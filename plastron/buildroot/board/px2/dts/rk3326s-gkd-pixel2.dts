@@ -403,28 +403,22 @@
 			turbo-mode;
 		};
 		/*
-		 * Disabled: this step was the trigger originally used to
-		 * reproduce the post-resume-from-deep-suspend cpufreq-
-		 * transition crash, which is now root-caused and fixed - see
-		 * 034-px30s-cru-suspend-resume-restore.patch and the Alpha
-		 * 1.4 release notes. Confirmed correct voltage (bit-for-bit
-		 * matching vendor's reference table) and confirmed this
-		 * silicon runs stable sustained at this frequency under a
-		 * static governor, so this was never a simple
-		 * overclock-instability disable.
+		 * Turbo-mode, like 1416MHz: cpufreq leaves it out unless boost
+		 * is turned on. It was disabled as the trigger for the
+		 * post-resume-from-deep-suspend cpufreq-transition crash,
+		 * since fixed by 034-px30s-cru-suspend-resume-restore.patch,
+		 * and kept off until 1512MHz itself was tested after the fix.
 		 *
-		 * Left disabled for now regardless: this specific step can't
-		 * have been exercised under the fix, since cpufreq never sees
-		 * a disabled OPP entry to select in the first place. Re-enable
-		 * only after testing 1512MHz directly post-fix, not simply
-		 * because the general crash is fixed.
+		 * Tested 2026-11-06: held at 1512MHz for 7 h 57 min in a game
+		 * at 4x fast forward, on the charger, with no crash, 47-48C
+		 * steady and 49.6C at the hottest. The run didn't include a
+		 * resume from deep suspend; TortOS doesn't use one.
 		 */
 		opp-1512000000 {
 			opp-hz = /bits/ 64 <1512000000>;
 			opp-microvolt = <1350000 1350000 1350000>;
 			clock-latency-ns = <40000>;
 			turbo-mode;
-			status = "disabled";
 		};
 	};
 
