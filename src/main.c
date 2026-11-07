@@ -1107,18 +1107,22 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 	 * folder, the wrong state directory and the wrong accent. */
 	int o = shelf_owner(a, s, i);
 
-	if (!v->tex[i] && is_muse(&a->sys.systems[s])) {
+	if (is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		muse_card_want(a, s, i);
 	} else if (!is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		char art[LIB_PATH * 3];
+		ui_card_order card;
 
 		box_art_path(a->sys.systems[o].folder, v->list.items[i].name,
 		             art, sizeof art);
 		/* Hand it to the worker and draw what the slot holds this frame:
 		 * nothing, or the card of the theme that was until its replacement
 		 * lands (theme_changed). Asking is cheap and ignores a card already
-		 * in hand, so callers ask every frame. */
-		bool asked = texload_want(s, i, art, NULL);
+		 * in hand, so callers ask every frame. With the card to draw if
+		 * there is no box art, so that is the worker's to draw as well. */
+		ui_card_order_set(&card, v->list.items[i].title,
+		                  a->sys.systems[o].accent, false);
+		bool asked = texload_want_or_draw(s, i, art, NULL, &card);
 
 		if (!asked && !g_loads_held) {
 			/* No worker. Exactly what this did before, on the frame, over
@@ -1145,56 +1149,74 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 }
 
 
-/* Finished art into textures: everything waiting, each frame. */
+/* One finished picture into its slot: texload_deliver's `put`. */
+static void shelf_put(void *ctx, texload_got *g)
+{
+	app *a = ctx;
+	SDL_Surface *surf = g->surf;
+	int s = g->sys, i = g->idx;
+	sysview *v;
+
+	if (home_accept(&a->home, a->r, s, i, surf)) {
+		if (surf) SDL_FreeSurface(surf);
+		return;
+	}
+	if (s < 0 || s >= a->sys.count) { if (surf) SDL_FreeSurface(surf); return; }
+	v = &a->view[s];
+	/* The shelf may have moved on, or something else may have filled this
+	 * slot while the decode was in the air. A slot holding a generated
+	 * card of the theme that was is not filled: it is waiting for this. */
+	if (i < 0 || i >= v->list.count || !game_card_wanted(v, i)) {
+		if (surf) SDL_FreeSurface(surf);
+		return;
+	}
+	/* The card of the theme that was, drawn until now, goes as this one
+	 * comes in. */
+	if (v->tex[i]) {
+		SDL_DestroyTexture(v->tex[i]);
+		v->tex[i] = NULL;
+	}
+	if (surf && g->card) {
+		/* The generated card, drawn on the worker: only its texture is
+		 * made here, marked with its theme as one made here would be. */
+		v->tex[i] = ui_card_upload(a->r, surf, g->theme);
+		if (v->tex[i]) { v->tw[i] = surf->w; v->th[i] = surf->h; }
+		v->cb[i] = 1.0f;
+		SDL_FreeSurface(surf);
+		surf = NULL;
+	}
+	/* A cover is squared and given a card's corners, the way Now
+	 * Playing draws it, so one album looks the same in both places. */
+	if (surf && is_muse(&a->sys.systems[s])) cover_shape(&surf);
+	if (surf) {
+		v->cb[i] = content_bottom(surf);
+		v->tex[i] = SDL_CreateTextureFromSurface(a->r, surf);
+		if (v->tex[i])
+			SDL_QueryTexture(v->tex[i], NULL, NULL, &v->tw[i], &v->th[i]);
+		SDL_FreeSurface(surf);
+	}
+	if (!v->tex[i]) {
+		/* No file could be read and no card came with it - the worker could
+		 * not have the faces: the generated card, made here. */
+		int o = shelf_owner(a, s, i);
+		v->tex[i] = is_muse(&a->sys.systems[s])
+		          ? ui_make_cover(a->r, v->list.items[i].title,
+		                          a->sys.systems[o].accent, &v->tw[i], &v->th[i])
+		          : ui_make_card(a->r, v->list.items[i].title,
+		                         a->sys.systems[o].accent,
+		                         &v->tw[i], &v->th[i]);
+		v->cb[i] = 1.0f;
+	}
+}
+
+/* Finished art into textures, as much of it as fits in this frame's share
+ * (texload_deliver): a landing or a fast scroll finishes a dozen at once,
+ * and one frame making every texture was the frame the shelf hitched on. The
+ * rest come in the next frames, which the loops draw while any is waiting
+ * (texload_ready). */
 static void texload_drain(app *a)
 {
-	SDL_Surface *surf;
-	int s, i;
-
-	while (texload_take(&s, &i, &surf, NULL)) {
-		sysview *v;
-
-		if (home_accept(&a->home, a->r, s, i, surf)) {
-			if (surf) SDL_FreeSurface(surf);
-			continue;
-		}
-		if (s < 0 || s >= a->sys.count) { if (surf) SDL_FreeSurface(surf); continue; }
-		v = &a->view[s];
-		/* The shelf may have moved on, or something else may have filled this
-		 * slot while the decode was in the air. A slot holding a generated
-		 * card of the theme that was is not filled: it is waiting for this. */
-		if (i < 0 || i >= v->list.count || !game_card_wanted(v, i)) {
-			if (surf) SDL_FreeSurface(surf);
-			continue;
-		}
-		/* The card of the theme that was, drawn until now, goes as this one
-		 * comes in. */
-		if (v->tex[i]) {
-			SDL_DestroyTexture(v->tex[i]);
-			v->tex[i] = NULL;
-		}
-		/* A cover is squared and given a card's corners, the way Now
-		 * Playing draws it, so one album looks the same in both places. */
-		if (surf && is_muse(&a->sys.systems[s])) cover_shape(&surf);
-		if (surf) {
-			v->cb[i] = content_bottom(surf);
-			v->tex[i] = SDL_CreateTextureFromSurface(a->r, surf);
-			if (v->tex[i])
-				SDL_QueryTexture(v->tex[i], NULL, NULL, &v->tw[i], &v->th[i]);
-			SDL_FreeSurface(surf);
-		}
-		if (!v->tex[i]) {
-			/* No file could be read: the generated card, made here. */
-			int o = shelf_owner(a, s, i);
-			v->tex[i] = is_muse(&a->sys.systems[s])
-			          ? ui_make_cover(a->r, v->list.items[i].title,
-			                          a->sys.systems[o].accent, &v->tw[i], &v->th[i])
-			          : ui_make_card(a->r, v->list.items[i].title,
-			                         a->sys.systems[o].accent,
-			                         &v->tw[i], &v->th[i]);
-			v->cb[i] = 1.0f;
-		}
-	}
+	texload_deliver(theme_index(), shelf_put, a);
 }
 
 static void evict_far(sysview *v, int keep)
@@ -2260,15 +2282,13 @@ static void drop_card(SDL_Texture **t)
 }
 
 
+/* The shelves' cards of the theme that was stay where they are: each slot
+ * shows its card until the one of the theme that is on lands from a worker
+ * (game_card_wanted), games' and albums' alike, so a turn leaves no hole in
+ * a row. Now Playing's cover is made on the frame and goes at once. */
 static void theme_changed(app *a)
 {
 	g_theme_late = false;              /* told, whoever turned it */
-	for (int i = 0; i < a->sys.count; i++) {
-		sysview *v = &a->view[i];
-
-		if (!is_muse(&a->sys.systems[i])) continue;
-		for (int k = 0; v->tex && k < v->list.count; k++) drop_card(&v->tex[k]);
-	}
 	drop_card(&g_np.tex);
 	g_np.done = g_np.tex != NULL;      /* np_cover's own rule: made, or ask */
 	redraw_now();
@@ -3894,6 +3914,10 @@ static void anim_launch(app *a)
 		 * zoomed an empty frame for the whole animation. Now a card that lands
 		 * partway through joins the zoom where it is. */
 		if (!card && v->list.count) {
+			/* This card first, out of its turn and whatever the frame has
+			 * spent: it is the one the zoom is waiting for. */
+			texload_deliver_slot(a->sys_cursor, v->cursor, theme_index(),
+			                     shelf_put, a);
 			texload_drain(a);
 			card = game_get_tex(a, v->cursor, &tw, &th, NULL);
 		}
@@ -12327,20 +12351,29 @@ static void np_cover(app *a, int al)
 
 /* Card `i` on Muse's shelf - game_get_tex's half for Muse. Its album's cover
  * when the card holds one, decoded on the worker like any box art; the
- * generated card when the music carries none; nothing yet while the daemon is
- * being asked, which cover_answers settles a few milliseconds later. */
+ * generated card when the music carries none, drawn on the worker too;
+ * nothing yet while the daemon is being asked, which cover_answers settles a
+ * few milliseconds later. Asked for while the slot is empty or holds the card
+ * of the theme that was, which it shows until its replacement lands, as a
+ * game's slot does. */
 static void muse_card_want(app *a, int s, int i)
 {
 	sysview *v = &a->view[s];
 	char path[LIB_PATH * 2 + 8];
+	ui_card_order card;
 	int al;
 
 	if (!v->album || i < 0 || i >= v->list.count) return;
 	al = v->album[i];
 	if (al < 0 || al >= g_muse.nalbums) return;
 	if (cover_file(al, path, sizeof path)) {
-		if (texload_want(s, i, path, NULL)) return;
+		/* A cover that will not decode is the card in the shelf's color,
+		 * as shelf_put has always made it */
+		ui_card_order_set(&card, v->list.items[i].title,
+		                  a->sys.systems[shelf_owner(a, s, i)].accent, true);
+		if (texload_want_or_draw(s, i, path, NULL, &card)) return;
 		/* No worker - a shot - so here, as game_get_tex does without one. */
+		if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
 		v->tex[i] = load_cover(a->r, path);
 		if (v->tex[i]) {
 			SDL_QueryTexture(v->tex[i], NULL, NULL, &v->tw[i], &v->th[i]);
@@ -12350,6 +12383,9 @@ static void muse_card_want(app *a, int s, int i)
 		g_cov[al].st = COV_NONE;             /* there, and not a picture */
 	}
 	if (g_cov && g_cov[al].st == COV_NONE) {
+		ui_card_order_set(&card, v->list.items[i].title, ZYPEROS_ACCENT, true);
+		if (texload_want_or_draw(s, i, NULL, NULL, &card)) return;
+		if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
 		v->tex[i] = ui_make_cover(a->r, v->list.items[i].title, ZYPEROS_ACCENT,
 		                          &v->tw[i], &v->th[i]);
 		v->cb[i] = 1.0f;

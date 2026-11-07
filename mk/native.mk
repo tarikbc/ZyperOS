@@ -84,3 +84,18 @@ $(BUILD)/home-check: tools/home-check.c $(CHECK_OBJS) FORCE
 
 $(BUILD)/games-check: tools/games-check.c $(CHECK_OBJS) FORCE
 	$(CC) $(CFLAGS) -o $@ tools/games-check.c $(CHECK_OBJS) $(LDLIBS)
+
+# The card with no art drawn on the art workers, against the frame's own
+# (tools/cardpaint-check.c), and finished pictures handed to the frame a few
+# a frame (tools/putpace-check.c): both need the workers, the fonts and a
+# renderer, so the launcher's own objects.
+$(BUILD)/cardpaint-check: tools/cardpaint-check.c $(CHECK_OBJS) FORCE
+	$(CC) $(CFLAGS) -o $@ tools/cardpaint-check.c $(CHECK_OBJS) $(LDLIBS)
+
+$(BUILD)/putpace-check: tools/putpace-check.c $(CHECK_OBJS) FORCE
+	$(CC) $(CFLAGS) -o $@ tools/putpace-check.c $(CHECK_OBJS) $(LDLIBS)
+
+# A measurement, not a check: the frame thread's time while a shelf lands
+# (tools/landbench.c, make landbench).
+$(BUILD)/landbench: tools/landbench.c $(CHECK_OBJS) FORCE
+	$(CC) $(CFLAGS) -o $@ tools/landbench.c $(CHECK_OBJS) $(LDLIBS)

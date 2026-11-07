@@ -25,8 +25,8 @@ static void page_fonts_cjk_open(int set)
     ui_cjk_font_path(false,menu,sizeof menu);
     ui_cjk_font_path(true,title,sizeof title);
     for(int i=0;i<PAGE_FONTS;i++) {
-        page_fonts_cjk[set][i]=TTF_OpenFont(i==PAGE_GAME_TITLE?title:menu,sizes[i]);
-        if(!page_fonts_cjk[set][i]) page_fonts_cjk[set][i]=TTF_OpenFont(menu,sizes[i]);
+        page_fonts_cjk[set][i]=ui_face_open(i==PAGE_GAME_TITLE?title:menu,sizes[i]);
+        if(!page_fonts_cjk[set][i]) page_fonts_cjk[set][i]=ui_face_open(menu,sizes[i]);
     }
 }
 bool page_fonts_init(const char *path)
@@ -38,8 +38,8 @@ bool page_fonts_init(const char *path)
     if(slash) snprintf(slash+1,sizeof bold-(size_t)(slash+1-bold),"title.ttf");
     else snprintf(bold,sizeof bold,"title.ttf");
     for(int i=0;i<PAGE_FONTS;i++) {
-        page_fonts[i]=TTF_OpenFont(i==PAGE_GAME_TITLE?bold:path,sizes[i]);
-        if(!page_fonts[i]) page_fonts[i]=TTF_OpenFont(path,sizes[i]);
+        page_fonts[i]=ui_face_open(i==PAGE_GAME_TITLE?bold:path,sizes[i]);
+        if(!page_fonts[i]) page_fonts[i]=ui_face_open(path,sizes[i]);
         if(!page_fonts[i]) return false;
     }
     return true;
@@ -48,8 +48,8 @@ void page_fonts_quit(void)
 {
     ui_text_memo_clear();
     for(int i=0;i<PAGE_FONTS;i++) {
-        if(page_fonts[i]) { TTF_CloseFont(page_fonts[i]); page_fonts[i]=NULL; }
-        for(int k=1;k<3;k++) if(page_fonts_cjk[k][i]) { TTF_CloseFont(page_fonts_cjk[k][i]); page_fonts_cjk[k][i]=NULL; }
+        if(page_fonts[i]) { ui_face_close(page_fonts[i]); page_fonts[i]=NULL; }
+        for(int k=1;k<3;k++) if(page_fonts_cjk[k][i]) { ui_face_close(page_fonts_cjk[k][i]); page_fonts_cjk[k][i]=NULL; }
     }
     page_cjk_tried[1]=page_cjk_tried[2]=false;
 }

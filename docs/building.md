@@ -153,6 +153,8 @@ something once broke in a way nothing noticed:
 | `check-home-shots` | the home screens as the launcher draws them in both layouts and themes: footer inside the inset, the song, a flip, a move (builds the host launcher) |
 | `check-favorites-shots` | the Favorites shelf names each game's own system right under its name (under one line or two), a console's own shelf does not, and every line keeps its margin, in both themes (builds the host launcher) |
 | `check-games` | the games row: the aspect, the wrap, tiny lists, rapid reversals and bounded jumps, on the launcher's own objects |
+| `check-cardpaint` | the card for a game or an album with no art, drawn on an art worker: the frame's pixels byte for byte, for every kind of title and both themes, a game's and an album's; in the faces of the language it was asked in; never handed to the shelf after a turn of the theme; the fonts closed and opened again around a fallback game while cards are asked for, with none drawn while they are down; and the frame's to make with no faces or no worker, on the launcher's own objects |
+| `check-putpace` | finished pictures put on screen a few a frame: the pace's rules with the costs handed in, then the workers' own cards on a software renderer, slow uploads included - every frame inside its share or one picture, every picture in its own slot in a few frames, none lost when more finish than the ring holds, a loop with nothing pressed drawing until the last is in, and the picture a screen waits for out of its turn, on the launcher's own objects |
 | `checkmark` | src/zypermark.h, Zyper as triangles, is what tools/zyperdef.py generates |
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
 | `check-from-rogue` | tools/from-rogue.sh's table against systems.cfg and against the folders on a ROGUE OS card |
@@ -165,6 +167,13 @@ something once broke in a way nothing noticed:
 
 They are offline and need no device. A screen's rows are a pure function of
 its state precisely so the first two can exist.
+
+`make landbench` is a measurement beside them, not one of them: the frame
+thread's time while a shelf of eleven lands, a hundred times, for games with
+no art, games with box art, and two dozen cards finished at once
+(tools/landbench.c). `--on-frame` works the frame as it did when it drew the
+cards itself and took every finished picture in one frame; `--slow MS` makes
+every upload slower, as a slow GPU's are. It prints and holds nothing.
 
 The host build renders exactly what the handheld renders, and can be asked for
 a single frame:

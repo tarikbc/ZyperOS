@@ -258,11 +258,11 @@ int main(void)
     bool game_landed=false;
     Uint32 until=SDL_GetTicks()+5000;
     while(SDL_GetTicks()<until && (!game_landed || !h.atlas.done || !texload_idle())) {
-        int shelf,id,theme; SDL_Surface *decoded;
-        while(texload_take(&shelf,&id,&decoded,&theme)) {
-            if(shelf==42) { assert(decoded); game_landed=true; }
-            else assert(home_accept(&h,r,shelf,id,decoded));
-            if(decoded) SDL_FreeSurface(decoded);
+        texload_got got;
+        while(texload_take(&got)) {
+            if(got.sys==42) { assert(got.surf); game_landed=true; }
+            else assert(home_accept(&h,r,got.sys,got.idx,got.surf));
+            if(got.surf) SDL_FreeSurface(got.surf);
         }
         SDL_Delay(1);
     }

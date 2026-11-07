@@ -6,6 +6,8 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include "texload.h"
+#include "cardgen.h"   /* cardgen_kept: a card is shown in its own theme only */
+#include "putpace.h"
 
 /* Slots each way. Comfortably more than the seven cards a shelf draws, so a
  * fast scroll queues ahead without the ring filling, and small enough that a
@@ -27,6 +29,10 @@ typedef struct {
 	/* The art itself is drawn for `theme` (texload_want_art), so whatever
 	 * file is found comes back saying so. */
 	bool     themed;
+	/* The card drawn where neither file is a picture (texload_want_or_draw),
+	 * a copy, as the paths are; `theme` is its theme. */
+	bool          carded;
+	ui_card_order card;
 } req;
 
 typedef struct {
@@ -37,6 +43,7 @@ typedef struct {
 	 * theme's. */
 	int          theme;
 	int          asked;      /* the theme the request carried, for queued() */
+	bool         card;       /* surf is the generated card, drawn for `theme` */
 } res;
 
 /* Two, on a four-core device, leaving a core for the render thread and one
@@ -62,6 +69,13 @@ typedef struct {
 static SDL_Thread *g_thread[NWORKERS];
 static SDL_mutex  *g_lock;
 static SDL_cond   *g_wake;
+/* Room in the result ring, for a worker holding a finished picture. The
+ * frame takes a few a frame now (texload_deliver), not every one, and a
+ * worker drawing cards finishes many in a frame: a full ring used to throw
+ * the newest away, to be asked for, read and drawn all over again. So a
+ * worker with a full ring waits for the frame to take one, and the requests
+ * wait behind it, newest first as ever. */
+static SDL_cond   *g_room;
 static bool        g_running;
 
 static req      g_rq[QN];
@@ -155,6 +169,7 @@ static int worker(void *arg)
 	for (;;) {
 		req          job;
 		SDL_Surface *s;
+		bool         drawn, gone;
 
 		SDL_LockMutex(g_lock);
 		while (g_running && g_rq_n == 0) SDL_CondWait(g_wake, g_lock);
@@ -174,20 +189,36 @@ static int worker(void *arg)
 
 		s = decode(job.first);
 		if (!s) s = decode(job.second);
+		/* No file, so the card in its place, here rather than on the frame:
+		 * several times an upload, and a shelf of games with no art asks for
+		 * a window of them at once. Not for a shelf that has gone since it
+		 * was asked for (texload_bump), which would only be thrown away -
+		 * and is what a fallback game's ui_quit is waiting behind. NULL when
+		 * the faces cannot be had, and the frame makes it as it always did. */
+		drawn = false;
+		if (!s && job.carded) {
+			SDL_LockMutex(g_lock);
+			gone = job.gen != g_gen;
+			SDL_UnlockMutex(g_lock);
+			if (!gone && (s = ui_card_paint(&job.card, true))) drawn = true;
+		}
 
 		SDL_LockMutex(g_lock);
+		while (g_running && job.gen == g_gen && g_rs_n >= QN)
+			SDL_CondWait(g_room, g_lock);
 		g_cur_sys[me] = g_cur_idx[me] = -1;
 		/* A result whose generation moved on is for a shelf that no longer
 		 * exists in that shape, and installing it would put one game's art
 		 * on another. */
-		if (job.gen == g_gen && g_rs_n < QN) {
+		if (g_running && job.gen == g_gen && g_rs_n < QN) {
 			res *r = &g_rs[(g_rs_head + g_rs_n) % QN];
 			r->sys = job.sys;
 			r->idx = job.idx;
 			r->gen = job.gen;
 			r->surf = s;
-			r->theme = job.themed ? job.theme : -1;
+			r->theme = job.themed || drawn ? job.theme : -1;
 			r->asked = job.theme;
+			r->card = drawn;
 			g_rs_n++;
 		} else if (s) {
 			SDL_FreeSurface(s);
@@ -204,7 +235,9 @@ bool texload_start(void)
 	if (g_thread[0]) return true;
 	for (k = 0; k < NWORKERS; k++) g_cur_sys[k] = g_cur_idx[k] = -1;
 	if (!(g_lock = SDL_CreateMutex())) return false;
-	if (!(g_wake = SDL_CreateCond())) {
+	if (!(g_wake = SDL_CreateCond()) || !(g_room = SDL_CreateCond())) {
+		if (g_wake) SDL_DestroyCond(g_wake);
+		g_wake = NULL;
 		SDL_DestroyMutex(g_lock);
 		g_lock = NULL;
 		return false;
@@ -219,6 +252,7 @@ bool texload_start(void)
 		/* None at all: fall back to decoding on the frame, as before. */
 		g_running = false;
 		SDL_DestroyCond(g_wake);   g_wake = NULL;
+		SDL_DestroyCond(g_room);   g_room = NULL;
 		SDL_DestroyMutex(g_lock);  g_lock = NULL;
 		fprintf(stderr, "texload: no worker (%s); art decodes on the frame\n",
 		        SDL_GetError());
@@ -235,6 +269,7 @@ void texload_stop(void)
 	SDL_LockMutex(g_lock);
 	g_running = false;
 	SDL_CondBroadcast(g_wake);      /* every waiter, not one of them */
+	SDL_CondBroadcast(g_room);
 	SDL_UnlockMutex(g_lock);
 	for (k = 0; k < NWORKERS; k++) {
 		if (!g_thread[k]) continue;
@@ -243,6 +278,7 @@ void texload_stop(void)
 	}
 	texload_bump();              /* frees whatever was still waiting */
 	SDL_DestroyCond(g_wake);     g_wake = NULL;
+	SDL_DestroyCond(g_room);     g_room = NULL;
 	SDL_DestroyMutex(g_lock);    g_lock = NULL;
 }
 
@@ -263,6 +299,7 @@ void texload_bump(void)
 		if (r->surf) SDL_FreeSurface(r->surf);
 	}
 	g_rs_n = g_rs_head = 0;
+	SDL_CondBroadcast(g_room);
 	SDL_UnlockMutex(g_lock);
 }
 
@@ -274,9 +311,10 @@ void texload_forget(void)
 	SDL_UnlockMutex(g_lock);
 }
 
-/* texload_want and texload_want_art: one queue, with or without a theme. */
+/* texload_want, texload_want_art and texload_want_or_draw: one queue, with
+ * or without a theme, with or without a card. */
 static bool ask(int sys, int idx, const char *first, const char *second,
-                int theme_ix, bool themed)
+                int theme_ix, bool themed, const ui_card_order *card)
 {
 	req *q;
 	int at;
@@ -313,6 +351,8 @@ static bool ask(int sys, int idx, const char *first, const char *second,
 	snprintf(q->second, sizeof q->second, "%s", second ? second : "");
 	q->theme = theme_ix;
 	q->themed = themed;
+	q->carded = card != NULL;
+	if (card) q->card = *card;
 	SDL_CondSignal(g_wake);
 	SDL_UnlockMutex(g_lock);
 	return true;
@@ -320,34 +360,134 @@ static bool ask(int sys, int idx, const char *first, const char *second,
 
 bool texload_want(int sys, int idx, const char *first, const char *second)
 {
-	return ask(sys, idx, first, second, -1, false);
+	return ask(sys, idx, first, second, -1, false, NULL);
 }
 
 bool texload_want_art(int sys, int idx, const char *first, const char *second,
                       int theme_ix)
 {
-	return ask(sys, idx, first, second, theme_ix, theme_ix >= 0);
+	return ask(sys, idx, first, second, theme_ix, theme_ix >= 0, NULL);
 }
 
-bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix)
+bool texload_want_or_draw(int sys, int idx, const char *first,
+                          const char *second, const ui_card_order *card)
 {
-	res *r;
+	return ask(sys, idx, first, second, card ? card->theme_ix : -1, false, card);
+}
 
+/* The result `at` places from the oldest, taken out of the ring, the older
+ * ones moved along a place each so the ring keeps its order. Called with the
+ * lock held. */
+static void pop(int at, texload_got *g)
+{
+	const res *r = &g_rs[(g_rs_head + at) % QN];
+	int k;
+
+	*g = (texload_got){ r->sys, r->idx, r->surf, r->theme, r->card };
+	for (k = at; k > 0; k--)
+		g_rs[(g_rs_head + k) % QN] = g_rs[(g_rs_head + k - 1) % QN];
+	g_rs_head = (g_rs_head + 1) % QN;
+	g_rs_n--;
+	SDL_CondSignal(g_room);
+}
+
+bool texload_take(texload_got *g)
+{
 	if (!g_thread[0]) return false;
 	SDL_LockMutex(g_lock);
 	if (g_rs_n == 0) {
 		SDL_UnlockMutex(g_lock);
 		return false;
 	}
-	r = &g_rs[g_rs_head];
-	*sys  = r->sys;
-	*idx  = r->idx;
-	*surf = r->surf;
-	if (theme_ix) *theme_ix = r->theme;
-	g_rs_head = (g_rs_head + 1) % QN;
-	g_rs_n--;
+	pop(0, g);
 	SDL_UnlockMutex(g_lock);
 	return true;
+}
+
+/* The frame's pace, kept from frame to frame: what a megapixel costs to put
+ * on screen is this device's, learned as it goes (src/putpace.h). One frame
+ * thread, so one pace. */
+static putpace g_pace = { TEXLOAD_SHARE_MS, 0.0f, 0.0f, 0 };
+
+static float ms_since(Uint64 t0)
+{
+	return (float)((double)(SDL_GetPerformanceCounter() - t0) * 1000.0 /
+	               (double)SDL_GetPerformanceFrequency());
+}
+
+/* One taken picture to `put`, or to the bin when it is a card of a theme no
+ * longer on, which is false. Not under the lock: `put` makes a texture, and
+ * a worker waiting to hand its next picture over should not wait for the
+ * GPU. */
+static bool hand(texload_got *g, int theme_on,
+                 void (*put)(void *ctx, texload_got *g), void *ctx)
+{
+	if (g->card && !cardgen_kept(g->theme, theme_on)) {
+		SDL_FreeSurface(g->surf);
+		return false;
+	}
+	put(ctx, g);
+	return true;
+}
+
+int texload_deliver(int theme_on, void (*put)(void *ctx, texload_got *g),
+                    void *ctx)
+{
+	int n = 0;
+
+	if (!g_thread[0]) return 0;
+	putpace_frame(&g_pace);
+	for (;;) {
+		texload_got g;
+		long px;
+		Uint64 t0;
+
+		SDL_LockMutex(g_lock);
+		if (g_rs_n == 0) {
+			SDL_UnlockMutex(g_lock);
+			break;
+		}
+		/* Asked before it is taken: one that does not fit stays first in
+		 * line for the next frame. */
+		px = g_rs[g_rs_head].surf ? (long)g_rs[g_rs_head].surf->w * g_rs[g_rs_head].surf->h : 0;
+		if (!putpace_room(&g_pace, px)) {
+			SDL_UnlockMutex(g_lock);
+			break;
+		}
+		pop(0, &g);
+		SDL_UnlockMutex(g_lock);
+
+		/* A card thrown away for its theme is not one put on screen: it
+		 * takes no frame's turn and teaches nothing, a free saying nothing
+		 * of what an upload costs, and costs a few microseconds. */
+		t0 = SDL_GetPerformanceCounter();
+		if (hand(&g, theme_on, put, ctx)) {
+			putpace_took(&g_pace, px, ms_since(t0));
+			n++;
+		}
+	}
+	return n;
+}
+
+bool texload_deliver_slot(int sys, int idx, int theme_on,
+                          void (*put)(void *ctx, texload_got *g), void *ctx)
+{
+	texload_got g;
+	int k;
+
+	if (!g_thread[0]) return false;
+	SDL_LockMutex(g_lock);
+	for (k = 0; k < g_rs_n; k++) {
+		const res *r = &g_rs[(g_rs_head + k) % QN];
+		if (r->sys == sys && r->idx == idx) break;
+	}
+	if (k == g_rs_n) {
+		SDL_UnlockMutex(g_lock);
+		return false;
+	}
+	pop(k, &g);
+	SDL_UnlockMutex(g_lock);
+	return hand(&g, theme_on, put, ctx);
 }
 
 bool texload_ready(void)
@@ -359,6 +499,17 @@ bool texload_ready(void)
 	any = g_rs_n > 0;
 	SDL_UnlockMutex(g_lock);
 	return any;
+}
+
+int texload_waiting(void)
+{
+	int n;
+
+	if (!g_thread[0]) return 0;
+	SDL_LockMutex(g_lock);
+	n = g_rs_n;
+	SDL_UnlockMutex(g_lock);
+	return n;
 }
 
 bool texload_idle(void)
