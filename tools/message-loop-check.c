@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Runs main.c's real timed-message loop and panel/snapshot plumbing with
  * a fake clock and input queue. Only drawing and hardware are replaced.
  * messages-check.py extracts those functions, without a second loop here. */

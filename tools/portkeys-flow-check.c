@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The real reader and loop, extracted at build time, not a model of them.
  * Only OS calls, the clock, and hardware/bar output are replaced. On Linux
  * this uses the real evdev ABI; the host fallback lets make check run on macOS.

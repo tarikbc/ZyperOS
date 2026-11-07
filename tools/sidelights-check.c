@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * What the launcher tells the side lights' gauge (src/sidelights.h): the
  * lines, word for word as plastron's gauge reads them (package/gauge/src/

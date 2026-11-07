@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Write a small NES test cartridge: ZyperOS's own, so a QEMU VM (or a Pixel 2)
 has a game to start with nothing downloaded and no licence to worry about.
 

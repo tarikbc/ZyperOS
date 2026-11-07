@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The tutorial's steps: what each waits for, what a press plays and when the
  * next comes on, and where every clock the drawing reads is. No SDL;
  * src/tourdraw.c draws it. See src/tour.h.

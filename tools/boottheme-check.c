@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* make check-boottheme: the words the boot screen's theme and language travel
  * in (src/boottheme.h), as boot.scr and the splash read them. */
 #include "../src/boottheme.h"

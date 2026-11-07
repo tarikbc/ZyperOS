@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* What MENU > System Update says. See src/sysupdate.h, and the update lab
  * (docs/design/mock/update-lab.html) for the page this lays out. */
 #include <stdio.h>

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-lat: how fast the GKD Pixel 2 answers a button, and how even its frames
  * are, measured at the panel with nothing in the program changed.
  *

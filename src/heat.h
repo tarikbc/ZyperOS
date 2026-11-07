@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* "Getting hot": when to say that the chip has passed the point where the
  * kernel slows it down hard (DESIGN.md 11.23).
  *

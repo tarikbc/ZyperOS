@@ -4,9 +4,9 @@
 
 ## ZyperOS Installer's own code
 
-ZyperOS Installer is under the PolyForm Shield License 1.0.0, in the repository's [`LICENSE`](../LICENSE) (this folder's [`LICENSE`](LICENSE) is the same text), with the notice in its [`NOTICE`](../NOTICE):
+ZyperOS Installer is under the GNU General Public License, version 3, in the repository's [`LICENSE`](../LICENSE) (this folder's [`LICENSE`](LICENSE) is the same text), with the notice and the additional terms under section 7 in its [`NOTICE`](../NOTICE), and the name and Zyper kept as trademarks in [`TRADEMARK.md`](../TRADEMARK.md):
 
-> Required Notice: Copyright 2026 Tarik Caramanico (https://github.com/tarikbc/ZyperOS)
+> Copyright (C) 2026 Tarik Caramanico
 
 It started from TortOS Installer by Eric Reinsmidt, in its MIT-licensed versions. That code keeps his MIT notice, Copyright (c) 2026 Eric Reinsmidt, in [`LICENSES/MIT-TortOS-Installer.txt`](../LICENSES/MIT-TortOS-Installer.txt).
 

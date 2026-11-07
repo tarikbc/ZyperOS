@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The tutorial on the screen: every screen of DESIGN.md 11.10, drawn from
  * src/tour.h's state and the clock, the way the tutorial lab's tour.js draws
  * it - the same sizes, places and times, so the screens I picked are the

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The status file: what the launcher's System Update screen shows, written
  * whole to a temporary name and renamed over the old one, so a reader never
  * sees half of it. One "key value" line each:

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* portkeys: the GKD Pixel 2's volume keys while a port runs, and the bar that
  * says what they did.
  *

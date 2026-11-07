@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 OR MPL-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only OR MPL-2.0 */
 /* Vendored from ZyperOS src/design.h, which is where it is changed: the
  * launcher, this port and portkeys read the same tokens, and
  * tools/designdef.py, which generates it, is there. Copy it back here whole,

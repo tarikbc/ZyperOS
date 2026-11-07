@@ -109,6 +109,7 @@ mkdir -p "$OUT/Licenses"
 cp "$ROOT/THIRD-PARTY-LICENSES.md" "$OUT/Licenses/ZyperOS.md"
 cp "$ROOT/LICENSE" "$OUT/Licenses/ZyperOS-LICENSE.md"
 cp "$ROOT/NOTICE" "$OUT/Licenses/ZyperOS-NOTICE.txt"
+cp "$ROOT/TRADEMARK.md" "$OUT/Licenses/ZyperOS-TRADEMARK.md"
 cp "$ROOT/LICENSES/MIT-TortOS.txt" "$OUT/Licenses/"
 # ...and the licenses of the menu music's tracks, which it names
 for f in "$ROOT"/res/bgm/LICENSE-*.txt; do

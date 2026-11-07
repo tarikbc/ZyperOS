@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The card for a game or an album with no art, drawn on an art worker
  * (src/ui.h's ui_card_paint, src/texload.h's texload_want_or_draw), held to
  * the card the frame draws, on the launcher's own objects.

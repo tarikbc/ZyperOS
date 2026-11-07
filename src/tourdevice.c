@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The handheld beside each lesson: DESIGN.md 11.10, "The handheld". See
  * src/tourdevice.h.
  *

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Offline title integration: real parser, runner, SQLite and library scan.
  * Only transport, credentials, ROM CRC and image shrinking are stubbed. */
 #include "../src/db.h"

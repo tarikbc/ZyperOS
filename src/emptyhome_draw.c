@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The empty home drawn: see emptyhome.h. Its words are emptyhome.c's, which
  * needs no screen, so tools/emptyhome-check.c holds them on their own. */
 #include "emptyhome.h"

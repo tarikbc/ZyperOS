@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Menu music's decoders. See src/bgm_dec.h.
  *
  * The two decoders are other people's code, each built in one file and

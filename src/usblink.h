@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* USB charges only until somebody says otherwise (2026-11-05).
  *
  * plastron's S40usbgadget makes the USB network gadget at boot but binds it

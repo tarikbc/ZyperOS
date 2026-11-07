@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-rumble: run the GKD Pixel 2's rumble motor from a shell, and read back
  * what the motor's PWM is doing.
  *

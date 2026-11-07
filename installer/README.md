@@ -131,8 +131,9 @@ history this folder keeps (a subtree, as `diatom/` is). Thank you, Eric.
 
 ## License
 
-ZyperOS Installer is under the PolyForm Shield License 1.0.0 (`LICENSE`), with
-the notice in the repository's `NOTICE`. It started from TortOS Installer by
+ZyperOS Installer is under the GNU General Public License, version 3
+(`LICENSE`), with the additional terms in the repository's `NOTICE`. The name
+and Zyper are trademarks; see the repository's `TRADEMARK.md`. It started from TortOS Installer by
 Eric Reinsmidt, in its MIT-licensed versions; that code keeps his MIT notice,
 in the repository's `LICENSES/MIT-TortOS-Installer.txt`.
 

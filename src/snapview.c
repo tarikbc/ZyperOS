@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See snapview.h. A small copy of mp4video.c's reading, for a second set of
  * frames; MP4's own reader is left exactly as it is. */
 #include "snapview.h"

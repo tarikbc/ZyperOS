@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Achievement badges: RetroAchievements' 64-pixel art for each achievement,
  * kept on the card beside the set it belongs to,
  *

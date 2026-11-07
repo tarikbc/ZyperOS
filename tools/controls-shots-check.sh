@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 # The in-game menu's Controls page, and the home's systems in A to Z order,
 # drawn by the host launcher (My picks, 2026-11-06,
 # docs/design/mock/controls-lab.html):

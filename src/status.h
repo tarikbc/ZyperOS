@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The shelf's status corner, DESIGN.md 11.12: the clock and the marks beside
  * it, top right, on the ground and in no shape. My pick in the status
  * lab, 2026-11-04, "the quiet corner".

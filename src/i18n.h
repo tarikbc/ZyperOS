@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The words a player reads, in the language MENU > Language chose.
  *
  * Every string the launcher shows has an ID (src/i18n_ids.h, S_...), and

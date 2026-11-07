@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The File Transfer page on the host: the real routes (src/hare.c) and the
  * real server (src/httpd.c) over a scratch card, for looking at the page in
  * a browser and for the README's pictures of it (tools/readme-shots.py).

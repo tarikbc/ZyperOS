@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Zyper's pop-up with the menu music's new song, on the home and the games
  * shelf (DESIGN.md 11.22; 2026-11-06: "whenever the bg song changes,
  * can we have zyper popup and say the new song name?"): its words and its

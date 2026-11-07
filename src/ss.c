@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See ss.h for where the two credentials come from and why. */
 #include <stdio.h>
 #include <string.h>

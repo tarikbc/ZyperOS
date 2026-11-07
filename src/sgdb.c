@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See sgdb.h for what this is and why the key is handled as it is. */
 #include <ctype.h>
 #include <pthread.h>

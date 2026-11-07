@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The USB port's two questions, apart from platform.h so src/usblink.c and
  * its check need no SDL. The device files answer them. */
 #ifndef USBPEER_H

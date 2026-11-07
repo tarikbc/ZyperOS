@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Percent-encoding, declared in net.h and implemented HERE.
  *
  * Apart from net.c on purpose. It is a pure string function with no socket in

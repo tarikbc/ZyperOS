@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* What USB File Transfer's SSH reads in dropbear's log, and the shadow it
  * gives dropbear (src/sshlink.h).
  *

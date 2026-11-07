@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-input: press the GKD Pixel 2's buttons from a shell.
  *
  *   px2-input BUTTON[+BUTTON...][:MS] ...   e.g.  px2-input down down a

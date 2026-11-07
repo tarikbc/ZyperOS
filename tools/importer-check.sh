@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 # The launcher's two computer-side importers, end to end on a scratch card:
 # --meta fills a game's year, genres and synopsis, and --titles then gives it a
 # display title without losing any of that; a game with no row gets one with

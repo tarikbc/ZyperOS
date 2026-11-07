@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The on-screen keyboard.
  *
  * Typing a WPA2 key on a d-pad is the worst text entry a handheld ever asks

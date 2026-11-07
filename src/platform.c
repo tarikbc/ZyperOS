@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The portable half of the platform layer: what every device shares. The
  * settings the library database holds for games, the input helpers, running
  * and spawning children, the power-off request and the volume and brightness

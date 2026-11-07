@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 # ZyperOS in QEMU on a Mac, standing in for the GKD Pixel 2: plastron's QEMU
 # image (`make qemu` there: out/qemu/sdcard.img and Image) booted on QEMU's
 # arm64 virt machine under Apple's Hypervisor framework. One VM per name, each

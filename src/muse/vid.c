@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See vid.h; the frames' layout is src/mp4frame.h.
  *
  * WHAT THIS CPU PLAYS. No hardware video decode is usable on the RK3326 under

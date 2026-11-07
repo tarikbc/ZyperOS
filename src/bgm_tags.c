@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* A menu music track's name from its tags. See src/bgm_tags.h.
  *
  * ID3v2 is read from the file a frame at a time, by the sizes in the frame

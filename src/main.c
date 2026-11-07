@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+/* SPDX-License-Identifier: GPL-3.0-only
  *
  * ZyperOS - a custom firmware for the TrimUI Brick that plays eleven
  * 8-, 16- and 32-bit consoles.

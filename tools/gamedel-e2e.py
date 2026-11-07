@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Delete Game through the real launcher, headless (make check-gamedel).
 
 The launcher's --delete-now runs Delete Game's yes on the game under the

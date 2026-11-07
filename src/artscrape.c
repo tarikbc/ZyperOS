@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See artscrape.h for where the rules came from and why they are these. */
 #include <ctype.h>
 #include <dirent.h>

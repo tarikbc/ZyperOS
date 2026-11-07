@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See stats.h. No SDL and no platform header, so the check can drive it
  * without a window - `now_ms` comes from the caller for the same reason
  * idle_check takes one.

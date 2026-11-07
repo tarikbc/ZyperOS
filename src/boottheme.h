@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The boot screen in the theme the player chose (DESIGN.md 11.21).
  *
  * The boot animation plays from the moment the panel lights, before the card

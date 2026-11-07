@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+// SPDX-License-Identifier: GPL-3.0-only
 import Foundation
 
 /// The Pixel 2's parts as px2sim reports them (plastron's package/px2sim):

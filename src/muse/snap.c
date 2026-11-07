@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See snap.h. The decoder here is a small copy of vid.c's on purpose: a snap
  * needs no seek but the loop, no frame skipping and no clock but the wall's,
  * and keeping it apart leaves MP4's player - the part people watch films on -

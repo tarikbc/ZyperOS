@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* WiFi over the stock wpa_supplicant. See wifi.h for the position: none of
  * this is ZyperOS's own networking, it is a client of firmware that already
  * works.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Menu music's player. See src/bgm.h.
  *
  * One thread. It reads the folder - Roms/BGM, or ZyperOS's own tracks when

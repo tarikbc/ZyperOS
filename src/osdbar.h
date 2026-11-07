@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 OR MPL-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only OR MPL-2.0 */
 #ifndef ZYPEROS_OSDBAR_H
 #define ZYPEROS_OSDBAR_H
 
@@ -27,8 +27,8 @@
  * so the design is written down once. Plain C, no allocation the
  * caller does not see, nothing but libm.
  *
- * Under either license above: ZyperOS is under the PolyForm Shield License
- * 1.0.0 and Diatom, which carries a copy of these two files in its port/,
+ * Under either license above: ZyperOS is under GPL-3.0-only
+ * and Diatom, which carries a copy of these two files in its port/,
  * with src/design.h they read, is MPL.
  *
  * The geometry is in DESIGN UNITS, the launcher's 1024x768 drawing space,

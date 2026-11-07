@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The hotspot's screen. See hotpanel.h, and DESIGN.md 11.16 for the layout
  * I picked in the hotspot lab (docs/design/mock/hotspot-lab.html, "A whole
  * screen"). */

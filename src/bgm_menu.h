@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* MENU > Menu Music, as rows: what src/bgm.h's settings look like in a menu.
  * No SDL, so tools/bgm-check.c builds it on a host; main.c's bgm_screen
  * draws it and acts on its keys. */

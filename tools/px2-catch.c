@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-catch: where a process crashed, on a device with no debugger.
  *
  *   px2-catch PID [SECONDS]     (default 60 s)

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See rajson.h. Everything here works on spans into the caller's buffer;
  * nothing is copied until js_str is asked for a string. */
 #include <stdlib.h>

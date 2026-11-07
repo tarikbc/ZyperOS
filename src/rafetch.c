@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See rafetch.h. The network is net.c, the JSON is rajson.c, the hash is
  * rahash.c; this is the RetroAchievements workflow those three serve. */
 #include <fcntl.h>

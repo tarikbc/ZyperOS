@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* A cached line must reach full opacity after its first fading frame. A
  * still drawn opaque cannot catch opacity baked into the cached glyphs.
  *

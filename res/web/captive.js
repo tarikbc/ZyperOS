@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The note in a phone's sign-in sheet, on the handheld's own network.
  *
  * When the handheld is the hotspot (src/hotspot.h), a phone that joins opens

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """A game's own system right under its name on the Favorites shelf (src/games.c).
 
     make check-favorites-shots

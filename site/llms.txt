@@ -1,6 +1,6 @@
 # ZyperOS
 
-> ZyperOS is a fast, light custom firmware (operating system) for the GKD Pixel 2 retro handheld, made by Tarik Caramanico and named after his dog Zyper. It plays forty systems from a microSD card you can take out at any time, plus PortMaster ports, music, audiobooks and videos. The emulator stays running, so a game starts the moment you press A. ZyperOS 1.0.1 is out for the GKD Pixel 2, released in November 2026: download ZyperOS Installer (macOS, Windows, Linux) from the latest release on GitHub, or write the card image with any disk image writer. The TrimUI Brick's image comes later. It is free, under the PolyForm Shield License 1.0.0.
+> ZyperOS is a fast, light custom firmware (operating system) for the GKD Pixel 2 retro handheld, made by Tarik Caramanico and named after his dog Zyper. It plays forty systems from a microSD card you can take out at any time, plus PortMaster ports, music, audiobooks and videos. The emulator stays running, so a game starts the moment you press A. ZyperOS 1.0.1 is out for the GKD Pixel 2, released in November 2026: download ZyperOS Installer (macOS, Windows, Linux) from the latest release on GitHub, or write the card image with any disk image writer. The TrimUI Brick's image comes later. It is free and open source, under the GNU GPL version 3 (GPL-3.0-only), with the name ZyperOS and Zyper kept as trademarks.
 
 ## Pages
 - [ZyperOS home](https://zyperos.com/): what it does, the screens, the forty systems, how it compares with the stock firmware, ROGUE OS, TortOS, ROCKNIX and plumOS, and how to install it.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The Diatom transport: the launcher's side of the socket to the resident
  * emulator. Nothing in it knows which device it runs on. */
 #include "device.h"
