@@ -225,8 +225,8 @@ static void horizontal_controls(void)
 	ck(n > 2, "the moving page has controls");
 	ck(!strcmp(rows[0].label, "Left/Right") && !strcmp(rows[0].value, "Move"),
 	   "left and right move along the row");
-	ck(!strcmp(rows[1].label, "Up/Down") && !strcmp(rows[1].value, "Jump by letter"),
-	   "up and down jump by letter");
+	ck(!strcmp(rows[1].label, "Up/Down") && !strcmp(rows[1].value, "Letter, or 3 systems"),
+	   "up and down jump by letter, or 3 systems by release date");
 }
 
 static void pages_are_named(void)

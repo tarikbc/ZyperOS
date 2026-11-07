@@ -129,6 +129,42 @@ int home_jump(int cursor, int count, int dir)
     if (k < 0) k = 0;
     return ((cursor + (dir < 0 ? -k : k)) % count + count) % count;
 }
+unsigned char home_group_key(const char *tag, const char *core, const char *name)
+{
+    if (!strcmp(tag, "FAV")) return 1;
+    if (!strcmp(core, "port")) return 2;
+    for (const char *p = name; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c >= 'a' && c <= 'z') return (unsigned char)(c - 32);
+        if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) return c;
+    }
+    return '#';
+}
+int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir)
+{
+    /* A group is a run of equal keys, so the shelf's order is all it needs:
+     * Favorites and Ports have keys of their own and are runs of one. */
+    if (count <= 1 || cursor < 0 || cursor >= count) return cursor < 0 ? 0 : cursor;
+    unsigned char key = keys[cursor];
+    int i;
+    if (dir > 0) {
+        for (i = 1; i < count; i++) {
+            int k = (cursor + i) % count;
+            if (keys[k] != key) return k;
+        }
+        return cursor;                          /* one group, the whole row */
+    }
+    /* A group is a run in the row's order, so its first system is found
+     * walking back to the row's start and never past it */
+    int start = cursor;
+    while (start > 0 && keys[start - 1] == key) start--;
+    if (start != cursor) return start;          /* up goes to its own first */
+    int p = (cursor - 1 + count) % count;
+    if (keys[p] == key) return cursor;          /* one group, the whole row */
+    start = p;
+    while (start > 0 && keys[start - 1] == keys[p]) start--;
+    return start;
+}
 bool home_song_update(home_song *song, bool active, bool paused, const char *title)
 {
     home_song next = { .active = active, .paused = active && paused };

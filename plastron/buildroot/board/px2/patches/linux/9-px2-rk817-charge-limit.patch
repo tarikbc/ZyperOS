@@ -9,9 +9,13 @@ At the end threshold the USB input current limit is held to its least,
 80 mA, under what the system draws: the battery takes no charge and gives
 the rest, falling slowly to the start threshold, where the input limit the
 cable came with is put back and it charges again. The start follows the
-end 5 points under it unless it is written after. An end of 100, the
-default, is no limit. While held with the cable in, the battery's status
-is "Not charging".
+end 2 points under it unless it is written after, so 80% holds between 78
+and 80%. The level both go by is the gauge's coulomb counter, which moves
+only with the charge itself, so a band that narrow does not switch back
+and forth and needs no time held: each switch waits for 17 mAh, minutes
+either way (RK817_CHARGE_LIMIT_GAP says more). An end of 100, the default,
+is no limit. While held with the cable in, the battery's status is "Not
+charging".
 
 Not the charger's enable (PMIC_CHRG_OUT bit 7), nor its voltage lowered
 under the battery's: either puts the charger off (CHRG_STS CHRG_OFF), and
@@ -28,14 +32,14 @@ start. The gauge's full-charge calibration runs on CHARGE_FINISH, and not
 while the limit holds the battery; a full charge now and then (ZyperOS's
 "Hold A for a full charge") gives it one.
 ---
- drivers/power/supply/rk817_charger.c | 128 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 125 insertions(+), 3 deletions(-)
+ drivers/power/supply/rk817_charger.c | 150 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 147 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/power/supply/rk817_charger.c b/drivers/power/supply/rk817_charger.c
-index 81c50f8..822bb97 100644
+index 81c50f8..7838832 100644
 --- a/drivers/power/supply/rk817_charger.c
 +++ b/drivers/power/supply/rk817_charger.c
-@@ -18,6 +18,16 @@
+@@ -18,6 +18,38 @@
  #include <linux/power_supply.h>
  #include <linux/regmap.h>
  
@@ -46,13 +50,35 @@ index 81c50f8..822bb97 100644
 + */
 +#define RK817_CHRG_OUT_EN	BIT(7)
 +
-+/* How far under the end threshold charging starts again, by default */
-+#define RK817_CHARGE_LIMIT_GAP	5
++/*
++ * How far under the end threshold charging starts again, by default: 2, so
++ * 80% holds between 78 and 80%. It was 5, and a battery held at 80% fell to
++ * 75% before it charged again, which looked like a limit that slipped
++ * (2026-11-07).
++ *
++ * The level it goes by is the gauge's coulomb counter over the full charge
++ * (rk817_read_props), not the battery's voltage: it moves only as charge
++ * goes in or out, in steps of 0.17 mAh, and under a limit nothing else in
++ * this driver moves it (the calibrations wait for CHARGE_FINISH, and not
++ * while held). So a narrow band has no noise to switch on, and needs no
++ * time held. Rounded to whole points, the battery is held from 79.5% (80
++ * shown) and let go under 78.5% (78 shown), so each switch waits for a
++ * point of charge: 17 mAh of the 1730 mAh in a GKD Pixel 2, 7 to 9 minutes
++ * at the 110 to 140 mA the held battery gives, and a minute or two on the
++ * cable to put it back.
++ *
++ * Battery care: held, the battery gives what the 80 mA input does not,
++ * whatever the band, so a narrow band takes no more out of it; it cuts the
++ * same charge into shorter top-ups. A top-up of a point near 80% is a small,
++ * shallow cycle, which stresses a lithium battery little: what ages it is
++ * sitting full, and the limit keeps it from that.
++ */
++#define RK817_CHARGE_LIMIT_GAP	2
 +
  /* Charging statuses reported by hardware register */
  enum rk817_charge_status {
  	CHRG_OFF,
-@@ -108,6 +118,24 @@ struct rk817_charger {
+@@ -108,6 +140,24 @@ struct rk817_charger {
  	/* Work queue to periodically update values. */
  	struct delayed_work work;
  
@@ -77,7 +103,7 @@ index 81c50f8..822bb97 100644
  	/*
  	 * The USB PHY's charger detection (BC1.2), when the device tree points
  	 * the charger node at it with an extcon phandle: the input current
-@@ -276,9 +304,13 @@ static int rk817_bat_calib_cap(struct rk817_charger *charger)
+@@ -276,9 +326,13 @@ static int rk817_bat_calib_cap(struct rk817_charger *charger)
  		return -EINVAL;
  	}
  
@@ -93,7 +119,7 @@ index 81c50f8..822bb97 100644
  		/*
  		 * soc should be 100000 and columb counter should show the full
  		 * charge capacity. Note that if the device is unplugged for a
-@@ -307,7 +339,8 @@ static int rk817_bat_calib_cap(struct rk817_charger *charger)
+@@ -307,7 +361,8 @@ static int rk817_bat_calib_cap(struct rk817_charger *charger)
  	 * The columb counter can drift up slightly, so we should correct for
  	 * it. But don't correct it until we're at 100% soc.
  	 */
@@ -103,7 +129,7 @@ index 81c50f8..822bb97 100644
  		regmap_bulk_read(rk808->regmap, RK817_GAS_GAUGE_Q_PRES_H3,
  				 bulk_reg, 4);
  		charge_now_adc = get_unaligned_be32(bulk_reg);
-@@ -455,6 +488,11 @@ static int rk817_bat_get_prop(struct power_supply *ps,
+@@ -455,6 +510,11 @@ static int rk817_bat_get_prop(struct power_supply *ps,
  		val->intval = charger->battery_present;
  		break;
  	case POWER_SUPPLY_PROP_STATUS:
@@ -115,7 +141,7 @@ index 81c50f8..822bb97 100644
  		if (charger->cur_avg_ua < 0) {
  			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
  			break;
-@@ -535,6 +573,12 @@ static int rk817_bat_get_prop(struct power_supply *ps,
+@@ -535,6 +595,12 @@ static int rk817_bat_get_prop(struct power_supply *ps,
  	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
  		val->intval = charger->max_chg_volt_uv;
  		break;
@@ -128,7 +154,7 @@ index 81c50f8..822bb97 100644
  	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
  		val->intval = charger->bat_voltage_max_design_uv;
  		break;
-@@ -551,6 +595,7 @@ static int rk817_bat_get_prop(struct power_supply *ps,
+@@ -551,6 +617,7 @@ static int rk817_bat_get_prop(struct power_supply *ps,
   */
  static const int rk817_ilim_ma[] = { 450, 80, 850, 1500, 1750, 2000, 2500, 3000 };
  
@@ -136,7 +162,7 @@ index 81c50f8..822bb97 100644
  #define RK817_ILIM_1500MA	0x03
  #define RK817_ILIM_2000MA	0x05
  
-@@ -569,6 +614,9 @@ static void rk817_set_input_limit(struct rk817_charger *charger)
+@@ -569,6 +636,9 @@ static void rk817_set_input_limit(struct rk817_charger *charger)
  	if (charger->edev &&
  	    extcon_get_state(charger->edev, EXTCON_CHG_USB_DCP) > 0)
  		sel = RK817_ILIM_2000MA;
@@ -146,7 +172,7 @@ index 81c50f8..822bb97 100644
  
  	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN,
  			  RK817_USB_ILIM_SEL, sel);
-@@ -598,6 +646,32 @@ static int rk817_dcp_notifier(struct notifier_block *nb, unsigned long event,
+@@ -598,6 +668,32 @@ static int rk817_dcp_notifier(struct notifier_block *nb, unsigned long event,
  	return NOTIFY_OK;
  }
  
@@ -179,7 +205,7 @@ index 81c50f8..822bb97 100644
  static int rk817_chg_get_prop(struct power_supply *ps,
  			      enum power_supply_property prop,
  			      union power_supply_propval *val)
-@@ -657,6 +731,7 @@ static irqreturn_t rk817_plug_in_isr(int irq, void *cg)
+@@ -657,6 +753,7 @@ static irqreturn_t rk817_plug_in_isr(int irq, void *cg)
  	charger->soc_cal = 0;
  
  	rk817_read_props(charger);
@@ -187,7 +213,7 @@ index 81c50f8..822bb97 100644
  
  	dev_dbg(charger->dev, "Power Cord Inserted\n");
  
-@@ -689,6 +764,7 @@ static irqreturn_t rk817_plug_out_isr(int irq, void *cg)
+@@ -689,6 +786,7 @@ static irqreturn_t rk817_plug_out_isr(int irq, void *cg)
  	rk817_set_input_limit(charger);
  
  	rk817_read_props(charger);
@@ -195,7 +221,7 @@ index 81c50f8..822bb97 100644
  
  	dev_dbg(charger->dev, "Power Cord Removed\n");
  
-@@ -708,9 +784,23 @@ static int rk817_bat_set_prop(struct power_supply *ps,
+@@ -708,9 +806,23 @@ static int rk817_bat_set_prop(struct power_supply *ps,
  			return -EINVAL;
  		charger->fcc_mah = val->intval / 1000;
  		return rk817_bat_calib_cap(charger);
@@ -219,7 +245,7 @@ index 81c50f8..822bb97 100644
  }
  
  static enum power_supply_property rk817_bat_props[] = {
-@@ -728,6 +818,8 @@ static enum power_supply_property rk817_bat_props[] = {
+@@ -728,6 +840,8 @@ static enum power_supply_property rk817_bat_props[] = {
  	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
  	POWER_SUPPLY_PROP_CAPACITY,
  	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
@@ -228,7 +254,7 @@ index 81c50f8..822bb97 100644
  };
  
  static enum power_supply_property rk817_chg_props[] = {
-@@ -744,6 +836,8 @@ static int rk817_bat_prop_writeable(struct power_supply *psy,
+@@ -744,6 +858,8 @@ static int rk817_bat_prop_writeable(struct power_supply *psy,
  {
  	switch (psp) {
  	case POWER_SUPPLY_PROP_CHARGE_FULL:
@@ -237,7 +263,7 @@ index 81c50f8..822bb97 100644
  		return 1;
  	default:
  		return 0;
-@@ -1108,6 +1202,7 @@ static void rk817_charging_monitor(struct work_struct *work)
+@@ -1108,6 +1224,7 @@ static void rk817_charging_monitor(struct work_struct *work)
  	charger = container_of(work, struct rk817_charger, work.work);
  
  	rk817_read_props(charger);
@@ -245,7 +271,7 @@ index 81c50f8..822bb97 100644
  
  	/* Run every 8 seconds like the BSP driver did. */
  	queue_delayed_work(system_percpu_wq, &charger->work, msecs_to_jiffies(8000));
-@@ -1149,6 +1244,16 @@ static int rk817_charger_probe(struct platform_device *pdev)
+@@ -1149,6 +1266,16 @@ static int rk817_charger_probe(struct platform_device *pdev)
  	charger->dev = &pdev->dev;
  	platform_set_drvdata(pdev, charger);
  
@@ -262,7 +288,7 @@ index 81c50f8..822bb97 100644
  	/* The USB PHY's charger detection, if the device tree names it */
  	if (of_property_present(node, "extcon")) {
  		struct device_node *phy = of_parse_phandle(node, "extcon", 0);
-@@ -1321,8 +1426,25 @@ static int __maybe_unused rk817_resume(struct device *dev)
+@@ -1321,8 +1448,25 @@ static int __maybe_unused rk817_resume(struct device *dev)
  
  static SIMPLE_DEV_PM_OPS(rk817_charger_pm, rk817_suspend, rk817_resume);
  

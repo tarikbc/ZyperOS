@@ -108,15 +108,15 @@ ja = 上/下
 it = Su/Giù
 
 [controls.jump_letter]
-note = What Up/Down do on a shelf: jump to the next letter of the games' names.
-en = Jump by letter
-zh-Hans = 按字母跳转
-es = Saltar por letra
-pt-BR = Pular por letra
-fr = Sauter par lettre
-de = Buchstabenweise
-ja = 頭文字で移動
-it = Salta per lettera
+note = What Up/Down do on a shelf: jump to the next letter of the games' names. On the home too: the next letter of the systems' names, or 3 systems when MENU > System Order is release date.
+en = Letter, or 3 systems
+zh-Hans = 字母，或 3 个系统
+es = Letra, o 3 sistemas
+pt-BR = Letra, ou 3 sistemas
+fr = Lettre, ou 3 systèmes
+de = Buchstabe oder 3
+ja = 頭文字か3システム
+it = Lettera, o 3 sistemi
 
 [controls.jump_systems]
 note = What L1/R1 do: 3 systems at a time on the home, a screenful of games on a shelf.

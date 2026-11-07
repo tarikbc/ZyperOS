@@ -199,7 +199,7 @@ const char *tour_cheer(int i)
  * (KEY_WORDS) */
 static const char *const KEY_NAME[TK_KEYS] = {
 	[TK_A] = "A", [TK_B] = "B", [TK_X] = "X", [TK_Y] = "Y",
-	[TK_L1] = "L1", [TK_R1] = "R1",
+	[TK_L1] = "L1", [TK_R1] = "R1", [TK_L2] = "L2", [TK_R2] = "R2",
 	[TK_START] = "START", [TK_SELECT] = "SELECT", [TK_MENU] = "MENU",
 	[TK_POWER] = "POWER",
 };
@@ -224,11 +224,11 @@ static const char *key_said(tour_key k)
 
 /* ---- the launcher's buttons ------------------------------------------------ */
 
-/* L2 and R2 are no key of the tutorial's (TK_KEYS): no step asks for them and
- * a press of one is not a wrong one, as it was not before they were the
- * launcher's buttons (the songs on the shelf). Music's note names them and
- * the handheld shows them pressed (tour_hands), and that is all. The Pixel
- * 2's device layer reads L2+R2 together itself, for the battery level. */
+/* L2 and R2 are keys of the tutorial's like L1 and R1: no step asks for
+ * them, so a press of one is a wrong press in every step, Music's too. Music's
+ * note names them and the handheld shows them pressed (tour_hands). The
+ * Pixel 2's device layer reads L2+R2 together itself, for the battery level,
+ * and then sends neither. */
 static const tour_key KEY_OF[IN_COUNT] = {
 	[IN_LEFT] = TK_LEFT, [IN_RIGHT] = TK_RIGHT, [IN_UP] = TK_UP, [IN_DOWN] = TK_DOWN,
 	[IN_ACCEPT] = TK_A, [IN_BACK] = TK_B, [IN_X] = TK_X, [IN_Y] = TK_Y,
@@ -237,7 +237,7 @@ static const tour_key KEY_OF[IN_COUNT] = {
 	[IN_VOLUP] = TK_VOL, [IN_VOLDN] = TK_VOL,
 	[IN_BRIGHTUP] = TK_BRIGHT, [IN_BRIGHTDN] = TK_BRIGHT,
 	[IN_POWER] = TK_POWER,
-	[IN_L2] = TK_KEYS, [IN_R2] = TK_KEYS,
+	[IN_L2] = TK_L2, [IN_R2] = TK_R2,
 };
 
 tour_key tour_key_of(in_button b)

@@ -103,14 +103,14 @@ const char *tour_choice_name(tour_step s, int i);
  * MENU+VOL, the Brick's F1 and F2). */
 typedef enum {
 	TK_UP, TK_DOWN, TK_LEFT, TK_RIGHT,
-	TK_A, TK_B, TK_X, TK_Y, TK_L1, TK_R1,
+	TK_A, TK_B, TK_X, TK_Y, TK_L1, TK_R1, TK_L2, TK_R2,
 	TK_START, TK_SELECT, TK_MENU,
 	TK_VOL, TK_BRIGHT, TK_POWER,
 	TK_KEYS
 } tour_key;
 
 /* What a launcher button is to the tutorial: the d-pad's four, the faces,
- * the shoulders (each a wrong press but in no step), START, SELECT, MENU,
+ * the shoulders (L1/R1 and L2/R2, each a wrong press but in no step bar L1/R1's Move Around), START, SELECT, MENU,
  * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER.
  * TK_KEYS for IN_NONE or anything out of range. */
 tour_key tour_key_of(in_button b);

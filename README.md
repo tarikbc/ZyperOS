@@ -83,7 +83,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Menu music:** ten free 8-bit tracks play behind the shelf and the menus, never over a game, and **MENU > Menu Music** shuffles them, plays one over and over or turns them off. Put your own MP3 or Ogg files in `Roms/BGM` and those play instead. On the shelf, **L2** and **R2** go to the song before or the next, and Zyper pops up with each new song's name, read from its tags. While MP4 plays behind the shelf, L2 and R2 skip its tracks (or a book's chapters) instead.
 - **The status corner:** the clock, Wi-Fi and the battery at the top of the home screen. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** bars or a percentage.
 - **The Pixel 2's side lights** show the battery charging and running low, the volume or brightness as you change it, a climb when files or covers finish, and a sparkle for an achievement; **MENU > Side Lights** turns each on or off. On the charger, the shelf's screen goes dark after the Auto Off time, and any button lights it again.
-- **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young.
+- **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%).
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.
 - **Play Time:** how long you've played each game or console, today, this week, this month, this year or ever.
 - **Favorites and sorting:** Y favorites a game, and each console sorts by name, play time, last played or recently added.
@@ -390,6 +390,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **A / B** | Choose and back |
 | **MENU** | Settings for whatever you're looking at. In a game: save, load, quit and more |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere. In MP4, **X** locks the screen and holding **SELECT + START** unlocks it |
+| **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
 | **L1 / R1** | Jump three systems on the home, a screenful of games on a shelf |
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
 | **MENU + R1** | Fast forward a game |
