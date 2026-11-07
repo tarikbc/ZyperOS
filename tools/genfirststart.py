@@ -31,6 +31,12 @@ launcher's meta is on the panel.
     update.png   "Updating ZyperOS on this card" and the empty bar
     bar.png      the bar full, nothing else
     first-start.txt   where the bar is, for the splash's fill
+    CODE/        setup.png and update.png in each other language of
+                 res/strings (boot.setup, boot.update; src/i18n.h), as
+                 English's are: the splash shows the language MENU > Language
+                 chose (DESIGN.md 11.20). Chinese in the Noto Sans SC cut
+                 (tools/cjkfont.py), the rest in Lexend. bar.png is every
+                 language's.
 
 Transparent around them: the splash lays them on the animation's ground,
 which is Zyper's #111310 under the whole loop (tools/zyperdef.BG).
@@ -46,6 +52,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import designdef as D   # noqa: E402
 import genboot as B     # noqa: E402
 import gendrift         # noqa: E402
+import i18n             # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "res", "boot", "first-start")
@@ -67,10 +74,25 @@ LINE_Y = 706                     # its baseline, 49 under the word's lowest pixe
 BAR_W, BAR_H = 420, 6            # DESIGN.md 4: bar, the progress bar's height
 BAR_Y = 728                      # its top: 16 under the line's descenders
 
-LINES = {
-    "setup": "Setting up ZyperOS on this card",
-    "update": "Updating ZyperOS on this card",
-}
+# The widest a line may be, in the launcher's units: 64 in from each side of
+# the 1024 (40 of the panel's 640)
+LINE_MAX = W - 2 * 64
+
+
+def lines(code):
+    """The two lines in a language: res/strings' boot.setup and boot.update"""
+    errors = []
+    by_id = {x.id: x for x in i18n.parse(errors)}
+    return {"setup": i18n.get(by_id["boot.setup"], code), "update": i18n.get(by_id["boot.update"], code)}
+
+
+def font_for(code):
+    """The face a language's line is drawn in: the UI's own for it"""
+    name = i18n.FONTS.get(code, i18n.LATIN_FONTS)[0]
+    return os.path.join(ROOT, "res", "fonts", name)
+
+
+LINES = lines("en")
 
 
 def bar_box():
@@ -79,14 +101,16 @@ def bar_box():
     return (x, BAR_Y, x + BAR_W, BAR_Y + BAR_H)
 
 
-def draw(line, full, theme="dark"):
+def draw(line, full, theme="dark", code="en"):
     """The bar fills in accent-ink on track, as DESIGN.md's progress strip:
     lime on Salt & Pepper, the dark green on Beard, where lime is too pale"""
     c = COLORS[theme]
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     if line:
-        font = ImageFont.truetype(FONT, META)
+        font = ImageFont.truetype(font_for(code), META)
+        if font.getlength(line) > LINE_MAX:
+            sys.exit("genfirststart: %s's line is %d wide, past %d: %s" % (code, font.getlength(line), LINE_MAX, line))
         d.text((W / 2, LINE_Y), line, font=font, fill=c["text-soft"] + (255,), anchor="ms")
     d.rounded_rectangle(bar_box(), radius=BAR_H // 2,
                         fill=(c["accent-ink"] if full else c["track"]) + (255,))
@@ -99,8 +123,11 @@ def write(out):
     for theme, under in THEME_DIRS.items():
         folder = os.path.join(out, under)
         os.makedirs(folder, exist_ok=True)
-        for name, line in LINES.items():
-            draw(line, False, theme).save(os.path.join(folder, name + ".png"))
+        for code in i18n.CODES:
+            to = folder if code == "en" else os.path.join(folder, code)
+            os.makedirs(to, exist_ok=True)
+            for name, line in lines(code).items():
+                draw(line, False, theme, code).save(os.path.join(to, name + ".png"))
         bar = draw(None, True, theme)
         bar.save(os.path.join(folder, "bar.png"))
     x0, y0, x1, y1 = bar.getchannel("A").getbbox()

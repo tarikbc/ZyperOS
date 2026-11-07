@@ -490,6 +490,68 @@
       ],
       "sha256": "4b833fada10ac6e55bc81472671086e254680b366c958589776a39f4ecd0192a",
       "source_commit": "61913935902163db09b0db7a061ddfdbba7f2fec"
+    },
+    {
+      "file": "light/tour-language.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--fn-volume",
+        "--tour",
+        "lang",
+        "3000",
+        "--tour-pick",
+        "1"
+      ],
+      "sha256": "00c929278b96a3e8ff719c4d879d805d5701ad8079ce19ff553994fe8c64caa5",
+      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+    },
+    {
+      "file": "light/menu-pt.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--lang",
+        "pt-BR",
+        "--menu",
+        "Language"
+      ],
+      "sha256": "813cec980ed621a76002a021e604d62517b14efb2ca9d78f62bc90a284418c03",
+      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+    },
+    {
+      "file": "light/menu-ja.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--lang",
+        "ja",
+        "--menu",
+        "Search Games"
+      ],
+      "sha256": "b664fa29952faddc7301905bf60bffe3deeeaa3eb47e95e687db4caf16071086",
+      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

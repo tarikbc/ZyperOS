@@ -1,0 +1,79 @@
+# The achievements of a game (src/main.c, cheevos_screen): the list's heading,
+# one achievement opened with A, and the notice when a game starts with a set.
+
+[cheevolist.heading]
+note = The list's heading, two lines: %s the game's name, then earned of all achievements, and points earned of all points
+en = %s\n%d / %d · %d / %d points
+zh-Hans = %s\n%d / %d · %d / %d 分
+es = %s\n%d / %d · %d / %d puntos
+pt-BR = %s\n%d / %d · %d / %d pontos
+fr = %s\n%d / %d · %d / %d points
+de = %s\n%d / %d · %d / %d Punkte
+ja = %s\n%d / %d · %d / %d ポイント
+it = %s\n%d / %d · %d / %d punti
+
+[cheevolist.no_description]
+note = One achievement opened with A, when the set gives it no description
+en = The set carries no description.
+zh-Hans = 该成就没有说明。
+es = Este logro no tiene descripción.
+pt-BR = Esta conquista não tem descrição.
+fr = Ce succès n'a pas de description.
+de = Keine Beschreibung vorhanden.
+ja = この実績には説明がありません。
+it = Questo obiettivo non ha una descrizione.
+
+[cheevolist.points]
+note = A row under one achievement's description: the points it is worth
+en = Points
+zh-Hans = 分数
+es = Puntos
+pt-BR = Pontos
+fr = Points
+de = Punkte
+ja = ポイント
+it = Punti
+
+[cheevolist.status]
+note = A row under one achievement's description: whether it is earned (its value cheevolist.earned or cheevolist.not_earned)
+en = Status
+zh-Hans = 状态
+es = Estado
+pt-BR = Status
+fr = Statut
+de = Status
+ja = 状態
+it = Stato
+
+[cheevolist.earned]
+note = The Status row's value: the achievement is earned (pt-BR: a conquista, feminine)
+en = earned
+zh-Hans = 已解锁
+es = conseguido
+pt-BR = conquistada
+fr = obtenu
+de = erhalten
+ja = 解除済み
+it = ottenuto
+
+[cheevolist.not_earned]
+note = The Status row's value: not earned yet
+en = not earned
+zh-Hans = 未解锁
+es = no conseguido
+pt-BR = não conquistada
+fr = non obtenu
+de = nicht erhalten
+ja = 未解除
+it = non ottenuto
+
+[cheevolist.unlocked]
+note = The small line of the notice over a game as it starts: earned of all the game's achievements; the game's name is the large line
+en = %d of %d unlocked
+zh-Hans = 已解锁 %d / %d
+es = %d de %d desbloqueados
+pt-BR = %d de %d desbloqueadas
+fr = %d sur %d débloqués
+de = %d von %d freigeschaltet
+ja = %d / %d 解除済み
+it = %d di %d sbloccati

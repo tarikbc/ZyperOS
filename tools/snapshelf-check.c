@@ -4,10 +4,13 @@
  *     make check-snapshelf
  *
  * The real src/snapshelf.c on a clock this file moves by hand: nothing is
- * asked before 3 s of a still focus, a scroll never asks, the cover turns
- * only once a picture is there, a move drops the snap at once and a menu
- * fades it back over quick, and the daemon is told to stop the same frame
- * either way - the rule that keeps decoding to what is on screen. */
+ * asked before half the wait (SNAPS_ASK_MS) of a still focus, then the snap
+ * is asked for held (its first picture only) until the bar is full
+ * (SNAPS_WAIT_MS), a scroll never asks, the cover turns only once a picture
+ * is there - the frame the bar is full when it came while held - a move
+ * drops the snap at once and a menu fades it back over quick, and the daemon
+ * is told to stop the same frame either way - the rule that keeps decoding
+ * to what is on screen. */
 #include <stdio.h>
 #include <string.h>
 
@@ -32,10 +35,11 @@ static int failures;
 
 static snapshelf s;
 static float k;
+static bool held;
 
 static const char *at(const char *path, bool front, bool picture, unsigned now)
 {
-	return snapshelf_step(&s, path, front, picture, now, &k);
+	return snapshelf_step(&s, path, front, picture, now, &held, &k);
 }
 
 int main(void)
@@ -44,11 +48,16 @@ int main(void)
 
 	printf("snapshelf: the cover and its video snap\n");
 
-	printf("  nothing is asked before 3 s on a game:\n");
+	printf("  nothing is asked before half the wait, then it is held until the bar is full:\n");
 	memset(&s, 0, sizeof s);
 	CHECK(!*at(A, true, false, 1000), "asked at once");
-	CHECK(!*at(A, true, false, 1000 + SNAPS_WAIT_MS - 1), "asked before the wait was over");
-	CHECK(!strcmp(at(A, true, false, 1000 + SNAPS_WAIT_MS), A), "not asked once it was");
+	CHECK(!*at(A, true, false, 1000 + SNAPS_ASK_MS - 1), "asked before half the wait");
+	CHECK(!strcmp(at(A, true, false, 1000 + SNAPS_ASK_MS), A) && held,
+	      "not asked for held at half the wait");
+	CHECK(!strcmp(at(A, true, false, 1000 + SNAPS_WAIT_MS - 1), A) && held && k == 0,
+	      "not still held, cover still, just before the bar is full");
+	CHECK(!strcmp(at(A, true, false, 1000 + SNAPS_WAIT_MS), A) && !held,
+	      "not let go once the bar was full");
 	CHECK(k == 0, "the cover turned before any picture came (%.2f)", k);
 
 	printf("  the cover turns once the first picture is there, over turn:\n");
@@ -75,8 +84,9 @@ int main(void)
 	printf("  back on the shelf on the same game, the wait starts over:\n");
 	t += 500;
 	CHECK(!*at(A, true, false, t), "asked again at once");
-	CHECK(!*at(A, true, false, t + SNAPS_WAIT_MS - 1), "asked again before the wait");
-	CHECK(!strcmp(at(A, true, false, t + SNAPS_WAIT_MS), A), "not asked after it");
+	CHECK(!*at(A, true, false, t + SNAPS_ASK_MS - 1), "asked again before half the wait");
+	CHECK(!strcmp(at(A, true, false, t + SNAPS_ASK_MS), A) && held, "not held at half the wait");
+	CHECK(!strcmp(at(A, true, false, t + SNAPS_WAIT_MS), A) && !held, "not let go after it");
 
 	printf("  the focus moves while it plays: gone at once, the next game waits:\n");
 	t += SNAPS_WAIT_MS;
@@ -85,15 +95,36 @@ int main(void)
 	CHECK(k == 1, "not playing (%.2f)", k);
 	CHECK(!*at(B, true, true, t + DS_MS_TURN + 10), "the old snap or the new one asked at once");
 	CHECK(k == 0, "the moved-away snap lingered on the new focus (%.2f)", k);
-	CHECK(!strcmp(at(B, true, false, t + DS_MS_TURN + 10 + SNAPS_WAIT_MS), B),
+	CHECK(!*at(B, true, false, t + DS_MS_TURN + 10 + SNAPS_ASK_MS - 1),
+	      "the new game was asked before half its own wait");
+	CHECK(!strcmp(at(B, true, false, t + DS_MS_TURN + 10 + SNAPS_WAIT_MS), B) && !held,
 	      "the new game was not asked after its own wait");
+
+	printf("  a picture that came while held: the cover turns the frame the bar is full:\n");
+	memset(&s, 0, sizeof s);
+	at(A, true, false, 0);
+	CHECK(!strcmp(at(A, true, true, SNAPS_ASK_MS + 50), A) && held, "not held with its picture");
+	CHECK(k == 0 && s.phase == SNS_WAIT, "the cover turned while the bar still filled (%.2f)", k);
+	at(A, true, true, SNAPS_WAIT_MS - 1);
+	CHECK(k == 0 && s.phase == SNS_WAIT && held, "turned or let go just before the bar was full");
+	CHECK(!strcmp(at(A, true, true, SNAPS_WAIT_MS), A) && !held && s.phase == SNS_IN,
+	      "the turn did not start the frame the bar was full");
+	at(A, true, true, SNAPS_WAIT_MS + DS_MS_TURN);
+	CHECK(k == 1 && s.phase == SNS_PLAY, "not playing a turn after the bar (%.2f)", k);
+
+	printf("  a menu over a held snap: the daemon stops that frame:\n");
+	memset(&s, 0, sizeof s);
+	at(A, true, false, 0);
+	CHECK(*at(A, true, true, SNAPS_ASK_MS) && held, "not held at half the wait");
+	CHECK(!*at(A, false, true, SNAPS_ASK_MS + 10) && !held && s.phase == SNS_IDLE && k == 0,
+	      "still asked for under a menu while held");
 
 	printf("  a scroll never asks:\n");
 	memset(&s, 0, sizeof s);
 	for (t = 0; t < 20000; t += 200) {
 		const char *got = at(t / 200 % 2 ? A : B, true, false, t);
 
-		CHECK(!*got, "a snap was asked at %u ms of scrolling", t);
+		CHECK(!*got && !held, "a snap was asked at %u ms of scrolling", t);
 		if (*got) break;
 	}
 

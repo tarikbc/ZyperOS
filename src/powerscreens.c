@@ -13,6 +13,7 @@
 
 #include <SDL.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 /* ---------- the start with a battery too low ------------------------------- */
@@ -37,9 +38,9 @@
 #define LOWBATT_BAR_W     420
 #define LOWBATT_MARK_K    1.5f
 #define LOWBATT_MARK_GAP  22
-#define LOWBATT_TITLE     "Battery too low"
-#define LOWBATT_LINE      "Plug in a charger."
-#define LOWBATT_CHARGING "Charging."
+#define LOWBATT_TITLE     T(S_LOWBATT_TITLE)
+#define LOWBATT_LINE      T(S_LOWBATT_LINE)
+#define LOWBATT_CHARGING  T(S_LOWBATT_CHARGING)
 
 lowbatt_view g_lb;
 
@@ -310,6 +311,54 @@ static void chg_zs(SDL_Renderer *r, unsigned t, float k)
 	}
 }
 
+/* A hint with a button drawn in it: the string is its words with %s where
+ * the button goes ("Hold %s to start"), so a language puts it where its
+ * sentence has it. The words before it, their spaces off, into `pre`, and
+ * where the words after it start into `post` (a no-break space off too:
+ * French's before a colon, which the glyph's gap stands for). */
+static void hint_split(const char *fmt, char *pre, size_t pn, const char **post)
+{
+	const char *at = strstr(fmt, "%s");
+	size_t n = at ? (size_t)(at - fmt) : strlen(fmt);
+
+	while (n > 0 && fmt[n - 1] == ' ') n--;
+	snprintf(pre, pn, "%.*s", (int)n, fmt);
+	*post = at ? at + 2 : "";
+	for (;;) {
+		if (**post == ' ') (*post)++;
+		else if (!strncmp(*post, "\xc2\xa0", 2)) *post += 2;
+		else break;
+	}
+}
+
+/* The gap from the glyph to the words after it: a word's 14, or a colon's
+ * 6, which sits against what it follows ("Segure (A): carga total") */
+static int hint_gap(const char *post)
+{
+	return *post == ':' ? 6 : 14;
+}
+
+/* Its width: the words either side of the button's glyph, `bw` wide, and the gaps */
+static int hint_width(TTF_Font *f, const char *pre, int bw, const char *post)
+{
+	return (pre[0] ? ui_text_width(f, pre) + 14 : 0) + bw +
+	       (post[0] ? hint_gap(post) + ui_text_width(f, post) : 0);
+}
+
+/* Drawn from `x`, the words at `ty` and the button centered on `mid`; how
+ * far it went */
+static int hint_draw(SDL_Renderer *r, TTF_Font *f, const char *pre, const char *button, int bw,
+                     const char *post, int x, int ty, int mid, SDL_Color c)
+{
+	int x0 = x;
+
+	if (pre[0]) x += ui_text(r, f, pre, x, ty, -1, c) + 14;
+	ui_button(r, button, x + bw / 2, mid, CHG_GLYPH, UI_BUTTON_PLAIN);
+	x += bw;
+	if (post[0]) x += hint_gap(post) + ui_text(r, f, post, x + hint_gap(post), ty, -1, c);
+	return x - x0;
+}
+
 /* The screen at `now`: `dim` toward the ground (the send-off), the words at
  * `k` */
 void chg_draw(app *a, unsigned now, float dim, float k)
@@ -347,7 +396,7 @@ void chg_draw(app *a, unsigned now, float dim, float k)
 	ui_text_tabular(a->r, ft, pct, x0 + mw + LOWBATT_MARK_GAP, ui_line_y(UI_F_TITLE, CHG_TITLE_TOP),
 	                -1, ui_fade(ui_col(t->text, 255), k));
 	if (unplugged || g_chg.speed[0])
-		ui_text(a->r, fl, unplugged ? "Unplugged" : g_chg.speed, ZYPEROS_SCREEN_W / 2,
+		ui_text(a->r, fl, unplugged ? T(S_CHARGING_UNPLUGGED) : g_chg.speed, ZYPEROS_SCREEN_W / 2,
 		        ui_line_y(UI_F_LABEL, CHG_LINE1_TOP), 0, ui_fade(ui_col(t->text_soft, 255), k));
 	if (!unplugged && g_chg.when[0])
 		ui_text(a->r, fm, g_chg.when, ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_META, CHG_LINE2_TOP),
@@ -358,32 +407,48 @@ void chg_draw(app *a, unsigned now, float dim, float k)
 	 * for a full charge" before it (11.26), and the bar under them fills
 	 * for whichever is held */
 	{
-		const char *hold = "Hold", *tail = "to start", *full = "for a full charge", *dot = "·";
+		char start_pre[64], full_pre[64];
+		const char *start_post, *full_post, *dot = "·";
 		const bool kept = chg_kept();
 		SDL_Color dimc = ui_fade(ui_col(t->text_dim, 255), k);
 		int gw = ui_button_width("POWER", CHG_GLYPH), ga = ui_button_width("A", CHG_GLYPH);
 		int x, w, ty = ui_cap_y(fm, CHG_HINT_MID);
 		float held = ch_screen_hold(&g_chg.s, now);
+		bool kept_split = false;
 
-		w = ui_text_width(fm, hold) + 14 + gw + 14 + ui_text_width(fm, tail);
-		if (kept)
-			w += ui_text_width(fm, hold) + 14 + ga + 14 + ui_text_width(fm, full) +
-			     22 + ui_text_width(fm, dot) + 22;
-		x = (ZYPEROS_SCREEN_W - w) / 2;
-		if (kept) {
+		hint_split(T(S_CHARGING_HOLD_START), start_pre, sizeof start_pre, &start_post);
+		hint_split(T(S_CHARGING_HOLD_FULL), full_pre, sizeof full_pre, &full_post);
+		w = hint_width(fm, start_pre, gw, start_post);
+		/* The two in a language whose words do not fit one line (French):
+		 * a line each, the full charge's first, both centered, never cut */
+		if (kept && w + hint_width(fm, full_pre, ga, full_post) + 44 + ui_text_width(fm, dot) >
+		            ZYPEROS_SCREEN_W - 2 * DS_INSET) {
+			const int fw = hint_width(fm, full_pre, ga, full_post);
 			float fh = ch_screen_full_hold(&g_chg.s, now);
 
-			x += ui_text(a->r, fm, hold, x, ty, -1, dimc) + 14;
-			ui_button(a->r, "A", x + ga / 2, CHG_HINT_MID, CHG_GLYPH, UI_BUTTON_PLAIN);
-			x += ga + 14;
-			x += ui_text(a->r, fm, full, x, ty, -1, dimc) + 22;
+			hint_draw(a->r, fm, full_pre, "A", ga, full_post, (ZYPEROS_SCREEN_W - fw) / 2,
+			          ui_cap_y(fm, CHG_HINT_MID - 30), CHG_HINT_MID - 30, dimc);
+			hint_draw(a->r, fm, start_pre, "POWER", gw, start_post, (ZYPEROS_SCREEN_W - w) / 2,
+			          ui_cap_y(fm, CHG_HINT_MID + 26), CHG_HINT_MID + 26, dimc);
+			if (fh > held) held = fh;
+			kept_split = true;
+		}
+		if (kept && !kept_split)
+			w += hint_width(fm, full_pre, ga, full_post) +
+			     22 + ui_text_width(fm, dot) + 22;
+		x = (ZYPEROS_SCREEN_W - w) / 2;
+		if (kept_split) {
+			/* drawn above */
+		} else if (kept) {
+			float fh = ch_screen_full_hold(&g_chg.s, now);
+
+			x += hint_draw(a->r, fm, full_pre, "A", ga, full_post, x, ty, CHG_HINT_MID, dimc);
+			x += 22;
 			x += ui_text(a->r, fm, dot, x, ty, -1, dimc) + 22;
 			if (fh > held) held = fh;
 		}
-		x += ui_text(a->r, fm, hold, x, ty, -1, dimc) + 14;
-		ui_button(a->r, "POWER", x + gw / 2, CHG_HINT_MID, CHG_GLYPH, UI_BUTTON_PLAIN);
-		x += gw + 14;
-		ui_text(a->r, fm, tail, x, ty, -1, dimc);
+		if (!kept_split)
+			hint_draw(a->r, fm, start_pre, "POWER", gw, start_post, x, ty, CHG_HINT_MID, dimc);
 		if (held > 0.0f) {
 			SDL_Rect bar = { (ZYPEROS_SCREEN_W - CHG_BAR_W) / 2, CHG_BAR_TOP, CHG_BAR_W, UI_BAR_H };
 

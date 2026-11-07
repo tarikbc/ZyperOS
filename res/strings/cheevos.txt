@@ -1,0 +1,96 @@
+# RetroAchievements over a running game (the pop-ups src/notice.h draws and
+# Diatom shows), the game info screen's Cheevos value, and the sign-in.
+
+[cheevos.to_earn]
+note = The pop-up as a game's achievement set arrives, first line; the game's name is under it. %d is how many achievements there are to earn.
+en = %d to earn
+zh-Hans = %d 个成就待解锁
+es = %d por conseguir
+pt-BR = %d para conquistar
+fr = %d à débloquer
+de = %d freizuschalten
+ja = 実績 %d 個
+it = %d da ottenere
+
+[cheevos.all_earned]
+note = The same pop-up when the account already has every one of them. Lowercase, as English.
+en = all %d already earned
+zh-Hans = %d 个成就已全部解锁
+es = los %d ya conseguidos
+pt-BR = todas as %d já conquistadas
+fr = les %d déjà débloqués
+de = alle %d schon erhalten
+ja = %d 個すべて解除済み
+it = tutti i %d già ottenuti
+
+[cheevos.unlocked_points]
+note = The pop-up as an achievement unlocks, first line; its name is under it. %d is what it was worth.
+en.one = Unlocked · %d point
+en.other = Unlocked · %d points
+zh-Hans = 已解锁 · %d 分
+es.one = Desbloqueado · %d punto
+es.other = Desbloqueado · %d puntos
+pt-BR.one = Desbloqueada · %d ponto
+pt-BR.other = Desbloqueada · %d pontos
+fr.one = Débloqué · %d point
+fr.other = Débloqué · %d points
+de.one = Freigeschaltet · %d Punkt
+de.other = Freigeschaltet · %d Punkte
+ja = 実績解除 · %d ポイント
+it.one = Sbloccato · %d punto
+it.other = Sbloccato · %d punti
+
+[cheevos.unlocked]
+note = The same pop-up's first line for an achievement worth no points, and its second line when the achievement has no name.
+en = Unlocked
+zh-Hans = 已解锁
+es = Desbloqueado
+pt-BR = Desbloqueada
+fr = Débloqué
+de = Freigeschaltet
+ja = 実績解除
+it = Sbloccato
+
+[cheevos.mastered]
+note = The pop-up after the last achievement of a game: every one earned. %d is the set's points. RetroAchievements calls this "mastered". review: pt-BR "Dominado" for RetroAchievements' "Mastered"; the RA community may say "Masterizado".
+en = Mastered · %d points
+zh-Hans = 已精通 · %d 分
+es = Dominado · %d puntos
+pt-BR = Dominado · %d pontos
+fr = Maîtrisé · %d points
+de = Gemeistert · %d Punkte
+ja = マスター · %d ポイント
+it = Padroneggiato · %d punti
+
+[cheevos.progress]
+note = A progress pop-up's first line when the achievement has no name; a count like "74 / 100" is under it.
+en = Progress
+zh-Hans = 进度
+es = Progreso
+pt-BR = Progresso
+fr = Progression
+de = Fortschritt
+ja = 進捗
+it = Progresso
+
+[cheevos.none]
+note = The game info screen: the Cheevos row's value when the game has no achievements. A lowercase value.
+en = none
+zh-Hans = 无
+es = ninguno
+pt-BR = nenhuma
+fr = aucun
+de = keine
+ja = なし
+it = nessuno
+
+[cheevos.ra_user]
+note = The keyboard's title when signing in to RetroAchievements: type the user name.
+en = RetroAchievements User
+zh-Hans = RetroAchievements 用户名
+es = Usuario de RetroAchievements
+pt-BR = Usuário do RetroAchievements
+fr = Utilisateur RetroAchievements
+de = RetroAchievements-Benutzer
+ja = RetroAchievements ユーザー名
+it = Utente RetroAchievements

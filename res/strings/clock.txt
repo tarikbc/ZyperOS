@@ -1,0 +1,366 @@
+# MENU > Date & Time (src/clock.c): its rows, the month's names and the
+# date and time the MENU row says. The time zones' cities are not here: a
+# city is written as it is. Each language writes the date in its own order.
+
+[clock.time_zone]
+note = Date & Time's first row; its value is a city (New York), not translated
+en = Time Zone
+zh-Hans = 时区
+es = Zona horaria
+pt-BR = Fuso horário
+fr = Fuseau horaire
+de = Zeitzone
+ja = タイムゾーン
+it = Fuso orario
+
+[clock.year]
+note = A Date & Time row; its value is the year, 2026
+en = Year
+zh-Hans = 年
+es = Año
+pt-BR = Ano
+fr = Année
+de = Jahr
+ja = 年
+it = Anno
+
+[clock.month]
+note = A Date & Time row; its value is the month's name
+en = Month
+zh-Hans = 月
+es = Mes
+pt-BR = Mês
+fr = Mois
+de = Monat
+ja = 月
+it = Mese
+
+[clock.day]
+note = A Date & Time row; its value is the day, 3
+en = Day
+zh-Hans = 日
+es = Día
+pt-BR = Dia
+fr = Jour
+de = Tag
+ja = 日
+it = Giorno
+
+[clock.hour]
+note = A Date & Time row; its value is the hour, 6 PM or 18
+en = Hour
+zh-Hans = 时
+es = Hora
+pt-BR = Hora
+fr = Heure
+de = Stunde
+ja = 時
+it = Ora
+
+[clock.minute]
+note = A Date & Time row; its value is the minute, 05
+en = Minute
+zh-Hans = 分
+es = Minuto
+pt-BR = Minuto
+fr = Minute
+de = Minute
+ja = 分
+it = Minuto
+
+[clock.month_jan]
+note = Month's value on Date & Time: the month's whole name. Lowercase where the language writes months so.
+en = January
+zh-Hans = 1 月
+es = enero
+pt-BR = janeiro
+fr = janvier
+de = Januar
+ja = 1月
+it = gennaio
+
+[clock.month_feb]
+en = February
+zh-Hans = 2 月
+es = febrero
+pt-BR = fevereiro
+fr = février
+de = Februar
+ja = 2月
+it = febbraio
+
+[clock.month_mar]
+en = March
+zh-Hans = 3 月
+es = marzo
+pt-BR = março
+fr = mars
+de = März
+ja = 3月
+it = marzo
+
+[clock.month_apr]
+en = April
+zh-Hans = 4 月
+es = abril
+pt-BR = abril
+fr = avril
+de = April
+ja = 4月
+it = aprile
+
+[clock.month_may]
+en = May
+zh-Hans = 5 月
+es = mayo
+pt-BR = maio
+fr = mai
+de = Mai
+ja = 5月
+it = maggio
+
+[clock.month_jun]
+en = June
+zh-Hans = 6 月
+es = junio
+pt-BR = junho
+fr = juin
+de = Juni
+ja = 6月
+it = giugno
+
+[clock.month_jul]
+en = July
+zh-Hans = 7 月
+es = julio
+pt-BR = julho
+fr = juillet
+de = Juli
+ja = 7月
+it = luglio
+
+[clock.month_aug]
+en = August
+zh-Hans = 8 月
+es = agosto
+pt-BR = agosto
+fr = août
+de = August
+ja = 8月
+it = agosto
+
+[clock.month_sep]
+en = September
+zh-Hans = 9 月
+es = septiembre
+pt-BR = setembro
+fr = septembre
+de = September
+ja = 9月
+it = settembre
+
+[clock.month_oct]
+en = October
+zh-Hans = 10 月
+es = octubre
+pt-BR = outubro
+fr = octobre
+de = Oktober
+ja = 10月
+it = ottobre
+
+[clock.month_nov]
+en = November
+zh-Hans = 11 月
+es = noviembre
+pt-BR = novembro
+fr = novembre
+de = November
+ja = 11月
+it = novembre
+
+[clock.month_dec]
+en = December
+zh-Hans = 12 月
+es = diciembre
+pt-BR = dezembro
+fr = décembre
+de = Dezember
+ja = 12月
+it = dicembre
+
+[clock.short_jan]
+note = The month in the MENU row's date (Oct 3, 6:12 AM), short. tight
+en = Jan
+zh-Hans = 1 月
+es = ene.
+pt-BR = jan.
+fr = janv.
+de = Jan.
+ja = 1月
+it = gen
+
+[clock.short_feb]
+en = Feb
+zh-Hans = 2 月
+es = feb.
+pt-BR = fev.
+fr = févr.
+de = Feb.
+ja = 2月
+it = feb
+
+[clock.short_mar]
+en = Mar
+zh-Hans = 3 月
+es = mar.
+pt-BR = mar.
+fr = mars
+de = März
+ja = 3月
+it = mar
+
+[clock.short_apr]
+en = Apr
+zh-Hans = 4 月
+es = abr.
+pt-BR = abr.
+fr = avr.
+de = Apr.
+ja = 4月
+it = apr
+
+[clock.short_may]
+en = May
+zh-Hans = 5 月
+es = may.
+pt-BR = mai.
+fr = mai
+de = Mai
+ja = 5月
+it = mag
+
+[clock.short_jun]
+en = Jun
+zh-Hans = 6 月
+es = jun.
+pt-BR = jun.
+fr = juin
+de = Juni
+ja = 6月
+it = giu
+
+[clock.short_jul]
+en = Jul
+zh-Hans = 7 月
+es = jul.
+pt-BR = jul.
+fr = juil.
+de = Juli
+ja = 7月
+it = lug
+
+[clock.short_aug]
+en = Aug
+zh-Hans = 8 月
+es = ago.
+pt-BR = ago.
+fr = août
+de = Aug.
+ja = 8月
+it = ago
+
+[clock.short_sep]
+en = Sep
+zh-Hans = 9 月
+es = sept.
+pt-BR = set.
+fr = sept.
+de = Sep.
+ja = 9月
+it = set
+
+[clock.short_oct]
+en = Oct
+zh-Hans = 10 月
+es = oct.
+pt-BR = out.
+fr = oct.
+de = Okt.
+ja = 10月
+it = ott
+
+[clock.short_nov]
+en = Nov
+zh-Hans = 11 月
+es = nov.
+pt-BR = nov.
+fr = nov.
+de = Nov.
+ja = 11月
+it = nov
+
+[clock.short_dec]
+en = Dec
+zh-Hans = 12 月
+es = dic.
+pt-BR = dez.
+fr = déc.
+de = Dez.
+ja = 12月
+it = dic
+
+[clock.am]
+note = Before noon, in 12-hour time (6 AM, 6:12 AM)
+en = AM
+zh-Hans = 上午
+es = a.m.
+pt-BR = AM
+fr = AM
+de = AM
+ja = 午前
+it = AM
+
+[clock.pm]
+note = After noon, in 12-hour time
+en = PM
+zh-Hans = 下午
+es = p.m.
+pt-BR = PM
+fr = PM
+de = PM
+ja = 午後
+it = PM
+
+[clock.hour_12h]
+note = Hour's value in 12-hour time: %d is the hour, %s is AM or PM (6 PM)
+en = %d %s
+zh-Hans = %2$s %1$d
+es = %d %s
+pt-BR = %d %s
+fr = %d %s
+de = %d %s
+ja = %2$s%1$d時
+it = %d %s
+
+[clock.label_12h]
+note = review: the Date & Time row's value in 12-hour time: %1$s the short month, %2$d the day, %3$d:%4$02d the time, %5$s AM or PM (Oct 3, 6:12 AM). zh dates keep the glossary's spaces.
+en = %s %d, %d:%02d %s
+zh-Hans = %1$s %2$d 日 %5$s %3$d:%4$02d
+es = %2$d %1$s, %3$d:%4$02d %5$s
+pt-BR = %2$d de %1$s, %3$d:%4$02d %5$s
+fr = %2$d %1$s, %3$d:%4$02d %5$s
+de = %2$d. %1$s, %3$d:%4$02d %5$s
+ja = %1$s%2$d日 %5$s%3$d:%4$02d
+it = %2$d %1$s, %3$d:%4$02d %5$s
+
+[clock.label_24h]
+note = review: the same in 24-hour time: %1$s the short month, %2$d the day, %3$02d:%4$02d the time (Oct 3, 18:05)
+en = %s %d, %02d:%02d
+zh-Hans = %1$s %2$d 日 %3$02d:%4$02d
+es = %2$d %1$s, %3$02d:%4$02d
+pt-BR = %2$d de %1$s, %3$02d:%4$02d
+fr = %2$d %1$s, %3$02d:%4$02d
+de = %2$d. %1$s, %3$02d:%4$02d
+ja = %s%d日 %02d:%02d
+it = %2$d %1$s, %3$02d:%4$02d

@@ -1,0 +1,295 @@
+# A game's menus (src/game_menu.c): the info screen X opens on the shelf, the
+# in-game menu MENU opens over a game, and the display modes both name
+# (src/app.h). Cheevos and Controls are sysmenu.txt's.
+
+# ---- the game info screen ---------------------------------------------------
+
+[gamemenu.synopsis]
+note = The game info screen's row: what the game is about; A opens the text
+en = Synopsis
+zh-Hans = 简介
+es = Sinopsis
+pt-BR = Sinopse
+fr = Synopsis
+de = Beschreibung
+ja = あらすじ
+it = Trama
+
+[gamemenu.synopsis_none]
+note = Synopsis' value when the scrape found no text. Lowercase.
+en = none
+zh-Hans = 无
+es = ninguna
+pt-BR = nenhuma
+fr = aucun
+de = keine
+ja = なし
+it = nessuna
+
+[gamemenu.year]
+note = The game info screen's row: the year it came out
+en = Year
+zh-Hans = 年份
+es = Año
+pt-BR = Ano
+fr = Année
+de = Jahr
+ja = 発売年
+it = Anno
+
+[gamemenu.genre]
+note = The game info screen's row
+en = Genre
+zh-Hans = 类型
+es = Género
+pt-BR = Gênero
+fr = Genre
+de = Genre
+ja = ジャンル
+it = Genere
+
+[gamemenu.replace_art]
+note = The game info screen's last row, for a game that has a cover: fetch a new one. tight: its value may be "needs Wi-Fi"
+en = Replace Box Art
+zh-Hans = 替换封面
+es = Cambiar carátula
+pt-BR = Trocar capa
+fr = Changer la jaquette
+de = Cover ersetzen
+ja = パッケージ画像を変更
+it = Cambia copertina
+
+[gamemenu.get_art]
+note = The same, for a game with no cover
+en = Get Box Art
+zh-Hans = 获取封面
+es = Obtener carátula
+pt-BR = Baixar capa
+fr = Obtenir la jaquette
+de = Cover holen
+ja = パッケージ画像を取得
+it = Scarica copertina
+
+# ---- the in-game menu -------------------------------------------------------
+
+[gamemenu.continue]
+note = The in-game menu's first row: back to the game
+en = Continue
+zh-Hans = 继续
+es = Continuar
+pt-BR = Continuar
+fr = Reprendre
+de = Weiter
+ja = 続ける
+it = Continua
+
+[gamemenu.save]
+note = The in-game menu: save a state
+en = Save
+zh-Hans = 存档
+es = Guardar
+pt-BR = Salvar
+fr = Sauvegarder
+de = Speichern
+ja = セーブ
+it = Salva
+
+[gamemenu.load]
+note = The in-game menu: load a state
+en = Load
+zh-Hans = 读档
+es = Cargar
+pt-BR = Carregar
+fr = Charger
+de = Laden
+ja = ロード
+it = Carica
+
+[gamemenu.display]
+note = The in-game menu: the display mode; its value is one of the modes below
+en = Display
+zh-Hans = 画面
+es = Pantalla
+pt-BR = Tela
+fr = Affichage
+de = Anzeige
+ja = 画面
+it = Schermo
+
+[gamemenu.reset]
+note = The in-game menu: start the game over
+en = Reset
+zh-Hans = 重置
+es = Reiniciar
+pt-BR = Reiniciar
+fr = Réinitialiser
+de = Neustart
+ja = リセット
+it = Riavvia
+
+[gamemenu.quit]
+note = The in-game menu: back to the shelf
+en = Quit
+zh-Hans = 退出
+es = Salir
+pt-BR = Sair
+fr = Quitter
+de = Beenden
+ja = 終了
+it = Esci
+
+[gamemenu.screens]
+note = The in-game menu of a two-screen game (Nintendo DS): how the two are laid out
+en = Screens
+zh-Hans = 双屏布局
+es = Pantallas
+pt-BR = Telas
+fr = Écrans
+de = Bildschirme
+ja = 画面配置
+it = Schermi
+
+[gamemenu.swap]
+note = The in-game menu of a two-screen game: the bottom screen on top
+en = Swap Screens
+zh-Hans = 交换屏幕
+es = Invertir pantallas
+pt-BR = Trocar telas
+fr = Inverser les écrans
+de = Bildschirme tauschen
+ja = 画面を入れ替え
+it = Inverti schermi
+
+[gamemenu.stylus]
+note = The in-game menu of a two-screen game: a pointer for the touch screen
+en = Stylus
+zh-Hans = 触控笔
+es = Puntero
+pt-BR = Caneta
+fr = Stylet
+de = Touchpen
+ja = タッチペン
+it = Stilo
+
+[gamemenu.cheevos_none]
+note = The in-game Cheevos' value for a game with no achievements. Lowercase.
+en = none
+zh-Hans = 无
+es = ninguno
+pt-BR = nenhuma
+fr = aucun
+de = keine
+ja = なし
+it = nessuno
+
+[gamemenu.layout_stacked]
+note = Screens' value: one screen above the other, both the same size
+en = Stacked
+zh-Hans = 上下排列
+es = Apiladas
+pt-BR = Empilhadas
+fr = Empilés
+de = Übereinander
+ja = 縦並び
+it = Impilati
+
+[gamemenu.layout_focus]
+note = review: Screens' value: the top screen big and the other small
+en = Top Focus
+zh-Hans = 上屏放大
+es = Superior grande
+pt-BR = Superior grande
+fr = Haut agrandi
+de = Oben groß
+ja = 上画面を大きく
+it = Superiore grande
+
+[gamemenu.layout_single]
+note = Screens' value: one screen at a time
+en = Single
+zh-Hans = 单屏
+es = Una sola
+pt-BR = Só uma
+fr = Un seul
+de = Einzeln
+ja = 1 画面
+it = Singolo
+
+# ---- display modes (MENU > Display Mode, the in-game Display) ---------------
+
+[gamemenu.dmode_stretch]
+note = review: a display mode: the picture fills the screen, its shape changed
+en = Stretch
+zh-Hans = 拉伸
+es = Estirar
+pt-BR = Esticar
+fr = Étirer
+de = Strecken
+ja = 引き伸ばし
+it = Estendi
+
+[gamemenu.dmode_aspect]
+note = review: a display mode: as big as fits, its shape kept
+en = Aspect
+zh-Hans = 保持比例
+es = Proporción
+pt-BR = Proporção
+fr = Proportions
+de = Seitenverhältnis
+ja = 比率を維持
+it = Proporzioni
+
+[gamemenu.dmode_integer]
+note = review: a display mode: scaled by whole numbers only, so every pixel is the same size
+en = Integer
+zh-Hans = 整数倍
+es = Entero
+pt-BR = Inteiro
+fr = Entier
+de = Ganzzahlig
+ja = 整数倍
+it = Intero
+
+[gamemenu.dmode_integer_tall]
+note = review: a display mode: whole numbers up and down only
+en = Integer tall
+zh-Hans = 纵向整数倍
+es = Entero vertical
+pt-BR = Inteiro vertical
+fr = Entier vertical
+de = Ganzzahlig vertikal
+ja = 縦のみ整数倍
+it = Intero verticale
+
+[gamemenu.dmode_overscale]
+note = review: a display mode: one whole number bigger than fits, the edges cut
+en = Overscale
+zh-Hans = 超出放大
+es = Sobreescalar
+pt-BR = Sobre-escala
+fr = Surdimension
+de = Überskalieren
+ja = はみ出し拡大
+it = Sovrascala
+
+[gamemenu.dmode_fill]
+note = review: a display mode: fills the screen, its shape kept, the edges cut
+en = Fill
+zh-Hans = 填充
+es = Llenar
+pt-BR = Preencher
+fr = Remplir
+de = Füllen
+ja = 画面いっぱい
+it = Riempi
+
+[gamemenu.dmode_native]
+note = a display mode: one pixel of the game to one of the screen
+en = Native 1:1
+zh-Hans = 原始 1:1
+es = Nativo 1:1
+pt-BR = Nativo 1:1
+fr = Natif 1:1
+de = Nativ 1:1
+ja = 等倍 1:1
+it = Nativo 1:1

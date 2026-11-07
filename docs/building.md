@@ -80,6 +80,8 @@ something once broke in a way nothing noticed:
 | `check-pkkeys` | the volume keys over a port: MENU+VOL is the backlight whichever device is read first, the kernel's autorepeat is no step, a hold repeats on the launcher's clock, and the levels saved are the ones pressed |
 | `check-systemart` | bounded sprite compilation, original frame colors/alpha/timing, disposal, deduplication, source attribution, catalogue coverage and generated output consistency |
 | `check-design` | DESIGN.md's tables, `src/design.h`, the mock kit's `tokens.js` and Wi-Fi File Transfer's colors are what `tools/designdef.py` writes, and every text pair the launcher and the page draw meets its contrast |
+| `check-strings` | every string in `res/strings/` in all five languages with English's printf conversions, every ID used and defined, every character in the font that draws it, and `src/i18n_ids.h`, `src/i18n_tables.c` and `res/web/i18n/` what `tools/i18n.py` writes |
+| `check-i18n-shots` | the main screens in all five languages and the pseudo-locale, from the host build: no string from `res/strings` cut, broken past its lines or off the screen in any language, and a list of what the pseudo-locale's longer words do not fit |
 | `check-linebreak` | a name too wide for its box breaks balanced, as the port loading screen breaks one: one line when it fits, else the fewest lines and, of those, the narrowest widest line, held to a search of every break; and a marquee's window rests with its ends between letters, never through one or through the bytes of one (no SDL) |
 | `check-portkeys` | the bar over a port takes the Appearance word from the device database, the zone from the card's library (one on Date & Time's list, else New York) and the theme file only when the database cannot be read, against scratch databases that are missing, empty, not databases or locked (SQLite, no SDL) |
 | `check-zyperrig` | Zyper's moves beside the top menu's heading: still at rest but for his breath and a blink every 3 to 6 s, the opening hop, a success's hop and pant and a failure's cocked head at their times, a reaction that starts from where he is, a press that drops what was booked and one on the way back that does nothing, a held key that starts nothing over, the first blink's window over a thousand seeds and a blink on its own time, and all of it across the clock's wrap (no SDL) |
@@ -143,11 +145,12 @@ something once broke in a way nothing noticed:
 | `check-tour-colors` | the tutorial across frames: low-alpha first frames and a theme round-trip never poison cached text, details or bars |
 | `check-update` | System Update end to end: two fake releases packed and signed with a throwaway key, check, download, a cut download resumed, refused lists and packs, the boot switch and its step back (skips without OpenSSL 3, libcurl or zlib) |
 | `check-sysupdate` | what MENU > System Update says in each state, held to the update lab's screens |
-| `check-boottheme` | the boot screen's theme words (DESIGN.md 11.21) |
+| `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
 | `check-captive` | Wi-Fi File Transfer's hotspot, its pure half: the DNS answer for every name, the Host check that tells a phone's internet check from the page, the QR code's text and the password |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, worker-drawn cards and missing art, on the launcher's own objects |
 | `check-home-shots` | the home screens as the launcher draws them in both layouts and themes: footer inside the inset, the song, a flip, a move (builds the host launcher) |
+| `check-favorites-shots` | the Favorites shelf names each game's own system right under its name (under one line or two), a console's own shelf does not, and every line keeps its margin, in both themes (builds the host launcher) |
 | `check-games` | the games row: the aspect, the wrap, tiny lists, rapid reversals and bounded jumps, on the launcher's own objects |
 | `checkmark` | src/zypermark.h, Zyper as triangles, is what tools/zyperdef.py generates |
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
@@ -185,8 +188,16 @@ is drawn in Regular and the launcher says so once on stderr.
 capacity on page 1. It reads storage from the chosen card; on a host without
 battery capacity data those fields show "unknown".
 
+`--lang CODE` draws any shot in that language (`en`, `zh-Hans`, `es`,
+`pt-BR`, `fr`, `de`, `ja`, `it`, or `xx`, the pseudo-locale: every string
+accented, 40% longer and in brackets), whatever MENU > Language saved;
+`--menu` still finds a row by its English name. `--language [ROW]` draws MENU >
+Language's panel, the cursor on ROW. `python3 tools/i18n-shots.py --keep DIR`
+writes the main screens in every language (`make check-i18n-shots`).
+
 `--tour STEP [MS [DONE]]` draws a frame of the tutorial in place of the shelf:
-STEP is `welcome`, `move`, `a`, `b`, `y`, `x`, `menu`, `select`, `vol`,
+STEP is `lang` (the language step: its cursor steps a language a second,
+and `--tour-pick N` puts it on language N), `welcome`, `move`, `a`, `b`, `y`, `x`, `menu`, `select`, `vol`,
 `bright`, `power`, `finish`, or `skip` for the message a skip leaves over the
 shelf; MS into it (2000), its press landed DONE ms ago (none), at a fixed
 clock, so the same arguments draw the same picture. The finish includes the

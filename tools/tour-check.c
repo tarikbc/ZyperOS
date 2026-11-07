@@ -49,7 +49,8 @@ static void walk(bool fn, bool music)
 
 	printf("the whole tour, %s, %s:\n", fn ? "MENU+VOL brightness" : "F1/F2 brightness",
 	       music ? "menu music" : "no menu music");
-	tour_start(&t, now, fn);
+	/* From the welcome: the language step before it has a check of its own */
+	tour_pose(&t, TOUR_WELCOME, now, 0, -1, fn);
 	tour_set_music(&t, music);
 	ck(t.step == TOUR_WELCOME && !t.over, "it starts on the welcome");
 	now += 300;
@@ -175,13 +176,60 @@ static void choices(void)
 	   "a shot can put the focus on any choice, mid-slide");
 }
 
+/* The first step, the language (DESIGN.md 11.30): round a language a
+ * second until a press, any press stopping it where it is; UP and DOWN round
+ * the eight, A keeps one and the welcome comes with Zyper already there;
+ * START keeps the one moved to, or the one that was on */
+static void language(void)
+{
+	tour t;
+	tour_zyper_at z;
+
+	printf("the language step:\n");
+	tour_start(&t, T0, false);
+	tour_lang_from(&t, 3);
+	ck(t.step == TOUR_LANG && tour_segment(&t) == -1, "the tutorial starts on it, with no segment");
+	ck(tour_lang_focus(&t, T0 + 999) == 3 && tour_lang_focus(&t, T0 + 1000) == 4,
+	   "it starts on the language that was on, and steps a second later");
+	ck(tour_lang_focus(&t, T0 + 1000 * TOUR_LANGS) == 3, "and goes round them all");
+	ck(tour_press(&t, TK_VOL, T0 + 2500) == TOUR_QUIET && tour_lang_focus(&t, T0 + 9000) == 5,
+	   "a press of any button stops it where it is, a volume key's too");
+	ck(tour_press(&t, TK_DOWN, T0 + 2600) == DS_SOUND_MOVE && tour_lang_focus(&t, T0 + 2600) == 6,
+	   "DOWN moves to the next");
+	ck(tour_press(&t, TK_DOWN, T0 + 2700) == DS_SOUND_MOVE &&
+	   tour_press(&t, TK_DOWN, T0 + 2800) == DS_SOUND_EDGE && tour_lang_focus(&t, T0) == 0,
+	   "and past the last round to the first, heard as the edge");
+	ck(tour_press(&t, TK_UP, T0 + 2900) == DS_SOUND_EDGE && tour_lang_focus(&t, T0) == TOUR_LANGS - 1,
+	   "UP back round");
+	ck(tour_press(&t, TK_X, T0 + 3000) == TOUR_QUIET && !t.wrong && t.step == TOUR_LANG,
+	   "another button is nothing, and no wrong press");
+	ck(tour_press(&t, TK_A, T0 + 3100) == DS_SOUND_ACCEPT && t.step == TOUR_WELCOME &&
+	   tour_lang_kept(&t) == TOUR_LANGS - 1, "A keeps it and the welcome comes");
+	z = tour_zyper_now(&t, T0 + 3101);
+	ck(z.hello && z.scale > 0.99f && t.say_at == T0 + 3100,
+	   "with Zyper already there, and only its words coming in");
+
+	tour_start(&t, T0, false);
+	tour_lang_from(&t, 2);
+	ck(tour_press(&t, TK_START, T0 + 4500) == DS_SOUND_BACK && t.over && tour_lang_kept(&t) == 2,
+	   "START after it went round alone keeps the one that was on");
+	tour_start(&t, T0, false);
+	tour_lang_from(&t, 2);
+	tour_press(&t, TK_DOWN, T0 + 300);
+	ck(tour_press(&t, TK_START, T0 + 400) == DS_SOUND_BACK && tour_lang_kept(&t) == 3,
+	   "START after a move keeps the one moved to");
+	tour_start(&t, T0, false);
+	tour_lang_from(&t, 99);
+	ck(tour_lang_focus(&t, T0) == 0, "a language out of range starts on the first");
+}
+
 static void deaf(void)
 {
 	tour t;
 	tour_key k;
 
 	printf("a step's first quarter second:\n");
-	tour_start(&t, T0, false);
+	tour_pose(&t, TOUR_WELCOME, T0, 0, -1, false);
 	for (k = 0; k < TK_KEYS; k++)
 		ck(tour_press(&t, k, T0 + 249) == TOUR_QUIET, "every press is nothing until 250 ms");
 	ck(t.step == TOUR_WELCOME && !t.wrong && !t.over, "and changes nothing");
@@ -791,6 +839,7 @@ static void saved(void)
 
 int main(void)
 {
+	language();
 	walk(false, false);
 	walk(true, true);
 	choices();

@@ -11,6 +11,24 @@
 #include "systemart_data.h"
 
 static TTF_Font *page_fonts[PAGE_FONTS];
+/* The same four in the cuts of Noto Sans SC and JP, for 简体中文 and 日本語
+ * (src/ui.h, ui_fonts_for, ui_font_set 1 and 2): each opened the first time
+ * its language is on, and kept */
+static TTF_Font *page_fonts_cjk[3][PAGE_FONTS];
+static bool page_cjk_tried[3];
+static void page_fonts_cjk_open(int set)
+{
+    static const int sizes[] = {DS_TYPE_CHROME,DS_TYPE_ACTION,DS_TYPE_SUPPORT,DS_TYPE_GAME_TITLE};
+    char menu[1024], title[1024];
+    if(page_cjk_tried[set]) return;
+    page_cjk_tried[set]=true;
+    ui_cjk_font_path(false,menu,sizeof menu);
+    ui_cjk_font_path(true,title,sizeof title);
+    for(int i=0;i<PAGE_FONTS;i++) {
+        page_fonts_cjk[set][i]=TTF_OpenFont(i==PAGE_GAME_TITLE?title:menu,sizes[i]);
+        if(!page_fonts_cjk[set][i]) page_fonts_cjk[set][i]=TTF_OpenFont(menu,sizes[i]);
+    }
+}
 bool page_fonts_init(const char *path)
 {
     static const int sizes[] = {DS_TYPE_CHROME,DS_TYPE_ACTION,DS_TYPE_SUPPORT,DS_TYPE_GAME_TITLE};
@@ -29,17 +47,26 @@ bool page_fonts_init(const char *path)
 void page_fonts_quit(void)
 {
     ui_text_memo_clear();
-    for(int i=0;i<PAGE_FONTS;i++) if(page_fonts[i]) {
-        TTF_CloseFont(page_fonts[i]); page_fonts[i]=NULL;
+    for(int i=0;i<PAGE_FONTS;i++) {
+        if(page_fonts[i]) { TTF_CloseFont(page_fonts[i]); page_fonts[i]=NULL; }
+        for(int k=1;k<3;k++) if(page_fonts_cjk[k][i]) { TTF_CloseFont(page_fonts_cjk[k][i]); page_fonts_cjk[k][i]=NULL; }
     }
+    page_cjk_tried[1]=page_cjk_tried[2]=false;
 }
 TTF_Font *page_font(page_font_role role)
-{ return page_fonts[role] ? page_fonts[role] : ui_font(UI_F_META); }
+{
+    int set=ui_font_set();
+    if(set) {
+        page_fonts_cjk_open(set);
+        if(page_fonts_cjk[set][role]) return page_fonts_cjk[set][role];
+    }
+    return page_fonts[role] ? page_fonts[role] : ui_font(UI_F_META);
+}
 
 home_layout home_parse(const char *id)
 { return id && !strcmp(id, "gallery") ? HOME_GALLERY : HOME_SPOTLIGHT; }
 const char *home_id(home_layout l) { return l == HOME_GALLERY ? "gallery" : "spotlight"; }
-const char *home_name(home_layout l) { return l == HOME_GALLERY ? "Gallery" : "Spotlight"; }
+const char *home_name(home_layout l) { return T(l == HOME_GALLERY ? S_HOME_GALLERY : S_HOME_SPOTLIGHT); }
 const char *home_label(const char *key, const char *canonical)
 {
     static const struct { const char *key, *name; } labels[] = {
@@ -54,13 +81,15 @@ const char *home_label(const char *key, const char *canonical)
         {"NGPC","NGPC"}, {"DC","Dreamcast"}, {"WSC","WSC"}, {"GBA","GBA"},
         {"PKMINI","PokéMini"}, {"NDS","NDS"}, {"PICO8","PICO-8"},
         {"ARCADE","Arcade"}, {"MAME","MAME"}, {"NAOMI","NAOMI"},
-        {"AW","Atomiswave"}, {"PRT","Ports"}, {"FAV","Favorites"}, {"MUSE","MP4"}
+        {"AW","Atomiswave"}, {"PRT","Ports"}, {"MUSE","MP4"}
     };
+    /* Favorites is the launcher's own shelf and named in the language that is on */
+    if (key && !strcmp(key, "FAV")) return T(S_HOME_FAVORITES);
     for (unsigned i = 0; key && i < sizeof labels / sizeof *labels; i++)
         if (!strcmp(key, labels[i].key)) return labels[i].name;
     /* Unknown long names use their tag at the same readable size. */
     if (canonical && canonical[0] && strlen(canonical) <= 12) return canonical;
-    return key && key[0] ? key : "System";
+    return key && key[0] ? key : T(S_HOME_SYSTEM);
 }
 
 float home_position(const home *h, uint32_t now)
@@ -103,7 +132,7 @@ int home_jump(int cursor, int count, int dir)
 bool home_song_update(home_song *song, bool active, bool paused, const char *title)
 {
     home_song next = { .active = active, .paused = active && paused };
-    if (active) snprintf(next.title,sizeof next.title,"%s",title && title[0] ? title : "Audio");
+    if (active) snprintf(next.title,sizeof next.title,"%s",title && title[0] ? title : T(S_HOME_AUDIO));
     bool changed = song->active != next.active || song->paused != next.paused ||
                    strcmp(song->title,next.title);
     *song = next;
@@ -308,7 +337,7 @@ static void sprite(home *h, SDL_Renderer *r, const home_item *item,
         SDL_Color c=UI_TEXT_DIM; c.a=(Uint8)(255*opacity);
         SDL_SetRenderDrawColor(r,c.r,c.g,c.b,c.a);
         SDL_Rect dash={cx-12,cy-2,24,4}; SDL_RenderFillRect(r,&dash);
-        if(dst.w>=256) ui_text(r,ui_font(UI_F_META),"No artwork",cx,ui_cap_y(ui_font(UI_F_META),cy+48),0,c);
+        if(dst.w>=256) ui_text(r,ui_font(UI_F_META),T(S_HOME_NO_ARTWORK),cx,ui_cap_y(ui_font(UI_F_META),cy+48),0,c);
     }
 }
 void page_hint(SDL_Renderer *r, const char *key, const char *label,
@@ -478,9 +507,9 @@ uint32_t home_draw(home *h,SDL_Renderer *r,home_layout layout,
     SDL_Rect underline={492,gallery?512:672,40,DS_BAR}; SDL_RenderFillRect(r,&underline);
     char index[32]; snprintf(index,sizeof index,"%d / %d",cursor+1,count);
     ui_text(r,page_font(PAGE_CHROME),index,512,ui_cap_y(page_font(PAGE_CHROME),704),0,UI_TEXT_DIM);
-    page_hint(r,"MENU","Settings",64,704,false,false);
+    page_hint(r,"MENU",T(S_HOME_SETTINGS),64,704,false,false);
     if(!gallery) page_hint(r,"SELECT","MP4",784,704,false,false);
-    page_hint(r,"A",open_label?open_label:"Open games",gallery?768:76,gallery?704:416,true,false);
+    page_hint(r,"A",open_label?open_label:T(S_HOME_OPEN_GAMES),gallery?768:76,gallery?704:416,true,false);
     if(animate && row_moving(&h->motion,now)) wait=0;
     if(!animate) wait=UINT32_MAX;
     restore_state(r,saved);

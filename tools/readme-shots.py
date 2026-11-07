@@ -75,6 +75,11 @@ SHOTS={
     # that is off, and Zyper's heat warning on the home
     'charging':('demo','PS1',['--charging','4000']),
     'heat':('demo','PS1',['--heatpop','1600']),
+    # The README's languages (DESIGN.md 11.30): the first start's step on
+    # 简体中文, and MENU in Portuguese and in Japanese
+    'tour-language':('demo','PS1',['--tour','lang','3000','--tour-pick','1']),
+    'menu-pt':('demo','PS1',['--lang','pt-BR','--menu','Language']),
+    'menu-ja':('demo','PS1',['--lang','ja','--menu','Search Games']),
 }
 # The README's light-and-dark section: these, in both themes
 DARK=['systems','menu']
@@ -171,7 +176,7 @@ def web_dir(web):
     """res/web as mk/payload.sh lays it out on the card"""
     shutil.copytree(ROOT/'res/web',web)
     for font in ['menu.ttf','title.ttf']: shutil.copyfile(ROOT/'res/fonts'/font,web/font)
-    (web/'wire.html').write_text((ROOT/'res/web/index.html').read_text().replace('Wi-Fi File Transfer','USB File Transfer'))
+    (web/'wire.html').write_text((ROOT/'res/web/index.html').read_text().replace('data-link="wifi"','data-link="usb"'))
 
 class DevTools:
     """Just enough of a WebSocket client for Chrome's DevTools protocol:

@@ -1,0 +1,101 @@
+# A system's games (src/games.c): what the shelf says about the focused game
+# and the keys along the bottom.
+
+[games.no_games]
+note = The shelf's title line when the system has no games
+en = No games
+zh-Hans = 没有游戏
+es = No hay juegos
+pt-BR = Nenhum jogo
+fr = Aucun jeu
+de = Keine Spiele
+ja = ゲームがありません
+it = Nessun gioco
+
+[games.played]
+note = review: under the game's name: how long it was played; %s is a time (12h 34m). The translations name it with the Play Time term.
+en = Played %s
+zh-Hans = 已玩 %s
+es = Tiempo de juego: %s
+pt-BR = Tempo de jogo: %s
+fr = Temps de jeu : %s
+de = Spielzeit: %s
+ja = プレイ時間 %s
+it = Tempo di gioco: %s
+
+[games.achievements]
+note = Under the game's name: achievements earned of the game's set (Achievements 4 / 54)
+en = Achievements %d / %d
+zh-Hans = 成就 %d / %d
+es = Logros %d / %d
+pt-BR = Conquistas %d / %d
+fr = Succès %d / %d
+de = Erfolge %d / %d
+ja = 実績 %d / %d
+it = Obiettivi %d / %d
+
+[games.resume]
+note = The hint by A: it goes on from where the game was left
+en = Resume
+zh-Hans = 继续
+es = Continuar
+pt-BR = Continuar
+fr = Reprendre
+de = Fortsetzen
+ja = 再開
+it = Riprendi
+
+[games.play]
+note = The hint by A: it starts the game
+en = Play
+zh-Hans = 开始
+es = Jugar
+pt-BR = Jogar
+fr = Jouer
+de = Spielen
+ja = プレイ
+it = Gioca
+
+[games.systems]
+note = The hint by B: back to the systems
+en = Systems
+zh-Hans = 系统
+es = Sistemas
+pt-BR = Sistemas
+fr = Systèmes
+de = Systeme
+ja = システム
+it = Sistemi
+
+[games.favorite]
+note = The hint by Y: mark the game a favorite
+en = Favorite
+zh-Hans = 收藏
+es = Favorito
+pt-BR = Favoritar
+fr = Favori
+de = Favorisieren
+ja = お気に入り
+it = Preferito
+
+[games.favorited]
+note = The hint by Y when the game is a favorite already
+en = Favorited
+zh-Hans = 已收藏
+es = En favoritos
+pt-BR = Favoritado
+fr = Dans les favoris
+de = Favorisiert
+ja = お気に入り済み
+it = Nei preferiti
+
+[games.details]
+note = The hint by X: the game's info screen
+en = Details
+zh-Hans = 详情
+es = Detalles
+pt-BR = Detalhes
+fr = Détails
+de = Details
+ja = 詳細
+it = Dettagli

@@ -6,14 +6,17 @@ every control, menu row and setting, and the reasons behind them.
 ## Installing
 
 Each device's card is a disk image written over the whole card, as the
-[README](../README.md#install) says. ZyperOS has no installer of its own yet.
+[README](../README.md#install) says, with [ZyperOS Installer](../installer/)
+or any program that writes disk images. Every release is on
+[GitHub](https://github.com/tarikbc/ZyperOS/releases/latest), from 1.0.0 on:
+the GKD Pixel 2's image is there, and the TrimUI Brick's comes later.
 
 The image is [plastron](https://github.com/tarikbc/plastron), the small
 Linux both devices run ZyperOS on: a boot partition and the system itself,
 read-only, and on the Brick also a small partition for system data such as
-Bluetooth pairings. At the first boot the rest of the card becomes ZYPEROS, an
-exFAT partition, with ZyperOS on it. Games, music, saves and settings live
-there, and it is the partition a computer sees.
+Bluetooth pairings. At the first boot, in about a minute, the rest of the
+card becomes ZYPEROS, an exFAT partition, with ZyperOS on it. Games, music,
+saves and settings live there, and it is the partition a computer sees.
 
 The device itself is never written to. The Brick boots from the card before
 its own system, so **removing the card brings the stock system back**;

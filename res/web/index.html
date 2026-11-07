@@ -1,11 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-link="wifi">
 <head>
 <meta charset="utf-8">
+<!-- The words are in the handheld's language (MENU > Language): /i18n.js,
+     loaded before app.js, which puts them in where data-t names one (and
+     data-t-aria an aria-label) and the name in .pagename and the title.
+     data-link="usb" is wire.html, this page under USB File Transfer's name
+     (mk/payload.sh). -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Beard, or Salt & Pepper where the browser asks for dark: app.css. -->
 <meta name="color-scheme" content="light dark">
-<title>Wi-Fi File Transfer</title>
+<title></title>
 <!-- Zyper's head alone, in a square: the lockup is nearly four times as wide
      as it is tall and would be a smudge at 16px. tools/genzyper.py writes it. -->
 <link rel="icon" type="image/svg+xml" href="/web/icon.svg">
@@ -23,14 +28,14 @@
       <img src="/web/zyper.svg" alt="" width="74" height="78">
       <img class="shut" src="/web/zyper-shut.svg" alt="" width="74" height="78">
     </div>
-    <h1>Wi-Fi File Transfer</h1>
-    <p class="sub">Enter the PIN on the handheld's screen.</p>
+    <h1 class="pagename"></h1>
+    <p class="sub" data-t="gate.sub"></p>
     <form id="pinform" autocomplete="off">
       <div id="boxes" class="boxes" role="group" aria-label="PIN">
-        <input inputmode="numeric" maxlength="1" aria-label="PIN, digit 1" autocomplete="one-time-code">
-        <input inputmode="numeric" maxlength="1" aria-label="digit 2">
-        <input inputmode="numeric" maxlength="1" aria-label="digit 3">
-        <input inputmode="numeric" maxlength="1" aria-label="digit 4">
+        <input inputmode="numeric" maxlength="1" autocomplete="one-time-code">
+        <input inputmode="numeric" maxlength="1">
+        <input inputmode="numeric" maxlength="1">
+        <input inputmode="numeric" maxlength="1">
       </div>
     </form>
     <p id="gatemsg" class="msg" role="status"></p>
@@ -46,11 +51,11 @@
     <div class="brand">
       <picture><source srcset="/web/mark.svg" media="(prefers-color-scheme: dark)">
       <img src="/web/mark-light.svg" alt="ZyperOS" width="127" height="36"></picture>
-      <span class="appname">Wi-Fi File Transfer</span>
+      <span class="appname pagename"></span>
     </div>
-    <nav id="places" class="places" aria-label="Folders on the card"></nav>
+    <nav id="places" class="places" data-t-aria="side.folders"></nav>
     <!-- The card's room for files, less what it keeps for saves. -->
-    <div id="room" class="room" hidden><span><b id="roomfree"></b><span id="roomof"></span></span><div class="meter"><span id="roombar"></span></div></div>
+    <div id="room" class="room" hidden><span id="roomline"></span><div class="meter"><span id="roombar"></span></div></div>
     <!-- Uploads, under the folders, while there are any: what is left and
          the time for all of them, one bar, then each file. -->
     <section id="queue" class="xfer" hidden aria-live="polite">
@@ -62,14 +67,14 @@
     <!-- USB File Transfer only: SSH over the same cable, with the PIN. -->
     <section id="ssh" class="ssh" hidden>
       <h2>SSH</h2>
-      <p>The password is the PIN. Add your key with ssh-copy-id to skip it next time.</p>
-      <div class="cmd"><code id="sshcmd"></code><button type="button" id="sshcopy" class="link">Copy</button></div>
+      <p data-t="ssh.note"></p>
+      <div class="cmd"><code id="sshcmd"></code><button type="button" id="sshcopy" class="link" data-t="ssh.copy"></button></div>
     </section>
     <!-- Settings, at the foot: the update, covers, the SteamGridDB key, the
          card, the logs (2026-11-06), a page of its own in the main
          area, as a folder is. -->
-    <nav class="places tail" aria-label="Settings">
-      <button id="setgo" type="button" class="i i-gear">Settings</button>
+    <nav class="places tail" data-t-aria="settings">
+      <button id="setgo" type="button" class="i i-gear" data-t="settings"></button>
     </nav>
   </aside>
 
@@ -78,30 +83,30 @@
       <!-- A phone's: Zyper beside the folder's name, where the sidebar's
            lockup would be. -->
       <img class="headzy" src="/web/zyper.svg" alt="" width="28" height="30">
-      <nav id="crumbs" class="crumbs" aria-label="Location"></nav>
+      <nav id="crumbs" class="crumbs" data-t-aria="crumbs"></nav>
       <div id="tools" class="tools">
-        <button id="newfolder" type="button" class="btn quiet i i-newfolder">New folder</button>
+        <button id="newfolder" type="button" class="btn quiet i i-newfolder" data-t="tool.new_folder"></button>
         <!-- In a music or audiobook folder: its names as MP4's shelf shows them. -->
-        <button id="tidy" type="button" class="btn quiet i i-tidy" hidden>Tidy names</button>
+        <button id="tidy" type="button" class="btn quiet i i-tidy" hidden data-t="tool.tidy"></button>
         <!-- A whole folder - an album, a book - with the folders inside it. -->
-        <label class="btn i i-upfolder" for="folderpicker" tabindex="0">Upload folder</label>
-        <label class="btn pri i i-up" for="picker" tabindex="0">Upload</label>
+        <label class="btn i i-upfolder" for="folderpicker" tabindex="0" data-t="tool.upload_folder"></label>
+        <label class="btn pri i i-up" for="picker" tabindex="0" data-t="tool.upload"></label>
       </div>
       <!-- A phone's: everything the sidebar holds but the folders. -->
-      <button id="more" type="button" class="iconbtn i i-dots" aria-label="More"></button>
+      <button id="more" type="button" class="iconbtn i i-dots" data-t-aria="tool.more"></button>
     </header>
-    <nav id="chips" class="chips" aria-label="Folders on the card"></nav>
+    <nav id="chips" class="chips" data-t-aria="side.folders"></nav>
 
     <section id="tidypanel" class="tidy" hidden>
       <h2 id="tidyhead"></h2>
       <ul id="tidylist"></ul>
       <div class="acts">
-        <button id="tidycancel" type="button" class="btn">Cancel</button>
-        <button id="tidygo" type="button" class="btn pri">Rename all</button>
+        <button id="tidycancel" type="button" class="btn" data-t="cancel"></button>
+        <button id="tidygo" type="button" class="btn pri" data-t="tidy.rename_all"></button>
       </div>
     </section>
     <ul id="list" class="list"></ul>
-    <p id="empty" class="empty" hidden>Nothing here yet. Drop files here, or press Upload.</p>
+    <p id="empty" class="empty" hidden data-t="list.empty"></p>
 
     <!-- Settings (DESIGN.md 11.15): a section for each thing, each shown
          only where it works here. -->
@@ -110,7 +115,7 @@
            gets the release's files with the computer's internet and the
            handheld checks and installs them. Drawn by app.js. -->
       <section id="update" class="set" hidden aria-live="polite">
-        <h2>Update ZyperOS</h2>
+        <h2 data-t="update.head"></h2>
         <div id="updbody"></div>
         <input id="updpicker" type="file" multiple accept=".txt,.zpk" hidden>
       </section>
@@ -119,9 +124,9 @@
            from MusicBrainz, and the device matches them. Hidden where the
            device says no. -->
       <section id="art" class="set" hidden>
-        <h2>Box art and album covers</h2>
+        <h2 data-t="art.head"></h2>
         <p id="artmsg" role="status"></p>
-        <div class="acts"><button id="artgo" type="button" class="btn i i-art">Get covers</button></div>
+        <div class="acts"><button id="artgo" type="button" class="btn i i-art" data-t="art.go"></button></div>
       </section>
       <!-- SteamGridDB's key, for the handheld's own Box Art: a 32-character
            key is a paste here and a long walk on its keyboard. The page never
@@ -130,20 +135,20 @@
         <h2>SteamGridDB</h2>
         <p id="sgdbmsg" role="status"></p>
         <div class="acts">
-          <button id="sgdbgo" type="button" class="btn i i-key">Add a key</button>
-          <button id="sgdbdel" type="button" class="btn quiet" hidden>Remove</button>
+          <button id="sgdbgo" type="button" class="btn i i-key" data-t="sgdb.add"></button>
+          <button id="sgdbdel" type="button" class="btn quiet" hidden data-t="act.remove"></button>
         </div>
       </section>
       <section class="set">
-        <h2>The card</h2>
+        <h2 data-t="card.head"></h2>
         <p id="cardroom"></p>
-        <label class="switch"><input id="showhidden" type="checkbox"><i aria-hidden="true"></i>Show hidden folders, such as .media with the covers</label>
+        <label class="switch"><input id="showhidden" type="checkbox"><i aria-hidden="true"></i><span data-t="card.show_hidden"></span></label>
       </section>
       <!-- A bug report as one file, packed by the device when asked. -->
       <section class="set">
-        <h2>Help</h2>
-        <p>The handheld's logs in one file, for a bug report. Network, headset and account names are masked.</p>
-        <div class="acts"><a class="btn i i-logs" href="/api/logs" download>Download logs</a></div>
+        <h2 data-t="help.head"></h2>
+        <p data-t="help.text"></p>
+        <div class="acts"><a class="btn i i-logs" href="/api/logs" download data-t="help.download"></a></div>
       </section>
     </div>
     <!-- Where a drop lands, said before anything is dropped: a capability
@@ -155,7 +160,7 @@
   <input id="picker" type="file" multiple hidden>
   <input id="folderpicker" type="file" webkitdirectory multiple hidden>
   <!-- A phone's Upload, under the thumb, and its uploads, folded to a line. -->
-  <label id="fab" class="fab i i-up" for="picker" tabindex="0">Upload</label>
+  <label id="fab" class="fab i i-up" for="picker" tabindex="0" data-t="tool.upload"></label>
   <button id="dock" type="button" class="dock" hidden></button>
 </div>
 
@@ -175,7 +180,7 @@
     <p id="dlgtext"></p>
     <input id="dlgfield" type="text" spellcheck="false" autocapitalize="off" hidden>
     <div class="acts">
-      <button id="dlgno" type="button" class="btn">Cancel</button>
+      <button id="dlgno" type="button" class="btn" data-t="cancel"></button>
       <button id="dlgyes" type="submit" class="btn pri"></button>
     </div>
   </form>
@@ -183,6 +188,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<script src="/i18n.js"></script>
 <script src="/web/captive.js"></script>
 <script src="/web/app.js"></script>
 </body>

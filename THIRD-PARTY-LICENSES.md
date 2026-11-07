@@ -162,6 +162,16 @@ audiobooks and videos, ALSA and glibc. plastron's package list on the card,
   `title.ttf` (SemiBold) is the title role's (DESIGN.md 4), the file transfer page's
   bold and the face of system and game titles. The ZyperOS name is not set in a font:
   tools/zyperdef.py draws its letters as strokes.
+- `res/fonts/zh-menu.otf` and `res/fonts/zh-title.otf` - **Noto Sans SC**
+  2.002 Regular and Bold, and `res/fonts/ja-menu.otf` and
+  `res/fonts/ja-title.otf` - **Noto Sans JP** 2.001 Regular and Bold, by
+  Adobe and Google (https://github.com/notofonts/noto-cjk), from Google
+  Fonts, SIL Open Font License 1.1, with the Reserved Font Name "Source";
+  full text in `res/fonts/OFL-NotoSansSC.txt` and `OFL-NotoSansJP.txt`. Cut
+  by tools/cjkfont.py to the characters ZyperOS writes and the first level
+  of GB 2312 or of JIS X 0208's kanji. The UI's faces in 简体中文 and
+  日本語, Lexend having neither, and the faces of Chinese or Japanese text
+  in any language.
 - `src/third_party/minimp3.h` - **minimp3**, an MP3 decoder by Lion (lieff)
   and its contributors (https://github.com/lieff/minimp3 at ea99364), CC0 1.0
   public domain dedication (`src/third_party/minimp3-LICENSE.txt`); and

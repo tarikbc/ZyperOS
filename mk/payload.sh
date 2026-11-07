@@ -61,6 +61,10 @@ cp "$ROOT/config/systems.cfg" "$P/"
 cp "$ROOT/res/system-icons/"*.png "$P/system-icons/" # pixel home atlases and stills
 cp "$ROOT/res/fonts/menu.ttf" "$P/"       # the UI face, and the in-game menu's
 cp "$ROOT/res/fonts/title.ttf" "$P/"      # its SemiBold, the title role's, found beside it
+cp "$ROOT/res/fonts/zh-menu.otf" "$P/"    # 简体中文's faces and 日本語's, beside
+cp "$ROOT/res/fonts/zh-title.otf" "$P/"   # them (tools/cjkfont.py), opened only
+cp "$ROOT/res/fonts/ja-menu.otf" "$P/"    # when Chinese or Japanese is drawn
+cp "$ROOT/res/fonts/ja-title.otf" "$P/"
 cp "$ROOT/res/singles.png" "$P/"          # Muse's cover for Singles, the loose songs
 cp "$ROOT/res/zyper.png" "$P/"            # Zyper's photo, on About's The name page
 # The interface sounds, every voice (src/uisound.h): the launcher reads them
@@ -89,12 +93,16 @@ cp "$ROOT/res/tour/"*.png "$P/res/tour/"
 # rather than being kept in the repo twice: the launcher reads $P/menu.ttf and
 # $P/title.ttf, and a browser asks for /web/menu.ttf and /web/title.ttf (the
 # page's 600, which a browser would otherwise make up by smearing Regular).
-cp "$ROOT/res/web/"* "$P/res/web/"
+# -R for i18n/, the page's words a language (tools/i18n.py), which the
+# launcher answers /i18n.js with in the language that is on.
+cp -R "$ROOT/res/web/"* "$P/res/web/"
 cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/menu.ttf"
 cp "$ROOT/res/fonts/title.ttf" "$P/res/web/title.ttf"
 # wire.html: the same page under the cable's name, USB File Transfer
-# (src/sys_menu.h). Only the words differ; the script and the server are one.
-sed 's/Wi-Fi File Transfer/USB File Transfer/g' "$ROOT/res/web/index.html" > "$P/res/web/wire.html"
+# (src/sys_menu.h). Only the name differs, which the page takes from
+# data-link; the script and the server are one.
+sed 's/data-link="wifi"/data-link="usb"/' "$ROOT/res/web/index.html" > "$P/res/web/wire.html"
+grep -q '^<html[^>]* data-link="usb"' "$P/res/web/wire.html" || { echo "payload: wire.html is not USB File Transfer's page" >&2; exit 1; }
 # The device has curl and OpenSSL but nothing to trust - see res/ssl/README.md.
 # Without this, every HTTPS request fails verification and achievements never
 # arrive, with an error that reads like the network being down.

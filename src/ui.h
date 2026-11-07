@@ -8,6 +8,7 @@
 
 #include "theme.h"   /* theme(): every color below is a role of the one on */
 #include "linebreak.h" /* LB_LINE: a line of a balanced break */
+#include "i18n.h"      /* lang: the faces follow the language */
 
 /* The look: the theme's ground, one accent per system, and nothing on screen
  * that is not either a card, the name of what is under the cursor, or a rail
@@ -83,8 +84,22 @@ typedef enum {
 } ui_font_role;
 
 /* The font for a role. One size: the Text Size setting is gone, and src/ui.c
- * says why. */
+ * says why. In the language that is on: Lexend, or in 简体中文 the cut of
+ * Noto Sans SC (DESIGN.md 4). */
 TTF_Font *ui_font(ui_font_role role);
+/* The faces ui_font answers with from now: `l`'s (src/i18n.h). Called with
+ * i18n_set. The Chinese set opens the first time and is kept. */
+void ui_fonts_for(lang l);
+/* Whether ui_font answers with a Chinese or Japanese set, and which set:
+ * 0 Lexend's, 1 Chinese's, 2 Japanese's */
+bool ui_fonts_cjk(void);
+int ui_font_set(void);
+/* The face's file of the set that is on (Chinese's while Lexend's is),
+ * beside menu.ttf: the title's or the rest's */
+const char *ui_cjk_font_path(bool title, char *out, size_t n);
+/* `role`'s face for `l`'s words, whatever language is on: each language's
+ * own name in the picker and in MENU > Language's panel */
+TTF_Font *ui_font_lang(ui_font_role role, lang l);
 /* A role's line: its size, an em (DESIGN.md 4's 60, 55, 49, 37), the unit
  * menu rows and stacked lines are laid out in. Not the font's line skip,
  * which is its ascent and descent: Lexend's ascent is a whole em, a quarter
@@ -415,12 +430,14 @@ int ui_card_theme(SDL_Texture *t);
  * ways (11.19): the USB trident, and three arcs and a dot for Wi-Fi. And the
  * answers while File Transfer's files move (11.14): an arrow up and one down
  * for keep going, a page with a tick for stop after this file, a ring crossed
- * for cancel now, a play triangle for play after this file. */
+ * for cancel now, a play triangle for play after this file. And a tick for
+ * the choice that is on in a list of choices (MENU > Language, 11.30). */
 typedef enum {
 	UI_GLYPH_REPEAT, UI_GLYPH_REPEAT_ONE, UI_GLYPH_SHUFFLE,
 	UI_GLYPH_CHARGE, UI_GLYPH_TRANSFER, UI_GLYPH_TERMINAL,
 	UI_GLYPH_USB, UI_GLYPH_WIFI,
 	UI_GLYPH_ARROWS, UI_GLYPH_FINISH, UI_GLYPH_CANCEL, UI_GLYPH_PLAY,
+	UI_GLYPH_CHECK,
 	UI_GLYPH_COUNT
 } ui_glyph;
 void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,

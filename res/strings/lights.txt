@@ -1,0 +1,86 @@
+# MENU > Side Lights (src/sidelights.c): the parts of what the lights on the
+# handheld's sides show, one row each, and the MENU row's value. On and Off
+# are menu.on_title and menu.off_title.
+
+[lights.bar]
+note = A Side Lights row: the lights fill as the battery charges
+en = Charging Bar
+zh-Hans = 充电进度条
+es = Barra de carga
+pt-BR = Barra de carga
+fr = Barre de charge
+de = Ladebalken
+ja = 充電ゲージ
+it = Barra di carica
+
+[lights.low]
+note = A Side Lights row: the lights warn of a low battery
+en = Low Battery
+zh-Hans = 电量低
+es = Batería baja
+pt-BR = Bateria fraca
+fr = Batterie faible
+de = Akku schwach
+ja = バッテリー低下
+it = Batteria scarica
+
+[lights.level]
+note = A Side Lights row: the lights show the level while it changes
+en = Volume and Brightness
+zh-Hans = 音量和亮度
+es = Volumen y brillo
+pt-BR = Volume e brilho
+fr = Volume et luminosité
+de = Lautstärke und Helligkeit
+ja = 音量と明るさ
+it = Volume e luminosità
+
+[lights.done]
+note = review: a Side Lights row: the lights flash when a file transfer or a cover fetch ends. es, pt-BR and fr leave done to the context, for the row's room.
+en = Files and Covers Done
+zh-Hans = 文件和封面完成
+es = Archivos y carátulas
+pt-BR = Arquivos e capas
+fr = Fichiers et jaquettes
+de = Dateien und Cover fertig
+ja = ファイルと画像の完了
+it = File e copertine
+
+[lights.cheer]
+note = A Side Lights row: the lights flash for an achievement
+en = Achievements
+zh-Hans = 成就
+es = Logros
+pt-BR = Conquistas
+fr = Succès
+de = Erfolge
+ja = 実績
+it = Obiettivi
+
+[lights.all_on]
+note = MENU > Side Lights' value: every part on
+en = All on
+zh-Hans = 全部开启
+es = Todas activadas
+pt-BR = Todas ativadas
+fr = Toutes activées
+de = Alle an
+ja = すべてオン
+it = Tutte attive
+
+[lights.some_on]
+note = MENU > Side Lights' value: how many parts are on, 1 to 4 (es, pt-BR, fr: las luces, as luzes, les lumières). tight: 15 bytes at most. English has one form for both.
+en.one = %d on
+en.other = %d on
+zh-Hans = %d 项开启
+es.one = %d activada
+es.other = %d activadas
+pt-BR.one = %d ativada
+pt-BR.other = %d ativadas
+fr.one = %d activée
+fr.other = %d activées
+de.one = %d an
+de.other = %d an
+ja = %d 個オン
+it.one = %d attiva
+it.other = %d attive

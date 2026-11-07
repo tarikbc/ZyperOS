@@ -4,6 +4,8 @@
 
 #include <string.h>
 
+#include "i18n.h"
+
 aout_dest aout_resolve(const aout_state *s)
 {
 	/* A cable wins outright, in every policy. Someone who physically plugged
@@ -37,6 +39,12 @@ const char *aout_dest_name(aout_dest d)
 	     : d == AOUT_WIRED ? "wired" : "speaker";
 }
 
+const char *aout_dest_label(aout_dest d)
+{
+	return T(d == AOUT_USB ? S_AUDIO_USB : d == AOUT_BT ? S_AUDIO_BLUETOOTH
+	       : d == AOUT_WIRED ? S_AUDIO_WIRED : S_AUDIO_SPEAKER);
+}
+
 aout_dest aout_dest_of(const aout_state *s, const char *dev)
 {
 	if (!dev || !dev[0]) return s->wired ? AOUT_WIRED : AOUT_SPK;
@@ -50,8 +58,8 @@ aout_channels aout_channels_for(aout_channels chosen, aout_dest d)
 	return chosen;
 }
 
-static const char *const CHANNELS_NAME[AOUT_CHANNELS_COUNT] = {
-	"stereo", "mono", "mono left", "mono right",
+static const str_id CHANNELS_NAME[AOUT_CHANNELS_COUNT] = {
+	S_AUDIO_STEREO, S_AUDIO_MONO, S_AUDIO_MONO_LEFT, S_AUDIO_MONO_RIGHT,
 };
 static const char *const CHANNELS_WIRE[AOUT_CHANNELS_COUNT] = {
 	"stereo", "mono", "left", "right",
@@ -59,7 +67,7 @@ static const char *const CHANNELS_WIRE[AOUT_CHANNELS_COUNT] = {
 
 const char *aout_channels_name(aout_channels c)
 {
-	return c >= 0 && c < AOUT_CHANNELS_COUNT ? CHANNELS_NAME[c] : CHANNELS_NAME[0];
+	return T(c >= 0 && c < AOUT_CHANNELS_COUNT ? CHANNELS_NAME[c] : CHANNELS_NAME[0]);
 }
 
 const char *aout_channels_wire(aout_channels c)

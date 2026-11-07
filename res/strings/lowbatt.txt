@@ -1,0 +1,35 @@
+# The start with a battery too low to play (DESIGN.md 11.24, src/powerscreens.c):
+# Zyper, the empty battery mark, the title beside it and the line under it.
+
+[lowbatt.title]
+note = The screen's title, in large type beside the empty battery mark, at a start off the charger
+en = Battery too low
+zh-Hans = 电量过低
+es = Batería muy baja
+pt-BR = Bateria muito fraca
+fr = Batterie trop faible
+de = Akku zu schwach
+ja = バッテリー残量不足
+it = Batteria troppo scarica
+
+[lowbatt.line]
+note = The line under the title: what to do
+en = Plug in a charger.
+zh-Hans = 请连接充电器。
+es = Conecta un cargador.
+pt-BR = Conecte um carregador.
+fr = Branchez un chargeur.
+de = Schließe ein Ladegerät an.
+ja = 充電器を接続してください。
+it = Collega un caricabatterie.
+
+[lowbatt.charging]
+note = The line under the title once a charger is plugged in; the start then goes on
+en = Charging.
+zh-Hans = 正在充电。
+es = Cargando.
+pt-BR = Carregando.
+fr = En charge.
+de = Lädt.
+ja = 充電中です。
+it = In carica.

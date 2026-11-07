@@ -20,6 +20,8 @@ protocol. What it holds, each a thing I asked for on 2026-11-06:
     rest stay on the computer and the panel says so
   - Settings: the update over the cable, off on an image with no release key,
     and with one, the files dropped, sent, checked and installed
+  - the page in the handheld's language (MENU > Language, 2026-11-07): every
+    word from its strings, the name the cable's, sizes the language's way
 
 No device is touched and nothing is fetched from the internet: the release
 GitHub would answer is given to the page. Chrome is needed; without it the
@@ -262,13 +264,31 @@ def main():
                   (cable / 'ZyperOS-v0.4.1-pixel2-update.zpk').stat().st_size == 300000,
                   'the files landed under their own names, a browser\'s "(1)" off')
             server.stop()
+
+            print("the page in the handheld's language:")
+            server = Server(card, web, 'usb', 'update=off', 'space=88.4/119', 'lang=fr')
+            check(signed_in(page, server) and
+                  page.until("document.getElementById('roomline').textContent !== ''"),
+                  'the page came up past the PIN, in French')
+            got = page.js("""(() => ({ lang: document.documentElement.lang, title: document.title,
+                name: document.querySelector('.appname').textContent,
+                room: document.getElementById('roomline').textContent,
+                keys: [...document.querySelectorAll('*')].flatMap((e) => [e.getAttribute('aria-label') || '',
+                    e.childNodes.length === 1 && e.firstChild.nodeType === 3 ? e.textContent : ''])
+                    .filter((w) => /^[a-z_]+(\\.[a-z_]+)+$/.test(w)) }))()""")
+            check(got['lang'] == 'fr' and got['title'] == 'Transfert de fichiers USB' and got['name'] == got['title'],
+                  f"the page's language and name: {got['lang']}, {got['title']}, {got['name']}")
+            check(got['room'] == '88,3 Go libres sur 119,0 Go',
+                  f"sizes the language's way: {got['room']}")
+            check(not got['keys'], f"every word found its string: {got['keys']}")
+            server.stop()
         finally:
             page.close()
     if failures:
         print(f'\n{failures} check(s) failed')
         return 1
     print('\nok: the page wears its art, hides dot folders, counts the room, says the time, '
-          'follows the handheld\'s stop, and updates over the cable')
+          'follows the handheld\'s stop, updates over the cable, and speaks its language')
     return 0
 
 

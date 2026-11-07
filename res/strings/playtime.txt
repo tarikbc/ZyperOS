@@ -1,0 +1,98 @@
+# MENU > Play Time (src/stats_screen.c): the total row, the games or systems
+# under it, the selected one's facts in a note, and the key legend. The window's
+# names ("This Month") and the durations ("2h 16m", "3d ago") are src/stats.c's.
+
+[playtime.title]
+note = The panel's heading, as MENU's row names it
+en = Play Time
+zh-Hans = 游戏时间
+es = Tiempo de juego
+pt-BR = Tempo de jogo
+fr = Temps de jeu
+de = Spielzeit
+ja = プレイ時間
+it = Tempo di gioco
+
+[playtime.total]
+note = The total row's value, beside the window's name ("This Month"): %s is the time played ("2h 16m"), %d how many times a game was started. Keep it short: it shares the row. review: "vez/vezes" (times played) for a launch in es and pt-BR, "fois" in fr
+en.one = %s · %d launch
+en.other = %s · %d launches
+zh-Hans = %s · %d 次
+es.one = %s · %d vez
+es.other = %s · %d veces
+pt-BR.one = %s · %d vez
+pt-BR.other = %s · %d vezes
+fr.one = %s · %d fois
+fr.other = %s · %d fois
+de.one = %s · %d Start
+de.other = %s · %d Starts
+ja = %s · %d 回
+it.one = %s · %d avvio
+it.other = %s · %d avvii
+
+[playtime.nothing]
+note = The only row under the total when nothing has been played in the window
+en = Nothing played yet
+zh-Hans = 还没有玩过游戏
+es = Aún no has jugado nada
+pt-BR = Nada jogado ainda
+fr = Aucune partie pour l'instant
+de = Noch nichts gespielt
+ja = まだプレイしていません
+it = Non hai ancora giocato
+
+[playtime.detail]
+note = The note under the list, about the selected game or system: %d how many times it was started, then its longest session (%s, "1h 05m"), then when it was last played (%s, "3d ago")
+en.one = %d launch · longest %s · %s
+en.other = %d launches · longest %s · %s
+zh-Hans = %d 次 · 最长 %s · %s
+es.one = %d vez · la más larga %s · %s
+es.other = %d veces · la más larga %s · %s
+pt-BR.one = %d vez · a mais longa %s · %s
+pt-BR.other = %d vezes · a mais longa %s · %s
+fr.one = %d fois · la plus longue %s · %s
+fr.other = %d fois · la plus longue %s · %s
+de.one = %d Start · längste %s · %s
+de.other = %d Starts · längste %s · %s
+ja = %d 回 · 最長 %s · %s
+it.one = %d avvio · la più lunga %s · %s
+it.other = %d avvii · la più lunga %s · %s
+
+[playtime.lost]
+note = Added to the end of playtime.detail, only when some sessions ended without their end being recorded (the power went): %d how many. Starts with " · ". review: the word for a session lost this way in each language
+en.one = " · %d lost"
+en.other = " · %d lost"
+zh-Hans = " · %d 次未记录"
+es.one = " · %d perdida"
+es.other = " · %d perdidas"
+pt-BR.one = " · %d perdida"
+pt-BR.other = " · %d perdidas"
+fr.one = " · %d perdue"
+fr.other = " · %d perdues"
+de.one = " · %d verloren"
+de.other = " · %d verloren"
+ja = " · %d 回未記録"
+it.one = " · %d persa"
+it.other = " · %d perse"
+
+[playtime.hint_by_system]
+note = The key legend at the foot while the list is by system: A goes to the shelf, Y lists by game, L1/R1 change the window of time
+en = A: go   Y: by game   L1/R1: window
+zh-Hans = A：前往   Y：按游戏   L1/R1：时段
+es = A: ir   Y: por juego   L1/R1: período
+pt-BR = A: ir   Y: por jogo   L1/R1: período
+fr = A\u00a0: aller   Y\u00a0: par jeu   L1/R1\u00a0: période
+de = A: öffnen   Y: nach Spiel   L1/R1: Zeitraum
+ja = A：移動   Y：ゲーム別   L1/R1：期間
+it = A: vai   Y: per gioco   L1/R1: periodo
+
+[playtime.hint_by_game]
+note = The key legend at the foot while the list is by game: A goes to the game, Y lists by system, L1/R1 change the window of time
+en = A: go   Y: by system   L1/R1: window
+zh-Hans = A：前往   Y：按系统   L1/R1：时段
+es = A: ir   Y: por sistema   L1/R1: período
+pt-BR = A: ir   Y: por sistema   L1/R1: período
+fr = A\u00a0: aller   Y\u00a0: par système   L1/R1\u00a0: période
+de = A: öffnen   Y: nach System   L1/R1: Zeitraum
+ja = A：移動   Y：システム別   L1/R1：期間
+it = A: vai   Y: per sistema   L1/R1: periodo

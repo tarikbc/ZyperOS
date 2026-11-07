@@ -1,0 +1,114 @@
+# The home's line under a system and its button hint, and a shelf's words
+# (src/main.c draw_systems, draw_games).
+
+[shelf.games]
+note = The home: under a system's name, how many games its shelf has.
+en.one = %d game
+en.other = %d games
+zh-Hans = %d 个游戏
+es.one = %d juego
+es.other = %d juegos
+pt-BR.one = %d jogo
+pt-BR.other = %d jogos
+fr.one = %d jeu
+fr.other = %d jeux
+de.one = %d Spiel
+de.other = %d Spiele
+ja = %d 本のゲーム
+it.one = %d gioco
+it.other = %d giochi
+
+[shelf.no_games]
+note = The home: under a system with no games (Favorites, when empty); and a shelf's title line when it has none.
+en = No games
+zh-Hans = 没有游戏
+es = Sin juegos
+pt-BR = Nenhum jogo
+fr = Aucun jeu
+de = Keine Spiele
+ja = ゲームがありません
+it = Nessun gioco
+
+[shelf.albums]
+note = The home, under MP4: how many music albums. Joined with shelf.books and shelf.videos by shelf.list_sep: "3 albums, 2 books, 1 video".
+en.one = %d album
+en.other = %d albums
+zh-Hans = %d 张专辑
+es.one = %d álbum
+es.other = %d álbumes
+pt-BR.one = %d álbum
+pt-BR.other = %d álbuns
+fr.one = %d album
+fr.other = %d albums
+de.one = %d Album
+de.other = %d Alben
+ja = アルバム %d 枚
+it.one = %d album
+it.other = %d album
+
+[shelf.books]
+note = The home, under MP4: how many audiobooks (MP4 plays books aloud). review: es/pt-BR/fr say "book" as English does; audiolibro, audiolivro or livre audio if that reads better.
+en.one = %d book
+en.other = %d books
+zh-Hans = %d 本有声书
+es.one = %d libro
+es.other = %d libros
+pt-BR.one = %d livro
+pt-BR.other = %d livros
+fr.one = %d livre
+fr.other = %d livres
+de.one = %d Hörbuch
+de.other = %d Hörbücher
+ja = 本 %d 冊
+it.one = %d libro
+it.other = %d libri
+
+[shelf.videos]
+note = The home, under MP4: how many videos.
+en.one = %d video
+en.other = %d videos
+zh-Hans = %d 个视频
+es.one = %d video
+es.other = %d videos
+pt-BR.one = %d vídeo
+pt-BR.other = %d vídeos
+fr.one = %d vidéo
+fr.other = %d vidéos
+de.one = %d Video
+de.other = %d Videos
+ja = 動画 %d 本
+it.one = %d video
+it.other = %d video
+
+[shelf.list_sep]
+note = Between MP4's counts on the home: "3 albums, 2 books, 1 video".
+en = ", "
+zh-Hans = ，
+es = ", "
+pt-BR = ", "
+fr = ", "
+de = ", "
+ja = 、
+it = ", "
+
+[shelf.open_games]
+note = The home's hint beside the A button: A opens the system's games.
+en = Open games
+zh-Hans = 打开游戏
+es = Abrir juegos
+pt-BR = Abrir jogos
+fr = Ouvrir les jeux
+de = Spiele öffnen
+ja = ゲームを見る
+it = Apri giochi
+
+[shelf.open_mp4]
+note = The same hint on MP4, the music, books and video player (its name is not translated).
+en = Open MP4
+zh-Hans = 打开 MP4
+es = Abrir MP4
+pt-BR = Abrir MP4
+fr = Ouvrir MP4
+de = MP4 öffnen
+ja = MP4 を開く
+it = Apri MP4

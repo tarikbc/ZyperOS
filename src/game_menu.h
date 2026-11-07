@@ -122,6 +122,9 @@ typedef enum {
 #define GM_LAYOUTS 3
 extern const char *const gm_layout_names[GM_LAYOUTS];    /* stacked, focus, single */
 extern const char *const gm_layout_labels[GM_LAYOUTS];   /* Stacked, Top Focus, Single */
+/* The same in the language that is on, which is what a row shows; the table
+ * above is English. Past the ends, the first. */
+const char *gm_layout_label(int layout);
 int gm_layout_index(const char *name);                   /* 0 for one it does not know */
 /* A system with no layout on record: the top screen alone. */
 #define GM_LAYOUT_DEFAULT 2                              /* single */

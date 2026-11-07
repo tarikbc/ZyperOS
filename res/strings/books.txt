@@ -1,0 +1,12 @@
+# Muse's books (audiobooks) on MP4's shelf.
+
+[books.finished]
+note = MP4's shelf: under an audiobook's title, where its author goes, once it has been listened to the end.
+en = Finished
+zh-Hans = 已听完
+es = Terminado
+pt-BR = Concluído
+fr = Terminé
+de = Zu Ende gehört
+ja = 再生完了
+it = Terminato

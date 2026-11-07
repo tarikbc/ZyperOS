@@ -67,9 +67,8 @@ bool stats_screen(app *a)
 		 * 764px against 704 of content, and menu_draw answered by cutting
 		 * the LABEL - so the row said "This Y...". The separator is the
 		 * cheapest 60px on the screen. */
-		snprintf(total_val, sizeof total_val, "%s · %d launch%s",
-		         total, stats_total_launches(),
-		         stats_total_launches() == 1 ? "" : "es");
+		snprintf(total_val, sizeof total_val, TN(S_PLAYTIME_TOTAL, stats_total_launches()),
+		         total, stats_total_launches());
 		rows[shown++] = (menu_row){ labels[0], total_val, false };
 
 		for (i = top; i < ngames && shown <= vis; i++) {
@@ -129,7 +128,7 @@ bool stats_screen(app *a)
 		}
 
 		if (ngames == 0) {
-			snprintf(labels[1], sizeof labels[1], "Nothing played yet");
+			snprintf(labels[1], sizeof labels[1], "%s", T(S_PLAYTIME_NOTHING));
 			rows[1] = (menu_row){ labels[1], NULL, false };
 			shown = 2;
 			detail[0] = '\0';
@@ -140,29 +139,28 @@ bool stats_screen(app *a)
 			 * is being looked at anyway. */
 			long longest = 0, last = 0, secs = 0;
 			int lost = 0, n = 0;
-			char lg[16], ag[16], tail[24];
+			char lg[16], ag[16];
+			size_t at;
 
 			stats_at(cursor, NULL, NULL, &secs, &n);
 			stats_extra(cursor, &longest, &last, &lost);
 			stats_format(longest, lg, sizeof lg);
 			stats_ago(last, now, ag, sizeof ag);
-			/* Only when it happened. A "0 lost" on every row would train the
-			 * eye to skip the one place the number matters. */
-			if (lost) snprintf(tail, sizeof tail, " · %d lost", lost);
-			else      tail[0] = '\0';
 			/* Written in full and left long. Four facts do not fit 704px and
 			 * are not meant to: the note scrolls. */
-			snprintf(detail, sizeof detail,
-			         "%d launch%s · longest %s · %s%s",
-			         n, n == 1 ? "" : "es", lg, ag, tail);
+			snprintf(detail, sizeof detail, TN(S_PLAYTIME_DETAIL, n), n, lg, ag);
+			/* Only when it happened. A "0 lost" on every row would train the
+			 * eye to skip the one place the number matters. */
+			at = strlen(detail);
+			if (lost) snprintf(detail + at, sizeof detail - at, TN(S_PLAYTIME_LOST, lost), lost);
 		}
 
 		if (detail[0]) {
 			rows[shown++] = MENU_RULE;
 			rows[shown++] = MENU_NOTE(detail);
 		}
-		rows[shown++] = MENU_NOTE(by_sys ? "A: go   Y: by game   L1/R1: window"
-		                                 : "A: go   Y: by system   L1/R1: window");
+		rows[shown++] = MENU_NOTE(by_sys ? T(S_PLAYTIME_HINT_BY_SYSTEM)
+		                                 : T(S_PLAYTIME_HINT_BY_GAME));
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -262,7 +260,7 @@ bool stats_screen(app *a)
 		draw_shelf(a);
 		ui_scrim_k(a->r, 0, k);
 		/* +1 because the total is row 0 and the games start under it. */
-		menu_draw(a, "Play Time", rows, shown,
+		menu_draw(a, T(S_PLAYTIME_TITLE), rows, shown,
 		          ngames ? cursor - top + 1 : -1, menu_std_width(a),
 		          MENU_ZYPEROS);
 		plat_draw_osd(a->r);

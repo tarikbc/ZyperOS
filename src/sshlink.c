@@ -9,6 +9,8 @@
 
 #include "sshlink.h"
 
+#include "i18n.h"
+
 /* ---- what dropbear says ------------------------------------------------- *
  *
  * dropbear -E logs one line per event, the master's and every connection's
@@ -644,13 +646,13 @@ const char *sshlink_status(void)
 {
 	switch (g_st) {
 	case ST_ON:
-		if (g_c.sessions == 0) return "waiting";
-		snprintf(g_status, sizeof g_status, "%d signed in", g_c.sessions);
+		if (g_c.sessions == 0) return T(S_SSH_WAITING);
+		snprintf(g_status, sizeof g_status, TN(S_SSH_SIGNED_IN, g_c.sessions), g_c.sessions);
 		return g_status;
-	case ST_DEV:    return "dev image";
-	case ST_LOCKED: return "locked";
-	case ST_RADIO:  return "not with Wi-Fi";
-	default:        return "off";
+	case ST_DEV:    return T(S_SSH_DEV_IMAGE);
+	case ST_LOCKED: return T(S_SSH_LOCKED);
+	case ST_RADIO:  return T(S_SSH_NOT_WITH_WIFI);
+	default:        return T(S_SSH_OFF);
 	}
 }
 
@@ -666,6 +668,6 @@ void sshlink_stop(void) {}
 bool sshlink_on(void) { return false; }
 void sshlink_note_web(int wrong) { (void)wrong; }
 int sshlink_sessions(void) { return 0; }
-const char *sshlink_status(void) { return "off"; }
+const char *sshlink_status(void) { return T(S_SSH_OFF); }
 
 #endif

@@ -1,0 +1,157 @@
+# Play time's words (src/stats.c): the windows the screen steps through, and
+# a time played and a time since. A time or a time since is 15 bytes at most
+# (tight): write the units short.
+
+[stats.all_time]
+note = The play time screen's window: every session ever
+en = All Time
+zh-Hans = 全部
+es = Todo el tiempo
+pt-BR = Todo o período
+fr = Depuis toujours
+de = Gesamt
+ja = 全期間
+it = Da sempre
+
+[stats.this_year]
+note = The play time screen's window
+en = This Year
+zh-Hans = 今年
+es = Este año
+pt-BR = Este ano
+fr = Cette année
+de = Dieses Jahr
+ja = 今年
+it = Quest'anno
+
+[stats.this_month]
+note = The play time screen's window
+en = This Month
+zh-Hans = 本月
+es = Este mes
+pt-BR = Este mês
+fr = Ce mois-ci
+de = Dieser Monat
+ja = 今月
+it = Questo mese
+
+[stats.this_week]
+note = The play time screen's window
+en = This Week
+zh-Hans = 本周
+es = Esta semana
+pt-BR = Esta semana
+fr = Cette semaine
+de = Diese Woche
+ja = 今週
+it = Questa settimana
+
+[stats.today_window]
+note = The play time screen's window
+en = Today
+zh-Hans = 今天
+es = Hoy
+pt-BR = Hoje
+fr = Aujourd'hui
+de = Heute
+ja = 今日
+it = Oggi
+
+[stats.never]
+note = A time played, or the last time a game was played, when it never was. Lowercase. tight
+en = never
+zh-Hans = 从未
+es = nunca
+pt-BR = nunca
+fr = jamais
+de = nie
+ja = なし
+it = mai
+
+[stats.secs]
+note = A time played under a minute (45s). tight
+en = %lds
+zh-Hans = %ld 秒
+es = %ld s
+pt-BR = %lds
+fr = %ld s
+de = %ld s
+ja = %ld 秒
+it = %lds
+
+[stats.mins_secs]
+note = A time played under an hour (7m 12s). tight
+en = %ldm %lds
+zh-Hans = %ld 分 %ld 秒
+es = %ld min %ld s
+pt-BR = %ldmin %lds
+fr = %ld min %ld s
+de = %ld min %ld s
+ja = %ld 分 %ld 秒
+it = %ldm %lds
+
+[stats.hours_mins]
+note = A time played of an hour or more (12h 34m). tight
+en = %ldh %ldm
+zh-Hans = %ld 时 %ld 分
+es = %ld h %ld min
+pt-BR = %ldh %ldmin
+fr = %ld h %ld min
+de = %ld h %ld min
+ja = %ld 時間 %ld 分
+it = %ldh %ldm
+
+[stats.today]
+note = When a game was last played: today. Lowercase. tight
+en = today
+zh-Hans = 今天
+es = hoy
+pt-BR = hoje
+fr = aujourd'hui
+de = heute
+ja = 今日
+it = oggi
+
+[stats.yesterday]
+note = When a game was last played. Lowercase. tight
+en = yesterday
+zh-Hans = 昨天
+es = ayer
+pt-BR = ontem
+fr = hier
+de = gestern
+ja = 昨日
+it = ieri
+
+[stats.days_ago]
+note = When a game was last played: 2 to 6 days ago (3d ago). tight
+en = %ldd ago
+zh-Hans = %ld 天前
+es = hace %ld días
+pt-BR = há %ld dias
+fr = il y a %ld j
+de = vor %ld Tagen
+ja = %ld 日前
+it = %ld g fa
+
+[stats.weeks_ago]
+note = When a game was last played: 1 to 8 weeks ago (2w ago), so a short unit with no plural. tight
+en = %ldw ago
+zh-Hans = %ld 周前
+es = hace %ld sem.
+pt-BR = há %ld sem.
+fr = il y a %ld sem.
+de = vor %ld Wo.
+ja = %ld 週前
+it = %ld sett. fa
+
+[stats.months_ago]
+note = When a game was last played: 2 months ago or more (3mo ago). tight
+en = %ldmo ago
+zh-Hans = %ld 个月前
+es = hace %ld meses
+pt-BR = há %ld meses
+fr = il y a %ld mois
+de = vor %ld Mon.
+ja = %ld か月前
+it = %ld mesi fa

@@ -7,6 +7,7 @@
 #include <strings.h>
 #include <time.h>
 
+#include "i18n.h"
 #include "library.h"
 #include "stats.h"
 
@@ -38,16 +39,24 @@
  * carrying metadata with no source. */
 typedef struct {
 	const char *name;   /* what the setting stores */
-	const char *label;  /* what the menu row shows */
+	const char *label;  /* what the menu row shows, in English */
+	str_id      text;   /* and in the language that is on: sort_label */
 } sort_order;
 
 static const sort_order SORTS[] = {
-	{ "name",   "Name"           },
-	{ "played", "Play Time"      },
-	{ "recent", "Last Played"    },
-	{ "added",  "Recently Added" },
+	{ "name",   "Name",           S_SORT_NAME           },
+	{ "played", "Play Time",      S_SYSMENU_PLAY_TIME   },
+	{ "recent", "Last Played",    S_SORT_LAST_PLAYED    },
+	{ "added",  "Recently Added", S_SORT_RECENTLY_ADDED },
 };
 #define SORT_COUNT ((int)(sizeof SORTS / sizeof SORTS[0]))
+
+/* Order i's label in the language that is on, what the row shows; past the
+ * ends, by name's */
+static inline const char *sort_label(int i)
+{
+	return T(SORTS[i >= 0 && i < SORT_COUNT ? i : 0].text);
+}
 
 static inline int sort_index(const char *name)
 {

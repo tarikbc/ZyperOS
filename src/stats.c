@@ -14,6 +14,7 @@
 #include <time.h>
 
 #include "db.h"
+#include "i18n.h"
 #include "stats.h"
 
 /* --- the session in progress -------------------------------------------- */
@@ -172,11 +173,11 @@ static int find_row(const char *tag, const char *file)
 const char *stats_window_name(stats_window w)
 {
 	switch (w) {
-	case STATS_YEAR:  return "This Year";
-	case STATS_MONTH: return "This Month";
-	case STATS_WEEK:  return "This Week";
-	case STATS_TODAY: return "Today";
-	default:          return "All Time";
+	case STATS_YEAR:  return T(S_STATS_THIS_YEAR);
+	case STATS_MONTH: return T(S_STATS_THIS_MONTH);
+	case STATS_WEEK:  return T(S_STATS_THIS_WEEK);
+	case STATS_TODAY: return T(S_STATS_TODAY_WINDOW);
+	default:          return T(S_STATS_ALL_TIME);
 	}
 }
 
@@ -319,12 +320,12 @@ int  stats_total_lost(void) { return g_lost; }
 void stats_format(long seconds, char *out, size_t n)
 {
 	if (!out || !n) return;
-	if (seconds <= 0)      snprintf(out, n, "never");
-	else if (seconds < 60) snprintf(out, n, "%lds", seconds);
+	if (seconds <= 0)      snprintf(out, n, "%s", T(S_STATS_NEVER));
+	else if (seconds < 60) snprintf(out, n, T(S_STATS_SECS), seconds);
 	else if (seconds < 3600)
-		snprintf(out, n, "%ldm %lds", seconds / 60, seconds % 60);
+		snprintf(out, n, T(S_STATS_MINS_SECS), seconds / 60, seconds % 60);
 	else
-		snprintf(out, n, "%ldh %ldm", seconds / 3600, (seconds % 3600) / 60);
+		snprintf(out, n, T(S_STATS_HOURS_MINS), seconds / 3600, (seconds % 3600) / 60);
 }
 
 /* Days apart on the CALENDAR, not elapsed hours divided by 24: something
@@ -337,16 +338,16 @@ void stats_ago(long then, long now, char *out, size_t n)
 	long days;
 
 	if (!out || !n) return;
-	if (then <= 0) { snprintf(out, n, "never"); return; }
+	if (then <= 0) { snprintf(out, n, "%s", T(S_STATS_NEVER)); return; }
 	ta = *localtime(&a);
 	tb = *localtime(&b);
 	ta.tm_hour = ta.tm_min = ta.tm_sec = 0; ta.tm_isdst = -1;
 	tb.tm_hour = tb.tm_min = tb.tm_sec = 0; tb.tm_isdst = -1;
 	days = ((long)mktime(&tb) - (long)mktime(&ta) + 43200) / 86400;
 
-	if (days <= 0)     snprintf(out, n, "today");
-	else if (days == 1) snprintf(out, n, "yesterday");
-	else if (days < 7)  snprintf(out, n, "%ldd ago", days);
-	else if (days < 60) snprintf(out, n, "%ldw ago", days / 7);
-	else                snprintf(out, n, "%ldmo ago", days / 30);
+	if (days <= 0)     snprintf(out, n, "%s", T(S_STATS_TODAY));
+	else if (days == 1) snprintf(out, n, "%s", T(S_STATS_YESTERDAY));
+	else if (days < 7)  snprintf(out, n, T(S_STATS_DAYS_AGO), days);
+	else if (days < 60) snprintf(out, n, T(S_STATS_WEEKS_AGO), days / 7);
+	else                snprintf(out, n, T(S_STATS_MONTHS_AGO), days / 30);
 }

@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "i18n.h"
+
 /* Bytes of a field kept, its terminator included. A longer one is cut on a
  * character's edge, never through one. */
 #define BGM_TAG_MAX 128
@@ -53,7 +55,7 @@ void bgm_vorbis_tags(char *const *list, int n, bgm_tags *t);
  * the album, which for a soundtrack rip is the game, else the artist, else
  * "Now playing". `body`, the large line, is the title, else the file's name
  * tidied (bgm_tidy_name). `t` may be NULL, for a track with no tags. */
-#define BGM_SONG_HEAD_NONE "Now playing"
+#define BGM_SONG_HEAD_NONE T(S_BGM_NOW_PLAYING)
 void bgm_song_label(const bgm_tags *t, const char *file,
                     char *head, size_t hn, char *body, size_t bn);
 

@@ -4,7 +4,7 @@
  * a browser and for the README's pictures of it (tools/readme-shots.py).
  *
  *     make build-native/portal-serve
- *     build-native/portal-serve CARD WEB [usb] [update=off|on|ready] [space=FREE/TOTAL]
+ *     build-native/portal-serve CARD WEB [usb] [update=off|on|ready] [space=FREE/TOTAL] [lang=CODE]
  *
  * CARD holds Roms/, Music/, Bios/, Saves/ and the rest as a card does,
  * ZyperOS/systems.cfg for the consoles' colors and icons, and
@@ -17,9 +17,11 @@
  * seconds, "ready" as one with an update staged; the files the page sends
  * land in CARD/.userdata/pixel2/update/cable and nothing is checked or
  * installed. "space=88.4/119" answers the card's room, in GB, as a card of
- * that size would rather than the computer's disk. It prints the PIN and the
- * port on one line, then serves until
- * stdin closes, or a line on it says to stop as the handheld's question does:
+ * that size would rather than the computer's disk. "lang=fr" is MENU >
+ * Language: the page and the server's words in that language (src/i18n.h),
+ * English without it. It prints the PIN and the port on one line, then
+ * serves until stdin closes, or a line on it says to stop as the handheld's
+ * question does:
  * "after" (once the files on their way are in) or "now". Like the device it listens on every address (port 8080 or
  * 8081 here, 80 needing root), so use a scratch card. No SDL, no device. */
 #include <poll.h>
@@ -31,6 +33,7 @@
 #include <unistd.h>
 
 #include "../src/hare.h"
+#include "../src/i18n.h"
 
 #define MAX_SYS 64
 
@@ -166,7 +169,7 @@ int main(int argc, char **argv)
 	struct pollfd in = { .fd = 0, .events = POLLIN };
 
 	if (argc < 3) {
-		fprintf(stderr, "usage: %s CARD WEB [usb] [update=off|on|ready] [space=FREE/TOTAL]\n", argv[0]);
+		fprintf(stderr, "usage: %s CARD WEB [usb] [update=off|on|ready] [space=FREE/TOTAL] [lang=CODE]\n", argv[0]);
 		return 2;
 	}
 	snprintf(roms, sizeof roms, "%s/Roms", argv[1]);
@@ -188,6 +191,8 @@ int main(int argc, char **argv)
 				g_total = (long long)(t * 1e9);
 				hare_set_space(card_space);
 			}
+		} else if (!strncmp(argv[i], "lang=", 5)) {
+			i18n_set(lang_parse(argv[i] + 5));
 		} else if (!strncmp(argv[i], "update=", 7)) {
 			g_update = argv[i] + 7;
 			if (!strcmp(g_update, "ready")) g_state = "ready";

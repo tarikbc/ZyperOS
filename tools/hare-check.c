@@ -28,10 +28,12 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include <zlib.h>
 
 #include "../src/hare.h"
+#include "../src/i18n.h"
 #include "../src/xfer.h"
 
 static int failures;
@@ -568,6 +570,47 @@ int main(void)
 		len = raw("GET /api/list HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", resp, sizeof resp);
 		CHECK(!strncmp(resp, "HTTP/1.1 401", 12) && head_count(resp, "Cache-Control:") == 1 &&
 		      strstr(resp, "Cache-Control: no-store"), "the API's head: %.300s", resp);
+	}
+
+	/* The page's words, /i18n.js: the file of the language that is on, with
+	 * no PIN (the PIN prompt is in it too), English's where a language has
+	 * none, and never the last language's from a browser's cache: two files
+	 * of one size and time still differ in their tag. */
+	printf("  /i18n.js is the words of the language that is on:\n");
+	{
+		static char resp[4096];
+		char p[256], b[256], q[512], tag[96];
+		struct timeval same[2] = { { 1700000000, 0 }, { 1700000000, 0 } };
+		const char *t;
+		long len;
+
+		snprintf(p, sizeof p, "%s/i18n", g_web);
+		mkdir(p, 0777);
+		snprintf(p, sizeof p, "%s/i18n/en.js", g_web);
+		mkfile(p, "words('en');");
+		utimes(p, same);
+		snprintf(p, sizeof p, "%s/i18n/fr.js", g_web);
+		mkfile(p, "words('fr');");
+		utimes(p, same);
+		CHECK(req("GET", "/i18n.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, "words('en');"),
+		      "English's, with no PIN: \"%s\"", b);
+		len = raw("GET /i18n.js HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", resp, sizeof resp);
+		tag[0] = '\0';
+		if (len > 0 && (t = strstr(resp, "ETag: "))) sscanf(t + 6, "%95s", tag);
+		CHECK(tag[0] == '"' && strstr(resp, "Cache-Control: no-cache") &&
+		      strstr(resp, "Content-Type: text/javascript"), "its head: %.300s", resp);
+		i18n_set(LANG_FR);
+		CHECK(req("GET", "/i18n.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, "words('fr');"),
+		      "after MENU > Language, French's: \"%s\"", b);
+		snprintf(q, sizeof q, "GET /i18n.js HTTP/1.1\r\nHost: x\r\nIf-None-Match: %s\r\n"
+		         "Connection: close\r\n\r\n", tag);
+		len = raw(q, resp, sizeof resp);
+		CHECK(len > 0 && !strncmp(resp, "HTTP/1.1 200", 12) && strstr(resp, "words('fr');"),
+		      "English's tag, asked after the change, kept English: %.300s", resp);
+		i18n_set(LANG_ES);
+		CHECK(req("GET", "/i18n.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, "words('en');"),
+		      "a language with no file of its own got \"%s\", not English's", b);
+		i18n_set(LANG_EN);
 	}
 
 	printf("  nothing else is:\n");

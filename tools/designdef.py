@@ -134,7 +134,11 @@ SCRIMS = [
 # ---- type --------------------------------------------------------------------
 
 FONT = "Lexend"
-FONT_FILES = {"Regular": "menu.ttf", "SemiBold": "title.ttf"}
+FONT_FILES = {"Regular": "menu.ttf", "SemiBold": "title.ttf",
+              # 简体中文's (tools/cjkfont.py): Noto Sans SC, Regular and Bold
+              "CJK": "zh-menu.otf", "CJK title": "zh-title.otf",
+              # 日本語's: Noto Sans JP, Regular and Bold
+              "JA": "ja-menu.otf", "JA title": "ja-title.otf"}
 TYPE = [
     # role    px   weight      for
     ("title", 60, "SemiBold", "the name under the cursor; screen titles"),
@@ -397,6 +401,10 @@ def design_h():
         L.append("#define DS_TYPE_%s %d" % (cname(role), px))
     L.append('#define DS_FONT_REGULAR "%s"' % FONT_FILES["Regular"])
     L.append('#define DS_FONT_SEMIBOLD "%s"' % FONT_FILES["SemiBold"])
+    L.append('#define DS_FONT_CJK "%s"' % FONT_FILES["CJK"])
+    L.append('#define DS_FONT_CJK_TITLE "%s"' % FONT_FILES["CJK title"])
+    L.append('#define DS_FONT_JA "%s"' % FONT_FILES["JA"])
+    L.append('#define DS_FONT_JA_TITLE "%s"' % FONT_FILES["JA title"])
     L.append("")
     L.append("/* Space and shape, in units. */")
     for name, v, _ in SPACE + SHAPE:

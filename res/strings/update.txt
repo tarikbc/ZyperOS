@@ -1,0 +1,564 @@
+# MENU > System Update (src/sysupdate.c, DESIGN.md 11.17): the value of its
+# MENU row, then its page in the order of the states: the line under the
+# versions, the bar or the line where the bar goes, the problem said in full,
+# and the buttons at the foot. Version numbers ("0.2.0") are the %s's.
+
+[update.value_restart_update]
+note = MENU's System Update row, its value: an update is in and waits for a restart. Lowercase, a status.
+en = restart to update
+zh-Hans = 重启以更新
+es = reiniciar para actualizar
+pt-BR = reiniciar para atualizar
+fr = redémarrer pour mettre à jour
+de = Neustart für Update
+ja = 再起動で更新
+it = riavvia per aggiornare
+
+[update.value_restart_back]
+note = MENU's System Update row, its value: going back to the version before waits for a restart
+en = restart to go back
+zh-Hans = 重启以回退
+es = reiniciar para volver
+pt-BR = reiniciar para voltar
+fr = redémarrer pour revenir
+de = Neustart zum Zurückstufen
+ja = 再起動で戻す
+it = riavvia per tornare indietro
+
+[update.value_downloading]
+note = MENU's System Update row, its value while an update downloads
+en = downloading
+zh-Hans = 正在下载
+es = descargando
+pt-BR = baixando
+fr = téléchargement
+de = lädt herunter
+ja = ダウンロード中
+it = download in corso
+
+[update.value_available]
+note = MENU's System Update row, its value: %s is the new version ("0.2.0 available")
+en = %s available
+zh-Hans = %s 可用
+es = %s disponible
+pt-BR = %s disponível
+fr = %s disponible
+de = %s verfügbar
+ja = %s が利用可能
+it = %s disponibile
+
+[update.unsupported]
+note = The line under the version, on a handheld whose install has no System Update
+en = System Update is not on this system.
+zh-Hans = 此系统不支持系统更新。
+es = Este sistema no tiene actualización del sistema.
+pt-BR = Este sistema não tem atualização do sistema.
+fr = La mise à jour du système n'est pas disponible ici.
+de = Systemupdate gibt es auf diesem System nicht.
+ja = このシステムでは使えません。
+it = Questo sistema non ha Aggiornamento di sistema.
+
+[update.use_installer]
+note = Where the bar goes: the ZyperOS Installer is the computer app that writes a card
+en = Use the ZyperOS Installer.
+zh-Hans = 请使用 ZyperOS 安装器。
+es = Usa el instalador de ZyperOS.
+pt-BR = Use o instalador do ZyperOS.
+fr = Utilisez l'installateur ZyperOS.
+de = Nutze den ZyperOS Installer.
+ja = ZyperOS Installer をお使いください。
+it = Usa l'installer di ZyperOS.
+
+[update.not_looked]
+note = The line under the version before it has ever looked for an update
+en = Not looked for updates yet
+zh-Hans = 尚未检查更新
+es = Aún no se buscaron actualizaciones
+pt-BR = Ainda não procurou atualizações
+fr = Pas encore de recherche de mises à jour
+de = Noch nicht nach Updates gesucht
+ja = まだアップデートを確認していません
+it = Non hai ancora cercato aggiornamenti
+
+[update.look]
+note = The A button's label at the foot of the page
+en = Look for Updates
+zh-Hans = 检查更新
+es = Buscar actualizaciones
+pt-BR = Procurar atualizações
+fr = Rechercher des mises à jour
+de = Nach Updates suchen
+ja = アップデートを確認
+it = Cerca aggiornamenti
+
+[update.need_wifi_look]
+note = The line under the version, with no network
+en = Connect to Wi-Fi to look for updates.
+zh-Hans = 连接 Wi-Fi 后即可检查更新。
+es = Conéctate al Wi-Fi para buscar actualizaciones.
+pt-BR = Conecte-se ao Wi-Fi para procurar atualizações.
+fr = Connectez-vous au Wi-Fi pour rechercher des mises à jour.
+de = Verbinde dich mit dem WLAN, um nach Updates zu suchen.
+ja = 確認するには Wi-Fi に接続してください。
+it = Connettiti al Wi-Fi per cercare aggiornamenti.
+
+[update.looking]
+note = The line under the version while it asks the update server
+en = Looking for updates…
+zh-Hans = 正在检查更新…
+es = Buscando actualizaciones…
+pt-BR = Procurando atualizações…
+fr = Recherche de mises à jour…
+de = Suche nach Updates …
+ja = アップデートを確認中…
+it = Ricerca di aggiornamenti…
+
+[update.updated_from]
+note = The line under the version just after an update: %s is the version it came from
+en = Updated from %s
+zh-Hans = 已从 %s 更新
+es = Actualizado desde %s
+pt-BR = Atualizado de %s
+fr = Mis à jour depuis %s
+de = Aktualisiert von %s
+ja = %s から更新しました
+it = Aggiornato da %s
+
+[update.went_back_from]
+note = review: pt-BR "Revertido de", or "Voltou da versão"? The line under the version just after going back: %s is the version it left
+en = Went back from %s
+zh-Hans = 已从 %s 回退
+es = Revertido desde %s
+pt-BR = Revertido de %s
+fr = Retour en arrière depuis %s
+de = Zurückgestuft von %s
+ja = %s から戻しました
+it = Tornato indietro da %s
+
+[update.up_to_date_checked]
+note = The line under the version: %s is the time it last looked ("9:41 AM")
+en = Up to date · checked %s
+zh-Hans = 已是最新 · %s 已检查
+es = Al día · revisado %s
+pt-BR = Atualizado · verificado %s
+fr = À jour · vérifié à %s
+de = Aktuell · geprüft um %s
+ja = 最新です · %s に確認
+it = Aggiornato · verificato alle %s
+
+[update.up_to_date]
+en = Up to date
+zh-Hans = 已是最新
+es = Al día
+pt-BR = Atualizado
+fr = À jour
+de = Aktuell
+ja = 最新です
+it = Aggiornato
+
+[update.look_again]
+note = The A button's label when it is up to date
+en = Look Again
+zh-Hans = 再次检查
+es = Buscar de nuevo
+pt-BR = Procurar de novo
+fr = Rechercher à nouveau
+de = Erneut suchen
+ja = もう一度確認
+it = Cerca di nuovo
+
+[update.size_system]
+note = The line under the versions for a system update (the system and ZyperOS together): %s is its download size ("120 MB")
+en = System and ZyperOS · %s
+zh-Hans = 系统和 ZyperOS · %s
+es = Sistema y ZyperOS · %s
+pt-BR = Sistema e ZyperOS · %s
+fr = Système et ZyperOS · %s
+de = System und ZyperOS · %s
+ja = システムと ZyperOS · %s
+it = Sistema e ZyperOS · %s
+
+[update.size_both]
+note = The line under the versions: what downloads, then the new version's whole size ("14 MB to download · 168 MB in all")
+en = %s to download · %s in all
+zh-Hans = 需下载 %s · 共 %s
+es = %s para descargar · %s en total
+pt-BR = %s para baixar · %s no total
+fr = %s à télécharger · %s au total
+de = %s Download · %s insgesamt
+ja = ダウンロード %s · 合計 %s
+it = %s da scaricare · %s in totale
+
+[update.size_download]
+note = The line under the versions: what downloads ("14 MB to download")
+en = %s to download
+zh-Hans = 需下载 %s
+es = %s para descargar
+pt-BR = %s para baixar
+fr = %s à télécharger
+de = %s Download
+ja = ダウンロード %s
+it = %s da scaricare
+
+[update.bytes]
+note = A size under a kilobyte ("950 bytes"); larger ones are KB and MB in every language
+en = %llu bytes
+zh-Hans = %llu 字节
+es = %llu bytes
+pt-BR = %llu bytes
+fr = %llu octets
+de = %llu Bytes
+ja = %llu バイト
+it = %llu byte
+
+[update.download]
+note = The A button's label when an update is there
+en = Download
+zh-Hans = 下载
+es = Descargar
+pt-BR = Baixar
+fr = Télécharger
+de = Herunterladen
+ja = ダウンロード
+it = Scarica
+
+[update.need_wifi_download]
+note = Where the bar goes, when an update is there but there is no network
+en = Connect to Wi-Fi to download.
+zh-Hans = 连接 Wi-Fi 后即可下载。
+es = Conéctate al Wi-Fi para descargar.
+pt-BR = Conecte-se ao Wi-Fi para baixar.
+fr = Connectez-vous au Wi-Fi pour télécharger.
+de = Verbinde dich mit dem WLAN, um herunterzuladen.
+ja = ダウンロードには Wi-Fi が必要です。
+it = Connettiti al Wi-Fi per scaricare.
+
+[update.battery_low]
+note = The problem, said in full: %d%% is the battery's percent ("18%")
+en = The battery is at %d%%. Plug in the charger to download the update.
+zh-Hans = 电池电量为 %d%%。请连接充电器以下载更新。
+es = La batería está al %d%%. Conecta el cargador para descargar la actualización.
+pt-BR = A bateria está em %d%%. Conecte o carregador para baixar a atualização.
+fr = La batterie est à %d %%. Branchez le chargeur pour télécharger la mise à jour.
+de = Der Akku ist bei %d\u00a0%%. Schließe das Ladegerät an, um das Update herunterzuladen.
+ja = バッテリー残量は %d%% です。アップデートをダウンロードするには充電器を接続してください。
+it = La batteria è al %d%%. Collega il caricabatterie per scaricare l'aggiornamento.
+
+[update.preparing]
+note = Left of the bar: the files are being copied before the download
+en = Preparing
+zh-Hans = 正在准备
+es = Preparando
+pt-BR = Preparando
+fr = Préparation
+de = Vorbereitung
+ja = 準備中
+it = Preparazione
+
+[update.files_of]
+note = Right of the bar: files done of files in all ("3 of 301 files")
+en = %d of %d files
+zh-Hans = %d / %d 个文件
+es = %d de %d archivos
+pt-BR = %d de %d arquivos
+fr = %d sur %d fichiers
+de = %d von %d Dateien
+ja = %d / %d ファイル
+it = %d di %d file
+
+[update.downloading]
+note = Left of the bar
+en = Downloading
+zh-Hans = 正在下载
+es = Descargando
+pt-BR = Baixando
+fr = Téléchargement
+de = Download
+ja = ダウンロード中
+it = Download
+
+[update.of_size]
+note = Right of the bar: what has downloaded of the whole ("6.1 of 14 MB"); the first %s is a number, the second a size
+en = %s of %s
+zh-Hans = %s / %s
+es = %s de %s
+pt-BR = %s de %s
+fr = %s sur %s
+de = %s von %s
+ja = %s / %s
+it = %s di %s
+
+[update.installing]
+note = Left of the bar: the new system written into its slot
+en = Installing
+zh-Hans = 正在安装
+es = Instalando
+pt-BR = Instalando
+fr = Installation
+de = Installation
+ja = インストール中
+it = Installazione
+
+[update.checking_files]
+note = Left of the bar: the downloaded files checked
+en = Checking files
+zh-Hans = 正在校验文件
+es = Comprobando archivos
+pt-BR = Verificando arquivos
+fr = Vérification des fichiers
+de = Dateiprüfung
+ja = ファイルを確認中
+it = Verifica dei file
+
+[update.count_of]
+note = Right of the bar while files are checked ("3 of 301")
+en = %d of %d
+zh-Hans = %d / %d
+es = %d de %d
+pt-BR = %d de %d
+fr = %d sur %d
+de = %d von %d
+ja = %d / %d
+it = %d di %d
+
+[update.back_goes_on]
+note = review: pt-BR "Voltar, continua" says B leaves while the download goes on; is it clear? The B button's label while it downloads
+en = Back, it goes on
+zh-Hans = 返回，继续更新
+es = Volver, continúa
+pt-BR = Voltar, continua
+fr = Retour, ça continue
+de = Zurück, läuft weiter
+ja = 戻る（続行されます）
+it = Indietro, continua
+
+[update.stopped]
+note = Left of the bar: a download that was cut short
+en = Stopped
+zh-Hans = 已停止
+es = Detenido
+pt-BR = Parado
+fr = Arrêté
+de = Unterbrochen
+ja = 停止
+it = Interrotto
+
+[update.continue]
+note = The A button's label: the download that stopped goes on
+en = Continue
+zh-Hans = 继续
+es = Continuar
+pt-BR = Continuar
+fr = Reprendre
+de = Fortsetzen
+ja = 再開
+it = Continua
+
+[update.installed_checked]
+note = The line under the versions: a system update is in its slot and checked
+en = Installed and checked
+zh-Hans = 已安装并校验
+es = Instalada y comprobada
+pt-BR = Instalada e verificada
+fr = Installée et vérifiée
+de = Installiert und geprüft
+ja = インストールと確認が完了
+it = Installato e verificato
+
+[update.downloaded_checked]
+note = The line under the versions: the update is downloaded and checked
+en = Downloaded and checked
+zh-Hans = 已下载并校验
+es = Descargada y comprobada
+pt-BR = Baixada e verificada
+fr = Téléchargée et vérifiée
+de = Heruntergeladen und geprüft
+ja = ダウンロードと確認が完了
+it = Scaricato e verificato
+
+[update.goes_in_next_start]
+note = Where the bar goes: the update goes in at the next start if not restarted now
+en = Or it goes in at the next start.
+zh-Hans = 或在下次启动时安装。
+es = O se instala al próximo encendido.
+pt-BR = Ou ela é instalada na próxima inicialização.
+fr = Sinon, elle s'installe au prochain démarrage.
+de = Sonst wird es beim nächsten Start installiert.
+ja = または次回起動時に適用されます。
+it = Oppure si installa al prossimo avvio.
+
+[update.restart_now]
+note = The A button's label
+en = Restart Now
+zh-Hans = 立即重启
+es = Reiniciar ahora
+pt-BR = Reiniciar agora
+fr = Redémarrer maintenant
+de = Jetzt neu starten
+ja = 今すぐ再起動
+it = Riavvia ora
+
+[update.later]
+note = The B button's label, beside Restart Now
+en = Later
+zh-Hans = 稍后
+es = Más tarde
+pt-BR = Mais tarde
+fr = Plus tard
+de = Später
+ja = あとで
+it = Più tardi
+
+[update.download_failed]
+note = The problem, said in full
+en = The download did not finish. Check the Wi-Fi and try again.
+zh-Hans = 下载未完成。请检查 Wi-Fi 后重试。
+es = La descarga no terminó. Revisa el Wi-Fi e inténtalo de nuevo.
+pt-BR = O download não terminou. Verifique o Wi-Fi e tente de novo.
+fr = Le téléchargement n'a pas abouti. Vérifiez le Wi-Fi et réessayez.
+de = Der Download wurde nicht beendet. Prüfe das WLAN und versuche es erneut.
+ja = ダウンロードが完了しませんでした。Wi-Fi を確認して、もう一度お試しください。
+it = Il download non è stato completato. Controlla il Wi-Fi e riprova.
+
+[update.try_again]
+note = The A button's label after a problem
+en = Try Again
+zh-Hans = 重试
+es = Reintentar
+pt-BR = Tentar de novo
+fr = Réessayer
+de = Erneut versuchen
+ja = もう一度試す
+it = Riprova
+
+[update.could_not_look]
+note = The line under the version when the update server did not answer
+en = Could not look for updates
+zh-Hans = 无法检查更新
+es = No se pudo buscar actualizaciones
+pt-BR = Não foi possível procurar atualizações
+fr = Impossible de rechercher les mises à jour
+de = Suche nach Updates fehlgeschlagen
+ja = アップデートを確認できませんでした
+it = Impossibile cercare aggiornamenti
+
+[update.no_server]
+note = The problem, said in full
+en = Could not reach the update server. Check the Wi-Fi and try again.
+zh-Hans = 无法连接更新服务器。请检查 Wi-Fi 后重试。
+es = No se pudo conectar con el servidor de actualizaciones. Revisa el Wi-Fi e inténtalo de nuevo.
+pt-BR = Não foi possível acessar o servidor de atualizações. Verifique o Wi-Fi e tente de novo.
+fr = Impossible de joindre le serveur de mises à jour. Vérifiez le Wi-Fi et réessayez.
+de = Der Updateserver ist nicht erreichbar. Prüfe das WLAN und versuche es erneut.
+ja = アップデートサーバーに接続できませんでした。Wi-Fi を確認して、もう一度お試しください。
+it = Impossibile raggiungere il server degli aggiornamenti. Controlla il Wi-Fi e riprova.
+
+[update.card_full]
+note = The problem, said in full
+en = The card is too full for the update. Make room on it, then try again.
+zh-Hans = 存储卡空间不足，无法更新。请腾出空间后重试。
+es = La tarjeta está demasiado llena para la actualización. Libera espacio y vuelve a intentarlo.
+pt-BR = O cartão está cheio demais para a atualização. Libere espaço e tente de novo.
+fr = La carte est trop pleine pour la mise à jour. Libérez de la place, puis réessayez.
+de = Die Karte ist zu voll für das Update. Schaffe Platz und versuche es erneut.
+ja = カードの空き容量が足りません。空きを作ってから、もう一度お試しください。
+it = La scheda è troppo piena per l'aggiornamento. Libera spazio, poi riprova.
+
+[update.needs_system]
+note = The line under the versions: %s is the new version, which needs a new system too
+en = %s also changes the system
+zh-Hans = %s 还会更改系统
+es = %s también cambia el sistema
+pt-BR = %s também altera o sistema
+fr = %s modifie aussi le système
+de = %s ändert auch das System
+ja = %s ではシステムも変更されます
+it = %s cambia anche il sistema
+
+[update.needs_fresh]
+note = The line under the versions: the update is too big for this card's slots
+en = Needs a fresh install
+zh-Hans = 需要全新安装
+es = Requiere una instalación nueva
+pt-BR = Requer uma instalação nova
+fr = Nécessite une nouvelle installation
+de = Neuinstallation nötig
+ja = 新規インストールが必要です
+it = Serve un'installazione da zero
+
+[update.too_big]
+note = The problem, said in full: the card's two system slots are smaller than the new system
+en = Too big for this card's system slots. A fresh install erases the card.
+zh-Hans = 超出此存储卡的系统分区大小。全新安装会清空存储卡。
+es = Es demasiado grande para los espacios del sistema de esta tarjeta. Una instalación nueva borra la tarjeta.
+pt-BR = Grande demais para os espaços de sistema deste cartão. Uma instalação nova apaga o cartão.
+fr = Trop volumineuse pour les emplacements système de cette carte. Une nouvelle installation efface la carte.
+de = Zu groß für die Systemslots dieser Karte. Eine Neuinstallation löscht die Karte.
+ja = このカードのシステム領域に収まりません。新規インストールではカードが消去されます。
+it = Troppo grande per gli slot di sistema di questa scheda. Un'installazione da zero cancella la scheda.
+
+[update.going_back_to]
+note = The line under the versions: %s is the version it goes back to at the restart
+en = Going back to %s
+zh-Hans = 将回退到 %s
+es = Volviendo a %s
+pt-BR = Voltando para %s
+fr = Retour à %s
+de = Rückkehr zu %s
+ja = %s に戻します
+it = Ritorno a %s
+
+[update.goes_back_next_start]
+note = Where the bar goes: it goes back at the next start if not restarted now
+en = Or it goes back at the next start.
+zh-Hans = 或在下次启动时回退。
+es = O vuelve atrás al próximo encendido.
+pt-BR = Ou ela volta na próxima inicialização.
+fr = Sinon, le retour se fait au prochain démarrage.
+de = Sonst geht es beim nächsten Start zurück.
+ja = または次回起動時に戻ります。
+it = Oppure torna indietro al prossimo avvio.
+
+[update.back_on]
+note = The line under the version: a new version did not start, and %s is the version it is on again
+en = Back on %s
+zh-Hans = 已回到 %s
+es = De vuelta en %s
+pt-BR = De volta para %s
+fr = De retour sur %s
+de = Wieder auf %s
+ja = %s に戻りました
+it = Di nuovo su %s
+
+[update.went_back_itself]
+note = The problem, said in full: the first %s is the version that did not start, the second the one it went back to
+en = %s did not start twice, so ZyperOS went back to %s by itself.
+zh-Hans = %s 两次未能启动，ZyperOS 已自动回到 %s。
+es = %s no arrancó dos veces, así que ZyperOS volvió solo a %s.
+pt-BR = %s não iniciou duas vezes, então o ZyperOS voltou sozinho para %s.
+fr = %s n'a pas démarré deux fois, ZyperOS est donc revenu de lui-même à %s.
+de = %s ist zweimal nicht gestartet, daher ist ZyperOS von selbst zu %s zurückgekehrt.
+ja = %s が 2 回起動しなかったため、ZyperOS は自動で %s に戻りました。
+it = %s non si è avviato due volte, quindi ZyperOS è tornato da solo a %s.
+
+[update.back]
+note = The B button's label at the foot of the page
+en = Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Retour
+de = Zurück
+ja = 戻る
+it = Indietro
+
+[update.roll_back_to]
+note = The Y button's label: %s is the version before this one
+en = Roll Back to %s
+zh-Hans = 回退到 %s
+es = Revertir a %s
+pt-BR = Reverter para %s
+fr = Revenir à %s
+de = Zurückstufen auf %s
+ja = %s に戻す
+it = Torna a %s

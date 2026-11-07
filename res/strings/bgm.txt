@@ -1,0 +1,13 @@
+# Menu music's pop-up (src/bgm_tags.h): its small line when a track says
+# nothing of where it is from.
+
+[bgm.now_playing]
+note = The small line over a song's title in the pop-up, when the track has no album and no artist
+en = Now playing
+zh-Hans = 正在播放
+es = Reproduciendo
+pt-BR = Tocando agora
+fr = Lecture en cours
+de = Jetzt läuft
+ja = 再生中
+it = In riproduzione

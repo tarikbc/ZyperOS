@@ -16,7 +16,8 @@
  * Decoded only while asked for: the launcher asks after a game has had the
  * focus for a few seconds and stops it the moment the focus moves, a menu
  * opens or the screen goes dark, and the daemon stops it too when the
- * launcher goes away. Nothing is decoded ahead. */
+ * launcher goes away. Nothing is decoded ahead but the first picture, which
+ * the launcher asks for held (below) while its wait bar fills. */
 
 bool snap_init(void);
 void snap_quit(void);
@@ -26,7 +27,14 @@ void snap_quit(void);
  * 0 is muted (MENU > Scraper > Video Snaps > Sound, muted to start), and then
  * nothing of the sound is even decoded. Its sound goes to ALSA's "default",
  * the system's mix, beside whatever else is playing; the launcher sends 0
- * while Muse plays, so a snap never talks over music somebody chose. */
-void snap_play(const char *path, int vol);
+ * while Muse plays, so a snap never talks over music somebody chose.
+ *
+ * `hold` opens it and puts out its first picture, then waits there with no
+ * clock and no sound: the launcher asks for it held halfway through the
+ * shelf's wait (2026-11-07: the picture took half a second after the
+ * bar was full), and the same path with `hold` false starts it from that
+ * picture the moment the bar is. Only the hold changing keeps the file open;
+ * a new path or volume starts again. */
+void snap_play(const char *path, int vol, bool hold);
 
 #endif

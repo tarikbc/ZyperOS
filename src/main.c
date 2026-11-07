@@ -1610,8 +1610,8 @@ static bool g_idle_charging;     /* what was true when SETIDLE was last sent */
  * (heat_watch), a notice over a running game (on_game_tick). The words are
  * short enough for the pop-up's slab without scrolling. */
 static heat_state g_heat;
-#define HEAT_HEAD "Getting hot"
-#define HEAT_BODY "Slowing down to cool off."
+#define HEAT_HEAD T(S_HEAT_HEAD)
+#define HEAT_BODY T(S_HEAT_SLOWING)
 
 void heat_tick(void)
 {
@@ -1766,9 +1766,9 @@ static void on_game_tick(void)
 		                   g_pending_active, chv_console());
 		g_watch_ms = plat_now_ms();
 		snprintf(g_watch_active, sizeof g_watch_active, "%s", g_pending_active);
-		snprintf(msg, sizeof msg, "%d to earn", chv_count());
+		snprintf(msg, sizeof msg, T(S_CHEEVOS_TO_EARN), chv_count());
 	} else {
-		snprintf(msg, sizeof msg, "all %d already earned", chv_count());
+		snprintf(msg, sizeof msg, T(S_CHEEVOS_ALL_EARNED), chv_count());
 	}
 
 	/* Rendering is safe here; presenting would not be. Same rule as an
@@ -1865,22 +1865,22 @@ static void on_cheevo_unlocked(int id)
 		/* Points on the context line, not the name: "First Blood!" is what
 		 * the player wants to read, and "1 point" is what it was worth. */
 		if (c && c->points > 0)
-			snprintf(head, sizeof head, "Unlocked · %d point%s",
-			         c->points, c->points == 1 ? "" : "s");
+			snprintf(head, sizeof head, TN(S_CHEEVOS_UNLOCKED_POINTS, c->points),
+			         c->points);
 		else
-			snprintf(head, sizeof head, "Unlocked");
+			snprintf(head, sizeof head, "%s", T(S_CHEEVOS_UNLOCKED));
 
 		/* With its badge, when the card has it (src/rabadge.h) */
 		p[0] = '\0';
 		if (c) rb_path(chv_source(), c->badge, p, sizeof p);
-		notice_queue(NQ_UNLOCK, id, 4000, head, c && c->title[0] ? c->title : "Unlocked",
-		             p[0] ? p : NULL, 0, 0);
+		notice_queue(NQ_UNLOCK, id, 4000, head,
+		             c && c->title[0] ? c->title : T(S_CHEEVOS_UNLOCKED), p[0] ? p : NULL, 0, 0);
 	}
 	/* The last one of the set: mastered, said after it */
 	if (chv_count() > 0 && chv_earned() == chv_count()) {
 		char head[64];
 
-		snprintf(head, sizeof head, "Mastered · %d points", chv_points_total());
+		snprintf(head, sizeof head, T(S_CHEEVOS_MASTERED), chv_points_total());
 		notice_queue(NQ_UNLOCK, 0, 4000, head, chv_game_title(), NULL, 0, 0);
 	}
 }
@@ -1906,7 +1906,7 @@ static void on_cheevo_progress(int id, const char *text, int value, int target)
 	else
 		snprintf(count, sizeof count, "%s", text);
 	rb_path(chv_source(), c->badge, p, sizeof p);
-	notice_queue(NQ_PROGRESS, id, 2500, c->title[0] ? c->title : "Progress", count,
+	notice_queue(NQ_PROGRESS, id, 2500, c->title[0] ? c->title : T(S_CHEEVOS_PROGRESS), count,
 	             p[0] ? p : NULL, value, target);
 }
 
@@ -1920,11 +1920,11 @@ static void on_speed(int x)
 	char p[CFG_STR * 2], body[16];
 
 	if (x > 1) snprintf(body, sizeof body, "%dx", x);
-	else       snprintf(body, sizeof body, "off");
+	else       snprintf(body, sizeof body, "%s", T(S_POPUP_FF_OFF));
 	/* Past the queue, at once - it answers a press - and the queue waits for
 	 * it to go */
 	snprintf(p, sizeof p, "%s", NOTICE_FILE);
-	if (notice_render("Fast forward", body, p, theme_index()))
+	if (notice_render(T(S_POPUP_FAST_FORWARD), body, p, theme_index()))
 		plat_resident_line("OVERLAY\tpath=%s\tms=1500", p);
 	nq_hold(&g_nq, plat_now_ms(), 1500);
 }
@@ -2386,6 +2386,30 @@ static void tick_update_trial(void)
  * written to at every start. */
 static unsigned g_boot_theme_at;
 
+/* The language on the card too, P_USERDATA/LANG_FILE, its code and a line
+ * end: plastron's init reads it when a system update's copy starts and hands
+ * it to the splash, so "Updating ZyperOS on this card" is in it on a card
+ * whose boot.scr is older than zylang (src/boottheme.h). Written only when it
+ * says something else, so a normal start reads a few bytes 10 s in and
+ * writes nothing. */
+static void lang_file_keep(void)
+{
+	char path[512], had[32] = "", want[32];
+	FILE *f;
+
+	snprintf(path, sizeof path, "%s/%s", P_USERDATA, LANG_FILE);
+	snprintf(want, sizeof want, "%s\n", lang_code(i18n_lang()));
+	if ((f = fopen(path, "r"))) {
+		if (!fgets(had, sizeof had, f)) had[0] = '\0';
+		fclose(f);
+	}
+	if (!strcmp(had, want)) return;
+	if ((f = fopen(path, "w"))) {
+		fputs(want, f);
+		fclose(f);
+	}
+}
+
 static void boot_theme_changed(void)
 {
 	g_boot_theme_at = plat_now_ms() ? plat_now_ms() : 1;
@@ -2417,9 +2441,11 @@ static void tick_boot_theme(void)
 		read = true;
 	}
 	db_get_str(db_lib(), "timezone", zone, sizeof zone, "America/New_York");
-	boottheme_words(appearance_id(theme_appearance()), zone, line, sizeof line, file, sizeof file);
+	boottheme_words(appearance_id(theme_appearance()), zone, lang_code(i18n_lang()),
+	                line, sizeof line, file, sizeof file);
 	g_boot_theme_at = 0;
-	if (!strcmp(line, said)) return;
+	lang_file_keep();
+	if (boottheme_same(line, said)) return;
 	{
 		char note[512], last[BOOTTHEME_MAX] = "";
 		FILE *f;
@@ -2511,12 +2537,13 @@ static void draw_systems(app *a)
 		int albums = ml_count(&g_muse, false), books = ml_count(&g_muse, true);
 		int videos = ml_count_kind(&g_muse, ML_VIDEOS);
 		char al[32] = "", bk[32] = "", vd[32] = "";
+		const char *sep = T(S_SHELF_LIST_SEP);
 
-		if (albums) snprintf(al, sizeof al, "%d album%s", albums, albums == 1 ? "" : "s");
-		if (books)  snprintf(bk, sizeof bk, "%d book%s", books, books == 1 ? "" : "s");
-		if (videos) snprintf(vd, sizeof vd, "%d video%s", videos, videos == 1 ? "" : "s");
-		snprintf(line, sizeof line, "%s%s%s%s%s", al, al[0] && bk[0] ? ", " : "", bk,
-		         (al[0] || bk[0]) && vd[0] ? ", " : "", vd);
+		if (albums) snprintf(al, sizeof al, TN(S_SHELF_ALBUMS, albums), albums);
+		if (books)  snprintf(bk, sizeof bk, TN(S_SHELF_BOOKS, books), books);
+		if (videos) snprintf(vd, sizeof vd, TN(S_SHELF_VIDEOS, videos), videos);
+		snprintf(line, sizeof line, "%s%s%s%s%s", al, al[0] && bk[0] ? sep : "", bk,
+		         (al[0] || bk[0]) && vd[0] ? sep : "", vd);
 	} else {
 		int gc = a->view[a->sys_cursor].list.count;
 
@@ -2524,15 +2551,15 @@ static void draw_systems(app *a)
 		 * starts empty and grows one at a time, but any system with a single
 		 * ROM has always said it. */
 		if (gc > 0)
-			snprintf(line, sizeof line, "%d game%s", gc, gc == 1 ? "" : "s");
-		else snprintf(line, sizeof line, "No games");
+			snprintf(line, sizeof line, TN(S_SHELF_GAMES, gc), gc);
+		else snprintf(line, sizeof line, "%s", T(S_SHELF_NO_GAMES));
 	}
 	home_item items[CFG_MAX_SYSTEMS];
 	home_items(a, items);
 	uint32_t now = g_home_phase >= 0 ? a->home.animation + (uint32_t)g_home_phase : anim_now();
 	uint32_t wait = home_draw(&a->home, a->r, a->home_layout, items,
 	                          a->sys.count, a->sys_cursor, line,
-	                          is_muse(s) ? "Open MP4" : "Open games", now,
+	                          is_muse(s) ? T(S_SHELF_OPEN_MP4) : T(S_SHELF_OPEN_GAMES), now,
 	                          g_home_live || g_home_phase >= 0);
 	/* The sprite's next frame alone is a focus frame's, not a whole one */
 	if (g_home_live && wait != UINT32_MAX) {
@@ -2765,7 +2792,7 @@ static void draw_game_text(app *a, sysview *v, const system_cfg *s, int idx)
 			 * its own name again when it is a folder with no author above it;
 			 * nor does a folder of videos with no series above it. */
 			if (al >= 0 && g_muse.albums[al].book) {
-				if (g_book_done && g_book_done[al]) under = "Finished";
+				if (g_book_done && g_book_done[al]) under = T(S_BOOKS_FINISHED);
 				else if (!strcmp(g->name, g->title)) under = "";
 			} else if (al >= 0 && g_muse.albums[al].kind == ML_VIDEOS &&
 			           !strcmp(g->name, g->title)) {
@@ -2876,6 +2903,8 @@ static snapshelf g_snap_shelf;
 static float     g_shot_snap_k = -1;      /* --snap K, for a shot */
 static float     g_shot_snap_wait = -1;   /* --snap-wait F, for a shot */
 static char      g_snap_asked[1024];
+static bool      g_snap_held;             /* g_snap_asked is only its first picture */
+static int       g_snap_vol;              /* and the sound it was asked with */
 static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; } g_snap_focus;
 
 /* Its sound as set, and none while Muse plays somebody's music. Read when a
@@ -2890,17 +2919,29 @@ static int snap_volume(void)
 	return s == SNAP_FULL ? 100 : s == SNAP_QUIET ? 25 : 0;
 }
 
-static void snap_ask(const char *req)
+/* `hold`: its first picture only, while the bar fills (snapshelf.h). Let go,
+ * the same snap keeps the picture it has: snapv_begin is for a new file
+ * only, since it marks every picture on screen as the old one's. */
+static void snap_ask(const char *req, bool hold)
 {
+	bool fresh = strcmp(req, g_snap_asked) != 0;
 	int vol;
 
-	if (!strcmp(req, g_snap_asked)) return;
-	vol = snap_volume();
+	hold = hold && *req;
+	if (!fresh && hold == g_snap_held) return;
+	/* Let go with the sound it was held with: a new volume would be a new
+	 * request to the daemon, which opens the file again */
+	vol = fresh ? snap_volume() : g_snap_vol;
+	g_snap_vol = vol;
 	snprintf(g_snap_asked, sizeof g_snap_asked, "%s", req);
-	if (*req) snapv_begin();
-	else snapv_release();
-	musec_snap(*req ? req : NULL, vol);
-	bgm_hold(BGM_HOLD_SNAP, *req && vol > 0);
+	g_snap_held = hold;
+	if (fresh) {
+		if (*req) snapv_begin();
+		else snapv_release();
+	}
+	musec_snap(*req ? req : NULL, vol, hold);
+	/* The menu music makes way only when a snap's sound starts */
+	bgm_hold(BGM_HOLD_SNAP, *req && !hold && vol > 0);
 }
 
 /* For the shelf's loop: a snap is asked for and the daemon has a newer
@@ -2914,7 +2955,7 @@ void snap_off(void)
 {
 	memset(&g_snap_shelf, 0, sizeof g_snap_shelf);
 	g_snap_focus.sys = -1;
-	snap_ask("");
+	snap_ask("", false);
 }
 
 static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool settled,
@@ -2924,7 +2965,7 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 	const char *req;
 	float k = 0;
 	int w = 0, h = 0;
-	bool front = g_home_live && settled && g;
+	bool front = g_home_live && settled && g, hold = false;
 
 	/* Which file, worked out when the focus moves rather than every frame */
 	if (!g) {
@@ -2945,8 +2986,8 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 			g_snap_focus.path[0] = '\0';
 	}
 	req = snapshelf_step(&g_snap_shelf, g ? g_snap_focus.path : "", front,
-	                     snapv_texture(NULL, NULL) != NULL, now, &k);
-	snap_ask(req);
+	                     snapv_texture(NULL, NULL) != NULL, now, &hold, &k);
+	snap_ask(req, hold);
 	if (*req) snapv_update(a->r);
 	if (snapshelf_moving(&g_snap_shelf)) redraw_now();
 	/* While it waits, a frame when the wait is over. While it plays, nothing
@@ -3090,13 +3131,14 @@ static void draw_games(app *a)
 	const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 	int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
 	games_info info = {
-		.system = s->name, .title = g ? g->title : "No games",
+		.system = s->name, .title = g ? g->title : T(S_SHELF_NO_GAMES),
 		.count = v->list.count, .cursor = v->cursor,
 		.played = g_game_page.valid ? g_game_page.played : "",
 		.has_achievements = g_game_page.valid && g_game_page.achievements,
 		.earned = g_game_page.earned, .total = g_game_page.total,
 		.resumable = g_game_page.valid && g_game_page.resume,
 		.favorite = g && fav_is(a->sys.systems[owner].tag, g->file),
+		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 		.snap_of = game_has_snap
 	};
 	shelf_snap(a, v, g, owner, !games_moving(&v->row, now), &info);
@@ -3565,8 +3607,8 @@ static void song_popup_draw(app *a, unsigned now)
 #define HEATPOP_PAD_X   30
 #define HEATPOP_PAD_Y   18
 #define HEATPOP_GAP     18        /* the thermometer to the words */
-#define HEATPOP_LINE1   "I'm getting hot!"
-#define HEATPOP_LINE2   "Slowing down to cool off."
+#define HEATPOP_LINE1   T(S_HEAT_ZYPER)
+#define HEATPOP_LINE2   T(S_HEAT_SLOWING)
 
 static struct {
 	bool     on;
@@ -4312,6 +4354,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		w = ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
 			w += gap + ui_text_width(fm, rows[i].value);
+		if (rows[i].value == MENU_TICK) w += ui_cap_height(fm) * 6 / 5;
 		if (w > content_w) content_w = w;
 	}
 	if (head2) {
@@ -4897,6 +4940,14 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				if (rows[i].value)
 					ui_text(a->r, fm, rows[i].value,
 					        content_x + content_w, ty, 1, vc);
+				/* The choice that is on: a tick, a capital's height and a
+				 * fifth, where the value's right edge is */
+				if (rows[i].value == MENU_TICK) {
+					int ts = ui_cap_height(fm) * 6 / 5;
+
+					ui_glyph_draw(a->r, UI_GLYPH_CHECK, content_x + content_w - ts / 2,
+					              y + ROW_H(rows[i]) / 2, ts, vc);
+				}
 			} else if (vw > lw) {
 				/* The VALUE is the long one. The label keeps its width and
 				 * the value takes everything left of the right edge. */
@@ -5264,7 +5315,7 @@ static void menu_message(app *a, const char *heading, menu_row row,
 /* What a message says when the network a screen needs is not there, one
  * sentence in every screen (DESIGN.md 12). A row that is dead for the same
  * reason says "needs Wi-Fi" in its value instead. */
-#define MSG_NEEDS_WIFI "Connect to Wi-Fi first."
+#define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
 
 /* Video snaps come with a lookup when MENU > Scraper > Video Snaps says to,
  * for the consoles left on (ss_run_videos asks this per console). */
@@ -5505,13 +5556,13 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.muse       = is_muse(sc);
 		u.fav        = !u.muse && sc->core[0] == '\0' && sc->folder[0] == '\0';
 		u.game_count = a->view[sys].list.count;
-		u.dmode      = DMODES[a->view[sys].dmode].label;
+		u.dmode      = dmode_label(a->view[sys].dmode);
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
 		u.muse_both  = u.muse && muse_kinds() > 1;
 		u.muse_playing = u.muse && lock_allowed();
 		u.sort       = u.muse ? ml_order_label_kind((ml_order)a->view[sys].sort, muse_kind_shown())
-		                      : SORTS[a->view[sys].sort].label;
+		                      : sort_label(a->view[sys].sort);
 	} else {
 		aout_state ao = aout_now();
 
@@ -5526,8 +5577,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		}
 		u.appearance = appearance_name(theme_appearance());
 		u.home = home_name(a->home_layout);
-		u.order = g_order_release ? "Release Date" : "A to Z";
-		u.battery = g_batt_pct ? "Percentage" : "Bars";
+		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
+		u.battery = g_batt_pct ? T(S_PANEL_BATTERY_PERCENTAGE) : T(S_PANEL_BATTERY_BARS);
 		u.ui_sounds  = uisound_setting_name(uisound_setting());
 		u.menu_music = bgm_menu_value(bgm_on(), bgm_count());
 		u.auto_off  = a->auto_off;
@@ -5882,7 +5933,7 @@ static bool confirm_body(app *a, const char *heading, const char *msg,
 
 	rows[0] = (menu_row){ msg, NULL, false };
 	rows[1] = (menu_row){ yes_label, NULL, true };
-	rows[2] = (menu_row){ "Cancel", NULL, true };
+	rows[2] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
 
 	for (;;) {
 		plat_input_poll(&a->in);
@@ -6057,7 +6108,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 {
 	menu_row rows[MENU_RUN_ROWS];
 	const char *heading = NULL;
-	int sel = 0, n = 0, b;
+	int sel = st->start_sel, n = 0, b;
 	float k;
 	/* Zyper's moves, in the menu that has him, on this loop's clock: it
 	 * draws every pass, so the breath and the blinks need nothing more */
@@ -6453,18 +6504,16 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 		              && !strcmp(cur, w->nets[k].ssid);
 
 		if (joined)
-			snprintf(msg, sizeof msg,
-			         "Forget %s? You are connected to it and will lose "
-			         "the network.", w->nets[k].ssid);
+			snprintf(msg, sizeof msg, T(S_WIFI_FORGET_JOINED), w->nets[k].ssid);
 		else
-			snprintf(msg, sizeof msg, "Forget %s?", w->nets[k].ssid);
+			snprintf(msg, sizeof msg, T(S_WIFI_FORGET_ASK), w->nets[k].ssid);
 
-		if (confirm_panel(a, "Wi-Fi", msg, "Forget")) {
+		if (confirm_panel(a, T(S_MENU_WIFI), msg, T(S_WIFI_FORGET))) {
 			snprintf(status, sizeof status,
-			         wifi_forget(w->nets[k].ssid) ? "Forgot %s"
-			                                      : "Could not forget %s",
+			         wifi_forget(w->nets[k].ssid) ? T(S_WIFI_FORGOT)
+			                                      : T(S_WIFI_FORGET_FAILED),
 			         w->nets[k].ssid);
-			if (!result_message(a, "Wi-Fi", status)) return MENU_STAY;
+			if (!result_message(a, T(S_MENU_WIFI), status)) return MENU_STAY;
 			if (w->on) wifi_begin_scan(w);
 		}
 		return MENU_STAY;
@@ -6481,11 +6530,11 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 			w->on = false;
 			w->n = 0;
 		} else {
-			wait_panel(a, "Wi-Fi", "Turning Wi-Fi on...");
+			wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_TURNING_ON));
 			w->on = wifi_up();
 			wifi_pref_save(w->on);
 			if (!w->on) {
-				if (!result_message(a, "Wi-Fi", "Wi-Fi did not come up"))
+				if (!result_message(a, T(S_MENU_WIFI), T(S_WIFI_DID_NOT_COME_UP)))
 					return MENU_STAY;
 			}
 			if (w->on) wifi_begin_scan(w);
@@ -6506,7 +6555,7 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 			if (kr != KB_ACCEPT) return MENU_STAY;
 		}
 
-		wait_panel(a, "Wi-Fi", "Connecting...");
+		wait_panel(a, T(S_MENU_WIFI), T(S_WIFI_CONNECTING));
 		ok = wifi_connect(w->nets[k].ssid, psk[0] ? psk : NULL);
 		/* Wiped as soon as it has been handed over. It still exists in the
 		 * supplicant's config, which is the point, but there is no reason for
@@ -6518,12 +6567,11 @@ static menu_result wifi_key(app *a, void *ctx, in_button key, int sel)
 			wifi_pref_save(true);
 			w->on = true;
 			wifi_status(ssid, sizeof ssid, ip, sizeof ip);
-			snprintf(status, sizeof status, "Connected to %s", ssid);
+			snprintf(status, sizeof status, T(S_WIFI_CONNECTED_TO), ssid);
 		} else {
-			snprintf(status, sizeof status, "Could not connect to %s",
-			         w->nets[k].ssid);
+			snprintf(status, sizeof status, T(S_WIFI_CONNECT_FAILED), w->nets[k].ssid);
 		}
-		if (!result_message(a, "Wi-Fi", status)) return MENU_STAY;
+		if (!result_message(a, T(S_MENU_WIFI), status)) return MENU_STAY;
 		/* Out on success, because the job is done and the menu row behind this
 		 * screen already names the network - staying in the list makes you back
 		 * out by hand to see the result. On failure stay, because the next
@@ -6585,15 +6633,15 @@ static menu_result ra_signin_screen(app *a)
 		return MENU_FAILED;
 	}
 
-	kr = keyboard_prompt(a, "RetroAchievements User", user, (int)sizeof user);
+	kr = keyboard_prompt(a, T(S_CHEEVOS_RA_USER), user, (int)sizeof user);
 	if (kr == KB_POWER) { power_off(a); return MENU_STAY; }
 	if (kr != KB_ACCEPT || !user[0]) return MENU_STAY;
 
-	kr = keyboard_prompt(a, "Password", pass, (int)sizeof pass);
+	kr = keyboard_prompt(a, T(S_PANEL_PASSWORD), pass, (int)sizeof pass);
 	if (kr == KB_POWER) { memset(pass, 0, sizeof pass); power_off(a); return MENU_STAY; }
 	if (kr != KB_ACCEPT || !pass[0]) { memset(pass, 0, sizeof pass); return MENU_STAY; }
 
-	wait_panel(a, "RetroAchievements", "Signing in...");
+	wait_panel(a, "RetroAchievements", T(S_PANEL_SIGNING_IN));
 	ok = ra_sign_in(user, pass, err, sizeof err);
 	/* Wiped the moment it has been used, the same as the Wi-Fi passphrase.
 	 * The token it bought is the thing worth keeping. */
@@ -6601,9 +6649,9 @@ static menu_result ra_signin_screen(app *a)
 
 	if (ok) {
 		ra_creds_save();
-		snprintf(err, sizeof err, "Signed in as %s", ra_user());
+		snprintf(err, sizeof err, T(S_PANEL_SIGNED_IN_AS), ra_user());
 	} else if (!err[0]) {
-		snprintf(err, sizeof err, "Sign-in failed");
+		snprintf(err, sizeof err, "%s", T(S_PANEL_SIGN_IN_FAILED));
 	}
 
 	row = (menu_row){ err, NULL, ok };
@@ -6637,28 +6685,28 @@ static menu_result ss_signin_screen(app *a)
 
 	if (!ss_have_dev() || !net_online()) {
 		row = (menu_row){ !ss_have_dev()
-		                  ? "This build has no ScreenScraper key."
+		                  ? T(S_SCRAPER_SS_NO_KEY)
 		                  : MSG_NEEDS_WIFI, NULL, false };
 		timed_message(a, "ScreenScraper", &row, 1, 0, MENU_ZYPEROS);
 		return MENU_FAILED;
 	}
 
-	kr = keyboard_prompt(a, "ScreenScraper User", user, (int)sizeof user);
+	kr = keyboard_prompt(a, T(S_SCRAPER_SS_USER), user, (int)sizeof user);
 	if (kr == KB_POWER) { power_off(a); return MENU_STAY; }
 	if (kr != KB_ACCEPT || !user[0]) return MENU_STAY;
 
-	kr = keyboard_prompt(a, "Password", pass, (int)sizeof pass);
+	kr = keyboard_prompt(a, T(S_PANEL_PASSWORD), pass, (int)sizeof pass);
 	if (kr == KB_POWER) { memset(pass, 0, sizeof pass); power_off(a); return MENU_STAY; }
 	if (kr != KB_ACCEPT || !pass[0]) { memset(pass, 0, sizeof pass); return MENU_STAY; }
 
-	wait_panel(a, "ScreenScraper", "Signing in...");
+	wait_panel(a, "ScreenScraper", T(S_PANEL_SIGNING_IN));
 	ok = ss_sign_in(user, pass, err, sizeof err);
 	memset(pass, 0, sizeof pass);
 
 	/* ss_sign_in stores the account itself, because it is the half that knows
 	 * whether the reply was real. Nothing to save here. */
-	if (ok) snprintf(err, sizeof err, "Signed in as %s", ss_user());
-	else if (!err[0]) snprintf(err, sizeof err, "Sign-in failed");
+	if (ok) snprintf(err, sizeof err, T(S_PANEL_SIGNED_IN_AS), ss_user());
+	else if (!err[0]) snprintf(err, sizeof err, "%s", T(S_PANEL_SIGN_IN_FAILED));
 
 	row = (menu_row){ err, NULL, ok };
 	timed_message(a, "ScreenScraper", &row, 1, 0, MENU_ZYPEROS);
@@ -6681,6 +6729,15 @@ static const char *sgdb_status(void)
 	     : sgdb_key_state() == SGDB_REFUSED ? "refused" : "not checked";
 }
 
+/* The same, as the Status row says it, in the language that is on:
+ * sgdb_status's words are the page's, which compares them */
+static const char *sgdb_status_shown(void)
+{
+	return sgdb_key_state() == SGDB_WORKS ? T(S_SCRAPER_SGDB_WORKS)
+	     : sgdb_key_state() == SGDB_REFUSED ? T(S_SCRAPER_SGDB_REFUSED)
+	     : T(S_SCRAPER_SGDB_NOT_CHECKED);
+}
+
 static int sgdb_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
 	static char masked[32];
@@ -6690,7 +6747,7 @@ static int sgdb_build(void *ctx, menu_row *rows, int max, const char **heading)
 	(void)max;
 	*heading = "SteamGridDB";
 	sgdb_key_masked(masked, sizeof masked);
-	return sys_menu_sgdb_rows(sgdb_have_key() ? masked : NULL, sgdb_status(),
+	return sys_menu_sgdb_rows(sgdb_have_key() ? masked : NULL, sgdb_status_shown(),
 	                          rows, ids);
 }
 
@@ -6727,7 +6784,7 @@ static menu_result sgdb_enter(app *a)
 		return MENU_FAILED;
 	}
 	for (;;) {
-		kb_result kr = keyboard_prompt(a, "SteamGridDB API Key", key, (int)sizeof key);
+		kb_result kr = keyboard_prompt(a, T(S_SCRAPER_SGDB_API_KEY), key, (int)sizeof key);
 		sgdb_try t;
 
 		if (kr == KB_POWER) { memset(key, 0, sizeof key); power_off(a); return MENU_STAY; }
@@ -6758,10 +6815,10 @@ static menu_result sgdb_key(app *a, void *ctx, in_button key, int sel)
 		r = sgdb_enter(a);
 	} else if (ids[sel] == SG_REMOVE &&
 	           confirm_panel(a, "SteamGridDB",
-	                         "Unlink the key?",
-	                         "Unlink")) {
+	                         T(S_SCRAPER_UNLINK_KEY_ASK),
+	                         T(S_SCRAPER_UNLINK))) {
 		sgdb_key_forget();
-		result_message(a, "SteamGridDB", "Unlinked.");
+		result_message(a, "SteamGridDB", T(S_SCRAPER_UNLINKED));
 		r = MENU_CHANGED;
 	}
 	if (r == MENU_CHANGED || r == MENU_FAILED) *said = r;
@@ -6830,7 +6887,7 @@ static int hare_rows(menu_row *out, const char *who, const char *ssh,
 {
 	int n = 0;
 
-	out[n++] = (menu_row){ "Browsers", who,   false };
+	out[n++] = (menu_row){ T(S_XFER_BROWSERS), who, false };
 	/* Over the cable, SSH beside the browsers (sshlink.h): who is signed in,
 	 * or why nobody can be. */
 	if (ssh) out[n++] = (menu_row){ "SSH", ssh, false };
@@ -6839,8 +6896,8 @@ static int hare_rows(menu_row *out, const char *who, const char *ssh,
 	 * moves bytes both ways, so both numbers are never zero - and a still
 	 * caught it mid-word. Rendered 2026-09-30, this fits even at
 	 * "1.2 GB / 413.5 MB". */
-	out[n++] = (menu_row){ "In / out", moved, false };
-	out[n++] = (menu_row){ "Now",      now,   false };
+	out[n++] = (menu_row){ T(S_XFER_IN_OUT), moved, false };
+	out[n++] = (menu_row){ T(S_XFER_NOW),    now,   false };
 	/* The key legend (DESIGN.md 11.4): B hides it, Y stops it (xs_*) */
 	if (legend) {
 		out[n++] = MENU_RULE;
@@ -6858,7 +6915,7 @@ static void hare_preview(app *a, const char *addr, const char *pin,
 {
 	menu_row rows[7];
 	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, "B: close");
+	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
 
 	hare_head(head, sizeof head, addr, pin);
 	draw_shelf(a);
@@ -6891,15 +6948,15 @@ static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
 static void hot_rows(menu_row *rows, char *phones, size_t pn, bool starting,
                      int joined, const char *pin, const char *now)
 {
-	if (starting)         snprintf(phones, pn, "starting");
-	else if (joined <= 0) snprintf(phones, pn, "waiting");
-	else                  snprintf(phones, pn, "%d joined", joined);
-	rows[0] = (menu_row){ hotspot_qr_text(), NULL,               false };
-	rows[1] = (menu_row){ "Network",         hotspot_ssid(),     false };
-	rows[2] = (menu_row){ "Password",        hotspot_password(), false };
-	rows[3] = (menu_row){ "PIN",             pin,                false };
-	rows[4] = (menu_row){ "Phones",          phones,             false };
-	rows[5] = (menu_row){ "Now",             now,                false };
+	if (starting)         snprintf(phones, pn, "%s", T(S_HOTPANEL_STARTING));
+	else if (joined <= 0) snprintf(phones, pn, "%s", T(S_XFER_WAITING));
+	else                  snprintf(phones, pn, TN(S_HOTPANEL_JOINED, joined), joined);
+	rows[0] = (menu_row){ hotspot_qr_text(),     NULL,               false };
+	rows[1] = (menu_row){ T(S_HOTPANEL_NETWORK), hotspot_ssid(),     false };
+	rows[2] = (menu_row){ T(S_PANEL_PASSWORD),   hotspot_password(), false };
+	rows[3] = (menu_row){ "PIN",                 pin,                false };
+	rows[4] = (menu_row){ T(S_HOTPANEL_PHONES),  phones,             false };
+	rows[5] = (menu_row){ T(S_XFER_NOW),         now,                false };
 }
 
 static void hot_show(app *a, const char *name, const char *pin, bool starting,
@@ -6923,12 +6980,12 @@ static void hot_preview(app *a, const char *ssid, const char *pass,
 
 	captive_wifi_qr(qr, sizeof qr, ssid, pass);
 	rows[0] = (menu_row){ qr,         NULL,   false };
-	rows[1] = (menu_row){ "Network",  ssid,   false };
-	rows[2] = (menu_row){ "Password", pass,   false };
-	rows[3] = (menu_row){ "PIN",      "4071", false };
-	rows[4] = (menu_row){ "Phones",   phones, false };
-	rows[5] = (menu_row){ "Now",      now,    false };
-	rows[6] = MENU_NOTE("B: close");
+	rows[1] = (menu_row){ T(S_HOTPANEL_NETWORK), ssid,   false };
+	rows[2] = (menu_row){ T(S_PANEL_PASSWORD),   pass,   false };
+	rows[3] = (menu_row){ "PIN",                 "4071", false };
+	rows[4] = (menu_row){ T(S_HOTPANEL_PHONES),  phones, false };
+	rows[5] = (menu_row){ T(S_XFER_NOW),         now,    false };
+	rows[6] = MENU_NOTE(T(S_PANEL_B_CLOSE));
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	panel_show(a, PANEL_HOT, XFER_NAME_WIFI, rows, 7, -1, 0, 0u, NULL, false, 0, NULL);
@@ -7233,7 +7290,7 @@ static void xfer_screen_way(app *a, int way);
  * and its name in two lines, the focused one the **accent** fill in
  * **on-accent** - and the key legend (11.4) under them. Tiles' names are
  * their labels, a newline between the two lines, and their mark is read
- * off the first word. Drawn at `pose` as every panel is.
+ * off the name (tile_glyph). Drawn at `pose` as every panel is.
  *
  * The tiles are the rows up to the first note (MENU_NOTE). Three notes after
  * them are File Transfer's question while files move (DESIGN.md 11.14,
@@ -7245,10 +7302,34 @@ static void xfer_screen_way(app *a, int way);
 #define TILE_H   232
 #define TILE_GAP 24
 #define TILE_PAD 40
+
+/* A tile's mark, by its name: usb_ask's tiles and the two questions'
+ * (xs_words), compared in the language that is on, or in English, which
+ * the shot harness's --usb-ask names them in */
+static ui_glyph tile_glyph(const char *label)
+{
+	static const struct { str_id name; ui_glyph g; } MARKS[] = {
+		{ S_XFER_TILE_CHARGE_ONLY,   UI_GLYPH_CHARGE },
+		{ S_XFER_TILE_FILE_TRANSFER, UI_GLYPH_TRANSFER },
+		{ S_XFER_TILE_KEEP_GOING,    UI_GLYPH_ARROWS },
+		{ S_XFER_TILE_NOT_NOW,       UI_GLYPH_ARROWS },
+		{ S_XFER_TILE_STOP_AFTER,    UI_GLYPH_FINISH },
+		{ S_XFER_TILE_CANCEL_NOW,    UI_GLYPH_CANCEL },
+		{ S_XFER_TILE_CANCEL_PLAY,   UI_GLYPH_CANCEL },
+		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof MARKS / sizeof MARKS[0]; i++)
+		if (!strcmp(label, T(MARKS[i].name)) || !strcmp(label, T_en(MARKS[i].name)))
+			return MARKS[i].g;
+	return UI_GLYPH_TERMINAL;
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
-	const char *legend = "Left/Right: move   A: choose   B: charge only";
+	const char *legend = T(S_XFER_LEGEND_CHARGE_ONLY);
 	const char *sub = NULL, *what = NULL;
 	const ds_theme *thm = theme();
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
@@ -7306,12 +7387,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
 		const char *label = tiles[i].label ? tiles[i].label : "";
 		const char *nl = strchr(label, '\n');
-		ui_glyph g = !strncmp(label, "Charge", 6) ? UI_GLYPH_CHARGE
-		           : !strncmp(label, "File", 4)   ? UI_GLYPH_TRANSFER
-		           : !strncmp(label, "Keep", 4) || !strncmp(label, "Not", 3) ? UI_GLYPH_ARROWS
-		           : !strncmp(label, "Stop", 4)   ? UI_GLYPH_FINISH
-		           : !strncmp(label, "Cancel", 6) ? UI_GLYPH_CANCEL
-		           : !strncmp(label, "Play", 4)   ? UI_GLYPH_PLAY : UI_GLYPH_TERMINAL;
+		ui_glyph g = tile_glyph(label);
 		char one[64], two[64];
 		TTF_Font *f = fm;
 		int lf = lm;
@@ -7363,9 +7439,9 @@ static void usb_ask(app *a)
 	int n = 0, sel = 0, choice = -1, lv;
 	float k;
 
-	tiles[n++] = (menu_row){ "Charge\nOnly",       NULL, true };
-	tiles[n++] = (menu_row){ "File\nTransfer",     NULL, true };
-	if (dev) tiles[n++] = (menu_row){ "Developer\n(SSH)", NULL, true };
+	tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
+	tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
+	if (dev) tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true };
 	lv = panel_open();
 	while (choice < 0) {
 		plat_input_poll(&a->in);
@@ -7389,7 +7465,7 @@ static void usb_ask(app *a)
 		tick_theme(a);
 		draw_shelf(a);
 		ui_scrim_k(a->r, 0, k);
-		panel_show(a, PANEL_TILES, "Computer Connected", tiles, n, sel, 0, MENU_ZYPEROS,
+		panel_show(a, PANEL_TILES, T(S_XFER_COMPUTER_CONNECTED), tiles, n, sel, 0, MENU_ZYPEROS,
 		           NULL, false, 0, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
@@ -7401,10 +7477,10 @@ static void usb_ask(app *a)
 	if (choice == 1) {
 		xfer_screen(a);
 	} else if (choice == 2) {
-		menu_row row = { "Developer link on. Unplug to end it.", NULL, false };
+		menu_row row = { T(S_XFER_DEV_LINK_ON), NULL, false };
 
 		usblink_hold(true);
-		timed_message(a, "Developer (SSH)", &row, 1, 0, MENU_ZYPEROS);
+		timed_message(a, T(S_XFER_DEV_HEADING), &row, 1, 0, MENU_ZYPEROS);
 	} else {
 		usblink_hold(false);
 	}
@@ -7414,10 +7490,12 @@ static void usb_ask(app *a)
  * is whether there is one, its last four, what is known about it, whether a
  * check is running, and the sentence for the last thing done - never the key.
  * The check runs in sgdb.c's thread, and xfer_screen's loop settles it. */
+static void up_jstr(char *out, size_t n, const char *s);   /* with the updates, below */
+
 static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
                        char *why, size_t wn)
 {
-	char key[SGDB_KEY_MAX * 4], tail[8], *json;
+	char key[SGDB_KEY_MAX * 4], tail[8], *json, jsaid[400];
 	const char *said, *outcome;
 	sgdb_try t = SGDB_TRY_IDLE;
 	int k;
@@ -7433,21 +7511,27 @@ static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
 		sgdb_key_forget();
 	}
 	if (op != HARE_SGDB_REMOVE) t = sgdb_try_poll();
-	said = op == HARE_SGDB_REMOVE ? "Key removed." : sgdb_try_said();
+	said = op == HARE_SGDB_REMOVE ? T(S_XFER_KEY_REMOVED) : sgdb_try_said();
 	outcome = t == SGDB_TRY_WORKS ? "works" : t == SGDB_TRY_KEPT ? "kept"
 	        : t == SGDB_TRY_REFUSED ? "refused" : t == SGDB_TRY_BAD ? "bad" : "";
 	sgdb_key_tail(tail, sizeof tail);
-	if (!(json = malloc(256))) {
-		snprintf(why, wn, "out of memory");
+	if (!(json = malloc(512))) {
+		snprintf(why, wn, "%s", T(S_XFER_ERR_MEMORY));
 		return NULL;
 	}
-	/* Every value here is fixed text or letters and digits: nothing to escape */
-	k = snprintf(json, 256,
+	/* Every value here is fixed text or letters and digits, but the sentence,
+	 * which is in the language that is on: escaped, and room for it */
+	up_jstr(jsaid, sizeof jsaid, said ? said : "");
+	k = snprintf(json, 512,
 	             "{\"key\":%s,\"tail\":\"%s\",\"state\":\"%s\",\"checking\":%s,"
-	             "\"outcome\":\"%s\",\"said\":\"%s\"}",
+	             "\"outcome\":\"%s\",\"said\":%s}",
 	             sgdb_have_key() ? "true" : "false", tail, sgdb_status(),
-	             t == SGDB_TRY_RUNNING ? "true" : "false", outcome, said);
-	if (k < 0 || k >= 256) { free(json); snprintf(why, wn, "could not say"); return NULL; }
+	             t == SGDB_TRY_RUNNING ? "true" : "false", outcome, jsaid);
+	if (k < 0 || k >= 512) {
+		free(json);
+		snprintf(why, wn, "%s", T(S_XFER_ERR_COULD_NOT_SAY));
+		return NULL;
+	}
 	*len = (size_t)k;
 	return json;
 }
@@ -7476,9 +7560,9 @@ static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
 #define XS_SHELF_MS   3000u             /* the files still this long: rescan */
 #define XS_RESTART_MS 1500u             /* the page's restart answered first */
 #define XS_WRONG_MAX  10                /* wrong PINs that end it behind the shelf */
-#define XS_LEGEND     "B: close"
-#define XS_LEGEND_MOV "B: keep going or stop"
-#define XS_LEGEND_END "B: hide"
+#define XS_LEGEND     T(S_PANEL_B_CLOSE)
+#define XS_LEGEND_MOV T(S_XFER_LEGEND_MOVING)
+#define XS_LEGEND_END T(S_XFER_LEGEND_HIDE)
 
 typedef struct {
 	bool        on;             /* the server is up */
@@ -7576,11 +7660,11 @@ static bool up_supported(char *why, size_t wn)
 	DIR *d;
 
 	if (!up_have()) {
-		snprintf(why, wn, "This card has no update program. Use the ZyperOS Installer.");
+		snprintf(why, wn, "%s", T(S_SYSUPDATE_NO_PROGRAM));
 		return false;
 	}
 	if (access(sys, R_OK) != 0) {
-		snprintf(why, wn, "This system image has no System Update. Use the ZyperOS Installer.");
+		snprintf(why, wn, "%s", T(S_SYSUPDATE_NO_SYSTEM_UPDATE));
 		return false;
 	}
 	if ((d = opendir(keys))) {
@@ -7592,8 +7676,7 @@ static bool up_supported(char *why, size_t wn)
 		closedir(d);
 	}
 	if (!key) {
-		snprintf(why, wn, "This system image has no release key yet, so it cannot check that an "
-		                  "update is real. Use the ZyperOS Installer.");
+		snprintf(why, wn, "%s", T(S_SYSUPDATE_NO_RELEASE_KEY));
 		return false;
 	}
 	return true;
@@ -7678,7 +7761,7 @@ static char *up_state_json(size_t *len, char *why, size_t wn)
 	up_jstr(msg, sizeof msg, v->st.message);
 	up_jstr(res, sizeof res, v->result);
 	up_jstr(nwhy, sizeof nwhy, no);
-	if (!(json = malloc(4096))) { snprintf(why, wn, "out of memory"); return NULL; }
+	if (!(json = malloc(4096))) { snprintf(why, wn, "%s", T(S_XFER_ERR_MEMORY)); return NULL; }
 	k = snprintf(json, 4096,
 	             "{\"on\":%s,\"why\":%s,\"device\":\"%s\",\"installed\":\"%s\",\"system\":\"%s\","
 	             "\"slots\":%s,\"running\":%s,\"state\":\"%s\",\"version\":\"%s\",\"kind\":\"%s\","
@@ -7691,7 +7774,11 @@ static char *up_state_json(size_t *len, char *why, size_t wn)
 	             v->st.version, v->st.system ? "system" : "folder",
 	             v->st.download, v->st.done, v->st.total, v->st.files_done, v->st.files_total,
 	             msg, res, v->st.time, v->battery, v->charging ? "true" : "false", files);
-	if (k < 0 || k >= 4096) { free(json); snprintf(why, wn, "could not say"); return NULL; }
+	if (k < 0 || k >= 4096) {
+		free(json);
+		snprintf(why, wn, "%s", T(S_XFER_ERR_COULD_NOT_SAY));
+		return NULL;
+	}
 	*len = (size_t)k;
 	return json;
 }
@@ -7714,9 +7801,9 @@ static char *xfer_update(int op, const char *name, char *path, size_t pn,
 	switch (op) {
 	case HARE_UPDATE_FILE:
 		if (!up_supported(why, wn)) return NULL;
-		if (up_running()) { snprintf(why, wn, "An update is at work. Wait for it to finish."); return NULL; }
+		if (up_running()) { snprintf(why, wn, "%s", T(S_SYSUPDATE_BUSY)); return NULL; }
 		if (!up_cable_name_ok(name)) {
-			snprintf(why, wn, "That is not one of this handheld's update files.");
+			snprintf(why, wn, "%s", T(S_SYSUPDATE_NOT_UPDATE_FILE));
 			return NULL;
 		}
 		up_path(dir, sizeof dir, "");
@@ -7724,25 +7811,25 @@ static char *xfer_update(int op, const char *name, char *path, size_t pn,
 		up_cable_dir(dir, sizeof dir);
 		mkdir(dir, 0755);
 		if (snprintf(path, pn, "%s/%s", dir, name) >= (int)pn) {
-			snprintf(why, wn, "that name is too long");
+			snprintf(why, wn, "%s", T(S_SYSUPDATE_NAME_TOO_LONG));
 			return NULL;
 		}
 		return up_dup("{}", len);
 	case HARE_UPDATE_CHECK:
 	case HARE_UPDATE_INSTALL:
 		if (!up_supported(why, wn)) return NULL;
-		if (up_running()) { snprintf(why, wn, "An update is at work already."); return NULL; }
+		if (up_running()) { snprintf(why, wn, "%s", T(S_SYSUPDATE_BUSY_ALREADY)); return NULL; }
 		up_cable_dir(dir, sizeof dir);
 		snprintf(list, sizeof list, "%s/ZyperOS-%s-update.txt", dir, up_device());
 		if (access(list, R_OK) != 0) {
-			snprintf(why, wn, "Send the update's files first.");
+			snprintf(why, wn, "%s", T(S_SYSUPDATE_SEND_FILES_FIRST));
 			return NULL;
 		}
 		up_spawn_cable(op == HARE_UPDATE_CHECK ? "check" : "download");
 		return up_state_json(len, why, wn);
 	case HARE_UPDATE_RESTART:
 		if (up_view(true)->st.state != SU_READY) {
-			snprintf(why, wn, "No update is ready to install.");
+			snprintf(why, wn, "%s", T(S_SYSUPDATE_NONE_READY));
 			return NULL;
 		}
 		g_xs.restart_at = plat_now_ms() ? plat_now_ms() : 1;
@@ -7890,13 +7977,13 @@ static bool xs_open(app *a, int way)
 	snprintf(path, sizeof path, "%s/system-icons", P_ROOT);
 	hare_set_icons(path);
 	if (hot) {
-		wait_panel(a, name, "Starting the hotspot...");
+		wait_panel(a, name, T(S_XFER_STARTING_HOTSPOT));
 		/* Up before the code is shown, so a phone that scans it at once can
 		 * join: a second or two, and hotspot_poll gives up at fifteen */
 		if (hotspot_start())
 			while ((g_xs.hs = hotspot_poll()) == HOTSPOT_STARTING) SDL_Delay(50);
 		if (g_xs.hs != HOTSPOT_UP) {
-			menu_row row = { "Could not start the hotspot.", NULL, false };
+			menu_row row = { T(S_XFER_HOTSPOT_FAILED), NULL, false };
 
 			hotspot_stop();
 			timed_message(a, name, &row, 1, 0, MENU_ZYPEROS);
@@ -7904,7 +7991,7 @@ static bool xs_open(app *a, int way)
 		}
 	}
 	if (!hare_start(P_ROMS, P_CARD, P_SHARED, P_WEB)) {
-		menu_row row = { "Could not start", NULL, false };
+		menu_row row = { T(S_XFER_COULD_NOT_START), NULL, false };
 
 		if (hot) hotspot_stop();
 		/* Over **scrim.menu**, as every message is (DESIGN.md 11.8). */
@@ -7986,7 +8073,8 @@ static void xs_tick(app *a)
 			else snprintf(g_xs.addr, sizeof g_xs.addr, "%s:%d", ip, hare_port());
 			g_xs.link_lost_at = 0;
 		} else {
-			snprintf(g_xs.addr, sizeof g_xs.addr, g_xs.cable ? "Cable unplugged" : "Wi-Fi went away");
+			snprintf(g_xs.addr, sizeof g_xs.addr, "%s",
+			         g_xs.cable ? T(S_XFER_CABLE_UNPLUGGED) : T(S_XFER_WIFI_GONE));
 			if (!g_xs.link_lost_at) g_xs.link_lost_at = now ? now : 1;
 		}
 	}
@@ -8080,10 +8168,10 @@ static void xs_mark(status_marks *m)
 static const char *xs_row_value(void)
 {
 	if (!g_xs.on) return NULL;
-	if (hare_closing()) return "closing";
-	if (g_xs.st.uploads > 0) return "receiving";
-	if (g_xs.st.sends > 0) return "sending";
-	return "on";
+	if (hare_closing()) return T(S_XFER_ROW_CLOSING);
+	if (g_xs.st.uploads > 0) return T(S_XFER_ROW_RECEIVING);
+	if (g_xs.st.sends > 0) return T(S_XFER_ROW_SENDING);
+	return T(S_XFER_ROW_ON);
 }
 
 /* End it: the server, SSH, the hotspot; the empty .media its covers left;
@@ -8100,13 +8188,13 @@ static void xs_stop(app *a, bool panels)
 	changed = hare_shelf_changed();
 	if (panels && g_xs.hot) {
 		if (g_xs.hot_failed) {
-			menu_row row = { "The hotspot stopped.", NULL, false };
+			menu_row row = { T(S_XFER_HOTSPOT_STOPPED), NULL, false };
 
 			timed_message(a, g_xs.name, &row, 1, 0, MENU_ZYPEROS);
 		}
 		/* The hotspot down and the Wi-Fi the player had back up, which
 		 * takes the supplicant a second or two to answer (xfer_stop) */
-		wait_panel(a, g_xs.name, "Closing the hotspot...");
+		wait_panel(a, g_xs.name, T(S_XFER_CLOSING_HOTSPOT));
 	}
 	xfer_stop(g_xs.cable);
 	g_xs.on = false;
@@ -8118,7 +8206,7 @@ static void xs_stop(app *a, bool panels)
 	 * the screen says it landed, and the game is not there. */
 	if (changed) {
 		if (panels) {
-			wait_panel(a, g_xs.name, "Scanning...");
+			wait_panel(a, g_xs.name, T(S_XFER_SCANNING));
 			rescan_all(a);
 		} else {
 			g_xs.rescan_due = true;
@@ -8138,21 +8226,29 @@ static void xs_end(void)
 
 /* The two questions' words (DESIGN.md 11.14): the tiles, two lines each, and
  * what each does, said under them while it is focused. The shot harness's
- * --xfer-ask draws these same ones. */
-static const char *const XS_STOP_L[] = { "Keep\ngoing", "Stop after\nthis file", "Cancel\nnow" };
-static const char *const XS_STOP_W[] = {
-	"Files keep moving behind the shelf.",
-	"This file finishes, then it closes.",
-	"The half-written file is deleted.",
+ * --xfer-ask draws these same ones. Each is three IDs, read through T() as
+ * it is asked, so XS_STOP_L and the rest are arrays of strings as they were. */
+static const str_id XS_WORDS[4][3] = {
+	{ S_XFER_TILE_KEEP_GOING, S_XFER_TILE_STOP_AFTER, S_XFER_TILE_CANCEL_NOW },
+	{ S_XFER_KEEP_GOING_SAYS, S_XFER_STOP_AFTER_SAYS, S_XFER_HALF_DELETED },
+	{ S_XFER_TILE_NOT_NOW, S_XFER_TILE_PLAY_AFTER, S_XFER_TILE_CANCEL_PLAY },
+	{ S_XFER_NOT_NOW_SAYS, S_XFER_PLAY_AFTER_SAYS, S_XFER_HALF_DELETED },
 };
-#define XS_STOP_LEGEND "Left/Right: move   A: choose   B: keep going"
-static const char *const XS_GAME_L[] = { "Not\nnow", "Play after\nthis file", "Cancel\nand play" };
-static const char *const XS_GAME_W[] = {
-	"Back to the shelf. The files keep moving.",
-	"This file finishes, then the game starts.",
-	"The half-written file is deleted.",
-};
-#define XS_GAME_LEGEND "Left/Right: move   A: choose   B: not now"
+
+static const char *const *xs_words(int which)
+{
+	static const char *w[4][3];
+	int i;
+
+	for (i = 0; i < 3; i++) w[which][i] = T(XS_WORDS[which][i]);
+	return w[which];
+}
+#define XS_STOP_L xs_words(0)
+#define XS_STOP_W xs_words(1)
+#define XS_STOP_LEGEND T(S_XFER_LEGEND_KEEP_GOING)
+#define XS_GAME_L xs_words(2)
+#define XS_GAME_W xs_words(3)
+#define XS_GAME_LEGEND T(S_XFER_LEGEND_NOT_NOW)
 
 /* A question while files move (DESIGN.md 11.14): three tiles over the shelf,
  * as Computer Connected's (My pick in the lab, 2026-11-06), a line under
@@ -8201,9 +8297,14 @@ static int xs_ask(app *a, const char *heading, const char *const *labels,
 		draw_shelf(a);
 		ui_scrim_k(a->r, 0, k);
 		for (i = 0; i < n; i++) rows[i] = (menu_row){ labels[i], NULL, true };
-		snprintf(sub, sizeof sub, "%s %s", g_xs.st.uploads > 0 ? "Receiving" : "Sending",
-		         g_xs.st.file[0] ? g_xs.st.file : "a file");
-		snprintf(line, sizeof line, what[sel], g_xs.st.file[0] ? g_xs.st.file : "The file");
+		if (g_xs.st.file[0])
+			snprintf(sub, sizeof sub,
+			         T(g_xs.st.uploads > 0 ? S_XFER_RECEIVING : S_XFER_SENDING), g_xs.st.file);
+		else
+			snprintf(sub, sizeof sub, "%s",
+			         T(g_xs.st.uploads > 0 ? S_XFER_RECEIVING_A_FILE : S_XFER_SENDING_A_FILE));
+		snprintf(line, sizeof line, what[sel],
+		         g_xs.st.file[0] ? g_xs.st.file : T(S_XFER_THE_FILE));
 		rows[n]     = MENU_NOTE(sub);
 		rows[n + 1] = MENU_NOTE(line);
 		rows[n + 2] = MENU_NOTE(legend);
@@ -8223,7 +8324,7 @@ static int xs_ask(app *a, const char *heading, const char *const *labels,
  * its way, or cancel now. 0, 1, 2; -1 for B again, which keeps going too. */
 static int xs_stop_ask(app *a)
 {
-	return xs_ask(a, "Files are still moving", XS_STOP_L, XS_STOP_W, 3, XS_STOP_LEGEND);
+	return xs_ask(a, T(S_XFER_STILL_MOVING), XS_STOP_L, XS_STOP_W, 3, XS_STOP_LEGEND);
 }
 
 /* A game asked for while File Transfer is on (My note: "if gaming affects it,
@@ -8238,7 +8339,8 @@ static bool xs_before_game(app *a)
 	int c;
 
 	if (!g_xs.on) return true;
-	c = xs_moving() ? xs_ask(a, "Files are still moving", XS_GAME_L, XS_GAME_W, 3, XS_GAME_LEGEND) : -2;
+	c = xs_moving() ? xs_ask(a, T(S_XFER_STILL_MOVING), XS_GAME_L, XS_GAME_W, 3, XS_GAME_LEGEND)
+	                 : -2;
 	if (!a->running) return false;
 	if (c == 0 || c == -1) return false;
 	if (c == 1) {
@@ -8260,10 +8362,13 @@ static bool xs_before_game(app *a)
 			tick_tint(a);
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
-			snprintf(line, sizeof line, "Finishing %s...", g_xs.st.file[0] ? g_xs.st.file : "the file");
+			if (g_xs.st.file[0])
+				snprintf(line, sizeof line, T(S_XFER_FINISHING), g_xs.st.file);
+			else
+				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
 			rows[0] = MENU_NOTE(line);
 			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE("B: back to the shelf");
+			rows[2] = MENU_NOTE(T(S_XFER_B_BACK_TO_SHELF));
 			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -8280,7 +8385,7 @@ static bool xs_before_game(app *a)
 	 * the shelf read again after it if anything arrived */
 	xs_stop(a, false);
 	if (c == -2) {
-		menu_row row = { "File Transfer closed for the game.", NULL, false };
+		menu_row row = { T(S_XFER_CLOSED_FOR_GAME), NULL, false };
 
 		timed_message(a, name, &row, 1, 0, MENU_ZYPEROS);
 	}
@@ -8337,9 +8442,8 @@ static void xfer_screen_way(app *a, int way)
 			cover_file(al, pic, sizeof pic);
 		}
 
-		if (g_xs.st.clients == 0)      snprintf(who, sizeof who, "waiting");
-		else if (g_xs.st.clients == 1) snprintf(who, sizeof who, "1 connected");
-		else                           snprintf(who, sizeof who, "%d connected", g_xs.st.clients);
+		if (g_xs.st.clients == 0) snprintf(who, sizeof who, "%s", T(S_XFER_WAITING));
+		else snprintf(who, sizeof who, TN(S_XFER_CONNECTED, g_xs.st.clients), g_xs.st.clients);
 
 		if (g_xs.in || g_xs.out) {
 			char hin[24], hout[24];
@@ -8348,14 +8452,16 @@ static void xfer_screen_way(app *a, int way)
 			human_bytes(hout, sizeof hout, g_xs.out);
 			snprintf(moved, sizeof moved, "%s / %s", hin, hout);
 		} else {
-			snprintf(moved, sizeof moved, "nothing yet");
+			snprintf(moved, sizeof moved, "%s", T(S_XFER_NOTHING_YET));
 		}
 		/* Closing after the file on its way: the Now row says which */
-		if (hare_closing())
-			snprintf(now_line, sizeof now_line, "closing after %s",
-			         g_xs.st.file[0] ? g_xs.st.file : "this file");
+		if (hare_closing() && g_xs.st.file[0])
+			snprintf(now_line, sizeof now_line, T(S_XFER_CLOSING_AFTER), g_xs.st.file);
+		else if (hare_closing())
+			snprintf(now_line, sizeof now_line, "%s", T(S_XFER_CLOSING_AFTER_THIS_FILE));
 		else
-			snprintf(now_line, sizeof now_line, "%s", g_xs.st.last[0] ? g_xs.st.last : "waiting");
+			snprintf(now_line, sizeof now_line, "%s",
+			         g_xs.st.last[0] ? g_xs.st.last : T(S_XFER_WAITING));
 
 		hare_head(head, sizeof head, g_xs.addr, g_xs.pin);
 		nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
@@ -8450,15 +8556,15 @@ static void art_head(char *out, size_t n, const char *now)
 	 * the panel a margin it can keep. */
 	ui_fit_text(ui_font(UI_F_LABEL), now, fit, sizeof fit,
 	            ZYPEROS_SCREEN_W * 3 / 4);
-	snprintf(out, n, "Box Art\n%s", fit);
+	snprintf(out, n, "%s\n%s", T(S_SCRAPER_BOX_ART), fit);
 }
 
 static int art_rows(menu_row *out, const char *where, const char *counts,
                     bool working)
 {
-	out[0] = (menu_row){ "Systems", where,  false };
-	out[1] = (menu_row){ "Art",     counts, false };
-	out[2] = (menu_row){ working ? "B: stop" : "B: close", NULL, false };
+	out[0] = (menu_row){ T(S_SCRAPER_SYSTEMS), where,  false };
+	out[1] = (menu_row){ T(S_SCRAPER_ART),     counts, false };
+	out[2] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE), NULL, false };
 	return 3;
 }
 
@@ -8509,7 +8615,7 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%d / %d",
 		         chv_earned(), chv_count());
 	else
-		snprintf(gi->cheevos, sizeof gi->cheevos, "none");
+		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_NONE));
 
 	/* What a scrape left on the card, if anything. Read here with the rest
 	 * rather than when the synopsis card opens: this is one indexed row, the
@@ -8585,7 +8691,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 {
 	menu_row     rows[3];
 	art_progress p;
-	char         counts[64], where[64], head[192];
+	char         counts[160], where[64], head[192];
 	int          nrows = 3;
 	bool         done = false, working = true;
 	float        k;
@@ -8596,7 +8702,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 	if (!net_online()) {
 		menu_row row = { MSG_NEEDS_WIFI, NULL, false };
 
-		timed_message(a, "Box Art", &row, 1, 0, accent);
+		timed_message(a, T(S_SCRAPER_BOX_ART), &row, 1, 0, accent);
 		return MENU_FAILED;
 	}
 
@@ -8655,9 +8761,9 @@ static menu_result art_run(app *a, const char *only, const char *one,
 					menu_row row[2];
 
 					art_head(head, sizeof head, one);
-					row[0] = (menu_row){ "Box Art",
-					                     had ? "replaced" : "found", false };
-					row[1] = (menu_row){ "B: close", NULL, false };
+					row[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
+					                     T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND), false };
+					row[1] = (menu_row){ T(S_PANEL_B_CLOSE), NULL, false };
 					timed_message(a, head, row, 2, menu_std_width(a), accent);
 					ss_run_cancel();
 					free_all_textures(a);
@@ -8666,8 +8772,8 @@ static menu_result art_run(app *a, const char *only, const char *one,
 				if (st < 0) { ss_run_cancel(); ss_working = false; break; }
 
 				art_head(head, sizeof head, one);
-				rows[0] = (menu_row){ "Box Art", ss_run_where(), false };
-				rows[1] = (menu_row){ "B: stop", NULL, false };
+				rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART), ss_run_where(), false };
+				rows[1] = (menu_row){ T(S_PANEL_B_STOP), NULL, false };
 				if (!panel_frame(a, lv, &k)) continue;
 				tick_tint(a);
 				tick_theme(a);
@@ -8712,11 +8818,21 @@ static menu_result art_run(app *a, const char *only, const char *one,
 		}
 		art_status(&p);
 
-		snprintf(counts, sizeof counts, "%d found · %d missing · %d already",
-		         p.found, p.missing, p.skipped);
+		{
+			/* Three facts, each a count of its own, between " · " */
+			char fo[40], mi[40], al[40];
+
+			snprintf(fo, sizeof fo, TN(S_SCRAPER_FOUND_N, p.found), p.found);
+			snprintf(mi, sizeof mi, TN(S_SCRAPER_MISSING_N, p.missing), p.missing);
+			snprintf(al, sizeof al, TN(S_SCRAPER_ALREADY_N, p.skipped), p.skipped);
+			snprintf(counts, sizeof counts, "%s · %s · %s", fo, mi, al);
+		}
 		if (p.named) {
+			char nm[40];
 			size_t used = strlen(counts);
-			snprintf(counts + used, sizeof counts - used, " · %d names", p.named);
+
+			snprintf(nm, sizeof nm, TN(S_SCRAPER_NAMES_N, p.named), p.named);
+			snprintf(counts + used, sizeof counts - used, " · %s", nm);
 		}
 		snprintf(where, sizeof where, "%d / %d", p.systems_done, p.systems);
 		if (one) {
@@ -8724,12 +8840,12 @@ static menu_result art_run(app *a, const char *only, const char *one,
 			 * game alone (art_begin's `only`), and "1 found, 19 already" would
 			 * be a true statement about work the player did not ask for. */
 			art_head(head, sizeof head, one);
-			rows[0] = (menu_row){ "Box Art",
-			                      working ? "fetching"
-			                      : p.found ? (had ? "replaced" : "found")
-			                      : had ? "not found, kept the old one"
-			                            : "not found", false };
-			rows[1] = (menu_row){ working ? "B: stop" : "B: close",
+			rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
+			                      working ? T(S_SCRAPER_FETCHING)
+			                      : p.found ? T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND)
+			                      : had ? T(S_SCRAPER_NOT_FOUND_KEPT)
+			                            : T(S_SCRAPER_NOT_FOUND), false };
+			rows[1] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE),
 			                      NULL, false };
 			nrows = 2;
 		} else {
@@ -8738,8 +8854,8 @@ static menu_result art_run(app *a, const char *only, const char *one,
 			 * which is what this said before and reads as still working
 			 * on it. */
 			art_head(head, sizeof head,
-			         working ? (p.now[0] ? p.now : "starting")
-			         : p.problem[0] ? p.problem : "Done");
+			         working ? (p.now[0] ? p.now : T(S_SCRAPER_STARTING))
+			         : p.problem[0] ? p.problem : T(S_SCRAPER_DONE));
 			nrows = art_rows(rows, where, counts, working);
 		}
 
@@ -8846,15 +8962,17 @@ static void scraper_snaps_value(scraper_ctx *c)
 
 	sys_menu_bytes(snaps_total(c->a), sz, sizeof sz);
 	snprintf(c->snaps, sizeof c->snaps, "%s · %s",
-	         snaps_fetch() || snaps_play() ? "on" : "off", sz);
+	         snaps_fetch() || snaps_play() ? T(S_SCRAPER_ON) : T(S_SCRAPER_OFF), sz);
 	c->u.snaps = c->snaps;
 }
 
 static void scraper_count(scraper_ctx *c)
 {
 	c->u.missing = art_count_missing(&c->a->sys, P_ROMS);
-	if (c->u.missing == 0) snprintf(g_scraper_val, sizeof g_scraper_val, "complete");
-	else snprintf(g_scraper_val, sizeof g_scraper_val, "%d missing", c->u.missing);
+	if (c->u.missing == 0)
+		snprintf(g_scraper_val, sizeof g_scraper_val, "%s", T(S_SCRAPER_COMPLETE));
+	else snprintf(g_scraper_val, sizeof g_scraper_val, TN(S_SCRAPER_MISSING_N, c->u.missing),
+	              c->u.missing);
 }
 
 static int scraper_build(void *ctx, menu_row *rows, int max, const char **heading)
@@ -8874,9 +8992,9 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 	c->u.ss_name = c->ss_name;
 	sgdb_key_masked(c->sgdb, sizeof c->sgdb);
 	c->u.sgdb = !sgdb_have_key() ? NULL
-	          : sgdb_key_state() == SGDB_REFUSED ? "key refused" : c->sgdb;
+	          : sgdb_key_state() == SGDB_REFUSED ? T(S_SCRAPER_KEY_REFUSED) : c->sgdb;
 
-	*heading = "Scraper";
+	*heading = T(S_SCRAPER_HEADING);
 	if (c->u.running) {
 		art_progress p;
 		int r = art_step();
@@ -8902,7 +9020,7 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 			if (p.problem[0]) {
 				ui_fit_text(ui_font(UI_F_LABEL), p.problem, fit, sizeof fit,
 				            ZYPEROS_SCREEN_W * 3 / 4);
-				snprintf(c->head, sizeof c->head, "Scraper\n%s", fit);
+				snprintf(c->head, sizeof c->head, "%s\n%s", T(S_SCRAPER_HEADING), fit);
 				*heading = c->head;
 			}
 		}
@@ -8929,7 +9047,10 @@ static menu_result scraper_key(app *a, void *ctx, in_button key, int sel)
 	if (sel < 0 || sel >= n || !rows[sel].live) return MENU_STAY;
 	switch (ids[sel]) {
 	case SC_FETCH:
-		if (!net_online()) { result_message(a, "Scraper", MSG_NEEDS_WIFI); return MENU_FAILED; }
+		if (!net_online()) {
+			result_message(a, T(S_SCRAPER_HEADING), MSG_NEEDS_WIFI);
+			return MENU_FAILED;
+		}
 		/* The one async slot, which an account answer may still hold */
 		sync_abandon();
 		art_begin(&a->sys, P_ROMS, NULL);
@@ -8978,8 +9099,10 @@ static int ss_page_build(void *ctx, menu_row *rows, int max, const char **headin
 	(void)ctx;
 	(void)max;
 	*heading = "ScreenScraper";
-	if (ss_run_left() >= 0) snprintf(status, sizeof status, "%d left today", ss_run_left());
-	else snprintf(status, sizeof status, "linked");
+	if (ss_run_left() >= 0)
+		snprintf(status, sizeof status, TN(S_SCRAPER_SS_LEFT_TODAY, ss_run_left()),
+		         ss_run_left());
+	else snprintf(status, sizeof status, "%s", T(S_SCRAPER_SS_LINKED));
 	return sys_menu_ss_rows(ss_have_dev(), ss_signed_in() ? ss_user() : NULL, status,
 	                        rows, ids);
 }
@@ -8997,11 +9120,12 @@ static menu_result ss_page_key(app *a, void *ctx, in_button key, int sel)
 	if (ids[sel] == SSP_ACCOUNT) {
 		r = ss_signin_screen(a);
 	} else if (ids[sel] == SSP_UNLINK &&
-	           confirm_panel(a, "ScreenScraper", "Unlink the account?", "Unlink")) {
+	           confirm_panel(a, "ScreenScraper", T(S_SCRAPER_UNLINK_ACCOUNT_ASK),
+	                         T(S_SCRAPER_UNLINK))) {
 		/* The password is wiped from memory and from the device's settings */
 		ss_creds_clear();
 		ss_creds_save();
-		result_message(a, "ScreenScraper", "Unlinked.");
+		result_message(a, "ScreenScraper", T(S_SCRAPER_UNLINKED));
 		r = MENU_CHANGED;
 	}
 	if (r == MENU_CHANGED || r == MENU_FAILED) *said = r;
@@ -9067,7 +9191,7 @@ static int snaps_build(void *ctx, menu_row *rows, int max, const char **heading)
 	int con[SN_ROWS], n, i;
 
 	(void)max;
-	*heading = "Video Snaps";
+	*heading = T(S_SNAPS_HEADING);
 	n = snaps_rows_now(s, rows, ids, con);
 	/* Every switch steps round with Left and Right, and is heard so */
 	for (i = 0; i < n; i++)
@@ -9095,19 +9219,19 @@ static menu_result snaps_key(app *a, void *ctx, in_button key, int sel)
 		}
 		break;
 	case SN_DELETE: {
-		char sz[24], msg[64];
+		char sz[24], msg[160];
 		unsigned long long gone = 0;
 		int i;
 
 		if (key != IN_ACCEPT) return MENU_STAY;
 		sys_menu_bytes(s->total, sz, sizeof sz);
-		snprintf(msg, sizeof msg, "Delete every video snap, %s?", sz);
-		if (!confirm_panel(a, "Video Snaps", msg, "Delete")) return MENU_STAY;
+		snprintf(msg, sizeof msg, T(S_SNAPS_DELETE_ASK), sz);
+		if (!confirm_panel(a, T(S_SNAPS_HEADING), msg, T(S_SNAPS_DELETE))) return MENU_STAY;
 		for (i = 0; i < s->nc; i++) gone += snaps_delete(P_ROMS, s->folder[i]);
 		snaps_read(s);
 		sys_menu_bytes(gone, sz, sizeof sz);
-		snprintf(msg, sizeof msg, "%s given back.", sz);
-		result_message(a, "Video Snaps", msg);
+		snprintf(msg, sizeof msg, T(S_SNAPS_GIVEN_BACK), sz);
+		result_message(a, T(S_SNAPS_HEADING), msg);
 		s->said = MENU_CHANGED;
 		return MENU_CHANGED;
 	}
@@ -9141,7 +9265,7 @@ static int lights_build(void *ctx, menu_row *rows, int max, const char **heading
 	int n, i;
 
 	(void)max;
-	*heading = "Side Lights";
+	*heading = T(S_PANEL_SIDE_LIGHTS);
 	n = sys_menu_lights_rows(plat_side_lights(), rows, ids);
 	for (i = 0; i < n; i++) sound[i] = MENU_SND_RING;
 	return n;
@@ -9159,6 +9283,62 @@ static menu_result lights_key(app *a, void *ctx, in_button key, int sel)
 	if (sel < 0 || sel >= n) return MENU_STAY;
 	plat_side_lights_set(side_lights_flip(on, ids[sel]));
 	return MENU_STAY;
+}
+
+/* A language on from the next frame: its words (src/i18n.h) and its faces
+ * (src/ui.h), every panel measured again for them, and kept: the setting,
+ * and the boot screen's words (tick_boot_theme) */
+static void language_apply(app *a, lang l, bool keep)
+{
+	i18n_set(l);
+	ui_fonts_for(l);
+	ui_text_memo_clear();
+	a->menu_w = 0;
+	/* The one shelf whose name is a word and not a system's: Favorites,
+	 * named when the shelves were built (src/shelfbuild.c) */
+	if (a->sys.count > 0 && !strcmp(a->sys.systems[0].tag, "FAV"))
+		snprintf(a->sys.systems[0].name, sizeof a->sys.systems[0].name, "%s",
+		         T(S_LIBRARY_FAVORITES));
+	if (!keep) return;
+	db_set_str(db_dev(), "language", lang_code(l));
+	boot_theme_changed();
+	fprintf(stderr, "language: %s\n", lang_code(l));
+}
+
+/* MENU > Language (DESIGN.md 11.30; my pick in the languages lab,
+ * 2026-11-07): the five, each in its own words and its own face, a tick on
+ * the one that is on and the cursor on it. A chooses it and goes back to the
+ * menu, which is drawn in it from the next frame; B leaves it as it was. */
+static int language_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	unsigned char *sound = ctx;
+	int i, on = (int)i18n_lang();
+
+	*heading = T(S_MENU_LANGUAGE);
+	for (i = 0; i < LANG_COUNT && i < max; i++) {
+		/* Each name in its own face: ui_text draws Chinese in the Chinese
+		 * face whatever is on (src/ui.h) */
+		rows[i] = (menu_row){ lang_name((lang)i), i == on ? MENU_TICK : NULL, true };
+		sound[i] = 0;
+	}
+	return i;
+}
+
+static menu_result language_key(app *a, void *ctx, in_button key, int sel)
+{
+	(void)ctx;
+	if (key != IN_ACCEPT || sel < 0 || sel >= LANG_COUNT) return MENU_STAY;
+	if ((lang)sel != i18n_lang()) language_apply(a, (lang)sel, true);
+	return MENU_DONE;
+}
+
+static void language_screen(app *a)
+{
+	static unsigned char sound[LANG_COUNT];
+
+	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a),
+	                           .sound = sound, .start_sel = (int)i18n_lang() },
+	         language_build, language_key, sound);
 }
 
 static void lights_screen(app *a)
@@ -9228,7 +9408,7 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 	if (key == IN_X) { uisound_play(DS_SOUND_BACK); return MENU_DONE; }
 	if (key != IN_ACCEPT || sel >= n || !rows[sel].live) return MENU_STAY;
 
-	if (!strcmp(rows[sel].label, "Synopsis")) {
+	if (!strcmp(rows[sel].label, T(S_GAMEMENU_SYNOPSIS))) {
 		game_meta m;
 
 		/* Read again here rather than carried in game_info: it is up to 4 KB
@@ -9240,7 +9420,7 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		return MENU_STAY;
 	}
 
-	if (!strcmp(rows[sel].label, "Cheevos")) {
+	if (!strcmp(rows[sel].label, T(S_SYSMENU_CHEEVOS))) {
 		/* The set the gatherer loaded to count this row is still the loaded
 		 * one, so the list has what it needs without reloading it. Over the
 		 * shelf rather than a paused frame: no game is running here. */
@@ -9344,40 +9524,41 @@ static int syn_layout(const char *text, int fixed,
 #define ABOUT_THANKS_PAGES 3
 #define ABOUT_THANKS_ROWS 6
 #define ABOUT_THANKS_LAST 4
-static const char ABOUT_STORY[] =
-	"ZyperOS is named after Zyper, my dog, who passed away. He was quick, "
-	"light on his feet and full of energy, and that is what this system "
-	"tries to be.\n\n"
-	"The name is also two words in one: zippy and hyper. Games start the "
-	"moment you press A, and the menus never make you wait.\n\n"
-	"Tarik";
 /* The README's Credits, a page at a time: who, and what of theirs ZyperOS
  * runs on, short enough that no row has to scroll. The last page has four
- * and the note that every license itself is in Licenses/ on the card. */
-static const menu_row ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = {
-	{ { "Eric Reinsmidt", "TortOS, Diatom", false },
-	  { "plastron", "Eric's Linux base", false },
-	  { "ROCKNIX", "the Pixel 2 kernel", false },
-	  { "Buildroot", "the Linux build", false },
-	  { "libretro", "the emulator cores", false },
-	  { "PortMaster", "the ports", false } },
-	{ { "plorpOS", "DSperate, FAKE-08", false },
-	  { "OpenBOR Team", "OpenBOR", false },
-	  { "BenJelter", "the console icons", false },
-	  { "Menu music", "OpenGameArt", false },
-	  { "Lexend", "the font", false },
-	  { "SDL, Mesa", "screen and input", false } },
-	{ { "FFmpeg, SQLite", "video, library", false },
-	  { "minimp3, stb_vorbis", "music", false },
-	  { "Linux, U-Boot", "the system", false },
-	  { "Temurin, DejaVu", "J2ME games", false } },
+ * and the note that every license itself is in Licenses/ on the card. A
+ * name is the same in every language and is written here; a word is an ID,
+ * its name NULL, read through T() as About opens (about_pages). */
+typedef struct {
+	const char *who;
+	str_id      who_s;
+	const char *what;
+	str_id      what_s;
+} about_thanks;
+static const about_thanks ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = {
+	{ { "Eric Reinsmidt", 0, "TortOS, Diatom", 0 },
+	  { "plastron", 0, NULL, S_ABOUT_THANKS_PLASTRON },
+	  { "ROCKNIX", 0, NULL, S_ABOUT_THANKS_ROCKNIX },
+	  { "Buildroot", 0, NULL, S_ABOUT_THANKS_BUILDROOT },
+	  { "libretro", 0, NULL, S_ABOUT_THANKS_LIBRETRO },
+	  { "PortMaster", 0, NULL, S_ABOUT_THANKS_PORTMASTER } },
+	{ { "plorpOS", 0, "DSperate, FAKE-08", 0 },
+	  { "OpenBOR Team", 0, "OpenBOR", 0 },
+	  { "BenJelter", 0, NULL, S_ABOUT_THANKS_BENJELTER },
+	  { NULL, S_ABOUT_THANKS_MENU_MUSIC, "OpenGameArt", 0 },
+	  { "Lexend", 0, NULL, S_ABOUT_THANKS_LEXEND },
+	  { "SDL, Mesa", 0, NULL, S_ABOUT_THANKS_SDL } },
+	{ { "FFmpeg, SQLite", 0, NULL, S_ABOUT_THANKS_FFMPEG },
+	  { "minimp3, stb_vorbis", 0, NULL, S_ABOUT_THANKS_MINIMP3 },
+	  { "Linux, U-Boot", 0, NULL, S_ABOUT_THANKS_LINUX },
+	  { "Temurin, DejaVu", 0, NULL, S_ABOUT_THANKS_TEMURIN } },
 };
 
 typedef struct {
 	char ver[48], addr[80], batt[32], up[48];
 	menu_row system[4], details[ABOUT_DETAIL_ROWS];
 	char story_lines[SYN_WRAP_LINES][CHV_WRAP_COLS];
-	menu_row story[SYN_ROWS], thanks_last[ABOUT_THANKS_LAST + 2];
+	menu_row story[SYN_ROWS], thanks[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS + 2];
 	int nstory, story_loop;
 	SDL_Texture *photo;
 	about_info info;
@@ -9387,22 +9568,32 @@ typedef struct {
 	int width;
 } about_view;
 
-/* The story laid out for the panel, and the last thanks page with its note;
- * once, when About opens: neither changes while it is open */
+/* The story laid out for the panel, and the thanks pages, the last with its
+ * note; once, when About opens: neither changes while it is open */
 static void about_pages(app *a, about_view *v)
 {
 	char path[CFG_STR * 2];
-	int i, wrap = menu_std_width(a);
+	int i, p, wrap = menu_std_width(a);
 
 	/* No photo (a host shot's card, say) is the story at the full width */
 	snprintf(path, sizeof path, "%s/zyper.png", P_ROOT);
 	if (!v->photo && (v->photo = IMG_LoadTexture(a->r, path)))
 		SDL_SetTextureBlendMode(v->photo, SDL_BLENDMODE_BLEND);
 	if (v->photo) wrap -= ABOUT_PHOTO_W + ABOUT_PHOTO_GAP;
-	v->nstory = syn_layout(ABOUT_STORY, wrap, v->story_lines, v->story, &v->story_loop);
-	for (i = 0; i < ABOUT_THANKS_LAST; i++) v->thanks_last[i] = ABOUT_THANKS[2][i];
-	v->thanks_last[i++] = MENU_RULE;
-	v->thanks_last[i] = MENU_NOTE("All licenses are in Licenses/");
+	v->nstory = syn_layout(T(S_ABOUT_STORY), wrap, v->story_lines, v->story, &v->story_loop);
+	for (p = 0; p < ABOUT_THANKS_PAGES; p++) {
+		int rows = p < ABOUT_THANKS_PAGES - 1 ? ABOUT_THANKS_ROWS : ABOUT_THANKS_LAST;
+
+		for (i = 0; i < rows; i++) {
+			const about_thanks *t = &ABOUT_THANKS[p][i];
+
+			v->thanks[p][i] = (menu_row){ t->who ? t->who : T(t->who_s),
+			                              t->what ? t->what : T(t->what_s), false };
+		}
+	}
+	i = ABOUT_THANKS_LAST;
+	v->thanks[2][i++] = MENU_RULE;
+	v->thanks[2][i] = MENU_NOTE(T(S_ABOUT_LICENSES));
 }
 
 /* One width for every page, grown only if a value needs it */
@@ -9410,11 +9601,11 @@ static int about_width(app *a, const about_view *v)
 {
 	int w = menu_std_width(a), m, i;
 
-	if ((m = menu_measure(v->details, ABOUT_DETAIL_ROWS, "About ZyperOS")) > w) w = m;
-	if ((m = menu_measure(v->system, 4, "About ZyperOS")) > w) w = m;
+	if ((m = menu_measure(v->details, ABOUT_DETAIL_ROWS, T(S_ABOUT_HEADING))) > w) w = m;
+	if ((m = menu_measure(v->system, 4, T(S_ABOUT_HEADING))) > w) w = m;
 	for (i = 0; i < ABOUT_THANKS_PAGES - 1; i++)
-		if ((m = menu_measure(ABOUT_THANKS[i], ABOUT_THANKS_ROWS, "Thanks")) > w) w = m;
-	if ((m = menu_measure(ABOUT_THANKS[2], ABOUT_THANKS_LAST, "Thanks")) > w) w = m;
+		if ((m = menu_measure(v->thanks[i], ABOUT_THANKS_ROWS, T(S_ABOUT_THANKS))) > w) w = m;
+	if ((m = menu_measure(v->thanks[2], ABOUT_THANKS_LAST, T(S_ABOUT_THANKS))) > w) w = m;
 	return w;
 }
 
@@ -9429,27 +9620,30 @@ static void about_refresh(about_view *v, unsigned now)
 		v->primed = true;
 		v->refreshed = now;
 		snprintf(v->addr, sizeof v->addr, "%s", ws == WIFI_CONNECTED
-		         ? (ip[0] ? ip : "no address yet") : "not connected");
+		         ? (ip[0] ? ip : T(S_ABOUT_NO_ADDRESS_YET)) : T(S_ABOUT_NOT_CONNECTED));
 		about_read(&v->info, P_CARD, plat_battery_info_path());
 		about_detail_rows(&v->info, v->details, &v->values);
 	}
 	/* Use the shared cable cache, so About follows charger changes as the
 	 * status corner does instead of waiting for the storage refresh. */
-	if (battery_now(&pct, &charging))
-		snprintf(v->batt, sizeof v->batt, "%d%%%s", pct, charging ? " charging" : "");
-	else snprintf(v->batt, sizeof v->batt, "unknown");
+	if (!battery_now(&pct, &charging))
+		snprintf(v->batt, sizeof v->batt, "%s", T(S_ABOUT_UNKNOWN));
+	else if (charging)
+		snprintf(v->batt, sizeof v->batt, T(S_ABOUT_BATTERY_CHARGING), pct);
+	else
+		snprintf(v->batt, sizeof v->batt, "%d%%", pct);
 	snprintf(v->ver, sizeof v->ver, "%s", ZYPEROS_VERSION);
-	snprintf(v->up, sizeof v->up, "%uh %02um", now / 3600000, (now / 60000) % 60);
-	v->system[0] = (menu_row){ "Version", v->ver, false };
-	v->system[1] = (menu_row){ "Address", v->addr, false };
-	v->system[2] = (menu_row){ "Battery", v->batt, false };
-	v->system[3] = (menu_row){ "Awake for", v->up, false };
+	snprintf(v->up, sizeof v->up, T(S_ABOUT_UPTIME), now / 3600000, (now / 60000) % 60);
+	v->system[0] = (menu_row){ T(S_ABOUT_VERSION), v->ver, false };
+	v->system[1] = (menu_row){ T(S_ABOUT_ADDRESS), v->addr, false };
+	v->system[2] = (menu_row){ T(S_ABOUT_BATTERY), v->batt, false };
+	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
 }
 
 static void about_draw(app *a, const about_view *v, int page)
 {
 	const menu_row *rows = v->system;
-	const char *heading = "About ZyperOS";
+	const char *heading = T(S_ABOUT_HEADING);
 	char count[16];
 	int n = 4;
 
@@ -9457,10 +9651,13 @@ static void about_draw(app *a, const about_view *v, int page)
 
 	switch (page) {
 	case 1: rows = v->details; n = ABOUT_DETAIL_ROWS; break;
-	case 2: rows = v->story; n = v->nstory; loop_at = v->story_loop; heading = "The name"; break;
-	case 3: rows = ABOUT_THANKS[0]; n = ABOUT_THANKS_ROWS; heading = "Thanks"; break;
-	case 4: rows = ABOUT_THANKS[1]; n = ABOUT_THANKS_ROWS; heading = "Thanks"; break;
-	case 5: rows = v->thanks_last; n = ABOUT_THANKS_LAST + 2; heading = "Thanks"; break;
+	case 2:
+		rows = v->story; n = v->nstory; loop_at = v->story_loop;
+		heading = T(S_ABOUT_THE_NAME);
+		break;
+	case 3: rows = v->thanks[0]; n = ABOUT_THANKS_ROWS; heading = T(S_ABOUT_THANKS); break;
+	case 4: rows = v->thanks[1]; n = ABOUT_THANKS_ROWS; heading = T(S_ABOUT_THANKS); break;
+	case 5: rows = v->thanks[2]; n = ABOUT_THANKS_LAST + 2; heading = T(S_ABOUT_THANKS); break;
 	}
 	/* The panel draws posed into a pass of its own while it opens; the
 	 * photo comes once it is at rest, rather than unscaled over it */
@@ -9549,7 +9746,7 @@ static void controls_screen(app *a)
 		char head[80], count[16];
 		int n = ctl_rows(page, rows);
 
-		snprintf(head, sizeof head, "Controls: %s", ctl_page_name(page));
+		snprintf(head, sizeof head, T(S_PANEL_CONTROLS), ctl_page_name(page));
 		/* which page of how many, at the heading's right (DESIGN.md 11.3) */
 		snprintf(count, sizeof count, "%d / %d", (int)page + 1, CTL_PAGES);
 
@@ -9636,7 +9833,7 @@ static void tour_sound(int s)
  * from where it is, and is taken by it: nothing waits on a message. */
 static void tour_skip_message(app *a)
 {
-	const char *s = "Show Tutorial is in MENU.";
+	const char *s = T(S_TOURRUN_SKIP_MESSAGE);
 	const uint32_t at = plat_now_ms();
 	uint32_t out = at + DS_MS_HOLD_SHORT, now;
 
@@ -9729,7 +9926,10 @@ static void tour_run(app *a, bool first)
 	/* What Appearance was, Auto too, for a theme looked at and not kept */
 	const appearance look_was = theme_appearance();
 
+	bool lang_kept = false;
+
 	tour_start(&t, plat_now_ms(), plat_brightness_on_volume());
+	tour_lang_from(&t, (int)i18n_lang());
 	tour_settings(a, at);
 	tour_choices_from(&t, at);
 	memcpy(looked, at, sizeof looked);
@@ -9804,6 +10004,18 @@ static void tour_run(app *a, bool first)
 			tour_hands(&t, held, plat_menu_held(), now);
 		}
 		tour_tick(&t, now);
+		/* The language step (DESIGN.md 11.30): the screen in the language
+		 * under the cursor from the frame it lands on, going round or
+		 * moved, and the one kept saved once A leaves the step or START
+		 * skips the rest */
+		if (t.step == TOUR_LANG && !t.over) {
+			const lang f = (lang)tour_lang_focus(&t, now);
+
+			if (f != i18n_lang()) language_apply(a, f, false);
+		} else if (!lang_kept) {
+			language_apply(a, (lang)tour_lang_kept(&t), true);
+			lang_kept = true;
+		}
 		tick_theme(a);
 		/* Seen once past the power step's press, so the second POWER in
 		 * its reward, which turns the handheld off, leaves it seen */
@@ -9915,11 +10127,11 @@ static int menu_shelf_width(app *a)
 		}
 		for (k = 0; !own && k < DMODE_COUNT; k++) {
 			int mw;
-			rows[SM_DISPLAY].value = DMODES[k].label;
+			rows[SM_DISPLAY].value = dmode_label(k);
 			mw = menu_measure(rows, n, heading);
 			if (mw > w) w = mw;
 		}
-		if (!own) rows[SM_DISPLAY].value = DMODES[0].label;
+		if (!own) rows[SM_DISPLAY].value = dmode_label(0);
 		/* And each core a shelf can choose, for the same reason. */
 		if (!own && cfg_core_count(&a->sys.systems[i]) > 1) {
 			char alt[CFG_STR], lb[CFG_STR];
@@ -9935,7 +10147,7 @@ static int menu_shelf_width(app *a)
 		}
 		for (k = 0; k < (muse ? ML_ORDERS : SORT_COUNT); k++) {
 			int mw;
-			rows[srow].value = muse ? ml_order_label((ml_order)k, false) : SORTS[k].label;
+			rows[srow].value = muse ? ml_order_label((ml_order)k, false) : sort_label(k);
 			mw = menu_measure(rows, n, heading);
 			if (mw > w) w = mw;
 			if (muse) {
@@ -9991,8 +10203,12 @@ int menu_std_width(app *a)
 {
 	int content = 800 - menu_pad() * 2;
 	int floor   = menu_shelf_width(a);
+	/* No wider than menu_draw makes a panel: a language whose rows run long
+	 * (German) measured past it, and About's story, wrapped at that, slid */
+	int most    = ZYPEROS_SCREEN_W - MENU_MARGIN * 2 - menu_pad() * 2;
+	int w       = floor > content ? floor : content;
 
-	return floor > content ? floor : content;
+	return w < most ? w : most;
 }
 
 /* ---------- MENU > Search Games ---------------------------------------- */
@@ -10008,7 +10224,7 @@ typedef struct {
 	app       *a;
 	sr_item    hit[SR_SHOWN];
 	int        n, found, pick;
-	char       heading[96], note[64];
+	char       heading[160], note[160];
 } search_view;
 
 static int search_build(void *ctx, menu_row *rows, int max, const char **heading)
@@ -10029,10 +10245,9 @@ static int search_build(void *ctx, menu_row *rows, int max, const char **heading
 	}
 	rows[n++] = MENU_RULE;
 	if (v->found > v->n)
-		snprintf(v->note, sizeof v->note, "%d of %d games: type more to narrow",
-		         v->n, v->found);
+		snprintf(v->note, sizeof v->note, T(S_SEARCH_SOME_OF), v->n, v->found);
 	else
-		snprintf(v->note, sizeof v->note, "%d game%s", v->found, v->found == 1 ? "" : "s");
+		snprintf(v->note, sizeof v->note, TN(S_SEARCH_FOUND, v->found), v->found);
 	rows[n++] = MENU_NOTE(v->note);
 	return n;
 }
@@ -10072,21 +10287,21 @@ static bool search_screen(app *a, int *shelf, int *game)
 	v.a = a;
 	while (!picked && a->running && !want_quit && !g_menu_closing) {
 		menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS };
-		kb_result kr = keyboard_prompt(a, "Search Games", query, (int)sizeof query);
+		kb_result kr = keyboard_prompt(a, T(S_SEARCH_TITLE), query, (int)sizeof query);
 
 		if (kr == KB_POWER) { power_off(a); break; }
 		if (kr != KB_ACCEPT || !query[0]) break;
 		v.found = sr_search(query, items, n, v.hit, SR_SHOWN);
 		v.n = v.found < SR_SHOWN ? v.found : SR_SHOWN;
 		if (!v.n) {
-			char msg[96];
+			char msg[192];
 
 			uisound_play(DS_SOUND_DENY);
-			snprintf(msg, sizeof msg, "No games match \"%s\"", query);
-			result_message(a, "Search Games", msg);
+			snprintf(msg, sizeof msg, T(S_SEARCH_NONE), query);
+			result_message(a, T(S_SEARCH_TITLE), msg);
 			continue;
 		}
-		snprintf(v.heading, sizeof v.heading, "Search: %s", query);
+		snprintf(v.heading, sizeof v.heading, T(S_SEARCH_HEADING), query);
 		v.pick = -1;
 		menu_run(a, &st, search_build, search_key, &v);
 		if (v.pick >= 0) {
@@ -10116,17 +10331,17 @@ static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
 	char id[64];
 	int z, n;
 
-	*heading = "Date & Time";
+	*heading = T(S_DATETIME_TITLE);
 	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
 	z = clock_zone_find(id);
 	snprintf(c->zone, sizeof c->zone, "%s", z >= 0 ? CLOCK_ZONES[z].city : id);
 	n = clock_rows(time(NULL), g_clock24, c->zone, rows, max, &c->b);
 	if (n + 3 <= max) {
 		rows[n++] = MENU_RULE;
-		rows[n++] = MENU_NOTE("Left/Right: change");
+		rows[n++] = MENU_NOTE(T(S_DATETIME_CHANGE));
 		/* Only where it is true: the Brick's ntpd sets the clock again once
 		 * Wi-Fi connects, so a time set here lasts until then */
-		if (plat_has_wifi()) rows[n++] = MENU_NOTE("Wi-Fi sets the clock when connected");
+		if (plat_has_wifi()) rows[n++] = MENU_NOTE(T(S_DATETIME_WIFI_SETS));
 	}
 	return n;
 }
@@ -10319,7 +10534,7 @@ static void update_page_draw(app *a, const su_page *p, char notes[UP_NOTES][120]
 	int x, i, w, y;
 
 	draw_background(a);
-	ui_text(r, fl, "System Update", ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
+	ui_text(r, fl, T(S_UPDATEPAGE_TITLE), ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
 	draw_zyper(r, 158.0f, 232.0f, 150.0f, ZYPER_TILT_DEG, 1.0f, 0.0f, 255);
 
 	/* 0.1.0 → 0.2.0, or the installed version alone */
@@ -10447,13 +10662,13 @@ static void update_screen(app *a)
 			up_spawn("download");
 			break;
 		case SUA_ROLLBACK: {
-			char msg[96], prog[512], dev[64];
+			char msg[192], prog[512], dev[64];
 			const char *slash = strrchr(P_USERDATA, '/');
 			char *argv[] = { prog, "rollback", "--card", (char *)P_CARD, "--device", dev, NULL };
 
 			uisound_play(DS_SOUND_ACCEPT);
-			snprintf(msg, sizeof msg, "Go back to %s at the next start?", v->prev);
-			if (confirm_panel(a, "Roll Back", msg, "Roll Back")) {
+			snprintf(msg, sizeof msg, T(S_UPDATEPAGE_ROLLBACK_ASK), v->prev);
+			if (confirm_panel(a, T(S_UPDATEPAGE_ROLLBACK), msg, T(S_UPDATEPAGE_ROLLBACK))) {
 				snprintf(prog, sizeof prog, "%s/zyperos-update", P_ROOT);
 				snprintf(dev, sizeof dev, "%s", slash ? slash + 1 : P_USERDATA);
 				plat_run(argv, NULL, P_ROOT);
@@ -10679,7 +10894,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 				if (key != IN_ACCEPT) return MENU_STAY;
 				if (id == SMM_ART) { album_art_screen(a); return MENU_STAY; }
 				if (id != SMM_RESCAN) return MENU_STAY;
-				wait_panel(a, "MP4", "Scanning...");
+				wait_panel(a, "MP4", T(S_LIBRARY_SCANNING));
 				rescan_all(a);
 				return MENU_DONE;
 			}
@@ -10776,7 +10991,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			art_screen(a, a->sys.systems[a->sys_cursor].folder, NULL, NULL,
 			           NULL, a->sys.systems[a->sys_cursor].accent);
 		if (sel == SM_RESCAN) {
-			wait_panel(a, a->sys.systems[a->sys_cursor].name, "Scanning...");
+			wait_panel(a, a->sys.systems[a->sys_cursor].name, T(S_LIBRARY_SCANNING));
 			rescan_all(a);
 			/* Close, rather than redraw this menu over a shelf that may have
 			 * just lost the system it was built for. Acting and closing is
@@ -10943,6 +11158,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		return MENU_DONE;
 	case PM_XFER:         xfer_screen(a); break;
 	case PM_LIGHTS:       lights_screen(a); break;
+	case PM_LANGUAGE:     language_screen(a); return MENU_CHANGED;
 	/* These three say how they went, which is Zyper's to answer */
 	case PM_SCRAPER:      return scraper_screen(a);
 	case PM_ACHIEVEMENTS: return ra_signin_screen(a);
@@ -11101,6 +11317,27 @@ typedef struct {
 	int saving;
 } slot_view;
 
+/* A save's moment as the strip shows it, "Aug 23 9:21:05 AM": the month's
+ * short name and the order of the parts are the language's (slots.when) */
+static void slot_when(char *out, size_t n, const struct tm *tm)
+{
+	static const str_id MON[12] = {
+		S_SLOTS_JAN, S_SLOTS_FEB, S_SLOTS_MAR, S_SLOTS_APR, S_SLOTS_MAY, S_SLOTS_JUN,
+		S_SLOTS_JUL, S_SLOTS_AUG, S_SLOTS_SEP, S_SLOTS_OCT, S_SLOTS_NOV, S_SLOTS_DEC,
+	};
+	int h12 = tm->tm_hour % 12;
+	const char *mon = T(MON[tm->tm_mon >= 0 && tm->tm_mon < 12 ? tm->tm_mon : 0]);
+
+	/* In the clock MENU > Clock chose, as the status corner is */
+	if (g_clock24) {
+		snprintf(out, n, T(S_SLOTS_WHEN_24), mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+		return;
+	}
+	if (!h12) h12 = 12;
+	snprintf(out, n, T(S_SLOTS_WHEN), mon, tm->tm_mday, h12, tm->tm_min, tm->tm_sec,
+	         T(tm->tm_hour < 12 ? S_SLOTS_AM : S_SLOTS_PM));
+}
+
 /* Drawing only, so one frame of it can be rendered by --shot without a game
  * running or a device in hand.
  *
@@ -11120,7 +11357,7 @@ static void slot_draw(app *a, const slot_view *sv, int sel)
 	const SDL_Rect area = { (ZYPEROS_SCREEN_W - 700) / 2, 129, 700, 451 };
 	const int bw = UI_PANEL_BORDER;
 	SDL_Rect img = area, frame;
-	char slotname[16];
+	char slotname[64];
 	int line_menu = ui_font_line(UI_F_MENU), line_meta = ui_font_line(UI_F_META);
 	int i;
 
@@ -11137,7 +11374,7 @@ static void slot_draw(app *a, const slot_view *sv, int sel)
 	 *
 	 * **text-soft**, as every heading is (DESIGN.md 11.3); it was the one
 	 * heading in **text-dim**. */
-	ui_text(a->r, ui_font(UI_F_LABEL), sv->saving ? "Save to" : "Load from",
+	ui_text(a->r, ui_font(UI_F_LABEL), sv->saving ? T(S_SLOTS_SAVE_TO) : T(S_SLOTS_LOAD_FROM),
 	        ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_LABEL, 39), 0,
 	        ui_col(dk->text_soft, 255));
 
@@ -11176,13 +11413,13 @@ static void slot_draw(app *a, const slot_view *sv, int sel)
 		SDL_SetRenderDrawColor(a->r, dk->ground.r, dk->ground.g, dk->ground.b,
 		                       238);
 		SDL_RenderFillRect(a->r, &img);
-		ui_text(a->r, ui_font(UI_F_MENU), "Empty", img.x + img.w / 2,
+		ui_text(a->r, ui_font(UI_F_MENU), T(S_SLOTS_EMPTY), img.x + img.w / 2,
 		        ui_cap_y(ui_font(UI_F_MENU), img.y + img.h / 2), 0,
 		        ui_col(dk->text_dim, 255));
 	}
 
-	if (sel == 0) snprintf(slotname, sizeof slotname, "Auto");
-	else          snprintf(slotname, sizeof slotname, "Slot %d", sel);
+	if (sel == 0) snprintf(slotname, sizeof slotname, "%s", T(S_SLOTS_AUTO));
+	else          snprintf(slotname, sizeof slotname, T(S_SLOTS_SLOT), sel);
 	ui_text(a->r, ui_font(UI_F_MENU), slotname, ZYPEROS_SCREEN_W / 2,
 	        ui_line_y(UI_F_MENU, img.y + img.h + 36), 0, ui_col(dk->text, 255));
 	ui_text(a->r, ui_font(UI_F_META),
@@ -11250,15 +11487,9 @@ static int slot_strip(app *a, SDL_Texture *bg, int saving)
 				 * strftime's "%-I", which drops the leading zero but is a GNU
 				 * extension and does nothing on the BSD libc the host build
 				 * links against - it would have read right on the device and
-				 * wrong in every screenshot. The month still comes from
-				 * strftime so it stays whatever the locale calls it. */
-				char mon[8];
-				int h12 = tm->tm_hour % 12;
-				strftime(mon, sizeof mon, "%b", tm);
-				if (!h12) h12 = 12;
-				snprintf(sv.when[i], sizeof sv.when[i], "%s %d %d:%02d:%02d %s",
-				         mon, tm->tm_mday, h12, tm->tm_min, tm->tm_sec,
-				         tm->tm_hour < 12 ? "AM" : "PM");
+				 * wrong in every screenshot. The month is the language's, as
+				 * the menu's words are, not the C library's locale. */
+				slot_when(sv.when[i], sizeof sv.when[i], tm);
 			}
 
 			slot_preview_path(a, o, g, slot, pth, sizeof pth);
@@ -11358,7 +11589,7 @@ static int gm_build(app *a, menu_row *out, gm_bufs *b)
 {
 	gm_ui u;
 
-	u.dmode  = DMODES[a->view[a->sys_cursor].dmode].label;
+	u.dmode  = dmode_label(a->view[a->sys_cursor].dmode);
 	u.earned = chv_earned();
 	u.total  = chv_count();
 	u.screens = g_game_dual;
@@ -11388,7 +11619,52 @@ static int gm_build(app *a, menu_row *out, gm_bufs *b)
  * than text. */
 #define CHV_WRAP_LINES 12
 
-/* Break `src` into lines no wider than `w`, at whitespace. Returns how many.
+/* The code point that starts at p, and its bytes in *len */
+static unsigned wrap_cp(const char *p, int *len)
+{
+	const unsigned char *u = (const unsigned char *)p;
+
+	*len = 1;
+	if (u[0] < 0xC0) return u[0];
+	if (u[0] < 0xE0 && (u[1] & 0xC0) == 0x80) { *len = 2; return (u[0] & 0x1Fu) << 6 | (u[1] & 0x3F); }
+	if (u[0] < 0xF0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80) {
+		*len = 3;
+		return (u[0] & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+	}
+	return u[0];
+}
+
+/* Whether a line may end at byte `i` of `s` inside a run with no spaces:
+ * src/linebreak.c's rule for Chinese, which has none - between two
+ * characters when either is Chinese, but not before a mark that closes
+ * (，。！…) nor after one that opens (（「“). `i` is where a character
+ * starts. */
+static bool wrap_cjk_break(const char *s, int i)
+{
+	static const unsigned closes[] = { 0x3001, 0x3002, 0xFF0C, 0xFF0E, 0xFF01, 0xFF1F, 0xFF1A,
+	                                   0xFF1B, 0xFF09, 0x300D, 0x300F, 0x300B, 0x3009, 0x3011,
+	                                   0x201D, 0x2019, 0x2026, 0x30FC, 0x00B7 };
+	static const unsigned opens[] = { 0xFF08, 0x300C, 0x300E, 0x300A, 0x3008, 0x3010,
+	                                  0x201C, 0x2018 };
+	unsigned prev, next;
+	int j = i - 1, len;
+	size_t k;
+
+	if (i <= 0 || !s[i]) return false;
+	while (j > 0 && ((unsigned char)s[j] & 0xC0) == 0x80) j--;
+	prev = wrap_cp(s + j, &len);
+	next = wrap_cp(s + i, &len);
+#define WRAP_CJK(c) (((c) >= 0x2E80 && (c) <= 0x9FFF) || ((c) >= 0xF900 && (c) <= 0xFAFF) || \
+                     ((c) >= 0xFF00 && (c) <= 0xFFEF))
+	if (!WRAP_CJK(prev) && !WRAP_CJK(next)) return false;
+#undef WRAP_CJK
+	for (k = 0; k < sizeof closes / sizeof closes[0]; k++) if (next == closes[k]) return false;
+	for (k = 0; k < sizeof opens / sizeof opens[0]; k++) if (prev == opens[k]) return false;
+	return true;
+}
+
+/* Break `src` into lines no wider than `w`, at whitespace, and in Chinese,
+ * which has none, between its characters (wrap_cjk_break). Returns how many.
  *
  * menu_draw marquees a note that does not fit, which is right for a footer
  * carrying four facts and wrong for a sentence: the reader has to wait for the
@@ -11417,7 +11693,7 @@ static int wrap_text(TTF_Font *f, const char *src, int w,
 
 	while (n < max) {
 		char buf[CHV_WRAP_COLS];
-		int take = 0, i;
+		int take = 0, fit = 0, i, len;
 		bool para = false;
 
 		while (*src == ' ' || *src == '\n' || *src == '\r' || *src == '\t') {
@@ -11432,14 +11708,19 @@ static int wrap_text(TTF_Font *f, const char *src, int w,
 		for (i = 1; src[i - 1] && src[i - 1] != '\n' && src[i - 1] != '\r' &&
 		            src[i - 1] != '\t'; i++) {
 			if (i >= (int)sizeof buf) break;
+			/* Inside a character's bytes: measured, and cut, only at its
+			 * end, so no line ends in half a character */
+			if (((unsigned char)src[i] & 0xC0) == 0x80) continue;
 			memcpy(buf, src, (size_t)i);
 			buf[i] = '\0';
 			if (ui_text_width(f, buf) > w) break;
+			fit = i;
 			if (src[i] == ' ' || src[i] == '\n' || src[i] == '\r' ||
-			    src[i] == '\t' || src[i] == '\0') take = i;
+			    src[i] == '\t' || src[i] == '\0' || wrap_cjk_break(src, i)) take = i;
 		}
 		if (!take) {                    /* one word longer than the panel */
-			take = i > 1 ? i - 1 : 1;
+			wrap_cp(src, &len);
+			take = fit > 0 ? fit : len;
 			if (take >= (int)sizeof buf) take = sizeof buf - 1;
 		}
 		memcpy(out[n], src, (size_t)take);
@@ -11491,7 +11772,7 @@ static bool cheevo_detail_screen(app *a, SDL_Texture *bg, bool over_shelf,
 	float k;
 
 	nl = wrap_text(ui_font(UI_F_MENU),
-	               c->desc[0] ? c->desc : "The set carries no description.",
+	               c->desc[0] ? c->desc : T(S_CHEEVOLIST_NO_DESCRIPTION),
 	               fixed, lines, CHV_WRAP_LINES);
 	/* Live, unlike an ordinary note. A caption under a setting is a caption;
 	 * here the description IS the content, and UI_TEXT_DIM is too quiet to be
@@ -11500,8 +11781,9 @@ static bool cheevo_detail_screen(app *a, SDL_Texture *bg, bool over_shelf,
 		rows[n++] = (menu_row){ lines[i], MENU_NOTE_MARK, true };
 	rows[n++] = MENU_RULE;
 	snprintf(pts, sizeof pts, "%d", c->points);
-	rows[n++] = (menu_row){ "Points", pts, true };
-	rows[n]   = (menu_row){ "Status", got ? "earned" : "not earned", true };
+	rows[n++] = (menu_row){ T(S_CHEEVOLIST_POINTS), pts, true };
+	rows[n]   = (menu_row){ T(S_CHEEVOLIST_STATUS),
+	                        got ? T(S_CHEEVOLIST_EARNED) : T(S_CHEEVOLIST_NOT_EARNED), true };
 	vcols[n]  = got ? VCOL_EARNED : 0u;
 	n++;
 
@@ -11933,17 +12215,23 @@ static void mmss(char *out, size_t n, double sec)
 #define NP_TX   (NP_X + NP_SIDE + 56)            /* the words beside it */
 #define NP_TW   (ZYPEROS_SCREEN_W - NP_TX - 64)
 
-/* A chapter as Now Playing names it: its own title when it has one worth
- * reading, "Chapter 3" when the title is only its number - Dungeon Crawler
- * Carl's thirty-seven are "001" to "037" - or missing. */
-static void chapter_label(int i, char *out, size_t n)
+/* Whether chapter `i` has a title worth reading, and not only its number -
+ * Dungeon Crawler Carl's thirty-seven are "001" to "037" - or none. */
+static bool chapter_titled(int i)
 {
 	const char *t = musec_chapter_title(i);
 	const char *p;
 
 	for (p = t; *p && (isdigit((unsigned char)*p) || *p == ' '); p++) { }
-	if (t[0] && *p) snprintf(out, n, "%s", t);
-	else            snprintf(out, n, "Chapter %d", i + 1);
+	return t[0] && *p;
+}
+
+/* A chapter as Now Playing names it: its own title when it has one worth
+ * reading, "Chapter 3" when the title is only its number or missing. */
+static void chapter_label(int i, char *out, size_t n)
+{
+	if (chapter_titled(i)) snprintf(out, n, "%s", musec_chapter_title(i));
+	else                   snprintf(out, n, T(S_MUSE_CHAPTER), i + 1);
 }
 
 /* One line of the words, sliding when it is wider than the column. `y` is
@@ -11957,6 +12245,8 @@ static void np_line(SDL_Renderer *r, ui_font_role role, const char *s, int y,
 	ui_text_marquee(r, f, s, NP_TX, ui_line_y(role, y), NP_TW, phase, col);
 	if (w < *wait) *wait = w;
 }
+
+static void np_legend(char *out, size_t n, const char *const *parts, int np, int w);
 
 /* Returns how long until the picture would change by itself, in ms - 0 while
  * a line is sliding - so the loop can leave the screen alone until then. */
@@ -11974,7 +12264,7 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 	unsigned rgb = ZYPEROS_ACCENT, wait = (unsigned)-1, phase;
 	SDL_Color acc = ui_col(theme()->accent_ink, 255);
 	const char *state = mn->state == MU_PLAYING ? NULL
-	                  : mn->state == MU_PAUSED  ? "Paused" : "Stopped";
+	                  : mn->state == MU_PAUSED  ? T(S_MUSE_PAUSED) : T(S_MUSE_STOPPED);
 	int book = musec_is_book() ? ml_album_of(&g_muse, musec_track(mn->index)) : -1;
 	double k = mn->len > 0 ? mn->at / mn->len : 0;
 	char t0[16], t1[16], line[200], fit[200];
@@ -11982,7 +12272,7 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 
 	/* A book played to its end says so, rather than that it stopped. */
 	if (mn->state == MU_STOPPED && book >= 0 && g_book_done && g_book_done[book])
-		state = "Finished";
+		state = T(S_MUSE_FINISHED);
 
 	g_frame_no++;
 	SDL_SetRenderDrawColor(r, UI_BG_R, UI_BG_G, UI_BG_B, 255);
@@ -12021,7 +12311,7 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 
 		/* A book with chapters counts those instead of its one file. */
 		if (musec_is_book() && musec_chapters() > 1) {
-			snprintf(line, sizeof line, "Chapter %d / %d",
+			snprintf(line, sizeof line, T(S_MUSE_CHAPTER_OF),
 			         musec_chapter_now() + 1, musec_chapters());
 			gx += ui_text(r, fs, line, NP_TX, ty, -1, UI_TEXT_DIM) + 18;
 		} else if (mn->count > 1) {
@@ -12048,8 +12338,11 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 		const char *top = mn->title;
 
 		if (musec_is_book() && musec_chapters() > 1) {
-			chapter_label(musec_chapter_now() < 0 ? 0 : musec_chapter_now(), chap, sizeof chap);
-			if (strncmp(chap, "Chapter ", 8) != 0) top = chap;
+			int ci = musec_chapter_now() < 0 ? 0 : musec_chapter_now();
+
+			/* The book's own "Chapter 3" is only a number too */
+			chapter_label(ci, chap, sizeof chap);
+			if (chapter_titled(ci) && strncmp(chap, "Chapter ", 8) != 0) top = chap;
 		}
 		np_line(r, UI_F_TITLE, top, y, phase, UI_TEXT, &wait);
 	}
@@ -12083,23 +12376,43 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 
 	/* The last line, its line ending where the cover does. */
 	if (next && next[0]) {
-		snprintf(line, sizeof line, "Next: %s", next);
+		snprintf(line, sizeof line, T(S_MUSE_NEXT), next);
 		ui_fit_text(fs, line, fit, sizeof fit, NP_TW);
 		ui_text(r, fs, fit, NP_TX,
 		        ui_line_y(UI_F_META, NP_Y + NP_SIDE - ui_font_line(UI_F_META)), -1,
 		        UI_TEXT_DIM);
 	}
 
-	ui_text(r, fs, musec_is_book()
-	        ? (musec_chapters() > 1
-	           ? (state ? "A: play   L1/R1: chapter   Left/Right: seek   Y: speed"
-	                    : "A: pause   L1/R1: chapter   Left/Right: seek   Y: speed")
-	           : (state ? "A: play   L1/R1: file   Left/Right: seek   Y: speed"
-	                    : "A: pause   L1/R1: file   Left/Right: seek   Y: speed"))
-	        : (state ? "A: play   L1/R1: track   Left/Right: seek   Y: mode"
-	                 : "A: pause   L1/R1: track   Left/Right: seek   Y: mode"),
-	        ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72), 0,
-	        UI_TEXT_DIM);
+	/* The keys, as much of them as fits the screen (np_legend): English's
+	 * longest, a book's, is about 950 of the 1008 */
+	{
+		const char *parts[4] = {
+			state ? T(S_MUSE_HINT_PLAY) : T(S_MUSE_HINT_PAUSE),
+			!musec_is_book() ? T(S_MUSE_HINT_TRACK)
+			: musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER) : T(S_MUSE_HINT_FILE),
+			T(S_MUSE_HINT_SEEK),
+			musec_is_book() ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE),
+		};
+
+		/* All four, on two lines where a language's words do not fit one:
+		 * a key left out is a cut (DESIGN.md 12) */
+		np_legend(line, sizeof line, parts, 4, ZYPEROS_SCREEN_W - 2 * DS_GRID);
+		if (strlen(line) < strlen(parts[0]) + strlen(parts[1]) + strlen(parts[2]) +
+		                   strlen(parts[3]) + 9) {
+			char more[200];
+			int k = 0;
+
+			while (k < 4 && strstr(line, parts[k])) k++;
+			np_legend(more, sizeof more, parts + k, 4 - k, ZYPEROS_SCREEN_W - 2 * DS_GRID);
+			ui_text(r, fs, line, ZYPEROS_SCREEN_W / 2,
+			        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72 - 46), 0, UI_TEXT_DIM);
+			ui_text(r, fs, more, ZYPEROS_SCREEN_W / 2,
+			        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72), 0, UI_TEXT_DIM);
+		} else {
+			ui_text(r, fs, line, ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72),
+			        0, UI_TEXT_DIM);
+		}
+	}
 	{
 		unsigned corner = draw_corner(r, theme_index(), UI_TEXT_SOFT,
 		                              wait <= 50 || frames_wanted());
@@ -12222,29 +12535,39 @@ static void lock_panel(app *a, const mp4lock *l)
 	SDL_Color panel = ui_col(theme()->surface, 255);
 	int pw = 720, ph = 360, px = (ZYPEROS_SCREEN_W - pw) / 2, py = (ZYPEROS_SCREEN_H - ph) / 2;
 	int y = py + 40, cx = ZYPEROS_SCREEN_W / 2, gs = 52, x, w;
-	const char *hold = "Hold", *plus = "+", *tail = "to unlock";
+	/* "Hold %s to unlock": the words either side of the pair, which is
+	 * drawn, their spaces off */
+	const char *fmt = T(S_MP4_HOLD_UNLOCK), *at = strstr(fmt, "%s");
+	const char *plus = "+", *tail = at ? at + 2 : "";
+	char hold[64];
+	int hn = at ? (int)(at - fmt) : (int)strlen(fmt);
 	float k = mp4lock_progress(l);
+
+	while (hn > 0 && fmt[hn - 1] == ' ') hn--;
+	snprintf(hold, sizeof hold, "%.*s", hn, fmt);
+	while (*tail == ' ') tail++;
 
 	ui_panel(r, &(SDL_Rect){ px, py, pw, ph }, DS_RADIUS_PANEL);
 	lock_mark(r, cx, y, ink, panel);
 	y += LOCK_MARK + 20;
-	ui_text(r, ft, "Locked", cx, ui_line_y(UI_F_TITLE, y), 0, text);
+	ui_text(r, ft, T(S_MP4_LOCKED), cx, ui_line_y(UI_F_TITLE, y), 0, text);
 	y += ui_font_line(UI_F_TITLE) + 20;
 	/* "Hold (SELECT) + (START) to unlock", the buttons drawn (DESIGN.md
 	 * 11.9), the pair mp4lock.h unlocks with. */
-	w = ui_text_width(fm, hold) + 14 + ui_button_width("SELECT", gs) + 12 +
-	    ui_text_width(fm, plus) + 12 + ui_button_width("START", gs) + 14 + ui_text_width(fm, tail);
+	w = (hold[0] ? ui_text_width(fm, hold) + 14 : 0) + ui_button_width("SELECT", gs) + 12 +
+	    ui_text_width(fm, plus) + 12 + ui_button_width("START", gs) +
+	    (tail[0] ? 14 + ui_text_width(fm, tail) : 0);
 	x = cx - w / 2;
 	{
 		int ty = ui_line_y(UI_F_META, y + (gs - ui_font_line(UI_F_META)) / 2), mid = y + gs / 2;
 
-		x += ui_text(r, fm, hold, x, ty, -1, dim) + 14;
+		if (hold[0]) x += ui_text(r, fm, hold, x, ty, -1, dim) + 14;
 		ui_button(r, "SELECT", x + ui_button_width("SELECT", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
 		x += ui_button_width("SELECT", gs) + 12;
 		x += ui_text(r, fm, plus, x, ty, -1, dim) + 12;
 		ui_button(r, "START", x + ui_button_width("START", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
 		x += ui_button_width("START", gs) + 14;
-		ui_text(r, fm, tail, x, ty, -1, dim);
+		if (tail[0]) ui_text(r, fm, tail, x, ty, -1, dim);
 	}
 	y += gs + 28;
 	/* The hold, as the one bar every hold in the system is (UI_BAR_H). */
@@ -12488,7 +12811,7 @@ static void np_video_bar(SDL_Renderer *r, const mu_now *mn, int x, int y, int w,
 	TTF_Font *fs = ui_font(UI_F_META);
 	SDL_Color acc = ui_col(theme()->accent_ink, a), soft = UI_TEXT_SOFT;
 	const char *state = mn->state == MU_PLAYING ? NULL
-	                  : mn->state == MU_PAUSED  ? "Paused" : "Stopped";
+	                  : mn->state == MU_PAUSED  ? T(S_MUSE_PAUSED) : T(S_MUSE_STOPPED);
 	double k = mn->len > 0 ? mn->at / mn->len : 0;
 	char t0[16], t1[16], line[24];
 	int fill, ty, left, right;
@@ -12534,11 +12857,11 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 	plat_video_under(tex, &pic, (SDL_Color){ g.r, g.g, g.b, 255 });
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 
-	parts[np++] = mn->state == MU_PLAYING ? "A: pause" : "A: play";
-	parts[np++] = "Left/Right: seek";
-	parts[np++] = "X: lock";
-	parts[np++] = full ? "Y: controls" : "Y: full screen";
-	if (mn->count > 1) parts[np++] = "L1/R1: video";
+	parts[np++] = mn->state == MU_PLAYING ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
+	parts[np++] = T(S_MUSE_HINT_SEEK);
+	parts[np++] = T(S_MP4_HINT_LOCK);
+	parts[np++] = full ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
+	if (mn->count > 1) parts[np++] = T(S_MP4_HINT_VIDEO);
 	np_legend(legend, sizeof legend, parts, np, ZYPEROS_SCREEN_W - 2 * NPV_X);
 
 	if (full) {
@@ -12563,7 +12886,7 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 		/* Paused, or stopped at the end, before the time in accent-ink. */
 		if (mn->state != MU_PLAYING) {
 			SDL_Color acc = ui_col(theme()->accent_ink, al);
-			const char *st = mn->state == MU_PAUSED ? "Paused" : "Stopped";
+			const char *st = mn->state == MU_PAUSED ? T(S_MUSE_PAUSED) : T(S_MUSE_STOPPED);
 
 			tw += 24 + ui_text(r, fs, st, NPV_X + NPV_W - tw - 24,
 			                   ui_line_y(UI_F_META, band.y + 30), 1, acc);
@@ -12872,7 +13195,7 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 			const char *v = "";
 
 			if (playing[0] && !strcmp(playing, t->path))
-				v = mn->state == MU_PAUSED ? "paused" : "playing";
+				v = mn->state == MU_PAUSED ? T(S_MUSE_ROW_PAUSED) : T(S_MUSE_ROW_PLAYING);
 			rows[n] = (menu_row){ t->name, v, true };
 		}
 		items = n;
@@ -12881,11 +13204,14 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 		/* What is playing, under a rule, even when it is another album's -
 		 * the list is a way to reach music, and the music is the point. */
 		if (loaded) {
+			char facts[sizeof note];
+
 			mmss(t0, sizeof t0, mn->at);
 			mmss(t1, sizeof t1, mn->len);
-			snprintf(note, sizeof note, "%s%s · %s · %s / %s",
-			         mn->state == MU_PAUSED ? "Paused: " : "", mn->title,
+			snprintf(facts, sizeof facts, "%s · %s · %s / %s", mn->title,
 			         mn->artist[0] ? mn->artist : mn->album, t0, t1);
+			snprintf(note, sizeof note, mn->state == MU_PAUSED ? T(S_MUSE_PAUSED_NOTE) : "%s",
+			         facts);
 			rows[n++] = MENU_RULE;
 			rows[n++] = MENU_NOTE(note);
 		}
@@ -13429,7 +13755,7 @@ static void album_art_screen(app *a)
 	museart_job *jobs;
 	museart_status st;
 	menu_row rows[3];
-	char head[300], fit[200], where[64], counts[96];
+	char head[300], fit[200], where[64], counts[160];
 	bool working, done = false;
 	int n, lv;
 	float k;
@@ -13437,7 +13763,7 @@ static void album_art_screen(app *a)
 	if (!net_online()) {
 		menu_row row = { MSG_NEEDS_WIFI, NULL, false };
 
-		timed_message(a, "Album Art", &row, 1, 0, ZYPEROS_ACCENT);
+		timed_message(a, T(S_MUSE_ART_TITLE), &row, 1, 0, ZYPEROS_ACCENT);
 		return;
 	}
 	jobs = calloc((size_t)(g_muse.nalbums > 0 ? g_muse.nalbums : 1), sizeof *jobs);
@@ -13465,21 +13791,20 @@ static void album_art_screen(app *a)
 		if (st.landed >= 0) album_art_landed(a, st.landed, st.rg);
 
 		ui_fit_text(ui_font(UI_F_LABEL),
-		            working ? (st.now[0] ? st.now : "starting")
+		            working ? (st.now[0] ? st.now : T(S_MUSE_ART_STARTING))
 		            : st.problem[0] ? st.problem
-		            : n == 0 ? "Every album has a crisp cover" : "Done",
+		            : n == 0 ? T(S_MUSE_ART_ALL_CRISP) : T(S_MUSE_ART_DONE),
 		            fit, sizeof fit, ZYPEROS_SCREEN_W * 3 / 4);
-		snprintf(head, sizeof head, "Album Art\n%s", fit);
+		snprintf(head, sizeof head, "%s\n%s", T(S_MUSE_ART_TITLE), fit);
 		snprintf(where, sizeof where, "%d / %d", st.done, st.n);
 		if (st.failed)
-			snprintf(counts, sizeof counts, "%d found · %d not found · %d failed",
+			snprintf(counts, sizeof counts, T(S_MUSE_ART_COUNTS_FAILED),
 			         st.found, st.missing, st.failed);
 		else
-			snprintf(counts, sizeof counts, "%d found · %d not found",
-			         st.found, st.missing);
-		rows[0] = (menu_row){ "Albums", where,  false };
-		rows[1] = (menu_row){ "Covers", counts, false };
-		rows[2] = (menu_row){ working ? "B: stop" : "B: close", NULL, false };
+			snprintf(counts, sizeof counts, T(S_MUSE_ART_COUNTS), st.found, st.missing);
+		rows[0] = (menu_row){ T(S_MUSE_ART_ALBUMS), where,  false };
+		rows[1] = (menu_row){ T(S_MUSE_ART_COVERS), counts, false };
+		rows[2] = (menu_row){ working ? T(S_MUSE_ART_STOP) : T(S_MUSE_ART_CLOSE), NULL, false };
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -13640,7 +13965,7 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	 * With "cheevos" after the first it was 818 wide in Lexend, more than
 	 * the panel's content, and the line scrolled; at 585 it fits with room
 	 * for a set of hundreds, and the list under it says what it counts. */
-	snprintf(heading, sizeof heading, "%s\n%d / %d · %d / %d points",
+	snprintf(heading, sizeof heading, T(S_CHEEVOLIST_HEADING),
 	         chv_game_title(), chv_earned(), n,
 	         chv_points_earned(), chv_points_total());
 
@@ -13825,15 +14150,15 @@ static int gm_width(app *a)
 	n = gm_build(a, rows, &b);
 	for (k = 0; k < DMODE_COUNT; k++) {
 		int mw;
-		rows[GM_DISPLAY].value = DMODES[k].label;
+		rows[GM_DISPLAY].value = dmode_label(k);
 		mw = menu_measure(rows, n, NULL);
 		if (mw > w) w = mw;
 	}
-	rows[GM_DISPLAY].value = DMODES[0].label;
+	rows[GM_DISPLAY].value = dmode_label(0);
 	/* A DS game's Screens row, right under Display, at each layout. */
 	for (k = 0; g_game_dual && k < GM_LAYOUTS; k++) {
 		int mw;
-		rows[GM_DISPLAY + 1].value = gm_layout_labels[k];
+		rows[GM_DISPLAY + 1].value = gm_layout_label(k);
 		mw = menu_measure(rows, n, NULL);
 		if (mw > w) w = mw;
 	}
@@ -14215,7 +14540,7 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 		fprintf(stderr, "port: couldn't write %s\n", PORT_REQUEST);
 		unlink(PORT_REQUEST ".tmp");
 		if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_DENY);
-		result_message(a, s->name, "couldn't start it");
+		result_message(a, s->name, T(S_LAUNCH_COULDNT_START));
 		return;
 	}
 	/* A's answer, now that the port will start, and before remember_place
@@ -14333,9 +14658,9 @@ static void launch(app *a)
 	 * failure than the one being fixed. */
 	if (s->disc_bios[0] && lib_is_disc(v->list.items[v->cursor].file)) {
 		if (!disc_bios_found(bios, s->disc_bios)) {
-			char msg[CFG_STR + 32];
+			char msg[CFG_STR + 96];
 
-			snprintf(msg, sizeof msg, "needs Bios/%.*s",
+			snprintf(msg, sizeof msg, T(S_LAUNCH_NEEDS_BIOS),
 				 (int)strcspn(s->disc_bios, ","), s->disc_bios);
 			if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_DENY);
 			result_message(a, v->list.items[v->cursor].title, msg);
@@ -14425,7 +14750,7 @@ static void launch(app *a)
 		memset(&it, 0, sizeof it);
 		it.kind = NQ_SET;
 		it.ms = 3000;
-		snprintf(it.head, sizeof it.head, "%d of %d unlocked", chv_earned(), chv_count());
+		snprintf(it.head, sizeof it.head, T(S_CHEEVOLIST_UNLOCKED), chv_earned(), chv_count());
 		snprintf(it.body, sizeof it.body, "%s", chv_game_title());
 		nq_push(&g_nq, &it);
 	}
@@ -15088,10 +15413,14 @@ static int shot_controls = -1;
 /* --sgdb [0|1|2]: MENU > SteamGridDB with no key, a key that works, or one
  * they refused - a stand-in key, masked as a real one is */
 static int shot_sgdb = -1;
-/* --scraper [0-4]: MENU > Scraper at rest, running, after a run; the Video
- * Snaps page; ScreenScraper's page. Stand-in counts, as a run would have. */
+/* --scraper [0-5]: MENU > Scraper at rest, running, after a run; the Video
+ * Snaps page; ScreenScraper's page; at rest with no network. Stand-in
+ * counts, as a run would have. */
 static int shot_scraper = -1;
 static int shot_about = -1;
+/* --language [ROW]: MENU > Language's panel over the shelf, the cursor on
+ * ROW (the language that is on when none is given) */
+static int shot_language = -2;
 /* --update: MENU > System Update's page as the status file in
  * ZYPEROS_USERDATA/update says (the update lab's states) */
 static int shot_update = -1;
@@ -15111,7 +15440,7 @@ static const char *shot_hot_now    = "receiving Contra (USA).zip";
 static const char *shot_hare_addr = "192.168.1.42";
 static const char *shot_hare_who  = "1 connected";
 static const char *shot_hare_head = "receiving Contra (USA).zip";
-static const char *shot_wait, *shot_wait_msg = "Scanning...";
+static const char *shot_wait, *shot_wait_msg;   /* NULL: library.scanning's */
 static int shot_osd_kind, shot_osd_val; /* --osd volume|brightness LEVEL */
 /* --tour STEP [MS [DONE]]: one frame of the tutorial, src/tour.h's step by
  * its name (or "skip", the shelf with the message a skip leaves), MS into
@@ -15127,13 +15456,16 @@ static int shot_tour_pick = -1, shot_tour_pick_ms = 5000;
 static bool shot_tour_music;
 static int shot_fn_volume;
 static const char *const TOUR_STEP_NAMES[TOUR_STEPS] = {
-	"welcome", "move", "a", "b", "y", "x", "menu", "select", "vol", "bright", "power",
+	"lang", "welcome", "move", "a", "b", "y", "x", "menu", "select", "vol", "bright", "power",
 	"theme", "home", "sounds", "music", "finish" };
 
 /* --theme light|dark: the theme the shot is drawn in, whatever the saved
  * Appearance is; -1 for the saved one. */
 static int shot_theme = -1;
 static int shot_home = -1;
+/* --lang CODE: the language the shot is drawn in (src/i18n.h; xx, the
+ * pseudo-locale, on a host), whatever MENU > Language saved; NULL for it */
+static const char *shot_lang;
 /* --cheer MS: the cheer for the first games, MS into it, over the home */
 static int shot_cheer = -1;
 /* --songpop "HEAD|BODY" [MS]: Zyper's pop-up with a song (DESIGN.md 11.22),
@@ -15250,11 +15582,14 @@ static void shot_draw_slots(app *a)
 	int i;
 
 	for (i = 0; i <= GM_SLOTS; i++) {
+		/* An afternoon in August, a slot an hour apart */
+		struct tm tm = { .tm_mon = 7, .tm_mday = 20 + i, .tm_hour = 13 + i,
+		                 .tm_min = i * 7, .tm_sec = i * 9 };
+
 		/* Slot 5 left empty, so the empty state is in the picture too. */
 		if (i == 5) continue;
 		sv.have[i] = 1;
-		snprintf(sv.when[i], sizeof sv.when[i], "Aug %d %d:%02d:%02d PM",
-		         20 + i, 1 + i, i * 7, i * 9);
+		slot_when(sv.when[i], sizeof sv.when[i], &tm);
 		sv.thumb[i] = fake_frame(a->r, shot_slot_aspect);
 	}
 	ui_scrim(a->r, 1);
@@ -15585,9 +15920,15 @@ static void shot_compose(app *a)
 		menu_row rows[MENU_MAX_ROWS];
 		menu_bufs b;
 		const char *heading;
-		int n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading), k;
+		lang was = i18n_lang();
+		int n, k;
 
+		/* The name as typed is English's, and the row is the same row in
+		 * every language: found in English, drawn in the shot's */
+		i18n_set(LANG_EN);
+		n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
 		for (k = 0; k < n && !(rows[k].label && !strcmp(rows[k].label, shot_menu_label)); k++) ;
+		i18n_set(was);
 		if (k == n) {
 			fprintf(stderr, "--menu: no row called %s\n", shot_menu_label);
 			shot_failed = 1;
@@ -15605,6 +15946,17 @@ static void shot_compose(app *a)
 		shot_key = -1;   /* once: --flip composes the shot more than once */
 	}
 	draw_shelf(a);
+	if (shot_language > -2) {
+		static unsigned char snd[LANG_COUNT];
+		menu_row rows[LANG_COUNT];
+		const char *heading;
+		int n = language_build(snd, rows, LANG_COUNT, &heading);
+
+		ui_scrim(a->r, 0);
+		menu_draw(a, heading, rows, n, shot_language >= 0 ? shot_language : (int)i18n_lang(),
+		          menu_std_width(a), MENU_ZYPEROS);
+		return;
+	}
 	if (shot_update >= 0) {
 		su_page p;
 		char notes[UP_NOTES][120];
@@ -15678,7 +16030,7 @@ static void shot_compose(app *a)
 	 * in..." and "Looking up this game...". Five flows use it and none of them
 	 * could be rendered. */
 	if (shot_wait) {
-		menu_row row = { shot_wait_msg, NULL, false };
+		menu_row row = { shot_wait_msg ? shot_wait_msg : T(S_LIBRARY_SCANNING), NULL, false };
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
@@ -15712,7 +16064,7 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		menu_draw(a, "SteamGridDB", rows, n, 0, menu_std_width(a), MENU_ZYPEROS);
 	}
-	if (shot_scraper >= 0 && shot_scraper <= 2) {
+	if ((shot_scraper >= 0 && shot_scraper <= 2) || shot_scraper == 5) {
 		static scraper_bufs b;
 		scraper_ui u = { .net = true, .missing = 142, .snaps = "on \xc2\xb7 1.4 GB",
 		                 .ss_have = true, .ss_in = true, .ss_name = "tarik",
@@ -15725,6 +16077,10 @@ static void shot_compose(app *a)
 		if (shot_scraper == 1) {
 			u.running = true; u.done = 31; u.total = 142;
 			u.ss_found = 12; u.lr_found = 17; u.sg_found = 2;
+		} else if (shot_scraper == 5) {
+			/* Offline: the first row's value is "needs Wi-Fi", the longest
+			 * it has in most languages (check-i18n-shots) */
+			u.net = false;
 		} else if (shot_scraper == 2) {
 			u.ran = true; u.missing = 9;
 			u.ss_found = 61; u.lr_found = 58; u.sg_found = 14; u.not_found = 9;
@@ -15834,8 +16190,8 @@ static void shot_compose(app *a)
 			rows[ci] = (menu_row){ sample[ci].t, vals[ci], sample[ci].got };
 			vcols[ci] = sample[ci].got ? VCOL_EARNED : 0u;
 		}
-		snprintf(head, sizeof head, "%s\n%d / 36 · %d / 415 points",
-		         shot_cheevos_game, 3, 25);
+		snprintf(head, sizeof head, T(S_CHEEVOLIST_HEADING),
+		         shot_cheevos_game, 3, 36, 25, 415);
 		/* Drawn the way cheevos_screen draws it - menu_draw_ex, the earned
 		 * colors, the shared width - because a shot that composes the panel
 		 * differently from the screen is a picture of something that does not
@@ -15932,17 +16288,22 @@ static int shot_menu_from(app *a, int sel)
 	return sel;
 }
 
-/* The row of the top menu called `label`, or -1 */
+/* The row of the top menu called `label` in English, or -1: the same row in
+ * every language, found in English as --menu's is */
 static int shot_menu_row(app *a, const char *label)
 {
 	menu_row rows[MENU_MAX_ROWS];
 	menu_bufs bufs;
 	const char *heading;
-	int n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading), i;
+	lang was = i18n_lang();
+	int n, i;
 
+	i18n_set(LANG_EN);
+	n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading);
 	for (i = 0; i < n; i++)
-		if (rows[i].label && !strcmp(rows[i].label, label)) return i;
-	return -1;
+		if (rows[i].label && !strcmp(rows[i].label, label)) break;
+	i18n_set(was);
+	return i < n ? i : -1;
 }
 
 /* --shot-at: the press, and the frames after it up to the shot's time.
@@ -16181,17 +16542,24 @@ static void shot_tour_draw(app *a)
 		const float ms = (float)shot_tour_ms;
 
 		draw_shelf(a);
-		tour_message(a->r, "Show Tutorial is in MENU.",
+		tour_message(a->r, T(S_TOURRUN_SKIP_MESSAGE),
 		             tour_ease(TC_OUT, (uint32_t)shot_tour_ms, 0, DS_MS_MOVE)
 		             * (1.0f - fminf(1.0f, fmaxf(0.0f, (ms - DS_MS_HOLD_SHORT) / DS_MS_FADE_OUT))));
 	} else {
 		tour_pose(&t, (tour_step)shot_tour, now, shot_tour_ms, shot_tour_done,
 		          shot_fn_volume || plat_brightness_on_volume());
+		tour_lang_from(&t, (int)i18n_lang());
 		tour_set_music(&t, shot_tour_music);
 		tour_settings(a, at);
 		tour_choices_from(&t, at);
 		if (shot_tour_pick >= 0)
 			tour_pose_pick(&t, shot_tour_pick, now, shot_tour_pick_ms);
+		/* The language step is drawn in the language under its cursor */
+		if (t.step == TOUR_LANG) {
+			const lang f = (lang)tour_lang_focus(&t, now);
+
+			if (f != i18n_lang()) language_apply(a, f, false);
+		}
 		if (shot_tour_done >= 0 && tour_choice_of(t.step) >= 0)
 			t.kept[tour_choice_of(t.step)] = t.pick[tour_choice_of(t.step)];
 		if (shot_tour_wrong >= 0)
@@ -16494,6 +16862,7 @@ int main(int argc, char *argv[])
 			          : !strncmp(w, "both", 4) ? (1 << EH_USB) | (1 << EH_WIFI) : 0;
 			if (strstr(w, ",brick")) g_eh_shot |= 4;
 		}
+		else if (!strcmp(argv[i], "--lang") && i + 1 < argc) shot_lang = argv[++i];
 		else if (!strcmp(argv[i], "--theme") && i + 1 < argc) {
 			i++;
 			if (!strcmp(argv[i], "light")) shot_theme = APPEAR_LIGHT;
@@ -16592,6 +16961,11 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
 				shot_update = atoi(argv[++i]);
 		}
+		else if (!strcmp(argv[i], "--language")) {
+			shot_language = -1;
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_language = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--about")) {
 			shot_about = 0;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] < '0' + ABOUT_PAGES &&
@@ -16614,7 +16988,7 @@ int main(int argc, char *argv[])
 		}
 		else if (!strcmp(argv[i], "--scraper")) {
 			shot_scraper = 0;
-			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '4')
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '5')
 				shot_scraper = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--sgdb")) {
@@ -17242,6 +17616,16 @@ int main(int argc, char *argv[])
 		if (shot_path) theme_set_file(NULL);
 		db_get_str(db_dev(), "appearance", ap, sizeof ap,
 		           appearance_id(APPEAR_LIGHT));
+		/* The language, MENU > Language's, or --lang's for a shot: every
+		 * string from here on is in it (src/i18n.h). English until a first
+		 * start's step or the menu says otherwise. Its faces once ui_init
+		 * has opened them, below. */
+		{
+			char lc[16];
+
+			db_get_str(db_dev(), "language", lc, sizeof lc, "en");
+			i18n_set(lang_parse(shot_path && shot_lang ? shot_lang : lc));
+		}
 		theme_init(shot_path && shot_theme >= 0 ? (appearance)shot_theme
 		                                        : appearance_parse(ap));
 	}
@@ -17335,6 +17719,8 @@ int main(int argc, char *argv[])
 	 * saved brightness does. Read before ui_init, which is when the scale is
 	 * applied. */
 	if (!ui_init(a.r, P_FONT)) fprintf(stderr, "font init failed\n");
+	/* The language's faces: Lexend's, opened above, or 简体中文's, opened now */
+	ui_fonts_for(i18n_lang());
 	page_fonts_init(P_FONT);
 	/* ui_init on its own, between "settings" and here: the fonts, the glow
 	 * and Beard's three shadow textures, every one made before the first

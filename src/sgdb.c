@@ -12,6 +12,7 @@
 
 #include "artscrape.h"
 #include "db.h"
+#include "i18n.h"
 #include "net.h"
 #include "rajson.h"
 
@@ -184,7 +185,7 @@ static char        g_try_key[SGDB_KEY_MAX];
 static atomic_int  g_try_result;          /* 0 while running, else 1 + sgdb_state */
 static bool        g_try_running;
 static sgdb_try    g_try = SGDB_TRY_IDLE;
-static char        g_try_text[96];
+static sgdb_try    g_said = SGDB_TRY_IDLE;
 
 static void *try_thread(void *unused)
 {
@@ -193,21 +194,11 @@ static void *try_thread(void *unused)
 	return NULL;
 }
 
+/* The outcome kept, its sentence read in the language that is on when it is
+ * shown (sgdb_try_said) */
 static sgdb_try said(sgdb_try t)
 {
-	/* One line of the message panel each, at the Pixel 2's 640 wide: 34
-	 * characters at most, so none of them has to scroll (DESIGN.md 11.8). The
-	 * kept one is explained where it is shown: the Status row reads "not
-	 * checked", and the page says the next Box Art run checks it. */
-	const char *s =
-		t == SGDB_TRY_WORKS   ? "The key works." :
-		t == SGDB_TRY_KEPT    ? "Saved, not checked yet." :
-		t == SGDB_TRY_REFUSED ? "SteamGridDB refused that key." :
-		t == SGDB_TRY_BAD     ? "A key is 32 letters and digits." :
-		t == SGDB_TRY_BUSY    ? "Wait for the key check." :
-		t == SGDB_TRY_RUNNING ? "Checking the key..." : "";
-
-	snprintf(g_try_text, sizeof g_try_text, "%s", s);
+	g_said = t;
 	return t;
 }
 
@@ -256,7 +247,22 @@ sgdb_try sgdb_try_poll(void)
 	return said(g_try);
 }
 
-const char *sgdb_try_said(void) { return g_try_text; }
+const char *sgdb_try_said(void)
+{
+	/* One line of the message panel each, at the Pixel 2's 640 wide: 34
+	 * characters at most, so none of them has to scroll (DESIGN.md 11.8). The
+	 * kept one is explained where it is shown: the Status row reads "not
+	 * checked", and the page says the next Box Art run checks it. */
+	switch (g_said) {
+	case SGDB_TRY_WORKS:   return T(S_SGDB_TRY_WORKS);
+	case SGDB_TRY_KEPT:    return T(S_SGDB_TRY_KEPT);
+	case SGDB_TRY_REFUSED: return T(S_SGDB_TRY_REFUSED);
+	case SGDB_TRY_BAD:     return T(S_SGDB_TRY_BAD);
+	case SGDB_TRY_BUSY:    return T(S_SGDB_TRY_BUSY);
+	case SGDB_TRY_RUNNING: return T(S_SGDB_TRY_RUNNING);
+	default:               return "";
+	}
+}
 
 /* ---- matching ------------------------------------------------------------ */
 

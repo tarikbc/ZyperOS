@@ -10,9 +10,10 @@ Beard and Salt & Pepper themes, Zyper).
 
 ## Download
 
-There is no release yet. When there is, every ZyperOS release on the
-[releases page](https://github.com/tarikbc/ZyperOS/releases/latest) carries
-the installer with ZyperOS's card images, at ZyperOS's version:
+Every ZyperOS release on the
+[releases page](https://github.com/tarikbc/ZyperOS/releases/latest), from
+1.0.0 on, carries the installer with ZyperOS's card image, at ZyperOS's
+version. The GKD Pixel 2's image is there; the TrimUI Brick's comes later.
 
 | | |
 |---|---|

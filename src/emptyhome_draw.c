@@ -55,14 +55,14 @@ void eh_draw(SDL_Renderer *r, const eh_state *s, eh_zyper_fn zyper)
 
 	/* Zyper at the left of the heading, as the menus have him beside theirs */
 	if (zyper) zyper(r, 123.0f, 160.0f, 124.0f);
-	ui_text(r, ft, "No games yet", 208, ui_cap_y(ft, 146), -1, UI_TEXT);
-	ui_text(r, fs, "Add them from a computer or a phone.", 208, ui_cap_y(fs, 209), -1,
+	ui_text(r, ft, T(S_EMPTYHOME_NO_GAMES_YET), 208, ui_cap_y(ft, 146), -1, UI_TEXT);
+	ui_text(r, fs, T(S_EMPTYHOME_ADD_THEM), 208, ui_cap_y(fs, 209), -1,
 	        UI_TEXT_SOFT);
 	card(r, s, EH_USB, EH_CARD_X0);
 	card(r, s, EH_WIFI, EH_CARD_X1);
-	ui_text(r, fs, "BIOS files go in Bios/ on the card.", 512, ui_cap_y(fs, EH_BIOS_CY), 0,
+	ui_text(r, fs, T(S_EMPTYHOME_BIOS), 512, ui_cap_y(fs, EH_BIOS_CY), 0,
 	        UI_TEXT_DIM);
-	page_hint(r, "MENU", "Settings", 64, 704, false, false);
+	page_hint(r, "MENU", T(S_EMPTYHOME_SETTINGS), 64, 704, false, false);
 	if (s->music) page_hint(r, "SELECT", "MP4", 784, 704, false, false);
 }
 
@@ -135,8 +135,7 @@ void eh_cheer_draw(SDL_Renderer *r, int games, unsigned t, eh_pose_fn zyper, voi
 	}
 	/* His bubble: **text** with the words in the **ground**, as the
 	 * tutorial's cheer */
-	if (games == 1) snprintf(say, sizeof say, "1 game!");
-	else snprintf(say, sizeof say, "%d games!", games);
+	snprintf(say, sizeof say, TN(S_EMPTYHOME_CHEER, games), games);
 	w = ui_text_width(fb, say) + 56;
 	b = (SDL_Rect){ 620, 364 - bh / 2, w, bh };
 	ui_round_rect(r, &b, bh / 2, ui_col(th->text, (Uint8)(255 * k + 0.5f)));

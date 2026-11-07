@@ -74,5 +74,5 @@ with tempfile.TemporaryDirectory(prefix="zyperos-messages-check-") as scratch:
     subprocess.run(shlex.split(os.environ.get("CC", "cc")) + [
         "-std=gnu11", "-Wall", "-Wextra", "-Wno-unused-parameter", "-O1", "-g",
         "-Isrc", "-I" + scratch, "tools/message-loop-check.c", "src/message.c",
-        "src/menumotion.c", "src/menusnap.c", "-lm", "-o", str(binary)], check=True)
+        "src/menumotion.c", "src/menusnap.c", "src/menu.c", "-lm", "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

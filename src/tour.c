@@ -12,6 +12,7 @@
 
 #include "clamp.h"
 #include "design.h"
+#include "i18n.h"
 #include "tour.h"
 
 /* ---- the clocks ----------------------------------------------------------- */
@@ -58,69 +59,107 @@ static const tour_loop LOOP_SELECT = {
 static const tour_loop LOOP_POWER = {
 	TP_POWER, 600, 760, 600, 1100, TC_FADE, 2900, false, 300, TC_FADE, 3600 };
 
-static const tour_info STEPS[TOUR_STEPS] = {
-	[TOUR_WELCOME] = { "Hi! I'm Zyper.", "Let me show you the buttons. It takes a minute.",
-	                   NULL, NULL, NULL, TG_FACE, "A", "A", NULL, NULL },
+/* A step's words, by their IDs (NO_TEXT for none), which tour_step_info
+ * says in the language that is on; its glyph's letter or word and the
+ * buttons a wrong press's answer names are as printed, in every language. */
+#define NO_TEXT S_COUNT
+
+typedef struct {
+	str_id      title, line, line_fn, note, note_done;
+	tour_glyph  glyph;
+	const char *label;
+	str_id      want;          /* "Try %s.": words, or NO_TEXT and */
+	const char *want_key;      /* a button by its printed name */
+	const char *want_fn;
+	const tour_loop *loop;
+} step_def;
+
+static const step_def STEPS[TOUR_STEPS] = {
+	/* The language: his hello in the language under the cursor, the A on
+	 * the focused row (src/tourdraw.c) */
+	[TOUR_LANG]    = { S_TOUR_LANG_HELLO, NO_TEXT,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
+	/* The welcome's and the finish's lines are two, "\n" between */
+	[TOUR_WELCOME] = { S_TOUR_WELCOME_TITLE, S_TOUR_WELCOME_LINES,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
 	/* The shoulders as a note on the two lessons they belong with, each
 	 * pair lit on the handheld (my follow-up to #90): L1/R1 jump on the
 	 * home and count as moves here, L2/R2 change the song - MP4's while it
 	 * plays, the menu music's otherwise */
-	[TOUR_MOVE]    = { "Move Around", "Press the D-pad to move along the shelf.",
-	                   NULL, "L1/R1 jump 3 systems.", NULL, TG_DPAD, NULL, "the D-pad",
+	[TOUR_MOVE]    = { S_TOUR_MOVE_TITLE, S_TOUR_MOVE_LINE,
+	                   NO_TEXT, S_TOUR_MOVE_NOTE, NO_TEXT, TG_DPAD, NULL, S_TOUR_TRY_DPAD, NULL,
 	                   NULL, NULL },
-	[TOUR_A]       = { "Open a Game", "Press A to open the game you are on.",
-	                   NULL, NULL, NULL, TG_FACE, "A", "A", NULL, &LOOP_A },
-	[TOUR_B]       = { "Go Back", "Press B to go back one step.",
-	                   NULL, NULL, NULL, TG_FACE, "B", "B", NULL, &LOOP_B },
-	[TOUR_Y]       = { "Keep a Favorite", "Press Y to add a game to Favorites.",
-	                   NULL, NULL, NULL, TG_FACE, "Y", "Y", NULL, &LOOP_Y },
-	[TOUR_X]       = { "See the Details", "Press X for a game's details.",
-	                   NULL, NULL, NULL, TG_FACE, "X", "X", NULL, &LOOP_X },
-	[TOUR_MENU]    = { "Settings", "Press MENU for settings, anywhere.",
-	                   NULL, NULL, NULL, TG_PILL, "MENU", "MENU", NULL, &LOOP_MENU },
-	[TOUR_SELECT]  = { "Music", "Press SELECT to open MP4, the media player.",
-	                   NULL, "L2/R2 play the previous or next song.", NULL, TG_PILL,
-	                   "SELECT", "SELECT", NULL, &LOOP_SELECT },
-	[TOUR_VOL]     = { "Volume", "Press VOL+ or VOL-.",
-	                   NULL, NULL, NULL, TG_ROCKER, NULL, "VOL+ or VOL-", NULL, NULL },
+	[TOUR_A]       = { S_TOUR_A_TITLE, S_TOUR_A_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, &LOOP_A },
+	[TOUR_B]       = { S_TOUR_B_TITLE, S_TOUR_B_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "B", NO_TEXT, "B", NULL, &LOOP_B },
+	[TOUR_Y]       = { S_TOUR_Y_TITLE, S_TOUR_Y_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "Y", NO_TEXT, "Y", NULL, &LOOP_Y },
+	[TOUR_X]       = { S_TOUR_X_TITLE, S_TOUR_X_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "X", NO_TEXT, "X", NULL, &LOOP_X },
+	[TOUR_MENU]    = { S_TOUR_MENU_TITLE, S_TOUR_MENU_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
+	                   &LOOP_MENU },
+	[TOUR_SELECT]  = { S_TOUR_SELECT_TITLE, S_TOUR_SELECT_LINE,
+	                   NO_TEXT, S_TOUR_SELECT_NOTE, NO_TEXT, TG_PILL,
+	                   "SELECT", NO_TEXT, "SELECT", NULL, &LOOP_SELECT },
+	[TOUR_VOL]     = { S_TOUR_VOL_TITLE, S_TOUR_VOL_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_ROCKER, NULL, S_TOUR_TRY_VOL, NULL, NULL,
+	                   NULL },
 	/* The Pixel 2's chord is MENU+VOL, as MENU > Controls names it and as
 	 * its glyph is drawn, the MENU pill and the rocker */
-	[TOUR_BRIGHT]  = { "Brightness", "Press F1 or F2.",
-	                   "Hold MENU and press VOL+ or VOL-.", NULL, NULL, TG_CHORD, NULL,
-	                   "F1 or F2", "MENU+VOL", NULL },
-	[TOUR_POWER]   = { "Power", "Press POWER to save and turn off.", NULL,
-	                   "This time it stays on.", "Frozen screen? Hold POWER for 10 s.",
-	                   TG_POWER, NULL, "POWER", NULL, &LOOP_POWER },
+	[TOUR_BRIGHT]  = { S_TOUR_BRIGHT_TITLE, S_TOUR_BRIGHT_LINE,
+	                   S_TOUR_BRIGHT_LINE_FN, NO_TEXT, NO_TEXT, TG_CHORD, NULL,
+	                   S_TOUR_TRY_F1_F2, NULL, "MENU+VOL", NULL },
+	[TOUR_POWER]   = { S_TOUR_POWER_TITLE, S_TOUR_POWER_LINE, NO_TEXT,
+	                   S_TOUR_POWER_NOTE, S_TOUR_POWER_NOTE_DONE,
+	                   TG_POWER, NULL, NO_TEXT, "POWER", NULL, &LOOP_POWER },
 	/* The choices: no glyph, the choices themselves side by side, and the
 	 * row MENU keeps them in named in the note. */
-	[TOUR_THEME]   = { "Light or dark?", "Press LEFT or RIGHT to look, A to keep it.", NULL,
-	                   "Change it later in MENU > Appearance.", NULL, TG_FACE, NULL,
-	                   "LEFT, RIGHT or A", NULL, NULL },
-	[TOUR_HOME]    = { "Your home screen", "Press LEFT or RIGHT to look, A to keep it.", NULL,
-	                   "Change it later in MENU > Home Screen.", NULL, TG_FACE, NULL,
-	                   "LEFT, RIGHT or A", NULL, NULL },
-	[TOUR_SOUNDS]  = { "Button sounds", "Press LEFT or RIGHT to listen, A to keep it.", NULL,
-	                   "Change it later in MENU > UI Sounds.", NULL, TG_FACE, NULL,
-	                   "LEFT, RIGHT or A", NULL, NULL },
-	[TOUR_MUSIC]   = { "Menu music", "Press LEFT or RIGHT to listen, A to keep it.", NULL,
-	                   "Change it later in MENU > Menu Music.", NULL, TG_FACE, NULL,
-	                   "LEFT, RIGHT or A", NULL, NULL },
-	[TOUR_FINISH]  = { "You're all set!", "Every button is in MENU > Controls.",
-	                   NULL, NULL, NULL, TG_FACE, "A", "A", NULL, NULL },
+	[TOUR_THEME]   = { S_TOUR_THEME_TITLE, S_TOUR_CHOICE_LOOK, NO_TEXT,
+	                   S_TOUR_THEME_NOTE, NO_TEXT, TG_FACE, NULL,
+	                   S_TOUR_TRY_CHOICE, NULL, NULL, NULL },
+	[TOUR_HOME]    = { S_TOUR_HOME_TITLE, S_TOUR_CHOICE_LOOK, NO_TEXT,
+	                   S_TOUR_HOME_NOTE, NO_TEXT, TG_FACE, NULL,
+	                   S_TOUR_TRY_CHOICE, NULL, NULL, NULL },
+	[TOUR_SOUNDS]  = { S_TOUR_SOUNDS_TITLE, S_TOUR_CHOICE_LISTEN, NO_TEXT,
+	                   S_TOUR_SOUNDS_NOTE, NO_TEXT, TG_FACE, NULL,
+	                   S_TOUR_TRY_CHOICE, NULL, NULL, NULL },
+	[TOUR_MUSIC]   = { S_TOUR_MUSIC_TITLE, S_TOUR_CHOICE_LISTEN, NO_TEXT,
+	                   S_TOUR_MUSIC_NOTE, NO_TEXT, TG_FACE, NULL,
+	                   S_TOUR_TRY_CHOICE, NULL, NULL, NULL },
+	[TOUR_FINISH]  = { S_TOUR_FINISH_TITLE, S_TOUR_FINISH_LINES,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, NULL },
 };
+
+static const char *said(str_id id)
+{
+	return id == NO_TEXT ? NULL : T(id);
+}
 
 const tour_info *tour_step_info(tour_step s)
 {
-	return &STEPS[s < 0 || s >= TOUR_STEPS ? TOUR_WELCOME : s];
+	/* A step's own, so two steps' can be held at once (the reward going
+	 * and the step coming); said again at every call, a few loads, so a
+	 * change of language is the next frame's */
+	static tour_info info[TOUR_STEPS];
+	const step_def *d;
+
+	if (s < 0 || s >= TOUR_STEPS) s = TOUR_WELCOME;
+	d = &STEPS[s];
+	info[s] = (tour_info){ said(d->title), said(d->line), said(d->line_fn), said(d->note),
+	                       said(d->note_done), d->glyph, d->label,
+	                       d->want == NO_TEXT ? d->want_key : T(d->want), d->want_fn, d->loop };
+	return &info[s];
 }
 
 /* Each choice's names, MENU's row values in the order its setting steps
  * through them. */
-static const struct { int n; const char *name[TOUR_CHOICE_MAX]; } CHOICES[TOUR_CHOICES] = {
-	{ 2, { "Light", "Dark" } },
-	{ 2, { "Spotlight", "Gallery" } },
-	{ 4, { "Wood", "Glass", "Bubble", "Off" } },
-	{ 2, { "On", "Off" } },
+static const struct { int n; str_id name[TOUR_CHOICE_MAX]; } CHOICES[TOUR_CHOICES] = {
+	{ 2, { S_TOUR_CHOICE_LIGHT, S_TOUR_CHOICE_DARK } },
+	{ 2, { S_TOUR_CHOICE_SPOTLIGHT, S_TOUR_CHOICE_GALLERY } },
+	{ 4, { S_TOUR_CHOICE_WOOD, S_TOUR_CHOICE_GLASS, S_TOUR_CHOICE_BUBBLE, S_TOUR_CHOICE_OFF } },
+	{ 2, { S_TOUR_CHOICE_ON, S_TOUR_CHOICE_OFF } },
 };
 
 int tour_choice_of(tour_step s)
@@ -140,30 +179,47 @@ const char *tour_choice_name(tour_step s, int i)
 {
 	const int c = tour_choice_of(s);
 
-	return c < 0 || i < 0 || i >= CHOICES[c].n ? "" : CHOICES[c].name[i];
+	return c < 0 || i < 0 || i >= CHOICES[c].n ? "" : T(CHOICES[c].name[i]);
 }
 
 /* Section 12 allows "!" in Zyper's bubble, and only there. */
-static const char *const CHEERS[] = { "Nice!", "Got it!", "Woof!", "Perfect!", "Good one!" };
+static const str_id CHEERS[] = {
+	S_TOUR_CHEER_NICE, S_TOUR_CHEER_GOT_IT, S_TOUR_CHEER_WOOF, S_TOUR_CHEER_PERFECT,
+	S_TOUR_CHEER_GOOD_ONE,
+};
 #define CHEERS_N (int)(sizeof CHEERS / sizeof CHEERS[0])
 
 const char *tour_cheer(int i)
 {
-	return CHEERS[(i % CHEERS_N + CHEERS_N) % CHEERS_N];
+	return T(CHEERS[(i % CHEERS_N + CHEERS_N) % CHEERS_N]);
 }
 
-/* The button's own name, for "That's X." */
+/* The button's own name, for "That's X.": as printed, in every language;
+ * the d-pad's four and the levels' keys have none printed, and are words
+ * (KEY_WORDS) */
 static const char *const KEY_NAME[TK_KEYS] = {
-	[TK_UP] = "Up", [TK_DOWN] = "Down", [TK_LEFT] = "Left", [TK_RIGHT] = "Right",
 	[TK_A] = "A", [TK_B] = "B", [TK_X] = "X", [TK_Y] = "Y",
 	[TK_L1] = "L1", [TK_R1] = "R1",
 	[TK_START] = "START", [TK_SELECT] = "SELECT", [TK_MENU] = "MENU",
-	[TK_VOL] = "volume", [TK_BRIGHT] = "brightness", [TK_POWER] = "POWER",
+	[TK_POWER] = "POWER",
+};
+static const str_id KEY_WORDS[TK_KEYS] = {
+	[TK_UP] = S_TOUR_KEY_UP, [TK_DOWN] = S_TOUR_KEY_DOWN,
+	[TK_LEFT] = S_TOUR_KEY_LEFT, [TK_RIGHT] = S_TOUR_KEY_RIGHT,
+	[TK_VOL] = S_TOUR_KEY_VOLUME, [TK_BRIGHT] = S_TOUR_KEY_BRIGHTNESS,
 };
 
+/* In English whatever is on, for the command line (--tour-wrong) */
 const char *tour_key_name(tour_key k)
 {
-	return k >= 0 && k < TK_KEYS ? KEY_NAME[k] : "";
+	if (k < 0 || k >= TK_KEYS) return "";
+	return KEY_NAME[k] ? KEY_NAME[k] : T_en(KEY_WORDS[k]);
+}
+
+/* As the answer says it, in the language that is on */
+static const char *key_said(tour_key k)
+{
+	return KEY_NAME[k] ? KEY_NAME[k] : T(KEY_WORDS[k]);
 }
 
 /* ---- the launcher's buttons ------------------------------------------------ */
@@ -284,9 +340,10 @@ float tour_focus_pos(const tour *t, uint32_t now)
  * own button, while the step waits for the player's. */
 static float demo_press(const tour *t, tour_part p, uint32_t now)
 {
-	const tour_info *st = &STEPS[t->step];
+	const step_def *st = &STEPS[t->step];
 	int tl;
 
+	if (t->step == TOUR_LANG) return 0.0f;
 	if (t->step == TOUR_WELCOME || t->step == TOUR_FINISH) {
 		int ms = since(now, t->step_at) - LOOP_A_AT;
 
@@ -429,6 +486,7 @@ static void hello(tour *t, bool finish, uint32_t now)
 	/* At the finish the last reward's corner Zyper goes first, in exit
 	 * (enter sends him), so one hands over to the other */
 	t->hello_at = now + (finish ? DS_MS_EXIT : DS_MS_QUICK);
+	t->say_at = t->hello_at;
 	zr_press(&t->zy, now);
 	if (finish) {
 		t->next_hop = t->hello_at + DS_MS_ZYPER_POP;
@@ -469,10 +527,10 @@ tour_zyper_at tour_zyper_now(const tour *t, uint32_t now)
 	/* In the power step the stage's Zyper is the one until its press: the
 	 * corner only lets the last step's go down. At the welcome there is no
 	 * corner yet, and at the finish only the last reward's, going */
-	z.corner = t->step != TOUR_WELCOME && z.drop < 1.0f &&
+	z.corner = t->step != TOUR_WELCOME && t->step != TOUR_LANG && z.drop < 1.0f &&
 	           !(t->step == TOUR_POWER && !t->done && t->rise.to < 0.5f);
 	z.hello = false;
-	if (t->step == TOUR_WELCOME || t->step == TOUR_FINISH) {
+	if (t->step == TOUR_LANG || t->step == TOUR_WELCOME || t->step == TOUR_FINISH) {
 		const int ms = since(now, t->hello_at);
 
 		z.hello = ms > 0;
@@ -498,7 +556,11 @@ static void enter(tour *t, tour_step s, uint32_t now)
 	/* The window he was up for is over, from wherever he is */
 	rise_to(t, 1.0f, now);
 	t->cheered = false;
-	if (s == TOUR_WELCOME || s == TOUR_FINISH) hello(t, s == TOUR_FINISH, now);
+	/* The welcome after the language step: Zyper is there already, and only
+	 * the welcome's words come in */
+	if (s == TOUR_WELCOME && t->from_lang) t->say_at = now;
+	else if (s == TOUR_LANG || s == TOUR_WELCOME || s == TOUR_FINISH) hello(t, s == TOUR_FINISH, now);
+	t->from_lang = false;
 	t->step = s;
 	t->step_at = now;
 	t->done = false;
@@ -552,7 +614,7 @@ int tour_segments(const tour *t)
 
 int tour_segment(const tour *t)
 {
-	if (t->step == TOUR_WELCOME) return -1;
+	if (t->step == TOUR_LANG || t->step == TOUR_WELCOME) return -1;
 	if (t->step == TOUR_FINISH) return tour_segments(t);
 	if (tour_choice_of(t->step) >= 0) return TOUR_LESSONS + tour_choice_of(t->step);
 	return t->step - TOUR_FIRST_LESSON;
@@ -564,7 +626,29 @@ void tour_start(tour *t, uint32_t now, bool fn_volume)
 	t->fn_volume = fn_volume;
 	zr_init(&t->zy, now, ZYPER_SEED);
 	t->rise = (tour_rise){ 1.0f, 1.0f, now, 0, TC_OUT };
-	enter(t, TOUR_WELCOME, now);
+	enter(t, TOUR_LANG, now);
+}
+
+/* ---- the language ------------------------------------------------------------ */
+
+void tour_lang_from(tour *t, int lang)
+{
+	if (lang < 0 || lang >= TOUR_LANGS) lang = 0;
+	t->lang_start = t->lang_pick = t->lang_kept = lang;
+}
+
+int tour_lang_focus(const tour *t, uint32_t now)
+{
+	int n;
+
+	if (t->lang_touched || t->step != TOUR_LANG) return t->lang_pick;
+	n = since(now, t->step_at) / TOUR_LANG_STEP_MS;
+	return (t->lang_start + (n > 0 ? n : 0)) % TOUR_LANGS;
+}
+
+int tour_lang_kept(const tour *t)
+{
+	return t->lang_kept;
 }
 
 /* Whether a press is the one the step waits for. */
@@ -605,16 +689,17 @@ static int landed(tour *t, uint32_t now)
  * alone how the chord goes. */
 static int missed(tour *t, tour_key k, uint32_t now)
 {
-	const tour_info *st = &STEPS[t->step];
+	const tour_info *st = tour_step_info(t->step);
 	const char *want = t->fn_volume && st->want_fn ? st->want_fn : st->want;
 
-	if (t->step == TOUR_BRIGHT && k == TK_VOL)
-		snprintf(t->hint, sizeof t->hint, t->fn_volume
-		         ? "That's volume. Hold MENU too." : "That's volume. Try F1 or F2.");
+	/* On the Brick a volume key there is "That's volume. Try F1 or F2.",
+	 * the answer every other wrong press gets */
+	if (t->step == TOUR_BRIGHT && k == TK_VOL && t->fn_volume)
+		snprintf(t->hint, sizeof t->hint, "%s", T(S_TOUR_WRONG_HOLD_MENU));
 	else if (t->step == TOUR_BRIGHT && k == TK_MENU && t->fn_volume)
-		snprintf(t->hint, sizeof t->hint, "Hold MENU, then press VOL+.");
+		snprintf(t->hint, sizeof t->hint, "%s", T(S_TOUR_WRONG_CHORD));
 	else
-		snprintf(t->hint, sizeof t->hint, "That's %s. Try %s.", KEY_NAME[k], want);
+		snprintf(t->hint, sizeof t->hint, T(S_TOUR_WRONG), key_said(k), want);
 	t->wrong = true;
 	t->wrong_at = now;
 	/* His answer to a failure, the menu's (section 10): the tongue in and
@@ -633,6 +718,13 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 
 	if (k < 0 || k >= TK_KEYS || t->over) return TOUR_QUIET;
 
+	/* Any press stops the languages going round, where they are (my
+	 * note: "until the user has any input") */
+	if (t->step == TOUR_LANG && !t->lang_touched) {
+		t->lang_pick = tour_lang_focus(t, now);
+		t->lang_touched = true;
+	}
+
 	/* The levels' keys keep working in every step, as on every screen; the
 	 * caller has turned the level already. */
 	if (k == TK_VOL || k == TK_BRIGHT) {
@@ -649,10 +741,30 @@ int tour_press(tour *t, tour_key k, uint32_t now)
 	}
 	if (k == TK_START) {
 		if (in_step < DEAF_MS) return TOUR_QUIET;
+		/* Skipped from the language step: the one the player moved to, or
+		 * the one that was on; going round alone chose nothing */
+		if (t->step == TOUR_LANG) t->lang_kept = t->lang_moved ? t->lang_pick : t->lang_start;
 		t->skipped = t->step != TOUR_FINISH;
 		t->over = true;
 		t->end_at = now;
 		return DS_SOUND_BACK;
+	}
+	if (t->step == TOUR_LANG) {
+		if (in_step < DEAF_MS) return TOUR_QUIET;
+		if (k == TK_UP || k == TK_DOWN || k == TK_LEFT || k == TK_RIGHT) {
+			const int to = t->lang_pick + (k == TK_UP || k == TK_LEFT ? -1 : 1);
+
+			t->pos_from = (float)t->lang_pick;
+			t->lang_pick = (to + TOUR_LANGS) % TOUR_LANGS;
+			t->moved_at = now;
+			t->lang_moved = true;
+			return t->lang_pick != to ? DS_SOUND_EDGE : DS_SOUND_MOVE;
+		}
+		if (k != TK_A) return TOUR_QUIET;
+		t->lang_kept = t->lang_pick;
+		t->from_lang = true;
+		enter(t, TOUR_WELCOME, now);
+		return DS_SOUND_ACCEPT;
 	}
 	if (t->step == TOUR_WELCOME) {
 		if (in_step < DEAF_MS) return TOUR_QUIET;
@@ -777,6 +889,15 @@ void tour_pose_wrong(tour *t, tour_key k, uint32_t now, int ms)
 void tour_pose_pick(tour *t, int pick, uint32_t now, int ms)
 {
 	const int c = tour_choice_of(t->step);
+
+	/* The language step: the cursor moved there, by the player */
+	if (t->step == TOUR_LANG && pick >= 0 && pick < TOUR_LANGS) {
+		t->pos_from = (float)t->lang_pick;
+		t->lang_pick = pick;
+		t->lang_touched = t->lang_moved = true;
+		t->moved_at = now - (uint32_t)ms;
+		return;
+	}
 
 	if (c < 0 || pick < 0 || pick >= CHOICES[c].n) return;
 	t->pos_from = (float)t->pick[c];

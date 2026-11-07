@@ -1,0 +1,804 @@
+# The tutorial (src/tour.c, src/tourdraw.c): Zyper's welcome, a step a
+# button, the four choices and the finish. A step's title is at title size
+# under the stage, its line and note at meta size under it, centered; keep
+# them about as long as English's. Zyper's bubble may have "!"; nothing else
+# does. Button names (A, MENU, VOL+, F1) are as printed, never translated;
+# LEFT and RIGHT are the d-pad's, and are.
+#
+# tour.lang.* is the language step's, which comes later.
+
+# The welcome
+
+[tour.welcome.title]
+note = Zyper's first words, in his big bubble at title size. tight: the bubble is at most about English's width, so a greeting with his name may not fit. review: pt-BR without the article ("Sou o Zyper" is too wide)
+en = Hi! I'm Zyper.
+zh-Hans = 我是 Zyper！
+es = ¡Soy Zyper!
+pt-BR = Oi! Sou Zyper.
+fr = Je suis Zyper\u00a0!
+de = Ich bin Zyper!
+ja = Zyper です！
+it = Sono Zyper!
+
+[tour.welcome.lines]
+note = The two lines under his bubble; \n is where the second starts.
+en = Let me show you the buttons.\nIt takes a minute.
+zh-Hans = 我来带你认识按键。\n只需要一分钟。
+es = Te muestro los botones.\nSolo toma un minuto.
+pt-BR = Vou te mostrar os botões.\nLeva só um minuto.
+fr = Je vous présente les boutons.\nÇa prend une minute.
+de = Ich zeige dir die Tasten.\nDas dauert eine Minute.
+ja = ボタンを紹介しますね。\n1 分ほどで終わります。
+it = Ti mostro i pulsanti.\nCi vuole un minuto.
+
+[tour.welcome.go]
+note = Beside the A glyph: what A does on the welcome. tight
+en = Let's go
+zh-Hans = 开始吧
+es = Vamos
+pt-BR = Vamos lá
+fr = C'est parti
+de = Los geht's
+ja = はじめる
+it = Andiamo
+
+# The lessons, a button each
+
+[tour.move.title]
+en = Move Around
+zh-Hans = 移动
+es = Moverse
+pt-BR = Navegar
+fr = Se déplacer
+de = Bewegen
+ja = 移動
+it = Muoviti
+
+[tour.move.line]
+note = The shelf is the row of systems or games.
+en = Press the D-pad to move along the shelf.
+zh-Hans = 按方向键在列表中移动。
+es = Usa la cruceta para moverte por la lista.
+pt-BR = Use o direcional para andar pela lista.
+fr = Utilisez la croix pour parcourir la liste.
+de = Drücke das Steuerkreuz zum Bewegen.
+ja = 十字キーで一覧を移動します。
+it = Premi la croce direzionale per spostarti nell'elenco.
+
+[tour.move.note]
+note = L1/R1 jump 3 systems at a time on the home.
+en = L1/R1 jump 3 systems.
+zh-Hans = L1/R1 一次跳 3 个系统。
+es = L1/R1 saltan 3 sistemas.
+pt-BR = L1/R1 pulam 3 sistemas.
+fr = L1/R1 sautent 3 systèmes.
+de = L1/R1 springen 3 Systeme.
+ja = L1/R1 で 3 システムずつ移動。
+it = L1/R1 saltano 3 sistemi.
+
+[tour.a.title]
+en = Open a Game
+zh-Hans = 打开游戏
+es = Abrir un juego
+pt-BR = Abrir um jogo
+fr = Ouvrir un jeu
+de = Spiel öffnen
+ja = ゲームを開く
+it = Apri un gioco
+
+[tour.a.line]
+note = review: pt-BR "Aperte" for Press, in every line of the tutorial
+en = Press A to open the game you are on.
+zh-Hans = 按 A 打开选中的游戏。
+es = Presiona A para abrir el juego elegido.
+pt-BR = Aperte A para abrir o jogo selecionado.
+fr = Appuyez sur A pour ouvrir le jeu choisi.
+de = Drücke A, um das Spiel zu öffnen.
+ja = A で、選んでいるゲームを開きます。
+it = Premi A per aprire il gioco selezionato.
+
+[tour.b.title]
+en = Go Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Revenir
+de = Zurück
+ja = 戻る
+it = Torna indietro
+
+[tour.b.line]
+en = Press B to go back one step.
+zh-Hans = 按 B 返回上一步。
+es = Presiona B para volver un paso.
+pt-BR = Aperte B para voltar um passo.
+fr = Appuyez sur B pour revenir en arrière.
+de = Drücke B für einen Schritt zurück.
+ja = B で 1 つ前に戻ります。
+it = Premi B per tornare indietro di un passo.
+
+[tour.y.title]
+en = Keep a Favorite
+zh-Hans = 收藏游戏
+es = Marcar un favorito
+pt-BR = Marcar um favorito
+fr = Ajouter un favori
+de = Favorit merken
+ja = お気に入りに追加
+it = Aggiungi un preferito
+
+[tour.y.line]
+note = Favorites is the home's list of favorite games.
+en = Press Y to add a game to Favorites.
+zh-Hans = 按 Y 把游戏加入收藏。
+es = Presiona Y para agregarlo a Favoritos.
+pt-BR = Aperte Y para pôr um jogo nos Favoritos.
+fr = Appuyez sur Y pour l'ajouter aux Favoris.
+de = Mit Y kommt ein Spiel zu den Favoriten.
+ja = Y でゲームをお気に入りに追加します。
+it = Premi Y per aggiungere un gioco ai Preferiti.
+
+[tour.x.title]
+en = See the Details
+zh-Hans = 查看详情
+es = Ver los detalles
+pt-BR = Ver os detalhes
+fr = Voir les détails
+de = Details ansehen
+ja = 詳細を見る
+it = Vedi i dettagli
+
+[tour.x.line]
+en = Press X for a game's details.
+zh-Hans = 按 X 查看游戏详情。
+es = Presiona X para ver los detalles.
+pt-BR = Aperte X para ver os detalhes.
+fr = Appuyez sur X pour voir les détails.
+de = Drücke X für die Spieldetails.
+ja = X でゲームの詳細を表示します。
+it = Premi X per i dettagli di un gioco.
+
+[tour.menu.title]
+en = Settings
+zh-Hans = 设置
+es = Configuración
+pt-BR = Configurações
+fr = Paramètres
+de = Einstellungen
+ja = 設定
+it = Impostazioni
+
+[tour.menu.line]
+en = Press MENU for settings, anywhere.
+zh-Hans = 随时按 MENU 打开设置。
+es = Presiona MENU para la configuración.
+pt-BR = Aperte MENU para as configurações.
+fr = Appuyez sur MENU pour les paramètres.
+de = Drücke überall MENU für Einstellungen.
+ja = MENU でどこでも設定を開けます。
+it = Premi MENU per le impostazioni, ovunque.
+
+[tour.select.title]
+en = Music
+zh-Hans = 音乐
+es = Música
+pt-BR = Música
+fr = Musique
+de = Musik
+ja = 音楽
+it = Musica
+
+[tour.select.line]
+note = MP4 is the media player's name. The widest line of the tutorial already: keep it no longer.
+en = Press SELECT to open MP4, the media player.
+zh-Hans = 按 SELECT 打开 MP4 媒体播放器。
+es = Presiona SELECT para abrir MP4, el reproductor.
+pt-BR = Aperte SELECT para abrir o player MP4.
+fr = Appuyez sur SELECT pour ouvrir le lecteur MP4.
+de = Drücke SELECT für MP4, den Mediaplayer.
+ja = SELECT でプレーヤーの MP4 を開きます。
+it = Premi SELECT per aprire MP4, il lettore.
+
+[tour.select.note]
+note = L2/R2 change the song: MP4's while it plays, else the menu music's. A note beside Zyper's corner: keep it about as long as English's.
+en = L2/R2 play the previous or next song.
+zh-Hans = L2/R2 播放上一首或下一首。
+es = L2/R2 cambian de canción.
+pt-BR = L2/R2 trocam de música.
+fr = L2/R2 changent de morceau.
+de = L2/R2 wechseln den Titel.
+ja = L2/R2 で前/次の曲を再生します。
+it = L2/R2 cambiano brano.
+
+[tour.vol.title]
+en = Volume
+zh-Hans = 音量
+es = Volumen
+pt-BR = Volume
+fr = Volume
+de = Lautstärke
+ja = 音量
+it = Volume
+
+[tour.vol.line]
+en = Press VOL+ or VOL-.
+zh-Hans = 按 VOL+ 或 VOL-。
+es = Presiona VOL+ o VOL-.
+pt-BR = Aperte VOL+ ou VOL-.
+fr = Appuyez sur VOL+ ou VOL-.
+de = Drücke VOL+ oder VOL-.
+ja = VOL+ か VOL- を押しましょう。
+it = Premi VOL+ o VOL-.
+
+[tour.bright.title]
+en = Brightness
+zh-Hans = 亮度
+es = Brillo
+pt-BR = Brilho
+fr = Luminosité
+de = Helligkeit
+ja = 明るさ
+it = Luminosità
+
+[tour.bright.line]
+note = On a handheld with brightness keys of its own, F1 and F2.
+en = Press F1 or F2.
+zh-Hans = 按 F1 或 F2。
+es = Presiona F1 o F2.
+pt-BR = Aperte F1 ou F2.
+fr = Appuyez sur F1 ou F2.
+de = Drücke F1 oder F2.
+ja = F1 か F2 を押しましょう。
+it = Premi F1 o F2.
+
+[tour.bright.line_fn]
+note = On the Pixel 2, where brightness is MENU held with a volume key.
+en = Hold MENU and press VOL+ or VOL-.
+zh-Hans = 按住 MENU，再按 VOL+ 或 VOL-。
+es = Mantén MENU y presiona VOL+ o VOL-.
+pt-BR = Segure MENU e aperte VOL+ ou VOL-.
+fr = Maintenez MENU, puis VOL+ ou VOL-.
+de = Halte MENU und drücke VOL+ oder VOL-.
+ja = MENU を押しながら VOL+ か VOL- を押します。
+it = Tieni premuto MENU e premi VOL+ o VOL-.
+
+[tour.power.title]
+note = The POWER button's lesson.
+en = Power
+zh-Hans = 电源
+es = Encendido
+pt-BR = Ligar e desligar
+fr = Alimentation
+de = Ein/Aus
+ja = 電源
+it = Accensione
+
+[tour.power.line]
+en = Press POWER to save and turn off.
+zh-Hans = 按 POWER 保存并关机。
+es = Presiona POWER para guardar y apagar.
+pt-BR = Aperte POWER para salvar e desligar.
+fr = Appuyez sur POWER pour sauvegarder et éteindre.
+de = Mit POWER speichern und ausschalten.
+ja = POWER でセーブして電源を切ります。
+it = Premi POWER per salvare e spegnere.
+
+[tour.power.note]
+note = The tutorial keeps the handheld on when POWER is pressed in this step.
+en = This time it stays on.
+zh-Hans = 这次不会关机。
+es = Esta vez no se apaga.
+pt-BR = Desta vez ele não desliga.
+fr = Cette fois, il reste allumé.
+de = Diesmal bleibt sie an.
+ja = 今回は電源は切れません。
+it = Questa volta resta acceso.
+
+[tour.power.note_done]
+note = Once POWER is pressed: a frozen handheld turns off with POWER held 10 seconds. A note beside Zyper's corner: keep it about as long as English's.
+en = Frozen screen? Hold POWER for 10 s.
+zh-Hans = 画面卡住？按住 POWER 10 秒。
+es = ¿Se congeló? Mantén POWER 10 s.
+pt-BR = Tela travada? Segure POWER por 10 s.
+fr = Écran figé ? Maintenez POWER 10 s.
+de = Bild eingefroren? Halte POWER 10 s.
+ja = フリーズしたら POWER を 10 秒長押し。
+it = Schermo bloccato? Tieni POWER per 10 s.
+
+# The choices: each a MENU setting, its choices side by side
+
+[tour.theme.title]
+en = Light or dark?
+zh-Hans = 浅色还是深色？
+es = ¿Claro u oscuro?
+pt-BR = Claro ou escuro?
+fr = Clair ou sombre ?
+de = Hell oder dunkel?
+ja = ライトかダークか？
+it = Chiaro o scuro?
+
+[tour.choice.look]
+note = Under the theme's and the home screen's choices. LEFT and RIGHT are the d-pad's, in capitals.
+en = Press LEFT or RIGHT to look, A to keep it.
+zh-Hans = 按左或右查看，按 A 选定。
+es = IZQUIERDA o DERECHA para ver, A para elegir.
+pt-BR = ESQUERDA ou DIREITA para ver, A para escolher.
+fr = GAUCHE ou DROITE pour voir, A pour choisir.
+de = LINKS/RECHTS zum Ansehen, A zum Behalten.
+ja = 左か右で見比べて、A で決定しましょう。
+it = SINISTRA o DESTRA per vedere, A per scegliere.
+
+[tour.theme.note]
+note = Appearance is MENU's row name.
+en = Change it later in MENU > Appearance.
+zh-Hans = 之后可在 MENU > 外观 中更改。
+es = Cámbialo en MENU > Apariencia.
+pt-BR = Mude em MENU > Aparência.
+fr = Plus tard\u00a0: MENU > Apparence.
+de = Änderbar in MENU > Erscheinungsbild.
+ja = あとで MENU > 外観 で変更できます。
+it = Puoi cambiarlo in MENU > Aspetto.
+
+[tour.home.title]
+en = Your home screen
+zh-Hans = 你的主屏幕
+es = Tu pantalla de inicio
+pt-BR = Sua tela inicial
+fr = Votre écran d'accueil
+de = Dein Startbildschirm
+ja = ホーム画面
+it = La tua schermata Home
+
+[tour.home.note]
+note = Home Screen is MENU's row name.
+en = Change it later in MENU > Home Screen.
+zh-Hans = 之后可在 MENU > 主屏幕样式 中更改。
+es = Cámbialo en MENU > Pantalla de inicio.
+pt-BR = Mude em MENU > Tela inicial.
+fr = Plus tard\u00a0: MENU > Écran d'accueil.
+de = Änderbar in MENU > Startbildschirm.
+ja = あとで MENU > ホーム画面 で変更できます。
+it = Puoi cambiarla in MENU > Schermata Home.
+
+[tour.sounds.title]
+en = Button sounds
+zh-Hans = 按键音效
+es = Sonidos de botones
+pt-BR = Sons dos botões
+fr = Sons des boutons
+de = Tastentöne
+ja = 操作音
+it = Suoni dei pulsanti
+
+[tour.choice.listen]
+note = Under the sounds' and the menu music's choices.
+en = Press LEFT or RIGHT to listen, A to keep it.
+zh-Hans = 按左或右试听，按 A 选定。
+es = IZQUIERDA o DERECHA para oír, A para elegir.
+pt-BR = ESQUERDA ou DIREITA para ouvir, A para escolher.
+fr = GAUCHE ou DROITE pour écouter, A pour choisir.
+de = LINKS/RECHTS zum Anhören, A zum Behalten.
+ja = 左か右で聴き比べて、A で決定しましょう。
+it = SINISTRA o DESTRA per ascoltare, A per scegliere.
+
+[tour.sounds.note]
+note = UI Sounds is MENU's row name.
+en = Change it later in MENU > UI Sounds.
+zh-Hans = 之后可在 MENU > 界面音效 中更改。
+es = Cámbialo en MENU > Sonidos.
+pt-BR = Mude em MENU > Sons da interface.
+fr = Plus tard\u00a0: MENU > Sons de l'interface.
+de = Änderbar in MENU > Bedientöne.
+ja = あとで MENU > 操作音 で変更できます。
+it = Puoi cambiarli in MENU > Suoni dell'interfaccia.
+
+[tour.music.title]
+en = Menu music
+zh-Hans = 菜单音乐
+es = Música del menú
+pt-BR = Música do menu
+fr = Musique du menu
+de = Menümusik
+ja = メニュー音楽
+it = Musica del menu
+
+[tour.music.note]
+note = Menu Music is MENU's row name.
+en = Change it later in MENU > Menu Music.
+zh-Hans = 之后可在 MENU > 菜单音乐 中更改。
+es = Cámbialo en MENU > Música del menú.
+pt-BR = Mude em MENU > Música do menu.
+fr = Plus tard\u00a0: MENU > Musique du menu.
+de = Änderbar in MENU > Menümusik.
+ja = あとで MENU > メニュー音楽 で変更できます。
+it = Puoi cambiarla in MENU > Musica del menu.
+
+[tour.choice.light]
+note = The choices' names, under each, as MENU's row values name them: the theme.
+en = Light
+zh-Hans = 浅色
+es = Claro
+pt-BR = Claro
+fr = Clair
+de = Hell
+ja = ライト
+it = Chiaro
+
+[tour.choice.dark]
+en = Dark
+zh-Hans = 深色
+es = Oscuro
+pt-BR = Escuro
+fr = Sombre
+de = Dunkel
+ja = ダーク
+it = Scuro
+
+[tour.choice.spotlight]
+note = The home screen's layouts.
+en = Spotlight
+zh-Hans = 聚焦
+es = Destacado
+pt-BR = Destaque
+fr = À la une
+de = Spotlight
+ja = スポットライト
+it = In evidenza
+
+[tour.choice.gallery]
+en = Gallery
+zh-Hans = 画廊
+es = Galería
+pt-BR = Galeria
+fr = Galerie
+de = Galerie
+ja = ギャラリー
+it = Galleria
+
+[tour.choice.wood]
+note = The UI sounds.
+en = Wood
+zh-Hans = 木
+es = Madera
+pt-BR = Madeira
+fr = Bois
+de = Holz
+ja = ウッド
+it = Legno
+
+[tour.choice.glass]
+en = Glass
+zh-Hans = 玻璃
+es = Cristal
+pt-BR = Vidro
+fr = Verre
+de = Glas
+ja = グラス
+it = Vetro
+
+[tour.choice.bubble]
+en = Bubble
+zh-Hans = 泡泡
+es = Burbuja
+pt-BR = Bolha
+fr = Bulle
+de = Blase
+ja = バブル
+it = Bolla
+
+[tour.choice.on]
+note = The menu music on; a named choice, so capitalized where the language capitalizes one.
+en = On
+zh-Hans = 开启
+es = Activado
+pt-BR = Ativado
+fr = Activé
+de = An
+ja = オン
+it = Attivo
+
+[tour.choice.off]
+note = The UI sounds or the menu music off.
+en = Off
+zh-Hans = 关闭
+es = Desactivado
+pt-BR = Desativado
+fr = Désactivé
+de = Aus
+ja = オフ
+it = Disattivo
+
+# The finish
+
+[tour.finish.title]
+note = Zyper's words, in his big bubble at title size.
+en = You're all set!
+zh-Hans = 一切就绪！
+es = ¡Todo listo!
+pt-BR = Tudo pronto!
+fr = Tout est prêt !
+de = Alles bereit!
+ja = 準備完了！
+it = Tutto pronto!
+
+[tour.finish.lines]
+note = The two lines under his bubble, one sentence; \n is where the second line starts. Controls is MENU's row name.
+en = Every button is in\nMENU > Controls.
+zh-Hans = 所有按键都在\nMENU > 按键说明 里。
+es = Todos los botones están en\nMENU > Controles.
+pt-BR = Todos os botões estão em\nMENU > Controles.
+fr = Tous les boutons sont dans\nMENU > Commandes.
+de = Alle Tasten findest du unter\nMENU > Steuerung.
+ja = ボタンの説明はすべて\nMENU > 操作方法 にあります。
+it = Trovi tutti i pulsanti in\nMENU > Comandi.
+
+[tour.finish.go]
+note = Beside the A glyph: what A does on the finish. tight
+en = Start playing
+zh-Hans = 开始游戏
+es = A jugar
+pt-BR = Começar a jogar
+fr = À vous de jouer
+de = Losspielen
+ja = プレイ開始
+it = Giochiamo
+
+# Zyper's bubble: his cheers, and his answer to the wrong button
+
+[tour.cheer.nice]
+note = Zyper's cheers, one after each lesson's press, in turn.
+en = Nice!
+zh-Hans = 不错！
+es = ¡Bien!
+pt-BR = Boa!
+fr = Bien joué !
+de = Super!
+ja = いいね！
+it = Bene!
+
+[tour.cheer.got_it]
+en = Got it!
+zh-Hans = 学会了！
+es = ¡Eso es!
+pt-BR = Isso aí!
+fr = C'est ça !
+de = Genau!
+ja = できたね！
+it = Esatto!
+
+[tour.cheer.woof]
+note = Zyper is a dog.
+en = Woof!
+zh-Hans = 汪！
+es = ¡Guau!
+pt-BR = Au au!
+fr = Ouaf !
+de = Wuff!
+ja = ワン！
+it = Bau!
+
+[tour.cheer.perfect]
+en = Perfect!
+zh-Hans = 完美！
+es = ¡Perfecto!
+pt-BR = Perfeito!
+fr = Parfait !
+de = Perfekt!
+ja = 完ぺき！
+it = Perfetto!
+
+[tour.cheer.good_one]
+en = Good one!
+zh-Hans = 真棒！
+es = ¡Muy bien!
+pt-BR = Mandou bem!
+fr = Bravo !
+de = Klasse!
+ja = いい感じ！
+it = Ottimo!
+
+[tour.cheer.saved]
+note = Zyper's cheer once a choice is kept.
+en = Saved!
+zh-Hans = 已保存！
+es = ¡Guardado!
+pt-BR = Salvo!
+fr = Enregistré !
+de = Gespeichert!
+ja = 保存しました！
+it = Salvato!
+
+[tour.wrong]
+note = Zyper's answer to the wrong button: the first %s is the button pressed (A, SELECT, or a word below: Up, volume), the second what to press (A, MENU+VOL, or a phrase below). In his bubble, which breaks after the first sentence when it is too wide. review: pt-BR says "You pressed %s" so that a button needs no article; zh-Hans has a space before a key said in Chinese (这是 上键), the rule's space for a Latin one
+en = That's %s. Try %s.
+zh-Hans = 这是 %s。试试 %s。
+es = Eso es %s. Usa %s.
+pt-BR = Você apertou %s. Tente %s.
+fr = C'est %s. Essayez %s.
+de = Das war %s. Probier %s.
+ja = それは %s です。%s を押しましょう。
+it = Hai premuto %s. Prova %s.
+
+[tour.wrong.hold_menu]
+note = On the Pixel 2, a volume key alone in the brightness step: brightness is MENU held with it.
+en = That's volume. Hold MENU too.
+zh-Hans = 这是音量键。请同时按住 MENU。
+es = Eso es el volumen. Mantén MENU también.
+pt-BR = Você apertou o volume. Segure MENU também.
+fr = C'est le volume. Maintenez aussi MENU.
+de = Das war die Lautstärke. Halte auch MENU.
+ja = それは音量ボタンです。MENU も押さえましょう。
+it = È il volume. Tieni premuto anche MENU.
+
+[tour.wrong.chord]
+note = On the Pixel 2, MENU alone in the brightness step: how the chord goes. One line in his bubble, beside "START: skip": keep it within English's length.
+en = Hold MENU, then press VOL+.
+zh-Hans = 按住 MENU，再按 VOL+。
+es = Mantén MENU, luego VOL+.
+pt-BR = Segure MENU e aperte VOL+.
+fr = Maintenez MENU et VOL+.
+de = Halte MENU, dann VOL+.
+ja = MENU を押しながら VOL+。
+it = Tieni MENU, poi premi VOL+.
+
+[tour.key.up]
+note = A button pressed, said in "That's %s.": the d-pad's directions, the volume keys and the brightness keys.
+en = Up
+zh-Hans = 上键
+es = Arriba
+pt-BR = para cima
+fr = Haut
+de = Oben
+ja = 上キー
+it = Su
+
+[tour.key.down]
+en = Down
+zh-Hans = 下键
+es = Abajo
+pt-BR = para baixo
+fr = Bas
+de = Unten
+ja = 下キー
+it = Giù
+
+[tour.key.left]
+en = Left
+zh-Hans = 左键
+es = Izquierda
+pt-BR = para a esquerda
+fr = Gauche
+de = Links
+ja = 左キー
+it = Sinistra
+
+[tour.key.right]
+en = Right
+zh-Hans = 右键
+es = Derecha
+pt-BR = para a direita
+fr = Droite
+de = Rechts
+ja = 右キー
+it = Destra
+
+[tour.key.volume]
+en = volume
+zh-Hans = 音量键
+es = el volumen
+pt-BR = o volume
+fr = le volume
+de = die Lautstärke
+ja = 音量ボタン
+it = un tasto volume
+
+[tour.key.brightness]
+en = brightness
+zh-Hans = 亮度键
+es = el brillo
+pt-BR = o brilho
+fr = la luminosité
+de = die Helligkeit
+ja = 明るさボタン
+it = un tasto luminosità
+
+[tour.try.dpad]
+note = What to press, said in "Try %s.": the move step's.
+en = the D-pad
+zh-Hans = 方向键
+es = la cruceta
+pt-BR = o direcional
+fr = la croix
+de = das Steuerkreuz
+ja = 十字キー
+it = la croce direzionale
+
+[tour.try.vol]
+note = The volume step's.
+en = VOL+ or VOL-
+zh-Hans = VOL+ 或 VOL-
+es = VOL+ o VOL-
+pt-BR = VOL+ ou VOL-
+fr = VOL+ ou VOL-
+de = VOL+ oder VOL-
+ja = VOL+ か VOL-
+it = VOL+ o VOL-
+
+[tour.try.f1_f2]
+note = The brightness step's, on a handheld with F1 and F2.
+en = F1 or F2
+zh-Hans = F1 或 F2
+es = F1 o F2
+pt-BR = F1 ou F2
+fr = F1 ou F2
+de = F1 oder F2
+ja = F1 か F2
+it = F1 o F2
+
+[tour.try.choice]
+note = A choice's: the d-pad's LEFT and RIGHT, or A. tight: the bubble's second line, beside "START: skip"; es, pt-BR and fr name the two directions as a pair and leave A to the line above.
+en = LEFT, RIGHT or A
+zh-Hans = 左、右或 A
+es = IZQUIERDA/DERECHA
+pt-BR = ESQUERDA/DIREITA
+fr = GAUCHE/DROITE
+de = LINKS/RECHTS
+ja = 左、右か A
+it = SINISTRA/DESTRA
+
+[tour.skip]
+note = The key legend at the bottom right of every step: START skips the rest.
+en = START: skip
+zh-Hans = START：跳过
+es = START: omitir
+pt-BR = START: pular
+fr = START : passer
+de = START: beenden
+ja = START：スキップ
+it = START: salta
+
+# The stage's stand-ins: a game's details, MP4 playing, the power-off
+
+[tour.demo.played]
+note = The stand-in details panel of a game (Chrono Trigger): its play time, 12 hours.
+en = Played 12 h
+zh-Hans = 已玩 12 小时
+es = Jugado 12 h
+pt-BR = Jogado 12 h
+fr = Joué 12 h
+de = 12 h gespielt
+ja = プレイ時間 12 時間
+it = Giocato 12 h
+
+[tour.demo.now_playing]
+note = The stand-in MP4 screen's heading.
+en = Now Playing
+zh-Hans = 正在播放
+es = Reproduciendo
+pt-BR = Tocando agora
+fr = Lecture en cours
+de = Jetzt läuft
+ja = 再生中
+it = In riproduzione
+
+[tour.demo.mix]
+note = The stand-in MP4 screen's album: a playlist of Zyper's. tight: at label size inside the stage.
+en = Zyper's Mix
+zh-Hans = Zyper 的歌单
+es = Mix de Zyper
+pt-BR = Mix do Zyper
+fr = Mix de Zyper
+de = Zypers Mix
+ja = Zyper の曲
+it = Mix di Zyper
+
+[tour.demo.saved]
+note = The stand-in power-off screen's words.
+en = Saved. See you soon.
+zh-Hans = 已保存。下次见。
+es = Guardado. Hasta pronto.
+pt-BR = Salvo. Até logo.
+fr = Sauvegardé. À bientôt.
+de = Gespeichert. Bis bald.
+ja = セーブしました。またね。
+it = Salvato. A presto.

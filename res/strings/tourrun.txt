@@ -1,0 +1,14 @@
+# The tutorial's runner (src/main.c, tour_run): what it says over the shelf
+# after the first start's tutorial is skipped. The tutorial's own words are
+# src/tour.c's and src/tourdraw.c's.
+
+[tourrun.skip_message]
+note = A one-line message over the shelf after the first start's tutorial is skipped: where to see it again (Show Tutorial, a MENU row)
+en = Show Tutorial is in MENU.
+zh-Hans = “查看教程”在 MENU 中。
+es = Ver tutorial está en MENU.
+pt-BR = Ver tutorial está no MENU.
+fr = Voir le tutoriel se trouve dans MENU.
+de = Tutorial ansehen findest du im MENU.
+ja = チュートリアルは MENU にあります。
+it = Trovi Mostra tutorial in MENU.

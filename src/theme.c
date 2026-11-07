@@ -7,6 +7,7 @@
 #include <string.h>
 #include <strings.h>
 
+#include "i18n.h"
 #include "themefile.h"
 
 /* How long the clock is trusted for, in seconds: Auto's hours are whole hours,
@@ -40,10 +41,10 @@ int theme_resolve(appearance a, int hour)
 const char *appearance_name(appearance a)
 {
 	switch (a) {
-	case APPEAR_DARK: return "Dark";
-	case APPEAR_AUTO: return "Auto";
+	case APPEAR_DARK: return T(S_THEME_DARK);
+	case APPEAR_AUTO: return T(S_THEME_AUTO);
 	case APPEAR_LIGHT:
-	default:          return "Light";
+	default:          return T(S_THEME_LIGHT);
 	}
 }
 

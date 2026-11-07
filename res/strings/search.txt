@@ -1,0 +1,63 @@
+# MENU > Search Games (src/main.c): the keyboard's title, then what it finds as
+# a list, a game a row with its system, and a note under the list.
+
+[search.title]
+note = The on-screen keyboard's title while the query is typed, and the heading of the message when nothing matches
+en = Search Games
+zh-Hans = 搜索游戏
+es = Buscar juegos
+pt-BR = Buscar jogos
+fr = Rechercher un jeu
+de = Spiele suchen
+ja = ゲームを検索
+it = Cerca giochi
+
+[search.heading]
+note = The heading over the list of games found: %s is what was typed
+en = Search: %s
+zh-Hans = 搜索：%s
+es = Buscar: %s
+pt-BR = Busca: %s
+fr = Recherche\u00a0: %s
+de = Suche: %s
+ja = 検索：%s
+it = Cerca: %s
+
+[search.found]
+note = The note under the list: how many games were found (all of them are in the list)
+en.one = %d game
+en.other = %d games
+zh-Hans = %d 个游戏
+es.one = %d juego
+es.other = %d juegos
+pt-BR.one = %d jogo
+pt-BR.other = %d jogos
+fr.one = %d jeu
+fr.other = %d jeux
+de.one = %d Spiel
+de.other = %d Spiele
+ja = %d 件
+it.one = %d gioco
+it.other = %d giochi
+
+[search.some_of]
+note = The note under the list when more games match than it shows: the first %d is how many are shown, the second how many match (always more than one)
+en = %d of %d games: type more to narrow
+zh-Hans = %d / %d 个游戏：多输入一些可缩小范围
+es = %d de %d juegos: escribe más para acotar
+pt-BR = %d de %d jogos: digite mais para refinar
+fr = %d jeux sur %d\u00a0: précisez la recherche
+de = %d von %d Spielen: weitertippen zum Eingrenzen
+ja = %d / %d 件：さらに入力して絞り込めます
+it = %d di %d giochi: scrivi altro per restringere
+
+[search.none]
+note = A message when no game matches: %s is what was typed
+en = No games match "%s"
+zh-Hans = 没有与“%s”匹配的游戏
+es = Ningún juego coincide con "%s"
+pt-BR = Nenhum jogo corresponde a "%s"
+fr = Aucun jeu ne correspond à «\u00a0%s\u00a0»
+de = Kein Spiel passt zu „%s“
+ja = 「%s」に一致するゲームはありません
+it = Nessun gioco corrisponde a "%s"

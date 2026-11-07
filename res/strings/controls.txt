@@ -1,0 +1,988 @@
+# MENU > Controls (src/controls.c): every button and what it does, a page a
+# place, and in a game the in-game menu's Controls pages for the system being
+# played. The button column is the button as printed on the handheld (A,
+# START, L1/R1, MENU+VOL), never translated; the d-pad's directions and the
+# volume keys are words, and are. The value column says what the button does.
+# A row's button and value share about 800 units at 49 px: keep values about
+# as short as English's.
+
+[controls.heading]
+note = The heading of every Controls page: %s is the page's name (below) or a system's name (Game Boy Advance). Title size, beside the page count "2 / 5": keep it short.
+en = Controls: %s
+zh-Hans = 按键说明：%s
+es = Controles: %s
+pt-BR = Controles: %s
+fr = Commandes : %s
+de = Steuerung: %s
+ja = 操作方法：%s
+it = Comandi: %s
+
+[controls.page.moving]
+note = The first page's name, in "Controls: Moving": the buttons that move you around the home and a shelf.
+en = Moving
+zh-Hans = 移动
+es = Moverse
+pt-BR = Mover-se
+fr = Bouger
+de = Bewegen
+ja = 移動
+it = Movimento
+
+[controls.page.shelf]
+note = A page's name, in "Controls: On the shelf": a system's list of games. tight
+en = On the shelf
+zh-Hans = 游戏列表
+es = En la lista
+pt-BR = Na lista
+fr = Liste
+de = Spieleliste
+ja = ゲーム一覧
+it = Nell'elenco
+
+[controls.page.game]
+note = A page's name, in "Controls: In a game": the hotkeys while a game runs.
+en = In a game
+zh-Hans = 游戏中
+es = En juego
+pt-BR = No jogo
+fr = En jeu
+de = Im Spiel
+ja = ゲーム中
+it = In gioco
+
+[controls.page.muse]
+note = A page's name, in "Controls: In MP4": MP4 is the media player's name, never translated.
+en = In MP4
+zh-Hans = MP4 中
+es = En MP4
+pt-BR = No MP4
+fr = MP4
+de = In MP4
+ja = MP4
+it = In MP4
+
+[controls.page.anywhere]
+note = A page's name, in "Controls: Anywhere": what works on every screen. tight: es and pt-BR say "General". review: pt-BR "Geral"
+en = Anywhere
+zh-Hans = 任意界面
+es = General
+pt-BR = Geral
+fr = Partout
+de = Überall
+ja = 共通
+it = Ovunque
+
+# Moving
+
+[controls.key.left_right]
+note = The button column: the d-pad's left and right, as a pair with a slash and no spaces. tight: MP4's row beside it is long. review: pt-BR "Esq./Dir."
+en = Left/Right
+zh-Hans = 左/右
+es = Izq./Der.
+pt-BR = Esq./Dir.
+fr = Gauche/Droite
+de = Links/Rechts
+ja = 左/右
+it = Sx/Dx
+
+[controls.move]
+note = What Left/Right do on the home and a shelf.
+en = Move
+zh-Hans = 移动
+es = Mover
+pt-BR = Mover
+fr = Se déplacer
+de = Bewegen
+ja = 移動
+it = Sposta
+
+[controls.key.up_down]
+note = The button column: the d-pad's up and down.
+en = Up/Down
+zh-Hans = 上/下
+es = Arriba/Abajo
+pt-BR = Cima/Baixo
+fr = Haut/Bas
+de = Oben/Unten
+ja = 上/下
+it = Su/Giù
+
+[controls.jump_letter]
+note = What Up/Down do on a shelf: jump to the next letter of the games' names.
+en = Jump by letter
+zh-Hans = 按字母跳转
+es = Saltar por letra
+pt-BR = Pular por letra
+fr = Sauter par lettre
+de = Buchstabenweise
+ja = 頭文字で移動
+it = Salta per lettera
+
+[controls.jump_systems]
+note = What L1/R1 do: 3 systems at a time on the home, a screenful of games on a shelf.
+en = 3 systems, a screenful
+zh-Hans = 3 个系统，或一整屏
+es = 3 sistemas, 1 pantalla
+pt-BR = 3 sistemas, uma tela
+fr = 3 systèmes, un écran
+de = 3 Systeme, eine Seite
+ja = 3 システム、1 画面分
+it = 3 sistemi, una schermata
+
+[controls.songs]
+note = What L2/R2 do: the previous or next song of the music playing.
+en = Previous/next song
+zh-Hans = 上一首/下一首
+es = Cambiar canción
+pt-BR = Trocar música
+fr = Changer de morceau
+de = Titel wechseln
+ja = 前/次の曲
+it = Cambia brano
+
+# On the shelf
+
+[controls.open_play]
+note = What A does on the home and a shelf: open a system, play a game.
+en = Open or play
+zh-Hans = 打开或开始
+es = Abrir o jugar
+pt-BR = Abrir ou jogar
+fr = Ouvrir ou jouer
+de = Öffnen oder spielen
+ja = 開く/プレイ
+it = Apri o gioca
+
+[controls.back]
+note = What B does.
+en = Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Retour
+de = Zurück
+ja = 戻る
+it = Indietro
+
+[controls.details]
+note = What X does on a shelf.
+en = Game details
+zh-Hans = 游戏详情
+es = Detalles del juego
+pt-BR = Detalhes do jogo
+fr = Détails du jeu
+de = Spieldetails
+ja = ゲームの詳細
+it = Dettagli del gioco
+
+[controls.favorite]
+note = What Y does on a shelf: mark the game a favorite.
+en = Favorite
+zh-Hans = 收藏
+es = Favorito
+pt-BR = Favorito
+fr = Favori
+de = Favorit
+ja = お気に入り
+it = Preferito
+
+[controls.battery]
+note = What L2+R2 do on the Pixel 2: show the battery's level on its side lights.
+en = Battery level
+zh-Hans = 电量
+es = Nivel de batería
+pt-BR = Nível da bateria
+fr = Niveau de batterie
+de = Akkustand
+ja = バッテリー残量
+it = Livello batteria
+
+# In a game
+
+[controls.menu_ff]
+note = What MENU does in a game: the in-game menu, and held with R1 fast forward (FF). tight
+en = Menu, +R1 for FF
+zh-Hans = 菜单，+R1 快进
+es = Menú, +R1 acelera
+pt-BR = Menu, +R1 acelera
+fr = Menu, +R1 accélère
+de = Menü, +R1 spult vor
+ja = メニュー、+R1 早送り
+it = Menu, +R1 accelera
+
+[controls.mp4_menu]
+note = What SELECT does in a game: MP4, the media player, is in the in-game menu.
+en = MP4 in menu
+zh-Hans = 菜单中的 MP4
+es = MP4 en el menú
+pt-BR = MP4 no menu
+fr = MP4 dans le menu
+de = MP4 im Menü
+ja = メニューの MP4
+it = MP4 nel menu
+
+[controls.turbo_row]
+note = What X/Y/L2/R2 do in a game: turbo (held, the button repeats) of A, B, L1 and R1. The * marks the note under it.
+en = Turbo A/B/L1/R1 *
+zh-Hans = A/B/L1/R1 连发 *
+es = Turbo A/B/L1/R1 *
+pt-BR = Turbo A/B/L1/R1 *
+fr = Turbo A/B/L1/R1 *
+de = Turbo A/B/L1/R1 *
+ja = A/B/L1/R1 連射 *
+it = Turbo A/B/L1/R1 *
+
+[controls.save_off]
+note = What POWER does: save the game and turn the handheld off.
+en = Save and turn off
+zh-Hans = 保存并关机
+es = Guardar y apagar
+pt-BR = Salvar e desligar
+fr = Sauvegarde et arrêt
+de = Speichern und aus
+ja = セーブして電源オフ
+it = Salva e spegni
+
+[controls.note_some]
+note = The footnote under the turbo row, the width of the panel: cut after about 30 characters.
+en = * for some systems
+zh-Hans = * 仅部分系统
+es = * en algunos sistemas
+pt-BR = * em alguns sistemas
+fr = * sur certains systèmes
+de = * bei manchen Systemen
+ja = * 一部のシステムのみ
+it = * per alcuni sistemi
+
+# In MP4
+
+[controls.play_pause]
+note = What A does in MP4.
+en = Play or pause
+zh-Hans = 播放或暂停
+es = Reproducir o pausar
+pt-BR = Tocar ou pausar
+fr = Lecture ou pause
+de = Abspielen oder Pause
+ja = 再生/一時停止
+it = Riproduci o pausa
+
+[controls.track]
+note = What L1/R1 do in MP4: the previous or next track, or a book's chapter.
+en = Track or chapter
+zh-Hans = 曲目或章节
+es = Pista o capítulo
+pt-BR = Faixa ou capítulo
+fr = Piste ou chapitre
+de = Titel oder Kapitel
+ja = 曲/章
+it = Traccia o capitolo
+
+[controls.seek]
+note = What Left/Right do in MP4: seek back or forward, faster while held. tight: beside Left/Right, es, pt-BR and fr say only "forward or back". review: pt-BR
+en = Seek, faster held
+zh-Hans = 快退快进，按住加速
+es = Adelantar o atrasar
+pt-BR = Avançar ou voltar
+fr = Avance/retour
+de = Spulen
+ja = 巻き戻し/早送り
+it = Avanti o indietro
+
+[controls.mode]
+note = What Y does in MP4: the play mode (repeat, shuffle), a book's speed, or a video's view.
+en = Mode, speed or view
+zh-Hans = 模式、速度或画面
+es = Modo, velocidad o vista
+pt-BR = Modo, velocidade ou tela
+fr = Mode, vitesse ou vue
+de = Modus, Tempo, Ansicht
+ja = モード、速度、表示
+it = Modalità, velocità o vista
+
+[controls.lock]
+note = What X does in MP4: lock every button until SELECT and START are held.
+en = Lock till SELECT+START
+zh-Hans = 锁定至 SELECT+START
+es = Bloqueo (SELECT+START)
+pt-BR = Trava até SELECT+START
+fr = Verrou (SELECT+START)
+de = Sperre bis SELECT+START
+ja = SELECT+START までロック
+it = Blocca fino a SELECT+START
+
+# Anywhere
+
+[controls.settings]
+note = What MENU does outside a game.
+en = Settings
+zh-Hans = 设置
+es = Configuración
+pt-BR = Configurações
+fr = Paramètres
+de = Einstellungen
+ja = 設定
+it = Impostazioni
+
+[controls.key.volume]
+note = The button column: the two volume keys, as words (they have no printed name).
+en = Volume rocker
+zh-Hans = 音量键
+es = Volumen
+pt-BR = Volume
+fr = Volume
+de = Lautstärke
+ja = 音量ボタン
+it = Tasti volume
+
+[controls.sound]
+note = What the volume keys do.
+en = Sound
+zh-Hans = 声音
+es = Sonido
+pt-BR = Som
+fr = Son
+de = Ton
+ja = 音量
+it = Audio
+
+[controls.brightness]
+note = What F1/F2 (MENU+VOL on the Pixel 2) do.
+en = Brightness
+zh-Hans = 亮度
+es = Brillo
+pt-BR = Brilho
+fr = Luminosité
+de = Helligkeit
+ja = 明るさ
+it = Luminosità
+
+[controls.turn_off]
+note = What POWER does outside a game.
+en = Turn off
+zh-Hans = 关机
+es = Apagar
+pt-BR = Desligar
+fr = Éteindre
+de = Ausschalten
+ja = 電源オフ
+it = Spegni
+
+# In a game: a system's buttons as its core names them. A name printed on
+# the system's own pad (Start, Select, Mode, C, II) is not here and is never
+# translated; these are the words. A value is at most about 22 characters.
+
+[controls.turbo]
+note = A button that repeats while held: %s is the button the game sees (A, Button 1). Two such rows are said as one when they share a word: "Turbo A/B".
+en = Turbo %s
+zh-Hans = %s 连发
+es = Turbo %s
+pt-BR = Turbo %s
+fr = Turbo %s
+de = Turbo %s
+ja = %s 連射
+it = Turbo %s
+
+[controls.fire]
+note = A joystick's button (Atari 2600), and a phone's OK/Fire key (J2ME).
+en = Fire
+zh-Hans = 开火
+es = Disparo
+pt-BR = Disparo
+fr = Tir
+de = Feuer
+ja = 発射
+it = Fuoco
+
+[controls.left_switch_a]
+note = Atari 2600: the left difficulty switch set to A.
+en = Left switch A
+zh-Hans = 左难度开关 A
+es = Interruptor izq. A
+pt-BR = Chave esq. A
+fr = Interrupteur g. A
+de = Linker Schalter A
+ja = 左スイッチ A
+it = Interruttore sin. A
+
+[controls.right_switch_a]
+note = Atari 2600: the right difficulty switch set to A.
+en = Right switch A
+zh-Hans = 右难度开关 A
+es = Interruptor der. A
+pt-BR = Chave dir. A
+fr = Interrupteur d. A
+de = Rechter Schalter A
+ja = 右スイッチ A
+it = Interruttore des. A
+
+[controls.left_switch_b]
+note = Atari 2600: the left difficulty switch set to B.
+en = Left switch B
+zh-Hans = 左难度开关 B
+es = Interruptor izq. B
+pt-BR = Chave esq. B
+fr = Interrupteur g. B
+de = Linker Schalter B
+ja = 左スイッチ B
+it = Interruttore sin. B
+
+[controls.right_switch_b]
+note = Atari 2600: the right difficulty switch set to B.
+en = Right switch B
+zh-Hans = 右难度开关 B
+es = Interruptor der. B
+pt-BR = Chave dir. B
+fr = Interrupteur d. B
+de = Rechter Schalter B
+ja = 右スイッチ B
+it = Interruttore des. B
+
+[controls.game_button]
+note = Game & Watch: the game's own button.
+en = Game button
+zh-Hans = 游戏按钮
+es = Botón del juego
+pt-BR = Botão do jogo
+fr = Bouton du jeu
+de = Spieltaste
+ja = ゲームボタン
+it = Pulsante del gioco
+
+[controls.help]
+note = Game & Watch: the game's help.
+en = Help
+zh-Hans = 帮助
+es = Ayuda
+pt-BR = Ajuda
+fr = Aide
+de = Hilfe
+ja = ヘルプ
+it = Aiuto
+
+[controls.game_menu]
+note = Game & Watch: the game's menu (Game A, Game B, the time).
+en = Game menu
+zh-Hans = 游戏菜单
+es = Menú del juego
+pt-BR = Menu do jogo
+fr = Menu du jeu
+de = Spielmenü
+ja = ゲームメニュー
+it = Menu del gioco
+
+[controls.fire_n]
+note = Atari 5200: a numbered fire button; %s is its number (1, 2).
+en = Fire %s
+zh-Hans = 开火 %s
+es = Disparo %s
+pt-BR = Disparo %s
+fr = Tir %s
+de = Feuer %s
+ja = 発射 %s
+it = Fuoco %s
+
+[controls.keypad]
+note = Atari 5200: a key of the controller's keypad; %s is the key (0, 1, #, *).
+en = Keypad %s
+zh-Hans = 数字键 %s
+es = Teclado %s
+pt-BR = Teclado %s
+fr = Pavé %s
+de = Tastenfeld %s
+ja = キーパッド %s
+it = Tastierino %s
+
+[controls.show_keypad]
+note = Atari 5200: shows the on-screen keypad.
+en = Show keypad
+zh-Hans = 显示数字键
+es = Mostrar teclado
+pt-BR = Mostrar teclado
+fr = Afficher le pavé
+de = Tastenfeld zeigen
+ja = キーパッドを表示
+it = Mostra tastierino
+
+[controls.button]
+note = A numbered or lettered button of a system (Vectrex, MSX, arcades, PICO-8); %s is its number or letter (1, 6, X, O).
+en = Button %s
+zh-Hans = 按钮 %s
+es = Botón %s
+pt-BR = Botão %s
+fr = Bouton %s
+de = Taste %s
+ja = ボタン %s
+it = Pulsante %s
+
+[controls.disk_side]
+note = Famicom Disk System: turn the disk over.
+en = Disk side
+zh-Hans = 磁盘换面
+es = Cambiar lado
+pt-BR = Virar disco
+fr = Face du disque
+de = Disk wenden
+ja = ディスク面切り替え
+it = Gira il disco
+
+[controls.eject_disk]
+note = Famicom Disk System.
+en = Eject disk
+zh-Hans = 弹出磁盘
+es = Expulsar disco
+pt-BR = Ejetar disco
+fr = Éjecter le disque
+de = Disk auswerfen
+ja = ディスクを取り出す
+it = Espelli disco
+
+[controls.left_difficulty]
+note = Atari 7800: the left difficulty switch.
+en = Left difficulty
+zh-Hans = 左难度开关
+es = Dificultad izq.
+pt-BR = Dificuldade esq.
+fr = Difficulté gauche
+de = Schwierigkeit links
+ja = 左難易度
+it = Difficoltà sin.
+
+[controls.right_difficulty]
+note = Atari 7800: the right difficulty switch.
+en = Right difficulty
+zh-Hans = 右难度开关
+es = Dificultad der.
+pt-BR = Dificuldade dir.
+fr = Difficulté droite
+de = Schwierigkeit rechts
+ja = 右難易度
+it = Difficoltà des.
+
+[controls.turn_screen]
+note = Lynx and WonderSwan: turn the picture for a game played on its side.
+en = Turn the screen
+zh-Hans = 旋转画面
+es = Girar la pantalla
+pt-BR = Girar a tela
+fr = Tourner l'écran
+de = Bild drehen
+ja = 画面を回転
+it = Ruota lo schermo
+
+[controls.play]
+note = 3DO: its P button, which is play and pause. P stays.
+en = P (play)
+zh-Hans = P（播放）
+es = P (reproducir)
+pt-BR = P (tocar)
+fr = P (lecture)
+de = P (Wiedergabe)
+ja = P（再生）
+it = P (riproduci)
+
+[controls.stop]
+note = 3DO: its X button, which is stop. X stays.
+en = X (stop)
+zh-Hans = X（停止）
+es = X (detener)
+pt-BR = X (parar)
+fr = X (arrêt)
+de = X (Stopp)
+ja = X（停止）
+it = X (ferma)
+
+[controls.right_pad_up]
+note = Virtual Boy: up on its right-hand d-pad.
+en = Right pad up
+zh-Hans = 右方向键上
+es = Cruceta der. arriba
+pt-BR = Direcional dir. cima
+fr = Croix droite haut
+de = Rechtes Pad oben
+ja = 右十字キー上
+it = Pad destro su
+
+[controls.right_pad_left]
+note = Virtual Boy: left on its right-hand d-pad.
+en = Right pad left
+zh-Hans = 右方向键左
+es = Cruceta der. izq.
+pt-BR = Direcional dir. esq.
+fr = Croix droite gauche
+de = Rechtes Pad links
+ja = 右十字キー左
+it = Pad destro sinistra
+
+[controls.circle]
+note = PlayStation's button.
+en = Circle
+zh-Hans = 圆圈
+es = Círculo
+pt-BR = Círculo
+fr = Rond
+de = Kreis
+ja = マル
+it = Cerchio
+
+[controls.cross]
+note = PlayStation's button. Not the letter X: X is a button of the handheld.
+en = Cross
+zh-Hans = 叉
+es = Equis
+pt-BR = Xis
+fr = Croix
+de = Kreuz
+ja = バツ
+it = Croce
+
+[controls.triangle]
+note = PlayStation's button.
+en = Triangle
+zh-Hans = 三角
+es = Triángulo
+pt-BR = Triângulo
+fr = Triangle
+de = Dreieck
+ja = サンカク
+it = Triangolo
+
+[controls.square]
+note = PlayStation's button.
+en = Square
+zh-Hans = 方块
+es = Cuadrado
+pt-BR = Quadrado
+fr = Carré
+de = Quadrat
+ja = シカク
+it = Quadrato
+
+[controls.y_left]
+note = WonderSwan: the left one of its Y buttons, a second d-pad.
+en = Y pad left
+zh-Hans = Y 左
+es = Pad Y izquierda
+pt-BR = Pad Y esquerda
+fr = Pad Y gauche
+de = Y-Pad links
+ja = Y 左
+it = Pad Y sinistra
+
+[controls.y_right]
+note = WonderSwan: the right one of its Y buttons.
+en = Y pad right
+zh-Hans = Y 右
+es = Pad Y derecha
+pt-BR = Pad Y direita
+fr = Pad Y droite
+de = Y-Pad rechts
+ja = Y 右
+it = Pad Y destra
+
+[controls.y_down]
+note = WonderSwan: the lower one of its Y buttons.
+en = Y pad down
+zh-Hans = Y 下
+es = Pad Y abajo
+pt-BR = Pad Y baixo
+fr = Pad Y bas
+de = Y-Pad unten
+ja = Y 下
+it = Pad Y giù
+
+[controls.y_up]
+note = WonderSwan: the upper one of its Y buttons.
+en = Y pad up
+zh-Hans = Y 上
+es = Pad Y arriba
+pt-BR = Pad Y cima
+fr = Pad Y haut
+de = Y-Pad oben
+ja = Y 上
+it = Pad Y su
+
+[controls.trigger]
+note = Dreamcast: an analog trigger; %s is L or R. Two are said as one, "L/R trigger", by the word they share.
+en = %s trigger
+zh-Hans = %s 扳机
+es = Gatillo %s
+pt-BR = Gatilho %s
+fr = Gâchette %s
+de = Trigger %s
+ja = %s トリガー
+it = Grilletto %s
+
+[controls.coin]
+note = Arcades: put in a coin (a credit).
+en = Coin
+zh-Hans = 投币
+es = Moneda
+pt-BR = Ficha
+fr = Pièce
+de = Münze
+ja = コイン投入
+it = Moneta
+
+[controls.right_soft]
+note = J2ME: a phone's right soft key, under the screen.
+en = Right soft key
+zh-Hans = 右软键
+es = Tecla derecha
+pt-BR = Tecla direita
+fr = Touche écran droite
+de = Rechter Softkey
+ja = 右ソフトキー
+it = Tasto selezione destro
+
+[controls.left_soft]
+note = J2ME: a phone's left soft key, under the screen.
+en = Left soft key
+zh-Hans = 左软键
+es = Tecla izquierda
+pt-BR = Tecla esquerda
+fr = Touche écran gauche
+de = Linker Softkey
+ja = 左ソフトキー
+it = Tasto selezione sinistro
+
+[controls.click]
+note = ScummVM: a mouse click.
+en = Click
+zh-Hans = 点击
+es = Clic
+pt-BR = Clique
+fr = Clic
+de = Klick
+ja = クリック
+it = Clic
+
+[controls.right_click]
+note = ScummVM: a right mouse click.
+en = Right-click
+zh-Hans = 右键点击
+es = Clic derecho
+pt-BR = Clique direito
+fr = Clic droit
+de = Rechtsklick
+ja = 右クリック
+it = Clic destro
+
+[controls.space]
+note = ScummVM: the keyboard's space bar.
+en = Space
+zh-Hans = 空格
+es = Espacio
+pt-BR = Espaço
+fr = Espace
+de = Leertaste
+ja = スペース
+it = Spazio
+
+[controls.skip_esc]
+note = ScummVM: Esc, which skips a scene. Esc is the key's name.
+en = Skip (Esc)
+zh-Hans = 跳过（Esc）
+es = Omitir (Esc)
+pt-BR = Pular (Esc)
+fr = Passer (Échap)
+de = Überspringen (Esc)
+ja = スキップ（Esc）
+it = Salta (Esc)
+
+[controls.return]
+note = ScummVM: the keyboard's Return (Enter) key.
+en = Return
+zh-Hans = 回车
+es = Intro
+pt-BR = Enter
+fr = Entrée
+de = Eingabe
+ja = Enter
+it = Invio
+
+[controls.slow_pointer]
+note = ScummVM: moves the pointer slower while held.
+en = Slow pointer
+zh-Hans = 慢速指针
+es = Puntero lento
+pt-BR = Ponteiro lento
+fr = Pointeur lent
+de = Zeiger langsam
+ja = ポインター低速
+it = Puntatore lento
+
+[controls.scummvm_menu]
+note = ScummVM: its own menu. ScummVM is a name.
+en = ScummVM menu
+zh-Hans = ScummVM 菜单
+es = Menú de ScummVM
+pt-BR = Menu do ScummVM
+fr = Menu ScummVM
+de = ScummVM-Menü
+ja = ScummVM メニュー
+it = Menu di ScummVM
+
+[controls.keyboard]
+note = ScummVM: the on-screen keyboard.
+en = Keyboard
+zh-Hans = 键盘
+es = Teclado
+pt-BR = Teclado
+fr = Clavier
+de = Tastatur
+ja = キーボード
+it = Tastiera
+
+[controls.shake]
+note = Pokémon mini: shakes the handheld, as the real one is shaken.
+en = Shake
+zh-Hans = 摇晃
+es = Sacudir
+pt-BR = Sacudir
+fr = Secouer
+de = Schütteln
+ja = 振る
+it = Scuoti
+
+[controls.power]
+note = Pokémon mini: its power button.
+en = Power
+zh-Hans = 电源
+es = Encendido
+pt-BR = Liga/desliga
+fr = Marche/arrêt
+de = Ein/Aus
+ja = 電源
+it = Accensione
+
+# In a game: the page a system adds
+
+[controls.c_buttons]
+note = Nintendo 64: the page of its C buttons, in "Controls: C buttons". tight: French's heading has room for "C" only
+en = C buttons
+zh-Hans = C 键
+es = Botones C
+pt-BR = Botões C
+fr = C
+de = C-Tasten
+ja = C ボタン
+it = Pulsanti C
+
+[controls.c_up]
+note = Nintendo 64: the C buttons' up one.
+en = C up
+zh-Hans = C 上
+es = C arriba
+pt-BR = C cima
+fr = C haut
+de = C oben
+ja = C 上
+it = C su
+
+[controls.c_right]
+en = C right
+zh-Hans = C 右
+es = C derecha
+pt-BR = C direita
+fr = C droite
+de = C rechts
+ja = C 右
+it = C destra
+
+[controls.c_down]
+en = C down
+zh-Hans = C 下
+es = C abajo
+pt-BR = C baixo
+fr = C bas
+de = C unten
+ja = C 下
+it = C giù
+
+[controls.c_left]
+en = C left
+zh-Hans = C 左
+es = C izquierda
+pt-BR = C esquerda
+fr = C gauche
+de = C links
+ja = C 左
+it = C sinistra
+
+[controls.rumble]
+note = Nintendo 64: the controller holds a Rumble Pak, not a Controller Pak (product names, not translated). Cut after about 30 characters.
+en = Rumble Pak, not Controller Pak
+zh-Hans = Rumble Pak，非 Controller Pak
+es = Rumble Pak, no Controller Pak
+pt-BR = Rumble Pak, não Controller Pak
+fr = Rumble Pak, pas Controller Pak
+de = Rumble Pak, kein Controller Pak
+ja = Rumble Pak（Controller Pak 不可）
+it = Rumble Pak, non Controller Pak
+
+[controls.two_screens]
+note = Nintendo DS: the page of its screens and stylus, in "Controls: Two screens". tight
+en = Two screens
+zh-Hans = 双屏
+es = 2 pantallas
+pt-BR = Duas telas
+fr = Écrans
+de = Bildschirme
+ja = 2 画面
+it = Due schermi
+
+[controls.other_screen]
+note = Nintendo DS: L2 shows the other screen.
+en = Other screen
+zh-Hans = 切换屏幕
+es = Otra pantalla
+pt-BR = Outra tela
+fr = Autre écran
+de = Anderer Bildschirm
+ja = 画面切り替え
+it = Altro schermo
+
+[controls.stylus]
+note = Nintendo DS: R2 turns the stylus on and off.
+en = Stylus on/off
+zh-Hans = 触控笔开/关
+es = Mostrar/ocultar lápiz
+pt-BR = Caneta liga/desliga
+fr = Stylet oui/non
+de = Touchpen an/aus
+ja = タッチペン オン/オフ
+it = Attiva/disattiva stilo
+
+[controls.key.dpad]
+note = The button column: the d-pad, as words.
+en = D-pad
+zh-Hans = 方向键
+es = Cruceta
+pt-BR = Direcional
+fr = Croix
+de = Steuerkreuz
+ja = 十字キー
+it = Croce
+
+[controls.stylus_moves]
+note = Nintendo DS: the d-pad moves the stylus while it is on.
+en = Moves the stylus
+zh-Hans = 移动触控笔
+es = Mueve el lápiz
+pt-BR = Move a caneta
+fr = Déplace le stylet
+de = Bewegt Touchpen
+ja = タッチペンを動かす
+it = Muove lo stilo
+
+[controls.stylus_touch]
+note = Nintendo DS: A touches the screen while the stylus is on.
+en = Touches, stylus on
+zh-Hans = 触控笔开启时点按
+es = Toca, con el lápiz
+pt-BR = Toca, com a caneta
+fr = Touche, stylet actif
+de = Tippt, Touchpen an
+ja = タッチ（ペンオン時）
+it = Tocca, stilo attivo

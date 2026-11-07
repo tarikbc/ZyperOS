@@ -60,6 +60,20 @@ SDL_FRect games_cover_rect(int width,int height,float offset)
 }
 /* See whether balancing retained all words. A longer name gets a full marquee,
  * rather than silently losing the tail to lb_balance's final-line ellipsis. */
+/* One part of the line under the name at x, or nothing once a part did not
+ * fit (x < 0): returns where the next one starts, or -1 */
+#define GAMES_META_RIGHT (1024-64)
+/* The system's line beside A's hint (page_hint at x 800): 40 short of it */
+#define GAMES_ORIGIN_RIGHT 760
+static int meta_part(SDL_Renderer *r,TTF_Font *f,const char *s,int x)
+{
+    if(x<0) return -1;
+    int w=ui_text_width(f,s);
+    if(x+w>GAMES_META_RIGHT) return -1;
+    ui_text(r,f,s,x,ui_cap_y(f,664),-1,UI_TEXT_DIM);
+    return x+w+32;
+}
+
 static bool complete_title(const char *title,char lines[][LB_LINE],int n)
 {
     const unsigned char *p=(const unsigned char *)title;
@@ -146,28 +160,43 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
         }
     }
     TTF_Font *title=page_font(PAGE_GAME_TITLE);
-    const char *name=info->title && info->title[0]?info->title:"No games";
+    const char *name=info->title && info->title[0]?info->title:T(S_GAMES_NO_GAMES);
     char lines[2][LB_LINE];
     int nlines=ui_balance_lines(title,name,656,2,lines);
-    if(complete_title(name,lines,nlines)) {
+    bool whole=complete_title(name,lines,nlines);
+    if(whole) {
         for(int i=0;i<nlines;i++) ui_text(r,title,lines[i],64,ui_cap_y(title,584+i*44),-1,UI_TEXT);
     } else {
         ui_text_marquee(r,title,name,64,ui_cap_y(title,584),656,phase,UI_TEXT);
         unsigned next=ui_pingpong_wait(ui_text_width(title,name)-656,phase); if(next<wait) wait=next;
     }
+    /* The game's own system on Favorites, right under its name (
+     * 2026-11-07: "have the system right below the name"): in the second
+     * line's place when the name takes one, clear of A's hint; under a name
+     * of two lines there is no room above the line below, so it leads that
+     * line instead. */
+    bool origin=info->origin && *info->origin;
+    if(origin && (!whole || nlines<2) && 64+ui_text_width(chrome,info->origin)<=GAMES_ORIGIN_RIGHT) {
+        ui_text(r,chrome,info->origin,64,ui_cap_y(chrome,584+44),-1,UI_TEXT_DIM);
+        origin=false;
+    }
+    /* The line below: the system when it did not fit above, then Played,
+     * then achievements, 32 apart. A part that would pass the right margin
+     * is left out with the ones after it, never drawn over the edge. */
     int x=64;
+    if(origin) x=meta_part(r,chrome,info->origin,x);
     if(info->played && *info->played) {
-        char text[64]; snprintf(text,sizeof text,"Played %s",info->played);
-        x+=ui_text(r,chrome,text,x,ui_cap_y(chrome,664),-1,UI_TEXT_DIM)+32;
+        char text[64]; snprintf(text,sizeof text,T(S_GAMES_PLAYED),info->played);
+        x=meta_part(r,chrome,text,x);
     }
     if(info->has_achievements) {
-        char text[64]; snprintf(text,sizeof text,"Achievements %d / %d",info->earned,info->total);
-        ui_text(r,chrome,text,x,ui_cap_y(chrome,664),-1,UI_TEXT_DIM);
+        char text[64]; snprintf(text,sizeof text,T(S_GAMES_ACHIEVEMENTS),info->earned,info->total);
+        meta_part(r,chrome,text,x);
     }
-    if(info->count) page_hint(r,"A",info->resumable?"Resume":"Play",800,600,true,false);
-    page_hint(r,"B","Systems",64,720,false,false);
-    page_hint(r,"Y",info->favorite?"Favorited":"Favorite",432,720,false,info->favorite);
-    page_hint(r,"X","Details",832,720,false,false);
+    if(info->count) page_hint(r,"A",T(info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
+    page_hint(r,"B",T(S_GAMES_SYSTEMS),64,720,false,false);
+    page_hint(r,"Y",T(info->favorite?S_GAMES_FAVORITED:S_GAMES_FAVORITE),432,720,false,info->favorite);
+    page_hint(r,"X",T(S_GAMES_DETAILS),832,720,false,false);
     SDL_SetRenderDrawColor(r,red,green,blue,alpha);
     SDL_SetRenderDrawBlendMode(r,blend);
     return wait;

@@ -1,0 +1,76 @@
+# MENU > RetroAchievements: why the sign-in did not work (src/rafetch.c),
+# shown as it is, in lowercase, under the RetroAchievements heading. A reason
+# RetroAchievements gives in its reply is shown in its own words.
+
+[ra.sign_in_need_both]
+en = user and password are both needed
+zh-Hans = 用户名和密码都需要填写
+es = se necesitan usuario y contraseña
+pt-BR = usuário e senha são necessários
+fr = l'identifiant et le mot de passe sont requis
+de = Benutzername und Passwort sind nötig
+ja = ユーザー名とパスワードが必要です
+it = servono utente e password
+
+[ra.sign_in_no_network]
+en = not on a network
+zh-Hans = 未连接网络
+es = sin conexión a una red
+pt-BR = sem conexão com uma rede
+fr = pas connecté à un réseau
+de = kein Netzwerk
+ja = ネットワーク未接続
+it = nessuna rete
+
+[ra.sign_in_wrong]
+en = wrong user name or password
+zh-Hans = 用户名或密码错误
+es = usuario o contraseña incorrectos
+pt-BR = usuário ou senha incorretos
+fr = identifiant ou mot de passe incorrect
+de = Benutzername oder Passwort falsch
+ja = ユーザー名またはパスワードが違います
+it = nome utente o password errati
+
+[ra.sign_in_refused_http]
+note = %d is the HTTP status the site answered with ("503")
+en = retroachievements.org refused (HTTP %d)
+zh-Hans = retroachievements.org 拒绝了请求（HTTP %d）
+es = retroachievements.org lo rechazó (HTTP %d)
+pt-BR = retroachievements.org recusou (HTTP %d)
+fr = retroachievements.org a refusé (HTTP %d)
+de = retroachievements.org hat abgelehnt (HTTP %d)
+ja = retroachievements.org に拒否されました（HTTP %d）
+it = retroachievements.org ha rifiutato (HTTP %d)
+
+[ra.sign_in_no_reach]
+en = could not reach retroachievements.org
+zh-Hans = 无法连接 retroachievements.org
+es = no se pudo conectar con retroachievements.org
+pt-BR = não foi possível acessar retroachievements.org
+fr = impossible de joindre retroachievements.org
+de = retroachievements.org nicht erreichbar
+ja = retroachievements.org に接続できません
+it = impossibile raggiungere retroachievements.org
+
+[ra.sign_in_refused]
+note = The site said no and gave no reason
+en = refused
+zh-Hans = 被拒绝
+es = rechazado
+pt-BR = recusado
+fr = refusé
+de = abgelehnt
+ja = 拒否されました
+it = rifiutato
+
+[ra.sign_in_no_token]
+note = The site said yes but sent no token, the key the handheld keeps instead of the password
+en = no token in the reply
+zh-Hans = 回复中没有令牌
+es = la respuesta no trae token
+pt-BR = a resposta não trouxe token
+fr = pas de jeton dans la réponse
+de = kein Token in der Antwort
+ja = 応答にトークンがありません
+it = nessun token nella risposta

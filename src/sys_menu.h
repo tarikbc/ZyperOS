@@ -23,6 +23,7 @@
 #include "wifi.h"
 #include "audioout.h"
 #include "sidelights.h"
+#include "i18n.h"
 
 /* The ZyperOS menu, in the order it is read.
  *
@@ -73,11 +74,15 @@
 /* Developer Mode above System Update, on a development image only: the USB link and
  * its SSH always on with the cable in, rather than the question a computer
  * gets (src/usblink.h). My pick in the USB lab, 2026-11-05. */
+/* PM_LANGUAGE is Language, under Date & Time and Clock: the regional
+ * settings together, as a phone keeps Language and Region (My pick in
+ * the languages lab, 2026-11-07; DESIGN.md 11.30). Its value is the
+ * language's own name; A opens the five. */
 typedef enum {
 	PM_SEARCH,
 	PM_STATS, PM_RANDOM,
 	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_CLOCK,
-	PM_HOURS,
+	PM_HOURS, PM_LANGUAGE,
 	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
 	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_UPDATE, PM_ABOUT, PM_ROWS
 } pm_row;
@@ -165,9 +170,10 @@ _Static_assert(MENU_MAX_ROWS >= SM_ROWS, "MENU_MAX_ROWS < SM_ROWS");
 /* The file server's two names, one per way the files travel: over the air,
  * Wi-Fi File Transfer; over the USB cable (the GKD Pixel 2), USB File Transfer.
  * Eric's, 2026-10-05. Only what people see takes the cable name; the code
- * and the server stay the hare's, one for both. */
-#define XFER_NAME_WIFI  "Wi-Fi File Transfer"
-#define XFER_NAME_CABLE "USB File Transfer"
+ * and the server stay the hare's, one for both. In the language that is on,
+ * so not for a static initializer. */
+#define XFER_NAME_WIFI  T(S_SYSMENU_XFER_WIFI)
+#define XFER_NAME_CABLE T(S_SYSMENU_XFER_CABLE)
 
 /* Where the built rows' text lives. A row holds pointers, not copies, so the
  * strings a build formats have to outlive the build; the caller owns this and
@@ -302,6 +308,12 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out);
  * the check can hold it to "never", "30s" and "2m" without a device. */
 void sys_menu_auto_off_label(int seconds, char *out, size_t n);
 
+/* System Order's value, "A to Z" or "Release Date", and Battery Icon's,
+ * "Bars" or "Percentage", in the language that is on: what sys_ui's order
+ * and battery take */
+const char *sys_menu_order_name(bool release);
+const char *sys_menu_battery_name(bool percent);
+
 /* ---- MENU > Scraper (DESIGN.md 11.19) -----------------------------------
  *
  * One list: the run and Video Snaps, a rule, then the sources in the order a
@@ -350,6 +362,8 @@ int sys_menu_sgdb_rows(const char *masked, const char *state, menu_row *out,
  * All. Fetching needs ScreenScraper, the only source with snaps. */
 typedef enum { SN_NONE, SN_FETCH, SN_PLAY, SN_SOUND, SN_CONSOLE, SN_DELETE } sn_row;
 enum { SNAP_MUTED, SNAP_QUIET, SNAP_FULL };
+/* The words the settings database keeps for them; the row says them in the
+ * language that is on */
 extern const char *const SNAP_SOUND_NAME[3];
 typedef struct { const char *name; bool on; unsigned long long bytes; } snaps_console;
 typedef struct {

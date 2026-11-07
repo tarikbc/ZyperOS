@@ -22,6 +22,76 @@ const still = matchMedia('(prefers-reduced-motion: reduce)');
 const ms = (name) => parseFloat(getComputedStyle(document.documentElement)
 	.getPropertyValue('--t-' + name)) || 0;
 
+/* ---- words --------------------------------------------------------------
+ *
+ * The page speaks the handheld's language, MENU > Language (
+ * 2026-11-07): /i18n.js, loaded before this file, is the device's
+ * res/web/i18n/<code>.js for the language that is on, which tools/i18n.py
+ * writes from res/strings/web.txt. t(name, ...) is the string web.<name>
+ * with its %s, %d and %1$s filled; tn(name, n, ...) is the form a count of
+ * n takes, filled with n when nothing else is given. index.html's own words
+ * carry their name in data-t (an attribute's in data-t-aria, data-t-title
+ * and the like), put in here before anything shows. tools/i18n.py counts a
+ * string as used only where its name is written out in quotes, in a call of
+ * t or tn or in a data-t attribute: a name is never built from pieces. */
+const WORDS = window.ZYPEROS_STRINGS || {};
+const LANG = window.ZYPEROS_LANG || 'en';
+const PLURAL = window.ZYPEROS_PLURAL || ((n) => (n === 1 ? 0 : 1));
+
+/* printf's %s, %d, %% and %1$s, the conversions the strings have; with no
+ * arguments, %s and %d stay for put() */
+function format(s, args) {
+	let at = 0;
+	return s.replace(/%(?:(\d+)\$)?([sd%])/g, (m, pos, c) =>
+		c === '%' ? '%' : !args.length ? m : String(args[pos ? pos - 1 : at++]));
+}
+function t(name, ...args) {
+	const w = WORDS[name];
+	return format(typeof w === 'string' ? w : Array.isArray(w) ? w[1] : name, args);
+}
+function tn(name, n, ...args) {
+	const w = WORDS[name];
+	return format(Array.isArray(w) ? w[PLURAL(n)] : typeof w === 'string' ? w : name,
+	              args.length ? args : [n]);
+}
+
+/* A line with an element in it, into `node`: `text` is a string from t with
+ * no arguments, and each conversion the next of `args` (or the numbered
+ * one), an element or a string */
+function put(node, text, ...args) {
+	const parts = [];
+	let at = 0, from = 0;
+	text.replace(/%(?:(\d+)\$)?([sd])/g, (m, pos, c, off) => {
+		parts.push(text.slice(from, off), args[pos ? pos - 1 : at++]);
+		from = off + m.length;
+		return m;
+	});
+	parts.push(text.slice(from));
+	node.replaceChildren(...parts.filter((x) => x !== ''));
+}
+
+/* Numbers the language's way (Intl), the digits as English has them: "1,5 Go"
+ * and "45 %" in French. A size is rounded as English always rounded it,
+ * toFixed, and only its point is the language's. */
+const POINT = (new Intl.NumberFormat(LANG).formatToParts(1.5)
+	.find((p) => p.type === 'decimal') || { value: '.' }).value;
+const PERCENT = new Intl.NumberFormat(LANG, { style: 'percent', maximumFractionDigits: 0 });
+const pct = (n) => PERCENT.format(n / 100);
+
+document.documentElement.lang = LANG;
+for (const e of document.querySelectorAll('*')) {
+	for (const a of [...e.attributes]) {
+		if (a.name === 'data-t') e.textContent = t(a.value);
+		else if (a.name.startsWith('data-t-'))
+			e.setAttribute(a.name === 'data-t-aria' ? 'aria-label' : a.name.slice(7), t(a.value));
+	}
+}
+/* The page's name, in the tab, on the PIN screen and over the folders:
+ * wire.html, USB File Transfer's page, is this one with data-link="usb" */
+const pageName = document.documentElement.dataset.link === 'usb' ? t('name.usb') : t('name.wifi');
+document.title = pageName;
+for (const e of document.querySelectorAll('.pagename')) e.textContent = pageName;
+
 let cwd = '';                 /* the path the listing is showing */
 let entries = [];
 let roots = [];               /* the card's six folders, in the device's order */
@@ -58,7 +128,7 @@ function pix(key, color, fallback) {
  * answer in plain text precisely so this can show them without a schema. */
 async function api(method, path, body) {
 	const r = await fetch(path, { method, body, credentials: 'same-origin' });
-	if (r.status === 401) { showGate('Session ended. Enter the PIN again.'); throw new Error('unauthorized'); }
+	if (r.status === 401) { showGate(t('gate.session_ended')); throw new Error('unauthorized'); }
 	if (!r.ok) throw new Error((await r.text()).split('\n')[1] || r.statusText);
 	return r;
 }
@@ -71,6 +141,7 @@ async function api(method, path, body) {
  * typed (My note in the lab, 2026-11-05), cocks his head at a wrong one
  * as he does in the menus, and hops at the right one (DESIGN.md 10). */
 const boxes = [...$('boxes').querySelectorAll('input')];
+boxes.forEach((b, i) => b.setAttribute('aria-label', i ? t('gate.digit', i + 1) : t('gate.digit_first', 1)));
 const zy = $('gatezy');
 let checking = false;
 let blinkTimer = 0;
@@ -166,17 +237,16 @@ async function sendPin(pin) {
 	try {
 		r = await fetch('/api/auth', { method: 'POST', body: pin });
 	} catch (err) {
-		return wrongPin('Could not reach the handheld. Check the connection and try again.');
+		return wrongPin(t('gate.unreachable'));
 	}
-	if (r.status === 429) return wrongPin('Too many wrong PINs. Wait 30 seconds, then try again.');
+	if (r.status === 429) return wrongPin(t('gate.locked'));
 	if (!r.ok) {
 		/* "wrong PIN, 4 tries left" from the device: the count, if it says
 		 * one; at the fifth it says to wait instead. */
 		const said = await r.text().catch(() => '');
-		if (/wait/.test(said)) return wrongPin('Too many wrong PINs. Wait 30 seconds, then try again.');
+		if (/wait/.test(said)) return wrongPin(t('gate.locked'));
 		const left = /(\d+) tr(y|ies) left/.exec(said);
-		return wrongPin(left ? 'Wrong PIN. ' + left[1] + (left[1] === '1' ? ' try left.' : ' tries left.')
-		                     : 'Wrong PIN.');
+		return wrongPin(left ? tn('gate.wrong_left', +left[1]) : t('gate.wrong'));
 	}
 	zy.classList.remove('shut');
 	zy.classList.add('hop');
@@ -215,11 +285,12 @@ function wrongPin(msg) {
  * the card. A size that disagrees with the file manager beside it reads as a
  * failed copy. A decimal for MB and GB, whole numbers for KB. */
 function human(n) {
-	if (n < 1000) return n + ' B';
-	const u = ['KB', 'MB', 'GB'];
+	if (n < 1000) return t('size.b', n);
 	let i = -1;
-	do { n /= 1000; i++; } while (n >= 1000 && i < u.length - 1);
-	return (i === 0 ? Math.round(n) : n.toFixed(1)) + ' ' + u[i];
+	do { n /= 1000; i++; } while (n >= 1000 && i < 2);
+	if (i === 0) return t('size.kb', Math.round(n));
+	const x = n.toFixed(1).replace('.', POINT);
+	return i === 1 ? t('size.mb', x) : t('size.gb', x);
 }
 
 const rootOf = (path) => roots.find((r) => r.path === path.split('/')[0]);
@@ -350,7 +421,7 @@ function openSettings(hist) {
 	const nav = $('crumbs');
 	const here = document.createElement('span');
 	here.className = 'here';
-	here.textContent = 'Settings';
+	here.textContent = t('settings');
 	nav.replaceChildren(here);
 	/* No card folder is open: the sidebar's and the chips' lime goes */
 	for (const b of document.querySelectorAll('#places button, #chips button')) {
@@ -464,7 +535,7 @@ function draw() {
 		const more = document.createElement('button');
 		more.type = 'button';
 		more.className = 'iconbtn i i-dots';
-		more.setAttribute('aria-label', 'More for ' + e.name);
+		more.setAttribute('aria-label', t('list.more_for', e.name));
 		more.setAttribute('aria-haspopup', 'menu');
 		more.onclick = () => openRowMenu(e, more, li);
 		li.append(more);
@@ -601,26 +672,26 @@ function openRowMenu(e, at, row) {
 	who.className = 'who';
 	who.textContent = e.dir ? e.name : e.name + ' · ' + human(e.size);
 	const nodes = [who];
-	if (e.dir) nodes.push(item('Open', 'folder', () => go(e.path)));
-	else nodes.push(item('Download', 'down', '/api/file?p=' + enc(e.path)));
-	nodes.push(item('Rename', 'pen', () => rename(e)));
-	nodes.push(item('Delete', 'bin', () => del(e), 'danger'));
+	if (e.dir) nodes.push(item(t('act.open'), 'folder', () => go(e.path)));
+	else nodes.push(item(t('act.download'), 'down', '/api/file?p=' + enc(e.path)));
+	nodes.push(item(t('act.rename'), 'pen', () => rename(e)));
+	nodes.push(item(t('act.delete'), 'bin', () => del(e), 'danger'));
 	openMenu(nodes, at, row);
 }
 
 /* A phone's ⋯: everything the sidebar holds but the folders. */
 $('more').addEventListener('click', () => {
-	const nodes = [item('New folder', 'newfolder', newFolder)];
-	const up = item('Upload folder', 'upfolder', () => $('folderpicker').click());
+	const nodes = [item(t('tool.new_folder'), 'newfolder', newFolder)];
+	const up = item(t('tool.upload_folder'), 'upfolder', () => $('folderpicker').click());
 	nodes.push(up);
-	if (canTidy(cwd)) nodes.push(item('Tidy names', 'tidy', tidyShow));
+	if (canTidy(cwd)) nodes.push(item(t('tool.tidy'), 'tidy', tidyShow));
 	/* The update, covers, the key, the card and the logs: Settings */
-	nodes.push(item('Settings', 'gear', () => openSettings()));
+	nodes.push(item(t('settings'), 'gear', () => openSettings()));
 	const fine = document.createElement('div');
 	fine.className = 'sub';
 	if (info.ssh) {
 		const h = document.createElement('p');
-		h.textContent = 'SSH: the password is the PIN. Add your key with ssh-copy-id to skip it next time.';
+		h.textContent = t('ssh.note_menu');
 		const c = $('ssh').querySelector('.cmd').cloneNode(true);
 		c.querySelector('button').removeAttribute('id');
 		c.querySelector('button').onclick = copySsh;
@@ -685,11 +756,11 @@ $('dialog').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.pre
 /* ---- the operations ---------------------------------------------------- */
 
 async function rename(e) {
-	const to = await ask({ title: 'Rename ' + (e.dir ? 'folder' : 'file'), field: e.name, yes: 'Rename' });
+	const to = await ask({ title: e.dir ? t('rename.folder') : t('rename.file'), field: e.name, yes: t('act.rename') });
 	if (!to || to === e.name) return;
 	try {
 		await api('POST', '/api/rename?p=' + enc(e.path) + '&to=' + enc(to));
-		toast('Renamed');
+		toast(t('ops.renamed'));
 		await go(cwd, 'none');
 	} catch (err) { toast(err.message, true); }
 }
@@ -706,19 +777,19 @@ async function del(e) {
 			c = await (await api('GET', '/api/count?p=' + enc(e.path))).json();
 		} catch (err) { toast(err.message, true); return; }
 		if (c.files + c.folders > 0) {
-			if (c.rule !== 'all') { toast(e.name + ': ' + c.why, true); return; }
+			if (c.rule !== 'all') { toast(t('del.why', e.name, c.why), true); return; }
 			if (c.too_many) {
-				toast(e.name + ' holds too much to delete at once. Delete it in parts.', true);
+				toast(t('del.too_much', e.name), true);
 				return;
 			}
-			const what = c.files + (c.files === 1 ? ' file' : ' files') +
-				(c.folders ? ' in ' + c.folders + (c.folders === 1 ? ' folder' : ' folders') : '');
-			if (!await ask({ title: 'Delete ' + e.name + '?', text: 'Everything in it goes too: ' + what + '.',
-			                 yes: 'Delete', danger: true })) return;
+			const files = tn('del.files', c.files);
+			const what = c.folders ? tn('del.files_in', c.folders, files, c.folders) : files;
+			if (!await ask({ title: t('del.head', e.name), text: t('del.everything', what),
+			                 yes: t('act.delete'), danger: true })) return;
 			return removeEntry(e, true);
 		}
 	}
-	if (!await ask({ title: 'Delete ' + e.name + '?', text: 'This cannot be undone.', yes: 'Delete', danger: true }))
+	if (!await ask({ title: t('del.head', e.name), text: t('del.undone'), yes: t('act.delete'), danger: true }))
 		return;
 	return removeEntry(e, false);
 }
@@ -726,14 +797,14 @@ async function del(e) {
 async function removeEntry(e, all) {
 	try {
 		await api('POST', '/api/delete?p=' + enc(e.path) + (all ? '&all=1' : ''));
-		toast('Deleted');
+		toast(t('ops.deleted'));
 		drawRoom();
 		await go(cwd, 'none');
 	} catch (err) { toast(err.message, true); }
 }
 
 async function newFolder() {
-	const name = await ask({ title: 'New folder in ' + nameOf(cwd), field: '', yes: 'Make folder' });
+	const name = await ask({ title: t('newfolder.head', nameOf(cwd)), field: '', yes: t('newfolder.make') });
 	if (!name) return;
 	try {
 		await api('POST', '/api/mkdir?p=' + enc(cwd + '/' + name));
@@ -759,11 +830,10 @@ async function tidyShow() {
 		plan = await (await api('GET', '/api/tidy?p=' + enc(here))).json();
 	} catch (err) { toast(err.message, true); return; }
 	if (here !== cwd) return;                     /* moved on meanwhile */
-	if (!plan.items.length) { toast('The names here are tidy already.'); return; }
+	if (!plan.items.length) { toast(t('tidy.already')); return; }
 	const doing = plan.items.filter((i) => !i.skip).length;
-	$('tidyhead').textContent = doing === plan.items.length
-		? 'Tidy names: ' + doing + (doing === 1 ? ' rename' : ' renames')
-		: 'Tidy names: ' + doing + ' of ' + plan.items.length + ' (the rest would land on a name already there)';
+	$('tidyhead').textContent = doing === plan.items.length ? tn('tidy.head', doing)
+		: t('tidy.head_some', doing, plan.items.length);
 	const ul = $('tidylist');
 	ul.replaceChildren();
 	/* The folder first, then its files, as they will read */
@@ -772,10 +842,10 @@ async function tidyShow() {
 		if (i.skip) li.className = 'skip';
 		const from = document.createElement('span');
 		from.className = 'from';
-		from.textContent = (i.folder ? 'Folder: ' : '') + i.from;
+		from.textContent = i.folder ? t('tidy.folder', i.from) : i.from;
 		const to = document.createElement('span');
 		to.className = 'to';
-		to.textContent = i.to + (i.skip ? ' (skipped: already there)' : '');
+		to.textContent = i.skip ? t('tidy.skipped', i.to) : i.to;
 		li.append(from, to);
 		ul.append(li);
 	}
@@ -789,7 +859,7 @@ async function tidyGo() {
 	$('tidygo').disabled = true;
 	try {
 		const res = await (await api('POST', '/api/tidy?p=' + enc(here))).json();
-		toast('Renamed ' + res.renamed + (res.skipped ? ', skipped ' + res.skipped : ''));
+		toast(res.skipped ? t('tidy.done_skipped', res.renamed, res.skipped) : t('tidy.done', res.renamed));
 		/* The folder may have a new name: go to it */
 		await go(here.slice(0, here.lastIndexOf('/') + 1) + res.folder, 'replace');
 	} catch (err) {
@@ -808,14 +878,14 @@ async function copySsh(ev) {
 	const code = ((ev && ev.target.closest('.cmd')) || $('ssh')).querySelector('code');
 	try {
 		await navigator.clipboard.writeText(code.textContent);
-		toast('Copied.');
+		toast(t('ssh.copied'));
 	} catch (err) {
 		/* No clipboard where the page is not https: select it instead */
 		const r = document.createRange();
 		r.selectNodeContents(code);
 		getSelection().removeAllRanges();
 		getSelection().addRange(r);
-		toast('Selected. Copy it with the keyboard.');
+		toast(t('ssh.selected'));
 	}
 }
 $('sshcopy').onclick = copySsh;
@@ -828,6 +898,7 @@ let sending = false;
  * file on its way (its stop question, DESIGN.md 11.14), or it went. What has
  * not gone stays on this computer, and the panel says which. */
 let held = '';
+let heldGone = false;     /* and it went, rather than closing after the file */
 
 /* ---- room on the card -------------------------------------------------
  *
@@ -841,7 +912,7 @@ let room = null;          /* { free, total, reserve } as the device last said */
 
 async function state() {
 	const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
-	if (r.status === 401) { showGate('Session ended. Enter the PIN again.'); throw new Error('unauthorized'); }
+	if (r.status === 401) { showGate(t('gate.session_ended')); throw new Error('unauthorized'); }
 	if (!r.ok) throw new Error('HTTP ' + r.status);
 	return r.json();
 }
@@ -855,11 +926,9 @@ async function drawRoom() {
 	if (room.free < 0 || room.total <= 0) return;
 	const free = usable(room);
 	$('room').hidden = false;
-	$('roomfree').textContent = human(free);
-	$('roomof').textContent = ' free of ' + human(room.total);
+	put($('roomline'), t('room.free'), el('b', '', human(free)), human(room.total));
 	$('roombar').style.width = Math.min(100, Math.max(0, 100 - free / room.total * 100)) + '%';
-	$('cardroom').textContent = human(free) + ' free of ' + human(room.total) +
-		'. The handheld keeps ' + human(room.reserve) + ' more for saves.';
+	$('cardroom').textContent = t('card.room', human(free), human(room.total), human(room.reserve));
 }
 
 /* Bytes the queue has still to send */
@@ -882,15 +951,14 @@ async function fitting(files) {
 	const fit = [];
 	let left = have;
 	for (const f of files) if (f.size <= left) { fit.push(f); left -= f.size; }
-	const text = (files.length === 1 ? 'This file needs ' : 'These ' + files.length + ' files need ') +
-		human(need) + '. The card has ' + human(have) + ' free.';
+	const text = files.length === 1 ? t('fit.one', human(need), human(have))
+		: t('fit.many', files.length, human(need), human(have));
 	if (!fit.length) {
-		await ask({ title: 'Not enough room on the card', text: text + ' Free up room, or send fewer files.',
-		            yes: 'OK', alone: true });
+		await ask({ title: t('fit.head'), text: t('fit.none', text), yes: t('act.ok'), alone: true });
 		return null;
 	}
-	const ok = await ask({ title: 'Not enough room on the card', text,
-		yes: fit.length === 1 ? 'Send the one that fits' : 'Send the ' + fit.length + ' that fit' });
+	const ok = await ask({ title: t('fit.head'), text,
+		yes: fit.length === 1 ? t('fit.send_one') : t('fit.send_some', fit.length) });
 	return ok ? fit : null;
 }
 
@@ -915,7 +983,7 @@ function fresh() {
 async function enqueue(list, dest) {
 	const dir = dest === undefined ? cwd : dest;
 	let files = [...list];       /* now: a drop's files go with its event */
-	if (!dir) { toast('Open a folder first', true); return; }
+	if (!dir) { toast(t('queue.open_folder'), true); return; }
 	if (held && sending) { toast(held, true); return; }
 	files = await fitting(files);
 	if (!files || !files.length) return;
@@ -1004,13 +1072,13 @@ function dropped(dt, dest) {
  * dropped into an artist's folder reuses it. */
 async function makeDir(path) {
 	const r = await fetch('/api/mkdir?p=' + enc(path), { method: 'POST', credentials: 'same-origin' });
-	if (r.status === 401) { showGate('Session ended. Enter the PIN again.'); throw new Error('unauthorized'); }
+	if (r.status === 401) { showGate(t('gate.session_ended')); throw new Error('unauthorized'); }
 	if (!r.ok && r.status !== 409) throw new Error((await r.text()).split('\n')[1] || r.statusText);
 }
 
 async function enqueueTree(tree, dest) {
 	const dir = dest === undefined ? cwd : dest;
-	if (!dir) { toast('Open a folder first', true); return; }
+	if (!dir) { toast(t('queue.open_folder'), true); return; }
 	if (held && sending) { toast(held, true); return; }
 	if (!tree.dirs.length) { enqueue(tree.files.map((f) => f.file), dir); return; }
 	/* Room first, before a folder is made for files that will not go */
@@ -1021,7 +1089,7 @@ async function enqueueTree(tree, dest) {
 	try {
 		for (const d of tree.dirs) await makeDir(dir + '/' + d);
 	} catch (err) { toast(err.message, true); return; }
-	if (!files.length) { toast('Folder made'); go(cwd, 'none').catch(() => {}); return; }
+	if (!files.length) { toast(t('ops.folder_made')); go(cwd, 'none').catch(() => {}); return; }
 	fresh();
 	for (const { file, rel } of files)
 		queue.push({ file, dir: rel ? dir + '/' + rel : dir, pct: 0, state: 'waiting' });
@@ -1054,10 +1122,12 @@ function fileUpload(path, blob) {
 	return ['/api/file?p=' + enc(path) + (pad ? '&pad=1' : ''), body];
 }
 
-/* Nothing more goes: the files waiting stay on this computer */
-function hold(why) {
+/* Nothing more goes: the files waiting stay on this computer. `gone`: the
+ * handheld closed it, rather than closing after the file on its way. */
+function hold(why, gone) {
 	if (held) return;
 	held = why;
+	heldGone = !!gone;
 	for (const j of queue) if (j.state === 'waiting') j.state = 'held';
 	drawQueue();
 }
@@ -1073,9 +1143,9 @@ function watch(on) {
 		try {
 			const st = await state();
 			room = st;
-			if (st.closing) hold('The handheld is closing File Transfer after the file on its way.');
+			if (st.closing) hold(t('queue.closing'));
 		} catch (e) {
-			if (e.message !== 'unauthorized') hold('The handheld closed File Transfer.');
+			if (e.message !== 'unauthorized') hold(t('queue.closed'), true);
 		}
 	}, 2000);
 }
@@ -1131,7 +1201,7 @@ function next() {
 		else if (xhr.status === 503) {
 			/* Refused before a byte went: the handheld is closing */
 			job.state = 'waiting';
-			hold(why + '.');
+			hold(t('queue.closing_now'));
 		} else {
 			job.state = 'failed';
 			job.why = why;
@@ -1141,11 +1211,11 @@ function next() {
 	};
 	xhr.onerror = () => {
 		job.state = 'failed';
-		job.why = 'connection lost';
+		job.why = t('queue.lost');
 		drawQueue();
 		/* Gone, rather than a hiccup: nothing more is tried */
 		state().then(() => next(), (e) => {
-			if (e.message !== 'unauthorized') hold('The handheld closed File Transfer.');
+			if (e.message !== 'unauthorized') hold(t('queue.closed'), true);
 			next();
 		});
 	};
@@ -1181,9 +1251,9 @@ function eta(left) {
 	const v = a && b && b[0] - a[0] >= 3000 ? (b[1] - a[1]) / ((b[0] - a[0]) / 1000) : 0;
 	if (!(v > 0)) return (etaWords = '');
 	const s = left / v;
-	etaWords = s < 60 ? 'about ' + Math.max(5, Math.ceil(s / 5) * 5) + ' s'
-		: s < 3600 ? 'about ' + Math.round(s / 60) + ' min'
-		: 'about ' + Math.floor(s / 3600) + ' h ' + Math.round(s % 3600 / 60) + ' min';
+	etaWords = s < 60 ? t('eta.s', Math.max(5, Math.ceil(s / 5) * 5))
+		: s < 3600 ? t('eta.min', Math.round(s / 60))
+		: t('eta.h', Math.floor(s / 3600), Math.round(s % 3600 / 60));
 	return etaWords;
 }
 
@@ -1195,18 +1265,20 @@ const count = (state) => queue.filter((j) => j.state === state).length;
 function queueHead() {
 	const done = count('done'), failed = count('failed'), kept = count('held');
 	const going = queue.some((j) => j.state === 'sending' || j.state === 'waiting');
-	if (held && going) return /closed/.test(held) ? 'Stopped on the handheld' : 'The handheld is stopping';
+	if (held && going) return heldGone ? t('queue.stopped') : t('queue.stopping');
 	if (!going)
-		return done + ' sent' + (failed ? ', ' + failed + ' failed' : '') + (kept ? ', ' + kept + ' not sent' : '');
-	return 'Sending ' + (done + failed + 1) + ' of ' + queue.length;
+		return failed && kept ? t('queue.sent_failed_kept', done, failed, kept)
+		     : failed ? t('queue.sent_failed', done, failed)
+		     : kept ? t('queue.sent_kept', done, kept) : t('queue.sent', done);
+	return t('queue.sending', done + failed + 1, queue.length);
 }
 
 /* What is left, in size and time, while they go */
 function queueLeft() {
 	if (!sending) return '';
 	const left = pending();
-	const t = held ? '' : eta(left);
-	return human(left) + ' left' + (t ? ' · ' + t : '');
+	const when = held ? '' : eta(left);
+	return t('queue.left', human(left)) + (when ? ' · ' + when : '');
 }
 
 /* How far the whole queue is, by bytes, for the bars */
@@ -1241,10 +1313,10 @@ function jobList() {
 		const p = document.createElement('span');
 		p.className = 'p';
 		p.textContent = j.state === 'failed' ? j.why
-		              : j.state === 'done' ? 'done'
-		              : j.state === 'waiting' ? 'waiting'
-		              : j.state === 'held' ? 'not sent'
-		              : j.pct + '%';
+		              : j.state === 'done' ? t('job.done')
+		              : j.state === 'waiting' ? t('job.waiting')
+		              : j.state === 'held' ? t('job.not_sent')
+		              : pct(j.pct);
 		li.append(n, p);
 		if (j.state !== 'done' && j.state !== 'held') {
 			const bar = document.createElement('div');
@@ -1268,7 +1340,7 @@ function drawQueue() {
 		if (!$('menu').hidden && $('menu').querySelector('.jobs')) closeMenu(true);
 		return;
 	}
-	const head = queueHead(), left = queueLeft(), pct = queuePct();
+	const head = queueHead(), left = queueLeft(), all = queuePct();
 	$('queuehead').textContent = head;
 	/* What is left and the time, one bar for them all; or, stopped by the
 	 * handheld, why the rest stay here */
@@ -1276,28 +1348,28 @@ function drawQueue() {
 	$('queueleft').hidden = !(held || left);
 	$('queueleft').classList.toggle('stopping', !!held);
 	$('queuetotal').hidden = !sending;
-	$('queuebar').style.width = pct + '%';
+	$('queuebar').style.width = all + '%';
 	$('queuelist').replaceChildren(...jobList().childNodes);
 
 	const top = document.createElement('div');
 	top.className = 'top';
 	const h = document.createElement('span');
 	/* A phone's one line: how far, and the time left */
-	const t = sending && !held ? eta(pending()) : '';
+	const when = sending && !held ? eta(pending()) : '';
 	h.textContent = sending && !held
-		? (count('done') + count('failed') + 1) + ' of ' + queue.length + (t ? ' · ' + t : '')
+		? t('queue.n_of', count('done') + count('failed') + 1, queue.length) + (when ? ' · ' + when : '')
 		: head;
 	const p = document.createElement('span');
 	p.className = 'p';
-	p.textContent = pct + '%';
+	p.textContent = pct(all);
 	top.append(h, p);
 	const bar = document.createElement('div');
 	bar.className = 'bar';
 	const fill = document.createElement('span');
-	fill.style.width = pct + '%';
+	fill.style.width = all + '%';
 	bar.append(fill);
 	$('dock').replaceChildren(top, bar);
-	$('dock').setAttribute('aria-label', head + ', ' + pct + '%');
+	$('dock').setAttribute('aria-label', t('queue.dock', head, pct(all)));
 
 	/* The sheet, if it is open, follows along */
 	const open = !$('menu').hidden && $('menu').querySelector('.jobs');
@@ -1337,8 +1409,7 @@ let dragDepth = 0;
  * somebody who has already found it is not shown - and says where a drop
  * lands. Dragging changes its emphasis, not its words. */
 function refreshDropHint() {
-	$('dropmsg').textContent = 'Drop files anywhere here to put them in ' + nameOf(cwd) +
-		', or onto a folder to put them there.';
+	$('dropmsg').textContent = t('list.drop_hint', nameOf(cwd));
 }
 function dragUI(on) {
 	$('drop').hidden = !on;
@@ -1407,14 +1478,13 @@ async function drawArt() {
 	const parts = [];
 
 	/* Both counts every time, so a zero reads as done rather than forgotten. */
-	if (games) parts.push(!g ? 'Every game has a cover.' : g === 1 ? '1 game has no cover.'
-		: g + ' games on ' + nc + (nc === 1 ? ' console' : ' consoles') + ' have no cover.');
+	if (games) parts.push(!g ? t('art.games_done') : g === 1 ? t('art.game_missing', g)
+		: tn('art.games_missing', nc, g, nc));
 	/* Album Art's own rule: no cover, or one too small to be sharp. */
-	if (albums) parts.push(!a ? 'Every album has a cover.'
-		: (a === 1 ? '1 album has' : a + ' albums have') + ' no cover, or a small one.');
+	if (albums) parts.push(!a ? t('art.albums_done') : tn('art.albums_missing', a));
 	$('art').hidden = !games && !albums;
 	$('artgo').disabled = !g && !a;
-	$('artmsg').textContent = parts.join(' ') + lastRun;
+	$('artmsg').textContent = sentences(...parts, lastRun);
 }
 
 /* What went wrong in the last run, kept beside the count once it is over: a
@@ -1422,13 +1492,18 @@ async function drawArt() {
  * on (2026-10-05). */
 let lastRun = '';
 const failNote = (fails) => fails.length
-	? ' Last time, ' + fails.length + ' failed: ' + fails.join('; ') + '.' : '';
+	? tn('art.last_failed', fails.length, fails.length, fails.join(t('art.sep'))) : '';
+/* Sentences one after another, as the language spaces them (Chinese does not) */
+const sentences = (...xs) => xs.filter(Boolean).join(t('gap'));
+
+/* An error with the status that caused it, which the words do not carry
+ * reliably in every language */
+const answered = (words, status) => Object.assign(new Error(words), { status });
 
 async function github(url) {
 	const r = await fetch(url);
-	if (r.status === 403 || r.status === 429)
-		throw new Error("GitHub's hourly limit is used up. Try again in an hour.");
-	if (!r.ok) throw new Error('GitHub answered ' + r.status);
+	if (r.status === 403 || r.status === 429) throw new Error(t('gh.limit'));
+	if (!r.ok) throw answered(t('gh.answered', r.status), r.status);
 	return r.json();
 }
 
@@ -1451,7 +1526,7 @@ const say = (t) => { $('artmsg').textContent = t; };
 async function coverBlob(repo, name) {
 	for (let hop = 0; hop < 4; hop++) {
 		const r = await fetch(GH_RAW + repo + '/master/Named_Boxarts/' + enc(name) + '.png');
-		if (!r.ok) throw new Error('GitHub answered ' + r.status);
+		if (!r.ok) throw answered(t('gh.answered', r.status), r.status);
 		const blob = await r.blob();
 		const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
 
@@ -1459,10 +1534,10 @@ async function coverBlob(repo, name) {
 			return blob;
 		const link = (await blob.text()).trim();
 		if (!link || link.length > 300 || link.includes('\n') || !link.endsWith('.png'))
-			throw new Error('not a picture');
+			throw new Error(t('art.not_picture'));
 		name = link.replace(/^.*\//, '').slice(0, -4);
 	}
-	throw new Error('links lead nowhere');
+	throw new Error(t('art.links_nowhere'));
 }
 
 /* libretro's file names are No-Intro's with these characters as _. */
@@ -1502,7 +1577,7 @@ async function getArt(n, fails, notes) {
 		for (const c of s.collections) {
 			if (!left.size) break;
 			const repo = repoOf(c);
-			const put = async (stem, name, report) => {
+			const cover1 = async (stem, name, report) => {
 				try {
 					await api('PUT', ...fileUpload(cover(stem), await coverBlob(repo, name)));
 					n.games++;
@@ -1512,35 +1587,37 @@ async function getArt(n, fails, notes) {
 					/* 'some': all but a 404, which for a checksum's name only
 					 * means libretro files that dump's cover under another name,
 					 * and the listing finds it (three such, 2026-10-05). */
-					if (report === true || (report === 'some' && !/ 404$/.test(err.message)))
-						fails.push(stem + ' (' + err.message + ')');
+					if (report === true || (report === 'some' && err.status !== 404))
+						fails.push(t('art.fail_item', stem, err.message));
 				}
 			};
+			/* `how`: the line while it goes, from the shelf, the count and the game */
 			const each = async (pairs, how, report) => {
 				let i = 0;
 				for (const [stem, name] of pairs) {
 					if (!left.has(stem)) continue;
-					say(s.name + ': ' + how + ', ' + (++i) + ' of ' + pairs.length + ', ' + stem);
-					await put(stem, name, report);
+					say(how(s.name, ++i, pairs.length, stem));
+					await cover1(stem, name, report);
 				}
 			};
 
-			await each([...left].map((stem) => [stem, libretroName(stem)]), 'by name', false);
+			await each([...left].map((stem) => [stem, libretroName(stem)]),
+			           (...a) => t('art.by_name', ...a), false);
 
 			if (left.size) {
-				say(s.name + ': looking games up by checksum');
+				say(t('art.looking_checksum', s.name));
 				const dat = await fetch(DAT + enc(c) + '.dat').catch(() => null);
 				if (dat && dat.ok) {
 					const byCrc = await (await api('POST', '/api/art/nointro?s=' + enc(s.folder),
 					                               await dat.text())).json();
 					await each(byCrc.matches.map((m) => [m.stem, libretroName(m.name)]),
-					           'by checksum', 'some');
+					           (...a) => t('art.by_checksum', ...a), 'some');
 				}
 			}
 
 			if (left.size && noList) waiting += left.size;
 			if (left.size && !noList) {
-				say(s.name + ': looking through libretro\'s list for ' + left.size + ' more');
+				say(t('art.looking_list', s.name, left.size));
 				let names;
 				try {
 					names = await coverNames(repo);
@@ -1552,20 +1629,18 @@ async function getArt(n, fails, notes) {
 				if (!names.length) continue;
 				const byName = await (await api('POST', '/api/art/match?s=' + enc(s.folder),
 				                                names.join('\n'))).json();
-				await each(byName.matches.map((m) => [m.stem, m.name]), 'from the list', true);
+				await each(byName.matches.map((m) => [m.stem, m.name]), (...a) => t('art.from_list', ...a), true);
 				/* And loosely, last of all: the device's loose pass, given no
 				 * checksum list ("-") since the checksums have had their turn. */
 				if (left.size) {
 					const loose = await (await api('POST', '/api/art/crc?s=' + enc(s.folder),
 					                               '-')).json();
-					await each(loose.matches.map((m) => [m.stem, m.name]), 'loosely', true);
+					await each(loose.matches.map((m) => [m.stem, m.name]), (...a) => t('art.loosely', ...a), true);
 				}
 			}
 		}
 	}
-	if (noList)
-		notes.push(' ' + waiting + (waiting === 1 ? ' game waits' : ' games wait') +
-		           ' for libretro\'s list: ' + noList);
+	if (noList) notes.push(tn('art.waits', waiting, waiting, noList));
 }
 
 /* Album covers: MusicBrainz names the release, the device picks it by MP4's
@@ -1580,7 +1655,7 @@ async function musicbrainz(url) {
 	if (wait > 0) await new Promise((ok) => setTimeout(ok, wait));
 	mbLast = Date.now();
 	const r = await fetch(url, { headers: { Accept: 'application/json' } });
-	if (r.status === 503) throw new Error('MusicBrainz is busy. Try again in a minute.');
+	if (r.status === 503) throw new Error(t('mb.busy'));
 	return r.ok ? r.text() : null;
 }
 
@@ -1592,7 +1667,7 @@ async function getAlbums(n, fails) {
 		const al = w.albums[i];
 		let pick = null;
 
-		say('Albums: ' + (i + 1) + ' of ' + w.albums.length + ', ' + al.album);
+		say(t('art.albums_progress', i + 1, w.albums.length, al.album));
 		for (const url of al.searches) {
 			const reply = await musicbrainz(url);
 			if (!reply) continue;
@@ -1604,12 +1679,12 @@ async function getAlbums(n, fails) {
 			const img = await fetch(CAA + pick.rg + '/front-500');
 			/* Known to MusicBrainz with no front cover given: not found. */
 			if (img.status === 404) continue;
-			if (!img.ok) throw new Error('the Cover Art Archive answered ' + img.status);
+			if (!img.ok) throw answered(t('art.caa_answered', img.status), img.status);
 			await api('PUT', ...fileUpload(pick.cover, await img.blob()));
 			n.albums++;
 		} catch (err) {
 			if (err.message === 'unauthorized') throw err;
-			fails.push(al.album + ' (' + err.message + ')');
+			fails.push(t('art.fail_item', al.album, err.message));
 		}
 	}
 }
@@ -1618,21 +1693,19 @@ async function getAlbums(n, fails) {
 async function getCovers() {
 	const n = { games: 0, albums: 0 };
 	const fails = [], notes = [];
-	const count = (k, one, many) => n[k] + ' ' + (n[k] === 1 ? one : many);
 
 	artBusy = true;
 	$('artgo').disabled = true;
 	try {
 		await getArt(n, fails, notes);
 		await getAlbums(n, fails);
-		toast('Covers for ' + count('games', 'game', 'games') + ' and ' +
-		      count('albums', 'album', 'albums') +
-		      (fails.length ? ', ' + fails.length + ' failed' : ''),
+		const games = tn('art.n_games', n.games), albums = tn('art.n_albums', n.albums);
+		toast(fails.length ? t('art.covers_failed', games, albums, fails.length) : t('art.covers', games, albums),
 		      !n.games && !n.albums && fails.length > 0);
-		lastRun = failNote(fails) + notes.join('');
+		lastRun = sentences(failNote(fails), ...notes);
 	} catch (err) {
 		if (err.message !== 'unauthorized') toast(err.message, true);
-		lastRun = ' Last time it stopped: ' + err.message + failNote(fails);
+		lastRun = sentences(t('art.last_stopped', err.message), failNote(fails));
 	} finally {
 		artBusy = false;
 		if (!inSettings) go(cwd, 'none').catch(() => {});
@@ -1657,11 +1730,11 @@ async function sgdbAsk(op, body) {
 	return r.json();
 }
 
-const sgdbLine = (s) => s.checking ? 'Checking the key...'
-	: !s.key ? 'For Box Art on the handheld: covers libretro and ScreenScraper lack.'
-	: s.state === 'works' ? 'It works. Box Art asks SteamGridDB last.'
-	: s.state === 'refused' ? 'SteamGridDB refused it. Paste a new one.'
-	: 'Not checked yet. The next Box Art run checks it.';
+const sgdbLine = (s) => s.checking ? t('sgdb.checking')
+	: !s.key ? t('sgdb.none')
+	: s.state === 'works' ? t('sgdb.works')
+	: s.state === 'refused' ? t('sgdb.refused')
+	: t('sgdb.unchecked');
 
 async function drawSgdb(s) {
 	if (!s) {
@@ -1670,15 +1743,13 @@ async function drawSgdb(s) {
 	sgdbInfo = s;
 	$('sgdb').hidden = !s;
 	if (!s) return;
-	$('sgdbgo').textContent = s.key ? 'Change key' : 'Add a key';
+	$('sgdbgo').textContent = s.key ? t('sgdb.change') : t('sgdb.add');
 	$('sgdbdel').hidden = !s.key;
-	$('sgdbmsg').textContent = (s.key ? 'Key ••••' + s.tail + '. ' : '') + sgdbLine(s);
+	$('sgdbmsg').textContent = sentences(s.key ? t('sgdb.key', '••••' + s.tail) : '', sgdbLine(s));
 }
 
 async function setSgdb() {
-	const key = await ask({ title: 'SteamGridDB key',
-		text: 'Paste your API key from steamgriddb.com, Preferences, API.',
-		field: '', yes: 'Save' });
+	const key = await ask({ title: t('sgdb.key_head'), text: t('sgdb.paste'), field: '', yes: t('act.save') });
 	if (!key) return;
 	try {
 		let s = await sgdbAsk('key', key);
@@ -1694,12 +1765,11 @@ async function setSgdb() {
 }
 
 async function delSgdb() {
-	if (!await ask({ title: 'Remove the SteamGridDB key?',
-		text: 'Box Art on the handheld stops asking SteamGridDB.', yes: 'Remove', danger: true }))
+	if (!await ask({ title: t('sgdb.remove_head'), text: t('sgdb.remove_text'), yes: t('act.remove'), danger: true }))
 		return;
 	try {
 		drawSgdb(await sgdbAsk('remove'));
-		toast('Key removed.');
+		toast(t('sgdb.removed'));
 	} catch (err) { if (err.message !== 'unauthorized') toast(err.message, true); }
 }
 
@@ -1748,15 +1818,15 @@ async function newest() {
 	try {
 		/* window.ZYPEROS_RELEASES: another answer, for tools/portal-check.py */
 		const r = await fetch(window.ZYPEROS_RELEASES || RELEASES, { headers: { Accept: 'application/vnd.github+json' } });
-		if (r.status === 404) { relWhy = 'ZyperOS has no release on GitHub yet.'; return; }
-		if (r.status === 403 || r.status === 429) { relWhy = "GitHub's hourly limit is used up. Try again in an hour."; return; }
-		if (!r.ok) { relWhy = 'GitHub answered ' + r.status + '.'; return; }
+		if (r.status === 404) { relWhy = t('update.no_release'); return; }
+		if (r.status === 403 || r.status === 429) { relWhy = t('gh.limit'); return; }
+		if (!r.ok) { relWhy = t('gh.answered_stop', r.status); return; }
 		const j = await r.json();
 		const assets = {};
 		for (const a of j.assets || []) assets[a.name] = { size: a.size, url: a.browser_download_url };
 		rel = { version: String(j.tag_name || '').replace(/^v/, ''), assets };
 	} catch (e) {
-		relWhy = 'Could not reach GitHub. Check this computer\'s internet.';
+		relWhy = t('update.no_github');
 	}
 }
 
@@ -1800,9 +1870,9 @@ const bar = (words, pct) => {
 };
 
 /* What the update program's states mean here */
-const WORK = { checking: 'Checking the files', copying: 'Copying the files that did not change',
-               downloading: 'Unpacking the update', verifying: 'Checking every file',
-               installing: 'Writing the system' };
+const WORK = { checking: t('update.work_checking'), copying: t('update.work_copying'),
+               downloading: t('update.work_unpacking'), verifying: t('update.work_verifying'),
+               installing: t('update.work_installing') };
 
 async function drawUpdate() {
 	let d;
@@ -1815,81 +1885,80 @@ async function drawUpdate() {
 	upd = d;
 	$('update').hidden = false;
 	const body = $('updbody');
-	const nodes = [el('p', 'now', 'You have ZyperOS ' + d.installed + '.')];
+	const nodes = [el('p', 'now', t('update.have', d.installed))];
 
 	/* No release key, no System Update, no program: off, and why */
 	if (!d.on) {
-		nodes.push(flag('Updates through the computer are off on this handheld. ' + d.why));
+		nodes.push(flag(t('update.off', d.why)));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	/* The update program at work: one bar, the handheld's own count */
 	if (d.running || upBusy === 'wait') {
-		const w = WORK[d.state] || 'Starting';
-		const pct = d.total ? Math.round(d.done / d.total * 100) : d.files_total ? Math.round(d.files_done / d.files_total * 100) : 0;
-		nodes[0] = el('p', 'now', 'Installing ZyperOS ' + (d.version || '') + ' on the handheld.');
-		nodes.push(bar(w + (pct ? ', ' + pct + '%' : '') + '...', pct),
-		           el('p', '', 'Keep the cable in. You can leave this page; the handheld goes on.'));
+		const w = WORK[d.state] || t('update.work_starting');
+		const at = d.total ? Math.round(d.done / d.total * 100) : d.files_total ? Math.round(d.files_done / d.files_total * 100) : 0;
+		nodes[0] = el('p', 'now', t('update.installing', d.version || ''));
+		nodes.push(bar(at ? t('update.working_pct', w, pct(at)) : t('update.working', w), at),
+		           el('p', '', t('update.keep_cable')));
 		body.replaceChildren(...nodes);
 		upWatch(true);
 		return;
 	}
 	upWatch(false);
 	if (d.state === 'ready') {
-		nodes[0] = el('p', 'now', 'ZyperOS ' + d.version + ' is ready.');
-		nodes.push(el('p', '', 'Restart the handheld to install it. It takes about 10 seconds.'),
+		nodes[0] = el('p', 'now', t('update.ready', d.version));
+		nodes.push(el('p', '', t('update.restart_text')),
 		           Object.assign(el('div', 'acts'), {}));
-		nodes[2].append(btn('Restart the handheld', 'pri', upRestart));
+		nodes[2].append(btn(t('update.restart'), 'pri', upRestart));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	/* Sending the files: their bar */
 	if (upBusy === 'send') {
-		nodes[0] = el('p', 'now', 'Sending ZyperOS ' + (rel ? rel.version : '') + ' to the handheld.');
-		nodes.push(bar(upLeft, upPct), el('p', '', 'Next, the handheld checks the signature and every file, then installs. Keep the cable in.'));
+		nodes[0] = el('p', 'now', t('update.sending', rel ? rel.version : ''));
+		nodes.push(bar(upLeft, upPct), el('p', '', t('update.next')));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	/* What the last try said, when it stopped short */
-	const said = { uptodate: 'The handheld already has this version.',
-	               'needs-system': 'This update needs a newer system image than the handheld has. ' +
-	                               (d.slots ? 'Send the system files too.' : 'Use the ZyperOS Installer.'),
-	               'too-big': "The new system does not fit this card's system slots. Use the ZyperOS Installer.",
-	               battery: 'Charge the handheld to 25% first.',
-	               space: 'Not enough room on the card for the update. Free up some room.',
-	               error: d.message || 'The update was refused.',
-	               stopped: 'The last update stopped before the end. Send the files again.' };
+	const said = { uptodate: t('update.uptodate'),
+	               'needs-system': d.slots ? t('update.needs_system_send') : t('update.needs_system_installer'),
+	               'too-big': t('update.too_big'),
+	               battery: t('update.battery'),
+	               space: t('update.space'),
+	               error: d.message || t('update.refused'),
+	               stopped: t('update.stopped') };
 	if (upBusy === 'done' && said[d.state]) nodes.push(flag(said[d.state], d.state === 'error'));
 
 	await newest();
 	if (!rel) {
-		nodes.push(el('p', '', relWhy || 'Looking for the newest release...'));
+		nodes.push(el('p', '', relWhy || t('update.looking')));
 		nodes.push(dropZone([]));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	const want = needed();
 	if (!want.length) {
-		nodes.push(el('p', '', 'The newest release, ' + rel.version + ', has no update for this handheld.'));
+		nodes.push(el('p', '', t('update.none_for', rel.version)));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	if (vcmp(rel.version, d.installed) <= 0 && !(d.slots && vcmp(rel.version, d.system || '0') > 0)) {
-		nodes.push(el('p', '', 'ZyperOS ' + d.installed + ' is the newest.'));
+		nodes.push(el('p', '', t('update.newest', d.installed)));
 		body.replaceChildren(...nodes);
 		return;
 	}
 	const size = want.reduce((n, f) => n + rel.assets[f].size, 0);
-	nodes[0] = el('p', 'now', 'ZyperOS ' + rel.version + ' is out. You have ' + d.installed + '.');
+	nodes[0] = el('p', 'now', t('update.out', rel.version, d.installed));
 	const have = want.filter((n) => upFiles.has(n)).length;
 	const steps = el('ol', 'steps');
 	const one = el('li'), t1 = el('div', 't');
 	one.append(el('span', 'n' + (have === want.length ? ' ok' : ''), '1'), t1);
-	t1.append(el('span', '', 'Download the update: ' + want.length + ' files, ' + human(size) + ', from GitHub.'),
-	          btn(have ? 'Download again' : 'Download', 'i i-down', () => upDownload(want)));
+	t1.append(el('span', '', t('update.download_text', want.length, human(size))),
+	          btn(have ? t('update.download_again') : t('act.download'), 'i i-down', () => upDownload(want)));
 	const two = el('li'), t2 = el('div', 't');
 	two.append(el('span', 'n', '2'), t2);
-	t2.append(el('span', '', 'Drop them here, or choose them. The handheld checks them before it installs.'), dropZone(want));
+	t2.append(el('span', '', t('update.drop')), dropZone(want));
 	steps.append(one, two);
 	nodes.push(steps);
 	body.replaceChildren(...nodes);
@@ -1914,8 +1983,8 @@ function dropZone(want) {
 	const z = el('div', 'dz');
 	const list = el('div', 'files');
 	for (const n of want) list.append(el('span', upFiles.has(n) ? 'have' : '', (upFiles.has(n) ? '✓ ' : '') + n));
-	if (!want.length) list.append(el('span', '', 'The update\'s files: ZyperOS-' + (upd ? upd.device : 'pixel2') + '-update.txt and its .zpk.'));
-	z.append(list, btn('Choose files', 'pri', () => $('updpicker').click()));
+	if (!want.length) list.append(el('span', '', t('update.files', 'ZyperOS-' + (upd ? upd.device : 'pixel2') + '-update.txt')));
+	z.append(list, btn(t('update.choose'), 'pri', () => $('updpicker').click()));
 	z.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); z.classList.add('over'); });
 	z.addEventListener('dragleave', () => z.classList.remove('over'));
 	z.addEventListener('drop', (e) => {
@@ -1942,7 +2011,7 @@ function upTake(files) {
 		if (want.length ? want.includes(name) : /^ZyperOS-.*\.(txt|zpk)$/.test(name)) upFiles.set(name, f);
 		else odd.push(f.name);
 	}
-	if (odd.length) toast('Not an update file for this handheld: ' + odd.join(', '), true);
+	if (odd.length) toast(t('update.odd', odd.join(t('sep.list'))), true);
 	if (rel && want.length && want.every((n) => upFiles.has(n))) upSend(want);
 	else drawUpdate();
 }
@@ -1956,7 +2025,7 @@ function upPut(name, file, progress) {
 		xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) progress(Math.min(ev.loaded, file.size)); };
 		xhr.onload = () => xhr.status === 200 ? ok()
 			: no(new Error((xhr.responseText || '').split('\n')[1] || 'HTTP ' + xhr.status));
-		xhr.onerror = () => no(new Error('connection lost'));
+		xhr.onerror = () => no(new Error(t('queue.lost')));
 		xhr.send(body);
 	});
 }
@@ -1968,8 +2037,7 @@ async function upSend(want) {
 	try {
 		const st = await state();
 		if (st.free >= 0 && usable(st) < total) {
-			toast('Not enough room on the card: the update needs ' + human(total) + ', the card has ' +
-			      human(usable(st)) + ' free.', true);
+			toast(t('update.no_room', human(total), human(usable(st))), true);
 			return;
 		}
 	} catch (e) { if (e.message === 'unauthorized') return; }
@@ -1981,8 +2049,8 @@ async function upSend(want) {
 		tick.last = at;
 		sample(false);
 		upPct = Math.round((done + at) / total * 100);
-		const t = eta(total - done - at);
-		upLeft = human(total - done - at) + ' left' + (t ? ' · ' + t : '');
+		const when = eta(total - done - at);
+		upLeft = t('queue.left', human(total - done - at)) + (when ? ' · ' + when : '');
 		drawUpdate();
 	};
 	try {
@@ -2016,12 +2084,12 @@ async function upSettle() {
 	for (let i = 0; i < 3600; i++) {
 		await new Promise((ok) => setTimeout(ok, 1000));
 		const r = await fetch('/api/update', { credentials: 'same-origin', cache: 'no-store' });
-		if (!r.ok) throw new Error('the handheld stopped answering');
+		if (!r.ok) throw new Error(t('update.no_answer'));
 		upd = await r.json();
 		drawUpdate();
 		if (!upd.running && upd.time !== since && !WORK[upd.state]) return;
 		if (i >= 15 && !upd.running && upd.time === since)
-			throw new Error('The update did not start on the handheld. Try again.');
+			throw new Error(t('update.not_started'));
 	}
 }
 
@@ -2035,8 +2103,8 @@ function upWatch(on) {
 async function upRestart() {
 	try {
 		await api('POST', '/api/update/restart');
-		$('updbody').replaceChildren(el('p', 'now', 'The handheld is restarting to install the update.'),
-			el('p', '', 'This page stops with it. Open File Transfer again on the handheld to come back.'));
+		$('updbody').replaceChildren(el('p', 'now', t('update.restarting')),
+			el('p', '', t('update.page_stops')));
 	} catch (err) { if (err.message !== 'unauthorized') toast(err.message, true); }
 }
 
@@ -2044,13 +2112,13 @@ async function upRestart() {
 
 let toastTimer = 0;
 function toast(msg, bad) {
-	const t = $('toast');
-	t.textContent = msg;
-	t.classList.toggle('bad', !!bad);
-	t.classList.add('show');
+	const box = $('toast');
+	box.textContent = msg;
+	box.classList.toggle('bad', !!bad);
+	box.classList.add('show');
 	clearTimeout(toastTimer);
 	/* DESIGN.md 8.2's holds: a short message, or a long one for longer */
-	toastTimer = setTimeout(() => t.classList.remove('show'),
+	toastTimer = setTimeout(() => box.classList.remove('show'),
 	                        ms(msg.length > 48 ? 'hold-long' : 'hold-short'));
 }
 

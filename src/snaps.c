@@ -18,6 +18,10 @@
 /* One key a console turned off, by its folder: on is the default, so a card
  * with new consoles has their snaps on without a key for each. */
 #define K_OFF   "snaps.off."
+/* The sound setting as the database keeps it, by SNAP_MUTED, SNAP_QUIET and
+ * SNAP_FULL: its own words, apart from SNAP_SOUND_NAME, which is what MENU
+ * shows and goes into the language that is on */
+static const char *const SOUND_ID[3] = { "muted", "quiet", "full" };
 
 bool snaps_fetch(void)        { return db_get_int(db_dev(), K_FETCH, 0) != 0; }
 void snaps_set_fetch(bool on) { db_set_int(db_dev(), K_FETCH, on ? 1 : 0); }
@@ -29,16 +33,16 @@ int snaps_sound(void)
 	char v[16];
 	int i;
 
-	db_get_str(db_dev(), K_SOUND, v, sizeof v, SNAP_SOUND_NAME[SNAP_MUTED]);
+	db_get_str(db_dev(), K_SOUND, v, sizeof v, SOUND_ID[SNAP_MUTED]);
 	for (i = 0; i < 3; i++)
-		if (!strcmp(v, SNAP_SOUND_NAME[i])) return i;
+		if (!strcmp(v, SOUND_ID[i])) return i;
 	return SNAP_MUTED;
 }
 
 void snaps_set_sound(int s)
 {
 	if (s < SNAP_MUTED || s > SNAP_FULL) s = SNAP_MUTED;
-	db_set_str(db_dev(), K_SOUND, SNAP_SOUND_NAME[s]);
+	db_set_str(db_dev(), K_SOUND, SOUND_ID[s]);
 }
 
 static bool off_key(const char *folder, char *k, size_t n)

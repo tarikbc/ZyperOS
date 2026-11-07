@@ -14,8 +14,8 @@ weight: 30
 
 <h2>The short answer</h2>
 <ul>
-  <li><strong>Pick ROGUE OS</strong> if you want a released system that runs over a hundred systems, DraStic and PortMaster included, with the stock firmware's familiar menus and many launcher skins.</li>
-  <li><strong>Pick ZyperOS</strong> if you want games sent from any browser, box art without a computer, RetroAchievements, updates on the handheld, and battery care such as a charge limit. It is still in testing, with no release images yet.</li>
+  <li><strong>Pick ROGUE OS</strong> if you want over a hundred systems, DraStic and PortMaster included, with the stock firmware's familiar menus and many launcher skins.</li>
+  <li><strong>Pick ZyperOS</strong> if you want games sent from any browser, box art without a computer, RetroAchievements, updates on the handheld, and battery care such as a charge limit. Version 1.0.0 is out, with a card image and ZyperOS Installer.</li>
 </ul>
 
 <h2>Side by side</h2>
@@ -25,7 +25,7 @@ weight: 30
   <tbody>
     <tr><th scope="row">Source, license</th><td class="us">PolyForm Shield 1.0.0, free</td><td>Its changed files, no license named</td></tr>
     <tr><th scope="row">What it is</th><td class="us">Its own launcher, emulator frontend and Linux</td><td>Changes to the stock firmware</td></tr>
-    <tr><th scope="row">Latest</th><td class="us">In testing, no release yet</td><td>1.22 (August 2025)</td></tr>
+    <tr><th scope="row">Latest</th><td class="us">v1.0.0 (November 2026)</td><td>1.22 (August 2025)</td></tr>
     <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>117 in its list</td></tr>
     <tr><th scope="row">Games without taking the card out</th><td class="us">[yes: A web page over Wi-Fi or the USB cable, its own network, and SSH] Web page, Wi-Fi or USB cable</td><td>[yes: The USB cable, and SSH] USB cable, SSH</td></tr>
     <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro with no account, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: ScreenScraper, with your account] ScreenScraper</td></tr>
@@ -37,7 +37,7 @@ weight: 30
     <tr><th scope="row">Rumble</th><td class="us">[yes: Games rumble] Yes</td><td>[yes: Through SDL2, with a stronger setting] Yes</td></tr>
     <tr><th scope="row">Low battery</th><td class="us">Warnings, then saves and powers off at 2%</td><td>Vibrates at 10% and 5%, shuts down at 1%</td></tr>
     <tr><th scope="row">While charging</th><td class="us">A charging screen when off, and a charge limit</td><td>A tool that turns the screen off and saves power while charging</td></tr>
-    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>Copy the new release's files onto the card</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back</td><td>Copy the new release's files onto the card</td></tr>
   </tbody>
 </table>
 </div>
@@ -48,7 +48,7 @@ weight: 30
 <p>ZyperOS is not built on the stock firmware. Its launcher, its emulator frontend Diatom, and its Linux, plastron, all began as Eric Reinsmidt's TortOS, and run games through libretro cores. Diatom stays running, so a game starts the moment you press <kbd>A</kbd>.</p>
 
 <h2>Installing</h2>
-<p>ROGUE OS installs in steps: download its first release's image, about 5.7 GB in six parts, and write it with a tool like balenaEtcher; resize its ROMS partition with a partition tool; then copy the newest release's <code>Image</code> and <code>SYSTEM</code> files over the ones on its EMUELEC partition. The first start may turn the handheld off once, as a file check. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> has both.</p>
+<p>ROGUE OS installs in steps: download its first release's image, about 5.7 GB in six parts, and write it with a tool like balenaEtcher; resize its ROMS partition with a partition tool; then copy the newest release's <code>Image</code> and <code>SYSTEM</code> files over the ones on its EMUELEC partition. The first start may turn the handheld off once, as a file check. ZyperOS's release has a card image you write with any image writer, and ZyperOS Installer, which downloads and writes it for you. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> has both.</p>
 
 <h2>Adding games and box art</h2>
 <p>On ROGUE OS, the default EmulationStation offers the USB cable as a file-transfer device, and SSH works over a network as <code>root</code>. Its Scraper app, in Tools, fetches images from ScreenScraper with your account. ZyperOS opens one web page in any browser, over Wi-Fi, its own network or the USB cable, and fetches covers from libretro with no account, from ScreenScraper and from SteamGridDB. See <a href="/blog/add-games-gkd-pixel-2/">adding games</a> and <a href="/blog/box-art-gkd-pixel-2/">box art</a>.</p>
@@ -60,13 +60,13 @@ weight: 30
 <p>ROGUE OS vibrates three times at 10% and at 5%, and at 1% it stops the game and shuts down safely to protect the card. Its "Charging screen off" tool turns the screen off and sets the chip to save power while the handheld charges. ZyperOS warns on the screen and with the side lights, saves the game and powers off at 2%, shows the charge and the time to full on a charger while off, and can stop charging at 80, 85 or 90%. <a href="/blog/gkd-pixel-2-battery-charge-limit/">The battery guide</a> shows them.</p>
 
 <h2>Updates</h2>
-<p>A new ROGUE OS release is files you copy onto the card's EMUELEC partition. Its newest is 1.22, from August 2025. ZyperOS's System Update works over Wi-Fi, downloads only what changed, and goes back by itself if a new version fails to start; it turns on once ZyperOS has its release signing key.</p>
+<p>A new ROGUE OS release is files you copy onto the card's EMUELEC partition. Its newest is 1.22, from August 2025. ZyperOS's System Update works over Wi-Fi, downloads only what changed, and goes back by itself if a new version fails to start. Without Wi-Fi, the File Transfer page brings it over the USB cable.</p>
 
 <h2>Moving from ROGUE OS to ZyperOS</h2>
 <p>ZyperOS has a tool for this, <code>tools/from-rogue.sh</code>. Pointed at a ROGUE OS card's games and a ZyperOS card, it copies every game, BIOS file and battery save ZyperOS has a place for, copies the PortMaster ports layout as it is, and reports what has no place. It only reads the ROGUE OS card and never writes over a file already on the ZyperOS card. Keep the ROGUE OS card as it is: it stays your way back.</p>
 
 <h2>Which one to pick</h2>
-<p>ROGUE OS is released and covers more systems, and its DraStic and PortMaster are ready on the card. ZyperOS covers fewer systems for now, with a newer design: web transfers, covers and achievements on the handheld, updates that roll back, and battery care. ROGUE OS made ZyperOS what it is. Each is a card, so you can keep both.</p>
+<p>ROGUE OS covers more systems, and its DraStic and PortMaster are ready on the card. ZyperOS covers fewer systems for now, with a newer design: web transfers, covers and achievements on the handheld, updates that roll back, and battery care. ROGUE OS made ZyperOS what it is. Each is a card, so you can keep both.</p>
 
 <h2>Sources</h2>
 <ol class="sources">

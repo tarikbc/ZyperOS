@@ -54,7 +54,21 @@ static const float font_mul[UI_F_COUNT] = {
 	[UI_F_CARD]  = 1.94f,   /* 71, in card pixels - the title IS the card */
 };
 
-static TTF_Font *fonts[UI_F_COUNT];
+/* The faces of the roles, a set a script: Lexend's (menu.ttf and title.ttf)
+ * for every language but Chinese and Japanese, and tools/cjkfont.py's cuts
+ * of Noto Sans SC and JP beside menu.ttf (DS_FONT_CJK..., DS_FONT_JA...),
+ * each opened the first time its language or its text is drawn and kept from
+ * then on: a language picker steps through them once a second, and a reopen
+ * would cost those frames. `fonts` is the set the language that is on draws
+ * in (ui_fonts_for); the button letters and the cards the launcher draws are
+ * marks and stay Lexend's. */
+enum { SET_LATIN, SET_SC, SET_JP, SETS };
+static TTF_Font *font_sets[SETS][UI_F_COUNT];
+static TTF_Font *const *const fonts_latin = font_sets[SET_LATIN];
+static TTF_Font **fonts = font_sets[SET_LATIN];
+static int set_on;                 /* the set `fonts` is, and the language's */
+static bool set_tried[SETS];
+static void set_open(int set);
 static TTF_Font *f_mark;
 /* The two faces of DESIGN.md 4: Regular, menu.ttf, the path ui_init is
  * handed, for every role but one; and SemiBold, title.ttf from the same
@@ -77,6 +91,10 @@ struct text_entry {
 	unsigned rgb;
 	SDL_Texture *tex;
 	int w, h;
+	/* Down this far where the line was drawn in another face than `font`
+	 * (face_for: Chinese in a Lexend role), so its capitals' middle is where
+	 * the caller put `font`'s */
+	int dy;
 	unsigned used;
 	/* A marquee's window, ended between letters (ui_text_marquee): how far
 	 * in from its right end the last whole letter ends at the start, and
@@ -238,6 +256,7 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 	}
 	snprintf(font_path_kept, sizeof font_path_kept, "%s", font_path);
 	title_path_beside(font_path, title_path_kept, sizeof title_path_kept);
+	fonts = font_sets[SET_LATIN];
 	for (i = 0; i < UI_F_COUNT; i++) {
 		int pt = role_pt(i);
 		const char *path = i == UI_F_TITLE ? title_path_kept : font_path;
@@ -261,6 +280,12 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 	}
 	glow_tex = make_glow(r);
 	shadows_make(r);
+	/* ui_init after ui_quit, a fallback game's, in 简体中文 or 日本語: its
+	 * faces again */
+	if (set_on != SET_LATIN) {
+		set_open(set_on);
+		if (font_sets[set_on][UI_F_MENU]) fonts = font_sets[set_on];
+	}
 	/* The title is a file of its own, so it opening says nothing of the
 	 * others: menu.ttf missing, with title.ttf there, is a launcher with no
 	 * menus, labels or counts. */
@@ -281,8 +306,12 @@ void ui_quit(void)
 		if (cache[i].tex) { SDL_DestroyTexture(cache[i].tex); cache[i].tex = NULL; }
 	if (glow_tex) { SDL_DestroyTexture(glow_tex); glow_tex = NULL; }
 	button_fonts_free();
-	for (int i = 0; i < UI_F_COUNT; i++)
-		if (fonts[i]) { TTF_CloseFont(fonts[i]); fonts[i] = NULL; }
+	for (int k = 0; k < SETS; k++) {
+		for (int i = 0; i < UI_F_COUNT; i++)
+			if (font_sets[k][i]) { TTF_CloseFont(font_sets[k][i]); font_sets[k][i] = NULL; }
+		set_tried[k] = false;
+	}
+	fonts = font_sets[SET_LATIN];
 	if (f_mark) { TTF_CloseFont(f_mark); f_mark = NULL; }
 	TTF_Quit();
 }
@@ -291,6 +320,74 @@ TTF_Font *ui_font(ui_font_role role)
 {
 	if (role < 0 || role >= UI_F_COUNT) return NULL;
 	return fonts[role];
+}
+
+/* A set's files beside menu.ttf: its title's and the rest's */
+static const char *const SET_FILES[SETS][2] = {
+	[SET_LATIN] = { DS_FONT_REGULAR, DS_FONT_SEMIBOLD },
+	[SET_SC]    = { DS_FONT_CJK, DS_FONT_CJK_TITLE },
+	[SET_JP]    = { DS_FONT_JA, DS_FONT_JA_TITLE },
+};
+
+static int set_of(lang l)
+{
+	return l == LANG_ZH_HANS ? SET_SC : l == LANG_JA ? SET_JP : SET_LATIN;
+}
+
+static void set_path(int set, bool title, char *out, size_t n)
+{
+	const char *slash = strrchr(font_path_kept, '/');
+	int dir = slash ? (int)(slash - font_path_kept) + 1 : 0;
+
+	snprintf(out, n, "%.*s%s", dir, font_path_kept, SET_FILES[set][title]);
+}
+
+/* A Chinese or Japanese set, every role at its size, once: a missing file is
+ * a line in the log, and its language is then drawn in Lexend, which has
+ * none of its characters, rather than not at all. */
+static void set_open(int set)
+{
+	char menu[512], title[512];
+
+	if (set == SET_LATIN || set_tried[set] || !font_path_kept[0]) return;
+	set_tried[set] = true;
+	set_path(set, false, menu, sizeof menu);
+	set_path(set, true, title, sizeof title);
+	for (int i = 0; i < UI_F_COUNT; i++) {
+		font_sets[set][i] = TTF_OpenFont(i == UI_F_TITLE ? title : menu, role_pt(i));
+		if (!font_sets[set][i]) font_sets[set][i] = TTF_OpenFont(menu, role_pt(i));
+	}
+	if (!font_sets[set][UI_F_MENU])
+		fprintf(stderr, "font: %s: %s; drawn in Lexend\n", menu, TTF_GetError());
+}
+
+void ui_fonts_for(lang l)
+{
+	set_on = set_of(l);
+	set_open(set_on);
+	fonts = font_sets[set_on][UI_F_MENU] ? font_sets[set_on] : font_sets[SET_LATIN];
+}
+
+bool ui_fonts_cjk(void) { return fonts != font_sets[SET_LATIN]; }
+
+int ui_font_set(void)
+{
+	return fonts == font_sets[SET_SC] ? 1 : fonts == font_sets[SET_JP] ? 2 : 0;
+}
+
+const char *ui_cjk_font_path(bool title, char *out, size_t n)
+{
+	set_path(set_on == SET_LATIN ? SET_SC : set_on, title, out, n);
+	return out;
+}
+
+TTF_Font *ui_font_lang(ui_font_role role, lang l)
+{
+	int set = set_of(l);
+
+	if (role < 0 || role >= UI_F_COUNT) return NULL;
+	set_open(set);
+	return font_sets[set][role] ? font_sets[set][role] : fonts[role];
 }
 
 int ui_font_line(ui_font_role role)
@@ -351,6 +448,79 @@ static menu_mark menu_mark_of(TTF_Font *f)
 	return m;
 }
 
+/* Whether s has a character Lexend lacks and the Chinese face has: the
+ * ideographs, kana, CJK punctuation and the full-width forms */
+static bool has_cjk(const char *s)
+{
+	const unsigned char *u = (const unsigned char *)s;
+
+	for (; *u; u++) {
+		unsigned c;
+
+		if (*u < 0xE2 || *u > 0xEF || (u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) continue;
+		c = (*u & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+		if ((c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF) || (c >= 0xFF00 && c <= 0xFFEF))
+			return true;
+	}
+	return false;
+}
+
+/* Whether face f has every Chinese or Japanese character of s */
+static bool covers(TTF_Font *f, const char *s)
+{
+	const unsigned char *u = (const unsigned char *)s;
+
+	for (; *u; u++) {
+		unsigned c;
+
+		if (*u < 0xE2 || *u > 0xEF || (u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) continue;
+		c = (*u & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+		if (c >= 0x2E80 && !TTF_GlyphIsProvided32(f, c)) return false;
+		u += 2;
+	}
+	return true;
+}
+
+/* Whether s has kana: Japanese, whatever else is in it */
+static bool has_kana(const char *s)
+{
+	const unsigned char *u = (const unsigned char *)s;
+
+	for (; u[0] && u[1] && u[2]; u++)
+		if (u[0] == 0xE3 && (u[1] == 0x81 || u[1] == 0x82 || u[1] == 0x83)) return true;
+	return false;
+}
+
+/* The face s is drawn in when f is asked for: f, or where s has Chinese or
+ * Japanese characters f has not, the first face of f's role that has them
+ * all, the set that is on first, then Japanese's where s has kana and
+ * Chinese's where it has none. So 简体中文 and 日本語 are themselves in MENU >
+ * Language's panel in any language, and a game named in either is drawn
+ * rather than boxes. Asked only where a line is measured or rendered afresh:
+ * what ui_text has cached was drawn this way already. */
+static TTF_Font *face_for(TTF_Font *f, const char *s)
+{
+	int role = -1, order[3];
+
+	if (!has_cjk(s) || covers(f, s)) return f;
+	for (int k = 0; k < SETS && role < 0; k++)
+		for (int i = 0; i < UI_F_COUNT; i++)
+			if (f == font_sets[k][i]) { role = i; break; }
+	if (role < 0) return f;
+	order[0] = set_on;
+	/* Japanese where it has kana, or where it is Japanese's own name, which
+	 * is kanji alone */
+	order[1] = has_kana(s) || !strcmp(s, lang_name(LANG_JA)) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (int k = 0; k < 3; k++) {
+		if (order[k] == SET_LATIN) continue;
+		set_open(order[k]);
+		if (font_sets[order[k]][role] && covers(font_sets[order[k]][role], s))
+			return font_sets[order[k]][role];
+	}
+	return f;
+}
+
 static int text_width(TTF_Font *f, const char *s)
 {
 	const char *p, *m;
@@ -358,6 +528,7 @@ static int text_width(TTF_Font *f, const char *s)
 	int w = 0, pw;
 
 	if (!f || !s) return 0;
+	f = face_for(f, s);
 	if (!menu_word(s, s)) {
 		TTF_SizeUTF8(f, s, &w, NULL);
 		return w;
@@ -435,6 +606,7 @@ SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 	int x = 0;
 
 	if (!f || !s || !*s) return NULL;
+	f = face_for(f, s);
 	if (!menu_word(s, s)) return TTF_RenderUTF8_Blended(f, s, col);
 	out = SDL_CreateRGBSurfaceWithFormat(0, ui_text_width(f, s), TTF_FontHeight(f),
 	                                     32, SDL_PIXELFORMAT_ARGB8888);
@@ -466,6 +638,45 @@ SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 	return out;
 }
 
+/* ---- what does not fit, said on a host ------------------------------------
+ *
+ * A string from res/strings that a screen had to cut, break past its lines
+ * or draw off the screen, in the language that is on: a line on stderr,
+ * once a string, "i18n: cut: ..." or "i18n: off screen: ...", which
+ * tools/i18n-shots.py fails on (make check-i18n-shots). Only where the
+ * pseudo-locale is built in, which is the host's build: a device never
+ * looks. A table string is known by where it lives (i18n_owns); in the
+ * pseudo-locale, whose every string ends "·]", by that too, so a line
+ * formatted from one is caught as well. */
+#ifdef I18N_PSEUDO
+static bool i18n_watched(const char *s)
+{
+	return s && (i18n_owns(s) || (i18n_lang() == LANG_PSEUDO && strstr(s, "\xc2\xb7]")));
+}
+
+static void i18n_note(const char *what, const char *s)
+{
+	static unsigned said[256];
+	unsigned h = 5381;
+
+	for (const char *p = s; *p; p++) h = h * 33 + (unsigned char)*p;
+	for (int i = 0; i < 256 && said[i]; i++) if (said[i] == h) return;
+	for (int i = 0; i < 256; i++) if (!said[i]) { said[i] = h; break; }
+	fprintf(stderr, "i18n: %s: %s\n", what, s);
+}
+
+/* Text formatted from a string ("linked as %s") is not the table's, so
+ * its cut is said as data: tools/i18n-shots.py fails on a screen whose
+ * data cuts outnumber English's on the same screen, which is a cut the
+ * translation made */
+static void i18n_fit_seen(const char *src, const char *dst)
+{
+	if (src && strcmp(src, dst)) i18n_note(i18n_watched(src) ? "cut" : "cut data", src);
+}
+#else
+#define i18n_fit_seen(src, dst) ((void)0)
+#endif
+
 static struct text_entry *text_get(SDL_Renderer *r, TTF_Font *f, const char *s,
                                   SDL_Color col)
 {
@@ -491,7 +702,11 @@ fill:
 		 * leave every later frame dim, even at full texture modulation. */
 		col.a = 255;
 		SDL_Surface *surf = ui_text_surface(f, s, col);
+		TTF_Font *g = face_for(f, s);
 		if (!surf) return NULL;
+		if (g != f)
+			cache[oldest].dy = (TTF_FontAscent(f) - TTF_FontAscent(g)) +
+			                   (ui_cap_height(g) - ui_cap_height(f)) / 2;
 		cache[oldest].tex = SDL_CreateTextureFromSurface(r, surf);
 		cache[oldest].w = surf->w;
 		cache[oldest].h = surf->h;
@@ -514,7 +729,12 @@ int ui_text(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
 	dst.w = e->w;
 	dst.h = e->h;
 	dst.x = anchor == 0 ? x - e->w / 2 : (anchor > 0 ? x - e->w : x);
-	dst.y = y;
+	dst.y = y + e->dy;
+#ifdef I18N_PSEUDO
+	/* Past the screen's edge (the 1024 units' design space; an ink's
+	 * width short of it, as a line's texture has room either side) */
+	if ((dst.x < -4 || dst.x + e->w > 1024 + 4) && i18n_watched(s)) i18n_note("off screen", s);
+#endif
 	SDL_SetTextureAlphaMod(e->tex, col.a);
 	SDL_RenderCopy(r, e->tex, NULL, &dst);
 	return e->w;
@@ -785,6 +1005,12 @@ void ui_text_marquee(SDL_Renderer *r, TTF_Font *f, const char *s,
 
 	if (!f || !s || w <= 0) return;
 	if (tw <= w) { ui_text(r, f, s, x, y, -1, col); return; }
+#ifdef I18N_PSEUDO
+	/* A name slides because it is data (a game, an SSID); a string of the
+	 * UI that slides was cut, only slowly: My rule wants it short
+	 * (MENU's "Transferir arquivos por Wi-Fi" beside "requer Wi-Fi") */
+	i18n_note(i18n_watched(s) ? "slides" : "slides data", s);
+#endif
 
 	over = tw - w;
 	off  = ui_pingpong(over, phase);
@@ -924,6 +1150,7 @@ void ui_fit_text(TTF_Font *f, const char *src, char *dst, size_t dstn,
 	}
 	if (!src || !dstn || dstn > LB_LINE || !memo_usable(src)) {
 		lb_fit(src, dst, dstn, maxw, ttf_width, f);
+		if (src) i18n_fit_seen(src, dst);
 		return;
 	}
 	if ((e = memo_find(MEMO_FIT, f, src, maxw, 0, dstn))) {
@@ -931,6 +1158,7 @@ void ui_fit_text(TTF_Font *f, const char *src, char *dst, size_t dstn,
 		return;
 	}
 	lb_fit(src, dst, dstn, maxw, ttf_width, f);
+	i18n_fit_seen(src, dst);
 	e = memo_slot(MEMO_FIT, f, src, maxw, 0, dstn);
 	memcpy(e->out[0], dst, dstn);
 }
@@ -942,13 +1170,24 @@ int ui_balance_lines(TTF_Font *f, const char *text, int maxw, int cap,
 	int n;
 
 	if (!f) return 0;
-	if (cap < 1 || cap > MEMO_LINES || !memo_usable(text))
-		return lb_balance(text, maxw, cap, ttf_width, f, lines);
+	if (cap < 1 || cap > MEMO_LINES || !memo_usable(text)) {
+		n = lb_balance(text, maxw, cap, ttf_width, f, lines);
+#ifdef I18N_PSEUDO
+		if (n > 0 && strstr(lines[n - 1], "...") && !strstr(text, "..."))
+			i18n_note(i18n_watched(text) ? "cut" : "cut data", text);
+#endif
+		return n;
+	}
 	if ((e = memo_find(MEMO_BALANCE, f, text, maxw, cap, 0))) {
 		memcpy(lines, e->out, (size_t)e->n * LB_LINE);
 		return e->n;
 	}
 	n = lb_balance(text, maxw, cap, ttf_width, f, lines);
+#ifdef I18N_PSEUDO
+	/* Every line full and the last cut: the text is longer than its box */
+	if (n > 0 && strstr(lines[n - 1], "...") && !strstr(text, "..."))
+		i18n_note(i18n_watched(text) ? "cut" : "cut data", text);
+#endif
 	if (n < 0 || n > cap) return n;
 	e = memo_slot(MEMO_BALANCE, f, text, maxw, cap, 0);
 	e->n = n;
@@ -1537,7 +1776,8 @@ static TTF_Font *button_font(int pt, bool semibold)
 	int i, best = -1;
 
 	if (pt < 1) pt = 1;
-	if (semibold && pt == DS_TYPE_TITLE && fonts[UI_F_TITLE]) return fonts[UI_F_TITLE];
+	/* Lexend's title face whatever the language: a button's letter is a mark */
+	if (semibold && pt == DS_TYPE_TITLE && fonts_latin[UI_F_TITLE]) return fonts_latin[UI_F_TITLE];
 	for (i = 0; i < BUTTON_FONTS; i++) {
 		if (button_fonts[i].pt == pt && button_fonts[i].semibold == semibold)
 			return button_fonts[i].f;
@@ -2407,7 +2647,7 @@ static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 	SDL_Surface *s;
 	SDL_Texture *t;
 
-	if (!(s = card_surface(fonts[UI_F_CARD], main_mark(), title, rgb,
+	if (!(s = card_surface(fonts_latin[UI_F_CARD], main_mark(), title, rgb,
 	                       cw, ch, round, ix)))
 		return NULL;
 	t = card_texture(r, s, ix);
@@ -2623,6 +2863,12 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.20f, 0.92f, 0.20f, 0.08f, G_W);
 		g_line(s, 0.33f, 0.60f, 0.45f, 0.72f, G_W);
 		g_line(s, 0.45f, 0.72f, 0.68f, 0.46f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_CHECK) {
+		/* A tick, the finish's own, alone and a stroke heavier */
+		g_line(s, 0.14f, 0.54f, 0.38f, 0.78f, G_W * 1.4f);
+		g_line(s, 0.38f, 0.78f, 0.86f, 0.24f, G_W * 1.4f);
 		return;
 	}
 	if (g == UI_GLYPH_CANCEL) {

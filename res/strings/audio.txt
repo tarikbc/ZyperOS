@@ -1,0 +1,90 @@
+# Where the sound goes and which ears hear what (src/audioout.c): the values
+# of MENU > Audio Output and Audio Channels. Lowercase status values.
+
+[audio.speaker]
+note = Audio Output's value: the handheld's own speaker
+en = speaker
+zh-Hans = 扬声器
+es = altavoz
+pt-BR = alto-falante
+fr = haut-parleur
+de = Lautsprecher
+ja = スピーカー
+it = altoparlante
+
+[audio.wired]
+note = Audio Output's value: headphones on the jack
+en = wired
+zh-Hans = 有线
+es = con cable
+pt-BR = com fio
+fr = filaire
+de = Kabel
+ja = 有線
+it = cuffie con filo
+
+[audio.bluetooth]
+note = review: Audio Output's value: a Bluetooth headset. As the glossary writes it: 蓝牙 in zh, where the MENU row keeps Bluetooth; the name's capital elsewhere, where English's value is lowercase.
+en = bluetooth
+zh-Hans = 蓝牙
+es = Bluetooth
+pt-BR = Bluetooth
+fr = Bluetooth
+de = Bluetooth
+ja = Bluetooth
+it = Bluetooth
+
+[audio.usb]
+note = Audio Output's value: a USB sound card. The name's capitals, as the glossary writes it
+en = usb
+zh-Hans = USB
+es = USB
+pt-BR = USB
+fr = USB
+de = USB
+ja = USB
+it = USB
+
+[audio.stereo]
+note = Audio Channels' value
+en = stereo
+zh-Hans = 立体声
+es = estéreo
+pt-BR = estéreo
+fr = stéréo
+de = Stereo
+ja = ステレオ
+it = stereo
+
+[audio.mono]
+note = Audio Channels' value: both channels as one, in both ears
+en = mono
+zh-Hans = 单声道
+es = mono
+pt-BR = mono
+fr = mono
+de = Mono
+ja = モノラル
+it = mono
+
+[audio.mono_left]
+note = Audio Channels' value: mono in the left ear only
+en = mono left
+zh-Hans = 单声道（左）
+es = mono izquierda
+pt-BR = mono esquerdo
+fr = mono gauche
+de = Mono links
+ja = モノラル（左）
+it = mono sinistra
+
+[audio.mono_right]
+note = Audio Channels' value: mono in the right ear only
+en = mono right
+zh-Hans = 单声道（右）
+es = mono derecha
+pt-BR = mono direito
+fr = mono droite
+de = Mono rechts
+ja = モノラル（右）
+it = mono destra

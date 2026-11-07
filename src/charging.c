@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "design.h"
+#include "i18n.h"
 
 void ch_eta_note(ch_eta *e, unsigned now, const ch_reading *r)
 {
@@ -73,7 +74,8 @@ int ch_eta_minutes(const ch_eta *e, unsigned now, const ch_reading *r)
 
 static const char *kind_word(ch_kind k)
 {
-	return k == CH_WALL ? "wall charger" : k == CH_COMPUTER ? "computer" : "charger";
+	return k == CH_WALL ? T(S_CHARGING_WALL) : k == CH_COMPUTER ? T(S_CHARGING_COMPUTER)
+	                    : T(S_CHARGING_CHARGER);
 }
 
 void ch_words(const ch_reading *r, int eta_min, bool settling,
@@ -86,33 +88,33 @@ void ch_words(const ch_reading *r, int eta_min, bool settling,
 	if (r->kind == CH_PENDING)
 		snprintf(speed, sn, "%s", "");
 	else if (kept)
-		snprintf(speed, sn, "Kept at %d%% · %s", lim, kind_word(r->kind));
+		snprintf(speed, sn, T(S_CHARGING_KEPT), lim, kind_word(r->kind));
 	else if (full)
-		snprintf(speed, sn, "Charged · %s", kind_word(r->kind));
+		snprintf(speed, sn, T(S_CHARGING_CHARGED), kind_word(r->kind));
 	else if (r->ma >= CH_MA_CHARGING && r->mv > 0) {
 		/* Tenths of a watt, from mA and mV */
 		long dw = ((long)r->ma * r->mv + 50000) / 100000;
 
-		snprintf(speed, sn, "Charging · %ld.%ld W · %s", dw / 10, dw % 10, kind_word(r->kind));
+		snprintf(speed, sn, T(S_CHARGING_WATTS), dw / 10, dw % 10, kind_word(r->kind));
 	} else
-		snprintf(speed, sn, "Plugged in · %s", kind_word(r->kind));
+		snprintf(speed, sn, T(S_CHARGING_PLUGGED), kind_word(r->kind));
 
-	if (full) snprintf(when, wn, "Fully charged");
-	else if (kept) snprintf(when, wn, "Charge Limit in MENU");
+	if (full) snprintf(when, wn, "%s", T(S_CHARGING_FULL));
+	else if (kept) snprintf(when, wn, "%s", T(S_CHARGING_LIMIT_IN_MENU));
 	else if (eta_min < 0 && !settling) snprintf(when, wn, "%s", "");
 	else if (lim) {
 		/* To the limit: "85%" where full would be */
-		if (eta_min < 0) snprintf(when, wn, "Working out the time to %d%%", lim);
-		else if (eta_min <= 5) snprintf(when, wn, "Almost at %d%%", lim);
-		else if (eta_min < 60) snprintf(when, wn, "%d%% in about %d min", lim, eta_min);
-		else if (eta_min % 60 == 0) snprintf(when, wn, "%d%% in about %d h", lim, eta_min / 60);
-		else snprintf(when, wn, "%d%% in about %d h %d min", lim, eta_min / 60, eta_min % 60);
+		if (eta_min < 0) snprintf(when, wn, T(S_CHARGING_TO_LIMIT_WORKING), lim);
+		else if (eta_min <= 5) snprintf(when, wn, T(S_CHARGING_TO_LIMIT_ALMOST), lim);
+		else if (eta_min < 60) snprintf(when, wn, T(S_CHARGING_TO_LIMIT_MIN), lim, eta_min);
+		else if (eta_min % 60 == 0) snprintf(when, wn, T(S_CHARGING_TO_LIMIT_H), lim, eta_min / 60);
+		else snprintf(when, wn, T(S_CHARGING_TO_LIMIT_H_MIN), lim, eta_min / 60, eta_min % 60);
 	}
-	else if (eta_min < 0) snprintf(when, wn, "Working out the time to full");
-	else if (eta_min <= 5) snprintf(when, wn, "Almost full");
-	else if (eta_min < 60) snprintf(when, wn, "Full in about %d min", eta_min);
-	else if (eta_min % 60 == 0) snprintf(when, wn, "Full in about %d h", eta_min / 60);
-	else snprintf(when, wn, "Full in about %d h %d min", eta_min / 60, eta_min % 60);
+	else if (eta_min < 0) snprintf(when, wn, "%s", T(S_CHARGING_TO_FULL_WORKING));
+	else if (eta_min <= 5) snprintf(when, wn, "%s", T(S_CHARGING_TO_FULL_ALMOST));
+	else if (eta_min < 60) snprintf(when, wn, T(S_CHARGING_TO_FULL_MIN), eta_min);
+	else if (eta_min % 60 == 0) snprintf(when, wn, T(S_CHARGING_TO_FULL_H), eta_min / 60);
+	else snprintf(when, wn, T(S_CHARGING_TO_FULL_H_MIN), eta_min / 60, eta_min % 60);
 }
 
 bool ch_fake_parse(const char *line, ch_reading *r)

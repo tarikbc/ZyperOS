@@ -86,6 +86,10 @@ static const ds_theme DS_THEME[DS_THEMES] = {
 #define DS_TYPE_CARD 71
 #define DS_FONT_REGULAR "menu.ttf"
 #define DS_FONT_SEMIBOLD "title.ttf"
+#define DS_FONT_CJK "zh-menu.otf"
+#define DS_FONT_CJK_TITLE "zh-title.otf"
+#define DS_FONT_JA "ja-menu.otf"
+#define DS_FONT_JA_TITLE "ja-title.otf"
 
 /* Space and shape, in units. */
 #define DS_GRID 8

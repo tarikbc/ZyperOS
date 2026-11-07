@@ -1,0 +1,36 @@
+# MENU > System Update's page (src/main.c, update_page_draw): its heading, and
+# the question before going back to the version before. The rest of the page's
+# words are src/sysupdate.c's.
+
+[updatepage.title]
+note = The page's heading, as MENU's row names it
+en = System Update
+zh-Hans = 系统更新
+es = Actualización del sistema
+pt-BR = Atualização do sistema
+fr = Mise à jour du système
+de = Systemupdate
+ja = システムアップデート
+it = Aggiornamento di sistema
+
+[updatepage.rollback]
+note = The heading of the question before going back to the version installed before, and its button that does it. review: fr "Rétrograder" and zh-Hans 回退 for going back a version
+en = Roll Back
+zh-Hans = 回退
+es = Revertir
+pt-BR = Reverter
+fr = Rétrograder
+de = Zurückstufen
+ja = バージョンを戻す
+it = Torna indietro
+
+[updatepage.rollback_ask]
+note = The question under updatepage.rollback: %s is the version before ("0.9.2"); the handheld switches at its next start
+en = Go back to %s at the next start?
+zh-Hans = 下次启动时回退到 %s？
+es = ¿Volver a %s en el próximo inicio?
+pt-BR = Voltar para %s na próxima inicialização?
+fr = Revenir à %s au prochain démarrage\u00a0?
+de = Beim nächsten Start zu %s zurückkehren?
+ja = 次回起動時に %s に戻しますか？
+it = Tornare a %s al prossimo avvio?

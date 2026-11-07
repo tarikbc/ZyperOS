@@ -25,6 +25,7 @@
 #include "clamp.h"
 #include "config.h"      /* CFG_NO_COLOR */
 #include "design.h"
+#include "i18n.h"
 #include "osdbar.h"
 #include "platform.h"    /* plat_draw_to_screen, the levels' ranges */
 #include "theme.h"
@@ -359,6 +360,24 @@ static void zyper(const tour_hooks *hk, float cx, float cy, float h, const zr_po
 	hk->zyper(hk->ctx, cx + g_ox, cy + h / 2.0f - hs / 2.0f + g_oy, hs, &z);
 }
 
+/* Where s's second sentence starts, after ". " or a Chinese full stop with
+ * more after it, and how long the first is; NULL for one sentence. */
+static const char *second_sentence(const char *s, int *first_len)
+{
+	const char *dot = strstr(s, ". "), *zh = strstr(s, "\xe3\x80\x82");   /* U+3002 */
+
+	if (zh && !zh[3]) zh = NULL;
+	if (dot && (!zh || dot < zh)) {
+		*first_len = (int)(dot - s + 1);
+		return dot + 2;
+	}
+	if (zh) {
+		*first_len = (int)(zh - s + 3);
+		return zh + 3;
+	}
+	return NULL;
+}
+
 /* His bubble, DESIGN.md 11.10: **meta** in **ground** on **text**, 60 high
  * and 24 in at each end, its line's middle on `cy`. One that would be wider
  * than `room` takes its second sentence to a second line above the bottom
@@ -368,15 +387,15 @@ static void bubble(SDL_Renderer *r, const char *s, float x, float cy, float op, 
 {
 	const ds_theme *t = theme();
 	const float pitch = (float)ui_font_line(UI_F_META) * 1.25f;
-	const char *cut = strstr(s, ". ");
+	int cut = 0;
+	const char *rest = second_sentence(s, &cut);
 	float w = words_w(UI_F_META, s) + 48.0f;
 
-	if (w > room && cut) {
-		char first[48];
-		const char *rest = cut + 2;
+	if (w > room && rest) {
+		char first[128];
 		float w1, w2;
 
-		snprintf(first, sizeof first, "%.*s", (int)(cut - s + 1), s);
+		snprintf(first, sizeof first, "%.*s", cut, s);
 		w1 = words_w(UI_F_META, first);
 		w2 = words_w(UI_F_META, rest);
 		w = (w1 > w2 ? w1 : w2) + 48.0f;
@@ -596,6 +615,7 @@ static void zoom(SDL_Renderer *r, float z, uint32_t now, const tour_hooks *hk)
 
 static SDL_Texture *details_tex;
 static int details_theme = -1;
+static lang details_lang;   /* its words' language, with the theme its key */
 /* A render target that would not be made or set is not asked for again on
  * every frame, and is said once: the panel is then not drawn. */
 static bool details_failed;
@@ -605,7 +625,9 @@ static void details_make(SDL_Renderer *r)
 	const ds_theme *t = theme();
 	const float was_op = g_op, was_x = g_ox, was_y = g_oy;
 
-	if (details_failed || (details_tex && details_theme == theme_index())) return;
+	if (details_failed || (details_tex && details_theme == theme_index() &&
+	                       details_lang == i18n_lang()))
+		return;
 	if (!details_tex)
 		details_tex = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
 		                                DETAILS_W, DETAILS_H);
@@ -627,12 +649,13 @@ static void details_make(SDL_Renderer *r)
 	words(r, UI_F_META, "Chrono Trigger", 150, 64, -1, t->text, 1.0f);
 	rr(r, 150, 92, 48, DS_BAR, 0, col(ui_sys_mark(SNES), 1.0f));
 	words(r, UI_F_META, "SNES \xc2\xb7 1995", 150, 132, -1, t->text_dim, 1.0f);
-	words(r, UI_F_META, "Played 12 h", 150, 180, -1, t->text_dim, 1.0f);
+	words(r, UI_F_META, T(S_TOUR_DEMO_PLAYED), 150, 180, -1, t->text_dim, 1.0f);
 	g_op = was_op;
 	g_ox = was_x;
 	g_oy = was_y;
 	plat_draw_to_screen();
 	details_theme = theme_index();
+	details_lang = i18n_lang();
 }
 
 static void details(SDL_Renderer *r, float sx)
@@ -699,8 +722,8 @@ static void now_playing(SDL_Renderer *r, float z, uint32_t now)
 	rr(r, 52, 62, 200, 200, 0, col(rgb(t->raised), 1.0f));
 	ellipse(r, 152, 162, 70, 70, col(rgb(t->edge), 1.0f));
 	ellipse(r, 152, 162, 16, 16, col(rgb(t->text_dim), 1.0f));
-	words(r, UI_F_META, "Now Playing", 288, 92, -1, t->text_dim, 1.0f);
-	words(r, UI_F_LABEL, "Zyper's Mix", 288, 150, -1, t->text, 1.0f);
+	words(r, UI_F_META, T(S_TOUR_DEMO_NOW_PLAYING), 288, 92, -1, t->text_dim, 1.0f);
+	words(r, UI_F_LABEL, T(S_TOUR_DEMO_MIX), 288, 150, -1, t->text, 1.0f);
 	rr(r, 288, 204, 340, DS_BAR, 3, col(rgb(t->track), 1.0f));
 	rr(r, 288, 204, 340 * prog, DS_BAR, 3, col(rgb(t->accent_ink), 1.0f));
 	words(r, UI_F_META, "1:12", 288, 250, -1, t->text_dim, 1.0f);
@@ -764,7 +787,7 @@ static void power_demo(SDL_Renderer *r, float t, bool zyper_on, const tour_hooks
 	if (zyper_on && t > DS_MS_FADE_OUT && hk && hk->poweroff && g_op > 0.004f)
 		hk->poweroff(hk->ctx, (unsigned)(t - DS_MS_FADE_OUT), 340.0f + g_ox, 118.0f + g_oy,
 		             160.0f, -120.0f + g_ox, (Uint8)(255.0f * clampf(g_op, 0.0f, 1.0f) + 0.5f));
-	words(r, UI_F_META, "Saved. See you soon.", 340, 244, 0, th->text_soft,
+	words(r, UI_F_META, T(S_TOUR_DEMO_SAVED), 340, 244, 0, th->text_soft,
 	      clampf((t - 2.0f * DS_MS_FADE_OUT) / DS_MS_FADE_OUT, 0.0f, 1.0f));
 }
 
@@ -973,7 +996,7 @@ static void glyph(SDL_Renderer *r, const tour *t, tour_step s, float cx, float c
 
 /* "START: skip", DESIGN.md 11.4's form, at the bottom right; and where it
  * starts, which his bubble keeps clear of. */
-#define LEGEND "START: skip"
+#define LEGEND T(S_TOUR_SKIP)
 
 static void legend(SDL_Renderer *r)
 {
@@ -995,7 +1018,7 @@ static float device_op(const tour *t, uint32_t now)
 /* Zyper's cheer for a step's reward: a lesson's, or a choice's "Saved!" */
 static const char *cheer_of(tour_step s)
 {
-	return tour_choice_of(s) >= 0 ? "Saved!" : tour_cheer(s - TOUR_FIRST_LESSON);
+	return tour_choice_of(s) >= 0 ? T(S_TOUR_CHEER_SAVED) : tour_cheer(s - TOUR_FIRST_LESSON);
 }
 
 /* Zyper's corner, his bubble and "START: skip", where they are in every
@@ -1150,10 +1173,15 @@ static void welcome(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hoo
 {
 	const ds_theme *th = theme();
 	const bool finish = t->step == TOUR_FINISH;
-	const float sop = tour_ease(TC_OUT, now, t->hello_at + SAY_IN_MS, DS_MS_MOVE);
-	const float lop = tour_ease(TC_OUT, now, t->hello_at + LINES_IN_MS, DS_MS_MOVE);
-	const char *l1 = finish ? "Every button is in" : "Let me show you the buttons.";
-	const char *l2 = finish ? "MENU > Controls." : "It takes a minute.";
+	const float sop = tour_ease(TC_OUT, now, t->say_at + SAY_IN_MS, DS_MS_MOVE);
+	const float lop = tour_ease(TC_OUT, now, t->say_at + LINES_IN_MS, DS_MS_MOVE);
+	/* The step's line, as two: "Every button is in" / "MENU > Controls." */
+	const char *lines = tour_step_info(t->step)->line;
+	const char *l2 = strchr(lines, '\n');
+	char l1[128];
+
+	snprintf(l1, sizeof l1, "%.*s", l2 ? (int)(l2 - lines) : (int)strlen(lines), lines);
+	if (l2) l2++;
 
 	if (finish) {
 		progress(r, tour_segments(t), tour_segments(t), false);
@@ -1172,8 +1200,8 @@ static void welcome(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hoo
 	words(r, UI_F_META, l1, SAY_X, 392, -1, th->text_soft, 1.0f);
 	words(r, UI_F_META, l2, SAY_X, 440, -1, th->text_soft, 1.0f);
 	glyph(r, t, t->step, SAY_X + 48.0f, 536, now, tour_wrong_pulse(t, now));
-	words(r, UI_F_MENU, finish ? "Start playing" : "Let's go", SAY_X + 120.0f, 536, -1,
-	      th->text_soft, 1.0f);
+	words(r, UI_F_MENU, T(finish ? S_TOUR_FINISH_GO : S_TOUR_WELCOME_GO), SAY_X + 120.0f,
+	      536, -1, th->text_soft, 1.0f);
 	g_op = 1.0f;
 
 	/* A wrong press on the welcome: the same answer as in a step. */
@@ -1185,6 +1213,74 @@ static void welcome(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hoo
 		bubble(r, t->hint, SAY_X, 140.0f + 6.0f * (1.0f - op), op, SCR_W - DS_INSET - SAY_X);
 	}
 	if (!finish) legend(r);
+}
+
+/* ---- the language ------------------------------------------------------------------ */
+
+/* DESIGN.md 11.30 (My pick in the languages lab, "Zyper says hello"):
+ * Zyper where the welcome has him, his bubble saying hello in the language
+ * under the cursor, and the languages beside him in **menu** rows of the
+ * lab's 75, each in its own words and its own face, the focused one on the
+ * accent with an A at its end. Five rows show; with more, the window moves
+ * with the cursor, the others behind a mark at each end that has more. */
+#define LANG_X     430.0f
+#define LANG_W     540.0f
+#define LANG_TOP   262.0f
+#define LANG_ROW   75.0f
+#define LANG_SHOWN 5
+
+static void lang_step(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *hk)
+{
+	const ds_theme *th = theme();
+	const int n = TOUR_LANGS, f = tour_lang_focus(t, now);
+	const float sop = tour_ease(TC_OUT, now, t->say_at + SAY_IN_MS, DS_MS_MOVE);
+	const float lop = tour_ease(TC_OUT, now, t->say_at + LINES_IN_MS, DS_MS_MOVE);
+	int first = f - LANG_SHOWN / 2, i;
+
+	if (first > n - LANG_SHOWN) first = n - LANG_SHOWN;
+	if (first < 0) first = 0;
+	{
+		const tour_zyper_at z = tour_zyper_now(t, now);
+
+		if (z.hello) zyper(hk, 268.0f, 372.0f, 300.0f, &z.pose, z.scale, 0.0f);
+	}
+	say_bubble(r, tour_step_info(TOUR_LANG)->title, SAY_X, 96.0f + 8.0f * (1.0f - sop), sop);
+	g_op = lop;
+	for (i = first; i < first + LANG_SHOWN && i < n; i++) {
+		const float y = LANG_TOP + (float)(i - first) * LANG_ROW, cy = y + LANG_ROW / 2.0f;
+		TTF_Font *fm = ui_font_lang(UI_F_MENU, (lang)i);
+		ds_rgb ink = th->text_soft;
+
+		if (i == f) {
+			rr(r, LANG_X, y, LANG_W, LANG_ROW, DS_RADIUS_ROW, col(rgb(th->accent), 1.0f));
+			ink = th->on_accent;
+			ui_button_pressed(r, "A", (int)lroundf(LANG_X + LANG_W - 46.0f + g_ox),
+			                  (int)lroundf(cy + g_oy), 52, UI_BUTTON_ON_ACCENT, 0.0f, 1.0f, g_op);
+		}
+		if (fm)
+			ui_text(r, fm, lang_name((lang)i), (int)lroundf(LANG_X + 26.0f + g_ox),
+			        ui_cap_y(fm, (int)lroundf(cy + g_oy)), -1, ui_fade(ui_col(ink, 255), g_op));
+	}
+	/* More above, more below: the panel's marks (11.3), small */
+	{
+		const SDL_Color c = col(rgb(th->text_dim), 1.0f);
+
+		if (first > 0) {
+			SDL_FPoint up[3] = { { LANG_X + LANG_W / 2.0f - 12.0f, LANG_TOP - 10.0f },
+			                     { LANG_X + LANG_W / 2.0f + 12.0f, LANG_TOP - 10.0f },
+			                     { LANG_X + LANG_W / 2.0f, LANG_TOP - 22.0f } };
+			poly(r, up, 3, c);
+		}
+		if (first + LANG_SHOWN < n) {
+			const float b = LANG_TOP + LANG_SHOWN * LANG_ROW;
+			SDL_FPoint dn[3] = { { LANG_X + LANG_W / 2.0f - 12.0f, b + 10.0f },
+			                     { LANG_X + LANG_W / 2.0f + 12.0f, b + 10.0f },
+			                     { LANG_X + LANG_W / 2.0f, b + 22.0f } };
+			poly(r, dn, 3, c);
+		}
+	}
+	g_op = 1.0f;
+	legend(r);
 }
 
 /* ---- the choices ------------------------------------------------------------------- */
@@ -1517,7 +1613,8 @@ void tour_draw(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *h
 	g_ox = g_oy = 0.0f;
 	SDL_SetRenderDrawColor(r, g.r, g.g, g.b, 255);
 	SDL_RenderClear(r);
-	if (t->step == TOUR_WELCOME || t->step == TOUR_FINISH) welcome(r, t, now, hk);
+	if (t->step == TOUR_LANG) lang_step(r, t, now, hk);
+	else if (t->step == TOUR_WELCOME || t->step == TOUR_FINISH) welcome(r, t, now, hk);
 	else if (tour_choice_of(t->step) >= 0) choice(r, t, now, hk);
 	else lesson(r, t, now, hk);
 }

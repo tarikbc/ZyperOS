@@ -9,6 +9,7 @@
 #include "coverflow.h"
 #include "games.h"
 #include "home.h"
+#include "i18n.h"
 #include "idle.h"
 #include "library.h"
 #include "muselib.h"
@@ -63,23 +64,31 @@ typedef struct {
  *
  * The names are Diatom's protocol strings and have to match its own table in
  * src/scale.c exactly - it answers an unknown one with ERROR code=bad_display
- * and changes nothing. The labels are ours, and are what the menu shows. */
+ * and changes nothing. The labels are ours: `label` in English, and `text`,
+ * through dmode_label, in the language that is on, which the menu shows. */
 /* STRETCH IS FIRST, AND FIRST IS THE DEFAULT. A sysview is zero-initialized
  * and no display mode is seeded, so index 0 is what every system plays at
  * nobody has configured. Filling the panel is the right default on a handheld
  * whose screen is the whole device: the alternative spends a fifth of a
  * 1024x768 panel on black bars for the Game Boys before anyone has been given
  * a reason to choose. The rest keep their order. */
-static const struct { const char *name, *label; } DMODES[] = {
-	{ "stretch",          "Stretch"      },
-	{ "aspect",           "Aspect"       },
-	{ "integer",          "Integer"      },
-	{ "integer-vertical", "Integer tall" },
-	{ "overscale",        "Overscale"    },
-	{ "fill",             "Fill"         },
-	{ "native",           "Native 1:1"   },
+static const struct { const char *name, *label; str_id text; } DMODES[] = {
+	{ "stretch",          "Stretch",      S_GAMEMENU_DMODE_STRETCH       },
+	{ "aspect",           "Aspect",       S_GAMEMENU_DMODE_ASPECT        },
+	{ "integer",          "Integer",      S_GAMEMENU_DMODE_INTEGER       },
+	{ "integer-vertical", "Integer tall", S_GAMEMENU_DMODE_INTEGER_TALL  },
+	{ "overscale",        "Overscale",    S_GAMEMENU_DMODE_OVERSCALE     },
+	{ "fill",             "Fill",         S_GAMEMENU_DMODE_FILL          },
+	{ "native",           "Native 1:1",   S_GAMEMENU_DMODE_NATIVE        },
 };
 #define DMODE_COUNT ((int)(sizeof DMODES / sizeof DMODES[0]))
+
+/* Display mode k's label in the language that is on; past the ends, the
+ * first's */
+static inline const char *dmode_label(int k)
+{
+	return T(DMODES[k >= 0 && k < DMODE_COUNT ? k : 0].text);
+}
 
 typedef struct {
 	systems_cfg sys;

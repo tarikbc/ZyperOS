@@ -1,0 +1,103 @@
+# System Update through the computer, over the USB cable: the sentences the
+# File Transfer page shows from the handheld when it cannot take an update
+# (src/main.c up_supported, xfer_update). They go in an HTTP answer's body,
+# which holds 160 bytes: keep each within that.
+
+[sysupdate.no_program]
+note = The File Transfer web page: this card has no update program. ZyperOS Installer is the computer app's name. tight: 160 bytes.
+en = This card has no update program. Use the ZyperOS Installer.
+zh-Hans = 此存储卡没有更新程序。请使用 ZyperOS Installer。
+es = Esta tarjeta no tiene programa de actualización. Usa ZyperOS Installer.
+pt-BR = Este cartão não tem o programa de atualização. Use o ZyperOS Installer.
+fr = Cette carte n'a pas de programme de mise à jour. Utilisez ZyperOS Installer.
+de = Diese Karte hat kein Updateprogramm. Nutze den ZyperOS Installer.
+ja = このカードには更新プログラムがありません。ZyperOS Installer をお使いください。
+it = Questa scheda non ha un programma di aggiornamento. Usa ZyperOS Installer.
+
+[sysupdate.no_system_update]
+note = The page: the system on this card cannot update itself. "System Update" is the feature's name (the glossary's). tight: 160 bytes.
+en = This system image has no System Update. Use the ZyperOS Installer.
+zh-Hans = 此系统镜像不支持系统更新。请使用 ZyperOS Installer。
+es = Esta imagen del sistema no tiene Actualización del sistema. Usa ZyperOS Installer.
+pt-BR = Esta imagem do sistema não tem Atualização do sistema. Use o ZyperOS Installer.
+fr = Cette image système n'a pas de Mise à jour du système. Utilisez ZyperOS Installer.
+de = Dieses Systemimage hat kein Systemupdate. Nutze den ZyperOS Installer.
+ja = このシステムイメージはシステムアップデートに対応していません。ZyperOS Installer をお使いください。
+it = Questa immagine di sistema non ha Aggiornamento di sistema. Usa ZyperOS Installer.
+
+[sysupdate.no_release_key]
+note = The page: the system has no key to check an update's signature with. tight: 160 bytes, accents count two.
+en = This system image has no release key yet, so it cannot check that an update is real. Use the ZyperOS Installer.
+zh-Hans = 此系统镜像还没有发布密钥，无法验证更新的真伪。请使用 ZyperOS Installer。
+es = Esta imagen aún no tiene clave de versión y no puede verificar que una actualización sea real. Usa ZyperOS Installer.
+pt-BR = Esta imagem ainda não tem chave de versão e não pode verificar se uma atualização é real. Use o ZyperOS Installer.
+fr = Cette image n'a pas encore de clé de version et ne peut pas vérifier une mise à jour. Utilisez ZyperOS Installer.
+de = Dieses Systemimage hat noch keinen Release-Schlüssel und kann Updates nicht prüfen. Nutze den ZyperOS Installer.
+ja = まだリリースキーがないため、アップデートを検証できません。ZyperOS Installer をお使いください。
+it = Questa immagine non ha ancora una chiave di rilascio e non può verificare gli aggiornamenti. Usa ZyperOS Installer.
+
+[sysupdate.busy]
+note = The page: an update is running; a file sent now would get in its way.
+en = An update is at work. Wait for it to finish.
+zh-Hans = 更新正在进行。请等待它完成。
+es = Hay una actualización en curso. Espera a que termine.
+pt-BR = Há uma atualização em andamento. Aguarde até ela terminar.
+fr = Une mise à jour est en cours. Attendez qu'elle se termine.
+de = Ein Update läuft. Warte, bis es fertig ist.
+ja = アップデートを実行中です。完了までお待ちください。
+it = Un aggiornamento è in corso. Attendi che finisca.
+
+[sysupdate.not_update_file]
+note = The page: a file sent that is not one of this handheld's update files.
+en = That is not one of this handheld's update files.
+zh-Hans = 这不是此掌机的更新文件。
+es = Ese no es un archivo de actualización de esta consola.
+pt-BR = Esse não é um arquivo de atualização deste console.
+fr = Ce n'est pas un fichier de mise à jour de cette console.
+de = Das ist keine Updatedatei dieser Konsole.
+ja = この本体のアップデートファイルではありません。
+it = Non è uno dei file di aggiornamento di questa console.
+
+[sysupdate.name_too_long]
+note = The page: a file's name too long for the card. Lowercase, as English.
+en = that name is too long
+zh-Hans = 名称太长
+es = ese nombre es demasiado largo
+pt-BR = esse nome é longo demais
+fr = ce nom est trop long
+de = dieser Name ist zu lang
+ja = 名前が長すぎます
+it = nome troppo lungo
+
+[sysupdate.busy_already]
+note = The page: Check or Install while an update is already running.
+en = An update is at work already.
+zh-Hans = 已有更新正在进行。
+es = Ya hay una actualización en curso.
+pt-BR = Já há uma atualização em andamento.
+fr = Une mise à jour est déjà en cours.
+de = Es läuft bereits ein Update.
+ja = すでにアップデートを実行中です。
+it = Un aggiornamento è già in corso.
+
+[sysupdate.send_files_first]
+note = The page: Check or Install before the update's files were sent.
+en = Send the update's files first.
+zh-Hans = 请先发送更新文件。
+es = Envía primero los archivos de la actualización.
+pt-BR = Envie primeiro os arquivos da atualização.
+fr = Envoyez d'abord les fichiers de la mise à jour.
+de = Sende zuerst die Dateien des Updates.
+ja = 先にアップデートのファイルを送ってください。
+it = Prima invia i file dell'aggiornamento.
+
+[sysupdate.none_ready]
+note = The page: Restart to install with no update ready.
+en = No update is ready to install.
+zh-Hans = 没有可以安装的更新。
+es = No hay ninguna actualización lista para instalar.
+pt-BR = Nenhuma atualização está pronta para instalar.
+fr = Aucune mise à jour n'est prête à être installée.
+de = Kein Update ist zur Installation bereit.
+ja = インストールできるアップデートがありません。
+it = Nessun aggiornamento pronto da installare.

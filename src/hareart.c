@@ -11,6 +11,7 @@
 
 #include "artscrape.h"
 #include "artshrink.h"
+#include "i18n.h"
 
 static const systems_cfg *g_sys;
 static char g_roms[1024];
@@ -46,7 +47,7 @@ char *hareart_wanted(size_t *len, char *why, size_t wn)
 	bool first = true;
 	int i, k;
 
-	if (!g_sys) { snprintf(why, wn, "no shelves"); return NULL; }
+	if (!g_sys) { snprintf(why, wn, "%s", T(S_HARE_NO_SHELVES)); return NULL; }
 	hj_lit(&o, "{\"shelves\":[");
 	for (i = 0; i < g_sys->count; i++) {
 		const system_cfg *sc = &g_sys->systems[i];
@@ -165,11 +166,11 @@ static bool find_shelf(matching *m, char *why, size_t wn)
 {
 	int i;
 
-	if (!g_sys) { snprintf(why, wn, "no shelves"); return false; }
+	if (!g_sys) { snprintf(why, wn, "%s", T(S_HARE_NO_SHELVES)); return false; }
 	for (i = 0; i < g_sys->count; i++)
 		if (!strcmp(g_sys->systems[i].folder, m->folder)) break;
 	if (i == g_sys->count || !shelf_dir(&g_sys->systems[i], m->dir, sizeof m->dir)) {
-		snprintf(why, wn, "no such shelf");
+		snprintf(why, wn, "%s", T(S_HARE_NO_SHELF));
 		return false;
 	}
 	m->sc = &g_sys->systems[i];
@@ -222,7 +223,7 @@ char *hareart_crc(const char *folder, const char *dat, size_t *len,
 	matching m = { .o = &o, .folder = folder, .dat = dat };
 
 	if (!g_names || strcmp(g_names_folder, folder)) {
-		snprintf(why, wn, "match this shelf by name first");
+		snprintf(why, wn, "%s", T(S_HARE_MATCH_FIRST));
 		return NULL;
 	}
 	m.names = g_names;

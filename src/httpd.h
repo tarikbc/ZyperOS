@@ -99,10 +99,10 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
                       const char *extra_headers);
 
 /* One of the page's own files: answered 304 with no body when the browser
- * already has it (its ETag, the file's size and time), and gzipped when the
- * browser takes gzip and it is text. `no-cache`, so a browser asks every time
- * and a changed file is never served stale. False, as httpd_reply_file, when
- * it replied with an error. */
+ * already has it (its ETag, the file's size, time and path), and gzipped
+ * when the browser takes gzip and it is text. `no-cache`, so a browser asks
+ * every time and a changed file is never served stale. False, as
+ * httpd_reply_file, when it replied with an error. */
 bool httpd_reply_static(httpd_req *r, const char *path, const char *content_type);
 void httpd_reply_status(httpd_req *r, int status, const char *text);
 

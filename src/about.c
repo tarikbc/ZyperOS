@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
 #include "about.h"
+#include "i18n.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -91,12 +92,13 @@ static void capacity_text(char *out, size_t cap, uint64_t uah)
 
 int about_detail_rows(const about_info *i, menu_row rows[ABOUT_DETAIL_ROWS], about_values *b)
 {
-	static const char *const labels[ABOUT_DETAIL_ROWS] = {
-		"Storage used", "Storage free", "Storage total", "Battery health", "Full charge", "Design charge"
+	static const str_id labels[ABOUT_DETAIL_ROWS] = {
+		S_ABOUT_STORAGE_USED, S_ABOUT_STORAGE_FREE, S_ABOUT_STORAGE_TOTAL,
+		S_ABOUT_BATTERY_HEALTH, S_ABOUT_FULL_CHARGE, S_ABOUT_DESIGN_CHARGE
 	};
 	for (int k = 0; k < ABOUT_DETAIL_ROWS; k++) {
-		snprintf(b->value[k], sizeof b->value[k], "unknown");
-		rows[k] = (menu_row){ labels[k], b->value[k], false };
+		snprintf(b->value[k], sizeof b->value[k], "%s", T(S_ABOUT_UNKNOWN));
+		rows[k] = (menu_row){ T(labels[k]), b->value[k], false };
 	}
 	if (i->storage_known) {
 		storage_text(b->value[0], sizeof b->value[0], i->used_bytes);
@@ -108,7 +110,7 @@ int about_detail_rows(const about_info *i, menu_row rows[ABOUT_DETAIL_ROWS], abo
 	if (i->full_uah && i->design_uah) {
 		long double pct = (long double)i->full_uah / (long double)i->design_uah * 100.0L;
 		unsigned health = pct >= 100.0L ? 100u : (unsigned)(pct + 0.5L);
-		snprintf(b->value[3], sizeof b->value[3], "%u%% estimate", health);
+		snprintf(b->value[3], sizeof b->value[3], T(S_ABOUT_HEALTH_ESTIMATE), health);
 	}
 	return ABOUT_DETAIL_ROWS;
 }

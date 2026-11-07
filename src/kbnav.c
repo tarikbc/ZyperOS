@@ -3,6 +3,7 @@
  * kbnav.h; tools/kbnav-check.c holds every move. */
 #include "kbnav.h"
 #include "design.h"
+#include "i18n.h"
 
 #include <stddef.h>
 
@@ -155,13 +156,13 @@ const char *kb_action_label(kb_action a, int layer)
 {
 	switch (a) {
 	case KB_ACT_SHIFT:
-		return kb_layer_after(layer, a) == 0 ? "unshift" : "shift";
+		return T(kb_layer_after(layer, a) == 0 ? S_KEYBOARD_UNSHIFT : S_KEYBOARD_SHIFT);
 	case KB_ACT_SYMBOLS:
 		return kb_layer_after(layer, a) == 0 ? "abc" : "#+=";
 	case KB_ACT_DELETE:
-		return "delete";
+		return T(S_KEYBOARD_DELETE);
 	case KB_ACT_DONE:
-		return "done";
+		return T(S_KEYBOARD_DONE);
 	case KB_ACT_SPACE:
 	default:
 		return "";

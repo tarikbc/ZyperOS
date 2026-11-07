@@ -31,7 +31,7 @@ typedef struct {
 
 /* The text the rows point into, and each row's sound class (menu.h) */
 typedef struct {
-	char vol[8], track[128], now[128], count[64];
+	char vol[8], track[128], now[128], count[64], put[64];
 	unsigned char sound[BGM_ROWS + 3];
 } bgm_bufs;
 

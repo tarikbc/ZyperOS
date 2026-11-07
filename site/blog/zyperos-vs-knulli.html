@@ -14,8 +14,8 @@ weight: 60
 
 <h2>The short answer</h2>
 <ul>
-  <li><strong>Pick Knulli</strong> if you want a released, Batocera-based system with Batocera's frontend and emulators, a scraper with three sources, video previews in its default theme, DraStic for the DS, and built-in menu music.</li>
-  <li><strong>Pick ZyperOS</strong> if you want Wi-Fi tested on the Pixel 2, games sent from any browser or over the USB cable, box art with no account, and battery care. ZyperOS is in testing, with no release images yet.</li>
+  <li><strong>Pick Knulli</strong> if you want a Batocera-based system with Batocera's frontend and emulators, a scraper with three sources, video previews in its default theme, DraStic for the DS, and built-in menu music.</li>
+  <li><strong>Pick ZyperOS</strong> if you want Wi-Fi tested on the Pixel 2, games sent from any browser or over the USB cable, box art with no account, and battery care. ZyperOS 1.0.0 is out, with a card image and ZyperOS Installer.</li>
 </ul>
 
 <h2>Side by side</h2>
@@ -24,7 +24,7 @@ weight: 60
   <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">Knulli</th></tr></thead>
   <tbody>
     <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>Buildroot's GPL-2.0-or-later; no license file of Knulli's own</td></tr>
-    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">In testing, no release yet</td><td>20260511 "Scarab" (May 2026), a stable build</td></tr>
+    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">v1.0.0 (November 2026)</td><td>20260511 "Scarab" (May 2026), a stable build</td></tr>
     <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>[unk]</td></tr>
     <tr><th scope="row">Wi-Fi on the Pixel 2</th><td class="us">[yes: Tested with the TP-Link TL-WN725N] Tested</td><td>[unk]</td></tr>
     <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi or the handheld's own network] Web page</td><td>[yes: Samba, which you turn on, and SCP or SFTP with SSH; no web page] Samba, SFTP</td></tr>
@@ -38,14 +38,14 @@ weight: 60
     <tr><th scope="row">Rumble</th><td class="us">[yes: Games rumble] Yes</td><td>[yes: The Pixel 2 has the rumble capability in its build] Yes</td></tr>
     <tr><th scope="row">Side lights</th><td class="us">[yes: Battery, volume, brightness, transfers, achievements] Yes</td><td>[unk]</td></tr>
     <tr><th scope="row">Charge limit, charging screen</th><td class="us">[yes: A limit of 80, 85 or 90%, and a charging screen while off] Yes</td><td>[unk]</td></tr>
-    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>A boot file for minor updates, a re-flash for major ones</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back</td><td>A boot file for minor updates, a re-flash for major ones</td></tr>
   </tbody>
 </table>
 </div>
 <p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. Knulli's docs are general, not about the Pixel 2; where its build files name the Pixel 2, the table uses them.</p>
 
 <h2>Installing</h2>
-<p>Knulli's 20260511 release has one file for the Pixel 2, <code>knulli-rk3326-pixel2-scarab-20260510.img.gz</code>, under its stable releases. Knulli's docs say to write it with an imaging tool such as Rufus, balenaEtcher, Raspberry Pi Imager or Win32 Disk Imager. That release needs a fresh write even over an older Knulli card, because its partition table changed. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers the steps.</p>
+<p>Knulli's 20260511 release has one file for the Pixel 2, <code>knulli-rk3326-pixel2-scarab-20260510.img.gz</code>, under its stable releases. Knulli's docs say to write it with an imaging tool such as Rufus, balenaEtcher, Raspberry Pi Imager or Win32 Disk Imager. That release needs a fresh write even over an older Knulli card, because its partition table changed. ZyperOS's release has a card image you write with any image writer, and ZyperOS Installer, which downloads and writes it for you. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers the steps.</p>
 
 <h2>Wi-Fi on the Pixel 2</h2>
 <p>This is the open question for Knulli on this handheld. Knulli's networking page, written for all its devices, lists USB Wi-Fi dongles with RTL8192CU or RTL8188EU chips, and recommends the TP-Link TL-WN725N, the same adapter ZyperOS is tested with. But in Knulli's build files the Pixel 2 does not have the Wi-Fi capability, and its Pixel 2 image uses a prebuilt kernel whose drivers the source does not show. So no source we read confirms Wi-Fi on a Pixel 2 running Knulli, and with it the scraper, RetroAchievements, PortMaster downloads and updates over the air.</p>
@@ -61,10 +61,10 @@ weight: 60
 <p>Knulli's RK3326 builds select Advanced DraStic and make DraStic the default for the DS, with melonDS too. PortMaster is not preinstalled: you install it from Knulli's Device Settings, with internet. Knulli has menu music built in, and your own MP3 or Ogg files in its music folder replace it. ZyperOS ships DSperate and runs DraStic if you add it, runs PortMaster ports set up elsewhere, and plays ten free tracks or your own. See <a href="/blog/nintendo-ds-gkd-pixel-2/">the DS guide</a> and <a href="/blog/portmaster-gkd-pixel-2/">the PortMaster guide</a>.</p>
 
 <h2>Updates</h2>
-<p>Knulli's docs describe an update menu, then say there are no update servers yet. A minor update is a boot file you copy over; a major one is a full re-flash. ZyperOS's System Update downloads only what changed over Wi-Fi, into a second slot that rolls back if a new version fails, and turns on once ZyperOS has its release signing key.</p>
+<p>Knulli's docs describe an update menu, then say there are no update servers yet. A minor update is a boot file you copy over; a major one is a full re-flash. ZyperOS's System Update downloads only what changed over Wi-Fi, into a second slot that rolls back if a new version fails. Without Wi-Fi, the File Transfer page brings it over the USB cable.</p>
 
 <h2>Which one to pick</h2>
-<p>Knulli brings Batocera's breadth and a stable Pixel 2 build, with DraStic, a three-source scraper and video previews. On this handheld, though, Wi-Fi is unconfirmed by any source, and much of Knulli leans on it. ZyperOS is narrower and still in testing, but made for the Pixel 2, with tested Wi-Fi and transfers that also work over the cable. Each is a card, so try both.</p>
+<p>Knulli brings Batocera's breadth and a stable Pixel 2 build, with DraStic, a three-source scraper and video previews. On this handheld, though, Wi-Fi is unconfirmed by any source, and much of Knulli leans on it. ZyperOS is narrower, but made for the Pixel 2, with tested Wi-Fi and transfers that also work over the cable. Each is a card, so try both.</p>
 
 <h2>Sources</h2>
 <ol class="sources">

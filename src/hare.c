@@ -16,6 +16,7 @@
 #include "captive.h"
 #include "fileio.h"
 #include "hare.h"
+#include "i18n.h"
 #include "monoclock.h"
 #include "muselib.h"
 #include "xfer.h"
@@ -233,7 +234,7 @@ char *hj_done(hj *o, size_t *len, char *why, size_t wn)
 {
 	if (o->bad || !o->p) {
 		free(o->p);
-		snprintf(why, wn, "out of memory");
+		snprintf(why, wn, "%s", T(S_HARE_NO_MEMORY));
 		return NULL;
 	}
 	*len = o->used;
@@ -463,7 +464,7 @@ void hare_set_icons(const char *dir)
 void hare_set_update(hare_update_fn fn) { g_update = fn; }
 void hare_set_space(bool (*fn)(long long *free, long long *total)) { g_space = fn; }
 
-void hare_close_after(void) { g_closing = true; note("closing after this file"); }
+void hare_close_after(void) { g_closing = true; note("%s", T(S_HARE_CLOSING)); }
 bool hare_closing(void) { return g_closing; }
 int  hare_inflight(void) { return g_uploads + g_sends; }
 unsigned hare_quiet_ms(void) { return now_ms32() - g_last_req; }
@@ -673,7 +674,7 @@ static void route_list(httpd_req *r)
 
 	httpd_query(r, "p", raw, sizeof raw);
 	if (raw[0] && !xfer_decode(raw, req, sizeof req)) {
-		httpd_reply_status(r, 400, "that is not a path");
+		httpd_reply_status(r, 400, T(S_HARE_NOT_PATH));
 		return;
 	}
 	if (!raw[0]) req[0] = '\0';
@@ -704,19 +705,19 @@ static void route_list(httpd_req *r)
 			JLIT(&j, ",\"dir\":true,\"size\":0}");
 		}
 		JLIT(&j, "]}");
-		if (j.bad) httpd_reply_status(r, 500, j.over ? "listing did not fit"
-		                                             : "out of memory");
+		if (j.bad) httpd_reply_status(r, 500, j.over ? T(S_HARE_LISTING_OVER)
+		                                             : T(S_HARE_NO_MEMORY));
 		else httpd_reply(r, 200, "application/json", j.p, j.used, NULL);
 		free(j.p);
 		return;
 	}
 
 	if (!xfer_resolve(raw, abs, sizeof abs)) {
-		httpd_reply_status(r, 403, "not somewhere you can look");
+		httpd_reply_status(r, 403, T(S_HARE_CANNOT_LOOK));
 		return;
 	}
 	d = opendir(abs);
-	if (!d) { httpd_reply_status(r, 404, "no such folder"); return; }
+	if (!d) { httpd_reply_status(r, 404, T(S_HARE_NO_FOLDER)); return; }
 	systems = !strcmp(req, "roms") || !strcmp(req, "states");
 
 	j = (hj){ .max = JSON_MAX };
@@ -813,8 +814,8 @@ static void route_list(httpd_req *r)
 	closedir(d);
 	JLIT(&j, "]}");
 
-	if (j.bad) httpd_reply_status(r, 500, j.over ? "that folder has more in it than fits"
-	                                              : "out of memory");
+	if (j.bad) httpd_reply_status(r, 500, j.over ? T(S_HARE_FOLDER_OVER)
+	                                              : T(S_HARE_NO_MEMORY));
 	else httpd_reply(r, 200, "application/json", j.p, j.used, NULL);
 	free(j.p);
 }
@@ -915,11 +916,11 @@ static void on_end(httpd_req *r, bool whole, void *ctx)
 	if (tag == TAG_SENDING && g_sends > 0) g_sends--;
 	if (tag == TAG_RECEIVING) {
 		if (g_uploads > 0) g_uploads--;
-		note("failed: %s", base_of(abs));
+		note(T(S_HARE_FAILED), base_of(abs));
 	} else if (whole) {
-		note("sent %s", base_of(abs));
+		note(T(S_HARE_SENT), base_of(abs));
 	} else {
-		note("failed: %s", base_of(abs));
+		note(T(S_HARE_FAILED), base_of(abs));
 	}
 }
 
@@ -935,13 +936,14 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 	 * the way to the page is the answer that opens its sign-in sheet on it
 	 * (captive.h). Out of it, captive.js, the sheet's note, is empty. */
 	if (g_captive[0] && !captive_host_is(httpd_header(r, "Host"), g_captive)) {
-		static const char body[] = "<a href=\"/\">Wi-Fi File Transfer</a>\n";
-		char loc[96];
+		char body[128], loc[96];
+		int n = snprintf(body, sizeof body, "<a href=\"/\">%s</a>\n", T(S_CAPTIVE_LINK));
 
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		snprintf(loc, sizeof loc,
 		         "Location: http://%s/\r\nCache-Control: no-store\r\n", g_captive);
-		httpd_reply(r, 302, "text/html; charset=utf-8", body, sizeof body - 1, loc);
+		httpd_reply(r, 302, "text/html; charset=utf-8", body,
+		            n > 0 && n < (int)sizeof body ? (size_t)n : 0, loc);
 		return;
 	}
 	if (!g_captive[0] && !strcmp(path, "/web/captive.js")) {
@@ -965,7 +967,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		char cookie[128];
 
 		if (now_ms32() < g_locked_until) {
-			note("PIN locked out");
+			note("%s", T(S_HARE_LOCKED));
 			httpd_reply_status(r, 429, "too many wrong PINs - wait a moment");
 			return;
 		}
@@ -974,9 +976,9 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			if (++g_tries >= MAX_TRIES) {
 				g_locked_until = now_ms32() + LOCKOUT_MS;
 				g_tries = 0;
-				note("PIN locked out");
+				note("%s", T(S_HARE_LOCKED));
 			} else {
-				note("wrong PIN (%d / %d)", g_tries, MAX_TRIES);
+				note(T(S_HARE_WRONG_PIN), g_tries, MAX_TRIES);
 			}
 			/* The page says how many are left before the wait, which the
 			 * device alone knows: a reload starts the page's own count over. */
@@ -1001,8 +1003,26 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		         "Set-Cookie: hare=%s; Path=/; HttpOnly; SameSite=Strict\r\n",
 		         g_token[g_ntoken]);
 		g_ntoken++;
-		note("a browser signed in");
+		note("%s", T(S_HARE_SIGNED_IN));
 		httpd_reply(r, 200, "text/plain", "ok", 2, cookie);
+		return;
+	}
+
+	/* The page's words, in the language that is on (MENU > Language): its
+	 * file in res/web/i18n, which tools/i18n.py writes, or English's where
+	 * the language has none (the host's pseudo-locale). The page loads it
+	 * before its script, so the PIN prompt needs it too. One URL for every
+	 * language, and the tag is the file's (httpd_reply_static), so a browser
+	 * asks every time and a new language is never answered with the last. */
+	if (!done && !strcmp(m, "GET") && !strcmp(path, "/i18n.js")) {
+		char file[XFER_PATH_MAX];
+		struct stat st;
+		int n = snprintf(file, sizeof file, "%s/i18n/%s.js", g_web, lang_code(i18n_lang()));
+
+		if (n < 0 || n >= (int)sizeof file || stat(file, &st) != 0)
+			n = snprintf(file, sizeof file, "%s/i18n/en.js", g_web);
+		if (n < 0 || n >= (int)sizeof file) { httpd_reply_status(r, 404, "no"); return; }
+		httpd_reply_static(r, file, mime_for(file));
 		return;
 	}
 
@@ -1112,7 +1132,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 				if (httpd_content_len(r) > 0) return;   /* answered once it is gone */
 			}
-			reply_json(r, g_update(op, name, NULL, 0, &len, why, sizeof why), len, why, "could not");
+			reply_json(r, g_update(op, name, NULL, 0, &len, why, sizeof why), len, why, T(S_HARE_COULD_NOT));
 			return;
 		}
 		/* A file: where it goes is the hook's to say, before a byte lands */
@@ -1120,26 +1140,26 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) {
 			if (g_closing) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 503, "File Transfer is closing on the handheld");
+				httpd_reply_status(r, 503, T(S_HARE_CLOSING_REPLY));
 				return;
 			}
 			json = g_update(HARE_UPDATE_FILE, name, dest, sizeof dest, &len, why, sizeof why);
 			if (!json || !dest[0] || snprintf(part, sizeof part, "%s.part", dest) >= (int)sizeof part) {
 				free(json);
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 400, why[0] ? why : "that is not one of the update's files");
+				httpd_reply_status(r, 400, why[0] ? why : T(S_HARE_NOT_UPDATE_FILE));
 				return;
 			}
 			free(json);
 			if (!room_for(dest, httpd_content_len(r))) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 507, "not enough room on the card");
+				httpd_reply_status(r, 507, T(S_HARE_NO_ROOM));
 				return;
 			}
 			httpd_want_body(r, HTTPD_BODY_FILE, part);
 			g_uploads++;
 			snprintf(g_file, sizeof g_file, "%s", name);
-			note("receiving %s", name);
+			note(T(S_HARE_RECEIVING), name);
 			httpd_set_tag(r, TAG_RECEIVING);
 			return;
 		}
@@ -1148,24 +1168,24 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		json = g_update(HARE_UPDATE_FILE, name, dest, sizeof dest, &len, why, sizeof why);
 		free(json);
 		if (!dest[0] || snprintf(part, sizeof part, "%s.part", dest) >= (int)sizeof part) {
-			httpd_reply_status(r, 500, "could not put that in place");
+			httpd_reply_status(r, 500, T(S_HARE_NOT_PLACED));
 			return;
 		}
 		/* Safari's pad, as for any file (HARE_PAD_BYTE) */
 		if (wants_unpad(r) && !unpad(part)) {
 			remove(part);
-			httpd_reply_status(r, 400, "the upload did not end in its pad");
+			httpd_reply_status(r, 400, T(S_HARE_NO_PAD));
 			return;
 		}
 		if (rename(part, dest) != 0) {
 			remove(part);
-			httpd_reply_status(r, 500, "could not put that in place");
-			note("failed: %s", name);
+			httpd_reply_status(r, 500, T(S_HARE_NOT_PLACED));
+			note(T(S_HARE_FAILED), name);
 			return;
 		}
-		note("received %s", name);
+		note(T(S_HARE_RECEIVED), name);
 		reply_json(r, g_update(HARE_UPDATE_FILED, name, dest, sizeof dest, &len, why, sizeof why),
-		           len, why, "could not");
+		           len, why, T(S_HARE_COULD_NOT));
 		return;
 	}
 
@@ -1179,7 +1199,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		if (!g_art_wanted) { httpd_reply_status(r, 404, "no box art here"); return; }
 		if (!(json = g_art_wanted(&len, why, sizeof why))) {
-			httpd_reply_status(r, 500, why[0] ? why : "could not look");
+			httpd_reply_status(r, 500, why[0] ? why : T(S_HARE_COULD_NOT_LOOK));
 			return;
 		}
 		httpd_reply(r, 200, "application/json", json, len, NULL);
@@ -1206,7 +1226,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			}
 			if (n <= 0 || n > ART_NAMES_MAX) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 413, "that is not a list of names");
+				httpd_reply_status(r, 413, T(S_HARE_NOT_NAMES));
 				return;
 			}
 			httpd_want_body(r, HTTPD_BODY_FILE, ART_NAMES_TMP);
@@ -1217,17 +1237,17 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		remove(ART_NAMES_TMP);
 		if (!raw[0] || !xfer_decode(raw, folder, sizeof folder)) {
 			free(body);
-			httpd_reply_status(r, 400, "which shelf?");
+			httpd_reply_status(r, 400, T(S_HARE_WHICH_SHELF));
 			return;
 		}
-		if (!body) { httpd_reply_status(r, 500, "the names did not arrive"); return; }
+		if (!body) { httpd_reply_status(r, 500, T(S_HARE_NAMES_LOST)); return; }
 		json = fn(folder, body, &len, why, sizeof why);
 		free(body);
 		if (!json) {
-			httpd_reply_status(r, 500, why[0] ? why : "could not match");
+			httpd_reply_status(r, 500, why[0] ? why : T(S_HARE_COULD_NOT_MATCH));
 			return;
 		}
-		note("box art for %s", folder);
+		note(T(S_HARE_BOX_ART), folder);
 		httpd_reply(r, 200, "application/json", json, len, NULL);
 		free(json);
 		return;
@@ -1241,7 +1261,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		if (!g_albums_wanted) { httpd_reply_status(r, 404, "no album covers here"); return; }
-		reply_json(r, g_albums_wanted(&len, why, sizeof why), len, why, "could not look");
+		reply_json(r, g_albums_wanted(&len, why, sizeof why), len, why, T(S_HARE_COULD_NOT_LOOK));
 		return;
 	}
 	if (!strcmp(path, "/api/albums/pick") && !strcmp(m, "POST")) {
@@ -1259,7 +1279,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			}
 			if (cl <= 0 || cl > PICK_MAX) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 413, "that is not a search reply");
+				httpd_reply_status(r, 413, T(S_HARE_NOT_SEARCH));
 				return;
 			}
 			httpd_want_body(r, HTTPD_BODY_FILE, PICK_TMP);
@@ -1270,12 +1290,12 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		remove(PICK_TMP);
 		if (!idq[0] || !reply) {
 			free(reply);
-			httpd_reply_status(r, 400, "which album?");
+			httpd_reply_status(r, 400, T(S_HARE_WHICH_ALBUM));
 			return;
 		}
 		n = strlen(reply);
 		reply_json(r, g_albums_pick(atoi(idq), reply, n, &len, why, sizeof why),
-		           len, why, "could not pick");
+		           len, why, T(S_HARE_COULD_NOT_PICK));
 		free(reply);
 		return;
 	}
@@ -1302,7 +1322,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			if (op == HARE_SGDB_KEY) {
 				if (cl <= 0 || cl > SGDB_BODY_MAX) {
 					httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-					httpd_reply_status(r, 413, "that is not a SteamGridDB key");
+					httpd_reply_status(r, 413, T(S_HARE_NOT_KEY));
 					return;
 				}
 				httpd_want_body(r, HTTPD_BODY_MEM, NULL);
@@ -1313,12 +1333,12 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		}
 		if (op == HARE_SGDB_KEY) body = httpd_body(r, &n);
 		reply_json(r, g_sgdb(op, body ? body : "", n, &len, why, sizeof why),
-		           len, why, "could not");
+		           len, why, T(S_HARE_COULD_NOT));
 		/* The key itself, in the request's own buffer: gone before httpd
 		 * frees it, so no later allocation can hand it on. */
 		if (body && n) memset((char *)body, 0, n);
-		if (op == HARE_SGDB_KEY) note("checking a SteamGridDB key");
-		else if (op == HARE_SGDB_REMOVE) note("SteamGridDB key removed");
+		if (op == HARE_SGDB_KEY) note("%s", T(S_HARE_SGDB_CHECKING));
+		else if (op == HARE_SGDB_REMOVE) note("%s", T(S_HARE_SGDB_REMOVED));
 		return;
 	}
 
@@ -1330,13 +1350,13 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		if (!g_pack_logs || !g_pack_logs(pack, sizeof pack, name, sizeof name)) {
-			httpd_reply_status(r, 500, "the logs could not be packed");
+			httpd_reply_status(r, 500, T(S_HARE_LOGS_FAILED));
 			return;
 		}
 		snprintf(extra, sizeof extra,
 		         "Content-Disposition: attachment; filename=\"%s\"\r\n", name);
 		if (httpd_reply_file(r, pack, "application/gzip", extra)) {
-			note("sending the logs");
+			note("%s", T(S_HARE_LOGS));
 			httpd_set_tag(r, TAG_SENDING);
 			g_sends++;
 		}
@@ -1351,7 +1371,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can look");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_LOOK));
 			return;
 		}
 		/* Named, so a browser saves it as itself rather than as "file". The
@@ -1379,12 +1399,12 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			}
 		}
 		if (g_closing) {
-			httpd_reply_status(r, 503, "File Transfer is closing on the handheld");
+			httpd_reply_status(r, 503, T(S_HARE_CLOSING_REPLY));
 			return;
 		}
 		/* Only once the file is really going out: a 404 said "sending" too. */
 		if (httpd_reply_file(r, abs, mime_for(abs), extra[0] ? extra : NULL)) {
-			note("sending %s", base_of(abs));
+			note(T(S_HARE_SENDING), base_of(abs));
 			httpd_set_tag(r, TAG_SENDING);
 			g_sends++;
 		}
@@ -1397,7 +1417,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
 			if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-			httpd_reply_status(r, 403, "not somewhere you can write");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
 			return;
 		}
 		if (!done) {
@@ -1405,7 +1425,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 			if (g_closing) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 503, "File Transfer is closing on the handheld");
+				httpd_reply_status(r, 503, T(S_HARE_CLOSING_REPLY));
 				return;
 			}
 			/* Before room_for, because a name the card cannot store is not a
@@ -1414,18 +1434,18 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			 * legal filename here - that is this call. */
 			if (!xfer_name_ok(base_of(abs))) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 400, "that is not a usable name");
+				httpd_reply_status(r, 400, T(S_HARE_BAD_NAME));
 				return;
 			}
 			/* A padded body has at least the pad in it. */
 			if (wants_unpad(r) && httpd_content_len(r) < 1) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 400, "a padded upload with no pad");
+				httpd_reply_status(r, 400, T(S_HARE_PAD_EMPTY));
 				return;
 			}
 			if (!room_for(abs, httpd_content_len(r))) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 507, "not enough room on the card");
+				httpd_reply_status(r, 507, T(S_HARE_NO_ROOM));
 				return;
 			}
 			/* A cover into a console's or an album's .media: the folder is
@@ -1450,13 +1470,13 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			 * copy of a save. */
 			if (snprintf(part, sizeof part, "%s.part", abs) >= (int)sizeof part) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 400, "that name is too long");
+				httpd_reply_status(r, 400, T(S_HARE_LONG_NAME));
 				return;
 			}
 			httpd_want_body(r, HTTPD_BODY_FILE, part);
 			g_uploads++;
 			snprintf(g_file, sizeof g_file, "%s", base_of(abs));
-			note("receiving %s", base_of(abs));
+			note(T(S_HARE_RECEIVING), base_of(abs));
 			httpd_set_tag(r, TAG_RECEIVING);
 			return;
 		}
@@ -1472,26 +1492,26 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			 * on_end. */
 			httpd_set_tag(r, 0);
 			if (snprintf(part, sizeof part, "%s.part", abs) >= (int)sizeof part) {
-				httpd_reply_status(r, 500, "that name is too long");
+				httpd_reply_status(r, 500, T(S_HARE_LONG_NAME));
 				return;
 			}
 			/* Safari's pad off first (HARE_PAD_BYTE): the file in place is the
 			 * file that was sent, or nothing replaces the one already there. */
 			if (wants_unpad(r) && !unpad(part)) {
 				remove(part);
-				httpd_reply_status(r, 400, "the upload did not end in its pad");
-				note("failed: %s", base_of(abs));
+				httpd_reply_status(r, 400, T(S_HARE_NO_PAD));
+				note(T(S_HARE_FAILED), base_of(abs));
 				return;
 			}
 			if (rename(part, abs) != 0) {
 				remove(part);
-				httpd_reply_status(r, 500, "could not put that in place");
-				note("failed: %s", base_of(abs));
+				httpd_reply_status(r, 500, T(S_HARE_NOT_PLACED));
+				note(T(S_HARE_FAILED), base_of(abs));
 				return;
 			}
 			note_write(abs);
 			if (g_after_write) g_after_write(abs);
-			note("received %s", base_of(abs));
+			note(T(S_HARE_RECEIVED), base_of(abs));
 			httpd_reply(r, 200, "text/plain", "ok", 2, NULL);
 		}
 		return;
@@ -1507,7 +1527,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		httpd_query(r, "p", req, sizeof req);
 		httpd_query(r, "to", to, sizeof to);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can write");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
 			return;
 		}
 		/* The destination is decoded HERE and checked as one name. It is not
@@ -1517,14 +1537,14 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			char dec[XFER_NAME_MAX];
 
 			if (!xfer_decode(to, dec, sizeof dec) || !xfer_name_ok(dec)) {
-				httpd_reply_status(r, 400, "that is not a usable name");
+				httpd_reply_status(r, 400, T(S_HARE_BAD_NAME));
 				return;
 			}
 			snprintf(dst, sizeof dst, "%s", abs);
 			slash = strrchr(dst, '/');
-			if (!slash) { httpd_reply_status(r, 400, "cannot rename that"); return; }
+			if (!slash) { httpd_reply_status(r, 400, T(S_HARE_CANNOT_RENAME)); return; }
 			if ((size_t)(slash - dst) + 1 + strlen(dec) >= sizeof dst) {
-				httpd_reply_status(r, 400, "that name is too long");
+				httpd_reply_status(r, 400, T(S_HARE_LONG_NAME));
 				return;
 			}
 			strcpy(slash + 1, dec);
@@ -1540,7 +1560,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (music && g_after_rename) g_after_rename(abs, dst, false);
 		note_write(dst);
 		note_write(abs);   /* it left one name and arrived at another */
-		note("renamed %s", base_of(dst));
+		note(T(S_HARE_RENAMED), base_of(dst));
 		httpd_reply(r, 200, "text/plain", "ok", 2, NULL);
 		return;
 	}
@@ -1557,15 +1577,15 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) { httpd_want_body(r, HTTPD_BODY_NONE, NULL); if (apply) return; }
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can write");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
 			return;
 		}
 		if (stat(abs, &st) != 0 || !S_ISDIR(st.st_mode)) {
-			httpd_reply_status(r, 404, "not a folder");
+			httpd_reply_status(r, 404, T(S_HARE_NOT_FOLDER));
 			return;
 		}
 		if (!(rt = tidy_root(abs))) {
-			httpd_reply_status(r, 400, "only a folder in Music or Audiobooks");
+			httpd_reply_status(r, 400, T(S_HARE_TIDY_WHERE));
 			return;
 		}
 		if ((n = tidy_plan(abs, rt, it, TIDY_MAX)) < 0) {
@@ -1604,7 +1624,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			/* Once, whatever was renamed: the folder's old path and its new */
 			if (renamed && g_after_rename) g_after_rename(from, abs, true);
 			note_write(abs);
-			note("tidied %d names in %s", renamed, base_of(abs));
+			note(TN(S_HARE_TIDIED, renamed), renamed, base_of(abs));
 		}
 		j.max = 512 + (size_t)n * (2 * XFER_NAME_MAX + 64);
 		if (apply) {
@@ -1624,8 +1644,8 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			}
 			JLIT(&j, "]}");
 		}
-		if (j.bad)  httpd_reply_status(r, 500, j.over ? "reply too long"
-		                                              : "out of memory");
+		if (j.bad)  httpd_reply_status(r, 500, j.over ? T(S_HARE_REPLY_LONG)
+		                                              : T(S_HARE_NO_MEMORY));
 		else        httpd_reply(r, 200, "application/json", j.p, j.used, NULL);
 		free(j.p);
 		return;
@@ -1638,10 +1658,10 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) { httpd_want_body(r, HTTPD_BODY_NONE, NULL); return; }
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can write");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
 			return;
 		}
-		if (stat(abs, &st) != 0) { httpd_reply_status(r, 404, "not there"); return; }
+		if (stat(abs, &st) != 0) { httpd_reply_status(r, 404, T(S_HARE_NOT_THERE)); return; }
 		/* A folder goes as xfer_delete_rule says, and only with everything
 		 * in it when the page asked for that by name (all=1), having shown
 		 * what is inside first - see /api/count. It was rmdir alone once:
@@ -1661,17 +1681,17 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 				if (rule != XFER_DEL_ALL) { httpd_reply_status(r, 409, why); return; }
 				if (strcmp(all, "1") != 0) {
-					httpd_reply_status(r, 409, "that folder is not empty");
+					httpd_reply_status(r, 409, T(S_HARE_NOT_EMPTY));
 					return;
 				}
 				n = tree_count(abs, 0, HARE_DELETE_MAX, &files, &folders);
 				if (n > HARE_DELETE_MAX) {
-					httpd_reply_status(r, 413, "too much in one go; delete it in parts");
+					httpd_reply_status(r, 413, T(S_HARE_TOO_MUCH));
 					return;
 				}
 				if (g_before_delete) g_before_delete(abs);
 				if (!tree_delete(abs, 0)) {
-					httpd_reply_status(r, 500, "some of it could not be deleted");
+					httpd_reply_status(r, 500, T(S_HARE_PARTLY_DELETED));
 					note_write(abs);
 					return;
 				}
@@ -1681,7 +1701,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			return;
 		}
 		note_write(abs);
-		note("deleted %s", base_of(abs));
+		note(T(S_HARE_DELETED), base_of(abs));
 		httpd_reply(r, 200, "text/plain", "ok", 2, NULL);
 		return;
 	}
@@ -1699,11 +1719,11 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can look");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_LOOK));
 			return;
 		}
 		if (stat(abs, &st) != 0 || !S_ISDIR(st.st_mode)) {
-			httpd_reply_status(r, 404, "not a folder");
+			httpd_reply_status(r, 404, T(S_HARE_NOT_FOLDER));
 			return;
 		}
 		switch (xfer_delete_rule(abs, &why)) {
@@ -1717,8 +1737,8 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		     files, folders, n > HARE_DELETE_MAX ? "true" : "false", rule);
 		hj_str(&j, why);
 		jfmt(&j, "}");
-		if (j.bad)  httpd_reply_status(r, 500, j.over ? "reply too long"
-		                                              : "out of memory");
+		if (j.bad)  httpd_reply_status(r, 500, j.over ? T(S_HARE_REPLY_LONG)
+		                                              : T(S_HARE_NO_MEMORY));
 		else        httpd_reply(r, 200, "application/json", j.p, j.used, NULL);
 		free(j.p);
 		return;
@@ -1730,18 +1750,18 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (!done) { httpd_want_body(r, HTTPD_BODY_NONE, NULL); return; }
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
-			httpd_reply_status(r, 403, "not somewhere you can write");
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
 			return;
 		}
 		if (!xfer_name_ok(base_of(abs))) {
-			httpd_reply_status(r, 400, "that is not a usable name");
+			httpd_reply_status(r, 400, T(S_HARE_BAD_NAME));
 			return;
 		}
 		if (mkdir(abs, 0777) != 0) {
 			httpd_reply_status(r, 409, strerror(errno));
 			return;
 		}
-		note("made %s", base_of(abs));
+		note(T(S_HARE_MADE), base_of(abs));
 		httpd_reply(r, 200, "text/plain", "ok", 2, NULL);
 		return;
 	}
@@ -1817,7 +1837,7 @@ bool hare_start(const char *roms_dir, const char *card_dir,
 	}
 
 	if (!httpd_start(ports, (int)(sizeof ports / sizeof ports[0]))) return false;
-	note("waiting for a browser");
+	note("%s", T(S_HARE_WAITING));
 	return true;
 }
 

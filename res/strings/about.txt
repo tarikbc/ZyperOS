@@ -1,0 +1,377 @@
+# MENU > About ZyperOS (src/main.c about_*, src/about.c): six pages, Left and
+# Right between them. Names (people, projects, the card's folders) stay as
+# they are in every language.
+
+[about.heading]
+note = The heading of About's first two pages.
+en = About ZyperOS
+zh-Hans = 关于 ZyperOS
+es = Acerca de ZyperOS
+pt-BR = Sobre o ZyperOS
+fr = À propos de ZyperOS
+de = Über ZyperOS
+ja = ZyperOS について
+it = Informazioni su ZyperOS
+
+[about.version]
+note = About, page 1: a row label; its value is "1.0.0".
+en = Version
+zh-Hans = 版本
+es = Versión
+pt-BR = Versão
+fr = Version
+de = Version
+ja = バージョン
+it = Versione
+
+[about.address]
+note = About, page 1: a row label; its value is the handheld's network (IP) address.
+en = Address
+zh-Hans = 地址
+es = Dirección
+pt-BR = Endereço
+fr = Adresse
+de = Adresse
+ja = アドレス
+it = Indirizzo
+
+[about.no_address_yet]
+note = The Address row's value while the network has given none yet. A lowercase value.
+en = no address yet
+zh-Hans = 暂无地址
+es = aún sin dirección
+pt-BR = ainda sem endereço
+fr = pas encore d'adresse
+de = noch keine Adresse
+ja = アドレス未取得
+it = ancora nessun indirizzo
+
+[about.not_connected]
+note = The Address row's value with no network. A lowercase value.
+en = not connected
+zh-Hans = 未连接
+es = sin conexión
+pt-BR = não conectado
+fr = non connecté
+de = nicht verbunden
+ja = 未接続
+it = non connesso
+
+[about.battery]
+note = About, page 1: a row label; its value is the charge ("82%").
+en = Battery
+zh-Hans = 电池
+es = Batería
+pt-BR = Bateria
+fr = Batterie
+de = Akku
+ja = バッテリー
+it = Batteria
+
+[about.battery_charging]
+note = The Battery row's value while it charges; %d%% is the charge ("82%").
+en = %d%% charging
+zh-Hans = %d%% 充电中
+es = %d%% cargando
+pt-BR = %d%% carregando
+fr = %d%% en charge
+de = %d\u00a0%%, lädt
+ja = %d%% 充電中
+it = %d%% in carica
+
+[about.unknown]
+note = A row's value on About when the handheld cannot read it (the battery, the card's storage). A lowercase value; it stands beside rows of either gender, so a form that does not agree is best. tight: beside About's longest labels (Battery health)
+en = unknown
+zh-Hans = 未知
+es = sin datos
+pt-BR = indisponível
+fr = indisponible
+de = unbekannt
+ja = 不明
+it = nessun dato
+
+[about.awake_for]
+note = About, page 1: a row label; its value is how long the handheld has been on, about.uptime.
+en = Awake for
+zh-Hans = 已运行
+es = Tiempo encendido
+pt-BR = Ligado há
+fr = Allumé depuis
+de = Laufzeit
+ja = 稼働時間
+it = Acceso da
+
+[about.uptime]
+note = The Awake for row's value: hours, then minutes, the minutes two digits ("1h 05m").
+en = %uh %02um
+zh-Hans = %u 小时 %02u 分
+es = %u h %02u min
+pt-BR = %u h %02u min
+fr = %u h %02u min
+de = %u h %02u min
+ja = %u 時間 %02u 分
+it = %u h %02u min
+
+[about.storage_used]
+note = About, page 2 (details): a row label; the card's storage in use, "22.3 GB".
+en = Storage used
+zh-Hans = 已用空间
+es = Almacenamiento usado
+pt-BR = Armazenamento usado
+fr = Stockage utilisé
+de = Belegter Speicher
+ja = 使用容量
+it = Spazio usato
+
+[about.storage_free]
+note = About, page 2: the card's storage free.
+en = Storage free
+zh-Hans = 可用空间
+es = Almacenamiento libre
+pt-BR = Armazenamento livre
+fr = Stockage libre
+de = Freier Speicher
+ja = 空き容量
+it = Spazio libero
+
+[about.storage_total]
+note = About, page 2: the card's whole size.
+en = Storage total
+zh-Hans = 总空间
+es = Almacenamiento total
+pt-BR = Armazenamento total
+fr = Stockage total
+de = Speicher gesamt
+ja = 総容量
+it = Spazio totale
+
+[about.battery_health]
+note = About, page 2: how much the battery holds now against when new, about.health_estimate.
+en = Battery health
+zh-Hans = 电池健康度
+es = Estado de la batería
+pt-BR = Saúde da bateria
+fr = État de la batterie
+de = Akkuzustand
+ja = バッテリーの状態
+it = Stato della batteria
+
+[about.health_estimate]
+note = The Battery health row's value; %u%% is a percentage ("92%"). An estimate, not a measurement.
+en = %u%% estimate
+zh-Hans = 约 %u%%
+es = %u%% estimado
+pt-BR = %u%% estimado
+fr = %u%% estimé
+de = ca. %u\u00a0%%
+ja = 推定 %u%%
+it = %u%% stimato
+
+[about.full_charge]
+note = About, page 2: what the battery holds when full now, "1,730 mAh".
+en = Full charge
+zh-Hans = 满电容量
+es = Carga completa
+pt-BR = Carga completa
+fr = Charge complète
+de = Aktuelle Kapazität
+ja = 満充電容量
+it = Carica completa
+
+[about.design_charge]
+note = About, page 2: what the battery held when new, as made, "1,730 mAh".
+en = Design charge
+zh-Hans = 设计容量
+es = Capacidad de diseño
+pt-BR = Capacidade original
+fr = Capacité d'origine
+de = Nennkapazität
+ja = 設計容量
+it = Capacità nominale
+
+[about.the_name]
+note = The heading of About's third page: the story of the name, about.story.
+en = The name
+zh-Hans = 名字的由来
+es = El nombre
+pt-BR = O nome
+fr = Le nom
+de = Der Name
+ja = 名前の由来
+it = Il nome
+
+[about.story]
+note = About, page 3, beside a photo of Zyper: Tarik's words about his dog Zyper, who died, after whom ZyperOS is named. Warm and plain; review: Tarik's own words, pt-BR above all. "zippy" and "hyper" are the two English words in the name: keep them in English and say what they mean. Signed "Tarik".
+en = ZyperOS is named after Zyper, my dog, who passed away. He was quick, light on his feet and full of energy, and that is what this system tries to be.\n\nThe name is also two words in one: zippy and hyper. Games start the moment you press A, and the menus never make you wait.\n\nTarik
+zh-Hans = ZyperOS 以我已经离开的狗狗 Zyper 命名。它敏捷、轻快、精力十足，这正是这个系统想成为的样子。\n\n这个名字也是两个英文单词的合体：zippy（敏捷）和 hyper（活力十足）。按下 A，游戏立刻开始；菜单也从不让你等待。\n\nTarik
+es = ZyperOS lleva el nombre de Zyper, mi perro, que ya no está. Era rápido, ágil y lleno de energía, y eso es lo que este sistema intenta ser.\n\nEl nombre también une dos palabras en inglés: zippy (veloz) y hyper (enérgico). Los juegos empiezan en cuanto pulsas A, y los menús nunca te hacen esperar.\n\nTarik
+pt-BR = O ZyperOS leva o nome do Zyper, meu cachorro, que já se foi. Ele era rápido, leve e cheio de energia, e é isso que este sistema tenta ser.\n\nO nome também junta duas palavras em inglês: zippy (ágil) e hyper (elétrico). Os jogos começam no instante em que você aperta A, e os menus nunca fazem você esperar.\n\nTarik
+fr = ZyperOS porte le nom de Zyper, mon chien, qui nous a quittés. Il était vif, léger et plein d'énergie, et c'est ce que ce système essaie d'être.\n\nLe nom réunit aussi deux mots anglais\u00a0: zippy (rapide) et hyper. Les jeux démarrent dès que vous appuyez sur A, et les menus ne vous font jamais attendre.\n\nTarik
+de = ZyperOS ist nach Zyper benannt, meinem Hund, der nicht mehr bei uns ist. Er war schnell, leichtfüßig und voller Energie, und genau das möchte dieses System sein.\n\nIm Namen stecken außerdem zwei englische Wörter: zippy (flink) und hyper (aufgedreht). Spiele starten, sobald du A drückst, und die Menüs lassen dich nie warten.\n\nTarik
+ja = ZyperOS の名前は、亡くなった私の愛犬 Zyper からとりました。すばしっこくて身軽で、元気いっぱいの子でした。このシステムが目指しているのも、そんな姿です。\n\nこの名前は、zippy（きびきびした）と hyper（元気いっぱい）という 2 つの英単語を合わせたものでもあります。A を押した瞬間にゲームが始まり、メニューで待たされることもありません。\n\nTarik
+it = ZyperOS prende il nome da Zyper, il mio cane, che non c'è più. Era veloce, agile e pieno di energia, ed è proprio ciò che questo sistema cerca di essere.\n\nIl nome unisce anche due parole inglesi: zippy (scattante) e hyper (pieno di energia). I giochi partono appena premi A, e i menu non ti fanno mai aspettare.\n\nTarik
+
+[about.thanks]
+note = The heading of About's last three pages: the projects ZyperOS is built on, a row each, the name and what of theirs it runs.
+en = Thanks
+zh-Hans = 致谢
+es = Agradecimientos
+pt-BR = Agradecimentos
+fr = Remerciements
+de = Danke
+ja = 謝辞
+it = Ringraziamenti
+
+[about.thanks_plastron]
+note = Thanks: beside "plastron", Eric Reinsmidt's system ZyperOS builds on.
+en = Eric's Linux base
+zh-Hans = Eric 的 Linux 基础系统
+es = la base Linux de Eric
+pt-BR = a base Linux do Eric
+fr = la base Linux d'Eric
+de = Erics Linux-Basis
+ja = Eric の Linux ベース
+it = la base Linux di Eric
+
+[about.thanks_rocknix]
+note = Thanks: beside "ROCKNIX".
+en = the Pixel 2 kernel
+zh-Hans = Pixel 2 内核
+es = el kernel del Pixel 2
+pt-BR = o kernel do Pixel 2
+fr = le noyau du Pixel 2
+de = der Kernel für den Pixel 2
+ja = Pixel 2 のカーネル
+it = il kernel del Pixel 2
+
+[about.thanks_buildroot]
+note = Thanks: beside "Buildroot", the tool that builds the system.
+en = the Linux build
+zh-Hans = Linux 构建系统
+es = la compilación de Linux
+pt-BR = a compilação do Linux
+fr = la compilation Linux
+de = der Linux-Build
+ja = Linux のビルド
+it = la compilazione di Linux
+
+[about.thanks_libretro]
+note = Thanks: beside "libretro".
+en = the emulator cores
+zh-Hans = 模拟器核心
+es = los núcleos de emulación
+pt-BR = os núcleos de emulação
+fr = les cœurs d'émulation
+de = die Emulator-Cores
+ja = エミュレーターコア
+it = i core degli emulatori
+
+[about.thanks_portmaster]
+note = Thanks: beside "PortMaster": the ports, PC games made to run on handhelds.
+en = the ports
+zh-Hans = 移植游戏
+es = los ports
+pt-BR = os ports
+fr = les portages
+de = die Ports
+ja = 移植ゲーム
+it = i port
+
+[about.thanks_benjelter]
+note = Thanks: beside "BenJelter", who drew the consoles' icons.
+en = the console icons
+zh-Hans = 主机图标
+es = los iconos de las consolas
+pt-BR = os ícones dos consoles
+fr = les icônes des consoles
+de = die Konsolensymbole
+ja = ゲーム機のアイコン
+it = le icone delle console
+
+[about.thanks_menu_music]
+note = Thanks: a row label, the music the menus play; its value is "OpenGameArt".
+en = Menu music
+zh-Hans = 菜单音乐
+es = Música del menú
+pt-BR = Música do menu
+fr = Musique du menu
+de = Menümusik
+ja = メニュー音楽
+it = Musica del menu
+
+[about.thanks_lexend]
+note = Thanks: beside "Lexend", the typeface.
+en = the font
+zh-Hans = 字体
+es = la fuente
+pt-BR = a fonte
+fr = la police
+de = die Schrift
+ja = フォント
+it = il font
+
+[about.thanks_sdl]
+note = Thanks: beside "SDL, Mesa".
+en = screen and input
+zh-Hans = 画面和输入
+es = pantalla y controles
+pt-BR = tela e controles
+fr = écran et commandes
+de = Bild und Eingabe
+ja = 画面と入力
+it = schermo e comandi
+
+[about.thanks_ffmpeg]
+note = Thanks: beside "FFmpeg, SQLite": FFmpeg plays video, SQLite keeps the game library.
+en = video, library
+zh-Hans = 视频、游戏库
+es = video, biblioteca
+pt-BR = vídeo, biblioteca
+fr = vidéo, bibliothèque
+de = Video, Bibliothek
+ja = 動画、ライブラリ
+it = video, libreria
+
+[about.thanks_minimp3]
+note = Thanks: beside "minimp3, stb_vorbis".
+en = music
+zh-Hans = 音乐
+es = música
+pt-BR = música
+fr = musique
+de = Musik
+ja = 音楽
+it = musica
+
+[about.thanks_linux]
+note = Thanks: beside "Linux, U-Boot".
+en = the system
+zh-Hans = 系统
+es = el sistema
+pt-BR = o sistema
+fr = le système
+de = das System
+ja = システム
+it = il sistema
+
+[about.thanks_temurin]
+note = Thanks: beside "Temurin, DejaVu", which run the J2ME (old phone) games.
+en = J2ME games
+zh-Hans = J2ME 游戏
+es = juegos J2ME
+pt-BR = jogos J2ME
+fr = jeux J2ME
+de = J2ME-Spiele
+ja = J2ME ゲーム
+it = giochi J2ME
+
+[about.licenses]
+note = Under the last thanks page: every license is in the card's Licenses/ folder (a folder name, kept).
+en = All licenses are in Licenses/
+zh-Hans = 所有许可证都在 Licenses/ 中
+es = Las licencias están en Licenses/
+pt-BR = As licenças estão em Licenses/
+fr = Les licences sont dans Licenses/
+de = Alle Lizenzen liegen in Licenses/
+ja = すべてのライセンスは Licenses/ にあります
+it = Tutte le licenze sono in Licenses/

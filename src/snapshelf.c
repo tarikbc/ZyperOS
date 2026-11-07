@@ -23,9 +23,10 @@ static void go(snapshelf *s, sns_phase p, uint32_t now)
 }
 
 const char *snapshelf_step(snapshelf *s, const char *path, bool front,
-                           bool picture, uint32_t now, float *k)
+                           bool picture, uint32_t now, bool *hold, float *k)
 {
 	float turned = 0;
+	bool held = false;
 
 	if (!path) path = "";
 	/* The focus moved: whatever was showing went with its card */
@@ -49,7 +50,13 @@ const char *snapshelf_step(snapshelf *s, const char *path, bool front,
 
 	switch (s->phase) {
 	case SNS_WAIT:
-		if (now - s->t >= SNAPS_WAIT_MS) go(s, SNS_ASKED, now);
+		/* The bar full: the snap goes, and if its first picture came while
+		 * it was held, the cover starts to turn this same frame */
+		if (now - s->t >= SNAPS_WAIT_MS) {
+			go(s, picture ? SNS_IN : SNS_ASKED, now);
+		} else if (now - s->t >= SNAPS_ASK_MS) {
+			held = true;
+		}
 		break;
 	case SNS_ASKED:
 		if (picture) go(s, SNS_IN, now);
@@ -69,7 +76,8 @@ const char *snapshelf_step(snapshelf *s, const char *path, bool front,
 		break;
 	}
 	if (k) *k = turned;
-	return s->phase == SNS_ASKED || s->phase == SNS_IN || s->phase == SNS_PLAY ? s->key : "";
+	if (hold) *hold = held;
+	return held || s->phase == SNS_ASKED || s->phase == SNS_IN || s->phase == SNS_PLAY ? s->key : "";
 }
 
 bool snapshelf_moving(const snapshelf *s)

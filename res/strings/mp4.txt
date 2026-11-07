@@ -1,0 +1,68 @@
+# MP4 (src/main.c): the lock screen's panel, and the key legend of a video.
+# MP4 is the player's name and is never translated.
+
+[mp4.locked]
+note = The lock screen's panel, under the padlock: the screen is locked
+en = Locked
+zh-Hans = 已锁定
+es = Bloqueado
+pt-BR = Bloqueado
+fr = Verrouillé
+de = Gesperrt
+ja = ロック中
+it = Bloccato
+
+[mp4.hold_unlock]
+note = The lock screen's panel, under mp4.locked: %s is the pair SELECT + START, drawn as two button glyphs with a + between
+en = Hold %s to unlock
+zh-Hans = 按住 %s 解锁
+es = Mantén %s para desbloquear
+pt-BR = Segure %s para desbloquear
+fr = Maintenez %s pour déverrouiller
+de = Halte %s zum Entsperren
+ja = %s 長押しでロック解除
+it = Tieni premuto %s per sbloccare
+
+[mp4.hint_lock]
+note = A part of a video's key legend: X locks the screen
+en = X: lock
+zh-Hans = X：锁定
+es = X: bloquear
+pt-BR = X: bloquear
+fr = X\u00a0: verrouiller
+de = X: sperren
+ja = X：ロック
+it = X: blocca
+
+[mp4.hint_controls]
+note = A part of a video's key legend, in full screen: Y shows the video smaller with its controls under it
+en = Y: controls
+zh-Hans = Y：控制栏
+es = Y: controles
+pt-BR = Y: controles
+fr = Y\u00a0: commandes
+de = Y: Steuerung
+ja = Y：コントロール
+it = Y: controlli
+
+[mp4.hint_full_screen]
+note = A part of a video's key legend, with the controls shown: Y shows the video full screen
+en = Y: full screen
+zh-Hans = Y：全屏
+es = Y: pantalla completa
+pt-BR = Y: tela cheia
+fr = Y\u00a0: plein écran
+de = Y: Vollbild
+ja = Y：全画面
+it = Y: schermo intero
+
+[mp4.hint_video]
+note = A part of a video's key legend, when the folder has more than one: L1/R1 go to the video before or after
+en = L1/R1: video
+zh-Hans = L1/R1：视频
+es = L1/R1: video
+pt-BR = L1/R1: vídeo
+fr = L1/R1\u00a0: vidéo
+de = L1/R1: Video
+ja = L1/R1：動画
+it = L1/R1: video

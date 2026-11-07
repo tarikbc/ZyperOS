@@ -6,6 +6,7 @@
 #include "ss.h"
 
 #include "db.h"
+#include "i18n.h"
 #include "net.h"
 #include "rajson.h"
 #include "ss_creds.h"
@@ -89,19 +90,19 @@ bool ss_sign_in(const char *user, const char *password, char *err, size_t errn)
 
 	if (err && errn) err[0] = '\0';
 	if (!ss_have_dev()) {
-		if (err) snprintf(err, errn, "this build has no ScreenScraper key");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_NO_KEY));
 		return false;
 	}
 	if (!user || !*user || !password || !*password) {
-		if (err) snprintf(err, errn, "user and password are both needed");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_NEED_BOTH));
 		return false;
 	}
 	if (strlen(user) >= SS_USER_MAX || strlen(password) >= SS_PASS_MAX) {
-		if (err) snprintf(err, errn, "that user or password is too long");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_TOO_LONG));
 		return false;
 	}
 	if (!net_online()) {
-		if (err) snprintf(err, errn, "not on a network");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_NO_NETWORK));
 		return false;
 	}
 
@@ -122,8 +123,7 @@ bool ss_sign_in(const char *user, const char *password, char *err, size_t errn)
 		 * body: a wrong password and a site that is down arrive identically.
 		 * Guessing between them would put a confident wrong sentence on the
 		 * screen, which is worse than a vague right one. */
-		if (err) snprintf(err, errn,
-		                  "could not sign in - check the account, or try later");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_FAILED));
 		return false;
 	}
 
@@ -133,7 +133,7 @@ bool ss_sign_in(const char *user, const char *password, char *err, size_t errn)
 	root = js_root(body, (size_t)got);
 	ok = js_member(root, "response", &resp) && js_member(resp, "ssuser", &who);
 	if (!ok) {
-		if (err) snprintf(err, errn, "that account was not recognized");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_UNKNOWN));
 		return false;
 	}
 
@@ -142,7 +142,7 @@ bool ss_sign_in(const char *user, const char *password, char *err, size_t errn)
 	snprintf(g_pass, sizeof g_pass, "%s", password);
 	if (!ss_creds_save()) {
 		ss_creds_clear();
-		if (err) snprintf(err, errn, "signed in, but the account could not be saved");
+		if (err) snprintf(err, errn, "%s", T(S_SS_SIGN_IN_NOT_SAVED));
 		return false;
 	}
 	return true;

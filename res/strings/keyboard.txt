@@ -1,0 +1,69 @@
+# The on-screen keyboard (src/keyboard.c, src/kbnav.c): its action keys'
+# names, lowercase verbs as DESIGN.md 12 has them, and the line under it.
+# abc and #+= name the layers by their marks and are not here.
+
+[keyboard.shift]
+note = The X key's name on the letters: capitals next. tight: about 124 units beside the X glyph
+en = shift
+zh-Hans = 大写
+es = mayús.
+pt-BR = maiús.
+fr = maj
+de = groß
+ja = 大文字
+it = maiusc
+
+[keyboard.unshift]
+note = The X key's name on the capitals: small letters next. tight: about 124 units beside the X glyph
+en = unshift
+zh-Hans = 小写
+es = minús.
+pt-BR = minús.
+fr = min
+de = klein
+ja = 小文字
+it = minusc
+
+[keyboard.delete]
+note = The B key's name: delete the letter before the cursor. tight: about 124 units beside the B glyph
+en = delete
+zh-Hans = 删除
+es = borrar
+pt-BR = apaga
+fr = suppr.
+de = entf.
+ja = 削除
+it = canc.
+
+[keyboard.done]
+note = The START key's name: the text is done. tight: about 90 units beside the START pill, so OK where done is long
+en = done
+zh-Hans = 完成
+es = listo
+pt-BR = OK
+fr = OK
+de = OK
+ja = 完了
+it = fatto
+
+[keyboard.cursor]
+note = The line under the keyboard: L1/R1 move the cursor
+en = cursor
+zh-Hans = 光标
+es = cursor
+pt-BR = cursor
+fr = curseur
+de = Cursor
+ja = カーソル
+it = cursore
+
+[keyboard.cancel]
+note = The line under the keyboard: MENU closes it without the text
+en = cancel
+zh-Hans = 取消
+es = cancelar
+pt-BR = cancelar
+fr = annuler
+de = abbrechen
+ja = キャンセル
+it = annulla

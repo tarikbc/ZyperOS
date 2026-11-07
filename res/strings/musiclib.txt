@@ -1,0 +1,68 @@
+# Muse's shelves (src/muselib.c): what MENU's Sort By row says for music,
+# books and videos; then why Album Art stopped early (src/museart.c).
+
+[musiclib.sort_artist]
+note = Sort By's value on the music shelf: by artist
+en = Artist
+zh-Hans = 艺人
+es = Artista
+pt-BR = Artista
+fr = Artiste
+de = Künstler
+ja = アーティスト
+it = Artista
+
+[musiclib.sort_album]
+note = Sort By's value on the music shelf: by album
+en = Album
+zh-Hans = 专辑
+es = Álbum
+pt-BR = Álbum
+fr = Album
+de = Album
+ja = アルバム
+it = Album
+
+[musiclib.sort_author]
+note = Sort By's value on the audiobooks shelf: by author
+en = Author
+zh-Hans = 作者
+es = Autor
+pt-BR = Autor
+fr = Auteur
+de = Autor
+ja = 著者
+it = Autore
+
+[musiclib.sort_title]
+note = Sort By's value on the audiobooks and videos shelves: by title
+en = Title
+zh-Hans = 标题
+es = Título
+pt-BR = Título
+fr = Titre
+de = Titel
+ja = タイトル
+it = Titolo
+
+[musiclib.sort_folder]
+note = Sort By's value on the videos shelf: by folder
+en = Folder
+zh-Hans = 文件夹
+es = Carpeta
+pt-BR = Pasta
+fr = Dossier
+de = Ordner
+ja = フォルダ
+it = Cartella
+
+[musiclib.art_no_network]
+note = Under the Album Art heading: three albums in a row failed, so the run stopped
+en = The network stopped answering
+zh-Hans = 网络停止响应
+es = La red dejó de responder
+pt-BR = A rede parou de responder
+fr = Le réseau ne répond plus
+de = Das Netzwerk antwortet nicht mehr
+ja = ネットワークが応答しなくなりました
+it = La rete ha smesso di rispondere

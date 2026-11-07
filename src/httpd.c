@@ -305,8 +305,11 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
  * Compressed here, from the file as it is on the card, and kept until the
  * file changes (its size or time): the page can still be restyled on the
  * card without a rebuild, which a .gz made by the build could not follow. A
- * handful of files, so a handful of places; the oldest goes. */
-#define GZ_FILES 8
+ * handful of files, so a handful of places, the oldest going: room for every
+ * text file a load asks for (the page, its style, its words, its two scripts
+ * on the hotspot, the marks in both themes, ten), or each load would push
+ * out the one the next asks for and gzip them all again. */
+#define GZ_FILES 12
 #define GZ_MAX   (1024L * 1024)
 
 static struct {
@@ -378,6 +381,20 @@ static const unsigned char *gz_of(const char *path, const struct stat *st, size_
 	return out;
 }
 
+/* FNV-1a of a file's path, for its tag: one URL can answer with another file
+ * - /i18n.js with the next language's after MENU > Language, / with
+ * wire.html - and two files of one size and time must still differ */
+static unsigned path_hash(const char *s)
+{
+	unsigned h = 2166136261u;
+
+	while (*s) {
+		h ^= (unsigned char)*s++;
+		h *= 16777619u;
+	}
+	return h;
+}
+
 /* Does a comma-separated header hold `token` (no q=0 handling: browsers that
  * send gzip mean it) */
 static bool header_has(const httpd_req *r, const char *name, const char *token)
@@ -406,10 +423,10 @@ bool httpd_reply_static(httpd_req *r, const char *path, const char *content_type
 	                        !strncmp(content_type, "application/json", 16));
 	if (text && header_has(r, "Accept-Encoding", "gzip"))
 		gz = gz_of(path, &st, &gzlen);
-	/* The tag is the file's size and time, and which encoding: a browser
-	 * that has one must not be told it has the other */
-	snprintf(tag, sizeof tag, "\"%lx-%lx%s\"", (unsigned long)st.st_size,
-	         (unsigned long)st.st_mtime, gz ? "-gz" : "");
+	/* The tag is the file's size, time and path, and which encoding: a
+	 * browser that has one must not be told it has the other */
+	snprintf(tag, sizeof tag, "\"%lx-%lx-%x%s\"", (unsigned long)st.st_size,
+	         (unsigned long)st.st_mtime, path_hash(path), gz ? "-gz" : "");
 	snprintf(extra, sizeof extra,
 	         "ETag: %s\r\nCache-Control: no-cache\r\n%s%s", tag,
 	         text ? "Vary: Accept-Encoding\r\n" : "",

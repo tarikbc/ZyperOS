@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "i18n.h"
+
 /* West to east, so left and right move the way a map does. */
 const clock_zone CLOCK_ZONES[] = {
 	{ "Pacific/Honolulu",    "Honolulu" },
@@ -40,9 +42,16 @@ const clock_zone CLOCK_ZONES[] = {
 };
 const int CLOCK_ZONE_COUNT = (int)(sizeof CLOCK_ZONES / sizeof CLOCK_ZONES[0]);
 
-static const char *const MONTHS[12] = {
-	"January", "February", "March", "April", "May", "June", "July",
-	"August", "September", "October", "November", "December",
+/* Each month's name, and the short one the menu row's date takes */
+static const str_id MONTHS[12] = {
+	S_CLOCK_MONTH_JAN, S_CLOCK_MONTH_FEB, S_CLOCK_MONTH_MAR, S_CLOCK_MONTH_APR,
+	S_CLOCK_MONTH_MAY, S_CLOCK_MONTH_JUN, S_CLOCK_MONTH_JUL, S_CLOCK_MONTH_AUG,
+	S_CLOCK_MONTH_SEP, S_CLOCK_MONTH_OCT, S_CLOCK_MONTH_NOV, S_CLOCK_MONTH_DEC,
+};
+static const str_id MONTHS_SHORT[12] = {
+	S_CLOCK_SHORT_JAN, S_CLOCK_SHORT_FEB, S_CLOCK_SHORT_MAR, S_CLOCK_SHORT_APR,
+	S_CLOCK_SHORT_MAY, S_CLOCK_SHORT_JUN, S_CLOCK_SHORT_JUL, S_CLOCK_SHORT_AUG,
+	S_CLOCK_SHORT_SEP, S_CLOCK_SHORT_OCT, S_CLOCK_SHORT_NOV, S_CLOCK_SHORT_DEC,
 };
 
 static int days_in(int year, int mon)
@@ -102,11 +111,12 @@ void clock_field_label(time_t t, clock_field f, bool h24, char *out, size_t n)
 	h = tm.tm_hour % 12 ? tm.tm_hour % 12 : 12;
 	switch (f) {
 	case CLK_YEAR:   snprintf(out, n, "%d", tm.tm_year + 1900); break;
-	case CLK_MONTH:  snprintf(out, n, "%s", MONTHS[tm.tm_mon]); break;
+	case CLK_MONTH:  snprintf(out, n, "%s", T(MONTHS[tm.tm_mon])); break;
 	case CLK_DAY:    snprintf(out, n, "%d", tm.tm_mday); break;
 	case CLK_HOUR:
 		if (h24) snprintf(out, n, "%02d", tm.tm_hour);
-		else     snprintf(out, n, "%d %s", h, tm.tm_hour < 12 ? "AM" : "PM");
+		else     snprintf(out, n, T(S_CLOCK_HOUR_12H), h,
+		                  T(tm.tm_hour < 12 ? S_CLOCK_AM : S_CLOCK_PM));
 		break;
 	case CLK_MINUTE: snprintf(out, n, "%02d", tm.tm_min); break;
 	default:         snprintf(out, n, "%s", ""); break;
@@ -121,11 +131,11 @@ void clock_label(time_t t, bool h24, char *out, size_t n)
 	localtime_r(&t, &tm);
 	h = tm.tm_hour % 12 ? tm.tm_hour % 12 : 12;
 	if (h24)
-		snprintf(out, n, "%.3s %d, %02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday,
+		snprintf(out, n, T(S_CLOCK_LABEL_24H), T(MONTHS_SHORT[tm.tm_mon]), tm.tm_mday,
 		         tm.tm_hour, tm.tm_min);
 	else
-		snprintf(out, n, "%.3s %d, %d:%02d %s", MONTHS[tm.tm_mon], tm.tm_mday,
-		         h, tm.tm_min, tm.tm_hour < 12 ? "AM" : "PM");
+		snprintf(out, n, T(S_CLOCK_LABEL_12H), T(MONTHS_SHORT[tm.tm_mon]), tm.tm_mday,
+		         h, tm.tm_min, T(tm.tm_hour < 12 ? S_CLOCK_AM : S_CLOCK_PM));
 }
 
 void clock_short(time_t t, bool h24, char *out, size_t n)
@@ -170,8 +180,8 @@ int clock_zone_step(const char *id, int d)
 
 /* ---- the screen's rows --------------------------------------------------------- */
 
-static const char *const ROW_NAMES[CLK_FIELDS] = {
-	"Year", "Month", "Day", "Hour", "Minute",
+static const str_id ROW_NAMES[CLK_FIELDS] = {
+	S_CLOCK_YEAR, S_CLOCK_MONTH, S_CLOCK_DAY, S_CLOCK_HOUR, S_CLOCK_MINUTE,
 };
 
 int clock_rows(time_t t, bool h24, const char *zone, menu_row *rows, int max,
@@ -179,10 +189,10 @@ int clock_rows(time_t t, bool h24, const char *zone, menu_row *rows, int max,
 {
 	int i, n = 0;
 
-	if (n < max) rows[n++] = (menu_row){ "Time Zone", zone, true };
+	if (n < max) rows[n++] = (menu_row){ T(S_CLOCK_TIME_ZONE), zone, true };
 	for (i = 0; i < CLK_FIELDS && n < max; i++) {
 		clock_field_label(t, (clock_field)i, h24, b->field[i], sizeof b->field[i]);
-		rows[n++] = (menu_row){ ROW_NAMES[i], b->field[i], true };
+		rows[n++] = (menu_row){ T(ROW_NAMES[i]), b->field[i], true };
 	}
 	return n;
 }

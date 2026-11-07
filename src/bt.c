@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "bt.h"
+#include "i18n.h"
 #include "spawn.h"
 
 #define BLUETOOTHCTL "/usr/bin/bluetoothctl"
@@ -112,9 +113,9 @@ void bt_label(const bt_device *d, char *out, size_t n)
 {
 	if (!out || !n) return;
 	if (!d)           { out[0] = '\0'; return; }
-	if (d->connected)   snprintf(out, n, "connected");
-	else if (d->bonded) snprintf(out, n, "paired");
-	else                snprintf(out, n, "in range");
+	if (d->connected)   snprintf(out, n, "%s", T(S_BTLINK_CONNECTED));
+	else if (d->bonded) snprintf(out, n, "%s", T(S_BTLINK_PAIRED));
+	else                snprintf(out, n, "%s", T(S_BTLINK_IN_RANGE));
 }
 
 /* "\t> ACL A8:F5:E1:4A:93:71 handle 128 state 1 lm MASTER AUTH ENCRYPT" */
@@ -427,7 +428,7 @@ bool bt_pair(const char *mac, char *err, size_t n)
 	char out[1024], scratch[256];
 
 	if (err && n) err[0] = '\0';
-	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "not an address"); return false; }
+	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "%s", T(S_BTLINK_NOT_ADDRESS)); return false; }
 
 	/* Bondable for the pairing and no longer. The adapter comes up
 	 * non-bondable, and then the kernel negotiates no-bonding: the pairing
@@ -443,8 +444,8 @@ bool bt_pair(const char *mac, char *err, size_t n)
 
 	if (!info_says(mac, "Paired: yes")) {
 		if (err) snprintf(err, n, "%s", strstr(out, "AuthenticationFailed")
-		                  ? "the headset refused the pairing"
-		                  : "pairing did not complete");
+		                  ? T(S_BTLINK_PAIR_REFUSED)
+		                  : T(S_BTLINK_PAIR_FAILED));
 		return false;
 	}
 	/* Judged by the key on disk, not by `Paired: yes`, which was the check
@@ -452,7 +453,7 @@ bool bt_pair(const char *mac, char *err, size_t n)
 	 * retry finds it already paired and never gets a new key. */
 	if (!bond_has_key(mac)) {
 		btctl(scratch, sizeof scratch, BT_ASK_S, "remove", mac);
-		if (err) snprintf(err, n, "the pairing was not saved");
+		if (err) snprintf(err, n, "%s", T(S_BTLINK_PAIR_NOT_SAVED));
 		return false;
 	}
 	/* Trusted, or it will not reconnect on its own at the next boot - which
@@ -476,10 +477,10 @@ bool bt_connect(const char *mac, char *err, size_t n)
 	char out[1024];
 
 	if (err && n) err[0] = '\0';
-	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "not an address"); return false; }
+	if (!bt_mac_valid(mac)) { if (err) snprintf(err, n, "%s", T(S_BTLINK_NOT_ADDRESS)); return false; }
 	btctl(out, sizeof out, BT_ACT_S, "connect", mac);
 	if (info_says(mac, "Connected: yes")) { publish_soon(); return true; }
-	if (err) snprintf(err, n, "it did not connect");
+	if (err) snprintf(err, n, "%s", T(S_BTLINK_NO_CONNECT));
 	return false;
 }
 

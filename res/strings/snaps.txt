@@ -1,0 +1,45 @@
+# MENU > Scraper > Video Snaps: the short videos a shelf plays for a game.
+
+[snaps.heading]
+note = The heading of the Video Snaps page. The glossary's Video Snaps.
+en = Video Snaps
+zh-Hans = 视频预览
+es = Avances en video
+pt-BR = Prévias em vídeo
+fr = Aperçus vidéo
+de = Videovorschau
+ja = 動画プレビュー
+it = Anteprime video
+
+[snaps.delete_ask]
+note = A yes/no question, Delete All on the page; %s is the room they take ("1.2 GB").
+en = Delete every video snap, %s?
+zh-Hans = 要删除所有视频预览（%s）吗？
+es = ¿Borrar todas las vistas previas en video (%s)?
+pt-BR = Apagar todas as prévias em vídeo (%s)?
+fr = Supprimer tous les aperçus vidéo (%s)\u00a0?
+de = Alle Videovorschauen löschen (%s)?
+ja = すべての動画プレビュー（%s）を削除しますか？
+it = Eliminare tutte le anteprime video (%s)?
+
+[snaps.delete]
+note = The yes answer to it.
+en = Delete
+zh-Hans = 删除
+es = Borrar
+pt-BR = Apagar
+fr = Supprimer
+de = Löschen
+ja = 削除
+it = Elimina
+
+[snaps.given_back]
+note = The message after it: %s is the room the card has back ("1.2 GB").
+en = %s given back.
+zh-Hans = 已释放 %s。
+es = Se liberaron %s.
+pt-BR = %s liberados.
+fr = %s libérés.
+de = %s freigegeben.
+ja = %s を解放しました。
+it = %s liberati.

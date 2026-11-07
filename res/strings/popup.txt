@@ -1,0 +1,24 @@
+# The pop-ups over a running game that are not achievements (src/main.c,
+# on_speed): drawn by the launcher, shown by Diatom.
+
+[popup.fast_forward]
+note = The pop-up as fast forward changes, first line; under it the step ("3x") or popup.ff_off.
+en = Fast forward
+zh-Hans = 快进
+es = Avance rápido
+pt-BR = Avanço rápido
+fr = Avance rapide
+de = Vorspulen
+ja = 早送り
+it = Avanti veloce
+
+[popup.ff_off]
+note = Under popup.fast_forward when fast forward stops. A lowercase value.
+en = off
+zh-Hans = 关闭
+es = desactivado
+pt-BR = desativado
+fr = désactivé
+de = aus
+ja = オフ
+it = disattivo

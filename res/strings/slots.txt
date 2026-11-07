@@ -1,0 +1,233 @@
+# The save state strip of the in-game menu (src/main.c, slot_draw): its
+# heading, the slot's name under the picture and when it was saved.
+
+[slots.save_to]
+note = The strip's heading when saving a state: the slot is picked below it
+en = Save to
+zh-Hans = 存档至
+es = Guardar en
+pt-BR = Salvar em
+fr = Sauvegarder dans
+de = Speichern in
+ja = セーブ先
+it = Salva in
+
+[slots.load_from]
+note = The strip's heading when loading a state: the slot is picked below it
+en = Load from
+zh-Hans = 读取存档
+es = Cargar desde
+pt-BR = Carregar de
+fr = Charger depuis
+de = Laden aus
+ja = ロード元
+it = Carica da
+
+[slots.empty]
+note = In the frame of a slot with no state saved in it
+en = Empty
+zh-Hans = 空
+es = Vacío
+pt-BR = Vazio
+fr = Vide
+de = Leer
+ja = 空き
+it = Vuoto
+
+[slots.auto]
+note = The name of the slot the game saves to by itself when it is quit (the autosave), under its picture
+en = Auto
+zh-Hans = 自动
+es = Auto
+pt-BR = Auto
+fr = Auto
+de = Auto
+ja = 自動
+it = Auto
+
+[slots.slot]
+note = A slot's name under its picture: %d is its number, 1 to 6
+en = Slot %d
+zh-Hans = 存档 %d
+es = Ranura %d
+pt-BR = Slot %d
+fr = Emplacement %d
+de = Platz %d
+ja = スロット %d
+it = Slot %d
+
+[slots.when]
+note = When the state was saved, under the slot's name: %1$s the month's short name (slots.jan...), %2$d the day, %3$d:%4$02d:%5$02d the hour (1 to 12), minutes and seconds, %6$s slots.am or slots.pm. Reorder with %1$s style. with MENU > Clock at 12-hour; slots.when_24 at 24-hour
+en = %s %d %d:%02d:%02d %s
+zh-Hans = %1$s%2$d日 %6$s %3$d:%4$02d:%5$02d
+es = %2$d %1$s %3$d:%4$02d:%5$02d %6$s
+pt-BR = %2$d %1$s %3$d:%4$02d:%5$02d %6$s
+fr = %2$d %1$s %3$d:%4$02d:%5$02d %6$s
+de = %2$d. %1$s %3$d:%4$02d:%5$02d %6$s
+ja = %1$s%2$d日 %6$s%3$d:%4$02d:%5$02d
+it = %2$d %1$s %3$d:%4$02d:%5$02d %6$s
+
+[slots.when_24]
+note = The same with MENU > Clock at 24-hour: %1$s the month's short name, %2$d the day, %3$02d:%4$02d:%5$02d the hour (0 to 23), minutes and seconds
+en = %s %d %02d:%02d:%02d
+zh-Hans = %1$s%2$d日 %3$02d:%4$02d:%5$02d
+es = %2$d %1$s %3$02d:%4$02d:%5$02d
+pt-BR = %2$d %1$s %3$02d:%4$02d:%5$02d
+fr = %2$d %1$s %3$02d:%4$02d:%5$02d
+de = %2$d. %1$s %3$02d:%4$02d:%5$02d
+ja = %1$s%2$d日 %3$02d:%4$02d:%5$02d
+it = %2$d %1$s %3$02d:%4$02d:%5$02d
+
+[slots.am]
+note = Before noon, at the end of slots.when (or where the language puts it)
+en = AM
+zh-Hans = 上午
+es = a. m.
+pt-BR = AM
+fr = AM
+de = AM
+ja = 午前
+it = AM
+
+[slots.pm]
+note = After noon, at the end of slots.when (or where the language puts it)
+en = PM
+zh-Hans = 下午
+es = p. m.
+pt-BR = PM
+fr = PM
+de = PM
+ja = 午後
+it = PM
+
+[slots.jan]
+note = A month's short name, in slots.when (Chinese: the month as a number and 月, the day's 日 is in slots.when). review: zh-Hans writes a date as 8月23日 with no spaces, against the rule of a space between Chinese and digits
+en = Jan
+zh-Hans = 1月
+es = ene
+pt-BR = jan
+fr = janv.
+de = Jan.
+ja = 1月
+it = gen
+
+[slots.feb]
+note = A month's short name, in slots.when
+en = Feb
+zh-Hans = 2月
+es = feb
+pt-BR = fev
+fr = févr.
+de = Feb.
+ja = 2月
+it = feb
+
+[slots.mar]
+note = A month's short name, in slots.when
+en = Mar
+zh-Hans = 3月
+es = mar
+pt-BR = mar
+fr = mars
+de = März
+ja = 3月
+it = mar
+
+[slots.apr]
+note = A month's short name, in slots.when
+en = Apr
+zh-Hans = 4月
+es = abr
+pt-BR = abr
+fr = avr.
+de = Apr.
+ja = 4月
+it = apr
+
+[slots.may]
+note = A month's short name, in slots.when
+en = May
+zh-Hans = 5月
+es = may
+pt-BR = mai
+fr = mai
+de = Mai
+ja = 5月
+it = mag
+
+[slots.jun]
+note = A month's short name, in slots.when
+en = Jun
+zh-Hans = 6月
+es = jun
+pt-BR = jun
+fr = juin
+de = Juni
+ja = 6月
+it = giu
+
+[slots.jul]
+note = A month's short name, in slots.when
+en = Jul
+zh-Hans = 7月
+es = jul
+pt-BR = jul
+fr = juil.
+de = Juli
+ja = 7月
+it = lug
+
+[slots.aug]
+note = A month's short name, in slots.when
+en = Aug
+zh-Hans = 8月
+es = ago
+pt-BR = ago
+fr = août
+de = Aug.
+ja = 8月
+it = ago
+
+[slots.sep]
+note = A month's short name, in slots.when
+en = Sep
+zh-Hans = 9月
+es = sep
+pt-BR = set
+fr = sept.
+de = Sep.
+ja = 9月
+it = set
+
+[slots.oct]
+note = A month's short name, in slots.when
+en = Oct
+zh-Hans = 10月
+es = oct
+pt-BR = out
+fr = oct.
+de = Okt.
+ja = 10月
+it = ott
+
+[slots.nov]
+note = A month's short name, in slots.when
+en = Nov
+zh-Hans = 11月
+es = nov
+pt-BR = nov
+fr = nov.
+de = Nov.
+ja = 11月
+it = nov
+
+[slots.dec]
+note = A month's short name, in slots.when
+en = Dec
+zh-Hans = 12月
+es = dic
+pt-BR = dez
+fr = déc.
+de = Dez.
+ja = 12月
+it = dic

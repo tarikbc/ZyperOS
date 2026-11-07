@@ -62,9 +62,12 @@ aout_dest   aout_resolve(const aout_state *s);
  * Never NULL, so a caller can always print or compare it. */
 const char *aout_device(const aout_state *s);
 
-/* For the menu: "Auto" / "Speaker", and what Auto currently resolves to. */
+/* For the menu: "Auto" / "Speaker", and what Auto currently resolves to:
+ * aout_dest_name in English, for the log, and aout_dest_label in the
+ * language that is on, for the row. */
 const char *aout_policy_name(aout_policy p);
 const char *aout_dest_name(aout_dest d);
+const char *aout_dest_label(aout_dest d);
 
 /* ---- which ears hear what --------------------------------------------------
  *
@@ -97,8 +100,8 @@ aout_dest     aout_dest_of(const aout_state *s, const char *dev);
  * 2026-10-11. */
 aout_channels aout_channels_for(aout_channels chosen, aout_dest d);
 
-/* The menu's names - "stereo", "mono", "mono left", "mono right" - and the
- * ones on the wire to Diatom and Muse and in the settings database: "stereo",
+/* The menu's names - "stereo", "mono", "mono left", "mono right", in the
+ * language that is on - and the ones on the wire to Diatom and Muse and in the settings database: "stereo",
  * "mono", "left", "right". Parsing takes the wire names; anything else is
  * stereo, which is what every output did before there was a choice. */
 const char   *aout_channels_name(aout_channels c);

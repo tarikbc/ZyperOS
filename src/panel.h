@@ -63,6 +63,9 @@ typedef struct {
 	 * MENU opens on the systems row, and no other. MENU_ZYPEROS is Wi-Fi,
 	 * About and the sign-ins too, so the accent cannot say it. */
 	bool     zyper;
+	/* The row the cursor starts on: 0, the first, unless a screen says
+	 * otherwise (MENU > Language starts on the language that is on) */
+	int      start_sel;
 } menu_style;
 
 /* What a screen with a panel draws under it, and asks every frame */

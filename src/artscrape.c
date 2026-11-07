@@ -17,6 +17,7 @@
 #include "artshrink.h"
 #include "config.h"
 #include "fileio.h"
+#include "i18n.h"
 #include "library.h"
 #include "monoclock.h"
 #include "net.h"
@@ -550,7 +551,10 @@ static char g_only[NAME_MAX_];
 static bool   g_ss_stop;
 static bool   g_ss_retried;       /* this game already had its one retry */
 static time_t g_ss_until;         /* not before this, after a 429 */
-static char   g_ss_note[64];
+/* A reason the run gives, as a string's ID (src/i18n.h), or NO_WHY: the
+ * screen says it in the language that is on, and the log in English. */
+#define NO_WHY (-1)
+static int    g_ss_note = NO_WHY;
 /* Use the launcher's scan for metadata-only work. Its full file key includes
  * disc folders and playlist selection; reconstructing that key from an art
  * stem would write a title the library cannot read. */
@@ -594,8 +598,8 @@ static int    g_nsg, g_sgi;
 static bool   g_sg_stop, g_sg_retried;
 static int    g_sg_quiet;          /* no answers in a row */
 static time_t g_sg_until;
-static char   g_sg_note[64];
-static char   g_sg_why[64];        /* what libretro said about the shelf, said at its end */
+static int    g_sg_note = NO_WHY;
+static int    g_sg_why = NO_WHY;   /* what libretro said about the shelf, said at its end */
 
 static art_progress g_st;
 
@@ -1332,11 +1336,11 @@ void art_begin(const systems_cfg *sys, const char *roms_dir, const char *only)
 	g_nleft = g_rem = 0;
 	g_ss_stop = g_ss_retried = false;
 	g_ss_until = 0;
-	g_ss_note[0] = '\0';
+	g_ss_note = NO_WHY;
 	g_nsg = g_sgi = g_sg_quiet = 0;
 	g_sg_stop = g_sg_retried = false;
 	g_sg_until = 0;
-	g_sg_note[0] = g_sg_why[0] = '\0';
+	g_sg_note = g_sg_why = NO_WHY;
 	g_run_t0 = now_ms();
 	g_sys_on = false;
 	g_phase = P_SYSTEM;
@@ -1432,13 +1436,14 @@ static void tidy_media(void)
 		rmdir(p);
 }
 
-static int next_system(const char *why)
+static int next_system(int why)
 {
-	if (why) {
-		snprintf(g_st.now, sizeof g_st.now, "%s: %s",
-		         g_si < g_nsys ? g_sys[g_si].folder : "?", why);
+	if (why != NO_WHY) {
+		const char *folder = g_si < g_nsys ? g_sys[g_si].folder : "?";
+
+		snprintf(g_st.now, sizeof g_st.now, T(S_ART_PROBLEM), folder, T(why));
 		snprintf(g_st.problem, sizeof g_st.problem, "%s", g_st.now);
-		fprintf(stderr, "art: %s\n", g_st.now);
+		fprintf(stderr, "art: %s: %s\n", folder, T_en((str_id)why));
 	}
 	if (g_sys_on)
 		say("art: %s: %d found, %d missing, in %ld s\n", g_sys[g_si].folder,
@@ -1459,8 +1464,8 @@ static bool ss_budget_available(void)
 	if (g_ss_stop) return false;
 	if (ss_run_left() >= 0 && ss_run_left() < SS_DAY_FLOOR) {
 		g_ss_stop = true;
-		snprintf(g_ss_note, sizeof g_ss_note, "ScreenScraper: today's quota is spent");
-		say("art: %s\n", g_ss_note);
+		g_ss_note = S_ART_SS_QUOTA;
+		say("art: %s\n", T_en(S_ART_SS_QUOTA));
 		return false;
 	}
 	return true;
@@ -1476,8 +1481,8 @@ static bool ss_finished(int result)
 	}
 	if (result < 0 && ss_run_too_many()) {
 		g_ss_stop = true;
-		snprintf(g_ss_note, sizeof g_ss_note, "ScreenScraper: too many requests, stopped");
-		say("art: %s\n", g_ss_note);
+		g_ss_note = S_ART_SS_TOO_MANY;
+		say("art: %s\n", T_en(S_ART_SS_TOO_MANY));
 	}
 	g_ss_retried = false;
 	return true;
@@ -1490,24 +1495,24 @@ static bool sg_on(void)
 
 /* `why` is the run's closing heading (art_head): about 25 characters fit
  * there at the Pixel 2's 640 wide, so each is short. */
-static void sg_stop(const char *why)
+static void sg_stop(str_id why)
 {
 	g_sg_stop = true;
-	snprintf(g_sg_note, sizeof g_sg_note, "%s", why);
-	say("art: %s\n", g_sg_note);
+	g_sg_note = why;
+	say("art: %s\n", T_en(why));
 }
 
 /* What libretro could not name on this shelf: SteamGridDB's to try when there
  * is a key, and otherwise missing, as it always was. `why` is a problem with
  * the shelf as a whole, said once its games are done. */
-static int leftover(const int *list, int n, const char *why)
+static int leftover(const int *list, int n, int why)
 {
 	if (n > 0 && sg_on()) {
 		memmove(g_sg, list, (size_t)n * sizeof list[0]);
 		g_nsg = n;
 		g_sgi = 0;
 		g_sg_retried = false;
-		snprintf(g_sg_why, sizeof g_sg_why, "%s", why ? why : "");
+		g_sg_why = why;
 		g_phase = P_SGDB;
 		return 1;
 	}
@@ -1536,7 +1541,7 @@ int art_step(void)
 	switch (g_phase) {
 	case P_SYSTEM:
 		if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
-			return next_system("no such folder");
+			return next_system(S_ART_WHY_NO_FOLDER);
 		/* Before the all-covers-present skip, fetch missing names without
 		 * touching those covers. A known title keeps the cheap skip policy. */
 		g_meta_i = 0;
@@ -1611,7 +1616,7 @@ int art_step(void)
 		} else {
 			read_roms(dir, g_sys[g_si].exts);
 		}
-		if (g_nroms == 0) return next_system(NULL);
+		if (g_nroms == 0) return next_system(NO_WHY);
 
 		/* Count what is missing BEFORE any request, and skip the system when
 		 * nothing is. The skip-if-present test used to live per-ROM, after
@@ -1630,9 +1635,9 @@ int art_step(void)
 				if (art_is_cover(have)) g_st.skipped++;
 				else want++;
 			}
-			if (want == 0) return next_system(NULL);
+			if (want == 0) return next_system(NO_WHY);
 		}
-		if (!remote && !sg_on()) return next_system("not in the table");
+		if (!remote && !sg_on()) return next_system(S_ART_WHY_NOT_IN_TABLE);
 
 		snprintf(g_st.now, sizeof g_st.now, "%s", g_sys[g_si].folder);
 		g_sys_t0 = now_ms();
@@ -1656,7 +1661,7 @@ int art_step(void)
 					continue;
 				g_retry[g_nretry++] = i;
 			}
-			return leftover(g_retry, g_nretry, NULL);
+			return leftover(g_retry, g_nretry, NO_WHY);
 		}
 		/* A replace keeps its own driver in the screen for now, which asks
 		 * ScreenScraper before it ever gets here. */
@@ -1711,7 +1716,7 @@ int art_step(void)
 	case P_TRY:
 		if (g_ri >= g_nroms) {
 			/* Nothing missed, so the catalog is never fetched. */
-			if (g_nretry == 0) return next_system(NULL);
+			if (g_nretry == 0) return next_system(NO_WHY);
 			g_phase = P_INDEX;
 			return 1;
 		}
@@ -1751,10 +1756,10 @@ int art_step(void)
 
 	/* ---- pass two: the catalog, for what pass one could not name ------ */
 	case P_INDEX:
-		snprintf(g_st.now, sizeof g_st.now, "%s catalog",
+		snprintf(g_st.now, sizeof g_st.now, T(S_ART_NOW_CATALOG),
 		         g_sys[g_si].folder);
 		if (!start_index(remote_nth(g_sys[g_si].folder, g_rem)))
-			return next_system("could not start curl");
+			return next_system(S_ART_WHY_NO_CURL);
 		g_phase = P_INDEX_WAIT;
 		return 1;
 
@@ -1767,8 +1772,8 @@ int art_step(void)
 		/* Distinguished on purpose: a network or TLS failure is not "these
 		 * games have no art", and reporting it as one is how a certificate
 		 * change gets mistaken for a library full of missing games. */
-		if (r < 0) return leftover(g_retry, g_nretry, "index fetch failed");
-		if (!parse_index()) return leftover(g_retry, g_nretry, "index unreadable or empty");
+		if (r < 0) return leftover(g_retry, g_nretry, S_ART_WHY_INDEX_FAILED);
+		if (!parse_index()) return leftover(g_retry, g_nretry, S_ART_WHY_INDEX_BAD);
 		g_qi = 0;
 		g_phase = P_FUZZY;
 		return 1;
@@ -1805,7 +1810,7 @@ int art_step(void)
 				int n = g_nleft;
 
 				g_nleft = 0;
-				return leftover(g_left, n, NULL);
+				return leftover(g_left, n, NO_WHY);
 			}
 		}
 		if (!art_paths(dir, g_roms[g_retry[g_qi]], media, sizeof media,
@@ -1816,7 +1821,7 @@ int art_step(void)
 		}
 		if (!match(g_roms[g_retry[g_qi]], hitbuf, sizeof hitbuf)) {
 			g_left[g_nleft++] = g_retry[g_qi];
-			snprintf(g_st.now, sizeof g_st.now, "no art for %s",
+			snprintf(g_st.now, sizeof g_st.now, T(S_ART_NOW_NO_ART),
 			         g_roms[g_retry[g_qi]]);
 			g_qi++;
 			return 1;
@@ -1846,7 +1851,7 @@ int art_step(void)
 
 	/* ---- pass three: the checksum, for what no name reached ----------- */
 	case P_DAT:
-		snprintf(g_st.now, sizeof g_st.now, "%s checksums",
+		snprintf(g_st.now, sizeof g_st.now, T(S_ART_NOW_CHECKSUMS),
 		         g_sys[g_si].folder);
 		free(g_dat);
 		g_dat = NULL;
@@ -1925,7 +1930,7 @@ int art_step(void)
 		if (g_sgi >= g_nsg || !sg_on()) {
 			g_st.missing += g_nsg - g_sgi;
 			g_nsg = g_sgi = 0;
-			return next_system(g_sg_why[0] ? g_sg_why : NULL);
+			return next_system(g_sg_why);
 		}
 		if (g_sg_until && time(NULL) < g_sg_until) return 1;
 		g_sg_until = 0;
@@ -1963,11 +1968,11 @@ int art_step(void)
 			g_sg_until = time(NULL) + SGDB_BUSY_WAIT;
 		} else {
 			if (sgdb_run_refused())
-				sg_stop("SteamGridDB: key refused");
+				sg_stop(S_ART_SG_REFUSED);
 			else if (sgdb_run_too_many())
-				sg_stop("SteamGridDB: too busy");
+				sg_stop(S_ART_SG_BUSY);
 			else if (sgdb_run_no_answer() && ++g_sg_quiet >= 2)
-				sg_stop("SteamGridDB: no answer");
+				sg_stop(S_ART_SG_NO_ANSWER);
 			if (!sgdb_run_no_answer()) g_sg_quiet = 0;
 			g_sg_retried = false;
 			g_st.missing++;
@@ -1989,8 +1994,8 @@ void art_status(art_progress *out)
 	 * a run-level fact rather than a system-level one - the pass stops for
 	 * the whole run - so it cannot be written when it happens: the next
 	 * system's own report would overwrite it a moment later. */
-	if (g_ss_note[0] && !out->problem[0])
-		snprintf(out->problem, sizeof out->problem, "%s", g_ss_note);
-	if (g_sg_note[0] && !out->problem[0])
-		snprintf(out->problem, sizeof out->problem, "%s", g_sg_note);
+	if (g_ss_note != NO_WHY && !out->problem[0])
+		snprintf(out->problem, sizeof out->problem, "%s", T(g_ss_note));
+	if (g_sg_note != NO_WHY && !out->problem[0])
+		snprintf(out->problem, sizeof out->problem, "%s", T(g_sg_note));
 }

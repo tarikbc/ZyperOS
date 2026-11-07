@@ -1,0 +1,2080 @@
+# Wi-Fi File Transfer and USB File Transfer's page (res/web, DESIGN.md
+# 11.15): what a phone or a computer shows, in the handheld's language.
+# tools/i18n.py writes these into res/web/i18n/<code>.js, the page's t() and
+# tn() read them by the name after "web." (app.js says how). The page's own
+# style: buttons and headings in sentence case in English too, messages end
+# with a full stop, status values lowercase. "the handheld" is the console
+# the page talks to.
+
+# ---- the name and the PIN screen -------------------------------------------
+
+[web.name.wifi]
+note = The page's name, in the browser's tab, on the PIN screen and over the folders, when File Transfer runs over Wi-Fi: MENU's row of the same name
+en = Wi-Fi File Transfer
+zh-Hans = Wi-Fi 文件传输
+es = Transferir archivos por Wi-Fi
+pt-BR = Transferir arquivos por Wi-Fi
+fr = Transfert de fichiers Wi-Fi
+de = WLAN-Dateiübertragung
+ja = Wi-Fi ファイル転送
+it = Trasferimento file via Wi-Fi
+
+[web.name.usb]
+note = The same, over the USB cable
+en = USB File Transfer
+zh-Hans = USB 文件传输
+es = Transferir archivos por USB
+pt-BR = Transferir arquivos por USB
+fr = Transfert de fichiers USB
+de = USB-Dateiübertragung
+ja = USB ファイル転送
+it = Trasferimento file via USB
+
+[web.gate.sub]
+note = Under the name on the PIN screen. The handheld shows a four-digit PIN. review: "handheld" as console
+en = Enter the PIN on the handheld's screen.
+zh-Hans = 请输入掌机屏幕上显示的 PIN。
+es = Escribe el PIN que aparece en la pantalla de la consola.
+pt-BR = Digite o PIN que aparece na tela do console.
+fr = Saisissez le PIN affiché sur l'écran de la console.
+de = Gib die PIN vom Bildschirm der Konsole ein.
+ja = 本体の画面に表示された PIN を入力してください。
+it = Inserisci il PIN mostrato sullo schermo della console.
+
+[web.gate.digit_first]
+note = Read aloud by a screen reader for the first of the four PIN boxes; %d is 1
+en = PIN, digit %d
+zh-Hans = PIN 第 %d 位
+es = PIN, dígito %d
+pt-BR = PIN, dígito %d
+fr = PIN, chiffre %d
+de = PIN, Ziffer %d
+ja = PIN、%d 桁目
+it = PIN, cifra %d
+
+[web.gate.digit]
+note = Read aloud for the second to the fourth PIN box; %d is 2 to 4
+en = digit %d
+zh-Hans = 第 %d 位
+es = dígito %d
+pt-BR = dígito %d
+fr = chiffre %d
+de = Ziffer %d
+ja = %d 桁目
+it = cifra %d
+
+[web.gate.wrong]
+en = Wrong PIN.
+zh-Hans = PIN 错误。
+es = PIN incorrecto.
+pt-BR = PIN incorreto.
+fr = PIN incorrect.
+de = Falsche PIN.
+ja = PIN が違います。
+it = PIN errato.
+
+[web.gate.wrong_left]
+note = After a wrong PIN, how many tries are left before a 30-second wait
+en.one = Wrong PIN. %d try left.
+en.other = Wrong PIN. %d tries left.
+zh-Hans = PIN 错误。还可尝试 %d 次。
+es.one = PIN incorrecto. Te queda %d intento.
+es.other = PIN incorrecto. Te quedan %d intentos.
+pt-BR.one = PIN incorreto. Resta %d tentativa.
+pt-BR.other = PIN incorreto. Restam %d tentativas.
+fr.one = PIN incorrect. Il reste %d essai.
+fr.other = PIN incorrect. Il reste %d essais.
+de.one = Falsche PIN. Noch %d Versuch.
+de.other = Falsche PIN. Noch %d Versuche.
+ja = PIN が違います。あと %d 回試せます。
+it.one = PIN errato. Ti resta %d tentativo.
+it.other = PIN errato. Ti restano %d tentativi.
+
+[web.gate.locked]
+en = Too many wrong PINs. Wait 30 seconds, then try again.
+zh-Hans = PIN 错误次数过多。请等待 30 秒后再试。
+es = Demasiados PIN incorrectos. Espera 30 segundos y vuelve a intentarlo.
+pt-BR = Muitos PINs incorretos. Aguarde 30 segundos e tente de novo.
+fr = Trop de PIN incorrects. Attendez 30 secondes, puis réessayez.
+de = Zu viele falsche PINs. Warte 30 Sekunden und versuche es dann erneut.
+ja = PIN の誤りが多すぎます。30 秒待ってから、もう一度お試しください。
+it = Troppi PIN errati. Attendi 30 secondi, poi riprova.
+
+[web.gate.unreachable]
+en = Could not reach the handheld. Check the connection and try again.
+zh-Hans = 无法连接到掌机。请检查连接后重试。
+es = No se pudo conectar con la consola. Revisa la conexión y vuelve a intentarlo.
+pt-BR = Não foi possível falar com o console. Verifique a conexão e tente de novo.
+fr = Impossible de joindre la console. Vérifiez la connexion et réessayez.
+de = Die Konsole ist nicht erreichbar. Prüfe die Verbindung und versuche es erneut.
+ja = 本体に接続できませんでした。接続を確認して、もう一度お試しください。
+it = Impossibile raggiungere la console. Controlla la connessione e riprova.
+
+[web.gate.session_ended]
+note = The PIN screen comes back when the handheld forgot this browser
+en = Session ended. Enter the PIN again.
+zh-Hans = 会话已结束。请重新输入 PIN。
+es = La sesión terminó. Escribe el PIN de nuevo.
+pt-BR = A sessão terminou. Digite o PIN de novo.
+fr = Session terminée. Saisissez de nouveau le PIN.
+de = Sitzung beendet. Gib die PIN erneut ein.
+ja = セッションが終了しました。もう一度 PIN を入力してください。
+it = Sessione terminata. Inserisci di nuovo il PIN.
+
+# ---- the sidebar --------------------------------------------------------------
+
+[web.side.folders]
+note = Read aloud: the list of the card's folders (ROMs, Music...), in the sidebar or as chips on a phone
+en = Folders on the card
+zh-Hans = 存储卡上的文件夹
+es = Carpetas de la tarjeta
+pt-BR = Pastas do cartão
+fr = Dossiers de la carte
+de = Ordner auf der Karte
+ja = カードのフォルダ
+it = Cartelle sulla scheda
+
+[web.room.free]
+note = Under the folders: the card's room. The first %s, in bold, is what is free ("12.3 GB"), the second the card's whole size
+en = %s free of %s
+zh-Hans = %s 可用，共 %s
+es = %s libres de %s
+pt-BR = %s livres de %s
+fr = %s libres sur %s
+de = %s von %s frei
+ja = %s 空き（全 %s）
+it = %s liberi su %s
+
+[web.ssh.note]
+note = USB File Transfer only: SSH over the same cable. ssh-copy-id is a command
+en = The password is the PIN. Add your key with ssh-copy-id to skip it next time.
+zh-Hans = 密码就是 PIN。用 ssh-copy-id 添加你的密钥，下次就不用输入了。
+es = La contraseña es el PIN. Agrega tu clave con ssh-copy-id para no escribirla la próxima vez.
+pt-BR = A senha é o PIN. Adicione sua chave com ssh-copy-id para não precisar dela da próxima vez.
+fr = Le mot de passe est le PIN. Ajoutez votre clé avec ssh-copy-id pour ne plus le saisir la prochaine fois.
+de = Das Passwort ist die PIN. Füge deinen Schlüssel mit ssh-copy-id hinzu, dann entfällt sie beim nächsten Mal.
+ja = パスワードは PIN です。ssh-copy-id で鍵を追加すると、次回から入力不要です。
+it = La password è il PIN. Aggiungi la tua chiave con ssh-copy-id per non doverla inserire la prossima volta.
+
+[web.ssh.copy]
+note = A button beside the SSH command
+en = Copy
+zh-Hans = 复制
+es = Copiar
+pt-BR = Copiar
+fr = Copier
+de = Kopieren
+ja = コピー
+it = Copia
+
+[web.settings]
+note = The place at the foot of the sidebar, and its page: the update, covers, the SteamGridDB key, the card, the logs
+en = Settings
+zh-Hans = 设置
+es = Configuración
+pt-BR = Configurações
+fr = Paramètres
+de = Einstellungen
+ja = 設定
+it = Impostazioni
+
+# ---- the folder's head ----------------------------------------------------------
+
+[web.crumbs]
+note = Read aloud: the path of the folder on screen, as buttons
+en = Location
+zh-Hans = 位置
+es = Ubicación
+pt-BR = Local
+fr = Emplacement
+de = Speicherort
+ja = 場所
+it = Percorso
+
+[web.tool.new_folder]
+en = New folder
+zh-Hans = 新建文件夹
+es = Nueva carpeta
+pt-BR = Nova pasta
+fr = Nouveau dossier
+de = Neuer Ordner
+ja = 新しいフォルダ
+it = Nuova cartella
+
+[web.tool.tidy]
+note = A button in a music or audiobook folder: renames its files to the clean names the music player shows
+en = Tidy names
+zh-Hans = 整理名称
+es = Limpiar nombres
+pt-BR = Arrumar nomes
+fr = Nettoyer les noms
+de = Namen bereinigen
+ja = 名前を整理
+it = Sistema i nomi
+
+[web.tool.upload_folder]
+en = Upload folder
+zh-Hans = 上传文件夹
+es = Subir carpeta
+pt-BR = Enviar pasta
+fr = Envoyer un dossier
+de = Ordner hochladen
+ja = フォルダをアップロード
+it = Carica cartella
+
+[web.tool.upload]
+en = Upload
+zh-Hans = 上传
+es = Subir
+pt-BR = Enviar
+fr = Envoyer
+de = Hochladen
+ja = アップロード
+it = Carica
+
+[web.tool.more]
+note = Read aloud: a phone's ⋯ button, with what the sidebar holds
+en = More
+zh-Hans = 更多
+es = Más
+pt-BR = Mais
+fr = Plus
+de = Mehr
+ja = その他
+it = Altro
+
+[web.cancel]
+note = A button: closes a question or a panel without doing anything
+en = Cancel
+zh-Hans = 取消
+es = Cancelar
+pt-BR = Cancelar
+fr = Annuler
+de = Abbrechen
+ja = キャンセル
+it = Annulla
+
+[web.tidy.rename_all]
+note = Tidy names' panel: makes every rename it lists
+en = Rename all
+zh-Hans = 全部重命名
+es = Renombrar todo
+pt-BR = Renomear tudo
+fr = Tout renommer
+de = Alle umbenennen
+ja = すべて名前を変更
+it = Rinomina tutto
+
+[web.list.empty]
+note = An empty folder. Upload is the button of that name
+en = Nothing here yet. Drop files here, or press Upload.
+zh-Hans = 这里还什么都没有。把文件拖到这里，或点击“上传”。
+es = Aún no hay nada aquí. Suelta archivos aquí o presiona Subir.
+pt-BR = Ainda não há nada aqui. Solte arquivos aqui ou clique em Enviar.
+fr = Rien ici pour l'instant. Déposez des fichiers ici ou appuyez sur Envoyer.
+de = Hier ist noch nichts. Zieh Dateien hierher oder wähle Hochladen.
+ja = まだ何もありません。ここにファイルをドロップするか、「アップロード」を押してください。
+it = Ancora niente qui. Trascina qui dei file o premi Carica.
+
+[web.list.drop_hint]
+note = Under the list: where a drop lands. %s is the folder on screen
+en = Drop files anywhere here to put them in %s, or onto a folder to put them there.
+zh-Hans = 把文件拖到这里的任意位置即可放进 %s，拖到某个文件夹上则放进那个文件夹。
+es = Suelta archivos en cualquier parte aquí para ponerlos en %s, o sobre una carpeta para ponerlos ahí.
+pt-BR = Solte arquivos em qualquer lugar aqui para colocá-los em %s, ou sobre uma pasta para colocá-los nela.
+fr = Déposez des fichiers n'importe où ici pour les mettre dans %s, ou sur un dossier pour les y mettre.
+de = Zieh Dateien irgendwo hierher, um sie in %s abzulegen, oder auf einen Ordner, um sie dort abzulegen.
+ja = ここにドロップすると %s に、フォルダの上にドロップするとそのフォルダに入ります。
+it = Trascina i file in un punto qualsiasi qui per metterli in %s, o su una cartella per metterli lì.
+
+[web.list.more_for]
+note = Read aloud: a row's ⋯ button; %s is the file or folder
+en = More for %s
+zh-Hans = %s 的更多操作
+es = Más opciones para %s
+pt-BR = Mais opções para %s
+fr = Plus d'options pour %s
+de = Mehr für %s
+ja = %s のその他の操作
+it = Altro per %s
+
+# ---- sizes ------------------------------------------------------------------------
+
+[web.size.b]
+note = A size in bytes, under 1000. review: French writes octets (o, Ko, Mo, Go)
+en = %d B
+zh-Hans = %d B
+es = %d B
+pt-BR = %d B
+fr = %d o
+de = %d B
+ja = %d B
+it = %d B
+
+[web.size.kb]
+note = A size in kilobytes, decimal (1000); %s is the number, written the language's way
+en = %s KB
+zh-Hans = %s KB
+es = %s KB
+pt-BR = %s KB
+fr = %s Ko
+de = %s KB
+ja = %s KB
+it = %s KB
+
+[web.size.mb]
+note = In megabytes; %s is the number with one decimal ("1.5", "1,5")
+en = %s MB
+zh-Hans = %s MB
+es = %s MB
+pt-BR = %s MB
+fr = %s Mo
+de = %s MB
+ja = %s MB
+it = %s MB
+
+[web.size.gb]
+note = In gigabytes; %s is the number with one decimal
+en = %s GB
+zh-Hans = %s GB
+es = %s GB
+pt-BR = %s GB
+fr = %s Go
+de = %s GB
+ja = %s GB
+it = %s GB
+
+# ---- a row's menu, and its questions -------------------------------------------------
+
+[web.act.open]
+note = A folder's menu: opens it
+en = Open
+zh-Hans = 打开
+es = Abrir
+pt-BR = Abrir
+fr = Ouvrir
+de = Öffnen
+ja = 開く
+it = Apri
+
+[web.act.download]
+note = A file's menu, and the update's: saves it on this phone or computer
+en = Download
+zh-Hans = 下载
+es = Descargar
+pt-BR = Baixar
+fr = Télécharger
+de = Herunterladen
+ja = ダウンロード
+it = Scarica
+
+[web.act.rename]
+note = A row's menu, and the button of the rename question
+en = Rename
+zh-Hans = 重命名
+es = Renombrar
+pt-BR = Renomear
+fr = Renommer
+de = Umbenennen
+ja = 名前を変更
+it = Rinomina
+
+[web.act.delete]
+note = A row's menu, and the button of the delete question
+en = Delete
+zh-Hans = 删除
+es = Eliminar
+pt-BR = Excluir
+fr = Supprimer
+de = Löschen
+ja = 削除
+it = Elimina
+
+[web.rename.folder]
+note = The rename question's heading, over the name field
+en = Rename folder
+zh-Hans = 重命名文件夹
+es = Renombrar carpeta
+pt-BR = Renomear pasta
+fr = Renommer le dossier
+de = Ordner umbenennen
+ja = フォルダ名を変更
+it = Rinomina cartella
+
+[web.rename.file]
+en = Rename file
+zh-Hans = 重命名文件
+es = Renombrar archivo
+pt-BR = Renomear arquivo
+fr = Renommer le fichier
+de = Datei umbenennen
+ja = ファイル名を変更
+it = Rinomina file
+
+[web.ops.renamed]
+note = A short note at the foot of the page
+en = Renamed
+zh-Hans = 已重命名
+es = Renombrado
+pt-BR = Renomeado
+fr = Renommé
+de = Umbenannt
+ja = 名前を変更しました
+it = Rinominato
+
+[web.del.head]
+note = The delete question's heading; %s is the file or folder
+en = Delete %s?
+zh-Hans = 删除 %s？
+es = ¿Eliminar %s?
+pt-BR = Excluir %s?
+fr = Supprimer %s ?
+de = %s löschen?
+ja = %s を削除しますか？
+it = Eliminare %s?
+
+[web.del.undone]
+en = This cannot be undone.
+zh-Hans = 此操作无法撤销。
+es = Esto no se puede deshacer.
+pt-BR = Isso não pode ser desfeito.
+fr = Cette action est irréversible.
+de = Das lässt sich nicht rückgängig machen.
+ja = この操作は取り消せません。
+it = L'operazione non si può annullare.
+
+[web.del.files]
+note = What a folder holds, in the delete question: the files, before web.del.files_in
+en.one = %d file
+en.other = %d files
+zh-Hans = %d 个文件
+es.one = %d archivo
+es.other = %d archivos
+pt-BR.one = %d arquivo
+pt-BR.other = %d arquivos
+fr.one = %d fichier
+fr.other = %d fichiers
+de.one = %d Datei
+de.other = %d Dateien
+ja = %d 個のファイル
+it.one = %d file
+it.other = %d file
+
+[web.del.files_in]
+note = And in how many folders: %s is web.del.files ("12 files"), %d the folders
+en.one = %s in %d folder
+en.other = %s in %d folders
+zh-Hans = %2$d 个文件夹中的 %1$s
+es.one = %s en %d carpeta
+es.other = %s en %d carpetas
+pt-BR.one = %s em %d pasta
+pt-BR.other = %s em %d pastas
+fr.one = %s dans %d dossier
+fr.other = %s dans %d dossiers
+de.one = %s in %d Ordner
+de.other = %s in %d Ordnern
+ja = %2$d 個のフォルダ内の %1$s
+it.one = %s in %d cartella
+it.other = %s in %d cartelle
+
+[web.del.everything]
+note = The delete question for a folder with things in it; %s is web.del.files or web.del.files_in
+en = Everything in it goes too: %s.
+zh-Hans = 里面的所有内容也会一并删除：%s。
+es = También se elimina todo lo que contiene: %s.
+pt-BR = Tudo o que há dentro também será excluído: %s.
+fr = Tout son contenu part aussi : %s.
+de = Alles darin wird mitgelöscht: %s.
+ja = 中身もすべて削除されます：%s。
+it = Verrà eliminato anche tutto il contenuto: %s.
+
+[web.del.why]
+note = A folder that cannot go: its name, then the handheld's reason
+en = %s: %s
+zh-Hans = %s：%s
+es = %s: %s
+pt-BR = %s: %s
+fr = %s : %s
+de = %s: %s
+ja = %s：%s
+it = %s: %s
+
+[web.del.too_much]
+note = %s is the folder
+en = %s holds too much to delete at once. Delete it in parts.
+zh-Hans = %s 里的内容太多，无法一次删除。请分批删除。
+es = %s tiene demasiado para eliminarlo de una vez. Elimínalo por partes.
+pt-BR = %s tem coisa demais para excluir de uma vez. Exclua em partes.
+fr = %s contient trop d'éléments pour être supprimé d'un coup. Supprimez-le en plusieurs fois.
+de = %s enthält zu viel, um es auf einmal zu löschen. Lösche es in Teilen.
+ja = %s は中身が多すぎて一度に削除できません。分けて削除してください。
+it = %s contiene troppo per eliminarla in una volta. Eliminala un po' alla volta.
+
+[web.ops.deleted]
+en = Deleted
+zh-Hans = 已删除
+es = Eliminado
+pt-BR = Excluído
+fr = Supprimé
+de = Gelöscht
+ja = 削除しました
+it = Eliminato
+
+[web.newfolder.head]
+note = The new folder question's heading; %s is the folder it goes in
+en = New folder in %s
+zh-Hans = 在 %s 中新建文件夹
+es = Nueva carpeta en %s
+pt-BR = Nova pasta em %s
+fr = Nouveau dossier dans %s
+de = Neuer Ordner in %s
+ja = %s に新しいフォルダ
+it = Nuova cartella in %s
+
+[web.newfolder.make]
+note = Its button
+en = Make folder
+zh-Hans = 创建文件夹
+es = Crear carpeta
+pt-BR = Criar pasta
+fr = Créer le dossier
+de = Ordner erstellen
+ja = フォルダを作成
+it = Crea cartella
+
+# ---- Tidy names -------------------------------------------------------------------------
+
+[web.tidy.already]
+en = The names here are tidy already.
+zh-Hans = 这里的名称已经很整齐了。
+es = Los nombres de aquí ya están limpios.
+pt-BR = Os nomes aqui já estão arrumados.
+fr = Les noms sont déjà propres ici.
+de = Die Namen hier sind schon bereinigt.
+ja = ここの名前はすでに整っています。
+it = I nomi qui sono già in ordine.
+
+[web.tidy.head]
+note = Tidy names' panel, every rename it lists can be made
+en.one = Tidy names: %d rename
+en.other = Tidy names: %d renames
+zh-Hans = 整理名称：%d 处重命名
+es.one = Limpiar nombres: %d cambio
+es.other = Limpiar nombres: %d cambios
+pt-BR.one = Arrumar nomes: %d renomeação
+pt-BR.other = Arrumar nomes: %d renomeações
+fr.one = Nettoyer les noms : %d renommage
+fr.other = Nettoyer les noms : %d renommages
+de.one = Namen bereinigen: %d Umbenennung
+de.other = Namen bereinigen: %d Umbenennungen
+ja = 名前を整理：%d 件の変更
+it.one = Sistema i nomi: %d modifica
+it.other = Sistema i nomi: %d modifiche
+
+[web.tidy.head_some]
+note = The same when some would take a name a file already has: how many of how many
+en = Tidy names: %d of %d (the rest would land on a name already there)
+zh-Hans = 整理名称：%d / %d（其余的会与已有名称重复）
+es = Limpiar nombres: %d de %d (el resto chocaría con un nombre que ya existe)
+pt-BR = Arrumar nomes: %d de %d (o resto cairia num nome que já existe)
+fr = Nettoyer les noms : %d sur %d (les autres tomberaient sur un nom déjà pris)
+de = Namen bereinigen: %d von %d (die übrigen hätten einen schon vorhandenen Namen)
+ja = 名前を整理：%d / %d 件（残りは既存の名前と重なります）
+it = Sistema i nomi: %d di %d (gli altri finirebbero su un nome già esistente)
+
+[web.tidy.folder]
+note = The folder's own rename, first in the panel's list; %s is its name now
+en = Folder: %s
+zh-Hans = 文件夹：%s
+es = Carpeta: %s
+pt-BR = Pasta: %s
+fr = Dossier : %s
+de = Ordner: %s
+ja = フォルダ：%s
+it = Cartella: %s
+
+[web.tidy.skipped]
+note = A rename that is not made; %s is the name it would take
+en = %s (skipped: already there)
+zh-Hans = %s（已跳过：名称已存在）
+es = %s (omitido: ya existe)
+pt-BR = %s (pulado: já existe)
+fr = %s (ignoré : existe déjà)
+de = %s (übersprungen: schon vorhanden)
+ja = %s（スキップ：既に存在）
+it = %s (saltato: esiste già)
+
+[web.tidy.done]
+note = A short note when it is done: how many were renamed
+en = Renamed %d
+zh-Hans = 已重命名 %d 个
+es = Renombrados: %d
+pt-BR = Renomeados: %d
+fr = Renommés : %d
+de = %d umbenannt
+ja = %d 件の名前を変更しました
+it = Rinominati: %d
+
+[web.tidy.done_skipped]
+note = How many were renamed, and how many skipped
+en = Renamed %d, skipped %d
+zh-Hans = 已重命名 %d 个，跳过 %d 个
+es = Renombrados: %d, omitidos: %d
+pt-BR = Renomeados: %d, pulados: %d
+fr = Renommés : %d, ignorés : %d
+de = %d umbenannt, %d übersprungen
+ja = %d 件の名前を変更、%d 件をスキップしました
+it = Rinominati: %d, saltati: %d
+
+# ---- SSH in a phone's menu -----------------------------------------------------------------
+
+[web.ssh.note_menu]
+note = The same as web.ssh.note, in a phone's ⋯ menu
+en = SSH: the password is the PIN. Add your key with ssh-copy-id to skip it next time.
+zh-Hans = SSH：密码就是 PIN。用 ssh-copy-id 添加你的密钥，下次就不用输入了。
+es = SSH: la contraseña es el PIN. Agrega tu clave con ssh-copy-id para no escribirla la próxima vez.
+pt-BR = SSH: a senha é o PIN. Adicione sua chave com ssh-copy-id para não precisar dela da próxima vez.
+fr = SSH : le mot de passe est le PIN. Ajoutez votre clé avec ssh-copy-id pour ne plus le saisir la prochaine fois.
+de = SSH: Das Passwort ist die PIN. Füge deinen Schlüssel mit ssh-copy-id hinzu, dann entfällt sie beim nächsten Mal.
+ja = SSH：パスワードは PIN です。ssh-copy-id で鍵を追加すると、次回から入力不要です。
+it = SSH: la password è il PIN. Aggiungi la tua chiave con ssh-copy-id per non doverla inserire la prossima volta.
+
+[web.ssh.copied]
+en = Copied.
+zh-Hans = 已复制。
+es = Copiado.
+pt-BR = Copiado.
+fr = Copié.
+de = Kopiert.
+ja = コピーしました。
+it = Copiato.
+
+[web.ssh.selected]
+note = Where the page cannot copy: the command is selected instead
+en = Selected. Copy it with the keyboard.
+zh-Hans = 已选中。请用键盘复制。
+es = Seleccionado. Cópialo con el teclado.
+pt-BR = Selecionado. Copie com o teclado.
+fr = Sélectionné. Copiez-le avec le clavier.
+de = Markiert. Kopiere es mit der Tastatur.
+ja = 選択しました。キーボードでコピーしてください。
+it = Selezionato. Copialo con la tastiera.
+
+# ---- room on the card -----------------------------------------------------------------------
+
+[web.fit.head]
+note = The heading of the question when a batch of files does not fit
+en = Not enough room on the card
+zh-Hans = 存储卡空间不足
+es = No hay espacio suficiente en la tarjeta
+pt-BR = Não há espaço suficiente no cartão
+fr = Pas assez d'espace sur la carte
+de = Nicht genug Platz auf der Karte
+ja = カードの空き容量が足りません
+it = Spazio insufficiente sulla scheda
+
+[web.fit.one]
+note = One file: its size, and the room the card has
+en = This file needs %s. The card has %s free.
+zh-Hans = 这个文件需要 %s。存储卡只剩 %s 可用。
+es = Este archivo necesita %s. La tarjeta tiene %s libres.
+pt-BR = Este arquivo precisa de %s. O cartão tem %s livres.
+fr = Ce fichier nécessite %s. La carte a %s de libre.
+de = Diese Datei braucht %s. Auf der Karte sind %s frei.
+ja = このファイルには %s 必要です。カードの空きは %s です。
+it = Questo file richiede %s. La scheda ha %s liberi.
+
+[web.fit.many]
+note = Two or more files: how many, their size, and the room the card has
+en = These %d files need %s. The card has %s free.
+zh-Hans = 这 %d 个文件需要 %s。存储卡只剩 %s 可用。
+es = Estos %d archivos necesitan %s. La tarjeta tiene %s libres.
+pt-BR = Estes %d arquivos precisam de %s. O cartão tem %s livres.
+fr = Ces %d fichiers nécessitent %s. La carte a %s de libre.
+de = Diese %d Dateien brauchen %s. Auf der Karte sind %s frei.
+ja = これら %d 個のファイルには %s 必要です。カードの空きは %s です。
+it = Questi %d file richiedono %s. La scheda ha %s liberi.
+
+[web.fit.none]
+note = When none of them fits: %s is web.fit.one or web.fit.many, then this
+en = %s Free up room, or send fewer files.
+zh-Hans = %s请腾出空间，或少上传一些文件。
+es = %s Libera espacio o sube menos archivos.
+pt-BR = %s Libere espaço ou envie menos arquivos.
+fr = %s Libérez de l'espace ou envoyez moins de fichiers.
+de = %s Schaffe Platz oder sende weniger Dateien.
+ja = %s空きを作るか、送るファイルを減らしてください。
+it = %s Libera spazio o invia meno file.
+
+[web.act.ok]
+note = A button that closes a note
+en = OK
+zh-Hans = 确定
+es = Aceptar
+pt-BR = OK
+fr = OK
+de = OK
+ja = OK
+it = OK
+
+[web.fit.send_one]
+note = The question's button when one of the files fits
+en = Send the one that fits
+zh-Hans = 上传放得下的那个
+es = Subir el que cabe
+pt-BR = Enviar o que cabe
+fr = Envoyer celui qui tient
+de = Die passende Datei senden
+ja = 収まる 1 個を送る
+it = Invia quello che ci sta
+
+[web.fit.send_some]
+note = When two or more fit; %d is how many
+en = Send the %d that fit
+zh-Hans = 上传放得下的 %d 个
+es = Subir los %d que caben
+pt-BR = Enviar os %d que cabem
+fr = Envoyer les %d qui tiennent
+de = Die %d passenden senden
+ja = 収まる %d 個を送る
+it = Invia i %d che ci stanno
+
+[web.card.room]
+note = Settings, The card: free, the whole card, and what the handheld keeps
+en = %s free of %s. The handheld keeps %s more for saves.
+zh-Hans = %s 可用，共 %s。掌机另外保留 %s 用于游戏存档。
+es = %s libres de %s. La consola reserva %s más para las partidas guardadas.
+pt-BR = %s livres de %s. O console reserva mais %s para os saves.
+fr = %s libres sur %s. La console garde %s de plus pour les sauvegardes.
+de = %s von %s frei. Die Konsole reserviert zusätzlich %s für Spielstände.
+ja = %s 空き（全 %s）。本体はセーブ用に %s を別に確保します。
+it = %s liberi su %s. La console tiene altri %s per i salvataggi.
+
+# ---- uploads ---------------------------------------------------------------------------------
+
+[web.queue.open_folder]
+en = Open a folder first
+zh-Hans = 请先打开一个文件夹
+es = Abre una carpeta primero
+pt-BR = Abra uma pasta primeiro
+fr = Ouvrez d'abord un dossier
+de = Öffne zuerst einen Ordner
+ja = 先にフォルダを開いてください
+it = Prima apri una cartella
+
+[web.ops.folder_made]
+note = A dropped folder with nothing to upload in it: only the folder was made
+en = Folder made
+zh-Hans = 文件夹已创建
+es = Carpeta creada
+pt-BR = Pasta criada
+fr = Dossier créé
+de = Ordner erstellt
+ja = フォルダを作成しました
+it = Cartella creata
+
+[web.queue.closing]
+note = The uploads' panel, when the handheld said to stop after the file on its way
+en = The handheld is closing File Transfer after the file on its way.
+zh-Hans = 掌机会在当前文件传完后关闭文件传输。
+es = La consola cerrará Transferir archivos después del archivo en curso.
+pt-BR = O console vai fechar o Transferir arquivos depois do arquivo em andamento.
+fr = La console fermera Transfert de fichiers après le fichier en cours.
+de = Die Konsole beendet die Dateiübertragung nach der laufenden Datei.
+ja = 本体は送信中のファイルの後にファイル転送を終了します。
+it = La console chiuderà Trasferimento file dopo il file in corso.
+
+[web.queue.closing_now]
+note = The same, when the handheld refused a file because it is closing
+en = File Transfer is closing on the handheld.
+zh-Hans = 掌机上的文件传输正在关闭。
+es = Transferir archivos se está cerrando en la consola.
+pt-BR = O Transferir arquivos está fechando no console.
+fr = Transfert de fichiers se ferme sur la console.
+de = Die Dateiübertragung wird auf der Konsole beendet.
+ja = 本体のファイル転送を終了しています。
+it = Trasferimento file si sta chiudendo sulla console.
+
+[web.queue.closed]
+en = The handheld closed File Transfer.
+zh-Hans = 掌机已关闭文件传输。
+es = La consola cerró Transferir archivos.
+pt-BR = O console fechou o Transferir arquivos.
+fr = La console a fermé Transfert de fichiers.
+de = Die Konsole hat die Dateiübertragung beendet.
+ja = 本体がファイル転送を終了しました。
+it = La console ha chiuso Trasferimento file.
+
+[web.queue.lost]
+note = A file's status in the list when the connection went
+en = connection lost
+zh-Hans = 连接中断
+es = conexión perdida
+pt-BR = conexão perdida
+fr = connexion perdue
+de = Verbindung verloren
+ja = 接続が切れました
+it = connessione persa
+
+[web.eta.s]
+note = The time left for every upload, under a minute (in fives)
+en = about %d s
+zh-Hans = 约 %d 秒
+es = unos %d s
+pt-BR = cerca de %d s
+fr = environ %d s
+de = etwa %d s
+ja = 約 %d 秒
+it = circa %d s
+
+[web.eta.min]
+en = about %d min
+zh-Hans = 约 %d 分钟
+es = unos %d min
+pt-BR = cerca de %d min
+fr = environ %d min
+de = etwa %d min
+ja = 約 %d 分
+it = circa %d min
+
+[web.eta.h]
+note = Hours and minutes
+en = about %d h %d min
+zh-Hans = 约 %d 小时 %d 分钟
+es = unas %d h %d min
+pt-BR = cerca de %d h %d min
+fr = environ %d h %d min
+de = etwa %d h %d min
+ja = 約 %d 時間 %d 分
+it = circa %d h %d min
+
+[web.queue.stopped]
+note = The uploads' heading when the handheld closed File Transfer
+en = Stopped on the handheld
+zh-Hans = 已在掌机上停止
+es = Detenido en la consola
+pt-BR = Parado no console
+fr = Arrêté sur la console
+de = Auf der Konsole gestoppt
+ja = 本体で停止しました
+it = Interrotto sulla console
+
+[web.queue.stopping]
+note = When it is closing after the file on its way
+en = The handheld is stopping
+zh-Hans = 掌机正在停止
+es = La consola se está deteniendo
+pt-BR = O console está parando
+fr = La console s'arrête
+de = Die Konsole stoppt
+ja = 本体が停止しています
+it = La console si sta fermando
+
+[web.queue.sent]
+note = The uploads' heading once they are over: how many went
+en = %d sent
+zh-Hans = 已上传 %d 个
+es = Subidos: %d
+pt-BR = Enviados: %d
+fr = Envoyés : %d
+de = %d gesendet
+ja = %d 個送信済み
+it = Inviati: %d
+
+[web.queue.sent_failed]
+note = How many went, and how many failed
+en = %d sent, %d failed
+zh-Hans = 已上传 %d 个，失败 %d 个
+es = Subidos: %d, con error: %d
+pt-BR = Enviados: %d, com falha: %d
+fr = Envoyés : %d, en échec : %d
+de = %d gesendet, %d fehlgeschlagen
+ja = %d 個送信済み、%d 個失敗
+it = Inviati: %d, non riusciti: %d
+
+[web.queue.sent_kept]
+note = How many went, and how many stayed on the computer
+en = %d sent, %d not sent
+zh-Hans = 已上传 %d 个，未上传 %d 个
+es = Subidos: %d, sin subir: %d
+pt-BR = Enviados: %d, não enviados: %d
+fr = Envoyés : %d, non envoyés : %d
+de = %d gesendet, %d nicht gesendet
+ja = %d 個送信済み、%d 個未送信
+it = Inviati: %d, non inviati: %d
+
+[web.queue.sent_failed_kept]
+en = %d sent, %d failed, %d not sent
+zh-Hans = 已上传 %d 个，失败 %d 个，未上传 %d 个
+es = Subidos: %d, con error: %d, sin subir: %d
+pt-BR = Enviados: %d, com falha: %d, não enviados: %d
+fr = Envoyés : %d, en échec : %d, non envoyés : %d
+de = %d gesendet, %d fehlgeschlagen, %d nicht gesendet
+ja = %d 個送信済み、%d 個失敗、%d 個未送信
+it = Inviati: %d, non riusciti: %d, non inviati: %d
+
+[web.queue.sending]
+note = The heading while they go: which file of how many
+en = Sending %d of %d
+zh-Hans = 正在上传第 %d 个，共 %d 个
+es = Subiendo %d de %d
+pt-BR = Enviando %d de %d
+fr = Envoi de %d sur %d
+de = Sende %d von %d
+ja = %d / %d 個目を送信中
+it = Invio %d di %d
+
+[web.queue.left]
+note = What is still to send ("1.2 GB"); the time left follows after " · "
+en = %s left
+zh-Hans = 剩余 %s
+es = Faltan %s
+pt-BR = Faltam %s
+fr = %s restants
+de = %s übrig
+ja = 残り %s
+it = Mancano %s
+
+[web.job.done]
+note = A file's status in the uploads' list
+en = done
+zh-Hans = 已完成
+es = listo
+pt-BR = concluído
+fr = terminé
+de = fertig
+ja = 完了
+it = fatto
+
+[web.job.waiting]
+en = waiting
+zh-Hans = 等待中
+es = en espera
+pt-BR = aguardando
+fr = en attente
+de = wartet
+ja = 待機中
+it = in attesa
+
+[web.job.not_sent]
+note = A file that stayed on the computer when the handheld stopped
+en = not sent
+zh-Hans = 未上传
+es = sin subir
+pt-BR = não enviado
+fr = non envoyé
+de = nicht gesendet
+ja = 未送信
+it = non inviato
+
+[web.queue.n_of]
+note = A phone's one line of uploads: which file of how many
+en = %d of %d
+zh-Hans = 第 %d 个，共 %d 个
+es = %d de %d
+pt-BR = %d de %d
+fr = %d sur %d
+de = %d von %d
+ja = %d / %d 個目
+it = %d di %d
+
+[web.queue.dock]
+note = Read aloud: that line, the heading and how far ("45%")
+en = %s, %s
+zh-Hans = %s，%s
+es = %s, %s
+pt-BR = %s, %s
+fr = %s, %s
+de = %s, %s
+ja = %s、%s
+it = %s, %s
+
+# ---- Settings: covers ---------------------------------------------------------------------------
+
+[web.art.head]
+note = Settings: covers for the games (Box Art) and the albums, fetched by this phone or computer
+en = Box art and album covers
+zh-Hans = 游戏封面和专辑封面
+es = Carátulas y portadas de álbumes
+pt-BR = Capas de jogos e de álbuns
+fr = Jaquettes et pochettes d'album
+de = Spielcover und Albumcover
+ja = パッケージ画像とアルバムアート
+it = Copertine di giochi e album
+
+[web.art.go]
+en = Get covers
+zh-Hans = 获取封面
+es = Obtener portadas
+pt-BR = Buscar capas
+fr = Récupérer les couvertures
+de = Cover holen
+ja = 画像を取得
+it = Scarica copertine
+
+[web.art.games_done]
+en = Every game has a cover.
+zh-Hans = 每个游戏都有封面。
+es = Todos los juegos tienen carátula.
+pt-BR = Todos os jogos têm capa.
+fr = Chaque jeu a sa jaquette.
+de = Jedes Spiel hat ein Cover.
+ja = すべてのゲームにパッケージ画像があります。
+it = Ogni gioco ha una copertina.
+
+[web.art.game_missing]
+note = One game without a cover; %d is 1
+en = %d game has no cover.
+zh-Hans = %d 个游戏没有封面。
+es = %d juego no tiene carátula.
+pt-BR = %d jogo está sem capa.
+fr = %d jeu n'a pas de jaquette.
+de = %d Spiel hat kein Cover.
+ja = パッケージ画像のないゲームが %d 本あります。
+it = %d gioco non ha la copertina.
+
+[web.art.games_missing]
+note = Two or more games without a cover, on how many systems (a form by the systems)
+en.one = %d games on %d console have no cover.
+en.other = %d games on %d consoles have no cover.
+zh-Hans = %2$d 个系统中有 %1$d 个游戏没有封面。
+es.one = %d juegos de %d sistema no tienen carátula.
+es.other = %d juegos de %d sistemas no tienen carátula.
+pt-BR.one = %d jogos de %d sistema estão sem capa.
+pt-BR.other = %d jogos de %d sistemas estão sem capa.
+fr.one = %d jeux sur %d système n'ont pas de jaquette.
+fr.other = %d jeux sur %d systèmes n'ont pas de jaquette.
+de.one = %d Spiele auf %d Konsole haben kein Cover.
+de.other = %d Spiele auf %d Konsolen haben kein Cover.
+ja = パッケージ画像のないゲームが %d 本あります（%d システム）。
+it.one = %d giochi su %d console non hanno la copertina.
+it.other = %d giochi su %d console non hanno la copertina.
+
+[web.art.albums_done]
+en = Every album has a cover.
+zh-Hans = 每张专辑都有封面。
+es = Todos los álbumes tienen portada.
+pt-BR = Todos os álbuns têm capa.
+fr = Chaque album a sa pochette.
+de = Jedes Album hat ein Cover.
+ja = すべてのアルバムにアートがあります。
+it = Ogni album ha una copertina.
+
+[web.art.albums_missing]
+note = Albums with no cover, or one too small to be sharp
+en.one = %d album has no cover, or a small one.
+en.other = %d albums have no cover, or a small one.
+zh-Hans = %d 张专辑没有封面，或封面太小。
+es.one = %d álbum no tiene portada, o la tiene pequeña.
+es.other = %d álbumes no tienen portada, o la tienen pequeña.
+pt-BR.one = %d álbum está sem capa, ou com uma capa pequena.
+pt-BR.other = %d álbuns estão sem capa, ou com uma capa pequena.
+fr.one = %d album n'a pas de pochette, ou une trop petite.
+fr.other = %d albums n'ont pas de pochette, ou une trop petite.
+de.one = %d Album hat kein oder nur ein kleines Cover.
+de.other = %d Alben haben kein oder nur ein kleines Cover.
+ja = アートがないか小さいアルバムが %d 枚あります。
+it.one = %d album non ha la copertina, o ne ha una piccola.
+it.other = %d album non hanno la copertina, o ne hanno una piccola.
+
+[web.art.last_failed]
+note = After the counts: what failed in the last run, a list of web.art.fail_item joined by web.art.sep
+en.one = Last time, %d failed: %s.
+en.other = Last time, %d failed: %s.
+zh-Hans = 上次有 %d 个失败：%s。
+es.one = La última vez falló %d: %s.
+es.other = La última vez fallaron %d: %s.
+pt-BR.one = Da última vez, %d falhou: %s.
+pt-BR.other = Da última vez, %d falharam: %s.
+fr.one = La dernière fois, %d a échoué : %s.
+fr.other = La dernière fois, %d ont échoué : %s.
+de.one = Letztes Mal ist %d fehlgeschlagen: %s.
+de.other = Letztes Mal sind %d fehlgeschlagen: %s.
+ja = 前回は %d 件失敗：%s。
+it.one = L'ultima volta, %d errore: %s.
+it.other = L'ultima volta, %d errori: %s.
+
+[web.art.sep]
+note = Between the failures in that list
+en = "; "
+zh-Hans = ；
+es = "; "
+pt-BR = "; "
+fr = " ; "
+de = "; "
+ja = 、
+it = "; "
+
+[web.art.fail_item]
+note = One failure: the game or album, and what went wrong
+en = %s (%s)
+zh-Hans = %s（%s）
+es = %s (%s)
+pt-BR = %s (%s)
+fr = %s (%s)
+de = %s (%s)
+ja = %s（%s）
+it = %s (%s)
+
+[web.art.waits]
+note = The games left when GitHub's list could not be read; %s is why (a sentence)
+en.one = %d game waits for libretro's list: %s
+en.other = %d games wait for libretro's list: %s
+zh-Hans = %d 个游戏在等待 libretro 的列表：%s
+es.one = %d juego espera la lista de libretro: %s
+es.other = %d juegos esperan la lista de libretro: %s
+pt-BR.one = %d jogo aguarda a lista do libretro: %s
+pt-BR.other = %d jogos aguardam a lista do libretro: %s
+fr.one = %d jeu attend la liste de libretro : %s
+fr.other = %d jeux attendent la liste de libretro : %s
+de.one = %d Spiel wartet auf die Liste von libretro: %s
+de.other = %d Spiele warten auf die Liste von libretro: %s
+ja = %d 本のゲームが libretro の一覧を待っています：%s
+it.one = %d gioco attende l'elenco di libretro: %s
+it.other = %d giochi attendono l'elenco di libretro: %s
+
+[web.art.last_stopped]
+note = When the last run stopped; %s is why
+en = Last time it stopped: %s
+zh-Hans = 上次中途停止：%s
+es = La última vez se detuvo: %s
+pt-BR = Da última vez, parou: %s
+fr = La dernière fois, arrêt : %s
+de = Letztes Mal gestoppt: %s
+ja = 前回は途中で停止しました：%s
+it = L'ultima volta si è fermato: %s
+
+[web.gap]
+note = Between two sentences on one line: a space, or none in Chinese
+en = " "
+zh-Hans = ""
+es = " "
+pt-BR = " "
+fr = " "
+de = " "
+ja = ""
+it = " "
+
+[web.gh.limit]
+en = GitHub's hourly limit is used up. Try again in an hour.
+zh-Hans = GitHub 每小时的请求次数已用完。请一小时后再试。
+es = Se agotó el límite por hora de GitHub. Vuelve a intentarlo en una hora.
+pt-BR = O limite por hora do GitHub acabou. Tente de novo daqui a uma hora.
+fr = La limite horaire de GitHub est atteinte. Réessayez dans une heure.
+de = Das Stundenlimit von GitHub ist erreicht. Versuche es in einer Stunde erneut.
+ja = GitHub の 1 時間あたりの上限に達しました。1 時間後にもう一度お試しください。
+it = Il limite orario di GitHub è esaurito. Riprova tra un'ora.
+
+[web.gh.answered]
+note = Why a cover did not come: GitHub's HTTP status (404, 500)
+en = GitHub answered %d
+zh-Hans = GitHub 返回了 %d
+es = GitHub respondió %d
+pt-BR = O GitHub respondeu %d
+fr = GitHub a répondu %d
+de = GitHub antwortete %d
+ja = GitHub の応答：%d
+it = GitHub ha risposto %d
+
+[web.art.not_picture]
+note = Why a cover did not come
+en = not a picture
+zh-Hans = 不是图片
+es = no es una imagen
+pt-BR = não é uma imagem
+fr = pas une image
+de = kein Bild
+ja = 画像ではありません
+it = non è un'immagine
+
+[web.art.links_nowhere]
+note = Why a cover did not come: libretro's file was a link to a link to...
+en = links lead nowhere
+zh-Hans = 链接指向空处
+es = los enlaces no llevan a nada
+pt-BR = os links não levam a lugar nenhum
+fr = les liens ne mènent nulle part
+de = Links führen ins Leere
+ja = リンク先がありません
+it = i link non portano da nessuna parte
+
+[web.art.by_name]
+note = While covers come: the system, then how, which of how many, and the game
+en = %s: by name, %d of %d, %s
+zh-Hans = %s：按名称，第 %d 个，共 %d 个，%s
+es = %s: por nombre, %d de %d, %s
+pt-BR = %s: pelo nome, %d de %d, %s
+fr = %s : par nom, %d sur %d, %s
+de = %s: nach Name, %d von %d, %s
+ja = %s：名前で照合、%d / %d、%s
+it = %s: per nome, %d di %d, %s
+
+[web.art.looking_checksum]
+en = %s: looking games up by checksum
+zh-Hans = %s：正在按校验和查找游戏
+es = %s: buscando juegos por suma de verificación
+pt-BR = %s: buscando jogos pelo checksum
+fr = %s : recherche des jeux par somme de contrôle
+de = %s: suche Spiele per Prüfsumme
+ja = %s：チェックサムでゲームを検索中
+it = %s: ricerca dei giochi per checksum
+
+[web.art.by_checksum]
+en = %s: by checksum, %d of %d, %s
+zh-Hans = %s：按校验和，第 %d 个，共 %d 个，%s
+es = %s: por suma de verificación, %d de %d, %s
+pt-BR = %s: pelo checksum, %d de %d, %s
+fr = %s : par somme de contrôle, %d sur %d, %s
+de = %s: per Prüfsumme, %d von %d, %s
+ja = %s：チェックサムで照合、%d / %d、%s
+it = %s: per checksum, %d di %d, %s
+
+[web.art.looking_list]
+note = %d is how many games are still without a cover
+en = %s: looking through libretro's list for %d more
+zh-Hans = %s：正在 libretro 的列表中查找另外 %d 个
+es = %s: buscando %d más en la lista de libretro
+pt-BR = %s: procurando mais %d na lista do libretro
+fr = %s : recherche de %d de plus dans la liste de libretro
+de = %s: suche %d weitere in der Liste von libretro
+ja = %s：libretro の一覧から残り %d 本を検索中
+it = %s: ricerca di altri %d nell'elenco di libretro
+
+[web.art.from_list]
+en = %s: from the list, %d of %d, %s
+zh-Hans = %s：从列表中，第 %d 个，共 %d 个，%s
+es = %s: de la lista, %d de %d, %s
+pt-BR = %s: da lista, %d de %d, %s
+fr = %s : depuis la liste, %d sur %d, %s
+de = %s: aus der Liste, %d von %d, %s
+ja = %s：一覧から、%d / %d、%s
+it = %s: dall'elenco, %d di %d, %s
+
+[web.art.loosely]
+note = Matched by a looser rule, last of all
+en = %s: loosely, %d of %d, %s
+zh-Hans = %s：模糊匹配，第 %d 个，共 %d 个，%s
+es = %s: por aproximación, %d de %d, %s
+pt-BR = %s: por aproximação, %d de %d, %s
+fr = %s : approximativement, %d sur %d, %s
+de = %s: ungefähr, %d von %d, %s
+ja = %s：あいまい照合、%d / %d、%s
+it = %s: per approssimazione, %d di %d, %s
+
+[web.mb.busy]
+en = MusicBrainz is busy. Try again in a minute.
+zh-Hans = MusicBrainz 正忙。请一分钟后再试。
+es = MusicBrainz está ocupado. Vuelve a intentarlo en un minuto.
+pt-BR = O MusicBrainz está ocupado. Tente de novo daqui a um minuto.
+fr = MusicBrainz est occupé. Réessayez dans une minute.
+de = MusicBrainz ist ausgelastet. Versuche es in einer Minute erneut.
+ja = MusicBrainz が混雑しています。1 分後にもう一度お試しください。
+it = MusicBrainz è occupato. Riprova tra un minuto.
+
+[web.art.albums_progress]
+note = While album covers come: which of how many, and the album
+en = Albums: %d of %d, %s
+zh-Hans = 专辑：第 %d 张，共 %d 张，%s
+es = Álbumes: %d de %d, %s
+pt-BR = Álbuns: %d de %d, %s
+fr = Albums : %d sur %d, %s
+de = Alben: %d von %d, %s
+ja = アルバム：%d / %d、%s
+it = Album: %d di %d, %s
+
+[web.art.caa_answered]
+note = Why an album cover did not come: the Cover Art Archive's HTTP status
+en = the Cover Art Archive answered %d
+zh-Hans = Cover Art Archive 返回了 %d
+es = el Cover Art Archive respondió %d
+pt-BR = o Cover Art Archive respondeu %d
+fr = le Cover Art Archive a répondu %d
+de = das Cover Art Archive antwortete %d
+ja = Cover Art Archive の応答：%d
+it = il Cover Art Archive ha risposto %d
+
+[web.art.n_games]
+note = In the note at the end: how many games got a cover
+en.one = %d game
+en.other = %d games
+zh-Hans = %d 个游戏
+es.one = %d juego
+es.other = %d juegos
+pt-BR.one = %d jogo
+pt-BR.other = %d jogos
+fr.one = %d jeu
+fr.other = %d jeux
+de.one = %d Spiel
+de.other = %d Spiele
+ja = %d 本のゲーム
+it.one = %d gioco
+it.other = %d giochi
+
+[web.art.n_albums]
+note = And how many albums
+en.one = %d album
+en.other = %d albums
+zh-Hans = %d 张专辑
+es.one = %d álbum
+es.other = %d álbumes
+pt-BR.one = %d álbum
+pt-BR.other = %d álbuns
+fr.one = %d album
+fr.other = %d albums
+de.one = %d Album
+de.other = %d Alben
+ja = %d 枚のアルバム
+it.one = %d album
+it.other = %d album
+
+[web.art.covers]
+note = The note at the end: web.art.n_games and web.art.n_albums
+en = Covers for %s and %s
+zh-Hans = 已为 %s 和 %s 获取封面
+es = Portadas para %s y %s
+pt-BR = Capas para %s e %s
+fr = Couvertures pour %s et %s
+de = Cover für %s und %s
+ja = %s と %s の画像を取得しました
+it = Copertine per %s e %s
+
+[web.art.covers_failed]
+note = The same, and how many failed
+en = Covers for %s and %s, %d failed
+zh-Hans = 已为 %s 和 %s 获取封面，%d 个失败
+es = Portadas para %s y %s; errores: %d
+pt-BR = Capas para %s e %s; falhas: %d
+fr = Couvertures pour %s et %s, échecs : %d
+de = Cover für %s und %s, %d fehlgeschlagen
+ja = %s と %s の画像を取得、%d 件失敗
+it = Copertine per %s e %s, %d non riuscite
+
+# ---- Settings: the SteamGridDB key ------------------------------------------------------------
+
+[web.sgdb.add]
+note = A button: give the handheld a SteamGridDB key, for Box Art
+en = Add a key
+zh-Hans = 添加密钥
+es = Agregar una clave
+pt-BR = Adicionar uma chave
+fr = Ajouter une clé
+de = Schlüssel hinzufügen
+ja = キーを追加
+it = Aggiungi una chiave
+
+[web.act.remove]
+note = A button: takes the key off the handheld
+en = Remove
+zh-Hans = 移除
+es = Quitar
+pt-BR = Remover
+fr = Supprimer
+de = Entfernen
+ja = 削除
+it = Rimuovi
+
+[web.sgdb.change]
+en = Change key
+zh-Hans = 更换密钥
+es = Cambiar clave
+pt-BR = Trocar chave
+fr = Changer de clé
+de = Schlüssel ändern
+ja = キーを変更
+it = Cambia chiave
+
+[web.sgdb.key]
+note = The key the handheld has, its last four characters after dots ("••••abcd")
+en = Key %s.
+zh-Hans = 密钥 %s。
+es = Clave %s.
+pt-BR = Chave %s.
+fr = Clé %s.
+de = Schlüssel %s.
+ja = キー %s。
+it = Chiave %s.
+
+[web.sgdb.checking]
+en = Checking the key...
+zh-Hans = 正在检查密钥……
+es = Comprobando la clave...
+pt-BR = Verificando a chave...
+fr = Vérification de la clé...
+de = Schlüssel wird geprüft ...
+ja = キーを確認中…
+it = Verifica della chiave...
+
+[web.sgdb.none]
+note = What the key is for. Box Art is the handheld's own feature (GLOSSARY: Box Art)
+en = For Box Art on the handheld: covers libretro and ScreenScraper lack.
+zh-Hans = 用于掌机上的“封面”：补上 libretro 和 ScreenScraper 没有的封面。
+es = Para Carátulas en la consola: las que no tienen libretro ni ScreenScraper.
+pt-BR = Para Capas no console: as capas que faltam no libretro e no ScreenScraper.
+fr = Pour Jaquettes sur la console : celles qui manquent à libretro et ScreenScraper.
+de = Für die Cover-Suche auf der Konsole: Cover, die bei libretro und ScreenScraper fehlen.
+ja = 本体の「パッケージ画像」用：libretro と ScreenScraper にない画像を補います。
+it = Per Copertine sulla console: le copertine che mancano a libretro e ScreenScraper.
+
+[web.sgdb.works]
+en = It works. Box Art asks SteamGridDB last.
+zh-Hans = 密钥有效。“封面”会最后向 SteamGridDB 查找。
+es = Funciona. Carátulas consulta SteamGridDB al final.
+pt-BR = Funciona. Capas consulta o SteamGridDB por último.
+fr = Elle fonctionne. Jaquettes interroge SteamGridDB en dernier.
+de = Er funktioniert. Die Cover-Suche fragt SteamGridDB als Letztes.
+ja = 有効です。「パッケージ画像」は最後に SteamGridDB を探します。
+it = Funziona. Copertine chiede a SteamGridDB per ultimo.
+
+[web.sgdb.refused]
+en = SteamGridDB refused it. Paste a new one.
+zh-Hans = SteamGridDB 拒绝了此密钥。请粘贴一个新的。
+es = SteamGridDB la rechazó. Pega una nueva.
+pt-BR = O SteamGridDB recusou a chave. Cole uma nova.
+fr = SteamGridDB l'a refusée. Collez-en une nouvelle.
+de = SteamGridDB hat ihn abgelehnt. Füge einen neuen ein.
+ja = SteamGridDB に拒否されました。新しいキーを貼り付けてください。
+it = SteamGridDB l'ha rifiutata. Incollane una nuova.
+
+[web.sgdb.unchecked]
+en = Not checked yet. The next Box Art run checks it.
+zh-Hans = 尚未检查。下次运行“封面”时会检查。
+es = Aún sin comprobar. Carátulas la comprobará la próxima vez.
+pt-BR = Ainda não verificada. A próxima execução de Capas vai verificá-la.
+fr = Pas encore vérifiée. Le prochain passage de Jaquettes la vérifiera.
+de = Noch nicht geprüft. Die nächste Cover-Suche prüft ihn.
+ja = 未確認です。次回の「パッケージ画像」の実行時に確認します。
+it = Non ancora verificata. La verificherà la prossima ricerca di Copertine.
+
+[web.sgdb.key_head]
+note = The question's heading, over a field for the key
+en = SteamGridDB key
+zh-Hans = SteamGridDB 密钥
+es = Clave de SteamGridDB
+pt-BR = Chave do SteamGridDB
+fr = Clé SteamGridDB
+de = SteamGridDB-Schlüssel
+ja = SteamGridDB キー
+it = Chiave SteamGridDB
+
+[web.sgdb.paste]
+note = review: Preferences and API are the site's own labels, in English on steamgriddb.com
+en = Paste your API key from steamgriddb.com, Preferences, API.
+zh-Hans = 从 steamgriddb.com 的 Preferences、API 页面粘贴你的 API 密钥。
+es = Pega tu clave de API de steamgriddb.com, Preferences, API.
+pt-BR = Cole sua chave de API do steamgriddb.com, Preferences, API.
+fr = Collez votre clé d'API depuis steamgriddb.com, Preferences, API.
+de = Füge deinen API-Schlüssel ein: steamgriddb.com, Preferences, API.
+ja = steamgriddb.com の Preferences、API から API キーを貼り付けてください。
+it = Incolla la tua chiave API da steamgriddb.com, Preferences, API.
+
+[web.act.save]
+note = The key question's button
+en = Save
+zh-Hans = 保存
+es = Guardar
+pt-BR = Salvar
+fr = Enregistrer
+de = Speichern
+ja = 保存
+it = Salva
+
+[web.sgdb.remove_head]
+en = Remove the SteamGridDB key?
+zh-Hans = 移除 SteamGridDB 密钥？
+es = ¿Quitar la clave de SteamGridDB?
+pt-BR = Remover a chave do SteamGridDB?
+fr = Supprimer la clé SteamGridDB ?
+de = SteamGridDB-Schlüssel entfernen?
+ja = SteamGridDB キーを削除しますか？
+it = Rimuovere la chiave SteamGridDB?
+
+[web.sgdb.remove_text]
+en = Box Art on the handheld stops asking SteamGridDB.
+zh-Hans = 掌机上的“封面”将不再向 SteamGridDB 查找。
+es = Carátulas en la consola dejará de consultar SteamGridDB.
+pt-BR = Capas no console deixa de consultar o SteamGridDB.
+fr = Jaquettes sur la console n'interrogera plus SteamGridDB.
+de = Die Cover-Suche auf der Konsole fragt SteamGridDB dann nicht mehr.
+ja = 本体の「パッケージ画像」は SteamGridDB を使わなくなります。
+it = Copertine sulla console non chiederà più a SteamGridDB.
+
+[web.sgdb.removed]
+en = Key removed.
+zh-Hans = 密钥已移除。
+es = Clave quitada.
+pt-BR = Chave removida.
+fr = Clé supprimée.
+de = Schlüssel entfernt.
+ja = キーを削除しました。
+it = Chiave rimossa.
+
+# ---- Settings: the card and Help ------------------------------------------------------------------
+
+[web.card.head]
+en = The card
+zh-Hans = 存储卡
+es = La tarjeta
+pt-BR = O cartão
+fr = La carte
+de = Die Karte
+ja = カード
+it = La scheda
+
+[web.card.show_hidden]
+note = A switch. .media is a folder's name, where covers are kept
+en = Show hidden folders, such as .media with the covers
+zh-Hans = 显示隐藏文件夹，例如存放封面的 .media
+es = Mostrar carpetas ocultas, como .media con las portadas
+pt-BR = Mostrar pastas ocultas, como a .media com as capas
+fr = Afficher les dossiers masqués, comme .media et ses couvertures
+de = Versteckte Ordner zeigen, etwa .media mit den Covern
+ja = 隠しフォルダを表示（画像が入った .media など）
+it = Mostra le cartelle nascoste, come .media con le copertine
+
+[web.help.head]
+en = Help
+zh-Hans = 帮助
+es = Ayuda
+pt-BR = Ajuda
+fr = Aide
+de = Hilfe
+ja = ヘルプ
+it = Aiuto
+
+[web.help.text]
+en = The handheld's logs in one file, for a bug report. Network, headset and account names are masked.
+zh-Hans = 掌机的日志打包成一个文件，用于报告问题。网络、耳机和账户名称会被隐藏。
+es = Los registros de la consola en un solo archivo, para reportar un error. Los nombres de redes, auriculares y cuentas se ocultan.
+pt-BR = Os logs do console em um só arquivo, para relatar um bug. Nomes de redes, fones e contas ficam ocultos.
+fr = Les journaux de la console en un seul fichier, pour signaler un bug. Les noms des réseaux, casques et comptes sont masqués.
+de = Die Protokolle der Konsole in einer Datei, für einen Fehlerbericht. Namen von Netzwerken, Kopfhörern und Konten werden unkenntlich gemacht.
+ja = 不具合の報告用に、本体のログを 1 つのファイルにまとめます。ネットワーク、ヘッドセット、アカウントの名前は伏せられます。
+it = I log della console in un unico file, per segnalare un bug. I nomi di reti, auricolari e account sono nascosti.
+
+[web.help.download]
+en = Download logs
+zh-Hans = 下载日志
+es = Descargar registros
+pt-BR = Baixar logs
+fr = Télécharger les journaux
+de = Protokolle herunterladen
+ja = ログをダウンロード
+it = Scarica i log
+
+# ---- Settings: the update over the cable ------------------------------------------------------------
+
+[web.update.head]
+note = USB File Transfer only: the update, with this computer's internet
+en = Update ZyperOS
+zh-Hans = 更新 ZyperOS
+es = Actualizar ZyperOS
+pt-BR = Atualizar o ZyperOS
+fr = Mettre à jour ZyperOS
+de = ZyperOS aktualisieren
+ja = ZyperOS をアップデート
+it = Aggiorna ZyperOS
+
+[web.update.have]
+note = %s is a version ("1.0.0")
+en = You have ZyperOS %s.
+zh-Hans = 你的版本是 ZyperOS %s。
+es = Tienes ZyperOS %s.
+pt-BR = Você tem o ZyperOS %s.
+fr = Vous avez ZyperOS %s.
+de = Du hast ZyperOS %s.
+ja = お使いのバージョンは ZyperOS %s です。
+it = Hai ZyperOS %s.
+
+[web.update.off]
+note = %s is the handheld's reason, a sentence or two
+en = Updates through the computer are off on this handheld. %s
+zh-Hans = 这台掌机已关闭通过电脑更新。%s
+es = Las actualizaciones a través de la computadora están desactivadas en esta consola. %s
+pt-BR = As atualizações pelo computador estão desativadas neste console. %s
+fr = Les mises à jour par l'ordinateur sont désactivées sur cette console. %s
+de = Updates über den Computer sind auf dieser Konsole aus. %s
+ja = この本体では、パソコン経由のアップデートがオフになっています。%s
+it = Gli aggiornamenti tramite computer sono disattivati su questa console. %s
+
+[web.update.installing]
+en = Installing ZyperOS %s on the handheld.
+zh-Hans = 正在掌机上安装 ZyperOS %s。
+es = Instalando ZyperOS %s en la consola.
+pt-BR = Instalando o ZyperOS %s no console.
+fr = Installation de ZyperOS %s sur la console.
+de = ZyperOS %s wird auf der Konsole installiert.
+ja = 本体に ZyperOS %s をインストール中です。
+it = Installazione di ZyperOS %s sulla console.
+
+[web.update.work_starting]
+note = The update program's steps, beside its bar
+en = Starting
+zh-Hans = 正在开始
+es = Iniciando
+pt-BR = Iniciando
+fr = Démarrage
+de = Wird gestartet
+ja = 開始中
+it = Avvio
+
+[web.update.work_checking]
+en = Checking the files
+zh-Hans = 正在检查文件
+es = Comprobando los archivos
+pt-BR = Verificando os arquivos
+fr = Vérification des fichiers
+de = Dateien werden geprüft
+ja = ファイルを確認中
+it = Verifica dei file
+
+[web.update.work_copying]
+en = Copying the files that did not change
+zh-Hans = 正在复制未改变的文件
+es = Copiando los archivos que no cambiaron
+pt-BR = Copiando os arquivos que não mudaram
+fr = Copie des fichiers inchangés
+de = Unveränderte Dateien werden kopiert
+ja = 変更のないファイルをコピー中
+it = Copia dei file non modificati
+
+[web.update.work_unpacking]
+en = Unpacking the update
+zh-Hans = 正在解包更新
+es = Descomprimiendo la actualización
+pt-BR = Descompactando a atualização
+fr = Décompression de la mise à jour
+de = Update wird entpackt
+ja = アップデートを展開中
+it = Estrazione dell'aggiornamento
+
+[web.update.work_verifying]
+en = Checking every file
+zh-Hans = 正在逐个检查文件
+es = Comprobando cada archivo
+pt-BR = Verificando cada arquivo
+fr = Vérification de chaque fichier
+de = Jede Datei wird geprüft
+ja = すべてのファイルを確認中
+it = Verifica di ogni file
+
+[web.update.work_installing]
+en = Writing the system
+zh-Hans = 正在写入系统
+es = Escribiendo el sistema
+pt-BR = Gravando o sistema
+fr = Écriture du système
+de = System wird geschrieben
+ja = システムを書き込み中
+it = Scrittura del sistema
+
+[web.update.working]
+note = A step, still going
+en = %s...
+zh-Hans = %s……
+es = %s...
+pt-BR = %s...
+fr = %s...
+de = %s ...
+ja = %s…
+it = %s...
+
+[web.update.working_pct]
+note = A step and how far ("45%")
+en = %s, %s...
+zh-Hans = %s，%s……
+es = %s, %s...
+pt-BR = %s, %s...
+fr = %s, %s...
+de = %s, %s ...
+ja = %s、%s…
+it = %s, %s...
+
+[web.update.keep_cable]
+en = Keep the cable in. You can leave this page; the handheld goes on.
+zh-Hans = 请保持数据线连接。你可以离开此页面，掌机会继续进行。
+es = Deja el cable conectado. Puedes salir de esta página; la consola sigue sola.
+pt-BR = Mantenha o cabo conectado. Você pode sair desta página; o console continua.
+fr = Laissez le câble branché. Vous pouvez quitter cette page ; la console continue.
+de = Lass das Kabel eingesteckt. Du kannst diese Seite verlassen; die Konsole macht weiter.
+ja = ケーブルは挿したままにしてください。このページを離れても、本体は続行します。
+it = Lascia il cavo collegato. Puoi uscire da questa pagina: la console continua da sola.
+
+[web.update.ready]
+note = An update is staged; %s is its version
+en = ZyperOS %s is ready.
+zh-Hans = ZyperOS %s 已准备就绪。
+es = ZyperOS %s está listo.
+pt-BR = O ZyperOS %s está pronto.
+fr = ZyperOS %s est prêt.
+de = ZyperOS %s ist bereit.
+ja = ZyperOS %s の準備ができました。
+it = ZyperOS %s è pronto.
+
+[web.update.restart_text]
+en = Restart the handheld to install it. It takes about 10 seconds.
+zh-Hans = 重启掌机即可安装，大约需要 10 秒。
+es = Reinicia la consola para instalarlo. Tarda unos 10 segundos.
+pt-BR = Reinicie o console para instalar. Leva cerca de 10 segundos.
+fr = Redémarrez la console pour l'installer. Cela prend environ 10 secondes.
+de = Starte die Konsole neu, um es zu installieren. Das dauert etwa 10 Sekunden.
+ja = 本体を再起動するとインストールされます。約 10 秒かかります。
+it = Riavvia la console per installarlo. Ci vogliono circa 10 secondi.
+
+[web.update.restart]
+note = A button
+en = Restart the handheld
+zh-Hans = 重启掌机
+es = Reiniciar la consola
+pt-BR = Reiniciar o console
+fr = Redémarrer la console
+de = Konsole neu starten
+ja = 本体を再起動
+it = Riavvia la console
+
+[web.update.sending]
+en = Sending ZyperOS %s to the handheld.
+zh-Hans = 正在把 ZyperOS %s 发送到掌机。
+es = Enviando ZyperOS %s a la consola.
+pt-BR = Enviando o ZyperOS %s para o console.
+fr = Envoi de ZyperOS %s vers la console.
+de = ZyperOS %s wird an die Konsole gesendet.
+ja = ZyperOS %s を本体に送信中です。
+it = Invio di ZyperOS %s alla console.
+
+[web.update.next]
+en = Next, the handheld checks the signature and every file, then installs. Keep the cable in.
+zh-Hans = 接下来，掌机会检查签名和每个文件，然后安装。请保持数据线连接。
+es = Después, la consola comprueba la firma y cada archivo, y luego instala. Deja el cable conectado.
+pt-BR = Em seguida, o console verifica a assinatura e cada arquivo e depois instala. Mantenha o cabo conectado.
+fr = Ensuite, la console vérifie la signature et chaque fichier, puis installe. Laissez le câble branché.
+de = Danach prüft die Konsole die Signatur und jede Datei und installiert dann. Lass das Kabel eingesteckt.
+ja = 次に、本体が署名とすべてのファイルを確認してからインストールします。ケーブルは挿したままにしてください。
+it = Poi la console verifica la firma e ogni file, e infine installa. Lascia il cavo collegato.
+
+[web.update.uptodate]
+note = Why the last try stopped short
+en = The handheld already has this version.
+zh-Hans = 掌机已经是这个版本。
+es = La consola ya tiene esta versión.
+pt-BR = O console já tem esta versão.
+fr = La console a déjà cette version.
+de = Die Konsole hat diese Version schon.
+ja = 本体はすでにこのバージョンです。
+it = La console ha già questa versione.
+
+[web.update.needs_system_send]
+note = review: ZyperOS Installer is the computer app's name, kept as it is
+en = This update needs a newer system image than the handheld has. Send the system files too.
+zh-Hans = 此更新需要比掌机上更新的系统镜像。请同时上传系统文件。
+es = Esta actualización necesita una imagen del sistema más nueva que la de la consola. Sube también los archivos del sistema.
+pt-BR = Esta atualização precisa de uma imagem do sistema mais nova que a do console. Envie também os arquivos do sistema.
+fr = Cette mise à jour nécessite une image système plus récente que celle de la console. Envoyez aussi les fichiers système.
+de = Dieses Update braucht ein neueres Systemimage als das der Konsole. Sende auch die Systemdateien.
+ja = このアップデートには、本体より新しいシステムイメージが必要です。システムファイルも送ってください。
+it = Questo aggiornamento richiede un'immagine di sistema più recente di quella della console. Invia anche i file di sistema.
+
+[web.update.needs_system_installer]
+en = This update needs a newer system image than the handheld has. Use the ZyperOS Installer.
+zh-Hans = 此更新需要比掌机上更新的系统镜像。请使用 ZyperOS Installer。
+es = Esta actualización necesita una imagen del sistema más nueva que la de la consola. Usa el ZyperOS Installer.
+pt-BR = Esta atualização precisa de uma imagem do sistema mais nova que a do console. Use o ZyperOS Installer.
+fr = Cette mise à jour nécessite une image système plus récente que celle de la console. Utilisez ZyperOS Installer.
+de = Dieses Update braucht ein neueres Systemimage als das der Konsole. Nutze den ZyperOS Installer.
+ja = このアップデートには、本体より新しいシステムイメージが必要です。ZyperOS Installer をお使いください。
+it = Questo aggiornamento richiede un'immagine di sistema più recente di quella della console. Usa ZyperOS Installer.
+
+[web.update.too_big]
+en = The new system does not fit this card's system slots. Use the ZyperOS Installer.
+zh-Hans = 新系统放不进这张存储卡的系统分区。请使用 ZyperOS Installer。
+es = El nuevo sistema no cabe en las ranuras de sistema de esta tarjeta. Usa el ZyperOS Installer.
+pt-BR = O novo sistema não cabe nos slots de sistema deste cartão. Use o ZyperOS Installer.
+fr = Le nouveau système ne tient pas dans les emplacements système de cette carte. Utilisez ZyperOS Installer.
+de = Das neue System passt nicht in die Systemslots dieser Karte. Nutze den ZyperOS Installer.
+ja = 新しいシステムがこのカードのシステム領域に収まりません。ZyperOS Installer をお使いください。
+it = Il nuovo sistema non entra negli slot di sistema di questa scheda. Usa ZyperOS Installer.
+
+[web.update.battery]
+en = Charge the handheld to 25%% first.
+zh-Hans = 请先把掌机充电到 25%%。
+es = Primero carga la consola hasta el 25 %%.
+pt-BR = Carregue o console até 25%% primeiro.
+fr = Chargez d'abord la console à 25 %%.
+de = Lade die Konsole zuerst auf 25\u00a0%% auf.
+ja = 先に本体を 25%% まで充電してください。
+it = Prima carica la console fino al 25%%.
+
+[web.update.space]
+en = Not enough room on the card for the update. Free up some room.
+zh-Hans = 存储卡空间不足，放不下更新。请腾出一些空间。
+es = No hay espacio suficiente en la tarjeta para la actualización. Libera algo de espacio.
+pt-BR = Não há espaço suficiente no cartão para a atualização. Libere algum espaço.
+fr = Pas assez d'espace sur la carte pour la mise à jour. Libérez de l'espace.
+de = Nicht genug Platz auf der Karte für das Update. Schaffe etwas Platz.
+ja = カードにアップデート用の空き容量が足りません。空きを作ってください。
+it = Spazio insufficiente sulla scheda per l'aggiornamento. Libera un po' di spazio.
+
+[web.update.refused]
+en = The update was refused.
+zh-Hans = 更新被拒绝。
+es = La actualización fue rechazada.
+pt-BR = A atualização foi recusada.
+fr = La mise à jour a été refusée.
+de = Das Update wurde abgelehnt.
+ja = アップデートが拒否されました。
+it = L'aggiornamento è stato rifiutato.
+
+[web.update.stopped]
+en = The last update stopped before the end. Send the files again.
+zh-Hans = 上次更新没有完成。请重新上传文件。
+es = La última actualización se detuvo antes de terminar. Vuelve a subir los archivos.
+pt-BR = A última atualização parou antes do fim. Envie os arquivos de novo.
+fr = La dernière mise à jour s'est arrêtée avant la fin. Renvoyez les fichiers.
+de = Das letzte Update wurde vorzeitig beendet. Sende die Dateien erneut.
+ja = 前回のアップデートは途中で止まりました。ファイルをもう一度送ってください。
+it = L'ultimo aggiornamento si è interrotto prima della fine. Invia di nuovo i file.
+
+[web.update.looking]
+en = Looking for the newest release...
+zh-Hans = 正在查找最新版本……
+es = Buscando la versión más reciente...
+pt-BR = Procurando a versão mais recente...
+fr = Recherche de la dernière version...
+de = Suche die neueste Version ...
+ja = 最新リリースを確認中…
+it = Ricerca della versione più recente...
+
+[web.update.no_release]
+en = ZyperOS has no release on GitHub yet.
+zh-Hans = ZyperOS 在 GitHub 上还没有发布版本。
+es = ZyperOS aún no tiene una versión en GitHub.
+pt-BR = O ZyperOS ainda não tem uma versão no GitHub.
+fr = ZyperOS n'a pas encore de version sur GitHub.
+de = ZyperOS hat noch keine Version auf GitHub.
+ja = ZyperOS はまだ GitHub でリリースされていません。
+it = ZyperOS non ha ancora una versione su GitHub.
+
+[web.gh.answered_stop]
+note = Why the newest release could not be read: GitHub's HTTP status
+en = GitHub answered %d.
+zh-Hans = GitHub 返回了 %d。
+es = GitHub respondió %d.
+pt-BR = O GitHub respondeu %d.
+fr = GitHub a répondu %d.
+de = GitHub antwortete %d.
+ja = GitHub の応答：%d。
+it = GitHub ha risposto %d.
+
+[web.update.no_github]
+en = Could not reach GitHub. Check this computer's internet.
+zh-Hans = 无法连接 GitHub。请检查这台电脑的网络。
+es = No se pudo conectar con GitHub. Revisa el internet de esta computadora.
+pt-BR = Não foi possível acessar o GitHub. Verifique a internet deste computador.
+fr = Impossible de joindre GitHub. Vérifiez la connexion Internet de cet ordinateur.
+de = GitHub ist nicht erreichbar. Prüfe die Internetverbindung dieses Computers.
+ja = GitHub に接続できませんでした。このパソコンのインターネット接続を確認してください。
+it = Impossibile raggiungere GitHub. Controlla la connessione a Internet di questo computer.
+
+[web.update.none_for]
+note = %s is the release's version
+en = The newest release, %s, has no update for this handheld.
+zh-Hans = 最新版本 %s 没有适用于这台掌机的更新。
+es = La versión más reciente, %s, no tiene actualización para esta consola.
+pt-BR = A versão mais recente, %s, não tem atualização para este console.
+fr = La dernière version, %s, n'a pas de mise à jour pour cette console.
+de = Die neueste Version, %s, hat kein Update für diese Konsole.
+ja = 最新リリース %s には、この本体用のアップデートがありません。
+it = La versione più recente, %s, non ha un aggiornamento per questa console.
+
+[web.update.newest]
+en = ZyperOS %s is the newest.
+zh-Hans = ZyperOS %s 已是最新版本。
+es = ZyperOS %s es la versión más reciente.
+pt-BR = O ZyperOS %s é a versão mais recente.
+fr = ZyperOS %s est la dernière version.
+de = ZyperOS %s ist die neueste Version.
+ja = ZyperOS %s が最新です。
+it = ZyperOS %s è la versione più recente.
+
+[web.update.out]
+note = The newest release's version, then the handheld's
+en = ZyperOS %s is out. You have %s.
+zh-Hans = ZyperOS %s 已发布。你的版本是 %s。
+es = Ya salió ZyperOS %s. Tienes %s.
+pt-BR = O ZyperOS %s saiu. Você tem o %s.
+fr = ZyperOS %s est disponible. Vous avez %s.
+de = ZyperOS %s ist da. Du hast %s.
+ja = ZyperOS %s が公開されました。お使いのバージョンは %s です。
+it = È uscito ZyperOS %s. Hai la %s.
+
+[web.update.download_text]
+note = Step 1: how many files (always two or four) and their size
+en = Download the update: %d files, %s, from GitHub.
+zh-Hans = 从 GitHub 下载更新：%d 个文件，%s。
+es = Descarga la actualización: %d archivos, %s, desde GitHub.
+pt-BR = Baixe a atualização: %d arquivos, %s, do GitHub.
+fr = Téléchargez la mise à jour : %d fichiers, %s, depuis GitHub.
+de = Lade das Update herunter: %d Dateien, %s, von GitHub.
+ja = GitHub からアップデートをダウンロード：%d 個のファイル、%s。
+it = Scarica l'aggiornamento: %d file, %s, da GitHub.
+
+[web.update.download_again]
+en = Download again
+zh-Hans = 重新下载
+es = Descargar de nuevo
+pt-BR = Baixar de novo
+fr = Télécharger à nouveau
+de = Erneut herunterladen
+ja = もう一度ダウンロード
+it = Scarica di nuovo
+
+[web.update.drop]
+note = Step 2
+en = Drop them here, or choose them. The handheld checks them before it installs.
+zh-Hans = 把它们拖到这里，或选择文件。掌机会在安装前检查它们。
+es = Suéltalos aquí o elígelos. La consola los comprueba antes de instalar.
+pt-BR = Solte-os aqui ou escolha-os. O console verifica tudo antes de instalar.
+fr = Déposez-les ici ou choisissez-les. La console les vérifie avant d'installer.
+de = Zieh sie hierher oder wähle sie aus. Die Konsole prüft sie vor der Installation.
+ja = ここにドロップするか、ファイルを選んでください。本体はインストール前に確認します。
+it = Trascinali qui o sceglili. La console li verifica prima di installare.
+
+[web.update.files]
+note = Before the newest release is known: %s is a file's name
+en = The update's files: %s and its .zpk.
+zh-Hans = 更新文件：%s 及其 .zpk。
+es = Los archivos de la actualización: %s y su .zpk.
+pt-BR = Os arquivos da atualização: %s e o .zpk dele.
+fr = Les fichiers de la mise à jour : %s et son .zpk.
+de = Die Dateien des Updates: %s und die zugehörige .zpk.
+ja = アップデートのファイル：%s とその .zpk。
+it = I file dell'aggiornamento: %s e il suo .zpk.
+
+[web.update.choose]
+note = A button: the computer's file picker
+en = Choose files
+zh-Hans = 选择文件
+es = Elegir archivos
+pt-BR = Escolher arquivos
+fr = Choisir des fichiers
+de = Dateien auswählen
+ja = ファイルを選択
+it = Scegli file
+
+[web.update.odd]
+note = %s is the files' names, joined by web.sep.list
+en = Not an update file for this handheld: %s
+zh-Hans = 不是这台掌机的更新文件：%s
+es = No es un archivo de actualización para esta consola: %s
+pt-BR = Não é um arquivo de atualização para este console: %s
+fr = Pas un fichier de mise à jour pour cette console : %s
+de = Keine Updatedatei für diese Konsole: %s
+ja = この本体のアップデートファイルではありません：%s
+it = Non è un file di aggiornamento per questa console: %s
+
+[web.sep.list]
+note = Between names in a list
+en = ", "
+zh-Hans = 、
+es = ", "
+pt-BR = ", "
+fr = ", "
+de = ", "
+ja = 、
+it = ", "
+
+[web.update.no_room]
+note = The update's size, and the room the card has
+en = Not enough room on the card: the update needs %s, the card has %s free.
+zh-Hans = 存储卡空间不足：更新需要 %s，存储卡只剩 %s 可用。
+es = No hay espacio suficiente en la tarjeta: la actualización necesita %s y la tarjeta tiene %s libres.
+pt-BR = Não há espaço suficiente no cartão: a atualização precisa de %s e o cartão tem %s livres.
+fr = Pas assez d'espace sur la carte : la mise à jour nécessite %s, la carte a %s de libre.
+de = Nicht genug Platz auf der Karte: Das Update braucht %s, auf der Karte sind %s frei.
+ja = カードの空き容量が足りません：アップデートには %s 必要ですが、空きは %s です。
+it = Spazio insufficiente sulla scheda: l'aggiornamento richiede %s, la scheda ha %s liberi.
+
+[web.update.no_answer]
+en = the handheld stopped answering
+zh-Hans = 掌机不再响应
+es = la consola dejó de responder
+pt-BR = o console parou de responder
+fr = la console ne répond plus
+de = die Konsole antwortet nicht mehr
+ja = 本体が応答しなくなりました
+it = la console ha smesso di rispondere
+
+[web.update.not_started]
+en = The update did not start on the handheld. Try again.
+zh-Hans = 更新没有在掌机上开始。请重试。
+es = La actualización no empezó en la consola. Vuelve a intentarlo.
+pt-BR = A atualização não começou no console. Tente de novo.
+fr = La mise à jour n'a pas démarré sur la console. Réessayez.
+de = Das Update ist auf der Konsole nicht gestartet. Versuche es erneut.
+ja = 本体でアップデートが始まりませんでした。もう一度お試しください。
+it = L'aggiornamento non è partito sulla console. Riprova.
+
+[web.update.restarting]
+en = The handheld is restarting to install the update.
+zh-Hans = 掌机正在重启以安装更新。
+es = La consola se está reiniciando para instalar la actualización.
+pt-BR = O console está reiniciando para instalar a atualização.
+fr = La console redémarre pour installer la mise à jour.
+de = Die Konsole startet neu, um das Update zu installieren.
+ja = アップデートをインストールするため、本体を再起動しています。
+it = La console si sta riavviando per installare l'aggiornamento.
+
+[web.update.page_stops]
+en = This page stops with it. Open File Transfer again on the handheld to come back.
+zh-Hans = 此页面会随之停止。要回来，请在掌机上再次打开文件传输。
+es = Esta página se detiene con ella. Vuelve a abrir Transferir archivos en la consola para regresar.
+pt-BR = Esta página para junto com ele. Abra o Transferir arquivos de novo no console para voltar.
+fr = Cette page s'arrête avec elle. Rouvrez Transfert de fichiers sur la console pour revenir.
+de = Diese Seite endet damit. Öffne die Dateiübertragung auf der Konsole erneut, um zurückzukehren.
+ja = このページも一緒に停止します。戻るには、本体でもう一度ファイル転送を開いてください。
+it = Questa pagina si ferma con lei. Riapri Trasferimento file sulla console per tornare.
+
+# ---- a phone's sign-in sheet, on the handheld's own network (res/web/captive.js) ---------------------
+
+[web.captive.ios_head]
+note = A note on an iPhone, in the small browser that opens when it joins the handheld's network
+en = Downloads need Safari.
+zh-Hans = 下载需要 Safari。
+es = Las descargas necesitan Safari.
+pt-BR = Os downloads precisam do Safari.
+fr = Les téléchargements nécessitent Safari.
+de = Downloads brauchen Safari.
+ja = ダウンロードには Safari が必要です。
+it = Per scaricare serve Safari.
+
+[web.captive.ios_text]
+note = Cancel and Use Without Internet are the iPhone's own buttons: the words iOS shows in this language. %s is the handheld's address, in bold. review: iOS's labels
+en = Tap Cancel, then Use Without Internet. Then open %s in Safari.
+zh-Hans = 轻点“取消”，再轻点“不使用互联网”。然后在 Safari 中打开 %s。
+es = Toca Cancelar y luego Usar sin Internet. Después abre %s en Safari.
+pt-BR = Toque em Cancelar e depois em Usar Sem Internet. Depois abra %s no Safari.
+fr = Touchez Annuler, puis Utiliser sans Internet. Ouvrez ensuite %s dans Safari.
+de = Tippe auf „Abbrechen“ und dann auf „Ohne Internet verwenden“. Öffne dann %s in Safari.
+ja = 「キャンセル」をタップし、「インターネットなしで使用」をタップします。次に Safari で %s を開いてください。
+it = Tocca Annulla, poi Usa senza Internet. Quindi apri %s in Safari.
+
+[web.captive.android_head]
+note = The same on Android, whose sheet cannot pick a file
+en = Uploads need Chrome.
+zh-Hans = 上传需要 Chrome。
+es = Para subir archivos se necesita Chrome.
+pt-BR = Os envios precisam do Chrome.
+fr = Les envois nécessitent Chrome.
+de = Uploads brauchen Chrome.
+ja = アップロードには Chrome が必要です。
+it = Per caricare serve Chrome.
+
+[web.captive.android_text]
+note = %1$s is the sheet's ⋮ menu; Use this network as is is Android's own item, in its words in this language. %2$s is the address. review: Android's label
+en = Tap %1$s, then Use this network as is. Then open %2$s in Chrome.
+zh-Hans = 轻点 %1$s，再轻点“按原样使用此网络”。然后在 Chrome 中打开 %2$s。
+es = Toca %1$s y luego Usar esta red tal como está. Después abre %2$s en Chrome.
+pt-BR = Toque em %1$s e depois em Usar esta rede como está. Depois abra %2$s no Chrome.
+fr = Touchez %1$s, puis Utiliser ce réseau tel quel. Ouvrez ensuite %2$s dans Chrome.
+de = Tippe auf %1$s und dann auf „Netzwerk im Istzustand verwenden“. Öffne dann %2$s in Chrome.
+ja = %1$s をタップし、「このネットワークをそのまま使用」をタップします。次に Chrome で %2$s を開いてください。
+it = Tocca %1$s, poi Usa questa rete così com'è. Quindi apri %2$s in Chrome.

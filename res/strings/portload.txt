@@ -1,0 +1,36 @@
+# A port's loading screen (DESIGN.md 11.11, src/portload.c): under the system's
+# and the game's names, a line that says the wait is a start and not a hang. On
+# one line when it fits the column, else the two sentences on two lines.
+
+[portload.starting_a_minute]
+note = The line on one line: portload.starting and portload.a_minute together, as a language joins two sentences
+en = Starting. This can take a minute.
+zh-Hans = 正在启动。这可能需要一分钟。
+es = Iniciando. Esto puede tardar un minuto.
+pt-BR = Iniciando. Isso pode levar um minuto.
+fr = Démarrage. Cela peut prendre une minute.
+de = Startet. Das kann eine Minute dauern.
+ja = 起動しています。1 分ほどかかる場合があります。
+it = Avvio in corso. Può volerci un minuto.
+
+[portload.starting]
+note = The line's first sentence, on its own line when the two do not fit one
+en = Starting.
+zh-Hans = 正在启动。
+es = Iniciando.
+pt-BR = Iniciando.
+fr = Démarrage.
+de = Startet.
+ja = 起動しています。
+it = Avvio in corso.
+
+[portload.a_minute]
+note = The line's second sentence, on its own line under the first
+en = This can take a minute.
+zh-Hans = 这可能需要一分钟。
+es = Esto puede tardar un minuto.
+pt-BR = Isso pode levar um minuto.
+fr = Cela peut prendre une minute.
+de = Das kann eine Minute dauern.
+ja = 1 分ほどかかる場合があります。
+it = Può volerci un minuto.

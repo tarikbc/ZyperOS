@@ -1,0 +1,1032 @@
+# MENU: the ZyperOS menu, a shelf's system menu and Muse's (src/sys_menu.c),
+# in the order the rows are listed, then the pages under Scraper. Language's
+# row is language.txt's; on, off and needs Wi-Fi are menu.txt's.
+
+# ---- the ZyperOS menu -------------------------------------------------------
+
+[sysmenu.search]
+note = A MENU row: find any game by typing its name
+en = Search Games
+zh-Hans = 搜索游戏
+es = Buscar juegos
+pt-BR = Buscar jogos
+fr = Rechercher un jeu
+de = Spiele suchen
+ja = ゲームを検索
+it = Cerca giochi
+
+[sysmenu.play_time]
+note = A MENU row that opens the play time screen; also a shelf's sort order
+en = Play Time
+zh-Hans = 游戏时间
+es = Tiempo de juego
+pt-BR = Tempo de jogo
+fr = Temps de jeu
+de = Spielzeit
+ja = プレイ時間
+it = Tempo di gioco
+
+[sysmenu.random_game]
+note = A row of MENU and of a system's menu: a game picked at random and started
+en = Random Game
+zh-Hans = 随机游戏
+es = Juego al azar
+pt-BR = Jogo aleatório
+fr = Jeu au hasard
+de = Zufallsspiel
+ja = ランダムゲーム
+it = Gioco a caso
+
+[sysmenu.wifi_connecting]
+note = MENU > Wi-Fi's value while it joins a network
+en = connecting
+zh-Hans = 正在连接
+es = conectando
+pt-BR = conectando
+fr = connexion…
+de = verbindet …
+ja = 接続中
+it = connessione…
+
+[sysmenu.audio_output]
+note = A MENU row: where the sound goes
+en = Audio Output
+zh-Hans = 音频输出
+es = Salida de audio
+pt-BR = Saída de áudio
+fr = Sortie audio
+de = Tonausgabe
+ja = 音声出力
+it = Uscita audio
+
+[sysmenu.audio_auto]
+note = review: Audio Output's value when set to Auto; %s is where the sound goes now (speaker, wired, bluetooth, usb). es and pt-BR write auto as English does, for the row's room; the glossary's word is automático.
+en = auto (%s)
+zh-Hans = 自动（%s）
+es = auto (%s)
+pt-BR = auto (%s)
+fr = auto (%s)
+de = auto (%s)
+ja = 自動（%s）
+it = auto (%s)
+
+[sysmenu.audio_channels]
+note = A MENU row: stereo, mono, or mono on one side
+en = Audio Channels
+zh-Hans = 声道
+es = Canales de audio
+pt-BR = Canais de áudio
+fr = Canaux audio
+de = Audiokanäle
+ja = 音声チャンネル
+it = Canali audio
+
+[sysmenu.ui_sounds]
+note = A MENU row: the launcher's own sounds (Wood, Glass, Bubble or Off)
+en = UI Sounds
+zh-Hans = 界面音效
+es = Sonidos
+pt-BR = Sons da interface
+fr = Sons de l'interface
+de = Bedientöne
+ja = 操作音
+it = Suoni dell'interfaccia
+
+[sysmenu.menu_music]
+note = A MENU row, and the heading of the page it opens
+en = Menu Music
+zh-Hans = 菜单音乐
+es = Música del menú
+pt-BR = Música do menu
+fr = Musique du menu
+de = Menümusik
+ja = メニュー音楽
+it = Musica del menu
+
+[sysmenu.xfer_wifi]
+note = A MENU row and the name of the file server a phone or computer opens over Wi-Fi. tight: beside "needs Wi-Fi" on MENU, so the empty home's short forms (emptyhome.card_wifi)
+en = Wi-Fi File Transfer
+zh-Hans = Wi-Fi 文件传输
+es = Transferir Wi-Fi
+pt-BR = Transferir Wi-Fi
+fr = Transfert Wi-Fi
+de = WLAN-Transfer
+ja = Wi-Fi ファイル転送
+it = Trasferisci Wi-Fi
+
+[sysmenu.xfer_cable]
+note = The same, where the files go over the USB cable; the empty home's short forms too (emptyhome.card_usb)
+en = USB File Transfer
+zh-Hans = USB 文件传输
+es = Transferir USB
+pt-BR = Transferir USB
+fr = Transfert USB
+de = USB-Transfer
+ja = USB ファイル転送
+it = Trasferisci USB
+
+[sysmenu.hotspot]
+note = review: Wi-Fi File Transfer's value with no network: the handheld makes a network of its own. pt-BR and es keep the English word; roteador/punto de acceso are the other choices.
+en = hotspot
+zh-Hans = 热点
+es = hotspot
+pt-BR = hotspot
+fr = point d'accès
+de = Hotspot
+ja = ホットスポット
+it = hotspot
+
+[sysmenu.date_time]
+note = A MENU row: the date, the time and the time zone
+en = Date & Time
+zh-Hans = 日期和时间
+es = Fecha y hora
+pt-BR = Data e hora
+fr = Date et heure
+de = Datum und Uhrzeit
+ja = 日付と時刻
+it = Data e ora
+
+[sysmenu.clock]
+note = A MENU row: how the time is written, 24-hour or 12-hour
+en = Clock
+zh-Hans = 时钟
+es = Reloj
+pt-BR = Relógio
+fr = Horloge
+de = Uhr
+ja = 時計
+it = Orologio
+
+[sysmenu.clock_24h]
+note = Clock's value
+en = 24-hour
+zh-Hans = 24 小时制
+es = 24 horas
+pt-BR = 24 horas
+fr = 24 heures
+de = 24 Stunden
+ja = 24 時間表示
+it = 24 ore
+
+[sysmenu.clock_12h]
+note = Clock's value
+en = 12-hour
+zh-Hans = 12 小时制
+es = 12 horas
+pt-BR = 12 horas
+fr = 12 heures
+de = 12 Stunden
+ja = 12 時間表示
+it = 12 ore
+
+[sysmenu.auto_off]
+note = A MENU row: the handheld turns itself off after this long with nothing pressed
+en = Auto Off
+zh-Hans = 自动关机
+es = Apagado automático
+pt-BR = Desligamento automático
+fr = Arrêt auto
+de = Automatisch aus
+ja = 自動電源オフ
+it = Spegnimento automatico
+
+[sysmenu.auto_off_never]
+note = Auto Off's value when it is off. Lowercase. tight
+en = never
+zh-Hans = 从不
+es = nunca
+pt-BR = nunca
+fr = jamais
+de = nie
+ja = しない
+it = mai
+
+[sysmenu.auto_off_secs]
+note = Auto Off's value in seconds (30s). tight: 15 bytes at most
+en = %ds
+zh-Hans = %d 秒
+es = %d s
+pt-BR = %d s
+fr = %d s
+de = %d s
+ja = %d 秒
+it = %d s
+
+[sysmenu.auto_off_mins]
+note = Auto Off's value in minutes (2m). tight: 15 bytes at most
+en = %dm
+zh-Hans = %d 分钟
+es = %d min
+pt-BR = %d min
+fr = %d min
+de = %d min
+ja = %d 分
+it = %d min
+
+[sysmenu.charge_limit]
+note = A MENU row: the battery stops charging at this level
+en = Charge Limit
+zh-Hans = 充电上限
+es = Límite de carga
+pt-BR = Limite de carga
+fr = Limite de charge
+de = Ladelimit
+ja = 充電上限
+it = Limite di carica
+
+[sysmenu.side_lights]
+note = A MENU row: what the lights on the handheld's sides show
+en = Side Lights
+zh-Hans = 侧灯
+es = Luces laterales
+pt-BR = Luzes laterais
+fr = Lumières latérales
+de = Seitenlichter
+ja = サイドライト
+it = Luci laterali
+
+[sysmenu.home_screen]
+note = A MENU row: the home's layout, Spotlight or Gallery
+en = Home Screen
+zh-Hans = 主屏幕样式
+es = Pantalla de inicio
+pt-BR = Tela inicial
+fr = Écran d'accueil
+de = Startbildschirm
+ja = ホーム画面
+it = Schermata Home
+
+[sysmenu.system_order]
+note = A MENU row: the order of the systems on the home
+en = System Order
+zh-Hans = 系统顺序
+es = Orden de sistemas
+pt-BR = Ordem dos sistemas
+fr = Ordre des systèmes
+de = Systemreihenfolge
+ja = システムの並び順
+it = Ordine dei sistemi
+
+[sysmenu.order_az]
+note = System Order's value: by name
+en = A to Z
+zh-Hans = A 到 Z
+es = A a Z
+pt-BR = A a Z
+fr = A à Z
+de = A bis Z
+ja = A〜Z
+it = Dalla A alla Z
+
+[sysmenu.order_release]
+note = System Order's value: by the year each console came out
+en = Release Date
+zh-Hans = 发行日期
+es = Fecha de lanzamiento
+pt-BR = Data de lançamento
+fr = Date de sortie
+de = Erscheinungsdatum
+ja = 発売日
+it = Data di uscita
+
+[sysmenu.battery_icon]
+note = A MENU row: how the status corner shows the battery
+en = Battery Icon
+zh-Hans = 电池图标
+es = Icono de batería
+pt-BR = Ícone da bateria
+fr = Icône de batterie
+de = Akkusymbol
+ja = バッテリーアイコン
+it = Icona della batteria
+
+[sysmenu.battery_bars]
+note = Battery Icon's value: the mark alone, its bars
+en = Bars
+zh-Hans = 电量格
+es = Barras
+pt-BR = Barras
+fr = Barres
+de = Balken
+ja = 目盛り
+it = Barre
+
+[sysmenu.battery_percent]
+note = Battery Icon's value: the charge written beside the mark
+en = Percentage
+zh-Hans = 百分比
+es = Porcentaje
+pt-BR = Porcentagem
+fr = Pourcentage
+de = Prozent
+ja = パーセント
+it = Percentuale
+
+[sysmenu.appearance]
+note = A MENU row: Light, Dark or Auto
+en = Appearance
+zh-Hans = 外观
+es = Apariencia
+pt-BR = Aparência
+fr = Apparence
+de = Erscheinungsbild
+ja = 外観
+it = Aspetto
+
+[sysmenu.scraper]
+note = A MENU row: box art, its sources and video snaps
+en = Scraper
+zh-Hans = 资料抓取
+es = Scraper
+pt-BR = Capas e vídeos
+fr = Scraper
+de = Cover und Videos
+ja = 画像と動画
+it = Copertine e video
+
+[sysmenu.cheevos]
+note = A MENU row and a row of the game menus: RetroAchievements' achievements
+en = Cheevos
+zh-Hans = 成就
+es = Logros
+pt-BR = Conquistas
+fr = Succès
+de = Erfolge
+ja = 実績
+it = Obiettivi
+
+[sysmenu.sign_in]
+note = Cheevos' value when no account is signed in. Lowercase.
+en = sign in
+zh-Hans = 登录
+es = iniciar sesión
+pt-BR = entrar
+fr = se connecter
+de = anmelden
+ja = サインイン
+it = accedi
+
+[sysmenu.controls]
+note = A MENU row and an in-game menu row: what every button does
+en = Controls
+zh-Hans = 按键说明
+es = Controles
+pt-BR = Controles
+fr = Commandes
+de = Steuerung
+ja = 操作方法
+it = Comandi
+
+[sysmenu.tutorial]
+note = A MENU row: the first start's tutorial again
+en = Show Tutorial
+zh-Hans = 查看教程
+es = Ver tutorial
+pt-BR = Ver tutorial
+fr = Voir le tutoriel
+de = Tutorial ansehen
+ja = チュートリアルを見る
+it = Mostra tutorial
+
+[sysmenu.developer]
+note = A MENU row on a development image
+en = Developer Mode
+zh-Hans = 开发者模式
+es = Modo desarrollador
+pt-BR = Modo desenvolvedor
+fr = Mode développeur
+de = Entwicklermodus
+ja = 開発者モード
+it = Modalità sviluppatore
+
+[sysmenu.update]
+note = A MENU row
+en = System Update
+zh-Hans = 系统更新
+es = Actualización del sistema
+pt-BR = Atualização do sistema
+fr = Mise à jour du système
+de = Systemupdate
+ja = システムアップデート
+it = Aggiornamento di sistema
+
+[sysmenu.about]
+note = A MENU row
+en = About ZyperOS
+zh-Hans = 关于 ZyperOS
+es = Acerca de ZyperOS
+pt-BR = Sobre o ZyperOS
+fr = À propos de ZyperOS
+de = Über ZyperOS
+ja = ZyperOS について
+it = Informazioni su ZyperOS
+
+# ---- a shelf's system menu --------------------------------------------------
+
+[sysmenu.games]
+note = A system menu row: how many games the shelf has
+en = Games
+zh-Hans = 游戏
+es = Juegos
+pt-BR = Jogos
+fr = Jeux
+de = Spiele
+ja = ゲーム
+it = Giochi
+
+[sysmenu.core]
+note = A system menu row: the emulator core that runs the shelf's games
+en = Core
+zh-Hans = 核心
+es = Núcleo
+pt-BR = Núcleo
+fr = Cœur
+de = Core
+ja = コア
+it = Core
+
+[sysmenu.sort_by]
+note = A system menu row: the shelf's order
+en = Sort By
+zh-Hans = 排序方式
+es = Ordenar por
+pt-BR = Ordenar por
+fr = Trier par
+de = Sortieren nach
+ja = 並べ替え
+it = Ordina per
+
+[sysmenu.display_mode]
+note = A system menu row: how the system's games fill the screen (Stretch, Aspect...)
+en = Display Mode
+zh-Hans = 显示模式
+es = Modo de pantalla
+pt-BR = Modo de exibição
+fr = Mode d'affichage
+de = Anzeigemodus
+ja = 表示モード
+it = Modalità schermo
+
+[sysmenu.box_art]
+note = A system menu row: fetch covers for this system's games
+en = Box Art
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = パッケージ画像
+it = Copertine
+
+[sysmenu.rescan]
+note = A system menu row: look at the card's folders again
+en = Rescan Folder
+zh-Hans = 重新扫描文件夹
+es = Volver a escanear carpeta
+pt-BR = Reescanear pasta
+fr = Réanalyser le dossier
+de = Ordner neu einlesen
+ja = フォルダを再スキャン
+it = Ripeti scansione cartella
+
+# ---- Muse's shelf menu (MP4: music, audiobooks, videos) ---------------------
+
+[sysmenu.muse_books]
+note = Muse's menu: how many books the shelf has
+en = Books
+zh-Hans = 书籍
+es = Libros
+pt-BR = Livros
+fr = Livres
+de = Hörbücher
+ja = 本
+it = Libri
+
+[sysmenu.muse_videos]
+note = Muse's menu: how many videos; also Show's value
+en = Videos
+zh-Hans = 视频
+es = Videos
+pt-BR = Vídeos
+fr = Vidéos
+de = Videos
+ja = 動画
+it = Video
+
+[sysmenu.muse_albums]
+note = Muse's menu: how many albums
+en = Albums
+zh-Hans = 专辑
+es = Álbumes
+pt-BR = Álbuns
+fr = Albums
+de = Alben
+ja = アルバム
+it = Album
+
+[sysmenu.muse_show]
+note = Muse's menu row: which kind of the card's files the shelf shows
+en = Show
+zh-Hans = 显示
+es = Mostrar
+pt-BR = Mostrar
+fr = Afficher
+de = Anzeigen
+ja = 表示
+it = Mostra
+
+[sysmenu.muse_audiobooks]
+note = Show's value
+en = Audiobooks
+zh-Hans = 有声书
+es = Audiolibros
+pt-BR = Audiolivros
+fr = Livres audio
+de = Hörbücher
+ja = オーディオブック
+it = Audiolibri
+
+[sysmenu.muse_music]
+note = Show's value
+en = Music
+zh-Hans = 音乐
+es = Música
+pt-BR = Música
+fr = Musique
+de = Musik
+ja = 音楽
+it = Musica
+
+[sysmenu.muse_author]
+note = Sort By's value on the books shelf
+en = Author
+zh-Hans = 作者
+es = Autor
+pt-BR = Autor
+fr = Auteur
+de = Autor
+ja = 著者
+it = Autore
+
+[sysmenu.muse_folder]
+note = Sort By's value on the videos shelf
+en = Folder
+zh-Hans = 文件夹
+es = Carpeta
+pt-BR = Pasta
+fr = Dossier
+de = Ordner
+ja = フォルダ
+it = Cartella
+
+[sysmenu.muse_artist]
+note = Sort By's value on the music shelf
+en = Artist
+zh-Hans = 艺人
+es = Artista
+pt-BR = Artista
+fr = Artiste
+de = Künstler
+ja = アーティスト
+it = Artista
+
+[sysmenu.muse_shuffle]
+note = Muse's menu row: play every song in a random order
+en = Shuffle All
+zh-Hans = 全部随机播放
+es = Todo aleatorio
+pt-BR = Tudo aleatório
+fr = Tout en aléatoire
+de = Alle zufällig
+ja = すべてシャッフル
+it = Riproduzione casuale
+
+[sysmenu.muse_lock]
+note = Muse's menu row: turn the screen off and keep the music playing
+en = Lock Screen
+zh-Hans = 锁屏
+es = Bloquear pantalla
+pt-BR = Bloquear tela
+fr = Verrouiller l'écran
+de = Bildschirmsperre
+ja = 画面ロック
+it = Blocca schermo
+
+[sysmenu.muse_lock_when]
+note = Lock Screen's value while nothing plays: it only works while music plays. Lowercase.
+en = while playing
+zh-Hans = 播放时可用
+es = al reproducir
+pt-BR = ao tocar
+fr = en lecture
+de = bei Wiedergabe
+ja = 再生中のみ
+it = solo con musica
+
+[sysmenu.muse_art]
+note = Muse's menu row: fetch album covers. tight: its value may be "needs Wi-Fi"
+en = Album Art
+zh-Hans = 专辑封面
+es = Portadas
+pt-BR = Capas de álbum
+fr = Pochettes
+de = Albumcover
+ja = アルバムアート
+it = Copertine album
+
+# ---- MENU > Scraper ---------------------------------------------------------
+
+[sysmenu.sc_fetching]
+note = Scraper's first row while a run fetches covers; its value is a count, 12 / 140
+en = Fetching
+zh-Hans = 正在获取
+es = Descargando
+pt-BR = Baixando
+fr = Récupération
+de = Wird geladen
+ja = 取得中
+it = Scaricamento
+
+[sysmenu.sc_fetch]
+note = Scraper's first row: fetch every missing cover; its value says how many are missing, or "needs Wi-Fi". tight: the label and either value share about 15 em of the menu face
+en = Fetch Missing Art
+zh-Hans = 获取缺失封面
+es = Bajar carátulas
+pt-BR = Baixar capas
+fr = Jaquettes
+de = Cover laden
+ja = 画像を取得
+it = Scarica copertine
+
+[sysmenu.sc_complete]
+note = Fetch Missing Art's value when no cover is missing. Lowercase.
+en = complete
+zh-Hans = 已齐全
+es = completo
+pt-BR = completo
+fr = complètes
+de = vollständig
+ja = 取得済み
+it = completo
+
+[sysmenu.sc_missing]
+note = Fetch Missing Art's value: how many covers are missing. English has one form for both.
+en.one = %d missing
+en.other = %d missing
+zh-Hans = 缺少 %d 个
+es.one = falta %d
+es.other = faltan %d
+pt-BR.one = falta %d
+pt-BR.other = faltam %d
+fr.one = %d manquante
+fr.other = %d manquantes
+de.one = %d fehlt
+de.other = %d fehlen
+ja = %d 件不足
+it.one = %d mancante
+it.other = %d mancanti
+
+[sysmenu.sc_video_snaps]
+note = A Scraper row: short videos of each game that play on the shelf
+en = Video Snaps
+zh-Hans = 视频预览
+es = Avances en video
+pt-BR = Prévias em vídeo
+fr = Aperçus vidéo
+de = Videovorschau
+ja = 動画プレビュー
+it = Anteprime video
+
+[sysmenu.sc_covers]
+note = A source's value after a run: how many covers it found. English says covers for 1 too; keep it.
+en.one = %d covers
+en.other = %d covers
+zh-Hans = %d 张封面
+es.one = %d carátula
+es.other = %d carátulas
+pt-BR.one = %d capa
+pt-BR.other = %d capas
+fr.one = %d jaquette
+fr.other = %d jaquettes
+de.one = %d Cover
+de.other = %d Cover
+ja = 画像 %d 枚
+it.one = %d copertina
+it.other = %d copertine
+
+[sysmenu.not_in_build]
+note = review: a value: this copy of ZyperOS was built without ScreenScraper's key, so the source cannot be used. Lowercase.
+en = not in this build
+zh-Hans = 此版本不支持
+es = no disponible
+pt-BR = indisponível
+fr = non disponible
+de = nicht enthalten
+ja = このビルドは非対応
+it = non disponibile
+
+[sysmenu.sc_linked_as]
+note = ScreenScraper's value: the account it is linked to; %s is the user name. tight: beside ScreenScraper, with room left for the name
+en = linked as %s
+zh-Hans = 已关联 %s
+es = vinculado: %s
+pt-BR = vinculado: %s
+fr = lié : %s
+de = verknüpft als %s
+ja = 連携：%s
+it = collegato: %s
+
+[sysmenu.sc_link]
+note = A source's value with no account linked: A links one. Lowercase.
+en = link
+zh-Hans = 关联
+es = vincular
+pt-BR = vincular
+fr = lier
+de = verknüpfen
+ja = 連携する
+it = collega
+
+[sysmenu.sc_no_account]
+note = libretro's value: it needs no account. Lowercase.
+en = no account
+zh-Hans = 无需账号
+es = sin cuenta
+pt-BR = sem conta
+fr = sans compte
+de = kein Konto
+ja = アカウント不要
+it = nessun account
+
+# ---- Scraper > ScreenScraper ------------------------------------------------
+
+[sysmenu.ss_account]
+note = ScreenScraper's page: the account's row; its value is the user name
+en = Account
+zh-Hans = 账号
+es = Cuenta
+pt-BR = Conta
+fr = Compte
+de = Konto
+ja = アカウント
+it = Account
+
+[sysmenu.ss_account_none]
+note = Account's value with no account linked. Lowercase.
+en = none
+zh-Hans = 无
+es = ninguna
+pt-BR = nenhuma
+fr = aucun
+de = keines
+ja = なし
+it = nessuno
+
+[sysmenu.status]
+note = A row on the ScreenScraper and SteamGridDB pages: whether the account or key works
+en = Status
+zh-Hans = 状态
+es = Estado
+pt-BR = Status
+fr = État
+de = Status
+ja = 状態
+it = Stato
+
+[sysmenu.ss_linked]
+note = Status' value: the account is linked. Lowercase.
+en = linked
+zh-Hans = 已关联
+es = vinculada
+pt-BR = vinculada
+fr = lié
+de = verknüpft
+ja = 連携済み
+it = collegato
+
+[sysmenu.unlink]
+note = A row on the ScreenScraper and SteamGridDB pages: forget the account or key
+en = Unlink
+zh-Hans = 取消关联
+es = Desvincular
+pt-BR = Desvincular
+fr = Dissocier
+de = Entfernen
+ja = 連携を解除
+it = Scollega
+
+[sysmenu.ss_note_brings]
+note = A note under ScreenScraper's rows: what it fetches
+en = Covers, text and video snaps.
+zh-Hans = 封面、文字和视频预览。
+es = Carátulas, textos y videos.
+pt-BR = Capas, textos e vídeos.
+fr = Jaquettes, textes et vidéos.
+de = Cover, Texte und Videovorschauen.
+ja = 画像、テキスト、動画プレビュー。
+it = Copertine, testi e anteprime video.
+
+[sysmenu.ss_note_free]
+note = A note: an account is free on its site
+en = Free at screenscraper.fr.
+zh-Hans = 可在 screenscraper.fr 免费注册。
+es = Gratis en screenscraper.fr.
+pt-BR = Grátis em screenscraper.fr.
+fr = Gratuit sur screenscraper.fr.
+de = Kostenlos auf screenscraper.fr.
+ja = screenscraper.fr で無料登録できます。
+it = Gratis su screenscraper.fr.
+
+[sysmenu.ss_note_key]
+note = A note in a build without ScreenScraper's developer key
+en = Needs a build with its key.
+zh-Hans = 需要包含其密钥的版本。
+es = Requiere una versión con su clave.
+pt-BR = Requer uma versão com a chave.
+fr = Nécessite une version avec sa clé.
+de = Braucht eine Version mit Schlüssel.
+ja = キーを含むビルドが必要です。
+it = Serve una versione con la sua chiave.
+
+# ---- Scraper > Video Snaps --------------------------------------------------
+
+[sysmenu.sn_fetch]
+note = Video Snaps' row: fetch a game's snap when its cover is fetched
+en = Fetch with Box Art
+zh-Hans = 随封面一起获取
+es = Descargar con carátulas
+pt-BR = Baixar com as capas
+fr = Récupérer avec les jaquettes
+de = Mit Cover laden
+ja = パッケージ画像と一緒に取得
+it = Con le copertine
+
+[sysmenu.sn_needs_ss]
+note = Fetch with Box Art's value with no ScreenScraper account. Lowercase.
+en = needs ScreenScraper
+zh-Hans = 需要 ScreenScraper
+es = requiere ScreenScraper
+pt-BR = requer ScreenScraper
+fr = ScreenScraper requis
+de = braucht ScreenScraper
+ja = ScreenScraper が必要
+it = richiede ScreenScraper
+
+[sysmenu.sn_play]
+note = Video Snaps' row: play the focused game's snap on its shelf
+en = Play on the Shelf
+zh-Hans = 在游戏列表中播放
+es = Ver en la lista
+pt-BR = Ver na lista
+fr = Lire dans la liste
+de = In Spieleliste abspielen
+ja = ゲーム一覧で再生
+it = Riproduci nell'elenco
+
+[sysmenu.sn_sound]
+note = Video Snaps' row: how loud a snap plays
+en = Sound
+zh-Hans = 声音
+es = Sonido
+pt-BR = Som
+fr = Son
+de = Ton
+ja = サウンド
+it = Audio
+
+[sysmenu.sn_muted]
+note = Sound's value: no sound. Lowercase.
+en = muted
+zh-Hans = 静音
+es = silenciado
+pt-BR = mudo
+fr = coupé
+de = stumm
+ja = ミュート
+it = muto
+
+[sysmenu.sn_quiet]
+note = Sound's value: low. Lowercase.
+en = quiet
+zh-Hans = 小声
+es = bajo
+pt-BR = baixo
+fr = faible
+de = leise
+ja = 小さめ
+it = basso
+
+[sysmenu.sn_full]
+note = Sound's value: at the full volume. Lowercase.
+en = full
+zh-Hans = 正常
+es = completo
+pt-BR = completo
+fr = plein
+de = voll
+ja = 最大
+it = massimo
+
+[sysmenu.sn_delete]
+note = Video Snaps' last row: delete every snap on the card; its value is the room they take
+en = Delete All
+zh-Hans = 全部删除
+es = Eliminar todo
+pt-BR = Excluir tudo
+fr = Tout supprimer
+de = Alle löschen
+ja = すべて削除
+it = Elimina tutto
+
+# ---- Scraper > SteamGridDB --------------------------------------------------
+
+[sysmenu.sg_key]
+note = SteamGridDB's page: the API key's row; its value is the key's last four characters
+en = Key
+zh-Hans = 密钥
+es = Clave
+pt-BR = Chave
+fr = Clé
+de = Schlüssel
+ja = キー
+it = Chiave
+
+[sysmenu.sg_key_none]
+note = Key's value with no key. Lowercase.
+en = none
+zh-Hans = 无
+es = ninguna
+pt-BR = nenhuma
+fr = aucune
+de = keiner
+ja = なし
+it = nessuna
+
+[sysmenu.sg_not_checked]
+note = Status' value before the key was tried. Lowercase.
+en = not checked
+zh-Hans = 未验证
+es = sin verificar
+pt-BR = não verificada
+fr = non vérifiée
+de = nicht geprüft
+ja = 未確認
+it = non verificata
+
+[sysmenu.sg_note_get]
+note = A note: where a key comes from
+en = Get one at steamgriddb.com.
+zh-Hans = 可在 steamgriddb.com 获取。
+es = Consigue una en steamgriddb.com.
+pt-BR = Obtenha uma em steamgriddb.com.
+fr = Obtenez-en une sur steamgriddb.com.
+de = Hol dir einen auf steamgriddb.com.
+ja = steamgriddb.com で取得できます。
+it = Ottienila su steamgriddb.com.
+
+[sysmenu.sg_note_paste]
+note = A note: the key can be pasted on the File Transfer page instead of typed
+en = Or paste it in File Transfer.
+zh-Hans = 也可以在文件传输页面中粘贴。
+es = O pégala en Transferir archivos.
+pt-BR = Ou cole em Transferir arquivos.
+fr = Ou collez-la via le transfert.
+de = Oder füge ihn in der Dateiübertragung ein.
+ja = ファイル転送でも貼り付けられます。
+it = O incollala in Trasferimento file.
+
+# ---- sizes ------------------------------------------------------------------
+
+[sysmenu.size_kb]
+note = A size in kilobytes (212 KB). French writes octets: Ko, Mo, Go.
+en = %llu KB
+zh-Hans = %llu KB
+es = %llu KB
+pt-BR = %llu KB
+fr = %llu Ko
+de = %llu KB
+ja = %llu KB
+it = %llu KB
+
+[sysmenu.size_mb]
+note = A size in megabytes
+en = %llu MB
+zh-Hans = %llu MB
+es = %llu MB
+pt-BR = %llu MB
+fr = %llu Mo
+de = %llu MB
+ja = %llu MB
+it = %llu MB
+
+[sysmenu.size_gb]
+note = A size in gigabytes; %s is the number with one decimal, written with menu.decimal_point (1.4)
+en = %s GB
+zh-Hans = %s GB
+es = %s GB
+pt-BR = %s GB
+fr = %s Go
+de = %s GB
+ja = %s GB
+it = %s GB

@@ -70,10 +70,12 @@ void musec_video_show(bool on);
 
 /* A game's video snap on the shelf (src/muse/snap.h): `path` played from its
  * start and looped, its pictures in their own frames (src/snapview.h); NULL
- * stops it. `vol` is its sound, 0 to 100, 0 muted. Sent only when it
- * changes, so a loop may say it every pass. Nothing at all without a
- * daemon: the shelf keeps its cover. */
-void musec_snap(const char *path, int vol);
+ * stops it. `vol` is its sound, 0 to 100, 0 muted. `hold` asks for its
+ * first picture only, held with no clock and no sound, and the same path
+ * with `hold` false then starts it from there (src/muse/snap.h). Sent only
+ * when one of the three changes, so a loop may say it every pass. Nothing
+ * at all without a daemon: the shelf keeps its cover. */
+void musec_snap(const char *path, int vol, bool hold);
 
 /* A queue of videos - a film, or a series' episodes: in order whatever the
  * mode is, as a book is (a film on repeat is not how anyone watches one), and

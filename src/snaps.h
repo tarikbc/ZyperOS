@@ -21,6 +21,13 @@
 
 /* DESIGN.md 8.2's hold-snap */
 #define SNAPS_WAIT_MS DS_MS_HOLD_SNAP
+/* Halfway through that wait, the snap is asked for held: its file opened and
+ * its first picture ready, so the cover turns the moment the bar is full.
+ * 2026-11-07: "when the video bar finishes loading, it still takes
+ * half a second to show the video. We should load the video as the bar fills
+ * up, or like 500ms after it starts filling up, to avoid affecting scrolling
+ * performance". Not at once: a shelf being scrolled asks for nothing. */
+#define SNAPS_ASK_MS (SNAPS_WAIT_MS / 2)
 
 bool snaps_fetch(void);           /* a Box Art run fetches them: off to start */
 void snaps_set_fetch(bool on);

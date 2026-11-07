@@ -10,7 +10,7 @@ static const char *keep(menu_snap *s, const char *t)
 	size_t len;
 	char *d;
 
-	if (!t || t == MENU_NOTE_MARK || t == MENU_BODY_MARK || t == MENU_HR_MARK)
+	if (!t || t == MENU_NOTE_MARK || t == MENU_BODY_MARK || t == MENU_HR_MARK || t == MENU_TICK)
 		return t;
 	len = strlen(t) + 1;
 	if (len > sizeof s->text - s->used) { s->ok = false; return NULL; }

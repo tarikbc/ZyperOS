@@ -1,0 +1,88 @@
+# MENU > Bluetooth's headsets (src/bt.c): each one's value, a status in
+# lowercase, then the note the screen shows when pairing or connecting one
+# did not work, also lowercase.
+
+[btlink.connected]
+note = A headset's value: connected, so the sound is there
+en = connected
+zh-Hans = 已连接
+es = conectado
+pt-BR = conectado
+fr = connecté
+de = verbunden
+ja = 接続済み
+it = connesso
+
+[btlink.paired]
+note = A headset's value: paired before, not connected now
+en = paired
+zh-Hans = 已配对
+es = vinculado
+pt-BR = pareado
+fr = associé
+de = gekoppelt
+ja = ペアリング済み
+it = associato
+
+[btlink.in_range]
+note = A headset's value: found nearby, never paired
+en = in range
+zh-Hans = 在附近
+es = disponible
+pt-BR = disponível
+fr = à portée
+de = in Reichweite
+ja = 近くにあります
+it = disponibile
+
+[btlink.pair_refused]
+en = the headset refused the pairing
+zh-Hans = 耳机拒绝了配对
+es = los audífonos rechazaron la vinculación
+pt-BR = o fone recusou o pareamento
+fr = le casque a refusé l'association
+de = der Kopfhörer hat das Koppeln abgelehnt
+ja = ヘッドセットに拒否されました
+it = l'auricolare ha rifiutato l'associazione
+
+[btlink.pair_failed]
+en = pairing did not complete
+zh-Hans = 配对未完成
+es = la vinculación no terminó
+pt-BR = o pareamento não terminou
+fr = l'association n'a pas abouti
+de = Koppeln nicht abgeschlossen
+ja = ペアリングが完了しませんでした
+it = associazione non completata
+
+[btlink.pair_not_saved]
+note = It paired, but the key that lets it reconnect after a restart was not written
+en = the pairing was not saved
+zh-Hans = 配对未保存
+es = no se guardó la vinculación
+pt-BR = o pareamento não foi salvo
+fr = l'association n'a pas été enregistrée
+de = die Kopplung wurde nicht gespeichert
+ja = ペアリングを保存できませんでした
+it = associazione non salvata
+
+[btlink.no_connect]
+en = it did not connect
+zh-Hans = 未能连接
+es = no se conectó
+pt-BR = não conectou
+fr = la connexion a échoué
+de = Verbindung fehlgeschlagen
+ja = 接続できませんでした
+it = connessione non riuscita
+
+[btlink.not_address]
+note = What was asked about is not a Bluetooth address; only a bug reaches it
+en = not an address
+zh-Hans = 不是有效地址
+es = no es una dirección
+pt-BR = não é um endereço
+fr = adresse non valide
+de = keine Adresse
+ja = アドレスが無効です
+it = non è un indirizzo

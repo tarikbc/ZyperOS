@@ -26,7 +26,7 @@ const char *uisound_setting_id(int s)
 
 const char *uisound_setting_name(int s)
 {
-	return s >= 0 && s < DS_VOICES ? DS_VOICE_NAME[s] : "Off";
+	return s >= 0 && s < DS_VOICES ? uisound_voice_name(s) : T(S_MENU_OFF_TITLE);
 }
 
 int uisound_setting_step(int s, int dir)

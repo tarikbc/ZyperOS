@@ -34,7 +34,8 @@ typedef enum {
 /* Room for the longest page and its footer, with a little spare. */
 #define CTL_MAX_ROWS 10
 
-/* What a page is called, under the heading. */
+/* What a page is called, under the heading, in the language that is on
+ * (src/i18n.h); S_CONTROLS_HEADING is the heading's "Controls: %s". */
 const char *ctl_page_name(ctl_page p);
 
 /* One page's rows, any note included, and how many there are.
@@ -89,11 +90,12 @@ typedef struct {
 } ctl_game;
 
 /* What a page's rows point into: its heading and the values a pair of rows
- * became ("Turbo A/B"). The caller's, as menu_row holds pointers. */
+ * became ("Turbo A/B"), in the language that is on. The caller's, as
+ * menu_row holds pointers. */
 typedef struct {
 	char head[48];
 	char key[CTL_MAX_ROWS][16];
-	char val[CTL_MAX_ROWS][32];
+	char val[CTL_MAX_ROWS][64];
 } ctl_buf;
 
 /* How many pages this game has: always In a game, after the system's. */

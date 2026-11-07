@@ -147,14 +147,14 @@ void bt_screen(app *a)
 				db_write_boot_env();
 
 				wait_panel(a, "Bluetooth",
-				           want ? "Turning on..." : "Turning off...");
+				           want ? T(S_BT_TURNING_ON) : T(S_BT_TURNING_OFF));
 				/* On: the stack first when there is no adapter (Bluetooth
 				 * was off at boot), so the switch works now rather than at
 				 * the next boot. Never bt_power without one: bluetoothctl
 				 * waits for a controller that is not coming. Off: the
 				 * adapter, then the stack and the radio's power. */
 				if (want && u.state == BT_NO_ADAPTER && !bt_up()) {
-					snprintf(u.note, sizeof u.note, "Bluetooth did not come up");
+					snprintf(u.note, sizeof u.note, "%s", T(S_BT_NOT_UP));
 				} else {
 					/* The stack just started: the bonds are readable now
 					 * (on the Brick they're on plastron's state partition,
@@ -164,7 +164,7 @@ void bt_screen(app *a)
 						bt_asoundrc(P_ROOT, P_USERDATA);
 					bt_power(want);
 					if (!want) bt_down();
-					snprintf(u.note, sizeof u.note, "%s", want ? "On" : "Off");
+					snprintf(u.note, sizeof u.note, "%s", want ? T(S_BT_ON) : T(S_BT_OFF));
 				}
 				note_until = now + 4000;
 				next_refresh = 0;
@@ -172,14 +172,14 @@ void bt_screen(app *a)
 				bt_device *d = &u.dev[u.cursor];
 
 				if (d->connected) {
-					wait_panel(a, "Bluetooth", "Disconnecting...");
+					wait_panel(a, "Bluetooth", T(S_BT_DISCONNECTING));
 					if (bt_disconnect(d->mac)) d->connected = false;
-					snprintf(u.note, sizeof u.note, "Disconnected"); note_until = now + 4000;
+					snprintf(u.note, sizeof u.note, "%s", T(S_BT_DISCONNECTED)); note_until = now + 4000;
 				} else {
 					bool ok = true;
 
 					if (!d->bonded) {
-						wait_panel(a, "Bluetooth", "Pairing...");
+						wait_panel(a, "Bluetooth", T(S_BT_PAIRING));
 						ok = bt_pair(d->mac, err, sizeof err);
 						if (!ok) {
 							snprintf(u.note, sizeof u.note, "%s", err);
@@ -192,7 +192,7 @@ void bt_screen(app *a)
 						}
 					}
 					if (ok) {
-						wait_panel(a, "Bluetooth", "Connecting...");
+						wait_panel(a, "Bluetooth", T(S_BT_CONNECTING));
 						if (bt_connect(d->mac, err, sizeof err)) {
 							/* Connecting one here is choosing it, so any other
 							 * goes back to paired: "connected" on this screen then
@@ -210,8 +210,8 @@ void bt_screen(app *a)
 
 							d->connected = true;
 							snprintf(u.note, sizeof u.note, "%s",
-							         bumped ? "Connected. The other headset is paired now"
-							                : "Connected");
+							         bumped ? T(S_BT_CONNECTED_OTHER_PAIRED)
+							                : T(S_BT_CONNECTED));
 							note_until = now + 4000;
 						} else {
 							snprintf(u.note, sizeof u.note, "%s", err); note_until = now + 4000;
@@ -228,12 +228,12 @@ void bt_screen(app *a)
 			             ? DS_SOUND_ACCEPT : DS_SOUND_DENY);
 		if (a->in.pressed[IN_X] && u.cursor >= 0 && u.cursor < u.n &&
 		    u.dev[u.cursor].bonded) {
-			wait_panel(a, "Bluetooth", "Forgetting...");
+			wait_panel(a, "Bluetooth", T(S_BT_FORGETTING));
 			if (bt_forget(u.dev[u.cursor].mac)) {
 				bt_asoundrc(P_ROOT, P_USERDATA);
-				snprintf(u.note, sizeof u.note, "Forgotten"); note_until = now + 4000;
+				snprintf(u.note, sizeof u.note, "%s", T(S_BT_FORGOTTEN)); note_until = now + 4000;
 			} else {
-				snprintf(u.note, sizeof u.note, "It would not unpair"); note_until = now + 4000;
+				snprintf(u.note, sizeof u.note, "%s", T(S_BT_NOT_UNPAIRED)); note_until = now + 4000;
 			}
 			next_refresh = 0;
 		}

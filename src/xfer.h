@@ -32,7 +32,8 @@
 
 typedef struct {
 	char name[16];              /* what a URL calls it: "roms" */
-	char label[32];             /* what a person calls it: "ROMs" */
+	const char *label;          /* what a person calls it: "ROMs", in the
+	                             * language that is on (src/i18n.h) */
 	char path[XFER_PATH_MAX];   /* absolute, no trailing slash */
 	/* Save states share a directory with two config files the launcher
 	 * writes. Nothing under this root may be a .cfg - not listed, not

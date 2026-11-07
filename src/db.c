@@ -35,6 +35,9 @@ static const db_default device_defaults[] = {
 	 * handheld, so it shows once - and once after the upgrade that brings
 	 * it, as nothing before set it - and `--set tour.done=1` can skip it */
 	{ "tour.done",  "0"  },
+	/* MENU > Language (src/i18n.h): a language's code, English until the
+	 * first start's step or the menu says otherwise */
+	{ "language",   "en" },
 };
 
 static const db_default library_defaults[] = {

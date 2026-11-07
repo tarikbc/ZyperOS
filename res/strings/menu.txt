@@ -1,0 +1,91 @@
+# Words more than one menu shows in its value column (src/sys_menu.c,
+# src/game_menu.c, src/bgm_menu.c, src/wifi_menu.c, src/bt_menu.c), and the
+# decimal mark of a size.
+
+[menu.on]
+note = A status value in a menu row's value column: the setting is on. Lowercase, as every status value.
+en = on
+zh-Hans = 开启
+es = activado
+pt-BR = ativado
+fr = activé
+de = an
+ja = オン
+it = attivo
+
+[menu.off]
+note = A status value: the setting is off. Lowercase.
+en = off
+zh-Hans = 关闭
+es = desactivado
+pt-BR = desativado
+fr = désactivé
+de = aus
+ja = オフ
+it = disattivo
+
+[menu.on_title]
+note = On, where English writes it as a named choice with a capital (Menu Music, Side Lights' parts)
+en = On
+zh-Hans = 开启
+es = Activado
+pt-BR = Ativado
+fr = Activé
+de = An
+ja = オン
+it = Attivo
+
+[menu.off_title]
+note = Off, where English writes it as a named choice with a capital (Menu Music, UI Sounds, Charge Limit, Side Lights)
+en = Off
+zh-Hans = 关闭
+es = Desactivado
+pt-BR = Desativado
+fr = Désactivé
+de = Aus
+ja = オフ
+it = Disattivo
+
+[menu.needs_wifi]
+note = A row's value when it cannot work without a network (glossary: needs Wi-Fi)
+en = needs Wi-Fi
+zh-Hans = 需要 Wi-Fi
+es = requiere Wi-Fi
+pt-BR = requer Wi-Fi
+fr = Wi-Fi requis
+de = braucht WLAN
+ja = Wi-Fi が必要
+it = richiede Wi-Fi
+
+[menu.not_connected]
+note = The value of the Wi-Fi and Bluetooth rows with nothing connected
+en = not connected
+zh-Hans = 未连接
+es = sin conexión
+pt-BR = não conectado
+fr = non connecté
+de = nicht verbunden
+ja = 未接続
+it = non connesso
+
+[menu.decimal_point]
+note = The decimal mark of a size such as 1.4 GB: one character, . or , as the language writes it
+en = .
+zh-Hans = .
+es = .
+pt-BR = ,
+fr = ,
+de = ,
+ja = .
+it = ,
+
+[menu.wifi]
+note = The Wi-Fi row in MENU, and the heading of the Wi-Fi screen and its messages: the product's name, which German writes WLAN (GLOSSARY.md)
+en = Wi-Fi
+zh-Hans = Wi-Fi
+es = Wi-Fi
+pt-BR = Wi-Fi
+fr = Wi-Fi
+de = WLAN
+ja = Wi-Fi
+it = Wi-Fi

@@ -8,8 +8,11 @@
 /* When the shelf's focused cover turns into its video snap, and back.
  *
  * My picks in the Scraper lab, 2026-11-06 (DESIGN.md 11.19): after a
- * game has had the focus for SNAPS_WAIT_MS (3 s), its snap is asked for; when
- * its first picture is there, the cover turns into it over **turn** (300 ms),
+ * game has had the focus for SNAPS_WAIT_MS (hold-snap, 1 s; the bar under the
+ * cover fills meanwhile), its snap plays; halfway there, at SNAPS_ASK_MS, it
+ * is asked for held, so its first picture is ready when the bar is full
+ * (2026-11-07). When that picture is there, the cover turns into it
+ * over **turn** (300 ms),
  * widening to the snap's own shape; it loops. When the focus moves the snap
  * is gone at once - the card is already sliding away - and when a menu opens
  * over the shelf, or the screen goes dark, it goes back to the cover over
@@ -33,10 +36,11 @@ typedef struct {
  * (or snaps are off, or the console's are). `front` says the shelf is what
  * is on screen, still, lit and with nothing over it. `picture` says the snap
  * asked for has its first picture. Returns the snap to ask the daemon for,
- * "" for none, and puts in *k how far the cover has turned into it, 0 to 1,
- * eased. */
+ * "" for none, puts in *hold whether it is asked for held (its first picture
+ * only, while the bar still fills), and in *k how far the cover has turned
+ * into it, 0 to 1, eased. */
 const char *snapshelf_step(snapshelf *s, const char *path, bool front,
-                           bool picture, uint32_t now, float *k);
+                           bool picture, uint32_t now, bool *hold, float *k);
 
 /* Whether the cover is turning one way or the other: a frame is wanted. */
 bool snapshelf_moving(const snapshelf *s);

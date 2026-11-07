@@ -128,7 +128,7 @@ static void build_favorites_shelf(app *a)
 	for (i = 0; i < n; i++) owner[i]++;          /* everything moved up one */
 
 	memset(&a->sys.systems[0], 0, sizeof a->sys.systems[0]);
-	snprintf(a->sys.systems[0].name, CFG_STR, "%s", "Favorites");
+	snprintf(a->sys.systems[0].name, CFG_STR, "%s", T(S_LIBRARY_FAVORITES));
 	snprintf(a->sys.systems[0].tag, sizeof a->sys.systems[0].tag, "%s", "FAV");
 	snprintf(a->sys.systems[0].card, CFG_STR, "%s", "FAVORITES.png");
 	/* ZyperOS's, not a console's: lime, as Muse is (see ZYPEROS_ACCENT) */

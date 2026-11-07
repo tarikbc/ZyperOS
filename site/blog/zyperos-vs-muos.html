@@ -14,8 +14,8 @@ weight: 70
 
 <h2>The short answer</h2>
 <ul>
-  <li><strong>Pick muOS</strong> if you want a released system with a large catalogue of systems, DraStic and PortMaster included, a web dashboard to manage files over Wi-Fi, a guided tour of each screen, and a media player with live TV and radio.</li>
-  <li><strong>Pick ZyperOS</strong> if you want box art fetched on the handheld, games sent over the USB cable as well as Wi-Fi, a charging screen while off, and a charge limit. ZyperOS is in testing, with no release images yet.</li>
+  <li><strong>Pick muOS</strong> if you want a large catalogue of systems, DraStic and PortMaster included, a web dashboard to manage files over Wi-Fi, a guided tour of each screen, and a media player with live TV and radio.</li>
+  <li><strong>Pick ZyperOS</strong> if you want box art fetched on the handheld, games sent over the USB cable as well as Wi-Fi, a charging screen while off, and a charge limit. ZyperOS 1.0.0 is out, with a card image and ZyperOS Installer.</li>
 </ul>
 
 <h2>Side by side</h2>
@@ -24,7 +24,7 @@ weight: 70
   <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">muOS</th></tr></thead>
   <tbody>
     <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>GPL-3.0 for its frontend and system code</td></tr>
-    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">In testing, no release yet</td><td>2606.0 "Andromeda" (October 2026)</td></tr>
+    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">v1.0.0 (November 2026)</td><td>2606.0 "Andromeda" (October 2026)</td></tr>
     <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>112 in its catalogue for the Pixel 2, 66 shown by default</td></tr>
     <tr><th scope="row">Kernel</th><td class="us">Linux 7.1.2, with ROCKNIX's patches</td><td>A prebuilt Linux 5.10.209, from the Rockchip kit</td></tr>
     <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi or the handheld's own network] Web page</td><td>[yes: The Web Dashboard's file manager, SFTP and Syncthing] Web Dashboard, SFTP, Syncthing</td></tr>
@@ -40,14 +40,14 @@ weight: 70
     <tr><th scope="row">Side lights</th><td class="us">Battery, volume, brightness, transfers, achievements</td><td>A sweep at start and shutdown, and the red charge light</td></tr>
     <tr><th scope="row">Charging screen when off</th><td class="us">[yes: The charge, the speed and the time to full] Yes</td><td>[no: Its Pixel 2 script says the board has no charge boot mode] No</td></tr>
     <tr><th scope="row">Charge limit</th><td class="us">[yes: 80, 85 or 90%] Yes</td><td>[unk]</td></tr>
-    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>A fresh image, or an update archive when there is one</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back</td><td>A fresh image, or an update archive when there is one</td></tr>
   </tbody>
 </table>
 </div>
 <p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. muOS's system count is from its core catalogue, filtered for the Pixel 2; no source says each was tested on it.</p>
 
 <h2>Installing</h2>
-<p>muOS's Pixel 2 device page links the 2606.0 image from file hosts and a torrent, with a SHA-256 hash; it is not on GitHub. Its install page asks for a quality card of 16 GB or more, recommends Raspberry Pi Imager, and says balenaEtcher is not recommended. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers the steps.</p>
+<p>muOS's Pixel 2 device page links the 2606.0 image from file hosts and a torrent, with a SHA-256 hash; it is not on GitHub. Its install page asks for a quality card of 16 GB or more, recommends Raspberry Pi Imager, and says balenaEtcher is not recommended. ZyperOS's release has a card image you write with any image writer, and ZyperOS Installer, which downloads and writes it for you. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers the steps.</p>
 
 <h2>Wi-Fi and adding games</h2>
 <p>muOS's device notes say the Pixel 2 has no Wi-Fi and gets online only with a supported USB Wi-Fi dongle, with network support off until you turn it on. Its Pixel 2 network config loads the RTL8188EU driver, and its docs name no adapter models. With Wi-Fi, muOS 2606.0 adds a Web Dashboard with file management, uploads and downloads included, plus SFTP and Syncthing.</p>
@@ -64,7 +64,7 @@ weight: 70
 <p>muOS lights the Pixel 2's side lights in a sweep at start and at shutdown, and leaves the red charge light on after shutdown. Its own Pixel 2 script says the board has no charge boot mode, so there is no charging screen while off. ZyperOS has one, showing the charge, the speed and the time to full, plus a charge limit and side lights for the battery, volume, brightness, transfers and achievements. <a href="/blog/gkd-pixel-2-battery-charge-limit/">The battery guide</a> shows them.</p>
 
 <h2>Which one to pick</h2>
-<p>muOS is released, with a broad catalogue, a web dashboard, a guided tour and a rich media player. ZyperOS is narrower and still in testing, with covers on the handheld, transfers over the cable, and battery care. Each is a card, so you can try both.</p>
+<p>muOS runs on many handhelds, with a broad catalogue, a web dashboard, a guided tour and a rich media player. ZyperOS is narrower and made for the Pixel 2, with covers on the handheld, transfers over the cable, and battery care. Each is a card, so you can try both.</p>
 
 <h2>Sources</h2>
 <ol class="sources">

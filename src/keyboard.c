@@ -589,7 +589,7 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 	 * A has no caption - it is OK everywhere. */
 	{
 		static const char *btn[2] = { "L1/R1", "MENU" };
-		static const char *lbl[2] = { "cursor", "cancel" };
+		const char *lbl[2] = { T(S_KEYBOARD_CURSOR), T(S_KEYBOARD_CANCEL) };
 		int wd[2], total = LINE_SEP, x;
 		int cy = panel.y + PANEL_H - LINE_BOTTOM;
 

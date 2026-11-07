@@ -2,6 +2,8 @@
  * renderer: where the cursor goes next, and how a row sounds. See src/menu.h. */
 #include "menu.h"
 
+const char MENU_TICK[] = "";
+
 int menu_step_sel(const menu_row *rows, int n, int sel, int dir)
 {
 	int i, k = sel;

@@ -1,0 +1,64 @@
+# Wi-Fi File Transfer as the handheld's own network (src/hotpanel.c, DESIGN.md
+# 11.16): a QR code a phone joins by, the network, its password and the PIN
+# beside it, the phones and the news under them.
+
+[hotpanel.scan]
+note = The line under the screen's heading (Wi-Fi File Transfer), over the QR code: a phone's camera joins the network, and the transfer page opens on the phone. tight: 928 units at meta size.
+en = Scan to join. The page opens on your phone.
+zh-Hans = 扫码加入。网页会在你的手机上打开。
+es = Escanea y únete. La página se abre en tu celular.
+pt-BR = Escaneie para entrar. A página abre no seu celular.
+fr = Scannez le code\u00a0: la page s'ouvre sur le téléphone.
+de = Scanne den Code. Die Seite öffnet sich am Handy.
+ja = スキャンして接続。スマホでページが開きます。
+it = Inquadra il codice: la pagina si apre sul telefono.
+
+[hotpanel.network]
+note = Beside the QR code, above the network's name.
+en = Network
+zh-Hans = 网络
+es = Red
+pt-BR = Rede
+fr = Réseau
+de = Netzwerk
+ja = ネットワーク
+it = Rete
+
+[hotpanel.phones]
+note = Under the code: a row label; its value is how many phones joined the network.
+en = Phones
+zh-Hans = 手机
+es = Celulares
+pt-BR = Celulares
+fr = Téléphones
+de = Handys
+ja = スマホ
+it = Telefoni
+
+[hotpanel.starting]
+note = The Phones row's value while the network starts. A lowercase value.
+en = starting
+zh-Hans = 正在启动
+es = iniciando
+pt-BR = iniciando
+fr = démarrage
+de = startet
+ja = 起動中
+it = avvio
+
+[hotpanel.joined]
+note = The Phones row's value: how many phones joined the handheld's network.
+en.one = %d joined
+en.other = %d joined
+zh-Hans = 已加入 %d 部
+es.one = %d se unió
+es.other = %d se unieron
+pt-BR.one = %d entrou
+pt-BR.other = %d entraram
+fr.one = %d connecté
+fr.other = %d connectés
+de.one = %d verbunden
+de.other = %d verbunden
+ja = %d 台接続済み
+it.one = %d connesso
+it.other = %d connessi

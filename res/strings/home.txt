@@ -1,0 +1,91 @@
+# The home, the systems' screen (src/home.c): the layout's names, the words a
+# system's card may say, and the keys along the bottom. System names are not
+# here: each is written as it is.
+
+[home.spotlight]
+note = MENU > Home Screen's value: one system big, the rest in a row
+en = Spotlight
+zh-Hans = 聚焦
+es = Destacado
+pt-BR = Destaque
+fr = À la une
+de = Spotlight
+ja = スポットライト
+it = In evidenza
+
+[home.gallery]
+note = MENU > Home Screen's value: the systems side by side
+en = Gallery
+zh-Hans = 画廊
+es = Galería
+pt-BR = Galeria
+fr = Galerie
+de = Galerie
+ja = ギャラリー
+it = Galleria
+
+[home.favorites]
+note = The Favorites shelf's name on the home
+en = Favorites
+zh-Hans = 收藏
+es = Favoritos
+pt-BR = Favoritos
+fr = Favoris
+de = Favoriten
+ja = お気に入り
+it = Preferiti
+
+[home.system]
+note = A system's name on the home when it has none of its own
+en = System
+zh-Hans = 系统
+es = Sistema
+pt-BR = Sistema
+fr = Système
+de = System
+ja = システム
+it = Sistema
+
+[home.audio]
+note = The song at the top of the home when the file has no title
+en = Audio
+zh-Hans = 音频
+es = Audio
+pt-BR = Áudio
+fr = Audio
+de = Audio
+ja = オーディオ
+it = Audio
+
+[home.no_artwork]
+note = On a system's card with no picture
+en = No artwork
+zh-Hans = 无图片
+es = Sin imagen
+pt-BR = Sem imagem
+fr = Pas d'image
+de = Kein Bild
+ja = 画像なし
+it = Nessuna immagine
+
+[home.settings]
+note = The hint by MENU on the home: it opens MENU
+en = Settings
+zh-Hans = 设置
+es = Ajustes
+pt-BR = Configurações
+fr = Réglages
+de = Einstellungen
+ja = 設定
+it = Impostazioni
+
+[home.open_games]
+note = The hint by A on the home: it opens the system's games
+en = Open games
+zh-Hans = 查看游戏
+es = Ver juegos
+pt-BR = Ver jogos
+fr = Voir les jeux
+de = Spiele öffnen
+ja = ゲームを見る
+it = Apri giochi

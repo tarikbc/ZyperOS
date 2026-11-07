@@ -1,0 +1,245 @@
+# The charging screen, while the handheld is off on a charger (DESIGN.md 11.25,
+# src/charging.c, src/powerscreens.c): under the percentage, the line of how it
+# charges and from what, the line of when it is full, and the hint at the foot.
+
+[charging.wall]
+note = The charger's kind, last on the line under the percentage ("Charging · 7.4 W · wall charger"), which is in large type and must stay short: where the power comes from. review: es "enchufe", pt-BR "tomada", fr "secteur" and zh-Hans 充电头 for a wall charger
+en = wall charger
+zh-Hans = 充电头
+es = enchufe
+pt-BR = tomada
+fr = secteur
+de = Netzteil
+ja = コンセント
+it = presa
+
+[charging.computer]
+note = The charger's kind when the cable goes to a computer
+en = computer
+zh-Hans = 电脑
+es = computadora
+pt-BR = computador
+fr = ordinateur
+de = Computer
+ja = パソコン
+it = computer
+
+[charging.charger]
+note = The charger's kind when it could not be told
+en = charger
+zh-Hans = 充电器
+es = cargador
+pt-BR = carregador
+fr = chargeur
+de = Ladegerät
+ja = 充電器
+it = caricabatterie
+
+[charging.kept]
+note = Held at the charge limit the player set: %d is the limit, %s the charger's kind. The battery is kept there.
+en = Kept at %d%% · %s
+zh-Hans = 保持在 %d%% · %s
+es = Mantenida al %d%% · %s
+pt-BR = Mantida em %d%% · %s
+fr = Maintenue à %d\u00a0%% · %s
+de = Bei %d\u00a0%% gehalten · %s
+ja = %d%% で維持 · %s
+it = Mantenuta al %d%% · %s
+
+[charging.charged]
+note = The battery is full: %s is the charger's kind
+en = Charged · %s
+zh-Hans = 已充满 · %s
+es = Cargada · %s
+pt-BR = Carregada · %s
+fr = Chargée · %s
+de = Geladen · %s
+ja = 充電完了 · %s
+it = Carica · %s
+
+[charging.watts]
+note = Charging: the power in watts (%ld.%ld, one decimal; write the decimal mark your language uses), then the charger's kind
+en = Charging · %ld.%ld W · %s
+zh-Hans = 正在充电 · %ld.%ld W · %s
+es = Cargando · %ld.%ld W · %s
+pt-BR = Carregando · %ld,%ld W · %s
+fr = En charge · %ld,%ld W · %s
+de = Lädt · %ld,%ld W · %s
+ja = 充電中 · %ld.%ld W · %s
+it = In carica · %ld,%ld W · %s
+
+[charging.plugged]
+note = The cable is in but no charge goes in (the battery is not taking any): %s is the charger's kind
+en = Plugged in · %s
+zh-Hans = 已接通电源 · %s
+es = Conectado · %s
+pt-BR = Conectado · %s
+fr = Branché · %s
+de = Angeschlossen · %s
+ja = 電源接続中 · %s
+it = Collegato · %s
+
+[charging.full]
+note = The second line, smaller, when the battery is full
+en = Fully charged
+zh-Hans = 已充满电
+es = Carga completa
+pt-BR = Carga completa
+fr = Charge complète
+de = Voll geladen
+ja = 充電が完了しました
+it = Carica completa
+
+[charging.limit_in_menu]
+note = The second line when the battery is held at the charge limit: where the setting is (Charge Limit, MENU's row)
+en = Charge Limit in MENU
+zh-Hans = 充电上限在 MENU 中设置
+es = Límite de carga en MENU
+pt-BR = Limite de carga no MENU
+fr = Limite de charge dans MENU
+de = Ladelimit im MENU
+ja = 充電上限は MENU で設定
+it = Limite di carica in MENU
+
+[charging.to_limit_working]
+note = The second line while the time to the charge limit (%d, a percentage) is still being worked out
+en = Working out the time to %d%%
+zh-Hans = 正在估算充到 %d%% 的时间
+es = Calculando el tiempo hasta %d%%
+pt-BR = Calculando o tempo até %d%%
+fr = Calcul du temps jusqu'à %d\u00a0%%
+de = Zeit bis %d\u00a0%% wird berechnet
+ja = %d%% までの時間を計算中
+it = Calcolo del tempo fino al %d%%
+
+[charging.to_limit_almost]
+note = The second line: a few minutes from the charge limit (%d, a percentage)
+en = Almost at %d%%
+zh-Hans = 即将充到 %d%%
+es = Casi al %d%%
+pt-BR = Quase em %d%%
+fr = Presque à %d\u00a0%%
+de = Fast bei %d\u00a0%%
+ja = まもなく %d%%
+it = Quasi al %d%%
+
+[charging.to_limit_min]
+note = The second line: the charge limit (%d, a percentage) in about so many minutes
+en = %d%% in about %d min
+zh-Hans = 约 %2$d 分钟后充到 %1$d%%
+es = %d%% en unos %d min
+pt-BR = %d%% em cerca de %d min
+fr = %d\u00a0%% dans environ %d min
+de = %d\u00a0%% in etwa %d min
+ja = %d%% まで約 %d 分
+it = %d%% tra circa %d min
+
+[charging.to_limit_h]
+note = The second line: the charge limit (%d, a percentage) in about so many hours
+en = %d%% in about %d h
+zh-Hans = 约 %2$d 小时后充到 %1$d%%
+es = %d%% en unas %d h
+pt-BR = %d%% em cerca de %d h
+fr = %d\u00a0%% dans environ %d h
+de = %d\u00a0%% in etwa %d h
+ja = %d%% まで約 %d 時間
+it = %d%% tra circa %d h
+
+[charging.to_limit_h_min]
+note = The second line: the charge limit (%d, a percentage) in about so many hours and minutes
+en = %d%% in about %d h %d min
+zh-Hans = 约 %2$d 小时 %3$d 分钟后充到 %1$d%%
+es = %d%% en unas %d h %d min
+pt-BR = %d%% em cerca de %d h %d min
+fr = %d\u00a0%% dans environ %d h %d min
+de = %d\u00a0%% in etwa %d h %d min
+ja = %d%% まで約 %d 時間 %d 分
+it = %d%% tra circa %d h %d min
+
+[charging.to_full_working]
+note = The second line while the time to full is still being worked out
+en = Working out the time to full
+zh-Hans = 正在估算充满所需时间
+es = Calculando el tiempo de carga
+pt-BR = Calculando o tempo de carga
+fr = Calcul du temps de charge
+de = Ladezeit wird berechnet
+ja = 満充電までの時間を計算中
+it = Calcolo del tempo di ricarica
+
+[charging.to_full_almost]
+note = The second line: a few minutes from full (the battery)
+en = Almost full
+zh-Hans = 即将充满
+es = Casi llena
+pt-BR = Quase cheia
+fr = Presque pleine
+de = Fast voll
+ja = まもなく満充電
+it = Quasi carica
+
+[charging.to_full_min]
+note = The second line: the battery full in about so many minutes
+en = Full in about %d min
+zh-Hans = 约 %d 分钟后充满
+es = Llena en unos %d min
+pt-BR = Cheia em cerca de %d min
+fr = Pleine dans environ %d min
+de = Voll in etwa %d min
+ja = 満充電まで約 %d 分
+it = Carica tra circa %d min
+
+[charging.to_full_h]
+note = The second line: the battery full in about so many hours
+en = Full in about %d h
+zh-Hans = 约 %d 小时后充满
+es = Llena en unas %d h
+pt-BR = Cheia em cerca de %d h
+fr = Pleine dans environ %d h
+de = Voll in etwa %d h
+ja = 満充電まで約 %d 時間
+it = Carica tra circa %d h
+
+[charging.to_full_h_min]
+note = The second line: the battery full in about so many hours and minutes
+en = Full in about %d h %d min
+zh-Hans = 约 %d 小时 %d 分钟后充满
+es = Llena en unas %d h %d min
+pt-BR = Cheia em cerca de %d h %d min
+fr = Pleine dans environ %d h %d min
+de = Voll in etwa %d h %d min
+ja = 満充電まで約 %d 時間 %d 分
+it = Carica tra circa %d h %d min
+
+[charging.unplugged]
+note = In place of the first line when the cable comes out; then the handheld turns off
+en = Unplugged
+zh-Hans = 已拔出
+es = Desconectado
+pt-BR = Desconectado
+fr = Débranché
+de = Kabel getrennt
+ja = 電源が外れました
+it = Scollegato
+
+[charging.hold_full]
+note = The hint at the foot, held at the charge limit, before "Hold %s to start" with a · between: %s is the A button, drawn as a glyph. Keep it short.
+en = Hold %s for a full charge
+zh-Hans = 按住 %s 充满电
+es = Mantén %s: carga total
+pt-BR = Segure %s: carga total
+fr = Maintenez %s\u00a0: charge complète
+de = Halte %s für volle Ladung
+ja = %s 長押しで満充電
+it = Tieni %s: carica completa
+
+[charging.hold_start]
+note = The hint at the foot: %s is the POWER button, drawn as a glyph
+en = Hold %s to start
+zh-Hans = 按住 %s 开机
+es = Mantén %s para encender
+pt-BR = Segure %s para ligar
+fr = Maintenez %s pour démarrer
+de = Halte %s zum Starten
+ja = %s 長押しで起動
+it = Tieni %s: accendi

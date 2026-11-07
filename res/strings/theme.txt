@@ -1,0 +1,35 @@
+# MENU > Appearance's values (src/theme.c). The database keeps light, dark
+# and auto in English.
+
+[theme.light]
+note = Appearance's value
+en = Light
+zh-Hans = 浅色
+es = Claro
+pt-BR = Claro
+fr = Clair
+de = Hell
+ja = ライト
+it = Chiaro
+
+[theme.dark]
+note = Appearance's value
+en = Dark
+zh-Hans = 深色
+es = Oscuro
+pt-BR = Escuro
+fr = Sombre
+de = Dunkel
+ja = ダーク
+it = Scuro
+
+[theme.auto]
+note = Appearance's value: light from 7:00 to 19:00, dark the rest
+en = Auto
+zh-Hans = 自动
+es = Automático
+pt-BR = Automático
+fr = Auto
+de = Automatisch
+ja = 自動
+it = Automatico

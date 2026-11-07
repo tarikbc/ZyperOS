@@ -1,0 +1,135 @@
+# The Wi-Fi screen (src/wifi_menu.c): each network's value, its signal and
+# whether it is joined, and the notes under the list. Network names are the
+# networks' own.
+
+[wifimenu.strong]
+note = A network's signal. Lowercase. es: la señal; pt-BR and fr: o sinal, le signal
+en = strong
+zh-Hans = 强
+es = fuerte
+pt-BR = forte
+fr = fort
+de = stark
+ja = 強い
+it = forte
+
+[wifimenu.good]
+note = A network's signal. Lowercase.
+en = good
+zh-Hans = 良好
+es = buena
+pt-BR = bom
+fr = bon
+de = gut
+ja = 良好
+it = buono
+
+[wifimenu.weak]
+note = A network's signal. Lowercase.
+en = weak
+zh-Hans = 弱
+es = débil
+pt-BR = fraco
+fr = faible
+de = schwach
+ja = 弱い
+it = debole
+
+[wifimenu.signal_connected]
+note = A network's value: %s is its signal (strong), and it is the one joined. es and pt-BR: la red, a rede
+en = %s - connected
+zh-Hans = %s - 已连接
+es = %s - conectada
+pt-BR = %s - conectada
+fr = %s - connecté
+de = %s - verbunden
+ja = %s - 接続済み
+it = %s - connessa
+
+[wifimenu.signal_saved]
+note = A network's value: its signal, and its password is saved
+en = %s - saved
+zh-Hans = %s - 已保存
+es = %s - guardada
+pt-BR = %s - salva
+fr = %s - enregistré
+de = %s - gespeichert
+ja = %s - 保存済み
+it = %s - salvata
+
+[wifimenu.signal_open]
+note = A network's value: its signal, and it has no password
+en = %s - open
+zh-Hans = %s - 开放
+es = %s - abierta
+pt-BR = %s - aberta
+fr = %s - ouvert
+de = %s - offen
+ja = %s - 保護なし
+it = %s - aperta
+
+[wifimenu.saved]
+note = A saved network's value before the scan has heard it. Lowercase.
+en = saved
+zh-Hans = 已保存
+es = guardada
+pt-BR = salva
+fr = enregistré
+de = gespeichert
+ja = 保存済み
+it = salvata
+
+[wifimenu.turn_on]
+note = The note under the switch with the radio off
+en = Turn Wi-Fi on to scan
+zh-Hans = 开启 Wi-Fi 以扫描
+es = Activa el Wi-Fi para buscar redes
+pt-BR = Ative o Wi-Fi para buscar redes
+fr = Activez le Wi-Fi pour rechercher
+de = Schalte WLAN ein, um zu suchen
+ja = Wi-Fi をオンにしてスキャン
+it = Attiva il Wi-Fi per cercare reti
+
+[wifimenu.none_found]
+note = The note when a scan found nothing
+en = No networks found
+zh-Hans = 未找到网络
+es = No se encontraron redes
+pt-BR = Nenhuma rede encontrada
+fr = Aucun réseau trouvé
+de = Keine Netzwerke gefunden
+ja = ネットワークが見つかりません
+it = Nessuna rete trovata
+
+[wifimenu.scanning]
+note = The note while it scans
+en = Scanning...
+zh-Hans = 正在扫描…
+es = Buscando...
+pt-BR = Buscando...
+fr = Recherche...
+de = Suche ...
+ja = スキャン中…
+it = Ricerca...
+
+[wifimenu.legend_forget]
+note = The note under the list: what Y and X do; the three spaces stay
+en = Y: rescan   X: forget
+zh-Hans = Y：重新扫描   X：忘记
+es = Y: buscar de nuevo   X: olvidar
+pt-BR = Y: buscar de novo   X: esquecer
+fr = Y : relancer   X : oublier
+de = Y: neu suchen   X: entfernen
+ja = Y：再スキャン   X：削除
+it = Y: cerca di nuovo   X: dimentica
+
+[wifimenu.legend]
+note = The same with no saved network to forget
+en = Y: rescan
+zh-Hans = Y：重新扫描
+es = Y: buscar de nuevo
+pt-BR = Y: buscar de novo
+fr = Y : relancer
+de = Y: neu suchen
+ja = Y：再スキャン
+it = Y: cerca di nuovo

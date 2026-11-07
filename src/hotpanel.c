@@ -127,14 +127,14 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms)
 
 	ui_text(r, ui_font(UI_F_TITLE), p->heading, HOT_LEFT,
 	        ui_line_y(UI_F_TITLE, HOT_TITLE_Y), -1, UI_TEXT);
-	ui_text(r, ui_font(UI_F_META), "Scan to join. The page opens on your phone.",
+	ui_text(r, ui_font(UI_F_META), T(S_HOTPANEL_SCAN),
 	        HOT_LEFT, ui_line_y(UI_F_META, HOT_SUB_Y), -1, UI_TEXT_DIM);
 
 	side = draw_code(r, HOT_LEFT, HOT_CODE_Y, p->qr);
 	kx = HOT_LEFT + side + HOT_GAP;
 	room = ZYPEROS_SCREEN_W - HOT_LEFT - kx;
-	entry(r, kx, HOT_COL_Y, room, "Network", p->ssid, UI_F_MENU, now_ms);
-	entry(r, kx, HOT_COL_Y + HOT_STEP, room, "Password", p->pass, UI_F_MENU, now_ms);
+	entry(r, kx, HOT_COL_Y, room, T(S_HOTPANEL_NETWORK), p->ssid, UI_F_MENU, now_ms);
+	entry(r, kx, HOT_COL_Y + HOT_STEP, room, T(S_PANEL_PASSWORD), p->pass, UI_F_MENU, now_ms);
 	entry(r, kx, HOT_COL_Y + 2 * HOT_STEP, room, "PIN", p->pin, UI_F_TITLE, now_ms);
 
 	/* The Now line's marquee starts over when its news does */
@@ -142,11 +142,12 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms)
 		snprintf(last_now, sizeof last_now, "%s", p->now ? p->now : "");
 		now_since = now_ms;
 	}
-	status(r, kx, room, HOT_ROWS_Y, "Phones", p->phones, 0);
-	status(r, kx, room, HOT_ROWS_Y + HOT_ROW_STEP, "Now", p->now, now_ms - now_since);
+	status(r, kx, room, HOT_ROWS_Y, T(S_HOTPANEL_PHONES), p->phones, 0);
+	status(r, kx, room, HOT_ROWS_Y + HOT_ROW_STEP, T(S_XFER_NOW), p->now, now_ms - now_since);
 
 	/* The key legend (DESIGN.md 11.4), centered at the foot */
-	ui_text(r, ui_font(UI_F_META), p->legend ? p->legend : "B: close", ZYPEROS_SCREEN_W / 2,
+	ui_text(r, ui_font(UI_F_META), p->legend ? p->legend : T(S_PANEL_B_CLOSE),
+	        ZYPEROS_SCREEN_W / 2,
 	        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - DS_INSET - DS_GRID -
 	                             ui_font_line(UI_F_META)), 0, UI_TEXT_DIM);
 }

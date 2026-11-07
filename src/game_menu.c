@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "game_menu.h"
+#include "i18n.h"
 
 int gi_rows(menu_row *out, const game_info *gi, bool net)
 {
@@ -34,17 +35,18 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * because the difference between "not looked up" and "looked up, nothing
 	 * there" is worth a word. */
 	if (gi->scraped)
-		out[n++] = (menu_row){ "Synopsis", gi->has_synopsis ? NULL : "none",
+		out[n++] = (menu_row){ T(S_GAMEMENU_SYNOPSIS),
+		                       gi->has_synopsis ? NULL : T(S_GAMEMENU_SYNOPSIS_NONE),
 		                       gi->has_synopsis };
 	if (gi->scraped && gi->year[0])
-		out[n++] = (menu_row){ "Year",  gi->year,  false };
+		out[n++] = (menu_row){ T(S_GAMEMENU_YEAR),  gi->year,  false };
 	if (gi->scraped && gi->genre[0])
-		out[n++] = (menu_row){ "Genre", gi->genre, false };
+		out[n++] = (menu_row){ T(S_GAMEMENU_GENRE), gi->genre, false };
 	/* The count opens the same list the in-game menu opens - which is where it
 	 * comes from. Reading "4/54" and having nowhere to go with it is the
 	 * question half-answered: which four, and what are the other fifty. A game
 	 * with no set has nothing to open and says so. */
-	out[n++] = (menu_row){ "Cheevos", gi->cheevos, gi->has_cheevos };
+	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos, gi->has_cheevos };
 	/* WHAT THIS SCREEN NO LONGER SAYS, and why, because each was removed on a
 	 * reason rather than to make the list shorter:
 	 *
@@ -81,8 +83,8 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * is holding; publisher and developer run to 214 and 417 distinct values
 	 * of pure trivia. They stay stored - re-scraping to add a column is an
 	 * hour - and stay off this screen. */
-	out[n++] = (menu_row){ gi->has_art ? "Replace Box Art" : "Get Box Art",
-	                       net ? NULL : "needs Wi-Fi", net };
+	out[n++] = (menu_row){ gi->has_art ? T(S_GAMEMENU_REPLACE_ART) : T(S_GAMEMENU_GET_ART),
+	                       net ? NULL : T(S_MENU_NEEDS_WIFI), net };
 	return n;
 }
 
@@ -91,6 +93,14 @@ const char *const gm_layout_names[GM_LAYOUTS]  = { "stacked", "focus", "single" 
 /* "Top Focus" rather than "Focus": the row has to say which screen is the big
  * one, and swapped it is the bottom - which Swap Screens says right under it. */
 const char *const gm_layout_labels[GM_LAYOUTS] = { "Stacked", "Top Focus", "Single" };
+static const str_id GM_LAYOUT_TEXT[GM_LAYOUTS] = {
+	S_GAMEMENU_LAYOUT_STACKED, S_GAMEMENU_LAYOUT_FOCUS, S_GAMEMENU_LAYOUT_SINGLE
+};
+
+const char *gm_layout_label(int layout)
+{
+	return T(GM_LAYOUT_TEXT[layout >= 0 && layout < GM_LAYOUTS ? layout : 0]);
+}
 
 int gm_layout_index(const char *name)
 {
@@ -118,15 +128,16 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 
 int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 {
-	static const char *label[GM_MAX_ROWS] = {
-		"Continue", "Save", "Load", "Display", "Controls", "Cheevos", "Reset", "Quit",
-		"Screens", "Swap Screens", "Stylus"
+	static const str_id label[GM_MAX_ROWS] = {
+		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_DISPLAY,
+		S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS, S_GAMEMENU_RESET, S_GAMEMENU_QUIT,
+		S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
 	int i, n;
 
-	for (i = 0; i < GM_MAX_ROWS; i++) full[i] = (menu_row){ label[i], NULL, true };
+	for (i = 0; i < GM_MAX_ROWS; i++) full[i] = (menu_row){ T(label[i]), NULL, true };
 	full[GM_DISPLAY].value = u->dmode;
 
 	/* Most of a library has no set, and a row that says so plainly is better
@@ -136,14 +147,13 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	if (u->total > 0)
 		snprintf(b->cheevos, sizeof b->cheevos, "%d / %d", u->earned, u->total);
 	else {
-		snprintf(b->cheevos, sizeof b->cheevos, "none");
+		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_GAMEMENU_CHEEVOS_NONE));
 		full[GM_CHEEVOS].live = false;
 	}
 	full[GM_CHEEVOS].value = b->cheevos;
-	full[GM_SCREENS].value = gm_layout_labels[u->layout >= 0 && u->layout < GM_LAYOUTS
-	                                          ? u->layout : 0];
-	full[GM_SWAP].value    = u->swap ? "on" : "off";
-	full[GM_STYLUS].value  = u->stylus ? "on" : "off";
+	full[GM_SCREENS].value = gm_layout_label(u->layout);
+	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON) : T(S_MENU_OFF);
+	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON) : T(S_MENU_OFF);
 
 	n = gm_row_ids(u, ids);
 	for (i = 0; i < n; i++) {

@@ -1,0 +1,36 @@
+# MENU > UI Sounds' values (src/uisound.c): the launcher's three voices, in
+# DESIGN.md's order. design.h's DS_VOICE_NAME is English; the row reads these.
+# Off is menu.off_title.
+
+[sounds.wood]
+note = UI Sounds' value: the voice made of wooden knocks
+en = Wood
+zh-Hans = 木
+es = Madera
+pt-BR = Madeira
+fr = Bois
+de = Holz
+ja = ウッド
+it = Legno
+
+[sounds.glass]
+note = UI Sounds' value: the voice made of glass chimes
+en = Glass
+zh-Hans = 玻璃
+es = Cristal
+pt-BR = Vidro
+fr = Verre
+de = Glas
+ja = グラス
+it = Vetro
+
+[sounds.bubble]
+note = UI Sounds' value: the voice made of bubbles
+en = Bubble
+zh-Hans = 泡泡
+es = Burbuja
+pt-BR = Bolha
+fr = Bulle
+de = Blase
+ja = バブル
+it = Bolla

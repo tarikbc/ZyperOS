@@ -16,6 +16,7 @@
 #include "artshrink.h"
 #include "db.h"
 #include "fileio.h"
+#include "i18n.h"
 #include "library.h"
 #include "monoclock.h"
 #include "net.h"
@@ -118,7 +119,7 @@ static bool run_begin(const char *folder, const char *file, const char *stem,
 	 * name alone - the same path a disc image takes. */
 	if (!art_rom_crc(rom_dir, stem, exts, &g_run.crc)) g_run.crc = 0;
 
-	snprintf(g_run.where, sizeof g_run.where, "looking it up");
+	snprintf(g_run.where, sizeof g_run.where, "%s", T(S_SS_WHERE_LOOKING));
 	if (!start_ask(g_run.crc)) return false;
 	g_run.phase = R_ASK;
 	return true;
@@ -212,7 +213,7 @@ static bool start_video(int answer)
 	if (stat(want, &st) == 0 && st.st_size > 0) return false;
 	snprintf(g_run.snap, sizeof g_run.snap, "%s.snap", want);
 	mkdir_media(g_run.dir);
-	snprintf(g_run.where, sizeof g_run.where, "fetching the video snap");
+	snprintf(g_run.where, sizeof g_run.where, "%s", T(S_SS_WHERE_SNAP));
 	if (!net_get_async(g_run.got.video, g_run.snap, SS_SNAP_WAIT_S)) return false;
 	g_run.answer = answer;
 	g_run.phase = R_VIDEO;
@@ -288,7 +289,7 @@ static int run_step(void)
 			         g_run.got.name, again ? ", asking by name" : "");
 			say_reply(how, bytes, parse_ms, what);
 			if (again) {
-				snprintf(g_run.where, sizeof g_run.where, "asking by name");
+				snprintf(g_run.where, sizeof g_run.where, "%s", T(S_SS_WHERE_BY_NAME));
 				if (start_ask(0)) { g_run.phase = R_RETRY; return 1; }
 			}
 			/* The wrong game. Never persist its title or prose. */
@@ -320,7 +321,7 @@ static int run_step(void)
 		/* The folder is made by what puts the first cover in it: the card
 		 * no longer comes with one per console (mk/payload.sh) */
 		mkdir_media(g_run.dir);
-		snprintf(g_run.where, sizeof g_run.where, "fetching the cover");
+		snprintf(g_run.where, sizeof g_run.where, "%s", T(S_SS_WHERE_COVER));
 		if (!net_get_async(g_run.got.art, g_run.dest, 60)) {
 			g_run.phase = R_FAIL;
 			return -1;

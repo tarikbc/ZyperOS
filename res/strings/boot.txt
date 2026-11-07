@@ -1,0 +1,26 @@
+# The boot screen's line on a first start (DESIGN.md 11.20): drawn into
+# pictures by tools/genfirststart.py, one set a language, which plastron's
+# splash lays over the boot animation while ZyperOS is copied onto the card.
+# Not read by the launcher.
+
+[boot.setup]
+note = Under the boot animation while a new card gets its ZyperOS, about a minute. One line, centered, at most 560 of the panel's 640 pixels.
+en = Setting up ZyperOS on this card
+zh-Hans = 正在为此存储卡设置 ZyperOS
+es = Preparando ZyperOS en esta tarjeta
+pt-BR = Preparando o ZyperOS neste cartão
+fr = Installation de ZyperOS sur cette carte
+de = ZyperOS wird auf dieser Karte eingerichtet
+ja = このカードに ZyperOS をセットアップ中
+it = Installazione di ZyperOS su questa scheda
+
+[boot.update]
+note = The same, after a system update, while the newer ZyperOS is copied onto the card
+en = Updating ZyperOS on this card
+zh-Hans = 正在更新此存储卡上的 ZyperOS
+es = Actualizando ZyperOS en esta tarjeta
+pt-BR = Atualizando o ZyperOS neste cartão
+fr = Mise à jour de ZyperOS sur cette carte
+de = ZyperOS wird auf dieser Karte aktualisiert
+ja = このカードの ZyperOS を更新中
+it = Aggiornamento di ZyperOS su questa scheda

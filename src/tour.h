@@ -51,10 +51,12 @@
 #include <stdint.h>
 
 #include "db.h"
+#include "i18n_ids.h"   /* LANG_COUNT: the languages the first step offers */
 #include "inbutton.h"   /* the launcher's buttons, with no SDL */
 #include "zyperrig.h"   /* Zyper's moves, one copy for the menu and here */
 
 typedef enum {
+	TOUR_LANG,
 	TOUR_WELCOME,
 	TOUR_MOVE, TOUR_A, TOUR_B, TOUR_Y, TOUR_X,
 	TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT, TOUR_POWER,
@@ -62,6 +64,19 @@ typedef enum {
 	TOUR_FINISH,
 	TOUR_STEPS
 } tour_step;
+
+/* The first step asks for the language (DESIGN.md 11.30; my picks in
+ * the languages lab, 2026-11-07): Zyper as on the welcome, his bubble saying
+ * hello in the language under the cursor, the languages beside him, each in
+ * its own words. Until a press, the cursor steps to the next language every
+ * TOUR_LANG_STEP_MS, so the screen greets in each in turn (My note);
+ * any press stops it there. UP and DOWN (LEFT and RIGHT too) move it, A
+ * keeps it and goes on to the welcome, in it. START skips the rest, keeping
+ * the one under the cursor if UP or DOWN put it there, else the one that was
+ * on: going round alone chooses nothing. The caller draws each language as
+ * the cursor reaches it (tour_lang_focus) and saves tour_lang_kept. */
+#define TOUR_LANGS        LANG_COUNT
+#define TOUR_LANG_STEP_MS 1000
 
 /* The ten steps that teach a button. */
 #define TOUR_FIRST_LESSON TOUR_MOVE
@@ -99,7 +114,9 @@ typedef enum {
  * both volume keys as TK_VOL, both brightness keys as TK_BRIGHT, POWER.
  * TK_KEYS for IN_NONE or anything out of range. */
 tour_key tour_key_of(in_button b);
-/* The button's own name, for "That's X.": Up, A, L1, START... */
+/* The button's own name, as "That's X." says it in English: Up, A, L1,
+ * START... English whatever language is on, for the command line's
+ * --tour-wrong; the answer itself says it in the language that is on. */
 const char *tour_key_name(tour_key k);
 
 /* The parts of the glyphs that can be seen pressed, by the demonstration or
@@ -141,9 +158,12 @@ typedef struct {
 	int        period;
 } tour_loop;
 
+/* A step's words in the language that is on (src/i18n.h); a glyph's letter
+ * or word and the buttons it names are as printed, in every language. */
 typedef struct {
 	const char *title;
-	const char *line;          /* under the title, meta text-soft */
+	const char *line;          /* under the title, meta text-soft; the welcome's
+	                            * and the finish's are two lines, "\n" between */
 	const char *line_fn;       /* the same where brightness is MENU+VOL, or NULL */
 	const char *note;          /* a second line, meta text-dim, or NULL */
 	const char *note_done;     /* the second line once the press landed, or NULL */
@@ -197,7 +217,7 @@ typedef struct {
 	/* A press of the wrong button, and Zyper's answer to it. */
 	bool      wrong;
 	uint32_t  wrong_at;
-	char      hint[48];
+	char      hint[128];     /* room for the longest language's */
 	/* Zyper: the rig his moves come from, the corner's rise, whether this
 	 * reward's hop and pant were started, and the hello's moment */
 	zr_rig    zy;
@@ -216,8 +236,24 @@ typedef struct {
 	int       pick[TOUR_CHOICES];
 	int       kept[TOUR_CHOICES];
 	bool      music;         /* the card has menu music: tour_set_music */
+	/* The language step (TOUR_LANG): the language that was on, the one the
+	 * cursor is on once a press stopped them going round, whether a press
+	 * did, whether UP or DOWN moved the cursor, and the one kept */
+	int       lang_start, lang_pick, lang_kept;
+	bool      lang_touched, lang_moved, from_lang;
+	/* When the welcome's words come in: his hello's moment, or the moment
+	 * the language step handed over to it, Zyper already there */
+	uint32_t  say_at;
 	struct { bool ever, held; uint32_t down_at, up_at; } hand[TP_PARTS];
 } tour;
+
+/* The language that was on when the tutorial started, which the cursor
+ * starts on and a skip goes back to (anything out of range: the first) */
+void tour_lang_from(tour *t, int lang);
+/* The language under the cursor at `now`, 0 to TOUR_LANGS - 1 */
+int  tour_lang_focus(const tour *t, uint32_t now);
+/* The language to keep, once the step is left or the tutorial skipped */
+int  tour_lang_kept(const tour *t);
 
 /* From the welcome, at `now`. `fn_volume`: plat_brightness_on_volume. */
 void tour_start(tour *t, uint32_t now, bool fn_volume);

@@ -1,0 +1,156 @@
+# The menus and the panel (src/main.c): words more than one screen says, the
+# values of MENU's rows the launcher fills in, and headings of MENU's pages.
+
+[panel.order_az]
+note = MENU > System Order's value: systems sorted by name. A named choice.
+en = A to Z
+zh-Hans = A 到 Z
+es = A a Z
+pt-BR = A a Z
+fr = A à Z
+de = A bis Z
+ja = A〜Z
+it = Dalla A alla Z
+
+[panel.order_release]
+note = MENU > System Order's value: systems sorted by the year they came out. A named choice.
+en = Release Date
+zh-Hans = 发行日期
+es = Fecha de lanzamiento
+pt-BR = Data de lançamento
+fr = Date de sortie
+de = Erscheinungsdatum
+ja = 発売日
+it = Data di uscita
+
+[panel.battery_bars]
+note = MENU > Battery Icon's value: the corner's battery as its mark alone. A named choice. review: zh-Hans 电量格 (the battery's bars).
+en = Bars
+zh-Hans = 电量格
+es = Barras
+pt-BR = Barras
+fr = Barres
+de = Balken
+ja = 目盛り
+it = Barre
+
+[panel.battery_percentage]
+note = MENU > Battery Icon's value: the battery's charge written beside the mark ("82%"). A named choice.
+en = Percentage
+zh-Hans = 百分比
+es = Porcentaje
+pt-BR = Porcentagem
+fr = Pourcentage
+de = Prozent
+ja = パーセント
+it = Percentuale
+
+[panel.side_lights]
+note = The heading of MENU > Side Lights, the lights on the handheld's sides.
+en = Side Lights
+zh-Hans = 侧灯
+es = Luces laterales
+pt-BR = Luzes laterais
+fr = Lumières latérales
+de = Seitenlichter
+ja = サイドライト
+it = Luci laterali
+
+[panel.controls]
+note = The heading of MENU > Controls; %s is the page's name ("On the shelf", "In a game").
+en = Controls: %s
+zh-Hans = 按键说明：%s
+es = Controles: %s
+pt-BR = Controles: %s
+fr = Commandes\u00a0: %s
+de = Steuerung: %s
+ja = 操作方法：%s
+it = Comandi: %s
+
+[panel.cancel]
+note = A yes/no panel's safe answer, under the question and the yes answer.
+en = Cancel
+zh-Hans = 取消
+es = Cancelar
+pt-BR = Cancelar
+fr = Annuler
+de = Abbrechen
+ja = キャンセル
+it = Annulla
+
+[panel.needs_wifi]
+note = A message when a screen needs the network and there is none.
+en = Connect to Wi-Fi first.
+zh-Hans = 请先连接 Wi-Fi。
+es = Conéctate al Wi-Fi primero.
+pt-BR = Conecte-se ao Wi-Fi primeiro.
+fr = Connectez-vous d'abord au Wi-Fi.
+de = Verbinde dich zuerst mit dem WLAN.
+ja = 先に Wi-Fi に接続してください。
+it = Connettiti prima al Wi-Fi.
+
+[panel.password]
+note = The keyboard's title when signing in (RetroAchievements, ScreenScraper), and the Wi-Fi hotspot screen's password, above it.
+en = Password
+zh-Hans = 密码
+es = Contraseña
+pt-BR = Senha
+fr = Mot de passe
+de = Passwort
+ja = パスワード
+it = Password
+
+[panel.signing_in]
+note = One line on a panel while a sign-in asks the service.
+en = Signing in...
+zh-Hans = 正在登录…
+es = Iniciando sesión...
+pt-BR = Entrando...
+fr = Connexion...
+de = Wird angemeldet ...
+ja = サインイン中…
+it = Accesso in corso...
+
+[panel.signed_in_as]
+note = The message after a sign-in worked; %s is the account's user name.
+en = Signed in as %s
+zh-Hans = 已登录为 %s
+es = Sesión iniciada como %s
+pt-BR = Você entrou como %s
+fr = Connecté en tant que %s
+de = Angemeldet als %s
+ja = %s としてサインインしました
+it = Accesso eseguito come %s
+
+[panel.sign_in_failed]
+note = The message when a sign-in did not work and the service said nothing more.
+en = Sign-in failed
+zh-Hans = 登录失败
+es = No se pudo iniciar sesión
+pt-BR = Falha ao entrar
+fr = Échec de la connexion
+de = Anmeldung fehlgeschlagen
+ja = サインインに失敗しました
+it = Accesso non riuscito
+
+[panel.b_close]
+note = A key legend at a panel's foot: B closes it. B is the button's name.
+en = B: close
+zh-Hans = B：关闭
+es = B: cerrar
+pt-BR = B: fechar
+fr = B\u00a0: fermer
+de = B: schließen
+ja = B：閉じる
+it = B: chiudi
+
+[panel.b_stop]
+note = A key legend at a panel's foot while something runs: B stops it.
+en = B: stop
+zh-Hans = B：停止
+es = B: detener
+pt-BR = B: parar
+fr = B\u00a0: arrêter
+de = B: stoppen
+ja = B：停止
+it = B: interrompi

@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
 /* The empty home's words: see emptyhome.h. */
 #include "emptyhome.h"
-#include "sys_menu.h"   /* XFER_NAME_CABLE, XFER_NAME_WIFI: the screens' own names */
+#include "i18n.h"
+#include "sys_menu.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -22,27 +23,28 @@ void eh_words(const eh_state *s, eh_way w, eh_text *out, char *buf, size_t n)
 	memset(out, 0, sizeof *out);
 	out->key = eh_key(w);
 	if (w == EH_USB) {
-		out->name = XFER_NAME_CABLE;
-		out->step[0] = "Plug into a computer";
+		out->name = T(S_EMPTYHOME_CARD_USB);
+		out->step[0] = T(S_EMPTYHOME_PLUG_COMPUTER);
 		/* The question a computer gets on a port that only charges
 		 * (usblink.h); a cable that links on its own has none */
-		out->step[1] = s->shared_port ? "Choose File Transfer" : "Press A";
+		out->step[1] = s->shared_port ? T(S_EMPTYHOME_CHOOSE_XFER) : T(S_EMPTYHOME_PRESS_A);
 		if (s->cable_addr[0] && buf && n) {
-			snprintf(buf, n, "Browse to %s", s->cable_addr);
+			snprintf(buf, n, T(S_EMPTYHOME_BROWSE_TO), s->cable_addr);
 			out->step[2] = buf;
 		} else {
-			out->step[2] = "Open the address it shows";
+			out->step[2] = T(S_EMPTYHOME_OPEN_ADDRESS);
 		}
 		if (!s->ok[EH_USB])
-			out->why = s->shared_port ? "Unplug the Wi-Fi adapter."
-			                          : "Plug into a computer first.";
+			out->why = s->shared_port ? T(S_EMPTYHOME_UNPLUG_ADAPTER)
+			                          : T(S_EMPTYHOME_PLUG_COMPUTER_FIRST);
 	} else {
-		out->name = XFER_NAME_WIFI;
-		out->step[0] = s->builtin_wifi ? "Connect to Wi-Fi" : "Plug in the Wi-Fi adapter";
-		out->step[1] = "Press Y";
-		out->step[2] = "Open the address it shows";
+		out->name = T(S_EMPTYHOME_CARD_WIFI);
+		out->step[0] = s->builtin_wifi ? T(S_EMPTYHOME_CONNECT_WIFI)
+		                               : T(S_EMPTYHOME_PLUG_ADAPTER);
+		out->step[1] = T(S_EMPTYHOME_PRESS_Y);
+		out->step[2] = T(S_EMPTYHOME_OPEN_ADDRESS);
 		if (!s->ok[EH_WIFI])
-			out->why = s->builtin_wifi ? "Connect to Wi-Fi in MENU first."
-			                           : "Plug in the Wi-Fi adapter first.";
+			out->why = s->builtin_wifi ? T(S_EMPTYHOME_CONNECT_WIFI_FIRST)
+			                           : T(S_EMPTYHOME_PLUG_ADAPTER_FIRST);
 	}
 }

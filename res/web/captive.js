@@ -19,15 +19,23 @@
 	var host = location.host || "10.42.1.1";
 	var text;
 
+	/* The words, in the handheld's language: /i18n.js comes before this
+	 * file (app.js says how). The line's %s (%2$s on Android, after the
+	 * menu's mark) is the address, in bold. */
+	function t(name) {
+		var w = (window.ZYPEROS_STRINGS || {})[name];
+		return typeof w === "string" ? w : name;
+	}
+
 	if (iphone) {
-		text = ["Downloads need Safari.",
-		        "Tap Cancel, then Use Without Internet. Then open ", " in Safari."];
+		text = [t("captive.ios_head"), t("captive.ios_text")];
 	} else if (android) {
-		text = ["Uploads need Chrome.",
-		        "Tap ⋮, then Use this network as is. Then open ", " in Chrome."];
+		/* The sheet's menu, ⋮, put in as the mark it is */
+		text = [t("captive.android_head"), t("captive.android_text").replace("%1$s", "\u22ee")];
 	} else {
 		return;
 	}
+	text = [text[0]].concat(text[1].replace("%2$s", "%s").split("%s"));
 
 	function show() {
 		var note = document.createElement("aside"), b = document.createElement("b"),
@@ -45,7 +53,7 @@
 		at.style.cssText = "font-weight:600;color:var(--accent-ink,#476b00)";
 		p.appendChild(document.createTextNode(text[1]));
 		p.appendChild(at);
-		p.appendChild(document.createTextNode(text[2]));
+		p.appendChild(document.createTextNode(text[2] || ""));
 		note.appendChild(b);
 		note.appendChild(p);
 		document.body.insertBefore(note, document.body.firstChild);

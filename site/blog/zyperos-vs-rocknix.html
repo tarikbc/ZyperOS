@@ -14,7 +14,7 @@ weight: 20
 
 <h2>The short answer</h2>
 <ul>
-  <li><strong>Pick ROCKNIX</strong> if you want the most systems, updates over the air today, DraStic and PortMaster ready on the card, or a USB Wi-Fi adapter with a newer chip. It is also released, while ZyperOS is still in testing.</li>
+  <li><strong>Pick ROCKNIX</strong> if you want the most systems, DraStic and PortMaster ready on the card, or a USB Wi-Fi adapter with a newer chip.</li>
   <li><strong>Pick ZyperOS</strong> if you want games that start the moment you press A, box art and video previews fetched on the handheld with no account, games sent from a phone's browser or over the USB cable, a card a Mac or PC can read, and battery care such as a charge limit.</li>
 </ul>
 
@@ -24,7 +24,7 @@ weight: 20
   <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">ROCKNIX</th></tr></thead>
   <tbody>
     <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>GPL-2.0 for its own code</td></tr>
-    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">In testing, no release yet</td><td>20261101 (November 2026)</td></tr>
+    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">v1.0.0 (November 2026)</td><td>20261101 (November 2026)</td></tr>
     <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>120 in its RK3326 list</td></tr>
     <tr><th scope="row">Card a Mac or PC reads</th><td class="us">[yes: exFAT games partition] exFAT</td><td>[no: The whole card is ext4, which Windows and macOS do not read] ext4</td></tr>
     <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi, the handheld's own network, or the USB cable] Web page, Wi-Fi or USB cable</td><td>[yes: A web server, Samba, SFTP, and USB network or file-transfer modes] Web server, Samba, SFTP, USB</td></tr>
@@ -33,7 +33,7 @@ weight: 20
     <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld; offline after a game's first start] Yes</td><td>[yes: Sign in on the handheld] Yes</td></tr>
     <tr><th scope="row">Nintendo DS</th><td class="us">DSperate built in, DraStic if you add it</td><td>DraStic built in, melonDS and others</td></tr>
     <tr><th scope="row">PortMaster</th><td class="us">[yes: Ports run; you set them up with PortMaster on another system] Ports run</td><td>[yes: Included] Included</td></tr>
-    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>Over the air, or a file</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back</td><td>Over the air, or a file</td></tr>
     <tr><th scope="row">Charge limit</th><td class="us">[yes: 80, 85 or 90%] 80, 85 or 90%</td><td>[unk]</td></tr>
     <tr><th scope="row">Charging screen when off</th><td class="us">[yes: The charge, the speed and the time to full] Yes</td><td>[unk]</td></tr>
     <tr><th scope="row">Side lights</th><td class="us">Battery, volume, brightness, transfers, achievements</td><td>Battery level and charging</td></tr>
@@ -45,7 +45,7 @@ weight: 20
 
 <h2>Installing</h2>
 <p>ROCKNIX publishes one image for a group of RK3326 handhelds; the Pixel 2's is the "b" image, <code>ROCKNIX-RK3326.aarch64-20261101-b.img.gz</code>. You decompress it and write it to a card, or on Windows use the ROCKNIX Image Burner, which lists the GKD Pixel 2. On the first boot it runs its install process and reboots.</p>
-<p>ZyperOS has no release image yet: you build it from source and write it with ZyperOS Installer or any image writer. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers both.</p>
+<p>ZyperOS's release has a card image you write with any image writer, and ZyperOS Installer, which downloads and writes it for you. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers both.</p>
 
 <h2>Adding games</h2>
 <p>This is the biggest practical difference. ROCKNIX expands the whole card as ext4, a Linux file system, and its docs say Windows cannot reach it; only Linux reads the card in a computer. Instead it offers many ways over the network: a simple web server, Samba, SFTP and scp, and over the Pixel 2's USB-C port a network mode or a file-transfer mode. Its FAQ notes that SSH and Samba are off by default in release builds.</p>
@@ -64,10 +64,10 @@ weight: 20
 <p>ROCKNIX's Pixel 2 settings turn on a battery script for its side lights: a red light at 10% or less, one to four green lights for the level, and a blinking light while charging. It powers the handheld off when the measured voltage stays at or under 3.4 V. ZyperOS's side lights show the battery too, plus volume, brightness, finished transfers and achievements, each on or off. It adds a charge limit, a charging screen while off, and a warning before heat slows a game. <a href="/blog/gkd-pixel-2-battery-charge-limit/">The battery guide</a> shows them.</p>
 
 <h2>Updates</h2>
-<p>ROCKNIX updates over the air from its menu, or from a <code>.tar</code> file you copy over. ZyperOS's System Update downloads only what changed, into a second system slot, and goes back by itself if the new version fails to start. It is built and tested, and turns on once ZyperOS has its release signing key.</p>
+<p>ROCKNIX updates over the air from its menu, or from a <code>.tar</code> file you copy over. ZyperOS's System Update downloads only what changed, into a second system slot, and goes back by itself if the new version fails to start. Without Wi-Fi, the File Transfer page brings it over the USB cable.</p>
 
 <h2>Which one to pick</h2>
-<p>ROCKNIX is the broader, released system: more systems, more handhelds and more ways to connect. ZyperOS is narrower and made for this one handheld, with the polish that allows: a first-start tutorial, a card your computer reads, transfers from a phone, covers and previews on the device, and care for the battery. If you can, try both: each one is a card, and the Pixel 2 starts whichever is in it.</p>
+<p>ROCKNIX is the broader system: more systems, more handhelds and more ways to connect. ZyperOS is narrower and made for this one handheld, with the polish that allows: a first-start tutorial, a card your computer reads, transfers from a phone, covers and previews on the device, and care for the battery. If you can, try both: each one is a card, and the Pixel 2 starts whichever is in it.</p>
 
 <h2>Sources</h2>
 <ol class="sources">

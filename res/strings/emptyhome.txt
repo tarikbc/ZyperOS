@@ -1,0 +1,217 @@
+# The empty home (src/emptyhome.c, emptyhome_draw.c): a card with no games,
+# the two ways to add some, and Zyper's cheer when they arrive.
+
+[emptyhome.no_games_yet]
+note = The empty home's heading, beside Zyper.
+en = No games yet
+zh-Hans = 还没有游戏
+es = Aún no hay juegos
+pt-BR = Ainda não há jogos
+fr = Pas encore de jeux
+de = Noch keine Spiele
+ja = まだゲームがありません
+it = Ancora nessun gioco
+
+[emptyhome.add_them]
+note = Under the heading: the two cards below are the ways.
+en = Add them from a computer or a phone.
+zh-Hans = 可以从电脑或手机添加。
+es = Agrégalos desde una computadora o un celular.
+pt-BR = Adicione pelo computador ou pelo celular.
+fr = Ajoutez-en depuis un ordinateur ou un téléphone.
+de = Füge sie per Computer oder Handy hinzu.
+ja = パソコンかスマホから追加できます。
+it = Aggiungili da un computer o da un telefono.
+
+[emptyhome.plug_computer]
+note = USB File Transfer's card, step 1. Steps are short commands with no full stop. tight: a card's step has about 380 units.
+en = Plug into a computer
+zh-Hans = 连接电脑
+es = Conecta una computadora
+pt-BR = Conecte um computador
+fr = Branchez un ordinateur
+de = Computer anschließen
+ja = パソコンに接続
+it = Collega un computer
+
+[emptyhome.choose_xfer]
+note = Step 2 on the Pixel 2: the computer brings up three tiles; choose the File Transfer one (xfer.tile_file_transfer). tight: a step has about 380 units.
+en = Choose File Transfer
+zh-Hans = 选择文件传输
+es = Elige Transferir archivos
+pt-BR = Escolha Transferir arquivos
+fr = Choisissez Transfert
+de = Dateiübertragung wählen
+ja = ファイル転送を選択
+it = Scegli Trasferisci file
+
+[emptyhome.press_a]
+note = Step 2 elsewhere: press the A button. tight.
+en = Press A
+zh-Hans = 按 A
+es = Pulsa A
+pt-BR = Aperte A
+fr = Appuyez sur A
+de = A drücken
+ja = A を押す
+it = Premi A
+
+[emptyhome.browse_to]
+note = Step 3: open this address in the computer's browser; %s is it ("10.42.0.1"). tight.
+en = Browse to %s
+zh-Hans = 访问 %s
+es = Ve a %s
+pt-BR = Acesse %s
+fr = Allez sur %s
+de = %s aufrufen
+ja = %s にアクセス
+it = Vai su %s
+
+[emptyhome.open_address]
+note = Step 3 when the address is not known yet: the screen that opens shows it. tight.
+en = Open the address it shows
+zh-Hans = 打开屏幕上显示的地址
+es = Abre la dirección mostrada
+pt-BR = Abra o endereço mostrado
+fr = Ouvrez l'adresse affichée
+de = Angezeigte Adresse öffnen
+ja = 表示されたアドレスを開く
+it = Apri l'indirizzo mostrato
+
+[emptyhome.unplug_adapter]
+note = Under USB's steps when it cannot start: the Pixel 2's one USB port has the Wi-Fi adapter in it. tight: a reason has about 420 units.
+en = Unplug the Wi-Fi adapter.
+zh-Hans = 请拔出 Wi-Fi 适配器。
+es = Quita el adaptador Wi-Fi.
+pt-BR = Tire o adaptador Wi-Fi.
+fr = Retirez l'adaptateur Wi-Fi.
+de = Zieh den WLAN-Adapter ab.
+ja = アダプターを抜いてください。
+it = Scollega l'adattatore Wi-Fi.
+
+[emptyhome.plug_computer_first]
+note = Under USB's steps when no computer is on the cable: say what is missing. tight: about 420 units.
+en = Plug into a computer first.
+zh-Hans = 请先连接电脑。
+es = Sin computadora conectada.
+pt-BR = Sem computador conectado.
+fr = Aucun ordinateur branché.
+de = Kein Computer verbunden.
+ja = パソコンが未接続です。
+it = Prima collega un computer.
+
+[emptyhome.connect_wifi]
+note = Wi-Fi File Transfer's card, step 1, on a handheld with Wi-Fi built in. tight.
+en = Connect to Wi-Fi
+zh-Hans = 连接 Wi-Fi
+es = Conéctate al Wi-Fi
+pt-BR = Conecte-se ao Wi-Fi
+fr = Connectez-vous au Wi-Fi
+de = Mit WLAN verbinden
+ja = Wi-Fi に接続
+it = Connettiti al Wi-Fi
+
+[emptyhome.plug_adapter]
+note = Step 1 on the Pixel 2, whose Wi-Fi is a USB adapter. tight.
+en = Plug in the Wi-Fi adapter
+zh-Hans = 插入 Wi-Fi 适配器
+es = Pon el adaptador Wi-Fi
+pt-BR = Coloque o adaptador Wi-Fi
+fr = Branchez l'adaptateur
+de = WLAN-Adapter einstecken
+ja = Wi-Fi アダプターを挿す
+it = Collega l'adattatore Wi-Fi
+
+[emptyhome.press_y]
+note = Step 2: press the Y button. tight.
+en = Press Y
+zh-Hans = 按 Y
+es = Pulsa Y
+pt-BR = Aperte Y
+fr = Appuyez sur Y
+de = Y drücken
+ja = Y を押す
+it = Premi Y
+
+[emptyhome.connect_wifi_first]
+note = Under Wi-Fi's steps when there is no network and no way to make one; MENU is the button. tight.
+en = Connect to Wi-Fi in MENU first.
+zh-Hans = 请先在 MENU 中连接 Wi-Fi。
+es = Conéctate al Wi-Fi en MENU.
+pt-BR = Conecte-se ao Wi-Fi no MENU.
+fr = Connectez le Wi-Fi dans MENU.
+de = WLAN im MENU verbinden.
+ja = 先に MENU で Wi-Fi に接続
+it = Connettiti al Wi-Fi in MENU.
+
+[emptyhome.plug_adapter_first]
+note = Under Wi-Fi's steps on the Pixel 2 with no adapter in: say what is missing. tight: about 420 units.
+en = Plug in the Wi-Fi adapter first.
+zh-Hans = 请先插入 Wi-Fi 适配器。
+es = Sin adaptador Wi-Fi.
+pt-BR = Sem adaptador Wi-Fi.
+fr = Aucun adaptateur Wi-Fi.
+de = Kein WLAN-Adapter.
+ja = アダプター未接続です。
+it = Manca l'adattatore Wi-Fi.
+
+[emptyhome.bios]
+note = Under the two cards: where the files some emulators need go. Bios/ is the card's folder, kept as it is.
+en = BIOS files go in Bios/ on the card.
+zh-Hans = BIOS 文件放在存储卡的 Bios/ 中。
+es = Los archivos BIOS van en Bios/ en la tarjeta.
+pt-BR = Os arquivos de BIOS ficam em Bios/ no cartão.
+fr = Les fichiers BIOS vont dans Bios/ sur la carte.
+de = BIOS-Dateien gehören in Bios/ auf der Karte.
+ja = BIOS ファイルはカードの Bios/ に入れます。
+it = I file BIOS vanno in Bios/ sulla scheda.
+
+[emptyhome.settings]
+note = The footer's hint beside the MENU button: MENU opens the settings.
+en = Settings
+zh-Hans = 设置
+es = Ajustes
+pt-BR = Configurações
+fr = Réglages
+de = Einstellungen
+ja = 設定
+it = Impostazioni
+
+[emptyhome.cheer]
+note = Zyper's bubble when the first games arrive: how many. Zyper is the dog; a ! belongs here.
+en.one = %d game!
+en.other = %d games!
+zh-Hans = %d 个游戏！
+es.one = ¡%d juego!
+es.other = ¡%d juegos!
+pt-BR.one = %d jogo!
+pt-BR.other = %d jogos!
+fr.one = %d jeu\u00a0!
+fr.other = %d jeux\u00a0!
+de.one = %d Spiel!
+de.other = %d Spiele!
+ja = ゲームが %d 本！
+it.one = %d gioco!
+it.other = %d giochi!
+
+[emptyhome.card_usb]
+note = The empty home's first card's title, the USB way to add games. tight: 420 units at 38 SemiBold, so a short form of USB File Transfer where the screen's name is longer (My note: "Transferir USB")
+en = USB File Transfer
+zh-Hans = USB 文件传输
+es = Transferir USB
+pt-BR = Transferir USB
+fr = Transfert USB
+de = USB-Transfer
+ja = USB ファイル転送
+it = Trasferisci USB
+
+[emptyhome.card_wifi]
+note = The empty home's second card's title, the Wi-Fi way. tight: 420 units, as card_usb
+en = Wi-Fi File Transfer
+zh-Hans = Wi-Fi 文件传输
+es = Transferir Wi-Fi
+pt-BR = Transferir Wi-Fi
+fr = Transfert Wi-Fi
+de = WLAN-Transfer
+ja = Wi-Fi ファイル転送
+it = Trasferisci Wi-Fi

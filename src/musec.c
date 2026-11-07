@@ -89,6 +89,7 @@ void musec_init(const char *muse_bin, const char *root)
  * has no snap playing. */
 static char g_snap_sent[1024], g_snap_want[1024];
 static int  g_snap_vol, g_snap_want_vol;
+static bool g_snap_hold, g_snap_want_hold;
 
 /* `why` is logged when a live connection ends: it is when "Muse vanished"
  * happened, which on 2026-09-25 could only be inferred afterwards - #42. */
@@ -518,18 +519,22 @@ void musec_video_show(bool on)
 static void snap_send(void)
 {
 	if (g_fd < 0) return;
-	if (!strcmp(g_snap_sent, g_snap_want) && g_snap_vol == g_snap_want_vol) return;
+	if (!strcmp(g_snap_sent, g_snap_want) && g_snap_vol == g_snap_want_vol &&
+	    g_snap_hold == g_snap_want_hold)
+		return;
 	snprintf(g_snap_sent, sizeof g_snap_sent, "%s", g_snap_want);
 	g_snap_vol = g_snap_want_vol;
-	sendf("SNAP\tpath=%s\tvol=%d", g_snap_sent, g_snap_vol);
+	g_snap_hold = g_snap_want_hold;
+	sendf("SNAP\tpath=%s\tvol=%d\thold=%d", g_snap_sent, g_snap_vol, g_snap_hold ? 1 : 0);
 }
 
-void musec_snap(const char *path, int vol)
+void musec_snap(const char *path, int vol, bool hold)
 {
 	/* A tab or a line break would end the line's field or the line */
 	if (!path || strpbrk(path, "\t\n")) path = "";
 	snprintf(g_snap_want, sizeof g_snap_want, "%s", path);
 	g_snap_want_vol = vol;
+	g_snap_want_hold = *path && hold;
 	/* A stop with no daemon needs no daemon */
 	if (g_fd < 0 && (!*path || !connected())) return;
 	snap_send();

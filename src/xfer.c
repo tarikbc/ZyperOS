@@ -5,10 +5,13 @@
 
 #include "xfer.h"
 
+#include "i18n.h"
+
 static xfer_root g_roots[8];
+static str_id    g_label[8];        /* each root's label, as a string's ID */
 static int       g_nroots;
 
-static void add_root(const char *name, const char *label, const char *fmt,
+static void add_root(const char *name, str_id label, const char *fmt,
                      const char *base, bool no_cfg)
 {
 	xfer_root *r;
@@ -17,7 +20,8 @@ static void add_root(const char *name, const char *label, const char *fmt,
 	r = &g_roots[g_nroots];
 	r->no_cfg = no_cfg;
 	snprintf(r->name,  sizeof r->name,  "%s", name);
-	snprintf(r->label, sizeof r->label, "%s", label);
+	r->label = T(label);
+	g_label[g_nroots] = label;
 	if (snprintf(r->path, sizeof r->path, fmt, base) >= (int)sizeof r->path)
 		return;                       /* a root that does not fit is no root */
 	g_nroots++;
@@ -34,15 +38,15 @@ void xfer_init(const char *roms_dir, const char *card_dir,
 	 * are out for the milder version of the same reason: a bad systems.cfg is
 	 * a launcher that does not start, and the way to recover it is the card
 	 * reader this feature exists to avoid needing. */
-	add_root("roms",  "ROMs",  "%s", roms_dir, false);
+	add_root("roms",  S_TRANSFER_ROOT_ROMS,  "%s", roms_dir, false);
 	/* Muse reads nothing but these two folders, and the card's top level is
 	 * not a root, so without them music and books were the one thing on the
 	 * card that still needed the card pulled. */
-	add_root("music", "Music", "%s/Music", card_dir, false);
-	add_root("books", "Audiobooks", "%s/Audiobooks", card_dir, false);
+	add_root("music", S_TRANSFER_ROOT_MUSIC, "%s/Music", card_dir, false);
+	add_root("books", S_TRANSFER_ROOT_BOOKS, "%s/Audiobooks", card_dir, false);
 	/* And MP4's films and series, its third folder, for the same reason. */
-	add_root("videos", "Videos", "%s/Videos", card_dir, false);
-	add_root("bios",  "BIOS",  "%s/Bios",  card_dir, false);
+	add_root("videos", S_TRANSFER_ROOT_VIDEOS, "%s/Videos", card_dir, false);
+	add_root("bios",  S_TRANSFER_ROOT_BIOS,  "%s/Bios",  card_dir, false);
 	/* Two different things, both called saves in conversation.
 	 *
 	 * Saves/ is battery saves - the .srm a cartridge would have had - and is
@@ -59,8 +63,8 @@ void xfer_init(const char *roms_dir, const char *card_dir,
 	 * record of an unlock the account has not seen yet, so it is not
 	 * something a stray tap should be able to delete: no_cfg keeps every .cfg
 	 * under this root out of listings and out of every path that resolves. */
-	add_root("saves",  "Saves",       "%s/Saves", card_dir, false);
-	add_root("states", "Save States", "%s/.zyperos", shared_dir, true);
+	add_root("saves",  S_TRANSFER_ROOT_SAVES,  "%s/Saves", card_dir, false);
+	add_root("states", S_TRANSFER_ROOT_STATES, "%s/.zyperos", shared_dir, true);
 }
 
 int xfer_root_count(void) { return g_nroots; }
@@ -83,7 +87,7 @@ xfer_del xfer_delete_rule(const char *abs, const char **why)
 		}
 	}
 	if (!root) {
-		if (why) *why = "not somewhere you can write";
+		if (why) *why = T(S_TRANSFER_WHY_OUTSIDE);
 		return XFER_DEL_NO;
 	}
 	rest = abs + best;
@@ -91,23 +95,27 @@ xfer_del xfer_delete_rule(const char *abs, const char **why)
 		if (*p == '/' && p[1]) depth++;
 
 	if (depth == 0) {
-		if (why) *why = "ZyperOS's own folders stay";
+		if (why) *why = T(S_TRANSFER_WHY_ROOT);
 		return XFER_DEL_NO;
 	}
 	if (!strcmp(root->name, "roms")) {
 		if (depth >= 2) return XFER_DEL_ALL;
-		if (why) *why = "a console's folder only goes once it is empty";
+		if (why) *why = T(S_TRANSFER_WHY_CONSOLE);
 		return XFER_DEL_EMPTY;
 	}
 	if (!strcmp(root->name, "music") || !strcmp(root->name, "books"))
 		return XFER_DEL_ALL;
-	if (why) *why = "this folder only goes once it is empty";
+	if (why) *why = T(S_TRANSFER_WHY_EMPTY);
 	return XFER_DEL_EMPTY;
 }
 
 const xfer_root *xfer_root_at(int i)
 {
-	return (i >= 0 && i < g_nroots) ? &g_roots[i] : NULL;
+	if (i < 0 || i >= g_nroots) return NULL;
+	/* In the language that is on now, not the one File Transfer opened in:
+	 * it goes on behind the shelf, where MENU can change it */
+	g_roots[i].label = T(g_label[i]);
+	return &g_roots[i];
 }
 
 static int hexval(int c)

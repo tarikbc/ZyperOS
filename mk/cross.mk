@@ -77,9 +77,11 @@ $(BUILD)/muse: $(MUSE_SRC) $(wildcard src/muse/*.h) src/mp4frame.h src/monoclock
 # (tools/pkset.c) and SQLite for them, and the side lights' line for a level
 # (src/sidelights.c); no SDL. The bar's colors are src/design.h's,
 # which osdbar.h, theme.h and themefile.h include, so it is listed beside
-# them: a token changed there rebuilds this.
+# them: a token changed there rebuilds this. The string tables (src/i18n.h)
+# because those files name their rows' words through them; read-only data
+# with no relocations, so portkeys pays file size, not memory or start time.
 PORTKEYS_SRC := tools/portkeys.c tools/pkkeys.c tools/pkset.c src/audioout.c src/osdbar.c src/theme.c \
-                src/themefile.c src/clock.c src/sidelights.c
+                src/themefile.c src/clock.c src/sidelights.c src/i18n.c src/i18n_tables.c
 $(BUILD)/portkeys: $(PORTKEYS_SRC) tools/pkkeys.h src/keyrepeat.h tools/pkset.h src/osdbar.h src/theme.h src/themefile.h \
                    src/clock.h src/design.h src/audioout.h src/device/pixel2_levels.h src/sidelights.h
 	mkdir -p $(BUILD)

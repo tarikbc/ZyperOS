@@ -21,6 +21,7 @@
 
 #include "audioout.h"
 #include "design.h"
+#include "i18n.h"
 
 #define UIS_RATE 48000
 
@@ -36,6 +37,19 @@
 int         uisound_setting_parse(const char *id);
 const char *uisound_setting_id(int s);     /* "wood" .. "off", for the database */
 const char *uisound_setting_name(int s);   /* "Wood" .. "Off", for the row */
+
+/* A voice's name for the row, in the language that is on. design.h's
+ * DS_VOICE_NAME is the English one; past the voices, the default's. */
+_Static_assert(DS_VOICES == 3, "a voice's name in res/strings/sounds.txt for each");
+static inline const char *uisound_voice_name(int v)
+{
+	static const str_id name[DS_VOICES] = {
+		[DS_VOICE_WOOD] = S_SOUNDS_WOOD, [DS_VOICE_GLASS] = S_SOUNDS_GLASS,
+		[DS_VOICE_BUBBLE] = S_SOUNDS_BUBBLE,
+	};
+
+	return T(name[v >= 0 && v < DS_VOICES ? v : DS_VOICE_DEFAULT]);
+}
 int         uisound_setting_step(int s, int dir);   /* round the four */
 
 /* ---- which press plays what -----------------------------------------------

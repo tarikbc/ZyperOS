@@ -1,0 +1,126 @@
+# File Transfer's card, as the page shows it (src/xfer.c): the folders in
+# the order of the page's sidebar, then why a folder may not be deleted
+# whole. The C server sends them to the page in the handheld's language. The
+# reasons follow a folder's name and a colon on the page ("Saves: this folder
+# only goes once it is empty"), so they start in lowercase.
+
+[transfer.root_roms]
+note = The games' folder in the page's sidebar. The same in every language: ROMs, as the card's Roms folder
+en = ROMs
+zh-Hans = ROMs
+es = ROMs
+pt-BR = ROMs
+fr = ROMs
+de = ROMs
+ja = ROMs
+it = ROMs
+
+[transfer.root_music]
+note = Muse's music folder in the page's sidebar
+en = Music
+zh-Hans = 音乐
+es = Música
+pt-BR = Música
+fr = Musique
+de = Musik
+ja = 音楽
+it = Musica
+
+[transfer.root_books]
+note = Muse's audiobooks folder in the page's sidebar
+en = Audiobooks
+zh-Hans = 有声书
+es = Audiolibros
+pt-BR = Audiolivros
+fr = Livres audio
+de = Hörbücher
+ja = オーディオブック
+it = Audiolibri
+
+[transfer.root_videos]
+note = MP4's films and series folder in the page's sidebar
+en = Videos
+zh-Hans = 视频
+es = Videos
+pt-BR = Vídeos
+fr = Vidéos
+de = Videos
+ja = 動画
+it = Video
+
+[transfer.root_bios]
+note = The BIOS files' folder in the page's sidebar. The same in every language
+en = BIOS
+zh-Hans = BIOS
+es = BIOS
+pt-BR = BIOS
+fr = BIOS
+de = BIOS
+ja = BIOS
+it = BIOS
+
+[transfer.root_saves]
+note = The games' own save files (a cartridge's battery saves) in the page's sidebar
+en = Saves
+zh-Hans = 游戏存档
+es = Partidas guardadas
+pt-BR = Saves
+fr = Sauvegardes
+de = Spielstände
+ja = セーブデータ
+it = Salvataggi
+
+[transfer.root_states]
+note = ZyperOS's save states in the page's sidebar
+en = Save States
+zh-Hans = 即时存档
+es = Estados guardados
+pt-BR = Save states
+fr = Sauvegardes d'état
+de = Speicherstände
+ja = ステートセーブ
+it = Stati salvati
+
+[transfer.why_outside]
+note = A path outside these folders
+en = not somewhere you can write
+zh-Hans = 这里不能写入
+es = no puedes escribir aquí
+pt-BR = não dá para gravar aqui
+fr = vous ne pouvez pas écrire ici
+de = hier kannst du nicht schreiben
+ja = 書き込めない場所です
+it = qui non puoi scrivere
+
+[transfer.why_root]
+note = One of these folders itself: none of them is ever deleted
+en = ZyperOS's own folders stay
+zh-Hans = ZyperOS 自带的文件夹不能删除
+es = las carpetas de ZyperOS se quedan
+pt-BR = as pastas do ZyperOS ficam
+fr = les dossiers de ZyperOS restent
+de = die eigenen Ordner von ZyperOS bleiben
+ja = ZyperOS のフォルダは削除できません
+it = le cartelle di ZyperOS restano
+
+[transfer.why_console]
+note = A console's folder under ROMs, so one click cannot take every game for a system
+en = a console's folder only goes once it is empty
+zh-Hans = 主机的文件夹清空后才能删除
+es = la carpeta de una consola solo se borra cuando está vacía
+pt-BR = a pasta de um console só pode ser apagada vazia
+fr = le dossier d'une console ne se supprime qu'une fois vide
+de = ein Konsolenordner lässt sich nur leer löschen
+ja = システムのフォルダは空になるまで削除できません
+it = la cartella di una console si elimina solo quando è vuota
+
+[transfer.why_empty]
+note = A folder in BIOS, Saves or Save States
+en = this folder only goes once it is empty
+zh-Hans = 此文件夹清空后才能删除
+es = esta carpeta solo se borra cuando está vacía
+pt-BR = esta pasta só pode ser apagada vazia
+fr = ce dossier ne se supprime qu'une fois vide
+de = dieser Ordner lässt sich nur leer löschen
+ja = このフォルダは空になるまで削除できません
+it = questa cartella si elimina solo quando è vuota

@@ -1,0 +1,24 @@
+# Starting a game (src/main.c, launch): what a message under the game's name
+# says when it cannot start.
+
+[launch.needs_bios]
+note = A message under the game's name when a disc game needs a firmware file the card lacks: %.*s is the file's name; Bios/ is the folder on the card (never translated)
+en = needs Bios/%.*s
+zh-Hans = 需要 Bios/%.*s
+es = requiere Bios/%.*s
+pt-BR = requer Bios/%.*s
+fr = nécessite Bios/%.*s
+de = braucht Bios/%.*s
+ja = Bios/%.*s が必要
+it = richiede Bios/%.*s
+
+[launch.couldnt_start]
+note = A message under a port's name when it could not be handed to the system to start
+en = couldn't start it
+zh-Hans = 无法启动
+es = no se pudo iniciar
+pt-BR = não foi possível iniciar
+fr = impossible de le lancer
+de = Start fehlgeschlagen
+ja = 起動できませんでした
+it = avvio non riuscito

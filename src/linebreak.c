@@ -8,8 +8,10 @@
 #include <string.h>
 
 /* Words a text is read as; the rest of a longer one is its last word, spaces
- * and all, and is cut where it does not fit. A game's name has a handful. */
-#define LB_WORDS 48
+ * and all, and is cut where it does not fit. A game's name has a handful; a
+ * line of Chinese is a word a character (lb_read), so a message of it has
+ * dozens. */
+#define LB_WORDS 80
 
 void lb_fit(const char *src, char *dst, size_t dstn, int maxw,
             lb_width_fn width, void *ctx)
@@ -44,6 +46,79 @@ static void lb_whole(char *s)
 	need = (unsigned char)s[p] < 0x80 ? 1 : ((unsigned char)s[p] & 0xE0) == 0xC0 ? 2
 	     : ((unsigned char)s[p] & 0xF0) == 0xE0 ? 3 : 4;
 	if (p + (size_t)need > n) s[p] = '\0';
+}
+
+/* Chinese and Japanese are written without spaces, and a line may break
+ * between any two of their characters (UAX 14's ideographic class): the
+ * ideographs, kana and the full-width forms. Not before the marks that close
+ * (，。、！？：；）」』》…), Japanese's small kana (っゃゅょ) and its long
+ * mark (ー), which stay at the end of the line before, nor after those that
+ * open (（「『《“), which go to the next with what they open: the rule a
+ * Chinese or Japanese reader expects, kinsoku's simplest form. */
+static int lb_cjk(unsigned c)
+{
+	return (c >= 0x2E80 && c <= 0x9FFF) || (c >= 0xF900 && c <= 0xFAFF) ||
+	       (c >= 0xFF00 && c <= 0xFFEF) || (c >= 0x20000 && c <= 0x2FFFF);
+}
+
+static int lb_closes(unsigned c)
+{
+	static const unsigned set[] = { 0x3001, 0x3002, 0xFF0C, 0xFF0E, 0xFF01, 0xFF1F, 0xFF1A,
+	                                0xFF1B, 0xFF09, 0x300D, 0x300F, 0x300B, 0x3009, 0x3011,
+	                                0x201D, 0x2019, 0x2026, 0x30FC, 0x00B7, 0x30FB,
+	                                /* Japanese's small kana, which no line starts with */
+	                                0x3041, 0x3043, 0x3045, 0x3047, 0x3049, 0x3063, 0x3083,
+	                                0x3085, 0x3087, 0x308E, 0x30A1, 0x30A3, 0x30A5, 0x30A7,
+	                                0x30A9, 0x30C3, 0x30E3, 0x30E5, 0x30E7, 0x30EE, 0x30F5, 0x30F6 };
+
+	for (size_t i = 0; i < sizeof set / sizeof set[0]; i++)
+		if (c == set[i]) return 1;
+	return 0;
+}
+
+static int lb_opens(unsigned c)
+{
+	return c == 0xFF08 || c == 0x300C || c == 0x300E || c == 0x300A || c == 0x3008 ||
+	       c == 0x3010 || c == 0x201C || c == 0x2018;
+}
+
+/* The code point at p, and its length in *len (1 for a byte that starts
+ * none, so a broken text still moves on) */
+static unsigned lb_cp(const char *p, int *len)
+{
+	const unsigned char *u = (const unsigned char *)p;
+
+	if (u[0] < 0x80) { *len = 1; return u[0]; }
+	if ((u[0] & 0xE0) == 0xC0 && (u[1] & 0xC0) == 0x80) { *len = 2; return (u[0] & 0x1Fu) << 6 | (u[1] & 0x3F); }
+	if ((u[0] & 0xF0) == 0xE0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80) {
+		*len = 3;
+		return (u[0] & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
+	}
+	if ((u[0] & 0xF8) == 0xF0 && (u[1] & 0xC0) == 0x80 && (u[2] & 0xC0) == 0x80 && (u[3] & 0xC0) == 0x80) {
+		*len = 4;
+		return (u[0] & 0x07u) << 18 | (u[1] & 0x3Fu) << 12 | (u[2] & 0x3Fu) << 6 | (u[3] & 0x3F);
+	}
+	*len = 1;
+	return u[0];
+}
+
+/* How many bytes of the run of `wl` at `p` (a run with no spaces) go before
+ * the first place a line may break inside it: wl when there is none */
+static size_t lb_piece(const char *p, size_t wl)
+{
+	size_t at = 0;
+	unsigned prev = 0;
+	int len;
+
+	while (at < wl) {
+		unsigned c = lb_cp(p + at, &len);
+
+		if (at && (lb_cjk(prev) || lb_cjk(c)) && !lb_closes(c) && !lb_opens(prev))
+			return at;
+		prev = c;
+		at += (size_t)len;
+	}
+	return wl;
 }
 
 /* The text as its words, one space between each, a word too wide for the box
@@ -119,11 +194,14 @@ static void lb_read(lb_text *t, const char *text)
 	size_t len = 0;
 	const char *p = text;
 
+	int glued = 0;
+
 	t->n = 0;
 	while (*p) {
 		char word[LB_LINE];
 		size_t wl;
 
+		if (*p == ' ') glued = 0;
 		while (*p == ' ') p++;
 		if (!*p) break;
 		if (t->n == LB_WORDS - 1) {
@@ -131,7 +209,9 @@ static void lb_read(lb_text *t, const char *text)
 			wl = strlen(p);
 			while (wl > 0 && p[wl - 1] == ' ') wl--;
 		} else {
-			wl = strcspn(p, " ");
+			/* To the next space, or to where a line may break inside the
+			 * run (Chinese): the next word then follows with no space */
+			wl = lb_piece(p, strcspn(p, " "));
 		}
 		snprintf(word, sizeof word, "%.*s", (int)wl, p);
 		lb_whole(word);
@@ -144,11 +224,12 @@ static void lb_read(lb_text *t, const char *text)
 		}
 		wl = strlen(word);
 		if (len + wl + 2 > sizeof t->buf) break;
-		if (t->n) t->buf[len++] = ' ';
+		if (t->n && !glued) t->buf[len++] = ' ';
 		t->at[t->n] = (int)len;
 		memcpy(t->buf + len, word, wl);
 		len += wl;
 		t->end[t->n++] = (int)len;
+		glued = *p && *p != ' ';
 	}
 	t->buf[len] = '\0';
 }

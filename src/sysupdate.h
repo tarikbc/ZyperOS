@@ -56,7 +56,7 @@ typedef enum { SUA_NONE, SUA_BACK, SUA_CHECK, SUA_DOWNLOAD, SUA_RESTART, SUA_ROL
 
 typedef struct {
 	char button[8];          /* "A", "B", "Y" */
-	char label[32];
+	char label[48];          /* room for a language longer than English */
 	su_action act;
 } su_key;
 

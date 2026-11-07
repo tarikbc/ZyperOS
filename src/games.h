@@ -18,6 +18,11 @@ typedef struct {
 typedef struct { int item; float offset,alpha; } games_slot;
 typedef struct {
     const char *system,*title,*played;
+    /* The focused game's own system, on a shelf of many systems' games
+     * (Favorites): first on the line under its name (2026-11-07: "In
+     * the favorites screen, let's have the system written below the game
+     * name"). NULL on a console's own shelf, where the heading says it. */
+    const char *origin;
     int count,cursor,earned,total;
     bool has_achievements,resumable,favorite;
     /* The focused game's video snap (src/snapshelf.h), or NULL: its picture,

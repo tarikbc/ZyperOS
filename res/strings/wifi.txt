@@ -1,0 +1,112 @@
+# MENU > Wi-Fi (src/main.c wifi_key): the questions and messages; the
+# screen's rows are src/wifi_menu.c's.
+
+[wifi.forget_joined]
+note = A yes/no question, X on the network the handheld is on; %s is the network's name.
+en = Forget %s? You are connected to it and will lose the network.
+zh-Hans = 要忘记 %s 吗？你正连接着它，会断开网络。
+es = ¿Olvidar %s? Estás conectado a esta red y la perderás.
+pt-BR = Esquecer %s? Você está conectado a ela e vai perder a rede.
+fr = Oublier %s\u00a0? Vous y êtes connecté et perdrez le réseau.
+de = %s entfernen? Du bist damit verbunden und verlierst das Netzwerk.
+ja = %s の設定を削除しますか？今つながっているネットワークが切れます。
+it = Dimenticare %s? Sei connesso a questa rete e la perderai.
+
+[wifi.forget_ask]
+note = A yes/no question, X on a saved network; %s is the network's name.
+en = Forget %s?
+zh-Hans = 要忘记 %s 吗？
+es = ¿Olvidar %s?
+pt-BR = Esquecer %s?
+fr = Oublier %s\u00a0?
+de = %s entfernen?
+ja = %s の設定を削除しますか？
+it = Dimenticare %s?
+
+[wifi.forget]
+note = The yes answer to wifi.forget_ask: the network's password is dropped.
+en = Forget
+zh-Hans = 忘记
+es = Olvidar
+pt-BR = Esquecer
+fr = Oublier
+de = Entfernen
+ja = 削除
+it = Dimentica
+
+[wifi.forgot]
+note = The message after it; %s is the network's name.
+en = Forgot %s
+zh-Hans = 已忘记 %s
+es = Se olvidó la red %s
+pt-BR = A rede %s foi esquecida
+fr = Réseau %s oublié
+de = %s entfernt
+ja = %s の設定を削除しました
+it = Rete %s dimenticata
+
+[wifi.forget_failed]
+note = The message when it could not; %s is the network's name.
+en = Could not forget %s
+zh-Hans = 无法忘记 %s
+es = No se pudo olvidar %s
+pt-BR = Não foi possível esquecer %s
+fr = Impossible d'oublier %s
+de = %s konnte nicht entfernt werden
+ja = %s の設定を削除できませんでした
+it = Impossibile dimenticare %s
+
+[wifi.turning_on]
+note = One line on a panel while the radio comes up.
+en = Turning Wi-Fi on...
+zh-Hans = 正在开启 Wi-Fi…
+es = Activando el Wi-Fi...
+pt-BR = Ligando o Wi-Fi...
+fr = Activation du Wi-Fi...
+de = WLAN wird eingeschaltet ...
+ja = Wi-Fi をオンにしています…
+it = Attivazione del Wi-Fi...
+
+[wifi.did_not_come_up]
+note = The message when the radio did not come up.
+en = Wi-Fi did not come up
+zh-Hans = Wi-Fi 未能开启
+es = No se pudo activar el Wi-Fi
+pt-BR = O Wi-Fi não ligou
+fr = Le Wi-Fi n'a pas démarré
+de = WLAN ist nicht gestartet
+ja = Wi-Fi を起動できませんでした
+it = Il Wi-Fi non si è attivato
+
+[wifi.connecting]
+note = One line on a panel while the handheld joins a network.
+en = Connecting...
+zh-Hans = 正在连接…
+es = Conectando...
+pt-BR = Conectando...
+fr = Connexion...
+de = Verbindet ...
+ja = 接続中…
+it = Connessione...
+
+[wifi.connected_to]
+note = The message after joining; %s is the network's name.
+en = Connected to %s
+zh-Hans = 已连接到 %s
+es = Conectado a %s
+pt-BR = Conectado a %s
+fr = Connecté à %s
+de = Verbunden mit %s
+ja = %s に接続しました
+it = Connesso a %s
+
+[wifi.connect_failed]
+note = The message when joining did not work; %s is the network's name.
+en = Could not connect to %s
+zh-Hans = 无法连接到 %s
+es = No se pudo conectar a %s
+pt-BR = Não foi possível conectar a %s
+fr = Impossible de se connecter à %s
+de = Verbindung mit %s fehlgeschlagen
+ja = %s に接続できませんでした
+it = Impossibile connettersi a %s

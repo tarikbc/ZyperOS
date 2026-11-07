@@ -570,9 +570,12 @@ static void command(int fd, const char *line)
 		 * frames, nothing to do with what is playing. Empty path stops. */
 		char p[PATH_MAX_];
 
+		char h[8];
+
 		arg(line, "path", p, sizeof p);
 		arg(line, "vol", v, sizeof v);
-		snap_play(p, atoi(v));
+		arg(line, "hold", h, sizeof h);
+		snap_play(p, atoi(v), atoi(h) != 0);
 		return;
 	}
 	if (!strncmp(line, "VIDEO", 5)) {
@@ -799,7 +802,7 @@ int main(void)
 
 			if (got <= 0) {
 				/* The launcher gone: nobody is looking at a snap */
-				snap_play(NULL, 0);
+				snap_play(NULL, 0, false);
 				close(cfd); cfd = -1; have = 0; continue;
 			}
 			have += (size_t)got;

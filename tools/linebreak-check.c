@@ -469,8 +469,76 @@ static void edges(void)
 	}
 }
 
+/* ---- Chinese ------------------------------------------------------------- */
+
+/* Whether line `s` starts with a mark that closes, or ends with one that opens */
+static int bad_edge(const char *s)
+{
+	static const char *const closes[] = { "，", "。", "、", "！", "？", "：", "；", "）", "」", "…" };
+	static const char *const opens[] = { "（", "「", "《", "“" };
+	size_t i;
+
+	for (i = 0; i < sizeof closes / sizeof closes[0]; i++)
+		if (!strncmp(s, closes[i], strlen(closes[i]))) return 1;
+	for (i = 0; i < sizeof opens / sizeof opens[0]; i++)
+		if (ends_with(s, opens[i])) return 1;
+	return 0;
+}
+
+/* Chinese has no spaces: it breaks between its characters, its lines join
+ * with nothing between them, and no line starts with a closing mark or ends
+ * with an opening one. A character is 12 wide in this table. */
+static void chinese(void)
+{
+	static const char *const texts[] = {
+		"连接充电器后，按住 POWER 开机。",
+		"正在为此存储卡设置 ZyperOS，请勿取出存储卡。",
+		"请先连接 Wi-Fi。然后在手机上打开（下面的）地址。",
+		"按上下查看，按 A 确定。",
+	};
+	char lines[LB_MAX_LINES][LB_LINE], msg[512];
+	size_t t;
+
+	printf("Chinese: between its characters, never at a mark's wrong side\n");
+	for (t = 0; t < sizeof texts / sizeof texts[0]; t++) {
+		for (int maxw = 60; maxw <= 300; maxw += 24) {
+			char joined[1024] = "", plain[1024] = "";
+			int n = lb_balance(texts[t], maxw, LB_MAX_LINES, width, NULL, lines), i;
+			const char *q;
+			char *o;
+
+			for (i = 0; i < n; i++) {
+				snprintf(msg, sizeof msg, "\"%s\" in %d: line %d \"%s\" is %d wide",
+				         texts[t], maxw, i, lines[i], width(NULL, lines[i]));
+				ck(width(NULL, lines[i]) <= maxw, msg);
+				ck(valid_utf8(lines[i]), msg);
+				snprintf(msg, sizeof msg, "\"%s\" in %d: line %d \"%s\" starts or ends at a mark",
+				         texts[t], maxw, i, lines[i]);
+				ck(!bad_edge(lines[i]), msg);
+				strcat(joined, lines[i]);
+			}
+			if (strstr(joined, "...")) continue;      /* a word cut to fit: not the whole */
+			/* Joined without spaces, it is the text without the spaces a
+			 * break took at a Latin word's edge */
+			for (q = texts[t], o = plain; *q; q++) if (*q != ' ') *o++ = *q;
+			*o = '\0';
+			for (q = joined, o = joined; *q; q++) if (*q != ' ') *o++ = *q;
+			*o = '\0';
+			snprintf(msg, sizeof msg, "\"%s\" in %d lines of %d: joined \"%s\"", texts[t], n, maxw, joined);
+			ck(!strcmp(joined, plain), msg);
+		}
+	}
+	/* A Latin word inside keeps its spaces, and a line holds it whole */
+	{
+		int n = lb_balance("按 A 确定", 200, 2, width, NULL, lines);
+
+		ck(n == 1 && !strcmp(lines[0], "按 A 确定"), "\"按 A 确定\" stays one line, spaces kept");
+	}
+}
+
 int main(void)
 {
+	chinese();
 	one_line();
 	balanced();
 	capped();

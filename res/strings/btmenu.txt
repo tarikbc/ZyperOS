@@ -1,0 +1,102 @@
+# The Bluetooth screen (src/bt_menu.c): the switch's value and the line under
+# the list that says what the buttons do. Button names (A, X, Y) stay; the
+# three spaces between two of them stay.
+
+[btmenu.no_adapter]
+note = The Bluetooth row's value when the radio's stack never started. Lowercase.
+en = no adapter
+zh-Hans = 无适配器
+es = sin adaptador
+pt-BR = sem adaptador
+fr = aucun adaptateur
+de = kein Adapter
+ja = アダプターなし
+it = nessun adattatore
+
+[btmenu.turn_on_boot]
+note = The line under the list: A turns Bluetooth on when the handheld next starts
+en = A: turn on at the next boot
+zh-Hans = A：下次开机时开启
+es = A: activar al próximo inicio
+pt-BR = A: ativar na próxima inicialização
+fr = A : activer au prochain démarrage
+de = A: beim nächsten Start einschalten
+ja = A：次回起動時にオン
+it = A: attiva al prossimo avvio
+
+[btmenu.turn_on]
+note = The line under the list: A turns Bluetooth on
+en = A: turn on
+zh-Hans = A：开启
+es = A: activar
+pt-BR = A: ativar
+fr = A : activer
+de = A: einschalten
+ja = A：オンにする
+it = A: attiva
+
+[btmenu.searching]
+note = The line under the list while it looks for headsets
+en = Searching...
+zh-Hans = 正在搜索…
+es = Buscando...
+pt-BR = Procurando...
+fr = Recherche...
+de = Suche ...
+ja = 検索中…
+it = Ricerca...
+
+[btmenu.search]
+note = The line under the list: Y looks for headsets
+en = Y: search
+zh-Hans = Y：搜索
+es = Y: buscar
+pt-BR = Y: procurar
+fr = Y : chercher
+de = Y: suchen
+ja = Y：検索
+it = Y: cerca
+
+[btmenu.turn_off_search]
+note = The line under the list, on the Bluetooth row
+en = A: turn off   Y: search
+zh-Hans = A：关闭   Y：搜索
+es = A: desactivar   Y: buscar
+pt-BR = A: desativar   Y: procurar
+fr = A : désactiver   Y : chercher
+de = A: ausschalten   Y: suchen
+ja = A：オフにする   Y：検索
+it = A: disattiva   Y: cerca
+
+[btmenu.disconnect]
+note = The line under the list, on a connected headset
+en = A: disconnect   Y: search   X: forget
+zh-Hans = A：断开   Y：搜索   X：忘记
+es = A: desconectar   Y: buscar   X: olvidar
+pt-BR = A: desconectar   Y: procurar   X: esquecer
+fr = A : déconnecter   Y : chercher   X : oublier
+de = A: trennen   Y: suchen   X: entfernen
+ja = A：切断   Y：検索   X：登録解除
+it = A: disconnetti   Y: cerca   X: dissocia
+
+[btmenu.connect]
+note = The line under the list, on a headset paired before
+en = A: connect   Y: search   X: forget
+zh-Hans = A：连接   Y：搜索   X：忘记
+es = A: conectar   Y: buscar   X: olvidar
+pt-BR = A: conectar   Y: procurar   X: esquecer
+fr = A : connecter   Y : chercher   X : oublier
+de = A: verbinden   Y: suchen   X: entfernen
+ja = A：接続   Y：検索   X：登録解除
+it = A: connetti   Y: cerca   X: dissocia
+
+[btmenu.pair]
+note = The line under the list, on a headset never paired
+en = A: pair   Y: search
+zh-Hans = A：配对   Y：搜索
+es = A: vincular   Y: buscar
+pt-BR = A: parear   Y: procurar
+fr = A : associer   Y : chercher
+de = A: koppeln   Y: suchen
+ja = A：ペアリング   Y：検索
+it = A: associa   Y: cerca

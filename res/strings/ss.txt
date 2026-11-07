@@ -1,0 +1,120 @@
+# ScreenScraper: the Box Art row's value while one game is asked about
+# (src/ssrun.c), then why MENU > ScreenScraper's sign-in did not work
+# (src/ss.c). The sign-in's lines are shown as they are, in lowercase, under
+# the ScreenScraper heading.
+
+[ss.where_looking]
+note = The Box Art row's value while ScreenScraper is asked about the game. Lowercase, a status.
+en = looking it up
+zh-Hans = 正在查找
+es = buscándolo
+pt-BR = procurando
+fr = recherche
+de = wird gesucht
+ja = 検索中
+it = ricerca in corso
+
+[ss.where_by_name]
+note = The Box Art row's value: the checksum answer was the wrong game, so it asks by the file's name
+en = asking by name
+zh-Hans = 按名称查找
+es = buscando por nombre
+pt-BR = buscando pelo nome
+fr = recherche par nom
+de = Suche nach Name
+ja = 名前で検索中
+it = ricerca per nome
+
+[ss.where_cover]
+note = The Box Art row's value while the cover downloads
+en = fetching the cover
+zh-Hans = 正在获取封面
+es = descargando la carátula
+pt-BR = baixando a capa
+fr = téléchargement de la jaquette
+de = lädt Cover
+ja = 画像を取得中
+it = download copertina
+
+[ss.where_snap]
+note = The Box Art row's value while the video snap (a short clip of the game) downloads
+en = fetching the video snap
+zh-Hans = 正在获取视频预览
+es = descargando la vista previa
+pt-BR = baixando a prévia em vídeo
+fr = téléchargement de l'aperçu vidéo
+de = lädt Videovorschau
+ja = 動画を取得中
+it = download anteprima video
+
+[ss.sign_in_no_key]
+note = Sign-in refused before asking: this build was made without ScreenScraper's developer key
+en = this build has no ScreenScraper key
+zh-Hans = 此版本没有 ScreenScraper 密钥
+es = esta versión no tiene clave de ScreenScraper
+pt-BR = esta versão não tem chave do ScreenScraper
+fr = cette version n'a pas de clé ScreenScraper
+de = diese Version hat keinen ScreenScraper-Schlüssel
+ja = ScreenScraper のキーがないビルドです
+it = questa versione non ha la chiave di ScreenScraper
+
+[ss.sign_in_need_both]
+en = user and password are both needed
+zh-Hans = 用户名和密码都需要填写
+es = se necesitan usuario y contraseña
+pt-BR = usuário e senha são necessários
+fr = l'identifiant et le mot de passe sont requis
+de = Benutzername und Passwort sind nötig
+ja = ユーザー名とパスワードが必要です
+it = servono utente e password
+
+[ss.sign_in_too_long]
+en = that user or password is too long
+zh-Hans = 用户名或密码太长
+es = ese usuario o contraseña es demasiado largo
+pt-BR = esse usuário ou senha é longo demais
+fr = cet identifiant ou ce mot de passe est trop long
+de = Benutzername oder Passwort zu lang
+ja = ユーザー名かパスワードが長すぎます
+it = utente o password troppo lunghi
+
+[ss.sign_in_no_network]
+en = not on a network
+zh-Hans = 未连接网络
+es = sin conexión a una red
+pt-BR = sem conexão com uma rede
+fr = pas connecté à un réseau
+de = kein Netzwerk
+ja = ネットワーク未接続
+it = nessuna rete
+
+[ss.sign_in_failed]
+note = A wrong password and a site that is down look the same from here, so it says both
+en = could not sign in - check the account, or try later
+zh-Hans = 无法登录 - 请检查账号，或稍后再试
+es = no se pudo iniciar sesión - revisa la cuenta o inténtalo más tarde
+pt-BR = não foi possível entrar - verifique a conta ou tente mais tarde
+fr = connexion impossible - vérifiez le compte ou réessayez plus tard
+de = Anmeldung fehlgeschlagen - prüfe das Konto oder versuche es später
+ja = サインインできません - アカウントを確認するか、後でお試しください
+it = accesso non riuscito - controlla l'account o riprova più tardi
+
+[ss.sign_in_unknown]
+en = that account was not recognized
+zh-Hans = 无法识别该账号
+es = no se reconoció esa cuenta
+pt-BR = essa conta não foi reconhecida
+fr = ce compte n'a pas été reconnu
+de = dieses Konto ist unbekannt
+ja = アカウントを認識できませんでした
+it = account non riconosciuto
+
+[ss.sign_in_not_saved]
+en = signed in, but the account could not be saved
+zh-Hans = 已登录，但无法保存账号
+es = sesión iniciada, pero no se pudo guardar la cuenta
+pt-BR = entrou, mas não foi possível salvar a conta
+fr = connecté, mais le compte n'a pas pu être enregistré
+de = angemeldet, aber das Konto wurde nicht gespeichert
+ja = サインインしましたが、保存できませんでした
+it = accesso eseguito, ma impossibile salvare l'account

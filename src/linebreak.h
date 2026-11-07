@@ -49,7 +49,9 @@ void lb_fit(const char *src, char *dst, size_t dstn, int maxw,
  *
  * So never more than `cap` lines and never a line over `maxw`. Words are what
  * spaces separate: a run of spaces is one break, and spaces at either end are
- * dropped. */
+ * dropped. Chinese, which has no spaces, breaks between its characters, but
+ * not before a mark that closes (，。！) nor after one that opens (（「), and
+ * its lines are joined with no space (src/linebreak.c, lb_piece). */
 int lb_balance(const char *text, int maxw, int cap, lb_width_fn width,
                void *ctx, char lines[][LB_LINE]);
 

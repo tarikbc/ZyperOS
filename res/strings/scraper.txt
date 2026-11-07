@@ -1,0 +1,374 @@
+# MENU > Scraper (DESIGN.md 11.19): Box Art for the whole card or one game,
+# its sources (ScreenScraper, libretro, SteamGridDB) and Video Snaps' value.
+# The glossary's names: Scraper, Box Art.
+
+[scraper.heading]
+note = The heading of MENU > Scraper, the page that fetches box art and video snaps; MENU's row has the same name.
+en = Scraper
+zh-Hans = 资料抓取
+es = Scraper
+pt-BR = Capas e vídeos
+fr = Scraper
+de = Cover und Videos
+ja = 画像と動画
+it = Copertine e video
+
+[scraper.complete]
+note = MENU > Scraper's value when every game has its box art. A lowercase value.
+en = complete
+zh-Hans = 已齐全
+es = completo
+pt-BR = completo
+fr = complet
+de = vollständig
+ja = 取得済み
+it = completo
+
+[scraper.missing_n]
+note = MENU > Scraper's value: how many games have no box art; also one fact of the run's count ("37 found · 2 missing · 61 already").
+en.one = %d missing
+en.other = %d missing
+zh-Hans = 缺少 %d
+es.one = falta %d
+es.other = faltan %d
+pt-BR.one = %d faltando
+pt-BR.other = %d faltando
+fr.one = %d manquante
+fr.other = %d manquantes
+de.one = %d fehlt
+de.other = %d fehlen
+ja = %d 件不足
+it.one = %d mancante
+it.other = %d mancanti
+
+[scraper.on]
+note = Scraper's Video Snaps row: on, then the room the snaps take ("on · 1.2 GB"). A lowercase value.
+en = on
+zh-Hans = 开启
+es = activado
+pt-BR = ativado
+fr = activé
+de = an
+ja = オン
+it = attivo
+
+[scraper.off]
+note = The same, off.
+en = off
+zh-Hans = 关闭
+es = desactivado
+pt-BR = desativado
+fr = désactivé
+de = aus
+ja = オフ
+it = disattivo
+
+[scraper.key_refused]
+note = Scraper's SteamGridDB row's value when SteamGridDB refused the key. A lowercase value.
+en = key refused
+zh-Hans = 密钥被拒绝
+es = clave rechazada
+pt-BR = chave recusada
+fr = clé refusée
+de = Schlüssel abgelehnt
+ja = キー拒否
+it = chiave rifiutata
+
+[scraper.box_art]
+note = The heading of a Box Art run (a game's name or the news under it), and its row label for one game. The glossary's Box Art.
+en = Box Art
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = パッケージ画像
+it = Copertine
+
+[scraper.systems]
+note = A Box Art run for the whole card: a row label; its value is how many systems are done, "4 / 10".
+en = Systems
+zh-Hans = 系统
+es = Sistemas
+pt-BR = Sistemas
+fr = Systèmes
+de = Systeme
+ja = システム
+it = Sistemi
+
+[scraper.art]
+note = The same run: a row label; its value is the count, "37 found · 2 missing · 61 already".
+en = Art
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = 画像
+it = Copertine
+
+[scraper.found_n]
+note = One fact of the run's count: covers found this run. A cover: carátula, capa, jaquette.
+en.one = %d found
+en.other = %d found
+zh-Hans = 找到 %d
+es.one = %d encontrada
+es.other = %d encontradas
+pt-BR.one = %d encontrada
+pt-BR.other = %d encontradas
+fr.one = %d trouvée
+fr.other = %d trouvées
+de.one = %d gefunden
+de.other = %d gefunden
+ja = %d 件取得
+it.one = %d trovata
+it.other = %d trovate
+
+[scraper.already_n]
+note = One fact of the run's count: games that had a cover already.
+en.one = %d already
+en.other = %d already
+zh-Hans = 已有 %d
+es.one = %d ya estaba
+es.other = %d ya estaban
+pt-BR.one = %d já tinha
+pt-BR.other = %d já tinham
+fr.one = %d déjà là
+fr.other = %d déjà là
+de.one = %d vorhanden
+de.other = %d vorhanden
+ja = %d 件既存
+it.one = %d già presente
+it.other = %d già presenti
+
+[scraper.names_n]
+note = One fact of the run's count, after the others: games given their proper names. English says "names" for one too; write each language's own forms.
+en.one = %d names
+en.other = %d names
+zh-Hans = %d 个名称
+es.one = %d nombre
+es.other = %d nombres
+pt-BR.one = %d nome
+pt-BR.other = %d nomes
+fr.one = %d nom
+fr.other = %d noms
+de.one = %d Name
+de.other = %d Namen
+ja = 名前 %d 件
+it.one = %d nome
+it.other = %d nomi
+
+[scraper.starting]
+note = Under the Box Art heading as a run begins. A lowercase value.
+en = starting
+zh-Hans = 正在开始
+es = iniciando
+pt-BR = iniciando
+fr = démarrage
+de = startet
+ja = 開始中
+it = avvio
+
+[scraper.done]
+note = Under the Box Art heading when the run ended with nothing wrong.
+en = Done
+zh-Hans = 完成
+es = Listo
+pt-BR = Pronto
+fr = Terminé
+de = Fertig
+ja = 完了
+it = Fatto
+
+[scraper.fetching]
+note = Box Art for one game: the row's value while it asks. A lowercase value.
+en = fetching
+zh-Hans = 正在获取
+es = buscando
+pt-BR = buscando
+fr = recherche
+de = wird gesucht
+ja = 取得中
+it = ricerca in corso
+
+[scraper.found]
+note = Box Art for one game: a cover came, where it had none. A lowercase value; the cover is feminine in es/pt-BR/fr.
+en = found
+zh-Hans = 已找到
+es = encontrada
+pt-BR = encontrada
+fr = trouvée
+de = gefunden
+ja = 取得しました
+it = trovata
+
+[scraper.replaced]
+note = Box Art for one game: a new cover replaced its old one. A lowercase value.
+en = replaced
+zh-Hans = 已替换
+es = reemplazada
+pt-BR = substituída
+fr = remplacée
+de = ersetzt
+ja = 差し替えました
+it = sostituita
+
+[scraper.not_found]
+note = Box Art for one game: no cover anywhere. A lowercase value.
+en = not found
+zh-Hans = 未找到
+es = no encontrada
+pt-BR = não encontrada
+fr = introuvable
+de = nicht gefunden
+ja = 見つかりません
+it = non trovata
+
+[scraper.not_found_kept]
+note = Box Art for one game: no new cover, and the one it had stays. A lowercase value.
+en = not found, kept the old one
+zh-Hans = 未找到，保留原封面
+es = no encontrada, se conserva la anterior
+pt-BR = não encontrada, a antiga foi mantida
+fr = introuvable, l'ancienne est conservée
+de = nicht gefunden, altes behalten
+ja = 見つからず、元の画像を保持
+it = non trovata, tenuta la precedente
+
+[scraper.ss_user]
+note = The keyboard's title when linking a ScreenScraper account: type the user name.
+en = ScreenScraper User
+zh-Hans = ScreenScraper 用户名
+es = Usuario de ScreenScraper
+pt-BR = Usuário do ScreenScraper
+fr = Utilisateur ScreenScraper
+de = ScreenScraper-Benutzer
+ja = ScreenScraper ユーザー名
+it = Utente ScreenScraper
+
+[scraper.ss_no_key]
+note = A message: this build of ZyperOS was made without the key ScreenScraper gives developers, so no account can be linked.
+en = This build has no ScreenScraper key.
+zh-Hans = 此版本没有 ScreenScraper 密钥。
+es = Esta versión no tiene clave de ScreenScraper.
+pt-BR = Esta versão não tem chave do ScreenScraper.
+fr = Cette version n'a pas de clé ScreenScraper.
+de = Diese Version hat keinen ScreenScraper-Schlüssel.
+ja = このビルドには ScreenScraper のキーがありません。
+it = Questa versione non ha la chiave di ScreenScraper.
+
+[scraper.ss_left_today]
+note = ScreenScraper's page: the account's status, how many requests it has left today. A lowercase value.
+en.one = %d left today
+en.other = %d left today
+zh-Hans = 今天还剩 %d 次
+es.one = queda %d hoy
+es.other = quedan %d hoy
+pt-BR.one = resta %d hoje
+pt-BR.other = restam %d hoje
+fr.one = %d restante aujourd'hui
+fr.other = %d restantes aujourd'hui
+de.one = %d heute übrig
+de.other = %d heute übrig
+ja = 本日残り %d 回
+it.one = oggi ne resta %d
+it.other = oggi ne restano %d
+
+[scraper.ss_linked]
+note = ScreenScraper's page: the account's status when the count is not known. A lowercase value; the account is feminine in es/pt-BR (cuenta, conta).
+en = linked
+zh-Hans = 已关联
+es = vinculada
+pt-BR = vinculada
+fr = associé
+de = verknüpft
+ja = 連携済み
+it = collegato
+
+[scraper.unlink_account_ask]
+note = A yes/no question on ScreenScraper's page.
+en = Unlink the account?
+zh-Hans = 要取消关联此账号吗？
+es = ¿Desvincular la cuenta?
+pt-BR = Desvincular a conta?
+fr = Dissocier le compte\u00a0?
+de = Konto entfernen?
+ja = アカウントの連携を解除しますか？
+it = Scollegare l'account?
+
+[scraper.unlink]
+note = The yes answer to scraper.unlink_account_ask and scraper.unlink_key_ask.
+en = Unlink
+zh-Hans = 取消关联
+es = Desvincular
+pt-BR = Desvincular
+fr = Dissocier
+de = Entfernen
+ja = 連携を解除
+it = Scollega
+
+[scraper.unlinked]
+note = The message after unlinking an account or a key.
+en = Unlinked.
+zh-Hans = 已取消关联。
+es = Desvinculada.
+pt-BR = Desvinculada.
+fr = Dissociation effectuée.
+de = Entfernt.
+ja = 連携を解除しました。
+it = Scollegamento eseguito.
+
+[scraper.sgdb_api_key]
+note = The keyboard's title on SteamGridDB's page: type the API key.
+en = SteamGridDB API Key
+zh-Hans = SteamGridDB API 密钥
+es = Clave API de SteamGridDB
+pt-BR = Chave de API do SteamGridDB
+fr = Clé API SteamGridDB
+de = SteamGridDB-API-Schlüssel
+ja = SteamGridDB API キー
+it = Chiave API SteamGridDB
+
+[scraper.sgdb_works]
+note = SteamGridDB's page: the key's Status value when SteamGridDB took it. A lowercase value.
+en = works
+zh-Hans = 可用
+es = funciona
+pt-BR = funciona
+fr = fonctionne
+de = funktioniert
+ja = 有効
+it = funziona
+
+[scraper.sgdb_refused]
+note = The key's Status value when SteamGridDB refused it. A lowercase value; the key is feminine in es/pt-BR/fr.
+en = refused
+zh-Hans = 被拒绝
+es = rechazada
+pt-BR = recusada
+fr = refusée
+de = abgelehnt
+ja = 拒否
+it = rifiutata
+
+[scraper.sgdb_not_checked]
+note = The key's Status value before any check.
+en = not checked
+zh-Hans = 未检查
+es = sin comprobar
+pt-BR = não verificada
+fr = non vérifiée
+de = nicht geprüft
+ja = 未確認
+it = non verificata
+
+[scraper.unlink_key_ask]
+note = A yes/no question on SteamGridDB's page.
+en = Unlink the key?
+zh-Hans = 要取消关联此密钥吗？
+es = ¿Desvincular la clave?
+pt-BR = Desvincular a chave?
+fr = Dissocier la clé\u00a0?
+de = Schlüssel entfernen?
+ja = キーの連携を解除しますか？
+it = Scollegare la chiave?

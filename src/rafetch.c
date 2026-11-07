@@ -14,6 +14,7 @@
 #include "atomic.h"
 #include "db.h"
 #include "fileio.h"
+#include "i18n.h"
 #include "rafetch.h"
 #include "rahash.h"
 #include "rajson.h"
@@ -69,11 +70,11 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn)
 
 	if (err && errn) err[0] = '\0';
 	if (!user || !*user || !password || !*password) {
-		if (err) snprintf(err, errn, "user and password are both needed");
+		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NEED_BOTH));
 		return false;
 	}
 	if (!net_online()) {
-		if (err) snprintf(err, errn, "not on a network");
+		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_NETWORK));
 		return false;
 	}
 
@@ -87,15 +88,15 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn)
 	 * what a player can look up or pass on. Only when nothing answered at
 	 * all - no DNS, no route, the timeout - is the site out of reach. */
 	if (http == 401) {
-		if (err) snprintf(err, errn, "wrong user name or password");
+		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_WRONG));
 		return false;
 	}
 	if (http >= 300) {
-		if (err) snprintf(err, errn, "retroachievements.org refused (HTTP %d)", http);
+		if (err) snprintf(err, errn, T(S_RA_SIGN_IN_REFUSED_HTTP), http);
 		return false;
 	}
 	if (got < 0) {
-		if (err) snprintf(err, errn, "could not reach retroachievements.org");
+		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_REACH));
 		return false;
 	}
 
@@ -103,12 +104,12 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn)
 	if (!js_member(root, "Success", &v) || !js_is_true(v)) {
 		char msg[160] = "";
 		if (js_member(root, "Error", &v)) js_str(v, msg, sizeof msg);
-		if (err) snprintf(err, errn, "%s", msg[0] ? msg : "refused");
+		if (err) snprintf(err, errn, "%s", msg[0] ? msg : T(S_RA_SIGN_IN_REFUSED));
 		return false;
 	}
 	if (!js_member(root, "Token", &v) || !js_str(v, g_token, sizeof g_token) ||
 	    !g_token[0]) {
-		if (err) snprintf(err, errn, "no token in the reply");
+		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_TOKEN));
 		return false;
 	}
 	snprintf(g_user, sizeof g_user, "%s", user);

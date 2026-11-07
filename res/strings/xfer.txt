@@ -1,0 +1,615 @@
+# File Transfer's screens on the handheld (src/main.c xfer_*, xs_*, usb_ask):
+# Wi-Fi and USB File Transfer, the question a computer on the cable gets, the
+# question while files move, and the sentences the File Transfer page shows
+# from the handheld.
+
+[xfer.computer_connected]
+note = The heading of the panel a computer on the USB cable brings up: three tiles to choose what the cable does.
+en = Computer Connected
+zh-Hans = 已连接电脑
+es = Computadora conectada
+pt-BR = Computador conectado
+fr = Ordinateur connecté
+de = Computer verbunden
+ja = パソコンに接続しました
+it = Computer connesso
+
+[xfer.tile_charge_only]
+note = A tile, two lines (\n between): the cable only charges. tight: a tile is 248 units wide.
+en = Charge\nOnly
+zh-Hans = 仅\n充电
+es = Solo\ncargar
+pt-BR = Só\ncarregar
+fr = Recharge\nseule
+de = Nur\nladen
+ja = 充電\nのみ
+it = Solo\nricarica
+
+[xfer.tile_file_transfer]
+note = A tile, two lines: USB File Transfer, files to and from the computer. tight.
+en = File\nTransfer
+zh-Hans = 文件\n传输
+es = Transferir\narchivos
+pt-BR = Transferir\narquivos
+fr = Transfert de\nfichiers
+de = Datei-\nübertragung
+ja = ファイル\n転送
+it = Trasferisci\nfile
+
+[xfer.tile_developer]
+note = A tile, two lines, on a development image only: a developer's SSH link over the cable. tight. review: pt-BR "Desenvolvedor" is 265 units at meta size, inside the 272 tile but past its margin.
+en = Developer\n(SSH)
+zh-Hans = 开发者\n（SSH）
+es = Desarrollador\n(SSH)
+pt-BR = Desenvolvedor\n(SSH)
+fr = Développeur\n(SSH)
+de = Entwickler\n(SSH)
+ja = 開発者\n（SSH）
+it = Sviluppatore\n(SSH)
+
+[xfer.legend_charge_only]
+note = The key legend under the tiles: Left/Right move between them, A chooses, B leaves the cable charging only. Three spaces between the keys. tight: one line in a panel 944 units wide at meta size. review: pt-BR is 899 of 944; "Esq./Dir." would give room.
+en = Left/Right: move   A: choose   B: charge only
+zh-Hans = 左/右：移动   A：选择   B：仅充电
+es = Izquierda/Derecha: mover   A: elegir   B: cargar
+pt-BR = Esquerda/Direita: mover   A: escolher   B: carregar
+fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: recharger
+de = Links/Rechts: wechseln   A: wählen   B: nur laden
+ja = 左/右：移動   A：選択   B：充電のみ
+it = Sinistra/Destra: sposta   A: scegli   B: solo ricarica
+
+[xfer.dev_heading]
+note = The heading of the message after the Developer (SSH) tile.
+en = Developer (SSH)
+zh-Hans = 开发者（SSH）
+es = Desarrollador (SSH)
+pt-BR = Desenvolvedor (SSH)
+fr = Développeur (SSH)
+de = Entwickler (SSH)
+ja = 開発者（SSH）
+it = Sviluppatore (SSH)
+
+[xfer.dev_link_on]
+note = The message after the Developer (SSH) tile.
+en = Developer link on. Unplug to end it.
+zh-Hans = 开发者连接已开启。拔出数据线即可结束。
+es = Enlace de desarrollador activo. Desconecta el cable para terminarlo.
+pt-BR = Conexão de desenvolvedor ligada. Desconecte o cabo para encerrar.
+fr = Liaison développeur active. Débranchez le câble pour l'arrêter.
+de = Entwicklerverbindung an. Zum Beenden Kabel abziehen.
+ja = 開発者リンクがオンです。ケーブルを抜くと終了します。
+it = Collegamento sviluppatore attivo. Scollega il cavo per terminarlo.
+
+[xfer.starting_hotspot]
+note = One line on a panel while Wi-Fi File Transfer makes the handheld its own network (a hotspot), where there is none to join. review: es and pt-BR say "hotspot", as phones there do; "punto de acceso" and "ponto de acesso" are the long forms.
+en = Starting the hotspot...
+zh-Hans = 正在开启热点…
+es = Iniciando el hotspot...
+pt-BR = Ligando o hotspot...
+fr = Démarrage du point d'accès...
+de = Hotspot wird gestartet ...
+ja = ホットスポットを起動中…
+it = Avvio dell'hotspot...
+
+[xfer.hotspot_failed]
+note = The message when the hotspot did not start.
+en = Could not start the hotspot.
+zh-Hans = 无法开启热点。
+es = No se pudo iniciar el hotspot.
+pt-BR = Não foi possível ligar o hotspot.
+fr = Impossible de démarrer le point d'accès.
+de = Der Hotspot ließ sich nicht starten.
+ja = ホットスポットを起動できませんでした。
+it = Impossibile avviare l'hotspot.
+
+[xfer.could_not_start]
+note = The message when File Transfer's server did not start.
+en = Could not start
+zh-Hans = 无法启动
+es = No se pudo iniciar
+pt-BR = Não foi possível iniciar
+fr = Impossible de démarrer
+de = Start fehlgeschlagen
+ja = 起動できませんでした
+it = Impossibile avviare
+
+[xfer.browsers]
+note = File Transfer's screen: a row label; its value is how many browsers are signed in, xfer.connected. review: zh-Hans says 客户端 (clients) because the font cut lacks 浏 of 浏览器; cut the font again (make cjk-font) to say 浏览器.
+en = Browsers
+zh-Hans = 客户端
+es = Navegadores
+pt-BR = Navegadores
+fr = Navigateurs
+de = Browser
+ja = ブラウザ
+it = Browser
+
+[xfer.waiting]
+note = A lowercase value on File Transfer's screens: nobody yet (Browsers, the hotspot's Phones), and the Now row before anything happens.
+en = waiting
+zh-Hans = 等待中
+es = esperando
+pt-BR = aguardando
+fr = en attente
+de = wartet
+ja = 待機中
+it = in attesa
+
+[xfer.connected]
+note = The Browsers row's value: how many browsers are signed in.
+en.one = %d connected
+en.other = %d connected
+zh-Hans = 已连接 %d 个
+es.one = %d conectado
+es.other = %d conectados
+pt-BR.one = %d conectado
+pt-BR.other = %d conectados
+fr.one = %d connecté
+fr.other = %d connectés
+de.one = %d verbunden
+de.other = %d verbunden
+ja = %d 台接続済み
+it.one = %d connesso
+it.other = %d connessi
+
+[xfer.in_out]
+note = File Transfer's screen: a row label; its value is the bytes the handheld got and sent, "12 KB / 41 MB". tight: it once scrolled when it was longer; about 330 units beside "1.2 GB / 413.5 MB".
+en = In / out
+zh-Hans = 收 / 发
+es = Entra / sale
+pt-BR = Entra / sai
+fr = Reçu / émis
+de = Rein / raus
+ja = 受信 / 送信
+it = Entra / esce
+
+[xfer.nothing_yet]
+note = The In / out row's value before any byte has moved. A lowercase value.
+en = nothing yet
+zh-Hans = 暂无
+es = nada aún
+pt-BR = nada ainda
+fr = rien pour l'instant
+de = noch nichts
+ja = まだなし
+it = ancora niente
+
+[xfer.now]
+note = File Transfer's screens (and the hotspot's): a row label; its value is the transfer's last news ("receiving Game.zip").
+en = Now
+zh-Hans = 当前
+es = Ahora
+pt-BR = Agora
+fr = En cours
+de = Jetzt
+ja = 現在
+it = Adesso
+
+[xfer.closing_after]
+note = The Now row's value once File Transfer closes after the file on its way; %s is the file's name. Lowercase, as English.
+en = closing after %s
+zh-Hans = 传完 %s 后关闭
+es = se cierra después de %s
+pt-BR = fecha depois de %s
+fr = fermeture après %s
+de = schließt nach %s
+ja = %s の後に終了
+it = chiusura dopo %s
+
+[xfer.closing_after_this_file]
+note = The same with no file name known.
+en = closing after this file
+zh-Hans = 传完此文件后关闭
+es = se cierra después de este archivo
+pt-BR = fecha depois deste arquivo
+fr = fermeture après ce fichier
+de = schließt nach dieser Datei
+ja = このファイルの後に終了
+it = chiusura dopo questo file
+
+[xfer.legend_moving]
+note = The key legend while files move: B asks whether to keep going behind the shelf or stop.
+en = B: keep going or stop
+zh-Hans = B：继续或停止
+es = B: continuar o detener
+pt-BR = B: continuar ou parar
+fr = B\u00a0: continuer ou arrêter
+de = B: weitermachen oder stoppen
+ja = B：続行または停止
+it = B: continua o interrompi
+
+[xfer.legend_hide]
+note = The key legend once it closes after the file on its way: B hides the screen.
+en = B: hide
+zh-Hans = B：隐藏
+es = B: ocultar
+pt-BR = B: ocultar
+fr = B\u00a0: masquer
+de = B: ausblenden
+ja = B：隠す
+it = B: nascondi
+
+[xfer.cable_unplugged]
+note = In the heading, where the address goes, when the USB cable came out.
+en = Cable unplugged
+zh-Hans = 数据线已拔出
+es = Cable desconectado
+pt-BR = Cabo desconectado
+fr = Câble débranché
+de = Kabel getrennt
+ja = ケーブルが抜かれました
+it = Cavo scollegato
+
+[xfer.wifi_gone]
+note = In the heading, where the address goes, when the Wi-Fi network went away.
+en = Wi-Fi went away
+zh-Hans = Wi-Fi 已断开
+es = Se perdió el Wi-Fi
+pt-BR = O Wi-Fi caiu
+fr = Wi-Fi perdu
+de = WLAN verloren
+ja = Wi-Fi が切断されました
+it = Wi-Fi perso
+
+[xfer.row_on]
+note = MENU's File Transfer row's value while it runs behind the shelf with nothing moving. A lowercase value.
+en = on
+zh-Hans = 开启
+es = activado
+pt-BR = ativado
+fr = activé
+de = an
+ja = オン
+it = attivo
+
+[xfer.row_receiving]
+note = The same row while files arrive.
+en = receiving
+zh-Hans = 正在接收
+es = recibiendo
+pt-BR = recebendo
+fr = réception
+de = empfängt
+ja = 受信中
+it = ricezione
+
+[xfer.row_sending]
+note = The same row while files go to the computer or phone.
+en = sending
+zh-Hans = 正在发送
+es = enviando
+pt-BR = enviando
+fr = envoi
+de = sendet
+ja = 送信中
+it = invio
+
+[xfer.row_closing]
+note = The same row while it closes after the file on its way.
+en = closing
+zh-Hans = 正在关闭
+es = cerrando
+pt-BR = fechando
+fr = fermeture
+de = schließt
+ja = 終了中
+it = chiusura
+
+[xfer.still_moving]
+note = The heading of the question B (or a game) brings while files move: three tiles.
+en = Files are still moving
+zh-Hans = 文件仍在传输
+es = Aún se están transfiriendo archivos
+pt-BR = Ainda há arquivos em transferência
+fr = Des fichiers sont en cours de transfert
+de = Dateien werden noch übertragen
+ja = ファイルを転送中です
+it = Trasferimento ancora in corso
+
+[xfer.receiving]
+note = Under that heading: what moves; %s is the file's name.
+en = Receiving %s
+zh-Hans = 正在接收 %s
+es = Recibiendo %s
+pt-BR = Recebendo %s
+fr = Réception de %s
+de = Empfange %s
+ja = %s を受信中
+it = Ricezione di %s
+
+[xfer.receiving_a_file]
+note = The same with no name known.
+en = Receiving a file
+zh-Hans = 正在接收文件
+es = Recibiendo un archivo
+pt-BR = Recebendo um arquivo
+fr = Réception d'un fichier
+de = Empfange eine Datei
+ja = ファイルを受信中
+it = Ricezione di un file
+
+[xfer.sending]
+note = Under that heading: what moves to the computer or phone; %s is the file's name.
+en = Sending %s
+zh-Hans = 正在发送 %s
+es = Enviando %s
+pt-BR = Enviando %s
+fr = Envoi de %s
+de = Sende %s
+ja = %s を送信中
+it = Invio di %s
+
+[xfer.sending_a_file]
+note = The same with no name known.
+en = Sending a file
+zh-Hans = 正在发送文件
+es = Enviando un archivo
+pt-BR = Enviando um arquivo
+fr = Envoi d'un fichier
+de = Sende eine Datei
+ja = ファイルを送信中
+it = Invio di un file
+
+[xfer.tile_keep_going]
+note = The question on B, a tile, two lines: hide the screen and let the files keep moving behind the shelf. tight: 248 units.
+en = Keep\ngoing
+zh-Hans = 继续\n传输
+es = Seguir\ntransfiriendo
+pt-BR = Continuar\ntransferindo
+fr = Continuer\nle transfert
+de = Weiter\nübertragen
+ja = そのまま\n続ける
+it = Continua\nin sottofondo
+
+[xfer.keep_going_says]
+note = Under the tiles while Keep going is focused.
+en = Files keep moving behind the shelf.
+zh-Hans = 文件在后台继续传输。
+es = Los archivos siguen en segundo plano.
+pt-BR = Os arquivos continuam em segundo plano.
+fr = Les fichiers continuent en arrière-plan.
+de = Die Übertragung läuft im Hintergrund weiter.
+ja = ファイルはバックグラウンドで転送されます。
+it = Il trasferimento continua in sottofondo.
+
+[xfer.tile_stop_after]
+note = A tile, two lines: stop File Transfer once the file on its way is in. tight.
+en = Stop after\nthis file
+zh-Hans = 传完此文件\n后停止
+es = Parar tras\neste archivo
+pt-BR = Parar após\neste arquivo
+fr = Arrêter après\nce fichier
+de = Stopp nach\ndieser Datei
+ja = この転送の\n後に停止
+it = Ferma dopo\nquesto file
+
+[xfer.stop_after_says]
+note = Under the tiles while Stop after this file is focused: then File Transfer closes.
+en = This file finishes, then it closes.
+zh-Hans = 传完此文件后关闭。
+es = Termina este archivo y luego se cierra.
+pt-BR = Este arquivo termina e depois fecha.
+fr = Ce fichier se termine, puis le transfert se ferme.
+de = Diese Datei wird fertig, dann schließt die Übertragung.
+ja = このファイルが終わったら終了します。
+it = Finisce questo file, poi si chiude.
+
+[xfer.tile_cancel_now]
+note = A tile, two lines: stop at once. tight.
+en = Cancel\nnow
+zh-Hans = 立即\n取消
+es = Cancelar\nahora
+pt-BR = Cancelar\nagora
+fr = Annuler\nmaintenant
+de = Jetzt\nabbrechen
+ja = 今すぐ\n中止
+it = Annulla\nora
+
+[xfer.half_deleted]
+note = Under the tiles while a Cancel tile is focused: the file that was arriving is deleted, never left half on the card.
+en = The half-written file is deleted.
+zh-Hans = 未写完的文件会被删除。
+es = El archivo a medio escribir se borra.
+pt-BR = O arquivo incompleto é apagado.
+fr = Le fichier incomplet est supprimé.
+de = Die halb geschriebene Datei wird gelöscht.
+ja = 書きかけのファイルは削除されます。
+it = Il file scritto a metà viene eliminato.
+
+[xfer.the_file]
+note = Kept for a line above that names the file ("%s"); none does now.
+en = The file
+zh-Hans = 该文件
+es = El archivo
+pt-BR = O arquivo
+fr = Le fichier
+de = Die Datei
+ja = そのファイル
+it = Il file
+
+[xfer.legend_keep_going]
+note = The key legend under the question on B. Three spaces between the keys. tight: 944 units at meta size.
+en = Left/Right: move   A: choose   B: keep going
+zh-Hans = 左/右：移动   A：选择   B：继续传输
+es = Izquierda/Derecha: mover   A: elegir   B: seguir
+pt-BR = Esquerda/Direita: mover   A: escolher   B: seguir
+fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: continuer
+de = Links/Rechts: wechseln   A: wählen   B: weiter
+ja = 左/右：移動   A：選択   B：そのまま続ける
+it = Sinistra/Destra: sposta   A: scegli   B: continua
+
+[xfer.tile_not_now]
+note = The question when a game is started while files move, a tile, two lines: no game now, back to the shelf. tight.
+en = Not\nnow
+zh-Hans = 暂不\n开始
+es = Ahora\nno
+pt-BR = Agora\nnão
+fr = Pas\nmaintenant
+de = Nicht\njetzt
+ja = 今は\nやめる
+it = Non\nora
+
+[xfer.not_now_says]
+note = Under the tiles while Not now is focused.
+en = Back to the shelf. The files keep moving.
+zh-Hans = 回到游戏列表，文件继续传输。
+es = Vuelves a la lista. Los archivos siguen.
+pt-BR = Volta à lista de jogos. Os arquivos seguem.
+fr = Retour à la liste. Les fichiers continuent.
+de = Zurück zur Spieleliste. Die Dateien werden weiter übertragen.
+ja = ゲーム一覧に戻ります。ファイルの転送は続きます。
+it = Torni all'elenco. Il trasferimento continua.
+
+[xfer.tile_play_after]
+note = A tile, two lines: start the game once the file on its way is in. tight.
+en = Play after\nthis file
+zh-Hans = 传完此文件\n后开始
+es = Jugar tras\neste archivo
+pt-BR = Jogar após\neste arquivo
+fr = Jouer après\nce fichier
+de = Spielen nach\ndieser Datei
+ja = この転送の\n後にプレイ
+it = Gioca dopo\nquesto file
+
+[xfer.play_after_says]
+note = Under the tiles while Play after this file is focused.
+en = This file finishes, then the game starts.
+zh-Hans = 传完此文件后开始游戏。
+es = Termina este archivo y luego empieza el juego.
+pt-BR = Este arquivo termina e depois o jogo começa.
+fr = Ce fichier se termine, puis le jeu démarre.
+de = Diese Datei wird fertig, dann startet das Spiel.
+ja = このファイルが終わったらゲームを始めます。
+it = Finisce questo file, poi parte il gioco.
+
+[xfer.tile_cancel_play]
+note = A tile, two lines: stop at once and start the game. tight.
+en = Cancel\nand play
+zh-Hans = 取消\n并开始
+es = Cancelar\ny jugar
+pt-BR = Cancelar\ne jogar
+fr = Annuler\net jouer
+de = Abbrechen\nund spielen
+ja = 中止して\nプレイ
+it = Annulla\ne gioca
+
+[xfer.legend_not_now]
+note = The key legend under the game's question. Three spaces between the keys. tight: 944 units at meta size.
+en = Left/Right: move   A: choose   B: not now
+zh-Hans = 左/右：移动   A：选择   B：暂不开始
+es = Izquierda/Derecha: mover   A: elegir   B: luego
+pt-BR = Esquerda/Direita: mover   A: escolher   B: depois
+fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: plus tard
+de = Links/Rechts: wechseln   A: wählen   B: nicht jetzt
+ja = 左/右：移動   A：選択   B：今はやめる
+it = Sinistra/Destra: sposta   A: scegli   B: non ora
+
+[xfer.finishing]
+note = One line on a panel while the game waits for the file on its way; %s is the file's name.
+en = Finishing %s...
+zh-Hans = 正在传完 %s…
+es = Terminando %s...
+pt-BR = Terminando %s...
+fr = Fin de %s...
+de = Schließe %s ab ...
+ja = %s の転送を完了中…
+it = Completamento di %s...
+
+[xfer.finishing_the_file]
+note = The same with no name known.
+en = Finishing the file...
+zh-Hans = 正在传完文件…
+es = Terminando el archivo...
+pt-BR = Terminando o arquivo...
+fr = Fin du fichier...
+de = Schließe die Datei ab ...
+ja = ファイルの転送を完了中…
+it = Completamento del file...
+
+[xfer.b_back_to_shelf]
+note = The key legend under it: B goes back to the shelf, the file still on its way.
+en = B: back to the shelf
+zh-Hans = B：返回游戏列表
+es = B: volver a la lista de juegos
+pt-BR = B: voltar à lista de jogos
+fr = B\u00a0: retour à la liste des jeux
+de = B: zurück zur Spieleliste
+ja = B：ゲーム一覧に戻る
+it = B: torna all'elenco giochi
+
+[xfer.closed_for_game]
+note = The message when a game starts and File Transfer closes for it.
+en = File Transfer closed for the game.
+zh-Hans = 文件传输已为游戏关闭。
+es = Se cerró la transferencia de archivos para jugar.
+pt-BR = A transferência de arquivos foi fechada para o jogo.
+fr = Transfert de fichiers fermé pour le jeu.
+de = Dateiübertragung für das Spiel beendet.
+ja = ゲームのためにファイル転送を終了しました。
+it = Trasferimento file chiuso per avviare il gioco.
+
+[xfer.hotspot_stopped]
+note = The message when the handheld's own network (the hotspot) stopped.
+en = The hotspot stopped.
+zh-Hans = 热点已停止。
+es = El hotspot se detuvo.
+pt-BR = O hotspot parou.
+fr = Le point d'accès s'est arrêté.
+de = Der Hotspot wurde beendet.
+ja = ホットスポットが停止しました。
+it = L'hotspot si è fermato.
+
+[xfer.closing_hotspot]
+note = One line on a panel while the hotspot closes and the handheld's Wi-Fi comes back.
+en = Closing the hotspot...
+zh-Hans = 正在关闭热点…
+es = Cerrando el hotspot...
+pt-BR = Desligando o hotspot...
+fr = Fermeture du point d'accès...
+de = Hotspot wird beendet ...
+ja = ホットスポットを終了中…
+it = Chiusura dell'hotspot...
+
+[xfer.scanning]
+note = One line on a panel after File Transfer while the shelves are read again for the new games.
+en = Scanning...
+zh-Hans = 正在扫描…
+es = Escaneando...
+pt-BR = Escaneando...
+fr = Analyse...
+de = Wird eingelesen ...
+ja = スキャン中…
+it = Scansione...
+
+[xfer.key_removed]
+note = Shown on the File Transfer web page after its SteamGridDB key is removed.
+en = Key removed.
+zh-Hans = 密钥已移除。
+es = Clave eliminada.
+pt-BR = Chave removida.
+fr = Clé supprimée.
+de = Schlüssel entfernt.
+ja = キーを削除しました。
+it = Chiave rimossa.
+
+[xfer.err_memory]
+note = Shown on the File Transfer web page when the handheld could not answer for want of memory. Lowercase, as English.
+en = out of memory
+zh-Hans = 内存不足
+es = memoria insuficiente
+pt-BR = memória insuficiente
+fr = mémoire insuffisante
+de = zu wenig Speicher
+ja = メモリ不足
+it = memoria esaurita
+
+[xfer.err_could_not_say]
+note = Shown on the File Transfer web page when the handheld's answer did not fit. Lowercase, as English.
+en = could not say
+zh-Hans = 无法回答
+es = no se pudo responder
+pt-BR = não foi possível responder
+fr = réponse impossible
+de = keine Antwort möglich
+ja = 応答できませんでした
+it = impossibile rispondere

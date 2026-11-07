@@ -1,0 +1,35 @@
+# A shelf's orders (src/sort.h), MENU > Sort By's values. The setting keeps
+# name, played, recent and added in English. Play Time is sysmenu.play_time.
+
+[sort.name]
+note = Sort By's value: by the games' names
+en = Name
+zh-Hans = 名称
+es = Nombre
+pt-BR = Nome
+fr = Nom
+de = Name
+ja = 名前
+it = Nome
+
+[sort.last_played]
+note = review: Sort By's value: the game played last first
+en = Last Played
+zh-Hans = 上次游玩
+es = Última partida
+pt-BR = Última partida
+fr = Dernière partie
+de = Zuletzt gespielt
+ja = 最終プレイ日
+it = Ultima partita
+
+[sort.recently_added]
+note = Sort By's value: the game put on the card last first
+en = Recently Added
+zh-Hans = 最近添加
+es = Últimos agregados
+pt-BR = Últimos adicionados
+fr = Ajouts récents
+de = Zuletzt hinzugefügt
+ja = 追加日
+it = Aggiunti di recente

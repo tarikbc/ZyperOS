@@ -1,0 +1,159 @@
+# Box Art and MENU > Scraper's run (src/artscrape.c): the line under the
+# heading while it works, then why it stopped. A %s is a console's folder
+# ("NES", "Game Boy") or a game's file name, as they are on the card. The
+# heading has room for about 25 characters at the Pixel 2's 640 wide; a
+# longer line is cut there.
+
+[art.now_catalog]
+note = Under the heading while it reads libretro's list of covers for a console: %s is the console's folder ("NES catalog")
+en = %s catalog
+zh-Hans = %s 目录
+es = catálogo de %s
+pt-BR = catálogo de %s
+fr = catalogue %s
+de = %s-Katalog
+ja = %s のカタログ
+it = catalogo di %s
+
+[art.now_no_art]
+note = Under the heading: no cover in the list matches this game; %s is the game's file name
+en = no art for %s
+zh-Hans = %s 没有封面
+es = sin carátula: %s
+pt-BR = sem capa: %s
+fr = pas de jaquette\u00a0: %s
+de = kein Cover für %s
+ja = %s の画像なし
+it = senza copertina: %s
+
+[art.now_checksums]
+note = review: pt-BR keeps "checksums" in English, as Brazilian tech text often does. Under the heading while it reads a console's list of checksums, to name games by what they are: %s is the console's folder
+en = %s checksums
+zh-Hans = %s 校验和
+es = sumas de verificación de %s
+pt-BR = checksums de %s
+fr = sommes de contrôle %s
+de = %s-Prüfsummen
+ja = %s のチェックサム
+it = checksum di %s
+
+[art.problem]
+note = Why a console was passed over: its folder, then one of the reasons below ("NES: no such folder")
+en = %s: %s
+zh-Hans = %s：%s
+es = %s: %s
+pt-BR = %s: %s
+fr = %s : %s
+de = %s: %s
+ja = %s：%s
+it = %s: %s
+
+[art.why_no_folder]
+note = tight. The console's folder is not on the card
+en = no such folder
+zh-Hans = 没有这个文件夹
+es = no existe la carpeta
+pt-BR = a pasta não existe
+fr = dossier introuvable
+de = Ordner fehlt
+ja = フォルダなし
+it = cartella assente
+
+[art.why_not_in_table]
+note = tight. libretro has no collection of covers for this console
+en = not in the table
+zh-Hans = 不在列表中
+es = no está en la tabla
+pt-BR = não está na tabela
+fr = absent de la table
+de = nicht in der Tabelle
+ja = 一覧に未収録
+it = non in tabella
+
+[art.why_no_curl]
+note = tight. curl is the program that downloads; it would not start
+en = could not start curl
+zh-Hans = 无法启动 curl
+es = no se pudo iniciar curl
+pt-BR = não deu para iniciar o curl
+fr = impossible de lancer curl
+de = curl startet nicht
+ja = curl の起動に失敗
+it = curl non si avvia
+
+[art.why_index_failed]
+note = tight. The list of covers did not download (the network, not missing art)
+en = index fetch failed
+zh-Hans = 索引下载失败
+es = falló la descarga del índice
+pt-BR = falha ao baixar o índice
+fr = échec de l'index
+de = Index nicht geladen
+ja = 一覧の取得に失敗
+it = indice non scaricato
+
+[art.why_index_bad]
+note = tight. The list of covers arrived but could not be read
+en = index unreadable or empty
+zh-Hans = 索引无法读取或为空
+es = índice ilegible o vacío
+pt-BR = índice ilegível ou vazio
+fr = index illisible ou vide
+de = Index unlesbar oder leer
+ja = 一覧が読めないか空です
+it = indice illeggibile o vuoto
+
+[art.ss_quota]
+note = tight. The ScreenScraper account's requests for today are used up; the run goes on with libretro
+en = ScreenScraper: today's quota is spent
+zh-Hans = ScreenScraper：今日配额已用完
+es = ScreenScraper: cuota de hoy agotada
+pt-BR = ScreenScraper: cota de hoje esgotada
+fr = ScreenScraper : quota du jour épuisé
+de = ScreenScraper: Tageslimit erreicht
+ja = ScreenScraper：本日の上限に到達
+it = ScreenScraper: quota di oggi esaurita
+
+[art.ss_too_many]
+note = tight. ScreenScraper refused twice for too many requests; it is not asked again this run
+en = ScreenScraper: too many requests, stopped
+zh-Hans = ScreenScraper：请求过多，已停止
+es = ScreenScraper: demasiadas solicitudes, detenido
+pt-BR = ScreenScraper: pedidos demais, parado
+fr = ScreenScraper : trop de requêtes, arrêté
+de = ScreenScraper: zu viele Anfragen, gestoppt
+ja = ScreenScraper：リクエスト過多で停止
+it = ScreenScraper: troppe richieste, fermato
+
+[art.sg_refused]
+note = tight. SteamGridDB refused the key; it is not asked again this run
+en = SteamGridDB: key refused
+zh-Hans = SteamGridDB：密钥被拒绝
+es = SteamGridDB: clave rechazada
+pt-BR = SteamGridDB: chave recusada
+fr = SteamGridDB : clé refusée
+de = SteamGridDB: Schlüssel abgelehnt
+ja = SteamGridDB：キーを拒否
+it = SteamGridDB: chiave rifiutata
+
+[art.sg_busy]
+note = tight. SteamGridDB said too many requests twice
+en = SteamGridDB: too busy
+zh-Hans = SteamGridDB：服务器繁忙
+es = SteamGridDB: saturado
+pt-BR = SteamGridDB: sobrecarregado
+fr = SteamGridDB : surchargé
+de = SteamGridDB: überlastet
+ja = SteamGridDB：混雑中
+it = SteamGridDB: sovraccarico
+
+[art.sg_no_answer]
+note = tight. SteamGridDB did not answer twice in a row
+en = SteamGridDB: no answer
+zh-Hans = SteamGridDB：无响应
+es = SteamGridDB: sin respuesta
+pt-BR = SteamGridDB: sem resposta
+fr = SteamGridDB : pas de réponse
+de = SteamGridDB: keine Antwort
+ja = SteamGridDB：応答なし
+it = SteamGridDB: nessuna risposta

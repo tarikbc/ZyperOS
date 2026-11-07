@@ -1,0 +1,300 @@
+# MP4's music and books (src/main.c): Now Playing, an album's tracks and Album
+# Art. Muse is the player's name and is never translated. A key legend is
+# its parts joined by three spaces, most needed first.
+
+[muse.chapter_of]
+note = Now Playing, over a book's title: which chapter of how many is playing
+en = Chapter %d / %d
+zh-Hans = 第 %d / %d 章
+es = Capítulo %d / %d
+pt-BR = Capítulo %d / %d
+fr = Chapitre %d / %d
+de = Kapitel %d / %d
+ja = 第 %d 章 / 全 %d 章
+it = Capitolo %d / %d
+
+[muse.chapter]
+note = A chapter's name when the book gives it only a number or none: %d is its number
+en = Chapter %d
+zh-Hans = 第 %d 章
+es = Capítulo %d
+pt-BR = Capítulo %d
+fr = Chapitre %d
+de = Kapitel %d
+ja = 第 %d 章
+it = Capitolo %d
+
+[muse.paused]
+note = Now Playing, between the two times under the bar, in the accent color: playing is paused
+en = Paused
+zh-Hans = 已暂停
+es = En pausa
+pt-BR = Pausado
+fr = En pause
+de = Pausiert
+ja = 一時停止中
+it = In pausa
+
+[muse.stopped]
+note = Now Playing, between the two times under the bar: nothing is playing
+en = Stopped
+zh-Hans = 已停止
+es = Detenido
+pt-BR = Parado
+fr = Arrêté
+de = Gestoppt
+ja = 停止中
+it = Interrotto
+
+[muse.finished]
+note = Now Playing, between the two times under the bar: a book was played to its end
+en = Finished
+zh-Hans = 已听完
+es = Terminado
+pt-BR = Concluído
+fr = Terminé
+de = Zu Ende
+ja = 再生完了
+it = Terminato
+
+[muse.next]
+note = Now Playing, the last line beside the cover: %s is what plays next (a song, a chapter or a file)
+en = Next: %s
+zh-Hans = 接下来：%s
+es = Siguiente: %s
+pt-BR = A seguir: %s
+fr = À suivre\u00a0: %s
+de = Danach: %s
+ja = 次：%s
+it = A seguire: %s
+
+[muse.hint_play]
+note = A part of the key legend at the foot, while paused or stopped: A plays
+en = A: play
+zh-Hans = A：播放
+es = A: reproducir
+pt-BR = A: tocar
+fr = A\u00a0: lecture
+de = A: abspielen
+ja = A：再生
+it = A: riproduci
+
+[muse.hint_pause]
+note = A part of the key legend at the foot, while playing: A pauses
+en = A: pause
+zh-Hans = A：暂停
+es = A: pausar
+pt-BR = A: pausar
+fr = A\u00a0: pause
+de = A: pausieren
+ja = A：一時停止
+it = A: pausa
+
+[muse.hint_track]
+note = A part of the key legend, for music: L1/R1 go to the track before or after
+en = L1/R1: track
+zh-Hans = L1/R1：曲目
+es = L1/R1: pista
+pt-BR = L1/R1: faixa
+fr = L1/R1\u00a0: piste
+de = L1/R1: Titel
+ja = L1/R1：曲
+it = L1/R1: traccia
+
+[muse.hint_chapter]
+note = A part of the key legend, for a book with chapters: L1/R1 go to the chapter before or after
+en = L1/R1: chapter
+zh-Hans = L1/R1：章节
+es = L1/R1: capítulo
+pt-BR = L1/R1: capítulo
+fr = L1/R1\u00a0: chapitre
+de = L1/R1: Kapitel
+ja = L1/R1：章
+it = L1/R1: capitolo
+
+[muse.hint_file]
+note = A part of the key legend, for a book in several files: L1/R1 go to the file before or after
+en = L1/R1: file
+zh-Hans = L1/R1：文件
+es = L1/R1: archivo
+pt-BR = L1/R1: arquivo
+fr = L1/R1\u00a0: fichier
+de = L1/R1: Datei
+ja = L1/R1：ファイル
+it = L1/R1: file
+
+[muse.hint_seek]
+note = A part of the key legend: the d-pad's Left and Right move back and forward in what plays. review: the verb for seeking
+en = Left/Right: seek
+zh-Hans = 左/右：快退/快进
+es = Izquierda/Derecha: adelantar
+pt-BR = Esquerda/Direita: avançar
+fr = Gauche/Droite\u00a0: avancer
+de = Links/Rechts: spulen
+ja = 左/右：巻き戻し/早送り
+it = Sinistra/Destra: scorri
+
+[muse.hint_speed]
+note = A part of the key legend, for a book: Y changes the playing speed
+en = Y: speed
+zh-Hans = Y：速度
+es = Y: velocidad
+pt-BR = Y: velocidade
+fr = Y\u00a0: vitesse
+de = Y: Tempo
+ja = Y：速度
+it = Y: velocità
+
+[muse.hint_mode]
+note = A part of the key legend, for music: Y changes the play mode (in order, repeat, shuffle)
+en = Y: mode
+zh-Hans = Y：模式
+es = Y: modo
+pt-BR = Y: modo
+fr = Y\u00a0: mode
+de = Y: Modus
+ja = Y：モード
+it = Y: modalità
+
+[muse.row_playing]
+note = An album's tracks: the value beside the track that is playing (a status, lowercase)
+en = playing
+zh-Hans = 正在播放
+es = reproduciendo
+pt-BR = tocando
+fr = en lecture
+de = läuft
+ja = 再生中
+it = in riproduzione
+
+[muse.row_paused]
+note = An album's tracks: the value beside the track that is paused (a status, lowercase)
+en = paused
+zh-Hans = 已暂停
+es = en pausa
+pt-BR = pausado
+fr = en pause
+de = pausiert
+ja = 一時停止中
+it = in pausa
+
+[muse.paused_note]
+note = An album's tracks, the note under the list while what plays is paused: %s is the title, artist and times ("Song · Artist · 1:26 / 3:40")
+en = Paused: %s
+zh-Hans = 已暂停：%s
+es = En pausa: %s
+pt-BR = Pausado: %s
+fr = En pause\u00a0: %s
+de = Pausiert: %s
+ja = 一時停止中：%s
+it = In pausa: %s
+
+[muse.art_title]
+note = Album Art (MENU on the music shelf): the heading of its panel, and of the message when there is no network. Covers for albums, from MusicBrainz.
+en = Album Art
+zh-Hans = 专辑封面
+es = Portadas de álbumes
+pt-BR = Capas de álbuns
+fr = Pochettes d'albums
+de = Albumcover
+ja = アルバムアート
+it = Copertine album
+
+[muse.art_starting]
+note = Album Art: the line under the heading before the first album is asked about
+en = starting
+zh-Hans = 正在开始
+es = iniciando
+pt-BR = iniciando
+fr = démarrage
+de = startet
+ja = 開始中
+it = avvio
+
+[muse.art_all_crisp]
+note = Album Art: the line under the heading when no album needs a cover (every one has a sharp, large one already)
+en = Every album has a crisp cover
+zh-Hans = 每张专辑都已有清晰封面
+es = Todos los álbumes tienen portada nítida
+pt-BR = Todos os álbuns têm capa nítida
+fr = Tous les albums ont une pochette nette
+de = Jedes Album hat ein scharfes Cover
+ja = 全アルバムのアートが鮮明です
+it = Ogni album ha una copertina nitida
+
+[muse.art_done]
+note = Album Art: the line under the heading when it has finished
+en = Done
+zh-Hans = 完成
+es = Listo
+pt-BR = Pronto
+fr = Terminé
+de = Fertig
+ja = 完了
+it = Fatto
+
+[muse.art_albums]
+note = Album Art: a row, its value how many albums of how many were asked about ("4 / 10")
+en = Albums
+zh-Hans = 专辑
+es = Álbumes
+pt-BR = Álbuns
+fr = Albums
+de = Alben
+ja = アルバム
+it = Album
+
+[muse.art_covers]
+note = Album Art: a row, its value the covers found and not found (muse.art_counts)
+en = Covers
+zh-Hans = 封面
+es = Portadas
+pt-BR = Capas
+fr = Pochettes
+de = Cover
+ja = アート
+it = Copertine
+
+[muse.art_counts]
+note = Album Art: the Covers row's value: covers found, and albums with none found
+en = %d found · %d not found
+zh-Hans = 找到 %d 张 · 未找到 %d 张
+es = %d encontradas · %d sin encontrar
+pt-BR = %d encontradas · %d não encontradas
+fr = %d trouvées · %d introuvables
+de = %d gefunden · %d nicht gefunden
+ja = %d 件取得 · %d 件なし
+it = %d trovate · %d non trovate
+
+[muse.art_counts_failed]
+note = Album Art: the Covers row's value with failures: covers found, not found, and asks that failed
+en = %d found · %d not found · %d failed
+zh-Hans = 找到 %d 张 · 未找到 %d 张 · 失败 %d 张
+es = %d encontradas · %d sin encontrar · %d con error
+pt-BR = %d encontradas · %d não encontradas · %d com erro
+fr = %d trouvées · %d introuvables · %d en échec
+de = %d gefunden · %d nicht gefunden · %d fehlgeschlagen
+ja = %d 件取得 · %d 件なし · %d 件失敗
+it = %d trovate · %d non trovate · %d errori
+
+[muse.art_stop]
+note = Album Art: the last row while it works, B stops it
+en = B: stop
+zh-Hans = B：停止
+es = B: detener
+pt-BR = B: parar
+fr = B\u00a0: arrêter
+de = B: stoppen
+ja = B：停止
+it = B: interrompi
+
+[muse.art_close]
+note = Album Art: the last row once it has finished, B closes the panel
+en = B: close
+zh-Hans = B：关闭
+es = B: cerrar
+pt-BR = B: fechar
+fr = B\u00a0: fermer
+de = B: schließen
+ja = B：閉じる
+it = B: chiudi

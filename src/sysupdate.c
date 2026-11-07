@@ -7,6 +7,8 @@
 
 #include "sysupdate.h"
 
+#include "i18n.h"
+
 static const struct { const char *word; su_state st; } STATES[] = {
 	{ "idle", SU_IDLE }, { "unsupported", SU_UNSUPPORTED }, { "checking", SU_CHECKING },
 	{ "uptodate", SU_UPTODATE }, { "available", SU_AVAILABLE },
@@ -87,21 +89,22 @@ void su_size(unsigned long long b, char *buf, size_t n)
 	if (b >= 10ull * 1000 * 1000)  snprintf(buf, n, "%llu MB", (b + 500000) / 1000000);
 	else if (b >= 1000ull * 1000)  snprintf(buf, n, "%.1f MB", (double)b / 1e6);
 	else if (b >= 1000)            snprintf(buf, n, "%llu KB", (b + 500) / 1000);
-	else                           snprintf(buf, n, "%llu bytes", b);
+	else                           snprintf(buf, n, T(S_UPDATE_BYTES), b);
 }
 
 /* "6.1 of 14 MB": the unit once, the larger one's */
 static void of_size(unsigned long long done, unsigned long long total, char *buf, size_t n)
 {
-	char t[24];
+	char t[24], d[24];
 	su_size(total, t, sizeof t);
 	if (total >= 1000ull * 1000) {
-		double d = (double)done / 1e6;
-		if (d >= 10) snprintf(buf, n, "%.0f of %s", d, t);
-		else snprintf(buf, n, "%.1f of %s", d, t);
+		double x = (double)done / 1e6;
+		if (x >= 10) snprintf(d, sizeof d, "%.0f", x);
+		else snprintf(d, sizeof d, "%.1f", x);
 	} else {
-		snprintf(buf, n, "%llu of %s", (done + 500) / 1000, t);
+		snprintf(d, sizeof d, "%llu", (done + 500) / 1000);
 	}
+	snprintf(buf, n, T(S_UPDATE_OF_SIZE), d, t);
 }
 
 static float frac(unsigned long long a, unsigned long long b)
@@ -127,12 +130,12 @@ static void size_line(const su_view *v, char *buf, size_t n)
 	su_size(v->st.download > 1 ? v->st.download : 0, d, sizeof d);
 	if (v->st.system)
 		/* The system's root and kernel, and with them its ZyperOS */
-		snprintf(buf, n, "System and ZyperOS \xc2\xb7 %s", d);
+		snprintf(buf, n, T(S_UPDATE_SIZE_SYSTEM), d);
 	else if (v->st.size) {
 		su_size(v->st.size, t, sizeof t);
-		snprintf(buf, n, "%s to download \xc2\xb7 %s in all", d, t);
+		snprintf(buf, n, T(S_UPDATE_SIZE_BOTH), d, t);
 	} else {
-		snprintf(buf, n, "%s to download", d);
+		snprintf(buf, n, T(S_UPDATE_SIZE_DOWNLOAD), d);
 	}
 }
 
@@ -141,10 +144,10 @@ static void size_line(const su_view *v, char *buf, size_t n)
 static void download_key(su_page *p, const su_view *v, const char *label)
 {
 	if (!v->wifi) {
-		snprintf(p->line, sizeof p->line, "Connect to Wi-Fi to download.");
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_NEED_WIFI_DOWNLOAD));
 	} else if (v->battery < SU_MIN_BATTERY && !v->charging) {
 		snprintf(p->warn, sizeof p->warn,
-		         "The battery is at %d%%. Plug in the charger to download the update.", v->battery);
+		         T(S_UPDATE_BATTERY_LOW), v->battery);
 	} else {
 		key(p, "A", label, SUA_DOWNLOAD);
 	}
@@ -152,9 +155,9 @@ static void download_key(su_page *p, const su_view *v, const char *label)
 
 static void rollback_key(su_page *p, const su_view *v)
 {
-	char l[32];
+	char l[sizeof p->keys[0].label];
 	if (!v->prev[0]) return;
-	snprintf(l, sizeof l, "Roll Back to %s", v->prev);
+	snprintf(l, sizeof l, T(S_UPDATE_ROLL_BACK_TO), v->prev);
 	key(p, "Y", l, SUA_ROLLBACK);
 }
 
@@ -185,9 +188,9 @@ void su_page_build(const su_view *v, su_page *p)
 	memset(p, 0, sizeof *p);
 	snprintf(p->from, sizeof p->from, "%s", v->installed[0] ? v->installed : "?");
 	if (s == SU_UNSUPPORTED) {
-		snprintf(p->sub, sizeof p->sub, "System Update is not on this system.");
-		snprintf(p->line, sizeof p->line, "Use the ZyperOS Installer.");
-		key(p, "B", "Back", SUA_BACK);
+		snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_UNSUPPORTED));
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
+		key(p, "B", T(S_UPDATE_BACK), SUA_BACK);
 		return;
 	}
 	if (running && s != SU_COPYING && s != SU_DOWNLOADING && s != SU_VERIFYING && s != SU_INSTALLING) s = SU_CHECKING;
@@ -203,34 +206,34 @@ void su_page_build(const su_view *v, su_page *p)
 	switch (s) {
 	case SU_IDLE:
 		if (v->wifi) {
-			snprintf(p->sub, sizeof p->sub, "Not looked for updates yet");
-			key(p, "A", "Look for Updates", SUA_CHECK);
+			snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_NOT_LOOKED));
+			key(p, "A", T(S_UPDATE_LOOK), SUA_CHECK);
 		} else {
-			snprintf(p->sub, sizeof p->sub, "Connect to Wi-Fi to look for updates.");
+			snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_NEED_WIFI_LOOK));
 		}
 		break;
 	case SU_CHECKING:
-		snprintf(p->sub, sizeof p->sub, "Looking for updates\xe2\x80\xa6");
+		snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_LOOKING));
 		break;
 	case SU_UPTODATE: {
 		/* Just switched (update/apply.sh's result): say from what */
 		char a[32] = "", b[32] = "";
 		if (sscanf(v->result, "updated %31s %31s", a, b) == 2 && !strcmp(b, v->installed))
-			snprintf(p->sub, sizeof p->sub, "Updated from %s", a);
+			snprintf(p->sub, sizeof p->sub, T(S_UPDATE_UPDATED_FROM), a);
 		else if (sscanf(v->result, "rolled-back %31s", a) == 1 && strcmp(a, v->installed))
-			snprintf(p->sub, sizeof p->sub, "Went back from %s", a);
+			snprintf(p->sub, sizeof p->sub, T(S_UPDATE_WENT_BACK_FROM), a);
 		else if (v->checked[0])
-			snprintf(p->sub, sizeof p->sub, "Up to date \xc2\xb7 checked %s", v->checked);
+			snprintf(p->sub, sizeof p->sub, T(S_UPDATE_UP_TO_DATE_CHECKED), v->checked);
 		else
-			snprintf(p->sub, sizeof p->sub, "Up to date");
-		if (v->wifi) key(p, "A", "Look Again", SUA_CHECK);
+			snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_UP_TO_DATE));
+		if (v->wifi) key(p, "A", T(S_UPDATE_LOOK_AGAIN), SUA_CHECK);
 		break;
 	}
 	case SU_AVAILABLE:
 	case SU_BATTERY:
 		size_line(v, p->sub, sizeof p->sub);
 		p->notes = v->notes;
-		download_key(p, v, "Download");
+		download_key(p, v, T(S_UPDATE_DOWNLOAD));
 		break;
 	case SU_COPYING:
 	case SU_DOWNLOADING:
@@ -240,92 +243,87 @@ void su_page_build(const su_view *v, su_page *p)
 		p->notes = v->notes;
 		p->bar = true;
 		if (s == SU_COPYING) {
-			snprintf(p->bar_left, sizeof p->bar_left, "Preparing");
-			snprintf(p->bar_right, sizeof p->bar_right, "%d of %d files", v->st.files_done, v->st.files_total);
+			snprintf(p->bar_left, sizeof p->bar_left, "%s", T(S_UPDATE_PREPARING));
+			snprintf(p->bar_right, sizeof p->bar_right, T(S_UPDATE_FILES_OF), v->st.files_done, v->st.files_total);
 			p->frac = frac((unsigned long long)v->st.files_done, (unsigned long long)v->st.files_total);
 		} else if (s == SU_DOWNLOADING) {
-			snprintf(p->bar_left, sizeof p->bar_left, "Downloading");
+			snprintf(p->bar_left, sizeof p->bar_left, "%s", T(S_UPDATE_DOWNLOADING));
 			of_size(v->st.done, v->st.total, p->bar_right, sizeof p->bar_right);
 			p->frac = frac(v->st.done, v->st.total);
 		} else if (s == SU_INSTALLING) {
 			/* The root written into the other slot, then read back */
-			snprintf(p->bar_left, sizeof p->bar_left, "Installing");
+			snprintf(p->bar_left, sizeof p->bar_left, "%s", T(S_UPDATE_INSTALLING));
 			snprintf(p->bar_right, sizeof p->bar_right, "%.0f%%", 100.0 * frac(v->st.done, v->st.total));
 			p->frac = frac(v->st.done, v->st.total);
 		} else {
-			snprintf(p->bar_left, sizeof p->bar_left, "Checking files");
-			snprintf(p->bar_right, sizeof p->bar_right, "%d of %d", v->st.files_done, v->st.files_total);
+			snprintf(p->bar_left, sizeof p->bar_left, "%s", T(S_UPDATE_CHECKING_FILES));
+			snprintf(p->bar_right, sizeof p->bar_right, T(S_UPDATE_COUNT_OF), v->st.files_done, v->st.files_total);
 			p->frac = frac(v->st.done, v->st.total);
 		}
-		key(p, "B", "Back, it goes on", SUA_BACK);
+		key(p, "B", T(S_UPDATE_BACK_GOES_ON), SUA_BACK);
 		return;
 	case SU_STOPPED:
 		size_line(v, p->sub, sizeof p->sub);
 		p->notes = v->notes;
 		if (v->st.total) {
 			p->bar = true;
-			snprintf(p->bar_left, sizeof p->bar_left, "Stopped");
+			snprintf(p->bar_left, sizeof p->bar_left, "%s", T(S_UPDATE_STOPPED));
 			of_size(v->st.done, v->st.total, p->bar_right, sizeof p->bar_right);
 			p->frac = frac(v->st.done, v->st.total);
 		}
-		download_key(p, v, "Continue");
+		download_key(p, v, T(S_UPDATE_CONTINUE));
 		if (p->line[0]) p->bar = false;
 		break;
 	case SU_READY:
-		snprintf(p->sub, sizeof p->sub, v->st.system ? "Installed and checked" : "Downloaded and checked");
+		snprintf(p->sub, sizeof p->sub, "%s", v->st.system ? T(S_UPDATE_INSTALLED_CHECKED) : T(S_UPDATE_DOWNLOADED_CHECKED));
 		p->notes = v->notes;
-		snprintf(p->line, sizeof p->line, "Or it goes in at the next start.");
-		key(p, "A", "Restart Now", SUA_RESTART);
-		key(p, "B", "Later", SUA_BACK);
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_GOES_IN_NEXT_START));
+		key(p, "A", T(S_UPDATE_RESTART_NOW), SUA_RESTART);
+		key(p, "B", T(S_UPDATE_LATER), SUA_BACK);
 		return;
 	case SU_ERROR:
 		if (v->st.version[0]) {
 			size_line(v, p->sub, sizeof p->sub);
-			snprintf(p->warn, sizeof p->warn,
-			         "The download did not finish. Check the Wi-Fi and try again.");
-			if (v->wifi) key(p, "A", "Try Again", SUA_DOWNLOAD);
+			snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_DOWNLOAD_FAILED));
+			if (v->wifi) key(p, "A", T(S_UPDATE_TRY_AGAIN), SUA_DOWNLOAD);
 		} else {
-			snprintf(p->sub, sizeof p->sub, "Could not look for updates");
-			snprintf(p->warn, sizeof p->warn,
-			         "Could not reach the update server. Check the Wi-Fi and try again.");
-			if (v->wifi) key(p, "A", "Try Again", SUA_CHECK);
+			snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_COULD_NOT_LOOK));
+			snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_NO_SERVER));
+			if (v->wifi) key(p, "A", T(S_UPDATE_TRY_AGAIN), SUA_CHECK);
 		}
 		break;
 	case SU_SPACE:
 		size_line(v, p->sub, sizeof p->sub);
-		snprintf(p->warn, sizeof p->warn,
-		         "The card is too full for the update. Make room on it, then try again.");
+		snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_CARD_FULL));
 		break;
 	case SU_NEEDS_SYSTEM:
-		snprintf(p->sub, sizeof p->sub, "%s also changes the system", v->st.version);
-		snprintf(p->line, sizeof p->line, "Use the ZyperOS Installer.");
+		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_NEEDS_SYSTEM), v->st.version);
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
 		break;
 	case SU_TOO_BIG:
 		/* A card keeps the slot size it was laid out with
 		 * (docs/updates.md): only a fresh install makes them bigger */
-		snprintf(p->sub, sizeof p->sub, "Needs a fresh install");
-		snprintf(p->warn, sizeof p->warn,
-		         "Too big for this card's system slots. A fresh install erases the card.");
-		snprintf(p->line, sizeof p->line, "Use the ZyperOS Installer.");
+		snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_NEEDS_FRESH));
+		snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_TOO_BIG));
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
 		break;
 	case SU_ROLLBACK:
-		snprintf(p->sub, sizeof p->sub, "Going back to %s", v->st.version);
-		snprintf(p->line, sizeof p->line, "Or it goes back at the next start.");
-		key(p, "A", "Restart Now", SUA_RESTART);
-		key(p, "B", "Later", SUA_BACK);
+		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_GOING_BACK_TO), v->st.version);
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_GOES_BACK_NEXT_START));
+		key(p, "A", T(S_UPDATE_RESTART_NOW), SUA_RESTART);
+		key(p, "B", T(S_UPDATE_LATER), SUA_BACK);
 		return;
 	case SU_UNSUPPORTED:
 		break;
 	}
 	if (went_back) {
-		snprintf(p->sub, sizeof p->sub, "Back on %s", p->from);
-		snprintf(p->warn, sizeof p->warn,
-		         "%s did not start twice, so ZyperOS went back to %s by itself.",
+		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_BACK_ON), p->from);
+		snprintf(p->warn, sizeof p->warn, T(S_UPDATE_WENT_BACK_ITSELF),
 		         v->result + 7, p->from);
 		p->to[0] = 0;
-		if (p->nkeys && p->keys[0].act == SUA_DOWNLOAD) snprintf(p->keys[0].label, sizeof p->keys[0].label, "Try Again");
+		if (p->nkeys && p->keys[0].act == SUA_DOWNLOAD) snprintf(p->keys[0].label, sizeof p->keys[0].label, "%s", T(S_UPDATE_TRY_AGAIN));
 	}
-	key(p, "B", "Back", SUA_BACK);
+	key(p, "B", T(S_UPDATE_BACK), SUA_BACK);
 	rollback_key(p, v);
 	/* A problem takes What's New's place */
 	if (p->warn[0]) p->notes = false;
@@ -334,15 +332,18 @@ void su_page_build(const su_view *v, su_page *p)
 const char *su_menu_value(const su_view *v, char *buf, size_t n)
 {
 	switch (v->running ? (v->st.state == SU_CHECKING ? SU_IDLE : v->st.state) : effective(v)) {
-	case SU_READY:       snprintf(buf, n, "restart to update"); break;
-	case SU_ROLLBACK:    snprintf(buf, n, "restart to go back"); break;
+	case SU_READY:       snprintf(buf, n, "%s", T(S_UPDATE_VALUE_RESTART_UPDATE)); break;
+	case SU_ROLLBACK:    snprintf(buf, n, "%s", T(S_UPDATE_VALUE_RESTART_BACK)); break;
 	case SU_COPYING:
 	case SU_DOWNLOADING:
 	case SU_VERIFYING:
-	case SU_INSTALLING:  snprintf(buf, n, v->running ? "downloading" : "%s available", v->st.version); break;
+	case SU_INSTALLING:
+		if (v->running) snprintf(buf, n, "%s", T(S_UPDATE_VALUE_DOWNLOADING));
+		else snprintf(buf, n, T(S_UPDATE_VALUE_AVAILABLE), v->st.version);
+		break;
 	case SU_AVAILABLE:
 	case SU_BATTERY:
-	case SU_STOPPED:     snprintf(buf, n, "%s available", v->st.version); break;
+	case SU_STOPPED:     snprintf(buf, n, T(S_UPDATE_VALUE_AVAILABLE), v->st.version); break;
 	default:             snprintf(buf, n, "%s", v->installed[0] ? v->installed : ""); break;
 	}
 	return buf;

@@ -1,0 +1,354 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ZyperOS Languages Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600&text=%E4%B8%AD%E6%96%87%E7%AE%80%E4%BD%93%E9%80%89%E6%8B%A9%E8%AF%AD%E8%A8%80%E4%BD%A0%E5%A5%BD%E6%8C%89%E4%B8%8A%E4%B8%8B%E6%9F%A5%E7%9C%8B%E7%A1%AE%E5%AE%9A%EF%BC%81%E3%80%82%EF%BC%8C&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0; }
+  .zk-wrap { padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 8px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header > svg { width: 70px; height: 74px; }
+  @media (max-width: 560px) { header { grid-template-columns: 1fr; } }
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--zk-page); padding-block: 12px; border-bottom: 1px solid var(--zk-line); display: grid; gap: 8px; }
+  .bar .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  .bar .zk-mono { margin-right: 4px; align-self: center; }
+  .bar .pad .zk-btn { min-width: 46px; }
+  #status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); align-self: center; }
+  .zk-why b { color: var(--zk-ink); font-weight: 600; }
+  .zk-why table { border-collapse: collapse; margin-top: 12px; font-size: 14px; min-width: 760px; }
+  .zk-why th, .zk-why td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--zk-line); vertical-align: top; }
+  .zk-why th { font: 500 12px var(--zk-f-mono); color: var(--zk-ink-3); letter-spacing: .04em; text-transform: uppercase; }
+  .zk-why td.pt { color: var(--zk-hi); }
+  .zk-why .tw { overflow-x: auto; max-width: 100%; }
+  .costs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; margin-top: 14px; }
+  .costs div { border: 1px solid var(--zk-line); border-radius: 10px; padding: 10px 12px; background: var(--zk-page-2); min-width: 0; }
+  .costs b { display: block; font: 600 20px var(--zk-f-display); color: var(--zk-ink); font-variant-numeric: tabular-nums; }
+  .costs span { font: 12px/1.4 var(--zk-f-mono); color: var(--zk-ink-3); }
+  .after { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px; margin-top: 14px; max-width: 900px; }
+  .after figure { margin: 0; display: grid; gap: 4px; }
+  .after figcaption { font: 11px/1.3 var(--zk-f-mono); color: var(--zk-ink-3); }
+  .boots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
+  .boots figure { margin: 0; display: grid; gap: 3px; }
+  .boots img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; display: block; background: #222; }
+  .boots figcaption { font: 11px/1.3 var(--zk-f-mono); color: var(--zk-ink-3); text-align: center; }
+  .phone { border: 1px solid var(--zk-line); border-radius: 22px; padding: 12px; background: #f3f2ec; color: #1b1d1a; font: 14px/1.4 "Lexend", system-ui, sans-serif; display: grid; gap: 8px; aspect-ratio: 4 / 3; align-content: start; }
+  .phone h5 { margin: 0; font: 600 18px "Lexend", system-ui, sans-serif; display: flex; justify-content: space-between; align-items: baseline; }
+  .phone h5 small { font: 12px var(--zk-f-mono); color: #6b6d66; }
+  .phone .row { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 10px; background: #e7e5dc; }
+  .phone .row span { color: #6b6d66; }
+  .phone .drop { border: 2px dashed #b9b8ae; border-radius: 12px; padding: 12px; text-align: center; color: #6b6d66; }
+
+  /* ---- the screens, in the launcher's units ---- */
+  .zs .hd { position: absolute; left: 0; right: 0; text-align: center; font-size: 60px; font-weight: 600; color: var(--text); transform: translateY(-50%); white-space: nowrap; }
+  .zs .ln { position: absolute; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--text-soft); transform: translateY(-50%); white-space: nowrap; }
+  .zs .lg { position: absolute; right: 24px; top: 724px; transform: translateY(-50%); font-size: 37px; color: var(--text-dim); white-space: nowrap; }
+  .zs .list { position: absolute; display: grid; }
+  .zs .li { height: 75px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 49px; color: var(--text-soft); white-space: nowrap; }
+  .zs .li.sel { background: var(--accent); color: var(--on-accent); }
+  .zs .li .gkeep { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 30px; font-weight: 600; box-shadow: 0 0 0 3px var(--on-accent) inset; color: var(--on-accent); }
+  .zs .li .tick { width: 40px; height: 40px; }
+  .zs .li .tick path { stroke: currentColor; }
+  .zs .li.cur:not(.sel) .tick path { stroke: var(--accent-ink); }
+  .zs .zbig { position: absolute; left: 130px; top: 220px; width: 280px; height: 295px; }
+  .zs .zmid { position: absolute; left: 72px; top: 250px; width: 300px; height: 316px; }
+  .zs .bub { position: absolute; background: var(--text); color: var(--ground); font-size: 60px; font-weight: 600; line-height: 72px; padding: 23px 42px; max-width: 548px; box-sizing: border-box; border-radius: 26px; text-wrap: balance; }
+  .zs .bub::before { content: ""; position: absolute; left: -14px; top: 50%; border: 14px solid transparent; border-left: 0; border-right-color: var(--text); transform: translateY(-50%); }
+  .zs .wline { position: absolute; left: 452px; font-size: 37px; color: var(--text-soft); line-height: 50px; white-space: pre; }
+  .zs .ga { position: absolute; width: 94px; height: 94px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 4px var(--edge) inset; display: grid; place-items: center; font-size: 52px; font-weight: 600; color: var(--text); transform: translate(-50%, -50%); }
+  .zs .gtext { position: absolute; font-size: 49px; color: var(--text-soft); transform: translateY(-50%); white-space: nowrap; }
+  .zs .one { position: absolute; left: 50%; top: 384px; transform: translate(-50%, -50%); height: 112px; padding: 0 56px; border-radius: 56px; background: var(--accent); color: var(--on-accent); font-size: 60px; font-weight: 600; display: grid; place-items: center; white-space: nowrap; }
+  .zs .side { position: absolute; top: 384px; transform: translate(-50%, -50%); font-size: 49px; color: var(--text-dim); white-space: nowrap; }
+  .zs .arr { position: absolute; top: 384px; width: 0; height: 0; transform: translateY(-50%); border-top: 18px solid transparent; border-bottom: 18px solid transparent; }
+  .zs .arr.l { border-right: 22px solid var(--text-dim); }
+  .zs .arr.r { border-left: 22px solid var(--text-dim); }
+  .zs [lang="zh"] { font-family: "Noto Sans SC", "PingFang SC", sans-serif; }
+  .zs .panel { line-height: 1.2; }
+  .zs .mrow { white-space: nowrap; }
+  .zs .mrow span { margin-left: 24px; }
+</style>
+<!--ZYPER-->
+<!-- The languages lab (2026-11-07): I asked for the five best-known
+     languages, Portuguese among them, every string in one place, and the
+     boot and charging screens in the language too. The boot frames in img/
+     (lang-boot-KIND-LANG-THEME.webp) are tools/genfirststart.py's own
+     drawing with each language's line, over the loop's first frame: they are
+     not kept in the repository; the lab's build inlines them (see the
+     languages PR). Everything else is drawn here from DESIGN.md's tokens. -->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS in <b>five languages</b></h1>
+      <p class="zk-lede">Every word on the handheld will come from one table: the launcher, the in-game menu, the File Transfer page, and the boot and charging screens. A language change is one pointer swap, so it costs no frames. These are the choices that are yours: which five, how the first start asks, where MENU keeps it, and the words.</p>
+      <p class="zk-lede">Try the first-start screens with the pad (or the arrow keys and Enter): UP and DOWN look at a language, and the screen speaks it at once. Pick one option in each section. Write any change in the note.</p>
+    </div>
+  </header>
+  <div class="bar">
+    <div class="zk-row pad" role="group" aria-label="Buttons">
+      <span class="zk-mono">Buttons</span>
+      <button type="button" class="zk-btn" data-key="up" aria-label="Up">▲</button>
+      <button type="button" class="zk-btn" data-key="down" aria-label="Down">▼</button>
+      <button type="button" class="zk-btn" data-key="a">A</button>
+      <span class="zk-mono" style="margin-left:12px">Theme</span>
+      <span id="themes" class="zk-row"></span>
+      <span id="status"></span>
+    </div>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  const BOOT = n => (window.LANG_BOOT && window.LANG_BOOT[n]) || "img/lang-boot-" + n + ".webp";
+
+  /* ---- the words, as they would ship (pt is Brazilian Portuguese; es is
+   * Latin American; tú, você and du, vous in French) ---------------------- */
+  const L = {
+    en: { name: "English", hello: "Hello!", choose: "Choose your language", look: "Press UP or DOWN to look, A to keep it.",
+          lookLR: "Press LEFT or RIGHT to look, A to keep it.", later: "Change it later in ⋮ > Language.", skip: "START: skip",
+          hi: "Hi! I'm Zyper.", show: "Let me show you the buttons.\nIt takes a minute.", go: "Let's go" },
+    pt: { name: "Português (Brasil)", short: "Português", hello: "Olá!", choose: "Escolha seu idioma", look: "Use CIMA ou BAIXO para ver, A para escolher.",
+          lookLR: "Use ESQUERDA ou DIREITA para ver, A para escolher.", later: "Mude depois em ⋮ > Idioma.", skip: "START: pular",
+          hi: "Oi! Sou o Zyper.", show: "Vou te mostrar os botões.\nLeva só um minuto.", go: "Vamos lá" },
+    es: { name: "Español", hello: "¡Hola!", choose: "Elige tu idioma", look: "Pulsa ARRIBA o ABAJO para ver, A para elegir.",
+          lookLR: "Pulsa IZQUIERDA o DERECHA para ver, A para elegir.", later: "Cámbialo luego en ⋮ > Idioma.", skip: "START: omitir",
+          hi: "¡Hola! Soy Zyper.", show: "Te muestro los botones.\nSolo toma un minuto.", go: "Vamos" },
+    fr: { name: "Français", hello: "Bonjour !", choose: "Choisissez votre langue", look: "HAUT ou BAS pour parcourir, A pour choisir.",
+          lookLR: "GAUCHE ou DROITE pour parcourir, A pour choisir.", later: "Modifiable dans ⋮ > Langue.", skip: "START : passer",
+          hi: "Salut ! Je suis Zyper.", show: "Je vais vous montrer les boutons.\nÇa prend une minute.", go: "C'est parti" },
+    de: { name: "Deutsch", hello: "Hallo!", choose: "Wähle deine Sprache", look: "OBEN oder UNTEN zum Ansehen, A zum Auswählen.",
+          lookLR: "LINKS oder RECHTS zum Ansehen, A zum Auswählen.", later: "Später änderbar unter ⋮ > Sprache.", skip: "START: überspringen",
+          hi: "Hallo! Ich bin Zyper.", show: "Ich zeige dir die Tasten.\nDas dauert eine Minute.", go: "Los geht's" },
+    it: { name: "Italiano", hello: "Ciao!", choose: "Scegli la lingua", look: "SU o GIÙ per vedere, A per scegliere.",
+          lookLR: "SINISTRA o DESTRA per vedere, A per scegliere.", later: "Cambiala in ⋮ > Lingua.", skip: "START: salta",
+          hi: "Ciao! Sono Zyper.", show: "Ti mostro i tasti.\nCi vuole un minuto.", go: "Andiamo" },
+    zh: { name: "中文（简体）", hello: "你好！", choose: "选择语言", look: "按上下查看，按 A 确定。",
+          lookLR: "按左右查看，按 A 确定。", later: "", skip: "START", hi: "", show: "", go: "" },
+  };
+  const SETS = { latin: ["en", "pt", "es", "fr", "de"], cjk: ["en", "zh", "es", "pt", "fr"], six: ["en", "pt", "es", "fr", "de", "it"] };
+  const ORDER = SETS.latin;
+
+  /* MENU's rows in each language, as each language writes a heading: Title
+   * Case in English, sentence case in Portuguese, Spanish and French, and
+   * German's nouns capitalized as German always has them */
+  const M = {
+    en: { date: ["Date & Time", "São Paulo"], clock: ["Clock", "24-hour"], lang: ["Language", "English"], off: ["Auto Off", "2m"], charge: ["Charge Limit", "Off"], lights: ["Side Lights", "All on"],
+          home: ["Home Screen", "Spotlight"], order: ["System Order", "A to Z"], batt: ["Battery Icon", "Bars"], look: ["Appearance", "Light"], scraper: ["Scraper", "ScreenScraper"],
+          search: ["Search Games", ""], time: ["Play Time", ""], random: ["Random Game", ""], wifi: ["Wi-Fi", "off"], bt: ["Bluetooth", "not connected"], audio: ["Audio Output", "auto (speaker)"] },
+    pt: { date: ["Data e hora", "São Paulo"], clock: ["Relógio", "24 horas"], lang: ["Idioma", "Português (Brasil)"], off: ["Desligamento automático", "2 min"], charge: ["Limite de carga", "desligado"], lights: ["Luzes laterais", "todas"],
+          home: ["Tela inicial", "Destaque"], order: ["Ordem dos sistemas", "A a Z"], batt: ["Ícone da bateria", "Barras"], look: ["Aparência", "Claro"], scraper: ["Capas e vídeos", "ScreenScraper"],
+          search: ["Buscar jogos", ""], time: ["Tempo de jogo", ""], random: ["Jogo aleatório", ""], wifi: ["Wi-Fi", "desligado"], bt: ["Bluetooth", "não conectado"], audio: ["Saída de áudio", "auto (alto-falante)"] },
+    de: { date: ["Datum & Uhrzeit", "São Paulo"], clock: ["Uhr", "24 Stunden"], lang: ["Sprache", "Deutsch"], off: ["Auto-Aus", "2 Min."], charge: ["Ladelimit", "aus"], lights: ["Seitenlichter", "alle an"],
+          home: ["Startbildschirm", "Spotlight"], order: ["Systemreihenfolge", "A bis Z"], batt: ["Akkusymbol", "Balken"], look: ["Erscheinungsbild", "Hell"], scraper: ["Scraper", "ScreenScraper"],
+          search: ["Spiele suchen", ""], time: ["Spielzeit", ""], random: ["Zufälliges Spiel", ""], wifi: ["WLAN", "aus"], bt: ["Bluetooth", "nicht verbunden"], audio: ["Audioausgabe", "auto (Lautsprecher)"] },
+  };
+  const TITLE_PT = { "Buscar jogos": "Buscar Jogos", "Tempo de jogo": "Tempo de Jogo", "Jogo aleatório": "Jogo Aleatório", "Saída de áudio": "Saída de Áudio", "Idioma": "Idioma",
+                     "Data e hora": "Data e Hora", "Desligamento automático": "Desligamento Automático", "Tela inicial": "Tela Inicial", "Ordem dos sistemas": "Ordem dos Sistemas", "Ícone da bateria": "Ícone da Bateria" };
+
+  const S = { f: 1, kept: -1, show: "light", t: 0 };
+  const lang = () => ORDER[S.f];
+  const esc = ZK.esc;
+  const TICK = `<svg class="tick" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const zl = k => k === "zh" ? ` lang="zh"` : "";
+
+  /* ---- the first start's language step, three ways -------------------- */
+  function listRows(set, f, x, y, w, withA, cur) {
+    return `<div class="list" style="left:${x}px;top:${y}px;width:${w}px">${set.map((k, i) =>
+      `<div class="li ${i === f ? "sel" : ""} ${i === cur ? "cur" : ""}"${zl(k)}>${esc(L[k].name)}${i === f && withA ? `<i class="gkeep">A</i>` : i === cur ? TICK : ""}</div>`).join("")}</div>`;
+  }
+  function pickList(set = ORDER, f = S.f) {
+    const w = L[set[f]];
+    return `<div class="hd"${zl(set[f])} style="top:116px">${esc(w.choose)}</div>
+      ${listRows(set, f, 252, 182 + (6 - set.length) * 30, 520, false)}
+      <div class="ln"${zl(set[f])} style="top:${set.length > 5 ? 676 : 646}px">${esc(w.look)}</div>
+      <div class="lg">${esc(w.skip)}</div>`;
+  }
+  function pickHello() {
+    const w = L[lang()];
+    return `<svg class="zmid"><use href="#zyper"/></svg>
+      <div class="bub" style="left:452px;top:96px">${esc(w.hello)}</div>
+      ${listRows(ORDER, S.f, 430, 262, 540, true)}
+      <div class="lg">${esc(w.skip)}</div>`;
+  }
+  function pickOne() {
+    const n = ORDER.length, w = L[lang()];
+    const prev = L[ORDER[(S.f + n - 1) % n]], next = L[ORDER[(S.f + 1) % n]];
+    return `<div class="ln" style="top:190px;font-size:55px;color:var(--text-soft)">${esc(w.choose)}</div>
+      <div class="side" style="left:136px">${esc(prev.short || prev.name)}</div><i class="arr l" style="left:268px"></i>
+      <div class="one">${esc(w.short || w.name)}</div>
+      <i class="arr r" style="left:734px"></i><div class="side" style="left:888px">${esc(next.short || next.name)}</div>
+      <div class="ln" style="top:560px">${esc(w.lookLR)}</div>
+      <div class="lg">${esc(w.skip)}</div>`;
+  }
+  /* What the next screen is once A keeps the language: the welcome, in it */
+  function welcome(k) {
+    const w = L[k];
+    return `<svg class="zbig"><use href="#zyper"/></svg>
+      <div class="bub" style="left:452px;bottom:436px">${esc(w.hi)}</div>
+      <div class="wline" style="top:368px">${esc(w.show)}</div>
+      <div class="ga" style="left:500px;top:537px">A</div><div class="gtext" style="left:573px;top:537px">${esc(w.go)}</div>
+      <div class="lg">${esc(w.skip)}</div>`;
+  }
+
+  /* ---- MENU ---------------------------------------------------------- */
+  const rows = (m, keys, title) => keys.map(k => [title ? (TITLE_PT[m[k][0]] || m[k][0]) : m[k][0], m[k][1]]);
+  function menuAt(keys, sel, m = M.en, o = {}) {
+    return ZK.menu(o.theme || "light", Object.assign({ rows: rows(m, keys, o.title), sel, more: true }, o));
+  }
+  function langPanel(k, f, heading) {
+    const set = ORDER;
+    return `<div class="scrim"></div><div class="panel"><h4>${esc(heading)}<svg class="zcorner"><use href="#zyper"/></svg></h4><hr>
+      ${set.map((x, i) => `<div class="mrow ${i === f ? "sel" : ""}">${esc(L[x].name)}<span>${x === k ? TICK.replace('class="tick"', 'class="tick" style="width:40px;height:40px;vertical-align:-6px"') : ""}</span></div>`).join("")}</div>`;
+  }
+
+  const th = () => S.show === "both" ? ["light", "dark"] : [S.show];
+  const scr = (html, t) => ZK.screen(t, `<div class="wash" style="opacity:0"></div>${html}`);
+  const both = fn => th().map(t => scr(fn(t), t)).join("");
+
+  const DECISIONS = [
+    {
+      key: "set", title: "Which five",
+      why: `my words: <b>the best-known five, Portuguese among them</b>. Counted by speakers, English is first, then Mandarin Chinese, Hindi, Spanish, Arabic and French, with Portuguese eighth. Hindi and Arabic need a text shaper and right-to-left layout, so they are out. Lexend, the UI font, has every letter the Latin languages need (Portuguese, Spanish, French, German, Italian, Vietnamese), and no Chinese, Japanese, Russian or Arabic. Chinese costs, measured on the Mac with Noto Sans SC (OFL), cut to the characters the strings use:
+        <div class="costs">
+          <div><b>232 KB</b><span>font on the card, ~940 characters (full font: 8.5 MB)</span></div>
+          <div><b>+0.5 MB</b><span>RAM against Lexend, its 8 sizes open (full font: +9 MB)</span></div>
+          <div><b>~6×</b><span>slower to draw a new line the first time (0.27 against 0.045 ms on an M3); cached after</span></div>
+          <div><b>new code</b><span>line breaks without spaces, and Noto Sans in place of Lexend in that language</span></div>
+        </div>`,
+      options: {
+        latin: { name: "Latin five", tag: "suggested", blurb: "English, Português (Brasil), Español, Français, Deutsch. No new font and no new code paths: Lexend draws all of them. Covers the Americas and most of Europe.", draw: () => both(() => pickList(SETS.latin, 1)) },
+        cjk: { name: "With Chinese", blurb: "English, 中文, Español, Português (Brasil), Français: the most spoken five that ZyperOS can draw. Adds the font and the line-break code above; in Chinese the UI is in Noto Sans, not Lexend.", draw: () => both(() => pickList(SETS.cjk, 1)) },
+        six: { name: "English and five", blurb: "If five means five besides English: Português (Brasil), Español, Français, Deutsch and Italiano. Still Lexend alone. A sixth column of words to keep up.", draw: () => both(() => pickList(SETS.six, 1)) },
+      },
+    },
+    {
+      key: "picker", title: "How the first start asks",
+      get why() {
+        const k = lang();
+        return `The first screen of a new card, before Zyper's welcome. Each language is named in its own words, and the screen speaks the one under the cursor, so a player finds theirs by reading. A keeps it, saved at once, and the tutorial goes on in it. START keeps the one under the cursor and skips the rest, as it does today. MENU &gt; Show Tutorial starts here too. Below: what A leads to, in ${esc(L[k].name)}.
+          <div class="after">${th().map(t => `<figure>${scr(welcome(k), t)}<figcaption>next: the welcome, ${t}</figcaption></figure>`).join("")}</div>`;
+      },
+      options: {
+        hello: { name: "Zyper says hello", tag: "suggested", blurb: "Zyper as on the welcome, his bubble saying hello in the language under the cursor, and the five beside him with an A on the focused one. The welcome that follows keeps him where he is.", draw: () => both(() => pickHello()) },
+        list: { name: "A list", blurb: "The question as a heading, the five as rows like MENU's, and how to answer it under them, all in the focused language. Plain and quick to read.", draw: () => both(() => pickList()) },
+        one: { name: "One at a time", blurb: "One name large in the middle and its neighbors at the sides, moved with LEFT and RIGHT like the shelf. Shows less at once; Português drops (Brasil) to fit.", draw: () => both(() => pickOne()) },
+      },
+    },
+    {
+      key: "place", title: "Where MENU keeps it",
+      why: `One new row, <b>Language</b>, its value the language's own name. In German it reads Sprache, so a player who picked the wrong one looks for the name of their own language in the value column.`,
+      options: {
+        clock: { name: "With the clock", tag: "suggested", blurb: "After Date & Time and Clock: the regional settings together, as a phone keeps Language and Region.", draw: () => th().map(t => scr(menuAt(["date", "clock", "lang", "off", "charge", "lights"], 2, M.en, { theme: t }), t)).join("") },
+        look: { name: "With Appearance", blurb: "After Appearance, at the end of the rows that change how ZyperOS looks: Home Screen, System Order, Battery Icon, Appearance.", draw: () => th().map(t => scr(menuAt(["home", "order", "batt", "look", "lang", "scraper"], 4, M.en, { theme: t }), t)).join("") },
+        top: { name: "Top of the settings", blurb: "Right after Random Game, before Wi-Fi: the first setting in MENU, the quickest to find in a language you cannot read.", draw: () => th().map(t => scr(menuAt(["search", "time", "random", "lang", "wifi", "bt"], 3, M.en, { theme: t }), t)).join("") },
+      },
+    },
+    {
+      key: "press", title: "What A does on the row",
+      why: `A change applies at once, as Appearance does: the menu redraws in the new language under the cursor.`,
+      options: {
+        list: { name: "Opens the five", tag: "suggested", blurb: "A opens a panel of the five, each in its own words, a check on the current one. UP/DOWN and A choose it and close the panel; B leaves it as it was. Shown in Portuguese.", draw: () => th().map(t => scr(langPanel("pt", 1, "Idioma"), t)).join("") },
+        step: { name: "Steps round", blurb: "LEFT, RIGHT and A step through the five on the row itself, like Appearance. Quicker, but each step turns the whole menu into another language, here German after two steps.", draw: () => th().map(t => scr(menuAt(["date", "clock", "lang", "off", "charge", "lights"], 2, M.de, { theme: t }), t)).join("") },
+      },
+    },
+    {
+      key: "case", title: "Capital letters",
+      why: `DESIGN.md 4 sets <b>Title Case</b> for headings and rows. That is an English rule: Portuguese, Spanish and French write UI labels in sentence case, and German capitalizes its nouns always. Shown in Portuguese.`,
+      options: {
+        own: { name: "Each language's own", tag: "suggested", blurb: "Title Case in English, sentence case in Portuguese, Spanish and French, German as German is written. What a native reader expects; Android and iOS do it this way.", draw: () => th().map(t => scr(menuAt(["search", "time", "random", "lang", "wifi", "audio"], 3, M.pt, { theme: t }), t)).join("") },
+        title: { name: "Title Case everywhere", blurb: "Every language's rows in Title Case, as the English ones are. The same shape in every language, but it reads as translated.", draw: () => th().map(t => scr(menuAt(["search", "time", "random", "lang", "wifi", "audio"], 3, M.pt, { theme: t, title: true }), t)).join("") },
+      },
+    },
+    {
+      key: "boot", title: "The boot screen's line",
+      why: `The first start's line under the boot animation is a picture, drawn before the card is read. The launcher will write the language beside the theme in theme.txt on the boot partition, boot.scr passes it to the splash, and the splash picks that language's pictures. No boot time is added: it is a choice between files. Below are tools/genfirststart.py's own frames with each line, Beard and Salt &amp; Pepper. The German line is the widest, 487 of the panel's 640 pixels.`,
+      options: {
+        own: { name: "In the language", tag: "suggested", blurb: "Five sets of the line pictures, 17 KB a theme each. The charging screen, the low battery screen and the rest are the launcher's and follow the language as every other screen does.", draw: () => `<div class="boots">${["en", "pt", "es", "fr", "de"].map(k => th().map(t => `<figure><img alt="${L[k].name} ${t}" src="${BOOT("setup-" + k + "-" + t)}"><figcaption>${k} · ${t}</figcaption></figure>`).join("")).join("")}</div>
+          <div class="boots" style="margin-top:6px">${["pt", "de"].map(k => `<figure><img alt="update ${L[k].name}" src="${BOOT("update-" + k + "-" + th()[0])}"><figcaption>${k} · update</figcaption></figure>`).join("")}</div>` },
+        en: { name: "English always", tag: "today", blurb: "The line stays English in every language. Nothing to send to the boot; the boot is the one place the language would not reach.", draw: () => `<div class="boots">${th().map(t => `<figure><img alt="English ${t}" src="${BOOT("setup-en-" + t)}"><figcaption>en · ${t}</figcaption></figure>`).join("")}</div>` },
+      },
+    },
+    {
+      key: "web", title: "The File Transfer page",
+      why: `The page a phone or a computer opens for File Transfer has its own words: folders, buttons, the PIN, the room left. Both ways cost nothing on the handheld: the page's words are a file per language, served as they are.`,
+      options: {
+        device: { name: "The handheld's language", tag: "suggested", blurb: "The page speaks what MENU > Language says. One setting for everything ZyperOS shows; a guest's phone in another language sees the owner's.", draw: () => `<div class="phone"><h5>ZyperOS <small>Português</small></h5><div class="drop">Solte arquivos aqui para enviar</div><div class="row">Jogos<span>1.204 arquivos</span></div><div class="row">Capas<span>812 arquivos</span></div><div class="row">Saves<span>96 arquivos</span></div></div>` },
+        browser: { name: "The browser's language", blurb: "The page speaks the phone's or computer's language when it is one of the five, else English. Each visitor reads their own, and it can differ from the handheld's.", draw: () => `<div class="phone"><h5>ZyperOS <small>browser: Deutsch</small></h5><div class="drop">Dateien hierher ziehen zum Senden</div><div class="row">Spiele<span>1.204 Dateien</span></div><div class="row">Cover<span>812 Dateien</span></div><div class="row">Spielstände<span>96 Dateien</span></div></div>` },
+      },
+    },
+    {
+      key: "words", title: "The words",
+      why: `The terms every screen will share, so one thing has one name in each language (DESIGN.md 12). The Portuguese column is yours to correct: write a change in the note as <b>term → your word</b>. Product names stay as they are: ZyperOS, MP4, PortMaster, RetroAchievements, ScreenScraper, Muse. Spanish is Latin American and says <i>tú</i>; Portuguese says <i>você</i>; German says <i>du</i>; French says <i>vous</i>, as Nintendo's French does.
+        <div class="tw"><table>
+          <tr><th>English</th><th>Português (Brasil)</th><th>Español</th><th>Français</th><th>Deutsch</th></tr>
+          ${[
+            ["game / games", "jogo / jogos", "juego / juegos", "jeu / jeux", "Spiel / Spiele"],
+            ["card (the SD card)", "cartão", "tarjeta", "carte", "Karte"],
+            ["Continue (in-game menu)", "Continuar", "Continuar", "Reprendre", "Weiter"],
+            ["Save / Load (a state)", "Salvar / Carregar", "Guardar / Cargar", "Sauvegarder / Charger", "Speichern / Laden"],
+            ["Reset / Quit", "Reiniciar / Sair", "Reiniciar / Salir", "Réinitialiser / Quitter", "Neustart / Beenden"],
+            ["Cheevos (the row)", "Conquistas", "Logros", "Succès", "Erfolge"],
+            ["Favorites", "Favoritos", "Favoritos", "Favoris", "Favoriten"],
+            ["Box Art", "Capas", "Carátulas", "Jaquettes", "Cover"],
+            ["Video Snaps", "Prévias em vídeo", "Vistas previas en video", "Aperçus vidéo", "Videovorschau"],
+            ["File Transfer", "Transferir arquivos", "Transferir archivos", "Transfert de fichiers", "Dateiübertragung"],
+            ["Play Time", "Tempo de jogo", "Tiempo de juego", "Temps de jeu", "Spielzeit"],
+            ["Battery too low", "Bateria muito fraca", "Batería muy baja", "Batterie trop faible", "Akku zu schwach"],
+            ["Plug in a charger.", "Conecte um carregador.", "Conecta un cargador.", "Branchez un chargeur.", "Schließe ein Ladegerät an."],
+            ["Charging", "Carregando", "Cargando", "En charge", "Lädt"],
+            ["Getting hot", "Esquentando", "Se está calentando", "Ça chauffe", "Wird heiß"],
+            ["Hold POWER to start", "Segure POWER para ligar", "Mantén POWER para encender", "Maintenez POWER pour démarrer", "Halte POWER zum Starten"],
+            ["Turn off", "Desligar", "Apagar", "Éteindre", "Ausschalten"],
+            ["System Update", "Atualização do sistema", "Actualización del sistema", "Mise à jour du système", "Systemupdate"],
+            ["Developer Mode", "Modo desenvolvedor", "Modo desarrollador", "Mode développeur", "Entwicklermodus"],
+            ["Connect to Wi-Fi first.", "Conecte-se ao Wi-Fi primeiro.", "Conéctate al Wi-Fi primero.", "Connectez-vous d'abord au Wi-Fi.", "Verbinde dich zuerst mit dem WLAN."],
+            ["needs Wi-Fi", "requer Wi-Fi", "requiere Wi-Fi", "Wi-Fi requis", "braucht WLAN"],
+            ["Woof! (Zyper)", "Au au!", "¡Guau!", "Ouaf !", "Wuff!"],
+          ].map(r => `<tr>${r.map((c, i) => `<td class="${i === 1 ? "pt" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}
+        </table></div>`,
+      options: {
+        ok: { name: "Good as written", tag: "suggested", blurb: "Use these terms everywhere. The full table comes as a review page once every string is in it, the Portuguese first for you.", draw: () => "" },
+        change: { name: "Change some", blurb: "Use them with the changes in the note.", draw: () => "" },
+      },
+    },
+  ];
+
+  const board = ZK.decisions(document.getElementById("board"), DECISIONS, {
+    storeKey: "zk-languages-picks",
+    status: s => { document.getElementById("status").textContent = s; },
+  });
+
+  /* ---- the pad and the theme ------------------------------------------- */
+  function press(k) {
+    const n = ORDER.length;
+    if (k === "up") S.f = (S.f + n - 1) % n;
+    else if (k === "down") S.f = (S.f + 1) % n;
+    else if (k === "a") S.kept = S.f;
+    board.render();
+    if (k === "a") document.getElementById("picker")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  document.querySelector(".pad").addEventListener("click", e => {
+    const b = e.target.closest("[data-key]");
+    if (b) press(b.dataset.key);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.target.closest("textarea, input")) return;
+    const k = { ArrowUp: "up", ArrowLeft: "up", ArrowDown: "down", ArrowRight: "down", Enter: "a" }[e.key];
+    if (k) { e.preventDefault(); press(k); }
+  });
+  const themes = document.getElementById("themes");
+  themes.innerHTML = [["light", "Light"], ["dark", "Dark"], ["both", "Both"]].map(([k, n]) =>
+    `<button type="button" class="zk-btn" id="theme-${k}" data-theme="${k}" aria-pressed="${S.show === k}">${n}</button>`).join("");
+  themes.addEventListener("click", e => {
+    const b = e.target.closest("[data-theme]");
+    if (!b) return;
+    S.show = b.dataset.theme;
+    themes.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.theme === S.show)));
+    board.render();
+  });
+})();
+</script>

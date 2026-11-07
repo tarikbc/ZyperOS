@@ -44,8 +44,9 @@
 #define LOAD_NAME_LINES 3
 #define LOAD_NAME_STEP  64           /* one line of the name to the next */
 #define LOAD_SAY_STEP   48           /* and of the line under it */
-#define LOAD_SAY_A      "Starting."
-#define LOAD_SAY_B      "This can take a minute."
+#define LOAD_SAY_A      T(S_PORTLOAD_STARTING)
+#define LOAD_SAY_B      T(S_PORTLOAD_A_MINUTE)
+#define LOAD_SAY_AB     T(S_PORTLOAD_STARTING_A_MINUTE)   /* the two on one line */
 /* Zyper's frame, where splash draws his loop: 120 x 116 panel pixels with its
  * top left at loading.txt's x 315 y 330, which is these units. Neither the
  * words nor the cover go in it: the block of words is at most 364 high (three
@@ -304,8 +305,8 @@ static void load_layout_make(load_layout *L, const system_cfg *s, const char *ti
 		L->line[LOAD_NAME][0][0] = '\0';
 		L->lines[LOAD_NAME] = 1;
 	}
-	if (ui_text_width(meta, LOAD_SAY_A " " LOAD_SAY_B) <= LOAD_COL_W) {
-		snprintf(L->line[LOAD_SAY][0], LB_LINE, "%s", LOAD_SAY_A " " LOAD_SAY_B);
+	if (ui_text_width(meta, LOAD_SAY_AB) <= LOAD_COL_W) {
+		snprintf(L->line[LOAD_SAY][0], LB_LINE, "%s", LOAD_SAY_AB);
 		L->lines[LOAD_SAY] = 1;
 	} else {
 		ui_fit_text(meta, LOAD_SAY_A, L->line[LOAD_SAY][0], LB_LINE, LOAD_COL_W);

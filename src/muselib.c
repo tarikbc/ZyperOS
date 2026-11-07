@@ -10,6 +10,8 @@
 #include <strings.h>
 #include <sys/stat.h>
 
+#include "i18n.h"
+
 /* What FFmpeg on the device was measured playing, plus the containers those
  * codecs arrive in. An .mp4 is the same container as an .m4a, often with
  * nothing but sound in it; a video in one plays its sound alone. */
@@ -570,9 +572,11 @@ void ml_free(ml_lib *lib)
 
 /* ---- the shelf's orders ----------------------------------------------------- */
 
-static const struct { const char *name, *label, *book, *video; } ORDERS[ML_ORDERS] = {
-	[ML_BY_ARTIST] = { "artist", "Artist", "Author", "Folder" },
-	[ML_BY_ALBUM]  = { "album",  "Album",  "Title",  "Title"  },
+/* The name the setting keeps, and what MENU's Sort By row says for music,
+ * books and videos (string IDs, src/i18n.h) */
+static const struct { const char *name; str_id label, book, video; } ORDERS[ML_ORDERS] = {
+	[ML_BY_ARTIST] = { "artist", S_MUSICLIB_SORT_ARTIST, S_MUSICLIB_SORT_AUTHOR, S_MUSICLIB_SORT_FOLDER },
+	[ML_BY_ALBUM]  = { "album",  S_MUSICLIB_SORT_ALBUM,  S_MUSICLIB_SORT_TITLE,  S_MUSICLIB_SORT_TITLE  },
 };
 
 const char *ml_order_name(ml_order o)
@@ -588,7 +592,7 @@ const char *ml_order_label(ml_order o, bool books)
 const char *ml_order_label_kind(ml_order o, ml_kind k)
 {
 	o = (unsigned)o < ML_ORDERS ? o : ML_BY_ARTIST;
-	return k == ML_BOOKS ? ORDERS[o].book : k == ML_VIDEOS ? ORDERS[o].video : ORDERS[o].label;
+	return T(k == ML_BOOKS ? ORDERS[o].book : k == ML_VIDEOS ? ORDERS[o].video : ORDERS[o].label);
 }
 
 ml_order ml_order_index(const char *name)

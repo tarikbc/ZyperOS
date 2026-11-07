@@ -41,6 +41,7 @@ static struct {
 	unsigned        req;
 	char            path[1024];
 	int             vol;
+	bool            hold;     /* snap.h: the first picture out, then wait */
 	bool            quit;
 } S = { .mu = PTHREAD_MUTEX_INITIALIZER };
 
@@ -272,6 +273,16 @@ static void *sthread(void *arg)
 		}
 		if (first < 0) first = pts;
 		last = pts;
+		if (S.hold) {
+			/* Held (snap.h): this picture out at once, then nothing until
+			 * the launcher lets it go, and its clock starts from there */
+			pthread_mutex_unlock(&S.mu);
+			publish(d, pts);
+			pthread_mutex_lock(&S.mu);
+			while (!S.quit && S.req == seen && S.hold) pthread_cond_wait(&S.cv, &S.mu);
+			start = mono() - (pts - first);
+			continue;
+		}
 		due = start + (pts - first);
 		/* Far behind (the CPU was busy elsewhere): start the clock again
 		 * here rather than racing through the frames to catch up. */
@@ -325,6 +336,10 @@ static void *athread(void *arg)
 		    snd_pcm_open(&pcm, "default", SND_PCM_STREAM_PLAYBACK, 0) == 0 &&
 		    snd_pcm_set_params(pcm, SND_PCM_FORMAT_S16_LE, SND_PCM_ACCESS_RW_INTERLEAVED,
 		                       DEC_CHANNELS, DEC_RATE, 0, 100000) == 0) {
+			/* Held: opened and ready, and silent until the picture goes */
+			pthread_mutex_lock(&S.mu);
+			while (!S.quit && S.req == seen && S.hold) pthread_cond_wait(&S.cv, &S.mu);
+			pthread_mutex_unlock(&S.mu);
 			for (;;) {
 				int n, i;
 				bool again;
@@ -403,7 +418,7 @@ void snap_quit(void)
 	g_started = false;
 }
 
-void snap_play(const char *path, int vol)
+void snap_play(const char *path, int vol, bool hold)
 {
 	if (!g_started) return;
 	if (!path) path = "";
@@ -413,8 +428,13 @@ void snap_play(const char *path, int vol)
 	if (strcmp(S.path, path) != 0 || S.vol != vol) {
 		snprintf(S.path, sizeof S.path, "%s", path);
 		S.vol = vol;
+		S.hold = hold;
 		S.req++;
 		/* Both threads wait on the one condition: wake them both */
+		pthread_cond_broadcast(&S.cv);
+	} else if (S.hold != hold) {
+		/* The same snap let go (or held): no new request, the file stays open */
+		S.hold = hold;
 		pthread_cond_broadcast(&S.cv);
 	}
 	pthread_mutex_unlock(&S.mu);

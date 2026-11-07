@@ -1,0 +1,601 @@
+# File Transfer's server (src/hare.c, hareart.c). Two kinds of words: the
+# line the handheld's File Transfer screen shows in its Now row, what
+# happened last (status values: lowercase, no full stop), and the reasons the
+# server gives the page when it refuses something, which the page shows as
+# they are (lowercase, no full stop: they follow a file's name or stand
+# alone in a short note). %s is a file or folder's name.
+
+# ---- the Now row on the handheld ------------------------------------------------
+
+[hare.waiting]
+note = The Now row when File Transfer opens
+en = waiting for a browser
+zh-Hans = 正在等待连接
+es = esperando un navegador
+pt-BR = aguardando um navegador
+fr = en attente d'un navigateur
+de = wartet auf einen Browser
+ja = ブラウザの接続待ち
+it = in attesa di un browser
+
+[hare.signed_in]
+note = A phone or a computer typed the right PIN
+en = a browser signed in
+zh-Hans = 已有设备登录
+es = un navegador inició sesión
+pt-BR = um navegador entrou
+fr = un navigateur s'est connecté
+de = ein Browser hat sich angemeldet
+ja = ブラウザがサインインしました
+it = accesso da un browser
+
+[hare.wrong_pin]
+note = A wrong PIN: how many wrong of how many before a 30-second wait
+en = wrong PIN (%d / %d)
+zh-Hans = PIN 错误（%d / %d）
+es = PIN incorrecto (%d / %d)
+pt-BR = PIN incorreto (%d / %d)
+fr = PIN incorrect (%d / %d)
+de = falsche PIN (%d / %d)
+ja = PIN が違います（%d / %d）
+it = PIN errato (%d / %d)
+
+[hare.locked]
+note = Too many wrong PINs: the page waits 30 seconds
+en = PIN locked out
+zh-Hans = PIN 已锁定
+es = PIN bloqueado
+pt-BR = PIN bloqueado
+fr = PIN bloqué
+de = PIN gesperrt
+ja = PIN がロックされました
+it = PIN bloccato
+
+[hare.receiving]
+note = A file coming from the phone or computer onto the card
+en = receiving %s
+zh-Hans = 正在接收 %s
+es = recibiendo %s
+pt-BR = recebendo %s
+fr = réception de %s
+de = empfange %s
+ja = %s を受信中
+it = ricezione di %s
+
+[hare.received]
+en = received %s
+zh-Hans = 已接收 %s
+es = recibido: %s
+pt-BR = recebido: %s
+fr = reçu : %s
+de = empfangen: %s
+ja = %s を受信しました
+it = ricevuto: %s
+
+[hare.sending]
+note = A file going from the card to the phone or computer
+en = sending %s
+zh-Hans = 正在发送 %s
+es = enviando %s
+pt-BR = enviando %s
+fr = envoi de %s
+de = sende %s
+ja = %s を送信中
+it = invio di %s
+
+[hare.sent]
+en = sent %s
+zh-Hans = 已发送 %s
+es = enviado: %s
+pt-BR = enviado: %s
+fr = envoyé : %s
+de = gesendet: %s
+ja = %s を送信しました
+it = inviato: %s
+
+[hare.failed]
+note = A file that did not arrive or did not go
+en = failed: %s
+zh-Hans = 失败：%s
+es = falló: %s
+pt-BR = falhou: %s
+fr = échec : %s
+de = Fehler: %s
+ja = 失敗：%s
+it = non riuscito: %s
+
+[hare.made]
+note = A new folder
+en = made %s
+zh-Hans = 已创建 %s
+es = creada: %s
+pt-BR = criada: %s
+fr = créé : %s
+de = erstellt: %s
+ja = %s を作成しました
+it = creata: %s
+
+[hare.renamed]
+note = %s is the new name
+en = renamed %s
+zh-Hans = 已重命名 %s
+es = renombrado: %s
+pt-BR = renomeado: %s
+fr = renommé : %s
+de = umbenannt: %s
+ja = %s に名前を変更しました
+it = rinominato: %s
+
+[hare.tidied]
+note = The page's Tidy names: how many names, in which folder
+en.one = tidied %d name in %s
+en.other = tidied %d names in %s
+zh-Hans = 已整理 %2$s 中的 %1$d 个名称
+es.one = %d nombre limpio en %s
+es.other = %d nombres limpios en %s
+pt-BR.one = %d nome arrumado em %s
+pt-BR.other = %d nomes arrumados em %s
+fr.one = %d nom nettoyé dans %s
+fr.other = %d noms nettoyés dans %s
+de.one = %d Name in %s bereinigt
+de.other = %d Namen in %s bereinigt
+ja = %2$s で %1$d 件の名前を整理しました
+it.one = %d nome sistemato in %s
+it.other = %d nomi sistemati in %s
+
+[hare.deleted]
+en = deleted %s
+zh-Hans = 已删除 %s
+es = eliminado: %s
+pt-BR = excluído: %s
+fr = supprimé : %s
+de = gelöscht: %s
+ja = %s を削除しました
+it = eliminato: %s
+
+[hare.box_art]
+note = The page is getting covers for a system's games; %s is the system's folder
+en = box art for %s
+zh-Hans = 正在获取 %s 的封面
+es = carátulas de %s
+pt-BR = capas de %s
+fr = jaquettes de %s
+de = Cover für %s
+ja = %s のパッケージ画像を取得中
+it = copertine per %s
+
+[hare.sgdb_checking]
+en = checking a SteamGridDB key
+zh-Hans = 正在检查 SteamGridDB 密钥
+es = comprobando una clave de SteamGridDB
+pt-BR = verificando uma chave do SteamGridDB
+fr = vérification d'une clé SteamGridDB
+de = prüfe einen SteamGridDB-Schlüssel
+ja = SteamGridDB のキーを確認中
+it = verifica di una chiave SteamGridDB
+
+[hare.sgdb_removed]
+en = SteamGridDB key removed
+zh-Hans = 已移除 SteamGridDB 密钥
+es = clave de SteamGridDB quitada
+pt-BR = chave do SteamGridDB removida
+fr = clé SteamGridDB supprimée
+de = SteamGridDB-Schlüssel entfernt
+ja = SteamGridDB のキーを削除しました
+it = chiave SteamGridDB rimossa
+
+[hare.logs]
+note = The page is downloading the handheld's logs
+en = sending the logs
+zh-Hans = 正在发送日志
+es = enviando los registros
+pt-BR = enviando os logs
+fr = envoi des journaux
+de = sende die Protokolle
+ja = ログを送信中
+it = invio dei log
+
+[hare.closing]
+note = Asked to stop after the file on its way
+en = closing after this file
+zh-Hans = 这个文件传完后关闭
+es = se cierra después de este archivo
+pt-BR = fecha depois deste arquivo
+fr = fermeture après ce fichier
+de = schließt nach dieser Datei
+ja = このファイルの後に終了します
+it = chiusura dopo questo file
+
+# ---- the reasons the page shows ---------------------------------------------------
+
+[hare.no_memory]
+en = out of memory
+zh-Hans = 内存不足
+es = memoria insuficiente
+pt-BR = memória insuficiente
+fr = mémoire insuffisante
+de = zu wenig Speicher
+ja = メモリ不足
+it = memoria esaurita
+
+[hare.not_path]
+note = A folder's address the server could not read
+en = that is not a path
+zh-Hans = 这不是有效的路径
+es = eso no es una ruta
+pt-BR = isso não é um caminho
+fr = ce n'est pas un chemin
+de = das ist kein Pfad
+ja = 有効なパスではありません
+it = non è un percorso
+
+[hare.listing_over]
+note = The card's folders did not fit in one answer
+en = listing did not fit
+zh-Hans = 列表太长，放不下
+es = la lista no cupo
+pt-BR = a lista não coube
+fr = la liste ne tenait pas
+de = die Liste passte nicht
+ja = 一覧が大きすぎます
+it = elenco troppo lungo
+
+[hare.cannot_look]
+note = A place outside the card's folders
+en = not somewhere you can look
+zh-Hans = 这里不能查看
+es = no es un lugar que puedas ver
+pt-BR = não é um lugar que você possa ver
+fr = ce n'est pas un endroit consultable
+de = hier kannst du nicht nachsehen
+ja = 表示できない場所です
+it = qui non puoi guardare
+
+[hare.no_folder]
+en = no such folder
+zh-Hans = 没有这个文件夹
+es = esa carpeta no existe
+pt-BR = essa pasta não existe
+fr = ce dossier n'existe pas
+de = diesen Ordner gibt es nicht
+ja = フォルダがありません
+it = cartella inesistente
+
+[hare.folder_over]
+note = A folder with more in it than one answer holds
+en = that folder has more in it than fits
+zh-Hans = 这个文件夹里的内容太多，放不下
+es = esa carpeta tiene más de lo que cabe
+pt-BR = essa pasta tem mais do que cabe
+fr = ce dossier contient plus que ce qui tient
+de = der Ordner enthält mehr, als passt
+ja = フォルダの中身が多すぎます
+it = la cartella contiene troppi elementi
+
+[hare.closing_reply]
+note = A file refused because the handheld is closing File Transfer
+en = File Transfer is closing on the handheld
+zh-Hans = 掌机上的文件传输正在关闭
+es = Transferir archivos se está cerrando en la consola
+pt-BR = o Transferir arquivos está fechando no console
+fr = Transfert de fichiers se ferme sur la console
+de = die Dateiübertragung wird auf der Konsole beendet
+ja = 本体のファイル転送を終了しています
+it = Trasferimento file si sta chiudendo sulla console
+
+[hare.not_update_file]
+note = A file sent for the update over the cable that is not one of its files
+en = that is not one of the update's files
+zh-Hans = 这不是更新的文件
+es = ese no es uno de los archivos de la actualización
+pt-BR = esse não é um dos arquivos da atualização
+fr = ce n'est pas un des fichiers de la mise à jour
+de = das ist keine Datei des Updates
+ja = アップデートのファイルではありません
+it = non è uno dei file dell'aggiornamento
+
+[hare.no_room]
+note = A file's status in the page's list of uploads
+en = not enough room on the card
+zh-Hans = 存储卡空间不足
+es = no hay espacio suficiente en la tarjeta
+pt-BR = não há espaço suficiente no cartão
+fr = pas assez d'espace sur la carte
+de = nicht genug Platz auf der Karte
+ja = カードの空き容量が足りません
+it = spazio insufficiente sulla scheda
+
+[hare.not_placed]
+note = A file arrived whole but could not take its name on the card
+en = could not put that in place
+zh-Hans = 无法将它放到位
+es = no se pudo colocar en su lugar
+pt-BR = não foi possível colocar no lugar
+fr = impossible de le mettre en place
+de = konnte nicht abgelegt werden
+ja = 配置できませんでした
+it = impossibile metterlo al suo posto
+
+[hare.no_pad]
+note = An upload that did not end in the extra byte the page adds to some files
+en = the upload did not end in its pad
+zh-Hans = 上传的结尾缺少填充字节
+es = la subida no terminó con su byte de relleno
+pt-BR = o envio não terminou com o byte de preenchimento
+fr = l'envoi ne se termine pas par son octet de remplissage
+de = der Upload endete nicht mit seinem Füllbyte
+ja = アップロードの末尾にパディングがありません
+it = il caricamento non termina con il byte di riempimento
+
+[hare.pad_empty]
+note = The same, an upload with no bytes at all
+en = a padded upload with no pad
+zh-Hans = 上传缺少填充字节
+es = una subida sin su byte de relleno
+pt-BR = um envio sem o byte de preenchimento
+fr = un envoi sans son octet de remplissage
+de = ein aufgefüllter Upload ohne Füllbyte
+ja = パディング付きアップロードが空です
+it = un caricamento senza il byte di riempimento
+
+[hare.could_not]
+note = When the handheld gives no reason of its own
+en = could not
+zh-Hans = 无法完成
+es = no se pudo
+pt-BR = não foi possível
+fr = échec
+de = fehlgeschlagen
+ja = できませんでした
+it = impossibile
+
+[hare.could_not_look]
+note = Box art: the handheld could not say which games want covers
+en = could not look
+zh-Hans = 无法查看
+es = no se pudo revisar
+pt-BR = não foi possível verificar
+fr = impossible de vérifier
+de = konnte nicht nachsehen
+ja = 確認できませんでした
+it = impossibile controllare
+
+[hare.not_names]
+note = Box art: what the page sent is not libretro's list of names
+en = that is not a list of names
+zh-Hans = 这不是名称列表
+es = eso no es una lista de nombres
+pt-BR = isso não é uma lista de nomes
+fr = ce n'est pas une liste de noms
+de = das ist keine Namensliste
+ja = 名前の一覧ではありません
+it = non è un elenco di nomi
+
+[hare.which_shelf]
+en = which shelf?
+zh-Hans = 哪个游戏列表？
+es = ¿qué lista de juegos?
+pt-BR = qual lista de jogos?
+fr = quelle liste des jeux ?
+de = welche Spieleliste?
+ja = どのゲーム一覧ですか？
+it = quale elenco giochi?
+
+[hare.names_lost]
+en = the names did not arrive
+zh-Hans = 名称没有送达
+es = los nombres no llegaron
+pt-BR = os nomes não chegaram
+fr = les noms ne sont pas arrivés
+de = die Namen kamen nicht an
+ja = 名前が届きませんでした
+it = i nomi non sono arrivati
+
+[hare.could_not_match]
+en = could not match
+zh-Hans = 无法匹配
+es = no se pudo emparejar
+pt-BR = não foi possível combinar
+fr = impossible d'associer
+de = keine Zuordnung möglich
+ja = 照合できませんでした
+it = impossibile abbinare
+
+[hare.not_search]
+note = Album covers: what the page sent is not MusicBrainz's answer
+en = that is not a search reply
+zh-Hans = 这不是搜索结果
+es = eso no es una respuesta de búsqueda
+pt-BR = isso não é uma resposta de busca
+fr = ce n'est pas une réponse de recherche
+de = das ist keine Suchantwort
+ja = 検索結果ではありません
+it = non è una risposta di ricerca
+
+[hare.which_album]
+en = which album?
+zh-Hans = 哪张专辑？
+es = ¿qué álbum?
+pt-BR = qual álbum?
+fr = quel album ?
+de = welches Album?
+ja = どのアルバムですか？
+it = quale album?
+
+[hare.could_not_pick]
+en = could not pick
+zh-Hans = 无法选择
+es = no se pudo elegir
+pt-BR = não foi possível escolher
+fr = impossible de choisir
+de = keine Auswahl möglich
+ja = 選べませんでした
+it = impossibile scegliere
+
+[hare.not_key]
+note = Something pasted that is far too long for a key
+en = that is not a SteamGridDB key
+zh-Hans = 这不是 SteamGridDB 密钥
+es = eso no es una clave de SteamGridDB
+pt-BR = isso não é uma chave do SteamGridDB
+fr = ce n'est pas une clé SteamGridDB
+de = das ist kein SteamGridDB-Schlüssel
+ja = SteamGridDB のキーではありません
+it = non è una chiave SteamGridDB
+
+[hare.logs_failed]
+en = the logs could not be packed
+zh-Hans = 无法打包日志
+es = no se pudieron empaquetar los registros
+pt-BR = não foi possível empacotar os logs
+fr = impossible d'empaqueter les journaux
+de = die Protokolle ließen sich nicht packen
+ja = ログをまとめられませんでした
+it = impossibile comprimere i log
+
+[hare.cannot_write]
+note = A place outside the card's folders, or one the page may not change
+en = not somewhere you can write
+zh-Hans = 这里不能写入
+es = no es un lugar donde puedas escribir
+pt-BR = não é um lugar onde você possa gravar
+fr = ce n'est pas un endroit modifiable
+de = hier kannst du nicht schreiben
+ja = 書き込めない場所です
+it = qui non puoi scrivere
+
+[hare.bad_name]
+note = A new name with a slash in it, or one that is only dots
+en = that is not a usable name
+zh-Hans = 这个名称不能用
+es = ese nombre no se puede usar
+pt-BR = esse nome não pode ser usado
+fr = ce nom n'est pas utilisable
+de = dieser Name ist nicht nutzbar
+ja = 使えない名前です
+it = nome non utilizzabile
+
+[hare.long_name]
+en = that name is too long
+zh-Hans = 这个名称太长
+es = ese nombre es demasiado largo
+pt-BR = esse nome é longo demais
+fr = ce nom est trop long
+de = dieser Name ist zu lang
+ja = 名前が長すぎます
+it = nome troppo lungo
+
+[hare.cannot_rename]
+note = One of the card's own folders (ROMs, Music...)
+en = cannot rename that
+zh-Hans = 无法重命名它
+es = eso no se puede renombrar
+pt-BR = isso não pode ser renomeado
+fr = impossible de renommer cela
+de = das lässt sich nicht umbenennen
+ja = 名前を変更できません
+it = non si può rinominare
+
+[hare.not_folder]
+en = not a folder
+zh-Hans = 不是文件夹
+es = no es una carpeta
+pt-BR = não é uma pasta
+fr = ce n'est pas un dossier
+de = kein Ordner
+ja = フォルダではありません
+it = non è una cartella
+
+[hare.tidy_where]
+note = Tidy names works only there. Music and Audiobooks are the card's folders, by name
+en = only a folder in Music or Audiobooks
+zh-Hans = 只能是 Music 或 Audiobooks 中的文件夹
+es = solo una carpeta de Music o Audiobooks
+pt-BR = só uma pasta em Music ou Audiobooks
+fr = uniquement un dossier de Music ou Audiobooks
+de = nur ein Ordner in Music oder Audiobooks
+ja = Music か Audiobooks の中のフォルダのみ
+it = solo una cartella in Music o Audiobooks
+
+[hare.reply_long]
+en = reply too long
+zh-Hans = 回复太长
+es = respuesta demasiado larga
+pt-BR = resposta longa demais
+fr = réponse trop longue
+de = Antwort zu lang
+ja = 応答が長すぎます
+it = risposta troppo lunga
+
+[hare.not_there]
+note = A file or folder deleted by someone else first
+en = not there
+zh-Hans = 已经不在了
+es = ya no está
+pt-BR = não está mais lá
+fr = introuvable
+de = nicht mehr da
+ja = すでにありません
+it = non c'è più
+
+[hare.not_empty]
+en = that folder is not empty
+zh-Hans = 这个文件夹不是空的
+es = esa carpeta no está vacía
+pt-BR = essa pasta não está vazia
+fr = ce dossier n'est pas vide
+de = der Ordner ist nicht leer
+ja = フォルダが空ではありません
+it = la cartella non è vuota
+
+[hare.too_much]
+en = too much in one go; delete it in parts
+zh-Hans = 一次删除的内容太多；请分批删除
+es = demasiado de una vez; elimínalo por partes
+pt-BR = coisa demais de uma vez; exclua em partes
+fr = trop d'un coup ; supprimez-le en plusieurs fois
+de = zu viel auf einmal; lösche es in Teilen
+ja = 一度に削除するには多すぎます。分けて削除してください
+it = troppo in una volta; eliminalo un po' alla volta
+
+[hare.partly_deleted]
+en = some of it could not be deleted
+zh-Hans = 其中一部分无法删除
+es = una parte no se pudo eliminar
+pt-BR = parte não pôde ser excluída
+fr = une partie n'a pas pu être supprimée
+de = einiges ließ sich nicht löschen
+ja = 一部を削除できませんでした
+it = una parte non è stata eliminata
+
+[hare.no_shelves]
+note = Box art, from src/hareart.c: the handheld has no systems' lists of games yet
+en = no shelves
+zh-Hans = 没有游戏列表
+es = no hay listas de juegos
+pt-BR = não há listas de jogos
+fr = aucune liste des jeux
+de = keine Spielelisten
+ja = ゲーム一覧がありません
+it = nessun elenco giochi
+
+[hare.no_shelf]
+en = no such shelf
+zh-Hans = 没有这个游戏列表
+es = esa lista de juegos no existe
+pt-BR = essa lista de jogos não existe
+fr = cette liste des jeux n'existe pas
+de = diese Spieleliste gibt es nicht
+ja = そのゲーム一覧はありません
+it = elenco giochi inesistente
+
+[hare.match_first]
+note = The page must match by name before it matches loosely
+en = match this shelf by name first
+zh-Hans = 请先按名称匹配这个游戏列表
+es = primero empareja esta lista de juegos por nombre
+pt-BR = primeiro combine esta lista de jogos pelo nome
+fr = associez d'abord cette liste des jeux par nom
+de = ordne diese Spieleliste zuerst nach Namen zu
+ja = 先にこのゲーム一覧を名前で照合してください
+it = prima abbina questo elenco giochi per nome

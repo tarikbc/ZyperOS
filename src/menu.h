@@ -16,6 +16,11 @@ typedef struct {
 	bool live;          /* false: a placeholder, drawn quiet and doing nothing */
 } menu_row;
 
+/* A value that is a tick at the row's right, in the value's color: the
+ * choice that is on in a list of choices (MENU > Language). Known by its
+ * address, which src/menusnap.c keeps as it is. */
+extern const char MENU_TICK[];
+
 /* How a row answers left, right and A (DESIGN.md 9). The menu runner plays
  * the sound on the press, before the screen's handler: a handler may take a
  * while - the in-game menu's Display waits up to 150 ms on Diatom's new

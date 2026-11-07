@@ -11,7 +11,7 @@
         check-db check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
-        check-home check-home-shots check-games design sounds \
+        check-home check-home-shots check-games check-favorites-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-building-doc check-blog \
         check-installer release
 
@@ -36,8 +36,9 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
-         check-home check-home-shots check-games checkmark \
-         check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog
+         check-home check-home-shots check-games check-favorites-shots checkmark \
+         check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog \
+         check-strings check-i18n-shots
 
 # All of them at once, as many at a time as there are cores (CHECK_JOBS=1 for
 # one after another), each into build-native/check-logs/: tools/check-run.py
@@ -161,12 +162,12 @@ build-native/cheevos-check: tools/cheevos-check.c src/cheevos.c src/cheevos.h \
 check-hare: build-native/hare-check
 	@./build-native/hare-check
 
-build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c FORCE
+build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/hare-check-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/hare-check-artnames"' \
-	      -o $@ tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c -lz
+	      -o $@ tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # The File Transfer page on the host, over a scratch card: the same routes and
 # server, for a browser and for tools/readme-shots.py's pictures of the page.
@@ -176,12 +177,12 @@ build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c sr
 check-portal: build-native/portal-serve
 	@python3 tools/portal-check.py
 
-build-native/portal-serve: tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c FORCE
+build-native/portal-serve: tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/portal-serve-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/portal-serve-artnames"' \
-	      -o $@ tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c -lz
+	      -o $@ tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # Hare's transport, driven by a real client over a real socket. An HTTP parser
 # is where "looks right" and "is right" part company: every browser sends the
@@ -217,10 +218,10 @@ check-audioout: build-native/audioout-check
 	@./build-native/audioout-check
 
 build-native/audioout-check: tools/audioout-check.c src/audioout.c \
-                            src/audioout.h FORCE
+                            src/audioout.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/audioout-check.c src/audioout.c
+	      -o $@ tools/audioout-check.c src/audioout.c $(I18N_SRC)
 
 # The volume and brightness bar, drawn by src/osdbar.c for the launcher, Diatom
 # and portkeys alike: a segment lit per step and no more, at both scales, and
@@ -272,10 +273,11 @@ build-native/lowbatt-check: tools/lowbatt-check.c src/lowbatt.c src/lowbatt.h sr
 check-charging: build-native/charging-check
 	@./build-native/charging-check
 
-build-native/charging-check: tools/charging-check.c src/charging.c src/charging.h src/design.h FORCE
+build-native/charging-check: tools/charging-check.c src/charging.c src/charging.h src/design.h \
+                            $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
-	      -o $@ tools/charging-check.c src/charging.c -lm
+	      -o $@ tools/charging-check.c src/charging.c $(I18N_SRC) -lm
 
 # "Getting hot" (src/heat.h): the 85 C trip, two readings in a row, the
 # hysteresis under 80 C, five quiet minutes, the poll's clock. Plain C.
@@ -310,10 +312,10 @@ check-pkkeys: build-native/pkkeys-check
 
 build-native/pkkeys-check: tools/pkkeys-check.c tools/pkkeys.c tools/pkkeys.h src/keyrepeat.h \
                            src/device/pixel2_levels.h src/audioout.c src/audioout.h \
-                           src/db.c src/db.h src/atomic.c FORCE
+                           src/db.c src/db.h src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
-	      -o $@ tools/pkkeys-check.c tools/pkkeys.c src/audioout.c src/db.c src/atomic.c -lsqlite3
+	      -o $@ tools/pkkeys-check.c tools/pkkeys.c src/audioout.c src/db.c src/atomic.c $(I18N_SRC) -lsqlite3
 
 # Which theme is on: MENU > Appearance's three settings, Auto's seven to seven
 # by the handheld's clock and the minute it may be late by, and the file the
@@ -325,10 +327,10 @@ check-theme: build-native/theme-check
 	@./build-native/theme-check
 
 build-native/theme-check: tools/theme-check.c src/theme.c src/theme.h \
-                          src/themefile.c src/themefile.h src/design.h FORCE
+                          src/themefile.c src/themefile.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/theme-check.c src/theme.c src/themefile.c
+	      -o $@ tools/theme-check.c src/theme.c src/themefile.c $(I18N_SRC)
 
 # System Update end to end (update/, docs/updates.md): two fake releases,
 # packed and signed with a throwaway key, a fake card, check, download, a cut
@@ -342,9 +344,9 @@ check-update: build-native/zyperos-update
 check-sysupdate: build-native/sysupdate-check
 	@./build-native/sysupdate-check
 
-build-native/sysupdate-check: tools/sysupdate-check.c src/sysupdate.c src/sysupdate.h src/menu.h FORCE
+build-native/sysupdate-check: tools/sysupdate-check.c src/sysupdate.c src/sysupdate.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
-	$(CC) -std=gnu11 -Wall -Wextra -O1 -g -o $@ tools/sysupdate-check.c src/sysupdate.c
+	$(CC) -std=gnu11 -Wall -Wextra -O1 -g -o $@ tools/sysupdate-check.c src/sysupdate.c $(I18N_SRC)
 
 # The boot screen's theme words (src/boottheme.h, DESIGN.md 11.21)
 check-boottheme: build-native/boottheme-check
@@ -373,11 +375,11 @@ check-portkeys: build-native/portkeys-check
 
 build-native/portkeys-check: tools/portkeys-check.c tools/pkset.c tools/pkset.h \
                              src/theme.c src/theme.h src/themefile.c src/themefile.h \
-                             src/clock.c src/clock.h src/design.h FORCE
+                             src/clock.c src/clock.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -o $@ tools/portkeys-check.c tools/pkset.c src/theme.c src/themefile.c \
-	      src/clock.c -lsqlite3
+	      src/clock.c $(I18N_SRC) -lsqlite3
 
 # systems.cfg's accent field: six hex digits are that color, and anything else
 # - an empty field, a line that stops before it, a word - is no color at all
@@ -397,10 +399,10 @@ build-native/config-check: tools/config-check.c src/config.c src/config.h FORCE
 check-kbnav: build-native/kbnav-check
 	@./build-native/kbnav-check
 
-build-native/kbnav-check: tools/kbnav-check.c src/kbnav.c src/kbnav.h FORCE
+build-native/kbnav-check: tools/kbnav-check.c src/kbnav.c src/kbnav.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/kbnav-check.c src/kbnav.c
+	      -o $@ tools/kbnav-check.c src/kbnav.c $(I18N_SRC)
 
 # The menus' focus plate and the give of their list, a move in quick on the
 # out curve (src/tween.c): a press mid-move takes it on from where it is, and
@@ -454,10 +456,10 @@ check-menusnap: build-native/menusnap-check
 	@./build-native/menusnap-check
 
 build-native/menusnap-check: tools/menusnap-check.c src/menusnap.c src/menusnap.h \
-                             src/menu.h src/zyperrig.h FORCE
+                             src/menu.h src/menu.c src/zyperrig.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/menusnap-check.c src/menusnap.c
+	      -o $@ tools/menusnap-check.c src/menusnap.c src/menu.c
 
 # The card drawn where there is no art, in each theme: its title reads on
 # every row of its slab in Beard and in Salt & Pepper, and a card made for one
@@ -484,10 +486,10 @@ check-blur: build-native/blur-check
 check-emptyhome: build-native/emptyhome-check
 	@./build-native/emptyhome-check
 
-build-native/emptyhome-check: tools/emptyhome-check.c src/emptyhome.c src/emptyhome.h FORCE
+build-native/emptyhome-check: tools/emptyhome-check.c src/emptyhome.c src/emptyhome.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(pkg-config --cflags sdl2) -Isrc \
-	      -o $@ tools/emptyhome-check.c src/emptyhome.c
+	      -o $@ tools/emptyhome-check.c src/emptyhome.c $(I18N_SRC)
 
 check-roundrect: build-native/roundrect-check
 	@./build-native/roundrect-check | tail -1
@@ -567,11 +569,12 @@ check-tour: build-native/tour-check
 
 build-native/tour-check: tools/tour-check.c src/tour.c src/tour.h src/design.h \
                          src/inbutton.h src/zyperrig.c src/zyperrig.h src/config.c \
-                         src/config.h src/db.c src/db.h src/atomic.c src/atomic.h FORCE
+                         src/config.h src/db.c src/db.h src/atomic.c src/atomic.h \
+                         $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/tour-check.c src/tour.c src/zyperrig.c src/config.c src/db.c \
-	      src/atomic.c -lsqlite3 -lm
+	      src/atomic.c $(I18N_SRC) -lsqlite3 -lm
 
 # A system's color as a mark (DESIGN.md 3.3): as systems.cfg has it on Salt &
 # Pepper and a quarter toward text on Beard, for every shipped system; no
@@ -683,6 +686,37 @@ check-portkeys-flow:
 check-design:
 	@python3 tools/designdef.py --check
 
+# Every string a player reads, in English, 简体中文, Español, Português
+# (Brasil) and Français: res/strings/*.txt, the source, and tools/i18n.py,
+# which writes src/i18n_ids.h, src/i18n_tables.c and the File Transfer page's
+# res/web/i18n/. The check holds them fresh, every string in all five with
+# English's printf conversions, every ID defined where it is used and used
+# where it is defined, and every character in the font that draws it.
+strings:
+	python3 tools/i18n.py
+
+# What a check that links a part of src/ which says T() links beside it: the
+# strings and their tables (src/i18n.h). English, as the launcher is before
+# the setting is read, unless the check sets another.
+I18N_SRC := src/i18n.c src/i18n_tables.c
+
+check-strings:
+	@python3 tools/i18n.py --check
+
+# The launcher's main screens in each language and the pseudo-locale, from the
+# host build: fails where a string from res/strings is cut, broken past its
+# lines or drawn off the screen in any of the five (src/ui.c says so on
+# stderr), and lists what the pseudo-locale's longer words do not fit.
+check-i18n-shots:
+	@python3 tools/i18n-shots.py
+
+# The Chinese UI's cut of Noto Sans SC (tools/cjkfont.py), from the two OTFs
+# in CJK_SRC; needs fontTools. Only when check-strings says a character is
+# missing from it.
+cjk-font:
+	@[ -n "$(CJK_SRC)" ] || { echo "cjk-font: CJK_SRC=DIR, the folder of NotoSansSC-Regular.otf and -Bold.otf" >&2; exit 1; }
+	python3 tools/cjkfont.py $(CJK_SRC)
+
 design:
 	python3 tools/designdef.py
 
@@ -693,10 +727,10 @@ check-uisound: build-native/uisound-check
 	@./build-native/uisound-check
 
 build-native/uisound-check: tools/uisound-check.c src/uisound.c src/uisound.h \
-                           src/audioout.c src/audioout.h src/design.h FORCE
+                           src/audioout.c src/audioout.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/uisound-check.c src/uisound.c src/audioout.c
+	      -o $@ tools/uisound-check.c src/uisound.c src/audioout.c $(I18N_SRC)
 
 # Menu music's rules (src/bgm.h): the tracks, the settings, the shuffle, the
 # history L2 goes back along, the gain, the Menu Music screen's rows, a
@@ -708,11 +742,11 @@ check-bgm: build-native/bgm-check
 
 build-native/bgm-check: tools/bgm-check.c src/bgm.c src/bgm.h src/bgm_menu.c \
                         src/bgm_menu.h src/bgm_tags.c src/bgm_tags.h src/songpop.c \
-                        src/songpop.h src/design.h src/menu.h src/bgm_dec.c src/bgm_ogg.c FORCE
+                        src/songpop.h src/design.h src/menu.h src/bgm_dec.c src/bgm_ogg.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -o $@ tools/bgm-check.c src/bgm.c src/bgm_menu.c src/bgm_tags.c src/songpop.c \
-	      src/bgm_dec.c src/bgm_ogg.c -lm
+	      src/bgm_dec.c src/bgm_ogg.c $(I18N_SRC) -lm
 
 # ZyperOS's own menu music, the tracks a card with an empty Roms/BGM plays:
 # every file in res/bgm/ is the one res/bgm/tracks.json records, from a
@@ -777,21 +811,22 @@ check-controls-shots:
 
 build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.c \
                             src/controls.h src/menu.h src/config.c src/config.h \
-                            src/db.c src/db.h src/atomic.c config/systems.cfg FORCE
+                            src/db.c src/db.h src/atomic.c config/systems.cfg \
+                            $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/controls-check.c src/controls.c src/config.c src/db.c src/atomic.c \
-	      -lsqlite3
+	      $(I18N_SRC) -lsqlite3
 
 build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/wifi.c \
                         src/sys_menu.c src/menu.c src/game_menu.c \
                         src/audioout.c src/sidelights.c src/wifi_menu.h src/sys_menu.h \
                         src/game_menu.h src/menu.h src/audioout.h src/sidelights.h \
-                        src/spawn.c src/spawn.h FORCE
+                        src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
-	      src/menu.c src/game_menu.c src/audioout.c src/sidelights.c src/spawn.c
+	      src/menu.c src/game_menu.c src/audioout.c src/sidelights.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never
@@ -799,15 +834,15 @@ build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/w
 check-sidelights: build-native/sidelights-check
 	@./build-native/sidelights-check
 
-build-native/sidelights-check: tools/sidelights-check.c src/sidelights.c src/sidelights.h FORCE
+build-native/sidelights-check: tools/sidelights-check.c src/sidelights.c src/sidelights.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sidelights-check.c src/sidelights.c
+	      -o $@ tools/sidelights-check.c src/sidelights.c $(I18N_SRC)
 
-build-native/xfer-check: tools/xfer-check.c src/xfer.c src/xfer.h FORCE
+build-native/xfer-check: tools/xfer-check.c src/xfer.c src/xfer.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/xfer-check.c src/xfer.c
+	      -o $@ tools/xfer-check.c src/xfer.c $(I18N_SRC)
 
 # Search Games' matching (src/search.h): what a query finds and in what order.
 check-search: build-native/search-check
@@ -824,10 +859,10 @@ build-native/search-check: tools/search-check.c src/search.c src/search.h FORCE
 check-sshlink: build-native/sshlink-check
 	@./build-native/sshlink-check
 
-build-native/sshlink-check: tools/sshlink-check.c src/sshlink.c src/sshlink.h FORCE
+build-native/sshlink-check: tools/sshlink-check.c src/sshlink.c src/sshlink.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sshlink-check.c src/sshlink.c
+	      -o $@ tools/sshlink-check.c src/sshlink.c $(I18N_SRC)
 
 # USB charges only until asked (src/usblink.h): a computer is asked about once
 # per plug and a charger never, every choice ends with its screen or its cable,
@@ -862,10 +897,10 @@ build-native/idle-check: tools/idle-check.c src/idle.c src/idle.h src/chargedark
 check-clock: build-native/clock-check
 	@./build-native/clock-check
 
-build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h FORCE
+build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/clock-check.c src/clock.c
+	      -o $@ tools/clock-check.c src/clock.c $(I18N_SRC)
 
 # The device's title matcher against the host tool's. A drift here does not
 # fail, it just finds fewer games - see tools/artscrape-check.c.
@@ -873,12 +908,12 @@ check-artscrape: build-native/artscrape-check
 	@ART_SCORING=1 ./build-native/artscrape-check
 	@python3 tools/artscrape-check.py
 
-build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c FORCE
+build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DZYPEROS_VERSION='"check"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/artscrape-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/artscrape-check-artdat"' \
-	      -o $@ tools/artscrape-check.c src/artscrape.c src/net.c src/urlenc.c src/library.c src/db.c -lsqlite3
+	      -o $@ tools/artscrape-check.c src/artscrape.c src/net.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
 
 # Replace fetches over a cover rather than deleting it first. The real scraper
 # against a stubbed network, so a hit and a miss are both pinned with no device
@@ -886,11 +921,11 @@ build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscr
 check-artrun: build-native/artrun-check
 	@./build-native/artrun-check
 
-build-native/artrun-check: tools/artrun-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c FORCE
+build-native/artrun-check: tools/artrun-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -DSS_BUSY_WAIT=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/artrun-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/artrun-check-artdat"' \
-	      -o $@ tools/artrun-check.c src/artscrape.c src/urlenc.c src/library.c src/db.c -lsqlite3
+	      -o $@ tools/artrun-check.c src/artscrape.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
 
 # SteamGridDB on the device (src/sgdb.h): the real client and a whole run
 # against a fake API - the key in a header and never a URL, the match, the
@@ -900,14 +935,14 @@ check-sgdb: build-native/sgdb-check
 	@./build-native/sgdb-check
 	@python3 tools/sgdb-check.py
 
-build-native/sgdb-check: tools/sgdb-check.c src/sgdb.c src/sgdb.h src/sgdbrun.c src/sgdbrun.h src/artscrape.c src/artscrape.h src/rajson.c src/urlenc.c src/library.c src/db.c FORCE
+build-native/sgdb-check: tools/sgdb-check.c src/sgdb.c src/sgdb.h src/sgdbrun.c src/sgdbrun.h src/artscrape.c src/artscrape.h src/rajson.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DSGDB_GAP_MS=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET -DSGDB_QUIET \
 	      -DSGDB_TMP='"build-native/sgdb-reply.json"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/sgdb-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/sgdb-check-artdat"' \
 	      -o $@ tools/sgdb-check.c src/sgdb.c src/sgdbrun.c src/artscrape.c src/rajson.c \
-	      src/urlenc.c src/library.c src/db.c -lsqlite3 -lpthread
+	      src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # When the shelf's cover turns into its video snap and back (src/snapshelf.h),
 # on a clock the check moves by hand.
@@ -946,10 +981,10 @@ build-native/noticeq-check: tools/noticeq-check.c src/noticeq.c src/noticeq.h FO
 check-rasubmit: build-native/rasubmit-check
 	@./build-native/rasubmit-check
 
-build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c FORCE
+build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c -lsqlite3 -lz
+	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
 
 # What RetroAchievements sign-in says for a wrong password, a refusal and no
 # answer, and the HTTP status net.c's blocking requests report under it. curl
@@ -958,11 +993,11 @@ build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h 
 check-rasignin: build-native/rasignin-check
 	@./build-native/rasignin-check
 
-build-native/rasignin-check: tools/rasignin-check.c tools/curl-standin.py src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/net.h src/atomic.c src/db.c FORCE
+build-native/rasignin-check: tools/rasignin-check.c tools/curl-standin.py src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/net.h src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -DNET_CURL='"$(CURDIR)/tools/curl-standin.py"' \
-	      -o $@ tools/rasignin-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c -lsqlite3 -lz
+	      -o $@ tools/rasignin-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
 
 # The two set converters - one C on the device, one Python in the bulk tool -
 # over real RetroAchievements responses. Needs credentials and a network;
@@ -970,10 +1005,10 @@ build-native/rasignin-check: tools/rasignin-check.c tools/curl-standin.py src/ra
 check-raset: build-native/raset-check
 	@python3 tools/raset-check.py
 
-build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c FORCE
+build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c -lsqlite3 -lz
+	      -o $@ tools/raset-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
 
 # Whether this build can reach ScreenScraper, and whether an account survives
 # a restart. The live half needs a network and .screenscraper.env, and skips
@@ -981,12 +1016,12 @@ build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c src/rah
 check-ss: build-native/ss-check
 	@./build-native/ss-check
 
-build-native/ss-check: tools/ss-check.c src/ss.c src/ss.h src/ssfetch.c src/ssfetch.h src/db.c src/net.c src/urlenc.c src/rajson.c FORCE
+build-native/ss-check: tools/ss-check.c src/ss.c src/ss.h src/ssfetch.c src/ssfetch.h src/db.c src/net.c src/urlenc.c src/rajson.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	@$(MAKE) -f mk/native.mk VERSION=$(VERSION) creds
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Ibuild-native \
 	      -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/ss-check.c src/ss.c src/ssfetch.c src/db.c src/net.c src/urlenc.c src/rajson.c -lsqlite3
+	      -o $@ tools/ss-check.c src/ss.c src/ssfetch.c src/db.c src/net.c src/urlenc.c src/rajson.c $(I18N_SRC) -lsqlite3
 
 # Scraped display names: SQLite upgrade, real parser/runner, library fallback,
 # and the actual main.c refresh hooks with headless view stubs.
@@ -995,24 +1030,24 @@ check-titles: build-native/title-check build-native/title-refresh-check build-na
 	@./build-native/title-refresh-check
 	@./build-native/title-bulk-check
 
-build-native/title-check: tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c FORCE
+build-native/title-check: tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DSS_TMP='"build-native/title-reply.json"' \
-	      -o $@ tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c -lsqlite3
+	      -o $@ tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
 
-build-native/title-bulk-check: tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c FORCE
+build-native/title-bulk-check: tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -DSS_BUSY_WAIT=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET \
 	      -DSS_TMP='"build-native/title-bulk-reply.json"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/title-bulk-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/title-bulk-check-artdat"' \
-	      -o $@ tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c -lsqlite3
+	      -o $@ tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
 
-build-native/title-refresh-check: tools/title-refresh-check.c tools/title-refresh-hooks.py src/main.c src/library.c src/db.c src/stats.c FORCE
+build-native/title-refresh-check: tools/title-refresh-check.c tools/title-refresh-hooks.py src/main.c src/library.c src/db.c src/stats.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	python3 tools/title-refresh-hooks.py src/main.c build-native/title-refresh-hooks.h
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Ibuild-native \
-	      -o $@ tools/title-refresh-check.c src/library.c src/db.c src/stats.c -lsqlite3
+	      -o $@ tools/title-refresh-check.c src/library.c src/db.c src/stats.c $(I18N_SRC) -lsqlite3
 
 # Host build of the launcher, for working on how the shelf looks.
 native:
@@ -1093,10 +1128,10 @@ build-native/db-check: tools/db-check.c src/db.c src/db.h src/atomic.c FORCE
 check-stats: build-native/stats-check
 	@./build-native/stats-check
 
-build-native/stats-check: tools/stats-check.c src/stats.c src/stats.h src/db.c src/atomic.c FORCE
+build-native/stats-check: tools/stats-check.c src/stats.c src/stats.h src/db.c src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/stats-check.c src/stats.c src/db.c src/atomic.c -lsqlite3
+	      -o $@ tools/stats-check.c src/stats.c src/db.c src/atomic.c $(I18N_SRC) -lsqlite3
 
 # What order a shelf ends up in. Two of the four orders read the session rows,
 # so this links stats and the database - but not library.c: game_entry is a
@@ -1105,10 +1140,10 @@ check-sort: build-native/sort-check
 	@./build-native/sort-check
 
 build-native/sort-check: tools/sort-check.c src/sort.h src/library.h src/stats.c \
-                         src/stats.h src/db.c src/atomic.c FORCE
+                         src/stats.h src/db.c src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sort-check.c src/stats.c src/db.c src/atomic.c -lsqlite3
+	      -o $@ tools/sort-check.c src/stats.c src/db.c src/atomic.c $(I18N_SRC) -lsqlite3
 
 # Bluetooth. A device NAME is arbitrary bytes chosen by whoever owns the
 # headset, arriving over the air into a process running as root; an ADDRESS is
@@ -1118,20 +1153,20 @@ check-bt: build-native/bt-check
 	@./build-native/bt-check
 
 build-native/bt-check: tools/bt-check.c tools/legend.h src/bt.c src/bt.h src/bt_menu.c \
-                      src/bt_menu.h src/spawn.c src/spawn.h FORCE
+                      src/bt_menu.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/spawn.c
+	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/spawn.c $(I18N_SRC)
 
 # Muse's view of the Music folder: the two shapes it reads, the litter a Mac
 # leaves beside every track, and where an album's cover is kept.
 check-muselib: build-native/muselib-check
 	@./build-native/muselib-check
 
-build-native/muselib-check: tools/muselib-check.c src/muselib.c src/muselib.h FORCE
+build-native/muselib-check: tools/muselib-check.c src/muselib.c src/muselib.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/muselib-check.c src/muselib.c
+	      -o $@ tools/muselib-check.c src/muselib.c $(I18N_SRC)
 
 # The logs pack: names and Bluetooth addresses masked, and a whole pack
 # unpacked with the same tar and read back.
@@ -1180,10 +1215,10 @@ check-museart: build-native/museart-check
 	@./build-native/museart-check
 
 build-native/museart-check: tools/museart-check.c src/museart.c src/museart.h \
-                            src/urlenc.c src/rajson.c tools/fixtures/musicbrainz/*.json FORCE
+                            src/urlenc.c src/rajson.c tools/fixtures/musicbrainz/*.json $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/museart-check.c src/museart.c src/urlenc.c src/rajson.c
+	      -o $@ tools/museart-check.c src/museart.c src/urlenc.c src/rajson.c $(I18N_SRC)
 
 # src/zypermark.h is Zyper as triangles, generated from tools/zyperdef.py
 # because C cannot import it; this proves it is current, and that the ground
@@ -1204,7 +1239,7 @@ check-textfade:
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
 		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c \
-		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c \
+		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 		  ./build-native/textfade-check; \
@@ -1219,7 +1254,7 @@ check-tour-colors:
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
 		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/roundrect.c \
 		  src/theme.c src/themefile.c src/linebreak.c src/blur.c src/cardgen.c \
-		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c \
+		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 		  ./build-native/tour-colors-check; \
@@ -1230,9 +1265,9 @@ check-tour-colors:
 check-about: build-native/about-check
 	@./build-native/about-check
 
-build-native/about-check: tools/about-check.c src/about.c src/about.h src/menu.h FORCE
+build-native/about-check: tools/about-check.c src/about.c src/about.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
-	$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra -o $@ tools/about-check.c src/about.c
+	$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra -o $@ tools/about-check.c src/about.c $(I18N_SRC)
 
 # About page cues stay inside the panel instead of floating over the shelf.
 check-about-shots:
@@ -1258,6 +1293,11 @@ check-home:
 .PHONY: check-home-shots
 check-home-shots: native
 	@'$(PYIMG)' tools/home-shot-check.py
+
+# The line under a game's name on Favorites: its own system (src/games.c)
+.PHONY: check-favorites-shots
+check-favorites-shots: native
+	@'$(PYIMG)' tools/favorites-shot-check.py
 
 # The tutorial's Theme and Home Screen previews, res/tour/home-LAYOUT-THEME.png
 # (DESIGN.md 11.10, "The choices"): the launcher's own home screen of a card

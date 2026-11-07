@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "fileio.h"
+#include "i18n.h"
 #include "net.h"
 #include "rajson.h"
 
@@ -239,7 +240,7 @@ static void next(int *outcome)
 	g_try = g_ntries = 0;
 	g_state = S_NEXT;
 	if (g_fails >= 3) {
-		snprintf(g_st.problem, sizeof g_st.problem, "The network stopped answering");
+		snprintf(g_st.problem, sizeof g_st.problem, "%s", T(S_MUSICLIB_ART_NO_NETWORK));
 		finish();
 	}
 }

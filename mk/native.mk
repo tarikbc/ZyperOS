@@ -35,6 +35,9 @@ CREDS := $(BUILD)/ss_creds.h
 CFLAGS += -I$(BUILD)
 # src too, so a device file in src/device/ includes the shared headers by name
 CFLAGS += -Isrc
+# The pseudo-locale, xx (src/i18n.h): every string accented and longer, for
+# the host's shots to find what does not fit. Never on a device.
+CFLAGS += -DI18N_PSEUDO
 
 .PHONY: all creds
 all: $(BUILD)/zyperos

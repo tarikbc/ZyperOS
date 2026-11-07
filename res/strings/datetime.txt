@@ -1,0 +1,35 @@
+# MENU > Date & Time (src/main.c, clock_build): the panel's heading and the
+# notes under its rows. The rows are src/clock.c's.
+
+[datetime.title]
+note = The panel's heading, as MENU's row names it
+en = Date & Time
+zh-Hans = 日期和时间
+es = Fecha y hora
+pt-BR = Data e hora
+fr = Date et heure
+de = Datum und Uhrzeit
+ja = 日付と時刻
+it = Data e ora
+
+[datetime.change]
+note = A note under the rows: the d-pad's Left and Right change the row's value
+en = Left/Right: change
+zh-Hans = 左/右：更改
+es = Izquierda/Derecha: cambiar
+pt-BR = Esquerda/Direita: alterar
+fr = Gauche/Droite\u00a0: modifier
+de = Links/Rechts: ändern
+ja = 左/右：変更
+it = Sinistra/Destra: cambia
+
+[datetime.wifi_sets]
+note = A note under the rows, on a handheld with Wi-Fi: once Wi-Fi connects, the clock is set from the network (a time set here lasts until then)
+en = Wi-Fi sets the clock when connected
+zh-Hans = 连接 Wi-Fi 后会自动校准时钟
+es = El Wi-Fi ajusta el reloj al conectarse
+pt-BR = O Wi-Fi acerta o relógio ao conectar
+fr = Le Wi-Fi règle l'horloge une fois connecté
+de = Mit WLAN wird die Uhr automatisch gestellt
+ja = Wi-Fi 接続時に時計を自動で合わせます
+it = Il Wi-Fi imposta l'ora quando è connesso

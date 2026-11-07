@@ -1,0 +1,14 @@
+# The handheld's own network (src/hare.c with src/captive.h): a phone that
+# joins asks a known address whether it is on the internet, and is sent to
+# the page instead. Its sign-in sheet's note is the page's (web.captive.*).
+
+[captive.link]
+note = The link in the answer a phone's internet check gets, to the page, for a browser that does not follow it by itself: the page's name (web.name.wifi)
+en = Wi-Fi File Transfer
+zh-Hans = Wi-Fi 文件传输
+es = Transferir archivos por Wi-Fi
+pt-BR = Transferir arquivos por Wi-Fi
+fr = Transfert de fichiers Wi-Fi
+de = WLAN-Dateiübertragung
+ja = Wi-Fi ファイル転送
+it = Trasferimento file via Wi-Fi

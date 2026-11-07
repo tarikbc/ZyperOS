@@ -1,0 +1,70 @@
+# MENU > SteamGridDB: what a key typed on the handheld or sent from the File
+# Transfer page came to (src/sgdb.c, sgdb_try_said). One line of the message
+# panel each, at the Pixel 2's 640 wide: about 34 characters, so none has to
+# scroll. The page gets the same sentence inside JSON: no double quotes.
+
+[sgdb.try_running]
+note = tight. The message while the key is checked against SteamGridDB
+en = Checking the key...
+zh-Hans = 正在验证密钥...
+es = Verificando la clave...
+pt-BR = Verificando a chave...
+fr = Vérification de la clé...
+de = Prüfe Schlüssel ...
+ja = キーを確認中…
+it = Verifica della chiave...
+
+[sgdb.try_works]
+note = tight. SteamGridDB took the key
+en = The key works.
+zh-Hans = 密钥有效。
+es = La clave funciona.
+pt-BR = A chave funciona.
+fr = La clé fonctionne.
+de = Schlüssel gültig.
+ja = キーは有効です。
+it = La chiave funziona.
+
+[sgdb.try_kept]
+note = tight. SteamGridDB did not answer; the key is kept and the next Box Art run checks it
+en = Saved, not checked yet.
+zh-Hans = 已保存，尚未验证。
+es = Guardada, aún sin verificar.
+pt-BR = Salva, ainda não verificada.
+fr = Enregistrée, pas encore vérifiée.
+de = Gespeichert, ungeprüft.
+ja = 保存済み（未確認）。
+it = Salvata, da verificare.
+
+[sgdb.try_refused]
+note = tight. The key typed is not kept
+en = SteamGridDB refused that key.
+zh-Hans = SteamGridDB 拒绝了此密钥。
+es = SteamGridDB rechazó esa clave.
+pt-BR = O SteamGridDB recusou essa chave.
+fr = SteamGridDB a refusé cette clé.
+de = SteamGridDB lehnt ihn ab.
+ja = SteamGridDB が拒否しました。
+it = Chiave rifiutata da SteamGridDB.
+
+[sgdb.try_bad]
+note = tight. What was typed is not the shape of a key
+en = A key is 32 letters and digits.
+zh-Hans = 密钥由 32 个字母和数字组成。
+es = La clave tiene 32 letras y dígitos.
+pt-BR = A chave tem 32 letras e dígitos.
+fr = Une clé a 32 lettres et chiffres.
+de = Ein Schlüssel hat 32 Zeichen.
+ja = キーは英数字 32 文字です。
+it = Una chiave ha 32 lettere e cifre.
+
+[sgdb.try_busy]
+note = tight. A key was sent while another is still being checked
+en = Wait for the key check.
+zh-Hans = 请等待密钥验证完成。
+es = Espera la verificación.
+pt-BR = Aguarde a verificação da chave.
+fr = Attendez la vérification.
+de = Warte auf die Prüfung.
+ja = キーを確認中です。
+it = Attendi la verifica.

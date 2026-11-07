@@ -1,0 +1,25 @@
+# The language setting itself: MENU's row, its panel and the first start's step
+# (DESIGN.md 11.30). The languages' names are not here: each is written in
+# its own words (tools/i18n.py's LANGS, lang_name), the same in every language.
+
+[menu.language]
+note = A MENU row, after Clock; its value is the language's own name. Also the heading of the panel A opens.
+en = Language
+zh-Hans = 语言
+es = Idioma
+pt-BR = Idioma
+fr = Langue
+de = Sprache
+ja = 言語
+it = Lingua
+
+[tour.lang.hello]
+note = Zyper's bubble on the first start's language step, in the language under the cursor. About 468 units at title size.
+en = Hello!
+zh-Hans = 你好！
+es = ¡Hola!
+pt-BR = Olá!
+fr = Bonjour !
+de = Hallo!
+ja = こんにちは！
+it = Ciao!

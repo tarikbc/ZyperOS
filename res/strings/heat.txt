@@ -1,0 +1,36 @@
+# "Getting hot" (src/heat.h, DESIGN.md 11.23): the notice over a running game,
+# and Zyper's pop-up on the home and the shelves. Short enough for the
+# pop-up's slab without scrolling.
+
+[heat.head]
+note = The notice over a running game: its heading, beside a thermometer. The chip is hot and the handheld slows down.
+en = Getting hot
+zh-Hans = 设备发热
+es = Se está calentando
+pt-BR = Esquentando
+fr = Ça chauffe
+de = Wird heiß
+ja = 本体が熱くなっています
+it = Si sta scaldando
+
+[heat.zyper]
+note = Zyper's bubble on the home and the shelves, first line; Zyper is the dog, speaking. The only place a ! belongs. tight: about 550 units at label size.
+en = I'm getting hot!
+zh-Hans = 我好热！
+es = ¡Tengo calor!
+pt-BR = Estou esquentando!
+fr = J'ai chaud\u00a0!
+de = Mir wird heiß!
+ja = 熱くなってきました！
+it = Ho caldo!
+
+[heat.slowing]
+note = Under heat.head over a game, and under heat.zyper in Zyper's bubble: the handheld runs slower until it cools. tight: the bubble has about 550 units at meta size.
+en = Slowing down to cool off.
+zh-Hans = 正在降速散热。
+es = Baja el ritmo para enfriarse.
+pt-BR = Desacelerando para esfriar.
+fr = Ralentissement pour refroidir.
+de = Langsamer, um abzukühlen.
+ja = 速度を落として冷却します。
+it = Rallenta per raffreddarsi.
