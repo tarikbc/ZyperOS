@@ -175,10 +175,12 @@ third-party:
 		/work/release-output-brick/legal-info/manifest.csv brick > buildroot/board/brick/third-party-packages.md
 
 release-pixel2:
+	@mkdir -p out
 	$(DOCKER_RUN) sh /src/scripts/release.sh $(VERSION) pixel2 > out/release-pixel2.log 2>&1 || \
 		{ tail -30 out/release-pixel2.log; exit 1; }
 
 release-brick:
+	@mkdir -p out
 	$(BRICK_RUN) sh /src/scripts/release.sh $(VERSION) brick > out/release-brick.log 2>&1 || \
 		{ tail -30 out/release-brick.log; exit 1; }
 
