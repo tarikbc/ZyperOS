@@ -591,7 +591,8 @@ keeps its aspect ratio. There is no perspective tilt, reflection or added
 card frame. The full scraped title appears below, followed by play time and
 the achievement count. Missing metadata is omitted rather than invented.
 A is **Resume** only when the existing resume path is available, otherwise
-**Play**. B returns to systems, Y toggles Favorite, and X opens game details.
+**Play**. B returns to systems, Y toggles Favorite, and X opens game details,
+whose last row is Delete Game (11.31).
 Long titles wrap or fit within their region, clear of the action and footer.
 Missing box art uses the theme's existing generated text fallback.
 
@@ -1854,6 +1855,60 @@ screen, and on a screen where a language cuts or slides more formatted
 text ("vinculado: tarik") than English does. The
 pseudo-locale, `--lang xx` on a host, writes every string accented, 40%
 longer and in brackets, to find what a longer translation would meet.
+
+### 11.31 Delete Game
+
+A game's details (X on the shelf) end in **Delete Game**, after the art
+action *(2026-11-07: "when clicking X on a game to see details, allow
+deleting that game. delete the game, saves, and media")*. A plain row, as
+the art action is: live everywhere but Ports, with no value, since what it
+takes is the question's to say. Never where the page opens, and A on it
+only asks. A BIOS set on a shelf (`neogeo.zip`) is never deleted: A says so
+in a one-line message (11.8), "neogeo is a BIOS other games need. It stays."
+
+- **The question** is the confirm panel every destructive row asks with
+  (Forget, Unlink, Delete All, Roll Back): over the shelf on **scrim.menu**,
+  heading **Delete Game**, then the question, then **Delete** and
+  **Cancel**, a centered list, the cursor starting on Cancel; B and MENU are
+  Cancel, POWER turns the handheld off with nothing deleted. What is new is
+  that the question is a paragraph: it names the game, says what goes with
+  it and that it cannot be undone, "Delete Metal Gear Solid? Its saves and
+  states, cover and video go too. This cannot be undone." Its lines are
+  wrapped to the panel and centered, as the one-line question of the other
+  confirms is, in **text-dim** as a question row is, a **menu** note line
+  each; a rule (the heading's) divides it from the answers when there is
+  room. A question too long for the lines over its answers would leave its
+  start where no cursor goes, so a game whose name does not fit is named in
+  the heading instead, as on its details page, and the question says "this
+  game".
+- **The yes** draws one frame, "Deleting..." (11.8), deletes, closes the
+  details page onto the shelf as it is now, and says what came of it in a
+  one-line message: "Deleted. 1.2 GB given back.", or that some of its
+  files would not go, or that nothing was deleted and why.
+- **The shelf** changes in place, with no read of the card: the game is off
+  its own shelf and Favorites, the cursor on the next game or the one
+  before at the end. A shelf left empty goes from the home, as an empty
+  system always has, and the home stands on the system in its place; with
+  no games left, the empty home (11.19). Favorites keeps the game its
+  cursor was on.
+
+**What goes**, every path built from the game's key - its system's folder
+and tag, its launch path, its name - and none found by a pattern or a
+listing (src/gamedel.h): the game's file, or its folder for a game in one
+(a multi-disc set, a ScummVM game); the tracks a `.cue`, `.gdi` or `.toc` at
+the top of the folder names, a `.cue`'s `.sbi`, a `.ccd`'s `.img` and
+`.sub`; an arcade set's `.zip`, and on NAOMI and Atomiswave the folder of its
+name holding its CHD; its saves (`Saves/<stem>.srm`, `.sav`, `.dsv`, and the
+arcade cores' own folders); the six state slots and Auto with their
+pictures; its cover and video snap and what a fetch stopped halfway left;
+its cached achievement set; and its rows in the library: details and
+title, favorite, play sessions. A file another game on the card builds too
+stays. A path that would leave `Roms/<console>/`, `Saves/` or the states
+folder refuses the whole delete, with nothing touched. Earned achievements
+stay: they are the player's.
+
+Host shots: `--info-delete` (the details, the cursor on Delete Game),
+`--delete-ask` (the question), `--delete-now` (the shelf after the yes).
 
 ## 12. Copy
 

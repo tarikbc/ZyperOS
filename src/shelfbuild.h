@@ -41,6 +41,9 @@ void system_order_load(void);
 void system_order_apply(systems_cfg *s);
 /* The Favorites shelf rebuilt after a favorite changed */
 void refresh_favorites_shelf(app *a);
+/* A game deleted from the card (src/gamedel.h): off its shelf and Favorites,
+ * in place, the shelf stood on moved to the next game or the home */
+void shelf_drop_game(app *a, const char *tag, const char *file);
 /* Muse's shelf in the order its view is set to */
 void muse_order_view(sysview *v);
 /* The Singles album's cover, made once there is a Singles */

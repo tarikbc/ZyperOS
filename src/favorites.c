@@ -119,6 +119,19 @@ bool fav_save(void)
 	return true;
 }
 
+bool fav_forget(const char *tag, const char *file)
+{
+	char key[FAV_TAG_MAX + FAV_FILE_MAX + 8];
+	int i = find(tag, file);
+
+	if (i >= 0) g_fav[i] = g_fav[--g_count];
+	if (!tag || !file ||
+	    snprintf(key, sizeof key, "fav.%s\t%s", tag, file) >= (int)sizeof key)
+		return i >= 0;
+	if (!db_has(db_lib(), key)) return i >= 0;
+	return db_del(db_lib(), key);
+}
+
 bool fav_is(const char *tag, const char *file)
 {
 	return find(tag, file) >= 0;

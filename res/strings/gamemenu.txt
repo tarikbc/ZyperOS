@@ -70,6 +70,116 @@ de = Cover holen
 ja = パッケージ画像を取得
 it = Scarica copertina
 
+[gamemenu.delete]
+note = The game info screen's row under the art action: delete the game, its saves, states, cover and video (DESIGN.md 11.31). Also the heading of its question, wait and messages. tight: a row label beside no value
+en = Delete Game
+zh-Hans = 删除游戏
+es = Borrar juego
+pt-BR = Apagar jogo
+fr = Supprimer le jeu
+de = Spiel löschen
+ja = ゲームを削除
+it = Elimina gioco
+
+[gamemenu.delete_ask]
+note = The question Delete Game asks, wrapped into lines over its two answers; %s is the game's name as the shelf shows it. Says what goes and that it cannot be undone. tight: four lines of about 34 characters with a name of 20
+en = Delete %s? Its saves and states, cover and video go too. This cannot be undone.
+zh-Hans = 要删除 %s 吗？它的游戏存档、即时存档、封面和视频预览也会一并删除。此操作无法撤销。
+es = ¿Borrar %s? Sus partidas y estados guardados, su carátula y su video se borran con él. No se puede deshacer.
+pt-BR = Apagar %s? Os saves, save states, a capa e o vídeo dele vão junto. Não é possível desfazer.
+fr = Supprimer %s\u00a0? Ses sauvegardes, sauvegardes d'état, jaquette et vidéo partent avec lui. Impossible d'annuler.
+de = %s löschen? Spielstände, Speicherstände, Cover und Video werden mitgelöscht. Das lässt sich nicht rückgängig machen.
+ja = %s を削除しますか？セーブデータ、ステートセーブ、パッケージ画像、動画プレビューも削除されます。元に戻せません。
+it = Eliminare %s? Salvataggi, stati salvati, copertina e video se ne vanno con lui. Non si può annullare.
+
+[gamemenu.delete_ask_this]
+note = The same question for a game whose name would not fit in it: the heading names the game instead.
+en = Delete this game? Its saves and states, cover and video go too. This cannot be undone.
+zh-Hans = 要删除这个游戏吗？它的游戏存档、即时存档、封面和视频预览也会一并删除。此操作无法撤销。
+es = ¿Borrar este juego? Sus partidas y estados guardados, su carátula y su video se borran con él. No se puede deshacer.
+pt-BR = Apagar este jogo? Os saves, save states, a capa e o vídeo dele vão junto. Não é possível desfazer.
+fr = Supprimer ce jeu\u00a0? Ses sauvegardes, sauvegardes d'état, jaquette et vidéo partent avec lui. Impossible d'annuler.
+de = Dieses Spiel löschen? Spielstände, Speicherstände, Cover und Video werden mitgelöscht. Das lässt sich nicht rückgängig machen.
+ja = このゲームを削除しますか？セーブデータ、ステートセーブ、パッケージ画像、動画プレビューも削除されます。元に戻せません。
+it = Eliminare questo gioco? Salvataggi, stati salvati, copertina e video se ne vanno con lui. Non si può annullare.
+
+[gamemenu.delete_yes]
+note = The yes answer to it, above Cancel.
+en = Delete
+zh-Hans = 删除
+es = Borrar
+pt-BR = Apagar
+fr = Supprimer
+de = Löschen
+ja = 削除
+it = Elimina
+
+[gamemenu.deleting]
+note = The one frame while the files go, under Delete Game.
+en = Deleting...
+zh-Hans = 正在删除…
+es = Borrando...
+pt-BR = Apagando...
+fr = Suppression…
+de = Wird gelöscht ...
+ja = 削除中…
+it = Eliminazione...
+
+[gamemenu.deleted]
+note = The message after it; %s is the room the card has back ("1.2 GB").
+en = Deleted. %s given back.
+zh-Hans = 已删除，释放了 %s。
+es = Borrado. Se liberaron %s.
+pt-BR = Apagado. %s liberados.
+fr = Supprimé. %s libérés.
+de = Gelöscht. %s freigegeben.
+ja = 削除しました。%s を解放しました。
+it = Eliminato. %s liberati.
+
+[gamemenu.delete_partly]
+note = The message when the game went but some of its other files would not.
+en = Deleted, but some of its files are still on the card.
+zh-Hans = 已删除，但仍有部分文件留在存储卡上。
+es = Borrado, pero algunos de sus archivos siguen en la tarjeta.
+pt-BR = Apagado, mas alguns arquivos dele ainda estão no cartão.
+fr = Supprimé, mais certains de ses fichiers sont encore sur la carte.
+de = Gelöscht, aber einige seiner Dateien sind noch auf der Karte.
+ja = 削除しましたが、一部のファイルがカードに残っています。
+it = Eliminato, ma alcuni suoi file sono ancora sulla scheda.
+
+[gamemenu.delete_failed]
+note = The message when the game's own files would not go, so nothing else was touched.
+en = Nothing was deleted. Check the card and try again.
+zh-Hans = 没有删除任何内容。请检查存储卡后重试。
+es = No se borró nada. Revisa la tarjeta e inténtalo de nuevo.
+pt-BR = Nada foi apagado. Verifique o cartão e tente de novo.
+fr = Rien n'a été supprimé. Vérifiez la carte et réessayez.
+de = Nichts wurde gelöscht. Prüfe die Karte und versuche es erneut.
+ja = 何も削除されませんでした。カードを確認して、もう一度お試しください。
+it = Non è stato eliminato nulla. Controlla la scheda e riprova.
+
+[gamemenu.delete_outside]
+note = The message when a path of the game would leave its folders (a sheet naming "../"), so it is refused whole.
+en = Nothing was deleted. One of its files is outside its folders.
+zh-Hans = 没有删除任何内容。它的一个文件位于其文件夹之外。
+es = No se borró nada. Uno de sus archivos está fuera de sus carpetas.
+pt-BR = Nada foi apagado. Um dos arquivos dele está fora das pastas dele.
+fr = Rien n'a été supprimé. Un de ses fichiers est hors de ses dossiers.
+de = Nichts wurde gelöscht. Eine seiner Dateien liegt außerhalb seiner Ordner.
+ja = 何も削除されませんでした。ファイルの一部がフォルダの外にあります。
+it = Non è stato eliminato nulla. Uno dei suoi file è fuori dalle sue cartelle.
+
+[gamemenu.delete_bios]
+note = The message for a BIOS set on a shelf (neogeo.zip), which is never deleted; %s is its name ("neogeo").
+en = %s is a BIOS other games need. It stays.
+zh-Hans = %s 是其他游戏需要的 BIOS，将保留。
+es = %s es una BIOS que necesitan otros juegos. Se queda.
+pt-BR = %s é uma BIOS de que outros jogos precisam. Ela fica.
+fr = %s est un BIOS dont d'autres jeux ont besoin. Il reste.
+de = %s ist ein BIOS, das andere Spiele brauchen. Es bleibt.
+ja = %s は他のゲームが必要とする BIOS です。削除しません。
+it = %s è un BIOS che serve ad altri giochi. Resta.
+
 # ---- the in-game menu -------------------------------------------------------
 
 [gamemenu.continue]

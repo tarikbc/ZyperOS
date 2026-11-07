@@ -135,6 +135,47 @@ void stats_recover(void)
 	}
 }
 
+/* --- a game deleted from the card ---------------------------------------- */
+
+struct gone_row { char key[STATS_TAG_MAX + STATS_FILE_MAX + 56]; struct gone_row *next; };
+struct gone_ctx { const char *tag, *file; struct gone_row *head; };
+
+/* sess.<start>.<t0>.<tag>\t<file>, for this tag and file exactly */
+static bool collect_gone(const char *key, const char *value, void *ctx)
+{
+	struct gone_ctx *g = ctx;
+	const char *dot = strchr(key + strlen("sess."), '.'), *tab;
+	struct gone_row *r;
+	size_t tl = strlen(g->tag);
+
+	(void)value;
+	if (!dot || !(dot = strchr(dot + 1, '.')) || !(tab = strchr(dot + 1, '\t'))) return true;
+	if ((size_t)(tab - dot - 1) != tl || strncmp(dot + 1, g->tag, tl) || strcmp(tab + 1, g->file))
+		return true;
+	if (!(r = malloc(sizeof *r))) return false;
+	snprintf(r->key, sizeof r->key, "%s", key);
+	r->next = g->head;
+	g->head = r;
+	return true;
+}
+
+int stats_forget(const char *tag, const char *file)
+{
+	struct gone_ctx g = { tag, file, NULL };
+	struct gone_row *r;
+	int n = 0;
+
+	if (!tag || !file) return 0;
+	/* Collected first, then deleted: the same care stats_recover takes */
+	db_each_prefix(db_lib(), "sess.", collect_gone, &g);
+	while ((r = g.head)) {
+		g.head = r->next;
+		if (db_del(db_lib(), r->key)) n++;
+		free(r);
+	}
+	return n;
+}
+
 /* --- summarizing --------------------------------------------------------- */
 
 typedef struct {

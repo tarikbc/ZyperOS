@@ -56,6 +56,8 @@ SHOTS={
     'gallery':('demo','PS1',['--home','gallery']),
     'shelf':('demo','PS1',['--screen','games']),
     'info':('demo','PS1',['--screen','games','--info']),
+    'info-delete':('demo','PS1',['--screen','games','--info-delete']),
+    'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
     'cheevos':('demo','PS1',['--cheevos-screen','0']),
     'menu':('demo','PS1',['--menu','Search Games']),
     'mp4':('demo','MUSE',['--screen','games']),

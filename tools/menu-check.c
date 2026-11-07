@@ -1150,10 +1150,11 @@ static void what_scrolls(void)
 
 /* ---------- the game info screen ------------------------------------------ */
 
-/* Five rows at most: the three that describe the game, then the two that do
- * something about it. The order reversed on 2026-09-17 - it used to lead with
- * what the cursor could act on - so it is asserted rather than assumed, which
- * is also how the old order got pinned and had to be unpinned here.
+/* Six rows at most: the three that describe the game, then the three that do
+ * something about it, Delete Game last (DESIGN.md 11.31). The order reversed
+ * on 2026-09-17 - it used to lead with what the cursor could act on - so it
+ * is asserted rather than assumed, which is also how the old order got pinned
+ * and had to be unpinned here.
  *
  * What is NOT here is as deliberate as what is: no File, no Size, no Box Art
  * byte count, no Favorite, which Y does from the shelf, and no Saves, which
@@ -1169,14 +1170,17 @@ static void info_rows(void)
 	snprintf(gi.cheevos, sizeof gi.cheevos, "12 of 78");
 	gi.has_cheevos = true;
 	gi.has_art = true;
+	gi.can_delete = true;
 
 	n = gi_rows(rows, &gi, true);
 	printf("game info, nothing scraped, art present and a network:\n");
-	ck(n == 2, "Cheevos and the art action, and nothing else to say");
+	ck(n == 3, "Cheevos, the art action and Delete Game, and nothing else to say");
 	ck(!strcmp(rows[0].label, "Cheevos"), "Cheevos leads when nothing describes the game");
 	ck(!strcmp(val(&rows[0]), "12 of 78"), "and carries the count");
 	ck(rows[0].live, "and opens the set, the way the in-game row does");
 	ck(!strcmp(rows[1].label, "Replace Box Art"), "art present offers a replace");
+	ck(!strcmp(rows[2].label, "Delete Game"), "Delete Game last");
+	ck(rows[2].live && !rows[2].value, "live, with no value: the question says what goes");
 	for (i = 0; i < n; i++) {
 		ck(strcmp(lbl(&rows[i]), "File") != 0, "no File row");
 		ck(strcmp(lbl(&rows[i]), "Size") != 0, "no Size row");
@@ -1185,7 +1189,7 @@ static void info_rows(void)
 		ck(strcmp(lbl(&rows[i]), "Saves") != 0, "no Saves row");
 	}
 	k = reachable(rows, n, got, GI_MAX);
-	ck(k == 2, "two stops: the set and the action");
+	ck(k == 3, "three stops: the set and the two actions");
 
 	gi.has_cheevos = false;
 	snprintf(gi.cheevos, sizeof gi.cheevos, "none");
@@ -1196,8 +1200,10 @@ static void info_rows(void)
 	ck(!strcmp(rows[1].label, "Get Box Art"), "no art offers a get, not a replace");
 	ck(!strcmp(val(&rows[1]), "needs Wi-Fi"), "and says why it is dead");
 	ck(!rows[1].live, "which it is");
+	ck(!strcmp(rows[2].label, "Delete Game") && rows[2].live,
+	   "Delete Game needs no network");
 	k = reachable(rows, n, got, GI_MAX);
-	ck(k == 0, "nothing on the screen can be chosen");
+	ck(k == 1, "Delete Game is the one thing on the screen to choose");
 
 	/* Scraped, which adds the three rows ABOVE Cheevos and nowhere else. The
 	 * shapes below are the whole of what a scrape can leave behind. */
@@ -1219,9 +1225,19 @@ static void info_rows(void)
 	   "then what kind, as the scrape joined it");
 	ck(!strcmp(rows[3].label, "Cheevos"),
 	   "then what there is to shoot for, which is worth seeing before starting");
-	ck(!strcmp(rows[4].label, "Replace Box Art"), "and the action last");
+	ck(!strcmp(rows[4].label, "Replace Box Art"), "then the art action");
+	ck(!strcmp(rows[5].label, "Delete Game"), "and Delete Game last");
 	k = reachable(rows, n, got, GI_MAX);
-	ck(k == 3, "three stops: the synopsis, the set and the action");
+	ck(k == 4, "four stops: the synopsis, the set and the two actions");
+
+	gi.can_delete = false;
+	n = gi_rows(rows, &gi, true);
+	printf("game info on Ports, whose games are not deleted here:\n");
+	ck(n == GI_MAX - 1, "one row fewer");
+	for (i = 0; i < n; i++)
+		ck(strcmp(lbl(&rows[i]), "Delete Game") != 0, "no Delete Game row");
+	ck(!strcmp(rows[n - 1].label, "Replace Box Art"), "the art action last");
+	gi.can_delete = true;
 
 	gi.has_synopsis = false;
 	n = gi_rows(rows, &gi, true);
