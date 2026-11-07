@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The empty home's words (src/emptyhome.h) for every device and port state:
  * the screens' own names, the button each way takes, steps that never name an
  * address the device does not have, and a reason exactly when a way cannot

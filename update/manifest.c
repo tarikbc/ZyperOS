@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The release manifest: reading it, and checking its signature.
  *
  * The format is text, one record a line, so it reads the same in C, in the

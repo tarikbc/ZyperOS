@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The on-screen keyboard's keys and the d-pad's moves between them. See
  * kbnav.h; tools/kbnav-check.c holds every move. */
 #include "kbnav.h"

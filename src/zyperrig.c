@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Zyper's moves beside the ZyperOS menu's heading. See src/zyperrig.h.
  *
  * The Zyper lab's Rig (its lab.js), for the one place I picked: two

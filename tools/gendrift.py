@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Committed art against its generator, for a generator's --check.
 
 The generator writes into a temp folder of its own, and this compares what it

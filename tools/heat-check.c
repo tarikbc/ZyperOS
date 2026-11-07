@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* make check-heat
  *
  * "Getting hot" (src/heat.h): the trip, two readings in a row, the

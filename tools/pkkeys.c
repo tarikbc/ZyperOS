@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The volume keys over a port, as decisions and steps: see pkkeys.h. */
 #include "pkkeys.h"
 

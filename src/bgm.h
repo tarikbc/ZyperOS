@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Menu music: tracks from the card played behind the shelf and the menus, and
  * never over a game, a port or Muse.
  *

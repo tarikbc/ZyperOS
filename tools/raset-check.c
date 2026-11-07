@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Convert a RetroAchievements patch response to a set file, with no network.
  *
  *     raset-check <gameid> <patch.json> <out.set>

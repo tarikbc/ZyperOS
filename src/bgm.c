@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Menu music's rules: no SDL, no ALSA, no threads. See src/bgm.h. */
 #include "bgm.h"
 

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* SSH over USB File Transfer's cable, with the screen's PIN.
  *
  * While USB File Transfer is open on the GKD Pixel 2, the launcher runs

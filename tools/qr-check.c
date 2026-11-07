@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* make check-qr
  *
  * The hotspot's QR code (src/qr.c). A code that looks like a QR code and does

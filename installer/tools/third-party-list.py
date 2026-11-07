@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Makes installer/THIRD-PARTY.md, the list of what ZyperOS Installer is built
 from: its own code's licenses, Tauri, the web view each system draws the
 window with, the fonts in ui/fonts (name, version and copyright read from the
@@ -259,8 +259,11 @@ def build():
     w('')
 
     # 1. The installer's own code
-    licence = read(REPO / 'LICENSE').splitlines()[0].lstrip('#').strip()
-    notices = [l.strip() for l in read(REPO / 'NOTICE').splitlines() if l.startswith('Required Notice:')]
+    text = read(REPO / 'LICENSE')
+    if 'GNU GENERAL PUBLIC LICENSE' not in text or 'Version 3, 29 June 2007' not in text:
+        fail('the repository LICENSE is not the GNU GPL version 3: the list says it is')
+    licence = 'GNU General Public License, version 3'
+    notices = [l.strip() for l in read(REPO / 'NOTICE').splitlines() if l.startswith('Copyright (C)')]
     mit = [l.strip() for l in read(REPO / 'LICENSES' / 'MIT-TortOS-Installer.txt').splitlines()
            if l.startswith('Copyright')]
     same = (INSTALLER / 'LICENSE').is_file() and read(INSTALLER / 'LICENSE') == read(REPO / 'LICENSE')
@@ -268,7 +271,7 @@ def build():
     w('')
     w(f'ZyperOS Installer is under the {licence}, in the repository\'s [`LICENSE`](../LICENSE)'
       + (' (this folder\'s [`LICENSE`](LICENSE) is the same text)' if same else '')
-      + ', with the notice in its [`NOTICE`](../NOTICE):')
+      + ', with the notice and the additional terms under section 7 in its [`NOTICE`](../NOTICE), and the name and Zyper kept as trademarks in [`TRADEMARK.md`](../TRADEMARK.md):')
     w('')
     for l in notices:
         w(f'> {cell(l)}')

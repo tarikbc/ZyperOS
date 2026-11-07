@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The Bluetooth screen, minus the screen.
  *
  * State and row building only. This file must never include SDL: a build

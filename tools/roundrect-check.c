@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* round_rect_rects against the shape ui_round_rect drew row by row: for every
  * radius up to ROUND_MAX and a spread of sizes around it, every pixel of the
  * row-by-row shape is in exactly one rect, and no pixel outside it is in any.

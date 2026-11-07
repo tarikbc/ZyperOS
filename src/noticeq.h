@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The pop-ups over a game, one after another.
  *
  * Diatom holds one overlay: a second OVERLAY replaces the first at once. Two

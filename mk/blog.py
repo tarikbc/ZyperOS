@@ -291,12 +291,14 @@ def footer():
     return """<footer>
   <div class="in">
     %s
-    <span class="meta">ZyperOS is free, under the PolyForm Shield License 1.0.0.</span>
+    <span class="meta">ZyperOS is free and open source, under GPL-3.0.</span>
     <span class="links">
       <a href="/">Home</a>
       <a href="/blog/">Blog</a>
       <a href="https://github.com/tarikbc/ZyperOS">GitHub</a>
       <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">Guide</a>
+      <a href="https://github.com/tarikbc/ZyperOS/blob/main/LICENSE">License</a>
+      <a href="https://github.com/tarikbc/ZyperOS/blob/main/TRADEMARK.md">Trademark</a>
     </span>
   </div>
 </footer>
@@ -585,8 +587,10 @@ def check(out, posts):
         text = src.read_text(encoding="utf-8")
         if "—" in text:
             problems.append("%s: an em dash; use a comma, a colon or two sentences" % src.name)
-        if re.search(r"open[ -]source", text, re.I):
-            problems.append("%s: says open source; ZyperOS is free, under PolyForm Shield" % src.name)
+        if re.search(r"polyform", text, re.I):
+            problems.append("%s: names PolyForm; ZyperOS is open source, under GPL-3.0" % src.name)
+        if re.search(r"\b(?:is|are)\s+(?:not|no longer)\s+open[ -]source", text, re.I):
+            problems.append("%s: says ZyperOS is not open source; it is, under GPL-3.0" % src.name)
         if re.search(r"\]\(https?://", text):
             problems.append("%s: a Markdown link; posts are HTML" % src.name)
         body = text.partition("\n---\n")[2]

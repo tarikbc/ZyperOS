@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-memtest: is the RAM sound, and how fast is it.
  *
  *   px2-memtest [MEGABYTES] [PASSES]      (defaults: 256 MB, 4 passes)

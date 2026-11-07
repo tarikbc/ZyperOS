@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The message clock, not a renderer: a slow frame cannot extend a hold,
  * B closes early, and power/quit win even on the last frame of an exit. */
 #include "../src/message.h"

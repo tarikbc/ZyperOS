@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-sample: where a thread spends its time, without perf.
  *
  *   px2-sample TID [SECONDS] [HZ]       (defaults: 10 s at 100 Hz)

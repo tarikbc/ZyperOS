@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* A tutorial frame drawn after its fade must have the same colors as that
  * frame drawn first. A single --shot never warms the text cache with a low
  * alpha, which hid the first-start tutorial's unreadable text on both themes.

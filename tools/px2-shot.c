@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* px2-shot: a screenshot of whatever the GKD Pixel 2's panel shows.
  *
  *   px2-shot [FILE.ppm]          (default /tmp/px2-shot.ppm)

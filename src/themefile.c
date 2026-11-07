@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 OR MPL-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only OR MPL-2.0 */
 /* The theme file. See src/themefile.h. */
 #include "themefile.h"
 

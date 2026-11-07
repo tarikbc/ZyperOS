@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The interface sounds, DESIGN.md 9: six short sounds in three voices, played
  * by the launcher on a press and never over a game.
  *

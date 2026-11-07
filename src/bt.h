@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Bluetooth audio, over the stock BlueZ. Like wifi.h, none of this is ZyperOS's
  * own stack - it is a client of a system that already works. Three things about
  * getting it working were not obvious, and all three matter to this file:

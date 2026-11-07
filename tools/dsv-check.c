@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* DraStic's .dsv into DSperate's .srm (src/dsv.c): the footer comes off, the
  * chip's bytes are kept exactly, an .srm already there is never touched, a
  * file that is not a .dsv is left alone, and the .srm goes in through

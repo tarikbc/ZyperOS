@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The start with a battery too low to play: its rules (DESIGN.md 11.24).
  *
  * At BATT_EMPTY_PCT or under, off the charger, a start used to come up to the

@@ -1,14 +1,16 @@
 # Third-party notices
 
 ZyperOS itself - the launcher in `src/`, the tools, scripts and configs, and
-the art made for this project - is under the **PolyForm Shield License
-1.0.0** (`LICENSE`), with the notice in `NOTICE`. It includes code by Eric
+the art made for this project - is under the **GNU General Public License,
+version 3** (`LICENSE`), with the notice in `NOTICE`. The name ZyperOS, Zyper
+and his art, and the logo are trademarks, kept by `NOTICE` and `TRADEMARK.md`.
+It includes code by Eric
 Reinsmidt from the MIT-licensed versions of
 [TortOS](https://github.com/ericreinsmidt/TortOS), which stays under his MIT
 notice (`LICENSES/MIT-TortOS.txt`).
 
 ZyperOS Installer, in `installer/`, runs on a computer and is not on the card.
-It is under the same PolyForm Shield License, keeps Eric Reinsmidt's MIT notice
+It is under the same GNU General Public License, keeps Eric Reinsmidt's MIT notice
 for the TortOS Installer code it includes
 (`LICENSES/MIT-TortOS-Installer.txt`), and names the crates it is built from in
 `installer/THIRD-PARTY.md`.

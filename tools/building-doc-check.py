@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """docs/building.md's table of checks against the Makefile's CHECKS: a row for
 every check, and no row for one that is gone (make check-building-doc)."""
 from pathlib import Path

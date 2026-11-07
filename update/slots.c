@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The two system slots (docs/updates.md, layer 2): which one runs, the
  * partitions, the boot partition and its bootstate.txt, and writing a slot.
  *

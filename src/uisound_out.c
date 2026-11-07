@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The interface sounds' player. See src/uisound.h.
  *
  * One thread, which reads the voices, opens the output when there is a sound

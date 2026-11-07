@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* MP4's lock rules (src/mp4lock.h), walked through what a pocket and a hand
  * actually do: every button blocked, power included, but the volume keys;
  * SELECT and START held together for hold-unlock unlock; a pair already held

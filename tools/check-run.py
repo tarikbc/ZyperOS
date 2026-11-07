@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 """make check's runner: every check at once, a few at a time, each into a log.
 
     tools/check-run.py [-j N] CHECK...

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See notice.h for why the launcher draws this and Diatom shows it. */
 #include <SDL.h>
 #include <SDL_image.h>

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* MP4's shared video frames (src/mp4frame.h): the daemon's writer and the
  * launcher's reader, run against each other on two threads over the same
  * memory, as fast as they go. Every picture is filled with one byte, its

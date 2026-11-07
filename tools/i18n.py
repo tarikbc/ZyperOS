@@ -265,7 +265,7 @@ def pseudo(s):
 
 # ---- writing -----------------------------------------------------------------
 
-HEAD = "/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */\n"
+HEAD = "/* SPDX-License-Identifier: GPL-3.0-only */\n"
 
 
 def c_literal(s):

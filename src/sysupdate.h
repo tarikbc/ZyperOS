@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* MENU > System Update: what its page says, from what the update program
  * (update/, docs/updates.md) last wrote and what the device knows. Like
  * sys_menu.c, nothing here touches SDL, a device or a file: main.c reads the

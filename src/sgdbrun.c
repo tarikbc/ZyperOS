@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See sgdbrun.h. Apart from sgdb.c the way ssrun.c is apart from ssfetch.c:
  * this half reaches for the card, the shrinker and the one async slot, and
  * that half is the reading and the judging. */

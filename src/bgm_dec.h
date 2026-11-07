@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* A menu music track, decoded a slice at a time: MP3 through minimp3, Ogg
  * Vorbis through stb_vorbis, both vendored in src/third_party/. Always
  * 16-bit stereo out, a mono track on both sides. See src/bgm.h. */

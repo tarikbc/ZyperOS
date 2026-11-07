@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Wi-Fi File Transfer's hotspot. See hotspot.h for what runs, and captive.h
  * for why every name a phone looks up answers with the handheld. */
 #include <stdio.h>

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The charging screen, while the handheld is off and on a charger (DESIGN.md
  * 11.25; my picks in the charging lab, 2026-11-06): its words, the time
  * to full, and its rules.

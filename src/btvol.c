@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See btvol.h. alsa-lib's simple mixer against bluealsa's control plugin:
  * forking amixer out of this process is what menu_wifi exists to avoid. */
 #include "btvol.h"

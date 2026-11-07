@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+// SPDX-License-Identifier: GPL-3.0-only
 import Foundation
 
 /// px2sim's line protocol, on the socket QEMU keeps for the VM's

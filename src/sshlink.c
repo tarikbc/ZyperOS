@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* See sshlink.h for what this is and what keeps it safe. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE

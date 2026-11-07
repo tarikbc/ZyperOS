@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* A QR code encoder: byte mode, level M, versions 1 to QR_VERSION_MAX. See
  * qr.h. The steps are the standard's, in its order: the bits, the error
  * correction, the blocks interleaved, the fixed patterns, the bits placed in

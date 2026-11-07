@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* zyperos-update: System Update for the card's ZyperOS folder.
  *
  *   zyperos-update check       is there a newer release? (status: available,

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Random Game: one game picked from the shelves, every game as likely as
  * every other - not every shelf, or a system with three games would come up
  * as often as one with three hundred.

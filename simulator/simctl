@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 # Drive a running ZyperOS Simulator window from a shell: one command, its
 # JSON answer on stdout.
 #

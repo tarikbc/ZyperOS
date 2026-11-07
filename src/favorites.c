@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Favorites. See favorites.h for the keying; this is the storage.
  *
  * One row per favorite in the library database, keyed "fav.<tag>\t<file>".

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Ogg Vorbis for menu music: stb_vorbis, vendored in src/third_party/, behind
  * the three calls src/bgm_dec.h names. A file of its own because minimp3,
  * in src/bgm_dec.c, has a function of the same name as one of its own. */

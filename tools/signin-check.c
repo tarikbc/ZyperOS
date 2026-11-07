@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* RetroAchievements sign-in, telling a wrong password from another refusal
  * from no answer at all, through the real src/rafetch.c and src/net.c, with
  * no network.

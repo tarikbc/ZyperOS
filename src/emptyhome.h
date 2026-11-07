@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef ZYPEROS_EMPTYHOME_H
 #define ZYPEROS_EMPTYHOME_H
 

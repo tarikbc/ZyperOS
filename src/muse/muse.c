@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Muse: the engine half of MP4, ZyperOS's media player (it was Muse, the
  * audio player, before it played video; the engine kept the name).
  *

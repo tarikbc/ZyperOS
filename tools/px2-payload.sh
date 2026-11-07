@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# SPDX-License-Identifier: GPL-3.0-only
 # The GKD Pixel 2's card payload, built from this working tree against
 # plastron's cross SDK, in Docker, without plastron's build volume:
 #

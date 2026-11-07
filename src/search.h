@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Search Games: what a typed query finds across every system's shelf.
  *
  * A game is found when every word typed is in its title - the scraped one

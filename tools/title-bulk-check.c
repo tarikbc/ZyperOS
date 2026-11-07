@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Real bulk driver, ScreenScraper runner/parser, library and database. Only
  * network, credentials and the image shrinker are stubbed. No live account. */
 #include "../src/artscrape.h"

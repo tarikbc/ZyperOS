@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* Finished pictures put on screen a few a frame (src/putpace.h,
  * src/texload.h's texload_deliver), on the launcher's own objects.
  *

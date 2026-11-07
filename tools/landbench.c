@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* The frame thread's time while a shelf lands, on the launcher's own objects
  * (make landbench). A measurement, not a check: it prints times and holds
  * nothing.

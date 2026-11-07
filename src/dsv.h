@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /* DraStic's Nintendo DS battery saves, taken over by DSperate.
  *
  * DraStic writes Saves/<rom name>.dsv: the save chip's bytes, then the
