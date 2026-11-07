@@ -31,7 +31,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
 REPO=tarikbc/ZyperOS
-PLASTRON=${PLASTRON:-$HOME/Programacao/plastron}
 # The cores: vendor/ of the main checkout (git's first worktree), which a
 # worktree like this one may not be
 VENDOR=${ZYPEROS_VENDOR:-$(git worktree list --porcelain | sed -n '1s/^worktree //p')/vendor}
@@ -81,12 +80,6 @@ if [ $PUBLISH = 1 ]; then
 	! gh release view "$TAG" --repo $REPO >/dev/null 2>&1 || stop "$REPO already has a $TAG release (a draft counts)"
 fi
 [ -d "$VENDOR/cores" ] || stop "no cores in $VENDOR/cores (ZYPEROS_VENDOR)"
-git -C "$PLASTRON" fetch -q origin
-[ "$(git -C "$PLASTRON" rev-parse --abbrev-ref HEAD)" = main ] || stop "$PLASTRON isn't on main"
-[ -z "$(git -C "$PLASTRON" status --porcelain --untracked-files=no)" ] || stop "$PLASTRON has changes"
-[ "$(git -C "$PLASTRON" rev-parse HEAD)" = "$(git -C "$PLASTRON" rev-parse origin/main)" ] ||
-	stop "$PLASTRON isn't main as GitHub has it: pull it first"
-PLASTRON_REV=$(git -C "$PLASTRON" rev-parse --short HEAD)
 # With no public key in res/update/keys the image has System Update off, and
 # the release has no update files. With one, a published release must carry a
 # signed list: the private key is checked for now, before the long build.
@@ -105,7 +98,7 @@ if [ $UPDATES = 1 ]; then
 else
 	echo "release.sh: no key in res/update/keys: System Update is off in this image, and the release has no update files"
 fi
-echo "ZyperOS $VERSION from $(git rev-parse --short HEAD), plastron $PLASTRON_REV"
+echo "ZyperOS $VERSION from $(git rev-parse --short HEAD), plastron/ with it"
 
 # The source as committed, never the working tree: a clean worktree of HEAD
 SRC=$(mktemp -d)/zyperos
@@ -116,6 +109,8 @@ cleanup() {
 }
 trap cleanup EXIT
 git worktree add -q --detach "$SRC" "$HEAD"
+# plastron/, the system, from the same commit
+PLASTRON=$SRC/plastron
 
 say "Waiting for $LOCK"
 until mkdir $LOCK 2>/dev/null; do
@@ -166,7 +161,7 @@ if [ $UPDATES = 1 ]; then
 	sign_list "$SYSTEM_PACK" "$SYSTEM_LIST"
 fi
 shasum -a 256 "$IMAGE" "$SOURCES" $UPDATE_FILES > SHA256SUMS
-printf 'ZyperOS %s (%s)\nplastron %s\n' "$VERSION" "$HEAD" "$(git -C "$PLASTRON" rev-parse HEAD)" > BUILT-FROM
+printf 'ZyperOS %s (%s), plastron/ included\n' "$VERSION" "$HEAD" > BUILT-FROM
 cat SHA256SUMS
 ls -l
 

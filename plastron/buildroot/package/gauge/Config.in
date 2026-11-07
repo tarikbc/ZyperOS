@@ -1,0 +1,10 @@
+config BR2_PACKAGE_GAUGE
+	bool "gauge"
+	help
+	  Shows the battery on the four lights on the side: a bar filling
+	  while charging, a red flash when the battery is low, and the level
+	  when asked (SIGUSR1). ZyperOS sends it more on the FIFO /run/gauge:
+	  the volume or brightness while it changes, a climb when files or
+	  covers finish, a sparkle for an achievement. ZyperOS's MENU > Side Lights picks which parts show
+	  (words in .userdata/pixel2/side-lights on the card, read again on
+	  SIGHUP). Started by init, with respawn.

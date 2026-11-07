@@ -1,0 +1,116 @@
+#!/bin/sh
+# Bluetooth on and off: the XR829's Bluetooth over its UART (ttyS1), BlueZ and
+# bluez-alsa, for ZyperOS's Bluetooth menu and headsets. On: the system log,
+# the modules, dbus, the chip attached by hciattach (Allwinner's xradio type,
+# which powers it through rfkill and uploads its firmware), hci0 up,
+# bluetoothd and bluealsa. Off: those stopped and the radio powered off: a
+# radio left on is battery spent. Each daemon is found by its PID file, never by name, as in
+# /etc/init.d/wpa_supplicant.
+M=/usr/lib/brick
+RFKILL=/sys/class/rfkill/rfkill0/state
+RUN=/var/run
+STATE=/var/lib/state
+BTPLAYER=/mnt/SDCARD/ZyperOS/btplayer
+
+# What Bluetooth keeps, on the card's plastron-state partition (ext4), as the
+# root is read-only: the pairings (/var/lib/bluetooth), the headsets' volumes
+# (/var/lib/bluealsa) and the adapter's address (/etc/bluetooth/xr_bt.conf),
+# links into it in the image. Mounted here and not at boot, as only Bluetooth
+# uses it and it starts after ZyperOS's first frame. Without it Bluetooth still
+# works, keeping nothing
+state() {
+	grep -q " $STATE " /proc/mounts && return 0
+	for p in /sys/class/block/mmcblk0p*; do
+		grep -q "^PARTNAME=plastron-state$" $p/uevent 2> /dev/null || continue
+		mount -t ext4 -o noatime /dev/${p##*/} $STATE &&
+			mkdir -p $STATE/bluetooth $STATE/bluealsa && return 0
+	done
+	echo "bluetooth: no plastron-state partition; nothing will be kept" > /dev/kmsg
+	return 1
+}
+
+running() {
+	p=$(cat "$1" 2> /dev/null)
+	[ -n "$p" ] && [ -d "/proc/$p" ]
+}
+
+# name: the PID file's; then the command, which must stay in the foreground
+daemon() {
+	n=$1
+	shift
+	running $RUN/$n.pid && return 0
+	"$@" > /dev/null 2>&1 &
+	echo $! > $RUN/$n.pid
+}
+
+stopd() {
+	p=$(cat $RUN/$1.pid 2> /dev/null)
+	if [ -n "$p" ]; then
+		kill "$p" 2> /dev/null
+		for i in $(seq 1 20); do
+			[ -d "/proc/$p" ] || break
+			sleep 0.1
+		done
+	fi
+	rm -f $RUN/$1.pid
+}
+
+# A clean attach takes about 5 s (measured). A failed one leaves the chip
+# wedged until its power is cycled (TrimUI's notes, 2026-09-03), so up to
+# three tries with a cycle between
+attach() {
+	for try in 1 2 3; do
+		daemon hciattach hciattach -n -t 20 ttyS1 xradio
+		for i in $(seq 1 75); do
+			[ -d /sys/class/bluetooth/hci0 ] && return 0
+			sleep 0.2
+		done
+		stopd hciattach
+		echo 0 > $RFKILL
+		sleep 2
+		echo 1 > $RFKILL
+		sleep 2
+	done
+	return 1
+}
+
+start() {
+	# The system log, first, so it hears everything below: bluetoothd and
+	# bluealsa (-S) log only to it. A ring in memory (logread prints it),
+	# lost at power-off; Muse's stall report saves a copy to the card
+	daemon syslogd syslogd -n -C64
+	state
+	for m in bluetooth hci_uart xradio_btlpm xradio_btfdi; do
+		grep -q "^$m " /proc/modules || insmod $M/$m.ko || return 1
+	done
+	if ! running $RUN/dbus.pid; then
+		mkdir -p /run/dbus
+		daemon dbus dbus-daemon --system --nofork --nopidfile
+	fi
+	[ -d /sys/class/bluetooth/hci0 ] || attach || return 1
+	hciconfig hci0 up || return 1
+	daemon bluetoothd /usr/libexec/bluetooth/bluetoothd
+	daemon bluealsa bluealsa -S -p a2dp-source -p hfp-ag --a2dp-volume
+	# ZyperOS's btplayer, from the card when it is there: a headset's play,
+	# pause, next and previous for Muse (they arrive as keys on its AVRCP
+	# keyboard, which nothing else reads), and its own volume. After
+	# bluetoothd, whose restart forgets the player it registers
+	[ -x $BTPLAYER ] && daemon btplayer $BTPLAYER
+}
+
+stop() {
+	stopd btplayer
+	stopd bluealsa
+	stopd bluetoothd
+	stopd hciattach
+	rm -f /tmp/zyperos_btsink
+	echo 0 > $RFKILL 2> /dev/null
+	stopd syslogd
+}
+
+case "$1" in
+	start) start ;;
+	stop) stop ;;
+	restart) stop; start ;;
+	*) echo "usage: $0 start|stop|restart" >&2; exit 1 ;;
+esac

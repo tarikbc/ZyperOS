@@ -1,0 +1,101 @@
+# QEMU's arm64 "virt" machine standing in for the GKD Pixel 2, for trying
+# ZyperOS without the device (docs/qemu.md, tools/qemu-run.sh). The base
+# system: px2_defconfig's toolchain, libraries and packages, less what drives
+# the Pixel 2's own parts (the bootloader, the jack, the USB role switch, USB
+# Wi-Fi), with a kernel for the virt machine, and those parts simulated
+# (package/px2sim). ZyperOS goes on top as on the Pixel 2 (board/zyperos/zyperos.config),
+# then board/qemu/zyperos-qemu.config (scripts/build.sh).
+
+# CPU and toolchain: the Pixel 2's, so the image's programs are the ones the
+# device runs (they run as they are on the Mac's cores, under HVF)
+BR2_aarch64=y
+BR2_cortex_a35=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
+BR2_GCC_VERSION_15_X=y
+BR2_KERNEL_HEADERS_6_19=y
+
+# System: as the Pixel 2's (busybox init, devtmpfs, no udev, no getty)
+BR2_TARGET_GENERIC_HOSTNAME="px2"
+BR2_TARGET_GENERIC_ISSUE="px2"
+BR2_INIT_BUSYBOX=y
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_PX2_PATH)/board/px2/busybox.fragment"
+BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_DEVTMPFS=y
+# BR2_TARGET_GENERIC_GETTY is not set
+# The Pixel 2's overlay, then the virt machine's, whose files win
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PX2_PATH)/board/px2/rootfs-overlay $(BR2_EXTERNAL_PX2_PATH)/board/qemu/rootfs-overlay"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/px2/post-build.sh $(BR2_EXTERNAL_PX2_PATH)/board/qemu/post-build.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/qemu/post-image.sh"
+# The network: virtio-net, its address from QEMU's DHCP (ifup at S40network)
+BR2_SYSTEM_DHCP="eth0"
+
+# Kernel: the Pixel 2's kernel.org 7.1.2, without ROCKNIX's patches, built
+# for the virt machine (board/qemu/linux-qemu.fragment). QEMU loads it
+# itself, so there is no bootloader and no device tree to build.
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="7.1.2"
+BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_PX2_PATH)/board/qemu/linux.config"
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+BR2_LINUX_KERNEL_NEEDS_HOST_LIBELF=y
+
+# SSH, over QEMU's forwarded port rather than the USB cable
+BR2_PACKAGE_DROPBEAR=y
+
+# Images: the Pixel 2's card layout (board/qemu/genimage.cfg), the root
+# squashfs
+# BR2_TARGET_ROOTFS_EXT2 is not set
+# BR2_TARGET_ROOTFS_TAR is not set
+BR2_PACKAGE_HOST_DOSFSTOOLS=y
+BR2_PACKAGE_HOST_GENIMAGE=y
+BR2_PACKAGE_HOST_MTOOLS=y
+
+# The display: the Pixel 2's Mesa and SDL2 on KMS, with Mesa's software
+# renderer for virtio-gpu, which has no 3D under QEMU on a Mac
+BR2_PACKAGE_LIBDRM=y
+BR2_PACKAGE_MESA3D_PX2=y
+BR2_PACKAGE_MESA3D_PX2_LLVMPIPE=y
+BR2_PACKAGE_SDL2=y
+BR2_PACKAGE_SDL2_KMSDRM=y
+BR2_PACKAGE_SDL2_OPENGLES=y
+
+# A press of the power key shuts down cleanly when the card has no ZyperOS
+BR2_PACKAGE_POWERKEY=y
+
+# The Pixel 2's buttons, battery, charger, backlight and side lights,
+# simulated, and the link to the simulator window (package/px2sim)
+BR2_PACKAGE_PX2SIM=y
+# The side lights show the battery, as on the Pixel 2 (gauge drives
+# px2sim's lights)
+BR2_PACKAGE_GAUGE=y
+
+# Sound: ALSA, on virtio-snd
+BR2_PACKAGE_ALSA_LIB=y
+
+BR2_TARGET_TZ_INFO=y
+
+# The data partition, made on the first boot as on the Pixel 2
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
+BR2_PACKAGE_UTIL_LINUX_PARTX=y
+BR2_PACKAGE_EXFATPROGS=y
+
+# wpa_supplicant and wpa_cli, which ZyperOS's Wi-Fi code runs: there is no
+# adapter to find, as on a Pixel 2 with none plugged in
+BR2_PACKAGE_WPA_SUPPLICANT=y
+BR2_PACKAGE_WPA_SUPPLICANT_NL80211=y
+BR2_PACKAGE_WPA_SUPPLICANT_CLI=y
+BR2_PACKAGE_WPA_SUPPLICANT_WPA3=y
+BR2_PACKAGE_LIBCURL=y
+BR2_PACKAGE_LIBCURL_CURL=y
+BR2_PACKAGE_LIBCURL_OPENSSL=y
+
+# The root read-only, squashfs with LZ4, as on the Pixel 2
+BR2_TARGET_ROOTFS_SQUASHFS=y
+BR2_TARGET_ROOTFS_SQUASHFS4_LZ4=y
+BR2_TARGET_ROOTFS_SQUASHFS_BS_256K=y
+# BR2_TARGET_GENERIC_REMOUNT_ROOTFS_RW is not set
+# BR2_PACKAGE_URANDOM_SCRIPTS is not set
+# mkimage, for boot.scr (board/zyperos/post-image-slots.sh)
+BR2_PACKAGE_HOST_UBOOT_TOOLS=y

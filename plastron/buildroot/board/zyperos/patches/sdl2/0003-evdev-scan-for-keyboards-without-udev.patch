@@ -1,0 +1,197 @@
+From: ZyperOS
+Subject: [PATCH] evdev: without udev, scan for keyboards and watch for new ones
+
+Without udev SDL found a keyboard or a mouse only when SDL_EVDEV_DEVICES
+named it ("TODO: Scan the devices manually, like a caveman"). plastron has
+no udev, so the keyboard PortMaster's gptokeyb makes for a port - the pad's
+presses as keys, which is how most ports are played - never reached the
+game, and a keyboard-driven port did not answer a single button.
+
+Now /dev/input is scanned at init and watched with inotify, and a keyboard
+proper (any of the first 32 keys, udev's ID_INPUT_KEYBOARD), a mouse or a
+touch screen is taken as udev would take it. Not a device with any key at
+all, as SDL's own guess has it: the power and volume buttons would then be
+keyboards in every SDL program. SDL_EVDEV_DEVICES still wins when it is set.
+---
+--- a/src/core/linux/SDL_evdev.c
++++ b/src/core/linux/SDL_evdev.c
+@@ -37,6 +37,11 @@
+ #include <fcntl.h>
+ #include <sys/ioctl.h>
+ #include <linux/input.h>
++#ifndef SDL_USE_LIBUDEV
++#include <dirent.h>
++#include <limits.h>
++#include <sys/inotify.h>
++#endif
+ 
+ #include "SDL.h"
+ #include "SDL_endian.h"
+@@ -119,6 +124,9 @@
+     SDL_evdevlist_item *first;
+     SDL_evdevlist_item *last;
+     SDL_EVDEV_keyboard_state *kbd;
++#ifndef SDL_USE_LIBUDEV
++    int inotify_fd; /* /dev/input watched for new devices, or -1 */
++#endif
+ } SDL_EVDEV_PrivateData;
+ 
+ #undef _THIS
+@@ -160,6 +168,116 @@
+     }
+ }
+ 
++#ifndef SDL_USE_LIBUDEV
++/* Without udev, the device at `path` if it is a keyboard, a mouse or a touch
++   screen, as SDL_EVDEV_udev_callback would take it. A keyboard here is one
++   with any of the first 32 keys (Esc, the digits, Q to D: udev's
++   ID_INPUT_KEYBOARD), not any device with a key: a handheld's power and
++   volume buttons are keys, and taking them for a keyboard would give every
++   SDL program key presses it never had before. What this is for is a virtual
++   keyboard such as PortMaster's gptokeyb makes for a port, the pad's
++   presses as keys, which SDL without udev never saw at all. */
++static void SDL_EVDEV_scan_one(const char *path)
++{
++    unsigned long bitmask_ev[NBITS(EV_MAX)] = { 0 };
++    unsigned long bitmask_abs[NBITS(ABS_MAX)] = { 0 };
++    unsigned long bitmask_key[NBITS(KEY_MAX)] = { 0 };
++    unsigned long bitmask_rel[NBITS(REL_MAX)] = { 0 };
++    int fd, devclass;
++
++    fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
++    if (fd < 0) {
++        return;
++    }
++    if (ioctl(fd, EVIOCGBIT(0, sizeof(bitmask_ev)), bitmask_ev) < 0 ||
++        ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(bitmask_abs)), bitmask_abs) < 0 ||
++        ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(bitmask_key)), bitmask_key) < 0 ||
++        ioctl(fd, EVIOCGBIT(EV_REL, sizeof(bitmask_rel)), bitmask_rel) < 0) {
++        close(fd);
++        return;
++    }
++    close(fd);
++
++    devclass = SDL_EVDEV_GuessDeviceClass(bitmask_ev, bitmask_abs, bitmask_key, bitmask_rel);
++    if (devclass & SDL_UDEV_DEVICE_JOYSTICK) {
++        return; /* the joystick code's, as with udev */
++    }
++    if (!(bitmask_key[0] & 0xFFFFFFFE)) {
++        devclass &= ~SDL_UDEV_DEVICE_KEYBOARD;
++    }
++    if (devclass & (SDL_UDEV_DEVICE_MOUSE | SDL_UDEV_DEVICE_KEYBOARD | SDL_UDEV_DEVICE_TOUCHSCREEN | SDL_UDEV_DEVICE_TOUCHPAD)) {
++        SDL_EVDEV_device_added(path, devclass);
++    }
++}
++
++/* Every event device there is now, and /dev/input watched for the ones that
++   come later: a port starts gptokeyb and its game together, and the game's
++   SDL may well be up before gptokeyb's keyboard is. The watch goes first, so
++   a device made during the scan is not missed (a second sighting of one is
++   ignored by SDL_EVDEV_device_added). */
++static void SDL_EVDEV_scan(void)
++{
++    char path[PATH_MAX];
++    struct dirent *entry;
++    DIR *dir;
++
++    _this->inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
++    if (_this->inotify_fd >= 0 &&
++        inotify_add_watch(_this->inotify_fd, "/dev/input", IN_CREATE | IN_DELETE) < 0) {
++        close(_this->inotify_fd);
++        _this->inotify_fd = -1;
++    }
++
++    dir = opendir("/dev/input");
++    if (!dir) {
++        return;
++    }
++    while ((entry = readdir(dir)) != NULL) {
++        if (SDL_strncmp(entry->d_name, "event", 5) == 0) {
++            (void)SDL_snprintf(path, sizeof(path), "/dev/input/%s", entry->d_name);
++            SDL_EVDEV_scan_one(path);
++        }
++    }
++    closedir(dir);
++}
++
++/* What came and went in /dev/input since the last poll. As the joystick
++   code's own inotify fallback reads it (LINUX_InotifyJoystickDetect). */
++static void SDL_EVDEV_inotify_poll(void)
++{
++    union
++    {
++        struct inotify_event event;
++        char storage[4096];
++        char enough_for_inotify[sizeof(struct inotify_event) + NAME_MAX + 1];
++    } buf;
++    char path[PATH_MAX];
++    ssize_t bytes;
++    size_t remain = 0;
++    size_t len;
++
++    bytes = read(_this->inotify_fd, &buf, sizeof(buf));
++    if (bytes > 0) {
++        remain = (size_t)bytes;
++    }
++    while (remain > 0) {
++        if (buf.event.len > 0 && SDL_strncmp(buf.event.name, "event", 5) == 0) {
++            (void)SDL_snprintf(path, sizeof(path), "/dev/input/%s", buf.event.name);
++            if (buf.event.mask & IN_CREATE) {
++                SDL_EVDEV_scan_one(path);
++            } else if (buf.event.mask & IN_DELETE) {
++                SDL_EVDEV_device_removed(path);
++            }
++        }
++        len = sizeof(struct inotify_event) + buf.event.len;
++        remain -= len;
++        if (remain != 0) {
++            SDL_memmove(&buf.storage[0], &buf.storage[len], remain);
++        }
++    }
++}
++#endif /* !SDL_USE_LIBUDEV */
++
+ int SDL_EVDEV_Init(void)
+ {
+     if (!_this) {
+@@ -167,6 +285,9 @@
+         if (!_this) {
+             return SDL_OutOfMemory();
+         }
++#ifndef SDL_USE_LIBUDEV
++        _this->inotify_fd = -1;
++#endif
+ 
+ #ifdef SDL_USE_LIBUDEV
+         if (SDL_UDEV_Init() < 0) {
+@@ -207,7 +328,7 @@
+                     }
+                 }
+             } else {
+-                /* TODO: Scan the devices manually, like a caveman */
++                SDL_EVDEV_scan();
+             }
+         }
+ #endif /* SDL_USE_LIBUDEV */
+@@ -236,6 +357,10 @@
+ #ifdef SDL_USE_LIBUDEV
+         SDL_UDEV_DelCallback(SDL_EVDEV_udev_callback);
+         SDL_UDEV_Quit();
++#else
++        if (_this->inotify_fd >= 0) {
++            close(_this->inotify_fd);
++        }
+ #endif /* SDL_USE_LIBUDEV */
+ 
+         /* Remove existing devices */
+@@ -320,6 +445,10 @@
+ 
+ #ifdef SDL_USE_LIBUDEV
+     SDL_UDEV_Poll();
++#else
++    if (_this->inotify_fd >= 0) {
++        SDL_EVDEV_inotify_poll();
++    }
+ #endif
+ 
+     SDL_EVDEV_kbd_update(_this->kbd);

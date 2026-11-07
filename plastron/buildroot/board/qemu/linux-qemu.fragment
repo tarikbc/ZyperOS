@@ -1,0 +1,115 @@
+# The kernel for QEMU's arm64 "virt" machine, as everything it is: added to
+# the kernel's allnoconfig by scripts/kernel-config-qemu.sh, which writes the
+# result to linux.config. Only what the virt machine and ZyperOS need, all
+# built in, except the virtio keyboard (below). The Pixel 2's own options
+# (ROCKNIX's patches, Panfrost, the RK817) have no place here; what this
+# kernel stands in for is listed in docs/qemu.md.
+
+# Its own name, so its modules never mix with the Pixel 2's 7.1.2 ones in an
+# output folder that built both
+CONFIG_LOCALVERSION="-qemu"
+CONFIG_PRINTK=y
+CONFIG_PRINTK_TIME=y
+CONFIG_MULTIUSER=y
+CONFIG_SYSVIPC=y
+CONFIG_POSIX_MQUEUE=y
+CONFIG_FHANDLE=y
+CONFIG_NO_HZ_IDLE=y
+CONFIG_HIGH_RES_TIMERS=y
+CONFIG_HZ_300=y
+CONFIG_SMP=y
+CONFIG_NR_CPUS=8
+CONFIG_SCHED_MC=y
+CONFIG_KALLSYMS=y
+CONFIG_BINFMT_ELF=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_SECCOMP=y
+
+# The virt machine: GIC, PCIe through the generic ECAM host, PL011 serial
+# (the console, which tools/qemu-run.sh keeps in a log), PL031 clock and
+# power off through PSCI, which ends QEMU
+CONFIG_PCI=y
+CONFIG_PCI_HOST_GENERIC=y
+CONFIG_SERIAL_AMBA_PL011=y
+CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+CONFIG_TTY=y
+CONFIG_UNIX98_PTYS=y
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_DRV_PL031=y
+# The clock from the host's at boot, and /dev/rtc0 for hwclock, as on the
+# Pixel 2 (ZyperOS's Date & Time sets it)
+CONFIG_RTC_HCTOSYS=y
+CONFIG_RTC_SYSTOHC=y
+CONFIG_RTC_INTF_SYSFS=y
+CONFIG_RTC_INTF_PROC=y
+CONFIG_RTC_INTF_DEV=y
+
+# virtio: the card (blk), the network (net, SSH on a forwarded port), the
+# display (gpu, KMS only: Mesa draws in software, see mesa3d-px2), sound and
+# random numbers. The keyboard is a module: plastron's px2sim loads it once
+# its pad, volume keys and power key are there, so they come first in
+# /dev/input, as the Pixel 2's do (see package/px2sim)
+CONFIG_VIRTIO_MENU=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_VIRTIO_MMIO=y
+CONFIG_BLK_DEV=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_NETDEVICES=y
+CONFIG_NET_CORE=y
+CONFIG_VIRTIO_NET=y
+CONFIG_DRM=y
+CONFIG_DRM_VIRTIO_GPU=y
+CONFIG_DRM_VIRTIO_GPU_KMS=y
+CONFIG_SYNC_FILE=y
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_HRTIMER=y
+CONFIG_SND_VIRTIO=y
+CONFIG_HW_RANDOM=y
+CONFIG_HW_RANDOM_VIRTIO=y
+CONFIG_INPUT=y
+CONFIG_INPUT_EVDEV=y
+CONFIG_INPUT_MISC=y
+CONFIG_INPUT_UINPUT=y
+CONFIG_MODULES=y
+CONFIG_VIRTIO_INPUT=m
+
+# The Pixel 2's own parts, simulated (package/px2sim): its battery and
+# charger, backlight and side lights as the same sysfs devices (a module,
+# px2sim_hw), and a virtio-serial port to the Mac's simulator window
+CONFIG_VIRTIO_CONSOLE=y
+CONFIG_POWER_SUPPLY=y
+# The charger's kind as the Pixel 2 tells it, the USB PHY's BC1.2 answer
+# (DCP a wall charger, SDP a computer) as an extcon, which px2sim_hw makes
+# and ZyperOS's charging screen reads (its src/device/pixel2.c, charge_kind)
+CONFIG_EXTCON=y
+CONFIG_BACKLIGHT_CLASS_DEVICE=y
+CONFIG_NEW_LEDS=y
+CONFIG_LEDS_CLASS=y
+
+# Networking for SSH and ZyperOS's file transfer page: IPv4 and v6, Unix
+# sockets (Diatom's), packet sockets (udhcpc)
+CONFIG_NET=y
+CONFIG_UNIX=y
+CONFIG_PACKET=y
+CONFIG_INET=y
+CONFIG_IPV6=y
+
+# The card's filesystems: the squashfs root, the FAT boot partition and the
+# exFAT games partition, as on the Pixel 2
+CONFIG_BLOCK=y
+CONFIG_MSDOS_PARTITION=y
+CONFIG_MISC_FILESYSTEMS=y
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_LZ4=y
+CONFIG_EXFAT_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ISO8859_1=y
+CONFIG_NLS_UTF8=y
+CONFIG_TMPFS=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_INOTIFY_USER=y

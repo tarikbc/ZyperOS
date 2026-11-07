@@ -24,8 +24,7 @@ The image comes from plastron (`make qemu` there: hours the first time,
 Buildroot's toolchain and then LLVM for Mesa's llvmpipe; minutes after that):
 
 ```sh
-cd ../plastron
-make qemu ZYPEROS_SRC=$PWD/../ZyperOS ZYPEROS_VENDOR=$PWD/../ZyperOS/vendor
+make -C plastron qemu
 ```
 
 It writes `out/qemu/sdcard.img` and `out/qemu/Image`. `tools/qemu-run.sh` takes

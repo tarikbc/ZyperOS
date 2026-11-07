@@ -1,0 +1,121 @@
+# GKD Pixel 2 (Rockchip RK3326S / PX30S): the base system. It boots, lights
+# the screen, plays sound, reads the buttons and powers off, and nothing about
+# it is ZyperOS's. ZyperOS goes on top: board/zyperos/zyperos.config, merged in by
+# scripts/build.sh.
+
+# CPU and toolchain. glibc, so prebuilt libretro cores and Diatom run as built.
+BR2_aarch64=y
+BR2_cortex_a35=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
+BR2_GCC_VERSION_15_X=y
+BR2_KERNEL_HEADERS_6_19=y
+
+# System: busybox init, devtmpfs, no udev
+BR2_TARGET_GENERIC_HOSTNAME="px2"
+BR2_TARGET_GENERIC_ISSUE="px2"
+BR2_INIT_BUSYBOX=y
+# No logger, kernel logger or cron: see the fragment
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_PX2_PATH)/board/px2/busybox.fragment"
+BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_DEVTMPFS=y
+# No getty: see board/px2/rootfs-overlay/etc/inittab
+# BR2_TARGET_GENERIC_GETTY is not set
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PX2_PATH)/board/px2/rootfs-overlay"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/px2/post-build.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/px2/post-image.sh"
+
+# Kernel: kernel.org 7.1.2 with ROCKNIX's patches, config and device tree
+# from their 20260901 release (the one that passed phase 0)
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION=y
+BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="7.1.2"
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_PX2_PATH)/board/px2/patches/linux"
+BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_PX2_PATH)/board/px2/linux.config"
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="rockchip/rk3326s-gkd-pixel2"
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+BR2_LINUX_KERNEL_NEEDS_HOST_LIBELF=y
+
+# Access over the USB cable
+BR2_PACKAGE_DROPBEAR=y
+
+# Images: FAT boot partition and one card image (see genimage.cfg); the root
+# is the squashfs below. No ext4 root any more: nothing has read rootfs.ext4
+# since the root went to squashfs, and its fixed 256 MB stopped the build once
+# the card's cores outgrew it (MAME 2003-Plus and the rest, 2026-11-04).
+# BR2_TARGET_ROOTFS_EXT2 is not set
+# BR2_TARGET_ROOTFS_TAR is not set
+BR2_PACKAGE_HOST_DOSFSTOOLS=y
+BR2_PACKAGE_HOST_GENIMAGE=y
+BR2_PACKAGE_HOST_MTOOLS=y
+BR2_PACKAGE_HOST_UBOOT_TOOLS=y
+
+# The display, from userspace: the splash and diatom drive it through libdrm
+BR2_PACKAGE_LIBDRM=y
+
+# Graphics: Mesa's Panfrost for the Mali-G31 (our package, see its Config.in)
+# and SDL2 drawing straight to the display with OpenGL ES, as ZyperOS does
+BR2_PACKAGE_MESA3D_PX2=y
+BR2_PACKAGE_SDL2=y
+BR2_PACKAGE_SDL2_KMSDRM=y
+BR2_PACKAGE_SDL2_OPENGLES=y
+
+# A press of the power button shuts down cleanly
+BR2_PACKAGE_POWERKEY=y
+BR2_PACKAGE_JACKSWITCH=y
+# The USB port a host for a USB-C DAC, a device for a computer, by the ID pin
+BR2_PACKAGE_USBROLE=y
+# The battery on the four lights on the side
+BR2_PACKAGE_GAUGE=y
+
+# Sound: ZyperOS, diatom (through SDL2) and jackswitch talk to ALSA directly
+BR2_PACKAGE_ALSA_LIB=y
+
+# Time zones, so local time can be any of them: ZyperOS's Date & Time chooses
+# one and sets TZ itself. The hardware clock keeps UTC, which is also the
+# system's own zone.
+BR2_TARGET_TZ_INFO=y
+
+# The data partition for games and saves (rootfs-overlay/etc/init.d/
+# datapart): sfdisk and partx add it on the first boot, mkfs.exfat formats
+# it and fsck.exfat repairs it
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
+BR2_PACKAGE_UTIL_LINUX_PARTX=y
+BR2_PACKAGE_EXFATPROGS=y
+
+# Wi-Fi from a USB adapter (the kernel's rtl8xxxu, a module usbrole loads when
+# one is plugged in): Realtek's firmware for the chips it drives, the
+# TL-WN725N v2/v3's RTL8188EUS among them, and wpa_supplicant and wpa_cli,
+# which ZyperOS drives (src/wifi.c), over nl80211, as on the Brick
+BR2_PACKAGE_LINUX_FIRMWARE=y
+BR2_PACKAGE_LINUX_FIRMWARE_RTL_81XX=y
+BR2_PACKAGE_WPA_SUPPLICANT=y
+BR2_PACKAGE_WPA_SUPPLICANT_NL80211=y
+BR2_PACKAGE_WPA_SUPPLICANT_CLI=y
+BR2_PACKAGE_WPA_SUPPLICANT_WPA3=y
+# And the wireless regulatory database, so the adapter follows the country's
+# rules rather than the kernel's conservative world ones (the kernel takes it
+# unsigned: linux-px2.config)
+BR2_PACKAGE_WIRELESS_REGDB=y
+# curl, which ZyperOS's online features run (src/net.c: scraping,
+# RetroAchievements), over OpenSSL, as on the Brick; ZyperOS brings its own CA
+# bundle
+BR2_PACKAGE_LIBCURL=y
+BR2_PACKAGE_LIBCURL_CURL=y
+BR2_PACKAGE_LIBCURL_OPENSSL=y
+
+# The root read-only, squashfs with LZ4 (board/px2/genimage.cfg and
+# boot.cmd); ext4 still built beside it, for writing by hand while developing.
+# Read-only, Buildroot points /etc/dropbear into RAM, so dropbear makes its
+# host key at each boot rather than writing one to the root. And no random
+# seed script (urandom-scripts), which keeps its seed on the root: datapart
+# keeps it on the card instead, and uses it before ZyperOS starts
+BR2_TARGET_ROOTFS_SQUASHFS=y
+BR2_TARGET_ROOTFS_SQUASHFS4_LZ4=y
+# 256 KB blocks rather than 128: Mesa's 13.8 MB library comes off the card in
+# fewer, larger reads (root mount to shelf about 17 ms sooner, 2026-10-23)
+BR2_TARGET_ROOTFS_SQUASHFS_BS_256K=y
+# BR2_TARGET_GENERIC_REMOUNT_ROOTFS_RW is not set
+# BR2_PACKAGE_URANDOM_SCRIPTS is not set

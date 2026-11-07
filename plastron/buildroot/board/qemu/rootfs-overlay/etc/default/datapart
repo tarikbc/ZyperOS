@@ -1,0 +1,4 @@
+# The data partition's label, as a Mac or PC shows it (see /etc/init.d/datapart),
+# and the card: QEMU's virtio disk rather than the Pixel 2's SD card
+DATA_LABEL=ZYPEROS
+CARD=/dev/vda

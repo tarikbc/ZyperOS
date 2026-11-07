@@ -1,0 +1,124 @@
+# TrimUI Brick (Allwinner A133P): the libraries and programs for our own
+# system on the Brick, built from source, all but Imagination's GPU
+# libraries (package/pvr-ge8300). The kernel and boot loader are built on
+# their own for now, in carapace and scute.
+
+# CPU and toolchain. glibc, as on the Pixel, so prebuilt libretro cores and
+# the GPU libraries run.
+BR2_aarch64=y
+BR2_cortex_a53=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
+BR2_GCC_VERSION_15_X=y
+# The headers of the kernel it runs on, Allwinner's 4.9: glibc refuses to
+# start on a kernel older than the headers it was built with
+BR2_KERNEL_HEADERS_VERSION=y
+BR2_DEFAULT_KERNEL_VERSION="4.9.337"
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_4_9=y
+# 4.9 predates the kernel's LICENSES folder: its license is COPYING alone
+BR2_PACKAGE_HOST_LINUX_HEADERS_LICENSE_FILES="COPYING"
+
+# System: busybox init, devtmpfs, no udev
+BR2_TARGET_GENERIC_HOSTNAME="brick"
+BR2_TARGET_GENERIC_ISSUE="brick"
+BR2_INIT_BUSYBOX=y
+BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_DEVTMPFS=y
+# No getty: see board/brick/rootfs-overlay/etc/inittab
+# Time zones, so local time can be any of them: ZyperOS's Date & Time chooses
+# one and sets TZ itself. The hardware clock keeps UTC, as on the Pixel 2.
+BR2_TARGET_TZ_INFO=y
+# BR2_TARGET_GENERIC_GETTY is not set
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_PX2_PATH)/board/brick/patches"
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PX2_PATH)/board/brick/rootfs-overlay"
+# udhcpd for the USB link: see the fragment
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_PX2_PATH)/board/brick/busybox.fragment"
+# A shell over the USB cable, as on the Pixel 2: dropbear, with the
+# developer's key in a development build (post-build.sh) and none in a
+# release, so nobody can log in to one. /etc/init.d/usbgadget starts it
+BR2_PACKAGE_DROPBEAR=y
+
+# Graphics: Imagination's GLES and EGL, and SDL2 drawing to the framebuffer
+# through them (the pvrfb video driver, see external.mk)
+BR2_PACKAGE_PVR_GE8300=y
+# ZyperOS's boot animation from the moment the framebuffer exists until
+# ZyperOS's first frame (splash-fb.c, inittab's first line, /etc/init.d/splash)
+BR2_PACKAGE_SPLASH=y
+# The kernel modules (the GPU's, the gamepad's) and the two startup tools, in
+# /usr/lib/brick, where /etc/init.d/brick loads and runs them
+BR2_PACKAGE_BRICK_KMODS=y
+BR2_PACKAGE_BRICK_TOOLS=y
+BR2_PACKAGE_SDL2=y
+BR2_PACKAGE_SDL2_OPENGLES=y
+
+# Sound: ZyperOS, Muse and diatom (through SDL2) talk to ALSA directly
+BR2_PACKAGE_ALSA_LIB=y
+
+# Wi-Fi: wpa_supplicant and wpa_cli, which ZyperOS drives (src/wifi.c), over
+# nl80211 as the XR829 driver is a cfg80211 one. WPA3 for networks that need
+# it; it brings in OpenSSL, which curl needs anyway.
+BR2_PACKAGE_WPA_SUPPLICANT=y
+BR2_PACKAGE_WPA_SUPPLICANT_NL80211=y
+BR2_PACKAGE_WPA_SUPPLICANT_CLI=y
+BR2_PACKAGE_WPA_SUPPLICANT_WPA3=y
+# The XR829's firmware, closed, from outside the repository (see its package)
+BR2_PACKAGE_XR829_FIRMWARE=y
+# curl, which ZyperOS's online features run (src/net.c: scraping,
+# RetroAchievements), over OpenSSL; ZyperOS brings its own CA bundle
+BR2_PACKAGE_LIBCURL=y
+BR2_PACKAGE_LIBCURL_CURL=y
+BR2_PACKAGE_LIBCURL_OPENSSL=y
+
+# Bluetooth: BlueZ with bluetoothctl and the tools ZyperOS runs (hcitool,
+# hciconfig) and hciattach, which attaches the XR829's Bluetooth over its UART
+# (board/brick/patches/bluez5_utils: Allwinner's xradio type, ported)
+BR2_PACKAGE_BLUEZ5_UTILS=y
+BR2_PACKAGE_BLUEZ5_UTILS_CLIENT=y
+BR2_PACKAGE_BLUEZ5_UTILS_TOOLS=y
+BR2_PACKAGE_BLUEZ5_UTILS_DEPRECATED=y
+# Sound to Bluetooth headsets: bluealsa (A2DP source, HFP gateway) and its
+# ALSA plugin, which ZyperOS's .asoundrc names (bt-alsa.sh)
+BR2_PACKAGE_BLUEZ_ALSA=y
+
+# Libraries ZyperOS and Diatom load, as on the Pixel: SDL2_image with PNG and
+# JPEG, SDL2_ttf, sqlite, zlib, FFmpeg for Muse
+BR2_PACKAGE_SDL2_IMAGE=y
+BR2_PACKAGE_LIBPNG=y
+BR2_PACKAGE_JPEG=y
+BR2_PACKAGE_SDL2_TTF=y
+BR2_PACKAGE_SQLITE=y
+BR2_PACKAGE_ZLIB=y
+BR2_PACKAGE_FFMPEG=y
+BR2_PACKAGE_FFMPEG_SWSCALE=y
+# BR2_PACKAGE_FFMPEG_FFMPEG is not set
+
+# ZyperOS (the launcher and Muse) and Diatom, built for the Brick from their
+# own repositories
+BR2_PACKAGE_ZYPEROS=y
+BR2_PACKAGE_DIATOM=y
+
+# sfdisk and partx, to add the games partition to a card on its first boot
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
+BR2_PACKAGE_UTIL_LINUX_PARTX=y
+# The games partition is exFAT, labeled ZYPEROS, as on the Pixel: mkfs.exfat
+# makes it, fsck.exfat repairs it after a power-off that left it dirty
+BR2_PACKAGE_EXFATPROGS=y
+
+# The boot files beside it (board/brick/post-image.sh): the initramfs, whose
+# one program is rootswitch, boot.scr made with mkimage, and the kernel,
+# device tree and boot loader from make brick-kernel and make brick-bootloader
+BR2_PACKAGE_BRICK_ROOTSWITCH=y
+BR2_PACKAGE_HOST_UBOOT_TOOLS=y
+BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/brick/post-image.sh"
+# The card image (board/brick/genimage.cfg), and ZyperOS's version written into
+# the startup script, which copies ZyperOS onto the card
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_PX2_PATH)/board/brick/post-build.sh"
+BR2_PACKAGE_HOST_DOSFSTOOLS=y
+# mkfs.ext4 on the build host, for the card image's empty state partition
+# (board/brick/post-image.sh)
+BR2_PACKAGE_HOST_E2FSPROGS=y
+BR2_PACKAGE_HOST_GENIMAGE=y
+BR2_PACKAGE_HOST_MTOOLS=y
+BR2_TARGET_ROOTFS_SQUASHFS=y
+BR2_TARGET_ROOTFS_SQUASHFS4_LZ4=y
+# BR2_TARGET_ROOTFS_TAR is not set

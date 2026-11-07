@@ -1,0 +1,31 @@
+#!/bin/sh
+# The last of a power-off ZyperOS asked for, on the Pixel 2, in place of
+# init's own end: so that a charger plugged in during it is not lost.
+#
+# The RK817 starts an off Pixel 2 when a cable comes, and only then. A cable
+# that comes while the power-off is still going (ZyperOS stopped, the
+# services, the card let go of, and busybox init's own 2 s of waits after
+# its last kill) comes while the PMIC is on, and once off the handheld
+# stayed off on the charger (2026-11-06). So the cable is read here,
+# the last thing before the end, and with it in the handheld restarts
+# instead: ZyperOS's launch.sh left off-pending on the card at the
+# power-off, and the launcher, finding that and the cable in, starts on its
+# charging screen. With it out, off at once, as init's waits would only
+# make room for a cable to be lost again.
+#
+# Anything else (a restart, a power-off from plastron's powerkey with no
+# ZyperOS, a device with no rk817-charger) goes on to init's own end as
+# before. Run by inittab after datapart stop, in place of its umount -a -r.
+
+ONLINE=/sys/class/power_supply/rk817-charger/online
+
+off=
+[ -e /tmp/zyperos_poweroff ] && [ ! -e /tmp/zyperos_reboot ] && [ -e "$ONLINE" ] && off=1
+# Read before the unmount, which takes /sys and /tmp with it: the end is
+# a few ms after
+on=0
+[ -n "$off" ] && read -r on < "$ONLINE"
+umount -a -r
+[ -n "$off" ] || exit 0
+[ "$on" = 1 ] && reboot -f
+poweroff -f

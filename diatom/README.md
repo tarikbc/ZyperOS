@@ -51,7 +51,7 @@ alone is a stricter test than designing for one embedder.
     make                        desktop (SDL2), for iteration
     make check                  the checks below; run before committing
 
-The devices' builds are [plastron](https://github.com/tarikbc/plastron)'s:
+The devices' builds are [plastron](../plastron/)'s:
 its Buildroot builds Diatom for the TrimUI Brick and the GKD Pixel 2 with its
 own compiler and SDL2 (`PORT=brick` or `PORT=pixel2`, SDL2 found with
 pkg-config), from this working tree.

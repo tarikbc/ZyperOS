@@ -1,0 +1,68 @@
+#!/bin/sh
+# The developer's SSH public key, as on the Pixel 2: from local/authorized_keys
+# (gitignored) into a development build, and taken out of a release
+# (PLASTRON_RELEASE=1, set by scripts/release.sh), where without a key nobody
+# can log in, as root has no password and dropbear turns down an empty one.
+set -eu
+KEYS=$BR2_EXTERNAL_PX2_PATH/../local/authorized_keys
+if [ "${PLASTRON_RELEASE:-0}" = 1 ]; then
+	rm -rf "$TARGET_DIR/root/.ssh"
+	# And dropbear never starts, as nobody could log in to it: the program
+	# stays, as the package list says, but nothing runs it
+	rm -f "$TARGET_DIR/etc/init.d/S50dropbear"
+elif [ -f "$KEYS" ]; then
+	install -d -m 700 "$TARGET_DIR/root/.ssh"
+	install -m 600 "$KEYS" "$TARGET_DIR/root/.ssh/authorized_keys"
+fi
+
+# ZyperOS's version, as a number, into its init script (package/zyperos's
+# zyperos.init), so a boot compares the card's against it without reading the
+# image's VERSION file, as the Pixel 2's post-build.sh does. Worked out by the
+# script's own version_of, so the two can't disagree.
+INIT=$TARGET_DIR/etc/init.d/zyperos
+SEED_VERSION=$TARGET_DIR/usr/share/zyperos/card/ZyperOS/VERSION
+if [ -f "$INIT" ] && [ -f "$SEED_VERSION" ]; then
+	eval "$(sed -n '/^version_of()/,/^}/p' "$INIT")"
+	version_of "$SEED_VERSION" && sed -i "s/^SEED_V=.*/SEED_V=$v/" "$INIT"
+	grep "^SEED_V=" "$INIT"
+fi
+
+# When this system was built, into datapart, which sets a clock that reads
+# after 2070 (TrimUI's firmware's RTC year) to it on a fresh card's first boot
+DATAPART=$TARGET_DIR/etc/init.d/datapart
+sed -i "s/^BUILT=.*/BUILT=$(date +%s)/" "$DATAPART"
+grep "^BUILT=" "$DATAPART"
+
+# Finder leaves .DS_Store files in the overlay folders on a Mac
+find "$TARGET_DIR" -name .DS_Store -delete
+
+# The games partition's mount point, made here rather than at boot: on a
+# squashfs root nothing can be made at boot, and datapart's mkdir would
+# fail, leaving the card unmounted and ZyperOS with nowhere to start from
+mkdir -p "$TARGET_DIR/mnt/SDCARD"
+
+# Bluetooth's lasting state, on the plastron-state partition that
+# init.d/bluetooth mounts at /var/lib/state, as the root is read-only: the
+# pairings, the headsets' volumes, and the adapter's address (xr_bt.conf,
+# which hciattach makes at the first attach). Everything else that changes at
+# run time is already in the RAM filesystems (/var/run, /var/log, /var/lib/dbus)
+mkdir -p "${TARGET_DIR:?}/var/lib/state"
+rm -rf "${TARGET_DIR:?}/var/lib/bluetooth" "${TARGET_DIR:?}/var/lib/bluealsa"
+ln -s state/bluetooth "$TARGET_DIR/var/lib/bluetooth"
+ln -s state/bluealsa "$TARGET_DIR/var/lib/bluealsa"
+ln -sfn ../../var/lib/state/xr_bt.conf "$TARGET_DIR/etc/bluetooth/xr_bt.conf"
+
+# The licenses, on the card where a player can find them: a Licenses folder
+# beside ZyperOS's, which the first boot and every ZyperOS update copy onto the
+# card with it. plastron's notice and this image's package list, Diatom's
+# notice, and ZyperOS's
+SEED_CARD=$TARGET_DIR/usr/share/zyperos/card
+if [ -d "$SEED_CARD" ]; then
+	L=$SEED_CARD/Licenses
+	mkdir -p "$L"
+	cp "$BR2_EXTERNAL_PX2_PATH/../THIRD-PARTY.md" "$L/plastron.md"
+	cp "$BR2_EXTERNAL_PX2_PATH/board/brick/third-party-packages.md" "$L/plastron-packages.md"
+	[ -f /zyperos/diatom/THIRD-PARTY.md ] && cp /zyperos/diatom/THIRD-PARTY.md "$L/Diatom.md"
+	[ -f "$SEED_CARD/ZyperOS/THIRD-PARTY-LICENSES.md" ] && cp "$SEED_CARD/ZyperOS/THIRD-PARTY-LICENSES.md" "$L/ZyperOS.md"
+	ls "$L"
+fi

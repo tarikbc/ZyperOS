@@ -1,0 +1,20 @@
+# U-Boot's qemu_arm64, as the QEMU image's bootloader (scripts/
+# build-qemu-uboot.sh): what boot.scr (board/zyperos/boot-slots.cmd) needs,
+# as the Pixel 2's U-Boot has it, and no wait for a key.
+CONFIG_BOOTDELAY=0
+CONFIG_HUSH_PARSER=y
+CONFIG_CMD_FAT=y
+CONFIG_FS_FAT=y
+CONFIG_FAT_WRITE=y
+CONFIG_CMD_SETEXPR=y
+CONFIG_CMD_ITEST=y
+CONFIG_CMD_EXPORTENV=y
+CONFIG_CMD_IMPORTENV=y
+# Its capsule tool needs GnuTLS, which the build container doesn't have
+CONFIG_TOOLS_MKEFICAPSULE=n
+# No video: the kernel draws; U-Boot need not. (QEMU runs this U-Boot on its
+# own CPU, TCG, not Apple's hypervisor: under hvf, U-Boot writing into the
+# flash it starts from stops QEMU with an "isv" assertion. ZyperOS's
+# tools/qemu-run.sh chooses.)
+# CONFIG_VIDEO is not set
+CONFIG_SYS_CONSOLE_INFO_QUIET=y

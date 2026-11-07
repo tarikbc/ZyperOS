@@ -1,0 +1,136 @@
+#!/bin/sh
+# The card's third partition, for games, saves and music: exFAT, so a Mac or
+# PC can read and write it. The card image only has boot and root, so on the
+# first boot this adds the partition over the rest of the card, whatever its
+# size, and formats it. Every boot after that just mounts it.
+#
+# Run by init straight after the basic mounts (see /etc/inittab), not by rcS
+# with the other startup scripts: ZyperOS needs this and nothing else from
+# them, and starts the moment it is done. `stop` unmounts it at shutdown.
+#
+# The label comes from /etc/default/datapart (DATA_LABEL=...), if there is one,
+# and so does the card, where it isn't the SD card (CARD=/dev/vda: QEMU's
+# virtio disk, plastron's qemu_defconfig).
+
+CARD=/dev/mmcblk0
+MOUNT=/mnt/SDCARD
+DATA_LABEL=PIXEL2
+[ -r /etc/default/datapart ] && . /etc/default/datapart
+# A disk whose name ends in a digit numbers its partitions after a p
+# (mmcblk0p3), any other straight after its name (vda3)
+case $CARD in
+*[0-9]) PART=${CARD}p ;;
+*) PART=$CARD ;;
+esac
+DATA=${PART}3
+DISK=/sys/block/${CARD#/dev/}
+
+create() {
+	echo "datapart: first boot, adding $DATA over the rest of the card" > /dev/kmsg
+	# Right after the system, on a 4 MiB boundary (the card's erase blocks):
+	# after root, or after root B (partition 4) on a card with two system
+	# slots, which comes after root A (ZyperOS's docs/updates.md). The start
+	# has to be given: left to itself, sfdisk takes the first free gap,
+	# which is the bootloader's, between sector 64 and boot at 16 MiB. Type
+	# 7 is exFAT in an MBR table; the size is the rest of the card. -N 3: the
+	# third entry, which a card with slots leaves free for it.
+	start=0
+	for n in 2 4; do
+		p=$DISK/${PART#/dev/}$n
+		[ -f $p/start ] || continue
+		end=$(( $(cat $p/start) + $(cat $p/size) ))
+		[ $end -gt $start ] && start=$end
+	done
+	start=$(( (start + 8191) / 8192 * 8192 ))
+	echo "start=$start, type=7" | sfdisk --quiet -N 3 --no-reread $CARD || return 1
+	# Root is mounted, so the kernel won't re-read the whole table; add the
+	# one partition instead
+	partx --add --nr 3 $CARD || return 1
+	# 32 KB clusters, as on the Brick: Linux reads a folder a whole cluster at
+	# a time, and mkfs.exfat's own choice, 128 KB on a card this size, made
+	# every folder ZyperOS reads at boot cost 128 KB of card
+	mkfs.exfat -c 32K -L "$DATA_LABEL" $DATA > /dev/null || return 1
+	echo "datapart: $DATA formatted as exFAT, label $DATA_LABEL" > /dev/kmsg
+}
+
+# A partition that was not unmounted cleanly (a flat battery, a pulled cable)
+# is checked and repaired before it is mounted. Linux will not do it, and will
+# not forget it either: a volume that is dirty when mounted stays dirty for
+# good, however cleanly it is unmounted after (fs/exfat keeps the flag as
+# persistent), so one bad power-off had every later boot warning that the
+# card needed fsck - seen 2026-10-02 after shutdowns that unmounted fine. The
+# flag is bit 1 of VolumeFlags, byte 106 of the boot sector: one od, so a
+# clean boot pays for reading one byte.
+repair() {
+	flags=$(od -An -tu1 -j106 -N1 $DATA)
+	[ $(( flags & 2 )) -eq 0 ] && return
+	echo "datapart: $DATA was not unmounted cleanly; checking it" > /dev/kmsg
+	fsck.exfat -p $DATA > /dev/null 2>&1
+	echo "datapart: fsck.exfat finished with status $?" > /dev/kmsg
+}
+
+start() {
+	# The card read ahead 2 MB at a time rather than 128 KB, before anything
+	# after this reads it, as on the Brick (its /etc/init.d/brick), where it
+	# took 40-90 ms off ZyperOS's start. A built-in, so no process for it
+	echo 2048 > $DISK/queue/read_ahead_kb
+	new=
+	if [ ! -b $DATA ]; then
+		create || {
+			echo "datapart: couldn't create $DATA" > /dev/kmsg
+			return 1
+		}
+		new=1
+	else
+		repair
+	fi
+	mkdir -p $MOUNT
+	mount -t exfat -o noatime $DATA $MOUNT || return 1
+	# The kernel's random numbers ready at once: last boot's seed from the
+	# card, and a fresh one written for the next. The read-only root can't
+	# keep it where Linux usually does, so it lives on the writable partition,
+	# as ROCKNIX keeps its own. Here, before ZyperOS starts: Mesa asks for
+	# random numbers as ZyperOS sets up its video, and with no seed that
+	# waited until the kernel had gathered its own, 4.0 s into the boot
+	# (2026-10-23). The seed the kernel counts is the one stop saves at
+	# shutdown; a new card's first boot, or one after a power loss, waits once.
+	# In the background: seedrng credits the seed at once, then writes the
+	# next and forces it onto the card, which on an SD card can take a few
+	# hundred milliseconds, and ZyperOS needn't wait for that
+	mkdir -p $MOUNT/.plastron/seedrng
+	seedrng -d $MOUNT/.plastron/seedrng > /dev/null 2>&1 &
+	# Keeps a Mac from building a Spotlight index of the whole card
+	if [ -n "$new" ]; then
+		touch $MOUNT/.metadata_never_index
+	fi
+}
+
+# At shutdown, after init's SIGTERM, as soon as nothing is using it. The
+# programs that run from the card take a moment to go: Diatom took 280 ms,
+# measured 2026-10-02, and the 200 ms init waited before its umount -a was
+# too short every time - the umount failed, the read-only remount it falls
+# back to leaves an exFAT volume dirty, and the next boot had to repair it.
+# Tried every 50 ms, so it waits only as long as they need, up to 3 s; past
+# that it is left to the repair at the next boot.
+stop() {
+	grep -q " $MOUNT " /proc/mounts || return 0
+	# A fresh seed for the next boot, now that the kernel's random numbers are
+	# long ready: only a seed made then is one the kernel can count on. The
+	# one written at boot counts only if the seed it found did, so without
+	# this a new card, or a boot after a power loss, would never recover
+	seedrng -d $MOUNT/.plastron/seedrng > /dev/null 2>&1
+	n=0
+	until umount $MOUNT 2>/dev/null; do
+		n=$((n + 1))
+		if [ $n -ge 60 ]; then
+			echo "datapart: $MOUNT still in use after 3 s, left for the next boot to check" > /dev/kmsg
+			return 1
+		fi
+		usleep 50000
+	done
+}
+
+case "$1" in
+start) start ;;
+stop) stop ;;
+esac

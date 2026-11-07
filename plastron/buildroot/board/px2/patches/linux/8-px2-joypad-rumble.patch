@@ -1,0 +1,96 @@
+From: plastron
+Subject: [PATCH] input: rocknix-singleadc-joypad: rumble that holds up on the GKD Pixel 2
+
+Two fixes to the driver's rumble path (its has_rumble side, which the
+GKD Pixel 2's device tree turns on by giving the joypad PWM0).
+
+No mutex in rumble_play_effect(). ff-memless calls it with the input
+device's event_lock held and interrupts off, from a write to the device
+and from its own timer. Uncontended, mutex_lock() passed; held by the
+play work (applying the PWM, which sleeps), it slept in atomic context,
+and Crazy Taxi 2, which eases its rumble every frame, froze the device
+within seconds (2026-11-05). The level is one u16, written whole, and the
+work still reads it under the mutex.
+
+The pin settled at probe. PWM0 comes up latched driving its pin high,
+which runs the motor. The probe applies the off state with the device
+tree's normal polarity, and the registers take it (the PWM debugfs reads
+back "disabled, normal polarity"), but the pin stays high: read from the
+pin through the GPIO block, it went low only once the channel had run, at
+any duty. So the motor ran from the moment the pin became PWM0 until a
+game first stopped a rumble. ROCKNIX's 030-pwm-vibra-kick-stuck-boot-state
+did the same for pwm-vibrator with a ramp from 90% duty over 250 ms, felt
+at every boot. This runs the channel once at 0% duty, low on the pin, for
+three periods (3 ms at the device tree's 1 ms), then turns it off: the pin
+reads low from then on, and there is nothing to feel.
+
+---
+ drivers/input/joystick/rocknix-singleadc-joypad.c | 41 ++++++++++++++++++++++++++++------
+ 1 file changed, 34 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/input/joystick/rocknix-singleadc-joypad.c b/drivers/input/joystick/rocknix-singleadc-joypad.c
+--- a/drivers/input/joystick/rocknix-singleadc-joypad.c
++++ b/drivers/input/joystick/rocknix-singleadc-joypad.c
+@@ -777,21 +777,25 @@
+ 	if (effect->type != FF_RUMBLE)
+ 		 return 0;
+ 
+-	mutex_lock(&joypad->lock);
+-	if (!joypad->rumble_enabled) {
+-		mutex_unlock(&joypad->lock);
++	/*
++	 * No mutex here: ff-memless calls this with the input device's
++	 * event_lock held and interrupts off, from a write to the device and
++	 * from its own timer. Uncontended, mutex_lock() passed; held by the
++	 * play work below (applying the PWM, which sleeps) it slept in atomic
++	 * context, and a game changing its rumble every frame froze the
++	 * GKD Pixel 2 within seconds. The level is one u16, written whole, and
++	 * the work reads it under the mutex as before.
++	 */
++	if (!READ_ONCE(joypad->rumble_enabled))
+ 		return 0; // Ignore rumble effects if disabled
+-	}
+ 
+ 	if (effect->u.rumble.strong_magnitude)
+ 		boosted_level = effect->u.rumble.strong_magnitude + joypad->boost_strong;
+ 	else
+ 		boosted_level = effect->u.rumble.weak_magnitude + joypad->boost_weak;
+ 
+-	joypad->level = (u16)CLAMP(boosted_level, 0, 0xffff);
++	WRITE_ONCE(joypad->level, (u16)CLAMP(boosted_level, 0, 0xffff));
+ 
+-	mutex_unlock(&joypad->lock);
+-
+ 	schedule_work(&joypad->play_work);
+ 	return 0;
+ }
+@@ -825,6 +829,29 @@
+ 		 return error;
+ 	}
+ 
++	/*
++	 * On the GKD Pixel 2 (PX30S) the channel comes up latched driving its
++	 * pin high, which runs the motor, and the off state applied above
++	 * changes the registers but not the pin: read back from the pin, it
++	 * stays high until the channel has run once. So run it once, at 0%
++	 * duty (low on the pin, nothing to feel), for three of its periods,
++	 * and turn it off again.
++	 */
++	state.duty_cycle = 0;
++	state.enabled = true;
++	error = pwm_apply_might_sleep(joypad->pwm, &state);
++	if (!error) {
++		unsigned long us = (unsigned long)div_u64(state.period, 1000) * 3;
++
++		usleep_range(us, us + 1000);
++		state.enabled = false;
++		error = pwm_apply_might_sleep(joypad->pwm, &state);
++	}
++	if (error) {
++		dev_err(dev, "failed to settle the PWM's pin: %d", error);
++		return error;
++	}
++
+ 	dev_info(dev, "rumble setup success!\n");
+ 	return 0;
+ }

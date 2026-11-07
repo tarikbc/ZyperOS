@@ -1,0 +1,9 @@
+# Build output, copied out of the Docker volume
+/out/
+# The developer's own files: SSH public key for the image
+/local/
+# Finder
+.DS_Store
+
+# Retired things kept for reference, out of the repository
+/attic/
