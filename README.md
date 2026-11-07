@@ -429,6 +429,17 @@ With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game'
 
 Press X on the game, choose **Delete Game** at the bottom of its details, and answer **Delete**. The cursor starts on **Cancel**, and B is Cancel too. It works from Favorites as well.
 
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/info-delete.png" width="320" alt="A game's details, the cursor on Delete Game"><br><sub>Delete Game, the last row of a game's details</sub></td>
+    <td align="center"><img src="res/readme/delete-ask.png" width="320" alt="Delete Game's question: Delete Metal Gear Solid? Its saves and states, cover and video go too. This cannot be undone. Delete, and Cancel under the cursor"><br><sub>It asks first, on Cancel</sub></td>
+  </tr>
+</table>
+
+</div>
+
 What goes, and nothing else:
 
 - **The game:** its file, or its folder for a game in a folder of its own (a multi-disc set with its `.m3u`, a ScummVM game). A `.cue`, `.gdi` or `.toc` at the top of the folder takes the track files it names, and a `.cue` its `.sbi`. An arcade set is its `.zip`, and on NAOMI and Atomiswave the folder of its name that holds its CHD.
