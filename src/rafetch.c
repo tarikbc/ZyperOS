@@ -65,8 +65,7 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn)
 	char body[2048];
 	net_field f[3];
 	jsv root, v;
-	long got;
-	int http;
+	int http = 0;
 
 	if (err && errn) err[0] = '\0';
 	if (!user || !*user || !password || !*password) {
@@ -81,22 +80,26 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn)
 	f[0].k = "r"; f[0].v = "login2";
 	f[1].k = "u"; f[1].v = user;
 	f[2].k = "p"; f[2].v = password;
-	got = net_post_buf(f, 3, body, sizeof body, 20, &http);
-	/* The status first, because a refusal has no body to read (curl runs
-	 * with `fail`). RetroAchievements answers a wrong user name or password
-	 * with 401; any other refusal is theirs to explain, and its number is
-	 * what a player can look up or pass on. Only when nothing answered at
-	 * all - no DNS, no route, the timeout - is the site out of reach. */
-	if (http == 401) {
-		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_WRONG));
-		return false;
-	}
-	if (http >= 300) {
-		if (err) snprintf(err, errn, T(S_RA_SIGN_IN_REFUSED_HTTP), http);
-		return false;
-	}
-	if (got < 0) {
-		if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_REACH));
+	/* Three failures, each with what to do about it: RetroAchievements
+	 * answers a wrong user or password with 401 (and its body, which `fail`
+	 * drops), any other refusal with its own status, which a person can look
+	 * up or pass on, and a network that is not there with nothing at all. It
+	 * was "could not reach" for all three, which sent people to their Wi-Fi
+	 * for a mistyped password. A 2xx too long to read whole is no token. */
+	if (net_post_answer(f, 3, body, sizeof body, 20, &http) < 0) {
+		if (http == 401) {
+			if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_WRONG));
+		} else if (http >= 200 && http <= 299) {
+			if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_TOKEN));
+		} else if (http) {
+			if (err) snprintf(err, errn, T(S_RA_SIGN_IN_HTTP_ANSWER), http);
+		} else {
+			if (err) snprintf(err, errn, "%s", T(S_RA_SIGN_IN_NO_REACH));
+		}
+		fprintf(stderr, "ra: sign-in %s (HTTP %d)\n",
+		        http == 401 ? "refused: wrong user or password"
+		        : http >= 200 && http <= 299 ? "reply too long to read"
+		        : http ? "refused" : "had no answer", http);
 		return false;
 	}
 
@@ -419,7 +422,7 @@ int ra_submit_unlock_as(const char *user, const char *token,
 	if (rom_hash && *rom_hash) { f[n].k = "m"; f[n++].v = rom_hash; }
 	f[n].k = "v"; f[n++].v = v;
 
-	if (net_post_buf(f, n, body, sizeof body, 20, NULL) < 0) return -1;
+	if (net_post_buf(f, n, body, sizeof body, 20) < 0) return -1;
 
 	root = js_root(body, strlen(body));
 	if (js_member(root, "Success", &m) && js_is_true(m)) return RA_SUBMIT_SENT;

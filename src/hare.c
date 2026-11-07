@@ -33,8 +33,8 @@
 
 static char     g_web[XFER_PATH_MAX];
 static char     g_captive[32];   /* the hotspot's address: hare_set_captive */
+static bool     g_cable;         /* served over the USB cable: hare_set_cable */
 static char     g_ssh[64];                   /* hare_set_ssh: user@address, or "" */
-static char     g_page[XFER_NAME_MAX + 1];   /* hare_set_page: "" is index.html */
 static unsigned (*g_folder_color)(const char *folder);   /* hare_set_folder_color */
 static const char *(*g_folder_icon)(const char *folder); /* hare_set_folder_icon */
 static char     g_icons[XFER_PATH_MAX];      /* hare_set_icons: the pictures */
@@ -436,14 +436,11 @@ void hare_set_captive(const char *addr)
 	snprintf(g_captive, sizeof g_captive, "%s", addr ? addr : "");
 }
 
+void hare_set_cable(bool cable) { g_cable = cable; }
+
 void hare_set_ssh(const char *who)
 {
 	snprintf(g_ssh, sizeof g_ssh, "%s", who ? who : "");
-}
-
-void hare_set_page(const char *page)
-{
-	snprintf(g_page, sizeof g_page, "%s", page ? page : "");
 }
 
 void hare_set_folder_color(unsigned (*color)(const char *folder))
@@ -820,6 +817,64 @@ static void route_list(httpd_req *r)
 	free(j.p);
 }
 
+/* ---- the page's trailer ---------------------------------------------------
+ *
+ * Over the USB cable Safari never hands the page the answer to a PUT whose
+ * body is an exact multiple of 131,072 bytes (128 KiB): the file lands whole,
+ * this answers, and the page sat at 100% on that file for good, the queue
+ * behind it stopped with it. fetch() hears the answer, but Safari then keeps
+ * that connection busy for good, and it has six to a host.
+ *
+ * So the page sends a file of such a size with these 16 bytes after it, and
+ * says so in the URL, trailer=16 (app.js, trailed()), and the body is never
+ * a multiple of 128 KiB. Here the bytes are checked, every one, and cut off
+ * the part-file before it takes the file's name: on the card, exactly what
+ * the person chose. Every PUT of a file the page makes goes that way - the
+ * uploads, the covers it fetches, the System Update files - and from any
+ * browser, over either link: there is no telling Safari apart, and no need.
+ *
+ * An upload that does not say so (curl, a script, an older page) is stored
+ * as sent, whatever its end. One that says another length, is shorter than
+ * the trailer, or does not end with it is refused: nothing it carried is
+ * stored, the file of that name is as it was, and its part-file goes. The
+ * bytes are text a person can read in a capture, and long enough that a file
+ * that happens to end in them, sent by a page that forgot them, is not a
+ * worry. */
+#define TRAILER "--zyperos-pad--\n"
+#define TRAILER_LEN (sizeof TRAILER - 1)
+
+/* How many bytes at the end of a PUT's body are the page's trailer: 0 when
+ * the request does not say, TRAILER_LEN when it does, -1 when it says
+ * something else or its body is too short to end with one */
+static long trailer_of(const httpd_req *r)
+{
+	char want[8], got[8];
+
+	if (!httpd_query(r, "trailer", got, sizeof got)[0]) return 0;
+	snprintf(want, sizeof want, "%zu", TRAILER_LEN);
+	if (strcmp(got, want) || httpd_content_len(r) < (long)TRAILER_LEN) return -1;
+	return (long)TRAILER_LEN;
+}
+
+/* The trailer off a part-file that arrived whole: its last TRAILER_LEN bytes
+ * checked to be it, then cut. False, with the part-file as it was, when they
+ * are not or the cut fails: the caller removes it, and nothing is stored. */
+static bool trailer_off(const char *part)
+{
+	char end[TRAILER_LEN];
+	struct stat st;
+	bool ok;
+	int fd = open(part, O_RDWR | O_CLOEXEC);
+
+	if (fd < 0) return false;
+	ok = fstat(fd, &st) == 0 && st.st_size >= (off_t)TRAILER_LEN &&
+	     pread(fd, end, sizeof end, st.st_size - (off_t)TRAILER_LEN) == (ssize_t)sizeof end &&
+	     !memcmp(end, TRAILER, sizeof end) &&
+	     ftruncate(fd, st.st_size - (off_t)TRAILER_LEN) == 0;
+	if (close(fd) != 0) ok = false;
+	return ok;
+}
+
 /* Is there room for `want` more bytes where `path` is going? */
 static bool room_for(const char *path, long want)
 {
@@ -845,46 +900,6 @@ static bool card_space(long long *free, long long *total)
 	*free = (long long)vfs.f_bavail * (long long)vfs.f_frsize;
 	*total = (long long)vfs.f_blocks * (long long)vfs.f_frsize;
 	return true;
-}
-
-/* SAFARI AND UPLOADS OF A MULTIPLE OF 128 KiB.
- *
- * Over the USB cable, Safari's XMLHttpRequest never hands the page the answer
- * to an upload whose body is an exact multiple of 131072 bytes: the file lands
- * whole, and the page sits at 100% for good. fetch() gets the answer but never
- * lets go of the connection, so each such file costs one of the six Safari
- * keeps to the device. The page sends such a file with HARE_PAD_BYTE after it
- * and pad=1 in the query (app.js, fileUpload), and the byte comes off here,
- * before the file is put in place, so what is stored is what was dropped.
- *
- * The byte is checked, not assumed. A pad=1 body that does not end in it is
- * not what the page sends, and cutting a byte off anyway would store a file
- * one byte short of anything anyone sent. It is 'Z' because a file's own last
- * byte is so seldom one: a ROM's is usually 0x00 or 0xFF, a PNG's 0x82, a
- * JPEG's 0xD9 and a text file's a newline. */
-#define HARE_PAD_BYTE 'Z'
-
-static bool wants_unpad(const httpd_req *r)
-{
-	char pad[4];
-
-	return !strcmp(httpd_query(r, "pad", pad, sizeof pad), "1");
-}
-
-/* The part-file without its last byte, which must be the pad. False leaves
- * the part-file as it was, for the caller to remove. */
-static bool unpad(const char *part)
-{
-	struct stat st;
-	unsigned char c = 0;
-	int fd;
-	bool ok;
-
-	if (stat(part, &st) != 0 || st.st_size < 1) return false;
-	if ((fd = open(part, O_RDONLY)) < 0) return false;
-	ok = pread(fd, &c, 1, st.st_size - 1) == 1 && c == HARE_PAD_BYTE;
-	close(fd);
-	return ok && truncate(part, st.st_size - 1) == 0;
 }
 
 /* ---- the entry points httpd calls ------------------------------------ */
@@ -1026,15 +1041,30 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		return;
 	}
 
+	/* Which link the page came over, for the name it shows (hare_set_cable):
+	 * a line of script the page reads before its own, answered here rather
+	 * than kept in res/web, so the page's files stay the same over either
+	 * link, a card's older web folder (which never asks) still loads, and
+	 * nothing a browser keeps from one link names the other: no tag and
+	 * build_head's no-store, where the page's files are tagged and kept.
+	 * Asked by no page from before it, and missing from a server that does
+	 * not answer it, the page is Wi-Fi's, as it always was. */
+	if (!done && !strcmp(m, "GET") && !strcmp(path, "/link.js")) {
+		static const char usb[] = "window.ZYPEROS_LINK = \"usb\";\n";
+		static const char wifi[] = "window.ZYPEROS_LINK = \"wifi\";\n";
+
+		httpd_reply(r, 200, "text/javascript; charset=utf-8", g_cable ? usb : wifi,
+		            g_cable ? sizeof usb - 1 : sizeof wifi - 1, NULL);
+		return;
+	}
+
 	/* The page and its assets. Served before the session check, because the
 	 * page IS the PIN prompt - requiring a session to reach it would be a
 	 * lock on the door to the lock. */
 	if (!done && !strcmp(m, "GET") &&
 	    (!strcmp(path, "/") || !strncmp(path, "/web/", 5))) {
 		char file[XFER_PATH_MAX];
-		const bool  home = !strcmp(path, "/");
-		const char *name = !home ? path + 5 : g_page[0] ? g_page : "index.html";
-		struct stat st;
+		const char *name = !strcmp(path, "/") ? "index.html" : path + 5;
 
 		/* From res/web on the card, so the page can be restyled without a
 		 * rebuild. The name is checked the same way a rename target is:
@@ -1043,16 +1073,6 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		if (snprintf(file, sizeof file, "%s/%s", g_web, name) >= (int)sizeof file) {
 			httpd_reply_status(r, 404, "no");
 			return;
-		}
-		/* A res/web from before wire.html, or the repo's own on a desktop,
-		 * has only index.html: the page under the Wi-Fi name still works,
-		 * and a 404 for the page itself would not. */
-		if (home && g_page[0] && stat(file, &st) != 0) {
-			name = "index.html";
-			if (snprintf(file, sizeof file, "%s/%s", g_web, name) >= (int)sizeof file) {
-				httpd_reply_status(r, 404, "no");
-				return;
-			}
 		}
 		httpd_reply_static(r, file, mime_for(name));
 		return;
@@ -1119,6 +1139,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		       : -1;
 		char name[128], dest[XFER_PATH_MAX], part[XFER_PATH_MAX + 8], why[160] = "";
 		size_t len = 0;
+		long trail;
 		char *json;
 
 		if (op < 0 || !g_update) {
@@ -1143,6 +1164,12 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 				httpd_reply_status(r, 503, T(S_HARE_CLOSING_REPLY));
 				return;
 			}
+			/* The page's trailer, as for any file (trailer_of) */
+			if ((trail = trailer_of(r)) < 0) {
+				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
+				httpd_reply_status(r, 400, T(S_HARE_NOT_AS_SENT));
+				return;
+			}
 			json = g_update(HARE_UPDATE_FILE, name, dest, sizeof dest, &len, why, sizeof why);
 			if (!json || !dest[0] || snprintf(part, sizeof part, "%s.part", dest) >= (int)sizeof part) {
 				free(json);
@@ -1151,7 +1178,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 				return;
 			}
 			free(json);
-			if (!room_for(dest, httpd_content_len(r))) {
+			if (!room_for(dest, httpd_content_len(r) - trail)) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 				httpd_reply_status(r, 507, T(S_HARE_NO_ROOM));
 				return;
@@ -1171,10 +1198,10 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			httpd_reply_status(r, 500, T(S_HARE_NOT_PLACED));
 			return;
 		}
-		/* Safari's pad, as for any file (HARE_PAD_BYTE) */
-		if (wants_unpad(r) && !unpad(part)) {
+		if ((trail = trailer_of(r)) < 0 || (trail && !trailer_off(part))) {
 			remove(part);
-			httpd_reply_status(r, 400, T(S_HARE_NO_PAD));
+			httpd_reply_status(r, 400, T(S_HARE_NOT_AS_SENT));
+			note(T(S_HARE_FAILED), name);
 			return;
 		}
 		if (rename(part, dest) != 0) {
@@ -1413,6 +1440,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 	if (!strcmp(path, "/api/file") && !strcmp(m, "PUT")) {
 		char req[XFER_PATH_MAX], abs[XFER_PATH_MAX];
+		long trail = trailer_of(r);
 
 		httpd_query(r, "p", req, sizeof req);
 		if (!xfer_resolve(req, abs, sizeof abs)) {
@@ -1437,13 +1465,15 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 				httpd_reply_status(r, 400, T(S_HARE_BAD_NAME));
 				return;
 			}
-			/* A padded body has at least the pad in it. */
-			if (wants_unpad(r) && httpd_content_len(r) < 1) {
+			/* A trailer this does not know, before a byte lands: refused
+			 * here, nothing is written and nothing replaced */
+			if (trail < 0) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
-				httpd_reply_status(r, 400, T(S_HARE_PAD_EMPTY));
+				httpd_reply_status(r, 400, T(S_HARE_NOT_AS_SENT));
 				return;
 			}
-			if (!room_for(abs, httpd_content_len(r))) {
+			/* The file's own size, without the page's trailer */
+			if (!room_for(abs, httpd_content_len(r) - trail)) {
 				httpd_want_body(r, HTTPD_BODY_NONE, NULL);
 				httpd_reply_status(r, 507, T(S_HARE_NO_ROOM));
 				return;
@@ -1495,11 +1525,12 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 				httpd_reply_status(r, 500, T(S_HARE_LONG_NAME));
 				return;
 			}
-			/* Safari's pad off first (HARE_PAD_BYTE): the file in place is the
-			 * file that was sent, or nothing replaces the one already there. */
-			if (wants_unpad(r) && !unpad(part)) {
+			/* What the page sent, and nothing it added: the trailer checked
+			 * and cut, or the whole part-file goes and the file of this name
+			 * stays as it was */
+			if (trail < 0 || (trail && !trailer_off(part))) {
 				remove(part);
-				httpd_reply_status(r, 400, T(S_HARE_NO_PAD));
+				httpd_reply_status(r, 400, T(S_HARE_NOT_AS_SENT));
 				note(T(S_HARE_FAILED), base_of(abs));
 				return;
 			}
@@ -1853,6 +1884,7 @@ void hare_stop(void)
 	g_sends = 0;
 	g_closing = false;
 	g_captive[0] = '\0';   /* the next screen says again whether it is one */
+	g_cable = false;       /* and which link it is */
 }
 
 const char *hare_pin(void) { return g_pin; }

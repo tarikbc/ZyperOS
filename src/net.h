@@ -39,14 +39,10 @@ void net_set_ca_path(const char *path);
 
 typedef struct { const char *k, *v; } net_field;
 
-/* Small replies - sign-in, and an unlock sent. Returns the body length, or
- * -1: no curl, no network, HTTP error, or a timeout. `http` gets the status
- * the server answered with, or 0 when nothing answered, so that sign-in can
- * tell a wrong password (401) from a site that is down; NULL when the caller
- * does the same thing with every failure, as an unlock does - carry on
- * without. Which failure it was is logged either way. */
-long net_post_buf(const net_field *f, int n, char *out, size_t outn, int timeout_s,
-                  int *http);
+/* Small replies - an unlock sent. Returns the body length, or -1: no curl,
+ * no network, HTTP error, or a timeout. Which failure it was is logged, not
+ * returned; net_post_answer below returns it, for sign-in. */
+long net_post_buf(const net_field *f, int n, char *out, size_t outn, int timeout_s);
 
 /* The same, as a GET to any URL, with the fields urlencoded onto the query
  * string. For a service that authenticates every call with parameters rather
@@ -60,10 +56,28 @@ long net_get_buf(const char *url, const net_field *f, int n, char *out,
  * one - SteamGridDB's "Authorization: Bearer <key>". The header is a
  * credential and is treated as one: written into the 0600 config file, never
  * into argv or the URL, and a request carrying one follows no redirect, so
- * the key reaches the host named and no other. `http` gets the status, or 0
- * when nothing answered. Blocking: for a worker thread. */
+ * the key reaches the host named and no other. Blocking: for a worker
+ * thread. */
 long net_get_hdr_buf(const char *url, const char *header, char *out, size_t outn,
+                     int timeout_s);
+
+/* net_post_buf and net_get_hdr_buf, saying who answered.
+ *
+ * curl runs with `fail`, so to the calls above every HTTP error is a failed
+ * request with no body, the same as no network at all: a sign-in with the
+ * wrong password said "could not reach retroachievements.org", and a wrong
+ * SteamGridDB key was kept as unchecked. These put in `*http` the status the
+ * server answered with, whole - 200, a 401 or a 503 refusing, a 302 not
+ * followed - or 0 when nothing answered whole: no curl, no network, no
+ * name, no route, the timeout, a reply cut short. The body is handed over,
+ * and its length returned, only for a 2xx that came whole and fits `out`;
+ * -1 otherwise, whatever `*http` says, so half of a reply (half a token) is
+ * never read as one. The same file and the same rules for what it carries;
+ * a refusal costs no more time than an answer. */
+long net_post_answer(const net_field *f, int n, char *out, size_t outn,
                      int timeout_s, int *http);
+long net_get_hdr_answer(const char *url, const char *header, char *out,
+                        size_t outn, int timeout_s, int *http);
 
 /* Many small files in one curl - one process, one connection, one TLS
  * handshake - for a worker thread: blocks for at most `timeout_s` in all.

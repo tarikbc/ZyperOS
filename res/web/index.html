@@ -1,12 +1,10 @@
 <!doctype html>
-<html lang="en" data-link="wifi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <!-- The words are in the handheld's language (MENU > Language): /i18n.js,
      loaded before app.js, which puts them in where data-t names one (and
-     data-t-aria an aria-label) and the name in .pagename and the title.
-     data-link="usb" is wire.html, this page under USB File Transfer's name
-     (mk/payload.sh). -->
+     data-t-aria an aria-label) and the name in .pagename and the title. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Beard, or Salt & Pepper where the browser asks for dark: app.css. -->
 <meta name="color-scheme" content="light dark">
@@ -189,6 +187,9 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/i18n.js"></script>
+<!-- Which link this is, cable or Wi-Fi, for the page's name: the handheld's
+     answer, never cached. Where nothing answers it, the name is Wi-Fi's. -->
+<script src="/link.js"></script>
 <script src="/web/captive.js"></script>
 <script src="/web/app.js"></script>
 </body>

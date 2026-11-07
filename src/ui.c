@@ -156,9 +156,7 @@ static void title_path_beside(const char *menu, char *out, size_t n)
  * pure function of the face, the text and the box, so the last answers are
  * kept here and handed back.
  *
- * The main thread's only: a worker draws cards with faces of its own
- * (ui_card_faces) and measures through the plain functions, so nothing here
- * is shared. Emptied whenever a face the main thread uses is closed, so a
+ * The main thread's only, so nothing here is shared. Emptied whenever a face the main thread uses is closed, so a
  * new face that lands at a closed one's address is never answered for it. */
 #define MEMO_N     64
 #define MEMO_TEXT  256
@@ -2413,8 +2411,7 @@ static void round_corners(SDL_Surface *s, int radius)
 }
 
 /* In the color the card's theme gives its title (card_surface), handed down
- * from there and never read from theme(): the loader's workers draw cards off
- * the main thread, where the theme can change while one is being drawn.
+ * from there and never read from theme().
  *
  * A line of the card role is laid out as ui_line_y lays out a line on the
  * screen: `*y` is the top of its line, an em (UI_F_CARD's 71) tall, and its
@@ -2496,14 +2493,8 @@ static int draw_wrapped(SDL_Surface *dst, TTF_Font *f, const char *title,
  * distinguishing: Castlevania, Contra and Crystalis sit next to each other and
  * were three identical Cs with the titles that tell them apart set small
  * underneath. Bled off the corner it is what it always was, a texture in the
- * system's color, and the title can have the space.
- *
- * In `mark`, the face at WATERMARK_PT, which is the caller's: the main
- * thread's own for a card made on the frame (main_mark), and a worker's own
- * for a card drawn on the loader's workers (ui_card_surface). With none
- * there is no letter, as there was none when the face would not open. */
-static void draw_watermark(SDL_Surface *dst, TTF_Font *mark, const char *title,
-                           unsigned rgb)
+ * system's color, and the title can have the space. */
+static void draw_watermark(SDL_Surface *dst, const char *title, unsigned rgb)
 {
 	char ch[2] = { 0, 0 };
 	const char *p = title;
@@ -2513,9 +2504,12 @@ static void draw_watermark(SDL_Surface *dst, TTF_Font *mark, const char *title,
 	if (!*p) return;
 	ch[0] = (*p >= 'a' && *p <= 'z') ? (char)(*p - 32) : *p;
 	if ((unsigned char)ch[0] > 127) return;   /* one glyph, and an ASCII one */
-	if (!mark) return;
 
-	t = TTF_RenderUTF8_Blended(mark, ch, (SDL_Color){
+	if (!f_mark && font_path_kept[0])
+		f_mark = TTF_OpenFont(font_path_kept, WATERMARK_PT);
+	if (!f_mark) return;
+
+	t = TTF_RenderUTF8_Blended(f_mark, ch, (SDL_Color){
 		(Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, 55 });
 	if (!t) return;
 	SDL_SetSurfaceBlendMode(t, SDL_BLENDMODE_BLEND);
@@ -2526,7 +2520,7 @@ static void draw_watermark(SDL_Surface *dst, TTF_Font *mark, const char *title,
 	 * Lexend's whole em its top came 41 lower than with Josefin Sans's. */
 	SDL_BlitSurface(t, NULL, dst, &(SDL_Rect){
 		dst->w - (int)(t->w * 0.62f),
-		dst->h - WATERMARK_PT / 20 - TTF_FontAscent(mark), 0, 0 });
+		dst->h - WATERMARK_PT / 20 - TTF_FontAscent(f_mark), 0, 0 });
 	SDL_FreeSurface(t);
 }
 
@@ -2539,18 +2533,8 @@ static void draw_watermark(SDL_Surface *dst, TTF_Font *mark, const char *title,
  * draws a card for each theme, a light **surface** slab with a charcoal title
  * in Beard and a dark one with a light title in Salt & Pepper (src/cardgen.h
  * has both, and the check that the title reads on every row of either). The
- * caller names the theme rather than this reading theme(), because a worker
- * draws it while the main thread may be changing the theme under it, and the
- * card has to be what the caller asked for so the caller can tell whether it
- * is still the theme on when it lands.
- *
- * In the faces it is handed, for the same worker: `title_f`, the card role's,
- * and `mark`, the watermark's. SDL_ttf's fonts are not safe to draw with from
- * two threads at once, so the main thread draws with its own (make_card) and
- * each worker with a set of its own (ui_card_fonts). The same file at the
- * same sizes, so a card is the same card whoever drew it. */
-static SDL_Surface *card_surface(TTF_Font *title_f, TTF_Font *mark,
-                                 const char *title, unsigned rgb,
+ * caller names the theme. */
+static SDL_Surface *card_surface(const char *title, unsigned rgb,
                                  int cw, int ch, bool round, int theme_ix)
 {
 	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, cw, ch, 32,
@@ -2578,7 +2562,7 @@ static SDL_Surface *card_surface(TTF_Font *title_f, TTF_Font *mark,
 		             SDL_MapRGBA(s->format, c.r, c.g, c.b, 255));
 	}
 
-	draw_watermark(s, mark, title, rgb);
+	draw_watermark(s, title, rgb);
 
 	/* The system's color as a band rather than a wash: a generated card
 	 * should read as "this system, no art" at a glance in the row. */
@@ -2589,12 +2573,12 @@ static SDL_Surface *card_surface(TTF_Font *title_f, TTF_Font *mark,
 	/* The title at the top and hard left, because that is the edge the eye
 	 * runs down when the row is moving. A rule under it rather than across
 	 * the card: it is the end of the name, not a divider between halves. */
-	if (title_f) {
+	if (fonts_latin[UI_F_CARD]) {
 		/* Not at the top edge. Started at 76 it left the bottom half of the
 		 * card empty for the one-line titles that are most of a shelf, and the
 		 * bleed does not fill it - the face darkens toward the foot and takes
 		 * the letter's tail with it. Four lines still fit below this. */
-		int y = draw_wrapped(s, title_f, title, cw - 96,
+		int y = draw_wrapped(s, fonts_latin[UI_F_CARD], title, cw - 96,
 		                     (int)(ch * 0.38f), 48,
 		                     ui_col(cardgen_title(theme_ix), 255));
 
@@ -2628,18 +2612,7 @@ static SDL_Texture *card_texture(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 	return t;
 }
 
-/* The main thread's watermark face, opened the first time a card is made
- * here and not in ui_init: at 560 points it is the biggest face there is, and
- * a launcher whose games all have art never draws one. Closed in ui_quit. */
-static TTF_Font *main_mark(void)
-{
-	if (!f_mark && font_path_kept[0])
-		f_mark = TTF_OpenFont(font_path_kept, WATERMARK_PT);
-	return f_mark;
-}
-
-/* On the main thread, so for the theme that is on, and in the main thread's
- * own faces. */
+/* On the main thread, so for the theme that is on. */
 static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
                               int cw, int ch, bool round, int *w, int *h)
 {
@@ -2647,18 +2620,12 @@ static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 	SDL_Surface *s;
 	SDL_Texture *t;
 
-	if (!(s = card_surface(fonts_latin[UI_F_CARD], main_mark(), title, rgb,
-	                       cw, ch, round, ix)))
+	if (!(s = card_surface(title, rgb, cw, ch, round, ix)))
 		return NULL;
 	t = card_texture(r, s, ix);
 	SDL_FreeSurface(s);
 	if (t) { *w = cw; *h = ch; }
 	return t;
-}
-
-SDL_Texture *ui_card_texture(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
-{
-	return s ? card_texture(r, s, theme_ix) : NULL;
 }
 
 int ui_card_theme(SDL_Texture *t)
@@ -2681,53 +2648,6 @@ SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h)
 {
 	return make_card(r, title, rgb, CARD_W, CARD_W, false, w, h);
-}
-
-/* A worker's faces: the card role's and the watermark's, from the file and at
- * the sizes of the main thread's own (ui_init, main_mark). */
-struct ui_card_fonts {
-	TTF_Font *title, *mark;
-};
-
-ui_card_fonts *ui_card_fonts_open(void)
-{
-	ui_card_fonts *f;
-
-	/* Before ui_init, or after ui_quit, there is no file to open and no
-	 * TTF_Init to open it under. */
-	if (!font_path_kept[0] || !TTF_WasInit()) return NULL;
-	if (!(f = calloc(1, sizeof *f))) return NULL;
-	f->title = TTF_OpenFont(font_path_kept, role_pt(UI_F_CARD));
-	f->mark = TTF_OpenFont(font_path_kept, WATERMARK_PT);
-	/* Both or neither. A worker with half a set would draw a card that is not
-	 * the one ui_make_card draws; with none, the main thread draws it, and it
-	 * is that card. */
-	if (!f->title || !f->mark) {
-		fprintf(stderr, "card fonts %s: %s; cards are made on the frame\n",
-		        font_path_kept, TTF_GetError());
-		ui_card_fonts_close(f);
-		return NULL;
-	}
-	return f;
-}
-
-void ui_card_fonts_close(ui_card_fonts *f)
-{
-	if (!f) return;
-	if (f->title) TTF_CloseFont(f->title);
-	if (f->mark) TTF_CloseFont(f->mark);
-	free(f);
-}
-
-SDL_Surface *ui_card_surface(ui_card_fonts *f, const char *title, unsigned rgb,
-                             bool album, int theme_ix)
-{
-	if (!f || !title) return NULL;
-	if (album)
-		return card_surface(f->title, f->mark, title, rgb, CARD_W, CARD_W,
-		                    false, theme_ix);
-	return card_surface(f->title, f->mark, title, rgb, CARD_W, CARD_H, true,
-	                    theme_ix);
 }
 
 

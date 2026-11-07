@@ -385,35 +385,6 @@ SDL_Texture *ui_make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h);
 
-/* The same card drawn off the main thread, for the art loader's workers
- * (src/texload.c), so the frame that asks for it only uploads it.
- *
- * A card of a game with no art was drawn on the main thread, 14-70 ms each on
- * the Pixel 2, and a shelf landed on with none drew a shelf's worth in one
- * frame. A worker draws it into a surface instead, in a set of faces of its
- * own: SDL_ttf's fonts are not safe to draw with from two threads at once,
- * and the main thread draws with its own all the time.
- *
- * A set is opened and closed on the main thread only, after ui_init and
- * before ui_quit: opening and closing a face touches FreeType's library,
- * which ui_init makes and ui_quit ends, and is not safe beside another
- * thread doing the same. Drawn with only by the one thread that owns it.
- * NULL when the faces will not open, and then the main thread makes the card
- * as it always has. */
-typedef struct ui_card_fonts ui_card_fonts;
-ui_card_fonts *ui_card_fonts_open(void);
-void ui_card_fonts_close(ui_card_fonts *f);
-/* The card ui_make_card makes, or with `album` the one ui_make_cover makes, in
- * theme `theme_ix` (DS_LIGHT or DS_DARK, never read from theme() here), as an
- * ARGB8888 surface the caller frees: ui_card_texture makes it a texture. NULL
- * for no set, no title, or no memory. */
-SDL_Surface *ui_card_surface(ui_card_fonts *f, const char *title, unsigned rgb,
-                             bool album, int theme_ix);
-
-/* A card a worker drew, as the texture ui_make_card would have made of it:
- * blended for its corners, and marked as made for `theme_ix`, the theme it
- * was drawn in. NULL for no surface. The surface stays the caller's. */
-SDL_Texture *ui_card_texture(SDL_Renderer *r, SDL_Surface *s, int theme_ix);
 /* The theme a card's texture was made for, DS_LIGHT or DS_DARK - a card from
  * this file - or -1 for any other texture: art that is no theme's. With cardgen_kept (src/cardgen.h), what
  * decides whether it may still be shown. */

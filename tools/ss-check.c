@@ -242,9 +242,9 @@ static void refuses_a_line_break(void)
 	   "a newline in a URL is refused");
 	ck(!net_get_async("https://x/cover.png\routput = /tmp/x", XOUT, 5),
 	   "and a carriage return");
-	ck(net_get_hdr_buf("https://x/a\tb", NULL, out, sizeof out, 5, NULL) < 0,
+	ck(net_get_hdr_buf("https://x/a\tb", NULL, out, sizeof out, 5) < 0,
 	   "and any control character, on the waiting path too");
-	ck(net_get_hdr_buf("https://x/", "Authorization: Bearer a\nb", out, sizeof out, 5, NULL) < 0,
+	ck(net_get_hdr_buf("https://x/", "Authorization: Bearer a\nb", out, sizeof out, 5) < 0,
 	   "and a header with a line break");
 	ck(net_async_poll() < 0, "and nothing was started");
 }

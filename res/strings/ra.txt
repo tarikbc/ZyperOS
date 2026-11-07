@@ -22,27 +22,6 @@ de = kein Netzwerk
 ja = ネットワーク未接続
 it = nessuna rete
 
-[ra.sign_in_wrong]
-en = wrong user name or password
-zh-Hans = 用户名或密码错误
-es = usuario o contraseña incorrectos
-pt-BR = usuário ou senha incorretos
-fr = identifiant ou mot de passe incorrect
-de = Benutzername oder Passwort falsch
-ja = ユーザー名またはパスワードが違います
-it = nome utente o password errati
-
-[ra.sign_in_refused_http]
-note = %d is the HTTP status the site answered with ("503")
-en = retroachievements.org refused (HTTP %d)
-zh-Hans = retroachievements.org 拒绝了请求（HTTP %d）
-es = retroachievements.org lo rechazó (HTTP %d)
-pt-BR = retroachievements.org recusou (HTTP %d)
-fr = retroachievements.org a refusé (HTTP %d)
-de = retroachievements.org hat abgelehnt (HTTP %d)
-ja = retroachievements.org に拒否されました（HTTP %d）
-it = retroachievements.org ha rifiutato (HTTP %d)
-
 [ra.sign_in_no_reach]
 en = could not reach retroachievements.org
 zh-Hans = 无法连接 retroachievements.org
@@ -52,6 +31,28 @@ fr = impossible de joindre retroachievements.org
 de = retroachievements.org nicht erreichbar
 ja = retroachievements.org に接続できません
 it = impossibile raggiungere retroachievements.org
+
+[ra.sign_in_wrong]
+note = The site answered that the user name or the password is wrong (its HTTP 401)
+en = wrong user or password
+zh-Hans = 用户名或密码错误
+es = usuario o contraseña incorrectos
+pt-BR = usuário ou senha incorretos
+fr = identifiant ou mot de passe incorrect
+de = Benutzername oder Passwort falsch
+ja = ユーザー名またはパスワードが違います
+it = utente o password errati
+
+[ra.sign_in_http_answer]
+note = The site answered, but with an HTTP error or a redirect rather than a sign-in, for a reason other than a wrong password. %d is the HTTP status it answered with (403, 503, ...), a number a person can look up or pass on; keep "HTTP" and the number as they are
+en = retroachievements.org would not sign you in (HTTP %d)
+zh-Hans = retroachievements.org 未能让你登录（HTTP %d）
+es = retroachievements.org no te dejó iniciar sesión (HTTP %d)
+pt-BR = retroachievements.org não deixou você entrar (HTTP %d)
+fr = retroachievements.org n'a pas permis la connexion (HTTP %d)
+de = retroachievements.org lässt die Anmeldung nicht zu (HTTP %d)
+ja = retroachievements.org にサインインできませんでした（HTTP %d）
+it = retroachievements.org non ha permesso l'accesso (HTTP %d)
 
 [ra.sign_in_refused]
 note = The site said no and gave no reason

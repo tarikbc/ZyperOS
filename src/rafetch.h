@@ -33,12 +33,10 @@ const char *ra_user(void);
 void ra_creds_copy(char *user, size_t un, char *token, size_t tn);
 
 /* Exchange a password for a token. The password is used and dropped; nothing
- * writes it anywhere. `err` says why not, which is the difference between a
- * wrong password and a site that is down: "wrong user name or password" for
- * their 401, "retroachievements.org refused (HTTP <code>)" for any other
- * refusal, "could not reach retroachievements.org" only when nothing
- * answered, and RA's own message when a reply says no. tools/rasignin-check.c
- * holds it to each. */
+ * writes it anywhere. `err` takes RA's own message when it refuses in a reply,
+ * "wrong user or password" for its 401, "retroachievements.org would not
+ * sign you in (HTTP n)" for any other HTTP error or answer that is no reply
+ * (a redirect), and "could not reach" when nothing answered whole. */
 bool ra_sign_in(const char *user, const char *password, char *err, size_t errn);
 
 /* The conversion on its own, so it can be checked against real responses with

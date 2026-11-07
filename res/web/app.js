@@ -86,9 +86,12 @@ for (const e of document.querySelectorAll('*')) {
 			e.setAttribute(a.name === 'data-t-aria' ? 'aria-label' : a.name.slice(7), t(a.value));
 	}
 }
-/* The page's name, in the tab, on the PIN screen and over the folders:
- * wire.html, USB File Transfer's page, is this one with data-link="usb" */
-const pageName = document.documentElement.dataset.link === 'usb' ? t('name.usb') : t('name.wifi');
+/* The page's name, in the tab, on the PIN screen and over the folders: the
+ * one the handheld's screen shows for the link the page came over, which
+ * /link.js says (hare_set_cable). Over the cable it was Wi-Fi File Transfer
+ * too, beside a handheld that said USB File Transfer. A handheld that does
+ * not answer it, or a computer serving res/web, leaves it unset: Wi-Fi's. */
+const pageName = window.ZYPEROS_LINK === 'usb' ? t('name.usb') : t('name.wifi');
 document.title = pageName;
 for (const e of document.querySelectorAll('.pagename')) e.textContent = pageName;
 
@@ -131,6 +134,33 @@ async function api(method, path, body) {
 	if (r.status === 401) { showGate(t('gate.session_ended')); throw new Error('unauthorized'); }
 	if (!r.ok) throw new Error((await r.text()).split('\n')[1] || r.statusText);
 	return r;
+}
+
+/* Every PUT of a file the page makes - the uploads, the covers it fetches,
+ * the System Update files - goes as this says: its URL and its body.
+ *
+ * Over the USB cable Safari never hands the page the answer to a PUT whose
+ * body is an exact multiple of 131,072 bytes (128 KiB): the file landed
+ * whole, the handheld answered, and the page sat at 100% on that file for
+ * good, the queue behind it stopped with it. fetch() hears the answer, but
+ * Safari then keeps that connection busy for good, and it has six. So a file
+ * of such a size, an empty one included, goes with TRAILER after it and
+ * trailer=16 in its URL - a body no multiple of 128 KiB is - and the
+ * handheld checks the trailer and takes it off before the file takes its
+ * name (src/hare.c, trailer_off). Any other size goes as it is. From every
+ * browser and over either link alike: there is no telling Safari apart, and
+ * no need. The Blob is the file and the trailer side by side, not a copy of
+ * a file that may be a gigabyte. */
+const TRAILER = '--zyperos-pad--\n';
+function trailed(url, blob) {
+	if (blob.size % 131072) return { url, body: blob };
+	return { url: url + '&trailer=' + TRAILER.length, body: new Blob([blob, TRAILER]) };
+}
+
+/* A file onto the card at `path`, by fetch: a cover the page fetched */
+function putFile(path, blob) {
+	const put = trailed('/api/file?p=' + enc(path), blob);
+	return api('PUT', put.url, put.body);
 }
 
 /* ---- the gate ---------------------------------------------------------- *
@@ -1002,11 +1032,13 @@ async function enqueue(list, dest) {
  * and folders are skipped - a Mac puts .DS_Store in every folder it has shown,
  * and ._ files beside every file it copied. */
 
-/* All but .media, where a console's shelf keeps its covers and a music folder
- * its albums': dragged onto a console's folder, it brings the covers. Safari
- * hands the page no dot names from inside a dropped or picked folder, so a
- * whole console's folder still comes without them (the README says so). */
-const skipName = (name) => name.startsWith('.') && name !== '.media';
+/* But not .media, where a console's covers are and an album folder's: it is
+ * a dot name too, so a console's .media dropped onto its folder uploaded
+ * nothing, and said nothing. Exactly .media, wherever it is in what was
+ * dropped or picked; everything hidden inside it is still left out. Safari
+ * leaves every dot name out of a folder before the page sees it, so from
+ * Safari the covers go as .media itself, dropped or picked on its own. */
+const leftOut = (name) => name.startsWith('.') && name !== '.media';
 
 /* A tree from a drop: { dirs, files }, dirs in the order they must be made
  * and each file with the folder it belongs in, both relative to the drop.
@@ -1023,7 +1055,7 @@ function walkDrop(dt) {
 	return (async () => {
 		const dirs = [], files = [];
 		const walk = async (en, rel) => {
-			if (skipName(en.name)) return;
+			if (leftOut(en.name)) return;
 			if (en.isFile) {
 				files.push({ file: await new Promise((ok, no) => en.file(ok, no)), rel });
 			} else if (en.isDirectory) {
@@ -1050,7 +1082,7 @@ function picked(list) {
 	const dirs = [], files = [], seen = new Set();
 	for (const f of list) {
 		const parts = (f.webkitRelativePath || f.name).split('/');
-		if (parts.some(skipName)) continue;
+		if (parts.some(leftOut)) continue;
 		for (let i = 1; i < parts.length; i++) {
 			const d = parts.slice(0, i).join('/');
 			if (!seen.has(d)) { seen.add(d); dirs.push(d); }
@@ -1095,31 +1127,6 @@ async function enqueueTree(tree, dest) {
 		queue.push({ file, dir: rel ? dir + '/' + rel : dir, pct: 0, state: 'waiting' });
 	drawQueue();
 	if (!sending) next();
-}
-
-/* A file's PUT to the card, as the URL and the body to send.
- *
- * Over the USB cable, Safari's XMLHttpRequest never delivers the answer to
- * an upload whose body is an exact multiple of 128 KiB: the file lands whole
- * and the bar sits at 100%. fetch() gets the answer but never frees the
- * connection, one of Safari's six to the device lost for good. So such a file
- * goes with one byte after it, and pad=1 says so; the device takes the byte
- * off before the file is put in place (hare.c, HARE_PAD_BYTE). Every browser
- * and every link does this: one byte costs nothing, and telling Safari or the
- * cable apart would be one more guess to get wrong. */
-const PAD_EVERY = 128 * 1024;
-const PAD_BYTE = 'Z';
-
-/* The body to send for `blob`, and whether it carries the pad: for any PUT of
- * a file, the card's (fileUpload) and System Update's (upPut) */
-function padded(blob) {
-	if (!blob.size || blob.size % PAD_EVERY) return [false, blob];
-	return [true, new Blob([blob, PAD_BYTE])];
-}
-
-function fileUpload(path, blob) {
-	const [pad, body] = padded(blob);
-	return ['/api/file?p=' + enc(path) + (pad ? '&pad=1' : ''), body];
 }
 
 /* Nothing more goes: the files waiting stay on this computer. `gone`: the
@@ -1184,10 +1191,11 @@ function next() {
 	drawQueue();
 
 	const xhr = new XMLHttpRequest();
-	const [url, body] = fileUpload(job.dir + '/' + job.file.name, job.file);
-	xhr.open('PUT', url);
+	const put = trailed('/api/file?p=' + enc(job.dir + '/' + job.file.name), job.file);
+	xhr.open('PUT', put.url);
 	xhr.upload.onprogress = (ev) => {
 		if (!ev.lengthComputable) return;
+		/* The file's bytes, not a trailer's after them */
 		const at = Math.min(ev.loaded, job.file.size);
 		sent += Math.max(0, at - (job.loaded || 0));
 		job.loaded = at;
@@ -1219,7 +1227,7 @@ function next() {
 			next();
 		});
 	};
-	xhr.send(body);
+	xhr.send(put.body);
 }
 
 /* ---- the time left -----------------------------------------------------
@@ -1579,7 +1587,7 @@ async function getArt(n, fails, notes) {
 			const repo = repoOf(c);
 			const cover1 = async (stem, name, report) => {
 				try {
-					await api('PUT', ...fileUpload(cover(stem), await coverBlob(repo, name)));
+					await putFile(cover(stem), await coverBlob(repo, name));
 					n.games++;
 					left.delete(stem);
 				} catch (err) {
@@ -1680,7 +1688,7 @@ async function getAlbums(n, fails) {
 			/* Known to MusicBrainz with no front cover given: not found. */
 			if (img.status === 404) continue;
 			if (!img.ok) throw answered(t('art.caa_answered', img.status), img.status);
-			await api('PUT', ...fileUpload(pick.cover, await img.blob()));
+			await putFile(pick.cover, await img.blob());
 			n.albums++;
 		} catch (err) {
 			if (err.message === 'unauthorized') throw err;
@@ -2019,14 +2027,14 @@ function upTake(files) {
 /* One file to the handheld, with its progress */
 function upPut(name, file, progress) {
 	return new Promise((ok, no) => {
-		const [pad, body] = padded(file);   /* Safari: see fileUpload */
 		const xhr = new XMLHttpRequest();
-		xhr.open('PUT', '/api/update/file?name=' + enc(name) + (pad ? '&pad=1' : ''));
+		const put = trailed('/api/update/file?name=' + enc(name), file);
+		xhr.open('PUT', put.url);
 		xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) progress(Math.min(ev.loaded, file.size)); };
 		xhr.onload = () => xhr.status === 200 ? ok()
 			: no(new Error((xhr.responseText || '').split('\n')[1] || 'HTTP ' + xhr.status));
 		xhr.onerror = () => no(new Error(t('queue.lost')));
-		xhr.send(body);
+		xhr.send(put.body);
 	});
 }
 

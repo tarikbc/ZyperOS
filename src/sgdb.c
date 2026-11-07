@@ -157,7 +157,8 @@ bool sgdb_auth_header(char *out, size_t n)
  * SGDB_REFUSED, or SGDB_UNCHECKED when nothing answered. */
 static sgdb_state sgdb_check_key(const char *key)
 {
-	char hdr[SGDB_KEY_MAX + 32], body[4096];
+	/* Room for a long list: a reply cut to fit is not read (net.h) */
+	char hdr[SGDB_KEY_MAX + 32], body[16384];
 	long got;
 	int http = 0;
 
@@ -165,11 +166,15 @@ static sgdb_state sgdb_check_key(const char *key)
 	/* Any search will do: the question is only whether they answer to the
 	 * key. A good key gets 200 and a list; a bad one 401 and
 	 * {"success":false,"errors":["Invalid API key"]}, measured 2026-11-06. */
-	got = net_get_hdr_buf(SGDB_API "/search/autocomplete/tetris", hdr,
-	                      body, sizeof body, SGDB_CHECK_S, &http);
+	got = net_get_hdr_answer(SGDB_API "/search/autocomplete/tetris", hdr,
+	                         body, sizeof body, SGDB_CHECK_S, &http);
 	memset(hdr, 0, sizeof hdr);
+	/* The key refused, by name: not kept, and the one before it stays.
+	 * net_get_hdr_buf could not say so - `fail` made a 401 no answer - and a
+	 * wrong key was kept as unchecked, to be refused again on every run. A
+	 * 403 is the same refusal, as the runs read it (sgdbrun.c). */
 	if (http == 401 || http == 403) return SGDB_REFUSED;
-	if (got >= 0 && http == 200) {
+	if (got >= 0) {
 		jsv v;
 
 		if (js_member(js_root(body, (size_t)got), "success", &v) && js_is_true(v))

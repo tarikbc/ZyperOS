@@ -11,8 +11,7 @@
  * texture when it is made, so a card made in Beard would stay Beard's after
  * Auto turns the shelf to Salt & Pepper at 19:00. So each card is made for
  * one theme, named by its index (DS_LIGHT or DS_DARK), and shown only while
- * that theme is on: a change of theme drops the others, and a card the
- * loader's worker drew for the theme that was is not installed at all.
+ * that theme is on: a change of theme drops the others.
  *
  * No SDL, so tools/cardgen-check.c holds both rules without a window: the
  * title reads on the slab at every row in both themes, Beard's light slab

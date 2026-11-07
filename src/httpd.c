@@ -382,8 +382,8 @@ static const unsigned char *gz_of(const char *path, const struct stat *st, size_
 }
 
 /* FNV-1a of a file's path, for its tag: one URL can answer with another file
- * - /i18n.js with the next language's after MENU > Language, / with
- * wire.html - and two files of one size and time must still differ */
+ * - /i18n.js with the next language's after MENU > Language - and two files
+ * of one size and time must still differ */
 static unsigned path_hash(const char *s)
 {
 	unsigned h = 2166136261u;
