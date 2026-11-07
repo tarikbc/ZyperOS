@@ -485,11 +485,10 @@ static void keys(void)
 		{ IN_START, TK_START }, { IN_SELECT, TK_SELECT }, { IN_MENU, TK_MENU },
 		{ IN_VOLUP, TK_VOL }, { IN_VOLDN, TK_VOL },
 		{ IN_BRIGHTUP, TK_BRIGHT }, { IN_BRIGHTDN, TK_BRIGHT }, { IN_POWER, TK_POWER },
-		/* The menu music's shoulders: no key of the tutorial's */
-		{ IN_L2, TK_KEYS }, { IN_R2, TK_KEYS },
+		{ IN_L2, TK_L2 }, { IN_R2, TK_R2 },
 	};
 	static const char *const names[TK_KEYS] = {
-		"Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L1", "R1",
+		"Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L1", "R1", "L2", "R2",
 		"START", "SELECT", "MENU", "volume", "brightness", "POWER" };
 	size_t i;
 	int k;
@@ -557,15 +556,37 @@ static void buttons(void)
 	pressed[IN_SELECT] = true;
 	ck(tour_buttons(&t, pressed, T0, snd) == 1 && t.over,
 	   "a press after START in the same frame reaches no tour that is over");
-	tour_pose(&t, TOUR_A, T0, 2000, -1, false);
+	/* L2 and R2 are wrong presses in every lesson that asks for another
+	 * button, each answered as any misclick is: deny, Zyper's failure, the
+	 * button named, the one to try. The lessons are all of them but the
+	 * welcome's and the choices'. */
+	{
+		static const tour_step lessons[] = { TOUR_MOVE, TOUR_A, TOUR_B, TOUR_Y, TOUR_X,
+		                                     TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT };
+		static const in_button shoulders[] = { IN_L2, IN_R2 };
+		size_t s2, b2;
+
+		for (s2 = 0; s2 < sizeof lessons / sizeof lessons[0]; s2++)
+			for (b2 = 0; b2 < 2; b2++) {
+				char what[96];
+
+				tour_pose(&t, lessons[s2], T0, 2000, -1, false);
+				memset(pressed, 0, sizeof pressed);
+				pressed[shoulders[b2]] = true;
+				n = tour_buttons(&t, pressed, T0, snd);
+				snprintf(what, sizeof what, "%s in the %s lesson is a misclick",
+				         tour_key_name(tour_key_of(shoulders[b2])),
+				         tour_step_info(lessons[s2])->title);
+				ck(n == 1 && snd[0] == DS_SOUND_DENY && t.wrong && !t.done &&
+				   strstr(t.hint, tour_key_name(tour_key_of(shoulders[b2]))), what);
+			}
+	}
+	tour_pose(&t, TOUR_SELECT, T0, 2000, -1, false);
 	memset(pressed, 0, sizeof pressed);
 	pressed[IN_L2] = true;
 	pressed[IN_R2] = true;
-	ck(tour_buttons(&t, pressed, T0, snd) == 0 && !t.done && !t.over,
-	   "L2 and R2, the songs', are no press of the tutorial's");
-	tour_pose(&t, TOUR_SELECT, T0, 2000, -1, false);
-	ck(tour_buttons(&t, pressed, T0, snd) == 0 && !t.done && !t.wrong,
-	   "not even in Music, whose note names them");
+	ck(tour_buttons(&t, pressed, T0, snd) == 2 && t.wrong,
+	   "even in Music, whose note names them");
 	ck(!strcmp(tour_step_info(TOUR_SELECT)->note, "L2/R2 play the previous or next song."),
 	   "Music's note says what L2/R2 do");
 }

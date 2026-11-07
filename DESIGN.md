@@ -952,11 +952,12 @@ of the player's own goes on from wherever the loop was.
   the volume and brightness keys are not wrong presses, and a press in the
   first 250 ms of a step, of any key, is the last step's thumb and is not
   heard. L1/R1 are wrong presses everywhere but Move Around, where they are
-  moves. L2 and R2 get no answer anywhere, not even in Music, whose note
-  names them: no step waits for them and a press of one is not wrong; the
-  handheld shows it pressed, and that is all. The Pixel 2's device layer
-  reads L2+R2 together itself, outside a game, to flash the battery level on
-  its side lights, in the tutorial as anywhere.
+  moves. L2 and R2 are wrong presses in every lesson, Music's too, whose note
+  names them: no step waits for them, so Zyper answers "That's L2. Try
+  SELECT." like any other misclick. The Pixel 2's device layer reads L2+R2
+  together itself, outside a game, to flash the battery level on its side
+  lights, in the tutorial as anywhere; that chord sends neither button, so it
+  is no misclick.
 - **The volume and brightness keys** work in every step, as on every screen,
   and answer their own.
 - **POWER** is the tutorial's in its own step until it is pressed; anywhere
