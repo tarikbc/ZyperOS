@@ -288,10 +288,10 @@ static bool wait_finished(int want_waiting)
 static int run_frames(int want, int max_frames, double *worst_frame,
                       double *worst_before_last, double *worst_put)
 {
-	int frames = 0;
+	int frames = 0, loops = 0;
 
 	*worst_frame = *worst_before_last = *worst_put = 0.0;
-	while (filled() < want && frames < max_frames) {
+	while (filled() < want && loops++ < max_frames) {
 		double t0, t, before = 0.0;
 		int n, waiting = texload_waiting();
 
@@ -299,12 +299,14 @@ static int run_frames(int want, int max_frames, double *worst_frame,
 		t0 = now_ms();
 		n = texload_deliver(theme_index(), slow_put, NULL);
 		t = now_ms() - t0;
-		frames++;
 		if (!waiting && !n) {
-			/* Not finished yet: the workers are drawing the rest */
+			/* Not finished yet: the workers are drawing the rest. Not a
+			 * frame that put anything, so it does not count: how many of
+			 * these pass depends on the host's speed, not on the pacing */
 			SDL_Delay(1);
 			continue;
 		}
+		frames++;
 		if (waiting) ck(n >= 1, "a frame with pictures waiting put at least one in");
 		for (int k = 0; k + 1 < nput && k < 64; k++) before += put_ms[k];
 		for (int k = 0; k < nput && k < 64; k++)
