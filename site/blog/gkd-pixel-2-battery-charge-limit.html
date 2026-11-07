@@ -22,7 +22,7 @@ weight: 80
 
 <h2>Set a charge limit</h2>
 <p>Open <strong>MENU</strong> on the home screen and go to <strong>Charge Limit</strong>, under Auto Off. <kbd>Left</kbd> and <kbd>Right</kbd> step it through <strong>Off</strong>, <strong>80%</strong>, <strong>85%</strong> and <strong>90%</strong>. The choice is saved at once.</p>
-<p>At the limit, the Pixel 2 does not cut the cable off. ZyperOS's Linux, plastron, tells the Pixel 2's charger chip to let the cable give only 80 mA, which is less than the handheld uses. So the battery takes no more charge and slowly gives a little back, and 5 points under the limit it charges again. The handheld never runs without the cable's power while it is plugged in, and the battery does not sit topped up all day on a desk.</p>
+<p>At the limit, the Pixel 2 does not cut the cable off. ZyperOS's Linux, plastron, tells the Pixel 2's charger chip to let the cable give only 80 mA, which is less than the handheld uses. So the battery takes no more charge and slowly gives a little back, and 2 points under the limit it charges again: at 80% it stays between 78 and 80%. The handheld never runs without the cable's power while it is plugged in, and the battery does not sit topped up all day on a desk.</p>
 <p>The percentage stays honest: 100% still means a full battery, and a limit of 85% shows 85%. The kernel forgets the limit when the handheld powers off, so ZyperOS sets it again at every start.</p>
 <p class="note">Need a full charge for a trip? On the charging screen, with a limit set, hold <kbd>A</kbd>. That charge goes to 100%, and the limit is back as soon as the cable comes out.</p>
 

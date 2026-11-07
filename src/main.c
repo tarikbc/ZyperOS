@@ -1442,8 +1442,8 @@ static void auto_off_save(int seconds)
  * lab, 2026-11-06): the charge the battery stops at to keep it healthy for
  * longer, 0 for Off, a full charge, as a new card has. On a charger that can
  * stop short (plat_charge_limit_supported): plastron's rk817 driver turns it
- * off at the limit and on again 5 points under. The kernel forgets it at a
- * power-off, so it is set at every start. */
+ * off at the limit and on again 2 points under, so 80% holds between 78 and
+ * 80%. The kernel forgets it at a power-off, so it is set at every start. */
 static const int CHARGE_LIMITS[] = { 0, 80, 85, 90 };
 #define CHARGE_LIMITS_COUNT ((int)(sizeof CHARGE_LIMITS / sizeof CHARGE_LIMITS[0]))
 /* "Hold A for a full charge" on the charging screen: this charge goes to
