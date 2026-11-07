@@ -156,6 +156,8 @@ static SDL_Renderer *R;
 static SDL_Texture *slot[SHELF];
 static int landed_twice, landed_wrong;
 static float slow_ms;          /* each upload made this slow, on purpose */
+static double put_all_ms;      /* every upload's time in run_frames, for the host's speed */
+static int nput_all;
 static double put_ms[64];      /* this frame's, one a picture */
 static int nput;
 
@@ -203,6 +205,8 @@ static void slow_put(void *ctx, texload_got *g)
 	}
 	while (now_ms() - t0 < slow_ms) { }
 	if (nput < 64) put_ms[nput] = now_ms() - t0;
+	put_all_ms += now_ms() - t0;
+	nput_all++;
 	nput++;
 }
 
@@ -291,6 +295,8 @@ static int run_frames(int want, int max_frames, double *worst_frame,
 	int frames = 0, loops = 0;
 
 	*worst_frame = *worst_before_last = *worst_put = 0.0;
+	put_all_ms = 0.0;
+	nput_all = 0;
 	while (filled() < want && loops++ < max_frames) {
 		double t0, t, before = 0.0;
 		int n, waiting = texload_waiting();
@@ -339,7 +345,23 @@ static void the_workers(void)
 	frames = run_frames(SHELF, 400, &worst, &before_last, &worst_put);
 	ck(filled() == SHELF && !landed_twice && !landed_wrong && all_their_own(),
 	   "every picture in its own slot, once, and none lost");
-	ck(frames <= 30, "the shelf in a few frames");
+	{
+		/* A frame puts pictures until its share is spent, so how many
+		 * fit in one depends on this host's upload time: a fast one fits
+		 * the shelf in a few frames, a slow one (a CI runner's software
+		 * renderer) in about one a frame. That is the pacing working, so
+		 * the bound follows the host: at least 30, more where each upload
+		 * takes a share or more */
+		double avg = nput_all ? put_all_ms / nput_all : 0.0;
+		int fit = avg > 0.0 ? (int)(TEXLOAD_SHARE_MS / avg) + 1 : SHELF;
+		int need = (SHELF + fit - 1) / fit;
+		int bound = 2 * need + 2;
+
+		if (bound < 30) bound = 30;
+		ck(frames <= bound, "the shelf in a few frames, for this host's upload time");
+		printf("    an upload takes %.2f ms here: %d a frame, at most %d frames\n",
+		       avg, fit, bound);
+	}
 	ck(before_last <= TEXLOAD_SHARE_MS + 1.0,
 	   "no frame took another picture once its share was spent");
 	printf("    %d pictures in %d frames, the longest %.2f ms (share %.1f)\n",
