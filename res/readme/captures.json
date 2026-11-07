@@ -77,7 +77,48 @@
         "games",
         "--info"
       ],
-      "sha256": "c2994742fd7cccf209fbfa00ff49ce5c4ec0b14769cb65fe5be40889252ba740"
+      "sha256": "616976068e3d35d658f876aefc1cfbe1de96a9097392c96ffe10173fdc6c7b5b",
+      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
+    },
+    {
+      "file": "light/info-delete.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--info-delete"
+      ],
+      "sha256": "57904aa4a678a802699dc9961a5e901ee399709119b62979d9abd76f74852e90",
+      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
+    },
+    {
+      "file": "light/delete-ask.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--delete-ask"
+      ],
+      "sha256": "f68467086bde7322d8f8dff4e5a6aa6363eedacfadaba2126d0c66e97db45e4b",
+      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
     },
     {
       "file": "light/cheevos.png",

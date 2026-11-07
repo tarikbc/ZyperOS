@@ -85,6 +85,13 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * hour - and stay off this screen. */
 	out[n++] = (menu_row){ gi->has_art ? T(S_GAMEMENU_REPLACE_ART) : T(S_GAMEMENU_GET_ART),
 	                       net ? NULL : T(S_MENU_NEEDS_WIFI), net };
+	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
+	 * cover and video. Never where the screen opens, and never the end of a
+	 * stray press: A on it only asks, and the question opens on Cancel. No
+	 * value: what it takes is said by the question, where it can be read
+	 * whole. */
+	if (gi->can_delete)
+		out[n++] = (menu_row){ T(S_GAMEMENU_DELETE), NULL, true };
 	return n;
 }
 

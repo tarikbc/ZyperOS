@@ -66,6 +66,11 @@ void stats_end(const char *reason, unsigned now_ms);
  * once at startup, before anything reads a total. */
 void stats_recover(void);
 
+/* A game deleted from the card (src/gamedel.h): every session of this tag
+ * and file out of the library database, which is its play time and the
+ * facts the shelf sorts it by. How many rows went. */
+int stats_forget(const char *tag, const char *file);
+
 /* --- reading, for the menu ---------------------------------------------- */
 
 /* Which slice of history a summary covers.

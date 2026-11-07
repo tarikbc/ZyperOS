@@ -552,6 +552,22 @@ bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m
 	return ok;
 }
 
+bool db_game_del(db *d, const char *folder, const char *file)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !folder || !file ||
+	    sqlite3_prepare_v2(d->h, "DELETE FROM games WHERE folder=? AND file=?;", -1, &st,
+	                       NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
+	sqlite3_finalize(st);
+	return ok;
+}
+
 void db_each_prefix(db *d, const char *prefix, db_each_fn fn, void *ctx)
 {
 	sqlite3_stmt *st = NULL;

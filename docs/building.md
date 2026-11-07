@@ -74,6 +74,7 @@ something once broke in a way nothing noticed:
 | `check-httpd` | request parsing, including the malformed ones |
 | `check-xfer` | upload paths cannot escape the directory they were aimed at |
 | `check-db` | a shipped default never overwrites a choice, and the two scopes stay apart |
+| `check-gamedel` | Delete Game on a scratch card holding a cartridge, a multi-disc set in its folder, a `.cue` with its tracks and an arcade set beside `neogeo.zip`, each with saves, states, a cover, a video and a set: exactly the game's files go, never a neighbour's, never `neogeo.zip`, never a file another game shares; its rows in the library database go and the neighbours' stay; a sheet or a folder that leads out of its folders is refused with nothing touched. Then the real launcher, headless (`--delete-now`): the shelf after, in place, on the next game or the one before, from Favorites, down to the empty home (builds the host launcher; that part skips without SDL2) |
 | `check-stats` | play time is recorded, and a LAUNCH still writes nothing |
 | `check-sort` | a shelf sorts the way it says it does, and the same shelf twice the same way |
 | `check-bt` | a device name from the air is only ever data; an address is validated |
@@ -233,6 +234,12 @@ of his first blink. `--poweroff` draws the power-off animation's frame
 `--shot-at`'s time in (0 without it), in place of the shelf. `--zyper` and
 `--poweroff` once took their time as a number of their own; they refuse one
 now, and say which flag has it.
+
+`--info` draws a game's details over the shelf, `--info-delete` the same with
+the cursor on Delete Game, and `--delete-ask` Delete Game's question, the
+cursor on Cancel (DESIGN.md 11.31). `--delete-now` deletes the game under the
+cursor as Delete Game's yes does, on the card the shot is given, and the shot
+is the shelf after it; stderr lists every path that went.
 
 `--jump <n>` applies n letter-jumps first (negative for up), so where the
 d-pad lands on a real library can be checked without a hand on the device.

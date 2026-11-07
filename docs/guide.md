@@ -696,6 +696,19 @@ neighbors. Its full scraped title, play time and achievement count appear below.
 A resumes an available saved game or starts it otherwise. Y toggles Favorite;
 X opens game details. A game without a cover keeps a readable text fallback.
 
+The details' last row is **Delete Game**. It asks first, naming the game and
+saying that its saves, states, cover and video go with it and that this cannot
+be undone; the cursor starts on Cancel, and B is Cancel. The game's files go -
+its folder for a game in one, the tracks a top-level `.cue`, `.gdi` or `.toc`
+names, an arcade set's `.zip` - with its saves in `Saves/`, its save states and
+their pictures, its cover and video snap, its cached achievement set, and its
+details, favorite and play time in the library. Each path is built from the
+game's own name, never matched by a pattern; a file another game on the card
+still uses stays, a BIOS set such as `neogeo.zip` is never deleted, and a
+sheet that names a file outside the game's folder stops the whole delete. The
+shelf moves to the next game, or the one before at the end; a shelf left with
+no games goes from the home. Ports have no Delete Game.
+
 Card art comes from, in order:
 
 1. box art in `Roms/<system>/.media/<name>.png`, whether you put it there or

@@ -131,6 +131,9 @@ bool db_titles_load(db *d, const char *folder, db_titles *out);
 const char *db_titles_find(const db_titles *t, const char *file);
 void db_titles_free(db_titles *t);
 bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m);
+/* A game's row gone, details and title with it: the game was deleted from
+ * the card (src/gamedel.h). True when there was one. */
+bool db_game_del(db *d, const char *folder, const char *file);
 
 /* Inspectable without being editable. Nothing on the device can read a
  * database - there is no sqlite3 binary - and losing the ability to SEE what a

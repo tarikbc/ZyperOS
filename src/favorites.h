@@ -36,6 +36,11 @@ bool fav_is(const char *tag, const char *file);
  * works. */
 bool fav_toggle(const char *tag, const char *file);
 
+/* A game deleted from the card (src/gamedel.h): off the set, and its row out
+ * of the library database whether or not the set was loaded. True when
+ * there was a row. */
+bool fav_forget(const char *tag, const char *file);
+
 int  fav_count(void);
 bool fav_at(int i, const char **tag, const char **file);
 

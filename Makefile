@@ -8,7 +8,7 @@
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
         check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-search \
         check-raset check-xfer check-sshlink check-usblink check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-        check-db check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
+        check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
         check-home check-home-shots check-games check-favorites-shots design sounds strings cjk-font check-strings check-i18n-shots \
@@ -30,7 +30,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-rasignin check-noticeq \
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
@@ -1121,6 +1121,33 @@ build-native/db-check: tools/db-check.c src/db.c src/db.h src/atomic.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/db-check.c src/db.c src/atomic.c -lsqlite3 -lpthread
+
+# Delete Game (src/gamedel.h) on a card made of small files: a cartridge, a
+# multi-disc set in its folder, a .cue with its tracks and an arcade set
+# beside neogeo.zip, each with saves, states, a cover, a video and a set.
+# Exactly the game's files go, never a neighbour's, never neogeo.zip, never
+# a file another game shares; its rows in the library database go and the
+# neighbours' stay; a sheet or a folder that leads out of the card's folders
+# is refused with nothing touched.
+#
+# Then the real launcher, headless (tools/gamedel-e2e.py): Delete Game's yes
+# through --delete-now, the shelf after it in place and on the next game or
+# the one before, from Favorites, down to the empty home, and the saved
+# library a start reads first.
+check-gamedel: build-native/gamedel-check
+	@./build-native/gamedel-check
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+	fi
+	@python3 tools/gamedel-e2e.py
+
+build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/library.c \
+                            src/library.h src/db.c src/db.h src/favorites.c src/stats.c \
+                            src/atomic.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/gamedel-check.c src/gamedel.c src/library.c src/db.c src/favorites.c \
+	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Play time. The assertion that earns this its place is that a LAUNCH writes
 # nothing: that is a claim about a path nobody watches, and it stops being true

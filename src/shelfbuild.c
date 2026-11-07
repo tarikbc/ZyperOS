@@ -3,6 +3,7 @@
 
 #include "db.h"
 #include "favorites.h"
+#include "gamedel.h"
 #include "musec.h"
 #include "savedlib.h"
 #include "texload.h"
@@ -934,6 +935,163 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 void rescan_all(app *a)
 {
 	rebuild(a, NULL, false);
+}
+
+/* The saved library as the shelves are now, after a change the launcher
+ * made itself and so knows without reading the card: the folder's digest
+ * for the check, and the file for the next start (src/savedlib.h) */
+static void saved_follow(app *a, const char *folder)
+{
+	savedlib_row rows[CFG_MAX_SYSTEMS];
+	char path[LIB_PATH];
+	int i, n = 0;
+
+	for (i = 0; i < g_nshown; i++) {
+		int k;
+
+		if (strcmp(g_shown[i].folder, folder)) continue;
+		g_shown[i].shown = 0;
+		for (k = 0; k < a->sys.count; k++)
+			if (!a->view[k].owner && !strcmp(a->sys.systems[k].folder, folder))
+				g_shown[i].shown = lib_listing_digest(&a->view[k].list);
+		g_shown[i].saved = g_shown[i].shown;
+	}
+	for (i = 0; i < a->sys.count && n < CFG_MAX_SYSTEMS; i++) {
+		const system_cfg *sc = &a->sys.systems[i];
+
+		if (a->view[i].owner || !strcmp(sc->tag, "MUSE") || !sc->folder[0]) continue;
+		rows[n++] = (savedlib_row){ sc->folder, sc->exts, &a->view[i].list };
+	}
+	saved_path(path, sizeof path);
+	if (g_save_lock) SDL_LockMutex(g_save_lock);
+	if (!savedlib_write(path, ZYPEROS_VERSION, rows, n))
+		fprintf(stderr, "saved library: could not write %s\n", path);
+	if (g_save_lock) SDL_UnlockMutex(g_save_lock);
+}
+
+/* One shelf's system taken off the home: its arrays freed, the rest moved
+ * down, as hide_empty_systems compacts them */
+static void drop_system(app *a, int si)
+{
+	sysview *v = &a->view[si];
+	int i;
+
+	free(v->tex); free(v->tw); free(v->th); free(v->cb);
+	free(v->album);
+	lib_free(&v->list);
+	for (i = si; i + 1 < a->sys.count; i++) {
+		a->sys.systems[i] = a->sys.systems[i + 1];
+		a->view[i] = a->view[i + 1];
+	}
+	a->sys.count--;
+	memset(&a->sys.systems[a->sys.count], 0, sizeof a->sys.systems[0]);
+	memset(&a->view[a->sys.count], 0, sizeof a->view[0]);
+}
+
+/* A game deleted from the card (src/gamedel.h, DESIGN.md 11.31): off its own
+ * shelf and off Favorites, in place, with no read of the card. The shelf
+ * stood on keeps its place and its cursor goes to the next game, or the one
+ * before at the end (gd_cursor_after); a shelf left empty goes, as an empty
+ * system always has (hide_empty_systems), and the home is shown on the
+ * system that took its place - or, with no games left on the card, the empty
+ * home. Favorites keeps the game its cursor was on.
+ *
+ * In place rather than rescan_all, which is a read of every console's folder
+ * for one file the launcher itself just deleted: on my card, 8,844 games on
+ * exFAT, that is most of a second (lib_scan_listing). */
+void shelf_drop_game(app *a, const char *tag, const char *file)
+{
+	char stand[sizeof a->sys.systems[0].tag], fav_tag[sizeof a->sys.systems[0].tag] = "";
+	char fav_file[LIB_PATH] = "", folder[CFG_STR] = "";
+	int was_sys, si, k, i, order = 0, fav_at_i = 0;
+
+	if (a->sys.count <= 0) return;
+	snprintf(stand, sizeof stand, "%s", a->sys.systems[a->sys_cursor].tag);
+	was_sys = a->sys_cursor;
+	/* Every index from here on can name another game */
+	free_all_textures(a);
+	SDL_AtomicIncRef(&g_lib_gen);       /* a check that read the card before is moot */
+
+	for (i = 0; i < a->sys.count; i++)
+		if (a->view[i].owner) {
+			const sysview *f = &a->view[i];
+
+			order = f->sort;
+			fav_at_i = f->cursor;
+			if (f->cursor >= 0 && f->cursor < f->list.count) {
+				snprintf(fav_tag, sizeof fav_tag, "%s",
+				         a->sys.systems[f->owner[f->cursor]].tag);
+				snprintf(fav_file, sizeof fav_file, "%s", f->list.items[f->cursor].file);
+			}
+			break;
+		}
+	drop_favorites_shelf(a);
+
+	for (si = 0; si < a->sys.count; si++)
+		if (!strcmp(a->sys.systems[si].tag, tag)) break;
+	if (si < a->sys.count && (k = lib_find_entry(&a->view[si].list, NULL, 0, file)) >= 0) {
+		sysview *v = &a->view[si];
+		size_t rest = (size_t)(v->list.count - k - 1);
+
+		snprintf(folder, sizeof folder, "%s", a->sys.systems[si].folder);
+		memmove(&v->list.items[k], &v->list.items[k + 1], rest * sizeof *v->list.items);
+		if (v->tex) memmove(&v->tex[k], &v->tex[k + 1], rest * sizeof *v->tex);
+		if (v->tw)  memmove(&v->tw[k],  &v->tw[k + 1],  rest * sizeof *v->tw);
+		if (v->th)  memmove(&v->th[k],  &v->th[k + 1],  rest * sizeof *v->th);
+		if (v->cb)  memmove(&v->cb[k],  &v->cb[k + 1],  rest * sizeof *v->cb);
+		v->list.count--;
+		/* Its cursor: on the game, it is now on the next one; past the
+		 * end, on the one before */
+		if (v->cursor > k) v->cursor--;
+		if (v->cursor >= v->list.count) v->cursor = v->list.count > 0 ? v->list.count - 1 : 0;
+		fprintf(stderr, "delete: %s %s off its shelf, %d game%s left\n", tag, file,
+		        v->list.count, v->list.count == 1 ? "" : "s");
+		saved_follow(a, folder);
+		if (v->list.count == 0) {
+			fprintf(stderr, "delete: %s has no games left, off the home\n", tag);
+			drop_system(a, si);
+		}
+	}
+	build_favorites_shelf(a);
+	for (i = 0; i < a->sys.count; i++)
+		if (a->view[i].owner) {
+			sysview *f = &a->view[i];
+			int c = -1;
+
+			f->sort = order;
+			sort_shelf(a, i);
+			/* The game Favorites was on, or where it was when that was the
+			 * game deleted */
+			for (k = 0; fav_file[0] && k < f->list.count; k++)
+				if (!strcmp(f->list.items[k].file, fav_file) &&
+				    !strcmp(a->sys.systems[f->owner[k]].tag, fav_tag))
+					c = k;
+			if (c < 0) c = fav_at_i < f->list.count ? fav_at_i : f->list.count - 1;
+			f->cursor = c > 0 ? c : 0;
+			cf_reset(&f->cf, f->cursor);
+			break;
+		}
+
+	/* Back where the player stood. On the game's own shelf its cursor was
+	 * the game, and moved above to the next one or the one before at the
+	 * end (gd_cursor_after's rule); on Favorites the same, above */
+	for (i = 0; i < a->sys.count; i++)
+		if (!strcmp(a->sys.systems[i].tag, stand)) break;
+	if (i < a->sys.count) {
+		sysview *v = &a->view[i];
+
+		a->sys_cursor = i;
+		cf_reset(&v->cf, v->cursor);
+		games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+	} else {
+		/* The shelf stood on emptied and went: the home, on the system now
+		 * in its place */
+		a->sys_cursor = was_sys < a->sys.count ? was_sys : a->sys.count - 1;
+		if (a->sys_cursor < 0) a->sys_cursor = 0;
+		a->screen = SCREEN_SYSTEMS;
+	}
+	if (a->sys.count > 0) a->tint = a->sys.systems[a->sys_cursor].accent;
+	home_reset(&a->home, a->sys_cursor, a->sys.count, plat_now_ms());
 }
 
 bool lib_check_apply(app *a, lib_check *c)
