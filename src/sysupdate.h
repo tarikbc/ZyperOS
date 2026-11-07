@@ -65,13 +65,13 @@ typedef struct {
  * where the bar goes, and the buttons at the foot. */
 typedef struct {
 	char from[32], to[32];   /* to "": only the installed version */
-	char sub[96];
+	char sub[256];
 	bool sub_warn;           /* the line under the versions in **warning** */
 	bool notes;              /* What's New under it */
 	bool bar;
 	float frac;
 	char bar_left[32], bar_right[48];
-	char line[96];           /* where the bar goes, when there is none */
+	char line[256];          /* where the bar goes, when there is none */
 	bool line_warn;
 	/* A problem, said in full where What's New goes (which steps aside):
 	 * big enough to read at arm's length, not a cut line in **meta** */

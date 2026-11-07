@@ -10807,14 +10807,21 @@ static void update_page_draw(app *a, const su_page *p, char notes[UP_NOTES][120]
 		up_arrow(r, x + 24, 200, 52);
 		ui_text(r, ft, p->to, x + 100, ui_cap_y(ft, 200), -1, UI_TEXT);
 	}
-	ui_fit_text(fs, p->sub, buf, sizeof buf, ZYPEROS_SCREEN_W - 272 - UP_X);
-	ui_text(r, fs, buf, 272, ui_cap_y(fs, 270), -1, p->sub_warn ? warn : UI_TEXT_DIM);
+	/* The line under the versions wraps to a second line before it is cut
+	 * (a long sentence in French or Portuguese); the second sits under it,
+	 * clear of What's New at 348 */
+	{
+		char sl[2][LB_LINE];
+		int n = ui_balance_lines(fs, p->sub, ZYPEROS_SCREEN_W - 272 - UP_X, 2, sl), k;
+		for (k = 0; k < n; k++)
+			ui_text(r, fs, sl[k], 272, ui_cap_y(fs, 270 + k * 38), -1, p->sub_warn ? warn : UI_TEXT_DIM);
+	}
 
 	/* A problem, in full: **menu** **text**, up to three balanced lines from
 	 * y 348 every 52, a **warning** bar beside them, where What's New goes */
 	if (p->warn[0]) {
-		char lines[3][LB_LINE];
-		int n = ui_balance_lines(fm, p->warn, UP_W - 34, 3, lines), k;
+		char lines[4][LB_LINE];
+		int n = ui_balance_lines(fm, p->warn, UP_W - 34, 4, lines), k;
 		SDL_Rect mark = { UP_X, 348 - 30, 8, (n - 1) * 52 + 60 };
 
 		ui_round_rect(r, &mark, 4, warn);
@@ -10844,9 +10851,12 @@ static void update_page_draw(app *a, const su_page *p, char notes[UP_NOTES][120]
 		ui_text(r, fs, p->bar_left, UP_X, ui_cap_y(fs, 626), -1, UI_TEXT_DIM);
 		ui_text(r, fs, p->bar_right, UP_X + UP_W, ui_cap_y(fs, 626), 1, UI_TEXT_DIM);
 	} else if (p->line[0]) {
-		ui_fit_text(fs, p->line, buf, sizeof buf, UP_W);
-		ui_text(r, fs, buf, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 600), 0,
-		        p->line_warn ? warn : UI_TEXT_DIM);
+		/* Up to three lines, centered, the last where the one line stood */
+		char ll[3][LB_LINE];
+		int n = ui_balance_lines(fs, p->line, UP_W, 3, ll), k;
+		for (k = 0; k < n; k++)
+			ui_text(r, fs, ll[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 600 - (n - 1 - k) * 38), 0,
+			        p->line_warn ? warn : UI_TEXT_DIM);
 	}
 
 	/* The buttons, glyph and word, centered as a row at the foot */

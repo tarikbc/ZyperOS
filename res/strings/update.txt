@@ -48,15 +48,26 @@ ja = %s が利用可能
 it = %s disponibile
 
 [update.unsupported]
-note = The line under the version, on a handheld whose install has no System Update
-en = System Update is not on this system.
-zh-Hans = 此系统不支持系统更新。
-es = Este sistema no tiene actualización del sistema.
-pt-BR = Este sistema não tem atualização do sistema.
-fr = La mise à jour du système n'est pas disponible ici.
-de = Systemupdate gibt es auf diesem System nicht.
-ja = このシステムでは使えません。
-it = Questo sistema non ha Aggiornamento di sistema.
+note = The line under the version, on a handheld whose install was made before System Update existed (it may wrap to two lines)
+en = This system was made without System Update.
+zh-Hans = 此系统安装时不带系统更新功能。
+es = Este sistema se creó sin actualización del sistema.
+pt-BR = Este sistema foi criado sem atualização do sistema.
+fr = Ce système a été créé sans mise à jour du système.
+de = Dieses System wurde ohne Systemupdate erstellt.
+ja = このシステムにはシステムアップデートが入っていません。
+it = Questo sistema è stato creato senza Aggiornamento di sistema.
+
+[update.unsupported_how]
+note = Where the bar goes, on that handheld: what to do, in up to two lines. One update with the ZyperOS Installer (the computer app that writes a card) switches System Update on
+en = Update once with the ZyperOS Installer on a computer to turn it on. After that, updates come over Wi-Fi.
+zh-Hans = 请先在电脑上用 ZyperOS 安装器更新一次以启用此功能，之后即可通过 Wi-Fi 更新。
+es = Actualiza una vez con el instalador de ZyperOS en un ordenador para activarla. Después, las actualizaciones llegan por Wi-Fi.
+pt-BR = Atualize uma vez pelo instalador do ZyperOS em um computador para ativar. Depois, as atualizações chegam pelo Wi-Fi.
+fr = Mettez à jour une fois avec l'installateur ZyperOS sur un ordinateur pour l'activer. Ensuite, les mises à jour arrivent par Wi-Fi.
+de = Aktualisiere einmal mit dem ZyperOS Installer an einem Computer, um es einzuschalten. Danach kommen Updates per WLAN.
+ja = パソコンで ZyperOS Installer を使って一度アップデートすると有効になります。以降は Wi-Fi で更新できます。
+it = Aggiorna una volta con l'installer di ZyperOS su un computer per attivarlo. Poi gli aggiornamenti arrivano via Wi-Fi.
 
 [update.use_installer]
 note = Where the bar goes: the ZyperOS Installer is the computer app that writes a card

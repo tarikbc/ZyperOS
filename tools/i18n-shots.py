@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -90,6 +91,25 @@ EXTRA = {
     "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),
 }
 
+# MENU > System Update in the states whose lines are longest, each as the
+# status file the update program writes it (src/sysupdate.c); the second is
+# whether a network is there (a test release's source on the card counts as
+# one). The lines wrap onto a second line, and fail here if they still do not fit.
+UPDATE_STATES = {
+    "update-unsupported": ("state unsupported\n", True),
+    "update-unsupported-offline": ("state unsupported\n", False),
+    "update-uptodate": ("state uptodate\nversion 0.1.0\ntime {now}\n", True),
+    "update-idle-offline": ("state idle\n", False),
+    "update-error": ("state error\ntime {now}\n", True),
+    "update-error-download": ("state error\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", True),
+    "update-needs-system": ("state needs-system\nversion 0.3.0\ntime {now}\n", True),
+    "update-too-big": ("state too-big\nversion 0.3.0\nkind system\ntime {now}\n", True),
+    "update-space": ("state space\nversion 0.2.0\ndownload 14200000\ntime {now}\n", True),
+    "update-available-offline": ("state available\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", False),
+    "update-ready": ("state ready\nversion 0.1.1\nkind system\ntime {now}\n", True),
+}
+EXTRA.update({name: ("demo", "PS1", ["--update"]) for name in UPDATE_STATES})
+
 # Each language's own run of every shot, on its own cards
 def run_language(code, shots, binary, keep):
     notes, failures, data = [], [], {}
@@ -104,6 +124,20 @@ def run_language(code, shots, binary, keep):
             card = cards[card_name]
             focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
+            # A state of the update page: its status, with or without a network
+            up = card / "userdata/update"
+            source = up / "source"
+            if name in UPDATE_STATES:
+                text, net = UPDATE_STATES[name]
+                (up / "status").write_text(text.format(now=int(time.time())))
+                if net:
+                    source.write_text("file:///nonexistent\n")
+                elif source.exists():
+                    source.unlink()
+            elif up.is_dir():
+                # Back to the demonstration card's own, for the shots after
+                (up / "status").write_text(R.UPDATE_STATUS)
+                source.write_text("file:///nonexistent\n")
             target = out / (name + ".png")
             # The tutorial and the battery's screens draw no status corner
             status = [] if name.startswith(("tour-", "lowbatt", "charging-")) else \
