@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charging lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .pair { display: grid; gap: 10px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+
+  /* ---- Zyper asleep: the symbol with its eyes shut ---------------------- */
+  .zs .zyp { position: absolute; transform-origin: 50% 70%; }
+  .zs .zyp svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .zs[data-theme="light"] .zyp svg { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent)); }
+  .zs .zzz { position: absolute; color: var(--text-dim); font-weight: 600; line-height: 1; }
+
+  /* ---- text in the type roles ------------------------------------------ */
+  .zs .t-title { position: absolute; font-size: 60px; font-weight: 600; color: var(--text); line-height: 1; white-space: nowrap; }
+  .zs .t-label { position: absolute; font-size: 55px; color: var(--text-soft); line-height: 1; white-space: nowrap; }
+  .zs .t-menu  { position: absolute; font-size: 49px; color: var(--text-soft); line-height: 1; white-space: nowrap; }
+  .zs .t-meta  { position: absolute; font-size: 37px; color: var(--text-dim); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .zs .center { left: 0; right: 0; text-align: center; }
+  .zs .batt { position: absolute; }
+  .zs .batt svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  /* the status corner's clock, 24 from the top right */
+  .zs .clock { position: absolute; right: 24px; top: 24px; height: 24px; line-height: 24px; font-size: 24px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+  /* the menu panel as a screen of its own */
+  .zs .cpanel { position: absolute; left: 112px; width: 800px; top: 120px; height: 520px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); padding: 30px 37px; box-sizing: border-box; }
+  .zs .cpanel h4 { margin: 0 0 4px; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .cpanel hr { border: 0; height: 2px; background: var(--edge); margin: 0 10px 12px; }
+  .zs .cpanel .mrow { display: flex; justify-content: space-between; padding: 8px 28px; font-size: 49px; color: var(--text-soft); }
+  .zs .cpanel .mrow span { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  /* the screen dark: the backlight off, the side lights still on */
+  .zs .dark { position: absolute; inset: 0; background: #000; }
+  .zs .leds { position: absolute; right: -2px; top: 250px; display: grid; gap: 22px; }
+  .zs .leds i { width: 10px; height: 34px; border-radius: 5px; background: #2a2a2a; display: block; }
+  .zs .leds i.on { background: #58d24a; box-shadow: 0 0 18px #58d24a; }
+  .zs .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .62); }
+  .zs .hint { position: absolute; left: 0; right: 0; bottom: 40px; text-align: center; font-size: 24px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Charging <b>lab</b></h1>
+      <p class="zk-lede">A screen for when the Pixel 2 is off and charging: how full it is, how fast it charges and when it will be full. Today a charger wakes the handheld for a moment and the bootloader turns it straight off again, so the screen stays dark. Pick one option in each section, and add a note if you want a change. Every option is shown in Beard and in Salt &amp; Pepper.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>When it shows:</b> a charger goes in while the handheld is off. The handheld starts a small charging mode instead of turning off again. No game, no music, no Wi-Fi; the side lights show the charge, as they do when it is on.</li>
+      <li><b>The numbers come from the battery:</b> the charge (%), the power going in (W, from the current and the voltage), and the kind of charger (a wall charger gets 2 A, a computer 1.5 A). "Full in" is worked out from the charge still needed and the current, smoothed over a minute, and slower for the last 10%, as a battery takes longer there. It shows after the first 30 seconds, rounded to 5 minutes.</li>
+      <li><b>Unplugged:</b> the screen says "Unplugged" for a moment and the handheld turns off.</li>
+      <li><b>Needs a new bootloader once:</b> the bootloader decides what a charger does to a handheld that is off. The change goes onto the card with the installer or a system update, after you say yes.</li>
+    </ul>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* Zyper, `w` wide, top left (x, y); asleep: his eyes shut (two lids over
+   * the symbol's eyes, in the mask's grey, and a dark line each) */
+  const zy = (x, y, w, asleep = true) =>
+    `<div class="zyp" style="left:${x}px;top:${y}px;width:${w}px;height:${Math.round(w * 1.055)}px"><svg viewBox="-114.6 -125.1 248.9 262.6"><use href="#zyper" x="-114.6" y="-125.1" width="248.9" height="262.6"/>${asleep ? `
+      <circle cx="-28" cy="-27" r="11.5" fill="#969998"/><circle cx="35" cy="-16" r="11.5" fill="#969998"/>
+      <path d="M-39 -27 q 11 9 22 -2 M24 -16 q 11 9 22 -2" fill="none" stroke="#111310" stroke-width="4.5" stroke-linecap="round"/>
+      <ellipse cx="-8" cy="72" rx="44" ry="40" fill="#E4E2D8"/>
+      <path d="M-30 50 q 22 13 44 -4" fill="none" stroke="#111310" stroke-width="5" stroke-linecap="round"/>` : ""}</svg></div>`;
+  const zzz = (x, y, s = 1) => `<span class="zzz" style="left:${x}px;top:${y}px;font-size:${Math.round(30 * s)}px">z</span><span class="zzz" style="left:${x + 26 * s}px;top:${y - 30 * s}px;font-size:${Math.round(38 * s)}px">z</span><span class="zzz" style="left:${x + 58 * s}px;top:${y - 68 * s}px;font-size:${Math.round(48 * s)}px">Z</span>`;
+  /* The status corner's battery mark at `k` times, `pct` full, charging */
+  function batt(x, y, k, pct, charging = true) {
+    const fill = Math.max(4, Math.round(28 * pct / 100));
+    const bolt = charging ? `<path d="M23 3 13 13.5h6.5L16 21l10.5-11H20z" fill="var(--text)" stroke="var(--ground)" stroke-width="1.6" stroke-linejoin="round"/>` : "";
+    const at = x === null ? "position:relative;flex:none" : `left:${x}px;top:${y}px`;
+    return `<div class="batt" style="${at};width:${44 * k}px;height:${24 * k}px"><svg viewBox="0 0 44 24">
+      <rect x="1.5" y="1.5" width="37" height="21" rx="6" fill="none" stroke="var(--text-soft)" stroke-width="3"/>
+      <rect x="40" y="8" width="3" height="8" rx="1" fill="var(--text-soft)"/>
+      <rect x="6" y="6" width="${fill}" height="12" rx="2" fill="var(--accent-ink)"/>${bolt}</svg></div>`;
+  }
+  const both = (draw, cap) => `<div class="pair">${ZK.screen("light", draw("light"))}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"))}<span class="cap">Salt &amp; Pepper</span>${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+  const clock = `<div class="clock">22:41</div>`;
+
+  /* What the lines say, by how much is shown */
+  const LINES = {
+    essentials: ["Full in about 1 h 10 min"],
+    speed: ["Charging · 7.4 W · wall charger", "Full in about 1 h 10 min"],
+    everything: ["Charging · 7.4 W · wall charger", "Full in about 1 h 10 min", "1.48 A · 4.12 V · 31 °C · health 96%"],
+  };
+
+  /* A: Zyper asleep over the battery and the percentage, the lines under */
+  function layoutZyper(o = {}) {
+    const lines = LINES[o.info || "speed"];
+    let y = 506;
+    const ls = lines.map((t, i) => { const r = `<div class="${i === 0 && lines.length > 1 ? "t-label" : "t-meta"} center" style="top:${y}px">${t}</div>`; y += i === 0 && lines.length > 1 ? 74 : 54; return r; }).join("");
+    return clock + zy(412, 92, 200) + zzz(628, 128) +
+      `<div class="t-title center" style="top:390px;display:flex;justify-content:center;align-items:center;gap:22px">${batt(null, null, 2, 62)}62%</div>` + ls;
+  }
+  /* B: the battery large, the percentage in it, Zyper asleep against it */
+  function layoutBattery(o = {}) {
+    const lines = LINES[o.info || "speed"];
+    let y = 506;
+    const ls = lines.map((t, i) => { const r = `<div class="${i === 0 && lines.length > 1 ? "t-label" : "t-meta"} center" style="top:${y}px">${t}</div>`; y += i === 0 && lines.length > 1 ? 74 : 54; return r; }).join("");
+    return clock + batt(380, 140, 7, 62, false) + zy(214, 178, 150) + zzz(296, 180, .8) +
+      `<div class="t-title center" style="top:390px">62%</div>` + ls;
+  }
+  /* C: the menu panel, its rows the numbers, Zyper asleep in its corner */
+  function layoutPanel(o = {}) {
+    const rows = [["Battery", "62%"], ["Charging", "7.4 W"], ["Charger", "wall charger"], ["Full in", "about 1 h 10 min"]];
+    if (o.info === "everything") rows.push(["Battery health", "96%"]);
+    return clock + `<div class="cpanel" style="${o.info === "everything" ? "height:600px;top:84px" : ""}"><h4>Charging</h4><hr>${rows.map(r => `<div class="mrow">${r[0]}<span>${r[1]}</span></div>`).join("")}</div>` +
+      zy(780, o.info === "everything" ? 82 : 118, 64);
+  }
+
+  const dark = (lit) => `<div class="dark"></div><div class="leds"><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>`;
+
+  const list = [
+    { key: "layout", title: "How the charging screen looks",
+      why: "Each shows 62%, charging at 7.4 W from a wall charger, full in about 1 h 10 min. Zyper is asleep: the handheld is off, he only keeps an eye on the battery.",
+      options: {
+        zyper: { name: "Zyper asleep over the numbers", tag: "suggested", blurb: "Zyper asleep at the top with his z's, the charging battery mark before the percentage in title, and the lines under: the speed in label, the time to full in meta. The clock in its corner.",
+          draw: () => both(() => layoutZyper()) },
+        battery: { name: "A big battery", blurb: "The battery mark large, filling with accent-ink as it charges, Zyper asleep against it, the percentage under it in title and the lines under that.",
+          draw: () => both(() => layoutBattery()) },
+        panel: { name: "A panel of numbers", blurb: "The menu panel on the ground: Battery, Charging, Charger and Full in as rows, Zyper asleep in its heading's corner. The most like the rest of the menus.",
+          draw: () => both(() => layoutPanel()) },
+      } },
+    { key: "info", title: "How much it says",
+      why: "Shown on the first layout; the others carry the same lines.",
+      options: {
+        essentials: { name: "Just the essentials", blurb: "The percentage and the time to full. Nothing to read twice.",
+          draw: () => both(() => layoutZyper({ info: "essentials" })) },
+        speed: { name: "Speed too", tag: "suggested", blurb: "The power going in and the kind of charger, then the time to full. Says at once whether the charger is a slow one.",
+          draw: () => both(() => layoutZyper({ info: "speed" })) },
+        everything: { name: "Everything", blurb: "Also the current, the voltage, the battery's temperature and its health (how much of its first capacity it still holds).",
+          draw: () => both(() => layoutZyper({ info: "everything" })) },
+      } },
+    { key: "light", title: "How long the screen stays lit",
+      why: "A lit screen takes power the battery would get, and a charging handheld is often left on a desk or by a bed.",
+      options: {
+        timeout: { name: "10 seconds, then dark", tag: "suggested", blurb: "Lit when the charger goes in, dark after 10 seconds; any button lights it again for 10 seconds. The side lights keep showing the charge.",
+          draw: () => both(th => layoutZyper() + dark(), "after 10 s: dark, the side lights on") },
+        dim: { name: "Always on, dimmed", blurb: "Lit at the lowest brightness for as long as it charges. Always readable; a night light by the bed.",
+          draw: () => both(th => layoutZyper() + `<div class="dim"></div>`) },
+        press: { name: "Dark until a press", blurb: "Lit for a moment when the charger goes in, then only when a button is pressed.",
+          draw: () => both(th => layoutZyper() + dark(), "dark until a button") },
+      } },
+    { key: "power", title: "What POWER does on the charging screen",
+      why: "The other buttons only light the screen.",
+      options: {
+        press: { name: "A press starts ZyperOS", tag: "suggested", blurb: "As POWER does on a handheld that is off: the boot animation, then the home, still charging.",
+          draw: () => both(th => layoutZyper() + `<div class="hint">POWER: start</div>`) },
+        hold: { name: "Hold POWER to start", blurb: "A press only lights the screen; held for a second, ZyperOS starts. Harder to start by accident in a bag.",
+          draw: () => both(th => layoutZyper() + `<div class="hint">Hold POWER to start</div>`) },
+      } },
+    { key: "poweroff", title: "Turning the handheld off while it charges",
+      why: "Today POWER saves and turns the handheld off, charger or not. Nothing changes off the charger.",
+      options: {
+        screen: { name: "The charging screen", tag: "suggested", blurb: "On the charger, the power-off goes to the charging screen instead of black, as a phone does. ZyperOS is off; the screen goes dark after its time.",
+          draw: () => both(() => layoutZyper()) },
+        off: { name: "Off, as now", blurb: "The handheld turns all the way off. The charging screen shows only when a charger goes in while it is off.",
+          draw: () => both(th => `<div class="dark"></div><div class="leds"><i></i><i></i><i></i><i></i><i></i></div>`, "off: nothing lit") },
+      } },
+  ];
+
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-charging", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

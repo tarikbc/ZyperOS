@@ -1,0 +1,71 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# PortMaster's control.txt for ZyperOS on the GKD Pixel 2. Every port sources
+# it first, for where things are ($directory, $controlfolder), how to run its
+# helpers ($ESUDO, $GPTOKEYB) and the controller (get_controls).
+#
+# launch.sh copies this over Roms/Ports/PortMaster/control.txt before each
+# port runs: PortMaster's own install and updates write one for whichever
+# system they take this for, and none of theirs knows ZyperOS.
+#
+# The paths are the stock ones. plastron links /roms to /mnt/SDCARD/Roms, and
+# the card is exFAT, which matches names without regard to case, so the
+# /roms/ports every port names is the shelf's Roms/Ports.
+
+CUR_TTY=/dev/tty0
+directory="roms"
+controlfolder="/$directory/ports/PortMaster"
+
+# Everything runs as root here, so no sudo, and gptokeyb is told to kill its
+# program by number (-1) rather than through sudo.
+ESUDO=""
+ESUDOKILL="-1"
+ESUDOKILL2="-1"
+
+export SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
+SDLDBFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+SDLDBUSERFILE="${HOME}/.config/SDL-GameControllerDB/gamecontrollerdb.txt"
+[ ! -f "${SDLDBUSERFILE}" ] && SDLDBUSERFILE="${controlfolder}/gamecontrollerdb.txt"
+
+# The Pixel 2's buttons come from ROCKNIX's joypad driver, which reports the
+# standard gamepad codes (BTN_SOUTH, BTN_DPAD_UP, ...) and no axes. SDL maps
+# such a pad by itself (plastron's SDL2 is patched to see a pad with no axes
+# at all), so there is no database line to pick out: an empty file, and SDL's
+# own mapping. No sticks.
+#
+# The hotkey is SELECT, not guide: SDL's own mapping takes guide only from
+# BTN_MODE, and MENU here is BTN_TRIGGER_HAPPY1. SELECT + START closes a port.
+get_controls() {
+  ANALOGSTICKS=0
+  LOWRES="N"
+  DEVICE=""
+  param_device="gkd-pixel2"
+  export HOTKEY="back"
+  export SDL_GAMECONTROLLERCONFIG_FILE="/tmp/gamecontrollerdb.txt"
+  : > /tmp/gamecontrollerdb.txt
+  sdl_controllerconfig=""
+}
+
+source $controlfolder/device_info.txt
+source $controlfolder/funcs.txt
+
+# device_info.txt guesses from /etc/os-release and the device tree; these it
+# can't know or gets wrong here.
+CFW_NAME="ZyperOS"
+CFW_VERSION="$(cat /mnt/SDCARD/ZyperOS/VERSION 2> /dev/null || echo Unknown)"
+DEVICE_NAME="GKD Pixel 2"
+DEVICE_CPU="RK3326"
+DEVICE_ARCH="aarch64"
+DEVICE_HAS_AARCH64="Y"
+DEVICE_HAS_ARMHF="N"
+DEVICE_RAM=1
+DISPLAY_WIDTH=640
+DISPLAY_HEIGHT=480
+ASPECT_X=4
+ASPECT_Y=3
+ANALOG_STICKS=0
+DISPLAY_ORIENTATION=0
+
+GPTOKEYB2="$ESUDO env LD_PRELOAD=$controlfolder/libinterpose.${DEVICE_ARCH}.so $controlfolder/gptokeyb2 $ESUDOKILL2"
+GPTOKEYB="$ESUDO $controlfolder/gptokeyb $ESUDOKILL"

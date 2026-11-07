@@ -1,0 +1,29 @@
+ZyperOS
+Copyright 2026 Tarik Caramanico
+
+Required Notice: Copyright 2026 Tarik Caramanico (https://github.com/tarikbc/ZyperOS)
+
+Licensor Line of Business: operating systems and firmware for handheld game consoles, and the software that installs them
+
+ZyperOS is licensed under the PolyForm Shield License 1.0.0, in LICENSE
+(https://polyformproject.org/licenses/shield/1.0.0). You may use, change and
+share it for any purpose except to provide a product that competes with it.
+A product competes with it even when it is free.
+
+Some parts of this repository are under other licenses:
+
+- Eric Reinsmidt's code from TortOS and TortOS Installer, as published in their
+  MIT-licensed versions, stays under the MIT License, with his notice in
+  LICENSES/MIT-TortOS.txt and LICENSES/MIT-TortOS-Installer.txt.
+- diatom/ (Diatom, the emulator frontend) is under the Mozilla Public License
+  2.0, in diatom/LICENSE.
+- mk/patches/ holds changes to other projects. Each patch is under the license
+  of the project it changes.
+- src/third_party/ (minimp3, stb_vorbis) and res/portmaster/ keep their own
+  licenses, given in those files.
+- Art, music, fonts and every program a card carries keep their own licenses.
+  THIRD-PARTY-LICENSES.md lists them.
+
+Versions of ZyperOS published before this notice were under the GNU General
+Public License, version 3 or later, and stay under it for whoever received
+them.

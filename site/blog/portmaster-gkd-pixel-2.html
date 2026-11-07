@@ -1,0 +1,60 @@
+title: PortMaster on the GKD Pixel 2: Setup and Ports
+description: Run PortMaster ports such as Stardew Valley and Celeste on the GKD Pixel 2 with ZyperOS: where ports go, the game files you supply, and what to expect.
+summary: Put a PortMaster setup on the card, add ports such as Stardew Valley and Celeste, and start them from the Ports shelf.
+crumb: PortMaster
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: systems
+image_alt: The ZyperOS Spotlight home, with animated pixel-art consoles
+related: add-games-gkd-pixel-2, nintendo-ds-gkd-pixel-2, best-custom-firmware-gkd-pixel-2
+weight: 50
+---
+<p>PortMaster brings PC and indie games to Linux handhelds as ports: Stardew Valley, Celeste and many more, each packed with what it needs to run. ZyperOS has a Ports shelf that runs them on the GKD Pixel 2. This guide explains how ports get onto a ZyperOS card, the game files you supply yourself, and what ZyperOS does when a port runs.</p>
+
+<h2>What PortMaster is</h2>
+<p>PortMaster is a free app, under the MIT license, that downloads and installs game ports on Linux handhelds. Each port carries its own libraries, so it does not change the system it runs on. Most ports of commercial games are not "ready to run": the port is free, but you supply the game's own files from a copy you bought.</p>
+<p>PortMaster's list of devices does not name the GKD Pixel 2, though its own FAQ says that list is out of date. Retro Game Corps found PortMaster preloaded on the Pixel 2's stock firmware, and working.</p>
+
+<h2>How ports get onto a ZyperOS card</h2>
+<p>A port is a script, <code>Something.sh</code>, with the port's folder beside it, and PortMaster keeps its own folder, <code>PortMaster/</code>, next to them. On ZyperOS all of that goes in <code>Roms/Ports</code>. The Ports shelf lists each script there, and stays hidden while the folder is empty.</p>
+<p class="note">PortMaster's own app, the one that browses and downloads ports, is a Python program. ZyperOS's Linux does not include Python, so that app does not run on ZyperOS. The ports themselves do.</p>
+<p>So you set ports up with PortMaster somewhere it runs, and copy the result:</p>
+<ol>
+  <li>On a card with a system PortMaster runs on, such as the stock firmware or ROCKNIX, open PortMaster and install the ports you want.</li>
+  <li>Add each port's game files where its instructions say, if it needs them.</li>
+  <li>Copy that card's ports folder to <code>Roms/Ports</code> on the ZyperOS card: the <code>.sh</code> scripts, their folders and <code>PortMaster/</code> itself.</li>
+</ol>
+<p>Moving from ROGUE OS? ZyperOS's <code>tools/from-rogue.sh</code> copies a ROGUE OS card's library to a ZyperOS card, and it copies the ports layout as it is.</p>
+
+<h2>Stardew Valley and Celeste</h2>
+<p>Both need the game's files from a copy you own, and both run on 64-bit Arm handhelds such as the Pixel 2.</p>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">Port</th><th scope="col">The game files you supply</th><th scope="col">Notes</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Stardew Valley Compatibility</th><td>The game's "compatibility" version, from Steam or GOG, copied into the port's <code>gamedata</code> folder</td><td>Stardew's own lighter build, for systems that cannot run the normal one. It gets the same content updates.</td></tr>
+    <tr><th scope="row">Stardew Valley</th><td>The Windows Steam version, not the compatibility branch</td><td>Marked experimental. Comes with SMAPI, and some mods can run out of memory.</td></tr>
+    <tr><th scope="row">Celeste</th><td>The DRM-free version, from itch.io (Linux) or Epic (Windows), copied into <code>celeste/gamedata</code></td><td>The first run takes a few minutes while it compresses the textures to save video memory.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The Pixel 2 has 1 GB of memory, and a big port like Stardew Valley wants most of it. That is why ZyperOS steps aside while a port runs.</p>
+
+<h2>What ZyperOS does when a port runs</h2>
+<ul>
+  <li><strong>It frees the memory.</strong> ZyperOS's emulator, which normally stays loaded so games start at once, is stopped, and so is MP4, so the port has the memory to itself.</li>
+  <li><strong>It sets PortMaster up for ZyperOS.</strong> PortMaster writes its settings for whatever system it was installed on. Before every port, ZyperOS puts its own <code>control.txt</code>, graphics settings and per-system file in <code>PortMaster/</code>, so a port copied from another system finds its way on ZyperOS.</li>
+  <li><strong>The volume keys still work</strong>, and <kbd>MENU</kbd> with them sets the brightness, with ZyperOS's bar over the port.</li>
+  <li><strong><kbd>POWER</kbd> ends the port</strong> and then turns the handheld off, as does a battery at 2%. The port is asked to close first, so a game that saves on exit gets the chance.</li>
+</ul>
+<p>When the port ends, ZyperOS comes back.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#supported-systems">ZyperOS README, Supported systems and Install</a>: the Ports shelf and <code>Roms/Ports</code>; <a href="https://github.com/tarikbc/ZyperOS/blob/main/sd/pixel2/launch.sh">sd/pixel2/launch.sh</a>: how a port runs; <a href="https://github.com/tarikbc/ZyperOS/blob/main/res/portmaster/control.txt">res/portmaster/</a>: ZyperOS's PortMaster files; <a href="https://github.com/tarikbc/ZyperOS/blob/main/tools/from-rogue.sh">tools/from-rogue.sh</a>.</li>
+  <li>plastron at <a href="https://github.com/tarikbc/plastron/tree/8e8aeea6e856bacdb64af0b15625ee208fd8663c">8e8aeea</a>: its build configuration has no Python.</li>
+  <li>PortMaster: <a href="https://github.com/PortsMaster/PortMaster-Website/blob/6c50eb5a47010208d224c84c8f1b4c2df1152c20/content/markdown/faq.markdown">its FAQ</a>, <a href="https://portmaster.games/installation.html">installation page</a>, <a href="https://github.com/PortsMaster/PortMaster-GUI/blob/9ed29285ecbb0610b7c86a0b77d0d9d1c74efd49/LICENSE">license</a>, <a href="https://github.com/PortsMaster/PortMaster-GUI/blob/9ed29285ecbb0610b7c86a0b77d0d9d1c74efd49/PortMaster/pugwash">its app, pugwash</a> (Python 3), and <a href="https://github.com/PortsMaster/PortMaster-Info/blob/5687c12f78522b24cf7a002dd63fd633eb06bd61/device_info.json">its device list</a>, read 7 November 2026.</li>
+  <li>The ports, in <a href="https://github.com/PortsMaster/PortMaster-New/tree/8f0e6004eaf997ab0a5c4f2ab7b9cce0f5d313e9/ports">PortMaster-New at 8f0e600</a>: <a href="https://github.com/PortsMaster/PortMaster-New/blob/8f0e6004eaf997ab0a5c4f2ab7b9cce0f5d313e9/ports/stardewvalley/README.md">stardewvalley</a>, <a href="https://github.com/PortsMaster/PortMaster-New/blob/8f0e6004eaf997ab0a5c4f2ab7b9cce0f5d313e9/ports/stardewvalleymainline/README.md">stardewvalleymainline</a>, <a href="https://github.com/PortsMaster/PortMaster-New/blob/8f0e6004eaf997ab0a5c4f2ab7b9cce0f5d313e9/ports/celeste/README.md">celeste</a>; and <a href="https://www.stardewvalley.net/compatibility/">Stardew Valley's compatibility page</a>.</li>
+  <li><a href="https://retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/">Retro Game Corps, February 2025</a>: PortMaster preloaded on the stock firmware.</li>
+</ol>

@@ -1,0 +1,65 @@
+title: GKD Pixel 2 Battery: Charge Limit and Low-Battery Care
+description: Keep the GKD Pixel 2's battery young: a charge limit of 80, 85 or 90%, a charging screen while it is off, and warnings for a low battery or heat.
+summary: Stop charging at 80, 85 or 90%, the charging screen when off, and the low-battery and heat warnings.
+crumb: Battery care
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: charging
+image_alt: The ZyperOS charging screen: Zyper asleep over 62%, Charging · 6.1 W · wall charger, and the time to full
+related: gkd-pixel-2-wifi-adapter, add-games-gkd-pixel-2, best-custom-firmware-gkd-pixel-2
+weight: 80
+---
+<p>A handheld that lives on a desk charger sits at 100% for days, and a lithium battery ages faster when it is kept full. ZyperOS can stop the GKD Pixel 2's charge short, shows the charge while the handheld is off, and warns you before a low battery or heat gets in the way. This guide shows each one, and what the Pixel 2 does on its own.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>MENU &gt; Charge Limit</strong> stops charging at 80, 85 or 90%. It is Off on a new card.</li>
+  <li>A charger plugged into a Pixel 2 that is off shows <strong>the charge, the charging speed and the time to full</strong>. Hold <kbd>POWER</kbd> to start.</li>
+  <li>The battery mark turns red at 10%, and below 10% the bottom side light flashes red. At 2% off the charger, ZyperOS saves the game and turns the handheld off.</li>
+  <li>When the chip gets hot enough for the kernel to slow it down hard, Zyper says <strong>"I'm getting hot!"</strong> so a slower game is no mystery.</li>
+</ul>
+
+<h2>Set a charge limit</h2>
+<p>Open <strong>MENU</strong> on the home screen and go to <strong>Charge Limit</strong>, under Auto Off. <kbd>Left</kbd> and <kbd>Right</kbd> step it through <strong>Off</strong>, <strong>80%</strong>, <strong>85%</strong> and <strong>90%</strong>. The choice is saved at once.</p>
+<p>At the limit, the Pixel 2 does not cut the cable off. ZyperOS's Linux, plastron, tells the Pixel 2's charger chip to let the cable give only 80 mA, which is less than the handheld uses. So the battery takes no more charge and slowly gives a little back, and 5 points under the limit it charges again. The handheld never runs without the cable's power while it is plugged in, and the battery does not sit topped up all day on a desk.</p>
+<p>The percentage stays honest: 100% still means a full battery, and a limit of 85% shows 85%. The kernel forgets the limit when the handheld powers off, so ZyperOS sets it again at every start.</p>
+<p class="note">Need a full charge for a trip? On the charging screen, with a limit set, hold <kbd>A</kbd>. That charge goes to 100%, and the limit is back as soon as the cable comes out.</p>
+
+<h2>The charging screen while it is off</h2>
+<p>Plug a charger into a Pixel 2 that is off and it wakes to a quiet screen instead of staying dark. Zyper sleeps over the numbers:</p>
+<ul>
+  <li><strong>The charge</strong>, with the battery mark.</li>
+  <li><strong>The speed and the charger</strong>, for example <em>Charging · 7.4 W · wall charger</em>, or <em>computer</em> on a computer's port. It waits a few seconds until the USB port names the charger.</li>
+  <li><strong>The time to full</strong>, rounded up to 5 minutes, such as <em>Full in about 1 h 10 min</em>. With a charge limit it is the time to the limit, and then <em>Kept at 85%</em>.</li>
+</ul>
+<figure class="shot"><img src="/img/charging.png" alt="The charging screen of a Pixel 2 that is off: Zyper asleep, 62%, Charging · 6.1 W · wall charger, Full in about 1 h 15 min, Hold POWER to start"><figcaption>A charger plugged into a Pixel 2 that is off.</figcaption></figure>
+<p>The screen goes dark after about ten seconds, and the side lights keep showing the charge. Any button lights it again. Hold <kbd>POWER</kbd> to start ZyperOS. Unplug the cable and it says <em>Unplugged</em> and turns off.</p>
+<p>Turning the handheld off while it is on a charger goes to this screen too, after the game is saved.</p>
+
+<h2>Low battery</h2>
+<p>The battery mark in the top right corner of the home turns red at 10%, and its fill blinks at 5%. <strong>MENU &gt; Battery Icon</strong> can show the percentage beside it.</p>
+<p>The Pixel 2's four side lights warn you even in a game: below 10% the bottom light flashes red every five seconds, and below 5% twice every two seconds. Press <kbd>L2</kbd> and <kbd>R2</kbd> together outside a game to flash the level on all four lights.</p>
+<p>At 2% or less off the charger, ZyperOS saves the game and powers off in order, before the battery cuts out on its own and loses your progress. Over a PortMaster port, it ends the port first. A start at 2% or less shows <em>Battery too low</em> and <em>Plug in a charger</em> instead of the home. Plug one in while it shows and the start goes on.</p>
+
+<h2>Heat</h2>
+<p>The Pixel 2's kernel slows the CPU and the GPU down when the chip passes 70 °C, and harder at 85 °C, where a game gets visibly slower. It powers the handheld off at 115 °C.</p>
+<p>ZyperOS reads the chip's temperature every five seconds. After two readings in a row at 85 °C or more, Zyper pops up on the home with <em>I'm getting hot! Slowing down to cool off.</em> In a game it is a short notice with a thermometer. It says it again only after the chip has been under 80 °C, and never twice in five minutes. If the chip ever reaches 115 °C, the game is saved before the power goes.</p>
+<figure class="shot"><img src="/img/heat.png" alt="Zyper on the ZyperOS home with a thermometer: I'm getting hot! Slowing down to cool off."><figcaption>On the home, Zyper says it himself.</figcaption></figure>
+
+<h2>Check the battery's health</h2>
+<p><strong>MENU &gt; About ZyperOS</strong> has a second page, with <kbd>Right</kbd>: the battery's estimated health, its full-charge capacity and its design capacity, in mAh. Health is the battery controller's own full-charge figure divided by the design figure. It is an estimate, not a lab test, but it shows a trend over months.</p>
+
+<h2>Other ways to make a charge last</h2>
+<ul>
+  <li><strong>Lower clocks for light systems.</strong> ZyperOS runs 8-bit and handheld systems at lower clocks, measured to keep every frame, so they use less power. There is nothing to set.</li>
+  <li><strong>Auto Off</strong> in MENU powers the handheld down after a time with no button pressed. On a new card it is two minutes. On the charger it does not power down.</li>
+  <li><strong>Brightness</strong>: hold <kbd>MENU</kbd> and press the volume keys.</li>
+</ul>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#features">ZyperOS README, Features</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#controls-and-menus">the user guide, Controls and menus</a>: side lights, Auto Off, About ZyperOS, the battery mark.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/DESIGN.md#1123-getting-hot">DESIGN.md, sections 11.23 to 11.26</a>: Getting hot, a battery too low to start, charging while off, and the charge limit.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/src/main.c">src/main.c</a>: the charge limit's steps (Off, 80, 85, 90) and a full charge, this time.</li>
+</ol>

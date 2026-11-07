@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS System Image Updates</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 80ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .costs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; }
+  .costs div { border: 1px solid var(--zk-line); border-radius: 10px; padding: 10px 12px; }
+  .costs b { display: block; font: 600 20px "Lexend", sans-serif; color: var(--zk-ink); font-variant-numeric: tabular-nums; }
+  .costs span { font-size: 13px; color: var(--zk-ink-3); }
+  /* a card as a strip: every area's width is a scale of its own, marked */
+  .card { display: grid; gap: 6px; }
+  .strip { display: flex; height: 54px; border-radius: 8px; overflow: hidden; border: 1px solid var(--zk-line); }
+  .strip > i { display: grid; place-items: center; font: 500 11px var(--zk-f-mono); color: #111; font-style: normal; text-align: center; line-height: 1.15; padding: 0 2px; border-right: 1px solid rgba(0,0,0,.25); }
+  .strip > i:last-child { border-right: 0; }
+  .ld { background: #b9b3a3; } .bt { background: #e0b23a; } .ra { background: #8fc46a; } .rb { background: #6fb0c9; } .dt { background: #d6d1c4; } .mv { background: repeating-linear-gradient(45deg, #e9a07a 0 8px, #f2c3aa 8px 16px); }
+  .lbl { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); display: flex; justify-content: space-between; }
+  .flow { font-size: 13.5px; color: var(--zk-ink-2); margin: 4px 0 0; padding-left: 18px; }
+  .flow li + li { margin-top: 3px; }
+  .pad { padding: 12px; display: grid; gap: 12px; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>System Image Updates</b></h1>
+      <p class="zk-lede">Layer 2 of System Update: the kernel, the root and the bootloader, over the air. Layer 1 (the card's ZyperOS folder) is built (ZyperOS #49). Nothing below is built: these three answers decide the card layout before any code touches it.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option.</b> The same signed list as layer 1, one more file per release (<code>ZyperOS-pixel2-system.txt</code>: root, kernel, device tree, bootloader, each with size and SHA-256). The new root is written to the slot that is not running while you play; one restart switches. U-Boot counts the trial starts in a small text file on the boot partition and goes back to the old slot after three that do not reach the shelf. No new U-Boot build is needed for that: today's has <code>fatwrite</code>, <code>setexpr</code> and <code>env import</code>.</div>
+  <div class="costs">
+    <div><b>70–95 MB</b><span>download per system update</span></div>
+    <div><b>~10 s</b><span>downtime: one restart</span></div>
+    <div><b>0 MB</b><span>new card space (option A)</span></div>
+    <div><b>13.5 MB</b><span>second kernel on the boot partition</span></div>
+  </div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  /* Widths are each area's size on a scale that keeps the small ones visible:
+   * the loader 16 MB, boot 64, a root slot 128 or 256, then the games. */
+  const strip = (parts) => `<div class="strip">${parts.map(([cls, w, t]) => `<i class="${cls}" style="flex:${w}">${t}</i>`).join("")}</div>`;
+  const TODAY = strip([["ld", 1, "loader<br>16 MB"], ["bt", 2, "p1 boot<br>64 MB"], ["ra", 4, "p2 root<br>256 MB"], ["dt", 9, "p3 games (exFAT), the rest of the card"]]);
+  const card = (title, s, notes) => `<div class="pad"><div class="card"><div class="lbl"><span>today</span><span>0 → 336 MB → end</span></div>${TODAY}<div class="lbl"><span>${title}</span></div>${s}</div><ol class="flow">${notes.map(n => `<li>${n}</li>`).join("")}</ol></div>`;
+
+  ZK.decisions(document.getElementById("m"), [
+    { key: "slots", title: "Where the second root goes",
+      why: "A/B needs a second root partition. Today the root area is 256 MB and the root uses 97 MB of it; the games partition starts right after it.",
+      options: {
+        split: { name: "Split today's 256 MB", tag: "suggested", blurb: "Two 128 MB slots inside the area p2 has now: p2 shrinks to 128 MB and a new p4 takes the other half. The games partition does not move, so no player file is copied anywhere. Each slot has 31 MB of room above today's 97 MB root (zstd instead of LZ4 would give more; to be measured).", draw: () => card("A: split", strip([["ld", 1, "loader"], ["bt", 2, "p1 boot<br>2 kernels"], ["ra", 2, "p2 root A<br>128 MB"], ["rb", 2, "p4 root B<br>128 MB"], ["dt", 9, "p3 games: unchanged"]]),
+          ["One partition-table change, no data moved.", "Works on every card already out there.", "The trade: 128 MB per root."]) },
+        full: { name: "Two full 256 MB slots", blurb: "Room to grow: each slot as big as today's. The games partition must start 256 MB later, so every existing card needs its games copied off and back (or a fresh card). For new installs only, through the installer; old cards keep the single root.", draw: () => card("B: two full slots", strip([["ld", 1, "loader"], ["bt", 2, "p1 boot"], ["ra", 4, "p2 root A<br>256 MB"], ["rb", 4, "p4 root B<br>256 MB"], ["mv", 9, "p3 games: moved 256 MB on"]]),
+          ["Twice the room per root.", "Existing cards: copy every game off and back, or stay single-root.", "Two kinds of card in the field."]) },
+      } },
+    { key: "migrate", title: "Who changes the partition table, once",
+      why: "Option A needs one change to the card's partition table: p2 shorter, p4 added. Both ways check first that the root fits in 128 MB, and both keep the old table's copy to put back.",
+      options: {
+        device: { name: "The device, by itself", tag: "suggested", blurb: "The first system update that supports A/B rewrites the table with sfdisk and adds p4 with partx, the same tools that make the games partition at first boot. No computer needed; the only risky moment is a few sectors written once, with the old table kept on the boot partition.", draw: () => `<div class="pad"><ol class="flow"><li>Checks: root ≤ 128 MB, battery, the table as expected.</li><li>Writes the new table (p2 128 MB, p4 128 MB), keeps the old one.</li><li>Writes the new root into p4, boots it on trial.</li><li>Good start: p4 becomes the slot; p2 is the spare.</li></ol></div>` },
+        installer: { name: "Only the installer", blurb: "The ZyperOS Installer's Update already rewrites p1 and p2 from a computer; it would rewrite the table too. Safer to reason about, but every player needs a computer once before system updates work over the air.", draw: () => `<div class="pad"><ol class="flow"><li>Card in a computer, the Installer's Update.</li><li>New table, both slots written, boot partition with two kernels.</li><li>From then on, system updates over the air.</li></ol></div>` },
+      } },
+    { key: "loader", title: "The bootloader",
+      why: "The loader (DDR init, U-Boot, BL31) stays single: it is not A/B. It changes rarely: the DDR fix of 2026-11-04 was the last time.",
+      options: {
+        installer: { name: "Installer only", tag: "suggested", blurb: "A release that changes the loader says so, and the device asks for the Installer's Update. A bad loader write never happens over the air. A card is removable, so the Installer is always the way back anyway.", draw: () => `<div class="pad"><ol class="flow"><li>System updates over the air: root, kernel, device tree.</li><li>Loader changes: the Installer, as today.</li></ol></div>` },
+        air: { name: "Over the air, last", blurb: "Written by the device after the new root has started once, with a read-back, and a warning on screen not to turn it off. Saves a computer trip on the rare loader release; a write cut at the wrong moment leaves a card for the Installer.", draw: () => `<div class="pad"><ol class="flow"><li>New root and kernel first, started on trial.</li><li>Then the loader, written and read back.</li><li>A cut write: the card goes to the Installer.</li></ol></div>` },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-layer2" });
+})();
+</script>
+</body>
+</html>

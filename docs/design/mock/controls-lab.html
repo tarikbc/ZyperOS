@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-game controls lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .pair { display: grid; gap: 10px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+  .play { align-self: flex-start; }
+  .order { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; font: 11px var(--zk-f-mono); color: var(--zk-ink-2); }
+  .order li { padding: 2px 6px; border: 1px solid var(--zk-line); border-radius: 6px; }
+  .order li.hi { border-color: var(--zk-hi); color: var(--zk-ink); font-weight: 500; }
+  .order li i { font-style: normal; color: var(--zk-ink-3); margin-right: 4px; }
+
+  /* ---- a paused game: a still scene in the system's color --------------- */
+  .zs .game { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--sys) 55%, #7fc4ff) 0 58%, color-mix(in srgb, var(--sys) 70%, #2a1d10) 58% 100%); }
+  .zs .game i { position: absolute; background: color-mix(in srgb, var(--sys) 40%, #fff); border-radius: 6px; }
+  .zs .game b { position: absolute; width: 64px; height: 64px; background: #f3d36b; border-radius: 10px; box-shadow: inset -8px -8px 0 rgba(0,0,0,.25); }
+  .zs .clock { position: absolute; top: 24px; right: 84px; height: 24px; line-height: 24px; font-size: 24px; color: #e8e6dd; font-variant-numeric: tabular-nums; }
+
+  /* ---- the in-game menu (src/main.c game_menu): no heading, 7 rows show -- */
+  .zs .gp { position: absolute; left: 200px; top: 97px; width: 624px; height: 616px; box-sizing: border-box; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); padding: 53px 28px 0; overflow: hidden; }
+  .zs .gp .r { height: 73px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; border-radius: 14px; font-size: 49px; color: var(--text-soft); white-space: nowrap; }
+  .zs .gp .r span { color: var(--text-dim); }
+  .zs .gp .r.dead { color: var(--text-dim); }
+  .zs .gp .r.sel { background: var(--accent); color: var(--on-accent); }
+  .zs .gp .r.sel span { color: var(--on-accent); opacity: .72; }
+  .zs .gp .r.new:not(.sel) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 70%, transparent) inset; }
+  .zs .gp .arrow { position: absolute; left: 50%; bottom: 30px; margin-left: -14px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid var(--text-dim); }
+  .zs .gp .arrow.up { bottom: auto; top: 22px; border-top: 0; border-bottom: 14px solid var(--text-dim); }
+
+  /* ---- a Controls page (controls_screen): heading, rule, rows, footer ---- */
+  .zs .cp { position: absolute; left: 66px; top: 97px; width: 892px; height: 621px; box-sizing: border-box; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); padding: 26px 54px 0; display: flex; flex-direction: column; }
+  .zs .cp h4 { margin: 0; height: 58px; line-height: 58px; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); white-space: nowrap; }
+  .zs .cp hr { border: 0; height: 2px; background: var(--edge); margin: 18px 0; flex: none; }
+  .zs .cp .r { height: 70px; flex: none; display: flex; justify-content: space-between; align-items: center; font-size: 49px; color: var(--text-soft); white-space: nowrap; gap: 30px; }
+  .zs .cp .r span { color: var(--text-soft); }
+  .zs .cp .r.act b { font-weight: 400; color: var(--text-soft); }
+  .zs .cp .r.act span { color: var(--text-dim); }
+  .zs .cp .note { height: 70px; line-height: 70px; flex: none; text-align: center; font-size: 49px; color: var(--text-soft); white-space: nowrap; }
+  .zs .cp .foot { margin-top: auto; flex: none; }
+  .zs .cp .foot hr { margin: 0 0 6px; }
+  .zs .cp .foot div { height: 66px; line-height: 66px; text-align: center; font-size: 49px; color: var(--text-soft); }
+  .zs .mk { display: inline-block; vertical-align: middle; width: 46px; height: 46px; }
+
+  /* ---- the home, as a row of systems (order only, not a new look) ------- */
+  .zs .hname { position: absolute; left: 0; right: 0; top: 120px; text-align: center; font-size: 60px; font-weight: 600; color: var(--text); white-space: nowrap; }
+  .zs .hrow { position: absolute; left: 0; right: 0; top: 280px; height: 260px; }
+  .zs .tile { position: absolute; top: 50%; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 26px; background: color-mix(in srgb, var(--acc) 82%, var(--ground)); box-shadow: var(--card-lift); }
+  .zs .tile.sel { width: 210px; height: 210px; margin: -105px 0 0 -105px; box-shadow: 0 0 0 6px var(--accent) , var(--card-lift); }
+  .zs .tlabel { position: absolute; top: 560px; width: 180px; margin-left: -90px; text-align: center; font-size: 30px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .zs .tlabel.sel { color: var(--text); font-weight: 600; }
+  .zs .hcount { position: absolute; bottom: 48px; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">In-game controls <b>lab</b></h1>
+      <p class="zk-lede">Two changes. First, a Controls row in the in-game menu: a page that lists every control that works in this game, on this system. Second, the systems in A to Z order on the home. Pick one option in each section, and add a note if you want a change. Every option is shown in Beard and in Salt &amp; Pepper. Play shows the presses, with the menu's sounds.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>One source:</b> the page is built by <code>src/controls.c</code>, the same file as MENU &gt; Controls on the home. The hotkey rows are the home's own rows, so the two pages cannot disagree.</li>
+      <li><b>Read from the cores:</b> each system's button names come from its core, measured from the pinned cores on 2026-11-06 (the names each core gives the RetroPad buttons), then put through the system's own map (Dreamcast, NAOMI, Atomiswave, Saturn, J2ME) and its turbo. So a Neo Geo Pocket's A is the B cap, as its core reads it.</li>
+      <li><b>Only what is true:</b> no row for a button that does nothing on that system. There is no save-state or screenshot hotkey today: Save and Load are menu rows.</li>
+      <li><b>Paged like the home's:</b> Left/Right turns the page, B goes back to the menu, MENU goes back to the game. Read-only, over the paused game, in the standard panel.</li>
+      <li><b>No cost in a game:</b> the page is built when it opens, from tables in the launcher. Nothing runs while the game plays, and the game starts as fast as today.</li>
+      <li><b>A to Z:</b> by the full name, as the Gallery shows it. Case and accents do not count, and numbers count as numbers: 3DO before 32X, Atari 2600 before Atari Lynx. Sorted once when the card is read, never per frame.</li>
+    </ul>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  /* MENU, drawn as the launcher draws it: a round key with three dots */
+  const MENU = `<svg class="mk" viewBox="-23 -23 46 46"><circle r="20" fill="none" stroke="var(--text-soft)" stroke-width="3.2"/><circle cy="-8.5" r="3.3" fill="var(--text-soft)"/><circle r="3.3" fill="var(--text-soft)"/><circle cy="8.5" r="3.3" fill="var(--text-soft)"/></svg>`;
+  const key = k => esc(k).replace(/^MENU/, MENU);
+
+  /* ---- what the pages say ------------------------------------------------
+   * Rows by button: [the handheld's button, what it does here]. The system
+   * names are the cores' own (measured), after the system's map and turbo. */
+  const PAGES = {
+    MD: { name: "Genesis", game: "Sonic the Hedgehog 2", sys: "#3E82D6", pages: [
+      { head: "Genesis", rows: [["A", "C"], ["B", "B"], ["X", "Y"], ["Y", "A"], ["L1/R1", "X/Z"], ["START/SELECT", "Start/Mode"]],
+        act: [["A", "Y"], ["B", "B"], ["C", "A"], ["X/Y/Z", "L1/X/R1"], ["Start", "START"], ["Mode", "SELECT"]] } ] },
+    NES: { name: "NES", game: "Super Mario Bros. 3", sys: "#C4443A", pages: [
+      { head: "NES", rows: [["A", "A"], ["B", "B"], ["X", "Turbo A"], ["Y", "Turbo B"], ["START/SELECT", "Start/Select"]] } ] },
+    N64: { name: "Nintendo 64", game: "Mario Kart 64", sys: "#2E8B3E", pages: [
+      { head: "Nintendo 64", rows: [["B", "A"], ["Y", "B"], ["L2", "Z"], ["L1/R1", "L/R"], ["START", "Start"]] },
+      { head: "Nintendo 64", rows: [["R2+X", "C up"], ["R2+A", "C right"], ["R2+B", "C down"], ["R2+Y", "C left"]], note: "Rumble Pak in" } ] },
+    NDS: { name: "Nintendo DS", game: "Mario Kart DS", sys: "#B8BEC9", pages: [
+      { head: "Nintendo DS", rows: [["A/B/X/Y", "A/B/X/Y"], ["L1/R1", "L/R"], ["START/SELECT", "Start/Select"], ["L2", "Other screen"], ["MENU+L1", "Other screen"], ["R2", "Stylus on/off"]] },
+      { head: "Stylus", rows: [["R2", "Stylus on/off"], ["Up/Down/Left/Right", "Move it"], ["A", "Touch"]], note: "Screens: in this menu" } ] },
+    DC: { name: "Dreamcast", game: "Crazy Taxi 2", sys: "#F26522", pages: [
+      { head: "Dreamcast", rows: [["A/B/X/Y", "A/B/X/Y"], ["L1/R1", "L/R triggers"], ["START", "Start"]], note: "It rumbles" } ] },
+    ARCADE: { name: "Arcade", game: "Street Fighter II", sys: "#8E5BD8", pages: [
+      { head: "Arcade", rows: [["B", "Button 1"], ["A", "Button 2"], ["Y", "Button 3"], ["X", "Button 4"], ["L1/R1", "Button 5/6"], ["SELECT/START", "Coin/Start"]] } ] },
+  };
+  /* The hotkeys, from the home's In a game and Anywhere pages */
+  const GAME = { head: "In a game", rows: [["MENU", "This menu"], ["MENU+R1", "Fast forward"], ["SELECT", "MP4 in this menu"], ["Volume rocker", "Sound"], ["MENU+VOL", "Brightness"], ["POWER", "Save and turn off"]] };
+  /* The home's five pages, as they are today */
+  const HOME = [
+    { head: "Moving", rows: [["Left/Right", "Move"], ["Up/Down", "Jump by letter"], ["L1/R1", "3 systems, a screenful"], ["L2/R2", "Previous/next song"]] },
+    { head: "On the shelf", rows: [["A", "Open or play"], ["B", "Back"], ["X", "Game details"], ["Y", "Favorite"], ["L2+R2", "Battery level"]] },
+    { head: "In MP4", rows: [["A", "Play or pause"], ["L1/R1", "Track or chapter"], ["Left/Right", "Seek, faster held"], ["Y", "Mode, speed or view"], ["X", "Lock till SELECT+START"]] },
+    { head: "Anywhere", rows: [["SELECT", "MP4"], ["MENU", "Settings"], ["Volume rocker", "Sound"], ["MENU+VOL", "Brightness"], ["POWER", "Turn off"]] },
+  ];
+  /* By action: the same rows turned round, the system's button first */
+  function byAction(p) {
+    const rows = p.rows.map(([k, v]) => [v, k]);
+    if (p.head === "In a game") return Object.assign({}, p, { rows: [["This menu", "MENU"], ["Fast forward", "MENU+R1"], ["MP4", "SELECT, in menu"], ["Sound", "Volume rocker"], ["Brightness", "MENU+VOL"], ["Save and turn off", "POWER"]] });
+    return Object.assign({}, p, { rows: p.act || rows });
+  }
+
+  const pageList = (sysKey, scope) => {
+    const s = PAGES[sysKey];
+    if (scope === "all") return s.pages.concat([GAME], HOME);
+    if (scope === "systems") return s.pages.concat([GAME], ...Object.keys(PAGES).filter(k => k !== sysKey).map(k => PAGES[k].pages[0]));
+    return s.pages.concat([GAME]);
+  };
+
+  /* ---- drawing ---------------------------------------------------------- */
+  const game = () => `<div class="game"><i style="left:120px;top:150px;width:180px;height:44px"></i><i style="left:620px;top:110px;width:240px;height:52px"></i><b style="left:300px;top:380px"></b><b style="left:364px;top:380px"></b><b style="left:700px;top:316px"></b></div><div class="scrim game"></div><div class="clock">20:41</div>`;
+
+  const IN_GAME = ["Continue", "Save", "Load", "Display", "Cheevos", "Reset", "Quit"];
+  const VALUES = { Display: "Stretch", Cheevos: "12 / 40" };
+  /* the menu with Controls at `at` (an index into IN_GAME's order, or -1),
+   * `sel` selected, the window's first row `first` */
+  function gmenu(at, sel, first = 0) {
+    const rows = IN_GAME.slice();
+    if (at >= 0) rows.splice(at, 0, "Controls");
+    else rows.push("Controls");
+    const show = rows.slice(first, first + 7);
+    return game() + `<div class="gp">${show.map((r, i) =>
+      `<div class="r ${first + i === sel ? "sel" : ""} ${r === "Controls" ? "new" : ""}">${r}<span>${VALUES[r] || ""}</span></div>`).join("")}
+      ${first > 0 ? `<div class="arrow up"></div>` : ""}${first + 7 < rows.length ? `<div class="arrow"></div>` : ""}</div>`;
+  }
+
+  /* a Controls page: `p` its rows, page `at` of `n` */
+  function cpage(p, at, n, action) {
+    const rows = p.rows.map(([k, v]) => action
+      ? `<div class="r act"><b>${esc(k)}</b><span>${key(v)}</span></div>`
+      : `<div class="r"><b style="font-weight:400">${key(k)}</b><span>${esc(v)}</span></div>`).join("");
+    return game() + `<div class="cp"><h4>Controls: ${esc(p.head)}</h4><hr>${rows}${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}
+      <div class="foot"><hr><div>${n > 1 ? "Left/Right: more" : "B: back"}</div></div></div>`;
+  }
+
+  const both = (draw, sys, cap) => `<div class="pair">${ZK.screen("light", draw("light"), { sys })}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"), { sys })}<span class="cap">Salt &amp; Pepper</span>${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+  const playBtn = id => `<button type="button" class="zk-btn play" data-play="${id}">Play</button>`;
+
+  /* ---- Play: frames shown in turn, each with its sound ------------------- */
+  const REELS = {};
+  const live = new Map();
+  function reel(id, sys, frames, rest) { REELS[id] = { sys, frames }; return `<div class="pair" data-reel="${id}">${both(rest || frames[0][0], sys)}${playBtn(id)}</div>`; }
+  function play(card, id) {
+    const r = REELS[id];
+    card = card.querySelector(`[data-reel="${id}"]`);
+    (live.get(card) || []).forEach(clearTimeout);
+    const timers = [];
+    r.frames.forEach(([draw, snd], i) => timers.push(setTimeout(() => {
+      card.querySelectorAll(".zs").forEach(z => { z.innerHTML = draw(z.dataset.theme); });
+      if (snd) ZK.sound(snd);
+    }, i * 620)));
+    live.set(card, timers);
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-play]");
+    if (b) play(b.closest(".zk-card"), b.dataset.play);
+  });
+
+  /* MENU, down to Controls, A, Right through the pages, B back */
+  function placeReel(id, at) {
+    const pages = pageList("MD", "game"), f = [[() => game(), null], [() => gmenu(at, 0), "accept"]];
+    const target = at < 0 ? IN_GAME.length : at;
+    const rows = IN_GAME.length + 1;
+    /* Up from Continue when it is the last row: the menu comes round */
+    const steps = target === rows - 1 ? [rows - 1] : Array.from({ length: target }, (_, i) => i + 1);
+    steps.forEach(s => f.push([() => gmenu(at, s, Math.max(0, s - 6)), "move"]));
+    pages.forEach((p, i) => f.push([() => cpage(p, i, pages.length), i ? "move" : "accept"]));
+    f.push([() => gmenu(at, target, Math.max(0, target - 6)), "back"]);
+    return reel(id, PAGES.MD.sys, f, () => gmenu(at, target, Math.max(0, target - 6)));
+  }
+
+  function scopeReel(id, sysKey, scope, action) {
+    const pages = pageList(sysKey, scope).map(p => action ? byAction(p) : p);
+    return reel(id, PAGES[sysKey].sys, pages.map((p, i) => [() => cpage(p, i, pages.length, action), i ? "move" : null]));
+  }
+
+  /* ---- the systems' order ------------------------------------------------ */
+  const SYS = [
+    ["Atari 2600", "Atari 2600", "#D9822B"], ["Game & Watch", "G&W", "#B89A5E"], ["Atari 5200", "Atari 5200", "#B4B9C2"], ["Vectrex", "Vectrex", "#2F6DB5"],
+    ["NES", "NES", "#C4443A"], ["MSX2", "MSX2", "#5A6FD8"], ["Atari 7800", "Atari 7800", "#C8323A"], ["Master System", "SMS", "#C12216"],
+    ["Game Boy", "Game Boy", "#7E9B47"], ["Genesis", "Genesis", "#3E82D6"], ["TurboGrafx-16", "TG-16", "#E8641E"], ["Atari Lynx", "Lynx", "#E7A23B"],
+    ["Game Gear", "Game Gear", "#00B589"], ["Neo Geo", "Neo Geo", "#D9A928"], ["SNES", "SNES", "#816EBA"], ["Sega CD", "Sega CD", "#2FA6B8"],
+    ["3DO", "3DO", "#E31B23"], ["32X", "32X", "#EC1D25"], ["Saturn", "Saturn", "#5B6AA8"], ["Virtual Boy", "Virtual Boy", "#D0021B"],
+    ["PlayStation", "PS1", "#B4B1AA"], ["Neo Geo CD", "Neo Geo CD", "#A8742E"], ["Nintendo 64", "N64", "#2E8B3E"], ["Neo Geo Pocket", "NGP", "#C2478F"],
+    ["Game Boy Color", "GBC", "#E0B23A"], ["WonderSwan", "WS", "#4E7FC1"], ["Neo Geo Pocket Color", "NGPC", "#00AA4F"], ["Dreamcast", "Dreamcast", "#F26522"],
+    ["WonderSwan Color", "WSC", "#E05A9A"], ["J2ME", "J2ME", "#E76F00"], ["Game Boy Advance", "GBA", "#6B5BD6"], ["ScummVM", "ScummVM", "#00C832"],
+    ["Pokémon Mini", "PokéMini", "#F2C230"], ["OpenBOR", "OpenBOR", "#C32C12"], ["Nintendo DS", "NDS", "#B8BEC9"], ["PICO-8", "PICO-8", "#29ADFF"],
+    ["Arcade", "Arcade", "#8E5BD8"], ["MAME", "MAME", "#6C7A89"], ["NAOMI", "NAOMI", "#F28C28"], ["Atomiswave", "Atomiswave", "#3AA0D8"],
+  ];
+  const ARCADES = new Set(["Arcade", "MAME", "NAOMI", "Atomiswave"]);
+  const FAV = ["Favorites", "Favorites", "var(--accent)"], PORTS = ["Ports", "Ports", "#FF6FAE"], MP4 = ["MP4", "MP4", "var(--accent)"];
+  const coll = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+  const az = l => l.slice().sort((a, b) => coll.compare(a[0], b[0]));
+  const DEF = { fav: "first", special: "last", arcade: "az" };
+  function order(o) {
+    o = Object.assign({}, DEF, o);
+    let main = SYS.slice();
+    if (o.special === "az") main = main.concat([PORTS, MP4]);
+    const arc = o.arcade === "end" ? main.filter(s => ARCADES.has(s[0])) : [];
+    main = az(main.filter(s => !arc.includes(s))).concat(az(arc));
+    if (o.special === "last") main = main.concat([PORTS, MP4]);
+    if (o.fav === "first") return [FAV].concat(main);
+    if (o.fav === "last") return main.concat([FAV]);
+    return az(main.concat([FAV]));
+  }
+  const RELEASE = () => [FAV].concat(SYS, [PORTS, MP4]);
+
+  /* the home at `at`: the name, five tiles, the count */
+  function home(list, at) {
+    let tiles = "", labels = "";
+    [-400, -200, 0, 200, 400].forEach((x, i) => {
+      const k = at + i - 2;
+      if (k < 0 || k >= list.length) return;
+      const s = list[k], c = i === 2 ? "sel" : "";
+      tiles += `<div class="tile ${c}" style="left:${512 + x}px;--acc:${s[2]}"></div>`;
+      labels += `<div class="tlabel ${c}" style="left:${512 + x}px">${esc(s[1])}</div>`;
+    });
+    return `<div class="hname">${esc(list[at][0])}</div><div class="hrow">${tiles}</div>${labels}<div class="hcount">${at + 1} / ${list.length}</div>`;
+  }
+  const chips = (list, hi) => `<ol class="order">${list.map((s, i) => `<li class="${hi.includes(s[0]) ? "hi" : ""}"><i>${i + 1}</i>${esc(s[0])}</li>`).join("")}</ol>`;
+  function orderCard(o, hi, focus) {
+    const list = Array.isArray(o) ? o : order(o);
+    const at = Math.max(0, list.findIndex(s => s[0] === focus));
+    return both(() => home(list, at), list[at][2].startsWith("#") ? list[at][2] : "#9bd13f") + chips(list, hi);
+  }
+
+  const SYSROWS = (row) => [["Charge Limit", "Off"], ["Side Lights", "Auto"], ["Home Screen", "Spotlight"]].concat(row ? [row] : [], [["Battery Icon", "Bars"], ["Appearance", "Light"]]);
+
+  const list = [
+    { key: "row", title: "Where Controls goes in the in-game menu",
+      why: "The menu shows seven rows; an eighth makes it scroll, as a DS game's menu does today, with the arrow at the bottom. Up from Continue comes round to the last row. The new row has a ring here only to find it.",
+      options: {
+        last: { name: "Last, after Quit", tag: "suggested", blurb: "The seven rows stay where hands know them. Controls is one Up from Continue, and the arrow says there is more. Nobody presses Quit by mistake on the way to it.",
+          draw: () => placeReel("p-last", -1) },
+        reset: { name: "Above Reset", blurb: "With the rows about the game (Display, Cheevos). Quit goes under the fold: one Up from Continue.",
+          draw: () => placeReel("p-reset", 5) },
+        display: { name: "After Display", blurb: "Beside the other row about how the game plays. Quit goes under the fold: one Up from Continue.",
+          draw: () => placeReel("p-display", 4) },
+        second: { name: "After Continue", blurb: "The first thing under Continue, for a player who opens the menu to find a button. Quit goes under the fold.",
+          draw: () => placeReel("p-second", 1) },
+      } },
+    { key: "list", title: "How a page lists the controls",
+      why: "Genesis in Sonic 2, then the hotkeys page. Press Play to turn the pages. The heading names the system, so the right column is the Genesis's own button.",
+      options: {
+        button: { name: "By button", tag: "suggested", blurb: "The handheld's button at the left, what it does at the right: \"A  C\". The same as MENU > Controls on the home, so one way to read every Controls page.",
+          draw: () => scopeReel("l-button", "MD", "game", false) },
+        action: { name: "By action", blurb: "What you want at the left, the button at the right: \"C  A\", \"Fast forward  MENU+R1\". Reads like a list of moves; it turns round the home's way.",
+          draw: () => scopeReel("l-action", "MD", "game", true) },
+      } },
+    { key: "scope", title: "What the pages cover",
+      why: "Mario Kart 64. Play turns through every page in that option.",
+      options: {
+        game: { name: "This game only", tag: "suggested", blurb: "This system's pages, then In a game (the hotkeys, volume, brightness, POWER). Two or three pages. Nothing that does not work right now.",
+          draw: () => scopeReel("s-game", "N64", "game", false) },
+        all: { name: "This game, then the home's pages", blurb: "The same, then the home's Moving, On the shelf, In MP4 and Anywhere pages: the whole device from inside a game.",
+          draw: () => scopeReel("s-all", "N64", "all", false) },
+        systems: { name: "This system, then every system", blurb: "This system first, then the hotkeys, then every other system's page in A to Z: a reference for the whole card. Forty pages to turn through.",
+          draw: () => scopeReel("s-systems", "N64", "systems", false) },
+      } },
+    { key: "pages", title: "The pages, system by system",
+      why: "Six examples, by button, this game only. Tell me in the note if a row is wrong or missing. Every system on the card gets its page the same way, from its core.",
+      options: {
+        right: { name: "These read right", blurb: "NES with turbo, Nintendo 64 with its C buttons and Rumble Pak, Nintendo DS with screens and the stylus, Dreamcast with its map, and Arcade with the coin. FDS games add L1 (flip the disk) and R1 (eject it) on the NES page.",
+          draw: () => ["NES", "N64", "NDS", "DC", "ARCADE"].map(k => scopeReel("x-" + k, k, "game", false)).join("") },
+      } },
+    { key: "fav", title: "Where Favorites goes",
+      why: "The home in A to Z order. Favorites shows only when a game is a favorite.",
+      options: {
+        first: { name: "First", tag: "suggested", blurb: "As today: the home opens on the games you chose, then A to Z.",
+          draw: () => orderCard({ fav: "first" }, ["Favorites"], "Favorites") },
+        az: { name: "In A to Z", blurb: "A shelf like the others, between Dreamcast and Game & Watch.",
+          draw: () => orderCard({ fav: "az" }, ["Favorites"], "Favorites") },
+        last: { name: "Last", blurb: "After the systems, one Left from the first system.",
+          draw: () => orderCard({ fav: "last" }, ["Favorites"], "Favorites") },
+      } },
+    { key: "special", title: "Where Ports and MP4 go",
+      why: "Ports (games that start from their own scripts) and MP4 (music, books and videos) are not consoles.",
+      options: {
+        last: { name: "Last, as today", tag: "suggested", blurb: "After the consoles: Ports, then MP4. Left from the first shelf comes round to MP4.",
+          draw: () => orderCard({ special: "last" }, ["Ports", "MP4"], "MP4") },
+        az: { name: "In A to Z", blurb: "MP4 between Master System and MSX2, Ports between Pokémon Mini and Saturn.",
+          draw: () => orderCard({ special: "az" }, ["Ports", "MP4"], "MP4") },
+      } },
+    { key: "arcade", title: "Where the arcade shelves go",
+      why: "Arcade, MAME, NAOMI and Atomiswave are last today, together.",
+      options: {
+        az: { name: "In A to Z", tag: "suggested", blurb: "Each by its name: Arcade and Atomiswave near the top, MAME and NAOMI in the middle. One rule for every shelf.",
+          draw: () => orderCard({ arcade: "az" }, [...ARCADES], "Arcade") },
+        end: { name: "Together, after the consoles", blurb: "The four in A to Z among themselves, after the consoles and before Ports and MP4.",
+          draw: () => orderCard({ arcade: "end" }, [...ARCADES], "Arcade") },
+      } },
+    { key: "order", title: "The release-date order",
+      why: "Today the home goes by US release date (config/systems.cfg says why). Keep it as a choice, or let A to Z replace it?",
+      options: {
+        gone: { name: "A to Z only", tag: "suggested", blurb: "One order to learn, one less row in MENU. systems.cfg keeps its dates in its comments.",
+          draw: () => both(th => ZK.shelf(th, {}) + ZK.menu(th, { rows: SYSROWS(null), sel: 2, more: true })) },
+        setting: { name: "MENU > System Order", blurb: "A row under Home Screen: A to Z (on a new card) or Release Date. Left/Right turns it, and the home re-sorts at once.",
+          draw: () => both(th => ZK.shelf(th, {}) + ZK.menu(th, { rows: SYSROWS(["System Order", "A to Z"]), sel: 3, more: true })) + chips(RELEASE(), []) + `<p class="cap">Release Date, as today</p>` },
+      } },
+  ];
+
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-controls-lab", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

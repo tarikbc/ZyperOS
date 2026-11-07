@@ -1,0 +1,456 @@
+/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* Does Muse read the Music folder the way its header says?
+ *
+ *     make check-muselib
+ *
+ * A folder is built under /tmp in both shapes muselib understands, with the
+ * litter a Mac leaves on a card copied from it, and read back. Then the
+ * questions the screens ask of it: which album is this track in, where is that
+ * album's cover kept, and which album is each card on the shelf in either of
+ * its orders.
+ *
+ * No SDL, no daemon, no device.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "../src/muselib.h"
+
+static int failures;
+
+#define CHECK(cond, ...)                                                      \
+	do {                                                                      \
+		if (!(cond)) {                                                        \
+			printf("  FAIL: ");                                               \
+			printf(__VA_ARGS__);                                              \
+			printf("\n        at %s:%d: %s\n", __FILE__, __LINE__, #cond);    \
+			failures++;                                                       \
+		}                                                                     \
+	} while (0)
+
+static char root[256];
+
+static void touch(const char *rel)
+{
+	char p[512];
+	FILE *f;
+
+	snprintf(p, sizeof p, "%s/%s", root, rel);
+	f = fopen(p, "w");
+	if (f) fclose(f);
+}
+
+static void dir(const char *rel)
+{
+	char p[512];
+
+	snprintf(p, sizeof p, "%s/%s", root, rel);
+	mkdir(p, 0755);
+}
+
+static int album_named(const ml_lib *l, const char *name)
+{
+	int i;
+
+	for (i = 0; i < l->nalbums; i++)
+		if (!strcmp(l->albums[i].name, name)) return i;
+	return -1;
+}
+
+static void names(void)
+{
+	char out[128];
+
+	printf("track names\n");
+	ml_track_name("03 High And Dry.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "High And Dry"), "number and space: got \"%s\"", out);
+	ml_track_name("01 - Orphan.flac", out, sizeof out);
+	CHECK(!strcmp(out, "Orphan"), "number and dash: got \"%s\"", out);
+	ml_track_name("1979.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "1979"), "a track CALLED a number keeps it: got \"%s\"", out);
+	ml_track_name("Intro.opus", out, sizeof out);
+	CHECK(!strcmp(out, "Intro"), "no number: got \"%s\"", out);
+
+	/* Names some downloads come with, dots and underscores for spaces, shown
+	 * with spaces; the card's names are left as they are */
+	printf("names with dots for spaces\n");
+	ml_track_name("01..American.Music.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "American Music"), "dotted track: got \"%s\"", out);
+	ml_track_name("31..Good.Feeling.(Live.At.The.Boathouse._.1991).mp3", out, sizeof out);
+	CHECK(!strcmp(out, "Good Feeling (Live At The Boathouse 1991)"),
+	      "a track keeps its year: got \"%s\"", out);
+	ml_track_name("06..Used.To.Be.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "Used To Be"), "short words between: got \"%s\"", out);
+	ml_track_name("16..He.Likes.Me.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "He Likes Me"), "one long word of three: got \"%s\"", out);
+	ml_track_name("07 R.E.M..mp3", out, sizeof out);
+	CHECK(!strcmp(out, "R.E.M."), "initials keep their dots: got \"%s\"", out);
+	ml_track_name("02 Mr. Brightside.mp3", out, sizeof out);
+	CHECK(!strcmp(out, "Mr. Brightside"), "a name with spaces is left alone: got \"%s\"", out);
+
+	snprintf(out, sizeof out, "%s",
+	         "Violent.Femmes.-.Why.Do.Birds.Sing_._Deluxe.Edition_._2021_.Mp3.320kbps._PMEDIA_._-xpost");
+	ml_clean_album(out, "Violent Femmes");
+	CHECK(!strcmp(out, "Why Do Birds Sing Deluxe Edition"),
+	      "a release name: got \"%s\"", out);
+	snprintf(out, sizeof out, "%s", "Violent.Femmes.-.Why.Do.Birds.Sing.2021.MP3");
+	ml_clean_album(out, NULL);
+	CHECK(!strcmp(out, "Violent Femmes - Why Do Birds Sing"),
+	      "a release name standing as its own artist: got \"%s\"", out);
+	snprintf(out, sizeof out, "%s", "George.Orwell.-.1984.MP3");
+	ml_clean_album(out, "George Orwell");
+	CHECK(!strcmp(out, "1984"), "a year as the whole title stays: got \"%s\"", out);
+	snprintf(out, sizeof out, "%s", "The Bends");
+	ml_clean_album(out, "Radiohead");
+	CHECK(!strcmp(out, "The Bends"), "an ordinary name is left alone: got \"%s\"", out);
+	snprintf(out, sizeof out, "%s", "Pablo Honey 1993");
+	ml_clean_album(out, "Radiohead");
+	CHECK(!strcmp(out, "Pablo Honey 1993"),
+	      "a year in a spaced name stays: got \"%s\"", out);
+	snprintf(out, sizeof out, "%s", "R.E.M.");
+	ml_clean_words(out);
+	CHECK(!strcmp(out, "R.E.M."), "an artist's initials stay: got \"%s\"", out);
+
+	/* What plays */
+	printf("what plays\n");
+	CHECK(ml_is_audio("01 Song.mp4") && ml_is_audio("01 Song.MP4"), "an mp4 plays");
+	CHECK(ml_is_audio("Book 3.m4b"), "an m4b plays");
+	CHECK(!ml_is_audio("01 Song.m4p"), "a locked m4p does not");
+	CHECK(!ml_is_audio(".hidden.mp3"), "a hidden file does not");
+
+	/* The same as names on the card, for Tidy names */
+	printf("names to rename to\n");
+	CHECK(ml_tidy_file("01..American.Music.mp3", out, sizeof out) &&
+	      !strcmp(out, "01 American Music.mp3"), "a track keeps its number: got \"%s\"", out);
+	CHECK(ml_tidy_file("31..Good.Feeling.(Live.At.The.Boathouse._.1991).mp3", out, sizeof out) &&
+	      !strcmp(out, "31 Good Feeling (Live At The Boathouse 1991).mp3"),
+	      "and its year: got \"%s\"", out);
+	CHECK(ml_tidy_file("Used.To.Be.flac", out, sizeof out) && !strcmp(out, "Used To Be.flac"),
+	      "no number: got \"%s\"", out);
+	CHECK(!ml_tidy_file("03 High And Dry.mp3", out, sizeof out), "a tidy name is left alone");
+	CHECK(!ml_tidy_file("07 R.E.M..mp3", out, sizeof out), "initials are left alone");
+	CHECK(!ml_tidy_file("1979.mp3", out, sizeof out), "a number for a name is left alone");
+	CHECK(ml_tidy_file("03..Toes.mp3", out, sizeof out) && !strcmp(out, "03 Toes.mp3"),
+	      "a one-word track loses its dots: got \"%s\"", out);
+	CHECK(ml_tidy_file("03_Toes.mp3", out, sizeof out) && !strcmp(out, "03 Toes.mp3"),
+	      "and its underscore: got \"%s\"", out);
+	CHECK(!ml_tidy_file("03. Toes.mp3", out, sizeof out), "a number and a dot and a space is left alone");
+	CHECK(!ml_tidy_file("03 - Toes.mp3", out, sizeof out), "a number and a dash is left alone");
+	CHECK(!ml_tidy_file("1.5.mp3", out, sizeof out), "a number for a title is left alone");
+	CHECK(ml_tidy_folder("Violent.Femmes.-.Why.Do.Birds.Sing_._Deluxe.Edition_._2021_.Mp3.320kbps._PMEDIA_._-xpost",
+	                     "Violent Femmes", out, sizeof out) &&
+	      !strcmp(out, "Why Do Birds Sing Deluxe Edition"), "a release folder: got \"%s\"", out);
+	CHECK(!ml_tidy_folder("The Bends", "Radiohead", out, sizeof out), "a tidy folder is left alone");
+}
+
+static void scan(void)
+{
+	ml_lib l;
+	char base[512], want[512];
+	int bends, bends2, pod, i;
+
+	printf("the folder\n");
+	dir("Radiohead");
+	dir("Radiohead/The Bends");
+	dir("Radiohead/The Bends 2");
+	dir("Radiohead/.media");
+	dir("Podcast");
+	dir("Empty");
+	touch("Radiohead/The Bends/02 Bones.mp3");
+	touch("Radiohead/The Bends/01 Planet Telex.mp3");
+	touch("Radiohead/The Bends/._01 Planet Telex.mp3");   /* AppleDouble */
+	touch("Radiohead/The Bends/notes.txt");
+	touch("Radiohead/The Bends 2/01 Bonus.mp3");
+	touch("Radiohead/.media/The Bends.jpg");               /* a cover, not an album */
+	touch("Podcast/ep1.mp3");
+	touch("loose.mp3");                                   /* under the root: no album */
+	dir("Singles");                                       /* where the launcher moves it */
+	touch("Singles/A Single.mp3");
+
+	CHECK(ml_scan(root, &l), "a folder that is there scans");
+	CHECK(l.nartists == 3, "two artists with music and Singles, not the empty one: %d",
+	      l.nartists);
+	CHECK(l.nalbums == 4, "three albums and Singles, and .media is not one: %d", l.nalbums);
+	CHECK(l.ntracks == 5, "five tracks, no AppleDouble, no text, nothing loose: %d",
+	      l.ntracks);
+
+	printf("Singles\n");
+	{
+		int s = album_named(&l, ML_SINGLES);
+
+		CHECK(s >= 0 && l.albums[s].singles && !l.albums[s].book,
+		      "Music/Singles is an album marked as Singles");
+		CHECK(album_named(&l, "The Bends") >= 0 &&
+		      !l.albums[album_named(&l, "The Bends")].singles,
+		      "and no other album is");
+	}
+
+	bends  = album_named(&l, "The Bends");
+	bends2 = album_named(&l, "The Bends 2");
+	pod    = album_named(&l, "Podcast");
+	CHECK(bends >= 0 && bends2 >= 0 && pod >= 0, "the albums are named by folder");
+	if (bends < 0 || bends2 < 0 || pod < 0) { ml_free(&l); return; }
+	CHECK(l.albums[bends].n == 2, "The Bends has two tracks: %d", l.albums[bends].n);
+	CHECK(!strcmp(l.tracks[l.albums[bends].first].name, "Planet Telex"),
+	      "sorted by file name, shown without the number: \"%s\"",
+	      l.tracks[l.albums[bends].first].name);
+
+	printf("which album a track is in\n");
+	CHECK(ml_album_of(&l, "Radiohead/The Bends/02 Bones.mp3") == bends,
+	      "a track in The Bends");
+	CHECK(ml_album_of(&l, "Radiohead/The Bends 2/01 Bonus.mp3") == bends2,
+	      "a folder whose name starts with another's is its own album");
+	CHECK(ml_album_of(&l, "Podcast/ep1.mp3") == pod, "the flat shape");
+	CHECK(ml_album_of(&l, "Radiohead/Pablo Honey/01 You.mp3") == -1,
+	      "a folder the scan never saw");
+	CHECK(ml_album_of(&l, "") == -1, "nothing playing");
+
+	printf("where covers are kept\n");
+	ml_cover_base(root, &l, bends, base, sizeof base);
+	snprintf(want, sizeof want, "%s/Radiohead/.media/The Bends", root);
+	CHECK(!strcmp(base, want), "beside the album: got %s", base);
+	ml_cover_base(root, &l, pod, base, sizeof base);
+	snprintf(want, sizeof want, "%s/.media/Podcast", root);
+	CHECK(!strcmp(base, want), "under the root for the flat shape: got %s", base);
+	ml_cover_base(root, &l, l.nalbums, base, sizeof base);
+	CHECK(base[0] == '\0', "no album, no path");
+
+	for (i = 0; i < l.ntracks; i++)
+		CHECK(l.tracks[i].path[0] != '/', "paths are relative: %s", l.tracks[i].path);
+	ml_free(&l);
+}
+
+/* The shelf's two orders, on a folder where they differ: two artists with a
+ * "Greatest Hits" each, and an album named in lower case, which has to sort
+ * where its letters say and not after every capital. */
+static void orders(void)
+{
+	static const char *const want[] = {
+		"amnesiac", "Greatest Hits", "Greatest Hits", "Parklife", "The Bends"
+	};
+	char sub[300];
+	ml_lib l;
+	int out[8], k;
+
+	printf("the shelf's orders\n");
+	CHECK(ml_order_index("album") == ML_BY_ALBUM, "album is stored as \"album\"");
+	CHECK(ml_order_index("artist") == ML_BY_ARTIST, "artist as \"artist\"");
+	CHECK(ml_order_index("name") == ML_BY_ARTIST && ml_order_index(NULL) == ML_BY_ARTIST,
+	      "anything else is the folder's own order");
+	CHECK(!strcmp(ml_order_label(ML_BY_ALBUM, false), "Album") &&
+	      !strcmp(ml_order_label(ML_BY_ARTIST, false), "Artist"), "what the menu says");
+	CHECK(!strcmp(ml_order_label(ML_BY_ALBUM, true), "Title") &&
+	      !strcmp(ml_order_label(ML_BY_ARTIST, true), "Author"),
+	      "and what it says on the books");
+	CHECK(!strcmp(ml_order_name((ml_order)ML_ORDERS), "artist"),
+	      "a number out of range reads as the first order, not past the table");
+
+	dir("o");
+	dir("o/Blur");
+	dir("o/Blur/Parklife");
+	dir("o/Blur/Greatest Hits");
+	dir("o/Queen");
+	dir("o/Queen/Greatest Hits");
+	dir("o/Radiohead");
+	dir("o/Radiohead/The Bends");
+	dir("o/Radiohead/amnesiac");
+	touch("o/Blur/Parklife/01 Girls And Boys.mp3");
+	touch("o/Blur/Greatest Hits/01 Beetlebum.mp3");
+	touch("o/Queen/Greatest Hits/01 Bohemian Rhapsody.mp3");
+	touch("o/Radiohead/The Bends/01 Planet Telex.mp3");
+	touch("o/Radiohead/amnesiac/01 Packt.mp3");
+	snprintf(sub, sizeof sub, "%s/o", root);
+	CHECK(ml_scan(sub, &l) && l.nalbums == 5, "five albums: %d", l.nalbums);
+	if (l.nalbums != 5) { ml_free(&l); return; }
+
+	CHECK(ml_shelf_order(&l, ML_BY_ARTIST, false, out) == 5, "every album is music");
+	for (k = 0; k < 5; k++)
+		CHECK(out[k] == k, "by artist is the scan's order: card %d is album %d", k, out[k]);
+
+	ml_shelf_order(&l, ML_BY_ALBUM, false, out);
+	for (k = 0; k < 5; k++)
+		CHECK(!strcmp(l.albums[out[k]].name, want[k]),
+		      "by album, card %d: want %s, got %s", k, want[k], l.albums[out[k]].name);
+	CHECK(!strncmp(l.tracks[l.albums[out[1]].first].path, "Blur/", 5) &&
+	      !strncmp(l.tracks[l.albums[out[2]].first].path, "Queen/", 6),
+	      "two of one title go in their artists' order");
+	CHECK(ml_shelf_order(&l, ML_BY_ALBUM, true, out) == 0, "and none is a book");
+	ml_free(&l);
+}
+
+/* A card's two folders read as one library, the books marked: what Muse's
+ * shelf filters on, and what the launcher resumes. Then the pictures a folder
+ * carries, which is where a book's cover usually is. */
+static void card(void)
+{
+	char c[300], img[600], want[600];
+	ml_lib l;
+	int out[8], dcc, hs, n;
+
+	printf("a card's Music and Audiobooks\n");
+	dir("card");
+	dir("card/Music");
+	dir("card/Music/Blur");
+	dir("card/Music/Blur/Parklife");
+	touch("card/Music/Blur/Parklife/01 Girls And Boys.mp3");
+	touch("card/Music/Blur/Parklife/cover.JPG");
+	dir("card/Audiobooks");
+	dir("card/Audiobooks/Dungeon Crawler Carl 3");
+	touch("card/Audiobooks/Dungeon Crawler Carl 3/Book 3.m4b");
+	touch("card/Audiobooks/Dungeon Crawler Carl 3/Book 3.jpg");
+	touch("card/Audiobooks/Dungeon Crawler Carl 3/Book 3.cue");
+	dir("card/Audiobooks/Banks");
+	dir("card/Audiobooks/Banks/The Hydrogen Sonata");
+	touch("card/Audiobooks/Banks/The Hydrogen Sonata/disc 02.mp3");
+	touch("card/Audiobooks/Banks/The Hydrogen Sonata/disc 01.mp3");
+	touch("card/Audiobooks/Banks/The Hydrogen Sonata/back.jpg");
+	touch("card/Audiobooks/Banks/The Hydrogen Sonata/front.jpg");
+	snprintf(c, sizeof c, "%s/card", root);
+
+	CHECK(ml_scan_card(c, &l), "a card with both folders scans");
+	CHECK(l.nalbums == 3 && ml_count(&l, false) == 1 && ml_count(&l, true) == 2,
+	      "one album and two books: %d, %d, %d", l.nalbums, ml_count(&l, false),
+	      ml_count(&l, true));
+	dcc = album_named(&l, "Dungeon Crawler Carl 3");
+	hs  = album_named(&l, "The Hydrogen Sonata");
+	CHECK(dcc >= 0 && hs >= 0, "books named by folder, in both shapes");
+	if (dcc < 0 || hs < 0) { ml_free(&l); return; }
+	CHECK(l.albums[dcc].book && l.albums[hs].book && !l.albums[album_named(&l, "Parklife")].book,
+	      "the books are marked, the album is not");
+	CHECK(!strcmp(l.tracks[l.albums[hs].first].path,
+	              "Audiobooks/Banks/The Hydrogen Sonata/disc 01.mp3"),
+	      "paths are relative to the card: %s", l.tracks[l.albums[hs].first].path);
+	CHECK(ml_album_of(&l, "Audiobooks/Dungeon Crawler Carl 3/Book 3.m4b") == dcc,
+	      "which book a file is in");
+	n = ml_shelf_order(&l, ML_BY_ARTIST, true, out);
+	CHECK(n == 2 && out[0] == hs && out[1] == dcc,
+	      "the book shelf is the books alone, by author: %d", n);
+	CHECK(ml_shelf_order(&l, ML_BY_ARTIST, false, out) == 1, "the music shelf the album alone");
+
+	ml_cover_base(c, &l, dcc, img, sizeof img);
+	snprintf(want, sizeof want, "%s/Audiobooks/.media/Dungeon Crawler Carl 3", c);
+	CHECK(!strcmp(img, want), "a book's cover is kept like an album's: %s", img);
+
+	printf("pictures in a folder\n");
+	snprintf(want, sizeof want, "%s/Audiobooks/Dungeon Crawler Carl 3/Book 3.jpg", c);
+	CHECK(ml_folder_image(c, &l, dcc, img, sizeof img) && !strcmp(img, want),
+	      "the only picture, whatever it is called: %s", img);
+	snprintf(want, sizeof want, "%s/Music/Blur/Parklife/cover.JPG", c);
+	CHECK(ml_folder_image(c, &l, album_named(&l, "Parklife"), img, sizeof img) &&
+	      !strcmp(img, want), "cover, in any case: %s", img);
+	CHECK(!ml_folder_image(c, &l, hs, img, sizeof img),
+	      "two pictures and neither named cover: no guess");
+	ml_free(&l);
+
+	snprintf(c, sizeof c, "%s/nothing", root);
+	CHECK(!ml_scan_card(c, &l), "a card with neither folder does not scan");
+	ml_free(&l);
+}
+
+/* MP4's Videos: a film straight in the folder is an album of its own, told
+ * apart from the films beside it by its file; a folder of videos is a series,
+ * with a season under it like an album under an artist. */
+static void videos(void)
+{
+	char c[300], img[600], want[600];
+	ml_lib l;
+	int out[8], film, eps, s1, n, i;
+
+	printf("a card's Videos\n");
+	dir("vcard");
+	dir("vcard/Music");
+	dir("vcard/Music/Blur");
+	dir("vcard/Music/Blur/Parklife");
+	touch("vcard/Music/Blur/Parklife/01 Girls And Boys.mp3");
+	dir("vcard/Videos");
+	touch("vcard/Videos/John Mayer - Where the Light Is.mp4");
+	touch("vcard/Videos/John Mayer - Where the Light Is.jpg");
+	touch("vcard/Videos/Another Film.mkv");
+	touch("vcard/Videos/notes.txt");
+	touch("vcard/Videos/._Another Film.mkv");                 /* AppleDouble */
+	touch("vcard/Videos/song.mp3");                           /* not a video */
+	dir("vcard/Videos/Planet Earth");
+	touch("vcard/Videos/Planet Earth/02 Mountains.mp4");
+	touch("vcard/Videos/Planet Earth/01 From Pole to Pole.mp4");
+	dir("vcard/Videos/The Office");
+	dir("vcard/Videos/The Office/Season 1");
+	touch("vcard/Videos/The Office/Season 1/S01E01 Pilot.webm");
+	dir("vcard/Videos/.media");
+	snprintf(c, sizeof c, "%s/vcard", root);
+
+	CHECK(ml_scan_card(c, &l), "a card with Music and Videos scans");
+	CHECK(ml_count_kind(&l, ML_MUSIC) == 1 && ml_count_kind(&l, ML_BOOKS) == 0 &&
+	      ml_count_kind(&l, ML_VIDEOS) == 4,
+	      "one album, no books, four videos: %d, %d, %d", ml_count_kind(&l, ML_MUSIC),
+	      ml_count_kind(&l, ML_BOOKS), ml_count_kind(&l, ML_VIDEOS));
+	film = album_named(&l, "John Mayer - Where the Light Is");
+	eps  = album_named(&l, "Planet Earth");
+	s1   = album_named(&l, "Season 1");
+	CHECK(film >= 0 && eps >= 0 && s1 >= 0 && album_named(&l, "Another Film") >= 0,
+	      "films by their file, series and seasons by their folder");
+	if (film < 0 || eps < 0 || s1 < 0) { ml_free(&l); return; }
+	CHECK(l.albums[film].solo && l.albums[film].n == 1 && !l.albums[eps].solo &&
+	      l.albums[eps].n == 2 && l.albums[film].kind == ML_VIDEOS && !l.albums[film].book,
+	      "a film is a solo album of one; the series is not");
+	CHECK(!strcmp(l.tracks[l.albums[film].first].path,
+	              "Videos/John Mayer - Where the Light Is.mp4"),
+	      "a film's path: %s", l.tracks[l.albums[film].first].path);
+	CHECK(ml_album_of(&l, "Videos/Another Film.mkv") == album_named(&l, "Another Film") &&
+	      ml_album_of(&l, "Videos/John Mayer - Where the Light Is.mp4") == film,
+	      "two films in one folder are two albums");
+	CHECK(ml_album_of(&l, "Videos/Planet Earth/02 Mountains.mp4") == eps,
+	      "an episode is in its series");
+	for (i = 0, n = 0; i < l.nartists; i++)
+		if (l.artists[i].kind == ML_VIDEOS && !l.artists[i].name[0]) n = l.artists[i].n;
+	CHECK(n == 2, "the films are under one artist with no name: %d", n);
+
+	n = ml_shelf_order_kind(&l, ML_BY_ALBUM, ML_VIDEOS, out);
+	CHECK(n == 4 && out[0] == album_named(&l, "Another Film") && out[3] == s1,
+	      "the video shelf by title: %d", n);
+	CHECK(!strcmp(ml_order_label_kind(ML_BY_ARTIST, ML_VIDEOS), "Folder") &&
+	      !strcmp(ml_order_label_kind(ML_BY_ALBUM, ML_VIDEOS), "Title"),
+	      "the video shelf's orders are Folder and Title");
+
+	ml_cover_base(c, &l, film, img, sizeof img);
+	snprintf(want, sizeof want, "%s/Videos/.media/John Mayer - Where the Light Is", c);
+	CHECK(!strcmp(img, want), "a film's cover is kept by its file: %s", img);
+	ml_cover_base(c, &l, eps, img, sizeof img);
+	snprintf(want, sizeof want, "%s/Videos/.media/Planet Earth", c);
+	CHECK(!strcmp(img, want), "a series' like an album's: %s", img);
+	snprintf(want, sizeof want, "%s/Videos/John Mayer - Where the Light Is.jpg", c);
+	CHECK(ml_folder_image(c, &l, film, img, sizeof img) && !strcmp(img, want),
+	      "a film's own picture, named as it is: %s", img);
+	CHECK(!ml_folder_image(c, &l, album_named(&l, "Another Film"), img, sizeof img),
+	      "not another film's picture");
+	CHECK(ml_is_video("a.MKV") && ml_is_video("b.webm") && !ml_is_video("c.mp3") &&
+	      !ml_is_video("._d.mp4"), "video names");
+	ml_free(&l);
+}
+
+int main(void)
+{
+	char cmd[300];
+
+	snprintf(root, sizeof root, "/tmp/muselib-check.XXXXXX");
+	if (!mkdtemp(root)) { perror("mkdtemp"); return 1; }
+
+	printf("muselib: the Music and Audiobooks folders\n");
+	names();
+	scan();
+	orders();
+	card();
+	videos();
+
+	snprintf(cmd, sizeof cmd, "rm -rf '%s'", root);
+	if (system(cmd) != 0) { }
+
+	if (failures) {
+		printf("\n%d failure%s\n", failures, failures == 1 ? "" : "s");
+		return 1;
+	}
+	printf("ok\n");
+	return 0;
+}

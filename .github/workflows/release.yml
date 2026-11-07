@@ -1,0 +1,191 @@
+# The second half of a ZyperOS release. tools/release.sh --publish, on the
+# Mac, builds the GKD Pixel 2's card image, makes a draft release v<VERSION>
+# with the image, its sources and SHA256SUMS, and pushes the tag; the tag
+# starts this. It builds ZyperOS Installer for macOS (one app for Apple
+# Silicon and Intel), Windows (a portable exe) and Linux (.deb and .rpm),
+# adds the files to the same release, puts them in its SHA256SUMS, and
+# publishes it. A tag with no draft waiting is refused: the image comes first.
+#
+# A pull request that changes this file builds the apps the same way and
+# stops before the release, to try it.
+#
+# dtolnay/rust-toolchain is a third-party action and runs with the job's
+# token, so it is pinned to a commit of its stable branch, not to the branch
+# name: a moved branch cannot change what runs here. Move the SHA on purpose.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: One version everywhere, and the tag's
+        id: v
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          sh tools/check-version.sh
+          v=$(sed -n 's/^VERSION ?= //p' Makefile)
+          if [ "$REF_TYPE" = tag ] && [ "$REF_NAME" != "v$v" ]; then
+            echo "the tag is $REF_NAME but the Makefile's VERSION is $v" >&2
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  macos:
+    needs: version
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: installer/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Tests
+        run: cargo test --locked
+      - name: App, for Apple Silicon and Intel
+        run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --bundles app
+      - name: Zip
+        env:
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p ../../dist
+          # ditto keeps the app's links and permissions, as Finder's own zip does
+          ditto -c -k --keepParent "target/universal-apple-darwin/release/bundle/macos/ZyperOS Installer.app" \
+            "../../dist/ZyperOS-Installer-$V-macOS.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos
+          path: dist/*
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: installer/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Tests
+        run: cargo test --locked
+      - name: Portable exe
+        run: npx --yes @tauri-apps/cli@2 build --no-bundle
+      - name: Lists no disk on a runner
+        shell: pwsh
+        run: |
+          $out = (& .\target\release\zyperos-installer.exe --list | Out-String)
+          Write-Output $out
+          if (($out -replace '\s', '') -ne '[]') { throw "a disk was listed on the runner" }
+      - name: Name
+        shell: pwsh
+        env:
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          New-Item -ItemType Directory -Force ..\..\dist | Out-Null
+          Copy-Item target\release\zyperos-installer.exe "..\..\dist\ZyperOS-Installer-$env:V-Windows.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: dist/*
+
+  linux:
+    needs: version
+    # Built on the oldest Ubuntu GitHub has, so the packages run on it and
+    # anything newer (Debian 12, current Ubuntu and Mint, Fedora)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: installer/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Tests
+        run: cargo test --locked
+      - name: Packages
+        run: npx --yes @tauri-apps/cli@2 build --bundles deb,rpm
+      - name: Lists no disk on a runner
+        run: |
+          out=$(target/release/zyperos-installer --list)
+          echo "$out"
+          test "$(echo "$out" | tr -d '[:space:]')" = "[]"
+      - name: Name
+        env:
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p ../../dist
+          # Named zyperos-installer by tauri.linux.conf.json
+          cp "target/release/bundle/deb/zyperos-installer_${V}_amd64.deb" "../../dist/ZyperOS-Installer-$V-amd64.deb"
+          cp "target/release/bundle/rpm/zyperos-installer-$V-1.x86_64.rpm" "../../dist/ZyperOS-Installer-$V-x86_64.rpm"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: dist/*
+
+  publish:
+    needs: [version, macos, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      V: ${{ needs.version.outputs.version }}
+      TAG: v${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: The four installer files
+        run: |
+          cd dist
+          for f in "ZyperOS-Installer-$V-macOS.zip" "ZyperOS-Installer-$V-Windows.exe" \
+                   "ZyperOS-Installer-$V-amd64.deb" "ZyperOS-Installer-$V-x86_64.rpm"; do
+            test -s "$f" || { echo "missing $f" >&2; exit 1; }
+          done
+          ls -l
+      - name: Add them to the draft release and publish it
+        if: github.ref_type == 'tag'
+        run: |
+          cd dist
+          state=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo none)
+          if [ "$state" != true ]; then
+            echo "no draft release $TAG waiting (found: $state). A release starts on the Mac with tools/release.sh --publish, which puts the card image on a draft first." >&2
+            exit 1
+          fi
+          # The draft's checksums (the image and its sources), with the
+          # installer's added: one SHA256SUMS for everything in the release
+          gh release download "$TAG" --pattern SHA256SUMS --dir sums
+          grep -q "ZyperOS-$TAG-pixel2.img.xz" sums/SHA256SUMS || { echo "the draft has no image in its SHA256SUMS" >&2; exit 1; }
+          grep -v ' ZyperOS-Installer-' sums/SHA256SUMS > SHA256SUMS
+          sha256sum ZyperOS-Installer-* >> SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$TAG" ZyperOS-Installer-* SHA256SUMS --clobber
+          gh release edit "$TAG" --draft=false
+          gh release view "$TAG" --json url,isDraft,isPrerelease,assets --jq '{url, isDraft, isPrerelease, assets: [.assets[].name]}'

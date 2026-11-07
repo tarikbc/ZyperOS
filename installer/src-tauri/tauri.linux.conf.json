@@ -1,0 +1,9 @@
+{
+  "productName": "zyperos-installer",
+  "bundle": {
+    "linux": {
+      "deb": { "desktopTemplate": "linux.desktop" },
+      "rpm": { "desktopTemplate": "linux.desktop" }
+    }
+  }
+}

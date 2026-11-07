@@ -1,0 +1,496 @@
+{
+  "source_commit": "642bc2aae5042491c320976a7e317edcd3f3e65f",
+  "renderer": "current native launcher, SDL software, headless",
+  "data": "demonstration library (freeware or stand-in names, empty files); built-in shot fixtures",
+  "artwork": {},
+  "screenshots": [
+    {
+      "file": "light/systems.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--home",
+        "spotlight"
+      ],
+      "sha256": "03f2f86944e4e2e3ed5dbe966dd6cedeb7e1a41ac3c61862a1b9f705caa35e44",
+      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
+    },
+    {
+      "file": "light/gallery.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--home",
+        "gallery"
+      ],
+      "sha256": "bb80a19fedd50dc4f2a1ee2ea780d9dbc6f2899b27e18699f5bad342c3ef419d",
+      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
+    },
+    {
+      "file": "light/shelf.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "dcd88d84c586366e900c08a8498614b57da5ab4e8d08ce70de9b4b9a920cad6b"
+    },
+    {
+      "file": "light/info.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--info"
+      ],
+      "sha256": "c2994742fd7cccf209fbfa00ff49ce5c4ec0b14769cb65fe5be40889252ba740"
+    },
+    {
+      "file": "light/cheevos.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--cheevos-screen",
+        "0"
+      ],
+      "sha256": "ce22c9e9b1c93b11db14f06178a9421b361cb0d4ec77a2cb6e9ba85846a0b253"
+    },
+    {
+      "file": "light/menu.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--menu",
+        "Search Games"
+      ],
+      "sha256": "2dabb030569182ad068cbdcccfe1e9a3dd963d910b9a190f2d60ef688b5a3af0"
+    },
+    {
+      "file": "light/mp4.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "53f7873c97225415a38af5cb98363e0bc2e0e887eab88179ce1467cdaddfea57"
+    },
+    {
+      "file": "light/nowplaying.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83"
+      ],
+      "sha256": "fb24d6b36ce0f88cd7e54c3de6da58fc794fba78e82bc71b6c9a00d6f5001ba7"
+    },
+    {
+      "file": "light/hare.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--hare",
+        "http://192.168.1.42",
+        "1 connected",
+        "Tobu Tobu Girl.gb"
+      ],
+      "sha256": "2923783813a9d1cf27c4852617d09c1e9c817a54ed7f6127fc3a22c6aa5f9b0d",
+      "source_commit": "70992931130292c04696593745b57a3f8c6fa726"
+    },
+    {
+      "file": "light/hotspot.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--hotspot",
+        "ZyperOS-7A2B",
+        "q7mx-3kpa",
+        "1 joined",
+        "waiting"
+      ],
+      "sha256": "2975b9b1209a44a2c4e769014df2ff0e9baeb6696d96594435c3ecddec916783"
+    },
+    {
+      "file": "light/usb-ask.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--usb-ask",
+        "0"
+      ],
+      "sha256": "7253e2fe98cae3cd34c6fc52ba8929d30b376b90de6ee97a61a851f2aaaa7ce6"
+    },
+    {
+      "file": "light/scummvm.png",
+      "card": "scummvm",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "c4ca9c17cbb8f7ff416e066f72a9531fb61e31efafa36605fa96ffc2eed8eb23"
+    },
+    {
+      "file": "light/scraper.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--scraper",
+        "2"
+      ],
+      "sha256": "ae34b32228001f66b0617e818a519aede54c2e19c2a55fe830542811d79ecbfd",
+      "source": "reused: the Scraper session's host frame of --scraper 2 (2026-11-06, the merged Scraper code), drawn over a card with one system; this tool draws the same panel over the demonstration card, sha256 ab8df6764c766976fb0c6b65c78aeda500d7a17337dbbe54540dd5d2662acc21"
+    },
+    {
+      "file": "light/update.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--update"
+      ],
+      "sha256": "1eb4f64e067e7123aa2a357f212cfb8f5fb2797123e7c15e07a37a82afe0ea91"
+    },
+    {
+      "file": "light/empty.png",
+      "card": "empty",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--ways",
+        "usb"
+      ],
+      "sha256": "09cfa5b1124c18422ce5e9dfec6424e85a60a826e49b20286522df48d3e95225"
+    },
+    {
+      "file": "light/tour-theme.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--fn-volume",
+        "--tour",
+        "theme",
+        "2000",
+        "--tour-music",
+        "--tour-pick",
+        "0"
+      ],
+      "sha256": "f9115a49d27f645f8f2561b5fed1cbdcd61d7d4215824ac91324e2cda3ce1a6c",
+      "source": "reused: the onboarding session's host frame, byte for byte what this tool draws"
+    },
+    {
+      "file": "light/tour-home.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--fn-volume",
+        "--tour",
+        "home",
+        "2000",
+        "--tour-music",
+        "--tour-pick",
+        "1"
+      ],
+      "sha256": "4e640e4b04345526779d90720fefd8c1a87f06fa411334963c3eba9350a005ac"
+    },
+    {
+      "file": "light/tour-sounds.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--fn-volume",
+        "--tour",
+        "sounds",
+        "2000",
+        "--tour-music",
+        "--tour-pick",
+        "1"
+      ],
+      "sha256": "2363632f95805cd7b3ecfc0f82e402e48646f7df75b94ca148f05274b220e92d",
+      "source": "reused: the onboarding session's host frame, byte for byte what this tool draws"
+    },
+    {
+      "file": "light/tour-music.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--fn-volume",
+        "--tour",
+        "music",
+        "2000",
+        "--tour-music",
+        "--tour-pick",
+        "0"
+      ],
+      "sha256": "9c9bacda749075fb651c2ed0958fd9c42fb1beecd84e86c0abf419af425340f8"
+    },
+    {
+      "file": "dark/systems.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--home",
+        "spotlight"
+      ],
+      "sha256": "b1b9aeebf9a8db9d07a03bea1449bd943f2b022e0552c5e6950804af495712c3",
+      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
+    },
+    {
+      "file": "dark/menu.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--menu",
+        "Search Games"
+      ],
+      "sha256": "716ae34e841de0be4a559567f67f887cb6da5914159109371d7665466b526b01"
+    },
+    {
+      "file": "light/portal.png",
+      "card": "portal",
+      "args": {
+        "width": 1280,
+        "height": 800,
+        "scale": 1,
+        "phone": false,
+        "folder": "roms/NES",
+        "upload": [
+          "Super Tilt Bro.nes",
+          524304
+        ],
+        "page": "res/web/index.html"
+      },
+      "sha256": "2f1071c9dc19090f852ea46469016ac8f472adaa4830daa3523336d6a87dacf0",
+      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
+      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
+    },
+    {
+      "file": "light/portal-pin.png",
+      "card": "portal",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 2,
+        "phone": true,
+        "gate": true,
+        "page": "res/web/index.html"
+      },
+      "sha256": "e6132f1359a5e5e0070e768126381dcc1bbbfa3c1e422ae3a7d90bae0f7102ad",
+      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
+      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
+    },
+    {
+      "file": "light/portal-phone.png",
+      "card": "portal",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 2,
+        "phone": true,
+        "folder": "roms",
+        "page": "res/web/index.html"
+      },
+      "sha256": "7d2142cc09013df450509c33785435a5562c9bb5d9d148c75a089d8c0662ca5e",
+      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
+      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
+    },
+    {
+      "file": "light/charging.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--charging",
+        "4000"
+      ],
+      "sha256": "b1fba038aa10f4f934acfcba2acbf2f75ce5196e576f4f40e82dc2eb392dc65b",
+      "source_commit": "61913935902163db09b0db7a061ddfdbba7f2fec"
+    },
+    {
+      "file": "light/heat.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--heatpop",
+        "1600"
+      ],
+      "sha256": "4b833fada10ac6e55bc81472671086e254680b366c958589776a39f4ecd0192a",
+      "source_commit": "61913935902163db09b0db7a061ddfdbba7f2fec"
+    }
+  ],
+  "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"
+}

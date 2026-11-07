@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controls pages lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .pair { display: grid; gap: 10px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+  .play { align-self: flex-start; }
+  .zs .backdrop { position: absolute; inset: 0; }
+  .zs .game { position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--sys) 55%, #7fc4ff) 0 58%, color-mix(in srgb, var(--sys) 70%, #2a1d10) 58% 100%); }
+
+  /* ---- a Controls page as menu_draw lays it out: 73-unit rows, 49 text,
+   * the heading 55; a panel as tall as its rows, from 97 down ------------- */
+  .zs .cp { position: absolute; left: 66px; top: 97px; width: 892px; box-sizing: border-box; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); padding: 26px 54px 30px; display: flex; flex-direction: column; }
+  .zs .cp h4 { margin: 0; height: 58px; line-height: 58px; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); white-space: nowrap; position: relative; }
+  .zs .cp h4 i { position: absolute; right: 0; top: 0; font-style: normal; font-size: 37px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .zs .cp hr { border: 0; height: 2px; background: var(--rule, var(--edge)); margin: 26px 0 18px; flex: none; }
+  .zs .cp .r { height: 73px; flex: none; display: flex; justify-content: space-between; align-items: center; font-size: 49px; color: var(--text-soft); white-space: nowrap; gap: 30px; }
+  .zs .cp .note { height: 67px; line-height: 67px; flex: none; text-align: center; font-size: 49px; color: var(--text-soft); white-space: nowrap; }
+  .zs .cp .rule { border: 0; height: 2px; background: var(--rule, var(--edge)); margin: 12px 0 14px; flex: none; }
+  .zs .mk { display: inline-block; vertical-align: middle; width: 46px; height: 46px; }
+  .zs .clock { position: absolute; top: 24px; left: 60px; height: 24px; line-height: 24px; font-size: 24px; color: var(--text-soft); }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Controls pages <b>lab</b></h1>
+      <p class="zk-lede">Three of the home's MENU &gt; Controls pages have five rows: In MP4, Anywhere, and On the shelf on the Pixel 2. With the rule and "Left/Right: more" under them, five rows do not fit the panel, so today these pages scroll up and down by themselves, and the fifth row is half hidden. Pick how they fit. Every option is shown in Beard and in Salt &amp; Pepper; Play turns the pages.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Measured on the launcher</b>
+    <ul>
+      <li>The panel holds <b>four rows</b> with the rule and the footer under them, and <b>six rows</b> with no footer (menu_list_fit, the font's own sizes).</li>
+      <li>The words stay as they are. Only where they sit changes.</li>
+      <li>The same look goes on the in-game Controls pages (PR #119), so every Controls page is one kind of page. A check draws every page of both and fails if one moves by itself.</li>
+    </ul>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const MENU = `<svg class="mk" viewBox="-23 -23 46 46"><circle r="20" fill="none" stroke="var(--text-soft)" stroke-width="3.2"/><circle cy="-8.5" r="3.3" fill="var(--text-soft)"/><circle r="3.3" fill="var(--text-soft)"/><circle cy="8.5" r="3.3" fill="var(--text-soft)"/></svg>`;
+  const key = k => esc(k).replace(/^MENU/, MENU);
+
+  /* The home's pages today, on the Pixel 2 (src/controls.c) */
+  const TODAY = [
+    { head: "Moving", rows: [["Left/Right", "Move"], ["Up/Down", "Jump by letter"], ["L1/R1", "3 systems, a screenful"], ["L2/R2", "Previous/next song"]] },
+    { head: "On the shelf", rows: [["A", "Open or play"], ["B", "Back"], ["X", "Game details"], ["Y", "Favorite"], ["L2+R2", "Battery level"]] },
+    { head: "In a game", rows: [["MENU", "Menu, +R1 for FF"], ["SELECT", "MP4 in menu"], ["X/Y/L2/R2", "Turbo A/B/L1/R1 *"], ["POWER", "Save and turn off"]], note: "* for some systems" },
+    { head: "In MP4", rows: [["A", "Play or pause"], ["L1/R1", "Track or chapter"], ["Left/Right", "Seek, faster held"], ["Y", "Mode, speed or view"], ["X", "Lock till SELECT+START"]] },
+    { head: "Anywhere", rows: [["SELECT", "MP4"], ["MENU", "Settings"], ["Volume rocker", "Sound"], ["MENU+VOL", "Brightness"], ["POWER", "Turn off"]] },
+  ];
+  /* B: a page more where one is long, four rows each, the footer kept */
+  const MORE = [
+    TODAY[0],
+    { head: "On the shelf", rows: TODAY[1].rows.slice(0, 4) },
+    TODAY[2],
+    { head: "In MP4", rows: TODAY[3].rows.slice(0, 3) },
+    { head: "MP4's screen", rows: TODAY[3].rows.slice(3) },
+    { head: "Anywhere", rows: [["SELECT", "MP4"], ["MENU", "Settings"], ["POWER", "Turn off"]] },
+    { head: "Sound and light", rows: [["Volume rocker", "Sound"], ["MENU+VOL", "Brightness"], ["L2+R2", "Battery level"]] },
+  ];
+  /* An in-game page, Genesis: four rows a page with a footer, six without */
+  const GEN4 = [{ head: "Genesis", rows: [["A", "C"], ["B", "B"], ["X", "Y"], ["Y", "A"]] }, { head: "Genesis", rows: [["L1/R1", "X/Z"], ["START/SELECT", "Start/Mode"]] }];
+  const GEN6 = [{ head: "Genesis", rows: [["A", "C"], ["B", "B"], ["X", "Y"], ["Y", "A"], ["L1/R1", "X/Z"], ["START/SELECT", "Start/Mode"]] }];
+  const IN_A_GAME = { head: "In a game", rows: [["MENU", "Menu, +R1 for FF"], ["Volume rocker", "Sound"], ["MENU+VOL", "Brightness"], ["POWER", "Save and turn off"]] };
+
+  /* `style`: "count" (the page count in the heading, no footer) or "foot"
+   * (Left/Right: more under a rule) */
+  function page(p, at, n, style, over, th) {
+    const rows = p.rows.map(([k, v]) => `<div class="r"><span>${key(k)}</span><span>${esc(v)}</span></div>`).join("");
+    const note = p.note ? `<hr class="rule"><div class="note">${esc(p.note)}</div>` : "";
+    const count = style === "count" && n > 1 ? `<i>${at + 1} / ${n}</i>` : "";
+    const foot = style === "foot" && n > 1 ? `<hr class="rule"><div class="note">Left/Right: more</div>` : "";
+    const under = over === "game" ? `<div class="game"></div><div class="scrim game"></div>` : `<div class="backdrop">${ZK.shelf(th, { title: "" })}</div><div class="scrim"></div>`;
+    return under + `<div class="cp"><h4>Controls: ${esc(p.head)}${count}</h4><hr>${rows}${note}${foot}</div>`;
+  }
+  const draw = (p, at, n, style, over) => th => page(p, at, n, style, over, th);
+
+  const both = (fn, sys, cap) => `<div class="pair">${ZK.screen("light", fn("light"), { sys })}<span class="cap">Beard</span>${ZK.screen("dark", fn("dark"), { sys })}<span class="cap">Salt &amp; Pepper</span>${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+  const REELS = {};
+  const live = new Map();
+  function reel(id, sys, frames, rest, cap) {
+    REELS[id] = frames;
+    return `<div class="pair" data-reel="${id}">${both(rest || frames[0], sys, cap)}<button type="button" class="zk-btn play" data-play="${id}">Play</button></div>`;
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-play]");
+    if (!b) return;
+    const box = b.closest("[data-reel]"), frames = REELS[b.dataset.play];
+    (live.get(box) || []).forEach(clearTimeout);
+    live.set(box, frames.map((fn, i) => setTimeout(() => {
+      box.querySelectorAll(".zs").forEach(z => { z.innerHTML = fn(z.dataset.theme); });
+      if (i) ZK.sound("move");
+    }, i * 900)));
+  });
+
+  const pages = (list, style, over) => list.map((p, i) => draw(p, i, list.length, style, over));
+  const SYS = "#9bd13f", GEN = "#3E82D6";
+
+  const list = [
+    { key: "fit", title: "How the long pages fit",
+      why: "The home's In MP4 page, which has five rows. Play turns through every page of that option. The in-game pages under each option are below it.",
+      options: {
+        count: { name: "The page count in the heading", tag: "suggested", blurb: "\"4 / 5\" at the heading's right, as About ZyperOS shows its pages, and no footer: six rows fit, so every page fits as it is, with the same five pages. Left/Right still turns them. In a game, Genesis fits on one page.",
+          draw: () => reel("count", SYS, pages(TODAY, "count"), draw(TODAY[3], 3, 5, "count")) +
+                      reel("count-game", GEN, pages(GEN6.concat([IN_A_GAME]), "count", "game"), null, "In a game: Genesis on one page, then In a game") },
+        foot: { name: "A page more where one is long", blurb: "\"Left/Right: more\" stays, four rows a page: In MP4 goes on to MP4's screen (Y, X), and Anywhere's volume, brightness and the Pixel 2's battery level go to a page of their own, Sound and light. Seven pages.",
+          draw: () => reel("foot", SYS, pages(MORE, "foot"), draw(MORE[3], 3, 7, "foot")) +
+                      reel("foot-game", GEN, pages(GEN4.concat([IN_A_GAME]), "foot", "game"), null, "In a game: Genesis on two pages, then In a game") },
+      } },
+  ];
+
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-controls-fit-lab", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

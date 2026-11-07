@@ -1,0 +1,70 @@
+title: Nintendo DS on the GKD Pixel 2: DSperate and DraStic
+description: Play Nintendo DS games on the GKD Pixel 2 with ZyperOS: DSperate built in, or DraStic if you add it, three screen layouts, a d-pad stylus and your saves.
+summary: Two DS emulators, three screen layouts, a d-pad stylus, and how DraStic saves move over.
+crumb: Nintendo DS
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: shelf
+image_alt: A system's games as a row of covers on the ZyperOS shelf
+related: gkd-pixel-2-bios-files, add-games-gkd-pixel-2, portmaster-gkd-pixel-2
+weight: 60
+---
+<p>The Nintendo DS had two screens, one of them a touch screen, and the GKD Pixel 2 has one 4:3 screen and no touch. So a DS game on the Pixel 2 needs a way to show both screens and to touch. ZyperOS gives you two emulators to choose from and a stylus you steer with the d-pad. This guide covers both emulators, the buttons and your saves.</p>
+
+<h2>Two emulators, one shelf</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col">DSperate</th><th scope="col">DraStic</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">On the card</th><td>Ships with ZyperOS</td><td>Not shipped: you copy it to <code>Emulators/DraStic/</code></td></tr>
+    <tr><th scope="row">License</th><td>GPL-3.0</td><td>Closed freeware</td></tr>
+    <tr><th scope="row">How it runs</th><td>Inside ZyperOS's emulator, Diatom, as a libretro core</td><td>As a program of its own</td></tr>
+    <tr><th scope="row">In-game menu</th><td>ZyperOS's own: save, load, screens, stylus</td><td>DraStic's own</td></tr>
+  </tbody>
+</table>
+</div>
+<p>DSperate is an emulator that reimplements DraStic's techniques under an open license. ZyperOS builds it with Thwonp's libretro wrapper from plorpOS. DraStic is a closed program, so ZyperOS cannot ship it, but it runs it if you add it.</p>
+<p>To choose, open the Nintendo DS shelf, press <kbd>MENU</kbd> and change the <strong>Core</strong> row. A card with DraStic on it still starts on DSperate until you choose DraStic there.</p>
+
+<h2>Adding DS games</h2>
+<p>Put <code>.nds</code> files, or <code>.zip</code> files with one inside, in <code>Roms/Nintendo DS</code>. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows the three ways to send them.</p>
+<p>Most DS sets are decrypted dumps, and those boot on DSperate's own free BIOS, with nothing else to add. An encrypted dump needs the DS's <code>bios7.bin</code>, <code>bios9.bin</code> and <code>firmware.bin</code>, loose in <code>Bios/</code>.</p>
+
+<h2>The buttons on DSperate</h2>
+<p>A game starts with the top screen alone, full size. The shoulders do the rest:</p>
+<ul>
+  <li><kbd>L1</kbd> and <kbd>R1</kbd> are the DS's L and R.</li>
+  <li><kbd>L2</kbd> shows the other screen.</li>
+  <li><kbd>R2</kbd> shows the bottom screen and turns the stylus on: the d-pad moves a cursor and <kbd>A</kbd> touches. <kbd>R2</kbd> again turns the stylus off and goes back.</li>
+  <li><kbd>MENU</kbd> opens ZyperOS's in-game menu. <strong>Controls</strong> there has a page for the two screens and the stylus.</li>
+</ul>
+
+<h2>Three screen layouts</h2>
+<p>The in-game menu has a <strong>Screens</strong> row with three layouts, plus <strong>Swap Screens</strong> and <strong>Stylus</strong>:</p>
+<ul>
+  <li><strong>Single</strong>: one screen alone, filling the Pixel 2's 640x480 panel exactly, since a DS screen is 4:3 like the panel. This is where a game starts. <kbd>L2</kbd> shows the other screen.</li>
+  <li><strong>Stacked</strong>: both screens, one over the other, as a 320x480 picture in the middle of the panel.</li>
+  <li><strong>Top Focus</strong>: one screen large, at twice the DS's size, and the other a quarter of its size beside it at the bottom.</li>
+</ul>
+<p><strong>Swap Screens</strong> puts the bottom screen first: on top in Stacked, the large one in Top Focus, the one shown in Single. While the stylus is on, the screen you touch is always the large or the shown one.</p>
+<p>Single is the best fit for games played mostly on one screen. Stacked suits games that use both all the time, such as a map below the action.</p>
+
+<h2>Moving your saves from DraStic</h2>
+<p>DraStic keeps a game's battery save as <code>Saves/&lt;game&gt;.dsv</code>. The first time that game runs on DSperate with no save of its own, ZyperOS takes the <code>.dsv</code> over: it keeps the save chip's bytes, writes them as DSperate's <code>.srm</code>, and never touches an <code>.srm</code> that is already there. After that, each emulator keeps its own file.</p>
+<p>So a card moved from another system with DraStic saves picks up where you left off on DSperate.</p>
+
+<h2>Using DraStic</h2>
+<ol>
+  <li>Copy DraStic to <code>Emulators/DraStic/</code> on the card.</li>
+  <li>Open the Nintendo DS shelf, press <kbd>MENU</kbd> and set <strong>Core</strong> to DraStic.</li>
+  <li>Start a game. DraStic runs on its own, with its own menus, and ZyperOS comes back when you quit.</li>
+</ol>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#supported-systems">ZyperOS README, Supported systems</a>: the Nintendo DS paragraph, the folder and file types, the BIOS files.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/config/systems.cfg">config/systems.cfg</a>: the two cores, DSperate's license, DraStic not shipped, the free BIOS and saves carried over.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/THIRD-PARTY-LICENSES.md">THIRD-PARTY-LICENSES.md</a>: DSperate and its libretro wrapper, <a href="https://github.com/thwonp/dsperate-lr">thwonp/dsperate-lr</a> with <a href="https://github.com/beebono/DSperate">beebono/DSperate</a>.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/src/dsv.h">src/dsv.h</a>: how DraStic's <code>.dsv</code> saves are taken over.</li>
+</ol>

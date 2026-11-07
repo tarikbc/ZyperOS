@@ -1,0 +1,6 @@
+# Cloudflare Pages redirects for zyperos.com; mk/site.sh copies this file.
+# /tip is the support section's button: a Stripe Payment Link on Caramanico's
+# account (Tip for ZyperOS, customer chooses the amount in USD, $5 suggested,
+# $1 to $500, no Managed Payments, which takes no tips or donations). 302, so
+# the link can change here without a cached permanent redirect.
+/tip https://buy.stripe.com/7sY00kdm92wU4ZH1Rv9fW00 302

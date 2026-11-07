@@ -1,0 +1,1198 @@
+/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* The TrimUI Brick (TG3040): the display, the buttons that arrive on three
+ * different devices, the LEDs, the codec, the panel backlight, the battery,
+ * and where things live on its card. Everything here is what makes a Brick a
+ * Brick; the rest of ZyperOS reaches it through platform.h and device.h. */
+#include "charging.h"
+#include "atomic.h"
+#include "audioout.h"
+#include "clamp.h"
+#include "db.h"
+#include "device.h"
+#include "platform.h"
+
+#include <dirent.h>
+#include <fcntl.h>
+#include <poll.h>
+#ifdef __linux__
+#include <linux/input.h>
+#include <sys/ioctl.h>
+#endif
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+static SDL_Window *win;
+static SDL_Renderer *ren;
+
+#define BITS_PER_LONG   (8 * (int)sizeof(long))
+#define NLONGS(max)     (((max) + BITS_PER_LONG) / BITS_PER_LONG)
+#define BIT_IS_SET(a,b) (((a)[(b) / BITS_PER_LONG] >> ((b) % BITS_PER_LONG)) & 1UL)
+
+static int fd_pad = -1;     /* "Brick Gamepad": every button, the volume keys too */
+static int fd_keys = -1;    /* "sunxi-keyboard": declares the volume keys, never sends them */
+static int fd_power = -1;   /* "axp2202-pek" */
+static int jack_fd = -1;    /* "audiocodec sunxi Audio Jack": the jack switch, for the settings */
+
+/* ZYPEROS_INPUT_DEBUG=1 logs raw evdev codes, so one press tells you exactly
+ * which device a control arrives on. */
+static int dbg_input;
+
+#ifdef __linux__
+/* Every button by its key code, as the Pixel 2 reads its own. brick-pad sends
+ * the Pixel's codes: A, B, X and Y as SOUTH, EAST, NORTH and WEST, named for
+ * their labels, and the d-pad as BTN_DPAD_*. Then the Brick's own: MENU, and
+ * the two front keys, which are brightness. L2 and R2 are the menu music's
+ * tracks on the shelf; the Brick has no lights for the Pixel 2's L2+R2. */
+static const struct { int code; in_button b; } keymap[] = {
+	{ BTN_DPAD_UP, IN_UP },       { BTN_DPAD_DOWN, IN_DOWN },
+	{ BTN_DPAD_LEFT, IN_LEFT },   { BTN_DPAD_RIGHT, IN_RIGHT },
+	{ BTN_SOUTH, IN_ACCEPT },     { BTN_EAST, IN_BACK },
+	{ BTN_NORTH, IN_X },          { BTN_WEST, IN_Y },
+	{ BTN_TL, IN_L1 },            { BTN_TR, IN_R1 },
+	{ BTN_TL2, IN_L2 },           { BTN_TR2, IN_R2 },
+	{ BTN_SELECT, IN_SELECT },    { BTN_START, IN_START },
+	{ BTN_MODE, IN_MENU },
+	{ BTN_THUMBL, IN_BRIGHTDN },  { BTN_THUMBR, IN_BRIGHTUP },
+	{ KEY_VOLUMEDOWN, IN_VOLDN }, { KEY_VOLUMEUP, IN_VOLUP },
+	{ KEY_POWER, IN_POWER },
+};
+#endif
+
+const char *P_ROOT = "/mnt/SDCARD/ZyperOS";
+const char *P_CARD = "/mnt/SDCARD";
+const char *P_ROMS = "/mnt/SDCARD/Roms";
+const char *P_USERDATA = "/mnt/SDCARD/.userdata/brick";
+
+/* The Brick's boot screen is drawn before anything could say a theme to it */
+int plat_boot_theme(const char *text) { (void)text; return 0; }
+const char *P_SHARED = "/mnt/SDCARD/.userdata/shared";
+/* Over The Hare's page. On the card rather than in the binary so it can be
+ * restyled with a text editor and a reload, which is the whole argument for
+ * a file-transfer feature existing at all. */
+const char *P_WEB = "/mnt/SDCARD/ZyperOS/res/web";
+
+const char *P_FONT = "/mnt/SDCARD/ZyperOS/menu.ttf";
+
+SDL_Renderer *plat_renderer(void) { return ren; }
+
+/* The boot animation is plastron's splash, drawing into the framebuffer's
+ * last page until ZyperOS draws. EGL's setup moves the screen to an empty page
+ * before ZyperOS has drawn anything, which the splash puts back; so it is told
+ * when the next move is ZyperOS's first frame, with a SIGUSR1, as on the
+ * Pixel 2. By name, as nothing here knows its pid; none running (the splash
+ * already gone) is nothing to tell. */
+static void signal_splash(int sig)
+{
+	DIR *proc = opendir("/proc");
+	struct dirent *e;
+
+	while (proc && (e = readdir(proc))) {
+		char path[64], comm[32] = { 0 };
+		int fd;
+
+		if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
+		snprintf(path, sizeof path, "/proc/%s/comm", e->d_name);
+		if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) continue;
+		if (read(fd, comm, sizeof comm - 1) > 0 && !strcmp(comm, "splash\n"))
+			kill(atoi(e->d_name), sig);
+		close(fd);
+	}
+	if (proc) closedir(proc);
+}
+
+/* The Brick's panel is the screen, so drawing to the screen is drawing to the
+ * window. The first present tells the splash first, and goes on the kernel's
+ * clock beside the splash's own lines, so the boot from power to shelf reads
+ * off one log, as on the Pixel 2. */
+void plat_present(void)
+{
+	static bool shown;
+
+	if (!shown) {
+		signal_splash(SIGUSR1);
+#ifdef __linux__
+		struct timespec now;
+		char line[64];
+		int fd;
+
+		clock_gettime(CLOCK_BOOTTIME, &now);
+		snprintf(line, sizeof line, "zyperos: first frame at %.3f s\n",
+		         now.tv_sec + now.tv_nsec / 1e9);
+		if ((fd = open("/dev/kmsg", O_WRONLY | O_CLOEXEC)) >= 0) {
+			if (write(fd, line, strlen(line)) < 0) { /* not fatal */ }
+			close(fd);
+		}
+#endif
+		shown = true;
+	}
+	SDL_RenderPresent(ren);
+}
+void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, NULL); }
+
+/* The Brick's screen is its panel: the picture goes straight into the frame,
+ * and what is drawn after it lands on top of it. */
+void plat_video_under(SDL_Texture *tex, const SDL_Rect *dst, SDL_Color bg)
+{
+	SDL_SetRenderDrawColor(ren, bg.r, bg.g, bg.b, 255);
+	SDL_RenderClear(ren);
+	if (tex) SDL_RenderCopy(ren, tex, NULL, dst);
+}
+
+/* No ports on the Brick, and no splash --still to hold a picture */
+bool plat_save_screen(const char *path) { (void)path; return false; }
+
+bool plat_video_init(void)
+{
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+#ifdef __linux__
+	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+	/* plastron loads the GPU's display driver while ZyperOS starts rather than
+	 * before it, as nothing needs it until here: so this waits for it, which
+	 * it normally doesn't have to. Only where it is plastron's module, which
+	 * shows in /sys/module once loaded; 2 s at most. */
+	if (access("/usr/lib/brick/dc_sunxi.ko", F_OK) == 0) {
+		unsigned t0 = plat_now_ms(), waited;
+
+		while (access("/sys/module/dc_sunxi", F_OK) != 0 && plat_now_ms() - t0 < 2000)
+			usleep(2000);
+		waited = plat_now_ms() - t0;
+		if (waited >= 2)
+			fprintf(stderr, "video: waited %u ms for the GPU's display driver\n", waited);
+	}
+#endif
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+		fprintf(stderr, "video init: %s\n", SDL_GetError());
+		return false;
+	}
+	SDL_ShowCursor(SDL_DISABLE);
+	/* A host build run by a check or for a shot (ZYPEROS_HEADLESS set, with
+	 * SDL_VIDEODRIVER=dummy) puts no window on the desktop of whoever is using
+	 * the computer: the window is hidden and the software renderer draws it,
+	 * which needs no OpenGL. SDL's offscreen driver would do as well but gives
+	 * every window OpenGL by default and fails without an EGL library; dummy
+	 * has no GL at all. The checks draw in software anyway. */
+	bool headless = getenv("ZYPEROS_HEADLESS") != NULL;
+	win = SDL_CreateWindow("ZyperOS", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+	                       ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H,
+	                       headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	if (!win) {
+		fprintf(stderr, "window: %s\n", SDL_GetError());
+		return false;
+	}
+	ren = SDL_CreateRenderer(win, -1, headless ? SDL_RENDERER_SOFTWARE
+	                                           : SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	if (!ren) {
+		fprintf(stderr, "renderer: %s\n", SDL_GetError());
+		return false;
+	}
+	SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+	/* Whether vsync was GRANTED, not whether it was asked for. PRESENTVSYNC
+	 * is a request the driver may decline in silence, and the shelf loop has
+	 * no delay in it - so a declined request is not a slower animation, it is
+	 * an uncapped loop presenting mid-scanout. This line existed and read
+	 * info.name only, which is how the request came to be talked about as if
+	 * it were the result. */
+	SDL_RendererInfo info;
+	if (SDL_GetRendererInfo(ren, &info) == 0)
+		fprintf(stderr, "renderer: %s, driver: %s, vsync %s\n",
+		        info.name, SDL_GetCurrentVideoDriver(),
+		        (info.flags & SDL_RENDERER_PRESENTVSYNC) ? "granted"
+		                                                 : "DECLINED (requested)");
+	/* The cube turns two offscreen faces, so this is load-bearing rather than
+	 * informational: without it the vertical shelves have nothing to draw. */
+	if (SDL_GetRendererInfo(ren, &info) == 0)
+		fprintf(stderr, "renderer: render-to-texture %s\n",
+		        (info.flags & SDL_RENDERER_TARGETTEXTURE) ? "available"
+		                                                  : "MISSING");
+	return true;
+}
+
+void plat_video_quit(void)
+{
+	plat_osd_forget();
+	if (ren) { SDL_DestroyRenderer(ren); ren = NULL; }
+	if (win) { SDL_DestroyWindow(win); win = NULL; }
+	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
+
+#ifdef __linux__
+/* Every input device this file wants, found by what each reports, not by
+ * number, in one pass, as pixel2.c finds the Pixel 2's: there is no udev, and
+ * enumeration order is not a promise. Every node is kept but the ones not
+ * wanted, as closing one waits out an RCU grace period in the kernel. */
+static void input_scan(void)
+{
+	unsigned long keys[NLONGS(KEY_MAX)], sw[NLONGS(SW_MAX)];
+	char path[32];
+	int i, fd;
+
+	for (i = 0; i < 32; i++) {
+		bool kept = true;
+
+		snprintf(path, sizeof path, "/dev/input/event%d", i);
+		if ((fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) continue;
+		memset(keys, 0, sizeof keys);
+		memset(sw, 0, sizeof sw);
+		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
+		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
+		if      (fd_pad < 0   && BIT_IS_SET(keys, BTN_SOUTH))           fd_pad = fd;
+		else if (fd_keys < 0  && BIT_IS_SET(keys, KEY_VOLUMEUP))        fd_keys = fd;
+		else if (fd_power < 0 && BIT_IS_SET(keys, KEY_POWER))           fd_power = fd;
+		else if (jack_fd < 0  && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))   jack_fd = fd;
+		else kept = false;
+		if (!kept) close(fd);
+	}
+}
+#endif
+
+bool plat_input_init(void)
+{
+	char marker[512];
+	snprintf(marker, sizeof marker, "%s/.input_debug", P_ROOT);
+	dbg_input = getenv("ZYPEROS_INPUT_DEBUG") != NULL || access(marker, F_OK) == 0;
+#ifdef __linux__
+	if (fd_pad < 0 || fd_keys < 0 || fd_power < 0) input_scan();
+	if (fd_pad < 0)   fprintf(stderr, "input: no gamepad found\n");
+	if (fd_keys < 0)  fprintf(stderr, "input: no volume keys found\n");
+	if (fd_power < 0) fprintf(stderr, "input: no power key found\n");
+#endif
+	return true;
+}
+
+/* Throw away everything that queued up while a game owned the screen. */
+void plat_input_flush(void)
+{
+	SDL_Event e;
+	SDL_PumpEvents();
+	while (SDL_PollEvent(&e)) { }
+#ifdef __linux__
+	{
+		struct input_event ev;
+		int fds[3], i;
+		fds[0] = fd_power; fds[1] = fd_keys; fds[2] = fd_pad;
+		for (i = 0; i < 3; i++)
+			while (fds[i] >= 0 &&
+			       read(fds[i], &ev, sizeof ev) == (ssize_t)sizeof ev) { }
+	}
+#endif
+}
+
+/* No wait, as on the Pixel 2: the keys are read straight from the kernel, and
+ * a boot on plastron makes no input noise (three recorded 2026-10-12: a plain
+ * one, power held, buttons pressed, had nothing but the presses themselves),
+ * so emptying the queues is enough. The 350 ms this replaces waited out
+ * TrimUI's input daemon. */
+void plat_input_settle(in_state *st)
+{
+	plat_input_flush();
+	memset(st, 0, sizeof *st);
+}
+
+/* The descriptors stay open: they are display-independent. */
+void plat_input_quit(void) { }
+
+static void poll_fd(int fd, in_state *st)
+{
+#ifdef __linux__
+	struct input_event ev;
+	size_t i;
+
+	while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
+		if (ev.type != EV_KEY || ev.value == 2) continue;
+		if (dbg_input) fprintf(stderr, "[in] fd=%d code=%d val=%d\n", fd, ev.code, ev.value);
+		for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
+			if (keymap[i].code == ev.code) {
+				plat_set_btn(st, keymap[i].b, ev.value == 1);
+				break;
+			}
+	}
+#else
+	(void)fd; (void)st;
+#endif
+}
+
+/* keyboard fallback so the native dev build is drivable: every button the
+ * launcher reads has a key, so the dev build can go wherever the handheld
+ * can - out of the tutorial too (docs/building.md lists them) */
+static in_button map_key(SDL_Keycode k)
+{
+	switch (k) {
+	case SDLK_LEFT: return IN_LEFT;
+	case SDLK_RIGHT: return IN_RIGHT;
+	case SDLK_UP: return IN_UP;
+	case SDLK_DOWN: return IN_DOWN;
+	case SDLK_RETURN: return IN_ACCEPT;
+	case SDLK_ESCAPE: return IN_BACK;
+	case SDLK_BACKSPACE: return IN_BACK;
+	case SDLK_x: return IN_X;
+	case SDLK_y: return IN_Y;
+	case SDLK_COMMA: return IN_L1;
+	case SDLK_PERIOD: return IN_R1;
+	case SDLK_k: return IN_L2;
+	case SDLK_l: return IN_R2;
+	case SDLK_s: return IN_START;
+	case SDLK_LSHIFT: case SDLK_RSHIFT: return IN_SELECT;
+	case SDLK_m: return IN_MENU;
+	case SDLK_MINUS: return IN_VOLDN;
+	case SDLK_EQUALS: return IN_VOLUP;
+	case SDLK_LEFTBRACKET: return IN_BRIGHTDN;
+	case SDLK_RIGHTBRACKET: return IN_BRIGHTUP;
+	case SDLK_p: return IN_POWER;
+	default: return IN_NONE;
+	}
+}
+
+void plat_input_wait(unsigned ms)
+{
+	struct pollfd p[3];
+	nfds_t n = 0;
+
+	if (fd_pad >= 0)   p[n++] = (struct pollfd){ .fd = fd_pad,   .events = POLLIN };
+	if (fd_keys >= 0)  p[n++] = (struct pollfd){ .fd = fd_keys,  .events = POLLIN };
+	if (fd_power >= 0) p[n++] = (struct pollfd){ .fd = fd_power, .events = POLLIN };
+	if (!n) { SDL_Delay(ms); return; }
+	/* A signal ends it early too, which is what a stop should do */
+	poll(p, n, (int)ms);
+}
+
+void plat_input_poll(in_state *st)
+{
+	memset(st->pressed, 0, sizeof st->pressed);
+	if (plat_terminating()) st->quit_requested = true;
+	/* The jack, checked here because this is the one thing every screen does
+	 * once a frame - and, more to the point, the one thing the launcher stops
+	 * doing while a game runs, since it is blocked in plat_resident_wait. That
+	 * is exactly the ownership boundary the level needs: whoever is pumping
+	 * input owns the volume, so the launcher must not re-apply a level over
+	 * Diatom's while Diatom holds it. Diatom polls the same switch on its own
+	 * side for the same reason. */
+	plat_audio_jack_poll();
+	/* And the mute switch, for the same reason and on the same frame. */
+	plat_mute_poll(true);
+	SDL_Event e;
+	while (SDL_PollEvent(&e)) {
+		switch (e.type) {
+		case SDL_QUIT:
+			st->quit_requested = true;
+			break;
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			if (e.key.repeat) break;
+			plat_set_btn(st, map_key(e.key.keysym.sym), e.type == SDL_KEYDOWN);
+			if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_q)
+				st->quit_requested = true;
+			break;
+		}
+	}
+	poll_fd(fd_pad, st);
+	poll_fd(fd_keys, st);
+	poll_fd(fd_power, st);
+}
+
+/* The launcher and Diatom take turns on one framebuffer here, so there is
+ * nothing to hand over. */
+void device_display_release(void) { }
+void device_display_take(void) { }
+
+/* The power key's queue, drained: true if a press was in it. The launcher
+ * watches power this way while a child or a game owns the screen, which is
+ * the one control that always has to work. */
+bool device_power_pressed(void)
+{
+	bool pressed = false;
+#ifdef __linux__
+	struct input_event ev;
+
+	while (fd_power >= 0 && read(fd_power, &ev, sizeof ev) == (ssize_t)sizeof ev)
+		if (ev.type == EV_KEY && ev.code == KEY_POWER && ev.value == 1)
+			pressed = true;
+#endif
+	return pressed;
+}
+
+/* ---- volume and brightness, straight at the hardware ----------------------
+ *
+ * ZyperOS's own code, against the same two device interfaces the emulator uses.
+ * It replaced a third-party settings library, which bought three things beyond
+ * independence:
+ *
+ *   - The scales MATCH. Diatom drives volume as 21 positions and brightness
+ *     as a 12-rung ladder; libmsettings used 0-20 and 0-10. Every level
+ *     crossing the socket had to be rescaled, and a rescale is where an
+ *     off-by-one hides. Both sides now speak the same ladder and the
+ *     conversion is the identity.
+ *   - Settings persist in ZyperOS's own file rather than the stock firmware's
+ *     /mnt/UDISK/system.json, which is TrimUI's state and not ours to own.
+ *   - One fewer binary on the card.
+ *
+ * The device facts here were measured, not guessed, and two of them are traps:
+ *
+ *   `digital volume` (0-63) is the speaker level and is INVERTED - 0 is
+ *   loudest, 63 is quietest - while the driver's own metadata advertises the
+ *   opposite. It also declares mute=0, so its minimum is maximum attenuation
+ *   (about -74 dB) rather than silence; the speaker switch carries the last
+ *   step.
+ *
+ *   `Headphone Volume` is NOT a speaker level. Raising it routes audio to the
+ *   jack and mutes the speakers. It stays at zero.
+ *
+ * The backlight has no /sys/class/backlight on this device; it is the
+ * Allwinner disp2 engine, addressed with plain command numbers (not _IOWR) and
+ * an unsigned long[4] argument block. */
+
+#ifdef __linux__
+#include <sys/ioctl.h>
+
+/* From the kernel UAPI (sound/asound.h), vendored rather than depended on.
+ * Only the integer case is needed; the union is declared at full size because
+ * its size is what _IOWR bakes into the request number, and a wrong layout
+ * produces a wrong request number rather than a failed call. */
+struct pl_ctl_elem_id {
+	unsigned int  numid;
+	int           iface;
+	unsigned int  device;
+	unsigned int  subdevice;
+	unsigned char name[44];
+	unsigned int  index;
+};
+struct pl_aes_iec958 {
+	unsigned char status[24], subcode[147], pad, dig_subframe[4];
+};
+struct pl_ctl_elem_value {
+	struct pl_ctl_elem_id id;
+	unsigned int indirect: 1;
+	union {
+		union { long value[128]; long *value_ptr; } integer;
+		union { long long value[64]; long long *value_ptr; } integer64;
+		union { unsigned int item[128]; unsigned int *item_ptr; } enumerated;
+		union { unsigned char data[512]; unsigned char *data_ptr; } bytes;
+		struct pl_aes_iec958 iec958;
+	} value;
+	unsigned char reserved[128];
+};
+#define PL_CTL_ELEM_READ   _IOWR('U', 0x12, struct pl_ctl_elem_value)
+#define PL_CTL_ELEM_WRITE  _IOWR('U', 0x13, struct pl_ctl_elem_value)
+
+#define GAIN_CTL     "digital volume"
+#define GAIN_RAW_MAX 63          /* 0 is loudest, 63 quietest */
+
+/* Only the top of that register is worth spending on the volume keys. The
+ * control is 1.16 dB per step, so using all 63 puts 73 dB across 21 positions -
+ * 3.65 dB a press, which made 60% of the scale -29 dB and the bottom two thirds
+ * inaudible. That is not a curve shape problem: dB is already the perceptually
+ * even axis, the same reason the brightness ladder below is geometric. It is a
+ * RANGE problem, and 73 dB is simply more than a handheld speaker has.
+ *
+ * Measured on the device 2026-08-28 with a 440 Hz tone at -1.4 dBFS captured on
+ * its own microphone. Coarse sweep, room baseline ~40 rms:
+ *
+ *   raw 0   10034 rms   201x room      raw 31    114 rms   2.3x room
+ *   raw 16   1485 rms    30x room      raw 47     34 rms   inaudible
+ *
+ * The floor was first set at 34 by reading that table, and Eric reported the
+ * bottom of the scale as dead. A finer sweep says why - room baseline 33:
+ *
+ *   raw 18  1091 rms  32.7x      raw 30    85 rms   2.5x
+ *   raw 22   404 rms  12.1x      raw 34    55 rms   1.6x
+ *   raw 26   173 rms   5.2x
+ *
+ * 34 is 1.6x room noise, so the last few positions were all sitting in the
+ * noise and were indistinguishable from each other. 26 is 5.2x: quiet, and
+ * unmistakably present. That is the floor, ~1.5 dB a press across the 21
+ * positions.
+ *
+ * Those rms numbers were captured with HP_CTL already at 0 - the sweep script
+ * sets it before measuring - so they describe the chain as it behaves now, and
+ * the 18 dB that mixer_defaults() restored was never inside them. A note here
+ * briefly claimed the opposite. That was inferred rather than read off the
+ * script which produced the table, and the script was on disk the whole time.
+ * The 18 dB gap was between the SWEEP and gameplay, not inside the sweep, which
+ * is exactly why the table looked sane while the device sounded quiet.
+ *
+ * What is weak here is the instrument, not the conditions. Those readings came
+ * from a microphone across the room, where raw 26 is 5.2x the room and raw 34
+ * is indistinguishable from it. A handheld at arm's length is a different
+ * question: what reads as silence over there is plainly audible in your hands.
+ * That is why the bottom of the scale was still reported as too loud once the
+ * chain was fixed, and why the floor below is now set by ear rather than by
+ * that table.
+ *
+ * That session had ONE WORKING SPEAKER, which nobody knew at the time. The
+ * quiet channel turned out on 2026-09-02 to be a loose connection on the PCB;
+ * it was resoldered and both now play evenly. So 39 was originally judged
+ * against roughly half this device's output.
+ *
+ * It stood anyway. Re-heard on the repaired hardware the same day - the quiet
+ * end, the balance and the general sound - and called right, so the constant
+ * now has two independent confirmations rather than one lucky derivation. Do
+ * not weaken it back to a guess on the strength of the history above.
+ *
+ * 39, chosen on the device on 2026-08-31 with a game playing, stepping the
+ * register down until Eric called it: raw 37 is barely audible and is where he
+ * wanted position 1. 39 is the constant that puts position 1 on 37 in this
+ * ladder AND in Diatom's, which round differently; 26 put it on 25. Position 20
+ * still lands on raw 0, so nothing about maximum changes.
+ *
+ * It costs resolution. Twenty positions across 39 is about 2.3 dB a press
+ * rather than 1.5, bought with a range of 45 dB rather than 30. That is the
+ * trade worth making: 30 dB down is not quiet in a room that is quiet, which
+ * a microphone across the room could not tell us and an ear could. */
+#define GAIN_RAW_USABLE 39
+
+/* Headphones need a different window, not the same one moved.
+ *
+ * Set by ear on 2026-09-02 with a game playing and a plug in the jack, the same
+ * method that produced 39. The ceiling first: above raw 8 it is uncomfortable,
+ * so 8 is where position 20 belongs. Then the floor, stepping down - 37, 45,
+ * 49, 53 and 57 were each still too loud to be a minimum, and 61 was called
+ * right.
+ *
+ * So the jack spends 53 register steps where the speaker spends 39, and an
+ * offset cannot express that. An offset from the measured ceiling would have
+ * put position 1 on 47, which was rejected on the way past. That is physically
+ * unsurprising: headphones are far more efficient than this speaker, so the
+ * same twenty presses have to cover more ground.
+ *
+ * The cost is resolution. 53 steps across 20 positions is about 3.1 dB a press
+ * against the speaker's 2.3. Giving the jack its own number of positions would
+ * fix that and is not worth it - 21 positions are shared verbatim with Diatom
+ * and launch.sh so a level crossing the socket needs no conversion, and that
+ * property is worth more than 0.8 dB of granularity.
+ *
+ * Both pairs are tied to one game's mix, exactly as 39 was. A quieter game sits
+ * under this floor. Consistent with what was already here, not worse. */
+#define SPK_RAW_TOP     0
+#define SPK_RAW_BOTTOM  GAIN_RAW_USABLE
+#define HP_RAW_TOP      8
+#define HP_RAW_BOTTOM   61
+
+#define SPEAKER_CTL  "HpSpeaker Switch"   /* the speaker's only true mute */
+#define HP_CTL       "Headphone Volume"   /* 0-7, 6 dB a step, INVERTED */
+#define HP_CTL_QUIET 7                    /* its quiet end, for the cut */
+#define SWAP_CTL     "DAC Swap"           /* 1 crosses left and right */
+#define HPSW_CTL     "Headphone Switch"   /* the headphone stage, which the speaker runs off */
+#define VOL_MAX      PLAT_VOL_MAX         /* 21 positions, 0..20 - Diatom's scale */
+
+#define DISP_LCD_SET_BRIGHTNESS 0x102
+#define DISP_LCD_GET_BRIGHTNESS 0x103
+
+/* Perceived brightness is proportional, not linear, so the rungs are
+ * geometric. The first is the panel's measured floor: 0 and 1 are black on
+ * this display and the driver clamps neither. Identical to Diatom's ladder,
+ * which is what makes the level handoff exact. */
+static const unsigned char bright_ladder[] = {
+	2, 4, 8, 16, 32, 48, 72, 96, 128, 160, 192, 255
+};
+#define BRIGHT_MAX ((int)(sizeof bright_ladder / sizeof bright_ladder[0]) - 1)
+/* The table is the definition; the header only publishes its extent. If they
+ * ever disagree this stops the build rather than shipping a rescale that is
+ * quietly off by a rung, which is the bug that put the maximum in a header. */
+_Static_assert(BRIGHT_MAX == PLAT_BRIGHT_MAX, "bright_ladder vs PLAT_BRIGHT_MAX");
+
+static int mixer_fd = -1, disp_fd = -1;
+static int cur_vol = -1, cur_bright = -1;
+
+static int ctl_io(const char *name, long *val, int write)
+{
+	struct pl_ctl_elem_value v;
+
+	if (mixer_fd < 0) return -1;
+	memset(&v, 0, sizeof v);
+	v.id.iface = 2;                                 /* SNDRV_CTL_ELEM_IFACE_MIXER */
+	snprintf((char *)v.id.name, sizeof v.id.name, "%s", name);
+	if (write) {
+		v.value.integer.value[0] = *val;
+		return ioctl(mixer_fd, PL_CTL_ELEM_WRITE, &v);
+	}
+	if (ioctl(mixer_fd, PL_CTL_ELEM_READ, &v) < 0) return -1;
+	*val = v.value.integer.value[0];
+	return 0;
+}
+
+/* Every nudge of the rocker lands here, including while a game is running, so
+ * what this costs is a frame-budget question rather than a tidiness one.
+ * Measured on the card 2026-09-05: the atomic_open/atomic_commit this replaces
+ * was 3.03 ms median with a 9.27 ms tail, against a 16.7 ms frame. The two
+ * writes below are 0.48 ms each with a 0.59 ms tail. */
+static void levels_save(void)
+{
+	db_set_int(db_dev(), "volume", cur_vol);
+	db_set_int(db_dev(), "brightness", cur_bright);
+}
+
+/* Write a control and complain if it does not land. Discarding this return is
+ * what cost the project 18 dB for its whole life; see mixer_defaults(). */
+static void ctl_set(const char *name, long val)
+{
+	if (ctl_io(name, &val, 1) < 0)
+		fprintf(stderr, "settings: mixer rejected '%s' = %ld\n", name, val);
+}
+
+/* Codec-wide state that the volume keys do not own, set once at init.
+ *
+ * HP_CTL is 0-7 at 6 dB a step and is INVERTED, exactly like GAIN_CTL above:
+ * 0 is loudest, 7 is near silence. The driver's TLV claims the opposite
+ * (dBscale-min=-42 dB, step +6 dB) and is wrong in the same way it is wrong
+ * about GAIN_CTL, so the metadata cannot be trusted on this codec at all.
+ *
+ * Despite its name it is not the jack. SPEAKER_CTL drives the speaker off the
+ * headphone stage, so this control gates everything the device plays. Diatom's
+ * port carried a comment insisting that raising it rerouted output to the jack
+ * and muted the speakers - what actually happens is that raising it attenuates
+ * the speaker, which sounds identical and is not the same thing. Settled by
+ * ear on 2026-08-31: at 7 the speaker is barely audible, at 0 it is loud.
+ *
+ * This write already existed, in apply_volume, spelled "Headphone" - a control
+ * this codec does not have. PL_CTL_ELEM_WRITE matches names exactly, the
+ * return was thrown away, and so every sound the device ever made came out
+ * 18 dB down while the source read as though it were setting this to zero.
+ *
+ * SWAP_CTL at 1 crosses the channels. The stock hook clears it
+ * (runtrimui-original.sh: `tinymix set 1 0`) and so does NextUI; we never did,
+ * so left and right have been backwards the entire time. It is an enumerated
+ * control rather than an integer, but the value union overlaps and we only
+ * ever write item 0, so the integer path reaches it.
+ *
+ * HP_CTL stays at 0 for both outputs. The jack was calibrated on 2026-09-02 and
+ * the answer was not this control: 9.3 dB was wanted at the ceiling and this
+ * steps in sixes, and it attenuates the speaker as well, so it cannot be moved
+ * for the jack alone. The headphone case is handled by its own window on
+ * GAIN_CTL instead - see HP_RAW_TOP. The one exception is the cut, in
+ * apply_volume.
+ *
+ * HPSW_CTL on, always. With it and SPEAKER_CTL both off the codec stops taking
+ * samples (see apply_volume), so the cut, which turns SPEAKER_CTL off, is only
+ * safe while this one is on. TrimUI's system left it on; plastron's comes up
+ * with it off, and there every mute and every level 0 stopped the sound
+ * device instead of silencing it: Muse's clock stood still until the cut came
+ * off (found 2026-10-16). The speaker runs off this stage too, and with it
+ * off after being on the speaker was weak. */
+static void mixer_defaults(void)
+{
+	if (mixer_fd < 0) return;
+	ctl_set(HPSW_CTL, 1);
+	ctl_set(HP_CTL, 0);
+	ctl_set(SWAP_CTL, 0);
+}
+
+/* Is there a plug in the headphone jack?
+ *
+ * SW_HEADPHONE_INSERT on the codec's own input node. This device exposes the
+ * state nowhere else: there is no ALSA jack kcontrol among its seventeen
+ * controls and nothing under /sys for it, so the only way to ask is EVIOCGSW,
+ * which is why this opens an input device rather than reading a file.
+ *
+ * Found by capability rather than by number, by input_scan with the rest: the
+ * cost of the wrong node is a volume ladder silently calibrated for the wrong
+ * output. */
+static int jack_present(void)
+{
+	unsigned long bits[NLONGS(SW_MAX)];
+
+	if (jack_fd < 0) return 0;
+	memset(bits, 0, sizeof bits);
+	if (ioctl(jack_fd, EVIOCGSW(sizeof bits), bits) < 0) return 0;
+	return BIT_IS_SET(bits, SW_HEADPHONE_INSERT) ? 1 : 0;
+}
+
+static int jack_was = -1;         /* last state acted on; -1 = never asked */
+
+/* THE MUTE SWITCH, and why it is read here rather than as an input event.
+ *
+ * Measured 2026-09-16 by watching every input device and every exported GPIO
+ * while the switch was flipped. It reports two ways: as EV_SW code 1 on
+ * /dev/input/event3, and as this pin. The pin is the one worth reading,
+ * because an event only arrives on a CHANGE - it says nothing about which way
+ * the switch is pointing at boot, after a resume, or after the launcher
+ * restarts, which is exactly when a physical control and the software can
+ * disagree. A file that always holds the truth cannot drift.
+ *
+ * DOWN, which reads 1, is muted. Eric's call: "off" is what the position says,
+ * and on a mute switch that labels the sound.
+ *
+ * Opened once and pread, not opened per poll: this runs from plat_input_poll,
+ * which every screen calls once a frame. */
+#define MUTE_GPIO "/sys/class/gpio/gpio243/value"
+static int mute_fd = -1;
+/* Tri-state: -1 means "not known", which is not the same as "not muted".
+ *
+ * The switch can be flipped DURING a game, when Diatom owns the codec and this
+ * side is blocked in plat_resident_wait seeing nothing. Coming back with a
+ * remembered position, the poll below compares the hardware against it, finds
+ * them equal and returns without re-applying - so the launcher would play at
+ * full volume with the switch down. Exactly the fault jack_forget exists to
+ * prevent, and found by reading its comment. */
+static int muted = -1;
+
+static bool mute_switch_down(void)
+{
+	char c = 0;
+
+	if (mute_fd < 0) mute_fd = open(MUTE_GPIO, O_RDONLY | O_CLOEXEC);
+	if (mute_fd < 0) return false;
+	if (pread(mute_fd, &c, 1, 0) != 1) return false;
+	return c == '1';
+}
+
+static void apply_volume(int v)
+{
+	int hp = jack_present();
+	bool cut = v == 0 || muted == 1;
+	long raw = cut ? GAIN_RAW_MAX
+	         : aout_level_to_raw(v, VOL_MAX,
+	                             hp ? HP_RAW_TOP : SPK_RAW_TOP,
+	                             hp ? HP_RAW_BOTTOM : SPK_RAW_BOTTOM);
+	long quiet = cut ? HP_CTL_QUIET : 0;
+	long on = !cut;
+
+	jack_was = hp;
+	cur_vol = v;
+	/* Zero has to cut the path, not merely attenuate it - and so does the
+	 * switch, which is why it lands here rather than beside the callers: every
+	 * route that re-applies a level (a nudge, a jack coming out) passes
+	 * through this line and honors the switch for free.
+	 *
+	 * SPEAKER_CTL cuts the speaker only, so with headphones in the switch and
+	 * level 0 both left them playing until 2026-09-30. They are cut by level
+	 * instead: GAIN_CTL and HP_CTL both at their quiet ends, about -116 dB and
+	 * silent by ear that day. Not "Headphone Switch", tried the same day: with
+	 * it and SPEAKER_CTL both off the codec stops taking samples (hw_ptr stood
+	 * still), and whatever waits on its stream waits until one comes back on -
+	 * a game froze switching to a headset until the mute came off. */
+	ctl_io(GAIN_CTL, &raw, 1);
+	ctl_io(HP_CTL, &quiet, 1);
+	ctl_io(SPEAKER_CTL, &on, 1);
+}
+
+/* Re-apply if the plug went in or came out since the last time.
+ *
+ * Without this a level only moves to the right ladder at the next volume press,
+ * so plugging in mid-game leaves the old register in place - which is precisely
+ * the moment the difference is 9 dB and being worn on your head. Cheap enough
+ * to call from a periodic path: one ioctl on an already-open fd, and it writes
+ * nothing unless the state actually changed. */
+bool plat_headphones_present(void) { return jack_present() != 0; }
+
+/* The Brick's port can play through a USB-C DAC once it is a host, but nothing
+ * on the board tells it a device is plugged in, and switching it to host by
+ * hand risks supplying power into a charger: not worth a board. 2026-10-05. */
+bool plat_usb_audio_present(void) { return false; }
+
+/* Files over the USB cable while a computer has the Brick on it, Down To The
+ * Wire as on the Pixel 2, and over Wi-Fi by Over The Hare otherwise. A
+ * computer is one that has brought up the cable's network link (its carrier):
+ * a charger powers the cable but never does. The controller's own state is no
+ * use here, as it says "configured" from the first computer on, through
+ * unplugs and chargers; plastron's usbgadget drops the link whenever the
+ * cable loses power. plastron gives usb0 this address. Two small reads,
+ * asked as menus are built. */
+#define CABLE_ADDR "10.55.0.2"
+#define CABLE_UDC  "/sys/class/udc/5100000.udc-controller"
+
+static bool file_starts(const char *path, const char *word)
+{
+	char buf[32] = "";
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+
+	if (fd < 0) return false;
+	if (read(fd, buf, sizeof buf - 1) < 0) buf[0] = '\0';
+	close(fd);
+	return strncmp(buf, word, strlen(word)) == 0;
+}
+
+bool plat_cable_link(char *addr, size_t n)
+{
+	if (!file_starts("/sys/class/net/usb0/carrier", "1") ||
+	    !file_starts("/sys/class/power_supply/axp2202-usb/online", "1"))
+		return false;
+	if (addr && n) snprintf(addr, n, "%s", CABLE_ADDR);
+	return true;
+}
+
+/* The Brick's link is its own usbgadget script's, always on: no question. */
+usb_peer plat_usb_peer(void) { return USB_PEER_UNKNOWN; }
+bool plat_usb_link(int op) { (void)op; return true; }
+
+/* The controller lets go of the cable and takes it again, so the computer
+ * sees the Brick plugged in afresh: the Pixel 2's computer once dropped it
+ * while the controller went on saying "configured" (2026-10-08). A third of a
+ * second apart, long enough for the computer to notice it went. */
+void plat_cable_reconnect(void)
+{
+	static const struct timespec gap = { 0, 300 * 1000000L };
+	int fd;
+
+	if ((fd = open(CABLE_UDC "/soft_connect", O_WRONLY | O_CLOEXEC)) < 0) return;
+	if (write(fd, "disconnect", 10) < 0) { /* left as it was */ }
+	close(fd);
+	nanosleep(&gap, NULL);
+	if ((fd = open(CABLE_UDC "/soft_connect", O_WRONLY | O_CLOEXEC)) < 0) return;
+	if (write(fd, "connect", 7) < 0) { /* the next screen tries again */ }
+	close(fd);
+	fprintf(stderr, "wire: the cable connection made fresh\n");
+}
+
+/* The switch, checked wherever the jack is and for the same reason: this is
+ * the one thing every screen does once a frame.
+ *
+ * It mutes the LAUNCHER's audio only. While a game runs the launcher is
+ * blocked in plat_resident_wait and Diatom owns the codec - it must, or the
+ * two would fight over one control - so the switch reaches a game by being
+ * told to it, not by both of them reading the same pin. Deciding what a
+ * physical control MEANS is the launcher's job; being quiet when asked is the
+ * emulator's. */
+bool plat_mute_poll(bool own_volume)
+{
+	int now = mute_switch_down() ? 1 : 0;
+
+	if (now == muted) return false;
+	muted = now;
+	/* Out of a game this side is the only writer. Diatom used to be told here
+	 * too, and it answered by applying its own level - which out of a game is
+	 * -1, unknown - so every unmute switched the speaker back off a moment
+	 * after this side turned it on, and with headphones in wrote a gain past
+	 * the register's end that wrapped around to full volume. Found
+	 * 2026-09-30. It needs no telling here: every RUN sends the switch's
+	 * state before the game starts. */
+	if (own_volume) {
+		if (cur_vol >= 0) apply_volume(cur_vol);
+		return true;
+	}
+	/* DURING A GAME, ONLY THE CUT - never this side's level.
+	 *
+	 * apply_volume would write GAIN_CTL from cur_vol, which is this side's
+	 * idea of the volume and is stale the moment Diatom takes over: the
+	 * player can change it in-game and only Diatom knows where it ended up.
+	 * Re-applying it here is the exact fault the comment above plat_input_poll
+	 * warns about, arriving by a new road.
+	 *
+	 * Turning the speaker back ON is safe even if Diatom sits at level 0,
+	 * because it attenuates as well as switching - its own comment puts the
+	 * control's minimum near -74 dB - so the worst case is a path opened onto
+	 * something already inaudible, and Diatom's own next write settles it.
+	 *
+	 * This side cuts because it is immediate: 100 ms, the resident loop's
+	 * period. The SETMUTE is what makes the cut STICK, since Diatom writes
+	 * the same controls whenever it applies a level. Neither alone is
+	 * enough - one is fast and one is durable. */
+	plat_resident_tell("SETMUTE\ton=%d", muted == 1 ? 1 : 0);
+	{
+		long on = (muted != 1);
+
+		ctl_io(SPEAKER_CTL, &on, 1);
+		/* And the headphones, by level as in apply_volume - the cut only.
+		 * Coming back, the level is Diatom's, and the SETMUTE above has it
+		 * put its own back. */
+		if (!on) {
+			long raw = GAIN_RAW_MAX, quiet = HP_CTL_QUIET;
+
+			ctl_io(GAIN_CTL, &raw, 1);
+			ctl_io(HP_CTL, &quiet, 1);
+		}
+	}
+	return true;
+}
+
+bool plat_muted(void) { return muted == 1; }
+
+/* Whatever this side remembers about the switch was formed while it was
+ * driving; a game just was. Called where jack_forget is, and for its reason. */
+static void mute_forget(void) { muted = -1; }
+
+void plat_audio_jack_poll(void)
+{
+	if (!aout_should_reapply(jack_was, jack_present() != 0, cur_vol >= 0))
+		return;
+	apply_volume(cur_vol);
+}
+
+/* Forget which way the jack was, so the next poll re-applies whatever the
+ * hardware says now instead of trusting a memory formed before a handover. */
+static void jack_forget(void) { jack_was = -1; }
+
+static void apply_brightness(int b)
+{
+	unsigned long a[4] = { 0, 0, 0, 0 };
+
+	cur_bright = b;
+	if (disp_fd < 0) return;
+	a[1] = bright_ladder[b];
+	ioctl(disp_fd, DISP_LCD_SET_BRIGHTNESS, a);
+}
+
+void plat_settings_init(void)
+{
+	int v = -1, b = -1;
+
+	mixer_fd = open("/dev/snd/controlC0", O_RDWR);
+	disp_fd  = open("/dev/disp", O_RDWR);
+	if (mixer_fd < 0) fprintf(stderr, "settings: no /dev/snd/controlC0\n");
+	if (disp_fd  < 0) fprintf(stderr, "settings: no /dev/disp\n");
+	mixer_defaults();
+	if (jack_fd < 0) input_scan();
+	if (jack_fd < 0) fprintf(stderr, "settings: no headphone jack input node; "
+	                                 "volume will use the speaker ladder\n");
+
+	/* The player's last choice, and it wins. The two-tier lookup this
+	 * replaces - a saved level, then a shipped default - is one key each,
+	 * because seeding writes the default once and a nudge overwrites it. Same
+	 * outcome, and it can no longer get the precedence wrong: the config used
+	 * to be reapplied over the saved level at every boot, which put it ahead
+	 * of the player. */
+	v = db_get_int(db_dev(), "volume", -1);
+	b = db_get_int(db_dev(), "brightness", -1);
+
+	/* Both are stored in the units this code uses - a rung each - so there is
+	 * no conversion here and no way for one key to mean two things. */
+
+	/* Last, whatever the panel is already at, so the launcher's first OSD
+	 * tells the truth even with nothing configured anywhere - launch.sh set a
+	 * brightness before this process existed. Nearest rung, because the panel
+	 * reports raw values and only the ladder has rungs. */
+	if (b < 0 && disp_fd >= 0) {
+		int raw = ioctl(disp_fd, DISP_LCD_GET_BRIGHTNESS, (unsigned long[4]){ 0, 0, 0, 0 });
+		int i;
+		if (raw >= 0) {
+			b = 0;
+			for (i = 1; i <= BRIGHT_MAX; i++)
+				if (abs(bright_ladder[i] - raw) < abs(bright_ladder[b] - raw)) b = i;
+		}
+	}
+	cur_vol    = v >= 0 ? clampi(v, 0, VOL_MAX)    : -1;
+	cur_bright = b >= 0 ? clampi(b, 0, BRIGHT_MAX) : BRIGHT_MAX / 2;
+	if (cur_vol >= 0) apply_volume(cur_vol);
+	apply_brightness(cur_bright);
+}
+
+/* The disp2 engine's LCD commands, beside SET/GET_BRIGHTNESS in the vendor's
+ * sunxi_display2.h: 0x104 lights the backlight, 0x105 puts it out. Screen 0
+ * in the first word, as for brightness. Watched on the device both ways. */
+#define DISP_LCD_BACKLIGHT_ENABLE  0x104
+#define DISP_LCD_BACKLIGHT_DISABLE 0x105
+
+void plat_backlight(bool on)
+{
+	unsigned long a[4] = { 0, 0, 0, 0 };
+
+	if (disp_fd < 0) return;
+	ioctl(disp_fd, on ? DISP_LCD_BACKLIGHT_ENABLE : DISP_LCD_BACKLIGHT_DISABLE, a);
+}
+
+#else   /* not __linux__ */
+
+/* The host build exists to look at the shelf while changing how it looks
+ * (mk/native.mk). There is no codec and no display engine here, so the
+ * settings are state and nothing more - enough that the OSD draws and the
+ * levels the launcher reports are consistent. */
+#define VOL_MAX    PLAT_VOL_MAX
+#define BRIGHT_MAX PLAT_BRIGHT_MAX
+static int cur_vol = 8, cur_bright = 7;
+static int mixer_fd = 0, disp_fd = 0;    /* "present", so the nudges run */
+static void levels_save(void) { }
+static void apply_volume(int v) { cur_vol = v; }
+static void apply_brightness(int b) { cur_bright = b; }
+/* No jack on the host, so nothing can be plugged into it. */
+void plat_audio_jack_poll(void) { }
+/* And no switch to flip. */
+bool plat_mute_poll(bool own_volume) { (void)own_volume; return false; }
+bool plat_muted(void) { return false; }
+bool plat_headphones_present(void) { return false; }
+bool plat_usb_audio_present(void) { return false; }
+bool plat_cable_link(char *addr, size_t n)
+{
+	(void)addr; (void)n;
+	return false;
+}
+void plat_cable_reconnect(void) { }
+usb_peer plat_usb_peer(void) { return USB_PEER_UNKNOWN; }
+bool plat_usb_link(int op) { (void)op; return true; }
+static void jack_forget(void) { }
+static void mute_forget(void) { }
+void plat_backlight(bool on) { (void)on; }
+
+/* No settings database on the host, so the config defaults are all there is.
+ * Taken anyway rather than ignored: a shelf rendered by --shot should show the
+ * OSD at the levels the card is configured for. */
+void plat_settings_init(void)
+{
+	/* The host has no codec and no display engine, so the levels above are
+	 * all there is and nothing needs applying to hardware. */
+}
+
+#endif  /* __linux__ */
+
+/* Called by the transport the moment a game hands input back: whatever this
+ * side remembers about the jack and the switch was formed while something
+ * else was driving. */
+void device_levels_forget(void)
+{
+	jack_forget();
+	mute_forget();
+}
+
+int plat_volume_get(void)     { return cur_vol; }
+int plat_brightness_get(void) { return cur_bright; }
+
+void plat_volume_nudge(int delta)
+{
+	if (mixer_fd < 0) return;
+	apply_volume(clampi((cur_vol < 0 ? 0 : cur_vol) + delta, 0, VOL_MAX));
+	levels_save();
+	plat_osd_show(2, cur_vol, VOL_MAX);
+}
+
+void plat_brightness_nudge(int delta)
+{
+	if (disp_fd < 0) return;
+	apply_brightness(clampi(cur_bright + delta, 0, BRIGHT_MAX));
+	levels_save();
+	plat_osd_show(1, cur_bright, BRIGHT_MAX);
+}
+
+void plat_volume_set_pct(int pct)
+{
+	if (mixer_fd < 0) return;
+	apply_volume(clampi((pct * VOL_MAX + 50) / 100, 0, VOL_MAX));
+	levels_save();
+}
+
+void plat_brightness_set(int level)
+{
+	if (disp_fd < 0) return;
+	apply_brightness(clampi(level, 0, BRIGHT_MAX));
+	levels_save();
+}
+
+/* Both radios are on the Brick's board: the xradio chip carries Wi-Fi and
+ * Bluetooth. */
+bool plat_has_wifi(void)      { return true; }
+bool plat_has_bluetooth(void) { return true; }
+
+/* F1 and F2, the front function keys. */
+bool plat_brightness_on_volume(void) { return false; }
+/* MENU is a button of its own, and in_state has it. */
+bool plat_menu_held(void) { return false; }
+/* L2 and R2 are buttons of their own too. */
+bool plat_tap_held(in_button b) { (void)b; return false; }
+
+/* No lights of its own for the battery. */
+bool plat_battery_lights(void) { return false; }
+side_lights plat_side_lights(void) { return LIGHTS_ALL; }
+void plat_side_lights_set(side_lights on) { (void)on; }
+void plat_side_lights_say(const char *line) { (void)line; }
+
+/* The A133's DRAM clock is its kernel's, with nothing here to lower. */
+void plat_ram_idle(bool idle) { (void)idle; }
+
+/* ---- the chip's temperature ---- */
+
+/* The Brick's A133 has thermal zones too, but where its kernel slows it is
+ * not measured here, so "Getting hot" (src/heat.h) says nothing on it: only
+ * the test file speaks, as on the Pixel 2 (src/device/pixel2.c), so a host
+ * shot or a check can ask for the warning. */
+bool plat_chip_temp(int *mc)
+{
+	FILE *f = fopen("/tmp/zyperos_fake_temp", "r");
+	int v = -1;
+
+	if (!f) return false;
+	if (fscanf(f, "%d", &v) != 1) v = -1;
+	fclose(f);
+	if (v < 0) return false;
+	*mc = v < 1000 ? v * 1000 : v;
+	return true;
+}
+
+/* ---- charging ---- */
+
+/* No charge limit on the Brick's charger, but the fake gauge has one, for a
+ * host shot of MENU > Charge Limit */
+bool plat_charge_limit_supported(void)
+{
+	return access("/tmp/zyperos_fake_charge", F_OK) == 0;
+}
+
+void plat_charge_limit_set(int pct)
+{
+	FILE *f;
+
+	if (access("/tmp/zyperos_fake_charge", F_OK) != 0) return;
+	if ((f = fopen("/tmp/zyperos_fake_charge_limit", "w"))) {
+		fprintf(f, "%d\n", pct);
+		fclose(f);
+	}
+}
+
+/* No charging screen on the Brick (src/charging.h): its charger and how it
+ * starts on one are the Pixel 2's question only. The test file speaks, as on
+ * the Pixel 2, so a host shot or a check can draw the screen. */
+bool plat_charge_read(ch_reading *r)
+{
+	FILE *f = fopen("/tmp/zyperos_fake_charge", "r");
+	char line[64] = "";
+	bool ok;
+
+	if (!f) return false;
+	ok = fgets(line, sizeof line, f) != NULL && ch_fake_parse(line, r);
+	fclose(f);
+	return ok;
+}
+
+/* ---- battery ---- */
+
+/* A level written to /tmp/zyperos_fake_batt stands in for the gauge, off the
+ * charger, for testing the low and empty battery: written from a shell, so it
+ * can change while a game runs, and gone at power-off. */
+const char *plat_battery_info_path(void)
+{
+#ifdef __linux__
+	return "/sys/class/power_supply/axp2202-battery";
+#else
+	return NULL;
+#endif
+}
+
+bool plat_battery(int *pct, bool *charging)
+{
+	FILE *fake = fopen("/tmp/zyperos_fake_batt", "r");
+	if (charging) *charging = false;
+	if (fake) {
+		int v = -1;
+		if (fscanf(fake, "%d", &v) != 1) v = -1;
+		fclose(fake);
+		if (v >= 0) {
+			if (pct) *pct = v;
+			return true;
+		}
+	}
+#ifdef __linux__
+	if (pct) {
+		FILE *f = fopen("/sys/class/power_supply/axp2202-battery/capacity", "r");
+		if (!f) return false;
+		int v = -1;
+		if (fscanf(f, "%d", &v) != 1) v = -1;
+		fclose(f);
+		if (v < 0) return false;
+		*pct = v;
+	}
+	if (charging) {
+		FILE *s = fopen("/sys/class/power_supply/axp2202-battery/status", "r");
+		if (s) {
+			char st[32] = { 0 };
+			bool read = fgets(st, sizeof st, s) != NULL;
+			if (read)
+				*charging = strncmp(st, "Charging", 8) == 0 || strncmp(st, "Full", 4) == 0;
+			fclose(s);
+			if (read) return true;
+		}
+	}
+	return pct != NULL;
+#else
+	(void)pct;
+	return false;
+#endif
+}

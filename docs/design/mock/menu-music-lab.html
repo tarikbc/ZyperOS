@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS Menu Music Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* The page's chrome is the kit's (.zk-*): a quiet dark page, lime for what
+   * is picked or playing. Layout: the summary and the handheld's menu first,
+   * then the twelve tracks as cards, originals before covers. */
+  :root { color-scheme: dark; --zk-warn: #ff9a85; }
+  body { margin: 0; background: #141615; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+
+  .top { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; margin-top: 22px; }
+  @media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+  .sum { background: var(--zk-page-2); border: 1px solid var(--zk-line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+  .sum h2 { margin: 0; }
+  .count { font: 600 20px/1.2 var(--zk-f-display); }
+  .count.ok { color: var(--zk-hi); }
+  .count.over { color: var(--zk-warn); }
+  .meter { display: grid; gap: 6px; }
+  .meter .lab { display: flex; justify-content: space-between; gap: 12px; font: 13px var(--zk-f-mono); color: var(--zk-ink-3); font-variant-numeric: tabular-nums; }
+  .meter .track { height: 10px; border-radius: 999px; background: var(--zk-line); overflow: hidden; }
+  .meter .fill { height: 100%; width: 0; background: var(--zk-hi); border-radius: 999px; transition: width .16s cubic-bezier(.22, 1, .36, 1); }
+  .meter.over .fill { background: var(--zk-warn); }
+  .chosen { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .chip { font: 500 12px var(--zk-f-mono); border: 1px solid var(--zk-line); border-radius: 999px; padding: 3px 10px; color: var(--zk-ink-2); }
+  .chip.hi { border-color: var(--zk-hi); color: var(--zk-hi); }
+  .screens { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+  .screens figure { margin: 0; display: grid; gap: 6px; }
+  .screens figcaption { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .zs .mnote { text-align: center; font-size: 37px; color: var(--text-dim); padding: 2px 28px; white-space: nowrap; }
+
+  .group { padding-block: 34px 4px; }
+  .group > p { margin: 4px 0 18px; color: var(--zk-ink-2); max-width: 80ch; }
+  .tk { display: grid; gap: 10px; align-content: start; }
+  .tk .head { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+  .play {
+    width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--zk-line); background: transparent; color: var(--zk-ink);
+    display: grid; place-items: center; cursor: pointer; touch-action: manipulation;
+  }
+  .play:hover { border-color: var(--zk-ink-3); }
+  .play:focus-visible, .wave:focus-visible, .zk-btn:focus-visible { outline: 2px solid var(--zk-hi); outline-offset: 2px; }
+  .play svg { width: 18px; height: 18px; fill: currentColor; }
+  .tk.playing .play { background: var(--zk-hi); border-color: var(--zk-hi); color: var(--zk-hi-ink); }
+  .tk h3 { margin: 0; }
+  .by { color: var(--zk-ink-2); font-size: 14px; }
+  .wave { width: 100%; height: 54px; display: block; cursor: pointer; border-radius: 6px; }
+  .time { display: flex; justify-content: space-between; font: 12px var(--zk-f-mono); color: var(--zk-ink-3); font-variant-numeric: tabular-nums; margin-top: -4px; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .facts .chip b { color: var(--zk-ink); font-weight: 500; }
+  .work { font-size: 14px; color: var(--zk-ink); margin: 0 2px; }
+  .src { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .src a { color: var(--zk-ink-2); }
+  .quote { font-size: 13px; color: var(--zk-ink-3); margin: 0 2px; font-style: italic; }
+  .sum .zk-note { box-sizing: border-box; }
+  .zk-btn:disabled { opacity: .45; cursor: default; }
+  .tk .zk-btn.pick { justify-self: start; }
+  .tk.picked { border-color: var(--zk-hi); box-shadow: 0 0 0 1px var(--zk-hi) inset; }
+  .tk.picked .zk-btn.pick { background: var(--zk-hi); border-color: var(--zk-hi); color: var(--zk-hi-ink); }
+  .made { margin-top: 30px; color: var(--zk-ink-3); font-size: 14px; max-width: 86ch; }
+  .made b { color: var(--zk-ink-2); font-weight: 500; }
+  @media (prefers-reduced-motion: reduce) { .meter .fill { transition: none; } }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Menu Music Lab</b></h1>
+      <p class="zk-lede">Twelve free 8-bit tracks for the menus of a fresh card, ten of them original and two covers of public-domain classics. Every one may ship in ZyperOS's public repository and on its card image. Listen, then pick 3 to 5.</p>
+      <p class="status" id="status">Connecting&hellip;</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept whatever you pick.</b> These play only while <b>Roms/BGM</b> holds no tracks: a card's own music always wins, and takes over as soon as it is copied on. MENU &gt; Menu Music shuffles them (each once before any plays again) or plays one over and over, at its own volume under the system's, and never over a game, a port or MP4. They ship as Ogg Vorbis at 48 kHz, the rate the handheld mixes at, all at the same loudness, under <b>15 MB</b> together. Every one is CC0 or CC BY, and each is credited in THIRD-PARTY-LICENSES.md and the README.</div>
+
+  <div class="top">
+    <section class="sum" aria-labelledby="sumh">
+      <h2 class="zk-h2" id="sumh">Your picks</h2>
+      <p class="count" id="count">Pick 3 to 5</p>
+      <div class="meter" id="meter">
+        <div class="lab"><span>On the card, as shipped</span><span id="mb">0.0 of 15 MB</span></div>
+        <div class="track"><div class="fill" id="fill"></div></div>
+      </div>
+      <div class="chosen" id="chosen"></div>
+      <div class="zk-row">
+        <button type="button" class="zk-btn" id="shuffle" disabled>Play my picks in shuffle</button>
+        <button type="button" class="zk-btn" id="stop">Stop</button>
+      </div>
+      <p style="margin:4px 0 0"><label class="zk-mono" for="note">Anything to change?</label></p>
+      <textarea class="zk-note" id="note" placeholder="Optional: a track to look for, a level, an order"></textarea>
+    </section>
+    <section aria-label="The menu on the handheld">
+      <div class="screens" id="screens"></div>
+    </section>
+  </div>
+
+  <main id="m"></main>
+
+  <p class="made" id="made"></p>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script src="menu-music.js"></script>
+<script>
+(() => {
+  "use strict";
+  const L = window.ZK_MUSICLAB, esc = ZK.esc, say = t => { document.getElementById("status").textContent = t; };
+  const byId = Object.fromEntries(L.tracks.map(t => [t.id, t]));
+  const picks = {};
+  let note = "";
+  try {
+    const s = JSON.parse(localStorage.getItem("zk-musiclab") || "{}");
+    Object.assign(picks, s.picks || {});
+    note = s.note || "";
+  } catch (e) {}
+
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const mb = b => (b / 1e6).toFixed(1);
+  const LIC = id => (L.licenses[id] || { name: id, url: "#" });
+  const PLAY = `<svg viewBox="0 0 20 20"><path d="M6 3.5v13l11-6.5z"/></svg>`;
+  const PAUSE = `<svg viewBox="0 0 20 20"><rect x="4.5" y="3.5" width="4" height="13" rx="1"/><rect x="11.5" y="3.5" width="4" height="13" rx="1"/></svg>`;
+
+  /* ---- the cards ---- */
+  function card(t) {
+    const lic = LIC(t.license);
+    const also = t.also ? ` (or ${esc(LIC(t.also).name)})` : "";
+    return `<article class="zk-card tk" id="t-${t.id}" data-id="${t.id}">
+      <div class="head">
+        <button type="button" class="play" id="play-${t.id}" aria-label="Play ${esc(t.title)}">${PLAY}</button>
+        <div><h3>${esc(t.title)}</h3><div class="by">${esc(t.author)}</div></div>
+      </div>
+      ${t.work ? `<p class="work">Cover of ${esc(t.work)}</p>` : ""}
+      <p>${esc(t.style)}</p>
+      <canvas class="wave" id="wave-${t.id}" tabindex="0" aria-label="Where ${esc(t.title)} is: click to jump" width="640" height="108"></canvas>
+      <div class="time"><span id="at-${t.id}">0:00</span><span>${mmss(t.seconds)}</span></div>
+      <div class="facts">
+        <span class="chip"><b>${esc(lic.name)}</b>${also}</span>
+        <span class="chip"><b>${mmss(t.seconds)}</b> long</span>
+        <span class="chip"><b>${mb(t.ogg_bytes)} MB</b> as shipped</span>
+      </div>
+      ${t.notice && t.notice !== t.author ? `<p class="quote">&ldquo;${esc(t.notice)}&rdquo;</p>` : ""}
+      <p class="src"><a href="${esc(t.page)}">Source page</a> &middot; <a href="${esc(lic.url)}">${esc(lic.name)}</a></p>
+      <button type="button" class="zk-btn pick" id="pick-${t.id}">Pick</button>
+    </article>`;
+  }
+  const originals = L.tracks.filter(t => t.kind !== "cover"), covers = L.tracks.filter(t => t.kind === "cover");
+  document.getElementById("m").innerHTML = `
+    <section class="group"><h2 class="zk-h2">Original 8-bit</h2>
+      <p>Written as chiptune by their authors: NES, Game Boy and 16-bit console styles, a tracker module, an 8-bit lo-fi beat.</p>
+      <div class="zk-grid">${originals.map(card).join("")}</div></section>
+    <section class="group"><h2 class="zk-h2">8-bit covers</h2>
+      <p>Covers are shippable only when the song itself is free, so these two are classical works long in the public domain, arranged for chip voices by people who gave their arrangement away. Covers of game or pop songs are left out: their composers' rights hold whatever the cover's license says.</p>
+      <div class="zk-grid">${covers.map(card).join("")}</div></section>`;
+  document.getElementById("made").innerHTML = `<b>How these were made.</b> Each from the exact file its author published (by checksum), decoded to 48 kHz stereo, silence trimmed from both ends, and set to ${L.lufs} LUFS so none jumps out of the shuffle; a few have their highest peaks held under &minus;1 dBTP. The card gets Ogg Vorbis at quality ${L.quality}; this page plays MP3 copies of the same masters, since a phone's browser may not play Ogg. Sizes are the Ogg files'. tools/bgm-tracks.py makes both.`;
+
+  /* ---- the waveforms ---- */
+  const css = getComputedStyle(document.querySelector(".zk-page"));
+  const INK = css.getPropertyValue("--zk-ink-3").trim() || "#8a8d88", HI = css.getPropertyValue("--zk-hi").trim() || "#bef23c";
+  function draw(id, frac) {
+    const t = byId[id], c = document.getElementById("wave-" + id), g = c.getContext("2d");
+    const W = c.width, H = c.height, n = t.peaks.length, bw = W / n;
+    g.clearRect(0, 0, W, H);
+    for (let i = 0; i < n; i++) {
+      const h = Math.max(3, t.peaks[i] * (H - 8));
+      g.fillStyle = (i + .5) / n <= frac ? HI : INK;
+      g.globalAlpha = (i + .5) / n <= frac ? 1 : .55;
+      g.fillRect(i * bw + 1, (H - h) / 2, Math.max(1, bw - 2), h);
+    }
+    g.globalAlpha = 1;
+  }
+  L.tracks.forEach(t => draw(t.id, 0));
+
+  /* ---- playing: one track at a time, through one <audio> ---- */
+  const audio = new Audio();
+  audio.preload = "none";
+  let cur = null, deck = [], shuffling = false, fade = 0;
+  function setPlaying(id) {
+    document.querySelectorAll(".tk").forEach(el => {
+      const on = el.dataset.id === id && !audio.paused;
+      el.classList.toggle("playing", on);
+      el.querySelector(".play").innerHTML = on ? PAUSE : PLAY;
+      el.querySelector(".play").setAttribute("aria-label", (on ? "Pause " : "Play ") + byId[el.dataset.id].title);
+    });
+    screens();
+  }
+  function fadeIn() {
+    /* The handheld brings a track in over 1200 ms when it starts (src/bgm_out.c) */
+    cancelAnimationFrame(fade);
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / 1200);
+      try { audio.volume = k; } catch (e) {}
+      if (k < 1) fade = requestAnimationFrame(step);
+    };
+    try { audio.volume = 0; } catch (e) {}
+    fade = requestAnimationFrame(step);
+  }
+  async function play(id, at, faded) {
+    if (cur !== id) {
+      if (cur) draw(cur, 0), (document.getElementById("at-" + cur).textContent = "0:00");
+      cur = id;
+      audio.src = byId[id].audio;
+    }
+    if (at !== undefined) {
+      const go = () => { audio.currentTime = at; };
+      if (audio.readyState >= 1) go(); else audio.addEventListener("loadedmetadata", go, { once: true });
+    }
+    if (faded) fadeIn(); else { cancelAnimationFrame(fade); try { audio.volume = 1; } catch (e) {} }
+    try { await audio.play(); } catch (e) { say("The browser would not play it: " + (e && e.name || "error")); }
+    setPlaying(id);
+  }
+  function stop() {
+    shuffling = false;
+    audio.pause();
+    setPlaying(null);
+    if (cur) { draw(cur, 0); document.getElementById("at-" + cur).textContent = "0:00"; audio.currentTime = 0; }
+  }
+  audio.addEventListener("timeupdate", () => {
+    if (!cur || !audio.duration) return;
+    draw(cur, audio.currentTime / audio.duration);
+    document.getElementById("at-" + cur).textContent = mmss(audio.currentTime);
+  });
+  audio.addEventListener("pause", () => setPlaying(cur));
+  audio.addEventListener("play", () => setPlaying(cur));
+  audio.addEventListener("ended", () => {
+    if (cur) draw(cur, 0);
+    if (shuffling) next(); else setPlaying(null);
+  });
+
+  /* Shuffle as the handheld deals it (src/bgm.c): every pick once before any
+   * plays again, and a new deck never starts with the one just heard; one
+   * track straight into the next, at full. */
+  function deal(last) {
+    const ids = picked();
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    if (ids.length > 1 && ids[0] === last) [ids[0], ids[1]] = [ids[1], ids[0]];
+    return ids;
+  }
+  function next(first) {
+    if (!deck.length) deck = deal(cur);
+    const id = deck.shift();
+    if (!id) return stop();
+    play(id, 0, first);
+    document.getElementById("t-" + id).scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  document.getElementById("shuffle").addEventListener("click", () => { shuffling = true; deck = deal(null); next(true); });
+  document.getElementById("stop").addEventListener("click", stop);
+
+  document.getElementById("m").addEventListener("click", e => {
+    const card = e.target.closest(".tk");
+    if (!card) return;
+    const id = card.dataset.id;
+    if (e.target.closest(".play")) {
+      shuffling = false;
+      if (cur === id && !audio.paused) audio.pause(); else play(id);
+    } else if (e.target.closest(".wave")) {
+      const r = e.target.getBoundingClientRect(), f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      shuffling = false;
+      play(id, f * byId[id].seconds);
+    } else if (e.target.closest(".pick")) {
+      picks[id] = !picks[id];
+      keep(id);
+      render();
+    }
+  });
+  document.getElementById("m").addEventListener("keydown", e => {
+    const w = e.target.closest(".wave");
+    if (!w || !["ArrowLeft", "ArrowRight", "Enter", " "].includes(e.key)) return;
+    e.preventDefault();
+    const id = w.closest(".tk").dataset.id;
+    if (e.key === "Enter" || e.key === " ") { if (cur === id && !audio.paused) audio.pause(); else play(id); return; }
+    if (cur !== id) return play(id);
+    audio.currentTime = Math.max(0, Math.min(byId[id].seconds - 1, audio.currentTime + (e.key === "ArrowRight" ? 10 : -10)));
+  });
+
+  /* ---- the picks ---- */
+  const picked = () => L.tracks.filter(t => picks[t.id]).map(t => t.id);
+  function render() {
+    const ids = picked(), n = ids.length, bytes = ids.reduce((s, id) => s + byId[id].ogg_bytes, 0);
+    L.tracks.forEach(t => {
+      const el = document.getElementById("t-" + t.id), on = !!picks[t.id];
+      el.classList.toggle("picked", on);
+      el.querySelector(".pick").textContent = on ? "Picked" : "Pick";
+      el.querySelector(".pick").setAttribute("aria-pressed", on);
+    });
+    const c = document.getElementById("count");
+    c.textContent = n === 0 ? "Pick 3 to 5" : n < 3 ? `${n} picked: ${3 - n} more` : n <= 5 ? `${n} picked` : `${n} picked: 5 at most`;
+    c.className = "count " + (n >= 3 && n <= 5 ? "ok" : n > 5 ? "over" : "");
+    const over = bytes > L.cap_bytes;
+    document.getElementById("meter").classList.toggle("over", over);
+    document.getElementById("fill").style.width = Math.min(100, bytes / L.cap_bytes * 100) + "%";
+    document.getElementById("mb").textContent = `${mb(bytes)} of ${mb(L.cap_bytes)} MB${over ? ": over the cap" : ""}`;
+    document.getElementById("chosen").innerHTML = ids.map(id => `<span class="chip hi">${esc(byId[id].title)}</span>`).join("");
+    document.getElementById("shuffle").disabled = n === 0;
+    screens();
+  }
+
+  /* ---- the menu on the handheld: MENU > Menu Music with these as ZyperOS's own ---- */
+  const SHELF = th => ZK.shelf(th, { title: "Super Metroid" });
+  function screens() {
+    const n = picked().length || 3, now = cur && !audio.paused ? byId[cur].title : "nothing";
+    const rows = [["Music", "On"], ["Volume", "50%"], ["Track", "Shuffle"], ["Playing", esc(now)]];
+    const notes = `<hr><div class="mnote">${n} ZyperOS track${n === 1 ? "" : "s"}</div><div class="mnote">Put yours in Roms/BGM</div>`;
+    const one = th => ZK.screen(th, SHELF(th) + ZK.menu(th, { heading: "Menu Music", rows, sel: 3 }).replace(/<\/div>$/, notes + "</div>"));
+    document.getElementById("screens").innerHTML =
+      `<figure>${one("light")}<figcaption>Beard (light)</figcaption></figure><figure>${one("dark")}<figcaption>Salt &amp; Pepper (dark)</figcaption></figure>`;
+    ZK.fit(document.getElementById("screens"));
+  }
+
+  /* Kept with the page through its database (collection "picks": one
+   * document per track, {picked}, and "note"), else in this browser */
+  let db = null;
+  const writing = {};
+  function local() { try { localStorage.setItem("zk-musiclab", JSON.stringify({ picks, note })); } catch (e) {} }
+  function keep(id) {
+    local();
+    if (!db) return;
+    say("Saving…");
+    const doc = id === "note" ? { note, at: new Date().toISOString() } : { picked: !!picks[id], title: byId[id].title, at: new Date().toISOString() };
+    writing[id] = (writing[id] || Promise.resolve())
+      .then(() => db.doc("picks/" + id).set(doc))
+      .then(() => say("Saved"), e => say("Not saved: " + (e && e.code || "error")));
+  }
+  const noteEl = document.getElementById("note");
+  noteEl.value = note;
+  let nt = 0;
+  noteEl.addEventListener("input", () => { note = noteEl.value; clearTimeout(nt); nt = setTimeout(() => keep("note"), 700); });
+
+  render();
+  (async () => {
+    if (!window.claude || !window.claude.use) { say("Saved in this browser"); return; }
+    const timer = setTimeout(() => say("Saved in this browser (no answer from the store)"), 10000);
+    try { db = await window.claude.use("db"); } catch (e) { db = null; }
+    if (!db) { clearTimeout(timer); say("Saved in this browser"); return; }
+    let synced = false;
+    db.collection("picks").onSnapshot(snap => {
+      clearTimeout(timer);
+      let changed = false;
+      if (!synced && !snap.metadata.fromCache) {
+        synced = true;
+        const have = new Set(snap.docs.map(d => d.id));
+        Object.keys(picks).forEach(k => { if (!have.has(k) && picks[k] && byId[k]) keep(k); });
+        if (note && !have.has("note")) keep("note");
+      }
+      snap.docs.forEach(d => {
+        const v = d.data() || {};
+        if (d.id === "note") {
+          if (document.activeElement !== noteEl && (v.note || "") !== note) { note = String(v.note || ""); noteEl.value = note; }
+        } else if (byId[d.id] && !!v.picked !== !!picks[d.id]) { picks[d.id] = !!v.picked; changed = true; }
+      });
+      if (!snap.metadata.fromCache) say("Saved");
+      if (changed) { local(); render(); }
+    }, err => { clearTimeout(timer); say("Saved in this browser (" + err.code + ")"); });
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+#!/bin/bash
+# gl4es for ZyperOS/ZyperOS on plastron (Mesa Panfrost): LIBGL_FB=0, SDL makes
+# the window. In GBM mode (4) gl4es probes the GPU with a pbuffer config on the
+# GBM display, which Mesa does not have, so it offered no extensions and
+# MonoGame refused to start (no framebuffer_object).
+export LIBGL_ES=2
+export LIBGL_GL=21
+export LIBGL_FB=0
+if [ -d "$PWD/gl4es.$DEVICE_ARCH" ]; then
+  export LD_LIBRARY_PATH="$PWD/gl4es.$DEVICE_ARCH:$LD_LIBRARY_PATH"
+elif [ -d "$PWD/gl4es" ]; then
+  export LD_LIBRARY_PATH="$PWD/gl4es:$LD_LIBRARY_PATH"
+fi
+if [ -d "$PWD/libs.$DEVICE_ARCH" ]; then
+  export LD_LIBRARY_PATH="$PWD/libs.$DEVICE_ARCH:$LD_LIBRARY_PATH"
+elif [ -d "$PWD/libs" ]; then
+  export LD_LIBRARY_PATH="$PWD/libs:$LD_LIBRARY_PATH"
+fi

@@ -1,0 +1,62 @@
+title: GKD Pixel 2 BIOS Files: What Goes Where
+description: Which BIOS files each system needs on the GKD Pixel 2 with ZyperOS, their exact file names, where they go on the card, and which systems run without one.
+summary: Each system's BIOS file names, where they go, and which systems run without one.
+crumb: BIOS files
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: gallery
+image_alt: The ZyperOS Gallery home, with animated pixel-art consoles
+related: add-games-gkd-pixel-2, nintendo-ds-gkd-pixel-2, gkd-pixel-2-music-video
+weight: 70
+---
+<p>Most retro systems run on the GKD Pixel 2 with nothing but the game. A few, mostly the CD consoles, also need the console's own startup code, its BIOS, as a file on the card. With ZyperOS the BIOS files go loose in one folder, <code>Bios/</code>, under the exact names below. This guide lists every system that needs one, and the ones where it is optional.</p>
+
+<h2>Where BIOS files go</h2>
+<p>Put them loose in <code>Bios/</code> at the top of the card, not in a folder per system. ZyperOS hands that folder to each emulator, and the emulator asks for a file name inside it. Three exceptions use a folder of their own: the Neo Geo CD, the Dreamcast family and MSX2, as the table says.</p>
+<p>The names must match exactly, capitals included. A file you dumped yourself may carry another name: rename it to the one here.</p>
+<p class="note">ZyperOS does not come with BIOS files: they are the console makers' code. Dump them from consoles you own.</p>
+
+<h2>Systems that need a BIOS</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">System</th><th scope="col">File, in <code>Bios/</code></th><th scope="col">Notes</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">PlayStation</th><td><code>scph5501.bin</code></td><td>A multi-disc game goes in a folder of its own, with an <code>.m3u</code> file that lists its discs.</td></tr>
+    <tr><th scope="row">TurboGrafx-CD</th><td><code>syscard3.pce</code></td><td>For CD games only. HuCards need nothing, and a CD game without it says so by name.</td></tr>
+    <tr><th scope="row">Sega CD</th><td><code>bios_CD_U.bin</code></td><td>Add <code>bios_CD_E.bin</code> or <code>bios_CD_J.bin</code> for a European or Japanese disc.</td></tr>
+    <tr><th scope="row">Neo Geo CD</th><td><code>neocd/neocd.bin</code></td><td>In a folder of its own, <code>Bios/neocd/</code>.</td></tr>
+    <tr><th scope="row">Neo Geo</th><td><code>neogeo.zip</code></td><td>The Neo Geo's own BIOS set, in <code>Bios/</code> or beside the game. Every Neo Geo game needs it.</td></tr>
+    <tr><th scope="row">Dreamcast</th><td><code>dc/dc_boot.bin</code></td><td>In <code>Bios/dc/</code>.</td></tr>
+    <tr><th scope="row">NAOMI</th><td><code>dc/naomi.zip</code></td><td>In <code>Bios/dc/</code>.</td></tr>
+    <tr><th scope="row">Atomiswave</th><td><code>dc/awbios.zip</code></td><td>In <code>Bios/dc/</code>.</td></tr>
+    <tr><th scope="row">3DO</th><td><code>panafz10.bin</code></td><td></td></tr>
+    <tr><th scope="row">Atari Lynx</th><td><code>lynxboot.img</code></td><td></td></tr>
+    <tr><th scope="row">Saturn</th><td><code>saturn_bios.bin</code></td><td>Or <code>sega_101.bin</code>, or <code>mpr-17933.bin</code>. The Saturn runs some games, not at full speed.</td></tr>
+    <tr><th scope="row">MSX2</th><td><code>Machines/</code> and <code>Databases/</code></td><td>blueMSX's two folders, in <code>Bios/</code>.</td></tr>
+    <tr><th scope="row">Nintendo DS</th><td><code>bios7.bin</code>, <code>bios9.bin</code>, <code>firmware.bin</code></td><td>Only for encrypted dumps. Most DS sets are decrypted and boot on DSperate's own free BIOS.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Optional: they run without one</h2>
+<ul>
+  <li><strong>Game Boy Advance</strong> runs on the emulator's built-in BIOS. Add <code>gba_bios.bin</code> for the original boot animation.</li>
+  <li><strong>Atari 7800</strong> runs without one. Add <code>7800 BIOS (U).rom</code> for the Atari logo at the start.</li>
+  <li><strong>Atari 5200</strong> and <strong>Pokémon Mini</strong> run without theirs, <code>5200.rom</code> and <code>bios.min</code>.</li>
+  <li><strong>32X</strong> needs none.</li>
+</ul>
+
+<h2>Systems that need nothing</h2>
+<p>The NES, SNES, Game Boy, Game Boy Color, Genesis, Master System, Game Gear, TurboGrafx-16 HuCards, Nintendo 64, Virtual Boy, WonderSwan, Neo Geo Pocket, Atari 2600, Vectrex, Game &amp; Watch, PICO-8, ScummVM and OpenBOR need no BIOS file.</p>
+<p><strong>J2ME</strong> is a special case: its emulator, FreeJ2ME-Plus, brings its own Java. The first J2ME game you start unpacks it into <code>Bios/</code>, about 60 MB, which takes a little while once.</p>
+
+<h2>Getting them onto the card</h2>
+<p>Copy them with the card in a computer, or open the <strong>BIOS</strong> folder on ZyperOS's File Transfer page in a browser and drop them there. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows both ways.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#supported-systems">ZyperOS README, Supported systems</a>: the BIOS files paragraph, the Nintendo DS, Saturn, J2ME and arcade notes.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/config/systems.cfg">config/systems.cfg</a>: each disc system's BIOS names.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#installing">The ZyperOS user guide, Installing</a>: BIOS files loose in <code>Bios/</code>, and the TurboGrafx-CD's.</li>
+</ol>

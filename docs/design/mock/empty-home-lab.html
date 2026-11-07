@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty home lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 6px 2px 0; }
+  .pair { display: grid; gap: 10px; }
+  .facts { color: var(--zk-ink-2); max-width: 78ch; margin: 14px 0 0; padding-left: 18px; }
+  .facts li { margin: 4px 0; }
+  .facts code { font: 13px var(--zk-f-mono); color: var(--zk-ink); }
+
+  /* ---- the home's frame, as src/home.c draws it (units of the 1024x768 screen) */
+  .zs .clock { position: absolute; left: 64px; top: 40px; font-size: 27px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .zs .marks { position: absolute; right: 64px; top: 40px; display: flex; gap: 14px; align-items: center; color: var(--text-soft); }
+  .zs .marks svg { height: 26px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; }
+  .zs .hint { position: absolute; display: flex; align-items: center; gap: 12px; font-size: 24px; color: var(--text-soft); white-space: nowrap; transform: translateY(-50%); }
+  .zs .hint.big { font-size: 27px; }
+  .zs .hint.big.dim { color: var(--text-dim); }
+  /* A button glyph: a face (A, B, X, Y), a pill (SELECT, START), or MENU's round
+   * key with three dots; .on is UI_BUTTON_ON_ACCENT, a focused hint's */
+  .zs .gb { flex: none; display: inline-grid; place-items: center; height: var(--s); min-width: var(--s); border-radius: calc(var(--s) / 2);
+            background: var(--raised); box-shadow: 0 0 0 calc(var(--s) * .07) var(--edge) inset; font-weight: 600; font-size: calc(var(--s) * .5); color: var(--text); }
+  .zs .gb.face { width: var(--s); }
+  .zs .gb.on { background: color-mix(in srgb, var(--accent) 82%, var(--on-accent)); box-shadow: 0 0 0 calc(var(--s) * .07) var(--on-accent) inset; color: var(--on-accent); }
+  .zs .gb.menu { width: var(--s); background-image: radial-gradient(circle, var(--text) 0 2.4px, transparent 2.9px), radial-gradient(circle, var(--text) 0 2.4px, transparent 2.9px), radial-gradient(circle, var(--text) 0 2.4px, transparent 2.9px);
+                 background-size: 6px 6px; background-repeat: no-repeat; background-position: center calc(50% - 8px), center center, center calc(50% + 8px); background-color: var(--raised); }
+  .zs .gb.off { opacity: .45; }
+  .zs .zyp { position: absolute; }
+  .zs .zyp svg { width: 100%; height: 100%; }
+  .zs h1, .zs h2, .zs p { margin: 0; font-weight: 400; }
+  .zs .t60 { font-size: 60px; font-weight: 600; color: var(--text); line-height: 1; }
+  .zs .t38 { font-size: 38px; font-weight: 600; color: var(--text); line-height: 1.1; }
+  .zs .t29 { font-size: 29px; color: var(--text-soft); line-height: 1.3; }
+  .zs .dim { color: var(--text-dim); }
+  .zs .mono { font-variant-numeric: tabular-nums; }
+  .zs .underline { position: absolute; width: 40px; height: 6px; background: var(--accent-ink); }
+
+  /* A: two cards */
+  .zs .way { position: absolute; top: 252px; width: 476px; height: 368px; border-radius: 22px; background: var(--raised); padding: 26px 28px 0; box-sizing: border-box; }
+  .zs .way.off > * { opacity: .5; }
+  .zs .way.off > .why { opacity: 1; }
+  .zs .way .wh { display: flex; align-items: center; justify-content: space-between; }
+  .zs .way .wh svg { width: 56px; height: 56px; flex: none; fill: none; stroke: var(--accent-ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .zs .way > .t38 { display: block; margin-top: 14px; white-space: nowrap; }
+  .zs .way ol { margin: 18px 0 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+  .zs .way li { counter-increment: s; display: grid; grid-template-columns: 36px 1fr; align-items: baseline; font-size: 29px; color: var(--text-soft); line-height: 1.25; white-space: nowrap; }
+  .zs .way li::before { content: counter(s); font-weight: 600; color: var(--text-dim); }
+  .zs .way .why { position: absolute; left: 28px; right: 28px; bottom: 24px; font-size: 29px; color: var(--text-soft); white-space: nowrap; }
+  .zs .way .go { position: absolute; left: 30px; bottom: 30px; }
+
+  /* B: the Spotlight's place */
+  .zs .spot-art { position: absolute; left: 536px; top: 112px; width: 448px; height: 448px; }
+  .zs .slot { position: absolute; inset: 64px 40px 40px 40px; border-radius: 28px; box-shadow: 0 0 0 4px var(--edge) inset; }
+  .zs .slot::after { content: ""; position: absolute; left: 50%; bottom: -2px; width: 120px; height: 8px; margin-left: -60px; border-radius: 4px; background: var(--ground); }
+
+  /* C: Zyper speaks */
+  .zs .say { position: absolute; background: var(--text); color: var(--ground); font-size: 37px; padding: 16px 30px; border-radius: 36px; line-height: 1.2; }
+  .zs .say::before { content: ""; position: absolute; left: -12px; top: 30px; border: 12px solid transparent; border-right-color: var(--text); border-left: 0; }
+  .zs .col { position: absolute; top: 330px; width: 440px; display: grid; justify-items: center; text-align: center; gap: 14px; }
+
+  /* the message and the cheer */
+  .zs .note2 { position: absolute; left: 172px; width: 680px; top: 330px; min-height: 108px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; text-align: center; padding: 18px 30px; box-sizing: border-box; font-size: 44px; color: var(--text-soft); line-height: 1.2; }
+  .zs .cheer { position: absolute; background: var(--text); color: var(--ground); font-size: 37px; padding: 12px 28px; border-radius: 32px; }
+  .zs .tick { position: absolute; width: 76px; height: 76px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+  .zs .tick svg { width: 46px; height: 46px; stroke: var(--on-accent); fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Empty home <b>lab</b></h1>
+      <p class="zk-lede">The home when the card has no games yet. It tells you how to add games, and one button starts each way. Every option is shown in Beard (light) and Salt &amp; Pepper (dark). Pick one option in each section, and add a note if you want a change.</p>
+      <ul class="facts">
+        <li><b>USB File Transfer</b>: the port only charges until you choose. Plug into a computer, choose File Transfer on the question (or press A here), then open <code>10.42.0.1</code> in the computer's browser and type the PIN the handheld shows.</li>
+        <li><b>Wi-Fi File Transfer</b>: the Pixel 2 needs its USB Wi-Fi adapter in the same port. On your Wi-Fi it shows its address and a PIN; with no network it makes its own (<code>ZyperOS-XXXX</code>, with a code to scan).</li>
+        <li>So on the Pixel 2 only one way works at a time: the cable, or the adapter. The screen can follow what is plugged in (section 2).</li>
+        <li>When a transfer adds games, the home becomes Spotlight or Gallery at once, with no restart.</li>
+      </ul>
+      <p class="zk-mono" id="status" style="margin-top:10px"></p>
+    </div>
+  </header>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  const ICON = {
+    /* The USB trident, as src/ui.c draws UI_GLYPH_USB */
+    usb: `<svg viewBox="0 0 56 56"><path d="M28 11v36.6M15.1 23v7.8c0 4 3.8 5.4 12.9 8.4M39.8 24v4c0 3.6-4.4 5-11.8 6.7" style="stroke-width:5"/><path d="M28 1.7 21.8 12.9h12.4z" style="fill:var(--accent-ink);stroke:none"/><circle cx="28" cy="48.2" r="5" style="fill:var(--accent-ink);stroke:none"/><circle cx="15.1" cy="23" r="4.8" style="fill:var(--accent-ink);stroke:none"/><rect x="35.3" y="15.1" width="9" height="9" style="fill:var(--accent-ink);stroke:none"/></svg>`,
+    wifi: `<svg viewBox="0 0 56 56"><path d="M5 21a33 33 0 0 1 46 0M12 29a23 23 0 0 1 32 0M19 37a13 13 0 0 1 18 0"/><circle cx="28" cy="45" r="2.6"/></svg>`,
+  };
+  const MARKS = `<svg viewBox="0 0 34 26" style="width:34px"><path d="M3 9a20 20 0 0 1 28 0M8 14a13 13 0 0 1 18 0M13 19a6 6 0 0 1 8 0"/></svg><svg viewBox="0 0 44 24" style="width:44px"><rect x="2" y="3" width="36" height="18" rx="4"/><path d="M41 9v6"/><rect x="6" y="7" width="22" height="10" rx="1.5" fill="currentColor" stroke="none"/></svg>`;
+  const TICK = `<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+  /* The Game Boy's still, res/system-icons/GB-still.png, as the home draws it */
+  const GB = "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACzElEQVR42u3dP2sTYRwH8KsKDofvQIQuggiKU6WLkAouOoh/6Ojs5tDWDk4dauvgO+hc/IOCjupURCdREEGQgO8ho9TJ4+mZ53hySXp36eczXZs7E9Ov3989l9RkGQAAAAAAAAAAAAAAANA9cy14DPt+Bs055t/A0SYA6qfZ2u/3+8U3n+0+L7bvLt8Z+Q/93f9ZbJ+ZPzvyMdP06fPXYvvywsVi+0rvWqM/Dw1gBGAENDgCtja3i28OBoNiO8/zmXqiY3+3tfVVIwAjgIacaNODWeotHoknPVwRaAAEACPgP2/evpupJ/rG9asaAAFAAHAOMEHf+j8avf8L8+c0AAKAEdCM+xunGr3/vR0NgAAgAAgAAoBVwHSEF3y6fvFFAyAAGAEjUfsaAAFAABAABAABQAAQAAQAAUAAEAAEAAFAAEjW+V8M2ds53crH1db/D0ADIAAIALNyDmDuawAEgJkbAV2sUw2AAGAETMSTp98PfL3y4Hz0tmHC/auOKe+nARAAjIDGVVVzndo+6lWvARAAOjQCKuv84aPhK4fHG4f+WGIf/xJ+OKQGQAAQAJwDdEfqR7v92f0y/PiOnBNoACMAI6BDS726x6QsEcPaj1V7lmXZ8eVLGgABwAjg9clfw0fOwj0NgABgBNRz6+bt6G0vX70Y+ZgU4cWalch9lOs9doGn6i1tGgABwAhIruPUETDJ6+1VF47Ceo9Ve1fegqYBjAAEAOcAXTLucm9cKfP9/YePB75e6i1qAAQAI2C6S8SY8LX+2PEp+6TWfrnyw9vyPNcACABGwPSU39UbXj0M6z3cL7ZPndqvWgWkvuNYAyAAGAG1lF8wir24E+6X+sulKbVvFYARQPvNNXS/+/82tja3Rz7zbpNxVwFr66uN/jw0gBGAAGAZ2AbjvhhTZ27H5nSq1GVgm+a+BkAAaEH9lJeEnncNgABwmP4CEOO2oYklJ84AAAAASUVORK5CYII=";
+  const g = (k, s, cls = "") => k === "MENU" ? `<i class="gb menu ${cls}" style="--s:${s}px"></i>`
+    : `<i class="gb ${/^[ABXY]$/.test(k) ? "face" : ""} ${cls}" style="--s:${s}px">${k}</i>`;
+  const hint = (k, label, x, y, o = {}) =>
+    `<div class="hint ${o.big ? "big" : ""} ${o.dim ? "dim" : ""}" style="left:${x}px;top:${y}px">${g(k, o.big ? 40 : 32, (o.on ? "on" : "") + (o.dim ? " off" : ""))}<span>${label}</span></div>`;
+  const chrome = (foot = true) => `<div class="clock">10:08</div><div class="marks">${MARKS}</div>${foot ? hint("MENU", "Settings", 64, 704) : ""}`;
+  const zy = (x, y, w) => `<div class="zyp" style="left:${x}px;top:${y}px;width:${w}px;height:${Math.round(w * 1.055)}px"><svg><use href="#zyper"/></svg></div>`;
+  const BIOS = "BIOS files go in Bios/ on the card.";
+  const USB = ["Plug into a computer", "Choose File Transfer", "Browse to 10.42.0.1"];
+  const WIFI = ["Plug in the Wi-Fi adapter", "Press Y", "Open the address it shows"];
+  const both = (draw, cap) => `<div class="pair">${ZK.screen("light", draw("light"))}${ZK.screen("dark", draw("dark"))}${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+
+  /* A: two cards, side by side, each with its steps and its button */
+  function cards(o = {}) {
+    const usbOff = o.state === "adapter", wifiOff = o.state === "cable";
+    const way = (x, icon, name, key, steps, off, why) => `<div class="way ${off && o.dimOff ? "off" : ""}" style="left:${x}px">
+        <div class="wh">${ICON[icon]}${g(key, 48, off && o.dimOff ? "" : "on")}</div><span class="t38">${name}</span>
+        <ol>${steps.map(s => `<li>${s}</li>`).join("")}</ol>
+        ${off && o.dimOff ? `<p class="why">${why}</p>` : ""}</div>`;
+    return chrome() + zy(64, 98, 118) +
+      `<div style="position:absolute;left:208px;top:118px"><p class="t60">No games yet</p><p class="t29" style="margin-top:14px">Add them from a computer or a phone.</p></div>` +
+      way(24, "usb", "USB File Transfer", "A", USB, usbOff, "Unplug the Wi-Fi adapter first.") +
+      way(524, "wifi", "Wi-Fi File Transfer", "Y", WIFI, wifiOff, "Plug in the Wi-Fi adapter first.") +
+      `<p class="t29 dim" style="position:absolute;left:0;right:0;top:642px;text-align:center">${BIOS}</p>`;
+  }
+
+  /* B: the Spotlight's own places: the name and its line at the left, the
+   * actions where "A Open games" is, Zyper where the console stands */
+  function spot() {
+    const step = (y, t) => `<p class="t29 dim" style="position:absolute;left:128px;top:${y}px">${t}</p>`;
+    return chrome() +
+      `<div class="spot-art"><div class="slot"></div>${zy(124, 150, 200).replace('class="zyp"', 'class="zyp" ')}</div>` +
+      `<p class="t60" style="position:absolute;left:76px;top:244px">No games yet</p>` +
+      `<p class="t29" style="position:absolute;left:76px;top:318px;color:var(--text-dim)">Add them from a computer or a phone</p>` +
+      hint("A", "USB File Transfer", 76, 410, { big: true, on: true }) + step(440, "Plug into a computer, open 10.42.0.1") +
+      hint("Y", "Wi-Fi File Transfer", 76, 520, { big: true, on: true }) + step(550, "Plug in the Wi-Fi adapter first") +
+      `<p class="t29 dim" style="position:absolute;left:76px;top:618px">${BIOS}</p>`;
+  }
+
+  /* C: Zyper says it, as in the tutorial, and the two ways under him */
+  function speaks() {
+    const col = (x, key, name, lines) => `<div class="col" style="left:${x}px">${g(key, 96, "on")}<p class="t38">${name}</p>${lines.map(l => `<p class="t29">${l}</p>`).join("")}</div>`;
+    return chrome() + zy(170, 96, 170) +
+      `<div class="say" style="left:372px;top:136px">No games yet! Let's add some.</div>` +
+      col(52, "A", "USB File Transfer", ["Plug into a computer,", "browse to 10.42.0.1"]) +
+      col(532, "Y", "Wi-Fi File Transfer", ["Plug in the Wi-Fi adapter,", "open the address it shows"]) +
+      `<p class="t29 dim" style="position:absolute;left:0;right:0;top:642px;text-align:center">${BIOS}</p>`;
+  }
+
+  const msg = (t) => `<div class="scrim"></div><div class="note2">${t}</div>`;
+  function cheer(th) {
+    return chrome() + `<div style="position:absolute;inset:0;opacity:.35">${spotHome()}</div>` + zy(400, 210, 220) +
+      `<div class="tick" style="left:612px;top:196px">${TICK}</div><div class="cheer" style="left:620px;top:330px">12 games!</div>`;
+  }
+  function spotHome() {
+    return `<img alt="" src="data:image/png;base64,${GB}" style="position:absolute;left:536px;top:112px;width:448px;height:448px;image-rendering:pixelated">` +
+      `<p class="t60" style="position:absolute;left:76px;top:244px">Game Boy</p><p class="t29 dim" style="position:absolute;left:76px;top:318px">12 games</p>` +
+      hint("A", "Open games", 76, 416, { big: true, on: true }) + `<div class="underline" style="left:492px;top:672px"></div>` +
+      `<p style="position:absolute;left:0;right:0;top:690px;text-align:center;font-size:24px;color:var(--text-dim)">1 / 1</p>`;
+  }
+
+  const list = [
+    { key: "layout", title: "The empty home",
+      why: "What the home shows when the card has no games. A starts USB File Transfer and Y starts Wi-Fi File Transfer, from any of these. MENU still opens Settings. The header (clock, Wi-Fi, battery) and the Settings key stay where the home has them.",
+      options: {
+        cards: { name: "Two cards", tag: "suggested", blurb: "Zyper and \"No games yet\" at the top, then the two ways side by side, each with its three steps and its button. Everything you need on one screen; the steps match the transfer screens.",
+          draw: () => both(t => cards({ dimOff: false })) },
+        spot: { name: "In the Spotlight", blurb: "The home's own layout: the title where a system's name goes, the two ways where \"A Open games\" goes (one short line each), and Zyper by an empty frame where the console stands. Quietest, and closest to the home you will see after.",
+          draw: () => both(spot) },
+        speaks: { name: "Zyper says it", blurb: "As in the tutorial: Zyper with his bubble, and the two ways as big buttons under him, two lines each. The friendliest, with the fewest words.",
+          draw: () => both(speaks) },
+      } },
+    { key: "unavailable", title: "When one way cannot work now",
+      why: "On the Pixel 2, the cable and the Wi-Fi adapter use the same port. With nothing plugged in, the cable way works and the Wi-Fi way does not. With the adapter in, it is the other way round. Shown on \"Two cards\"; the other layouts do the same with their buttons.",
+      options: {
+        follow: { name: "Follow the port", tag: "suggested", blurb: "The way that cannot work now is dimmed, its button gray, and one line says why. It lights up the moment you plug in or unplug. Its button plays the deny sound.",
+          draw: () => both(t => cards({ dimOff: true, state: "cable" }), "nothing plugged in: Wi-Fi is dimmed") },
+        message: { name: "Both always lit", blurb: "Both ways always look the same. Pressing the one that cannot work says why in a one-line message.",
+          draw: () => `<div class="pair">${ZK.screen("light", cards({ dimOff: false }))}${ZK.screen("light", cards({ dimOff: false }) + msg("Plug in the Wi-Fi adapter first."))}<p class="cap">the screen, and Y with nothing plugged in</p></div>` },
+      } },
+    { key: "arrive", title: "When the first games arrive",
+      why: "You close the transfer screen, the handheld scans the card, and the home has games.",
+      options: {
+        straight: { name: "Straight to the home", tag: "suggested", blurb: "\"Scanning...\" as today, then Spotlight (or Gallery) on the first system with games. Nothing extra.",
+          draw: () => both(t => chrome() + spotHome()) },
+        cheer: { name: "Zyper cheers first", blurb: "The tutorial's reward: a check, Zyper's hop and \"12 games!\" for a second, over the home as it comes in.",
+          draw: () => both(cheer) },
+      } },
+  ];
+
+  const status = document.getElementById("status");
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-empty-home-picks", status: s => { status.textContent = s; } });
+})();
+</script>
+</body>
+</html>

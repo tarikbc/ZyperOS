@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Beard, or Salt & Pepper where the browser asks for dark: app.css. -->
+<meta name="color-scheme" content="light dark">
+<title>Wi-Fi File Transfer</title>
+<!-- Zyper's head alone, in a square: the lockup is nearly four times as wide
+     as it is tall and would be a smudge at 16px. tools/genzyper.py writes it. -->
+<link rel="icon" type="image/svg+xml" href="/web/icon.svg">
+<link rel="stylesheet" href="/web/app.css">
+</head>
+<body>
+
+<!-- The PIN gate (DESIGN.md 11.15). Shown until /api/auth accepts, and the
+     only thing a browser can reach without a session. Four boxes, one digit
+     each; the PIN goes to the device as the fourth lands, so there is no
+     button. Zyper shuts his eyes while it is typed. -->
+<section id="gate" class="gate">
+  <div class="panel">
+    <div id="gatezy" class="zy" aria-hidden="true">
+      <img src="/web/zyper.svg" alt="" width="74" height="78">
+      <img class="shut" src="/web/zyper-shut.svg" alt="" width="74" height="78">
+    </div>
+    <h1>Wi-Fi File Transfer</h1>
+    <p class="sub">Enter the PIN on the handheld's screen.</p>
+    <form id="pinform" autocomplete="off">
+      <div id="boxes" class="boxes" role="group" aria-label="PIN">
+        <input inputmode="numeric" maxlength="1" aria-label="PIN, digit 1" autocomplete="one-time-code">
+        <input inputmode="numeric" maxlength="1" aria-label="digit 2">
+        <input inputmode="numeric" maxlength="1" aria-label="digit 3">
+        <input inputmode="numeric" maxlength="1" aria-label="digit 4">
+      </div>
+    </form>
+    <p id="gatemsg" class="msg" role="status"></p>
+  </div>
+</section>
+
+<!-- Everything past the gate: the card folders in a sidebar on a wide
+     screen, as chips over the list on a phone (DESIGN.md 11.15). -->
+<div id="app" class="app" hidden>
+  <aside class="side">
+    <!-- The real drawn size, so nothing moves on a cold load before the
+         stylesheet arrives. The lockup's viewBox is 968.3 x 275.6. -->
+    <div class="brand">
+      <picture><source srcset="/web/mark.svg" media="(prefers-color-scheme: dark)">
+      <img src="/web/mark-light.svg" alt="ZyperOS" width="127" height="36"></picture>
+      <span class="appname">Wi-Fi File Transfer</span>
+    </div>
+    <nav id="places" class="places" aria-label="Folders on the card"></nav>
+    <!-- The card's room for files, less what it keeps for saves. -->
+    <div id="room" class="room" hidden><span><b id="roomfree"></b><span id="roomof"></span></span><div class="meter"><span id="roombar"></span></div></div>
+    <!-- Uploads, under the folders, while there are any: what is left and
+         the time for all of them, one bar, then each file. -->
+    <section id="queue" class="xfer" hidden aria-live="polite">
+      <h2 id="queuehead"></h2>
+      <p id="queueleft" class="eta" hidden></p>
+      <div id="queuetotal" class="bar total" hidden><span id="queuebar"></span></div>
+      <ul id="queuelist"></ul>
+    </section>
+    <!-- USB File Transfer only: SSH over the same cable, with the PIN. -->
+    <section id="ssh" class="ssh" hidden>
+      <h2>SSH</h2>
+      <p>The password is the PIN. Add your key with ssh-copy-id to skip it next time.</p>
+      <div class="cmd"><code id="sshcmd"></code><button type="button" id="sshcopy" class="link">Copy</button></div>
+    </section>
+    <!-- Settings, at the foot: the update, covers, the SteamGridDB key, the
+         card, the logs (2026-11-06), a page of its own in the main
+         area, as a folder is. -->
+    <nav class="places tail" aria-label="Settings">
+      <button id="setgo" type="button" class="i i-gear">Settings</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="head">
+      <!-- A phone's: Zyper beside the folder's name, where the sidebar's
+           lockup would be. -->
+      <img class="headzy" src="/web/zyper.svg" alt="" width="28" height="30">
+      <nav id="crumbs" class="crumbs" aria-label="Location"></nav>
+      <div id="tools" class="tools">
+        <button id="newfolder" type="button" class="btn quiet i i-newfolder">New folder</button>
+        <!-- In a music or audiobook folder: its names as MP4's shelf shows them. -->
+        <button id="tidy" type="button" class="btn quiet i i-tidy" hidden>Tidy names</button>
+        <!-- A whole folder - an album, a book - with the folders inside it. -->
+        <label class="btn i i-upfolder" for="folderpicker" tabindex="0">Upload folder</label>
+        <label class="btn pri i i-up" for="picker" tabindex="0">Upload</label>
+      </div>
+      <!-- A phone's: everything the sidebar holds but the folders. -->
+      <button id="more" type="button" class="iconbtn i i-dots" aria-label="More"></button>
+    </header>
+    <nav id="chips" class="chips" aria-label="Folders on the card"></nav>
+
+    <section id="tidypanel" class="tidy" hidden>
+      <h2 id="tidyhead"></h2>
+      <ul id="tidylist"></ul>
+      <div class="acts">
+        <button id="tidycancel" type="button" class="btn">Cancel</button>
+        <button id="tidygo" type="button" class="btn pri">Rename all</button>
+      </div>
+    </section>
+    <ul id="list" class="list"></ul>
+    <p id="empty" class="empty" hidden>Nothing here yet. Drop files here, or press Upload.</p>
+
+    <!-- Settings (DESIGN.md 11.15): a section for each thing, each shown
+         only where it works here. -->
+    <div id="settings" class="sets" hidden>
+      <!-- Update ZyperOS through this computer, over the USB cable: the page
+           gets the release's files with the computer's internet and the
+           handheld checks and installs them. Drawn by app.js. -->
+      <section id="update" class="set" hidden aria-live="polite">
+        <h2>Update ZyperOS</h2>
+        <div id="updbody"></div>
+        <input id="updpicker" type="file" multiple accept=".txt,.zpk" hidden>
+      </section>
+      <!-- Covers, where the device has no network of its own (USB File
+           Transfer): this page fetches box art from libretro and album covers
+           from MusicBrainz, and the device matches them. Hidden where the
+           device says no. -->
+      <section id="art" class="set" hidden>
+        <h2>Box art and album covers</h2>
+        <p id="artmsg" role="status"></p>
+        <div class="acts"><button id="artgo" type="button" class="btn i i-art">Get covers</button></div>
+      </section>
+      <!-- SteamGridDB's key, for the handheld's own Box Art: a 32-character
+           key is a paste here and a long walk on its keyboard. The page never
+           gets it back, only its last four. Hidden where the device says no. -->
+      <section id="sgdb" class="set" hidden>
+        <h2>SteamGridDB</h2>
+        <p id="sgdbmsg" role="status"></p>
+        <div class="acts">
+          <button id="sgdbgo" type="button" class="btn i i-key">Add a key</button>
+          <button id="sgdbdel" type="button" class="btn quiet" hidden>Remove</button>
+        </div>
+      </section>
+      <section class="set">
+        <h2>The card</h2>
+        <p id="cardroom"></p>
+        <label class="switch"><input id="showhidden" type="checkbox"><i aria-hidden="true"></i>Show hidden folders, such as .media with the covers</label>
+      </section>
+      <!-- A bug report as one file, packed by the device when asked. -->
+      <section class="set">
+        <h2>Help</h2>
+        <p>The handheld's logs in one file, for a bug report. Network, headset and account names are masked.</p>
+        <div class="acts"><a class="btn i i-logs" href="/api/logs" download>Download logs</a></div>
+      </section>
+    </div>
+    <!-- Where a drop lands, said before anything is dropped: a capability
+         shown only to somebody already dragging is not shown. Lit while a
+         file is over the window. -->
+    <p id="dropmsg" class="hint" role="status"></p>
+  </main>
+
+  <input id="picker" type="file" multiple hidden>
+  <input id="folderpicker" type="file" webkitdirectory multiple hidden>
+  <!-- A phone's Upload, under the thumb, and its uploads, folded to a line. -->
+  <label id="fab" class="fab i i-up" for="picker" tabindex="0">Upload</label>
+  <button id="dock" type="button" class="dock" hidden></button>
+</div>
+
+<!-- The frame only, while a file is over the window. -->
+<div id="drop" class="drop" hidden></div>
+
+<!-- One menu for a row's ⋯ and a right-click, and for the phone's ⋯: a
+     pop-up beside the button on a wide screen, a sheet from the bottom on a
+     phone. -->
+<div id="scrim" class="scrim" hidden></div>
+<div id="menu" class="menu" role="menu" hidden></div>
+
+<!-- Rename, New folder and every question before a delete. -->
+<div id="dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlghead" hidden>
+  <form id="dlgform" class="panel" autocomplete="off">
+    <h2 id="dlghead"></h2>
+    <p id="dlgtext"></p>
+    <input id="dlgfield" type="text" spellcheck="false" autocapitalize="off" hidden>
+    <div class="acts">
+      <button id="dlgno" type="button" class="btn">Cancel</button>
+      <button id="dlgyes" type="submit" class="btn pri"></button>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="/web/captive.js"></script>
+<script src="/web/app.js"></script>
+</body>
+</html>

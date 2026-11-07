@@ -1,0 +1,320 @@
+<title>ZyperOS Sound Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #141615; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 80ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .how { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin-top: 14px; font: 13px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .how kbd { font: 500 12px var(--zk-f-mono); color: var(--zk-ink); border: 1px solid var(--zk-line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+  .how label { display: flex; gap: 8px; align-items: center; color: var(--zk-ink-2); }
+  .how select { font: 13px var(--zk-f-mono); color: var(--zk-ink); background: var(--zk-page-2); border: 1px solid var(--zk-line); border-radius: 8px; padding: 4px 8px; }
+  .demo { display: grid; gap: 8px; }
+  .demo .zk-frame { cursor: pointer; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .12s; }
+  .zk-card.active .demo .zk-frame { outline-color: var(--zk-hi); }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .pad { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pad button, .alone button {
+    font: 500 13px var(--zk-f-mono); color: var(--zk-ink); background: transparent; min-width: 40px; height: 34px;
+    border: 1px solid var(--zk-line); border-radius: 999px; padding: 0 12px; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  .pad button:hover, .alone button:hover { border-color: var(--zk-ink-3); }
+  .pad button:focus-visible, .alone button:focus-visible, .zk-frame:focus-visible { outline: 2px solid var(--zk-hi); outline-offset: 2px; }
+  .pad button.down { background: var(--zk-line); }
+  .alone { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .alone span { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin-right: 2px; }
+  .tones { font: 11px/1.5 var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; overflow-x: auto; white-space: pre; }
+  @media (prefers-reduced-motion: reduce) { .demo .zk-frame { transition: none; } }
+</style>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Sound Lab</b></h1>
+      <p class="zk-lede">The six interface sounds DESIGN.md names, as the handheld will play them: each is a WAV that tools/gensounds.py synthesizes, at 48 kHz and at the handheld's own level. Play them on live screens, then pick a voice and three rules for when they play.</p>
+      <p class="status" id="status">Connecting&hellip;</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option.</b> Six sounds: <b>move</b> (a step), <b>edge</b> (a step that hits the end), <b>accept</b> (A, and a menu opening), <b>back</b> (B, a menu closing), <b>deny</b> (a press nothing can act on, such as Y on Muse's albums) and <b>reward</b> (a favorite added, a tutorial step). They are quiet and short, they come from the launcher only, and never over a game. The volume keys and the mute switch set them. They play on the speaker, the headphone jack and a USB-C DAC, and stay off on a Bluetooth headset, whose delay would put every tick after its press. MENU &gt; UI Sounds turns them off.</div>
+  <div class="how">
+    <span>Click a screen, then <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd> move, hold to repeat, <kbd>Enter</kbd> is A, <kbd>Backspace</kbd> is B, <kbd>Y</kbd> is Y, <kbd>M</kbd> is MENU. Or use the buttons under it.</span>
+    <label for="labgain">Level <select id="labgain"><option value="1">as on the handheld</option><option value="4">+12 dB for laptop speakers</option></select></label>
+  </div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script src="sounds.js"></script>
+<script>
+(() => {
+  const L = window.ZK_SOUNDLAB;
+  const SUGGEST = { voice: "wood", held: "softer" };
+  let board = null;
+  const pick = k => (board && board.picks[k] && board.picks[k].choice) || SUGGEST[k];
+
+  /* ---- sound: the WAVs, read as they are and played through Web Audio ---- */
+  let ac = null, gain = 1;
+  const bufs = {};
+  function wavBuffer(uri) {
+    const bin = atob(uri.slice(uri.indexOf(",") + 1)), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const dv = new DataView(u8.buffer);
+    let p = 12, rate = 48000, data = null;
+    while (p + 8 <= u8.length) {
+      const id = String.fromCharCode(u8[p], u8[p + 1], u8[p + 2], u8[p + 3]), size = dv.getUint32(p + 4, true);
+      if (id === "fmt ") rate = dv.getUint32(p + 12, true);
+      if (id === "data") { data = [p + 8, size]; break; }
+      p += 8 + size + (size & 1);
+    }
+    const n = data[1] / 2, b = ac.createBuffer(1, n, rate), ch = b.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = dv.getInt16(data[0] + i * 2, true) / 32768;
+    return b;
+  }
+  function audio() {
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+      for (const [v, s] of Object.entries(L.voices)) {
+        bufs[v] = {};
+        for (const [n, uri] of Object.entries(s)) bufs[v][n] = wavBuffer(uri);
+      }
+    }
+    if (ac.state === "suspended") ac.resume();
+    return ac;
+  }
+  function play(voice, name, level = 1) {
+    if (!name) return;
+    const c = audio(), src = c.createBufferSource(), g = c.createGain();
+    src.buffer = bufs[voice][name];
+    g.gain.value = level * gain;
+    src.connect(g).connect(c.destination);
+    src.start();
+  }
+  document.getElementById("labgain").addEventListener("change", e => { gain = +e.target.value; });
+
+  /* The rule src/uisound.c will hold a step to, given the picks: a step that
+   * moves plays move, including a wrap; one that
+   * cannot move plays edge once per press, not on every repeat while held;
+   * a repeat plays as the held pick says. */
+  function stepSound(st, moved, repeat, held) {
+    if (!moved) {
+      if (repeat && st.edged) return null;
+      st.edged = true;
+      return ["edge", 1];
+    }
+    st.edged = false;
+    const name = "move";
+    if (!repeat || held === "every") return [name, 1];
+    if (held === "softer") return [name, 0.5];
+    return null;
+  }
+
+  /* ---- the demos -------------------------------------------------------- */
+  const state = {};
+  const GAMES = ["Chrono Trigger", "Donkey Kong Country", "EarthBound", "F-Zero", "Kirby Super Star", "Mega Man X",
+                 "Secret of Mana", "Star Fox", "Super Mario World", "Super Metroid", "Yoshi's Island", "Zelda: A Link to the Past"];
+  const COLORS = Object.values(ZK.SYS);
+  const SHELF = GAMES.map((name, i) => ({ name, sys: COLORS[i % COLORS.length] }));
+  const MENU_ROWS = [["Play Time", ""], ["Wi-Fi", "off"], ["Bluetooth", "not connected"], ["Audio Output", "auto (speaker)"], ["Wi-Fi File Transfer", "needs Wi-Fi", 1]];
+  const ROW_AT = {
+    audio: [["Audio Output", "auto (speaker)"], ["Audio Channels", "stereo"], ["UI Sounds", "on"], ["Wi-Fi File Transfer", "needs Wi-Fi", 1], ["Date & Time", "Nov 4, 8:20 PM"]],
+    look:  [["Appearance", "Light"], ["UI Sounds", "on"], ["Box Art", "needs Wi-Fi", 1]],
+  };
+
+  function st(id, init) { return state[id] || (state[id] = init(id)); }
+  /* The next live row in dir, or the same row when there is none: menu_step_sel. */
+  function stepRow(rows, sel, dir) {
+    for (let i = sel + dir; i >= 0 && i < rows.length; i += dir) if (!rows[i][2]) return i;
+    return sel;
+  }
+
+  const KINDS = {
+    /* The ZyperOS menu over the shelf, in the voice of the option. */
+    menu: {
+      init: () => ({ sel: 0, open: true }),
+      voice: id => id.split(":")[1],
+      draw: (s, theme) => ZK.shelf(theme) + (s.open ? ZK.menu(theme, { rows: MENU_ROWS, sel: s.sel }) : ""),
+      pad: ["up", "down", "A", "B", "MENU"],
+      key(s, b, repeat, id) {
+        const v = this.voice(id);
+        if (!s.open) {
+          if (b === "MENU") { s.open = true; s.sel = 0; return [v, "accept", 1]; }
+          if (b === "A") return [v, "accept", 1];
+          if (b === "B") return [v, "back", 1];
+          return null;
+        }
+        if (b === "up" || b === "down") {
+          const to = stepRow(MENU_ROWS, s.sel, b === "up" ? -1 : 1), r = stepSound(s, to !== s.sel, repeat, pick("held"));
+          s.sel = to;
+          return r && [v, r[0], r[1]];
+        }
+        if (b === "A") return [v, "accept", 1];
+        if (b === "B" || b === "MENU") { s.open = false; return [v, "back", 1]; }
+        return null;
+      },
+      caption: "Beard \u00b7 the ZyperOS menu \u00b7 B closes it, MENU opens it",
+    },
+    /* A shelf of twelve games that wraps, in the picked voice. */
+    shelf: {
+      init: () => ({ cur: 0, favs: new Set([2]) }),
+      draw: (s, theme) => ZK.shelf(theme, { games: SHELF, cursor: s.cur, favs: s.favs }),
+      pad: ["left", "right", "A", "B", "Y"],
+      key(s, b, repeat, id) {
+        const v = pick("voice"), [kind, opt] = id.split(":"), n = SHELF.length;
+        const held = kind === "held" ? opt : pick("held");
+        if (b === "left" || b === "right") {
+          const d = b === "left" ? -1 : 1, to = (s.cur + d + n) % n;
+          const r = stepSound(s, true, repeat, held);
+          s.cur = to;
+          return r && [v, r[0], r[1]];
+        }
+        if (b === "A") return [v, "accept", 1];
+        if (b === "B") return [v, "back", 1];
+        if (b === "Y") {
+          if (s.favs.has(s.cur)) { s.favs.delete(s.cur); return [v, "back", 1]; }
+          s.favs.add(s.cur);
+          return [v, "reward", 1];
+        }
+        return null;
+      },
+      caption: "Salt & Pepper \u00b7 a shelf of 12 that wraps \u00b7 Y hearts a game",
+    },
+    /* The ZyperOS menu at the row's place, with the row live. */
+    row: {
+      init: id => ({ sel: ROW_AT[id.split(":")[1]].findIndex(r => r[0] === "UI Sounds"), on: true }),
+      rows(s, id) { return ROW_AT[id.split(":")[1]].map(r => r[0] === "UI Sounds" ? [r[0], s.on ? "on" : "off"] : r); },
+      draw(s, theme, id) { return ZK.shelf(theme) + ZK.menu(theme, { rows: this.rows(s, id), sel: s.sel, more: true }); },
+      pad: ["up", "down", "left", "right", "A", "B"],
+      key(s, b, repeat, id) {
+        const v = pick("voice"), rows = this.rows(s, id), heard = r => (s.on ? r : null);
+        if (b === "up" || b === "down") {
+          const to = stepRow(rows, s.sel, b === "up" ? -1 : 1), r = stepSound(s, to !== s.sel, repeat, pick("held"));
+          s.sel = to;
+          return heard(r && [v, r[0], r[1]]);
+        }
+        const toggles = rows[s.sel][0] === "UI Sounds";
+        if (b === "A" || ((b === "left" || b === "right") && toggles)) {
+          if (toggles) { s.on = !s.on; return heard([v, b === "A" ? "accept" : "move", 1]); }
+          return heard([v, "accept", 1]);
+        }
+        if (b === "B") return heard([v, "back", 1]);
+        return null;
+      },
+      caption: "Beard \u00b7 A, or left and right, turn UI Sounds on and off",
+    },
+  };
+
+  const LABEL = { up: "\u25b2", down: "\u25bc", left: "\u25c0", right: "\u25b6" };
+  function demo(kind, id, theme) {
+    const k = KINDS[kind], s = st(id, k.init);
+    return `<div class="demo" data-kind="${kind}" data-id="${id}" data-theme-name="${theme}">
+      <div tabindex="0" role="application" aria-label="Playable screen: ${k.caption}">${ZK.screen(theme, k.draw(s, theme, id))}</div>
+      <span class="cap">${k.caption}</span>
+      <div class="pad" role="group" aria-label="Buttons">${k.pad.map(b => `<button type="button" data-btn="${b}" aria-label="${b}">${LABEL[b] || b}</button>`).join("")}</div>
+    </div>`;
+  }
+  function redraw(el) {
+    const kind = el.dataset.kind, id = el.dataset.id, theme = el.dataset.themeName;
+    el.querySelector(".zs").innerHTML = KINDS[kind].draw(state[id], theme, id);
+  }
+  function press(el, b, repeat) {
+    const kind = el.dataset.kind, id = el.dataset.id, k = KINDS[kind];
+    const r = k.key(state[id], b, repeat, id);
+    redraw(el);
+    if (r) play(r[0], r[1], r[2]);
+  }
+
+  /* Held buttons repeat as src/platform.c's in_repeat does: once on the
+   * press, then after 300 ms every 90 ms. */
+  let hold = null;
+  function startHold(el, b) {
+    stopHold();
+    press(el, b, false);
+    if (!["up", "down", "left", "right"].includes(b)) return;
+    hold = { t: setTimeout(function tick() { press(el, b, true); hold.t = setTimeout(tick, 90); }, 300), b };
+  }
+  function stopHold() { if (hold) clearTimeout(hold.t); hold = null; document.querySelectorAll(".pad .down").forEach(x => x.classList.remove("down")); }
+
+  function alone(voice) {
+    return `<div class="alone"><span>alone</span>${["move", "edge", "accept", "back", "deny", "reward"].map(n =>
+      `<button type="button" data-snd="${voice}:${n}">${n}</button>`).join("")}</div>`;
+  }
+  function tones(voice) {
+    const t = L.tones[voice];
+    return `<details><summary class="zk-mono">tones</summary><div class="tones">${Object.entries(t).map(([n, ts]) =>
+      n.padEnd(7) + ts.map(x => `${x[0]} ${Array.isArray(x[1]) ? x[1].join("\u2192") : x[1]} Hz ${x[2]} ms ${x[3]} at ${x[4]}`).join("; ")).join("\n")}</div></details>`;
+  }
+
+  /* The screen the keys go to: the last one clicked or focused. */
+  const m = document.getElementById("m");
+  let active = null;
+  const activeEl = () => active && m.querySelector(`.demo[data-id="${active}"]`);
+  function activate(el) {
+    document.querySelectorAll(".zk-card.active").forEach(c => c.classList.remove("active"));
+    active = el ? el.dataset.id : null;
+    if (el) el.closest(".zk-card").classList.add("active");
+  }
+
+  board = ZK.decisions(m, [
+    { key: "voice", title: "The voice",
+      why: "What all six sounds are made of. Each option is the whole set, so the six agree with each other. In each, forward steps up in pitch and back steps down.",
+      options: {
+        glass: { name: "Glass", tag: "today", blurb: "The ticks the design lab played: pure high tones, a 1.9 kHz tick on a move, triangle clicks on A and B, two square blips for deny. Crisp and clean, the least warm.",
+                 draw: () => demo("menu", "voice:glass", "light") + alone("glass") + tones("glass") },
+        wood: { name: "Wood", tag: "suggested", blurb: "A soft mallet on a wooden bar: a short C6 tock on a move, a fuller D6 on A, a lower A5 on B, a falling \"uh-uh\" for deny, and two bars a fifth apart for a reward. Warm and short.",
+                draw: () => demo("menu", "voice:wood", "light") + alone("wood") + tones("wood") },
+        bubble: { name: "Bubble", blurb: "Small drops that pop upward: a rising bip on a move, a bigger bloop on A, a falling one on B. The most playful, closest to Zyper.",
+                  draw: () => demo("menu", "voice:bubble", "light") + alone("bubble") + tones("bubble") },
+      } },
+    { key: "held", title: "A held direction",
+      why: "A held direction steps the shelf every 90 ms after the first 300 ms. That is eleven steps a second. This is what each of them sounds like. The shelves play the voice you picked above.",
+      options: {
+        every: { name: "Every step", blurb: "Each repeat ticks like a press, at the same level. A ratchet you can count.", draw: () => demo("shelf", "held:every", "dark") },
+        softer: { name: "Softer while held", tag: "suggested", blurb: "The first step at full level, and every repeat after it at half (6 dB down). You still hear the shelf run, and a long hold does not drown the room.", draw: () => demo("shelf", "held:softer", "dark") },
+        first: { name: "First step only", blurb: "The press ticks and the repeats are silent. Quiet, but a long run gives no sense of speed.", draw: () => demo("shelf", "held:first", "dark") },
+      } },
+    { key: "row", title: "Where MENU > UI Sounds goes",
+      why: "The new row, on or off, saved like Appearance. It is the launcher's sound, so it can sit with the audio rows or with the look of the shelf.",
+      options: {
+        audio: { name: "With the audio rows", tag: "suggested", blurb: "Under Audio Channels: Audio Output, Audio Channels and UI Sounds are everything about what you hear.", draw: () => demo("row", "row:audio", "light") },
+        look: { name: "With the look", blurb: "Under Appearance: the rows that change how the launcher feels rather than what it does.", draw: () => demo("row", "row:look", "light") },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-sound",
+       onRender: () => { const el = activeEl(); if (el) el.closest(".zk-card").classList.add("active"); } });
+
+  /* ---- input ------------------------------------------------------------- */
+  m.addEventListener("pointerdown", e => {
+    const d = e.target.closest(".demo");
+    if (d) activate(d);
+    const b = e.target.closest("[data-btn]");
+    if (b && d) { e.preventDefault(); b.classList.add("down"); startHold(d, b.dataset.btn); }
+  });
+  /* A press from the keyboard on a focused button, which pointerdown misses. */
+  m.addEventListener("click", e => {
+    const s = e.target.closest("[data-snd]");
+    if (s) { const [v, n] = s.dataset.snd.split(":"); play(v, n); return; }
+    const b = e.target.closest("[data-btn]"), d = e.target.closest(".demo");
+    if (b && d && e.detail === 0) press(d, b.dataset.btn, false);
+  });
+  ["pointerup", "pointercancel", "blur"].forEach(t => window.addEventListener(t, stopHold));
+  m.addEventListener("focusin", e => { const d = e.target.closest(".demo"); if (d) activate(d); });
+
+  const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "A", a: "A", Backspace: "B", Escape: "B", b: "B", y: "Y", m: "MENU" };
+  window.addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("textarea, select, input")) return;
+    const b = KEYS[e.key] || KEYS[e.key.toLowerCase()], el = activeEl();
+    if (!b || !el || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!KINDS[el.dataset.kind].pad.includes(b)) return;
+    if (e.target.closest && e.target.closest("button") && b === "A") return;
+    e.preventDefault();
+    if (e.repeat) return;
+    startHold(el, b);
+  });
+  window.addEventListener("keyup", e => { if (hold && (KEYS[e.key] || KEYS[e.key.toLowerCase()]) === hold.b) stopHold(); });
+})();
+</script>

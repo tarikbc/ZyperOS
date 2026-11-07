@@ -1,0 +1,43 @@
+diff --git a/src/libretro.cpp b/src/libretro.cpp
+index eadda3b..3777675 100644
+--- a/src/libretro.cpp
++++ b/src/libretro.cpp
+@@ -142,6 +142,18 @@ RETRO_API void retro_set_input_poll(retro_input_poll_t cb) { input_poll_cb = cb;
+ RETRO_API void retro_set_input_state(retro_input_state_t cb) { input_state_cb = cb; }
+ 
+ RETRO_API void retro_init(void) { ds::set_thread_layout(false); }
++
++// Frame skip, driven by the frontend. A frontend that knows a frame will not
++// be shown, or will run late, says so through the audio buffer status
++// callback (underrun_likely), the one libretro channel for it; the GPU then
++// leaves that frame's 3D raster and line output out, while the CPUs, the
++// timing and the sound run as always. Handed over with each game, not once at
++// retro_init: a frontend that keeps the core loaded across games (Diatom)
++// forgets the last game's callback when it binds the next. The idea of
++// skipping DSperate's drawing from this callback is nelynes's slotPlus
++// (crates/slot-retro); plorpOS carries a change like it for its Brick.
++static bool skip_req;
++static void audio_status(bool, unsigned, bool underrun_likely) { skip_req = underrun_likely; }
+ RETRO_API void retro_deinit(void) {}
+ 
+ RETRO_API void retro_get_system_info(retro_system_info* info) {
+@@ -213,6 +225,7 @@ RETRO_API void retro_run(void) {
+     nds->io.set_mic(n > 0 ? mic_buf : nullptr, n > 0 ? size_t(n) : 0);
+   }
+ 
++  nds->gpu.set_frame_skip(skip_req);
+   nds->run_frame();
+ 
+   std::memcpy(frame, nds->gpu.framebuffer(0), W * H * 4);
+@@ -289,6 +302,11 @@ RETRO_API bool retro_load_game(const retro_game_info* game) {
+   retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;   // DSperate's 0xAARRGGBB, alpha ignored
+   if (!env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &fmt)) return false;
+   read_options();
++  skip_req = false;
++  {
++    retro_audio_buffer_status_callback cb{audio_status};
++    env_cb(RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK, &cb);
++  }
+   rom_path = game->path;
+   nds = std::make_unique<ds::NDS>();
+   if (!boot()) { nds.reset(); return false; }

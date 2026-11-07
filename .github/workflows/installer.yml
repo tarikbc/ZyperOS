@@ -1,0 +1,77 @@
+# ZyperOS Installer (installer/) on Linux and Windows: the tests, the apps,
+# and a check that each lists no disk on a machine with no card in it (a
+# runner has only its own fixed disks). For every pull request that changes
+# the installer, and by hand. A release builds it for macOS too and adds it
+# to the release (release.yml).
+#
+# dtolnay/rust-toolchain is a third-party action and runs with the job's
+# token, so it is pinned to a commit of its stable branch, not to the branch
+# name: a moved branch cannot change what runs here. Move the SHA on purpose.
+name: Installer
+
+on:
+  pull_request:
+    paths:
+      - installer/**
+      - .github/workflows/installer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: installer/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libxdo-dev
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Tests
+        run: cargo test --locked
+      - name: Packages
+        run: npx --yes @tauri-apps/cli@2 build --bundles deb,rpm
+      - name: Lists no disk on a runner
+        run: |
+          out=$(target/release/zyperos-installer --list)
+          echo "$out"
+          test "$(echo "$out" | tr -d '[:space:]')" = "[]"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: |
+            installer/src-tauri/target/release/bundle/deb/*.deb
+            installer/src-tauri/target/release/bundle/rpm/*.rpm
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: installer/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - name: Tests
+        run: cargo test --locked
+      - name: Portable exe
+        run: cargo build --release --locked
+      - name: Lists no disk on a runner
+        shell: pwsh
+        run: |
+          $out = (& .\target\release\zyperos-installer.exe --list | Out-String)
+          Write-Output $out
+          if (($out -replace '\s', '') -ne '[]') { throw "a disk was listed on the runner" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: installer/src-tauri/target/release/zyperos-installer.exe

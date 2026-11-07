@@ -1,0 +1,8 @@
+# The first start's line and bar. Written by tools/genfirststart.py; edit that.
+# Panel pixels, 640x480 landscape: the bar's box, every pixel bar.png
+# draws. It fills left to right: bar.png's pixels from x to the fill,
+# in its rows only; setup.png's or update.png's everywhere else.
+# Salt & Pepper's pictures here, Beard's in light/, on each theme's ground.
+bar 186 452 268 10
+ground.dark 17 19 16
+ground.light 230 228 218

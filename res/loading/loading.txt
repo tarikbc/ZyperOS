@@ -1,0 +1,35 @@
+# Zyper's loading loop. Written by tools/genloading.py; edit that.
+loop bounce
+frames 12
+fps 12
+# Every frame, in both themes: this size, RGBA, in panel pixels.
+size 120x116
+#
+# Which set: the word in /tmp/zyperos-theme, `light` or `dark`
+# (src/themefile.h). A missing file, or any other word, is light,
+# as the launcher reads it. The frames of a theme are in its dir,
+# under this folder, as zyper-00.png to zyper-11.png.
+#   light  Beard          dir light  ground #e6e4da, Zyper's
+#          focus-small shadow (8 down, 20 blur, ink 18%) is in
+#          the frames: composite them over the still, nothing else.
+#   dark   Salt & Pepper  dir .      ground #111310
+# The ground is the theme's, as the launcher's still has it under
+# its backdrop; it is here for a player that needs a color, and
+# the old 'ground 7 8 12' was the launcher's before the themes.
+# It is not what goes under a frame: see the corner.
+dir.light light
+dir.dark .
+ground.light 230 228 218
+ground.dark 17 19 16
+#
+# Panel pixels, 640x480 landscape, the frame's top-left corner:
+# (504, 528) in the launcher's 1024x768 drawing space, the left edge
+# of the text column, under the words. port_loading_screen() in
+# the launcher (claude/lexend-cards) leaves this 120x116 area free
+# of text and of the cover.
+# The still under it is not flat: it has the cover blurred as a
+# backdrop and the cover lifted, so the splash must copy the
+# still back under the frame before each frame, not fill the
+# area with the ground, which would show as a box.
+x 315
+y 330

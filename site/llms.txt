@@ -1,0 +1,25 @@
+# ZyperOS
+
+> ZyperOS is a fast, light custom firmware (operating system) for the GKD Pixel 2 retro handheld, made by me Caramanico and named after his dog Zyper. It plays forty systems from a microSD card you can take out at any time, plus PortMaster ports, music, audiobooks and videos. The emulator stays running, so a game starts the moment you press A. ZyperOS is in testing on the GKD Pixel 2 and has no release images yet: build the card image from source and write it with ZyperOS Installer (macOS, Windows, Linux) or any disk image writer. It is free, under the PolyForm Shield License 1.0.0.
+
+## Pages
+- [ZyperOS home](https://zyperos.com/): what it does, the screens, the forty systems, how it compares with the stock firmware, ROGUE OS, TortOS, ROCKNIX and plumOS, and how to install it.
+- [Blog](https://zyperos.com/blog/): guides for the GKD Pixel 2 (installing custom firmware, Wi-Fi adapters, adding games, PortMaster, RetroAchievements, box art, Nintendo DS, BIOS files, battery care, music and video) and sourced comparisons of ZyperOS with the other systems for it. Every post is listed under Blog at the end of this file.
+- [Source code on GitHub](https://github.com/tarikbc/ZyperOS): the launcher, the card's scripts, the Diatom emulator frontend, ZyperOS Installer and the tools.
+- [README](https://github.com/tarikbc/ZyperOS#readme): features, install steps, controls, FAQ and the sources behind the comparison.
+- [User guide](https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md): every screen and setting on the device.
+- [Building ZyperOS](https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md): how to build the card image.
+
+## What it does
+- Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers; search and Random Game.
+- A first-start tutorial that teaches each button and asks for the theme, home screen, button sounds and menu music.
+- Box art fetched on the handheld from libretro, ScreenScraper and SteamGridDB, and video previews on the shelf.
+- RetroAchievements, signed in on the device, working offline after the first download.
+- PortMaster ports, Nintendo DS with DSperate or DraStic, OpenBOR, ScummVM.
+- MP4: music, audiobooks and videos, opened with SELECT from anywhere.
+- Wi-Fi and USB File Transfer: a web page on any computer or phone, behind a PIN, with the handheld's own network when there is no Wi-Fi.
+- Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, fast forward and turbo.
+- Light and dark themes. System Update over Wi-Fi turns on once releases are signed.
+
+## Hardware notes
+- The GKD Pixel 2 has no Wi-Fi or Bluetooth of its own. A USB Wi-Fi adapter with a supported Realtek chip (for example the TP-Link TL-WN725N on a USB-C adapter) gives it Wi-Fi while plugged in.

@@ -1,0 +1,26 @@
+FreeJ2ME-Plus's core starts its Java app in retro_init, with two pipes to
+it, and ends the app in retro_deinit, but keeps the parent's ends of the
+pipes open. A frontend that unloads the core between games never notices.
+ZyperOS's Diatom keeps cores loaded and puts this one down with
+retro_deinit after each game, so it would gain two open files with every
+J2ME game. retro_deinit now closes them; the next retro_init opens new ones.
+
+For ZyperOS, mk/build-freej2me.sh applies it; GPL-3.0 as the code it
+changes.
+
+--- a/src/libretro/freej2me_libretro.c
++++ b/src/libretro/freej2me_libretro.c
+@@ -1526,6 +1526,13 @@
+ 		CloseHandle(hProcessSnap);
+ #endif
+ 	}
++#if defined(__linux__) || defined(__APPLE__)
++	/* The parent's ends of the pipes javaOpen made: the next retro_init
++	 * makes two new ones, and a frontend that keeps the core loaded
++	 * between games would gain two open files with every game. */
++	if (pRead[0] > 2) { close(pRead[0]); pRead[0] = -1; }
++	if (pWrite[1] > 2) { close(pWrite[1]); pWrite[1] = -1; }
++#endif
+ }
+ 
+ void retro_reset(void)

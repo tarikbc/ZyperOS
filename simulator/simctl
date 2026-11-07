@@ -1,0 +1,33 @@
+#!/bin/sh
+# SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+# Drive a running ZyperOS Simulator window from a shell: one command, its
+# JSON answer on stdout.
+#
+#   simulator/simctl [-n NAME] state
+#   simulator/simctl [-n NAME] press|release BUTTON[+BUTTON]
+#   simulator/simctl [-n NAME] tap BUTTON[+BUTTON] [MS]
+#   simulator/simctl [-n NAME] battery 0-100 | cable 0|1 | headphones 0|1
+#   simulator/simctl [-n NAME] kind wall|computer   (what the cable is in)
+#
+# cable 1 while the VM is off starts it as a charger plugged into an off
+# Pixel 2 does (tools/qemu-run.sh start --charger): ZyperOS's charging screen.
+#   simulator/simctl [-n NAME] power | shutdown | quit
+#   simulator/simctl [-n NAME] screenshot FILE.png      (the VM's screen)
+#   simulator/simctl [-n NAME] window-shot FILE.png     (the whole device, drawn)
+#   simulator/simctl [-n NAME] wait-frames N
+#
+# NAME is the window's VM, "simulator" unless told (ZYPEROS_QEMU_NAME).
+# Buttons: up down left right a b x y l1 r1 l2 r2 select start menu volup
+# voldown power.
+set -eu
+NAME=${ZYPEROS_QEMU_NAME:-simulator}
+if [ "${1:-}" = -n ]; then NAME=$2; shift 2; fi
+[ $# -gt 0 ] || { sed -n '3,17p' "$0"; exit 1; }
+SOCK=${ZYPEROS_QEMU_HOME:-$HOME/Library/Caches/zyperos-qemu}/$NAME/app.sock
+[ -S "$SOCK" ] || { echo "simctl: no simulator window for $NAME ($SOCK)" >&2; exit 1; }
+# Paths as the window sees them: absolute
+case ${1:-} in
+screenshot | window-shot)
+	case $2 in /*) ;; *) set -- "$1" "$PWD/$2" ;; esac ;;
+esac
+printf '%s\n' "$*" | nc -U "$SOCK"

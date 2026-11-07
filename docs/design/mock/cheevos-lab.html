@@ -1,0 +1,132 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS Achievements Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .stack { display: grid; gap: 8px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 80ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+
+  /* A paused-or-running game under everything: a stand-in frame, not art */
+  .zs .game { position: absolute; inset: 0; background:
+      linear-gradient(180deg, #5c94fc 0 62%, #00a800 62% 66%, #c84c0c 66% 100%); }
+  .zs .game::before { content: ""; position: absolute; left: 180px; top: 300px; width: 120px; height: 160px; background: #e09050; box-shadow: 0 -40px 0 -10px #d82800; }
+  .zs .game::after { content: ""; position: absolute; left: 560px; top: 180px; width: 260px; height: 60px; border-radius: 30px; background: #fcfcfc; box-shadow: 120px 40px 0 -10px #fcfcfc; }
+
+  /* DESIGN.md 11.7: surface at 85%, radius.panel, bottom center; heading in
+   * meta text-dim, body in label text. Padding a third and a sixth of a
+   * menu line, as src/notice.c pads it. */
+  .zs .notice { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%);
+    background: color-mix(in srgb, var(--surface) 85%, transparent); border-radius: 28px;
+    padding: 8px 20px 6px; text-align: center; white-space: nowrap; display: flex; align-items: center; gap: 20px; }
+  .zs .notice .tx { display: grid; }
+  .zs .notice.left .tx { text-align: left; }
+  .zs .notice .h { font-size: 37px; color: var(--text-dim); line-height: 1.25; }
+  .zs .notice .b { font-size: 55px; color: var(--text); line-height: 1.2; }
+  .zs .notice .strip { height: 6px; border-radius: 3px; background: var(--track); margin: 8px 0 6px; position: relative; overflow: hidden; }
+  .zs .notice .strip i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent-ink); }
+  .zs .notice.pill { padding: 6px 22px 6px 8px; gap: 14px; bottom: 40px; }
+  .zs .notice.pill .b { font-size: 49px; }
+
+  /* A badge: 64 px art drawn at the size of the notice's two lines,
+   * radius.row; locked is the same art grey and dim */
+  .zs .badge { flex: none; width: 104px; height: 104px; border-radius: 14px; overflow: hidden; display: block; }
+  .zs .badge.small { width: 64px; height: 64px; border-radius: 10px; }
+  .zs .badge.row { width: 54px; height: 54px; border-radius: 10px; margin-right: 22px; }
+  .zs .badge.big { width: 112px; height: 112px; border-radius: 18px; margin: 0 auto 8px; }
+  .zs .badge.lock { filter: grayscale(1) brightness(.75) contrast(.85); opacity: .7; }
+
+  .zs .mrow .lbl { display: flex; align-items: center; min-width: 0; }
+  .zs .mrow .lbl b { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zs .mrow.got, .zs .mrow.got span { color: var(--accent-ink); }
+  .zs .mrow.sel.got, .zs .mrow.sel.got span { color: var(--on-accent); }
+  .zs .note { text-align: center; font-size: 37px; color: var(--text-dim); }
+  .zs .desc { font-size: 49px; color: var(--text-soft); text-align: center; padding: 0 20px; line-height: 1.25; }
+  .zs .panel h4 small { display: block; font-size: 37px; color: var(--text-dim); }
+</style>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Achievements Lab</b></h1>
+      <p class="zk-lede">What RetroAchievements looks like in a game: the pop-up when one unlocks, a new pop-up for progress ("5 / 10" toward an achievement that counts), and the badges RetroAchievements draws for each one, kept on the card so they work offline. Each option is shown in Beard and in Salt &amp; Pepper.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option:</b> a pop-up is the notice slab DESIGN.md 11.7 already has (surface at 85%, panel corners, bottom center), and pop-ups now wait their turn: two unlocks in a row show one after the other, never one over the other. The badges here are placeholders; the handheld shows RetroAchievements' own 64-pixel art, grey while locked.</div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  /* Placeholder badges: pixel art made here, standing in for RA's */
+  const ART = {
+    star: ["....yy....", "...yyyy...", "yyyyyyyyyy", ".yyyyyyyy.", "..yyyyyy..", "..yyyyyy..", ".yyy..yyy.", ".yy....yy."],
+    coin: ["...oooo...", "..oyyyyo..", ".oyyoyyyo.", ".oyyoyyyo.", ".oyyoyyyo.", ".oyyoyyyo.", "..oyyyyo..", "...oooo..."],
+    flag: [".g........", ".gwwwwww..", ".gwrrwww..", ".gwwwwww..", ".g........", ".g........", ".g........", "ggg......."],
+  };
+  const COL = { y: "#f8d038", o: "#c86c00", w: "#fcfcfc", r: "#d82800", g: "#30302c" };
+  function badge(kind, cls) {
+    const rows = ART[kind], bg = { star: "#2a3a8c", coin: "#1d6b3a", flag: "#8a2c4c" }[kind];
+    let r = "";
+    rows.forEach((line, y) => [...line].forEach((ch, x) => { if (COL[ch]) r += `<rect x="${x + 1}" y="${y + 2}" width="1" height="1" fill="${COL[ch]}"/>`; }));
+    return `<svg class="badge ${cls || ""}" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect width="12" height="12" fill="${bg}"/>${r}</svg>`;
+  }
+  const both = f => () => `<div class="stack">
+      ${ZK.screen("light", f("light"))}<span class="cap">Beard</span>
+      ${ZK.screen("dark", f("dark"))}<span class="cap">Salt &amp; Pepper</span></div>`;
+  const game = `<div class="game"></div>`;
+
+  const unlock = {
+    today: () => game + `<div class="notice"><div class="tx"><span class="h">Unlocked &middot; 10 points</span><span class="b">Mushroom Kingdom Tourist</span></div></div>`,
+    left: () => game + `<div class="notice left">${badge("star")}<div class="tx"><span class="h">Unlocked &middot; 10 points</span><span class="b">Mushroom Kingdom Tourist</span></div></div>`,
+  };
+  const progress = {
+    words: () => game + `<div class="notice">${badge("coin")}<div class="tx" style="text-align:left"><span class="h">Progress &middot; 74 / 100</span><span class="b">Coin Collector</span></div></div>`,
+    strip: () => game + `<div class="notice left">${badge("coin")}<div class="tx"><span class="h">Coin Collector</span><div class="strip"><i style="width:74%"></i></div><span class="h" style="color:var(--text)">74 / 100</span></div></div>`,
+    pill: () => game + `<div class="notice pill">${badge("coin", "small")}<span class="b">74 / 100</span></div>`,
+  };
+  const ROWS = [["star", "Mushroom Kingdom Tourist", "10", 1], ["coin", "Coin Collector", "74 / 100", 0], ["flag", "World 1 Cleared", "5", 1], ["star", "No Damage Run", "25", 0], ["flag", "Warp Zone", "10", 0]];
+  const head = `<h4>Super Mario Bros. 3<small>2 / 36 &middot; 15 / 415 points</small></h4><hr>`;
+  const list = {
+    text: () => game + `<div class="scrim game"></div><div class="panel">${head}${ROWS.map((r, i) =>
+      `<div class="mrow ${r[3] ? "got" : ""} ${i === 1 ? "sel" : ""}"><span class="lbl" style="color:inherit"><b>${r[1]}</b></span><span>${r[2]}</span></div>`).join("")}</div>`,
+    card: () => game + `<div class="scrim game"></div><div class="panel"><h4>Coin Collector</h4><hr>${badge("coin", "big lock")}<div class="desc">Collect 100 coins in one game, without losing a life.</div><hr style="margin-top:12px"><div class="mrow">Progress<span>74 / 100</span></div><div class="mrow">Points<span>10</span></div><div class="mrow">Status<span>not earned</span></div></div>`,
+    rows: () => game + `<div class="scrim game"></div><div class="panel">${head}${ROWS.map((r, i) =>
+      `<div class="mrow ${r[3] ? "got" : ""} ${i === 1 ? "sel" : ""}"><span class="lbl" style="color:inherit">${badge(r[0], "row" + (r[3] ? "" : " lock"))}<b>${r[1]}</b></span><span>${r[2]}</span></div>`).join("")}</div>`,
+  };
+
+  ZK.decisions(document.getElementById("m"), [
+    { key: "unlock", title: "The pop-up when an achievement unlocks",
+      why: "Today it is two lines of text. RetroAchievements gives every achievement a 64-pixel badge; the handheld can fetch them with the set and keep them beside it on the card.",
+      options: {
+        today: { name: "Text only", tag: "today", blurb: "As it is: points on the small line, the name on the large one, both centered. Nothing is fetched.", draw: both(unlock.today) },
+        left: { name: "Badge at the left", tag: "suggested", blurb: "The badge as tall as the two lines, at the left, with the lines left-aligned beside it. The slab grows by the badge's width. A game whose badges are not on the card yet shows today's text-only pop-up.", draw: both(unlock.left) },
+      } },
+    { key: "progress", title: "The pop-up for progress",
+      why: "Some achievements count something (coins, wins, rings). RetroAchievements reports the count as it moves; RetroArch shows a small pop-up. These show at most one every few seconds per achievement, never at 0 and never at the last step (the unlock pop-up says that).",
+      options: {
+        words: { name: "Words", blurb: "The unlock pop-up's shape: the count on the small line, the name on the large one.", draw: both(progress.words) },
+        strip: { name: "Strip", tag: "suggested", blurb: "The name on the small line, a strip in accent-ink (the color DESIGN.md gives the progress strip) and the count under it. Reads at a glance over a moving game.", draw: both(progress.strip) },
+        pill: { name: "Small pill", blurb: "Only the badge and the count, in a pill smaller than a notice. Least in the way; the name is not there.", draw: both(progress.pill) },
+      } },
+    { key: "list", title: "Badges in the achievements list",
+      why: "The list over a paused game (MENU > Cheevos) and its card (A on one). Either way the list now shows the count of an achievement in progress, \"74 / 100\", where its points are.",
+      options: {
+        text: { name: "No badges", tag: "today", blurb: "The list and the card stay text. Earned rows in accent-ink, as now.", draw: both(list.text) },
+        card: { name: "On the card", tag: "suggested", blurb: "The list stays text; the card for one achievement shows its badge large over the description, grey while locked, with its progress.", draw: both(list.card) },
+        rows: { name: "On every row", blurb: "A small badge at the start of each row as well, grey while locked. Easiest to scan; a list of hundreds loads that many images while it scrolls.", draw: both(list.rows) },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-cheevos" });
+})();
+</script>

@@ -1,0 +1,81 @@
+title: Music, Audiobooks and Videos on the GKD Pixel 2
+description: Use the GKD Pixel 2 as a music, audiobook and video player with ZyperOS: folders, formats that play smoothly on its four cores, covers and a screen lock.
+summary: Which video formats play smoothly on its four cores, and how to add albums, books and films.
+crumb: Music and video
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: mp4
+image_alt: MP4's shelf of album covers in ZyperOS
+related: add-games-gkd-pixel-2, gkd-pixel-2-battery-charge-limit, gkd-pixel-2-bios-files
+weight: 75
+---
+<p>The GKD Pixel 2 has a good screen, a speaker, a headphone jack and room for a big card, so it makes a handy music and video player too. ZyperOS has one built in, called MP4, for music, audiobooks and videos. SELECT opens it from anywhere, even from a paused game. This guide shows where files go, which ones play well, and the controls.</p>
+
+<h2>Where files go</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">What</th><th scope="col">Folder</th><th scope="col">Example</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Music</th><td><code>Music/</code>, a folder per artist, one per album</td><td><code>Music/Radiohead/The Bends/01 Planet Telex.mp3</code></td></tr>
+    <tr><th scope="row">Audiobooks</th><td><code>Audiobooks/</code>, a folder per book, an author's folder above it if you like</td><td><code>Audiobooks/Iain M. Banks/The Hydrogen Sonata/</code></td></tr>
+    <tr><th scope="row">Videos</th><td><code>Videos/</code>, a film on its own or a folder per series</td><td><code>Videos/Planet Earth/01 From Pole to Pole.mp4</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p>Send them as you send games: with the card in a computer, or on the File Transfer page over Wi-Fi or the USB cable. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows how.</p>
+<ul>
+  <li>An album folder put straight into <code>Music/</code> moves under its artist when its tags name one. Songs in no folder at all move into <code>Music/Singles/</code>.</li>
+  <li>A book is one M4B file or a folder of MP3s, played in name order.</li>
+  <li>A picture named like a film, <code>Where the Light Is.jpg</code>, is its cover. Otherwise MP4 takes one from the video itself.</li>
+</ul>
+
+<h2>Formats that play</h2>
+<p>Music and books: MP3, M4A, M4B, MP4, AAC, FLAC, Ogg, Opus and WAV.</p>
+<p>Video is where the Pixel 2 needs care. It has no hardware video decoder its Linux can use, so its four CPU cores decode in software:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Video</th><th scope="col">On the Pixel 2</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">H.264 in an .mp4, up to 720p</th><td>Plays smoothly</td></tr>
+    <tr><th scope="row">H.264 at 854x480 or 640x360</th><td>The size to make for its 640x480 screen, at a fraction of the battery</td></tr>
+    <tr><th scope="row">HEVC and VP9</th><td>Play up to about 480p</td></tr>
+    <tr><th scope="row">1080p</th><td>Only just keeps up, and drops frames when the picture moves a lot</td></tr>
+    <tr><th scope="row">AV1</th><td>Does not play</td></tr>
+  </tbody>
+</table>
+</div>
+<p>MKV, WebM, MOV and AVI files play too, if the video inside them is one of those. For a long trip, convert films to H.264 at 854x480: they look as sharp on this screen and the battery lasts much longer.</p>
+
+<h2>The shelf and Now Playing</h2>
+<p>MP4 opens on a shelf of album covers, the way a console opens on its games. <strong>MENU &gt; Show</strong> switches between music, books and videos. <kbd>A</kbd> on an album opens its tracks; <kbd>A</kbd> on a book carries on where you left it.</p>
+<figure class="shot"><img src="/img/nowplaying.png" alt="MP4's Now Playing screen: the album cover, the track, where in it you are and what comes next"><figcaption>Now Playing: the cover, the track and what comes next.</figcaption></figure>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Button</th><th scope="col">On Now Playing</th></tr></thead>
+  <tbody>
+    <tr><th scope="row"><kbd>A</kbd></th><td>Pause or play</td></tr>
+    <tr><th scope="row"><kbd>L1</kbd> / <kbd>R1</kbd></th><td>The previous or next track, or a book's chapter</td></tr>
+    <tr><th scope="row"><kbd>Left</kbd> / <kbd>Right</kbd></th><td>Back or ahead ten seconds; held, a minute a step, then five</td></tr>
+    <tr><th scope="row"><kbd>Y</kbd></th><td>The play mode for music; the speed for a book, 0.75x to 2x</td></tr>
+    <tr><th scope="row"><kbd>SELECT</kbd></th><td>Close MP4; the music keeps playing</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Leave MP4 and the music goes on behind the menus. On the home and a games shelf, <kbd>L2</kbd> and <kbd>R2</kbd> then skip tracks, and Zyper pops up with what plays now. While music plays, a running game is silent; pause the music and the game is heard again.</p>
+<p>On a video, <kbd>Y</kbd> switches between full screen, where the controls show only when you press a button, and a view with the controls always on screen. Every video and every book remembers where you stopped, even through a power-off.</p>
+
+<h2>Lock the screen for a pocket</h2>
+<p>Press <kbd>X</kbd> on any MP4 screen while something plays. With music or a book the screen goes dark, and every button is ignored except the volume keys. On a book, that took about 6 hours of listening to 10. A video stays in sight. Hold <kbd>SELECT</kbd> and <kbd>START</kbd> together for two seconds to unlock.</p>
+
+<h2>Covers</h2>
+<p>An album's cover comes from its own files, or a picture in its folder. For albums with none, or only a small one, <strong>MENU &gt; Album Art</strong> on MP4's shelf fetches a sharper cover over Wi-Fi from MusicBrainz's Cover Art Archive. It needs a USB Wi-Fi adapter on the Pixel 2.</p>
+
+<h2>Headphones</h2>
+<p>Wired headphones in the jack, or a USB-C headphone adapter in the port, take the sound the moment they are plugged in. The Pixel 2 has no Bluetooth, so Bluetooth headphones do not work on it.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#faq">ZyperOS README, FAQ</a>: adding music, audiobooks and videos, the video formats on the Pixel 2, Bluetooth.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#mp4">The ZyperOS user guide, MP4</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#audio">Audio</a>: the shelf, Now Playing, Lock Screen, Album Art, where sound goes.</li>
+</ol>

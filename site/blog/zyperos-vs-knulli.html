@@ -1,0 +1,76 @@
+title: ZyperOS vs Knulli on the GKD Pixel 2
+description: ZyperOS and Knulli on the GKD Pixel 2, from each project's own code, docs and releases: installing, games, box art, achievements, DS, PortMaster and Wi-Fi.
+summary: What Knulli's own pages and releases say about the Pixel 2, beside ZyperOS.
+crumb: ZyperOS vs Knulli
+topic: compare
+published: 2026-11-07
+updated: 2026-11-07
+image: scraper
+image_alt: MENU > Scraper in ZyperOS, with the covers each source found
+related: best-custom-firmware-gkd-pixel-2, zyperos-vs-muos, zyperos-vs-rocknix
+weight: 60
+---
+<p>Knulli is a fork of Batocera for many handhelds, and its May 2026 release lists the GKD Pixel 2 among its stable builds. Its docs cover all its devices at once and have no page for the Pixel 2, so some of what they describe may work differently on this one. This is Knulli beside ZyperOS, from each project's own code, docs and releases as of 7 November 2026, with a dash wherever no source speaks to the Pixel 2.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>Pick Knulli</strong> if you want a released, Batocera-based system with Batocera's frontend and emulators, a scraper with three sources, video previews in its default theme, DraStic for the DS, and built-in menu music.</li>
+  <li><strong>Pick ZyperOS</strong> if you want Wi-Fi tested on the Pixel 2, games sent from any browser or over the USB cable, box art with no account, and battery care. ZyperOS is in testing, with no release images yet.</li>
+</ul>
+
+<h2>Side by side</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">Knulli</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>Buildroot's GPL-2.0-or-later; no license file of Knulli's own</td></tr>
+    <tr><th scope="row">Latest for the Pixel 2</th><td class="us">In testing, no release yet</td><td>20260511 "Scarab" (May 2026), a stable build</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>[unk]</td></tr>
+    <tr><th scope="row">Wi-Fi on the Pixel 2</th><td class="us">[yes: Tested with the TP-Link TL-WN725N] Tested</td><td>[unk]</td></tr>
+    <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi or the handheld's own network] Web page</td><td>[yes: Samba, which you turn on, and SCP or SFTP with SSH; no web page] Samba, SFTP</td></tr>
+    <tr><th scope="row">Games over the USB cable</th><td class="us">[yes: The same web page, and SSH] Web page</td><td>[yes: ADB, for the Pixel 2] ADB</td></tr>
+    <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro with no account, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: ScreenScraper, TheGamesDB and ArcadeDB, over the network] ScreenScraper, TheGamesDB, ArcadeDB</td></tr>
+    <tr><th scope="row">Video previews</th><td class="us">[yes: A cover plays a few seconds of its game] Yes</td><td>[yes: The default theme shows a scraped video in the game list] Yes</td></tr>
+    <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld; offline after a game's first start] Yes</td><td>[yes: Built in, with internet] Yes</td></tr>
+    <tr><th scope="row">Nintendo DS</th><td class="us">DSperate built in, DraStic if you add it</td><td>DraStic (Advanced DraStic) by default, and melonDS</td></tr>
+    <tr><th scope="row">PortMaster</th><td class="us">[yes: Ports run; you set them up with PortMaster on another system] Ports run</td><td>[yes: Installed from its Device Settings, with internet] You install it</td></tr>
+    <tr><th scope="row">Menu music</th><td class="us">[yes: 10 free tracks, or your own] Yes</td><td>[yes: Built in, or your own MP3 and Ogg files] Yes</td></tr>
+    <tr><th scope="row">Rumble</th><td class="us">[yes: Games rumble] Yes</td><td>[yes: The Pixel 2 has the rumble capability in its build] Yes</td></tr>
+    <tr><th scope="row">Side lights</th><td class="us">[yes: Battery, volume, brightness, transfers, achievements] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Charge limit, charging screen</th><td class="us">[yes: A limit of 80, 85 or 90%, and a charging screen while off] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>A boot file for minor updates, a re-flash for major ones</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. Knulli's docs are general, not about the Pixel 2; where its build files name the Pixel 2, the table uses them.</p>
+
+<h2>Installing</h2>
+<p>Knulli's 20260511 release has one file for the Pixel 2, <code>knulli-rk3326-pixel2-scarab-20260510.img.gz</code>, under its stable releases. Knulli's docs say to write it with an imaging tool such as Rufus, balenaEtcher, Raspberry Pi Imager or Win32 Disk Imager. That release needs a fresh write even over an older Knulli card, because its partition table changed. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers the steps.</p>
+
+<h2>Wi-Fi on the Pixel 2</h2>
+<p>This is the open question for Knulli on this handheld. Knulli's networking page, written for all its devices, lists USB Wi-Fi dongles with RTL8192CU or RTL8188EU chips, and recommends the TP-Link TL-WN725N, the same adapter ZyperOS is tested with. But in Knulli's build files the Pixel 2 does not have the Wi-Fi capability, and its Pixel 2 image uses a prebuilt kernel whose drivers the source does not show. So no source we read confirms Wi-Fi on a Pixel 2 running Knulli, and with it the scraper, RetroAchievements, PortMaster downloads and updates over the air.</p>
+<p>ZyperOS loads its driver when the adapter goes in, and is tested on the Pixel 2 with the TL-WN725N. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> has the details.</p>
+
+<h2>Adding games</h2>
+<p>Knulli's docs offer Samba, which you turn on, and SCP or SFTP with its SSH service. They say a web page for file transfer is not supported and not planned. Over the USB cable, Knulli uses ADB, and its build gives the Pixel 2 that capability. ZyperOS opens one web page in any browser, behind a PIN, over Wi-Fi, its own network, or the USB cable. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows it.</p>
+
+<h2>Box art, previews and achievements</h2>
+<p>Knulli's scraper asks ScreenScraper, TheGamesDB and ArcadeDB over the network, and its default theme, Art Book Next, plays a scraped video in the game list. ZyperOS fetches covers from libretro with no account, ScreenScraper and SteamGridDB, and turns a cover into its video snap after a few seconds. Both have RetroAchievements built in; ZyperOS keeps a game's achievements on the card after its first start, so it plays offline.</p>
+
+<h2>DS, PortMaster and music</h2>
+<p>Knulli's RK3326 builds select Advanced DraStic and make DraStic the default for the DS, with melonDS too. PortMaster is not preinstalled: you install it from Knulli's Device Settings, with internet. Knulli has menu music built in, and your own MP3 or Ogg files in its music folder replace it. ZyperOS ships DSperate and runs DraStic if you add it, runs PortMaster ports set up elsewhere, and plays ten free tracks or your own. See <a href="/blog/nintendo-ds-gkd-pixel-2/">the DS guide</a> and <a href="/blog/portmaster-gkd-pixel-2/">the PortMaster guide</a>.</p>
+
+<h2>Updates</h2>
+<p>Knulli's docs describe an update menu, then say there are no update servers yet. A minor update is a boot file you copy over; a major one is a full re-flash. ZyperOS's System Update downloads only what changed over Wi-Fi, into a second slot that rolls back if a new version fails, and turns on once ZyperOS has its release signing key.</p>
+
+<h2>Which one to pick</h2>
+<p>Knulli brings Batocera's breadth and a stable Pixel 2 build, with DraStic, a three-source scraper and video previews. On this handheld, though, Wi-Fi is unconfirmed by any source, and much of Knulli leans on it. ZyperOS is narrower and still in testing, but made for the Pixel 2, with tested Wi-Fi and transfers that also work over the cable. Each is a card, so try both.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li>Knulli at <a href="https://github.com/knulli-cfw/knulli-linux/tree/57afa662009641d181f57241bcc480119b131530">57afa66</a>: <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/README.md">README</a>, <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/COPYING">COPYING</a>, <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/board/fsoverlay/etc/init.d/S02generate-capability">device capabilities</a>, <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/board/rockchip/rk3326/pixel2/create-boot-script.sh">the Pixel 2 boot script</a>, <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/package/system/knulli-system/Config.in">system Config.in</a>, <a href="https://github.com/knulli-cfw/knulli-linux/blob/57afa662009641d181f57241bcc480119b131530/package/system/knulli-configgen/configs/configgen-defaults-rk3326.yml">RK3326 defaults</a>.</li>
+  <li>Knulli release <a href="https://github.com/knulli-cfw/knulli-linux/releases/tag/20260511">20260511</a>.</li>
+  <li>knulli.org at <a href="https://github.com/knulli-cfw/knulli.org/tree/314b26f1822c8531bed8a9cea72028b229b4436e">314b26f</a>: <a href="https://knulli.org/play/install/">Install</a>, <a href="https://knulli.org/play/add-games/network-transfer/">Network transfer</a>, <a href="https://knulli.org/play/add-games/accessing-via-usb/">USB</a>, <a href="https://knulli.org/configure/networking/">Networking</a>, <a href="https://knulli.org/play/scraping/">Scraping</a>, <a href="https://knulli.org/play/retro-achievements/">RetroAchievements</a>, <a href="https://knulli.org/play/update/">Updates</a>, <a href="https://knulli.org/systems/portmaster/">PortMaster</a>, <a href="https://knulli.org/configure/customization/background-music/">Background music</a>, <a href="https://knulli.org/configure/customization/themes/">Themes</a>.</li>
+  <li>ZyperOS: <a href="https://github.com/tarikbc/ZyperOS#readme">the README</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">the user guide</a>.</li>
+</ol>
+<p class="meta">Read on 7 November 2026.</p>

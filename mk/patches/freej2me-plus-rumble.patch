@@ -1,0 +1,20 @@
+FreeJ2ME-Plus's core stops the rumble every frame it has none to play, and
+calls the frontend's rumble function to do it without checking it has one:
+a frontend with no motor (the TrimUI Brick, or Diatom's desktop port) hands
+back none, and the first frame without rumble jumped to address 0. The
+branch that plays a rumble checks; the one that stops it now does too.
+
+For ZyperOS, mk/build-freej2me.sh applies it; GPL-3.0 as the code it
+changes.
+
+--- a/src/libretro/freej2me_libretro.c
++++ b/src/libretro/freej2me_libretro.c
+@@ -1103,7 +1103,7 @@
+ 			rumble.set_rumble_state(0, RETRO_RUMBLE_WEAK,  rumbleStrength);
+ 			rumbleTime -= 1000 / DEFAULT_FPS;
+ 		}
+-		else
++		else if (rumble.set_rumble_state)
+ 		{
+ 			rumble.set_rumble_state(0, RETRO_RUMBLE_STRONG, 0);
+ 			rumble.set_rumble_state(0, RETRO_RUMBLE_WEAK, 0);

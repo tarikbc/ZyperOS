@@ -1,0 +1,69 @@
+title: GKD Pixel 2 Wi-Fi: Which USB Adapter Works
+description: The GKD Pixel 2 has no Wi-Fi of its own. Which USB Wi-Fi adapter to buy for ZyperOS, how to plug it in, what it unlocks, and which chips do not work.
+summary: The Pixel 2 has no Wi-Fi. A Realtek USB adapter in the USB-C port adds it, and the TP-Link TL-WN725N is tested.
+crumb: Wi-Fi adapter
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: hotspot
+image_alt: Wi-Fi File Transfer as the handheld's own network: a QR code, the network's name, its password and the PIN
+related: add-games-gkd-pixel-2, box-art-gkd-pixel-2, retroachievements-gkd-pixel-2
+weight: 25
+---
+<p>The GKD Pixel 2 has no Wi-Fi radio and no Bluetooth. What it has is a USB-C port that can host a device, so a small USB Wi-Fi adapter gives it Wi-Fi while it is plugged in. On ZyperOS that unlocks box art, RetroAchievements and Wi-Fi File Transfer. This guide says which adapter to get, and which chips will not work.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>Get a TP-Link TL-WN725N</strong>, hardware version 2 or 3. Its chip is the Realtek RTL8188EUS. It is the adapter ZyperOS is tested with, and the only kind that can also make the handheld's own network.</li>
+  <li><strong>Add a small USB-A to USB-C adapter</strong>, since the TL-WN725N has a USB-A plug and the Pixel 2 has a USB-C port.</li>
+  <li><strong>It is 2.4 GHz only</strong>, 802.11n up to 150 Mbps. That is plenty for covers, achievements and moving games.</li>
+</ul>
+
+<h2>Why the chip matters</h2>
+<p>A Wi-Fi adapter works only if the system has a driver for its chip, and an adapter's box rarely names the chip. ZyperOS's Linux, plastron, keeps its kernel small, and carries two Wi-Fi drivers:</p>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">Driver</th><th scope="col">Chips</th><th scope="col">On ZyperOS</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Realtek's own 8188eu</th><td>RTL8188EU and RTL8188EUS, such as the TL-WN725N v2 and v3</td><td>[yes: Tested with the TL-WN725N] Joins networks, and can be the handheld's own network</td></tr>
+    <tr><th scope="row">The kernel's rtl8xxxu</th><td>Other Realtek 802.11n chips it drives, such as the RTL8188FU, RTL8192EU, RTL8723BU and RTL8192FU</td><td>[yes: Should work; not tested by us] Joins networks; not tested by us</td></tr>
+    <tr><th scope="row">None</th><td>Realtek 802.11ac chips (RTL8811AU, RTL8812AU, RTL8821CU, RTL8822BU and others), and MediaTek, Atheros and Intel chips</td><td>[no: No driver in ZyperOS's kernel] No driver</td></tr>
+  </tbody>
+</table>
+</div>
+<p>So skip the dual-band "AC" adapters: most use the 802.11ac chips in the last row, which need the kernel's rtw88 drivers, and ZyperOS's kernel does not have them.</p>
+<p>The TL-WN725N's chip goes to Realtek's own driver, not the kernel's, because the kernel's driver can only join a network. Realtek's can also be an access point, which Wi-Fi File Transfer uses when no network is around.</p>
+<p class="note">TP-Link has sold several hardware versions of the TL-WN725N. Its support page lists V1 to V4.60, and offers Linux drivers for V3 but only a Windows driver for V4.60. We have tested V2 and V3. If the box says another version, it may carry another chip.</p>
+
+<h2>Plug it in</h2>
+<ol>
+  <li>Put the adapter in a USB-A to USB-C adapter, and that in the Pixel 2's USB-C port.</li>
+  <li>ZyperOS loads its driver when it is plugged in. The Wi-Fi rows appear in MENU: Wi-Fi, Cheevos and Wi-Fi File Transfer.</li>
+  <li>Open <strong>MENU &gt; Wi-Fi</strong>, pick your network and type its password. The handheld remembers it, on the card, and joins it again next time.</li>
+</ol>
+<p>Each time Wi-Fi connects, ZyperOS sets the clock from the network. Without an adapter, set the time once in <strong>MENU &gt; Date &amp; Time</strong>.</p>
+
+<h2>One port, two jobs</h2>
+<p>The Pixel 2 has one USB-C port, and it is also where it charges and where a computer connects. So while the Wi-Fi adapter is in, the port is not free for a charger or a computer, and USB File Transfer waits for the cable. ZyperOS shows this plainly: on a card with no games, the way that cannot start now is dimmed and says why, and it lights up when you plug in or unplug.</p>
+<p>Without an adapter, USB File Transfer moves games over the cable with no Wi-Fi at all. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows both.</p>
+
+<h2>What Wi-Fi unlocks</h2>
+<ul>
+  <li><strong><a href="/blog/box-art-gkd-pixel-2/">Box art and video snaps</a></strong>, fetched on the handheld.</li>
+  <li><strong><a href="/blog/retroachievements-gkd-pixel-2/">RetroAchievements</a></strong>: the sign-in, and each game's first start.</li>
+  <li><strong>Wi-Fi File Transfer</strong> from any browser, and with no network around, the handheld's own network.</li>
+  <li><strong>Album Art</strong> for MP4, and the clock set from the network.</li>
+</ul>
+
+<h2>The handheld's own network</h2>
+<p>With the TL-WN725N in and no network joined, <strong>MENU &gt; Wi-Fi File Transfer</strong> makes the handheld a Wi-Fi network for as long as its screen is open. It shows a QR code, the network's name and password, and the PIN. Your phone joins by the code, and the transfer page opens by itself.</p>
+<figure class="shot small"><img src="/img/hotspot.png" alt="Wi-Fi File Transfer as the handheld's own network: a QR code, the network's name ZyperOS-7A2B, its password and the PIN"><figcaption>No network around: the handheld makes its own.</figcaption></figure>
+<p>An adapter whose driver cannot be an access point shows <em>Could not start the hotspot</em>. It can still join a normal network.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#install">ZyperOS README, Install</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#wi-fi-file-transfer-with-no-network">the user guide, Wi-Fi File Transfer with no network</a>: the adapter, the shared port, the hotspot.</li>
+  <li>plastron at <a href="https://github.com/tarikbc/plastron/tree/8e8aeea6e856bacdb64af0b15625ee208fd8663c">8e8aeea</a>: <code>buildroot/board/px2/linux.config</code> (rtl8xxxu on, rtw88 off), <code>buildroot/board/zyperos/rootfs-overlay/etc/modprobe.d/rtl8188eu.conf</code> (RTL8188EU adapters to Realtek's 8188eu, for the access point).</li>
+  <li>Linux kernel, <a href="https://github.com/torvalds/linux/blob/d48723711bae9b8cdc56719c448ba42fef28cbee/drivers/net/wireless/realtek/rtl8xxxu/Kconfig">rtl8xxxu's Kconfig</a> and <a href="https://github.com/torvalds/linux/blob/d48723711bae9b8cdc56719c448ba42fef28cbee/drivers/net/wireless/realtek/rtl8xxxu/core.c#L8015-L8106">its tested device table</a> and <a href="https://github.com/torvalds/linux/blob/d48723711bae9b8cdc56719c448ba42fef28cbee/drivers/net/wireless/realtek/rtw88/Kconfig">rtw88's Kconfig</a>: which chips each driver covers.</li>
+  <li>TP-Link: <a href="https://www.tp-link.com/us/home-networking/adapter/tl-wn725n/">the TL-WN725N's specifications</a> (2.4 GHz, up to 150 Mbps) and <a href="https://www.tp-link.com/us/support/download/tl-wn725n/">its support page</a> (hardware versions and their drivers), read 7 November 2026.</li>
+</ol>

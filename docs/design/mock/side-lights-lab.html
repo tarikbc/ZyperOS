@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Side lights lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .pair { display: grid; gap: 10px; }
+
+  /* ---- the side of the handheld: MENU, POWER and the four lights -------- */
+  .stage { display: flex; gap: 14px; align-items: stretch; background: #0d0f0e; border: 1px solid var(--zk-line); border-radius: 12px; padding: 12px; min-width: 0; }
+  .stage .screens { display: grid; gap: 8px; flex: 1; min-width: 0; align-content: start; }
+  .stage .side { flex: none; width: 74px; display: grid; justify-items: center; align-content: start; gap: 8px; }
+  .stage .side svg { width: 74px; height: auto; display: block; }
+  .say { font: 12px/1.35 var(--zk-f-mono); color: var(--zk-ink-2); min-height: 2.7em; text-align: center; }
+  .stage.wide { flex-direction: row; align-items: center; justify-content: center; gap: 22px; }
+  .stage.wide .say { text-align: left; min-width: 0; flex: 1; }
+  .lens-off { fill: #4f6b35; }
+  .glow { opacity: 0; transition: opacity 40ms linear; }
+  .glow.on { opacity: 1; }
+  .play { align-self: flex-start; }
+  .zs .barslot { position: absolute; inset: 0; opacity: 0; }
+  .zs .dark { position: absolute; inset: 0; background: #000; opacity: 0; }
+
+  /* ---- the try-it panel ----------------------------------------------- */
+  .try { margin-top: 26px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; padding: 18px; border: 1px solid var(--zk-line); border-radius: 14px; background: var(--zk-page-2); }
+  .try .side svg { width: 110px; height: auto; display: block; }
+  .try h2 { margin: 0 0 4px; }
+  .try .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .try .btns .zk-btn[aria-pressed="true"] { background: var(--zk-ink); color: var(--zk-page); border-color: var(--zk-ink); }
+  .try label.batt { display: flex; align-items: center; gap: 10px; margin-top: 12px; font: 13px var(--zk-f-mono); color: var(--zk-ink-2); flex-wrap: wrap; }
+  .try input[type=range] { width: min(260px, 100%); accent-color: var(--zk-hi); }
+  .try .now { font: 13px/1.5 var(--zk-f-mono); color: var(--zk-ink-2); margin-top: 12px; min-height: 3em; }
+  .try .uses { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin-top: 8px; }
+  @media (max-width: 560px) { .try { grid-template-columns: 1fr; justify-items: start; } .try .side svg { width: 84px; } }
+  @media (prefers-reduced-motion: reduce) { .glow { transition: none; } }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Side lights <b>lab</b></h1>
+      <p class="zk-lede">The four lights under POWER can be lit one by one, so they can show more than the battery. Each section below plays an option on a drawing of the Pixel 2's right side, top to bottom as on the device. Press Play, pick one option in each section, and add a note if you want a change. The panel under this text lets you try every pattern together, with your picks.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>On or off, nothing between.</b> The lights are GPIO pins with no brightness. The bottom light is red, green, or both at once, which the simulator draws amber; how amber it looks on the device is still to be checked.</li>
+      <li><b>The low-battery flash is never hidden</b> unless the low-battery part is turned off. The red light shows through every new pattern.</li>
+      <li><b>L2+R2</b> still flashes the battery level over everything, in every setting.</li>
+      <li><b>No cost to games.</b> The gauge sleeps until something happens; a pattern is a few wakes of a small program of its own. The launcher sends one short line to the gauge and never waits for it. Diatom does nothing new, so a game loses no frames.</li>
+      <li><b>Where:</b> volume and brightness in menus and in games (ports too), the game light for every game the launcher starts, Done for File Transfer (USB and Wi-Fi) and the Scraper.</li>
+    </ul>
+  </div>
+
+  <section class="try" aria-labelledby="try-h">
+    <div class="side" id="try-side"></div>
+    <div style="min-width:0">
+      <h2 class="zk-h2" id="try-h">Try it</h2>
+      <p class="zk-why">Press the buttons as you would on the handheld. The lights follow your picks below; a section with no pick uses its suggested option.</p>
+      <div class="btns" role="group" aria-label="Buttons">
+        <button type="button" class="zk-btn" id="t-voldn">VOL−</button>
+        <button type="button" class="zk-btn" id="t-volup">VOL+</button>
+        <button type="button" class="zk-btn" id="t-brdn">MENU + VOL−</button>
+        <button type="button" class="zk-btn" id="t-brup">MENU + VOL+</button>
+        <button type="button" class="zk-btn" id="t-l2r2">L2 + R2</button>
+      </div>
+      <div class="btns" role="group" aria-label="Things that happen">
+        <button type="button" class="zk-btn" id="t-game" aria-pressed="false">Playing a game</button>
+        <button type="button" class="zk-btn" id="t-done">Files arrive</button>
+        <button type="button" class="zk-btn" id="t-cheer">Achievement</button>
+        <button type="button" class="zk-btn" id="t-cable" aria-pressed="false">Cable in</button>
+        <button type="button" class="zk-btn" id="t-limit" aria-pressed="false">Held at the charge limit</button>
+        <button type="button" class="zk-btn" id="t-dark" aria-pressed="false">Screen dark</button>
+      </div>
+      <label class="batt" for="t-pct">Battery <input type="range" id="t-pct" min="1" max="100" value="62"> <span id="t-pctv">62%</span></label>
+      <p class="now" id="t-now"></p>
+      <p class="uses" id="t-uses"></p>
+    </div>
+  </section>
+
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* ======================================================================
+   * The lights. Bit 0 is battery0 (the bottom light's red), bit 1 battery1
+   * (its green), bits 2 to 4 the three green lights above it, as plastron's
+   * gauge numbers them.
+   * ==================================================================== */
+  const RED = 1, G1 = 2;
+  const greens = n => { let b = 0; for (let i = 0; i < n && i < 4; i++) b |= G1 << i; return b; };
+  const dot = i => G1 << i;   /* one green light, 0 the bottom one */
+
+  /* The right side, MENU and POWER over the four lenses: id names the
+   * drawing so its glows can be found */
+  let sides = 0;
+  function side() {
+    const id = "sd" + (++sides);
+    const lens = (i, y) => {
+      const glow = (cls, col) => `<circle class="glow ${cls}" data-i="${i}" cx="37" cy="${y}" r="8.5" fill="${col}" filter="url(#${id}-b)"/><circle class="glow ${cls}" data-i="${i}" cx="37" cy="${y}" r="5.6" fill="${col}"/>`;
+      return `<circle class="lens-off" cx="37" cy="${y}" r="5.6"/>` +
+        (i === 0 ? glow("r", "#ff4a3a") + glow("g", "#86ff4f") + glow("a", "#ffb02a") : glow("g", "#86ff4f"));
+    };
+    return `<svg viewBox="0 0 74 260" role="img" aria-label="The side lights" data-side="${id}">
+      <defs><linearGradient id="${id}-body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#86a23c"/><stop offset=".45" stop-color="#b0c967"/><stop offset="1" stop-color="#9cb849"/></linearGradient>
+      <filter id="${id}-b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="4"/></filter></defs>
+      <rect x="9" y="2" width="56" height="256" rx="18" fill="url(#${id}-body)"/>
+      <circle cx="37" cy="30" r="12" fill="#343638"/><circle cx="37" cy="25.5" r="1.4" fill="#9a9d9f"/><circle cx="37" cy="30" r="1.4" fill="#9a9d9f"/><circle cx="37" cy="34.5" r="1.4" fill="#9a9d9f"/>
+      <rect x="22" y="70" width="30" height="11" rx="5.5" fill="#343638" transform="rotate(-45 37 75.5)"/>
+      <text x="37" y="104" text-anchor="middle" font-size="7" font-family="IBM Plex Mono, monospace" fill="#5d7a2a">POWER</text>
+      ${lens(4, 126)}${lens(3, 156)}${lens(2, 186)}${lens(0, 216)}
+    </svg>`;
+  }
+  /* Show `bits` on one drawing */
+  function paint(svg, bits) {
+    svg.querySelectorAll(".glow").forEach(g => {
+      const i = +g.dataset.i;
+      let on;
+      if (i === 0) {
+        const r = bits & RED, gr = bits & G1;
+        on = g.classList.contains("a") ? (r && gr) : g.classList.contains("r") ? (r && !gr) : (gr && !r);
+      } else on = bits & (1 << i);
+      g.classList.toggle("on", !!on);
+    });
+  }
+
+  /* ======================================================================
+   * The model: what the gauge shows at `now` (ms), from the setting `c` and
+   * the state `s`. plastron's gauge gets the same rules in C, as a pure
+   * function with host checks; this is the page's copy.
+   * ==================================================================== */
+  const HOLD_BAR = ZK.T.motion ? (ZK.T.motion["hold-bar"] || {}).ms || 1500 : 1500;
+  const STEP_MS = 400, ASK_MS = 2000;
+
+  /* A pattern's lights `t` ms after it began, or -1 once it is over */
+  function pattern(kind, t, c, e) {
+    const P = c.pace;
+    if (kind === "level") {
+      if (t > (e.last - e.at) + HOLD_BAR) return -1;
+      const v = e.val, max = e.max;
+      if (v <= 0 && e.vol) return RED;
+      if (c.level === "eighth") {
+        const n = Math.max(1, Math.ceil(8 * v / max)), full = n >> 1, half = n & 1;
+        return greens(full) | (half && (t % 500) < 250 ? dot(full) : 0);
+      }
+      return greens(Math.max(1, Math.ceil(4 * v / max)));
+    }
+    if (kind === "done") {
+      if (c.done === "climb") { const k = Math.floor(t / P); return k < 8 ? dot(k % 4) : -1; }
+      if (c.done === "bounce") { const k = Math.floor(t / P), seq = [0, 1, 2, 3, 2, 1, 0]; return k < 7 ? dot(seq[k]) : -1; }
+      if (c.done === "fill") {
+        const k = Math.floor(t / P);
+        if (k < 4) return greens(k + 1);
+        const f = Math.floor((k - 4) / 2);   /* then on, off, on, off in two steps each */
+        return f < 4 ? (f % 2 ? 0 : greens(4)) : -1;
+      }
+      return -1;
+    }
+    if (kind === "cheer") {
+      if (c.cheer === "done") return pattern("done", t, c, e);
+      const k = Math.floor(t / (P * 1.5));
+      return k < 6 ? (k % 2 ? dot(1) | dot(3) : dot(0) | dot(2)) : -1;
+    }
+    if (kind === "sweep") { const k = Math.floor(t / P); return k < 4 ? greens(k + 1) : k < 6 ? greens(4) : -1; }
+    return -1;
+  }
+
+  /* The charging bar: the lights held for each full quarter, then one more
+   * each STEP_MS up to all four; still when full, and still (c.limit) when
+   * the charger holds the battery at the limit or (c.barPlay) in a game */
+  function chargeBar(c, s, now) {
+    const held = s.pct >= 100 ? 4 : Math.floor(s.pct / 25);
+    if (held >= 4) return greens(4);
+    const still = (s.limit && c.limit === "still") || (s.game && c.barPlay === "still");
+    if (still) return greens(Math.max(1, held));
+    const steps = 4 - held + 1;
+    return greens(held + Math.floor((now - s.barAt) / STEP_MS) % steps);
+  }
+
+  function levelBits(pct) {
+    if (pct >= 75) return greens(4);
+    if (pct >= 50) return greens(3);
+    if (pct >= 25) return greens(2);
+    if (pct >= 10) return greens(1);
+    return RED;
+  }
+
+  /* The red flash: under 10% off the cable, once every 5 s for 200 ms; with
+   * "stages" under 5% twice every 2 s; with "warn" three quick flashes the
+   * moment it falls under 10% and under 5% */
+  function lowRed(c, s, now) {
+    if (s.plugged || !c.low || s.pct >= 10) return false;
+    const t = now - s.lowAt;
+    if (c.lowStyle === "warn" && t < 900 && (t % 300) < 150) return true;
+    if (c.lowStyle !== "today" && s.pct < 5) { const u = t % 2000; return u < 150 || (u >= 300 && u < 450); }
+    return (t % 5000) < 200;
+  }
+
+  function frame(c, s, now) {
+    let bits = 0;
+    const barOn = s.plugged && c.bar && !(s.game && c.barPlay === "dark");
+    if (barOn) bits = chargeBar(c, s, now);
+    else if (s.game && c.game === "steady") bits = dot(3);
+    else if (s.game && c.game === "beat") bits = (now - s.gameAt) % 4000 < 90 ? dot(3) : 0;
+
+    /* The newest event over the base, unless the battery comes first and
+     * the bar is up */
+    const e = s.ev;
+    if (e && !(barOn && c.mix === "battery")) {
+      const b = pattern(e.kind, now - e.at, c, e);
+      if (b < 0) s.ev = null; else bits = b;
+    }
+    if (s.askAt >= 0) {
+      const t = now - s.askAt;
+      if (t < ASK_MS) bits = Math.floor(t / 250) % 2 ? 0 : levelBits(s.pct); else s.askAt = -1;
+    }
+    if (lowRed(c, s, now)) bits |= RED;
+    return bits;
+  }
+
+  /* An event the launcher sends, as the gauge would take it: whether the
+   * setting shows it at all */
+  function send(c, s, kind, now, o = {}) {
+    if (kind === "level") {
+      if (c.level === "off" || (c.level === "dark" && !s.dark)) return;
+      if (s.ev && s.ev.kind === "level" && s.ev.vol === o.vol) Object.assign(s.ev, { val: o.val, max: o.max, last: now });
+      else s.ev = { kind, at: now, last: now, val: o.val, max: o.max, vol: o.vol };
+      return;
+    }
+    if (kind === "done" && c.done === "off") return;
+    if (kind === "cheer" && c.cheer === "off") return;
+    s.ev = { kind, at: now };
+  }
+  function setGame(c, s, on, now) {
+    if (s.game === on) return;
+    s.game = on; s.gameAt = now;
+    if (on && c.game === "start") s.ev = { kind: "sweep", at: now };
+  }
+  function setPct(s, pct, now) {
+    const was = s.pct;
+    s.pct = pct;
+    if ((was >= 10 && pct < 10) || (was >= 5 && pct < 5)) s.lowAt = now;
+  }
+  function setPlugged(s, on, now) { if (s.plugged !== on) { s.plugged = on; s.barAt = now; s.lowAt = now; } }
+  const fresh = (o = {}) => Object.assign({ pct: 62, plugged: false, limit: false, game: false, gameAt: 0, barAt: 0, lowAt: -100000, ev: null, askAt: -1, dark: false }, o);
+
+  /* The settings each option stands for, over these defaults (the
+   * suggested option in every section) */
+  const DEFAULT = { bar: true, low: true, level: "quarter", game: "steady", done: "climb", cheer: "sparkle", pace: 100, lowStyle: "stages", mix: "top", barPlay: "still", limit: "still" };
+
+  /* ======================================================================
+   * Playing a scenario on a card: steps [ms, f(s, t, say)] and a length
+   * ==================================================================== */
+  const live = new Map();
+  function playOn(card, cfg, steps, len, hooks = {}) {
+    const old = live.get(card);
+    if (old) old.stop = true;
+    const run = { stop: false };
+    live.set(card, run);
+    const c = Object.assign({}, DEFAULT, cfg), s = fresh(hooks.state || {});
+    const svgs = [...card.querySelectorAll("svg[data-side]")], says = [...card.querySelectorAll(".say")];
+    const say = t => says.forEach(e => (e.textContent = t));
+    const t0 = performance.now();
+    let i = 0;
+    if (hooks.start) hooks.start(card, s);
+    function tick() {
+      if (run.stop) return;
+      const now = performance.now() - t0;
+      while (i < steps.length && steps[i][0] <= now) steps[i++][1](s, steps[i - 1][0], say, c);
+      const bits = frame(c, s, now);
+      svgs.forEach(v => paint(v, bits));
+      if (hooks.each) hooks.each(card, s, now);
+      if (now < len) requestAnimationFrame(tick);
+      else { svgs.forEach(v => paint(v, 0)); say("Press Play to see it again."); if (hooks.end) hooks.end(card); }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* Presses `n` of one level key, `every` ms apart, from `from` */
+  function presses(at, n, every, from, dir, max, vol) {
+    const out = [];
+    for (let k = 1; k <= n; k++) {
+      const val = Math.max(0, Math.min(max, from + dir * k));
+      out.push([at + (k - 1) * every, (s, t, say, c) => {
+        send(c, s, "level", t, { val, max, vol });
+        s.shown = { val, max, vol, at: t };
+        say(`${vol ? (dir > 0 ? "VOL+" : "VOL−") : (dir > 0 ? "MENU + VOL+" : "MENU + VOL−")} · ${vol ? "volume" : "brightness"} ${val} of ${max}`);
+      }]);
+    }
+    return out;
+  }
+
+  /* The screens beside the lights: the shelf with the bar, in both themes */
+  const SHOTS = th => ZK.shelf(th, {}) + `<div class="barslot">${ZK.bar(th, "volume", 6, 20)}</div><div class="dark"></div>`;
+  const stage = (screens) => `<div class="stage"><div class="side">${side()}<div class="say">Press Play.</div></div>${screens ? `<div class="screens">${ZK.screen("light", SHOTS("light"))}<span class="cap">Beard</span>${ZK.screen("dark", SHOTS("dark"))}<span class="cap">Salt &amp; Pepper</span></div>` : ""}</div>`;
+  const lone = () => `<div class="stage wide"><div class="side">${side()}</div><div class="say">Press Play.</div></div>`;
+  const playBtn = (id) => `<button type="button" class="zk-btn play" data-play="${id}">Play</button>`;
+
+  /* The screens follow the bar: drawn at its level while it holds */
+  const screenHooks = {
+    each(card, s, now) {
+      card.querySelectorAll(".zs").forEach(sc => {
+        const slot = sc.querySelector(".barslot"), dk = sc.querySelector(".dark");
+        const sh = s.shown, up = sh && now - sh.at < HOLD_BAR;
+        if (sh && slot.dataset.v !== `${sh.vol}:${sh.val}`) {
+          slot.innerHTML = ZK.bar(sc.dataset.theme, sh.vol ? "volume" : "brightness", sh.val, sh.max);
+          slot.dataset.v = `${sh.vol}:${sh.val}`;
+        }
+        slot.style.opacity = up && !s.dark ? 1 : 0;
+        dk.style.opacity = s.dark ? .92 : 0;
+      });
+    },
+    end(card) { card.querySelectorAll(".zs .barslot").forEach(e => (e.style.opacity = 0)); card.querySelectorAll(".zs .dark").forEach(e => (e.style.opacity = 0)); },
+  };
+
+  /* ---- the scenarios ------------------------------------------------------ */
+  const SC = {
+    level: [
+      ...presses(400, 6, 160, 6, 1, 20, true),
+      ...presses(3600, 12, 130, 12, -1, 20, true),
+      ...presses(7200, 5, 200, 4, 1, 11, false),
+    ],
+    levelDark: [
+      [0, (s, t, say) => say("Screen on: the bar shows on the screen.")],
+      ...presses(500, 5, 160, 6, 1, 20, true),
+      [3000, (s, t, say) => { s.dark = true; say("MP4 lock, screen dark."); }],
+      ...presses(3800, 6, 160, 11, -1, 20, true),
+    ],
+    game: [
+      [0, (s, t, say) => say("On the shelf.")],
+      [1200, (s, t, say, c) => { setGame(c, s, true, t); say("A: Chrono Trigger starts."); }],
+      [3500, (s, t, say) => say("Playing…")],
+      [10500, (s, t, say, c) => { setGame(c, s, false, t); say("MENU > Quit: back on the shelf."); }],
+    ],
+    done: [
+      [0, (s, t, say) => say("File Transfer: receiving 3 files…")],
+      [1500, (s, t, say, c) => { send(c, s, "done", t); say("File Transfer: 3 files arrived."); }],
+      [4500, (s, t, say) => say("Scraper: fetching covers…")],
+      [6000, (s, t, say, c) => { send(c, s, "done", t); say("Scraper: 42 covers fetched."); }],
+    ],
+    cheer: [
+      [0, (s, t, say, c) => { setGame(c, s, true, -99999); say("Playing Super Metroid…"); }],
+      [1500, (s, t, say, c) => { send(c, s, "cheer", t); say("Achievement unlocked: Ice Beam."); }],
+      [5000, (s, t, say, c) => { send(c, s, "cheer", t); say("Achievement unlocked: Speed Booster."); }],
+    ],
+    low: [
+      [0, (s, t, say) => { s.pct = 11; say("11%, on the battery."); }],
+      [800, (s, t, say) => { setPct(s, 9, t); say("9%: under 10%."); }],
+      [7800, (s, t, say) => { setPct(s, 4, t); say("4%: under 5%."); }],
+    ],
+    mix: [
+      [0, (s, t, say) => { setPlugged(s, true, t); s.pct = 40; say("On the cable at 40%: the charging bar."); }],
+      ...presses(2600, 4, 160, 8, 1, 20, true),
+      [5200, (s, t, say, c) => { send(c, s, "done", t); say("File Transfer: 12 files arrived."); }],
+      [8000, (s, t, say) => { setPlugged(s, false, t); s.pct = 9; s.lowAt = t; say("Cable out, at 9%."); }],
+      ...presses(9600, 3, 180, 11, -1, 20, true),
+      [12400, (s, t, say) => { s.askAt = t; say("L2 + R2: the battery level."); }],
+    ],
+    barPlay: [
+      [0, (s, t, say) => { setPlugged(s, true, t); s.pct = 30; say("On the cable at 30%, on the shelf."); }],
+      [2500, (s, t, say, c) => { setGame(c, s, true, t); say("A game starts."); }],
+      [9500, (s, t, say, c) => { setGame(c, s, false, t); say("Back on the shelf."); }],
+    ],
+    limit: [
+      [0, (s, t, say) => { setPlugged(s, true, t); s.pct = 85; s.limit = true; say("On the cable, held at 85% (Charge Limit 85%)."); }],
+    ],
+  };
+
+  document.getElementById("board").addEventListener("click", e => {
+    const b = e.target.closest("[data-play]");
+    if (!b) return;
+    const card = b.closest(".zk-card"), [key, opt] = b.dataset.play.split(":");
+    const d = list.find(x => x.key === key), op = d && d.options[opt];
+    if (!op || !op.play) return;
+    op.play(card);
+  });
+
+  /* ---- MENU pictures --------------------------------------------------------- */
+  const both = (draw) => `<div class="pair">${ZK.screen("light", draw("light"))}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"))}<span class="cap">Salt &amp; Pepper</span></div>`;
+  const MAIN = v => [["Auto Off", "5 min"], ["Charge Limit", "Off"], ["Side Lights", v], ["Home Screen", "Spotlight"], ["Battery Icon", "Bars"]];
+  const PAGE = (on) => [["Charging Bar", on[0]], ["Low Battery", on[1]], ["Volume and Brightness", on[2]], ["While Playing", on[3]], ["Files and Covers Done", on[4]], ["Achievements", on[5]]];
+  const menuMain = v => both(th => ZK.shelf(th, {}) + ZK.menu(th, { rows: MAIN(v), sel: 2, more: true }));
+  const menuPage = (on, sel = 2) => both(th => ZK.shelf(th, {}) + ZK.menu(th, { heading: "Side Lights", rows: PAGE(on), sel }));
+  const ALL = ["On", "On", "On", "On", "On", "On"];
+
+  /* ======================================================================
+   * The decisions
+   * ==================================================================== */
+  const list = [
+    { key: "level", title: "Volume and brightness on the lights",
+      why: "While you change the volume (VOL+/VOL−) or the brightness (MENU with VOL+/VOL−), the lights show the level, and stay lit as long as the screen's bar does (1.5 s after the last press). Volume at 0 lights the bottom one red. Play shows the volume going up, down to silence, then the brightness up.",
+      options: {
+        quarter: { name: "A bar of four", tag: "suggested", blurb: "Each light is a quarter: one light for 1 to 5 of 20, all four for 16 to 20. Easy to read from the corner of an eye.",
+          draw: () => stage(true) + playBtn("level:quarter"), play: card => playOn(card, { level: "quarter" }, SC.level, 9800, screenHooks) },
+        eighth: { name: "Eight steps, a half blinks", blurb: "Twice as fine: a light that blinks is half a quarter. Closer to the 20 steps of the screen's bar, but busier.",
+          draw: () => stage(true) + playBtn("level:eighth"), play: card => playOn(card, { level: "eighth" }, SC.level, 9800, screenHooks) },
+        dark: { name: "Only when the screen is dark", blurb: "With the screen on, the screen's bar is enough and the lights stay dark. With the screen dark (MP4's lock, the dark shelf on the charger), the lights are the only way to see the level.",
+          draw: () => stage(true) + playBtn("level:dark"), play: card => playOn(card, { level: "dark" }, SC.levelDark, 7200, screenHooks) },
+        off: { name: "Not on the lights", blurb: "As today: the level only on the screen.",
+          draw: () => stage(true) + playBtn("level:off"), play: card => playOn(card, { level: "off" }, SC.level, 9800, screenHooks) },
+      } },
+
+    { key: "game", title: "A light while a game runs",
+      why: "From the moment a game starts until it ends, ports and standalone emulators too. The top light, so it never reads as the battery bar, which fills from the bottom. Play starts a game at 1.2 s and quits it at 10.5 s.",
+      options: {
+        steady: { name: "The top light on", tag: "suggested", blurb: "Steady while you play, like a power light. It costs the gauge no wake at all, and the light itself a few milliamps.",
+          draw: () => lone() + playBtn("game:steady"), play: card => playOn(card, { game: "steady" }, SC.game, 12500) },
+        beat: { name: "A heartbeat", blurb: "The top light blinks once, 90 ms, every 4 seconds. Quieter in a dark room; one wake of the gauge every 4 s.",
+          draw: () => lone() + playBtn("game:beat"), play: card => playOn(card, { game: "beat" }, SC.game, 12500) },
+        start: { name: "A sweep at the start", blurb: "The lights fill up once as the game starts, then go dark while you play.",
+          draw: () => lone() + playBtn("game:start"), play: card => playOn(card, { game: "start" }, SC.game, 12500) },
+        off: { name: "Not on the lights", blurb: "Nothing while you play.",
+          draw: () => lone() + playBtn("game:off"), play: card => playOn(card, { game: "off" }, SC.game, 12500) },
+      } },
+
+    { key: "done", title: "When files or covers finish",
+      why: "A File Transfer finishes (the last file of a batch arrived over USB or Wi-Fi), or the Scraper finishes its run. Useful when the handheld lies on a desk with its screen dark. Play shows a transfer, then a Scraper run.",
+      options: {
+        climb: { name: "Climb twice", tag: "suggested", blurb: "One light runs up the four, twice: 0.8 s. Reads as \"up and done\".",
+          draw: () => lone() + playBtn("done:climb"), play: card => playOn(card, { done: "climb" }, SC.done, 8500) },
+        bounce: { name: "Up and back", blurb: "One light runs up and back down once: 0.7 s.",
+          draw: () => lone() + playBtn("done:bounce"), play: card => playOn(card, { done: "bounce" }, SC.done, 8500) },
+        fill: { name: "Fill and flash", blurb: "The four fill up, then all four flash twice: 1.2 s. The loudest of the three.",
+          draw: () => lone() + playBtn("done:fill"), play: card => playOn(card, { done: "fill" }, SC.done, 8500) },
+        off: { name: "Not on the lights", blurb: "Only the screen says it.",
+          draw: () => lone() + playBtn("done:off"), play: card => playOn(card, { done: "off" }, SC.done, 8500) },
+      } },
+
+    { key: "cheer", title: "An achievement unlocked",
+      why: "A proposal of mine: a RetroAchievements unlock in a game, beside the pop-up on the screen. Play shows two unlocks in a game (the game light under them, as picked above).",
+      options: {
+        sparkle: { name: "A sparkle", tag: "suggested", blurb: "Two pairs of lights take turns, three times: 0.9 s. Different from every battery pattern, so it never reads as a warning.",
+          draw: () => lone() + playBtn("cheer:sparkle"), play: card => playOn(card, { cheer: "sparkle" }, SC.cheer, 7500) },
+        done: { name: "As Done", blurb: "The same pattern as files and covers finishing: one pattern for good news.",
+          draw: () => lone() + playBtn("cheer:done"), play: card => playOn(card, { cheer: "done" }, SC.cheer, 7500) },
+        off: { name: "Not on the lights", blurb: "Only the pop-up.",
+          draw: () => lone() + playBtn("cheer:off"), play: card => playOn(card, { cheer: "off" }, SC.cheer, 7500) },
+      } },
+
+    { key: "pace", title: "The pace of the patterns",
+      why: "How long each step of a moving pattern lasts: Done, the sparkle and the sweep. Play shows Climb twice at that pace. The charging bar keeps its own 400 ms.",
+      options: {
+        quick: { name: "Quick, 70 ms", blurb: "A flick: 0.56 s for Climb twice.",
+          draw: () => lone() + playBtn("pace:quick"), play: card => playOn(card, { pace: 70 }, [[400, (s, t, say, c) => { send(c, s, "done", t); say("Done at 70 ms a step."); }], [2200, (s, t, say, c) => { send(c, s, "done", t); }]], 3800) },
+        mid: { name: "Even, 100 ms", tag: "suggested", blurb: "0.8 s for Climb twice: each light is seen.",
+          draw: () => lone() + playBtn("pace:mid"), play: card => playOn(card, { pace: 100 }, [[400, (s, t, say, c) => { send(c, s, "done", t); say("Done at 100 ms a step."); }], [2200, (s, t, say, c) => { send(c, s, "done", t); }]], 3800) },
+        calm: { name: "Calm, 160 ms", blurb: "1.3 s for Climb twice: slow enough to follow the light.",
+          draw: () => lone() + playBtn("pace:calm"), play: card => playOn(card, { pace: 160 }, [[400, (s, t, say, c) => { send(c, s, "done", t); say("Done at 160 ms a step."); }], [2400, (s, t, say, c) => { send(c, s, "done", t); }]], 4600) },
+      } },
+
+    { key: "low", title: "The low-battery warning",
+      why: "A proposal of mine: easier to notice, without more light while there is time. On the battery only; the cable stops it. Play goes from 11% to 9%, then to 4% at 7.8 s.",
+      options: {
+        today: { name: "As today", tag: "today", blurb: "Under 10%, the bottom light flashes red for 200 ms every 5 seconds.",
+          draw: () => lone() + playBtn("low:today"), play: card => playOn(card, { lowStyle: "today" }, SC.low, 14500) },
+        stages: { name: "Two stages", tag: "suggested", blurb: "Under 10% as today. Under 5% (the launcher powers off at 2%), a double flash every 2 seconds.",
+          draw: () => lone() + playBtn("low:stages"), play: card => playOn(card, { lowStyle: "stages" }, SC.low, 14500) },
+        warn: { name: "Two stages and a warning", blurb: "As Two stages, and three quick red flashes the moment it falls under 10% and under 5%.",
+          draw: () => lone() + playBtn("low:warn"), play: card => playOn(card, { lowStyle: "warn" }, SC.low, 14500) },
+      } },
+
+    { key: "mix", title: "When two things want the lights",
+      why: "The red flash is laid over everything (it is the bottom light's red, which no pattern uses), and L2+R2 is over everything else. The question is the new patterns and the charging bar. Play: the cable in at 40%, VOL+, files arrive, the cable out at 9%, VOL−, then L2+R2.",
+      options: {
+        top: { name: "Newest on top", tag: "suggested", blurb: "A volume change or a Done takes the lights for its short time, then the charging bar or the game light comes back.",
+          draw: () => lone() + playBtn("mix:top"), play: card => playOn(card, { mix: "top" }, SC.mix, 15000) },
+        battery: { name: "The battery first", blurb: "While the charging bar shows, the new patterns stay away; off the cable they show as in Newest on top.",
+          draw: () => lone() + playBtn("mix:battery"), play: card => playOn(card, { mix: "battery" }, SC.mix, 15000) },
+      } },
+
+    { key: "barPlay", title: "The charging bar during a game",
+      why: "A proposal of mine: a bar that moves every 400 ms in the corner of an eye, while you play on the cable. Play: the cable in at 30%, a game from 2.5 s to 9.5 s.",
+      options: {
+        moving: { name: "Moving, as today", tag: "today", blurb: "The bar fills and starts again, in games as on the shelf.",
+          draw: () => lone() + playBtn("barPlay:moving"), play: card => playOn(card, { barPlay: "moving" }, SC.barPlay, 12000) },
+        still: { name: "Still while playing", tag: "suggested", blurb: "In a game the bar stands at the level (at 30%, one light), and moves again on the shelf.",
+          draw: () => lone() + playBtn("barPlay:still"), play: card => playOn(card, { barPlay: "still" }, SC.barPlay, 12000) },
+        dark: { name: "The game light instead", blurb: "In a game the bar gives way to the game light (or to dark, if the game light is off); on the shelf it comes back.",
+          draw: () => lone() + playBtn("barPlay:dark"), play: card => playOn(card, { barPlay: "dark" }, SC.barPlay, 12000) },
+      } },
+
+    { key: "limit", title: "The charging bar at the charge limit",
+      why: "A proposal of mine: with Charge Limit on, the charger holds the battery at the limit (85% here) and nothing goes in. Today the bar goes on filling, as if it charged.",
+      options: {
+        still: { name: "Still at the limit", tag: "suggested", blurb: "The bar stands at the level (three lights at 85%), as a full battery's four do. It moves again when charging starts again 5 points under.",
+          draw: () => lone() + playBtn("limit:still"), play: card => playOn(card, { limit: "still" }, SC.limit, 6000) },
+        today: { name: "Filling, as today", tag: "today", blurb: "The bar fills while the cable is in, held or not.",
+          draw: () => lone() + playBtn("limit:today"), play: card => playOn(card, { limit: "today" }, SC.limit, 6000) },
+      } },
+
+    { key: "row", title: "How MENU > Side Lights offers them",
+      why: "Today the row steps round Auto, Charging, Low Battery and Off. With the new patterns there is more to choose. The names on the page are the parts above.",
+      options: {
+        page: { name: "A page of switches", tag: "suggested", blurb: "A on Side Lights opens a page with one row for each part, each On or Off (left and right, or A). The row in MENU says how many are on: \"All on\", \"4 on\", \"Off\".",
+          draw: () => menuMain("All on") + menuPage(ALL) },
+        presets: { name: "Presets in the row", blurb: "No page. The row steps round All (every part), Battery (the bar and the red flash, today's Auto), Charging, Low Battery and Off.",
+          draw: () => menuMain("All") },
+        custom: { name: "Presets, then Custom", blurb: "The row steps round All, Battery and Off; a fourth value, Custom, opens the page of switches for anything between.",
+          draw: () => menuMain("Custom") + menuPage(["On", "On", "Off", "On", "On", "Off"], 3) },
+      } },
+
+    { key: "default", title: "What a card starts with",
+      why: "For a new card, and for a card whose Side Lights is Auto today (a card set to Charging, Low Battery or Off keeps what it says).",
+      options: {
+        all: { name: "Everything on", tag: "suggested", blurb: "Every part on: the lights show what this lab offers from the first start. Anyone who wants less turns parts off.",
+          draw: () => menuPage(ALL, -1) },
+        battery: { name: "The battery only", tag: "today", blurb: "The bar and the red flash, as today; the new parts wait to be turned on.",
+          draw: () => menuPage(["On", "On", "Off", "Off", "Off", "Off"], -1) },
+      } },
+  ];
+
+  /* ======================================================================
+   * The try-it panel, on the picks
+   * ==================================================================== */
+  const PICK = {   /* a pick's option id as setting values */
+    level: o => ({ level: o }),
+    game: o => ({ game: o }),
+    done: o => ({ done: o }),
+    cheer: o => ({ cheer: o }),
+    pace: o => ({ pace: { quick: 70, mid: 100, calm: 160 }[o] || 100 }),
+    low: o => ({ lowStyle: o }),
+    mix: o => ({ mix: o }),
+    barPlay: o => ({ barPlay: o }),
+    limit: o => ({ limit: o }),
+  };
+  let board = null;
+  function tryCfg() {
+    const c = Object.assign({}, DEFAULT), used = [];
+    const p = (board && board.picks) || {};
+    Object.keys(PICK).forEach(k => {
+      const ch = p[k] && p[k].choice, d = list.find(x => x.key === k);
+      if (ch && d.options[ch]) { Object.assign(c, PICK[k](ch)); used.push(`${d.title}: ${d.options[ch].name}`); }
+    });
+    return { c, used };
+  }
+  const T = { s: fresh(), t0: performance.now(), vol: 6, bri: 7 };
+  const tnow = () => performance.now() - T.t0;
+  const trySide = document.getElementById("try-side");
+  trySide.innerHTML = side();
+  const trySvg = trySide.querySelector("svg");
+  const $ = id => document.getElementById(id);
+  let tryTxt = "Nothing is happening: the lights are dark.";
+  function tryLevel(vol, d) {
+    const { c } = tryCfg();
+    if (vol) T.vol = Math.max(0, Math.min(20, T.vol + d)); else T.bri = Math.max(0, Math.min(11, T.bri + d));
+    send(c, T.s, "level", tnow(), { val: vol ? T.vol : T.bri, max: vol ? 20 : 11, vol });
+    tryTxt = vol ? `Volume ${T.vol} of 20.` : `Brightness ${T.bri} of 11.`;
+    if (c.level === "off") tryTxt += " (Volume and brightness are off on the lights.)";
+    if (c.level === "dark" && !T.s.dark) tryTxt += " (Shown only with the screen dark.)";
+  }
+  $("t-volup").onclick = () => tryLevel(true, 1);
+  $("t-voldn").onclick = () => tryLevel(true, -1);
+  $("t-brup").onclick = () => tryLevel(false, 1);
+  $("t-brdn").onclick = () => tryLevel(false, -1);
+  $("t-l2r2").onclick = () => { T.s.askAt = tnow(); tryTxt = `L2 + R2: the battery level, ${T.s.pct}%.`; };
+  $("t-done").onclick = () => { send(tryCfg().c, T.s, "done", tnow()); tryTxt = "Files arrived."; };
+  $("t-cheer").onclick = () => { send(tryCfg().c, T.s, "cheer", tnow()); tryTxt = "Achievement unlocked."; };
+  const toggle = (id, f) => { const b = $(id); b.onclick = () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); f(on); }; };
+  toggle("t-game", on => { setGame(tryCfg().c, T.s, on, tnow()); tryTxt = on ? "A game is running." : "Back on the shelf."; });
+  toggle("t-cable", on => { setPlugged(T.s, on, tnow()); tryTxt = on ? "The cable is in." : "The cable is out."; });
+  toggle("t-limit", on => { T.s.limit = on; tryTxt = on ? "The charger holds the battery at the limit (with the cable in)." : "Charging normally (with the cable in)."; });
+  toggle("t-dark", on => { T.s.dark = on; tryTxt = on ? "The screen is dark." : "The screen is on."; });
+  $("t-pct").oninput = e => { setPct(T.s, +e.target.value, tnow()); $("t-pctv").textContent = e.target.value + "%"; };
+  (function loop() {
+    const { c, used } = tryCfg();
+    paint(trySvg, frame(c, T.s, tnow()));
+    $("t-now").textContent = tryTxt;
+    $("t-uses").textContent = used.length ? "Your picks: " + used.join(" · ") : "No picks yet: every section's suggested option.";
+    requestAnimationFrame(loop);
+  })();
+
+  board = ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-side-lights", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# ZyperOS welcomes every crawler, AI assistants and answer engines included.
+User-agent: *
+Allow: /
+Disallow: /cdn-cgi/
+# /tip only redirects to the Stripe tip page
+Disallow: /tip$
+
+Sitemap: https://zyperos.com/sitemap.xml

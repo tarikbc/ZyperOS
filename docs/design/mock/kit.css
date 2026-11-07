@@ -1,0 +1,180 @@
+/* ZyperOS mock kit: the handheld's screens as HTML, for design decisions.
+ *
+ * A .screen is the launcher's 1024x768 design space, drawn in units and
+ * scaled to fit its .frame, so every size here is a DESIGN.md token in the
+ * units the C code uses. Colors come from tokens.js through CSS variables
+ * that kit.js sets per theme (ZK.vars); nothing in this file names a color
+ * of the handheld's own. The page around the screens has its own quiet
+ * chrome (.zk-*), which is not part of the design system. */
+
+/* ---- the page around the screens ------------------------------------------ */
+.zk-page {
+  --zk-page: #141615; --zk-page-2: #1b1e1c; --zk-line: #2c302e;
+  --zk-ink: #e8e6dd; --zk-ink-2: #b9bab2; --zk-ink-3: #8a8d88;
+  --zk-hi: #bef23c; --zk-hi-ink: #111310;
+  --zk-f-display: "Lexend", "Avenir Next", system-ui, sans-serif;
+  --zk-f-body: "Lexend", "Avenir Next", system-ui, sans-serif;
+  --zk-f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+  background: var(--zk-page); color: var(--zk-ink);
+  font: 15px/1.55 var(--zk-f-body);
+}
+.zk-wrap { max-width: 1240px; margin: 0 auto; }
+.zk-h1 { font: 600 clamp(28px, 4vw, 42px)/1.08 var(--zk-f-display); margin: 0; text-wrap: balance; }
+.zk-h1 b { color: var(--zk-hi); font-weight: 600; }
+.zk-lede { color: var(--zk-ink-2); max-width: 70ch; margin: 6px 0 0; }
+.zk-h2 { font: 600 24px/1.2 var(--zk-f-display); margin: 0; text-wrap: balance; }
+.zk-why { color: var(--zk-ink-2); margin: 2px 0 0; max-width: 72ch; }
+.zk-mono { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); }
+.zk-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.zk-card {
+  background: var(--zk-page-2); border: 1px solid var(--zk-line); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.zk-card.picked { border-color: var(--zk-hi); box-shadow: 0 0 0 1px var(--zk-hi) inset; }
+.zk-card h3 { font: 600 17px/1.2 var(--zk-f-display); margin: 4px 2px 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.zk-card p { margin: 0 2px; color: var(--zk-ink-2); }
+.zk-tag { font: 500 11px var(--zk-f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--zk-hi-ink); background: var(--zk-hi); border-radius: 4px; padding: 1px 6px; }
+.zk-tag.dim { background: var(--zk-line); color: var(--zk-ink-2); }
+.zk-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.zk-btn {
+  font: 500 14px var(--zk-f-body); color: var(--zk-ink); background: transparent;
+  border: 1px solid var(--zk-line); border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.zk-btn:hover { border-color: var(--zk-ink-3); }
+.zk-btn:focus-visible, .zk-note:focus-visible { outline: 2px solid var(--zk-hi); outline-offset: 2px; }
+.zk-btn.pick { background: var(--zk-ink); color: var(--zk-page); border-color: var(--zk-ink); }
+.zk-card.picked .zk-btn.pick { background: var(--zk-hi); border-color: var(--zk-hi); color: var(--zk-hi-ink); }
+.zk-note {
+  font: 15px/1.5 var(--zk-f-body); color: var(--zk-ink); background: var(--zk-page-2); width: 100%;
+  border: 1px solid var(--zk-line); border-radius: 10px; padding: 10px 12px; resize: vertical; min-height: 60px;
+}
+.zk-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.zk-sw { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: center; font: 11px/1.2 var(--zk-f-mono); color: var(--zk-ink-3); min-width: 0; }
+.zk-sw i { width: 14px; height: 14px; border-radius: 4px; display: block; box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset; }
+.zk-sw span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- the handheld screen ------------------------------------------------------ */
+.zk-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #000; }
+.zs {
+  position: absolute; left: 0; top: 0; width: 1024px; height: 768px;
+  transform-origin: 0 0; transform: scale(var(--k, .33));
+  background: var(--ground); color: var(--text);
+  font-family: "Lexend", "Avenir Next", system-ui, sans-serif; font-weight: 400;
+  overflow: hidden;
+}
+.zs .wash { position: absolute; inset: 0; background: radial-gradient(60% 50% at 50% 92%, color-mix(in srgb, var(--sys) var(--wash-mix), transparent), transparent 70%); }
+.zs .title { position: absolute; left: 0; right: 0; top: 36px; text-align: center; font-size: 60px; font-weight: 600; color: var(--text); }
+.zs .cards { position: absolute; left: 0; right: 0; top: 140px; height: 470px; }
+.zs .card {
+  position: absolute; top: 50%; left: 50%; width: 330px; height: 440px; margin: -220px 0 0 -165px;
+  border-radius: 22px; background: var(--cover); overflow: hidden; box-shadow: var(--card-lift);
+}
+.zs .card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--acc); }
+.zs .card::after { content: attr(data-name); position: absolute; left: 24px; right: 24px; bottom: 30px; font-size: 34px; color: rgba(255,255,255,.94); text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.zs .card .art { position: absolute; left: 30px; right: 30px; top: 50px; height: 240px; border-radius: 13px; background: var(--art); }
+.zs .heart { position: absolute; left: 24px; top: 46px; width: 44px; height: 40px; }
+.zs .rail { position: absolute; left: 90px; right: 90px; bottom: 23px; height: 6px; border-radius: 3px; background: var(--track); }
+.zs .rail i { position: absolute; left: 0; width: 18%; top: 0; bottom: 0; border-radius: 3px; background: var(--sys-mark); }
+.zs .count { position: absolute; bottom: 48px; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--text-dim); }
+.zs .scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) var(--scrim-menu), transparent); }
+.zs .scrim.game { background: color-mix(in srgb, var(--ink) var(--scrim-game), transparent); }
+.zs .panel {
+  position: absolute; left: 112px; width: 800px; top: 40px; bottom: 40px;
+  border-radius: 28px; background: var(--surface);
+  box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift);
+  padding: 30px 37px; display: flex; flex-direction: column; gap: 4px;
+}
+.zs .panel h4 { margin: 0 0 4px; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); position: relative; }
+.zs .panel hr { border: 0; height: 2px; background: var(--rule, var(--edge)); margin: 0 10px 12px; }
+.zs .mrow { display: flex; justify-content: space-between; align-items: center; padding: 8px 28px; border-radius: 14px; font-size: 49px; color: var(--text-soft); }
+.zs .mrow span { color: var(--text-dim); }
+.zs .mrow.dead, .zs .mrow.dead span { color: var(--text-dim); }
+.zs .mrow.sel { background: var(--accent); color: var(--on-accent); }
+.zs .mrow.sel span { color: var(--on-accent); opacity: .72; }
+.zs .more { align-self: center; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid var(--text-dim); margin-top: 6px; }
+.zs .bar {
+  position: absolute; left: 286px; top: 22px; width: 452px; height: 64px; border-radius: 32px;
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: 0 0 0 2px var(--edge) inset, var(--bar-lift);
+  display: flex; align-items: center; padding-left: 20px;
+}
+.zs .bar svg { width: 44px; height: 44px; flex: none; }
+.zs .bar .segs { display: flex; gap: 4px; margin-left: 20px; width: 338px; }
+.zs .bar .segs i { flex: 1; height: 16px; border-radius: 3px; background: var(--track); }
+.zs .bar .segs i.on { background: var(--pc); }
+.zs .zcorner { position: absolute; right: 20px; top: -6px; width: 61px; height: 64px; }
+.zs .msg { position: absolute; left: 212px; width: 600px; top: 330px; height: 108px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; font-size: 49px; color: var(--text-soft); }
+.zs .legend { position: absolute; left: 24px; right: 24px; bottom: 30px; text-align: center; font-size: 37px; color: var(--text-dim); white-space: pre; }
+
+/* keyboard, as src/keyboard.c lays it out */
+.zs .kb2 { position: absolute; left: 82px; width: 860px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+.zs .kb2 h5 { margin: 0; position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+.zs .kb2 .field { position: absolute; left: 28px; right: 28px; top: 82px; height: 64px; border-radius: 12px; background: var(--ground); box-shadow: 0 0 0 2px var(--edge) inset; font-size: 49px; padding: 1px 16px; color: var(--text); white-space: pre; overflow: hidden; }
+.zs .kb2 .field i { display: inline-block; width: 3px; height: 44px; background: var(--accent-ink); vertical-align: -8px; margin-left: 2px; }
+.zs .kb2 .grid { position: absolute; left: 43px; width: 774px; display: grid; grid-template-columns: repeat(10, 72px); gap: 6px; }
+.zs .kb2 .grid b, .zs .kb2 .acts b { height: 60px; border-radius: 12px; background: var(--raised); display: grid; place-items: center; font-weight: 400; font-size: 49px; color: var(--text-soft); }
+.zs .kb2 .grid b.sel, .zs .kb2 .acts b.sel, .zs .kb2 .space.sel { background: var(--accent); color: var(--on-accent); }
+.zs .kb2 .space { position: absolute; left: 43px; width: 774px; height: 48px; border-radius: 12px; background: var(--raised); display: grid; place-items: center; font-size: 37px; color: var(--text-dim); }
+.zs .kb2 .acts { position: absolute; left: 43px; width: 774px; display: flex; gap: 6px; }
+.zs .kb2 .acts b { font-size: 37px; color: var(--text); }
+.zs .kb2 .tabs { position: absolute; left: 0; right: 0; top: 158px; display: flex; justify-content: center; gap: 8px; }
+.zs .kb2 .tabs span { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 20px 0 8px; border-radius: 25px; font-size: 37px; color: var(--text-dim); box-shadow: 0 0 0 2px var(--edge) inset; }
+.zs .kb2 .tabs span.on { background: var(--raised); color: var(--text); box-shadow: none; }
+.zs .kb2 .legend { position: absolute; left: 0; right: 0; bottom: 16px; display: grid; gap: 6px; justify-items: center; font-size: 37px; color: var(--text-dim); }
+.zs .kb2 .legend > div { display: flex; align-items: center; gap: 10px; height: 46px; line-height: 1; }
+.zs .kb2 .legend span:not(.kg):not(.chip) { margin-right: 18px; }
+.zs .kb2 .legend .chip { font-size: 37px; padding: 0 10px; border-radius: 8px; background: var(--raised); color: var(--text-soft); }
+.zs .kg { display: inline-grid; place-items: center; height: var(--gs); min-width: var(--gs); padding: 0 calc(var(--gs) * .35); border-radius: calc(var(--gs) / 2); background: var(--raised); box-shadow: 0 0 0 2px var(--edge) inset; font-size: calc(var(--gs) * .5); color: var(--text); font-weight: 600; }
+.zs .kg.round { padding: 0; width: var(--gs); }
+
+/* button glyphs */
+.zs .g-face { position: absolute; width: 96px; height: 96px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 4px var(--edge) inset; display: grid; place-items: center; font-size: 56px; font-weight: 600; color: var(--text); transform: translate(-50%, -50%); }
+.zs .g-pill { position: absolute; height: 64px; padding: 0 30px; border-radius: 32px; background: var(--raised); box-shadow: 0 0 0 4px var(--edge) inset; display: grid; place-items: center; font-size: 30px; color: var(--text); transform: translate(-50%, -50%); }
+.zs .lit { box-shadow: 0 0 0 4px var(--accent) inset, 0 0 0 14px color-mix(in srgb, var(--accent) 28%, transparent); transform: translate(-50%, -50%) scale(.92); }
+
+/* tutorial */
+.zs .progress { position: absolute; top: 32px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.zs .progress i { width: 40px; height: 6px; border-radius: 3px; background: var(--track); }
+.zs .progress i.done { background: var(--accent-ink); }
+.zs .progress i.now { background: var(--text); }
+.zs .stage { position: absolute; left: 172px; top: 84px; width: 680px; height: 340px; border-radius: 28px; background: color-mix(in srgb, var(--ground) 67%, var(--surface)); box-shadow: 0 0 0 3px var(--edge) inset; overflow: hidden; }
+.zs .stage .cards { top: -60px; transform: scale(.62); transform-origin: 50% 50%; }
+.zs .t-title { position: absolute; left: 0; right: 0; top: 476px; text-align: center; font-size: 60px; font-weight: 600; }
+.zs .t-line { position: absolute; left: 0; right: 0; top: 566px; text-align: center; font-size: 37px; color: var(--text-soft); }
+.zs .t-note { position: absolute; left: 0; right: 0; top: 614px; text-align: center; font-size: 37px; color: var(--text-dim); }
+.zs .check { position: absolute; left: 814px; top: 46px; width: 76px; height: 76px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+.zs .check svg { width: 46px; height: 46px; stroke: var(--on-accent); }
+.zs .zy { position: absolute; width: 128px; height: 135px; left: 46px; bottom: 0; }
+.zs .bubble { position: absolute; left: 196px; bottom: 92px; background: var(--text); color: var(--ground); font-size: 37px; padding: 10px 26px; border-radius: 32px; }
+.zs .skip { position: absolute; right: 40px; bottom: 36px; font-size: 30px; color: var(--text-dim); display: flex; gap: 12px; align-items: center; }
+.zs .skip b { font-weight: 400; font-size: 22px; padding: 4px 14px; border-radius: 20px; box-shadow: 0 0 0 3px var(--edge) inset; color: var(--text-soft); }
+.zs .welcome { position: absolute; inset: 0; text-align: center; }
+.zs .welcome svg { position: absolute; left: 362px; top: 120px; width: 300px; height: 316px; }
+
+/* Zyper in Beard: his beard is the light ground's own white, so he casts the
+   focus-small shadow (DESIGN.md 10) to keep his outline. */
+.zs[data-theme="light"] .zy, .zs[data-theme="light"] .zcorner,
+.zs[data-theme="light"] .welcome svg, .zs[data-theme="light"] .empty svg {
+  filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent));
+}
+
+/* Zyper empty state */
+.zs .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.zs .empty svg { width: 220px; height: 232px; display: block; margin: 0 auto 26px; }
+.zs .empty div { font-size: 55px; }
+.zs .empty p { font-size: 37px; color: var(--text-soft); margin: 10px 0 0; }
+
+/* the wide keyboard: the action row with its buttons on the keys */
+.zs .kb2.wide { left: 42px; width: 940px; }
+.zs .kb2.wide .grid { left: 53px; grid-template-columns: repeat(10, 78px); }
+.zs .kb2.wide .acts { left: 53px; width: 834px; }
+.zs .kb2.wide .acts b { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.zs .kb2.wide .acts b .kg { --gs: 40px; }
+.zs .kb2.wide .acts b.sel .kg { background: color-mix(in srgb, var(--on-accent) 12%, transparent); box-shadow: 0 0 0 2px var(--on-accent) inset; color: var(--on-accent); }
+.zs .kb2 .spc { display: block; width: 56px; height: 16px; border: 4px solid currentColor; border-top: 0; border-radius: 0 0 4px 4px; opacity: .8; }
+.zs .kb2 .corner { position: absolute; left: 24px; top: 24px; display: flex; gap: 10px; align-items: center; font-size: 37px; color: var(--text-dim); }
+.zs .kb2 .field.narrow { left: 92px; right: 92px; }
+.zs .kb2 .cur { position: absolute; top: 94px; }
+.zs .kb2 .cur.l { left: 32px; }
+.zs .kb2 .cur.r { right: 32px; }

@@ -1,0 +1,79 @@
+title: ZyperOS vs plumOS on the GKD Pixel 2
+description: ZyperOS and plumOS Pixel2, two young systems for the GKD Pixel 2, side by side from their own code and releases: games, Wi-Fi, DS, PortMaster, updates.
+summary: Two young systems: plumOS's 86 systems and A/B updates from a file, beside ZyperOS's Wi-Fi and USB File Transfer.
+crumb: ZyperOS vs plumOS
+topic: compare
+published: 2026-11-07
+updated: 2026-11-07
+image: menu
+image_alt: The ZyperOS menu, with its settings for the device
+related: best-custom-firmware-gkd-pixel-2, zyperos-vs-tortos, gkd-pixel-2-wifi-adapter
+weight: 50
+---
+<p>plumOS Pixel2, by game-de-it, and ZyperOS are both young systems made for the GKD Pixel 2 alone, and both say they are in testing. They took different roads: plumOS keeps the stock firmware's boot path and kernel and replaces everything above them, while ZyperOS brings its own Linux. This is the two side by side, from each project's own code, docs and releases as of 7 November 2026.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>Pick plumOS</strong> if you want more systems today, DraStic and PortMaster built in, a list of tested dual-band Wi-Fi adapters, and A/B system updates you can install from a file now. It has a release image you can download, though its project says that image has not had its final boot test.</li>
+  <li><strong>Pick ZyperOS</strong> if you want to send games over the USB cable or from a phone's browser, box art and video previews on the handheld, RetroAchievements, and battery care such as a charge limit. It has no release images yet.</li>
+</ul>
+
+<h2>Side by side</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">plumOS Pixel2</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>MIT for its own code</td></tr>
+    <tr><th scope="row">Latest</th><td class="us">In testing, no release yet</td><td>v0.1.4 (August 2026), in testing</td></tr>
+    <tr><th scope="row">Kernel</th><td class="us">Linux 7.1.2, with ROCKNIX's patches</td><td>The stock firmware's Linux 5.10.198</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>86 in its list</td></tr>
+    <tr><th scope="row">Card a Mac or PC reads</th><td class="us">[yes: exFAT] exFAT</td><td>[yes: FAT32] FAT32</td></tr>
+    <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi or the handheld's own network] Web page</td><td>[yes: SSH and SFTP, FTP and Samba] SSH, SFTP, FTP, Samba</td></tr>
+    <tr><th scope="row">Games over the USB cable</th><td class="us">[yes: The same web page, with no Wi-Fi] Yes</td><td>[no: Release images ship no USB mode] No</td></tr>
+    <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: libretro's thumbnails, no account] libretro</td></tr>
+    <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Nintendo DS</th><td class="us">DSperate built in, DraStic if you add it</td><td>DraStic, built in</td></tr>
+    <tr><th scope="row">PortMaster</th><td class="us">[yes: Ports run; you set them up with PortMaster on another system] Ports run</td><td>[yes: Included, with a compatibility check before each port] Included</td></tr>
+    <tr><th scope="row">Tested Wi-Fi adapters</th><td class="us">TP-Link TL-WN725N (RTL8188EUS)</td><td>UGREEN AC650 and other RTL8811CU / RTL8821CU, and RTL8188EU</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, A/B with roll back, once releases are signed</td><td>A signed file you copy over, A/B with roll back</td></tr>
+    <tr><th scope="row">Charging screen when off</th><td class="us">[yes: ZyperOS's own: the charge, the speed and the time to full] Yes</td><td>[yes: The stock charging screen, after a shutdown on a charger] Yes</td></tr>
+    <tr><th scope="row">Charge limit</th><td class="us">[yes: 80, 85 or 90%] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Media</th><td class="us">Music, audiobooks and video</td><td>Music, and game music files</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. Hover over or tap a mark for more.</p>
+
+<h2>Two ways to build a Pixel 2 system</h2>
+<p>plumOS keeps the stock Pixel 2 boot path and its Linux 5.10.198 kernel, and replaces everything from the system file onward: its own frontend, emulators and apps. Its charging screen, for one, is the stock firmware's own.</p>
+<p>ZyperOS brings its own Linux, plastron, with a current kernel, 7.1.2, carrying ROCKNIX's RK3326 patches and the Pixel 2's device tree. Its launcher keeps the emulator running, so a game starts the moment you press <kbd>A</kbd>.</p>
+
+<h2>Installing</h2>
+<p>plumOS asks for a separate card of at least 16 GB, and says not to write over the stock card. You extract its image from a <code>.7z</code>, write it with Raspberry Pi Imager or balenaEtcher, and on the first boot it makes its FAT32 games volume and may restart once; add games only after that. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> covers both.</p>
+
+<h2>Adding games</h2>
+<p>Both make a games space a Mac or PC reads: FAT32 on plumOS, exFAT on ZyperOS. Over a network, plumOS offers SSH and SFTP, on by default, and FTP and Samba, which you turn on. Its docs say release images ship no USB mode, so there is no transfer over the cable.</p>
+<p>ZyperOS opens one web page in any browser, behind a PIN, over Wi-Fi or over the USB cable, and with no network around the handheld makes its own for your phone. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows it.</p>
+
+<h2>Wi-Fi</h2>
+<p>Neither can charge and use a Wi-Fi adapter at once without extra hardware, since the Pixel 2 has one USB-C port; plumOS's README says so too. plumOS lists the adapters it has validated: the UGREEN AC650 and other RTL8811CU and RTL8821CU adapters, with a driver it builds for them, and older RTL8188EU adapters on the stock driver, which its own test found too slow for big transfers. ZyperOS is tested with the TP-Link TL-WN725N, an RTL8188EUS, which can also be the handheld's own network; it has no driver for the RTL8811CU and RTL8821CU. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> has the details.</p>
+
+<h2>Box art, achievements and video</h2>
+<p>plumOS's Scraping app downloads box art, title screens or screenshots from libretro's thumbnails, with no account, though not for the Nintendo DS. ZyperOS asks libretro, ScreenScraper with an account, and SteamGridDB with your key, and can play a few seconds of a game in place of its cover. ZyperOS signs in to RetroAchievements on the handheld; we found no source on RetroAchievements in plumOS. ZyperOS's MP4 plays videos and audiobooks as well as music.</p>
+
+<h2>DS and PortMaster</h2>
+<p>plumOS runs the DS on standalone DraStic, which it includes, and includes PortMaster with a compatibility layer that checks each port before it starts. ZyperOS ships DSperate and runs DraStic if you add it. It runs PortMaster ports, but PortMaster's own app does not run on it, so you set ports up on another system. See <a href="/blog/nintendo-ds-gkd-pixel-2/">the DS guide</a> and <a href="/blog/portmaster-gkd-pixel-2/">the PortMaster guide</a>.</p>
+
+<h2>Updates</h2>
+<p>Both write a new system into a second slot and keep the one before, so a failed update can go back. On plumOS you copy a signed update file to the card and start it from System Settings. ZyperOS's System Update downloads it over Wi-Fi, only what changed, and turns on once ZyperOS has its release signing key.</p>
+
+<h2>Which one to pick</h2>
+<p>plumOS has more systems, DraStic and PortMaster ready, and a wider list of tested Wi-Fi adapters. ZyperOS has transfers over the USB cable and from a phone, more on the handheld itself, and battery care. Both are in testing, so expect changes in either. Each one is a card: try both.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li>plumOS Pixel2 at <a href="https://github.com/game-de-it/plumOS-pixel2_v2/tree/dec872c042229c1d38443f7e8e3fe962fc369e81">dec872c</a>: <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/README.md">README</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/install.md">install</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/storage.md">storage</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/network.md">network</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/configuration/connectivity.md">connectivity</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/scraping.md">scraping</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/updates.md">updates</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/operation.md">operation</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/package/frontend-pixel2/systems.json">system list</a>, and its <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/validation/2026-08-17-pixel2-usb-wifi-throughput.md">Wi-Fi throughput note</a>.</li>
+  <li>plumOS Pixel2 release <a href="https://github.com/game-de-it/plumOS-pixel2_v2/releases/tag/v0.1.4">v0.1.4</a>.</li>
+  <li>ZyperOS: <a href="https://github.com/tarikbc/ZyperOS#readme">the README</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">the user guide</a>; plastron's <a href="https://github.com/tarikbc/plastron/blob/8e8aeea6e856bacdb64af0b15625ee208fd8663c/buildroot/configs/px2_defconfig">px2_defconfig</a> (Linux 7.1.2).</li>
+</ol>
+<p class="meta">Read on 7 November 2026.</p>

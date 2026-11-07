@@ -1,0 +1,57 @@
+# ZyperOS's web page moved to https://zyperos.com on 2026-11-07: Cloudflare
+# Pages builds it from main with mk/site.sh. GitHub Pages keeps the old
+# address, tarikbc.github.io/ZyperOS, as a forward to it. A project site on
+# GitHub Pages cannot send a server redirect, so every path there gets a page
+# that names zyperos.com as its canonical address and moves to it at once,
+# which search engines read as a permanent move. The repository's Pages
+# source stays "GitHub Actions".
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Forward to zyperos.com
+        run: |
+          mkdir -p _site
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>ZyperOS moved to zyperos.com</title>
+          <link rel="canonical" href="https://zyperos.com/">
+          <meta http-equiv="refresh" content="0; url=https://zyperos.com/">
+          <script>location.replace("https://zyperos.com/" + location.hash)</script>
+          </head>
+          <body>
+          <p>ZyperOS's web page moved to <a href="https://zyperos.com/">zyperos.com</a>.</p>
+          </body>
+          </html>
+          EOF
+          cp _site/index.html _site/404.html
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v5

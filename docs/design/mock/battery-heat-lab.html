@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battery and heat lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .pair { display: grid; gap: 10px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+  .play { align-self: flex-start; }
+
+  /* ---- Zyper, from the page's #zyper symbol, in units -------------------- */
+  .zs .zyp { position: absolute; transform-origin: 50% 70%; }
+  .zs .zyp svg { width: 100%; height: 100%; display: block; }
+  /* Beard lifts him with focus-small: 8 down, 20 blur, ink at 18% (DESIGN.md 10) */
+  .zs[data-theme="light"] .zyp svg { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent)); }
+
+  /* ---- the low-battery start screen, on the ground ----------------------- */
+  .zs .lb-title { position: absolute; left: 0; right: 0; text-align: center; font-size: 60px; font-weight: 600; color: var(--text); line-height: 1; }
+  .zs .lb-line { position: absolute; left: 0; right: 0; text-align: center; font-size: 55px; color: var(--text-soft); line-height: 1; }
+  .zs .lb-meta { position: absolute; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--text-dim); line-height: 1; font-variant-numeric: tabular-nums; }
+  /* The countdown: a bar 420 wide, the first start's shape (11.20), in
+   * warning on track, emptying from the right */
+  .zs .cd { position: absolute; left: 302px; width: 420px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .zs .cd i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 3px; background: var(--warning); }
+  /* The battery mark, the status corner's (11.12) at a size: body outline
+   * in frame, tip, fill; warning when low, accent-ink and a bolt charging */
+  .zs .batt { position: absolute; }
+  .zs .batt svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  /* The menu panel (11.3) as a screen of its own */
+  .zs .lb-panel { position: absolute; left: 162px; width: 700px; top: 214px; height: 340px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+  .zs .lb-panel h4 { position: absolute; left: 0; right: 0; top: 30px; margin: 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .lb-panel hr { position: absolute; left: 47px; right: 47px; top: 112px; margin: 0; border: 0; height: 2px; background: var(--warning); }
+  .zs .off { position: absolute; inset: 0; background: #000; opacity: 0; }
+  .zs .homein { position: absolute; inset: 0; opacity: 0; }
+
+  /* ---- the home's frame: clock and marks, as the status corner (11.12) --- */
+  .zs .clock { position: absolute; right: 120px; top: 24px; height: 24px; line-height: 24px; font-size: 24px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+  .zs .smarks { position: absolute; right: 24px; top: 24px; height: 24px; display: flex; gap: 12px; align-items: center; }
+  .zs .smarks svg { height: 24px; display: block; }
+
+  /* ---- the song pop-up's slab (11.22): surface at 85%, radius.panel, top
+   * at y 96, Zyper 64 tall at its left; meta text-dim over label text ---- */
+  .zs .pop { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px;
+    padding: 8px 18px 8px 14px; border-radius: 28px; background: color-mix(in srgb, var(--surface) 85%, transparent); box-shadow: var(--panel-lift); white-space: nowrap; }
+  .zs .pop .zi { position: relative; width: 61px; height: 64px; flex: none; }
+  .zs .pop .zi .zyp { left: 0; top: 0; width: 61px; height: 64px; }
+  .zs .pop .tx { display: grid; text-align: left; }
+  .zs .pop .h, .zs .notice .h { font-size: 37px; color: var(--text-dim); line-height: 1.25; }
+  .zs .pop .b, .zs .notice .b { font-size: 55px; color: var(--text); line-height: 1.2; }
+  /* the tutorial's bubble, Zyper come up from the bottom edge (11.10) */
+  .zs .bub { position: absolute; left: 330px; top: 430px; max-width: 560px; padding: 22px 30px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); font-size: 49px; color: var(--text); line-height: 1.2; white-space: normal; }
+  .zs .bub::after { content: ""; position: absolute; left: -16px; bottom: 34px; width: 32px; height: 32px; background: var(--surface); box-shadow: -3px 3px 0 0 var(--edge); transform: rotate(45deg); }
+  .zs .msg { position: absolute; left: 132px; width: 760px; top: 290px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; text-align: center; padding: 26px 30px; box-sizing: border-box; font-size: 49px; color: var(--text-soft); line-height: 1.3; }
+
+  /* ---- over a game ------------------------------------------------------ */
+  .zs .game { position: absolute; inset: 0; background: linear-gradient(180deg, #5c94fc 0 62%, #00a800 62% 66%, #c84c0c 66% 100%); }
+  .zs .game::before { content: ""; position: absolute; left: 180px; top: 300px; width: 120px; height: 160px; background: #e09050; box-shadow: 0 -40px 0 -10px #d82800; }
+  .zs .game::after { content: ""; position: absolute; left: 560px; top: 180px; width: 260px; height: 60px; border-radius: 30px; background: #fcfcfc; box-shadow: 120px 40px 0 -10px #fcfcfc; }
+  /* DESIGN.md 11.7, as src/notice.c pads it: a third and a sixth of a menu line */
+  .zs .notice { position: absolute; left: 50%; bottom: 32px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px;
+    padding: 8px 20px 6px; border-radius: 28px; background: color-mix(in srgb, var(--surface) 85%, transparent); white-space: nowrap; text-align: center; }
+  .zs .notice .tx { display: grid; }
+  .zs .notice.left .tx { text-align: left; }
+  .zs .therm { flex: none; display: block; }
+  /* the bar's pill (11.6): 452 x 64, top center, 22 down; surface at 93% */
+  .zs .pill { position: absolute; left: 286px; width: 452px; top: 22px; height: 64px; border-radius: 32px; background: color-mix(in srgb, var(--surface) 93%, transparent);
+    box-shadow: 0 0 0 2px var(--edge) inset, var(--bar-lift); display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 37px; color: var(--text); }
+  /* the low-battery disc's place and size, radius 9 at 34 from the corner */
+  .zs .hdot { position: absolute; right: 18px; top: 18px; width: 32px; height: 32px; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Battery and heat <b>lab</b></h1>
+      <p class="zk-lede">Two safety screens. First, what the handheld shows when it starts with a battery too low to play: today it boots to the home and powers off about 10 seconds later with no word. Second, a warning when the chip gets hot and starts to slow down: today nothing shows. Pick one option in each section, and add a note if you want a change. Every option is shown in Beard and in Salt &amp; Pepper.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>Low battery at start:</b> 2% or less, off the charger (the level where a game already saves and the handheld powers off). The screen comes before the home, the tutorial and a resume into a game, so nothing starts and stops again. It costs a normal start nothing: the launcher reads the battery for the status corner anyway. POWER powers off at once. The game you were in stays marked, so the next start, charged, goes back into it.</li>
+      <li><b>Heat:</b> the warning comes when the chip passes 85 °C, where the kernel slows the CPU and GPU hard. The handheld reads the temperature every 5 seconds, two readings in a row, so one odd reading says nothing. The warning comes again only after the chip has cooled under 80 °C and 5 minutes have passed. No sound: the slow-down is not something you did.</li>
+      <li><b>At 115 °C</b> the kernel powers the handheld off. That power-off already saves a running game, like POWER, and now also keeps the game marked so the next start goes back into it.</li>
+    </ul>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* ---- marks ------------------------------------------------------------ */
+  /* Zyper, `w` wide, at (x, y) top left; `tilt` in degrees (his cocked head
+   * is 18, DESIGN.md 10) */
+  const zy = (x, y, w, tilt = 0, cls = "") =>
+    `<div class="zyp ${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${Math.round(w * 1.055)}px;transform:rotate(${tilt}deg)"><svg><use href="#zyper"/></svg></div>`;
+  /* The battery: 40 x 24 body, 3 frame, radius-chip corners, 3 x 8 tip, fill
+   * to 28 x 12 (src/status.h), at `k` times; `pct` filled; charging draws the
+   * fill in accent-ink and the bolt */
+  function batt(x, y, k, pct, charging, cls = "") {
+    const fill = pct <= 0 ? 0 : Math.max(4, Math.round(28 * pct / 100));
+    const col = charging ? "var(--accent-ink)" : "var(--warning)";
+    const bolt = charging ? `<path d="M23 3 13 13.5h6.5L16 21l10.5-11H20z" fill="var(--text)" stroke="var(--ground)" stroke-width="1.6" stroke-linejoin="round"/>` : "";
+    const at = x === null ? "position:relative;flex:none" : `left:${x}px;top:${y}px`;
+    return `<div class="batt ${cls}" style="${at};width:${44 * k}px;height:${24 * k}px"><svg viewBox="0 0 44 24">
+      <rect x="1.5" y="1.5" width="37" height="21" rx="6" fill="none" stroke="${charging ? "var(--text-soft)" : "var(--warning)"}" stroke-width="3"/>
+      <rect x="40" y="8" width="3" height="8" rx="1" fill="${charging ? "var(--text-soft)" : "var(--warning)"}"/>
+      <rect class="bf" x="6" y="6" width="${charging ? 16 : fill}" height="12" rx="2" fill="${col}"/>${bolt}</svg></div>`;
+  }
+  /* A thermometer: a stem and a bulb in frame strokes, filled in warning */
+  function therm(h, color = "var(--warning)") {
+    return `<svg class="therm" viewBox="-14 -26 28 52" style="height:${h}px;width:${Math.round(h * 28 / 52)}px">
+      <path d="M-6 9V-18a6 6 0 0 1 12 0V9a10 10 0 1 1-12 0z" fill="none" stroke="${color}" stroke-width="3.4" stroke-linejoin="round"/>
+      <circle cx="0" cy="17" r="6" fill="${color}"/><rect x="-2.4" y="-12" width="4.8" height="28" rx="2.4" fill="${color}"/></svg>`;
+  }
+  const WIFI = `<svg viewBox="0 0 36 24" style="width:36px"><path d="M18 22 12.3 16.3a8 8 0 0 1 11.4 0z" fill="var(--text-soft)"/><path d="M8.1 12.1a14 14 0 0 1 19.8 0M2.4 6.4a22 22 0 0 1 31.2 0" fill="none" stroke="var(--text-soft)" stroke-width="4" stroke-linecap="round"/></svg>`;
+  const BATT = `<svg viewBox="0 0 44 24" style="width:44px"><rect x="1.5" y="1.5" width="37" height="21" rx="6" fill="none" stroke="var(--edge)" stroke-width="3"/><rect x="40" y="8" width="3" height="8" rx="1" fill="var(--edge)"/><rect x="6" y="6" width="20" height="12" rx="2" fill="var(--text-soft)"/></svg>`;
+  const corner = () => `<div class="clock">10:08</div><div class="smarks">${WIFI}${BATT}</div>`;
+  const home = th => ZK.shelf(th, { title: "" }) + corner();
+  const both = (draw, cap) => `<div class="pair">${ZK.screen("light", draw("light"))}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"))}<span class="cap">Salt &amp; Pepper</span>${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+  const playBtn = (id, label) => `<button type="button" class="zk-btn play" data-play="${id}">${label}</button>`;
+
+  /* ---- the low-battery start screen ------------------------------------ */
+  const LB_TITLE = "Battery too low", LB_LINE = "Plug in a charger.";
+  /* A: Zyper above two lines, his head cocked, as tired as he gets */
+  function lbZyper(o = {}) {
+    const cd = o.cd || "bar";
+    let foot = "";
+    if (cd === "bar") foot = `<div class="cd" style="top:640px"><i></i></div>`;
+    if (cd === "seconds") foot = `<div class="lb-meta" style="top:626px">Powering off in <span class="sec">6</span> s</div>`;
+    return zy(397, 100, 230, 18, "lbz") +
+      `<div class="lb-title" style="top:418px;display:flex;justify-content:center;align-items:center;gap:22px">${batt(null, null, 1.5, 2, false, "lbb")}${LB_TITLE}</div>` +
+      `<div class="lb-line lbl" style="top:508px">${LB_LINE}</div>` + foot +
+      `<div class="homein"></div><div class="off"></div>`;
+  }
+  /* B: the empty battery large, Zyper leaning on it */
+  function lbMark() {
+    return zy(186, 158, 170, 18) + batt(360, 196, 8, 2, false) +
+      `<div class="lb-title" style="top:470px">${LB_TITLE}</div>` +
+      `<div class="lb-line" style="top:560px">${LB_LINE}</div>` +
+      `<div class="cd" style="top:676px"><i></i></div>`;
+  }
+  /* C: the menu panel on the ground, Zyper in its heading's corner */
+  function lbPanel() {
+    return `<div class="lb-panel"><h4>${LB_TITLE}</h4><hr></div>` + zy(752, 214, 61, 18) +
+      `<div class="lb-line" style="top:372px">${LB_LINE}</div>` +
+      `<div class="cd" style="top:480px"><i></i></div>`;
+  }
+
+  /* ---- heat on the home ------------------------------------------------- */
+  const HOT_H = "Getting hot", HOT_B = "Slowing down to cool off.";
+  function heatSlab(th) {
+    return home(th) + `<div class="pop"><div class="zi">${zy(0, 0, 61)}</div><div class="tx"><span class="h">${HOT_H}</span><span class="b">${HOT_B}</span></div></div>`;
+  }
+  function heatMessage(th) {
+    return home(th) + `<div class="scrim"></div><div class="msg"><div>The Pixel 2 is getting hot.</div><div>It slows down to cool off.</div></div>`;
+  }
+  function heatBubble(th) {
+    return home(th) + zy(96, 470, 260, 0) + `<div class="bub">I'm getting hot! Slowing down to cool off.</div>`;
+  }
+
+  /* ---- heat over a game ------------------------------------------------- */
+  const game = `<div class="game"></div>`;
+  const gameText = () => game + `<div class="notice"><div class="tx"><span class="h">${HOT_H}</span><span class="b">${HOT_B}</span></div></div>`;
+  const gameMark = () => game + `<div class="notice left">${therm(104)}<div class="tx"><span class="h">${HOT_H}</span><span class="b">${HOT_B}</span></div></div>`;
+  const gamePill = () => game + `<div class="pill">${therm(44)}<span>Getting hot</span></div>`;
+
+  /* ---- motion ----------------------------------------------------------- */
+  const live = new Map();   /* a frame's running timers, cleared on a replay */
+  function stop(el) { (live.get(el) || []).forEach(clearTimeout); live.set(el, []); el.getAnimations({ subtree: true }).forEach(a => a.cancel()); }
+  const later = (el, ms, f) => live.get(el).push(setTimeout(f, ms));
+  /* The send-off from where he stands: the head straight and the tongue in
+   * (260 ms, in), then dim to the ground (210 ms, out), and the backlight off */
+  function sendOff(sc) {
+    const z = sc.querySelector(".lbz"), off = sc.querySelector(".off");
+    z.animate([{ transform: "rotate(18deg)" }, { transform: "rotate(0deg)" }], { duration: 260, easing: "cubic-bezier(.64,0,.78,0)", fill: "forwards" });
+    later(sc, 260, () => z.animate([{ opacity: 1 }, { opacity: .12 }], { duration: 210, easing: ZK.T.curves.out, fill: "forwards" }));
+    later(sc, 520, () => off.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 60, fill: "forwards" }));
+  }
+  function playCountdown(card, kind) {
+    card.querySelectorAll(".zs").forEach(sc => {
+      stop(sc);
+      const HOLD = 6000;
+      if (kind === "bar") sc.querySelector(".cd i").animate([{ width: "100%" }, { width: "0%" }], { duration: HOLD, easing: "linear", fill: "forwards" });
+      if (kind === "seconds") for (let s = 1; s <= 6; s++) later(sc, s * 1000, () => { const e = sc.querySelector(".sec"); if (e) e.textContent = String(6 - s); });
+      later(sc, HOLD, () => sendOff(sc));
+    });
+  }
+  function playCharger(card, kind) {
+    card.querySelectorAll(".zs").forEach(sc => {
+      stop(sc);
+      const th = sc.dataset.theme, hin = sc.querySelector(".homein");
+      hin.innerHTML = home(th);
+      sc.querySelector(".cd i")?.animate([{ width: "100%" }, { width: "60%" }], { duration: 2400, easing: "linear", fill: "forwards" });
+      /* the cable goes in at 2.4 s */
+      later(sc, 2400, () => {
+        if (kind === "cheer") {
+          const z = sc.querySelector(".lbz");
+          sc.querySelector(".lbb").outerHTML = batt(null, null, 1.5, 2, true, "lbb");
+          sc.querySelector(".lbl").textContent = "Charging.";
+          sc.querySelector(".cd")?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" });
+          z.animate([{ transform: "rotate(18deg)" }, { transform: "rotate(0deg) translateY(-26px)" }, { transform: "rotate(0deg)" }], { duration: 420, easing: ZK.T.curves.out, fill: "forwards" });
+          later(sc, 1400, () => hin.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: ZK.T.curves.out, fill: "forwards" }));
+        } else {
+          hin.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: ZK.T.curves.out, fill: "forwards" });
+        }
+      });
+    });
+  }
+  function playHeat(card) {
+    card.querySelectorAll(".zs").forEach(sc => {
+      stop(sc);
+      const p = sc.querySelector(".pop, .notice:not([style]), .pill, .bub, .msg");
+      const z = sc.querySelector(".pop .zyp, .bub ~ .zyp, .zyp:not(.lbz)");
+      if (!p) return;
+      p.animate([{ opacity: 0, translate: "0 -14px" }, { opacity: 1, translate: "0 0" }], { duration: 120, easing: ZK.T.curves.out, fill: "both" });
+      if (z && sc.querySelector(".pop, .bub")) z.animate([{ translate: "0 0" }, { translate: "0 -10px" }, { translate: "0 0" }, { translate: "0 -6px" }, { translate: "0 0" }], { duration: 900, delay: 120, easing: "ease-in-out", iterations: 3 });
+      later(sc, 4000, () => p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "linear", fill: "forwards" }));
+    });
+  }
+  document.getElementById("board").addEventListener("click", e => {
+    const b = e.target.closest("[data-play]");
+    if (!b) return;
+    const card = b.closest(".zk-card"), [what, kind] = b.dataset.play.split(":");
+    if (what === "cd") playCountdown(card, kind);
+    if (what === "ch") playCharger(card, kind);
+    if (what === "heat") playHeat(card);
+  });
+
+  const list = [
+    { key: "lowbatt", title: "The start screen when the battery is too low",
+      why: "At 2% or less, off the charger, the handheld shows this as its first screen and powers off by itself. Zyper's head is cocked with his tongue in, the way he looks when something fails. The bar under the lines is the next section's question.",
+      options: {
+        zyper: { name: "Zyper and two lines", tag: "suggested", blurb: "Zyper large, where the power-off animation has him, over \"Battery too low\" (title) and \"Plug in a charger.\" (label), with the empty battery mark in warning before the title. When the time is up he plays the power-off from where he stands: his head straightens and he dims to the ground.",
+          draw: () => both(() => lbZyper()) },
+        mark: { name: "The empty battery", blurb: "The empty battery mark large in warning, Zyper beside it, and the two lines under. The battery says it before you read.",
+          draw: () => both(lbMark) },
+        panel: { name: "A panel", blurb: "The menu panel on the ground, with a warning rule and Zyper small in its heading's corner, like a message. Smallest; reads like the rest of the menus.",
+          draw: () => both(lbPanel) },
+      } },
+    { key: "countdown", title: "How it shows the time left",
+      why: "The screen stays 6 seconds, enough to find a cable, then powers off. Press Play to see the 6 seconds and the power-off.",
+      options: {
+        bar: { name: "A bar that empties", tag: "suggested", blurb: "The first start's bar, 420 wide, in warning on track, emptying from the right over the 6 seconds. Says \"soon\" without numbers to read.",
+          draw: () => both(() => lbZyper({ cd: "bar" })) + playBtn("cd:bar", "Play") },
+        seconds: { name: "Seconds", blurb: "\"Powering off in 6 s\" in meta text-dim, counting down. Exact, but the number moves every second.",
+          draw: () => both(() => lbZyper({ cd: "seconds" })) + playBtn("cd:seconds", "Play") },
+        none: { name: "Nothing", blurb: "Only the two lines; the power-off comes when it comes.",
+          draw: () => both(() => lbZyper({ cd: "none" })) + playBtn("cd:none", "Play") },
+      } },
+    { key: "charger", title: "When a charger goes in while it shows",
+      why: "The handheld goes on to the home, charging. Press Play: the cable goes in at 2.4 seconds.",
+      options: {
+        cheer: { name: "Charging, then the home", tag: "suggested", blurb: "The battery mark turns to the charging bolt, the line says \"Charging.\", Zyper's head comes up with a hop, and after about a second the home comes in.",
+          draw: () => both(() => lbZyper({ cd: "bar" })) + playBtn("ch:cheer", "Play") },
+        straight: { name: "Straight to the home", blurb: "The home comes in the moment the cable is in. Fastest; the status corner's bolt says it is charging.",
+          draw: () => both(() => lbZyper({ cd: "bar" })) + playBtn("ch:straight", "Play") },
+      } },
+    { key: "heathome", title: "\"Getting hot\" on the home and the shelf",
+      why: "When the chip passes 85 °C and the home or a games shelf shows. The words are short so the slab stays inside the 800 a panel may be, with no scrolling. Over a menu or MP4 it waits, and shows when you are back on the home if the chip is still hot. Press Play to see it come and go.",
+      options: {
+        slab: { name: "The song pop-up", tag: "suggested", blurb: "The slab Zyper uses to say a new song (11.22): top center, Zyper at its left, \"Getting hot\" over \"Slowing down to cool off.\" He pants while it stays: a dog cools off that way. In over quick, held 4 s, out over fade-out. It takes no press.",
+          draw: () => both(heatSlab) + playBtn("heat", "Play") },
+        message: { name: "A message", blurb: "The one-line message panel (11.8) over the scrim, two lines, held hold-long; B closes it early. Harder to miss, but it stops what you were doing.",
+          draw: () => both(heatMessage) + playBtn("heat", "Play") },
+        bubble: { name: "Zyper's bubble", blurb: "Zyper comes up from the bottom edge and says it in his own bubble, as in the tutorial: \"I'm getting hot!\" Friendliest, and the biggest.",
+          draw: () => both(heatBubble) + playBtn("heat", "Play") },
+      } },
+    { key: "heatgame", title: "\"Getting hot\" over a game",
+      why: "Zyper is never over a game (DESIGN.md 10), so this is Diatom's notice or its bar. It waits its turn with achievement pop-ups and goes first. Press Play to see it come and go.",
+      options: {
+        mark: { name: "Notice with a thermometer", tag: "suggested", blurb: "The notice at the bottom (11.7), a thermometer in warning at its left where an achievement's badge goes, the two lines beside it. Held 4 s.",
+          draw: () => both(gameMark) + playBtn("heat", "Play") },
+        text: { name: "Notice, words only", blurb: "The same notice with only the two lines, centered, as an achievement without a badge.",
+          draw: () => both(gameText) + playBtn("heat", "Play") },
+        pill: { name: "In the bar's place", blurb: "The volume bar's pill at the top center, with a thermometer and one short line. Diatom would put a notice at the top for the first time.",
+          draw: () => both(gamePill) + playBtn("heat", "Play") },
+        dot: { name: "Notice, then a mark", blurb: "The notice once, then a small thermometer in the top right corner, where the low-battery disc goes, for as long as the chip is over 80 °C.",
+          draw: () => both(th => gameMark(th) + `<div class="hdot">${therm(32)}</div>`) + playBtn("heat", "Play") },
+      } },
+  ];
+
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-battery-heat", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

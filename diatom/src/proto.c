@@ -1,0 +1,436 @@
+/* The launcher protocol.
+ *
+ * One Unix domain socket, line-based, tab-separated `key=value`. Tabs separate
+ * fields so that paths may contain spaces, which ROM filenames routinely do.
+ *
+ * The rule this file exists to uphold is about the DISPLAY, not about error
+ * reporting:
+ *
+ *     ERROR means the game never started. EXIT means it ran and stopped.
+ *
+ * A launcher that hears RUNNING stops drawing. If a missing BIOS were reported
+ * as RUNNING and then immediately EXIT, the launcher would hand over the screen
+ * for a game that never existed, and the player would see a black frame before
+ * the shelf came back.
+ *
+ * Unknown verbs and unknown keys are ignored rather than refused, so a newer
+ * launcher can talk to an older Diatom without a version negotiation.
+ *
+ * One connection at a time, and THE NEWEST WINS. A connect while one is held
+ * displaces it, and the old one is reported as a hangup.
+ *
+ * This comment used to say a second connect was "accepted and closed
+ * immediately", trusting a dead launcher to reach EOF even on SIGKILL. The
+ * code never did that - it did not watch the listener while connected, so a
+ * second connect waited in the backlog - and the premise failed as well: a
+ * daemon the launcher had started inherited its end of this socket and kept
+ * it open after the launcher died. The restarted launcher then blocked in
+ * connect before its first frame, and the Brick sat frozen on 2026-09-18.
+ */
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include "diatom.h"
+
+static int  g_listen = -1;
+static int  g_conn   = -1;
+static int  g_wake   = -1;   /* see diatom_proto_wake_fd */
+static char g_path[256];
+static char g_in[4096];      /* accumulates until a newline arrives */
+static size_t g_used;
+
+static void log_(diatom_log_level lvl, const char *fmt, ...)
+{
+	char buf[512];
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(buf, sizeof buf, fmt, ap);
+	va_end(ap);
+	diatom_port_log(lvl, buf);
+}
+
+bool diatom_proto_listen(const char *path)
+{
+	struct sockaddr_un addr;
+
+	if (!path || !*path) return false;
+	if (strlen(path) >= sizeof addr.sun_path) {
+		log_(DIATOM_LOG_ERROR, "proto: socket path too long: %s", path);
+		return false;
+	}
+
+	/* A stale socket file outbids a live one, so remove it. Safe because a
+	 * second Diatom is not a supported configuration - the display cannot be
+	 * shared (the display handoff spike of 2026-08-24, a working note out of
+	 * the tree since 08d33b4: git show
+	 * 08d33b4^:docs/spikes/2026-08-24-display-handoff.md). */
+	unlink(path);
+
+	g_listen = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (g_listen < 0) {
+		log_(DIATOM_LOG_ERROR, "proto: socket: %s", strerror(errno));
+		return false;
+	}
+	memset(&addr, 0, sizeof addr);
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, sizeof addr.sun_path, "%s", path);
+
+	if (bind(g_listen, (struct sockaddr *)&addr, sizeof addr) != 0 ||
+	    listen(g_listen, 1) != 0) {
+		log_(DIATOM_LOG_ERROR, "proto: bind/listen %s: %s", path, strerror(errno));
+		close(g_listen);
+		g_listen = -1;
+		return false;
+	}
+	fcntl(g_listen, F_SETFL, O_NONBLOCK);
+	snprintf(g_path, sizeof g_path, "%s", path);
+	log_(DIATOM_LOG_INFO, "proto: listening on %s", path);
+	return true;
+}
+
+void diatom_proto_close(void)
+{
+	if (g_conn   >= 0) { close(g_conn);   g_conn   = -1; }
+	if (g_listen >= 0) { close(g_listen); g_listen = -1; }
+	if (g_path[0]) { unlink(g_path); g_path[0] = '\0'; }
+	g_used = 0;
+}
+
+bool diatom_proto_active(void)     { return g_listen >= 0; }
+bool diatom_proto_connected(void)  { return g_conn   >= 0; }
+
+void diatom_proto_send(const char *fmt, ...)
+{
+	char buf[1024];
+	va_list ap;
+	int n;
+
+	if (g_conn < 0) return;
+	va_start(ap, fmt);
+	n = vsnprintf(buf, sizeof buf - 1, fmt, ap);
+	va_end(ap);
+	if (n < 0) return;
+	/* vsnprintf returns the length the line WOULD have had. A longer line
+	 * is cut at sizeof buf - 2 characters, what the buffer holds with the
+	 * newline after it: taken as it came, the newline went past buf and
+	 * send() read on past it (a state saved under a 1,099-character path).
+	 * A cut line is a wrong line, but it is one line, and the next one
+	 * still arrives as its own. */
+	if (n > (int)sizeof buf - 2) n = (int)sizeof buf - 2;
+	buf[n++] = '\n';
+	/* MSG_NOSIGNAL: a launcher that died mid-write must not take Diatom with
+	 * it. The write fails, the next poll reports the hangup, and the game
+	 * keeps running - which is the whole point of a separate process. */
+	if (send(g_conn, buf, (size_t)n, MSG_NOSIGNAL) < 0 && errno != EAGAIN)
+		log_(DIATOM_LOG_WARN, "proto: send: %s", strerror(errno));
+}
+
+/* The crash path. Async-signal-safe, which rules out the send above: vsnprintf
+ * is not on POSIX's list, and neither is re-entering the buffer it formats
+ * into. So `line` must arrive complete, newline included, as a constant.
+ *
+ * send() rather than write() for two reasons, both required. send() is on the
+ * async-signal-safe list. MSG_NOSIGNAL stops a launcher that died first from
+ * turning a reportable crash into an unreportable one - without it the SIGPIPE
+ * default disposition would kill us here, before we could re-raise the signal
+ * that actually caused the crash.
+ *
+ * One pass, and no retry on EAGAIN. A launcher that has stopped reading would
+ * otherwise turn a crash into a hang, and an unreported crash is much the
+ * lesser fault - the socket closing tells the launcher something died anyway.
+ */
+void diatom_proto_emit_fatal(const char *line)
+{
+	size_t n = 0, off = 0;
+
+	if (g_conn < 0 || !line) return;
+	while (line[n]) n++;          /* strlen is not on the safe list either */
+
+	while (off < n) {
+		ssize_t w = send(g_conn, line + off, n - off, MSG_NOSIGNAL);
+		if (w <= 0) return;
+		off += (size_t)w;
+	}
+}
+
+/* Fill `out` from one complete line. Unknown keys are skipped silently. */
+static void parse_line(char *line, diatom_msg *out)
+{
+	char *save = NULL, *field;
+
+	memset(out, 0, sizeof *out);
+	field = strtok_r(line, "\t", &save);
+	if (!field) { out->kind = DIATOM_MSG_NONE; return; }
+
+	if      (!strcmp(field, "RUN"))     out->kind = DIATOM_MSG_RUN;
+	else if (!strcmp(field, "STOP"))    out->kind = DIATOM_MSG_STOP;
+	else if (!strcmp(field, "QUIT"))    out->kind = DIATOM_MSG_QUIT;
+	else if (!strcmp(field, "PAUSE"))   out->kind = DIATOM_MSG_PAUSE;
+	else if (!strcmp(field, "SETIDLE")) out->kind = DIATOM_MSG_SETIDLE;
+	else if (!strcmp(field, "RESUME"))  out->kind = DIATOM_MSG_RESUME;
+	else if (!strcmp(field, "RESET"))   out->kind = DIATOM_MSG_RESET;
+	else if (!strcmp(field, "SAVE"))    out->kind = DIATOM_MSG_SAVE;
+	else if (!strcmp(field, "LOAD"))    out->kind = DIATOM_MSG_LOAD;
+	else if (!strcmp(field, "OPTIONS")) out->kind = DIATOM_MSG_OPTIONS;
+	else if (!strcmp(field, "SETOPT"))  out->kind = DIATOM_MSG_SETOPT;
+	else if (!strcmp(field, "INPUTS"))   out->kind = DIATOM_MSG_INPUTS;
+	else if (!strcmp(field, "MAP"))      out->kind = DIATOM_MSG_MAP;
+	else if (!strcmp(field, "SETMAP"))   out->kind = DIATOM_MSG_SETMAP;
+	else if (!strcmp(field, "LEVELS"))   out->kind = DIATOM_MSG_LEVELS;
+	else if (!strcmp(field, "SETLEVEL")) out->kind = DIATOM_MSG_SETLEVEL;
+	else if (!strcmp(field, "DISPLAY"))  out->kind = DIATOM_MSG_DISPLAY;
+	else if (!strcmp(field, "SETDISPLAY")) out->kind = DIATOM_MSG_SETDISPLAY;
+	else if (!strcmp(field, "OVERLAY"))    out->kind = DIATOM_MSG_OVERLAY;
+	else if (!strcmp(field, "CHEEVOS"))    out->kind = DIATOM_MSG_CHEEVOS;
+	else if (!strcmp(field, "SETCHEEVOS")) out->kind = DIATOM_MSG_SETCHEEVOS;
+	else if (!strcmp(field, "AUDIO"))      out->kind = DIATOM_MSG_AUDIO;
+	else if (!strcmp(field, "SETAUDIO"))   out->kind = DIATOM_MSG_SETAUDIO;
+	else if (!strcmp(field, "MUTE"))       out->kind = DIATOM_MSG_MUTE;
+	else if (!strcmp(field, "SETMUTE"))    out->kind = DIATOM_MSG_SETMUTE;
+	else if (!strcmp(field, "QUIET"))      out->kind = DIATOM_MSG_QUIET;
+	else if (!strcmp(field, "SETQUIET"))   out->kind = DIATOM_MSG_SETQUIET;
+	else if (!strcmp(field, "SPEED"))      out->kind = DIATOM_MSG_SPEED;
+	else if (!strcmp(field, "CHANNELS"))   out->kind = DIATOM_MSG_CHANNELS;
+	else if (!strcmp(field, "SETCHANNELS"))out->kind = DIATOM_MSG_SETCHANNELS;
+	else if (!strcmp(field, "PREMAP"))     out->kind = DIATOM_MSG_PREMAP;
+	else if (!strcmp(field, "LOWBATTERY"))    out->kind = DIATOM_MSG_LOWBATTERY;
+	else if (!strcmp(field, "SETLOWBATTERY")) out->kind = DIATOM_MSG_SETLOWBATTERY;
+	else if (!strcmp(field, "DISC"))       out->kind = DIATOM_MSG_DISC;
+	else if (!strcmp(field, "SETDISC"))    out->kind = DIATOM_MSG_SETDISC;
+	else if (!strcmp(field, "SCREENS"))    out->kind = DIATOM_MSG_SCREENS;
+	else if (!strcmp(field, "SETSCREENS")) out->kind = DIATOM_MSG_SETSCREENS;
+	else if (!strcmp(field, "STYLUS"))     out->kind = DIATOM_MSG_STYLUS;
+	else if (!strcmp(field, "SETSTYLUS"))  out->kind = DIATOM_MSG_SETSTYLUS;
+	else {
+		log_(DIATOM_LOG_WARN, "proto: ignoring unknown verb '%s'", field);
+		out->kind = DIATOM_MSG_NONE;
+		return;
+	}
+
+	while ((field = strtok_r(NULL, "\t", &save)) != NULL) {
+		char *eq = strchr(field, '=');
+		const char *v;
+		if (!eq) continue;
+		*eq = '\0';
+		v = eq + 1;
+		if      (!strcmp(field, "device"))
+			snprintf(out->device, sizeof out->device, "%s", v);
+		/* SETMUTE's and SETQUIET's only argument. Anything that is not "1"
+		 * is off, so a launcher that sends "true" gets sound rather than
+		 * silence - the safe direction to be wrong in, because a device stuck
+		 * making sound can be quieted again, and one stuck silent looks
+		 * broken. */
+		else if (!strcmp(field, "on")) out->on = (strcmp(v, "1") == 0);
+		/* SETLOWBATTERY's second flag: the battery is critical, and the
+		 * disc blinks. "1" or not, as `on`. */
+		else if (!strcmp(field, "blink")) out->blink = (strcmp(v, "1") == 0);
+		else if (!strcmp(field, "core")) snprintf(out->core, sizeof out->core, "%s", v);
+		else if (!strcmp(field, "rom"))  snprintf(out->rom,  sizeof out->rom,  "%s", v);
+		/* A key the original protocol did not define, which costs nothing to
+		 * add because unknown keys are ignored: an older Diatom drops it and
+		 * fails the way it always did, a newer one checks before loading. */
+		else if (!strcmp(field, "firmware"))
+			snprintf(out->firmware, sizeof out->firmware, "%s", v);
+		else if (!strcmp(field, "tag"))  snprintf(out->tag,  sizeof out->tag,  "%s", v);
+		else if (!strcmp(field, "slot")) snprintf(out->slot,  sizeof out->slot,  "%s", v);
+		else if (!strcmp(field, "resume"))
+			snprintf(out->resume, sizeof out->resume, "%s", v);
+		else if (!strcmp(field, "exit_state"))
+			snprintf(out->exit_state, sizeof out->exit_state, "%s", v);
+		else if (!strcmp(field, "preview"))
+			snprintf(out->preview, sizeof out->preview, "%s", v);
+		else if (!strcmp(field, "path")) snprintf(out->path,  sizeof out->path,  "%s", v);
+		/* `cheevos=` is a path on RUN rather than the set itself: a condition
+		 * string runs to kilobytes and would not survive a line protocol, and
+		 * the launcher already passes paths for save states. */
+		else if (!strcmp(field, "cheevos"))
+			snprintf(out->cheevos, sizeof out->cheevos, "%s", v);
+		else if (!strcmp(field, "console")) out->console = (int)strtol(v, NULL, 10);
+		else if (!strcmp(field, "screens")) out->screens = (int)strtol(v, NULL, 10);
+		else if (!strcmp(field, "frameskip"))
+			snprintf(out->frameskip, sizeof out->frameskip, "%s", v);
+		else if (!strcmp(field, "power"))
+			snprintf(out->power, sizeof out->power, "%s", v);
+		else if (!strcmp(field, "controller"))
+			out->controller = (unsigned)strtoul(v, NULL, 10);
+		else if (!strcmp(field, "layout"))
+			snprintf(out->layout, sizeof out->layout, "%s", v);
+		else if (!strcmp(field, "swap")) snprintf(out->swap, sizeof out->swap, "%s", v);
+		else if (!strcmp(field, "key"))  snprintf(out->key,   sizeof out->key,   "%s", v);
+		else if (!strcmp(field, "value"))snprintf(out->value, sizeof out->value, "%s", v);
+		else if (!strcmp(field, "map"))  snprintf(out->map,   sizeof out->map,   "%s", v);
+		else if (!strcmp(field, "kind")) snprintf(out->lkind, sizeof out->lkind, "%s", v);
+		else if (!strcmp(field, "index")) out->index = (int)strtol(v, NULL, 10);
+		else if (!strcmp(field, "count")) out->count = (int)strtol(v, NULL, 10);
+		/* OVERLAY's duration, into the same int. A second integer field whose
+		 * only difference is which verb reads it would be two names for one
+		 * slot, which is how the launcher ends up setting the wrong one. */
+		else if (!strcmp(field, "ms"))    out->count = (int)strtol(v, NULL, 10);
+		else if (!strcmp(field, "mode"))  snprintf(out->dmode,  sizeof out->dmode,  "%s", v);
+		else if (!strcmp(field, "filter"))snprintf(out->dfilter,sizeof out->dfilter,"%s", v);
+		/* anything else: forward compatibility, ignore */
+	}
+}
+
+/* Take one buffered line if there is one. */
+static bool take_line(diatom_msg *out)
+{
+	char *nl = memchr(g_in, '\n', g_used);
+	size_t len;
+
+	if (!nl) return false;
+	*nl = '\0';
+	len = (size_t)(nl - g_in) + 1;
+	parse_line(g_in, out);
+	memmove(g_in, g_in + len, g_used - len);
+	g_used -= len;
+	return true;
+}
+
+/* Take the connection that is waiting. True when it displaced one: the
+ * launcher that connected last is the one that is alive, whatever is still
+ * holding the other end of the old one. */
+static bool accept_newest(void)
+{
+	int fd = accept(g_listen, NULL, NULL);
+	bool displaced = false;
+
+	if (fd < 0) return false;
+	if (g_conn >= 0) {
+		log_(DIATOM_LOG_WARN, "proto: a newer launcher connected; dropping the old connection");
+		close(g_conn);
+		displaced = true;
+	}
+	fcntl(fd, F_SETFL, O_NONBLOCK);
+	g_conn = fd;
+	g_used = 0;           /* whatever the old one had half-sent is not ours */
+	log_(DIATOM_LOG_INFO, "proto: launcher connected");
+	return displaced;
+}
+
+void diatom_proto_wake_fd(int fd) { g_wake = fd; }
+
+diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
+{
+	struct pollfd p[3];
+	int n = 0, li = -1, ci = -1, wi = -1;
+	ssize_t got;
+
+	memset(out, 0, sizeof *out);
+	if (g_listen < 0) return DIATOM_MSG_NONE;
+
+	/* A line may already be buffered from a previous read. */
+	if (g_conn >= 0 && take_line(out)) return out->kind;
+
+	/* The listener ALWAYS, connected or not. Watching it only while idle was
+	 * the whole of the old lockup: a connect made while one was held was
+	 * never seen, and the launcher making it waited forever. */
+	p[n].fd = g_listen; p[n].events = POLLIN; li = n++;
+	if (g_conn >= 0) { p[n].fd = g_conn; p[n].events = POLLIN; ci = n++; }
+	if (g_wake >= 0) { p[n].fd = g_wake;  p[n].events = POLLIN; wi = n++; }
+
+	if (poll(p, (nfds_t)n, timeout_ms) <= 0) return DIATOM_MSG_NONE;
+
+	/* Drained and thrown away. The only information a wake byte carries is
+	 * that this call should return so the caller can look at its flags. */
+	if (wi >= 0 && (p[wi].revents & POLLIN)) {
+		char drain[64];
+		while (read(g_wake, drain, sizeof drain) > 0) ;
+		return DIATOM_MSG_NONE;
+	}
+
+	if (li >= 0 && (p[li].revents & POLLIN)) {
+		bool displaced = accept_newest();
+
+		/* Tell a fresh launcher whether the screen is already spoken for.
+		 * Without this, a launcher restarted by launch.sh while a game runs
+		 * would draw its shelf over live output. */
+		/* proto=2 added the state plane. The protocol already promises
+		 * unknown verbs are ignored, so an old launcher is unaffected; this is
+		 * how a NEW launcher discovers the plane is absent rather than
+		 * inferring it from silence.
+		 *
+		 * proto=3 adds turbo, and had to bump for a different reason: it
+		 * changes the value GRAMMAR of an existing key rather than adding one,
+		 * which the ignore-unknown promise does not cover. The degradation is
+		 * safe in both directions - a Diatom without it reads `a~3` as a
+		 * button name nobody has and rejects the whole map, so an old pairing
+		 * loses turbo rather than getting a wrong map - but a launcher should
+		 * not have to discover that by trying. */
+		/* proto=4 adds audio output. Purely additive, so the ignore-unknown
+		 * promise covers an old launcher completely - the bump is for the NEW
+		 * one, which needs to know whether asking is worth it. Without it, a
+		 * launcher that sent SETAUDIO to a Diatom without the state would get
+		 * silence back and could not tell that from a sink that failed to
+		 * open, which is precisely the confusion the fallback exists to
+		 * prevent. */
+		/* proto=5 adds mute, and bumps for exactly proto=4's reason.
+		 * Additive, so an old Diatom ignoring SETMUTE is safe in itself - but
+		 * it would leave the device LOUD with the switch down, and a launcher
+		 * could not tell that from a mute that worked. Knowing not to promise
+		 * the player something is the point of the number. */
+		/* proto=6 adds quiet, for the same reason again: an old Diatom
+		 * ignores SETQUIET and the game plays on under the music, which a
+		 * launcher could not tell from a quiet that worked. */
+		/* proto=7 adds fast forward. Additive - an old launcher ignores
+		 * SPEED - and bumped so a new one can tell whether MENU+R1 will answer
+		 * before telling a player it does. */
+		/* proto=8 adds the channels, for a player who hears with one ear.
+		 * Additive like the rest, and bumped for quiet's reason: an old Diatom
+		 * ignores SETCHANNELS and a game plays half its sound into the ear
+		 * that cannot hear it, which a launcher could not tell from a mix
+		 * that worked. */
+		/* proto=9 adds PREMAP: the cores are mapped when the launcher says
+		 * it has drawn, rather than the moment Diatom listens. Additive: an
+		 * old Diatom ignores it and maps at once, as it always did; an old
+		 * launcher never sends it, and the cores are mapped a few seconds
+		 * later anyway. */
+		/* proto=10 adds low battery. Additive: an old Diatom ignores
+		 * SETLOWBATTERY and a game shows nothing, as before; bumped so a
+		 * launcher can tell whether the disc will be drawn. */
+		/* proto=11 adds discs. Additive: an old Diatom ignores DISC and
+		 * SETDISC, and a launcher that sees proto=10 knows not to offer a
+		 * "Next disc" row that would do nothing - which a player stuck at
+		 * "insert disc 2" could not tell from a disc that would not read. */
+		/* proto=12 adds two screens in one frame: RUN screens=2 and
+		 * frameskip=late, SCREENS and SETSCREENS, STYLUS and SETSTYLUS.
+		 * Additive: an old Diatom ignores all of it and shows a DS frame as
+		 * one tall picture with no stylus, and a launcher that sees proto=11
+		 * knows not to offer a Screens or Stylus row that would do nothing. */
+		diatom_proto_send("READY\tproto=12\tstate=%s", running ? "running" : "idle");
+		/* A displaced launcher is a vanished one, and every loop already
+		 * knows what that means - the in-game menu resumes the game. Said
+		 * after READY, so the new launcher hears where things stand first. */
+		return displaced ? DIATOM_MSG_HANGUP : DIATOM_MSG_NONE;
+	}
+
+	if (ci >= 0 && (p[ci].revents & (POLLIN | POLLHUP | POLLERR))) {
+		got = read(g_conn, g_in + g_used, sizeof g_in - g_used - 1);
+		if (got > 0) {
+			g_used += (size_t)got;
+			if (take_line(out)) return out->kind;
+			if (g_used >= sizeof g_in - 1) {
+				log_(DIATOM_LOG_WARN, "proto: oversized line, dropping");
+				g_used = 0;
+			}
+			return DIATOM_MSG_NONE;
+		}
+		/* EOF, including the launcher being SIGKILLed. The game keeps
+		 * running; Diatom is a separate process so a dead launcher cannot
+		 * end it. */
+		log_(DIATOM_LOG_INFO, "proto: launcher disconnected");
+		close(g_conn);
+		g_conn = -1;
+		g_used = 0;
+		return DIATOM_MSG_HANGUP;
+	}
+	return DIATOM_MSG_NONE;
+}

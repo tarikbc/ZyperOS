@@ -1,0 +1,34 @@
+# Build products
+/build/
+/build-native/
+/out/
+
+# Redistributed binaries: the libretro cores and the device runtime libraries.
+# All of it is fetched by mk/fetch-vendor.sh, so none of it belongs in the
+# history. The emulator binary is Diatom's, built in diatom/ (its own Makefile)
+# and taken from DIATOM_ELF at payload time.
+/vendor/
+
+# ScreenScraper credentials: the developer pair the build compiles in, and the
+# account check-ss logs in with. Read by the Makefile and tools/ss-check.c.
+/.screenscraper.env
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+._*
+
+# Copied in from res/fonts at deploy and payload time so the browser can ask
+# for /web/menu.ttf and /web/title.ttf - one copy in the repo, two on the card.
+/res/web/menu.ttf
+/res/web/title.ttf
+
+# Retired things kept for reference, out of the repository
+/attic/
+
+# The menu music lab's MP3s, made by tools/bgm-tracks.py lab (45 MB): published
+# with the lab, never committed. menu-music.js beside them is.
+/docs/design/mock/audio/

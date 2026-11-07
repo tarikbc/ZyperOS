@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS Update Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .stack { display: grid; gap: 8px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 80ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 20px; }
+  .states article { display: grid; gap: 6px; }
+  .states h3 { margin: 4px 0 0; font: 600 15px var(--zk-f-sans, "Lexend", sans-serif); color: var(--zk-ink); }
+  .states p { margin: 0; font-size: 13.5px; color: var(--zk-ink-2); }
+
+  /* On the handheld: in launcher units (1024x768), DESIGN.md tokens only. */
+  .zs .mrow.prog { display: grid; grid-template-columns: 1fr auto; row-gap: 10px; }
+  .zs .mrow.prog .pbar { grid-column: 1 / -1; height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; }
+  .zs .mrow.prog .pbar b { display: block; height: 100%; border-radius: 7px; background: var(--accent-ink); }
+  .zs .mrow.sel.prog .pbar { background: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+  .zs .mrow.sel.prog .pbar b { background: var(--on-accent); }
+  .zs .mrow .new { color: var(--accent-ink); }
+  .zs .mrow.sel .new { color: var(--on-accent); opacity: 1; }
+  .zs .mrow.warn span { color: var(--warning); }
+  .zs .mrow.sel.warn span { color: var(--on-accent); }
+  .zs .panel > * { flex-shrink: 0; }
+  .zs .panel .note { font-size: 37px; color: var(--text-dim); padding: 6px 28px 0; line-height: 1.25; }
+
+  /* the full page */
+  .zs .up-page { position: absolute; inset: 0; }
+  .zs .up-page h4 { position: absolute; left: 0; right: 0; top: 34px; margin: 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .up-page .zy { position: absolute; left: 70px; top: 150px; width: 150px; height: 158px; }
+  .zs .up-page .jump { position: absolute; left: 270px; top: 160px; font-size: 76px; font-weight: 600; color: var(--text); }
+  .zs .up-page .jump i { font-style: normal; color: var(--text-dim); font-weight: 400; padding: 0 18px; }
+  .zs .up-page .size { position: absolute; left: 272px; top: 262px; font-size: 37px; color: var(--text-dim); }
+  .zs .up-page ul { position: absolute; left: 90px; right: 90px; top: 350px; margin: 0; padding: 0 0 0 40px; font-size: 41px; line-height: 1.35; color: var(--text-soft); }
+  .zs .up-page .pb { position: absolute; left: 90px; right: 90px; top: 580px; height: 18px; border-radius: 9px; background: var(--track); overflow: hidden; }
+  .zs .up-page .pb b { display: block; height: 100%; background: var(--accent-ink); border-radius: 9px; }
+  .zs .up-page .pt { position: absolute; left: 90px; right: 90px; top: 612px; font-size: 37px; color: var(--text-dim); display: flex; justify-content: space-between; }
+  .zs .up-page .keys { position: absolute; left: 0; right: 0; bottom: 34px; display: flex; justify-content: center; gap: 46px; font-size: 41px; color: var(--text-soft); align-items: center; }
+  .zs .up-page .keys b { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 2px var(--edge) inset; font-weight: 600; font-size: 34px; margin-right: 14px; color: var(--text); }
+
+  /* the one message */
+  .zs .up-msg { position: absolute; left: 132px; width: 760px; top: 250px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); padding: 34px 44px 30px; display: grid; gap: 18px; }
+  .zs .up-msg .l1 { font-size: 49px; color: var(--text); font-weight: 600; }
+  .zs .up-msg .l2 { font-size: 41px; color: var(--text-dim); }
+  .zs .up-msg .pb { height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; }
+  .zs .up-msg .pb b { display: block; height: 100%; background: var(--accent-ink); }
+  .zs .up-msg .keys { display: flex; gap: 40px; font-size: 41px; color: var(--text-soft); align-items: center; }
+  .zs .up-msg .keys b { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 2px var(--edge) inset; font-weight: 600; font-size: 32px; margin-right: 12px; color: var(--text); }
+  .zs .corner-dot { position: absolute; right: 40px; top: 30px; display: flex; align-items: center; gap: 12px; font-size: 34px; color: var(--text-dim); }
+  .zs .corner-dot i { width: 18px; height: 18px; border-radius: 50%; background: var(--accent-ink); }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Update Lab</b></h1>
+      <p class="zk-lede">System Update for the card's ZyperOS folder: the launcher, Diatom, the cores and the art. It downloads only the files that changed, checks every file against a signed list, and keeps the old version for one step back. These three decisions set where it lives, how it looks, and when it looks for updates.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option.</b> Nothing installs while you play: the new version goes into a separate folder and is switched in at the next start. Below 25% battery without the charger, the download does not start. A download that stops (Wi-Fi gone, power off) continues where it stopped. If the new version does not start twice, the next start goes back to the old one by itself.</div>
+  <main id="m"></main>
+  <section style="padding-block:36px 8px">
+    <p class="zk-mono" style="margin:0">04</p>
+    <h2 class="zk-h2">Every state of the suggested screen</h2>
+    <p class="zk-why">Not a decision: what the menu-panel screen says in each case, so the words can be checked. Salt &amp; Pepper on the even ones.</p>
+    <div class="states" id="states"></div>
+  </section>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  const SHELF = th => ZK.shelf(th, { title: "Super Metroid" });
+  const pbar = pct => `<div class="pbar"><b style="width:${pct}%"></b></div>`;
+  /* The menu panel, with rows as [label, value, dead, cls]. */
+  function panel(th, heading, rows, sel, note) {
+    const z = `<svg class="zcorner"><use href="#zyper"/></svg>`;
+    const body = rows.map((r, i) => {
+      const cls = [r[2] ? "dead" : "", i === sel ? "sel" : "", r[3] || ""].join(" ");
+      if (r[3] === "prog") return `<div class="mrow ${cls}">${r[0]}<span>${r[1]}</span>${pbar(r[4])}</div>`;
+      return `<div class="mrow ${cls}">${r[0]}<span>${r[1]}</span></div>`;
+    }).join("");
+    return `<div class="scrim"></div><div class="panel"><h4>${heading}${z}</h4><hr>${body}${note ? `<div class="note">${note}</div>` : ""}</div>`;
+  }
+  const screenUpdate = (th, state) => ZK.screen(th, SHELF(th) + panel(th, "System Update", ...state));
+  const S = {
+    available: [[["Installed", "0.1.0", 1], ["New", `<span class="new">0.2.0 · 14 MB</span>`], ["Download", ""], ["What's New", ""], ["Roll Back", "0.0.9"]], 2],
+    downloading: [[["Installed", "0.1.0", 1], ["New", "0.2.0 · 14 MB"], ["Downloading", "6.1 of 14 MB", 0, "prog", 44], ["What's New", ""]], 2, "B leaves this screen. The download goes on."],
+    ready: [[["Installed", "0.1.0", 1], ["New", "0.2.0 · checked"], ["Restart Now", ""], ["What's New", ""]], 2, "Or later: the update goes in the next time ZyperOS starts."],
+  };
+
+  ZK.decisions(document.getElementById("m"), [
+    { key: "entry", title: "Where System Update lives",
+      why: "One place to look, with the news in the value column when there is an update. The MENU list is already long, so the other choice puts it inside About ZyperOS.",
+      options: {
+        row: { name: "Its own row", tag: "suggested", blurb: "MENU > System Update, just above About ZyperOS. Its value says the installed version, or the new one when there is an update, in the accent color.", draw: () => `<div class="stack">
+          ${ZK.screen("light", SHELF("light") + panel("light", "ZyperOS", [["Controls", ""], ["Show Tutorial", ""], ["System Update", `<span class="new">0.2.0 available</span>`], ["About ZyperOS", ""]], 2))}
+          <span class="cap">Beard &middot; an update is out</span>
+          ${ZK.screen("dark", SHELF("dark") + panel("dark", "ZyperOS", [["Controls", ""], ["Show Tutorial", ""], ["System Update", "0.1.0"], ["About ZyperOS", ""]], 2))}
+          <span class="cap">Salt &amp; Pepper &middot; up to date</span></div>` },
+        about: { name: "Inside About", blurb: "No new MENU row. About ZyperOS opens with the version and a System Update row under it; the MENU row About ZyperOS gets the value \"update\" when there is one.", draw: () => `<div class="stack">
+          ${ZK.screen("light", SHELF("light") + panel("light", "ZyperOS", [["Controls", ""], ["Show Tutorial", ""], ["About ZyperOS", `<span class="new">update</span>`]], 2))}
+          <span class="cap">Beard &middot; MENU, an update is out</span>
+          ${ZK.screen("dark", SHELF("dark") + panel("dark", "About ZyperOS", [["Version", "0.1.0", 1], ["System Update", `<span class="new">0.2.0</span>`], ["Storage", "21.4 GB free"], ["Battery", "84%"]], 1))}
+          <span class="cap">Salt &amp; Pepper &middot; About's first page</span></div>` },
+      } },
+    { key: "screen", title: "The update screen",
+      why: "What opens from the row. It has to show the two versions, the download and its progress, the restart, and the step back.",
+      options: {
+        panel: { name: "Menu panel", tag: "suggested", blurb: "The same panel as every MENU screen, so nothing new to learn: rows for the versions and the actions, and the Download row turns into its own progress bar. A one-line note under the rows says what B and the restart do.", draw: () => `<div class="stack">
+          ${screenUpdate("light", S.available)}<span class="cap">Beard &middot; update available</span>
+          ${screenUpdate("dark", S.downloading)}<span class="cap">Salt &amp; Pepper &middot; downloading</span></div>` },
+        page: { name: "Full page", blurb: "A page of its own, like the tutorial's: Zyper, the version jump in big type, three lines of what is new, one progress bar, and the buttons at the bottom. More room for the notes; one more kind of screen.", draw: () => {
+          const page = (th, pct, keys) => ZK.screen(th, `<div class="up-page"><h4>System Update</h4><svg class="zy"><use href="#zyper"/></svg>
+            <div class="jump">0.1.0<i>→</i>0.2.0</div><div class="size">14 MB to download · 168 MB in all</div>
+            <ul><li>New home screen with art for every system</li><li>MP4 videos in the music player</li><li>Dreamcast rumble</li></ul>
+            ${pct === null ? "" : `<div class="pb"><b style="width:${pct}%"></b></div><div class="pt"><span>Downloading</span><span>6.1 of 14 MB</span></div>`}
+            <div class="keys">${keys}</div></div>`);
+          return `<div class="stack">${page("light", null, "<span><b>A</b>Download</span><span><b>B</b>Back</span>")}<span class="cap">Beard &middot; update available</span>
+            ${page("dark", 44, "<span><b>B</b>Back, it goes on</span>")}<span class="cap">Salt &amp; Pepper &middot; downloading</span></div>`; } },
+        message: { name: "One message", blurb: "No screen: one message box over the shelf, with the version, the size and the buttons, then the same box with a bar. Smallest; no room for What's New or the step back.", draw: () => {
+          const msg = (th, l1, l2, pct, keys) => ZK.screen(th, SHELF(th) + `<div class="scrim"></div><div class="up-msg"><div class="l1">${l1}</div><div class="l2">${l2}</div>${pct === null ? "" : `<div class="pb"><b style="width:${pct}%"></b></div>`}<div class="keys">${keys}</div></div>`);
+          return `<div class="stack">${msg("light", "ZyperOS 0.2.0 is out", "14 MB to download", null, "<span><b>A</b>Download</span><span><b>B</b>Later</span>")}<span class="cap">Beard &middot; update available</span>
+            ${msg("dark", "Downloading 0.2.0", "6.1 of 14 MB", 44, "<span><b>B</b>Hide</span>")}<span class="cap">Salt &amp; Pepper &middot; downloading</span></div>`; } },
+      } },
+    { key: "when", title: "When it looks for updates",
+      why: "Looking costs one small request to GitHub. Downloading costs the update's size on the battery and the Wi-Fi.",
+      options: {
+        manual: { name: "Only when you open it", blurb: "No network use unless you open System Update. You find out about an update only by looking.", draw: () => `<div class="stack">
+          ${ZK.screen("light", SHELF("light") + panel("light", "System Update", [["Installed", "0.1.0", 1], ["Looking for updates…", "", 1]], -1))}<span class="cap">Beard &middot; opened: it looks now</span></div>` },
+        daily: { name: "Once a day on Wi-Fi", tag: "suggested", blurb: "After Wi-Fi joins, at most once a day, it reads the release list (one small request, no download). The MENU row then says \"0.2.0 available\". It never interrupts a game and never downloads by itself.", draw: () => `<div class="stack">
+          ${ZK.screen("light", SHELF("light") + panel("light", "ZyperOS", [["Show Tutorial", ""], ["System Update", `<span class="new">0.2.0 available</span>`], ["About ZyperOS", ""]], -1))}<span class="cap">Beard &middot; found by itself, shown in MENU only</span></div>` },
+        auto: { name: "Download by itself", blurb: "As the daily check, and on the charger (or above 50%) it also downloads and checks the update in the background. Then MENU says \"restart to update\" and one message asks once.", draw: () => `<div class="stack">
+          ${ZK.screen("dark", SHELF("dark") + `<div class="scrim"></div><div class="msg" style="width:720px;left:152px">0.2.0 is ready. Restart?</div>`)}<span class="cap">Salt &amp; Pepper &middot; downloaded on the charger</span></div>` },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-update" });
+
+  const all = [
+    ["Looking", "Opened with Wi-Fi on: one request, a second or two.", [[["Installed", "0.1.0", 1], ["Looking for updates…", "", 1], ["Roll Back", "0.0.9"]], -1]],
+    ["Up to date", "The newest release is the one installed.", [[["Installed", "0.2.0", 1], ["Up to date", "checked 9:41", 1], ["Look Again", ""], ["Roll Back", "0.1.0"]], 2]],
+    ["Available", "Size is what downloads, not the whole folder.", S.available],
+    ["Downloading", "A row of its own with the bar; B leaves and it goes on.", S.downloading],
+    ["Checking files", "After the download: every file against the signed list.", [[["Installed", "0.1.0", 1], ["New", "0.2.0 · 14 MB"], ["Checking files", "214 of 301", 0, "prog", 71]], 2]],
+    ["Ready", "Restart now, or it goes in at the next start.", S.ready],
+    ["Low battery", "Refused below 25% without the charger.", [[["Installed", "0.1.0", 1], ["New", "0.2.0 · 14 MB"], ["Download", "charge first", 1, "warn"], ["What's New", ""]], 3, "Battery is 18%. Connect the charger to download."]],
+    ["No Wi-Fi", "The same words as the other network rows.", [[["Installed", "0.1.0", 1], ["New", "needs Wi-Fi", 1], ["Roll Back", "0.0.9"]], 2]],
+    ["Stopped", "Wi-Fi went away, or the device was turned off.", [[["Installed", "0.1.0", 1], ["New", "0.2.0 · 14 MB"], ["Continue", "6.1 of 14 MB"], ["What's New", ""]], 2]],
+    ["Failed check", "A file does not match the signed list: it is downloaded again.", [[["Installed", "0.1.0", 1], ["New", "0.2.0 · 14 MB"], ["Try Again", "2 files bad", 0, "warn"]], 2]],
+    ["Needs the installer", "This release needs a newer system image (kernel and root).", [[["Installed", "0.1.0", 1], ["New", "0.3.0", 1], ["Needs", "the Installer", 1]], -1, "0.3.0 also changes the system. Use Update in the ZyperOS Installer on a computer."]],
+    ["Went back", "The new version did not start twice, so this start went back.", [[["Installed", "0.1.0", 1], ["0.2.0", "did not start", 1, "warn"], ["Try Again", ""]], 2]],
+  ];
+  document.getElementById("states").innerHTML = all.map((s, i) => {
+    const th = i % 2 ? "dark" : "light";
+    return `<article>${screenUpdate(th, s[2])}<h3>${s[0]}</h3><p>${s[1]}</p></article>`;
+  }).join("");
+  ZK.fit(document.getElementById("states"));
+})();
+</script>
+</body>
+</html>

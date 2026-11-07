@@ -1,0 +1,91 @@
+title: How to Install Custom Firmware on the GKD Pixel 2
+description: Install custom firmware on the GKD Pixel 2 step by step: keep the stock card, write an image to a microSD card, and the first boot, for ZyperOS and others.
+summary: Back up the stock card, write an image to a microSD card, and the first boot. It says ZyperOS has no release image yet.
+crumb: Installing custom firmware
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: tour-home
+image_alt: ZyperOS's first start asks for the home screen: Spotlight or Gallery
+related: best-custom-firmware-gkd-pixel-2, add-games-gkd-pixel-2, gkd-pixel-2-wifi-adapter
+weight: 10
+---
+<p>On the GKD Pixel 2, the whole system lives on the microSD card. So installing custom firmware does not change the handheld at all: you write the new system to a card and boot from it. Keep the card it came with and you can always go back. This guide covers the steps every system shares, and what is different for ZyperOS, ROCKNIX, TortOS, plumOS and ROGUE OS.</p>
+
+<h2>Before you start</h2>
+<ul>
+  <li><strong>A second microSD card.</strong> Use a new card for the new system, and put the stock card away. plumOS asks for one of at least 16 GB; the others name no minimum. Get one big enough for your games.</li>
+  <li><strong>A card reader</strong> for your computer.</li>
+  <li><strong>A program that writes disk images</strong>, such as Raspberry Pi Imager or balenaEtcher.</li>
+</ul>
+<p class="note">ZyperOS is in testing and has no release images yet. To try it now, you build the card image from source, as the ZyperOS section below says. The steps for the other systems work today.</p>
+
+<h2>Step 1: keep the stock card safe</h2>
+<p>The card that came with your Pixel 2 holds its stock firmware, and some sellers ship games on it too. Writing an image to a card erases everything on it, so do not write over that one. Put it away, and if you want a spare, make a full image of it first with a disk imaging program. To go back to stock at any time, turn the handheld off and put that card back.</p>
+
+<h2>Step 2: download the image for the Pixel 2</h2>
+<p>Each project publishes a file for the Pixel 2. As of 7 November 2026:</p>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">System</th><th scope="col">The file</th><th scope="col">Notes</th></tr></thead>
+  <tbody>
+    <tr><th scope="row" class="us">ZyperOS</th><td class="us">No release yet</td><td class="us">Build the image from source, then write it with ZyperOS Installer or any image writer.</td></tr>
+    <tr><th scope="row">ROCKNIX</th><td><code>ROCKNIX-RK3326.aarch64-20261101-b.img.gz</code></td><td>The RK3326 "b" image is the Pixel 2's. Windows users can use the ROCKNIX Image Burner instead.</td></tr>
+    <tr><th scope="row">TortOS</th><td><code>TortOS-v2.1.1-pixel2.img.xz</code></td><td>Or TortOS Installer, for macOS, Windows and Linux, which downloads and writes it for you.</td></tr>
+    <tr><th scope="row">plumOS Pixel2</th><td><code>plumOS-Pixel2-v0.1.4-sd-image.7z</code></td><td>Extract the <code>.img</code> from the <code>.7z</code> first. The project says this fresh image has not had its final boot test.</td></tr>
+    <tr><th scope="row">ROGUE OS</th><td><code>RogueOS-v1.0.zip</code> and its five parts, about 5.7 GB</td><td>From its first release. Then the newest release's <code>Image</code> and <code>SYSTEM</code> files go on top (step 4).</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Check the download against the checksum file each project publishes beside it, where there is one. ROCKNIX, TortOS and plumOS publish one.</p>
+
+<h2>Step 3: write the image to the card</h2>
+<ol>
+  <li>Put the new card in the card reader.</li>
+  <li>Decompress the file if the project says to. ROCKNIX's docs say to decompress the image first, and plumOS's <code>.img</code> comes out of a <code>.7z</code>.</li>
+  <li>Open the image writer, choose the image and the card, and write. Check twice that you chose the card, not another disk: the writer erases what it writes to.</li>
+  <li>Eject the card when the writer says it is done.</li>
+</ol>
+<p>ROCKNIX's docs name Rufus, Raspberry Pi Imager and Win32 Disk Imager; plumOS's name Raspberry Pi Imager and balenaEtcher; ROGUE OS's notes name balenaEtcher; TortOS's README says any program that writes disk images.</p>
+
+<h2>Step 4: the first boot</h2>
+<p>Put the card in the Pixel 2 and turn it on. The first boot takes longer than the rest, because each system makes the space for your games on the rest of the card:</p>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><th scope="col">System</th><th scope="col">On the first boot</th><th scope="col">The games space</th></tr></thead>
+  <tbody>
+    <tr><th scope="row" class="us">ZyperOS</th><td class="us">Turns the rest of the card into ZYPEROS, then starts the tutorial</td><td class="us">exFAT: a Mac or PC reads it</td></tr>
+    <tr><th scope="row">ROCKNIX</th><td>Runs its install process, then reboots</td><td>ext4 over the whole card: Windows and macOS do not see it</td></tr>
+    <tr><th scope="row">TortOS</th><td>Turns the rest of the card into TORTOS</td><td>exFAT: a Mac or PC reads it</td></tr>
+    <tr><th scope="row">plumOS Pixel2</th><td>Makes its PLUMOS_USER volume and may restart once. Do not cut the power, and add games only after it</td><td>FAT32: a Mac or PC reads it</td></tr>
+    <tr><th scope="row">ROGUE OS</th><td>Before the first boot: resize its ROMS partition with a partition tool, then copy the newest <code>Image</code> and <code>SYSTEM</code> over the ones on its EMUELEC partition. It may turn off once at the first start, as a file check</td><td>[unk]</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Step 5: add your games</h2>
+<p>Every system has its own folder names. On ZyperOS games go in <code>Roms/&lt;console&gt;</code>, and you can send them over Wi-Fi or the USB cable as well as with the card in a computer. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows how.</p>
+
+<h2>Installing ZyperOS today</h2>
+<p>ZyperOS has no release images while it is in testing. To try it now:</p>
+<ol>
+  <li>Build the card image from source, as <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md">docs/building.md</a> explains.</li>
+  <li>Write it to a microSD card with ZyperOS Installer, which you build from the same repository for macOS, Windows or Linux, or with any program that writes disk images, like Raspberry Pi Imager. A fresh install erases the card.</li>
+  <li>Put the card in the Pixel 2 and turn it on. After the first boot, Zyper teaches the buttons and asks four things: the theme, the home screen, the button sounds and the menu music.</li>
+  <li>Set your time zone in <strong>MENU &gt; Date &amp; Time</strong>. Without Wi-Fi, set the time there too, and it keeps it.</li>
+</ol>
+<figure class="shot small"><img src="/img/tour-theme.png" alt="ZyperOS's first start asks: Light or dark? The home screen shown in both themes"><figcaption>The first start asks for the theme, the home screen, the sounds and the music.</figcaption></figure>
+<p>ZyperOS Installer can also update a card that already has ZyperOS and keep its games, music and saves. To follow along until the first release, watch <a href="https://github.com/tarikbc/ZyperOS">the GitHub repository</a>.</p>
+
+<h2>Going back</h2>
+<p>Turn the Pixel 2 off and put another card in. The handheld starts whatever system is on the card, so the stock card brings the stock firmware back, unchanged. Everything a system keeps, Wi-Fi passwords included, is on its own card: wipe a card before you give it away.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#install">ZyperOS README, Install</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#installing">the user guide, Installing</a>.</li>
+  <li>ROCKNIX: <a href="https://github.com/ROCKNIX/distribution/releases/tag/20261101">release 20261101</a> (the Pixel 2's file), <a href="https://github.com/ROCKNIX/distribution/releases/tag/20260801">release 20260801</a> (Pixel 2 support added), <a href="https://github.com/ROCKNIX/rocknix.org/blob/18a359940c85fd9ae21252e4df708a9df9e6817d/docs/play/install.md">rocknix.org, Install</a> and <a href="https://github.com/ROCKNIX/rocknix.org/blob/18a359940c85fd9ae21252e4df708a9df9e6817d/docs/faqs.md">FAQ</a> (the ext4 card).</li>
+  <li>TortOS: <a href="https://github.com/ericreinsmidt/TortOS/releases/tag/v2.1.1">release v2.1.1</a>, <a href="https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/README.md">README at aafe6de</a>, <a href="https://github.com/ericreinsmidt/TortOS-Installer/blob/5636763529a99af284e67766a77b7fc5fba1efa4/README.md">TortOS Installer at 5636763</a>.</li>
+  <li>plumOS Pixel2: <a href="https://github.com/game-de-it/plumOS-pixel2_v2/releases/tag/v0.1.4">release v0.1.4</a>, <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/README.md">README</a> and <a href="https://github.com/game-de-it/plumOS-pixel2_v2/blob/dec872c042229c1d38443f7e8e3fe962fc369e81/docs/user/install.md">docs/user/install.md</a> at dec872c.</li>
+  <li>ROGUE OS: <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.22">release 1.22</a>, <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.0">release 1.0</a> and <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/README.md">README at f567073</a>.</li>
+</ol>
+<p class="meta">Read on 7 November 2026. A project may have released something newer since; its own page has the current file.</p>

@@ -1,0 +1,692 @@
+<!doctype html>
+<!-- ZyperOS's web page, served at https://zyperos.com by Cloudflare Pages,
+     which runs mk/site.sh on every change to main that touches the page or
+     its pictures (tarikbc.github.io/ZyperOS forwards here, by
+     .github/workflows/pages.yml). I picked this layout, the shelf, in the
+     landing lab on 2026-11-04, and the 3D Pixel 2 beside the title
+     (pixel2.js) in the device lab the same day. mk/site.sh puts them beside
+     their pictures, which stay where the README keeps them (res/readme/,
+     res/web/).
+
+     Every color is a DESIGN.md role: Beard for a visitor in light mode,
+     Salt & Pepper in dark mode. The type is Lexend, the corners and the motion
+     are DESIGN.md's (card 22, panel 28, row 14, chip 8; 80 ms presses and
+     160 ms moves on the quintic ease-out). The shelf is the launcher's: the
+     focused screen full size, its neighbours at .78 and .62. The screenshots
+     are all in Beard; the light-and-dark section alone shows Salt & Pepper's. -->
+<html lang="en" class="with-device">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Search and sharing: a keyword-first title with the name at the end (60
+     characters at most), a description of 155 at most, one canonical address,
+     the social card tools/site-art.sh draws, and the icons it draws from
+     Zyper's head. robots.txt, sitemap.xml (mk/site.sh), llms.txt and the
+     IndexNow key file sit beside this page. -->
+<title>Fast Custom Firmware for the GKD Pixel 2 | ZyperOS</title>
+<meta name="description" content="A fast, light firmware for the GKD Pixel 2: forty systems, PortMaster ports, box art, RetroAchievements, music and video, on a card you can take out.">
+<link rel="canonical" href="https://zyperos.com/">
+<meta property="og:title" content="ZyperOS: fast custom firmware for the GKD Pixel 2">
+<meta property="og:description" content="A fast, light firmware for the GKD Pixel 2 that plays your whole retro library: forty systems, PortMaster ports, and your music and videos.">
+<meta property="og:url" content="https://zyperos.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ZyperOS">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://zyperos.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ZyperOS, fast custom firmware for the GKD Pixel 2, beside its Spotlight home screen">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ZyperOS: fast custom firmware for the GKD Pixel 2">
+<meta name="twitter:description" content="Forty systems, PortMaster ports, box art and RetroAchievements, from a card you can take out.">
+<meta name="twitter:image" content="https://zyperos.com/og.png">
+<meta name="twitter:image:alt" content="ZyperOS, fast custom firmware for the GKD Pixel 2, beside its Spotlight home screen">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e6e4da" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111310" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://zyperos.com/#website",
+      "name": "ZyperOS",
+      "url": "https://zyperos.com/",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://zyperos.com/#tarik" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://zyperos.com/#tarik",
+      "name": "Tarik Caramanico",
+      "url": "https://github.com/tarikbc"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://zyperos.com/#software",
+      "name": "ZyperOS",
+      "applicationCategory": "GameApplication",
+      "applicationSubCategory": "Custom firmware for retro handhelds",
+      "operatingSystem": "GKD Pixel 2",
+      "description": "A fast, light firmware for the GKD Pixel 2 that plays your whole retro library: forty systems, PortMaster ports, box art, RetroAchievements, and your music and videos, from a card you can take out at any time.",
+      "url": "https://zyperos.com/",
+      "image": "https://zyperos.com/og.png",
+      "screenshot": "https://zyperos.com/img/systems.png",
+      "author": { "@id": "https://zyperos.com/#tarik" },
+      "license": "https://polyformproject.org/licenses/shield/1.0.0",
+      "isAccessibleForFree": true,
+      "sameAs": ["https://github.com/tarikbc/ZyperOS"],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&display=swap">
+<style>
+  /* Beard */
+  :root {
+    --ground: #e6e4da; --surface: #f5f4ee; --raised: #d9d7cc; --edge: #c9c7bc; --track: #cfcdc2;
+    --text: #1a1c1a; --text-soft: #3d403e; --text-dim: #5a5d5a;
+    --accent: #bef23c; --on-accent: #111310; --accent-ink: #476b00;
+    /* Zyper casts focus-small in Beard, where his beard is the ground's own
+     * white (DESIGN.md 10); a focused screen lifts on a shadow */
+    --zshadow: drop-shadow(0 5px 12px rgb(17 19 16 / .18));
+    --lift: 0 18px 48px rgb(17 19 16 / .22);
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    --font: Lexend, "Avenir Next", system-ui, -apple-system, sans-serif;
+    color-scheme: light;
+  }
+  /* Salt & Pepper */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #111310; --surface: #1d201e; --raised: #303433; --edge: #3a3e3c; --track: #3f4341;
+      --text: #e4e2d8; --text-soft: #c3c3ba; --text-dim: #969998;
+      --accent: #bef23c; --on-accent: #111310; --accent-ink: #bef23c;
+      --zshadow: none;
+      --lift: 0 26px 70px rgb(0 0 0 / .55);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--ground); color: var(--text); font: 400 18px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 3px; border-radius: 6px; }
+  img { max-width: 100%; }
+  .in { max-width: 1120px; margin: 0 auto; padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(40px, env(safe-area-inset-right, 0px)); }
+  section { padding-block: 72px; }
+  h1 { font: 600 56px/1.08 var(--font); margin: 0; text-wrap: balance; }
+  h2 { font: 600 34px/1.15 var(--font); margin: 0 0 20px; text-wrap: balance; }
+  h3 { font: 600 20px/1.3 var(--font); margin: 0; }
+  p { margin: 0; }
+  .sub { font-size: 21px; color: var(--text-soft); max-width: 46ch; text-wrap: pretty; }
+  .soft { color: var(--text-soft); }
+  .meta { font-size: 15px; color: var(--text-dim); }
+  .stack { display: grid; gap: 22px; align-content: start; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+  .nav { display: flex; padding-block: 20px; }
+  .nav ul { display: flex; gap: 22px; list-style: none; margin: 0 0 0 auto; padding: 0; font-size: 16px; }
+  .nav a { text-decoration: none; color: var(--text-soft); }
+  .nav a:hover { color: var(--text); }
+
+  .hero { padding-block: 40px 24px; display: grid; gap: 32px; align-items: center; }
+  .hero-text { display: grid; gap: 26px; justify-items: start; min-width: 0; }
+  .with-device .hero { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); }
+  .with-device .hero h1 { font-size: 48px; }
+  .device { display: none; }
+  .with-device .device { display: block; width: 100%; max-width: 440px; aspect-ratio: 5 / 6; justify-self: center; position: relative; }
+  .device canvas { display: block; width: 100%; height: 100%; opacity: 0; visibility: hidden; transition: opacity 200ms linear; touch-action: pan-y; cursor: grab; }
+  .device canvas:active { cursor: grabbing; }
+  .device.ready canvas { opacity: 1; visibility: visible; }
+  .device-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .device.ready .device-poster { visibility: hidden; }
+  .device canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+  .lockup { display: block; width: min(560px, 100%); }
+  .lockup img { display: block; width: 100%; height: auto; }
+
+  .btn { display: inline-flex; align-items: center; gap: 12px; font: 600 17px/1 var(--font); padding: 15px 22px; border-radius: 14px; text-decoration: none; transition: transform 80ms var(--ease); }
+  .btn:active { transform: scale(.97); }
+  .btn.go { background: var(--accent); color: var(--on-accent); }
+  .btn.alt { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 3px var(--edge); }
+  .glyph { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2.5px currentColor; font: 600 13px/1 var(--font); }
+  .pill { display: inline-flex; align-items: center; gap: 9px; padding: 7px 13px; border-radius: 8px; background: var(--raised); color: var(--text-soft); font-size: 15px; line-height: 1.3; }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-ink); flex: none; }
+
+  .shelf { padding-block: 24px 72px; overflow: hidden; }
+  .stage { position: relative; --sw: min(620px, 54vw); height: calc(var(--sw) * .75 + 36px); }
+  .shot { margin: 0; border-radius: 22px; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
+  .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .stage .shot { position: absolute; left: 50%; top: 12px; width: var(--sw); transition: transform 160ms var(--ease), opacity 160ms var(--ease); }
+  .stage .shot.on { box-shadow: var(--lift); }
+  .js .stage { cursor: grab; touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
+  .stage img { -webkit-user-drag: none; }
+  .shelf.dragging .stage { cursor: grabbing; }
+  .shelf.dragging .shot, .shelf.dragging .rail i { transition: none; }
+  .stage:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -4px; }
+  .shelf-foot { display: grid; justify-items: center; gap: 8px; margin-top: 18px; text-align: center; padding-inline: 16px; }
+  .shelf-foot b { font: 600 24px/1.2 var(--font); }
+  .rail { width: min(520px, 70vw); height: 6px; border-radius: 3px; background: var(--track); position: relative; }
+  .rail i { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / 8); border-radius: 3px; background: var(--accent-ink); transition: transform 160ms var(--ease); }
+  .shelf-ctl { display: none; gap: 14px; justify-content: center; margin-top: 18px; }
+  .js .shelf-ctl { display: flex; }
+  .step { width: 52px; height: 44px; border-radius: 14px; border: 0; background: var(--surface); box-shadow: inset 0 0 0 3px var(--edge); color: var(--text); font: 600 18px/1 var(--font); cursor: pointer; transition: transform 80ms var(--ease); }
+  .step:active { transform: scale(.94); }
+  .step:disabled { color: var(--text-dim); cursor: default; }
+
+  .feats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 56px; }
+  .feats > div { display: grid; gap: 6px; align-content: start; }
+  .feats p { color: var(--text-soft); font-size: 17px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .chips li { padding: 6px 12px; border-radius: 8px; background: var(--surface); box-shadow: inset 0 0 0 2px var(--edge); font-size: 16px; line-height: 1.4; }
+  .split { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 40px; align-items: center; }
+  .browser { margin: 0; border-radius: 16px; overflow: hidden; box-shadow: var(--lift), inset 0 0 0 1px var(--edge); }
+  .browser img { display: block; width: 100%; height: auto; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; margin-top: 28px; }
+  .pair > div { display: grid; gap: 10px; justify-items: center; }
+  .pair .shot { width: 100%; box-shadow: var(--lift); }
+  .name { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 40px; align-items: center; }
+  .name img { width: 180px; height: auto; filter: var(--zshadow); }
+  /* Zyper's photo, as About shows it on the handheld: radius.card's corners */
+  .name img.photo { border-radius: 22px; }
+  .panel { background: var(--surface); box-shadow: inset 0 0 0 3px var(--edge); border-radius: 28px; padding: 36px; }
+  .support { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 36px; align-items: center; }
+  .support > img { width: 120px; height: auto; filter: var(--zshadow); }
+  .thanks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 48px; margin: 0; padding: 0; list-style: none; }
+  .thanks li { color: var(--text-soft); font-size: 17px; }
+  .thanks b { color: var(--text); font-weight: 600; }
+  /* The comparison: a row's name stays put while the systems scroll under it
+   * on a phone. A row, not a card, so the five read across as one line. */
+  .compare-wrap { margin-top: 28px; overflow-x: auto; border-radius: 22px; background: var(--surface); border: 3px solid var(--edge); }
+  .compare { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; font-size: 15px; line-height: 1.4; }
+  .compare th, .compare td { padding: 12px 11px; text-align: left; vertical-align: top; overflow-wrap: break-word; }
+  .compare tr + tr > * { border-top: 2px solid var(--edge); }
+  .compare thead th { font-weight: 600; padding-top: 18px; }
+  .compare tbody th { font-weight: 600; }
+  .compare tr > :first-child { width: 16%; }
+  .compare thead th { width: 14%; }
+  .compare tr > :first-child { position: sticky; left: 0; background: var(--surface); box-shadow: -8px 0 0 var(--surface); padding-left: 18px; }
+  .compare td { color: var(--text-soft); }
+  .compare .us { color: var(--text); }
+  .compare thead .us { color: var(--accent-ink); }
+  .compare .unk { color: var(--text-dim); }
+  /* Ticks, crosses and dashes, each with what it means in a tooltip (
+     2026-11-06). The tooltip is a layer of its own (.tip, placed by the script
+     at the foot), since the table's sideways scroll would clip one inside it. */
+  .compare .ic { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; min-height: 26px; border-radius: 8px; cursor: help; }
+  .compare .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .compare .ic.yes { color: var(--accent-ink); }
+  .compare .ic.no { color: var(--text-soft); }
+  .compare .ic.unk { color: var(--text-dim); font-size: 18px; }
+  .compare .ic:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 1px; }
+  .tip { position: fixed; z-index: 50; max-width: 260px; padding: 8px 12px; border-radius: 12px; background: var(--text); color: var(--ground); font-size: 14px; line-height: 1.4; pointer-events: none; opacity: 0; transition: opacity .12s var(--ease); }
+  .tip.on { opacity: 1; }
+  .compare sup, .compare-notes sup { font-size: .7em; line-height: 0; }
+  .compare-wrap:focus-visible { outline-offset: 2px; border-radius: 22px; }
+  .compare-notes { display: grid; gap: 10px; margin-top: 18px; max-width: 80ch; }
+  .compare-notes ol { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; }
+  .compare-hint { display: none; margin-top: 14px; }
+  .compare-hint + .compare-wrap { margin-top: 10px; }
+  footer { padding-block: 40px 56px; border-top: 2px solid var(--edge); }
+  footer .in { display: flex; gap: 20px 32px; flex-wrap: wrap; align-items: center; }
+  footer .lockup { width: 120px; }
+  footer .links { display: flex; gap: 20px; margin-left: auto; font-size: 16px; }
+
+  @media (max-width: 760px) {
+    .in { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+    section { padding-block: 48px; }
+    h1 { font-size: 34px; }
+    h2 { font-size: 26px; }
+    .sub { font-size: 18px; }
+    .nav ul { margin-left: 0; flex-wrap: wrap; gap: 6px 18px; }
+    .with-device .hero { grid-template-columns: minmax(0, 1fr); }
+    .with-device .hero h1 { font-size: 34px; }
+    .with-device .device { max-width: 340px; }
+    .stage { --sw: 78vw; }
+    .feats, .thanks { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .pair { gap: 18px 12px; }
+    .split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .name { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .name img { width: 120px; }
+    .panel { padding: 24px 20px; border-radius: 22px; }
+    .support { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .support > img { width: 88px; }
+    .compare { min-width: 820px; font-size: 14px; }
+    .compare th, .compare td { padding: 10px 9px; }
+    .compare-hint { display: block; }
+    .compare tr > :first-child { width: 112px; padding-left: 14px; }
+    footer .links { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before { transition: none !important; }
+  }
+</style>
+<script>
+  document.documentElement.classList.add("js");
+  /* The static poster reserves the same space before WebGL loads. */
+</script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body>
+
+<nav class="nav in" aria-label="Sections">
+  <ul>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#systems">Systems</a></li>
+    <li><a href="#compare">Compare</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="https://github.com/tarikbc/ZyperOS">GitHub</a></li>
+  </ul>
+</nav>
+
+<header class="in hero">
+  <div class="hero-text">
+  <picture class="lockup">
+    <source media="(prefers-color-scheme: dark)" srcset="img/lockup.png">
+    <img src="img/lockup-light.png" width="1405" height="400" alt="ZyperOS: Zyper, a miniature schnauzer with his head cocked and his tongue out, beside the name">
+  </picture>
+  <h1>A fast, light firmware for the GKD Pixel 2 that plays your whole retro library.</h1>
+  <p class="sub">Forty systems, PortMaster ports, and your music and videos, from a card you can take out at any time.</p>
+  <div class="row">
+    <a class="btn go" href="https://github.com/tarikbc/ZyperOS"><span class="glyph" aria-hidden="true">A</span>See it on GitHub</a>
+    <a class="btn alt" href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">Read the guide</a>
+  </div>
+  <span class="pill">In testing on the GKD Pixel 2. No release images yet.</span>
+  </div>
+  <div class="device"><img class="device-poster" src="models/pixel2-poster.png" width="800" height="960" alt="Green GKD Pixel 2 with a metal shell, standing upright."><canvas tabindex="0" role="img" aria-label="Green GKD Pixel 2 running ZyperOS. Drag or use the left and right arrow keys to turn it."></canvas></div>
+</header>
+
+<!-- The positions written here are the shelf on its third screen, so the
+     page is right before, or without, the script below. -->
+<section class="shelf" aria-label="Screens" aria-roledescription="carousel">
+  <div class="stage" data-focus="1" tabindex="0" role="group" aria-label="Screenshots. Drag horizontally or use the arrow keys.">
+    <figure class="shot" data-i="0" style="transform:translateX(-50%) translateX(-86%) scale(0.78);opacity:0.75;z-index:9"><img src="img/gallery.png" width="1024" height="768" alt="The Gallery home" decoding="async"></figure>
+    <figure class="shot on" data-i="1" style="transform:translateX(-50%) translateX(0%) scale(1);opacity:1;z-index:10"><img src="img/systems.png" width="1024" height="768" alt="The Spotlight home" decoding="async"></figure>
+    <figure class="shot" data-i="2" style="transform:translateX(-50%) translateX(86%) scale(0.78);opacity:0.75;z-index:9"><img src="img/shelf.png" width="1024" height="768" alt="A system&#x27;s games as cards" decoding="async"></figure>
+    <figure class="shot" data-i="3" style="transform:translateX(-50%) translateX(152%) scale(0.62);opacity:0.55;z-index:8"><img src="img/info.png" width="1024" height="768" alt="A game&#x27;s details" decoding="async"></figure>
+    <figure class="shot" data-i="4" style="transform:translateX(-50%) translateX(206%) scale(0.5);opacity:0.35;z-index:7"><img src="img/cheevos.png" width="1024" height="768" alt="An achievements list" decoding="async"></figure>
+    <figure class="shot" data-i="5" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:6"><img src="img/menu.png" width="1024" height="768" alt="The ZyperOS menu" decoding="async"></figure>
+    <figure class="shot" data-i="6" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:5"><img src="img/scraper.png" width="1024" height="768" alt="MENU &gt; Scraper and the covers each source found" decoding="async"></figure>
+    <figure class="shot" data-i="7" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:4"><img src="img/mp4.png" width="1024" height="768" alt="MP4&#x27;s shelf of albums" decoding="async"></figure>
+  </div>
+  <div class="shelf-foot">
+    <b data-cap aria-live="polite">Every system, in pixel art</b>
+    <span class="meta" data-count>2 / 8</span>
+    <div class="rail"><i style="transform:translateX(100%)"></i></div>
+  </div>
+  <div class="shelf-ctl">
+    <button type="button" class="step" data-step="-1" aria-label="Previous screen">&larr;</button>
+    <button type="button" class="step" data-step="1" aria-label="Next screen">&rarr;</button>
+  </div>
+  <p class="meta in">Current ZyperOS screens, shown with a sample library.</p>
+</section>
+
+<section id="features">
+  <div class="in">
+    <h2>What it does</h2>
+    <div class="feats">
+      <div><h3>Starts the moment you press A</h3><p>The emulator stays running, so a game is up as soon as you choose it, and it picks up where you left it.</p></div>
+      <div><h3>Every system in pixel art</h3><p>Animated consoles on a Spotlight or Gallery home, A to Z or by release date, and your games as a row of covers.</p></div>
+      <div><h3>A first start that asks</h3><p>Zyper teaches each button and shows where it is on the Pixel 2, then asks for the theme, the home screen, the button sounds and the menu music.</p></div>
+      <div><h3>No games yet? It shows how</h3><p>An empty card opens on the two ways to add games, USB or Wi-Fi, one button each. Zyper cheers when they arrive.</p></div>
+      <div><h3>Box art it finds itself</h3><p>MENU &gt; Scraper asks libretro with no account, ScreenScraper with a free one in builds that carry its developer pair, and SteamGridDB with your own key. Renamed ROMs match by checksum.</p></div>
+      <div><h3>Video snaps</h3><p>Rest on a game for a second and its cover turns into a few seconds of the game, from ScreenScraper. A play mark says which games have one.</p></div>
+      <div><h3>Search and Random Game</h3><p>Find any game by a few letters of its name, or let ZyperOS pick one and start it.</p></div>
+      <div><h3>RetroAchievements</h3><p>Sign in on the device. Achievements download once and then work offline, with badges and progress pop-ups.</p></div>
+      <div><h3>Ports</h3><p>A Ports shelf runs PortMaster games, such as Stardew Valley and Celeste.</p></div>
+      <div><h3>Nintendo DS your way</h3><p>DSperate with three screen layouts and a d-pad stylus, or DraStic if you add it.</p></div>
+      <div><h3>MP4</h3><p>Music, audiobooks and videos on a shelf of their own covers. SELECT opens it from anywhere, even in a game, and X locks the screen.</p></div>
+      <div><h3>Menu music</h3><p>Ten free 8-bit tracks behind the menus, never over a game. Your own in Roms/BGM play instead.</p></div>
+      <div><h3>Wi-Fi File Transfer</h3><p>Move games, music and saves from any browser, behind a PIN. With no Wi-Fi around, the handheld makes its own network for your phone. It keeps going while you play, and shows the time left.</p></div>
+      <div><h3>Battery care</h3><p>A charge limit of 80, 85 or 90%, a charging screen while the handheld is off, and a warning before a low battery or heat gets in the way.</p></div>
+      <div><h3>USB that only charges</h3><p>Plug in a computer and the Pixel 2 asks first: charge only, or open USB File Transfer.</p></div>
+      <div><h3>System Update</h3><p>Over Wi-Fi, only what changed, signed, with Roll Back. It turns on once ZyperOS has its release signing key.</p></div>
+      <div><h3>Rumble and side lights</h3><p>Dreamcast, PlayStation and Game Boy Color rumble games shake the Pixel 2. Its four side lights show the battery charging and running low, the volume and brightness as you change them, a climb when files or covers finish, and a sparkle for an achievement. MENU &gt; Side Lights turns each on or off.</p></div>
+      <div><h3>Clocks per system</h3><p>8-bit and handheld systems run at lower clocks, measured to keep every frame, and the battery lasts longer.</p></div>
+      <div><h3>Fast forward and turbo</h3><p>MENU + R1 runs a game at up to 4x. X and Y are turbo A and B.</p></div>
+      <div><h3>Every control, in the game</h3><p>Controls in the in-game menu shows what each button does in that game, on its system: its own buttons, turbo, the hotkeys, the N64's C buttons and the DS's stylus.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="portal">
+  <div class="in split">
+    <div class="stack">
+      <h2>The File Transfer page</h2>
+      <p class="soft">The handheld shows an address and a PIN; open it in any browser, on a computer or a phone, over Wi-Fi, the handheld's own network or the USB cable. No app and no account.</p>
+      <p class="soft">The card's folders, each in ZyperOS's pixel art, ROMs with a folder per console. Drop files anywhere to upload them, with the time left as they go and the card's free space checked first. Download, rename and delete from each file's menu. Over the cable, Settings fetches missing box art and updates ZyperOS with the computer's own internet.</p>
+    </div>
+    <figure class="browser"><img src="img/portal.png" width="1280" height="800" alt="The File Transfer page on a computer: the card's folders down the left with their pixel art, an NES folder open, and an upload under the folders with the time left" loading="lazy" decoding="async"></figure>
+  </div>
+</section>
+
+<section id="themes">
+  <div class="in">
+    <h2>Light and dark</h2>
+    <p class="soft">Beard in light, Salt &amp; Pepper in dark. MENU &gt; Appearance chooses Light, Dark or Auto, and the first start asks.</p>
+    <div class="pair">
+      <div><figure class="shot"><img src="img/systems.png" width="1024" height="768" alt="The Spotlight home in the light theme" loading="lazy" decoding="async"></figure><span class="meta">Light</span></div>
+      <div><figure class="shot"><img src="img/dark/systems.png" width="1024" height="768" alt="The Spotlight home in the dark theme" loading="lazy" decoding="async"></figure><span class="meta">Dark</span></div>
+      <div><figure class="shot"><img src="img/menu.png" width="1024" height="768" alt="The ZyperOS menu in the light theme" loading="lazy" decoding="async"></figure><span class="meta">Light</span></div>
+      <div><figure class="shot"><img src="img/dark/menu.png" width="1024" height="768" alt="The ZyperOS menu in the dark theme" loading="lazy" decoding="async"></figure><span class="meta">Dark</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="systems">
+  <div class="in">
+    <h2>Forty systems</h2>
+    <ul class="chips">
+      <li>Atari 2600</li><li>Game &amp; Watch</li><li>Atari 5200</li><li>Vectrex</li><li>NES</li><li>MSX2</li><li>Atari 7800</li><li>Master System</li><li>Game Boy</li><li>Genesis</li><li>TurboGrafx-16 and CD</li><li>Atari Lynx</li><li>Game Gear</li><li>Neo Geo</li><li>SNES</li><li>Sega CD</li><li>3DO</li><li>32X</li><li>Saturn</li><li>Virtual Boy</li><li>PlayStation</li><li>Neo Geo CD</li><li>Nintendo 64</li><li>Neo Geo Pocket</li><li>Game Boy Color</li><li>WonderSwan</li><li>Neo Geo Pocket Color</li><li>Dreamcast</li><li>WonderSwan Color</li><li>J2ME</li><li>Game Boy Advance</li><li>ScummVM</li><li>Pokémon Mini</li><li>OpenBOR</li><li>Nintendo DS</li><li>PICO-8</li><li>Arcade</li><li>MAME</li><li>NAOMI</li><li>Atomiswave</li>
+    </ul>
+  </div>
+</section>
+
+<!-- How it compares: the README's table ("How it compares"), cell for cell;
+     change a cell in both. Every cell outside ZyperOS's column comes from a
+     source read on 2026-11-06, and a dash is a row no source speaks to:
+     - Stock: GameKiddy publishes no documentation; Retro Game Corps' review,
+       retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/
+     - ROGUE OS: github.com/Ninoh-FOX/PIXEL2-ROGUE-OS at f567073, its README,
+       release GKDPIXELII_1.22, es_systems.cfg (123 entries, 117 without
+       tools, music, mplayer, imageviewer, ports, moonlight), iux/skins (13)
+     - TortOS: github.com/ericreinsmidt/TortOS at aafe6de, README and
+       docs/guide.md; plastron's README at b67f5ec (rumble, 2.2 s from power
+       on); release v2.1.1
+     - ROCKNIX: github.com/ROCKNIX/distribution at 13d241a, README (license),
+       RK3326 SUPPORTED_EMULATORS_AND_CORES.md (126 rows, 6 of them System),
+       rk3326s-gkd-pixel2.dts (pwm-vibrator), quirks/devices/GameKiddy GKD
+       Pixel2 (DEVICE_BATTERY_LED_STATUS); rocknix.org, play/add-games,
+       configure/scraper, play/retro-achievements, play/update,
+       configure/themes; emulationstation-next at f6c5428, GuiMenu.cpp
+       (FRONTEND MUSIC); release 20261101
+     - plumOS Pixel2: github.com/game-de-it/plumOS-pixel2_v2 at dec872c, its
+       README, docs/user/network.md, updates.md, storage.md,
+       package/frontend-pixel2/systems.json (88 enabled, 86 without Ports and
+       Music), plumos-thumbnail-scraper (libretro-thumbnails); release v0.1.4
+     - The others: Knulli release 20260511, muOS's
+       _data/devices/rk-pixel-2.yml, spruceUI/twigUI-next,
+       NukeBomB3000/minui-gkd-pixel2
+     - ZyperOS: the README; the boot time from plastron#15 (1.58 s, kernel
+       to the first frame, mean of 10 starts on the Pixel 2) and ZyperOS#83 -->
+<section id="compare">
+  <div class="in">
+    <h2>How it compares</h2>
+    <p class="soft">The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS beside the one it comes with and four others, from what each one's own pages, code and releases say in November 2026. ROGUE OS set the bar for this handheld, and ZyperOS set out to match it.</p>
+    <p class="meta compare-hint">The table scrolls sideways; the row names stay put.</p>
+    <div class="compare-wrap" tabindex="0" role="region" aria-label="ZyperOS beside five other systems for the GKD Pixel 2. Scrolls sideways.">
+      <table class="compare">
+        <thead>
+          <tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">Stock<sup>1</sup></th><th scope="col">ROGUE OS</th><th scope="col">TortOS</th><th scope="col">ROCKNIX</th><th scope="col">plumOS Pixel2</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Source, license</th><td class="us">PolyForm Shield 1.0.0</td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td>Its changed files, no license named</td><td>GPL-3.0</td><td>GPL-2.0 for its own code</td><td>MIT for its own code</td></tr>
+          <tr><th scope="row">Install, latest</th><td class="us">Build the image: in testing, no release yet</td><td>On the card it comes with</td><td>Card image, then v1.22's files (Aug 2025)</td><td>Card image or TortOS Installer, v2.1.1 (Oct 2026)</td><td>Card image, 20261101 (Nov 2026)</td><td>Card image, v0.1.4 (Aug 2026), in testing</td></tr>
+          <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>Over 100 folders</td><td>117<sup>2</sup></td><td>11</td><td>120<sup>2</sup></td><td>86<sup>2</sup></td></tr>
+          <tr><th scope="row">Games without taking the card out</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. A web page over Wi-Fi or the USB cable, its own hotspot, and SSH" data-tip="A web page over Wi-Fi or the USB cable, its own hotspot, and SSH"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Samba file sharing over Wi-Fi" data-tip="Samba file sharing over Wi-Fi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. The USB cable, and SSH" data-tip="The USB cable, and SSH"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. A web page over Wi-Fi or the USB cable" data-tip="A web page over Wi-Fi or the USB cable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Samba, SFTP and the USB cable" data-tip="Samba, SFTP and the USB cable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Samba, SFTP and FTP" data-tip="Samba, SFTP and FTP"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">Box art on the device</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Fetched on the handheld from libretro, ScreenScraper and SteamGridDB" data-tip="Fetched on the handheld from libretro, ScreenScraper and SteamGridDB"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic no" tabindex="0" role="img" aria-label="No. Not on the handheld: covers are scraped on a computer, with Skraper" data-tip="Not on the handheld: covers are scraped on a computer, with Skraper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. ScreenScraper, with your account" data-tip="ScreenScraper, with your account"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. libretro and ScreenScraper" data-tip="libretro and ScreenScraper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. ScreenScraper" data-tip="ScreenScraper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. libretro&#x27;s thumbnails" data-tip="libretro&#x27;s thumbnails"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">Retro<wbr>Achievements</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Sign in on the handheld" data-tip="Sign in on the handheld"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Sign in on the handheld" data-tip="Sign in on the handheld"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Built in" data-tip="Built in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">System updates</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Over Wi-Fi, into a second system slot that rolls back if it fails; on once releases are signed" data-tip="Over Wi-Fi, into a second system slot that rolls back if it fails; on once releases are signed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Copy the new release&#x27;s files onto the card" data-tip="Copy the new release&#x27;s files onto the card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. With TortOS Installer, on a computer" data-tip="With TortOS Installer, on a computer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Over the air, or from a file" data-tip="Over the air, or from a file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Copy a file onto the card; a second system slot rolls back" data-tip="Copy a file onto the card; a second system slot rolls back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">First-start tutorial</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. A tour of the buttons and the first choices, on the first start" data-tip="A tour of the buttons and the first choices, on the first start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Themes</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Light and dark, or by the clock" data-tip="Light and dark, or by the clock"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. EmulationStation themes, added over the network" data-tip="EmulationStation themes, added over the network"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. 13 launcher skins" data-tip="13 launcher skins"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Two card art styles" data-tip="Two card art styles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Themes, with a downloader" data-tip="Themes, with a downloader"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Your own themes" data-tip="Your own themes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">Menu music</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. 10 free tracks, or your own" data-tip="10 free tracks, or your own"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Frontend music, on to start" data-tip="Frontend music, on to start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Media player</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Music, audiobooks and video" data-tip="Music, audiobooks and video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Music and video" data-tip="Music and video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Music and audiobooks" data-tip="Music and audiobooks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Music and video" data-tip="Music and video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Music" data-tip="Music"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">PortMaster</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Yes; you add PortMaster to the card yourself" data-tip="Yes; you add PortMaster to the card yourself"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Preloaded" data-tip="Preloaded"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Included" data-tip="Included"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Included" data-tip="Included"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Included" data-tip="Included"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td></tr>
+          <tr><th scope="row">Rumble</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Games rumble" data-tip="Games rumble"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Through SDL2, with a stronger setting" data-tip="Through SDL2, with a stronger setting"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic no" tabindex="0" role="img" aria-label="No. plastron&#x27;s README: neither device has rumble" data-tip="plastron&#x27;s README: neither device has rumble"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. The Pixel 2&#x27;s vibration motor is in its device tree" data-tip="The Pixel 2&#x27;s vibration motor is in its device tree"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Side lights</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. The battery, volume and brightness, finished transfers and achievements, each on or off in Settings &gt; Side Lights" data-tip="The battery, volume and brightness, finished transfers and achievements, each on or off in Settings &gt; Side Lights"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. The battery" data-tip="The battery"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic yes" tabindex="0" role="img" aria-label="Yes. The battery" data-tip="The battery"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Video previews on the shelf</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Rest on a game for a second and its cover plays a few seconds of it, from ScreenScraper" data-tip="Rest on a game for a second and its cover plays a few seconds of it, from ScreenScraper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Charge limit</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Settings &gt; Charge Limit stops charging at 80, 85 or 90%" data-tip="Settings &gt; Charge Limit stops charging at 80, 85 or 90%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Charging screen when off</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. A charger plugged in while it is off shows the charge and the time to full; hold POWER to start" data-tip="A charger plugged in while it is off shows the charge and the time to full; hold POWER to start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Boot time</th><td class="us">1.6 s<sup>4</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td>2.2 s<sup>4</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="compare-notes">
+      <p class="meta">A tick means it has it and a cross that it does not; – means none of the sources says either way. Hover over a mark, or tap it, for what it means. The Pixel 2 has no Wi-Fi of its own, so on every system a Wi-Fi feature needs a USB Wi-Fi adapter. Knulli, muOS, twigUI (spruceOS) and a MinUI port run on the Pixel 2 too.</p>
+      <ol class="meta">
+        <li>GameKiddy publishes no documentation for the stock firmware. Its column is from Retro Game Corps' review of February 2025, and the firmware may have changed since.</li>
+        <li>No count is published, so this is the systems in its own list, counted without tools, media players and ports. Hacks and regions can be entries of their own.</li>
+        <li>In builds made with ScreenScraper's developer key.</li>
+        <li>Each project's own number, and not measured the same way: ZyperOS's from the kernel's start to the home screen, on the Pixel 2 (mean of 10 starts), and TortOS's from power on to its shelf.</li>
+      </ol>
+      <p class="meta">Every source is linked in <a href="https://github.com/tarikbc/ZyperOS#how-it-compares">the README</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="in name">
+    <img class="photo" src="img/zyper-photo.jpg" width="600" height="800" alt="Zyper, a grey miniature schnauzer, sitting on the grass with his tongue out">
+    <div class="stack">
+      <h2>The name</h2>
+      <p class="soft">ZyperOS is named after Zyper, my dog, who passed away. He was quick, light on his feet and full of energy, and that is what this system tries to be.</p>
+      <p class="soft">The name is also two words in one: zippy and hyper. Games start the moment you press A, the menus never make you wait, and the whole system comes up in about two seconds.</p>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="in">
+    <div class="panel stack">
+      <h2>Install</h2>
+      <p class="soft">ZyperOS is in testing on the GKD Pixel 2, and there are no release images yet. To try it now, build the card image from source and write it to a microSD card with ZyperOS Installer, built from the same repository, or any disk image writer.</p>
+      <div class="row">
+        <a class="btn go" href="https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md"><span class="glyph" aria-hidden="true">A</span>Build the card</a>
+        <a class="btn alt" href="https://github.com/tarikbc/ZyperOS">Watch on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="in stack">
+    <h2>Thanks</h2>
+    <p class="soft">ZyperOS stands on other people's work. Thank you to:</p>
+    <ul class="thanks">
+      <li><b>Eric Reinsmidt</b>, for <a href="https://github.com/ericreinsmidt/TortOS">TortOS</a>, its installer, plastron and Diatom, where ZyperOS's launcher, installer, Linux and emulator started.</li>
+      <li><b>ROCKNIX</b>, for the RK3326 kernel patches and the Pixel 2 device tree.</li>
+      <li><b>PortMaster</b>, for the ports and the runtimes they run on.</li>
+      <li><b>plorpOS</b> by Thwonp, for the DSperate wrapper and the FAKE-08 patches.</li>
+      <li><b>The libretro core authors</b>, whose emulators do the real work.</li>
+      <li><b>OpenBOR</b>, by Senile Team and the OpenBOR Team, for the OpenBOR shelf.</li>
+      <li><b>Ten OpenGameArt composers</b>, for the free menu music, under CC0.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- Support: a one-time tip of any amount, through a Stripe Payment Link on
+     Caramanico's account (My business), reached through /tip in
+     _redirects so the link can change without touching this page. A tip,
+     not a donation: Stripe takes donations only for a charitable purpose,
+     and its Managed Payments takes none. -->
+<section id="support">
+  <div class="in">
+    <div class="panel support">
+      <img src="img/zyper.svg" width="120" height="120" alt="">
+      <div class="stack">
+        <h2>Support ZyperOS</h2>
+        <p class="soft">ZyperOS is free, and it will stay free. If it made your Pixel 2 more fun, you can leave a tip of any amount, once. It helps me keep building it, and it unlocks nothing: everyone gets the same ZyperOS.</p>
+        <div class="row">
+          <a class="btn go" href="/tip"><span class="glyph" aria-hidden="true">A</span>Leave a tip</a>
+        </div>
+        <p class="meta">One payment through Stripe, to Caramanico, my business in Italy. It is a tip, not a charitable donation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<footer>
+  <div class="in">
+    <picture class="lockup">
+      <source media="(prefers-color-scheme: dark)" srcset="img/lockup.png">
+      <img src="img/lockup-light.png" width="1405" height="400" alt="ZyperOS" loading="lazy">
+    </picture>
+    <span class="meta">Under the PolyForm Shield License 1.0.0.</span>
+    <span class="links">
+      <a href="/blog/">Blog</a>
+      <a href="https://github.com/tarikbc/ZyperOS">GitHub</a>
+      <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">Guide</a>
+      <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md">Building</a>
+      <a href="#support">Support</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+/* The comparison's tooltips: what a tick, a cross or a dash means, shown on
+ * hover, on keyboard focus and on a tap, in one fixed layer above the table
+ * so its sideways scroll cannot clip them. Above the mark, or under it when
+ * there is no room above. */
+(() => {
+  const marks = document.querySelectorAll(".compare [data-tip]");
+  if (!marks.length) return;
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  tip.setAttribute("role", "tooltip");
+  document.body.append(tip);
+  let on = null;
+  const place = () => {
+    if (!on) return;
+    const r = on.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    let x = r.left + r.width / 2 - t.width / 2, y = r.top - t.height - 8;
+    if (y < 8) y = r.bottom + 8;
+    x = Math.max(8, Math.min(x, innerWidth - t.width - 8));
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  };
+  const show = el => { on = el; tip.textContent = el.dataset.tip; tip.classList.add("on"); place(); };
+  const hide = el => { if (!el || el === on) { on = null; tip.classList.remove("on"); } };
+  marks.forEach(el => {
+    el.addEventListener("mouseenter", () => show(el));
+    el.addEventListener("mouseleave", () => hide(el));
+    el.addEventListener("focus", () => show(el));
+    el.addEventListener("blur", () => hide(el));
+    el.addEventListener("click", () => (on === el ? hide(el) : show(el)));
+  });
+  addEventListener("scroll", place, { passive: true, capture: true });
+  addEventListener("resize", place);
+})();
+</script>
+<script>
+/* The screenshot shelf follows mouse, pen and horizontal touch drags.
+ * Fractions interpolate between the shelf's positions; release snaps to a
+ * whole screenshot. Vertical touch gestures remain normal page scrolling. */
+(() => {
+  const shelf = document.querySelector(".shelf"), stage = shelf.querySelector(".stage");
+  const shots = [...stage.querySelectorAll(".shot")];
+  const caps = ["Or the Gallery home", "Every system, in pixel art", "Your games, cover by cover", "A game's details, one button away", "RetroAchievements on the device", "The device's settings in one menu", "Box art from three sources", "Your albums, in MP4"];
+  const STEP = [0, .86, 1.52, 2.06, 2.5], SCALE = [1, .78, .62, .5, .4], DIM = [1, .75, .55, .35, 0];
+  const cap = shelf.querySelector("[data-cap]"), count = shelf.querySelector("[data-count]");
+  const rail = shelf.querySelector(".rail i"), steps = [...shelf.querySelectorAll("[data-step]")];
+  const clamp = n => Math.max(0, Math.min(shots.length - 1, n));
+  const between = (values, distance) => {
+    const k = Math.min(distance, 4), lo = Math.floor(k), hi = Math.min(lo + 1, 4);
+    return values[lo] + (values[hi] - values[lo]) * (k - lo);
+  };
+  let focus = +stage.dataset.focus, position = focus, drag = null, suppressClick = false;
+  function draw(p) {
+    position = clamp(p);
+    shots.forEach((el, i) => {
+      const d = i - position, distance = Math.abs(d);
+      el.style.transform = `translateX(-50%) translateX(${Math.sign(d) * between(STEP, distance) * 100}%) scale(${between(SCALE, distance)})`;
+      el.style.opacity = between(DIM, distance);
+      el.style.zIndex = 10 - Math.round(distance);
+      el.style.pointerEvents = distance >= 4 ? "none" : "";
+      el.classList.toggle("on", i === Math.round(position));
+      if (distance < 3) el.querySelector("img").loading = "eager";
+    });
+    rail.style.transform = `translateX(${position * 100}%)`;
+  }
+  function show(f) {
+    focus = clamp(Math.round(f));
+    draw(focus);
+    stage.dataset.focus = focus;
+    cap.textContent = caps[focus];
+    count.textContent = `${focus + 1} / ${shots.length}`;
+    steps[0].disabled = focus === 0;
+    steps[1].disabled = focus === shots.length - 1;
+  }
+  steps.forEach(b => b.addEventListener("click", () => show(focus + +b.dataset.step)));
+  shots.forEach((el, i) => {
+    el.querySelector("img").draggable = false;
+    el.addEventListener("click", () => show(i));
+  });
+  shelf.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (!drag) show(focus + (e.key === "ArrowLeft" ? -1 : 1));
+      e.preventDefault();
+    }
+  });
+  stage.addEventListener("dragstart", e => e.preventDefault());
+  // A drag must not also activate the screenshot originally pressed. A new
+  // pointerdown clears this guard, so the next deliberate tap still works.
+  stage.addEventListener("click", e => {
+    if (suppressClick && e.detail !== 0) {
+      suppressClick = false; e.preventDefault(); e.stopImmediatePropagation();
+    }
+  }, true);
+  stage.addEventListener("pointerdown", e => {
+    if (drag || e.button !== 0 || e.isPrimary === false) return;
+    suppressClick = false;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, start: focus,
+      step: Math.max(1, shots[0].offsetWidth * STEP[1]), active: false,
+      tapped: shots.indexOf(e.target.closest(".shot")) };
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!drag || drag.id !== e.pointerId) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.active) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 6) return;
+      if (e.pointerType !== "mouse" && Math.abs(dy) > Math.abs(dx)) {
+        drag = null;
+        if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
+        return;
+      }
+      if (Math.abs(dx) < 6) return;
+      drag.active = true;
+      shelf.classList.add("dragging");
+      stage.setPointerCapture(e.pointerId);
+    }
+    e.preventDefault();
+    draw(drag.start - dx / drag.step);
+  });
+  function finish(e, cancelled) {
+    if (!drag || drag.id !== e.pointerId) return;
+    const gesture = drag;
+    drag = null;
+    shelf.classList.remove("dragging");
+    if (gesture.active) {
+      suppressClick = true;
+      let target = Math.round(position);
+      const dx = e.clientX - gesture.x;
+      // Preserve short touch swipes as well as long drags through many cards.
+      if (target === gesture.start && Math.abs(dx) > Math.min(70, gesture.step * .18))
+        target += dx < 0 ? 1 : -1;
+      show(cancelled ? gesture.start : target);
+    } else if (!cancelled && gesture.tapped >= 0) show(gesture.tapped);
+    if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
+  }
+  stage.addEventListener("pointerup", e => finish(e, false));
+  stage.addEventListener("pointercancel", e => finish(e, true));
+  stage.addEventListener("lostpointercapture", e => finish(e, true));
+  show(focus);
+})();
+</script>
+<script type="module">
+/* The Blender poster stays visible if WebGL, the model or its loader fails. */
+const box = document.querySelector(".device");
+import("./pixel2.js")
+    .then(m => m.mount(box.querySelector("canvas")))
+    .then(() => box.classList.add("ready"), () => box.classList.add("static"));
+</script>
+</body>
+</html>

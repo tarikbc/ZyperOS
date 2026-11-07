@@ -1,0 +1,2600 @@
+/* GKD Pixel 2 port.
+ *
+ * The Pixel 2 is an RK3326S with a Mali-G31 and a 640x480 panel that is
+ * physically 480x640 portrait, mounted turned. Its system is plastron:
+ * mainline Linux, Mesa's Panfrost, SDL2 with ALSA, no udev, no fbdev.
+ *
+ * Presentation is OpenGL ES 3 on a GBM surface, page-flipped through KMS by a
+ * thread of its own. present() copies the core's frame into a latest-wins
+ * mailbox and returns; the thread uploads it as a texture, draws it scaled and
+ * turned in one quad, and flips at the panel's rate. That is the Brick's flip
+ * thread with the blit moved to the GPU, because the CPU blit measured 7.7 ms
+ * a frame here against a SNES core that already takes 10.5.
+ *
+ * The panel's orientation never leaves this file: the surface is reported as
+ * 640x480, and the turn is in the quad's vertices.
+ *
+ * The display is shared with the launcher by DRM master, held only between the
+ * first present after a stop and the end of the next present_stop.
+ *
+ * SDL2 provides audio and the clock only. Buttons are read straight from the
+ * kernel's input devices, found by what they report.
+ *
+ * This file does not include libretro.h and must never need to.
+ */
+#include <SDL.h>
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES3/gl3.h>
+#include <drm_fourcc.h>
+#include <gbm.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/input.h>
+#include <math.h>
+#include <poll.h>
+#include <pthread.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <time.h>
+#include <unistd.h>
+
+#include "diatom_port.h"
+#include "ladder.h"
+#include "osdbar.h"
+#include "port_clock.h"
+#include "port_cpufreq.h"
+#include "rumble_evdev.h"
+#include "themefile.h"
+
+#define AUDIO_RATE 48000
+/* Capacity in FRAMES, the Brick's figure: 4096 at 48 kHz is about 85 ms, with
+ * rate control holding it near half. Measured here 2026-10-01 through the
+ * desktop port and the system's dmix: 1,200 frames of Contra, nothing dropped,
+ * the queue between 131 and 2912. */
+#define AUDIO_BUFFER_FRAMES 4096
+#define AUDIO_FRAME_BYTES   (2 * (int)sizeof(int16_t))
+
+/* 2 dB down for the RK817, the speaker and headphone jack. Sound near full
+ * scale is clipped past Diatom on its way out: Metroid Zero Mission's intro
+ * peaks at -1.8 dB and crackled on and off on the speaker, 20 clicks in 17 s
+ * on a recording, none of them in what Diatom handed over, no underruns, the
+ * Brick clean with the same game. Two volume steps lower still crackled, so
+ * the clipping comes before the volume; 2 dB less going in did not crackle
+ * (2026-10-30). Muse plays everything 2 dB down too (for its own overs, in
+ * October), so a game and a song sound alike. Not a USB-C DAC, which has its
+ * own path and has not been heard to clip. */
+#define RK817_HEADROOM 0.7943f
+
+/* ---------- the display ---------------------------------------------------- */
+
+static int                 g_drm_fd = -1;
+static struct gbm_device  *g_gbm;
+static struct gbm_surface *g_gbm_surface;
+static struct gbm_bo      *g_shown_bo;      /* on glass, released after the next flip */
+static uint32_t            g_crtc_id, g_connector_id;
+static int                 g_crtc_pipe;     /* index in the resources, for vblank waits */
+static drmModeModeInfo     g_mode;
+static bool                g_crtc_lit;      /* something already scans out on the CRTC */
+static bool                g_have_master;
+
+static EGLDisplay g_egl_display = EGL_NO_DISPLAY;
+static EGLContext g_egl_context = EGL_NO_CONTEXT;
+static EGLSurface g_egl_surface = EGL_NO_SURFACE;
+static EGLConfig  g_egl_config;
+
+/* The panel in its own terms, and the surface as the host sees it. On this
+ * device the panel is 480x640 and the surface 640x480; g_turned says the two
+ * differ. */
+static int  g_panel_w, g_panel_h;
+static int  g_surface_w, g_surface_h;
+static bool g_turned;
+
+/* Frames handed over by present(). Three, with the Brick's roles: front is
+ * the last one drawn (kept for a capture), inflight is being drawn now,
+ * pending is published and waiting. present() writes into whichever holds no
+ * role and steals pending when all three are taken. Latest wins. */
+#define MAILBOX_FRAMES 3
+typedef struct {
+	uint8_t      *pixels;
+	size_t        cap;
+	int           w, h;
+	size_t        pitch;
+	diatom_pixfmt fmt;
+	diatom_rect   dst;
+	diatom_filter filter;
+	/* The planes in force when this frame was presented, so a layout change
+	 * and the frame it was made for reach the panel together. */
+	diatom_plane  planes[DIATOM_PLANES_MAX];
+	int           nplanes;
+	/* A GPU frame (present_gpu) is no pixels at all: the slot's texture,
+	 * which the core drew into on its own context, tex_w x tex_h with the
+	 * frame at its bottom-left, and the fence that says the drawing is done.
+	 * The thread waits on the fence before it samples. */
+	bool          gpu;
+	bool          top_down;     /* a GPU frame drawn first row at the top */
+	GLuint        gpu_tex;
+	int           tex_w, tex_h;
+	EGLSyncKHR    fence;
+	unsigned      seq;          /* present_gpu's count, for the turn-taking */
+} mailbox_frame;
+
+static mailbox_frame    g_frames[MAILBOX_FRAMES];
+static pthread_t        g_thread;
+static pthread_mutex_t  g_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t   g_cv = PTHREAD_COND_INITIALIZER;     /* work for the thread */
+static pthread_cond_t   g_idle = PTHREAD_COND_INITIALIZER;   /* the thread went idle */
+static int              g_front = -1, g_inflight = -1, g_pending = -1;
+static bool             g_thread_running, g_thread_stop;
+static bool             g_want_blank;       /* present_stop(BLANK) asked for black */
+static bool             g_blanking;
+static const char      *g_capture_path;     /* a capture asked for, and its answer */
+static bool             g_capture_ok;
+static bool             g_presented;        /* anything presented since the last stop */
+
+/* Startup handshake: the EGL context belongs to the thread, so the thread
+ * builds it and init waits to hear whether that worked. */
+static int              g_thread_ready;     /* 0 waiting, 1 ok, -1 failed */
+
+static bool g_present_debug;
+
+/* GL objects, all owned by the thread. */
+static GLuint g_prog_plain, g_prog_sharp, g_prog_solid;
+static GLuint g_frame_tex, g_overlay_tex, g_osdbar_tex;
+static int    g_tex_w = -1, g_tex_h = -1;
+static diatom_pixfmt g_tex_fmt;
+
+/* ---------- GPU frames ------------------------------------------------------- */
+
+/* A core that draws with the GPU (diatom_port_gpu_begin) gets a context of its
+ * own on the host's thread, sharing textures with the thread's, and one
+ * texture per mailbox slot: slot i draws into texture g_gpu_tex[i], so a GPU
+ * frame takes the same roles a pixel frame does (front, inflight, pending),
+ * and the texture of a slot holding a role is never drawn into.
+ *
+ * ONE framebuffer for all of them, its texture swapped under it as the slots
+ * turn. A core may read the framebuffer's name once and keep it: libretro's
+ * GL state manager (glsm, which flycast2021 uses) takes it at context_reset
+ * and binds that name every frame after. With a framebuffer per slot that
+ * core drew every frame into slot 0's and the panel showed the others, black
+ * (2026-11-04). Framebuffers are the core context's own; only the textures
+ * are shared.
+ *
+ * Two fences keep the two contexts apart. present_gpu leaves one after the
+ * core's drawing, which the thread waits on before sampling (the frame's
+ * `fence`); the thread leaves one after sampling (g_gpu_done), which
+ * gpu_target waits on before the core draws into that texture again. By then
+ * it has nearly always passed: the slot was free, so the thread is two frames
+ * on. */
+static EGLContext g_gpu_ctx = EGL_NO_CONTEXT;
+static GLuint     g_gpu_tex[MAILBOX_FRAMES], g_gpu_depth;
+static GLuint     g_gpu_fb;                      /* the core draws into this one */
+static GLuint     g_gpu_read_fb;                 /* gpu_read's, for any slot */
+static int        g_gpu_attached = -1;           /* the slot whose texture g_gpu_fb holds */
+static EGLSyncKHR g_gpu_done[MAILBOX_FRAMES];    /* under g_mx */
+static int        g_gpu_w, g_gpu_h;
+static bool       g_gpu_top_down;                /* the core draws its first row at the top */
+static int        g_gpu_drawing = -1;            /* the slot the core draws into; under g_mx */
+static int        g_gpu_last = -1;               /* the slot of the last GPU frame presented */
+/* The end of the core's last frame on the GPU, for present_gpu's throttle */
+static EGLSyncKHR g_gpu_throttle = EGL_NO_SYNC_KHR;
+/* Turn-taking on the GPU (gpu_target): the last GPU frame presented, and the
+ * last one the thread has drawn to the panel, by present_gpu's count. Under
+ * g_mx. */
+static unsigned   g_gpu_seq, g_gpu_blitted;
+
+static PFNEGLCREATESYNCKHRPROC     p_create_sync;
+static PFNEGLDESTROYSYNCKHRPROC    p_destroy_sync;
+static PFNEGLCLIENTWAITSYNCKHRPROC p_client_wait;
+static PFNEGLWAITSYNCKHRPROC       p_server_wait;   /* NULL without EGL_KHR_wait_sync */
+
+static bool sync_procs(void)
+{
+	if (!p_create_sync) {
+		const char *ext = eglQueryString(g_egl_display, EGL_EXTENSIONS);
+
+		p_create_sync  = (PFNEGLCREATESYNCKHRPROC)eglGetProcAddress("eglCreateSyncKHR");
+		p_destroy_sync = (PFNEGLDESTROYSYNCKHRPROC)eglGetProcAddress("eglDestroySyncKHR");
+		p_client_wait  = (PFNEGLCLIENTWAITSYNCKHRPROC)eglGetProcAddress("eglClientWaitSyncKHR");
+		if (ext && strstr(ext, "EGL_KHR_wait_sync"))
+			p_server_wait = (PFNEGLWAITSYNCKHRPROC)eglGetProcAddress("eglWaitSyncKHR");
+	}
+	return p_create_sync && p_destroy_sync && p_client_wait;
+}
+
+static void wait_sync(EGLSyncKHR s)
+{
+	if (s == EGL_NO_SYNC_KHR) return;
+	p_client_wait(g_egl_display, s, 0, EGL_FOREVER_KHR);
+	p_destroy_sync(g_egl_display, s);
+}
+
+/* A frame dropped unseen (stolen from pending) leaves its fence unwaited. */
+static void drop_fence(int slot)
+{
+	mailbox_frame *f;
+
+	if (slot < 0) return;
+	f = &g_frames[slot];
+	if (f->gpu && f->fence != EGL_NO_SYNC_KHR) {
+		p_destroy_sync(g_egl_display, f->fence);
+		f->fence = EGL_NO_SYNC_KHR;
+	}
+}
+
+/* The thread, before it samples a GPU frame: the core's drawing is done.
+ *
+ * Done on the GPU, which is where it has to be: the thread's commands wait
+ * for the fence there (eglWaitSyncKHR), and the thread goes on to queue its
+ * drawing at once. Waiting on the CPU instead held the thread, and through
+ * the turn-taking in diatom_port_gpu_target the core with it, until the GPU
+ * had finished the frame: the CPU and the GPU took turns, and a frame cost
+ * the two together. Dr. Mario 64 drew one in 30 ms, 15 of them the thread
+ * waiting here (2026-11-04). The order on the GPU is unchanged - the core's
+ * frame, this thread's blit of it, the core's next frame - as the core starts
+ * its next only once this thread has flushed. A client wait where the
+ * extension is missing. */
+static void gpu_frame_ready(mailbox_frame *f)
+{
+	if (!f->gpu || f->fence == EGL_NO_SYNC_KHR) return;
+	if (p_server_wait) {
+		p_server_wait(g_egl_display, f->fence, 0);
+		p_destroy_sync(g_egl_display, f->fence);
+	} else {
+		wait_sync(f->fence);
+	}
+	f->fence = EGL_NO_SYNC_KHR;
+}
+
+/* ---------- the overlay and the level bar ----------------------------------- */
+
+/* The overlay's scale: ZyperOS's 1024-unit screen to the surface, as the
+ * level bar's (draw_level_bar); 1 where the surface is that screen */
+static float ov_scale(void);
+
+/* The overlay from diatom_port_overlay: a borrowed pointer, not a copy (see
+ * diatom_port.h). The thread uploads it under g_mx, and the host's next call
+ * takes g_mx first, so the buffer is never read after the host lets go of it. */
+static const uint8_t *g_ov;
+static int            g_ov_w, g_ov_h;
+static uint64_t       g_ov_until;
+static bool           g_ov_dirty;           /* a new image to upload */
+
+/* The level bar: when it came up and when it last changed, which is all its
+ * slide and fade need (osdbar_envelope), and the theme it draws in, which the
+ * launcher says in THEME_FILE and osd_show reads on each press. */
+static uint64_t g_osd_shown, g_osd_changed;
+static bool     g_osd_on;
+static int      g_osd_level, g_osd_max, g_osd_kind;   /* kind 0 volume, 1 brightness */
+static int      g_osd_theme;                          /* DS_LIGHT or DS_DARK */
+static bool     g_lowbat, g_lowbat_blink;   /* the low-battery disc; under g_mx */
+
+/* ---------- levels ---------------------------------------------------------- */
+
+/* Output gain, by ioctl on /dev/snd/controlC0, with the kernel's struct
+ * vendored the way the Brick port does it (see port/brick.c for why a raw
+ * ioctl and not alsa-lib). The RK817's "Master Playback Volume" is 0-255, two
+ * channels, and not inverted: 255 is 0 dB, 0 is -95 dB (the driver's own
+ * scale, read with amixer 2026-10-01). It has no switch; speaker or headphones
+ * is "Playback Mux", which the system's jackswitch daemon drives, not us. */
+struct dm_ctl_elem_id {
+	unsigned int numid; int iface; unsigned int device, subdevice;
+	unsigned char name[44]; unsigned int index;
+};
+struct dm_aes_iec958 {
+	unsigned char status[24], subcode[147], pad, dig_subframe[4];
+};
+struct dm_ctl_elem_value {
+	struct dm_ctl_elem_id id;
+	unsigned int indirect: 1;
+	union {
+		union { long value[128]; long *value_ptr; } integer;
+		union { long long value[64]; long long *value_ptr; } integer64;
+		union { unsigned int item[128]; unsigned int *item_ptr; } enumerated;
+		union { unsigned char data[512]; unsigned char *data_ptr; } bytes;
+		struct dm_aes_iec958 iec958;
+	} value;
+	unsigned char reserved[128];
+};
+#define DM_CTL_ELEM_READ   _IOWR('U', 0x12, struct dm_ctl_elem_value)
+#define DM_CTL_ELEM_WRITE  _IOWR('U', 0x13, struct dm_ctl_elem_value)
+
+#define GAIN_CTL     "Master Playback Volume"
+#define GAIN_LEVELS  20         /* what the USER moves in: 20 steps of 5% */
+
+/* The windows the twenty levels spread over, as ATTENUATION from the
+ * register's top: 0 is 255, 0 dB.
+ *
+ * Set by ear on 2026-10-02 with a game playing, the way the Brick's were; the
+ * steps taken are in ZyperOS's src/device/pixel2.c. Speaker: level 20 on raw
+ * 255, level 1 on raw 172, about 31 dB. Headphones (Apple EarPods): level 20
+ * on raw 244, level 1 on raw 76, about 63 dB. The windows below are the ones
+ * that land levels 1 and 20 exactly there with the rounding both sides share.
+ *
+ * Level 0 is raw 0, -95 dB, as the cut: the control has no switch. Whether
+ * that is silent by ear is also unmeasured.
+ *
+ * Attenuation, not raw, because that is how ZyperOS's launcher holds it (its
+ * src/device/pixel2.c): its shared ladder arithmetic was written for the
+ * Brick's inverted register, loud end low, and attenuation is that shape. The
+ * same numbers and the same rounding on both sides, for the reason brick.c
+ * gives: a level that crosses the socket has to mean the same thing on both.
+ * Change one, change the other. */
+#define GAIN_RAW_MAX    255
+#define SPK_ATT_TOP     0
+#define SPK_ATT_BOTTOM  87
+#define HP_ATT_TOP      11
+#define HP_ATT_BOTTOM   188
+
+/* A USB-C DAC's volume: "USB Playback Volume" on the codec's card, a software
+ * volume that plastron's ALSA config puts in front of the DAC (its pcm.usb),
+ * the DAC's own control set to full by the system. ZyperOS makes the control
+ * at startup (its src/device/pixel2.c says why it can't be left to alsa-lib)
+ * and writes it with every level; so does this, both controls each time, so a
+ * DAC plugged in mid-game needs nothing re-applied. 0-255, 0.375 dB a step,
+ * the codec's step; 0 is silence. The window is ZyperOS's, a starting guess
+ * from the EarPods' headphone window. Change one, change the other. */
+#define USB_CTL         "USB Playback Volume"
+#define USB_RAW_MAX     255
+#define USB_ATT_TOP     11
+#define USB_ATT_BOTTOM  188
+
+static bool g_muted;                /* the launcher's */
+static int  g_mixer_fd = -1;
+static int  g_level = -1;           /* the position last read or written; -1 none */
+
+/* Backlight, /sys/class/backlight/backlight, 0-255, 0 is off. The same rungs
+ * as ZyperOS's src/device/pixel2.c, which says how they were found: the device
+ * tree's brightness-levels table sends 1 to 17 all to the same output, so the
+ * Brick's rungs (2, 4, 8, 16) were four steps of one brightness. 17 is the
+ * floor, and the panel went black below it (checked by eye 2026-10-02 on the
+ * PWM directly); the rungs are equal ratios from there to 255, since
+ * brightness is perceived in ratios (spike 2026-08-26). */
+#define BACKLIGHT "/sys/class/backlight/backlight/brightness"
+static const unsigned char bright_ladder[] = {
+	17, 22, 28, 36, 46, 58, 74, 95, 122, 156, 199, 255
+};
+#define BRIGHT_LEVELS ((int)(sizeof bright_ladder / sizeof bright_ladder[0]) - 1)
+
+/* ---------- input ----------------------------------------------------------- */
+
+#define BITS_PER_LONG   (8 * (int)sizeof(long))
+#define NLONGS(max)     (((max) + BITS_PER_LONG) / BITS_PER_LONG)
+#define BIT_IS_SET(a,b) (((a)[(b) / BITS_PER_LONG] >> ((b) % BITS_PER_LONG)) & 1UL)
+
+static int      g_pad_fd = -1;      /* the gamepad: "gkd_pixel2_joypad" */
+static char     g_pad_path[32];     /* its node, opened again to rumble */
+static int      g_keys_fd = -1;     /* the volume keys: "gpio-keys" */
+static int      g_jack_fd = -1;     /* the codec's jack switch */
+static uint32_t g_buttons;
+static bool     g_input_debug;
+
+/* Kernel code -> Diatom button.
+ *
+ * The codes are the device tree's (ROCKNIX's rk3326s-gkd-pixel2.dts), and the
+ * labels are MEASURED: every key pressed in a known order on 2026-10-01 with a
+ * logger reading the kernel's events. The caps marked A, B, X, Y send SOUTH,
+ * EAST, NORTH, WEST - not the Brick's arrangement, where X and Y were the
+ * other way round from position. The codes are named for the labels, not for
+ * where the caps sit: A is on the right and B at the bottom, so the A cap
+ * sends SOUTH. Mapping by label is what puts the right-hand button on the
+ * game's A, as on a SNES pad. L2 and R2 are real keys, the d-pad is four
+ * keys rather than a hat, and the key the device calls FUNCTION
+ * (BTN_TRIGGER_HAPPY1) is MENU. */
+static const struct { int code; int btn; } keymap[] = {
+	{ BTN_DPAD_UP,    DIATOM_BTN_UP },    { BTN_DPAD_DOWN,  DIATOM_BTN_DOWN },
+	{ BTN_DPAD_LEFT,  DIATOM_BTN_LEFT },  { BTN_DPAD_RIGHT, DIATOM_BTN_RIGHT },
+	{ BTN_SOUTH,      DIATOM_BTN_A },     { BTN_EAST,       DIATOM_BTN_B },
+	{ BTN_NORTH,      DIATOM_BTN_X },     { BTN_WEST,       DIATOM_BTN_Y },
+	{ BTN_TL,         DIATOM_BTN_L1 },    { BTN_TR,         DIATOM_BTN_R1 },
+	{ BTN_TL2,        DIATOM_BTN_L2 },    { BTN_TR2,        DIATOM_BTN_R2 },
+	{ BTN_SELECT,     DIATOM_BTN_SELECT },{ BTN_START,      DIATOM_BTN_START },
+	{ BTN_TRIGGER_HAPPY1, DIATOM_BTN_MENU },
+};
+
+/* ---------- audio ----------------------------------------------------------- */
+
+static SDL_AudioDeviceID g_audio;
+static char              g_audio_dev[128];
+/* The device is opened from the host's thread (SETAUDIO, a session's start)
+ * and, since a core may make its sound on a thread of its own, written from
+ * that thread too, where a write that finds the sink gone reopens the
+ * default. So g_audio and g_audio_dev change under this, one at a time. */
+static pthread_mutex_t   g_audio_dev_mx = PTHREAD_MUTEX_INITIALIZER;
+
+static void port_logf(diatom_log_level lvl, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
+
+static void port_logf(diatom_log_level lvl, const char *fmt, ...)
+{
+	char msg[256];
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(msg, sizeof msg, fmt, ap);
+	va_end(ap);
+	diatom_port_log(lvl, msg);
+}
+
+/* ==================== levels ================================================ */
+
+/* The gamepad, the volume keys and the headphone jack, found by what each
+ * reports, not by number - there is no udev here, and enumeration order is not
+ * a promise.
+ *
+ * In one pass, keeping the nodes it wants and closing only the rest (the power
+ * key, which the launcher watches). Closing an evdev descriptor waits out an
+ * RCU grace period in the kernel (evdev_detach_client), 10 to 50 ms each on
+ * this device while the boot is busy; ZyperOS's scan of the same kind spent
+ * about 190 ms of its startup in close(), measured 2026-10-02, and this port's
+ * scan was the same shape - one per device, closing everything passed over. */
+static void input_scan(void)
+{
+	unsigned long keys[NLONGS(KEY_MAX)], sw[NLONGS(SW_MAX)];
+	char path[32];
+	int i, fd;
+
+	for (i = 0; i < 32; i++) {
+		bool kept = true;
+
+		snprintf(path, sizeof path, "/dev/input/event%d", i);
+		if ((fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) continue;
+		memset(keys, 0, sizeof keys);
+		memset(sw, 0, sizeof sw);
+		ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys);
+		ioctl(fd, EVIOCGBIT(EV_SW, sizeof sw), sw);
+		if      (g_pad_fd < 0  && BIT_IS_SET(keys, BTN_SOUTH)) {
+			g_pad_fd = fd;
+			snprintf(g_pad_path, sizeof g_pad_path, "%s", path);
+		}
+		else if (g_keys_fd < 0 && BIT_IS_SET(keys, KEY_VOLUMEUP))       g_keys_fd = fd;
+		else if (g_jack_fd < 0 && BIT_IS_SET(sw, SW_HEADPHONE_INSERT))  g_jack_fd = fd;
+		else kept = false;
+		if (!kept) close(fd);
+	}
+}
+
+/* Is there a plug in the headphone jack? SW_HEADPHONE_INSERT on the codec's
+ * input device ("rk817_int Headphones"), found by input_scan. */
+static void jack_open(void)
+{
+	if (g_jack_fd < 0) input_scan();
+	if (g_jack_fd < 0)
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no headphone jack input; "
+		                "volume uses the speaker window");
+}
+
+static int jack_present(void)
+{
+	unsigned long bits[NLONGS(SW_MAX)];
+
+	if (g_jack_fd < 0) return 0;
+	memset(bits, 0, sizeof bits);
+	if (ioctl(g_jack_fd, EVIOCGSW(sizeof bits), bits) < 0) return 0;
+	return BIT_IS_SET(bits, SW_HEADPHONE_INSERT) ? 1 : 0;
+}
+
+static int att_top(void) { return jack_present() ? HP_ATT_TOP    : SPK_ATT_TOP; }
+static int att_bot(void) { return jack_present() ? HP_ATT_BOTTOM : SPK_ATT_BOTTOM; }
+
+/* The window is attenuation from the register's top (port/ladder.h), and
+ * position 0 is then replaced by the cut. */
+static int level_to_raw(int lv)
+{
+	if (lv <= 0) return 0;
+	return GAIN_RAW_MAX - ladder_window_raw(lv, GAIN_LEVELS, att_top(), att_bot());
+}
+
+static int raw_to_level(int raw)
+{
+	return ladder_window_pos(GAIN_RAW_MAX - raw, GAIN_LEVELS, att_top(), att_bot());
+}
+
+static int ctl_io(const char *name, long *val, int write)
+{
+	struct dm_ctl_elem_value v;
+
+	if (g_mixer_fd < 0) return -1;
+	memset(&v, 0, sizeof v);
+	v.id.iface = 2;                                 /* SNDRV_CTL_ELEM_IFACE_MIXER */
+	snprintf((char *)v.id.name, sizeof v.id.name, "%s", name);
+	if (write) {
+		/* Both channels: a stereo control written in one leaves the other
+		 * where it was, which reads as a balance problem. */
+		v.value.integer.value[0] = *val;
+		v.value.integer.value[1] = *val;
+		if (ioctl(g_mixer_fd, DM_CTL_ELEM_WRITE, &v) < 0) {
+			port_logf(DIATOM_LOG_WARN, "pixel2: mixer rejected '%s' = %ld",
+			          name, *val);
+			return -1;
+		}
+		return 0;
+	}
+	if (ioctl(g_mixer_fd, DM_CTL_ELEM_READ, &v) < 0) return -1;
+	*val = v.value.integer.value[0];
+	return 0;
+}
+
+static int gain_io(long *val, int write) { return ctl_io(GAIN_CTL, val, write); }
+
+static int g_jack_was = -1;         /* jack state at the last write; -1 = never */
+
+static void gain_apply(void)
+{
+	bool cut = g_level <= 0 || g_muted;
+	long v   = cut ? 0 : level_to_raw(g_level);
+	long usb = cut ? 0 : USB_RAW_MAX - ladder_window_raw(g_level, GAIN_LEVELS,
+	                                                     USB_ATT_TOP, USB_ATT_BOTTOM);
+
+	g_jack_was = jack_present();
+	gain_io(&v, 1);
+	ctl_io(USB_CTL, &usb, 1);
+}
+
+/* Re-apply when the plug goes in or out, as on the Brick: whoever pumps input
+ * owns the level, and the windows differ by jack. */
+static void gain_jack_poll(void)
+{
+	if (jack_present() == g_jack_was || g_level < 0) return;
+	gain_apply();
+}
+
+static void osd_show(int kind, int level, int max)
+{
+	/* The theme is the launcher's, in a file: read before g_mx is taken, so
+	 * the render thread is never kept waiting on the filesystem, and again
+	 * on every press, so a change while the bar is up shows on the next one. */
+	int theme = themefile_read(THEME_FILE);
+
+	pthread_mutex_lock(&g_mx);
+	uint64_t now = diatom_port_now_us();
+	float a, rise;
+
+	/* Coming in only when it was not already up: a press while it holds or
+	 * fades keeps it where it is, as on the shelf. */
+	if (!g_osd_on || !osdbar_envelope((uint32_t)((now - g_osd_shown) / 1000),
+	                                  (uint32_t)((now - g_osd_changed) / 1000), &a, &rise))
+		g_osd_shown = now;
+	g_osd_on    = true;
+	g_osd_kind  = kind;
+	g_osd_level = level;
+	g_osd_max   = max;
+	g_osd_theme = theme;
+	g_osd_changed = now;
+	pthread_mutex_unlock(&g_mx);
+}
+
+static int backlight_read(void)
+{
+	char buf[16];
+	ssize_t n;
+	int fd = open(BACKLIGHT, O_RDONLY | O_CLOEXEC);
+
+	if (fd < 0) return -1;
+	n = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (n <= 0) return -1;
+	buf[n] = '\0';
+	return atoi(buf);
+}
+
+static void backlight_write(int raw)
+{
+	char buf[16];
+	int fd = open(BACKLIGHT, O_WRONLY | O_CLOEXEC);
+	int n = snprintf(buf, sizeof buf, "%d\n", raw);
+
+	if (fd < 0) return;
+	if (write(fd, buf, (size_t)n) != n)
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: backlight write failed");
+	close(fd);
+}
+
+/* ==================== GL ==================================================== */
+
+static const char *VERTEX_SHADER =
+	"#version 300 es\n"
+	"in vec2 a_pos;\n"
+	"in vec2 a_src;\n"
+	"out vec2 v_src;\n"
+	"void main() { v_src = a_src; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
+
+/* The panel's color matrix, applied in linear light: decoded from the
+ * screen's gamma, mixed, encoded again. See matrix_load. */
+#define PANEL_COLOR \
+	"uniform mat3 u_matrix;\n" \
+	"uniform bool u_panel;\n" \
+	"vec4 panel(vec4 c) {\n" \
+	"	if (!u_panel) return c;\n" \
+	"	vec3 lin = pow(c.rgb, vec3(2.2));\n" \
+	"	return vec4(pow(clamp(u_matrix * lin, 0.0, 1.0), vec3(1.0 / 2.2)), c.a);\n" \
+	"}\n"
+
+/* Nearest: the sampler's own, which picks the source pixel under the
+ * destination pixel's centre - floor((i + 0.5) / scale), the same pixel
+ * brick.c's map picks. */
+static const char *PLAIN_SHADER =
+	"#version 300 es\n"
+	"precision highp float;\n"
+	"uniform sampler2D u_tex;\n"
+	"uniform vec2 u_size;\n"
+	PANEL_COLOR
+	"in vec2 v_src;\n"
+	"out vec4 o_color;\n"
+	"void main() { o_color = panel(texture(u_tex, v_src / u_size)); }\n";
+
+/* Sharp-bilinear, brick.c's build_map in a shader: the bilinear weight,
+ * steepened by the scale so the blend spans one destination pixel. Interior
+ * pixels sample a texel centre exactly; only the pixel straddling a source
+ * boundary mixes. At an integer factor every weight is 0 or 1, so it equals
+ * nearest. The edges need no clamp of their own: CLAMP_TO_EDGE blends the
+ * border texel with itself, which is brick.c's clamp. UNVERIFIED against
+ * brick.c's output until a capture comparison. */
+static const char *SHARP_SHADER =
+	"#version 300 es\n"
+	"precision highp float;\n"
+	"uniform sampler2D u_tex;\n"
+	"uniform vec2 u_size;\n"
+	"uniform vec2 u_scale;\n"
+	PANEL_COLOR
+	"in vec2 v_src;\n"
+	"out vec4 o_color;\n"
+	"void main() {\n"
+	"	vec2 c = v_src - 0.5;\n"
+	"	vec2 p = floor(c);\n"
+	"	vec2 f = clamp((c - p - 0.5) * u_scale + 0.5, 0.0, 1.0);\n"
+	"	o_color = panel(texture(u_tex, (p + 0.5 + f) / u_size));\n"
+	"}\n";
+
+static const char *SOLID_SHADER =
+	"#version 300 es\n"
+	"precision mediump float;\n"
+	"uniform vec4 u_color;\n"
+	"out vec4 o_color;\n"
+	"void main() { o_color = u_color; }\n";
+
+static GLuint compile(GLenum type, const char *src)
+{
+	GLuint s = glCreateShader(type);
+	GLint ok = 0;
+
+	glShaderSource(s, 1, &src, NULL);
+	glCompileShader(s);
+	glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+	if (!ok) {
+		char log[512];
+		glGetShaderInfoLog(s, sizeof log, NULL, log);
+		port_logf(DIATOM_LOG_ERROR, "pixel2: shader: %s", log);
+		glDeleteShader(s);
+		return 0;
+	}
+	return s;
+}
+
+/* A uniform's location, asked of the driver once a program and kept: by name
+ * it is a string lookup in the driver, and the frame asked for ten or more
+ * on every flip (u_tex, u_size, u_matrix, u_panel, u_scale, the bar's and
+ * the disc's). Emptied when a program is linked and when the context goes,
+ * so a new program that gets an old one's id is asked again. The present
+ * thread's GL alone calls this. */
+#define ULOCS 24
+static struct {
+	GLuint prog;
+	char   name[16];
+	GLint  loc;
+} g_uloc[ULOCS];
+static int g_nuloc;
+
+static GLint uloc(GLuint prog, const char *name)
+{
+	GLint loc;
+	int i;
+
+	for (i = 0; i < g_nuloc; i++)
+		if (g_uloc[i].prog == prog && !strcmp(g_uloc[i].name, name)) return g_uloc[i].loc;
+	loc = glGetUniformLocation(prog, name);
+	if (g_nuloc < ULOCS && strlen(name) < sizeof g_uloc[0].name) {
+		g_uloc[g_nuloc].prog = prog;
+		snprintf(g_uloc[g_nuloc].name, sizeof g_uloc[g_nuloc].name, "%s", name);
+		g_uloc[g_nuloc].loc = loc;
+		g_nuloc++;
+	}
+	return loc;
+}
+
+static GLuint link_program(const char *fragment)
+{
+	GLuint vs = compile(GL_VERTEX_SHADER, VERTEX_SHADER);
+	GLuint fs = compile(GL_FRAGMENT_SHADER, fragment);
+	GLuint p;
+	GLint ok = 0;
+
+	if (!vs || !fs) return 0;
+	g_nuloc = 0;
+	p = glCreateProgram();
+	glAttachShader(p, vs);
+	glAttachShader(p, fs);
+	glBindAttribLocation(p, 0, "a_pos");
+	glBindAttribLocation(p, 1, "a_src");
+	glLinkProgram(p);
+	glDeleteShader(vs);
+	glDeleteShader(fs);
+	glGetProgramiv(p, GL_LINK_STATUS, &ok);
+	if (!ok) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: program did not link");
+		glDeleteProgram(p);
+		return 0;
+	}
+	return p;
+}
+
+/* A rect in SURFACE coordinates (landscape, y down) to clip space on the
+ * target being drawn. On glass the panel is portrait and the picture turns
+ * 90 degrees counter-clockwise, which on this panel ("Left Side Up") is the
+ * right way up - checked by eye 2026-10-01 with a marker drawn top-left.
+ * Landscape (x, y) lands on portrait (y, W - x). For a capture the target is
+ * the surface itself and nothing turns. */
+static void to_clip(float x, float y, bool turned, float *out)
+{
+	if (turned) {
+		float px = y, py = (float)g_surface_w - x;
+		out[0] = px / (float)g_panel_w * 2.0f - 1.0f;
+		out[1] = 1.0f - py / (float)g_panel_h * 2.0f;
+	} else {
+		out[0] = x / (float)g_surface_w * 2.0f - 1.0f;
+		out[1] = 1.0f - y / (float)g_surface_h * 2.0f;
+	}
+}
+
+/* One textured or solid quad. `src` is in texels, matching the rect's corners:
+ * top-left, top-right, bottom-left, bottom-right. */
+static void draw_quad_from(float x, float y, float w, float h,
+                           float sx, float sy, float sw, float sh, bool turned)
+{
+	float pos[8], src[8] = { sx, sy, sx + sw, sy, sx, sy + sh, sx + sw, sy + sh };
+
+	to_clip(x,     y,     turned, &pos[0]);
+	to_clip(x + w, y,     turned, &pos[2]);
+	to_clip(x,     y + h, turned, &pos[4]);
+	to_clip(x + w, y + h, turned, &pos[6]);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, pos);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, src);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+static void draw_quad(float x, float y, float w, float h,
+                      float sw, float sh, bool turned)
+{
+	draw_quad_from(x, y, w, h, 0, 0, sw, sh, turned);
+}
+
+static void solid(float x, float y, float w, float h,
+                  float r, float g, float b, float a, bool turned)
+{
+	glUseProgram(g_prog_solid);
+	glUniform4f(uloc(g_prog_solid, "u_color"), r, g, b, a);
+	draw_quad(x, y, w, h, 0, 0, turned);
+}
+
+/* Upload a mailbox frame into the frame texture. RGB565 goes up as is;
+ * XRGB8888 goes up as bytes and the texture's swizzle puts B and R back and
+ * pins alpha, so no shader needs to know which format it is drawing. */
+static void upload_frame(const mailbox_frame *f)
+{
+	size_t bpp = (f->fmt == DIATOM_PIX_RGB565) ? 2 : 4;
+	bool realloc_tex = f->w != g_tex_w || f->h != g_tex_h || f->fmt != g_tex_fmt;
+
+	if (f->gpu) return;             /* already a texture: the core drew it */
+	glBindTexture(GL_TEXTURE_2D, g_frame_tex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)(f->pitch / bpp));
+	if (f->fmt == DIATOM_PIX_RGB565) {
+		if (realloc_tex)
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB565, f->w, f->h, 0,
+			             GL_RGB, GL_UNSIGNED_SHORT_5_6_5, f->pixels);
+		else
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, f->w, f->h,
+			                GL_RGB, GL_UNSIGNED_SHORT_5_6_5, f->pixels);
+	} else {
+		if (realloc_tex) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, f->w, f->h, 0,
+			             GL_RGBA, GL_UNSIGNED_BYTE, f->pixels);
+		} else {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, f->w, f->h,
+			                GL_RGBA, GL_UNSIGNED_BYTE, f->pixels);
+		}
+	}
+	if (realloc_tex) {
+		bool xrgb = f->fmt == DIATOM_PIX_XRGB8888;
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, xrgb ? GL_BLUE : GL_RED);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, xrgb ? GL_RED : GL_BLUE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ONE);
+		g_tex_w = f->w;
+		g_tex_h = f->h;
+		g_tex_fmt = f->fmt;
+	}
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+}
+
+/* The level bar: the launcher's own pill, from the same code (osdbar.c, which
+ * is ZyperOS's src/osdbar.c), so a volume press looks the same in a game as on
+ * the shelf and over a port. Drawn into pixels at the surface's scale - 0.625
+ * of the launcher's 1024 on the 640x480 panel - and redrawn only when the
+ * level, the fade or the theme moves; the slide is the quad's place. BGRA
+ * with straight alpha, the overlay's own layout, so it goes up the overlay's
+ * way. Not through the panel's color matrix: the shelf is not, and the bar is
+ * the shelf's. */
+static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
+                           float rise, bool turned)
+{
+	static uint32_t px[OSDBAR_W * OSDBAR_H];
+	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme, drawn_a, w, h;
+	const float s = (float)g_surface_w / 1024.0f;
+	int a = (int)(alpha * 255 + 0.5f);
+
+	if (s <= 0 || s > 1) return;
+	if (kind != drawn_kind || level != drawn_level || max != drawn_max ||
+	    theme != drawn_theme || a != drawn_a) {
+		osdbar_size(s, &w, &h);
+		osdbar_render(px, w, h, w, s, theme, kind ? OSDBAR_BRIGHT : OSDBAR_VOLUME,
+		              level, max, alpha, false);
+		glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+		drawn_kind = kind; drawn_level = level; drawn_max = max;
+		drawn_theme = theme; drawn_a = a;
+	}
+	glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
+	glUseProgram(g_prog_plain);
+	glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
+	glUniform2f(uloc(g_prog_plain, "u_size"), (float)w, (float)h);
+	glUniform1i(uloc(g_prog_plain, "u_panel"), 0);
+	draw_quad(roundf(OSDBAR_X * s), roundf((OSDBAR_Y - rise) * s), (float)w, (float)h,
+	          (float)w, (float)h, turned);
+}
+
+/* The low-battery disc: the one the launcher drew on the shelf until its
+ * status corner replaced it (ZyperOS 87db5aa, which took out
+ * draw_low_battery_dot), in its place and color, as horizontal spans so it
+ * matches that disc to the pixel: radius 9, centered 34 px from the top and
+ * right edges of the surface. */
+static void draw_low_battery(bool turned)
+{
+	const int r = 9, cx = g_surface_w - 34, cy = 34;
+	int dy;
+
+	for (dy = -r; dy <= r; dy++) {
+		const int v = r * r - dy * dy;
+		int dx = 0;
+
+		/* sqrt(v) rounded, as the launcher's span is: the largest dx with
+		 * (2dx - 1)^2 <= 4v. */
+		while ((2 * (dx + 1) - 1) * (2 * (dx + 1) - 1) <= 4 * v) dx++;
+		solid((float)(cx - dx), (float)(cy + dy), (float)(2 * dx + 1), 1,
+		      224 / 255.f, 72 / 255.f, 72 / 255.f, 1, turned);
+	}
+}
+
+/* The panel's color matrix, from plastron's /etc/panel-color: nine numbers,
+ * row by row, lines starting with # skipped. Beside the Brick Hammer the
+ * Pixel's panel shows greens yellow - its green has no blue in it where the
+ * Brick's has some - and a curve per channel (the splash's gamma table) can't
+ * add blue to a pixel that has none; a matrix can. Tuned by eye 2026-10-07:
+ * blue gains a tenth of green, in linear light. Read once, at start; no file,
+ * no matrix, and the shaders skip the math. Measured that day with the GPU's
+ * work in the timing: 8.69 ms a frame with it, 8.86 without, the same within
+ * the noise, as the turn to the panel is already a pass of its own. */
+#define MATRIX_PATH "/etc/panel-color"
+static float g_matrix[9];
+static bool  g_matrix_on;
+
+static void matrix_load(void)
+{
+	FILE *f = fopen(MATRIX_PATH, "r");
+	char line[256];
+	float m[9];
+	int n = 0;
+
+	if (!f) return;
+	while (n < 9 && fgets(line, sizeof line, f)) {
+		char *p = line, *end;
+
+		if (line[0] == '#') continue;
+		while (n < 9) {
+			float v = strtof(p, &end);
+			if (end == p) break;
+			m[n++] = v;
+			p = end;
+		}
+	}
+	fclose(f);
+	if (n != 9) {
+		port_logf(DIATOM_LOG_WARN, "pixel2: %s has %d numbers, not 9; no matrix", MATRIX_PATH, n);
+		return;
+	}
+	memcpy(g_matrix, m, sizeof g_matrix);
+	g_matrix_on = true;
+	port_logf(DIATOM_LOG_INFO, "pixel2: color matrix from %s", MATRIX_PATH);
+}
+
+/* Draw one frame and whatever is over it, onto the current target. */
+static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
+                       int osd_kind, int osd_level, int osd_max, int osd_theme,
+                       float osd_alpha, float osd_rise, bool lowbat,
+                       bool turned)
+{
+	GLuint prog = f->filter == DIATOM_FILTER_SHARP ? g_prog_sharp : g_prog_plain;
+	GLint  filter = f->filter == DIATOM_FILTER_SHARP ? GL_LINEAR : GL_NEAREST;
+	/* A GPU frame is GL's way up, its first row at the bottom of a texture
+	 * larger than it: sampled from row h down to row 0, so the same quads
+	 * draw it upright. Unless its core draws the first row at the top. */
+	bool   flip = f->gpu && !f->top_down;
+	float  top  = flip ? (float)f->h : 0.0f;
+	float  down = flip ? -1.0f : 1.0f;
+
+	glClearColor(0, 0, 0, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glBindTexture(GL_TEXTURE_2D, f->gpu ? f->gpu_tex : g_frame_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+	/* Whatever alpha the core left in it, the panel gets 1 (see below) */
+	if (f->gpu) glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ONE);
+	glUseProgram(prog);
+	glUniform1i(uloc(prog, "u_tex"), 0);
+	glUniform2f(uloc(prog, "u_size"),
+	            (float)(f->gpu ? f->tex_w : f->w), (float)(f->gpu ? f->tex_h : f->h));
+	glUniformMatrix3fv(uloc(prog, "u_matrix"), 1, GL_TRUE, g_matrix);
+	glUniform1i(uloc(prog, "u_panel"), g_matrix_on);
+	if (f->nplanes) {
+		/* A DS frame's two screens, each its own quad out of the one
+		 * texture (diatom_port_planes). Sharp's steepness is per quad: the
+		 * two screens of a focus layout are at 2x and 0.5x. The sampler
+		 * clamps only at the texture's edge, so with a linear filter a
+		 * screen's last row can take a little of the other screen's first,
+		 * where the two meet in the middle of the texture; nearest never
+		 * reaches past its own texel. */
+		int i;
+
+		for (i = 0; i < f->nplanes; i++) {
+			const diatom_plane *p = &f->planes[i];
+
+			if (prog == g_prog_sharp)
+				glUniform2f(uloc(prog, "u_scale"),
+				            (float)p->dst.w / (float)p->src.w,
+				            (float)p->dst.h / (float)p->src.h);
+			draw_quad_from((float)p->dst.x, (float)p->dst.y,
+			               (float)p->dst.w, (float)p->dst.h,
+			               (float)p->src.x, top + down * (float)p->src.y,
+			               (float)p->src.w, down * (float)p->src.h, turned);
+		}
+	} else {
+		if (prog == g_prog_sharp)
+			glUniform2f(uloc(prog, "u_scale"),
+			            (float)f->dst.w / (float)f->w, (float)f->dst.h / (float)f->h);
+		/* dst may reach past the surface (fill, overscale): GL clips it. */
+		draw_quad_from((float)f->dst.x, (float)f->dst.y, (float)f->dst.w, (float)f->dst.h,
+		               0.0f, top, (float)f->w, down * (float)f->h, turned);
+	}
+
+	/* Alpha in the target stays 1 whatever is blended over it: the scanout
+	 * format carries alpha, and this display controller is not trusted to
+	 * ignore it (the Brick's composited per pixel - see brick.c, g_opaque). */
+	glEnable(GL_BLEND);
+	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+	if (overlay_live) {
+		/* The launcher draws a notice in its 1024-unit screen, as the level
+		 * bar is drawn (draw_level_bar), so it is scaled to the surface the
+		 * same way: 640 wide on this panel. Drawn at the surface's size
+		 * instead, a notice over 640 units wide - most achievements, "Getting
+		 * hot" - was refused, and a narrower one came out 1.6 times too
+		 * large (2026-11-06). */
+		const float s = ov_scale();
+		float ow = roundf(g_ov_w * s), oh = roundf(g_ov_h * s);
+		float x0 = roundf((g_surface_w - ow) / 2.0f);
+		float y0 = roundf(g_surface_h - oh - g_surface_h / 24.0f);
+
+		glBindTexture(GL_TEXTURE_2D, g_overlay_tex);
+		glUseProgram(g_prog_plain);
+		glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
+		glUniform2f(uloc(g_prog_plain, "u_size"),
+		            (float)g_ov_w, (float)g_ov_h);
+		glUniformMatrix3fv(uloc(g_prog_plain, "u_matrix"), 1, GL_TRUE,
+		                   g_matrix);
+		glUniform1i(uloc(g_prog_plain, "u_panel"), g_matrix_on);
+		draw_quad(x0, y0, ow, oh, (float)g_ov_w, (float)g_ov_h, turned);
+	}
+	if (osd_live)
+		draw_level_bar(osd_kind, osd_level, osd_max, osd_theme, osd_alpha, osd_rise,
+		               turned);
+	if (lowbat)
+		draw_low_battery(turned);
+	glDisable(GL_BLEND);
+}
+
+/* ==================== KMS =================================================== */
+
+/* The format the frames are scanned out as: ARGB8888 (bo_fb says why), or
+ * XRGB8888, the same bytes with the alpha byte ignored, on a display whose
+ * primary plane takes no ARGB8888 - QEMU's virtio-gpu, where plastron's
+ * qemu_defconfig stands in for the Pixel 2 (show_frame finds out). */
+static uint32_t g_fb_format = DRM_FORMAT_ARGB8888;
+
+/* A GBM buffer's framebuffer, and the format it was made in */
+struct bo_fb_info {
+	uint32_t fb, format;
+};
+
+static void bo_destroyed(struct gbm_bo *bo, void *data)
+{
+	struct bo_fb_info *info = data;
+
+	if (info && info->fb) drmModeRmFB(gbm_device_get_fd(gbm_bo_get_device(bo)), info->fb);
+	free(info);
+}
+
+/* The framebuffer for a GBM buffer, made once and kept with it. ARGB8888,
+ * because a page flip cannot change format and the launcher's SDL scans out
+ * ARGB8888 (measured as EINVAL otherwise); made again if g_fb_format has
+ * changed since. */
+static uint32_t bo_fb(struct gbm_bo *bo)
+{
+	struct bo_fb_info *info = gbm_bo_get_user_data(bo);
+	uint32_t handles[4] = { gbm_bo_get_handle(bo).u32 };
+	uint32_t pitches[4] = { gbm_bo_get_stride(bo) };
+	uint32_t offsets[4] = { 0 };
+	uint32_t fb;
+
+	if (info && info->format == g_fb_format) return info->fb;
+	if (drmModeAddFB2(g_drm_fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
+	                  g_fb_format, handles, pitches, offsets, &fb, 0)) {
+		port_logf(DIATOM_LOG_ERROR, "pixel2: AddFB2: %s", strerror(errno));
+		return 0;
+	}
+	if (info) {
+		drmModeRmFB(g_drm_fd, info->fb);
+	} else if ((info = malloc(sizeof *info))) {
+		gbm_bo_set_user_data(bo, info, bo_destroyed);
+	} else {
+		drmModeRmFB(g_drm_fd, fb);
+		return 0;
+	}
+	info->fb = fb;
+	info->format = g_fb_format;
+	return fb;
+}
+
+/* Take the display, if it is not ours already, and find out whether anything
+ * is scanning out. With the launcher or the boot splash in front, the CRTC is
+ * lit and a flip is all it takes; standalone, nothing is, and the first frame
+ * sets the mode. */
+static bool take_display(void)
+{
+	drmModeCrtc *crtc;
+
+	if (g_have_master) return true;
+	if (drmSetMaster(g_drm_fd) != 0) {
+		port_logf(DIATOM_LOG_ERROR, "pixel2: cannot take the display: %s",
+		          strerror(errno));
+		return false;
+	}
+	g_have_master = true;
+	crtc = drmModeGetCrtc(g_drm_fd, g_crtc_id);
+	g_crtc_lit = crtc && crtc->mode_valid && crtc->buffer_id;
+	drmModeFreeCrtc(crtc);
+	return true;
+}
+
+static void give_display(void)
+{
+	if (!g_have_master) return;
+	if (drmDropMaster(g_drm_fd) != 0)
+		port_logf(DIATOM_LOG_WARN, "pixel2: drop master: %s", strerror(errno));
+	g_have_master = false;
+}
+
+static void flip_done(int fd, unsigned seq, unsigned sec, unsigned usec, void *data)
+{
+	*(bool *)data = true;
+}
+
+static void wait_vblank(void)
+{
+	drmVBlank vbl;
+
+	memset(&vbl, 0, sizeof vbl);
+	vbl.request.type = DRM_VBLANK_RELATIVE;
+	if (g_crtc_pipe == 1)
+		vbl.request.type |= DRM_VBLANK_SECONDARY;
+	else if (g_crtc_pipe > 1)
+		vbl.request.type |= (g_crtc_pipe << DRM_VBLANK_HIGH_CRTC_SHIFT) &
+		                    DRM_VBLANK_HIGH_CRTC_MASK;
+	vbl.request.sequence = 1;
+	drmWaitVBlank(g_drm_fd, &vbl);
+}
+
+/* Framebuffer fb on the CRTC: 0, or the errno that refused it. *done is
+ * true once it is on glass, or a page flip's event will make it so. */
+static int put_on_glass(uint32_t fb, bool *done)
+{
+	int tries = 0, ret, flip_err;
+
+	if (!g_crtc_lit) {
+		/* Standalone: nothing was lit, so this frame sets the mode. */
+		if (drmModeSetCrtc(g_drm_fd, g_crtc_id, fb, 0, 0, &g_connector_id, 1,
+		                   &g_mode) != 0) {
+			flip_err = errno;
+			port_logf(DIATOM_LOG_ERROR, "pixel2: set mode: %s", strerror(flip_err));
+			return flip_err;
+		}
+		g_crtc_lit = true;
+		*done = true;
+		return 0;
+	}
+	/* The previous owner's last frame may still be queued, and the flip
+	 * comes back busy until it lands: measured every time, one refresh.
+	 * Wait a refresh and retry, a few times at most. */
+	while ((ret = drmModePageFlip(g_drm_fd, g_crtc_id, fb,
+	                              DRM_MODE_PAGE_FLIP_EVENT, done)) != 0 &&
+	       errno == EBUSY && tries++ < 5)
+		wait_vblank();
+	if (ret == 0) return 0;
+	/* What is lit is in another format, and a flip cannot change it: the
+	 * boot splash's frame is XRGB8888, and a game resumed at boot comes
+	 * before the launcher has put up anything of its own. Every flip came
+	 * back EINVAL until the launcher drew its resume menu, 8 to 11 frames,
+	 * seen 2026-10-27 on the Pixel 2 and in a player's logs. A mode-set can
+	 * change it, as the standalone path's does, and after it the frames flip
+	 * as usual. */
+	flip_err = errno;
+	if (flip_err == EINVAL &&
+	    drmModeSetCrtc(g_drm_fd, g_crtc_id, fb, 0, 0, &g_connector_id, 1, &g_mode) == 0) {
+		port_logf(DIATOM_LOG_INFO, "pixel2: what was lit would not take "
+		          "a flip; set the mode with this frame instead");
+		*done = true;
+		return 0;
+	}
+	port_logf(DIATOM_LOG_WARN, "pixel2: page flip: %s", strerror(flip_err));
+	return flip_err;
+}
+
+/* Put what was just swapped on glass, and wait until it is. */
+static void show_frame(void)
+{
+	struct gbm_bo *bo = gbm_surface_lock_front_buffer(g_gbm_surface);
+	uint32_t fb;
+	bool done = false;
+	int ret;
+
+	if (!bo) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no front buffer after swap");
+		return;
+	}
+	if (!(fb = bo_fb(bo)) || !take_display()) {
+		gbm_surface_release_buffer(g_gbm_surface, bo);
+		return;
+	}
+
+	ret = put_on_glass(fb, &done);
+	/* Refused even by a mode-set: a display with no ARGB8888 at all, QEMU's
+	 * virtio-gpu. The same frames as XRGB8888, from now on. */
+	if (ret == EINVAL && g_fb_format == DRM_FORMAT_ARGB8888) {
+		g_fb_format = DRM_FORMAT_XRGB8888;
+		diatom_port_log(DIATOM_LOG_INFO, "pixel2: the display takes no ARGB8888; "
+		                "showing the frames as XRGB8888");
+		ret = (fb = bo_fb(bo)) ? put_on_glass(fb, &done) : EINVAL;
+	}
+	if (ret != 0) {
+		gbm_surface_release_buffer(g_gbm_surface, bo);
+		return;
+	}
+
+	while (!done) {
+		struct pollfd p = { .fd = g_drm_fd, .events = POLLIN };
+		drmEventContext ev = { .version = 2, .page_flip_handler = flip_done };
+
+		/* Bounded, so a flip that never completes costs a frame and a log
+		 * line rather than the thread. */
+		if (poll(&p, 1, 100) <= 0) {
+			diatom_port_log(DIATOM_LOG_WARN, "pixel2: flip did not complete");
+			break;
+		}
+		drmHandleEvent(g_drm_fd, &ev);
+	}
+
+	if (g_shown_bo) gbm_surface_release_buffer(g_gbm_surface, g_shown_bo);
+	g_shown_bo = bo;
+}
+
+/* ==================== the presenting thread ================================= */
+
+static bool gl_start(void)
+{
+	static const EGLint config_attribs[] = {
+		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+		EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
+		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+		EGL_NONE
+	};
+	static const EGLint context_attribs[] = {
+		EGL_CONTEXT_MAJOR_VERSION, 3, EGL_NONE
+	};
+	PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display =
+		(PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
+	EGLConfig configs[64], config = NULL;
+	EGLint n = 0, i;
+
+	g_egl_display = get_platform_display
+		? get_platform_display(EGL_PLATFORM_GBM_KHR, g_gbm, NULL)
+		: eglGetDisplay((EGLNativeDisplayType)g_gbm);
+	if (g_egl_display == EGL_NO_DISPLAY || !eglInitialize(g_egl_display, NULL, NULL)) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no EGL display");
+		return false;
+	}
+	eglBindAPI(EGL_OPENGL_ES_API);
+
+	/* The config whose native format is the scanout format exactly. */
+	eglChooseConfig(g_egl_display, config_attribs, configs, 64, &n);
+	for (i = 0; i < n; i++) {
+		EGLint visual = 0;
+		eglGetConfigAttrib(g_egl_display, configs[i], EGL_NATIVE_VISUAL_ID, &visual);
+		if (visual == GBM_FORMAT_ARGB8888) { config = configs[i]; break; }
+	}
+	if (!config) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no ARGB8888 EGL config");
+		return false;
+	}
+
+	g_gbm_surface = gbm_surface_create(g_gbm, (uint32_t)g_panel_w, (uint32_t)g_panel_h,
+	                                   GBM_FORMAT_ARGB8888,
+	                                   GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+	if (!g_gbm_surface) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GBM surface");
+		return false;
+	}
+	g_egl_config  = config;
+	g_egl_context = eglCreateContext(g_egl_display, config, EGL_NO_CONTEXT, context_attribs);
+	g_egl_surface = eglCreateWindowSurface(g_egl_display, config,
+	                                       (EGLNativeWindowType)g_gbm_surface, NULL);
+	if (g_egl_context == EGL_NO_CONTEXT || g_egl_surface == EGL_NO_SURFACE ||
+	    !eglMakeCurrent(g_egl_display, g_egl_surface, g_egl_surface, g_egl_context)) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GLES 3 context");
+		return false;
+	}
+
+	g_prog_plain = link_program(PLAIN_SHADER);
+	g_prog_sharp = link_program(SHARP_SHADER);
+	g_prog_solid = link_program(SOLID_SHADER);
+	if (!g_prog_plain || !g_prog_sharp || !g_prog_solid) return false;
+	matrix_load();
+
+	glGenTextures(1, &g_frame_tex);
+	glGenTextures(1, &g_overlay_tex);
+	glGenTextures(1, &g_osdbar_tex);
+	glBindTexture(GL_TEXTURE_2D, g_frame_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	/* The overlay is BGRA straight alpha, uploaded as bytes: swizzled back. */
+	glBindTexture(GL_TEXTURE_2D, g_overlay_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	/* Linear going down (ov_scale, 0.625 here), as the launcher's own text
+	 * is scaled to this panel; at 1, on whole pixels, it is the same */
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_BLUE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+	/* The level bar: the same, BGRA straight alpha (draw_level_bar). */
+	glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_BLUE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+	glViewport(0, 0, g_panel_w, g_panel_h);
+	return true;
+}
+
+static void gl_stop(void)
+{
+	if (g_egl_display == EGL_NO_DISPLAY) return;
+	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	if (g_egl_surface != EGL_NO_SURFACE) eglDestroySurface(g_egl_display, g_egl_surface);
+	g_nuloc = 0;
+	if (g_egl_context != EGL_NO_CONTEXT) eglDestroyContext(g_egl_display, g_egl_context);
+	eglTerminate(g_egl_display);
+	g_egl_display = EGL_NO_DISPLAY;
+}
+
+/* A capture: the front frame drawn again, unturned, into an offscreen target
+ * the size of the surface, and read back. What the host asked for is the
+ * picture as the player sees it, which is landscape. */
+static bool capture_front(int front, const char *path)
+{
+	GLuint fbo, rb;
+	uint8_t *rgba, *flipped;
+	SDL_Surface *s, *rgb;
+	size_t row = (size_t)g_surface_w * 4;
+	bool ok = false;
+	int y;
+
+	if (front < 0) return false;
+	rgba = malloc(row * (size_t)g_surface_h);
+	flipped = malloc(row * (size_t)g_surface_h);
+	if (!rgba || !flipped) { free(rgba); free(flipped); return false; }
+
+	glGenFramebuffers(1, &fbo);
+	glGenRenderbuffers(1, &rb);
+	glBindRenderbuffer(GL_RENDERBUFFER, rb);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, g_surface_w, g_surface_h);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rb);
+	glViewport(0, 0, g_surface_w, g_surface_h);
+
+	upload_frame(&g_frames[front]);
+	draw_scene(&g_frames[front], false, false, 0, 0, 0, 0, 0, 0, false, false);
+	glReadPixels(0, 0, g_surface_w, g_surface_h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, g_panel_w, g_panel_h);
+	glDeleteRenderbuffers(1, &rb);
+	glDeleteFramebuffers(1, &fbo);
+
+	/* GL reads bottom row first. */
+	for (y = 0; y < g_surface_h; y++)
+		memcpy(flipped + (size_t)y * row, rgba + (size_t)(g_surface_h - 1 - y) * row, row);
+
+	s = SDL_CreateRGBSurfaceWithFormatFrom(flipped, g_surface_w, g_surface_h, 32,
+	                                       (int)row, SDL_PIXELFORMAT_ABGR8888);
+	if (s) {
+		/* Plain 24-bit, as on the Brick: readers refuse 32-bit BMP headers. */
+		rgb = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_RGB24, 0);
+		if (rgb) { ok = SDL_SaveBMP(rgb, path) == 0; SDL_FreeSurface(rgb); }
+		SDL_FreeSurface(s);
+	}
+	free(rgba);
+	free(flipped);
+	return ok;
+}
+
+static void *present_thread(void *arg)
+{
+	bool ok = gl_start();
+
+	pthread_mutex_lock(&g_mx);
+	g_thread_ready = ok ? 1 : -1;
+	pthread_cond_broadcast(&g_idle);
+	if (!ok) { pthread_mutex_unlock(&g_mx); gl_stop(); return arg; }
+
+	while (!g_thread_stop) {
+		int frame;
+		bool ov_live, osd_live, lowbat;
+		int osd_kind, osd_level, osd_max, osd_theme;
+		float osd_alpha = 0, osd_rise = 0;
+		uint64_t now, t0 = 0;
+		EGLSyncKHR done;
+
+		if (g_pending < 0 && !g_want_blank && !g_capture_path) {
+			pthread_cond_wait(&g_cv, &g_mx);
+			continue;
+		}
+
+		if (g_capture_path) {
+			const char *path = g_capture_path;
+			int front = g_front;
+
+			pthread_mutex_unlock(&g_mx);
+			ok = capture_front(front, path);
+			pthread_mutex_lock(&g_mx);
+			g_capture_ok = ok;
+			g_capture_path = NULL;
+			pthread_cond_broadcast(&g_idle);
+			continue;
+		}
+
+		if (g_want_blank) {
+			g_want_blank = false;
+			g_blanking = true;
+			pthread_mutex_unlock(&g_mx);
+			glClearColor(0, 0, 0, 1);
+			glClear(GL_COLOR_BUFFER_BIT);
+			eglSwapBuffers(g_egl_display, g_egl_surface);
+			show_frame();
+			pthread_mutex_lock(&g_mx);
+			g_blanking = false;
+			pthread_cond_broadcast(&g_idle);
+			continue;
+		}
+
+		frame = g_pending;
+		g_pending  = -1;
+		g_inflight = frame;
+
+		/* The overlay is read here, under the lock the host's next
+		 * diatom_port_overlay takes, so the borrowed pointer is never read
+		 * after the host has moved on. */
+		now = diatom_port_now_us();
+		ov_live = g_ov && now < g_ov_until;
+		if (ov_live && g_ov_dirty) {
+			glBindTexture(GL_TEXTURE_2D, g_overlay_tex);
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, g_ov_w, g_ov_h, 0,
+			             GL_RGBA, GL_UNSIGNED_BYTE, g_ov);
+			g_ov_dirty = false;
+		}
+		osd_live  = g_osd_on &&
+		            osdbar_envelope((uint32_t)((now - g_osd_shown) / 1000),
+		                            (uint32_t)((now - g_osd_changed) / 1000),
+		                            &osd_alpha, &osd_rise);
+		if (!osd_live) g_osd_on = false;
+		osd_kind  = g_osd_kind;
+		osd_level = g_osd_level;
+		osd_max   = g_osd_max;
+		osd_theme = g_osd_theme;
+		/* Blinking: the even seconds, the launcher's rhythm. */
+		lowbat    = g_lowbat && (!g_lowbat_blink || (now / 1000000u) % 2 == 0);
+		pthread_mutex_unlock(&g_mx);
+
+		if (g_present_debug) t0 = diatom_port_now_us();
+		gpu_frame_ready(&g_frames[frame]);
+		if (g_present_debug && g_frames[frame].gpu) {
+			static uint64_t waited, last;
+			static int n;
+			uint64_t t = diatom_port_now_us();
+
+			waited += t - t0;
+			if (++n >= 60) {
+				port_logf(DIATOM_LOG_INFO, "present: 60 GPU frames in %llu ms, %llu ms of it "
+				          "waiting for the core's drawing",
+				          (unsigned long long)((t - last) / 1000),
+				          (unsigned long long)(waited / 1000));
+				n = 0;
+				waited = 0;
+				last = t;
+			}
+		}
+		upload_frame(&g_frames[frame]);
+		draw_scene(&g_frames[frame], ov_live, osd_live, osd_kind, osd_level,
+		           osd_max, osd_theme, osd_alpha, osd_rise, lowbat, g_turned);
+		/* The core may draw into this texture again once the GPU has read
+		 * it: a fence for diatom_port_gpu_target to wait on. */
+		done = g_frames[frame].gpu
+		     ? p_create_sync(g_egl_display, EGL_SYNC_FENCE_KHR, NULL) : EGL_NO_SYNC_KHR;
+		if (g_frames[frame].gpu) {
+			/* Drawn and on its way: the core may start its next frame */
+			glFlush();
+			pthread_mutex_lock(&g_mx);
+			g_gpu_blitted = g_frames[frame].seq;
+			pthread_cond_broadcast(&g_idle);
+			pthread_mutex_unlock(&g_mx);
+		}
+		eglSwapBuffers(g_egl_display, g_egl_surface);
+		if (g_present_debug) {
+			static int n;
+			uint64_t t1 = diatom_port_now_us();
+			if (++n >= 60) {
+				n = 0;
+				port_logf(DIATOM_LOG_DEBUG, "present: upload+draw+swap %llu us",
+				          (unsigned long long)(t1 - t0));
+			}
+		}
+		show_frame();
+
+		pthread_mutex_lock(&g_mx);
+		g_front    = frame;
+		g_inflight = -1;
+		if (done != EGL_NO_SYNC_KHR) {
+			if (g_gpu_done[frame] != EGL_NO_SYNC_KHR)
+				p_destroy_sync(g_egl_display, g_gpu_done[frame]);
+			g_gpu_done[frame] = done;
+		}
+		pthread_cond_broadcast(&g_idle);
+	}
+	pthread_mutex_unlock(&g_mx);
+	gl_stop();
+	return arg;
+}
+
+/* Until nothing is pending, nothing is being drawn and no request is open.
+ * The thread keeps running: callers want quiescence, not teardown. */
+static void drain(void)
+{
+	pthread_mutex_lock(&g_mx);
+	while (g_thread_running &&
+	       (g_pending >= 0 || g_inflight >= 0 || g_want_blank || g_blanking ||
+	        g_capture_path))
+		pthread_cond_wait(&g_idle, &g_mx);
+	pthread_mutex_unlock(&g_mx);
+}
+
+/* ==================== the port interface ==================================== */
+
+/* Set from the host's thread and read only there, by present, which copies
+ * them into the frame it fills: the flip thread never sees these. */
+static diatom_plane g_planes[DIATOM_PLANES_MAX];
+static int          g_nplanes;
+
+void diatom_port_planes(const diatom_plane *planes, int n)
+{
+	if (!planes || n < 0) n = 0;
+	if (n > DIATOM_PLANES_MAX) n = DIATOM_PLANES_MAX;
+	if (n) memcpy(g_planes, planes, sizeof *planes * (size_t)n);
+	g_nplanes = n;
+	port_logf(DIATOM_LOG_INFO, "present: %d plane(s)%s", n, n ? "" : ", the whole frame");
+}
+
+void diatom_port_present(const void *src, int w, int h, size_t pitch,
+                         diatom_pixfmt fmt, diatom_rect dst, diatom_filter filter)
+{
+	mailbox_frame *f;
+	size_t need;
+	int i;
+
+	/* Dupe frame: the panel already shows it. */
+	if (!src || w <= 0 || h <= 0 || !g_thread_running) return;
+
+	pthread_mutex_lock(&g_mx);
+	for (i = 0; i < MAILBOX_FRAMES; i++)
+		if (i != g_front && i != g_inflight && i != g_pending && i != g_gpu_drawing) break;
+	if (i == MAILBOX_FRAMES) {
+		i = g_pending;
+		g_pending = -1;
+		drop_fence(i);
+	}
+	pthread_mutex_unlock(&g_mx);
+	/* Every slot busy and none pending: the core holds one to draw into. A
+	 * GPU core's session presents no pixels, so this is never its frame. */
+	if (i < 0) return;
+
+	f = &g_frames[i];
+	f->gpu = false;
+	need = pitch * (size_t)h;
+	if (need > f->cap) {
+		/* Grows only, and only when a core's geometry outgrows every frame so
+		 * far: a few times per game at most, never per frame. */
+		uint8_t *p = realloc(f->pixels, need);
+		if (!p) {
+			diatom_port_log(DIATOM_LOG_WARN, "present: no memory for the frame; dropped");
+			return;
+		}
+		f->pixels = p;
+		f->cap = need;
+	}
+	/* What the port was handed, once per change, as brick.c logs it. Against
+	 * the last frame logged, not the slot's old contents: the slots rotate. */
+	{
+		static int lw = -1, lh = -1;
+		static size_t lpitch;
+		static diatom_rect ldst;
+		static diatom_filter lfilter;
+
+		if (w != lw || h != lh || pitch != lpitch || filter != lfilter ||
+		    memcmp(&dst, &ldst, sizeof dst) != 0) {
+			lw = w; lh = h; lpitch = pitch; ldst = dst; lfilter = filter;
+			port_logf(DIATOM_LOG_INFO,
+			          "present: src %dx%d pitch %zu fmt %d -> dst %dx%d at %d,%d "
+			          "(surface %dx%d) %s",
+			          w, h, pitch, (int)fmt, dst.w, dst.h, dst.x, dst.y,
+			          g_surface_w, g_surface_h,
+			          filter == DIATOM_FILTER_SHARP ? "sharp" : "nearest");
+		}
+	}
+	memcpy(f->pixels, src, need);
+	f->w = w;
+	f->h = h;
+	f->pitch = pitch;
+	f->fmt = fmt;
+	f->dst = dst;
+	f->filter = filter;
+	f->nplanes = g_nplanes;
+	if (g_nplanes) memcpy(f->planes, g_planes, sizeof g_planes[0] * (size_t)g_nplanes);
+
+	pthread_mutex_lock(&g_mx);
+	g_presented = true;
+	g_pending = i;
+	pthread_cond_signal(&g_cv);
+	pthread_mutex_unlock(&g_mx);
+}
+
+/* ---------- GPU frames: the port interface ------------------------------------
+ * See the GPU frames section near the top for the slots and the fences. */
+
+bool diatom_port_gpu_begin(const diatom_gpu_spec *spec)
+{
+	EGLint attribs[] = { EGL_CONTEXT_MAJOR_VERSION, spec->major >= 3 ? 3 : 2, EGL_NONE };
+	GLint max_tex = 0;
+	int i;
+
+	if (g_gpu_ctx != EGL_NO_CONTEXT) diatom_port_gpu_end();
+	if (!g_thread_running || g_egl_context == EGL_NO_CONTEXT || !sync_procs()) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GPU for the core (no display or no fences)");
+		return false;
+	}
+	/* Sharing the thread's context: its textures are the core's targets */
+	g_gpu_ctx = eglCreateContext(g_egl_display, g_egl_config, g_egl_context, attribs);
+	if (g_gpu_ctx == EGL_NO_CONTEXT && attribs[1] == 2) {
+		attribs[1] = 3;                 /* OpenGL ES 3 runs an ES 2 core as well */
+		g_gpu_ctx = eglCreateContext(g_egl_display, g_egl_config, g_egl_context, attribs);
+	}
+	if (g_gpu_ctx == EGL_NO_CONTEXT ||
+	    !eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, g_gpu_ctx)) {
+		port_logf(DIATOM_LOG_ERROR, "pixel2: no OpenGL ES %d context for the core (0x%x)",
+		          attribs[1], eglGetError());
+		if (g_gpu_ctx != EGL_NO_CONTEXT) eglDestroyContext(g_egl_display, g_gpu_ctx);
+		g_gpu_ctx = EGL_NO_CONTEXT;
+		return false;
+	}
+
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex);
+	g_gpu_top_down = spec->top_down;
+	g_gpu_w = spec->max_w > 0 ? spec->max_w : g_surface_w;
+	g_gpu_h = spec->max_h > 0 ? spec->max_h : g_surface_h;
+	if (max_tex > 0 && g_gpu_w > max_tex) g_gpu_w = max_tex;
+	if (max_tex > 0 && g_gpu_h > max_tex) g_gpu_h = max_tex;
+
+	/* One depth and stencil buffer for every slot: the core draws one frame
+	 * at a time, and nothing of a frame's depth outlives it. */
+	g_gpu_depth = 0;
+	if (spec->depth || spec->stencil) {
+		glGenRenderbuffers(1, &g_gpu_depth);
+		glBindRenderbuffer(GL_RENDERBUFFER, g_gpu_depth);
+		glRenderbufferStorage(GL_RENDERBUFFER,
+		                      spec->stencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT16,
+		                      g_gpu_w, g_gpu_h);
+	}
+	glGenTextures(MAILBOX_FRAMES, g_gpu_tex);
+	for (i = 0; i < MAILBOX_FRAMES; i++) {
+		glBindTexture(GL_TEXTURE_2D, g_gpu_tex[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_gpu_w, g_gpu_h, 0,
+		             GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	}
+	glGenFramebuffers(1, &g_gpu_read_fb);
+	glGenFramebuffers(1, &g_gpu_fb);
+	glBindFramebuffer(GL_FRAMEBUFFER, g_gpu_fb);
+	/* Depth and stencil apart, which OpenGL ES 2 takes as well as 3 */
+	if (g_gpu_depth)
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+		                          GL_RENDERBUFFER, g_gpu_depth);
+	if (g_gpu_depth && spec->stencil)
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+		                          GL_RENDERBUFFER, g_gpu_depth);
+	/* Each slot's texture through it once: cleared, and checked complete */
+	for (i = 0; i < MAILBOX_FRAMES; i++) {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+		                       g_gpu_tex[i], 0);
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			diatom_port_log(DIATOM_LOG_ERROR, "pixel2: the core's framebuffer is incomplete");
+			diatom_port_gpu_end();
+			return false;
+		}
+	}
+	g_gpu_attached = MAILBOX_FRAMES - 1;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glFinish();
+
+	pthread_mutex_lock(&g_mx);
+	g_gpu_drawing = -1;
+	g_gpu_seq = g_gpu_blitted = 0;
+	pthread_mutex_unlock(&g_mx);
+	g_gpu_last = -1;
+	port_logf(DIATOM_LOG_INFO, "pixel2: GPU frames on OpenGL ES %d, up to %dx%d%s%s",
+	          attribs[1], g_gpu_w, g_gpu_h, spec->depth ? ", depth" : "",
+	          spec->stencil ? ", stencil" : "");
+	return true;
+}
+
+void diatom_port_gpu_end(void)
+{
+	int i;
+
+	if (g_gpu_ctx == EGL_NO_CONTEXT) return;
+	/* Nothing of the core's may still be on its way to the panel, and the
+	 * front frame, once its texture is gone, may never be drawn again. */
+	drain();
+	pthread_mutex_lock(&g_mx);
+	for (i = 0; i < MAILBOX_FRAMES; i++) {
+		drop_fence(i);
+		if (g_gpu_done[i] != EGL_NO_SYNC_KHR) {
+			p_destroy_sync(g_egl_display, g_gpu_done[i]);
+			g_gpu_done[i] = EGL_NO_SYNC_KHR;
+		}
+	}
+	if (g_front >= 0 && g_frames[g_front].gpu) g_front = -1;
+	for (i = 0; i < MAILBOX_FRAMES; i++) g_frames[i].gpu = false;
+	g_gpu_drawing = -1;
+	pthread_mutex_unlock(&g_mx);
+	g_gpu_last = -1;
+	if (g_gpu_throttle != EGL_NO_SYNC_KHR) {
+		p_destroy_sync(g_egl_display, g_gpu_throttle);
+		g_gpu_throttle = EGL_NO_SYNC_KHR;
+	}
+
+	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, g_gpu_ctx);
+	glDeleteFramebuffers(1, &g_gpu_fb);
+	glDeleteFramebuffers(1, &g_gpu_read_fb);
+	glDeleteTextures(MAILBOX_FRAMES, g_gpu_tex);
+	if (g_gpu_depth) glDeleteRenderbuffers(1, &g_gpu_depth);
+	memset(g_gpu_tex, 0, sizeof g_gpu_tex);
+	g_gpu_fb = g_gpu_read_fb = g_gpu_depth = 0;
+	g_gpu_attached = -1;
+	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	eglDestroyContext(g_egl_display, g_gpu_ctx);
+	g_gpu_ctx = EGL_NO_CONTEXT;
+}
+
+uintptr_t diatom_port_gpu_target(void)
+{
+	EGLSyncKHR done = EGL_NO_SYNC_KHR;
+	int i;
+
+	if (g_gpu_ctx == EGL_NO_CONTEXT) return 0;
+	pthread_mutex_lock(&g_mx);
+	if (g_gpu_drawing < 0) {
+		/* Turn-taking: the next frame starts once the thread has drawn the
+		 * last one to the panel. The GPU runs one job after another, so a
+		 * frame begun earlier went ahead of the thread's small one, and the
+		 * panel waited behind the core: Crazy Taxi 2's 27 frames a second
+		 * reached it as 11 (2026-11-04). Bounded, so a thread that stopped
+		 * drawing cannot hold the core for good. */
+		struct timespec until;
+
+		clock_gettime(CLOCK_MONOTONIC, &until);   /* g_idle's clock, set at init */
+		until.tv_nsec += 200 * 1000000L;
+		if (until.tv_nsec >= 1000000000L) { until.tv_sec++; until.tv_nsec -= 1000000000L; }
+		while (g_thread_running && g_gpu_blitted != g_gpu_seq)
+			if (pthread_cond_timedwait(&g_idle, &g_mx, &until) == ETIMEDOUT) break;
+
+		for (i = 0; i < MAILBOX_FRAMES; i++)
+			if (i != g_front && i != g_inflight && i != g_pending) break;
+		if (i == MAILBOX_FRAMES) {      /* all three taken: the newest wins */
+			i = g_pending;
+			g_pending = -1;
+			drop_fence(i);
+		}
+		g_gpu_drawing = i;
+		done = g_gpu_done[i];
+		g_gpu_done[i] = EGL_NO_SYNC_KHR;
+	}
+	i = g_gpu_drawing;
+	pthread_mutex_unlock(&g_mx);
+	wait_sync(done);
+	if (i != g_gpu_attached) {
+		/* The core's own binding put back: its state cache expects it */
+		GLint prev = 0;
+
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev);
+		glBindFramebuffer(GL_FRAMEBUFFER, g_gpu_fb);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+		                       g_gpu_tex[i], 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev);
+		g_gpu_attached = i;
+	}
+	return g_gpu_fb;
+}
+
+void *diatom_port_gpu_proc(const char *name)
+{
+	return (void *)eglGetProcAddress(name);
+}
+
+void diatom_port_present_gpu(int w, int h, diatom_rect dst, diatom_filter filter)
+{
+	mailbox_frame *f;
+	EGLSyncKHR fence, throttle;
+	int i;
+
+	if (g_gpu_ctx == EGL_NO_CONTEXT || w <= 0 || h <= 0 || !g_thread_running) return;
+	pthread_mutex_lock(&g_mx);
+	i = g_gpu_drawing;
+	pthread_mutex_unlock(&g_mx);
+	if (i < 0) return;              /* nothing drawn since the last one */
+	if (w > g_gpu_w) w = g_gpu_w;
+	if (h > g_gpu_h) h = g_gpu_h;
+
+	/* Into the core's command stream after its drawing, and flushed: the
+	 * thread's wait flushes only its own context. */
+	fence = p_create_sync(g_egl_display, EGL_SYNC_FENCE_KHR, NULL);
+	throttle = p_create_sync(g_egl_display, EGL_SYNC_FENCE_KHR, NULL);
+	glFlush();
+	/* And no further ahead of the GPU than one frame: the previous frame
+	 * must be done before the core starts the next. Nothing else holds it
+	 * back - RetroArch's swap does that there - and a core that queued
+	 * frames faster than the GPU drew them had every frame drawn and only
+	 * the newest shown, behind all the rest: Crazy Taxi 2 queued about 37 a
+	 * second and the panel showed 6 (2026-11-04). */
+	if (g_present_debug) {
+		static uint64_t waited, last;
+		static int n;
+		uint64_t t0 = diatom_port_now_us(), t1;
+
+		wait_sync(g_gpu_throttle);
+		t1 = diatom_port_now_us();
+		waited += t1 - t0;
+		if (++n >= 60) {
+			port_logf(DIATOM_LOG_INFO, "present: the core drew 60 frames in %llu ms, "
+			          "%llu ms of it waiting for the GPU",
+			          (unsigned long long)((t1 - last) / 1000),
+			          (unsigned long long)(waited / 1000));
+			n = 0;
+			waited = 0;
+			last = t1;
+		}
+	} else {
+		wait_sync(g_gpu_throttle);
+	}
+	g_gpu_throttle = throttle;
+
+	{
+		static int lw = -1, lh = -1;
+
+		if (w != lw || h != lh) {
+			lw = w; lh = h;
+			port_logf(DIATOM_LOG_INFO,
+			          "present: GPU frame %dx%d of %dx%d -> dst %dx%d at %d,%d %s",
+			          w, h, g_gpu_w, g_gpu_h, dst.w, dst.h, dst.x, dst.y,
+			          filter == DIATOM_FILTER_SHARP ? "sharp" : "nearest");
+		}
+	}
+	f = &g_frames[i];
+	f->gpu = true;
+	f->top_down = g_gpu_top_down;
+	f->gpu_tex = g_gpu_tex[i];
+	f->tex_w = g_gpu_w;
+	f->tex_h = g_gpu_h;
+	f->w = w;
+	f->h = h;
+	f->fmt = DIATOM_PIX_XRGB8888;
+	f->dst = dst;
+	f->filter = filter;
+	f->fence = fence;
+	f->seq = g_gpu_seq + 1;         /* g_gpu_seq is this thread's alone to change */
+	f->nplanes = g_nplanes;
+	if (g_nplanes) memcpy(f->planes, g_planes, sizeof g_planes[0] * (size_t)g_nplanes);
+	g_gpu_last = i;
+
+	pthread_mutex_lock(&g_mx);
+	if (g_pending >= 0 && g_pending != i) drop_fence(g_pending);
+	g_presented = true;
+	g_pending = i;
+	g_gpu_drawing = -1;
+	g_gpu_seq++;
+	pthread_cond_signal(&g_cv);
+	pthread_mutex_unlock(&g_mx);
+}
+
+bool diatom_port_gpu_read(void *xrgb, int *w, int *h, size_t cap)
+{
+	const mailbox_frame *f;
+	GLint prev_fb = 0, prev_align = 4;
+	uint8_t *rgba;
+	uint32_t *out = xrgb;
+	int x, y, fw, fh;
+
+	if (g_gpu_ctx == EGL_NO_CONTEXT || g_gpu_last < 0 || !xrgb) return false;
+	f = &g_frames[g_gpu_last];
+	fw = f->w;
+	fh = f->h;
+	if ((size_t)fw * (size_t)fh * 4 > cap) return false;
+	rgba = malloc((size_t)fw * (size_t)fh * 4);
+	if (!rgba) return false;
+
+	/* The core's own bindings are put back: its state cache (glsm) does not
+	 * expect them to move between frames. */
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fb);
+	glGetIntegerv(GL_PACK_ALIGNMENT, &prev_align);
+	glBindFramebuffer(GL_FRAMEBUFFER, g_gpu_read_fb);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+	                       g_gpu_tex[g_gpu_last], 0);
+	glPixelStorei(GL_PACK_ALIGNMENT, 4);
+	glReadPixels(0, 0, fw, fh, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+	glPixelStorei(GL_PACK_ALIGNMENT, prev_align);
+	glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prev_fb);
+
+	/* Bottom row first in GL (unless the core drew top down), top row first
+	 * out; RGBA bytes to 0x00RRGGBB */
+	for (y = 0; y < fh; y++) {
+		int row = g_gpu_top_down ? y : fh - 1 - y;
+		const uint8_t *s = rgba + (size_t)row * (size_t)fw * 4;
+		uint32_t *d = out + (size_t)y * (size_t)fw;
+
+		for (x = 0; x < fw; x++, s += 4)
+			d[x] = (uint32_t)s[0] << 16 | (uint32_t)s[1] << 8 | s[2];
+	}
+	free(rgba);
+	*w = fw;
+	*h = fh;
+	return true;
+}
+
+static float ov_scale(void)
+{
+	return g_surface_w > 0 && g_surface_w < 1024 ? (float)g_surface_w / 1024.0f : 1.0f;
+}
+
+void diatom_port_overlay(const uint8_t *bgra, int w, int h, unsigned ms)
+{
+	pthread_mutex_lock(&g_mx);
+	if (!bgra || ms == 0 || w <= 0 || h <= 0) {
+		g_ov = NULL;
+		g_ov_until = 0;
+	} else if (roundf(w * ov_scale()) > g_surface_w || roundf(h * ov_scale()) > g_surface_h) {
+		/* Refused, not clipped: see diatom_port.h. */
+		diatom_port_log(DIATOM_LOG_WARN, "overlay larger than the surface; ignored");
+	} else {
+		g_ov = bgra;
+		g_ov_w = w;
+		g_ov_h = h;
+		g_ov_until = diatom_port_now_us() + (uint64_t)ms * 1000ull;
+		g_ov_dirty = true;
+	}
+	pthread_mutex_unlock(&g_mx);
+}
+
+/* The pixels of the frames that are not on glass: copies the flip thread has
+ * already uploaded, each as large as the largest frame the game drew (two of
+ * them are 2.5 MB after a 640x480 XRGB8888 game), which nothing reads until a
+ * present fills them again and grows them back. Let go when a game stops
+ * presenting rather than kept through the launcher's whole stay. The front
+ * one stays: a capture of what is on glass uploads it again. */
+static void release_frames(void)
+{
+	int i;
+
+	pthread_mutex_lock(&g_mx);
+	for (i = 0; i < MAILBOX_FRAMES; i++)
+		if (i != g_front && i != g_pending && i != g_inflight && i != g_gpu_drawing) {
+			free(g_frames[i].pixels);
+			g_frames[i].pixels = NULL;
+			g_frames[i].cap = 0;
+		}
+	pthread_mutex_unlock(&g_mx);
+}
+
+void diatom_port_present_stop(diatom_park park)
+{
+	bool was_presenting;
+
+	if (!g_thread_running) return;
+	drain();
+
+	pthread_mutex_lock(&g_mx);
+	was_presenting = g_presented;
+	g_presented = false;
+	pthread_mutex_unlock(&g_mx);
+
+	/* Nothing presented since the last stop: the launcher has the display,
+	 * and parking would take it (the Brick learned this the hard way, see
+	 * brick.c). */
+	if (!was_presenting) return;
+
+	if (park == DIATOM_PARK_BLANK) {
+		pthread_mutex_lock(&g_mx);
+		g_want_blank = true;
+		pthread_cond_signal(&g_cv);
+		pthread_mutex_unlock(&g_mx);
+		drain();
+	}
+	/* KEEP leaves the last frame on glass, and the buffer behind it stays
+	 * allocated: removing a framebuffer that is on glass blanks the panel.
+	 * The launcher's first flip replaces it. */
+	release_frames();
+	give_display();
+}
+
+/* ---------- audio, as on the Brick ------------------------------------------ */
+
+static bool audio_open(const char *name)
+{
+	SDL_AudioSpec want, have;
+
+	if (g_audio) { SDL_CloseAudioDevice(g_audio); g_audio = 0; }
+	if (name && *name) setenv("AUDIODEV", name, 1);
+	else               unsetenv("AUDIODEV");
+
+	SDL_memset(&want, 0, sizeof want);
+	want.freq     = AUDIO_RATE;
+	want.format   = AUDIO_S16SYS;
+	want.channels = 2;
+	want.samples  = 1024;
+
+	if (SDL_WasInit(SDL_INIT_AUDIO) == 0 && SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
+		return false;
+	g_audio = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+	if (!g_audio) return false;
+	SDL_PauseAudioDevice(g_audio, 0);
+	port_logf(DIATOM_LOG_INFO,
+	          "audio: opened %s at %d Hz, %d ch, %d frames/period, %u byte buffer",
+	          name && *name ? name : "the default device",
+	          have.freq, have.channels, have.samples, have.size);
+	return true;
+}
+
+static void audio_get(char *out, size_t cap)
+{
+	if (out && cap) snprintf(out, cap, "%s", g_audio_dev);
+}
+
+static size_t audio_queued(void)
+{
+	if (!g_audio) return 0;
+	return SDL_GetQueuedAudioSize(g_audio) / AUDIO_FRAME_BYTES;
+}
+
+bool diatom_port_audio_set(const char *name, char *actual, size_t cap)
+{
+	const char *want = name ? name : "";
+	bool ok;
+
+	pthread_mutex_lock(&g_audio_dev_mx);
+	if (g_audio && !strcmp(want, g_audio_dev)) {
+		audio_get(actual, cap);
+		pthread_mutex_unlock(&g_audio_dev_mx);
+		return true;
+	}
+	ok = audio_open(name);
+	if (!ok) {
+		port_logf(DIATOM_LOG_WARN, "audio: %s unavailable (%s); using the default",
+		          name && *name ? name : "the default device", SDL_GetError());
+		if (audio_open(NULL)) g_audio_dev[0] = '\0';
+	} else {
+		snprintf(g_audio_dev, sizeof g_audio_dev, "%s", name ? name : "");
+	}
+	audio_get(actual, cap);
+	pthread_mutex_unlock(&g_audio_dev_mx);
+	return ok;
+}
+
+/* Not at init: see diatom_port_audio_start in diatom_port.h. NOT fatal when
+ * it fails. A port that cannot open a sound device can still put pixels where
+ * the device wants them, and silence costs far less than no emulator: the
+ * write path drops, and the host configures the session with capacity 0, which
+ * turns dynamic rate control off rather than leaving it correcting for a
+ * buffer that does not exist. Tried again at the next start, which costs
+ * nothing when it fails. */
+bool diatom_port_audio_start(void)
+{
+	bool ok = true;
+
+	pthread_mutex_lock(&g_audio_dev_mx);
+	if (!g_audio) {
+		ok = audio_open(NULL);
+		if (ok) g_audio_dev[0] = '\0';
+		else    port_logf(DIATOM_LOG_WARN,
+		                  "audio unavailable (%s); continuing without sound",
+		                  SDL_GetError());
+	}
+	pthread_mutex_unlock(&g_audio_dev_mx);
+	return ok;
+}
+
+void diatom_port_audio_get(char *out, size_t cap)
+{
+	pthread_mutex_lock(&g_audio_dev_mx);
+	audio_get(out, cap);
+	pthread_mutex_unlock(&g_audio_dev_mx);
+}
+
+size_t diatom_port_audio_write(const int16_t *frames, size_t n)
+{
+	size_t queued, room;
+
+	pthread_mutex_lock(&g_audio_dev_mx);
+	if (g_audio && g_audio_dev[0] &&
+	    SDL_GetAudioDeviceStatus(g_audio) == SDL_AUDIO_STOPPED) {
+		diatom_port_log(DIATOM_LOG_WARN,
+		                "audio: the sink went away; falling back to the default");
+		g_audio_dev[0] = '\0';
+		audio_open(NULL);
+	}
+	if (!g_audio || !frames || !n) { pthread_mutex_unlock(&g_audio_dev_mx); return 0; }
+	queued = audio_queued();
+	room   = queued >= (size_t)AUDIO_BUFFER_FRAMES
+	       ? 0 : (size_t)AUDIO_BUFFER_FRAMES - queued;
+	if (n > room) n = room;
+	if (n) {
+		if (!g_audio_dev[0]) {
+			static int16_t down[AUDIO_BUFFER_FRAMES * 2];
+			size_t i;
+
+			for (i = 0; i < n * 2; i++) down[i] = (int16_t)(frames[i] * RK817_HEADROOM);
+			frames = down;
+		}
+		SDL_QueueAudio(g_audio, frames, (Uint32)(n * AUDIO_FRAME_BYTES));
+	}
+	pthread_mutex_unlock(&g_audio_dev_mx);
+	return n;
+}
+
+size_t diatom_port_audio_queued(void)
+{
+	size_t n;
+
+	pthread_mutex_lock(&g_audio_dev_mx);
+	n = audio_queued();
+	pthread_mutex_unlock(&g_audio_dev_mx);
+	return n;
+}
+
+/* ---------- input ----------------------------------------------------------- */
+
+/* The pad's keys as they are right now, for a start or after the kernel
+ * dropped events (SYN_DROPPED): the held-at-entry rule needs to know about a
+ * key that was already down. */
+static void pad_resync(void)
+{
+	unsigned long keys[NLONGS(KEY_MAX)];
+	size_t i;
+
+	if (g_pad_fd < 0) return;
+	memset(keys, 0, sizeof keys);
+	if (ioctl(g_pad_fd, EVIOCGKEY(sizeof keys), keys) < 0) return;
+	g_buttons = 0;
+	for (i = 0; i < sizeof keymap / sizeof keymap[0]; i++)
+		if (BIT_IS_SET(keys, keymap[i].code))
+			g_buttons |= DIATOM_BIT(keymap[i].btn);
+}
+
+/* Normally found already, by jack_open's scan, which runs first. */
+static void input_open(void)
+{
+	if (g_pad_fd < 0 || g_keys_fd < 0) input_scan();
+	if (g_pad_fd < 0)
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no gamepad found; no game input");
+	if (g_keys_fd < 0)
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: no volume keys found");
+	pad_resync();
+}
+
+/* The two volume keys, as level keys. What a key is, volume or brightness under
+ * MENU, is settled when it goes down and kept while it is held, as ZyperOS keeps
+ * it, so letting go of MENU mid-hold does not turn brightness into volume. A
+ * press is latched until the host has read it, so a tap between two frames
+ * counts; a key the events say is held is checked against the kernel, so a
+ * release this port never saw cannot leave the host repeating. The stepping
+ * and the repeat are the host's. */
+static const int level_codes[2] = { KEY_VOLUMEUP, KEY_VOLUMEDOWN };
+static struct {
+	bool down;           /* held, by the events */
+	bool pressed;        /* went down since the host last asked */
+	bool bright;         /* went down with MENU held */
+} g_level_key[2];
+
+void diatom_port_input_poll(void)
+{
+	struct input_event ev[32];
+	ssize_t n;
+	size_t i, k;
+
+	gain_jack_poll();
+
+	while (g_pad_fd >= 0 && (n = read(g_pad_fd, ev, sizeof ev)) > 0) {
+		for (i = 0; i < (size_t)n / sizeof ev[0]; i++) {
+			if (ev[i].type == EV_SYN && ev[i].code == SYN_DROPPED) {
+				pad_resync();
+				continue;
+			}
+			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
+			if (g_input_debug)
+				port_logf(DIATOM_LOG_DEBUG, "key %d -> %d", ev[i].code, ev[i].value);
+			for (k = 0; k < sizeof keymap / sizeof keymap[0]; k++) {
+				if (keymap[k].code != ev[i].code) continue;
+				if (ev[i].value) g_buttons |=  DIATOM_BIT(keymap[k].btn);
+				else             g_buttons &= ~DIATOM_BIT(keymap[k].btn);
+			}
+		}
+	}
+
+	/* The volume keys are level keys, never reported as buttons and never
+	 * sent to a core. With MENU held they are brightness instead, the
+	 * Pixel 2's only way to it; the host sees the level move and treats
+	 * MENU's release as the end of a chord. */
+	while (g_keys_fd >= 0 && (n = read(g_keys_fd, ev, sizeof ev)) > 0) {
+		for (i = 0; i < (size_t)n / sizeof ev[0]; i++) {
+			int key;
+
+			if (ev[i].type != EV_KEY || ev[i].value == 2) continue;
+			if      (ev[i].code == KEY_VOLUMEUP)   key = 0;
+			else if (ev[i].code == KEY_VOLUMEDOWN) key = 1;
+			else continue;
+			if (!ev[i].value) {
+				g_level_key[key].down = false;
+				continue;
+			}
+			if (g_input_debug)
+				port_logf(DIATOM_LOG_DEBUG, "level key %d", ev[i].code);
+			g_level_key[key].down    = true;
+			g_level_key[key].pressed = true;
+			g_level_key[key].bright  = (g_buttons & DIATOM_BIT(DIATOM_BTN_MENU)) != 0;
+		}
+	}
+}
+
+uint32_t diatom_port_input_state(void) { return g_buttons; }
+
+bool diatom_port_rumble(uint16_t strong, uint16_t weak)
+{
+	return evdev_rumble_set(strong, weak);
+}
+
+void diatom_port_input_reset(void)
+{
+	struct input_event ev[32];
+
+	while (g_pad_fd >= 0 && read(g_pad_fd, ev, sizeof ev) > 0) { }
+	while (g_keys_fd >= 0 && read(g_keys_fd, ev, sizeof ev) > 0) { }
+	memset(g_level_key, 0, sizeof g_level_key);
+	pad_resync();
+}
+
+/* ---------- levels: the hardware under them --------------------------------- */
+
+void diatom_port_level_invalidate(void)
+{
+	g_level    = -1;
+	g_jack_was = -1;
+}
+
+int diatom_port_level_positions(diatom_level_kind kind)
+{
+	/* Asked every frame, so the backlight is looked for once, not read each
+	 * time. */
+	static int have_backlight = -1;
+
+	switch (kind) {
+	case DIATOM_LEVEL_VOLUME:
+		return g_mixer_fd >= 0 ? GAIN_LEVELS + 1 : 0;
+	case DIATOM_LEVEL_BRIGHTNESS:
+		if (have_backlight < 0) have_backlight = backlight_read() >= 0;
+		return have_backlight ? BRIGHT_LEVELS + 1 : 0;
+	default:
+		return 0;
+	}
+}
+
+int diatom_port_level_read(diatom_level_kind kind)
+{
+	long v;
+	int raw;
+
+	switch (kind) {
+	case DIATOM_LEVEL_VOLUME:
+		/* Kept as well as returned: the mute and the jack re-apply act on
+		 * the level the hardware is at, read here the first frame after a
+		 * handover, before any press writes one. */
+		if (gain_io(&v, 0) < 0) return -1;
+		g_level = raw_to_level((int)v);
+		return g_level;
+	case DIATOM_LEVEL_BRIGHTNESS:
+		/* Nearest rung, so a level the launcher left between two reads as the
+		 * closer one. */
+		if ((raw = backlight_read()) < 0) return -1;
+		return ladder_nearest(bright_ladder, BRIGHT_LEVELS + 1, raw);
+	default:
+		return -1;
+	}
+}
+
+void diatom_port_level_write(diatom_level_kind kind, int pos)
+{
+	switch (kind) {
+	case DIATOM_LEVEL_VOLUME:
+		g_level = pos;
+		gain_apply();
+		break;
+	case DIATOM_LEVEL_BRIGHTNESS:
+		if (pos < 0)             pos = 0;
+		if (pos > BRIGHT_LEVELS) pos = BRIGHT_LEVELS;
+		backlight_write(bright_ladder[pos]);
+		break;
+	default:
+		break;
+	}
+}
+
+uint32_t diatom_port_level_keys(void)
+{
+	static const uint32_t as_volume[2] = { DIATOM_LEVEL_KEY_VOLUME_UP, DIATOM_LEVEL_KEY_VOLUME_DOWN };
+	static const uint32_t as_bright[2] = { DIATOM_LEVEL_KEY_BRIGHTNESS_UP, DIATOM_LEVEL_KEY_BRIGHTNESS_DOWN };
+	unsigned long keys[NLONGS(KEY_MAX)];
+	uint32_t out = 0;
+	bool asked = false;
+	int k;
+
+	for (k = 0; k < 2; k++) {
+		if (g_level_key[k].down) {
+			if (!asked) {
+				memset(keys, 0, sizeof keys);
+				if (g_keys_fd < 0 || ioctl(g_keys_fd, EVIOCGKEY(sizeof keys), keys) < 0)
+					memset(keys, 0, sizeof keys);
+				asked = true;
+			}
+			if (!BIT_IS_SET(keys, level_codes[k])) g_level_key[k].down = false;
+		}
+		if (g_level_key[k].down || g_level_key[k].pressed)
+			out |= g_level_key[k].bright ? as_bright[k] : as_volume[k];
+		g_level_key[k].pressed = false;
+	}
+	return out;
+}
+
+void diatom_port_level_shown(diatom_level_kind kind, int pos, int positions)
+{
+	osd_show(kind == DIATOM_LEVEL_BRIGHTNESS ? 1 : 0, pos, positions - 1);
+}
+
+void diatom_port_low_battery(bool on, bool blink)
+{
+	pthread_mutex_lock(&g_mx);
+	g_lowbat = on;
+	g_lowbat_blink = blink;
+	pthread_mutex_unlock(&g_mx);
+}
+
+/* No hardware mute on this device, but the launcher may still hold one:
+ * while it does, the level never comes back on. */
+void diatom_port_mute_set(bool on)
+{
+	if (on == g_muted) return;
+	g_muted = on;
+	if (g_mixer_fd >= 0 && g_level >= 0) gain_apply();
+}
+
+bool diatom_port_mute_get(void) { return g_muted; }
+
+static bool sysfs_put(const char *path, const char *v);
+
+void diatom_port_fast_clock(bool on)
+{
+	static bool said;
+	static int gpu_held = -1;
+
+	if (!diatom_cpufreq_hold_top(on) && !said) {
+		said = true;
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the CPU's lowest clock");
+	}
+	/* And the GPU's floor at its top step, 520 MHz, for the same reason
+	 * (see diatom_port.h); 0 is no floor, the governor's again. The first
+	 * call always writes, as the CPU's does, so a crashed Diatom's hold is
+	 * cleared. */
+	if (gpu_held != (int)on) {
+		gpu_held = on;
+		if (!sysfs_put("/sys/class/devfreq/ff400000.gpu/min_freq", on ? "520000000" : "0"))
+			diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the GPU's lowest clock");
+	}
+}
+
+/* The ceilings, off this board's own tables: the CPU's steps (1296 MHz at
+ * the top), the DDR's three trained rates (194, 328, 1056 MHz) and the GPU's
+ * steps (200 to 520 MHz). FULL gives each back its top: the CPU its own
+ * maximum, and 0 to a devfreq max_freq, which the kernel reads as no
+ * ceiling. The DDR runs under the performance governor (plastron's
+ * S01governor), so its ceiling is its rate. */
+static bool sysfs_put(const char *path, const char *v)
+{
+	int fd = open(path, O_WRONLY | O_CLOEXEC);
+	bool ok;
+
+	if (fd < 0) return false;
+	ok = write(fd, v, strlen(v)) == (ssize_t)strlen(v);
+	close(fd);
+	return ok;
+}
+
+void diatom_port_power(int level)
+{
+	static const struct { const char *cpu, *ram, *gpu; } lv[] = {
+		[DIATOM_POWER_FULL]   = { NULL,      "0",         "0" },
+		[DIATOM_POWER_MEDIUM] = { "1008000", "0",         "300000000" },
+		[DIATOM_POWER_LIGHT]  = { "816000",  "328000000", "200000000" },
+	};
+	static int now = -1;
+	bool ok;
+
+	if (level < DIATOM_POWER_FULL || level > DIATOM_POWER_LIGHT || level == now) return;
+	now = level;
+	ok = lv[level].cpu
+	   ? sysfs_put(DIATOM_CPUFREQ "scaling_max_freq", lv[level].cpu)
+	   : diatom_cpufreq_copy(DIATOM_CPUFREQ "cpuinfo_max_freq",
+	                         DIATOM_CPUFREQ "scaling_max_freq");
+	ok &= sysfs_put("/sys/class/devfreq/dmc/max_freq", lv[level].ram);
+	ok &= sysfs_put("/sys/class/devfreq/ff400000.gpu/max_freq", lv[level].gpu);
+	if (!ok) diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set every clock ceiling");
+}
+
+/* ---------- lifecycle ------------------------------------------------------- */
+
+/* The connected connector, the CRTC driving it and its mode. The panel is the
+ * only output; its preferred mode is its only mode (480x640, read with
+ * modetest 2026-10-01). */
+static bool kms_find(void)
+{
+	drmModeRes *res = drmModeGetResources(g_drm_fd);
+	drmModeConnector *conn = NULL;
+	drmModeEncoder *enc = NULL;
+	int i;
+
+	if (!res) return false;
+	for (i = 0; i < res->count_connectors && !conn; i++) {
+		drmModeConnector *c = drmModeGetConnector(g_drm_fd, res->connectors[i]);
+		if (c && c->connection == DRM_MODE_CONNECTED && c->count_modes > 0) conn = c;
+		else drmModeFreeConnector(c);
+	}
+	if (!conn) { drmModeFreeResources(res); return false; }
+
+	g_connector_id = conn->connector_id;
+	g_mode = conn->modes[0];
+	for (i = 0; i < conn->count_modes; i++)
+		if (conn->modes[i].type & DRM_MODE_TYPE_PREFERRED) { g_mode = conn->modes[i]; break; }
+
+	enc = drmModeGetEncoder(g_drm_fd, conn->encoder_id ? conn->encoder_id : conn->encoders[0]);
+	if (enc) {
+		if (enc->crtc_id) {
+			g_crtc_id = enc->crtc_id;
+		} else {
+			for (i = 0; i < res->count_crtcs; i++)
+				if (enc->possible_crtcs & (1u << i)) { g_crtc_id = res->crtcs[i]; break; }
+		}
+	}
+	for (i = 0; i < res->count_crtcs; i++)
+		if (res->crtcs[i] == g_crtc_id) g_crtc_pipe = i;
+
+	drmModeFreeEncoder(enc);
+	drmModeFreeConnector(conn);
+	drmModeFreeResources(res);
+	return g_crtc_id != 0;
+}
+
+bool diatom_port_init(diatom_port_caps *out)
+{
+	g_input_debug   = getenv("DIATOM_INPUT_DEBUG") != NULL;
+	g_present_debug = getenv("DIATOM_PRESENT_DEBUG") != NULL;
+
+	g_drm_fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+	if (g_drm_fd < 0) { perror("open /dev/dri/card0"); return false; }
+	/* Opening the device while nobody holds master makes us master, and a
+	 * resident Diatom must not hold the display while the launcher draws.
+	 * Taken back at the first present. */
+	drmDropMaster(g_drm_fd);
+
+	if (!kms_find()) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no connected panel");
+		return false;
+	}
+	g_panel_w = g_mode.hdisplay;
+	g_panel_h = g_mode.vdisplay;
+	/* Portrait panel, landscape surface. */
+	g_turned    = g_panel_h > g_panel_w;
+	g_surface_w = g_turned ? g_panel_h : g_panel_w;
+	g_surface_h = g_turned ? g_panel_w : g_panel_h;
+
+	g_gbm = gbm_create_device(g_drm_fd);
+	if (!g_gbm) { diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no GBM device"); return false; }
+
+	/* g_idle on the monotonic clock, before the thread exists, for the one
+	 * timed wait on it (gpu_target's): the wall clock here has jumped by
+	 * decades on a dead RTC, which would turn 200 ms into forever. */
+	{
+		pthread_condattr_t ca;
+
+		pthread_condattr_init(&ca);
+		pthread_condattr_setclock(&ca, CLOCK_MONOTONIC);
+		pthread_cond_destroy(&g_idle);
+		pthread_cond_init(&g_idle, &ca);
+		pthread_condattr_destroy(&ca);
+	}
+	if (pthread_create(&g_thread, NULL, present_thread, NULL) != 0) {
+		diatom_port_log(DIATOM_LOG_ERROR, "pixel2: no presenting thread");
+		return false;
+	}
+	pthread_mutex_lock(&g_mx);
+	while (g_thread_ready == 0) pthread_cond_wait(&g_idle, &g_mx);
+	pthread_mutex_unlock(&g_mx);
+	if (g_thread_ready < 0) {
+		pthread_join(g_thread, NULL);
+		return false;
+	}
+	g_thread_running = true;
+
+	g_mixer_fd = open("/dev/snd/controlC0", O_RDWR | O_CLOEXEC);
+	jack_open();
+	input_open();
+	/* The motor is the joypad's: plastron's device tree hands PWM0 to the
+	 * joypad driver, which makes the pad an FF_RUMBLE device. An image
+	 * without that has no motor to run, and says so here. */
+	out->rumble = evdev_rumble_open(g_pad_fd, g_pad_path);
+
+	/* No audio here: it opens once the launcher has drawn, or at the first
+	 * game; see diatom_port_audio_start. */
+
+	port_logf(DIATOM_LOG_INFO,
+	          "pixel2: panel %dx%d%s, surface %dx%d, crtc %u, audio %d Hz, pad %s, rumble %s",
+	          g_panel_w, g_panel_h, g_turned ? " (turned)" : "",
+	          g_surface_w, g_surface_h, g_crtc_id, AUDIO_RATE,
+	          g_pad_fd >= 0 ? "yes" : "none", out->rumble ? "yes" : "none");
+
+	out->surface_w           = g_surface_w;
+	out->surface_h           = g_surface_h;
+	out->audio_rate          = AUDIO_RATE;
+	out->audio_buffer_frames = AUDIO_BUFFER_FRAMES;   /* open or not yet */
+	out->present_blocks      = false;
+	out->gpu                 = true;
+	return true;
+}
+
+void diatom_port_shutdown(void)
+{
+	int i;
+
+	if (g_thread_running) {
+		drain();
+		pthread_mutex_lock(&g_mx);
+		g_thread_stop = true;
+		pthread_cond_signal(&g_cv);
+		pthread_mutex_unlock(&g_mx);
+		pthread_join(g_thread, NULL);
+		g_thread_running = false;
+	}
+	give_display();
+	for (i = 0; i < MAILBOX_FRAMES; i++) free(g_frames[i].pixels);
+	/* The level and the brightness are user settings and stay where they are,
+	 * as on the Brick. */
+	if (g_mixer_fd >= 0) { close(g_mixer_fd); g_mixer_fd = -1; }
+	evdev_rumble_close();
+	if (g_pad_fd >= 0)   close(g_pad_fd);
+	if (g_keys_fd >= 0)  close(g_keys_fd);
+	if (g_jack_fd >= 0)  close(g_jack_fd);
+	pthread_mutex_lock(&g_audio_dev_mx);
+	if (g_audio)         SDL_CloseAudioDevice(g_audio);
+	g_audio = 0;
+	pthread_mutex_unlock(&g_audio_dev_mx);
+	SDL_Quit();
+	/* The GBM surface and device go with the process: the buffer on glass
+	 * stays allocated until then. */
+	if (g_drm_fd >= 0)   close(g_drm_fd);
+}
+
+bool diatom_port_should_quit(void) { return false; }
+
+bool diatom_port_capture(const char *path)
+{
+	bool ok;
+
+	if (!g_thread_running || !path) return false;
+	drain();
+	pthread_mutex_lock(&g_mx);
+	g_capture_path = path;
+	pthread_cond_signal(&g_cv);
+	while (g_capture_path) pthread_cond_wait(&g_idle, &g_mx);
+	ok = g_capture_ok;
+	pthread_mutex_unlock(&g_mx);
+	return ok;
+}
+
+uint64_t diatom_port_now_us(void)
+{
+	return diatom_ticks_to_us(SDL_GetPerformanceCounter(),
+	                          SDL_GetPerformanceFrequency());
+}
+
+void diatom_port_log(diatom_log_level lvl, const char *msg)
+{
+	static const char *tag[] = { "debug", "info", "warn", "error" };
+	fprintf(stderr, "[%s] %s\n", tag[lvl], msg);
+}

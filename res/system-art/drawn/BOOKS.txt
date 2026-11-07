@@ -1,0 +1,58 @@
+## BOOKS: pixel maps reduced from real photos (tools/systemart-reduce.py).
+## Each part: area-averaged to its size, median-cut colors; "." is transparent.
+# body 30x52
+## photo: https://commons.wikimedia.org/wiki/File:PediaPress_Hardcover_standing01.jpg | PediaPress | CC BY-SA 3.0
+## reduced: --size 40x52 --crop 0.15,0.1,0.88,0.92 --vignette --tolerance 60
+3c3a3b 585353 78726f 918c7e 9e987c a39d7f a29c8a a7a189 a9a38a aaa490 ada894 b5b4ab bdc5d2 dddbd6 f3efe6 fbf9f3
+...11222......................
+.112ddddcba66322..............
+113bcdddddddddddcbb6632.......
+32111123abddddddddddddddcbbbba
+54443221111239bdddddddddddded5
+5444444443322111126bcddddeefe4
+5444445444454543221112abefefe4
+54444455555555555554335aefefe4
+74554333445555555559755aefefe4
+84554443333445555559aa5aefefe4
+84555555433333434445555aefefe4
+75555555554554543333445aefefe5
+74975555543353457444435aefefe5
+95abbaaa777574334334555aefefe4
+955558a9baa987777633335aefffe5
+85555577779abbba9a77647aefffe5
+645555777777779aabbba87aefffe5
+84444477777777777779aa7aefffe5
+95777564446777787777777aefffe5
+95777777776666688777777aefffe5
+a6777788887888766667777aefffe5
+a7787888888899999886667aefffe7
+a7888888989998999999898aefffe7
+a7888889999999999998988aefffe8
+a7888889999999999999999aefffe7
+a7ba98888999aa99a999999aefffe7
+a8ccccbba99999aa9aa9999aefffe7
+a8ccccccccbba9a99aa9a99aefffe7
+a8ccccccccccccbbaaaaa9aaefffe8
+a8bcccccccccccccccbba99aefffe8
+a86cccccccccccccccccccaaefffe7
+a826bcccccccccccccccccaaefffe7
+a826936cccccccccccccccaaefffd7
+a822b33bccccccccccccccaaefffd8
+a82121013966ccccccccccbaefffd8
+a833211123336bbbccccccbaefffd8
+a7339122122239aabbccccaaefffd8
+a72123230222222339abbbaaefffd8
+a73331122211122222222aaaefffd8
+.7334100000000100000126aefffd8
+.7101100000000001110103aefffd8
+.7100000001111100011103aefffd7
+.7222222110000011110003aefffd7
+.7631000000121101100003aefffd7
+b6455421122101210000004aefffd8
+..a666777321210000000149efffd7
+......96677742100000014aefffb4
+.........96677862100014aeffec.
+............996799731249efec..
+...............a99999879ee....
+...................a9899c.....
+......................aa......

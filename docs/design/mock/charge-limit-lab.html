@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charge limit lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .pair { display: grid; gap: 10px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+
+  /* ---- Zyper asleep: the symbol with its eyes shut ---------------------- */
+  .zs .zyp { position: absolute; transform-origin: 50% 70%; }
+  .zs .zyp svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .zs[data-theme="light"] .zyp svg { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent)); }
+  .zs .zzz { position: absolute; color: var(--text-dim); font-weight: 600; line-height: 1; }
+
+  /* ---- text in the type roles ------------------------------------------ */
+  .zs .t-title { position: absolute; font-size: 60px; font-weight: 600; color: var(--text); line-height: 1; white-space: nowrap; }
+  .zs .t-label { position: absolute; font-size: 55px; color: var(--text-soft); line-height: 1; white-space: nowrap; }
+  .zs .t-meta  { position: absolute; font-size: 37px; color: var(--text-dim); line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .zs .center { left: 0; right: 0; text-align: center; }
+  .zs .batt { position: absolute; }
+  .zs .batt svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .zs .hold { position: absolute; left: 0; right: 0; top: 662px; display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 37px; color: var(--text-dim); }
+
+  /* the status corner: the clock, then the battery, 24 from the top right */
+  .zs .clock { position: absolute; top: 24px; height: 24px; line-height: 24px; font-size: 24px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+  /* a crop: the top right of the home, larger, so the mark can be read */
+  .crop { position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--zk-line); aspect-ratio: 4 / 1.3; }
+  .crop .zk-frame { position: absolute; width: 300%; right: 0; top: 0; border-radius: 0; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Charge limit <b>lab</b></h1>
+      <p class="zk-lede">A setting that stops charging at 80, 85 or 90%, to keep the battery healthy for longer. Pick one option in each section, and add a note if you want a change. Every option is shown in Beard and in Salt &amp; Pepper.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>How it works:</b> at the limit the Pixel 2's charger stops, and it starts again when the battery falls 5% under the limit (for 85%: it stops at 85% and starts again at 80%). So it does not top up all day on a desk. The percentage stays true: 100% is still a full battery.</li>
+      <li><b>Off and charging too:</b> a charger on a Pixel 2 that is off starts the charging screen, and the charging screen keeps the limit.</li>
+      <li><b>The time on the charging screen</b> is to the limit: "85% in about 40 min", not "Full in about 1 h 10 min".</li>
+      <li><b>Why these numbers:</b> a lithium battery ages slower when it is not kept full. 80 to 90% keeps most of a charge's play time and takes away the hardest part for the cell, the last 10%.</li>
+      <li><b>Needs plastron once:</b> the kernel's charger driver for the Pixel 2 has no limit today. A small change adds the standard Linux one (<code>charge_control_end_threshold</code>), and it comes with a system update. The Brick's charger belongs to its own kernel, so the row shows on the Pixel 2 only for now.</li>
+    </ul>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* Zyper, `w` wide, top left (x, y), asleep: his eyes and mouth shut */
+  const zy = (x, y, w) =>
+    `<div class="zyp" style="left:${x}px;top:${y}px;width:${w}px;height:${Math.round(w * 1.055)}px"><svg viewBox="-114.6 -125.1 248.9 262.6"><use href="#zyper" x="-114.6" y="-125.1" width="248.9" height="262.6"/>
+      <circle cx="-28" cy="-27" r="11.5" fill="#969998"/><circle cx="35" cy="-16" r="11.5" fill="#969998"/>
+      <path d="M-39 -27 q 11 9 22 -2 M24 -16 q 11 9 22 -2" fill="none" stroke="#111310" stroke-width="4.5" stroke-linecap="round"/>
+      <ellipse cx="-8" cy="72" rx="44" ry="40" fill="#E4E2D8"/>
+      <path d="M-30 50 q 22 13 44 -4" fill="none" stroke="#111310" stroke-width="5" stroke-linecap="round"/></svg></div>`;
+  const zzz = (x, y) => `<span class="zzz" style="left:${x}px;top:${y}px;font-size:30px">z</span><span class="zzz" style="left:${x + 26}px;top:${y - 30}px;font-size:38px">z</span><span class="zzz" style="left:${x + 58}px;top:${y - 68}px;font-size:48px">Z</span>`;
+
+  /* The status corner's battery mark at `k` times, `pct` full; `mark` what
+   * it carries: "bolt" charging, "plug" on the cable and not charging,
+   * "dim" the bolt in text-dim, "tick" the bolt and a line at the limit,
+   * "" nothing */
+  const BOLT = ink => `<path d="M23 3 13 13.5h6.5L16 21l10.5-11H20z" fill="${ink}" stroke="var(--ground)" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const PLUG = `<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16.5 4v5M22.5 4v5M19.5 15.5V21" stroke="var(--ground)" stroke-width="5.5"/><rect x="13.5" y="8.5" width="12" height="7" rx="2.2" stroke="var(--ground)" stroke-width="3.5"/>
+      <path d="M16.5 4v5M22.5 4v5M19.5 15.5V21" stroke="var(--text)" stroke-width="2.4"/><rect x="13.5" y="8.5" width="12" height="7" rx="2.2" fill="var(--text)" stroke="var(--text)" stroke-width="1.2"/></g>`;
+  function batt(x, y, k, pct, mark = "bolt", limit = 85) {
+    const fill = Math.max(4, Math.round(28 * pct / 100));
+    const tick = mark === "tick" ? `<rect x="${6 + Math.round(28 * limit / 100)}" y="3.5" width="2" height="17" rx="1" fill="var(--text-soft)"/>` : "";
+    const sign = mark === "plug" ? PLUG : mark === "dim" ? BOLT("var(--text-dim)") : mark ? BOLT("var(--text)") : "";
+    const at = x === null ? "position:relative;flex:none" : `left:${x}px;top:${y}px`;
+    return `<div class="batt" style="${at};width:${44 * k}px;height:${24 * k}px"><svg viewBox="0 0 44 24">
+      <rect x="1.5" y="1.5" width="37" height="21" rx="6" fill="none" stroke="var(--text-soft)" stroke-width="3"/>
+      <rect x="40" y="8" width="3" height="8" rx="1" fill="var(--text-soft)"/>
+      <rect x="6" y="6" width="${fill}" height="12" rx="2" fill="var(--accent-ink)"/>${tick}${sign}</svg></div>`;
+  }
+  const both = (draw, cap) => `<div class="pair">${ZK.screen("light", draw("light"))}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"))}<span class="cap">Salt &amp; Pepper</span>${cap ? `<p class="cap">${cap}</p>` : ""}</div>`;
+  const glyph = l => `<span class="kg" style="--gs:44px">${l}</span>`;
+
+  /* The charging screen (DESIGN.md 11.25), `pct`, its two lines, the mark,
+   * and its hint (or `hint` in place of it) */
+  function charging(pct, l1, l2, mark = "bolt", hint) {
+    return `<div class="clock" style="right:24px">22:41</div>` + zy(412, 92, 200) + zzz(628, 128) +
+      `<div class="t-title center" style="top:390px;display:flex;justify-content:center;align-items:center;gap:22px">${batt(null, null, 1.5, pct, mark)}${pct}%</div>` +
+      (l1 ? `<div class="t-label center" style="top:506px">${l1}</div>` : "") +
+      (l2 ? `<div class="t-meta center" style="top:580px">${l2}</div>` : "") +
+      `<div class="hold">${hint || `Hold ${glyph("POWER")} to start`}</div>`;
+  }
+
+  /* The home's top right: the clock and the battery mark */
+  const corner = (pct, mark) => `<div class="clock" style="right:84px">10:08</div>` + batt(956, 24, 1, pct, mark);
+  const crop = (pct, mark) => `<div class="pair">${["light", "dark"].map(th => `<div class="crop">${ZK.screen(th, ZK.shelf(th, { title: "" }) + corner(pct, mark))}</div><span class="cap">${th === "light" ? "Beard" : "Salt &amp; Pepper"}, the home's top right</span>`).join("")}</div>`;
+
+  /* MENU with the row, `name` and its value, picked */
+  const ROWS = (name, value) => [["Clock", "24-hour"], ["Auto Off", "2 min"], [name, value], ["Side Lights", "Auto"], ["Battery Icon", "Bars"]];
+  const menu = (name, value) => both(th => ZK.shelf(th, {}) + ZK.menu(th, { rows: ROWS(name, value), sel: 2, more: true }));
+
+  const list = [
+    { key: "row", title: "The setting in MENU",
+      why: "One row under Auto Off, beside the other battery rows. Left and right step its value round, as Side Lights does; A steps it on.",
+      options: {
+        limit: { name: "Charge Limit", tag: "suggested", blurb: "Off, 80%, 85%, 90%. Says what it does in two words, and Off reads as \"no limit\".",
+          draw: () => menu("Charge Limit", "85%") },
+        care: { name: "Battery Care", blurb: "Off, 80%, 85%, 90%. Says why rather than what; the value says what.",
+          draw: () => menu("Battery Care", "85%") },
+        chargeto: { name: "Charge To", blurb: "100%, 90%, 85%, 80%. The value is always a number: 100% is today's full charge.",
+          draw: () => menu("Charge To", "85%") },
+      } },
+    { key: "default", title: "What a new card starts with",
+      why: "A card already in use keeps charging to 100% either way until the row is changed.",
+      options: {
+        off: { name: "Off", tag: "suggested", blurb: "Charges to 100%, as today. The row is there for anyone who wants it; a full battery is what most people expect from a new handheld.",
+          draw: () => menu("Charge Limit", "Off") },
+        on85: { name: "85%", blurb: "On from the first start: the battery lasts longer for everyone, and a player who needs every minute sets it to Off.",
+          draw: () => menu("Charge Limit", "85%") },
+      } },
+    { key: "screen", title: "The charging screen at the limit",
+      why: "Off and on the charger, held at 85% by a wall charger. Before the limit the screen is as today, with the time to the limit.",
+      options: {
+        kept: { name: "Kept at 85%", tag: "suggested", blurb: "\"Kept at 85% · wall charger\", and under it \"Charge Limit in MENU\" so the reason is never a mystery.",
+          draw: () => both(() => charging(85, "Kept at 85% · wall charger", "Charge Limit in MENU", "plug"), "before the limit: \"Charging · 6.1 W · wall charger\" and \"85% in about 40 min\"") },
+        charged: { name: "Charged, for now", blurb: "\"Charged · wall charger\", as a full battery says, and \"Stopped at 85% to keep the battery healthy\".",
+          draw: () => both(() => charging(85, "Charged · wall charger", "Stopped at 85% to keep the battery healthy", "plug")) },
+        quiet: { name: "Just the number", blurb: "The percentage and the kind of charger, \"85% · wall charger\", with no word about the limit.",
+          draw: () => both(() => charging(85, "85% · wall charger", "", "plug")) },
+      } },
+    { key: "mark", title: "The battery mark when it is held at the limit",
+      why: "In the status corner and on the charging screen. The cable is in, but nothing goes into the battery.",
+      options: {
+        plug: { name: "A plug", tag: "suggested", blurb: "The bolt becomes a plug: on the cable, not charging. The bolt comes back when it charges again under the limit.",
+          draw: () => crop(85, "plug") },
+        bolt: { name: "The bolt, as on any charger", tag: "today", blurb: "No change: the bolt shows while the cable is in. Says \"on the charger\", not \"charging\".",
+          draw: () => crop(85, "bolt") },
+        dim: { name: "The bolt, dimmed", blurb: "The bolt in text-dim while it waits, full ink while it charges.",
+          draw: () => crop(85, "dim") },
+        tick: { name: "A line at the limit", blurb: "A thin line in the battery where the limit is, always while the limit is on; the bolt as today.",
+          draw: () => crop(85, "tick") },
+      } },
+    { key: "once", title: "A full charge for a trip",
+      why: "A long day away from a charger, and 85% is not enough.",
+      options: {
+        menu: { name: "Set the row to Off", tag: "suggested", blurb: "Nothing new: the row back to Off for the trip, and on again after. One place for the setting, and nothing to press by mistake.",
+          draw: () => menu("Charge Limit", "Off") },
+        screen: { name: "On the charging screen, once", blurb: "At the limit, the charging screen says \"Hold A for a full charge\": this charge goes to 100%, and the limit is back on after the cable comes out.",
+          draw: () => both(() => charging(85, "Kept at 85% · wall charger", "Charge Limit in MENU", "plug", `Hold ${glyph("A")} for a full charge &nbsp;·&nbsp; Hold ${glyph("POWER")} to start`)) },
+      } },
+  ];
+
+  ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-charge-limit", status: t => (document.getElementById("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

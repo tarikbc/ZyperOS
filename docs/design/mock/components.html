@@ -1,0 +1,99 @@
+<title>ZyperOS Components</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 8px 0; }
+  .themes .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  section { padding-block: 30px 6px; border-bottom: 1px solid var(--zk-line); }
+  .pair { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); margin-top: 16px; }
+  figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+  figcaption { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); }
+</style>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Components</b></h1>
+      <p class="zk-lede">Every component in DESIGN.md, drawn from its tokens in both themes at the launcher's 1024&times;768 and scaled down. Beard is the light theme and the default; Salt &amp; Pepper is the dark theme.</p>
+      <div class="themes" role="group" aria-label="Themes shown">
+        <button type="button" class="zk-btn" data-show="both" aria-pressed="true">Both themes</button>
+        <button type="button" class="zk-btn" data-show="light" aria-pressed="false">Beard</button>
+        <button type="button" class="zk-btn" data-show="dark" aria-pressed="false">Salt &amp; Pepper</button>
+      </div>
+    </div>
+  </header>
+  <main id="g"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  const g = document.getElementById("g");
+  let show = "both";
+  const items = [
+    { t: "Colors", why: "Every role, both themes. Text meets 4.5:1 and marks 3:1 wherever they are drawn (make check).",
+      d: th => ZK.swatches(th) },
+    { t: "Shelf", why: "Covers are the color; the frame is quiet. Focus is size and lift: a glow in Salt & Pepper, a shadow in Beard. The heart of a favorite sits left of the title.",
+      d: th => ZK.screen(th, ZK.shelf(th, { fav: true })) },
+    { t: "Menu", why: "Surface, 3-unit edge, soft corners. The focused row is the lime fill; Zyper sits beside the heading.",
+      d: th => ZK.screen(th, ZK.shelf(th) + ZK.menu(th, { sel: 1, more: false })) },
+    { t: "System menu", why: "A system's menu says which system it is with its color on the heading rule, never with the focus.",
+      d: th => ZK.screen(th, ZK.shelf(th) + ZK.menu(th, { heading: "SNES", zyper: false, rule: ZK.SYS.snes, sel: 0, rows: [["Games", "12"], ["Core", "snes9x"], ["Sort By", "Name"], ["Display Mode", "Integer tall"], ["Box Art", "needs Wi-Fi", 1], ["Rescan Folder", ""]] })) },
+    { t: "Volume and brightness bar", why: "Lime for volume, warm for light, one segment per step. The same pixels on the shelf, over a game and over a port.",
+      d: th => ZK.screen(th, ZK.shelf(th) + ZK.bar(th, th === "light" ? "volume" : "brightness", th === "light" ? 13 : 7, th === "light" ? 20 : 11)) },
+    { t: "Keyboard", why: "Every key of src/keyboard.c, and under the grid the action row: each key shows its button. One line names the two with no key. The selected key is the lime fill; the caret is lime ink.",
+      d: th => ZK.screen(th, ZK.shelf(th) + ZK.keyboard(th)) },
+    { t: "One-line message", why: "A one-row panel over the menu scrim, held 1.6 s.",
+      d: th => ZK.screen(th, ZK.shelf(th) + ZK.message("Saved")) },
+    { t: "Tutorial: welcome", why: "Zyper says hello; A starts, START skips.",
+      d: th => ZK.screen(th, ZK.tourWelcome(th)) },
+    { t: "Tutorial: a step, then its reward", why: "The step loops its demonstration and waits; the press gets a check, a hop and a cheer, and the next step comes on by itself.",
+      d: th => ZK.screen(th, ZK.tourStep(th, { done: th === "dark", lit: th === "light" })) },
+  ];
+  function render() {
+    const themes = show === "both" ? ["light", "dark"] : [show];
+    g.innerHTML = items.map(it => `<section><h2 class="zk-h2">${it.t}</h2><p class="zk-why">${it.why}</p>
+      <div class="pair">${themes.map(th => `<figure>${it.d(th)}<figcaption>${ZK.T.themes[th].name}</figcaption></figure>`).join("")}</div></section>`).join("") +
+      `<section><h2 class="zk-h2">Motion</h2><p class="zk-why">Snappy: arrivals on the quintic ease-out, exits on a cubic ease-in, nothing overshoots. The loop: a card step (move), the bar in (quick), a check (quick), a menu opening (move) and closing (exit).</p>
+       <div class="pair">${themes.map(th => `<figure class="motion">${ZK.screen(th, ZK.shelf(th) + ZK.bar(th) + `<div class="check" style="left:474px;top:560px"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>` + `<div class="m-menu">${ZK.menu(th, { sel: 2 })}</div>`)}<figcaption>${ZK.T.themes[th].name}</figcaption></figure>`).join("")}</div>
+       <div class="zk-row" style="margin-top:12px"><button type="button" class="zk-btn" id="replay">Replay</button></div></section>
+       <section><h2 class="zk-h2">Sound</h2><p class="zk-why">Soft UI: from the launcher only, never over a game, through the system volume. Three voices; MENU &gt; UI Sounds picks one, or none.</p>
+       ${Object.entries(ZK.T.sound.voices).map(([v, d]) => `<div class="zk-row" style="margin-top:12px"><span class="zk-mono" style="min-width:110px;align-self:center">${d.name}${v === ZK.T.sound.default ? " (default)" : ""}</span>${Object.keys(d.sounds).map(n => `<button type="button" class="zk-btn" data-snd="${n}" data-voice="${v}">${n}</button>`).join("")}</div>`).join("")}</section>`;
+    ZK.fit(g);
+    play();
+  }
+  function play() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    g.querySelectorAll(".motion .zs").forEach(s => {
+      s.getAnimations({ subtree: true }).forEach(a => a.cancel());
+      const cards = s.querySelector(".cards"), bar = s.querySelector(".bar"), check = s.querySelector(".check"), m = s.querySelector(".m-menu");
+      ZK.animate(cards, "move", [{ transform: "translateX(0)" }, { transform: "translateX(-300px)" }], { delay: 200, fill: "forwards" });
+      ZK.animate(cards, "move", [{ transform: "translateX(-300px)" }, { transform: "translateX(0)" }], { delay: 900, fill: "forwards" });
+      ZK.animate(bar, "quick", [{ opacity: 0, transform: "translateY(-14px)" }, { opacity: 1, transform: "none" }], { delay: 500 });
+      ZK.animate(bar, "fade-out", [{ opacity: 1 }, { opacity: 0 }], { delay: 2000, fill: "forwards" });
+      ZK.animate(check, "quick", [{ opacity: 0, transform: "scale(0)" }, { opacity: 1, transform: "scale(1)" }], { delay: 1300 });
+      ZK.animate(check, "fade-out", [{ opacity: 1 }, { opacity: 0 }], { delay: 2100, fill: "forwards" });
+      ZK.animate(m, "move", [{ opacity: 0, transform: "scale(.96)" }, { opacity: 1, transform: "none" }], { delay: 2500 });
+      ZK.animate(m, "exit", [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.96)" }], { delay: 3500, fill: "forwards" });
+    });
+  }
+  setInterval(play, 4400);
+  document.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.snd) ZK.sound(b.dataset.snd, b.dataset.voice);
+    if (b.id === "replay") play();
+    if (b.dataset.show) {
+      show = b.dataset.show;
+      document.querySelectorAll("[data-show]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      render();
+    }
+  });
+  render();
+})();
+</script>

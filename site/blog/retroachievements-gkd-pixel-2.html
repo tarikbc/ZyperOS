@@ -1,0 +1,58 @@
+title: RetroAchievements on the GKD Pixel 2
+description: Earn RetroAchievements on the GKD Pixel 2 with ZyperOS: sign in on the handheld, play offline after a game's first start, and see badges and progress.
+summary: Sign in on the handheld, play offline after the first start, and see badges and progress pop-ups.
+crumb: RetroAchievements
+topic: guide
+published: 2026-11-07
+updated: 2026-11-07
+image: cheevos
+image_alt: A game's achievements list in ZyperOS, with badges, points and a progress count
+related: gkd-pixel-2-wifi-adapter, box-art-gkd-pixel-2, best-custom-firmware-gkd-pixel-2
+weight: 40
+---
+<p>RetroAchievements adds achievements to classic games: beat a boss without a hit, find every secret, finish a level under a time. ZyperOS has it built in on the GKD Pixel 2. You sign in on the handheld, and after a game's first start it works offline too. This guide shows what you need and how it looks.</p>
+
+<h2>What you need</h2>
+<ul>
+  <li><strong>A free RetroAchievements account</strong>, made at <a href="https://retroachievements.org">retroachievements.org</a>.</li>
+  <li><strong>A USB Wi-Fi adapter</strong> for the sign-in and for each game's first start. The Pixel 2 has no Wi-Fi of its own; <a href="/blog/gkd-pixel-2-wifi-adapter/">the Wi-Fi guide</a> says which adapters work.</li>
+  <li><strong>A game RetroAchievements knows.</strong> It identifies a game by a checksum of the ROM, so a clean dump of a common release is what it has sets for. A hack or a fan translation often has no set.</li>
+</ul>
+
+<h2>Sign in</h2>
+<ol>
+  <li>Plug in the Wi-Fi adapter and join a network in <strong>MENU &gt; Wi-Fi</strong>.</li>
+  <li>Open <strong>MENU &gt; Cheevos</strong>. The row says <code>sign in</code>.</li>
+  <li>Type your user name and password with the on-screen keyboard.</li>
+</ol>
+<p>The row then shows your account. The Cheevos row only appears while the Wi-Fi adapter is in, since signing in needs the network.</p>
+
+<h2>Play</h2>
+<p>Start a game as usual. The first time a game starts, the handheld needs Wi-Fi to identify it and download its achievements. ZyperOS keeps them on the card, beside the box art, so from then on the game has its achievements with or without Wi-Fi.</p>
+<p>What you unlock without Wi-Fi waits on the card, and reaches your account the next time the handheld connects. If the account already has an achievement, that is no error: ZyperOS counts it as settled.</p>
+<p>ZyperOS sends unlocks as softcore achievements. It has no hardcore mode.</p>
+
+<h2>Badges, pop-ups and the list</h2>
+<ul>
+  <li><strong>An unlock</strong> shows a notice at the bottom of the screen with the achievement's badge and name.</li>
+  <li><strong>Progress</strong>, for achievements that count something, shows a strip and a count such as <em>74 / 100</em>.</li>
+  <li><strong>The side lights</strong> sparkle for an achievement: two pairs of lights take turns. <strong>MENU &gt; Side Lights</strong> turns that off.</li>
+  <li><strong>The list</strong>, Cheevos in the in-game menu, shows every achievement of the game with its badge, grey until you earn it, and the count where one is moving.</li>
+</ul>
+<figure class="shot"><img src="/img/cheevos.png" alt="The achievements list for a game: badges at the left, earned ones in color, the points and a progress count"><figcaption>Cheevos in the in-game menu: every achievement, with its badge and points.</figcaption></figure>
+<p>On the shelf, each game's card shows its achievement count under the title.</p>
+
+<h2>If an achievement does not unlock</h2>
+<ul>
+  <li><strong>Check the sign-in</strong> in MENU &gt; Cheevos.</li>
+  <li><strong>Check the first start had Wi-Fi.</strong> Without it, ZyperOS cannot identify the game. Start it once with the adapter in.</li>
+  <li><strong>Check the dump.</strong> A ROM with a different checksum is a game RetroAchievements has never seen. A zip is checked on its largest file, which is the one ZyperOS runs.</li>
+</ul>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://github.com/tarikbc/ZyperOS#faq">ZyperOS README, FAQ: How do achievements work?</a></li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#controls-and-menus">The ZyperOS user guide</a>: the Cheevos row, the in-game menu, the side lights.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/DESIGN.md#117-notice-over-a-game">DESIGN.md, 11.7 Notice</a>: the badge and progress notices, and the achievements list.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/src/rafetch.h">src/rafetch.h</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/src/rahash.h">src/rahash.h</a>: softcore unlocks, and how a game is identified.</li>
+</ol>

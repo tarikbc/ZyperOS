@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>ZyperOS Hotspot Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .stack { display: grid; gap: 8px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ol { margin: 6px 0 0; padding-left: 20px; }
+  #layout .zk-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+
+  /* ---- the hotspot screen, in the launcher's units ------------------------
+   * Panel: surface, radius-panel 28, the 3-unit edge, over scrim.menu, as
+   * DESIGN.md 11.3. Type: label 55 heading, menu 49 rows, title 60, meta 37.
+   * The code: one module is 8 units (the grid step, exactly 5 panel pixels),
+   * ink on a paper tile with a quiet zone of four modules. The tile is
+   * Beard's surface in both themes: a phone camera reads dark on light. */
+  .zs .hp { position: absolute; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+  .zs .hp h4 { position: absolute; left: 0; right: 0; top: 26px; margin: 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .hp h4 .zcorner { right: 28px; top: -4px; }
+  .zs .hp hr { position: absolute; left: 47px; right: 47px; top: 104px; margin: 0; border: 0; height: 2px; background: var(--edge); }
+  .zs .qr { position: absolute; border-radius: 14px; background: #f5f4ee; box-shadow: 0 0 0 3px var(--edge) inset; }
+  .zs .qr svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .zs .kv { position: absolute; display: grid; gap: 2px; }
+  .zs .kv i { font-style: normal; font-size: 37px; color: var(--text-dim); line-height: 1.2; }
+  .zs .kv b { font-weight: 400; font-size: 49px; color: var(--text); line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .zs .kv b.pin { font-size: 60px; font-weight: 600; letter-spacing: 0; }
+  .zs .hrow { position: absolute; display: flex; justify-content: space-between; align-items: center; font-size: 49px; color: var(--text-soft); }
+  .zs .hrow span { color: var(--text-dim); }
+  .zs .line { position: absolute; left: 0; right: 0; text-align: center; font-size: 49px; color: var(--text-soft); }
+  .zs .line.meta { font-size: 37px; color: var(--text-dim); }
+  .zs .leg { position: absolute; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--text-dim); white-space: pre; }
+  .zs .bigpin { position: absolute; left: 0; right: 0; text-align: center; font-size: 60px; font-weight: 600; color: var(--text); }
+  .zs .full { position: absolute; inset: 0; background: var(--ground); }
+  .zs .full .t { position: absolute; left: 48px; top: 56px; font-size: 60px; font-weight: 600; }
+  .zs .full .s { position: absolute; left: 48px; top: 138px; font-size: 37px; color: var(--text-dim); }
+
+  /* ---- the phone's sign-in sheet, in its own pixels -----------------------
+   * The page's own web scale, as the File Transfer lab draws it. */
+  .fr { position: relative; width: 100%; overflow: hidden; }
+  .fr > .vp { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .fr.phone { aspect-ratio: 390 / 844; border-radius: 30px; background: #000; box-shadow: 0 0 0 1px #3a3e3c; }
+  .fr.phone > .vp { width: 390px; height: 844px; }
+  .phones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .wx { position: absolute; inset: 0; background: var(--ground); color: var(--text); font: 16px/1.45 "Lexend", system-ui, sans-serif; overflow: hidden; border-radius: 30px; }
+  .wx * { box-sizing: border-box; }
+  .wx .sbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 14px; font-weight: 600; }
+  .wx .sbar i { width: 64px; height: 12px; border-radius: 6px; background: var(--text); opacity: .85; }
+  .wx .nav { height: 50px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--edge); background: var(--surface); font-size: 15px; }
+  .wx .nav b { font-weight: 600; }
+  .wx .nav span:last-child { justify-self: end; color: #2f7cf6; }
+  .wx .nav.android { grid-template-columns: auto 1fr auto; gap: 14px; }
+  .wx .nav.android span:last-child { color: var(--text-soft); font-size: 22px; line-height: 1; }
+  .wx .nav.android small { display: block; font-size: 12px; color: var(--text-dim); font-weight: 400; }
+  .wx .note { margin: 12px 14px 0; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--edge); font-size: 14px; color: var(--text-soft); display: grid; gap: 4px; }
+  .wx .note b { color: var(--text); font-weight: 600; }
+  .wx .note code { font: 600 14px "Lexend", sans-serif; color: var(--accent-ink); }
+  .wx .gate { padding: 18px 14px; }
+  .wx .gate .card { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 24px 18px 22px; text-align: center; }
+  .wx .gate .zbig { width: 64px; height: 68px; margin: 0 auto 6px; display: block; }
+  .wx .gate h1 { margin: 0 0 4px; font-size: 21px; font-weight: 600; }
+  .wx .gate p { margin: 0 0 18px; color: var(--text-dim); font-size: 14px; }
+  .wx .boxes { display: flex; gap: 10px; justify-content: center; }
+  .wx .boxes span { width: 54px; height: 64px; border-radius: 8px; background: var(--ground); border: 1px solid var(--edge); display: grid; place-items: center; font-size: 28px; font-weight: 600; }
+  .wx .boxes span.at { border: 2px solid var(--accent-ink); }
+  .wx .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 15px; }
+  .wx .btn.q { background: var(--raised); color: var(--text); font-weight: 400; }
+  .wx .dlg { position: absolute; left: 22px; right: 22px; top: 300px; background: var(--surface); border-radius: 18px; padding: 20px 18px; box-shadow: 0 24px 64px rgba(0,0,0,.3), 0 0 0 1px var(--edge); display: grid; gap: 10px; font-size: 14.5px; color: var(--text-soft); }
+  .wx .dlg h2 { margin: 0; font-size: 18px; color: var(--text); }
+  .wx .dlg ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .wx .scrim2 { position: absolute; inset: 0; background: rgba(17,19,16,.35); }
+  .wx .files { padding: 8px 14px; display: grid; gap: 8px; }
+  .wx .files div { height: 52px; border-radius: 9px; background: var(--surface); border: 1px solid var(--edge); display: flex; align-items: center; padding: 0 12px; font-size: 14.5px; color: var(--text-soft); }
+  .wx .intro { padding: 30px 22px; text-align: center; display: grid; gap: 14px; }
+  .wx .intro h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .wx .intro p { margin: 0; color: var(--text-dim); font-size: 14.5px; }
+</style>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Hotspot Lab</b></h1>
+      <p class="zk-lede">Wi-Fi File Transfer when the handheld is on no network: it makes its own Wi-Fi, and a phone joins by scanning a code on the screen. The phone's sign-in sheet then opens the transfer page by itself, and the PIN still guards it.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option.</b> Each time the screen opens, the handheld makes a new password and a new PIN; both die when it closes, and normal Wi-Fi comes back. On a network, the screen stays as it is today.
+    <ol>
+      <li>The phone scans the code with its camera and joins (Wi-Fi password, WPA2).</li>
+      <li>The phone shows its sign-in sheet, which opens the transfer page at 10.42.1.1.</li>
+      <li>The page asks for the PIN, as today.</li>
+    </ol>
+    The codes on this page are pictures only; they do not scan. One module of the code is 8 units, five panel pixels, so the code is about 3.7 cm wide on the Pixel 2.</div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  /* A picture of a QR code of n modules: the three finders, the timing
+   * lines, one alignment square and seeded noise. Not a real code. */
+  function qrPicture(n, seed) {
+    let s = seed >>> 0;
+    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const m = [];
+    for (let y = 0; y < n; y++) { m.push([]); for (let x = 0; x < n; x++) m[y].push(rnd() < .5 ? 1 : 0); }
+    const finder = (ox, oy) => {
+      for (let y = -1; y < 8; y++) for (let x = -1; x < 8; x++) {
+        const X = ox + x, Y = oy + y;
+        if (X < 0 || Y < 0 || X >= n || Y >= n) continue;
+        const d = Math.max(Math.abs(x - 3), Math.abs(y - 3));
+        m[Y][X] = d === 4 ? 0 : d === 2 ? 0 : 1;
+      }
+    };
+    finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+    for (let i = 8; i < n - 8; i++) { m[6][i] = i % 2 ? 0 : 1; m[i][6] = i % 2 ? 0 : 1; }
+    const a = n - 7;
+    for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) {
+      const d = Math.max(Math.abs(x), Math.abs(y));
+      m[a + y][a + x] = d === 1 ? 0 : 1;
+    }
+    return m;
+  }
+  /* The tile: quiet zone of four modules, each module 8 units. */
+  function qrTile(x, y, n, seed, mod = 8) {
+    const q = 4, side = (n + 2 * q) * mod, m = qrPicture(n, seed);
+    let r = "";
+    for (let j = 0; j < n; j++) {
+      let i = 0;
+      while (i < n) {
+        if (!m[j][i]) { i++; continue; }
+        let k = i;
+        while (k < n && m[j][k]) k++;
+        r += `<rect x="${(q + i) * mod}" y="${(q + j) * mod}" width="${(k - i) * mod}" height="${mod}"/>`;
+        i = k;
+      }
+    }
+    return `<div class="qr" style="left:${x}px;top:${y}px;width:${side}px;height:${side}px"><svg viewBox="0 0 ${side} ${side}" fill="#111310" shape-rendering="crispEdges">${r}</svg></div>`;
+  }
+  const Z = `<svg class="zcorner"><use href="#zyper"/></svg>`;
+  const NET = "ZyperOS-7Q2K", PW = "q7mx-3kpa", PIN = "4071";
+
+  /* A: everything at once. A 940 panel (the keyboard's width), the code on
+   * the left, what to type on the right, the transfer's rows under both. */
+  function sideBySide(th, o = {}) {
+    const pw = o.pw || PW, net = o.net || NET, n = o.n || 29;
+    const side = (n + 8) * 8;
+    return `<div class="scrim"></div><div class="hp" style="left:42px;top:72px;width:940px;height:624px">
+      <h4>Wi-Fi File Transfer${Z}</h4><hr>
+      ${qrTile(55, 134, n, 7)}
+      <div class="kv" style="left:${55 + side + 48}px;top:136px"><i>Network</i><b>${ZK.esc(net)}</b></div>
+      <div class="kv" style="left:${55 + side + 48}px;top:256px"><i>Password</i><b>${ZK.esc(pw)}</b></div>
+      <div class="kv" style="left:${55 + side + 48}px;top:376px"><i>PIN</i><b class="pin">${PIN}</b></div>
+      <div class="hrow" style="left:84px;right:84px;top:${134 + side + 34}px">Phones<span>${o.who || "waiting"}</span></div>
+      <div class="hrow" style="left:84px;right:84px;top:${134 + side + 34 + 70}px">Now<span>${o.now || "waiting"}</span></div>
+    </div>`;
+  }
+
+  /* B: the code first; once a phone has joined, the code gives way to the
+   * PIN and today's rows. Y brings the code back for another phone. */
+  function codeFirst(th, joined) {
+    if (!joined) {
+      return `<div class="scrim"></div><div class="hp" style="left:112px;top:56px;width:800px;height:688px">
+        <h4>Wi-Fi File Transfer${Z}</h4><hr>
+        ${qrTile(252, 128, 29, 7)}
+        <div class="line" style="top:452px">Scan with your phone's camera.</div>
+        <div class="line meta" style="top:520px">${NET} · ${PW}</div>
+        <div class="leg" style="top:610px">B: close</div>
+      </div>`;
+    }
+    return `<div class="scrim"></div><div class="hp" style="left:112px;top:120px;width:800px;height:528px">
+      <h4>Wi-Fi File Transfer${Z}</h4><hr>
+      <div class="line meta" style="top:132px">Type this PIN on your phone</div>
+      <div class="bigpin" style="top:180px">PIN ${PIN}</div>
+      <div class="hrow" style="left:84px;right:84px;top:282px">Phones<span>1 connected</span></div>
+      <div class="hrow" style="left:84px;right:84px;top:352px">Now<span>waiting</span></div>
+      <div class="leg" style="top:446px">Y: show the code   B: close</div>
+    </div>`;
+  }
+
+  /* C: the whole screen is the code page, no panel, no shelf under it. */
+  function fullScreen(th) {
+    const n = 29, mod = 12, side = (n + 8) * mod;
+    return `<div class="full">
+      <div class="t">Wi-Fi File Transfer</div>
+      <div class="s">Scan to join. The page opens on your phone.</div>
+      ${qrTile(48, 208, n, 7, mod)}
+      <div class="kv" style="left:${48 + side + 64}px;top:216px"><i>Network</i><b>${NET}</b></div>
+      <div class="kv" style="left:${48 + side + 64}px;top:336px"><i>Password</i><b>${PW}</b></div>
+      <div class="kv" style="left:${48 + side + 64}px;top:456px"><i>PIN</i><b class="pin">${PIN}</b></div>
+      <div class="hrow" style="left:${48 + side + 64}px;right:48px;top:584px;font-size:37px">Phones<span>waiting</span></div>
+      <div class="leg" style="top:${768 - 70}px">B: close</div>
+    </div>`;
+  }
+
+  const both = (f, capL, capD) => () => `<div class="stack">
+      ${ZK.screen("light", ZK.shelf("light", { title: false, count: false }) + f("light", false))}
+      <span class="cap">Beard &middot; ${capL}</span>
+      ${ZK.screen("dark", ZK.shelf("dark", { title: false, count: false }) + f("dark", true))}
+      <span class="cap">Salt &amp; Pepper &middot; ${capD}</span></div>`;
+
+  /* The phone's sheet, for decision 4. th: theme; os: "ios" or "android". */
+  function phone(th, os, body) {
+    const nav = os === "ios"
+      ? `<div class="nav"><span></span><b>${NET}</b><span>Cancel</span></div>`
+      : `<div class="nav android"><span style="font-size:20px">&times;</span><b>Sign in to ${NET}<small>10.42.1.1</small></b><span>&#8942;</span></div>`;
+    return `<div class="fr phone"><div class="vp"><div class="wx" style="${ZK.vars(th)}"><div class="sbar"><span>9:41</span><i></i></div>${nav}${body}</div></div></div>`;
+  }
+  const gate = `<div class="gate"><div class="card"><svg class="zbig"><use href="#zyper"/></svg><h1>Enter the PIN</h1><p>It is on the handheld's screen.</p><div class="boxes"><span>4</span><span>0</span><span class="at"></span><span></span></div></div></div>`;
+  const noteIOS = `<div class="note"><b>Downloads need Safari.</b><span>Tap Cancel, then Use Without Internet. Then open <code>10.42.1.1</code> in Safari.</span></div>`;
+  const noteAnd = `<div class="note"><b>Uploads need Chrome.</b><span>Tap &#8942;, then Use this network as is. Then open <code>10.42.1.1</code> in Chrome.</span></div>`;
+  const files = `<div class="files"><div>Roms</div><div>Music</div><div>Audiobooks</div><div>Saves</div></div>`;
+  const dlgIOS = `<div class="scrim2"></div><div class="dlg"><h2>Download in Safari</h2>This sign-in sheet cannot save files.<ol><li>Tap Cancel, then Use Without Internet.</li><li>Open Safari and go to <b>10.42.1.1</b>.</li></ol><span class="btn">OK</span></div>`;
+  const dlgAnd = `<div class="scrim2"></div><div class="dlg"><h2>Upload in Chrome</h2>This sign-in sheet cannot pick files.<ol><li>Tap &#8942;, then Use this network as is.</li><li>Open Chrome and go to <b>10.42.1.1</b>.</li></ol><span class="btn">OK</span></div>`;
+  const intro = os => `<div class="intro"><svg class="zbig" style="width:80px;height:84px;margin:0 auto"><use href="#zyper"/></svg><h1>You're on the handheld's Wi-Fi</h1>
+      <p>${os === "ios" ? "This sheet can upload, but it cannot save files. To download, tap Cancel, then Use Without Internet, and open 10.42.1.1 in Safari." : "This sheet can download, but it cannot pick files. To upload, tap &#8942;, then Use this network as is, and open 10.42.1.1 in Chrome."}</p>
+      <span class="btn">Continue here</span></div>`;
+  const pair = (a, b, ca, cb) => () => `<div class="stack"><div class="phones">${a}${b}</div><span class="cap">${ca} &middot; ${cb}</span></div>`;
+
+  ZK.decisions(document.getElementById("m"), [
+    { key: "layout", title: "The handheld's screen while it is the hotspot",
+      why: "Today the screen is the menu panel: the address and PIN in the heading, and three rows. As the hotspot it must also show the code, the network and its password. The code must be big enough for a phone at arm's length; at 8 units a module it is 296 units wide.",
+      options: {
+        side: { name: "Everything at once", tag: "suggested", blurb: "A wide panel (the keyboard's 940). The code on the left; on the right the network, the password and the PIN, which is what a laptop needs to type; the transfer's rows under both. Nothing moves: a second phone can scan at any time.", draw: both((th, d) => sideBySide(th, d ? { who: "1 connected", now: "receiving Contra (USA).zip" } : {}), "waiting for a phone", "a phone uploading") },
+        first: { name: "Code first, then the PIN", blurb: "One thing at a time. The standard panel shows only the code and one line; when a phone joins, the code gives way to the PIN and the rows (move, 160 ms). Y brings the code back for another phone.", draw: both(codeFirst, "before a phone joins", "after a phone joins") },
+        full: { name: "A whole screen", blurb: "Not a panel over the shelf but a screen of its own, like a pairing screen: title top left, the code half again as big (12 units a module), and what to type beside it. A new pattern for ZyperOS; the shelf is hidden while it is up.", draw: () => `<div class="stack">${ZK.screen("light", fullScreen("light"))}<span class="cap">Beard</span>${ZK.screen("dark", fullScreen("dark"))}<span class="cap">Salt &amp; Pepper</span></div>` },
+      } },
+    { key: "password", title: "The password",
+      why: "The phone reads it from the code, so mostly nobody types it. A laptop has no camera to scan with and does. It is new each time the screen opens.",
+      options: {
+        mixed: { name: "Letters and digits", tag: "suggested", blurb: "Eight lowercase letters and digits in two groups of four, without look-alikes (no 0/o, 1/l). The hyphen is part of it. Short, and the code stays the smallest size (29 modules).", draw: both((th) => sideBySide(th, { pw: "q7mx-3kpa" }), "q7mx-3kpa", "q7mx-3kpa") },
+        words: { name: "Two words and a number", blurb: "Easy to read out and to type: two short words from a list and two digits. Longer, so the code is one size up (33 modules, 328 units).", draw: both((th) => sideBySide(th, { pw: "kite-moss-48", n: 33 }), "kite-moss-48", "kite-moss-48") },
+        digits: { name: "Digits", blurb: "Ten digits in two groups. Quick on a number pad; a little longer to read off the screen.", draw: both((th) => sideBySide(th, { pw: "48210 93755" }), "48210 93755", "48210 93755") },
+      } },
+    { key: "name", title: "The network's name",
+      why: "What the phone's Wi-Fi list shows. A phone remembers a network by its name; with a new password each time, the code gives it the new one.",
+      options: {
+        tagged: { name: "ZyperOS-7Q2K", tag: "suggested", blurb: "ZyperOS and four characters from the adapter's own address: the same every time for one handheld, different from a friend's.", draw: both((th) => sideBySide(th, { net: "ZyperOS-7Q2K" }), "ZyperOS-7Q2K", "ZyperOS-7Q2K") },
+        plain: { name: "ZyperOS", blurb: "The same name on every handheld. Simplest; two handhelds in one room look the same in the list.", draw: both((th) => sideBySide(th, { net: "ZyperOS" }), "ZyperOS", "ZyperOS") },
+        zyper: { name: "Zyper's Pixel 2", blurb: "Warmer, and says what it is. The apostrophe is legal in a Wi-Fi name, and the code carries it.", draw: both((th) => sideBySide(th, { net: "Zyper's Pixel 2" }), "Zyper's Pixel 2", "Zyper's Pixel 2") },
+      } },
+    { key: "sheet", title: "What the phone's sign-in sheet says",
+      why: "The sheet is a small browser the phone opens by itself. It cannot do everything: on an iPhone it can upload but cannot save a download; on Android it can download but cannot pick a file to upload (its code has no file picker). The real browser does both, once the phone agrees to stay on a network without internet.",
+      options: {
+        note: { name: "A note at the top", tag: "suggested", blurb: "In the sheet only, a short note above the page says what the sheet cannot do and the two steps to the real browser. In Safari or Chrome the note is not there.", draw: pair(phone("light", "ios", noteIOS + gate), phone("dark", "android", noteAnd + gate), "iPhone sheet, Beard", "Android sheet, Salt &amp; Pepper") },
+        ask: { name: "Only when needed", blurb: "No note. A tap on Download in the iPhone sheet, or on Upload in the Android sheet, opens a short dialog with the two steps.", draw: pair(phone("light", "ios", files + dlgIOS), phone("dark", "android", files + dlgAnd), "iPhone sheet, Download tapped", "Android sheet, Upload tapped") },
+        intro: { name: "A first page", blurb: "The sheet opens on a short page that says where the phone is and what the sheet can do, with Continue here to the PIN; the real browser skips it.", draw: pair(phone("light", "ios", intro("ios")), phone("dark", "android", intro("android")), "iPhone sheet", "Android sheet") },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-hotspot", onRender: fitPhones });
+
+  /* The phones' pages are drawn at 390 wide and scaled to their frames. */
+  function fitPhones() {
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = fitPhones.ro || (fitPhones.ro = new ResizeObserver(es => es.forEach(e => {
+      const vp = e.target.querySelector(".vp");
+      if (vp) vp.style.transform = `scale(${e.contentRect.width / 390})`;
+    })));
+    document.querySelectorAll(".fr.phone").forEach(f => ro.observe(f));
+  }
+})();
+</script>

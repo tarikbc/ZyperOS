@@ -1,0 +1,15 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+#
+# PortMaster's per-system file for ZyperOS on the GKD Pixel 2. A port script
+# sources mod_${CFW_NAME}.txt after control.txt, when there is one, for the
+# lines a system needs that the others do not. launch.sh copies it in beside
+# control.txt before each port, as it does that file.
+#
+# pm_platform_helper is called by newer port scripts just before the game
+# runs (Nova Pinball does); each system's mod file defines it. Without one
+# the script printed "command not found" and went on. Nothing to do here.
+
+pm_platform_helper() {
+  printf ""
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 10px 0; align-items: center; }
+  .themes .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 6px 2px 0; }
+  .pair { display: grid; gap: 10px; }
+
+  /* The question as the standard panel, as tall as its rows (src/menu.c
+   * sizes a panel to them), centered, with the key legend under it. */
+  .zs .panel.ask { top: 96px; bottom: auto; }
+  .zs .asklegend { position: absolute; left: 0; right: 0; top: 600px; text-align: center; font-size: 37px; color: var(--text-dim); white-space: pre; }
+  /* Choice tiles: three cards in a row on a panel, the focused one lime. */
+  .zs .tiles { position: absolute; left: 72px; width: 880px; top: 150px; height: 470px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+  .zs .tiles h4 { margin: 34px 0 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .tiles .row3 { position: absolute; left: 40px; right: 40px; top: 150px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .zs .tile { height: 220px; border-radius: 22px; background: var(--raised); display: grid; justify-items: center; align-content: center; gap: 18px; color: var(--text-soft); font-size: 40px; text-align: center; line-height: 1.1; }
+  .zs .tile svg { width: 84px; height: 84px; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .zs .tile.sel { background: var(--accent); color: var(--on-accent); }
+  .zs .tiles .legend { bottom: 26px; }
+
+  /* A quiet bar along the bottom, over the shelf, with the buttons' glyphs. */
+  .zs .ubar { position: absolute; left: 64px; right: 64px; bottom: 32px; height: 180px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; align-content: center; gap: 14px; padding: 0 34px; font-size: 37px; color: var(--text-soft); }
+  .zs .ubar b { font-weight: 600; font-size: 44px; color: var(--text); }
+  .zs .ubar .acts3 { display: flex; gap: 28px; font-size: 33px; }
+  .zs .ubar .g { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 4px var(--edge) inset; font-weight: 600; font-size: 28px; font-style: normal; color: var(--text); margin-right: 10px; }
+  .zs .ubar span { display: inline-flex; align-items: center; white-space: nowrap; }
+  .zs .note1 { position: absolute; left: 132px; width: 760px; top: 330px; min-height: 108px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; text-align: center; padding: 18px 30px; font-size: 44px; color: var(--text-soft); line-height: 1.2; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">USB <b>lab</b></h1>
+      <p class="zk-lede">The USB port only charges until you choose otherwise. When a computer is plugged in, the handheld asks what to do. A wall charger never asks. Pick one option in each section, and add a note if you want a change.</p>
+      <div class="themes" role="group" aria-label="Themes shown">
+        <button type="button" class="zk-btn" data-show="light" aria-pressed="true">Beard</button>
+        <button type="button" class="zk-btn" data-show="dark" aria-pressed="false">Salt &amp; Pepper</button>
+        <span id="status" class="zk-mono"></span>
+      </div>
+    </div>
+  </header>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  let th = "light";
+  const shelf = () => ZK.shelf(th);
+  const icon = {
+    bolt: `<svg viewBox="0 0 48 48"><path d="M27 4 10 28h13l-3 16 18-25H25z"/></svg>`,
+    folder: `<svg viewBox="0 0 48 48"><path d="M5 13a4 4 0 0 1 4-4h9l4 5h17a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M24 20v11M18.5 25.5 24 20l5.5 5.5"/></svg>`,
+    term: `<svg viewBox="0 0 48 48"><rect x="5" y="8" width="38" height="32" rx="4"/><path d="m13 18 7 6-7 6M24 30h11"/></svg>`,
+  };
+  const ROWS = (dev) => [["Charge Only", ""], ["File Transfer", ""]].concat(dev ? [["Developer (SSH)", ""]] : []);
+  const legend = (t) => `<div class="legend">${t}</div>`;
+
+  function promptMenu(sel = 1, dev = true) {
+    return ZK.screen(th, shelf() + ZK.menu(th, { heading: "Computer Connected", zyper: false, sel, rows: ROWS(dev) }).replace('class="panel"', 'class="panel ask"') + `<div class="asklegend">A: choose   B: charge only</div>`);
+  }
+  function promptTiles(sel = 1) {
+    const t = [["bolt", "Charge<br>Only"], ["folder", "File<br>Transfer"], ["term", "Developer<br>(SSH)"]];
+    return ZK.screen(th, shelf() + `<div class="scrim"></div><div class="tiles"><h4>Computer Connected</h4><div class="row3">${t.map(([i, n], k) => `<div class="tile ${k === sel ? "sel" : ""}">${icon[i]}<span>${n}</span></div>`).join("")}</div>${legend("Left/Right: move   A: choose   B: charge only")}</div>`);
+  }
+  function promptBar() {
+    return ZK.screen(th, shelf() + `<div class="ubar"><b>Computer connected</b><div class="acts3"><span><i class="g">A</i>File Transfer</span><span><i class="g">Y</i>Developer</span><span><i class="g">B</i>Charge Only</span></div></div>`);
+  }
+  const devNote = () => ZK.screen(th, shelf() + `<div class="scrim"></div><div class="note1">Developer link on. Unplug to end it.</div>`);
+  const MENU_ROWS = [["Play Time", ""], ["UI Sounds", "Wood"], ["USB File Transfer", ""], ["Date & Time", "Nov 5, 15:40"], ["Developer Mode", "on"], ["About ZyperOS", ""]];
+
+  const list = [
+    { key: "prompt", title: "The question when a computer is plugged in",
+      why: "It shows over the shelf, once per plug. Pressing B, or leaving the handheld alone, keeps it charging only. Unplugging ends whatever you chose. Developer (SSH) appears on development images only. Each picture shows a development image.",
+      options: {
+        menu: { name: "Menu panel", tag: "suggested", blurb: "The standard panel, like every other question the handheld asks: three rows, one key legend. Developer (SSH) then shows a one-line message: \"Developer link on. Unplug to end it.\"",
+          draw: () => `<div class="pair">${promptMenu(1)}${devNote()}<p class="cap">the panel, and what Developer (SSH) says</p></div>` },
+        tiles: { name: "Three tiles", blurb: "Three big choices side by side, with a mark each. Left and Right move between them. Bigger and friendlier, but it is a new kind of panel.",
+          draw: () => promptTiles(1) },
+        bar: { name: "Quiet bar", blurb: "A bar along the bottom, with each choice on its own button. It takes A, Y and B until you answer, then goes away. The smallest of the three.",
+          draw: promptBar },
+      } },
+    { key: "focus", title: "Which row the question starts on",
+      why: "The lime row is what A picks. B always means charge only.",
+      options: {
+        transfer: { name: "File Transfer", tag: "suggested", blurb: "Most people plug into a computer to move files, so A does it at once. Charge only stays one press away (B).", draw: () => promptMenu(1) },
+        charge: { name: "Charge Only", blurb: "The safe choice is first, so a quick A keeps it charging only.", draw: () => promptMenu(0) },
+      } },
+    { key: "devrow", title: "Where Developer Mode lives",
+      why: "Developer Mode keeps the USB link and SSH on whenever a computer is plugged in, with no question. It is on by default in development images, so other sessions keep the device. A release image has no Developer Mode at all.",
+      options: {
+        zyperos: { name: "In the ZyperOS menu", tag: "suggested", blurb: "One row, Developer Mode, on or off, above About ZyperOS. Only in development images.",
+          draw: () => ZK.screen(th, shelf() + ZK.menu(th, { sel: 4, rows: MENU_ROWS, more: true })) },
+        about: { name: "In About ZyperOS", blurb: "A third page in About ZyperOS, with Developer Mode on it. Out of the way, but harder to find.",
+          draw: () => ZK.screen(th, shelf() + ZK.menu(th, { heading: "About ZyperOS", zyper: false, sel: 0, rows: [["Developer Mode", "on"], ["USB link", "on"], ["SSH", "root@10.42.0.1"]] })) },
+      } },
+  ];
+
+  const status = document.getElementById("status");
+  const board = ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-usb-picks", status: s => { status.textContent = s; } });
+  document.querySelector(".themes").addEventListener("click", e => {
+    const b = e.target.closest("[data-show]");
+    if (!b) return;
+    th = b.dataset.show;
+    document.querySelectorAll("[data-show]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    board.render();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS Installer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top" data-tauri-drag-region>
+	<picture data-tauri-drag-region>
+		<source srcset="mark.svg" media="(prefers-color-scheme: dark)">
+		<img class="logo" src="mark-light.svg" alt="ZyperOS" data-tauri-drag-region>
+	</picture>
+	<span class="product" data-tauri-drag-region>Installer</span>
+	<button class="chip" id="newer" hidden></button>
+	<span class="ver" id="ver" data-tauri-drag-region></span>
+</header>
+
+<!-- The choices: device, which ZyperOS, which card, what to do -->
+<main class="screen" id="main">
+	<section class="group">
+		<h2>Device</h2>
+		<div class="seg" data-group="device" role="radiogroup" aria-label="Device">
+			<button class="opt" data-value="pixel2" role="radio"><b>GKD Pixel 2</b><span>The system ZyperOS is made for</span></button>
+			<button class="opt" data-value="brick" role="radio"><b>TrimUI Brick</b><span>Brick and Brick Hammer</span></button>
+		</div>
+	</section>
+
+	<section class="group">
+		<h2>ZyperOS</h2>
+		<div class="list" data-group="source" role="radiogroup" aria-label="ZyperOS">
+			<button class="row" data-value="release" role="radio">
+				<span class="mark-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg></span>
+				<span class="text"><b>Latest release</b><span id="release-what">Looking on GitHub</span></span>
+				<span class="value" id="release-value"></span>
+			</button>
+			<button class="row" data-value="file" role="radio">
+				<span class="mark-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z M14 3.5v4h4"/></svg></span>
+				<span class="text"><b id="file-title">Image file</b><span id="file-what">An .img.xz or .img on this computer. You can drop one on this window.</span></span>
+				<span class="value" id="file-value">Choose</span>
+			</button>
+		</div>
+	</section>
+
+	<section class="group">
+		<h2>Card</h2>
+		<div class="list" id="cards" role="radiogroup" aria-label="Card"></div>
+		<div class="empty" id="no-card">
+			<svg viewBox="0 0 32 40" aria-hidden="true"><path d="M5 2h15l9 9v25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M10 6v7M14 6v7M18 6v7"/></svg>
+			<span><b id="no-card-title">Looking for cards</b><span id="no-card-what">Asking this computer for its removable disks.</span></span>
+		</div>
+	</section>
+
+	<section class="group">
+		<h2>What to do</h2>
+		<div class="seg" data-group="action" role="radiogroup" aria-label="What to do">
+			<button class="opt" data-value="update" role="radio"><b>Update</b><span id="update-what">Keeps the games, music and saves.</span></button>
+			<button class="opt" data-value="fresh" role="radio"><b>Fresh install</b><span>Erases the whole card.</span></button>
+		</div>
+	</section>
+</main>
+
+<footer class="bottom" id="bottom">
+	<p class="note" id="note"></p>
+	<button class="go" id="go" disabled>Install</button>
+</footer>
+
+<!-- The write, and how it ended -->
+<section class="screen center" id="working" hidden>
+	<h1 id="working-title">Installing ZyperOS</h1>
+	<p class="sub" id="working-card"></p>
+	<ol class="steps" id="steps">
+		<li data-step="get"><i></i><span id="step-get">Download</span></li>
+		<li data-step="write"><i></i><span>Write</span></li>
+		<li data-step="check"><i></i><span>Read back</span></li>
+		<li data-step="eject"><i></i><span>Eject</span></li>
+	</ol>
+	<div class="bar" role="progressbar" aria-labelledby="phase"><div id="bar-fill"></div></div>
+	<p class="phase" id="phase">Starting</p>
+	<p class="detail" id="detail"></p>
+	<button id="cancel">Stop</button>
+</section>
+
+<section class="screen center" id="finished" hidden>
+	<img class="zyper" id="zyper" src="zyper.svg" alt="">
+	<h1 id="finished-title">Done</h1>
+	<p class="lead" id="finished-head"></p>
+	<p class="detail" id="finished-what"></p>
+	<button class="go" id="finished-back">Done</button>
+</section>
+
+<!-- One more step before anything is written: the card, by name and size -->
+<div class="scrim" id="confirm" hidden>
+	<div class="panel" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+		<h3 id="confirm-title">Erase this card?</h3>
+		<div class="target">
+			<svg viewBox="0 0 32 40" aria-hidden="true"><path d="M5 2h15l9 9v25a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M10 6v7M14 6v7M18 6v7"/></svg>
+			<span class="text"><b id="confirm-name"></b><span id="confirm-detail"></span></span>
+			<span class="size" id="confirm-size"></span>
+		</div>
+		<p id="confirm-what"></p>
+		<label class="check" id="confirm-check-row"><input type="checkbox" id="confirm-check"><span id="confirm-check-text"></span></label>
+		<div class="buttons">
+			<button id="confirm-back">Cancel</button>
+			<button class="go" id="confirm-go">Erase and install</button>
+		</div>
+	</div>
+</div>
+
+<div class="drop" id="drop" hidden><span>Drop the card image to use it</span></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+fake08-states.patch, from plorpOS (https://github.com/thwonp/plorpOS, mk/patches/
+at 5461fc8), MIT, Copyright (c) 2026 Thwonp. Unchanged; why it is needed
+is in mk/build-fake08.sh. git apply skips this preamble.
+
+diff --git a/source/p8GlobalLuaFunctions.h b/source/p8GlobalLuaFunctions.h
+index 3158b96..4f9e629 100644
+--- a/source/p8GlobalLuaFunctions.h
++++ b/source/p8GlobalLuaFunctions.h
+@@ -376,6 +376,10 @@ eris.restore_all = function(persisted)
+   for k,v in pairs(new_symbols) do
+     _G[k] = v
+   end
++  -- __z8_run_cart registers the sandbox from inside the cart coroutine, which
++  -- a restore replaces before it ever runs; without this the VM's nil-global
++  -- fallback keeps reading the previous cart's sandbox (its _update60, say).
++  rawset(debug.getregistry(), "__PICO8_SANDBOX", __cart_sandbox)
+ end
+ 
+ function __z8_strlen(s)
+diff --git a/source/vm.cpp b/source/vm.cpp
+index 63a6a63..d43f492 100644
+--- a/source/vm.cpp
++++ b/source/vm.cpp
+@@ -171,17 +171,17 @@ bool _initializeLuaState(lua_State* luaState) {
+     // we call this function to establish the default global state of things not to save in the save state
+     // needs to be called after globals are loaded but before the cart is run, or _init is called
+     //TODO: move these calls to the glue code?
+-    // lua_getglobal(luaState, "eris");
+-	// lua_getfield(luaState, -1, "init_persist_all");
++    lua_getglobal(luaState, "eris");
++	lua_getfield(luaState, -1, "init_persist_all");
+ 
+-    // if (lua_pcall(luaState, 0, 0, 0)){
+-    //     Logger_Write("Error setting up lua persistence: %s\n", lua_tostring(luaState, -1));
+-    //     lua_pop(luaState, 1);
+-    //     return false;
+-    // }
++    if (lua_pcall(luaState, 0, 0, 0)){
++        Logger_Write("Error setting up lua persistence: %s\n", lua_tostring(luaState, -1));
++        lua_pop(luaState, 2);
++        return false;
++    }
+ 
+-    // //pop the eris.init_persist_all fuction off the stack now that we're done with it
+-    // lua_pop(luaState, 1);
++    //pop the eris table off the stack now that we're done with it
++    lua_pop(luaState, 1);
+ 
+ 
+     return true;
+@@ -1509,11 +1509,23 @@ size_t Vm::serializeLuaState(char* dest) {
+ }
+ 
+ void Vm::deserializeLuaState(const char* src, size_t len) {
++    // eris links half-built protos into objects the incremental GC may have
++    // already marked, with no write barrier, so a GC step mid-restore frees
++    // them. Hold the GC until the restore is done.
++    lua_gc(_luaState, LUA_GCSTOP, 0);
+     lua_getglobal(_luaState, "eris");
+ 	lua_getfield(_luaState, -1, "restore_all");
+ 	lua_pushlstring(_luaState, src, len);
+ 
+-	if (lua_pcall(_luaState, 1, 0, 0) != 0) {
++	int status = lua_pcall(_luaState, 1, 0, 0);
++	lua_gc(_luaState, LUA_GCRESTART, 0);
++	// GCRESTART zeroes the GC's debt, so everything the restore allocated -
++	// a whole Lua heap - would never be paid for. Rewind restores every
++	// frame: the old heaps pile up as garbage the GC thinks it does not owe
++	// (Celeste: +170 MB per second of rewind, then multi-second collections).
++	// Collect it now while it is all fresh garbage.
++	lua_gc(_luaState, LUA_GCCOLLECT, 0);
++	if (status != 0) {
+ 		std::string e = lua_tostring(_luaState, -1);
+ 		lua_pop(_luaState, 1);
+ 		return;

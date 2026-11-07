@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS Scraper Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .stack { display: grid; gap: 8px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+
+  /* ---- On the handheld: launcher units (1024x768), DESIGN.md tokens only ---- */
+  .zs .panel > * { flex-shrink: 0; }
+  .zs .mrow .new { color: var(--accent-ink); }
+  .zs .mrow.sel .new { color: var(--on-accent); }
+  .zs .mrow.sec { font-size: 37px; color: var(--text-dim); padding-block: 10px 2px; }
+  .zs .mrow.prog { display: grid; grid-template-columns: 1fr auto; row-gap: 10px; }
+  .zs .mrow.prog .pbar { grid-column: 1 / -1; height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; }
+  .zs .mrow.prog .pbar b { display: block; height: 100%; border-radius: 7px; background: var(--accent-ink); }
+  .zs .mrow.sel.prog .pbar { background: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+  .zs .mrow.sel.prog .pbar b { background: var(--on-accent); }
+  .zs .panel .rule { height: 2px; background: var(--edge); margin: 8px 10px; }
+  .zs .panel .note { font-size: 37px; color: var(--text-dim); text-align: center; line-height: 1.3; padding: 2px 20px; }
+  .zs .panel h4 .sub { display: block; font-size: 37px; color: var(--text-dim); margin-top: 2px; }
+
+  /* Source cards (layout C): a raised card per source, two lines, a mark. */
+  .zs .srcs { display: grid; gap: 14px; }
+  .zs .src { border-radius: 22px; background: var(--raised); padding: 14px 26px; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 20px; }
+  .zs .src b { font-weight: 400; font-size: 49px; color: var(--text-soft); }
+  .zs .src span { grid-column: 1; font-size: 37px; color: var(--text-dim); }
+  .zs .src i { grid-row: 1 / span 2; grid-column: 2; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--edge) inset; color: var(--text-dim); font: 600 37px/1 "Lexend", sans-serif; font-style: normal; }
+  .zs .src i.on { background: var(--accent-ink); box-shadow: none; color: var(--surface); }
+  .zs .src.sel { background: var(--accent); }
+  .zs .src.sel b, .zs .src.sel span { color: var(--on-accent); }
+  .zs .src.sel i { box-shadow: 0 0 0 3px var(--on-accent) inset; color: var(--on-accent); }
+  .zs .src.sel i.on { background: var(--on-accent); color: var(--accent); }
+  .zs .go { margin-top: 18px; border-radius: 22px; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; font-size: 49px; color: var(--text-soft); box-shadow: 0 0 0 3px var(--edge) inset; }
+  .zs .go span { color: var(--text-dim); }
+  .zs .go.sel { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+  .zs .go.sel span { color: var(--on-accent); opacity: .72; }
+  .zs .go .pbar { height: 14px; border-radius: 7px; background: var(--track); overflow: hidden; flex: 1; margin-left: 30px; }
+  .zs .go .pbar b { display: block; height: 100%; background: var(--accent-ink); }
+
+  /* Two tiles (the Link choice), as the USB question draws them (11.18). */
+  .zs .tiles { position: absolute; left: 112px; width: 800px; top: 150px; height: 470px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+  .zs .tiles h4 { margin: 34px 0 0; text-align: center; font-size: 55px; font-weight: 400; color: var(--text-soft); }
+  .zs .tiles .row2 { position: absolute; left: 40px; right: 40px; top: 140px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .zs .tile { height: 232px; border-radius: 22px; background: var(--raised); display: grid; justify-items: center; align-content: center; gap: 16px; color: var(--text-soft); font-size: 40px; text-align: center; line-height: 1.1; }
+  .zs .tile svg { width: 84px; height: 84px; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  .zs .tile.sel { background: var(--accent); color: var(--on-accent); }
+  .zs .tiles .legend { bottom: 26px; }
+
+  /* ---- The games shelf as the launcher draws it now ---- */
+  .zs .gs-time { position: absolute; left: 64px; top: 46px; font-size: 29px; color: var(--text-soft); }
+  .zs .gs-head { position: absolute; left: 64px; top: 130px; font-size: 29px; color: var(--text-soft); }
+  .zs .gs-count { position: absolute; right: 64px; top: 130px; font-size: 29px; color: var(--text-dim); }
+  .zs .gs-card { position: absolute; top: 211px; height: 328px; border-radius: 12px; overflow: hidden; }
+  .zs .gs-card.side { width: 157px; height: 235px; top: 258px; opacity: .5; }
+  .zs .gs-card.l { left: 45px; } .zs .gs-card.r { left: 822px; }
+  .zs .gs-card.main { left: 403px; width: 218px; box-shadow: var(--card-lift); }
+  .zs .cover { position: absolute; top: 0; bottom: 0; left: 50%; width: 218px; margin-left: -109px; background: var(--art); }
+  .zs .gs-card.side .cover { width: 157px; margin-left: -78.5px; }
+  .zs .cover::before { content: attr(data-name); position: absolute; left: 14px; right: 14px; top: 18px; font: 600 29px/1.05 "Lexend", sans-serif; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.45); }
+  .zs .cover::after { content: ""; position: absolute; left: 22px; right: 22px; top: 120px; bottom: 26px; border-radius: 8px; background: radial-gradient(70% 60% at 50% 40%, rgba(255,255,255,.35), transparent 70%), linear-gradient(160deg, rgba(0,0,0,.05), rgba(0,0,0,.35)); }
+  .zs .gs-title { position: absolute; left: 64px; top: 560px; font-size: 38px; font-weight: 600; color: var(--text); }
+  .zs .gs-play { position: absolute; right: 64px; top: 566px; font-size: 29px; color: var(--text-soft); display: flex; gap: 12px; align-items: center; }
+  .zs .gs-legend { position: absolute; left: 64px; right: 64px; top: 700px; display: flex; justify-content: space-between; font-size: 27px; color: var(--text-soft); }
+  .zs .gl { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 2px var(--edge) inset; font: 600 22px/1 "Lexend", sans-serif; color: var(--text); margin-right: 10px; }
+  .zs .gl.a { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+  .zs .timer { position: absolute; left: 403px; width: 218px; top: 548px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .zs .timer b { display: block; height: 100%; width: 0; background: var(--accent-ink); }
+
+  /* A video snap, drawn: a side-scroller's screen in 4:3, moving */
+  .zs .vid { position: absolute; overflow: hidden; opacity: 0;
+    background: linear-gradient(#5fb8ff 0 58%, #6bc46b 58% 66%, #8a5a2b 66%); }
+  .zs .vid .hill { position: absolute; bottom: 34%; width: 60%; height: 34%; border-radius: 50% 50% 0 0; background: #4fa64f; }
+  .zs .vid .cloud { position: absolute; top: 12%; width: 22%; height: 9%; border-radius: 40px; background: #fff; opacity: .9; }
+  .zs .vid .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: repeating-linear-gradient(90deg, #8a5a2b 0 26px, #6f4620 26px 52px); }
+  .zs .vid .hero { position: absolute; left: 38%; bottom: 34%; width: 9%; height: 17%; background: #e8423a; border-radius: 6px 6px 2px 2px; box-shadow: inset 0 8px 0 #f6c08a; }
+  .zs .vid .coin { position: absolute; bottom: 58%; width: 4.5%; height: 9%; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 0 3px #c99a1f inset; }
+  .zs .vid .chip { position: absolute; right: 8px; top: 8px; padding: 2px 8px; border-radius: 6px; font: 600 16px/1.3 "Lexend", sans-serif; color: #fff; background: rgba(0,0,0,.45); }
+  .zs .dim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 62%, transparent); opacity: 0; }
+
+  /* The loop: 0-3 s the cover; the crossfade in turn (300 ms); the snap
+   * plays; at 6.4 s the focus moves and the cover is back in quick (120 ms). */
+  @keyframes vid-in   { 0%, 42.8% { opacity: 0 } 47.1%, 91.4% { opacity: 1 } 93.1%, 100% { opacity: 0 } }
+  @keyframes cov-out  { 0%, 42.8% { opacity: 1 } 47.1%, 91.4% { opacity: 0 } 93.1%, 100% { opacity: 1 } }
+  @keyframes dim-in   { 0%, 42.8% { opacity: 0 } 47.1%, 91.4% { opacity: 1 } 93.1%, 100% { opacity: 0 } }
+  @keyframes widen    { 0%, 42.8% { left: 403px; width: 218px } 47.1%, 91.4% { left: 293px; width: 437px } 93.1%, 100% { left: 403px; width: 218px } }
+  @keyframes timer    { 0% { width: 0 } 42.8% { width: 100% } 43%, 100% { width: 0 } }
+  @keyframes scroll   { to { background-position-x: -52px } }
+  @keyframes drift    { from { transform: translateX(0) } to { transform: translateX(-140%) } }
+  @keyframes hop      { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-60%) } }
+  .zs .play .vid { animation: vid-in 7s linear infinite; }
+  .zs .play .main .cover { animation: cov-out 7s linear infinite; }
+  .zs .play .dim { animation: dim-in 7s linear infinite; }
+  .zs .play.wide .main { animation: widen 7s cubic-bezier(.45,0,.55,1) infinite; }
+  .zs .play .timer b { animation: timer 7s linear infinite; }
+  .zs .vid .ground { animation: scroll .5s linear infinite; }
+  .zs .vid .cloud { animation: drift 6s linear infinite; }
+  .zs .vid .hero { animation: hop .7s ease-in-out infinite; }
+  .zs .still .vid { opacity: 1; } .zs .still .main .cover { opacity: 0; } .zs .still .dim { opacity: 1; }
+  .zs .still.wide .main { left: 293px; width: 437px; }
+  @media (prefers-reduced-motion: reduce) {
+    .zs .play .vid, .zs .play .main .cover, .zs .play .dim, .zs .play.wide .main, .zs .play .timer b,
+    .zs .vid .ground, .zs .vid .cloud, .zs .vid .hero { animation: none; }
+    .zs .play .vid, .zs .play .dim { opacity: 1; } .zs .play .main .cover { opacity: 0; }
+    .zs .play.wide .main { left: 293px; width: 437px; }
+  }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Scraper Lab</b></h1>
+      <p class="zk-lede">One MENU row, Scraper, in place of Box Art, ScreenScraper and SteamGridDB: the three sources and their links, the run that fetches missing box art, and the video snaps a game's cover turns into after 3 seconds on the shelf. Six decisions; every screen is in the launcher's own units and colors, Beard and Salt &amp; Pepper.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option.</b>
+    <ul>
+      <li><b>MENU &gt; Scraper</b> sits where Box Art is now, and its value says what is missing: "142 missing", or "complete". A console's own menu keeps its Box Art row: the same run for that console alone.</li>
+      <li><b>The order is fixed</b>: ScreenScraper when linked (box art, year, genre, synopsis, video snaps), then libretro (no account), then SteamGridDB when linked (box art for what the other two lack). Replace Box Art (X on a game) asks the same sources in the same order and keeps the old cover when nothing is found.</li>
+      <li><b>Linking</b> is checked once against the service. ScreenScraper has no token: its API signs every request with the password, so the device keeps the user and the password, as it does today, in the device's settings and never in a log. SteamGridDB keeps its key, shown only as ••••1a2b. The key can still be pasted on the File Transfer page.</li>
+      <li><b>Video snaps</b> come from ScreenScraper only (its small "video-normalized" file, about 1 to 3 MB a game, beside the cover in the console's .media folder), so they need ScreenScraper linked. On the shelf they are decoded by MP4's video path, and only while one is on screen: the shelf must still scroll at about 59 fps, input must answer as fast as today, and the CPU must go back to rest when the snap stops. Measured on the Pixel 2 before it ships. Any press, or a menu opening, puts the cover back at once.</li>
+    </ul>
+  </div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  const SYS = ZK.SYS;
+  const pbar = pct => `<div class="pbar"><b style="width:${pct}%"></b></div>`;
+  const SHELF = th => ZK.shelf(th, { title: "Super Metroid" });
+
+  /* A menu panel. rows: [label, value, dead, kind, pct]; kind "sec" is a
+   * section line, "rule" a rule, "note" a centered note, "prog" a bar. */
+  function panel(heading, rows, sel, o = {}) {
+    const z = o.zyper ? `<svg class="zcorner"><use href="#zyper"/></svg>` : "";
+    const body = rows.map((r, i) => {
+      if (r[3] === "rule") return `<div class="rule"></div>`;
+      if (r[3] === "note") return `<div class="note">${r[0]}</div>`;
+      const cls = [r[2] ? "dead" : "", i === sel ? "sel" : "", r[3] || ""].join(" ");
+      if (r[3] === "prog") return `<div class="mrow ${cls}">${r[0]}<span>${r[1]}</span>${pbar(r[4])}</div>`;
+      return `<div class="mrow ${cls}">${r[0]}<span>${r[1] || ""}</span></div>`;
+    }).join("");
+    const top = o.top === undefined ? 40 : o.top, bottom = o.bottom === undefined ? 40 : o.bottom;
+    return `<div class="scrim"></div><div class="panel" style="top:${top}px;bottom:${bottom}px"><h4>${heading}${z}</h4><hr>${body}</div>`;
+  }
+  const scr = (th, html) => ZK.screen(th, SHELF(th) + html);
+
+  /* ---- 1. the Scraper screen ---- */
+  const L = {
+    idle: [["Fetch Missing Art", `<span class="new">142 missing</span>`], ["Video Snaps", "on · 1.4 GB"],
+           ["Sources, in the order they are asked", "", 1, "sec"],
+           ["ScreenScraper", "linked as tarik"], ["libretro", "no account", 1], ["SteamGridDB", "••••1a2b"]],
+    running: [["Fetching", "Game Boy · 31 / 142", 0, "prog", 22], ["Video Snaps", "on · 1.4 GB"],
+              ["Found so far", "", 1, "sec"],
+              ["ScreenScraper", "12 covers · 9 snaps", 1], ["libretro", "17 covers", 1], ["SteamGridDB", "2 covers", 1]],
+    done: [["Fetch Missing Art", "complete"], ["Video Snaps", "on · 1.6 GB"],
+           ["Last run, 4 minutes", "", 1, "sec"],
+           ["ScreenScraper", "61 covers · 48 snaps", 1], ["libretro", "58 covers", 1], ["SteamGridDB", "14 covers", 1], ["Not found", "9", 1]],
+  };
+  const two = {
+    main: [["Fetch Missing Art", `<span class="new">142 missing</span>`], ["Video Snaps", "on · 1.4 GB"], ["Sources", "2 of 3 linked"],
+           ["", "", 0, "rule"], ["Box Art asks the linked sources in order.", "", 0, "note"]],
+    sources: [["ScreenScraper", "linked as tarik"], ["libretro", "no account", 1], ["SteamGridDB", "link"],
+              ["", "", 0, "rule"], ["Asked in this order. A: link or unlink", "", 0, "note"]],
+    running: [["Fetching", "SNES · 88 / 142", 0, "prog", 62], ["Video Snaps", "on · 1.4 GB"], ["Sources", "2 of 3 linked"],
+              ["", "", 0, "rule"], ["61 found · 4 not found · B: stop", "", 0, "note"]],
+  };
+  function cards(th, sel, run) {
+    const s = [["ScreenScraper", run ? "12 covers · 9 snaps so far" : "linked as tarik · covers, text, snaps", true],
+               ["libretro", run ? "17 covers so far" : "no account · covers", true],
+               ["SteamGridDB", run ? "2 covers so far" : "not linked · covers the others lack", false]];
+    const body = `<div class="srcs">${s.map((x, i) => `<div class="src ${i === sel ? "sel" : ""}"><b>${x[0]}</b><i class="${x[2] ? "on" : ""}">${x[2] ? "✓" : "+"}</i><span>${x[1]}</span></div>`).join("")}</div>
+      <div class="go ${sel === 3 ? "sel" : ""}">${run ? `Fetching<span style="margin-left:24px">31 / 142</span>${pbar(22)}` : `Fetch Missing Art<span>142 missing</span>`}</div>`;
+    return scr(th, `<div class="scrim"></div><div class="panel"><h4>Scraper<svg class="zcorner"><use href="#zyper"/></svg></h4><hr>${body}</div>`);
+  }
+
+  /* ---- 2. linking ---- */
+  const KBD = (th, title, text) => ZK.screen(th, SHELF(th) + ZK.keyboard(th, { title, text, sel: [1, 2] }));
+  const MSG = (th, t) => ZK.screen(th, SHELF(th) + `<div class="scrim"></div><div class="msg" style="left:162px;width:700px">${t}</div>`);
+  const ICON = {
+    type: `<svg viewBox="0 0 84 84"><rect x="8" y="22" width="68" height="40" rx="6"/><path d="M20 34h4M32 34h4M44 34h4M56 34h8M20 46h44"/></svg>`,
+    phone: `<svg viewBox="0 0 84 84"><rect x="24" y="8" width="36" height="68" rx="6"/><path d="M36 66h12"/><path d="M34 30h16M34 40h16"/></svg>`,
+  };
+  const TILES = (th, sel) => ZK.screen(th, SHELF(th) + `<div class="scrim"></div><div class="tiles"><h4>Link SteamGridDB</h4><div class="row2">
+      <div class="tile ${sel === 0 ? "sel" : ""}">${ICON.type}<span>Type the key</span></div>
+      <div class="tile ${sel === 1 ? "sel" : ""}">${ICON.phone}<span>Paste it on<br>a phone</span></div></div>
+      <div class="legend">Left/Right: move   A: choose   B: back</div></div>`);
+
+  /* ---- 3-5. the shelf and its video snap ---- */
+  const VID = chip => `<div class="hill" style="left:-10%"></div><div class="hill" style="left:48%;height:26%"></div>
+    <div class="cloud" style="left:70%"></div><div class="cloud" style="left:120%;top:20%"></div>
+    <div class="coin" style="left:58%"></div><div class="coin" style="left:66%"></div>
+    <div class="ground"></div><div class="hero"></div>${chip ? `<div class="chip">${chip}</div>` : ""}`;
+  /* mode: "crop", "wide", "box"; how: "play" (the 7 s loop) or "still" */
+  function gshelf(th, mode, how, chip) {
+    const vstyle = mode === "crop" ? "left:50%;width:437px;margin-left:-218.5px;top:0;height:328px"
+                 : mode === "box" ? "left:0;right:0;top:82px;height:164px" : "inset:0";
+    const art = (acc) => `--art:linear-gradient(160deg, color-mix(in srgb, ${acc} 85%, #fff 8%), color-mix(in srgb, ${acc} 45%, #000))`;
+    return ZK.screen(th, `<div class="${how} ${mode === "wide" ? "wide" : ""}" style="position:absolute;inset:0">
+      <div class="gs-time">11:04</div>
+      <div class="gs-head">Super Nintendo</div><div class="gs-count">7 / 23</div>
+      <div class="gs-card side l"><div class="cover" data-name="Mega Man X" style="${art(SYS.gbc)}"></div></div>
+      <div class="gs-card side r"><div class="cover" data-name="Star Fox" style="${art(SYS.nes)}"></div></div>
+      <div class="gs-card main"><div class="cover" data-name="Super Metroid" style="${art(SYS.snes)}"></div>
+        ${mode === "box" ? `<div class="dim"></div>` : ""}<div class="vid" style="${vstyle}">${VID(chip)}</div></div>
+      ${how === "play" ? `<div class="timer"><b></b></div>` : ""}
+      <div class="gs-title">Super Metroid</div>
+      <div class="gs-play"><span class="gl a">A</span>Play</div>
+      <div class="gs-legend"><span><span class="gl">B</span>Systems</span><span><span class="gl">Y</span>Favorite</span><span><span class="gl">X</span>Details</span></div>
+    </div>`, { sys: SYS.snes });
+  }
+
+  ZK.decisions(document.getElementById("m"), [
+    { key: "layout", title: "The Scraper screen",
+      why: "What MENU > Scraper opens: the run, video snaps and the three sources in one place. Each option is shown at rest, running, and after a run.",
+      options: {
+        list: { name: "One list", tag: "suggested", blurb: "One menu panel: Fetch Missing Art and Video Snaps on top, then the sources in the order they are asked, each saying who it is linked as. While it runs, the Fetch row becomes its progress and the sources count what they found. Nothing new to learn.", draw: () => `<div class="stack">
+          ${scr("light", panel("Scraper", L.idle, 0, { zyper: true }))}<span class="cap">Beard · at rest</span>
+          ${scr("dark", panel("Scraper", L.running, 0, { zyper: true }))}<span class="cap">Salt &amp; Pepper · running (B stops)</span>
+          ${scr("light", panel("Scraper", L.done, 0, { zyper: true }))}<span class="cap">Beard · after a run</span></div>` },
+        twolevel: { name: "Sources behind a row", blurb: "The first screen is short: the run, Video Snaps, and one Sources row (\"2 of 3 linked\") that opens the list of sources. One more level, fewer rows at once.", draw: () => `<div class="stack">
+          ${scr("light", panel("Scraper", two.main, 0, { zyper: true }))}<span class="cap">Beard · at rest</span>
+          ${scr("dark", panel("Sources", two.sources, 2))}<span class="cap">Salt &amp; Pepper · Sources opened</span>
+          ${scr("light", panel("Scraper", two.running, 0, { zyper: true }))}<span class="cap">Beard · running</span></div>` },
+        cards: { name: "Source cards", blurb: "Each source a card with two lines (who it is linked as, and what it brings) and a mark: a check when it is linked, a plus when it can be. The run is a wide button under them. Clearer at a glance; a new kind of panel.", draw: () => `<div class="stack">
+          ${cards("light", 0, false)}<span class="cap">Beard · at rest, ScreenScraper focused</span>
+          ${cards("dark", 3, true)}<span class="cap">Salt &amp; Pepper · running</span></div>` },
+      } },
+    { key: "link", title: "Linking and unlinking a source",
+      why: "A on ScreenScraper or SteamGridDB. Not linked: link it. Linked: see who, change it, or unlink it. libretro needs nothing.",
+      options: {
+        direct: { name: "Straight to the keyboard", blurb: "A on a source that is not linked opens the keyboard at once (ScreenScraper asks user, then password), checks, and says \"Linked as tarik\". A on a linked one asks one question: Unlink, Change, or Cancel. Fewest screens.", draw: () => `<div class="stack">
+          ${KBD("light", "ScreenScraper User", "tarik")}<span class="cap">Beard · A on ScreenScraper, not linked</span>
+          ${MSG("dark", "Linked as tarik.")}<span class="cap">Salt &amp; Pepper · checked</span>
+          ${scr("light", panel("ScreenScraper", [["Unlink", ""], ["Change Account", ""], ["Cancel", ""]], 0, { top: 190, bottom: 190 }))}<span class="cap">Beard · A on it again, linked</span></div>` },
+        page: { name: "A page per source", tag: "suggested", blurb: "A opens the source's own page: who it is linked as and whether it works, a row to link or change it, a row to unlink it, and a note on where an account or a key comes from. The same page shape for both; what today's SteamGridDB screen already is.", draw: () => `<div class="stack">
+          ${scr("light", panel("ScreenScraper", [["Account", "tarik"], ["Status", "works · 1,204 / 20,000 today", 1], ["Unlink", ""], ["", "", 0, "rule"], ["Covers, text and video snaps.", "", 0, "note"], ["A free account at screenscraper.fr.", "", 0, "note"]], 0, { top: 70, bottom: 70 }))}<span class="cap">Beard · ScreenScraper, linked</span>
+          ${scr("dark", panel("SteamGridDB", [["Key", "none"], ["", "", 0, "rule"], ["Get one at steamgriddb.com.", "", 0, "note"], ["Or paste it in File Transfer.", "", 0, "note"]], 0, { top: 150, bottom: 150 }))}<span class="cap">Salt &amp; Pepper · SteamGridDB, not linked: A types the key</span></div>` },
+        choice: { name: "Type it or paste it", blurb: "For SteamGridDB, whose key is 32 characters: A when it is not linked offers two tiles, type the key here or paste it on a phone (which opens File Transfer with its PIN right there). ScreenScraper goes straight to the keyboard. Linked sources open the page in the option before.", draw: () => `<div class="stack">
+          ${TILES("light", 1)}<span class="cap">Beard · A on SteamGridDB, not linked</span>
+          ${scr("dark", panel("10.42.0.1<span class=\"sub\">PIN 4718 · paste the key on the page</span>", [["Browsers", "1 connected"], ["Now", "waiting for the key"]], -1, { top: 160, bottom: 220 }))}<span class="cap">Salt &amp; Pepper · Paste on a phone: File Transfer opens</span></div>` },
+      } },
+    { key: "snaps", title: "Where Video Snaps are set",
+      why: "Turning them on fetches them with the box art and plays them on the shelf. They take room: about 1 to 3 MB a game, so 1.4 GB for 700 games. Per console, if it is cheap to offer.",
+      options: {
+        row: { name: "One row", blurb: "Scraper > Video Snaps steps between on and off with Left/Right, and its value is the room they take. Off stops fetching and playing them; a second row, Delete Video Snaps, gives the room back. All consoles or none.", draw: () => `<div class="stack">
+          ${scr("light", panel("Scraper", [["Fetch Missing Art", "142 missing"], ["Video Snaps", "‹ on · 1.4 GB ›"], ["Delete Video Snaps", "1.4 GB"], ["Sources, in the order they are asked", "", 1, "sec"], ["ScreenScraper", "linked as tarik"], ["libretro", "no account", 1]], 1, { zyper: true }))}<span class="cap">Beard</span></div>` },
+        page: { name: "A Video Snaps page", tag: "suggested", blurb: "Scraper > Video Snaps opens a page: on or off for fetching and for playing, the sound, then every console with the room its snaps take and its own on or off, and Delete All at the end. Per console at the cost of one page.", draw: () => `<div class="stack">
+          ${scr("light", panel("Video Snaps", [["Fetch with Box Art", "on"], ["Play on the Shelf", "on"], ["Sound", "muted"], ["Consoles", "", 1, "sec"], ["SNES", "on · 212 MB"], ["Game Boy", "on · 96 MB"], ["PlayStation", "off · 0 MB"]], 4))}<span class="cap">Beard · scrolls on to every console and Delete All</span>
+          ${scr("dark", panel("Video Snaps", [["Fetch with Box Art", "needs ScreenScraper", 1], ["Play on the Shelf", "on"], ["Sound", "muted"], ["Consoles", "", 1, "sec"], ["SNES", "on · 212 MB"], ["Game Boy", "on · 96 MB"]], 1))}<span class="cap">Salt &amp; Pepper · ScreenScraper not linked: what is on the card still plays</span></div>` },
+        console: { name: "In each console's menu", blurb: "Each console's menu gets a Video Snaps row with its own on or off and size; Scraper shows the total and turns them all off at once. Settings sit with the console they are about; to see them all you visit each one.", draw: () => `<div class="stack">
+          ${scr("light", panel("SNES", [["Games", "23", 1], ["Core", "snes9x2010", 1], ["Sort By", "Name"], ["Box Art", ""], ["Video Snaps", "‹ on · 212 MB ›"], ["Rescan Folder", ""]], 4, { }))}<span class="cap">Beard · a console's menu</span>
+          ${scr("dark", panel("Scraper", [["Fetch Missing Art", "142 missing"], ["Video Snaps", "on · 1.4 GB in all"], ["Sources, in the order they are asked", "", 1, "sec"], ["ScreenScraper", "linked as tarik"], ["libretro", "no account", 1], ["SteamGridDB", "••••1a2b"]], 1, { zyper: true }))}<span class="cap">Salt &amp; Pepper · Scraper's total</span></div>` },
+      } },
+    { key: "look", title: "How a video snap sits on the shelf",
+      why: "After 3 seconds on a game (the line under the cover fills, for this page only) its cover crossfades into the snap in turn (300 ms), which loops; when the focus moves the cover is back in quick (120 ms). A snap is 4:3 and a cover is about 2:3. Each loop here is 7 seconds.",
+      options: {
+        crop: { name: "Fills the cover", blurb: "The snap fills the cover's own frame, cut at both sides. Nothing on the shelf moves; about half the game's screen is lost, and HUDs at the edges with it.", draw: () => `<div class="stack">
+          ${gshelf("light", "crop", "play")}<span class="cap">Beard · the loop</span>
+          ${gshelf("dark", "crop", "still")}<span class="cap">Salt &amp; Pepper · playing</span></div>` },
+        wide: { name: "The cover turns wide", tag: "suggested", blurb: "The cover widens to 4:3 at the same height while it crossfades, and the whole game screen plays. The cards either side stay where they are: a wide card still clears them. Back to the cover's shape when the focus moves.", draw: () => `<div class="stack">
+          ${gshelf("light", "wide", "play")}<span class="cap">Beard · the loop</span>
+          ${gshelf("dark", "wide", "still")}<span class="cap">Salt &amp; Pepper · playing</span></div>` },
+        box: { name: "Inside the cover", blurb: "The snap plays whole and small in the middle of the cover, which dims around it. Nothing changes shape; the picture is the smallest of the three.", draw: () => `<div class="stack">
+          ${gshelf("light", "box", "play")}<span class="cap">Beard · the loop</span>
+          ${gshelf("dark", "box", "still")}<span class="cap">Salt &amp; Pepper · playing</span></div>` },
+      } },
+    { key: "sound", title: "The snap's sound",
+      why: "Snaps carry the game's sound. Menu Music may be playing on the shelf, and the shelf is where people browse quietly.",
+      options: {
+        muted: { name: "Muted", tag: "suggested", blurb: "Snaps play without sound. Menu Music, when on, carries on under them unchanged. Nothing to decode for sound, which is cheaper too.", draw: () => `<div class="stack">${gshelf("dark", "wide", "still")}<span class="cap">Salt &amp; Pepper · no sound</span></div>` },
+        quiet: { name: "Quiet", blurb: "The snap's sound at a quarter of the volume, and Menu Music dips under it while the snap plays, then comes back.", draw: () => `<div class="stack">${gshelf("dark", "wide", "still", "♪ quiet")}<span class="cap">Salt &amp; Pepper · a quarter of the volume</span></div>` },
+        setting: { name: "A setting, muted to start", blurb: "Muted on a new device; Video Snaps > Sound steps Muted, Quiet, Full. Choosing Quiet or Full dips Menu Music under a snap.", draw: () => `<div class="stack">${scr("dark", panel("Video Snaps", [["Fetch with Box Art", "on"], ["Play on the Shelf", "on"], ["Sound", "‹ muted ›"], ["Consoles", "", 1, "sec"], ["SNES", "on · 212 MB"]], 2))}<span class="cap">Salt &amp; Pepper · the Sound row</span></div>` },
+      } },
+    { key: "wait", title: "How long before the snap",
+      why: "I said 3 seconds. Shown here so the line can move if 3 feels slow or fast on the device; the timer starts again at every move.",
+      options: {
+        three: { name: "3 seconds", tag: "suggested", blurb: "Long enough that scrolling through a shelf never starts one; short enough that resting on a game does.", draw: () => `<div class="stack">${gshelf("light", "wide", "play")}<span class="cap">Beard · 3 s, then the snap</span></div>` },
+        two: { name: "2 seconds", blurb: "Snappier. A slow scroll that pauses on a game for a moment may start a snap it then has to stop.", draw: () => `<div class="stack">${ZK.screen("light", `<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:55px;color:var(--text-soft)">2 s on a game, then the snap</div>`)}</div>` },
+        five: { name: "5 seconds", blurb: "Never in the way while choosing; a snap is something you wait for.", draw: () => `<div class="stack">${ZK.screen("light", `<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:55px;color:var(--text-soft)">5 s on a game, then the snap</div>`)}</div>` },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-scraper" });
+})();
+</script>
+</body>
+</html>

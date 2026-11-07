@@ -1,0 +1,77 @@
+title: ZyperOS vs ROGUE OS on the GKD Pixel 2
+description: ZyperOS and ROGUE OS on the GKD Pixel 2, row by row from each project's code and releases: installing, systems, games, box art, DS, battery, updates.
+summary: The system that set the bar for the Pixel 2, beside the one built to match it, row by row.
+crumb: ZyperOS vs ROGUE OS
+topic: compare
+published: 2026-11-07
+updated: 2026-11-07
+image: gallery
+image_alt: The ZyperOS Gallery home, with animated pixel-art consoles
+related: best-custom-firmware-gkd-pixel-2, zyperos-vs-rocknix, gkd-pixel-2-stock-firmware
+weight: 30
+---
+<p>ROGUE OS, by Ninoh-FOX, is a set of changes to the GKD Pixel 2's own firmware, and it set the bar for what this handheld can do. ZyperOS set out to match it, as a separate system with a Linux of its own. This is the two side by side, from each project's own code and releases as of 7 November 2026.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>Pick ROGUE OS</strong> if you want a released system that runs over a hundred systems, DraStic and PortMaster included, with the stock firmware's familiar menus and many launcher skins.</li>
+  <li><strong>Pick ZyperOS</strong> if you want games sent from any browser, box art without a computer, RetroAchievements, updates on the handheld, and battery care such as a charge limit. It is still in testing, with no release images yet.</li>
+</ul>
+
+<h2>Side by side</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">ROGUE OS</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Source, license</th><td class="us">PolyForm Shield 1.0.0, free</td><td>Its changed files, no license named</td></tr>
+    <tr><th scope="row">What it is</th><td class="us">Its own launcher, emulator frontend and Linux</td><td>Changes to the stock firmware</td></tr>
+    <tr><th scope="row">Latest</th><td class="us">In testing, no release yet</td><td>1.22 (August 2025)</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>117 in its list</td></tr>
+    <tr><th scope="row">Games without taking the card out</th><td class="us">[yes: A web page over Wi-Fi or the USB cable, its own network, and SSH] Web page, Wi-Fi or USB cable</td><td>[yes: The USB cable, and SSH] USB cable, SSH</td></tr>
+    <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro with no account, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: ScreenScraper, with your account] ScreenScraper</td></tr>
+    <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Nintendo DS</th><td class="us">DSperate built in, DraStic if you add it</td><td>DraStic (Steward Fu's), melonDS and others</td></tr>
+    <tr><th scope="row">PortMaster</th><td class="us">[yes: Ports run; you set them up with PortMaster on another system] Ports run</td><td>[yes: Included] Included</td></tr>
+    <tr><th scope="row">Media</th><td class="us">Music, audiobooks, video</td><td>Music, game music, video</td></tr>
+    <tr><th scope="row">Themes</th><td class="us">Light and dark</td><td>13 launcher skins</td></tr>
+    <tr><th scope="row">Rumble</th><td class="us">[yes: Games rumble] Yes</td><td>[yes: Through SDL2, with a stronger setting] Yes</td></tr>
+    <tr><th scope="row">Low battery</th><td class="us">Warnings, then saves and powers off at 2%</td><td>Vibrates at 10% and 5%, shuts down at 1%</td></tr>
+    <tr><th scope="row">While charging</th><td class="us">A charging screen when off, and a charge limit</td><td>A tool that turns the screen off and saves power while charging</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">Over Wi-Fi, with roll back, once releases are signed</td><td>Copy the new release's files onto the card</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. Hover over or tap a mark for more.</p>
+
+<h2>What each one is</h2>
+<p>ROGUE OS's README calls it changes made to the original system: the stock firmware's system file is unpacked, improved and packed again, with a newer kernel build and RetroArch 1.21.0. So it keeps the stock firmware's IUX menu and EmulationStation, and adds to them. It is made for the GKD Pixel 2 alone.</p>
+<p>ZyperOS is not built on the stock firmware. Its launcher, its emulator frontend Diatom, and its Linux, plastron, all began as Eric Reinsmidt's TortOS, and run games through libretro cores. Diatom stays running, so a game starts the moment you press <kbd>A</kbd>.</p>
+
+<h2>Installing</h2>
+<p>ROGUE OS installs in steps: download its first release's image, about 5.7 GB in six parts, and write it with a tool like balenaEtcher; resize its ROMS partition with a partition tool; then copy the newest release's <code>Image</code> and <code>SYSTEM</code> files over the ones on its EMUELEC partition. The first start may turn the handheld off once, as a file check. ZyperOS has no release image yet; you build it from source. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> has both.</p>
+
+<h2>Adding games and box art</h2>
+<p>On ROGUE OS, the default EmulationStation offers the USB cable as a file-transfer device, and SSH works over a network as <code>root</code>. Its Scraper app, in Tools, fetches images from ScreenScraper with your account. ZyperOS opens one web page in any browser, over Wi-Fi, its own network or the USB cable, and fetches covers from libretro with no account, from ScreenScraper and from SteamGridDB. See <a href="/blog/add-games-gkd-pixel-2/">adding games</a> and <a href="/blog/box-art-gkd-pixel-2/">box art</a>.</p>
+
+<h2>Nintendo DS and PortMaster</h2>
+<p>ROGUE OS includes Steward Fu's DraStic and a second DraStic build, plus melonDS and DeSmuME, and PortMaster, with its runtimes from a file on its releases page. On DraStic, <kbd>R2</kbd> turns the stylus on and <kbd>L2</kbd> swaps the screens. ZyperOS ships DSperate, an open DS emulator, with the same shoulder idea: <kbd>R2</kbd> for the stylus, <kbd>L2</kbd> for the other screen, and three layouts. It runs DraStic too if you add it, and takes DraStic's saves over. ZyperOS runs PortMaster ports, but PortMaster's own app does not run on it. See <a href="/blog/nintendo-ds-gkd-pixel-2/">the DS guide</a> and <a href="/blog/portmaster-gkd-pixel-2/">the PortMaster guide</a>.</p>
+
+<h2>Battery</h2>
+<p>ROGUE OS vibrates three times at 10% and at 5%, and at 1% it stops the game and shuts down safely to protect the card. Its "Charging screen off" tool turns the screen off and sets the chip to save power while the handheld charges. ZyperOS warns on the screen and with the side lights, saves the game and powers off at 2%, shows the charge and the time to full on a charger while off, and can stop charging at 80, 85 or 90%. <a href="/blog/gkd-pixel-2-battery-charge-limit/">The battery guide</a> shows them.</p>
+
+<h2>Updates</h2>
+<p>A new ROGUE OS release is files you copy onto the card's EMUELEC partition. Its newest is 1.22, from August 2025. ZyperOS's System Update works over Wi-Fi, downloads only what changed, and goes back by itself if a new version fails to start; it turns on once ZyperOS has its release signing key.</p>
+
+<h2>Moving from ROGUE OS to ZyperOS</h2>
+<p>ZyperOS has a tool for this, <code>tools/from-rogue.sh</code>. Pointed at a ROGUE OS card's games and a ZyperOS card, it copies every game, BIOS file and battery save ZyperOS has a place for, copies the PortMaster ports layout as it is, and reports what has no place. It only reads the ROGUE OS card and never writes over a file already on the ZyperOS card. Keep the ROGUE OS card as it is: it stays your way back.</p>
+
+<h2>Which one to pick</h2>
+<p>ROGUE OS is released and covers more systems, and its DraStic and PortMaster are ready on the card. ZyperOS covers fewer systems for now, with a newer design: web transfers, covers and achievements on the handheld, updates that roll back, and battery care. ROGUE OS made ZyperOS what it is. Each is a card, so you can keep both.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li>ROGUE OS at <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20">f567073</a>: <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/README.md">README</a>, <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/emulationstation/es_systems.cfg">system list</a>, <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/iux/skins">launcher skins</a>, <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/config/modules/ES-Switcher.sh">ES-Switcher.sh</a> (USB transfer), <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/etc/init.d/99batteryshutdown">99batteryshutdown</a>.</li>
+  <li>ROGUE OS releases <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.22">1.22</a> and <a href="https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.0">1.0</a>.</li>
+  <li>ZyperOS: <a href="https://github.com/tarikbc/ZyperOS#readme">the README</a>, <a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md">the user guide</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/tools/from-rogue.sh">tools/from-rogue.sh</a>.</li>
+</ol>
+<p class="meta">Read on 7 November 2026.</p>

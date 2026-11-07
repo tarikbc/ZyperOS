@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Transfer 2 lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* The lab's own chrome is kit.css's quiet dark page (.zk-*); the screens
+   * are the handheld's units, the page frames are res/web/app.css itself. */
+  html, body { margin: 0; background: #141615; }
+  .zk-page { padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 10px 0; align-items: center; }
+  .themes .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  #status { margin-left: 6px; }
+  .found { margin: 18px 0 4px; padding: 16px 18px; border: 1px solid var(--zk-line); border-radius: 14px; background: var(--zk-page-2); max-width: 92ch; }
+  .found h2 { font: 600 17px/1.3 var(--zk-f-display); margin: 0 0 6px; }
+  .found ol { margin: 0; padding-left: 20px; color: var(--zk-ink-2); display: grid; gap: 6px; }
+  .found b { color: var(--zk-ink); font-weight: 600; }
+  .found code { font: 13px var(--zk-f-mono); color: var(--zk-ink); }
+  .stack { display: grid; gap: 10px; }
+  .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .trio { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+  @media (max-width: 760px) { .duo, .trio { grid-template-columns: 1fr; } }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 4px 2px 0; }
+  /* Wide decisions (the page): one option per row */
+  #icons .zk-grid, #eta .zk-grid, #room .zk-grid, #settings .zk-grid, #update .zk-grid { grid-template-columns: 1fr; }
+
+  /* ---- page frames: the real page in an iframe, drawn at its own size
+   * and scaled to the card ---------------------------------------------- */
+  .pf { position: relative; margin: 0; width: 100%; overflow: hidden; border-radius: 10px; background: #000; box-shadow: 0 0 0 1px #2c302e; }
+  .pf iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; pointer-events: none; }
+  .pf.phone { border-radius: 26px; }
+
+  /* ---- the handheld, in the launcher's units (DESIGN.md 4, 6, 11) ------- */
+  .zs .panel h4 b { font-weight: 600; color: var(--text); }
+  .zs .pfoot { margin-top: auto; display: flex; justify-content: center; gap: 44px; font-size: 37px; color: var(--text-dim); align-items: center; padding-top: 12px; }
+  .zs .pfoot span { display: inline-flex; align-items: center; gap: 12px; }
+  .zs .qsub { text-align: center; font-size: 37px; color: var(--text-dim); margin: -6px 0 12px; }
+  .zs .qdesc { font-size: 37px; color: var(--text-soft); text-align: center; padding: 14px 18px 0; line-height: 1.3; min-height: 2.6em; text-wrap: balance; }
+  /* The shelf's quiet corner (DESIGN.md 11.12): a 24-unit row at the inset,
+   * the clock in meta text-soft, marks 12 apart */
+  .zs .corner { position: absolute; right: 24px; top: 18px; display: flex; gap: 12px; align-items: center; font-size: 37px; color: var(--text-soft); }
+  .zs .corner span { margin-right: 4px; }
+  .zs .corner svg { height: 34px; width: auto; display: block; }
+  .zs .pill { position: absolute; left: 26px; top: 18px; display: flex; gap: 14px; align-items: center; height: 62px; padding: 0 26px 0 14px; border-radius: 31px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 0 0 2px var(--edge) inset, var(--bar-lift); font-size: 34px; color: var(--text-soft); }
+  .zs .pill svg { width: 46px; height: 46px; color: var(--text-dim); }
+  .zs .msgw { position: absolute; left: 92px; width: 840px; top: 300px; min-height: 150px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; font-size: 49px; color: var(--text-soft); text-align: center; padding: 24px 48px; box-sizing: border-box; line-height: 1.25; text-wrap: balance; }
+  .zs .tiles { display: flex; gap: 24px; justify-content: center; }
+  .zs .tile { width: 272px; height: 232px; border-radius: 22px; background: var(--raised); color: var(--text-soft); display: grid; justify-items: center; align-content: start; padding-top: 22px; box-sizing: border-box; text-align: center; font-size: 40px; line-height: 1.15; }
+  .zs .tile svg { width: 76px; height: 76px; margin-bottom: 14px; }
+  .zs .tile.sel { background: var(--accent); color: var(--on-accent); }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">File Transfer, <b>round two</b></h1>
+      <p class="zk-lede">my five asks and his two notes, as choices. A transfer that keeps going in the background, a safe way to stop it, games while files move, pixel-art icons on every folder, a time left for the uploads, a check for free space, and a Settings page with an update over the USB cable. Pick one option in each section. Add a note to change anything.</p>
+      <div class="themes" role="group" aria-label="Themes shown">
+        <button type="button" class="zk-btn" data-show="both" aria-pressed="true">Beard and Salt &amp; Pepper</button>
+        <button type="button" class="zk-btn" data-show="light" aria-pressed="false">Beard only</button>
+        <button type="button" class="zk-btn" data-show="dark" aria-pressed="false">Salt &amp; Pepper only</button>
+        <span id="status" class="zk-mono"></span>
+      </div>
+    </div>
+  </header>
+
+  <section class="found" aria-labelledby="found-h">
+    <h2 id="found-h">What I found first</h2>
+    <ol>
+      <li><b>Why .media is everywhere.</b> A new card gets an empty <code>.media</code> in each of its 41 system folders (<code>mk/payload.sh</code>), and every System Update puts them back (its <code>.card</code> list). Box Art and the Scraper also make one before each try, so a cover that never comes leaves an empty folder. The ones in Music hold real album covers. The fix: make <code>.media</code> only when a cover lands, remove the empty ones, and hide dot folders in the page.</li>
+      <li><b>Why Atomiswave had no bar.</b> The page took its colors from the shelf's list, and the shelf hides a system with no games. BGM is not a system, so it had nothing. Every option below fixes both.</li>
+      <li><b>What the page can get from GitHub.</b> It can read the list of releases (<code>api.github.com</code> allows a web page to). It cannot read the release files: <code>github.com</code> and <code>release-assets.githubusercontent.com</code> send no CORS header, so the browser blocks the bytes. Section 9 shows the two ways around this.</li>
+      <li><b>Games and transfers.</b> The transfer server runs in the launcher's loop. A game takes that loop, and a port even restarts the launcher. So files stop moving during a game, and a browser gives up after 20 seconds of silence. Games must wait.</li>
+      <li><b>Free space.</b> Today the handheld refuses a file that does not fit, one file at a time, after the files before it went. The page never adds up a batch first.</li>
+    </ol>
+  </section>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script src="portal.js"></script>
+<script>
+(function () {
+  "use strict";
+  const P = window.ZYPER_PORTAL;
+  let show = "both";
+  const themes = () => show === "both" ? ["light", "dark"] : [show];
+  const NAME = { light: "Beard", dark: "Salt & Pepper" };
+
+  /* ================= the handheld ===================================== */
+
+  const GAMES = [
+    { name: "Tobu Tobu Girl", sys: ZK.SYS.gb }, { name: "Micro Mages", sys: ZK.SYS.nes },
+    { name: "Blade Buster", sys: ZK.SYS.nes }, { name: "Lizard", sys: ZK.SYS.nes },
+    { name: "Nova the Squirrel", sys: ZK.SYS.nes },
+  ];
+  const shelf = th => ZK.shelf(th, { games: GAMES, cursor: 1 });
+  const kg = (b, s) => `<span class="kg ${/^[ABXY]$/.test(b) ? "round" : ""}" style="--gs:${s || 46}px">${b}</span>`;
+  const foot = keys => `<div class="pfoot">${keys.map(([b, t]) => `<span>${kg(b)}${t}</span>`).join("")}</div>`;
+  const zc = `<svg class="zcorner"><use href="#zyper"/></svg>`;
+
+  function xmark(pct) {
+    const r = 19, c = 2 * Math.PI * r;
+    const ring = pct == null ? "" : `<circle cx="24" cy="24" r="${r}" fill="none" stroke="var(--track)" stroke-width="4"/><circle cx="24" cy="24" r="${r}" fill="none" stroke="var(--accent-ink)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * pct).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 24 24)"/>`;
+    return `<svg viewBox="0 0 48 48" aria-hidden="true">${ring}<path d="M19 31V16m0 0-5 5m5-5 5 5M29 17v15m0 0-5-5m5 5 5-5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  const WIFI = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 20a23 23 0 0 1 32 0M14 26.5a14 14 0 0 1 20 0M20 33a5.5 5.5 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/><circle cx="24" cy="38" r="2.6" fill="currentColor"/></svg>`;
+  const BATT = `<svg class="batt" viewBox="0 0 56 48" aria-hidden="true"><rect x="4" y="14" width="42" height="21" rx="5" fill="none" stroke="currentColor" stroke-width="3.2"/><rect x="9" y="19" width="26" height="11" rx="2" fill="currentColor"/><rect x="48" y="20" width="4" height="9" rx="1.5" fill="currentColor"/></svg>`;
+  const corner = mark => `<div class="corner">${mark === undefined ? "" : xmark(mark)}<span>10:08</span>${WIFI}${BATT}</div>`;
+
+  /* The transfer screen as main.c draws it today (hare_head, hare_rows),
+   * with o.keys at its foot. */
+  function xferPanel(th, keys, now) {
+    const rows = [["Browsers", "1 connected"], ["SSH", "off"], ["In / out", "1.2 GB / 2 MB"], ["Now", now || "receiving Lizard.nes"]];
+    return shelf(th) + corner() + `<div class="scrim"></div><div class="panel"><h4>10.42.0.1<br><b>PIN 4071</b>${zc}</h4><hr>${rows.map(r => `<div class="mrow">${r[0]}<span>${r[1]}</span></div>`).join("")}${keys ? foot(keys) : ""}</div>`;
+  }
+
+  /* The question while files move: a menu panel (DESIGN.md 11.3), a line
+   * for what moves, the choices, and what the focused one does. */
+  const STOP_ROWS = [
+    ["Keep going", "in the background", "File Transfer keeps going while you use ZyperOS. MENU opens it again."],
+    ["Stop after this file", "about 40 s", "Tobu Tobu Girl.gb finishes, then File Transfer closes. 9 files stay on the computer."],
+    ["Cancel now", "", "The half-written file is deleted, so it never shows as a broken game. Files already here stay."],
+  ];
+  function ask(th, head, sub, rows, sel, keys, top) {
+    return `<div class="scrim"></div><div class="panel" style="top:${top || 64}px;bottom:auto;left:92px;width:840px"><h4>${head}${zc}</h4><hr>
+      <div class="qsub">${sub}</div>${rows.map((r, i) => `<div class="mrow ${i === sel ? "sel" : ""}">${r[0]}<span>${r[1]}</span></div>`).join("")}
+      <div class="qdesc">${rows[sel][2]}</div>${foot(keys)}</div>`;
+  }
+  const stopAsk = (th, sel) => shelf(th) + ask(th, "Files are still moving", "Tobu Tobu Girl.gb, 62%. 9 more wait.", STOP_ROWS, sel, [["A", "choose"], ["B", "keep going"]]);
+
+  const TILE_ART = [
+    `<svg viewBox="0 0 48 48"><path d="M19 33V14m0 0-6 6m6-6 6 6M29 15v19m0 0-6-6m6 6 6-6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    `<svg viewBox="0 0 48 48"><path d="M13 6h15l9 9v27H13z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M19 29l5 5 9-10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="16" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M18 18l12 12M30 18 18 30" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>`,
+  ];
+  function stopTiles(th, sel) {
+    const names = ["Keep<br>going", "Stop after<br>this file", "Cancel<br>now"];
+    return shelf(th) + `<div class="scrim"></div><div class="panel" style="top:96px;bottom:auto;left:40px;width:944px;padding:30px 40px"><h4>Files are still moving${zc}</h4><hr>
+      <div class="qsub">Tobu Tobu Girl.gb, 62%. 9 more wait.</div>
+      <div class="tiles">${names.map((n, i) => `<div class="tile ${i === sel ? "sel" : ""}">${TILE_ART[i]}<div>${n}</div></div>`).join("")}</div>
+      <div class="qdesc">${STOP_ROWS[sel][2]}</div>${foot([["◀▶", "move"], ["A", "choose"], ["B", "keep going"]])}</div>`;
+  }
+
+  const GAME_ROWS = [
+    ["Not now", "", "Back to the shelf. The files keep moving."],
+    ["Play after this file", "about 40 s", "Tobu Tobu Girl.gb finishes, File Transfer closes, then the game starts. 9 files stay on the computer."],
+    ["Cancel the transfer and play", "", "The half-written file is deleted. The game starts at once."],
+  ];
+  const gameAsk = (th, sel) => shelf(th) + corner(.62) + ask(th, "Files are still moving", "A game would stop them.", GAME_ROWS, sel, [["A", "choose"], ["B", "not now"]], 56);
+  const msg = (th, text, mark) => shelf(th) + corner(mark) + `<div class="scrim"></div><div class="msgw">${text}</div>`;
+
+  function menuRow(th, value) {
+    const rows = [["Search Games", ""], ["Wi-Fi", "off"], ["Bluetooth", "not connected"], ["USB File Transfer", value], ["System Update", "0.4.0"], ["Date & Time", "Nov 6, 10:08 AM"]];
+    return shelf(th) + ZK.menu(th, { rows, sel: 3 });
+  }
+  const pill = th => shelf(th) + `<div class="pill">${xmark(.62)}<span>Receiving 3 of 12 · about 6 min</span></div>` + `<div class="corner"><span>10:08</span>${WIFI}${BATT}</div>`;
+
+  /* Both themes (or the one asked for), each captioned */
+  function hh(draw, caps) {
+    return `<div class="stack">${themes().map((th, i) => `${ZK.screen(th, draw(th, i))}<span class="cap">${NAME[th]}${caps && caps[th] ? " · " + caps[th] : ""}</span>`).join("")}</div>`;
+  }
+
+  /* ================= the page (res/web) ================================= */
+
+  /* app.css as served, with the theme fixed instead of asked of the
+   * browser, Lexend for the card's own copy of it, and the new pieces. */
+  const NEW_CSS = `
+/* today's band, which the page no longer has */
+.band{width:6px;height:28px;flex:none;margin:0 8px 0 4px;border-radius:3px;background-color:color-mix(in srgb,var(--sys) 75%,var(--text))}
+.sico{width:40px;height:40px;flex:none;display:grid;place-items:center;margin:-3px 0;background:none;box-shadow:none}
+.sico img{width:40px;height:40px;object-fit:contain;display:block}
+.sico.tile{width:46px;height:46px;border-radius:var(--radius-row);background:color-mix(in srgb,var(--sys,var(--text-dim)) 14%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sys,var(--text-dim)) 30%,transparent)}
+.sico.tile img{width:40px;height:40px}
+.sico .mark{width:auto}
+.places button.pix::before{display:none}
+.places button img{width:30px;height:30px;object-fit:contain;margin:-4px -2px -4px -4px;flex:none}
+.places.tail{margin-top:auto}
+.room{display:grid;gap:6px;padding:0 10px;font-size:var(--fs-meta);color:var(--text-dim);font-variant-numeric:tabular-nums}
+.room b{color:var(--text-soft);font-weight:600}
+.meter{height:6px;border-radius:3px;background:var(--track);overflow:hidden}
+.meter span{display:block;height:100%;border-radius:3px;background:var(--text-dim)}
+.xfer .eta{color:var(--text-dim);font-size:var(--fs-meta);margin-top:-8px;font-variant-numeric:tabular-nums}
+.xfer .total{height:8px;border-radius:4px}
+.xfer .more{color:var(--text-dim);font-size:var(--fs-meta)}
+.xfer .stopping{color:var(--text-soft);font-size:var(--fs-meta)}
+.etabig{display:grid;gap:2px}
+.etabig b{font-size:30px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.etabig span{color:var(--text-dim);font-size:var(--fs-meta);font-variant-numeric:tabular-nums}
+.sets{display:grid;gap:16px;max-width:760px}
+.set{background:var(--surface);border:1px solid var(--edge);border-radius:var(--radius-panel);padding:18px 20px;display:grid;gap:10px}
+.set h2{font-size:var(--fs-label);font-weight:600}
+.set p{color:var(--text-dim);font-size:15px}
+.set p.now{color:var(--text-soft);font-size:var(--fs-menu)}
+.set .acts{justify-content:flex-start}
+.set .big{font-size:var(--fs-title);font-weight:600;color:var(--text)}
+.steps{display:grid;gap:14px}
+.steps li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start}
+.steps .n{width:30px;height:30px;border-radius:50%;background:var(--raised);display:grid;place-items:center;font-size:14px;font-weight:600;color:var(--text-soft)}
+.steps .n.ok{background:var(--accent);color:var(--on-accent)}
+.steps .t{display:grid;gap:8px;padding-top:3px;justify-items:start}
+.steps .t > span{color:var(--text-soft)}
+.dz{justify-self:stretch;border:2px dashed var(--edge);border-radius:var(--radius-card);padding:14px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;color:var(--text-dim);font-size:15px}
+.sendbar{display:grid;gap:6px;font-size:var(--fs-meta);color:var(--text-dim);font-variant-numeric:tabular-nums}
+.sendbar .bar{height:8px}
+.flag{display:grid;gap:6px;padding:12px 14px;border-radius:var(--radius-card);background:var(--ground);border:1px solid var(--edge)}
+.flag p{color:var(--text-soft)}
+.switch{display:flex;align-items:center;gap:12px;color:var(--text-soft)}
+.switch i{width:42px;height:24px;border-radius:12px;background:var(--track);position:relative;flex:none}
+.switch i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);box-shadow:var(--small-lift)}
+.i-gear{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Ccircle cx='12' cy='12' r='6.6'/%3E%3Cpath d='M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8'/%3E%3C/svg%3E")}
+`;
+  const cssFor = {};
+  function pcss(th) {
+    if (cssFor[th]) return cssFor[th];
+    let css = P.css.replace(/@font-face\s*\{[^}]*\}/g, "");
+    css = css.replace(/@media \(prefers-color-scheme: dark\)/g, th === "dark" ? "@media all" : "@media not all")
+             .replace(/@media \(prefers-color-scheme: light\)/g, th === "dark" ? "@media not all" : "@media all");
+    return (cssFor[th] = css + (th === "dark" ? `:root{--dark:1}.band{background-color:var(--sys)!important}` : "") + `:root{color-scheme:${th}}html,body,button,input{font-family:"Lexend",system-ui,sans-serif}` + NEW_CSS);
+  }
+  const attr = s => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  function pframe(th, body, w, h, phone) {
+    w = w || 1180; h = h || 740;
+    const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&display=swap"><style>${pcss(th)}</style></head><body>${body(th)}</body></html>`;
+    return `<figure class="pf ${phone ? "phone" : ""}" style="aspect-ratio:${w}/${h}" data-w="${w}"><iframe tabindex="-1" aria-hidden="true" title="" style="width:${w}px;height:${h}px" srcdoc="${attr(doc)}"></iframe></figure>`;
+  }
+  /* Both themes side by side, or one */
+  function pp(body, o) {
+    o = o || {};
+    const f = th => `<div class="stack">${pframe(th, body, o.w, o.h, o.phone)}<span class="cap">${NAME[th]}${o.cap ? " · " + o.cap : ""}</span></div>`;
+    return themes().length > 1 && !o.stack ? `<div class="duo">${themes().map(f).join("")}</div>` : `<div class="stack">${themes().map(f).join("")}</div>`;
+  }
+
+  /* ---- the page's pieces ------------------------------------------------ */
+  const sysBy = tag => P.systems.find(s => s.tag === tag);
+  /* Folders that are not systems, and the art that stands for them */
+  const EXTRA = { BGM: "BGM", Hacks: "FOLDER", ROMs: "ROMS", Music: "MUSE", Audiobooks: "BOOKS", Videos: "VIDEOS", BIOS: "BIOS", Saves: "SAVES", "Save States": "STATES" };
+  const iconOf = key => P.icons[key] || null;
+
+  function lead(style, name, key, color) {
+    const src = key && iconOf(key);
+    if (style === "today") return color ? `<span class="band" style="--sys:#${color}"></span>` : `<span class="mark i i-folder"></span>`;
+    const inner = src ? `<img src="${src}" alt="">` : `<span class="mark i i-folder"></span>`;
+    return `<span class="sico ${style === "tile" ? "tile" : ""}" ${color ? `style="--sys:#${color}"` : ""}>${inner}</span>`;
+  }
+  const ROM_ROWS = ["AW", "BGM", "DC", "GBA", "Hacks", "NES", "NDS", "PICO8", "PS1", "PRT", "SFC"];
+  function romRows(style) {
+    return ROM_ROWS.map(t => {
+      const s = sysBy(t);
+      const name = s ? s.folder : t;
+      const key = s ? s.key : EXTRA[t];
+      /* Today's page took colors from the shelf, which hides a system with
+       * no games: Atomiswave, on my card */
+      return { name, key, color: s && !(style === "today" && t === "AW") ? s.color : null };
+    }).sort((a, b) => a.name.localeCompare(b.name)).map(r =>
+      `<li class="row dir">${lead(style, r.name, r.key, r.color)}<button class="name" type="button">${r.name}</button><span class="chev">›</span><button class="iconbtn i i-dots" type="button"></button></li>`).join("");
+  }
+  const ROOTS = [["roms", "ROMs"], ["music", "Music"], ["books", "Audiobooks"], ["videos", "Videos"], ["bios", "BIOS"], ["saves", "Saves"], ["states", "Save States"]];
+  function places(style, on) {
+    return `<nav class="places">${ROOTS.map(([id, label]) => {
+      const src = style === "tile" && iconOf(EXTRA[label]);
+      return src ? `<button type="button" class="pix ${id === on ? "on" : ""}"><img src="${src}" alt="">${label}</button>`
+                 : `<button type="button" class="i i-${id} ${id === on ? "on" : ""}">${label}</button>`;
+    }).join("")}</nav>`;
+  }
+  const brand = th => `<div class="brand"><img src="${th === "dark" ? P.marks.mark : P.marks["mark-light"]}" alt="ZyperOS" width="127" height="36"><span class="appname">USB File Transfer</span></div>`;
+  const room = (free, total, pct) => `<div class="room"><span><b>${free}</b> free of ${total}</span><div class="meter"><span style="width:${pct}%"></span></div></div>`;
+  const extrasToday = `<div class="extras"><div class="art"><button type="button" class="link">Get Box Art and Album Covers</button><p>12 games on 3 consoles have no cover.</p></div><div class="art"><span class="pair"><button type="button" class="link">SteamGridDB key ••••3f2a</button><button type="button" class="link">Remove</button></span><p>It works. Box Art asks SteamGridDB last.</p></div><a class="link" href="#">Download logs</a><p class="fine">Network, headset and account names are masked.</p></div>`;
+  const settingsLink = on => `<nav class="places tail"><button type="button" class="i i-gear ${on ? "on" : ""}">Settings</button></nav>`;
+  const toolsBar = `<div class="tools"><button type="button" class="btn quiet i i-newfolder">New folder</button><button type="button" class="btn i i-upfolder">Upload folder</button><button type="button" class="btn pri i i-up">Upload</button></div>`;
+  const head = (title, tools) => `<header class="head"><nav class="crumbs"><span class="here">${title}</span></nav>${tools === false ? "" : tools || toolsBar}</header>`;
+  function app(th, o) {
+    return `<div class="app"><aside class="side">${brand(th)}${places(o.icons || "tile", o.on === undefined ? "roms" : o.on)}${o.room || ""}${o.queue || ""}${o.settings === false ? extrasToday : settingsLink(o.on === "")}</aside><main class="main">${o.main}</main></div>${o.over || ""}`;
+  }
+  const romsMain = style => head("ROMs") + `<ul class="list">${romRows(style)}</ul><p class="hint">Drop files anywhere here to put them in ROMs, or onto a folder to put them there.</p>`;
+
+  const JOBS = `<ul class="jobs"><li class="job done"><span class="n">Micro Mages.nes</span><span class="p">done</span></li><li class="job done"><span class="n">Lizard.nes</span><span class="p">done</span></li><li class="job sending"><span class="n">Tobu Tobu Girl.gb</span><span class="p">62%</span><div class="bar"><span style="width:62%"></span></div></li><li class="job waiting"><span class="n">Blade Buster.nes</span><span class="p">waiting</span><div class="bar"><span></span></div></li><li class="more">8 more waiting</li></ul>`;
+  const queueLine = `<section class="xfer"><h2>Sending 3 of 12</h2><p class="eta">4.2 GB left · about 6 min</p><div class="bar total"><span style="width:38%"></span></div>${JOBS}</section>`;
+  const queueBig = `<section class="xfer"><div class="etabig"><b>About 6 min</b><span>left for 10 files · 4.2 GB</span></div><div class="bar total"><span style="width:38%"></span></div><h2>Sending 3 of 12</h2>${JOBS}</section>`;
+  const queueToday = `<section class="xfer"><h2>Uploading 3 of 12</h2>${JOBS}</section>`;
+  const queueStopping = `<section class="xfer"><h2>The handheld is stopping</h2><p class="stopping">Tobu Tobu Girl.gb finishes, then File Transfer closes. 9 files stay on this computer.</p><div class="bar total"><span style="width:62%"></span></div>${JOBS.replace(/waiting<\/span><div class="bar"><span><\/span><\/div>/, "not sent</span>").replace("8 more waiting", "8 more not sent")}</section>`;
+
+  function phoneDock(th, line, pct) {
+    return `<div class="app docked"><aside class="side">${brand(th)}${places("tile", "roms")}</aside><main class="main"><header class="head"><img class="headzy" src="${P.marks.zyper}" alt="" width="28" height="30"><nav class="crumbs"><span class="here">ROMs</span></nav><button type="button" id="more" class="iconbtn i i-dots"></button></header><nav class="chips">${ROOTS.map(([id, l]) => `<button type="button" class="${id === "roms" ? "on" : ""}">${l}</button>`).join("")}</nav><ul class="list">${romRows("tile")}</ul></main><button type="button" class="dock"><div class="top"><span>${line}</span><span class="p">${pct}%</span></div><div class="bar"><span style="width:${pct}%"></span></div></button></div>`;
+  }
+
+  const dialog = (title, text, acts) => `<div class="dialog"><form class="panel"><h2>${title}</h2><p>${text}</p><div class="acts">${acts}</div></form></div>`;
+
+  /* Settings, as a page in the main area */
+  const UPDATE_OFF = `<div class="flag"><p>Updates are off on this handheld. Its system has no release key yet, so it cannot prove an update is real. Use the ZyperOS Installer to update.</p></div>`;
+  function setUpdate(state) {
+    let body;
+    if (state === "off") body = `<p class="now">You have ZyperOS <b>0.4.0</b>.</p>${UPDATE_OFF}`;
+    else if (state === "drop") body = `<p class="now">ZyperOS <b>0.4.1</b> is out. You have 0.4.0.</p><ol class="steps"><li><span class="n ok">1</span><div class="t"><span>Download the update: 2 files, 38 MB, from GitHub.</span><button type="button" class="btn i i-down">Download again</button></div></li><li><span class="n">2</span><div class="t"><span>Drop the two files here. The handheld checks them before it installs.</span><div class="dz"><span>ZyperOS-pixel2-update.txt and ZyperOS-v0.4.1-pixel2-update.zpk</span><button type="button" class="btn pri">Choose files</button></div></div></li></ol>`;
+    else if (state === "sending") body = `<p class="now">Sending ZyperOS <b>0.4.1</b> to the handheld.</p><div class="sendbar"><span>ZyperOS-v0.4.1-pixel2-update.zpk · 21 MB left · about 15 s</span><div class="bar"><span style="width:45%"></span></div></div><p>Next, the handheld checks the signature and every file, then installs. Keep the cable in.</p>`;
+    else if (state === "auto") body = `<p class="now">ZyperOS <b>0.4.1</b> is out. You have 0.4.0.</p><p>What's new: the transfer keeps going in the background, and every folder has its icon.</p><div class="acts"><button type="button" class="btn pri">Update to 0.4.1 · 38 MB</button></div>`;
+    else if (state === "autogo") body = `<p class="now">Updating to ZyperOS <b>0.4.1</b>.</p><div class="sendbar"><span>Getting it from GitHub and sending it on · 17 of 38 MB · about 15 s</span><div class="bar"><span style="width:45%"></span></div></div><p>Next, the handheld checks the signature and every file, then installs. Keep the cable in.</p>`;
+    else if (state === "ready") body = `<p class="now">ZyperOS <b>0.4.1</b> is ready.</p><p>Restart the handheld to install it. It takes about 10 seconds.</p><div class="acts"><button type="button" class="btn pri">Restart the handheld</button></div>`;
+    return `<section class="set"><h2>Update ZyperOS</h2>${body}</section>`;
+  }
+  const SET_COVERS = `<section class="set"><h2>Box art and album covers</h2><p>This computer gets them from libretro and MusicBrainz, and the handheld puts each one in place. 12 games and 3 albums have no cover.</p><div class="acts"><button type="button" class="btn i i-art">Get covers</button></div></section>`;
+  const SET_SGDB = `<section class="set"><h2>SteamGridDB</h2><p>Key ••••3f2a. It works. Box Art on the handheld asks SteamGridDB last.</p><div class="acts"><button type="button" class="btn i i-key">Change key</button><button type="button" class="btn quiet">Remove</button></div></section>`;
+  const SET_CARD = `<section class="set"><h2>The card</h2><p>88.4 GB free of 119 GB.</p><label class="switch"><i></i>Show hidden folders, such as .media with the covers</label></section>`;
+  const SET_HELP = `<section class="set"><h2>Help</h2><p>A report for a bug: the handheld's logs in one file. Network, headset and account names are masked.</p><div class="acts"><button type="button" class="btn i i-logs">Download logs</button></div></section>`;
+  const settingsMain = up => head("Settings", false) + `<div class="sets">${setUpdate(up)}${SET_COVERS}${SET_SGDB}${SET_CARD}${SET_HELP}</div>`;
+
+  /* ================= the decisions ===================================== */
+  const list = [
+    { key: "leave", title: "Leaving the transfer screen",
+      why: "my note: hide it instead of closing it, so files keep moving while you use ZyperOS. In the background the server, the PIN, SSH and the hotspot stay up. Nothing else changes until it stops. Auto Off waits while a browser is on.",
+      options: {
+        hide: { name: "B hides it", tag: "suggested", blurb: "B always hides File Transfer, and it keeps running. Y stops it: at once when nothing moves, or with the question in section 2 while files move. MENU's row, or the empty home's button, opens it again with the same PIN.", draw: () => hh((th, i) => i ? shelf(th) + corner(.62) : xferPanel(th, [["B", "hide"], ["Y", "stop"]]), { light: "the screen", dark: "after B" }) },
+        ask: { name: "B asks while files move", blurb: "B closes as today when nothing moves. While files move, B opens the question in section 2, with Keep going in the background first.", draw: () => hh((th, i) => i ? stopAsk(th, 0) : xferPanel(th, [["B", "close"]]), { light: "the screen", dark: "B while files move" }) },
+        today: { name: "B closes", tag: "today", blurb: "B closes File Transfer at once. A file on its way is cut, and its half-written copy is deleted. The browser says the connection was lost.", draw: () => hh(th => xferPanel(th, null)) },
+      } },
+    { key: "question", title: "The question while files move",
+      why: "What stopping offers while a file is on its way. In every option the half-written file is a .part file: it never shows on the shelf, and it is deleted on a cancel. Files already received stay. The browser hears it too: it stops sending, and it says which files stay on the computer.",
+      options: {
+        rows: { name: "Menu rows", tag: "suggested", blurb: "A menu panel, as every question in ZyperOS. Keep going is first, so a quick A loses nothing. The line under the rows says what the focused choice does.", draw: () => hh((th, i) => stopAsk(th, i ? 2 : 0), { light: "Keep going", dark: "Cancel now" }) + `<div style="margin-top:10px">${pp(th => app(th, { queue: queueStopping, main: romsMain("tile") }), { stack: true, cap: "the computer, after Stop after this file" })}</div>` },
+        tiles: { name: "Three tiles", blurb: "The three choices as tiles, like Computer Connected. Bigger targets, the same words.", draw: () => hh((th, i) => stopTiles(th, i ? 2 : 0), { light: "Keep going", dark: "Cancel now" }) },
+      } },
+    { key: "background", title: "While it runs in the background",
+      why: "How you see that File Transfer is still on after you hide it.",
+      options: {
+        corner: { name: "A mark in the corner", tag: "suggested", blurb: "The two arrows join the clock, Wi-Fi and battery. A ring fills while files move. With nothing moving, the arrows stay, quietly.", draw: () => hh((th, i) => shelf(th) + corner(i ? undefined : .62), { light: "files moving", dark: "nothing moving" }) },
+        pill: { name: "A pill", blurb: "A pill at the top left says what moves and the time left. It goes when nothing moves.", draw: () => hh(th => pill(th)) },
+        menu: { name: "Only in MENU", blurb: "Nothing on the shelf. MENU's row says it is on, and how far it is.", draw: () => hh(th => menuRow(th, "receiving 62%")) },
+      } },
+    { key: "games", title: "A game while files move",
+      why: "my note: if gaming affects it, no games during a transfer. It does: a game takes the launcher's loop, which also moves the files. With nothing moving, a game closes File Transfer and says so for a moment.",
+      options: {
+        ask: { name: "Ask", tag: "suggested", blurb: "A question with the safe choice first. Play after this file waits for the file on its way, then plays.", draw: () => hh((th, i) => i ? msg(th, "File Transfer closed for the game.") : gameAsk(th, 1), { light: "files moving", dark: "nothing moving" }) },
+        wait: { name: "Just wait", blurb: "A message and back to the shelf. To play, stop File Transfer first.", draw: () => hh((th, i) => i ? msg(th, "File Transfer closed for the game.") : msg(th, "Files are still moving. Play when they are done.", .62), { light: "files moving", dark: "nothing moving" }) },
+      } },
+    { key: "icons", title: "Folders on the page",
+      why: "Every system folder gets the shelf's pixel art. Folders that are not systems get new pixel art, drawn the same way from real photos: BGM a cassette, Saves a memory card, Save States a floppy disk, BIOS a chip, Music MP4's walkman, a plain folder for the rest. In every option, dot folders such as .media are hidden: covers stay in each system's art and in Settings.",
+      options: {
+        tile: { name: "Pixel art on a tile", tag: "suggested", blurb: "Each icon sits on a small tile tinted with the system's color, so the color that was the bar stays. The card's folders in the sidebar get their pixel art too.", draw: () => pp(th => app(th, { icons: "tile", main: romsMain("tile") })) },
+        bare: { name: "Pixel art alone", blurb: "The icon with nothing behind it, a little bigger. The sidebar keeps its line marks.", draw: () => pp(th => app(th, { icons: "line", main: romsMain("bare") })) },
+        today: { name: "Bars", tag: "today", blurb: "A system's color as a bar, a plain folder for the rest. Atomiswave and BGM had nothing.", draw: () => pp(th => app(th, { icons: "line", settings: false, main: romsMain("today") })) },
+      } },
+    { key: "eta", title: "Time left for the uploads",
+      why: "The time left for every file in the queue, from the measured speed. Smoothed over the last 20 seconds and changed at most once a second, so it does not jump. Under a minute it counts seconds; with no speed yet it says nothing.",
+      options: {
+        line: { name: "One line and one bar", tag: "suggested", blurb: "Under the heading: what is left, in size and time, and one bar for the whole queue. Each file keeps its own bar. On a phone the bottom line says the same.", draw: () => `<div class="trio">${pp(th => app(th, { queue: queueLine, main: romsMain("tile") }), { stack: true })}${pp(th => phoneDock(th, "3 of 12 · about 6 min", 38), { w: 390, h: 844, phone: true, stack: true })}</div>` },
+        big: { name: "The time, big", blurb: "The time left in big type over the queue, the size under it.", draw: () => pp(th => app(th, { queue: queueBig, main: romsMain("tile") })) },
+        today: { name: "No time", tag: "today", blurb: "A count of files, and a bar for each file.", draw: () => pp(th => app(th, { icons: "line", settings: false, queue: queueToday, main: romsMain("today") })) },
+      } },
+    { key: "room", title: "When the files do not fit",
+      why: "my note: check the free space first. The page adds up the files before it sends any, and asks the handheld how much room there is. The handheld keeps 100 MB free for saves, states and the database, so a full card never stops a save. It also still checks each file, as the last word. The free space shows under the folders.",
+      options: {
+        ask: { name: "Send what fits", tag: "suggested", blurb: "A question before anything moves: send the files that fit, in their order, or cancel.", draw: () => pp(th => app(th, { room: room("6.2 GB", "119 GB", 95), main: romsMain("tile"), over: dialog("Not enough room on the card", "These 14 files need 9.8 GB. The card has 6.2 GB free.", `<button type="button" class="btn">Cancel</button><button type="button" class="btn pri">Send the 9 that fit</button>`) })) },
+        stop: { name: "Send nothing", blurb: "The batch does not start. Free up room or pick fewer files, then try again.", draw: () => pp(th => app(th, { room: room("6.2 GB", "119 GB", 95), main: romsMain("tile"), over: dialog("Not enough room on the card", "These 14 files need 9.8 GB. The card has 6.2 GB free. Free up room, or send fewer files.", `<button type="button" class="btn pri">OK</button>`) })) },
+      } },
+    { key: "settings", title: "Where Settings lives",
+      why: "Settings holds what the sidebar's foot held, and more: the update, covers, the SteamGridDB key, the card's free space and hidden folders, and the logs. Each section shows only where it works: covers only over the USB cable, as today.",
+      options: {
+        page: { name: "A page", tag: "suggested", blurb: "Settings at the foot of the sidebar opens in the main area, like a folder. On a phone it is in the ⋯ menu.", draw: () => pp(th => app(th, { on: "", main: settingsMain("drop") })) },
+        dialog: { name: "A dialog", blurb: "A gear in the top bar opens Settings over the folder you are in.", draw: () => pp(th => app(th, { main: head("ROMs", `<div class="tools"><button type="button" class="iconbtn i i-gear" aria-label="Settings"></button><button type="button" class="btn pri i i-up">Upload</button></div>`) + `<ul class="list">${romRows("tile")}</ul>`, over: `<div class="dialog"><div class="panel" style="max-width:620px;max-height:640px;overflow:hidden"><h2>Settings</h2><div class="sets">${setUpdate("auto")}${SET_COVERS}${SET_SGDB}</div></div></div>` })) },
+      } },
+    { key: "update", title: "Updating ZyperOS through the computer",
+      why: "Over the USB cable, where the handheld has no internet. The computer only carries the files: the handheld checks the release's signature and every file's checksum, then installs as System Update does, the folder and, on a card with two system slots, the system. A file changed on the way is refused. No release key exists yet, so today every handheld shows the last frame: updates stay off, and the page says so.",
+      options: {
+        drop: { name: "Download, then drop", tag: "suggested", blurb: "Works with GitHub's releases as they are. The page reads which release is newest, and its button downloads exactly the files this handheld needs. You drop them on the page, and the rest is one bar.", draw: () => `<div class="duo">${pframe("light", th => head("Settings", false) + `<div class="sets">${setUpdate("drop")}</div>`, 820, 360)}${pframe(themes().length > 1 ? "dark" : themes()[0], th => head("Settings", false) + `<div class="sets">${setUpdate("sending")}</div>`, 820, 360)}</div><div class="duo" style="margin-top:12px">${pframe(themes().length > 1 ? "dark" : themes()[0], th => head("Settings", false) + `<div class="sets">${setUpdate("ready")}</div>`, 820, 250)}${pframe("light", th => head("Settings", false) + `<div class="sets">${setUpdate("off")}</div>`, 820, 250)}</div><p class="cap">the files dropped · sending · ready · every handheld today (no release key)</p>` },
+        auto: { name: "One button", blurb: "The page gets the files and sends them by itself. GitHub blocks that for release files, so each release would also copy its update to ZyperOS's web page on GitHub Pages, which allows it. That is a change to the release flow, and about 0.5 GB per release on a 1 GB site.", draw: () => `<div class="duo">${pframe("light", th => head("Settings", false) + `<div class="sets">${setUpdate("auto")}</div>`, 820, 250)}${pframe(themes().length > 1 ? "dark" : themes()[0], th => head("Settings", false) + `<div class="sets">${setUpdate("autogo")}</div>`, 820, 250)}</div><p class="cap">the update found · getting and sending it</p>` },
+      } },
+  ];
+
+  /* Each page frame draws at its own size and scales to its card */
+  const ro = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => scale(e.target))) : null;
+  function scale(f) {
+    const ifr = f.firstElementChild;
+    if (ifr) ifr.style.transform = `scale(${f.clientWidth / Number(f.dataset.w)})`;
+  }
+  function fitAll() {
+    document.querySelectorAll(".pf").forEach(f => { scale(f); if (ro) ro.observe(f); });
+    ZK.fit(document);
+  }
+  const status = document.getElementById("status");
+  const board = ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-transfer2-picks", status: s => { status.textContent = s; }, onRender: fitAll });
+  document.querySelector(".themes").addEventListener("click", e => {
+    const b = e.target.closest("[data-show]");
+    if (!b) return;
+    show = b.dataset.show;
+    document.querySelectorAll("[data-show]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    board.render();
+  });
+  fitAll();
+})();
+</script>
+</body>
+</html>

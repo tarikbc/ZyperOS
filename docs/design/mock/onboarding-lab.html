@@ -1,0 +1,354 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ZyperOS Onboarding Choices</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  header { padding-block: 32px 8px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header > svg { width: 70px; height: 74px; }
+  .bar { position: sticky; top: 0; z-index: 2; background: var(--zk-page); padding-block: 12px; border-bottom: 1px solid var(--zk-line); display: grid; gap: 8px; }
+  .bar .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  .bar .zk-mono { margin-right: 4px; align-self: center; }
+  .bar .pad .zk-btn { min-width: 46px; }
+  #status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); align-self: center; }
+  .shots { display: grid; gap: 8px; }
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .flow figure { margin: 0; display: grid; gap: 4px; }
+  .flow figcaption { font: 11px/1.3 var(--zk-f-mono); color: var(--zk-ink-3); text-align: center; }
+  .flow figure.new figcaption { color: var(--zk-hi); }
+  .flow figure.new .zk-frame { box-shadow: 0 0 0 2px var(--zk-hi); }
+  .zk-why b { color: var(--zk-ink); font-weight: 600; }
+
+  /* ---- the steps, in the launcher's units ---- */
+  .zs .mini { position: absolute; border-radius: 14px; background-size: cover; background-position: center; box-shadow: 0 0 0 3px var(--edge); }
+  .zs .shot { position: absolute; inset: 0; background-size: cover; }
+  .zs .pills { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 16px; transform: translateY(-50%); }
+  .zs .pill { height: 64px; padding: 0 30px; border-radius: 32px; background: var(--raised); box-shadow: 0 0 0 3px var(--edge) inset; display: grid; place-items: center; font-size: 37px; color: var(--text-soft); white-space: nowrap; }
+  .zs .pill.on { background: var(--accent); box-shadow: none; color: var(--on-accent); animation: pop 160ms cubic-bezier(.23, 1, .32, 1); }
+  .zs .pill.kept { box-shadow: 0 0 0 3px var(--accent-ink) inset; color: var(--text); }
+  @keyframes pop { from { transform: scale(.92); } to { transform: scale(1); } }
+  .zs .t-title { top: 516px; transform: translateY(-50%); }
+  .zs .t-line { top: 578px; transform: translateY(-50%); }
+  .zs .t-note { top: 624px; transform: translateY(-50%); }
+  .zs .mg { display: inline-block; width: 1.05em; height: 1.05em; vertical-align: -.17em; }
+  .zs .legend2 { position: absolute; right: 24px; top: 724px; transform: translateY(-50%); font-size: 37px; color: var(--text-dim); }
+  .zs .tile { position: absolute; border-radius: 22px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset; display: grid; place-items: center; }
+  .zs .tile.on { box-shadow: 0 0 0 6px var(--accent) inset; }
+  .zs .tile svg { width: 112px; height: 112px; color: var(--text-soft); }
+  .zs .label { position: absolute; transform: translate(-50%, -50%); font-size: 37px; color: var(--text-dim); white-space: nowrap; }
+  .zs .label.on { color: var(--on-accent); background: var(--accent); padding: 4px 22px; border-radius: 26px; }
+  .zs .ring { position: absolute; border-radius: 26px; box-shadow: 0 0 0 6px var(--accent); }
+  .zs .sp { position: absolute; color: var(--text-soft); }
+  .zs .sp .wave { transform-origin: 40% 50%; }
+  .zs .sp.ping .wave { animation: ping 420ms cubic-bezier(.23, 1, .32, 1); }
+  @keyframes ping { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+  .zs .panel2 { position: absolute; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset; }
+  .zs .mrow2 { position: absolute; left: 10px; right: 10px; height: 72px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 49px; color: var(--text-soft); }
+  .zs .mrow2 span { color: var(--text-dim); font-size: 49px; }
+  .zs .mrow2.sel { background: var(--accent); color: var(--on-accent); }
+  .zs .mrow2.sel span { color: var(--on-accent); }
+  .zs .rowlab { position: absolute; font-size: 37px; color: var(--text-dim); transform: translateY(-50%); }
+  .zs .zy { left: 32px; bottom: 16px; }
+  .zs .bubble { bottom: 96px; }
+</style>
+<!--ZYPER-->
+<!-- The onboarding-choices lab (2026-11-06): I asked that the first-launch
+     tutorial ask for the theme, the display mode and the sounds. The home
+     screens and the tutorial frames in img/ are the host launcher's own
+     (`build-native/zyperos --shot F --screen systems --home LAYOUT --theme TH`
+     on a card with GB, GBA, SFC, N64 and PS1, and `--tour STEP MS`), at
+     640 x 480 WebP; they are not kept in the repository. The choice steps
+     themselves are drawn here from DESIGN.md's tokens and 11.10's places. -->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Tutorial: <b>make it yours</b></h1>
+      <p class="zk-lede">I asked that the first start ask which theme, display mode and sounds the player wants. These are three new steps in the tutorial, each with a live preview. A pick is saved at once to the same setting MENU uses, and each step says where to change it later. START: skip still works: a step not reached keeps its default (Light, Spotlight, Wood, Menu Music on).</p>
+      <p class="zk-lede">Try them with the pad below (or the arrow keys and Enter): LEFT and RIGHT look at each choice, A keeps it. The Sounds step plays the launcher's own sounds. Pick one option in each section, and say what to change in the note.</p>
+    </div>
+  </header>
+  <div class="bar">
+    <div class="zk-row" role="group" aria-label="Step shown" id="steps"></div>
+    <div class="zk-row pad" role="group" aria-label="Buttons">
+      <span class="zk-mono">Buttons</span>
+      <button type="button" class="zk-btn" data-key="up" aria-label="Up">▲</button>
+      <button type="button" class="zk-btn" data-key="down" aria-label="Down">▼</button>
+      <button type="button" class="zk-btn" data-key="left" aria-label="Left">◀</button>
+      <button type="button" class="zk-btn" data-key="right" aria-label="Right">▶</button>
+      <button type="button" class="zk-btn" data-key="a">A</button>
+      <span class="zk-mono" style="margin-left:12px">Theme</span>
+      <span id="themes" class="zk-row"></span>
+      <span id="status"></span>
+    </div>
+  </div>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script src="sounds.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* ---- what each step offers ------------------------------------------------- */
+  const CH = {
+    theme:   { names: ["Light", "Dark"], row: "Appearance", title: "Light or dark?", def: 0 },
+    home:    { names: ["Spotlight", "Gallery"], row: "Home Screen", title: "Your home screen", def: 0 },
+    display: { names: ["Aspect", "Integer", "Stretch"], row: "Display Mode", title: "How games fill the screen", def: 0 },
+    sounds:  { names: ["Wood", "Glass", "Bubble", "Off"], row: "UI Sounds", title: "Button sounds", def: 0 },
+    music:   { names: ["On", "Off"], row: "Menu Music", title: "Menu music", def: 0 },
+  };
+  const STEPS = [["theme", "Theme"], ["home", "Home Screen"], ["sounds", "Sounds"], ["music", "Menu Music"]];
+  const S = { step: "theme", f: { theme: 0, home: 0, display: 0, sounds: 0, music: 0 }, kept: {}, reward: -1e9, ping: -1e9, show: "both" };
+  const voice = () => CH.sounds.names[S.f.sounds].toLowerCase();
+
+  /* ---- the launcher's own WAVs (tools/gensounds.py --lab) ----------------------- */
+  function play(name, v) {
+    v = v || voice();
+    const w = window.ZK_SOUNDLAB && ZK_SOUNDLAB.voices[v];
+    if (!w || !w[name]) return;
+    try { const a = new Audio(w[name]); a.play().catch(() => {}); } catch (e) {}
+  }
+
+  /* ---- pieces, in units -------------------------------------------------------- */
+  const MG = `<svg class="mg" viewBox="0 0 24 24" aria-label="MENU"><circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="12" cy="7.3" r="1.55" fill="currentColor"/><circle cx="12" cy="12" r="1.55" fill="currentColor"/><circle cx="12" cy="16.7" r="1.55" fill="currentColor"/></svg>`;
+  const img = (name, th) => `img/${name}-${th}.webp`;
+  function progress(n, cur) {
+    return `<div class="progress">${Array.from({ length: n }, (_, i) => `<i class="${i < cur ? "done" : i === cur ? "now" : ""}"></i>`).join("")}</div>`;
+  }
+  const stage = inner => `<div class="stage">${inner || ""}</div>`;
+  const words = (k, line) => `<div class="t-title">${CH[k].title}</div>
+    <div class="t-line">${line || "Press LEFT or RIGHT to look, A to keep it."}</div>
+    <div class="t-note">Change it later in ${MG} &gt; ${CH[k].row}.</div>`;
+  const legend = `<div class="legend2">START: skip</div>`;
+  function reward(now, th) {
+    if (now - S.reward > 1100) return "";
+    return `<div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <svg class="zy"><use href="#zyper"/></svg><div class="bubble">Saved!</div>`;
+  }
+  function pills(k, y, focusOn = true) {
+    const f = S.f[k];
+    return `<div class="pills" style="top:${y}px">${CH[k].names.map((n, i) =>
+      `<div class="pill ${i === f && focusOn ? "on" : i === f ? "kept" : ""}">${n}</div>`).join("")}</div>`;
+  }
+  /* A speaker, its waves pinging as a sound plays; Off crossed out */
+  function speaker(x, y, size, off, now) {
+    const pinging = now - S.ping < 420;
+    return `<svg class="sp ${pinging ? "ping" : ""}" style="left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 19h7l10-8v26l-10-8H8z" fill="currentColor" stroke="none"/>
+      ${off ? `<path d="M32 18l10 12M42 18L32 30"/>` : `<g class="wave"><path d="M31 18a9 9 0 0 1 0 12"/><path d="M36 13a16 16 0 0 1 0 22"/></g>`}</svg>`;
+  }
+  /* A Game Boy frame in a 4:3 screen, filled the way a display mode fills it */
+  function gameIn(mode, x, y, w, h) {
+    const sw = 640, shh = 480, gw = 160, gh = 144;
+    let dw, dh;
+    if (mode === 2) { dw = sw; dh = shh; } else if (mode === 1) { const k = Math.floor(shh / gh); dw = gw * k; dh = gh * k; } else { dh = shh; dw = shh * gw / gh; }
+    const k = w / sw, gx = x + (sw - dw) / 2 * k, gy = y + (shh - dh) / 2 * k;
+    const px = (dw * k) / 20;
+    let cells = "";
+    const art = ["....................", "....................", "........##..........", ".......####.........", "......##..##........", "....................", "..##..........##....", "..##....##....##....", "....................", "####################", "#..#..#..#..#..#..#.", "####################", "...................."];
+    art.forEach((r, j) => [...r].forEach((c, i) => { if (c === "#") cells += `<rect x="${i}" y="${j * 20 / 18}" width="1" height="${20 / 18}"/>`; }));
+    return `<div class="mini" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:#000"></div>
+      <svg style="position:absolute;left:${gx}px;top:${gy}px;width:${dw * k}px;height:${dh * k}px" viewBox="0 0 20 ${20 * gh / gw}" preserveAspectRatio="none">
+      <rect width="20" height="${20 * gh / gw}" fill="#9bbc0f"/><g fill="#306230">${cells}</g></svg>`;
+  }
+
+  /* What the stage shows for a step, as it is chosen now */
+  function preview(k, th, now, x, y, w, h) {
+    if (k === "theme") return `<div class="mini" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background-image:url(${img("home-spotlight", S.f.theme ? "dark" : "light")})"></div>`;
+    if (k === "home") return `<div class="mini" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background-image:url(${img(S.f.home ? "home-gallery" : "home-spotlight", th)})"></div>`;
+    if (k === "display") return gameIn(S.f.display, x, y, w, h);
+    if (k === "sounds") return speaker(x + w / 2, y + h / 2, 210, S.f.sounds === 3, now);
+    return `<svg class="sp" style="left:${x + w / 2 - 100}px;top:${y + h / 2 - 100}px;width:200px;height:200px" viewBox="0 0 48 48" fill="currentColor"><path d="M18 34a5 5 0 1 1-2-4V11l20-4v22a5 5 0 1 1-2-4V14l-16 3z"/>${S.f.music ? `<path d="M8 8l32 32" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>` : ""}</svg>`;
+  }
+
+  /* ---- the three layouts --------------------------------------------------------
+   * A: the lesson's frame - the preview on the stage, the choices as pills on
+   *    its bottom edge where a lesson's glyph is.
+   * B: the choices side by side as big previews, the focused one ringed.
+   * C: the preview on the stage, and on its edge the very row MENU has. */
+  const NSEG = 13, SEG0 = { theme: 0, home: 1, display: 1, sounds: 2, music: 3 };
+  function stepA(k, th, now) {
+    return progress(NSEG, SEG0[k]) + stage() + preview(k, th, now, 312, 104, 400, 300) + pills(k, 424) + words(k) + legend + reward(now, th);
+  }
+  function stepB(k, th, now) {
+    const n = CH[k].names.length, f = S.f[k];
+    let out = progress(NSEG, SEG0[k]);
+    if (k === "theme" || k === "home" || k === "music" || k === "display") {
+      const w = n === 3 ? 280 : 380, h = w * .75, gap = n === 3 ? 40 : 56, x0 = 512 - (n * w + (n - 1) * gap) / 2, y = 96;
+      CH[k].names.forEach((name, i) => {
+        const x = x0 + i * (w + gap);
+        const saved = S.f[k];
+        S.f[k] = i;
+        const pv = k === "theme" ? `<div class="mini" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background-image:url(${img("home-spotlight", i ? "dark" : "light")})"></div>`
+                 : preview(k, th, now, x, y, w, h);
+        S.f[k] = saved;
+        out += (k === "music" ? `<div class="tile" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"></div>` : "") + pv;
+        if (i === f) out += `<div class="ring" style="left:${x - 10}px;top:${y - 10}px;width:${w + 20}px;height:${h + 20}px"></div>`;
+        out += `<div class="label ${i === f ? "on" : ""}" style="left:${x + w / 2}px;top:${y + h + 48}px">${name}</div>`;
+      });
+    } else {
+      const w = 180, gap = 32, x0 = 512 - (n * w + (n - 1) * gap) / 2, y = 130;
+      CH[k].names.forEach((name, i) => {
+        const x = x0 + i * (w + gap);
+        out += `<div class="tile ${i === f ? "on" : ""}" style="left:${x}px;top:${y}px;width:${w}px;height:${w}px">${speaker(0, 0, 0, i === 3, 0).replace(/style="[^"]*"/, 'style="position:static;width:112px;height:112px"')}</div>`;
+        out += `<div class="label ${i === f ? "on" : ""}" style="left:${x + w / 2}px;top:${y + w + 52}px">${name}</div>`;
+      });
+    }
+    return out + words(k) + legend + reward(now, th);
+  }
+  function stepC(k, th, now) {
+    const v = CH[k].names[S.f[k]];
+    return progress(NSEG, SEG0[k]) + stage() + preview(k, th, now, 312, 100, 360 * 4 / 3 * .75 + 40, 270)
+      + `<div class="panel2" style="left:212px;top:378px;width:600px;height:92px"><div class="mrow2 sel" style="top:10px">${CH[k].row}<span>‹ ${v} ›</span></div></div>`
+      + words(k, "Press LEFT or RIGHT to change it, A to keep it.") + legend + reward(now, th);
+  }
+  const LAYOUT = { a: stepA, b: stepB, c: stepC };
+
+  /* Sounds with Menu Music: a second row of pills on the stage, UP and DOWN
+   * between them; or its own step; or not asked. Drawn with layout A. */
+  function soundsTwoRows(th, now) {
+    const row = S.step === "music" ? 1 : 0;
+    return progress(12, 2) + stage(
+      `<div class="rowlab" style="left:40px;top:100px">UI Sounds</div><div class="rowlab" style="left:40px;top:250px">Menu Music</div>`)
+      + `<div style="position:absolute;left:172px;top:84px;width:680px;height:340px">${pills("sounds", 150, row === 0)}${pills("music", 300, row === 1)}</div>`
+      + `<div class="t-title">Sounds</div><div class="t-line">LEFT or RIGHT to look, UP or DOWN for a row.</div>
+         <div class="t-note">Change them later in ${MG}, as UI Sounds and Menu Music.</div>` + legend + reward(now, th);
+  }
+
+  /* ---- where the steps go: the flow, frame by frame ------------------------------ */
+  function flow(where, th) {
+    const real = (name, cap) => ({ html: ZK.screen(th, `<div class="shot" style="background-image:url(${img(name, th)})"></div>`), cap });
+    const made = (k, cap) => ({ html: ZK.screen(k === "theme" ? (S.f.theme ? "dark" : "light") : th, stepA(k, th, -1e9)), cap, isNew: true });
+    const choices = [made("theme", "Theme"), made("home", "Home Screen"), made("sounds", "Sounds")];
+    const lessons = [real("tour-move", "10 lessons")];
+    const seq = where === "before"
+      ? [real("tour-welcome", "Welcome"), ...choices, ...lessons, real("tour-finish", "Finish")]
+      : [real("tour-welcome", "Welcome"), ...lessons, ...choices, real("tour-finish", "Finish")];
+    return `<div class="flow">${seq.map(s => `<figure class="${s.isNew ? "new" : ""}">${s.html}<figcaption>${s.cap}</figcaption></figure>`).join("")}</div>`;
+  }
+
+  /* ---- the board ------------------------------------------------------------------ */
+  const live = (dec, opt) => `<div class="live" data-dec="${dec}" data-opt="${opt}"></div>`;
+  const themes = () => S.show === "both" ? ["light", "dark"] : [S.show];
+  function paintOne(el, now) {
+    const { dec, opt } = el.dataset;
+    let html = "";
+    if (dec === "where") {
+      html = flow(opt, S.show === "dark" ? "dark" : "light");
+    } else if (dec === "layout") {
+      const k = S.step === "music" ? "sounds" : S.step;
+      const ths = k === "theme" ? [S.f.theme ? "dark" : "light"] : themes();
+      html = `<div class="shots">${ths.map(th => ZK.screen(th, LAYOUT[opt](k, th, now))).join("")}</div>`;
+    } else if (dec === "display") {
+      const k = opt === "home" ? "home" : "display";
+      html = `<div class="shots">${themes().map(th => ZK.screen(th, stepA(k, th, now))).join("")}</div>`;
+    } else if (dec === "music") {
+      html = `<div class="shots">${themes().map(th => ZK.screen(th,
+        opt === "row" ? soundsTwoRows(th, now) : opt === "step" ? stepA(S.step === "music" ? "music" : "sounds", th, now) : stepA("sounds", th, now))).join("")}</div>`;
+    }
+    el.innerHTML = html;
+  }
+  function paint() {
+    const now = performance.now();
+    document.querySelectorAll(".live").forEach(el => paintOne(el, now));
+    ZK.fit(document);
+  }
+
+  const board = ZK.decisions(document.getElementById("board"), [
+    {
+      key: "where",
+      title: "Where the three steps go",
+      why: "The welcome comes first either way, and the finish last. <b>Before the lessons</b>: the player makes it theirs first, so the ten lessons are drawn in the theme they picked and heard in their sounds; Zyper's welcome says \"First, make it yours.\" <b>After the lessons</b>: the player has learned the D-pad and A before choosing anything, and the finish follows the last choice. The progress strip at the top grows from 10 to 13 segments either way, the choices in their place in it. On the Pixel 2 the choice steps are centered, as on the Brick: the handheld beside the lessons is for buttons, and these steps teach none.",
+      options: {
+        before: { name: "Before the lessons", tag: "suggested", blurb: "Welcome, Theme, Home Screen, Sounds, then the lessons and the finish.", draw: () => live("where", "before") },
+        after: { name: "After the lessons", blurb: "Welcome, the lessons, then Theme, Home Screen, Sounds, and the finish.", draw: () => live("where", "after") },
+      },
+    },
+    {
+      key: "layout",
+      title: "How a choice step looks",
+      why: "Use the step buttons above to see each step, and LEFT and RIGHT to look. A moves the preview at once: the theme step turns the whole screen in its new theme, the home screen preview is the real Spotlight or Gallery, and the sounds step plays the voice it lands on (Off plays nothing). A keeps the pick, saved at once to MENU's own setting, with the lesson's reward: the check and Zyper's \"Saved!\". START skips from here. Each preview is drawn once into a kept texture, so every step runs at the panel's 60 fps.",
+      options: {
+        a: { name: "Preview and pills", tag: "suggested", blurb: "The lesson's frame: the preview on the stage, the choices as pills on its edge where a lesson's button is, the focused one lime.", draw: () => live("layout", "a") },
+        b: { name: "Side by side", blurb: "The choices themselves are the previews, side by side, the focused one ringed in lime with its name under it. The theme step shows Light and Dark at once.", draw: () => live("layout", "b") },
+        c: { name: "The MENU row", blurb: "The preview on the stage, and on its edge a piece of MENU: the same row the player will find there later, its value stepped with LEFT and RIGHT.", draw: () => live("layout", "c") },
+      },
+    },
+    {
+      key: "display",
+      title: "Which \"display mode\"",
+      why: "Two settings could be meant. <b>Home Screen</b> (MENU &gt; Home Screen) is how the systems are laid out: Spotlight or Gallery, one setting for the handheld. <b>Display Mode</b> is a row in each system's own menu: how a game fills the screen (Aspect, Integer, Stretch and four more), set per system today, so a first-start pick would set it for every system at once. Drawn in layout A; use the Home Screen step and LEFT and RIGHT.",
+      options: {
+        home: { name: "Home Screen", tag: "suggested", blurb: "Spotlight or Gallery, with the real home screen as the preview. It is what the player sees first and most.", draw: () => live("display", "home") },
+        games: { name: "Games' Display Mode", blurb: "Aspect, Integer or Stretch for every system at once, previewed on a Game Boy frame. Each system's menu can still change its own.", draw: () => live("display", "games") },
+      },
+    },
+    {
+      key: "music",
+      title: "Menu Music",
+      why: "Menu Music (MENU &gt; Menu Music, on by default) plays the card's own tracks from its BGM folder on the shelf. On a card with no tracks there is nothing to hear, and the step or row is left out. Drawn in layout A; the step buttons Sounds and Menu Music move between the rows or the steps.",
+      options: {
+        row: { name: "A second row on Sounds", tag: "suggested", blurb: "One Sounds step with two rows of pills on the stage, UI Sounds and Menu Music; UP and DOWN move between them. Three steps in all.", draw: () => live("music", "row") },
+        step: { name: "Its own step", blurb: "A fourth step after Sounds, On or Off, playing the first track while On is focused.", draw: () => live("music", "step") },
+        none: { name: "Not asked", blurb: "Only the UI sounds are asked; Menu Music stays on, its default, and MENU changes it.", draw: () => live("music", "none") },
+      },
+    },
+  ], {
+    storeKey: "zk-onboarding",
+    status: s => { const st = document.getElementById("status"); if (st) st.textContent = s; },
+    onRender: () => paint(),
+  });
+
+  /* ---- the pad ---------------------------------------------------------------------- */
+  function renderBar() {
+    document.getElementById("steps").innerHTML = `<span class="zk-mono">Step</span>` + STEPS.map(([k, name]) =>
+      `<button type="button" class="zk-btn" data-step="${k}" aria-pressed="${S.step === k}">${name}</button>`).join("");
+    document.getElementById("themes").innerHTML = [["both", "Both"], ["light", "Light"], ["dark", "Dark"]].map(([k, n]) =>
+      `<button type="button" class="zk-btn" data-show="${k}" aria-pressed="${S.show === k}">${n}</button>`).join("");
+  }
+  function press(key) {
+    const k = S.step;
+    if (key === "up" || key === "down") {
+      S.step = k === "music" ? "sounds" : k === "sounds" ? "music" : k;
+      play("move");
+    } else if (key === "left" || key === "right") {
+      const n = CH[k].names.length, d = key === "right" ? 1 : -1, was = S.f[k];
+      S.f[k] = (was + d + n) % n;
+      if (k === "home") S.f.display = (S.f.display + d + 3) % 3;
+      const wrapped = (d > 0 && S.f[k] < was) || (d < 0 && S.f[k] > was);
+      if (k === "sounds") { S.ping = performance.now(); if (S.f.sounds !== 3) play(wrapped ? "edge" : "move"); }
+      else play(wrapped ? "edge" : "move");
+    } else if (key === "a") {
+      S.kept[k] = S.f[k];
+      S.reward = performance.now();
+      if (S.f.sounds !== 3) play("reward");
+      const order = ["theme", "home", "sounds", "music"];
+      setTimeout(() => { S.step = order[(order.indexOf(S.step) + 1) % order.length]; renderBar(); paint(); }, 1100);
+      setTimeout(paint, 1120);
+    }
+    renderBar();
+    paint();
+    if (k === "sounds") setTimeout(paint, 440);
+  }
+  document.querySelector(".bar").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.step) { S.step = b.dataset.step; renderBar(); paint(); }
+    else if (b.dataset.show) { S.show = b.dataset.show; renderBar(); paint(); }
+    else if (b.dataset.key) press(b.dataset.key);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.target.closest && e.target.closest("textarea, input")) return;
+    const key = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "a" }[e.key];
+    if (!key) return;
+    e.preventDefault();
+    press(key);
+  });
+  renderBar();
+  paint();
+})();
+</script>

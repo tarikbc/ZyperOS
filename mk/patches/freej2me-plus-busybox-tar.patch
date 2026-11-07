@@ -1,0 +1,21 @@
+FreeJ2ME-Plus's core unpacks its Java runtime, a .tar.gz on Linux, with the
+system's tar and "-xf", which leaves GNU tar and bsdtar to see the gzip on
+their own. BusyBox tar does not: on plastron (the GKD Pixel 2's system) it
+answered "invalid tar magic" and the game never started. "-xzf" says it, and
+every tar the core can meet off Windows takes it; the archive is always a
+.tar.gz there (RUNTIME_ARCHIVE_EXT).
+
+For ZyperOS, mk/build-freej2me.sh applies it; GPL-3.0 as the code it
+changes.
+
+--- a/src/libretro/bundled_jre.c
++++ b/src/libretro/bundled_jre.c
+@@ -195,7 +195,7 @@
+ 
+ 	if (pid == 0)
+ 	{
+-		execlp("tar", "tar", "-xf", archive, "-C", dest, (char*)NULL);
++		execlp("tar", "tar", "-xzf", archive, "-C", dest, (char*)NULL);
+ 		_exit(127);
+ 	}
+ 	if (pid < 0 || waitpid(pid, &status, 0) < 0)

@@ -1,0 +1,55 @@
+# The folders of my ROGUE OS card (GKD Pixel 2, 128 GB) that hold files,
+# from a read-only listing of its roms/ folder on 2026-11-06: folder, files,
+# MB. Dot files (macOS's ._ shadows) are not counted. tools/from-rogue-check.sh
+# fails when one of these folders has no row in tools/from-rogue.sh's table,
+# so nothing on this card can be left out without the table saying why.
+3do	4	56
+arcade	480	1318
+atari2600	1097	211
+atari5200	201	49
+atari7800	131	6
+atarilynx	51	8
+BGM	330	455
+bios	6146	581
+dreamcast	13	901
+fbneo	1636	6488
+gameandwatch	111	50
+gamegear	663	133
+gb	2482	263
+gba	441	3769
+gbc	1581	742
+hbmame	213	168
+j2me	11	0
+mame	2314	1347
+mastersystem	255	62
+megadrive	2488	1213
+msx2	1410	90
+music	11	310
+n64	301	127
+naomi	100	1654
+nds	61	864
+neocd	8	1103
+nes	2691	305
+ngp	19	6
+ngpc	58	63
+openbor	35	2014
+pcengine	689	1210
+pcenginecd	30	499
+pico-8	392	19
+pokemini	23	3
+ports	12460	6215
+psp	88	8650
+psx	117	9041
+saturn	8	1222
+saves	42	3
+savestates	73	106
+screenshots	2	0
+sega32x	41	65
+segacd	23	2365
+sfc	2303	1137
+varcade	616	891
+vectrex	53	1
+virtualboy	52	34
+wifi	1	0
+wonderswan	120	79
+wonderswancolor	106	93

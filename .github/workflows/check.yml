@@ -1,0 +1,45 @@
+# make check on every pull request and on main: the whole offline suite
+# (Makefile CHECKS, Diatom's and the simulator's included) on macOS, the system
+# ZyperOS is written on. A failure keeps build-native/check-logs as an artifact:
+# one log a check, the failing one printed in the job's output as well.
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SDL2 for the host launcher and Diatom's desktop port
+        run: brew install sdl2 sdl2_image sdl2_ttf
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pillow for the image checks
+        run: python -m pip install Pillow
+
+      - name: make check
+        run: make check
+
+      - name: Keep the logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-logs
+          path: build-native/check-logs/

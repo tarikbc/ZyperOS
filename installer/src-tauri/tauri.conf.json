@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ZyperOS Installer",
+  "identifier": "com.tarikbc.zyperos-installer",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "ZyperOS Installer",
+        "width": 780,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 620
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Tarik Caramanico",
+    "copyright": "Copyright (c) 2026 Tarik Caramanico. Built on TortOS Installer, copyright (c) 2026 Eric Reinsmidt.",
+    "category": "Utility",
+    "homepage": "https://github.com/tarikbc/ZyperOS/tree/main/installer",
+    "shortDescription": "Puts ZyperOS on a microSD card for the GKD Pixel 2 or the TrimUI Brick",
+    "longDescription": "Installs ZyperOS on a microSD card for the GKD Pixel 2 or the TrimUI Brick, or updates a card that already has it without touching the games, music and saves on it.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "pkexec | policykit-1"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "polkit"
+        ]
+      }
+    }
+  }
+}

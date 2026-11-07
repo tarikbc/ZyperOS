@@ -1,0 +1,18 @@
+flycast2021 (metallic77/flycast 603814c, ROCKNIX's flycast2021-lr pin):
+the fork comments out PostProcessor::SelectFramebuffer's body, and the
+comment swallows PostProcessor::Render's whole definition, so a GLES2 build
+fails to link (gles.cpp still calls it when the PowerVR2 filter option is
+on). An empty Render links it; with the filter on, nothing is
+post-processed. The filter is off by default.
+
+--- a/core/rend/gles/postprocess.cpp
++++ b/core/rend/gles/postprocess.cpp
+@@ -353,3 +353,8 @@
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);*/
+ }
++
++// ZyperOS: this fork comments out SelectFramebuffer's body, and Render's whole
++// definition went inside that comment, so a GLES2 build failed to link. The
++// PowerVR2 filter that calls it is off; with it on, nothing is post-processed.
++void PostProcessor::Render(GLuint output_fbo) {}

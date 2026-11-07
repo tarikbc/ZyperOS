@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Transfer lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; padding-block: 10px 0; align-items: center; }
+  .themes .zk-btn[aria-pressed="true"] { background: var(--zk-hi); color: var(--zk-hi-ink); border-color: var(--zk-hi); }
+  #status { margin-left: 6px; }
+  /* Wide decisions: one option per row, desktop and phone side by side. */
+  #layout .zk-grid { grid-template-columns: 1fr; }
+  .duo { display: grid; grid-template-columns: minmax(0, 3.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .trio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .stack { display: grid; gap: 12px; }
+  @media (max-width: 760px) { .duo { grid-template-columns: 1fr; } .duo .fr.phone { width: 70%; justify-self: center; } }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 6px 2px 0; }
+
+  /* ---- device frames ------------------------------------------------ */
+  .fr { position: relative; width: 100%; overflow: hidden; }
+  .fr > .vp { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .fr.desk { aspect-ratio: 1280 / 840; border-radius: 10px; background: #2a2d2b; box-shadow: 0 0 0 1px #000 inset; }
+  .fr.desk > .vp { width: 1280px; height: 840px; }
+  .fr.phone { aspect-ratio: 390 / 844; border-radius: 30px; background: #000; box-shadow: 0 0 0 1px #3a3e3c; }
+  .fr.phone > .vp { width: 390px; height: 844px; }
+  .chrome { position: absolute; left: 0; right: 0; top: 0; height: 40px; background: #2a2d2b; display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+  .chrome i { width: 12px; height: 12px; border-radius: 50%; background: #4a4e4c; }
+  .chrome span { margin-left: 70px; flex: 0 1 520px; height: 26px; border-radius: 7px; background: #1d201e; color: #a9aba5; font: 13px/26px "Lexend", sans-serif; padding: 0 12px; }
+  .desk .wx { top: 40px; }
+  .phone .wx { border-radius: 30px; }
+
+  /* ---- the page itself, in its own pixels ---------------------------
+   * Colors are DESIGN.md 3's roles. Radii are DESIGN.md 6's at the Pixel 2's
+   * 0.625: panel 18, card 14, row 9, key 8, chip 5. Type is Lexend 400 and
+   * 600 on the web's own scale with DESIGN.md 4's ratios: menu 16, label 18,
+   * title 20, meta 13.5. Motion is DESIGN.md 8's: quick 120 out, move 160 out. */
+  .wx { position: absolute; inset: 0; background: var(--ground); color: var(--text); font: 16px/1.45 "Lexend", system-ui, sans-serif; overflow: hidden; }
+  .wx * { box-sizing: border-box; }
+  .wx .z { width: 34px; height: 36px; flex: none; }
+  .wx .ico { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .wx .btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 9px; background: var(--raised); color: var(--text); border: 1px solid var(--edge); font-size: 15px; white-space: nowrap; }
+  .wx .btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .wx .btn.quiet { background: transparent; border-color: transparent; color: var(--text-soft); }
+  .wx .brand { display: flex; align-items: center; gap: 10px; }
+  .wx .brand b { display: block; font-weight: 600; font-size: 18px; line-height: 1.1; }
+  .wx .brand span { display: block; font-size: 13.5px; color: var(--text-dim); line-height: 1.2; }
+  .wx .crumbs { display: flex; align-items: baseline; gap: 8px; font-size: 16px; color: var(--text-dim); min-width: 0; flex-wrap: wrap; }
+  .wx .crumbs a { color: var(--text-soft); }
+  .wx .crumbs b { color: var(--text); font-weight: 600; font-size: 20px; }
+  .wx .panel { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 6px; }
+  .wx .list { list-style: none; margin: 0; padding: 0; }
+  .wx .row { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 8px 12px; border-radius: 9px; position: relative; }
+  .wx .row + .row::before { content: ""; position: absolute; left: 12px; right: 12px; top: 0; height: 1px; background: var(--edge); }
+  .wx .row.focus { background: var(--accent); color: var(--on-accent); }
+  .wx .row.focus::before, .wx .row.focus + .row::before { opacity: 0; }
+  .wx .row.focus .size, .wx .row.focus .more { color: var(--on-accent); opacity: .72; }
+  .wx .row.hover { background: var(--raised); }
+  .wx .row.hover::before, .wx .row.hover + .row::before { opacity: 0; }
+  .wx .row .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .wx .row .size { color: var(--text-dim); font-size: 13.5px; white-space: nowrap; }
+  .wx .row .more { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; color: var(--text-dim); flex: none; }
+  .wx .row .chev { color: var(--text-dim); font-size: 20px; }
+  .wx .cov { width: 34px; height: 46px; border-radius: 4px; flex: none; position: relative; overflow: hidden; }
+  .wx .cov::after { content: attr(data-i); position: absolute; inset: auto 0 4px; text-align: center; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.9); }
+  .wx .band { width: 6px; height: 28px; border-radius: 3px; flex: none; margin: 0 8px 0 4px; }
+  .wx .row.w { flex-wrap: wrap; row-gap: 4px; }
+  .wx .row.w .wline { flex-basis: 100%; display: flex; align-items: center; gap: 10px; padding-left: 48px; }
+  .wx .row.w .wline .words { margin-left: auto; }
+  .wx .words { display: flex; gap: 4px; }
+  .wx .words span { font-size: 14px; color: var(--text-dim); padding: 7px 9px; border-radius: 8px; border: 1px solid var(--edge); }
+  .wx .words span.danger { color: var(--warning); }
+  .wx .check { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--edge); flex: none; display: grid; place-items: center; }
+  .wx .row.sel { background: var(--raised); }
+  .wx .row.sel::before, .wx .row.sel + .row::before { opacity: 0; }
+  .wx .row.sel .check { background: var(--accent); border-color: var(--accent); }
+  .wx .bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .wx .bar b { display: block; height: 100%; border-radius: 3px; background: var(--accent-ink); }
+  .wx .job { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 13.5px; }
+  .wx .job .n { color: var(--text-soft); overflow-wrap: anywhere; }
+  .wx .job .p { color: var(--text-dim); }
+  .wx .job .bar { grid-column: 1 / -1; }
+  .wx .job.ok .p { color: var(--accent-ink); }
+  .wx h5 { margin: 0 0 10px; font-size: 13.5px; font-weight: 600; color: var(--text-soft); }
+  .wx .quietlinks { display: grid; gap: 4px; font-size: 13.5px; }
+  .wx .quietlinks a { color: var(--text-soft); display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 9px; }
+
+  /* sidebar */
+  .wx.sb:not(.ph) { display: grid; grid-template-columns: 264px 1fr; }
+  .wx.sb aside { background: var(--surface); border-right: 1px solid var(--edge); padding: 20px 14px; display: flex; flex-direction: column; gap: 22px; }
+  .wx.sb aside .brand { padding: 0 8px; }
+  .wx .places { display: grid; gap: 2px; }
+  .wx .places a { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 9px; color: var(--text-soft); }
+  .wx .places a .ico { color: var(--text-dim); }
+  .wx .places a.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .wx .places a.on .ico { color: var(--on-accent); }
+  .wx .xfer { margin-top: auto; background: var(--ground); border: 1px solid var(--edge); border-radius: 14px; padding: 14px; display: grid; gap: 12px; }
+  .wx.sb main { padding: 26px 36px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .wx .head { display: flex; align-items: center; gap: 16px; }
+  .wx .head .crumbs { flex: 1; }
+  .wx .acts { display: flex; gap: 8px; }
+  .wx .hint { margin: 0; text-align: center; color: var(--text-dim); font-size: 13.5px; }
+
+  /* column */
+  .wx.col .top { height: 72px; display: flex; align-items: center; gap: 16px; padding: 0 max(24px, calc((100% - 920px) / 2)); border-bottom: 1px solid var(--edge); background: var(--ground); }
+  .wx.col .top .brand { flex: 1; }
+  .wx.col .body { max-width: 920px; margin: 0 auto; padding: 24px 24px 0; display: grid; gap: 16px; }
+  .wx.col .tray { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--edge); padding: 12px max(24px, calc((100% - 920px) / 2)); display: grid; gap: 10px; }
+
+  /* shelf */
+  .wx.sh .top { height: 72px; display: flex; align-items: center; gap: 22px; padding: 0 32px; border-bottom: 1px solid var(--edge); }
+  .wx.sh .tabs { display: flex; gap: 4px; flex: 1; }
+  .wx.sh .tabs a { padding: 8px 14px; border-radius: 9px; color: var(--text-soft); font-size: 15px; }
+  .wx.sh .tabs a.on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .wx.sh .body { padding: 22px 32px; display: grid; gap: 18px; }
+  .wx .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 22px 20px; }
+  .wx .tile { display: grid; gap: 8px; align-content: start; }
+  .wx .tile .art { aspect-ratio: 3 / 4; border-radius: 14px; position: relative; overflow: hidden; }
+  .wx .tile .art::after { content: attr(data-i); position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-weight: 600; font-size: 22px; color: rgba(255,255,255,.9); }
+  .wx .tile .t { font-size: 14px; line-height: 1.3; color: var(--text-soft); }
+  .wx .tile .s { font-size: 12.5px; color: var(--text-dim); }
+  .wx .tile.focus .art { box-shadow: var(--focus-lift); transform: scale(1.04); }
+  .wx .tile.focus .t { color: var(--text); font-weight: 600; }
+  .wx .corner { position: absolute; right: 24px; bottom: 24px; width: 320px; background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 16px; display: grid; gap: 12px; box-shadow: var(--panel-lift); }
+  .wx .systiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .wx .systile { background: var(--surface); border-radius: 14px; overflow: hidden; min-height: 92px; display: grid; place-items: center; text-align: center; padding: 16px 10px 10px; font-weight: 600; font-size: 15px; position: relative; border: 1px solid var(--edge); }
+  .wx .systile::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--b); }
+
+  /* phone */
+  .wx.ph { padding-top: 44px; }
+  .wx .sbar { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 14px; font-weight: 600; }
+  .wx .sbar i { width: 64px; height: 12px; border-radius: 6px; background: var(--text); opacity: .85; font-style: normal; }
+  .wx .home { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--text); opacity: .8; }
+  .wx .ptop { display: flex; align-items: center; gap: 10px; padding: 10px 16px 6px; }
+  .wx .ptop .t { flex: 1; font-weight: 600; font-size: 20px; }
+  .wx .ptop .z { width: 28px; height: 30px; }
+  .wx .roundbtn { width: 40px; height: 40px; border-radius: 9px; display: grid; place-items: center; color: var(--text-soft); background: var(--raised); }
+  .wx .chips { display: flex; gap: 8px; padding: 8px 16px 12px; overflow: hidden; }
+  .wx .chip { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--edge); display: flex; align-items: center; font-size: 14.5px; color: var(--text-soft); }
+  .wx .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .wx .pbody { padding: 0 12px; display: grid; gap: 12px; }
+  .wx .pcrumbs { padding: 4px 16px 10px; }
+  .wx .fab { position: absolute; right: 16px; bottom: 92px; height: 52px; padding: 0 20px; border-radius: 14px; background: var(--accent); color: var(--on-accent); font-weight: 600; display: flex; gap: 8px; align-items: center; box-shadow: var(--small-lift); }
+  .wx .mini { position: absolute; left: 12px; right: 12px; bottom: 24px; background: var(--surface); border: 1px solid var(--edge); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; font-size: 13.5px; box-shadow: var(--small-lift); }
+  .wx .mini .top2 { display: flex; justify-content: space-between; color: var(--text-soft); }
+  .wx .scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) var(--scrim-menu), transparent); }
+  .wx .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 18px 18px 0 0; padding: 10px 12px 34px; box-shadow: 0 0 0 1px var(--edge); }
+  .wx .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--track); margin: 0 auto 12px; }
+  .wx .sheet .who { padding: 4px 12px 12px; color: var(--text-dim); font-size: 13.5px; overflow-wrap: anywhere; }
+  .wx .sheet .opt { display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 12px; border-radius: 9px; color: var(--text-soft); }
+  .wx .sheet .opt.focus { background: var(--accent); color: var(--on-accent); }
+  .wx .sheet .opt.danger { color: var(--warning); }
+  .wx .selbar { position: absolute; left: 12px; right: 12px; bottom: 24px; background: var(--surface); border: 1px solid var(--edge); border-radius: 14px; padding: 8px 8px 8px 16px; display: flex; align-items: center; gap: 6px; box-shadow: var(--small-lift); }
+  .wx .selbar .n { flex: 1; font-weight: 600; font-size: 15px; }
+  .wx .selbar .btn { height: 38px; padding: 0 12px; font-size: 14px; }
+  .wx .selbar .btn.danger { color: var(--warning); }
+
+  /* gate */
+  .wx .gate { position: absolute; inset: 44px 0 0; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .wx .gate .card { width: 100%; background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 28px 22px 24px; text-align: center; box-shadow: var(--panel-lift); }
+  .wx .gate .zbig { width: 74px; height: 78px; margin: 0 auto 8px; display: block; transform-origin: 50% 60%; filter: var(--zyper-lift); }
+  .wx .gate .zbig.tilt { transform: rotate(-18deg); }
+  .wx .gate h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  .wx .gate p { margin: 0 0 22px; color: var(--text-dim); font-size: 14.5px; }
+  .wx .field { display: flex; gap: 10px; }
+  .wx .field .in { flex: 1; height: 56px; border-radius: 8px; background: var(--ground); border: 1px solid var(--edge); display: grid; place-items: center; font-size: 28px; letter-spacing: .5em; text-indent: .5em; }
+  .wx .field .btn { height: 56px; }
+  .wx .boxes { display: flex; gap: 10px; justify-content: center; }
+  .wx .boxes span { width: 58px; height: 68px; border-radius: 8px; background: var(--ground); border: 1px solid var(--edge); display: grid; place-items: center; font-size: 30px; font-weight: 600; }
+  .wx .boxes span.at { border: 2px solid var(--accent-ink); }
+  .wx .boxes.bad span { border: 2px solid var(--warning); color: var(--warning); }
+  .wx .msg { margin: 16px 0 0; font-size: 14.5px; color: var(--warning); min-height: 21px; }
+  .wx .msg.ok { color: var(--text-dim); }
+
+  /* ssh */
+  .term { background: #0c0d0c; color: #d8d6cc; border-radius: 10px; padding: 14px 16px; font: 13px/1.6 "IBM Plex Mono", ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 0 0 1px #2c302e; }
+  .term .dim { color: #8a8d88; }
+  .term .ok { color: #bef23c; }
+  .sshcard { border-radius: 10px; overflow: hidden; }
+  .sshcard .wx { position: relative; inset: auto; padding: 16px; }
+  .sshcard h6 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .sshcard .wx p { margin: 0 0 12px; color: var(--text-dim); font-size: 13.5px; }
+  .sshcard code { font: 13px "IBM Plex Mono", monospace; background: var(--ground); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text); }
+  .sshcard code span { color: var(--text-dim); font-family: "Lexend", sans-serif; font-size: 13px; }
+  .sshcard .keyrow { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13.5px; color: var(--text-soft); }
+  .sshcard .keyrow .k { flex: 1; overflow-wrap: anywhere; font: 12.5px "IBM Plex Mono", monospace; }
+  .sshcard .keyrow .btn { height: 32px; padding: 0 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">File Transfer <b>lab</b></h1>
+      <p class="zk-lede">The web page of Wi-Fi File Transfer and USB File Transfer, redrawn from DESIGN.md: Lexend, the two themes, lime as the focus fill, soft corners. And SSH over the USB cable. Pick one option in each section. Add a note if you want a change.</p>
+      <div class="themes" role="group" aria-label="Themes shown">
+        <button type="button" class="zk-btn" data-show="mixed" aria-pressed="true">Desktop Beard, phone Salt &amp; Pepper</button>
+        <button type="button" class="zk-btn" data-show="light" aria-pressed="false">All Beard</button>
+        <button type="button" class="zk-btn" data-show="dark" aria-pressed="false">All Salt &amp; Pepper</button>
+        <span id="status" class="zk-mono"></span>
+      </div>
+    </div>
+  </header>
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+  const T = ZK.T;
+  let show = "mixed";
+  const themeFor = kind => show === "mixed" ? (kind === "desk" ? "light" : "dark") : show;
+
+  /* The page's colors: DESIGN.md 3's roles for the theme, and its lifts. */
+  function vars(th) {
+    const c = T.themes[th].color, dark = th === "dark";
+    const v = Object.entries(c).map(([k, x]) => `--${k}:${x}`);
+    v.push(`--scrim-menu:${Math.round(T.themes[th].scrim.menu * 100)}%`);
+    v.push(`--panel-lift:${dark ? "0 0 60px color-mix(in srgb, var(--text-dim) 6%, transparent)" : "0 24px 64px color-mix(in srgb, var(--ink) 18%, transparent)"}`);
+    v.push(`--small-lift:${dark ? "0 0 0 1px var(--edge)" : "0 8px 20px color-mix(in srgb, var(--ink) 18%, transparent)"}`);
+    v.push(`--focus-lift:${dark ? "0 0 40px color-mix(in srgb, var(--sysc, #816eba) 55%, transparent)" : "0 18px 48px color-mix(in srgb, var(--ink) 22%, transparent)"}`);
+    v.push(`--zyper-lift:${dark ? "none" : "drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent))"}`);
+    return v.join(";");
+  }
+  /* A system's color as a mark: a quarter toward text on Beard (DESIGN.md 3.3). */
+  const mark = (th, hex) => th === "dark" ? `#${hex}` : `color-mix(in srgb, #${hex} 75%, ${T.themes.light.color.text})`;
+
+  const desk = (th, cls, html) => `<div class="fr desk"><div class="vp"><div class="chrome"><i></i><i></i><i></i><span>10.42.0.1</span></div><div class="wx ${cls}" style="${vars(th)}">${html}</div></div></div>`;
+  const phone = (th, cls, html) => `<div class="fr phone"><div class="vp"><div class="wx ph ${cls}" style="${vars(th)}"><div class="sbar">10:08<i></i></div>${html}<div class="home"></div></div></div></div>`;
+
+  const I = {
+    roms: `<svg class="ico" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 17h3"/></svg>`,
+    music: `<svg class="ico" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>`,
+    books: `<svg class="ico" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 1h13v-3"/></svg>`,
+    bios: `<svg class="ico" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>`,
+    saves: `<svg class="ico" viewBox="0 0 24 24"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>`,
+    states: `<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+    up: `<svg class="ico" viewBox="0 0 24 24"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>`,
+    folder: `<svg class="ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></svg>`,
+    upfolder: `<svg class="ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 16v-5M9.5 13.5 12 11l2.5 2.5"/></svg>`,
+    dots: `<svg class="ico" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/></svg>`,
+    down: `<svg class="ico" viewBox="0 0 24 24"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>`,
+    pen: `<svg class="ico" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>`,
+    bin: `<svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M10 3h4M6 7l1 13h10l1-13"/></svg>`,
+    art: `<svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>`,
+    logs: `<svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg>`,
+    tick: `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="var(--on-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  };
+  const zy = (cls = "z") => `<svg class="${cls}"><use href="#zyper"/></svg>`;
+  const PLACES = [["ROMs", "roms"], ["Music", "music"], ["Audiobooks", "books"], ["BIOS", "bios"], ["Saves", "saves"], ["Save States", "states"]];
+  const SYSTEMS = [["Atari 2600", "D9822B"], ["Dreamcast", "F26522"], ["Game Boy", "7E9B47"], ["Game Boy Advance", "6B5BD6"], ["Game Boy Color", "E0B23A"], ["Genesis", "3E82D6"], ["NES", "C4443A"], ["Nintendo 64", "2E8B3E"], ["Nintendo DS", "B8BEC9"], ["PlayStation", "B4B1AA"], ["SNES", "816EBA"]];
+  const GAMES = [["Chrono Trigger (USA).sfc", "4.0 MB", 262, "CT"], ["Donkey Kong Country (USA) (Rev 2).sfc", "4.0 MB", 28, "DKC"], ["EarthBound (USA).sfc", "3.0 MB", 340, "EB"], ["F-Zero (USA).sfc", "512 KB", 210, "FZ"], ["Super Mario World (USA).sfc", "512 KB", 48, "SMW"], ["Super Metroid (Japan, USA) (En,Ja).sfc", "3.0 MB", 18, "SM"], ["The Legend of Zelda - A Link to the Past (USA).sfc", "1.0 MB", 110, "LttP"]];
+  const cov = (h, dark) => `background:linear-gradient(160deg, hsl(${h} 52% ${dark ? 46 : 52}%), hsl(${h} 48% 18%))`;
+  const crumbs = (here = "SNES") => `<nav class="crumbs"><a>ROMs</a><span>›</span><b>${here}</b></nav>`;
+  const acts = `<div class="acts"><span class="btn quiet">${I.folder}New folder</span><span class="btn">${I.upfolder}Upload folder</span><span class="btn pri">${I.up}Upload</span></div>`;
+
+  function gameRows(th, o = {}) {
+    const n = o.n || GAMES.length;
+    return GAMES.slice(0, n).map(([nm, sz, h, i], k) => {
+      const cls = k === o.focus ? "focus" : k === o.hover ? "hover" : (o.sel && o.sel.has(k)) ? "sel" : "";
+      const right = o.words ? `<div class="wline"><span class="size">${sz}</span><div class="words"><span>Download</span><span>Rename</span><span class="danger">Delete</span></div></div>`
+        : o.check ? `<span class="size">${sz}</span>` : `<span class="size">${sz}</span><span class="more">${I.dots}</span>`;
+      return `<li class="row ${cls}${o.words ? " w" : ""}">${o.check ? `<span class="check">${o.sel && o.sel.has(k) ? I.tick : ""}</span>` : ""}<span class="cov" data-i="${i}" style="${cov(h, th === "dark")}"></span><span class="nm">${nm}</span>${right}</li>`;
+    }).join("");
+  }
+  const sysRows = (th, n = 9) => SYSTEMS.slice(0, n).map(([nm, hex], k) =>
+    `<li class="row ${k === 3 && th === "dark" ? "" : ""}"><span class="band" style="background:${mark(th, hex)}"></span><span class="nm">${nm}</span><span class="chev">›</span></li>`).join("");
+  const xferJobs = `<div class="job"><span class="n">Chrono Trigger (USA).sfc</span><span class="p">72%</span><div class="bar"><b style="width:72%"></b></div></div>
+    <div class="job"><span class="n">EarthBound (USA).sfc</span><span class="p">waiting</span><div class="bar"><b style="width:0"></b></div></div>
+    <div class="job ok"><span class="n">F-Zero (USA).sfc</span><span class="p">done</span></div>`;
+
+  /* ---- 1. layout --------------------------------------------------- */
+  function layoutColumn() {
+    const a = themeFor("desk"), b = themeFor("phone");
+    const d = desk(a, "col", `<div class="top"><div class="brand">${zy()}<div><b>ZyperOS</b><span>USB File Transfer</span></div></div>${acts}</div>
+      <div class="body">${crumbs()}<ul class="list panel">${gameRows(a, { focus: 0, n: 6 })}</ul></div>
+      <div class="tray">${xferJobs.split("</div>\n")[0]}</div></div>`);
+    const p = phone(b, "col", `<div class="ptop">${zy()}<span class="t">ZyperOS</span><span class="btn pri" style="height:38px;padding:0 12px">${I.up}Upload</span></div>
+      <div class="pcrumbs"><nav class="crumbs"><b>ROMs</b></nav></div><div class="pbody"><ul class="list panel">${sysRows(b, 9)}</ul></div>
+      <div class="mini"><div class="top2"><span>Uploading 1 of 3</span><span>72%</span></div><div class="bar"><b style="width:72%"></b></div></div>`);
+    return `<div class="duo">${d}${p}</div>`;
+  }
+  function layoutSidebar() {
+    const a = themeFor("desk"), b = themeFor("phone");
+    const d = desk(a, "sb", `<aside><div class="brand">${zy()}<div><b>ZyperOS</b><span>USB File Transfer</span></div></div>
+        <nav class="places">${PLACES.map(([n, i], k) => `<a class="${k === 0 ? "on" : ""}">${I[i]}${n}</a>`).join("")}</nav>
+        <section class="xfer"><h5>Uploading 2 of 3</h5>${xferJobs}</section>
+        <div class="quietlinks"><a>${I.art}Get Box Art and Album Covers</a><a>${I.logs}Download logs</a></div></aside>
+      <main><div class="head">${crumbs()}${acts}</div><ul class="list panel">${gameRows(a, { focus: 0, hover: 3 })}</ul>
+        <p class="hint">Drop files anywhere here to put them in SNES.</p></main>`);
+    const p = phone(b, "sb", `<div class="ptop">${zy()}<span class="t">ROMs</span><span class="roundbtn">${I.dots}</span></div>
+      <div class="chips">${PLACES.map(([n], k) => `<span class="chip ${k === 0 ? "on" : ""}">${n}</span>`).join("")}</div>
+      <div class="pbody"><ul class="list panel">${sysRows(b, 9)}</ul></div>
+      <span class="fab">${I.up}Upload</span>
+      <div class="mini"><div class="top2"><span>Uploading 2 of 3</span><span>72%</span></div><div class="bar"><b style="width:72%"></b></div></div>`);
+    return `<div class="duo">${d}${p}</div>`;
+  }
+  function layoutShelf() {
+    const a = themeFor("desk"), b = themeFor("phone");
+    const tiles = GAMES.concat(GAMES.slice(0, 5).map(g => [g[0].replace("(USA)", "(Europe)"), g[1], g[2] + 30, g[3]])).slice(0, 12).map(([nm, sz, h, i], k) =>
+      `<div class="tile ${k === 0 ? "focus" : ""}"><div class="art" data-i="${i}" style="${cov(h, a === "dark")}"></div><span class="t">${nm.replace(/\.sfc$/, "")}</span><span class="s">${sz}</span></div>`).join("");
+    const d = desk(a, "sh", `<div class="top"><div class="brand">${zy()}<div><b>ZyperOS</b><span>USB File Transfer</span></div></div>
+        <nav class="tabs">${PLACES.map(([n], k) => `<a class="${k === 0 ? "on" : ""}">${n}</a>`).join("")}</nav><span class="btn pri">${I.up}Upload</span></div>
+      <div class="body"><div class="head">${crumbs()}<span class="btn quiet">${I.folder}New folder</span><span class="btn">List</span></div><div class="grid">${tiles}</div></div>
+      <div class="corner"><h5 style="margin:0">Uploading 2 of 3</h5>${xferJobs}</div>`);
+    const p = phone(b, "sh", `<div class="ptop">${zy()}<span class="t">ROMs</span><span class="roundbtn">${I.dots}</span></div>
+      <div class="chips">${PLACES.map(([n], k) => `<span class="chip ${k === 0 ? "on" : ""}">${n}</span>`).join("")}</div>
+      <div class="pbody"><div class="systiles">${SYSTEMS.slice(0, 10).map(([n, hex]) => `<div class="systile" style="--b:${mark(b, hex)}">${n}</div>`).join("")}</div></div>
+      <span class="fab">${I.up}Upload</span>`);
+    return `<div class="duo">${d}${p}</div>`;
+  }
+
+  /* ---- 2. the PIN -------------------------------------------------- */
+  const gate = (th, inner, bad) => phone(th, "", `<div class="gate"><div class="card">${zy("zbig" + (bad ? " tilt" : ""))}<h1>USB File Transfer</h1><p>Enter the PIN on the handheld's screen.</p>${inner}</div></div>`);
+  function pinField() {
+    const a = themeFor("phone"), b = show === "mixed" ? "light" : a;
+    return `<div class="trio"><div>${gate(b, `<div class="field"><span class="in">40</span><span class="btn pri">Open</span></div><p class="msg"></p>`)}<p class="cap">typing</p></div>
+      <div>${gate(a, `<div class="field"><span class="in" style="border-color:var(--warning)">4017</span><span class="btn pri">Open</span></div><p class="msg">Wrong PIN. 4 tries left.</p>`, false)}<p class="cap">a wrong PIN</p></div></div>`;
+  }
+  function pinBoxes() {
+    const a = themeFor("phone"), b = show === "mixed" ? "light" : a;
+    return `<div class="trio"><div>${gate(b, `<div class="boxes"><span>4</span><span>0</span><span class="at"></span><span></span></div><p class="msg ok">Opens on the fourth digit.</p>`)}<p class="cap">typing</p></div>
+      <div>${gate(a, `<div class="boxes bad"><span>4</span><span>0</span><span>1</span><span>7</span></div><p class="msg">Wrong PIN. 4 tries left.</p>`, true)}<p class="cap">a wrong PIN: Zyper cocks his head</p></div></div>`;
+  }
+
+  /* ---- 3. a file's actions ----------------------------------------- */
+  const phList = (th, rows, extra = "") => phone(th, "sb", `<div class="ptop">${zy()}<span class="t">SNES</span><span class="roundbtn">${I.dots}</span></div>
+      <div class="pcrumbs"><nav class="crumbs"><a>ROMs</a><span>›</span><span>SNES</span></nav></div><div class="pbody"><ul class="list panel">${rows}</ul></div>${extra}`);
+  const actWords = () => { const t = themeFor("phone"); return `<div class="trio"><div>${phList(t, gameRows(t, { words: true, n: 5 }))}<p class="cap">as today: the words go under the name</p></div></div>`; };
+  const actMore = () => { const t = themeFor("phone"); return `<div class="trio"><div>${phList(t, gameRows(t, { n: 7 }))}<p class="cap">at rest</p></div><div>${phList(t, gameRows(t, { n: 7 }),
+      `<div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="who">Chrono Trigger (USA).sfc · 4.0 MB</div><div class="opt focus">${I.down}Download</div><div class="opt">${I.pen}Rename</div><div class="opt danger">${I.bin}Delete</div></div>`)}<p class="cap">after ⋯ on Chrono Trigger</p></div></div>`; };
+  const actSelect = () => { const t = themeFor("phone"); return `<div class="trio"><div>${phList(t, gameRows(t, { n: 7, check: true, sel: new Set([0, 2]) }),
+      `<div class="selbar"><span class="n">2 selected</span><span class="btn">${I.down}Download</span><span class="btn danger">${I.bin}Delete</span></div>`)}<p class="cap">two files picked</p></div></div>`; };
+
+  /* ---- 4. SSH ------------------------------------------------------ */
+  const handheld = (rows) => ZK.screen(themeFor("phone"), ZK.shelf(themeFor("phone")) + ZK.menu(themeFor("phone"), { heading: "10.42.0.1<br>PIN 4071", zyper: false, sel: -1, rows }));
+  const sshCard = (th, body) => `<div class="sshcard"><div class="wx" style="${vars(th)}">${body}</div></div>`;
+  function sshPin() {
+    return `<div class="stack">${handheld([["Browsers", "waiting"], ["SSH", "1 signed in"], ["In / out", "nothing yet"], ["Now", "waiting"]])}
+      <div class="term"><span class="dim">~ %</span> ssh root@10.42.0.1
+root@10.42.0.1's password: <span class="dim">(4071)</span>
+<span class="ok">#</span> </div>
+      ${sshCard(themeFor("desk"), `<h6>SSH</h6><p>From a terminal on this computer. The password is the PIN.</p><code>ssh root@10.42.0.1<span>Copy</span></code>`)}</div>`;
+  }
+  function sshKey() {
+    return `<div class="stack">${handheld([["Browsers", "1 connected"], ["SSH", "1 signed in"], ["In / out", "nothing yet"], ["Now", "waiting"]])}
+      <div class="term"><span class="dim">~ %</span> ssh root@10.42.0.1
+<span class="ok">#</span> </div>
+      ${sshCard(themeFor("desk"), `<h6>SSH keys</h6><p>Paste a public key once. It stays on the card.</p><code>ssh-ed25519 AAAA… you@laptop<span>Add key</span></code>
+        <div class="keyrow"><span class="k">ssh-ed25519 …k3Fz tarik@mac</span><span class="btn">Remove</span></div>`)}</div>`;
+  }
+  function sshBoth() {
+    return `<div class="stack">${handheld([["Browsers", "waiting"], ["SSH", "1 signed in"], ["In / out", "nothing yet"], ["Now", "waiting"]])}
+      <div class="term"><span class="dim">~ %</span> ssh-copy-id root@10.42.0.1
+root@10.42.0.1's password: <span class="dim">(4071, once)</span>
+<span class="dim">Number of key(s) added: 1</span>
+<span class="dim">~ %</span> ssh root@10.42.0.1
+<span class="ok">#</span> </div>
+      ${sshCard(themeFor("desk"), `<h6>SSH</h6><p>The password is the PIN. Add your key with ssh-copy-id to skip it next time. Keys stay on the card.</p><code>ssh root@10.42.0.1<span>Copy</span></code>`)}</div>`;
+  }
+
+  const list = [
+    { key: "layout", title: "The page's layout",
+      why: "Where things go, on a desktop and on a phone. Every option keeps all of today's features: upload files or a folder, new folder, rename, delete, download, Tidy names, box art and covers, logs, and drag and drop onto the page or onto a folder. The desktop shows the SNES folder with an upload under way. The phone shows ROMs, where each console has its color. The lime row is keyboard focus, as on the handheld.",
+      options: {
+        column: { name: "One column", tag: "today", blurb: "Today's page, cleaned up. A top bar with the buttons, the path, and one list in a panel. Uploads in a tray along the bottom.", draw: layoutColumn },
+        sidebar: { name: "Sidebar", tag: "suggested", blurb: "The six card folders stay in view on the left. The open one has the lime fill, as the focused row on the handheld. Uploads sit under the folders, with the quiet extras. On a phone the folders become chips, and Upload is a button under your thumb.", draw: layoutSidebar },
+        shelf: { name: "Shelf", blurb: "Like the handheld: consoles as tiles in their color, games as a grid of covers. It looks best when most games have box art. A List button gives the rows back.", draw: layoutShelf },
+      } },
+    { key: "pin", title: "Entering the PIN",
+      why: "The first thing anyone sees. Each option shows typing and a wrong PIN. After five wrong PINs the page waits 30 seconds, as today.",
+      options: {
+        field: { name: "One field", tag: "today", blurb: "One wide field and an Open button.", draw: pinField },
+        boxes: { name: "Four boxes", tag: "suggested", blurb: "One box for each digit. The page opens after the fourth digit, so there is no button. A pasted PIN fills all four boxes. On a wrong PIN, Zyper cocks his head, as he does in the menus.", draw: pinBoxes },
+      } },
+    { key: "actions", title: "What a file row offers",
+      why: "Download, Rename and Delete. Shown on a phone, where space is tight. On a desktop the same choice applies, and a right-click opens the same menu.",
+      options: {
+        words: { name: "Words on the row", tag: "today", blurb: "Three words on every row. Clear, but busy, and long names wrap.", draw: actWords },
+        more: { name: "One ⋯ button", tag: "suggested", blurb: "One button on each row opens a short menu: a sheet on a phone, a pop-up on a desktop. Delete is in the warning color and asks first, as today.", draw: actMore },
+        select: { name: "Select", blurb: "A box on every row. Pick many files, then download or delete them together. More power, but one more step for a single file.", draw: actSelect },
+      } },
+    { key: "ssh", title: "SSH over the USB cable",
+      why: "A shell on the handheld from a computer on the cable. The same in every option: SSH is off until USB File Transfer opens, and off again when it closes, which also ends open sessions. It listens only on the cable address 10.42.0.1, never on Wi-Fi. Five wrong PINs turn SSH off until the screen opens again. Release images still start no SSH at boot and carry no keys: the launcher starts dropbear from this screen only. The handheld's host key stays on the card, so the computer knows it the next time. Development images keep their own SSH as now.",
+      options: {
+        pin: { name: "The PIN", blurb: "ssh root@10.42.0.1, and the password is the PIN on the screen. A new PIN each time the screen opens. Nothing to set up.", draw: sshPin },
+        key: { name: "Saved keys", blurb: "No password login at all. Paste a public key once on the page; after that, ssh root@10.42.0.1 goes straight in while the screen is open.", draw: sshKey },
+        both: { name: "The PIN, and keys", tag: "suggested", blurb: "The PIN works for anyone with the screen in front of them. ssh-copy-id, with the PIN once, saves your key on the card, and then your computer skips the PIN.", draw: sshBoth },
+      } },
+  ];
+
+  /* Each frame draws its page at the page's own size and scales it to fit. */
+  const ro = window.ResizeObserver ? new ResizeObserver(es => es.forEach(e => scale(e.target))) : null;
+  function scale(fr) {
+    const vp = fr.firstElementChild;
+    if (vp) vp.style.transform = `scale(${fr.clientWidth / vp.offsetWidth})`;
+  }
+  function fitAll() {
+    document.querySelectorAll(".fr").forEach(f => { scale(f); if (ro) ro.observe(f); });
+    ZK.fit(document);
+  }
+  const status = document.getElementById("status");
+  const board = ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-transfer-picks", status: s => { status.textContent = s; }, onRender: fitAll });
+
+  document.querySelector(".themes").addEventListener("click", e => {
+    const b = e.target.closest("[data-show]");
+    if (!b) return;
+    show = b.dataset.show;
+    document.querySelectorAll("[data-show]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    board.render();
+  });
+  fitAll();
+})();
+</script>
+</body>
+</html>

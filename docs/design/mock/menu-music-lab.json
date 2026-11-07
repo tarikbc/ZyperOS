@@ -1,0 +1,189 @@
+{
+  "about": "The menu music lab's candidates (docs/design/mock/menu-music-lab.html): free 8-bit tracks a GPL-3.0 project may ship on its card image and in its public repository. Each source is the exact file downloaded, by its SHA-256. tools/bgm-tracks.py lab makes the lab's audio from these; the picks go to res/bgm/tracks.json.",
+  "tracks": [
+    {
+      "id": "napping-on-a-cloud",
+      "title": "Napping on a Cloud",
+      "author": "congusbongus",
+      "kind": "original",
+      "style": "Chill, happy chiptune made in MilkyTracker. Rendered here from the author's own module file, so it has none of the 64 kbps download's blur.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/napping-on-a-cloud",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/napping_on_a_cloud.xm_.zip",
+        "sha256": "9dca392eb4501249ae14e0cb787df7d9e4d33569e97832a8b50b082b3b73643b",
+        "bytes": 5583,
+        "member": "napping on a cloud.xm",
+        "render": "openmpt"
+      }
+    },
+    {
+      "id": "apple-cider",
+      "title": "Apple Cider",
+      "author": "Zane Little Music",
+      "kind": "original",
+      "style": "Cozy autumn chiptune in a 16-bit console style. Tags on its page: cozy, cute, SNES.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/apple-cider",
+      "notice": "This song (and everything else I make) is royalty-free!",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/apple_cider.ogg",
+        "sha256": "29dfe7f2491fa2cabd159db70db868445be253e395db5f75b30b3113f798f4ca",
+        "bytes": 3240559
+      },
+      "master": "https://opengameart.org/sites/default/files/apple_cider.wav"
+    },
+    {
+      "id": "hush-hamlet",
+      "title": "Hush Hamlet",
+      "author": "Zane Little Music",
+      "kind": "original",
+      "style": "Quiet village theme from the chiptune collection Another Bag of Chips. Tags on its page: cozy, relaxing, calm.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/hush-hamlet",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/hush_hamlet_0.wav",
+        "sha256": "2f203a8ade4b8603e54c2503211d8d31afd976705e7e29c6ffd19498d268df1b",
+        "bytes": 51909010
+      }
+    },
+    {
+      "id": "truth",
+      "title": "Truth",
+      "author": "HydroGene",
+      "kind": "original",
+      "style": "NES chiptune. Tags on its page: calm, emotional, sad, sanctuary.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/8-bit-truth",
+      "notice": "Credits are NOT mandatory, but I'm curious to know what you will do with it, so don't hesitate to share the project that uses it :)",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/16._truth_0.mp3",
+        "sha256": "ecbf55eeac469e72fa336a5e1838bc50a95ca8f6049ce551cd43eeaf06e066c9",
+        "bytes": 4432513
+      }
+    },
+    {
+      "id": "scheatt",
+      "title": "Scheatt",
+      "author": "Spring Spring",
+      "kind": "original",
+      "style": "Laid-back chiptune with sampled claps, tagged relaxing, 8-bit and 16-bit.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/scheatt",
+      "notice": "Spring",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/scheatt_0.mp3",
+        "sha256": "93ac1ea1ce95848cc234e6df66aac3d34d64de141bbc3b6219250009f4bfbac2",
+        "bytes": 3574850
+      }
+    },
+    {
+      "id": "ice-cave",
+      "title": "Ice Cave",
+      "author": "TAD",
+      "kind": "original",
+      "style": "8-bit lo-fi hip hop. Tags on its page: relax, slow, harp.",
+      "license": "CC0-1.0",
+      "also": "CC-BY-4.0",
+      "page": "https://opengameart.org/content/8-bit-lofi-ice-cave",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/8_bit_ice_cave_lofi_0.mp3",
+        "sha256": "d64b0bea300c019f89452c8d1d1ad39bf717eda0ee7419eaa15ff641b44e4551",
+        "bytes": 9421553
+      }
+    },
+    {
+      "id": "starfall-island",
+      "title": "Starfall Island",
+      "author": "John Oestmann",
+      "kind": "original",
+      "style": "From minimal_worlds_ii, an album made in the style of the Game Boy.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/minimalworldsii-game-boy-style-album",
+      "notice": "Music and Project Files are Public Domain / CC0",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/john_oestmann_-_minimal_worlds_ii_-_ogg.zip",
+        "sha256": "6864765d7bdc0a8609caa542850f0934663682330e216673e7a233506871255c",
+        "bytes": 24968675,
+        "member": "John Oestmann - minimal_worlds_ii/xx-starfall_island.ogg"
+      },
+      "master": "https://opengameart.org/sites/default/files/xx-starfall_island.wav"
+    },
+    {
+      "id": "leap",
+      "title": "Leap",
+      "author": "nene",
+      "kind": "original",
+      "style": "Old-school 8-bit RPG adventure theme.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/leap-8bit",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/leap.WAV",
+        "sha256": "e996bb3f06c93bbbed1be2145b70caad46e9272ce7006af5ba418d5b53530e13",
+        "bytes": 28221908
+      }
+    },
+    {
+      "id": "the-arplands",
+      "title": "The Arplands",
+      "author": "LordZintick",
+      "kind": "original",
+      "style": "Upbeat, loopable 8-bit adventure tune.",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/the-arplands",
+      "notice": "CC0 - use for whatever you want, but I would like it if you tell me what you use it in so I can play/see it myself!",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/the_arplands_0.ogg",
+        "sha256": "54fcd0a72861f143f93ff218e5118691d3629fe0e46714d7d8795e449d60a245",
+        "bytes": 1602666
+      },
+      "master": "https://opengameart.org/sites/default/files/the_arplands.wav"
+    },
+    {
+      "id": "bossa-nova",
+      "title": "Bossa Nova",
+      "author": "Joth",
+      "kind": "original",
+      "style": "An 8-bit bossa nova loop at 129 bpm, \"for those lengthy elevator sequences\".",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/bossa-nova",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/8bit%20Bossa.mp3",
+        "sha256": "0ee835fd279ac5fa15f9346744cbafc2ba800c1c0671b78ca9abe2b4353402f7",
+        "bytes": 1196325
+      }
+    },
+    {
+      "id": "canon-in-d",
+      "title": "Canon in D",
+      "author": "ctske",
+      "kind": "cover",
+      "work": "Canon and Gigue in D, Johann Pachelbel (1653-1706)",
+      "style": "An 8-bit transcription in FamiTracker (2A03, the NES's own voices).",
+      "license": "CC0-1.0",
+      "page": "https://opengameart.org/content/8-bit-pachelbels-canon-in-d",
+      "notice": "This is about as public domain as public domain gets, so no credit is necessary. If you want to give credit anyway, you can call it \"an 8-bit transcription by Ctske of Johann Pachelbel's Canon and Gigue for 3 violins and basso continuo\".",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/pachelbelscanon_0.ogg",
+        "sha256": "ef3b7459cc093865069ad2efdc1e7820485c662399a613a8181bc577372162d1",
+        "bytes": 5569109
+      }
+    },
+    {
+      "id": "swan-lake",
+      "title": "Chiptune Tchaikovsky",
+      "author": "Tomasz Kucza",
+      "kind": "cover",
+      "work": "Neapolitan Dance from Swan Lake, Pyotr Ilyich Tchaikovsky (1840-1893)",
+      "style": "A fun chiptune arrangement. CC BY, so its credit goes in the notices.",
+      "license": "CC-BY-4.0",
+      "page": "https://opengameart.org/content/chiptune-tchaikovsky",
+      "notice": "Tomasz Kucza",
+      "source": {
+        "url": "https://opengameart.org/sites/default/files/tomasz-kucza-chiptune-tchaikovsky.mp3",
+        "sha256": "3ffde14aff2b20dc68f49b7d14d88e8b8d529bb2fc4a6efdfa311159cb5d94c9",
+        "bytes": 3211421
+      }
+    }
+  ]
+}

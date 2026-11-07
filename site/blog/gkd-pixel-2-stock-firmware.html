@@ -1,0 +1,72 @@
+title: GKD Pixel 2 Stock Firmware: Should You Replace It?
+description: What the GKD Pixel 2's stock firmware does well and badly, what a custom firmware card changes, and how to keep the stock card safe to go back.
+summary: What the firmware it ships with does and does not do, what a new card changes, and how to keep the stock card safe.
+crumb: Stock firmware
+topic: compare
+published: 2026-11-07
+updated: 2026-11-07
+image: systems
+image_alt: The ZyperOS Spotlight home, with animated pixel-art consoles
+related: install-custom-firmware-gkd-pixel-2, best-custom-firmware-gkd-pixel-2, zyperos-vs-rogue-os
+weight: 15
+---
+<p>The GKD Pixel 2 ships with its own firmware on the microSD card in the box. GameKiddy publishes no documentation for it, so the best account is Retro Game Corps' guide from February 2025. This is what that guide found, what changes when you put another system on a card, and how to do it without losing the stock one.</p>
+
+<h2>What the stock firmware is</h2>
+<p>According to Retro Game Corps, the stock firmware is a fork of ROCKNIX, based on ROCKNIX's build for the Anbernic RG351MP, with extra settings. It starts in GKD's own menu, IUX, which the guide says looks like a reskinned GMenu2x, and it also has EmulationStation as a second launcher, chosen in IUX's settings. The card has two partitions, EMUELEC and ROMS, and ROMS holds a folder for each of more than a hundred systems.</p>
+<p class="note">GameKiddy has no page for the firmware, and the guide gives no version number. The stock firmware may have changed since February 2025.</p>
+
+<h2>What works well</h2>
+<ul>
+  <li><strong>IUX is usable.</strong> The guide calls it a serviceable menu system.</li>
+  <li><strong>PortMaster comes installed, and works.</strong></li>
+  <li><strong>Many systems</strong>, with a folder for each on the card.</li>
+  <li><strong>File sharing over Wi-Fi</strong> with Samba, once a USB Wi-Fi adapter is in.</li>
+</ul>
+
+<h2>What does not</h2>
+<ul>
+  <li><strong>No working scraper</strong> for box art on the handheld. The guide scrapes on a computer, with Skraper, instead.</li>
+  <li><strong>No quick shutdown and resume</strong>, to turn off mid-game and pick up there.</li>
+  <li><strong>Pico-8</strong> has a section, but it is not set up.</li>
+  <li><strong>Many EmulationStation themes</strong> do not work with GKD's setup.</li>
+  <li><strong>Updating PortMaster</strong> can break the ports that came on the card; the guide's fix is to reinstall them in PortMaster.</li>
+  <li><strong>What is on the card depends on the seller</strong>: some cards come with games, some with the system alone.</li>
+</ul>
+<p>The guide's own advice is to switch to EmulationStation, add a USB Wi-Fi adapter, scrape box art on a computer, and add apps through PortMaster.</p>
+
+<h2>Side by side with ZyperOS</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">Stock firmware</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Install</th><td class="us">Build the image: in testing, no release yet</td><td>On the card it comes with</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>Over 100 folders</td></tr>
+    <tr><th scope="row">Games without taking the card out</th><td class="us">[yes: A web page over Wi-Fi or the USB cable, its own network, and SSH] Web page, Wi-Fi or USB cable</td><td>[yes: Samba file sharing over Wi-Fi] Samba over Wi-Fi</td></tr>
+    <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro, ScreenScraper, SteamGridDB] Yes</td><td>[no: Not on the handheld: covers are scraped on a computer, with Skraper] No</td></tr>
+    <tr><th scope="row">Pick up where you left off</th><td class="us">[yes: A game picks up where you left it] Yes</td><td>[no: No quick shutdown and resume] No</td></tr>
+    <tr><th scope="row">PortMaster</th><td class="us">[yes: Ports run; you set them up with PortMaster on another system] Ports run</td><td>[yes: Preloaded] Preloaded</td></tr>
+    <tr><th scope="row">Themes</th><td class="us">Light and dark</td><td>EmulationStation themes, added over the network</td></tr>
+    <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Sign in on the handheld] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Charge limit, charging screen</th><td class="us">[yes: A limit of 80, 85 or 90%, and a charging screen while off] Yes</td><td>[unk]</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. The stock column is from Retro Game Corps' guide of February 2025.</p>
+
+<h2>Should you replace it?</h2>
+<p>You do not have to replace anything. On the Pixel 2 the system lives on the card, so a custom firmware goes on a second card, and the stock card stays as it is. Swap the cards and the handheld starts the other system.</p>
+<p>A new card is worth it if the gaps above bother you: box art without a computer, a game that picks up where you stopped, or sending games without taking the card out. Each system fills different gaps; <a href="/blog/best-custom-firmware-gkd-pixel-2/">the comparison of every system for the Pixel 2</a> shows which fills which. ZyperOS covers fewer systems than the stock firmware's hundred-plus folders, so check that yours are among <a href="https://github.com/tarikbc/ZyperOS#supported-systems">its forty</a>.</p>
+
+<h2>Keep the stock card safe</h2>
+<ol>
+  <li>Take the stock card out and put it away. Do not write another system over it: some come with games, and it is your way back.</li>
+  <li>If you want a spare, make a full image of it with a disk imaging program before anything else.</li>
+  <li>Write the new system to a second card. <a href="/blog/install-custom-firmware-gkd-pixel-2/">The install guide</a> shows how.</li>
+</ol>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li><a href="https://retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/">Retro Game Corps, "How to Make the GKD Pixel II Software Suck Less"</a>, published 1 February 2025, read 7 November 2026.</li>
+  <li>ZyperOS: <a href="https://github.com/tarikbc/ZyperOS#readme">the README</a> and its comparison table.</li>
+</ol>

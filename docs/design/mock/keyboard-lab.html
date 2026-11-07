@@ -1,0 +1,62 @@
+<title>ZyperOS Keyboard Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  header { padding-block: 32px 6px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  header svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .stack { display: grid; gap: 8px; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 80ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+</style>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header>
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">ZyperOS <b>Keyboard Lab</b></h1>
+      <p class="zk-lede">The whole on-screen keyboard, as src/keyboard.c lays it out: the digit row on every layer, three layers, the space bar, and the face buttons as verbs. Each option is shown in Beard on the letters and in Salt &amp; Pepper on the symbols.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>, because each saves presses on a D-pad: B deletes, X shifts, Y switches to symbols, so a capital costs one press; the digits never need a layer switch; L1/R1 move the cursor; the grid wraps at every edge; the text is never hidden. The selected key is the lime focus fill, and each press clicks and pops.</div>
+  <main id="m"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  const two = v => () => `<div class="stack">
+      ${ZK.screen("light", ZK.shelf("light") + ZK.keyboard("light", { variant: v, footer: "full", layer: 0, sel: v === "actions" ? [4, 0] : [2, 4] }))}
+      <span class="cap">Beard &middot; letters${v === "actions" ? " &middot; shift selected" : ""}</span>
+      ${ZK.screen("dark", ZK.shelf("dark") + ZK.keyboard("dark", { variant: v, footer: "full", layer: 2, sel: [1, 3], text: "Zyper#2026" }))}
+      <span class="cap">Salt &amp; Pepper &middot; symbols</span></div>`;
+  ZK.decisions(document.getElementById("m"), [
+    { key: "keyboard", title: "How the keyboard teaches its buttons",
+      why: "The keys stay as they are; what changes is how a player learns that the face buttons are verbs and sees which layer is on.",
+      options: {
+        today: { name: "Chips", tag: "today", blurb: "Today's layout on the new tokens: the seven verbs as text chips in two rows under the space bar. Nothing says which layer is on except the keys themselves.", draw: two("today") },
+        glyphs: { name: "Glyphs and layer tabs", tag: "suggested", blurb: "The verbs drawn with the same button glyphs as the tutorial, so the A in the legend is the A on the handheld; the X and Y verbs change with the layer. Tabs over the grid show the layer and the button that reaches it.", draw: two("glyphs") },
+        actions: { name: "Action row", blurb: "The bottom row becomes keys you can also select: shift, symbols, space, delete and done, and the legend under them gives each one's button too. Easiest to discover; the action keys cost a trip to the bottom row for anyone who does not use the buttons.", draw: two("actions") },
+      } },
+    { key: "footer", title: "Where the captions go, with the action row",
+      why: "The action row with a two-row legend under it is crowded. These put each caption where it applies, so the footer shrinks or goes away. A has no caption in either: it is OK everywhere in ZyperOS, and the tutorial teaches it.",
+      options: {
+        none: { name: "On the keys", tag: "suggested", blurb: "Each action key carries its button: X shift, Y symbols, B delete, START done. L1 and R1 sit at the two ends of the field, where the cursor moves. MENU cancel sits in the title's corner like a close button. No footer at all.", draw: () => `<div class="stack">
+          ${ZK.screen("light", ZK.shelf("light") + ZK.keyboard("light", { variant: "actions", footer: "none", layer: 0, sel: [4, 4] }))}
+          <span class="cap">Beard &middot; letters &middot; done selected</span>
+          ${ZK.screen("dark", ZK.shelf("dark") + ZK.keyboard("dark", { variant: "actions", footer: "none", layer: 2, sel: [1, 3], text: "Zyper#2026" }))}
+          <span class="cap">Salt &amp; Pepper &middot; symbols</span></div>` },
+        line: { name: "One quiet line", blurb: "The keys carry their buttons as above, and one line under them says the two that have no key: L1/R1 move the cursor, MENU cancels.", draw: () => `<div class="stack">
+          ${ZK.screen("light", ZK.shelf("light") + ZK.keyboard("light", { variant: "actions", footer: "line", layer: 0, sel: [4, 4] }))}
+          <span class="cap">Beard &middot; letters &middot; done selected</span>
+          ${ZK.screen("dark", ZK.shelf("dark") + ZK.keyboard("dark", { variant: "actions", footer: "line", layer: 2, sel: [1, 3], text: "Zyper#2026" }))}
+          <span class="cap">Salt &amp; Pepper &middot; symbols</span></div>` },
+        full: { name: "Two rows", tag: "today", blurb: "The action row as you picked it, with all seven verbs in two rows under it. For comparison.", draw: two("actions") },
+      } },
+  ], { status: t => (document.getElementById("status").textContent = t), storeKey: "zk-keyboard" });
+})();
+</script>

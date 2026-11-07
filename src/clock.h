@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* Date & Time: the arithmetic and the words, with no SDL and no device.
+ *
+ * The GKD Pixel 2 has no network to take the time from, so its clock is
+ * whatever it is set to here, and the hardware clock keeps it while the
+ * device is off. The Brick sets its clock over Wi-Fi, but had no way to choose
+ * a time zone either, so both get the same screen.
+ *
+ * Split out of main.c, like sys_menu.c: tools/clock-check.c links this file
+ * alone. Setting the clock itself is plat_clock_set. */
+#ifndef CLOCK_H
+#define CLOCK_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <time.h>
+
+#include "menu.h"
+
+/* The screen's rows that change the time, in order. Time Zone comes before
+ * them (2026-11-06: "in date/time settings, timezone should come
+ * first": the zone is set once, and moves every field's value) and is not a
+ * field of the time. */
+typedef enum {
+	CLK_YEAR, CLK_MONTH, CLK_DAY, CLK_HOUR, CLK_MINUTE, CLK_FIELDS
+} clock_field;
+
+/* The screen's rows, in order: Time Zone, then the fields from Year to
+ * Minute. clock_rows fills them for `t`, the zone's row saying `zone` (its
+ * city, or an id not on the list as it is), each field as clock_field_label
+ * says it, into `b`; how many, at most CLOCK_ROWS. clock_row_field is the
+ * field a row changes, -1 for Time Zone and anything past the fields. */
+#define CLOCK_ROW_ZONE   0
+#define CLOCK_ROW_FIELD0 1
+#define CLOCK_ROWS       (CLOCK_ROW_FIELD0 + CLK_FIELDS)
+typedef struct { char field[CLK_FIELDS][24]; } clock_bufs;
+int clock_rows(time_t t, bool h24, const char *zone, menu_row *rows, int max,
+               clock_bufs *b);
+int clock_row_field(int row);
+
+/* `t` with one field moved by `d` (local time), and the seconds at zero:
+ * setting a clock by hand starts the minute it is set on. Each field wraps
+ * within the one above it - the minute past 59 is 0 of the same hour - so a
+ * row changes only itself. A day past the end of the new month comes back to
+ * its last day. The year is the exception: it stops at 2000 and 2099. */
+time_t clock_step(time_t t, clock_field f, int d);
+
+/* What the field's row says for `t`: "2026", "October", "3", "6 AM", "05";
+ * the hour "18", or "06", when `h24`. */
+void clock_field_label(time_t t, clock_field f, bool h24, char *out, size_t n);
+
+/* The menu row's value: "Oct 3, 6:12 AM", 12-hour, Eric's call 2026-10-03; or
+ * "Oct 3, 06:12" when `h24`, MENU > Clock's 24-hour (mine, 2026-11-04). */
+void clock_label(time_t t, bool h24, char *out, size_t n);
+
+/* The shelf's clock, its status corner's: "10:08", 12-hour with no AM or PM,
+ * the status lab's pick, since the words would carry the corner past the
+ * systems card's edge; "22:08", or "09:05", when `h24`. */
+void clock_short(time_t t, bool h24, char *out, size_t n);
+
+/* Whether `t` is a time somebody set: 2026 or later. A Pixel 2 never set
+ * keeps 2018, and a corner that said 10:43 then would say a time that is
+ * not now; the shelf shows no clock until it is set. */
+bool clock_is_set(time_t t);
+
+/* The time zones on offer, by city. A short list rather than the four hundred
+ * the zone database has, because stepping through those with left and right
+ * would take minutes; every hour of offset anyone lives in is here. */
+typedef struct {
+	const char *id;     /* the zone database's name, which TZ takes */
+	const char *city;   /* what the row shows */
+} clock_zone;
+
+extern const clock_zone CLOCK_ZONES[];
+extern const int CLOCK_ZONE_COUNT;
+
+/* The list's entry for a zone id, or -1 when it is not on the list (a setting
+ * from before the list, or edited by hand). */
+int clock_zone_find(const char *id);
+
+/* The entry `d` steps from `id`'s, stopping at the ends. An id not on the list
+ * steps onto it from New York, the shipped default. */
+int clock_zone_step(const char *id, int d);
+
+#endif

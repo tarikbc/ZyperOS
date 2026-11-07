@@ -1,0 +1,581 @@
+<title>ZyperOS Design Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;600&family=Nunito:wght@500;700;800&family=Lexend:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one long column of decisions; each decision is a row of option
+   cards, each card a live 1024x768 handheld screen scaled to fit, with the
+   pick button and the reason under it. The page itself stays a quiet
+   warm graphite so it does not argue with the palettes it shows. */
+:root {
+  color-scheme: dark;
+  --page: #141615;
+  --page-2: #1b1e1c;
+  --line: #2c302e;
+  --ink: #e8e6dd;
+  --ink-2: #b9bab2;
+  --ink-3: #8a8d88;
+  --lime: #bef23c;
+  --lime-ink: #111310;
+  --focus: #bef23c;
+  --f-display: "Josefin Sans", "Avenir Next", "Futura", system-ui, sans-serif;
+  --f-body: "Nunito", "Avenir Next", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+header.top {
+  display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center;
+  padding-block: 36px 20px;
+}
+header.top svg { width: 76px; height: 80px; }
+h1 {
+  font: 600 clamp(30px, 4.4vw, 46px)/1.05 var(--f-display);
+  letter-spacing: 0.01em; margin: 0; text-wrap: balance;
+}
+h1 b { color: var(--lime); font-weight: 600; }
+.lede { color: var(--ink-2); max-width: 66ch; margin: 6px 0 0; }
+.status {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  padding: 10px 0; background: var(--page);
+  border-bottom: 1px solid var(--line);
+  font: 14px var(--f-mono); color: var(--ink-2);
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
+.status .dots { display: flex; gap: 6px; }
+.status .dots i { width: 22px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+.status .dots i.on { background: var(--lime); }
+.status .save { margin-left: auto; }
+
+section.decision { padding-block: 40px 8px; border-bottom: 1px solid var(--line); }
+.dhead { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: baseline; }
+.dnum { font: 500 14px var(--f-mono); color: var(--ink-3); }
+h2 { font: 600 28px/1.15 var(--f-display); margin: 0; text-wrap: balance; }
+.why { grid-column: 2; color: var(--ink-2); margin: 2px 0 0; max-width: 72ch; }
+.uses { grid-column: 2; font: 13px var(--f-mono); color: var(--ink-3); margin: 6px 0 0; }
+
+.options {
+  display: grid; gap: 18px; margin-top: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+.opt {
+  background: var(--page-2); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+.opt.picked { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime) inset; }
+.opt h3 { font: 600 19px/1.2 var(--f-display); margin: 4px 2px 0; display: flex; gap: 8px; align-items: baseline; }
+.opt h3 small { font: 12px var(--f-mono); color: var(--ink-3); font-weight: 400; }
+.opt p { margin: 0 2px; color: var(--ink-2); font-size: 15px; }
+.tag { font: 500 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--lime-ink); background: var(--lime); border-radius: 4px; padding: 1px 6px; }
+.tag.today { background: var(--line); color: var(--ink-2); }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.sw { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: center; font: 11px/1.2 var(--f-mono); color: var(--ink-3); min-width: 0; }
+.sw i { width: 14px; height: 14px; border-radius: 4px; display: block; box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+.sw span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+button {
+  font: 600 14px var(--f-body); color: var(--ink); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--ink-3); }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button.pick { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.opt.picked button.pick { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
+.note { margin-top: 16px; display: grid; gap: 6px; max-width: 760px; }
+.note label { font: 13px var(--f-mono); color: var(--ink-3); }
+textarea {
+  font: 15px/1.5 var(--f-body); color: var(--ink); background: var(--page-2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; resize: vertical; min-height: 64px;
+}
+.foot { color: var(--ink-3); font-size: 14px; padding-top: 28px; max-width: 72ch; }
+
+/* ---- the handheld screen ------------------------------------------------- */
+.frame { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #000; }
+.screen {
+  position: absolute; left: 0; top: 0; width: 1024px; height: 768px;
+  transform-origin: 0 0; transform: scale(var(--k, .33));
+  background: var(--g); color: var(--t1); font-family: var(--uf);
+  overflow: hidden;
+}
+.screen .glow { position: absolute; inset: 0; background: radial-gradient(60% 50% at 50% 92%, color-mix(in srgb, var(--sys) 30%, transparent), transparent 70%); }
+.screen .title { position: absolute; left: 0; right: 0; top: 36px; text-align: center; font-size: 60px; color: var(--t1); letter-spacing: .01em; }
+.screen .cards { position: absolute; left: 0; right: 0; top: 140px; height: 470px; }
+.screen .card {
+  position: absolute; top: 50%; width: 330px; height: 440px; left: 50%;
+  margin: -220px 0 0 -165px; border-radius: var(--r-card);
+  background: var(--cover); overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+.screen .card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--acc); }
+.screen .card::after {
+  content: attr(data-name); position: absolute; left: 24px; right: 24px; bottom: 30px;
+  font-size: 34px; color: rgba(255,255,255,.92); text-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+.screen .card .art { position: absolute; left: 30px; right: 30px; top: 60px; height: 240px; border-radius: calc(var(--r-card) * .6); background: var(--art); }
+.screen .rail { position: absolute; left: 90px; right: 90px; bottom: 26px; height: 6px; border-radius: 3px; background: var(--track); }
+.screen .rail i { position: absolute; left: 0; width: 18%; top: 0; bottom: 0; border-radius: 3px; background: var(--sys); }
+.screen .count { position: absolute; bottom: 52px; left: 0; right: 0; text-align: center; font-size: 37px; color: var(--t2); }
+.screen .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.47); }
+.screen .panel {
+  position: absolute; left: 112px; right: 112px; top: 40px; bottom: 40px;
+  border-radius: var(--r-panel); background: var(--surface);
+  box-shadow: 0 0 0 var(--frame-w) var(--frame) inset, 0 30px 80px rgba(0,0,0,.5);
+  padding: 34px 40px; display: flex; flex-direction: column; gap: 6px;
+}
+.screen .panel h4 { margin: 0 0 6px; text-align: center; font-size: 55px; font-weight: 400; color: var(--t2); }
+.screen .panel hr { border: 0; height: 2px; background: color-mix(in srgb, var(--frame) 55%, var(--surface)); margin: 0 10px 10px; }
+.screen .mrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 28px; border-radius: var(--r-row); font-size: 49px; color: var(--t1); position: relative; }
+.screen .mrow span { color: var(--t2); }
+.screen .mrow.dead { color: var(--t3); }
+.screen .mrow.dead span { color: var(--t3); }
+.screen .mrow.sel.s-fill { background: var(--raised); }
+.screen .mrow.sel.s-ring { box-shadow: 0 0 0 4px var(--sel) inset; }
+.screen .mrow.sel.s-solid { background: var(--sel); color: var(--sel-ink); }
+.screen .mrow.sel.s-solid span { color: var(--sel-ink); opacity: .75; }
+.screen .pill {
+  position: absolute; left: 286px; top: 22px; width: 452px; height: 64px; border-radius: 32px;
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: 0 0 0 2px var(--edge) inset, 0 4px 14px rgba(0,0,0,.45);
+  display: flex; align-items: center; gap: 0; padding-left: 22px;
+}
+.screen .pill svg { width: 44px; height: 44px; flex: none; }
+.screen .pill .segs { display: flex; gap: 4px; margin-left: 22px; width: 338px; }
+.screen .pill .segs i { flex: 1; height: 16px; border-radius: 3px; background: var(--track); }
+.screen .pill .segs i.on { background: var(--pc); }
+
+/* the tutorial */
+.screen .stage { position: absolute; left: 172px; top: 84px; width: 680px; height: 340px; border-radius: var(--r-panel); background: color-mix(in srgb, var(--g) 60%, var(--surface)); box-shadow: 0 0 0 2px var(--edge) inset; overflow: hidden; }
+.screen .progress { position: absolute; top: 32px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.screen .progress i { width: 40px; height: 6px; border-radius: 3px; background: var(--track); }
+.screen .progress i.done { background: var(--ok); }
+.screen .progress i.now { background: var(--t1); }
+.screen .btn { position: absolute; width: 96px; height: 96px; border-radius: 50%; left: 464px; top: 376px; background: var(--raised); box-shadow: 0 0 0 4px var(--edge) inset; display: grid; place-items: center; font-size: 56px; color: var(--t1); }
+.screen .h-title { position: absolute; left: 0; right: 0; top: 484px; text-align: center; font-size: 60px; }
+.screen .h-line { position: absolute; left: 0; right: 0; top: 570px; text-align: center; font-size: 37px; color: var(--t2); }
+.screen .check { position: absolute; left: 812px; top: 56px; width: 76px; height: 76px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; }
+.screen .check svg { width: 46px; height: 46px; }
+.screen .zy { position: absolute; width: 140px; height: 148px; left: 40px; bottom: -6px; }
+.screen .bubble { position: absolute; left: 196px; bottom: 96px; background: var(--t1); color: var(--g); font-size: 40px; padding: 8px 26px; border-radius: 34px; }
+.screen .skip { position: absolute; right: 40px; bottom: 40px; font-size: 30px; color: var(--t3); display: flex; gap: 12px; align-items: center; }
+.screen .skip b { font-weight: 400; font-size: 22px; padding: 4px 14px; border-radius: 20px; box-shadow: 0 0 0 3px var(--edge) inset; color: var(--t2); }
+.screen .zcorner { position: absolute; right: 70px; top: 46px; width: 76px; height: 80px; }
+.screen .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.screen .empty svg { width: 220px; height: 232px; display: block; margin: 0 auto 26px; }
+.screen .empty div { font-size: 52px; }
+.screen .empty p { font-size: 37px; color: var(--t2); margin: 10px 0 0; }
+
+@media (prefers-reduced-motion: reduce) { .opt { transition: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="zyper" viewBox="-114.6 -125.1 248.9 262.6"><polygon points="-60.14,-108.09 93.49,-81.00 101.02,-43.11 85.74,43.55 -95.46,11.60 -80.18,-75.06" fill="#969998"/><polygon points="-60.14,-108.09 93.49,-81.00 101.02,-43.11 95.81,-13.57 65.34,-25.03 35.56,-40.44 6.95,-39.39 -19.59,-50.16 -52.84,-45.87 -85.39,-45.52 -80.18,-75.06" fill="#525658"/><polygon points="-31.88,-107.16 -76.48,-119.09 -104.05,-89.43 -108.56,-29.30 -87.13,-35.67 -66.40,-72.63" fill="#525658"/><polygon points="87.23,-45.54 94.08,-3.72 112.03,9.60 128.36,-48.45 112.60,-85.75 66.61,-89.80" fill="#525658"/><polygon points="-50.30,-106.35 -75.55,-112.83 -92.23,-87.34 -88.52,-62.32 -70.22,-85.49" fill="#DE929E"/><polygon points="95.23,-56.32 104.50,-28.28 116.54,-50.53 109.59,-80.19 83.64,-82.73" fill="#DE929E"/><polygon points="-0.53,-48.83 17.20,-45.71 19.46,-6.72 -15.99,-12.97" fill="#E4E2D8"/><polygon points="-17.85,-25.49 -18.48,-23.34 -19.57,-21.39 -21.08,-19.72 -22.91,-18.44 -24.99,-17.60 -27.20,-17.23 -29.43,-17.37 -31.58,-18.01 -33.53,-19.10 -35.19,-20.61 -36.48,-22.44 -37.32,-24.51 -37.68,-26.72 -37.54,-28.96 -36.91,-31.11 -35.81,-33.06 -34.31,-34.72 -32.48,-36.00 -30.40,-36.85 -28.19,-37.21 -25.96,-37.07 -23.81,-36.44 -21.86,-35.34 -20.20,-33.84 -18.91,-32.01 -18.07,-29.93 -17.71,-27.72" fill="#111310"/><polygon points="26.12,-19.99 27.21,-21.95 28.72,-23.61 30.55,-24.89 32.63,-25.74 34.84,-26.10 37.07,-25.96 39.22,-25.32 41.17,-24.23 42.83,-22.73 44.12,-20.89 44.96,-18.82 45.32,-16.61 45.18,-14.37 44.55,-12.22 43.45,-10.27 41.95,-8.61 40.12,-7.33 38.04,-6.48 35.83,-6.12 33.60,-6.26 31.45,-6.89 29.50,-7.99 27.84,-9.49 26.55,-11.33 25.71,-13.40 25.35,-15.61 25.49,-17.85" fill="#111310"/><polygon points="-1.17,-50.98 -10.90,-64.88 -41.72,-74.37 -67.09,-68.69 -82.38,-51.08 -74.85,-47.72 -57.01,-56.76 -35.34,-52.94 -12.40,-44.83" fill="#E4E2D8"/><polygon points="28.38,-45.77 52.71,-45.54 74.37,-41.72 88.05,-27.12 96.27,-27.70 87.93,-49.48 66.03,-63.50 33.82,-65.12 19.92,-55.38" fill="#E4E2D8"/><polygon points="2.08,-11.82 31.63,-6.61 63.96,17.37 81.69,55.02 75.44,90.47 56.09,119.56 31.99,129.52 17.97,116.90 -2.88,131.50 -21.19,120.15 -42.27,124.55 -56.87,103.70 -74.36,110.77 -93.60,93.16 -101.83,59.22 -95.58,23.76 -66.04,-5.55 -27.46,-17.03" fill="#E4E2D8"/><polygon points="-47.03,36.39 31.75,50.28 29.45,57.55 25.29,64.12 19.48,69.64 12.30,73.84 4.13,76.51 -4.63,77.52 -13.54,76.82 -22.16,74.43 -30.05,70.49 -36.82,65.18 -42.12,58.78 -45.69,51.60 -47.36,44.01" fill="#111310"/><polygon points="-21.20,-17.95 26.07,-9.62 25.61,4.51 11.36,16.22 -16.22,11.36 -25.61,-4.51" fill="#111310"/><polygon points="-13.32,52.49 18.20,58.04 11.25,97.43 9.62,102.17 6.61,106.17 2.51,109.04 -2.28,110.50 -7.28,110.41 -12.02,108.78 -16.01,105.77 -18.89,101.67 -20.35,96.88 -20.26,91.88" fill="#D67692"/></symbol>
+  <symbol id="spk" viewBox="-24 -24 48 48"><rect x="-22" y="-9" width="12" height="18" rx="2"/><path d="M-12-9 2-22v44L-12 9z"/><path d="M8-9a13 13 0 0 1 0 18M13-15a21 21 0 0 1 0 30" fill="none" stroke-width="4" stroke-linecap="round"/></symbol>
+  <symbol id="sun" viewBox="-24 -24 48 48"><circle r="9.6"/><g stroke-width="4" stroke-linecap="round"><path d="M0-14v-7M0 14v7M-14 0h-7M14 0h7M-10-10l-5-5M10 10l5 5M-10 10l-5 5M10-10l5-5"/></g></symbol>
+  <symbol id="tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1>ZyperOS <b>Design Lab</b></h1>
+      <p class="lede">Eight decisions that set DESIGN.md, the one system the shelf, the menus, Diatom's overlay, the volume bar and the tutorial will all follow. Every screen below is drawn at the launcher's own 1024&times;768 size and scaled down. Pick one option per decision and add a note where you want a change. Each later decision draws in the palette, type and shape you picked above it.</p>
+    </div>
+  </header>
+  <div class="status" role="status">
+    <span id="count">0 of 8 picked</span>
+    <span class="dots" id="dots" aria-hidden="true"></span>
+    <span class="save" id="save">Connecting&hellip;</span>
+  </div>
+  <main id="decisions"></main>
+  <p class="foot">Your picks and notes are saved with this page as you make them, so Claude can read them back and write DESIGN.md from them. Nothing here changes the handheld until that document is written and reviewed.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- the options -------------------------------------------------- */
+
+const SYS = { snes: "#8a6fc0", nes: "#c4443a", gbc: "#e0b23a", gb: "#7e9b47", ngpc: "#00aa4f" };
+
+const PALETTES = {
+  night: {
+    name: "Night", tag: "today",
+    blurb: "Blue-black ground, cool slate panels, one cyan for every piece of chrome, lime only in the name.",
+    g: "#07080c", surface: "#161820", raised: "#343740", edge: "#30333d", track: "#3c3e48",
+    t1: "#ededf2", t2: "#c6c9d6", t3: "#9499ac",
+    frame: "#3dd6ff", frameW: "12px", sel: "#3dd6ff", selInk: "#07080c",
+    vol: "#3dd6ff", bright: "#ffce80", ok: "#bef23c", heart: "#f0546e", music: "#9cd345", warn: "#e04848",
+  },
+  pepper: {
+    name: "Salt & Pepper",
+    blurb: "Zyper's coat as the whole UI: charcoal ground from his nose and eyes, the dark cap for panels, beard white for text. Lime is the one accent, for chrome and for success.",
+    g: "#111310", surface: "#1d201e", raised: "#303433", edge: "#3a3e3c", track: "#3f4341",
+    t1: "#e4e2d8", t2: "#c3c3ba", t3: "#969998",
+    frame: "#3a3e3c", frameW: "3px", sel: "#bef23c", selInk: "#111310",
+    vol: "#bef23c", bright: "#f2d27a", ok: "#bef23c", heart: "#de929e", music: "#bef23c", warn: "#e0705a",
+  },
+  pop: {
+    name: "Salt & Pepper Pop", tag: "suggested",
+    blurb: "The same schnauzer greys, with a bright accent per job: lime for ZyperOS and success, sky for volume and selection, amber for light, tongue pink for favorites, violet for music (Muse is green today, too close to Zyper's lime to tell apart). Systems keep their own colors on the shelf.",
+    g: "#111310", surface: "#1d201e", raised: "#303433", edge: "#3a3e3c", track: "#3f4341",
+    t1: "#e4e2d8", t2: "#c3c3ba", t3: "#969998",
+    frame: "#bef23c", frameW: "4px", sel: "#5cc8ff", selInk: "#0d1418",
+    vol: "#5cc8ff", bright: "#ffc857", ok: "#bef23c", heart: "#e07a9a", music: "#a98bff", warn: "#ff7a59",
+  },
+  beard: {
+    name: "Beard",
+    blurb: "A light look: the white beard as ground, charcoal text, lime as a fill with dark text. Bright in a dark room, so likely a second theme rather than the default.",
+    g: "#e6e4da", surface: "#f5f4ee", raised: "#d9d7cc", edge: "#c9c7bc", track: "#cfcdc2",
+    t1: "#1a1c1a", t2: "#3d403e", t3: "#6d706d",
+    frame: "#525658", frameW: "3px", sel: "#bef23c", selInk: "#111310",
+    vol: "#2a8fc4", bright: "#c98a00", ok: "#5e8c00", heart: "#c2557a", music: "#7055d0", warn: "#c4482f",
+  },
+};
+
+const SELECTION = {
+  fill:  { name: "Soft fill", tag: "today", blurb: "A raised surface behind the focused row. Quiet; the accent stays free for other jobs.", cls: "s-fill" },
+  ring:  { name: "Accent ring", blurb: "A ring in the selection color. Reads at arm's length on the 3.5 inch panel without filling the row.", cls: "s-ring" },
+  solid: { name: "Accent fill", blurb: "The row fills with the selection color and its text turns dark. The strongest signal, the boldest look.", cls: "s-solid" },
+};
+
+const TYPE = {
+  josefin: { name: "Josefin Sans", tag: "today", blurb: "Geometric, elegant, a little vintage. Thin at small sizes on the panel.", f: '"Josefin Sans", "Futura", sans-serif' },
+  nunito:  { name: "Nunito", blurb: "Rounded terminals, friendly and warm, like the schnauzer mark. Sturdy at small sizes.", f: '"Nunito", "Avenir Next", sans-serif' },
+  lexend:  { name: "Lexend", blurb: "Built for reading speed: open shapes, wide spacing. The most legible at 23 panel pixels.", f: '"Lexend", "Avenir Next", sans-serif' },
+};
+
+const SHAPE = {
+  crisp: { name: "Crisp", blurb: "Small corners. Precise and technical.", card: 12, panel: 16, row: 8 },
+  soft:  { name: "Soft", tag: "today", blurb: "Cards at 22, panels and rows a little rounder. Today's feel.", card: 22, panel: 28, row: 14 },
+  round: { name: "Round", blurb: "Big, friendly corners, close to the pill shapes of the bar and the buttons.", card: 34, panel: 40, row: 28 },
+};
+
+const MOTION = {
+  calm:    { name: "Calm", blurb: "Everything eases out over a quarter second. No overshoot anywhere.", move: 240, ui: 220, ease: "cubic-bezier(.33,1,.68,1)", pop: "cubic-bezier(.33,1,.68,1)", hop: 0 },
+  snappy:  { name: "Snappy", blurb: "Fast and sharp: 160 ms with a steep ease-out. Feels like hardware.", move: 160, ui: 150, ease: "cubic-bezier(.22,1,.36,1)", pop: "cubic-bezier(.22,1,.36,1)", hop: 0 },
+  playful: { name: "Playful", tag: "suggested", blurb: "Moves stay calm and quick, but rewards and Zyper overshoot a little and settle, like the boot animation.", move: 240, ui: 220, ease: "cubic-bezier(.33,1,.68,1)", pop: "cubic-bezier(.34,1.56,.64,1)", hop: 1 },
+};
+
+const ZYPER = {
+  moments:   { name: "Moments", blurb: "Zyper appears only at moments that matter: boot, loading, the tutorial, rewards, power off. Never on working screens." },
+  companion: { name: "Companion", tag: "suggested", blurb: "As Moments, plus a small Zyper in the menu header who reacts when something happens: a favorite, an unlock, a finished download." },
+  everywhere:{ name: "Everywhere", blurb: "As Companion, plus empty states, errors and waits: no games, no Wi-Fi, a scan in progress." },
+};
+
+const SOUND = {
+  silent:  { name: "Silent", tag: "today", blurb: "No interface sounds. The game and Muse are the only sound." },
+  rewards: { name: "Rewards only", blurb: "One short chime when something good happens: a tutorial step, an achievement, a favorite." },
+  soft:    { name: "Soft UI", tag: "suggested", blurb: "A quiet tick on move, a click on A, a lower click on B, the chime on rewards. Follows the volume, and off while a game runs." },
+};
+
+const DECISIONS = [
+  { key: "palette",   title: "Palette",            why: "The colors of the ground, the surfaces, the text and every accent, and which job each accent does.", uses: "shelf · menus · bar · tutorial · Diatom overlay", options: PALETTES, draw: drawPalette },
+  { key: "selection", title: "Focus",              why: "How the row or card under the cursor shows it is the one. On a handheld this is the most looked-at thing on screen.", uses: "menus · lists · keyboard · tutorial", options: SELECTION, draw: drawMenuScreen },
+  { key: "type",      title: "Typeface",           why: "One family for the whole UI. It is drawn at 23 to 38 pixels on a 640x480 panel held at arm's length.", uses: "everything with text", options: TYPE, draw: drawMenuScreen },
+  { key: "shape",     title: "Corners",            why: "One radius family: cards, panels, rows. Pills (the bar, buttons) stay fully round in every option.", uses: "cards · panels · rows · stage", options: SHAPE, draw: drawShapeScreen },
+  { key: "motion",    title: "Motion",             why: "How fast things move and how they land. The demo loops: the shelf steps one card, the bar slides in, a reward pops, the bar fades.", uses: "shelf · menus · bar · rewards · Zyper", options: MOTION, draw: drawMotion },
+  { key: "zyper",     title: "Zyper's role",       why: "How often the mascot shows up. Too little and the OS has no personality; too much and he gets in the way.", uses: "menus · empty states · rewards", options: ZYPER, draw: drawZyper },
+  { key: "sound",     title: "Sound",              why: "ZyperOS has no interface sounds today. Consoles like the Switch use them to make every press feel answered.", uses: "launcher only, never over a game", options: SOUND, draw: drawSound },
+  { key: "tour",      title: "Tutorial reward",    why: "What a correct press in the tutorial gets. All three keep the progress strip and move on by themselves after a second.", uses: "tutorial · first launch", options: {
+      full:  { name: "Check, hop and words", tag: "suggested", blurb: "A check pops on the stage, Zyper hops and says a short cheer in a bubble." },
+      check: { name: "Check and hop", blurb: "No words: the check and Zyper's hop say it." },
+      quiet: { name: "Check only", blurb: "The check and the progress strip. Zyper stays still." },
+    }, draw: drawTour },
+];
+
+/* ---------- state and saving -------------------------------------------- */
+
+/* Text a viewer wrote, made safe to put in markup. */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+}
+
+const picks = {};         /* key -> {choice, note} */
+let db = null;
+const writing = {};       /* key -> promise chain: one write at a time per doc */
+const saveEl = document.getElementById("save");
+
+function setSave(t) { saveEl.textContent = t; }
+
+function local(load) {
+  try {
+    if (load) return JSON.parse(localStorage.getItem("zyperos-lab") || "{}");
+    localStorage.setItem("zyperos-lab", JSON.stringify(picks));
+  } catch (e) { return {}; }
+}
+
+function persist(key) {
+  local(false);
+  if (!db) return;
+  const body = Object.assign({ at: new Date().toISOString() }, picks[key]);
+  setSave("Saving…");
+  writing[key] = (writing[key] || Promise.resolve())
+    .then(() => db.doc("picks/" + key).set(body))
+    .then(() => setSave("Saved"))
+    .catch(e => setSave(e && e.code === "invalid_argument" ? "Read-only: picks stay in this browser" : "Not saved: " + (e && e.code || "error")));
+}
+
+function current(key, fallback) {
+  const p = picks[key] && picks[key].choice;
+  const d = DECISIONS.find(d => d.key === key);
+  return p && d.options[p] ? p : fallback;
+}
+
+/* ---------- drawing ------------------------------------------------------- */
+
+function vars(pal, shape, type) {
+  return [
+    ["--g", pal.g], ["--surface", pal.surface], ["--raised", pal.raised], ["--edge", pal.edge],
+    ["--track", pal.track], ["--t1", pal.t1], ["--t2", pal.t2], ["--t3", pal.t3],
+    ["--frame", pal.frame], ["--frame-w", pal.frameW], ["--sel", pal.sel], ["--sel-ink", pal.selInk],
+    ["--ok", pal.ok], ["--sys", SYS.snes], ["--r-card", shape.card + "px"], ["--r-panel", shape.panel + "px"],
+    ["--r-row", shape.row + "px"], ["--uf", type.f],
+  ].map(([k, v]) => k + ":" + v).join(";");
+}
+
+function ctx(over = {}) {
+  return {
+    pal: PALETTES[over.palette || current("palette", "pop")],
+    sel: SELECTION[over.selection || current("selection", "fill")],
+    type: TYPE[over.type || current("type", "josefin")],
+    shape: SHAPE[over.shape || current("shape", "soft")],
+  };
+}
+
+function shelfHTML() {
+  const c = (name, acc, x, s, dim) =>
+    `<div class="card" data-name="${name}" style="--acc:${acc};--cover:linear-gradient(160deg, color-mix(in srgb, ${acc} 55%, #222), #121212);--art:linear-gradient(135deg, color-mix(in srgb, ${acc} 80%, #fff 10%), color-mix(in srgb, ${acc} 40%, #000));transform:translateX(${x}px) scale(${s});filter:brightness(${dim})"></div>`;
+  return `<div class="glow"></div><div class="title">Chrono Trigger</div>
+    <div class="cards">${c("Earthbound", SYS.gbc, -560, .62, .55)}${c("Punch-Out!!", SYS.nes, -300, .78, .7)}${c("Super Metroid", SYS.gb, 300, .78, .7)}${c("F-Zero", SYS.ngpc, 560, .62, .55)}${c("Chrono Trigger", SYS.snes, 0, 1, 1)}</div>
+    <div class="count">1 / 12</div><div class="rail"><i></i></div>`;
+}
+
+function pillHTML(pal, kind = "vol", level = 13, max = 20) {
+  const col = kind === "vol" ? pal.vol : pal.bright;
+  let segs = "";
+  for (let i = 0; i < max; i++) segs += `<i class="${i < level ? "on" : ""}"></i>`;
+  return `<div class="pill" style="--pc:${col}"><svg style="fill:${col};stroke:${col}"><use href="#${kind === "vol" ? "spk" : "sun"}"/></svg><div class="segs">${segs}</div></div>`;
+}
+
+function menuHTML(c, opts = {}) {
+  const rows = [["Play Time", ""], ["Wi-Fi", "off"], ["Bluetooth", "not connected"], ["Audio Output", "auto (speaker)"], ["Wi-Fi File Transfer", "needs Wi-Fi", 1], ["Date & Time", "Nov 3, 8:20 PM"]];
+  const sel = opts.selRow ?? 0;
+  const z = opts.zcorner ? `<svg class="zcorner"><use href="#zyper"/></svg>` : "";
+  return `<div class="scrim"></div><div class="panel">${z}<h4>ZyperOS</h4><hr>${rows.map((r, i) =>
+    `<div class="mrow ${r[2] ? "dead" : ""} ${i === sel ? "sel " + c.sel.cls : ""}">${r[0]}<span>${r[1]}</span></div>`).join("")}</div>`;
+}
+
+function screen(c, inner, extra = "") {
+  return `<div class="frame"><div class="screen" style="${vars(c.pal, c.shape, c.type)};${extra}">${inner}</div></div>`;
+}
+
+function swatches(p) {
+  const s = [["ground", p.g], ["surface", p.surface], ["text", p.t1], ["dim", p.t3], ["chrome", p.frame], ["focus", p.sel],
+             ["success", p.ok], ["volume", p.vol], ["light", p.bright], ["favorite", p.heart], ["music", p.music], ["warning", p.warn]];
+  return `<div class="swatches">${s.map(([n, v]) => `<div class="sw"><i style="background:${v}"></i><span>${n}</span></div>`).join("")}</div>`;
+}
+
+function drawPalette(key, c) {
+  const cc = ctx({ palette: key });
+  return screen(cc, shelfHTML() + menuHTML(cc) + pillHTML(cc.pal)) + swatches(cc.pal);
+}
+
+function drawMenuScreen(key, c, d) {
+  const cc = ctx({ [d.key]: key });
+  return screen(cc, shelfHTML() + menuHTML(cc, { selRow: 1 }));
+}
+
+function drawShapeScreen(key) {
+  const cc = ctx({ shape: key });
+  return screen(cc, shelfHTML() + menuHTML(cc, { selRow: 2 }));
+}
+
+function tourHTML(c, reward, opts = {}) {
+  const steps = Array.from({ length: 10 }, (_, i) => `<i class="${i < 2 ? "done" : i === 2 ? (reward !== "none" ? "done" : "now") : ""}"></i>`).join("");
+  const hop = opts.hop ? "transform:translateY(-34px) rotate(-8deg)" : "";
+  return `<div class="progress">${steps}</div>
+    <div class="stage">${shelfHTML().replace('class="title"', 'class="title" style="display:none"').replace('class="count"', 'class="count" style="display:none"')}</div>
+    <div class="btn">B</div>
+    <div class="h-title">Go back</div><div class="h-line">Press B to go back one step.</div>
+    ${reward !== "none" ? `<div class="check"><svg style="stroke:${c.pal.g}"><use href="#tick"/></svg></div>` : ""}
+    <svg class="zy" style="${reward === "full" || reward === "check" ? hop : ""}"><use href="#zyper"/></svg>
+    ${reward === "full" ? `<div class="bubble">Woof!</div>` : ""}
+    <div class="skip"><b>START</b>Skip tutorial</div>`;
+}
+
+function drawTour(key) {
+  const cc = ctx();
+  return screen(cc, tourHTML(cc, key, { hop: key !== "quiet" }));
+}
+
+function drawZyper(key) {
+  const cc = ctx();
+  if (key === "moments") return screen(cc, shelfHTML() + menuHTML(cc));
+  if (key === "companion") return screen(cc, shelfHTML() + menuHTML(cc, { zcorner: true }));
+  return screen(cc, `<div class="empty"><div><svg><use href="#zyper"/></svg><div>No games here yet</div><p>Copy games into Roms/SNES and press A to look again.</p></div></div>`);
+}
+
+/* Motion: one orchestrated loop per option, run with the Web Animations API
+   on the option's own curves and durations. */
+function drawMotion(key) {
+  const cc = ctx();
+  return screen(cc, shelfHTML() + pillHTML(cc.pal) + `<div class="check" style="left:474px;top:560px"><svg style="stroke:${cc.pal.g}"><use href="#tick"/></svg></div>`) +
+    `<div class="row"><button type="button" data-replay="${key}">Replay</button></div>`;
+}
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+function runMotion(card, m) {
+  const scr = card.querySelector(".screen");
+  if (!scr) return;
+  const cards = scr.querySelector(".cards"), pill = scr.querySelector(".pill"), check = scr.querySelector(".check");
+  scr.getAnimations({ subtree: true }).forEach(a => a.cancel());
+  const step = 300;
+  cards.animate([{ transform: "translateX(0)" }, { transform: `translateX(-${step}px)` }],
+    { duration: m.move, delay: 200, easing: m.ease, fill: "forwards" });
+  cards.animate([{ transform: `translateX(-${step}px)` }, { transform: "translateX(0)" }],
+    { duration: m.move, delay: 1100, easing: m.ease, fill: "forwards", composite: "replace" });
+  pill.animate([{ opacity: 0, transform: "translateY(-14px)" }, { opacity: 1, transform: "translateY(0)" }],
+    { duration: 120, delay: 600, easing: m.ease, fill: "both" });
+  pill.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, delay: 2600, easing: "linear", fill: "forwards" });
+  check.animate([{ transform: "scale(0)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }],
+    { duration: m.hop ? 420 : m.ui, delay: 1600, easing: m.pop, fill: "both" });
+  check.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, delay: 3000, fill: "forwards" });
+}
+
+/* Sound: synthesized, short, quiet. Played only from a press. */
+let ac = null;
+function tone(f, dur, type = "sine", gain = .08, at = 0) {
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + .004);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+}
+const SOUNDS = {
+  tick:  () => tone(1900, .025, "sine", .05),
+  click: () => tone(1250, .04, "triangle", .09),
+  back:  () => tone(820, .05, "triangle", .08),
+  chime: () => { tone(1318.5, .16, "triangle", .08); tone(1975.5, .26, "triangle", .07, .09); },
+};
+function drawSound(key) {
+  const cc = ctx();
+  const btns = key === "silent" ? `<p>Nothing to hear.</p>`
+    : key === "rewards" ? `<div class="row"><button type="button" data-snd="chime">Reward chime</button></div>`
+    : `<div class="row"><button type="button" data-snd="tick">Move</button><button type="button" data-snd="click">A</button><button type="button" data-snd="back">B</button><button type="button" data-snd="chime">Reward</button></div>`;
+  return screen(cc, shelfHTML()) + btns;
+}
+
+/* ---------- the page ------------------------------------------------------ */
+
+const main = document.getElementById("decisions");
+
+function render() {
+  main.innerHTML = DECISIONS.map((d, n) => {
+    const chosen = picks[d.key] && picks[d.key].choice;
+    return `<section class="decision" id="${d.key}">
+      <div class="dhead"><span class="dnum">${String(n + 1).padStart(2, "0")}</span><h2>${d.title}</h2>
+      <p class="why">${d.why}</p><p class="uses">Used in: ${d.uses}</p></div>
+      <div class="options">${Object.entries(d.options).map(([k, o]) => `
+        <article class="opt ${chosen === k ? "picked" : ""}" data-key="${d.key}" data-opt="${k}">
+          ${d.draw(k, null, d)}
+          <h3>${o.name} ${o.tag ? `<span class="tag ${o.tag === "today" ? "today" : ""}">${o.tag}</span>` : ""}</h3>
+          <p>${o.blurb}</p>
+          <div class="row"><button type="button" class="pick" id="pick-${d.key}-${k}" aria-pressed="${chosen === k}">${chosen === k ? "Picked" : "Pick " + o.name}</button></div>
+        </article>`).join("")}</div>
+      <div class="note"><label for="note-${d.key}">Anything to change about ${d.title.toLowerCase()}?</label>
+      <textarea id="note-${d.key}" data-note="${d.key}" placeholder="Optional">${esc((picks[d.key] && picks[d.key].note) || "")}</textarea></div>
+    </section>`;
+  }).join("");
+  fit();
+  status();
+  if (!reduce.matches) motionAll();
+}
+
+function status() {
+  const n = DECISIONS.filter(d => picks[d.key] && picks[d.key].choice).length;
+  document.getElementById("count").textContent = `${n} of ${DECISIONS.length} picked`;
+  document.getElementById("dots").innerHTML = DECISIONS.map(d => `<i class="${picks[d.key] && picks[d.key].choice ? "on" : ""}"></i>`).join("");
+}
+
+const ro = new ResizeObserver(es => es.forEach(e => {
+  const s = e.target.querySelector(".screen");
+  if (s) s.style.setProperty("--k", e.contentRect.width / 1024);
+}));
+function fit() { document.querySelectorAll(".frame").forEach(f => ro.observe(f)); }
+
+let loop = null;
+function motionAll() {
+  clearInterval(loop);
+  const go = () => document.querySelectorAll('.opt[data-key="motion"]').forEach(c => runMotion(c, MOTION[c.dataset.opt]));
+  go();
+  loop = setInterval(go, 3600);
+}
+
+main.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const card = b.closest(".opt");
+  if (b.dataset.snd) { SOUNDS[b.dataset.snd](); return; }
+  if (b.dataset.replay) { runMotion(card, MOTION[b.dataset.replay]); return; }
+  if (b.classList.contains("pick") && card) {
+    const key = card.dataset.key, opt = card.dataset.opt;
+    picks[key] = Object.assign({}, picks[key], { choice: opt });
+    if (key === "sound" && opt !== "silent") SOUNDS.chime();
+    persist(key);
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+    document.getElementById(`pick-${key}-${opt}`)?.focus({ preventScroll: true });
+  }
+});
+
+let noteTimer = {};
+main.addEventListener("input", e => {
+  const key = e.target.dataset.note;
+  if (!key) return;
+  picks[key] = Object.assign({}, picks[key], { note: e.target.value });
+  clearTimeout(noteTimer[key]);
+  noteTimer[key] = setTimeout(() => persist(key), 700);
+});
+
+Object.assign(picks, local(true));
+render();
+
+(async () => {
+  const use = window.claude && window.claude.use;
+  if (!use) { setSave("Saved in this browser"); return; }
+  db = await window.claude.use("db");
+  if (!db) { setSave("Saved in this browser"); return; }
+  const timer = setTimeout(() => setSave("Saved here; the store is not answering yet"), 10000);
+  db.collection("picks").onSnapshot(snap => {
+    if (!snap.metadata.fromCache) clearTimeout(timer);
+    let changed = false;
+    snap.docs.forEach(d => {
+      const v = d.data() || {};
+      const cur = picks[d.id] || {};
+      if (v.choice !== cur.choice || (v.note || "") !== (cur.note || "")) {
+        if (document.activeElement && document.activeElement.dataset.note === d.id) return;
+        picks[d.id] = { choice: String(v.choice || ""), note: String(v.note || "") };
+        changed = true;
+      }
+    });
+    if (!snap.metadata.fromCache) setSave("Saved");
+    if (changed) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+  }, err => { clearTimeout(timer); setSave("Saved in this browser (" + err.code + ")"); });
+})();
+})();
+</script>

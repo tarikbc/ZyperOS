@@ -1,0 +1,76 @@
+title: ZyperOS vs TortOS on the GKD Pixel 2
+description: ZyperOS began as Eric Reinsmidt's TortOS. What it kept, what it added, and where TortOS is the simpler pick on the GKD Pixel 2, from both projects' code.
+summary: ZyperOS began as Eric Reinsmidt's TortOS. What it kept, what it added, and where TortOS is the simpler pick.
+crumb: ZyperOS vs TortOS
+topic: compare
+published: 2026-11-07
+updated: 2026-11-07
+image: info
+image_alt: A game's details in ZyperOS: its cover, year, publisher and genre
+related: best-custom-firmware-gkd-pixel-2, zyperos-vs-rocknix, zyperos-vs-plumos
+weight: 40
+---
+<p>ZyperOS began as TortOS, Eric Reinsmidt's fast, focused firmware for the TrimUI Brick and the GKD Pixel 2. Its launcher, its installer, its Linux, plastron, and its emulator frontend, Diatom, all started in TortOS, and ZyperOS keeps Eric's notices and thanks him on its home page. This is what the two share, where ZyperOS went further, and when TortOS is the better pick, from both projects' own sources as of 7 November 2026.</p>
+
+<h2>The short answer</h2>
+<ul>
+  <li><strong>Pick TortOS</strong> if you want a small, released system with an installer you can download today, for the eleven classic consoles it plays, with Wi-Fi and USB transfers and achievements.</li>
+  <li><strong>Pick ZyperOS</strong> if you want the bigger library: forty systems, the Nintendo DS and PortMaster ports, plus video, rumble, a first-start tutorial and battery care. It is still in testing, with no release images yet.</li>
+</ul>
+
+<h2>What they share</h2>
+<p>Both run their games in Diatom, a libretro frontend that starts at boot and stays running, so a game is up the moment you choose it. Both run on plastron, a small Buildroot Linux whose Pixel 2 kernel uses ROCKNIX's patches and device tree. Both keep the whole system on the card and make the rest of it an exFAT partition a Mac or PC can read. And both send games from a browser over Wi-Fi or the USB cable, sign in to RetroAchievements on the handheld, and fetch box art from libretro and ScreenScraper.</p>
+
+<h2>Side by side</h2>
+<div class="table-wrap wide">
+<table>
+  <thead><tr><td></td><th scope="col" class="us">ZyperOS</th><th scope="col">TortOS</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">License</th><td class="us">PolyForm Shield 1.0.0, free</td><td>GPL-3.0</td></tr>
+    <tr><th scope="row">Install, latest</th><td class="us">Build the image: in testing, no release yet</td><td>Card image or TortOS Installer, v2.1.1 (October 2026)</td></tr>
+    <tr><th scope="row">Devices</th><td class="us">GKD Pixel 2</td><td>TrimUI Brick and GKD Pixel 2</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>11</td></tr>
+    <tr><th scope="row">Nintendo DS</th><td class="us">[yes: DSperate built in, DraStic if you add it] Yes</td><td>[no: Not among its eleven consoles] No</td></tr>
+    <tr><th scope="row">PortMaster ports</th><td class="us">[yes: A Ports shelf] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Games over Wi-Fi or USB</th><td class="us">[yes: A web page over Wi-Fi or the USB cable, the handheld's own network, and SSH over the cable] Yes, plus its own network</td><td>[yes: A web page over Wi-Fi or the USB cable] Yes</td></tr>
+    <tr><th scope="row">Box art on the device</th><td class="us">[yes: libretro, ScreenScraper, SteamGridDB] libretro, ScreenScraper, SteamGridDB</td><td>[yes: libretro and ScreenScraper] libretro, ScreenScraper</td></tr>
+    <tr><th scope="row">Video previews</th><td class="us">[yes: A cover plays a few seconds of its game] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">RetroAchievements</th><td class="us">[yes: Offline after a game's first start] Yes</td><td>[yes: Offline after a game's first start] Yes</td></tr>
+    <tr><th scope="row">Media</th><td class="us">Music, audiobooks and video</td><td>Music and audiobooks</td></tr>
+    <tr><th scope="row">First-start tutorial</th><td class="us">[yes: A tour of the buttons and the first choices] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">Rumble</th><td class="us">[yes: Games rumble] Yes</td><td>[no: plastron's README: neither device has rumble] No</td></tr>
+    <tr><th scope="row">Charge limit, charging screen</th><td class="us">[yes: A limit of 80, 85 or 90%, and a charging screen while off] Yes</td><td>[unk]</td></tr>
+    <tr><th scope="row">System updates</th><td class="us">On the handheld, over Wi-Fi, once releases are signed</td><td>TortOS Installer, on a computer</td></tr>
+    <tr><th scope="row">Boot time</th><td class="us">1.6 s, kernel to home</td><td>About 2.2 s, power on to shelf</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="meta">A tick means it has it, a cross that it does not, and a dash that no source we read says either way. The two boot times are each project's own, measured from different points: ZyperOS's from the kernel's start to the home screen (mean of 10 starts), TortOS's from power on.</p>
+
+<h2>What ZyperOS added</h2>
+<ul>
+  <li><strong>Twenty-nine more systems</strong>, among them the PlayStation, Nintendo 64, Dreamcast, Nintendo DS, Saturn, arcade sets, ScummVM, OpenBOR and J2ME, and a Ports shelf for PortMaster games.</li>
+  <li><strong>A new home</strong>: animated pixel-art consoles on a Spotlight or Gallery screen, light and dark themes, and a first start that teaches each button.</li>
+  <li><strong>Video</strong> in MP4, its media player, and <strong>video snaps</strong> on the shelf.</li>
+  <li><strong>SteamGridDB</strong> as a third box art source, for homebrew and hacks.</li>
+  <li><strong>The handheld's own Wi-Fi network</strong> for transfers when there is none around, and SSH over the USB cable.</li>
+  <li><strong>Rumble</strong> in the Dreamcast, PlayStation and Game Boy Color games that use it, and <strong>side lights</strong> for volume, brightness, finished transfers and achievements, as well as the battery.</li>
+  <li><strong>Battery care</strong>: a charge limit, a charging screen while off, and a heat warning.</li>
+  <li><strong>System Update</strong> on the handheld, into a second system slot that rolls back if a new version fails.</li>
+</ul>
+
+<h2>Where TortOS is the better pick</h2>
+<p>TortOS is released, with checksums and an installer that downloads the latest version and writes it for you. It runs on two handhelds, the TrimUI Brick as well as the Pixel 2. If you play only the classic consoles it covers, from the NES to the Game Boy Advance, it is the smaller, simpler system, and it starts in about two seconds.</p>
+<p>ZyperOS has no release images yet. Until it does, TortOS is the one you can install today without building anything.</p>
+
+<h2>Installing and updating</h2>
+<p>TortOS Installer, for macOS, Windows and Linux, downloads the latest release, checks it against the release's checksums, writes it, and reads it back. It also updates a card and keeps its games, music, saves and settings; writing the image by hand erases the card. ZyperOS Installer started from it and works the same way, built from ZyperOS's repository for now. Once ZyperOS releases are signed, its System Update also updates the handheld over Wi-Fi, without a computer.</p>
+
+<h2>Sources</h2>
+<ol class="sources">
+  <li>TortOS at <a href="https://github.com/ericreinsmidt/TortOS/tree/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1">aafe6de</a>: <a href="https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/README.md">README</a> and <a href="https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/docs/guide.md">guide</a>; releases <a href="https://github.com/ericreinsmidt/TortOS/releases/tag/v2.1.1">v2.1.1</a> and <a href="https://github.com/ericreinsmidt/TortOS/releases/tag/v2.0.0">v2.0.0</a>.</li>
+  <li>plastron at <a href="https://github.com/ericreinsmidt/plastron/blob/b67f5ec86a601f878f1bc8452d16af7112950f3d/README.md">b67f5ec, README</a>: the Pixel 2's kernel, no rumble, the 2.2 s start.</li>
+  <li>TortOS Installer at <a href="https://github.com/ericreinsmidt/TortOS-Installer/blob/5636763529a99af284e67766a77b7fc5fba1efa4/README.md">5636763, README</a>.</li>
+  <li>ZyperOS: <a href="https://github.com/tarikbc/ZyperOS#readme">the README</a>, its credits and how it compares; the boot time from <a href="https://github.com/tarikbc/plastron/pull/15">plastron#15</a> and <a href="https://github.com/tarikbc/ZyperOS/pull/83">ZyperOS#83</a>.</li>
+</ol>
+<p class="meta">Read on 7 November 2026.</p>

@@ -1,0 +1,43 @@
+[package]
+name = "zyperos-installer"
+version = "1.0.0"
+description = "Puts ZyperOS on a microSD card for the GKD Pixel 2 or the TrimUI Brick, or updates one"
+# Built on TortOS Installer by Eric Reinsmidt
+authors = ["Tarik Caramanico", "Eric Reinsmidt"]
+license-file = "../LICENSE"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# The system's own file chooser, for a card image on this computer
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Both devices' images are .img.xz: a pure-Rust decoder, so nothing to link
+# on three systems, and no encoder
+lzma-rust2 = { version = "0.20", default-features = false, features = ["std", "xz"] }
+# Downloads from GitHub: rustls with its own root certificates, so nothing
+# to install alongside on Linux
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+sha2 = "0.11"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+plist = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Ioctl", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+# The tests make their own .xz images
+lzma-rust2 = { version = "0.20", default-features = false, features = ["std", "xz", "encoder"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

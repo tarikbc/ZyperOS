@@ -1,0 +1,762 @@
+/* SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0 */
+/* See musec.h. The protocol is src/muse/muse.c's. */
+#include "musec.h"
+
+#include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include "muselib.h"
+#include "musequeue.h"
+#include "platform.h"
+
+#define MUSE_SOCK "/tmp/muse.sock"
+
+static char    g_bin[256], g_root[256];
+static int     g_fd = -1;
+static char    g_in[4096];
+static size_t  g_have;
+static unsigned g_spawned_ms;
+static int     g_spawned;
+
+/* Covers the daemon has answered about and nobody has taken yet. A handful:
+ * they are asked for one screen at a time, and one dropped here is asked for
+ * again by a caller whose answer never came - see musec_cover_ask. */
+#define COVER_RING 8
+static struct { char base[LIB_PATH * 2], file[LIB_PATH * 2 + 8]; } g_cov[COVER_RING];
+static int     g_cov_head, g_cov_n;
+
+/* Who folders are by, answered and not yet taken, the same way. */
+#define ARTIST_RING 8
+static struct { char dir[LIB_PATH * 2], name[256]; } g_art[ARTIST_RING];
+static int     g_art_head, g_art_n;
+
+static int     g_show = -1;         /* VIDEO show= last sent, -1 none yet */
+static bool    g_show_want;         /* what it should be */
+static bool    g_names_each;        /* the queue names each track's own; see musec_names_by */
+static void  (*g_names_fn)(const char *, char *, size_t, char *, size_t);
+static char  **g_q;                 /* the queue, relative paths, ours */
+static int     g_qn;
+static muq     g_order;             /* which of them plays when: the mode */
+static muq_mode g_mode = MUQ_IN_ORDER;
+static int     g_pending;           /* a PLAY waiting for the connection */
+static bool    g_advanced;          /* the next track is asked for; see event() */
+static int     g_skips;             /* consecutive tracks that would not open */
+static char    g_artist[128], g_album[128];
+static mu_now  g_now;
+static bool    g_book;              /* the queue is a book: in order, always */
+static bool    g_videos;            /* or videos: in order too */
+static bool    g_videos_call;       /* inside musec_play_videos */
+static double  g_start_at;          /* where the first PLAY of a queue starts */
+static bool    g_ran_out;           /* see musec_take_ran_out */
+static double  g_speed = 1.0;       /* see musec_set_speed */
+/* The playing file's chapters, from the daemon's CHAPTER lines. */
+#define MAX_CHAPTERS 256
+static double  g_ch_at[MAX_CHAPTERS];
+static char    g_ch_title[MAX_CHAPTERS][96];
+static int     g_nch;
+/* A seek on its way: where to, and when it was asked for. See seek_to. */
+static bool    g_seeking;
+static double  g_seek_to;
+static unsigned g_seek_ms;
+
+/* The output, which Muse holds for its whole life and has to be HANDED a
+ * headset: see musec_sink in musec.h. */
+static char     g_sink_sent[128];   /* what it was last asked for, "" unknown */
+static char     g_sink_said[128];   /* what it last reported, "" not yet */
+static unsigned g_sink_ms;          /* when the ask went */
+static bool     g_sink_waiting;     /* asked, and no answer yet */
+static char     g_chan_sent[8];     /* the channels last asked for, "" none yet */
+static bool     g_asked;            /* PLAY or RESUME sent, not yet answered */
+static void   (*g_before_heard)(void);
+
+static void seek_to(double t);
+
+void musec_init(const char *muse_bin, const char *root)
+{
+	snprintf(g_bin, sizeof g_bin, "%s", muse_bin);
+	snprintf(g_root, sizeof g_root, "%s", root);
+}
+
+/* What was last asked of the daemon's snap, so a frame loop's every pass
+ * sends nothing; forgotten with the connection (drop), since a new daemon
+ * has no snap playing. */
+static char g_snap_sent[1024], g_snap_want[1024];
+static int  g_snap_vol, g_snap_want_vol;
+
+/* `why` is logged when a live connection ends: it is when "Muse vanished"
+ * happened, which on 2026-09-25 could only be inferred afterwards - #42. */
+static void drop(const char *why, int err)
+{
+	if (g_fd >= 0) {
+		fprintf(stderr, "muse: connection lost: %s%s%s (state %s, sink %s)\n", why,
+		        err ? ", " : "", err ? strerror(err) : "",
+		        g_now.state == MU_PLAYING ? "playing" : g_now.state == MU_PAUSED ? "paused" : "stopped",
+		        g_sink_said[0] ? g_sink_said : "?");
+		close(g_fd);
+	}
+	g_fd = -1;
+	g_have = 0;
+	if (g_now.state != MU_OFF) g_now.state = MU_OFF;
+	/* A new connection may be a new daemon, so its output is not known
+	 * until it says; its READY announcement does. */
+	g_sink_sent[0] = g_sink_said[0] = '\0';
+	g_sink_waiting = g_asked = false;
+	g_snap_sent[0] = '\0';
+	/* And it starts in stereo, so whatever was asked of the old one has to
+	 * be asked again. */
+	g_chan_sent[0] = '\0';
+	/* And with nobody watching. */
+	g_show = -1;
+}
+
+static void sendf(const char *fmt, ...);
+
+static void show_send(void)
+{
+	if (g_fd < 0 || g_show == (int)g_show_want) return;
+	g_show = g_show_want;
+	sendf("VIDEO\tshow=%d", g_show);
+}
+
+static void sendf(const char *fmt, ...)
+{
+	char line[1400];
+	va_list ap;
+	int n;
+
+	if (g_fd < 0) return;
+	va_start(ap, fmt);
+	n = vsnprintf(line, sizeof line - 1, fmt, ap);
+	va_end(ap);
+	/* Not sent at all rather than sent cut short: a PLAY cut short plays a
+	 * file nobody asked for, and a COVER cut short writes a picture under a
+	 * name nobody will look for. Nothing the launcher builds is this long -
+	 * two paths of LIB_PATH each - so this is a guard, not a case. */
+	if (n < 0 || n > (int)sizeof line - 2) {
+		fprintf(stderr, "muse: a line too long to send\n");
+		return;
+	}
+	line[n++] = '\n';
+	if (send(g_fd, line, (size_t)n, MSG_NOSIGNAL | MSG_DONTWAIT) < 0 &&
+	    errno != EAGAIN)
+		drop("send failed", errno);      /* it went away; the next poll starts it */
+}
+
+/* Connected, or on the way. The daemon is started at most once every two
+ * seconds, so a Muse that cannot start does not become a fork a frame. */
+static int connected(void)
+{
+	struct sockaddr_un sa = { .sun_family = AF_UNIX };
+	int fd;
+
+	if (g_fd >= 0) return 1;
+	snprintf(sa.sun_path, sizeof sa.sun_path, "%s", MUSE_SOCK);
+	/* Non-blocking by fcntl rather than SOCK_NONBLOCK, which is Linux's: the
+	 * host build compiles this too, and a Unix-socket connect either answers
+	 * at once or fails at once either way. */
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd >= 0) fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+	if (fd >= 0 && connect(fd, (struct sockaddr *)&sa, sizeof sa) == 0) {
+		g_fd = fd;
+		g_have = 0;
+		if (g_now.state == MU_OFF) g_now.state = MU_STOPPED;
+		return 1;
+	}
+	if (fd >= 0) close(fd);
+	if (!g_bin[0]) return 0;
+	if (!g_spawned || plat_now_ms() - g_spawned_ms > 2000) {
+		char *argv[] = { g_bin, NULL };
+
+		plat_spawn_detached(argv, NULL, NULL);
+		g_spawned = 1;
+		g_spawned_ms = plat_now_ms();
+		fprintf(stderr, "muse: started %s\n", g_bin);
+	}
+	return 0;
+}
+
+static void play_current(void)
+{
+	int t = muq_current(&g_order);
+	const char *q;
+
+	if (t < 0 || t >= g_qn) return;
+	q = g_q[t];
+	/* Held until the daemon has said which output it is on - its READY
+	 * announcement ends with SINK - or the route below has nothing to go by
+	 * and the first track of a fresh daemon starts on the speaker. */
+	if (!connected() || !g_sink_said[0]) { g_pending = 1; return; }
+	g_pending = 0;
+	/* Routed BEFORE the PLAY goes, so the track starts where it is heard
+	 * rather than on the speaker for however long the route takes. The
+	 * daemon runs its commands in order, so a SINK sent now lands first. */
+	g_asked = true;
+	if (g_before_heard) g_before_heard();
+	/* Only the queue's first PLAY starts part way: every track after it is
+	 * one the queue moved on to, from its beginning. */
+	sendf("PLAY\tpath=%s/%s\tat=%.1f\tspeed=%.2f", g_root, q, g_start_at, g_speed);
+	g_nch = 0;                     /* the new file says its own */
+	/* Until META says otherwise, the name the file has. */
+	ml_track_name(strrchr(q, '/') ? strrchr(q, '/') + 1 : q,
+	              g_now.title, sizeof g_now.title);
+	if (g_names_each && g_names_fn) {
+		g_names_fn(q, g_now.artist, sizeof g_now.artist, g_now.album, sizeof g_now.album);
+	} else {
+		snprintf(g_now.artist, sizeof g_now.artist, "%s", g_artist);
+		snprintf(g_now.album, sizeof g_now.album, "%s", g_album);
+	}
+	g_now.vw = g_now.vh = 0;            /* until META says it has a picture */
+	g_now.at = g_start_at;
+	g_now.speed = g_speed;
+	g_start_at = 0;
+	g_seeking = false;
+	g_now.len = 0;
+	g_now.index = g_order.pos;
+	g_now.count = g_qn;
+}
+
+/* The next track the queue's mode names, or the end. `failed` is a track that
+ * would not play rather than one that finished - see muq_failed. */
+static void advance(bool failed)
+{
+	if ((failed ? muq_failed(&g_order) : muq_ended(&g_order)) >= 0) {
+		play_current();
+		g_advanced = true;
+	} else {
+		g_now.state = MU_STOPPED;
+		if (!failed) g_ran_out = true;
+	}
+}
+
+/* `key=` in a tab-separated line, or "". */
+static void field(const char *line, const char *key, char *out, size_t n)
+{
+	size_t kl = strlen(key);
+	const char *p = line;
+
+	out[0] = '\0';
+	while ((p = strchr(p, '\t'))) {
+		p++;
+		if (!strncmp(p, key, kl) && p[kl] == '=') {
+			size_t len = strcspn(p + kl + 1, "\t");
+
+			if (len >= n) len = n - 1;
+			memcpy(out, p + kl + 1, len);
+			out[len] = '\0';
+			return;
+		}
+	}
+}
+
+static void event(const char *line)
+{
+	char v[256];
+
+	if (!strncmp(line, "READY", 5)) {
+		show_send();
+		if (g_pending) play_current();
+	} else if (!strncmp(line, "STATE", 5)) {
+		field(line, "state", v, sizeof v);
+		/* The track that ended says "stopped" AFTER its END, and by then the
+		 * next one has already been asked for. Taken at its word, the queue
+		 * reads as stopped for the moment between two tracks - and a game
+		 * follows musec_playing to decide whether it is heard, so its sound
+		 * came up for a tenth of a second at every track change. */
+		if (g_advanced && !strcmp(v, "stopped")) { g_advanced = false; return; }
+		g_advanced = false;
+		g_asked = false;
+		g_now.state = !strcmp(v, "playing") ? MU_PLAYING
+		            : !strcmp(v, "paused")  ? MU_PAUSED : MU_STOPPED;
+		if (g_now.state == MU_PLAYING) g_skips = 0;
+	} else if (!strncmp(line, "CHAPTER", 7)) {
+		int i;
+
+		field(line, "i", v, sizeof v);
+		i = atoi(v);
+		if (i >= 0 && i < MAX_CHAPTERS) {
+			field(line, "at", v, sizeof v);
+			g_ch_at[i] = atof(v);
+			field(line, "title", g_ch_title[i], sizeof g_ch_title[i]);
+			if (i + 1 > g_nch) g_nch = i + 1;
+		}
+	} else if (!strncmp(line, "META", 4)) {
+		/* The CHAPTER lines follow, and are this file's alone. */
+		g_nch = 0;
+		/* The file's own tags win where it has them; the folder names stand
+		 * in where it does not, which on this card is the artist almost
+		 * every time - the rips carry an album tag and no artist one. */
+		field(line, "title", v, sizeof v);
+		if (v[0]) snprintf(g_now.title, sizeof g_now.title, "%s", v);
+		field(line, "artist", v, sizeof v);
+		if (v[0]) snprintf(g_now.artist, sizeof g_now.artist, "%s", v);
+		field(line, "album", v, sizeof v);
+		if (v[0]) snprintf(g_now.album, sizeof g_now.album, "%s", v);
+		field(line, "len", v, sizeof v);
+		g_now.len = atof(v);
+		/* "640x360", or "0x0" - and nothing from a daemon older than video. */
+		field(line, "video", v, sizeof v);
+		if (sscanf(v, "%dx%d", &g_now.vw, &g_now.vh) != 2 || g_now.vw <= 0 || g_now.vh <= 0)
+			g_now.vw = g_now.vh = 0;
+	} else if (!strncmp(line, "POS", 3)) {
+		double at;
+
+		field(line, "len", v, sizeof v); if (atof(v) > 0) g_now.len = atof(v);
+		field(line, "at", v, sizeof v);  at = atof(v);
+		/* While a seek is on its way, a position that is not the seek's is
+		 * from before it: the once-a-second report sent as the SEEK went
+		 * out, or an earlier seek of a held d-pad landing. Taken at its
+		 * word it pulled the clock back and then forward again - measured
+		 * 2026-09-28, a 635.8 between seeks to 630 and 640, and an M4B,
+		 * whose seeks take 700 ms, showing 1010 after 1050 was asked for.
+		 * And the next press counts from the shown position, so a held
+		 * d-pad also lost ground. Three seconds at most, for a seek that
+		 * never lands; speed goes up to 2x, so that is the slack. */
+		if (g_seeking) {
+			double since = (plat_now_ms() - g_seek_ms) / 1000.0;
+
+			if (at >= g_seek_to - 0.5 && at <= g_seek_to + since * 2 + 1.5)
+				g_seeking = false;                          /* it landed */
+			else if (since < 3.0)
+				return;
+			else
+				g_seeking = false;
+		}
+		g_now.at = at;
+	} else if (!strncmp(line, "END", 3)) {
+		advance(false);
+	} else if (!strncmp(line, "SINK", 4)) {
+		field(line, "device", g_sink_said, sizeof g_sink_said);
+		g_sink_waiting = false;
+		/* Taken as the starting point only when nothing has been asked of
+		 * this daemon yet. After that, what was ASKED stands: re-asking
+		 * because Muse fell back would retry a dead headset every tick,
+		 * which is the loop aout_apply's comment in main.c describes. */
+		if (!g_sink_sent[0])
+			snprintf(g_sink_sent, sizeof g_sink_sent, "%s", g_sink_said);
+		if (g_pending) play_current();
+	} else if (!strncmp(line, "COVER", 5)) {
+		int k = (g_cov_head + g_cov_n) % COVER_RING;
+
+		if (g_cov_n == COVER_RING) {           /* the oldest makes room */
+			g_cov_head = (g_cov_head + 1) % COVER_RING;
+			g_cov_n--;
+			k = (g_cov_head + g_cov_n) % COVER_RING;
+		}
+		field(line, "base", g_cov[k].base, sizeof g_cov[k].base);
+		field(line, "file", g_cov[k].file, sizeof g_cov[k].file);
+		g_cov_n++;
+	} else if (!strncmp(line, "ARTIST", 6)) {
+		int k = (g_art_head + g_art_n) % ARTIST_RING;
+
+		if (g_art_n == ARTIST_RING) {          /* the oldest makes room */
+			g_art_head = (g_art_head + 1) % ARTIST_RING;
+			g_art_n--;
+			k = (g_art_head + g_art_n) % ARTIST_RING;
+		}
+		field(line, "dir", g_art[k].dir, sizeof g_art[k].dir);
+		field(line, "name", g_art[k].name, sizeof g_art[k].name);
+		g_art_n++;
+	} else if (!strncmp(line, "ERROR", 5)) {
+		field(line, "why", v, sizeof v);
+		fprintf(stderr, "muse: %s\n", v);
+		/* A track that will not open is skipped rather than ending the
+		 * album - but not forever: a whole album of files that fail is a
+		 * folder problem, and walking it at a frame a track says nothing. */
+		if (++g_skips < 8) advance(true); else g_now.state = MU_STOPPED;
+	}
+}
+
+/* A headset's own play, pause, next and previous, which btplayer reads off its
+ * AVRCP keyboard and writes as `<action> <stamp>` (tools/btplayer.c). Here and
+ * not in any one screen, because musec_poll runs wherever Muse matters - the
+ * shelf, the menus, a game's tick, Muse's own screens. Only ever Muse, even in
+ * a game: pausing the music is what brings the game's sound back, and a
+ * headset's button never reaches into the game itself - Eric's call,
+ * 2026-09-26. A new stamp is a new press; the one found at start is only
+ * noted. Read every tenth of a second, before anything that could return
+ * early, so a press made while Muse was not running is used up, not replayed
+ * later. */
+static void headset_keys(void)
+{
+	static unsigned looked;
+	static long     seen;
+	static bool     primed;
+	unsigned now = plat_now_ms();
+	char     act[16];
+	long     stamp;
+	FILE    *f;
+
+	if (primed && now - looked < 100) return;
+	looked = now;
+	f = fopen("/tmp/zyperos_btkey", "r");
+	if (f && fscanf(f, "%15s %ld", act, &stamp) == 2 && stamp != seen) {
+		bool fresh = primed;
+
+		seen = stamp;
+		if (fresh) {
+			fprintf(stderr, "muse: headset %s\n", act);
+			if (!strcmp(act, "toggle"))     musec_toggle();
+			else if (!strcmp(act, "pause")) { if (g_now.state == MU_PLAYING) sendf("PAUSE"); }
+			else if (!strcmp(act, "next"))  musec_next();
+			else if (!strcmp(act, "prev"))  musec_prev();
+		}
+	}
+	if (f) fclose(f);
+	primed = true;
+}
+
+static void snap_send(void);
+
+void musec_poll(void)
+{
+	ssize_t got;
+
+	headset_keys();
+
+	/* Reconnect whenever there is a queue to look after, not only when a
+	 * play is waiting: a daemon that restarts mid-album would otherwise
+	 * finish the track it was on and stop, because its END went to a socket
+	 * nobody was reading. */
+	if (g_fd < 0) {
+		if ((!g_pending && g_qn == 0 && !g_snap_want[0]) || !connected()) return;
+	}
+	snap_send();
+	for (;;) {
+		got = recv(g_fd, g_in + g_have, sizeof g_in - g_have - 1, MSG_DONTWAIT);
+		if (got == 0) { drop("closed by Muse", 0); return; }
+		if (got < 0) {
+			if (errno != EAGAIN && errno != EWOULDBLOCK) drop("receive failed", errno);
+			break;
+		}
+		g_have += (size_t)got;
+		g_in[g_have] = '\0';
+		for (;;) {
+			char *nl = memchr(g_in, '\n', g_have);
+			size_t used;
+
+			if (!nl) break;
+			*nl = '\0';
+			event(g_in);
+			if (g_fd < 0) return;              /* the event dropped us */
+			used = (size_t)(nl - g_in) + 1;
+			memmove(g_in, nl + 1, g_have - used);
+			g_have -= used;
+		}
+		if (g_have >= sizeof g_in - 1) g_have = 0;
+	}
+}
+
+void musec_play(const char *const *paths, int n, int start, double at, bool book,
+                double speed, const char *artist, const char *album)
+{
+	int i, k = 0;
+
+	for (i = 0; i < g_qn; i++) free(g_q[i]);
+	free(g_q);
+	g_q = calloc((size_t)(n > 0 ? n : 1), sizeof *g_q);
+	g_qn = 0;
+	if (!g_q) return;
+	for (i = 0; i < n; i++) {
+		/* A tab or a newline is structure on the wire; a name holding one
+		 * would arrive as a different path. Nobody names a song that way,
+		 * and the one that did is left out rather than misplayed. */
+		if (strpbrk(paths[i], "\t\n")) { if (i < start) start--; continue; }
+		g_q[k] = strdup(paths[i]);
+		if (g_q[k]) k++;
+	}
+	g_qn = k;
+	muq_free(&g_order);
+	g_book = book;
+	/* musec_play_videos sets it for its own call and nothing else does. */
+	if (!g_videos_call) g_videos = false;
+	g_speed = speed >= 0.5 && speed <= 2.0 ? speed : 1.0;
+	muq_init(&g_order, k, start >= 0 && start < k ? start : 0,
+	         book || g_videos ? MUQ_IN_ORDER : g_mode, plat_now_ms() * 2654435761u + 1);
+	g_skips = 0;
+	g_start_at = at > 0 ? at : 0;
+	g_ran_out = false;
+	g_names_each = !artist && !album;
+	snprintf(g_artist, sizeof g_artist, "%s", artist ? artist : "");
+	snprintf(g_album, sizeof g_album, "%s", album ? album : "");
+	play_current();
+}
+
+void musec_play_videos(const char *const *paths, int n, int start, double at,
+                       const char *artist, const char *album)
+{
+	g_videos = g_videos_call = true;
+	musec_play(paths, n, start, at, false, 1.0, artist, album);
+	g_videos_call = false;
+}
+
+bool musec_is_videos(void) { return g_videos; }
+
+void musec_names_by(void (*fn)(const char *track, char *artist, size_t an,
+                               char *album, size_t aln))
+{
+	g_names_fn = fn;
+}
+
+bool musec_video(void) { return g_now.vw > 0 && g_now.state != MU_OFF; }
+
+void musec_video_show(bool on)
+{
+	g_show_want = on;
+	show_send();
+}
+
+/* What is wanted, sent once there is a daemon to send it to: the first snap
+ * asked of a launcher whose Muse has not started yet starts it, and goes out
+ * when it answers (musec_poll). */
+static void snap_send(void)
+{
+	if (g_fd < 0) return;
+	if (!strcmp(g_snap_sent, g_snap_want) && g_snap_vol == g_snap_want_vol) return;
+	snprintf(g_snap_sent, sizeof g_snap_sent, "%s", g_snap_want);
+	g_snap_vol = g_snap_want_vol;
+	sendf("SNAP\tpath=%s\tvol=%d", g_snap_sent, g_snap_vol);
+}
+
+void musec_snap(const char *path, int vol)
+{
+	/* A tab or a line break would end the line's field or the line */
+	if (!path || strpbrk(path, "\t\n")) path = "";
+	snprintf(g_snap_want, sizeof g_snap_want, "%s", path);
+	g_snap_want_vol = vol;
+	/* A stop with no daemon needs no daemon */
+	if (g_fd < 0 && (!*path || !connected())) return;
+	snap_send();
+}
+
+void musec_toggle(void)
+{
+	if (g_now.state == MU_PLAYING) sendf("PAUSE");
+	else if (g_now.state == MU_PAUSED) {
+		g_asked = true;
+		if (g_before_heard) g_before_heard();   /* see play_current */
+		sendf("RESUME");
+	}
+	else if (g_qn > 0) play_current();
+}
+
+void musec_on_before_heard(void (*fn)(void)) { g_before_heard = fn; }
+
+bool musec_heard(void) { return g_now.state == MU_PLAYING || g_asked; }
+
+void musec_sink(const char *device)
+{
+	const char *dev = device && device[0] ? device : "default";
+
+	if (g_fd < 0 || !g_sink_said[0]) return;   /* not connected, or not heard from */
+	if (!strcmp(dev, g_sink_sent)) return;
+	snprintf(g_sink_sent, sizeof g_sink_sent, "%s", dev);
+	g_sink_ms = plat_now_ms();
+	g_sink_waiting = true;
+	sendf("SINK\tdevice=%s", dev);
+	fprintf(stderr, "muse: sink -> %s\n", dev);
+}
+
+void musec_channels(const char *mode)
+{
+	const char *m = mode && mode[0] ? mode : "stereo";
+
+	if (g_fd < 0 || !g_sink_said[0]) return;   /* not connected, or not heard from */
+	if (!strcmp(m, g_chan_sent)) return;
+	snprintf(g_chan_sent, sizeof g_chan_sent, "%s", m);
+	sendf("CHANNELS\tmode=%s", m);
+	fprintf(stderr, "muse: channels -> %s\n", m);
+}
+
+void musec_sink_again(void)
+{
+	/* Forget what was asked, so the next musec_sink sends even an unchanged
+	 * device. Only while connected and heard from: an empty ask otherwise
+	 * means "not known yet", which the SINK answer fills in. */
+	if (g_fd >= 0 && g_sink_said[0]) g_sink_sent[0] = '\0';
+}
+
+bool musec_sink_settled(void)
+{
+	/* The daemon answers a SINK after its retries, which are a second at
+	 * most; a little over that, and it is taken as done either way. */
+	if (g_fd < 0 || !g_sink_waiting) return true;
+	return plat_now_ms() - g_sink_ms > 1200;
+}
+
+const char *musec_sink_now(void)
+{
+	/* Not while a SINK is unanswered: until then it is the device before -
+	 * the same stale-report trouble as Diatom's, see aout_send in main.c. */
+	return g_fd >= 0 && g_sink_said[0] && !g_sink_waiting ? g_sink_said : "";
+}
+
+void musec_next(void)
+{
+	if (g_book && g_nch > 1) {
+		int c = musec_chapter_now();
+
+		if (c + 1 < g_nch) { seek_to(g_ch_at[c + 1]); return; }
+	}
+	if (muq_next(&g_order) >= 0) play_current();
+}
+
+/* Seek, and hold the shown position there until the daemon says it landed:
+ * see the POS case in event(). */
+static void seek_to(double t)
+{
+	g_now.at = t;                  /* shown at once, confirmed by a POS */
+	g_seeking = true;
+	g_seek_to = t;
+	g_seek_ms = plat_now_ms();
+	sendf("SEEK\tat=%.1f", t);
+}
+
+void musec_prev(void)
+{
+	/* The way every player does it: three seconds in, "back" means the start
+	 * of this track; before that it means the one before - and where there is
+	 * none before, the start of this one again. */
+	if (g_book && g_nch > 1) {
+		int c = musec_chapter_now();
+		double into = c >= 0 ? g_now.at - g_ch_at[c] : 0;
+
+		if (c >= 0 && into > 3.0) { seek_to(g_ch_at[c]); return; }
+		if (c > 0)                { seek_to(g_ch_at[c - 1]); return; }
+	}
+	if (g_now.at > 3.0 || muq_prev(&g_order) < 0) seek_to(0);
+	else play_current();
+}
+
+void musec_seek_by(double delta)
+{
+	double t = g_now.at + delta;
+
+	if (g_now.state != MU_PLAYING && g_now.state != MU_PAUSED) return;
+	if (t < 0) t = 0;
+	if (g_now.len > 0 && t > g_now.len - 1) t = g_now.len - 1;
+	seek_to(t);
+}
+
+void musec_stop(void)
+{
+	sendf("STOP");
+}
+
+bool musec_cover_ask(const char *track, const char *base)
+{
+	if (strpbrk(track, "\t\n") || strpbrk(base, "\t\n")) return false;
+	if (!connected()) return false;
+	sendf("COVER\tpath=%s/%s\tbase=%s", g_root, track, base);
+	return g_fd >= 0;
+}
+
+bool musec_cover_take(char *base, size_t bn, char *file, size_t fn)
+{
+	if (g_cov_n == 0) return false;
+	snprintf(base, bn, "%s", g_cov[g_cov_head].base);
+	snprintf(file, fn, "%s", g_cov[g_cov_head].file);
+	g_cov_head = (g_cov_head + 1) % COVER_RING;
+	g_cov_n--;
+	return true;
+}
+
+bool musec_artist_ask(const char *dir)
+{
+	if (strpbrk(dir, "\t\n")) return false;
+	if (!connected()) return false;
+	sendf("ARTIST\tdir=%s/%s", g_root, dir);
+	return g_fd >= 0;
+}
+
+bool musec_artist_take(char *dir, size_t dn, char *name, size_t nn)
+{
+	size_t root = strlen(g_root);
+	const char *d;
+
+	if (g_art_n == 0) return false;
+	d = g_art[g_art_head].dir;
+	/* Handed back as it was asked, under the music root. */
+	if (!strncmp(d, g_root, root) && d[root] == '/') d += root + 1;
+	snprintf(dir, dn, "%s", d);
+	snprintf(name, nn, "%s", g_art[g_art_head].name);
+	g_art_head = (g_art_head + 1) % ARTIST_RING;
+	g_art_n--;
+	return true;
+}
+
+const char *musec_track(int i)
+{
+	return i >= 0 && i < g_qn ? g_q[g_order.order[i]] : NULL;
+}
+
+const char *musec_upcoming(void)
+{
+	int t = muq_upcoming(&g_order);
+
+	return t >= 0 && t < g_qn ? g_q[t] : NULL;
+}
+
+void musec_set_mode(muq_mode m)
+{
+	if ((int)m < 0 || m >= MUQ_MODES) m = MUQ_IN_ORDER;
+	g_mode = m;
+	if (g_book || g_videos) return;      /* see musec_play */
+	muq_set_mode(&g_order, m);
+	g_now.index = g_order.pos;
+}
+
+bool musec_is_book(void) { return g_book; }
+
+void musec_set_speed(double x)
+{
+	if (x < 0.5 || x > 2.0) return;
+	g_speed = x;
+	g_now.speed = x;
+	if (g_now.state == MU_PLAYING || g_now.state == MU_PAUSED) sendf("SPEED\tx=%.2f", x);
+}
+
+double musec_speed(void) { return g_speed; }
+
+int musec_chapters(void) { return g_nch; }
+
+const char *musec_chapter_title(int i) { return i >= 0 && i < g_nch ? g_ch_title[i] : ""; }
+
+int musec_chapter_now(void)
+{
+	int i, c = -1;
+
+	/* Half a second of slack: a seek to a chapter's start is shown at once
+	 * and confirmed a moment later, and should read as that chapter. */
+	for (i = 0; i < g_nch; i++)
+		if (g_ch_at[i] <= g_now.at + 0.5) c = i;
+	return c;
+}
+
+bool musec_take_ran_out(void)
+{
+	bool r = g_ran_out;
+
+	g_ran_out = false;
+	return r;
+}
+
+muq_mode musec_mode(void) { return g_mode; }
+
+const mu_now *musec_now(void) { return &g_now; }
+
+const char *musec_path(void)
+{
+	int t = muq_current(&g_order);
+
+	if (g_now.state == MU_OFF || g_now.state == MU_STOPPED) return "";
+	return t >= 0 && t < g_qn ? g_q[t] : "";
+}
+
+bool musec_playing(void) { return g_now.state == MU_PLAYING; }
