@@ -465,8 +465,10 @@ audio rows.)*
 - A step that moves plays **move**. A step that cannot, at the end of a list,
   plays **edge**, once a press: held against the end, the repeats are
   silent.
-- A step that wraps from the last item to the first plays **move**.
-  A held wrap uses the normal held level. A blocked edge still plays **edge**.
+- A menu list does not wrap (11.3), so a step down from the last row or up
+  from the first plays **edge**. A shelf or the home that wraps from the last
+  item to the first plays **move**. A held wrap uses the normal held level. A
+  blocked edge still plays **edge**.
 - A held direction repeats every 90 ms after 300 ms. Its first step plays at
   full level and every repeat at half (**held**, 6 dB down), so the shelf is
   heard running and a long hold does not fill the room. The edge a hold comes
@@ -574,7 +576,18 @@ MENU remains at the left footer, the position in the middle, and A at the
 right. SELECT still opens the player without another footer caption.
 **L1**/**R1** jump three systems, coming round past either end as a step
 does, the row moving all three in the press's direction in **move** and
-**out**; on a games shelf they jump a screenful. **L2**/**R2** are the menu
+**out**; on a games shelf they jump a screenful. **Up**/**Down** on the home
+jump the same way, by what MENU > System Order (11.29) says: with release
+date, three systems, as L1/R1 do; with A to Z, **Down** goes to the first
+system of the next letter and **Up** to the first of the cursor's own letter,
+or of the one before when it is already there. They come round past the ends
+as L1/R1 do, in the same motion and sounds. Favorites, which the order puts
+first, and Ports, which it puts last, are a group each, so a letter never
+swallows them and they keep the places the order gives them. The letter is the
+first letter or digit of the system's name, worked out from the names in
+memory when the press comes: nothing is read, and nothing runs per frame.
+*(2026-11-07: I wanted Up and Down to do on the home what they do on a shelf.)*
+**L2**/**R2** are the menu
 music's song before and the next on both, with the song pop-up (11.22);
 while MP4 plays behind the shelf, MP4's track before and the next instead
 (11.14). *(2026-11-06.)*
@@ -624,6 +637,16 @@ live rows **text-soft**, values **text-dim**, dead rows **text-dim** at both.
 The focused row is an **accent** fill, **radius.row**, its label and value in
 **on-accent**. More rows above or below: a small triangle in **text-dim**.
 Opens and closes as 8.2 says.
+
+**The cursor does not wrap.** Down on the last row that can be selected and
+Up on the first do nothing, in every menu panel - MENU, a system's menu, the
+in-game menu, a screen's rows, Muse's list, the achievement list and the
+yes/cancel panel - and a held direction stops at the end and stays there,
+playing **edge** once (9). It is one rule in one place, `menu_step_sel`
+(src/menu.c), and the three loops with their own cursor clamp the same way.
+The shelves of games and covers and the home are not menus and still come
+round. *(2026-11-07: I did not want a menu to jump back up when I reached its
+end.)*
 
 **A panel of pages** (Left/Right turns them: About ZyperOS, MENU > Controls,
 a game's Controls) says which page it shows at the heading's right, in
@@ -1084,18 +1107,22 @@ first. The first keeps Version, Address, Battery and Awake for. The second
 shows Storage used, Storage free, Storage total, Battery health, Full charge
 and Design charge. The third, headed **The name**, is the README's story of
 it: Zyper, my dog, who passed away, and zippy and hyper, signed Tarik;
-laid out as a synopsis is, so taller than the panel it walks and comes round
-(11's synopsis rule). The last three, headed **Thanks**, are the README's
+laid out as a synopsis is, but it holds still: it opens at the top, **Up**/**Down**
+scroll it a line at a time (held, they repeat) and it stops at the top and at
+the bottom, with the same soft edge a scrolling card has wherever more text
+is hidden, so the top has none and the bottom has one until the end (11's
+synopsis rule is for a synopsis, which still walks by itself). **Left**/**Right**
+still turn the page. The last three, headed **Thanks**, are the README's
 Credits as rows, who on the left and what of theirs on the right, short
 enough that none scrolls: six, six, then four with a rule and the note "All
 licenses are in Licenses/". Every page uses the standard menu panel and one
 measured width. The **meta** **text-dim** page count, "1 / 6" to "6 / 6",
 sits at the right of the panel's heading, with space reserved around the
 centered title. No page text floats over the shelf. No row changes a
-setting. Host shots: `--about 0` to `5`. *(I picked Details, then asked
+setting. Host shots: `--about 0` to `5`, and `--about-scroll F` (0 to 1) for the name's page scrolled F of the way down. *(I picked Details, then asked
 to put its page information inside the panel, 2026-11-04. On 2026-11-06 he
 asked for the page on the name, a tribute to his dog, and a thank-you page to
-the open-source work ZyperOS is built on.)*
+the open-source work ZyperOS is built on. On 2026-11-07 I asked for it to stop scrolling by itself, so I can scroll it.)*
 
 Storage is the mounted card's filesystem in decimal GB. Free is the available
 space; used excludes reserved blocks. Capacity comes from the battery
@@ -1804,7 +1831,8 @@ card is read (`cfg_sort_systems`), never per frame.
 systems.cfg's own order (by US release date, its comments say why). Left,
 right and A step it round, heard as a ring; the shelves are read again in the
 new order at once, the cursor kept on its system, as File Transfer reads them
-when it closes.
+when it closes. It also decides what Up and Down do on the home (11.1): three
+systems with Release Date, a letter with A to Z.
 
 ### 11.30 Languages
 
