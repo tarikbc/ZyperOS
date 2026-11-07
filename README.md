@@ -100,7 +100,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Games without taking the card out** | Wi-Fi or USB web page, its own hotspot, SSH | Samba | USB cable, SSH | Wi-Fi or USB web page | Samba, SFTP, USB cable | Samba, SFTP, FTP |
 | **Box art on the device** | libretro, ScreenScraper<sup>3</sup>, SteamGridDB | On a computer (Skraper) | ScreenScraper | libretro, ScreenScraper | ScreenScraper | libretro |
 | **RetroAchievements** | Yes | — | — | Yes | Yes | — |
-| **System updates** | Over Wi-Fi, A/B with roll back | — | Copy the new files | TortOS Installer, on a computer | Over the air, or a file | A file you copy, A/B with roll back |
+| **System updates** | Over Wi-Fi or the USB cable, A/B with roll back | — | Copy the new files | TortOS Installer, on a computer | Over the air, or a file | A file you copy, A/B with roll back |
 | **First-start tutorial** | Yes | — | — | — | — | — |
 | **Themes** | Light and dark | EmulationStation themes | 13 launcher skins | 2 card art styles | Yes, with a downloader | Your own themes |
 | **Languages** | 8: English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語, Italiano | — | 21, in its launcher | English | 36 | 6 |
