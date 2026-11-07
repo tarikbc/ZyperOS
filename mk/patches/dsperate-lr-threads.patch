@@ -1,0 +1,193 @@
+diff --git a/src/libretro.cpp b/src/libretro.cpp
+index 3777675..76eeee6 100644
+--- a/src/libretro.cpp
++++ b/src/libretro.cpp
+@@ -3,10 +3,10 @@
+ //
+ // The core library (DSperate/src/core) is driven the way DSperate's own
+ // headless frontend drives it: load_bios, reset, load_rom, direct boot, JIT
+-// attach, then one run_frame() per retro_run(). Everything a frontend owns -
+-// pacing, presenting, audio output, thread placement - is the libretro
+-// frontend's here, so DSperate's thread layout stays off and its threads run
+-// at normal priority.
++// attach, then one run_frame() per retro_run(). Pacing, presenting and audio
++// output are the libretro frontend's here. Thread placement is DSperate's own
++// layout, set up for each game as DSperate's frontend sets it (see "thread
++// layout" below).
+ #include "libretro.h"
+ 
+ #include "core/nds.h"
+@@ -18,11 +18,17 @@
+ 
+ #include <cstdarg>
+ #include <cstdio>
++#include <cstdlib>
+ #include <cstring>
+ #include <memory>
+ #include <string>
+ #include <vector>
+ 
++#include <dirent.h>
++#include <pthread.h>
++#include <sched.h>
++#include <time.h>
++
+ namespace {
+ 
+ constexpr unsigned W = ds::SCREEN_W, H = ds::SCREEN_H;   // one screen; the frame is two stacked
+@@ -95,6 +101,128 @@ void load_unlisted_save() {
+   nds->cart->load_save(data.data(), data.size());
+ }
+ 
++// ---- thread layout --------------------------------------------------------------------------
++// DSperate's own frontend runs with its thread layout and real-time
++// scheduling on (emu.thread_layout = auto, emu.realtime = rr): the emulation
++// thread on a core of its own, each 2D engine on a worker of its own beside a
++// 3D band on the next two cores, and everything else - the frontend's present
++// and audio threads, the interrupts - on the first core; the emulation thread
++// and the video workers at SCHED_RR 5 (host_cores.h). Off, the three band
++// workers, the one line worker and the emulation thread move between the
++// cores at normal priority and wait on one another. Measured on a GKD Pixel 2
++// (four Cortex-A35 at 1296 MHz) with ZyperOS's Diatom, Mario Kart DS, a Grand
++// Prix race, 30 s: off, 16.7 ms a drawn frame, 20% of the frames left
++// undrawn, 49 fps at the panel; on, 14.0 ms, 2%, 59.6 fps (the frontend
++// holding the CPU's clock at its top; the layout without real-time gave 16%).
++//
++// Here the emulation thread is the frontend's, the one that calls retro_run.
++// The layout is set up as each game loads and put back as it unloads: the
++// frontend keeps its threads, and may keep this core loaded, across games.
++// Real-time takes root or an rtprio limit; refused, the threads are placed
++// and keep their policy. DSPERATE_LAYOUT=0 in the environment leaves it off.
++bool layout_on;
++bool layout_rt;
++cpu_set_t layout_aff;   // the process's cores before the layout
++long layout_frames;
++
++// The kernel caps the real-time class at sched_rt_runtime_us of every
++// sched_rt_period_us (95% of a second on a stock kernel) and takes what is
++// over it in one lump, the thread stopped for up to 50 ms: a scene that keeps
++// the emulation thread busy for a second would show it as a hitch. As
++// DSperate's pacer does (emu.rt_relief), the thread naps the surplus as a
++// frame starts instead, a quarter of a frame at most each time, judged on its
++// own CPU time. rt_share 0: no cap to keep under.
++double rt_share, rt_period, rt_t0, rt_cpu0;
++
++double now_s(clockid_t c) {
++  timespec ts;
++  clock_gettime(c, &ts);
++  return double(ts.tv_sec) + double(ts.tv_nsec) / 1e9;
++}
++
++double read_num(const char* path) {
++  FILE* f = std::fopen(path, "r");
++  double v = 0;
++  if (!f) return 0;
++  if (std::fscanf(f, "%lf", &v) != 1) v = 0;
++  std::fclose(f);
++  return v;
++}
++
++// Before the machine is built: its workers place themselves as they start.
++// Threads started from here on, the workers and the frontend's own (its audio
++// thread opens once the game has loaded), start at normal priority rather
++// than as copies of this thread; the workers then set their own.
++void layout_begin() {
++  layout_on = layout_rt = false;
++  rt_share = 0;
++  const char* off = std::getenv("DSPERATE_LAYOUT");
++  if ((off && off[0] == '0') || sched_getaffinity(0, sizeof layout_aff, &layout_aff) != 0) {
++    ds::set_thread_layout(false);
++    return;
++  }
++  sched_param sp{};
++  sp.sched_priority = 5;
++  layout_rt = pthread_setschedparam(pthread_self(), SCHED_RR, &sp) == 0;
++  if (!layout_rt) log(RETRO_LOG_INFO, "dsperate: no real-time scheduling here; threads placed only\n");
++  ds::latch_worker_sched();   // the video workers take this thread's policy
++  if (layout_rt) sched_setscheduler(0, SCHED_RR | SCHED_RESET_ON_FORK, &sp);
++  ds::set_thread_layout(true);
++  layout_on = true;
++  layout_frames = 0;
++  const double runtime = read_num("/proc/sys/kernel/sched_rt_runtime_us");
++  const double period = read_num("/proc/sys/kernel/sched_rt_period_us");
++  if (layout_rt && runtime > 0 && period > 0 && runtime < period) {
++    rt_share = runtime / period - 0.01;   // a margin: being throttled costs 50 ms
++    rt_period = period / 1e6;
++    rt_t0 = now_s(CLOCK_MONOTONIC);
++    rt_cpu0 = now_s(CLOCK_THREAD_CPUTIME_ID);
++  }
++}
++
++// At the first frame, when the frontend has started what it starts for a game
++// (its audio thread): this thread to its core and the frontend's threads to
++// the first one. A thread started later (a save writer) would start on this
++// thread's core, behind it, so the frontend's are moved again every second.
++void layout_frame() {
++  if (!layout_on) return;
++  if (layout_frames++ == 0) {
++    ds::place_current_thread(ds::ThreadRole::Emu);
++    if (layout_rt) {   // placing set the policy again, without the flag
++      sched_param sp{};
++      sp.sched_priority = 5;
++      sched_setscheduler(0, SCHED_RR | SCHED_RESET_ON_FORK, &sp);
++    }
++    ds::place_foreign_threads();
++  } else if (layout_frames % 60 == 0) {
++    ds::place_foreign_threads();
++  }
++  if (rt_share <= 0) return;
++  const double t = now_s(CLOCK_MONOTONIC), cpu = now_s(CLOCK_THREAD_CPUTIME_ID);
++  if (t - rt_t0 >= rt_period) { rt_t0 = t; rt_cpu0 = cpu; return; }
++  const double over = (cpu - rt_cpu0) - rt_share * (t - rt_t0);
++  if (over <= 0) return;
++  const double nap = over < 0.25 / FPS ? over : 0.25 / FPS;
++  timespec ts{0, long(nap * 1e9)};
++  while (clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, &ts) == EINTR) {}
++}
++
++// After the machine is gone (its workers joined): every thread back on the
++// cores it had and this one at normal priority, for the next game or core.
++void layout_end() {
++  if (!layout_on) return;
++  layout_on = false;
++  sched_param sp{};
++  sched_setscheduler(0, SCHED_OTHER, &sp);
++  if (DIR* d = opendir("/proc/self/task")) {
++    while (dirent* e = readdir(d))
++      if (e->d_name[0] >= '0' && e->d_name[0] <= '9')
++        sched_setaffinity(pid_t(std::atol(e->d_name)), sizeof layout_aff, &layout_aff);
++    closedir(d);
++  }
++  ds::set_thread_layout(false);
++}
++
+ bool boot() {
+   const std::string sys = dir(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY);
+   auto in_sys = [&](const char* name) {
+@@ -225,6 +353,7 @@ RETRO_API void retro_run(void) {
+     nds->io.set_mic(n > 0 ? mic_buf : nullptr, n > 0 ? size_t(n) : 0);
+   }
+ 
++  layout_frame();
+   nds->gpu.set_frame_skip(skip_req);
+   nds->run_frame();
+ 
+@@ -308,8 +437,9 @@ RETRO_API bool retro_load_game(const retro_game_info* game) {
+     env_cb(RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK, &cb);
+   }
+   rom_path = game->path;
++  layout_begin();
+   nds = std::make_unique<ds::NDS>();
+-  if (!boot()) { nds.reset(); return false; }
++  if (!boot()) { nds.reset(); layout_end(); return false; }
+   load_unlisted_save();
+   register_memory_map();
+ #if DSPERATE_JIT
+@@ -334,6 +464,7 @@ RETRO_API void retro_unload_game(void) {
+   if (jit_on) ds::jit::detach(*nds);
+ #endif
+   nds.reset();
++  layout_end();
+   state_size = 0;
+   // The frontend may stay up between games: don't keep a state's 6 MB.
+   std::vector<ds::u8>().swap(state_w.data());

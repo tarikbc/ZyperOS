@@ -2360,12 +2360,12 @@ bool diatom_port_mute_get(void) { return g_muted; }
 
 static bool sysfs_put(const char *path, const char *v);
 
-void diatom_port_fast_clock(bool on)
+void diatom_port_fast_clock(bool cpu, bool gpu)
 {
 	static bool said;
 	static int gpu_held = -1;
 
-	if (!diatom_cpufreq_hold_top(on) && !said) {
+	if (!diatom_cpufreq_hold_top(cpu) && !said) {
 		said = true;
 		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the CPU's lowest clock");
 	}
@@ -2373,9 +2373,9 @@ void diatom_port_fast_clock(bool on)
 	 * (see diatom_port.h); 0 is no floor, the governor's again. The first
 	 * call always writes, as the CPU's does, so a crashed Diatom's hold is
 	 * cleared. */
-	if (gpu_held != (int)on) {
-		gpu_held = on;
-		if (!sysfs_put("/sys/class/devfreq/ff400000.gpu/min_freq", on ? "520000000" : "0"))
+	if (gpu_held != (int)gpu) {
+		gpu_held = gpu;
+		if (!sysfs_put("/sys/class/devfreq/ff400000.gpu/min_freq", gpu ? "520000000" : "0"))
 			diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the GPU's lowest clock");
 	}
 }
