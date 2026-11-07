@@ -30,7 +30,7 @@ PLASTRON_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null
 STAMP := -e PLASTRON_COMMIT=$(PLASTRON_COMMIT) -e "PLASTRON_WHO=$(USER) with plastron $(PLASTRON_COMMIT)"
 DOCKER_RUN := docker run --rm -t $(STAMP) -v $(CURDIR):/src:ro $(SOURCES) -v $(VOLUME):/work $(IMAGE)
 
-.PHONY: gauge-check push all builder volume image base qemu sdk brick brick-inputs brick-kernel brick-bootloader brick-probe bootloader shell linux-rebuild copy-out clean-output release release-pixel2 release-brick third-party
+.PHONY: gauge-check charge-limit-check push all builder volume image base qemu sdk brick brick-inputs brick-kernel brick-bootloader brick-probe bootloader shell linux-rebuild copy-out clean-output release release-pixel2 release-brick third-party
 
 all: image
 
@@ -225,3 +225,22 @@ gauge-check:
 	@d=$$(mktemp -d) && cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O1 -o $$d/gauge-check \
 		buildroot/package/gauge/src/check.c buildroot/package/gauge/src/lights.c && \
 		$$d/gauge-check; s=$$?; rm -f $$d/gauge-check; rmdir $$d; exit $$s
+
+# The Pixel 2's charge limit (board/px2/charge-limit-check.c): the rule and
+# the band taken out of its kernel patch as they stand, rk817_charge_limit
+# and RK817_CHARGE_LIMIT_GAP, and run on this computer against a battery
+# made of the Pixel 2's numbers, with ZyperOS's own CHARGE_LIMIT_GAP (the
+# start the launcher writes) beside the driver's. No Docker, no kernel, no
+# device. Into out/, which each checkout has its own of.
+CHARGE_LIMIT_PATCH := buildroot/board/px2/patches/linux/9-px2-rk817-charge-limit.patch
+CHARGE_LIMIT_OUT := out/charge-limit-check
+charge-limit-check:
+	@mkdir -p $(CHARGE_LIMIT_OUT) && \
+		{ sed -n 's/^+\(#define RK817_CHARGE_LIMIT_GAP\)/\1/p' $(CHARGE_LIMIT_PATCH) && \
+		  sed -n 's/^#define CHARGE_LIMIT_GAP[[:space:]]/#define ZYPEROS_CHARGE_LIMIT_GAP /p' \
+			$(ZYPEROS_SRC)/src/device/pixel2.c && \
+		  sed -n '/^+static void rk817_charge_limit(/,/^+}/s/^+//p' $(CHARGE_LIMIT_PATCH); \
+		} > $(CHARGE_LIMIT_OUT)/rule.c && \
+		cc -std=c11 -Wall -Wextra -Werror -O1 -I$(CHARGE_LIMIT_OUT) -o $(CHARGE_LIMIT_OUT)/check \
+			buildroot/board/px2/charge-limit-check.c && \
+		$(CHARGE_LIMIT_OUT)/check

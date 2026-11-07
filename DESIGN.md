@@ -1656,13 +1656,23 @@ lithium battery ages slower when it is not kept full.
 ring, as Side Lights is. Only where the charger can stop short: plastron's
 rk817 driver on the GKD Pixel 2 (`charge_control_end_threshold`), which at
 the limit lets the cable give only 80 mA, less than the handheld draws, so
-the battery takes no charge and slowly gives the rest, and 5 points under it
-charges again: it does not top up all day on a desk, and the battery is never
-off the system (turning the charger off took it off, and pulling the cable
-then cut the power, on a Pixel 2). The kernel forgets it at a power-off, and the
-launcher sets it at every start. The percentage stays true: 100% is still a
-full battery. With the cable out the charger is on again, so a charger on a
-handheld that is off, with no kernel to keep the limit, charges it.
+the battery takes no charge and slowly gives the rest, and 2 points under it
+(`charge_control_start_threshold`) charges again: the battery holds between
+the limit minus 2 and the limit, 78 to 80% at 80%, it does not sit full all
+day on a desk, and it is never off the system (turning the charger off took
+it off, and pulling the cable then cut the power, on a Pixel 2). The band was
+5 points at first, and 80% fell to 75% before it charged again, which looked
+like a limit that slipped (2026-11-07). 2 is safe: the level is the gauge's
+coulomb counter, which moves only with the charge, so each switch waits for a
+point of charge, minutes, and never flickers on and off. And it is kind to
+the battery: held, it gives the handheld the same current whatever the band,
+so a narrow band only cuts that into shorter top-ups, and a top-up of a point
+near 80% stresses it little. The launcher writes the start as well as the
+end, so a system from before the change holds the same band. The kernel
+forgets the limit at a power-off, and the launcher sets it at every start.
+The percentage stays true: 100% is still a full battery. With the cable out
+the charger is on again, so a charger on a handheld that is off, with no
+kernel to keep the limit, charges it.
 
 On the charging screen (11.25), with a limit: the time is to the limit, "85%
 in about 40 min" ("Working out the time to 85%", "Almost at 85%"); held at

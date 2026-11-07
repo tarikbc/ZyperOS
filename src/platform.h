@@ -365,8 +365,9 @@ bool plat_charge_read(struct ch_reading *r);
 
 /* MENU > Charge Limit (DESIGN.md 11.26): whether the battery's charger can
  * stop short of full (plastron's rk817 charge_control_end_threshold), and
- * that limit set, in percent, 100 for none. The fake gauge above has one,
- * written to /tmp/zyperos_fake_charge_limit. */
+ * that limit set, in percent, 100 for none; it charges again 2 under it
+ * (charge_control_start_threshold). The fake gauge above has one, written to
+ * /tmp/zyperos_fake_charge_limit. */
 bool plat_charge_limit_supported(void);
 void plat_charge_limit_set(int pct);
 

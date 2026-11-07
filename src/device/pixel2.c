@@ -1265,9 +1265,17 @@ bool plat_charge_read(ch_reading *r)
 	return true;
 }
 
-/* MENU > Charge Limit: plastron's rk817 driver's end threshold (its start
- * follows, 5 under it), or the fake gauge's file */
+/* MENU > Charge Limit: plastron's rk817 driver's end threshold, where it
+ * stops charging, and its start threshold, CHARGE_LIMIT_GAP under it, where
+ * it charges again: 80% holds between 78 and 80%. Or the fake gauge's file.
+ * The driver puts the start 2 under the end itself (RK817_CHARGE_LIMIT_GAP
+ * in plastron's 9-px2-rk817-charge-limit.patch says why 2 is safe for the
+ * battery), but a system from before that puts it 5 under, 75 to 80%, so
+ * the launcher writes the start too. plastron's `make charge-limit-check`
+ * holds the two numbers equal. */
 #define CHARGE_LIMIT      "/sys/class/power_supply/battery/charge_control_end_threshold"
+#define CHARGE_START      "/sys/class/power_supply/battery/charge_control_start_threshold"
+#define CHARGE_LIMIT_GAP  2
 #define CHARGE_LIMIT_FAKE "/tmp/zyperos_fake_charge_limit"
 
 bool plat_charge_limit_supported(void)
@@ -1279,9 +1287,18 @@ void plat_charge_limit_set(int pct)
 {
 	char v[8];
 
-	snprintf(v, sizeof v, "%d\n", pct < 50 ? 100 : pct > 100 ? 100 : pct);
-	if (access(CHARGE_LIMIT, W_OK) == 0) write_file(CHARGE_LIMIT, v);
-	else if (access("/tmp/zyperos_fake_charge", F_OK) == 0) {
+	if (pct < 50 || pct > 100) pct = 100;
+	snprintf(v, sizeof v, "%d\n", pct);
+	if (access(CHARGE_LIMIT, W_OK) == 0) {
+		write_file(CHARGE_LIMIT, v);
+		/* After the end: the driver checks the start against it, and
+		 * writing the end moves the start too. 100 is no limit, with no
+		 * start to keep. */
+		if (pct < 100) {
+			snprintf(v, sizeof v, "%d\n", pct - CHARGE_LIMIT_GAP);
+			write_file(CHARGE_START, v);
+		}
+	} else if (access("/tmp/zyperos_fake_charge", F_OK) == 0) {
 		/* write_file is for sysfs, which has the file already */
 		FILE *f = fopen(CHARGE_LIMIT_FAKE, "w");
 
