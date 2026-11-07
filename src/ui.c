@@ -78,6 +78,26 @@ static TTF_Font *f_mark;
  * path is menu.ttf's, so the title is Regular rather than missing. */
 static char font_path_kept[512];
 static char title_path_kept[512];
+/* See ui_face_open. Made by the first ui_init and kept for the life of the
+ * process, never destroyed by ui_quit: a worker can be waiting on one then. */
+static SDL_mutex *face_lock;
+/* The generated card's faces on the art workers (ui_card_paint's `away`): a
+ * set of their own, so a face of the frame thread's is only ever the frame
+ * thread's. Opened the first time a worker draws a card and closed by
+ * ui_quit, both under away_lock, which a worker holds for the whole of a
+ * card: two workers drawing at once take turns, a card being a fraction of
+ * what a decode is. `away_up` is from ui_init to ui_quit, the stretch the
+ * font library is up in: outside it nothing opens them and nothing draws. */
+typedef struct {
+	TTF_Font *title[SETS];      /* UI_F_CARD's face in each set */
+	bool      title_tried[SETS];
+	TTF_Font *mark;             /* the watermark's letter */
+	bool      mark_tried;
+} card_faces;
+static SDL_mutex *away_lock;
+static card_faces away_faces;
+static bool away_up;
+static void card_faces_close(card_faces *k);
 static SDL_Texture *glow_tex;
 static void shadows_make(SDL_Renderer *r);
 static void shadows_free(void);
@@ -247,7 +267,10 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 	memo_clear();
 	/* Granted, not asked for: a driver may decline PRESENTVSYNC in silence */
 	vsync_on = SDL_GetRendererInfo(r, &ri) == 0 && (ri.flags & SDL_RENDERER_PRESENTVSYNC);
+	if (!face_lock) face_lock = SDL_CreateMutex();
+	if (!away_lock) away_lock = SDL_CreateMutex();
 
+	/* No worker is in the library here: away_up is down until the end */
 	if (TTF_Init() != 0) {
 		fprintf(stderr, "ttf: %s\n", TTF_GetError());
 		return false;
@@ -259,7 +282,7 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 		int pt = role_pt(i);
 		const char *path = i == UI_F_TITLE ? title_path_kept : font_path;
 
-		fonts[i] = TTF_OpenFont(path, pt);
+		fonts[i] = ui_face_open(path, pt);
 		if (!fonts[i] && i == UI_F_TITLE) {
 			/* Said once a run: ui_init runs again after every fallback
 			 * game, and the button glyphs open the title path at their own
@@ -271,7 +294,7 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 				        TTF_GetError(), font_path);
 			said = true;
 			snprintf(title_path_kept, sizeof title_path_kept, "%s", font_path);
-			fonts[i] = TTF_OpenFont(font_path, pt);
+			fonts[i] = ui_face_open(font_path, pt);
 		}
 		if (!fonts[i])
 			fprintf(stderr, "font %s @%d: %s\n", path, pt, TTF_GetError());
@@ -284,10 +307,33 @@ bool ui_init(SDL_Renderer *r, const char *font_path)
 		set_open(set_on);
 		if (font_sets[set_on][UI_F_MENU]) fonts = font_sets[set_on];
 	}
+	/* Up for the workers' card faces too, which open from font_path_kept,
+	 * set above: the lock is what makes it theirs to read */
+	if (away_lock) SDL_LockMutex(away_lock);
+	away_up = true;
+	if (away_lock) SDL_UnlockMutex(away_lock);
 	/* The title is a file of its own, so it opening says nothing of the
 	 * others: menu.ttf missing, with title.ttf there, is a launcher with no
 	 * menus, labels or counts. */
 	return fonts[UI_F_TITLE] && fonts[UI_F_MENU];
+}
+
+TTF_Font *ui_face_open(const char *path, int pt)
+{
+	TTF_Font *f;
+
+	if (face_lock) SDL_LockMutex(face_lock);
+	f = TTF_OpenFont(path, pt);
+	if (face_lock) SDL_UnlockMutex(face_lock);
+	return f;
+}
+
+void ui_face_close(TTF_Font *f)
+{
+	if (!f) return;
+	if (face_lock) SDL_LockMutex(face_lock);
+	TTF_CloseFont(f);
+	if (face_lock) SDL_UnlockMutex(face_lock);
 }
 
 static void glyphs_free(void);
@@ -296,6 +342,15 @@ static void button_fonts_free(void);
 
 void ui_quit(void)
 {
+	/* The workers' card faces first, and the library marked down for them,
+	 * before any of it goes: a worker drawing a card holds away_lock until
+	 * the card is done, so this waits out that card, and the next one finds
+	 * away_up false and leaves the card to the frame. Nothing draws text
+	 * from here to the next ui_init, and nothing is left holding a face. */
+	if (away_lock) SDL_LockMutex(away_lock);
+	away_up = false;
+	card_faces_close(&away_faces);
+	if (away_lock) SDL_UnlockMutex(away_lock);
 	memo_clear();
 	glyphs_free();
 	digits_free();
@@ -306,12 +361,14 @@ void ui_quit(void)
 	button_fonts_free();
 	for (int k = 0; k < SETS; k++) {
 		for (int i = 0; i < UI_F_COUNT; i++)
-			if (font_sets[k][i]) { TTF_CloseFont(font_sets[k][i]); font_sets[k][i] = NULL; }
+			if (font_sets[k][i]) { ui_face_close(font_sets[k][i]); font_sets[k][i] = NULL; }
 		set_tried[k] = false;
 	}
 	fonts = font_sets[SET_LATIN];
-	if (f_mark) { TTF_CloseFont(f_mark); f_mark = NULL; }
+	if (f_mark) { ui_face_close(f_mark); f_mark = NULL; }
+	if (face_lock) SDL_LockMutex(face_lock);
 	TTF_Quit();
+	if (face_lock) SDL_UnlockMutex(face_lock);
 }
 
 TTF_Font *ui_font(ui_font_role role)
@@ -352,8 +409,8 @@ static void set_open(int set)
 	set_path(set, false, menu, sizeof menu);
 	set_path(set, true, title, sizeof title);
 	for (int i = 0; i < UI_F_COUNT; i++) {
-		font_sets[set][i] = TTF_OpenFont(i == UI_F_TITLE ? title : menu, role_pt(i));
-		if (!font_sets[set][i]) font_sets[set][i] = TTF_OpenFont(menu, role_pt(i));
+		font_sets[set][i] = ui_face_open(i == UI_F_TITLE ? title : menu, role_pt(i));
+		if (!font_sets[set][i]) font_sets[set][i] = ui_face_open(menu, role_pt(i));
 	}
 	if (!font_sets[set][UI_F_MENU])
 		fprintf(stderr, "font: %s: %s; drawn in Lexend\n", menu, TTF_GetError());
@@ -519,14 +576,17 @@ static TTF_Font *face_for(TTF_Font *f, const char *s)
 	return f;
 }
 
-static int text_width(TTF_Font *f, const char *s)
+/* text_width in `f` when `f` is already the face `s` is drawn in (face_for's
+ * answer for it): it reads nothing but the face, so a worker drawing a card
+ * in faces of its own measures with it (card_face_for), and face_for, which
+ * reads and opens the frame thread's sets, stays the frame thread's. */
+static int width_in(TTF_Font *f, const char *s)
 {
 	const char *p, *m;
 	char part[512];
 	int w = 0, pw;
 
 	if (!f || !s) return 0;
-	f = face_for(f, s);
 	if (!menu_word(s, s)) {
 		TTF_SizeUTF8(f, s, &w, NULL);
 		return w;
@@ -546,6 +606,12 @@ static int text_width(TTF_Font *f, const char *s)
 		w += menu_mark_of(f).adv;
 	}
 	return w;
+}
+
+static int text_width(TTF_Font *f, const char *s)
+{
+	if (!f || !s) return 0;
+	return width_in(face_for(f, s), s);
 }
 
 int ui_text_width(TTF_Font *f, const char *s)
@@ -596,7 +662,9 @@ static void menu_mark_put(SDL_Surface *dst, int x, menu_mark m, SDL_Color col)
 	}
 }
 
-SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
+/* ui_text_surface in `f` when `f` is already the face `s` is drawn in, as
+ * width_in is text_width's: the frame thread's sets are not read. */
+static SDL_Surface *render_in(TTF_Font *f, const char *s, SDL_Color col)
 {
 	const char *p, *m;
 	SDL_Surface *out;
@@ -604,9 +672,8 @@ SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 	int x = 0;
 
 	if (!f || !s || !*s) return NULL;
-	f = face_for(f, s);
 	if (!menu_word(s, s)) return TTF_RenderUTF8_Blended(f, s, col);
-	out = SDL_CreateRGBSurfaceWithFormat(0, ui_text_width(f, s), TTF_FontHeight(f),
+	out = SDL_CreateRGBSurfaceWithFormat(0, width_in(f, s), TTF_FontHeight(f),
 	                                     32, SDL_PIXELFORMAT_ARGB8888);
 	if (!out) return NULL;
 	SDL_FillRect(out, NULL, SDL_MapRGBA(out->format, col.r, col.g, col.b, 0));
@@ -634,6 +701,12 @@ SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
 		x += menu_mark_of(f).adv;
 	}
 	return out;
+}
+
+SDL_Surface *ui_text_surface(TTF_Font *f, const char *s, SDL_Color col)
+{
+	if (!f || !s || !*s) return NULL;
+	return render_in(face_for(f, s), s, col);
 }
 
 /* ---- what does not fit, said on a host ------------------------------------
@@ -1782,7 +1855,7 @@ static TTF_Font *button_font(int pt, bool semibold)
 		if (!button_fonts[i].pt) {
 			button_fonts[i].pt = pt;
 			button_fonts[i].semibold = semibold;
-			button_fonts[i].f = path[0] ? TTF_OpenFont(path, pt) : NULL;
+			button_fonts[i].f = path[0] ? ui_face_open(path, pt) : NULL;
 			if (!button_fonts[i].f)
 				fprintf(stderr, "font %s @%d: %s\n", path, pt, TTF_GetError());
 			return button_fonts[i].f;
@@ -1800,7 +1873,7 @@ static void button_fonts_free(void)
 
 	memo_clear();
 	for (i = 0; i < BUTTON_FONTS; i++) {
-		if (button_fonts[i].f) TTF_CloseFont(button_fonts[i].f);
+		if (button_fonts[i].f) ui_face_close(button_fonts[i].f);
 		button_fonts[i].pt = 0;
 		button_fonts[i].semibold = false;
 		button_fonts[i].f = NULL;
@@ -2410,6 +2483,92 @@ static void round_corners(SDL_Surface *s, int radius)
 	}
 }
 
+/* ---- the faces a card is drawn in
+ *
+ * One recipe, two sets of faces: `k` NULL is the frame thread's own - the
+ * card role of its sets, which face_for would answer with, and f_mark - and
+ * `k` a card_faces is a set of copies, for a worker (away_faces). The same
+ * files at the same sizes, so the same pixels; only whose they are differs,
+ * since a face may be used by one thread at a time. */
+
+/* UI_F_CARD's face in set `set`, opened the first time it is wanted: on the
+ * frame, set_open's, which opens the set's every role as face_for always
+ * did; away, that one face, from the file set_open would have read. */
+static TTF_Font *card_title_face(card_faces *k, int set)
+{
+	char path[512];
+
+	if (!k) {
+		set_open(set);
+		return font_sets[set][UI_F_CARD];
+	}
+	if (!k->title_tried[set]) {
+		k->title_tried[set] = true;
+		if (set == SET_LATIN) snprintf(path, sizeof path, "%s", font_path_kept);
+		else set_path(set, false, path, sizeof path);
+		k->title[set] = path[0] ? ui_face_open(path, role_pt(UI_F_CARD)) : NULL;
+	}
+	return k->title[set];
+}
+
+/* The watermark's face. The frame's is tried again at every card that would
+ * show one, as it always was; a worker's once, after which its cards are the
+ * frame's to make (ui_card_paint). */
+static TTF_Font *card_mark_face(card_faces *k)
+{
+	if (!k) {
+		if (!f_mark && font_path_kept[0])
+			f_mark = ui_face_open(font_path_kept, WATERMARK_PT);
+		return f_mark;
+	}
+	if (!k->mark_tried) {
+		k->mark_tried = true;
+		k->mark = font_path_kept[0] ? ui_face_open(font_path_kept, WATERMARK_PT) : NULL;
+	}
+	return k->mark;
+}
+
+static void card_faces_close(card_faces *k)
+{
+	for (int i = 0; i < SETS; i++) {
+		ui_face_close(k->title[i]);
+		k->title[i] = NULL;
+		k->title_tried[i] = false;
+	}
+	ui_face_close(k->mark);
+	k->mark = NULL;
+	k->mark_tried = false;
+}
+
+/* face_for for a line of a card, `f` its Latin face: the same choice, made
+ * among `k`'s faces, with the language's set the order carried rather than
+ * the one on now. */
+static TTF_Font *card_face_for(card_faces *k, int lang_set, TTF_Font *f,
+                               const char *s)
+{
+	int order[3];
+
+	if (!has_cjk(s) || covers(f, s)) return f;
+	order[0] = lang_set;
+	order[1] = has_kana(s) || !strcmp(s, lang_name(LANG_JA)) ? SET_JP : SET_SC;
+	order[2] = order[1] == SET_JP ? SET_SC : SET_JP;
+	for (int n = 0; n < 3; n++) {
+		TTF_Font *g;
+
+		if (order[n] == SET_LATIN) continue;
+		g = card_title_face(k, order[n]);
+		if (g && covers(g, s)) return g;
+	}
+	return f;
+}
+
+/* Where a card's lines are set, and in which faces */
+typedef struct {
+	card_faces *k;
+	int         lang_set;
+	TTF_Font   *f;        /* the Latin face: the em and the capitals' place */
+} card_pen;
+
 /* In the color the card's theme gives its title (card_surface), handed down
  * from there and never read from theme().
  *
@@ -2420,15 +2579,16 @@ static void round_corners(SDL_Surface *s, int radius)
  * descent: Lexend's is 89, and stacked by it four lines ran off an album's
  * square cover and the first sat 19 lower on the card than the Josefin Sans
  * before it, whose 71 to 73 and 4 of air the em and 6 keep. */
-static void blit_line(SDL_Surface *dst, TTF_Font *f, const char *line, int *y,
-                      int x, SDL_Color col)
+static void blit_line(SDL_Surface *dst, const card_pen *pen, const char *line,
+                      int *y, int x, SDL_Color col)
 {
 	const int em = role_pt(UI_F_CARD);
-	SDL_Surface *t = ui_text_surface(f, line, col);
+	SDL_Surface *t = render_in(card_face_for(pen->k, pen->lang_set, pen->f, line),
+	                           line, col);
 	if (!t) return;
 	SDL_BlitSurface(t, NULL, dst,
 	                &(SDL_Rect){ x < 0 ? (dst->w - t->w) / 2 : x,
-	                             ui_cap_y(f, *y + em * 2 / 5), 0, 0 });
+	                             ui_cap_y(pen->f, *y + em * 2 / 5), 0, 0 });
 	*y += em + 6;
 	SDL_FreeSurface(t);
 }
@@ -2438,7 +2598,7 @@ static void blit_line(SDL_Surface *dst, TTF_Font *f, const char *line, int *y,
  * append when it no longer fits, so there is no second buffer that could
  * truncate the first. Returns the y below the last line, which is where a rule
  * under the title goes. */
-static int draw_wrapped(SDL_Surface *dst, TTF_Font *f, const char *title,
+static int draw_wrapped(SDL_Surface *dst, const card_pen *pen, const char *title,
                         int box_w, int top_y, int x, SDL_Color col)
 {
 	char line[256];
@@ -2462,7 +2622,7 @@ static int draw_wrapped(SDL_Surface *dst, TTF_Font *f, const char *title,
 		keep = len;
 		if (len + (len ? 1 : 0) + n + 1 > sizeof line) {
 			/* the line cannot hold another word at all */
-			if (len) { blit_line(dst, f, line, &y, x, col); lines++; }
+			if (len) { blit_line(dst, pen, line, &y, x, col); lines++; }
 			snprintf(line, sizeof line, "%s", word);
 			len = n;
 			continue;
@@ -2472,16 +2632,16 @@ static int draw_wrapped(SDL_Surface *dst, TTF_Font *f, const char *title,
 		len += n;
 		line[len] = '\0';
 
-		w = ui_text_width(f, line);
+		w = width_in(card_face_for(pen->k, pen->lang_set, pen->f, line), line);
 		if (w > box_w && keep) {
 			line[keep] = '\0';                /* undo the append */
-			blit_line(dst, f, line, &y, x, col);
+			blit_line(dst, pen, line, &y, x, col);
 			lines++;
 			snprintf(line, sizeof line, "%s", word);
 			len = n;
 		}
 	}
-	if (line[0] && lines < 4) blit_line(dst, f, line, &y, x, col);
+	if (line[0] && lines < 4) blit_line(dst, pen, line, &y, x, col);
 	return y;
 }
 
@@ -2494,10 +2654,12 @@ static int draw_wrapped(SDL_Surface *dst, TTF_Font *f, const char *title,
  * were three identical Cs with the titles that tell them apart set small
  * underneath. Bled off the corner it is what it always was, a texture in the
  * system's color, and the title can have the space. */
-static void draw_watermark(SDL_Surface *dst, const char *title, unsigned rgb)
+static void draw_watermark(SDL_Surface *dst, card_faces *k, const char *title,
+                           unsigned rgb)
 {
 	char ch[2] = { 0, 0 };
 	const char *p = title;
+	TTF_Font *mark;
 	SDL_Surface *t;
 
 	while (*p && (unsigned char)*p <= ' ') p++;
@@ -2505,11 +2667,9 @@ static void draw_watermark(SDL_Surface *dst, const char *title, unsigned rgb)
 	ch[0] = (*p >= 'a' && *p <= 'z') ? (char)(*p - 32) : *p;
 	if ((unsigned char)ch[0] > 127) return;   /* one glyph, and an ASCII one */
 
-	if (!f_mark && font_path_kept[0])
-		f_mark = TTF_OpenFont(font_path_kept, WATERMARK_PT);
-	if (!f_mark) return;
+	if (!(mark = card_mark_face(k))) return;
 
-	t = TTF_RenderUTF8_Blended(f_mark, ch, (SDL_Color){
+	t = TTF_RenderUTF8_Blended(mark, ch, (SDL_Color){
 		(Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, 55 });
 	if (!t) return;
 	SDL_SetSurfaceBlendMode(t, SDL_BLENDMODE_BLEND);
@@ -2520,23 +2680,27 @@ static void draw_watermark(SDL_Surface *dst, const char *title, unsigned rgb)
 	 * Lexend's whole em its top came 41 lower than with Josefin Sans's. */
 	SDL_BlitSurface(t, NULL, dst, &(SDL_Rect){
 		dst->w - (int)(t->w * 0.62f),
-		dst->h - WATERMARK_PT / 20 - TTF_FontAscent(f_mark), 0, 0 });
+		dst->h - WATERMARK_PT / 20 - TTF_FontAscent(mark), 0, 0 });
 	SDL_FreeSurface(t);
 }
 
-/* The card at any size: ui_make_card is a game's, ui_make_cover an album's.
- * One recipe, so an album with no art reads as the same kind of thing as a
- * game with none - except the corners, which an album's does not round: it
- * stands among square sleeves, where a game's stands among cards.
+/* The card at any size: a game's 512 x 656 and an album's 512 square. One
+ * recipe, so an album with no art reads as the same kind of thing as a game
+ * with none - except the corners, which an album's does not round: it stands
+ * among square sleeves, where a game's stands among cards.
  *
- * For theme `theme_ix`, DS_LIGHT or DS_DARK, and only from it: DESIGN.md 11.1
- * draws a card for each theme, a light **surface** slab with a charcoal title
- * in Beard and a dark one with a light title in Salt & Pepper (src/cardgen.h
- * has both, and the check that the title reads on every row of either). The
- * caller names the theme. */
-static SDL_Surface *card_surface(const char *title, unsigned rgb,
-                                 int cw, int ch, bool round, int theme_ix)
+ * For the order's theme, DS_LIGHT or DS_DARK, and only from it: DESIGN.md
+ * 11.1 draws a card for each theme, a light **surface** slab with a charcoal
+ * title in Beard and a dark one with a light title in Salt & Pepper
+ * (src/cardgen.h has both, and the check that the title reads on every row of
+ * either). The order names the theme; nothing here reads theme(), so a
+ * worker can draw it. In `k`'s faces (card_title_face). */
+static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
 {
+	const int cw = CARD_W, ch = o->album ? CARD_W : CARD_H;
+	const int theme_ix = o->theme_ix;
+	const char *title = o->title;
+	unsigned rgb = o->rgb;
 	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, cw, ch, 32,
 	                                                SDL_PIXELFORMAT_ARGB8888);
 	const ds_theme *t = theme_at(theme_ix);
@@ -2546,6 +2710,7 @@ static SDL_Surface *card_surface(const char *title, unsigned rgb,
 	 * Color's would not read, and lime as **accent-ink**. The band across the
 	 * top stays the system's own color, as the mock kit's card has it. */
 	unsigned rule = ui_sys_mark_in(rgb, theme_ix);
+	card_pen pen = { k, o->lang_set, NULL };
 	int y;
 	if (!s) return NULL;
 
@@ -2562,7 +2727,7 @@ static SDL_Surface *card_surface(const char *title, unsigned rgb,
 		             SDL_MapRGBA(s->format, c.r, c.g, c.b, 255));
 	}
 
-	draw_watermark(s, title, rgb);
+	draw_watermark(s, k, title, rgb);
 
 	/* The system's color as a band rather than a wash: a generated card
 	 * should read as "this system, no art" at a glance in the row. */
@@ -2573,12 +2738,12 @@ static SDL_Surface *card_surface(const char *title, unsigned rgb,
 	/* The title at the top and hard left, because that is the edge the eye
 	 * runs down when the row is moving. A rule under it rather than across
 	 * the card: it is the end of the name, not a divider between halves. */
-	if (fonts_latin[UI_F_CARD]) {
+	if ((pen.f = card_title_face(k, SET_LATIN))) {
 		/* Not at the top edge. Started at 76 it left the bottom half of the
 		 * card empty for the one-line titles that are most of a shelf, and the
 		 * bleed does not fill it - the face darkens toward the foot and takes
 		 * the letter's tail with it. Four lines still fit below this. */
-		int y = draw_wrapped(s, fonts_latin[UI_F_CARD], title, cw - 96,
+		int y = draw_wrapped(s, &pen, title, cw - 96,
 		                     (int)(ch * 0.38f), 48,
 		                     ui_col(cardgen_title(theme_ix), 255));
 
@@ -2587,7 +2752,35 @@ static SDL_Surface *card_surface(const char *title, unsigned rgb,
 		                         (Uint8)(rule >> 8), (Uint8)rule, 220));
 	}
 
-	if (round) round_corners(s, CARD_RADIUS);
+	if (!o->album) round_corners(s, CARD_RADIUS);
+	return s;
+}
+
+void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
+                       bool album)
+{
+	snprintf(o->title, sizeof o->title, "%s", title ? title : "");
+	o->rgb = rgb;
+	o->album = album;
+	o->theme_ix = theme_index();
+	o->lang_set = set_on;
+}
+
+SDL_Surface *ui_card_paint(const ui_card_order *o, bool away)
+{
+	SDL_Surface *s = NULL;
+
+	if (!away) return card_surface(NULL, o);
+	if (!away_lock) return NULL;
+	SDL_LockMutex(away_lock);
+	/* Both faces open before a pixel is drawn, or none of it: a card drawn
+	 * here without a face the frame would have drawn it with would be
+	 * another card, so a face that will not open leaves every card to the
+	 * frame, which draws it as it always did, with or without. */
+	if (away_up && card_title_face(&away_faces, SET_LATIN) &&
+	    card_mark_face(&away_faces))
+		s = card_surface(&away_faces, o);
+	SDL_UnlockMutex(away_lock);
 	return s;
 }
 
@@ -2600,9 +2793,7 @@ static SDL_Surface *card_surface(const char *title, unsigned rgb,
  * by any of them. */
 static char card_made_for[DS_THEMES];
 
-/* A card's surface as its texture: blended for its corners, and marked with
- * the theme it was drawn for. */
-static SDL_Texture *card_texture(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
+SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 {
 	SDL_Texture *t = SDL_CreateTextureFromSurface(r, s);
 
@@ -2612,19 +2803,24 @@ static SDL_Texture *card_texture(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 	return t;
 }
 
-/* On the main thread, so for the theme that is on. */
+/* On the frame, so for the theme that is on. In the workers' faces when they
+ * can be had - the same pixels - and the frame's own when not: a card made
+ * here is Now Playing's, a port's loading screen's, a shot's or one a worker
+ * could not draw, and a second 560-point face with its glyphs cached, kept
+ * for those alone, would be megabytes for a card or two. */
 static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
-                              int cw, int ch, bool round, int *w, int *h)
+                              bool album, int *w, int *h)
 {
-	const int ix = theme_index();
+	ui_card_order o;
 	SDL_Surface *s;
 	SDL_Texture *t;
 
-	if (!(s = card_surface(title, rgb, cw, ch, round, ix)))
+	ui_card_order_set(&o, title, rgb, album);
+	if (!(s = ui_card_paint(&o, true)) && !(s = card_surface(NULL, &o)))
 		return NULL;
-	t = card_texture(r, s, ix);
+	t = ui_card_upload(r, s, o.theme_ix);
+	if (t) { *w = s->w; *h = s->h; }
 	SDL_FreeSurface(s);
-	if (t) { *w = cw; *h = ch; }
 	return t;
 }
 
@@ -2641,13 +2837,13 @@ int ui_card_theme(SDL_Texture *t)
 SDL_Texture *ui_make_card(SDL_Renderer *r, const char *title, unsigned rgb,
                           int *w, int *h)
 {
-	return make_card(r, title, rgb, CARD_W, CARD_H, true, w, h);
+	return make_card(r, title, rgb, false, w, h);
 }
 
 SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h)
 {
-	return make_card(r, title, rgb, CARD_W, CARD_W, false, w, h);
+	return make_card(r, title, rgb, true, w, h);
 }
 
 

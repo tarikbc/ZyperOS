@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <SDL.h>
 
+#include "ui.h"   /* ui_card_order: the card a worker draws where there is no file */
+
 /* Decoding card art off the render thread.
  *
  * cf_draw asks for every visible card every frame and the decode used to
@@ -24,7 +26,12 @@
  * The visible consequence is that a cold card is blank for a few frames rather
  * than freezing the shelf. It is not slower - the art lands at the same moment
  * either way, and what changes is whether everything else kept moving while it
- * was coming. */
+ * was coming.
+ *
+ * Where there is no file, the card the launcher draws in its place is drawn
+ * here as well (texload_want_or_draw), and finished pictures are handed to
+ * the frame a few at a time (texload_deliver), so neither the drawing nor
+ * the uploads of a whole shelf land on one frame. */
 
 bool texload_start(void);
 void texload_stop(void);
@@ -61,18 +68,60 @@ bool texload_want(int sys, int idx, const char *first, const char *second);
 bool texload_want_art(int sys, int idx, const char *first, const char *second,
                       int theme_ix);
 
-/* One finished decode, or false if none is ready. The caller owns `surf` and
- * must free it; it is NULL when no file could be read, which means the caller
- * should draw its own placeholder. `theme_ix`, if not NULL, is the theme art
- * asked for with texload_want_art is for (with no surface as well), and -1 for
- * art that is no theme's.
+/* texload_want, and where neither file is a picture, the generated card
+ * `card` describes, drawn on the worker (ui_card_paint) rather than left for
+ * the frame. In the order's theme: asked again in another, it is another ask,
+ * as texload_want_art's are, and a card that lands in a theme no longer on is
+ * never handed over (texload_deliver). `card` NULL is texload_want.
+ *
+ * False, as texload_want's, means no worker: the caller reads the file and
+ * makes the card itself. */
+bool texload_want_or_draw(int sys, int idx, const char *first,
+                          const char *second, const ui_card_order *card);
+
+/* One finished picture. `surf` is the caller's to free; NULL when no file
+ * could be read and no card was drawn, which means the caller should draw its
+ * own placeholder - a card the worker could not draw (ui_card_paint) is that.
+ * `card` says `surf` is the generated card, drawn in theme `theme`, to be
+ * made a texture with ui_card_upload. Otherwise `theme` is the theme art
+ * asked for with texload_want_art is for, and -1 for art that is no theme's.
  *
  * The surface is already ARGB8888, so the caller only has to make a texture
  * from it. Where the art stops is NOT computed here: content_bottom scans
  * trailing empty rows and stops at the first row with anything in it, so it
  * costs the padding rather than the image, and duplicating it out of main.c
  * to save that would be the worse trade. */
-bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix);
+typedef struct {
+	int          sys, idx;
+	SDL_Surface *surf;
+	int          theme;
+	bool         card;
+} texload_got;
+
+/* The oldest finished picture, or false if none is ready. */
+bool texload_take(texload_got *g);
+
+/* The share of a frame texload_deliver may spend, in ms: a quarter of the
+ * Pixel 2's 16.7 ms at 60 Hz, the rest the frame's own to draw. */
+#define TEXLOAD_SHARE_MS 4.0f
+
+/* For the frame: hand finished pictures to `put`, oldest first, while they
+ * fit in this frame's share (src/putpace.h), and at least one when any is
+ * waiting, so a slow device still fills its shelf; the rest stay waiting for
+ * the next frame, and texload_ready says so. `put` owns `g->surf`. A card
+ * drawn in a theme other than `theme_on` is freed here and never handed
+ * over: its slot keeps whatever it shows until the card of the theme that is
+ * on comes. Returns how many were handed over; one thrown away for its theme
+ * is not one, though it was taken. */
+int texload_deliver(int theme_on, void (*put)(void *ctx, texload_got *g),
+                    void *ctx);
+
+/* The one finished picture for (sys, idx), handed to `put` now if it is
+ * waiting, wherever it is in line and whatever this frame has spent, under
+ * the same rule of theme: for a screen that is waiting for that one picture
+ * and no other, the launch zoom's focused card. True if it was handed over. */
+bool texload_deliver_slot(int sys, int idx, int theme_on,
+                          void (*put)(void *ctx, texload_got *g), void *ctx);
 
 /* Whether anything is waiting to be taken, without taking it.
  *
@@ -81,6 +130,11 @@ bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix);
  * find them: art that finished while nothing moved would wait for the next
  * press. This lets the loop notice there is something to install. */
 bool texload_ready(void);
+
+/* How many finished pictures are waiting to be taken: for a check, and for
+ * a measurement that wants a shelf's worth finished before a frame takes
+ * them. */
+int texload_waiting(void);
 
 /* Whether the workers have nothing at all: nothing queued, nothing being
  * decoded, nothing waiting to be taken. For the shelf, which lowers the memory

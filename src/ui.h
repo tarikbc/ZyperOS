@@ -57,6 +57,16 @@ static inline unsigned ui_rgb(ds_rgb c)
 bool ui_init(SDL_Renderer *r, const char *font_path);
 void ui_quit(void);
 
+/* TTF_OpenFont and TTF_CloseFont, one thread at a time. SDL_ttf opens every
+ * face in one FreeType library, and FreeType's rule for a library shared by
+ * threads is a lock around making and destroying faces (its FT_Library and
+ * FT_Face notes); what is done with a face once it is open needs no lock, so
+ * long as one thread uses it at a time. The art workers open faces of their
+ * own to draw the generated card (ui_card_paint), so every face the launcher
+ * opens or closes, on any thread, goes through these two. */
+TTF_Font *ui_face_open(const char *path, int pt);
+void ui_face_close(TTF_Font *f);
+
 /* After a present in a loop that draws every frame: the rest before the next
  * one. Nothing when the renderer waits for the panel (vsync granted): SDL's
  * present already waits for the last frame's flip, so the panel paces the
@@ -389,6 +399,45 @@ SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
  * this file - or -1 for any other texture: art that is no theme's. With cardgen_kept (src/cardgen.h), what
  * decides whether it may still be shown. */
 int ui_card_theme(SDL_Texture *t);
+
+/* ---- the generated card, made off the frame ----
+ *
+ * Drawing a card is several times what putting it on the GPU is (0.24 ms
+ * against 0.04 on an M3), and landing on a shelf of games with no art asks
+ * for eleven at once. So the art workers (src/texload.h) draw it where there
+ * is no file, and the frame only makes its texture.
+ *
+ * An order is everything a card is drawn from, copied, so a worker reads
+ * nothing of the launcher's while the frame goes on changing it: the title,
+ * the system's color, the shape, and the theme and the language's faces that
+ * were on when it was asked for. */
+#define UI_CARD_TITLE 256
+typedef struct {
+	char     title[UI_CARD_TITLE];
+	unsigned rgb;        /* the system's color, or CFG_NO_COLOR */
+	bool     album;      /* an album's square cover, not a game's card */
+	int      theme_ix;   /* DS_LIGHT or DS_DARK: the theme it is drawn in */
+	int      lang_set;   /* whose faces a Chinese or Japanese title is in */
+} ui_card_order;
+
+/* An order for a card in the theme and language that are on: on the frame. */
+void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
+                       bool album);
+
+/* The card the order describes, as an ARGB8888 surface the caller frees: a
+ * game's 512 x 656 with round corners, an album's 512 x 512 with square ones.
+ *
+ * `away` true: in faces of the workers' own, on any thread; NULL when those
+ * faces cannot be had - the fonts are down around a fallback game (ui_quit
+ * to ui_init), or would not open - and then the card is the frame's to make,
+ * as it always was. `away` false: in the frame thread's own faces, on the
+ * frame thread. The same pixels either way, which tools/cardpaint-check.c
+ * holds; ui_make_card makes them in the workers' faces when it can. */
+SDL_Surface *ui_card_paint(const ui_card_order *o, bool away);
+
+/* A card's surface as its texture, blended for its corners and marked with
+ * the theme it was drawn in (ui_card_theme). On the frame thread. */
+SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix);
 
 /* The play modes' marks, in the shapes everybody already reads: two arrows
  * chasing round a loop for repeat, the same with a 1 in it for repeat one, and

@@ -11,7 +11,7 @@
         check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
-        check-home check-home-shots check-games check-favorites-shots design sounds strings cjk-font check-strings check-i18n-shots \
+        check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-building-doc check-blog \
         check-installer release
 
@@ -36,7 +36,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
-         check-home check-home-shots check-games check-favorites-shots checkmark \
+         check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog \
          check-strings check-i18n-shots
 
@@ -1344,6 +1344,31 @@ check-tour-previews: native
 check-games:
 	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/games-check
 	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/games-check
+
+# The card for a game or an album with no art, drawn on an art worker rather
+# than on the frame: the frame's pixels byte for byte, every kind of title,
+# both themes, a game's and an album's; a card of the theme that was never
+# handed to the shelf after a turn; the fonts closed and opened again around
+# a fallback game while cards are asked for. On the launcher's own objects.
+.PHONY: check-cardpaint
+check-cardpaint:
+	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/cardpaint-check
+	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/cardpaint-check
+
+# Finished pictures put on screen a few a frame (src/putpace.h): the rules
+# with the costs handed in, then the workers' own pictures on a software
+# renderer, slow uploads included. On the launcher's own objects.
+.PHONY: check-putpace
+check-putpace:
+	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/putpace-check
+	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/putpace-check
+
+# The frame thread's time while a shelf lands, for games with no art and with
+# box art (tools/landbench.c). A measurement, not in CHECKS: it prints times.
+.PHONY: landbench
+landbench:
+	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/landbench
+	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/landbench
 
 # tools/from-rogue.sh, the move off a ROGUE OS card: its table against
 # systems.cfg (every shelf it fills lists the types it brings, its track
