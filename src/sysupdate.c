@@ -189,7 +189,9 @@ void su_page_build(const su_view *v, su_page *p)
 	snprintf(p->from, sizeof p->from, "%s", v->installed[0] ? v->installed : "?");
 	if (s == SU_UNSUPPORTED) {
 		snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_UNSUPPORTED));
-		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
+		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_UNSUPPORTED_HOW));
+		/* The check is cheap and says the same if nothing changed */
+		if (v->wifi && !running) key(p, "A", T(S_UPDATE_LOOK_AGAIN), SUA_CHECK);
 		key(p, "B", T(S_UPDATE_BACK), SUA_BACK);
 		return;
 	}
@@ -299,6 +301,7 @@ void su_page_build(const su_view *v, su_page *p)
 	case SU_NEEDS_SYSTEM:
 		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_NEEDS_SYSTEM), v->st.version);
 		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
+		if (v->wifi && !running) key(p, "A", T(S_UPDATE_LOOK_AGAIN), SUA_CHECK);
 		break;
 	case SU_TOO_BIG:
 		/* A card keeps the slot size it was laid out with
@@ -306,6 +309,7 @@ void su_page_build(const su_view *v, su_page *p)
 		snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_NEEDS_FRESH));
 		snprintf(p->warn, sizeof p->warn, "%s", T(S_UPDATE_TOO_BIG));
 		snprintf(p->line, sizeof p->line, "%s", T(S_UPDATE_USE_INSTALLER));
+		if (v->wifi && !running) key(p, "A", T(S_UPDATE_LOOK_AGAIN), SUA_CHECK);
 		break;
 	case SU_ROLLBACK:
 		snprintf(p->sub, sizeof p->sub, T(S_UPDATE_GOING_BACK_TO), v->st.version);

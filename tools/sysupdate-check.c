@@ -139,19 +139,25 @@ int main(void)
 	/* A release for a newer system image */
 	v = base("state needs-system\nversion 0.3.0\n");
 	su_page_build(&v, &pg);
-	CHECK(!strcmp(pg.to, "0.3.0") && !strcmp(pg.line, "Use the ZyperOS Installer.") && !btn(&pg, "A"), "needs-system: the Installer, no Download");
+	CHECK(!strcmp(pg.to, "0.3.0") && !strcmp(pg.line, "Use the ZyperOS Installer.") && is(&pg, "A", "Look Again", SUA_CHECK) &&
+	      !is(&pg, "A", "Download", SUA_DOWNLOAD), "needs-system: the Installer, A Look Again, no Download");
 
 	/* A system bigger than this card's slots */
 	v = base("state too-big\nversion 0.3.0\nkind system\n");
 	su_page_build(&v, &pg);
 	CHECK(!strcmp(pg.to, "0.3.0") && !strcmp(pg.sub, "Needs a fresh install") && strstr(pg.warn, "system slots") &&
 	      strstr(pg.warn, "erases the card") && strlen(pg.warn) <= 72 && !strcmp(pg.line, "Use the ZyperOS Installer.") &&
-	      !btn(&pg, "A"), "too-big: a fresh install, said in full in three lines, no Download");
+	      is(&pg, "A", "Look Again", SUA_CHECK), "too-big: a fresh install, said in full in three lines, A Look Again, no Download");
 
 	/* An image without System Update */
 	v = base("state unsupported\n");
 	su_page_build(&v, &pg);
-	CHECK(!strcmp(pg.sub, "System Update is not on this system.") && pg.nkeys == 1, "unsupported: says so, B only");
+	CHECK(!strcmp(pg.sub, "This system was made without System Update.") && strstr(pg.line, "ZyperOS Installer") &&
+	      strstr(pg.line, "Wi-Fi") && is(&pg, "A", "Look Again", SUA_CHECK) && btn(&pg, "B"),
+	      "unsupported: why, what to do, A Look Again and B");
+	v.wifi = false;
+	su_page_build(&v, &pg);
+	CHECK(!btn(&pg, "A") && btn(&pg, "B"), "unsupported, no Wi-Fi: B only");
 
 	/* A version that did not start went back */
 	v = base("state available\nversion 0.2.0\ndownload 14200000\n");
