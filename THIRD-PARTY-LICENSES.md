@@ -60,7 +60,7 @@ that rebuilds it to the same bytes.
 | `picodrive_libretro.so` | Sega CD, 32X | **Non-commercial** | https://github.com/libretro/picodrive at 1890c29 |
 | `neocd_libretro.so` | Neo Geo CD | LGPL-3.0 | https://github.com/libretro/neocd_libretro at b1e04c7 |
 | `fake08_libretro.so` | PICO-8 | MIT | https://github.com/jtothebell/fake-08 at 814991a, with plorpOS's three patches (MIT, Copyright (c) 2026 Thwonp, `mk/patches/fake08-*.patch`), built by `mk/build-fake08.sh` |
-| `dsperate_libretro.so` | Nintendo DS | GPL-3.0-or-later | https://github.com/thwonp/dsperate-lr at 093d50f, the libretro wrapper, with https://github.com/beebono/DSperate v3.0.5 (ddf2910) as its submodule and the wrapper's two patches to it, plus ZyperOS's `mk/patches/dsperate-lr-frameskip.patch`; built by `mk/build-dsperate.sh`, not the buildbot |
+| `dsperate_libretro.so` | Nintendo DS | GPL-3.0-or-later | https://github.com/thwonp/dsperate-lr at 093d50f, the libretro wrapper, with https://github.com/beebono/DSperate v3.0.5 (ddf2910) as its submodule and the wrapper's two patches to it, plus ZyperOS's `mk/patches/dsperate-lr-frameskip.patch` and `mk/patches/dsperate-lr-threads.patch`; built by `mk/build-dsperate.sh`, not the buildbot |
 | `flycast2021_libretro.so` | Dreamcast | GPL-2.0-or-later | https://github.com/metallic77/flycast at 603814c (ROCKNIX's flycast2021-lr pin, a fork of libretro's Flycast), plus ZyperOS's `mk/patches/flycast2021-postprocess-render.patch`; built by `mk/build-flycast2021.sh`, not the buildbot |
 | `a5200_libretro.so` | Atari 5200 | GPL-2.0 | https://github.com/libretro/a5200 at 40c6f2f |
 | `handy_libretro.so` | Atari Lynx | zlib | https://github.com/libretro/libretro-handy at bc55d46 |

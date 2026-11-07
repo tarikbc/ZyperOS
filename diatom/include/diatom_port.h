@@ -391,10 +391,11 @@ void diatom_port_level_shown(diatom_level_kind kind, int pos, int positions);
  * of its own implements this as a no-op and is correct. */
 void diatom_port_low_battery(bool on, bool blink);
 
-/* Hold the CPU at its top clock, or give the clock back to the governor. The
- * host says true while a game runs fast, and false at 1x, in the menu, at the
- * end of a session and once at start, which clears a hold a crashed Diatom
- * left behind. It may say it every turn; the port acts on a change.
+/* Hold the CPU at its top clock (`cpu`), and the GPU at its top with it
+ * (`gpu`), or give each clock back to its governor. The host says true while
+ * a game runs fast, and false at 1x, in the menu, at the end of a session and
+ * once at start, which clears a hold a crashed Diatom left behind. It may say
+ * it every turn; the port acts on a change.
  *
  * Fast forward is the one time a game needs the top clock and ondemand does
  * not give it: a fast turn waits out what is left of its periods, so the CPU
@@ -411,8 +412,19 @@ void diatom_port_low_battery(bool on, bool blink);
  * says true for the whole of such a game, at full power, and a port holds its
  * GPU's clock at the top with the CPU's. Measured on the Pixel 2, 2026-11-04,
  * Mario Kart 64: the CPU at 600 MHz and the GPU at 400 of 520 under their
- * governors, 38.5 fps; both at the top, 48.9. */
-void diatom_port_fast_clock(bool on);
+ * governors, 38.5 fps; both at the top, 48.9.
+ *
+ * A game that leaves its late frames undrawn (RUN frameskip=late, a DS game)
+ * is the third, at 1x and at full power, the CPU alone: such a core runs at
+ * the edge of its frame time, and the moment it has a little to spare, the
+ * sleep between frames reads to ondemand as an idle core, which steps down,
+ * and the frames after it come late. Measured on the Pixel 2, 2026-11-07,
+ * Mario Kart DS on DSperate with its thread layout: left to ondemand, the CPU
+ * spent 7 s of 30 at 1008 or 1200 MHz, 4.3% of the frames undrawn and 57.3
+ * fps at the panel, a second at 37; held at the top, 2.0% and 59.6, no
+ * second under 58. Its GPU only puts the picture on the panel, so it is left
+ * to its governor. */
+void diatom_port_fast_clock(bool cpu, bool gpu);
 
 /* How much clock a game gets. FULL is the device's top clocks; MEDIUM and
  * LIGHT are lower ceilings for systems that keep their speed under them

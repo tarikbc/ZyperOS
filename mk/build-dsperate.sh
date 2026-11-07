@@ -10,7 +10,7 @@
 # pins DSperate as a submodule, so one commit of the wrapper pins both. This is
 # the wrapper plorpOS ships on its GKD and RG Rotate builds
 # (thwonp/plorpOS mk/build-dsperate.sh, MIT), at the same commit, built the same
-# way, plus one patch of ours (below).
+# way, plus two patches of ours (below).
 #
 # PGO: DSperate commits a GCC profile with each release, made with GCC 13.3 on
 # Ubuntu 24.04 (its CI), and the wrapper's build.sh applies it. A profile only
@@ -32,7 +32,7 @@
 # in-order core like the A53 it measured, so nothing here argues for tuning
 # before a measurement on the Pixel 2 does. DSPERATE_TUNE stays empty.
 #
-# The one patch, mk/patches/dsperate-lr-frameskip.patch: the frontend's "this
+# The first patch, mk/patches/dsperate-lr-frameskip.patch: the frontend's "this
 # frame will run late" makes the GPU leave that frame's drawing out. Diatom
 # already says it for fast forward, through the audio buffer status callback,
 # and for a DS game it says it at 1x too when a frame runs late (RUN
@@ -42,6 +42,19 @@
 # Only the wrapper's libretro.cpp changes, which the profile does not cover, so
 # the profile still applies in full. The idea is nelynes's slotPlus
 # (crates/slot-retro); plorpOS carries a change like it for its Brick build.
+#
+# The second, mk/patches/dsperate-lr-threads.patch: DSperate's own thread
+# layout, which its own frontend runs with and the wrapper left off. For each
+# game the frontend's emulation thread (the one calling retro_run) gets a core
+# of its own, each 2D engine a worker beside a 3D band on the next two cores,
+# and the frontend's other threads the first core, with the emulation thread
+# and the video workers at SCHED_RR 5; all of it is put back as the game
+# unloads, since Diatom keeps the core loaded and its threads across games.
+# Measured on the Pixel 2, Mario Kart DS, a Grand Prix race, 30 s: 16.7 ms a
+# drawn frame, 20% of the frames undrawn and 49 fps at the panel without it;
+# 14.0 ms, 2% and 59.6 fps with it, Diatom holding the CPU at its top clock
+# (the layout without real-time: 16%; real-time without the layout: 18%).
+# Again only the wrapper's libretro.cpp changes, so the profile applies in full.
 #
 # The result is checked before it is installed: no unversioned undefined
 # symbol (it would not dlopen), and nothing newer than plastron's glibc 2.42
@@ -58,7 +71,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=093d50fcbd10531273e0cc22a23c6644a26b9b71   # DSperate v3.0.5 (ddf2910), plorpOS's pin
-SHA=9522c85fb13795f7b097f7399f72407b116fd74dec3ed0971f3cfaeb821531e3
+SHA=944b5d4c5ff3af79bffff9cc6e1f594ec4ccc1238b44f2264340be730ffd3f59
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 
@@ -71,6 +84,7 @@ git -C "$SRC" submodule -q foreach git checkout -q -f .
 git -C "$SRC" clean -qfdx
 git -C "$SRC/DSperate" clean -qfdx
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-frameskip.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-threads.patch"
 docker image inspect $IMAGE >/dev/null 2>&1 ||
 	docker build --platform $PLAT -q -t $IMAGE "$SRC" >/dev/null
 
@@ -98,5 +112,5 @@ if [ "$GOT" != "$SHA" ]; then
 fi
 mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
-echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip, untuned ARMv8.0"
+echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout, untuned ARMv8.0"
 echo "  sha256 $GOT"

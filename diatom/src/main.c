@@ -2048,9 +2048,14 @@ static int run_session_inner(const diatom_session *sn)
 		 * maximum, and put back after, with time for the clocks to settle. */
 		if (fast && !power_fast) diatom_port_power(DIATOM_POWER_FULL);
 		/* A core that draws with the GPU is held at the top at 1x too, when
-		 * nothing caps its clocks: see diatom_port_fast_clock. */
-		diatom_port_fast_clock(fast || (diatom_hw_active() &&
-		                                g_power_level == DIATOM_POWER_FULL));
+		 * nothing caps its clocks, and so is the CPU under a game that leaves
+		 * its late frames undrawn (a DS game): see diatom_port_fast_clock. */
+		{
+			const bool full = g_power_level == DIATOM_POWER_FULL;
+			const bool gpu_top = fast || (diatom_hw_active() && full);
+
+			diatom_port_fast_clock(gpu_top || (sn->late_skip && full), gpu_top);
+		}
 		if (!fast && power_fast) {
 			diatom_port_power(g_power_level);
 			g_power_calm_us = diatom_port_now_us() + 1000000;
@@ -2377,7 +2382,7 @@ static int run_session_inner(const diatom_session *sn)
 				/* The menu is the launcher's, at the governor's clock and
 				 * under no ceiling; a fast game takes the top one back on
 				 * its next turn, and a game at 1x its ceiling here. */
-				diatom_port_fast_clock(false);
+				diatom_port_fast_clock(false, false);
 				diatom_port_power(DIATOM_POWER_FULL);
 				resumed = menu_pause(sn);
 				diatom_port_power(power_fast ? DIATOM_POWER_FULL : g_power_level);
@@ -2494,7 +2499,7 @@ static int run_session_inner(const diatom_session *sn)
 	 * game this way and the device powers off after them (the core's stop
 	 * resets the hold). */
 	diatom_rumble_hold(true);
-	diatom_port_fast_clock(false);
+	diatom_port_fast_clock(false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
 
 	/* Both paths, and in this order: the game's own save first, because losing
@@ -2773,7 +2778,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "diatom: port init failed\n");
 		return 2;
 	}
-	diatom_port_fast_clock(false);
+	diatom_port_fast_clock(false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
 
 	/* Once for the life of the process, not per session: the first thing a
