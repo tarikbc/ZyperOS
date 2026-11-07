@@ -6,13 +6,13 @@ const char MENU_TICK[] = "";
 
 int menu_step_sel(const menu_row *rows, int n, int sel, int dir)
 {
-	int i, k = sel;
+	int k;
 
 	if (n <= 0) return 0;
-	for (i = 0; i < n; i++) {
-		k = (k + dir + n) % n;
+	/* No wrap: the walk runs out at the first or the last row and stays on
+	 * the row it started from. */
+	for (k = sel + dir; k >= 0 && k < n; k += dir)
 		if (rows[k].live) return k;
-	}
 	return sel;
 }
 

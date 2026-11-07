@@ -389,6 +389,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **A / B** | Choose and back |
 | **MENU** | Settings for whatever you're looking at. In a game: save, load, quit and more |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere. In MP4, **X** locks the screen and holding **SELECT + START** unlocks it |
+| **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
 | **L1 / R1** | Jump three systems on the home, a screenful of games on a shelf |
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
 | **MENU + R1** | Fast forward a game |

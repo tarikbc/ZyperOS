@@ -4132,11 +4132,16 @@ int menu_list_fit(int fixed, int rules, int notes)
  * Here rather than in the caller because the two must agree about the heading,
  * the padding and the note height, and a screen that measured itself would
  * drift from the panel that draws it the first time either is retuned. */
+static int menu_note_h(void)
+{
+	return ui_font_line(UI_F_MENU) + menu_pad() / 3;
+}
+
 static int menu_notes_fit(void)
 {
 	int pad = menu_pad();
 	int head_h = ui_font_line(UI_F_LABEL) + pad;
-	int note_h = ui_font_line(UI_F_MENU) + pad / 3;
+	int note_h = menu_note_h();
 	int avail = MENU_AVAIL_H - (head_h + pad / 2) - pad;
 
 	return note_h > 0 && avail > note_h ? avail / note_h : 1;
@@ -4248,6 +4253,15 @@ static void menu_marquee(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int
  * 2026-11-05). Set by that screen around its own draw and NULL otherwise;
  * NULL for a row leaves its square empty, so the labels stay in one column. */
 static SDL_Texture *(*g_row_icon)(int row);
+
+/* A body that holds still and is walked by hand (About's story): `>= 0` is the
+ * pixels the caller has scrolled it by, in place of the ping-pong or the loop
+ * the cursorless body runs by itself. Set around that screen's own draw and -1
+ * everywhere else. Out come how far it can go (`g_menu_scroll_span`, from the
+ * last draw) and the height of one line (`g_menu_scroll_line`), so the caller
+ * stops at the ends and steps by a line without measuring anything. */
+static int g_menu_scroll_hold = -1;
+static int g_menu_scroll_span, g_menu_scroll_line;
 
 /* A row's height in a panel: a rule's, a note's, or a row's (ROW_H) */
 static int panel_row_h(menu_row r, int rule_h, int note_h, int row_h)
@@ -4442,6 +4456,13 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			if (scroll_h < row_h) scroll_h = row_h;
 			scroll_span = body - scroll_h;
 			if (scroll_span < 0) scroll_span = 0;
+			g_menu_scroll_span = scroll_span;
+			g_menu_scroll_line = note_h;
+			/* Walked by hand: nothing travels, so nothing asks for a frame.
+			 * The soft edges below say which way there is more. */
+			if (g_menu_scroll_hold >= 0) {
+				scroll = g_menu_scroll_hold < scroll_span ? g_menu_scroll_hold : scroll_span;
+			} else {
 			/* Moving while it travels, for the status corner's forks
 			 * (frames_wanted): a looping card always, a ping-pong out of
 			 * its holds */
@@ -4462,6 +4483,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			} else {
 				scroll = ui_pingpong(scroll_span,
 				                     mq_phase(MQ_VSCROLL, n, rows_h));
+			}
 			}
 		}
 	}
@@ -5946,10 +5968,12 @@ static bool confirm_body(app *a, const char *heading, const char *msg,
 		{
 			in_button b = in_repeat(&a->in, IN_UP)   ? IN_UP
 			            : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
+			int to = b == IN_UP ? 1 : 2;
 
+			/* Up is the answer row, Down is Cancel, and neither goes round */
 			if (b != IN_NONE) {
-				moved_sound(a, b);
-				sel = (sel == 1) ? 2 : 1;
+				step_sound(a, b, sel, to);
+				sel = to;
 			}
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
@@ -6131,7 +6155,10 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * then land on something live. */
 		if (sel >= n) sel = n - 1;
 		if (sel < 0) sel = 0;
-		if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, +1);
+		if (!rows[sel].live) {
+			sel = menu_step_sel(rows, n, sel, +1);
+			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
+		}
 
 		plat_input_poll(&a->in);
 		/* Where the sound goes, followed in the menus too: a headset connected
@@ -9503,7 +9530,9 @@ static int menu_measure(const menu_row *rows, int n, const char *heading);
 /* wrap_text, syn_layout and their sizes are further down, with the synopsis */
 #define CHV_WRAP_COLS  96
 #define SYN_WRAP_LINES 80
-#define SYN_ROWS (SYN_WRAP_LINES * 2 + 5)
+/* The blank lines and the rule between the two copies of a synopsis */
+#define SYN_LOOP_GAP 5
+#define SYN_ROWS (SYN_WRAP_LINES * 2 + SYN_LOOP_GAP)
 static int syn_layout(const char *text, int fixed,
                       char (*lines)[CHV_WRAP_COLS], menu_row *rows,
                       int *loop_at);
@@ -9560,6 +9589,7 @@ typedef struct {
 	char story_lines[SYN_WRAP_LINES][CHV_WRAP_COLS];
 	menu_row story[SYN_ROWS], thanks[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS + 2];
 	int nstory, story_loop;
+	int story_scroll;        /* pixels the story is scrolled by, by hand */
 	SDL_Texture *photo;
 	about_info info;
 	about_values values;
@@ -9580,7 +9610,10 @@ static void about_pages(app *a, about_view *v)
 	if (!v->photo && (v->photo = IMG_LoadTexture(a->r, path)))
 		SDL_SetTextureBlendMode(v->photo, SDL_BLENDMODE_BLEND);
 	if (v->photo) wrap -= ABOUT_PHOTO_W + ABOUT_PHOTO_GAP;
+	/* Laid out once, not twice: it holds still and is walked by hand */
 	v->nstory = syn_layout(T(S_ABOUT_STORY), wrap, v->story_lines, v->story, &v->story_loop);
+	if (v->story_loop > 0) v->nstory = v->story_loop - SYN_LOOP_GAP;
+	v->story_loop = 0;
 	for (p = 0; p < ABOUT_THANKS_PAGES; p++) {
 		int rows = p < ABOUT_THANKS_PAGES - 1 ? ABOUT_THANKS_ROWS : ABOUT_THANKS_LAST;
 
@@ -9664,8 +9697,12 @@ static void about_draw(app *a, const about_view *v, int page)
 	bool rest = g_pframe.panel.scale == 1.0f && g_pframe.panel.alpha == 1.0f;
 
 	snprintf(count, sizeof count, "%d / %d", page + 1, ABOUT_PAGES);
+	/* The story holds still where Up and Down have put it */
+	g_menu_scroll_hold = page == 2 ? v->story_scroll : -1;
+	if (page != 2) g_menu_scroll_span = 0;
 	menu_draw_caption(a, heading, rows, n, -1, v->width, MENU_ZYPEROS, NULL, false, loop_at,
 	                  count);
+	g_menu_scroll_hold = -1;
 	if (page == 2 && v->photo && rest && g_menu_body.h > 0) {
 		/* At the body's right, middle of its height, smaller only if the
 		 * body is shorter than the photo */
@@ -9708,6 +9745,21 @@ static void about_screen(app *a)
 		if (in_repeat(&a->in, IN_RIGHT)) {
 			moved_sound(a, IN_RIGHT);
 			page = (page + 1) % ABOUT_PAGES;
+		}
+		/* The story: Up and Down walk it a line at a time, held they repeat,
+		 * and it stops at the top and at the bottom. It never moves by itself. */
+		if (page == 2 && g_menu_scroll_line > 0) {
+			int was = v.story_scroll, lim = g_menu_scroll_span;
+
+			if (in_repeat(&a->in, IN_UP)) {
+				v.story_scroll = was > g_menu_scroll_line ? was - g_menu_scroll_line : 0;
+				step_sound(a, IN_UP, was, v.story_scroll);
+			}
+			if (in_repeat(&a->in, IN_DOWN)) {
+				was = v.story_scroll;
+				v.story_scroll = was + g_menu_scroll_line < lim ? was + g_menu_scroll_line : lim;
+				step_sound(a, IN_DOWN, was, v.story_scroll);
+			}
 		}
 		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
 		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
@@ -13218,12 +13270,12 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 
 		if (items > 0) {
 			if (in_repeat(&a->in, IN_UP)) {
-				step_sound(a, IN_UP, sel, (sel + items - 1) % items);
-				sel = (sel + items - 1) % items;
+				step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
+				if (sel > 0) sel--;
 			}
 			if (in_repeat(&a->in, IN_DOWN)) {
-				step_sound(a, IN_DOWN, sel, (sel + 1) % items);
-				sel = (sel + 1) % items;
+				step_sound(a, IN_DOWN, sel, sel < items - 1 ? sel + 1 : sel);
+				if (sel < items - 1) sel++;
 			}
 		}
 		if (in_repeat(&a->in, IN_LEFT))     { moved_sound(a, IN_LEFT); musec_seek_by(-seek_step(&a->in, IN_LEFT)); }
@@ -13978,12 +14030,12 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 		ui_sounds_follow();
 
 		if (in_repeat(&a->in, IN_UP)) {
-			step_sound(a, IN_UP, sel, (sel + n - 1) % n);
-			sel = (sel + n - 1) % n;
+			step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
+			if (sel > 0) sel--;
 		}
 		if (in_repeat(&a->in, IN_DOWN)) {
-			step_sound(a, IN_DOWN, sel, (sel + 1) % n);
-			sel = (sel + 1) % n;
+			step_sound(a, IN_DOWN, sel, sel < n - 1 ? sel + 1 : sel);
+			if (sel < n - 1) sel++;
 		}
 		/* A set runs to well over a hundred entries, so the shoulder buttons
 		 * page it the same way they page a shelf. */
@@ -15138,6 +15190,17 @@ static void load_ahead(app *a)
 	prime_toward(a, a->sys_cursor, a->view[a->sys_cursor].cursor);
 }
 
+/* Where up (-1) or down (+1) goes on the home with the order on A to Z */
+static int home_letter_at(const app *a, int dir)
+{
+	unsigned char keys[CFG_MAX_SYSTEMS];
+	int i, n = a->sys.count < CFG_MAX_SYSTEMS ? a->sys.count : CFG_MAX_SYSTEMS;
+
+	for (i = 0; i < n; i++) keys[i] = home_group_key(a->sys.systems[i].tag, a->sys.systems[i].core,
+		                         a->sys.systems[i].name);
+	return home_letter_jump(keys, n, a->sys_cursor, dir);
+}
+
 static void update_systems(app *a)
 {
 	int n = a->sys.count;
@@ -15162,6 +15225,16 @@ static void update_systems(app *a)
 	 * the row moving all the way in the press's direction */
 	if (in_repeat(&a->in, IN_L1)) { a->sys_cursor = home_jump(a->sys_cursor, n, -1); dir = -1; sb = IN_L1; }
 	if (in_repeat(&a->in, IN_R1)) { a->sys_cursor = home_jump(a->sys_cursor, n, +1); dir = +1; sb = IN_R1; }
+	/* Up and down do the same, one group at a time: three systems by release
+	 * date, and an initial by A to Z (home_letter_jump). Built on the press,
+	 * from the names in memory - nothing is read. */
+	if (in_repeat(&a->in, IN_UP) || in_repeat(&a->in, IN_DOWN)) {
+		int d = in_repeat(&a->in, IN_DOWN) ? +1 : -1;
+
+		a->sys_cursor = g_order_release ? home_jump(a->sys_cursor, n, d)
+		                                : home_letter_at(a, d);
+		dir = d; sb = d > 0 ? IN_DOWN : IN_UP;
+	}
 	if (a->sys_cursor == was) dir = 0;
 	if (dir) load_ahead(a);
 	if (sb != IN_NONE) step_sound(a, sb, was, a->sys_cursor);
@@ -15418,6 +15491,9 @@ static int shot_sgdb = -1;
  * counts, as a run would have. */
 static int shot_scraper = -1;
 static int shot_about = -1;
+/* --about-scroll F: the story page scrolled F (0 to 1) of the way down, as
+ * Up and Down would leave it. Left alone it is the top, where it opens. */
+static float shot_about_scroll = -1;
 /* --language [ROW]: MENU > Language's panel over the shelf, the cursor on
  * ROW (the language that is on when none is given) */
 static int shot_language = -2;
@@ -15976,6 +16052,11 @@ static void shot_compose(app *a)
 			about_refresh(&v, 2700000u);
 			about_pages(a, &v);
 			v.width = about_width(a, &v);
+			if (shot_about_scroll >= 0) {
+				int over = v.nstory - menu_notes_fit();
+
+				v.story_scroll = over > 0 ? (int)(shot_about_scroll * over * menu_note_h()) : 0;
+			}
 		}
 		ui_scrim(a->r, 0);
 		about_draw(a, &v, shot_about);
@@ -16965,6 +17046,11 @@ int main(int argc, char *argv[])
 			shot_language = -1;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
 				shot_language = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--about-scroll") && i + 1 < argc) {
+			shot_about_scroll = (float)atof(argv[++i]);
+			if (shot_about_scroll < 0) shot_about_scroll = 0;
+			if (shot_about_scroll > 1) shot_about_scroll = 1;
 		}
 		else if (!strcmp(argv[i], "--about")) {
 			shot_about = 0;

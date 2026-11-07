@@ -56,6 +56,18 @@ void home_select(home *h, int cursor, int count, int direction, uint32_t now);
  * goes one less than the row: two systems are a step apart, one is none. */
 #define HOME_JUMP 3
 int home_jump(int cursor, int count, int dir);
+/* A system's group on the A to Z home: the first letter or digit of its name,
+ * upper-cased, and a group of its own for Favorites (tag FAV) and for Ports
+ * (core "port"), which the order puts first and last whatever they are called
+ * (cfg_sort_systems). */
+/* Up and down on the home, with MENU > System Order on A to Z: `keys` is each
+ * system's group (its name's first letter, or a key of its own for Favorites
+ * and Ports), in the row's order. Down is the first system of the next group;
+ * up is the first of the cursor's own group, or of the previous one when it is
+ * already there. Round the ends as home_jump goes, and the cursor stays put
+ * when the whole row is one group. Pure: the caller builds `keys` on the press. */
+unsigned char home_group_key(const char *tag, const char *core, const char *name);
+int home_letter_jump(const unsigned char *keys, int count, int cursor, int dir);
 float home_position(const home *h, uint32_t now);
 bool home_moving(const home *h, uint32_t now);
 bool home_song_update(home_song *song, bool active, bool paused, const char *title);

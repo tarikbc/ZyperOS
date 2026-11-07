@@ -889,9 +889,12 @@ static int reachable(const menu_row *rows, int n, int *out, int max)
 	if (!rows[0].live) sel = menu_step_sel(rows, n, 0, +1);
 	if (!rows[sel].live) return 0;      /* nothing live at all */
 	for (i = 0; i < n && k < max; i++) {
+		int next;
+
 		out[k++] = sel;
-		sel = menu_step_sel(rows, n, sel, +1);
-		if (sel == out[0]) break;       /* wrapped */
+		next = menu_step_sel(rows, n, sel, +1);
+		if (next == sel) break;         /* the last stop: a menu does not wrap */
+		sel = next;
 	}
 	return k;
 }
@@ -1071,6 +1074,63 @@ static void step_terminates(void)
 	ck(menu_step_sel(dead, 3, 1, +1) == 1, "forward stays put");
 	ck(menu_step_sel(dead, 3, 1, -1) == 1, "backward stays put");
 	ck(menu_step_sel(dead, 0, 0, +1) == 0, "an empty menu is survivable");
+}
+
+/* A menu does not wrap (2026-11-07: "when reaching the end of a menu, don't go
+ * back up automatically"): Down on the last live row and Up on the first stay
+ * where they are, however long the direction is held, and the dead rows at an
+ * end are not stops. Walked a press at a time, as a held key repeats. */
+static void step_does_not_wrap(void)
+{
+	menu_row rows[6];
+	int sel, i;
+
+	for (i = 0; i < 6; i++) rows[i] = (menu_row){ "row", NULL, true };
+	rows[0].live = false;           /* a dead row above the first stop */
+	rows[5].live = false;           /* and one below the last */
+
+	printf("a list does not wrap:\n");
+	sel = menu_step_sel(rows, 6, 1, -1);
+	ck(sel == 1, "up on the first row stays on it");
+	for (i = 0; i < 10; i++) sel = menu_step_sel(rows, 6, sel, +1);
+	ck(sel == 4, "held down stops on the last row that can be selected");
+	for (i = 0; i < 10; i++) sel = menu_step_sel(rows, 6, sel, +1);
+	ck(sel == 4, "and keeps stopping there, however long it is held");
+	for (i = 0; i < 10; i++) sel = menu_step_sel(rows, 6, sel, -1);
+	ck(sel == 1, "held up stops on the first");
+	ck(menu_step_sel(rows, 6, 2, +1) == 3 && menu_step_sel(rows, 6, 3, -1) == 2,
+	   "and a step in the middle still steps");
+	rows[2].live = false;
+	ck(menu_step_sel(rows, 6, 1, +1) == 3, "over a dead row inside the list");
+	ck(menu_step_sel(rows, 1, 0, +1) == 0 && menu_step_sel(rows, 1, 0, -1) == 0,
+	   "a list of one has nowhere to go");
+}
+
+/* The shared engine is the only place a menu list wraps by arithmetic: every
+ * panel with rows goes through menu_step_sel or, for the three loops of their
+ * own (Muse's list, the achievement list, the yes/cancel panel), clamps. A
+ * `% n` on the cursor in main.c on the up or down press brings the wrap back,
+ * so the source is read for it. */
+static void source_does_not_wrap(void)
+{
+	static const char *const bad[] = {
+		"(sel + 1) % n", "(sel + n - 1) % n", "(sel + 1) % items",
+		"(sel + items - 1) % items", "(sel == 1) ? 2 : 1",
+	};
+	FILE *f = fopen("src/main.c", "r");
+	char line[512];
+	int ln = 0, hits = 0;
+	size_t i;
+
+	printf("no menu loop wraps its cursor:\n");
+	ck(f != NULL, "src/main.c is there to read");
+	while (f && fgets(line, sizeof line, f)) {
+		ln++;
+		for (i = 0; i < sizeof bad / sizeof bad[0]; i++)
+			if (strstr(line, bad[i])) { printf("  src/main.c:%d: %s", ln, line); hits++; }
+	}
+	if (f) fclose(f);
+	ck(hits == 0, "no up or down press steps a menu cursor round the end");
 }
 
 /* Walking down a list and back must end up looking at the top of it again.
@@ -1702,6 +1762,8 @@ int main(void)
 	slots();
 	save_slot();
 	step_terminates();
+	step_does_not_wrap();
+	source_does_not_wrap();
 	window_returns();
 	what_scrolls();
 	info_rows();

@@ -121,6 +121,62 @@ int main(void)
     assert(fabsf(home_position(&h, 1000) - 11) < .0001f);
     home_select(&h, home_jump(1, 10, -1), 10, -1, 1000);
     assert(fabsf(home_position(&h, 2000) - 8) < .0001f);
+    /* Up/Down on the home: with A to Z, the first system of the next letter, or
+     * of its own letter and then the previous; round the ends like L1/R1. */
+    {
+        /* F A A B B B D, Ports last: groups of 1, 2, 3, 1, 1 */
+        const unsigned char k[] = { 1, 'A', 'A', 'B', 'B', 'B', 'D', 2 };
+        const int n = sizeof k;
+        assert(home_letter_jump(k, n, 0, 1) == 1);          /* off Favorites */
+        assert(home_letter_jump(k, n, 1, 1) == 3 && home_letter_jump(k, n, 2, 1) == 3);
+        assert(home_letter_jump(k, n, 3, 1) == 6 && home_letter_jump(k, n, 5, 1) == 6);
+        assert(home_letter_jump(k, n, 6, 1) == 7);          /* onto Ports */
+        assert(home_letter_jump(k, n, 7, 1) == 0);          /* round, as R1 does */
+        assert(home_letter_jump(k, n, 5, -1) == 3 && home_letter_jump(k, n, 4, -1) == 3);
+        assert(home_letter_jump(k, n, 3, -1) == 1);         /* already first: the previous */
+        assert(home_letter_jump(k, n, 2, -1) == 1);
+        assert(home_letter_jump(k, n, 1, -1) == 0);
+        assert(home_letter_jump(k, n, 0, -1) == 7);         /* round, as L1 does */
+        assert(home_letter_jump(k, n, 7, -1) == 6);
+        const unsigned char one[] = { 'A', 'A', 'A' };
+        assert(home_letter_jump(one, 3, 1, 1) == 1 && home_letter_jump(one, 3, 2, -1) == 0);
+        assert(home_letter_jump(one, 3, 0, -1) == 0);       /* one group: nowhere to go */
+        assert(home_letter_jump(one, 1, 0, 1) == 0 && home_letter_jump(one, 0, 0, 1) == 0);
+        assert(home_group_key("FAV", "x", "Favorites") == 1);
+        assert(home_group_key("PRT", "port", "Ports") == 2);
+        assert(home_group_key("GB", "gambatte", "game boy") == 'G');
+        assert(home_group_key("A", "c", "  3DO") == '3' && home_group_key("A", "c", "...") == '#');
+    }
+    /* The same on the real list, sorted as A to Z sorts it: every Down lands on
+     * the first system of a letter, and ten of them go all the way round. */
+    {
+        systems_cfg sc;
+        unsigned char keys[CFG_MAX_SYSTEMS];
+        int cur, groups = 0, i;
+        assert(cfg_load_systems("config/systems.cfg", &sc) && sc.count > 10);
+        cfg_sort_systems(&sc);
+        for (i = 0; i < sc.count; i++)
+            keys[i] = home_group_key(sc.systems[i].tag, sc.systems[i].core, sc.systems[i].name);
+        for (i = 0; i < sc.count; i++)
+            if (i == 0 || keys[i] != keys[i - 1]) groups++;
+        /* the letters are in order, so a letter is one run and never two */
+        for (i = 1; i < sc.count; i++)
+            if (keys[i] != keys[i - 1])
+                for (int j = 0; j < i - 1; j++) assert(keys[j] != keys[i]);
+        cur = 0;
+        for (i = 0; i < groups; i++) {
+            int to = home_letter_jump(keys, sc.count, cur, 1);
+            assert(to == 0 ? i == groups - 1 : (to > cur && keys[to] != keys[to - 1]));
+            cur = to;
+        }
+        assert(cur == 0);                                   /* all the way round */
+        for (i = 0; i < groups; i++) {
+            int to = home_letter_jump(keys, sc.count, cur, -1);
+            assert(keys[to] != keys[(to + sc.count - 1) % sc.count] || sc.count == 1);
+            cur = to;
+        }
+        assert(cur == 0);
+    }
     /* Review P2: visible small-list sprites never teleport across the row. */
     for(int count=2;count<=5;count++) {
         home_reset(&h,0,count,0);
