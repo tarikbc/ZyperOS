@@ -1,5 +1,5 @@
 # ZyperOS. The device builds, for the TrimUI Brick and the GKD Pixel 2, are
-# plastron's (github.com/tarikbc/plastron): its Buildroot builds the
+# plastron's (plastron/ in this repository): its Buildroot builds the
 # launcher and Muse with mk/cross.mk and lays out the card with mk/payload.sh,
 # and the version below is read from here. What this Makefile does is the rest:
 # the offline checks, a host build of the launcher, the cores, and the assets.

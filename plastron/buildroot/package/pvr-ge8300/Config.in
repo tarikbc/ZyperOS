@@ -1,0 +1,44 @@
+config BR2_PACKAGE_PVR_GE8300
+	bool "pvr-ge8300"
+	depends on BR2_aarch64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	select BR2_PACKAGE_HAS_LIBEGL
+	select BR2_PACKAGE_HAS_LIBGLES
+	help
+	  Imagination's OpenGL ES and EGL for the PowerVR GE8300 in the
+	  TrimUI Brick's Allwinner A133P: the userspace half of DDK
+	  1.11@5516664, the version the kernel's GPU driver is built
+	  from, with the null window system that draws to the Linux
+	  framebuffer, and the GPU's firmware.
+
+	  Imagination's closed binaries, under Imagination's own terms: they
+	  are not part of plastron, are never committed, and come with no
+	  license from us. The build takes them from a folder mounted at
+	  /brick-gpu (BRICK_GPU in the Makefile, ~/brick-runtime/gpu-ddk-1.11
+	  by default), laid out as:
+
+	    lib64/      libEGL.so libGLESv2.so libGLES_CM.so libIMGegl.so
+	                libsrv_um.so libglslcompiler.so libusc.so
+	                libpvrNULL_WSEGL.so
+	    lib64/firmware/rgx.fw.22.102.54.38
+	    include/    the Khronos headers: EGL, KHR, GLES, GLES2, GLES3
+
+	  They are the Imagination PowerVR DDK 1.11@5516664 userspace
+	  libraries for the GE8300 (fbdev window system, glibc, aarch64),
+	  as Allwinner ships them in its A133 SDKs; the libraries and the
+	  firmware are in lib64/ of Creality's Sonic Pad SDK at
+	  https://github.com/CrealityTech/sonic_pad_os/tree/7f37a7f/package/libs/libgpu/ge8300/fbdev/glibc
+	  and the headers are Khronos's. Nothing else will do:
+	  they must match the kernel's GPU driver exactly, and other copies
+	  around (TrimUI's are DDK 1.19) don't. The build checks each file
+	  against files.sha256 and stops on any difference.
+
+if BR2_PACKAGE_PVR_GE8300
+
+config BR2_PACKAGE_PROVIDES_LIBEGL
+	default "pvr-ge8300"
+
+config BR2_PACKAGE_PROVIDES_LIBGLES
+	default "pvr-ge8300"
+
+endif

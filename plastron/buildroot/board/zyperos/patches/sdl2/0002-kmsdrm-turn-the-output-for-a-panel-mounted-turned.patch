@@ -1,0 +1,861 @@
+From: ZyperOS
+Subject: [PATCH] kmsdrm: turn the output for a panel mounted turned
+
+With SDL_KMSDRM_ROTATION=90 or 270, programs get a landscape window on the
+GKD Pixel 2's 480x640 portrait panel, and each frame is turned onto the
+panel by a GLES blit at swap (SDL_kmsdrmrotate.c), into XRGB buffers so a
+game that leaves alpha at 0 is not shown black, flushed rather than waited
+for, and flipped mailbox-style: the swap never waits for the display, the
+newest frame goes up at the next refresh (SDL_KMSDRM_VSYNC=1 for SDL's
+blocking swap). The cursor stays hidden. SDL_KMSDRM_DUMP=N saves the Nth
+turned frame to /tmp/kmsdrm-frame.rgba, and SDL_KMSDRM_FPS=1 prints frames
+a second and the turn's cost to stderr. The VOP cannot turn a plane, and
+RGA needs the vendor kernel.
+---
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmmouse.c b/src/video/kmsdrm/SDL_kmsdrmmouse.c
+--- a/src/video/kmsdrm/SDL_kmsdrmmouse.c	2026-11-03 21:02:49
++++ b/src/video/kmsdrm/SDL_kmsdrmmouse.c	2026-11-03 21:03:05
+@@ -307,6 +307,13 @@
+     int num_displays, i;
+     int ret = 0;
+ 
++    /* No pointer on a handheld whose picture is turned (SDL_KMSDRM_ROTATION):
++       the cursor plane is not turned with it, and it only ever showed as an
++       arrow in a corner over the game */
++    if (((SDL_VideoData *)SDL_GetVideoDevice()->driverdata)->rotation) {
++        cursor = NULL;
++    }
++
+     /* Get the mouse focused window, if any. */
+ 
+     mouse = SDL_GetMouse();
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmopengles.c b/src/video/kmsdrm/SDL_kmsdrmopengles.c
+--- a/src/video/kmsdrm/SDL_kmsdrmopengles.c	2026-11-03 21:02:49
++++ b/src/video/kmsdrm/SDL_kmsdrmopengles.c	2026-11-03 22:58:35
+@@ -110,6 +110,11 @@
+         KMSDRM_CreateSurfaces(_this, window);
+     }
+ 
++    /* A turned panel swaps without waiting for the display (SDL_kmsdrmrotate.c) */
++    if (windata->rotator && !SDL_getenv("SDL_KMSDRM_VSYNC")) {
++        return KMSDRM_RotatorSwap(_this, window);
++    }
++
+     /* Wait for confirmation that the next front buffer has been flipped, at which
+        point the previous front buffer can be released */
+     if (!KMSDRM_WaitPageflip(_this, windata)) {
+@@ -143,7 +148,14 @@
+     }
+ 
+     /* Get an actual usable fb for the next front buffer. */
+-    fb_info = KMSDRM_FBFromBO(_this, windata->next_bo);
++    if (windata->rotator) {
++        /* A turned panel: the landscape frame goes on screen a quarter turn
++           round, through a buffer of the panel's own shape */
++        struct gbm_bo *turned = KMSDRM_RotatorDraw(windata->rotator, windata->next_bo);
++        fb_info = KMSDRM_FBFromBO(_this, turned ? turned : windata->next_bo);
++    } else {
++        fb_info = KMSDRM_FBFromBO(_this, windata->next_bo);
++    }
+     if (!fb_info) {
+         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not get a framebuffer");
+         return 0;
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmrotate.c b/src/video/kmsdrm/SDL_kmsdrmrotate.c
+--- a/src/video/kmsdrm/SDL_kmsdrmrotate.c	1969-12-31 21:00:00
++++ b/src/video/kmsdrm/SDL_kmsdrmrotate.c	2026-11-03 22:59:10
+@@ -0,0 +1,638 @@
++/*
++  Simple DirectMedia Layer
++  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
++
++  This software is provided 'as-is', without any express or implied
++  warranty.  In no event will the authors be held liable for any damages
++  arising from the use of this software.
++
++  Permission is granted to anyone to use this software for any purpose,
++  including commercial applications, and to alter it and redistribute it
++  freely, subject to the following restrictions:
++
++  1. The origin of this software must not be misrepresented; you must not
++     claim that you wrote the original software. If you use this software
++     in a product, an acknowledgment in the product documentation would be
++     appreciated but is not required.
++  2. Altered source versions must be plainly marked as such, and must not be
++     misrepresented as being the original software.
++  3. This notice may not be removed or altered from any source distribution.
++*/
++
++/* Output rotation for a panel mounted turned (ZyperOS/plastron, the GKD Pixel
++ * 2: a 480x640 portrait panel in a landscape handheld). With
++ * SDL_KMSDRM_ROTATION=90 or 270 the program is handed a landscape window and
++ * renders into a landscape GBM surface as usual; at each swap the locked front
++ * buffer is drawn a quarter turn onto one of three portrait scanout buffers by
++ * a context of our own, and that buffer is what gets flipped. The display
++ * controller (Rockchip VOP) cannot turn a plane itself, and Rockchip's RGA
++ * library, which AmberELEC's equivalent patch uses, needs the vendor kernel.
++ *
++ * Our EGL is the real libEGL.so.1, loaded here, not the one SDL loaded: a
++ * PortMaster port often points SDL at gl4es's EGL, which wraps it. The
++ * program's context is put back exactly as it was after each blit. */
++
++#include "../../SDL_internal.h"
++
++#ifdef SDL_VIDEO_DRIVER_KMSDRM
++
++#include "SDL_loadso.h"
++#include "SDL_log.h"
++#include "SDL_timer.h"
++#include "SDL_kmsdrmvideo.h"
++#include "SDL_kmsdrmdyn.h"
++#include "SDL_kmsdrmopengles.h" /* SDL_EGL_VideoData, for the swap */
++
++#include <poll.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++#include <GLES2/gl2.h>
++#include <GLES2/gl2ext.h>
++
++#ifndef DRM_FORMAT_MOD_INVALID
++#define DRM_FORMAT_MOD_INVALID ((1ULL << 56) - 1)
++#endif
++
++#define ROT_BUFFERS 3
++#define ROT_SOURCES 4
++
++typedef struct
++{
++    struct gbm_bo *bo;
++    EGLImageKHR image;
++    GLuint tex;
++} RotSource;
++
++struct KMSDRM_Rotator
++{
++    void *egl_lib;
++    PFNEGLGETPROCADDRESSPROC GetProcAddress;
++    EGLDisplay (*GetDisplay)(EGLNativeDisplayType);
++    EGLBoolean (*Initialize)(EGLDisplay, EGLint *, EGLint *);
++    EGLBoolean (*ChooseConfig)(EGLDisplay, const EGLint *, EGLConfig *, EGLint, EGLint *);
++    EGLContext (*CreateContext)(EGLDisplay, EGLConfig, EGLContext, const EGLint *);
++    EGLBoolean (*DestroyContext)(EGLDisplay, EGLContext);
++    EGLBoolean (*MakeCurrent)(EGLDisplay, EGLSurface, EGLSurface, EGLContext);
++    EGLContext (*GetCurrentContext)(void);
++    EGLSurface (*GetCurrentSurface)(EGLint);
++    EGLDisplay (*GetCurrentDisplay)(void);
++    EGLBoolean (*BindAPI)(EGLenum);
++    EGLenum (*QueryAPI)(void);
++    PFNEGLCREATEIMAGEKHRPROC CreateImage;
++    PFNEGLDESTROYIMAGEKHRPROC DestroyImage;
++
++    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC ImageTargetTexture2D;
++    void (*GenTextures)(GLsizei, GLuint *);
++    void (*DeleteTextures)(GLsizei, const GLuint *);
++    void (*BindTexture)(GLenum, GLuint);
++    void (*TexParameteri)(GLenum, GLenum, GLint);
++    void (*ActiveTexture)(GLenum);
++    void (*GenFramebuffers)(GLsizei, GLuint *);
++    void (*DeleteFramebuffers)(GLsizei, const GLuint *);
++    void (*BindFramebuffer)(GLenum, GLuint);
++    void (*FramebufferTexture2D)(GLenum, GLenum, GLenum, GLuint, GLint);
++    GLenum (*CheckFramebufferStatus)(GLenum);
++    void (*Viewport)(GLint, GLint, GLsizei, GLsizei);
++    void (*Disable)(GLenum);
++    GLuint (*CreateShader)(GLenum);
++    void (*ShaderSource)(GLuint, GLsizei, const GLchar *const *, const GLint *);
++    void (*CompileShader)(GLuint);
++    GLuint (*CreateProgram)(void);
++    void (*AttachShader)(GLuint, GLuint);
++    void (*BindAttribLocation)(GLuint, GLuint, const GLchar *);
++    void (*LinkProgram)(GLuint);
++    void (*GetProgramiv)(GLuint, GLenum, GLint *);
++    void (*UseProgram)(GLuint);
++    GLint (*GetUniformLocation)(GLuint, const GLchar *);
++    void (*Uniform1i)(GLint, GLint);
++    void (*VertexAttribPointer)(GLuint, GLint, GLenum, GLboolean, GLsizei, const void *);
++    void (*EnableVertexAttribArray)(GLuint);
++    void (*DrawArrays)(GLenum, GLint, GLsizei);
++    void (*Finish)(void);
++    void (*Flush)(void);
++    void (*ReadPixels)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
++
++    EGLDisplay display;
++    EGLContext context;
++    GLuint program;
++
++    int width, height; /* the panel's own, portrait */
++    int degrees;
++    struct gbm_bo *bos[ROT_BUFFERS];
++    EGLImageKHR images[ROT_BUFFERS];
++    GLuint texs[ROT_BUFFERS], fbos[ROT_BUFFERS];
++    int next;
++    /* KMSDRM_RotatorSwap's mailbox: the buffer on glass, the one a flip is
++       queued for, and the newest drawn and not yet flipped; -1 for none. A new
++       frame is never drawn into the first two. */
++    int shown, queued, ready;
++    SDL_bool started;
++
++    RotSource sources[ROT_SOURCES];
++    int next_source;
++};
++
++static EGLImageKHR rot_import(KMSDRM_Rotator *r, struct gbm_bo *bo)
++{
++    EGLint attrs[24];
++    int n = 0, fd;
++    uint64_t mod = DRM_FORMAT_MOD_INVALID;
++    EGLImageKHR image;
++
++    fd = KMSDRM_gbm_bo_get_fd(bo);
++    if (fd < 0) {
++        return EGL_NO_IMAGE_KHR;
++    }
++    if (KMSDRM_gbm_bo_get_modifier) {
++        mod = KMSDRM_gbm_bo_get_modifier(bo);
++    }
++    attrs[n++] = EGL_WIDTH;
++    attrs[n++] = (EGLint)KMSDRM_gbm_bo_get_width(bo);
++    attrs[n++] = EGL_HEIGHT;
++    attrs[n++] = (EGLint)KMSDRM_gbm_bo_get_height(bo);
++    attrs[n++] = EGL_LINUX_DRM_FOURCC_EXT;
++    attrs[n++] = (EGLint)KMSDRM_gbm_bo_get_format(bo);
++    attrs[n++] = EGL_DMA_BUF_PLANE0_FD_EXT;
++    attrs[n++] = fd;
++    attrs[n++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
++    attrs[n++] = KMSDRM_gbm_bo_get_offset ? (EGLint)KMSDRM_gbm_bo_get_offset(bo, 0) : 0;
++    attrs[n++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
++    attrs[n++] = (EGLint)KMSDRM_gbm_bo_get_stride(bo);
++    if (mod != DRM_FORMAT_MOD_INVALID) {
++        attrs[n++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
++        attrs[n++] = (EGLint)(mod & 0xffffffff);
++        attrs[n++] = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
++        attrs[n++] = (EGLint)(mod >> 32);
++    }
++    attrs[n++] = EGL_NONE;
++    image = r->CreateImage(r->display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, attrs);
++    close(fd); /* the image holds its own reference */
++    return image;
++}
++
++static GLuint rot_texture(KMSDRM_Rotator *r, EGLImageKHR image)
++{
++    GLuint tex;
++
++    r->GenTextures(1, &tex);
++    r->BindTexture(GL_TEXTURE_2D, tex);
++    r->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++    r->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++    r->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++    r->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++    r->ImageTargetTexture2D(GL_TEXTURE_2D, (GLeglImageOES)image);
++    return tex;
++}
++
++#define LOAD(field, name)                                                  \
++    do {                                                                   \
++        *(void **)&r->field = (void *)r->GetProcAddress(name);             \
++        if (!r->field) {                                                   \
++            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "rotation: no %s", name); \
++            return SDL_FALSE;                                              \
++        }                                                                  \
++    } while (0)
++
++static SDL_bool rot_load(KMSDRM_Rotator *r)
++{
++    r->egl_lib = SDL_LoadObject("libEGL.so.1");
++    if (!r->egl_lib) {
++        return SDL_FALSE;
++    }
++    *(void **)&r->GetProcAddress = SDL_LoadFunction(r->egl_lib, "eglGetProcAddress");
++    if (!r->GetProcAddress) {
++        return SDL_FALSE;
++    }
++    LOAD(GetDisplay, "eglGetDisplay");
++    LOAD(Initialize, "eglInitialize");
++    LOAD(ChooseConfig, "eglChooseConfig");
++    LOAD(CreateContext, "eglCreateContext");
++    LOAD(DestroyContext, "eglDestroyContext");
++    LOAD(MakeCurrent, "eglMakeCurrent");
++    LOAD(GetCurrentContext, "eglGetCurrentContext");
++    LOAD(GetCurrentSurface, "eglGetCurrentSurface");
++    LOAD(GetCurrentDisplay, "eglGetCurrentDisplay");
++    LOAD(BindAPI, "eglBindAPI");
++    LOAD(QueryAPI, "eglQueryAPI");
++    LOAD(CreateImage, "eglCreateImageKHR");
++    LOAD(DestroyImage, "eglDestroyImageKHR");
++    LOAD(ImageTargetTexture2D, "glEGLImageTargetTexture2DOES");
++    LOAD(GenTextures, "glGenTextures");
++    LOAD(DeleteTextures, "glDeleteTextures");
++    LOAD(BindTexture, "glBindTexture");
++    LOAD(TexParameteri, "glTexParameteri");
++    LOAD(ActiveTexture, "glActiveTexture");
++    LOAD(GenFramebuffers, "glGenFramebuffers");
++    LOAD(DeleteFramebuffers, "glDeleteFramebuffers");
++    LOAD(BindFramebuffer, "glBindFramebuffer");
++    LOAD(FramebufferTexture2D, "glFramebufferTexture2D");
++    LOAD(CheckFramebufferStatus, "glCheckFramebufferStatus");
++    LOAD(Viewport, "glViewport");
++    LOAD(Disable, "glDisable");
++    LOAD(CreateShader, "glCreateShader");
++    LOAD(ShaderSource, "glShaderSource");
++    LOAD(CompileShader, "glCompileShader");
++    LOAD(CreateProgram, "glCreateProgram");
++    LOAD(AttachShader, "glAttachShader");
++    LOAD(BindAttribLocation, "glBindAttribLocation");
++    LOAD(LinkProgram, "glLinkProgram");
++    LOAD(GetProgramiv, "glGetProgramiv");
++    LOAD(UseProgram, "glUseProgram");
++    LOAD(GetUniformLocation, "glGetUniformLocation");
++    LOAD(Uniform1i, "glUniform1i");
++    LOAD(VertexAttribPointer, "glVertexAttribPointer");
++    LOAD(EnableVertexAttribArray, "glEnableVertexAttribArray");
++    LOAD(DrawArrays, "glDrawArrays");
++    LOAD(Finish, "glFinish");
++    LOAD(Flush, "glFlush");
++    LOAD(ReadPixels, "glReadPixels");
++    return SDL_TRUE;
++}
++
++/* Saved and put back around everything this file does with EGL. */
++typedef struct
++{
++    EGLDisplay display;
++    EGLContext context;
++    EGLSurface draw, read;
++    EGLenum api;
++} RotSaved;
++
++static void rot_enter(KMSDRM_Rotator *r, RotSaved *s)
++{
++    s->display = r->GetCurrentDisplay();
++    s->context = r->GetCurrentContext();
++    s->draw = r->GetCurrentSurface(EGL_DRAW);
++    s->read = r->GetCurrentSurface(EGL_READ);
++    s->api = r->QueryAPI();
++    r->BindAPI(EGL_OPENGL_ES_API);
++    r->MakeCurrent(r->display, EGL_NO_SURFACE, EGL_NO_SURFACE, r->context);
++}
++
++static void rot_leave(KMSDRM_Rotator *r, const RotSaved *s)
++{
++    r->BindAPI(s->api);
++    if (s->context != EGL_NO_CONTEXT) {
++        r->MakeCurrent(s->display, s->draw, s->read, s->context);
++    } else {
++        r->MakeCurrent(r->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++    }
++}
++
++static GLuint rot_shader(KMSDRM_Rotator *r, GLenum type, const char *src)
++{
++    GLuint s = r->CreateShader(type);
++    r->ShaderSource(s, 1, &src, NULL);
++    r->CompileShader(s);
++    return s;
++}
++
++KMSDRM_Rotator *KMSDRM_RotatorCreate(_THIS, int panel_w, int panel_h, int degrees)
++{
++    SDL_VideoData *viddata = (SDL_VideoData *)_this->driverdata;
++    KMSDRM_Rotator *r = SDL_calloc(1, sizeof(*r));
++    static const EGLint cfg_attrs[] = { EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE };
++    static const EGLint ctx_attrs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
++    static const char *vs =
++        "attribute vec2 pos;\n"
++        "attribute vec2 uv;\n"
++        "varying vec2 v;\n"
++        "void main() { v = uv; gl_Position = vec4(pos, 0.0, 1.0); }\n";
++    static const char *fs =
++        "precision mediump float;\n"
++        "varying vec2 v;\n"
++        "uniform sampler2D t;\n"
++        "void main() { gl_FragColor = vec4(texture2D(t, v).rgb, 1.0); }\n";
++    EGLConfig config;
++    EGLint n = 0;
++    RotSaved saved;
++    GLint linked = 0;
++    int i;
++
++    if (!r) {
++        return NULL;
++    }
++    r->width = panel_w;
++    r->height = panel_h;
++    r->degrees = degrees;
++    r->shown = r->queued = r->ready = -1;
++    if (!rot_load(r)) {
++        goto fail;
++    }
++    r->display = r->GetDisplay((EGLNativeDisplayType)viddata->gbm_dev);
++    if (r->display == EGL_NO_DISPLAY || !r->Initialize(r->display, NULL, NULL)) {
++        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "rotation: no EGL display");
++        goto fail;
++    }
++    r->BindAPI(EGL_OPENGL_ES_API);
++    if (!r->ChooseConfig(r->display, cfg_attrs, &config, 1, &n) || n < 1) {
++        goto fail;
++    }
++    r->context = r->CreateContext(r->display, config, EGL_NO_CONTEXT, ctx_attrs);
++    if (r->context == EGL_NO_CONTEXT) {
++        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "rotation: no EGL context");
++        goto fail;
++    }
++
++    rot_enter(r, &saved);
++    r->program = r->CreateProgram();
++    r->AttachShader(r->program, rot_shader(r, GL_VERTEX_SHADER, vs));
++    r->AttachShader(r->program, rot_shader(r, GL_FRAGMENT_SHADER, fs));
++    r->BindAttribLocation(r->program, 0, "pos");
++    r->BindAttribLocation(r->program, 1, "uv");
++    r->LinkProgram(r->program);
++    r->GetProgramiv(r->program, GL_LINK_STATUS, &linked);
++    for (i = 0; linked && i < ROT_BUFFERS; i++) {
++        /* XRGB, not the window's ARGB: the VOP blends a plane by its alpha,
++           and a game that leaves alpha at 0 showed as a black panel */
++        r->bos[i] = KMSDRM_gbm_bo_create(viddata->gbm_dev, panel_w, panel_h, GBM_FORMAT_XRGB8888,
++                                         GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
++        if (!r->bos[i]) {
++            linked = 0;
++            break;
++        }
++        r->images[i] = rot_import(r, r->bos[i]);
++        if (r->images[i] == EGL_NO_IMAGE_KHR) {
++            linked = 0;
++            break;
++        }
++        r->texs[i] = rot_texture(r, r->images[i]);
++        r->GenFramebuffers(1, &r->fbos[i]);
++        r->BindFramebuffer(GL_FRAMEBUFFER, r->fbos[i]);
++        r->FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r->texs[i], 0);
++        if (r->CheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
++            linked = 0;
++        }
++    }
++    r->BindFramebuffer(GL_FRAMEBUFFER, 0);
++    rot_leave(r, &saved);
++    if (!linked) {
++        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "rotation: could not set up the turned buffers");
++        KMSDRM_RotatorDestroy(r);
++        return NULL;
++    }
++    SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "rotation: %d degrees onto the %dx%d panel", degrees, panel_w, panel_h);
++    return r;
++
++fail:
++    KMSDRM_RotatorDestroy(r);
++    return NULL;
++}
++
++struct gbm_bo *KMSDRM_RotatorDraw(KMSDRM_Rotator *r, struct gbm_bo *src)
++{
++    RotSaved saved;
++    RotSource *s = NULL;
++    GLfloat quad[16];
++    int i, out;
++    Uint64 t0;
++
++    /* Where each corner of the panel samples the program's landscape frame,
++       in memory order (row 0 at the top for both). 270 is a quarter turn
++       counter-clockwise, the way ZyperOS turns its own picture on the GKD
++       Pixel 2; 90 the other way. Corners: panel (0,0) (1,0) (0,1) (1,1). */
++    static const GLfloat pos[8] = { -1, -1, 1, -1, -1, 1, 1, 1 };
++    static const GLfloat ccw[8] = { 1, 0, 1, 1, 0, 0, 0, 1 };
++    static const GLfloat cw[8] = { 0, 1, 0, 0, 1, 1, 1, 0 };
++    const GLfloat *uv = r->degrees == 90 ? cw : ccw;
++
++    for (i = 0; i < ROT_SOURCES; i++) {
++        if (r->sources[i].bo == src) {
++            s = &r->sources[i];
++            break;
++        }
++    }
++
++    t0 = SDL_GetPerformanceCounter();
++    rot_enter(r, &saved);
++    if (!s) {
++        /* A GBM surface hands back the same few buffers over and over; they
++           are imported once each, the oldest import reused for a new one. */
++        s = &r->sources[r->next_source];
++        r->next_source = (r->next_source + 1) % ROT_SOURCES;
++        if (s->bo) {
++            r->DeleteTextures(1, &s->tex);
++            r->DestroyImage(r->display, s->image);
++            s->bo = NULL;
++        }
++        s->image = rot_import(r, src);
++        if (s->image == EGL_NO_IMAGE_KHR) {
++            rot_leave(r, &saved);
++            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "rotation: could not import the frame");
++            return NULL;
++        }
++        s->tex = rot_texture(r, s->image);
++        s->bo = src;
++    }
++
++    /* Never the buffer on glass or the one a flip is queued for: with three,
++       one is always free, and a frame not yet flipped is simply replaced */
++    out = r->next;
++    while (out == r->shown || out == r->queued) {
++        out = (out + 1) % ROT_BUFFERS;
++    }
++    r->next = (out + 1) % ROT_BUFFERS;
++    r->ready = out;
++    for (i = 0; i < 4; i++) {
++        quad[i * 4 + 0] = pos[i * 2];
++        quad[i * 4 + 1] = pos[i * 2 + 1];
++        quad[i * 4 + 2] = uv[i * 2];
++        quad[i * 4 + 3] = uv[i * 2 + 1];
++    }
++    r->BindFramebuffer(GL_FRAMEBUFFER, r->fbos[out]);
++    r->Viewport(0, 0, r->width, r->height);
++    r->Disable(GL_BLEND);
++    r->Disable(GL_SCISSOR_TEST);
++    r->Disable(GL_DEPTH_TEST);
++    r->Disable(GL_CULL_FACE);
++    r->UseProgram(r->program);
++    r->ActiveTexture(GL_TEXTURE0);
++    r->BindTexture(GL_TEXTURE_2D, s->tex);
++    r->Uniform1i(r->GetUniformLocation(r->program, "t"), 0);
++    r->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad);
++    r->VertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad + 2);
++    r->EnableVertexAttribArray(0);
++    r->EnableVertexAttribArray(1);
++    r->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
++
++    /* SDL_KMSDRM_DUMP=N: the Nth turned frame, as it goes to the panel, raw
++       RGBA in /tmp/kmsdrm-frame.rgba - a look at a screen no one can see */
++    {
++        static int frames;
++        const char *dump = SDL_getenv("SDL_KMSDRM_DUMP");
++
++        if (dump && ++frames == SDL_atoi(dump)) {
++            void *px = SDL_malloc((size_t)r->width * r->height * 4);
++            FILE *f = fopen("/tmp/kmsdrm-frame.rgba", "wb");
++
++            if (px && f) {
++                r->ReadPixels(0, 0, r->width, r->height, GL_RGBA, GL_UNSIGNED_BYTE, px);
++                fwrite(px, 4, (size_t)r->width * r->height, f);
++            }
++            if (f) {
++                fclose(f);
++            }
++            SDL_free(px);
++        }
++    }
++    /* Submitted, not waited for. The flip waits for the GPU by itself: the
++       turned buffer is a dma-buf, and the VOP's commit waits on its implicit
++       fence. glFinish here held the program's thread for its whole frame on
++       the GPU, 50-64 ms in Stardew Valley's farm, every frame - and a MonoGame
++       game that falls behind runs extra update ticks to catch up, which made
++       the next frame later still: 2 fps. */
++    r->Flush();
++    r->BindFramebuffer(GL_FRAMEBUFFER, 0);
++    rot_leave(r, &saved);
++
++    /* SDL_KMSDRM_FPS=1: frames a second, and what the turn costs, on stderr
++       every two seconds - how fast a port really runs, with nothing drawn */
++    if (SDL_getenv("SDL_KMSDRM_FPS")) {
++        static Uint64 since, spent;
++        static int frames;
++        Uint64 now = SDL_GetPerformanceCounter(), freq = SDL_GetPerformanceFrequency();
++
++        if (!since) {
++            since = now;
++        }
++        frames++;
++        spent += now - t0;
++        if (now - since >= 2 * freq) {
++            fprintf(stderr, "kmsdrm: %.1f fps, turning %.2f ms a frame\n",
++                    frames * (double)freq / (double)(now - since),
++                    spent * 1000.0 / (double)freq / frames);
++            since = now;
++            spent = 0;
++            frames = 0;
++        }
++    }
++    return r->bos[out];
++}
++
++void KMSDRM_RotatorDestroy(KMSDRM_Rotator *r)
++{
++    int i;
++
++    if (!r) {
++        return;
++    }
++    if (r->context != EGL_NO_CONTEXT && r->MakeCurrent) {
++        RotSaved saved;
++
++        rot_enter(r, &saved);
++        for (i = 0; i < ROT_SOURCES; i++) {
++            if (r->sources[i].bo) {
++                r->DeleteTextures(1, &r->sources[i].tex);
++                r->DestroyImage(r->display, r->sources[i].image);
++            }
++        }
++        for (i = 0; i < ROT_BUFFERS; i++) {
++            if (r->fbos[i]) {
++                r->DeleteFramebuffers(1, &r->fbos[i]);
++            }
++            if (r->texs[i]) {
++                r->DeleteTextures(1, &r->texs[i]);
++            }
++            if (r->images[i]) {
++                r->DestroyImage(r->display, r->images[i]);
++            }
++        }
++        rot_leave(r, &saved);
++        r->DestroyContext(r->display, r->context);
++    }
++    for (i = 0; i < ROT_BUFFERS; i++) {
++        if (r->bos[i]) {
++            KMSDRM_gbm_bo_destroy(r->bos[i]);
++        }
++    }
++    if (r->egl_lib) {
++        SDL_UnloadObject(r->egl_lib);
++    }
++    SDL_free(r);
++}
++
++static void rot_flip_done(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
++{
++    (void)fd; (void)frame; (void)sec; (void)usec;
++    *((SDL_bool *)data) = SDL_FALSE;
++}
++
++/* A swap that never waits for the display. The program's frame is turned into
++ * a free buffer and its own buffer handed straight back, and the newest turned
++ * frame is flipped whenever the last flip has landed - at most one a refresh,
++ * the rest replaced before they are seen. Blocking on the flip, as SDL does,
++ * cost a fixed-timestep game up to a whole refresh every frame: Stardew Valley
++ * on the Pixel 2 then fell behind, ran extra update ticks to catch up, and sat
++ * at 3-6 fps on a farm Rogue's firmware ran smoothly. SDL_KMSDRM_VSYNC=1 puts
++ * SDL's own blocking swap back. */
++int KMSDRM_RotatorSwap(_THIS, SDL_Window *window)
++{
++    SDL_WindowData *windata = (SDL_WindowData *)window->driverdata;
++    SDL_DisplayData *dispdata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
++    SDL_VideoData *viddata = (SDL_VideoData *)_this->driverdata;
++    KMSDRM_Rotator *r = windata->rotator;
++    struct gbm_bo *front, *turned;
++    KMSDRM_FBInfo *fb;
++    struct pollfd pfd;
++    drmEventContext ev;
++
++    if (!_this->egl_data->eglSwapBuffers(_this->egl_data->egl_display, windata->egl_surface)) {
++        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "eglSwapBuffers failed");
++        return 0;
++    }
++    front = KMSDRM_gbm_surface_lock_front_buffer(windata->gs);
++    if (!front) {
++        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not lock front buffer on GBM surface");
++        return 0;
++    }
++    turned = KMSDRM_RotatorDraw(r, front);
++    /* Back to EGL at once: the turn is queued on the GPU ahead of anything the
++       program draws into this buffer next, and the GPU keeps that order */
++    KMSDRM_gbm_surface_release_buffer(windata->gs, front);
++    if (!turned) {
++        return 0;
++    }
++
++    /* Has the last flip landed? Asked, not waited for */
++    SDL_zero(ev);
++    ev.version = DRM_EVENT_CONTEXT_VERSION;
++    ev.page_flip_handler = rot_flip_done;
++    pfd.fd = viddata->drm_fd;
++    pfd.events = POLLIN;
++    pfd.revents = 0;
++    while (windata->waiting_for_flip && poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) {
++        KMSDRM_drmHandleEvent(viddata->drm_fd, &ev);
++        pfd.revents = 0;
++    }
++    if (!windata->waiting_for_flip && r->queued >= 0) {
++        r->shown = r->queued;
++        r->queued = -1;
++    }
++    if (windata->waiting_for_flip || r->ready < 0) {
++        return 1; /* the newest frame waits for the next swap */
++    }
++
++    fb = KMSDRM_FBFromBO(_this, r->bos[r->ready]);
++    if (!fb) {
++        return 0;
++    }
++    if (!r->started) {
++        if (KMSDRM_drmModeSetCrtc(viddata->drm_fd, dispdata->crtc->crtc_id, fb->fb_id, 0, 0,
++                                  &dispdata->connector->connector_id, 1, &dispdata->mode)) {
++            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not set videomode on CRTC.");
++            return 0;
++        }
++        r->started = SDL_TRUE;
++        r->shown = r->ready;
++    } else if (KMSDRM_drmModePageFlip(viddata->drm_fd, dispdata->crtc->crtc_id, fb->fb_id,
++                                      DRM_MODE_PAGE_FLIP_EVENT, &windata->waiting_for_flip) == 0) {
++        windata->waiting_for_flip = SDL_TRUE;
++        r->queued = r->ready;
++    }
++    r->ready = -1;
++    return 1;
++}
++
++#endif /* SDL_VIDEO_DRIVER_KMSDRM */
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmsym.h b/src/video/kmsdrm/SDL_kmsdrmsym.h
+--- a/src/video/kmsdrm/SDL_kmsdrmsym.h	2026-11-03 21:02:49
++++ b/src/video/kmsdrm/SDL_kmsdrmsym.h	2026-11-03 21:02:50
+@@ -123,6 +123,7 @@
+                                           void (*destroy_user_data)(struct gbm_bo *, void *)))
+ SDL_KMSDRM_SYM(void *,gbm_bo_get_user_data,(struct gbm_bo *bo))
+ SDL_KMSDRM_SYM(void,gbm_bo_destroy,(struct gbm_bo *bo))
++SDL_KMSDRM_SYM(int,gbm_bo_get_fd,(struct gbm_bo *bo))
+ SDL_KMSDRM_SYM(struct gbm_bo *,gbm_bo_create,(struct gbm_device *gbm,
+                                               uint32_t width, uint32_t height,
+                                               uint32_t format, uint32_t usage))
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmvideo.c b/src/video/kmsdrm/SDL_kmsdrmvideo.c
+--- a/src/video/kmsdrm/SDL_kmsdrmvideo.c	2026-11-03 21:02:49
++++ b/src/video/kmsdrm/SDL_kmsdrmvideo.c	2026-11-03 21:03:05
+@@ -898,8 +898,8 @@
+     modedata->mode_index = mode_index;
+ 
+     display.driverdata = dispdata;
+-    display.desktop_mode.w = dispdata->mode.hdisplay;
+-    display.desktop_mode.h = dispdata->mode.vdisplay;
++    display.desktop_mode.w = KMSDRM_MODE_W(viddata, dispdata->mode);
++    display.desktop_mode.h = KMSDRM_MODE_H(viddata, dispdata->mode);
+     display.desktop_mode.refresh_rate = dispdata->mode.vrefresh;
+     display.desktop_mode.format = SDL_PIXELFORMAT_ARGB8888;
+     display.desktop_mode.driverdata = modedata;
+@@ -1112,6 +1112,12 @@
+         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not restore CRTC");
+     }
+ 
++    /* The turned buffers are off the screen now that the CRTC is back */
++    if (windata->rotator) {
++        KMSDRM_RotatorDestroy(windata->rotator);
++        windata->rotator = NULL;
++    }
++
+     /***************************/
+     /* Destroy the EGL surface */
+     /***************************/
+@@ -1181,7 +1187,9 @@
+        or SetWindowFullscreen, send a fake event for now since the actual
+        recreation is deferred */
+     KMSDRM_GetModeToSet(window, &mode);
+-    SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED, mode.hdisplay, mode.vdisplay);
++    SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
++                        KMSDRM_MODE_W((SDL_VideoData *)SDL_GetVideoDevice()->driverdata, mode),
++                        KMSDRM_MODE_H((SDL_VideoData *)SDL_GetVideoDevice()->driverdata, mode));
+ }
+ 
+ /* This determines the size of the fb, which comes from the GBM surface
+@@ -1216,15 +1224,23 @@
+        mode that's set in sync with what SDL_video.c thinks is set */
+     KMSDRM_GetModeToSet(window, &dispdata->mode);
+ 
+-    display->current_mode.w = dispdata->mode.hdisplay;
+-    display->current_mode.h = dispdata->mode.vdisplay;
++    display->current_mode.w = KMSDRM_MODE_W(viddata, dispdata->mode);
++    display->current_mode.h = KMSDRM_MODE_H(viddata, dispdata->mode);
+     display->current_mode.refresh_rate = dispdata->mode.vrefresh;
+     display->current_mode.format = SDL_PIXELFORMAT_ARGB8888;
+ 
+     windata->gs = KMSDRM_gbm_surface_create(viddata->gbm_dev,
+-                                            dispdata->mode.hdisplay, dispdata->mode.vdisplay,
++                                            KMSDRM_MODE_W(viddata, dispdata->mode),
++                                            KMSDRM_MODE_H(viddata, dispdata->mode),
+                                             surface_fmt, surface_flags);
+ 
++    /* A turned panel: the program draws landscape into gs, and each frame is
++       turned onto the panel's own buffers at swap (SDL_kmsdrmrotate.c) */
++    if (viddata->rotation && !windata->rotator) {
++        windata->rotator = KMSDRM_RotatorCreate(_this, dispdata->mode.hdisplay,
++                                                dispdata->mode.vdisplay, viddata->rotation);
++    }
++
+     if (!windata->gs) {
+         return SDL_SetError("Could not create GBM surface");
+     }
+@@ -1246,7 +1262,7 @@
+     ret = SDL_EGL_MakeCurrent(_this, windata->egl_surface, egl_context);
+ 
+     SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
+-                        dispdata->mode.hdisplay, dispdata->mode.vdisplay);
++                        KMSDRM_MODE_W(viddata, dispdata->mode), KMSDRM_MODE_H(viddata, dispdata->mode));
+ 
+     windata->egl_surface_dirty = SDL_FALSE;
+ 
+@@ -1305,6 +1321,12 @@
+     viddata->video_init = SDL_FALSE;
+     viddata->gbm_init = SDL_FALSE;
+ 
++    {
++        const char *rot = SDL_getenv("SDL_KMSDRM_ROTATION");
++        int deg = rot ? SDL_atoi(rot) : 0;
++        viddata->rotation = (deg == 90 || deg == 270) ? deg : 0;
++    }
++
+     /* Get KMSDRM resources info and store what we need. Getting and storing
+        this info isn't a problem for VK compatibility.
+        For VK-incompatible initializations we have KMSDRM_GBMInit(), which is
+@@ -1363,8 +1385,8 @@
+             modedata->mode_index = i;
+         }
+ 
+-        mode.w = conn->modes[i].hdisplay;
+-        mode.h = conn->modes[i].vdisplay;
++        mode.w = KMSDRM_MODE_W((SDL_VideoData *)_this->driverdata, conn->modes[i]);
++        mode.h = KMSDRM_MODE_H((SDL_VideoData *)_this->driverdata, conn->modes[i]);
+         mode.refresh_rate = conn->modes[i].vrefresh;
+         mode.format = SDL_PIXELFORMAT_ARGB8888;
+         mode.driverdata = modedata;
+diff --color -ruN a/src/video/kmsdrm/SDL_kmsdrmvideo.h b/src/video/kmsdrm/SDL_kmsdrmvideo.h
+--- a/src/video/kmsdrm/SDL_kmsdrmvideo.h	2026-11-03 21:02:49
++++ b/src/video/kmsdrm/SDL_kmsdrmvideo.h	2026-11-03 22:58:35
+@@ -72,6 +72,8 @@
+ #define GBM_BO_USE_LINEAR   (1 << 4)
+ #endif
+ 
++typedef struct KMSDRM_Rotator KMSDRM_Rotator;
++
+ typedef struct SDL_VideoData
+ {
+     int devindex;     /* device index that was passed on creation */
+@@ -92,6 +94,10 @@
+        open 1 FD and create 1 gbm device. */
+     SDL_bool gbm_init;
+ 
++    /* SDL_KMSDRM_ROTATION: 0, or 90 or 270 to hand programs a turned
++       window on a panel mounted turned (SDL_kmsdrmrotate.c) */
++    int rotation;
++
+ } SDL_VideoData;
+ 
+ typedef struct SDL_DisplayModeData
+@@ -123,6 +129,7 @@
+ 
+ typedef struct SDL_WindowData
+ {
++    KMSDRM_Rotator *rotator; /* the turned output, SDL_kmsdrmrotate.c */
+     SDL_VideoData *viddata;
+     /* SDL internals expect EGL surface to be here, and in KMSDRM the GBM surface is
+        what supports the EGL surface on the driver side, so all these surfaces and buffers
+@@ -191,6 +198,16 @@
+ int KMSDRM_GLES_GetSwapInterval(_THIS);
+ int KMSDRM_GLES_SwapWindow(_THIS, SDL_Window *window);
+ void KMSDRM_GLES_DeleteContext(_THIS, SDL_GLContext context);
++
++/* SDL_kmsdrmrotate.c */
++KMSDRM_Rotator *KMSDRM_RotatorCreate(_THIS, int panel_w, int panel_h, int degrees);
++struct gbm_bo *KMSDRM_RotatorDraw(KMSDRM_Rotator *r, struct gbm_bo *src);
++void KMSDRM_RotatorDestroy(KMSDRM_Rotator *r);
++int KMSDRM_RotatorSwap(_THIS, SDL_Window *window);
++
++/* A mode's width and height as programs see them: swapped when turning */
++#define KMSDRM_MODE_W(vd, m) ((vd)->rotation ? (m).vdisplay : (m).hdisplay)
++#define KMSDRM_MODE_H(vd, m) ((vd)->rotation ? (m).hdisplay : (m).vdisplay)
+ 
+ #endif /* __SDL_KMSDRMVIDEO_H__ */
+ 

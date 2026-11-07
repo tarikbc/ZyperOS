@@ -1,0 +1,246 @@
+From: plastron
+Subject: [PATCH] PX30S: train the DDR frequency set points (FSP_INIT)
+
+The PX30S only changes its DDR rate between frequencies Rockchip's BL31
+has trained, and BL31 trains them when the loader sends the DDR
+parameters with ROCKCHIP_SIP_CONFIG_DRAM_FSP_INIT. Rockchip's U-Boot
+does this in its dmc_fsp driver; mainline does not, so the DDR stayed at
+the DDR init blob's 333 MHz and BL31 refused every rate the kernel's DMC
+driver asked for (ROUND_RATE failed, -EINVAL). This is that driver's
+PX30S path with Rockchip's px30s default parameters compiled in, LPDDR4
+trained to 1056 MHz as the GKD Pixel 2's own firmware has it. BL31 then
+leaves the DDR at 1056 MHz (LPDDR4) or 666 MHz (the others).
+---
+diff -ruN a/arch/arm/mach-rockchip/px30/Makefile b/arch/arm/mach-rockchip/px30/Makefile
+--- a/arch/arm/mach-rockchip/px30/Makefile	2026-11-03 23:55:27
++++ b/arch/arm/mach-rockchip/px30/Makefile	2026-11-03 23:55:27
+@@ -11,3 +11,7 @@
+ endif
+ 
+ obj-y += px30.o
++
++ifeq ($(CONFIG_XPL_BUILD)$(CONFIG_TPL_BUILD),)
++obj-y += px30s_dmc_fsp.o
++endif
+diff -ruN a/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.c b/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.c
+--- a/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.c	1969-12-31 21:00:00
++++ b/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.c	2026-11-03 23:55:47
+@@ -0,0 +1,113 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * plastron: the PX30S's DDR frequency set points, handed to Rockchip's BL31.
++ *
++ * The PX30S (RK3326S) only moves its DDR between frequencies the firmware has
++ * trained, and BL31 trains them when the loader sends the board's DDR
++ * parameters with ROCKCHIP_SIP_CONFIG_DRAM_FSP_INIT, then leaves the DDR at
++ * the first of them. Rockchip's own U-Boot does this in its dmc_fsp driver
++ * (drivers/ram/rockchip/dmc_fsp.c, next-dev); mainline has nothing like it,
++ * so the DDR stayed at the 333 MHz the DDR init blob sets, and BL31 refused
++ * every rate the kernel's DMC driver asked for. This is that driver's PX30S
++ * path, with the parameters compiled in (px30s_dmc_fsp.h) instead of read
++ * from a device tree, run once before the kernel starts.
++ */
++
++#include <cpu_func.h>
++#include <event.h>
++#include <linux/arm-smccc.h>
++#include <linux/kernel.h>
++#include <linux/string.h>
++#include <asm/io.h>
++#include <asm/types.h>
++
++#include "px30s_dmc_fsp.h"
++
++#define SIP_DRAM_CONFIG		0x82000008
++#define SIP_SHARE_MEM		0x82000009
++#define SHARE_PAGE_TYPE_DDRFSP	5
++#define DRAM_GET_VERSION	0x08
++#define DRAM_FSP_INIT		0x0f
++#define FSP_MIN_VERSION		0x106	/* Rockchip's floor for the PX30S */
++
++/* A PX30S has both of DDR_GRF_CON1's bits 15:14 set (Rockchip's cpuinfo) */
++#define DDR_GRF_CON1		0xff630004
++/* The DDR type, as the DDR init blob leaves it (SYS_REG_DEC_DDRTYPE_V3) */
++#define PMUGRF_OS_REG2		0xff010208
++#define PMUGRF_OS_REG3		0xff01020c
++
++static const u32 *px30s_fsp_params(u32 type)
++{
++	switch (type) {
++	case 0: return px30s_fsp_ddr4;
++	case 3: return px30s_fsp_ddr3;
++	case 5: return px30s_fsp_lpddr2;
++	case 6: return px30s_fsp_lpddr3;
++	case 7: return px30s_fsp_lpddr4;
++	}
++	return NULL;
++}
++
++static int px30s_dmc_fsp(void)
++{
++	struct arm_smccc_res res;
++	const u32 *params;
++	ulong base, size, pages;
++	u32 reg2, reg3, type, *p;
++
++	if (((readl(DDR_GRF_CON1) >> 14) & 3) != 3)
++		return 0;
++
++	arm_smccc_smc(SIP_DRAM_CONFIG, 0, 0, DRAM_GET_VERSION, 0, 0, 0, 0, &res);
++	if (res.a0 || res.a1 < FSP_MIN_VERSION) {
++		printf("DDR FSP: BL31 DRAM version 0x%lx, needs 0x%x\n",
++		       res.a1, FSP_MIN_VERSION);
++		return 0;
++	}
++
++	reg2 = readl(PMUGRF_OS_REG2);
++	reg3 = readl(PMUGRF_OS_REG3);
++	type = ((reg2 >> 13) & 0x7) | (((reg3 >> 12) & 0x3) << 3);
++	params = px30s_fsp_params(type);
++	if (!params) {
++		printf("DDR FSP: no parameters for DDR type %u\n", type);
++		return 0;
++	}
++
++	/* A page of FSP settings, then the DDR parameters and the de-skew */
++	size = (PX30S_FSP_PARAMS + PX30S_FSP_DESKEW) * 4 + 4096;
++	pages = DIV_ROUND_UP(size, 4096) + 1;
++	arm_smccc_smc(SIP_SHARE_MEM, pages, SHARE_PAGE_TYPE_DDRFSP,
++		      0, 0, 0, 0, 0, &res);
++	if (res.a0) {
++		printf("DDR FSP: no memory shared with BL31\n");
++		return 0;
++	}
++	base = res.a1;
++
++	p = (u32 *)base;
++	p[0] = 0;		/* debug_print_level */
++	p[1] = 1;		/* phy_de_skew_en */
++	/*
++	 * Rockchip's driver means the parameters to start a page in
++	 * (DTS_PAR_OFFSET, 4096) but adds DTS_PAR_OFFSET / 4 to an address,
++	 * so they land 1024 bytes in, and that is where the BL31 it ships with
++	 * reads them. Written at both: neither copy overlaps the other or the
++	 * settings, and the one BL31 does not read is never looked at.
++	 */
++	memcpy((void *)(base + 1024), params, PX30S_FSP_PARAMS * 4);
++	memcpy((void *)(base + 1024 + PX30S_FSP_PARAMS * 4), px30s_fsp_de_skew,
++	       PX30S_FSP_DESKEW * 4);
++	memcpy((void *)(base + 4096), params, PX30S_FSP_PARAMS * 4);
++	memcpy((void *)(base + 4096 + PX30S_FSP_PARAMS * 4), px30s_fsp_de_skew,
++	       PX30S_FSP_DESKEW * 4);
++	flush_dcache_range(base, base + pages * 4096);
++
++	arm_smccc_smc(SIP_DRAM_CONFIG, SHARE_PAGE_TYPE_DDRFSP, 0, DRAM_FSP_INIT,
++		      0, 0, 0, 0, &res);
++	if (res.a0)
++		printf("DDR FSP: BL31 refused the set points (0x%lx)\n", res.a0);
++
++	return 0;
++}
++EVENT_SPY_SIMPLE(EVT_LAST_STAGE_INIT, px30s_dmc_fsp);
+diff -ruN a/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.h b/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.h
+--- a/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.h	1969-12-31 21:00:00
++++ b/arch/arm/mach-rockchip/px30/px30s_dmc_fsp.h	2026-11-03 23:55:27
+@@ -0,0 +1,101 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * The PX30S DDR parameters for px30s_dmc_fsp.c, in the order Rockchip's
++ * dmc_fsp.c sends them (ddr_params_v1, then ddr_params_exp_v1): the values of
++ * Rockchip's px30s-dram-default-timing.dtsi and the de-skew of its
++ * px30-dram-default-timing.dtsi (rockchip-linux/kernel, develop-5.10), with
++ * LPDDR4 trained up to 1056 MHz as the GKD Pixel 2's own firmware has it
++ * (Rockchip's file stops at 666). 0xff00aa99 is Rockchip's "not given".
++ */
++
++#define PX30S_FSP_PARAMS	66
++#define PX30S_FSP_DESKEW	198
++
++static const u32 px30s_fsp_ddr3[] = {
++	0x00000101, 0x00000000, 0x00000000, 0x0000029a, 0x000000c2, 0x00000148, 0x0000029a, 0x00000000,
++	0x00000000, 0x0000000d, 0x0000005d, 0x00000000, 0x00000000, 0x00000000, 0x0000042a, 0x00000320,
++	0x0000012c, 0x00000000, 0x00000021, 0x00000021, 0x00000021, 0x00000022, 0x00000021, 0x00000021,
++	0x00000021, 0x00000022, 0x00000078, 0x00000085, 0x00000001, 0x00000001, 0x0000014d, 0x0000014d,
++	0x0000000f, 0x00000003, 0x00000003, 0x0000000f, 0x00000003, 0x00000003, 0x00000000, 0x00000000,
++	0x00000000, 0x00000000, 0x00000015, 0x00000000, 0x000000b1, 0x00000000, 0x00000000, 0x00000000,
++	0x00000000, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99,
++};
++
++static const u32 px30s_fsp_ddr4[] = {
++	0x00000101, 0x00000000, 0x00000000, 0x0000029a, 0x000000c2, 0x00000148, 0x0000029a, 0x00000000,
++	0x00000000, 0x0000000d, 0x0000005d, 0x00000000, 0x00000000, 0x00000000, 0x0000042a, 0x00000320,
++	0x000001f4, 0x00000000, 0x00000021, 0x00000021, 0x00000021, 0x00000022, 0x00000021, 0x00000021,
++	0x00000021, 0x00000022, 0x00000078, 0x00000079, 0x00000001, 0x00000001, 0x000001f4, 0x000001f4,
++	0x0000000e, 0x00000001, 0x00000001, 0x0000000e, 0x00000001, 0x00000001, 0x00000000, 0x00000000,
++	0x00000000, 0x00000000, 0x0000000c, 0x00000000, 0x000000b1, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99,
++};
++
++static const u32 px30s_fsp_lpddr2[] = {
++	0x00000101, 0x00000000, 0x00000000, 0x00000210, 0x000000c2, 0x00000148, 0x00000210, 0x00000000,
++	0x00000000, 0x0000000d, 0x0000005d, 0x00000000, 0x00000000, 0x00000000, 0x0000042a, 0x00000320,
++	0x00000000, 0x00000000, 0x00000021, 0x00000021, 0x00000021, 0x00000022, 0x00000021, 0x00000021,
++	0x00000021, 0x00000022, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000271, 0x00000271,
++	0x0000000e, 0x00000001, 0x00000001, 0x0000000e, 0x00000001, 0x00000001, 0x00000000, 0x00000000,
++	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000000e4, 0x00000000, 0x00000000, 0x00000000,
++	0x00000000, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99,
++};
++
++static const u32 px30s_fsp_lpddr3[] = {
++	0x00000101, 0x00000000, 0x00000000, 0x0000029a, 0x000000c2, 0x00000148, 0x0000029a, 0x00000000,
++	0x00000000, 0x0000000d, 0x0000005d, 0x00000000, 0x00000000, 0x00000000, 0x0000042a, 0x00000320,
++	0x00000000, 0x00000000, 0x00000021, 0x00000021, 0x00000021, 0x00000022, 0x00000021, 0x00000021,
++	0x00000021, 0x00000022, 0x000000f0, 0x00000079, 0x00000001, 0x00000001, 0x0000014d, 0x0000014d,
++	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
++	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000000e4, 0x00000000, 0x00000000, 0x00000000,
++	0x00000000, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99, 0xff00aa99,
++	0xff00aa99, 0xff00aa99,
++};
++
++static const u32 px30s_fsp_lpddr4[] = {
++	0x00000101, 0x00000000, 0x00000000, 0x00000420, 0x000000c2, 0x00000148, 0x00000420, 0x00000000,
++	0x00000000, 0x0000000d, 0x0000005d, 0x00000000, 0x00000000, 0x00000000, 0x0000042a, 0x00000320,
++	0x00000000, 0x00000000, 0x0000002c, 0x00000026, 0x0000002f, 0x00000028, 0x0000002c, 0x00000026,
++	0x0000002f, 0x00000028, 0x0000003c, 0x00000050, 0x00000000, 0x00000000, 0x00000320, 0x00000320,
++	0x00000007, 0x00000001, 0x00000001, 0x00000007, 0x00000001, 0x00000001, 0x00000000, 0x00000000,
++	0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000000e4, 0x00000000, 0x00000000, 0x00000000,
++	0x00000000, 0x00000078, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000320, 0x00000000,
++	0x00000000, 0x00000001, 0x00000001, 0x00000000, 0x000000c8, 0x00000114, 0x0000017c, 0x000001a4,
++	0x000001a4, 0x000001a4,
++};
++
++static const u32 px30s_fsp_de_skew[] = {
++	0x00000006, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000006,
++	0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007,
++	0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007, 0x00000007,
++	0x00000007, 0x00000007, 0x00000006, 0x00000007, 0x00000006, 0x00000007, 0x00000007, 0x00000007,
++	0x00000008, 0x00000008, 0x00000009, 0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000008,
++	0x00000009, 0x00000008, 0x00000009, 0x00000008, 0x00000009, 0x00000008, 0x00000008, 0x00000008,
++	0x00000006, 0x00000009, 0x00000009, 0x00000007, 0x00000006, 0x00000008, 0x00000007, 0x00000009,
++	0x00000007, 0x00000008, 0x00000008, 0x00000008, 0x00000007, 0x00000008, 0x00000008, 0x00000009,
++	0x00000007, 0x00000009, 0x00000008, 0x00000009, 0x00000007, 0x00000007, 0x00000009, 0x00000009,
++	0x00000007, 0x00000007, 0x00000009, 0x00000009, 0x00000007, 0x00000009, 0x00000007, 0x00000008,
++	0x00000007, 0x00000009, 0x00000009, 0x00000009, 0x00000009, 0x00000009, 0x00000008, 0x00000009,
++	0x00000008, 0x00000009, 0x00000006, 0x00000009, 0x00000009, 0x00000007, 0x00000007, 0x00000008,
++	0x00000008, 0x00000009, 0x00000009, 0x00000009, 0x00000008, 0x00000009, 0x00000008, 0x00000009,
++	0x00000009, 0x00000009, 0x00000009, 0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000007,
++	0x00000009, 0x00000009, 0x00000007, 0x00000007, 0x00000008, 0x00000008, 0x00000009, 0x00000008,
++	0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000009, 0x00000008,
++	0x00000009, 0x00000008, 0x00000008, 0x00000008, 0x00000006, 0x00000009, 0x00000009, 0x00000007,
++	0x00000007, 0x00000008, 0x00000008, 0x00000008, 0x00000007, 0x00000007, 0x00000008, 0x00000008,
++	0x00000008, 0x00000008, 0x00000007, 0x00000008, 0x00000008, 0x00000008, 0x00000008, 0x00000008,
++	0x00000007, 0x00000007, 0x00000009, 0x00000009, 0x00000007, 0x00000008, 0x00000008, 0x00000009,
++	0x00000008, 0x00000009, 0x00000007, 0x00000008, 0x00000008, 0x00000009, 0x00000009, 0x00000009,
++	0x00000009, 0x00000009, 0x00000008, 0x00000009, 0x00000008, 0x00000009, 0x00000006, 0x00000009,
++	0x00000009, 0x00000007, 0x00000007, 0x00000008, 0x00000009, 0x00000009, 0x00000009, 0x00000009,
++	0x00000008, 0x00000008, 0x00000008, 0x00000009, 0x00000009, 0x00000009, 0x00000009, 0x00000009,
++	0x00000008, 0x00000008, 0x00000008, 0x00000007, 0x00000009, 0x00000009,
++};
++

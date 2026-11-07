@@ -1,6 +1,6 @@
 # Building ZyperOS
 
-Both devices run ZyperOS on [plastron](https://github.com/tarikbc/plastron),
+Both devices run ZyperOS on [plastron](../plastron/), in this repository's `plastron/`,
 and plastron's build is what builds ZyperOS for them: it runs `mk/cross.mk`
 with its own cross-compiler and libraries, and `mk/payload.sh` to lay out what
 goes on the card, from this working tree (its Makefile's `ZYPEROS_SRC`). For
@@ -286,12 +286,12 @@ build volume: about 20 seconds from clean. `PX2_SDK` picks an SDK by name
 (`docker volume ls --filter label=plastron.sdk`); without it, the newest.
 Make the SDK again in plastron after a change to its libraries.
 
-A whole card image is plastron's: `make` there for the Pixel 2, or `make brick
+A whole card image is plastron's: `make -C plastron` for the Pixel 2, or `make -C plastron brick
 BRICK_TARGET=zyperos-rebuild` for the Brick. A full `make brick` also writes a
 card image.
 
 On a plastron development build, SSH runs over the USB cable with the key
-from plastron's `local/authorized_keys`: `ssh root@10.55.0.2` reaches the
+from `plastron/local/authorized_keys` (ignored by git): `ssh root@10.55.0.2` reaches the
 Brick and `ssh root@10.42.0.1` the Pixel 2. Copy files with `scp -O`, since no
 SFTP server runs, and into `/tmp` first; check that the checksums match on
 both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds

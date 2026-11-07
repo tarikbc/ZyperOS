@@ -1,0 +1,197 @@
+Subject: [PATCH] power: supply: rk817: 2 A input from a dedicated charger
+
+Not from upstream. Mainline sets the RK817's USB input current limit to
+1.5 A for every port, at probe and again each time the cable comes out
+(the register resets then). The GKD Pixel 2's own firmware (its BSP
+kernel, which ROGUE OS runs) takes 2 A from a dedicated charger and less
+from a computer, by the USB PHY's BC1.2 charger detection.
+
+The PHY driver (phy-rockchip-inno-usb2) already does that detection and
+reports it as extcon cables: EXTCON_CHG_USB_DCP for a wall charger, or a
+charger whose data lines are open. With an extcon phandle on the charger
+node, this follows it: 2 A while the PHY says DCP, 1.5 A otherwise, set
+from an extcon notifier and wherever mainline set 1.5 A before. Without
+the phandle nothing changes. The 4.5 V input voltage limit stays on, so
+a supply that sags under the load is drawn on less.
+
+The limit is readable as the charger supply's input_current_limit.
+---
+ drivers/power/supply/rk817_charger.c | 108 +++++++++++++++++++++++++++++++----
+--- a/drivers/power/supply/rk817_charger.c
++++ b/drivers/power/supply/rk817_charger.c
+@@ -10,6 +10,7 @@
+ 
+ #include <linux/unaligned.h>
+ #include <linux/devm-helpers.h>
++#include <linux/extcon.h>
+ #include <linux/mfd/rk808.h>
+ #include <linux/irq.h>
+ #include <linux/of.h>
+@@ -106,6 +107,15 @@
+ 
+ 	/* Work queue to periodically update values. */
+ 	struct delayed_work work;
++
++	/*
++	 * The USB PHY's charger detection (BC1.2), when the device tree points
++	 * the charger node at it with an extcon phandle: the input current
++	 * limit follows the kind of port the cable is in.
++	 */
++	struct extcon_dev *edev;
++	struct notifier_block dcp_nb;
++	struct work_struct ilim_work;
+ };
+ 
+ /* ADC coefficients extracted from BSP kernel */
+@@ -532,6 +542,60 @@
+ 		return -EINVAL;
+ 	}
+ 	return 0;
++}
++
++/*
++ * The USB input current limit, ILIM_SEL in RK817_PMIC_CHRG_IN, in mA. The
++ * order is the BSP kernel's (enum charge_input_current), and 80 mA at 1 was
++ * checked on a GKD Pixel 2.
++ */
++static const int rk817_ilim_ma[] = { 450, 80, 850, 1500, 1750, 2000, 2500, 3000 };
++
++#define RK817_ILIM_1500MA	0x03
++#define RK817_ILIM_2000MA	0x05
++
++/*
++ * A dedicated charger (DCP, or a charger with its data lines open, which the
++ * PHY reports the same way) may give the device 2 A, which is what its BSP
++ * kernel lets it take; any other port, or no charger detection at all, keeps
++ * the 1.5 A this driver has always set. The input voltage limit (4.5 V) stays
++ * on, so a supply that sags under the load is drawn on less.
++ */
++static void rk817_set_input_limit(struct rk817_charger *charger)
++{
++	struct rk808 *rk808 = charger->rk808;
++	u8 sel = RK817_ILIM_1500MA;
++
++	if (charger->edev &&
++	    extcon_get_state(charger->edev, EXTCON_CHG_USB_DCP) > 0)
++		sel = RK817_ILIM_2000MA;
++
++	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN,
++			  RK817_USB_ILIM_SEL, sel);
++	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN, RK817_USB_ILIM_EN,
++			  (0x01 << 3));
++}
++
++static void rk817_ilim_work(struct work_struct *work)
++{
++	struct rk817_charger *charger =
++		container_of(work, struct rk817_charger, ilim_work);
++
++	rk817_set_input_limit(charger);
++	dev_dbg(charger->dev, "input current limit for %s\n",
++		extcon_get_state(charger->edev, EXTCON_CHG_USB_DCP) > 0 ?
++		"a dedicated charger" : "a USB port");
++}
++
++/* Called as the PHY finds a dedicated charger or loses it. */
++static int rk817_dcp_notifier(struct notifier_block *nb, unsigned long event,
++			      void *ptr)
++{
++	struct rk817_charger *charger =
++		container_of(nb, struct rk817_charger, dcp_nb);
++
++	schedule_work(&charger->ilim_work);
++	return NOTIFY_OK;
+ }
+ 
+ static int rk817_chg_get_prop(struct power_supply *ps,
+@@ -563,6 +627,17 @@
+ 	case POWER_SUPPLY_PROP_USB_TYPE:
+ 		val->intval = POWER_SUPPLY_USB_TYPE_DCP;
+ 		break;
++	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT: {
++		unsigned int reg;
++		int ret;
++
++		ret = regmap_read(charger->rk808->regmap, RK817_PMIC_CHRG_IN,
++				  &reg);
++		if (ret)
++			return ret;
++		val->intval = rk817_ilim_ma[reg & RK817_USB_ILIM_SEL] * 1000;
++		break;
++	}
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -610,14 +685,8 @@
+ 	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN, RK817_USB_VLIM_EN,
+ 			  (0x01 << 7));
+ 
+-	/*
+-	 * Set average USB input current limit to 1.5A and enable USB current
+-	 * input limit.
+-	 */
+-	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN,
+-			  RK817_USB_ILIM_SEL, 0x03);
+-	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN, RK817_USB_ILIM_EN,
+-			  (0x01 << 3));
++	/* Set the USB input current limit and enable it. */
++	rk817_set_input_limit(charger);
+ 
+ 	rk817_read_props(charger);
+ 
+@@ -667,6 +736,7 @@
+ 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
+ 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
+ 	POWER_SUPPLY_PROP_VOLTAGE_AVG,
++	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
+ };
+ 
+ static int rk817_bat_prop_writeable(struct power_supply *psy,
+@@ -1025,14 +1095,8 @@
+ 	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN, RK817_USB_VLIM_EN,
+ 			  (0x01 << 7));
+ 
+-	/*
+-	 * Set average USB input current limit to 1.5A and enable USB current
+-	 * input limit.
+-	 */
+-	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN,
+-			  RK817_USB_ILIM_SEL, 0x03);
+-	regmap_write_bits(rk808->regmap, RK817_PMIC_CHRG_IN, RK817_USB_ILIM_EN,
+-			  (0x01 << 3));
++	/* Set the USB input current limit and enable it. */
++	rk817_set_input_limit(charger);
+ 
+ 	return 0;
+ }
+@@ -1085,6 +1149,30 @@
+ 	charger->dev = &pdev->dev;
+ 	platform_set_drvdata(pdev, charger);
+ 
++	/* The USB PHY's charger detection, if the device tree names it */
++	if (of_property_present(node, "extcon")) {
++		struct device_node *phy = of_parse_phandle(node, "extcon", 0);
++
++		if (!phy)
++			return dev_err_probe(dev, -EINVAL, "bad extcon phandle\n");
++		charger->edev = extcon_find_edev_by_node(phy);
++		of_node_put(phy);
++		if (IS_ERR(charger->edev))
++			return dev_err_probe(dev, PTR_ERR(charger->edev),
++					     "USB PHY's extcon not found\n");
++		ret = devm_work_autocancel(dev, &charger->ilim_work,
++					   rk817_ilim_work);
++		if (ret)
++			return ret;
++		charger->dcp_nb.notifier_call = rk817_dcp_notifier;
++		ret = devm_extcon_register_notifier(dev, charger->edev,
++						    EXTCON_CHG_USB_DCP,
++						    &charger->dcp_nb);
++		if (ret)
++			return dev_err_probe(dev, ret,
++					     "extcon notifier failed\n");
++	}
++
+ 	rk817_bat_calib_vol(charger);
+ 
+ 	pscfg.drv_data = charger;

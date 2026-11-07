@@ -1,0 +1,201 @@
+#!/bin/sh
+# ZyperOS, from the card's games partition, on both devices. ZyperOS's own files
+# live there, so it is updated by copying files onto the card.
+#
+# Started by init right after datapart has mounted the card, and in the
+# background: init waits for each sysinit line, and the rest of the
+# boot has nothing ZyperOS needs, so it carries on beside it.
+#
+# A card with no ZyperOS on it gets the copy this image carries first: on the
+# first boot of a freshly written card, and again whenever ZyperOS goes
+# missing from it (the partition wiped from a Mac, an update gone wrong).
+# And a card with an older ZyperOS than the image's gets it too: the installer's
+# system-only update writes a new image but leaves the card's games partition,
+# ZyperOS/ included, as it was. Never an older one over a newer, so a ZyperOS
+# copied onto the card by hand stays until an image newer than it comes.
+#
+# ZyperOS handles the power button itself (it saves a running game first), so
+# the Pixel 2's powerkey only runs when there is no ZyperOS on the card to do
+# it. The Brick's power key is the kernel's, and needs nothing.
+CARD=/mnt/SDCARD
+LAUNCH=$CARD/ZyperOS/launch.sh
+PID=/tmp/zyperos-loop.pid
+SEED=/usr/share/zyperos/card
+# The image's ZyperOS version as version_of gives it (below), written in by the
+# build (each board's post-build.sh) so a boot never reads the image's VERSION
+# file: that read cost 5 to 8 ms, the card's 1 ms, as the card's folder has
+# just been read for launch.sh (measured 2026-10-06). Empty in an image built
+# without a version, which then never copies over a card's ZyperOS.
+SEED_V=
+
+# The boot animation says what is going on while ZyperOS is copied, about a
+# minute on a Pixel 2: a line under the lockup and a bar that fills as the
+# card does (the splash's copy_start; ZyperOS's DESIGN.md 11.20). One line:
+# "setup" or "update", where to and from where, and the language the line is
+# in: MENU > Language's, which ZyperOS keeps on the card as well as in
+# theme.txt (its src/i18n.h, LANG_FILE), since a card whose boot.scr is
+# older than zylang keeps that boot.scr through System Update. None on a new
+# card, which is English until its first start asks. Written whole, then
+# renamed, so the splash never reads half of it; a device without that
+# splash does nothing with it.
+splash_copy() {
+	local f lang=
+	for f in "$CARD"/.userdata/*/language; do
+		[ -f "$f" ] && read -r lang < "$f"
+		break
+	done
+	echo "$1 $CARD $SEED $lang" > /tmp/splash-copy.new && mv /tmp/splash-copy.new /tmp/splash-copy
+}
+
+# Only ever adds: ZyperOS keeps its own state in ZyperOS/ (where it was, what
+# was playing), and the Roms, Bios and Saves folders may already hold the
+# player's files, so nothing on the card is removed but the one retired file
+# below, and nothing is replaced but ZyperOS's own files. launch.sh goes last, after a sync, so a copy cut
+# short leaves no launch.sh and the next boot starts it over.
+seed() {
+	splash_copy "${1:-setup}"
+	mkdir -p "$CARD/ZyperOS" || return 1
+	for f in "$SEED/ZyperOS/"* "$SEED/ZyperOS/".[!.]*; do
+		[ -e "$f" ] || continue
+		[ "${f##*/}" = launch.sh ] && continue
+		cp -R "$f" "$CARD/ZyperOS/" || return 1
+	done
+	for d in "$SEED/"*; do
+		[ "${d##*/}" = ZyperOS ] && continue
+		cp -R "$d" "$CARD/" || return 1
+	done
+	# The files an older version left that this one doesn't: its notice, which
+	# moved to Licenses/ in 2.0.0, and the names cards had before ZyperOS had
+	# its own (Licenses/ZyperOS.md was another name), which a card updated
+	# from them would otherwise keep beside the new ones
+	rm -f "$CARD/ZyperOS/THIRD-PARTY-LICENSES.md" "$CARD/Licenses/TortOS.md" \
+		"$CARD/ZyperOS/portmaster/libgl_TortOS.txt"
+	sync
+	cp "$SEED/ZyperOS/launch.sh" "$LAUNCH" || return 1
+	sync
+	echo "zyperos: ZyperOS copied onto the card" > /dev/kmsg
+}
+
+# The version in file $1 as one number in $v, 1.4.0 as 1004000, or false
+# when there is no file or it is not a version. Builtins only: this runs at
+# every boot, and a fork costs more than the whole check.
+version_of() {
+	v=
+	[ -f "$1" ] || return 1
+	IFS=. read -r a b c < "$1"
+	case "$a.$b.${c:-0}" in
+	*[!0-9.]* | .* | *..*) return 1 ;;
+	esac
+	v=$((a * 1000000 + b * 1000 + ${c:-0}))
+}
+
+# Whether the image carries a newer ZyperOS than the card. A card with no
+# version has one older than any that says: every card written before
+# 2026-10-06, when the file began.
+newer_seed() {
+	[ -n "$SEED_V" ] || return 1
+	version_of "$CARD/ZyperOS/VERSION" || return 0
+	[ "$SEED_V" -gt "$v" ]
+}
+
+# System Update's switch has work to do: a staged update, a step back asked
+# for, a new version on trial, or a switch cut short. Builtins only, as
+# version_of: on most starts there is nothing, and the check is all it costs.
+update_pending() {
+	local f
+	[ -e "$CARD/ZyperOS.next/.ready" ] || [ -e "$CARD/ZyperOS/.trial" ] ||
+		[ -e "$CARD/ZyperOS.swap" ] || [ -e "$CARD/ZyperOS.bad" ] && return 0
+	[ ! -d "$CARD/ZyperOS" ] && [ -d "$CARD/ZyperOS.prev" ] && return 0
+	for f in "$CARD"/.userdata/*/update/rollback; do
+		[ -e "$f" ] && return 0
+	done
+	return 1
+}
+
+# The image's ZyperOS as a staged update: copied into ZyperOS.next, marked
+# ready with its version, and switched in by update-apply.sh, with the
+# card's other folders added as seed() adds them
+seed_staged() {
+	local d next=$CARD/ZyperOS.next
+	[ -f /usr/lib/zyperos/update-apply.sh ] || return 1
+	[ -f "$SEED/ZyperOS/VERSION" ] || return 1
+	rm -rf "$next"
+	splash_copy update
+	if ! cp -R "$SEED/ZyperOS" "$next"; then
+		rm -rf "$next"
+		return 1
+	fi
+	for d in "$SEED/"*; do
+		[ "${d##*/}" = ZyperOS ] && continue
+		cp -R "$d" "$CARD/" || return 1
+	done
+	sync
+	cp "$SEED/ZyperOS/VERSION" "$next/.ready" && sync || return 1
+	sh /usr/lib/zyperos/update-apply.sh "$CARD"
+	[ -f "$LAUNCH" ]
+}
+
+start() {
+	# A card from before ZyperOS had its own name keeps everything in TortOS/.
+	# Moved once, less the launcher and the launch.sh that knows the old
+	# paths, so the copy below comes in as on a card with no ZyperOS. The
+	# settings and states in .userdata are launch.sh's to move.
+	if [ ! -d "$CARD/ZyperOS" ] && [ -d "$CARD/TortOS" ]; then
+		mv "$CARD/TortOS" "$CARD/ZyperOS" &&
+			rm -f "$CARD/ZyperOS/launch.sh" "$CARD/ZyperOS/tortos.elf" &&
+			echo "zyperos: the card's TortOS/ is ZyperOS/ now" > /dev/kmsg
+	fi
+	# System Update (ZyperOS's update/apply.sh, from this image): a staged
+	# update goes in, a step back is taken, a version that did not start goes
+	# back. Before the copy below, which compares the card's version with
+	# the image's, and before anything from the card runs.
+	if [ -f /usr/lib/zyperos/update-apply.sh ] && update_pending; then
+		sh /usr/lib/zyperos/update-apply.sh "$CARD"
+	fi
+	if [ ! -f "$LAUNCH" ] && [ -f "$SEED/ZyperOS/launch.sh" ]; then
+		echo "zyperos: no ZyperOS on the card; copying it from the image" > /dev/kmsg
+		seed || echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+	elif [ -f "$LAUNCH" ] && newer_seed; then
+		echo "zyperos: the image carries a newer ZyperOS than the card; copying it" > /dev/kmsg
+		# As an update (ZyperOS's update/apply.sh): staged beside the card's,
+		# switched in, the card's kept as ZyperOS.prev, on trial. So a new
+		# system that does not start, and goes back to the one before
+		# (U-Boot's boot count, docs/updates.md), gets the folder that went
+		# with it back too. A card with no room for a second folder, or a
+		# copy that fails, gets it in place as before.
+		if ! seed_staged; then
+			rm -f "$LAUNCH"
+			seed update || echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+		fi
+	fi
+	if [ -f "$LAUNCH" ]; then
+		sh "$LAUNCH" < /dev/null > /dev/null 2>&1 &
+		echo $! > $PID
+	else
+		echo "zyperos: no $LAUNCH; the splash stays and power works" > /dev/kmsg
+		[ -x /usr/sbin/powerkey ] &&
+			/usr/sbin/powerkey < /dev/null > /dev/null 2>&1 &
+	fi
+}
+
+# At shutdown, ahead of init's TERM to everything: launch.sh first, or it
+# starts ZyperOS again the moment ZyperOS goes, then ZyperOS, Muse and Diatom,
+# waiting up to 2 s for Diatom, which saves a running game on its TERM
+stop() {
+	local p kids
+	if [ -f $PID ] && read p < $PID; then
+		# Its children too, read before it goes and they pass to init:
+		# launch.sh's Wi-Fi loop ran on after it, one more for every stop
+		# and start (five on a test device, 2026-11-04)
+		kids=$(pgrep -P "$p")
+		kill "$p" 2>/dev/null
+		[ -n "$kids" ] && kill $kids 2>/dev/null
+	fi
+	killall -TERM zyperos.elf muse diatom 2>/dev/null
+	for i in $(seq 1 20); do pidof diatom > /dev/null || break; sleep 0.1; done
+}
+
+case "$1" in
+start) start ;;
+stop) stop ;;
+esac

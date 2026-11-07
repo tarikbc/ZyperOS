@@ -1,0 +1,14 @@
+config BR2_PACKAGE_ZYPEROS
+	bool "zyperos"
+	depends on BR2_PACKAGE_SDL2_IMAGE
+	depends on BR2_PACKAGE_SDL2_TTF
+	depends on BR2_PACKAGE_FFMPEG
+	select BR2_PACKAGE_SQLITE
+	select BR2_PACKAGE_ALSA_LIB
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_LIBCURL
+	select BR2_PACKAGE_OPENSSL
+	help
+	  The ZyperOS launcher (zyperos) and its music engine (muse),
+	  built from the ZyperOS repository, mounted at /zyperos in the
+	  build container.

@@ -1,0 +1,60 @@
+From: plastron
+Subject: [PATCH] PX30 (GKD Pixel 2): a charger's start boots to the charging screen
+
+A charger plugged into the Pixel 2 while it is off makes the RK817 power it
+on with the plug-in bit in ON_SOURCE. ROCKNIX's config turned it straight
+off again (ROCKCHIP_RK8XX_DISABLE_BOOT_ON_POWERON), so the screen stayed
+dark while it charged. That option is off now (px2.config), and the board's
+late init sets zy_charge=1 instead, which boot.scr turns into zycharge=1 on
+the kernel's line: ZyperOS shows its charging screen. A restart has its own
+bit in ON_SOURCE (0x02 on the device, the charger's 0x40), so it never looks
+like a charger's start.
+---
+--- a/board/hardkernel/odroid_go2/go2.c
++++ b/board/hardkernel/odroid_go2/go2.c
+@@ -9,6 +9,8 @@
+ #include <dm.h>
+ #include <env.h>
+ #include <stdlib.h>
++#include <power/pmic.h>
++#include <power/rk8xx_pmic.h>
+ 
+ #define DTB_DIR			"rockchip/"
+ 
+@@ -101,10 +103,36 @@
+ 	return 0;
+ }
+ 
++/*
++ * plastron: a charger plugged into the GKD Pixel 2 while it is off makes the
++ * RK817 power it on, and its ON_SOURCE says so: the plug-in bit, not the
++ * power key's. U-Boot turned it straight off again for that
++ * (ROCKCHIP_RK8XX_DISABLE_BOOT_ON_POWERON, off in px2.config now); instead
++ * the boot goes on with zy_charge=1, which boot.scr puts on the kernel's line
++ * as zycharge=1, and ZyperOS shows its charging screen (its DESIGN.md 11.25)
++ * rather than the boot animation and the home. A restart is a reason of its
++ * own there (0x02, read on a Pixel 2 on 2026-11-06, against 0x40 for the
++ * charger), so one never comes back as a charger's start.
++ */
++static void px2_charge_boot(void)
++{
++	struct udevice *pmic;
++	int on;
++
++	if (uclass_get_device_by_driver(UCLASS_PMIC, DM_DRIVER_GET(rockchip_rk805), &pmic))
++		return;
++	on = pmic_reg_read(pmic, RK817_ON_SOURCE);
++	if (on < 0 || !(on & RK8XX_ON_PLUG_IN) || (on & RK8XX_ON_PWRON))
++		return;
++	printf("Started by a charger: zy_charge=1\n");
++	env_set("zy_charge", "1");
++}
++
+ int rk_board_late_init(void)
+ {
+ 	int ret;
+ 
++	px2_charge_boot();
+ 	ret = oga_detect_device();
+ 	if (ret) {
+ 		printf("Unable to detect device type: %d\n", ret);

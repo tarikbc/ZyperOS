@@ -1,0 +1,11 @@
+config BR2_PACKAGE_PX2SIM
+	bool "px2sim"
+	depends on BR2_LINUX_KERNEL
+	help
+	  The GKD Pixel 2's buttons and parts in QEMU's virt machine
+	  (configs/qemu_defconfig): its joypad, volume keys, power key
+	  and headphone jack made through uinput, its battery, charger,
+	  backlight and side lights made by a kernel module (px2sim_hw),
+	  all under the names the Pixel 2's kernel gives them, and the
+	  link to ZyperOS's simulator window on the Mac over a
+	  virtio-serial port. Run once by init, before ZyperOS.

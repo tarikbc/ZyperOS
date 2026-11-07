@@ -485,9 +485,9 @@ Open **MENU > Wi-Fi File Transfer** (**USB File Transfer** over the USB cable), 
 ZyperOS is C and SDL2, two repositories that build together:
 
 - [ZyperOS](https://github.com/tarikbc/ZyperOS) (this one): the launcher, the card's scripts and the tools, in [`diatom/`](diatom/) the libretro frontend that starts once at boot and stays running (its own Makefile, under the Mozilla Public License 2.0), and in [`installer/`](installer/) ZyperOS Installer, which puts ZyperOS on a card from macOS, Windows or Linux (Rust and Tauri)
-- [plastron](https://github.com/tarikbc/plastron): the Linux under it, built with Buildroot in Docker
+- [`plastron/`](plastron/): the Linux under it, built with Buildroot in Docker (its own license, the GNU GPL version 3, in [`plastron/LICENSE`](plastron/LICENSE))
 
-[Building](docs/building.md) covers the toolchain, the card and the checks. With a development build on the card and the Pixel 2 on the USB cable, `make push` in plastron writes a new system to the device, and `tools/px2-deploy.sh` puts a new ZyperOS on it, without taking the card out. On a development image, **MENU > Developer Mode** (on to start) keeps the USB link to a computer up with no question, for the image's own SSH at `10.42.0.1`; a release image has no Developer Mode.
+[Building](docs/building.md) covers the toolchain, the card and the checks. With a development build on the card and the Pixel 2 on the USB cable, `make -C plastron push` writes a new system to the device, and `tools/px2-deploy.sh` puts a new ZyperOS on it, without taking the card out. On a development image, **MENU > Developer Mode** (on to start) keeps the USB link to a computer up with no question, for the image's own SSH at `10.42.0.1`; a release image has no Developer Mode.
 
 [Releasing](docs/releases/README.md): `make release PUBLISH=1` on the Mac builds the card image and makes the draft release; the tag it pushes has GitHub build ZyperOS Installer for macOS, Windows and Linux, add it to the same release and publish it. Every version's release has the image and the installer together. A release also carries System Update's pack and its list, signed with ZyperOS's release key (`tools/update-key.sh`) ([how it works](docs/updates.md)).
 

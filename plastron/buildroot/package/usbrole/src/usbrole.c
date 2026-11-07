@@ -1,0 +1,281 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/*
+ * usbrole: the USB port is a host while something that wants power is
+ * plugged into it, and a device otherwise.
+ *
+ * The Pixel 2's one USB-C port is both: a device to a computer (charging, and
+ * the networking development runs over) and a host to a USB-C DAC. The USB
+ * PHY tells them apart by the ID pin and reports it as its extcon's USB-HOST
+ * cable, but nothing in the kernel acts on it: the dwc2 controller takes its
+ * role from the role switch. This sets the role from the pin, once at startup
+ * and then on every change, as ROCKNIX does on this device. It sleeps on the
+ * kernel's uevents in between.
+ *
+ * It asks for host only while USB-HOST reads 1, so the port never supplies
+ * power while a computer or a charger is powering it, which ROCKNIX warns can
+ * damage the board. And the pin is not enough on its own: plugged into a
+ * computer by a USB-C cable, it read 1 for a moment as the plug settled, and
+ * the port went host for 4 to 10 seconds with the computer powering it, the
+ * computer seeing nothing meanwhile (2026-11-05). So going host waits for
+ * the pin to settle and needs nothing powering the port from outside (the
+ * RK817's charger input); a DAC or an adapter wants power and gives none.
+ *
+ * And when a DAC's sound card appears, it turns the DAC's own playback volume
+ * to full: the volume the player moves is a software one in front of it
+ * (asound.conf's pcm.usb), the same for every DAC.
+ *
+ * And it loads the driver for anything plugged in that has one as a module,
+ * by the alias the kernel gives the device, as udev would: a USB Wi-Fi
+ * adapter's, whose driver and wireless stack are modules so a boot without
+ * one starts none of it. Everything else here is built in, and modprobe
+ * finds nothing to load for it.
+ */
+#include <dirent.h>
+#include <fcntl.h>
+#include <linux/netlink.h>
+#include <signal.h>
+#include <sound/asound.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+/* Room for a directory name of the most a name can be, 255 */
+static char host_state[320];   /* the USB-HOST cable's state file */
+static char role_file[320];    /* the role switch */
+/* Power coming in from the other end: a computer or a charger */
+#define VBUS_IN "/sys/class/power_supply/rk817-charger/online"
+/* How long the pin must stay at host before the port follows it */
+#define SETTLE_US 400000
+
+static void log_to_kernel(const char *text)
+{
+	int fd = open("/dev/kmsg", O_WRONLY | O_CLOEXEC);
+
+	if (fd >= 0) {
+		if (write(fd, text, strlen(text)) < 0) { /* nowhere to say so */ }
+		close(fd);
+	}
+}
+
+static int read_line(const char *path, char *out, size_t n)
+{
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t got;
+
+	if (fd < 0)
+		return -1;
+	got = read(fd, out, n - 1);
+	close(fd);
+	if (got < 0)
+		return -1;
+	out[got] = '\0';
+	out[strcspn(out, "\n")] = '\0';
+	return 0;
+}
+
+/* The USB-HOST cable, among every extcon's cables, and the role switch */
+static int find_files(void)
+{
+	DIR *d;
+	struct dirent *e;
+
+	if ((d = opendir("/sys/class/extcon"))) {
+		while ((e = readdir(d)) && !host_state[0]) {
+			for (int i = 0; i < 16; i++) {
+				char path[320], name[32];
+
+				snprintf(path, sizeof path, "/sys/class/extcon/%s/cable.%d/name",
+				         e->d_name, i);
+				if (read_line(path, name, sizeof name) < 0)
+					break;
+				if (strcmp(name, "USB-HOST"))
+					continue;
+				snprintf(host_state, sizeof host_state,
+				         "/sys/class/extcon/%s/cable.%d/state", e->d_name, i);
+				break;
+			}
+		}
+		closedir(d);
+	}
+	if ((d = opendir("/sys/class/usb_role"))) {
+		while ((e = readdir(d)) && !role_file[0]) {
+			if (e->d_name[0] == '.')
+				continue;
+			snprintf(role_file, sizeof role_file, "/sys/class/usb_role/%s/role",
+			         e->d_name);
+		}
+		closedir(d);
+	}
+	return host_state[0] && role_file[0] ? 0 : -1;
+}
+
+static void follow_pin(void)
+{
+	char state[8], role[16];
+	const char *want;
+	int fd;
+
+	if (read_line(host_state, state, sizeof state) < 0 ||
+	    read_line(role_file, role, sizeof role) < 0)
+		return;
+	static int held;   /* the pin said host with power in: said once */
+
+	want = strcmp(state, "1") ? "device" : "host";
+	if (strcmp(want, "host"))
+		held = 0;
+	if (!strcmp(role, want))
+		return;
+	/* Going host: only if the pin still says so once it has settled, and
+	 * nothing is powering the port. Read once the port is host, the
+	 * charger input would see the port's own power, so it is asked only on
+	 * the way there. */
+	if (!strcmp(want, "host")) {
+		char vbus[8];
+
+		usleep(SETTLE_US);
+		if (read_line(host_state, state, sizeof state) < 0 || strcmp(state, "1"))
+			return;
+		if (read_line(VBUS_IN, vbus, sizeof vbus) == 0 && !strcmp(vbus, "1")) {
+			if (!held++)
+				log_to_kernel("usbrole: the pin says host, but power comes in: device\n");
+			return;
+		}
+	}
+	fd = open(role_file, O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	if (write(fd, want, strlen(want)) > 0)
+		log_to_kernel(strcmp(want, "host") ?
+		              "usbrole: device, nothing plugged in wants power\n" :
+		              "usbrole: host, something plugged in wants power\n");
+	close(fd);
+}
+
+/* The output's controls, "... Playback Volume" and "... Playback Switch", at
+ * full and on. Not a headset's microphone monitor or sidetone, which are
+ * playback controls too: full there is the room in your ears, or feedback. */
+static void dac_full(int card)
+{
+	struct snd_ctl_elem_id ids[64];
+	struct snd_ctl_elem_list list = { .space = 64, .pids = ids };
+	char path[32];
+	int fd, set = 0;
+
+	snprintf(path, sizeof path, "/dev/snd/controlC%d", card);
+	if ((fd = open(path, O_RDWR | O_CLOEXEC)) < 0)
+		return;
+	if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_LIST, &list) < 0)
+		list.used = 0;
+	for (unsigned int i = 0; i < list.used; i++) {
+		struct snd_ctl_elem_info info = { .id = ids[i] };
+		struct snd_ctl_elem_value v = { .id = ids[i] };
+		const char *name = (const char *)ids[i].name;
+		int volume = strstr(name, "Playback Volume") != NULL;
+		int on = strstr(name, "Playback Switch") != NULL;
+
+		if ((!volume && !on) || strstr(name, "Mic") || strstr(name, "Sidetone") ||
+		    strstr(name, "Monitor"))
+			continue;
+		if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0 ||
+		    !(info.access & SNDRV_CTL_ELEM_ACCESS_WRITE) ||
+		    info.type != (volume ? SNDRV_CTL_ELEM_TYPE_INTEGER
+		                         : SNDRV_CTL_ELEM_TYPE_BOOLEAN))
+			continue;
+		for (unsigned int c = 0; c < info.count && c < 128; c++)
+			v.value.integer.value[c] = volume ? info.value.integer.max : 1;
+		if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_WRITE, &v) >= 0)
+			set++;
+	}
+	close(fd);
+	if (set) {
+		char text[64];
+
+		snprintf(text, sizeof text, "usbrole: card %d's playback at full\n", card);
+		log_to_kernel(text);
+	}
+}
+
+/* The driver for a device, by its alias ("usb:v0BDAp8179..."). Not waited
+ * for: SIGCHLD is ignored, so nothing has to reap it. */
+static void load_driver(const char *alias)
+{
+	if (strncmp(alias, "usb:", 4) || fork() != 0)
+		return;
+	execl("/sbin/modprobe", "modprobe", "-q", alias, (char *)NULL);
+	_exit(127);
+}
+
+/* Devices plugged in before this started: the boot's own events came before
+ * there was anyone to hear them */
+static void load_present(void)
+{
+	DIR *d = opendir("/sys/bus/usb/devices");
+	struct dirent *e;
+
+	if (!d)
+		return;
+	while ((e = readdir(d))) {
+		char path[320], alias[256];
+
+		if (e->d_name[0] == '.')
+			continue;
+		snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/modalias", e->d_name);
+		if (read_line(path, alias, sizeof alias) == 0)
+			load_driver(alias);
+	}
+	closedir(d);
+}
+
+int main(void)
+{
+	struct sockaddr_nl addr = { .nl_family = AF_NETLINK, .nl_groups = 1 };
+	char msg[4096];
+	int sock;
+
+	if (find_files() < 0) {
+		log_to_kernel("usbrole: no USB-HOST cable or no role switch\n");
+		/* init respawns us; don't spin */
+		sleep(10);
+		return 1;
+	}
+	sock = socket(AF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT);
+	if (sock < 0 || bind(sock, (struct sockaddr *)&addr, sizeof addr) < 0) {
+		log_to_kernel("usbrole: can't listen for the kernel's events\n");
+		sleep(10);
+		return 1;
+	}
+
+	signal(SIGCHLD, SIG_IGN);
+	follow_pin();
+	/* A DAC already in, if init restarted us. Card 0 is the RK817. */
+	for (int card = 1; card < 8; card++)
+		dac_full(card);
+	load_present();
+	/* The PHY's extcon announces each change of its cables as a uevent:
+	 * "change@/devices/.../extcon/extcon0". A sound card's controls arrive
+	 * as "add@/devices/.../sound/card1/controlC1", the node already made. */
+	for (;;) {
+		ssize_t got = recv(sock, msg, sizeof msg - 1, 0);
+		const char *last;
+
+		if (got <= 0)
+			continue;
+		msg[got] = '\0';
+		last = strrchr(msg, '/');
+		/* The pin's cable, and the charger's input, which can settle
+		 * after it */
+		if (strstr(msg, "/extcon/") || strstr(msg, "/power_supply/"))
+			follow_pin();
+		else if (!strncmp(msg, "add@", 4) && last && !strncmp(last, "/controlC", 9) &&
+		         atoi(last + 9) > 0)
+			dac_full(atoi(last + 9));
+		/* The message's fields follow its header, each ended by a 0 */
+		if (!strncmp(msg, "add@", 4))
+			for (const char *f = msg + strlen(msg) + 1; f < msg + got; f += strlen(f) + 1)
+				if (!strncmp(f, "MODALIAS=", 9))
+					load_driver(f + 9);
+	}
+}

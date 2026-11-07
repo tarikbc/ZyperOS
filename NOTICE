@@ -17,6 +17,8 @@ Some parts of this repository are under other licenses:
   LICENSES/MIT-TortOS.txt and LICENSES/MIT-TortOS-Installer.txt.
 - diatom/ (Diatom, the emulator frontend) is under the Mozilla Public License
   2.0, in diatom/LICENSE.
+- plastron/ (plastron, the Linux system ZyperOS runs on, built with Buildroot)
+  is under the GNU General Public License, version 3, in plastron/LICENSE.
 - mk/patches/ holds changes to other projects. Each patch is under the license
   of the project it changes.
 - src/third_party/ (minimp3, stb_vorbis) and res/portmaster/ keep their own

@@ -1,0 +1,27 @@
+From: ZyperOS
+Subject: [PATCH] evdev: a gamepad with buttons and no axes is a joystick
+
+Without udev SDL guesses a device class from its capabilities, and only
+a device with ABS_X and ABS_Y could be a joystick. The GKD Pixel 2's pad
+reports buttons only (its d-pad is BTN_DPAD_* keys), so every SDL program
+on plastron, which has no udev, found no pad at all.
+---
+--- a/src/core/linux/SDL_evdev_capabilities.c	2026-11-03 19:47:46
++++ b/src/core/linux/SDL_evdev_capabilities.c	2026-11-03 19:47:46
+@@ -104,6 +104,16 @@
+         }
+     }
+ 
++    /* A gamepad with no axes at all: a handheld's built-in pad whose d-pad
++     * comes as BTN_DPAD_* keys, like the GKD Pixel 2's (ROCKNIX's singleadc
++     * joypad sets no EV_ABS with no analog channels). udev's input_id calls
++     * that a joystick too; without udev this guess is all SDL has, and
++     * without this every SDL program saw no pad on it. */
++    if (test_bit(EV_KEY, bitmask_ev) && test_bit(BTN_GAMEPAD, bitmask_key) &&
++        !test_bit(EV_ABS, bitmask_ev)) {
++        devclass |= SDL_UDEV_DEVICE_JOYSTICK; /* ID_INPUT_JOYSTICK */
++    }
++
+     if (test_bit(EV_REL, bitmask_ev) &&
+         test_bit(REL_X, bitmask_rel) && test_bit(REL_Y, bitmask_rel) &&
+         test_bit(BTN_MOUSE, bitmask_key)) {

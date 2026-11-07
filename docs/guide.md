@@ -11,7 +11,7 @@ or any program that writes disk images. Every release is on
 [GitHub](https://github.com/tarikbc/ZyperOS/releases/latest), from 1.0.0 on:
 the GKD Pixel 2's image is there, and the TrimUI Brick's comes later.
 
-The image is [plastron](https://github.com/tarikbc/plastron), the small
+The image is [plastron](../plastron/), the small
 Linux both devices run ZyperOS on: a boot partition and the system itself,
 read-only, and on the Brick also a small partition for system data such as
 Bluetooth pairings. At the first boot, in about a minute, the rest of the

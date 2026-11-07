@@ -1,0 +1,29 @@
+# Changes to Buildroot's BusyBox config (package/busybox/busybox.config).
+#
+# No system logger, kernel logger or cron: ZyperOS logs to the card, the
+# kernel's log is in dmesg, and nothing is scheduled. Each was a process
+# started during boot, beside ZyperOS, for nothing.
+# CONFIG_SYSLOGD is not set
+# CONFIG_KLOGD is not set
+# CONFIG_CROND is not set
+
+# A DHCP server for the USB cable, so the computer on the other end gets an
+# address and Down To The Wire has one a browser opens (S40usbgadget).
+CONFIG_UDHCPD=y
+CONFIG_DHCPD_LEASES_FILE="/var/lib/misc/udhcpd.leases"
+
+# tar's -z, for ZyperOS's Download logs (a .tar.gz), which failed with tar
+# saying 'invalid option -- z'. gzip itself was already in.
+CONFIG_FEATURE_SEAMLESS_GZ=y
+
+# The clock from the network when Wi-Fi has an address (the udhcpc hook
+# /usr/share/udhcpc/default.script.d/ntp), as on the Brick: ntpd as a client
+# only, and timeout, so a sync on a network that doesn't answer gives up
+CONFIG_NTPD=y
+CONFIG_TIMEOUT=y
+
+# pkill and pgrep: PortMaster's gptokeyb closes a port with "pkill -f <name>"
+# when SELECT + START is pressed, and without them it exited and left the
+# game running, with nothing to close it
+CONFIG_PGREP=y
+CONFIG_PKILL=y

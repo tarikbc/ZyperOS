@@ -1,0 +1,83 @@
+#!/bin/sh
+# USB networking over the cable (CDC NCM). The MAC addresses are fixed, so
+# the computer keeps one interface for this device and the Pixel's IPv6
+# link-local address never changes: fe80::70:78ff:fe32:1
+#
+# NCM, not ECM, since 2026-10-06: macOS and Linux have drivers for both, but
+# Windows only for NCM, so with ECM Down To The Wire never worked there. And
+# Microsoft's OS descriptors below, naming Windows' own NCM driver (WINNCM),
+# so Windows loads it when the cable goes in rather than showing an unknown
+# device: Windows 10 needs that, Windows 11 is said not to, and both take it.
+#
+# And 10.42.0.1, with udhcpd giving the computer an address beside it
+# (/etc/udhcpd.conf): browsers won't open a link-local address, and
+# ZyperOS's USB File Transfer shows this one.
+#
+# Bound only in Developer Mode (below): otherwise USB charges only until
+# ZyperOS's question says otherwise.
+GADGET=/sys/kernel/config/usb_gadget/px2
+
+case "$1" in
+start)
+	# The port's role switch starts out as host. Make it a device, so the
+	# gadget actually connects (only ever this way: going host while the
+	# Mac supplies VBUS is what ROCKNIX's script warns can fry a board).
+	for role in /sys/class/usb_role/*/role; do
+		[ -w "$role" ] && echo device > "$role"
+	done
+	for _ in 1 2 3 4 5 6 7 8 9 10; do
+		[ -n "$(ls /sys/class/udc 2>/dev/null)" ] && break
+		sleep 0.1
+	done
+	mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
+	mkdir -p "$GADGET"
+	cd "$GADGET" || exit 1
+	echo 0x1d6b > idVendor               # Linux Foundation
+	echo 0x0104 > idProduct              # Multifunction Composite Gadget
+	echo 0x0200 > bcdUSB
+	# Windows remembers a device's driver by vendor, product and this
+	# number, so a computer that met the ECM Pixel looks afresh at the NCM
+	# one rather than keeping what it decided the first time
+	echo 0x0201 > bcdDevice
+	mkdir -p strings/0x409
+	echo "ZyperOS" > strings/0x409/manufacturer
+	echo "GKD Pixel 2" > strings/0x409/product
+	mkdir -p functions/ncm.usb0
+	echo 02:70:78:32:00:01 > functions/ncm.usb0/dev_addr
+	echo 02:70:78:32:00:02 > functions/ncm.usb0/host_addr
+	mkdir -p configs/c.1/strings/0x409
+	echo "NCM" > configs/c.1/strings/0x409/configuration
+	[ -e configs/c.1/ncm.usb0 ] || ln -s "$GADGET/functions/ncm.usb0" configs/c.1/
+	# Microsoft's OS descriptors: the signature Windows asks for, and the
+	# NCM interface marked as WINNCM, Windows' own driver
+	echo 1 > os_desc/use
+	echo 0xcd > os_desc/b_vendor_code
+	echo MSFT100 > os_desc/qw_sign
+	echo WINNCM > functions/ncm.usb0/os_desc/interface.ncm/compatible_id
+	[ -e os_desc/c.1 ] || ln -s "$GADGET/configs/c.1" os_desc/
+	# Charging only until asked: the gadget is made but bound to the
+	# controller only in Developer Mode, so otherwise a computer sees no
+	# device. ZyperOS asks when a computer is plugged in and binds it for
+	# File Transfer or Developer (SSH) (its src/usblink.h). Developer Mode is
+	# a development image's only (one that starts dropbear), on unless the
+	# card's .userdata/pixel2/developer, which ZyperOS keeps, says "0". A
+	# release image binds nothing here, whatever a development image left on
+	# the card. This runs after datapart has mounted the card.
+	dev=0
+	if [ -e /etc/init.d/S50dropbear ]; then
+		dev=1
+		v=
+		[ -r /mnt/SDCARD/.userdata/pixel2/developer ] &&
+			read -r v < /mnt/SDCARD/.userdata/pixel2/developer
+		[ "$v" = 0 ] && dev=0
+	fi
+	[ "$dev" = 1 ] && ls /sys/class/udc | head -n1 > UDC
+	ip link set usb0 up
+	ip addr add 10.42.0.1/24 dev usb0
+	udhcpd /etc/udhcpd.conf
+	;;
+stop)
+	killall udhcpd 2>/dev/null
+	echo "" > "$GADGET/UDC"
+	;;
+esac
