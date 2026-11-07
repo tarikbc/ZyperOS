@@ -316,27 +316,16 @@ de = konnte nicht abgelegt werden
 ja = 配置できませんでした
 it = impossibile metterlo al suo posto
 
-[hare.no_pad]
-note = An upload that did not end in the extra byte the page adds to some files
-en = the upload did not end in its pad
-zh-Hans = 上传的结尾缺少填充字节
-es = la subida no terminó con su byte de relleno
-pt-BR = o envio não terminou com o byte de preenchimento
-fr = l'envoi ne se termine pas par son octet de remplissage
-de = der Upload endete nicht mit seinem Füllbyte
-ja = アップロードの末尾にパディングがありません
-it = il caricamento non termina con il byte di riempimento
-
-[hare.pad_empty]
-note = The same, an upload with no bytes at all
-en = a padded upload with no pad
-zh-Hans = 上传缺少填充字节
-es = una subida sin su byte de relleno
-pt-BR = um envio sem o byte de preenchimento
-fr = un envoi sans son octet de remplissage
-de = ein aufgefüllter Upload ohne Füllbyte
-ja = パディング付きアップロードが空です
-it = un caricamento senza il byte di riempimento
+[hare.not_as_sent]
+note = A file's status in the page's list of uploads: its end was not the one the page puts on it, so it is not stored, and a file of the same name on the card is as it was. Send it again
+en = did not arrive as sent, nothing was stored
+zh-Hans = 收到的内容与发送的不一致，未保存
+es = no llegó como se envió, no se guardó nada
+pt-BR = não chegou como foi enviado, nada foi salvo
+fr = pas arrivé tel qu'envoyé, rien n'a été enregistré
+de = nicht wie gesendet angekommen, nichts gespeichert
+ja = 送信したとおりに届かなかったため、保存していません
+it = non è arrivato come inviato, non è stato salvato nulla
 
 [hare.could_not]
 note = When the handheld gives no reason of its own

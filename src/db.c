@@ -70,26 +70,28 @@ static const db_default library_defaults[] = {
 	{ "coreopt..mgba_sgb_borders",  "OFF" },
 	{ "coreopt.GB.mgba_gb_model",   "Game Boy" },
 	{ "coreopt.GB.mgba_gb_colors",  "DMG Green" },
-	/* Frameskip on "auto" for the GBA's, the SNES's and the Genesis's cores.
-	 * Diatom drives it with a hint (diatom/src/env.c), so a core skips
-	 * drawing only the frames fast forward does not show, and none at 1x,
-	 * where every frame is shown. Measured on the Pixel 2 without it, fast
-	 * forward fell short of what it asked for: a heavy GBA game reached
-	 * 1.53x and 1.44x at 3x and 4x (2.35x and 2.37x with it), a heavy SNES
-	 * game 1.58x, 1.63x and 1.55x at 2x, 3x and 4x (2.00x, 2.85x and 3.16x
-	 * with it), and a Genesis game about 2x at every step (2.00x, 3.00x and
-	 * 3.94x with it). */
+	/* pcsx_rearmed's frameskip on "auto": Diatom drives it with a hint
+	 * (diatom/src/env.c), and its "auto" skips a frame reported as about to
+	 * underrun, which Diatom says only of frames fast forward will not show.
+	 * The PlayStation's fast forward is not yet measured on the Pixel 2. */
+	{ "coreopt..pcsx_rearmed_frameskip_type", "auto" },
+	/* PicoDrive's, for the Sega CD and 32X, the same way: not yet measured
+	 * on the Pixel 2. */
+	{ "coreopt..picodrive_frameskip", "auto" },
+	/* And the three cores whose heavy games fell short of fast forward's
+	 * speed on the Pixel 2, every frame drawn though most are never shown:
+	 * mGBA (the Game Boys and the GBA), Snes9x 2010 and Genesis Plus GX (the
+	 * Genesis, Master System and Game Gear). Each core's own name for the
+	 * option and for its automatic value, "auto", which skips a frame only
+	 * when the frontend says it is about to underrun - in Diatom, only a
+	 * frame fast forward will not show, so at 1x nothing changes. Read from
+	 * each core's libretro_core_options.h and the strcmp in its libretro.c
+	 * (libretro/mgba at e31759b, the tree mk/build-mgba-bridge.sh builds;
+	 * libretro/snes9x2010 and libretro/Genesis-Plus-GX), where each one's
+	 * own default is "disabled". */
 	{ "coreopt..mgba_frameskip",            "auto" },
 	{ "coreopt..snes9x_2010_frameskip",     "auto" },
 	{ "coreopt..genesis_plus_gx_frameskip", "auto" },
-	/* pcsx_rearmed takes the same hint (its "auto" skips a frame reported as
-	 * about to underrun, which Diatom says only of frames fast forward will
-	 * not show). Set by analogy with the three above; the PlayStation's fast
-	 * forward is not yet measured on the Pixel 2. */
-	{ "coreopt..pcsx_rearmed_frameskip_type", "auto" },
-	/* PicoDrive, for the Sega CD and 32X, by the same analogy: not yet
-	 * measured on the Pixel 2. */
-	{ "coreopt..picodrive_frameskip", "auto" },
 	/* PicoDrive's own default, PAR, reports square pixels, 1.4286 for
 	 * 320x224, where genesis_plus_gx reports 1.3061 for the same Genesis
 	 * picture. CRT reports 1.2991, so the Sega CD and 32X shelves take the

@@ -13,15 +13,24 @@ protocol. What it holds, each a thing I asked for on 2026-11-06:
     a console its own, Atomiswave too though it has no games, the menu
     music's BGM the cassette, the card's folders in the sidebar theirs
   - dot folders (.media) are not listed, and are when Settings says so
+  - a console's .media, dropped onto its folder or in a folder picked,
+    goes up with its covers, and nothing else hidden does (2026-11-07)
   - a batch that does not fit the card is asked about before a byte goes,
     with the files that fit offered in their order
   - the uploads show the time left for all of them, once there is a speed
+  - a file of an exact multiple of 128 KiB, which Safari over the cable
+    never hears the answer to, goes with the page's trailer and lands to the
+    byte: an upload, a cover, an update's file (2026-11-07)
   - the handheld's "stop after this file": the file on its way finishes, the
     rest stay on the computer and the panel says so
   - Settings: the update over the cable, off on an image with no release key,
     and with one, the files dropped, sent, checked and installed
   - the page in the handheld's language (MENU > Language, 2026-11-07): every
     word from its strings, the name the cable's, sizes the language's way
+  - the page named after its link, as the handheld's screen is: USB File
+    Transfer over the cable and Wi-Fi File Transfer over Wi-Fi, in its tab,
+    on the PIN screen and over the folders, and never a name the browser
+    kept from the other link
 
 No device is touched and nothing is fetched from the internet: the release
 GitHub would answer is given to the page. Chrome is needed; without it the
@@ -208,6 +217,73 @@ def main():
                   'Show hidden folders lists it')
             page.js("document.getElementById('showhidden').click()")
 
+            print("a console's .media, dropped or picked, and nothing else hidden:")
+            # A picked folder as the Upload folder picker hands it over, each
+            # file with its path inside the folder, and a dropped one as the
+            # entries API walks it: a Mac's litter beside the games and inside
+            # .media, a hidden folder, and the covers in .media
+            page.js("""window.__picked = (() => {
+                const f = (path, text) => { const x = new File([text], path.split('/').pop());
+                    Object.defineProperty(x, 'webkitRelativePath', { value: path }); return x; };
+                return picked([f('Pick/Game.nes', 'GAME'), f('Pick/.DS_Store', 'x'), f('Pick/._Game.nes', 'x'),
+                    f('Pick/.media/Game.png', 'COVER1'), f('Pick/.media/.DS_Store', 'x'),
+                    f('Pick/.media/._Game.png', 'x'), f('Pick/.hidden/x.png', 'x'),
+                    f('Pick/.media/.thumbs/y.png', 'x')]); })()""")
+            got = page.js("[window.__picked.dirs, window.__picked.files.map((f) => f.rel + '/' + f.file.name)]")
+            check(got == [['Pick', 'Pick/.media'], ['Pick/Game.nes', 'Pick/.media/Game.png']],
+                  f'a picked folder keeps .media and leaves the rest hidden out: {got}')
+            page.js("enqueueTree(window.__picked, 'roms/NES')")
+            done = "!sending && queue.length > 0 && queue.every((j) => j.state === 'done')"
+            check(page.until(done), 'the picked folder went up: ' +
+                  str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
+            page.js("""(() => {
+                const file = (name, text) => ({ name, isFile: true, isDirectory: false,
+                    file: (ok) => ok(new File([text], name)) });
+                const dir = (name, kids) => ({ name, isFile: false, isDirectory: true, createReader: () => {
+                    let given = false;
+                    return { readEntries: (ok) => { ok(given ? [] : kids); given = true; } }; } });
+                const media = dir('.media', [file('Contra.png', 'COVER2'), file('.DS_Store', 'x'),
+                    file('._Contra.png', 'x'), dir('.Trashes', [file('z.png', 'x')])]);
+                dropped({ items: [{ webkitGetAsEntry: () => media }], files: [] }, 'roms/NES'); })()""")
+            check(page.until(done + " && queue.some((j) => j.file.name === 'Contra.png')"),
+                  "a console's .media dropped onto its folder went up: " +
+                  str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
+            nes = card / 'Roms/NES'
+            check((nes / 'Pick/Game.nes').read_bytes() == b'GAME' and
+                  (nes / 'Pick/.media/Game.png').read_bytes() == b'COVER1',
+                  "the picked folder's game and its cover in its .media")
+            check((nes / '.media/Contra.png').read_bytes() == b'COVER2', "the dropped cover in NES's .media")
+            hidden = sorted(str(p.relative_to(card)) for p in nes.rglob('*')
+                            if any(part.startswith('.') and part != '.media' for part in p.relative_to(nes).parts))
+            check(not hidden, f'nothing hidden but .media reached the card: {hidden}')
+            page.js("fresh()")
+
+            print('files of an exact multiple of 128 KiB, and the rest:')
+            # Safari never hears the answer to a PUT of such a size, so the
+            # page sends it with a trailer the handheld takes off: here, that
+            # it does, for the queue and for a cover, and the card has each
+            # file to the byte. Chrome hears every answer either way.
+            page.js("""(() => {
+                window.__puts = [];
+                const open = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function (m, url) { window.__puts.push(url); return open.apply(this, arguments); };
+                const f = (name, n) => new File([new Uint8Array(n).map((_, i) => i * 7 % 251)], name);
+                enqueue([f('k128.bin', 131072), f('k256.bin', 262144), f('k0.bin', 0), f('k1.bin', 1000)], 'roms/NES');
+                window.__cover = putFile('roms/NES/.media/k128.png', f('k128.png', 131072)).then(() => 'ok', (e) => e.message);
+            })()""")
+            check(page.until(done + " && queue.length === 4", 20) and page.js("window.__cover") == 'ok',
+                  'they went up: ' + str(page.js("queue.map((j) => j.file.name + ' ' + j.state + ' ' + (j.why || ''))")))
+            puts = page.js("window.__puts")
+            check(len(puts) == 4 and all(u.endswith('&trailer=16') == ('k1.bin' not in u) for u in puts),
+                  f'the multiples of 128 KiB, an empty one too, went with the trailer, and only they: {puts}')
+            pattern = bytes(i * 7 % 251 for i in range(262144))
+            sizes = {name: (nes / name).read_bytes() for name in ('k128.bin', 'k256.bin', 'k0.bin', 'k1.bin')}
+            check(sizes == {'k128.bin': pattern[:131072], 'k256.bin': pattern, 'k0.bin': b'', 'k1.bin': pattern[:1000]},
+                  'each is on the card to the byte: ' + str({k: len(v) for k, v in sizes.items()}))
+            check((nes / '.media/k128.png').read_bytes() == pattern[:131072], 'and the cover, to the byte')
+            check(not list(nes.rglob('*.part')), 'no part-file is left')
+            page.js("fresh()")
+
             print('room on the card:')
             page.js("go('roms/NES', 'none')")
             page.js("""(() => { const f = (n, s) => { const x = new File(['x'], n); Object.defineProperty(x, 'size', { value: s }); return x; };
@@ -255,14 +331,16 @@ def main():
             page.js(f"sendPin({json.dumps(server.pin)})")
             check(page.until("/0\\.4\\.1 is out/.test(document.getElementById('updbody').textContent)"),
                   'the newest release is offered, with the files it takes')
+            # The pack an exact 256 KiB: the update's files go with the
+            # trailer too, and land without it
             page.js("upTake([new File(['zyperos-update 1\\n'], 'ZyperOS-pixel2-update.txt'), "
-                    "new File([new Uint8Array(300000)], 'ZyperOS-v0.4.1-pixel2-update (1).zpk')])")
+                    "new File([new Uint8Array(262144)], 'ZyperOS-v0.4.1-pixel2-update (1).zpk')])")
             check(page.until("/is ready/.test(document.getElementById('updbody').textContent)", 30),
                   'sent, checked and installed: ' + str(page.js("document.getElementById('updbody').innerText.split('\\n')[0]")))
             cable = card / '.userdata/pixel2/update/cable'
             check((cable / 'ZyperOS-pixel2-update.txt').is_file() and
-                  (cable / 'ZyperOS-v0.4.1-pixel2-update.zpk').stat().st_size == 300000,
-                  'the files landed under their own names, a browser\'s "(1)" off')
+                  (cable / 'ZyperOS-v0.4.1-pixel2-update.zpk').read_bytes() == bytes(262144),
+                  'the files landed under their own names, a browser\'s "(1)" off, the 256 KiB one to the byte')
             server.stop()
 
             print("the page in the handheld's language:")
@@ -272,15 +350,33 @@ def main():
                   'the page came up past the PIN, in French')
             got = page.js("""(() => ({ lang: document.documentElement.lang, title: document.title,
                 name: document.querySelector('.appname').textContent,
+                gate: document.querySelector('#gate .pagename').textContent,
                 room: document.getElementById('roomline').textContent,
                 keys: [...document.querySelectorAll('*')].flatMap((e) => [e.getAttribute('aria-label') || '',
                     e.childNodes.length === 1 && e.firstChild.nodeType === 3 ? e.textContent : ''])
                     .filter((w) => /^[a-z_]+(\\.[a-z_]+)+$/.test(w)) }))()""")
-            check(got['lang'] == 'fr' and got['title'] == 'Transfert de fichiers USB' and got['name'] == got['title'],
-                  f"the page's language and name: {got['lang']}, {got['title']}, {got['name']}")
+            check(got['lang'] == 'fr' and got['title'] == 'Transfert de fichiers USB' and
+                  got['name'] == got['title'] and got['gate'] == got['title'],
+                  f"the page's language and the cable's name: {got['lang']}, {got['title']}, {got['name']}, {got['gate']}")
             check(got['room'] == '88,3 Go libres sur 119,0 Go',
                   f"sizes the language's way: {got['room']}")
             check(not got['keys'], f"every word found its string: {got['keys']}")
+            # The same server and the same browser, its cache warm with the
+            # page's tagged files, opened over the other link and back: the
+            # name is the link's each time, never one the browser kept
+            names = "[document.title, document.querySelector('.appname').textContent, " \
+                    "document.querySelector('#gate .pagename').textContent]"
+            for link, name in (('wifi', 'Transfert de fichiers Wi-Fi'), ('usb', 'Transfert de fichiers USB')):
+                server.say(link)
+                fresh(page, f'{server.origin}/#roms')
+                check(page.until(f"document.readyState === 'complete' && {names}.every((n) => n === {json.dumps(name)})"),
+                      f'opened again over {link}, the page is {name}: {page.js(names)}')
+            server.stop()
+
+            print("over Wi-Fi, Wi-Fi's name:")
+            server = Server(card, web, 'update=off')
+            check(signed_in(page, server) and page.js(f"{names}.every((n) => n === 'Wi-Fi File Transfer')"),
+                  f"the page is Wi-Fi File Transfer: {page.js(names)}")
             server.stop()
         finally:
             page.close()
@@ -288,7 +384,8 @@ def main():
         print(f'\n{failures} check(s) failed')
         return 1
     print('\nok: the page wears its art, hides dot folders, counts the room, says the time, '
-          'follows the handheld\'s stop, updates over the cable, and speaks its language')
+          'follows the handheld\'s stop, updates over the cable, speaks its language '
+          'and is named after its link')
     return 0
 
 

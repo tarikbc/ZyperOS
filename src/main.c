@@ -1117,16 +1117,8 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 		/* Hand it to the worker and draw what the slot holds this frame:
 		 * nothing, or the card of the theme that was until its replacement
 		 * lands (theme_changed). Asking is cheap and ignores a card already
-		 * in hand, so callers ask every frame.
-		 *
-		 * With what the card needs when there is no file, so the worker
-		 * draws that too: made here, it was 14-70 ms of the frame each on
-		 * the Pixel 2, and a shelf with no art landed on drew a shelf's
-		 * worth in one frame. In the theme on now, which the worker is
-		 * handed and never reads (texload_want_card). */
-		bool asked = texload_want_card(s, i, art, NULL, v->list.items[i].title,
-		                               a->sys.systems[o].accent, false,
-		                               theme_index());
+		 * in hand, so callers ask every frame. */
+		bool asked = texload_want(s, i, art, NULL);
 
 		if (!asked && !g_loads_held) {
 			/* No worker. Exactly what this did before, on the frame, over
@@ -1153,41 +1145,15 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 }
 
 
-/* How long a frame spends installing finished art, after the first piece.
- *
- * Everything waiting used to go in on the frame that found it, and an upload
- * is not free: a whole 512x656 card is about 8 ms of
- * SDL_CreateTextureFromSurface on the Pixel 2, not the 1-2 ms it was taken
- * for. A shelf landed on asks for its whole window at once, and whatever of
- * it had come back by the next frame went in on that one frame, eight
- * milliseconds a card. About a third of a 16.7 ms frame, so a frame that
- * installs is still a frame. */
-#define DRAIN_BUDGET_MS 6
-
-/* Finished art into textures: at least one piece each frame, and more while
- * the frame has spent under DRAIN_BUDGET_MS on it. What is left stays in the
- * loader's ring for the next frames, and texload_ready keeps the loop
- * drawing them while it waits.
- *
- * Every caller has a frame on screen to keep moving: the shelf and what draws
- * over it (draw_shelf), and the launch zoom. Nothing waits on the drain with
- * the screen still dark, so none is handed a way past the budget. */
+/* Finished art into textures: everything waiting, each frame. */
 static void texload_drain(app *a)
 {
-	const Uint64 t0 = SDL_GetPerformanceCounter();
-	const Uint64 budget = SDL_GetPerformanceFrequency() * DRAIN_BUDGET_MS / 1000;
 	SDL_Surface *surf;
-	int s, i, made_for;
-	bool generated, first = true;
+	int s, i;
 
-	/* Timed from the start of the drain, and asked before each piece but the
-	 * first, so a frame never installs nothing while something is waiting
-	 * and a frame that found one dear piece stops at it. */
-	while ((first || SDL_GetPerformanceCounter() - t0 < budget) &&
-	       texload_take(&s, &i, &surf, &made_for, &generated)) {
+	while (texload_take(&s, &i, &surf, NULL)) {
 		sysview *v;
 
-		first = false;
 		if (home_accept(&a->home, a->r, s, i, surf)) {
 			if (surf) SDL_FreeSurface(surf);
 			continue;
@@ -1201,35 +1167,11 @@ static void texload_drain(app *a)
 			if (surf) SDL_FreeSurface(surf);
 			continue;
 		}
-		/* A card the worker drew in a theme that is no longer on: asked
-		 * before a change of theme and landed after it. Not installed, and
-		 * the slot keeps what it has - the card of the theme that was, or
-		 * nothing - until the ask made in the theme that is on lands. That
-		 * ask is made by whatever draws the slot next, if it is not on its
-		 * way already. */
-		if (generated && !cardgen_kept(made_for, theme_index())) {
-			SDL_FreeSurface(surf);
-			continue;
-		}
 		/* The card of the theme that was, drawn until now, goes as this one
 		 * comes in. */
 		if (v->tex[i]) {
 			SDL_DestroyTexture(v->tex[i]);
 			v->tex[i] = NULL;
-		}
-		if (generated) {
-			/* The worker's card, which only wants uploading: drawn to its
-			 * foot, and already the shape it is shown in - an album's
-			 * square-cornered, as ui_make_cover makes it, so not given a
-			 * cover's corners below. Marked with the theme it is in. */
-			v->tex[i] = ui_card_texture(a->r, surf, made_for);
-			if (v->tex[i]) {
-				v->tw[i] = surf->w;
-				v->th[i] = surf->h;
-				v->cb[i] = 1.0f;
-			}
-			SDL_FreeSurface(surf);
-			surf = NULL;
 		}
 		/* A cover is squared and given a card's corners, the way Now
 		 * Playing draws it, so one album looks the same in both places. */
@@ -1242,9 +1184,7 @@ static void texload_drain(app *a)
 			SDL_FreeSurface(surf);
 		}
 		if (!v->tex[i]) {
-			/* No file could be read and no card came with it: the generated
-			 * card, made here. A worker draws none before its faces are open
-			 * (texload_fonts_open), nor for an ask that came without one. */
+			/* No file could be read: the generated card, made here. */
 			int o = shelf_owner(a, s, i);
 			v->tex[i] = is_muse(&a->sys.systems[s])
 			          ? ui_make_cover(a->r, v->list.items[i].title,
@@ -8003,15 +7943,15 @@ static bool xs_open(app *a, int way)
 		hare_set_albums(NULL, NULL);
 	}
 	hare_set_after_write(xfer_after_write);
-	/* The page under the screen's own name: wire.html says USB File Transfer
-	 * (mk/payload.sh), index.html Wi-Fi File Transfer, hotspot or not */
-	hare_set_page(cable ? "wire.html" : NULL);
 	/* The SteamGridDB key, pasted on the page: over Wi-Fi it is checked at
 	 * once; over the cable, which has no internet, it is kept unchecked */
 	hare_set_sgdb(xfer_sgdb);
 	/* Updates through the computer, where the handheld has no internet of
 	 * its own: over the cable (docs/updates.md) */
 	hare_set_update(cable ? xfer_update : NULL);
+	/* The page's name, the one this screen shows: USB File Transfer over
+	 * the cable, Wi-Fi File Transfer over Wi-Fi and the hotspot */
+	hare_set_cable(cable);
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	g_xfer_sys_ok = cfg_load_systems(path, &g_xfer_sys);
 	hare_set_folder_color(xfer_folder_color);
@@ -12387,9 +12327,8 @@ static void np_cover(app *a, int al)
 
 /* Card `i` on Muse's shelf - game_get_tex's half for Muse. Its album's cover
  * when the card holds one, decoded on the worker like any box art; the
- * generated card when the music carries none, drawn on the worker too; nothing
- * yet while the daemon is being asked, which cover_answers settles a few
- * milliseconds later. */
+ * generated card when the music carries none; nothing yet while the daemon is
+ * being asked, which cover_answers settles a few milliseconds later. */
 static void muse_card_want(app *a, int s, int i)
 {
 	sysview *v = &a->view[s];
@@ -12399,15 +12338,8 @@ static void muse_card_want(app *a, int s, int i)
 	if (!v->album || i < 0 || i >= v->list.count) return;
 	al = v->album[i];
 	if (al < 0 || al >= g_muse.nalbums) return;
-	/* Both asks carry the album's card, square and square-cornered, for the
-	 * worker to draw when there is no picture (texload_want_card): a cover
-	 * that is not one, or none at all. In MP4's color, which is the accent and
-	 * the same in both themes, as texload_drain draws it when a worker could
-	 * not. */
 	if (cover_file(al, path, sizeof path)) {
-		if (texload_want_card(s, i, path, NULL, v->list.items[i].title,
-		                      ZYPEROS_ACCENT, true, theme_index()))
-			return;
+		if (texload_want(s, i, path, NULL)) return;
 		/* No worker - a shot - so here, as game_get_tex does without one. */
 		v->tex[i] = load_cover(a->r, path);
 		if (v->tex[i]) {
@@ -12418,10 +12350,6 @@ static void muse_card_want(app *a, int s, int i)
 		g_cov[al].st = COV_NONE;             /* there, and not a picture */
 	}
 	if (g_cov && g_cov[al].st == COV_NONE) {
-		/* No file to read, so the worker only draws the card */
-		if (texload_want_card(s, i, NULL, NULL, v->list.items[i].title,
-		                      ZYPEROS_ACCENT, true, theme_index()))
-			return;
 		v->tex[i] = ui_make_cover(a->r, v->list.items[i].title, ZYPEROS_ACCENT,
 		                          &v->tw[i], &v->th[i]);
 		v->cb[i] = 1.0f;
@@ -15256,11 +15184,6 @@ static void launch(app *a)
 		 * the display, so this side tears its own down first. */
 		anim_launch(a);
 		free_all_textures(a);
-		/* The workers' faces before the font library goes with ui_quit.
-		 * The workers themselves stay up: a decode in the air lands into
-		 * nothing (free_all_textures bumped it), and a card asked for before
-		 * this is made on the frame when it comes back without one. */
-		texload_fonts_close();
 		page_fonts_quit();
 		ui_quit();
 		plat_input_quit();
@@ -15320,9 +15243,6 @@ static void launch(app *a)
 		a->r = plat_renderer();
 		ui_init(a->r, P_FONT);
 		page_fonts_init(P_FONT);
-		/* And the workers' faces again, after ui_init as at boot, before the
-		 * shelf asks for a card */
-		texload_fonts_open();
 		a->menu_w = 0;   /* fonts reopened: remeasure the panel */
 		prime_home(a);
 		prime_window(a, a->sys_cursor);
@@ -18069,14 +17989,6 @@ int main(int argc, char *argv[])
 	 * frame (src/ui.c says why), and made again after every fallback game. */
 	t_mark("ui");
 
-	/* The workers' own faces, for the cards of games with no art, which they
-	 * draw so the frame only uploads them (texload_fonts_open). After
-	 * ui_init, which starts the font library, and before the first ask
-	 * below, so the first shelf's cards are drawn there and not on the
-	 * frame. Timed on its own: it is four faces read off the card, two of
-	 * them at 560 points. Nothing with no worker, as for a shot. */
-	texload_fonts_open();
-	t_mark("card fonts");
 	/* The library, read meanwhile (scan_thread): what follows needs it */
 	if (scanner) SDL_WaitThread(scanner, NULL);
 	t_mark("scan joined");
@@ -18530,9 +18442,7 @@ done:
 	free_all_textures(&a);
 	/* First, and before IMG_Quit: the worker is inside IMG_Load, and the
 	 * views it decodes into are freed just below. The resizer too, for the
-	 * same IMG_Quit - it is in IMG_Load and IMG_SavePNG. And before ui_quit:
-	 * texload_stop closes the workers' faces, which have to go before the
-	 * font library does. */
+	 * same IMG_Quit - it is in IMG_Load and IMG_SavePNG. */
 	texload_stop();
 	art_shrink_stop();
 	/* Told, not waited for - see ra_flush_stop. */

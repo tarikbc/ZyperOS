@@ -98,11 +98,6 @@ cp "$ROOT/res/tour/"*.png "$P/res/tour/"
 cp -R "$ROOT/res/web/"* "$P/res/web/"
 cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/menu.ttf"
 cp "$ROOT/res/fonts/title.ttf" "$P/res/web/title.ttf"
-# wire.html: the same page under the cable's name, USB File Transfer
-# (src/sys_menu.h). Only the name differs, which the page takes from
-# data-link; the script and the server are one.
-sed 's/data-link="wifi"/data-link="usb"/' "$ROOT/res/web/index.html" > "$P/res/web/wire.html"
-grep -q '^<html[^>]* data-link="usb"' "$P/res/web/wire.html" || { echo "payload: wire.html is not USB File Transfer's page" >&2; exit 1; }
 # The device has curl and OpenSSL but nothing to trust - see res/ssl/README.md.
 # Without this, every HTTPS request fails verification and achievements never
 # arrive, with an error that reads like the network being down.

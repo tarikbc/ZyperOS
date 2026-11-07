@@ -178,7 +178,6 @@ def web_dir(web):
     """res/web as mk/payload.sh lays it out on the card"""
     shutil.copytree(ROOT/'res/web',web)
     for font in ['menu.ttf','title.ttf']: shutil.copyfile(ROOT/'res/fonts'/font,web/font)
-    (web/'wire.html').write_text((ROOT/'res/web/index.html').read_text().replace('data-link="wifi"','data-link="usb"'))
 
 class DevTools:
     """Just enough of a WebSocket client for Chrome's DevTools protocol:

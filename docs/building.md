@@ -70,10 +70,10 @@ something once broke in a way nothing noticed:
 | `check-raset` | the C and Python set converters agree (needs `RA_USER`/`RA_PASS`) |
 | `check-artscrape` | two name normalizers agree on every candidate |
 | `check-artrun` | whole Box Art runs against a fake network: Replace keeps a cover it cannot better, and a checksum names the ROM in a zip, not the readme beside it |
-| `check-hare` | nothing on the file server is reachable without the PIN |
+| `check-hare` | nothing on the file server is reachable without the PIN; the page is named after its link (`/link.js`: the cable's or Wi-Fi's, never kept by a browser), and a web folder from before that still serves its page; an upload or an update's file of an exact multiple of 128 KiB sent with the page's trailer is stored to the byte, one sent plainly as sent, and one with a trailer it cannot make sense of refused, the file of its name kept and no part-file left |
 | `check-httpd` | request parsing, including the malformed ones |
 | `check-xfer` | upload paths cannot escape the directory they were aimed at |
-| `check-db` | a shipped default never overwrites a choice, and the two scopes stay apart |
+| `check-db` | a shipped default never overwrites a choice, and the two scopes stay apart; fast forward's frameskip on mGBA, Snes9x 2010 and Genesis Plus GX at each core's own automatic value on a new card, and a value the player set kept |
 | `check-gamedel` | Delete Game on a scratch card holding a cartridge, a multi-disc set in its folder, a `.cue` with its tracks and an arcade set beside `neogeo.zip`, each with saves, states, a cover, a video and a set: exactly the game's files go, never a neighbour's, never `neogeo.zip`, never a file another game shares; its rows in the library database go and the neighbours' stay; a sheet or a folder that leads out of its folders is refused with nothing touched. Then the real launcher, headless (`--delete-now`): the shelf after, in place, on the next game or the one before, from Favorites, down to the empty home (builds the host launcher; that part skips without SDL2) |
 | `check-stats` | play time is recorded, and a LAUNCH still writes nothing |
 | `check-sort` | a shelf sorts the way it says it does, and the same shelf twice the same way |
@@ -95,13 +95,13 @@ something once broke in a way nothing noticed:
 | `check-portload` | the port loading screen over a white cover, a black one and a Nintendo DS game with a black one, in both themes: its words at 4.5:1 and its band at 3:1 as the screen reads them back, and neither words nor cover in Zyper's frame (builds the host launcher; skips without SDL2) |
 | `check-flip` | both home layouts, generated game covers and Now Playing match a cold start after a theme change; source sprites remain present, and removed settings never restore old layouts |
 | `check-portkeys-flow` | The actual portkeys reader and loop with fake syscalls: poll races, pending release, overflow, removal, noise, and clocks; and over a port, the power key and an empty battery (two readings 5 s apart, off the charger), each one USR1 to launch.sh and never one to init. |
-| `check-portal` | the File Transfer page in headless Chrome over the real routes and a scratch card: its folders' art, the hidden dot folders, the room, the time left, the handheld's stop and the update over the cable (needs Chrome) |
+| `check-portal` | the File Transfer page in headless Chrome over the real routes and a scratch card: its folders' art, the hidden dot folders, a console's `.media` dropped or picked going up with its covers and nothing else hidden, files of an exact multiple of 128 KiB (which Safari over the cable never hears the answer to) sent with the trailer and landing to the byte, the room, the time left, the handheld's stop, the update over the cable, and its name after the link it came over, USB File Transfer or Wi-Fi File Transfer, opened over one and then the other (needs Chrome) |
 | `check-rasubmit` | what a refused unlock means for the queue: settled, the account's, or that one row's; no request is made |
-| `check-rasignin` | what RetroAchievements sign-in says for a wrong password, a refusal and no answer, and the HTTP status the blocking requests report under it |
+| `check-signin` | RetroAchievements sign-in against a stand-in for curl: a token signs in; a 401 says the user or password is wrong; a 403, a 503 or a redirect says retroachievements.org would not sign you in, with the number; a reply cut short, too long, or nothing at all is never read as a token; and as curl, the check holds that the password is never on its command line, every file the request makes is new and 0600 from the start and gone after, and the log names the failure and no credential |
 | `check-noticeq` | the pop-ups over a game, one after another (src/noticeq.h) |
 | `check-sshlink` | USB File Transfer's SSH: what it counts in dropbear's log (sign-ins, wrong PINs, a port it cannot have), names that try to say otherwise, and the shadow it gives dropbear |
 | `check-usblink` | USB charges only until asked: a computer is asked about once per plug and a charger never, every choice ends with its screen or its cable, and Developer Mode keeps the link |
-| `check-sgdb` | SteamGridDB on the device: the real client and a whole run against a fake API (the key in a header and never a URL, the match, the formats, the refusals), its title and ratio held to tools/sgdb-check.py |
+| `check-sgdb` | SteamGridDB on the device: the real client and a whole run against a fake API (the key in a header and never a URL, the match, the formats, the refusals, a key refused with a 401 or 403 when it is entered said so and the one before it kept), its title and ratio held to tools/sgdb-check.py |
 | `check-snapshelf` | when the shelf's cover turns into its video snap and back, on a clock the check moves by hand |
 | `check-ss` | whether this build can reach ScreenScraper, and whether an account survives a restart |
 | `check-savedlib` | the saved library a start shows first: a listing written, read and finished is the scan, and nothing but a whole file is read as one; four headless starts of the launcher, with a game added before the third, rebuilt in place |
@@ -149,7 +149,7 @@ something once broke in a way nothing noticed:
 | `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
 | `check-captive` | Wi-Fi File Transfer's hotspot, its pure half: the DNS answer for every name, the Host check that tells a phone's internet check from the page, the QR code's text and the password |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
-| `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, worker-drawn cards and missing art, on the launcher's own objects |
+| `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |
 | `check-home-shots` | the home screens as the launcher draws them in both layouts and themes: footer inside the inset, the song, a flip, a move (builds the host launcher) |
 | `check-favorites-shots` | the Favorites shelf names each game's own system right under its name (under one line or two), a console's own shelf does not, and every line keeps its margin, in both themes (builds the host launcher) |
 | `check-games` | the games row: the aspect, the wrap, tiny lists, rapid reversals and bounded jumps, on the launcher's own objects |

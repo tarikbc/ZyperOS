@@ -91,8 +91,9 @@ Linux packages in Docker.
    `npx @tauri-apps/cli@2`.
 2. Run `tools/release.sh` in this folder. It checks the page against
    ZyperOS's design (`tools/check-design.sh`: the colors against
-   `res/web/app.css`, the fonts and marks against `res/`), runs the tests,
-   then builds all four files into `dist/<version>/` with their
+   `res/web/app.css`, the fonts and marks against `res/`), checks that
+   `THIRD-PARTY.md` is the list `tools/third-party-list.py` makes now and is
+   committed, runs the tests, then builds all four files into `dist/<version>/` with their
    `SHA256SUMS`. Nothing is published. The first run takes a while: it
    builds the Linux image from `tools/linux.Dockerfile` and fetches the
    Windows SDK for `cargo-xwin`.
@@ -136,8 +137,12 @@ Eric Reinsmidt, in its MIT-licensed versions; that code keeps his MIT notice,
 in the repository's `LICENSES/MIT-TortOS-Installer.txt`.
 
 The fonts in `ui/fonts` are Lexend, under the SIL Open Font License
-(`ui/fonts/OFL.txt`). What else it is built from (Tauri, every Rust crate in
-the apps, with their licenses) is in `THIRD-PARTY.md`, which
-`tools/third-party.py` makes from `src-tauri/Cargo.lock`
-(`python3 tools/third-party.py > THIRD-PARTY.md`, here); `tools/release.sh`
-stops when the two differ.
+(`ui/fonts/OFL.txt`).
+
+What the apps are built from is listed in [THIRD-PARTY.md](THIRD-PARTY.md):
+every Rust crate compiled into them, with its license, its repository and
+which apps carry it, and Tauri, the system web views and the fonts.
+`tools/third-party-list.py` makes it from `src-tauri/Cargo.lock` and the font
+files; never edit it by hand. After changing a dependency, make it again with
+`python3 tools/third-party-list.py` in this folder and commit it:
+`tools/release.sh` stops when it is out of date.

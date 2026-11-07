@@ -20,7 +20,7 @@ ja = Wi-Fi ファイル転送
 it = Trasferimento file via Wi-Fi
 
 [web.name.usb]
-note = The same, over the USB cable
+note = The same, when File Transfer runs over the USB cable: MENU's row of the same name
 en = USB File Transfer
 zh-Hans = USB 文件传输
 es = Transferir archivos por USB

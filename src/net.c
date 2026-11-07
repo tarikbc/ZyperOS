@@ -22,6 +22,18 @@
 
 #define RA_URL "https://retroachievements.org/dorequest.php"
 
+/* Where a request's files are made: /tmp, RAM on the device. A check builds
+ * with a folder of its own (tools/signin-check.c), to see every one go. */
+#ifndef NET_TMP
+#define NET_TMP "/tmp"
+#endif
+
+/* The curls to try, in order. A check builds with its own stand-in first,
+ * to answer what a server would and to see what curl is handed. */
+#ifndef NET_CURL_BINARIES
+#define NET_CURL_BINARIES "/usr/bin/curl", "/bin/curl", "curl"
+#endif
+
 static char g_ca[512];
 
 void net_set_ca_path(const char *path)
@@ -45,14 +57,7 @@ static int open_new(const char *path, int flags, mode_t mode)
 
 static const char *curl_bin(void)
 {
-#ifdef NET_CURL
-	/* A check's stand-in, built in by the Makefile (check-rasignin): it reads
-	 * the same config and answers the way a server and curl would, with no
-	 * network. Never set for the device. */
-	static const char *tried[] = { NET_CURL };
-#else
-	static const char *tried[] = { "/usr/bin/curl", "/bin/curl", "curl" };
-#endif
+	static const char *tried[] = { NET_CURL_BINARIES };
 	static const char *found;
 	size_t i;
 
@@ -206,6 +211,16 @@ static bool write_config(const char *path, const char *url, bool get,
 
 	fprintf(f, "silent\nshow-error\nfail\n");
 	cfg_protocols(f);
+	/* `status`: the status after the body, on the same stdout, so the
+	 * caller can tell a refusal from no answer (request): `fail` leaves an
+	 * HTTP error no body, and a wrong password read as no network. Not the
+	 * body to `output` and the status alone on stdout, as write_get_config
+	 * has it: curl would make the body's file itself, at its own mode, and
+	 * this body carries a token, where stdout is a file made 0600 here. The
+	 * line break keeps the status off the body's last line; curl 7.54 has
+	 * write-out. Not for net_post_async, whose reply file its callers read
+	 * whole. */
+	if (status) { fprintf(f, "write-out = "); cfg_quote(f, "\n%{http_code}"); fputc('\n', f); }
 	fprintf(f, "max-time = %d\n", timeout_s);
 	/* Verification stays ON. The device has no trust store of its own, which
 	 * is the whole reason this file ships; -k would be the other way to make
@@ -216,8 +231,6 @@ static bool write_config(const char *path, const char *url, bool get,
 	 * like a permissions problem and is not one. */
 	fprintf(f, "user-agent = "); cfg_quote(f, NET_UA); fputc('\n', f);
 	cfg_header(f, header);
-	/* The status after the body, on the same stdout: see reply_status */
-	if (status) { fprintf(f, "write-out = "); cfg_quote(f, "%{http_code}"); fputc('\n', f); }
 
 	for (i = 0; i < n; i++) {
 		char kv[1024];
@@ -281,89 +294,98 @@ static void tmp_config(char *out, size_t n)
 {
 	static atomic_uint seq;
 
-	snprintf(out, n, "/tmp/zyperos-ra-%ld-%u.curl", (long)getpid(),
+	snprintf(out, n, NET_TMP "/zyperos-ra-%ld-%u.curl", (long)getpid(),
 	         (unsigned)atomic_fetch_add(&seq, 1));
 }
 
-/* THE STATUS, AT THE END OF THE BODY.
- *
- * curl runs with `fail`, so a refusal is an exit code and no body, and one
- * refusal looks like every other and like no answer at all. RetroAchievements
- * answers a wrong password with 401, and sign-in said "could not reach" for
- * it; SteamGridDB answers a wrong key with 401 too, and its check could not
- * tell that from a network that is not there.
- *
- * write-out prints %{http_code} when the transfer is over, error or not, on
- * the same stdout as the body. So the reply file is the body, when one came,
- * and then exactly three digits: the status, or "000" when no server
- * answered. They are read from the end of the file, not from the end of what
- * fits in the caller's buffer, so a reply too long for it keeps its status.
- * And it stays one file, the one opened 0600 before curl starts: a file of
- * its own for the status, or `output` for the body, would be one more place
- * a token passes through.
- *
- * Returns the status (0 for "000") and, in `body`, how long the body before
- * it is; or -1 when the file does not end in a status at all: curl never
- * started, or died before it printed one. */
-static int reply_status(int fd, off_t *body)
-{
-	struct stat st;
-	char d[3];
-
-	*body = 0;
-	if (fstat(fd, &st) != 0 || st.st_size < 3) return -1;
-	if (pread(fd, d, 3, st.st_size - 3) != 3) return -1;
-	if (!isdigit((unsigned char)d[0]) || !isdigit((unsigned char)d[1]) ||
-	    !isdigit((unsigned char)d[2]))
-		return -1;
-	*body = st.st_size - 3;
-	return (d[0] - '0') * 100 + (d[1] - '0') * 10 + (d[2] - '0');
-}
+/* What one blocking request came to. `exit` is curl's (-1 when it did not
+ * run or did not exit), `http` the status its write-out printed after the
+ * body (0 when it printed none, and "000" when nothing answered), `len` how
+ * much of the body is in the caller's buffer (-1 for none: curl did not exit
+ * 0), and `whole` whether that is all of it. */
+typedef struct {
+	int  exit, http;
+	long len;
+	bool whole;
+} net_got;
 
 /* The two blocking calls differ only in where they go and how the fields
- * travel, so they are one body with the config written two ways. */
-static long request_buf(const char *url, bool get, const net_field *f, int n,
-                        char *out, size_t outn, int timeout_s, int *http,
-                        const char *header)
+ * travel, so they are one body with the config written two ways. What it
+ * came to is for the callers below to read: the plain calls as they always
+ * have, the answer calls with the status. */
+static net_got request(const char *url, bool get, const net_field *f, int n,
+                       char *out, size_t outn, int timeout_s, const char *header)
 {
-	char cfg[128], tmp[160];
-	int fd, rc, code;
-	long got = -1;
-	off_t body;
+	net_got g = { -1, 0, -1, false };
+	char cfg[sizeof NET_TMP + 64], tmp[sizeof NET_TMP + 80];
+	struct stat st;
+	int fd;
 
-	if (http) *http = 0;
-	if (!out || outn == 0) return -1;
+	if (!out || outn == 0) return g;
 	out[0] = '\0';
-	if (!url_ok(url) || (header && !url_ok(header))) return -1;
+	if (!url_ok(url) || (header && !url_ok(header))) return g;
 	tmp_config(cfg, sizeof cfg);
 	snprintf(tmp, sizeof tmp, "%s.body", cfg);
-	if (!write_config(cfg, url, get, f, n, timeout_s, header, true)) return -1;
+	if (!write_config(cfg, url, get, f, n, timeout_s, header, true)) return g;
 
-	/* 0600 before curl writes a byte into it: sign-in's reply is a token */
 	fd = open_new(tmp, O_RDWR, 0600);
-	if (fd < 0) { unlink(cfg); return -1; }
-	rc = run_curl(cfg, fd);
+	if (fd < 0) { unlink(cfg); return g; }
+	g.exit = run_curl(cfg, fd);
 	unlink(cfg);
-	code = reply_status(fd, &body);
-	/* The body only from a transfer curl calls a success: a refusal under
-	 * `fail` has none, and one cut short is not the whole reply - and may
-	 * be half a token, which is not copied out to sit in a caller's buffer. */
-	if (rc == 0 && code >= 0) {
-		size_t want = (size_t)body < outn - 1 ? (size_t)body : outn - 1;
-		ssize_t r = pread(fd, out, want, 0);
+	if (fstat(fd, &st) == 0) {
+		/* The body, then a line break and the status's three digits */
+		long body = (long)st.st_size;
+		char tail[4];
 
-		if (r >= 0) { out[r] = '\0'; got = (long)r; }
+		if (body >= 4 && pread(fd, tail, 4, body - 4) == 4 && tail[0] == '\n' &&
+		    isdigit((unsigned char)tail[1]) && isdigit((unsigned char)tail[2]) &&
+		    isdigit((unsigned char)tail[3])) {
+			g.http = (tail[1] - '0') * 100 + (tail[2] - '0') * 10 + (tail[3] - '0');
+			body -= 4;
+		}
+		if (g.exit == 0) {
+			size_t want = (size_t)body < outn - 1 ? (size_t)body : outn - 1;
+			ssize_t r = pread(fd, out, want, 0);
+
+			if (r >= 0) {
+				out[r] = '\0';
+				g.len = (long)r;
+				g.whole = r == (ssize_t)body;
+			}
+		}
 	}
 	close(fd);
 	unlink(tmp);
+	/* Which it was, for the log: never what was sent or what came back */
+	if (g.exit == 22)
+		fprintf(stderr, "net: refused, HTTP %d\n", g.http);
+	else if (g.exit != 0)
+		fprintf(stderr, "net: no answer (curl exit %d)\n", g.exit);
+	else if (g.http < 200 || g.http > 299)
+		fprintf(stderr, "net: answered HTTP %d\n", g.http);
+	else if (!g.whole)
+		fprintf(stderr, "net: a reply past its %zu bytes of room\n", outn - 1);
+	return g;
+}
 
-	if (code < 0) code = 0;
-	if (http) *http = code;
-	if (got < 0) {
-		if (code) fprintf(stderr, "net: request failed (curl exit %d, HTTP %d)\n", rc, code);
-		else      fprintf(stderr, "net: request failed (curl exit %d, no answer)\n", rc);
-	}
-	return got;
+/* The plain calls: the body whenever curl exits 0, as they always had it */
+static long body_of(net_got g)
+{
+	return g.exit == 0 ? g.len : -1;
+}
+
+/* The answer calls: the server's status into `*http`, but only where a
+ * server's answer came whole - exit 0, or 22 for `fail`'s HTTP error. Every
+ * other exit is a request cut short or never made (a name, a route, the
+ * time), and whatever status line came before the cut is no answer. The
+ * body only for a 2xx all there in the buffer: half a token is not one. */
+static long answer_of(net_got g, int *http)
+{
+	int h = g.exit == 0 || g.exit == 22 ? g.http : 0;
+
+	if (h < 100 || h > 599) h = 0;
+	if (http) *http = h;
+	return g.exit == 0 && h >= 200 && h <= 299 && g.whole ? g.len : -1;
 }
 
 /* The first eight bytes of every PNG */
@@ -383,7 +405,7 @@ static bool is_png(const char *path)
 int net_get_pngs(const char *const *urls, const char *const *paths, int n,
                  int timeout_s)
 {
-	char cfg[128], part[600];
+	char cfg[sizeof NET_TMP + 64], part[600];
 	FILE *f;
 	int fd, i, got = 0, devnull;
 
@@ -425,25 +447,36 @@ int net_get_pngs(const char *const *urls, const char *const *paths, int n,
 long net_get_buf(const char *url, const net_field *f, int n, char *out,
                  size_t outn, int timeout_s)
 {
-	return request_buf(url, true, f, n, out, outn, timeout_s, NULL, NULL);
+	return body_of(request(url, true, f, n, out, outn, timeout_s, NULL));
 }
 
 long net_get_hdr_buf(const char *url, const char *header, char *out, size_t outn,
-                     int timeout_s, int *http)
+                     int timeout_s)
 {
-	return request_buf(url, true, NULL, 0, out, outn, timeout_s, http, header);
+	return body_of(request(url, true, NULL, 0, out, outn, timeout_s, header));
 }
 
-long net_post_buf(const net_field *f, int n, char *out, size_t outn, int timeout_s,
-                  int *http)
+long net_post_buf(const net_field *f, int n, char *out, size_t outn, int timeout_s)
 {
-	return request_buf(RA_URL, false, f, n, out, outn, timeout_s, http, NULL);
+	return body_of(request(RA_URL, false, f, n, out, outn, timeout_s, NULL));
+}
+
+long net_post_answer(const net_field *f, int n, char *out, size_t outn,
+                     int timeout_s, int *http)
+{
+	return answer_of(request(RA_URL, false, f, n, out, outn, timeout_s, NULL), http);
+}
+
+long net_get_hdr_answer(const char *url, const char *header, char *out,
+                        size_t outn, int timeout_s, int *http)
+{
+	return answer_of(request(url, true, NULL, 0, out, outn, timeout_s, header), http);
 }
 
 /* ---- the same thing, without waiting ------------------------------------ */
 
 static pid_t g_async = -1;
-static char  g_async_cfg[160];
+static char  g_async_cfg[sizeof NET_TMP + 96];
 /* When the request in flight started, and what the last one to finish took
  * and exited with. See net_async_ms. */
 static long  g_async_t0;
@@ -457,7 +490,7 @@ bool net_post_async(const net_field *f, int n, const char *path, int timeout_s)
 	if (g_async > 0 && net_async_poll() == 0) return false;
 	if (!bin) return false;
 
-	snprintf(g_async_cfg, sizeof g_async_cfg, "/tmp/zyperos-ra-async-%ld.curl",
+	snprintf(g_async_cfg, sizeof g_async_cfg, NET_TMP "/zyperos-ra-async-%ld.curl",
 	         (long)getpid());
 	if (!write_config(g_async_cfg, RA_URL, false, f, n, timeout_s, NULL, false)) return false;
 
@@ -520,7 +553,7 @@ bool net_get_async_hdr(const char *url, const char *path, int timeout_s,
 	if (!bin) return false;
 	if (!url_ok(url) || (header && !url_ok(header))) return false;
 
-	snprintf(g_async_cfg, sizeof g_async_cfg, "/tmp/zyperos-get-async-%ld.curl",
+	snprintf(g_async_cfg, sizeof g_async_cfg, NET_TMP "/zyperos-get-async-%ld.curl",
 	         (long)getpid());
 	snprintf(g_async_dest, sizeof g_async_dest, "%s", path);
 	if (snprintf(g_async_part, sizeof g_async_part, "%s.part", path)
@@ -601,11 +634,6 @@ int net_async_exit(void) { return g_async_exit; }
 
 bool net_online(void)
 {
-#ifdef NET_CURL
-	/* The check's stand-in curl is the whole network: there is no interface
-	 * to ask about, and a host with none still runs the check */
-	return curl_bin() != NULL;
-#else
 	struct ifaddrs *ifa, *p;
 	bool up = false;
 
@@ -620,5 +648,4 @@ bool net_online(void)
 	}
 	freeifaddrs(ifa);
 	return up;
-#endif
 }

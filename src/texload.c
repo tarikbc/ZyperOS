@@ -6,7 +6,6 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include "texload.h"
-#include "ui.h"       /* ui_card_surface: the card drawn where no file is */
 
 /* Slots each way. Comfortably more than the seven cards a shelf draws, so a
  * fast scroll queues ahead without the ring filling, and small enough that a
@@ -16,8 +15,6 @@
 /* LIB_PATH * 3, the size main.c builds these paths in, without taking a
  * dependency on library.h for one number. */
 #define PATHN 1664
-/* LIB_NAME, a game's title, for the same reason. */
-#define TITLEN 256
 
 typedef struct {
 	int      sys, idx;
@@ -27,22 +24,19 @@ typedef struct {
 	/* The theme the main thread read when it asked: the worker never reads
 	 * theme(). */
 	int      theme;
-	/* With neither file read, the card drawn instead (texload_want_card):
-	 * its title, the system's color, and whether it is an album's cover. */
-	bool     card, album;
-	unsigned rgb;
-	char     title[TITLEN];
+	/* The art itself is drawn for `theme` (texload_want_art), so whatever
+	 * file is found comes back saying so. */
+	bool     themed;
 } req;
 
 typedef struct {
 	int          sys, idx;
 	unsigned     gen;
 	SDL_Surface *surf;
-	/* The theme a card the worker drew is in; -1 for art, which is no
+	/* The theme themed art was asked for in; -1 for art that is no
 	 * theme's. */
 	int          theme;
 	int          asked;      /* the theme the request carried, for queued() */
-	bool         generated;  /* `surf` is a card the worker drew */
 } res;
 
 /* Two, on a four-core device, leaving a core for the render thread and one
@@ -91,16 +85,6 @@ static unsigned g_gen = 1;
  * of theme (queued). */
 static int      g_cur_sys[NWORKERS], g_cur_idx[NWORKERS], g_cur_theme[NWORKERS];
 static unsigned g_cur_gen[NWORKERS];
-
-/* Each worker's faces for the cards it draws, and the lock it holds while it
- * draws with them (texload_fonts_open). A lock per worker and apart from
- * g_lock: a card is 14-70 ms of drawing, and under g_lock that would hold up
- * every ask and every take on the main thread for as long, where under its
- * own it holds up only the main thread closing that worker's faces, which it
- * does on the way into a game. Written by the main thread only, under the
- * lock; read by the worker under it, and by the main thread without it. */
-static SDL_mutex     *g_font_lock[NWORKERS];
-static ui_card_fonts *g_fonts[NWORKERS];
 
 /* Whether (sys, idx) is already on its way in theme `theme_ix`: being
  * decoded, or decoded and waiting to be taken. Called with the lock held.
@@ -164,32 +148,6 @@ static SDL_Surface *decode(const char *path)
 	return conv;
 }
 
-/* Worker side: the card for a job whose files were not there, in worker
- * `me`'s own faces and the theme the job carries. NULL with no faces open,
- * and the main thread makes it then, as it did before workers drew any.
- *
- * Not for a job already disowned (texload_bump): it would be thrown away when
- * it landed, and a card is the dearest thing a worker does. The theme cannot
- * be asked the same way - the worker never reads it - so a card for the
- * theme that was is drawn, and turned away on the main thread. */
-static SDL_Surface *draw_card(int me, const req *job)
-{
-	SDL_Surface *s = NULL;
-	bool disowned;
-
-	if (!g_font_lock[me]) return NULL;
-	SDL_LockMutex(g_lock);
-	disowned = job->gen != g_gen;
-	SDL_UnlockMutex(g_lock);
-	if (disowned) return NULL;
-	SDL_LockMutex(g_font_lock[me]);
-	if (g_fonts[me])
-		s = ui_card_surface(g_fonts[me], job->title, job->rgb, job->album,
-		                    job->theme);
-	SDL_UnlockMutex(g_font_lock[me]);
-	return s;
-}
-
 static int worker(void *arg)
 {
 	const int me = (int)(intptr_t)arg;
@@ -197,7 +155,6 @@ static int worker(void *arg)
 	for (;;) {
 		req          job;
 		SDL_Surface *s;
-		bool         drawn = false;
 
 		SDL_LockMutex(g_lock);
 		while (g_running && g_rq_n == 0) SDL_CondWait(g_wake, g_lock);
@@ -217,7 +174,6 @@ static int worker(void *arg)
 
 		s = decode(job.first);
 		if (!s) s = decode(job.second);
-		if (!s && job.card) drawn = (s = draw_card(me, &job)) != NULL;
 
 		SDL_LockMutex(g_lock);
 		g_cur_sys[me] = g_cur_idx[me] = -1;
@@ -230,11 +186,8 @@ static int worker(void *arg)
 			r->idx = job.idx;
 			r->gen = job.gen;
 			r->surf = s;
-			/* A card is in the theme it was drawn in, whatever the files
-			 * it stood in for would have been. */
-			r->theme = drawn ? job.theme : -1;
+			r->theme = job.themed ? job.theme : -1;
 			r->asked = job.theme;
-			r->generated = drawn;
 			g_rs_n++;
 		} else if (s) {
 			SDL_FreeSurface(s);
@@ -256,9 +209,6 @@ bool texload_start(void)
 		g_lock = NULL;
 		return false;
 	}
-	/* A worker whose lock could not be made only never draws a card: the
-	 * main thread makes the ones it would have. */
-	for (k = 0; k < NWORKERS; k++) g_font_lock[k] = SDL_CreateMutex();
 	g_running = true;
 	for (k = 0; k < NWORKERS; k++) {
 		char name[24];
@@ -268,10 +218,6 @@ bool texload_start(void)
 	if (!g_thread[0]) {
 		/* None at all: fall back to decoding on the frame, as before. */
 		g_running = false;
-		for (k = 0; k < NWORKERS; k++) {
-			if (g_font_lock[k]) SDL_DestroyMutex(g_font_lock[k]);
-			g_font_lock[k] = NULL;
-		}
 		SDL_DestroyCond(g_wake);   g_wake = NULL;
 		SDL_DestroyMutex(g_lock);  g_lock = NULL;
 		fprintf(stderr, "texload: no worker (%s); art decodes on the frame\n",
@@ -294,15 +240,6 @@ void texload_stop(void)
 		if (!g_thread[k]) continue;
 		SDL_WaitThread(g_thread[k], NULL);
 		g_thread[k] = NULL;
-	}
-	/* No worker is left to draw with them. Closed here and not left to the
-	 * caller, because the locks go with the workers; still on the main
-	 * thread, and before ui_quit wherever this is called. */
-	for (k = 0; k < NWORKERS; k++) {
-		ui_card_fonts_close(g_fonts[k]);
-		g_fonts[k] = NULL;
-		if (g_font_lock[k]) SDL_DestroyMutex(g_font_lock[k]);
-		g_font_lock[k] = NULL;
 	}
 	texload_bump();              /* frees whatever was still waiting */
 	SDL_DestroyCond(g_wake);     g_wake = NULL;
@@ -337,11 +274,9 @@ void texload_forget(void)
 	SDL_UnlockMutex(g_lock);
 }
 
-/* texload_want and texload_want_card: one queue, with or without a theme,
- * and with or without a card to draw when no file is there (`title` NULL for
- * none). */
+/* texload_want and texload_want_art: one queue, with or without a theme. */
 static bool ask(int sys, int idx, const char *first, const char *second,
-                int theme_ix, const char *title, unsigned rgb, bool album)
+                int theme_ix, bool themed)
 {
 	req *q;
 	int at;
@@ -377,10 +312,7 @@ static bool ask(int sys, int idx, const char *first, const char *second,
 	snprintf(q->first,  sizeof q->first,  "%s", first  ? first  : "");
 	snprintf(q->second, sizeof q->second, "%s", second ? second : "");
 	q->theme = theme_ix;
-	q->card = title != NULL;
-	q->album = album;
-	q->rgb = rgb;
-	snprintf(q->title, sizeof q->title, "%s", title ? title : "");
+	q->themed = themed;
 	SDL_CondSignal(g_wake);
 	SDL_UnlockMutex(g_lock);
 	return true;
@@ -388,55 +320,16 @@ static bool ask(int sys, int idx, const char *first, const char *second,
 
 bool texload_want(int sys, int idx, const char *first, const char *second)
 {
-	return ask(sys, idx, first, second, -1, NULL, 0, false);
+	return ask(sys, idx, first, second, -1, false);
 }
 
-/* A file that is read is art, which is no theme's. The theme is still the
- * request's, so that queued and waiting tell an ask made after a change of
- * theme from one made before it, and the card is drawn in it. */
-bool texload_want_card(int sys, int idx, const char *first, const char *second,
-                       const char *title, unsigned rgb, bool album, int theme_ix)
+bool texload_want_art(int sys, int idx, const char *first, const char *second,
+                      int theme_ix)
 {
-	return ask(sys, idx, first, second, theme_ix, title ? title : "", rgb, album);
+	return ask(sys, idx, first, second, theme_ix, theme_ix >= 0);
 }
 
-void texload_fonts_open(void)
-{
-	int k;
-
-	for (k = 0; k < NWORKERS; k++) {
-		ui_card_fonts *f;
-
-		if (!g_thread[k] || !g_font_lock[k] || g_fonts[k]) continue;
-		/* Opened outside the lock: the files are read here, and the worker
-		 * has nothing to wait for until they are in. */
-		if (!(f = ui_card_fonts_open())) continue;
-		SDL_LockMutex(g_font_lock[k]);
-		g_fonts[k] = f;
-		SDL_UnlockMutex(g_font_lock[k]);
-	}
-}
-
-void texload_fonts_close(void)
-{
-	int k;
-
-	for (k = 0; k < NWORKERS; k++) {
-		ui_card_fonts *f;
-
-		if (!g_font_lock[k] || !g_fonts[k]) continue;
-		/* Taken under the lock, which waits out a card being drawn with
-		 * them; closed after it, when no worker can reach them any more. */
-		SDL_LockMutex(g_font_lock[k]);
-		f = g_fonts[k];
-		g_fonts[k] = NULL;
-		SDL_UnlockMutex(g_font_lock[k]);
-		ui_card_fonts_close(f);
-	}
-}
-
-bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix,
-                  bool *generated)
+bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix)
 {
 	res *r;
 
@@ -451,7 +344,6 @@ bool texload_take(int *sys, int *idx, SDL_Surface **surf, int *theme_ix,
 	*idx  = r->idx;
 	*surf = r->surf;
 	if (theme_ix) *theme_ix = r->theme;
-	if (generated) *generated = r->generated;
 	g_rs_head = (g_rs_head + 1) % QN;
 	g_rs_n--;
 	SDL_UnlockMutex(g_lock);

@@ -414,6 +414,61 @@ static void every_default_is_readable(void)
 	}
 }
 
+/* Fast forward's frameskip, on the three cores that fell short of its speed:
+ * each core's own option at its own automatic value on a new card, and a
+ * card where the player chose another value keeps it at the next boot. The
+ * keys and values are written out here rather than read from the table, so
+ * a typo in either - a name the core never asks for is no default at all,
+ * and fails silently on the device - has to be made twice to pass. */
+static void fast_forward_frameskip(void)
+{
+	static const char *const keys[] = {
+		"coreopt..mgba_frameskip",            /* Game Boy, GBC, GBA */
+		"coreopt..snes9x_2010_frameskip",     /* SNES */
+		"coreopt..genesis_plus_gx_frameskip", /* Genesis, SMS, Game Gear */
+	};
+	db *d;
+	char buf[64];
+	size_t i;
+
+	printf("fast forward's frameskip is the cores' automatic one by default:\n");
+	scrub();
+	d = db_open(LIB, DB_LIBRARY);
+	if (!d) { ck(0, "the library opens"); return; }
+	for (i = 0; i < sizeof keys / sizeof keys[0]; i++) {
+		db_get_str(d, keys[i], buf, sizeof buf, "");
+		ck(!strcmp(buf, "auto"), keys[i]);
+	}
+	/* The ones already there stay as they were */
+	db_get_str(d, "coreopt..pcsx_rearmed_frameskip_type", buf, sizeof buf, "");
+	ck(!strcmp(buf, "auto"), "the PlayStation's frameskip is still auto");
+	db_get_str(d, "coreopt..picodrive_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "auto"), "PicoDrive's frameskip is still auto");
+
+	/* A choice, on a card set up before or after: kept through a reopen,
+	 * which seeds again as every boot does */
+	ck(db_set_str(d, "coreopt..mgba_frameskip", "disabled"), "the player turns mGBA's off");
+	ck(db_set_str(d, "coreopt..snes9x_2010_frameskip", "manual"), "and sets Snes9x's to manual");
+	db_close(d);
+	d = db_open(LIB, DB_LIBRARY);
+	if (!d) { ck(0, "the library reopens"); return; }
+	db_get_str(d, "coreopt..mgba_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "disabled"), "mGBA's frameskip kept the player's value");
+	db_get_str(d, "coreopt..snes9x_2010_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "manual"), "Snes9x's frameskip kept the player's value");
+	db_get_str(d, "coreopt..genesis_plus_gx_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "auto"), "an untouched one keeps its default");
+
+	/* A card from before the change: no key at all, until its next boot */
+	ck(db_del(d, "coreopt..genesis_plus_gx_frameskip"), "a card without the default");
+	db_close(d);
+	d = db_open(LIB, DB_LIBRARY);
+	if (!d) { ck(0, "the library reopens"); return; }
+	db_get_str(d, "coreopt..genesis_plus_gx_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "auto"), "an older card gets the default at its next boot");
+	db_close(d);
+}
+
 /* --dump must never put a credential on a terminal.
  *
  * It is the repair tool for a device with no sqlite3, so it is run over adb
@@ -525,6 +580,7 @@ int main(void)
 	prefix_scan();
 	no_database_is_survivable();
 	every_default_is_readable();
+	fast_forward_frameskip();
 	a_dump_hides_credentials();
 	one_connection_two_threads();
 	cleanup();

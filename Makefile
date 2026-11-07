@@ -6,7 +6,7 @@
 # docs/building.md says how to work on a device.
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-search \
+        check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
         check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-rasignin check-noticeq \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq \
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
@@ -166,14 +166,15 @@ build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c sr
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/hare-check-albumpick"' \
-	      -DART_NAMES_TMP='"$(CURDIR)/build-native/hare-check-artnames"' \
+	      -DART_NAMES_TMP='"$(CURDIR)/build-native/hare-check-artnames"' -DREPO_WEB='"$(CURDIR)/res/web"' \
 	      -o $@ tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # The File Transfer page on the host, over a scratch card: the same routes and
 # server, for a browser and for tools/readme-shots.py's pictures of the page.
 # The page itself, in headless Chrome over that server: its folders' art, the
-# hidden dot folders, the room, the time left, the handheld's stop and the
-# update over the cable (tools/portal-check.py). Chrome is needed.
+# hidden dot folders, the room, the time left, the handheld's stop, the
+# update over the cable and its name after the link it came over
+# (tools/portal-check.py). Chrome is needed.
 check-portal: build-native/portal-serve
 	@python3 tools/portal-check.py
 
@@ -965,7 +966,7 @@ build-native/rahash-check: tools/rahash-check.c src/rahash.c src/rahash.h FORCE
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/rahash-check.c src/rahash.c -lz
 
-.PHONY: check-noticeq check-rasubmit check-rasignin check-lowbatt check-heat check-charging
+.PHONY: check-noticeq check-rasubmit check-lowbatt check-heat check-charging
 
 # The pop-ups over a game, one after another (src/noticeq.h)
 check-noticeq: build-native/noticeq-check
@@ -976,6 +977,20 @@ build-native/noticeq-check: tools/noticeq-check.c src/noticeq.c src/noticeq.h FO
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/noticeq-check.c src/noticeq.c
 
+# RetroAchievements sign-in, telling a wrong password from another refusal
+# from no answer: the real rafetch.c and net.c, net.c read in whole with the
+# check as its curl, answering as each server would, and the credential rules
+# held as it runs: off the command line, in 0600 files made new, all gone
+# after (tools/signin-check.c). No network.
+check-signin: build-native/signin-check
+	@./build-native/signin-check
+
+build-native/signin-check: tools/signin-check.c src/rafetch.c src/rafetch.h src/net.c src/net.h src/rajson.c src/rahash.c src/atomic.c src/db.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
+	      -DNET_TMP='"$(CURDIR)/build-native/signin-check-tmp"' \
+	      -o $@ tools/signin-check.c src/rafetch.c src/rajson.c src/rahash.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
+
 # What a refused unlock means for the queue (ra_refusal): settled, the
 # account's, or that one row's. No request is made.
 check-rasubmit: build-native/rasubmit-check
@@ -985,19 +1000,6 @@ build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h 
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
-
-# What RetroAchievements sign-in says for a wrong password, a refusal and no
-# answer, and the HTTP status net.c's blocking requests report under it. curl
-# is tools/curl-standin.py (NET_CURL), which also holds net.c to its rules for
-# the token: never in argv, only in files that are 0600 first. No network.
-check-rasignin: build-native/rasignin-check
-	@./build-native/rasignin-check
-
-build-native/rasignin-check: tools/rasignin-check.c tools/curl-standin.py src/rafetch.c src/rafetch.h src/rajson.c src/rahash.c src/net.c src/net.h src/atomic.c src/db.c $(I18N_SRC) FORCE
-	@mkdir -p build-native
-	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
-	      -DNET_CURL='"$(CURDIR)/tools/curl-standin.py"' \
-	      -o $@ tools/rasignin-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
 
 # The two set converters - one C on the device, one Python in the bulk tool -
 # over real RetroAchievements responses. Needs credentials and a network;

@@ -33,7 +33,7 @@
 
 **Files:** `res/fonts/menu.ttf` (Lexend Regular), `res/fonts/title.ttf` (new, Lexend SemiBold), `res/fonts/OFL.txt`, `THIRD-PARTY-LICENSES.md`, `src/ui.c` (the title role and the button glyphs' 96 face open `title.ttf` from the folder `menu.ttf` is in; fall back to `menu.ttf`), `mk/payload.sh` (ship `title.ttf`, and the web copy), `res/web/app.css` (a 600 `@font-face`; its cyan becomes the tokens, light and dark by `prefers-color-scheme`), `docs/building.md`; layout that assumed Josefin: the shelf name at y 618 against the count at 690, half-descent centering (`src/main.c` 3725, 4278; `src/notice.c` 133; `src/keyboard.c` 231) moved to `ui_cap_y`, `menu_std_width`'s floor, the ui.h comments that name Josefin.
 
-**Interfaces:** Produces `const char *ui_title_font_path(void)` (the path the title role opened, for the worker card title); consumes `ui_cap_y`, `ui_cap_height`.
+**Interfaces:** consumes `ui_cap_y`, `ui_cap_height`.
 
 - [ ] **Step 1:** Swap the files and open the title role from `title.ttf` with the fallback; `make native`, `make check`.
 - [ ] **Step 2:** Fix each metric-dependent layout by content; shots in both themes of the shelf (both card sets), menus, keyboard on each layer, notice, info, cheevos; compare with Task 2 of the themes plan's shots for regressions in spacing.

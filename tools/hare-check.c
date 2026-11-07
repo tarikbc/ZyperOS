@@ -96,10 +96,10 @@ static void *server_loop(void *u)
 	return NULL;
 }
 
-static bool serve_up(void)
+static bool serve_up(const char *web)
 {
 	g_stop = 0;
-	if (!hare_start(g_roms, g_card, g_shared, g_web)) return false;
+	if (!hare_start(g_roms, g_card, g_shared, web)) return false;
 	pthread_create(&g_thread, NULL, server_loop, NULL);
 	return true;
 }
@@ -364,25 +364,32 @@ static int host_req(const char *method, const char *host, const char *path,
 	return status;
 }
 
+/* A file's bytes into `out`: how many, or -1 when it is not there or is
+ * bigger than `n` */
+static long file_bytes(const char *path, char *out, size_t n)
+{
+	FILE *f = fopen(path, "rb");
+	size_t got;
+
+	if (!f) return -1;
+	got = fread(out, 1, n, f);
+	fclose(f);
+	return got < n ? (long)got : -1;
+}
+
+static bool exists(const char *path)
+{
+	struct stat st;
+
+	return stat(path, &st) == 0;
+}
+
 /* ---- a small tree to serve --------------------------------------------- */
 
 static void mkfile(const char *path, const char *text)
 {
 	FILE *f = fopen(path, "wb");
 	if (f) { fputs(text, f); fclose(f); }
-}
-
-/* Whether the file at `path` is exactly these `n` bytes, no more and no less. */
-static bool file_is(const char *path, const void *want, size_t n)
-{
-	static char have[256 * 1024];
-	FILE *f = fopen(path, "rb");
-	size_t got;
-
-	if (!f) return false;
-	got = fread(have, 1, sizeof have, f);
-	fclose(f);
-	return got == n && !memcmp(have, want, n);
 }
 
 static void build_tree(void)
@@ -443,7 +450,7 @@ int main(void)
 	build_tree();
 	printf("hare: the routes, and who may use them\n");
 
-	if (!serve_up()) {
+	if (!serve_up(g_web)) {
 		printf("  FAIL: the server did not start\n");
 		rmtree(g_root);
 		return 1;
@@ -458,29 +465,6 @@ int main(void)
 
 	printf("  the page is reachable without a PIN, because it IS the prompt:\n");
 	CHECK(get("/", NULL) == 200, "the page was not served");
-
-	/* USB File Transfer's page is wire.html, the same page under the cable's
-	 * name; the files under /web/ stay what they are, and a web folder that
-	 * has no wire.html still gets a page rather than a 404. */
-	printf("  over the cable, / is the page under the cable's name:\n");
-	{
-		char p[256], b[256];
-
-		snprintf(p, sizeof p, "%s/wire.html", g_web);
-		mkfile(p, "<h1>wire</h1>");
-		hare_set_page("wire.html");
-		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200 &&
-		      !strcmp(b, "<h1>wire</h1>"), "over the cable, / was \"%s\"", b);
-		CHECK(req("GET", "/web/index.html", NULL, NULL, 0, b, sizeof b) == 200 &&
-		      !strcmp(b, "<h1>hare</h1>"), "/web/index.html changed with it: \"%s\"", b);
-		hare_set_page("gone.html");
-		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200 &&
-		      !strcmp(b, "<h1>hare</h1>"),
-		      "a web folder without the page answered / with \"%s\"", b);
-		hare_set_page(NULL);
-		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200 &&
-		      !strcmp(b, "<h1>hare</h1>"), "over the air, / was \"%s\"", b);
-	}
 
 	/* The page's files are asked for again with a tag and answered 304 with
 	 * nothing, and text goes gzipped to a browser that takes it; the API is
@@ -613,6 +597,45 @@ int main(void)
 		i18n_set(LANG_EN);
 	}
 
+	/* The page's name, after the link it is served over: /link.js, with no
+	 * PIN (the PIN screen wears the name), the link that is on and never one
+	 * a browser kept, and answered by the server, so a web folder from before
+	 * it - this one, whose page never asks - still serves its page. */
+	printf("  /link.js names the link, cable or Wi-Fi, and is never kept:\n");
+	{
+		static char resp[4096];
+		static const char usb[] = "window.ZYPEROS_LINK = \"usb\";\n";
+		static const char wifi[] = "window.ZYPEROS_LINK = \"wifi\";\n";
+		char b[256], p[256];
+		struct stat st;
+		long len;
+
+		CHECK(req("GET", "/link.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, wifi),
+		      "before the launcher says, the link is not Wi-Fi: \"%s\"", b);
+		hare_set_cable(true);
+		CHECK(req("GET", "/link.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, usb),
+		      "over the cable, with no PIN: \"%s\"", b);
+		len = raw("GET /link.js HTTP/1.1\r\nHost: x\r\nIf-None-Match: \"0-0-0\"\r\n"
+		          "If-Modified-Since: Thu, 01 Jan 2099 00:00:00 GMT\r\nConnection: close\r\n\r\n",
+		          resp, sizeof resp);
+		CHECK(len > 0 && !strncmp(resp, "HTTP/1.1 200", 12) && strstr(resp, "Content-Type: text/javascript") &&
+		      head_count(resp, "Cache-Control:") == 1 && strstr(resp, "Cache-Control: no-store") &&
+		      !head_count(resp, "ETag:"), "a browser could keep it: %.300s", resp);
+		hare_set_cable(false);
+		CHECK(req("GET", "/link.js", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, wifi),
+		      "back on Wi-Fi, the cable's answer stayed: \"%s\"", b);
+		/* This web folder is one from before: no link.js, a page that does
+		 * not ask. It is served over either link. */
+		snprintf(p, sizeof p, "%s/link.js", g_web);
+		CHECK(stat(p, &st) != 0, "the old web folder has a link.js");
+		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, "<h1>hare</h1>"),
+		      "an old web folder's page over Wi-Fi: \"%s\"", b);
+		hare_set_cable(true);
+		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200 && !strcmp(b, "<h1>hare</h1>"),
+		      "an old web folder's page over the cable: \"%s\"", b);
+		hare_set_cable(false);
+	}
+
 	printf("  nothing else is:\n");
 	{
 		/* Every route, unauthenticated. A 401 each. This is the check that
@@ -705,53 +728,6 @@ int main(void)
 		      "rename failed");
 		CHECK(post("/api/delete?p=roms/NES/Renamed.nes", g_cookie) == 200,
 		      "delete failed");
-	}
-
-	/* Safari over the cable never hands the page the answer to an upload of
-	 * an exact multiple of 128 KiB, so the page sends such a file with 'Z'
-	 * after it and pad=1, and the device takes the byte off (hare.c,
-	 * HARE_PAD_BYTE). What lands must be the file to the byte; an upload
-	 * without pad=1 must be stored as it came, a last 'Z' and all; and a
-	 * pad=1 body that is empty or ends in anything else must replace nothing
-	 * and leave no part-file. */
-	printf("  an upload padded for Safari lands as the file it was:\n");
-	{
-		static char big[128 * 1024 + 1];
-		char p[256], part[256];
-		struct stat st;
-		size_t i;
-
-		for (i = 0; i < sizeof big - 1; i++) big[i] = (char)(i * 7 % 251);
-		big[sizeof big - 1] = 'Z';
-		snprintf(p, sizeof p, "%s/NES/Pad.bin", g_roms);
-		snprintf(part, sizeof part, "%s.part", p);
-
-		CHECK(req("PUT", "/api/file?p=roms/NES/Pad.bin&pad=1", g_cookie,
-		          big, sizeof big, NULL, 0) == 200, "a padded upload was refused");
-		CHECK(file_is(p, big, sizeof big - 1),
-		      "the padded upload is not the 131072 bytes before its pad");
-		CHECK(stat(part, &st) != 0, "a padded upload left its part-file");
-
-		CHECK(req("PUT", "/api/file?p=roms/NES/Plain.bin", g_cookie,
-		          big, sizeof big - 1, NULL, 0) == 200, "an unpadded 128 KiB upload failed");
-		snprintf(p, sizeof p, "%s/NES/Plain.bin", g_roms);
-		CHECK(file_is(p, big, sizeof big - 1), "an unpadded 128 KiB upload did not land whole");
-		CHECK(req("PUT", "/api/file?p=roms/NES/Plain.bin", g_cookie,
-		          "ROMZ", 4, NULL, 0) == 200 && file_is(p, "ROMZ", 4),
-		      "an unpadded upload ending in Z lost its Z");
-		remove(p);
-
-		snprintf(p, sizeof p, "%s/NES/Pad.bin", g_roms);
-		CHECK(req("PUT", "/api/file?p=roms/NES/Pad.bin&pad=1", g_cookie,
-		          NULL, 0, NULL, 0) == 400, "an empty padded upload was not refused");
-		CHECK(file_is(p, big, sizeof big - 1), "an empty padded upload replaced the file");
-		CHECK(req("PUT", "/api/file?p=roms/NES/Pad.bin&pad=1", g_cookie,
-		          "ROMX", 4, NULL, 0) == 400,
-		      "a padded upload that does not end in its pad was not refused");
-		CHECK(file_is(p, big, sizeof big - 1),
-		      "a padded upload that does not end in its pad replaced the file");
-		CHECK(stat(part, &st) != 0, "a refused padded upload left its part-file");
-		remove(p);
 	}
 
 	printf("  and a session does not let a path climb out:\n");
@@ -1074,6 +1050,85 @@ int main(void)
 		hare_set_update(NULL);
 	}
 
+	/* Safari over the cable never hears the answer to a PUT of an exact
+	 * multiple of 128 KiB, so the page sends such a file with its trailer
+	 * after it and trailer=16 in the URL, and the server takes it off: stored
+	 * to the byte. A PUT that does not say so is stored as sent, trailer and
+	 * all; one that says it wrongly is refused, the file of that name kept
+	 * and no part-file left. The uploads' route and the update's. */
+	printf("  128 KiB multiples: the page's trailer off, plain uploads as sent, the rest refused:\n");
+	{
+		static const char trailer[] = "--zyperos-pad--\n";
+		static char data[262144 + 64], body[262144 + 64], back[262144 + 64];
+		static const char *const WAYS[] = { "/api/file?p=roms/NES/", "/api/update/file?name=" };
+		static const size_t SIZES[] = { 131072, 262144, 0 };
+		char url[256], dest[300], part[310], resp[512];
+		size_t i, w;
+		long n;
+
+		for (i = 0; i < sizeof data; i++) data[i] = (char)(i * 7 % 251);
+		snprintf(g_cable, sizeof g_cable, "%s/cable", g_root);
+		mkdir(g_cable, 0777);
+		hare_set_update(update_seen);
+		for (w = 0; w < sizeof WAYS / sizeof WAYS[0]; w++) {
+			/* The update's hook takes one name, and the uploads' any */
+			const char *name = w ? "ZyperOS-pixel2-update.txt" : "Even.bin";
+			const char *what = w ? "the update's file" : "an upload";
+
+			if (w) snprintf(dest, sizeof dest, "%s/%s", g_cable, name);
+			else   snprintf(dest, sizeof dest, "%s/NES/%s", g_roms, name);
+			snprintf(part, sizeof part, "%s.part", dest);
+
+			for (i = 0; i < sizeof SIZES / sizeof SIZES[0]; i++) {
+				size_t sz = SIZES[i];
+
+				memcpy(body, data, sz);
+				memcpy(body + sz, trailer, sizeof trailer - 1);
+				snprintf(url, sizeof url, "%s%s&trailer=16", WAYS[w], name);
+				CHECK(req("PUT", url, g_cookie, body, sz + sizeof trailer - 1, resp, sizeof resp) == 200,
+				      "%s of %zu bytes the page's way was refused: %s", what, sz, resp);
+				n = file_bytes(dest, back, sizeof back);
+				CHECK(n == (long)sz && !memcmp(back, data, sz),
+				      "%s of %zu bytes the page's way is stored as %ld bytes", what, sz, n);
+				CHECK(!exists(part), "%s the page's way left its part-file", what);
+			}
+
+			/* Plain: as sent, even when it ends with the trailer's bytes */
+			memcpy(body, data, 131072);
+			memcpy(body + 131072, trailer, sizeof trailer - 1);
+			snprintf(url, sizeof url, "%s%s", WAYS[w], name);
+			CHECK(req("PUT", url, g_cookie, body, 131072, resp, sizeof resp) == 200 &&
+			      file_bytes(dest, back, sizeof back) == 131072 && !memcmp(back, data, 131072),
+			      "%s of 128 KiB made plainly is not stored as sent", what);
+			CHECK(req("PUT", url, g_cookie, body, 131072 + sizeof trailer - 1, resp, sizeof resp) == 200 &&
+			      file_bytes(dest, back, sizeof back) == 131072 + (long)sizeof trailer - 1 &&
+			      !memcmp(back, body, 131072 + sizeof trailer - 1),
+			      "%s ending in the trailer's bytes, not saying so, lost them", what);
+
+			/* Malformed, each with the file of that name as it was before */
+			mkfile(dest, "ORIGINAL");
+			memcpy(body + 131072, "--zyperos-pad--X", 16);     /* not its end */
+			snprintf(url, sizeof url, "%s%s&trailer=16", WAYS[w], name);
+			CHECK(req("PUT", url, g_cookie, body, 131072 + 16, resp, sizeof resp) == 400,
+			      "%s that does not end with the trailer was taken", what);
+			snprintf(url, sizeof url, "%s%s&trailer=17", WAYS[w], name);
+			CHECK(req("PUT", url, g_cookie, body, 131072 + 17, resp, sizeof resp) == 400,
+			      "%s with a trailer of another length was taken", what);
+			snprintf(url, sizeof url, "%s%s&trailer=x", WAYS[w], name);
+			CHECK(req("PUT", url, g_cookie, body, 131072 + 16, resp, sizeof resp) == 400,
+			      "%s with a trailer that is no number was taken", what);
+			snprintf(url, sizeof url, "%s%s&trailer=16", WAYS[w], name);
+			CHECK(req("PUT", url, g_cookie, trailer, 5, resp, sizeof resp) == 400,
+			      "%s shorter than its trailer was taken", what);
+			CHECK(strstr(resp, "nothing was stored") != NULL, "the refusal does not say why: %s", resp);
+			CHECK(file_bytes(dest, back, sizeof back) == 8 && !memcmp(back, "ORIGINAL", 8),
+			      "a refused %s replaced the file of its name", what);
+			CHECK(!exists(part), "a refused %s left a part-file", what);
+			remove(dest);
+		}
+		hare_set_update(NULL);
+	}
+
 	printf("  stopping after the files on their way:\n");
 	{
 		char b[512];
@@ -1093,6 +1148,38 @@ int main(void)
 	CHECK(hare_port() == 0, "still listening after stop");
 	CHECK(hare_pin()[0] == '\0', "the PIN outlived the screen");
 	CHECK(!hare_closing(), "closing outlived the screen");
+
+	/* The repository's own page (res/web), as a card carries it, served the
+	 * way the cable serves it: the page asks /link.js before its script,
+	 * its words have the cable's name in the handheld's language, and the
+	 * link is the cable's - and forgotten when the screen closes. Chrome
+	 * draws the page itself in tools/portal-check.py. */
+	printf("  the repository's page over the cable carries the cable's name:\n");
+	hare_set_cable(true);
+	if (!serve_up(REPO_WEB)) {
+		CHECK(0, "the server did not start over %s", REPO_WEB);
+	} else {
+		static char b[32768];
+		const char *link, *app;
+
+		CHECK(req("GET", "/", NULL, NULL, 0, b, sizeof b) == 200, "the page was not served");
+		link = strstr(b, "<script src=\"/link.js\"></script>");
+		app = strstr(b, "<script src=\"/web/app.js\"></script>");
+		CHECK(link && app && link < app, "the page does not ask /link.js before its script");
+		i18n_set(LANG_FR);
+		CHECK(req("GET", "/i18n.js", NULL, NULL, 0, b, sizeof b) == 200 &&
+		      strstr(b, "\"name.usb\": \"Transfert de fichiers USB\"") &&
+		      strstr(b, "\"name.wifi\": \"Transfert de fichiers Wi-Fi\""),
+		      "French's words lack the two names: %.200s", b);
+		i18n_set(LANG_EN);
+		CHECK(req("GET", "/link.js", NULL, NULL, 0, b, sizeof b) == 200 && strstr(b, "\"usb\""),
+		      "the link is not the cable's: \"%s\"", b);
+		serve_down();
+		CHECK(serve_up(REPO_WEB), "the server did not start again");
+		CHECK(req("GET", "/link.js", NULL, NULL, 0, b, sizeof b) == 200 && strstr(b, "\"wifi\""),
+		      "the cable outlived the screen: \"%s\"", b);
+		serve_down();
+	}
 
 	rmtree(g_root);
 	if (failures) { printf("\n%d check(s) failed\n", failures); return 1; }

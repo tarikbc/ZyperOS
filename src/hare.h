@@ -132,17 +132,20 @@ void hare_set_sgdb(hare_sgdb_fn fn);
  * sheet's note); unset, an empty script. */
 void hare_set_captive(const char *addr);
 
+/* Which link the page is served over: the USB cable (true), or Wi-Fi and the
+ * handheld's own network (false), as the launcher starts it. The page names
+ * itself after it, as the handheld's screen does - USB File Transfer or
+ * Wi-Fi File Transfer, in its tab, on the PIN screen and over the folders -
+ * from GET /link.js, which needs no session (the PIN screen is named too)
+ * and is never cached, so a browser that saw the page over one link is told
+ * again over the other. Wi-Fi until set; hare_stop forgets it, so every
+ * start says again. */
+void hare_set_cable(bool cable);
+
 /* SSH over the same link, as user@address ("root@10.42.0.1"), which the
  * roots' listing names so the page can show the command; NULL or "" is none.
  * USB File Transfer sets it while its SSH listens (sshlink.h). */
 void hare_set_ssh(const char *who);
-
-/* What GET / answers with: a file in the web folder, by name, or NULL for
- * index.html. USB File Transfer sets "wire.html", the same page under the
- * cable's name (mk/payload.sh writes it), so the tab and the heading say what
- * the screen says. Only / changes; the page's files under /web/ are the same
- * either way. A web folder without the named page gets index.html. */
-void hare_set_page(const char *page);
 
 /* A console's color, 0xRRGGBB, for a folder in ROMs or Save States (both
  * hold a folder per system), which the listing gives the page for the tile

@@ -11,7 +11,8 @@
  *   THE KEY. Cleaned as it is pasted, kept and read back across a restart,
  *   shown as four characters and never more, sent in a header and never in a
  *   URL, never to their CDN, and checked once when it is entered: kept when
- *   it works or nothing answered, not kept when it was refused.
+ *   it works or nothing answered, not kept when it was refused (a 401 or a
+ *   403), and the key before it kept then.
  *
  *   THE MATCH. The computer tool's title and 0.85, on written replies: the
  *   first of the best names, nothing under the bar, and only grids this
@@ -37,6 +38,7 @@
 
 #include "../src/artscrape.h"
 #include "../src/db.h"
+#include "../src/i18n.h"
 #include "../src/net.h"
 #include "../src/sgdb.h"
 #include "../src/sgdbrun.h"
@@ -176,15 +178,18 @@ int  net_async_http(void)  { return g_http; }
 int  net_async_ms(void)    { return 0; }
 int  net_async_exit(void)  { return g_http ? 0 : 6; }
 
-/* The check on entry, which waits: a thread calls this. */
+/* The check on entry, which waits: a thread calls this. It answers with
+ * g_check_status as net.c would: the status a server gave, 0 for nothing
+ * answering, and the body only for a 200. */
 static char g_check_hdr[256];
-long net_get_hdr_buf(const char *url, const char *header, char *out, size_t outn,
-                     int timeout_s, int *http)
+long net_get_hdr_answer(const char *url, const char *header, char *out, size_t outn,
+                        int timeout_s, int *http)
 {
 	(void)timeout_s;
 	snprintf(g_check_hdr, sizeof g_check_hdr, "%s", header ? header : "");
-	if (http) *http = g_check_status;
+	*http = 0;
 	if (strstr(url, KEY) || strstr(url, KEY2)) return -1;   /* caught below */
+	*http = g_check_status;
 	if (g_check_status != 200) return -1;
 	snprintf(out, outn, "{\"success\":true,\"data\":[]}");
 	return (long)strlen(out);
@@ -355,14 +360,6 @@ int main(int argc, char **argv)
 	      "the check's header was \"%s\"", g_check_hdr);
 	CHECK(sgdb_try_poll() == SGDB_TRY_WORKS, "the outcome did not stay for a page to read");
 
-	printf("  a refused key is not kept, and the one before stays:\n");
-	g_check_status = 401;
-	CHECK(sgdb_try_begin(KEY) == SGDB_TRY_RUNNING, "the check did not start");
-	CHECK(settle() == SGDB_TRY_REFUSED, "a refused key was not said to be refused");
-	sgdb_key_tail(buf, sizeof buf);
-	CHECK(!strcmp(buf, "3210"), "the kept key changed to the refused one: ...%s", buf);
-	CHECK(strstr(sgdb_try_said(), "refused") != NULL, "it said \"%s\"", sgdb_try_said());
-
 	printf("  no answer keeps it, to be checked on the next run:\n");
 	g_check_status = 0;
 	CHECK(sgdb_try_begin(KEY) == SGDB_TRY_RUNNING, "the check did not start");
@@ -371,6 +368,35 @@ int main(int argc, char **argv)
 	g_check_status = 429;
 	CHECK(sgdb_try_begin(KEY) == SGDB_TRY_RUNNING && settle() == SGDB_TRY_KEPT,
 	      "a 429 at the check threw the key away");
+
+	/* SteamGridDB's 401 for a wrong key (measured 2026-11-06), and a 403:
+	 * refused, said so, not kept, and the key before it kept as it was. It
+	 * was no answer once - curl's `fail` made every refusal look like the
+	 * network - and a wrong key was kept as unchecked. Their site down is
+	 * still no answer about the key. */
+	printf("  a key SteamGridDB refuses is said refused, and the key before it stays:\n");
+	{
+		static const int REFUSALS[] = { 401, 403 };
+		char kept[128];
+		size_t i;
+
+		for (i = 0; i < sizeof REFUSALS / sizeof REFUSALS[0]; i++) {
+			g_check_status = REFUSALS[i];
+			CHECK(sgdb_try_begin(KEY2) == SGDB_TRY_RUNNING, "the check did not start");
+			CHECK(settle() == SGDB_TRY_REFUSED, "a %d at the check was not a refusal", REFUSALS[i]);
+			CHECK(!strcmp(sgdb_try_said(), T(S_SGDB_TRY_REFUSED)),
+			      "after a %d it says \"%s\"", REFUSALS[i], sgdb_try_said());
+			CHECK(sgdb_secret() && !strcmp(sgdb_secret(), KEY),
+			      "a key refused with %d took the place of the one before", REFUSALS[i]);
+			CHECK(sgdb_key_state() == SGDB_UNCHECKED, "and the one before is %d", sgdb_key_state());
+			db_get_str(db_dev(), "sgdb.key", kept, sizeof kept, "");
+			CHECK(!strcmp(kept, KEY), "the database holds \"%s\" after a %d", kept, REFUSALS[i]);
+		}
+		g_check_status = 503;
+		CHECK(sgdb_try_begin(KEY) == SGDB_TRY_RUNNING && settle() == SGDB_TRY_KEPT,
+		      "their site down threw the key away");
+		CHECK(sgdb_key_state() == SGDB_UNCHECKED, "and was not kept as unchecked");
+	}
 
 	printf("  something that is no key is refused before any request:\n");
 	CHECK(sgdb_try_begin("not a key") == SGDB_TRY_BAD, "\"not a key\" was checked");

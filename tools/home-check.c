@@ -6,68 +6,11 @@
 #include "config.h"
 #include "texload.h"
 #include "systemart_data.h"
-#include "cardgen.h"
 #include <SDL_image.h>
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-
-/* The next result for shelf `sys`, freeing any other on the way; false after
- * five seconds with none. */
-static bool take_for(int sys, int *idx, SDL_Surface **surf, int *theme, bool *generated)
-{
-    Uint32 until = SDL_GetTicks() + 5000;
-    while (SDL_GetTicks() < until) {
-        int got;
-        if (!texload_take(&got, idx, surf, theme, generated)) { SDL_Delay(1); continue; }
-        if (got == sys) return true;
-        if (*surf) SDL_FreeSurface(*surf);
-    }
-    return false;
-}
-
-/* A texture's pixels as they are, copied onto the screen unblended and read
- * back: a card the worker drew and one ui_make_card made compare this way. */
-static Uint32 *pixels_of(SDL_Renderer *r, SDL_Texture *t, int w, int h)
-{
-    Uint32 *px = malloc((size_t)w * h * 4);
-    assert(px && t);
-    SDL_SetTextureBlendMode(t, SDL_BLENDMODE_NONE);
-    SDL_RenderCopy(r, t, NULL, &(SDL_Rect){0, 0, w, h});
-    assert(SDL_RenderReadPixels(r, &(SDL_Rect){0, 0, w, h}, SDL_PIXELFORMAT_ARGB8888, px, w * 4) == 0);
-    return px;
-}
-
-/* The worker's card for `title` in theme `ix`, album or not, against the card
- * the main thread makes in that theme: the same size, marked with the theme,
- * and the same card pixel for pixel. */
-static void card_matches(SDL_Renderer *r, int idx, const char *title, unsigned rgb, bool album, int ix)
-{
-    SDL_Surface *surf = NULL;
-    SDL_Texture *mine, *made;
-    int got, theme = -2, w = 0, h = 0;
-    bool generated = false;
-    Uint32 *a, *b;
-
-    assert(texload_want_card(43, idx, "/no/such/art.png", NULL, title, rgb, album, ix));
-    assert(take_for(43, &got, &surf, &theme, &generated));
-    assert(got == idx && surf && generated && theme == ix);
-    assert(surf->w == 512 && surf->h == (album ? 512 : 656));
-    mine = ui_card_texture(r, surf, theme);
-    assert(mine && ui_card_theme(mine) == ix);
-    theme_init(ix == DS_DARK ? APPEAR_DARK : APPEAR_LIGHT);
-    assert(theme_index() == ix);
-    made = album ? ui_make_cover(r, title, rgb, &w, &h) : ui_make_card(r, title, rgb, &w, &h);
-    assert(made && w == surf->w && h == surf->h);
-    a = pixels_of(r, mine, w, h);
-    b = pixels_of(r, made, w, h);
-    assert(!memcmp(a, b, (size_t)w * h * 4));
-    free(a); free(b);
-    SDL_DestroyTexture(mine); SDL_DestroyTexture(made); SDL_FreeSurface(surf);
-    theme_init(APPEAR_LIGHT);
-}
 
 int main(void)
 {
@@ -315,9 +258,8 @@ int main(void)
     bool game_landed=false;
     Uint32 until=SDL_GetTicks()+5000;
     while(SDL_GetTicks()<until && (!game_landed || !h.atlas.done || !texload_idle())) {
-        int shelf,id,theme; SDL_Surface *decoded; bool generated;
-        while(texload_take(&shelf,&id,&decoded,&theme,&generated)) {
-            assert(!generated); /* files read, and nothing asked for a card */
+        int shelf,id,theme; SDL_Surface *decoded;
+        while(texload_take(&shelf,&id,&decoded,&theme)) {
             if(shelf==42) { assert(decoded); game_landed=true; }
             else assert(home_accept(&h,r,shelf,id,decoded));
             if(decoded) SDL_FreeSurface(decoded);
@@ -331,30 +273,6 @@ int main(void)
     assert(home_accept(&h,r,HOME_LOADER_ATLAS,h.atlas.asset+1,wrong));
     assert(h.atlas.tex==kept);
     SDL_FreeSurface(wrong);
-    /* A game with no art. Before the workers' faces are open no card comes
-     * back, and the shelf makes it on the frame as it always has; once they
-     * are, the worker draws it, in the theme it was asked in, and it is the
-     * card the main thread makes in that theme, pixel for pixel - a game's
-     * and an album's, in both themes. Closed, no card again. */
-    {
-        SDL_Surface *none=NULL; int id=-1;
-        assert(texload_want_card(43,0,"/no/such/art.png",NULL,"Contra",0xC8102E,false,DS_LIGHT));
-        assert(take_for(43,&id,&none,NULL,NULL) && id==0 && !none);
-        texload_fonts_open();
-        texload_fonts_open();   /* open already: nothing */
-        card_matches(r,1,"Castlevania III: Dracula's Curse",0xC8102E,false,DS_LIGHT);
-        card_matches(r,2,"Castlevania III: Dracula's Curse",0xC8102E,false,DS_DARK);
-        card_matches(r,3,"A Night at the Opera",0xBEF23C,true,DS_LIGHT);
-        card_matches(r,4,"   lowercase first, no color",CFG_NO_COLOR,true,DS_DARK);
-        /* A card drawn for the theme that was is told apart on landing */
-        assert(!cardgen_kept(DS_DARK,theme_index()) && cardgen_kept(DS_LIGHT,theme_index()));
-        texload_fonts_close();
-        texload_fonts_close();  /* closed already: nothing */
-        bool generated=true; int theme=-2;
-        assert(texload_want_card(43,5,"/no/such/art.png",NULL,"Contra",0xC8102E,false,DS_LIGHT));
-        assert(take_for(43,&id,&none,&theme,&generated) && id==5 && !none && !generated && theme==-1);
-        texload_fonts_open();   /* left open: texload_stop closes them */
-    }
     texload_stop();
     /* Invalid/missing sources produce a neutral placeholder, with no retry loop. */
     home_free(&h); home_reset(&h,0,1,0);
@@ -369,6 +287,6 @@ int main(void)
     assert(home_draw(&h,r,HOME_GALLERY,&missing,1,0,"No games","Open games",0,true)==UINT32_MAX);
     assert(home_draw(&h,r,HOME_GALLERY,NULL,0,0,"","",0,true)==UINT32_MAX);
     home_free(&h); page_fonts_quit(); ui_quit(); SDL_DestroyRenderer(r); SDL_FreeSurface(surface); IMG_Quit(); SDL_Quit();
-    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, worker-drawn cards, and missing art");
+    puts("ok: home choice, labels, motion, cached music, renderer state, bounded assets, worker isolation, and missing art");
     return 0;
 }

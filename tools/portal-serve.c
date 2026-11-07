@@ -10,7 +10,8 @@
  * ZyperOS/systems.cfg for the consoles' colors and icons, and
  * ZyperOS/system-icons for the pictures (res/system-icons); WEB is res/web
  * with the two fonts beside it, as mk/payload.sh lays it out. "usb" serves
- * wire.html, the page named USB File Transfer, with SSH's line. "update="
+ * the page as the USB cable does: under the cable's name, USB File Transfer,
+ * with SSH's line; without it the page is Wi-Fi File Transfer's. "update="
  * answers Settings' update over the cable with a stand-in for the launcher
  * and its update program (main.c's xfer_update): "off" as an image with no
  * release key, "on" as one that takes the files and installs them over a few
@@ -22,8 +23,11 @@
  * English without it. It prints the PIN and the port on one line, then
  * serves until stdin closes, or a line on it says to stop as the handheld's
  * question does:
- * "after" (once the files on their way are in) or "now". Like the device it listens on every address (port 8080 or
- * 8081 here, 80 needing root), so use a scratch card. No SDL, no device. */
+ * "after" (once the files on their way are in) or "now"; "usb" and "wifi"
+ * on it change the link the page is named after, as a handheld opened over
+ * the other would, with the same server and the browser's cache. Like the
+ * device it listens on every address (port 8080 or 8081 here, 80 needing
+ * root), so use a scratch card. No SDL, no device. */
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,7 +185,7 @@ int main(int argc, char **argv)
 	hare_set_icons(icons);
 	for (int i = 3; i < argc; i++) {
 		if (!strcmp(argv[i], "usb")) {
-			hare_set_page("wire.html");
+			hare_set_cable(true);
 			hare_set_ssh("root@10.42.0.1");
 		} else if (!strncmp(argv[i], "space=", 6)) {
 			double f = 0, t = 0;
@@ -207,7 +211,8 @@ int main(int argc, char **argv)
 	printf("%s %d\n", hare_pin(), hare_port());
 	fflush(stdout);
 	/* A line on stdin is the handheld's stop question, for tools/portal-check.py:
-	 * "after" closes after the files on their way, "now" cancels them */
+	 * "after" closes after the files on their way, "now" cancels them; or the
+	 * link the page is named after, "usb" or "wifi" */
 	for (;;) {
 		hare_poll();
 		if (poll(&in, 1, 4) > 0) {
@@ -216,6 +221,8 @@ int main(int argc, char **argv)
 
 			if (n <= 0) break;
 			b[n] = '\0';
+			if (strstr(b, "usb")) hare_set_cable(true);
+			if (strstr(b, "wifi")) hare_set_cable(false);
 			if (strstr(b, "after")) hare_close_after();
 			if (strstr(b, "now")) { hare_stop(); return 0; }
 		}

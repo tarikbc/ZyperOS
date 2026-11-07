@@ -31,17 +31,22 @@ if cargo tauri --version >/dev/null 2>&1; then TAURI="cargo tauri"; else TAURI="
 say "ZyperOS's design"
 tools/check-design.sh
 
-# THIRD-PARTY.md is made from Cargo.lock. One left behind a change to the
-# crates names crates the apps no longer carry, or misses ones they do.
-say "The third-party list"
+# THIRD-PARTY.md names what the apps are built from: made again from
+# Cargo.lock, it must be the committed file, or the release would ship a list
+# of something else
+say "The list of what the installer is built from"
 LIST=$(mktemp)
-python3 tools/third-party.py > "$LIST" || { rm -f "$LIST"; stop "tools/third-party.py failed"; }
+trap 'rm -f "$LIST"' EXIT
+python3 tools/third-party-list.py --output "$LIST"
 if ! cmp -s "$LIST" THIRD-PARTY.md; then
-	diff -u THIRD-PARTY.md "$LIST" | head -40 || true
-	rm -f "$LIST"
-	stop "THIRD-PARTY.md is not Cargo.lock's: run python3 tools/third-party.py > THIRD-PARTY.md in installer/ and commit it"
+	diff -u THIRD-PARTY.md "$LIST" | head -n 40 >&2 || true
+	stop "THIRD-PARTY.md is out of date with src-tauri/Cargo.lock. Make it again with 'python3 tools/third-party-list.py' in installer/, and commit it."
 fi
-rm -f "$LIST"
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+	! { git ls-files --error-unmatch THIRD-PARTY.md && git diff --quiet HEAD -- THIRD-PARTY.md; } >/dev/null 2>&1; then
+	stop "THIRD-PARTY.md is up to date but not committed. Commit it."
+fi
+echo "THIRD-PARTY.md is up to date"
 
 say "Tests"
 (cd src-tauri && cargo test --quiet)
