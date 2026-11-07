@@ -38,11 +38,16 @@ for use of some trade names, trademarks, or service marks":
     - the name "ZyperOS Installer";
     - Zyper, the miniature schnauzer mascot, and his artwork, including the
       files res/zyper.png, res/readme/zyper.png, res/readme/zyper-photo.jpg,
-      res/loading/zyper-*.png, res/web/zyper.svg, res/web/zyper-shut.svg,
-      res/boot/zyperos-fly.mp4, and installer/ui/zyper.svg;
+      res/loading/zyper-*.png and res/loading/light/zyper-*.png, the
+      first-start screens under res/boot/first-start/ (both themes, every
+      language) and the boot images made from them in
+      plastron/buildroot/package/splash/, res/web/zyper.svg,
+      res/web/zyper-shut.svg, res/boot/zyperos-fly.mp4, installer/ui/zyper.svg,
+      and Zyper as the launcher draws him;
     - the ZyperOS logo, wordmark, and lockup, including res/readme/lockup.png,
-      res/readme/lockup-light.png, res/readme/wordmark.png, the installer
-      icons under installer/src-tauri/icons/ and installer/ui/mark*.svg, and
+      res/readme/lockup-light.png, res/readme/wordmark.png, res/web/icon.svg,
+      res/web/mark.svg, res/web/mark-light.svg, the installer icons under
+      installer/src-tauri/icons/ and installer/ui/mark*.svg, and
       the site's favicon, app icons, and social preview image under site/;
     - the project website at https://zyperos.com.
 
