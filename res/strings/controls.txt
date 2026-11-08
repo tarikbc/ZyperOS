@@ -858,6 +858,94 @@ it = Accensione
 
 # In a game: the page a system adds
 
+[controls.attack]
+note = OpenBOR, a beat-'em-up engine: the button that attacks.
+en = Attack
+zh-Hans = 攻击
+es = Ataque
+pt-BR = Ataque
+fr = Attaque
+de = Angriff
+ja = 攻撃
+it = Attacco
+
+[controls.attack_n]
+note = OpenBOR: its other attack buttons, %s their number (2, 3, 4): "Attack 2". Two of them pair as "Attack 3/4".
+en = Attack %s
+zh-Hans = 攻击 %s
+es = Ataque %s
+pt-BR = Ataque %s
+fr = Attaque %s
+de = Angriff %s
+ja = 攻撃 %s
+it = Attacco %s
+
+[controls.jump]
+note = OpenBOR: the button that jumps.
+en = Jump
+zh-Hans = 跳跃
+es = Salto
+pt-BR = Pulo
+fr = Saut
+de = Sprung
+ja = ジャンプ
+it = Salto
+
+[controls.special]
+note = OpenBOR: the special move, a fighter's strongest attack.
+en = Special
+zh-Hans = 必杀技
+es = Especial
+pt-BR = Especial
+fr = Spécial
+de = Spezial
+ja = 必殺技
+it = Speciale
+
+[controls.pause]
+note = OpenBOR: START pauses the game and opens OpenBOR's own menu.
+en = Pause
+zh-Hans = 暂停
+es = Pausa
+pt-BR = Pausa
+fr = Pause
+de = Pause
+ja = ポーズ
+it = Pausa
+
+[controls.screenshot]
+note = OpenBOR: SELECT saves a picture of the screen.
+en = Screenshot
+zh-Hans = 截图
+es = Captura
+pt-BR = Captura
+fr = Capture
+de = Bildschirmfoto
+ja = スクショ
+it = Screenshot
+
+[controls.menu_port]
+note = What MENU does in OpenBOR, which runs as a program of its own: the in-game menu, with no hotkeys.
+en = Menu
+zh-Hans = 菜单
+es = Menú
+pt-BR = Menu
+fr = Menu
+de = Menü
+ja = メニュー
+it = Menu
+
+[controls.quit_off]
+note = What POWER does in OpenBOR: the game ends and the handheld turns off (no save state to resume).
+en = Quit and turn off
+zh-Hans = 退出并关机
+es = Salir y apagar
+pt-BR = Sair e desligar
+fr = Quitter, éteindre
+de = Beenden und aus
+ja = 終了して電源オフ
+it = Esci e spegni
+
 [controls.c_buttons]
 note = Nintendo 64: the page of its C buttons, in "Controls: C buttons". tight: French's heading has room for "C" only
 en = C buttons

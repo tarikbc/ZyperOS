@@ -62,6 +62,11 @@ typedef struct {
 
 typedef struct {
 	bool menu_held;              /* MENU is down */
+	/* MENU on its own, as Diatom reads it (diatom/src/main.c): armed by its
+	 * press, a modifier once a step goes under it (MENU+VOL, the backlight),
+	 * and a tap when it is let go still armed. menu_tapped is that tap, for
+	 * pkkeys_menu_tapped to take. */
+	bool menu_armed, menu_tapped;
 	struct {
 		bool    down;
 		bool    bright;          /* went down under MENU: a brightness key until let go */
@@ -99,6 +104,13 @@ int pkkeys_tick(pkkeys *k, int64_t now_ms, pk_step *out, int max);
 /* How long poll may wait before pkkeys_tick has a repeat to give, in ms: -1
  * for nothing held, 0 when one is due or events wait for a pass. */
 int pkkeys_wait(const pkkeys *k, int64_t now_ms);
+
+/* MENU was let go without a step under it since the last call: the in-game
+ * menu over a port that has one (portkeys --menu). Taken once: the next call
+ * is false until MENU is tapped again. A MENU only found down at a resync was
+ * never pressed here, so its release is no tap, as in Diatom a MENU still held
+ * as the game resumes is not. */
+bool pkkeys_menu_tapped(pkkeys *k);
 
 /* What a device says is down when its events cannot be trusted (after a
  * SYN_DROPPED, from EVIOCGKEY) or when it has gone, which is all up: MENU, and

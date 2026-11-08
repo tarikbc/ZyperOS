@@ -142,10 +142,15 @@ typedef struct {
 	int         layout;   /* into gm_layout_names */
 	bool        swap;
 	bool        stylus;
+	/* A program of its own under the menu, not a game Diatom runs: OpenBOR
+	 * (src/portmenu.h). Paused by stopping it, so there is nothing to save,
+	 * load, reset or show differently, and no achievements. */
+	bool        port;
 } gm_ui;
 
 /* The rows this menu has, in the order shown: GM_ROWS of them, or
- * GM_MAX_ROWS with the screens' three. */
+ * GM_MAX_ROWS with the screens' three; over a port, Continue, Controls and
+ * Quit. */
 int gm_row_ids(const gm_ui *u, gm_row *ids);
 
 /* Where the Cheevos row's text lives; the caller owns it, because a row holds

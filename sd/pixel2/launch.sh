@@ -172,12 +172,26 @@ PORTMASTER=$ROMS_PATH/Ports/PortMaster
 # (setsid), so its group is the port, its script and what they started, and
 # nothing of launch.sh's.
 PORT_PID=
+# Ended: TERM, and CONT after it, for a port portkeys has stopped under its
+# in-game menu (a stopped process takes TERM only once it goes on); whatever
+# is left 3 s later is killed
+port_end() {
+	[ -n "$PORT_PID" ] || return
+	kill -TERM -"$PORT_PID" 2> /dev/null
+	kill -CONT -"$PORT_PID" 2> /dev/null
+	( sleep 3; kill -KILL -"$PORT_PID" 2> /dev/null ) &
+}
 port_power() {
 	echo "port: powering off (POWER or the battery), ending it" >> "$LOG"
 	: > /tmp/zyperos_poweroff
-	[ -n "$PORT_PID" ] || return
-	kill -TERM -"$PORT_PID" 2> /dev/null
-	( sleep 3; kill -KILL -"$PORT_PID" 2> /dev/null ) &
+	port_end
+}
+# Quit in the in-game menu over a port (OpenBOR's, tools/portkeys.c --menu):
+# USR2 from portkeys. The port ends as for POWER, and the launcher comes back
+# on its shelf, as after a port that ended by itself
+port_quit() {
+	echo "port: Quit in the in-game menu, ending it" >> "$LOG"
+	port_end
 }
 run_port() {
 	local pid i rc
@@ -210,6 +224,7 @@ run_port() {
 	# library database holds the time zone Auto's hour is read in
 	local keys= still= turn= m
 	trap port_power USR1
+	trap port_quit USR2
 	# The panel is a 480x640 portrait one mounted turned (below). A
 	# landscape display is QEMU's (plastron's qemu_defconfig), where nothing
 	# turns: the first mode of the first connector with one says which
@@ -223,9 +238,18 @@ run_port() {
 		/usr/bin/splash --still /tmp/zyperos_loading.raw &
 		still=$!
 	fi
+	# OpenBOR has the in-game menu on MENU too, which portkeys shows by
+	# stopping it and starting the launcher for the menu alone (--menu: the
+	# launcher, the system's tag and the game; src/portmenu.h)
 	if [ -x "$ZYPEROS_DIR/portkeys" ]; then
-		"$ZYPEROS_DIR/portkeys" "$USERDATA_PATH/zyperos.db" \
-			"$SHARED_USERDATA_PATH/.zyperos/library.db" 2>> "$LOG" &
+		if [ "${1##*/}" = OpenBOR.sh ] && [ -n "$2" ]; then
+			"$ZYPEROS_DIR/portkeys" --menu "$ZYPEROS_DIR/zyperos.elf" OPENBOR "$2" \
+				"$USERDATA_PATH/zyperos.db" \
+				"$SHARED_USERDATA_PATH/.zyperos/library.db" 2>> "$LOG" &
+		else
+			"$ZYPEROS_DIR/portkeys" "$USERDATA_PATH/zyperos.db" \
+				"$SHARED_USERDATA_PATH/.zyperos/library.db" 2>> "$LOG" &
+		fi
 		keys=$!
 	fi
 	# The panel is a 480x640 portrait one mounted turned. ZyperOS and Diatom
@@ -250,7 +274,7 @@ run_port() {
 	# Waited for: while the bar is up it holds a copy of the port's display,
 	# and the launcher cannot take the display until that copy is gone
 	[ -n "$keys" ] && kill "$keys" 2> /dev/null && wait "$keys" 2> /dev/null
-	trap - USR1
+	trap - USR1 USR2
 	[ -n "$still" ] && kill "$still" 2> /dev/null
 	rm -f /tmp/zyperos_loading.raw
 	# A helper left behind would keep the buttons typing keys under the

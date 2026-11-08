@@ -32,6 +32,10 @@ static int handle(pkkeys *k, const pk_key *e, int64_t now_ms, pk_step *out, int 
 	 * then every 33, and stepped and saved every one of them. */
 	if (e->value == 2) return 0;
 	if (e->code == PK_BTN_MENU) {
+		/* A press of MENU already down is no press (a resync found it) */
+		if (e->value && !k->menu_held) k->menu_armed = true;
+		if (!e->value && k->menu_held && k->menu_armed) k->menu_tapped = true;
+		if (!e->value) k->menu_armed = false;
 		k->menu_held = e->value != 0;
 		return 0;
 	}
@@ -45,6 +49,8 @@ static int handle(pkkeys *k, const pk_key *e, int64_t now_ms, pk_step *out, int 
 	if (k->key[i].down || max < 1) return 0;
 	k->key[i].down = true;
 	k->key[i].bright = k->menu_held;
+	/* A step under MENU makes it a modifier: its release opens nothing */
+	if (k->menu_held) k->menu_armed = false;
 	k->key[i].next_ms = now_ms + REPEAT_DELAY_MS;
 	out[0] = (pk_step){ k->menu_held ? PK_BRIGHT : PK_VOLUME, i ? -1 : +1, false };
 	return 1;
@@ -128,8 +134,18 @@ int pkkeys_wait(const pkkeys *k, int64_t now_ms)
 	return (int)w;
 }
 
+bool pkkeys_menu_tapped(pkkeys *k)
+{
+	bool t = k->menu_tapped;
+
+	k->menu_tapped = false;
+	return t;
+}
+
 void pkkeys_menu_state(pkkeys *k, bool down)
 {
+	/* What was down before the events were lost was not pressed here */
+	k->menu_armed = false;
 	k->menu_held = down;
 }
 

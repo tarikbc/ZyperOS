@@ -391,6 +391,16 @@ static const ctl_pad PADS[] = {
 	{ "NDS", NULL, { [P_A] = BTN("A"), [P_B] = BTN("B"), [P_X] = BTN("X"), [P_Y] = BTN("Y"),
 	                 [P_L1] = BTN("L"), [P_R1] = BTN("R"), [P_START] = BTN("Start"),
 	                 [P_SELECT] = BTN("Select") } },
+	/* OpenBOR's own layout for a pad SDL knows (its sdl/control.c), on the
+	 * buttons SDL names A, B, X and Y, which on the Pixel 2 are the caps that
+	 * say so; a module can change them in OpenBOR's options */
+	{ "OPENBOR", NULL, { [P_A] = SAYS(S_CONTROLS_ATTACK), [P_B] = SAYS(S_CONTROLS_JUMP),
+	                     [P_X] = SAYS_ON(S_CONTROLS_ATTACK_N, "2"),
+	                     [P_Y] = SAYS(S_CONTROLS_SPECIAL),
+	                     [P_L1] = SAYS_ON(S_CONTROLS_ATTACK_N, "3"),
+	                     [P_R1] = SAYS_ON(S_CONTROLS_ATTACK_N, "4"),
+	                     [P_START] = SAYS(S_CONTROLS_PAUSE),
+	                     [P_SELECT] = SAYS(S_CONTROLS_SCREENSHOT) } },
 	/* FinalBurn Neo and MAME 2003-Plus: a game's first button at the bottom,
 	 * as mainline MAME's pad layout has it */
 	{ "ARCADE", NULL, { [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "2"),
@@ -729,6 +739,19 @@ static int in_a_game(menu_row *out)
 	return n;
 }
 
+/* The same over a program of its own (OpenBOR): MENU is the menu alone, and
+ * POWER ends the game, which has no state to come back to */
+static int in_a_port(menu_row *out)
+{
+	int n = 0;
+
+	out[n++] = (menu_row){ "MENU", T(S_CONTROLS_MENU_PORT), false };
+	out[n++] = row_volume();
+	out[n++] = row_brightness();
+	out[n++] = (menu_row){ "POWER", T(S_CONTROLS_QUIT_OFF), false };
+	return n;
+}
+
 static void heading(const ctl_game *g, const char *page, ctl_buf *b)
 {
 	/* A name too wide beside the page count gives way to the home's short
@@ -775,7 +798,7 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 		if (x->has_note) out[n++] = MENU_NOTE(T(x->note));
 	} else {
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_GAME));
-		n = in_a_game(out);
+		n = g->port ? in_a_port(out) : in_a_game(out);
 	}
 	return n;
 }

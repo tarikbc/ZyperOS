@@ -122,6 +122,13 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 {
 	int n = 0, i;
 
+	/* Over a port: what a stopped program can still be asked */
+	if (u->port) {
+		ids[n++] = GM_CONTINUE;
+		ids[n++] = GM_CONTROLS;
+		ids[n++] = GM_QUIT;
+		return n;
+	}
 	for (i = 0; i < GM_ROWS; i++) {
 		ids[n++] = (gm_row)i;
 		if (i == GM_DISPLAY && u->screens) {

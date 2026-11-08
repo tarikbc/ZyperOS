@@ -98,6 +98,10 @@ static bool batt_now(int *pct, bool *charging)
 	*charging = batt_charging;
 	return true;
 }
+/* The in-game menu (menu_show, outside the extracted code): how often it was
+ * asked for, what it answers, and the power key's file read after it */
+static int menu_shows, menu_answer;
+static int menu_show(void) { menu_shows++; return menu_answer; }
 static pid_t mock_getppid(void) { return parent_pid; }
 static int mock_kill(pid_t pid, int sig) { kills++; kill_pid = pid; kill_sig = sig; return 0; }
 static ssize_t mock_read(int fd, void *out, size_t count)
@@ -190,6 +194,7 @@ static void reset(void)
 	lost_menu = lost_vol = false; ev_clock = CLOCK_MONOTONIC;
 	powfd = -1; kills = kill_sig = 0; kill_pid = 0; parent_pid = 4242;
 	batt_next = 0; batt_seen = 0; batt_len = batt_i = 0; batt_charging = false;
+	menu_shows = 0; menu_answer = 1;
 	for (int i = 0; i < 8; i++) { clocks[i] = 1000100; times[i] = 1000; waits[i] = -99; }
 	wall_us = clocks[0]; mono_ms = times[0];
 	fds[0] = (struct pollfd){10, POLLIN, 0}; fds[1] = (struct pollfd){11, POLLIN, 0};
@@ -333,6 +338,36 @@ int main(void)
 	reset(); batt_len = 1; batt_seq[0] = 50;
 	run_loop();
 	ck(waits[0] == 5000, "the loop wakes for the battery every 5 s when nothing else wakes it");
+	/* MENU on its own asks for the in-game menu once, in the pass that reads
+	 * its release; MENU+VOL+ (the backlight) does not. After a menu that was
+	 * up, the power key's file is drained unread, so a POWER pressed in the
+	 * menu (the launcher's) does not end the port a second time, and the keys
+	 * are queried again (resync) */
+	for (int pad = 0; pad < 2; pad++) {
+		int vol = 1 - pad;
+
+		reset(); has_menu[pad] = has_vol[vol] = true; powfd = 12; ready = 1 << pad;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		put(2, 1000060, EV_KEY, KEY_POWER, 1);
+		run_loop();
+		ck(menu_shows == 1 && steps == 0 && kills == 0 && queries == 2 && qpos[2] == qlen[2],
+		   "MENU alone: the in-game menu once, then the power key drained and the keys resynced");
+
+		reset(); has_menu[pad] = has_vol[vol] = true; ready = 1 << pad;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(vol, 1000005, EV_KEY, PK_KEY_VOLUMEUP, 1);
+		put(vol, 1000040, EV_KEY, PK_KEY_VOLUMEUP, 0);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		run_loop();
+		ck(menu_shows == 0 && levels.bright == 8, "MENU+VOL+: the backlight, and no menu");
+
+		reset(); has_menu[pad] = has_vol[vol] = true; ready = 1 << pad; menu_answer = 0;
+		put(pad, 1000000, EV_KEY, PK_BTN_MENU, 1);
+		put(pad, 1000050, EV_KEY, PK_BTN_MENU, 0);
+		run_loop();
+		ck(menu_shows == 1 && queries == 0, "no menu over this port: nothing resynced");
+	}
 	printf("portkeys-flow: %d checks, %d failed\n", checks, failures);
 	return failures ? 1 : 0;
 }

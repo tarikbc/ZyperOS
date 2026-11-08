@@ -1350,6 +1350,18 @@ static void ingame_rows(void)
 	k = reachable(rows, n, got, GM_ROWS);
 	ck(k == GM_ROWS, "every row is a stop");
 
+	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
+	 * still be asked, every one a stop, in the game menu's order */
+	u.port = true;
+	n = gm_rows(&u, rows, &b);
+	printf("in-game menu over a port:\n");
+	ck(n == 3 && gm_row_ids(&u, ids) == 3 && ids[0] == GM_CONTINUE && ids[1] == GM_CONTROLS &&
+	   ids[2] == GM_QUIT, "Continue, Controls and Quit");
+	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
+	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
+	ck(reachable(rows, n, got, GM_ROWS) == 3, "every row a stop");
+	u.port = false;
+
 	u.earned = 0; u.total = 0;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a game with no set:\n");

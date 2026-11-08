@@ -87,6 +87,9 @@ typedef struct {
 	 * by the launcher; NULL counts characters instead (19 at most) */
 	bool      (*fits)(void *ctx, const char *head);
 	void       *ctx;
+	/* A program of its own, not a game Diatom runs (OpenBOR,
+	 * src/portmenu.h): its In a game page has no hotkeys, and POWER ends it */
+	bool        port;
 } ctl_game;
 
 /* What a page's rows point into: its heading and the values a pair of rows
@@ -107,9 +110,10 @@ int ctl_game_pages(const ctl_game *g);
  * page. */
 int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b);
 
-/* Whether a system has a page of its buttons here: false for a system run by
- * an emulator of its own ("run:"), which has no in-game menu, and for one
- * this table does not know. */
+/* Whether a system has a page of its buttons here: false for one this table
+ * does not know, and for a system run by an emulator of its own ("run:") with
+ * no in-game menu over it - every one but OpenBOR, which has the menu
+ * (src/portmenu.h). */
 bool ctl_game_known(const char *tag);
 
 /* Two values said as one, the way the pages pair buttons: "Turbo A" and
