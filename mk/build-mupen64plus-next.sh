@@ -12,6 +12,10 @@
 # device on OpenGL ES 3: the aarch64 dynarec, GLideN64 on GLES 3. A Cortex-A35
 # runs what an A53 does. HLE RSP (no paraLLEl, which wants Vulkan).
 #
+# One patch of ours, mk/patches/mupen64plus-next-new-frame-swap.patch:
+# GLideN64 hands over a frame only when there is a new picture, not at every
+# vertical interrupt (the patch says why).
+#
 # In the image mk/build-flycast2021.sh builds the Dreamcast core in
 # (mk/flycast2021.Dockerfile): Debian bullseye's GCC 10, libGLESv2 to link
 # against and zlib, which is all this core needs too.
@@ -26,7 +30,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${1:-/tmp/zyperos-mupen64plus-next}
 PIN=f275caf4b2bfa1e6d1c51636746ea793f3d80320   # libretro/mupen64plus-libretro-nx, ROCKNIX's mupen64plus-nx-lr pin
 TAR_SHA=1810b7bbdc4abfdeee8a9f7f99c4a91dab601a228935802317c25a43d7cf9dbb
-SHA=8e3590469b1b44373b82f8a3c015fa2c359b8f39bd686d7f4d7b57bbe9d9c95c
+SHA=4d54a1878e98a4d2ea6ca3795762d3994a772440e2ea44558f1594913d156b45
 
 command -v docker >/dev/null || { echo "need docker" >&2; exit 1; }
 command -v curl   >/dev/null || { echo "need curl" >&2; exit 1; }
@@ -39,6 +43,8 @@ GOT=$(shasum -a 256 "$TAR" | cut -d' ' -f1)
 [ "$GOT" = "$TAR_SHA" ] || { echo "!! source sha256 $GOT, expected $TAR_SHA" >&2; exit 1; }
 rm -rf "$SRC/mupen64plus-libretro-nx-$PIN"
 tar -xzf "$TAR" -C "$SRC"
+(cd "$SRC/mupen64plus-libretro-nx-$PIN" &&
+ patch -s -p1 < "$ROOT/mk/patches/mupen64plus-next-new-frame-swap.patch")
 
 docker run --rm --platform linux/arm64 -v "$SRC/mupen64plus-libretro-nx-$PIN:/src" -w /src \
 	zyperos-flycast2021 bash -c '
@@ -65,3 +71,5 @@ mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/mupen64plus_next_libretro.so"
 echo "  built  mupen64plus_next ($PIN)"
 echo "  sha256 $GOT"
+# Which patch is in it, for mk/payload.sh to hold it to (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" write mupen64plus_next
