@@ -3,6 +3,7 @@
 #include "menu.h"
 
 const char MENU_TICK[] = "";
+const char MENU_KEY_X[] = "";
 
 int menu_step_sel(const menu_row *rows, int n, int sel, int dir)
 {

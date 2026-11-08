@@ -230,7 +230,7 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 
 <img align="right" width="320" src="res/readme/openbor.png" alt="The in-game menu over a paused OpenBOR game: Continue, Controls and Quit">
 
-**OpenBOR games** are modules, one `.pak` file each, run by OpenBOR itself rather than a libretro core. **A** attacks, **B** jumps, **X** is the second attack, **Y** the special, **L1** and **R1** the third and fourth, **START** pauses into OpenBOR's own menu and **SELECT** saves a screenshot. **MENU** pauses the game under ZyperOS's in-game menu, as in any other game: **Continue**, **Controls**, which lists those buttons, and **Quit**, back to the shelf. OpenBOR keeps its own saves and has no save states, so the menu has no Save, Load or Reset. The volume and brightness bars work over it, and **POWER** ends the game and turns the handheld off. A module that came as a folder has to be packed into a `.pak` first. The Pixel 2 only.
+**OpenBOR games** are modules, one `.pak` file each, run by OpenBOR itself rather than a libretro core. **A** attacks, **B** jumps, **X** is the second attack, **Y** the special, **L1** and **R1** the third and fourth, **START** pauses into OpenBOR's own menu and **SELECT** saves a screenshot. **MENU** pauses the game under ZyperOS's in-game menu, as in any other game: **Continue**, **Controls**, which lists those buttons, and **Quit**, back to the shelf (**X** quits from any row). OpenBOR keeps its own saves and has no save states, so the menu has no Save, Load or Reset. The volume and brightness bars work over it, and **POWER** ends the game and turns the handheld off. A module that came as a folder has to be packed into a `.pak` first. The Pixel 2 only.
 
 <br clear="right">
 
@@ -406,7 +406,7 @@ When a port runs, ZyperOS steps aside to give it the memory, puts its own PortMa
 
 <img align="right" width="320" src="res/readme/ports-controls.png" alt="Controls over a port: the d-pad, A, B, X, L1/R1 and START+SELECT as its README says them">
 
-**MENU** over a port, or over PortMaster, pauses it under the in-game menu: **Continue**, **Controls** and **Quit**, back to the Ports shelf. The game stops where it is and nothing you press in the menu reaches it. **Controls** reads the port's own files: what its README says each button does, the keyboard key each button types for it (its gptokeyb keymap), the buttons that work in every port (**MENU**, the volume keys, **MENU + VOL** for brightness, **SELECT + START**, PortMaster's own way to end a port, and **POWER**), and, last, what its PortMaster entry says to copy where. Over PortMaster it lists PortMaster's own buttons: **Up/Down** move, **L1/R1** a page, **A** chooses, **B** goes back, **X** filters the list, **Y** uninstalls a port. **Quit** ends the port, its helpers and the runtime it mounted, then the shelf comes back.
+**MENU** over a port, or over PortMaster, pauses it under the in-game menu: **Continue**, **Controls** and **Quit**, back to the Ports shelf. **X** quits from any row, as in every in-game menu. The game stops where it is and nothing you press in the menu reaches it. **Controls** reads the port's own files: what its README says each button does, the keyboard key each button types for it (its gptokeyb keymap), the buttons that work in every port (**MENU**, **MENU** then **X** to quit, the volume keys, **MENU + VOL** for brightness, **SELECT + START**, PortMaster's own way to end a port, and **POWER**), and, last, what its PortMaster entry says to copy where. Over PortMaster it lists PortMaster's own buttons: **Up/Down** move, **L1/R1** a page, **A** chooses, **B** goes back, **X** filters the list, **Y** uninstalls a port. **Quit** ends the port, its helpers and the runtime it mounted, then the shelf comes back.
 
 <br clear="right">
 
@@ -422,6 +422,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 |---|---|
 | **A / B** | Choose and back |
 | **MENU** | Settings for whatever you're looking at. In a game: save, load, quit and more |
+| **X** in the in-game menu | Quit, from any row: the Quit row shows the X button |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere. In MP4, **X** locks the screen and holding **SELECT + START** unlocks it |
 | **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
 | **L1 / R1** | Jump three systems on the home, a screenful of games on a shelf |
@@ -430,7 +431,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
 | **X / Y** | In a game, turbo A and B. On the shelf, a game's details (and Delete Game) and favorite |
 | **POWER** | Save and turn off. Over a port, it ends the port first |
-| **MENU** over a port | The in-game menu over it: Continue, Controls, Quit |
+| **MENU** over a port | The in-game menu over it: Continue, Controls, Quit (or **X**) |
 
 The device lists every button under **MENU > Controls**, and in a game, **Controls** in the in-game menu lists what each button does in that game. [The guide](docs/guide.md#controls-and-menus) covers every control, menu and setting in detail.
 

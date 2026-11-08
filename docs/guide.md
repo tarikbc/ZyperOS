@@ -80,6 +80,7 @@ it away.
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
 | **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
 | **SELECT+R2** (in game) | faster: 1.5x, 2x, 3x |
@@ -133,8 +134,8 @@ or Y) and, under them, which Pak its controller holds and where to change it:
 "MENU > Pak: Rumble Pak". A PICO-8 game lists its
 arrows, O and X and its pause menu. A DS game has a page for its two screens
 and the stylus. Then Hotkeys, SELECT with a shoulder: quick save and load, and
-faster and slower. The last page, In a game, is MENU, volume, brightness and
-POWER. Left and right change the page, B goes back to the menu, and MENU goes
+faster and slower. The last page, In a game, is MENU, MENU then X (Quit),
+volume, brightness and POWER. Left and right change the page, B goes back to the menu, and MENU goes
 back to the game.
 
 **OpenBOR has the in-game menu too**, though it runs as a program of its
@@ -144,7 +145,8 @@ OpenBOR's buttons (A attacks, B jumps, X is the second attack, Y the special,
 L1 and R1 the third and fourth, START pauses into OpenBOR's own menu, SELECT
 saves a screenshot) and then In a game, where POWER quits and turns the
 handheld off. OpenBOR keeps its own saves and has no save states, so there is
-no Save, Load or Reset. Quit ends the game and goes back to the shelf.
+no Save, Load or Reset. Quit ends the game and goes back to the shelf, and X
+does the same from any row, as in every in-game menu.
 The standalone Flycast, when a card has it for the Dreamcast, gets the same
 three rows. Its buttons are set in its own menus, so Controls there has only
 the In a game page.

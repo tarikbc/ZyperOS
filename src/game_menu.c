@@ -184,6 +184,11 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 	return n;
 }
 
+gm_row gm_x_row(void)
+{
+	return GM_QUIT;
+}
+
 int gm_row_at(const gm_ui *u, gm_row id)
 {
 	gm_row ids[GM_MAX_ROWS];
@@ -227,6 +232,8 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON) : T(S_MENU_OFF);
 	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON) : T(S_MENU_OFF);
 	full[GM_PAK].value     = u->pak;
+	/* X quits from anywhere on the page (gm_x_row), and Quit says so */
+	full[GM_QUIT].value    = MENU_KEY_X;
 
 	n = gm_row_ids(u, ids);
 	for (i = 0; i < n; i++) {

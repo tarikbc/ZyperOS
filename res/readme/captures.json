@@ -641,8 +641,8 @@
         "0",
         "port"
       ],
-      "sha256": "9de3116215235980dc26813077bcc44964be89c6acc99dfa6aec0bba5ba81137",
-      "source_commit": "d923761fa835d074013fa04f4740500fc3a7aef5"
+      "sha256": "3b510aa57528e8fbc3f9a6a52daa5da7a16c8645d98b35f5a3cecab163777d5c",
+      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
     },
     {
       "file": "light/gamemenu.png",
@@ -799,8 +799,8 @@
         "0",
         "port"
       ],
-      "sha256": "9de3116215235980dc26813077bcc44964be89c6acc99dfa6aec0bba5ba81137",
-      "source_commit": "a5409f66d37aec320a9c1b3898e5df99f1f49d4b"
+      "sha256": "3b510aa57528e8fbc3f9a6a52daa5da7a16c8645d98b35f5a3cecab163777d5c",
+      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
     },
     {
       "file": "light/ports-controls.png",

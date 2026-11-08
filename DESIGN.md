@@ -787,6 +787,13 @@ of each half's word, and a 2-unit **edge** line between them. POWER is a
 96-unit circle with the power mark in **text**: a ring of 20 open at the top,
 a stroke of 6 with round ends, and a stroke down into it.
 
+**In a menu row**, a glyph says a button does the row's job from anywhere on
+the page: the row's value is `MENU_KEY_X` (src/menu.h), and the glyph is
+drawn at 40, the keyboard's action keys' size, where the value's right edge
+is, plain off the fill and UI_BUTTON_ON_ACCENT on it. The in-game menu's Quit
+is the one (11.28). "MENU, X" names the press on a Controls page: a comma for
+one press after the other, as a plus is for held together.
+
 A pressed glyph is 92% size, its ring **accent**, with a soft **accent** halo
 (16 units of blur at three quarters), in **press**. A pressed arm of the
 D-pad or half of the rocker fills with **accent** and its arrow or word turns
@@ -1847,6 +1854,15 @@ Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. Eight rows i
 one more than the panel shows, so Quit is under the arrow, one Up from
 Continue, as a DS game's last rows are.
 
+**X is Quit** from any row of the in-game menu's page (gm_x_row,
+src/game_menu.h), in every in-game menu ZyperOS draws: over a Diatom game,
+over a "run:" program or a port, and over PortMaster. It does what A on Quit
+does and is heard as A is; Quit asks nothing first, so neither does X. The
+Quit row carries X's glyph at its right where a value goes (`MENU_KEY_X`,
+11.9), so the menu teaches the button, and the In a game page says it as
+"MENU, X  Quit". No row of the page answered X before. *(2026-11-08: I
+wanted to leave a game without scrolling down to Quit.)*
+
 A opens a read-only page over the paused game, in the standard panel with
 the system's rule color, as MENU > Controls is on the home: Left/Right turns
 the pages and comes round, B goes back to the menu, MENU to the game, and
@@ -1874,7 +1890,7 @@ and nothing else. Which page of how many is at the heading's right, "1 / 3"
   faster and SELECT+L2 slower, and under them "SELECT alone stays the
   game's" where SELECT is one of the system's buttons. The same rows as the
   home's Hotkeys page.
-- **In a game** last: MENU (the menu), the volume
+- **In a game** last: MENU (the menu), MENU then X (Quit), the volume
   rocker, brightness (MENU+VOL on the Pixel 2, F1/F2 on the Brick), POWER.
   The same rows as the home's pages, from one place in src/controls.c.
 - **Buttons that are shapes** are drawn, not named: the PlayStation's cross,

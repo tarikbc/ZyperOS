@@ -21,6 +21,12 @@ typedef struct {
  * address, which src/menusnap.c keeps as it is. */
 extern const char MENU_TICK[];
 
+/* A value that is X's glyph at the row's right (DESIGN.md 11.9, the glyph the
+ * hints draw), on the fill as a selected key's: X does what the row does
+ * from anywhere on its page, and the glyph teaches it. The in-game menu's
+ * Quit (11.28). Known by its address, as MENU_TICK is. */
+extern const char MENU_KEY_X[];
+
 /* How a row answers left, right and A (DESIGN.md 9). The menu runner plays
  * the sound on the press, before the screen's handler: a handler may take a
  * while - the in-game menu's Display waits up to 150 ms on Diatom's new

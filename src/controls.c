@@ -21,6 +21,10 @@ void ctl_set_battery_lights(bool on) { battery_lights = on; }
 static menu_row row_menu(void)   { return (menu_row){ "MENU", T(S_CONTROLS_INGAME_MENU), false }; }
 static menu_row row_mp4(void)    { return (menu_row){ "SELECT", T(S_CONTROLS_MP4_MENU), false }; }
 static menu_row row_save_off(void) { return (menu_row){ "POWER", T(S_CONTROLS_SAVE_OFF), false }; }
+/* X in the in-game menu, from any row: its Quit, whose row draws X's glyph
+ * (src/game_menu.h, gm_x_row). MENU then X, a comma for one after the
+ * other, as a plus is for held together; the value is the row's own name. */
+static menu_row row_quit(void)   { return (menu_row){ "MENU, X", T(S_GAMEMENU_QUIT), false }; }
 static menu_row row_volume(void)
 {
 	return (menu_row){ T(S_CONTROLS_KEY_VOLUME), T(S_CONTROLS_SOUND), false };
@@ -103,6 +107,7 @@ static int game(menu_row *out)
 	 * SELECT+L2, on the Hotkeys page after this one. Eric's wording,
 	 * 2026-10-01, SELECT's with it. */
 	out[n++] = row_menu();
+	out[n++] = row_quit();
 	out[n++] = row_mp4();
 	/* X and Y are Diatom's turbo on the nine two-button systems; L2 and R2
 	 * are mGBA's own Turbo L and R, which work on GBA and do nothing on GB and
@@ -932,6 +937,7 @@ static int in_a_game(menu_row *out)
 	/* SELECT is the game's own in a game; MP4 is in the menu this page is
 	 * read from, which says so on the home's In a game page */
 	out[n++] = row_menu();
+	out[n++] = row_quit();
 	out[n++] = row_volume();
 	out[n++] = row_brightness();
 	out[n++] = row_save_off();
@@ -948,6 +954,7 @@ static int in_a_port(const ctl_game *g, menu_row *out)
 	int n = 0;
 
 	out[n++] = (menu_row){ "MENU", T(S_CONTROLS_MENU_PORT), false };
+	out[n++] = row_quit();
 	if (g->doc && g->doc->gptokeyb && !g->doc->portmaster)
 		out[n++] = (menu_row){ "SELECT+START", T(S_CONTROLS_QUIT_GAME), false };
 	out[n++] = row_volume();
