@@ -44,6 +44,95 @@ _spec = importlib.util.spec_from_file_location("readme_shots", ROOT / "tools" / 
 R = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(R)
 
+# The string IDs of a text the launcher drew: src/ui.c says the text, not the
+# ID (a label is copied into a row's buffer, or formatted around a name, and
+# is not the table's pointer by then), so it is found in the language's own
+# strings: the whole string, one of its lines, or a format's pattern
+class Strings:
+    def __init__(self, code):
+        errors = []
+        self.names, self.whole, self.formats = [], {}, []
+        for name, s, form in i18n.flat(i18n.parse(errors)):
+            sid = s.id + ("" if not s.plural else (".one" if form == 0 else ".other"))
+            en = i18n.get(s, "en", form)
+            text = i18n.pseudo(en) if code == i18n.PSEUDO else i18n.get(s, code, form)
+            self.names.append(sid)
+            for piece in [text] + text.split("\n"):
+                if piece.strip():
+                    self.whole.setdefault(piece, []).append(sid)
+            for piece in text.split("\n"):
+                if i18n.FMT_RE.search(piece):
+                    pattern, pos = "", 0
+                    for m in i18n.FMT_RE.finditer(piece):
+                        pattern += re.escape(piece[pos:m.start()]) + (r"%" if m.group(0) == "%%" else r".+?")
+                        pos = m.end()
+                    pattern += re.escape(piece[pos:])
+                    self.formats.append((re.compile("^" + pattern.replace("%%", "%") + "$", re.S), sid))
+
+    def ids(self, text):
+        """The IDs a drawn text may be: [] when it is no string's (a name, a number)"""
+        if text in self.whole:
+            return self.whole[text]
+        found = [sid for pattern, sid in self.formats if pattern.match(text)]
+        return found[:3]
+
+    def label(self, text):
+        found = self.ids(text)
+        found = list(dict.fromkeys(found))
+        return "/".join(found[:3]) if found else "(not a string)"
+
+
+STRINGS = {}
+
+
+def strings_of(code):
+    if code not in STRINGS:
+        STRINGS[code] = Strings(code)
+    return STRINGS[code]
+
+
+def unescape(text):
+    return text.replace("\\n", "\n")
+
+
+# The strings no shot draws yet, held as a list that may only shrink: a new
+# string must come with a shot of it, or be listed here with the reason
+UNSHOT = ROOT / "tools" / "i18n-unshot.txt"
+UNSHOT_WHY = {
+    "hare": "answers sent to the File Transfer page, which draws them, not the launcher",
+}
+UNSHOT_DEFAULT = "no shot draws it yet"
+
+
+def read_unshot():
+    ids = set()
+    for line in UNSHOT.read_text(encoding="utf-8").splitlines() if UNSHOT.is_file() else []:
+        line = line.split("#")[0].strip()
+        if line:
+            ids.add(line)
+    return ids
+
+
+def write_unshot(ids):
+    out = ["# Strings of res/strings that no shot of tools/i18n-shots.py draws, so that",
+           "# check-i18n-shots cannot say whether they fit where they are drawn.",
+           "#",
+           "# The list may only shrink: a string not here that no shot draws fails the",
+           "# check. Add a shot (a screen's flags, or one of EXTRA's loops) and run",
+           "#     python3 tools/i18n-shots.py --write-unshot",
+           "# to drop what it draws, or keep a string here with the reason after its ID.",
+           ""]
+    last = None
+    for name in ids:
+        group = name.split(".")[0]
+        if group != last:
+            out.append("")
+            out.append("# " + group + ": " + UNSHOT_WHY.get(group, UNSHOT_DEFAULT))
+            last = group
+        out.append(name)
+    UNSHOT.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
 # The README's, but its page shots (a browser's), and these: MENU through its
 # rows, the panels it opens, the in-game menu, the tutorial, the battery's
 # and the power-off's screens, the keyboard, the save slots
@@ -85,11 +174,50 @@ EXTRA = {
     "charging-kept": ("demo", "PS1", ["--charging", "4000", "kept"]),
     "charging-keptfull": ("demo", "PS1", ["--charging", "4000", "keptfull"]),
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
-    "usb-ask-1": ("demo", "PS1", ["--usb-ask", "1"]),
+    "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
+    "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
     # A row whose value is "needs Wi-Fi", the longest it has in most languages
     "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),
 }
+
+# What the first-start tour says, step by step, and what the in-game Controls
+# page says for every system: the same words in each language on a screen of
+# each, since the longest of a system's is the one that overflows (the tour
+# is read from src/main.c's TOUR_STEP_NAMES, the systems from config/systems.cfg)
+def tour_steps():
+    text = (ROOT / "src" / "main.c").read_text(encoding="utf-8")
+    block = re.search(r"TOUR_STEP_NAMES\[TOUR_STEPS\] = \{(.*?)\};", text, re.S).group(1)
+    return re.findall(r'"([a-z]+)"', block)
+
+
+def system_tags():
+    tags = []
+    for line in (ROOT / "config" / "systems.cfg").read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.startswith("#") and line.count("|") >= 4:
+            tags.append(line.split("|")[4].strip())
+    return tags
+
+
+for _step in tour_steps():
+    EXTRA.setdefault("tour-" + _step, ("demo", "PS1", ["--tour", _step, "2500"]))
+for _tag in system_tags():
+    for _page in range(3):
+        EXTRA.setdefault("gamecontrols-%s-%d" % (_tag, _page),
+                         ("demo", "PS1", ["--gamecontrols", str(_page), _tag]))
+for _row in range(8):
+    EXTRA.setdefault("gamemenu-%d" % _row, ("demo", "PS1", ["--gamemenu", str(_row)]))
+for _kind in ("unplugged", "off", "pending"):
+    EXTRA.setdefault("charging-" + _kind, ("demo", "PS1", ["--charging", "4000", _kind]))
+for _layer in (1, 2):
+    EXTRA.setdefault("keyboard-%d" % _layer, ("demo", "PS1", ["--keyboard", str(_layer)]))
+for _page in (3, 4):
+    EXTRA.setdefault("controls-%d" % _page, ("demo", "PS1", ["--controls", str(_page)]))
+for _scroll in ("0.5", "1"):
+    EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
+EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
+EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
+EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
 # status file the update program writes it (src/sysupdate.c); the second is
@@ -112,7 +240,7 @@ EXTRA.update({name: ("demo", "PS1", ["--update"]) for name in UPDATE_STATES})
 
 # Each language's own run of every shot, on its own cards
 def run_language(code, shots, binary, keep):
-    notes, failures, data = [], [], {}
+    notes, failures, data, drawn = [], [], {}, set()
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor"}
@@ -152,13 +280,24 @@ def run_language(code, shots, binary, keep):
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ")):
                     data.setdefault(name, []).append(line[6:])
+                elif line.startswith("fit: drawn: "):
+                    drawn.add(unescape(line[12:]))
+                elif line.startswith("fit: overflow: "):
+                    px, box, text = line[15:].split("|", 2)
+                    kind, span, *beside = box.split(" ", 2)
+                    what = {"screen": "past the screen's edge",
+                            "meets": "into the text beside it (x %s, \"%s\")" % (span, beside[0] if beside else ""),
+                            "box": "past its box (x %s)" % span}[kind]
+                    text = unescape(text)
+                    notes.append("%s/%s: %s: %s px %s: %s" % (
+                        code, name, strings_of(code).label(text), px, what, text.replace("\n", " / ")[:60]))
                 elif line.startswith("i18n: "):
                     notes.append("%s/%s: %s" % (code, name, line[6:]))
             ok_anyway = name in R.CORNER_OWN and R.CORNER_OWN[name] in r.stdout
             if (r.returncode and not ok_anyway) or not target.is_file():
                 tail = " | ".join(r.stdout.strip().splitlines()[-3:])
                 failures.append("%s/%s: the shot failed (exit %d): %s" % (code, name, r.returncode, tail))
-    return code, notes, failures, data
+    return code, notes, failures, data, drawn
 
 
 def main():
@@ -166,6 +305,9 @@ def main():
     ap.add_argument("--keep", type=Path, help="keep the frames in DIR/<code>/")
     ap.add_argument("--lang", action="append", help="this language only (more than once for more)")
     ap.add_argument("--strict", action="store_true", help="fail on the pseudo-locale's too")
+    ap.add_argument("--coverage", action="store_true", help="list the strings no shot draws")
+    ap.add_argument("--write-unshot", action="store_true",
+                    help="write tools/i18n-unshot.txt: every string no shot draws, as it is now")
     ap.add_argument("only", nargs="*", help="shot names (default: all)")
     args = ap.parse_args()
     if subprocess.call(["pkg-config", "--exists", "sdl2", "SDL2_image", "SDL2_ttf"],
@@ -185,12 +327,12 @@ def main():
     keep = args.keep.resolve() if args.keep else None
     results = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(langs)) as pool:
-        for code, notes, failures, data in pool.map(lambda c: run_language(c, shots, binary, keep), langs):
+        for code, notes, failures, data, drawn in pool.map(lambda c: run_language(c, shots, binary, keep), langs):
             # Data (a game's name, a formatted line) may be cut or slide in
             # English too; a screen where a language cuts more of it than
             # English does has a translation that made the cut ("vinculado
             # como t..." beside ScreenScraper)
-            results[code] = (notes, failures, data)
+            results[code] = (notes, failures, data, drawn)
     english = results["en"][2] if "en" in results else None
     for code in langs:
         if english is None or code == "en": continue
@@ -198,9 +340,35 @@ def main():
             if len(said) > len(english.get(name, [])):
                 results[code][0].extend("%s/%s: %s (English: %d)" % (code, name, d, len(english.get(name, [])))
                                         for d in said)
+    # Every string a shot draws, or says why it is none of the shots'
+    full = not args.only and not args.lang and "en" in results
+    gone = []
+    if "en" in results:
+        st = strings_of("en")
+        seen = set()
+        for text in results["en"][3]:
+            seen.update(st.ids(text))
+        gone = [n for n in st.names if n not in seen]
+    if args.coverage:
+        for name in gone:
+            print("undrawn " + name)
+        print("%d of %d strings are drawn in no shot" % (len(gone), len(st.names)))
+    if args.write_unshot:
+        write_unshot(gone)
+        print("wrote %s: %d strings" % (UNSHOT.relative_to(ROOT), len(gone)))
+        return 0
+    unshot_bad = []
+    if full:
+        listed = read_unshot()
+        unshot_bad = ["%s: drawn in no shot and not in tools/i18n-unshot.txt: add a shot to "
+                      "tools/i18n-shots.py (a text of it must be drawn in each language), or list it "
+                      "there with the reason" % n for n in gone if n not in listed]
+        for n in sorted(listed - set(gone)):
+            print("note %s is in tools/i18n-unshot.txt but is drawn (or gone): "
+                  "python3 tools/i18n-shots.py --write-unshot" % n)
     bad = 0
     for code in langs:
-        notes, failures, _ = results[code]
+        notes, failures = results[code][:2]
         for f in failures:
             print("FAIL " + f)
             bad += 1
@@ -211,7 +379,10 @@ def main():
         for n in notes:
             print("FAIL " + n)
             bad += 1
-    pseudo = len(results.get(i18n.PSEUDO, ([], [], {}))[0])
+    for n in unshot_bad:
+        print("FAIL " + n)
+        bad += 1
+    pseudo = len(results.get(i18n.PSEUDO, ([], [], {}, set()))[0])
     if bad:
         print("check-i18n-shots: %d problems in %d screens x %d languages" % (bad, len(shots), len(langs)))
         return 1

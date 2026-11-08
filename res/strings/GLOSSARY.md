@@ -64,7 +64,35 @@ written to match. Change a term here first, then everywhere it is used.
   string that slides in a marquee is cut too, only slowly. A block's
   `note = tight` says the room in units. `make check-i18n-shots` fails on
   any cut or slide in any language, and the pseudo-locale shows what a
-  longer word would meet.
+  longer word would meet (the room each kind of string has is below).
+- **Room: each kind of string has a box, and stays inside it** *(2026-11-07)*.
+  A string that touches the edge of its box, or runs past it, is broken, not
+  only one cut at the screen's edge: the Computer Connected question's hint
+  ran past its panel in Portuguese. What room a string has:
+  - *A heading* has its panel less the page count beside it (a title may
+    take the count's room too, when it has to). A title wider than a dialog
+    breaks onto a second line.
+  - *A row's label and its value* share the panel's width; neither slides.
+  - *A tile or a key* has its own width, in units (`note = tight: ...`). A
+    tile's two lines fall to the smaller size before they touch its edge.
+  - *A hint or a legend* (`Left/Right: move   A: choose`) has the panel's
+    inner width, and breaks between its keys, at the three spaces, onto a
+    second line. Keep the three spaces: they are where it may break.
+  - *A message* is one line in the message panel; a long one is a sentence
+    of its own with a short form, never a marquee.
+  - *The corner, the footer and the legend line* have the screen between its
+    insets, and their parts must not meet.
+
+  `make check-i18n-shots` measures it: every screen of tools/i18n-shots.py
+  is drawn in all eight languages and `xx`, and src/ui.c checks each string
+  it draws against the smallest rect it sits on (the panel, tile or plate),
+  the neighbouring text on its line, and the screen. It fails with the shot,
+  the language, the string ID and the overflow in pixels (units of 1024). A
+  layout fix (wrap, balance, size to the content) comes before a shorter
+  string; where a string must be shorter, keep it natural in that language.
+  A string no shot draws fails the check too, unless tools/i18n-unshot.txt
+  lists it (that list may only shrink): add a shot of the screen it is on.
+  `xx` (every string 40% longer) only warns, as a longer word to expect.
 - **Counts** use the plural forms (`en.one`, `en.other`); Chinese and
   Japanese have one form. French's one form is for 0 and 1.
 - **Unsure?** Add `note = review: ...` to the block saying what to check.

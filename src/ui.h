@@ -226,6 +226,14 @@ int ui_balance_lines(TTF_Font *f, const char *text, int maxw, int cap,
  * face opened at the same address must not be answered for the old one. */
 void ui_text_memo_clear(void);
 
+/* A new frame starts: the rects and lines the host's overflow check kept of
+ * the last are forgotten (src/ui.c, "the box a string must stay inside") */
+void ui_fit_frame(void);
+#ifdef I18N_PSEUDO
+/* A cleared screen is a new frame for it too */
+#define SDL_RenderClear(r) (ui_fit_frame(), SDL_RenderClear(r))
+#endif
+
 /* Draw `s` left-aligned at (x,y), clipped to `w` pixels, sliding it back and
  * forth when it does not fit.
  *
