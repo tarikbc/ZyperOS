@@ -20,6 +20,7 @@
 #include "device.h"
 #include "fileio.h"
 #include "platform.h"
+#include "portmenu.h"
 
 #include <SDL_syswm.h>
 
@@ -297,6 +298,49 @@ bool plat_save_screen(const char *path)
 	SDL_RenderPresent(ren);
 	SDL_SetRenderTarget(ren, screen_tex);
 	return ok;
+}
+
+/* The still portkeys saves (src/portmenu.h): "ZPST", the width and the
+ * height, then the panel's rows as it showed them. On the turned panel a
+ * landscape pixel (x, y) is the panel's (y, W - 1 - x), W the landscape width,
+ * as plat_save_screen turns it there, so it is turned back here; on a
+ * landscape display (QEMU's) it is the picture as it is. */
+SDL_Texture *plat_load_screen(const char *path)
+{
+	FILE *f = fopen(path, "rb");
+	unsigned char hdr[8];
+	uint32_t *in = NULL;
+	SDL_Surface *sf = NULL;
+	SDL_Texture *tex = NULL;
+	int w, h, x, y;
+	bool turned;
+
+	if (!f) return NULL;
+	if (fread(hdr, 1, sizeof hdr, f) != sizeof hdr || memcmp(hdr, PORT_MENU_MAGIC, 4)) goto done;
+	w = hdr[4] | hdr[5] << 8;
+	h = hdr[6] | hdr[7] << 8;
+	if (w != panel_w || h != panel_h) {
+		fprintf(stderr, "port menu: the still is %dx%d, the panel %dx%d; none\n", w, h, panel_w, panel_h);
+		goto done;
+	}
+	turned = panel_turn != 0;
+	if (!(in = malloc((size_t)w * h * 4)) || fread(in, 4, (size_t)w * h, f) != (size_t)w * h) goto done;
+	if (!(sf = SDL_CreateRGBSurfaceWithFormat(0, turned ? h : w, turned ? w : h, 32,
+	                                           SDL_PIXELFORMAT_ARGB8888)))
+		goto done;
+	for (y = 0; y < sf->h; y++) {
+		uint32_t *row = (uint32_t *)((uint8_t *)sf->pixels + (size_t)y * sf->pitch);
+
+		for (x = 0; x < sf->w; x++)
+			row[x] = 0xFF000000u | (turned ? in[(size_t)(sf->w - 1 - x) * w + y]
+			                               : in[(size_t)y * w + x]);
+	}
+	tex = SDL_CreateTextureFromSurface(ren, sf);
+done:
+	if (sf) SDL_FreeSurface(sf);
+	free(in);
+	fclose(f);
+	return tex;
 }
 
 bool plat_video_init(void)

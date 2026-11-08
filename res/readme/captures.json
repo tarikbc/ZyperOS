@@ -621,6 +621,28 @@
       ],
       "sha256": "b664fa29952faddc7301905bf60bffe3deeeaa3eb47e95e687db4caf16071086",
       "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+    },
+    {
+      "file": "light/openbor.png",
+      "card": "openbor",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "0",
+        "port"
+      ],
+      "sha256": "9de3116215235980dc26813077bcc44964be89c6acc99dfa6aec0bba5ba81137",
+      "source_commit": "d923761fa835d074013fa04f4740500fc3a7aef5"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

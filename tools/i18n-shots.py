@@ -114,15 +114,17 @@ EXTRA.update({name: ("demo", "PS1", ["--update"]) for name in UPDATE_STATES})
 def run_language(code, shots, binary, keep):
     notes, failures, data = [], [], {}
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
-        cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm"}
+        cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
+                 "openbor": Path(tmp) / "openbor"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.scummvm_card(cards["scummvm"])
+        R.openbor_card(cards["openbor"])
         R.card_dirs(cards["empty"])
         out = (keep / code) if keep else Path(tmp) / "out"
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS}.get(tag, "")
+            focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0]}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
             # A state of the update page: its status, with or without a network
             up = card / "userdata/update"

@@ -49,9 +49,11 @@ FOCUS=GAMES[2]   # the games page and its details open on Metal Gear Solid
 SCUMMVM=['Beneath a Steel Sky','Drascula - The Vampire Strikes Back',
          'Flight of the Amazon Queen','Lure of the Temptress','Soltys']
 SCUMMVM_FOCUS=SCUMMVM[2]
+# OpenBOR's shelf: Senile Team's freeware game, as a stand-in module
+OPENBOR=['Beats of Rage.pak']
 # name: (card, the shelf .last names, flags). 'demo' is the library above,
 # 'empty' a card with no games (the empty home), 'scummvm' ScummVM's freeware
-# games alone.
+# games alone, 'openbor' a module on the OpenBOR shelf.
 SHOTS={
     'systems':('demo','PS1',['--home','spotlight']),
     'gallery':('demo','PS1',['--home','gallery']),
@@ -70,6 +72,9 @@ SHOTS={
     'hotspot':('demo','PS1',['--hotspot','ZyperOS-7A2B','q7mx-3kpa','1 joined','waiting']),
     'usb-ask':('demo','PS1',['--usb-ask','0']),
     'scummvm':('scummvm','SCUMMVM',['--screen','games']),
+    # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
+    # made-up frame rather than a game's
+    'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
     'scraper':('demo','PS1',['--scraper','2']),
     'update':('demo','PS1',['--update']),
     'empty':('empty','',['--ways','usb']),
@@ -173,6 +178,11 @@ def scummvm_card(card):
     card_dirs(card)
     for name in SCUMMVM:
         d=card/'Roms/ScummVM'/name;d.mkdir(parents=True);(d/'readme.txt').touch()
+
+def openbor_card(card):
+    card_dirs(card)
+    d=card/'Roms/OpenBOR';d.mkdir(parents=True)
+    for name in OPENBOR: (d/name).touch()
 
 # The File Transfer page: a computer's window on a console's folder with an
 # upload going (throttled to 64 KB/s, shot 4.5 s in, once its time left shows), and a phone's on the PIN
@@ -356,9 +366,11 @@ def main():
               'data':'demonstration library (freeware or stand-in names, empty files); built-in shot fixtures',
               'artwork':{},'screenshots':[]}
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
-        cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm'}
+        cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
+               'openbor':Path(temporary)/'openbor'}
         demo_card(cards['demo'],args.art_dir,manifest)
         scummvm_card(cards['scummvm'])
+        openbor_card(cards['openbor'])
         card_dirs(cards['empty'])
         for theme in ['light','dark']:
             dest=out/theme;dest.mkdir(exist_ok=True)
@@ -366,7 +378,7 @@ def main():
                 if theme=='dark' and name not in DARK: continue
                 if args.only and name not in args.only: continue
                 card=cards[card_name]
-                focus={'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS}.get(tag,'')
+                focus={'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS,'OPENBOR':OPENBOR[0]}.get(tag,'')
                 (card/'ZyperOS/.last').write_text(tag+'\n'+focus+'\n')
                 target=dest/(name+'.png')
                 # The tutorial draws no status corner, so it has no --status

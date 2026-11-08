@@ -21,6 +21,7 @@
 #include "../src/config.h"
 #include "../src/controls.h"
 #include "../src/db.h"
+#include "../src/portmenu.h"
 #include "legend.h"   /* BUTTONS, is_button, legend_form */
 
 static int fails;
@@ -387,8 +388,9 @@ static void in_a_game(void)
 		bool resident = strncmp(s->core, "run:", 4) && strcmp(s->core, "port");
 		int e;
 
-		if (!resident) {
-			/* a standalone emulator or a port has no in-game menu */
+		if (!resident && !port_menu_pads(s->tag)) {
+			/* a standalone emulator or a port has no page of its buttons,
+			 * but OpenBOR, whose layout ships with it (src/portmenu.h) */
 			snprintf(msg, sizeof msg, "%s runs outside Diatom and has a page", s->tag);
 			ck(!ctl_game_known(s->tag), msg);
 			continue;
@@ -397,7 +399,7 @@ static void in_a_game(void)
 		ck(ctl_game_known(s->tag), msg);
 		for (e = 0; e < 2; e++) {
 			ctl_game g = { s->tag, s->name, s->tag, s->map, turbo_of(s->tag),
-			               e ? "fds" : "zip" };
+			               e ? "fds" : "zip", NULL, NULL, !resident };
 			seen_row all[64];
 			char heads[CTL_GAME_PAGES + 1][48];
 			int pages = ctl_game_pages(&g), p, n;
@@ -486,6 +488,45 @@ static void in_a_game(void)
 		g.tag = "MD";
 		ctl_game_rows(&g, 0, rows, &b);
 		ck(!strcmp(b.head, "Controls: Genesis"), "and a name that fits stays");
+	}
+	/* OpenBOR, a program of its own with the in-game menu (src/portmenu.h):
+	 * its buttons as OpenBOR lays out a pad, and an In a game page with no
+	 * hotkeys, where POWER ends the game rather than saving it */
+	{
+		ctl_game g = { "OPENBOR", "OpenBOR", "OpenBOR", "", "", "pak", NULL, NULL, true };
+		seen_row all[64];
+		int n = game_rows(&g, all, 64, NULL);
+
+		ck(port_menu_for("run:ZyperOS/openbor/OpenBOR.sh") &&
+		   port_menu_for("run:Emulators/DraStic/DraStic.sh") &&
+		   port_menu_for("run:Emulators/Flycast/Flycast.sh") &&
+		   !port_menu_for("port") && !port_menu_for("dsperate") && !port_menu_for("flycast2021"),
+		   "the in-game menu over every \"run:\" program, and not over a port or a Diatom core");
+		ck(port_menu_pads("OPENBOR") && !port_menu_pads("NDS") && !port_menu_pads("DC") &&
+		   !port_menu_pads("PORTS"),
+		   "OpenBOR's buttons on its Controls page; DraStic's and Flycast's are their own");
+		ck(says(all, n, "A", "Attack") && says(all, n, "B", "Jump") &&
+		   says(all, n, "X", "Attack 2") && says(all, n, "Y", "Special") &&
+		   says(all, n, "L1/R1", "Attack 3/4") && says(all, n, "START", "Pause") &&
+		   says(all, n, "SELECT", "Screenshot"),
+		   "OpenBOR: A attacks, B jumps, X Attack 2, Y the special, L1/R1 Attack 3/4, START pauses, SELECT a screenshot");
+		ck(says(all, n, "MENU", "Menu") && says(all, n, "POWER", "Quit and turn off") &&
+		   !says(all, n, "POWER", "Save and turn off"),
+		   "OpenBOR's In a game: MENU the menu, POWER quits and turns off");
+		g.port = false;
+		n = game_rows(&g, all, 64, NULL);
+		ck(says(all, n, "POWER", "Save and turn off"), "a Diatom game's POWER saves");
+	}
+	/* DraStic or the standalone Flycast under the menu: their buttons are
+	 * their own settings', so In a game alone, with no hotkeys */
+	{
+		ctl_game g = { "", "Nintendo DS", "DS", "", "", "nds", NULL, NULL, true };
+		seen_row all[64];
+		int n = game_rows(&g, all, 64, NULL);
+
+		ck(ctl_game_pages(&g) == 1 && says(all, n, "MENU", "Menu") &&
+		   says(all, n, "POWER", "Quit and turn off") && !says(all, n, "A", NULL),
+		   "over DraStic or Flycast: In a game alone, MENU the menu, POWER quits");
 	}
 	/* A system it does not know is In a game alone */
 	{

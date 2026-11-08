@@ -87,6 +87,7 @@
 #include "tour.h"
 #include "tourdraw.h"
 #include "game_menu.h"
+#include "portmenu.h"
 #include "gamedel.h"
 #include "dsv.h"
 #include "dslang.h"
@@ -166,6 +167,11 @@ static void xfer_screen_way(app *a, int way);
 
 volatile sig_atomic_t want_quit;
 static void on_sigterm(int sig) { (void)sig; want_quit = 1; plat_terminate(); }
+
+/* This process is the in-game menu over a port (src/portmenu.h, --port-menu),
+ * started for it by portkeys while the port is stopped: the menu, its
+ * Controls page and nothing else. */
+static bool g_port_menu;
 
 /* Boot time is the one number a launcher cannot be careless about, so the
  * phases are timed and logged rather than guessed at. On the project this
@@ -6318,7 +6324,9 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * borrows its backdrop and its power rule for as long as it is up.
 		 * Rebuilt on the way back, because anything may have changed while
 		 * Muse covered it - a Bluetooth headset connecting, for one. */
-		if (a->in.pressed[IN_SELECT]) {
+		/* Not over a port's: MP4 is stopped for a port (launch.sh), and
+		 * this process starts none for its menu */
+		if (a->in.pressed[IN_SELECT] && !g_port_menu) {
 			if (muse_open(a, st, ctx)) return MENU_LEFT_GONE;
 			continue;
 		}
@@ -12060,6 +12068,7 @@ static int gm_build(app *a, menu_row *out, gm_bufs *b)
 	u.earned = chv_earned();
 	u.total  = chv_count();
 	u.screens = g_game_dual;
+	u.port   = g_port_menu;
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
 		                                      a->view[a->sys_cursor].cursor)];
@@ -14518,8 +14527,13 @@ static bool ctl_head_fits(void *ctx, const char *head)
 	return ui_text_width(ui_font(UI_F_LABEL), head) <= menu_std_width(a) - 2 * inset;
 }
 
+/* The port's system and game, for its Controls page (port_menu_main) */
+static ctl_game g_port_ctl;
+static bool is_port(const system_cfg *s);     /* with launch_port, below */
+
 static ctl_game game_controls_of(app *a)
 {
+	if (g_port_menu) return g_port_ctl;
 	sysview *sv = &a->view[a->sys_cursor];
 	int o = shelf_owner(a, a->sys_cursor, sv->cursor);
 	const system_cfg *s = &a->sys.systems[o];
@@ -14527,7 +14541,7 @@ static ctl_game game_controls_of(app *a)
 	const char *dot = strrchr(file, '.');
 
 	return (ctl_game){ s->tag, s->name, home_label(s->tag, s->name), s->map,
-	                   plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a };
+	                   plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a, is_port(s) };
 }
 
 /* The in-game menu's Controls (DESIGN.md 11.28): every control this game
@@ -14696,7 +14710,7 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	/* A row's place to its id: a DS game has three rows more after Display,
 	 * and the same list the build used says which row is which. */
 	{
-		gm_ui u = { .screens = g_game_dual };
+		gm_ui u = { .screens = g_game_dual, .port = g_port_menu };
 		gm_row ids[GM_MAX_ROWS];
 		int n = gm_row_ids(&u, ids);
 
@@ -14906,6 +14920,46 @@ static void game_menu(app *a)
 	/* Nothing presents from here: the next frame on screen is the game's. */
 }
 
+/* The in-game menu over a port (src/portmenu.h): this process started by
+ * portkeys for it alone, with the port stopped and its last frame saved. The
+ * same menu as over a Diatom game, over that frame, with the rows a stopped
+ * program can answer to (gm_row_ids): Continue, Controls - the port's system's
+ * page and In a game's - and Quit. Its exit status says which: Continue, and
+ * B or MENU, go back to the game; Quit ends it and the shelf comes back;
+ * POWER, here or on the Controls page, or the battery run flat, end it and
+ * turn the handheld off. The opening and the closing are the in-game menu's
+ * own, so the close lands on the frame the game goes on from. */
+static int port_menu(app *a)
+{
+	gm_ctx c = { 0 };
+
+	uisound_play(DS_SOUND_ACCEPT);
+	c.a = a;
+	c.bg = plat_load_screen(PORT_MENU_STILL);
+	c.st.fixed_w     = gm_width(a);
+	c.st.sound       = c.bufs.sound;
+	c.st.follow_tint = true;
+	c.st.backdrop    = gm_backdrop;
+	c.st.on_power    = gm_power;
+
+	g_menu_closing = false;
+	if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
+		c.resume = true;
+	g_menu_closing = false;
+	if (c.resume) {
+		leave_end how = panel_leave_run(a, gm_backdrop, &c);
+
+		if (how == LEAVE_POWER) gm_power(a, &c);
+		if (how == LEAVE_QUIT) c.resume = true;      /* asked to stop: the game goes on */
+	}
+	mm_leaving_cut();
+	if (c.bg) SDL_DestroyTexture(c.bg);
+	if (plat_run_power_pressed()) return PORT_MENU_POWER;
+	/* A TERM to this process is not the player's Quit: the game goes on, or
+	 * ends with the system that sent it */
+	return c.resume || want_quit ? PORT_MENU_CONTINUE : PORT_MENU_QUIT;
+}
+
 /* Bring the resident emulator back.
  *
  * With one process per game a core that segfaults takes down that game and
@@ -14987,9 +15041,12 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	/* Written whole, then renamed into place: launch.sh reads it the moment
 	 * this process is gone, and half a path would run nothing. */
 	f = fopen(PORT_REQUEST ".tmp", "w");
+	/* A program of its own on a game has the in-game menu over it: the
+	 * system's tag after the game says so to launch.sh, which gives it to
+	 * portkeys with --menu (src/portmenu.h) */
 	if (!strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX)))
-		ok = f && fprintf(f, "%s/%s\t%s\n", P_CARD,
-		                  s->core + strlen(RUN_PREFIX), path) > 0;
+		ok = f && fprintf(f, "%s/%s\t%s\t%s\n", P_CARD, s->core + strlen(RUN_PREFIX), path,
+		                  port_menu_for(s->core) ? s->tag : "") > 0;
 	else
 		ok = f && fprintf(f, "%s\n", path) > 0;
 	if (f && fclose(f) != 0) ok = false;
@@ -15015,6 +15072,11 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	book_keep(true);
 	anim_launch(a);
 	port_loading_screen(a, s);
+	/* "Getting hot" for portkeys to show over the port, which this process
+	 * is not there to render then (src/portmenu.h), in either theme, as Auto
+	 * can turn it while the port runs */
+	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_LIGHT, DS_LIGHT);
+	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_DARK, DS_DARK);
 	a->running = false;
 }
 
@@ -16098,13 +16160,18 @@ static void shot_draw_slots(app *a)
  * it, on a made-up frame: the one place the status corner is drawn in Salt &
  * Pepper whatever the theme. On a games shelf, whose system and game it
  * builds its rows for. */
+/* --gamemenu [row] port: the menu over a port instead (src/portmenu.h), as
+ * port_menu shows it over OpenBOR; --backdrop PNG puts a picture of a real
+ * game under it in place of the made-up frame, at the screen's size. */
 static int shot_gamemenu, shot_gamemenu_sel;
+static const char *shot_backdrop;
 
 static void shot_draw_gamemenu(app *a)
 {
 	menu_row rows[GM_STYLUS + 1];
 	gm_bufs b;
-	SDL_Texture *bg = fake_frame(a->r, 4.0f / 3);
+	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
+	                                : fake_frame(a->r, 4.0f / 3);
 	int n;
 
 	gm_backdrop(a, &(gm_ctx){ .a = a, .bg = bg }, 1.0f);
@@ -16221,7 +16288,8 @@ static void controls_fit_report(app *a)
 
 			for (e = 0; e < 2; e++) {
 				ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
-				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a };
+				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a,
+				               is_port(s) };
 				int np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
 
 				if (e && strcmp(s->tag, "NES")) continue;
@@ -17244,11 +17312,108 @@ static int scan_thread(void *ctx)
 	return 0;
 }
 
+/* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
+ * its own (OpenBOR, DraStic, the standalone Flycast), and only that. What it needs of the launcher's start, in the same order: the
+ * settings, the port's system from systems.cfg (its name and accent, and its
+ * buttons for the Controls page), the language and theme, the interface
+ * sounds, the display (taken as from the splash: portkeys has let go of it),
+ * the buttons and the faces. No scan of the card, no Diatom, no MP4, no menu
+ * music, no File Transfer: the port has the memory, and the menu wants none
+ * of them. Auto Off is off: a port has no state to come back to after it,
+ * and the battery run flat is still POWER (idle_due). */
+static int port_menu_main(int argc, char **argv)
+{
+	static app a;
+	const char *tag = argc > 2 ? argv[2] : "", *game = argc > 3 ? argv[3] : "";
+	const char *dot = strrchr(game, '.');
+	const system_cfg *s = NULL;
+	char path[CFG_STR * 2];
+	int how, i;
+
+	signal(SIGTERM, on_sigterm);
+	signal(SIGINT, on_sigterm);
+	t_boot0 = plat_now_ms();
+	paths_init();
+	{
+		char dev[CFG_STR * 2], lib[CFG_STR * 2], env[CFG_STR * 2], tz[64];
+
+		db_paths_ready(dev, sizeof dev, lib, sizeof lib, env, sizeof env);
+		if (!db_init(dev, lib, env))
+			fprintf(stderr, "port menu: no settings database; the shipped defaults\n");
+		db_get_str(db_lib(), "timezone", tz, sizeof tz, "America/New_York");
+		plat_clock_zone(tz);
+	}
+	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
+	if (!cfg_load_systems(path, &a.sys)) {
+		fprintf(stderr, "port menu: no usable %s\n", path);
+		return PORT_MENU_CONTINUE;
+	}
+	for (i = 0; i < a.sys.count; i++)
+		if (!strcmp(a.sys.systems[i].tag, tag)) {
+			a.sys_cursor = i;
+			s = &a.sys.systems[i];
+			break;
+		}
+	if (!s) {
+		fprintf(stderr, "port menu: no system tagged %s\n", tag);
+		return PORT_MENU_CONTINUE;
+	}
+	g_port_menu = true;
+	/* Its buttons when ZyperOS knows them (OpenBOR's); over DraStic or the
+	 * standalone Flycast, In a game alone (port_menu_pads) */
+	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
+	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true };
+	{
+		char ap[16], lc[16], v[16], dir[CFG_STR * 2];
+
+		db_get_str(db_dev(), "language", lc, sizeof lc, "en");
+		i18n_set(lang_parse(lc));
+		db_get_str(db_dev(), "appearance", ap, sizeof ap, appearance_id(APPEAR_LIGHT));
+		theme_init(appearance_parse(ap));
+		IMG_Init(IMG_INIT_PNG);
+		db_get_str(db_dev(), "uisounds", v, sizeof v, uisound_setting_id(DS_VOICE_DEFAULT));
+		uisound_set(uisound_setting_parse(v));
+		snprintf(dir, sizeof dir, "%s/res/sounds", P_ROOT);
+		uisound_init(dir);
+	}
+	if (!plat_video_init()) {
+		fprintf(stderr, "port menu: video init failed\n");
+		return PORT_MENU_CONTINUE;
+	}
+	a.r = plat_renderer();
+	plat_input_init();
+	plat_settings_init();
+	if (!ui_init(a.r, P_FONT)) fprintf(stderr, "port menu: font init failed\n");
+	ui_fonts_for(i18n_lang());
+	page_fonts_init(P_FONT);
+	clock24_load();
+	batt_icon_load();
+	a.tint = s->accent;
+	a.auto_off = 0;
+	a.running = true;
+	fprintf(stderr, "port menu: %s, ready in %u ms\n", s->name, plat_now_ms() - t_boot0);
+
+	how = port_menu(&a);
+	fprintf(stderr, "port menu: %s\n", how == PORT_MENU_QUIT ? "Quit" :
+	        how == PORT_MENU_POWER ? "POWER" : "Continue");
+	/* The window closed, which puts back on the panel the frame SDL found
+	 * there - the port's - before the port has the display again */
+	uisound_release();
+	plat_input_quit();
+	ui_quit();
+	plat_video_quit();
+	db_shutdown();
+	return how;
+}
+
 int main(int argc, char *argv[])
 {
 	app a = { 0 };
 	char path[CFG_STR * 2];
 	char startup[CFG_STR];
+
+	if (argc > 1 && !strcmp(argv[1], PORT_MENU_ARG)) return port_menu_main(argc, argv);
 
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--shot") && i + 1 < argc) {
@@ -17424,8 +17589,12 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && !strcmp(argv[i + 1], "dual")) {
 				g_game_dual = true;
 				i++;
+			} else if (i + 1 < argc && !strcmp(argv[i + 1], "port")) {
+				g_port_menu = true;
+				i++;
 			}
 		}
+		else if (!strcmp(argv[i], "--backdrop") && i + 1 < argc) shot_backdrop = argv[++i];
 		else if (!strcmp(argv[i], "--press") && i + 1 < argc) {
 			i++;
 			shot_key = !strcmp(argv[i], "left")  ? IN_LEFT

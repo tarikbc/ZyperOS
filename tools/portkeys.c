@@ -9,6 +9,10 @@
  *
  *   VOL+ / VOL-          the volume, a position at a time
  *   MENU held + VOL      the backlight instead, a rung at a time
+ *   MENU on its own      with --menu (OpenBOR), the in-game menu (menu_show)
+ *
+ * And over any port, "Getting hot" when the chip passes the kernel's trip, as
+ * over a game (heat_check), and POWER and a battery run flat (end_port).
  *
  * WHAT A KEY MEANS is tools/pkkeys.c's, which tools/pkkeys-check.c holds:
  * the events of every device are handled in the order of their times, so
@@ -70,6 +74,7 @@
 #include <drm/drm_mode.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/dma-buf.h>
 #include <linux/input.h>
 #include <linux/kcmp.h>
 #include <poll.h>
@@ -83,13 +88,16 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "device/pixel2_levels.h"
+#include "heat.h"
 #include "osdbar.h"
 #include "pkkeys.h"
 #include "pkset.h"
+#include "portmenu.h"
 #include "sidelights.h"
 #include "status.h"
 #include "themefile.h"
@@ -102,6 +110,9 @@
 #endif
 #ifndef SYS_kcmp
 #define SYS_kcmp 272                 /* asm-generic's, which is aarch64's */
+#endif
+#ifndef DRM_IOCTL_MODE_GETFB2        /* Linux 5.7 */
+#define DRM_IOCTL_MODE_GETFB2 DRM_IOWR(0xCE, struct drm_mode_fb_cmd2)
 #endif
 
 /* tools/pkkeys.h writes the kernel's numbers out, to build on the host */
@@ -350,13 +361,19 @@ static bool find_crtc(int fd)
  * 64 bytes, so a row of 64 is one the driver has no cause to pad. The six
  * columns past the bar stay clear: they fall on the far side of it from the
  * panel's edge, below it as the player sees it, so it is where it was. */
+static size_t notice_bytes(void);
+
 static bool buffers(void)
 {
-	int i;
+	int i, rows;
 
 	G.cw = (bh + 15) / 16 * 16;
+	/* Rows enough for the heat notice as well (notice_put), which goes up on
+	 * the same buffers in rows of its own width */
+	rows = (int)((notice_bytes() + (size_t)G.cw * 4 - 1) / ((size_t)G.cw * 4));
+	if (rows < bw) rows = bw;
 	for (i = 0; i < 2; i++) {
-		struct drm_mode_create_dumb c = { .width = (uint32_t)G.cw, .height = (uint32_t)bw, .bpp = 32 };
+		struct drm_mode_create_dumb c = { .width = (uint32_t)G.cw, .height = (uint32_t)rows, .bpp = 32 };
 		struct drm_mode_map_dumb m;
 		void *p;
 
@@ -378,8 +395,9 @@ static bool buffers(void)
 static bool overlay_setup(void);
 
 /* Every process but this one with the display open, until one of the copies
- * is the master's. */
-static bool borrow(void)
+ * is the master's: that copy, in G with the pid, its pidfd, the number the
+ * port has it under and the CRTC lighting the panel. Nothing made on it yet. */
+static bool master_copy(void)
 {
 	DIR *proc = opendir("/proc");
 	struct dirent *pe;
@@ -418,26 +436,6 @@ static bool borrow(void)
 			G.their_fd = theirs;
 			closedir(fds);
 			closedir(proc);
-			if (!buffers()) {
-				fprintf(stderr, "portkeys: no buffers for the bar\n");
-				release(false);
-				return false;
-			}
-			/* The cursor window, until it says otherwise - unless the
-			 * driver padded the rows after all, which only an overlay
-			 * plane can be told of (ADDFB2 takes the pitch) */
-			G.cursor = G.pitch == (uint32_t)G.cw * 4;
-			if (!G.cursor) {
-				fprintf(stderr, "portkeys: rows of %u bytes, not %d; using an overlay plane\n",
-				        G.pitch, G.cw * 4);
-				if (!overlay_setup()) {
-					fprintf(stderr, "portkeys: no overlay plane either; no bar\n");
-					release(false);
-					return false;
-				}
-			}
-			B.drawn_a = -1;     /* nothing of ours on these buffers yet */
-			fprintf(stderr, "portkeys: showing the bar over pid %d (%dx%d)\n", pid, G.pw, G.ph);
 			return true;
 		}
 		closedir(fds);
@@ -445,6 +443,33 @@ static bool borrow(void)
 	}
 	if (proc) closedir(proc);
 	return false;
+}
+
+/* The port's display, for the bar: its master copy and two buffers on it */
+static bool borrow(void)
+{
+	if (!master_copy()) return false;
+	if (!buffers()) {
+		fprintf(stderr, "portkeys: no buffers for the bar\n");
+		release(false);
+		return false;
+	}
+	/* The cursor window, until it says otherwise - unless the driver padded
+	 * the rows after all, which only an overlay plane can be told of (ADDFB2
+	 * takes the pitch) */
+	G.cursor = G.pitch == (uint32_t)G.cw * 4;
+	if (!G.cursor) {
+		fprintf(stderr, "portkeys: rows of %u bytes, not %d; using an overlay plane\n",
+		        G.pitch, G.cw * 4);
+		if (!overlay_setup()) {
+			fprintf(stderr, "portkeys: no overlay plane either; no bar\n");
+			release(false);
+			return false;
+		}
+	}
+	B.drawn_a = -1;     /* nothing of ours on these buffers yet */
+	fprintf(stderr, "portkeys: showing the bar over pid %d (%dx%d)\n", G.pid, G.pw, G.ph);
+	return true;
 }
 
 /* The fallback when the CRTC has no cursor window, or one that will not take
@@ -577,6 +602,218 @@ static void bar_show(int kind, int level, int max)
 	B.live = true;
 }
 
+/* ---- "Getting hot" over a port ----------------------------------------------
+ *
+ * DESIGN.md 11.23's notice with the thermometer, which Diatom shows over a
+ * game when the chip passes the kernel's second trip. The launcher renders it
+ * as it hands over to the port (src/portmenu.h), in both themes, and here it
+ * is read once at the start, scaled to the panel as Diatom scales it (the
+ * launcher's 1024 units to 640) and kept. When src/heat.h's rules say so -
+ * two readings at 85 C or more, 5 s apart, then quiet until the chip has
+ * cooled under 80 C and five minutes have passed - it goes up for
+ * DS_MS_HOLD_HEAT where Diatom puts it, at the bottom, centered, on the
+ * cursor window the bar uses: the bar, when a volume key is pressed under it,
+ * takes the window and gives it back. The chip is read with the battery, every
+ * 5 s, so it costs the port nothing it was not already paying. */
+
+static int read_level(const char *path);   /* with the battery, below */
+
+static heat_state H;
+static struct {
+	uint32_t *px[DS_THEMES];     /* premultiplied ARGB, landscape, panel pixels */
+	int w[DS_THEMES], h[DS_THEMES];
+	bool live, drawn;            /* up (or under the bar), and on the window now */
+	long until;
+	int theme;                   /* the theme it went up in */
+} N;
+
+/* The chip's temperature in mC, as the launcher reads it (plat_chip_temp):
+ * /tmp/zyperos_fake_temp (C or mC) standing in, else the hotter of the
+ * soc-thermal and gpu-thermal zones */
+static bool chip_temp(int *mc)
+{
+	static char zone[2][48];
+	static int nzones = -1;
+	int v = read_level("/tmp/zyperos_fake_temp"), best = -1, i;
+
+	if (v >= 0) {
+		*mc = v < 1000 ? v * 1000 : v;
+		return true;
+	}
+	if (nzones < 0) {
+		nzones = 0;
+		for (i = 0; i < 8 && nzones < 2; i++) {
+			char path[64], type[32] = "";
+			ssize_t r;
+			int fd;
+
+			snprintf(path, sizeof path, "/sys/class/thermal/thermal_zone%d/type", i);
+			if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) continue;
+			r = read(fd, type, sizeof type - 1);
+			close(fd);
+			type[r > 0 ? r : 0] = '\0';
+			if (strncmp(type, "soc-thermal", 11) && strncmp(type, "gpu-thermal", 11)) continue;
+			snprintf(zone[nzones++], sizeof zone[0], "/sys/class/thermal/thermal_zone%d/temp", i);
+		}
+	}
+	for (i = 0; i < nzones; i++)
+		if ((v = read_level(zone[i])) > best) best = v;
+	if (best < 0) return false;
+	*mc = best;
+	return true;
+}
+
+/* One theme's notice from the launcher's file: scaled by PANEL_S with a
+ * bilinear sample of the premultiplied pixels, which keeps the text's edges
+ * as Diatom's GPU does */
+static void notice_load(int theme, const char *path)
+{
+	FILE *f = fopen(path, "rb");
+	uint8_t hdr[8];
+	uint32_t *src = NULL, *dst;
+	int sw, sh, w, h, x, y;
+
+	if (!f) return;
+	if (fread(hdr, 1, 8, f) != 8 || memcmp(hdr, "DTOV", 4)) goto done;
+	sw = hdr[4] | hdr[5] << 8;
+	sh = hdr[6] | hdr[7] << 8;
+	w = (int)(sw * PANEL_S + 0.5f);
+	h = (int)(sh * PANEL_S + 0.5f);
+	if (sw <= 0 || sh <= 0 || w < 2 || h < 2 || sw > 1024 || sh > 768) goto done;
+	if (!(src = malloc((size_t)sw * sh * 4)) || fread(src, 4, (size_t)sw * sh, f) != (size_t)sw * sh) goto done;
+	for (x = 0; x < sw * sh; x++) {              /* BGRA bytes are ARGB words: premultiplied */
+		uint32_t c = src[x], a = c >> 24;
+
+		src[x] = a << 24 | (((c >> 16) & 255) * a / 255) << 16 | (((c >> 8) & 255) * a / 255) << 8 |
+		         ((c & 255) * a / 255);
+	}
+	if (!(dst = malloc((size_t)w * h * 4))) goto done;
+	for (y = 0; y < h; y++)
+		for (x = 0; x < w; x++) {
+			float fx = (x + 0.5f) / PANEL_S - 0.5f, fy = (y + 0.5f) / PANEL_S - 0.5f;
+			int x0 = fx < 0 ? 0 : (int)fx, y0 = fy < 0 ? 0 : (int)fy;
+			int x1 = x0 + 1 < sw ? x0 + 1 : x0, y1 = y0 + 1 < sh ? y0 + 1 : y0;
+			float tx = fx - x0, ty = fy - y0;
+			uint32_t c00 = src[y0 * sw + x0], c10 = src[y0 * sw + x1];
+			uint32_t c01 = src[y1 * sw + x0], c11 = src[y1 * sw + x1], out = 0;
+			int k;
+
+			if (tx < 0) tx = 0;
+			if (ty < 0) ty = 0;
+			for (k = 0; k < 32; k += 8) {
+				float v = (((c00 >> k) & 255) * (1 - tx) + ((c10 >> k) & 255) * tx) * (1 - ty) +
+				          (((c01 >> k) & 255) * (1 - tx) + ((c11 >> k) & 255) * tx) * ty;
+
+				out |= (uint32_t)(v + 0.5f) << k;
+			}
+			dst[(size_t)y * w + x] = out;
+		}
+	N.px[theme] = dst;
+	N.w[theme] = w;
+	N.h[theme] = h;
+done:
+	free(src);
+	fclose(f);
+}
+
+/* The most either theme's notice needs of a buffer, turned, in rows of its own
+ * width padded to 16 pixels, as the bar's are (buffers) */
+static size_t notice_bytes(void)
+{
+	size_t most = 0;
+	int t;
+
+	for (t = 0; t < DS_THEMES; t++) {
+		size_t n = (size_t)((N.h[t] + 15) / 16 * 16) * 4 * (size_t)N.w[t];
+
+		if (N.px[t] && n > most) most = n;
+	}
+	return most;
+}
+
+/* The notice on the cursor window, where Diatom puts it on the landscape
+ * screen: centered, its bottom a 24th of the height up. Turned onto the
+ * portrait panel as the bar is (put); as it is on a landscape display (QEMU's).
+ * False when it did not go up. */
+static bool notice_put(void)
+{
+	int t = N.theme, w = N.w[t], h = N.h[t], x, y;
+	bool turned = G.ph > G.pw;
+	int lw = turned ? G.ph : G.pw, lh = turned ? G.pw : G.ph;
+	int lx = (lw - w) / 2, ly = lh - h - lh / 24;
+	int bw_ = turned ? (h + 15) / 16 * 16 : (w + 15) / 16 * 16, bh_ = turned ? w : h;
+	int next = G.cur ^ 1;
+	uint32_t *dst = G.map[next];
+	struct drm_mode_cursor c;
+
+	if (!N.px[t] || !G.cursor || (size_t)bw_ * 4 * bh_ > G.size) return false;
+	memset(dst, 0, (size_t)bw_ * 4 * bh_);
+	for (y = 0; y < h; y++)
+		for (x = 0; x < w; x++) {
+			uint32_t v = N.px[t][(size_t)y * w + x];
+
+			if (turned) dst[(size_t)(w - 1 - x) * bw_ + y] = v;
+			else        dst[(size_t)y * bw_ + x] = v;
+		}
+	memset(&c, 0, sizeof c);
+	c.flags = DRM_MODE_CURSOR_BO | DRM_MODE_CURSOR_MOVE;
+	c.crtc_id = G.crtc;
+	c.x = turned ? ly : lx;
+	c.y = turned ? G.ph - lx - w : ly;
+	c.width = (uint32_t)bw_;
+	c.height = (uint32_t)bh_;
+	c.handle = G.handle[next];
+	if (ioctl(G.fd, DRM_IOCTL_MODE_CURSOR, &c) < 0) {
+		fprintf(stderr, "portkeys: the heat notice did not go up (%s)\n", strerror(errno));
+		return false;
+	}
+	G.cur = next;
+	return true;
+}
+
+/* The chip read, with the battery's cadence (heat_poll keeps HEAT_POLL_MS),
+ * and the notice up when it is due */
+static void heat_check(long now)
+{
+	heat_poll(&H, (unsigned)now, chip_temp);
+	if (!heat_take(&H, (unsigned)now)) return;
+	N.theme = pkset_bar_theme(appearance_read ? appearance_word : NULL, time(NULL), THEME_FILE);
+	if (!N.px[N.theme]) {
+		fprintf(stderr, "portkeys: getting hot (%d mC), but no notice to show\n", H.mc);
+		return;
+	}
+	fprintf(stderr, "portkeys: getting hot (%d mC); the notice over the port\n", H.mc);
+	N.live = true;
+	N.drawn = false;
+	N.until = now + DS_MS_HOLD_HEAT;
+}
+
+/* The notice's life, when the bar is not on the window: how long until the
+ * next look, -1 for nothing up */
+static int notice_tick(long now)
+{
+	if (!N.live) return -1;
+	if (now >= N.until) {
+		N.live = false;
+		if (N.drawn) release(false);
+		N.drawn = false;
+		return -1;
+	}
+	if (!N.drawn) {
+		if ((!held() && !borrow()) || !notice_put()) {
+			N.live = false;
+			release(false);
+			return -1;
+		}
+		N.drawn = true;
+		B.drawn_a = -1;      /* the bar's next frame goes up whatever it was */
+	} else if (!held()) {
+		N.live = N.drawn = false;
+		return -1;
+	}
+	return (int)(N.until - now);
+}
+
 /* One frame of the bar's life, if it changed; how long until the next. While
  * it slides or fades that is a refresh, 16 ms, and a frame the window did not
  * take is tried again at the next. Every frame first asks whether the copy is
@@ -592,7 +829,10 @@ static int bar_tick(void)
 	float a, rise;
 	bool alive;
 
-	if (!B.live || !held()) return -1;
+	heat_check(now);
+	if (!B.live) return notice_tick(now);
+	if (!held()) return -1;
+	N.drawn = false;             /* the bar has the window */
 	alive = osdbar_envelope((uint32_t)(now - B.shown), (uint32_t)(now - B.changed), &a, &rise);
 	if (!alive) a = 0, rise = 0;
 	if (a != B.drawn_a || rise != B.drawn_rise || B.kind != B.drawn_kind || B.level != B.drawn_level ||
@@ -605,6 +845,11 @@ static int bar_tick(void)
 		B.drawn_theme = B.theme;
 	}
 	if (!alive) {
+		/* The heat notice back on the window, if it is still up */
+		if (N.live && now < N.until) {
+			B.live = false;
+			return notice_tick(now);
+		}
 		release(false);
 		return -1;
 	}
@@ -690,6 +935,356 @@ static bool batt_now(int *pct, bool *charging)
 	return true;
 }
 
+/* ---- the in-game menu, over a port that has one -----------------------------
+ *
+ * OpenBOR has no libretro core, so it runs as a program of its own, as DraStic
+ * and the standalone Flycast do when a card adds them, and the launcher, which
+ * draws the in-game menu over a game Diatom runs, has exited for it. With
+ * --menu (launch.sh gives it for any "run:" program, src/portmenu.h), MENU on its own
+ * (pkkeys_menu_tapped: pressed and let go with no brightness step under it,
+ * as Diatom reads it) brings the launcher back for its menu, src/portmenu.h:
+ *
+ *   1. The port stops where it is, its whole process group (SIGSTOP): the
+ *      game is paused, its sound with it, and its last frame stays lit, since
+ *      nothing flips it; a helper its script started (gptokeyb) stops with
+ *      it. OpenBOR takes a second's gap as one tick of game time
+ *      (getinterval), so nothing in the game moved meanwhile.
+ *   2. That frame is saved, as the panel shows it, for the menu's backdrop
+ *      (still_save), and the port's display is let go of: DROP_MASTER on the
+ *      borrowed copy of its file, which root may do for a file it did not
+ *      open, as the bar's borrow is (see the top of this file).
+ *   3. The launcher starts with --port-menu, takes the display as it takes it
+ *      from the boot splash, shows the in-game menu over the saved frame and
+ *      exits with what was chosen. It reads the keys itself meanwhile, the
+ *      volume ones too, and saves the levels in the same database; this
+ *      process waits for it and reads nothing.
+ *   4. The display goes back to the port (SET_MASTER on the same copy), its
+ *      frame is put back on the panel if the launcher left another, what was
+ *      pressed for the menu is emptied out of the input queues of every
+ *      process in the group (port_input_flush), and it goes on (SIGCONT).
+ *      The levels are
+ *      read again, and the keys here resynced (in the loop).
+ *   5. Quit: launch.sh ends the port, as it ends one for POWER but without
+ *      powering off (SIGUSR2), and the shelf comes back. POWER in the menu,
+ *      or the battery run flat there: SIGUSR1, as POWER over the port.
+ *
+ * While the port plays none of this costs it anything: a MENU tap is a key
+ * read here like any other, and the port's frames are its own. */
+
+static const char *menu_elf, *menu_tag, *menu_game;   /* --menu ELF TAG GAME */
+
+static void end_port(void);          /* with the power key, below */
+
+/* The process stopped, as /proc says: state T. The name in its stat line can
+ * hold spaces and parentheses, so the state is read after the last ')'. */
+static bool stopped(int pid)
+{
+	char path[64], buf[512], *p;
+	ssize_t r;
+	int fd;
+
+	snprintf(path, sizeof path, "/proc/%d/stat", pid);
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) return false;
+	r = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (r <= 0) return false;
+	buf[r] = '\0';
+	p = strrchr(buf, ')');
+	return p && p[1] == ' ' && (p[2] == 'T' || p[2] == 't');
+}
+
+static bool write_all(int fd, const void *buf, size_t n)
+{
+	const uint8_t *b = buf;
+
+	while (n) {
+		ssize_t w = write(fd, b, n);
+
+		if (w < 0 && errno == EINTR) continue;
+		if (w <= 0) return false;
+		b += w;
+		n -= (size_t)w;
+	}
+	return true;
+}
+
+/* The frame on the panel, framebuffer `fb_id`, saved to PORT_MENU_STILL as
+ * the panel shows it. Its buffer is mapped as the card's own dumb buffer,
+ * which Mesa makes a scanout buffer as on this panel, or else as the dma-buf
+ * it is; a frame in any other form than plain 32-bit rows is not saved, and
+ * the menu then sits on the theme's ground instead. Read once, 1.2 MB of
+ * write-combined memory on the Pixel 2. */
+static bool still_save(uint32_t fb_id)
+{
+	struct drm_mode_fb_cmd2 f;
+	struct drm_mode_map_dumb m;
+	uint8_t *map = MAP_FAILED, *out = NULL, hdr[8];
+	size_t size = 0, row;
+	int dmabuf = -1, fd;
+	uint32_t y;
+	bool ok = false;
+
+	memset(&f, 0, sizeof f);
+	f.fb_id = fb_id;
+	if (ioctl(G.fd, DRM_IOCTL_MODE_GETFB2, &f) < 0 || !f.handles[0]) {
+		fprintf(stderr, "portkeys: the port's frame cannot be read (%s)\n", strerror(errno));
+		return false;
+	}
+	row = (size_t)f.width * 4;
+	if ((f.pixel_format != 0x34325258 && f.pixel_format != 0x34325241) ||   /* XRGB8888, ARGB8888 */
+	    ((f.flags & DRM_MODE_FB_MODIFIERS) && f.modifier[0] != 0) ||          /* not linear */
+	    !f.width || !f.height || f.width > 4096 || f.height > 4096 || f.pitches[0] < row) {
+		fprintf(stderr, "portkeys: the port's frame is format %08x, modifier %llx; not saved\n",
+		        f.pixel_format, (unsigned long long)f.modifier[0]);
+		goto done;
+	}
+	size = (size_t)f.offsets[0] + (size_t)f.pitches[0] * f.height;
+	memset(&m, 0, sizeof m);
+	m.handle = f.handles[0];
+	if (ioctl(G.fd, DRM_IOCTL_MODE_MAP_DUMB, &m) == 0)
+		map = mmap(NULL, size, PROT_READ, MAP_SHARED, G.fd, (off_t)m.offset);
+	if (map == MAP_FAILED) {
+		struct drm_prime_handle ph = { .handle = f.handles[0], .flags = DRM_CLOEXEC };
+
+		if (ioctl(G.fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &ph) == 0) {
+			dmabuf = ph.fd;
+			map = mmap(NULL, size, PROT_READ, MAP_SHARED, dmabuf, 0);
+		}
+	}
+	if (map == MAP_FAILED) {
+		fprintf(stderr, "portkeys: the port's frame cannot be mapped (%s); not saved\n", strerror(errno));
+		goto done;
+	}
+	if (!(out = malloc(row * f.height))) goto done;
+	if (dmabuf >= 0) {
+		struct dma_buf_sync sy = { DMA_BUF_SYNC_START | DMA_BUF_SYNC_READ };
+
+		ioctl(dmabuf, DMA_BUF_IOCTL_SYNC, &sy);
+	}
+	for (y = 0; y < f.height; y++)
+		memcpy(out + y * row, map + f.offsets[0] + (size_t)y * f.pitches[0], row);
+	if (dmabuf >= 0) {
+		struct dma_buf_sync sy = { DMA_BUF_SYNC_END | DMA_BUF_SYNC_READ };
+
+		ioctl(dmabuf, DMA_BUF_IOCTL_SYNC, &sy);
+	}
+	memcpy(hdr, PORT_MENU_MAGIC, 4);
+	hdr[4] = (uint8_t)f.width;  hdr[5] = (uint8_t)(f.width >> 8);
+	hdr[6] = (uint8_t)f.height; hdr[7] = (uint8_t)(f.height >> 8);
+	fd = open(PORT_MENU_STILL ".tmp", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+	ok = fd >= 0 && write_all(fd, hdr, sizeof hdr) && write_all(fd, out, row * f.height);
+	if (fd >= 0 && close(fd)) ok = false;
+	ok = ok && rename(PORT_MENU_STILL ".tmp", PORT_MENU_STILL) == 0;
+	if (!ok) unlink(PORT_MENU_STILL ".tmp");
+done:
+	if (map != MAP_FAILED) munmap(map, size);
+	if (dmabuf >= 0) close(dmabuf);
+	free(out);
+	/* The handle GETFB2 made, in the port's file: a new one of its own, so
+	 * closing it leaves the port's handles to the same buffer as they were */
+	{
+		struct drm_gem_close gc = { .handle = f.handles[0] };
+
+		ioctl(G.fd, DRM_IOCTL_GEM_CLOSE, &gc);
+	}
+	return ok;
+}
+
+/* The connector the panel's CRTC lights, for putting the port's frame back */
+static uint32_t crtc_connector(void)
+{
+	struct drm_mode_card_res res;
+	uint32_t ids[8];
+	unsigned i;
+
+	memset(&res, 0, sizeof res);
+	res.count_connectors = 8;
+	res.connector_id_ptr = (uintptr_t)ids;
+	if (ioctl(G.fd, DRM_IOCTL_MODE_GETRESOURCES, &res) < 0) return 0;
+	for (i = 0; i < res.count_connectors && i < 8; i++) {
+		struct drm_mode_get_connector c = { .connector_id = ids[i] };
+		struct drm_mode_get_encoder e;
+
+		if (ioctl(G.fd, DRM_IOCTL_MODE_GETCONNECTOR, &c) < 0 || !c.encoder_id) continue;
+		memset(&e, 0, sizeof e);
+		e.encoder_id = c.encoder_id;
+		if (ioctl(G.fd, DRM_IOCTL_MODE_GETENCODER, &e) == 0 && e.crtc_id == G.crtc) return ids[i];
+	}
+	return 0;
+}
+
+/* What was pressed while the menu was up was the launcher's, and the port has
+ * it all queued for the moment it goes on: the A that chose Continue would be
+ * an attack. So would a helper the port's script started beside it, which
+ * reads the pad too - gptokeyb turning it into keys, DraStic's stylus pad -
+ * and would type it all into the game. Each event device any process of the
+ * port's group has open has the clock it is read on changed and changed
+ * back, which empties that queue and leaves the kernel's SYN_DROPPED in it
+ * (evdev_set_clk_type). SDL reads that as events lost and asks the device
+ * what is down now, so the port sees the buttons as they are and nothing
+ * pressed for the menu; a helper that does not read SYN_DROPPED so (gptokeyb)
+ * loses only a release that came while the menu was up. Each is left on the
+ * wall clock, the kernel's own default, which SDL does not change. */
+static int input_flush_pid(int pid)
+{
+	char dir[64];
+	DIR *fds;
+	struct dirent *fe;
+	int flushed = 0, pidfd;
+
+	snprintf(dir, sizeof dir, "/proc/%d/fd", pid);
+	if (!(fds = opendir(dir))) return 0;
+	if ((pidfd = (int)syscall(SYS_pidfd_open, pid, 0)) < 0) {
+		closedir(fds);
+		return 0;
+	}
+	while ((fe = readdir(fds))) {
+		char link[352], target[64];
+		ssize_t r;
+		int fd, mono = CLOCK_MONOTONIC, wall = CLOCK_REALTIME;
+
+		if (fe->d_name[0] == '.') continue;
+		snprintf(link, sizeof link, "%s/%s", dir, fe->d_name);
+		if ((r = readlink(link, target, sizeof target - 1)) <= 0) continue;
+		target[r] = '\0';
+		if (strncmp(target, "/dev/input/event", 16)) continue;
+		if ((fd = (int)syscall(SYS_pidfd_getfd, pidfd, atoi(fe->d_name), 0)) < 0) continue;
+		ioctl(fd, EVIOCSCLOCKID, &mono);
+		ioctl(fd, EVIOCSCLOCKID, &wall);
+		close(fd);
+		flushed++;
+	}
+	close(pidfd);
+	closedir(fds);
+	return flushed;
+}
+
+/* The process group of a process, from its stat line (after the name) */
+static int pgrp_of(int pid)
+{
+	char path[64], buf[512], *p, state;
+	int ppid = 0, pg = -1;
+	ssize_t r;
+	int fd;
+
+	snprintf(path, sizeof path, "/proc/%d/stat", pid);
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) return -1;
+	r = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (r <= 0) return -1;
+	buf[r] = '\0';
+	if (!(p = strrchr(buf, ')')) || sscanf(p + 1, " %c %d %d", &state, &ppid, &pg) != 3) return -1;
+	return pg;
+}
+
+static void port_input_flush(int pg)
+{
+	DIR *proc = opendir("/proc");
+	struct dirent *pe;
+	int queues = 0, procs = 0;
+
+	while (proc && (pe = readdir(proc))) {
+		int pid = atoi(pe->d_name), n;
+
+		if (pid <= 1 || pgrp_of(pid) != pg) continue;
+		if ((n = input_flush_pid(pid)) > 0) procs++;
+		queues += n;
+	}
+	if (proc) closedir(proc);
+	fprintf(stderr, "portkeys: %d input queue(s) of %d process(es) emptied of the menu's presses\n",
+	        queues, procs);
+}
+
+/* MENU tapped: the in-game menu, as at the top of this section. 0 when there
+ * was none (no --menu, or no port holding the display); 1 when it was up, and
+ * this process's keys and levels are then to be read again. */
+static int menu_show(void)
+{
+	struct drm_mode_crtc c;
+	uint32_t conn;
+	pid_t pg, child;
+	long t0 = now_ms();
+	int pid, status = 0, how = PORT_MENU_CONTINUE, i;
+
+	if (!menu_elf) return 0;
+	/* The bar down and let go of, and the display found afresh */
+	release(false);
+	if (!master_copy()) {
+		fprintf(stderr, "portkeys: MENU, but no program holds the display; no menu\n");
+		return 0;
+	}
+	pid = G.pid;
+	pg = getpgid(pid);
+	if (pg <= 1 || pg == getpgrp()) {
+		fprintf(stderr, "portkeys: MENU, but pid %d is not a port's; no menu\n", pid);
+		release(false);
+		return 0;
+	}
+	fprintf(stderr, "portkeys: MENU, the in-game menu over pid %d\n", pid);
+	kill(-pg, SIGSTOP);
+	for (i = 0; i < 50 && !stopped(pid); i++) usleep(2000);
+	/* A refresh more, for a flip it had asked for to land: then the frame on
+	 * the panel is the one it stopped on */
+	usleep(20000);
+	memset(&c, 0, sizeof c);
+	c.crtc_id = G.crtc;
+	if (ioctl(G.fd, DRM_IOCTL_MODE_GETCRTC, &c) < 0) c.fb_id = 0;
+	unlink(PORT_MENU_STILL);
+	if (c.fb_id) still_save(c.fb_id);
+	conn = crtc_connector();
+	if (ioctl(G.fd, DRM_IOCTL_DROP_MASTER, 0) < 0) {
+		fprintf(stderr, "portkeys: cannot let go of the port's display (%s); no menu\n", strerror(errno));
+		kill(-pg, SIGCONT);
+		release(false);
+		return 0;
+	}
+
+	child = fork();
+	if (child == 0) {
+		execl(menu_elf, menu_elf, PORT_MENU_ARG, menu_tag, menu_game, (char *)NULL);
+		_exit(127);
+	}
+	if (child < 0) fprintf(stderr, "portkeys: cannot start the menu (%s)\n", strerror(errno));
+	while (child > 0 && waitpid(child, &status, 0) < 0 && errno == EINTR) {}
+	if (child > 0 && WIFEXITED(status) &&
+	    (WEXITSTATUS(status) == PORT_MENU_QUIT || WEXITSTATUS(status) == PORT_MENU_POWER))
+		how = WEXITSTATUS(status);
+	else if (child > 0 && !(WIFEXITED(status) && WEXITSTATUS(status) == PORT_MENU_CONTINUE))
+		fprintf(stderr, "portkeys: the menu ended with status %d; the game goes on\n", status);
+
+	/* The display back to the port, and its frame on the panel. The
+	 * launcher's SDL puts back the frame it found as it closes its window;
+	 * one that did not (a crash) left the panel dark or on its own picture */
+	for (i = 0; i < 150 && ioctl(G.fd, DRM_IOCTL_SET_MASTER, 0) < 0; i++) usleep(2000);
+	if (i == 150) {
+		fprintf(stderr, "portkeys: cannot give the display back to the port (%s)\n", strerror(errno));
+	} else if (c.fb_id && c.mode_valid && conn) {
+		struct drm_mode_crtc now = { .crtc_id = G.crtc };
+
+		if (ioctl(G.fd, DRM_IOCTL_MODE_GETCRTC, &now) < 0 || now.fb_id != c.fb_id || !now.mode_valid) {
+			c.set_connectors_ptr = (uintptr_t)&conn;
+			c.count_connectors = 1;
+			if (ioctl(G.fd, DRM_IOCTL_MODE_SETCRTC, &c) < 0)
+				fprintf(stderr, "portkeys: cannot put the port's frame back (%s)\n", strerror(errno));
+		}
+	}
+	port_input_flush(pg);
+	release(false);
+	kill(-pg, SIGCONT);
+	/* The launcher's volume and brightness keys, saved where these are */
+	pk_levels_load(db, BACKLIGHT, &L);
+	fprintf(stderr, "portkeys: the menu was up %ld ms: %s\n", now_ms() - t0,
+	        how == PORT_MENU_QUIT ? "Quit" : how == PORT_MENU_POWER ? "POWER" : "Continue");
+	if (how == PORT_MENU_QUIT) {
+		pid_t parent = getppid();
+
+		if (parent > 1) kill(parent, SIGUSR2);
+	} else if (how == PORT_MENU_POWER) {
+		end_port();
+	}
+	return 1;
+}
+
 /* Devices: the poll set's first n entries, and for each whether it has MENU
  * or the volume keys, whether the kernel's queue for it overflowed
  * (SYN_DROPPED) and what it sent since is still to be skipped, and whether
@@ -755,6 +1350,20 @@ static void power_read(void)
 		}
 	}
 	if (r == 0 || (r < 0 && errno != EAGAIN && errno != EINTR)) {
+		close(powfd);
+		powfd = -1;
+	}
+}
+
+/* After the in-game menu (menu_show), which read POWER itself: what the power
+ * key's file queued meanwhile was the launcher's, and is let go of unread */
+static void power_drain(void)
+{
+	struct input_event ev[16];
+	ssize_t r = 1;
+
+	while (powfd >= 0 && (r = read(powfd, ev, sizeof ev)) > 0) {}
+	if (powfd >= 0 && (r == 0 || (r < 0 && errno != EAGAIN && errno != EINTR))) {
 		close(powfd);
 		powfd = -1;
 	}
@@ -916,6 +1525,16 @@ int main(int argc, char **argv)
 	DIR *d = opendir("/dev/input");
 	struct dirent *e;
 
+	/* --menu ELF TAG GAME first, from launch.sh for a port with the in-game
+	 * menu (OpenBOR): the launcher to show it, the system's tag and the
+	 * game, for menu_show */
+	if (argc > 4 && !strcmp(argv[1], "--menu")) {
+		menu_elf = argv[2];
+		menu_tag = argv[3];
+		menu_game = argv[4];
+		argv += 4;
+		argc -= 4;
+	}
 	osdbar_size(PANEL_S, &bw, &bh);
 	pkkeys_init(&K);
 	mixer = open("/dev/snd/controlC0", O_RDWR | O_CLOEXEC);
@@ -943,6 +1562,10 @@ int main(int argc, char **argv)
 	 * library, from launch.sh: $SHARED_USERDATA_PATH/.zyperos/library.db */
 	appearance_read = pkset_text(db, "appearance", appearance_word, sizeof appearance_word);
 	pkset_zone_load(argc > 2 ? argv[2] : NULL);
+	/* The heat notice the launcher left, in both themes (heat_check) */
+	heat_init(&H);
+	notice_load(DS_LIGHT, PORT_HEAT_LIGHT);
+	notice_load(DS_DARK, PORT_HEAT_DARK);
 
 	/* Every event device with a volume key or MENU (BTN_TRIGGER_HAPPY1, on
 	 * the joypad), and the headphone switch: found by what they report
@@ -1051,6 +1674,15 @@ int main(int argc, char **argv)
 		for (i = 0; i < n; i++) unreliable |= dropped[i] || resync[i];
 		unreliable |= lost_menu || lost_vol;
 		if (unreliable || !keys_pass(keys, nk, cutoff)) resync_devices(&plugged);
+
+		/* MENU on its own: the in-game menu, over a port that has one
+		 * (menu_show). What was pressed while it was up was the launcher's,
+		 * POWER and the volume keys too, so this side's keys start again
+		 * from what is down now. */
+		if (pkkeys_menu_tapped(&K) && menu_show()) {
+			power_drain();
+			resync_devices(&plugged);
+		}
 
 		if (plugged) apply_volume();
 

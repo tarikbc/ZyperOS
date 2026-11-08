@@ -451,6 +451,77 @@ static void the_resync(void)
 	ck(r.l.bright == 6 && r.l.vol == 4, "MENU found down at a resync: VOL- is the backlight; brightness %d", r.l.bright);
 }
 
+/* ---- MENU on its own: the in-game menu over a port -------------------------- */
+
+static void the_menu_tap(void)
+{
+	rig r;
+	pk_key e[2];
+	bool t;
+
+	/* Pressed and let go, nothing under it: one tap, taken once */
+	rig_init(&r, 4, 7);
+	tap(&r, PK_BTN_MENU, 120);
+	t = pkkeys_menu_tapped(&r.k);
+	ck(t && !pkkeys_menu_tapped(&r.k) && r.n == 0, "MENU alone: one tap, taken once, no step");
+
+	/* MENU+VOL- is the backlight, and MENU let go after it opens nothing */
+	rig_init(&r, 4, 7);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 1);
+	pass(&r, e, 1, r.now * 1000 + 100);
+	tap(&r, PK_KEY_VOLUMEDOWN, 80);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 0);
+	pass(&r, e, 1, r.now * 1000 + 100);
+	ck(r.l.bright == 6 && !pkkeys_menu_tapped(&r.k), "MENU+VOL-: the backlight, and no tap; brightness %d",
+	   r.l.bright);
+
+	/* The chord from px2-input, both down in one pass, both up in the next */
+	rig_init(&r, 4, 7);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 1);
+	e[1] = ev(r.now * 1000 + 5, PK_KEY_VOLUMEUP, 1);
+	pass(&r, e, 2, r.now * 1000 + 100);
+	run_to(&r, r.now + 80);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 0);
+	e[1] = ev(r.now * 1000 + 5, PK_KEY_VOLUMEUP, 0);
+	pass(&r, e, 2, r.now * 1000 + 100);
+	ck(r.l.bright == 8 && !pkkeys_menu_tapped(&r.k), "menu+volup in one pass: no tap; brightness %d", r.l.bright);
+
+	/* Let go of MENU first, then VOL+: the volume, and a tap all the same,
+	 * as a VOL+ after MENU's release is no chord */
+	rig_init(&r, 4, 7);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 1);
+	e[1] = ev(r.now * 1000 + 40000, PK_BTN_MENU, 0);
+	pass(&r, e, 2, r.now * 1000 + 50000);
+	r.now += 60;
+	tap(&r, PK_KEY_VOLUMEUP, 80);
+	ck(r.l.vol == 5 && pkkeys_menu_tapped(&r.k), "MENU tapped, then VOL+: a tap and the volume; volume %d", r.l.vol);
+
+	/* The kernel's autorepeat of MENU is no second press */
+	rig_init(&r, 4, 7);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 1);
+	e[1] = ev(r.now * 1000 + 300000, PK_BTN_MENU, 2);
+	pass(&r, e, 2, r.now * 1000 + 400000);
+	ck(!pkkeys_menu_tapped(&r.k) && r.k.menu_armed, "MENU held, the kernel repeating it: still one press, no tap yet");
+
+	/* MENU found down at a resync (the menu closed with MENU still held, or
+	 * events lost): its release was never pressed here, and opens nothing */
+	rig_init(&r, 4, 7);
+	pkkeys_menu_state(&r.k, true);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 0);
+	pass(&r, e, 1, r.now * 1000 + 100);
+	ck(!pkkeys_menu_tapped(&r.k) && !r.k.menu_held, "MENU found down at a resync, then let go: no tap");
+
+	/* Pressed before a resync and let go after it: no tap either */
+	rig_init(&r, 4, 7);
+	e[0] = ev(r.now * 1000, PK_BTN_MENU, 1);
+	pass(&r, e, 1, r.now * 1000 + 100);
+	pkkeys_init(&r.k);
+	pkkeys_menu_state(&r.k, true);
+	e[0] = ev(r.now * 1000 + 1000, PK_BTN_MENU, 0);
+	pass(&r, e, 1, r.now * 1000 + 2000);
+	ck(!pkkeys_menu_tapped(&r.k), "MENU pressed, a resync, MENU let go: no tap");
+}
+
 /* ---- the steps and the log ------------------------------------------------------ */
 
 static void the_log(void)
@@ -632,6 +703,7 @@ int main(void)
 	the_kernel_repeat();
 	the_clock();
 	the_resync();
+	the_menu_tap();
 	the_log();
 	the_database();
 	the_pending_order();
