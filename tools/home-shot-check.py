@@ -196,6 +196,23 @@ for layout in ('spotlight','gallery'):
         assert same(pct.crop((0,0,560,80)),plain.crop((0,0,560,80)))
 shot(env,'setting-battery-back','--menu','Battery Icon','--press','left','--theme','light')
 assert same(shot(env,'battery-bars','--home','spotlight','--theme','light'),bars)
+# MENU > Battery Icon > Time Left (src/battery_eta.h): icon= is the setting
+# for one shot, eta= the minutes the estimate gives. With one, the corner
+# writes the time where the percentage went and nothing else moves; with none
+# yet (the first minutes after a start) it writes the percentage itself, and
+# on Bars an estimate is never written.
+def corner(name, status):
+    file = OUT/(name+'.png')
+    run(env,'--shot',str(file),'--screen','systems','--home','spotlight','--theme','light','--status',status)
+    return Image.open(file).convert('RGBA')
+pct=corner('time-pct',STATUS+' icon=percentage')
+assert same(corner('time-none',STATUS+' icon=time'),pct), 'Time Left with no estimate must write the percentage'
+left=corner('time-left',STATUS+' icon=time eta=205')
+assert not same(left,pct), 'Time Left with an estimate must write the time'
+assert same(left.crop((0,80,1024,768)),pct.crop((0,80,1024,768))), 'Time Left moved something below the corner'
+assert same(left.crop((0,0,560,80)),pct.crop((0,0,560,80))), 'Time Left moved something left of the corner'
+assert same(corner('time-bars',STATUS+' icon=bars eta=205'),bars), 'Bars must never write a time'
+assert not same(corner('time-on-cable',STATUS+' icon=time chg eta=45'),corner('time-on-cable-pct',STATUS+' icon=percentage chg')), 'the time to full on the cable'
 # One, two, empty and an unknown system remain valid native screens.
 for name,tags in [('one',{'GB'}),('two',{'GB','GBA'}),('empty',set())]:
     _,small=fixture(name,tags)

@@ -534,9 +534,12 @@ menus:
 - **Charging while off** (11.25): asleep, his eyes and mouth shut, breathing
   slowly, his z's going up.
 
-Apart from that pop-up he is never on the shelf; he is never over a game,
-never more than one at a time, and his lime is the system's lime: he does
-not get a color of his own.
+- **An achievement won** (11.7): over a game, at the right end of the unlock's
+  notice, a still picture of him as he rests in the menus. *(2026-11-07.)*
+
+Apart from that pop-up he is never on the shelf; he is over a game only in
+that notice, never more than one at a time, and his lime is the system's
+lime: he does not get a color of his own.
 
 In Beard his beard is the ground's own white, and drawn flat he loses his
 outline; there he casts the **focus-small** shadow (8 down, 20 blur, ink at
@@ -722,11 +725,33 @@ left-aligned beside it. A progress notice is the achievement's name in
 **meta** **text-dim**, a strip **bar** high in **accent-ink** on **track**,
 and the count ("74 / 100") in **meta** **text** under it. Notices take turns:
 each has its time and a 300 ms gap before the next; unlocks go ahead of
-progress. The achievements list (MENU > Cheevos) has the badge at the start
+progress. The achievements list (MENU > Achievements) has the badge at the start
 of every row, greyed and faded until earned, and the count where the points
 are while it moves. *(My picks in the achievements lab,
 docs/design/mock/cheevos-lab.html, 2026-11-05: badge at the left, strip, on
 every row.)*
+
+**The plain badge.** Where the card has no badge for an achievement, none yet
+or never (a handheld with no network has none until a computer puts them
+there, `tools/ra-sets.py`), the place is not left empty: a trophy on a tile,
+the badge's size and corners, in the theme's own colors (src/noticeart.h).
+Earned, the trophy is **accent-ink** on **raised**; locked, as every row of
+the list not yet won and a progress notice, **text-dim** on **track**, faded
+as a badge is. So a list and a notice are the one shape whether the art is on
+the card or not, and nothing moves when a fetch lands it. Badges are fetched
+on the shelf, never in a game, on a thread of their own in one curl for what
+is missing (src/rabadge.h); no frame waits on the network.
+
+**Zyper on an unlock.** The notice an unlock makes, and the one for mastering
+a set, has Zyper at its right end, as tall as the badge, cocked and panting as
+he rests in the menus (10), in his own colors; on Beard with the
+**focus-small** shadow under him, since his beard is the slab's own white
+there, on Salt & Pepper with none. A count moving, the set's arrival and
+fast forward's word do not have him: he is for the achievement won. He is
+filled into the notice's pixels from the table the menus draw him from
+(src/zyperplace.c, src/noticeart.c), so he is the same dog; the slab may run
+a little wider with him (7/8 of the screen, not 5/6) so a long name keeps its
+room.
 
 ### 11.8 One-line message
 A menu panel over **scrim.menu**. One row holds for **hold.short**;
@@ -1083,7 +1108,28 @@ it has priority for direct volume or brightness feedback.
   mark in the clock's font and tabular digits, in the mark's own color
   (**text-soft**, or **warning** when it is low), so the clock and the marks
   before it move left by its width *(2026-11-05: "show percentage or
-  just bars")*. Saved as `battery_icon` in the device's database.
+  just bars")*; **Time Left** writes the time in the same place the same
+  way, "3 h 25 min" *(2026-11-07)*. Left and Right go round the three, A
+  forward. Saved as `battery_icon` ("bars", "percentage" or "time") in the
+  device's database.
+  Off the cable the time is `src/battery_eta.h`'s: the gauge reads whole
+  percent, so it is read from how long a percent takes to fall, as an
+  exponential average over 10 minutes weighted by each fall's length, with
+  the part of a percent already used since the last fall counted (it counts
+  down with the clock) and a fall that is late slowing the rate as it waits.
+  It is the time to BATT_EMPTY_PCT, where the launcher saves and powers off,
+  not to 0%, and it is shown to the minute under 10, to 5 minutes under 10
+  hours and to the hour after, a number changing when it means something. It
+  starts after two falls (the first only marks where a percent began): a few
+  minutes after a start, longer at a light load. The cable, a gauge that
+  rises with no cable and more than a day clear it. On the cable it is the
+  charging screen's time to full (`src/charging.h`, CC then CV from the
+  gauge's current, to the Charge Limit when there is one), after its 30 s
+  settle. Wherever there is none to give - those first minutes, a charger
+  whose gauge cannot say (the Brick), held at the limit or full - the corner
+  writes the percentage, so it is never without a number. Up to
+  `STATUS_PCT_MAX` (160) units are kept for the text; the corner asks for a
+  frame each minute while it shows a time, as the clock does.
 
 The games title lives below the cover row (11.1), separate from the header.
 Status marks are cached in a small texture when their values change; the
@@ -1779,7 +1825,7 @@ off), which an older gauge reads alone, then `level`/`-level`, `done`/`-done`,
 My picks in the controls lab (docs/design/mock/controls-lab.html,
 2026-11-06). The in-game menu has a **Controls** row, right after Display
 (after a DS game's Screens, Swap Screens and Stylus, which go with Display):
-Continue, Save, Load, Display, Controls, Cheevos, Reset, Quit. Eight rows is
+Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. Eight rows is
 one more than the panel shows, so Quit is under the arrow, one Up from
 Continue, as a DS game's last rows are.
 

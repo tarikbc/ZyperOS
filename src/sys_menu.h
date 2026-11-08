@@ -95,7 +95,7 @@ typedef enum {
  * side - Diatom has per-system display modes and core-supplied button labels -
  * so these are hooks waiting to be wired, not wishes. */
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_SORT,
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT,
 	SM_DISPLAY, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
@@ -253,7 +253,7 @@ typedef struct {
 	/* System Order, under Home Screen: "A to Z" (default, NULL reads it) or
 	 * "Release Date", systems.cfg's order (2026-11-06) */
 	const char *order;
-	const char *battery;    /* the corner's battery: Bars (default) or Percentage */
+	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
 	int         charge_limit;   /* percent, 0 for Off */
 	/* Side Lights: side_lights_value's, "All on", "3 on" or "Off". NULL
@@ -289,6 +289,11 @@ typedef struct {
 	/* The shelf lists more than one core (the Nintendo DS: DraStic and
 	 * DSperate), so its Core row is a choice rather than a fact. */
 	bool        core_choice;
+	/* Game Language, under Core, on the Nintendo DS shelf while DSperate runs
+	 * it (src/dslang.h): the row's value, "Auto (English)" or a language's
+	 * name. NULL: the shelf has no such row, and every other shelf's menu is
+	 * as it was. */
+	const char *dslang;
 	int         game_count;
 	const char *dmode;
 	/* The label of the shelf's sort order. A label rather than an index for
@@ -309,10 +314,10 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out);
 void sys_menu_auto_off_label(int seconds, char *out, size_t n);
 
 /* System Order's value, "A to Z" or "Release Date", and Battery Icon's,
- * "Bars" or "Percentage", in the language that is on: what sys_ui's order
- * and battery take */
+ * "Bars" (0), "Percentage" (1) or "Time Left" (2), in the language that is
+ * on: what sys_ui's order and battery take */
 const char *sys_menu_order_name(bool release);
-const char *sys_menu_battery_name(bool percent);
+const char *sys_menu_battery_name(int mode);
 
 /* ---- MENU > Scraper (DESIGN.md 11.19) -----------------------------------
  *

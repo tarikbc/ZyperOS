@@ -22,10 +22,10 @@ weight: 40
 <h2>Sign in</h2>
 <ol>
   <li>Plug in the Wi-Fi adapter and join a network in <strong>MENU &gt; Wi-Fi</strong>.</li>
-  <li>Open <strong>MENU &gt; Cheevos</strong>. The row says <code>sign in</code>.</li>
+  <li>Open <strong>MENU &gt; Achievements</strong>. The row says <code>sign in</code>.</li>
   <li>Type your user name and password with the on-screen keyboard.</li>
 </ol>
-<p>The row then shows your account. The Cheevos row only appears while the Wi-Fi adapter is in, since signing in needs the network.</p>
+<p>The row then shows your account. The Achievements row only appears while the Wi-Fi adapter is in, since signing in needs the network.</p>
 
 <h2>Play</h2>
 <p>Start a game as usual. The first time a game starts, the handheld needs Wi-Fi to identify it and download its achievements. ZyperOS keeps them on the card, beside the box art, so from then on the game has its achievements with or without Wi-Fi.</p>
@@ -34,17 +34,18 @@ weight: 40
 
 <h2>Badges, pop-ups and the list</h2>
 <ul>
-  <li><strong>An unlock</strong> shows a notice at the bottom of the screen with the achievement's badge and name.</li>
+  <li><strong>An unlock</strong> shows a notice at the bottom of the screen with the achievement's badge and name, and Zyper at the right. Until the badge is on the card, a trophy stands in for it. The badges are fetched while the handheld is online and no game is running, never during a game.</li>
   <li><strong>Progress</strong>, for achievements that count something, shows a strip and a count such as <em>74 / 100</em>.</li>
   <li><strong>The side lights</strong> sparkle for an achievement: two pairs of lights take turns. <strong>MENU &gt; Side Lights</strong> turns that off.</li>
-  <li><strong>The list</strong>, Cheevos in the in-game menu, shows every achievement of the game with its badge, grey until you earn it, and the count where one is moving.</li>
+  <li><strong>The list</strong>, Achievements in the in-game menu, shows every achievement of the game with its badge, grey until you earn it, and the count where one is moving.</li>
 </ul>
-<figure class="shot"><img src="/img/cheevos.png" alt="The achievements list for a game: badges at the left, earned ones in color, the points and a progress count"><figcaption>Cheevos in the in-game menu: every achievement, with its badge and points.</figcaption></figure>
+<figure class="shot"><img src="/img/cheevo-notice.png" alt="The notice over a game when an achievement unlocks: its badge at the left, Unlocked and its points over its name, and Zyper at the right"><figcaption>An unlock over a game: its badge, its name and points, and Zyper.</figcaption></figure>
+<figure class="shot"><img src="/img/cheevos.png" alt="The achievements list for a game: badges at the left, earned ones in color, the points and a progress count"><figcaption>Achievements in the in-game menu: every achievement, with its badge and points.</figcaption></figure>
 <p>On the shelf, each game's card shows its achievement count under the title.</p>
 
 <h2>If an achievement does not unlock</h2>
 <ul>
-  <li><strong>Check the sign-in</strong> in MENU &gt; Cheevos.</li>
+  <li><strong>Check the sign-in</strong> in MENU &gt; Achievements.</li>
   <li><strong>Check the first start had Wi-Fi.</strong> Without it, ZyperOS cannot identify the game. Start it once with the adapter in.</li>
   <li><strong>Check the dump.</strong> A ROM with a different checksum is a game RetroAchievements has never seen. A zip is checked on its largest file, which is the one ZyperOS runs.</li>
 </ul>
@@ -52,7 +53,7 @@ weight: 40
 <h2>Sources</h2>
 <ol class="sources">
   <li><a href="https://github.com/tarikbc/ZyperOS#faq">ZyperOS README, FAQ: How do achievements work?</a></li>
-  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#controls-and-menus">The ZyperOS user guide</a>: the Cheevos row, the in-game menu, the side lights.</li>
+  <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/docs/guide.md#controls-and-menus">The ZyperOS user guide</a>: the Achievements row, the in-game menu, the side lights.</li>
   <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/DESIGN.md#117-notice-over-a-game">DESIGN.md, 11.7 Notice</a>: the badge and progress notices, and the achievements list.</li>
   <li><a href="https://github.com/tarikbc/ZyperOS/blob/main/src/rafetch.h">src/rafetch.h</a> and <a href="https://github.com/tarikbc/ZyperOS/blob/main/src/rahash.h">src/rahash.h</a>: softcore unlocks, and how a game is identified.</li>
 </ol>

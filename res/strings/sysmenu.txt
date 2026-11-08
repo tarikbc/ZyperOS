@@ -323,6 +323,17 @@ de = Prozent
 ja = パーセント
 it = Percentuale
 
+[sysmenu.battery_time]
+note = Battery Icon's value: the time left written beside the mark ("3 h 20 min"), or the time to full on the cable
+en = Time Left
+zh-Hans = 剩余时间
+es = Tiempo restante
+pt-BR = Tempo restante
+fr = Temps restant
+de = Restzeit
+ja = 残り時間
+it = Tempo rimasto
+
 [sysmenu.appearance]
 note = A MENU row: Light, Dark or Auto
 en = Appearance
@@ -346,8 +357,8 @@ ja = 画像と動画
 it = Copertine e video
 
 [sysmenu.cheevos]
-note = A MENU row and a row of the game menus: RetroAchievements' achievements
-en = Cheevos
+note = A MENU row and a row of the game menus: RetroAchievements' achievements, and the page the row opens. Called Achievements in English, and by each language's own word for them (not Cheevos, RetroAchievements' slang).
+en = Achievements
 zh-Hans = 成就
 es = Logros
 pt-BR = Conquistas
@@ -357,7 +368,7 @@ ja = 実績
 it = Obiettivi
 
 [sysmenu.sign_in]
-note = Cheevos' value when no account is signed in. Lowercase.
+note = The Achievements row's value when no account is signed in. Lowercase.
 en = sign in
 zh-Hans = 登录
 es = iniciar sesión
@@ -445,6 +456,28 @@ fr = Cœur
 de = Core
 ja = コア
 it = Core
+
+[sysmenu.dslang]
+note = A system menu row, on the Nintendo DS shelf: the language its games speak, whatever the firmware.bin on the card was dumped from
+en = Game Language
+zh-Hans = 游戏语言
+es = Idioma del juego
+pt-BR = Idioma do jogo
+fr = Langue du jeu
+de = Spielsprache
+ja = ゲームの言語
+it = Lingua del gioco
+
+[sysmenu.dslang_auto]
+note = Game Language's value when it follows MENU > Language: %s is the language the DS game comes to, in its own name ("English", "Español"), English where the DS has none of the handheld's
+en = Auto (%s)
+zh-Hans = 自动（%s）
+es = Auto (%s)
+pt-BR = Auto (%s)
+fr = Auto (%s)
+de = Auto (%s)
+ja = 自動（%s）
+it = Auto (%s)
 
 [sysmenu.sort_by]
 note = A system menu row: the shelf's order

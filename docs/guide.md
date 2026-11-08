@@ -79,7 +79,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Display, Controls, Cheevos, Reset, Quit. It opens when you let go, so MENU can be held for fast forward |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. It opens when you let go, so MENU can be held for fast forward |
 | **MENU+R1** (in game) | fast forward: 2x, 3x, 4x, then back to normal |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
@@ -185,14 +185,14 @@ than any one console:
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
-| **Cheevos** | the RetroAchievements account, or `sign in` |
+| **Achievements** | the RetroAchievements account, or `sign in` |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
 | **About ZyperOS** | two pages: version, address, charge and uptime; then storage and estimated battery health |
 
 The Pixel 2 has no radio, so the rows that need Wi-Fi show only while a
-USB Wi-Fi adapter is plugged in: Wi-Fi, Cheevos and Wi-Fi
+USB Wi-Fi adapter is plugged in: Wi-Fi, Achievements and Wi-Fi
 File Transfer here (USB File Transfer stays, with a computer on the cable), Box
 Art in a console's menu, and Album Art in MP4's. Scraper stays: its fetch says
 it needs Wi-Fi, and its video snaps and sources need none. Bluetooth is never
@@ -242,7 +242,7 @@ never set does not show a time that is not now. The same corner is on Now
 Playing and over the menu of a paused game.
 
 Wi-Fi File Transfer and Scraper's fetch need a network, and go quiet without one rather than
-disappearing - a row that vanishes teaches nobody why. Cheevos stays reachable
+disappearing - a row that vanishes teaches nobody why. Achievements stays reachable
 either way, because signing in is the thing you go there to do, and Bluetooth
 and Play Time need no network at all.
 
@@ -294,6 +294,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 |---|---|
 | **Games** | how many the shelf found |
 | **Core** | which libretro core runs them |
+| **Game Language** | the Nintendo DS shelf's, while DSperate runs it: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`; a game resumed from its saved state keeps its own until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Box Art** | fetch what this system is missing, and nothing else |
@@ -700,8 +701,15 @@ Appearance selects Light, Dark or Auto. Console sprites retain their source
 colors in both themes. Only the focused system animates. The top bar shows the
 clock at the left, a background song when one is playing or paused, and Wi-Fi
 and the battery at the right. A long song title shortens before the status
-marks. MENU > Battery Icon shows the battery as its mark alone (Bars) or with
-its charge beside it (Percentage).
+marks. MENU > Battery Icon shows the battery as its mark alone (Bars), with
+its charge beside it (Percentage) or with the time left beside it (Time Left).
+Time Left reads how long each percent has taken to fall, averaged over about
+ten minutes, and counts to where ZyperOS saves and powers off (2%), not to 0%.
+It shows the percentage until two falls have been seen, a few minutes after a
+start or after the cable comes out, and it never shows more than a day. On the
+cable it shows the time to full, or to the Charge Limit, from the gauge's
+current as the charging screen does, and the percentage while that settles or
+where the charger's gauge cannot say.
 
 The games page uses a horizontal cover row. The focused cover is larger than its
 neighbors. Its full scraped title, play time and achievement count appear below.

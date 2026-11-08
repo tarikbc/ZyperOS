@@ -134,9 +134,37 @@
         "10:08 24h wifi=off batt=82",
         "--fn-volume",
         "--cheevos-screen",
-        "0"
+        "0",
+        "--cheevos-badge",
+        "{card}/Roms/PlayStation/.cheevos/Hagane.set",
+        "b#"
       ],
-      "sha256": "ce22c9e9b1c93b11db14f06178a9421b361cb0d4ec77a2cb6e9ba85846a0b253"
+      "sha256": "e1d1b2292121197be1f105db0710487aba38fa3ec266c7b43841ca317003fe87",
+      "source_commit": "a7a594b3183cc59372b11be52b8da7883718e2cf"
+    },
+    {
+      "file": "light/cheevo-notice.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--notice-kind",
+        "unlock",
+        "--notice",
+        "Violated Heavens",
+        "Unlocked \u00b7 10 points",
+        "--notice-badge",
+        "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
+      ],
+      "sha256": "d128b7bac15f3c55252988c9ca0a5920acff2a3e96de5165521fbb3bc0fa36a3",
+      "source_commit": "a7a594b3183cc59372b11be52b8da7883718e2cf"
     },
     {
       "file": "light/menu.png",

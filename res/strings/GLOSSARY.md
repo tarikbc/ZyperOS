@@ -95,7 +95,7 @@ written to match. Change a term here first, then everywhere it is used.
 | Play / Resume | 开始 / 继续 | Jugar / Continuar | Jogar / Continuar | Jouer / Reprendre | Spielen / Fortsetzen | プレイ / 再開 | Gioca / Riprendi |
 | Display (in-game) | 画面 | Pantalla | Tela | Affichage | Anzeige | 画面 | Schermo |
 | Controls | 按键说明 | Controles | Controles | Commandes | Steuerung | 操作方法 | Comandi |
-| Cheevos (the row, achievements) | 成就 | Logros | Conquistas | Succès | Erfolge | 実績 | Obiettivi |
+| Achievements (the row and its page) | 成就 | Logros | Conquistas | Succès | Erfolge | 実績 | Obiettivi |
 | Favorites | 收藏 | Favoritos | Favoritos | Favoris | Favoriten | お気に入り | Preferiti |
 | Recently Played | 最近玩过 | Jugados recientemente | Jogados recentemente | Joués récemment | Zuletzt gespielt | 最近プレイしたゲーム | Giocati di recente |
 | Box Art | 封面 | Carátulas | Capas | Jaquettes | Cover | パッケージ画像 | Copertine |

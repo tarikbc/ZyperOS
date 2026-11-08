@@ -27,7 +27,7 @@ static const db_default device_defaults[] = {
 	{ "audioout",   "auto" },  /* auto | speaker - see src/audioout.h */
 	{ "channels",   "stereo" },/* stereo | mono | left | right - ditto */
 	{ "home",       "spotlight" }, /* home layout, independent of Appearance */
-	{ "battery_icon", "bars" },  /* bars | percentage: the corner's battery */
+	{ "battery_icon", "bars" },  /* bars | percentage | time: the corner's battery */
 	{ "autooff",    "120" },   /* seconds without input, 0 is off */
 	{ "wifi",       "0"  },    /* what THIS device was last doing, not the */
 	{ "bluetooth",  "0"  },    /* shipped default - seeding merges the two */
@@ -38,6 +38,9 @@ static const db_default device_defaults[] = {
 	/* MENU > Language (src/i18n.h): a language's code, English until the
 	 * first start's step or the menu says otherwise */
 	{ "language",   "en" },
+	/* MENU > Game Language on the Nintendo DS shelf (src/dslang.h): "auto",
+	 * or one of the language words it lists */
+	{ "ds_language", "auto" },
 };
 
 static const db_default library_defaults[] = {

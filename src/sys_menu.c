@@ -22,9 +22,10 @@ const char *sys_menu_order_name(bool release)
 	return T(release ? S_SYSMENU_ORDER_RELEASE : S_SYSMENU_ORDER_AZ);
 }
 
-const char *sys_menu_battery_name(bool percent)
+const char *sys_menu_battery_name(int mode)
 {
-	return T(percent ? S_SYSMENU_BATTERY_PERCENT : S_SYSMENU_BATTERY_BARS);
+	return T(mode == 2 ? S_SYSMENU_BATTERY_TIME : mode == 1 ? S_SYSMENU_BATTERY_PERCENT
+	                                                       : S_SYSMENU_BATTERY_BARS);
 }
 
 /* Three rows say the same thing when the radio is down, and they say it in
@@ -60,6 +61,7 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out)
 
 	for (r = 0; r < SM_ROWS; r++) {
 		if (u->no_wifi && r == SM_BOXART) continue;
+		if (!u->dslang && r == SM_DSLANG) continue;
 		out[n++] = (sm_row)r;
 	}
 	return n;
@@ -258,9 +260,11 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core steps on A as well; Sort By and Display Mode do nothing with it. */
+/* Core and Game Language step on A as well; Sort By and Display Mode do
+ * nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
+	[SM_DSLANG]  = MENU_SND_RING,
 	[SM_SORT]    = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_RANDOM]  = MENU_SND_OWN,
@@ -341,6 +345,8 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		/* One of them, picked and started: src/randgame.h */
 		full[SM_RANDOM]  = (menu_row){ T(S_SYSMENU_RANDOM_GAME),  NULL, u->game_count > 0 };
 		full[SM_CORE]    = (menu_row){ T(S_SYSMENU_CORE),         b->b, u->core_choice };
+		/* The Nintendo DS's game language, a choice stepped like the core */
+		full[SM_DSLANG]  = (menu_row){ T(S_SYSMENU_DSLANG), u->dslang, u->dslang != NULL };
 		full[SM_SORT]    = (menu_row){ T(S_SYSMENU_SORT_BY),
 		                              u->sort ? u->sort : T(S_SORT_NAME), true  };
 		full[SM_DISPLAY] = (menu_row){ T(S_SYSMENU_DISPLAY_MODE), u->dmode, true  };
@@ -474,7 +480,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ORDER] = (menu_row){ T(S_SYSMENU_SYSTEM_ORDER), u->order ? u->order : sys_menu_order_name(false), true };
 	/* The status corner's battery: the mark alone, or its charge written
 	 * beside it (2026-11-05). On every device: both have a battery. */
-	full[PM_BATTERY] = (menu_row){ T(S_SYSMENU_BATTERY_ICON), u->battery ? u->battery : sys_menu_battery_name(false), true };
+	full[PM_BATTERY] = (menu_row){ T(S_SYSMENU_BATTERY_ICON), u->battery ? u->battery : sys_menu_battery_name(0), true };
 	/* Appearance applies on every device. */
 	full[PM_APPEARANCE]   = (menu_row){ T(S_SYSMENU_APPEARANCE),
 	                                   u->appearance ? u->appearance : T(S_THEME_LIGHT), true };

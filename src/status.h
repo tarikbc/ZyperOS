@@ -101,9 +101,10 @@ typedef struct {
 	 * a plug where the bolt goes. With charging. */
 	bool held;
 	bool blink_off;  /* critical, and in the second the fill is not drawn */
-	/* Room left of the battery for its charge written out ("82%"), in units:
-	 * 0 for none (MENU > Battery Icon > Bars). The caller writes the number
-	 * there, in the clock's font, as this file draws no text. */
+	/* Room left of the battery for its charge written out ("82%"), or the
+	 * time left ("3 h 20 min"), in units: 0 for none (MENU > Battery Icon >
+	 * Bars). The caller writes the text there, in the clock's font, as this
+	 * file draws no text. */
 	int  pct_w;
 	/* File Transfer on behind the shelf (My pick, 2026-11-06): its mark,
 	 * an arrow up and one down, left of the others; while files move a ring
@@ -117,6 +118,9 @@ typedef struct {
 /* The battery mark's width and the space between its number and it */
 #define STATUS_BATT_W   44
 #define STATUS_PCT_GAP  8
+/* The most room the number or the time left may take, in units: "100%" is
+ * under 50, and "9 h 55 min" or "9 小时 55 分钟" the widest of the time */
+#define STATUS_PCT_MAX  160
 
 /* The marks' width in units, gaps between them included: 0 for none, 120
  * for all three, 156 with File Transfer's 24. The clock stands

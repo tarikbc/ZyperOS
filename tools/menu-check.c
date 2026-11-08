@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+static int sm_at(const sys_ui *u, sm_row which);
 static int fails;
 
 static void ck(int cond, const char *what)
@@ -244,8 +245,8 @@ static void zyperos_menu_offline(void)
 	ck(!rows[PM_XFER].live, "OTH is not selectable offline");
 	ck(!strcmp(rows[PM_SCRAPER].label, "Scraper") && rows[PM_SCRAPER].live,
 	   "Scraper is live offline: its Video Snaps and sources need no network");
-	ck(!strcmp(val(&rows[PM_ACHIEVEMENTS]), "sign in"), "Cheevos invites a sign in");
-	ck(rows[PM_ACHIEVEMENTS].live, "Cheevos is reachable signed out");
+	ck(!strcmp(val(&rows[PM_ACHIEVEMENTS]), "sign in"), "Achievements invites a sign in");
+	ck(rows[PM_ACHIEVEMENTS].live, "Achievements is reachable signed out");
 	ck(!strcmp(val(&rows[PM_SLEEP]), "2m"), "120s reads as 2m");
 	ck(!strcmp(rows[PM_CLOCK].label, "Date & Time") &&
 	   !strcmp(val(&rows[PM_CLOCK]), "Oct 3, 6:12 AM"), "Date & Time reads the time");
@@ -457,7 +458,7 @@ static void zyperos_menu_online(void)
 	ck(rows[PM_XFER].live && !rows[PM_XFER].value, "OTH is live and unqualified");
 	ck(rows[PM_SCRAPER].live && !rows[PM_SCRAPER].value,
 	   "Scraper is live, with no value before a count");
-	ck(!strcmp(val(&rows[PM_ACHIEVEMENTS]), "eric"), "Cheevos shows the account");
+	ck(!strcmp(val(&rows[PM_ACHIEVEMENTS]), "eric"), "Achievements shows the account");
 	ck(!strcmp(val(&rows[PM_SLEEP]), "never"), "0s reads as never");
 
 	/* ONE ROW, SCRAPER, where Box Art was: the run, Video Snaps and the
@@ -465,7 +466,7 @@ static void zyperos_menu_online(void)
 	 * DESIGN.md 11.19). The two account rows it replaces are gone. */
 	printf("the Scraper row and its screen:\n");
 	ck(PM_SCRAPER == PM_APPEARANCE + 1 && PM_ACHIEVEMENTS == PM_SCRAPER + 1,
-	   "Scraper sits where Box Art was, above Cheevos");
+	   "Scraper sits where Box Art was, above Achievements");
 	{
 		int j;
 
@@ -699,20 +700,20 @@ static void system_menu(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 
 	printf("system menu:\n");
-	ck(n == SM_ROWS, "every row is filled");
+	ck(n == SM_ROWS - 1, "every row is filled, but Game Language, which only the Nintendo DS has");
 	ck(!strcmp(heading, "Game Boy"), "heading is the system, not ZyperOS");
-	ck(!strcmp(val(&rows[SM_GAMES]), "412"), "the count is the real one");
-	ck(!strcmp(val(&rows[SM_CORE]), "gambatte"), "the core is the real one");
-	ck(!strcmp(val(&rows[SM_DISPLAY]), "Sharp"), "display mode is passed through");
-	ck(rows[SM_DISPLAY].live && rows[SM_RESCAN].live, "the two live rows are live");
-	ck(!rows[SM_GAMES].live && !rows[SM_CORE].live, "reported facts are not rows to press");
-	ck(rows[SM_BOXART].live, "Box Art is live on a network");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_GAMES)]), "412"), "the count is the real one");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_CORE)]), "gambatte"), "the core is the real one");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_DISPLAY)]), "Sharp"), "display mode is passed through");
+	ck(rows[sm_at(&u, SM_DISPLAY)].live && rows[sm_at(&u, SM_RESCAN)].live, "the two live rows are live");
+	ck(!rows[sm_at(&u, SM_GAMES)].live && !rows[sm_at(&u, SM_CORE)].live, "reported facts are not rows to press");
+	ck(rows[sm_at(&u, SM_BOXART)].live, "Box Art is live on a network");
 
 	/* A shelf that lists two cores, the Nintendo DS's: Core is a choice. */
 	u.sys_core = "DraStic";
 	u.core_choice = true;
 	sys_menu_build(&u, rows, &b, &heading);
-	ck(rows[SM_CORE].live && !strcmp(val(&rows[SM_CORE]), "DraStic"),
+	ck(rows[sm_at(&u, SM_CORE)].live && !strcmp(val(&rows[sm_at(&u, SM_CORE)]), "DraStic"),
 	   "two cores make Core a row to press, naming the one in use");
 	u.core_choice = false;
 	u.sys_core = "gambatte";
@@ -720,9 +721,9 @@ static void system_menu(void)
 	/* The same menu with the radio down. Only Box Art changes. */
 	u.wifi = WIFI_OFF;
 	sys_menu_build(&u, rows, &b, &heading);
-	ck(!rows[SM_BOXART].live, "Box Art dies with the radio");
-	ck(!strcmp(val(&rows[SM_BOXART]), "needs Wi-Fi"), "and says why");
-	ck(rows[SM_RESCAN].live, "Rescan does not need a network");
+	ck(!rows[sm_at(&u, SM_BOXART)].live, "Box Art dies with the radio");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_BOXART)]), "needs Wi-Fi"), "and says why");
+	ck(rows[sm_at(&u, SM_RESCAN)].live, "Rescan does not need a network");
 
 	/* Favorites, which is not a system: no core and no folder, so four of the
 	 * six rows have nothing to describe and one of them - Display Mode -
@@ -882,6 +883,66 @@ static void auto_off_words(void)
 /* Walk the whole menu and collect every row the cursor can actually rest on.
  * A row that is drawn but cannot be selected is fine; a row that CAN be
  * selected and then does nothing when pressed is the defect. */
+/* Game Language (src/dslang.h): a row of the Nintendo DS shelf's menu, under
+ * Core, there while DSperate runs it, and on no other shelf's menu - nor on
+ * the DS's with DraStic, which has no use for it */
+static void dslang_row(void)
+{
+	sys_ui u;
+	menu_bufs b;
+	menu_row rows[MENU_MAX_ROWS], plain[MENU_MAX_ROWS];
+	sm_row sm[SM_ROWS];
+	const char *heading;
+	int n, np, i, at;
+
+	memset(&u, 0, sizeof u);
+	u.games = true;
+	u.wifi = WIFI_CONNECTED;
+	u.sys_name = "Nintendo DS"; u.sys_core = "DSperate"; u.core_choice = true;
+	u.game_count = 20; u.dmode = "Native";
+	np = sys_menu_build(&u, plain, &b, &heading);
+
+	printf("system menu, Game Language:\n");
+	ck(!has_label(plain, np, "Game Language"), "no Game Language row unless the shelf says so");
+	ck(np == SM_ROWS - 1, "and every other row is there");
+
+	u.dslang = "Auto (English)";
+	n = sys_menu_build(&u, rows, &b, &heading);
+	at = sm_at(&u, SM_DSLANG);
+	ck(n == np + 1 && n == SM_ROWS, "one row more");
+	ck(at == sm_at(&u, SM_CORE) + 1, "right under Core");
+	ck(!strcmp(rows[at].label, "Game Language"), "named Game Language");
+	ck(!strcmp(val(&rows[at]), "Auto (English)"), "saying what it is set to");
+	ck(rows[at].live, "a row to press");
+	ck(menu_sound_at(b.sound, n, at) == MENU_SND_RING, "that steps round, on A too");
+	/* the rest in the order it was, each row as it was */
+	ck(sys_menu_system_rows(&u, sm) == n && sm[at] == SM_DSLANG, "the build and the list agree");
+	for (i = 0; i < n; i++) {
+		int j = i < at ? i : i - 1;
+
+		if (i == at) continue;
+		if (strcmp(rows[i].label, plain[j].label) || strcmp(val(&rows[i]), val(&plain[j]))) {
+			ck(false, "the other rows are as they were");
+			break;
+		}
+	}
+	u.dslang = "Español";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[at]), "Español"), "and a language by its name");
+}
+
+/* Where a console shelf's menu has `which`, or -1: the enum's numbers are the
+ * full list's, and Game Language is only on the Nintendo DS's shelf (a Box
+ * Art row is not there without a radio) */
+static int sm_at(const sys_ui *u, sm_row which)
+{
+	sm_row ids[SM_ROWS];
+	int n = sys_menu_system_rows(u, ids), k;
+
+	for (k = 0; k < n; k++)
+		if (ids[k] == which) return k;
+	return -1;
+}
 static int reachable(const menu_row *rows, int n, int *out, int max)
 {
 	int sel = 0, k = 0, i;
@@ -927,14 +988,14 @@ static void cursor_reaches(void)
 
 	printf("system menu, what the cursor can reach:\n");
 	ck(k == 5, "five rows, not eight");
-	ck(holds(got, k, SM_RANDOM), "Random Game, with games on the shelf");
-	ck(holds(got, k, SM_DISPLAY), "Display Mode");
+	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
+	ck(holds(got, k, sm_at(&u, SM_DISPLAY)), "Display Mode");
 	/* Live since sorting stopped being alphabetical-only. It was a
 	 * placeholder for long enough that this check counted three. */
-	ck(holds(got, k, SM_SORT), "Sort By");
-	ck(holds(got, k, SM_BOXART), "Box Art");
-	ck(holds(got, k, SM_RESCAN), "Rescan Folder");
-	ck(!holds(got, k, SM_GAMES) && !holds(got, k, SM_CORE),
+	ck(holds(got, k, sm_at(&u, SM_SORT)), "Sort By");
+	ck(holds(got, k, sm_at(&u, SM_BOXART)), "Box Art");
+	ck(holds(got, k, sm_at(&u, SM_RESCAN)), "Rescan Folder");
+	ck(!holds(got, k, sm_at(&u, SM_GAMES)) && !holds(got, k, sm_at(&u, SM_CORE)),
 	   "the reported facts are not stops");
 
 	memset(&u, 0, sizeof u);
@@ -1008,8 +1069,8 @@ static void radio_less(void)
 	for (i = 0, ok = true; i < k; i++) if (pm[i] != (pm_row)i) ok = false;
 	ck(k == PM_ROWS && ok, "every ZyperOS row, in the enum's order");
 	k = sys_menu_system_rows(&u, sm);
-	for (i = 0, ok = true; i < k; i++) if (sm[i] != (sm_row)i) ok = false;
-	ck(k == SM_ROWS && ok, "every system row, in the enum's order");
+	for (i = 0, ok = true; i < k; i++) if (sm[i] != (sm_row)(i + (i >= SM_DSLANG))) ok = false;
+	ck(k == SM_ROWS - 1 && ok, "every system row but Game Language, in the enum's order");
 
 	u.no_wifi = true;
 	u.no_bt = true;
@@ -1021,7 +1082,7 @@ static void radio_less(void)
 	   "no Wi-Fi, no Bluetooth");
 	ck(!has_label(rows, n, "Wi-Fi File Transfer") && has_label(rows, n, "Scraper"),
 	   "no Wi-Fi File Transfer; Scraper stays, for Video Snaps and the sources");
-	ck(!has_label(rows, n, "Cheevos"), "and no Cheevos sign-in");
+	ck(!has_label(rows, n, "Achievements"), "and no Achievements sign-in");
 	ck(has_label(rows, n, "Audio Output") && has_label(rows, n, "Play Time") &&
 	   has_label(rows, n, "Controls") && has_label(rows, n, "About ZyperOS") &&
 	   has_label(rows, n, "Date & Time"),
@@ -1053,7 +1114,7 @@ static void radio_less(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 	k = sys_menu_system_rows(&u, sm);
 	printf("system menu, no radio at all:\n");
-	ck(n == k && n == SM_ROWS - 1, "Box Art goes and nothing else");
+	ck(n == k && n == SM_ROWS - 2, "Box Art goes and nothing else");
 	ck(!has_label(rows, n, "Box Art"), "no Box Art");
 	ck(sm[n - 1] == SM_RESCAN && !strcmp(rows[n - 1].label, "Rescan Folder"),
 	   "Rescan Folder moves up into its place");
@@ -1135,7 +1196,7 @@ static void source_does_not_wrap(void)
 
 /* Walking down a list and back must end up looking at the top of it again.
  *
- * The list here is the game info screen as a scraped game builds it: Cheevos
+ * The list here is the game info screen as a scraped game builds it: Achievements
  * and Year lead, and neither is a stop for the cursor. On the device on
  * 2026-09-16, one walk down to Favorite scrolled both off the top and nothing
  * afterwards brought them back - the window moved only when the CURSOR would
@@ -1234,8 +1295,8 @@ static void info_rows(void)
 
 	n = gi_rows(rows, &gi, true);
 	printf("game info, nothing scraped, art present and a network:\n");
-	ck(n == 3, "Cheevos, the art action and Delete Game, and nothing else to say");
-	ck(!strcmp(rows[0].label, "Cheevos"), "Cheevos leads when nothing describes the game");
+	ck(n == 3, "Achievements, the art action and Delete Game, and nothing else to say");
+	ck(!strcmp(rows[0].label, "Achievements"), "Achievements leads when nothing describes the game");
 	ck(!strcmp(val(&rows[0]), "12 of 78"), "and carries the count");
 	ck(rows[0].live, "and opens the set, the way the in-game row does");
 	ck(!strcmp(rows[1].label, "Replace Box Art"), "art present offers a replace");
@@ -1265,7 +1326,7 @@ static void info_rows(void)
 	k = reachable(rows, n, got, GI_MAX);
 	ck(k == 1, "Delete Game is the one thing on the screen to choose");
 
-	/* Scraped, which adds the three rows ABOVE Cheevos and nowhere else. The
+	/* Scraped, which adds the three rows ABOVE Achievements and nowhere else. The
 	 * shapes below are the whole of what a scrape can leave behind. */
 	gi.has_cheevos = true;
 	snprintf(gi.cheevos, sizeof gi.cheevos, "12 of 78");
@@ -1283,7 +1344,7 @@ static void info_rows(void)
 	   "then when it came out");
 	ck(!strcmp(rows[2].label, "Genre") && !strcmp(val(&rows[2]), "Platform,Shoot'em Up"),
 	   "then what kind, as the scrape joined it");
-	ck(!strcmp(rows[3].label, "Cheevos"),
+	ck(!strcmp(rows[3].label, "Achievements"),
 	   "then what there is to shoot for, which is worth seeing before starting");
 	ck(!strcmp(rows[4].label, "Replace Box Art"), "then the art action");
 	ck(!strcmp(rows[5].label, "Delete Game"), "and Delete Game last");
@@ -1303,7 +1364,7 @@ static void info_rows(void)
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with no prose:\n");
 	ck(!strcmp(val(&rows[0]), "none"), "Synopsis says none");
-	ck(!rows[0].live, "and does nothing, the way the in-game Cheevos row does");
+	ck(!rows[0].live, "and does nothing, the way the in-game Achievements row does");
 
 	gi.year[0] = '\0';
 	gi.has_synopsis = true;
@@ -1317,13 +1378,13 @@ static void info_rows(void)
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with neither year nor genre:\n");
 	ck(n == GI_MAX - 2, "both are simply absent");
-	ck(!strcmp(rows[1].label, "Cheevos"), "leaving the prose and the two actions");
+	ck(!strcmp(rows[1].label, "Achievements"), "leaving the prose and the two actions");
 }
 
 
 /* ---------- the in-game menu ---------------------------------------------- */
 
-/* Cheevos is the only row that can be dead, and it is dead exactly when the
+/* Achievements is the only row that can be dead, and it is dead exactly when the
  * game has no set. Everything else is always something A does. */
 static void ingame_rows(void)
 {
@@ -1345,7 +1406,7 @@ static void ingame_rows(void)
 	   "Controls right after Display");
 	ck(rows[GM_CONTROLS].live && !rows[GM_CONTROLS].value, "and opens with A, no value");
 	ck(!strcmp(val(&rows[GM_DISPLAY]), "Native"), "Display carries the mode");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "12 / 40"), "Cheevos counts the set");
+	ck(!strcmp(val(&rows[GM_CHEEVOS]), "12 / 40"), "Achievements counts the set");
 	ck(rows[GM_CHEEVOS].live, "and is reachable");
 	k = reachable(rows, n, got, GM_ROWS);
 	ck(k == GM_ROWS, "every row is a stop");
@@ -1365,7 +1426,7 @@ static void ingame_rows(void)
 	u.earned = 0; u.total = 0;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a game with no set:\n");
-	ck(!strcmp(val(&rows[GM_CHEEVOS]), "none"), "Cheevos says none");
+	ck(!strcmp(val(&rows[GM_CHEEVOS]), "none"), "Achievements says none");
 	ck(!rows[GM_CHEEVOS].live, "and does nothing");
 	k = reachable(rows, n, got, GM_ROWS);
 	ck(k == GM_ROWS - 1, "so the cursor steps over it");
@@ -1388,8 +1449,8 @@ static void ingame_rows(void)
 	   "Screens says the layout");
 	ck(!strcmp(val(&rows[5]), "on") && !strcmp(val(&rows[6]), "off"),
 	   "Swap Screens and Stylus say on or off, lowercase like any status");
-	ck(!strcmp(rows[8].label, "Cheevos") && !strcmp(val(&rows[8]), "12 / 40"),
-	   "Cheevos moves down with its value");
+	ck(!strcmp(rows[8].label, "Achievements") && !strcmp(val(&rows[8]), "12 / 40"),
+	   "Achievements moves down with its value");
 	k = reachable(rows, n, got, GM_MAX_ROWS);
 	ck(k == GM_MAX_ROWS, "every row is a stop");
 	ck(gm_layout_index("single") == 2 && gm_layout_index("nonsense") == 0,
@@ -1713,12 +1774,12 @@ static void row_sounds(void)
 	u.sys_name = "NDS"; u.sys_core = "drastic"; u.core_choice = true;
 	u.game_count = 3; u.dmode = "Native";
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(menu_sound_at(b.sound, n, SM_CORE) == MENU_SND_RING, "a system's Core steps round, on A too");
-	ck(menu_sound_at(b.sound, n, SM_SORT) == (MENU_SND_RING | MENU_SND_NO_A),
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_CORE)) == MENU_SND_RING, "a system's Core steps round, on A too");
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_SORT)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "Sort By steps round and does nothing with A");
-	ck(menu_sound_at(b.sound, n, SM_DISPLAY) == (MENU_SND_RING | MENU_SND_NO_A),
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_DISPLAY)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "and Display Mode the same");
-	ck(!menu_sound_at(b.sound, n, SM_GAMES) && !menu_sound_at(b.sound, n, SM_RESCAN),
+	ck(!menu_sound_at(b.sound, n, sm_at(&u, SM_GAMES)) && !menu_sound_at(b.sound, n, sm_at(&u, SM_RESCAN)),
 	   "the count and Rescan are plain");
 
 	u.fav = true;
@@ -1787,6 +1848,7 @@ int main(void)
 	auto_off_words();
 	cursor_reaches();
 	radio_less();
+	dslang_row();
 	slots();
 	save_slot();
 	step_terminates();
