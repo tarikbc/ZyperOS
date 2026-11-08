@@ -346,8 +346,8 @@ ja = 画像と動画
 it = Copertine e video
 
 [sysmenu.cheevos]
-note = A MENU row and a row of the game menus: RetroAchievements' achievements
-en = Cheevos
+note = A MENU row and a row of the game menus: RetroAchievements' achievements, and the page the row opens. Called Achievements in English, and by each language's own word for them (not Cheevos, RetroAchievements' slang).
+en = Achievements
 zh-Hans = 成就
 es = Logros
 pt-BR = Conquistas
@@ -357,7 +357,7 @@ ja = 実績
 it = Obiettivi
 
 [sysmenu.sign_in]
-note = Cheevos' value when no account is signed in. Lowercase.
+note = The Achievements row's value when no account is signed in. Lowercase.
 en = sign in
 zh-Hans = 登录
 es = iniciar sesión

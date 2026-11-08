@@ -36,6 +36,7 @@ import tempfile
 import time
 import urllib.parse
 import urllib.request
+import zlib
 
 ROOT=Path(__file__).resolve().parents[1]
 GAMES=[
@@ -58,7 +59,10 @@ SHOTS={
     'info':('demo','PS1',['--screen','games','--info']),
     'info-delete':('demo','PS1',['--screen','games','--info-delete']),
     'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
-    'cheevos':('demo','PS1',['--cheevos-screen','0']),
+    'cheevos':('demo','PS1',['--cheevos-screen','0','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
+    # An unlock over a game (DESIGN.md 11.7): its badge, and Zyper at the right
+    'cheevo-notice':('demo','PS1',['--notice-kind','unlock','--notice',"Violated Heavens",'Unlocked \u00b7 10 points',
+                                   '--notice-badge','{card}/Roms/PlayStation/.cheevos/badges/b3.png']),
     'menu':('demo','PS1',['--menu','Search Games']),
     'mp4':('demo','MUSE',['--screen','games']),
     'nowplaying':('demo','MUSE',['--nowplaying','0','0','83']),
@@ -94,6 +98,32 @@ CORNER_OWN={'charging':'no corner drawn, though --status gave it something to sh
 # the size of the Pixel 2's two-slot test download, tarikbc/ZyperOS#59)
 UPDATE_STATUS='state available\ninstalled 0.1.0\nversion 0.1.1\ndownload 83000000\nkind system\n'
 
+def png_rgb(path,w,h,rows):
+    """An 8-bit RGB PNG from rows of (r,g,b), standard library only"""
+    raw=b''.join(b'\x00'+bytes(c for px in row for c in px) for row in rows)
+    def chunk(kind,body):
+        out=struct.pack('>I',len(body))+kind+body
+        return out+struct.pack('>I',zlib.crc32(kind+body)&0xFFFFFFFF)
+    path.write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))
+                    +chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b''))
+
+# Stand-ins for an achievement's badge (src/rabadge.h): a 64-pixel square, a
+# diagonal blend of one color, a frame and a diamond. RetroAchievements' own
+# are the games' art, and none is in this repository.
+BADGE_COLORS=[(214,87,62),(61,142,201),(242,178,52),(120,186,102),(163,92,201),(40,168,160),(224,112,90),(90,100,220)]
+def stand_in_badge(path,color):
+    rows=[]
+    for y in range(64):
+        row=[]
+        for x in range(64):
+            t=(x+y)/126
+            c=[round(v*(1.0-0.38*t)) for v in color]
+            if min(x,y,63-x,63-y)<3: c=[round(v*0.55) for v in color]
+            elif abs(x-31.5)+abs(y-31.5)<15: c=[min(255,round(v*0.35+255*0.65)) for v in color]
+            row.append(tuple(c))
+        rows.append(row)
+    png_rgb(path,64,64,rows)
+
 def card_dirs(card):
     for folder in ['ZyperOS','Roms','userdata','shared']: (card/folder).mkdir(parents=True)
     shutil.copyfile(ROOT/'config/systems.cfg',card/'ZyperOS/systems.cfg')
@@ -111,6 +141,10 @@ def demo_card(card,art_dir,manifest):
         if art and art.is_file():
             shutil.copyfile(art,media/(name+'.png'))
             manifest['artwork'][name]=hashlib.sha256(art.read_bytes()).hexdigest()
+    # Stand-in badges for the achievements list and notice shots, beside the
+    # (absent) set of the PlayStation folder as src/rabadge.h keeps them
+    badges=card/'Roms/PlayStation/.cheevos/badges';badges.mkdir(parents=True)
+    for i,color in enumerate(BADGE_COLORS): stand_in_badge(badges/f'b{i+1}.png',color)
     # Curated metadata for the demonstration's focused game. This is
     # library data, not a modified drawing path or a user's saved state.
     dbdir=card/'shared/.zyperos';dbdir.mkdir()
@@ -331,14 +365,15 @@ def main():
                 target=dest/(name+'.png')
                 # The tutorial draws no status corner, so it has no --status
                 status=[] if name.startswith('tour-') else ['--status','10:08 24h wifi=off batt=82']
+                # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
-                         '--screen','systems','--phase','3200',*status,'--fn-volume',*flags]
+                         '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
                 result=subprocess.run(command,cwd=ROOT,env=env_for(card),text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 (dest/(name+'.log')).write_text(result.stdout)
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')
                 if not target.is_file(): raise RuntimeError(f'missing {target}')
-                manifest['screenshots'].append({'file':f'{theme}/{name}.png','card':card_name,'args':command[3:],
+                manifest['screenshots'].append({'file':f'{theme}/{name}.png','card':card_name,'args':[a.replace(str(card),'{card}') for a in command[3:]],
                     'sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
                 print(theme+'/'+name,flush=True)
     if not args.no_page and (not args.only or set(args.only)&set(PAGES)):
