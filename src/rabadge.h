@@ -25,6 +25,8 @@
 
 #include <SDL.h>
 
+#include "design.h"
+
 #define RB_URL "https://media.retroachievements.org/Badge/"
 
 /* Where badge `name` of the set at `set_path` is kept. False for no name. */
@@ -39,6 +41,15 @@ bool rb_have(const char *set_path, const char *name);
 #define RB_TEXTURES 48
 SDL_Texture *rb_texture(SDL_Renderer *r, const char *set_path, const char *name,
                         bool locked);
+/* The same, or where the card has no art for it - none yet, or never, on a
+ * handheld with no network - the plain badge in theme `t` (src/noticeart.h),
+ * earned or `locked`, so every row of a list has an icon of the one shape and
+ * nothing moves when the art lands. Never NULL but for no renderer or no
+ * memory. Kept as the badges are; the plain badge is made once a theme and
+ * look. A frame never waits on the network for either: files are read from
+ * the card, and the fetch is on its own thread. */
+SDL_Texture *rb_icon(SDL_Renderer *r, const char *set_path, const char *name,
+                     bool locked, const ds_theme *t);
 /* Let them all go: a theme's renderer change, the screen closed */
 void rb_textures_free(void);
 

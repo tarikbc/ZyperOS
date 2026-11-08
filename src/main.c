@@ -1751,6 +1751,19 @@ static void on_game_tick(void)
 
 static noticeq g_nq;
 
+/* What a notice carries besides its words (src/notice.h), by what it is
+ * about: an unlock, and mastery, which is one, has its badge and Zyper; a
+ * count moving, its badge; the set's arrival has neither. Where the card has
+ * no art for a badge the plain one takes its place (src/noticeart.h). */
+static unsigned notice_look(nq_kind kind)
+{
+	switch (kind) {
+	case NQ_UNLOCK:   return NOTICE_ICON | NOTICE_ZYPER;
+	case NQ_PROGRESS: return NOTICE_ICON;
+	default:          return 0;
+	}
+}
+
 /* The next one, if the one on screen has had its time. From the game tick,
  * and as soon as one is queued. */
 static void notice_pump(void)
@@ -1761,13 +1774,14 @@ static void notice_pump(void)
 	if (it.mark ? notice_render_mark(it.head, it.body, (notice_mark)it.mark,
 	                                 NOTICE_FILE, theme_index())
 	            : notice_render_ex(it.head, it.body, it.badge[0] ? it.badge : NULL,
-	                               it.value, it.target, NOTICE_FILE, theme_index()))
+	                               notice_look(it.kind), it.value, it.target,
+	                               NOTICE_FILE, theme_index()))
 		plat_resident_line("OVERLAY\tpath=%s\tms=%d", NOTICE_FILE, it.ms);
 }
 
 /* "Getting hot" over a game (DESIGN.md 11.23): the notice with a thermometer
  * where a badge goes, held **hold-heat**, ahead of every pop-up waiting.
- * Zyper is never over a game (DESIGN.md 10). */
+ * Zyper is over a game only in an unlock's notice (DESIGN.md 10), not here. */
 static void heat_notice(void)
 {
 	nq_item it;
@@ -14261,28 +14275,18 @@ static void synopsis_screen(app *a, const char *title, const char *text,
 	free(rows);
 }
 
-/* The list's badge for row `row`: chv_at(row)'s, greyed until earned, or
- * NULL when the card has none (src/rabadge.h). menu_panel's g_row_icon while
- * the list is drawn. */
+/* The list's icon for row `row`: chv_at(row)'s badge, greyed until earned,
+ * or the plain one where the card has none yet (src/rabadge.h). menu_panel's
+ * g_row_icon while the list is drawn. Every row has one, so nothing moves
+ * when a fetch lands the art: the next frame reads the file. */
 static SDL_Renderer *g_badge_r;
 
 static SDL_Texture *cheevo_row_badge(int row)
 {
 	const cheevo *c = chv_at(row);
 
-	return c ? rb_texture(g_badge_r, chv_source(), c->badge,
-	                      !(c->earned || c->earned_now)) : NULL;
-}
-
-/* Whether any achievement in the set has a badge on the card: a set with
- * none keeps its rows as they were, with no empty squares */
-static bool cheevo_badges_here(void)
-{
-	int i;
-
-	for (i = 0; i < chv_count(); i++)
-		if (rb_have(chv_source(), chv_at(i)->badge)) return true;
-	return false;
+	return c ? rb_icon(g_badge_r, chv_source(), c->badge,
+	                   !(c->earned || c->earned_now), theme()) : NULL;
 }
 
 static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
@@ -14293,7 +14297,6 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	unsigned *vcols;
 	char (*vals)[32];
 	char heading[192];
-	bool badges = cheevo_badges_here();
 
 	if (n <= 0) return;
 	rows  = calloc((size_t)n, sizeof *rows);
@@ -14395,11 +14398,12 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 		chv_backdrop(a, bg, over_shelf, k);
 		/* visits_all: every achievement can be opened, earned or not, so
 		 * `live` here is about color and not about reach. Each row with its
-		 * badge when the card has the set's (g_row_icon). */
-		if (badges || (rb_landed() && (badges = cheevo_badges_here()))) {
-			g_badge_r = a->r;
-			g_row_icon = cheevo_row_badge;
-		}
+		 * badge, or the plain one until the card has it (g_row_icon); the
+		 * count of badges that landed is read so it does not pile up, and
+		 * the frame after a landing reads the files. */
+		rb_landed();
+		g_badge_r = a->r;
+		g_row_icon = cheevo_row_badge;
 		menu_draw_ex(a, heading, rows, n, sel, menu_std_width(a), a->tint,
 		             vcols, true, 0);
 		g_row_icon = NULL;
@@ -15726,6 +15730,10 @@ static const char *shot_notice_head = "Unlocked · 5 points";
  * a badge, or as a progress notice (notice_render_ex) */
 static const char *shot_notice_badge;
 static int shot_notice_value, shot_notice_target;
+/* --notice-kind unlock|progress|set: what the notice is about, which says
+ * what it carries (notice_look): an unlock has the plain badge where no
+ * --notice-badge is given, and Zyper; progress, the plain badge; set, neither */
+static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
@@ -15779,14 +15787,20 @@ static int shot_at = -1;
 static int shot_launch;
 static const char *shot_cheevos_game = "Hagane: The Final Conflict";
 /* --cheevos-badge SET NAME: every row with that badge (src/rabadge.h), the
- * ones not earned greyed, as the list draws them */
+ * ones not earned greyed, as the list draws them; a '#' in NAME is the row's
+ * number, 1 to 8, so each row can have a picture of its own. Without it every
+ * row has the plain badge, as a set the card has no art for does. */
 static const char *shot_badge_set, *shot_badge_name;
 static bool shot_badge_got[8];
 
 static SDL_Texture *shot_row_badge(int row)
 {
-	return row >= 0 && row < 8 ? rb_texture(g_badge_r, shot_badge_set, shot_badge_name,
-	                                        !shot_badge_got[row]) : NULL;
+	char name[64], *hash;
+
+	if (row < 0 || row >= 8) return NULL;
+	snprintf(name, sizeof name, "%s", shot_badge_name ? shot_badge_name : "");
+	if ((hash = strchr(name, '#'))) *hash = (char)('1' + row);
+	return rb_icon(g_badge_r, shot_badge_set, name, !shot_badge_got[row], theme());
 }
 static int shot_syn;       /* --synopsis: the card a scraped game opens */
 static int shot_info;
@@ -16609,11 +16623,9 @@ static void shot_compose(app *a)
 		 * colors, the shared width - because a shot that composes the panel
 		 * differently from the screen is a picture of something that does not
 		 * exist. It used to call menu_draw with a width of 0. */
-		if (shot_badge_set) {
-			for (ci = 0; ci < cn; ci++) shot_badge_got[ci] = sample[ci].got;
-			g_badge_r = a->r;
-			g_row_icon = shot_row_badge;
-		}
+		for (ci = 0; ci < cn; ci++) shot_badge_got[ci] = sample[ci].got;
+		g_badge_r = a->r;
+		g_row_icon = shot_row_badge;
 		menu_draw_ex(a, head, rows, cn, shot_cheevos_sel, menu_std_width(a),
 		             a->tint, vcols, true, 0);
 		g_row_icon = NULL;
@@ -16627,7 +16639,8 @@ static void shot_compose(app *a)
 		     ? notice_render_mark(shot_notice_head, shot_notice, (notice_mark)shot_notice_mark,
 		                          dt, theme_index())
 		     : notice_render_ex(shot_notice_head, shot_notice, shot_notice_badge,
-		                        shot_notice_value, shot_notice_target, dt, theme_index())) &&
+		                        notice_look(shot_notice_kind), shot_notice_value,
+		                        shot_notice_target, dt, theme_index())) &&
 		    (nf = fopen(dt, "rb"))) {
 			unsigned char hd[8];
 			if (fread(hd, 1, 8, nf) == 8 && !memcmp(hd, "DTOV", 4)) {
@@ -17511,6 +17524,12 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--notice-progress") && i + 2 < argc) {
 			shot_notice_value = atoi(argv[++i]);
 			shot_notice_target = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--notice-kind") && i + 1 < argc) {
+			const char *k = argv[++i];
+
+			shot_notice_kind = !strcmp(k, "unlock") ? NQ_UNLOCK
+			                 : !strcmp(k, "progress") ? NQ_PROGRESS : NQ_SET;
 		}
 		else if (!strcmp(argv[i], "--notice-heat")) shot_notice_mark = NOTICE_MARK_HEAT;
 		else if (!strcmp(argv[i], "--charging") && i + 1 < argc) {

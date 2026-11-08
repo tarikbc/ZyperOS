@@ -534,9 +534,12 @@ menus:
 - **Charging while off** (11.25): asleep, his eyes and mouth shut, breathing
   slowly, his z's going up.
 
-Apart from that pop-up he is never on the shelf; he is never over a game,
-never more than one at a time, and his lime is the system's lime: he does
-not get a color of his own.
+- **An achievement won** (11.7): over a game, at the right end of the unlock's
+  notice, a still picture of him as he rests in the menus. *(2026-11-07.)*
+
+Apart from that pop-up he is never on the shelf; he is over a game only in
+that notice, never more than one at a time, and his lime is the system's
+lime: he does not get a color of his own.
 
 In Beard his beard is the ground's own white, and drawn flat he loses his
 outline; there he casts the **focus-small** shadow (8 down, 20 blur, ink at
@@ -722,11 +725,33 @@ left-aligned beside it. A progress notice is the achievement's name in
 **meta** **text-dim**, a strip **bar** high in **accent-ink** on **track**,
 and the count ("74 / 100") in **meta** **text** under it. Notices take turns:
 each has its time and a 300 ms gap before the next; unlocks go ahead of
-progress. The achievements list (MENU > Cheevos) has the badge at the start
+progress. The achievements list (MENU > Achievements) has the badge at the start
 of every row, greyed and faded until earned, and the count where the points
 are while it moves. *(My picks in the achievements lab,
 docs/design/mock/cheevos-lab.html, 2026-11-05: badge at the left, strip, on
 every row.)*
+
+**The plain badge.** Where the card has no badge for an achievement, none yet
+or never (a handheld with no network has none until a computer puts them
+there, `tools/ra-sets.py`), the place is not left empty: a trophy on a tile,
+the badge's size and corners, in the theme's own colors (src/noticeart.h).
+Earned, the trophy is **accent-ink** on **raised**; locked, as every row of
+the list not yet won and a progress notice, **text-dim** on **track**, faded
+as a badge is. So a list and a notice are the one shape whether the art is on
+the card or not, and nothing moves when a fetch lands it. Badges are fetched
+on the shelf, never in a game, on a thread of their own in one curl for what
+is missing (src/rabadge.h); no frame waits on the network.
+
+**Zyper on an unlock.** The notice an unlock makes, and the one for mastering
+a set, has Zyper at its right end, as tall as the badge, cocked and panting as
+he rests in the menus (10), in his own colors; on Beard with the
+**focus-small** shadow under him, since his beard is the slab's own white
+there, on Salt & Pepper with none. A count moving, the set's arrival and
+fast forward's word do not have him: he is for the achievement won. He is
+filled into the notice's pixels from the table the menus draw him from
+(src/zyperplace.c, src/noticeart.c), so he is the same dog; the slab may run
+a little wider with him (7/8 of the screen, not 5/6) so a long name keeps its
+room.
 
 ### 11.8 One-line message
 A menu panel over **scrim.menu**. One row holds for **hold.short**;
@@ -1800,7 +1825,7 @@ off), which an older gauge reads alone, then `level`/`-level`, `done`/`-done`,
 My picks in the controls lab (docs/design/mock/controls-lab.html,
 2026-11-06). The in-game menu has a **Controls** row, right after Display
 (after a DS game's Screens, Swap Screens and Stylus, which go with Display):
-Continue, Save, Load, Display, Controls, Cheevos, Reset, Quit. Eight rows is
+Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. Eight rows is
 one more than the panel shows, so Quit is under the arrow, one Up from
 Continue, as a DS game's last rows are.
 

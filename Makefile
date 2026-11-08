@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
@@ -978,7 +978,7 @@ build-native/rahash-check: tools/rahash-check.c src/rahash.c src/rahash.h FORCE
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/rahash-check.c src/rahash.c -lz
 
-.PHONY: check-noticeq check-rasubmit check-lowbatt check-heat check-charging
+.PHONY: check-noticeq check-badges check-badge-shots check-rasubmit check-lowbatt check-heat check-charging
 
 # The pop-ups over a game, one after another (src/noticeq.h)
 check-noticeq: build-native/noticeq-check
@@ -988,6 +988,39 @@ build-native/noticeq-check: tools/noticeq-check.c src/noticeq.c src/noticeq.h FO
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/noticeq-check.c src/noticeq.c
+
+# Achievement badges (src/rabadge.h) and the two pictures the launcher draws
+# for them (src/noticeart.h): the cache beside the set, the fetch off the
+# frame in one curl for what is missing, the plain badge where the card has
+# none, a 404 page never kept as a badge; then the plain badge and Zyper as
+# pixels. The real rabadge.c and net.c, net.c read in whole with the check as
+# its curl (tools/rabadge-check.c). No network. Needs SDL2 and SDL2_image,
+# and skips cleanly without them.
+check-badges:
+	@if pkg-config --exists sdl2 SDL2_image 2>/dev/null; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
+		  $$(pkg-config --cflags sdl2 SDL2_image) -Isrc \
+		  -DNET_TMP='"$(CURDIR)/build-native/badges-check-tmp"' \
+		  -DZYPEROS_VERSION='"check"' \
+		  -o build-native/rabadge-check tools/rabadge-check.c src/rabadge.c src/noticeart.c \
+		  src/zyperplace.c src/blur.c src/cheevos.c src/atomic.c src/db.c \
+		  $$(pkg-config --libs sdl2 SDL2_image) -lsqlite3 -lz -lpthread -lm && \
+		SDL_VIDEODRIVER=dummy ./build-native/rabadge-check; \
+	else echo "skipped: no SDL2 and SDL2_image for the badge check"; fi
+
+# The same, as the launcher draws them (src/main.c, src/notice.c): an unlock's
+# notice with a badge or the plain one and Zyper, in both themes; a count's
+# with the plain one and no Zyper; the set's arrival with neither; and the
+# achievements list with the plain badge in every row, or the card's own.
+# The host build's --notice and --cheevos-screen shots, read back with
+# Python's standard library (tools/badge-shots-check.py). Needs SDL2, and
+# skips cleanly without it.
+check-badge-shots:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+	fi
+	@python3 tools/badge-shots-check.py
 
 # RetroAchievements sign-in, telling a wrong password from another refusal
 # from no answer: the real rafetch.c and net.c, net.c read in whole with the

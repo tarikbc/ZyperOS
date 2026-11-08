@@ -79,7 +79,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Display, Controls, Cheevos, Reset, Quit. It opens when you let go, so MENU can be held for fast forward |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. It opens when you let go, so MENU can be held for fast forward |
 | **MENU+R1** (in game) | fast forward: 2x, 3x, 4x, then back to normal |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
@@ -173,14 +173,14 @@ than any one console:
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
-| **Cheevos** | the RetroAchievements account, or `sign in` |
+| **Achievements** | the RetroAchievements account, or `sign in` |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
 | **About ZyperOS** | two pages: version, address, charge and uptime; then storage and estimated battery health |
 
 The Pixel 2 has no radio, so the rows that need Wi-Fi show only while a
-USB Wi-Fi adapter is plugged in: Wi-Fi, Cheevos and Wi-Fi
+USB Wi-Fi adapter is plugged in: Wi-Fi, Achievements and Wi-Fi
 File Transfer here (USB File Transfer stays, with a computer on the cable), Box
 Art in a console's menu, and Album Art in MP4's. Scraper stays: its fetch says
 it needs Wi-Fi, and its video snaps and sources need none. Bluetooth is never
@@ -230,7 +230,7 @@ never set does not show a time that is not now. The same corner is on Now
 Playing and over the menu of a paused game.
 
 Wi-Fi File Transfer and Scraper's fetch need a network, and go quiet without one rather than
-disappearing - a row that vanishes teaches nobody why. Cheevos stays reachable
+disappearing - a row that vanishes teaches nobody why. Achievements stays reachable
 either way, because signing in is the thing you go there to do, and Bluetooth
 and Play Time need no network at all.
 
