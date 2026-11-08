@@ -2154,8 +2154,29 @@ in both themes and every language. The numbers and the cache are held by
 ### 11.33 Install PortMaster
 
 The Ports shelf installs the official PortMaster (portmaster.games) when it
-is not on the card (src/pminstall.h). Nothing new is drawn for it: it is the
-shelf's own entry and System Update's page (11.17) with its own words.
+is not on the card (src/pminstall.h). It is the shelf's own entry and System
+Update's page (11.17) with its own words, and its own art.
+
+- **The art** (tools/genportmaster.py, `res/portmaster/`), drawn for ZyperOS,
+  with no part of PortMaster's logo or any brand's art: a dock crane lowering
+  a game cartridge (ZyperOS's lime label with a gear, gold contacts at its
+  foot) onto a stack of shipping containers in Ports' pink, blue and teal,
+  on a quay over the water. Pixel art as the home's sprites are, 64 by 82
+  pixels with three-step ramps and a one-pixel **ink** outline, drawn 8 times
+  over into the generated card's 512 by 656, with its corners and the band of
+  Ports' color across the top, so it stands in a row of generated cards as
+  one of them. **The cover** is one file a theme, as a generated card is: its
+  sky is the card's slab (cardgen_slab), with the sun in Beard and the moon
+  and stars in Salt & Pepper; the crane, the cartridge and the water are the
+  same in both. It is the entry's cover on the card or not, on the Ports
+  shelf, Favorites, any order of either and the port's loading screen, in
+  place of box art: a scrape skips PortMaster, and its details have no Box
+  Art row. MENU > Storage's Ports page lists games as words (11.32), so it
+  has no picture there. **The icon** is the crane, cartridge and containers
+  on a piece of quay with nothing behind them, on the Install PortMaster page
+  where System Update's has Zyper, at 0.8 of its 4-to-1 file: two panel
+  pixels to one of the art's on the Pixel 2. *(2026-11-08: I wanted
+  PortMaster to have art of its own in ZyperOS's style.)*
 
 - **The entry** is PortMaster's, `Roms/Ports/PortMaster.sh`, on the Ports
   shelf whether it is on the card or not, wherever the card's ZyperOS has

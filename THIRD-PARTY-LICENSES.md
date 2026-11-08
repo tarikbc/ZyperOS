@@ -142,7 +142,10 @@ own) runs on the system's Python 3. It downloads **PortMaster**
 GitHub releases onto the card when the player asks, and PortMaster updates
 itself from then on. ZyperOS carries no part of PortMaster: the other files
 in `res/portmaster/` are ZyperOS's own settings for it, which launch.sh puts
-in PortMaster's folder before each port.
+in PortMaster's folder before each port, and the Ports shelf's art for its
+entry (`cover-light.png`, `cover-dark.png` and `icon.png`), drawn for ZyperOS
+by `tools/genportmaster.py` with no part of PortMaster's logo or any brand's
+art, under ZyperOS's own license.
 
 ---
 

@@ -100,8 +100,9 @@ Some parts of this repository are under other licenses:
   is under the GNU General Public License, version 3, in plastron/LICENSE.
 - mk/patches/ holds changes to other projects. Each patch is under the license
   of the project it changes.
-- src/third_party/ (minimp3, stb_vorbis) and res/portmaster/ keep their own
-  licenses, given in those files.
+- src/third_party/ (minimp3, stb_vorbis) and the scripts in res/portmaster/
+  keep their own licenses, given in those files. The pictures in
+  res/portmaster/ (tools/genportmaster.py) are ZyperOS's own.
 - Art, music, fonts and every program a card carries keep their own licenses.
   THIRD-PARTY-LICENSES.md lists them.
 

@@ -32,6 +32,11 @@
  * only: only its launch.sh runs ports), and where it says what it is doing */
 #define PM_INSTALLER "portmaster/pm-install.py"
 #define PM_STATUS_DIR "/tmp/zyperos-pm"
+/* The entry's own art, beside the installer (tools/genportmaster.py): its
+ * cover in each theme, and the icon the Install PortMaster page draws */
+#define PM_COVER_LIGHT "portmaster/cover-light.png"
+#define PM_COVER_DARK  "portmaster/cover-dark.png"
+#define PM_ICON        "portmaster/icon.png"
 
 typedef enum {
 	PM_IDLE,                  /* nothing started: the offer */

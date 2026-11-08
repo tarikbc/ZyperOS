@@ -4,6 +4,7 @@
 #include "blur.h"
 #include "design.h"
 #include "linebreak.h"
+#include "shelfbuild.h"
 #include "theme.h"
 #include "ui.h"
 
@@ -458,7 +459,9 @@ bool port_loading_draw(app *a, const system_cfg *s, int i)
 	if (!cover || tex_stale(cover)) {
 		char art[LIB_PATH * 3], prev[LIB_PATH * 3];
 
-		box_art_path(a->sys.systems[o].folder, v->list.items[i].name, art, sizeof art);
+		/* PortMaster's own cover in this theme, else the box art */
+		if (!pm_cover_path(a, o, &v->list.items[i], theme_index(), art, sizeof art))
+			box_art_path(a->sys.systems[o].folder, v->list.items[i].name, art, sizeof art);
 		preview_path(a, o, &v->list.items[i], prev, sizeof prev);
 		cover = load_image(a->r, art, &tw, &th, &cb);
 		if (!cover) cover = load_image(a->r, prev, &tw, &th, &cb);

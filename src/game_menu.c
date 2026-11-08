@@ -83,8 +83,9 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * is holding; publisher and developer run to 214 and 417 distinct values
 	 * of pure trivia. They stay stored - re-scraping to add a column is an
 	 * hour - and stay off this screen. */
-	out[n++] = (menu_row){ gi->has_art ? T(S_GAMEMENU_REPLACE_ART) : T(S_GAMEMENU_GET_ART),
-	                       net ? NULL : T(S_MENU_NEEDS_WIFI), net };
+	if (!gi->own_art)
+		out[n++] = (menu_row){ gi->has_art ? T(S_GAMEMENU_REPLACE_ART) : T(S_GAMEMENU_GET_ART),
+		                       net ? NULL : T(S_MENU_NEEDS_WIFI), net };
 	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
 	 * cover and video. Never where the screen opens, and never the end of a
 	 * stray press: A on it only asks, and the question opens on Cancel. No
