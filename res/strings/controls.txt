@@ -50,6 +50,17 @@ de = Im Spiel
 ja = ゲーム中
 it = In gioco
 
+[controls.page.hotkeys]
+note = A Controls page's name, in "Controls: Hotkeys": SELECT held with a shoulder, in a game (quick save and load, the speed). Beside the page count: keep it short. review: fr Combos, as Raccourcis did not fit beside the count.
+en = Hotkeys
+zh-Hans = 快捷键
+es = Atajos
+pt-BR = Atalhos
+fr = Combos
+de = Schnelltasten
+ja = ホットキー
+it = Scorciatoie
+
 [controls.page.muse]
 note = A page's name, in "Controls: In MP4": MP4 is the media player's name, never translated.
 en = In MP4
@@ -199,16 +210,16 @@ it = Livello batteria
 
 # In a game
 
-[controls.menu_ff]
-note = What MENU does in a game: the in-game menu, and held with R1 fast forward (FF). tight
-en = Menu, +R1 for FF
-zh-Hans = 菜单，+R1 快进
-es = Menú, +R1 acelera
-pt-BR = Menu, +R1 acelera
-fr = Menu, +R1 accélère
-de = Menü, +R1 spult vor
-ja = メニュー、+R1 早送り
-it = Menu, +R1 accelera
+[controls.ingame_menu]
+note = What MENU does in a game: it opens the in-game menu (Continue, Save, Load...). tight
+en = In-game menu
+zh-Hans = 游戏内菜单
+es = Menú del juego
+pt-BR = Menu do jogo
+fr = Menu du jeu
+de = Spielmenü
+ja = ゲーム内メニュー
+it = Menu di gioco
 
 [controls.mp4_menu]
 note = What SELECT does in a game: MP4, the media player, is in the in-game menu.
@@ -253,6 +264,63 @@ fr = * sur certains systèmes
 de = * bei manchen Systemen
 ja = * 一部のシステムのみ
 it = * per alcuni sistemi
+
+# Hotkeys: SELECT held and a shoulder, in a game
+
+[controls.quick_save]
+note = What SELECT+R1 does in a game: saves a state to the quick slot (the in-game menu's Quick Slot row). As gamemenu.save's word.
+en = Quick save
+zh-Hans = 快速存档
+es = Guardado rápido
+pt-BR = Salvar rápido
+fr = Sauvegarde rapide
+de = Schnell speichern
+ja = クイックセーブ
+it = Salvataggio rapido
+
+[controls.quick_load]
+note = What SELECT+L1 does in a game: loads the state in the quick slot. As gamemenu.load's word.
+en = Quick load
+zh-Hans = 快速读档
+es = Carga rápida
+pt-BR = Carregar rápido
+fr = Chargement rapide
+de = Schnell laden
+ja = クイックロード
+it = Caricamento rapido
+
+[controls.faster]
+note = What SELECT+R2 does in a game: the game runs faster, a step a press (1.5x, 2x, 3x).
+en = Faster
+zh-Hans = 加速
+es = Más rápido
+pt-BR = Mais rápido
+fr = Plus vite
+de = Schneller
+ja = 速くする
+it = Più veloce
+
+[controls.slower]
+note = What SELECT+L2 does in a game: the game runs slower, a step a press, back to normal speed.
+en = Slower
+zh-Hans = 减速
+es = Más lento
+pt-BR = Mais lento
+fr = Moins vite
+de = Langsamer
+ja = 遅くする
+it = Più lento
+
+[controls.note_select]
+note = The note under the hotkeys: a press of SELECT with no shoulder after it still reaches the game as its SELECT. The width of the panel: about 30 characters.
+en = SELECT alone stays the game's
+zh-Hans = 单按 SELECT 仍是游戏按键
+es = SELECT solo es del juego
+pt-BR = SELECT sozinho é do jogo
+fr = SELECT seul reste au jeu
+de = SELECT allein gehört dem Spiel
+ja = SELECT だけならゲームの操作
+it = SELECT da solo resta al gioco
 
 # In MP4
 
@@ -614,50 +682,6 @@ de = Rechtes Pad links
 ja = 右十字キー左
 it = Pad destro sinistra
 
-[controls.circle]
-note = PlayStation's button.
-en = Circle
-zh-Hans = 圆圈
-es = Círculo
-pt-BR = Círculo
-fr = Rond
-de = Kreis
-ja = マル
-it = Cerchio
-
-[controls.cross]
-note = PlayStation's button. Not the letter X: X is a button of the handheld.
-en = Cross
-zh-Hans = 叉
-es = Equis
-pt-BR = Xis
-fr = Croix
-de = Kreuz
-ja = バツ
-it = Croce
-
-[controls.triangle]
-note = PlayStation's button.
-en = Triangle
-zh-Hans = 三角
-es = Triángulo
-pt-BR = Triângulo
-fr = Triangle
-de = Dreieck
-ja = サンカク
-it = Triangolo
-
-[controls.square]
-note = PlayStation's button.
-en = Square
-zh-Hans = 方块
-es = Cuadrado
-pt-BR = Quadrado
-fr = Carré
-de = Quadrat
-ja = シカク
-it = Quadrato
-
 [controls.y_left]
 note = WonderSwan: the left one of its Y buttons, a second d-pad.
 en = Y pad left
@@ -856,6 +880,28 @@ de = Ein/Aus
 ja = 電源
 it = Accensione
 
+[controls.arrows]
+note = PICO-8's d-pad: its four arrow buttons (left, right, up, down).
+en = Arrows
+zh-Hans = 箭头键
+es = Flechas
+pt-BR = Setas
+fr = Flèches
+de = Pfeiltasten
+ja = 方向キー
+it = Frecce
+
+[controls.pause_menu]
+note = What START does on the PICO-8: opens its pause menu.
+en = Pause menu
+zh-Hans = 暂停菜单
+es = Menú de pausa
+pt-BR = Menu de pausa
+fr = Menu pause
+de = Pausenmenü
+ja = ポーズメニュー
+it = Menu di pausa
+
 # In a game: the page a system adds
 
 [controls.attack]
@@ -998,16 +1044,16 @@ de = C links
 ja = C 左
 it = C sinistra
 
-[controls.rumble]
-note = Nintendo 64: the controller holds a Rumble Pak, not a Controller Pak (product names, not translated). Cut after about 30 characters.
-en = Rumble Pak, not Controller Pak
-zh-Hans = Rumble Pak，非 Controller Pak
-es = Rumble Pak, no Controller Pak
-pt-BR = Rumble Pak, não Controller Pak
-fr = Rumble Pak, pas Controller Pak
-de = Rumble Pak, kein Controller Pak
-ja = Rumble Pak（Controller Pak 不可）
-it = Rumble Pak, non Controller Pak
+[controls.pak_where]
+note = Under a Nintendo 64 game's C buttons: where its controller's Pak is chosen and which one is in, as a menu path and its value. %1$s is gamemenu.pak (the row's name), %2$s the Pak, a product name never translated: "Rumble Pak" or "Controller Pak" (the N64's memory card). MENU is drawn as the key. The width of the panel: about 30 characters with "Controller Pak".
+en = MENU > %s: %s
+zh-Hans = MENU > %s：%s
+es = MENU > %s: %s
+pt-BR = MENU > %s: %s
+fr = MENU > %s : %s
+de = MENU > %s: %s
+ja = MENU > %s：%s
+it = MENU > %s: %s
 
 [controls.two_screens]
 note = Nintendo DS: the page of its screens and stylus, in "Controls: Two screens". tight

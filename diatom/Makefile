@@ -26,7 +26,7 @@ LDFLAGS += -lz
 # Objects live under build/$(PORT)/ so host and cross builds cannot collide:
 # a leftover x86 main.o in a device link fails late and confusingly.
 BUILD := build/$(PORT)
-SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/hw.c port/$(PORT).c
+SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/hw.c port/$(PORT).c
 # Expanded where it is used, not here: a port's block below adds its own files
 # to SRC (the Pixel 2's bar, port/osdbar.c), and := took the list before they
 # were in it, so they were never built and the link failed.
@@ -109,7 +109,7 @@ ifeq ($(PORT),pixel2)
 endif
 
 .PHONY: all clean check check-seam check-proto check-port \
-        check-corefacts check-cheevos check-screens check-bounds check-copies \
+        check-corefacts check-cheevos check-screens check-chord check-bounds check-copies \
         stub run-stub
 
 all: $(BIN)
@@ -142,7 +142,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-bounds check-proto check-port check-stateplane check-resident
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-bounds check-proto check-port check-stateplane check-resident check-hotkeys
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -174,6 +174,20 @@ $(SCREENS_TEST): test/screens_test.c src/screens.c src/scale.c src/screens.h src
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
 	      -Iinclude -Isrc -o $@ test/screens_test.c src/screens.c src/scale.c
+
+# SELECT as the hotkeys' chord key (src/chord.h): every case of the rule, turn
+# by turn, as a game reads the pad - a tap given back as it is let go, a chord
+# hidden whole, SELECT with another button the game's at once, the soft reset,
+# a core with no states. Offline, like check-screens: src/chord.c alone.
+CHORD_TEST := $(BUILD)/chord-test
+
+check-chord: $(CHORD_TEST)
+	@./$(CHORD_TEST)
+
+$(CHORD_TEST): test/chord_test.c src/chord.c src/chord.h include/diatom_port.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
+	      -Iinclude -Isrc -o $@ test/chord_test.c src/chord.c
 
 # Input that does not fit what reads it: zips too short or too sure of
 # themselves (src/zip.c), and a protocol line longer than its buffer
@@ -242,6 +256,14 @@ check-resident:
 	$(FRESH_IF_BUILT)
 	@python3 test/resident.py
 .PHONY: check-resident
+
+# SELECT's hotkeys end to end (src/chord.h): the pad by script, what the stub
+# core read written down, the quick slot's SAVE and LOAD answered while the
+# game runs. On check-stateplane's terms: about eight seconds, skipped unbuilt.
+check-hotkeys:
+	$(FRESH_IF_BUILT)
+	@python3 test/hotkeys.py
+.PHONY: check-hotkeys
 
 # The port's audio contract: falls back, is idempotent, and ALWAYS returns.
 # The last one is the reason this exists - a close that joins a stuck audio

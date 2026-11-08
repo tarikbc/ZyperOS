@@ -838,7 +838,7 @@ check-controls-shots:
 	@sh tools/controls-shots-check.sh
 
 build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.c \
-                            src/controls.h src/menu.h src/config.c src/config.h \
+                            src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
                             src/db.c src/db.h src/atomic.c config/systems.cfg \
                             $(I18N_SRC) FORCE
 	@mkdir -p build-native
@@ -847,14 +847,15 @@ build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.
 	      $(I18N_SRC) -lsqlite3
 
 build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/wifi.c \
-                        src/sys_menu.c src/menu.c src/game_menu.c \
+                        src/sys_menu.c src/menu.c src/game_menu.c src/controls.c \
                         src/audioout.c src/sidelights.c src/wifi_menu.h src/sys_menu.h \
                         src/game_menu.h src/menu.h src/audioout.h src/sidelights.h \
-                        src/spawn.c src/spawn.h $(I18N_SRC) FORCE
+                        src/controls.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
-	      src/menu.c src/game_menu.c src/audioout.c src/sidelights.c src/spawn.c $(I18N_SRC)
+	      src/menu.c src/game_menu.c src/controls.c src/audioout.c src/sidelights.c \
+	      src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never

@@ -441,6 +441,103 @@ static void screens_put(const char *tag, int layout, bool swap)
 	plat_resident_line("SETSCREENS\tlayout=%s\tswap=%d", gm_layout_names[layout], swap ? 1 : 0);
 }
 
+/* ---------- the quick slot ------------------------------------------------- *
+ *
+ * SELECT+R1 saves a state to it and SELECT+L1 loads it (Diatom's chord.h),
+ * and the in-game menu's Quick Slot row picks it: one of the six, for each
+ * system, slot 1 until one is picked. Kept in the device's database beside
+ * screens.<TAG>, under quickslot.<TAG>, so it stays on the card. */
+/* The last system asked for and its slot: the in-game menu builds its rows
+ * every frame, and the database is read once, not sixty times a second.
+ * Written only through quick_slot_put, which keeps it. */
+static struct { char tag[CFG_STR]; int slot; } quick_seen;
+
+static int quick_slot_get(const char *tag)
+{
+	char key[48], v[8];
+
+	if (quick_seen.slot && !strcmp(quick_seen.tag, tag)) return quick_seen.slot;
+	gm_quick_key(tag, key, sizeof key);
+	snprintf(quick_seen.tag, sizeof quick_seen.tag, "%s", tag);
+	quick_seen.slot = gm_quick_slot(db_get_str(db_dev(), key, v, sizeof v, NULL) ? v : NULL);
+	return quick_seen.slot;
+}
+
+static void quick_slot_put(const char *tag, int slot)
+{
+	char key[48], v[8];
+
+	if (slot < 1 || slot > GM_SLOTS) slot = GM_QUICK_DEFAULT;
+	gm_quick_key(tag, key, sizeof key);
+	snprintf(v, sizeof v, "%d", slot);
+	db_set_str(db_dev(), key, v);
+	snprintf(quick_seen.tag, sizeof quick_seen.tag, "%s", tag);
+	quick_seen.slot = slot;
+}
+
+/* The game being played, for the hotkeys: they come while this process waits
+ * on the game and has no shelf to look at, so the launch leaves what they
+ * need here (quick_bind). A slot's files are <stem>.<n>.state and .bmp, as
+ * the menu's Save writes them (slot_state_path). `asked` is the slot of a
+ * SAVE or LOAD sent and not yet answered, 0 for none, and `path` its state. */
+static struct {
+	char tag[CFG_STR];
+	char name[CFG_STR];
+	char stem[LIB_PATH * 2];
+	bool states;
+	int  asked;
+	bool load;
+	char path[LIB_PATH * 2 + 16];
+} g_quick;
+
+/* ---------- the Nintendo 64's Pak ------------------------------------------ *
+ *
+ * What an N64 game's controller holds: the Rumble Pak, ZyperOS's default
+ * (src/db.c: the Pixel 2 has a motor), or the Controller Pak, the memory
+ * card some games save to - Mario Kart 64's ghosts, and games that save
+ * nowhere else. Chosen per game in the in-game menu's Pak row, since it is
+ * the game that needs one or the other, and kept in the library's database
+ * as pak.<TAG>.<file>, beside the system's core options; a game never chosen
+ * for has the system's (coreopt.N64.mupen64plus-pak1). Mupen64Plus-Next
+ * reads its option again whenever one changes and swaps the pak in the
+ * controller there and then, so the row works while the game runs, and the
+ * Controller Pak's contents live in the game's own save RAM, its .srm,
+ * whichever is in. */
+static bool pak_system(const system_cfg *s)
+{
+	return s && !strcmp(s->core, "mupen64plus_next");
+}
+
+/* The system's own: its core option, or the Rumble Pak */
+static const char *pak_default(const char *tag)
+{
+	int i, n = plat_coreopt_count(tag);
+
+	for (i = 0; i < n; i++) {
+		const char *kv = plat_coreopt(tag, i);
+
+		if (!strncmp(kv, GM_PAK_OPTION "=", sizeof GM_PAK_OPTION))
+			return gm_pak_value(kv + sizeof GM_PAK_OPTION);
+	}
+	return gm_pak_value(NULL);
+}
+
+static const char *pak_get(const char *tag, const char *file)
+{
+	char key[CFG_STR + LIB_PATH + 8], v[16];
+
+	gm_pak_key(tag, file, key, sizeof key);
+	return db_get_str(db_lib(), key, v, sizeof v, NULL) ? gm_pak_value(v) : pak_default(tag);
+}
+
+static void pak_put(const char *tag, const char *file, const char *value)
+{
+	char key[CFG_STR + LIB_PATH + 8];
+
+	gm_pak_key(tag, file, key, sizeof key);
+	db_set_str(db_lib(), key, gm_pak_value(value));
+}
+
 /* ---------- per-system sort order ----------------------------------------- */
 
 /* Keyed on the tag for the same reason display.<TAG> is, and stored beside it.
@@ -1037,6 +1134,20 @@ static void slot_preview_path(app *a, int s, const game_entry *g, int slot,
 void state_path(app *a, int s, const game_entry *g, char *out, size_t n)
 {
 	slot_state_path(a, s, g, SLOT_AUTO, out, n);
+}
+
+/* The hotkeys' copy of where this game's slots are (g_quick), at its launch:
+ * slot_state_path's, less the slot */
+static void quick_bind(app *a, int s, const game_entry *g)
+{
+	const system_cfg *sc = &a->sys.systems[s];
+
+	memset(&g_quick, 0, sizeof g_quick);
+	snprintf(g_quick.tag, sizeof g_quick.tag, "%s", sc->tag);
+	snprintf(g_quick.name, sizeof g_quick.name, "%s", sc->name);
+	snprintf(g_quick.stem, sizeof g_quick.stem, "%s/.zyperos/%s/%s",
+	         P_SHARED, sc->folder, persist_base(a, s, g));
+	g_quick.states = ctl_has_states(sc->tag);
 }
 
 /* The launcher owns the paths, so the launcher makes the directories - the
@@ -1933,23 +2044,77 @@ static void on_cheevo_progress(int id, const char *text, int value, int target)
 	             p[0] ? p : NULL, value, target);
 }
 
-/* Called from inside plat_resident_wait when Diatom says the fast-forward step
- * changed, or that a game resumed fast. Drawn as an unlock notice is -
- * rendered here, composited there - and shorter, since it says a word. The
- * step, not the speed reached: on a heavy SNES or GBA game 3x and 4x both run
- * about 2.5x, and that figure moves from scene to scene. */
-static void on_speed(int x)
+/* A pop-up that answers a press over the game: rendered here, composited by
+ * Diatom, as an unlock notice is, and shorter, since it says a word or two.
+ * Past the queue, at once, and the queue waits for it to go. */
+static void popup_now(const char *head, const char *body)
 {
-	char p[CFG_STR * 2], body[16];
+	char p[CFG_STR * 2];
 
-	if (x > 1) snprintf(body, sizeof body, "%dx", x);
-	else       snprintf(body, sizeof body, "%s", T(S_POPUP_FF_OFF));
-	/* Past the queue, at once - it answers a press - and the queue waits for
-	 * it to go */
 	snprintf(p, sizeof p, "%s", NOTICE_FILE);
-	if (notice_render(T(S_POPUP_FAST_FORWARD), body, p, theme_index()))
+	if (notice_render(head, body, p, theme_index()))
 		plat_resident_line("OVERLAY\tpath=%s\tms=1500", p);
 	nq_hold(&g_nq, plat_now_ms(), 1500);
+}
+
+/* Called from inside plat_resident_wait when Diatom says the speed step
+ * changed (SELECT+R2, SELECT+L2), or that a game resumed fast: in halves, 3
+ * is 1.5x. The step, not the speed reached: on a heavy SNES or GBA game the
+ * top step runs about 2.5x, and that figure moves from scene to scene. */
+static void on_speed(int half)
+{
+	char body[24];
+
+	if (half % 2) snprintf(body, sizeof body, T(S_POPUP_SPEED_HALF), half / 2);
+	else          snprintf(body, sizeof body, T(S_POPUP_SPEED_WHOLE), half / 2);
+	popup_now(T(S_POPUP_SPEED), body);
+}
+
+/* Called from inside plat_resident_wait for the quick slot (platform.h's
+ * PLAT_QUICK_*). SELECT+R1 and SELECT+L1 ask, and the slot is this
+ * process's to know (quick_slot_get), so the SAVE or LOAD goes back to
+ * Diatom from here, a save with its picture for the slot strip, and the
+ * pop-up says the slot when the answer comes. A slot with nothing in it is
+ * said at once, with no LOAD: the strip says "Empty" for the same file. */
+static void on_quick(int what, const char *path)
+{
+	char slot[32];
+
+	if (what == PLAT_QUICK_ASK_SAVE || what == PLAT_QUICK_ASK_LOAD) {
+		bool load = what == PLAT_QUICK_ASK_LOAD;
+		int n;
+
+		if (!g_quick.stem[0]) return;
+		if (!g_quick.states) {
+			popup_now(T(S_POPUP_NO_STATES), g_quick.name);
+			return;
+		}
+		n = quick_slot_get(g_quick.tag);
+		snprintf(slot, sizeof slot, T(S_SLOTS_SLOT), n);
+		snprintf(g_quick.path, sizeof g_quick.path, "%s.%d.state", g_quick.stem, n);
+		if (load && access(g_quick.path, R_OK) != 0) {
+			popup_now(T(S_POPUP_SLOT_EMPTY), slot);
+			return;
+		}
+		g_quick.asked = n;
+		g_quick.load = load;
+		if (load)
+			plat_resident_line("LOAD\tpath=%s", g_quick.path);
+		else
+			plat_resident_line("SAVE\tpath=%s\tpreview=%s.%d.bmp", g_quick.path,
+			                   g_quick.stem, n);
+		return;
+	}
+	/* An answer to what the hotkeys asked; the menu's own are not said */
+	if (!g_quick.asked || !path || strcmp(path, g_quick.path)) return;
+	snprintf(slot, sizeof slot, T(S_SLOTS_SLOT), g_quick.asked);
+	g_quick.asked = 0;
+	switch (what) {
+	case PLAT_QUICK_SAVED:       popup_now(T(S_POPUP_SAVED), slot); break;
+	case PLAT_QUICK_LOADED:      popup_now(T(S_POPUP_LOADED), slot); break;
+	case PLAT_QUICK_SAVE_FAILED: popup_now(T(S_POPUP_SAVE_FAILED), slot); break;
+	default:                     popup_now(T(S_POPUP_LOAD_FAILED), slot); break;
+	}
 }
 
 static wifi_state menu_wifi(char *ssid, int cap);   /* with the menus, below */
@@ -12060,15 +12225,31 @@ static void gm_cycle_display(app *a, int d)
 
 /* What the in-game menu needs from the app, handed to gm_rows to become rows.
  * Same split as everywhere else. */
-static int gm_build(app *a, menu_row *out, gm_bufs *b)
+/* What the in-game menu shows, gathered: for its rows, and for where each
+ * row is (gm_row_at), which the quick slot's row moves */
+static void gm_gather(app *a, gm_ui *out)
 {
 	gm_ui u;
 
+	memset(&u, 0, sizeof u);
 	u.dmode  = dmode_label(a->view[a->sys_cursor].dmode);
 	u.earned = chv_earned();
 	u.total  = chv_count();
 	u.screens = g_game_dual;
 	u.port   = g_port_menu;
+	/* The game's own system, on Favorites too (shelf_owner); none where its
+	 * core keeps no states, and none over a program of its own (a "run:"
+	 * one, src/portmenu.h), which has no states and no Pak */
+	if (!u.port) {
+		const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor,
+		                                      a->view[a->sys_cursor].cursor)];
+
+		u.quick = ctl_has_states(q->tag) ? quick_slot_get(q->tag) : 0;
+		/* An N64 game's Pak, on Mupen64Plus-Next */
+		if (pak_system(q) && a->view[a->sys_cursor].list.count > 0)
+			u.pak = gm_pak_name(pak_get(q->tag, a->view[a->sys_cursor].list
+			                                     .items[a->view[a->sys_cursor].cursor].file));
+	}
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
 		                                      a->view[a->sys_cursor].cursor)];
@@ -12080,6 +12261,14 @@ static int gm_build(app *a, menu_row *out, gm_bufs *b)
 		u.swap   = plat_resident_swap();
 		u.stylus = plat_resident_stylus();
 	}
+	*out = u;
+}
+
+static int gm_build(app *a, menu_row *out, gm_bufs *b)
+{
+	gm_ui u;
+
+	gm_gather(a, &u);
 	return gm_rows(&u, out, b);
 }
 
@@ -14540,8 +14729,13 @@ static ctl_game game_controls_of(app *a)
 	const char *file = sv->list.count > 0 ? sv->list.items[sv->cursor].file : "";
 	const char *dot = strrchr(file, '.');
 
-	return (ctl_game){ s->tag, s->name, home_label(s->tag, s->name), s->map,
-	                   plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a, is_port(s) };
+	ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
+	               plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a, is_port(s),
+	               NULL };
+
+	/* What the N64's C buttons page says is in the controller */
+	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s->tag, file));
+	return g;
 }
 
 /* The in-game menu's Controls (DESIGN.md 11.28): every control this game
@@ -14616,20 +14810,37 @@ static int gm_width(app *a)
 {
 	menu_row rows[GM_MAX_ROWS];
 	gm_bufs b;
-	int w = 0, k, n;
+	gm_ui u;
+	int w = 0, k, n, disp, scr;
 
 	n = gm_build(a, rows, &b);
-	for (k = 0; k < DMODE_COUNT; k++) {
+	gm_gather(a, &u);
+	/* Where the rows are, which the quick slot's row moves: none where the
+	 * system keeps no states */
+	disp = gm_row_at(&u, GM_DISPLAY);
+	scr  = gm_row_at(&u, GM_SCREENS);
+	for (k = 0; disp >= 0 && k < DMODE_COUNT; k++) {
 		int mw;
-		rows[GM_DISPLAY].value = dmode_label(k);
+		rows[disp].value = dmode_label(k);
 		mw = menu_measure(rows, n, NULL);
 		if (mw > w) w = mw;
 	}
-	rows[GM_DISPLAY].value = dmode_label(0);
+	if (disp >= 0) rows[disp].value = dmode_label(0);
+	/* An N64 game's Pak, at each */
+	{
+		int pk = gm_row_at(&u, GM_PAK);
+
+		for (k = 0; pk >= 0 && k < 2; k++) {
+			int mw;
+			rows[pk].value = gm_pak_name(k ? "memory" : "rumble");
+			mw = menu_measure(rows, n, NULL);
+			if (mw > w) w = mw;
+		}
+	}
 	/* A DS game's Screens row, right under Display, at each layout. */
-	for (k = 0; g_game_dual && k < GM_LAYOUTS; k++) {
+	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
 		int mw;
-		rows[GM_DISPLAY + 1].value = gm_layout_label(k);
+		rows[scr].value = gm_layout_label(k);
 		mw = menu_measure(rows, n, NULL);
 		if (mw > w) w = mw;
 	}
@@ -14710,10 +14921,12 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	/* A row's place to its id: a DS game has three rows more after Display,
 	 * and the same list the build used says which row is which. */
 	{
-		gm_ui u = { .screens = g_game_dual, .port = g_port_menu };
+		gm_ui u;
 		gm_row ids[GM_MAX_ROWS];
-		int n = gm_row_ids(&u, ids);
+		int n;
 
+		gm_gather(a, &u);
+		n = gm_row_ids(&u, ids);
 		sel = sel >= 0 && sel < n ? (int)ids[sel] : GM_MAX_ROWS;
 	}
 	if ((sel == GM_SCREENS || sel == GM_SWAP || sel == GM_STYLUS) &&
@@ -14738,6 +14951,33 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	 * into it. */
 	if (sel == GM_DISPLAY && (key == IN_LEFT || key == IN_RIGHT)) {
 		gm_cycle_display(a, key == IN_RIGHT ? 1 : -1);
+		return MENU_STAY;
+	}
+	/* The quick slot steps round 1 to 6 on left, right and A, kept for the
+	 * game's system at once: SELECT+R1 and SELECT+L1 use it from the next
+	 * press, in this game and every other on the system */
+	/* The Pak turns between the two on left, right and A, kept for this game
+	 * and put in the controller at once: Diatom takes SETOPT while paused,
+	 * and the core swaps the pak on its next frame */
+	if (sel == GM_PAK && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		sysview *sv = &a->view[a->sys_cursor];
+		const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor, sv->cursor)];
+
+		if (sv->list.count > 0) {
+			const char *file = sv->list.items[sv->cursor].file;
+			const char *to = gm_pak_other(pak_get(q->tag, file));
+
+			pak_put(q->tag, file, to);
+			plat_resident_line("SETOPT\tkey=%s\tvalue=%s", GM_PAK_OPTION, to);
+		}
+		return MENU_STAY;
+	}
+	if (sel == GM_QUICK && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor,
+		                                      a->view[a->sys_cursor].cursor)];
+		int d = key == IN_LEFT ? -1 : 1;
+
+		quick_slot_put(q->tag, gm_quick_step(quick_slot_get(q->tag), d));
 		return MENU_STAY;
 	}
 	if (key != IN_ACCEPT) return MENU_STAY;
@@ -15162,6 +15402,11 @@ static void launch(app *a)
 		cfg_run_keys(s, g_game_dual, keys, (int)sizeof keys);
 		if (keys[0]) plat_resident_run_keys(keys);
 		plat_resident_map(s->map);
+		/* And an N64 game's Pak, its own over the system's; none else */
+		if (pak_system(s))
+			plat_resident_opt(GM_PAK_OPTION, pak_get(s->tag, romfile));
+		else
+			plat_resident_opt(NULL, NULL);
 	}
 
 	/* A disc that needs firmware, before anything tries to run it.
@@ -15196,6 +15441,7 @@ static void launch(app *a)
 	 * preview live beside each other, the launch hands both over, and a game
 	 * always comes up where it was left. */
 	state_path(a, o, &v->list.items[v->cursor], st, sizeof st);
+	quick_bind(a, o, &v->list.items[v->cursor]);
 	/* The scratch, not the Auto card - see pause_preview_path. The card is
 	 * written from this only when the game actually ends, below. */
 	pause_preview_path(pv, sizeof pv);
@@ -16289,7 +16535,7 @@ static void controls_fit_report(app *a)
 			for (e = 0; e < 2; e++) {
 				ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
 				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a,
-				               is_port(s) };
+				               is_port(s), NULL };
 				int np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
 
 				if (e && strcmp(s->tag, "NES")) continue;
@@ -17363,7 +17609,7 @@ static int port_menu_main(int argc, char **argv)
 	 * standalone Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
-	                         dot ? dot + 1 : "", ctl_head_fits, &a, true };
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL };
 	{
 		char ap[16], lc[16], v[16], dir[CFG_STR * 2];
 
@@ -18251,6 +18497,7 @@ int main(int argc, char *argv[])
 		plat_resident_on_unlock(on_cheevo_unlocked);
 		plat_resident_on_progress(on_cheevo_progress);
 		plat_resident_on_speed(on_speed);
+		plat_resident_on_quick(on_quick);
 		plat_resident_on_tick(on_game_tick);
 		plat_resident_on_battery_empty(battery_empty);
 		heat_init(&g_heat);

@@ -22,6 +22,7 @@
 #include "../src/controls.h"
 #include "../src/db.h"
 #include "../src/portmenu.h"
+#include "../src/padglyph.h"
 #include "legend.h"   /* BUTTONS, is_button, legend_form */
 
 static int fails;
@@ -235,7 +236,7 @@ static void pages_are_named(void)
 	int p, q;
 
 	printf("the pages\n");
-	ck(CTL_PAGES == 5, "five pages");
+	ck(CTL_PAGES == 6, "six pages");
 	for (p = 0; p < CTL_PAGES; p++) {
 		ck(ctl_page_name((ctl_page)p) && ctl_page_name((ctl_page)p)[0],
 		   "every page is named");
@@ -412,6 +413,48 @@ static void in_a_game(void)
 			n = game_rows(&g, all, 64, heads);
 			snprintf(msg, sizeof msg, "%s: the last page is In a game", s->tag);
 			ck(!strcmp(heads[pages - 1], "Controls: In a game"), msg);
+			/* A program of its own (OpenBOR, src/portmenu.h) has no
+			 * Hotkeys: SELECT's chords are Diatom's, not the program's */
+			if (!resident) {
+				snprintf(msg, sizeof msg, "%s runs outside Diatom and has a Hotkeys page", s->tag);
+				ck(!says(all, n, "SELECT+R1", NULL) && !says(all, n, "SELECT+R2", NULL), msg);
+			} else {
+				snprintf(msg, sizeof msg, "%s: the page before it is Hotkeys", s->tag);
+				ck(pages >= 2 && !strcmp(heads[pages - 2], "Controls: Hotkeys"), msg);
+				/* The speed on every system; a quick save and load where its
+				 * core keeps a state, and nowhere else */
+				snprintf(msg, sizeof msg, "%s: SELECT+R2/L2 are not Faster and Slower", s->tag);
+				ck(says(all, n, "SELECT+R2", "Faster") && says(all, n, "SELECT+L2", "Slower"), msg);
+				snprintf(msg, sizeof msg, "%s: quick save %s, its core %s states", s->tag,
+				         says(all, n, "SELECT+R1", "Quick save") ? "said" : "not said",
+				         ctl_has_states(s->tag) ? "keeps" : "keeps no");
+				ck(says(all, n, "SELECT+R1", "Quick save") == ctl_has_states(s->tag) &&
+				   says(all, n, "SELECT+L1", "Quick load") == ctl_has_states(s->tag), msg);
+				/* The rule's note where SELECT is a game button, and only there */
+				{
+					ctl_game sel = g;
+					bool has_select = false;
+					int sp, sn;
+
+					sel.map = s->map;
+					for (sp = 0; sp < pages - 2; sp++) {
+						menu_row rr[CTL_MAX_ROWS];
+						ctl_buf bb;
+
+						sn = ctl_game_rows(&sel, sp, rr, &bb);
+						for (int r = 0; r < sn; r++)
+							if (rr[r].label && !ROW_IS_NOTE(rr[r]) &&
+							    (strstr(rr[r].label, "SELECT") == rr[r].label ||
+							     strstr(rr[r].label, "/SELECT")) &&
+							    !strstr(rr[r].label, "SELECT+"))
+								has_select = true;
+					}
+					snprintf(msg, sizeof msg, "%s: the SELECT note %s, SELECT %s a game button",
+					         s->tag, says(all, n, "(note)", "SELECT alone stays the game's")
+					         ? "said" : "not said", has_select ? "is" : "is not");
+					ck(says(all, n, "(note)", "SELECT alone stays the game's") == has_select, msg);
+				}
+			}
 			/* Turbo where the card has it, and nowhere else */
 			{
 				int k, turbo = 0;
@@ -424,9 +467,16 @@ static void in_a_game(void)
 				         turbo ? "yes" : "no", turbo_of(s->tag)[0] ? "has it" : "has none");
 				ck(turbo == (turbo_of(s->tag)[0] != '\0'), msg);
 			}
-			/* No page names MENU+L1, gone from DS games 2026-11-06 */
-			snprintf(msg, sizeof msg, "%s: MENU+L1 is on a page", s->tag);
-			ck(!says(all, n, "MENU+L1", NULL), msg);
+			/* No page names MENU+L1, gone from DS games 2026-11-06, nor
+			 * MENU+R1, fast forward until 2026-11-07 (SELECT+R2 now), nor
+			 * R2+X, the N64's C buttons until then (SELECT+X now) */
+			snprintf(msg, sizeof msg, "%s: MENU+L1, MENU+R1 or R2+X is on a page", s->tag);
+			ck(!says(all, n, "MENU+L1", NULL) && !says(all, n, "MENU+R1", NULL) &&
+			   !says(all, n, "R2+X", NULL), msg);
+			for (int r = 0; r < n; r++) {
+				snprintf(msg, sizeof msg, "%s: \"%s\" says MENU+R1 or FF", s->tag, all[r].val);
+				ck(!strstr(all[r].val, "+R1") && !strstr(all[r].val, "FF"), msg);
+			}
 			pages_seen += pages;
 		}
 	}
@@ -447,8 +497,30 @@ static void in_a_game(void)
 			{ "DC",   "", "chd", "A", "B" },
 			/* FDS games turn their disk */
 			{ "NES",  "", "fds", "L1/R1", "Disk side/Eject disk" },
-			{ "N64",  "", "z64", "R2+X", "C up" },
-			{ "N64",  "", "z64", "(note)", "Rumble Pak, not Controller Pak" },
+			/* SELECT held makes the face buttons the C buttons, as map|N64
+			 * puts the core's R2 on it */
+			{ "N64",  "select:r2,r2:none", "z64", "SELECT+X", "C up" },
+			{ "N64",  "select:r2,r2:none", "z64", "SELECT+Y", "C left" },
+			{ "N64",  "select:r2,r2:none", "z64", "L2", "Z" },
+			/* Under the C buttons, which Pak is in and where it is chosen:
+			 * the Rumble Pak until a game takes the Controller Pak */
+			{ "N64",  "select:r2,r2:none", "z64", "(note)", "MENU > Pak: Rumble Pak" },
+			/* Every button the PICO-8 reads: its arrows, O and X, its
+			 * pause menu */
+			{ "PICO8", "", "p8", "D-pad", "Arrows" },
+			{ "PICO8", "", "p8", "A", "Button X" },
+			{ "PICO8", "", "p8", "B", "Button O" },
+			{ "PICO8", "", "p8", "START", "Pause menu" },
+			/* The PlayStation's faces as their shapes (padglyph.h) */
+			{ "PS1",  "", "chd", "A", PAD_CIRCLE },
+			{ "PS1",  "", "chd", "B", PAD_CROSS },
+			{ "PS1",  "", "chd", "X", PAD_TRIANGLE },
+			{ "PS1",  "", "chd", "Y", PAD_SQUARE },
+			/* The hotkeys, and the rule's note where SELECT is the game's */
+			{ "SFC",  "", "sfc", "SELECT+R1", "Quick save" },
+			{ "SFC",  "", "sfc", "SELECT+L1", "Quick load" },
+			{ "SFC",  "", "sfc", "(note)", "SELECT alone stays the game's" },
+			{ "SCUMMVM", "", "scummvm", "SELECT+R2", "Faster" },
 			{ "NDS",  "", "nds", "L2", "Other screen" },
 			{ "NDS",  "", "nds", "R2", "Stylus on/off" },
 			{ "ARCADE", "", "zip", "START/SELECT", "Start/Coin" },
@@ -528,6 +600,19 @@ static void in_a_game(void)
 		   says(all, n, "POWER", "Quit and turn off") && !says(all, n, "A", NULL),
 		   "over DraStic or Flycast: In a game alone, MENU the menu, POWER quits");
 	}
+	/* A game that took the Controller Pak says so, with where to change it */
+	{
+		ctl_game g = { "N64", "Nintendo 64", "N64", "select:r2,r2:none", "", "z64", NULL, NULL,
+		               false, "Controller Pak" };
+		seen_row all[64];
+		int n = game_rows(&g, all, 64, NULL);
+
+		ck(says(all, n, "(note)", "MENU > Pak: Controller Pak"),
+		   "N64: a game with the Controller Pak says it is in, and where");
+		ck(!says(all, n, "(note)", "Rumble Pak, not Controller Pak"),
+		   "and the riddle it replaced is gone");
+	}
+
 	/* A system it does not know is In a game alone */
 	{
 		ctl_game g = { "NOPE", "Nope", "Nope", "", "", "bin", NULL, NULL };
@@ -535,10 +620,13 @@ static void in_a_game(void)
 		ctl_buf b;
 		int n;
 
-		ck(ctl_game_pages(&g) == 1, "an unknown system has In a game alone");
+		ck(ctl_game_pages(&g) == 2, "an unknown system has Hotkeys and In a game alone");
 		n = ctl_game_rows(&g, 0, rows, &b);
+		ck(n == 4 && !strcmp(b.head, "Controls: Hotkeys"),
+		   "Hotkeys first: quick save and load, faster and slower, no SELECT note");
+		n = ctl_game_rows(&g, 1, rows, &b);
 		ck(n == 4 && !strcmp(b.head, "Controls: In a game"),
-		   "and its one page has no footer to turn");
+		   "and In a game has no footer to turn");
 	}
 }
 

@@ -381,8 +381,8 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * ignores SETQUIET and the game plays on under the music, which a
 		 * launcher could not tell from a quiet that worked. */
 		/* proto=7 adds fast forward. Additive - an old launcher ignores
-		 * SPEED - and bumped so a new one can tell whether MENU+R1 will answer
-		 * before telling a player it does. */
+		 * SPEED - and bumped so a new one can tell whether MENU+R1 (as it
+		 * was then) will answer before telling a player it does. */
 		/* proto=8 adds the channels, for a player who hears with one ear.
 		 * Additive like the rest, and bumped for quiet's reason: an old Diatom
 		 * ignores SETCHANNELS and a game plays half its sound into the ear
@@ -405,7 +405,13 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * Additive: an old Diatom ignores all of it and shows a DS frame as
 		 * one tall picture with no stylus, and a launcher that sees proto=11
 		 * knows not to offer a Screens or Stylus row that would do nothing. */
-		diatom_proto_send("READY\tproto=12\tstate=%s", running ? "running" : "idle");
+		/* proto=13 moves the speed and adds the quick slot: SELECT+R2 and
+		 * SELECT+L2 step it in halves, so SPEED's x may be "1.5", and MENU+R1
+		 * does nothing; SELECT+R1 and SELECT+L1 send HOTKEY key=save|load,
+		 * and a SAVE or LOAD while the game runs is answered when its file
+		 * is done, SAVE taking preview= too. A launcher that sees proto=12
+		 * knows the hotkeys are not there to promise. */
+		diatom_proto_send("READY\tproto=13\tstate=%s", running ? "running" : "idle");
 		/* A displaced launcher is a vanished one, and every loop already
 		 * knows what that means - the in-game menu resumes the game. Said
 		 * after READY, so the new launcher hears where things stand first. */

@@ -12,6 +12,7 @@
 #include "../src/wifi_menu.h"
 #include "../src/sys_menu.h"
 #include "../src/game_menu.h"
+#include "../src/controls.h"
 #include "../src/sidelights.h"
 #include "legend.h"   /* legend_form: DESIGN.md 11.4's one form */
 
@@ -1394,12 +1395,18 @@ static void ingame_rows(void)
 	gm_row ids[GM_MAX_ROWS];
 	int got[GM_MAX_ROWS], n, k;
 
-	u.dmode = "Native"; u.earned = 12; u.total = 40;
+	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
 	n = gm_rows(&u, rows, &b);
 
 	printf("in-game menu, a game with a set:\n");
-	ck(n == GM_ROWS, "eight rows");
+	ck(n == GM_ROWS, "nine rows");
 	ck(!strcmp(rows[GM_CONTINUE].label, "Continue"), "Continue leads");
+	/* The quick slot right after Load (2026-11-07): the slot SELECT+R1 and
+	 * SELECT+L1 use, its number at the right, stepped round like Display */
+	ck(!strcmp(rows[GM_QUICK].label, "Quick Slot") && GM_QUICK == GM_LOAD + 1,
+	   "Quick Slot right after Load");
+	ck(!strcmp(val(&rows[GM_QUICK]), "2") && rows[GM_QUICK].live,
+	   "and says the slot, a stop");
 	/* Controls right after Display (2026-11-06): a page to read,
 	 * so it is always a stop and says nothing at the right */
 	ck(!strcmp(rows[GM_DISPLAY + 1].label, "Controls") && GM_CONTROLS == GM_DISPLAY + 1,
@@ -1434,25 +1441,41 @@ static void ingame_rows(void)
 	ck(holds(got, k, GM_QUIT) && holds(got, k, GM_CONTINUE),
 	   "the rows either side of it still work");
 
+	/* A system whose core keeps no state (ScummVM, J2ME): no quick slot,
+	 * so no row, and every other row a place up from its id */
+	u.earned = 12; u.total = 40; u.quick = 0;
+	n = gm_rows(&u, rows, &b);
+	printf("in-game menu, a system with no save states:\n");
+	ck(n == GM_ROWS - 1, "eight rows, no Quick Slot");
+	ck(gm_row_at(&u, GM_QUICK) == -1 && gm_row_at(&u, GM_DISPLAY) == GM_DISPLAY - 1 &&
+	   !strcmp(rows[gm_row_at(&u, GM_DISPLAY)].label, "Display"),
+	   "Display a row up, where gm_row_at says");
+	gm_row_ids(&u, ids);
+	ck(ids[2] == GM_LOAD && ids[3] == GM_DISPLAY && ids[n - 1] == GM_QUIT,
+	   "Load, then Display, Quit last");
+	ck(ctl_has_states("SFC") && ctl_has_states("PS1") && ctl_has_states("N64") &&
+	   !ctl_has_states("SCUMMVM") && !ctl_has_states("J2ME"),
+	   "every Diatom system keeps states but ScummVM and J2ME");
+
 	/* A DS game on DSperate: its two screens' three rows, after Display,
 	 * and every other row still where gm_row_ids says it is. */
-	u.earned = 12; u.total = 40;
+	u.quick = 1;
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a game with two screens:\n");
-	ck(n == GM_MAX_ROWS, "eleven rows");
-	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_DISPLAY && ids[4] == GM_SCREENS &&
-	   ids[5] == GM_SWAP && ids[6] == GM_STYLUS && ids[7] == GM_CONTROLS &&
-	   ids[8] == GM_CHEEVOS && ids[10] == GM_QUIT,
+	ck(n == GM_MAX_ROWS - 1, "twelve rows: every row but the N64's Pak");
+	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_QUICK && ids[4] == GM_DISPLAY &&
+	   ids[5] == GM_SCREENS && ids[6] == GM_SWAP && ids[7] == GM_STYLUS &&
+	   ids[8] == GM_CONTROLS && ids[9] == GM_CHEEVOS && ids[11] == GM_QUIT,
 	   "Screens, Swap Screens and Stylus right after Display, then Controls");
-	ck(!strcmp(rows[4].label, "Screens") && !strcmp(val(&rows[4]), "Top Focus"),
+	ck(!strcmp(rows[5].label, "Screens") && !strcmp(val(&rows[5]), "Top Focus"),
 	   "Screens says the layout");
-	ck(!strcmp(val(&rows[5]), "on") && !strcmp(val(&rows[6]), "off"),
+	ck(!strcmp(val(&rows[6]), "on") && !strcmp(val(&rows[7]), "off"),
 	   "Swap Screens and Stylus say on or off, lowercase like any status");
-	ck(!strcmp(rows[8].label, "Achievements") && !strcmp(val(&rows[8]), "12 / 40"),
+	ck(!strcmp(rows[9].label, "Achievements") && !strcmp(val(&rows[9]), "12 / 40"),
 	   "Achievements moves down with its value");
-	k = reachable(rows, n, got, GM_MAX_ROWS);
-	ck(k == GM_MAX_ROWS, "every row is a stop");
+	k = reachable(rows, n, got, GM_MAX_ROWS - 1);
+	ck(k == GM_MAX_ROWS - 1, "every row is a stop");
 	ck(gm_layout_index("single") == 2 && gm_layout_index("nonsense") == 0,
 	   "a layout name Diatom did not send reads as Stacked");
 	ck(!strcmp(gm_layout_names[GM_LAYOUT_DEFAULT], "single"),
@@ -1460,7 +1483,57 @@ static void ingame_rows(void)
 
 	u.screens = false;
 	ck(gm_row_ids(&u, ids) == GM_ROWS && ids[GM_CHEEVOS] == GM_CHEEVOS,
-	   "and any other game keeps eight, each its own id");
+	   "and any other game keeps nine, each its own id");
+
+	/* A Nintendo 64 game: its Pak, right before Controls, saying which */
+	u.pak = gm_pak_name("rumble");
+	n = gm_rows(&u, rows, &b);
+	printf("in-game menu, a Nintendo 64 game:\n");
+	ck(n == GM_ROWS + 1, "ten rows");
+	ck(gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_DISPLAY) + 1 &&
+	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PAK) + 1, "Pak between Display and Controls");
+	ck(!strcmp(rows[gm_row_at(&u, GM_PAK)].label, "Pak") &&
+	   !strcmp(val(&rows[gm_row_at(&u, GM_PAK)]), "Rumble Pak"), "Pak says Rumble Pak");
+	k = reachable(rows, n, got, GM_ROWS + 1);
+	ck(k == GM_ROWS + 1, "every row is a stop");
+	u.pak = NULL;
+}
+
+/* The N64's Pak as the row steps it and the library keeps it */
+static void n64_pak(void)
+{
+	char key[96];
+
+	printf("the N64's Pak:\n");
+	ck(!strcmp(gm_pak_value(NULL), "rumble") && !strcmp(gm_pak_value("nonsense"), "rumble"),
+	   "the Rumble Pak until a game takes the other, and for a value it does not know");
+	ck(!strcmp(gm_pak_value("memory"), "memory"), "the Controller Pak is Mupen64Plus-Next's memory");
+	ck(!strcmp(gm_pak_other("rumble"), "memory") && !strcmp(gm_pak_other("memory"), "rumble"),
+	   "the row turns between the two");
+	ck(!strcmp(gm_pak_name("rumble"), "Rumble Pak") &&
+	   !strcmp(gm_pak_name("memory"), "Controller Pak"), "each by its product's name");
+	gm_pak_key("N64", "Mario Kart 64 (USA).z64", key, sizeof key);
+	ck(!strcmp(key, "pak.N64.Mario Kart 64 (USA).z64"), "kept per game, as pak.<TAG>.<file>");
+	ck(!strcmp(GM_PAK_OPTION, "mupen64plus-pak1"), "Mupen64Plus-Next's player 1 pak option");
+}
+
+/* The quick slot as the device's database keeps it: per system, slot 1
+ * until one is picked, anything that is no slot read as 1, and the row's
+ * step round the six */
+static void quick_slot(void)
+{
+	char key[48];
+
+	printf("the quick slot:\n");
+	gm_quick_key("SFC", key, sizeof key);
+	ck(!strcmp(key, "quickslot.SFC"), "kept per system, as quickslot.<TAG>");
+	ck(gm_quick_slot(NULL) == 1, "slot 1 until one is picked");
+	ck(gm_quick_slot("4") == 4 && gm_quick_slot("6") == 6, "a slot that was picked");
+	ck(gm_quick_slot("0") == 1 && gm_quick_slot("7") == 1 && gm_quick_slot("auto") == 1 &&
+	   gm_quick_slot("") == 1, "and 1 for anything that is no slot, Auto included");
+	ck(gm_quick_step(1, 1) == 2 && gm_quick_step(6, 1) == 1 && gm_quick_step(1, -1) == 6,
+	   "right and left step round 1 to 6");
+	ck(gm_quick_step(9, 1) == 2, "from a slot that is none, as from slot 1");
 }
 
 /* The save slots, and the one constant that survived a rename by being written
@@ -1804,15 +1877,16 @@ static void row_sounds(void)
 
 	/* The in-game menu's Display steps on A as well as left and right
 	 * (gm_key's GM_DISPLAY), so A is accept there, not deny. */
-	g.dmode = "Native"; g.screens = true;
+	g.dmode = "Native"; g.screens = true; g.quick = 3;
 	n = gm_rows(&g, gr, &gb);
 	gm_row_ids(&g, ids);
 	for (i = 0; i < n; i++) {
-		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SCREENS ||
-		                ids[i] == GM_SWAP || ids[i] == GM_STYLUS ? MENU_SND_RING : 0;
+		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_QUICK || ids[i] == GM_SCREENS ||
+		                ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
+		                ? MENU_SND_RING : 0;
 
 		ck(menu_sound_at(gb.sound, n, i) == want,
-		   "in-game: Display and the screens' rows step round, on A too; the rest plain");
+		   "in-game: Display, Quick Slot and the screens' rows step round, on A too; the rest plain");
 	}
 
 	/* The Wi-Fi screen's rows are networks, named by whoever runs them, and
@@ -1858,6 +1932,8 @@ int main(void)
 	what_scrolls();
 	info_rows();
 	ingame_rows();
+	quick_slot();
+	n64_pak();
 	audio_row();
 	channels_row();
 	sounds_row();

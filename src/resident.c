@@ -53,6 +53,7 @@ static void dclose(void)
  * platform.h. */
 static char d_run_keys[128];
 static char d_map[96];          /* plat_resident_map, for the next RUN */
+static char d_opt[128];         /* plat_resident_opt, "key\tvalue=..." */
 static bool d_stylus, d_swap;
 
 static bool dsend(const char *fmt, ...)
@@ -240,9 +241,13 @@ static void (*d_on_unlock)(int id);
 
 void plat_resident_on_unlock(void (*fn)(int id)) { d_on_unlock = fn; }
 
-static void (*d_on_speed)(int x);
+static void (*d_on_speed)(int half);
 
-void plat_resident_on_speed(void (*fn)(int x)) { d_on_speed = fn; }
+void plat_resident_on_speed(void (*fn)(int half)) { d_on_speed = fn; }
+
+static void (*d_on_quick)(int what, const char *path);
+
+void plat_resident_on_quick(void (*fn)(int what, const char *path)) { d_on_quick = fn; }
 
 static void (*d_on_progress)(int id, const char *text, int value, int target);
 
@@ -306,6 +311,10 @@ bool plat_resident_send(const char *tag, const char *core, const char *rom,
 				dsend("SETOPT\tkey=%.*s\tvalue=%s",
 				      (int)(eq - kv), kv, eq + 1);
 			}
+			/* This game's own, after the system's, so it is the one that
+			 * stands */
+			if (d_opt[0]) dsend("SETOPT\tkey=%s", d_opt);
+			d_opt[0] = '\0';
 		}
 
 		/* Quiet BEFORE RUN, and on every RUN. Diatom holds it across RUN,
@@ -593,6 +602,14 @@ void plat_resident_map(const char *map)
 	snprintf(d_map, sizeof d_map, "%s", map ? map : "");
 }
 
+void plat_resident_opt(const char *key, const char *value)
+{
+	if (key && *key && value && *value)
+		snprintf(d_opt, sizeof d_opt, "%s\tvalue=%s", key, value);
+	else
+		d_opt[0] = '\0';
+}
+
 bool plat_resident_stylus(void) { return d_stylus; }
 void plat_resident_note_stylus(bool on) { d_stylus = on; }
 
@@ -728,8 +745,23 @@ static int diatom_wait(void)
 			else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
 			else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
 			else if (strncmp(l, "CHEEVO\t", 7) == 0) d_note_cheevo(l);
+			/* The step, "1" to "3" in halves: "1.5" is 3 */
 			else if (strncmp(l, "SPEED\tx=", 8) == 0) {
-				if (d_on_speed) d_on_speed(atoi(l + 8));
+				if (d_on_speed) d_on_speed((int)(strtod(l + 8, NULL) * 2.0 + 0.5));
+			}
+			/* SELECT's quick slot: the hotkey, and what came of the SAVE or
+			 * LOAD the launcher sent for it (and of the menu's, which are
+			 * answered the same way and are no business of the callback's
+			 * unless it asked) */
+			else if (strncmp(l, "HOTKEY\tkey=", 11) == 0) {
+				if (d_on_quick && !strcmp(l + 11, "save")) d_on_quick(PLAT_QUICK_ASK_SAVE, NULL);
+				if (d_on_quick && !strcmp(l + 11, "load")) d_on_quick(PLAT_QUICK_ASK_LOAD, NULL);
+			}
+			else if (strncmp(l, "SAVED\tpath=", 11) == 0) {
+				if (d_on_quick) d_on_quick(PLAT_QUICK_SAVED, l + 11);
+			}
+			else if (strncmp(l, "LOADED\tpath=", 12) == 0) {
+				if (d_on_quick) d_on_quick(PLAT_QUICK_LOADED, l + 12);
 			}
 			/* Nobody has pressed anything for as long as the player asked.
 			 * Handled exactly as a power press: STOP the game, and the
@@ -772,6 +804,14 @@ static int diatom_wait(void)
 			}
 			else if (strncmp(l, "ERROR", 5) == 0) {
 				fprintf(stderr, "diatom: %s\n", l);
+				if (d_on_quick && d_got_running) {
+					const char *m = strstr(l, "\tmsg=");
+
+					if (strstr(l, "code=save_failed") && m)
+						d_on_quick(PLAT_QUICK_SAVE_FAILED, m + 5);
+					else if (strstr(l, "code=state_rejected") && m)
+						d_on_quick(PLAT_QUICK_LOAD_FAILED, m + 5);
+				}
 				/* Before RUNNING it means the game never started and the
 				 * display is still ours. After, it is a failed menu op the
 				 * menu already showed; the game is still going.

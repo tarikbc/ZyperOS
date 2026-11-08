@@ -113,9 +113,11 @@ static const db_default library_defaults[] = {
 	 * the Dreamcast's 320x240 above is for. */
 	{ "coreopt..mupen64plus-43screensize", "320x240" },
 	/* And its Rumble Pak in the controller, where the core's default is the
-	 * Controller Pak: the Pixel 2 has a motor (2026-11-05). The trade is the
-	 * Controller Pak's saves, which few games need - most save on the
-	 * cartridge, as Mario Kart 64's records do; its ghosts are the loss. */
+	 * Controller Pak: the Pixel 2 has a motor (2026-11-05). Few games need
+	 * the Controller Pak - most save on the cartridge, as Mario Kart 64's
+	 * records do; its ghosts do not - so a game that does takes it in the
+	 * in-game menu's Pak row, which keeps the choice for that game alone
+	 * (src/main.c, pak_*, 2026-11-07). */
 	{ "coreopt.N64.mupen64plus-pak1", "rumble" },
 	/* The PlayStation's DualShock (config/systems.cfg, controller|PS1) turns
 	 * analog on a button combo, L1+R1+SELECT by default, which a game's own

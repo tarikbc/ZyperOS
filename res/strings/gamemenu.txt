@@ -215,6 +215,28 @@ de = Laden
 ja = ロード
 it = Carica
 
+[gamemenu.quick]
+note = The in-game menu: the slot SELECT+R1 saves to and SELECT+L1 loads from; its value is the slot's number, 1 to 6. As slots.slot's word.
+en = Quick Slot
+zh-Hans = 快速存档位
+es = Ranura rápida
+pt-BR = Slot rápido
+fr = Emplacement rapide
+de = Schnellplatz
+ja = クイックスロット
+it = Slot rapido
+
+[gamemenu.pak]
+note = The in-game menu of a Nintendo 64 game: what its controller holds, the Rumble Pak or the Controller Pak (the N64's memory card), its value one of those product names, never translated. "Pak" is the N64's own word for both, and Mupen64Plus-Next's. Short: it is also in the C buttons page's note.
+en = Pak
+zh-Hans = 手柄插件
+es = Pak
+pt-BR = Pak
+fr = Pak
+de = Pak
+ja = パック
+it = Pak
+
 [gamemenu.display]
 note = The in-game menu: the display mode; its value is one of the modes below
 en = Display

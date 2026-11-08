@@ -355,6 +355,28 @@ static void sysram_tick(void)
 
 static bool late_here(void) { return late_at >= 0 && (long)frame >= late_at; }
 
+/* STUBCORE_INPUT_LOG=path: a line a frame, the frame and the pad as the core
+ * read it (1 << each RETRO_DEVICE_ID_JOYPAD_*), so a test can say what the
+ * game saw - SELECT given late, a chord's buttons never (test/hotkeys.py). */
+static void input_log(void)
+{
+	static FILE *f;
+	static bool tried;
+	unsigned id, bits = 0;
+
+	if (!tried) {
+		const char *e = getenv("STUBCORE_INPUT_LOG");
+
+		tried = true;
+		if (e && *e) f = fopen(e, "w");
+	}
+	if (!f) return;
+	for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++)
+		if (input_cb(0, RETRO_DEVICE_JOYPAD, 0, id)) bits |= 1u << id;
+	fprintf(f, "%u %u\n", (unsigned)frame, bits);
+	fflush(f);
+}
+
 static void late_tick(void)
 {
 	size_t i;
@@ -412,6 +434,7 @@ void retro_run(void)
 	poll_cb();
 	sysram_tick();
 	late_tick();
+	input_log();
 
 	/* A box you can drive, so input is verifiable by looking at it. */
 	held = input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
