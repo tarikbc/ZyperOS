@@ -758,8 +758,8 @@
         "--screen",
         "games"
       ],
-      "sha256": "b5ec7a8ec2ac053764edfe1dae71796674db19fe67c744de6000b473d512bb51",
-      "source_commit": "bd648711fd5fb771d3b23a7b21852f68fffbbf8e"
+      "sha256": "6ec8e8ddda137bafea694fd499fd085a7402129ecfe3ee1ca0fc03c4d1d34822",
+      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
     },
     {
       "file": "light/portmaster.png",
@@ -777,8 +777,8 @@
         "--portmaster",
         "running"
       ],
-      "sha256": "b431c20478b19cee370f074be828bc8c506b6baad4e2c134b2b8728a02f9efbb",
-      "source_commit": "829900dedf246417fae9241c9cf910db4b67d818"
+      "sha256": "b92537c0839e774d3c51c0339b08193651409776957088fd2d9732e88496200e",
+      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
     },
     {
       "file": "light/ports-menu.png",

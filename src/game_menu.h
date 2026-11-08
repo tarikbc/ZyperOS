@@ -106,6 +106,9 @@ typedef struct {
 	char  genre[GI_GENRE_MAX];   /* the same, comma separated */
 	bool  has_cheevos;     /* there is a set to open, not just a count to read */
 	bool  has_art;         /* chooses the action's label; no longer a row */
+	/* Art of its own that no fetch replaces: PortMaster's entry on the
+	 * Ports shelf (src/pminstall.h, PM_COVER_LIGHT), so no Box Art row */
+	bool  own_art;
 	/* Whether this game has a row in the card's games table at all, and
 	 * whether that row carries a synopsis. Two flags rather than one, because
 	 * they answer different questions: a game nobody has scraped shows neither

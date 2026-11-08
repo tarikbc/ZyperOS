@@ -35,7 +35,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-core-stamp check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-captive check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-captive check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog \
          check-strings check-i18n-shots
@@ -405,6 +405,13 @@ check-pminstall: build-native/pminstall-check
 build-native/pminstall-check: tools/pminstall-check.c src/pminstall.c src/pminstall.h src/sysupdate.c src/sysupdate.h src/library.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -O1 -g -o $@ tools/pminstall-check.c src/pminstall.c src/sysupdate.c $(I18N_SRC)
+
+# PortMaster's cover in each theme and its page's icon (res/portmaster/*.png)
+# against what tools/genportmaster.py draws, pixel for pixel. Needs Pillow.
+.PHONY: check-pmart
+check-pmart:
+	@py='$(PYIMG)'; if [ -z "$$py" ]; then echo "check-pmart: skipped, no Pillow"; \
+	else "$$py" -B tools/genportmaster.py --check; fi
 
 # The PortMaster installer itself (res/portmaster/pm-install.py), on this
 # computer against a made-up release served from a folder: an install, a
@@ -1197,7 +1204,8 @@ vendor:
 # the token block in res/web/app.css). Two have generators of their own, run as
 # they say: tools/gensingles.py writes res/singles.png, and tools/genzyper.py
 # the stills of Zyper and the ZyperOS lettering (res/readme/, res/web/ and
-# src/zypermark.h).
+# src/zypermark.h). tools/genportmaster.py draws PortMaster's covers and icon
+# (res/portmaster/), which check-pmart holds.
 boot:
 	python3 tools/genboot.py
 

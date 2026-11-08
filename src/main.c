@@ -1325,8 +1325,27 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 	 * folder, the wrong state directory and the wrong accent. */
 	int o = shelf_owner(a, s, i);
 
+	char pm[LIB_PATH * 2];
+
 	if (is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		muse_card_want(a, s, i);
+	} else if (game_card_wanted(v, i) &&
+	           pm_cover_path(a, o, &v->list.items[i], theme_index(), pm, sizeof pm)) {
+		/* PortMaster's own cover, in the theme that is on, made a card of
+		 * that theme as a generated one is, so a change of theme asks for
+		 * the other (src/shelfbuild.h) */
+		if (!texload_want_art(s, i, pm, NULL, theme_index()) && !g_loads_held) {
+			SDL_Surface *sf = IMG_Load(pm);
+
+			if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
+			v->tex[i] = NULL;
+			if (sf) {
+				v->cb[i] = content_bottom(sf);
+				v->tex[i] = ui_card_upload(a->r, sf, theme_index());
+				if (v->tex[i]) { v->tw[i] = sf->w; v->th[i] = sf->h; }
+				SDL_FreeSurface(sf);
+			}
+		}
 	} else if (!is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		char art[LIB_PATH * 3];
 		ui_card_order card;
@@ -1408,7 +1427,10 @@ static void shelf_put(void *ctx, texload_got *g)
 	if (surf && is_muse(&a->sys.systems[s])) cover_shape(&surf);
 	if (surf) {
 		v->cb[i] = content_bottom(surf);
-		v->tex[i] = SDL_CreateTextureFromSurface(a->r, surf);
+		/* Art drawn for one theme (PortMaster's cover) is kept as a card
+		 * of that theme is, and gives way to the other's at a change */
+		v->tex[i] = g->theme >= 0 ? ui_card_upload(a->r, surf, g->theme)
+		                          : SDL_CreateTextureFromSurface(a->r, surf);
 		if (v->tex[i])
 			SDL_QueryTexture(v->tex[i], NULL, NULL, &v->tw[i], &v->th[i]);
 		SDL_FreeSurface(surf);
@@ -9419,6 +9441,7 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * autosave each time this screen opened. */
 	box_art_path(s->folder, g->name, p, sizeof p);
 	gi->has_art = (stat(p, &st) == 0 && st.st_size > 0);
+	gi->own_art = pm_cover_path(a, owner, g, theme_index(), p, sizeof p);
 
 	/* Loading the set clobbers whatever set is loaded, which is nobody's
 	 * during shelf browsing - no game is running. It stays loaded after this
@@ -11714,9 +11737,10 @@ static void up_arrow(SDL_Renderer *r, int x, int mid, int w)
 
 /* The page's heading is the caller's: System Update's, or Install
  * PortMaster's, which is this page with its own words (src/pminstall.h).
- * `notes` are the points under the line, What's New on System Update's. */
+ * `notes` are the points under the line, What's New on System Update's.
+ * `icon`, PortMaster's (pm_icon_tex), stands where Zyper does, NULL for him. */
 static void update_page_draw(app *a, const char *heading, const su_page *p,
-                             char notes[][120], int nnotes)
+                             char notes[][120], int nnotes, SDL_Texture *icon)
 {
 	const ds_theme *thm = theme();
 	SDL_Renderer *r = a->r;
@@ -11728,7 +11752,19 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 
 	draw_background(a);
 	ui_text(r, fl, heading, ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
-	draw_zyper(r, 158.0f, 232.0f, 150.0f, ZYPER_TILT_DEG, 1.0f, 0.0f, 255);
+	if (icon) {
+		/* Four of its pixels to one of the art's, drawn at 0.8: two panel
+		 * pixels to one on the Pixel 2, so it stays sharp */
+		int iw, ih;
+
+		SDL_QueryTexture(icon, NULL, NULL, &iw, &ih);
+		iw = iw * 4 / 5;
+		ih = ih * 4 / 5;
+		/* A little over Zyper's middle, its quay clear of the points */
+		SDL_RenderCopy(r, icon, NULL, &(SDL_Rect){ 158 - iw / 2, 216 - ih / 2, iw, ih });
+	} else {
+		draw_zyper(r, 158.0f, 232.0f, 150.0f, ZYPER_TILT_DEG, 1.0f, 0.0f, 255);
+	}
 
 	/* 0.1.0 → 0.2.0, or the installed version alone */
 	x = 270;
@@ -11901,7 +11937,7 @@ static void update_screen(app *a)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nnotes);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nnotes, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -17222,7 +17258,15 @@ static void pm_spawn(const system_cfg *s)
 	g_pm_read_at = 0;
 }
 
-static void pm_install_screen(app *a, const system_cfg *s)
+/* PortMaster's icon for its page, or NULL (Zyper, then) */
+static SDL_Texture *pm_icon_tex(app *a)
+{
+	char path[LIB_PATH * 2];
+
+	return pm_icon_path(path, sizeof path) ? IMG_LoadTexture(a->r, path) : NULL;
+}
+
+static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 {
 	char notes[PM_NOTES][120];
 	bool had = pm_view_read(s, true)->installed;
@@ -17275,12 +17319,20 @@ static void pm_install_screen(app *a, const system_cfg *s)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nnotes);
+		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nnotes, icon);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
 	}
 	pm_offer_refresh(a);
+}
+
+static void pm_install_screen(app *a, const system_cfg *s)
+{
+	SDL_Texture *icon = pm_icon_tex(a);
+
+	pm_install_loop(a, s, icon);
+	if (icon) SDL_DestroyTexture(icon);
 }
 
 /* A shelf's disc bios in Bios/: any one of its names, which config/systems.cfg
@@ -18838,7 +18890,7 @@ static void shot_compose(app *a)
 		int nn = up_notes(notes);
 
 		su_page_build(up_view(true), &p);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nn);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nn, NULL);
 		return;
 	}
 	if (g_pm_shot >= 0) {
@@ -18847,8 +18899,11 @@ static void shot_compose(app *a)
 		su_page p;
 		int nn;
 
+		SDL_Texture *icon = pm_icon_tex(a);
+
 		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nn);
+		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nn, icon);
+		if (icon) SDL_DestroyTexture(icon);
 		return;
 	}
 	if (shot_about >= 0) {

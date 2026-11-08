@@ -415,14 +415,15 @@ static float ms_since(Uint64 t0)
 	               (double)SDL_GetPerformanceFrequency());
 }
 
-/* One taken picture to `put`, or to the bin when it is a card of a theme no
- * longer on, which is false. Not under the lock: `put` makes a texture, and
+/* One taken picture to `put`, or to the bin when it is a card, or art drawn
+ * for a theme (texload_want_art: PortMaster's cover), of a theme no longer
+ * on, which is false. Not under the lock: `put` makes a texture, and
  * a worker waiting to hand its next picture over should not wait for the
  * GPU. */
 static bool hand(texload_got *g, int theme_on,
                  void (*put)(void *ctx, texload_got *g), void *ctx)
 {
-	if (g->card && !cardgen_kept(g->theme, theme_on)) {
+	if ((g->card || g->theme >= 0) && !cardgen_kept(g->theme, theme_on)) {
 		SDL_FreeSurface(g->surf);
 		return false;
 	}

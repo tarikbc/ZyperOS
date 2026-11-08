@@ -163,6 +163,7 @@ def demo_card(card,art_dir,manifest):
     card_dirs(card)
     for folder,game in [('NES','Super Mario Bros.nes'),('SNES','Super Metroid.sfc'),('Game Boy','Tetris.gb'),('Genesis','Sonic the Hedgehog.md'),('Dreamcast','Sonic Adventure.chd'),('Game Boy Advance','Metroid Fusion.gba')]:
         d=card/'Roms'/folder;d.mkdir();(d/game).touch()
+    pm_art(card)   # the Install PortMaster page's icon (--portmaster)
     media=card/'Roms/PlayStation/.media';media.mkdir(parents=True)
     for name in GAMES:
         (media.parent/(name+'.chd')).touch()
@@ -202,8 +203,15 @@ def ports_card(card):
     card_dirs(card)
     (card/'Roms/NES').mkdir(exist_ok=True);(card/'Roms/NES/Super Tilt Bro.nes').touch()
     (card/'Roms/Ports').mkdir(exist_ok=True)
-    (card/'ZyperOS/portmaster').mkdir(parents=True,exist_ok=True)
+    pm_art(card)
     shutil.copyfile(ROOT/'res/portmaster/pm-install.py',card/'ZyperOS/portmaster/pm-install.py')
+
+def pm_art(card):
+    """PortMaster's covers and icon in the card's ZyperOS, as the payload
+    puts them there (tools/genportmaster.py)"""
+    (card/'ZyperOS/portmaster').mkdir(parents=True,exist_ok=True)
+    for name in ('cover-light.png','cover-dark.png','icon.png'):
+        shutil.copyfile(ROOT/'res/portmaster'/name,card/'ZyperOS/portmaster'/name)
 
 def pm_env(env,name,folder):
     """env with name's status file, when it is one of PM_SHOTS"""
@@ -226,6 +234,7 @@ def portdocs_card(card):
     card_dirs(card)
     shutil.copytree(ROOT/'tools/fixtures/ports',card/'Roms/Ports')
     (card/'Roms/Ports/PortMaster.sh').touch()
+    pm_art(card)
 
 def openbor_card(card):
     card_dirs(card)

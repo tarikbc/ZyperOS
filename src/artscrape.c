@@ -21,6 +21,7 @@
 #include "library.h"
 #include "monoclock.h"
 #include "net.h"
+#include "pminstall.h"
 #include "sgdb.h"
 #include "sgdbrun.h"
 #include "ss.h"
@@ -676,6 +677,10 @@ static void read_roms(const char *dir, const char *exts)
 		if (snprintf(full, sizeof full, "%s/%s", dir, e->d_name)
 		    >= (int)sizeof full) continue;
 		if (!ext_allowed(e->d_name, exts)) continue;
+		/* PortMaster's script on the Ports shelf has its own cover in
+		 * every theme (src/pminstall.h, PM_COVER_LIGHT): no game of a
+		 * scrape, which would fetch art the shelf never shows */
+		if (!strcasecmp(e->d_name, PM_SCRIPT)) continue;
 		/* The listing's own type where the filesystem gives one (exFAT
 		 * does): a stat per game was 8,800 of them on my card for
 		 * MENU > Scraper's count alone, 2026-11-06 */

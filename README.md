@@ -394,11 +394,11 @@ Without Wi-Fi, **Update ZyperOS** on [the File Transfer page](#the-file-transfer
 
 ### PortMaster
 
-<img align="right" width="360" src="res/readme/portmaster.png" alt="Install PortMaster: PortMaster's version, what it is, and the download's bar at 9.8 of 24 MB">
+<img align="right" width="360" src="res/readme/portmaster.png" alt="Install PortMaster: its crane icon, PortMaster's version, what it is, and the download's bar at 9.8 of 24 MB">
 
 [PortMaster](https://portmaster.games) is the port store Linux handhelds share: PC games made to run on them, such as Stardew Valley and Celeste, each with what it needs. ZyperOS installs the official PortMaster app, as muOS, Knulli and ROCKNIX use it.
 
-On the Ports shelf, PortMaster's entry says **Install** until it is on the card. **A** opens its page, and **Install** downloads PortMaster's latest stable release from its GitHub over Wi-Fi (a USB Wi-Fi adapter on the Pixel 2), about 24 MB. ZyperOS checks it against the size and checksums PortMaster and GitHub publish, then unpacks it into `Roms/Ports`. Nothing goes in place until all of it checks out, so a cut-off download leaves no half-installed PortMaster. Then **A** opens it, from the page or the shelf, like any port, and PortMaster updates itself from then on.
+On the Ports shelf, PortMaster's entry has a cover of its own, drawn for ZyperOS in its pixel style for the light and dark themes: a dock crane lowering a game cartridge onto a stack of shipping containers. It is the same cover before and after the install, on Favorites too. The entry says **Install** until PortMaster is on the card. **A** opens its page, and **Install** downloads PortMaster's latest stable release from its GitHub over Wi-Fi (a USB Wi-Fi adapter on the Pixel 2), about 24 MB. ZyperOS checks it against the size and checksums PortMaster and GitHub publish, then unpacks it into `Roms/Ports`. Nothing goes in place until all of it checks out, so a cut-off download leaves no half-installed PortMaster. Then **A** opens it, from the page or the shelf, like any port, and PortMaster updates itself from then on.
 
 Its first start unpacks its own files and downloads its catalog of ports, which takes a few minutes. Pick the ports you want in PortMaster; they are on the Ports shelf when you leave it. Many ports of commercial games need the game's own files from a copy you own, and PortMaster says which and where they go: [the File Transfer page](#the-file-transfer-page) sends them from a computer to the port's folder, under **ROMs > Ports**, over Wi-Fi or the USB cable. Ports copied from another system's ports folder run too.
 

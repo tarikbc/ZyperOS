@@ -63,8 +63,9 @@ void texload_forget(void);
 bool texload_want(int sys, int idx, const char *first, const char *second);
 
 
-/* System art: try the light card first, then the dark fallback. Tag the
- * result with the requested theme so a later theme change replaces it. */
+/* Art drawn for one theme, as PortMaster's cover is (one file a theme):
+ * the result is tagged with `theme_ix`, so a later theme change replaces it,
+ * and one that lands in a theme no longer on is never handed over. */
 bool texload_want_art(int sys, int idx, const char *first, const char *second,
                       int theme_ix);
 

@@ -689,6 +689,27 @@ bool pm_is_offer(const app *a, int sys, const game_entry *g)
 	       is_ports(&a->sys.systems[sys]) && !strcasecmp(g->file, PM_SCRIPT);
 }
 
+bool pm_is_entry(const app *a, int sys, const game_entry *g)
+{
+	return g && sys >= 0 && sys < a->sys.count && is_ports(&a->sys.systems[sys]) &&
+	       !strcasecmp(g->file, PM_SCRIPT);
+}
+
+bool pm_cover_path(const app *a, int sys, const game_entry *g, int theme_ix,
+                   char *out, size_t n)
+{
+	if (!pm_is_entry(a, sys, g)) return false;
+	snprintf(out, n, "%s/%s", P_ROOT,
+	         theme_ix == DS_DARK ? PM_COVER_DARK : PM_COVER_LIGHT);
+	return access(out, R_OK) == 0;
+}
+
+bool pm_icon_path(char *out, size_t n)
+{
+	snprintf(out, n, "%s/%s", P_ROOT, PM_ICON);
+	return access(out, R_OK) == 0;
+}
+
 int pm_shelf_offers(const app *a, int sys)
 {
 	const sysview *v = &a->view[sys];

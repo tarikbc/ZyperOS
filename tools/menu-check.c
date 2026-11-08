@@ -1370,6 +1370,15 @@ static void info_rows(void)
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Delete Game") != 0, "no Delete Game row");
 	ck(!strcmp(rows[n - 1].label, "Replace Box Art"), "the art action last");
+	/* PortMaster's entry has its own cover, which no fetch replaces */
+	gi.own_art = true;
+	n = gi_rows(rows, &gi, true);
+	printf("game info on PortMaster, whose cover is its own:\n");
+	ck(n == GI_MAX - 2, "no art action either");
+	for (i = 0; i < n; i++)
+		ck(strcmp(lbl(&rows[i]), "Replace Box Art") && strcmp(lbl(&rows[i]), "Get Box Art"),
+		   "no Box Art row");
+	gi.own_art = false;
 	gi.can_delete = true;
 
 	gi.has_synopsis = false;
