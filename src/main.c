@@ -103,6 +103,7 @@
 #include "bt_screen.h"
 #include "panel.h"
 #include "place.h"
+#include "pminstall.h"
 #include "portload.h"
 #include "powerscreens.h"
 #include "raqueue.h"
@@ -3417,6 +3418,8 @@ static void draw_games(app *a)
 		.earned = g_game_page.earned, .total = g_game_page.total,
 		.resumable = g_game_page.valid && g_game_page.resume,
 		.favorite = g && fav_is(a->sys.systems[owner].tag, g->file),
+		/* PortMaster's entry while it is not on the card: A installs it */
+		.install = pm_is_offer(a, owner, g),
 		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 		.snap_of = game_has_snap
 	};
@@ -3443,8 +3446,10 @@ static void draw_games(app *a)
 /* No game on the card: nothing on the home but MP4, if that */
 static bool no_games(const app *a)
 {
+	/* The Ports shelf with PortMaster's entry alone, not installed yet, is
+	 * no game: the card still has none to play (src/pminstall.h) */
 	for (int i = 0; i < a->sys.count; i++)
-		if (!is_muse(&a->sys.systems[i])) return false;
+		if (!is_muse(&a->sys.systems[i]) && !pm_only_offer(a, i)) return false;
 	return true;
 }
 
@@ -3511,7 +3516,7 @@ static int games_on_card(const app *a)
 		const system_cfg *sc = &a->sys.systems[i];
 
 		if (is_muse(sc) || (!sc->core[0] && !sc->folder[0])) continue;
-		n += a->view[i].list.count;
+		n += a->view[i].list.count - pm_shelf_offers(a, i);
 	}
 	return n;
 }
@@ -3535,7 +3540,7 @@ static void empty_arrived(app *a)
 	for (int i = 0; i < a->sys.count; i++) {
 		const system_cfg *sc = &a->sys.systems[i];
 
-		if (is_muse(sc) || (!sc->core[0] && !sc->folder[0])) continue;
+		if (is_muse(sc) || (!sc->core[0] && !sc->folder[0]) || pm_only_offer(a, i)) continue;
 		a->sys_cursor = i;
 		a->screen = SCREEN_SYSTEMS;
 		a->tint = sc->accent;
@@ -5977,7 +5982,7 @@ static bool random_pick(app *a, bool all, int *shelf, int *game)
 		count[i] = a->view[i].list.count;
 		/* Not Muse, whose cards are albums, nor - from every system -
 		 * Favorites, whose games are on their own shelves too */
-		use[i] = all ? !is_muse(s) && !a->view[i].owner
+		use[i] = all ? !is_muse(s) && !a->view[i].owner && !pm_only_offer(a, i)
 		             : i == a->sys_cursor && !is_muse(s);
 	}
 	if (!rg_pick(count, use, a->sys.count, rg_random(), last_shelf, last_game,
@@ -11264,7 +11269,11 @@ static void up_arrow(SDL_Renderer *r, int x, int mid, int w)
 	SDL_RenderGeometry(r, NULL, v, 3, NULL, 0);
 }
 
-static void update_page_draw(app *a, const su_page *p, char notes[UP_NOTES][120], int nnotes)
+/* The page's heading is the caller's: System Update's, or Install
+ * PortMaster's, which is this page with its own words (src/pminstall.h).
+ * `notes` are the points under the line, What's New on System Update's. */
+static void update_page_draw(app *a, const char *heading, const su_page *p,
+                             char notes[][120], int nnotes)
 {
 	const ds_theme *thm = theme();
 	SDL_Renderer *r = a->r;
@@ -11275,7 +11284,7 @@ static void update_page_draw(app *a, const su_page *p, char notes[UP_NOTES][120]
 	int x, i, w, y;
 
 	draw_background(a);
-	ui_text(r, fl, T(S_UPDATEPAGE_TITLE), ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
+	ui_text(r, fl, heading, ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
 	draw_zyper(r, 158.0f, 232.0f, 150.0f, ZYPER_TILT_DEG, 1.0f, 0.0f, 255);
 
 	/* 0.1.0 → 0.2.0, or the installed version alone */
@@ -11447,7 +11456,7 @@ static void update_screen(app *a)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, &p, notes, nnotes);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nnotes);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -15393,11 +15402,21 @@ static bool is_port(const system_cfg *s)
 	       !strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX));
 }
 
+static void pm_install_screen(app *a, const system_cfg *s);
+
 static void launch_port(app *a, const system_cfg *s, const char *file)
 {
 	char path[LIB_PATH * 2];
 	FILE *f;
 	bool ok;
+
+	/* PortMaster's entry while PortMaster is not on the card, asked of the
+	 * card now: its page, which installs it (src/pminstall.h) */
+	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT) && pm_offer_refresh(a)) {
+		if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_ACCEPT);
+		pm_install_screen(a, s);
+		return;
+	}
 
 	snprintf(path, sizeof path, "%s/%s/%s", P_ROMS, s->folder, file);
 	/* Written whole, then renamed into place: launch.sh reads it the moment
@@ -15440,6 +15459,184 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_LIGHT, DS_LIGHT);
 	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_DARK, DS_DARK);
 	a->running = false;
+}
+
+/* ---------- Install PortMaster (src/pminstall.h, DESIGN.md 11.32) --------
+ *
+ * The Ports shelf's PortMaster while it is not on the card: System Update's
+ * page with its own words. Install starts res/portmaster/pm-install.py on
+ * its own (it outlives this screen: B leaves it working, as System Update's
+ * download goes on), and the page draws the status file it writes. */
+
+#define PM_PYTHON "/usr/bin/python3"
+
+static void pm_status_path(char *out, size_t n)
+{
+	const char *e = getenv("ZYPEROS_PM_STATUS");   /* a host shot's status file */
+
+	snprintf(out, n, "%s", e && *e ? e : PM_STATUS_DIR "/status");
+}
+
+/* The installer holds its lock, beside the status file, while it runs */
+static bool pm_locked(void)
+{
+	char p[LIB_PATH], *slash;
+	bool busy;
+	int fd;
+
+	pm_status_path(p, sizeof p);
+	if (!(slash = strrchr(p, '/'))) return false;
+	snprintf(slash + 1, sizeof p - (size_t)(slash + 1 - p), "lock");
+	if ((fd = open(p, O_RDONLY | O_CLOEXEC)) < 0) return false;
+	busy = flock(fd, LOCK_SH | LOCK_NB) != 0;
+	close(fd);
+	return busy;
+}
+
+/* A way out to the internet: Wi-Fi, or a default route on another link
+ * (QEMU's network, a wired adapter). A computer on the USB cable gives no
+ * route out, so File Transfer's link is not one. */
+static bool pm_network(void)
+{
+	char line[256];
+	bool route = false;
+	FILE *f;
+
+	if (menu_wifi(NULL, 0) == WIFI_CONNECTED) return true;
+	if (!(f = fopen("/proc/net/route", "r"))) return false;
+	while (!route && fgets(line, sizeof line, f)) {
+		char ifc[32];
+		unsigned long dest, gw, flags;
+
+		if (sscanf(line, "%31s %lx %lx %lx", ifc, &dest, &gw, &flags) == 4 &&
+		    dest == 0 && (flags & 1ul) && strcmp(ifc, "lo"))
+			route = true;
+	}
+	fclose(f);
+	return route;
+}
+
+static pm_view g_pm;
+static unsigned g_pm_read_at, g_pm_started;
+/* --portmaster [running,nonet,nopython,installed]: a host shot's view, the
+ * status from ZYPEROS_PM_STATUS; -1 none */
+static int g_pm_shot = -1;
+enum { PM_SHOT_RUNNING = 1, PM_SHOT_NONET = 2, PM_SHOT_NOPYTHON = 4, PM_SHOT_INSTALLED = 8 };
+
+/* Everything the page shows, read again at most four times a second: the
+ * page asks every frame */
+static const pm_view *pm_view_read(const system_cfg *s, bool now)
+{
+	unsigned t = plat_now_ms();
+	char p[LIB_PATH], text[512] = "";
+
+	if (!now && g_pm_read_at && t - g_pm_read_at < 250) return &g_pm;
+	g_pm_read_at = t ? t : 1;
+	memset(&g_pm, 0, sizeof g_pm);
+	pm_status_path(p, sizeof p);
+	up_read(p, text, sizeof text);
+	pm_status_parse(text, &g_pm.st);
+	if (g_pm_shot >= 0) {
+		g_pm.running = g_pm_shot & PM_SHOT_RUNNING;
+		g_pm.network = !(g_pm_shot & PM_SHOT_NONET);
+		g_pm.python = !(g_pm_shot & PM_SHOT_NOPYTHON);
+		g_pm.installed = g_pm_shot & PM_SHOT_INSTALLED;
+		return &g_pm;
+	}
+	/* Python takes a moment to start and take its lock: a run just begun
+	 * is running until it says it is done or failed */
+	g_pm.running = pm_locked() ||
+	               (g_pm_started && t - g_pm_started < 5000 &&
+	                g_pm.st.state != PM_DONE && g_pm.st.state != PM_ERROR);
+	g_pm.network = pm_network();
+	g_pm.python = access(PM_PYTHON, X_OK) == 0;
+	g_pm.installed = pm_on_card(s->folder);
+	return &g_pm;
+}
+
+static void pm_spawn(const system_cfg *s)
+{
+	char script[LIB_PATH], ports[LIB_PATH], status[LIB_PATH];
+	char *argv[] = { (char *)PM_PYTHON, (char *)"-I", script, (char *)"--ports", ports,
+	                 (char *)"--status", status, NULL };
+	FILE *f;
+
+	snprintf(script, sizeof script, "%s/%s", P_ROOT, PM_INSTALLER);
+	snprintf(ports, sizeof ports, "%s/%s", P_ROMS, s->folder);
+	pm_status_path(status, sizeof status);
+	/* The last run's word is not this one's: the page says it is looking
+	 * from the press on, until the installer writes its own */
+	mkdir(PM_STATUS_DIR, 0755);
+	if ((f = fopen(status, "w"))) {
+		fputs("state checking\n", f);
+		fclose(f);
+	}
+	fprintf(stderr, "portmaster: installing into %s\n", ports);
+	plat_spawn_detached(argv, NULL, P_ROOT);
+	g_pm_started = plat_now_ms();
+	if (!g_pm_started) g_pm_started = 1;
+	g_pm_read_at = 0;
+}
+
+static void pm_install_screen(app *a, const system_cfg *s)
+{
+	char notes[PM_NOTES][120];
+	bool had = pm_view_read(s, true)->installed;
+
+	while (!want_quit && a->running) {
+		const pm_view *v = pm_view_read(s, false);
+		su_action act = SUA_NONE;
+		su_page p;
+		int nnotes;
+
+		pm_page_build(v, &p, notes, &nnotes);
+		/* Installed while the page is up: the shelf's A says Play now */
+		if (v->installed && !had) {
+			had = true;
+			pm_offer_refresh(a);
+		}
+		plat_input_poll(&a->in);
+		muse_poll();
+		aout_apply(false);
+		if (a->in.quit_requested) { a->running = false; return; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { power_off(a); return; }
+		if (a->in.pressed[IN_SELECT]) muse_open(a, NULL, NULL);
+		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
+		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
+		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
+		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		if (a->in.pressed[IN_ACCEPT]) act = update_page_key(&p, "A");
+		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_MENU]) {
+			uisound_play(DS_SOUND_BACK);
+			break;
+		}
+		if (a->in.pressed[IN_ACCEPT] && act == SUA_NONE) uisound_play(DS_SOUND_DENY);
+		switch (act) {
+		case SUA_DOWNLOAD:
+			uisound_play(DS_SOUND_ACCEPT);
+			pm_spawn(s);
+			break;
+		case SUA_OPEN:
+			/* PortMaster, run as any port is: the launcher exits for it */
+			pm_offer_refresh(a);
+			launch_port(a, s, PM_SCRIPT);
+			return;
+		case SUA_BACK:
+			uisound_play(DS_SOUND_BACK);
+			pm_offer_refresh(a);
+			return;
+		default:
+			break;
+		}
+
+		tick_tint(a);
+		tick_theme(a);
+		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nnotes);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(16);
+	}
+	pm_offer_refresh(a);
 }
 
 /* A shelf's disc bios in Bios/: any one of its names, which config/systems.cfg
@@ -16906,7 +17103,17 @@ static void shot_compose(app *a)
 		int nn = up_notes(notes);
 
 		su_page_build(up_view(true), &p);
-		update_page_draw(a, &p, notes, nn);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nn);
+		return;
+	}
+	if (g_pm_shot >= 0) {
+		static system_cfg ports = { .folder = "Ports", .core = "port" };
+		char notes[PM_NOTES][120];
+		su_page p;
+		int nn;
+
+		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
+		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nn);
 		return;
 	}
 	if (shot_about >= 0) {
@@ -18018,6 +18225,18 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--tour-music")) shot_tour_music = true;
 		else if (!strcmp(argv[i], "--portload") && i + 1 < argc)
 			shot_portload = argv[++i];
+		else if (!strcmp(argv[i], "--portmaster")) {
+			/* The Install PortMaster page, as ZYPEROS_PM_STATUS's file
+			 * says, with any of running, nonet, nopython, installed */
+			g_pm_shot = 0;
+			if (i + 1 < argc && argv[i + 1][0] != '-') {
+				const char *w = argv[++i];
+				if (strstr(w, "running"))   g_pm_shot |= PM_SHOT_RUNNING;
+				if (strstr(w, "nonet"))     g_pm_shot |= PM_SHOT_NONET;
+				if (strstr(w, "nopython"))  g_pm_shot |= PM_SHOT_NOPYTHON;
+				if (strstr(w, "installed")) g_pm_shot |= PM_SHOT_INSTALLED;
+			}
+		}
 		else if (!strcmp(argv[i], "--update")) {
 			shot_update = 1;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')

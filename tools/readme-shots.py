@@ -77,6 +77,8 @@ SHOTS={
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
     'scraper':('demo','PS1',['--scraper','2']),
     'update':('demo','PS1',['--update']),
+    'ports':('ports','PRT',['--screen','games']),
+    'portmaster':('demo','PS1',['--portmaster','running']),
     'empty':('empty','',['--ways','usb']),
     'tour-theme':('demo','PS1',['--tour','theme','2000','--tour-music','--tour-pick','0']),
     'tour-home':('demo','PS1',['--tour','home','2000','--tour-music','--tour-pick','1']),
@@ -179,6 +181,28 @@ def demo_card(card,art_dir,manifest):
     # A test release's source on the card counts as a network to look with
     # (docs/updates.md), so the page offers its download as on Wi-Fi
     (up/'source').write_text('file:///nonexistent\n')
+
+# The Install PortMaster page's shots: the status file as res/portmaster/
+# pm-install.py writes it, read through ZYPEROS_PM_STATUS (--portmaster)
+PM_SHOTS={'portmaster':'state downloading\nversion 2026.06.23-0015\ntotal 24121702\ndone 9800000\n'}
+
+def ports_card(card):
+    """A card whose ZyperOS has the PortMaster installer and whose Ports
+    folder has no PortMaster yet: the Ports shelf offers to install it"""
+    card_dirs(card)
+    (card/'Roms/NES').mkdir(exist_ok=True);(card/'Roms/NES/Super Tilt Bro.nes').touch()
+    (card/'Roms/Ports').mkdir(exist_ok=True)
+    (card/'ZyperOS/portmaster').mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(ROOT/'res/portmaster/pm-install.py',card/'ZyperOS/portmaster/pm-install.py')
+
+def pm_env(env,name,folder):
+    """env with name's status file, when it is one of PM_SHOTS"""
+    if name in PM_SHOTS:
+        status=Path(folder)/('pm-'+name)/'status'
+        status.parent.mkdir(parents=True,exist_ok=True)
+        status.write_text(PM_SHOTS[name])
+        env['ZYPEROS_PM_STATUS']=str(status)
+    return env
 
 def scummvm_card(card):
     card_dirs(card)
@@ -373,10 +397,11 @@ def main():
               'artwork':{},'screenshots':[]}
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
-               'openbor':Path(temporary)/'openbor'}
+               'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports'}
         demo_card(cards['demo'],args.art_dir,manifest)
         scummvm_card(cards['scummvm'])
         openbor_card(cards['openbor'])
+        ports_card(cards['ports'])
         card_dirs(cards['empty'])
         for theme in ['light','dark']:
             dest=out/theme;dest.mkdir(exist_ok=True)
@@ -384,7 +409,7 @@ def main():
                 if theme=='dark' and name not in DARK: continue
                 if args.only and name not in args.only: continue
                 card=cards[card_name]
-                focus={'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS,'OPENBOR':OPENBOR[0]}.get(tag,'')
+                focus={'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS,'OPENBOR':OPENBOR[0],'PRT':'PortMaster.sh'}.get(tag,'')
                 (card/'ZyperOS/.last').write_text(tag+'\n'+focus+'\n')
                 target=dest/(name+'.png')
                 # The tutorial draws no status corner, so it has no --status
@@ -392,7 +417,8 @@ def main():
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
                          '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
-                result=subprocess.run(command,cwd=ROOT,env=env_for(card),text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
+                                      stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 (dest/(name+'.log')).write_text(result.stdout)
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')

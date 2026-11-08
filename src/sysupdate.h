@@ -48,8 +48,11 @@ typedef struct {
 	char checked[16];         /* when it last looked, "9:41"; "" for never */
 } su_view;
 
-/* What a button does on the page */
-typedef enum { SUA_NONE, SUA_BACK, SUA_CHECK, SUA_DOWNLOAD, SUA_RESTART, SUA_ROLLBACK } su_action;
+/* What a button does on the page. SUA_OPEN is the Install PortMaster page's
+ * (src/pminstall.h), which is this page with its own words: open what was
+ * installed. */
+typedef enum { SUA_NONE, SUA_BACK, SUA_CHECK, SUA_DOWNLOAD, SUA_RESTART, SUA_ROLLBACK,
+               SUA_OPEN } su_action;
 
 #define SU_MIN_BATTERY 25
 #define SU_MAX_KEYS 3

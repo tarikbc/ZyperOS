@@ -238,13 +238,38 @@ UPDATE_STATES = {
 }
 EXTRA.update({name: ("demo", "PS1", ["--update"]) for name in UPDATE_STATES})
 
+# The Install PortMaster page (src/pminstall.c) in its states with the
+# longest words: its status as res/portmaster/pm-install.py writes it, and
+# --portmaster's view of the device. And the Ports shelf with PortMaster not
+# on the card, A saying Install, on a card of its own that has the installer
+PM_STATES = {
+    "portmaster-offer": ("", "none"),
+    "portmaster-offline": ("", "nonet"),
+    "portmaster-old-system": ("", "nopython"),
+    "portmaster-looking": ("state checking\n", "running"),
+    "portmaster-downloading": ("state downloading\nversion 2026.06.23-0015\ntotal 24121702\ndone 6100000\n", "running"),
+    "portmaster-verifying": ("state verifying\nversion 2026.06.23-0015\n", "running"),
+    "portmaster-unpacking": ("state unpacking\nversion 2026.06.23-0015\ntotal 41198857\ndone 18000000\n", "running"),
+    "portmaster-stopped": ("state unpacking\nversion 2026.06.23-0015\ntotal 41198857\ndone 18000000\n", "none"),
+    "portmaster-done": ("state done\nversion 2026.06.23-0015\n", "installed"),
+    "portmaster-network": ("state error\nerror network\n", "none"),
+    "portmaster-checksum": ("state error\nversion 2026.06.23-0015\nerror checksum\n", "none"),
+    "portmaster-space": ("state error\nversion 2026.06.23-0015\nerror space\nneed 108000000\n", "none"),
+    "portmaster-unpack": ("state error\nversion 2026.06.23-0015\nerror unpack\n", "nonet"),
+    "portmaster-release": ("state error\nerror release\n", "none"),
+}
+EXTRA.update({name: ("demo", "PS1", ["--portmaster", view]) for name, (_, view) in PM_STATES.items()})
+# (The Ports shelf with PortMaster's Install, and the page downloading, are
+# the README's, tools/readme-shots.py's ports and portmaster.)
+
 # Each language's own run of every shot, on its own cards
 def run_language(code, shots, binary, keep):
     notes, failures, data, drawn = [], [], {}, set()
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
-                 "openbor": Path(tmp) / "openbor"}
+                 "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
+        R.ports_card(cards["ports"])
         R.scummvm_card(cards["scummvm"])
         R.openbor_card(cards["openbor"])
         R.card_dirs(cards["empty"])
@@ -252,7 +277,8 @@ def run_language(code, shots, binary, keep):
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0]}.get(tag, "")
+            focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
+                     "PRT": "PortMaster.sh"}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
             # A state of the update page: its status, with or without a network
             up = card / "userdata/update"
@@ -275,7 +301,13 @@ def run_language(code, shots, binary, keep):
             command = [str(binary), "--shot", str(target), "--theme", "light", "--lang", code,
                        "--screen", "systems", "--phase", "3200", *status, "--fn-volume", *flags]
             # errors=replace: a log line may end mid-character (a cut name)
-            r = subprocess.run(command, cwd=ROOT, env=R.env_for(card), text=True, errors="replace",
+            env = R.pm_env(R.env_for(card), name, tmp)
+            if name in PM_STATES:
+                pm = Path(tmp) / ("pm-" + name)
+                pm.mkdir(exist_ok=True)
+                (pm / "status").write_text(PM_STATES[name][0])
+                env["ZYPEROS_PM_STATUS"] = str(pm / "status")
+            r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ")):
