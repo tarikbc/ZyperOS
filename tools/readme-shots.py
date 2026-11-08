@@ -79,6 +79,10 @@ SHOTS={
     'update':('demo','PS1',['--update']),
     'ports':('ports','PRT',['--screen','games']),
     'portmaster':('demo','PS1',['--portmaster','running']),
+    # MENU > Storage (DESIGN.md 11.32) on its stand-in card of 128 GB nearly
+    # full, and the demonstration card's PlayStation page
+    'storage':('demo','PS1',['--storage','main']),
+    'storage-system':('demo','PS1',['--storage','system']),
     'empty':('empty','',['--ways','usb']),
     'tour-theme':('demo','PS1',['--tour','theme','2000','--tour-music','--tour-pick','0']),
     'tour-home':('demo','PS1',['--tour','home','2000','--tour-music','--tour-pick','1']),

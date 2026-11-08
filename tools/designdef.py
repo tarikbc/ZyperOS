@@ -58,6 +58,13 @@ COLORS = [
     ("favorite",   "c2557a",   "de929e"),
     ("warning",    "b23f28",   "e0705a"),
     ("ink",        "111310",   "111310"),
+    # MENU > Storage's stacked bar (DESIGN.md 11.32): the three parts that
+    # belong to games, a hue each, none of lime, warm, pink or red-orange,
+    # whose meanings are taken. Media, the rest and free space are roles
+    # above (text-soft, text-dim, track) and ZyperOS is accent-ink.
+    ("store-games", "2c64c4",  "6b9ef5"),
+    ("store-saves", "7a4fc4",  "ae8ef2"),
+    ("store-art",   "0e8a86",  "4fc8c0"),
 ]
 
 # Text roles are owed 4.5:1 on these grounds; marks 3:1 on theirs.
@@ -71,6 +78,8 @@ MARK_ON = {
     "favorite": ("surface",), "accent": ("ink",),
     # the status corner's low battery, outline and fill (DESIGN.md 11.12)
     "warning": ("ground",),
+    # Storage's bar and its legend's dots, on the page's ground
+    "store-games": ("ground",), "store-saves": ("ground",), "store-art": ("ground",),
 }
 
 # Wi-Fi File Transfer's page (res/web/app.css) draws text on more grounds than the

@@ -106,6 +106,9 @@ Each role has one value per theme. Code asks for the role, never the value.
 | **favorite** | `#c2557a` | `#de929e` |
 | **warning** | `#b23f28` | `#e0705a` |
 | **ink** | `#111310` | `#111310` |
+| **store-games** | `#2c64c4` | `#6b9ef5` |
+| **store-saves** | `#7a4fc4` | `#ae8ef2` |
+| **store-art** | `#0e8a86` | `#4fc8c0` |
 <!-- /generated:colors -->
 
 - **ground** clears the screen. **surface** is a panel, a card's slab, the
@@ -123,6 +126,8 @@ Each role has one value per theme. Code asks for the role, never the value.
   lime, because the fill's lime on a light ground is only 1.3:1.
 - **light** is brightness, **favorite** the heart, **warning** low battery
   and errors.
+- **store-games**, **store-saves** and **store-art** are Storage's bar and
+  its legend's dots (11.32), and nothing else.
 
 ### 3.3 Accents
 
@@ -2004,7 +2009,106 @@ stay: they are the player's.
 Host shots: `--info-delete` (the details, the cursor on Delete Game),
 `--delete-ask` (the question), `--delete-now` (the shelf after the yes).
 
-### 11.32 Install PortMaster
+### 11.32 Storage
+
+MENU > **Storage**, just above System Update, is how the card is used, as a
+phone's Settings shows its storage *(2026-11-07: "an interface in our menu
+that shows how our storage is. Like Apple does on the iPhone."; my picks in
+the Storage lab, `docs/design/mock/storage-lab.html`)*. The row's value is
+the room left, "7.4 GB free", asked of the card at most every 2 s, as About
+asks it.
+
+**The page** is a full page on **ground**, as System Update's (11.17):
+
+- "Storage" in **label** **text-soft** centered at cap y 56, and the card's
+  size as it is sold, "128 GB", at its right in **meta** **text-dim**, where
+  a panel of pages keeps its count (11.3). A card of 127.9 GB is 128 GB: the
+  next size cards come in when the device is within a tenth under it.
+- At cap y 128 the room used, its number in **title** **text** and its words
+  in **menu** **text-soft** ("120.6 GB used", the words where the language
+  puts them), and the room left at the right in **menu** **text-soft**.
+- **The bar**, x 64 to 960, y 172, 32 tall, a pill: the parts in a fixed
+  order, square where they meet and 3 apart on the ground (**frame**), the
+  free room the **track** under them all; a part with anything in it is at
+  least 4 wide.
+
+  | Part | Is | Color |
+  |---|---|---|
+  | Games | each system's `Roms/<folder>` but its `.media` | **store-games** |
+  | Saves | `Saves/` and the states | **store-saves** |
+  | Art | covers and video snaps, the systems' `.media` | **store-art** |
+  | Media | Music, Videos, Audiobooks, `Roms/BGM` | **text-soft** |
+  | ZyperOS | the `ZyperOS/` folder, `Emulators/` and the system's partitions beside the card's filesystem | **accent-ink** |
+  | Other | BIOS, the library and settings, the filesystem's own tables: what is used less everything above | **text-dim** |
+
+  Lime is ZyperOS, as everywhere; the three parts of games have a hue each,
+  none of warm, pink or red-orange, whose meanings are taken (3.3). A
+  system's own color would have been its own, but the two largest on my
+  card, the PlayStation's and the Nintendo DS's, are both grey.
+- **The legend** at cap y 240, **meta** **text-dim**, a 20-unit dot and the
+  part's name, 26 between, centered; a longer language takes two lines, and
+  the list a row less.
+- **The list** from y 266: rows as a menu's (1.5 **menu** lines, the focus an
+  **accent** fill that glides in **quick**, the window moving a whole row at
+  a time, never round), five at a time with a rule's room. First at most two
+  **recommendations**, a sparkle in **accent-ink** for their mark, the larger
+  saving first, shown when one gives back 10 MB or more, a rule under them;
+  then everything by size: each system with its home sprite (its games, its
+  saves and states, its art), Videos, Music and Audiobooks with their folder
+  pictures from the File Transfer page, BIOS, ZyperOS with Zyper's face, and
+  Other. The more-rows triangles of 11.3.
+- **Under the list**, at cap y 702, the focused row's facts in **meta**
+  **text-dim**, at most two balanced lines: "116 games · saves and states
+  1.3 GB · art 900 MB", "318 songs", what a recommendation is.
+
+**A system's page**: its name as the heading, its sprite at the left (x 56,
+y 92, 112 square) where System Update has Zyper, its size in **title** and its
+games' count at the right, its own bar of games, saves and art with each
+part's size in the legend. Then **Delete Video Snaps** when it has snaps
+(Video Snaps' own delete, 11.19), a rule, and its games, largest first: a
+game's size is what Delete Game gives back (11.31's plan, summed), its facts
+"Played 22h 5m · last played 3mo ago · saves and states 69 MB" or "never
+played". A on a game is Delete Game's question, as it is, over this page;
+the page is what every panel it opens stands on. B goes back to the card,
+on the system's row.
+
+**The recommendations**, each a question as Delete Game's (a paragraph, a
+rule, the answer, Cancel focused), then "Deleting...", then "Deleted. 1.2 GB
+given back.":
+
+- **Unused Art**: the covers and video snaps in a system's `.media` of no
+  game on its shelf, by the name Delete Game uses for them, a fetch's
+  leftovers with them; a dotfile (a Mac's `._` twin) is not a cover.
+  "A fetch can bring them back."
+- **Old Save States**: the states of a game none of whose states was written
+  in a year and that was not played in one, or is no longer on the card.
+  Saves never: "Their saves stay."
+
+Each lists its folders again and holds each file to its rule at the moment
+it deletes it, so nothing a stale number counted goes.
+
+**Measuring** (src/storage.h): allocated bytes, the clusters a file holds
+(128 KB on a 128 GB exFAT card), so the parts come to what the card says is
+used. A thread walks the card at the lowest CPU and I/O priority there is,
+only while the page is open, never while a game runs; each folder is kept
+with its time in `ZYPEROS_SHARED/storage.cache`, and a refresh lists again
+only the folders whose time moved, so the page opens at once with the last
+numbers and they move to the new ones as the walk reports. When Other moves
+more than 64 MB with no folder's time to say why (a card changed on a
+computer that kept the times), every folder is listed again. The first time,
+with nothing cached, the room used and left are there at once, the bar is
+striped where the walk has not been, and Zyper, his head cocked, stands over
+"Measuring the card", the system it is in, "PlayStation · 41 of 116", and
+"Only the first time. After this it opens at once."
+
+Host shots: `--storage main|system|art|states|delete|done|first [ROW]`, on a
+stand-in card of 128 GB nearly full; `tools/storage-shots.py` takes them all
+in both themes and every language. The numbers and the cache are held by
+`make check-storage`.
+
+---
+
+### 11.33 Install PortMaster
 
 The Ports shelf installs the official PortMaster (portmaster.games) when it
 is not on the card (src/pminstall.h). Nothing new is drawn for it: it is the

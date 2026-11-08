@@ -73,9 +73,10 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own.
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
+- **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
 - **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
-- **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH.
+- **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
 - **Autosave and resume,** plus six save slots for when you want a checkpoint.
 - **Quick save and quick load, without opening a menu:** hold SELECT and press **R1** to save a state, **L1** to load it back. A pop-up names the slot. **Quick Slot** in the in-game menu picks which of the six slots the two use, for each system, and the card remembers it. SELECT is still each game's own button: pressed alone, it reaches the game as you let go of it; only SELECT with a shoulder is a hotkey.
@@ -118,6 +119,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **PortMaster** | Yes, installed from the Ports shelf with one press | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
+| **Storage by part and by game** | Yes, with recommendations | — | — | — | — | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
 | **Charge limit** | 80, 85 or 90% | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
@@ -454,6 +456,26 @@ With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game'
 </details>
 
 <details>
+<summary><b>What fills my card?</b></summary>
+
+**MENU > Storage**, just above System Update. The bar shows the card by part: games, saves and save states, art (covers and video snaps), media (music, videos, audiobooks), ZyperOS itself, and the rest. Under it, every system and folder by size; A on a system opens its page, with its games largest first. A on a game there asks Delete Game's question. The first time, Zyper measures the card while you wait; after that the page opens at once and updates itself.
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/storage.png" width="320" alt="MENU > Storage: 120.5 GB used and 7.4 GB free of 128 GB, a bar by part, two recommendations, then PlayStation, Videos and Sega CD by size"><br><sub>The card by part, then by size</sub></td>
+    <td align="center"><img src="res/readme/storage-system.png" width="320" alt="PlayStation's page: 3.8 GB in six games, its bar of games, saves and art, Delete Video Snaps, then its games largest first"><br><sub>A system's games, largest first</sub></td>
+  </tr>
+</table>
+
+</div>
+
+**Unused Art** deletes the covers and video snaps of games that are no longer on the card; a fetch in **MENU > Scraper** can bring them back. **Old Save States** deletes the save states of games none of whose states was written in a year and that you have not played in one. Your saves stay. Each asks first, with the room it gives back, and the cursor on Cancel.
+
+</details>
+
+<details>
 <summary><b>How do I delete a game?</b></summary>
 
 Press X on the game, choose **Delete Game** at the bottom of its details, and answer **Delete**. The cursor starts on **Cancel**, and B is Cancel too. It works from Favorites as well.
@@ -549,7 +571,18 @@ ZyperOS is C and SDL2, two repositories that build together:
 - [ZyperOS](https://github.com/tarikbc/ZyperOS) (this one): the launcher, the card's scripts and the tools, in [`diatom/`](diatom/) the libretro frontend that starts once at boot and stays running (its own Makefile, under the Mozilla Public License 2.0), and in [`installer/`](installer/) ZyperOS Installer, which puts ZyperOS on a card from macOS, Windows or Linux (Rust and Tauri)
 - [`plastron/`](plastron/): the Linux under it, built with Buildroot in Docker (its own license, the GNU GPL version 3, in [`plastron/LICENSE`](plastron/LICENSE))
 
-[Building](docs/building.md) covers the toolchain, the card and the checks. With a development build on the card and the Pixel 2 on the USB cable, `make -C plastron push` writes a new system to the device, and `tools/px2-deploy.sh` puts a new ZyperOS on it, without taking the card out. On a development image, **MENU > Developer Mode** (on to start) keeps the USB link to a computer up with no question, for the image's own SSH at `10.42.0.1`; a release image has no Developer Mode.
+[Building](docs/building.md) covers the toolchain, the card and the checks. With a development build on the card and the Pixel 2 on the USB cable, `make -C plastron push` writes a new system to the device, and `tools/px2-deploy.sh` puts a new ZyperOS on it, without taking the card out. On a development image, **MENU > Developer Mode** (on to start) keeps the USB link to a computer up with no question, for the image's own SSH at `10.42.0.1`. A release image has [developer mode](#developer-mode) instead, which you turn on yourself.
+
+### Developer mode
+
+A release image starts no SSH and holds no key, so a shell on it is yours to ask for. Developer mode is how, and it stays out of the way until you look for it. On **MENU > About**, on the first page (the one with the version), hold **L2 and R2 together for five seconds**. A **Developer Mode** row appears with a bar that fills as the seconds pass, and letting go of either button, or leaving the page, starts again. When it is full, a message says **Developer Mode is on**, and the row stays on the first page as *on*. **MENU > Developer Mode** then opens its page, where **A** turns developer mode off again.
+
+With it on, the Pixel 2 behaves like a development build for as long as a computer is on the cable. The USB link stays up with no question, and SSH runs on the cable's address, `ssh root@10.42.0.1`, never over Wi-Fi. Closing a page or starting a game does not end it, and when the launcher restarts (a `tools/px2-deploy.sh` run does that) the sessions drop and SSH is back a few seconds later, so a key logs in again. Pulling the cable out, or turning developer mode off, ends it. There are two ways in, and both are yours:
+
+- **A key from the card.** Copy your public key, `id_ed25519.pub` or any `.pub` file (or an `authorized_keys` file), into the `Developer` folder at the card's root; the Pixel makes the folder the first time. Plain public keys only: a line with options in front, such as a forced command, is skipped. A key taken is kept with the ones `ssh-copy-id` saves. The folder is outside `ZyperOS/` because an update swaps that one for the new version's.
+- **A password for this plug.** The Pixel makes eight random characters each time a computer is plugged in. Only **MENU > Developer Mode** shows them, and nothing keeps them. Five wrong ones lock SSH until the next plug, as File Transfer's PIN does. This is also how the first key gets in without taking the card out: sign in with the password, then run `ssh-copy-id root@10.42.0.1`.
+
+**MENU > Developer Mode** opens the page: the command, the password, where the keys go, how many it read, and SSH's status. **A** there turns developer mode off; **B** closes the page and leaves everything running. Nothing is shipped in the image: no password, no key. A development image is unchanged: its SSH starts at boot with the key in `plastron/local/authorized_keys`, and `tools/px2-deploy.sh` works as before.
 
 [Releasing](docs/releases/README.md): `make release PUBLISH=1` on the Mac builds the card image and makes the draft release; the tag it pushes has GitHub build ZyperOS Installer for macOS, Windows and Linux, add it to the same release and publish it. Every version's release has the image and the installer together. A release also carries System Update's pack and its list, signed with ZyperOS's release key (`tools/update-key.sh`) ([how it works](docs/updates.md)).
 

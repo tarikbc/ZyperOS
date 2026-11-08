@@ -451,6 +451,7 @@ static void zyperos_menu_online(void)
 	u.ra_name = "eric";
 	u.auto_off = 0;
 	u.update = "0.2.0 available";
+	u.storage = "7.4 GB free";
 	n = sys_menu_build(&u, rows, &b, &heading);
 
 	ck(n == PM_ROWS, "row count does not depend on the network");
@@ -618,8 +619,16 @@ static void zyperos_menu_online(void)
 	ck(!strcmp(rows[PM_TOUR].label, "Show Tutorial"), "it is there");
 	ck(rows[PM_TOUR].live, "and live with the radio down and nobody signed in");
 	ck(!rows[PM_TOUR].value, "and says nothing in the value column");
-	ck(PM_TOUR == PM_DEVELOPER - 1 && PM_DEVELOPER == PM_UPDATE - 1,
-	   "and sits just above Developer Mode, then System Update");
+	ck(PM_TOUR == PM_DEVELOPER - 1 && PM_DEVELOPER == PM_STORAGE - 1,
+	   "and sits just above Developer Mode, then Storage");
+
+	/* Storage (DESIGN.md 11.32): just above System Update, live on every
+	 * device, its value the room left on the card */
+	printf("the Storage row:\n");
+	ck(!strcmp(rows[PM_STORAGE].label, "Storage"), "it is there");
+	ck(rows[PM_STORAGE].live && !strcmp(val(&rows[PM_STORAGE]), "7.4 GB free"),
+	   "live, and its value is the room left");
+	ck(PM_STORAGE == PM_UPDATE - 1, "and sits just above System Update");
 
 	/* System Update (DESIGN.md 11.17): just above About, its value the
 	 * installed version or the news, on a card with the update program */

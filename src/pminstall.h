@@ -12,7 +12,7 @@
  * page draws that file. Nothing here touches SDL, a device or a file:
  * src/main.c reads the status and the card and asks this for the page, so
  * `make check` holds every state's words (tools/pminstall-check.c). The page
- * is System Update's (DESIGN.md 11.17, 11.32), drawn by the same function. */
+ * is System Update's (DESIGN.md 11.17, 11.33), drawn by the same function. */
 #ifndef ZYPEROS_PMINSTALL_H
 #define ZYPEROS_PMINSTALL_H
 

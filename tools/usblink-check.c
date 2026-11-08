@@ -122,6 +122,30 @@ int main(void)
 	step();
 	CHECK(!g_bound, "the link stayed with the cable out");
 
+	printf("  Developer Mode on a release image (src/devmode.h): the link, no question, no file:\n");
+	usblink_release_dev(true);
+	CHECK(usblink_developer(db_dev()), "the launcher's Developer Mode is not Developer Mode");
+	g_port = USB_PEER_COMPUTER;
+	CHECK(!step(), "asked about a computer in Developer Mode");
+	CHECK(g_bound, "Developer Mode left the link off");
+	usblink_for_transfer();
+	usblink_after_transfer(db_dev());
+	CHECK(g_bound, "closing USB File Transfer took Developer Mode's link");
+	g_port = USB_PEER_CHARGER;
+	step();
+	CHECK(g_bound, "Developer Mode let the link go for a charger");
+	g_port = USB_PEER_COMPUTER;
+	step();
+	CHECK(flag() == -1, "Developer Mode wrote the card's file on a release image (%d)", flag());
+	usblink_release_dev(false);
+	CHECK(!usblink_developer(db_dev()) && !g_bound, "turned off, Developer Mode kept the link");
+	g_port = USB_PEER_NONE;
+	step();
+	g_port = USB_PEER_COMPUTER;
+	CHECK(step(), "a computer was not asked about once Developer Mode was off");
+	g_port = USB_PEER_NONE;
+	step();
+
 	printf("  a development image (dropbear at boot) is in Developer Mode:\n");
 	f = fopen(script, "w");
 	if (f) fclose(f);

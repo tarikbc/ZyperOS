@@ -159,7 +159,7 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked \u00b7 10 points",
+        "Unlocked · 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
@@ -705,6 +705,42 @@
         "PS1"
       ],
       "sha256": "87f433b86258cda9cebbd6e68cdd62fe1ba58d754fdfb628969f308c4f25bd26"
+    },
+    {
+      "file": "light/storage.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "main"
+      ],
+      "sha256": "de10a5af4434544d9d370e80823624fe29e145eb6139ebbdda5b2894bff93eb9"
+    },
+    {
+      "file": "light/storage-system.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "system"
+      ],
+      "sha256": "d419f0aedf488502a53e756f228cdfb4dc07120d05ab063c279d4c2cae58807b"
     },
     {
       "file": "light/ports.png",

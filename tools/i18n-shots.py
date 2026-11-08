@@ -117,6 +117,9 @@ def unescape(text):
 UNSHOT = ROOT / "tools" / "i18n-unshot.txt"
 UNSHOT_WHY = {
     "hare": "answers sent to the File Transfer page, which draws them, not the launcher",
+    "storage": "drawn wrapped to their lines, in pieces of a line (the used number as a title, "
+               "a part of the line under the list), with tabular digits, or a plural's one form "
+               "the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)",
 }
 UNSHOT_DEFAULT = "no shot draws it yet"
 
@@ -160,6 +163,18 @@ EXTRA = {
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),
     "system-menu": ("demo", "PS1", ["--screen", "games", "--menu"]),
+    "storage-art": ("demo", "PS1", ["--storage", "art"]),
+    "storage-states": ("demo", "PS1", ["--storage", "states"]),
+    "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
+    "storage-done": ("demo", "PS1", ["--storage", "done"]),
+    "storage-first": ("demo", "PS1", ["--storage", "first"]),
+    "storage-zyperos": ("demo", "PS1", ["--storage", "main", "zyperos"]),
+    "storage-videos": ("demo", "PS1", ["--storage", "main", "videos"]),
+    "storage-music": ("demo", "PS1", ["--storage", "main", "music"]),
+    "storage-books": ("demo", "PS1", ["--storage", "main", "books"]),
+    "storage-bios": ("demo", "PS1", ["--storage", "main", "bios"]),
+    "storage-other": ("demo", "PS1", ["--storage", "main", "other"]),
+    "storage-snaps": ("demo", "PS1", ["--storage", "system", "0"]),
     "about-0": ("demo", "PS1", ["--about", "0"]),
     "about-1": ("demo", "PS1", ["--about", "1"]),
     "about-2": ("demo", "PS1", ["--about", "2"]),
@@ -193,6 +208,12 @@ EXTRA = {
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
+    # Developer Mode (src/devmode.h): its page with one key, a count of two
+    # figures (the plural's other), and none, and the message of the unlock
+    "dev-page": ("demo", "PS1", ["--dev-page", "0"]),
+    "dev-page-keys": ("demo", "PS1", ["--dev-page", "1"]),
+    "dev-page-none": ("demo", "PS1", ["--dev-page", "2"]),
+    "dev-on": ("demo", "PS1", ["--dev-page", "3"]),
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
     # A row whose value is "needs Wi-Fi", the longest it has in most languages
     "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),

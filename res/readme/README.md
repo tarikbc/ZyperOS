@@ -20,7 +20,7 @@ curated Metal Gear Solid metadata. The launcher draws every game card itself:
 no box art and no game screens are included. The home screens show the
 system art in res/system-icons. MP4 shows clearly named demonstration albums.
 Achievement rows, playback timing, transfer progress, the hotspot, the
-Scraper's counts and the System Update page use the launcher's built-in shot
+Scraper's counts, the Storage page and the System Update page use the launcher's built-in shot
 fixtures and stand-in values. No ROMs, audio, account credentials or personal
 save data are included or required. The clock and battery are fixed preview
 values.
