@@ -41,6 +41,11 @@
   </tr>
   <tr>
     <td align="center"><img src="res/readme/battery.png" width="240" alt="MENU > Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery"><br><sub>The battery, as time left</sub></td>
+    <td align="center"><img src="res/readme/gamemenu.png" width="240" alt="The in-game menu on its Quick Slot row, slot 1"><br><sub>A quick slot for each system</sub></td>
+    <td align="center"><img src="res/readme/controls-hotkeys.png" width="240" alt="Controls: Hotkeys. SELECT with R1 and L1 quick save and load, with R2 and L2 faster and slower"><br><sub>SELECT with a shoulder: the hotkeys</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="res/readme/controls-ps1.png" width="240" alt="Controls: PlayStation. A, B, X and Y beside the circle, cross, triangle and square they are"><br><sub>Every button, as its pad draws it</sub></td>
   </tr>
 </table>
 
@@ -73,12 +78,13 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH.
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
 - **Autosave and resume,** plus six save slots for when you want a checkpoint.
+- **Quick save and quick load, without opening a menu:** hold SELECT and press **R1** to save a state, **L1** to load it back. A pop-up names the slot. **Quick Slot** in the in-game menu picks which of the six slots the two use, for each system, and the card remembers it. SELECT is still each game's own button: pressed alone, it reaches the game as you let go of it; only SELECT with a shoulder is a hotkey.
 - **A QWERTY keyboard** that keeps up with the d-pad.
 - **Clocks per system:** 8-bit and handheld systems run the CPU, memory and GPU under lower ceilings, measured to keep every frame, and so does the 16-bit generation a step higher. Lower clocks run at lower voltage, which saves battery. At the first frame that comes late, a game goes back to full clocks for the rest of the session.
 - **Turbo buttons:** X and Y press A and B for you, on the nine consoles whose controllers had two face buttons. On Game Boy Advance, L2 and R2 do the same for L and R.
-- **Fast forward:** hold MENU and press R1 to run a game at 2x, 3x or 4x, and once more to go back.
-- **Every control, in the game:** **Controls** in the in-game menu shows what each button does in the game you are playing: its system's own buttons as its emulator reads them, the turbo buttons, the hotkeys, the Nintendo 64's C buttons and Rumble Pak, and the DS's screens and stylus.
-- **Rumble on the Pixel 2:** Dreamcast games, PlayStation games (as a DualShock) and Game Boy Color rumble cartridges shake the handheld, and Nintendo 64 games get a Rumble Pak in place of the Controller Pak. The motor stops while the in-game menu is open.
+- **Faster and slower:** hold SELECT and press **R2** to run a game at 1.5x, 2x or 3x, and **L2** to step back down to normal speed. A pop-up says the speed.
+- **Every control, in the game:** **Controls** in the in-game menu shows what each button does in the game you are playing: its system's own buttons as its emulator reads them (the PlayStation's as their cross, circle, triangle and square), the turbo buttons, the hotkeys, the Nintendo 64's C buttons (SELECT with X, A, B or Y) and Rumble Pak, the PICO-8's arrows, O, X and pause menu, and the DS's screens and stylus.
+- **Rumble on the Pixel 2:** Dreamcast games, PlayStation games (as a DualShock) and Game Boy Color rumble cartridges shake the handheld, and Nintendo 64 games get a Rumble Pak. A game that saves to the Controller Pak, the N64's memory card, takes it instead in the in-game menu's **Pak** row, which keeps the choice for that game. The motor stops while the in-game menu is open.
 - **A USB-C headphone adapter on the Pixel 2:** plug one in and the sound goes there, ahead of the headphone jack, in games and in MP4. It's a choice of its own in Audio Output.
 - **Bluetooth headphones** on the Brick, paired on the device, with its volume buttons reaching them and their own buttons playing and skipping in MP4. Plug in wired ones and they take over.
 - **Mono audio,** for anyone who hears with one ear: Audio Channels plays games and MP4 in mono, or in mono in just the left or right ear on headphones.
@@ -400,7 +406,8 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
 | **L1 / R1** | Jump three systems on the home, a screenful of games on a shelf |
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
-| **MENU + R1** | Fast forward a game |
+| **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
+| **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
 | **X / Y** | In a game, turbo A and B. On the shelf, a game's details (and Delete Game) and favorite |
 | **POWER** | Save and turn off. Over a port, it ends the port first |
 

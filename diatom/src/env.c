@@ -49,6 +49,9 @@ static bool              g_geometry_dirty;
 static int               g_new_w, g_new_h;
 static double            g_new_aspect;
 static uint32_t          g_suppress;
+/* What the poll hook said at the last poll: hidden, and given */
+static diatom_poll_hook  g_poll_hook;
+static uint32_t          g_hook_hide, g_hook_give;
 /* GET_GAME_INFO_EXT's answer, while a game out of a zip loads */
 static struct retro_game_info_ext g_ext;
 static bool              g_ext_on;
@@ -56,6 +59,12 @@ static bool              g_ext_on;
 void diatom_env_suppress(uint32_t mask)
 {
 	g_suppress = mask;
+}
+
+void diatom_env_poll_hook(diatom_poll_hook fn)
+{
+	g_poll_hook = fn;
+	g_hook_hide = g_hook_give = 0;
 }
 
 /* The libretro pointer, for a core with a touch screen (RETRO_DEVICE_POINTER):
@@ -617,9 +626,14 @@ static bool env_cb(unsigned cmd, void *data)
 /* Defined down with the map, which is the state it exists to advance. */
 static void turbo_tick(void);
 
+/* The pad is read here, inside the core's frame, so a press is new to the
+ * core on the very frame it is new to Diatom. Whatever judges a press as it
+ * comes (SELECT's chords, main.c) judges it here too, or the frame it goes
+ * down would reach the game before anything had seen it. */
 static void cb_input_poll(void)
 {
 	diatom_port_input_poll();
+	if (g_poll_hook) g_hook_hide = g_poll_hook(diatom_port_input_state(), &g_hook_give);
 	turbo_tick();
 }
 
@@ -741,7 +755,7 @@ static void turbo_tick(void)
 	int b;
 
 	g_input_frame++;
-	held = diatom_port_input_state() & ~g_suppress;
+	held = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
 	for (b = 0; b < DIATOM_BTN_COUNT; b++)
 		if (turbo_period[b] &&
 		    (held & DIATOM_BIT(b)) && !(turbo_prev & DIATOM_BIT(b)))
@@ -920,7 +934,7 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	}
 	if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
 
-	state = diatom_port_input_state() & ~g_suppress;
+	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
 
 	/* OR, not first-match. Under an identity map no two canonical buttons
 	 * share a target so returning the first was always correct; remapping

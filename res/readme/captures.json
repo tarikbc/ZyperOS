@@ -643,6 +643,68 @@
       ],
       "sha256": "9de3116215235980dc26813077bcc44964be89c6acc99dfa6aec0bba5ba81137",
       "source_commit": "d923761fa835d074013fa04f4740500fc3a7aef5"
+    },
+    {
+      "file": "light/gamemenu.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "3"
+      ],
+      "sha256": "038d416a1408a7166372bd7a007dadd195b622134a3805369c76722b1794fb41"
+    },
+    {
+      "file": "light/controls-ps1.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "0",
+        "PS1"
+      ],
+      "sha256": "0a5f7e31e61e115b547dc911805ff95c938ed49deac880513436b02c285bb4a0"
+    },
+    {
+      "file": "light/controls-hotkeys.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "2",
+        "PS1"
+      ],
+      "sha256": "87f433b86258cda9cebbd6e68cdd62fe1ba58d754fdfb628969f308c4f25bd26"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

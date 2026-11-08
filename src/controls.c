@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "i18n.h"
+#include "padglyph.h"
 
 static bool fn_volume;        /* see ctl_set_fn_volume */
 static bool battery_lights;   /* see ctl_set_battery_lights */
@@ -17,7 +18,7 @@ void ctl_set_battery_lights(bool on) { battery_lights = on; }
 /* The rows the home's pages and a game's In a game page both say, written
  * once so the two cannot come to disagree. A button is named as it is
  * printed, in every language; what it does is in the language that is on. */
-static menu_row row_menu(void)   { return (menu_row){ "MENU", T(S_CONTROLS_MENU_FF), false }; }
+static menu_row row_menu(void)   { return (menu_row){ "MENU", T(S_CONTROLS_INGAME_MENU), false }; }
 static menu_row row_mp4(void)    { return (menu_row){ "SELECT", T(S_CONTROLS_MP4_MENU), false }; }
 static menu_row row_save_off(void) { return (menu_row){ "POWER", T(S_CONTROLS_SAVE_OFF), false }; }
 static menu_row row_volume(void)
@@ -35,6 +36,7 @@ static const str_id NAMES[CTL_PAGES] = {
 	[CTL_MOVING]   = S_CONTROLS_PAGE_MOVING,
 	[CTL_SHELF]    = S_CONTROLS_PAGE_SHELF,
 	[CTL_GAME]     = S_CONTROLS_PAGE_GAME,
+	[CTL_HOTKEYS]  = S_CONTROLS_PAGE_HOTKEYS,
 	[CTL_MUSE]     = S_CONTROLS_PAGE_MUSE,
 	[CTL_ANYWHERE] = S_CONTROLS_PAGE_ANYWHERE,
 };
@@ -96,10 +98,10 @@ static int game(menu_row *out)
 {
 	int n = 0;
 
-	/* Fast forward rides on MENU's row, because a seventh row does not fit
-	 * (PAGE_MAX in tools/controls-check.c). MENU+R1 steps 2x, 3x, 4x and back
-	 * to normal, and MENU opens the menu on release so it can be held for it.
-	 * Eric's wording, 2026-10-01, SELECT's with it. */
+	/* MENU is the in-game menu, which opens on release. Fast forward rode on
+	 * its row as MENU+R1 until 2026-11-07, when it moved to SELECT+R2 and
+	 * SELECT+L2, on the Hotkeys page after this one. Eric's wording,
+	 * 2026-10-01, SELECT's with it. */
 	out[n++] = row_menu();
 	out[n++] = row_mp4();
 	/* X and Y are Diatom's turbo on the nine two-button systems; L2 and R2
@@ -116,6 +118,30 @@ static int game(menu_row *out)
 	 * separate claims. Eric's, 2026-09-20; reworded by him 2026-10-01. */
 	out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SOME));
 	return n;
+}
+
+/* The hotkeys: SELECT held and a shoulder (diatom/src/chord.h), in a game
+ * whatever the system. The quick slot is the in-game menu's Quick Slot row,
+ * one a system. The note is the rule that keeps SELECT a game button: a
+ * press with no shoulder after it is the game's. Shared with a game's own
+ * Hotkeys page (hotkeys_for). */
+static int hotkey_rows(menu_row *out, bool states, bool select_note)
+{
+	int n = 0;
+
+	if (states) {
+		out[n++] = (menu_row){ "SELECT+R1", T(S_CONTROLS_QUICK_SAVE), false };
+		out[n++] = (menu_row){ "SELECT+L1", T(S_CONTROLS_QUICK_LOAD), false };
+	}
+	out[n++] = (menu_row){ "SELECT+R2", T(S_CONTROLS_FASTER), false };
+	out[n++] = (menu_row){ "SELECT+L2", T(S_CONTROLS_SLOWER), false };
+	if (select_note) out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SELECT));
+	return n;
+}
+
+static int hotkeys(menu_row *out)
+{
+	return hotkey_rows(out, true, true);
 }
 
 static int muse(menu_row *out)
@@ -170,6 +196,7 @@ int ctl_rows(ctl_page p, menu_row *out)
 	switch (p) {
 	case CTL_SHELF:    n = shelf(out);  break;
 	case CTL_GAME:     n = game(out);        break;
+	case CTL_HOTKEYS:  n = hotkeys(out);     break;
 	case CTL_MUSE:     n = muse(out);        break;
 	case CTL_ANYWHERE: n = anywhere(out);    break;
 	default:           n = moving(out); break;
@@ -195,15 +222,23 @@ int ctl_rows(ctl_page p, menu_row *out)
  * the system does not have - mGBA names L and R for the Game Boy too, Genesis
  * Plus GX a Genesis pad for the Master System - is left out. */
 
-enum { P_A, P_B, P_X, P_Y, P_L1, P_R1, P_L2, P_R2, P_START, P_SELECT, P_COUNT };
+/* The d-pad last in the enum and first on a page: a system whose page says
+ * what its d-pad is (the PICO-8's arrow buttons) has it as its first row. A
+ * page says it only where the core makes the d-pad something to say; on the
+ * rest it is the pad's own directions and goes without saying. */
+enum { P_A, P_B, P_X, P_Y, P_L1, P_R1, P_L2, P_R2, P_START, P_SELECT, P_DPAD, P_COUNT };
 
 /* The handheld's buttons, in the order a page lists them, by the names the
- * pages use and the names Diatom's maps use. */
+ * pages use and the names Diatom's maps use. The d-pad is words (DPAD_KEY),
+ * and no map moves it. */
 static const char *const KEY[P_COUNT] = {
-	"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "START", "SELECT"
+	"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "START", "SELECT", NULL
 };
 static const char *const SPEC[P_COUNT] = {
-	"a", "b", "x", "y", "l1", "r1", "l2", "r2", "start", "select"
+	"a", "b", "x", "y", "l1", "r1", "l2", "r2", "start", "select", "dpad"
+};
+static const int ORDER[P_COUNT] = {
+	P_DPAD, P_A, P_B, P_X, P_Y, P_L1, P_R1, P_L2, P_R2, P_START, P_SELECT
 };
 
 /* A button as a core names it, the way a page says it: a name printed on
@@ -322,16 +357,20 @@ static const ctl_pad PADS[] = {
 	                [P_L2] = SAYS(S_CONTROLS_RIGHT_PAD_UP),
 	                [P_R2] = SAYS(S_CONTROLS_RIGHT_PAD_LEFT),
 	                [P_START] = BTN("Start"), [P_SELECT] = BTN("Select") } },
-	{ "PS1", NULL, { [P_A] = SAYS(S_CONTROLS_CIRCLE), [P_B] = SAYS(S_CONTROLS_CROSS),
-	                 [P_X] = SAYS(S_CONTROLS_TRIANGLE), [P_Y] = SAYS(S_CONTROLS_SQUARE),
+	/* The faces are shapes, drawn as the pad has them (padglyph.h), in every
+	 * language: words until 2026-11-07 */
+	{ "PS1", NULL, { [P_A] = BTN(PAD_CIRCLE), [P_B] = BTN(PAD_CROSS),
+	                 [P_X] = BTN(PAD_TRIANGLE), [P_Y] = BTN(PAD_SQUARE),
 	                 [P_L1] = BTN("L1"), [P_R1] = BTN("R1"), [P_L2] = BTN("L2"),
 	                 [P_R2] = BTN("R2"), [P_START] = BTN("Start"), [P_SELECT] = BTN("Select") } },
 	/* NeoCD: the four buttons, and three of its presses at once */
 	{ "NEOCD", NULL, { [P_A] = BTN("B"), [P_B] = BTN("A"), [P_X] = BTN("D"), [P_Y] = BTN("C"),
 	                   [P_L1] = BTN("B+C"), [P_L2] = BTN("A+B"), [P_R2] = BTN("A+B+C"),
 	                   [P_START] = BTN("Start"), [P_SELECT] = BTN("Select") } },
-	/* Mupen64Plus-Next: B the N64's A, Y its B, L2 its Z; R2 held makes the
-	 * face buttons the C buttons, which have a page of their own */
+	/* Mupen64Plus-Next: B the N64's A, Y its B, L2 its Z. The core makes the
+	 * face buttons its C buttons while its R2 is held, and map|N64 puts that
+	 * R2 on SELECT, which the N64 has none of (and takes R2's own away): the
+	 * C buttons have a page of their own */
 	{ "N64", NULL, { [P_B] = BTN("A"), [P_Y] = BTN("B"), [P_L1] = BTN("L"), [P_R1] = BTN("R"),
 	                 [P_L2] = BTN("Z"), [P_START] = BTN("Start") } },
 	/* Beetle NeoPop: the south button is the Pocket's A */
@@ -383,9 +422,13 @@ static const ctl_pad PADS[] = {
 	{ "PKMINI", NULL, { [P_A] = BTN("A"), [P_B] = BTN("B"), [P_X] = SAYS_ON(S_CONTROLS_TURBO, "A"),
 	                    [P_L1] = SAYS(S_CONTROLS_SHAKE), [P_R1] = BTN("C"),
 	                    [P_SELECT] = SAYS(S_CONTROLS_POWER) } },
-	/* fake-08: PICO-8's O at the bottom, X beside it */
-	{ "PICO8", NULL, { [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "X"),
-	                   [P_B] = SAYS_ON(S_CONTROLS_BUTTON, "O"), [P_START] = BTN("Pause") } },
+	/* fake-08: PICO-8's arrow buttons on the d-pad, its O at the bottom
+	 * and X beside it, START its pause menu - every button it reads
+	 * (fake-08's libretro.cpp at the pin: the d-pad, B, A and START) */
+	{ "PICO8", NULL, { [P_DPAD] = SAYS(S_CONTROLS_ARROWS),
+	                   [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "X"),
+	                   [P_B] = SAYS_ON(S_CONTROLS_BUTTON, "O"),
+	                   [P_START] = SAYS(S_CONTROLS_PAUSE_MENU) } },
 	/* DSperate as the DS's pad; L2 and R2 are Diatom's, on the page after
 	 * (EXTRAS) */
 	{ "NDS", NULL, { [P_A] = BTN("A"), [P_B] = BTN("B"), [P_X] = BTN("X"), [P_Y] = BTN("Y"),
@@ -444,14 +487,19 @@ typedef struct {
 } ctl_extra;
 
 static const ctl_extra EXTRAS[] = {
-	/* R2 held turns the face buttons into the C buttons, each the way it
-	 * sits (Mupen64Plus-Next's defaults: C1 right, C2 left, C3 down, C4
-	 * up); and the controller holds a Rumble Pak (src/db.c) */
-	{ "N64", S_CONTROLS_C_BUTTONS, { { BTN("R2+X"), S_CONTROLS_C_UP },
-	                                 { BTN("R2+A"), S_CONTROLS_C_RIGHT },
-	                                 { BTN("R2+B"), S_CONTROLS_C_DOWN },
-	                                 { BTN("R2+Y"), S_CONTROLS_C_LEFT } },
-	  true, S_CONTROLS_RUMBLE },
+	/* SELECT held turns the face buttons into the C buttons, each the way
+	 * it sits (Mupen64Plus-Next's defaults: C1 right, C2 left, C3 down, C4
+	 * up): the core's own R2 held does it, and map|N64 puts that on SELECT,
+	 * which the N64 has none of (R2 until 2026-11-07, SELECT's shoulders
+	 * being the hotkeys'). Under them, the Pak the controller holds and where
+	 * it is changed, "MENU > Pak: Rumble Pak" (ctl_game.accessory): it said
+	 * "Rumble Pak, not Controller Pak" until 2026-11-07, when the Pak became
+	 * the player's to choose, per game, and that read as a riddle. */
+	{ "N64", S_CONTROLS_C_BUTTONS, { { BTN("SELECT+X"), S_CONTROLS_C_UP },
+	                                 { BTN("SELECT+A"), S_CONTROLS_C_RIGHT },
+	                                 { BTN("SELECT+B"), S_CONTROLS_C_DOWN },
+	                                 { BTN("SELECT+Y"), S_CONTROLS_C_LEFT } },
+	  true, S_CONTROLS_PAK_WHERE },
 	/* Diatom's (screens.h): L2 the other screen, R2 the stylus, and while
 	 * it is on the d-pad moves it and A touches. MENU+L1 switched the
 	 * screens too until 2026-11-06 (My note: L2 does it). The d-pad is not
@@ -503,6 +551,17 @@ static const ctl_extra *extra_for(const char *tag)
 bool ctl_game_known(const char *tag)
 {
 	return pad_for(tag, NULL) != NULL || pad_for(tag, "fds") != NULL;
+}
+
+bool ctl_has_states(const char *tag)
+{
+	static const char *const NONE[] = { "SCUMMVM", "J2ME" };
+	size_t i;
+
+	if (!tag) return false;
+	for (i = 0; i < sizeof NONE / sizeof NONE[0]; i++)
+		if (!strcmp(tag, NONE[i])) return false;
+	return true;
 }
 
 static int spec_index(const char *s, size_t n)
@@ -635,22 +694,24 @@ static bool is_face(const crow *r)
 static int pad_rows(const ctl_game *g, crow *r)
 {
 	const ctl_pad *pd = pad_for(g->tag, g->ext);
-	/* pairs: A/B 0, X/Y 1, L1/R1 2, L2/R2 3, START/SELECT 4 */
-	static const int PAIR[P_COUNT] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4 };
-	int to[P_COUNT], i, n = 0;
+	/* pairs: A/B 0, X/Y 1, L1/R1 2, L2/R2 3, START/SELECT 4; the d-pad
+	 * none */
+	static const int PAIR[P_COUNT] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5 };
+	int to[P_COUNT], k, n = 0;
 	bool turbo[P_COUNT] = { false };
 
 	if (!pd) return 0;
-	for (i = 0; i < P_COUNT; i++) to[i] = i;
+	for (k = 0; k < P_COUNT; k++) to[k] = k;
 	apply_map(g->map, to, turbo);
 	apply_map(g->turbo, to, turbo);
-	for (i = 0; i < P_COUNT; i++) {
+	for (k = 0; k < P_COUNT; k++) {
+		const int i = ORDER[k];
 		const ctl_label *lab = &pd->pad[to[i]];
 		char said[sizeof r[n].val];
 
 		if (!label_set(lab)) continue;
 		label_say(lab, said, sizeof said);
-		snprintf(r[n].key, sizeof r[n].key, "%s", KEY[i]);
+		snprintf(r[n].key, sizeof r[n].key, "%s", KEY[i] ? KEY[i] : T(S_CONTROLS_KEY_DPAD));
 		if (turbo[i]) snprintf(r[n].val, sizeof r[n].val, T(S_CONTROLS_TURBO), said);
 		else snprintf(r[n].val, sizeof r[n].val, "%s", said);
 		r[n].pair = PAIR[i];
@@ -668,10 +729,11 @@ typedef struct {
 	int nrows;
 } plan;
 
-/* Where the faces end, when they and the rest each fit a page */
+/* Where the faces end, when they and the rest each fit a page; a d-pad row
+ * before them goes with them */
 static int face_cut(const crow *r, int n)
 {
-	int faces = 0;
+	int faces = n > 0 && r[0].pair == 5 ? 1 : 0;
 
 	while (faces < n && is_face(&r[faces])) faces++;
 	/* two at least: a page of one row is no page */
@@ -717,12 +779,36 @@ static void make_plan(const ctl_game *g, plan *pl)
 	pl->start[pl->sys] = pl->nrows;
 }
 
+/* The game's pages after its buttons: its own (the extra), Hotkeys, In a
+ * game. A program of its own (a "run:" one, src/portmenu.h) has no Hotkeys:
+ * SELECT's chords are Diatom's, and it is not Diatom's game. */
+static int game_pages(const ctl_game *g, const plan *pl)
+{
+	return pl->sys + (pl->extra ? 1 : 0) + (g->port ? 0 : 1) + 1;
+}
+
 int ctl_game_pages(const ctl_game *g)
 {
 	plan pl;
 
 	make_plan(g, &pl);
-	return pl.sys + (pl.extra ? 1 : 0) + 1;
+	return game_pages(g, &pl);
+}
+
+/* Whether SELECT is one of the game's buttons, after its map: then the
+ * Hotkeys page says a press of it alone is still the game's. Not on a
+ * system with none (the N64's goes to its C buttons, the PICO-8 has none),
+ * where it would be a rule about nothing. */
+static bool select_is_games(const ctl_game *g)
+{
+	const ctl_pad *pd = pad_for(g->tag, g->ext);
+	int to[P_COUNT], k;
+	bool turbo[P_COUNT] = { false };
+
+	if (!pd) return false;
+	for (k = 0; k < P_COUNT; k++) to[k] = k;
+	apply_map(g->map, to, turbo);
+	return label_set(&pd->pad[to[P_SELECT]]);
 }
 
 /* In a game's own page: what works whatever the system, the hotkeys */
@@ -773,7 +859,7 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 	int pages, n = 0, i;
 
 	make_plan(g, &pl);
-	pages = pl.sys + (pl.extra ? 1 : 0) + 1;
+	pages = game_pages(g, &pl);
 	if (page < 0 || page >= pages) page = 0;
 
 	if (page < pl.sys) {
@@ -795,7 +881,19 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 			snprintf(b->val[n], sizeof b->val[n], "%s", T(x->rows[i].does));
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
 		}
-		if (x->has_note) out[n++] = MENU_NOTE(T(x->note));
+		if (x->has_note && x->note == S_CONTROLS_PAK_WHERE) {
+			/* the menu path to the Pak row, and what it says now */
+			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_WHERE), T(S_GAMEMENU_PAK),
+			         g->accessory ? g->accessory : "Rumble Pak");
+			out[n++] = MENU_NOTE(b->note);
+		} else if (x->has_note) {
+			out[n++] = MENU_NOTE(T(x->note));
+		}
+	} else if (!g->port && page == pages - 2) {
+		/* No quick save or load where the core keeps no state: SELECT+R1
+		 * and SELECT+L1 are the game's there */
+		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_HOTKEYS));
+		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g));
 	} else {
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_GAME));
 		n = g->port ? in_a_port(out) : in_a_game(out);

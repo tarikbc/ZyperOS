@@ -118,6 +118,48 @@ int gm_layout_index(const char *name)
 	return 0;
 }
 
+void gm_quick_key(const char *tag, char *out, size_t n)
+{
+	snprintf(out, n, "quickslot.%s", tag ? tag : "");
+}
+
+int gm_quick_slot(const char *stored)
+{
+	int v = 0;
+
+	if (!stored || sscanf(stored, "%d", &v) != 1 || v < 1 || v > GM_SLOTS)
+		return GM_QUICK_DEFAULT;
+	return v;
+}
+
+int gm_quick_step(int slot, int d)
+{
+	if (slot < 1 || slot > GM_SLOTS) slot = GM_QUICK_DEFAULT;
+	return ((slot - 1 + d) % GM_SLOTS + GM_SLOTS) % GM_SLOTS + 1;
+}
+
+const char *gm_pak_value(const char *stored)
+{
+	return stored && !strcmp(stored, "memory") ? "memory" : "rumble";
+}
+
+const char *gm_pak_other(const char *value)
+{
+	return !strcmp(gm_pak_value(value), "memory") ? "rumble" : "memory";
+}
+
+const char *gm_pak_name(const char *value)
+{
+	return !strcmp(gm_pak_value(value), "memory") ? "Controller Pak" : "Rumble Pak";
+}
+
+/* In the library's database, beside the system's core options: pak.<TAG>.<the
+ * game's file, as its shelf names it> */
+void gm_pak_key(const char *tag, const char *file, char *out, size_t n)
+{
+	snprintf(out, n, "pak.%s.%s", tag ? tag : "", file ? file : "");
+}
+
 int gm_row_ids(const gm_ui *u, gm_row *ids)
 {
 	int n = 0, i;
@@ -130,22 +172,35 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 		return n;
 	}
 	for (i = 0; i < GM_ROWS; i++) {
+		if (i == GM_QUICK && !u->quick) continue;
 		ids[n++] = (gm_row)i;
 		if (i == GM_DISPLAY && u->screens) {
 			ids[n++] = GM_SCREENS;
 			ids[n++] = GM_SWAP;
 			ids[n++] = GM_STYLUS;
 		}
+		if (i == GM_DISPLAY && u->pak) ids[n++] = GM_PAK;
 	}
 	return n;
+}
+
+int gm_row_at(const gm_ui *u, gm_row id)
+{
+	gm_row ids[GM_MAX_ROWS];
+	int n = gm_row_ids(u, ids), i;
+
+	for (i = 0; i < n; i++)
+		if (ids[i] == id) return i;
+	return -1;
 }
 
 int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 {
 	static const str_id label[GM_MAX_ROWS] = {
-		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_DISPLAY,
-		S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS, S_GAMEMENU_RESET, S_GAMEMENU_QUIT,
-		S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS
+		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_QUICK,
+		S_GAMEMENU_DISPLAY, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS, S_GAMEMENU_RESET,
+		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
+		S_GAMEMENU_PAK
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
@@ -153,6 +208,9 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 
 	for (i = 0; i < GM_MAX_ROWS; i++) full[i] = (menu_row){ T(label[i]), NULL, true };
 	full[GM_DISPLAY].value = u->dmode;
+	/* The slot's number alone: the row says what it is */
+	snprintf(b->quick, sizeof b->quick, "%d", u->quick);
+	full[GM_QUICK].value = b->quick;
 
 	/* Most of a library has no set, and a row that says so plainly is better
 	 * than one that is missing: "none" answers the question the player opened
@@ -168,14 +226,16 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	full[GM_SCREENS].value = gm_layout_label(u->layout);
 	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON) : T(S_MENU_OFF);
 	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON) : T(S_MENU_OFF);
+	full[GM_PAK].value     = u->pak;
 
 	n = gm_row_ids(u, ids);
 	for (i = 0; i < n; i++) {
 		out[i] = full[ids[i]];
-		/* Display steps round on left and right and on A; so do the three
-		 * for two screens. Every other row is plain. */
-		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_SCREENS ||
-		              ids[i] == GM_SWAP || ids[i] == GM_STYLUS ? MENU_SND_RING : 0;
+		/* Display steps round on left and right and on A; so do the quick
+		 * slot and the three for two screens. Every other row is plain. */
+		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_QUICK || ids[i] == GM_SCREENS ||
+		              ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
+		              ? MENU_SND_RING : 0;
 	}
 	return n;
 }

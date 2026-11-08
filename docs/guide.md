@@ -79,8 +79,11 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. It opens when you let go, so MENU can be held for fast forward |
-| **MENU+R1** (in game) | fast forward: 2x, 3x, 4x, then back to normal |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
+| **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
+| **SELECT+R2** (in game) | faster: 1.5x, 2x, 3x |
+| **SELECT+L2** (in game) | slower, a step a press, back to normal speed |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
 | **POWER** | powers off. In a game, the game is saved first |
@@ -123,13 +126,16 @@ The shelf always runs horizontally.
 **Controls in the in-game menu** lists what each button does in the game you
 are playing, on its system. The first pages are the system's own buttons, as
 its emulator reads them: on a Genesis the A button is C, and on a Neo Geo
-Pocket X is a turbo B. The turbo buttons are there too. A Nintendo 64 game has
-a page for its C buttons (hold R2 and press X, A, B or Y) and says that its
-controller holds a Rumble Pak. A DS game has a page for its two screens and
-the stylus. The last page, In a game, is the hotkeys: MENU, fast forward,
-volume, brightness and POWER. Left and right change the page, B goes back to
-the menu, and MENU goes back to the game. There is no save-state or
-screenshot button: Save and Load are in the in-game menu.
+Pocket X is a turbo B. The turbo buttons are there too, and a PlayStation
+game's face buttons are drawn as the pad's cross, circle, triangle and square.
+A Nintendo 64 game has a page for its C buttons (hold SELECT and press X, A, B
+or Y) and, under them, which Pak its controller holds and where to change it:
+"MENU > Pak: Rumble Pak". A PICO-8 game lists its
+arrows, O and X and its pause menu. A DS game has a page for its two screens
+and the stylus. Then Hotkeys, SELECT with a shoulder: quick save and load, and
+faster and slower. The last page, In a game, is MENU, volume, brightness and
+POWER. Left and right change the page, B goes back to the menu, and MENU goes
+back to the game.
 
 **OpenBOR has the in-game menu too**, though it runs as a program of its
 own rather than a libretro core. MENU stops the game where it is and opens
@@ -341,16 +347,40 @@ on all nine rather than only on the one core that happens to implement turbo.
 emulator's own turbo rather than ZyperOS's, so it is only there on Game Boy
 Advance; on Game Boy and Game Boy Color, which have no L and R, they do nothing.
 
-**Fast forward** is MENU+R1 in a game. Each press steps the speed to 2x, 3x,
-4x and back to normal, and says so at the bottom of the screen. The game is
-silent while it's fast, and the picture moves in steps rather than smoothly,
-because the Brick draws every other frame to give the game more time. Each
-game starts at normal speed, and the speed stays where you left it through the
-in-game menu.
+**Faster and slower** are SELECT+R2 and SELECT+L2 in a game. Each press of R2
+steps the speed to 1.5x, 2x and 3x, each press of L2 back down to normal, and
+the step shows at the bottom of the screen. The game is silent while it's
+fast, and the picture moves in steps rather than smoothly, because the
+handheld draws every other frame to give the game more time. Each game starts
+at normal speed, and the speed stays where you left it through the in-game
+menu. MENU+R1 was fast forward until 1.0.2.
 
 The speed is as fast as the game can go, up to the step. NES games reach it,
 and Genesis comes close. A heavy SNES or Game Boy Advance game tops out at
-about 2.5x, so there 3x and 4x both mean as fast as that game can go.
+about 2.5x, so there 3x means as fast as that game can go.
+
+**Quick save and quick load** are SELECT+R1 and SELECT+L1 in a game: a state
+saved into the in-game menu's **Quick Slot**, and loaded back from it, with a
+pop-up that names the slot. The game keeps running while the state is
+written. Quick Slot is one of the six slots of Save and Load, slot 1 until you
+pick another, and each system remembers its own. A system whose emulator keeps
+no states (ScummVM, J2ME) has no Quick Slot, and there R1 and L1 under SELECT
+are the game's.
+
+**The Nintendo 64's Pak.** An N64 game's controller holds the Rumble Pak, so
+the Pixel 2 shakes. A game that saves to the Controller Pak, the N64's memory
+card (Mario Kart 64's ghosts, and games that save nowhere else), takes it in
+the in-game menu's **Pak** row: left, right or A turns it, at once, and the
+game keeps it. The Controller Pak's saves are kept in the game's own save
+file in `Saves/`, whichever Pak is in.
+
+**SELECT stays a game button.** Most systems have a SELECT of their own, so a
+press of SELECT is either the game's or the hotkeys', decided by what comes
+next. SELECT and then a shoulder (R1, L1, R2, L2) is a hotkey, and the game
+never sees that SELECT. SELECT and then any other button goes to the game at
+once, with that button, so A+B+START+SELECT still resets a game. SELECT
+pressed alone reaches the game as you let go of it, for as long as you held
+it, and SELECT held alone for longer than 0.4 seconds is the game's, held.
 
 Volume and brightness show the same bar at the top of the screen in the
 launcher, in a game, in the in-game menu and over a port: a pill with a mark

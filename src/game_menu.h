@@ -64,6 +64,27 @@ static inline int gm_save_slot(const bool *have)
 	return GM_SLOTS;
 }
 
+/* The quick slot: SELECT+R1 saves to it and SELECT+L1 loads it (Diatom's
+ * chord.h), and the menu's Quick Slot row picks it, kept per system in the
+ * device's database. Its key there, quickslot.<TAG>; the slot a stored value
+ * says, 1 when there is none or it is no slot; and the slot `d` steps from
+ * `slot`, round 1 to GM_SLOTS. Pure, for tools/menu-check.c. */
+#define GM_QUICK_DEFAULT 1
+void gm_quick_key(const char *tag, char *out, size_t n);
+int  gm_quick_slot(const char *stored);
+int  gm_quick_step(int slot, int d);
+
+/* The N64's Pak: Mupen64Plus-Next's mupen64plus-pak1 values the row steps
+ * between, "rumble" (ZyperOS's default: the Pixel 2 has a motor) and
+ * "memory", and how the row and the Controls page name each, the products'
+ * own names in every language. A value it does not know is the Rumble Pak.
+ * Pure, for tools/menu-check.c. */
+#define GM_PAK_OPTION "mupen64plus-pak1"
+const char *gm_pak_value(const char *stored);          /* "rumble" | "memory" */
+const char *gm_pak_other(const char *value);           /* the one it steps to */
+const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */
+void gm_pak_key(const char *tag, const char *file, char *out, size_t n);
+
 #define GI_MAX 6          /* four facts at most, two actions */
 
 /* The genre line, from the scrape. Sized from the card rather than guessed:
@@ -112,11 +133,22 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
 /* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
  * every control this game has, on its system (src/controls.h). After a DS
  * game's three rows, which belong with Display. Eight rows is one more than
- * the panel shows, so Quit is under the arrow, one Up from Continue. */
+ * the panel shows, so Quit is under the arrow, one Up from Continue.
+ *
+ * Quick Slot, after Load (2026-11-07): the slot SELECT+R1 saves to and
+ * SELECT+L1 loads from, 1 to GM_SLOTS, kept per system; left, right and A
+ * step it. With Save and Load, where states are. A system whose core keeps
+ * no state (controls.h, ctl_has_states) has no quick slot and no row, so
+ * its menu has a row fewer: gm_row_ids says which rows a menu has. */
+/* Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
+ * Rumble Pak or the Controller Pak (the memory card some games save to),
+ * kept for the game. Right before Controls, whose C buttons page says which
+ * one is in. Its id comes after the screens' rows, as theirs do. */
 typedef enum {
-	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_DISPLAY, GM_CONTROLS, GM_CHEEVOS, GM_RESET, GM_QUIT,
+	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_CONTROLS, GM_CHEEVOS, GM_RESET,
+	GM_QUIT,
 	GM_ROWS,
-	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS,
+	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK,
 	GM_MAX_ROWS
 } gm_row;
 
@@ -146,18 +178,25 @@ typedef struct {
 	 * (src/portmenu.h). Paused by stopping it, so there is nothing to save,
 	 * load, reset or show differently, and no achievements. */
 	bool        port;
+	/* The quick slot, 1 to GM_SLOTS; 0 where the system keeps no states */
+	int         quick;
+	/* A Nintendo 64 game's Pak, as gm_pak_name says it; NULL for no row */
+	const char *pak;
 } gm_ui;
 
 /* The rows this menu has, in the order shown: GM_ROWS of them, or
- * GM_MAX_ROWS with the screens' three; over a port, Continue, Controls and
- * Quit. */
+ * GM_MAX_ROWS with the screens' three, a row fewer with no quick slot, one
+ * more with an N64 game's Pak; over a port, Continue, Controls and Quit. */
 int gm_row_ids(const gm_ui *u, gm_row *ids);
+/* Where row `id` is in that list, or -1 when the menu has none */
+int gm_row_at(const gm_ui *u, gm_row id);
 
 /* Where the Cheevos row's text lives; the caller owns it, because a row holds
  * a pointer rather than a copy. And each row's sound class (MENU_SND_*,
  * menu.h), set by gm_rows by the row's id, for the menu runner. */
 typedef struct {
 	char cheevos[24];
+	char quick[8];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;
 

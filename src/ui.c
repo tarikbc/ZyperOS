@@ -8,6 +8,7 @@
 #include "sysmark.h"  /* a system's color as a mark */
 #include "config.h"   /* CFG_NO_COLOR: a system with no color of its own */
 #include "linebreak.h" /* where a name too wide for its box breaks or is cut */
+#include "padglyph.h"  /* the PlayStation's shapes, drawn in running text */
 
 #include <math.h>
 #include <stdio.h>
@@ -503,6 +504,124 @@ static menu_mark menu_mark_of(TTF_Font *f)
 	return m;
 }
 
+/* ---- the PlayStation's shapes in running text -----------------------------
+ *
+ * The cross, circle, triangle and square, where a string names them
+ * (padglyph.h, 2026-11-07): drawn here as the shapes the pad has, in the
+ * text's own color, a capital's height and a stroke as heavy as the face's,
+ * so they read beside the letters in either theme. Made once per string like
+ * the rest of it (text_get's cache), by 4 x 4 samples a pixel, so a shape
+ * costs nothing a frame and stays crisp at the Pixel 2's size. Measured the
+ * same way by width_in, so fitting and centering see them. */
+typedef struct {
+	float d, w, cy;    /* the shape's box, its stroke, the middle in the line */
+	int side, adv;     /* room either side; the whole width */
+} shape_mark;
+
+static shape_mark shape_mark_of(TTF_Font *f)
+{
+	float cap = (float)ui_cap_height(f);
+	shape_mark m;
+
+	m.d = roundf(cap * 1.06f);
+	m.w = fmaxf(1.5f, cap * 0.135f);
+	m.side = (int)lroundf(cap * 0.10f);
+	m.adv = (int)m.d + 2 * m.side;
+	m.cy = (float)TTF_FontAscent(f) - cap / 2.0f;
+	return m;
+}
+
+/* How far (px, py) is from the segment a-b */
+static float seg_dist(float px, float py, float ax, float ay, float bx, float by)
+{
+	float vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
+	float t = l2 > 0 ? ((px - ax) * vx + (py - ay) * vy) / l2 : 0;
+
+	if (t < 0) t = 0;
+	if (t > 1) t = 1;
+	return hypotf(px - (ax + t * vx), py - (ay + t * vy));
+}
+
+/* Whether (x, y), from the shape's middle, is ink, for shape k (padglyph.h's
+ * order: cross, circle, triangle, square) in a box d across, stroke w */
+static bool shape_in(int k, float x, float y, float d, float w)
+{
+	const float hw = w / 2.0f;
+
+	switch (k) {
+	case 0: {   /* the cross: two strokes corner to corner */
+		const float a = 0.36f * d;
+
+		return seg_dist(x, y, -a, -a, a, a) <= hw || seg_dist(x, y, a, -a, -a, a) <= hw;
+	}
+	case 1:     /* the circle: a ring, the box across */
+		return fabsf(hypotf(x, y) - (d / 2.0f - hw)) <= hw;
+	case 2: {   /* the triangle: its point up, a little wider than the box
+		     * and nearly as tall, so it looks the size of the circle beside
+		     * it; equilateral, it looked a size smaller */
+		const float top = -0.50f * d + hw, base = 0.40f * d - hw, half = 0.53f * d - hw;
+
+		return seg_dist(x, y, 0, top, -half, base) <= hw ||
+		       seg_dist(x, y, -half, base, half, base) <= hw ||
+		       seg_dist(x, y, half, base, 0, top) <= hw;
+	}
+	default: {  /* the square: a little inside the box, as squares look larger */
+		const float h = 0.40f * d;
+
+		return fabsf(x) <= h + hw && fabsf(y) <= h + hw &&
+		       !(fabsf(x) < h - hw && fabsf(y) < h - hw);
+	}
+	}
+}
+
+static void shape_put(SDL_Surface *dst, int x, shape_mark m, int k, SDL_Color col)
+{
+	const float cx = (float)x + (float)m.side + m.d / 2.0f, cy = m.cy;
+	int y0 = (int)floorf(cy - m.d / 2.0f - 1.0f), y1 = (int)ceilf(cy + m.d / 2.0f + 1.0f);
+
+	if (y0 < 0) y0 = 0;
+	if (y1 > dst->h) y1 = dst->h;
+	for (int py = y0; py < y1; py++) {
+		Uint32 *row = (Uint32 *)((Uint8 *)dst->pixels + (size_t)py * dst->pitch);
+
+		for (int px = x; px < x + m.adv && px < dst->w; px++) {
+			int hit = 0;
+
+			for (int sy = 0; sy < 4; sy++)
+				for (int sx = 0; sx < 4; sx++)
+					hit += shape_in(k, (float)px + ((float)sx + 0.5f) / 4.0f - cx,
+					                (float)py + ((float)sy + 0.5f) / 4.0f - cy, m.d, m.w);
+			if (hit) row[px] = SDL_MapRGBA(dst->format, col.r, col.g, col.b,
+			                                (Uint8)((hit * 255 + 8) / 16));
+		}
+	}
+}
+
+/* The next mark at or after p (s the string's start): the word MENU or a
+ * shape. *len is its bytes, *kind -1 for MENU or the shape's number. NULL
+ * when there is none. */
+static const char *mark_next(const char *s, const char *p, int *len, int *kind)
+{
+	const char *m = menu_word(s, p), *g = strchr(p, '\xEE');
+
+	while (g && pad_glyph_at(g) < 0) g = strchr(g + 1, '\xEE');
+	if (g && (!m || g < m)) {
+		*len = 3;
+		*kind = pad_glyph_at(g);
+		return g;
+	}
+	*len = 4;
+	*kind = -1;
+	return m;
+}
+
+static bool has_marks(const char *s)
+{
+	int len, kind;
+
+	return mark_next(s, s, &len, &kind) != NULL;
+}
+
 /* Whether s has a character Lexend lacks and the Chinese face has: the
  * ideographs, kana, CJK punctuation and the full-width forms */
 static bool has_cjk(const char *s)
@@ -530,7 +649,9 @@ static bool covers(TTF_Font *f, const char *s)
 
 		if (*u < 0xE2 || *u > 0xEF || (u[1] & 0xC0) != 0x80 || (u[2] & 0xC0) != 0x80) continue;
 		c = (*u & 0x0Fu) << 12 | (u[1] & 0x3Fu) << 6 | (u[2] & 0x3F);
-		if (c >= 0x2E80 && !TTF_GlyphIsProvided32(f, c)) return false;
+		/* A shape (padglyph.h) is drawn, and no face is asked for it */
+		if (c >= 0x2E80 && !(c >= 0xE000 && c <= 0xF8FF) && !TTF_GlyphIsProvided32(f, c))
+			return false;
 		u += 2;
 	}
 	return true;
@@ -582,19 +703,19 @@ static TTF_Font *face_for(TTF_Font *f, const char *s)
  * reads and opens the frame thread's sets, stays the frame thread's. */
 static int width_in(TTF_Font *f, const char *s)
 {
-	const char *p, *m;
+	const char *p = s, *m;
 	char part[512];
-	int w = 0, pw;
+	int w = 0, pw, len, kind;
 
 	if (!f || !s) return 0;
-	if (!menu_word(s, s)) {
+	if (!has_marks(s)) {
 		TTF_SizeUTF8(f, s, &w, NULL);
 		return w;
 	}
-	for (p = s; *p; p = m + 4) {
+	while (*p) {
 		size_t n;
 
-		m = menu_word(s, p);
+		m = mark_next(s, p, &len, &kind);
 		n = m ? (size_t)(m - p) : strlen(p);
 		if (n) {
 			snprintf(part, sizeof part, "%.*s", (int)n, p);
@@ -603,7 +724,8 @@ static int width_in(TTF_Font *f, const char *s)
 			w += pw;
 		}
 		if (!m) break;
-		w += menu_mark_of(f).adv;
+		w += kind < 0 ? menu_mark_of(f).adv : shape_mark_of(f).adv;
+		p = m + len;
 	}
 	return w;
 }
@@ -666,21 +788,21 @@ static void menu_mark_put(SDL_Surface *dst, int x, menu_mark m, SDL_Color col)
  * width_in is text_width's: the frame thread's sets are not read. */
 static SDL_Surface *render_in(TTF_Font *f, const char *s, SDL_Color col)
 {
-	const char *p, *m;
+	const char *p = s, *m;
 	SDL_Surface *out;
 	char part[512];
-	int x = 0;
+	int x = 0, len, kind;
 
 	if (!f || !s || !*s) return NULL;
-	if (!menu_word(s, s)) return TTF_RenderUTF8_Blended(f, s, col);
+	if (!has_marks(s)) return TTF_RenderUTF8_Blended(f, s, col);
 	out = SDL_CreateRGBSurfaceWithFormat(0, width_in(f, s), TTF_FontHeight(f),
 	                                     32, SDL_PIXELFORMAT_ARGB8888);
 	if (!out) return NULL;
 	SDL_FillRect(out, NULL, SDL_MapRGBA(out->format, col.r, col.g, col.b, 0));
-	for (p = s; *p; p = m + 4) {
+	while (*p) {
 		size_t n;
 
-		m = menu_word(s, p);
+		m = mark_next(s, p, &len, &kind);
 		n = m ? (size_t)(m - p) : strlen(p);
 		if (n) {
 			SDL_Surface *t;
@@ -695,10 +817,12 @@ static SDL_Surface *render_in(TTF_Font *f, const char *s, SDL_Color col)
 		}
 		if (!m) break;
 		if (SDL_LockSurface(out) == 0) {
-			menu_mark_put(out, x, menu_mark_of(f), col);
+			if (kind < 0) menu_mark_put(out, x, menu_mark_of(f), col);
+			else          shape_put(out, x, shape_mark_of(f), kind, col);
 			SDL_UnlockSurface(out);
 		}
-		x += menu_mark_of(f).adv;
+		x += kind < 0 ? menu_mark_of(f).adv : shape_mark_of(f).adv;
+		p = m + len;
 	}
 	return out;
 }

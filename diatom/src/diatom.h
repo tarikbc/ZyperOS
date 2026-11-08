@@ -133,6 +133,12 @@ bool diatom_env_new_geometry(int *w, int *h, double *aspect);   /* consumes the 
  * for keys that are normally the core's but are currently part of a host
  * chord. */
 void diatom_env_suppress(uint32_t mask);
+/* Called at every poll the core makes, with the pad just read, before the
+ * core reads a button of it: returns what to hide from the core, and sets
+ * what the core sees held although it is not (a SELECT given back as it is
+ * let go). SELECT's chords (chord.h, main.c). NULL for none; set per game. */
+typedef uint32_t (*diatom_poll_hook)(uint32_t pad, uint32_t *give);
+void diatom_env_poll_hook(diatom_poll_hook fn);
 
 /* The libretro pointer the core reads this frame: the stylus's, from
  * screens.h, in the whole frame's -0x7fff..0x7fff. See env.c. */
@@ -223,7 +229,7 @@ typedef enum {
 	DIATOM_MSG_SETMUTE,    /* hold it off, or release it: `on` = 1 | 0 */
 	DIATOM_MSG_QUIET,      /* report whether the game's own sound is held silent */
 	DIATOM_MSG_SETQUIET,   /* hold it silent, or let it play: `on` = 1 | 0 */
-	DIATOM_MSG_SPEED,      /* report the fast-forward step, 1 to 4 */
+	DIATOM_MSG_SPEED,      /* report the speed step: 1, 1.5, 2 or 3 */
 	DIATOM_MSG_CHANNELS,   /* report which ears hear what */
 	DIATOM_MSG_SETCHANNELS,/* set it: `dmode` = stereo | mono | left | right */
 	DIATOM_MSG_PREMAP,     /* the launcher has drawn: map the cores now */
@@ -353,6 +359,21 @@ void diatom_save_flush(void);      /* synchronous; exit and signal paths */
 void diatom_save_shutdown(void);
 bool diatom_state_save(diatom_core *c, const char *path);
 bool diatom_state_load(diatom_core *c, const char *path);
+
+/* A state saved or loaded while the game runs (SAVE and LOAD outside the
+ * menu: the hotkeys' quick slot): the core's half here, on the frame thread,
+ * and the card's on a thread of its own, so the game does not stop for it.
+ * One at a time. _save_bg takes `pic`, a malloc'd picture of `pic_n` bytes
+ * written to `pic_path` after the state (or NULL). _bg_poll, once a turn,
+ * says a job is over: its kind, path and whether it worked, a load handed to
+ * the core first when `apply`; with `wait` it waits for one in flight. The
+ * two above wait for one too, so nothing reads a state half written. */
+typedef enum { DIATOM_BG_NONE, DIATOM_BG_SAVE, DIATOM_BG_LOAD } diatom_bg_kind;
+bool diatom_state_save_bg(diatom_core *c, const char *path, const char *pic_path,
+                          uint8_t *pic, size_t pic_n);
+bool diatom_state_load_bg(diatom_core *c, const char *path);
+diatom_bg_kind diatom_state_bg_poll(diatom_core *c, bool wait, bool apply,
+                                    char *path, size_t n, bool *ok);
 
 /* scale.c - geometry is arithmetic and lives here, once, so every port agrees.
  * Performing the blit is hardware and belongs to the port.

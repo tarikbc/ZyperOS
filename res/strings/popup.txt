@@ -1,24 +1,102 @@
 # The pop-ups over a running game that are not achievements (src/main.c,
-# on_speed): drawn by the launcher, shown by Diatom.
+# on_speed and on_quick): drawn by the launcher, shown by Diatom. A small
+# line over a large one: the first says what happened, the second to what.
 
-[popup.fast_forward]
-note = The pop-up as fast forward changes, first line; under it the step ("3x") or popup.ff_off.
-en = Fast forward
-zh-Hans = 快进
-es = Avance rápido
-pt-BR = Avanço rápido
-fr = Avance rapide
-de = Vorspulen
-ja = 早送り
-it = Avanti veloce
+[popup.speed]
+note = The pop-up as SELECT+R2 or SELECT+L2 changes the game's speed, first line; under it the step (popup.speed_half or popup.speed_whole).
+en = Speed
+zh-Hans = 速度
+es = Velocidad
+pt-BR = Velocidade
+fr = Vitesse
+de = Tempo
+ja = 速度
+it = Velocità
 
-[popup.ff_off]
-note = Under popup.fast_forward when fast forward stops. A lowercase value.
-en = off
-zh-Hans = 关闭
-es = desactivado
-pt-BR = desativado
-fr = désactivé
-de = aus
-ja = オフ
-it = disattivo
+[popup.speed_half]
+note = Under popup.speed: a step between two whole speeds, %d its whole part: "1.5x". With the language's decimal mark.
+en = %d.5x
+zh-Hans = %d.5x
+es = %d,5x
+pt-BR = %d,5x
+fr = %d,5x
+de = %d,5x
+ja = %d.5x
+it = %d,5x
+
+[popup.speed_whole]
+note = Under popup.speed: a whole speed, %d of it: "2x", and "1x" at the normal speed.
+en = %dx
+zh-Hans = %dx
+es = %dx
+pt-BR = %dx
+fr = %dx
+de = %dx
+ja = %dx
+it = %dx
+
+[popup.saved]
+note = The pop-up after SELECT+R1 saved a state, first line; under it the slot (slots.slot, "Slot 2").
+en = Saved to
+zh-Hans = 已存档至
+es = Guardado en
+pt-BR = Salvo em
+fr = Sauvegardé dans
+de = Gespeichert in
+ja = セーブしました
+it = Salvato in
+
+[popup.loaded]
+note = The pop-up after SELECT+L1 loaded a state, first line; under it the slot.
+en = Loaded from
+zh-Hans = 已读取
+es = Cargado desde
+pt-BR = Carregado de
+fr = Chargé depuis
+de = Geladen aus
+ja = ロードしました
+it = Caricato da
+
+[popup.save_failed]
+note = The pop-up when SELECT+R1 could not save (the card is full, or the core refused), first line; under it the slot.
+en = Could not save to
+zh-Hans = 无法存档至
+es = No se pudo guardar en
+pt-BR = Não foi possível salvar em
+fr = Échec de la sauvegarde
+de = Speichern fehlgeschlagen
+ja = セーブできませんでした
+it = Impossibile salvare in
+
+[popup.load_failed]
+note = The pop-up when SELECT+L1 could not load the state (made by another version of the emulator), first line; under it the slot.
+en = Could not load
+zh-Hans = 无法读取
+es = No se pudo cargar
+pt-BR = Não foi possível carregar
+fr = Échec du chargement
+de = Laden fehlgeschlagen
+ja = ロードできませんでした
+it = Impossibile caricare
+
+[popup.slot_empty]
+note = The pop-up when SELECT+L1 finds nothing saved in the quick slot, first line; under it the slot.
+en = Nothing saved in
+zh-Hans = 存档位为空
+es = Nada guardado en
+pt-BR = Nada salvo em
+fr = Rien de sauvegardé dans
+de = Nichts gespeichert in
+ja = セーブがありません
+it = Niente salvato in
+
+[popup.no_states]
+note = The pop-up when SELECT+R1 or SELECT+L1 is pressed on a system with no save states (ScummVM, J2ME), first line; under it the system's name.
+en = No save states on
+zh-Hans = 不支持即时存档
+es = Sin estados guardados en
+pt-BR = Sem save states em
+fr = Pas de sauvegarde d'état sur
+de = Keine Speicherstände auf
+ja = ステートセーブはありません
+it = Nessuno stato salvato su

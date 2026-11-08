@@ -1847,12 +1847,21 @@ and nothing else. Which page of how many is at the heading's right, "1 / 3"
   Dreamcast's L1/R1 are its triggers. No row for a button that does nothing
   there; an FDS game adds L1/R1, the disk's side and eject.
 - **What a system adds**, a page of its own: the Nintendo 64's C buttons
-  (R2 held with X, A, B, Y) with "Rumble Pak, not Controller Pak" under them;
-  the DS's two screens (L2 the other screen, R2 the stylus, then the d-pad
-  moves it and A touches).
-- **In a game** last: MENU (the menu, +R1 for fast forward), the volume
+  (SELECT held with X, A, B, Y) with "MENU > Pak: Rumble Pak" under them,
+  which Pak the controller holds and where it is chosen (the in-game menu's
+  Pak row, per game); the DS's two screens (L2 the other screen, R2 the
+  stylus, then the d-pad moves it and A touches).
+- **Hotkeys**, SELECT held with a shoulder (2026-11-07): SELECT+R1 quick
+  save and SELECT+L1 quick load (where the core keeps states), SELECT+R2
+  faster and SELECT+L2 slower, and under them "SELECT alone stays the
+  game's" where SELECT is one of the system's buttons. The same rows as the
+  home's Hotkeys page.
+- **In a game** last: MENU (the menu), the volume
   rocker, brightness (MENU+VOL on the Pixel 2, F1/F2 on the Brick), POWER.
   The same rows as the home's pages, from one place in src/controls.c.
+- **Buttons that are shapes** are drawn, not named: the PlayStation's cross,
+  circle, triangle and square, in the text's color at a capital's height
+  (src/padglyph.h, drawn by ui.c as it draws MENU's key).
 
 **Six rows a page**, or five and a note (the count in the heading, no
 footer, 11.3). A row more sends a list with no cursor past the panel, where

@@ -317,47 +317,33 @@ void diatom_save_shutdown(void)
 #define PROGRESS_HDR   8
 #define PROGRESS_MAX   (1u << 20)
 
-/* The trailer after the payload, read from where `f` stands: malloc'd, or
- * NULL for a state with none */
-static uint8_t *progress_read(FILE *f, uint32_t *size)
-{
-	uint8_t t[PROGRESS_HDR], *p;
-	uint32_t n;
-
-	*size = 0;
-	if (fread(t, 1, sizeof t, f) != sizeof t || memcmp(t, PROGRESS_MAGIC, 4)) return NULL;
-	n = (uint32_t)t[4] | ((uint32_t)t[5] << 8) | ((uint32_t)t[6] << 16) |
-	    ((uint32_t)t[7] << 24);
-	if (!n || n > PROGRESS_MAX || !(p = malloc(n))) return NULL;
-	if (fread(p, 1, n, f) != n) { free(p); return NULL; }
-	*size = n;
-	return p;
-}
-
-bool diatom_state_save(diatom_core *c, const char *path)
+/* A state as its file holds it, header, payload and trailer, in one
+ * malloc'd buffer: serialized here, on the frame thread, between two frames,
+ * so it is one frame's state. NULL when the core keeps none. */
+static uint8_t *state_build(diatom_core *c, size_t *len)
 {
 	struct state_header h;
 	struct retro_system_info si;
 	uint8_t *buf;
 	size_t   n;
 	uint32_t prog;
-	bool     ok;
 
-	if (!c->serialize_size || !c->serialize || !path) return false;
+	*len = 0;
+	if (!c->serialize_size || !c->serialize) return NULL;
 
 	/* Called immediately before every serialize, never cached. Measured: mGBA
 	 * moved 528448 to 462912 within 600 frames of Golden Sun while reporting
 	 * quirks 0x0, having never declared CORE_VARIABLE_SIZE. A cached size that
 	 * later grows makes saving fail silently. */
 	n = c->serialize_size();
-	if (!n) { logf_(DIATOM_LOG_ERROR, "state: core reports no state"); return false; }
+	if (!n) { logf_(DIATOM_LOG_ERROR, "state: core reports no state"); return NULL; }
 	/* Achievement progress after the core's own, in a trailer the header's
 	 * payload length leaves outside: a Diatom from before it reads the state
 	 * and never sees it (diatom_cheevos_progress_restore) */
 	prog = diatom_cheevos_progress_size();
 
 	buf = malloc(sizeof h + n + (prog ? PROGRESS_HDR + prog : 0));
-	if (!buf) return false;
+	if (!buf) return NULL;
 
 	memset(&h, 0, sizeof h);
 	memcpy(h.magic, STATE_MAGIC, sizeof h.magic);
@@ -372,7 +358,7 @@ bool diatom_state_save(diatom_core *c, const char *path)
 	if (!c->serialize(buf + sizeof h, n)) {
 		logf_(DIATOM_LOG_ERROR, "state: serialize failed");
 		free(buf);
-		return false;
+		return NULL;
 	}
 	memcpy(buf, &h, sizeof h);
 	if (prog) {
@@ -385,10 +371,22 @@ bool diatom_state_save(diatom_core *c, const char *path)
 		t[7] = (uint8_t)(prog >> 24);
 		if (!diatom_cheevos_progress_save(t + PROGRESS_HDR, prog)) prog = 0;
 	}
+	*len = sizeof h + n + (prog ? PROGRESS_HDR + prog : 0);
+	return buf;
+}
 
-	ok = write_atomic(path, buf, sizeof h + n + (prog ? PROGRESS_HDR + prog : 0));
+bool diatom_state_save(diatom_core *c, const char *path)
+{
+	uint8_t *buf;
+	size_t   len;
+	bool     ok;
+
+	if (!path) return false;
+	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
+	if (!(buf = state_build(c, &len))) return false;
+	ok = write_atomic(path, buf, len);
 	free(buf);
-	if (ok) logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s", n, path);
+	if (ok) logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s", len, path);
 	return ok;
 }
 
@@ -444,24 +442,23 @@ static bool version_twins(const char *have, const char *want)
 	return false;
 }
 
-bool diatom_state_load(diatom_core *c, const char *path)
+/* A state file read whole, handed to the core: on the frame thread, as a
+ * load always was. `data` is the file, `n` its length. */
+static bool state_apply(diatom_core *c, const char *path, const uint8_t *data, size_t n)
 {
 	struct state_header h;
 	struct retro_system_info si;
-	uint8_t *buf, *prog;
-	uint32_t nprog;
-	FILE    *f;
+	const uint8_t *prog = NULL;
+	uint32_t nprog = 0;
 	bool     ok;
 
-	if (!c->unserialize || !path) return false;
-	f = fopen(path, "rb");
-	if (!f) return false;                     /* absent is not an error */
-
-	if (fread(&h, 1, sizeof h, f) != sizeof h ||
-	    memcmp(h.magic, STATE_MAGIC, sizeof h.magic) != 0 ||
-	    h.version != STATE_VERSION) {
+	if (n < sizeof h) {
 		logf_(DIATOM_LOG_WARN, "state: %s is not a Diatom state", path);
-		fclose(f);
+		return false;
+	}
+	memcpy(&h, data, sizeof h);
+	if (memcmp(h.magic, STATE_MAGIC, sizeof h.magic) != 0 || h.version != STATE_VERSION) {
+		logf_(DIATOM_LOG_WARN, "state: %s is not a Diatom state", path);
 		return false;
 	}
 
@@ -477,26 +474,34 @@ bool diatom_state_load(diatom_core *c, const char *path)
 		      path, h.core_name, h.core_version,
 		      si.library_name ? si.library_name : "?",
 		      si.library_version ? si.library_version : "?");
-		fclose(f);
 		return false;
 	}
-
-	buf = malloc(h.payload);
-	if (!buf) { fclose(f); return false; }
-	if (fread(buf, 1, h.payload, f) != h.payload) {
+	if (n - sizeof h < h.payload) {
 		logf_(DIATOM_LOG_WARN, "state: %s is truncated", path);
-		free(buf); fclose(f);
 		return false;
 	}
-	prog = progress_read(f, &nprog);
-	fclose(f);
+	/* The achievement trailer, when there is one whole: "DCHV", a length,
+	 * the bytes */
+	{
+		const uint8_t *t = data + sizeof h + h.payload;
+		size_t left = n - sizeof h - h.payload;
 
-	ok = c->unserialize(buf, h.payload);
-	free(buf);
+		if (left >= PROGRESS_HDR && !memcmp(t, PROGRESS_MAGIC, 4)) {
+			uint32_t k = (uint32_t)t[4] | ((uint32_t)t[5] << 8) |
+			             ((uint32_t)t[6] << 16) | ((uint32_t)t[7] << 24);
+
+			if (k && k <= PROGRESS_MAX && left - PROGRESS_HDR >= k) {
+				prog = t + PROGRESS_HDR;
+				nprog = k;
+			}
+		}
+	}
+
+	ok = c->unserialize(data + sizeof h, h.payload);
 	logf_(DIATOM_LOG_INFO, "state: %s %s",
 	      ok ? "restored" : "REFUSED by core:", path);
 
-	/* Here rather than at the three call sites. A loaded state is a different
+	/* Here rather than at the call sites. A loaded state is a different
 	 * point in the game's history, so the achievement progress the game had
 	 * goes with the game's own: the progress the state carries, or none -
 	 * hit counts and the previous frame every delta is measured against,
@@ -504,6 +509,153 @@ bool diatom_state_load(diatom_core *c, const char *path)
 	 * made. A call site added later inherits this instead of having to
 	 * remember it. */
 	if (ok) diatom_cheevos_progress_restore(prog, nprog);
-	free(prog);
 	return ok;
+}
+
+/* The whole file into a malloc'd buffer, or NULL. Absent is not an error. */
+static uint8_t *read_whole(const char *path, size_t *n)
+{
+	FILE    *f = fopen(path, "rb");
+	uint8_t *buf = NULL;
+	long     len;
+
+	*n = 0;
+	if (!f) return NULL;
+	if (fseek(f, 0, SEEK_END) == 0 && (len = ftell(f)) > 0 && fseek(f, 0, SEEK_SET) == 0 &&
+	    (buf = malloc((size_t)len)) && fread(buf, 1, (size_t)len, f) == (size_t)len)
+		*n = (size_t)len;
+	else {
+		free(buf);
+		buf = NULL;
+	}
+	fclose(f);
+	return buf;
+}
+
+bool diatom_state_load(diatom_core *c, const char *path)
+{
+	uint8_t *buf;
+	size_t   n;
+	bool     ok;
+
+	if (!c->unserialize || !path) return false;
+	/* A state still being written to this path is the one asked for */
+	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
+	if (!(buf = read_whole(path, &n))) return false;
+	ok = state_apply(c, path, buf, n);
+	free(buf);
+	return ok;
+}
+
+/* ---- states while the game runs ------------------------------------------
+ *
+ * A quick save or load (SELECT+R1, SELECT+L1) happens while the game runs,
+ * and the card is the slow half of it: an 8 KB write is about 8 ms here and a
+ * 528 KB one 68 ms (measured, above), and a PlayStation state is 4 MB, an N64
+ * one 16 MB. So the file goes to a thread of its own and the frames keep
+ * coming. The core's half, serialize or unserialize, stays on the frame
+ * thread, between two frames, where it always was: a state is one frame's.
+ *
+ * One at a time. A save or load asked for while one is in flight, or any
+ * state read or written the old way (the menu's, the exit's), waits for it
+ * first, so a load right after a save reads the save. */
+static struct {
+	pthread_t     th;
+	bool          busy;            /* a thread to join */
+	diatom_bg_kind kind;
+	char          path[1024];
+	char          pic_path[1024];  /* a save's picture beside it, or "" */
+	uint8_t      *data, *pic;      /* a save's bytes; a load's, once read */
+	size_t        n, pic_n;
+	bool          ok;
+	bool          threaded;        /* run on a thread, which is joined */
+} g_bg;
+/* Raised by the job as its last act: the frame thread may join without
+ * waiting. Atomic, because it is the one thing both threads read. */
+static int g_bg_done;
+
+static void *bg_run(void *arg)
+{
+	if (g_bg.kind == DIATOM_BG_SAVE) {
+		g_bg.ok = write_atomic(g_bg.path, g_bg.data, g_bg.n);
+		/* The picture after the state, so a slot that has one has a game
+		 * behind it */
+		if (g_bg.ok && g_bg.pic && g_bg.pic_path[0])
+			write_atomic(g_bg.pic_path, g_bg.pic, g_bg.pic_n);
+	} else {
+		g_bg.data = read_whole(g_bg.path, &g_bg.n);
+		g_bg.ok = g_bg.data != NULL;
+	}
+	__atomic_store_n(&g_bg_done, 1, __ATOMIC_RELEASE);
+	return arg;
+}
+
+/* On a thread, or here when none will start */
+static void bg_start(void)
+{
+	__atomic_store_n(&g_bg_done, 0, __ATOMIC_RELEASE);
+	g_bg.busy = true;
+	g_bg.threaded = pthread_create(&g_bg.th, NULL, bg_run, NULL) == 0;
+	if (!g_bg.threaded) bg_run(NULL);
+}
+
+bool diatom_state_save_bg(diatom_core *c, const char *path, const char *pic_path,
+                          uint8_t *pic, size_t pic_n)
+{
+	uint8_t *buf;
+	size_t   len;
+
+	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
+	if (!path || !(buf = state_build(c, &len))) { free(pic); return false; }
+	g_bg.kind = DIATOM_BG_SAVE;
+	snprintf(g_bg.path, sizeof g_bg.path, "%s", path);
+	snprintf(g_bg.pic_path, sizeof g_bg.pic_path, "%s", pic_path ? pic_path : "");
+	g_bg.data = buf;
+	g_bg.n = len;
+	g_bg.pic = pic;
+	g_bg.pic_n = pic_n;
+	bg_start();
+	return true;
+}
+
+bool diatom_state_load_bg(diatom_core *c, const char *path)
+{
+	diatom_state_bg_poll(c, true, false, NULL, 0, NULL);
+	if (!c->unserialize || !path) return false;
+	g_bg.kind = DIATOM_BG_LOAD;
+	snprintf(g_bg.path, sizeof g_bg.path, "%s", path);
+	g_bg.pic_path[0] = '\0';
+	g_bg.data = g_bg.pic = NULL;
+	bg_start();
+	return true;
+}
+
+/* A job that finished, or `wait` for it: joined, a load handed to the core
+ * (when `apply`; a game that is ending takes no state), and what it was.
+ * Nothing the job writes is read here before g_bg_done says it is done, and
+ * the join after it orders the rest, so there is no lock. */
+diatom_bg_kind diatom_state_bg_poll(diatom_core *c, bool wait, bool apply,
+                                    char *path, size_t n, bool *ok)
+{
+	diatom_bg_kind k;
+	bool good;
+
+	if (!g_bg.busy) return DIATOM_BG_NONE;
+	if (!wait && !__atomic_load_n(&g_bg_done, __ATOMIC_ACQUIRE)) return DIATOM_BG_NONE;
+	if (g_bg.threaded) pthread_join(g_bg.th, NULL);
+	g_bg.busy = false;
+	k = g_bg.kind;
+	good = g_bg.ok;
+	if (k == DIATOM_BG_SAVE) {
+		if (good) logf_(DIATOM_LOG_INFO, "state: wrote %zu bytes to %s", g_bg.n, g_bg.path);
+		else logf_(DIATOM_LOG_ERROR, "state: could not write %s", g_bg.path);
+	} else if (good) {
+		good = apply && state_apply(c, g_bg.path, g_bg.data, g_bg.n);
+	}
+	free(g_bg.data);
+	free(g_bg.pic);
+	g_bg.data = g_bg.pic = NULL;
+	if (path && n) snprintf(path, n, "%s", g_bg.path);
+	if (ok) *ok = good;
+	return k;
 }

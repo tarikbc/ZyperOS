@@ -94,6 +94,12 @@ SHOTS={
     # MENU > Battery Icon on Time Left: the corner writes the time left
     # (STATUS below), as 3 h 25 min beside the battery
     'battery':('demo','PS1',['--menu','Battery Icon']),
+    # The quick slot and the hotkeys (2026-11-07): the in-game menu on its
+    # Quick Slot row, a PlayStation game's buttons drawn as their shapes, and
+    # its Hotkeys page, SELECT with a shoulder
+    'gamemenu':('demo','PS1',['--screen','games','--gamemenu','3']),
+    'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
+    'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
 }
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
 # what it shows: icon= is the setting for this shot, eta= the minutes left

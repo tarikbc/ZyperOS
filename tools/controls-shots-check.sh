@@ -35,7 +35,8 @@ mkdir -p "$D/root" "$D/userdata" "$D/shared" || exit 1
 cp config/systems.cfg "$D/root/systems.cfg" || exit 1
 for g in "Genesis/Sonic the Hedgehog 2.md" "Nintendo 64/Mario Kart 64.z64" \
          "Nintendo DS/Mario Kart DS.nds" "NES/Zelda no Densetsu.fds" \
-         "Neo Geo Pocket Color/Metal Slug.ngc" "Game Boy/Tetris.gb"; do
+         "Neo Geo Pocket Color/Metal Slug.ngc" "Game Boy/Tetris.gb" \
+         "PlayStation/Ridge Racer.chd" "PICO-8/Celeste.p8"; do
 	mkdir -p "$D/Roms/$(dirname "$g")" || exit 1
 	: >"$D/Roms/$g" || exit 1
 done
@@ -63,9 +64,10 @@ same()  { cmp -s "$D/$2.png" "$D/$3.png" || fail "$1 ($D/$2.png against $D/$3.pn
 other() { cmp -s "$D/$2.png" "$D/$3.png" && fail "$1 ($D/$2.png is $D/$3.png)"; }
 
 echo "the in-game Controls pages, still, each its own"
-# tag:pages - Genesis's buttons, then In a game; the Nintendo 64 and the DS
-# a page of their own between (C buttons, two screens)
-for sp in MD:2 N64:3 NDS:3 NES:2 NGPC:2; do
+# tag:pages - Genesis's buttons, then Hotkeys and In a game; the Nintendo 64
+# and the DS a page of their own between (C buttons, two screens); the
+# PlayStation's buttons two pages, its faces drawn as their shapes
+for sp in MD:3 N64:4 NDS:4 NES:3 NGPC:3 PS1:4 PICO8:3; do
 	tag=${sp%:*}
 	pages=${sp#*:}
 	for th in light dark; do
@@ -91,11 +93,11 @@ for sp in MD:2 N64:3 NDS:3 NES:2 NGPC:2; do
 	other "$tag: the themes are the same picture" "$tag-0-light" "$tag-0-dark"
 done
 # The Pixel 2's brightness is MENU with the volume keys, and its page says so
-shot "MD-1-pixel" --theme light --screen games --gamecontrols 1 MD --fn-volume
-other "In a game names the Pixel 2's brightness keys" "MD-1-pixel" "MD-1-light"
+shot "MD-2-pixel" --theme light --screen games --gamecontrols 2 MD --fn-volume
+other "In a game names the Pixel 2's brightness keys" "MD-2-pixel" "MD-2-light"
 
 echo "every Controls page fits the panel, measured with the font"
-# Width and height, on both devices: the home's five and every system's in
+# Width and height, on both devices: the home's six and every system's in
 # systems.cfg (an .fds game too), each heading beside its page count. A row
 # too wide is cut or slides, a page too tall scrolls itself. Found on the
 # Pixel 2, 2026-11-06: "START/SELECT  Right/Left soft key"; and the home's
@@ -112,18 +114,20 @@ measured=$(sed -n 's/^controls-fit: \([0-9]*\) pages measured.*/\1/p' "$D/one.lo
 echo "the home's Controls pages, each its own"
 for th in light dark; do
 	p=0
-	while [ "$p" -lt 5 ]; do
+	while [ "$p" -lt 6 ]; do
 		shot "home-$p-$th" --theme "$th" --screen games --controls "$p"
 		[ "$p" -gt 0 ] && other "home page $p ($th) is page $((p - 1))" "home-$p-$th" "home-$((p - 1))-$th"
 		p=$((p + 1))
 	done
 done
 
-echo "the in-game menu has Controls after Display"
+echo "the in-game menu has Quick Slot after Load, Controls after Display"
 for th in light dark; do
-	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 4
-	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 3
-	other "$th: the fifth row is not Display" "gamemenu-$th" "gamemenu-display-$th"
+	shot "gamemenu-$th" --theme "$th" --screen games --gamemenu 5
+	shot "gamemenu-display-$th" --theme "$th" --screen games --gamemenu 4
+	shot "gamemenu-quick-$th" --theme "$th" --screen games --gamemenu 3
+	other "$th: the sixth row is not Display" "gamemenu-$th" "gamemenu-display-$th"
+	other "$th: the fourth row is not Display" "gamemenu-quick-$th" "gamemenu-display-$th"
 done
 
 echo "the home: A to Z on a new card, release dates as a choice"

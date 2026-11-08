@@ -19,7 +19,7 @@
 - PortMaster ports, Nintendo DS with DSperate or DraStic, OpenBOR, ScummVM.
 - MP4: music, audiobooks and videos, opened with SELECT from anywhere.
 - Wi-Fi and USB File Transfer: a web page on any computer or phone, behind a PIN, with the handheld's own network when there is no Wi-Fi.
-- Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, fast forward and turbo.
+- Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, quick save and quick load on SELECT+R1/L1 into a slot picked per system, faster and slower on SELECT+R2/L2, and turbo.
 - Light and dark themes. System Update over Wi-Fi, or over the USB cable from the File Transfer page: signed, only what changed, with roll back.
 
 ## Hardware notes

@@ -22,13 +22,14 @@
  * tools/controls-check.c can link it and read what these pages contain
  * without a renderer. */
 
-/* Five pages, because six rows is what a panel holds under its heading and
+/* Six pages, because six rows is what a panel holds under its heading and
  * the shelf's seven buttons do not fit on one: the pad and the shoulders move
- * you, the face buttons act on what you moved to. Which page of the five is
- * said at the heading's right, "2 / 5", as every panel of pages says it
- * (DESIGN.md 11.3); there is no footer. */
+ * you, the face buttons act on what you moved to. In a game has two, the
+ * game's own keys and the hotkeys (SELECT and a shoulder, 2026-11-07). Which
+ * page of the six is said at the heading's right, "2 / 6", as every panel of
+ * pages says it (DESIGN.md 11.3); there is no footer. */
 typedef enum {
-	CTL_MOVING, CTL_SHELF, CTL_GAME, CTL_MUSE, CTL_ANYWHERE, CTL_PAGES
+	CTL_MOVING, CTL_SHELF, CTL_GAME, CTL_HOTKEYS, CTL_MUSE, CTL_ANYWHERE, CTL_PAGES
 } ctl_page;
 
 /* Room for the longest page and its footer, with a little spare. */
@@ -74,7 +75,8 @@ void ctl_set_battery_lights(bool on);
  *
  * Built when the page opens, never in a game. */
 
-#define CTL_GAME_PAGES 4      /* the system's two at most, its own, In a game */
+/* the system's two at most, its own, Hotkeys, In a game */
+#define CTL_GAME_PAGES 5
 
 typedef struct {
 	const char *tag;          /* the system's, e.g. "MD" */
@@ -90,6 +92,11 @@ typedef struct {
 	/* A program of its own, not a game Diatom runs (OpenBOR,
 	 * src/portmenu.h): its In a game page has no hotkeys, and POWER ends it */
 	bool        port;
+	/* What a Nintendo 64 game's controller holds, "Rumble Pak" or
+	 * "Controller Pak", as the in-game menu's Pak row says it: the C
+	 * buttons page says which, and where to change it. NULL is the Rumble
+	 * Pak, ZyperOS's default. */
+	const char *accessory;
 } ctl_game;
 
 /* What a page's rows point into: its heading and the values a pair of rows
@@ -99,6 +106,7 @@ typedef struct {
 	char head[48];
 	char key[CTL_MAX_ROWS][16];
 	char val[CTL_MAX_ROWS][64];
+	char note[96];
 } ctl_buf;
 
 /* How many pages this game has: always In a game, after the system's. */
@@ -115,6 +123,13 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b);
  * no in-game menu over it - every one but OpenBOR, which has the menu
  * (src/portmenu.h). */
 bool ctl_game_known(const char *tag);
+
+/* Whether a system's core keeps save states, so its in-game menu has a quick
+ * slot and SELECT+R1 and SELECT+L1 save and load it: every system Diatom
+ * runs but ScummVM and J2ME, whose cores keep none (FreeJ2ME-Plus's
+ * retro_serialize_size is 0, read 2026-11-07). Diatom asks the core too, and
+ * under SELECT gives a core with none its R1 and L1 (diatom/src/chord.h). */
+bool ctl_has_states(const char *tag);
 
 /* Two values said as one, the way the pages pair buttons: "Turbo A" and
  * "Turbo B" are "Turbo A/B", "L trigger" and "R trigger" "L/R trigger", the

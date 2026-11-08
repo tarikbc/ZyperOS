@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include "cheevos.h"
+#include "chord.h"
 #include "diatom.h"
 #include "levels.h"
 #include "screens.h"
@@ -63,10 +64,12 @@ typedef struct diatom_session {
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
+static void bg_report(bool wait, bool apply);
 static void levels_forget(void);
 static void apply_display(int mode, diatom_filter filter);
 
 static diatom_core     *g_core;   /* resident, never unloaded */
+static bool             g_paused; /* the in-game menu is open (menu_pause) */
 static diatom_policy    g_policy;
 
 /* An overlay image, from the launcher, to be composited over the game.
@@ -147,55 +150,50 @@ static bool show_overlay(const char *path, unsigned ms)
  * reads, top-down rows because that is what BMP wants for a positive height...
  * negative height, rather - top-down needs biHeight < 0, and getting that
  * wrong renders every card upside down. */
-static bool write_bmp(const char *path, const void *pixels, int w, int h,
-                      size_t pitch)
+static uint8_t *bmp_encode(const void *pixels, int w, int h, size_t pitch, size_t *len)
 {
-	FILE *f;
-	unsigned char hdr[54];
+	uint8_t *out, *o;
 	int y, x;
 	size_t row = (size_t)w * 3, pad = (4 - (row & 3)) & 3;
 	unsigned int size = 54 + (unsigned int)((row + pad) * (size_t)h);
 
-	if (!pixels || w <= 0 || h <= 0) return false;
-	f = fopen(path, "wb");
-	if (!f) return false;
+	*len = 0;
+	if (!pixels || w <= 0 || h <= 0 || !(out = calloc(1, size))) return NULL;
 
-	memset(hdr, 0, sizeof hdr);
-	hdr[0] = 'B'; hdr[1] = 'M';
-	hdr[2]  = (unsigned char)size;       hdr[3]  = (unsigned char)(size >> 8);
-	hdr[4]  = (unsigned char)(size >> 16); hdr[5] = (unsigned char)(size >> 24);
-	hdr[10] = 54;
-	hdr[14] = 40;
-	hdr[18] = (unsigned char)w; hdr[19] = (unsigned char)(w >> 8);
-	hdr[22] = (unsigned char)h; hdr[23] = (unsigned char)(h >> 8);
-	hdr[26] = 1;                          /* planes */
-	hdr[28] = 24;                         /* bpp */
-	fwrite(hdr, 1, sizeof hdr, f);
+	out[0] = 'B'; out[1] = 'M';
+	out[2]  = (unsigned char)size;       out[3]  = (unsigned char)(size >> 8);
+	out[4]  = (unsigned char)(size >> 16); out[5] = (unsigned char)(size >> 24);
+	out[10] = 54;
+	out[14] = 40;
+	out[18] = (unsigned char)w; out[19] = (unsigned char)(w >> 8);
+	out[22] = (unsigned char)h; out[23] = (unsigned char)(h >> 8);
+	out[26] = 1;                          /* planes */
+	out[28] = 24;                         /* bpp */
+	o = out + 54;
 
-	/* Bottom-up, as positive-height BMP requires. */
+	/* Bottom-up, as positive-height BMP requires. The pad bytes are the
+	 * calloc's zeros. */
 	for (y = h - 1; y >= 0; y--) {
 		const unsigned char *src = (const unsigned char *)pixels
 		                         + (size_t)y * pitch;
-		unsigned char px[3] = { 0, 0, 0 };
 
-		for (x = 0; x < w; x++) {
+		for (x = 0; x < w; x++, o += 3) {
 			if (g_policy.pixfmt == DIATOM_PIX_RGB565) {
 				unsigned v = ((const unsigned short *)src)[x];
-				px[2] = (unsigned char)(((v >> 11) & 0x1f) * 255 / 31);
-				px[1] = (unsigned char)(((v >>  5) & 0x3f) * 255 / 63);
-				px[0] = (unsigned char)(( v        & 0x1f) * 255 / 31);
+				o[2] = (unsigned char)(((v >> 11) & 0x1f) * 255 / 31);
+				o[1] = (unsigned char)(((v >>  5) & 0x3f) * 255 / 63);
+				o[0] = (unsigned char)(( v        & 0x1f) * 255 / 31);
 			} else {   /* XRGB8888 */
 				unsigned v = ((const unsigned *)src)[x];
-				px[2] = (unsigned char)(v >> 16);
-				px[1] = (unsigned char)(v >> 8);
-				px[0] = (unsigned char)v;
+				o[2] = (unsigned char)(v >> 16);
+				o[1] = (unsigned char)(v >> 8);
+				o[0] = (unsigned char)v;
 			}
-			fwrite(px, 1, 3, f);
 		}
-		if (pad) { unsigned char z[3] = {0,0,0}; fwrite(z, 1, pad, f); }
+		o += pad;
 	}
-	fclose(f);
-	return true;
+	*len = size;
+	return out;
 }
 
 /* Two screens laid out (screens.h): defined below, with the display mode. */
@@ -239,20 +237,39 @@ static bool gpu_snapshot(void)
 	return true;
 }
 
-static bool write_preview(const char *path)
+/* The frame as a preview's BMP, in memory: what write_preview writes, for a
+ * quick save to carry to its thread (diatom_state_save_bg). malloc'd, or NULL
+ * when there is no picture. */
+static uint8_t *preview_encode(size_t *len)
 {
+	*len = 0;
 	/* No picture rather than the last game's pixels, which g_frame still
 	 * holds while a GPU game draws none of its own */
-	if (diatom_hw_active() && !gpu_snapshot()) return false;
+	if (diatom_hw_active() && !gpu_snapshot()) return NULL;
 	if (g_dual && g_nplanes > 0 && g_frame) {
 		int bpp = g_policy.pixfmt == DIATOM_PIX_RGB565 ? 2 : 4, w = 0, h = 0;
 		void *pic = scr_compose(g_frame, g_frame_pitch, bpp, g_planes, g_nplanes, &w, &h);
-		bool ok = pic && write_bmp(path, pic, w, h, (size_t)w * (size_t)bpp);
+		uint8_t *b = pic ? bmp_encode(pic, w, h, (size_t)w * (size_t)bpp, len) : NULL;
 
 		free(pic);
-		if (ok) return true;
+		if (b) return b;
 	}
-	return write_bmp(path, g_frame, g_frame_w, g_frame_h, g_frame_pitch);
+	return bmp_encode(g_frame, g_frame_w, g_frame_h, g_frame_pitch, len);
+}
+
+static bool write_preview(const char *path)
+{
+	size_t   n;
+	uint8_t *b = preview_encode(&n);
+	FILE    *f;
+	bool     ok;
+
+	if (!b) return false;
+	f = fopen(path, "wb");
+	ok = f && fwrite(b, 1, n, f) == n;
+	if (f) fclose(f);
+	free(b);
+	return ok;
 }
 
 static diatom_port_caps g_caps;
@@ -883,22 +900,38 @@ static void idle_note_input(bool any)
 	}
 }
 
-/* Fast forward. The step the player chose with MENU+R1, 1 to 4, reset at
- * every RUN and kept across the menu. A state on the state plane that only
- * Diatom writes: `SPEED x=N`, as the reply to `SPEED` and unsolicited on every
- * change, so the launcher can say so on screen. */
-#define SPEED_MAX 4
+/* The speed. The step the player chose with SELECT+R2 (faster) and SELECT+L2
+ * (slower), reset at every RUN and kept across the menu. A state on the state
+ * plane that only Diatom writes: `SPEED x=1.5`, as the reply to `SPEED` and
+ * unsolicited on every step, so the launcher can say so on screen - at the
+ * ends too, where the step does not move, so a press is always answered.
+ *
+ * The steps are in halves of the normal speed, and a half is what a fast turn
+ * runs: a fast turn stands for two refreshes (below), so it runs one core
+ * frame for each half - 3 at 1.5x, 6 at 3x. 1x, 1.5x, 2x and 3x: 4x reached
+ * about 2.5x on a heavy SNES or GBA game, as 3x did, so it was a step that
+ * said more than it did. Nothing under 1x: slow motion would stretch the
+ * sound or drop it, and fast forward's silence is only right going fast.
+ * MENU+R1 stepped 2x, 3x, 4x and off until 2026-11-07. */
+static const int SPEED_HALVES[] = { 2, 3, 4, 6 };
+#define SPEED_STEPS ((int)(sizeof SPEED_HALVES / sizeof SPEED_HALVES[0]))
 /* What a fast turn leaves spare, for the save tick, the socket and the pad. */
 #define FAST_MARGIN_US 1500.0
 /* Presenting's cost before the first present of a game has measured it: the
  * exit summary's figure for stretch, 6.6 to 7.0 ms, rounded up. */
 #define FAST_PRESENT_GUESS_US 7000.0
-static int  g_speed = 1;
+static int  g_speed_ix;     /* into SPEED_HALVES; 0 is 1x */
+
+/* The speed in halves: 2 is 1x */
+static int speed_half(void)
+{
+	return SPEED_HALVES[g_speed_ix];
+}
 
 /* For a core that asks (GET_FASTFORWARDING, env.c) */
 bool diatom_fast_forwarding(void)
 {
-	return g_speed > 1;
+	return g_speed_ix > 0;
 }
 
 /* A Super Game Boy's clock is the SNES's, 2.4% faster than a Game Boy's, and
@@ -937,18 +970,28 @@ static double sound_rate(const struct retro_system_info *si,
 /* One step's measurement: frames run against the pacing periods that passed,
  * so a step that hit the budget says how far short it fell. Wall time
  * includes the menu; the speed does not. */
-static void step_report(int step, long frames, long periods, uint64_t held_us,
+static void step_report(int half, long frames, long periods, uint64_t held_us,
                         uint64_t dropped)
 {
-	printf("diatom: speed %dx held %.1fs, reached %.2fx, %llu audio frame(s) dropped\n",
-	       step, held_us / 1000000.0, periods ? (double)frames / (double)periods : 0.0,
+	printf("diatom: speed %.1fx held %.1fs, reached %.2fx, %llu audio frame(s) dropped\n",
+	       half / 2.0, held_us / 1000000.0, periods ? (double)frames / (double)periods : 0.0,
 	       (unsigned long long)dropped);
 	fflush(stdout);
 }
 
+/* "1", "1.5", "2", "3": the step as SPEED says it */
+static void speed_said(int half, char *out, size_t n)
+{
+	if (half % 2) snprintf(out, n, "%d.5", half / 2);
+	else          snprintf(out, n, "%d", half / 2);
+}
+
 static void speed_emit(void)
 {
-	if (diatom_proto_connected()) diatom_proto_send("SPEED\tx=%d", g_speed);
+	char x[8];
+
+	speed_said(speed_half(), x, sizeof x);
+	if (diatom_proto_connected()) diatom_proto_send("SPEED\tx=%s", x);
 }
 
 static bool take_pause_request(void)
@@ -958,7 +1001,7 @@ static bool take_pause_request(void)
 	return v;
 }
 
-static bool menu_pause(const diatom_session *sn)
+static bool menu_pause_inner(const diatom_session *sn)
 {
 	/* The pause preview goes out BEFORE PAUSED, so by the time the launcher
 	 * hears it owns the display, the frame it will dim and draw its menu over
@@ -1050,6 +1093,20 @@ static bool menu_pause(const diatom_session *sn)
 	 * loop then ends the session the same way STOP does - which is the right
 	 * reading of a termination arriving with the menu open. */
 	return false;
+}
+
+/* The menu, with the states as the menu's (g_paused), and a quick save still
+ * on its thread finished and said first: SAVED before PAUSED, so the launcher
+ * hears it while it is still listening to the game. */
+static bool menu_pause(const diatom_session *sn)
+{
+	bool resumed;
+
+	bg_report(true, true);
+	g_paused = true;
+	resumed = menu_pause_inner(sn);
+	g_paused = false;
+	return resumed;
 }
 
 /* One game, start to finish. Extracted so the protocol loop can run it
@@ -1595,18 +1652,68 @@ static bool state_plane_msg(const diatom_msg *m)
  * the first five and does not come here: it answers OPTIONS and SETOPT itself
  * and the state plane through state_plane_msg. False for anything neither
  * owns. */
+/* ---- states while the game runs ------------------------------------------
+ *
+ * With the menu open, SAVE and LOAD are the menu's: written and read at once,
+ * as they always were, while nothing is drawn. Outside it they are the quick
+ * slot's - SELECT+R1 and SELECT+L1 ask the launcher, which knows the slot,
+ * and it sends them while the game runs - and the card's half goes to a
+ * thread (diatom_state_save_bg) so the game keeps its frames. Either way the
+ * answer is SAVED or LOADED, or the ERROR the menu's would get. g_paused is
+ * the menu's being open (menu_pause). */
+
+/* A job that ended, said: `wait` for one in flight, and `apply` a load to the
+ * game - not to one that is ending, which takes no state. */
+static void bg_report(bool wait, bool apply)
+{
+	char path[1024];
+	bool ok;
+
+	switch (diatom_state_bg_poll(g_core, wait, apply, path, sizeof path, &ok)) {
+	case DIATOM_BG_SAVE:
+		diatom_proto_send(ok ? "SAVED\tpath=%s" : "ERROR\tcode=save_failed\tmsg=%s", path);
+		break;
+	case DIATOM_BG_LOAD:
+		if (apply)
+			diatom_proto_send(ok ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
+			                  path);
+		break;
+	default:
+		break;
+	}
+}
+
 static bool game_msg(const diatom_msg *m)
 {
 	switch (m->kind) {
 	/* Also honored while running, not only from the menu. Slot CHOICE belongs
 	 * in the launcher's menu, but nothing about that requires the game to be
-	 * paused to write a state. */
+	 * paused to write a state. `preview=` writes the frame beside it, which
+	 * the menu does itself from the pause's picture. */
 	case DIATOM_MSG_SAVE:
-		diatom_proto_send(diatom_state_save(g_core, m->path)
-		                  ? "SAVED\tpath=%s" : "ERROR\tcode=save_failed\tmsg=%s",
-		                  m->path);
+		bg_report(true, true);
+		if (!g_paused) {
+			size_t n = 0;
+			uint8_t *pic = m->preview[0] ? preview_encode(&n) : NULL;
+
+			if (!diatom_state_save_bg(g_core, m->path, m->preview, pic, n))
+				diatom_proto_send("ERROR\tcode=save_failed\tmsg=%s", m->path);
+			return true;
+		}
+		if (diatom_state_save(g_core, m->path)) {
+			if (m->preview[0]) write_preview(m->preview);
+			diatom_proto_send("SAVED\tpath=%s", m->path);
+		} else {
+			diatom_proto_send("ERROR\tcode=save_failed\tmsg=%s", m->path);
+		}
 		return true;
 	case DIATOM_MSG_LOAD:
+		bg_report(true, true);
+		if (!g_paused) {
+			if (!diatom_state_load_bg(g_core, m->path))
+				diatom_proto_send("ERROR\tcode=state_rejected\tmsg=%s", m->path);
+			return true;
+		}
 		diatom_proto_send(diatom_state_load(g_core, m->path)
 		                  ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
 		                  m->path);
@@ -1665,6 +1772,51 @@ static void present_frame(bool fresh)
 static int      g_power_level;
 static uint64_t g_power_calm_us;
 
+/* SELECT's chords (chord.h), judged at every poll the core makes
+ * (diatom_env_poll_hook), so no press reaches the game before the rule has
+ * seen it: what the polls of a turn asked for (acts) and the shoulders they
+ * took gather here for the frame loop to act on once a turn. g_sel_live is
+ * which shoulders are hotkeys in this game. */
+static chord    g_sel;
+static uint32_t g_sel_was, g_sel_live, g_sel_took;
+static unsigned g_sel_acts;
+
+static uint32_t sel_poll(uint32_t pad, uint32_t *give)
+{
+	chord_out o = chord_turn(&g_sel, pad, g_sel_was,
+	                         diatom_port_now_us() / 1000, g_sel_live);
+
+	g_sel_was = pad;
+	g_sel_acts |= o.acts;
+	g_sel_took |= o.took;
+	*give = o.give;
+	return o.hide;
+}
+
+/* A fresh start for SELECT: at a game's start and as the menu resumes it,
+ * from the pad as it is, so a button already held is no press */
+static void sel_reset(uint32_t pad)
+{
+	chord_reset(&g_sel);
+	g_sel_was = pad;
+	g_sel_acts = 0;
+	g_sel_took = 0;
+	diatom_env_poll_hook(sel_poll);
+}
+
+/* SELECT+R1 or SELECT+L1. The quick slot is the launcher's - it keeps one a
+ * system and knows the game's paths - so the hotkey is said, and the launcher
+ * sends SAVE or LOAD back (game_msg). With no launcher there is no slot. */
+static void quick_ask(const char *key)
+{
+	if (diatom_proto_connected()) {
+		diatom_proto_send("HOTKEY\tkey=%s", key);
+		return;
+	}
+	printf("diatom: quick %s needs a launcher, which keeps the slot\n", key);
+	fflush(stdout);
+}
+
 static void power_trouble(const char *why, uint64_t now)
 {
 	if (g_power_level == DIATOM_POWER_FULL || now < g_power_calm_us) return;
@@ -1682,7 +1834,7 @@ static int run_session_inner(const diatom_session *sn)
 	double   frame_us, next_us;
 	uint64_t t_start, paused_us = 0;   /* menu time, excluded from the rate */
 	uint32_t buttons = 0, prev_buttons = 0, held_at_entry = 0;
-	uint32_t chord_hold = 0;    /* R1, while it belongs to MENU+R1 */
+	uint32_t sel_took = 0;      /* shoulders SELECT's chords took this turn */
 	uint32_t sty_wait = 0;      /* d-pad and A held as the stylus came on */
 	bool     menu_armed = false, menu_chorded = false;
 	long     fast_frames = 0, fast_turns = 0, fast_unshown = 0;
@@ -1725,7 +1877,8 @@ static int run_session_inner(const diatom_session *sn)
 	bool stop = false;
 
 	/* Per-game state that must not carry over from the previous session. */
-	g_speed = 1;
+	g_speed_ix = 0;
+	g_sel_live = CHORD_KEYS;
 	g_audio_fast = false;
 	g_present_frames = 0;
 	g_present_us = 0;
@@ -1988,6 +2141,7 @@ static int run_session_inner(const diatom_session *sn)
 	held_at_entry = prev_buttons;
 	sty_wait = 0;
 	diatom_env_suppress(held_at_entry | (g_dual ? scr_own_keys(sty_on()) : 0));
+	sel_reset(prev_buttons);
 
 	/* The system's clock ceiling, before the warmup, so its frames already
 	 * run under it */
@@ -2024,6 +2178,14 @@ static int run_session_inner(const diatom_session *sn)
 	if (sn->state_load && diatom_hw_active() && !diatom_state_load(g_core, sn->state_load))
 		printf("diatom: no usable state at %s; starting the game normally\n",
 		       sn->state_load);
+	/* A core that keeps no state (FreeJ2ME-Plus, ScummVM) has no quick save
+	 * or load, so under SELECT its R1 and L1 are its own. Asked after the
+	 * warmup, when a core whose machine runs on a thread (flycast2021) has a
+	 * state to size; once a game, since some cores size it by writing one. */
+	if (!g_core->serialize_size || !g_core->serialize_size()) {
+		g_sel_live &= ~(DIATOM_BIT(DIATOM_BTN_R1) | DIATOM_BIT(DIATOM_BTN_L1));
+		printf("diatom: this core keeps no state; SELECT+R1 and SELECT+L1 are the game's\n");
+	}
 
 	t_start = diatom_port_now_us();
 	next_us = (double)t_start;
@@ -2041,7 +2203,7 @@ static int run_session_inner(const diatom_session *sn)
 		 * worth - or until the next one would not fit in the two periods less
 		 * what presenting costs, whichever comes first. The present cost is the
 		 * running average, so a cheaper display mode buys speed by itself. */
-		const bool fast = g_speed > 1;
+		const bool fast = g_speed_ix > 0;
 		const int periods = fast ? 2 : 1;
 		/* Fast, at the top clock; see diatom_port_fast_clock. Every ceiling
 		 * lifted first, since a minimum held at the top cannot pass the
@@ -2098,7 +2260,7 @@ static int run_session_inner(const diatom_session *sn)
 			if (!fast && (double)s0 > next_us + frame_us)
 				power_trouble("a late frame", s0);
 
-			if (skips && ran + 1 < periods * g_speed &&
+			if (skips && ran + 1 < speed_half() &&
 			    !(sn->limit > 0 && frames + 1 >= sn->limit))
 				shown = (double)(s0 - batch_t0) + unshown_us + shown_us > budget;
 			/* frameskip=late, at 1x: a frame that starts more than half a
@@ -2147,7 +2309,7 @@ static int run_session_inner(const diatom_session *sn)
 			} else {
 				double spent;
 
-				if (!fast || ran >= periods * g_speed) break;
+				if (!fast || ran >= speed_half()) break;
 				if (sn->limit > 0 && frames >= sn->limit) break;
 				spent = (double)(diatom_port_now_us() - batch_t0);
 				if (spent + spent / ran > budget) break;
@@ -2232,6 +2394,9 @@ static int run_session_inner(const diatom_session *sn)
 		}
 
 		diatom_save_tick();
+		/* A quick save's write or a quick load's read that finished on its
+		 * thread: said, and a load handed to the core, between two frames */
+		bg_report(false, true);
 
 		if (diatom_proto_active()) {
 			diatom_msg m;
@@ -2269,19 +2434,47 @@ static int run_session_inner(const diatom_session *sn)
 		 * physically down stays latched. */
 		held_at_entry &= buttons;
 
-		/* R1 belongs to MENU+R1 from the moment MENU is down - not from when
-		 * R1 is, so the frame R1 goes down cannot leak into the game - and
-		 * stays hidden after MENU is let go, until R1 is too. */
-		if (buttons & DIATOM_BIT(DIATOM_BTN_MENU))
-			chord_hold = DIATOM_BIT(DIATOM_BTN_R1);
-		else
-			chord_hold &= buttons;
+		/* SELECT's chords (chord.h): SELECT+R1 saves to the quick slot,
+		 * SELECT+L1 loads from it, SELECT+R2 steps the speed up and
+		 * SELECT+L2 down. Judged at the core's polls (sel_poll) and acted on
+		 * here, once a turn, before the DS's L2 and R2 below, so a shoulder
+		 * a chord took does not also switch a screen. */
+		{
+			unsigned acts = g_sel_acts;
+			int step = ((acts >> CHORD_FASTER) & 1) - ((acts >> CHORD_SLOWER) & 1);
+
+			g_sel_acts = 0;
+			sel_took = g_sel_took;
+			g_sel_took = 0;
+			if (acts & (1u << CHORD_SAVE)) quick_ask("save");
+			if (acts & (1u << CHORD_LOAD)) quick_ask("load");
+			if (acts & ((1u << CHORD_FASTER) | (1u << CHORD_SLOWER))) {
+				int to = g_speed_ix + step;
+
+				if (to < 0) to = 0;
+				if (to >= SPEED_STEPS) to = SPEED_STEPS - 1;
+				if (to != g_speed_ix) {
+					step_report(speed_half(), step_frames, step_periods,
+					            diatom_port_now_us() - step_t0,
+					            diatom_audio_dropped() - step_drop0);
+					g_speed_ix = to;
+					printf("diatom: speed %.1fx\n", speed_half() / 2.0);
+					fflush(stdout);
+					step_frames = step_periods = 0;
+					step_t0 = diatom_port_now_us();
+					step_drop0 = diatom_audio_dropped();
+				}
+				/* At an end as well: the press is answered on screen */
+				speed_emit();
+			}
+		}
 
 		/* A game with two screens, a DS game: its buttons are screens.h's
 		 * (THE BUTTONS). L1 and R1 are the DS's shoulders. L2 brings the
 		 * other screen in front, R2 turns stylus mode on and off, and while
 		 * it is on the d-pad moves the cursor and A is the stylus on the
-		 * screen. L2 and R2 under MENU are left to MENU's chords. MENU+L1
+		 * screen. L2 and R2 under MENU are left to MENU's chords, and under
+		 * SELECT to its (sel_took). MENU+L1
 		 * switched the screens too, from before L2 did; it went on
 		 * 2026-11-06, L2 alone being the one way, and L1 under MENU
 		 * is the DS's own L again. The pointer goes to the core on its next
@@ -2290,7 +2483,7 @@ static int run_session_inner(const diatom_session *sn)
 			uint32_t sty_mask = 0;
 
 			if (g_dual) {
-				uint32_t down = buttons & ~prev_buttons;
+				uint32_t down = buttons & ~prev_buttons & ~sel_took;
 				uint32_t lent = scr_own_keys(true) & ~scr_own_keys(false);
 				bool was = sty_on();
 
@@ -2329,11 +2522,13 @@ static int run_session_inner(const diatom_session *sn)
 
 			/* The single writer. Every reason to hide a button from the core
 			 * is composed here, so no reason can clear another. */
-			diatom_env_suppress(held_at_entry | chord_hold | sty_mask);
+			diatom_env_suppress(held_at_entry | sty_mask);
 		}
 
-		/* MENU+R1 steps the speed. MENU is a modifier, so it is armed by its
-		 * press and acts on its RELEASE. */
+		/* MENU is a modifier too, so it is armed by its press and acts on
+		 * its RELEASE. MENU+R1 stepped the speed until 2026-11-07, when
+		 * SELECT+R2 and SELECT+L2 took it (chord.h); R1 under MENU is the
+		 * game's again, as L1 under it is since the DS's screens left it. */
 		{
 			uint32_t pressed = buttons & ~prev_buttons;
 
@@ -2347,21 +2542,6 @@ static int run_session_inner(const diatom_session *sn)
 			 * Read every frame so `levels_moved` stays current. */
 			if (levels_moved() && (buttons & DIATOM_BIT(DIATOM_BTN_MENU)))
 				menu_chorded = true;
-
-			if ((buttons & DIATOM_BIT(DIATOM_BTN_MENU)) &&
-			    (pressed & DIATOM_BIT(DIATOM_BTN_R1))) {
-				step_report(g_speed, step_frames, step_periods,
-				            diatom_port_now_us() - step_t0,
-				            diatom_audio_dropped() - step_drop0);
-				g_speed = g_speed % SPEED_MAX + 1;
-				menu_chorded = true;
-				printf("diatom: speed %dx\n", g_speed);
-				fflush(stdout);
-				speed_emit();
-				step_frames = step_periods = 0;
-				step_t0 = diatom_port_now_us();
-				step_drop0 = diatom_audio_dropped();
-			}
 		}
 
 		/* MENU is Diatom's own key and the ports no longer act on it, because
@@ -2426,7 +2606,7 @@ static int run_session_inner(const diatom_session *sn)
 
 					/* Resuming fast is the one moment the speed could surprise,
 					 * so it is said again. At 1x there is nothing to say. */
-					if (g_speed > 1) speed_emit();
+					if (g_speed_ix > 0) speed_emit();
 
 					/* prev_buttons covers everything edge-triggered, which is
 					 * every consumer except the one that matters: the core reads
@@ -2450,6 +2630,10 @@ static int run_session_inner(const diatom_session *sn)
 					 * applying it would leak the button on exactly the frame this
 					 * exists to protect. */
 					held_at_entry = prev_buttons;
+					/* A SELECT the menu was opened over is no chord or tap
+					 * of this game's: it is held_at_entry's until let go */
+					sel_reset(prev_buttons);
+					sel_took = 0;
 					diatom_env_suppress(held_at_entry |
 					                    (g_dual ? scr_own_keys(sty_on()) : 0));
 					continue;
@@ -2482,7 +2666,7 @@ static int run_session_inner(const diatom_session *sn)
 			 * lying about its frame rate. */
 			next_us = (double)now;
 			resyncs++;
-			if (g_speed <= 1) power_trouble("a stall", now);
+			if (g_speed_ix == 0) power_trouble("a stall", now);
 		}
 		/* Otherwise keep the debt and let the next short sleep repay it. */
 	}
@@ -2502,6 +2686,11 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_port_fast_clock(false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
 
+	/* A quick save still on its thread is finished and said before EXIT; a
+	 * quick load is not handed to a game that is over. */
+	bg_report(true, false);
+	diatom_env_poll_hook(NULL);
+
 	/* Both paths, and in this order: the game's own save first, because losing
 	 * it is a defect, then the state, which is a convenience. */
 	diatom_save_shutdown();
@@ -2515,7 +2704,7 @@ static int run_session_inner(const diatom_session *sn)
 		diatom_proto_send("PREVIEW\tpath=%s", sn->preview);
 
 	if (fast_frames)
-		step_report(g_speed, step_frames, step_periods,
+		step_report(speed_half(), step_frames, step_periods,
 		            diatom_port_now_us() - step_t0,
 		            diatom_audio_dropped() - step_drop0);
 

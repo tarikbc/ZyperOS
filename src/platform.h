@@ -157,10 +157,23 @@ int  plat_resident_wait(void);
  * to size. NULL to stop. */
 void plat_resident_on_unlock(void (*fn)(int id));
 
-/* Called from inside plat_resident_wait when Diatom reports its fast-forward
- * step, 1 to 4: on every MENU+R1, and again when a game resumes fast. A
- * callback for the unlock's reason. NULL to stop. */
-void plat_resident_on_speed(void (*fn)(int x));
+/* Called from inside plat_resident_wait when Diatom reports its speed step,
+ * in halves (2 is 1x, 3 is 1.5x, up to 6, 3x): on every SELECT+R2 and
+ * SELECT+L2, and again when a game resumes fast. A callback for the unlock's
+ * reason. NULL to stop. */
+void plat_resident_on_speed(void (*fn)(int half));
+
+/* Called from inside plat_resident_wait for the quick slot: Diatom's SELECT+R1
+ * and SELECT+L1 (PLAT_QUICK_ASK_*, no path), and the answers to a SAVE or
+ * LOAD sent while the game runs, with the state's path: SAVED and LOADED, or
+ * their ERRORs. The menu's own SAVE and LOAD are answered the same way, so a
+ * callback acts on a path it asked for. NULL to stop. */
+enum {
+	PLAT_QUICK_ASK_SAVE, PLAT_QUICK_ASK_LOAD,
+	PLAT_QUICK_SAVED, PLAT_QUICK_LOADED,
+	PLAT_QUICK_SAVE_FAILED, PLAT_QUICK_LOAD_FAILED
+};
+void plat_resident_on_quick(void (*fn)(int what, const char *path));
 
 /* Called from inside plat_resident_wait when Diatom reports an achievement's
  * count moving ("CHEEVO id=.. state=progress value=.. target=.. text=.."),
@@ -245,6 +258,10 @@ void plat_resident_run_keys(const char *keys);
  * with the system's turbo (plat_turbo_map); NULL or "" for none. Like the
  * RUN keys, it is for the next plat_resident_send only. */
 void plat_resident_map(const char *map);
+/* One core option for the next RUN only, sent after the system's own (and
+ * so over them): a choice the player made for one game, as the N64's Pak
+ * (src/main.c, pak_*). Like the map, for the next plat_resident_send only. */
+void plat_resident_opt(const char *key, const char *value);
 /* The stylus of a game with two screens, as Diatom last said (STYLUS on=):
  * R2 turns it in the game, where this process cannot see. Off at every RUN.
  * _note records what the menu just asked for, so the row says it at once. */
