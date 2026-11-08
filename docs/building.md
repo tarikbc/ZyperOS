@@ -319,17 +319,21 @@ from `plastron/local/authorized_keys` (ignored by git): `ssh root@10.55.0.2` rea
 Brick and `ssh root@10.42.0.1` the Pixel 2. Copy files with `scp -O`, since no
 SFTP server runs, and into `/tmp` first; check that the checksums match on
 both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds
-carry no key and run no SSH server.
+carry no key and run no SSH server until Developer Mode is on (MENU > About).
 
-For the Pixel 2 with nobody holding it, `tools/` has small programs to build
+Every image has `px2-shot` and `px2-input` in `/usr/bin`, so over SSH a
+screenshot is `px2-shot /tmp/s.ppm` and a press is `px2-input a`, with
+nothing to build or copy.
+
+For the Pixel 2 with nobody holding it, `tools/` has more small programs to build
 with plastron's toolchain (`aarch64-buildroot-linux-gnu-gcc -O2`, `-pthread`
 for the memory test; the SDK has it as `/sdk/bin/aarch64-buildroot-linux-gnu-gcc`
 in `docker run --rm -v plastron-sdk-px2-<id>:/sdk:ro plastron-builder`) and run
 from `/tmp` as root:
 
-- `px2-shot` saves what the panel shows as a 640x480 PPM, from any program,
+- `px2-shot` (in the image) saves what the panel shows as a 640x480 PPM, from any program,
   and `px2-shot --fps` counts the frames a second it shows.
-- `px2-input down down a` presses the buttons, as the joypad would, and
+- `px2-input` (in the image): `px2-input down down a` presses the buttons, as the joypad would, and
   `px2-input select+start` presses them together, for an emulator's quit chord.
   `volup` and `voldown` are the volume keys, sent on their own device, and
   `power` the power key on the PMIC's: it turns the handheld off, but in the
