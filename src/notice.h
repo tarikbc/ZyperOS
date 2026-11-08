@@ -35,15 +35,27 @@
 bool notice_render(const char *heading, const char *body, const char *path,
                    int theme_ix);
 
+/* What an achievement's notice carries besides its words (`look`, below): the
+ * plain badge where the card has no art for it, and Zyper. Notice kinds that
+ * are not about an achievement - the set's arrival, fast forward, "Getting
+ * hot" - carry neither. */
+#define NOTICE_ICON  1   /* a trophy on a tile when `badge` is NULL or will
+                          * not load, so the slab has the badge's shape
+                          * whether the card has the art or not */
+#define NOTICE_ZYPER 2   /* Zyper at the right end, DESIGN.md 11.7 */
+
 /* The same slab with an achievement's badge at its left, the lines
  * left-aligned beside it - `badge` a PNG, NULL or one that will not load for
- * none, which is notice_render. With `target` above 0 it is a progress
+ * none, which is notice_render unless `look` has NOTICE_ICON, which puts the
+ * plain badge there (noticeart_plain), locked-looking for a progress notice,
+ * whose achievement is not won. With `target` above 0 it is a progress
  * notice: the heading (the achievement's name) over a strip in
  * **accent-ink** on **track**, `value` of `target` filled, and `body` (the
  * count, "74 / 100") under it in **meta** **text**. My picks in the
  * achievements lab, 2026-11-05 (docs/design/mock/cheevos-lab.html). */
 bool notice_render_ex(const char *heading, const char *body, const char *badge,
-                      int value, int target, const char *path, int theme_ix);
+                      unsigned look, int value, int target, const char *path,
+                      int theme_ix);
 
 /* A mark the launcher draws itself, where a badge goes */
 typedef enum {

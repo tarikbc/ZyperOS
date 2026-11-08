@@ -1,5 +1,5 @@
 # RetroAchievements over a running game (the pop-ups src/notice.h draws and
-# Diatom shows), the game info screen's Cheevos value, and the sign-in.
+# Diatom shows), the game info screen's Achievements value, and the sign-in.
 
 [cheevos.to_earn]
 note = The pop-up as a game's achievement set arrives, first line; the game's name is under it. %d is how many achievements there are to earn.
@@ -74,7 +74,7 @@ ja = 進捗
 it = Progresso
 
 [cheevos.none]
-note = The game info screen: the Cheevos row's value when the game has no achievements. A lowercase value.
+note = The game info screen: the Achievements row's value when the game has no achievements. A lowercase value.
 en = none
 zh-Hans = 无
 es = ninguno
