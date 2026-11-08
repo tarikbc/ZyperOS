@@ -176,6 +176,12 @@ EXTRA = {
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
+    # Developer Mode (src/devmode.h): its page with one key, a count of two
+    # figures (the plural's other), and none, and the message of the unlock
+    "dev-page": ("demo", "PS1", ["--dev-page", "0"]),
+    "dev-page-keys": ("demo", "PS1", ["--dev-page", "1"]),
+    "dev-page-none": ("demo", "PS1", ["--dev-page", "2"]),
+    "dev-on": ("demo", "PS1", ["--dev-page", "3"]),
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
     # A row whose value is "needs Wi-Fi", the longest it has in most languages
     "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),

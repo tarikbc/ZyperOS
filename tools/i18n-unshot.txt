@@ -233,6 +233,9 @@ corner.time_h_min
 datetime.change
 datetime.wifi_sets
 
+# devmode: its plural's other form reads like its one in a drawn text, so a shot cannot tell them apart (the page is drawn with 1 and with 12 keys)
+devmode.keys_count.other
+
 # emptyhome: no shot draws it yet
 emptyhome.unplug_adapter
 emptyhome.cheer.one

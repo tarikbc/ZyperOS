@@ -8697,6 +8697,27 @@ static void dev_ssh_tick(void)
 	}
 }
 
+/* The page's rows, from what it is told, so the page and its shot (the
+ * overflow check draws it in every language) are one list */
+static int dev_rows(menu_row rows[6], char *cmd, size_t cn, char *keys, size_t kn, bool up,
+                    const char *ip, const char *pw, int nkeys, const char *ssh)
+{
+	int n = 0;
+
+	if (nkeys > 0) snprintf(keys, kn, TN(S_DEVMODE_KEYS_COUNT, nkeys), nkeys);
+	else snprintf(keys, kn, "%s", T(S_DEVMODE_KEYS_NONE));
+	snprintf(cmd, cn, "ssh root@%s", ip);
+	if (up) {
+		rows[n++] = (menu_row){ T(S_DEVMODE_COMMAND), cmd, false };
+		rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), pw, false };
+	}
+	rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
+	rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
+	rows[n++] = (menu_row){ "SSH", ssh, false };
+	rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+	return n;
+}
+
 /* MENU's Developer Mode row opens this page: what to type, the password
  * (made when SSH started for this plug), where the keys go and how many were
  * read, and SSH's own status. A turns Developer Mode off (and ends SSH), B
@@ -8731,18 +8752,8 @@ static void dev_screen(app *a)
 			uisound_play(DS_SOUND_ACCEPT);
 			done = true;
 		}
-		if (g_dv.nkeys > 0) snprintf(keys, sizeof keys, TN(S_DEVMODE_KEYS_COUNT, g_dv.nkeys), g_dv.nkeys);
-		else snprintf(keys, sizeof keys, "%s", T(S_DEVMODE_KEYS_NONE));
-		snprintf(cmd, sizeof cmd, "ssh root@%s", g_dv.ip);
-		n = 0;
-		if (g_dv.up) {
-			rows[n++] = (menu_row){ T(S_DEVMODE_COMMAND), cmd, false };
-			rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), g_dv.pw, false };
-		}
-		rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
-		rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
-		rows[n++] = (menu_row){ "SSH", sshlink_status(), false };
-		rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+		n = dev_rows(rows, cmd, sizeof cmd, keys, sizeof keys, g_dv.up, g_dv.ip, g_dv.pw,
+		             g_dv.nkeys, sshlink_status());
 		{
 			int m = menu_measure(rows, n, T(S_XFER_DEV_HEADING));
 
@@ -16578,6 +16589,7 @@ static int shot_art;
 static const char *shot_art_now = "Legend of Zelda, The - A Link to the Past (USA)";
 static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
+static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
@@ -17308,6 +17320,24 @@ static void shot_compose(app *a)
 
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
+	}
+	if (shot_dev >= 0) {
+		/* Developer Mode's page, as dev_screen builds it, and the message
+		 * the unlock leaves, in the language that is on */
+		char cmd[96], keys[48];
+		menu_row rows[6];
+		int n;
+
+		ui_scrim(a->r, 0);
+		if (shot_dev < 3) {
+			n = dev_rows(rows, cmd, sizeof cmd, keys, sizeof keys, true, "10.42.0.1", "x7k4mq2d",
+			             shot_dev == 0 ? 1 : shot_dev == 1 ? 12 : 0, T(S_SSH_WAITING));
+			menu_draw(a, T(S_XFER_DEV_HEADING), rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		} else {
+			rows[0] = (menu_row){ T(S_DEVMODE_IS_ON), NULL, false };
+			rows[1] = (menu_row){ T(S_DEVMODE_WHERE), NULL, false };
+			menu_draw(a, T(S_SYSMENU_DEVELOPER), rows, 2, -1, 0, MENU_ZYPEROS);
+		}
 	}
 	if (shot_xfer_ask >= 0) {
 		/* The question while files move, from the same words xs_ask shows */
@@ -18354,6 +18384,11 @@ int main(int argc, char *argv[])
 			shot_usb = 0;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
+		}
+		else if (!strcmp(argv[i], "--dev-page")) {
+			shot_dev = 0;
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_dev = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--xfer-ask")) {
 			shot_xfer_ask = 0;
