@@ -17768,6 +17768,29 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	/* --coreopts TAG: the core options the launcher sends a game of the system
+	 * TAG (systems.cfg's tag field, "NDS"), one key=value a line in the order
+	 * they are sent, with the language the card has saved in force: the
+	 * Nintendo DS's language is made from it (src/dslang.h), and
+	 * tools/dslang-check.sh holds that it is. */
+	if (argc > 2 && !strcmp(argv[1], "--coreopts")) {
+		char dev[CFG_STR * 2], lib[CFG_STR * 2], lc[16];
+		int i;
+
+		paths_init();
+		db_paths_ready(dev, sizeof dev, lib, sizeof lib, NULL, 0);
+		if (!db_init(dev, lib, NULL)) {
+			fprintf(stderr, "cannot open the settings database\n");
+			return 1;
+		}
+		db_get_str(db_dev(), "language", lc, sizeof lc, "en");
+		i18n_set(lang_parse(lc));
+		for (i = 0; i < plat_coreopt_count(argv[2]); i++)
+			puts(plat_coreopt(argv[2], i));
+		db_shutdown();
+		return 0;
+	}
+
 	t_boot0 = plat_now_ms();
 	paths_init();
 

@@ -6,6 +6,8 @@
  * and the Diatom transport is in resident.c. */
 #include "db.h"
 #include "device.h"
+#include "dslang.h"
+#include "i18n.h"
 #include "keyrepeat.h" /* hold-to-repeat's 300 ms and 90 ms, which portkeys repeats on too */
 #include "platform.h"
 
@@ -91,18 +93,35 @@ static int coreopt_nth(const char *tag, int want, const char **out)
 	return 0;
 }
 
+/* The one opinion that is not a stored setting: a Nintendo DS game's language
+ * follows MENU > Language (src/dslang.h), which can change between two games,
+ * so it is made when asked and not read once with the rest. It goes first,
+ * so an entry of the same key in the database, sent after it, wins. */
+static const char *derived_coreopt(const char *tag)
+{
+	static char kv[48];
+
+	if (!tag || strcmp(tag, DSLANG_TAG)) return NULL;
+	snprintf(kv, sizeof kv, "%s=%s", DSLANG_KEY, dslang_value(i18n_lang()));
+	return kv;
+}
+
 int plat_coreopt_count(const char *tag)
 {
 	int n = 0;
 	if (ncoreopts < 0) coreopts_load();
 	while (coreopt_nth(tag, n, NULL)) n++;
-	return n;
+	return n + (derived_coreopt(tag) ? 1 : 0);
 }
 
 const char *plat_coreopt(const char *tag, int i)
 {
-	const char *kv = "";
+	const char *kv = "", *own = derived_coreopt(tag);
 	if (ncoreopts < 0) coreopts_load();
+	if (own) {
+		if (i == 0) return own;
+		i--;
+	}
 	coreopt_nth(tag, i, &kv);
 	return kv;
 }

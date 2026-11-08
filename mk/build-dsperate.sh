@@ -10,7 +10,7 @@
 # pins DSperate as a submodule, so one commit of the wrapper pins both. This is
 # the wrapper plorpOS ships on its GKD and RG Rotate builds
 # (thwonp/plorpOS mk/build-dsperate.sh, MIT), at the same commit, built the same
-# way, plus two patches of ours (below).
+# way, plus three patches of ours (below).
 #
 # PGO: DSperate commits a GCC profile with each release, made with GCC 13.3 on
 # Ubuntu 24.04 (its CI), and the wrapper's build.sh applies it. A profile only
@@ -56,6 +56,24 @@
 # (the layout without real-time: 16%; real-time without the layout: 18%).
 # Again only the wrapper's libretro.cpp changes, so the profile applies in full.
 #
+# The third, mk/patches/dsperate-lr-language.patch: the language a game sees.
+# A DS game reads it from the firmware's user settings, and a firmware.bin in
+# Bios/ carries the language of the console it was dumped from: the one on my
+# ROGUE card, which tools/from-rogue.sh copies to Bios/, is Spanish (language
+# 5), and Mario Kart DS came up in Spanish on my Pixel 2 whatever I or the
+# handheld speak. Nothing in the wrapper or in Diatom looked at it. The patch adds the core option
+# dsperate_language (restart): firmware, the default and the old behaviour, or
+# japanese, english, french, german, italian or spanish, which sets the
+# language field of the user settings in the run's own copy of the firmware
+# just before the game is started (DSperate's direct boot copies the settings
+# from it). The launcher sends it with every DS game (src/dslang.h): the
+# language MENU > Language chose where the DS has it, English where it does
+# not (Portuguese, Chinese). Only that one field of the copy in memory
+# changes: the dump on the card is not written (DSperate saves a changed
+# firmware only from its own frontends, to a sidecar file, and this wrapper
+# never does), and nothing of the game's save or of the other settings is
+# touched. Again only libretro.cpp changes, so the profile applies in full.
+#
 # The result is checked before it is installed: no unversioned undefined
 # symbol (it would not dlopen), and nothing newer than plastron's glibc 2.42
 # and libstdc++ 6.0.34 (GLIBCXX_3.4.34). It needs GLIBC_2.38 and GLIBCXX_3.4.30
@@ -71,7 +89,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=093d50fcbd10531273e0cc22a23c6644a26b9b71   # DSperate v3.0.5 (ddf2910), plorpOS's pin
-SHA=944b5d4c5ff3af79bffff9cc6e1f594ec4ccc1238b44f2264340be730ffd3f59
+SHA=90e82234e99aa17491ba79e21693b483984558bf94c2318379ec2f33fab78e8d
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 
@@ -85,6 +103,7 @@ git -C "$SRC" clean -qfdx
 git -C "$SRC/DSperate" clean -qfdx
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-frameskip.patch"
 git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-threads.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/dsperate-lr-language.patch"
 docker image inspect $IMAGE >/dev/null 2>&1 ||
 	docker build --platform $PLAT -q -t $IMAGE "$SRC" >/dev/null
 
@@ -112,5 +131,5 @@ if [ "$GOT" != "$SHA" ]; then
 fi
 mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
-echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout, untuned ARMv8.0"
+echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout + language, untuned ARMv8.0"
 echo "  sha256 $GOT"

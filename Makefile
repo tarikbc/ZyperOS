@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-dslang check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
@@ -257,6 +257,21 @@ build-native/battery-check: tools/battery-check.c src/battery_poll.c src/battery
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
 	      -o $@ tools/battery-check.c src/battery_poll.c
+
+# The Nintendo DS's language (src/dslang.h): every language MENU > Language has
+# maps to the DS's own or to English, the core's option and its values are the
+# patch's (mk/patches/dsperate-lr-language.patch), and the launcher sends it
+# first with every DS game and with no other. Plain C for the table; the
+# launcher itself, built for the host, for what it sends.
+check-dslang: build-native/dslang-check
+	@./build-native/dslang-check
+	@sh tools/dslang-check.sh
+
+build-native/dslang-check: tools/dslang-check.c src/dslang.c src/dslang.h src/i18n_ids.h \
+                           mk/patches/dsperate-lr-language.patch FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
+	      -o $@ tools/dslang-check.c src/dslang.c
 
 # The start with a battery too low to play (src/lowbatt.h): which start shows
 # the screen, its hold, POWER, the charger's moment, the fresh reading that

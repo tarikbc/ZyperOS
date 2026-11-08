@@ -117,6 +117,7 @@ something once broke in a way nothing noticed:
 | `check-logpack` | the logs pack: names and Bluetooth addresses masked, and a whole pack unpacked with the same tar and read back |
 | `check-clock` | Date & Time: each row moving only itself, the 12-hour and 24-hour words, the shelf's short clock, and the zone list west to east |
 | `check-battery` | a charger change reaches the shared battery cache within 250 ms at the shelf's poll rate |
+| `check-dslang` | the Nintendo DS's language: each language MENU > Language has maps to the DS's own or to English (Português (Brasil) and 简体中文 have none), the core's option and its values are the patch's, and the launcher sends it first with every DS game and with no other (builds the host launcher for the second half; skips without SDL2) |
 | `check-lowbatt` | the start with a battery too low to play: which start shows the screen, its hold, POWER, the charger's moment, and the reading that decides the power-off |
 | `check-heat` | "Getting hot": the 85 C trip, two readings in a row, the hysteresis under 80 C, five quiet minutes, the poll's clock |
 | `check-charging` | the charging screen: the charger's kind, its lines, the time to full through CC and CV, and its rules |
