@@ -1,0 +1,38 @@
+# The status corner's battery, MENU > Battery Icon > Time Left (src/main.c,
+# draw_corner_at): the time left written left of the mark. Short, because
+# the clock and the marks before it move left by its width; the numbers are
+# in cells (src/ui.h's tabular digits). English's "h" and "min" as the
+# charging screen writes them (charging.txt).
+
+[corner.time_min]
+note = The corner's time left, under an hour: %d is the minutes
+en = %d min
+zh-Hans = %d 分钟
+es = %d min
+pt-BR = %d min
+fr = %d min
+de = %d min
+ja = %d 分
+it = %d min
+
+[corner.time_h]
+note = The corner's time left, a whole number of hours: %d is the hours
+en = %d h
+zh-Hans = %d 小时
+es = %d h
+pt-BR = %d h
+fr = %d h
+de = %d h
+ja = %d 時間
+it = %d h
+
+[corner.time_h_min]
+note = The corner's time left in hours and minutes: the hours, then the minutes
+en = %d h %d min
+zh-Hans = %d 小时 %d 分钟
+es = %d h %d min
+pt-BR = %d h %d min
+fr = %d h %d min
+de = %d h %d min
+ja = %d 時間 %d 分
+it = %d h %d min

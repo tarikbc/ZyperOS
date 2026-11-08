@@ -1083,7 +1083,28 @@ it has priority for direct volume or brightness feedback.
   mark in the clock's font and tabular digits, in the mark's own color
   (**text-soft**, or **warning** when it is low), so the clock and the marks
   before it move left by its width *(2026-11-05: "show percentage or
-  just bars")*. Saved as `battery_icon` in the device's database.
+  just bars")*; **Time Left** writes the time in the same place the same
+  way, "3 h 25 min" *(2026-11-07)*. Left and Right go round the three, A
+  forward. Saved as `battery_icon` ("bars", "percentage" or "time") in the
+  device's database.
+  Off the cable the time is `src/battery_eta.h`'s: the gauge reads whole
+  percent, so it is read from how long a percent takes to fall, as an
+  exponential average over 10 minutes weighted by each fall's length, with
+  the part of a percent already used since the last fall counted (it counts
+  down with the clock) and a fall that is late slowing the rate as it waits.
+  It is the time to BATT_EMPTY_PCT, where the launcher saves and powers off,
+  not to 0%, and it is shown to the minute under 10, to 5 minutes under 10
+  hours and to the hour after, a number changing when it means something. It
+  starts after two falls (the first only marks where a percent began): a few
+  minutes after a start, longer at a light load. The cable, a gauge that
+  rises with no cable and more than a day clear it. On the cable it is the
+  charging screen's time to full (`src/charging.h`, CC then CV from the
+  gauge's current, to the Charge Limit when there is one), after its 30 s
+  settle. Wherever there is none to give - those first minutes, a charger
+  whose gauge cannot say (the Brick), held at the limit or full - the corner
+  writes the percentage, so it is never without a number. Up to
+  `STATUS_PCT_MAX` (160) units are kept for the text; the corner asks for a
+  frame each minute while it shows a time, as the clock does.
 
 The games title lives below the cover row (11.1), separate from the header.
 Status marks are cached in a small texture when their values change; the

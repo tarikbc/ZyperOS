@@ -177,7 +177,7 @@
   .shelf-foot { display: grid; justify-items: center; gap: 8px; margin-top: 18px; text-align: center; padding-inline: 16px; }
   .shelf-foot b { font: 600 24px/1.2 var(--font); }
   .rail { width: min(520px, 70vw); height: 6px; border-radius: 3px; background: var(--track); position: relative; }
-  .rail i { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / 8); border-radius: 3px; background: var(--accent-ink); transition: transform 160ms var(--ease); }
+  .rail i { position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% / 9); border-radius: 3px; background: var(--accent-ink); transition: transform 160ms var(--ease); }
   .shelf-ctl { display: none; gap: 14px; justify-content: center; margin-top: 18px; }
   .js .shelf-ctl { display: flex; }
   .step { width: 52px; height: 44px; border-radius: 14px; border: 0; background: var(--surface); box-shadow: inset 0 0 0 3px var(--edge); color: var(--text); font: 600 18px/1 var(--font); cursor: pointer; transition: transform 80ms var(--ease); }
@@ -320,10 +320,11 @@
     <figure class="shot" data-i="5" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:6"><img src="img/menu.png" width="1024" height="768" alt="The ZyperOS menu" decoding="async"></figure>
     <figure class="shot" data-i="6" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:5"><img src="img/scraper.png" width="1024" height="768" alt="MENU &gt; Scraper and the covers each source found" decoding="async"></figure>
     <figure class="shot" data-i="7" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:4"><img src="img/mp4.png" width="1024" height="768" alt="MP4&#x27;s shelf of albums" decoding="async"></figure>
+    <figure class="shot" data-i="8" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:3"><img src="img/battery.png" width="1024" height="768" alt="MENU &gt; Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery" decoding="async"></figure>
   </div>
   <div class="shelf-foot">
     <b data-cap aria-live="polite">Every system, in pixel art</b>
-    <span class="meta" data-count>2 / 8</span>
+    <span class="meta" data-count>2 / 9</span>
     <div class="rail"><i style="transform:translateX(100%)"></i></div>
   </div>
   <div class="shelf-ctl">
@@ -352,7 +353,7 @@
       <div><h3>MP4</h3><p>Music, audiobooks and videos on a shelf of their own covers. SELECT opens it from anywhere, even in a game, and X locks the screen.</p></div>
       <div><h3>Menu music</h3><p>Ten free 8-bit tracks behind the menus, never over a game. Your own in Roms/BGM play instead.</p></div>
       <div><h3>Wi-Fi File Transfer</h3><p>Move games, music and saves from any browser, behind a PIN. With no Wi-Fi around, the handheld makes its own network for your phone. It keeps going while you play, and shows the time left.</p></div>
-      <div><h3>Battery care</h3><p>A charge limit of 80, 85 or 90%, a charging screen while the handheld is off, and a warning before a low battery or heat gets in the way.</p></div>
+      <div><h3>Battery care</h3><p>A charge limit of 80, 85 or 90%, a charging screen while the handheld is off, and a warning before a low battery or heat gets in the way. The corner can show the time left, or the time to full on the cable, instead of the percentage.</p></div>
       <div><h3>USB that only charges</h3><p>Plug in a computer and the Pixel 2 asks first: charge only, or open USB File Transfer.</p></div>
       <div><h3>System Update</h3><p>Over Wi-Fi, only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.</p></div>
       <div><h3>Rumble and side lights</h3><p>Dreamcast, PlayStation and Game Boy Color rumble games shake the Pixel 2. Its four side lights show the battery charging and running low, the volume and brightness as you change them, a climb when files or covers finish, and a sparkle for an achievement. MENU &gt; Side Lights turns each on or off.</p></div>
@@ -603,7 +604,7 @@
 (() => {
   const shelf = document.querySelector(".shelf"), stage = shelf.querySelector(".stage");
   const shots = [...stage.querySelectorAll(".shot")];
-  const caps = ["Or the Gallery home", "Every system, in pixel art", "Your games, cover by cover", "A game's details, one button away", "RetroAchievements on the device", "The device's settings in one menu", "Box art from three sources", "Your albums, in MP4"];
+  const caps = ["Or the Gallery home", "Every system, in pixel art", "Your games, cover by cover", "A game's details, one button away", "RetroAchievements on the device", "The device's settings in one menu", "Box art from three sources", "Your albums, in MP4", "The battery, as time left"];
   const STEP = [0, .86, 1.52, 2.06, 2.5], SCALE = [1, .78, .62, .5, .4], DIM = [1, .75, .55, .35, 0];
   const cap = shelf.querySelector("[data-cap]"), count = shelf.querySelector("[data-count]");
   const rail = shelf.querySelector(".rail i"), steps = [...shelf.querySelectorAll("[data-step]")];

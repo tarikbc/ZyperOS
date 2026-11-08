@@ -111,9 +111,65 @@ for want in 24h 12h; do
 	fi
 done
 
+# MENU > Battery Icon > Time Left writes "9 h 55 min" where "100%" went: the
+# widest of it, in every language (Chinese's is the longest), with every mark
+# on and File Transfer's too, must still fit the room the corner keeps for it
+# (STATUS_PCT_MAX) and stay clear of the card, the title and the panels. The
+# launcher says CORNER: when the text is wider than its room.
+echo "the widest Time Left clear of the card, the title and every panel, in every language"
+WIDEST_TIME="00:00 24h wifi=3 bt batt=100 chg xfer=on eta=595 icon=time"
+for lang in en zh-Hans es pt-BR fr de ja it; do
+	for screen in systems games menu-last; do
+		case $screen in
+		systems)   extra="" ;;
+		games)     extra="--screen games --phase 3200" ;;
+		menu-last) extra="--menu About\ ZyperOS" ;;
+		esac
+		# shellcheck disable=SC2086
+		eval run --shot "$D/time-$lang-$screen.png" --theme light --lang $lang $extra \
+		     --status "\"$WIDEST_TIME\"" >"$D/one.log" 2>&1
+		st=$?
+		cat "$D/one.log" >>"$D/log"
+		if grep -q "CORNER:" "$D/one.log"; then
+			echo "  FAIL $lang $screen:"
+			grep "CORNER:" "$D/one.log" | sed 's/^ */    /'
+			fails=$((fails + 1))
+		elif [ "$st" -ne 0 ] || [ ! -s "$D/time-$lang-$screen.png" ]; then
+			echo "  FAIL $lang $screen: the shot failed, exit $st (see $D/log)"
+			fails=$((fails + 1))
+		fi
+	done
+done
+
+echo "MENU > Battery Icon goes round Bars, Percentage, Time Left and back, saved"
+# Right goes forward from Bars; each press is its own process through the
+# row's real handler, the setting read back from the database. Left goes back,
+# and from Bars round to Time Left.
+rm -f "$D"/userdata/*.db "$D"/userdata/*.sqlite 2>/dev/null
+step() {
+	key=$1
+	want=$2
+	run --shot "$D/battery-$want.png" --menu "Battery Icon" --press "$key" >"$D/one.log" 2>&1
+	cat "$D/one.log" >>"$D/log"
+	got=$(run --dump 2>/dev/null | awk '$1 == "battery_icon" { print $2 }')
+	if [ "$got" != "$want" ]; then
+		echo "  FAIL $key saved \"${got:-nothing}\", not $want"
+		fails=$((fails + 1))
+	fi
+}
+step right percentage
+step right time
+step right bars
+step left time
+step left percentage
+step left bars
+step left time
+step right bars
+
 if [ "$fails" -ne 0 ]; then
 	printf '\n%d FAILED\n' "$fails"
 	exit 1
 fi
 printf '\nok: the corner keeps clear of the card, the title and the panels in\n'
-printf 'the horizontal row and both themes, and Clock turns over and is saved\n'
+printf 'the horizontal row and both themes, Time Left fits in every language,\n'
+printf 'and Clock and Battery Icon turn over and are saved\n'

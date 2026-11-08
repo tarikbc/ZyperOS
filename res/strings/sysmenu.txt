@@ -323,6 +323,17 @@ de = Prozent
 ja = パーセント
 it = Percentuale
 
+[sysmenu.battery_time]
+note = Battery Icon's value: the time left written beside the mark ("3 h 20 min"), or the time to full on the cable
+en = Time Left
+zh-Hans = 剩余时间
+es = Tiempo restante
+pt-BR = Tempo restante
+fr = Temps restant
+de = Restzeit
+ja = 残り時間
+it = Tempo rimasto
+
 [sysmenu.appearance]
 note = A MENU row: Light, Dark or Auto
 en = Appearance

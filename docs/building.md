@@ -61,7 +61,7 @@ something once broke in a way nothing noticed:
 | | |
 |---|---|
 | `check-menus` | what each menu CONTAINS in a given state, with no renderer and no device |
-| `check-corner` | the widest status corner clear of the focused card in each direction, with a long title and every tall panel a grid step under it, both themes, as each shot checks its own frame; and MENU > Clock turns over and is saved (builds the host launcher; skips without SDL2) |
+| `check-corner` | the widest status corner clear of the focused card in each direction, with a long title and every tall panel a grid step under it, both themes, as each shot checks its own frame; the widest Time Left text in every language fits its room; and MENU > Clock and MENU > Battery Icon turn over and are saved (builds the host launcher; skips without SDL2) |
 | `check-status` | the shelf's status corner: the battery's warnings at 10% and 5% and none on the charger, the signal's steps and `wpa_cli signal_poll` read for them, and the marks drawn as the status lab drew them, probed in both themes (no SDL) |
 | `check-audioout` | where sound goes given a cable, a headset and a setting - all eight combinations |
 | `check-idle` | the Auto Off clock, including the charger case and the counter wrapping |
@@ -117,6 +117,7 @@ something once broke in a way nothing noticed:
 | `check-logpack` | the logs pack: names and Bluetooth addresses masked, and a whole pack unpacked with the same tar and read back |
 | `check-clock` | Date & Time: each row moving only itself, the 12-hour and 24-hour words, the shelf's short clock, and the zone list west to east |
 | `check-battery` | a charger change reaches the shared battery cache within 250 ms at the shelf's poll rate |
+| `check-battery-eta` | the time left on the battery: the estimate from how long a percent takes to fall, against a simulated gauge at several loads, across the clock's wrap, a change of load, a stall, the cable and a gauge that corrects itself; and the corner's rounding |
 | `check-lowbatt` | the start with a battery too low to play: which start shows the screen, its hold, POWER, the charger's moment, and the reading that decides the power-off |
 | `check-heat` | "Getting hot": the 85 C trip, two readings in a row, the hysteresis under 80 C, five quiet minutes, the poll's clock |
 | `check-charging` | the charging screen: the charger's kind, its lines, the time to full through CC and CV, and its rules |

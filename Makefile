@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-battery-eta check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
@@ -257,6 +257,18 @@ build-native/battery-check: tools/battery-check.c src/battery_poll.c src/battery
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
 	      -o $@ tools/battery-check.c src/battery_poll.c
+
+# The time left on the battery (src/battery_eta.h): the estimate from how long
+# a percent takes to fall, against a simulated gauge at several loads, across
+# the clock's wrap, through a change of load, a stall, the cable and a gauge
+# that corrects itself. Plain C, no device.
+check-battery-eta: build-native/battery-eta-check
+	@./build-native/battery-eta-check
+
+build-native/battery-eta-check: tools/battery-eta-check.c src/battery_eta.c src/battery_eta.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
+	      -o $@ tools/battery-eta-check.c src/battery_eta.c -lm
 
 # The start with a battery too low to play (src/lowbatt.h): which start shows
 # the screen, its hold, POWER, the charger's moment, the fresh reading that

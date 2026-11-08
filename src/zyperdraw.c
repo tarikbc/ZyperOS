@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "zyperdraw.h"
 
+#include "battery_eta.h"
 #include "battery_poll.h"
 #include "blur.h"
 #include "design.h"
@@ -312,17 +313,30 @@ void zyper_shadow_draw(SDL_Renderer *r, float cx, float cy, float h,
  * at five seconds; the cable is read every 200 ms, including while no frame
  * is drawn (idle_due -> on_charger). Only a changed reading asks for a frame.
  * redraw_now also holds the status corner's radio forks back for that frame. */
+static battery_poll g_battery;
+static batt_eta     g_eta;
+
 bool battery_now(int *pct, bool *charging)
 {
-	static battery_poll battery;
 	static bool was;
+	uint32_t now = plat_now_ms();
 
-	if (battery_poll_update(&battery, plat_now_ms(), plat_battery)) redraw_now();
-	if (was && !battery.charging) charge_full_end();
-	was = battery.charging;
-	if (pct) *pct = battery.pct;
-	if (charging) *charging = battery.charging;
-	return battery.valid;
+	if (battery_poll_update(&g_battery, now, plat_battery)) redraw_now();
+	if (was && !g_battery.charging) charge_full_end();
+	was = g_battery.charging;
+	/* Every reading goes to the time-left estimate, whatever draws or does
+	 * not: the falls it learns from happen with the screen as it is. It
+	 * compares one int and returns, until the percent changes. */
+	batt_eta_note(&g_eta, now, g_battery.valid ? g_battery.pct : -1, g_battery.charging);
+	if (pct) *pct = g_battery.pct;
+	if (charging) *charging = g_battery.charging;
+	return g_battery.valid;
+}
+
+int battery_minutes_left(void)
+{
+	battery_now(NULL, NULL);
+	return batt_eta_minutes(&g_eta, plat_now_ms(), BATT_EMPTY_PCT);
 }
 
 /* Too low to go on, cached as battery_level is. Asked by every screen through
