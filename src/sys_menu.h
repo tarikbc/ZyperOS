@@ -253,7 +253,7 @@ typedef struct {
 	/* System Order, under Home Screen: "A to Z" (default, NULL reads it) or
 	 * "Release Date", systems.cfg's order (2026-11-06) */
 	const char *order;
-	const char *battery;    /* the corner's battery: Bars (default) or Percentage */
+	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
 	int         charge_limit;   /* percent, 0 for Off */
 	/* Side Lights: side_lights_value's, "All on", "3 on" or "Off". NULL
@@ -309,10 +309,10 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out);
 void sys_menu_auto_off_label(int seconds, char *out, size_t n);
 
 /* System Order's value, "A to Z" or "Release Date", and Battery Icon's,
- * "Bars" or "Percentage", in the language that is on: what sys_ui's order
- * and battery take */
+ * "Bars" (0), "Percentage" (1) or "Time Left" (2), in the language that is
+ * on: what sys_ui's order and battery take */
 const char *sys_menu_order_name(bool release);
-const char *sys_menu_battery_name(bool percent);
+const char *sys_menu_battery_name(int mode);
 
 /* ---- MENU > Scraper (DESIGN.md 11.19) -----------------------------------
  *

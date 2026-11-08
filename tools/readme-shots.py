@@ -86,7 +86,13 @@ SHOTS={
     'tour-language':('demo','PS1',['--tour','lang','3000','--tour-pick','1']),
     'menu-pt':('demo','PS1',['--lang','pt-BR','--menu','Language']),
     'menu-ja':('demo','PS1',['--lang','ja','--menu','Search Games']),
+    # MENU > Battery Icon on Time Left: the corner writes the time left
+    # (STATUS below), as 3 h 25 min beside the battery
+    'battery':('demo','PS1',['--menu','Battery Icon']),
 }
+# A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
+# what it shows: icon= is the setting for this shot, eta= the minutes left
+STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time'}
 # The README's light-and-dark section: these, in both themes
 DARK=['systems','menu']
 # A shot whose screen draws its own clock, outside the status corner, so the
@@ -364,7 +370,7 @@ def main():
                 (card/'ZyperOS/.last').write_text(tag+'\n'+focus+'\n')
                 target=dest/(name+'.png')
                 # The tutorial draws no status corner, so it has no --status
-                status=[] if name.startswith('tour-') else ['--status','10:08 24h wifi=off batt=82']
+                status=[] if name.startswith('tour-') else ['--status',STATUS.get(name,'10:08 24h wifi=off batt=82')]
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
                          '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]

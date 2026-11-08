@@ -39,6 +39,9 @@
     <td align="center"><img src="res/readme/nowplaying.png" width="240" alt="MP4's Now Playing"><br><sub>Now Playing, on SELECT from anywhere</sub></td>
     <td align="center"><img src="res/readme/scraper.png" width="240" alt="MENU > Scraper: Fetch Missing Art, Video Snaps, and the covers ScreenScraper, libretro and SteamGridDB found"><br><sub>Box art from three sources</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="res/readme/battery.png" width="240" alt="MENU > Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery"><br><sub>The battery, as time left</sub></td>
+  </tr>
 </table>
 
 </div>
@@ -81,7 +84,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Mono audio,** for anyone who hears with one ear: Audio Channels plays games and MP4 in mono, or in mono in just the left or right ear on headphones.
 - **MP4, a media player for music, audiobooks and videos:** your albums, books and films on a shelf of their own covers; every book and every video picks up where you left it, and **Shuffle All** plays every song on the card in a random order. SELECT opens MP4 from anywhere, even the in-game menu, and it keeps playing when you close it. While it plays, the game is silent. **X** locks it: the screen goes dark and every button but volume stops working, POWER included, until you hold **SELECT + START** for two seconds. A volume press lights the screen just long enough to show the volume bar, and a video stays in sight.
 - **Menu music:** ten free 8-bit tracks play behind the shelf and the menus, never over a game, and **MENU > Menu Music** shuffles them, plays one over and over or turns them off. Put your own MP3 or Ogg files in `Roms/BGM` and those play instead. On the shelf, **L2** and **R2** go to the song before or the next, and Zyper pops up with each new song's name, read from its tags. While MP4 plays behind the shelf, L2 and R2 skip its tracks (or a book's chapters) instead.
-- **The status corner:** the clock, Wi-Fi and the battery at the top of the home screen. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** bars or a percentage.
+- **The status corner:** the clock, Wi-Fi and the battery at the top of the home screen. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** shows the battery as bars alone, with its percentage, or with the time left. Time Left counts down from how fast the battery has been falling, to where ZyperOS saves and powers off, and shows the percentage until it has seen a few minutes of use after a start. On the cable it shows the time to full, or to the Charge Limit.
 - **The Pixel 2's side lights** show the battery charging and running low, the volume or brightness as you change it, a climb when files or covers finish, and a sparkle for an achievement; **MENU > Side Lights** turns each on or off. On the charger, the shelf's screen goes dark after the Auto Off time, and any button lights it again.
 - **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%).
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.

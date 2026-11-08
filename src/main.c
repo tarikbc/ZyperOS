@@ -13,6 +13,7 @@
  */
 #include "atomic.h"
 #include "about.h"
+#include "battery_eta.h"
 #include "battery_poll.h"
 #include "bgm.h"
 #include "bgm_menu.h"
@@ -1931,17 +1932,27 @@ static void clock24_save(bool on)
 }
 
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
- * default) or with its charge written beside it ("percentage"), my ask
- * of 2026-11-05. Read with the clock's setting; draw_corner_at writes the
- * number. */
-static bool g_batt_pct;
+ * default), with its charge written beside it ("percentage"), my ask of
+ * 2026-11-05, or with the time left written there ("time"), my ask of
+ * 2026-11-07. Read with the clock's setting; draw_corner_at writes the text.
+ * The time left is the estimate in src/battery_eta.h off the cable and the
+ * time to full (or to the charge limit) on it; where there is none yet - the
+ * first minutes after the start, a cable just plugged in, a charger whose
+ * gauge cannot say - it writes the percentage, so the corner is never empty
+ * of a number. */
+enum { BATT_BARS, BATT_PCT, BATT_TIME, BATT_MODES };
+static const char *const BATT_IDS[BATT_MODES] = { "bars", "percentage", "time" };
+static int g_batt_mode;
 
 static void batt_icon_load(void)
 {
 	char v[16];
+	int k;
 
 	db_get_str(db_dev(), "battery_icon", v, sizeof v, "bars");
-	g_batt_pct = !strcmp(v, "percentage");
+	g_batt_mode = BATT_BARS;
+	for (k = 0; k < BATT_MODES; k++)
+		if (!strcmp(v, BATT_IDS[k])) g_batt_mode = k;
 }
 
 /* --status, for a shot: what the corner shows in place of the device's
@@ -1956,8 +1967,10 @@ static struct {
 	bool         set;
 	int          minutes;
 	int          h24;          /* -1 for the saved setting */
+	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          icon;         /* BATT_BARS.., -1 for the saved setting */
 	status_marks m;
-} shot_st = { .minutes = -1, .h24 = -1 };
+} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .icon = -1 };
 
 /* Where the corner (its clock's text box and its marks), the clock alone, the
  * last panel and the games title's capitals were drawn this frame, for a
@@ -1968,12 +1981,16 @@ static SDL_Rect g_corner_box, g_clock_box, g_menu_panel, g_title_caps;
  * screen draws in it beside the rows (About's photo of Zyper) */
 static SDL_Rect g_menu_body;
 static int      g_marks_w;   /* the marks' width as status_marks_width gave it */
+/* The battery's number or time as wide as it wrote, before STATUS_PCT_MAX
+ * held it to its room: a shot checks it fits (shot_corner_clear) */
+static int      g_pct_natural;
 
 /* The screen was cleared: nothing recorded above is on it any more. */
 static void drawn_forget(void)
 {
 	g_corner_box = g_clock_box = g_menu_panel = g_title_caps = (SDL_Rect){ 0 };
 	g_marks_w = 0;
+	g_pct_natural = 0;
 }
 
 static bool status_same(const status_marks *a, const status_marks *b)
@@ -1991,8 +2008,10 @@ static bool status_same(const status_marks *a, const status_marks *b)
  * One for the launcher, as the volume bar's is. */
 static void status_blit(SDL_Renderer *r, const status_marks *m, int theme, int dx, int dy)
 {
-	/* 120 for the three marks and 96 for the battery's number's room */
-	static uint32_t      px[(STATUS_PAD * 2 + 120 + 96) * (STATUS_PAD * 2 + STATUS_ROW)];
+	/* 156 for all four marks (File Transfer's too) and the room of the
+	 * battery's number or time, and the gap between them */
+	static uint32_t      px[(STATUS_PAD * 2 + 156 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
+	                        (STATUS_PAD * 2 + STATUS_ROW)];
 	static SDL_Texture  *tex;
 	static SDL_Renderer *tex_for;
 	static status_marks  painted;
@@ -2090,6 +2109,64 @@ static bool charge_held(void)
 	return held;
 }
 
+/* MENU > Battery Icon > Time Left, on the cable: the minutes to full, or to
+ * the charge limit when one is set, from the gauge's current and charge
+ * (src/charging.h: the charging screen's estimate, the same numbers). Read
+ * every 2 s while the cable is in; -1 where the charger's gauge cannot say,
+ * while the current settles (CH_SETTLE_MS) and when it is held at the limit
+ * or full, and the corner writes the percentage. */
+static int charge_minutes(bool charging)
+{
+	static unsigned at;
+	static bool primed;
+	static ch_eta eta;
+	static int minutes = -1;
+	unsigned now = plat_now_ms();
+
+	if (!charging) {
+		/* Out of the cable: the next one starts from nothing */
+		primed = false;
+		eta = (ch_eta){ 0 };
+		minutes = -1;
+		return -1;
+	}
+	if (!primed || now - at >= 2000) {
+		ch_reading r;
+
+		primed = true;
+		at = now;
+		minutes = -1;
+		if (plat_charge_read(&r)) {
+			r.limit = charge_limit_now();
+			ch_eta_note(&eta, now, &r);
+			minutes = r.held ? -1 : ch_eta_minutes(&eta, now, &r);
+			if (minutes == 0) minutes = -1;
+		}
+	}
+	return minutes;
+}
+
+/* The minutes Time Left shows in the corner, or -1: a shot's own (--status
+ * eta=) or what the cable or the discharge says */
+static int corner_minutes(const status_marks *m)
+{
+	if (m->batt < 0) return -1;
+	if (shot_st.set) return shot_st.eta;
+	return m->charging ? charge_minutes(true) : battery_minutes_left();
+}
+
+/* "45 min", "3 h", "3 h 20 min": to the minute under 10, to 5 under 10
+ * hours and to the hour after (batt_eta_round), so a number changes when it
+ * means something */
+static void corner_time_text(int minutes, char *out, size_t n)
+{
+	int r = batt_eta_round(minutes);
+
+	if (r < 60)            snprintf(out, n, T(S_CORNER_TIME_MIN), r);
+	else if (r % 60 == 0)  snprintf(out, n, T(S_CORNER_TIME_H), r / 60);
+	else                   snprintf(out, n, T(S_CORNER_TIME_H_MIN), r / 60, r % 60);
+}
+
 /* File Transfer behind the shelf, for the corner's mark (xs_*) */
 static void xs_mark(status_marks *m);
 
@@ -2117,6 +2194,9 @@ static void status_gather(status_marks *m, bool moving)
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
+	/* The time to full forgets the cable the moment it is out, whatever the
+	 * setting, so a cable plugged in later starts its estimate afresh */
+	if (!chg) charge_minutes(false);
 	xs_mark(m);
 }
 
@@ -2175,7 +2255,7 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 {
 	status_marks m;
 	struct timespec ts;
-	char clk[16], pct[8];
+	char clk[16], pct[24];
 	int right = compact ? 960 : STATUS_RIGHT, dy = compact ? 28 : 0;
 	int x = right, mw;
 	unsigned wait;
@@ -2185,13 +2265,27 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 	status_gather(&m, moving);
 	wait = status_blink(&m);
 	/* MENU > Battery Icon > Percentage: room left of the mark for "82%", in
-	 * the clock's font and digits in cells, so 9% to 10% moves only itself */
-	if (g_batt_pct && m.batt >= 0) {
+	 * the clock's font and digits in cells, so 9% to 10% moves only itself.
+	 * Time Left writes "3 h 20 min" there when it has one, else the same
+	 * number, and asks for a frame every minute while it does, as the clock
+	 * does, so the time counts down with it. */
+	if (g_batt_mode != BATT_BARS && m.batt >= 0) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
+		int left = g_batt_mode == BATT_TIME ? corner_minutes(&m) : -1;
 
-		snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
-		m.pct_w = ui_text_tabular_width(f, pct);
-		if (m.pct_w > 96) m.pct_w = 96;
+		if (left > 0) {
+			unsigned minute = 60000;
+
+			corner_time_text(left, pct, sizeof pct);
+			redraw_at(plat_now_ms() + minute);
+			if (minute < wait) wait = minute;
+		} else {
+			snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
+		}
+		m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
+		if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+	} else {
+		g_pct_natural = 0;
 	}
 	status_blit(r, &m, theme, right - STATUS_RIGHT, dy);
 	if (m.pct_w > 0) {
@@ -5581,7 +5675,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.appearance = appearance_name(theme_appearance());
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
-		u.battery = g_batt_pct ? T(S_PANEL_BATTERY_PERCENTAGE) : T(S_PANEL_BATTERY_BARS);
+		u.battery = g_batt_mode == BATT_TIME ? T(S_PANEL_BATTERY_TIME)
+		          : g_batt_mode == BATT_PCT ? T(S_PANEL_BATTERY_PERCENTAGE) : T(S_PANEL_BATTERY_BARS);
 		u.ui_sounds  = uisound_setting_name(uisound_setting());
 		u.menu_music = bgm_menu_value(bgm_on(), bgm_count());
 		u.auto_off  = a->auto_off;
@@ -11389,10 +11484,11 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		clock24_save(!g_clock24);
 		return MENU_CHANGED;
 	}
-	/* Bars or Percentage, two positions turned over the same way */
+	/* Bars, Percentage or Time Left: three positions round, as Charge Limit
+	 * goes, Right and A forward and Left back, saved as its word */
 	if (sel == PM_BATTERY && (d || key == IN_ACCEPT)) {
-		g_batt_pct = !g_batt_pct;
-		db_set_str(db_dev(), "battery_icon", g_batt_pct ? "percentage" : "bars");
+		g_batt_mode = (g_batt_mode + (d < 0 ? BATT_MODES - 1 : 1)) % BATT_MODES;
+		db_set_str(db_dev(), "battery_icon", BATT_IDS[g_batt_mode]);
 		redraw_now();
 		return MENU_CHANGED;
 	}
@@ -15805,6 +15901,18 @@ static bool shot_status_parse(const char *spec)
 		/* on the cable, held at the charge limit: the plug */
 		else if (!strcmp(w, "held")) shot_st.m.charging = shot_st.m.held = true;
 		else if (!strcmp(w, "blinkoff")) shot_st.m.blink_off = true;
+		/* what MENU > Battery Icon > Time Left writes: eta=200 is 3 h 20 min,
+		 * on the cable the time to full; without it, the percentage */
+		else if (!strncmp(w, "eta=", 4) && w[4] >= '0' && w[4] <= '9') shot_st.eta = atoi(w + 4);
+		/* MENU > Battery Icon for this shot, not the saved one: icon=bars,
+		 * icon=percentage or icon=time */
+		else if (!strncmp(w, "icon=", 5)) {
+			int k;
+
+			for (k = 0; k < BATT_MODES && strcmp(w + 5, BATT_IDS[k]); k++) ;
+			if (k == BATT_MODES) return false;
+			shot_st.icon = k;
+		}
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
@@ -16095,6 +16203,15 @@ static const char *shot_corner_clear(app *a)
 	if (g_clock_box.w && !g_clock_left && g_clock_box.x + g_clock_box.w != clock_right) {
 		snprintf(why, sizeof why, "the clock ends at x %d, not at %d, %d from its marks",
 		         g_clock_box.x + g_clock_box.w, clock_right, STATUS_CLOCK_GAP);
+		return why;
+	}
+#ifdef I18N_PSEUDO
+	/* The pseudo-locale is 40% longer on purpose, and meant to overflow */
+	if (i18n_lang() != LANG_PSEUDO)
+#endif
+	if (g_pct_natural > STATUS_PCT_MAX) {
+		snprintf(why, sizeof why, "the battery's text is %d units wide, over the %d "
+		         "its room holds: it would run into the marks", g_pct_natural, STATUS_PCT_MAX);
 		return why;
 	}
 	if (a->sys.count > 0 && a->screen == SCREEN_SYSTEMS) {
@@ -17192,7 +17309,9 @@ int main(int argc, char *argv[])
 		 * host with no radio and no battery. Words, in any order:
 		 * H:MM (the time of day; none is a clock never set), 24h or 12h,
 		 * wifi=off|idle|1|2|3, bt, batt=PCT, chg, and blinkoff for a
-		 * critical battery caught in its second off. */
+		 * critical battery caught in its second off, eta=MIN for what
+		 * MENU > Battery Icon > Time Left writes, icon=bars|percentage|time
+		 * for the setting itself. */
 		else if (!strcmp(argv[i], "--status") && i + 1 < argc) {
 			if (!shot_status_parse(argv[++i])) {
 				fprintf(stderr, "--status: cannot read \"%s\"\n", argv[i]);
@@ -18069,6 +18188,7 @@ int main(int argc, char *argv[])
 	clock24_load();
 	batt_icon_load();
 	if (shot_path && shot_st.h24 >= 0) g_clock24 = shot_st.h24;
+	if (shot_path && shot_st.icon >= 0) g_batt_mode = shot_st.icon;
 	a.sys_cursor = 0;
 	db_get_str(db_lib(), "startup_system", startup, sizeof startup, "");
 	if (startup[0])

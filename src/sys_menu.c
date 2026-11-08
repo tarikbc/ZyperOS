@@ -22,9 +22,10 @@ const char *sys_menu_order_name(bool release)
 	return T(release ? S_SYSMENU_ORDER_RELEASE : S_SYSMENU_ORDER_AZ);
 }
 
-const char *sys_menu_battery_name(bool percent)
+const char *sys_menu_battery_name(int mode)
 {
-	return T(percent ? S_SYSMENU_BATTERY_PERCENT : S_SYSMENU_BATTERY_BARS);
+	return T(mode == 2 ? S_SYSMENU_BATTERY_TIME : mode == 1 ? S_SYSMENU_BATTERY_PERCENT
+	                                                       : S_SYSMENU_BATTERY_BARS);
 }
 
 /* Three rows say the same thing when the radio is down, and they say it in
@@ -474,7 +475,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ORDER] = (menu_row){ T(S_SYSMENU_SYSTEM_ORDER), u->order ? u->order : sys_menu_order_name(false), true };
 	/* The status corner's battery: the mark alone, or its charge written
 	 * beside it (2026-11-05). On every device: both have a battery. */
-	full[PM_BATTERY] = (menu_row){ T(S_SYSMENU_BATTERY_ICON), u->battery ? u->battery : sys_menu_battery_name(false), true };
+	full[PM_BATTERY] = (menu_row){ T(S_SYSMENU_BATTERY_ICON), u->battery ? u->battery : sys_menu_battery_name(0), true };
 	/* Appearance applies on every device. */
 	full[PM_APPEARANCE]   = (menu_row){ T(S_SYSMENU_APPEARANCE),
 	                                   u->appearance ? u->appearance : T(S_THEME_LIGHT), true };

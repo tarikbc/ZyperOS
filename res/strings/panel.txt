@@ -45,6 +45,17 @@ de = Prozent
 ja = パーセント
 it = Percentuale
 
+[panel.battery_time]
+note = MENU > Battery Icon's value: the time left written beside the mark ("3 h 20 min"), the time to full on the cable. A named choice.
+en = Time Left
+zh-Hans = 剩余时间
+es = Tiempo restante
+pt-BR = Tempo restante
+fr = Temps restant
+de = Restzeit
+ja = 残り時間
+it = Tempo rimasto
+
 [panel.side_lights]
 note = The heading of MENU > Side Lights, the lights on the handheld's sides.
 en = Side Lights

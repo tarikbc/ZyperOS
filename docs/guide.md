@@ -688,8 +688,15 @@ Appearance selects Light, Dark or Auto. Console sprites retain their source
 colors in both themes. Only the focused system animates. The top bar shows the
 clock at the left, a background song when one is playing or paused, and Wi-Fi
 and the battery at the right. A long song title shortens before the status
-marks. MENU > Battery Icon shows the battery as its mark alone (Bars) or with
-its charge beside it (Percentage).
+marks. MENU > Battery Icon shows the battery as its mark alone (Bars), with
+its charge beside it (Percentage) or with the time left beside it (Time Left).
+Time Left reads how long each percent has taken to fall, averaged over about
+ten minutes, and counts to where ZyperOS saves and powers off (2%), not to 0%.
+It shows the percentage until two falls have been seen, a few minutes after a
+start or after the cable comes out, and it never shows more than a day. On the
+cable it shows the time to full, or to the Charge Limit, from the gauge's
+current as the charging screen does, and the percentage while that settles or
+where the charger's gauge cannot say.
 
 The games page uses a horizontal cover row. The focused cover is larger than its
 neighbors. Its full scraped title, play time and achievement count appear below.

@@ -27,7 +27,7 @@ static const db_default device_defaults[] = {
 	{ "audioout",   "auto" },  /* auto | speaker - see src/audioout.h */
 	{ "channels",   "stereo" },/* stereo | mono | left | right - ditto */
 	{ "home",       "spotlight" }, /* home layout, independent of Appearance */
-	{ "battery_icon", "bars" },  /* bars | percentage: the corner's battery */
+	{ "battery_icon", "bars" },  /* bars | percentage | time: the corner's battery */
 	{ "autooff",    "120" },   /* seconds without input, 0 is off */
 	{ "wifi",       "0"  },    /* what THIS device was last doing, not the */
 	{ "bluetooth",  "0"  },    /* shipped default - seeding merges the two */
