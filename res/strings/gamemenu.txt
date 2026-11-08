@@ -133,7 +133,7 @@ es = Borrado. Se liberaron %s.
 pt-BR = Apagado. %s liberados.
 fr = Supprimé. %s libérés.
 de = Gelöscht. %s freigegeben.
-ja = 削除しました。%s を解放しました。
+ja = 削除済み。%s を解放しました。
 it = Eliminato. %s liberati.
 
 [gamemenu.delete_partly]

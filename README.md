@@ -73,6 +73,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own.
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
+- **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
 - **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
@@ -118,6 +119,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **PortMaster** | Yes, you add PortMaster | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
+| **Storage by part and by game** | Yes, with recommendations | — | — | — | — | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
 | **Charge limit** | 80, 85 or 90% | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
@@ -436,6 +438,26 @@ Covers go over USB or Wi-Fi File Transfer too: drag a console's `.media` folder 
 Don't like a cover? Press X on the game and choose **Replace Box Art**. It looks again, and if nothing turns up, you keep the one you had.
 
 With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game's video snap with its cover. Rest on a game for three seconds and its cover turns into the snap. They take room, a megabyte or three a game: the page shows how much for each console, turns each one on or off, and deletes them all. Their sound is muted to start.
+
+</details>
+
+<details>
+<summary><b>What fills my card?</b></summary>
+
+**MENU > Storage**, just above System Update. The bar shows the card by part: games, saves and save states, art (covers and video snaps), media (music, videos, audiobooks), ZyperOS itself, and the rest. Under it, every system and folder by size; A on a system opens its page, with its games largest first. A on a game there asks Delete Game's question. The first time, Zyper measures the card while you wait; after that the page opens at once and updates itself.
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/storage.png" width="320" alt="MENU > Storage: 120.5 GB used and 7.4 GB free of 128 GB, a bar by part, two recommendations, then PlayStation, Videos and Sega CD by size"><br><sub>The card by part, then by size</sub></td>
+    <td align="center"><img src="res/readme/storage-system.png" width="320" alt="PlayStation's page: 3.8 GB in six games, its bar of games, saves and art, Delete Video Snaps, then its games largest first"><br><sub>A system's games, largest first</sub></td>
+  </tr>
+</table>
+
+</div>
+
+**Unused Art** deletes the covers and video snaps of games that are no longer on the card; a fetch in **MENU > Scraper** can bring them back. **Old Save States** deletes the save states of games none of whose states was written in a year and that you have not played in one. Your saves stay. Each asks first, with the room it gives back, and the cursor on Cancel.
 
 </details>
 

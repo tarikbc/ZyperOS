@@ -30,6 +30,9 @@ typedef struct {
 	ds_rgb favorite;
 	ds_rgb warning;
 	ds_rgb ink;
+	ds_rgb store_games;
+	ds_rgb store_saves;
+	ds_rgb store_art;
 	uint8_t scrim_menu;
 	uint8_t scrim_game;
 	uint8_t bar_shadow;   /* the bar's shadow, ink opacity 0-255 */
@@ -54,6 +57,9 @@ static const ds_theme DS_THEME[DS_THEMES] = {
 	  { 194,  85, 122 },   /* favorite */
 	  { 178,  63,  40 },   /* warning */
 	  {  17,  19,  16 },   /* ink */
+	  {  44, 100, 196 },   /* store-games */
+	  { 122,  79, 196 },   /* store-saves */
+	  {  14, 138, 134 },   /* store-art */
 	  71, 186, 46 },
 	{ "Salt & Pepper",
 	  {  17,  19,  16 },   /* ground */
@@ -71,6 +77,9 @@ static const ds_theme DS_THEME[DS_THEMES] = {
 	  { 222, 146, 158 },   /* favorite */
 	  { 224, 112,  90 },   /* warning */
 	  {  17,  19,  16 },   /* ink */
+	  { 107, 158, 245 },   /* store-games */
+	  { 174, 142, 242 },   /* store-saves */
+	  {  79, 200, 192 },   /* store-art */
 	  120, 186, 102 },
 };
 

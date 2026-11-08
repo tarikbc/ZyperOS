@@ -1,0 +1,385 @@
+# MENU > Storage: how the card is used, part by part (src/storage.h, the
+# page src/storage_page.c, DESIGN.md 11.32).
+
+[storage.title]
+note = The MENU row and the page's heading: how the card's room is used, as a phone's Settings names it. tight
+en = Storage
+zh-Hans = 存储空间
+es = Almacenamiento
+pt-BR = Armazenamento
+fr = Stockage
+de = Speicher
+ja = ストレージ
+it = Archiviazione
+
+[storage.free]
+note = The MENU row's value, and the page's top right: the room left on the card; %s is a size ("7.4 GB"). Lowercase, as a status value. tight
+en = %s free
+zh-Hans = 可用 %s
+es = %s libres
+pt-BR = %s livres
+fr = %s libres
+de = %s frei
+ja = 空き %s
+it = %s liberi
+
+[storage.used]
+note = The page's top left: the room the card has used; %s is a size, drawn larger than the words ("120.6 GB used").
+en = %s used
+zh-Hans = 已用 %s
+es = %s usados
+pt-BR = %s usados
+fr = %s utilisés
+de = %s belegt
+ja = %s 使用済み
+it = %s usati
+
+[storage.cat_games]
+note = The bar's legend: the games themselves (one word if it can be). tight
+en = Games
+zh-Hans = 游戏
+es = Juegos
+pt-BR = Jogos
+fr = Jeux
+de = Spiele
+ja = ゲーム
+it = Giochi
+
+[storage.cat_saves]
+note = The bar's legend: saves and save states together (the glossary's saves). tight
+en = Saves
+zh-Hans = 存档
+es = Partidas
+pt-BR = Saves
+fr = Sauvegardes
+de = Spielstände
+ja = セーブ
+it = Salvataggi
+
+[storage.cat_art]
+note = The bar's legend: the games' covers and video snaps together, the pictures and the short videos. tight
+en = Art
+zh-Hans = 封面与预览
+es = Arte
+pt-BR = Arte
+fr = Visuels
+de = Grafiken
+ja = アート
+it = Grafica
+
+[storage.cat_media]
+note = The bar's legend: music, videos and audiobooks together (what MP4 plays). tight
+en = Media
+zh-Hans = 媒体
+es = Multimedia
+pt-BR = Mídia
+fr = Médias
+de = Medien
+ja = メディア
+it = Media
+
+[storage.cat_zyperos]
+note = The bar's legend and a row: the system itself. A product name, never translated. tight
+en = ZyperOS
+zh-Hans = ZyperOS
+es = ZyperOS
+pt-BR = ZyperOS
+fr = ZyperOS
+de = ZyperOS
+ja = ZyperOS
+it = ZyperOS
+
+[storage.cat_other]
+note = The bar's legend and the last row: everything the other parts do not name. tight
+en = Other
+zh-Hans = 其他
+es = Otros
+pt-BR = Outros
+fr = Autres
+de = Sonstiges
+ja = その他
+it = Altro
+
+[storage.videos]
+note = A row: the card's Videos folder (films). tight
+en = Videos
+zh-Hans = 视频
+es = Videos
+pt-BR = Vídeos
+fr = Vidéos
+de = Videos
+ja = ビデオ
+it = Video
+
+[storage.music]
+note = A row: the card's Music folder. tight
+en = Music
+zh-Hans = 音乐
+es = Música
+pt-BR = Música
+fr = Musique
+de = Musik
+ja = ミュージック
+it = Musica
+
+[storage.books]
+note = A row: the card's Audiobooks folder. tight
+en = Audiobooks
+zh-Hans = 有声书
+es = Audiolibros
+pt-BR = Audiolivros
+fr = Livres audio
+de = Hörbücher
+ja = オーディオブック
+it = Audiolibri
+
+[storage.bios]
+note = A row: the card's Bios folder, the firmware files emulators read. The folder's name, never translated. tight
+en = BIOS
+zh-Hans = BIOS
+es = BIOS
+pt-BR = BIOS
+fr = BIOS
+de = BIOS
+ja = BIOS
+it = BIOS
+
+[storage.unused_art]
+note = A recommendation's row: the covers and video snaps of games that are no longer on the card, which can be deleted. tight
+en = Unused Art
+zh-Hans = 闲置的封面与预览
+es = Arte sin usar
+pt-BR = Arte sem uso
+fr = Visuels inutilisés
+de = Ungenutzte Grafiken
+ja = 使われていないアート
+it = Grafica inutilizzata
+
+[storage.old_states]
+note = A recommendation's row: save states of games not played for a year, which can be deleted (the glossary's save states). tight
+en = Old Save States
+zh-Hans = 旧的即时存档
+es = Estados antiguos
+pt-BR = Save states antigos
+fr = Anciens états
+de = Alte Speicherstände
+ja = 古いステートセーブ
+it = Stati salvati vecchi
+
+[storage.unused_caption]
+note = The line under the list for Unused Art: what it is. A sentence, at most two lines.
+en = Covers and video snaps of games no longer on the card.
+zh-Hans = 已不在存储卡上的游戏的封面和视频预览。
+es = Carátulas y avances en video de juegos que ya no están en la tarjeta.
+pt-BR = Capas e prévias em vídeo de jogos que não estão mais no cartão.
+fr = Jaquettes et aperçus vidéo de jeux qui ne sont plus sur la carte.
+de = Cover und Videovorschauen von Spielen, die nicht mehr auf der Karte sind.
+ja = カードにもうないゲームのパッケージ画像と動画プレビュー。
+it = Copertine e anteprime video di giochi non più sulla scheda.
+
+[storage.old_caption]
+note = The line under the list for Old Save States: %d is how many games' states. Saves (in-game save files) are never deleted, and it says so.
+en.one = States of %d game not played for a year. Saves stay.
+en.other = States of %d games not played for a year. Saves stay.
+zh-Hans = %d 款一年未玩游戏的即时存档。游戏存档会保留。
+es.one = Estados guardados de %d juego sin jugar en un año. Las partidas se quedan.
+es.other = Estados guardados de %d juegos sin jugar en un año. Las partidas se quedan.
+pt-BR.one = Save states de %d jogo não jogado há um ano. Os saves ficam.
+pt-BR.other = Save states de %d jogos não jogados há um ano. Os saves ficam.
+fr.one = Sauvegardes d'état de %d jeu non joué depuis un an. Les sauvegardes restent.
+fr.other = Sauvegardes d'état de %d jeux non joués depuis un an. Les sauvegardes restent.
+de.one = Speicherstände von %d Spiel, ein Jahr nicht gespielt. Spielstände bleiben.
+de.other = Speicherstände von %d Spielen, ein Jahr nicht gespielt. Spielstände bleiben.
+ja = 1 年遊んでいない %d 本のゲームのステートセーブ。セーブデータは残ります。
+it.one = Stati salvati di %d gioco non giocato da un anno. I salvataggi restano.
+it.other = Stati salvati di %d giochi non giocati da un anno. I salvataggi restano.
+
+[storage.unused_ask]
+note = The yes/no question for Unused Art; %s is the room it gives back ("1.2 GB"). A fetch is MENU > Scraper's, which can get them again.
+en = Delete the covers and video snaps of games no longer on the card? %s. A fetch can bring them back.
+zh-Hans = 要删除已不在存储卡上的游戏的封面和视频预览吗？共 %s。重新抓取即可找回。
+es = ¿Borrar las carátulas y avances en video de juegos que ya no están en la tarjeta? %s. Puedes volver a descargarlos.
+pt-BR = Apagar as capas e prévias em vídeo de jogos que não estão mais no cartão? %s. Dá para baixá-las de novo.
+fr = Supprimer les jaquettes et aperçus vidéo des jeux qui ne sont plus sur la carte ? %s. Vous pourrez les récupérer.
+de = Cover und Videovorschauen von Spielen löschen, die nicht mehr auf der Karte sind? %s. Sie lassen sich wieder laden.
+ja = カードにもうないゲームのパッケージ画像と動画プレビューを削除しますか？%s。もう一度取得できます。
+it = Eliminare copertine e anteprime video dei giochi non più sulla scheda? %s. Si possono scaricare di nuovo.
+
+[storage.old_ask]
+note = The yes/no question for Old Save States; %d is how many games' states, %s the room it gives back ("940 MB"). Saves stay.
+en.one = Delete the save states of %d game not played for a year? %s. Its saves stay.
+en.other = Delete the save states of %d games not played for a year? %s. Their saves stay.
+zh-Hans = 要删除 %d 款一年未玩游戏的即时存档吗？共 %s。游戏存档会保留。
+es.one = ¿Borrar los estados guardados de %d juego sin jugar en un año? %s. Sus partidas guardadas se quedan.
+es.other = ¿Borrar los estados guardados de %d juegos sin jugar en un año? %s. Sus partidas guardadas se quedan.
+pt-BR.one = Apagar os save states de %d jogo não jogado há um ano? %s. Os saves ficam.
+pt-BR.other = Apagar os save states de %d jogos não jogados há um ano? %s. Os saves ficam.
+fr.one = Supprimer les sauvegardes d'état de %d jeu non joué depuis un an ? %s. Ses sauvegardes restent.
+fr.other = Supprimer les sauvegardes d'état de %d jeux non joués depuis un an ? %s. Leurs sauvegardes restent.
+de.one = Speicherstände von %d Spiel löschen, das ein Jahr nicht gespielt wurde? %s. Seine Spielstände bleiben.
+de.other = Speicherstände von %d Spielen löschen, die ein Jahr nicht gespielt wurden? %s. Ihre Spielstände bleiben.
+ja = 1 年遊んでいない %d 本のゲームのステートセーブを削除しますか？%s。セーブデータは残ります。
+it.one = Eliminare gli stati salvati di %d gioco non giocato da un anno? %s. I suoi salvataggi restano.
+it.other = Eliminare gli stati salvati di %d giochi non giocati da un anno? %s. I loro salvataggi restano.
+
+[storage.saves_part]
+note = A part of a system's line under the list: its saves and save states take %s ("1.3 GB"). Lowercase: it follows a dot in the line.
+en = saves and states %s
+zh-Hans = 存档 %s
+es = partidas y estados %s
+pt-BR = saves e states %s
+fr = sauvegardes %s
+de = Spielstände %s
+ja = セーブ %s
+it = salvataggi %s
+
+[storage.art_part]
+note = A part of a system's line under the list: its covers and video snaps take %s ("900 MB"). Lowercase.
+en = art %s
+zh-Hans = 封面与预览 %s
+es = arte %s
+pt-BR = arte %s
+fr = visuels %s
+de = Grafiken %s
+ja = アート %s
+it = grafica %s
+
+[storage.songs]
+note = The line under the list for Music: how many songs.
+en.one = %d song
+en.other = %d songs
+zh-Hans = %d 首歌曲
+es.one = %d canción
+es.other = %d canciones
+pt-BR.one = %d música
+pt-BR.other = %d músicas
+fr.one = %d morceau
+fr.other = %d morceaux
+de.one = %d Titel
+de.other = %d Titel
+ja = %d 曲
+it.one = %d brano
+it.other = %d brani
+
+
+
+[storage.zyperos_caption]
+note = The line under the list for ZyperOS: what its room holds.
+en = The system and its emulators
+zh-Hans = 系统及其模拟器
+es = El sistema y sus emuladores
+pt-BR = O sistema e seus emuladores
+fr = Le système et ses émulateurs
+de = Das System und seine Emulatoren
+ja = システムとエミュレーター
+it = Il sistema e i suoi emulatori
+
+[storage.bios_caption]
+note = The line under the list for BIOS: what the folder holds.
+en = Files some emulators need to start
+zh-Hans = 部分模拟器启动所需的文件
+es = Archivos que algunos emuladores necesitan
+pt-BR = Arquivos de que alguns emuladores precisam
+fr = Fichiers dont certains émulateurs ont besoin
+de = Dateien, die manche Emulatoren brauchen
+ja = 一部のエミュレーターに必要なファイル
+it = File necessari ad alcuni emulatori
+
+[storage.other_caption]
+note = The line under the list for Other: what it holds.
+en = Settings, the library and everything else
+zh-Hans = 设置、游戏库和其他所有内容
+es = Ajustes, la biblioteca y todo lo demás
+pt-BR = Configurações, a biblioteca e todo o resto
+fr = Réglages, bibliothèque et tout le reste
+de = Einstellungen, Bibliothek und alles andere
+ja = 設定、ライブラリ、その他すべて
+it = Impostazioni, libreria e tutto il resto
+
+[storage.delete_snaps]
+note = A row on a system's page: deletes all of that system's video snaps (the glossary's Video Snaps). tight
+en = Delete Video Snaps
+zh-Hans = 删除视频预览
+es = Borrar avances en video
+pt-BR = Apagar prévias em vídeo
+fr = Supprimer les aperçus
+de = Videovorschauen löschen
+ja = 動画プレビューを削除
+it = Elimina anteprime video
+
+[storage.snaps_caption]
+note = The line under a system's list for Delete Video Snaps; %s is the system's name.
+en = Every video snap of %s. A fetch can bring them back.
+zh-Hans = %s 的所有视频预览。重新抓取即可找回。
+es = Todos los avances en video de %s. Puedes volver a descargarlos.
+pt-BR = Todas as prévias em vídeo de %s. Dá para baixá-las de novo.
+fr = Tous les aperçus vidéo de %s. Vous pourrez les récupérer.
+de = Alle Videovorschauen von %s. Sie lassen sich wieder laden.
+ja = %s の動画プレビューすべて。もう一度取得できます。
+it = Tutte le anteprime video di %s. Si possono scaricare di nuovo.
+
+[storage.last_played]
+note = A part of a game's line under the list: when it was last played; %s is "3mo ago", "yesterday" (stats.*). Lowercase.
+en = last played %s
+zh-Hans = 上次游玩：%s
+es = última vez %s
+pt-BR = última vez %s
+fr = dernière partie %s
+de = zuletzt %s
+ja = 最後にプレイ：%s
+it = ultima volta %s
+
+[storage.never_played]
+note = A game's line under the list when it was never played. Lowercase.
+en = never played
+zh-Hans = 从未玩过
+es = nunca jugado
+pt-BR = nunca jogado
+fr = jamais joué
+de = nie gespielt
+ja = 未プレイ
+it = mai giocato
+
+[storage.measuring]
+note = The page the first time it opens, while the card is measured: the line under Zyper.
+en = Measuring the card
+zh-Hans = 正在测量存储卡
+es = Midiendo la tarjeta
+pt-BR = Medindo o cartão
+fr = Mesure de la carte
+de = Karte wird gemessen
+ja = カードを計測中
+it = Misurazione della scheda
+
+[storage.progress]
+note = Under it: the system being measured and how far, "PlayStation · 41 of 116"; %s is the system, then two counts.
+en = %s · %d of %d
+zh-Hans = %s · %d / %d
+es = %s · %d de %d
+pt-BR = %s · %d de %d
+fr = %s · %d sur %d
+de = %s · %d von %d
+ja = %s · %d / %d
+it = %s · %d di %d
+
+[storage.first_note]
+note = The line at the foot of that page: measuring takes time only once, the cache makes it fast after.
+en = Only the first time. After this it opens at once.
+zh-Hans = 只有第一次需要。之后会立即打开。
+es = Solo la primera vez. Después se abre al instante.
+pt-BR = Só na primeira vez. Depois abre na hora.
+fr = La première fois seulement. Ensuite, elle s'ouvre aussitôt.
+de = Nur beim ersten Mal. Danach öffnet es sofort.
+ja = 初回のみです。次からはすぐに開きます。
+it = Solo la prima volta. Poi si apre subito.
+
+[storage.measuring_part]
+note = The bar's legend, for the part not measured yet, while it is measured. tight
+en = Measuring...
+zh-Hans = 测量中…
+es = Midiendo...
+pt-BR = Medindo...
+fr = Mesure…
+de = Wird gemessen …
+ja = 計測中…
+it = Misurazione...

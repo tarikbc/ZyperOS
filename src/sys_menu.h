@@ -71,6 +71,10 @@
  * 2026-11-06; DESIGN.md 11.19). On every device: with no network it cannot
  * fetch, but Video Snaps still play and a key pasted over the USB cable
  * still wants a place to be seen. */
+/* PM_STORAGE is Storage, just above System Update, as a phone keeps its
+ * storage beside its software update: how the card is used, part by part
+ * (src/storage.h, DESIGN.md 11.32). Its value is the room left. My pick in
+ * the Storage lab, 2026-11-07. */
 /* Developer Mode above System Update, on a development image only: the USB link and
  * its SSH always on with the cable in, rather than the question a computer
  * gets (src/usblink.h). My pick in the USB lab, 2026-11-05. */
@@ -84,7 +88,7 @@ typedef enum {
 	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_CLOCK,
 	PM_HOURS, PM_LANGUAGE,
 	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
-	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_UPDATE, PM_ABOUT, PM_ROWS
+	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
 } pm_row;
 
 /* Random Game is under Games: one of the games that row counts, picked and
@@ -244,6 +248,8 @@ typedef struct {
 	/* System Update (src/sysupdate.h): the row's value, or NULL on a device
 	 * or card without the update program, which has no row */
 	const char *update;
+	/* Storage's value, the room left on the card ("7.4 GB free") */
+	const char *storage;
 	/* The Appearance setting's name, "Light", "Dark" or "Auto" - what
 	 * appearance_name says, and not the theme it comes to now, which for Auto
 	 * is the clock's to say. NULL reads Light, the default. A label and not

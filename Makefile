@@ -8,7 +8,7 @@
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
         check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-        check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
+        check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots design sounds strings cjk-font check-strings check-i18n-shots \
@@ -30,7 +30,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
@@ -1222,6 +1222,22 @@ build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h sr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/gamedel-check.c src/gamedel.c src/library.c src/db.c src/favorites.c \
 	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
+
+# MENU > Storage's numbers (src/storage.h) on a card made of small files:
+# every part, every game's bytes and the bar held to the clusters the card's
+# own files take; the cache read on a second start with no folder listed
+# again, a game added listing its own folder alone, a cache it cannot read
+# measured again; and the two recommendations deleting exactly their files.
+check-storage: build-native/storage-check
+	@./build-native/storage-check
+
+build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c \
+                            src/gamedel.h src/library.c src/db.c src/favorites.c src/stats.c \
+                            src/atomic.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/library.c src/db.c \
+	      src/favorites.c src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Play time. The assertion that earns this its place is that a LAUNCH writes
 # nothing: that is a claim about a path nobody watches, and it stops being true

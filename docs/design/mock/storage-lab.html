@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storage lab</title>
+<script src="tokens.js"></script>
+<style>
+/* The Storage lab (2026-11-07): MENU > Storage, the card as iPhone Storage
+ * shows a phone - one stacked bar, a few recommendations, everything sorted
+ * by size, and a page per system. Drawn in the launcher's 1024x768 units
+ * from DESIGN.md's tokens; ?shot=NAME&theme=light|dark draws one screen at
+ * 1024x768 for a still, which tools/storage-mock-shots.sh takes. */
+@font-face { font-family: "ZLex"; src: url("../../../res/fonts/menu.ttf"); font-weight: 400; }
+@font-face { font-family: "ZLex"; src: url("../../../res/fonts/title.ttf"); font-weight: 600; }
+html, body { margin: 0; background: #141615; }
+body.shot { overflow: hidden; }
+.zs {
+  position: relative; width: 1024px; height: 768px; overflow: hidden;
+  background: var(--ground); color: var(--text);
+  font-family: "ZLex", sans-serif; font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+/* Text is placed by its capitals (DESIGN.md 4): .t's top is the cap
+ * centre less 0.525 em, the offset Lexend's 1.0 ascent and 0.25 descent
+ * give a 1 em line. */
+.t { position: absolute; line-height: 1; white-space: pre; }
+.label { font-size: 55px; }
+.title { font-size: 60px; font-weight: 600; }
+.menu  { font-size: 49px; }
+.meta  { font-size: 37px; }
+.c-text { color: var(--text); } .c-soft { color: var(--text-soft); } .c-dim { color: var(--text-dim); }
+.c-ink { color: var(--accent-ink); } .c-warn { color: var(--warning); }
+
+/* the stacked bar: a pill, segments 3 apart on the ground (frame) */
+.sbar { position: absolute; display: flex; gap: 3px; border-radius: 999px; overflow: hidden; }
+.sbar i { display: block; height: 100%; min-width: 4px; }
+.sbar i.free { background: var(--track); }
+.legend { position: absolute; display: flex; flex-wrap: wrap; justify-content: center; column-gap: 26px; row-gap: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 10px; font-size: 37px; line-height: 1; color: var(--text-dim); white-space: nowrap; }
+.legend span b { font-weight: 400; color: var(--text-soft); }
+.legend i { width: 20px; height: 20px; border-radius: 50%; display: inline-block; }
+.legend i.free { background: var(--track); box-shadow: 0 0 0 2px var(--edge) inset; }
+
+/* a list row, as a menu row: 1.5 menu lines, the focus an accent fill */
+.list { position: absolute; left: 48px; right: 48px; }
+.row { position: relative; height: 73.5px; border-radius: 14px; }
+.row.sel { background: var(--accent); }
+.row .ic { position: absolute; left: 24px; top: 4.75px; width: 64px; height: 64px; image-rendering: pixelated; background-size: 64px 64px; background-repeat: no-repeat; }
+.row .ic.sheet { background-size: 128px 64px; background-position: 0 0; }
+.row .ic.zy { background: none; }
+.row .ic.zy img { width: 56px; height: 59px; margin: 3px 4px; }
+.row .nm, .row .vl { position: absolute; top: calc(36.75px - 25.7px); font-size: 49px; line-height: 1; white-space: nowrap; }
+.row .nm { left: 112px; color: var(--text-soft); }
+.row.noic .nm { left: 28px; }
+.row .vl { right: 28px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.row.sel .nm, .row.sel .vl { color: var(--on-accent); }
+.row.sel .vl { opacity: .72; }
+.rule { height: 2px; background: var(--edge); margin: 10px 28px 10px; }
+.more { position: absolute; left: 498px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 14px solid var(--text-dim); }
+.more.up { border-top: 0; border-bottom: 14px solid var(--text-dim); }
+
+/* the recommendation mark: a sparkle in accent-ink, 64 square */
+.spark { position: absolute; left: 24px; top: 4.75px; width: 64px; height: 64px; }
+.row.sel .spark path { fill: var(--on-accent); }
+
+/* button glyphs at the foot, as System Update's (11.17) */
+.foot { position: absolute; left: 0; right: 0; top: 690px; height: 48px; display: flex; justify-content: center; gap: 40px; }
+.foot span { display: inline-flex; align-items: center; gap: 14px; font-size: 37px; color: var(--text-soft); line-height: 1; }
+.glyph { width: 48px; height: 48px; border-radius: 50%; background: var(--raised); box-shadow: 0 0 0 3px var(--edge) inset; display: grid; place-items: center; font-size: 25px; font-weight: 600; color: var(--text); line-height: 1; }
+
+/* a menu panel over the page (11.3) */
+.scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) var(--scrim-menu), transparent); }
+.panel { position: absolute; left: 66px; width: 892px; top: 96px; bottom: 46px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); }
+.panel .ph { position: absolute; left: 0; right: 0; text-align: center; }
+.panel .prule { position: absolute; left: 53px; right: 53px; height: 2px; background: var(--edge); }
+.panel .prow { position: absolute; left: 26px; right: 26px; height: 72px; border-radius: 14px; }
+.panel .prow.sel { background: var(--accent); }
+.panel .prow .t { top: calc(36px - 25.7px); }
+.panel .q { position: absolute; left: 60px; right: 60px; text-align: center; font-size: 49px; line-height: 66px; color: var(--text-dim); white-space: normal; }
+.msg { position: absolute; left: 50%; transform: translateX(-50%); padding: 0 56px; white-space: nowrap; top: 330px; height: 108px; border-radius: 28px; background: var(--surface); box-shadow: 0 0 0 3px var(--edge) inset, var(--panel-lift); display: grid; place-items: center; font-size: 49px; color: var(--text-soft); }
+
+/* the header row over the shelf, for the MENU frame */
+.clock { position: absolute; left: 64px; top: calc(64px - 14px); font-size: 27px; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.batt { position: absolute; left: 916px; top: 52px; width: 40px; height: 24px; border-radius: 8px; box-shadow: 0 0 0 3px var(--text-soft) inset; }
+.batt::before { content: ""; position: absolute; left: 6px; top: 6px; width: 28px; height: 12px; border-radius: 3px; background: var(--text-soft); }
+.batt::after { content: ""; position: absolute; left: 42px; top: 8px; width: 3px; height: 8px; border-radius: 0 2px 2px 0; background: var(--text-soft); }
+
+/* Zyper in Beard casts the focus-small shadow (DESIGN.md 10) */
+.zs[data-theme="light"] .zyper { filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--ink) 18%, transparent)); }
+.prog { position: absolute; height: 18px; border-radius: 9px; background: var(--track); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--accent-ink); border-radius: 9px; }
+
+/* lab page chrome (not part of the design system) */
+.lab { color: #e8e6dd; font: 15px/1.5 "ZLex", system-ui, sans-serif; max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+.lab h1 { font-weight: 600; font-size: 34px; margin: 0 0 6px; }
+.lab h2 { font-weight: 600; font-size: 22px; margin: 34px 0 6px; }
+.lab p { color: #b9bab2; max-width: 76ch; }
+.lab .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.lab .fr { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; }
+.lab .fr > .zs { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<script>
+"use strict";
+const T = window.ZYPER_TOKENS;
+
+/* The storage palette: DESIGN.md 3.2's store-games, store-saves and
+ * store-art (tools/designdef.py), media text-soft, the rest text-dim,
+ * ZyperOS accent-ink and free space the track (DESIGN.md 11.32). */
+const CATS = [
+  ["games", "Games"], ["saves", "Saves"], ["art", "Art"], ["media", "Media"], ["zyperos", "ZyperOS"], ["other", "Other"],
+];
+
+/* The card, as a 128 GB card that is nearly full looks: a PlayStation
+ * library, two CD systems, Nintendo DS, films and music. Sizes in GB,
+ * decimal, as About ZyperOS gives them. */
+const CARD = {
+  total: 128.0,
+  cats: { games: 86.7, saves: 2.8, art: 3.1, media: 24.5, zyperos: 2.6, other: 0.9 },
+};
+CARD.used = Object.values(CARD.cats).reduce((a, b) => a + b, 0);
+CARD.free = CARD.total - CARD.used;
+
+const ICON = k => `../../../res/system-icons/${k}-still.png`;
+const SHEET = k => `../../../res/system-icons/${k}.png`;
+const ZYPER = "../../../res/web/zyper.svg";
+
+const MAIN_ROWS = [
+  { rec: true, name: "Unused Art", val: "1.2 GB", cap: "Covers and video snaps of 212 games no longer on the card." },
+  { rec: true, name: "Old Save States", val: "940 MB", cap: "States of 41 games not played for a year. Saves stay." },
+  { rule: true },
+  { icon: ICON("PS1"), name: "PlayStation", val: "44.8 GB", cap: "116 games · saves and states 1.3 GB · art 900 MB" },
+  { sheet: SHEET("VIDEOS"), name: "Videos", val: "18.4 GB", cap: "6 films" },
+  { icon: ICON("SEGACD"), name: "Sega CD", val: "16.2 GB", cap: "46 games" },
+  { icon: ICON("PCE"), name: "TurboGrafx-16", val: "11.4 GB", cap: "61 games" },
+  { icon: ICON("NDS"), name: "Nintendo DS", val: "9.5 GB", cap: "105 games" },
+  { sheet: SHEET("MUSE"), name: "Music", val: "5.2 GB", cap: "318 songs" },
+  { icon: ICON("PORTS"), name: "Ports", val: "4.2 GB", cap: "12 ports" },
+  { zy: true, name: "ZyperOS", val: "2.6 GB", cap: "The system and its emulators" },
+];
+
+const PS1_ROWS = [
+  { name: "Delete Video Snaps", val: "860 MB", cap: "Every PlayStation video snap. A fetch can bring them back." },
+  { rule: true },
+  { name: "Final Fantasy IX", val: "1.9 GB", cap: "4 discs · Played 41 h · last played Aug 2025" },
+  { name: "The Legend of Dragoon", val: "1.8 GB", cap: "4 discs · never played" },
+  { name: "Final Fantasy VIII", val: "1.7 GB", cap: "4 discs · Played 22 h · last played Apr 2025" },
+  { name: "Final Fantasy VII", val: "1.4 GB", cap: "3 discs · Played 63 h · last played Oct 2026" },
+  { name: "Metal Gear Solid", val: "1.0 GB", cap: "2 discs · Played 9 h · last played Nov 2026" },
+  { name: "Parasite Eve II", val: "1.0 GB", cap: "2 discs · never played" },
+];
+
+function vars(theme) {
+  const th = T.themes[theme], c = th.color, dark = theme === "dark";
+  const v = Object.entries(c).map(([k, x]) => `--${k}:${x}`);
+  v.push(`--scrim-menu:${Math.round(th.scrim.menu * 100)}%`);
+  v.push(`--panel-lift:${dark ? "0 0 80px color-mix(in srgb, var(--accent) 6%, transparent)" : "0 24px 64px color-mix(in srgb, var(--ink) 18%, transparent)"}`);
+  return v.join(";");
+}
+const cap = (y, f) => y - 0.525 * f;   /* a 1 em line's top for capitals centred on y */
+
+function catColor(theme, k) {
+  const c = T.themes[theme].color;
+  if (k === "games") return c["store-games"];
+  if (k === "saves") return c["store-saves"];
+  if (k === "art") return c["store-art"];
+  if (k === "zyperos") return c["accent-ink"];
+  if (k === "unmeasured") return "repeating-linear-gradient(135deg, color-mix(in srgb, var(--text-dim) 45%, var(--track)) 0 8px, var(--track) 8px 16px)";
+  if (k === "media") return c["text-soft"];
+  if (k === "other") return c["text-dim"];
+  return c["text-dim"];
+}
+function bar(theme, x, y, w, h, parts, total) {
+  const gaps = 3 * parts.length;
+  const segs = parts.map(([k, v]) => k === "free"
+    ? `<i class="free" style="flex:${v}"></i>`
+    : `<i style="flex:${v};background:${catColor(theme, k)}"></i>`).join("");
+  return `<div class="sbar" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${segs}</div>`;
+}
+function legend(theme, x, y, w, items) {
+  return `<div class="legend" style="left:${x}px;top:${y}px;width:${w}px">${items.map(([k, name, v]) =>
+    `<span><i class="${k === "free" ? "free" : ""}" style="${k === "free" ? "" : `background:${catColor(theme, k)}`}"></i>${name}${v ? ` <b>${v}</b>` : ""}</span>`).join("")}</div>`;
+}
+const SPARK = `<svg class="spark" viewBox="-32 -32 64 64"><path d="M-4-22C-2-9 1-6 14-4 1-2-2 1-4 14-6 1-9-2-22-4-9-6-6-9-4-22Z" fill="var(--accent-ink)"/><path d="M15 6C16 13 17 14 24 15 17 16 16 17 15 24 14 17 13 16 6 15 13 14 14 13 15 6Z" fill="var(--accent-ink)"/></svg>`;
+
+function rows(list, sel, top) {
+  let html = "";
+  list.forEach((r, i) => {
+    if (r.rule) { html += `<div class="rule"></div>`; return; }
+    const s = i === sel ? "sel" : "";
+    let ic = "";
+    if (r.rec) ic = SPARK;
+    else if (r.icon) ic = `<div class="ic" style="background-image:url('${r.icon}')"></div>`;
+    else if (r.sheet) ic = `<div class="ic sheet" style="background-image:url('${r.sheet}')"></div>`;
+    else if (r.zy) ic = `<div class="ic zy"><img src="${ZYPER}" alt=""></div>`;
+    html += `<div class="row ${s} ${ic ? "" : "noic"}">${ic}<span class="nm">${r.name}</span><span class="vl">${r.val}</span></div>`;
+  });
+  return html;
+}
+function foot(pairs) {
+  return `<div class="foot">${pairs.map(([g, w]) => `<span><span class="glyph">${g}</span>${w}</span>`).join("")}</div>`;
+}
+function caption(y, text) {
+  return `<div class="t meta c-dim" style="left:0;right:0;text-align:center;top:${cap(y, 37)}px">${text}</div>`;
+}
+
+/* ---- MENU > Storage: the main page ----------------------------------------
+ * Heading at cap 56, the card's size at its right where a panel of pages
+ * keeps its count (11.3); used and free at cap 128; the bar 172 to 204;
+ * the legend at cap 240; five rows from 270; the focused row's facts at
+ * cap 698. */
+const TOP = { head: 56, sum: 128, bar: 172, barH: 32, leg: 222, list: 268, rows: 5, capY: 714 };
+function heading(text, right) {
+  let h = `<div class="t label c-soft" style="left:0;right:0;text-align:center;top:${cap(TOP.head, 55)}px">${text}</div>`;
+  if (right) h += `<div class="t meta c-dim" style="right:64px;top:${cap(TOP.head, 37)}px">${right}</div>`;
+  return h;
+}
+function listWindow(list, sel, rowsShown, more) {
+  let h = `<div class="list" style="top:${TOP.list}px;height:${rowsShown * 73.5 + 22}px;overflow:hidden">${rows(list, sel)}</div>`;
+  if (more) h += `<div class="more" style="top:${TOP.list + rowsShown * 73.5 + 22 + 8}px"></div>`;
+  return h;
+}
+function mainPage(theme, o = {}) {
+  const sel = o.sel === undefined ? 3 : o.sel;
+  const c = o.card || CARD;
+  const parts = CATS.map(([k]) => [k, c.cats[k]]).concat([["free", c.free]]);
+  const fmt = v => v.toFixed(1);
+  let h = heading("Storage", `${Math.round(c.total)} GB`);
+  h += `<div class="t" style="left:64px;top:${cap(TOP.sum, 60)}px"><span class="title c-text">${fmt(c.used)} GB</span><span class="menu c-soft"> used</span></div>`;
+  h += `<div class="t menu c-soft" style="right:64px;top:${cap(TOP.sum, 49)}px">${fmt(c.free)} GB free</div>`;
+  h += bar(theme, 64, TOP.bar, 896, TOP.barH, parts);
+  h += legend(theme, 24, TOP.leg, 976, CATS.map(([k, n]) => [k, n]));
+  const list = o.rows || MAIN_ROWS;
+  h += listWindow(list, sel, TOP.rows, true);
+  const r = list[sel];
+  h += caption(TOP.capY, r && r.cap ? r.cap : "");
+  return h;
+}
+
+/* ---- a system's page ---------------------------------------------------------
+ * The system's own sprite where System Update has Zyper, the system's share
+ * of the card beside it, its bar in the same colours, and the legend with
+ * each part's size. Then its video snaps, and its games, largest first:
+ * each one's size is what Delete Game would give back. */
+function systemPage(theme, o = {}) {
+  const sel = o.sel === undefined ? 4 : o.sel;
+  let h = heading("PlayStation");
+  h += `<div style="position:absolute;left:56px;top:92px;width:112px;height:112px;background:url('${ICON("PS1")}') 0 0/112px 112px no-repeat;image-rendering:pixelated"></div>`;
+  h += `<div class="t" style="left:200px;top:${cap(TOP.sum, 60)}px"><span class="title c-text">44.8 GB</span></div>`;
+  h += `<div class="t menu c-soft" style="right:64px;top:${cap(TOP.sum, 49)}px">116 games</div>`;
+  h += bar(theme, 200, TOP.bar, 760, TOP.barH, [["games", 42.6], ["saves", 1.3], ["art", 0.9]]);
+  h += legend(theme, 24, TOP.leg, 976, [["games", "Games", "42.6 GB"], ["saves", "Saves", "1.3 GB"], ["art", "Art", "900 MB"]]);
+  h += listWindow(PS1_ROWS, sel, TOP.rows, true);
+  h += caption(TOP.capY, PS1_ROWS[sel].cap);
+  return h;
+}
+
+/* ---- a recommendation: the question, over the page ------------------------- */
+function confirmPanel(heading, question, answers, sel) {
+  let h = `<div class="scrim"></div><div class="panel">`;
+  h += `<div class="ph t label c-soft" style="top:${cap(57, 55)}px">${heading}</div>`;
+  h += `<div class="prule" style="top:109px"></div>`;
+  h += `<div class="q" style="top:136px">${question}</div>`;
+  h += `<div class="prule" style="top:430px"></div>`;
+  answers.forEach((a, i) => {
+    h += `<div class="prow ${i === sel ? "sel" : ""}" style="top:${434 - 1 + i * 73}px"><div class="t menu ${i === sel ? "" : "c-soft"}" style="left:0;right:0;text-align:center;${i === sel ? "color:var(--on-accent)" : ""}">${a}</div></div>`;
+  });
+  return h + `</div>`;
+}
+function recAsk(theme) {
+  return mainPage(theme, { sel: 0 }) + confirmPanel("Unused Art",
+    "Delete 212 covers and 37 video snaps of games no longer on the card? 1.2 GB. A fetch can bring them back.",
+    ["Delete", "Cancel"], 1);
+}
+function recDone(theme) {
+  const card = { total: 128, cats: Object.assign({}, CARD.cats, { art: 1.9 }) };
+  card.used = Object.values(card.cats).reduce((a, b) => a + b, 0); card.free = card.total - card.used;
+  const rows2 = MAIN_ROWS.slice(1);
+  return mainPage(theme, { sel: 0, card, rows: rows2 }) + `<div class="msg">Deleted. 1.2 GB given back.</div>`;
+}
+function delAsk(theme) {
+  return systemPage(theme, { sel: 4 }) + confirmPanel("Delete Game",
+    "Delete Final Fantasy VIII? Its saves and states, cover and video go too. This cannot be undone.",
+    ["Delete", "Cancel"], 1);
+}
+
+/* ---- where it lives: MENU, just above System Update ----------------------- */
+function menuFrame(theme) {
+  const rowsM = [["Controls", ""], ["Show Tutorial", ""], ["Storage", "7.4 GB free"], ["System Update", "1.0.2"], ["About ZyperOS", ""]];
+  let h = `<div class="clock">10:08</div><div class="batt"></div>`;
+  h += `<div class="scrim"></div><div class="panel" style="bottom:46px">`;
+  h += `<div class="ph t label c-soft" style="top:${cap(57, 55)}px">ZyperOS</div>`;
+  h += `<img class="zyper" src="${ZYPER}" style="position:absolute;right:53px;top:26px;width:61px;height:64px">`;
+  h += `<div class="prule" style="top:109px"></div>`;
+  h += `<div class="more up" style="top:122px;left:432px"></div>`;
+  rowsM.forEach(([n, v], i) => {
+    const s = i === 2;
+    h += `<div class="prow ${s ? "sel" : ""}" style="top:${136 + 73 * i}px"><div class="t menu" style="left:29px;color:${s ? "var(--on-accent)" : "var(--text-soft)"}">${n}</div><div class="t menu" style="right:28px;color:${s ? "var(--on-accent)" : "var(--text-dim)"};${s ? "opacity:.72" : ""}">${v}</div></div>`;
+  });
+  return h + `</div>`;
+}
+
+/* ---- the first open on a card with no cache: Zyper sniffs it out ---------- */
+function firstPage(theme) {
+  /* used and free are statvfs's, exact at once; the bar is grey but for
+   * what is measured so far, and fills in as the walk reports */
+  let h = heading("Storage", "128 GB");
+  h += `<div class="t" style="left:64px;top:${cap(TOP.sum, 60)}px"><span class="title c-text">120.6 GB</span><span class="menu c-soft"> used</span></div>`;
+  h += `<div class="t menu c-soft" style="right:64px;top:${cap(TOP.sum, 49)}px">7.4 GB free</div>`;
+  h += bar(theme, 64, TOP.bar, 896, TOP.barH, [["games", 28.3], ["saves", 0.6], ["art", 0.4], ["unmeasured", 91.3], ["free", 7.4]]);
+  h += legend(theme, 24, TOP.leg, 976, [["games", "Games"], ["saves", "Saves"], ["art", "Art"], ["unmeasured", "Measuring..."]]);
+  h += `<img class="zyper" src="${ZYPER}" style="position:absolute;left:442px;top:318px;width:140px;height:148px;transform:rotate(-10deg);transform-origin:50% 80%">`;
+  h += `<div class="t menu c-soft" style="left:0;right:0;text-align:center;top:${cap(540, 49)}px">Measuring the card</div>`;
+  h += `<div class="t meta c-dim" style="left:0;right:0;text-align:center;top:${cap(594, 37)}px">PlayStation · 41 of 116 games</div>`;
+  h += caption(TOP.capY, "Only the first time. After this it opens at once.");
+  return h;
+}
+
+const SHOTS = {
+  main: mainPage, system: systemPage, "rec-ask": recAsk, "rec-done": recDone,
+  "delete-ask": delAsk, menu: menuFrame, first: firstPage,
+};
+function screen(name, theme) {
+  return `<div class="zs" data-theme="${theme}" style="${vars(theme)}">${SHOTS[name](theme)}</div>`;
+}
+
+const q = new URLSearchParams(location.search);
+if (q.get("shot")) {
+  document.body.className = "shot";
+  document.body.innerHTML = screen(q.get("shot"), q.get("theme") || "light");
+} else {
+  let html = `<div class="lab"><h1>Storage lab</h1><p>MENU &gt; Storage, drawn from DESIGN.md's tokens at the launcher's 1024x768. Every frame in Beard and in Salt &amp; Pepper.</p>`;
+  for (const n of Object.keys(SHOTS)) {
+    html += `<h2>${n}</h2><div class="pair"><div class="fr">${screen(n, "light")}</div><div class="fr">${screen(n, "dark")}</div></div>`;
+  }
+  document.body.innerHTML = html + `</div>`;
+  const fit = () => document.querySelectorAll(".fr").forEach(f => { f.firstElementChild.style.transform = `scale(${f.clientWidth / 1024})`; });
+  addEventListener("resize", fit); fit();
+}
+</script>
+</body>
+</html>

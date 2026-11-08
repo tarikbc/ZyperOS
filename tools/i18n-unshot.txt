@@ -518,6 +518,23 @@ stats.days_ago
 stats.weeks_ago
 stats.months_ago
 
+
+# storage: drawn wrapped to their lines, in pieces of a line (the used number as a title, a part of the line under the list), with tabular digits, or a plural's one form the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)
+storage.used
+storage.unused_caption
+storage.old_caption.one
+storage.old_caption.other
+storage.unused_ask
+storage.old_ask.one
+storage.old_ask.other
+storage.saves_part
+storage.art_part
+storage.songs.one
+storage.songs.other
+storage.snaps_caption
+storage.last_played
+storage.progress
+
 # sysmenu: no shot draws it yet
 sysmenu.wifi_connecting
 sysmenu.hotspot
