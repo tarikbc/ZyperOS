@@ -4516,6 +4516,19 @@ static int menu_row_h(void) { return ui_font_line(UI_F_MENU) * 3 / 2; }
  * unless both use the same number. */
 static int menu_pad(void)   { return menu_row_h() * 3 / 4; }
 
+/* X's glyph at a row's right (MENU_KEY_X): the keyboard's action keys' 40,
+ * DESIGN.md 11.9, which sits in a menu row as a hint's sits in its legend */
+#define MENU_KEY_SIZE 40
+
+/* What a row's value takes at the right of the rows, for the measures:
+ * its text, a tick (MENU_TICK) or X's glyph (MENU_KEY_X) */
+static int menu_value_w(TTF_Font *fm, const char *v)
+{
+	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
+	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
+	return v ? ui_text_width(fm, v) : 0;
+}
+
 /* The air between the panel and the screen edge, on every side. */
 #define MENU_MARGIN 24
 /* ...but the top, where the status corner stands (DESIGN.md 11.12) on every
@@ -4797,8 +4810,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (!rows[i].label) continue;          /* a rule measures nothing */
 		w = ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
-			w += gap + ui_text_width(fm, rows[i].value);
-		if (rows[i].value == MENU_TICK) w += ui_cap_height(fm) * 6 / 5;
+			w += gap + menu_value_w(fm, rows[i].value);
 		if (w > content_w) content_w = w;
 	}
 	if (head2) {
@@ -5363,7 +5375,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				content_w -= isz + pad / 2;
 			}
 			int lw = ui_text_width(fm, rows[i].label);
-			int vw = rows[i].value ? ui_text_width(fm, rows[i].value) : 0;
+			int vw = menu_value_w(fm, rows[i].value);
 			int room;
 
 			/* WHICHEVER IS LONGER IS THE CONTENT, and the content is what
@@ -5396,7 +5408,16 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			 * on whether the player had earned it. */
 			bool moves = menu_row_moves(rows[i], i == sel, visits_all);
 
-			if (lw + (vw ? gap + vw : 0) <= content_w) {
+			/* X's glyph where the value goes, on the fill as a selected
+			 * key's (UI_BUTTON_ON_ACCENT) once the plate is mostly there,
+			 * and the label given what is left */
+			if (rows[i].value == MENU_KEY_X) {
+				ui_button(a->r, "X", content_x + content_w - vw / 2,
+				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
+				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
+				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
+				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
+			} else if (lw + (vw ? gap + vw : 0) <= content_w) {
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
 				if (rows[i].value)
@@ -11196,7 +11217,7 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
 		if (!rows[i].label) continue;          /* a rule measures nothing */
 		rw = ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
-			rw += gap + ui_text_width(fm, rows[i].value);
+			rw += gap + menu_value_w(fm, rows[i].value);
 		if (rw > w) w = rw;
 	}
 	if (heading) {
@@ -16667,6 +16688,13 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		gm_gather(a, &u);
 		n = gm_row_ids(&u, ids);
 		sel = sel >= 0 && sel < n ? (int)ids[sel] : GM_MAX_ROWS;
+	}
+	/* X, wherever the cursor is: what A on its row does (gm_x_row), heard
+	 * as A there is, since the runner plays accept for A alone */
+	if (key == IN_X) {
+		uisound_play(DS_SOUND_ACCEPT);
+		sel = gm_x_row();
+		key = IN_ACCEPT;
 	}
 	if ((sel == GM_SCREENS || sel == GM_SWAP || sel == GM_STYLUS) &&
 	    (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {

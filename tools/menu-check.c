@@ -1428,6 +1428,13 @@ static void ingame_rows(void)
 	ck(rows[GM_CHEEVOS].live, "and is reachable");
 	k = reachable(rows, n, got, GM_ROWS);
 	ck(k == GM_ROWS, "every row is a stop");
+	/* X from anywhere on the page is Quit (2026-11-08), and Quit alone
+	 * carries X's glyph to say so */
+	ck(gm_x_row() == GM_QUIT && rows[GM_QUIT].value == MENU_KEY_X,
+	   "X is Quit's, and Quit draws X's glyph");
+	for (k = 0; k < n; k++)
+		if (k != GM_QUIT && rows[k].value == MENU_KEY_X) break;
+	ck(k == n, "and no other row does");
 
 	/* Over a port (OpenBOR, src/portmenu.h): what a stopped program can
 	 * still be asked, every one a stop, in the game menu's order */
@@ -1438,6 +1445,8 @@ static void ingame_rows(void)
 	   ids[2] == GM_QUIT, "Continue, Controls and Quit");
 	ck(!strcmp(rows[0].label, "Continue") && !strcmp(rows[1].label, "Controls") &&
 	   !strcmp(rows[2].label, "Quit"), "labeled as over a game");
+	ck(rows[2].value == MENU_KEY_X && gm_row_at(&u, gm_x_row()) == 2,
+	   "X is its Quit too, with the glyph");
 	ck(reachable(rows, n, got, GM_ROWS) == 3, "every row a stop");
 	u.port = false;
 

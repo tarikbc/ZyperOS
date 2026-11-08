@@ -190,6 +190,13 @@ typedef struct {
 int gm_row_ids(const gm_ui *u, gm_row *ids);
 /* Where row `id` is in that list, or -1 when the menu has none */
 int gm_row_at(const gm_ui *u, gm_row id);
+/* The row X does from anywhere on the menu's page, as A on it does: Quit,
+ * in every in-game menu (a game's, a port's, PortMaster's), so leaving a
+ * game is one press and not a walk to the last row. Its row carries X's
+ * glyph at the right (MENU_KEY_X) to teach it. Quit asks nothing first,
+ * so neither does X. No row of the page answered X before
+ * (2026-11-08). */
+gm_row gm_x_row(void);
 
 /* Where the Cheevos row's text lives; the caller owns it, because a row holds
  * a pointer rather than a copy. And each row's sound class (MENU_SND_*,

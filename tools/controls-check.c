@@ -586,9 +586,11 @@ static void in_a_game(void)
 		ck(says(all, n, "MENU", "Menu") && says(all, n, "POWER", "Quit and turn off") &&
 		   !says(all, n, "POWER", "Save and turn off"),
 		   "OpenBOR's In a game: MENU the menu, POWER quits and turns off");
+		ck(says(all, n, "MENU, X", "Quit"), "and X in the menu is its Quit");
 		g.port = false;
 		n = game_rows(&g, all, 64, NULL);
 		ck(says(all, n, "POWER", "Save and turn off"), "a Diatom game's POWER saves");
+		ck(says(all, n, "MENU, X", "Quit"), "a Diatom game's X in the menu is Quit too");
 	}
 	/* The standalone Flycast under the menu: its buttons are its own
 	 * settings', so In a game alone, with no hotkeys */
@@ -626,7 +628,7 @@ static void in_a_game(void)
 		ck(n == 4 && !strcmp(b.head, "Controls: Hotkeys"),
 		   "Hotkeys first: quick save and load, faster and slower, no SELECT note");
 		n = ctl_game_rows(&g, 1, rows, &b);
-		ck(n == 4 && !strcmp(b.head, "Controls: In a game"),
+		ck(n == 5 && !strcmp(b.head, "Controls: In a game"),
 		   "and In a game has no footer to turn");
 	}
 }
