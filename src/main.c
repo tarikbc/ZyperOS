@@ -89,6 +89,7 @@
 #include "game_menu.h"
 #include "gamedel.h"
 #include "dsv.h"
+#include "dslang.h"
 #include "ui.h"
 #include "wifi_menu.h"
 #include "zyperrig.h"
@@ -356,6 +357,44 @@ static void core_step(app *a, int sys, int d)
 	snprintf(key, sizeof key, "core.%s", s->tag);
 	db_set_str(db_dev(), key, s->core);
 	fprintf(stderr, "core: %s now runs on %s\n", s->name, s->core);
+}
+
+/* ---------- the Nintendo DS's game language ------------------------------- */
+
+/* Game Language, the row under Core on the Nintendo DS shelf's menu while
+ * DSperate runs it (src/dslang.h): Auto, the language of MENU > Language
+ * where the DS has it and English where not, or one of the choices outright.
+ * Saved as ds_language the moment it changes; the next game started runs in
+ * it (src/platform.c sends it as the core's dsperate_language). DraStic has
+ * its own settings, so with DraStic chosen the shelf has no such row. */
+static dsl_choice dslang_load(void)
+{
+	char v[16];
+
+	db_get_str(db_dev(), DSLANG_SETTING, v, sizeof v, "auto");
+	return dslang_parse(v);
+}
+
+static bool dslang_row_shown(const app *a, int sys)
+{
+	const system_cfg *s = &a->sys.systems[sys];
+
+	return !strcmp(s->tag, DSLANG_TAG) && !strcmp(s->core, "dsperate");
+}
+
+/* What the row says for choice `c`: a language by its own name, and Auto by
+ * the language it comes to - "Auto (English)" for a handheld in Português
+ * (Brasil) - since a row that reads only "Auto" makes the player guess. */
+static const char *dslang_label(dsl_choice c, char *buf, size_t n)
+{
+	if (c == DSL_AUTO) {
+		dsl_choice to = dslang_parse(dslang_value(i18n_lang()));
+
+		snprintf(buf, n, T(S_SYSMENU_DSLANG_AUTO), lang_name(dslang_label_lang(to)));
+	} else {
+		snprintf(buf, n, "%s", lang_name(dslang_label_lang(c)));
+	}
+	return buf;
 }
 
 /* ---------- two screens ---------------------------------------------------- */
@@ -5647,6 +5686,11 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.sys_name   = sc->name;
 		u.sys_core   = core_label(sc->core, corebuf, sizeof corebuf);
 		u.core_choice = cfg_core_count(sc) > 1;
+		{
+			static char dslbuf[64];
+
+			u.dslang = dslang_row_shown(a, sys) ? dslang_label(dslang_load(), dslbuf, sizeof dslbuf) : NULL;
+		}
 		/* By what it HAS, not by its name or its position: a shelf with no
 		 * core and no folder is the built one, and a check can hand that
 		 * over without inventing a flag day. */
@@ -10451,6 +10495,21 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
  * system or another font widens the frame instead of overflowing it.
  * Cached because it is a few hundred text measurements and none of its inputs
  * change while a menu is open. */
+/* Where a console shelf's menu has the row `which`, or -1: the enum's numbers
+ * are the full list's, and a shelf's list is what sys_menu_system_rows makes
+ * of it (no Box Art without a radio, Game Language only on the DS). */
+static int sm_pos(const app *a, int sys, sm_row which)
+{
+	sys_ui dev = { .no_wifi = !plat_has_wifi(),
+	               .dslang = dslang_row_shown(a, sys) ? "" : NULL };
+	sm_row ids[SM_ROWS];
+	int n = sys_menu_system_rows(&dev, ids), k;
+
+	for (k = 0; k < n; k++)
+		if (ids[k] == which) return k;
+	return -1;
+}
+
 static int menu_shelf_width(app *a)
 {
 	menu_row rows[MENU_MAX_ROWS];
@@ -10475,7 +10534,10 @@ static int menu_shelf_width(app *a)
 	for (i = 0; i < a->sys.count; i++) {
 		bool muse = is_muse(&a->sys.systems[i]);
 		bool own  = muse || a->view[i].owner;
-		int  srow = own ? 1 : SM_SORT, show = -1;
+		int  srow = own ? 1 : sm_pos(a, i, SM_SORT), show = -1;
+		int  drow = own ? -1 : sm_pos(a, i, SM_DISPLAY);
+		int  crow = own ? -1 : sm_pos(a, i, SM_CORE);
+		int  lrow = own ? -1 : sm_pos(a, i, SM_DSLANG);
 
 		n = menu_build(a, SCREEN_GAMES, i, rows, &bufs, &heading);
 		if (muse) {
@@ -10497,25 +10559,38 @@ static int menu_shelf_width(app *a)
 				if (mw > w) w = mw;
 			}
 		}
-		for (k = 0; !own && k < DMODE_COUNT; k++) {
+		for (k = 0; drow >= 0 && k < DMODE_COUNT; k++) {
 			int mw;
-			rows[SM_DISPLAY].value = dmode_label(k);
+			rows[drow].value = dmode_label(k);
 			mw = menu_measure(rows, n, heading);
 			if (mw > w) w = mw;
 		}
-		if (!own) rows[SM_DISPLAY].value = dmode_label(0);
+		if (drow >= 0) rows[drow].value = dmode_label(0);
 		/* And each core a shelf can choose, for the same reason. */
-		if (!own && cfg_core_count(&a->sys.systems[i]) > 1) {
+		if (crow >= 0 && cfg_core_count(&a->sys.systems[i]) > 1) {
 			char alt[CFG_STR], lb[CFG_STR];
-			const char *keep = rows[SM_CORE].value;
+			const char *keep = rows[crow].value;
 
 			for (k = 0; cfg_core_at(&a->sys.systems[i], k, alt, sizeof alt); k++) {
 				int mw;
-				rows[SM_CORE].value = core_label(alt, lb, sizeof lb);
+				rows[crow].value = core_label(alt, lb, sizeof lb);
 				mw = menu_measure(rows, n, heading);
 				if (mw > w) w = mw;
 			}
-			rows[SM_CORE].value = keep;
+			rows[crow].value = keep;
+		}
+		/* And each language the Nintendo DS's game can speak, Auto too */
+		if (lrow >= 0) {
+			char lb[64];
+			const char *keep = rows[lrow].value;
+
+			for (k = 0; k < DSL_CHOICES; k++) {
+				int mw;
+				rows[lrow].value = dslang_label((dsl_choice)k, lb, sizeof lb);
+				mw = menu_measure(rows, n, heading);
+				if (mw > w) w = mw;
+			}
+			rows[lrow].value = keep;
 		}
 		for (k = 0; k < (muse ? ML_ORDERS : SORT_COUNT); k++) {
 			int mw;
@@ -11291,7 +11366,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * moves Rescan Folder up one: which row is which comes from the same
 		 * list the build used. */
 		else if (!is_muse(&a->sys.systems[a->sys_cursor])) {
-			sys_ui dev = { .no_wifi = !plat_has_wifi() };
+			sys_ui dev = { .no_wifi = !plat_has_wifi(),
+			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL };
 			sm_row ids[SM_ROWS];
 			int n = sys_menu_system_rows(&dev, ids);
 
@@ -11303,6 +11379,14 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if ((d || key == IN_ACCEPT) && sel == SM_CORE &&
 		    cfg_core_count(&a->sys.systems[a->sys_cursor]) > 1) {
 			core_step(a, a->sys_cursor, d ? d : 1);
+			return MENU_STAY;
+		}
+		/* The Nintendo DS's game language, stepped round the eight the same
+		 * way, saved at once: the next game started runs in it. */
+		if ((d || key == IN_ACCEPT) && sel == SM_DSLANG) {
+			dsl_choice c = dslang_step(dslang_load(), d ? d : 1);
+
+			db_set_str(db_dev(), DSLANG_SETTING, dslang_id(c));
 			return MENU_STAY;
 		}
 		/* Display mode, saved the moment it changes because there is no
@@ -17902,6 +17986,29 @@ int main(int argc, char *argv[])
 		db_dump(db_dev(), stdout);
 		printf("library %s\n", lib);
 		db_dump(db_lib(), stdout);
+		db_shutdown();
+		return 0;
+	}
+
+	/* --coreopts TAG: the core options the launcher sends a game of the system
+	 * TAG (systems.cfg's tag field, "NDS"), one key=value a line in the order
+	 * they are sent, with the language the card has saved in force: the
+	 * Nintendo DS's language is made from it (src/dslang.h), and
+	 * tools/dslang-check.sh holds that it is. */
+	if (argc > 2 && !strcmp(argv[1], "--coreopts")) {
+		char dev[CFG_STR * 2], lib[CFG_STR * 2], lc[16];
+		int i;
+
+		paths_init();
+		db_paths_ready(dev, sizeof dev, lib, sizeof lib, NULL, 0);
+		if (!db_init(dev, lib, NULL)) {
+			fprintf(stderr, "cannot open the settings database\n");
+			return 1;
+		}
+		db_get_str(db_dev(), "language", lc, sizeof lc, "en");
+		i18n_set(lang_parse(lc));
+		for (i = 0; i < plat_coreopt_count(argv[2]); i++)
+			puts(plat_coreopt(argv[2], i));
 		db_shutdown();
 		return 0;
 	}

@@ -457,6 +457,28 @@ de = Core
 ja = コア
 it = Core
 
+[sysmenu.dslang]
+note = A system menu row, on the Nintendo DS shelf: the language its games speak, whatever the firmware.bin on the card was dumped from
+en = Game Language
+zh-Hans = 游戏语言
+es = Idioma del juego
+pt-BR = Idioma do jogo
+fr = Langue du jeu
+de = Spielsprache
+ja = ゲームの言語
+it = Lingua del gioco
+
+[sysmenu.dslang_auto]
+note = Game Language's value when it follows MENU > Language: %s is the language the DS game comes to, in its own name ("English", "Español"), English where the DS has none of the handheld's
+en = Auto (%s)
+zh-Hans = 自动（%s）
+es = Auto (%s)
+pt-BR = Auto (%s)
+fr = Auto (%s)
+de = Auto (%s)
+ja = 自動（%s）
+it = Auto (%s)
+
 [sysmenu.sort_by]
 note = A system menu row: the shelf's order
 en = Sort By

@@ -95,7 +95,7 @@ typedef enum {
  * side - Diatom has per-system display modes and core-supplied button labels -
  * so these are hooks waiting to be wired, not wishes. */
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_SORT,
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT,
 	SM_DISPLAY, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
@@ -289,6 +289,11 @@ typedef struct {
 	/* The shelf lists more than one core (the Nintendo DS: DraStic and
 	 * DSperate), so its Core row is a choice rather than a fact. */
 	bool        core_choice;
+	/* Game Language, under Core, on the Nintendo DS shelf while DSperate runs
+	 * it (src/dslang.h): the row's value, "Auto (English)" or a language's
+	 * name. NULL: the shelf has no such row, and every other shelf's menu is
+	 * as it was. */
+	const char *dslang;
 	int         game_count;
 	const char *dmode;
 	/* The label of the shelf's sort order. A label rather than an index for
