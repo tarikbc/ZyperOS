@@ -95,6 +95,7 @@
 #include "portinfo.h"
 #include "dsv.h"
 #include "dslang.h"
+#include "dsresume.h"
 #include "ui.h"
 #include "wifi_menu.h"
 #include "zyperrig.h"
@@ -286,18 +287,22 @@ static void display_save(app *a)
 /* ---------- per-system core ----------------------------------------------- */
 
 /* A shelf whose core field lists more than one core, the first the default -
- * the Nintendo DS: DSperate, a libretro core run in Diatom with ZyperOS's own
- * in-game menu, and DraStic, a standalone program run through a script. The
- * shelf's Core row chooses (core_step, from the system menu), and the choice
- * is kept per system under core.<TAG>, beside display.<TAG>. Everything
- * that runs a game reads s->core, so choosing is writing that field and
- * nothing else follows it.
+ * the Dreamcast: flycast2021, a libretro core run in Diatom with ZyperOS's own
+ * in-game menu, and the standalone Flycast 2.7, a program run through a
+ * script. The shelf's Core row chooses (core_step, from the system menu), and
+ * the choice is kept per system under core.<TAG>, beside display.<TAG>.
+ * Everything that runs a game reads s->core, so choosing is writing that
+ * field and nothing else follows it. A shelf with one core keeps the row, as
+ * a fact rather than a choice: it names the core.
  *
  * A core that is not on the card is passed over when there is no choice on
- * record: a card without DSperate's core plays its DS games on DraStic, if
- * that is there, without anyone visiting a menu, and the row offers both. A
- * choice on record is kept even if its core has gone, so taking DraStic off
- * for a while does not lose it. */
+ * record: a card without flycast2021 plays its Dreamcast games on Flycast
+ * 2.7, if that is there, without anyone visiting a menu, and the row offers
+ * both. A choice on record is kept even if its core has gone, so taking
+ * Flycast 2.7 off for a while does not lose it. A choice on record of a core
+ * the shelf no longer lists is passed over the same way: the Nintendo DS's
+ * core.NDS, which named DraStic's script on a card that chose it before
+ * 2026-11-08, is never read, since the DS has one core now. */
 static bool core_present(const char *core)
 {
 	char path[CFG_STR * 2];
@@ -312,8 +317,8 @@ static bool core_present(const char *core)
 }
 
 /* What the Core row says: a libretro core by its short name, as every other
- * shelf's row always has, and a script by its own name - "DraStic" for
- * run:Emulators/DraStic/DraStic.sh - since the path is the card's business. */
+ * shelf's row always has, and a script by its own name - "Flycast" for
+ * run:Emulators/Flycast/Flycast.sh - since the path is the card's business. */
 static const char *core_label(const char *core, char *buf, size_t n)
 {
 	const char *b, *dot;
@@ -373,12 +378,12 @@ static void core_step(app *a, int sys, int d)
 
 /* ---------- the Nintendo DS's game language ------------------------------- */
 
-/* Game Language, the row under Core on the Nintendo DS shelf's menu while
- * DSperate runs it (src/dslang.h): Auto, the language of MENU > Language
- * where the DS has it and English where not, or one of the choices outright.
- * Saved as ds_language the moment it changes; the next game started runs in
- * it (src/platform.c sends it as the core's dsperate_language). DraStic has
- * its own settings, so with DraStic chosen the shelf has no such row. */
+/* Game Language, the row under Core on the Nintendo DS shelf's menu
+ * (src/dslang.h): Auto, the language of MENU > Language where the DS has it
+ * and English where not, or one of the choices outright. Saved as
+ * ds_language the moment it changes; the next game started runs in it
+ * (src/platform.c sends it as the core's dsperate_language), and so does the
+ * next Reset of the one running (mk/patches/dsperate-lr-language.patch). */
 static dsl_choice dslang_load(void)
 {
 	char v[16];
@@ -407,6 +412,56 @@ static const char *dslang_label(dsl_choice c, char *buf, size_t n)
 		snprintf(buf, n, "%s", lang_name(dslang_label_lang(c)));
 	}
 	return buf;
+}
+
+/* A DS game's resume, by the language it was left in (src/dsresume.h): for
+ * the game about to start, `st` its auto state, the language it will run in
+ * into `lang` ("" when that cannot be known, or the game is not a DS game on
+ * DSperate), and true when its auto state was made in another one, so it
+ * starts fresh instead. The language is the one the core gets: the last
+ * dsperate_language the launcher sends, which is the row's unless the
+ * library database has one of its own (src/platform.c). */
+static bool ds_resume_fresh(const system_cfg *s, const char *romfile, const char *st,
+                            char *lang, size_t n)
+{
+	char fw[CFG_STR * 2], opt[32] = "", was[16];
+	const char *eff, *rec;
+	int i, k = plat_coreopt_count(s->tag);
+
+	lang[0] = '\0';
+	if (strcmp(s->tag, DSLANG_TAG) || strcmp(s->core, "dsperate")) return false;
+	for (i = 0; i < k; i++) {
+		const char *kv = plat_coreopt(s->tag, i);
+
+		if (!strncmp(kv, DSLANG_KEY "=", sizeof DSLANG_KEY))
+			snprintf(opt, sizeof opt, "%s", kv + sizeof DSLANG_KEY);
+	}
+	snprintf(fw, sizeof fw, "%s/Bios/firmware.bin", P_CARD);
+	if (!(eff = dsr_effective(opt, fw))) return false;
+	snprintf(lang, n, "%s", eff);
+	if (access(st, F_OK) != 0) return false;
+	rec = dsr_recorded(st, fw, was, sizeof was);
+	if (!dsr_start_fresh(rec, eff)) return false;
+	fprintf(stderr, "dslang: %s: its auto state was made in %s, the game runs in %s now: "
+	        "starting it fresh\n", romfile, rec, eff);
+	return true;
+}
+
+/* As the game ends: when its auto state was written in this run (it is not
+ * the file `before` saw), the language it was written in goes beside it. The
+ * state's own time and size, not the way the game ended: Diatom writes it at
+ * a quit, at POWER and at a shutdown's TERM alike, and not after a crash. */
+static void ds_resume_record(const char *st, const char *lang, const struct stat *before,
+                             bool had)
+{
+	struct stat now;
+
+	if (!lang[0] || stat(st, &now) != 0) return;
+	if (had && now.st_mtime == before->st_mtime && now.st_size == before->st_size &&
+	    now.st_ino == before->st_ino)
+		return;
+	if (!dsr_record(st, lang))
+		fprintf(stderr, "dslang: could not write the language beside %s\n", st);
 }
 
 /* ---------- two screens ---------------------------------------------------- */
@@ -16884,7 +16939,7 @@ static void respawn_resident(app *a)
 }
 
 /* The Ports shelf. A port is a Linux program with a script of its own - a
- * PortMaster port, DraStic, anything that is not a libretro core - and it
+ * PortMaster port, OpenBOR, anything that is not a libretro core - and it
  * wants the display, the buttons and most of the memory, which this process
  * and the resident Diatom are holding. So it does not run under the launcher
  * at all: the launcher names the script in PORT_REQUEST and exits, and
@@ -16894,8 +16949,9 @@ static void respawn_resident(app *a)
  *
  * A shelf whose core is "run:<script>" is the same handoff for a standalone
  * emulator: the script, under the card, is run with the game as its one
- * argument - Nintendo DS through DraStic, which is no libretro core. The
- * request is then the script and the game, a tab between them. */
+ * argument - OpenBOR, which has no libretro core, or the Dreamcast through
+ * the standalone Flycast. The request is then the script and the game, a tab
+ * between them. */
 #define PORT_CORE    "port"
 #define RUN_PREFIX   "run:"
 #define PORT_REQUEST "/tmp/zyperos_port"
@@ -17192,6 +17248,11 @@ static void launch(app *a)
 	 * loudly. */
 	char *argv[27 + 2 * 32];
 	bool resident = false, want_menu;
+	/* A DS game's resume by its language (ds_resume_fresh): what it will
+	 * run in, whether it starts fresh, and its auto state as it was */
+	char ds_lang[16] = "";
+	bool ds_fresh = false, ds_had = false;
+	struct stat ds_before;
 	unsigned waited;
 	int n = 0;
 
@@ -17216,10 +17277,11 @@ static void launch(app *a)
 	snprintf(save, sizeof save, "%s/Saves", P_CARD);
 	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
 
-	/* A DS game: two screens in one frame, a DraStic save to take over the
-	 * first time, and frames left undrawn when they run late - DSperate's
-	 * 3D is the heaviest thing a Cortex-A35 is asked to draw, and a skipped
-	 * drawing keeps the game at its speed where a late frame slows it. */
+	/* A DS game: two screens in one frame, a DraStic save (ROGUE OS's) to
+	 * take over the first time, and frames left undrawn when they run late -
+	 * DSperate's 3D is the heaviest thing a Cortex-A35 is asked to draw, and
+	 * a skipped drawing keeps the game at its speed where a late frame slows
+	 * it. */
 	g_game_dual = two_screens(s);
 	if (g_game_dual) dsv_import(save, romfile);
 	{
@@ -17270,6 +17332,10 @@ static void launch(app *a)
 	 * preview live beside each other, the launch hands both over, and a game
 	 * always comes up where it was left. */
 	state_path(a, o, &v->list.items[v->cursor], st, sizeof st);
+	/* Not a resume a DS game would come back from in another language than
+	 * the one Game Language says now (src/dsresume.h) */
+	ds_fresh = ds_resume_fresh(s, romfile, st, ds_lang, sizeof ds_lang);
+	ds_had = ds_lang[0] && stat(st, &ds_before) == 0;
 	quick_bind(a, o, &v->list.items[v->cursor]);
 	/* The scratch, not the Auto card - see pause_preview_path. The card is
 	 * written from this only when the game actually ends, below. */
@@ -17338,6 +17404,18 @@ static void launch(app *a)
 	 * once the game is running (the tick shows it), when the set was here
 	 * before the launch - a first play says it when the set arrives */
 	nq_clear(&g_nq);
+	/* Said as the game starts, ahead of anything else: why it is not where
+	 * it was left */
+	if (ds_fresh) {
+		nq_item it;
+
+		memset(&it, 0, sizeof it);
+		it.kind = NQ_ALERT;
+		it.ms = 4000;
+		snprintf(it.head, sizeof it.head, "%s", T(S_POPUP_DSLANG_HEAD));
+		snprintf(it.body, sizeof it.body, "%s", T(S_POPUP_DSLANG_BODY));
+		nq_push(&g_nq, &it);
+	}
 	if (active[0] || (chv_count() > 0 && !first_play)) {
 		nq_item it;
 
@@ -17389,7 +17467,7 @@ static void launch(app *a)
 		 * the in-game menu, which is drawn HERE now, over the frame the
 		 * emulator hands us on the way into its pause. */
 		aout_before_launch();
-		if (plat_resident_send(s->tag, core, rom, st, st, pv,
+		if (plat_resident_send(s->tag, core, rom, ds_fresh ? "" : st, st, pv,
 		                       console, active[0] ? active : NULL)) {
 			int r;
 
@@ -17573,7 +17651,9 @@ static void launch(app *a)
 			argv[n++] = (char *)aout_channels_wire(
 				aout_channels_for(g_channels, aout_dest_of(&cs, "")));
 		}
-		argv[n++] = (char *)"--load-state";      argv[n++] = st;
+		if (!ds_fresh) {
+			argv[n++] = (char *)"--load-state";  argv[n++] = st;
+		}
 		argv[n++] = (char *)"--state-on-exit";   argv[n++] = st;
 		/* A DS game's screens, as RUN and SETSCREENS give them to the
 		 * resident one. */
@@ -17620,6 +17700,8 @@ static void launch(app *a)
 
 	t_back0 = plat_now_ms();
 	present_ground(a);
+	/* The language its auto state was just written in, if it was */
+	ds_resume_record(st, ds_lang, &ds_before, ds_had);
 
 	/* The game has just written a fresh autosave preview. Throw the card's
 	 * texture away so it picks that up - but only if the preview is what the
@@ -18923,6 +19005,10 @@ static void shot_compose(app *a)
 		else if (!strcmp(shot_popup, "no_states")) {
 			shot_notice_head = T(S_POPUP_NO_STATES);
 			snprintf(pbody, sizeof pbody, "%s", "Super Metroid");
+		} else if (!strcmp(shot_popup, "dslang")) {
+			/* A DS game started fresh in a new Game Language (ds_resume_fresh) */
+			shot_notice_head = T(S_POPUP_DSLANG_HEAD);
+			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_DSLANG_BODY));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
 			snprintf(pbody, sizeof pbody,
@@ -19482,7 +19568,7 @@ static int scan_thread(void *ctx)
 }
 
 /* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
- * its own (OpenBOR, DraStic, the standalone Flycast), and only that. What it needs of the launcher's start, in the same order: the
+ * its own (OpenBOR, the standalone Flycast), and only that. What it needs of the launcher's start, in the same order: the
  * settings, the port's system from systems.cfg (its name and accent, and its
  * buttons for the Controls page), the language and theme, the interface
  * sounds, the display (taken as from the splash: portkeys has let go of it),
@@ -19528,8 +19614,8 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	g_port_menu = true;
-	/* Its buttons when ZyperOS knows them (OpenBOR's); over DraStic or the
-	 * standalone Flycast, In a game alone (port_menu_pads) */
+	/* Its buttons when ZyperOS knows them (OpenBOR's); over the standalone
+	 * Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
 	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL };

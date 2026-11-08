@@ -26,10 +26,10 @@
 
 /* Which games get the menu, by the core that runs them: every game a shelf
  * hands to a program of its own through a "run:" script. That is OpenBOR,
- * which ZyperOS ships, and DraStic and the standalone Flycast 2.7, which a
- * card can add for the Nintendo DS and Dreamcast shelves' Core row. The
- * launcher names the system's tag in the port request for these alone
- * (launch_port), and launch.sh gives portkeys --menu when it does.
+ * which ZyperOS ships, and the standalone Flycast 2.7, which a card can add
+ * for the Dreamcast shelf's Core row. The launcher names the system's tag in
+ * the port request for these alone (launch_port), and launch.sh gives
+ * portkeys --menu when it does.
  *
  * Not a port ("port", the Ports shelf): the mechanism is the same, but a
  * PortMaster game such as Stardew Valley takes most of the 1 GB, and the
@@ -41,11 +41,10 @@ static inline bool port_menu_for(const char *core)
 }
 
 /* Of those, the programs whose buttons the Controls pages know, by tag:
- * OpenBOR, whose layout ships with it (src/controls.c). DraStic and Flycast
- * keep theirs in their own settings, which ZyperOS does not read, so over
- * them Controls is In a game alone; and the Nintendo DS's page of buttons is
- * DSperate's, not DraStic's. tools/controls-check.c holds this to the
- * table. */
+ * OpenBOR, whose layout ships with it (src/controls.c). Flycast 2.7 keeps
+ * its own in its settings, which ZyperOS does not read, so over it Controls
+ * is In a game alone; and the Dreamcast's page of buttons is flycast2021's.
+ * tools/controls-check.c holds this to the table. */
 static inline bool port_menu_pads(const char *tag)
 {
 	return tag && !strcmp(tag, "OPENBOR");

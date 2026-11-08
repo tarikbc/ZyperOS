@@ -203,6 +203,29 @@ int main(void)
 	CHECK(strstr(patch, "UserField::Nickname") == NULL && strstr(patch, "UserField::Message") == NULL &&
 	      strstr(patch, "UserField::Colour") == NULL && strstr(patch, "UserField::Birthday") == NULL,
 	      "and no other of the settings");
+	/* At every Reset too, the option read again: the reset hunk (its header
+	 * names retro_reset) adds read_language() and apply_language(false)
+	 * before the reset's direct boot, and boot's applies it after load_bios.
+	 * Checked on the real core in a linux/arm64 container on 2026-11-08: a
+	 * Reset keeps the language, and takes a changed option's. */
+	{
+		const char *h = strstr(patch, "@@ RETRO_API void retro_reset(void)");
+		const char *next = h ? strstr(h + 2, "\n@@") : NULL;
+		const char *r1 = h ? strstr(h, "+  read_language();") : NULL;
+		const char *r2 = r1 ? strstr(r1, "+  apply_language(false);") : NULL;
+		const char *r3 = r2 ? strstr(r2, "   nds->reset();") : NULL;
+		const char *b = strstr(patch, "@@ bool boot()");
+		const char *b1 = b ? strstr(b, "+  apply_language(true);") : NULL;
+		const char *b2 = b1 ? strstr(b1, "   nds->reset();") : NULL;
+
+		CHECK(h != NULL, "the patch changes retro_reset");
+		CHECK(r1 && r2 && r3 && (!next || r3 < next),
+		      "retro_reset reads the option again and sets the language before the reset's direct boot");
+		CHECK(b1 && b2, "boot sets the language before the first reset");
+		CHECK(strstr(patch, "+  read_language();\n }") != NULL ||
+		      strstr(patch, "read_language();\n }") != NULL,
+		      "read_options reads the language too");
+	}
 	/* The firmware file is not written: DSperate saves a changed firmware only
 	 * where a frontend calls save_firmware_override, and the patch adds no call */
 	for (p = patch; p && *p; p = strchr(p, '\n') ? strchr(p, '\n') + 1 : NULL) {

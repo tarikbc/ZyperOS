@@ -116,6 +116,11 @@ for f in "$ROOT"/res/bgm/LICENSE-*.txt; do
 	cp "$f" "$OUT/Licenses/menu-music-${f##*/LICENSE-}"
 done
 cp "$DIATOM_ELF" "$P/diatom"
+# A core ZyperOS patches goes on the card only as the build of the patches in
+# mk/patches now: the 1.0.1 images carried a Nintendo DS core built before its
+# language patch, and the Game Language row did nothing (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" check "$VENDOR_DIR" ||
+	{ echo "payload: a patched core in $VENDOR_DIR is stale or unstamped" >&2; exit 1; }
 cp "$VENDOR_DIR/cores/"*.so "$P/cores/"
 # ScummVM's engine data and GUI theme, from mk/build-scummvm.sh with its core.
 # The core reads them from Bios/scummvm, which launch.sh fills from here: a
@@ -150,8 +155,8 @@ fi
 missing=
 # "port" and "run:<script>" are not cores: those shelves hand their games to
 # launch.sh, which runs a script instead of Diatom. A shelf can list several
-# cores, comma separated (the Nintendo DS: DraStic's script and DSperate), and
-# each libretro one of them must be here.
+# cores, comma separated (the Dreamcast: flycast2021 and Flycast 2.7's
+# script), and each libretro one of them must be here.
 for core in $(awk -F'|' '$1=="sys"{n=split($4, c, ","); for (i = 1; i <= n; i++) {
                   gsub(/^[ \t]+|[ \t]+$/,"",c[i]); if (c[i] != "port" && c[i] !~ /^run:/) print c[i] } }' \
               "$ROOT/config/systems.cfg" | sort -u); do

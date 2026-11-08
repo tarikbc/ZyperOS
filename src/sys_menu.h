@@ -292,13 +292,13 @@ typedef struct {
 	/* The system menu */
 	const char *sys_name;
 	const char *sys_core;
-	/* The shelf lists more than one core (the Nintendo DS: DraStic and
-	 * DSperate), so its Core row is a choice rather than a fact. */
+	/* The shelf lists more than one core (the Dreamcast: flycast2021 and
+	 * the standalone Flycast 2.7), so its Core row is a choice rather than a
+	 * fact. */
 	bool        core_choice;
-	/* Game Language, under Core, on the Nintendo DS shelf while DSperate runs
-	 * it (src/dslang.h): the row's value, "Auto (English)" or a language's
-	 * name. NULL: the shelf has no such row, and every other shelf's menu is
-	 * as it was. */
+	/* Game Language, under Core, on the Nintendo DS shelf (src/dslang.h):
+	 * the row's value, "Auto (English)" or a language's name. NULL: the
+	 * shelf has no such row, and every other shelf's menu is as it was. */
 	const char *dslang;
 	int         game_count;
 	const char *dmode;

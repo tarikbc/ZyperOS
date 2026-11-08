@@ -1,11 +1,9 @@
 #!/bin/sh
-# Build DSperate, the Nintendo DS core the Nintendo DS shelf can run instead
-# of DraStic (its Core row, src/main.c).
+# Build DSperate, the Nintendo DS shelf's core.
 #
-# DSperate (github.com/beebono/DSperate, GPL-3.0) is an open DS emulator that
-# reimplements DraStic's techniques - an ARM64 JIT and NEON rendering - written
-# from DraStic's freely distributed debug-symbol build and measured against
-# melonDS. It has no libretro core of its own. dsperate-lr
+# DSperate (github.com/beebono/DSperate, GPL-3.0) is an open DS emulator with
+# an ARM64 JIT and NEON rendering, measured against melonDS. It has no
+# libretro core of its own. dsperate-lr
 # (github.com/thwonp/dsperate-lr, GPL-3.0) wraps its core library as one, and
 # pins DSperate as a submodule, so one commit of the wrapper pins both. This is
 # the wrapper plorpOS ships on its GKD and RG Rotate builds
@@ -62,11 +60,14 @@
 # ROGUE card, which tools/from-rogue.sh copies to Bios/, is Spanish (language
 # 5), and Mario Kart DS came up in Spanish on my Pixel 2 whatever I or the
 # handheld speak. Nothing in the wrapper or in Diatom looked at it. The patch
-# adds the core option dsperate_language (restart): firmware, the default and
-# the old behaviour, or japanese, english, french, german, italian, spanish or
+# adds the core option dsperate_language: firmware, the default and the old
+# behaviour, or japanese, english, french, german, italian, spanish or
 # chinese (the iQue DS's), which sets the language field of the user settings
 # in the run's own copy of the firmware just before the game is started
-# (DSperate's direct boot copies the settings from it). The launcher sends it
+# (DSperate's direct boot copies the settings from it), and again at every
+# Reset, read afresh: a reset does not load the firmware again, so the copy
+# kept the language already, but a game may write its own settings to the
+# firmware while it runs, and the option may have changed. The launcher sends it
 # with every DS game (src/dslang.h): the shelf's Game Language row, which is
 # the language MENU > Language chose where the DS has it and English where it
 # does not (Portuguese, Chinese) until it is set to one outright. Only that
@@ -91,7 +92,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=093d50fcbd10531273e0cc22a23c6644a26b9b71   # DSperate v3.0.5 (ddf2910), plorpOS's pin
-SHA=570f7a59191cb38dc40b8abbdee19bba35c03810cbb1af0cb14f240e89b5ec01
+SHA=f00dafcde14422194cd89d58acc815b9946c52fd48fde3cece59019b60f63f11
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 
@@ -128,10 +129,13 @@ GOT=$(shasum -a 256 "$SO" | cut -d' ' -f1)
 if [ "$GOT" != "$SHA" ]; then
 	echo "!! dsperate sha256 $GOT, expected $SHA" >&2
 	echo "  The toolchain image, the source, the patch or the profile changed." >&2
-	echo "  Verify the core, then update SHA here and in the README together." >&2
+	echo "  Verify the core, then update SHA here." >&2
 	exit 1
 fi
 mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
 echo "  built  dsperate (dsperate-lr ${LR%${LR#???????}}, DSperate v3.0.5) + PGO + frameskip + thread layout + language, untuned ARMv8.0"
 echo "  sha256 $GOT"
+# Which patches are in it, for mk/payload.sh to hold it to: the 1.0.1 images
+# shipped a core built before the language patch (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" write dsperate

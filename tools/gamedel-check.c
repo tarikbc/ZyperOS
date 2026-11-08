@@ -542,7 +542,7 @@ static void the_rules(void)
 	CHECK(!gd_is_bios("neogeo/neogeo.zip"));
 	CHECK(!gd_is_bios(NULL));
 	CHECK(gd_shelf_deletes("mgba"));
-	CHECK(gd_shelf_deletes("run:Emulators/DraStic/DraStic.sh"));
+	CHECK(gd_shelf_deletes("run:Emulators/Flycast/Flycast.sh"));
 	/* A port too: its port.json or its GAMEDIR says which folders are its */
 	CHECK(gd_shelf_deletes("port"));
 	/* The next game, or the one before at the end, or none */
