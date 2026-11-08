@@ -112,6 +112,18 @@ static const db_default library_defaults[] = {
 	 * own size, where the core's default is 640x480, on the same Mali-G31
 	 * the Dreamcast's 320x240 above is for. */
 	{ "coreopt..mupen64plus-43screensize", "320x240" },
+	/* And no framebuffer emulation. With the core handing over a frame only
+	 * for a new picture (mk/patches/mupen64plus-next-new-frame-swap.patch)
+	 * Mario Kart 64 ran its full speed and Mesa's panfrost crashed it within
+	 * seconds to a minute, in 10 of 11 one-minute races: a freed render
+	 * target read in pan_preload_emit_pre_frame_dcd, with GLideN64's
+	 * framebuffer objects in play, and still with the color copy to RDRAM
+	 * off, transaction elimination off or AFBC off. With framebuffer
+	 * emulation off, none of 4 races crashed, 1 to 3 minutes each, at 56 to
+	 * 59 core frames a second of 60 (2026-11-08). The cost: effects
+	 * that read the frame back (a paused game's backdrop, Pokemon Snap's
+	 * photos, some transitions) are missing or plain. */
+	{ "coreopt.N64.mupen64plus-EnableFBEmulation", "False" },
 	/* And its Rumble Pak in the controller, where the core's default is the
 	 * Controller Pak: the Pixel 2 has a motor (2026-11-05). Few games need
 	 * the Controller Pak - most save on the cartridge, as Mario Kart 64's
