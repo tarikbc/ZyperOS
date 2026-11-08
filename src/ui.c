@@ -730,10 +730,129 @@ static void i18n_note(const char *what, const char *s)
 	static unsigned said[256];
 	unsigned h = 5381;
 
+	for (const char *p = what; *p; p++) h = h * 33 + (unsigned char)*p;
 	for (const char *p = s; *p; p++) h = h * 33 + (unsigned char)*p;
 	for (int i = 0; i < 256 && said[i]; i++) if (said[i] == h) return;
 	for (int i = 0; i < 256; i++) if (!said[i]) { said[i] = h; break; }
 	fprintf(stderr, "i18n: %s: %s\n", what, s);
+}
+
+/* ---- the box a string must stay inside ---------------------------------
+ *
+ * A string that is wider than the panel, tile or plate it is drawn on is as
+ * broken as one past the screen, and the screen's edge says nothing of it
+ * (the Computer Connected question's hint ran 125 units past its two-tile
+ * panel, 2026-11-07). So the rects a frame fills (ui_round_rect, which
+ * ui_panel and the tiles, cards and plates are made of) are kept, and each
+ * string drawn is held to the smallest of them its anchor and its middle are
+ * in, less a margin: text touching an edge is overflowing it too. And two
+ * strings of a line must not meet. Every string, not only the table's: a
+ * label copied into a row's buffer or formatted around a name is no longer
+ * the table's pointer, and it is the one that overflows.
+ *
+ * "i18n: overflow: PX|BOX|TEXT" and, once a string, "i18n: drawn: TEXT"
+ * (tools/i18n-shots.py names the screen, the language and the string ID, and
+ * from the drawn ones what no shot shows). Only on a host. */
+#define FIT_RECTS 128
+#define FIT_MARGIN 3                /* units of air a string keeps from its box: a key's are 3 to 4 */
+static SDL_Rect fit_rect[FIT_RECTS];
+static int fit_n;
+static struct { SDL_Rect r; unsigned h; char text[32]; } fit_line[FIT_RECTS];
+static int fit_lines;
+
+void ui_fit_frame(void) { fit_n = 0; fit_lines = 0; }
+
+static void fit_box(const SDL_Rect *q)
+{
+	if (fit_n < FIT_RECTS) fit_rect[fit_n++] = *q;
+}
+
+/* The text with its line ends as \n, on one line of the log */
+static void fit_say(const char *what, const char *head, const char *s)
+{
+	static unsigned said[4096];
+	char line[1100], *o = line;
+	unsigned h = 5381;
+	int i;
+
+	for (const char *p = what; *p; p++) h = h * 33 + (unsigned char)*p;
+	for (const char *p = head; *p; p++) h = h * 33 + (unsigned char)*p;
+	for (const char *p = s; *p; p++) h = h * 33 + (unsigned char)*p;
+	if (!h) h = 1;
+	for (i = (int)(h % 4096); said[i] && said[i] != h; i = (i + 1) % 4096) {}
+	if (said[i]) return;
+	said[i] = h;
+	o += snprintf(line, sizeof line, "%s", head);
+	for (; *s && o < line + sizeof line - 3; s++) {
+		if (*s == '\n') { *o++ = '\\'; *o++ = 'n'; }
+		else *o++ = *s;
+	}
+	*o = '\0';
+	fprintf(stderr, "i18n: %s: %s\n", what, line);
+}
+
+/* `dst` is where `s` is drawn, at anchor x `ax` */
+static void fit_check(SDL_Renderer *r, const char *s, const SDL_Rect *dst, int ax)
+{
+	const SDL_Rect *box = NULL;
+	char head[128];
+	unsigned hash = 5381;
+	int i, cy = dst->y + dst->h / 2, over;
+	long best = 0;
+
+	for (const char *p = s; *p; p++) hash = hash * 33 + (unsigned char)*p;
+
+	fit_say("drawn", "", s);
+	if (SDL_RenderIsClipEnabled(r)) return;
+	for (i = 0; i < fit_n; i++) {
+		const SDL_Rect *q = &fit_rect[i];
+		long area = (long)q->w * q->h;
+
+		if (ax < q->x || ax >= q->x + q->w || cy < q->y || cy >= q->y + q->h) continue;
+		if (q->h < dst->h / 2 || q->w < 24) continue;
+		if (!box || area <= best) { box = q; best = area; }
+	}
+	if (box) {
+		over = box->x + FIT_MARGIN - dst->x;
+		if (dst->x + dst->w - (box->x + box->w - FIT_MARGIN) > over)
+			over = dst->x + dst->w - (box->x + box->w - FIT_MARGIN);
+		if (over > 0) {
+			snprintf(head, sizeof head, "%d|box %d..%d|", over, box->x, box->x + box->w);
+			fit_say("overflow", head, s);
+		}
+	}
+	/* Two strings of a line must not meet: a label and its value, a
+	 * footer's two ends */
+	for (i = 0; i < fit_lines; i++) {
+		const SDL_Rect *o = &fit_line[i].r;
+		int top = dst->y > o->y ? dst->y : o->y;
+		int bot = dst->y + dst->h < o->y + o->h ? dst->y + dst->h : o->y + o->h;
+		int left = dst->x > o->x ? dst->x : o->x;
+		int right = dst->x + dst->w < o->x + o->w ? dst->x + dst->w : o->x + o->w;
+
+		/* The same string drawn twice (a plate's focused copy) is not a meeting,
+		 * nor is one drawn over most of the other (an animation's two frames) */
+		if (fit_line[i].h != hash && bot - top > dst->h / 2 && right - left > 2 &&
+		    (right - left) * 5 < (dst->w < o->w ? dst->w : o->w) * 3) {
+			snprintf(head, sizeof head, "%d|meets %d..%d %s|", right - left, o->x, o->x + o->w,
+			         fit_line[i].text);
+			fit_say("overflow", head, s);
+		}
+	}
+	if (fit_lines < FIT_RECTS) {
+		fit_line[fit_lines].r = *dst;
+		fit_line[fit_lines].h = hash;
+		snprintf(fit_line[fit_lines].text, sizeof fit_line[fit_lines].text, "%.30s", s);
+		for (char *c = fit_line[fit_lines].text; *c; c++) if (*c == '\n' || *c == '|') *c = ' ';
+		fit_lines++;
+	}
+	/* Past the screen's edge (the 1024 units' design space) */
+	over = FIT_MARGIN - dst->x;
+	if (dst->x + dst->w - (1024 - FIT_MARGIN) > over) over = dst->x + dst->w - (1024 - FIT_MARGIN);
+	if (over > 0) {
+		snprintf(head, sizeof head, "%d|screen 0..1024|", over);
+		fit_say("overflow", head, s);
+	}
 }
 
 /* Text formatted from a string ("linked as %s") is not the table's, so
@@ -746,6 +865,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 }
 #else
 #define i18n_fit_seen(src, dst) ((void)0)
+void ui_fit_frame(void) {}
 #endif
 
 static struct text_entry *text_get(SDL_Renderer *r, TTF_Font *f, const char *s,
@@ -802,9 +922,7 @@ int ui_text(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
 	dst.x = anchor == 0 ? x - e->w / 2 : (anchor > 0 ? x - e->w : x);
 	dst.y = y + e->dy;
 #ifdef I18N_PSEUDO
-	/* Past the screen's edge (the 1024 units' design space; an ink's
-	 * width short of it, as a line's texture has room either side) */
-	if ((dst.x < -4 || dst.x + e->w > 1024 + 4) && i18n_watched(s)) i18n_note("off screen", s);
+	fit_check(r, s, &dst, x);
 #endif
 	SDL_SetTextureAlphaMod(e->tex, col.a);
 	SDL_RenderCopy(r, e->tex, NULL, &dst);
@@ -1511,6 +1629,7 @@ void ui_scrim_k(SDL_Renderer *r, int game, float k)
 	int alpha = game ? t->scrim_game : t->scrim_menu;
 
 	if (!(k > 0.0f)) return;
+	ui_fit_frame();   /* what is under a scrim is another layer's */
 	if (k < 1.0f) alpha = (int)(alpha * k + 0.5f);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColor(r, t->ink.r, t->ink.g, t->ink.b, (Uint8)alpha);
@@ -1774,6 +1893,9 @@ void ui_round_rect(SDL_Renderer *r, const SDL_Rect *q, int radius, SDL_Color col
 	int y, n;
 
 	if (q->w <= 0 || q->h <= 0) return;
+#ifdef I18N_PSEUDO
+	fit_box(q);
+#endif
 	radius = round_rect_radius(q->w, q->h, radius);
 
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
