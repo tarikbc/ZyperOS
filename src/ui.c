@@ -750,8 +750,9 @@ static void i18n_note(const char *what, const char *s)
  * label copied into a row's buffer or formatted around a name is no longer
  * the table's pointer, and it is the one that overflows.
  *
- * "i18n: overflow: PX|BOX|TEXT" and, once a string, "i18n: drawn: TEXT"
- * (tools/i18n-shots.py names the screen, the language and the string ID, and
+ * "fit: overflow: PX|BOX|TEXT" and, once a string, "fit: drawn: TEXT" (not
+ * "i18n: ", which other checks read as a string that did not fit;
+ * tools/i18n-shots.py names the screen, the language and the string ID, and
  * from the drawn ones what no shot shows). Only on a host. */
 #define FIT_RECTS 128
 #define FIT_MARGIN 3                /* units of air a string keeps from its box: a key's are 3 to 4 */
@@ -788,7 +789,7 @@ static void fit_say(const char *what, const char *head, const char *s)
 		else *o++ = *s;
 	}
 	*o = '\0';
-	fprintf(stderr, "i18n: %s: %s\n", what, line);
+	fprintf(stderr, "fit: %s: %s\n", what, line);
 }
 
 /* `dst` is where `s` is drawn, at anchor x `ax` */

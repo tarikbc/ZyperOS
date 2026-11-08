@@ -203,6 +203,14 @@ controls.slow_pointer
 controls.scummvm_menu
 controls.keyboard
 controls.shake
+controls.attack
+controls.attack_n
+controls.jump
+controls.special
+controls.pause
+controls.screenshot
+controls.menu_port
+controls.quit_off
 controls.c_buttons
 controls.c_up
 controls.c_right
@@ -215,6 +223,11 @@ controls.stylus
 controls.key.dpad
 controls.stylus_moves
 controls.stylus_touch
+
+# corner: no shot draws it yet
+corner.time_min
+corner.time_h
+corner.time_h_min
 
 # datetime: no shot draws it yet
 datetime.change
@@ -337,7 +350,6 @@ lights.bar
 lights.low
 lights.level
 lights.done
-lights.cheer
 lights.all_on
 lights.some_on.one
 lights.some_on.other
@@ -408,6 +420,7 @@ musiclib.art_no_network
 # panel: no shot draws it yet
 panel.order_release
 panel.battery_percentage
+panel.battery_time
 panel.side_lights
 panel.controls
 panel.needs_wifi
@@ -573,7 +586,10 @@ sysmenu.charge_limit
 sysmenu.side_lights
 sysmenu.order_release
 sysmenu.battery_percent
+sysmenu.battery_time
 sysmenu.developer
+sysmenu.dslang
+sysmenu.dslang_auto
 sysmenu.muse_books
 sysmenu.muse_videos
 sysmenu.muse_albums

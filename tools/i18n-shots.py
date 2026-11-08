@@ -280,10 +280,10 @@ def run_language(code, shots, binary, keep):
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ")):
                     data.setdefault(name, []).append(line[6:])
-                elif line.startswith("i18n: drawn: "):
-                    drawn.add(unescape(line[13:]))
-                elif line.startswith("i18n: overflow: "):
-                    px, box, text = line[16:].split("|", 2)
+                elif line.startswith("fit: drawn: "):
+                    drawn.add(unescape(line[12:]))
+                elif line.startswith("fit: overflow: "):
+                    px, box, text = line[15:].split("|", 2)
                     kind, span, *beside = box.split(" ", 2)
                     what = {"screen": "past the screen's edge",
                             "meets": "into the text beside it (x %s, \"%s\")" % (span, beside[0] if beside else ""),
