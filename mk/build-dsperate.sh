@@ -61,14 +61,16 @@
 # Bios/ carries the language of the console it was dumped from: the one on my
 # ROGUE card, which tools/from-rogue.sh copies to Bios/, is Spanish (language
 # 5), and Mario Kart DS came up in Spanish on my Pixel 2 whatever I or the
-# handheld speak. Nothing in the wrapper or in Diatom looked at it. The patch adds the core option
-# dsperate_language (restart): firmware, the default and the old behaviour, or
-# japanese, english, french, german, italian or spanish, which sets the
-# language field of the user settings in the run's own copy of the firmware
-# just before the game is started (DSperate's direct boot copies the settings
-# from it). The launcher sends it with every DS game (src/dslang.h): the
-# language MENU > Language chose where the DS has it, English where it does
-# not (Portuguese, Chinese). Only that one field of the copy in memory
+# handheld speak. Nothing in the wrapper or in Diatom looked at it. The patch
+# adds the core option dsperate_language (restart): firmware, the default and
+# the old behaviour, or japanese, english, french, german, italian, spanish or
+# chinese (the iQue DS's), which sets the language field of the user settings
+# in the run's own copy of the firmware just before the game is started
+# (DSperate's direct boot copies the settings from it). The launcher sends it
+# with every DS game (src/dslang.h): the shelf's Game Language row, which is
+# the language MENU > Language chose where the DS has it and English where it
+# does not (Portuguese, Chinese) until it is set to one outright. Only that
+# one field of the copy in memory
 # changes: the dump on the card is not written (DSperate saves a changed
 # firmware only from its own frontends, to a sidecar file, and this wrapper
 # never does), and nothing of the game's save or of the other settings is
@@ -89,7 +91,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-/tmp/zyperos-dsperate-lr}
 REPO=${DSPERATE_LR:-https://github.com/thwonp/dsperate-lr.git}
 LR=093d50fcbd10531273e0cc22a23c6644a26b9b71   # DSperate v3.0.5 (ddf2910), plorpOS's pin
-SHA=90e82234e99aa17491ba79e21693b483984558bf94c2318379ec2f33fab78e8d
+SHA=570f7a59191cb38dc40b8abbdee19bba35c03810cbb1af0cb14f240e89b5ec01
 IMAGE=dsperate-lr-cross
 PLAT=linux/amd64
 

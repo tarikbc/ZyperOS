@@ -94,15 +94,18 @@ static int coreopt_nth(const char *tag, int want, const char **out)
 }
 
 /* The one opinion that is not a stored setting: a Nintendo DS game's language
- * follows MENU > Language (src/dslang.h), which can change between two games,
- * so it is made when asked and not read once with the rest. It goes first,
+ * is the shelf's Game Language, Auto being MENU > Language (src/dslang.h),
+ * which can change between two games, so it is made when asked and not read
+ * once with the rest. It goes first,
  * so an entry of the same key in the database, sent after it, wins. */
 static const char *derived_coreopt(const char *tag)
 {
 	static char kv[48];
+	char word[16];
 
 	if (!tag || strcmp(tag, DSLANG_TAG)) return NULL;
-	snprintf(kv, sizeof kv, "%s=%s", DSLANG_KEY, dslang_value(i18n_lang()));
+	db_get_str(db_dev(), DSLANG_SETTING, word, sizeof word, "auto");
+	snprintf(kv, sizeof kv, "%s=%s", DSLANG_KEY, dslang_option(dslang_parse(word), i18n_lang()));
 	return kv;
 }
 

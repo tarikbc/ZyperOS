@@ -282,6 +282,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 |---|---|
 | **Games** | how many the shelf found |
 | **Core** | which libretro core runs them |
+| **Game Language** | the Nintendo DS shelf's, while DSperate runs it: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`; a game resumed from its saved state keeps its own until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Box Art** | fetch what this system is missing, and nothing else |

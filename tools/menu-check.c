@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+static int sm_at(const sys_ui *u, sm_row which);
 static int fails;
 
 static void ck(int cond, const char *what)
@@ -699,20 +700,20 @@ static void system_menu(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 
 	printf("system menu:\n");
-	ck(n == SM_ROWS, "every row is filled");
+	ck(n == SM_ROWS - 1, "every row is filled, but Game Language, which only the Nintendo DS has");
 	ck(!strcmp(heading, "Game Boy"), "heading is the system, not ZyperOS");
-	ck(!strcmp(val(&rows[SM_GAMES]), "412"), "the count is the real one");
-	ck(!strcmp(val(&rows[SM_CORE]), "gambatte"), "the core is the real one");
-	ck(!strcmp(val(&rows[SM_DISPLAY]), "Sharp"), "display mode is passed through");
-	ck(rows[SM_DISPLAY].live && rows[SM_RESCAN].live, "the two live rows are live");
-	ck(!rows[SM_GAMES].live && !rows[SM_CORE].live, "reported facts are not rows to press");
-	ck(rows[SM_BOXART].live, "Box Art is live on a network");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_GAMES)]), "412"), "the count is the real one");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_CORE)]), "gambatte"), "the core is the real one");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_DISPLAY)]), "Sharp"), "display mode is passed through");
+	ck(rows[sm_at(&u, SM_DISPLAY)].live && rows[sm_at(&u, SM_RESCAN)].live, "the two live rows are live");
+	ck(!rows[sm_at(&u, SM_GAMES)].live && !rows[sm_at(&u, SM_CORE)].live, "reported facts are not rows to press");
+	ck(rows[sm_at(&u, SM_BOXART)].live, "Box Art is live on a network");
 
 	/* A shelf that lists two cores, the Nintendo DS's: Core is a choice. */
 	u.sys_core = "DraStic";
 	u.core_choice = true;
 	sys_menu_build(&u, rows, &b, &heading);
-	ck(rows[SM_CORE].live && !strcmp(val(&rows[SM_CORE]), "DraStic"),
+	ck(rows[sm_at(&u, SM_CORE)].live && !strcmp(val(&rows[sm_at(&u, SM_CORE)]), "DraStic"),
 	   "two cores make Core a row to press, naming the one in use");
 	u.core_choice = false;
 	u.sys_core = "gambatte";
@@ -720,9 +721,9 @@ static void system_menu(void)
 	/* The same menu with the radio down. Only Box Art changes. */
 	u.wifi = WIFI_OFF;
 	sys_menu_build(&u, rows, &b, &heading);
-	ck(!rows[SM_BOXART].live, "Box Art dies with the radio");
-	ck(!strcmp(val(&rows[SM_BOXART]), "needs Wi-Fi"), "and says why");
-	ck(rows[SM_RESCAN].live, "Rescan does not need a network");
+	ck(!rows[sm_at(&u, SM_BOXART)].live, "Box Art dies with the radio");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_BOXART)]), "needs Wi-Fi"), "and says why");
+	ck(rows[sm_at(&u, SM_RESCAN)].live, "Rescan does not need a network");
 
 	/* Favorites, which is not a system: no core and no folder, so four of the
 	 * six rows have nothing to describe and one of them - Display Mode -
@@ -882,6 +883,66 @@ static void auto_off_words(void)
 /* Walk the whole menu and collect every row the cursor can actually rest on.
  * A row that is drawn but cannot be selected is fine; a row that CAN be
  * selected and then does nothing when pressed is the defect. */
+/* Game Language (src/dslang.h): a row of the Nintendo DS shelf's menu, under
+ * Core, there while DSperate runs it, and on no other shelf's menu - nor on
+ * the DS's with DraStic, which has no use for it */
+static void dslang_row(void)
+{
+	sys_ui u;
+	menu_bufs b;
+	menu_row rows[MENU_MAX_ROWS], plain[MENU_MAX_ROWS];
+	sm_row sm[SM_ROWS];
+	const char *heading;
+	int n, np, i, at;
+
+	memset(&u, 0, sizeof u);
+	u.games = true;
+	u.wifi = WIFI_CONNECTED;
+	u.sys_name = "Nintendo DS"; u.sys_core = "DSperate"; u.core_choice = true;
+	u.game_count = 20; u.dmode = "Native";
+	np = sys_menu_build(&u, plain, &b, &heading);
+
+	printf("system menu, Game Language:\n");
+	ck(!has_label(plain, np, "Game Language"), "no Game Language row unless the shelf says so");
+	ck(np == SM_ROWS - 1, "and every other row is there");
+
+	u.dslang = "Auto (English)";
+	n = sys_menu_build(&u, rows, &b, &heading);
+	at = sm_at(&u, SM_DSLANG);
+	ck(n == np + 1 && n == SM_ROWS, "one row more");
+	ck(at == sm_at(&u, SM_CORE) + 1, "right under Core");
+	ck(!strcmp(rows[at].label, "Game Language"), "named Game Language");
+	ck(!strcmp(val(&rows[at]), "Auto (English)"), "saying what it is set to");
+	ck(rows[at].live, "a row to press");
+	ck(menu_sound_at(b.sound, n, at) == MENU_SND_RING, "that steps round, on A too");
+	/* the rest in the order it was, each row as it was */
+	ck(sys_menu_system_rows(&u, sm) == n && sm[at] == SM_DSLANG, "the build and the list agree");
+	for (i = 0; i < n; i++) {
+		int j = i < at ? i : i - 1;
+
+		if (i == at) continue;
+		if (strcmp(rows[i].label, plain[j].label) || strcmp(val(&rows[i]), val(&plain[j]))) {
+			ck(false, "the other rows are as they were");
+			break;
+		}
+	}
+	u.dslang = "Español";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[at]), "Español"), "and a language by its name");
+}
+
+/* Where a console shelf's menu has `which`, or -1: the enum's numbers are the
+ * full list's, and Game Language is only on the Nintendo DS's shelf (a Box
+ * Art row is not there without a radio) */
+static int sm_at(const sys_ui *u, sm_row which)
+{
+	sm_row ids[SM_ROWS];
+	int n = sys_menu_system_rows(u, ids), k;
+
+	for (k = 0; k < n; k++)
+		if (ids[k] == which) return k;
+	return -1;
+}
 static int reachable(const menu_row *rows, int n, int *out, int max)
 {
 	int sel = 0, k = 0, i;
@@ -927,14 +988,14 @@ static void cursor_reaches(void)
 
 	printf("system menu, what the cursor can reach:\n");
 	ck(k == 5, "five rows, not eight");
-	ck(holds(got, k, SM_RANDOM), "Random Game, with games on the shelf");
-	ck(holds(got, k, SM_DISPLAY), "Display Mode");
+	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
+	ck(holds(got, k, sm_at(&u, SM_DISPLAY)), "Display Mode");
 	/* Live since sorting stopped being alphabetical-only. It was a
 	 * placeholder for long enough that this check counted three. */
-	ck(holds(got, k, SM_SORT), "Sort By");
-	ck(holds(got, k, SM_BOXART), "Box Art");
-	ck(holds(got, k, SM_RESCAN), "Rescan Folder");
-	ck(!holds(got, k, SM_GAMES) && !holds(got, k, SM_CORE),
+	ck(holds(got, k, sm_at(&u, SM_SORT)), "Sort By");
+	ck(holds(got, k, sm_at(&u, SM_BOXART)), "Box Art");
+	ck(holds(got, k, sm_at(&u, SM_RESCAN)), "Rescan Folder");
+	ck(!holds(got, k, sm_at(&u, SM_GAMES)) && !holds(got, k, sm_at(&u, SM_CORE)),
 	   "the reported facts are not stops");
 
 	memset(&u, 0, sizeof u);
@@ -1008,8 +1069,8 @@ static void radio_less(void)
 	for (i = 0, ok = true; i < k; i++) if (pm[i] != (pm_row)i) ok = false;
 	ck(k == PM_ROWS && ok, "every ZyperOS row, in the enum's order");
 	k = sys_menu_system_rows(&u, sm);
-	for (i = 0, ok = true; i < k; i++) if (sm[i] != (sm_row)i) ok = false;
-	ck(k == SM_ROWS && ok, "every system row, in the enum's order");
+	for (i = 0, ok = true; i < k; i++) if (sm[i] != (sm_row)(i + (i >= SM_DSLANG))) ok = false;
+	ck(k == SM_ROWS - 1 && ok, "every system row but Game Language, in the enum's order");
 
 	u.no_wifi = true;
 	u.no_bt = true;
@@ -1053,7 +1114,7 @@ static void radio_less(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 	k = sys_menu_system_rows(&u, sm);
 	printf("system menu, no radio at all:\n");
-	ck(n == k && n == SM_ROWS - 1, "Box Art goes and nothing else");
+	ck(n == k && n == SM_ROWS - 2, "Box Art goes and nothing else");
 	ck(!has_label(rows, n, "Box Art"), "no Box Art");
 	ck(sm[n - 1] == SM_RESCAN && !strcmp(rows[n - 1].label, "Rescan Folder"),
 	   "Rescan Folder moves up into its place");
@@ -1701,12 +1762,12 @@ static void row_sounds(void)
 	u.sys_name = "NDS"; u.sys_core = "drastic"; u.core_choice = true;
 	u.game_count = 3; u.dmode = "Native";
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(menu_sound_at(b.sound, n, SM_CORE) == MENU_SND_RING, "a system's Core steps round, on A too");
-	ck(menu_sound_at(b.sound, n, SM_SORT) == (MENU_SND_RING | MENU_SND_NO_A),
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_CORE)) == MENU_SND_RING, "a system's Core steps round, on A too");
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_SORT)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "Sort By steps round and does nothing with A");
-	ck(menu_sound_at(b.sound, n, SM_DISPLAY) == (MENU_SND_RING | MENU_SND_NO_A),
+	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_DISPLAY)) == (MENU_SND_RING | MENU_SND_NO_A),
 	   "and Display Mode the same");
-	ck(!menu_sound_at(b.sound, n, SM_GAMES) && !menu_sound_at(b.sound, n, SM_RESCAN),
+	ck(!menu_sound_at(b.sound, n, sm_at(&u, SM_GAMES)) && !menu_sound_at(b.sound, n, sm_at(&u, SM_RESCAN)),
 	   "the count and Rescan are plain");
 
 	u.fav = true;
@@ -1775,6 +1836,7 @@ int main(void)
 	auto_off_words();
 	cursor_reaches();
 	radio_less();
+	dslang_row();
 	slots();
 	save_slot();
 	step_terminates();

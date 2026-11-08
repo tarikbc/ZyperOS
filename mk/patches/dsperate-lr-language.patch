@@ -6,9 +6,9 @@ index 76eeee6..db4cf70 100644
  std::unique_ptr<ds::NDS> nds;
  std::string rom_path;
  bool jit_on = true;
-+// The DS language a game sees, 0 to 5 as the firmware's user settings number
-+// them, or -1 for the firmware's own. See read_options and boot.
-+constexpr const char* kLanguages[] = {"japanese", "english", "french", "german", "italian", "spanish"};
++// The DS language a game sees, 0 to 6 as the firmware's user settings number
++// them (6 is the iQue DS's Chinese), or -1 for the firmware's own. See read_options and boot.
++constexpr const char* kLanguages[] = {"japanese", "english", "french", "german", "italian", "spanish", "chinese"};
 +int ds_language = -1;
  uint32_t frame[W * H * 2];
  ds::s16 audio[4096 * 2];
@@ -25,7 +25,7 @@ index 76eeee6..db4cf70 100644
 +  retro_variable lv{"dsperate_language", nullptr};
 +  ds_language = -1;
 +  if (env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &lv) && lv.value)
-+    for (int i = 0; i < 6; ++i)
++    for (int i = 0; i < 7; ++i)
 +      if (!std::strcmp(lv.value, kLanguages[i])) ds_language = i;
  }
  
@@ -47,7 +47,7 @@ index 76eeee6..db4cf70 100644
 +    const bool had = nds->read_user_settings(was);
 +    if (nds->write_user_settings(ds::NDS::UserField::Language, user))
 +      log(RETRO_LOG_INFO, "dsperate: language %s (the firmware's was %s)\n", kLanguages[ds_language],
-+          had && was.language < 6 ? kLanguages[was.language] : "not known");
++          had && was.language < 7 ? kLanguages[was.language] : "not known");
 +    else
 +      log(RETRO_LOG_WARN, "dsperate: this firmware has no user settings to set the language in\n");
 +  }
@@ -58,7 +58,7 @@ index 76eeee6..db4cf70 100644
    env_cb = cb;
    static const retro_variable vars[] = {
      {"dsperate_jit", "JIT recompiler (restart); enabled|disabled"},
-+    {"dsperate_language", "Game language (restart); firmware|japanese|english|french|german|italian|spanish"},
++    {"dsperate_language", "Game language (restart); firmware|japanese|english|french|german|italian|spanish|chinese"},
      {nullptr, nullptr},
    };
    cb(RETRO_ENVIRONMENT_SET_VARIABLES, const_cast<retro_variable*>(vars));

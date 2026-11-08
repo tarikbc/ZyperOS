@@ -38,6 +38,9 @@ static const db_default device_defaults[] = {
 	/* MENU > Language (src/i18n.h): a language's code, English until the
 	 * first start's step or the menu says otherwise */
 	{ "language",   "en" },
+	/* MENU > Game Language on the Nintendo DS shelf (src/dslang.h): "auto",
+	 * or one of the language words it lists */
+	{ "ds_language", "auto" },
 };
 
 static const db_default library_defaults[] = {
