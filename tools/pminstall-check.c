@@ -77,7 +77,7 @@ int main(void)
 	v = view("", false);
 	p = page(&v, &nn, notes);
 	CHECK(!strcmp(p.from, "PortMaster") && !p.to[0], "the big words are PortMaster");
-	CHECK(!strcmp(p.sub, "By the PortMaster team · portmaster.games"), "the offer says who makes it");
+	CHECK(!strcmp(p.sub, "By the PortMaster team"), "the offer says who makes it");
 	CHECK(p.notes && nn == 2 && !strcmp(notes[0], "PC games ported to handhelds, ready to download.") &&
 	      !strcmp(notes[1], "Some ports need the files of a game you own."), "the offer's two points");
 	CHECK(is(&p, "A", "Install", SUA_DOWNLOAD) && is(&p, "B", "Back", SUA_BACK), "Install and Back");

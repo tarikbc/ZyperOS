@@ -2019,7 +2019,7 @@ shelf's own entry and System Update's page (11.17) with its own words.
   entry is still no game to the empty home (11.19) and to Random Game.
 - **The page**, A on the entry: heading **Install PortMaster**; "PortMaster"
   in **title** where the versions go; under it the facts, "By the
-  PortMaster team · portmaster.games", or the version while it works; two
+  PortMaster team", or the version while it works; two
   points where What's New goes, what PortMaster is and that some ports need
   a game you own, kept up while it looks, downloads and unpacks; where the
   bar goes, "It downloads from GitHub over Wi-Fi." or, with no way out,

@@ -16,15 +16,15 @@ ja = PortMaster をインストール
 it = Installa PortMaster
 
 [portmaster.from]
-note = The line under the big "PortMaster": who makes it and its site, facts joined by " · ". PortMaster is not part of ZyperOS. tight: one line of the page's small type, about 660 units, in English
-en = By the PortMaster team · portmaster.games
-zh-Hans = PortMaster 团队出品 · portmaster.games
-es = Del equipo de PortMaster · portmaster.games
-pt-BR = Da equipe do PortMaster · portmaster.games
-fr = Par l'équipe PortMaster · portmaster.games
-de = Vom PortMaster-Team · portmaster.games
-ja = PortMaster チーム制作 · portmaster.games
-it = Dal team di PortMaster · portmaster.games
+note = The line under the big "PortMaster": who makes it, since PortMaster is not part of ZyperOS. tight: one line of the page's small type, about 660 units
+en = By the PortMaster team
+zh-Hans = PortMaster 团队出品
+es = Del equipo de PortMaster
+pt-BR = Da equipe do PortMaster
+fr = Par l'équipe PortMaster
+de = Vom PortMaster-Team
+ja = PortMaster チーム制作
+it = Dal team di PortMaster
 
 [portmaster.point_store]
 note = The first of the page's two points, at most two lines: what PortMaster is. A port is a PC game made to run on handhelds
