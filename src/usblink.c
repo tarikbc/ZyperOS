@@ -24,6 +24,9 @@ static unsigned g_at;
  * is read: usblink_follow asks five times a second, and only
  * usblink_set_developer writes it */
 static int      g_dev_value = -2;
+/* Developer Mode on a release image (devmode.h), which the launcher says is
+ * on: the link is kept like a development image's, with no question */
+static bool     g_release_dev;
 
 bool usblink_dev_image(void)
 {
@@ -34,7 +37,7 @@ bool usblink_developer(db *dev)
 {
 	int v;
 
-	if (!usblink_dev_image()) return false;
+	if (!usblink_dev_image()) return g_release_dev;
 	if (g_dev_value == -2) g_dev_value = dev ? db_get_int(dev, KEY, -1) : -1;
 	v = g_dev_value;
 	return v < 0 ? true : v != 0;
@@ -79,6 +82,19 @@ void usblink_set_developer(db *dev, const char *userdata, bool on)
 		plat_usb_link(0);
 	}
 	fprintf(stderr, "usb: Developer Mode %s\n", on ? "on" : "off");
+}
+
+void usblink_release_dev(bool on)
+{
+	if (usblink_dev_image() || g_release_dev == on) return;
+	g_release_dev = on;
+	if (plat_usb_peer() == USB_PEER_UNKNOWN) return;
+	if (on) {
+		plat_usb_link(1);
+		g_asked = true;                   /* nothing left to ask this plug */
+	} else if (!g_held) {
+		plat_usb_link(0);
+	}
 }
 
 bool usblink_follow(db *dev, unsigned now_ms)

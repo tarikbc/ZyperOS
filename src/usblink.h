@@ -34,9 +34,18 @@
 /* A development image: one that starts dropbear at boot. */
 bool usblink_dev_image(void);
 
-/* Developer Mode, as set, or the image's default. Always false on a
- * release image. */
+/* Developer Mode, as set, or the image's default. On a release image it is
+ * false until usblink_release_dev says otherwise. */
 bool usblink_developer(db *dev);
+
+/* Developer Mode on a release image (src/devmode.h): the launcher tells this
+ * whether it is on (as it starts, and when the player turns it on or off).
+ * While on, usblink_developer is true there too: the link stays bound while
+ * a computer is on the cable and nothing is asked, as on a development
+ * image, so SSH (which the launcher starts then) is there for as long as the
+ * cable is, and a launcher that restarts finds the link still up. Nothing is
+ * written to the card, and a development image ignores this. */
+void usblink_release_dev(bool on);
 
 /* Set it: the database, the card's file for S40usbgadget, and the link now. */
 void usblink_set_developer(db *dev, const char *userdata, bool on);
