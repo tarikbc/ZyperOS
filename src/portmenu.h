@@ -39,6 +39,15 @@ static inline bool port_menu_for(const char *tag)
 #define PORT_MENU_STILL    "/tmp/zyperos-port-still.raw"
 #define PORT_MENU_MAGIC    "ZPST"
 
+/* "Getting hot" over a port (DESIGN.md 11.23). The launcher renders the
+ * notices Diatom shows over a game; for a port it is not running, so it
+ * renders this one as it hands over to the port (launch_port), in both
+ * themes, and portkeys shows it when the chip passes the trip, by src/heat.h's
+ * rules. Diatom's overlay format (src/notice.h): "DTOV", the width and the
+ * height as uint16 little-endian, then BGRA rows, straight alpha. */
+#define PORT_HEAT_LIGHT    "/tmp/zyperos-port-heat-light.dtov"
+#define PORT_HEAT_DARK     "/tmp/zyperos-port-heat-dark.dtov"
+
 /* The launcher's exit status for each answer */
 #define PORT_MENU_CONTINUE 10
 #define PORT_MENU_QUIT     11

@@ -11,6 +11,9 @@
  *   MENU held + VOL      the backlight instead, a rung at a time
  *   MENU on its own      with --menu (OpenBOR), the in-game menu (menu_show)
  *
+ * And over any port, "Getting hot" when the chip passes the kernel's trip, as
+ * over a game (heat_check), and POWER and a battery run flat (end_port).
+ *
  * WHAT A KEY MEANS is tools/pkkeys.c's, which tools/pkkeys-check.c holds:
  * the events of every device are handled in the order of their times, so
  * MENU on the joypad and VOL+ on gpio-keys a few microseconds after it are a
@@ -90,6 +93,7 @@
 #include <unistd.h>
 
 #include "device/pixel2_levels.h"
+#include "heat.h"
 #include "osdbar.h"
 #include "pkkeys.h"
 #include "pkset.h"
@@ -357,13 +361,19 @@ static bool find_crtc(int fd)
  * 64 bytes, so a row of 64 is one the driver has no cause to pad. The six
  * columns past the bar stay clear: they fall on the far side of it from the
  * panel's edge, below it as the player sees it, so it is where it was. */
+static size_t notice_bytes(void);
+
 static bool buffers(void)
 {
-	int i;
+	int i, rows;
 
 	G.cw = (bh + 15) / 16 * 16;
+	/* Rows enough for the heat notice as well (notice_put), which goes up on
+	 * the same buffers in rows of its own width */
+	rows = (int)((notice_bytes() + (size_t)G.cw * 4 - 1) / ((size_t)G.cw * 4));
+	if (rows < bw) rows = bw;
 	for (i = 0; i < 2; i++) {
-		struct drm_mode_create_dumb c = { .width = (uint32_t)G.cw, .height = (uint32_t)bw, .bpp = 32 };
+		struct drm_mode_create_dumb c = { .width = (uint32_t)G.cw, .height = (uint32_t)rows, .bpp = 32 };
 		struct drm_mode_map_dumb m;
 		void *p;
 
@@ -592,6 +602,218 @@ static void bar_show(int kind, int level, int max)
 	B.live = true;
 }
 
+/* ---- "Getting hot" over a port ----------------------------------------------
+ *
+ * DESIGN.md 11.23's notice with the thermometer, which Diatom shows over a
+ * game when the chip passes the kernel's second trip. The launcher renders it
+ * as it hands over to the port (src/portmenu.h), in both themes, and here it
+ * is read once at the start, scaled to the panel as Diatom scales it (the
+ * launcher's 1024 units to 640) and kept. When src/heat.h's rules say so -
+ * two readings at 85 C or more, 5 s apart, then quiet until the chip has
+ * cooled under 80 C and five minutes have passed - it goes up for
+ * DS_MS_HOLD_HEAT where Diatom puts it, at the bottom, centered, on the
+ * cursor window the bar uses: the bar, when a volume key is pressed under it,
+ * takes the window and gives it back. The chip is read with the battery, every
+ * 5 s, so it costs the port nothing it was not already paying. */
+
+static int read_level(const char *path);   /* with the battery, below */
+
+static heat_state H;
+static struct {
+	uint32_t *px[DS_THEMES];     /* premultiplied ARGB, landscape, panel pixels */
+	int w[DS_THEMES], h[DS_THEMES];
+	bool live, drawn;            /* up (or under the bar), and on the window now */
+	long until;
+	int theme;                   /* the theme it went up in */
+} N;
+
+/* The chip's temperature in mC, as the launcher reads it (plat_chip_temp):
+ * /tmp/zyperos_fake_temp (C or mC) standing in, else the hotter of the
+ * soc-thermal and gpu-thermal zones */
+static bool chip_temp(int *mc)
+{
+	static char zone[2][48];
+	static int nzones = -1;
+	int v = read_level("/tmp/zyperos_fake_temp"), best = -1, i;
+
+	if (v >= 0) {
+		*mc = v < 1000 ? v * 1000 : v;
+		return true;
+	}
+	if (nzones < 0) {
+		nzones = 0;
+		for (i = 0; i < 8 && nzones < 2; i++) {
+			char path[64], type[32] = "";
+			ssize_t r;
+			int fd;
+
+			snprintf(path, sizeof path, "/sys/class/thermal/thermal_zone%d/type", i);
+			if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) continue;
+			r = read(fd, type, sizeof type - 1);
+			close(fd);
+			type[r > 0 ? r : 0] = '\0';
+			if (strncmp(type, "soc-thermal", 11) && strncmp(type, "gpu-thermal", 11)) continue;
+			snprintf(zone[nzones++], sizeof zone[0], "/sys/class/thermal/thermal_zone%d/temp", i);
+		}
+	}
+	for (i = 0; i < nzones; i++)
+		if ((v = read_level(zone[i])) > best) best = v;
+	if (best < 0) return false;
+	*mc = best;
+	return true;
+}
+
+/* One theme's notice from the launcher's file: scaled by PANEL_S with a
+ * bilinear sample of the premultiplied pixels, which keeps the text's edges
+ * as Diatom's GPU does */
+static void notice_load(int theme, const char *path)
+{
+	FILE *f = fopen(path, "rb");
+	uint8_t hdr[8];
+	uint32_t *src = NULL, *dst;
+	int sw, sh, w, h, x, y;
+
+	if (!f) return;
+	if (fread(hdr, 1, 8, f) != 8 || memcmp(hdr, "DTOV", 4)) goto done;
+	sw = hdr[4] | hdr[5] << 8;
+	sh = hdr[6] | hdr[7] << 8;
+	w = (int)(sw * PANEL_S + 0.5f);
+	h = (int)(sh * PANEL_S + 0.5f);
+	if (sw <= 0 || sh <= 0 || w < 2 || h < 2 || sw > 1024 || sh > 768) goto done;
+	if (!(src = malloc((size_t)sw * sh * 4)) || fread(src, 4, (size_t)sw * sh, f) != (size_t)sw * sh) goto done;
+	for (x = 0; x < sw * sh; x++) {              /* BGRA bytes are ARGB words: premultiplied */
+		uint32_t c = src[x], a = c >> 24;
+
+		src[x] = a << 24 | (((c >> 16) & 255) * a / 255) << 16 | (((c >> 8) & 255) * a / 255) << 8 |
+		         ((c & 255) * a / 255);
+	}
+	if (!(dst = malloc((size_t)w * h * 4))) goto done;
+	for (y = 0; y < h; y++)
+		for (x = 0; x < w; x++) {
+			float fx = (x + 0.5f) / PANEL_S - 0.5f, fy = (y + 0.5f) / PANEL_S - 0.5f;
+			int x0 = fx < 0 ? 0 : (int)fx, y0 = fy < 0 ? 0 : (int)fy;
+			int x1 = x0 + 1 < sw ? x0 + 1 : x0, y1 = y0 + 1 < sh ? y0 + 1 : y0;
+			float tx = fx - x0, ty = fy - y0;
+			uint32_t c00 = src[y0 * sw + x0], c10 = src[y0 * sw + x1];
+			uint32_t c01 = src[y1 * sw + x0], c11 = src[y1 * sw + x1], out = 0;
+			int k;
+
+			if (tx < 0) tx = 0;
+			if (ty < 0) ty = 0;
+			for (k = 0; k < 32; k += 8) {
+				float v = (((c00 >> k) & 255) * (1 - tx) + ((c10 >> k) & 255) * tx) * (1 - ty) +
+				          (((c01 >> k) & 255) * (1 - tx) + ((c11 >> k) & 255) * tx) * ty;
+
+				out |= (uint32_t)(v + 0.5f) << k;
+			}
+			dst[(size_t)y * w + x] = out;
+		}
+	N.px[theme] = dst;
+	N.w[theme] = w;
+	N.h[theme] = h;
+done:
+	free(src);
+	fclose(f);
+}
+
+/* The most either theme's notice needs of a buffer, turned, in rows of its own
+ * width padded to 16 pixels, as the bar's are (buffers) */
+static size_t notice_bytes(void)
+{
+	size_t most = 0;
+	int t;
+
+	for (t = 0; t < DS_THEMES; t++) {
+		size_t n = (size_t)((N.h[t] + 15) / 16 * 16) * 4 * (size_t)N.w[t];
+
+		if (N.px[t] && n > most) most = n;
+	}
+	return most;
+}
+
+/* The notice on the cursor window, where Diatom puts it on the landscape
+ * screen: centered, its bottom a 24th of the height up. Turned onto the
+ * portrait panel as the bar is (put); as it is on a landscape display (QEMU's).
+ * False when it did not go up. */
+static bool notice_put(void)
+{
+	int t = N.theme, w = N.w[t], h = N.h[t], x, y;
+	bool turned = G.ph > G.pw;
+	int lw = turned ? G.ph : G.pw, lh = turned ? G.pw : G.ph;
+	int lx = (lw - w) / 2, ly = lh - h - lh / 24;
+	int bw_ = turned ? (h + 15) / 16 * 16 : (w + 15) / 16 * 16, bh_ = turned ? w : h;
+	int next = G.cur ^ 1;
+	uint32_t *dst = G.map[next];
+	struct drm_mode_cursor c;
+
+	if (!N.px[t] || !G.cursor || (size_t)bw_ * 4 * bh_ > G.size) return false;
+	memset(dst, 0, (size_t)bw_ * 4 * bh_);
+	for (y = 0; y < h; y++)
+		for (x = 0; x < w; x++) {
+			uint32_t v = N.px[t][(size_t)y * w + x];
+
+			if (turned) dst[(size_t)(w - 1 - x) * bw_ + y] = v;
+			else        dst[(size_t)y * bw_ + x] = v;
+		}
+	memset(&c, 0, sizeof c);
+	c.flags = DRM_MODE_CURSOR_BO | DRM_MODE_CURSOR_MOVE;
+	c.crtc_id = G.crtc;
+	c.x = turned ? ly : lx;
+	c.y = turned ? G.ph - lx - w : ly;
+	c.width = (uint32_t)bw_;
+	c.height = (uint32_t)bh_;
+	c.handle = G.handle[next];
+	if (ioctl(G.fd, DRM_IOCTL_MODE_CURSOR, &c) < 0) {
+		fprintf(stderr, "portkeys: the heat notice did not go up (%s)\n", strerror(errno));
+		return false;
+	}
+	G.cur = next;
+	return true;
+}
+
+/* The chip read, with the battery's cadence (heat_poll keeps HEAT_POLL_MS),
+ * and the notice up when it is due */
+static void heat_check(long now)
+{
+	heat_poll(&H, (unsigned)now, chip_temp);
+	if (!heat_take(&H, (unsigned)now)) return;
+	N.theme = pkset_bar_theme(appearance_read ? appearance_word : NULL, time(NULL), THEME_FILE);
+	if (!N.px[N.theme]) {
+		fprintf(stderr, "portkeys: getting hot (%d mC), but no notice to show\n", H.mc);
+		return;
+	}
+	fprintf(stderr, "portkeys: getting hot (%d mC); the notice over the port\n", H.mc);
+	N.live = true;
+	N.drawn = false;
+	N.until = now + DS_MS_HOLD_HEAT;
+}
+
+/* The notice's life, when the bar is not on the window: how long until the
+ * next look, -1 for nothing up */
+static int notice_tick(long now)
+{
+	if (!N.live) return -1;
+	if (now >= N.until) {
+		N.live = false;
+		if (N.drawn) release(false);
+		N.drawn = false;
+		return -1;
+	}
+	if (!N.drawn) {
+		if ((!held() && !borrow()) || !notice_put()) {
+			N.live = false;
+			release(false);
+			return -1;
+		}
+		N.drawn = true;
+		B.drawn_a = -1;      /* the bar's next frame goes up whatever it was */
+	} else if (!held()) {
+		N.live = N.drawn = false;
+		return -1;
+	}
+	return (int)(N.until - now);
+}
+
 /* One frame of the bar's life, if it changed; how long until the next. While
  * it slides or fades that is a refresh, 16 ms, and a frame the window did not
  * take is tried again at the next. Every frame first asks whether the copy is
@@ -607,7 +829,10 @@ static int bar_tick(void)
 	float a, rise;
 	bool alive;
 
-	if (!B.live || !held()) return -1;
+	heat_check(now);
+	if (!B.live) return notice_tick(now);
+	if (!held()) return -1;
+	N.drawn = false;             /* the bar has the window */
 	alive = osdbar_envelope((uint32_t)(now - B.shown), (uint32_t)(now - B.changed), &a, &rise);
 	if (!alive) a = 0, rise = 0;
 	if (a != B.drawn_a || rise != B.drawn_rise || B.kind != B.drawn_kind || B.level != B.drawn_level ||
@@ -620,6 +845,11 @@ static int bar_tick(void)
 		B.drawn_theme = B.theme;
 	}
 	if (!alive) {
+		/* The heat notice back on the window, if it is still up */
+		if (N.live && now < N.until) {
+			B.live = false;
+			return notice_tick(now);
+		}
 		release(false);
 		return -1;
 	}
@@ -1284,6 +1514,10 @@ int main(int argc, char **argv)
 	 * library, from launch.sh: $SHARED_USERDATA_PATH/.zyperos/library.db */
 	appearance_read = pkset_text(db, "appearance", appearance_word, sizeof appearance_word);
 	pkset_zone_load(argc > 2 ? argv[2] : NULL);
+	/* The heat notice the launcher left, in both themes (heat_check) */
+	heat_init(&H);
+	notice_load(DS_LIGHT, PORT_HEAT_LIGHT);
+	notice_load(DS_DARK, PORT_HEAT_DARK);
 
 	/* Every event device with a volume key or MENU (BTN_TRIGGER_HAPPY1, on
 	 * the joypad), and the headphone switch: found by what they report

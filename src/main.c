@@ -14885,6 +14885,11 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	book_keep(true);
 	anim_launch(a);
 	port_loading_screen(a, s);
+	/* "Getting hot" for portkeys to show over the port, which this process
+	 * is not there to render then (src/portmenu.h), in either theme, as Auto
+	 * can turn it while the port runs */
+	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_LIGHT, DS_LIGHT);
+	notice_render_mark(HEAT_HEAD, HEAT_BODY, NOTICE_MARK_HEAT, PORT_HEAT_DARK, DS_DARK);
 	a->running = false;
 }
 
