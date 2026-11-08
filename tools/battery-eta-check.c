@@ -338,6 +338,178 @@ static void rounding(void)
 	}
 }
 
+
+/* ---- the gauge's own estimate, from the first read ------------------------- */
+
+/* Off the cable: the charge over the current, less the charge under the
+ * floor. Tarik's Pixel 2, 2026-11-08: 1353124 of 1730000 uAh at 78%. */
+static void gauge_discharge(void)
+{
+	/* 1353 mAh at 500 mA, 2% of 1730 (35 mAh) under the floor: 2 h 38 min */
+	int m = batt_gauge_left(1353, 1730, -500, FLOOR_PCT);
+	int twice = batt_gauge_left(1353, 1730, -1000, FLOOR_PCT);
+
+	CHECK(m == 158, "1353 mAh less the floor at 500 mA is 158 min");
+	CHECK(batt_gauge_left(1353, 1730, -500, 0) == 162, "no floor, 162 min");
+	CHECK(batt_gauge_left(1353, 1730, 500, FLOOR_PCT) < 0, "current into the battery is no discharge");
+	CHECK(batt_gauge_left(1353, 1730, 0, FLOOR_PCT) < 0, "zero current is no estimate");
+	CHECK(batt_gauge_left(1353, 1730, -(BATT_GAUGE_MIN_MA - 1), FLOOR_PCT) < 0, "a current under the minimum is none");
+	CHECK(batt_gauge_left(1353, 1730, -BATT_GAUGE_MIN_MA, FLOOR_PCT) < 0, "20 mA would be days: over a day, none");
+	CHECK(batt_gauge_left(-1, 1730, -500, FLOOR_PCT) < 0, "no charge file, no estimate");
+	CHECK(batt_gauge_left(1353, -1, -500, FLOOR_PCT) == 162, "no full file: no floor to take off, still a number");
+	CHECK(batt_gauge_left(30, 1730, -500, FLOOR_PCT) < 0, "under the floor, none");
+	CHECK(batt_gauge_left(34, 1730, -500, FLOOR_PCT) < 0, "at the floor, none");
+	CHECK(batt_gauge_left(36, 1730, -3000, FLOOR_PCT) == 1, "never under 1");
+	CHECK(batt_gauge_left(5000, 1730, -500, FLOOR_PCT) < 0, "a charge far over full is a broken gauge");
+	CHECK(twice == 79, "double the current, half the time");
+}
+
+/* On the cable: what is left to the target over the current going in */
+static void gauge_charge(void)
+{
+	/* 1353 of 1730 mAh at 1567 mA, to full: 377 mAh, 14.4 min */
+	CHECK(batt_gauge_to_full(1353, 1730, 0, 1567) == 14, "to full at 1567 mA, 14 min");
+	CHECK(batt_gauge_to_full(1353, 1730, 100, 1567) == 14, "a limit of 100 is no limit");
+	/* to 85%: 1470.5 - 1353 = 117.5 mAh, 4.5 min */
+	CHECK(batt_gauge_to_full(1353, 1730, 85, 1567) == 4, "to 85%, 4.5 min is 4");
+	/* to 80%: 1384 - 1353 = 31 mAh, 1.2 min */
+	CHECK(batt_gauge_to_full(1353, 1730, 80, 1567) == 1, "to 80%, a minute");
+	/* 3000 mAh at 40%, to 85%: 1350 mAh at 1500 mA, 54 min */
+	CHECK(batt_gauge_to_full(1200, 3000, 85, 1500) == 54, "to 85% from 1200 of 3000 at 1500 mA: 54 min");
+	CHECK(batt_gauge_to_full(1400, 1730, 80, 1567) == 0, "past the limit: 0, there already");
+	CHECK(batt_gauge_to_full(1353, 1730, 0, 0) < 0, "zero current going in is no estimate");
+	CHECK(batt_gauge_to_full(1353, 1730, 0, BATT_GAUGE_CHARGE_MIN_MA - 1) < 0, "a trickle is none");
+	CHECK(batt_gauge_to_full(1353, 1730, 0, -400) < 0, "current out of the battery is none");
+	CHECK(batt_gauge_to_full(-1, 1730, 0, 1567) < 0, "no charge file");
+	CHECK(batt_gauge_to_full(1353, -1, 0, 1567) < 0, "no full file");
+	CHECK(batt_gauge_to_full(1353, 1730, 0, 50) == 452, "50 mA is the least that gives a number");
+	CHECK(batt_gauge_to_full(100, 1730, 0, 50) < 0, "over a day is none");
+}
+
+/* The blend: nothing jumps as the falls take over, and a missing half is
+ * the other half alone */
+static void blend(void)
+{
+	batt_eta e = { 0 };
+
+	CHECK(batt_eta_blend(100, 200, 0) == 100, "no weight: the quick one");
+	CHECK(batt_eta_blend(100, 200, 100) == 200, "all weight: the slow one");
+	CHECK(batt_eta_blend(100, 200, 50) == 150, "half and half");
+	CHECK(batt_eta_blend(-1, 200, 0) == 200, "no quick one: the slow, whatever the weight");
+	CHECK(batt_eta_blend(100, -1, 100) == 100, "no slow one: the quick, whatever the weight");
+	CHECK(batt_eta_blend(-1, -1, 50) == -1, "neither: none");
+	CHECK(batt_eta_blend(100, 200, 500) == 200 && batt_eta_blend(100, 200, -5) == 100,
+	      "the weight is held to 0..100");
+
+	CHECK(batt_eta_weight(&e, 1000) == 0, "no reading, no weight");
+	e.have = true;
+	CHECK(batt_eta_weight(&e, 1000) == 0, "no rate, no weight");
+	e.rated = true;
+	e.rated_at = 1000;
+	CHECK(batt_eta_weight(&e, 1000) == 0, "a rate just read starts at none");
+	CHECK(batt_eta_weight(&e, 1000 + BETA_TAU_MS) == 50, "half of it after one time constant");
+	CHECK(batt_eta_weight(&e, 1000 + 2 * BETA_TAU_MS) == 100, "all of it after two");
+	CHECK(batt_eta_weight(&e, 1000 + 10 * BETA_TAU_MS) == 100, "and stays");
+	CHECK(batt_eta_weight(&e, 500) == 0, "a clock from before the rate is none, not 100");
+	e.rated_at = 0xFFFFFFFFu - 1000;
+	CHECK(batt_eta_weight(&e, BETA_TAU_MS - 1000) == 50, "across the clock's wrap");
+
+	CHECK(batt_ramp(0, 30000, 30000) == 0 && batt_ramp(30000, 30000, 30000) == 0, "the ramp waits out its start");
+	CHECK(batt_ramp(45000, 30000, 30000) == 50 && batt_ramp(60000, 30000, 30000) == 100, "then rises in a line");
+}
+
+/* Both estimates at the same load: the gauge at the very first read, the
+ * falls after two. A 1730 mAh battery from 78% drawing `ma` mA; `bias` is the
+ * gauge's current's error as a share (1.0 true). The numbers are printed. */
+static void compare(double ma, double bias)
+{
+	const double full = 1730.0;
+	double per_min = ma / full * 100.0 / 60.0;   /* percent a minute */
+	sim s;
+	int first_fall = -1, after2 = -1, gauge, t;
+	double truth_min;
+
+	start(&s, 1000, 78.0);
+	truth_min = (s.charge - FLOOR_PCT) / per_min;
+	gauge = batt_gauge_left((int)(full * s.charge / 100.0), (int)full, -(int)(ma * bias), FLOOR_PCT);
+	for (t = 0; t < 120 * 60; t++) {
+		int m;
+
+		run(&s, 1, per_min, 1000);
+		m = mins(&s);
+		if (m >= 0 && first_fall < 0) first_fall = t + 1;
+		if (m >= 0 && after2 < 0 && s.e.rated) after2 = m;
+		if (first_fall >= 0 && after2 >= 0) break;
+	}
+	printf("  %4.0f mA (current read %3.0f%%): true %3.0f min; gauge at the first read %3d min; "
+	       "falls: first number after %d s: %d min (true then %.0f)\n",
+	       ma, bias * 100.0, truth_min, gauge, first_fall, after2, truth(&s, per_min));
+	CHECK(gauge > 0, "the gauge gives a number at once");
+	if (bias == 1.0)
+		CHECK(near(gauge, truth_min, truth_min * 0.05 + 1), "the gauge is near the truth with a true current");
+	CHECK(first_fall > 0 && after2 > 0, "the falls give one in the end");
+	CHECK(first_fall > 0 && near(after2, truth(&s, per_min), truth(&s, per_min) * 0.15 + 2),
+	      "and it is near the truth");
+}
+
+/* The state machine: calculating, an estimate, held, full, the percentage */
+static void corner(void)
+{
+	corner_in in = { .minutes = -1 };
+	sim s;
+	int prev, step, worst = 0, t;
+	double per_min = 500.0 / 1730.0 * 100.0 / 60.0;   /* 500 mA, percent a minute */
+
+	CHECK(batt_corner_kind(&in) == CORNER_PCT, "no estimate and none coming: the percentage");
+	in.expect = true;
+	CHECK(batt_corner_kind(&in) == CORNER_CALC, "none yet, one coming: calculating");
+	in.minutes = 42;
+	CHECK(batt_corner_kind(&in) == CORNER_TIME, "an estimate beats the dots");
+	in.minutes = 0;
+	CHECK(batt_corner_kind(&in) == CORNER_CALC, "0 is no estimate");
+	in = (corner_in){ .charging = true, .minutes = -1, .expect = true };
+	CHECK(batt_corner_kind(&in) == CORNER_CALC, "calculating on the cable too, in its first seconds");
+	in.minutes = 12;
+	CHECK(batt_corner_kind(&in) == CORNER_TIME, "calculating to a time on the cable");
+	in.held = true;
+	CHECK(batt_corner_kind(&in) == CORNER_HELD, "held at the limit: held, not a time");
+	in.minutes = -1;
+	CHECK(batt_corner_kind(&in) == CORNER_HELD, "held beats calculating, so the dots never go on for ever");
+	in.full = true;
+	CHECK(batt_corner_kind(&in) == CORNER_FULL, "full beats held");
+	in = (corner_in){ .charging = false, .full = true, .held = true, .minutes = 30 };
+	CHECK(batt_corner_kind(&in) == CORNER_TIME, "off the cable, full and held mean nothing");
+	CHECK(batt_corner_dots(0) == 0 && batt_corner_dots(CORNER_DOT_MS) == 1 &&
+	      batt_corner_dots(3 * CORNER_DOT_MS) == 3 && batt_corner_dots(4 * CORNER_DOT_MS) == 0,
+	      "the dots fill one at a time and start over");
+	CHECK(batt_corner_dots(0xFFFFFFFFu) >= 0 && batt_corner_dots(0xFFFFFFFFu) <= 3,
+	      "and the clock's wrap is a frame like another");
+
+	/* A walk through it, off the cable: calculating until the first number,
+	 * which comes from the gauge at once; the falls blended in over 20
+	 * minutes with no step in the shown time. */
+	start(&s, 5000, 78.0);
+	in = (corner_in){ .minutes = mins(&s), .expect = true };
+	CHECK(batt_corner_kind(&in) == CORNER_CALC, "no falls yet and no gauge: calculating");
+	in.minutes = batt_eta_blend(batt_gauge_left(1350, 1730, -500, FLOOR_PCT), mins(&s),
+	                            batt_eta_weight(&s.e, s.now));
+	CHECK(batt_corner_kind(&in) == CORNER_TIME, "the gauge's number ends it at the first read");
+	prev = in.minutes;
+	for (t = 0; t < 40 * 60; t++) {
+		int g, m;
+
+		run(&s, 1, per_min, 1000);
+		g = batt_gauge_left((int)(1730.0 * s.charge / 100.0), 1730, -500, FLOOR_PCT);
+		m = batt_eta_blend(g, mins(&s), batt_eta_weight(&s.e, s.now));
+		CHECK(m > 0, "a number all the way");
+		step = m > prev ? m - prev : prev - m;
+		if (step > worst) worst = step;
+		prev = m;
+	}
+	printf("  largest one-second step in the blended time over 40 minutes: %d min\n", worst);
+	CHECK(worst <= 3, "the blended time does not jump");
+}
+
 int main(void)
 {
 	constant(0, 0.4, 5000);          /* a fall every 150 s */
@@ -355,6 +527,15 @@ int main(void)
 	cable_and_gauge();
 	odd_reads();
 	rounding();
+	gauge_discharge();
+	gauge_charge();
+	blend();
+	corner();
+	printf("the gauge's first number against the falls':\n");
+	compare(500, 1.0);
+	compare(900, 1.0);
+	compare(250, 1.0);
+	compare(500, 0.8);
 
 	if (failures) {
 		printf("check-battery-eta: %d failure(s)\n", failures);

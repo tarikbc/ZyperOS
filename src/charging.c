@@ -128,6 +128,7 @@ bool ch_fake_parse(const char *line, ch_reading *r)
 	memset(r, 0, sizeof *r);
 	r->pct = pct;
 	r->ma = ma;
+	r->ma_known = true;
 	r->mv = mv;
 	r->full_mah = 3000;
 	r->now_mah = 3000 * pct / 100;

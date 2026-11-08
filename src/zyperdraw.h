@@ -34,6 +34,9 @@ bool battery_empty(void);
  * (src/battery_eta.h); -1 while there is none to give: off the cable, fewer
  * than two falls seen since the start or the cable came out. */
 int battery_minutes_left(void);
+/* The same with the gauge's own estimate (batt_gauge_left, -1 for none)
+ * blended in: it carries the time until the falls have earned its place */
+int battery_minutes_left_with(int gauge_min);
 /* Has the player been away long enough to power the device off? */
 bool idle_due(app *a);
 

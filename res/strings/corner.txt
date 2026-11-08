@@ -2,7 +2,8 @@
 # draw_corner_at): the time left written left of the mark. Short, because
 # the clock and the marks before it move left by its width; the numbers are
 # in cells (src/ui.h's tabular digits). English's "h" and "min" as the
-# charging screen writes them (charging.txt).
+# charging screen writes them (charging.txt). On the cable it writes "On hold"
+# at the Charge Limit and "Charged" when full instead, as short as the time.
 
 [corner.time_min]
 note = The corner's time left, under an hour: %d is the minutes
@@ -36,3 +37,25 @@ fr = %d h %d min
 de = %d h %d min
 ja = %d 時間 %d 分
 it = %d h %d min
+
+[corner.held]
+note = The corner's battery, Time Left, on the cable and held at the Charge Limit: replaces the time, beside the plug mark
+en = On hold
+zh-Hans = 已暂停
+es = En espera
+pt-BR = Limitado
+fr = En pause
+de = Gehalten
+ja = 保持中
+it = In pausa
+
+[corner.full]
+note = The corner's battery, Time Left, on the cable and full: replaces the time
+en = Charged
+zh-Hans = 已充满
+es = Cargado
+pt-BR = Carregado
+fr = Chargé
+de = Geladen
+ja = 充電完了
+it = Carica

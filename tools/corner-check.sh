@@ -141,6 +141,28 @@ for lang in en zh-Hans es pt-BR fr de ja it; do
 	done
 done
 
+# On the cable, Time Left says "On hold" at the Charge Limit and "Charged" when
+# full, in the time's place, beside the battery's plug or bolt; and while it has
+# no time yet, three dots. Each in every language, with every mark on, must fit.
+echo "On hold, Charged and the calculating dots fit the corner, in every language"
+for lang in en zh-Hans es pt-BR fr de ja it; do
+	for state in "held" "full" "calc"; do
+		# shellcheck disable=SC2086
+		run --shot "$D/state-$lang-$state.png" --theme light --lang $lang \
+		    --status "00:00 24h wifi=3 bt batt=100 $state xfer=on icon=time" >"$D/one.log" 2>&1
+		st=$?
+		cat "$D/one.log" >>"$D/log"
+		if grep -q "CORNER:" "$D/one.log"; then
+			echo "  FAIL $lang $state:"
+			grep "CORNER:" "$D/one.log" | sed 's/^ */    /'
+			fails=$((fails + 1))
+		elif [ "$st" -ne 0 ] || [ ! -s "$D/state-$lang-$state.png" ]; then
+			echo "  FAIL $lang $state: the shot failed, exit $st (see $D/log)"
+			fails=$((fails + 1))
+		fi
+	done
+done
+
 echo "MENU > Battery Icon goes round Bars, Percentage, Time Left and back, saved"
 # Right goes forward from Bars; each press is its own process through the
 # row's real handler, the setting read back from the database. Left goes back,

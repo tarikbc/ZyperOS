@@ -304,6 +304,8 @@ typedef enum {
 	S_CORNER_TIME_MIN,
 	S_CORNER_TIME_H,
 	S_CORNER_TIME_H_MIN,
+	S_CORNER_HELD,
+	S_CORNER_FULL,
 	/* res/strings/datetime.txt */
 	S_DATETIME_TITLE,
 	S_DATETIME_CHANGE,

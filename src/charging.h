@@ -47,6 +47,9 @@ typedef struct ch_reading {
 	/* The charge limit in force, the caller's: 0 for none (MENU > Charge
 	 * Limit Off, or a full charge asked for) */
 	int     limit;
+	/* `ma` was read: false where the gauge has no current file (it then
+	 * reads 0, which is no answer), so the corner does not wait on one */
+	bool    ma_known;
 } ch_reading;
 
 /* The fake gauge's line (plat_charge_read), "PCT MA MV [wall|computer|unknown
