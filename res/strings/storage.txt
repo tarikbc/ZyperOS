@@ -261,39 +261,7 @@ ja = %d 曲
 it.one = %d brano
 it.other = %d brani
 
-[storage.videos_n]
-note = The line under the list for Videos: how many videos.
-en.one = %d video
-en.other = %d videos
-zh-Hans = %d 个视频
-es.one = %d video
-es.other = %d videos
-pt-BR.one = %d vídeo
-pt-BR.other = %d vídeos
-fr.one = %d vidéo
-fr.other = %d vidéos
-de.one = %d Video
-de.other = %d Videos
-ja = %d 本のビデオ
-it.one = %d video
-it.other = %d video
 
-[storage.books_n]
-note = The line under the list for Audiobooks: how many books.
-en.one = %d book
-en.other = %d books
-zh-Hans = %d 本有声书
-es.one = %d audiolibro
-es.other = %d audiolibros
-pt-BR.one = %d audiolivro
-pt-BR.other = %d audiolivros
-fr.one = %d livre audio
-fr.other = %d livres audio
-de.one = %d Hörbuch
-de.other = %d Hörbücher
-ja = %d 冊
-it.one = %d audiolibro
-it.other = %d audiolibri
 
 [storage.zyperos_caption]
 note = The line under the list for ZyperOS: what its room holds.

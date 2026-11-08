@@ -100,6 +100,9 @@ def unescape(text):
 UNSHOT = ROOT / "tools" / "i18n-unshot.txt"
 UNSHOT_WHY = {
     "hare": "answers sent to the File Transfer page, which draws them, not the launcher",
+    "storage": "drawn wrapped to their lines, in pieces of a line (the used number as a title, "
+               "a part of the line under the list), with tabular digits, or a plural's one form "
+               "the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)",
 }
 UNSHOT_DEFAULT = "no shot draws it yet"
 
@@ -148,7 +151,13 @@ EXTRA = {
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
     "storage-done": ("demo", "PS1", ["--storage", "done"]),
     "storage-first": ("demo", "PS1", ["--storage", "first"]),
-    "storage-zyperos": ("demo", "PS1", ["--storage", "main", "9"]),
+    "storage-zyperos": ("demo", "PS1", ["--storage", "main", "zyperos"]),
+    "storage-videos": ("demo", "PS1", ["--storage", "main", "videos"]),
+    "storage-music": ("demo", "PS1", ["--storage", "main", "music"]),
+    "storage-books": ("demo", "PS1", ["--storage", "main", "books"]),
+    "storage-bios": ("demo", "PS1", ["--storage", "main", "bios"]),
+    "storage-other": ("demo", "PS1", ["--storage", "main", "other"]),
+    "storage-snaps": ("demo", "PS1", ["--storage", "system", "0"]),
     "about-0": ("demo", "PS1", ["--about", "0"]),
     "about-1": ("demo", "PS1", ["--about", "1"]),
     "about-2": ("demo", "PS1", ["--about", "2"]),

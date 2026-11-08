@@ -740,7 +740,7 @@
         "--storage",
         "system"
       ],
-      "sha256": "32b3a965656b1a0d840c287fde7a86d666c036df48737db26d0a3fcf0424f504"
+      "sha256": "d419f0aedf488502a53e756f228cdfb4dc07120d05ab063c279d4c2cae58807b"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

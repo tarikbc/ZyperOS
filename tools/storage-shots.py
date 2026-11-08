@@ -36,7 +36,8 @@ SHOTS = {
     "delete": ["delete"],
     "done": ["done"],
     "first": ["first"],
-    "zyperos": ["main", "9"],
+    "zyperos": ["main", "zyperos"],
+    "bios": ["main", "bios"],
 }
 
 
@@ -71,7 +72,7 @@ def main():
                     r = subprocess.run(cmd, cwd=ROOT, env=R.env_for(card), text=True,
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                     (dest / (name + ".log")).write_text(r.stdout)
-                    cut = [l for l in r.stdout.splitlines() if l.startswith("i18n:")]
+                    cut = [l for l in r.stdout.splitlines() if l.startswith(("fit:", "i18n:"))]
                     if r.returncode or not target.is_file():
                         print(f"FAIL {theme}/{lang}/{name}: {r.stdout[-400:]}")
                         bad += 1

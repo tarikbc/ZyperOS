@@ -11714,8 +11714,12 @@ static bool store_game_size(store_view *v, const char *folder, const game_entry 
 	if (v->fixture) {
 		memset(out, 0, sizeof *out);
 		out->bytes = store_fixture_game(g->title);
-		out->games = out->bytes * 9 / 10;
-		out->states = out->bytes - out->games;
+		out->games = out->bytes;
+		/* States on the largest game alone */
+		if (strstr(g->title, "Metal Gear")) {
+			out->games = out->bytes * 9 / 10;
+			out->states = out->bytes - out->games;
+		}
 		return true;
 	}
 	return st_game(folder, g->file, out);
@@ -11809,9 +11813,9 @@ static void store_caption(store_view *v, sp_row *r)
 		}
 		break;
 	}
-	case SR_VIDEOS: snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_VIDEOS_N, c->nvideos), c->nvideos); break;
+	case SR_VIDEOS: snprintf(r->caption, sizeof r->caption, TN(S_SHELF_VIDEOS, c->nvideos), c->nvideos); break;
 	case SR_MUSIC:  snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_SONGS, c->nmusic), c->nmusic); break;
-	case SR_BOOKS:  snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_BOOKS_N, c->nbooks), c->nbooks); break;
+	case SR_BOOKS:  snprintf(r->caption, sizeof r->caption, TN(S_SHELF_BOOKS, c->nbooks), c->nbooks); break;
 	case SR_BIOS:   snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_BIOS_CAPTION)); break;
 	case SR_ZYPEROS: snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_ZYPEROS_CAPTION)); break;
 	case SR_OTHER:  snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_OTHER_CAPTION)); break;
@@ -12298,14 +12302,16 @@ static void storage_screen(app *a)
 	free(v);
 }
 
-/* --storage NAME [SEL]: the page on a stand-in card of 128 GB nearly full,
+/* --storage NAME [ROW]: the page on a stand-in card of 128 GB nearly full,
  * as the Storage lab drew it. NAME is main, system (the PlayStation shelf
  * of the card the shot runs on), art and states (a recommendation's
  * question), done (the card after Unused Art), delete (Delete Game's
- * question from the system's page) or first (the first walk). SEL is the
- * focused row. */
+ * question from the system's page) or first (the first walk). ROW is the
+ * focused row, by number or by what it is (videos, music, books, bios,
+ * zyperos, other). */
 static const char *shot_storage;
 static int shot_storage_sel = -1;
+static const char *shot_storage_row;
 
 static void store_fixture(store_view *v, bool measured)
 {
@@ -12408,10 +12414,11 @@ static void storage_shot(app *a)
 				v.fix_count[v.page] = sh >= 0 ? a->view[sh].list.count : 0;
 				s->games = s->states = 0;
 				for (i = 0; sh >= 0 && i < a->view[sh].list.count; i++) {
-					unsigned long long b = store_fixture_game(a->view[sh].list.items[i].title);
+					st_game_size gz;
 
-					s->games += b * 9 / 10;
-					s->states += b - b * 9 / 10;
+					store_game_size(&v, "PlayStation", &a->view[sh].list.items[i], &gz);
+					s->games += gz.games;
+					s->states += gz.states;
 				}
 				s->saves = 4000000ull;
 				s->covers = 9000000ull;
@@ -12430,6 +12437,18 @@ static void storage_shot(app *a)
 				if (v.rows[i].kind == (!strcmp(name, "art") ? SR_ART : SR_STATES)) v.pg.sel = i;
 		if (!strcmp(name, "done")) v.pg.sel = 0;
 		if (shot_storage_sel >= 0 && shot_storage_sel < v.nrows) v.pg.sel = shot_storage_sel;
+		if (shot_storage_row) {
+			static const struct { const char *name; int kind; } ROWS[] = {
+				{ "videos", SR_VIDEOS }, { "music", SR_MUSIC }, { "books", SR_BOOKS },
+				{ "bios", SR_BIOS }, { "zyperos", SR_ZYPEROS }, { "other", SR_OTHER },
+			};
+			size_t k;
+
+			for (k = 0; k < sizeof ROWS / sizeof ROWS[0]; k++)
+				if (!strcmp(shot_storage_row, ROWS[k].name))
+					for (i = 0; i < v.nrows; i++)
+						if (v.rows[i].kind == ROWS[k].kind) v.pg.sel = i;
+		}
 	}
 	store_draw(a, &v);
 	if (!strcmp(name, "art") || !strcmp(name, "states")) {
@@ -19042,7 +19061,11 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--storage")) {
 			shot_storage = "main";
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_storage = argv[++i];
-			if (i + 1 < argc && argv[i + 1][0] != '-') shot_storage_sel = atoi(argv[++i]);
+			if (i + 1 < argc && argv[i + 1][0] != '-') {
+				i++;
+				if (argv[i][0] >= '0' && argv[i][0] <= '9') shot_storage_sel = atoi(argv[i]);
+				else shot_storage_row = argv[i];
+			}
 		}
 		else if (!strcmp(argv[i], "--update")) {
 			shot_update = 1;
