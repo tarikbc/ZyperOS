@@ -271,6 +271,11 @@ void plat_resident_on_battery_empty(bool (*fn)(void)) { d_battery_empty = fn; }
  * The cost was not cosmetic - see the ERROR arm in diatom_wait. */
 static int d_got_running;
 
+bool plat_resident_started(void)
+{
+	return d_got_running != 0;
+}
+
 bool plat_resident_send(const char *tag, const char *core, const char *rom,
                         const char *resume, const char *exit_state,
                         const char *preview,
