@@ -175,6 +175,7 @@ EXTRA = {
     "storage-bios": ("demo", "PS1", ["--storage", "main", "bios"]),
     "storage-other": ("demo", "PS1", ["--storage", "main", "other"]),
     "storage-snaps": ("demo", "PS1", ["--storage", "system", "0"]),
+    "storage-rest": ("demo", "PS1", ["--storage", "system", "rest"]),
     "about-0": ("demo", "PS1", ["--about", "0"]),
     "about-1": ("demo", "PS1", ["--about", "1"]),
     "about-2": ("demo", "PS1", ["--about", "2"]),

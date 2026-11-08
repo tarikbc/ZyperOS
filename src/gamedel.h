@@ -74,7 +74,11 @@ typedef enum {
 	GD_OK,
 	GD_BIOS,        /* a BIOS set other games need: neogeo.zip, pgm.zip */
 	GD_OUTSIDE,     /* a path would leave the game's folders */
-	GD_TOO_MANY     /* more paths than a plan holds; a path too long */
+	GD_TOO_MANY,    /* more paths than a plan holds; a path too long */
+	GD_RUNTIME,     /* PortMaster itself, which every port runs on: its plan
+	                 * is made, for its size, but it is never run */
+	GD_PORT_UNKNOWN /* a port nothing names its folder for (src/portinfo.h):
+	                 * its script alone in the plan, and refused */
 } gd_why;
 
 typedef struct {
@@ -97,9 +101,11 @@ bool gd_is_bios(const char *file);
  * asks it of each game, to know whose old states are whose (src/storage.h). */
 const char *gd_state_base(const char *file, const char *name, bool hooked);
 
-/* Whether a shelf's games can be deleted here at all. A port is a script, a
- * folder beside it and PortMaster's shared libraries, and nothing says which
- * of those are its own; so Ports has no Delete Game. */
+/* Whether a shelf's games can be deleted here at all: every shelf's. A port
+ * is a script, the folders it runs from and PortMaster's shared libraries;
+ * its port.json, or its script's GAMEDIR, says which folders are its own
+ * (src/portinfo.h), and a port nothing says that for is refused
+ * (GD_PORT_UNKNOWN), as PortMaster itself always is (GD_RUNTIME). */
 bool gd_shelf_deletes(const char *core);
 
 /* The plan: every path this game's delete would take, the game's own files

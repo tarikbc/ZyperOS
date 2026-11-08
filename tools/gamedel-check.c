@@ -379,9 +379,45 @@ static void deleted(const char *what, const shelf *s, const char *file, const ch
 	list_free(&after);
 }
 
+/* ---- the Ports shelf ------------------------------------------------------- */
+
+/* As PortMaster lays a card out (2026-11-08, Tarik's Pixel 2): a port whose
+ * port.json names its script and its folder, one whose script's GAMEDIR
+ * names its folder, PortMaster's own script and folder, a script nothing
+ * names a folder for, two ports that share a folder, and a port folder whose
+ * script is gone */
+static void make_ports(void)
+{
+	put("Roms/Ports/StardewValley.sh", "#!/bin/bash\nGAMEDIR=\"/$directory/ports/stardewvalley\"\n");
+	put("Roms/Ports/stardewvalley/port.json",
+	    "{\"version\": 2, \"name\": \"stardewvalley.zip\",\n"
+	    " \"items\": [\"stardewvalley/\", \"StardewValley.sh\"],\n"
+	    " \"attr\": {\"title\": \"Stardew Valley\", \"porter\": [\"x\"]}}\n");
+	put("Roms/Ports/stardewvalley/gamedata/Stardew Valley.exe", "exe");
+	put("Roms/Ports/stardewvalley/conf/save.dat", "save");
+	put("Roms/Ports/.media/StardewValley.png", "png");
+	put("Roms/Ports/Celeste.sh", "#!/bin/bash\nexport GAMEDIR=/$directory/ports/celeste/\ncd $GAMEDIR\n");
+	put("Roms/Ports/celeste/Celeste.exe", "exe");
+	put("Roms/Ports/PortMaster.sh", "");
+	put("Roms/Ports/PortMaster/libs/mono.squashfs", "mono");
+	put("Roms/Ports/PortMaster/control.txt", "control");
+	put("Roms/Ports/Mystery.sh", "#!/bin/bash\necho hello\n");
+	put("Roms/Ports/Twin One.sh", "#!/bin/bash\n");
+	put("Roms/Ports/Twin Two.sh", "#!/bin/bash\n");
+	put("Roms/Ports/twinone/port.json", "{\"items\": [\"twinone/\", \"common/\", \"Twin One.sh\"]}");
+	put("Roms/Ports/twintwo/port.json", "{\"items\": [\"twintwo/\", \"common/\", \"Twin Two.sh\"]}");
+	put("Roms/Ports/twinone/a.bin", "a");
+	put("Roms/Ports/twintwo/b.bin", "b");
+	put("Roms/Ports/common/engine.bin", "engine");
+	put("Roms/Ports/gtavc/port.json",
+	    "{\"items\": [\"gtavc/\", \"Grand Theft Auto Vice City.sh\"],"
+	    " \"attr\": {\"title\": \"Grand Theft Auto: Vice City\"}}");
+	put("Roms/Ports/gtavc/data.bin", "data");
+}
+
 /* ---- the card's games ------------------------------------------------------ */
 
-static const shelf *GB, *GBC, *PS1, *ARC;
+static const shelf *GB, *GBC, *PS1, *ARC, *PRT;
 
 static void make_card(void)
 {
@@ -499,7 +535,8 @@ static void the_rules(void)
 	CHECK(!gd_is_bios(NULL));
 	CHECK(gd_shelf_deletes("mgba"));
 	CHECK(gd_shelf_deletes("run:Emulators/DraStic/DraStic.sh"));
-	CHECK(!gd_shelf_deletes("port"));
+	/* A port too: its port.json or its GAMEDIR says which folders are its */
+	CHECK(gd_shelf_deletes("port"));
 	/* The next game, or the one before at the end, or none */
 	CHECK(gd_cursor_after(5, 2) == 2);
 	CHECK(gd_cursor_after(5, 0) == 0);
@@ -528,6 +565,8 @@ int main(void)
 	GBC = system_row("GBC");
 	PS1 = system_row("PS1");
 	ARC = system_row("ARCADE");
+	PRT = system_row("PRT");
+	make_ports();
 	make_card();
 
 	the_rules();
@@ -682,6 +721,56 @@ int main(void)
 		CHECK(unlink(p) == 0);
 		deleted("a game whose files are already gone: what is left of it:",
 		        PS1, "Crash Bandicoot 2 (USA).cue", "Crash Bandicoot 2 (USA)", gone, 3);
+	}
+
+	/* The Ports shelf: a port's script and its own folders, by its port.json
+	 * or its GAMEDIR; never PortMaster's, never a folder another port names */
+	{
+		static const char *const gone[] = {
+			"Roms/Ports/StardewValley.sh", "Roms/Ports/stardewvalley/",
+			"Roms/Ports/stardewvalley/port.json", "Roms/Ports/stardewvalley/gamedata/",
+			"Roms/Ports/stardewvalley/gamedata/Stardew Valley.exe",
+			"Roms/Ports/stardewvalley/conf/", "Roms/Ports/stardewvalley/conf/save.dat",
+			"Roms/Ports/.media/StardewValley.png", "Roms/Ports/.media/",
+			NULL
+		};
+		deleted("a port: its script and the folder its port.json names, with its cover:",
+		        PRT, "StardewValley.sh", "StardewValley", gone, 5);
+	}
+	{
+		static const char *const gone[] = {
+			"Roms/Ports/Celeste.sh", "Roms/Ports/celeste/", "Roms/Ports/celeste/Celeste.exe", NULL
+		};
+		deleted("a port with no port.json: the folder its script's GAMEDIR names:",
+		        PRT, "Celeste.sh", "Celeste", gone, 2);
+	}
+	{
+		static const char *const gone[] = {
+			"Roms/Ports/Twin One.sh", "Roms/Ports/twinone/", "Roms/Ports/twinone/port.json",
+			"Roms/Ports/twinone/a.bin", NULL
+		};
+		deleted("two ports that share a folder: the one deleted leaves it to the other:",
+		        PRT, "Twin One.sh", "Twin One", gone, 3);
+		CHECK(there("Roms/Ports/common/engine.bin"));
+	}
+	refused("PortMaster, which every port runs on, is refused:", PRT, "PortMaster.sh", "PortMaster",
+	        GD_RUNTIME);
+	refused("a port nothing names a folder for is refused:", PRT, "Mystery.sh", "Mystery",
+	        GD_PORT_UNKNOWN);
+	{
+		/* ...but PortMaster's plan is made, folder and all, for its size */
+		gd_card card = { roms, saves, states };
+		gd_game g = { PRT->folder, PRT->tag, PRT->core, PRT->exts, "PortMaster.sh", "PortMaster" };
+		int n = others_of(PRT->folder, "PortMaster.sh", g_others, 256);
+		char want[600];
+		bool has = false;
+
+		printf("PortMaster's plan holds its folder, for Storage's size of it:\n");
+		CHECK(!gd_plan_make(&card, &g, g_others, n, &g_plan) && g_plan.why == GD_RUNTIME);
+		snprintf(want, sizeof want, "%s/Ports/PortMaster", roms);
+		for (int i = 0; i < g_plan.n; i++)
+			if (!strcmp(g_plan.path[i], want) && g_plan.kind[i] == GD_TREE) has = true;
+		CHECK(has);
 	}
 
 	db_shutdown();

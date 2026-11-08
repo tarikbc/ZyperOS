@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Delete Game. See gamedel.h for the rules; this is the paths. */
 #include "gamedel.h"
+#include "portinfo.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -83,7 +84,7 @@ bool gd_is_bios(const char *file)
 
 bool gd_shelf_deletes(const char *core)
 {
-	return core && strcmp(core, "port") != 0;
+	return core != NULL;
 }
 
 /* ---- names --------------------------------------------------------------- */
@@ -445,6 +446,75 @@ static void plan_hold(gd_plan *p, const gd_card *card, const char *romdir)
 	if (p->why == GD_OK) p->n = k;
 }
 
+static void plan_hold(gd_plan *p, const gd_card *card, const char *romdir);
+static bool shares_name(const gd_other *o, int n, const char *folder, const char *name);
+
+/* A port's plan: its script, the folders its port.json or its GAMEDIR names
+ * (src/portinfo.h) that no other port on the shelf names too, and its cover
+ * and snap. PortMaster's is its script and its folder, made for its size
+ * and refused (GD_RUNTIME); a port nothing names a folder for has its
+ * script alone, and is refused (GD_PORT_UNKNOWN). A port keeps its saves in
+ * its own folders, so nothing of Saves/ or the states is its. */
+static bool port_plan(const gd_card *card, const gd_game *g, const gd_other *others,
+                      int nothers, gd_plan *p, const char *romdir)
+{
+	static const char *const MEDIA[] = { "png", "mp4", "png.part", "mp4.part", "mp4.snap",
+	                                     "png.sgdb", "png.tmp" };
+	pi_port *ports = malloc(PI_MAX * sizeof *ports);
+	char (*mine)[PI_NAME] = malloc(PI_ITEMS * sizeof *mine);
+	char (*theirs)[PI_NAME] = malloc(PI_ITEMS * sizeof *theirs);
+	bool runtime = pi_runtime(g->file);
+	int np, nm = 0, k, j, t;
+	size_t i;
+
+	if (!ports || !mine || !theirs) {
+		free(ports); free(mine); free(theirs);
+		p->why = GD_TOO_MANY;
+		return false;
+	}
+	np = pi_scan(romdir, ports, PI_MAX);
+	plan_add(p, GD_FILE, "%s/%s", romdir, g->file);
+	if (runtime) {
+		snprintf(mine[0], PI_NAME, "PortMaster");
+		nm = 1;
+	} else {
+		nm = pi_folders(romdir, ports, np, g->file, mine, PI_ITEMS);
+	}
+	for (k = 0; k < nm; k++) {
+		bool shared = false;
+
+		for (j = 0; j < nothers && !shared; j++) {
+			int nt;
+
+			if (strcmp(others[j].folder, g->folder) || strchr(others[j].file, '/')) continue;
+			nt = pi_folders(romdir, ports, np, others[j].file, theirs, PI_ITEMS);
+			for (t = 0; t < nt; t++)
+				if (!strcasecmp(theirs[t], mine[k])) shared = true;
+		}
+		if (shared) { p->kept++; continue; }
+		plan_add(p, GD_TREE, "%s/%s", romdir, mine[k]);
+	}
+	free(ports);
+	free(mine);
+	free(theirs);
+	if (shares_name(others, nothers, g->folder, g->name)) {
+		p->kept++;
+	} else {
+		for (i = 0; i < sizeof MEDIA / sizeof MEDIA[0]; i++)
+			plan_add(p, GD_FILE, "%s/.media/%s.%s", romdir, g->name, MEDIA[i]);
+	}
+	plan_add(p, GD_EMPTY_DIR, "%s/.media", romdir);
+	if (p->why != GD_OK) return false;
+	plan_hold(p, card, romdir);
+	if (p->why != GD_OK) return false;
+	if (runtime || nm == 0) {
+		p->why = runtime ? GD_RUNTIME : GD_PORT_UNKNOWN;
+		snprintf(p->bad, sizeof p->bad, "%s", g->file);
+		return false;
+	}
+	return true;
+}
+
 bool gd_plan_make(const gd_card *card, const gd_game *g,
                   const gd_other *others, int nothers, gd_plan *p)
 {
@@ -471,6 +541,11 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 		return false;
 	}
 	snprintf(romdir, sizeof romdir, "%s/%s", card->roms, g->folder);
+	/* A port is a script at the top; a folder the shelf lists as a game of
+	 * its own (a disc image inside it, lib_scan_listing's second pass) goes
+	 * whole, as on any shelf */
+	if (!strcmp(core, "port") && !strchr(g->file, '/'))
+		return port_plan(card, g, others, nothers, p, romdir);
 	slash = strchr(g->file, '/');
 	stem_of(g->file, stem, sizeof stem);
 	snprintf(sbase, sizeof sbase, "%s", state_base(g->file, g->name, hooked));

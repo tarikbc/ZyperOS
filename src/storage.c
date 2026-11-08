@@ -4,6 +4,7 @@
 
 #include "atomic.h"
 #include "gamedel.h"
+#include "portinfo.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -248,6 +249,8 @@ static bool g_cache_read;
 static char g_card_root[PATH_MAX_ST];
 
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+static st_orphan g_orph[ST_ORPHANS];   /* the Ports shelf's, under g_mu */
+static int g_norph;
 static st_card g_pub;
 static atomic_int g_cancel;          /* the page asks the walk to end */
 
@@ -424,6 +427,18 @@ static unsigned long long tree_bytes(const char *abs)
 	}
 	closedir(dir);
 	return sum;
+}
+
+/* A game's folder: from the walk's own listings, just made, when it has
+ * them; else read here */
+static unsigned long long folder_bytes(const char *abs)
+{
+	void **slot = smap_slot(&g_dirs, rel_of(abs), false);
+	tsum t = { 0 };
+
+	if (!slot || !*slot) return tree_bytes(abs);
+	walk(abs, false, true, false, &t);
+	return t.bytes;
 }
 
 /* ---- the card's size ------------------------------------------------------- */
@@ -698,8 +713,11 @@ static void size_game(const st_paths *p, const st_game_in *g, const gd_other *ot
 	snprintf(media, sizeof media, "%s/.media", romdir);
 	card = (gd_card){ p->roms, saves, states };
 	gg = (gd_game){ g->folder, g->tag, g->core, g->exts, g->file, g->name };
-	if (!gd_plan_make(&card, &gg, others, no, plan)) {
-		/* A BIOS set, or a sheet that leads away: the file alone */
+	if (!gd_plan_make(&card, &gg, others, no, plan) &&
+	    plan->why != GD_RUNTIME && plan->why != GD_PORT_UNKNOWN) {
+		/* A BIOS set, or a sheet that leads away: the file alone. PortMaster
+		 * and a port nothing names folders for are refused too, and their
+		 * plans are what they hold: PortMaster's folder, the script alone */
 		struct stat st;
 		char f[PATH_MAX_ST];
 
@@ -713,7 +731,7 @@ static void size_game(const st_paths *p, const st_game_in *g, const gd_other *ot
 
 		if (plan->kind[i] == GD_EMPTY_DIR || lstat(plan->path[i], &st) != 0) continue;
 		if (S_ISDIR(st.st_mode)) {
-			if (plan->kind[i] == GD_TREE) b = tree_bytes(plan->path[i]);
+			if (plan->kind[i] == GD_TREE) b = folder_bytes(plan->path[i]);
 		} else if (S_ISREG(st.st_mode)) {
 			b = alloc_of(&st);
 		}
@@ -968,6 +986,83 @@ static unsigned long long root_bytes(const char *abs, bool trust, bool force, bo
 	return t.bytes;
 }
 
+/* The folders the Ports shelf's scripts name (src/portinfo.h), and always
+ * PortMaster's: none of them is an orphan, and none is one to delete */
+static int ports_claimed(const char *dir, const st_game_in *g, int n, const char *folder,
+                         char (*out)[PI_NAME], int max)
+{
+	pi_port *ports = malloc(PI_MAX * sizeof *ports);
+	int np = ports ? pi_scan(dir, ports, PI_MAX) : 0, m = 0, k;
+
+	if (max > 0) snprintf(out[m++], PI_NAME, "PortMaster");
+	for (k = 0; k < n && ports && m < max; k++) {
+		const char *slash = strchr(g[k].file, '/');
+
+		if (strcmp(g[k].folder, folder)) continue;
+		/* A folder the shelf lists as a game of its own is that game's */
+		if (slash) snprintf(out[m++], PI_NAME, "%.*s", (int)(slash - g[k].file), g[k].file);
+		else m += pi_folders(dir, ports, np, g[k].file, out + m, max - m);
+	}
+	free(ports);
+	return m;
+}
+
+static bool claimed_by(char (*claimed)[PI_NAME], int n, const char *name)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (!strcasecmp(claimed[i], name)) return true;
+	return false;
+}
+
+/* The Ports shelf's folders no script on it names, from the walk's own
+ * listings, titled by their port.json */
+static void ports_orphans(const job_view *j)
+{
+	char dir[PATH_MAX_ST], (*claimed)[PI_NAME];
+	pi_port *ports;
+	st_orphan found[ST_ORPHANS];
+	void **slot;
+	dnode *d;
+	char *kids = NULL, *k;
+	size_t len = 0;
+	int nc, np, nf = 0;
+
+	snprintf(dir, sizeof dir, "%s/%s", j->p.roms, j->s.ports);
+	claimed = malloc(PI_MAX * sizeof *claimed);
+	ports = malloc(PI_MAX * sizeof *ports);
+	if (!claimed || !ports) { free(claimed); free(ports); return; }
+	nc = ports_claimed(dir, j->g, j->n, j->s.ports, claimed, PI_MAX);
+	np = pi_scan(dir, ports, PI_MAX);
+	if ((slot = smap_slot(&g_dirs, rel_of(dir), false)) && (d = *slot) && d->kids_len &&
+	    (kids = malloc(d->kids_len))) {
+		len = d->kids_len;
+		memcpy(kids, d->kids, len);
+	}
+	for (k = kids; k && k < kids + len && nf < ST_ORPHANS; k += strlen(k) + 1) {
+		char sub[PATH_MAX_ST];
+		const pi_port *pt;
+		tsum t = { 0 };
+
+		if (k[0] == '.' || claimed_by(claimed, nc, k)) continue;
+		snprintf(sub, sizeof sub, "%s/%s", dir, k);
+		walk(sub, false, true, false, &t);
+		memset(&found[nf], 0, sizeof found[nf]);
+		snprintf(found[nf].folder, sizeof found[nf].folder, "%s", k);
+		if ((pt = pi_of_folder(ports, np, k))) snprintf(found[nf].title, sizeof found[nf].title, "%s", pt->title);
+		found[nf].bytes = t.bytes;
+		nf++;
+	}
+	free(kids);
+	free(claimed);
+	free(ports);
+	pthread_mutex_lock(&g_mu);
+	memcpy(g_orph, found, (size_t)nf * sizeof *found);
+	g_norph = nf;
+	pthread_mutex_unlock(&g_mu);
+}
+
 /* Everything, once: from the cache alone with `trust`, else from the card.
  * Publishes as it goes when `live`. False when it was asked to end. */
 static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool live)
@@ -1145,7 +1240,11 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 			slot = smap_slot(&g_games, key, false);
 			gn = slot ? *slot : NULL;
 			pthread_mutex_unlock(&g_mu);
-			if (!trust && plan && others && hs && (!gn || gn->sig != gsig || force)) {
+			/* A port writes its saves and settings into its own folders,
+			 * whose times no signature here follows: its size is made
+			 * again each walk, from listings the walk has just made */
+			if (!trust && plan && others && hs &&
+			    (!gn || gn->sig != gsig || force || (j->s.ports && !strcmp(s->folder, j->s.ports)))) {
 				st_game_size sz;
 				int no = others_of(j->g, j->n, k, lo, hi, hs, others);
 
@@ -1172,6 +1271,7 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 	free(plan);
 	free(others);
 	free(hs);
+	if (!trust && j->s.ports) ports_orphans(j);
 	c->at[0] = '\0';
 	c->at_done = c->at_total = 0;
 	st_totals(c);
@@ -1301,6 +1401,7 @@ static job *job_make(const st_paths *p, const st_systems *s, const st_game_in *g
 	if (!jb) return NULL;
 	LEN(p->card); LEN(p->roms); LEN(p->shared); LEN(p->root);
 	for (i = 0; i < s->n && i < ST_MAX_SYS; i++) LEN(s->folders[i]);
+	if (s->ports) LEN(s->ports);
 	for (i = 0; i < n; i++) {
 		LEN(g[i].folder); LEN(g[i].tag); LEN(g[i].core); LEN(g[i].exts); LEN(g[i].file); LEN(g[i].name);
 	}
@@ -1314,6 +1415,7 @@ static job *job_make(const st_paths *p, const st_systems *s, const st_game_in *g
 	jb->v.p.own_fs = p->own_fs;
 	for (i = 0; i < s->n && i < ST_MAX_SYS; i++) PUT(jb->v.s.folders[i], s->folders[i]);
 	jb->v.s.n = i;
+	if (s->ports) PUT(jb->v.s.ports, s->ports);
 	for (i = 0; i < n; i++) {
 		st_game_in *o = &jb->games[i];
 
@@ -1489,4 +1591,61 @@ unsigned long long st_delete_old_states(const st_paths *p, const st_systems *s,
 		free(v);
 	}
 	return sum;
+}
+
+int st_orphans(st_orphan *out, int max)
+{
+	int n;
+
+	pthread_mutex_lock(&g_mu);
+	n = g_norph < max ? g_norph : max;
+	memcpy(out, g_orph, (size_t)n * sizeof *out);
+	pthread_mutex_unlock(&g_mu);
+	return n;
+}
+
+/* A folder and everything in it, never following a link; the bytes it held */
+static unsigned long long tree_remove(const char *dir, int depth)
+{
+	unsigned long long sum = 0;
+	DIR *d;
+	struct dirent *e;
+
+	if (depth > 16 || !(d = opendir(dir))) return 0;
+	while ((e = readdir(d))) {
+		char p[PATH_MAX_ST];
+		struct stat st;
+
+		if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+		if (snprintf(p, sizeof p, "%s/%s", dir, e->d_name) >= (int)sizeof p) continue;
+		if (lstat(p, &st) != 0) continue;
+		if (S_ISDIR(st.st_mode)) sum += tree_remove(p, depth + 1);
+		else if (unlink(p) == 0) sum += alloc_of(&st);
+	}
+	closedir(d);
+	rmdir(dir);
+	return sum;
+}
+
+unsigned long long st_delete_port_folder(const st_paths *p, const st_systems *s,
+                                         const st_game_in *games, int n, const char *folder)
+{
+	char dir[PATH_MAX_ST], sub[PATH_MAX_ST], (*claimed)[PI_NAME];
+	struct stat st;
+	unsigned long long b;
+	int nc;
+
+	if (!s->ports || !folder || !folder[0] || folder[0] == '.' || strchr(folder, '/') ||
+	    pi_runtime(folder))
+		return 0;
+	snprintf(dir, sizeof dir, "%s/%s", p->roms, s->ports);
+	if (snprintf(sub, sizeof sub, "%s/%s", dir, folder) >= (int)sizeof sub) return 0;
+	if (lstat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) return 0;
+	/* Held to the shelf as it is now: a script that names it makes it a
+	 * port's, and it stays */
+	if (!(claimed = malloc(PI_MAX * sizeof *claimed))) return 0;
+	nc = ports_claimed(dir, games, n, s->ports, claimed, PI_MAX);
+	b = claimed_by(claimed, nc, folder) ? 0 : tree_remove(sub, 0);
+	free(claimed);
+	return b;
 }

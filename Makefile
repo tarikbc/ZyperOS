@@ -1231,12 +1231,12 @@ check-gamedel: build-native/gamedel-check
 	fi
 	@python3 tools/gamedel-e2e.py
 
-build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/library.c \
+build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/portinfo.c src/portinfo.h src/library.c \
                             src/library.h src/db.c src/db.h src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/gamedel-check.c src/gamedel.c src/library.c src/db.c src/favorites.c \
+	      -o $@ tools/gamedel-check.c src/gamedel.c src/portinfo.c src/library.c src/db.c src/favorites.c \
 	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # MENU > Storage's numbers (src/storage.h) on a card made of small files:
@@ -1253,12 +1253,12 @@ check-storage: build-native/storage-check
 	fi
 	@python3 tools/storage-motion-check.py
 
-build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c \
+build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c src/portinfo.c \
                             src/gamedel.h src/library.c src/db.c src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/library.c src/db.c \
+	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/portinfo.c src/library.c src/db.c \
 	      src/favorites.c src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Play time. The assertion that earns this its place is that a LAUNCH writes

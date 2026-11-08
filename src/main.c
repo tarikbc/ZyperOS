@@ -92,6 +92,7 @@
 #include "game_menu.h"
 #include "portmenu.h"
 #include "gamedel.h"
+#include "portinfo.h"
 #include "dsv.h"
 #include "dslang.h"
 #include "ui.h"
@@ -6832,7 +6833,19 @@ static bool timed_message(app *a, const char *heading, const menu_row *rows,
 static bool result_message(app *a, const char *heading, const char *text)
 {
 	menu_row row = { text, NULL, false };
+	int w = menu_std_width(a);
 
+	/* A message wider than the panel goes onto lines, balanced, rather than
+	 * sliding where a word is cut ("neogeo is a BIOS other games need. It
+	 * stays.", "PortMaster runs every port. It stays." in French) */
+	if (ui_text_width(ui_font(UI_F_MENU), text) > w) {
+		char lines[3][LB_LINE];
+		menu_row rows[3];
+		int n = ui_balance_lines(ui_font(UI_F_MENU), text, w, 3, lines), i;
+
+		for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+		if (n > 1) return timed_message(a, heading, rows, n, w, MENU_ZYPEROS);
+	}
 	return timed_message(a, heading, &row, 1, 0, MENU_ZYPEROS);
 }
 
@@ -10314,25 +10327,34 @@ static int delete_ask_fit(bool *rule)
  * A name too long for the question to fit names the game in the heading
  * instead, as the details page under it does, and the question says "this
  * game": a name may slide in a heading, a question may not be cut. */
-static int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
-                           menu_row *rows, const char **heading)
+static int delete_ask_rows_for(app *a, const char *title, bool port, char (*lines)[CHV_WRAP_COLS],
+                               menu_row *rows, const char **heading)
 {
 	char q[LIB_NAME + 512];
 	bool rule;
 	int n, i, fit = delete_ask_fit(&rule), w = menu_std_width(a);
 	TTF_Font *f = ui_font(UI_F_MENU);
 
-	snprintf(q, sizeof q, T(S_GAMEMENU_DELETE_ASK), title);
+	/* A port's question says its folders go, its saves in them (DESIGN.md
+	 * 11.31): a port keeps nothing in Saves/ */
+	snprintf(q, sizeof q, T(port ? S_GAMEMENU_DELETE_ASK_PORT : S_GAMEMENU_DELETE_ASK), title);
 	n = wrap_text(f, q, w, lines, DEL_ASK_LINES);
 	*heading = T(S_GAMEMENU_DELETE);
 	if (n > fit) {
-		n = wrap_text(f, T(S_GAMEMENU_DELETE_ASK_THIS), w, lines, DEL_ASK_LINES);
+		n = wrap_text(f, T(port ? S_GAMEMENU_DELETE_ASK_PORT_THIS : S_GAMEMENU_DELETE_ASK_THIS), w,
+		              lines, DEL_ASK_LINES);
 		*heading = title;
 	}
 	for (i = 0; i < n; i++)
 		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
 	if (n < fit || rule) rows[n++] = MENU_HR;
 	return n;
+}
+
+static int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
+                           menu_row *rows, const char **heading)
+{
+	return delete_ask_rows_for(a, title, false, lines, rows, heading);
 }
 
 /* One frame of the question over the shelf, Cancel focused, for a shot */
@@ -10413,6 +10435,8 @@ static bool game_delete_now(app *a, int owner, const game_entry *g, bool wait,
 		        plan->why == GD_BIOS ? "a BIOS set" : plan->why == GD_OUTSIDE
 		        ? "outside its folders" : "too many paths", plan->bad);
 		if (plan->why == GD_BIOS) snprintf(said, n, T(S_GAMEMENU_DELETE_BIOS), name);
+		else if (plan->why == GD_RUNTIME) snprintf(said, n, "%s", T(S_GAMEMENU_DELETE_RUNTIME));
+		else if (plan->why == GD_PORT_UNKNOWN) snprintf(said, n, T(S_GAMEMENU_DELETE_PORT_UNKNOWN), name);
 		else snprintf(said, n, "%s", plan->why == GD_OUTSIDE ? T(S_GAMEMENU_DELETE_OUTSIDE)
 		                                                     : T(S_GAMEMENU_DELETE_FAILED));
 		free(others);
@@ -10461,12 +10485,35 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
 	int nq, lv;
 	bool yes;
 
+	const system_cfg *s = owner >= 0 && owner < a->sys.count ? &a->sys.systems[owner] : NULL;
+	bool port = s && !strcmp(s->core, "port");
+
 	said[0] = '\0';
 	if (gd_is_bios(g->file)) {
 		snprintf(said, n, T(S_GAMEMENU_DELETE_BIOS), g->name);
 		return false;
 	}
-	nq = delete_ask_rows(a, g->title, lines, rows, &heading);
+	/* A port says why it stays before anything is asked: PortMaster, which
+	 * every port runs on, and a port nothing names its folders for
+	 * (src/portinfo.h) */
+	if (port) {
+		char dir[CFG_STR * 2], (*f)[PI_NAME] = malloc(PI_ITEMS * sizeof *f);
+		pi_port *ports = malloc(PI_MAX * sizeof *ports);
+		int np, nf = 0;
+
+		snprintf(dir, sizeof dir, "%s/%s", P_ROMS, s->folder);
+		if (pi_runtime(g->file)) {
+			snprintf(said, n, "%s", T(S_GAMEMENU_DELETE_RUNTIME));
+		} else if (f && ports) {
+			np = pi_scan(dir, ports, PI_MAX);
+			nf = pi_folders(dir, ports, np, g->file, f, PI_ITEMS);
+			if (!nf) snprintf(said, n, T(S_GAMEMENU_DELETE_PORT_UNKNOWN), g->title);
+		}
+		free(f);
+		free(ports);
+		if (said[0]) return false;
+	}
+	nq = delete_ask_rows_for(a, g->title, port, lines, rows, &heading);
 	lv = panel_open();
 	yes = confirm_rows(a, heading, rows, nq, T(S_GAMEMENU_DELETE_YES), menu_std_width(a), lv);
 	panel_close(a, lv, !a->running);
@@ -11799,7 +11846,7 @@ static void update_screen(app *a)
 
 enum {
 	SR_ART, SR_STATES, SR_SYSTEM, SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS,
-	SR_OTHER, SR_SNAPS, SR_GAME
+	SR_OTHER, SR_SNAPS, SR_GAME, SR_ORPHAN, SR_REST
 };
 
 typedef struct {
@@ -11826,6 +11873,8 @@ typedef struct {
 	st_game_in *games;            /* the walk's request */
 	int ngames;
 	st_systems sys;
+	st_orphan orph[ST_ORPHANS];   /* the Ports shelf's folders no script names */
+	int norph;
 	st_paths paths;
 	store_icon icons[ST_MAX_SYS + 8];
 	int nicons;
@@ -11962,6 +12011,10 @@ static void store_request(store_view *v)
 	for (i = 0; v->cfg_ok && i < v->cfg.count && v->sys.n < ST_MAX_SYS; i++)
 		if (v->cfg.systems[i].folder[0] && !is_muse(&v->cfg.systems[i]))
 			v->sys.folders[v->sys.n++] = v->cfg.systems[i].folder;
+	v->sys.ports = NULL;
+	for (i = 0; v->cfg_ok && i < v->cfg.count; i++)
+		if (!strcmp(v->cfg.systems[i].core, "port") && v->cfg.systems[i].folder[0])
+			v->sys.ports = v->cfg.systems[i].folder;
 	v->paths = (st_paths){ P_CARD, P_ROMS, P_SHARED, P_ROOT, store_own_fs() };
 }
 
@@ -12140,6 +12193,12 @@ static void store_caption(store_view *v, sp_row *r)
 		snprintf(r->caption, sizeof r->caption, T(S_STORAGE_SNAPS_CAPTION), s ? s->name : c->sys[v->page].folder);
 		break;
 	}
+	case SR_ORPHAN:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_ORPHAN_CAPTION));
+		break;
+	case SR_REST:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_REST_CAPTION));
+		break;
 	case SR_GAME: {
 		int sh = store_shelf(v->a, c->sys[v->page].folder);
 		const game_entry *g = sh >= 0 && r->index < v->a->view[sh].list.count
@@ -12239,26 +12298,52 @@ static void store_rows(store_view *v)
 				store_row_look(v, r);
 			}
 		}
-		if (cnt > 0 && (it = malloc((size_t)cnt * sizeof *it))) {
+		/* On the Ports shelf, its folders no script names too: a port whose
+		 * script is gone, by its port.json's name, or a folder of nothing's */
+		bool ports = v->sys.ports && !strcmp(s->folder, v->sys.ports);
+		unsigned long long owned = 0, whole = store_sys_bytes(s);
+		bool all_sized = true;
+
+		v->norph = ports && !v->fixture ? st_orphans(v->orph, ST_ORPHANS) : 0;
+		if ((cnt > 0 || v->norph > 0) && (it = malloc((size_t)(cnt + v->norph) * sizeof *it))) {
 			for (i = 0; i < cnt; i++) {
 				const game_entry *g = &v->a->view[sh].list.items[i];
 				st_game_size sz;
 				bool ok = store_game_size(v, s->folder, g, &sz);
 
 				it[n++] = (store_item){ SR_GAME, i, ok ? sz.bytes : 0, ok, g->title };
+				if (ok) owned += sz.bytes;
+				else all_sized = false;
+			}
+			for (i = 0; i < v->norph; i++) {
+				it[n++] = (store_item){ SR_ORPHAN, i, v->orph[i].bytes, true,
+				                        v->orph[i].title[0] ? v->orph[i].title : v->orph[i].folder };
+				owned += v->orph[i].bytes;
 			}
 			qsort(it, (size_t)n, sizeof *it, store_item_cmp);
 			for (i = 0; i < n; i++) {
 				sp_row *r = store_add(v);
 
 				if (!r) break;
-				r->kind = SR_GAME;
+				r->kind = it[i].kind;
 				r->index = it[i].index;
-				r->name = v->a->view[sh].list.items[it[i].index].title;
+				r->name = it[i].kind == SR_GAME ? v->a->view[sh].list.items[it[i].index].title : it[i].title;
 				if (it[i].sized) store_bytes(it[i].bytes, r->value, sizeof r->value);
 				r->icon = SP_ICON_NONE;
 			}
 			free(it);
+		}
+		/* What none of those owns - art of games gone, a loose file, a set
+		 * two games share - so the rows come to the system's whole */
+		if (all_sized && whole > owned && whole - owned >= 1000000ull) {
+			sp_row *r = store_add(v);
+
+			if (r) {
+				r->kind = SR_REST;
+				r->name = T(S_STORAGE_REST);
+				store_bytes(whole - owned, r->value, sizeof r->value);
+				r->icon = SP_ICON_NONE;
+			}
 		}
 	}
 	/* Back on the row it was on, or the nearest */
@@ -12496,6 +12581,26 @@ static void store_act(store_view *v)
 		store_after(v);
 		break;
 	}
+	case SR_ORPHAN: {
+		const st_orphan *o = r->index < v->norph ? &v->orph[r->index] : NULL;
+		char folder[ST_FOLDER];
+		unsigned long long b;
+
+		if (!o) { uisound_play(DS_SOUND_DENY); break; }
+		uisound_play(DS_SOUND_ACCEPT);
+		snprintf(folder, sizeof folder, "%s", o->folder);
+		store_bytes(o->bytes, sz, sizeof sz);
+		snprintf(q, sizeof q, T(S_STORAGE_ORPHAN_ASK), o->title[0] ? o->title : o->folder, sz);
+		if (!store_ask(a, T(S_GAMEMENU_DELETE), q, T(S_GAMEMENU_DELETE_YES))) break;
+		st_stop();
+		wait_panel(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETING));
+		b = st_delete_port_folder(&v->paths, &v->sys, v->games, v->ngames, folder);
+		fprintf(stderr, "storage: port folder %s: %llu bytes\n", folder, b);
+		if (b) store_said(a, T(S_GAMEMENU_DELETE), b, S_GAMEMENU_DELETED);
+		else result_message(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETE_FAILED));
+		store_after(v);
+		break;
+	}
 	case SR_GAME: {
 		int sh = store_shelf(a, v->c.sys[v->page].folder);
 		char said[256];
@@ -12645,7 +12750,7 @@ static void storage_screen(app *a)
  * with --shot-at, as the page opens it: shot_motion) or first (the first
  * walk). ROW is the
  * focused row, by number or by what it is (videos, music, books, bios,
- * zyperos, other). */
+ * zyperos, other, rest). */
 static const char *shot_storage;
 static int shot_storage_sel = -1;
 static int shot_lv;              /* --shot-at's panel level (with shot_motion's, below) */
@@ -12779,6 +12884,7 @@ static void storage_shot(app *a)
 			static const struct { const char *name; int kind; } ROWS[] = {
 				{ "videos", SR_VIDEOS }, { "music", SR_MUSIC }, { "books", SR_BOOKS },
 				{ "bios", SR_BIOS }, { "zyperos", SR_ZYPEROS }, { "other", SR_OTHER },
+				{ "rest", SR_REST },
 			};
 			size_t k;
 

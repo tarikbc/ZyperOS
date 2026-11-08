@@ -103,6 +103,28 @@ de = Dieses Spiel löschen? Spielstände, Speicherstände, Cover und Video werde
 ja = このゲームを削除しますか？セーブデータ、ステートセーブ、パッケージ画像、動画プレビューも削除されます。元に戻せません。
 it = Eliminare questo gioco? Salvataggi, stati salvati, copertina e video se ne vanno con lui. Non si può annullare.
 
+[gamemenu.delete_ask_port]
+note = Delete Game's question for a PortMaster port (the Ports shelf); %s is the port's name. A port keeps its saves inside its own folders, which go with it.
+en = Delete %s? Its folders go too, its saves with them. This cannot be undone.
+zh-Hans = 要删除 %s 吗？它的文件夹会一并删除，存档也在其中。此操作无法撤销。
+es = ¿Borrar %s? Sus carpetas se borran con él, y sus partidas con ellas. No se puede deshacer.
+pt-BR = Apagar %s? As pastas dele vão junto, com os saves. Não é possível desfazer.
+fr = Supprimer %s\u00a0? Ses dossiers partent avec lui, et ses sauvegardes avec eux. Impossible d'annuler.
+de = %s löschen? Seine Ordner werden mitgelöscht, mit den Spielständen darin. Das lässt sich nicht rückgängig machen.
+ja = %s を削除しますか？フォルダーとその中のセーブデータも削除されます。元に戻せません。
+it = Eliminare %s? Le sue cartelle se ne vanno con lui, salvataggi compresi. Non si può annullare.
+
+[gamemenu.delete_ask_port_this]
+note = The same question for a port whose name would not fit in it: the heading names the port instead.
+en = Delete this port? Its folders go too, its saves with them. This cannot be undone.
+zh-Hans = 要删除这个移植游戏吗？它的文件夹会一并删除，存档也在其中。此操作无法撤销。
+es = ¿Borrar este port? Sus carpetas se borran con él, y sus partidas con ellas. No se puede deshacer.
+pt-BR = Apagar este port? As pastas dele vão junto, com os saves. Não é possível desfazer.
+fr = Supprimer ce portage\u00a0? Ses dossiers partent avec lui, et ses sauvegardes avec eux. Impossible d'annuler.
+de = Diesen Port löschen? Seine Ordner werden mitgelöscht, mit den Spielständen darin. Das lässt sich nicht rückgängig machen.
+ja = この移植ゲームを削除しますか？フォルダーとその中のセーブデータも削除されます。元に戻せません。
+it = Eliminare questo port? Le sue cartelle se ne vanno con lui, salvataggi compresi. Non si può annullare.
+
 [gamemenu.delete_yes]
 note = The yes answer to it, above Cancel.
 en = Delete
@@ -168,6 +190,28 @@ fr = Rien n'a été supprimé. Un de ses fichiers est hors de ses dossiers.
 de = Nichts wurde gelöscht. Eine seiner Dateien liegt außerhalb seiner Ordner.
 ja = 何も削除されませんでした。ファイルの一部がフォルダの外にあります。
 it = Non è stato eliminato nulla. Uno dei suoi file è fuori dalle sue cartelle.
+
+[gamemenu.delete_runtime]
+note = The message for PortMaster on the Ports shelf, which is never deleted: every port runs on it.
+en = PortMaster runs every port. It stays.
+zh-Hans = 所有移植游戏都依赖 PortMaster 运行，将保留。
+es = PortMaster hace funcionar todos los ports. Se queda.
+pt-BR = O PortMaster roda todos os ports. Ele fica.
+fr = PortMaster fait tourner tous les portages. Il reste.
+de = PortMaster lässt jeden Port laufen. Es bleibt.
+ja = PortMaster はすべての移植ゲームの動作に必要です。削除しません。
+it = PortMaster fa funzionare tutti i port. Resta.
+
+[gamemenu.delete_port_unknown]
+note = The message for a port whose folders nothing on the card names (no port.json, no GAMEDIR in its script), so it is not deleted; %s is its name.
+en = Nothing says which folders are %s's. It stays.
+zh-Hans = 无法确定哪些文件夹属于 %s，将保留。
+es = Nada indica qué carpetas son de %s. Se queda.
+pt-BR = Nada diz quais pastas são de %s. Ele fica.
+fr = Rien n'indique quels dossiers sont à %s. Il reste.
+de = Nichts sagt, welche Ordner zu %s gehören. Es bleibt.
+ja = どのフォルダーが %s のものか分かりません。削除しません。
+it = Niente dice quali cartelle sono di %s. Resta.
 
 [gamemenu.delete_bios]
 note = The message for a BIOS set on a shelf (neogeo.zip), which is never deleted; %s is its name ("neogeo").
