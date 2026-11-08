@@ -10,6 +10,7 @@ the boot loader and the closed parts.
 | alsa-lib | 1.2.15.3 | LGPL-2.1+ (library), GPL-2.0+ (aserver) | https://www.alsa-project.org/files/pub/lib |
 | bash | 5.2.37 | GPL-3.0+ | https://ftpmirror.gnu.org/bash |
 | busybox | 1.37.0 | GPL-2.0, bzip2-1.0.4 | https://www.busybox.net/downloads |
+| ca-certificates | 20260223 | GPL-2.0+ (script), MPL-2.0 (data) | https://snapshot.debian.org/archive/debian/20260223T202245Z/pool/main/c/ca-certificates |
 | diatom | from its repository | MPL-2.0 | Diatom, https://github.com/tarikbc/ZyperOS (diatom/) |
 | dropbear | 2026.91 | MIT, BSD-2-Clause, Public domain, Unlicense, WTFPL | https://matt.ucc.asn.au/dropbear/releases |
 | exfatprogs | 1.2.9 | GPL-2.0+ | https://github.com/exfatprogs/exfatprogs/releases/download/1.2.9 |
@@ -24,6 +25,7 @@ the boot loader and the closed parts.
 | jpeg-turbo | 3.1.2 | IJG (libjpeg), BSD-3-Clause (TurboJPEG), Zlib (SIMD) | https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.2 |
 | libcurl | 8.20.0 | curl | https://curl.se/download |
 | libdrm | 2.4.131 | MIT | https://dri.freedesktop.org/libdrm |
+| libffi | 3.4.8 | MIT | https://github.com/libffi/libffi/releases/download/v3.4.8 |
 | libnl | 3.11.0 | LGPL-2.1+ | https://github.com/thom311/libnl/releases/download/libnl3_11_0 |
 | libogg | 1.3.6 | BSD-3-Clause | http://downloads.xiph.org/releases/ogg |
 | libopenssl | 3.6.2 | Apache-2.0 | https://github.com/openssl/openssl/releases/download/openssl-3.6.2 |
@@ -41,10 +43,12 @@ the boot loader and the closed parts.
 | ncurses | 6.6-20251231 | MIT with advertising clause | https://github.com/ThomasDickey/ncurses-snapshots/archive/v6_6_20251231 |
 | openal | 1.24.3 | LGPL-2.0+ | https://github.com/kcat/openal-soft/archive/1.24.3 |
 | powerkey | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
+| python3 | 3.14.5 | Python-2.0, others | https://python.org/ftp/python/3.14.5 |
 | readline | 8.3 | GPL-3.0+ | https://ftpmirror.gnu.org/readline |
 | rtl8188eu | 2ef2819d2d3ef7701a739c66525bca4731c6abbf | GPL-2.0, proprietary (rtl8188eufw.bin firmware blob) | https://github.com/benetti-engineering/rtl8188eu/archive/2ef2819d2d3ef7701a739c66525bca4731c6abbf |
 | sdl2 | 2.32.10 | Zlib | http://www.libsdl.org/release |
 | sdl2_image | 2.8.12 | Zlib | http://www.libsdl.org/projects/SDL_image/release |
+| sdl2_mixer | 2.6.3 | Zlib | http://www.libsdl.org/projects/SDL_mixer/release |
 | sdl2_ttf | 2.24.0 | Zlib | http://www.libsdl.org/projects/SDL_ttf/release |
 | splash | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | sqlite | 3.51.3 | blessing | https://www.sqlite.org/2026 |
@@ -53,4 +57,5 @@ the boot loader and the closed parts.
 | util-linux | 2.41.4 | GPL-2.0+, BSD-4-Clause, LGPL-2.1+ (libblkid, libfdisk, libmount), BSD-3-Clause (libuuid), BSD-2-Clause (xxhash), ISC (rfkill), MIT (hardlink, flock) | https://cdn.kernel.org/pub/linux/utils/util-linux/v2.41 |
 | wireless-regdb | 2026.05.30 | ISC | https://cdn.kernel.org/pub/software/network/wireless-regdb |
 | wpa_supplicant | 2.11 | BSD-3-Clause | http://w1.fi/releases |
+| xz | 5.8.3 | Public Domain, BSD-0-Clause, GPL-2.0+, GPL-3.0+, LGPL-2.1+ | https://github.com/tukaani-project/xz/releases/download/v5.8.3 |
 | zyperos | from its repository | GPL-3.0+ | ZyperOS, https://github.com/tarikbc/ZyperOS |
