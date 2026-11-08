@@ -361,6 +361,48 @@ static int hint_draw(SDL_Renderer *r, TTF_Font *f, const char *pre, const char *
 
 /* The screen at `now`: `dim` toward the ground (the send-off), the words at
  * `k` */
+/* The first line of the screen, "Charging · 6.1 W · wall charger", in one
+ * row, or in two where a language's words are wider than the screen (the
+ * pseudo-locale's, 13 units past it): broken at the " · " that leaves the
+ * narrower of the two halves, the dot gone with the break; a word too long
+ * for that is broken as every other text is (ui_balance_lines). */
+static int chg_rows(TTF_Font *f, const char *text, char row[2][LB_LINE])
+{
+	const int maxw = ZYPEROS_SCREEN_W - 2 * DS_INSET;
+	const char *dot = "\xc2\xb7";
+	const char *at;
+	int found = 0, bestw = 0, n;
+
+	if (ui_text_width(f, text) <= maxw) {
+		snprintf(row[0], LB_LINE, "%s", text);
+		return 1;
+	}
+	for (at = strstr(text, dot); at; at = strstr(at + 2, dot)) {
+		char x[LB_LINE], y[LB_LINE];
+		int cut = (int)(at - text), wx, wy, w;
+		const char *rest = at + 2;
+
+		/* Not a dot with no word on a side of it */
+		while (cut > 0 && text[cut - 1] == ' ') cut--;
+		while (*rest == ' ') rest++;
+		if (!cut || !*rest) continue;
+		snprintf(x, sizeof x, "%.*s", cut, text);
+		snprintf(y, sizeof y, "%s", rest);
+		wx = ui_text_width(f, x);
+		wy = ui_text_width(f, y);
+		w = wx > wy ? wx : wy;
+		if (w <= maxw && (!found || w < bestw)) {
+			found = 1;
+			bestw = w;
+			snprintf(row[0], LB_LINE, "%s", x);
+			snprintf(row[1], LB_LINE, "%s", y);
+		}
+	}
+	if (found) return 2;
+	n = ui_balance_lines(f, text, maxw, 2, row);
+	return n < 1 ? 1 : n;
+}
+
 void chg_draw(app *a, unsigned now, float dim, float k)
 {
 	const ds_theme *t = theme();
@@ -395,12 +437,23 @@ void chg_draw(app *a, unsigned now, float dim, float k)
 	                 chg_held(), theme_index(), (Uint8)(255.0f * k + 0.5f));
 	ui_text_tabular(a->r, ft, pct, x0 + mw + LOWBATT_MARK_GAP, ui_line_y(UI_F_TITLE, CHG_TITLE_TOP),
 	                -1, ui_fade(ui_col(t->text, 255), k));
-	if (unplugged || g_chg.speed[0])
-		ui_text(a->r, fl, unplugged ? T(S_CHARGING_UNPLUGGED) : g_chg.speed, ZYPEROS_SCREEN_W / 2,
-		        ui_line_y(UI_F_LABEL, CHG_LINE1_TOP), 0, ui_fade(ui_col(t->text_soft, 255), k));
-	if (!unplugged && g_chg.when[0])
-		ui_text(a->r, fm, g_chg.when, ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_META, CHG_LINE2_TOP),
-		        0, ui_fade(ui_col(t->text_dim, 255), k));
+	{
+		char row[2][LB_LINE];
+		int rows = unplugged || g_chg.speed[0]
+		         ? chg_rows(fl, unplugged ? T(S_CHARGING_UNPLUGGED) : g_chg.speed, row) : 0;
+		int lh = ui_font_line(UI_F_LABEL), i;
+
+		/* Two lines stand half a line higher, and the time to full half a
+		 * line lower, so the second line clears it */
+		for (i = 0; i < rows; i++)
+			ui_text(a->r, fl, row[i], ZYPEROS_SCREEN_W / 2,
+			        ui_line_y(UI_F_LABEL, CHG_LINE1_TOP + i * lh - (rows - 1) * lh / 2), 0,
+			        ui_fade(ui_col(t->text_soft, 255), k));
+		if (!unplugged && g_chg.when[0])
+			ui_text(a->r, fm, g_chg.when, ZYPEROS_SCREEN_W / 2,
+			        ui_line_y(UI_F_META, CHG_LINE2_TOP + (rows > 1 ? (rows - 1) * lh / 2 : 0)),
+			        0, ui_fade(ui_col(t->text_dim, 255), k));
+	}
 	if (unplugged || dim > 0.0f) return;
 	/* "Hold (POWER) to start", the button drawn as the lock screen draws
 	 * its pair (DESIGN.md 11.9, 11.14); held at the charge limit, "Hold (A)
