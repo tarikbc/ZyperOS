@@ -78,6 +78,10 @@ SHOTS={
     'scraper':('demo','PS1',['--scraper','2']),
     'update':('demo','PS1',['--update']),
     'ports':('ports','PRT',['--screen','games']),
+    # The in-game menu over a port, and the first of its Controls pages: what
+    # its README says the buttons do (the made-up Star Farm, SHOT_FOCUS)
+    'ports-menu':('portdocs','PRT',['--screen','games','--gamemenu','0','port']),
+    'ports-controls':('portdocs','PRT',['--screen','games','--gamecontrols','0','PRT']),
     'portmaster':('demo','PS1',['--portmaster','running']),
     # MENU > Storage (DESIGN.md 11.32) on its stand-in card of 128 GB nearly
     # full, and the demonstration card's PlayStation page
@@ -107,6 +111,8 @@ SHOTS={
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
 }
+# The game a shot's shelf opens on, where it is not its system's own (below)
+SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
 # what it shows: icon= is the setting for this shot, eta= the minutes left
 STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time'}
@@ -212,6 +218,14 @@ def scummvm_card(card):
     card_dirs(card)
     for name in SCUMMVM:
         d=card/'Roms/ScummVM'/name;d.mkdir(parents=True);(d/'readme.txt').touch()
+
+def portdocs_card(card):
+    """A card whose Ports folder has the made-up ports of tools/fixtures/ports
+    (port.json, keymaps, READMEs) and PortMaster's script: the in-game menu
+    over a port and its Controls pages"""
+    card_dirs(card)
+    shutil.copytree(ROOT/'tools/fixtures/ports',card/'Roms/Ports')
+    (card/'Roms/Ports/PortMaster.sh').touch()
 
 def openbor_card(card):
     card_dirs(card)
@@ -401,11 +415,13 @@ def main():
               'artwork':{},'screenshots':[]}
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
-               'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports'}
+               'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports',
+               'portdocs':Path(temporary)/'portdocs'}
         demo_card(cards['demo'],args.art_dir,manifest)
         scummvm_card(cards['scummvm'])
         openbor_card(cards['openbor'])
         ports_card(cards['ports'])
+        portdocs_card(cards['portdocs'])
         card_dirs(cards['empty'])
         for theme in ['light','dark']:
             dest=out/theme;dest.mkdir(exist_ok=True)
@@ -413,7 +429,7 @@ def main():
                 if theme=='dark' and name not in DARK: continue
                 if args.only and name not in args.only: continue
                 card=cards[card_name]
-                focus={'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS,'OPENBOR':OPENBOR[0],'PRT':'PortMaster.sh'}.get(tag,'')
+                focus=SHOT_FOCUS.get(name) or {'PS1':FOCUS+'.chd','SCUMMVM':SCUMMVM_FOCUS,'OPENBOR':OPENBOR[0],'PRT':'PortMaster.sh'}.get(tag,'')
                 (card/'ZyperOS/.last').write_text(tag+'\n'+focus+'\n')
                 target=dest/(name+'.png')
                 # The tutorial draws no status corner, so it has no --status

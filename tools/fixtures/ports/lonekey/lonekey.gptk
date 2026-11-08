@@ -1,0 +1,14 @@
+[config]
+deadzone_mode = axial
+
+[controls]
+dpad = arrow_keys
+a = enter
+b = esc
+start = enter
+back = tab
+x = z
+y = z
+
+[controls:menu]
+a = f1

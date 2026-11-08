@@ -62,7 +62,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 ## Features
 
 - **Forty systems,** from the Atari 2600 to PlayStation, Nintendo 64, Nintendo DS, Dreamcast and Saturn, with Arcade, MAME, Neo Geo, NAOMI and Atomiswave, ScummVM, PICO-8, OpenBOR and J2ME ([the full list](#supported-systems)).
-- **Ports:** the Ports shelf installs the official [PortMaster](https://portmaster.games) with one press and runs its games, such as Stardew Valley and Celeste ([how](#portmaster)).
+- **Ports:** the Ports shelf installs the official [PortMaster](https://portmaster.games) with one press and runs its games, such as Stardew Valley and Celeste. **MENU** over any port, and over PortMaster itself, pauses it under ZyperOS's in-game menu, with **Controls** for that port ([how](#portmaster)).
 - **Nintendo DS your way:** [DSperate](https://github.com/beebono/DSperate) inside the emulator, with three screen layouts and a d-pad stylus. A Mario Kart DS race keeps 60 frames a second on the Pixel 2. **Game Language** in the DS shelf's menu picks the language a game speaks: Auto, the language of **MENU > Language** where the DS has it (English, Español, Français, Deutsch, Italiano, 日本語) and English where it doesn't, or any of them outright, whatever `firmware.bin` says. A game left in another language starts fresh in the new one, with its battery save.
 - **Dreamcast** on flycast2021, the 2021 libretro [Flycast](https://github.com/flyinghead/flycast), drawn on the GPU inside the emulator, with saves, states and resume like any other system. Standalone Flycast is the second choice if you add it.
 - **A home screen in pixel art:** every system as its animated console, on a Spotlight or a Gallery home, and your games as a row of covers. The systems go A to Z, or by release date in **MENU > System Order**. Light or dark, [as you like](#light-and-dark).
@@ -84,7 +84,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Clocks per system:** 8-bit and handheld systems run the CPU, memory and GPU under lower ceilings, measured to keep every frame, and so does the 16-bit generation a step higher. Lower clocks run at lower voltage, which saves battery. At the first frame that comes late, a game goes back to full clocks for the rest of the session.
 - **Turbo buttons:** X and Y press A and B for you, on the nine consoles whose controllers had two face buttons. On Game Boy Advance, L2 and R2 do the same for L and R.
 - **Faster and slower:** hold SELECT and press **R2** to run a game at 1.5x, 2x or 3x, and **L2** to step back down to normal speed. A pop-up says the speed.
-- **Every control, in the game:** **Controls** in the in-game menu shows what each button does in the game you are playing: its system's own buttons as its emulator reads them (the PlayStation's as their cross, circle, triangle and square), the turbo buttons, the hotkeys, the Nintendo 64's C buttons (SELECT with X, A, B or Y) and Rumble Pak, the PICO-8's arrows, O, X and pause menu, and the DS's screens and stylus.
+- **Every control, in the game:** **Controls** in the in-game menu shows what each button does in the game you are playing: its system's own buttons as its emulator reads them (the PlayStation's as their cross, circle, triangle and square), the turbo buttons, the hotkeys, the Nintendo 64's C buttons (SELECT with X, A, B or Y) and Rumble Pak, the PICO-8's arrows, O, X and pause menu, and the DS's screens and stylus. Over a port it shows what the port documents: the controls in its README, the key each button types for it, and what to copy where before it runs.
 - **Rumble on the Pixel 2:** Dreamcast games, PlayStation games (as a DualShock) and Game Boy Color rumble cartridges shake the handheld, and Nintendo 64 games get a Rumble Pak. A game that saves to the Controller Pak, the N64's memory card, takes it instead in the in-game menu's **Pak** row, which keeps the choice for that game. The motor stops while the in-game menu is open.
 - **A USB-C headphone adapter on the Pixel 2:** plug one in and the sound goes there, ahead of the headphone jack, in games and in MP4. It's a choice of its own in Audio Output.
 - **Bluetooth headphones** on the Brick, paired on the device, with its volume buttons reaching them and their own buttons playing and skipping in MP4. Plug in wired ones and they take over.
@@ -116,7 +116,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Languages** | 8: English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語, Italiano | — | 21, in its launcher | English | 36 | 6 |
 | **Menu music** | 10 free tracks, or yours | — | — | — | Yes | — |
 | **Media player** | Music, audiobooks, video | — | Music, video | Music, audiobooks | Music, video | Music |
-| **PortMaster** | Yes, installed from the Ports shelf with one press | Yes | Yes | — | Yes | Yes |
+| **PortMaster** | Yes, installed from the Ports shelf with one press, with the in-game menu over every port | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
 | **Storage by part and by game** | Yes, with recommendations | — | — | — | — | — |
@@ -404,6 +404,10 @@ Its first start unpacks its own files and downloads its catalog of ports, which 
 
 When a port runs, ZyperOS steps aside to give it the memory, puts its own PortMaster settings for the Pixel 2 in place, and keeps the volume keys and **POWER** working. PortMaster is not part of ZyperOS: it comes from the PortMaster team, under the MIT license.
 
+<img align="right" width="320" src="res/readme/ports-controls.png" alt="Controls over a port: the d-pad, A, B, X, L1/R1 and START+SELECT as its README says them">
+
+**MENU** over a port, or over PortMaster, pauses it under the in-game menu: **Continue**, **Controls** and **Quit**, back to the Ports shelf. The game stops where it is and nothing you press in the menu reaches it. **Controls** reads the port's own files: what its README says each button does, the keyboard key each button types for it (its gptokeyb keymap), the buttons that work in every port (**MENU**, the volume keys, **MENU + VOL** for brightness, **SELECT + START**, PortMaster's own way to end a port, and **POWER**), and, last, what its PortMaster entry says to copy where. Over PortMaster it lists PortMaster's own buttons: **Up/Down** move, **L1/R1** a page, **A** chooses, **B** goes back, **X** filters the list, **Y** uninstalls a port. **Quit** ends the port, its helpers and the runtime it mounted, then the shelf comes back.
+
 <br clear="right">
 
 ### Removing ZyperOS
@@ -426,6 +430,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
 | **X / Y** | In a game, turbo A and B. On the shelf, a game's details (and Delete Game) and favorite |
 | **POWER** | Save and turn off. Over a port, it ends the port first |
+| **MENU** over a port | The in-game menu over it: Continue, Controls, Quit |
 
 The device lists every button under **MENU > Controls**, and in a game, **Controls** in the in-game menu lists what each button does in that game. [The guide](docs/guide.md#controls-and-menus) covers every control, menu and setting in detail.
 

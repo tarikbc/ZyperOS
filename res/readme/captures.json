@@ -779,6 +779,50 @@
       ],
       "sha256": "b431c20478b19cee370f074be828bc8c506b6baad4e2c134b2b8728a02f9efbb",
       "source_commit": "829900dedf246417fae9241c9cf910db4b67d818"
+    },
+    {
+      "file": "light/ports-menu.png",
+      "card": "portdocs",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "0",
+        "port"
+      ],
+      "sha256": "9de3116215235980dc26813077bcc44964be89c6acc99dfa6aec0bba5ba81137",
+      "source_commit": "a5409f66d37aec320a9c1b3898e5df99f1f49d4b"
+    },
+    {
+      "file": "light/ports-controls.png",
+      "card": "portdocs",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "0",
+        "PRT"
+      ],
+      "sha256": "e4e47f6c76efeb7504d88418a216b842ec01bdfd2cde6b98b3638d083ad0ed1d",
+      "source_commit": "a5409f66d37aec320a9c1b3898e5df99f1f49d4b"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

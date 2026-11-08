@@ -40,6 +40,9 @@ for g in "Genesis/Sonic the Hedgehog 2.md" "Nintendo 64/Mario Kart 64.z64" \
 	mkdir -p "$D/Roms/$(dirname "$g")" || exit 1
 	: >"$D/Roms/$g" || exit 1
 done
+# The made-up ports (port.json, keymaps, READMEs) on the Ports shelf, for
+# their pages here and in the fit test below
+cp -R tools/fixtures/ports "$D/Roms/Ports" || exit 1
 : >"$D/log"
 
 run() {
@@ -95,6 +98,29 @@ done
 # The Pixel 2's brightness is MENU with the volume keys, and its page says so
 shot "MD-2-pixel" --theme light --screen games --gamecontrols 2 MD --fn-volume
 other "In a game names the Pixel 2's brightness keys" "MD-2-pixel" "MD-2-light"
+
+echo "a port's Controls pages, each its own"
+# Star Farm (tools/fixtures/ports): its README's words, two pages of keys,
+# In a game, About. The shelf opens on it, the only port on it for these
+# (the others back for the fit test); About is prose and may scroll, so it
+# alone is not held still
+mkdir -p "$D/aside" && mv "$D/Roms/Ports/Lone Key.sh" "$D/Roms/Ports/lonekey" "$D/Roms/Ports/Odd Keys.sh" \
+	"$D/Roms/Ports/oddkeys" \
+	"$D/Roms/Ports/Plain.sh" "$D/aside/" || exit 1
+port_shot() { shot "$@"; }
+p=0
+while [ "$p" -lt 5 ]; do
+	port_shot "port-$p" --theme light --screen games --gamecontrols "$p" PRT
+	if [ "$p" -lt 4 ]; then
+		port_shot "port-$p-later" --theme light --screen games --gamecontrols "$p" PRT --shot-at 4000
+		same "port page $p moves by itself" "port-$p" "port-$p-later"
+	fi
+	[ "$p" -gt 0 ] && other "port page $p is page $((p - 1))" "port-$p" "port-$((p - 1))"
+	p=$((p + 1))
+done
+port_shot "port-past" --theme light --screen games --gamecontrols 5 PRT
+same "a port: a page past the end is the first" "port-past" "port-0"
+mv "$D/aside/"* "$D/Roms/Ports/" || exit 1
 
 echo "every Controls page fits the panel, measured with the font"
 # Width and height, on both devices: the home's six and every system's in
