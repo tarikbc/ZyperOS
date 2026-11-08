@@ -52,10 +52,10 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 	FILE *f = fopen(path, "r");
 	if (!f) return false;
 	char line[1024];
-	/* power|tag|level, map|tag|spec, controller|tag|n and stick|tag|dpad
-	 * lines, applied once every system is read, so they may sit anywhere in
-	 * the file */
-	struct { char kind[12], tag[8], value[96]; } extra[CFG_MAX_SYSTEMS * 4];
+	/* power|tag|level, map|tag|spec, controller|tag|n, stick|tag|dpad and
+	 * gpu|tag|ahead lines, applied once every system is read, so they may sit
+	 * anywhere in the file */
+	struct { char kind[12], tag[8], value[96]; } extra[CFG_MAX_SYSTEMS * 5];
 	int nextra = 0;
 	while (fgets(line, sizeof line, f) && out->count < CFG_MAX_SYSTEMS) {
 		strip(line);
@@ -63,7 +63,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 		char *fld[9] = { 0 };
 		int n = split(line, fld, 9);
 		if (n == 3 && (!strcmp(fld[0], "power") || !strcmp(fld[0], "map") ||
-		               !strcmp(fld[0], "controller") || !strcmp(fld[0], "stick"))) {
+		               !strcmp(fld[0], "controller") || !strcmp(fld[0], "stick") ||
+		               !strcmp(fld[0], "gpu"))) {
 			if (nextra < (int)(sizeof extra / sizeof extra[0])) {
 				snprintf(extra[nextra].kind, sizeof extra[0].kind, "%s", fld[0]);
 				snprintf(extra[nextra].tag, sizeof extra[0].tag, "%s", fld[1]);
@@ -98,6 +99,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 				snprintf(s->map, sizeof s->map, "%s", extra[i].value);
 			else if (!strcmp(extra[i].kind, "stick"))
 				snprintf(s->stick, sizeof s->stick, "%s", extra[i].value);
+			else if (!strcmp(extra[i].kind, "gpu"))
+				snprintf(s->gpu, sizeof s->gpu, "%s", extra[i].value);
 			else
 				s->controller = (unsigned)strtoul(extra[i].value, NULL, 10);
 		}
@@ -116,7 +119,9 @@ void cfg_run_keys(const system_cfg *s, bool dual, char *out, int cap)
 	if (s->controller && n < cap)
 		n += snprintf(out + n, (size_t)(cap - n), "%scontroller=%u", n ? "\t" : "", s->controller);
 	if (s->stick[0] && n < cap)
-		snprintf(out + n, (size_t)(cap - n), "%sstick=%s", n ? "\t" : "", s->stick);
+		n += snprintf(out + n, (size_t)(cap - n), "%sstick=%s", n ? "\t" : "", s->stick);
+	if (s->gpu[0] && n < cap)
+		snprintf(out + n, (size_t)(cap - n), "%sgpu=%s", n ? "\t" : "", s->gpu);
 }
 
 int cfg_core_count(const system_cfg *s)

@@ -21,6 +21,7 @@
 static struct retro_hw_render_callback g_hw;
 static bool g_asked;            /* this load asked for the GPU */
 static bool g_live;             /* the context is up and the core was told */
+static bool g_ahead;            /* RUN gpu=ahead: diatom_gpu_spec's ahead */
 
 /* The core's own retro_run, while hw_run stands in for it */
 static diatom_core *g_core;
@@ -71,6 +72,11 @@ bool diatom_hw_request(struct retro_hw_render_callback *cb, const diatom_port_ca
 	return true;
 }
 
+void diatom_hw_ahead(bool on)
+{
+	g_ahead = on;
+}
+
 void diatom_hw_load_begin(void)
 {
 	g_asked = false;
@@ -94,6 +100,7 @@ bool diatom_hw_start(diatom_core *c)
 	/* libretro's flag, true for GL's own way up (Flycast's), false for a
 	 * core that draws its first row at the top */
 	spec.top_down = !g_hw.bottom_left_origin;
+	spec.ahead    = g_ahead;
 	if (!diatom_port_gpu_begin(&spec)) {
 		fprintf(stderr, "diatom: no GPU context for the core\n");
 		return false;

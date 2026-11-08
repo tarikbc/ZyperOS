@@ -165,7 +165,9 @@ bool diatom_env_frame_skippable(void);
  * not pixels. */
 bool diatom_hw_request(struct retro_hw_render_callback *cb, const diatom_port_caps *caps);
 void diatom_hw_load_begin(void);
-
+/* RUN gpu=ahead, before the game loads: the port may let the core draw ahead
+ * of the panel (diatom_gpu_spec's ahead) */
+void diatom_hw_ahead(bool on);
 bool diatom_hw_start(diatom_core *c);
 void diatom_hw_unload(void);
 bool diatom_hw_active(void);
@@ -283,6 +285,10 @@ typedef struct {
 	 * system its games play with a stick; empty or anything else, the
 	 * joypad's d-pad as ever. */
 	char stick[16];
+	/* RUN: "ahead" lets a core that draws with the GPU draw ahead of the
+	 * panel (diatom_gpu_spec's ahead), for the N64's; empty or anything
+	 * else, held to it as ever. */
+	char gpu[16];
 	char layout[16];       /* SETSCREENS: a name from scr_layout_names */
 	char swap[4];          /* SETSCREENS: "1" | "0"; empty leaves it */
 	int  console;          /* RUN / SETCHEEVOS */

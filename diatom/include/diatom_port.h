@@ -203,6 +203,13 @@ typedef struct {
 	int  max_w, max_h;      /* the largest frame the core will draw */
 	bool depth, stencil;
 	bool top_down;          /* its first row at the top, not GL's way up */
+	/* The core may draw ahead of the panel: its frame drawn to the panel's
+	 * buffer while the last flip still waits for the vertical blank, and
+	 * two frames ahead of the GPU rather than one. For a core that hands
+	 * over a frame at every refresh, a 30 fps game's twice
+	 * (Mupen64Plus-Next): held to the panel, it was held to the blank. The
+	 * host says, from RUN gpu=ahead; a port is free to ignore it. */
+	bool ahead;
 } diatom_gpu_spec;
 
 bool  diatom_port_gpu_begin(const diatom_gpu_spec *spec);

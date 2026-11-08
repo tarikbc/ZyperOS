@@ -75,6 +75,10 @@ typedef struct {
 	 * sent with RUN as stick=. Empty is the d-pad as the d-pad. From a
 	 * `stick|tag|dpad` line. */
 	char stick[8];
+	/* "ahead": a core that draws with the GPU may draw ahead of the panel
+	 * (Diatom's diatom_gpu_spec), for one that hands over a frame at every
+	 * refresh; sent with RUN as gpu=. From a `gpu|tag|ahead` line. */
+	char gpu[8];
 } system_cfg;
 
 typedef struct {
@@ -87,7 +91,7 @@ bool cfg_load_systems(const char *path, systems_cfg *out);
 
 /* The RUN keys a game on `s` needs beyond the usual, tab separated, into
  * `out` ("" for none): two screens for a DS game (`dual`), the clock ceiling,
- * the controller type and the d-pad as a stick. */
+ * the controller type, the d-pad as a stick and the GPU's pacing. */
 /* Two system names in A to Z order (2026-11-06): case and accents do
  * not count ("Pokémon" is "pokemon") and a run of digits counts as its
  * number, so 3DO comes before 32X and Atari 2600 before Atari 5200 and Atari

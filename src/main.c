@@ -17336,9 +17336,9 @@ static void launch(app *a)
 	if (g_game_dual) dsv_import(save, romfile);
 	{
 		/* The RUN keys this game needs beyond the usual: a DS game's two
-		 * screens, the system's clock ceiling, controller type and d-pad
-		 * stick, and its button map (config.h: power, controller, stick,
-		 * map) */
+		 * screens, the system's clock ceiling, controller type, d-pad
+		 * stick and GPU pacing, and its button map (config.h: power,
+		 * controller, stick, gpu, map) */
 		char keys[96];
 
 		cfg_run_keys(s, g_game_dual, keys, (int)sizeof keys);

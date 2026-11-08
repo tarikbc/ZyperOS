@@ -183,8 +183,13 @@ static int        g_gpu_w, g_gpu_h;
 static bool       g_gpu_top_down;                /* the core draws its first row at the top */
 static int        g_gpu_drawing = -1;            /* the slot the core draws into; under g_mx */
 static int        g_gpu_last = -1;               /* the slot of the last GPU frame presented */
-/* The end of the core's last frame on the GPU, for present_gpu's throttle */
+/* The end of the core's last frame on the GPU, for present_gpu's throttle,
+ * and of the one before it, for a core that may draw ahead (g_gpu_ahead) */
 static EGLSyncKHR g_gpu_throttle = EGL_NO_SYNC_KHR;
+static EGLSyncKHR g_gpu_throttle_old = EGL_NO_SYNC_KHR;
+/* diatom_gpu_spec's ahead, for the game running: see diatom_port_gpu_target
+ * and present_gpu */
+static bool       g_gpu_ahead;
 /* Turn-taking on the GPU (gpu_target): the last GPU frame presented, and the
  * last one the thread has drawn to the panel, by present_gpu's count. Under
  * g_mx. */
@@ -1167,12 +1172,59 @@ static int put_on_glass(uint32_t fb, bool *done)
 	return flip_err;
 }
 
-/* Put what was just swapped on glass, and wait until it is. */
+/* A flip queued and not yet on glass, and its event's flag: for a core that
+ * may draw ahead (g_gpu_ahead), show_frame queues the flip and returns, and
+ * the thread draws the next frame while the flip waits for the vertical
+ * blank. One at a time: the next show_frame, the thread with nothing to draw
+ * and drain() each see it finished first. g_flip_bo changes under g_mx, for
+ * drain; only the thread changes it. */
+static struct gbm_bo *g_flip_bo;
+static bool           g_flip_flag;
+
+/* The flip on its way, finished: waited for up to wait_ms at a time, and
+ * false if it is still on its way after a wait shorter than 100 ms. 100 ms is
+ * the bound it always had, after which a flip that never completes costs a
+ * frame and a log line rather than the thread. */
+static bool flip_finish(int wait_ms)
+{
+	while (g_flip_bo && !g_flip_flag) {
+		struct pollfd p = { .fd = g_drm_fd, .events = POLLIN };
+		drmEventContext ev = { .version = 2, .page_flip_handler = flip_done };
+		int r = poll(&p, 1, wait_ms);
+
+		if (r > 0) {
+			drmHandleEvent(g_drm_fd, &ev);
+			continue;
+		}
+		if (wait_ms < 100) return false;
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: flip did not complete");
+		break;
+	}
+	if (!g_flip_bo) return true;
+	if (g_shown_bo) gbm_surface_release_buffer(g_gbm_surface, g_shown_bo);
+	g_shown_bo = g_flip_bo;
+	pthread_mutex_lock(&g_mx);
+	g_flip_bo = NULL;
+	pthread_cond_broadcast(&g_idle);
+	pthread_mutex_unlock(&g_mx);
+	return true;
+}
+
+/* Put what was just swapped on glass, and wait until it is - or, for a core
+ * that may draw ahead, leave it on its way (g_flip_bo above).
+ *
+ * Why the core cares: the next frame starts only once this thread has drawn
+ * the last (diatom_port_gpu_target), and this thread draws only after it is
+ * back from here. Waiting here for the vertical blank held the core to it:
+ * Mupen64Plus-Next hands over a frame at every one of the N64's 60 a second,
+ * a 30 fps game's twice, and its frames fell one and two refreshes apart, 37
+ * a second, Super Mario 64 at 62% of its speed with its sound starved
+ * (2026-11-08). */
 static void show_frame(void)
 {
 	struct gbm_bo *bo = gbm_surface_lock_front_buffer(g_gbm_surface);
 	uint32_t fb;
-	bool done = false;
+	bool *done = &g_flip_flag;
 	int ret;
 
 	if (!bo) {
@@ -1184,21 +1236,30 @@ static void show_frame(void)
 		return;
 	}
 
-	ret = put_on_glass(fb, &done);
+	/* The one before, if it is still on its way: a flip at a time */
+	flip_finish(100);
+	*done = false;
+	ret = put_on_glass(fb, done);
 	/* Refused even by a mode-set: a display with no ARGB8888 at all, QEMU's
 	 * virtio-gpu. The same frames as XRGB8888, from now on. */
 	if (ret == EINVAL && g_fb_format == DRM_FORMAT_ARGB8888) {
 		g_fb_format = DRM_FORMAT_XRGB8888;
 		diatom_port_log(DIATOM_LOG_INFO, "pixel2: the display takes no ARGB8888; "
 		                "showing the frames as XRGB8888");
-		ret = (fb = bo_fb(bo)) ? put_on_glass(fb, &done) : EINVAL;
+		ret = (fb = bo_fb(bo)) ? put_on_glass(fb, done) : EINVAL;
 	}
 	if (ret != 0) {
 		gbm_surface_release_buffer(g_gbm_surface, bo);
 		return;
 	}
+	if (g_gpu_ahead && !*done) {
+		pthread_mutex_lock(&g_mx);
+		g_flip_bo = bo;
+		pthread_mutex_unlock(&g_mx);
+		return;
+	}
 
-	while (!done) {
+	while (!*done) {
 		struct pollfd p = { .fd = g_drm_fd, .events = POLLIN };
 		drmEventContext ev = { .version = 2, .page_flip_handler = flip_done };
 
@@ -1385,6 +1446,14 @@ static void *present_thread(void *arg)
 		EGLSyncKHR done;
 
 		if (g_pending < 0 && !g_want_blank && !g_capture_path) {
+			/* A flip on its way (show_frame): finished, a little at a time,
+			 * so a frame that comes meanwhile is drawn at once */
+			if (g_flip_bo) {
+				pthread_mutex_unlock(&g_mx);
+				flip_finish(2);
+				pthread_mutex_lock(&g_mx);
+				continue;
+			}
 			pthread_cond_wait(&g_cv, &g_mx);
 			continue;
 		}
@@ -1512,7 +1581,7 @@ static void drain(void)
 	pthread_mutex_lock(&g_mx);
 	while (g_thread_running &&
 	       (g_pending >= 0 || g_inflight >= 0 || g_want_blank || g_blanking ||
-	        g_capture_path))
+	        g_capture_path || g_flip_bo))
 		pthread_cond_wait(&g_idle, &g_mx);
 	pthread_mutex_unlock(&g_mx);
 }
@@ -1637,6 +1706,7 @@ bool diatom_port_gpu_begin(const diatom_gpu_spec *spec)
 
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex);
 	g_gpu_top_down = spec->top_down;
+	g_gpu_ahead = spec->ahead;
 	g_gpu_w = spec->max_w > 0 ? spec->max_w : g_surface_w;
 	g_gpu_h = spec->max_h > 0 ? spec->max_h : g_surface_h;
 	if (max_tex > 0 && g_gpu_w > max_tex) g_gpu_w = max_tex;
@@ -1725,6 +1795,13 @@ void diatom_port_gpu_end(void)
 		p_destroy_sync(g_egl_display, g_gpu_throttle);
 		g_gpu_throttle = EGL_NO_SYNC_KHR;
 	}
+	if (g_gpu_throttle_old != EGL_NO_SYNC_KHR) {
+		p_destroy_sync(g_egl_display, g_gpu_throttle_old);
+		g_gpu_throttle_old = EGL_NO_SYNC_KHR;
+	}
+	/* drain() above saw any flip on its way finished; the next game, GPU or
+	 * not, is held to the panel unless it says otherwise */
+	g_gpu_ahead = false;
 
 	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, g_gpu_ctx);
 	glDeleteFramebuffers(1, &g_gpu_fb);
@@ -1752,7 +1829,18 @@ uintptr_t diatom_port_gpu_target(void)
 		 * frame begun earlier went ahead of the thread's small one, and the
 		 * panel waited behind the core: Crazy Taxi 2's 27 frames a second
 		 * reached it as 11 (2026-11-04). Bounded, so a thread that stopped
-		 * drawing cannot hold the core for good. */
+		 * drawing cannot hold the core for good.
+		 *
+		 * Strict for a core that may draw ahead too (the spec's `ahead`). A
+		 * frame of slack here, the core starting its next before the thread
+		 * had drawn the last, ran Super Mario 64 at its full speed, and
+		 * crashed Mesa now and then: the core's context and the thread's
+		 * working on the same textures at once, panfrost's preload reading a
+		 * resource the other had changed (pan_preload_emit_pre_frame_dcd,
+		 * three times in Mario Kart 64, 2026-11-08). Crazy Taxi 2 also showed
+		 * 37 frames a second for 45 with it, which is what the strict turn is
+		 * for. What `ahead` changes is the thread's flip (show_frame) and
+		 * the GPU throttle (present_gpu). */
 		struct timespec until;
 
 		clock_gettime(CLOCK_MONOTONIC, &until);   /* g_idle's clock, set at init */
@@ -1818,13 +1906,21 @@ void diatom_port_present_gpu(int w, int h, diatom_rect dst, diatom_filter filter
 	 * back - RetroArch's swap does that there - and a core that queued
 	 * frames faster than the GPU drew them had every frame drawn and only
 	 * the newest shown, behind all the rest: Crazy Taxi 2 queued about 37 a
-	 * second and the panel showed 6 (2026-11-04). */
+	 * second and the panel showed 6 (2026-11-04).
+	 *
+	 * Two frames, for a core that may draw ahead: the one before the
+	 * previous must be done. Held to one, Super Mario 64 waited 8 ms of
+	 * every frame here for the GPU to finish the last (2026-11-08). Still
+	 * bounded: never more than two frames queued. */
+	EGLSyncKHR *wait_for = g_gpu_ahead ? &g_gpu_throttle_old : &g_gpu_throttle;
+
 	if (g_present_debug) {
 		static uint64_t waited, last;
 		static int n;
 		uint64_t t0 = diatom_port_now_us(), t1;
 
-		wait_sync(g_gpu_throttle);
+		wait_sync(*wait_for);
+		*wait_for = EGL_NO_SYNC_KHR;
 		t1 = diatom_port_now_us();
 		waited += t1 - t0;
 		if (++n >= 60) {
@@ -1837,8 +1933,10 @@ void diatom_port_present_gpu(int w, int h, diatom_rect dst, diatom_filter filter
 			last = t1;
 		}
 	} else {
-		wait_sync(g_gpu_throttle);
+		wait_sync(*wait_for);
+		*wait_for = EGL_NO_SYNC_KHR;
 	}
+	if (g_gpu_ahead) g_gpu_throttle_old = g_gpu_throttle;
 	g_gpu_throttle = throttle;
 
 	{

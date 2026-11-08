@@ -63,6 +63,8 @@ typedef struct diatom_session {
 	unsigned      controller;
 	/* RUN stick=dpad: the d-pad is the left analog stick (stick.h) */
 	bool          dpad_stick;
+	/* RUN gpu=ahead: a GPU core may draw ahead of the panel (hw.c) */
+	bool          gpu_ahead;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -767,6 +769,7 @@ static void usage(void)
 		"              [--power light|medium]  run under that clock ceiling\n"
 		"              [--controller <n>]  libretro controller type for port 0\n"
 		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
+		"              [--gpu ahead]       a GPU core may draw ahead of the panel (N64)\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -2856,6 +2859,8 @@ static int run_session(const diatom_session *sn)
 	int rc;
 
 	g_phase = PHASE_LOADING;
+	diatom_hw_ahead(sn->gpu_ahead);
+	if (sn->gpu_ahead) printf("diatom: gpu=ahead, the core may draw ahead of the panel\n");
 	rc = run_session_inner(sn);
 	g_phase = PHASE_IDLE;
 	return rc;
@@ -2880,7 +2885,7 @@ int main(int argc, char **argv)
 	const char *frameskip = "";
 	const char *power = "";
 	unsigned controller = 0;
-	bool dpad_stick = false;
+	bool dpad_stick = false, gpu_ahead = false;
 	int screens = 1;
 	diatom_filter start_filter;
 	long limit = 0;
@@ -2923,6 +2928,8 @@ int main(int argc, char **argv)
 			controller = (unsigned)strtoul(argv[++i], NULL, 10);
 		else if (!strcmp(argv[i], "--stick") && i + 1 < argc)
 			dpad_stick = !strcmp(argv[++i], "dpad");
+		else if (!strcmp(argv[i], "--gpu") && i + 1 < argc)
+			gpu_ahead = !strcmp(argv[++i], "ahead");
 		else if (!strcmp(argv[i], "--layout") && i + 1 < argc) {
 			int l = scr_layout_index(argv[++i]);
 			if (l < 0) { usage(); return 1; }
@@ -3090,6 +3097,7 @@ int main(int argc, char **argv)
 			              : DIATOM_POWER_FULL;
 			sn.controller = m.controller;
 			sn.dpad_stick = !strcmp(m.stick, "dpad");
+			sn.gpu_ahead  = !strcmp(m.gpu, "ahead");
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			run_session(&sn);   /* its own ERROR/EXIT is the report */
@@ -3117,6 +3125,7 @@ int main(int argc, char **argv)
 			       : DIATOM_POWER_FULL,
 			.controller = controller,
 			.dpad_stick = dpad_stick,
+			.gpu_ahead = gpu_ahead,
 		};
 		int rc = run_session(&sn);
 		if (rc) return rc;
