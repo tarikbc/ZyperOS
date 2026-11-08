@@ -62,25 +62,42 @@ class Strings:
                     self.whole.setdefault(piece, []).append(sid)
             for piece in text.split("\n"):
                 if i18n.FMT_RE.search(piece):
-                    pattern, pos = "", 0
+                    pattern, pos, literal = "", 0, 0
                     for m in i18n.FMT_RE.finditer(piece):
-                        pattern += re.escape(piece[pos:m.start()]) + (r"%" if m.group(0) == "%%" else r".+?")
+                        pattern += re.escape(piece[pos:m.start()]) + (r"%" if m.group(0) == "%%" else r"(.+?)")
+                        literal += m.start() - pos
                         pos = m.end()
                     pattern += re.escape(piece[pos:])
-                    self.formats.append((re.compile("^" + pattern.replace("%%", "%") + "$", re.S), sid))
+                    literal += len(piece) - pos
+                    self.formats.append((re.compile("^" + pattern.replace("%%", "%") + "$", re.S), sid, literal))
 
     def ids(self, text):
         """The IDs a drawn text may be: [] when it is no string's (a name, a number)"""
         if text in self.whole:
             return self.whole[text]
-        found = [sid for pattern, sid in self.formats if pattern.match(text)]
-        return found[:3]
+        # The formats it fits, the one with the most words of its own first:
+        # "MENU > %s: %s" is what a note of the Pak is, and "%s: %s" fits it too
+        found = [(literal, sid, m) for pattern, sid, literal in self.formats
+                 for m in [pattern.match(text)] if m]
+        best = max((literal for literal, _, _ in found), default=0)
+        ids = [sid for literal, sid, _ in found if literal == best]
+        # A page's name is drawn inside the heading ("Controls: Hotkeys"), the
+        # heading's own string being the format that fits: the name is drawn
+        # too, when what stands in the heading's place is the name
+        for literal, sid, m in found:
+            if literal == best:
+                for piece in m.groups():
+                    ids += [n for n in self.whole.get(piece, []) if n.startswith(COMPOSED)]
+        return ids
 
     def label(self, text):
         found = self.ids(text)
         found = list(dict.fromkeys(found))
         return "/".join(found[:3]) if found else "(not a string)"
 
+
+# The strings that are drawn as a part of another's text, in a heading
+COMPOSED = ("controls.page.",)
 
 STRINGS = {}
 
@@ -201,23 +218,37 @@ def system_tags():
 
 for _step in tour_steps():
     EXTRA.setdefault("tour-" + _step, ("demo", "PS1", ["--tour", _step, "2500"]))
+# On the card with a game in every system: a shelf with no game is not on
+# the shelves, and the Controls page asked for a system that is not there is
+# the cursor's own (the PlayStation's), whatever the system said
 for _tag in system_tags():
     for _page in range(3):
         EXTRA.setdefault("gamecontrols-%s-%d" % (_tag, _page),
-                         ("demo", "PS1", ["--gamecontrols", str(_page), _tag]))
+                         ("all", "PS1", ["--gamecontrols", str(_page), _tag]))
 for _row in range(8):
     EXTRA.setdefault("gamemenu-%d" % _row, ("demo", "PS1", ["--gamemenu", str(_row)]))
-for _kind in ("unplugged", "off", "pending"):
+for _kind in ("unplugged", "off", "pending", "soon"):
     EXTRA.setdefault("charging-" + _kind, ("demo", "PS1", ["--charging", "4000", _kind]))
 for _layer in (1, 2):
     EXTRA.setdefault("keyboard-%d" % _layer, ("demo", "PS1", ["--keyboard", str(_layer)]))
-for _page in (3, 4):
+for _page in (3, 4, 5):
     EXTRA.setdefault("controls-%d" % _page, ("demo", "PS1", ["--controls", str(_page)]))
 for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
+
+# The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
+# on_speed), each as it says: the slot saved, loaded, empty or failed, a game
+# whose core keeps no states, and the speed at a half step and a whole one
+for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states"):
+    EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
+EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
+EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
+# A Nintendo 64 game's in-game menu, with its Pak row (the shelf of a system
+# with a game in it: the card with one in every system)
+EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
 # status file the update program writes it (src/sysupdate.c); the second is
@@ -238,13 +269,35 @@ UPDATE_STATES = {
 }
 EXTRA.update({name: ("demo", "PS1", ["--update"]) for name in UPDATE_STATES})
 
+# The demonstration card with one game in each system that has none (a name
+# and its first extension, from config/systems.cfg), so that every system is
+# a shelf, and its in-game menu and Controls are the ones of its games
+def all_systems_card(card):
+    for line in (ROOT / "config" / "systems.cfg").read_text(encoding="utf-8").splitlines():
+        f = line.split("|")
+        if f[0] != "sys" or len(f) < 8:
+            continue
+        folder = card / "Roms" / f[2]
+        if folder.exists():
+            continue
+        if f[4] == "SCUMMVM":
+            (folder / "Beneath a Steel Sky").mkdir(parents=True)
+            (folder / "Beneath a Steel Sky" / "readme.txt").touch()
+            continue
+        exts = [e for e in f[7].split(",") if e != "zip"] or ["zip"]
+        folder.mkdir(parents=True)
+        (folder / ("Stand In." + exts[0])).touch()
+
+
 # Each language's own run of every shot, on its own cards
 def run_language(code, shots, binary, keep):
     notes, failures, data, drawn = [], [], {}, set()
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
-                 "openbor": Path(tmp) / "openbor"}
+                 "openbor": Path(tmp) / "openbor", "all": Path(tmp) / "all"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
+        R.demo_card(cards["all"], None, {"artwork": {}})
+        all_systems_card(cards["all"])
         R.scummvm_card(cards["scummvm"])
         R.openbor_card(cards["openbor"])
         R.card_dirs(cards["empty"])

@@ -413,13 +413,34 @@ static void bubble(SDL_Renderer *r, const char *s, float x, float cy, float op, 
 static void say_bubble(SDL_Renderer *r, const char *s, float x, float top, float op)
 {
 	const ds_theme *t = theme();
-	const float w = words_w(UI_F_TITLE, s) + 80.0f, h = 120.0f;
+	/* The words the bubble holds, a line or, where they are wider than the
+	 * room from the bubble to the screen's inset (the pseudo-locale's), two,
+	 * balanced; the bubble grows upward by the second line, so the tail
+	 * stays where it points at him and the lines under it stay clear */
+	const float room = SCR_W - DS_INSET - x - 80.0f;
+	char line[2][LB_LINE];
+	int rows = ui_balance_lines(ui_font(UI_F_TITLE), s, (int)room, 2, line);
+	const float lh = (float)ui_font_line(UI_F_TITLE), grow = rows > 1 ? lh : 0.0f;
+	float lw = 0.0f;
+	int i;
 	SDL_FPoint tail[3] = { { x + 2.0f, top + 66.0f }, { x + 2.0f, top + 94.0f },
 	                       { x - 14.0f, top + 80.0f } };
 
-	rr(r, x, top, w, h, DS_RADIUS_PANEL, col(rgb(t->text), op));
+	for (i = 0; i < rows; i++)
+		if (words_w(UI_F_TITLE, line[i]) > lw) lw = words_w(UI_F_TITLE, line[i]);
+	if (rows < 1) {
+		lw = words_w(UI_F_TITLE, s);
+		rows = 0;
+	}
+	rr(r, x, top - grow, lw + 80.0f, 120.0f + grow, DS_RADIUS_PANEL, col(rgb(t->text), op));
 	poly(r, tail, 3, col(rgb(t->text), op));
-	words(r, UI_F_TITLE, s, x + 40.0f, top + h / 2.0f, -1, t->ground, op);
+	if (rows < 1) {
+		words(r, UI_F_TITLE, s, x + 40.0f, top + 60.0f, -1, t->ground, op);
+		return;
+	}
+	for (i = 0; i < rows; i++)
+		words(r, UI_F_TITLE, line[i], x + 40.0f,
+		      top + 60.0f - grow / 2.0f + ((float)i - (rows - 1) / 2.0f) * lh, -1, t->ground, op);
 }
 
 /* ---- the little things on the stage -------------------------------------------- */

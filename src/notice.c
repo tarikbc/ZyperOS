@@ -340,6 +340,8 @@ static bool render(const char *heading, const char *body, const char *badge,
 	 * this is the common case, not the edge. */
 	/* The count is in the small face, as the heading is */
 	if (prog) fb = fh;
+	ui_fit_drawn(body);
+	ui_fit_drawn(heading);
 	ui_fit_text(fb, body, bodyfit, sizeof bodyfit, maxw);
 	ui_fit_text(fh, heading, headfit, sizeof headfit, maxw);
 	body = bodyfit;
