@@ -118,7 +118,6 @@ cheevolist.unlocked
 cheevos.to_earn
 cheevos.all_earned
 cheevos.unlocked_points.one
-cheevos.unlocked_points.other
 cheevos.unlocked
 cheevos.mastered
 cheevos.progress
@@ -159,30 +158,10 @@ clock.pm
 clock.label_12h
 
 # controls: no shot draws it yet
-controls.heading
-controls.page.moving
-controls.page.shelf
-controls.page.game
-controls.page.muse
-controls.page.anywhere
 controls.battery
-controls.fire
-controls.left_switch_a
-controls.right_switch_a
-controls.left_switch_b
-controls.right_switch_b
-controls.game_button
-controls.help
-controls.game_menu
-controls.fire_n
-controls.keypad
 controls.show_keypad
-controls.button
 controls.disk_side
 controls.eject_disk
-controls.left_difficulty
-controls.right_difficulty
-controls.turn_screen
 controls.play
 controls.stop
 controls.right_pad_up
@@ -191,38 +170,9 @@ controls.y_left
 controls.y_right
 controls.y_down
 controls.y_up
-controls.coin
-controls.right_soft
-controls.left_soft
-controls.click
-controls.right_click
-controls.space
-controls.skip_esc
 controls.return
-controls.slow_pointer
-controls.scummvm_menu
-controls.keyboard
-controls.shake
-controls.attack
-controls.attack_n
-controls.jump
-controls.special
-controls.pause
-controls.screenshot
-controls.menu_port
-controls.quit_off
 controls.c_buttons
-controls.c_up
-controls.c_right
-controls.c_down
-controls.c_left
-controls.rumble
 controls.two_screens
-controls.other_screen
-controls.stylus
-controls.key.dpad
-controls.stylus_moves
-controls.stylus_touch
 
 # corner: no shot draws it yet
 corner.time_min
@@ -332,7 +282,6 @@ home.no_artwork
 
 # hotpanel: no shot draws it yet
 hotpanel.starting
-hotpanel.joined.other
 
 # tour: no shot draws it yet
 tour.lang.hello
@@ -374,7 +323,6 @@ muse.chapter
 muse.paused
 muse.stopped
 muse.finished
-muse.next
 muse.hint_play
 muse.hint_pause
 muse.hint_track
@@ -422,7 +370,6 @@ panel.order_release
 panel.battery_percentage
 panel.battery_time
 panel.side_lights
-panel.controls
 panel.needs_wifi
 panel.signing_in
 panel.signed_in_as
@@ -440,9 +387,6 @@ playtime.lost.other
 playtime.hint_by_system
 playtime.hint_by_game
 
-# popup: no shot draws it yet
-popup.fast_forward
-
 # portload: no shot draws it yet
 portload.starting_a_minute
 portload.starting
@@ -459,7 +403,6 @@ ra.sign_in_no_token
 
 # scraper: no shot draws it yet
 scraper.complete
-scraper.missing_n.other
 scraper.on
 scraper.key_refused
 scraper.art
@@ -506,7 +449,6 @@ sgdb.try_busy
 
 # shelf: no shot draws it yet
 shelf.games.one
-shelf.games.other
 shelf.no_games
 shelf.albums.one
 shelf.books.one
@@ -518,8 +460,6 @@ shelf.list_sep
 # slots: no shot draws it yet
 slots.save_to
 slots.empty
-slots.slot
-slots.when
 slots.am
 slots.pm
 slots.jan
@@ -557,7 +497,6 @@ ss.sign_in_unknown
 ss.sign_in_not_saved
 
 # ssh: no shot draws it yet
-ssh.signed_in.other
 ssh.dev_image
 ssh.locked
 ssh.not_with_wifi
@@ -570,7 +509,6 @@ stats.this_week
 stats.today_window
 stats.never
 stats.mins_secs
-stats.hours_mins
 stats.today
 stats.yesterday
 stats.days_ago
@@ -604,10 +542,6 @@ sysmenu.muse_lock_when
 sysmenu.muse_art
 sysmenu.sc_fetching
 sysmenu.sc_complete
-sysmenu.sc_missing.one
-sysmenu.sc_missing.other
-sysmenu.sc_covers.one
-sysmenu.sc_covers.other
 sysmenu.not_in_build
 sysmenu.sc_link
 sysmenu.ss_account
@@ -710,7 +644,6 @@ update.looking
 update.updated_from
 update.went_back_from
 update.up_to_date
-update.size_system
 update.size_both
 update.bytes
 update.battery_low
@@ -719,14 +652,12 @@ update.files_of
 update.downloading
 update.installing
 update.checking_files
-update.count_of
 update.back_goes_on
 update.stopped
 update.downloaded_checked
 update.download_failed
 update.no_server
 update.card_full
-update.needs_system
 update.too_big
 update.going_back_to
 update.goes_back_next_start
@@ -770,7 +701,6 @@ xfer.dev_link_on
 xfer.starting_hotspot
 xfer.hotspot_failed
 xfer.could_not_start
-xfer.connected.other
 xfer.nothing_yet
 xfer.closing_after
 xfer.closing_after_this_file
