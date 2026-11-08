@@ -11321,7 +11321,9 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		char lines[2][LB_LINE];
 		int n = ui_balance_lines(fm, notes[i], UP_W - 40, 2, lines), k;
 
-		ui_text(r, fm, "\xc2\xb7", UP_X, ui_cap_y(fm, y), -1, UI_TEXT_DIM);
+		/* A drawn dot, not the "·" glyph: Noto Sans SC's is full width,
+		 * and in Chinese it ran into the point's first character */
+		ui_round_rect(r, &(SDL_Rect){ UP_X + 4, y - 5, 10, 10 }, 5, UI_TEXT_DIM);
 		for (k = 0; k < n && y <= 348 + 3 * 52; k++, y += 52)
 			ui_text(r, fm, lines[k], UP_X + 40, ui_cap_y(fm, y), -1, UI_TEXT_SOFT);
 	}

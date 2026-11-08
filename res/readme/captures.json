@@ -741,8 +741,8 @@
         "--portmaster",
         "running"
       ],
-      "sha256": "0f8831c0cc1c16b9d2874e8995654459ab1f5244179d15641f48757e0ba1a4b3",
-      "source_commit": "bd648711fd5fb771d3b23a7b21852f68fffbbf8e"
+      "sha256": "b431c20478b19cee370f074be828bc8c506b6baad4e2c134b2b8728a02f9efbb",
+      "source_commit": "829900dedf246417fae9241c9cf910db4b67d818"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"
