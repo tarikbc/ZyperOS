@@ -916,6 +916,11 @@ static void fit_say(const char *what, const char *head, const char *s)
 	fprintf(stderr, "fit: %s: %s\n", what, line);
 }
 
+void ui_fit_drawn(const char *s)
+{
+	if (s && *s) fit_say("drawn", "", s);
+}
+
 /* `dst` is where `s` is drawn, at anchor x `ax` */
 static void fit_check(SDL_Renderer *r, const char *s, const SDL_Rect *dst, int ax)
 {
@@ -991,6 +996,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 #else
 #define i18n_fit_seen(src, dst) ((void)0)
 void ui_fit_frame(void) {}
+void ui_fit_drawn(const char *s) { (void)s; }
 #endif
 
 static struct text_entry *text_get(SDL_Renderer *r, TTF_Font *f, const char *s,

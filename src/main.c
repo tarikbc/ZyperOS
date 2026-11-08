@@ -15896,6 +15896,32 @@ static ctl_game game_controls_of(app *a)
 	return g;
 }
 
+/* The panel of a game's Controls: the standard one, or wider where a page's
+ * button and what it does do not fit side by side in it. Chinese has the
+ * shelf menus' narrowest panel, and Atari 7800's START/SELECT beside
+ * Pause/Select (in Latin letters in every language) slid in it, as the
+ * host's fit check found once every system was a shelf in it (2026-11-08).
+ * Measured across every page of the game, so turning a page does not resize
+ * the panel, and never past the width menu_draw can make one. A note under
+ * the rows is no part of it: a long one scrolls. */
+static int game_controls_width(app *a, const ctl_game *g)
+{
+	int w = menu_std_width(a), p, pages = ctl_game_pages(g);
+	int most = ZYPEROS_SCREEN_W - MENU_MARGIN * 2 - menu_pad() * 2;
+
+	for (p = 0; p < pages; p++) {
+		menu_row rows[CTL_MAX_ROWS], kept[CTL_MAX_ROWS];
+		ctl_buf b;
+		int i, n = ctl_game_rows(g, p, rows, &b), k = 0, m;
+
+		for (i = 0; i < n; i++)
+			if (!ROW_IS_NOTE(rows[i])) kept[k++] = rows[i];
+		m = menu_measure(kept, k, NULL);
+		if (m > w) w = m;
+	}
+	return w < most ? w : most;
+}
+
 /* The in-game menu's Controls (DESIGN.md 11.28): every control this game
  * has, a page at a time over the paused game, Left/Right to turn them, as
  * MENU > Controls is on the home. Read-only. The rows are made when a page
@@ -15906,12 +15932,13 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 	menu_row rows[CTL_MAX_ROWS];
 	ctl_buf b;
 	char count[16] = "";
-	int page = 0, pages, n, lv, done = 0;
+	int page = 0, pages, n, lv, done = 0, width;
 	float k;
 
 	ctl_set_fn_volume(plat_brightness_on_volume());
 	pages = ctl_game_pages(&g);
 	n = ctl_game_rows(&g, page, rows, &b);
+	width = game_controls_width(a, &g);
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -15951,8 +15978,8 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_theme(a);
 		paused_backdrop(a, bg, k);
-		menu_draw_caption(a, b.head, rows, n, -1, menu_std_width(a), a->tint, NULL, false, 0,
-		                  count[0] ? count : NULL);
+		menu_draw_caption(a, b.head, rows, n, -1, width, a->tint, NULL,
+		                  false, 0, count[0] ? count : NULL);
 		plat_present();
 		ui_frame_rest(8);
 	}
@@ -17287,18 +17314,25 @@ static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
+/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|speed N:
+ * the pop-up of the SELECT hotkeys, as on_quick and on_speed put it over a
+ * game (notice_render, no badge, no Zyper); N is the step for speed, in
+ * halves (3 is 1.5x) */
+static const char *shot_popup;
+static int shot_popup_half = 2;
 /* --lowbatt MS [charging|off]: the low-battery start screen MS ms in
  * (DESIGN.md 11.24); with charging, a charger plugged in at 2.4 s; with off,
  * MS ms into its send-off */
 static int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 static int shot_heatpop = -1;
-/* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull]: the
+/* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull|soon]: the
  * charging screen MS ms in (DESIGN.md 11.25), a wall charger putting 1480 mA
  * into a 62% battery; with hold, POWER held half way; unplugged, the cable
  * out; off, MS ms into its send-off; pending, the charger not named yet;
  * kept, held at an 85% charge limit (11.26); limit, charging toward it;
- * keptfull, held at 100%, charged full before the limit was set */
+ * keptfull, held at 100%, charged full before the limit was set; soon, a
+ * 92% battery, full in minutes */
 static int shot_charging = -1, shot_charging_kind;
 static int shot_cheevos;
 static int shot_cheevos_sel;
@@ -17616,7 +17650,7 @@ static void shot_draw_gamecontrols(app *a)
 	snprintf(count, sizeof count, "%d / %d",
 	         shot_gamecontrols < pages ? shot_gamecontrols + 1 : 1, pages);
 	paused_backdrop(a, bg, 1.0f);
-	menu_draw_caption(a, b.head, rows, n, -1, menu_std_width(a), a->tint, NULL, false, 0,
+	menu_draw_caption(a, b.head, rows, n, -1, game_controls_width(a, &g), a->tint, NULL, false, 0,
 	                  pages > 1 ? count : NULL);
 	if (bg) SDL_DestroyTexture(bg);
 }
@@ -18196,12 +18230,35 @@ static void shot_compose(app *a)
 		             a->tint, vcols, true, 0);
 		g_row_icon = NULL;
 	}
+	if (shot_popup) {
+		static char pbody[48];
+		char slot[32];
+
+		snprintf(slot, sizeof slot, T(S_SLOTS_SLOT), 2);
+		shot_notice = pbody;
+		snprintf(pbody, sizeof pbody, "%s", slot);
+		if (!strcmp(shot_popup, "saved"))             shot_notice_head = T(S_POPUP_SAVED);
+		else if (!strcmp(shot_popup, "loaded"))       shot_notice_head = T(S_POPUP_LOADED);
+		else if (!strcmp(shot_popup, "save_failed"))  shot_notice_head = T(S_POPUP_SAVE_FAILED);
+		else if (!strcmp(shot_popup, "load_failed"))  shot_notice_head = T(S_POPUP_LOAD_FAILED);
+		else if (!strcmp(shot_popup, "slot_empty"))   shot_notice_head = T(S_POPUP_SLOT_EMPTY);
+		else if (!strcmp(shot_popup, "no_states")) {
+			shot_notice_head = T(S_POPUP_NO_STATES);
+			snprintf(pbody, sizeof pbody, "%s", "Super Metroid");
+		} else {
+			shot_notice_head = T(S_POPUP_SPEED);
+			snprintf(pbody, sizeof pbody,
+			         shot_popup_half % 2 ? T(S_POPUP_SPEED_HALF) : T(S_POPUP_SPEED_WHOLE),
+			         shot_popup_half / 2);
+		}
+	}
 	if (shot_notice) {
 		char dt[512];
 		FILE *nf;
 
 		snprintf(dt, sizeof dt, "%s.dtov", shot_path);
-		if ((shot_notice_mark
+		if ((shot_popup ? notice_render(shot_notice_head, shot_notice, dt, theme_index())
+		     : shot_notice_mark
 		     ? notice_render_mark(shot_notice_head, shot_notice, (notice_mark)shot_notice_mark,
 		                          dt, theme_index())
 		     : notice_render_ex(shot_notice_head, shot_notice, shot_notice_badge,
@@ -18579,8 +18636,9 @@ static void shot_charging_draw(app *a)
 	/* kept: held at an 85% limit; limit: charging toward it; keptfull: held,
 	 * but charged full before the limit was set */
 	ch_fake_parse(shot_charging_kind == 5 ? "85 -5 4100 wall 1 1"
-	              : shot_charging_kind == 7 ? "100 -5 4290 wall 1 1" : "62 1480 4120 wall 1", &g_chg.r);
-	if (shot_charging_kind >= 5) g_chg.r.limit = 85;
+	              : shot_charging_kind == 7 ? "100 -5 4290 wall 1 1"
+	              : shot_charging_kind == 8 ? "92 1480 4150 wall 1" : "62 1480 4120 wall 1", &g_chg.r);
+	if (shot_charging_kind >= 5 && shot_charging_kind != 8) g_chg.r.limit = 85;
 	/* pending: the PHY has not named the charger yet */
 	if (shot_charging_kind == 4) g_chg.r.kind = CH_PENDING;
 	g_chg.valid = true;
@@ -19209,6 +19267,11 @@ int main(int argc, char *argv[])
 			                 : !strcmp(k, "progress") ? NQ_PROGRESS : NQ_SET;
 		}
 		else if (!strcmp(argv[i], "--notice-heat")) shot_notice_mark = NOTICE_MARK_HEAT;
+		else if (!strcmp(argv[i], "--popup") && i + 1 < argc) {
+			shot_popup = argv[++i];
+			if (!strcmp(shot_popup, "speed") && i + 1 < argc && argv[i + 1][0] != '-')
+				shot_popup_half = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--charging") && i + 1 < argc) {
 			shot_charging = atoi(argv[++i]);
 			if (shot_charging < 0) shot_charging = 0;
@@ -19219,6 +19282,7 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "kept")) { shot_charging_kind = 5; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "limit")) { shot_charging_kind = 6; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "keptfull")) { shot_charging_kind = 7; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "soon")) { shot_charging_kind = 8; i++; }
 		}
 		else if (!strcmp(argv[i], "--heatpop") && i + 1 < argc) {
 			shot_heatpop = atoi(argv[++i]);
