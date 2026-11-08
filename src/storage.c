@@ -1635,17 +1635,19 @@ unsigned long long st_delete_port_folder(const st_paths *p, const st_systems *s,
 	unsigned long long b;
 	int nc;
 
-	if (!s->ports || !folder || !folder[0] || folder[0] == '.' || strchr(folder, '/') ||
-	    pi_runtime(folder))
-		return 0;
+	char real[PI_NAME];
+
+	if (!s->ports || !folder || !folder[0]) return 0;
 	snprintf(dir, sizeof dir, "%s/%s", p->roms, s->ports);
-	if (snprintf(sub, sizeof sub, "%s/%s", dir, folder) >= (int)sizeof sub) return 0;
+	/* By the listing's own name, and PortMaster's never (src/portinfo.h) */
+	if (!pi_real_folder(dir, folder, real, sizeof real) || pi_runtime(real)) return 0;
+	if (snprintf(sub, sizeof sub, "%s/%s", dir, real) >= (int)sizeof sub) return 0;
 	if (lstat(sub, &st) != 0 || !S_ISDIR(st.st_mode)) return 0;
 	/* Held to the shelf as it is now: a script that names it makes it a
 	 * port's, and it stays */
 	if (!(claimed = malloc(PI_MAX * sizeof *claimed))) return 0;
 	nc = ports_claimed(dir, games, n, s->ports, claimed, PI_MAX);
-	b = claimed_by(claimed, nc, folder) ? 0 : tree_remove(sub, 0);
+	b = claimed_by(claimed, nc, real) ? 0 : tree_remove(sub, 0);
 	free(claimed);
 	return b;
 }

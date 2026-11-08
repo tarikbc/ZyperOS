@@ -510,6 +510,8 @@ int main(void)
 		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "gtavc"), want);
 		CHECK(!there("Roms/Ports/gtavc"));
 		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "PortMaster"), 0);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "PortMaster."), 0);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "portmaster"), 0);
 		CHECK(there("Roms/Ports/PortMaster/libs/mono.squashfs"));
 		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "stardewvalley"), 0);
 		CHECK(there("Roms/Ports/stardewvalley/gamedata/Stardew Valley.dll"));

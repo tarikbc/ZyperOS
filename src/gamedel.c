@@ -484,9 +484,17 @@ static bool port_plan(const gd_card *card, const gd_game *g, const gd_other *oth
 		bool shared = false;
 
 		for (j = 0; j < nothers && !shared; j++) {
+			const char *slash = strchr(others[j].file, '/');
 			int nt;
 
-			if (strcmp(others[j].folder, g->folder) || strchr(others[j].file, '/')) continue;
+			if (strcmp(others[j].folder, g->folder)) continue;
+			/* A folder the shelf lists as a game of its own is that game's */
+			if (slash) {
+				if (strlen(mine[k]) == (size_t)(slash - others[j].file) &&
+				    !strncasecmp(others[j].file, mine[k], (size_t)(slash - others[j].file)))
+					shared = true;
+				continue;
+			}
 			nt = pi_folders(romdir, ports, np, others[j].file, theirs, PI_ITEMS);
 			for (t = 0; t < nt; t++)
 				if (!strcasecmp(theirs[t], mine[k])) shared = true;

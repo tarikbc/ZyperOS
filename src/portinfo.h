@@ -40,6 +40,13 @@ int pi_scan(const char *dir, pi_port *out, int max);
 int pi_folders(const char *dir, const pi_port *all, int n, const char *script,
                char out[][PI_NAME], int max);
 
+/* The folder at the top of `dir` that `name` is, by the listing itself, its
+ * real name into `out`: never a path handed to the filesystem, which on the
+ * card's exFAT can drop trailing dots or spaces and land on another folder
+ * ("PortMaster." on PortMaster). False for none, and for a name that ends
+ * in a dot or a space. */
+bool pi_real_folder(const char *dir, const char *name, char *out, size_t n);
+
 /* PortMaster's own: its script or its folder, by name */
 bool pi_runtime(const char *name);
 

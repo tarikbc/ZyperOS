@@ -113,6 +113,37 @@ static size_t jkey(const char *s, size_t from, const char *key)
 	return 0;
 }
 
+/* The folder at the top of `dir` that `name` is, by the directory's own
+ * listing: its real name into `out`. Never by a path handed to the
+ * filesystem, which on the card's exFAT can drop a name's trailing dots or
+ * spaces and land on another folder ("PortMaster." on PortMaster); and a
+ * name that ends in either is no folder's. Case does not count, as on the
+ * card. */
+bool pi_real_folder(const char *dir, const char *name, char *out, size_t n)
+{
+	DIR *d;
+	struct dirent *e;
+	size_t len = strlen(name);
+	bool found = false;
+
+	if (!len || name[len - 1] == '.' || name[len - 1] == ' ' || name[0] == '.' ||
+	    name[0] == ' ' || strchr(name, '/'))
+		return false;
+	if (!(d = opendir(dir))) return false;
+	while ((e = readdir(d)) && !found) {
+		char p[PI_NAME * 3];
+		struct stat st;
+
+		if (e->d_name[0] == '.' || strcasecmp(e->d_name, name)) continue;
+		if (snprintf(p, sizeof p, "%s/%s", dir, e->d_name) >= (int)sizeof p) continue;
+		if (lstat(p, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+		snprintf(out, n, "%s", e->d_name);
+		found = true;
+	}
+	closedir(d);
+	return found;
+}
+
 static void read_port(const char *dir, const char *folder, const char *json, pi_port *pt)
 {
 	size_t i;
@@ -121,25 +152,22 @@ static void read_port(const char *dir, const char *folder, const char *json, pi_
 	snprintf(pt->folder, sizeof pt->folder, "%s", folder);
 	if ((i = jkey(json, 0, "items")) && json[i] == '[') {
 		for (i++;;) {
-			char item[PI_NAME];
+			char item[PI_NAME], real[PI_NAME];
 			size_t len;
-			struct stat st;
-			char path[PI_NAME * 3];
 
 			skip_ws(json, &i);
 			if (json[i] == ']' || !json[i]) break;
 			if (json[i] == ',') { i++; continue; }
 			if (!jstring(json, &i, item, sizeof item)) break;
 			len = strlen(item);
-			while (len && item[len - 1] == '/') item[--len] = '\0';
+			if (len && item[len - 1] == '/') item[--len] = '\0';
 			/* One name at the top of the folder: nothing with a slash or a
 			 * dot first, which no port's own folder or script is */
 			if (!len || strchr(item, '/') || item[0] == '.') continue;
-			snprintf(path, sizeof path, "%s/%s", dir, item);
-			if ((lstat(path, &st) == 0 && S_ISDIR(st.st_mode)) ||
-			    (len < 3 || strcasecmp(item + len - 3, ".sh"))) {
-				if (pt->nfolders < PI_ITEMS) snprintf(pt->folders[pt->nfolders++], PI_NAME, "%s", item);
-			} else if (pt->nscripts < PI_ITEMS) {
+			/* A folder only as the listing names it (pi_real_folder) */
+			if (pi_real_folder(dir, item, real, sizeof real)) {
+				if (pt->nfolders < PI_ITEMS) snprintf(pt->folders[pt->nfolders++], PI_NAME, "%s", real);
+			} else if (len > 3 && !strcasecmp(item + len - 3, ".sh") && pt->nscripts < PI_ITEMS) {
 				snprintf(pt->scripts[pt->nscripts++], PI_NAME, "%s", item);
 			}
 		}
@@ -218,8 +246,6 @@ int pi_folders(const char *dir, const pi_port *all, int n, const char *script,
 {
 	int i, k, m = 0;
 	char gd[PI_NAME];
-	struct stat st;
-	char path[PI_NAME * 3];
 
 	if (pi_runtime(script)) return 0;
 	for (i = 0; i < n; i++)
@@ -228,18 +254,20 @@ int pi_folders(const char *dir, const pi_port *all, int n, const char *script,
 				int f;
 
 				for (f = 0; f < all[i].nfolders && m < max; f++) {
-					if (pi_runtime(all[i].folders[f])) continue;
-					snprintf(path, sizeof path, "%s/%s", dir, all[i].folders[f]);
-					if (lstat(path, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
-					snprintf(out[m++], PI_NAME, "%s", all[i].folders[f]);
+					char real[PI_NAME];
+
+					/* Held to the listing again: it may have gone since */
+					if (!pi_real_folder(dir, all[i].folders[f], real, sizeof real) || pi_runtime(real)) continue;
+					snprintf(out[m++], PI_NAME, "%s", real);
 				}
 				if (m) return m;
 			}
 	gamedir(dir, script, gd, sizeof gd);
-	if (gd[0] && !pi_runtime(gd)) {
-		snprintf(path, sizeof path, "%s/%s", dir, gd);
-		if (lstat(path, &st) == 0 && S_ISDIR(st.st_mode) && m < max)
-			snprintf(out[m++], PI_NAME, "%s", gd);
+	if (gd[0] && m < max) {
+		char real[PI_NAME];
+
+		if (pi_real_folder(dir, gd, real, sizeof real) && !pi_runtime(real))
+			snprintf(out[m++], PI_NAME, "%s", real);
 	}
 	return m;
 }

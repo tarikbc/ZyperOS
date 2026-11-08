@@ -406,13 +406,21 @@ static void make_ports(void)
 	put("Roms/Ports/Twin Two.sh", "#!/bin/bash\n");
 	put("Roms/Ports/twinone/port.json", "{\"items\": [\"twinone/\", \"common/\", \"Twin One.sh\"]}");
 	put("Roms/Ports/twintwo/port.json", "{\"items\": [\"twintwo/\", \"common/\", \"Twin Two.sh\"]}");
-	put("Roms/Ports/twinone/a.bin", "a");
-	put("Roms/Ports/twintwo/b.bin", "b");
+	put("Roms/Ports/twinone/a.dat", "a");
+	put("Roms/Ports/twintwo/b.dat", "b");
 	put("Roms/Ports/common/engine.bin", "engine");
 	put("Roms/Ports/gtavc/port.json",
 	    "{\"items\": [\"gtavc/\", \"Grand Theft Auto Vice City.sh\"],"
 	    " \"attr\": {\"title\": \"Grand Theft Auto: Vice City\"}}");
 	put("Roms/Ports/gtavc/data.bin", "data");
+	/* A port.json that names PortMaster's folder with a trailing dot, which
+	 * the card's exFAT can resolve to PortMaster itself; and a folder the
+	 * shelf lists as a game of its own (a disc image at its top) that a
+	 * port's port.json names too */
+	put("Roms/Ports/Sly.sh", "#!/bin/bash\n");
+	put("Roms/Ports/sly/port.json", "{\"items\": [\"sly/\", \"PortMaster./\", \"PortMaster.\", \"disc/\", \"Sly.sh\"]}");
+	put("Roms/Ports/sly/sly.dat", "sly");
+	put("Roms/Ports/disc/game.iso", "iso");
 }
 
 /* ---- the card's games ------------------------------------------------------ */
@@ -747,11 +755,23 @@ int main(void)
 	{
 		static const char *const gone[] = {
 			"Roms/Ports/Twin One.sh", "Roms/Ports/twinone/", "Roms/Ports/twinone/port.json",
-			"Roms/Ports/twinone/a.bin", NULL
+			"Roms/Ports/twinone/a.dat", NULL
 		};
 		deleted("two ports that share a folder: the one deleted leaves it to the other:",
 		        PRT, "Twin One.sh", "Twin One", gone, 3);
 		CHECK(there("Roms/Ports/common/engine.bin"));
+	}
+	{
+		/* Never PortMaster's folder by a name the filesystem would bend onto
+		 * it, never a folder the shelf lists as a game of its own */
+		static const char *const gone[] = {
+			"Roms/Ports/Sly.sh", "Roms/Ports/sly/", "Roms/Ports/sly/port.json", "Roms/Ports/sly/sly.dat",
+			NULL
+		};
+		deleted("a port.json naming \"PortMaster.\" and a folder game: neither goes with the port:",
+		        PRT, "Sly.sh", "Sly", gone, 3);
+		CHECK(there("Roms/Ports/PortMaster/libs/mono.squashfs"));
+		CHECK(there("Roms/Ports/disc/game.iso"));
 	}
 	refused("PortMaster, which every port runs on, is refused:", PRT, "PortMaster.sh", "PortMaster",
 	        GD_RUNTIME);
