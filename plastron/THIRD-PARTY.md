@@ -64,6 +64,15 @@ Diatom's.
   Realtek's firmware for the chip, `rtl8188eufw.bin`, which is closed and
   redistributed as Buildroot's package does. **hostapd** (BSD-3-Clause),
   http://w1.fi, runs the access point.
+- **Python** 3.14 (PSF-2.0 and others), https://python.org, with
+  **libffi** (MIT), **xz**'s liblzma (0BSD and public domain) and
+  **SDL2_mixer** (Zlib), https://libsdl.org: what **PortMaster**
+  (https://portmaster.games, MIT) runs on. The ZyperOS image carries no part
+  of PortMaster: ZyperOS's Ports shelf downloads it from PortMaster's own
+  releases (https://github.com/PortsMaster/PortMaster-GUI) when the player
+  asks. And **Mozilla's root certificates** (MPL-2.0), as Debian's
+  ca-certificates package, https://salsa.debian.org/debian/ca-certificates,
+  for HTTPS from curl, Python and OpenSSL.
 
 ## TrimUI Brick
 

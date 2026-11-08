@@ -49,6 +49,15 @@ if [ -e "$TARGET_DIR/usr/lib/libtheoradec.so.2" ]; then
 	ln -sf libtheoradec.so.2 "$TARGET_DIR/usr/lib/libtheoradec.so.1"
 fi
 
+# Python's parts nothing here runs (it is on the system for PortMaster,
+# board/zyperos/zyperos.config): ensurepip, pip's installer with its own copy
+# of pip (1.8 MB), and the turtle module and its demos, which draw with Tk,
+# which the system has none of
+for py in "$TARGET_DIR"/usr/lib/python3.*; do
+	[ -d "$py" ] || continue
+	rm -rf "$py/ensurepip" "$py/turtledemo" "$py/turtle.pyc" "$py/turtle.py"
+done
+
 # The licenses, on the card where a player can find them: a Licenses folder
 # beside ZyperOS's, which the first boot and every ZyperOS update copy onto the
 # card with it. plastron's notice and this image's package list, Diatom's

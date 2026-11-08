@@ -2108,6 +2108,43 @@ in both themes and every language. The numbers and the cache are held by
 
 ---
 
+### 11.33 Install PortMaster
+
+The Ports shelf installs the official PortMaster (portmaster.games) when it
+is not on the card (src/pminstall.h). Nothing new is drawn for it: it is the
+shelf's own entry and System Update's page (11.17) with its own words.
+
+- **The entry** is PortMaster's, `Roms/Ports/PortMaster.sh`, on the Ports
+  shelf whether it is on the card or not, wherever the card's ZyperOS has
+  the installer (the Pixel 2): the same name, cover and favorite before and
+  after, so installing it changes no place on the shelf. While it is not on
+  the card, A's hint says **Install** and the line under its name **Not
+  installed** (11.1's line, its first part). A shelf with nothing but this
+  entry is still no game to the empty home (11.19) and to Random Game.
+- **The page**, A on the entry: heading **Install PortMaster**; "PortMaster"
+  in **title** where the versions go; under it the facts, "By the
+  PortMaster team", or the version while it works; two
+  points where What's New goes, what PortMaster is and that some ports need
+  a game you own, kept up while it looks, downloads and unpacks; where the
+  bar goes, "It downloads from GitHub over Wi-Fi." or, with no way out,
+  "Connect to Wi-Fi to download." and no A. The keys are **Install**
+  (Try Again after a problem) and **Back**; while it works only **Back, it
+  goes on**, as System Update's download goes on.
+- **The bar** is System Update's: "Downloading" and "9.8 of 24 MB", then
+  "Checking the download" full, then "Unpacking" by bytes.
+- **Done:** "Version 2026.06.23-0015 · installed", two points (it is on the
+  Ports shelf; open it to get ports, it updates itself), **Open PortMaster**
+  and **Back**. The shelf's hint says Play from then on.
+- **A problem** is said in full where the points go, as System Update's
+  (no GitHub, a download cut short, a checksum that does not match, a full
+  card with the room it needs, a card that refused a write, a release list
+  that makes no sense, a stop), with Try Again. A system with no Python
+  (from before PortMaster could run) says to update it in MENU > System
+  Update, and has only Back.
+
+Host shots: `--portmaster [running,nonet,nopython,installed]`, the page as
+the file ZYPEROS_PM_STATUS names says.
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and

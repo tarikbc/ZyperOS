@@ -25,6 +25,10 @@ typedef struct {
     const char *origin;
     int count,cursor,earned,total;
     bool has_achievements,resumable,favorite;
+    /* The focused entry is PortMaster while it is not on the card
+     * (src/pminstall.h): A says Install, and the line under its name
+     * that it is not installed */
+    bool install;
     /* The focused game's video snap (src/snapshelf.h), or NULL: its picture,
      * its shape, and how far the cover has turned into it, 0 to 1. */
     SDL_Texture *snap;

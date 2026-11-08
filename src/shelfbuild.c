@@ -5,6 +5,7 @@
 #include "favorites.h"
 #include "gamedel.h"
 #include "musec.h"
+#include "pminstall.h"
 #include "savedlib.h"
 #include "texload.h"
 #include "theme.h"
@@ -624,6 +625,7 @@ static struct {
 	uint64_t shown;           /* lib_listing_digest of the listing the shelf showed */
 	uint64_t saved;           /* and of the saved file's, when it had one */
 	bool     in_file;
+	bool     pm;              /* the Ports shelf, listed with PortMaster's entry */
 } g_shown[CFG_MAX_SYSTEMS];
 static int g_nshown;
 static int g_saved_extra;     /* the file's shelves for folders no system has */
@@ -635,9 +637,77 @@ static void saved_path(char *out, size_t n)
 	snprintf(out, n, "%s/saved-library", P_USERDATA);
 }
 
+/* ---------- PortMaster's entry on the Ports shelf (src/pminstall.h) -------
+ *
+ * The Ports shelf lists Roms/Ports/PortMaster.sh whether it is on the card or
+ * not, wherever the card's ZyperOS has the installer (the Pixel 2's, whose
+ * launch.sh runs ports): the same entry a scan makes of the real one, so the
+ * saved library, the card read again after a start, a favorite and the play
+ * time are all the same before and after it is installed. Only the A on it
+ * differs: the page that installs it, while it is not on the card. */
+
+bool g_pm_offer;
+
+static bool pm_installer_here(void)
+{
+	char p[LIB_PATH];
+
+	snprintf(p, sizeof p, "%s/%s", P_ROOT, PM_INSTALLER);
+	return access(p, R_OK) == 0;
+}
+
+static bool is_ports(const system_cfg *s)
+{
+	return !strcmp(s->core, "port");
+}
+
+bool pm_on_card(const char *folder)
+{
+	char p[LIB_PATH];
+
+	snprintf(p, sizeof p, "%s/%s/%s/%s", P_ROMS, folder, PM_FOLDER, PM_PROGRAM);
+	if (access(p, R_OK) != 0) return false;
+	snprintf(p, sizeof p, "%s/%s/%s", P_ROMS, folder, PM_SCRIPT);
+	return access(p, R_OK) == 0;
+}
+
+bool pm_offer_refresh(const app *a)
+{
+	g_pm_offer = false;
+	if (!pm_installer_here()) return false;
+	for (int i = 0; i < a->sys.count; i++)
+		if (is_ports(&a->sys.systems[i])) {
+			g_pm_offer = !pm_on_card(a->sys.systems[i].folder);
+			break;
+		}
+	return g_pm_offer;
+}
+
+bool pm_is_offer(const app *a, int sys, const game_entry *g)
+{
+	return g_pm_offer && g && sys >= 0 && sys < a->sys.count &&
+	       is_ports(&a->sys.systems[sys]) && !strcasecmp(g->file, PM_SCRIPT);
+}
+
+int pm_shelf_offers(const app *a, int sys)
+{
+	const sysview *v = &a->view[sys];
+
+	if (!g_pm_offer || a->view[sys].owner || !is_ports(&a->sys.systems[sys])) return 0;
+	for (int i = 0; i < v->list.count; i++)
+		if (!strcasecmp(v->list.items[i].file, PM_SCRIPT)) return 1;
+	return 0;
+}
+
+bool pm_only_offer(const app *a, int sys)
+{
+	return a->view[sys].list.count == 1 && pm_shelf_offers(a, sys) == 1;
+}
+
 int scan_all_from(app *a, saved_lib *saved, bool save)
 {
 	int from_saved = 0;
+	bool pm_installer = pm_installer_here();
 
 	SDL_AtomicIncRef(&g_lib_gen);
 	g_nshown = 0;
@@ -647,7 +717,10 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 		bool kept = saved && savedlib_take(saved, sc->folder, sc->exts, &v->list);
 		uint64_t digest;
 
+		bool pm = is_ports(sc) && pm_installer;
+
 		if (!kept) lib_scan_listing(P_ROMS, sc->folder, sc->exts, &v->list);
+		if (pm) pm_listing_add(&v->list);
 		digest = lib_listing_digest(&v->list);
 		if (g_nshown < CFG_MAX_SYSTEMS) {
 			snprintf(g_shown[g_nshown].folder, sizeof g_shown[0].folder, "%s", sc->folder);
@@ -655,6 +728,7 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 			g_shown[g_nshown].shown = digest;
 			g_shown[g_nshown].saved = kept ? digest : 0;
 			g_shown[g_nshown].in_file = kept;
+			g_shown[g_nshown].pm = pm;
 			g_nshown++;
 		}
 		from_saved += kept;
@@ -715,6 +789,7 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 	hide_empty_systems(a);
 	build_favorites_shelf(a);
 	build_muse_shelf(a);
+	pm_offer_refresh(a);
 	return from_saved;
 }
 
@@ -746,6 +821,7 @@ struct lib_check {
 	saved_shelf fresh[CFG_MAX_SYSTEMS];
 	uint64_t    shown[CFG_MAX_SYSTEMS], saved[CFG_MAX_SYSTEMS];
 	bool        in_file[CFG_MAX_SYSTEMS];
+	bool        pm[CFG_MAX_SYSTEMS];
 	bool        rewrite;          /* the file is not the card, or there is none */
 	char        changed[96];      /* the folders the shelves are behind on, for the log */
 	bool        behind;           /* and whether there are any */
@@ -769,6 +845,7 @@ lib_check *lib_check_begin(void)
 		c->shown[k] = g_shown[k].shown;
 		c->saved[k] = g_shown[k].saved;
 		c->in_file[k] = g_shown[k].in_file;
+		c->pm[k] = g_shown[k].pm;
 	}
 	return c;
 }
@@ -782,6 +859,7 @@ void lib_check_run(lib_check *c)
 		uint64_t d;
 
 		lib_scan_listing(P_ROMS, c->fresh[k].folder, c->fresh[k].exts, &c->fresh[k].list);
+		if (c->pm[k]) pm_listing_add(&c->fresh[k].list);
 		d = lib_listing_digest(&c->fresh[k].list);
 		if (!c->in_file[k] || d != c->saved[k]) c->rewrite = true;
 		if (d != c->shown[k]) {

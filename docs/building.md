@@ -152,6 +152,8 @@ something once broke in a way nothing noticed:
 | `check-tour-colors` | the tutorial across frames: low-alpha first frames and a theme round-trip never poison cached text, details or bars |
 | `check-update` | System Update end to end: two fake releases packed and signed with a throwaway key, check, download, a cut download resumed, refused lists and packs, the boot switch and its step back (skips without OpenSSL 3, libcurl or zlib) |
 | `check-sysupdate` | what MENU > System Update says in each state, held to the update lab's screens |
+| `check-pminstall` | what the Install PortMaster page says in each state (src/pminstall.c), and the Ports shelf's PortMaster entry added to a listing that lacks it, once |
+| `check-pmhelper` | the PortMaster installer (res/portmaster/pm-install.py) against a made-up release in a folder: an install, a second run, a lost PortMaster.sh put back, an MD5, SHA-256 or size that does not match, members outside PortMaster/, a release list that makes no sense, runtimes kept, a second run at once turned away |
 | `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
 | `check-captive` | Wi-Fi File Transfer's hotspot, its pure half: the DNS answer for every name, the Host check that tells a phone's internet check from the page, the QR code's text and the password |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |

@@ -358,17 +358,23 @@ static void make_volume(void)
 
 /* ---- the keyboard ------------------------------------------------------- */
 
-/* A keyboard: one with letters, which none of the four has */
+/* A keyboard: one with letters, which none of the four has, that QEMU
+ * gives the machine (virtio, BUS_VIRTUAL). Not a keyboard a program makes
+ * with uinput: PortMaster's gptokeyb makes one for every port, the pad's
+ * presses as keys, and taken here they went to the buttons and never to the
+ * port (found 2026-11-08: no port in the VM answered a key). */
 static void take(const char *path)
 {
 	unsigned long keys[KEY_MAX / (8 * sizeof(long)) + 1];
+	struct input_id id;
 	int fd, i, slot = -1;
 
 	for (i = 0; i < MAX_KBD; i++)
 		if (kbd[i] < 0) { slot = i; break; }
 	if (slot < 0 || (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) return;
 	memset(keys, 0, sizeof keys);
-	if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys) < 0 ||
+	if (ioctl(fd, EVIOCGID, &id) < 0 || id.bustype != BUS_VIRTUAL ||
+	    ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys) < 0 ||
 	    !((keys[KEY_A / (8 * sizeof(long))] >> (KEY_A % (8 * sizeof(long)))) & 1) ||
 	    ioctl(fd, EVIOCGRAB, 1) < 0) {
 		close(fd);

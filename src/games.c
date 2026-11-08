@@ -185,6 +185,7 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
      * is left out with the ones after it, never drawn over the edge. */
     int x=64;
     if(origin) x=meta_part(r,chrome,info->origin,x);
+    if(info->install) x=meta_part(r,chrome,T(S_PORTMASTER_NOT_INSTALLED),x);
     if(info->played && *info->played) {
         char text[64]; snprintf(text,sizeof text,T(S_GAMES_PLAYED),info->played);
         x=meta_part(r,chrome,text,x);
@@ -193,7 +194,8 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
         char text[64]; snprintf(text,sizeof text,T(S_GAMES_ACHIEVEMENTS),info->earned,info->total);
         meta_part(r,chrome,text,x);
     }
-    if(info->count) page_hint(r,"A",T(info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
+    if(info->count) page_hint(r,"A",T(info->install?S_PORTMASTER_INSTALL:
+                                      info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
     page_hint(r,"B",T(S_GAMES_SYSTEMS),64,720,false,false);
     page_hint(r,"Y",T(info->favorite?S_GAMES_FAVORITED:S_GAMES_FAVORITE),432,720,false,info->favorite);
     page_hint(r,"X",T(S_GAMES_DETAILS),832,720,false,false);

@@ -25,6 +25,16 @@ ESUDOKILL2="-1"
 
 export SDL_GAMECONTROLLERCONFIG_FILE="$controlfolder/gamecontrollerdb.txt"
 SDLDBFILE="${SDL_GAMECONTROLLERCONFIG_FILE}"
+
+# SDL 2.32 passes over a display it can't become DRM master of, and
+# PortMaster's own window starts SDL while PortMaster's splash (a LOVE
+# program) still holds the display: "No available video device", and
+# PortMaster closed at once (found in QEMU, 2026-11-08). SDL takes master
+# itself when it makes its window, which PortMaster does once its splash has
+# gone. Nothing else holds the display while a port runs (plastron's splash
+# --still lets go of it after its one picture), so for a port it changes
+# nothing.
+export SDL_KMSDRM_REQUIRE_DRM_MASTER=0
 SDLDBUSERFILE="${HOME}/.config/SDL-GameControllerDB/gamecontrollerdb.txt"
 [ ! -f "${SDLDBUSERFILE}" ] && SDLDBUSERFILE="${controlfolder}/gamecontrollerdb.txt"
 

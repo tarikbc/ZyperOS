@@ -39,6 +39,21 @@ void lib_check_free(lib_check *c);
 extern bool g_order_release;
 void system_order_load(void);
 void system_order_apply(systems_cfg *s);
+/* PortMaster on the Ports shelf (src/pminstall.h). g_pm_offer: the card's
+ * ZyperOS has the installer and PortMaster is not on the card, as the last
+ * scan or pm_offer_refresh found, so A on the shelf's PortMaster opens the
+ * page that installs it. pm_on_card: PortMaster whole in that Ports folder,
+ * its program and its script, asked of the card now. pm_is_offer: whether
+ * `g`, a game of system `sys`, is that entry while it is offered;
+ * pm_shelf_offers: 1 when shelf `sys` holds it so, else 0 (for a count of
+ * games, which it is not); pm_only_offer: whether it is all the shelf holds,
+ * a shelf with no ports on it yet, which the empty home does not count. */
+extern bool g_pm_offer;
+bool pm_on_card(const char *folder);
+bool pm_offer_refresh(const app *a);
+bool pm_is_offer(const app *a, int sys, const game_entry *g);
+int  pm_shelf_offers(const app *a, int sys);
+bool pm_only_offer(const app *a, int sys);
 /* The Favorites shelf rebuilt after a favorite changed */
 void refresh_favorites_shelf(app *a);
 /* A game deleted from the card (src/gamedel.h): off its shelf and Favorites,

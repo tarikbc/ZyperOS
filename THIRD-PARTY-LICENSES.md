@@ -136,6 +136,14 @@ and box art, FFmpeg (built without its GPL parts) for MP4's music,
 audiobooks and videos, ALSA and glibc. plastron's package list on the card,
 `Licenses/plastron-packages.md`, gives their versions and licenses.
 
+The Pixel 2's PortMaster installer (`res/portmaster/pm-install.py`, ZyperOS's
+own) runs on the system's Python 3. It downloads **PortMaster**
+(https://portmaster.games, MIT, by the PortMaster team) from PortMaster's own
+GitHub releases onto the card when the player asks, and PortMaster updates
+itself from then on. ZyperOS carries no part of PortMaster: the other files
+in `res/portmaster/` are ZyperOS's own settings for it, which launch.sh puts
+in PortMaster's folder before each port.
+
 ---
 
 ## Files ZyperOS carries

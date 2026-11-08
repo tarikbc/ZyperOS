@@ -634,6 +634,23 @@ transfer.why_root
 transfer.why_console
 transfer.why_empty
 
+# portmaster: drawn through the Install PortMaster page's buffers (src/pminstall.c
+# fills System Update's su_page, as its own update.* words are), split into
+# balanced lines, so no drawn line is the string; the portmaster-* shots draw
+# every one and fail on any cut
+portmaster.point_store
+portmaster.point_files
+portmaster.installed
+portmaster.done_open
+portmaster.err_network
+portmaster.err_checksum
+portmaster.err_space
+portmaster.err_unpack
+portmaster.err_release
+portmaster.err_internal
+portmaster.err_stopped
+portmaster.needs_system
+
 # update: no shot draws it yet
 update.value_restart_update
 update.value_restart_back

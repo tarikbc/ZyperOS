@@ -1,0 +1,258 @@
+# Install PortMaster (src/pminstall.c, src/main.c's pm_install_screen): the
+# page A opens on the Ports shelf's PortMaster while PortMaster is not on the
+# card, and the words the shelf shows under that entry. The page is System
+# Update's; the words it shares with it (Downloading, Try Again, Back, it goes
+# on, the download that did not finish) are update.txt's.
+
+[portmaster.title]
+note = The page's heading: put the official PortMaster on the card
+en = Install PortMaster
+zh-Hans = 安装 PortMaster
+es = Instalar PortMaster
+pt-BR = Instalar PortMaster
+fr = Installer PortMaster
+de = PortMaster installieren
+ja = PortMaster をインストール
+it = Installa PortMaster
+
+[portmaster.from]
+note = The line under the big "PortMaster": who makes it, since PortMaster is not part of ZyperOS. tight: one line of the page's small type, about 660 units
+en = By the PortMaster team
+zh-Hans = PortMaster 团队出品
+es = Del equipo de PortMaster
+pt-BR = Da equipe do PortMaster
+fr = Par l'équipe PortMaster
+de = Vom PortMaster-Team
+ja = PortMaster チーム制作
+it = Dal team di PortMaster
+
+[portmaster.point_store]
+note = The first of the page's two points, at most two lines: what PortMaster is. A port is a PC game made to run on handhelds
+en = PC games ported to handhelds, ready to download.
+zh-Hans = 移植到掌机的电脑游戏，随时可以下载。
+es = Juegos de PC adaptados a portátiles, listos para descargar.
+pt-BR = Jogos de PC adaptados para portáteis, prontos para baixar.
+fr = Des jeux PC adaptés aux consoles portables.
+de = PC-Spiele für Handhelds, bereit zum Herunterladen.
+ja = 携帯ゲーム機向けに移植された PC ゲームをダウンロードできます。
+it = Giochi PC adattati alle console portatili, pronti da scaricare.
+
+[portmaster.point_files]
+note = The second point, at most two lines: some ports are free, others need the data files of a commercial game the player owns
+en = Some ports need the files of a game you own.
+zh-Hans = 部分移植游戏需要你拥有的游戏文件。
+es = Algunos ports necesitan los archivos de un juego que tengas.
+pt-BR = Alguns ports pedem os arquivos de um jogo seu.
+fr = Certains portages exigent un jeu que vous possédez.
+de = Manche Ports brauchen Dateien eines eigenen Spiels.
+ja = 一部の移植版には、持っているゲームのファイルが必要です。
+it = Alcuni port richiedono i file di un gioco che possiedi.
+
+[portmaster.install]
+note = The A button's label on the page, and on the Ports shelf under PortMaster while it is not on the card
+en = Install
+zh-Hans = 安装
+es = Instalar
+pt-BR = Instalar
+fr = Installer
+de = Installieren
+ja = インストール
+it = Installa
+
+[portmaster.from_github]
+note = Where the bar goes, before Install is pressed: where the download comes from
+en = It downloads from GitHub over Wi-Fi.
+zh-Hans = 通过 Wi-Fi 从 GitHub 下载。
+es = Se descarga de GitHub por Wi-Fi.
+pt-BR = É baixado do GitHub pelo Wi-Fi.
+fr = Il se télécharge depuis GitHub en Wi-Fi.
+de = Es wird über WLAN von GitHub heruntergeladen.
+ja = Wi-Fi で GitHub からダウンロードします。
+it = Si scarica da GitHub tramite Wi-Fi.
+
+[portmaster.looking]
+note = The line under "PortMaster" while it asks GitHub which release is the newest
+en = Looking for the newest release…
+zh-Hans = 正在查找最新版本…
+es = Buscando la versión más reciente…
+pt-BR = Procurando a versão mais recente…
+fr = Recherche de la dernière version…
+de = Neueste Version wird gesucht …
+ja = 最新バージョンを探しています…
+it = Ricerca dell'ultima versione…
+
+[portmaster.version]
+note = The line under "PortMaster" while it downloads: %s is PortMaster's version, "2026.06.23-0015"
+en = Version %s
+zh-Hans = 版本 %s
+es = Versión %s
+pt-BR = Versão %s
+fr = Version %s
+de = Version %s
+ja = バージョン %s
+it = Versione %s
+
+[portmaster.checking]
+note = Under the bar, left, while the download is checked against its published checksums
+en = Checking the download
+zh-Hans = 正在校验下载
+es = Comprobando la descarga
+pt-BR = Verificando o download
+fr = Vérification du téléchargement
+de = Download wird geprüft
+ja = ダウンロードを確認中
+it = Verifica del download
+
+[portmaster.unpacking]
+note = Under the bar, left, while PortMaster is unpacked onto the card
+en = Unpacking
+zh-Hans = 正在解压
+es = Descomprimiendo
+pt-BR = Descompactando
+fr = Décompression
+de = Wird entpackt
+ja = 展開中
+it = Estrazione
+
+[portmaster.installed]
+note = The line under "PortMaster" once it is on the card: %s is its version, "2026.06.23-0015"
+en = Version %s · installed
+zh-Hans = 版本 %s · 已安装
+es = Versión %s · instalada
+pt-BR = Versão %s · instalada
+fr = Version %s · installée
+de = Version %s · installiert
+ja = バージョン %s · インストール済み
+it = Versione %s · installata
+
+[portmaster.done_shelf]
+note = The first point once it is installed
+en = It is on the Ports shelf now.
+zh-Hans = 它现在在 Ports 游戏列表中。
+es = Ya está en la lista de juegos de Ports.
+pt-BR = Ele já está na lista de jogos de Ports.
+fr = Il est maintenant dans la liste des jeux Ports.
+de = Es ist jetzt in der Spieleliste von Ports.
+ja = Ports のゲーム一覧に追加されました。
+it = Ora è nell'elenco giochi di Ports.
+
+[portmaster.done_open]
+note = The second point once it is installed: opening it is how ports are got, and PortMaster updates itself from then on
+en = Open it to get ports. It updates itself.
+zh-Hans = 打开它即可获取移植游戏。它会自动更新。
+es = Ábrelo para conseguir ports. Se actualiza solo.
+pt-BR = Abra-o para baixar ports. Ele se atualiza sozinho.
+fr = Ouvrez-le pour les portages. Il se met à jour seul.
+de = Öffne es, um Ports zu holen. Es aktualisiert sich selbst.
+ja = 開くと移植版を入手できます。自動でアップデートされます。
+it = Aprilo per scaricare i port. Si aggiorna da solo.
+
+[portmaster.open]
+note = The A button's label once it is installed: runs PortMaster
+en = Open PortMaster
+zh-Hans = 打开 PortMaster
+es = Abrir PortMaster
+pt-BR = Abrir PortMaster
+fr = Ouvrir PortMaster
+de = PortMaster öffnen
+ja = PortMaster を開く
+it = Apri PortMaster
+
+[portmaster.not_installed]
+note = The line under "PortMaster" after a problem, and on the Ports shelf under PortMaster while it is not on the card
+en = Not installed
+zh-Hans = 未安装
+es = No instalado
+pt-BR = Não instalado
+fr = Non installé
+de = Nicht installiert
+ja = 未インストール
+it = Non installato
+
+[portmaster.err_network]
+note = The problem, said in full: GitHub, where PortMaster's releases are, did not answer
+en = Could not reach GitHub. Check the Wi-Fi and try again.
+zh-Hans = 无法连接 GitHub。请检查 Wi-Fi 后重试。
+es = No se pudo conectar con GitHub. Revisa el Wi-Fi e inténtalo de nuevo.
+pt-BR = Não foi possível acessar o GitHub. Verifique o Wi-Fi e tente de novo.
+fr = Impossible de joindre GitHub. Vérifiez le Wi-Fi et réessayez.
+de = GitHub ist nicht erreichbar. Prüfe das WLAN und versuche es erneut.
+ja = GitHub に接続できませんでした。Wi-Fi を確認して、もう一度お試しください。
+it = Impossibile raggiungere GitHub. Controlla il Wi-Fi e riprova.
+
+[portmaster.err_checksum]
+note = The problem, said in full: what downloaded is not what PortMaster published (its size or checksum differs), so it was thrown away
+en = The download did not match what PortMaster published, so nothing was installed. Try again.
+zh-Hans = 下载的文件与 PortMaster 发布的不一致，因此未安装任何内容。请重试。
+es = La descarga no coincide con lo que publicó PortMaster, así que no se instaló nada. Inténtalo de nuevo.
+pt-BR = O download não confere com o que o PortMaster publicou, então nada foi instalado. Tente de novo.
+fr = Le téléchargement ne correspond pas à ce que PortMaster a publié\u00a0: rien n'a été installé. Réessayez.
+de = Der Download stimmt nicht mit PortMaster überein, daher wurde nichts installiert. Versuche es erneut.
+ja = ダウンロードしたファイルが PortMaster の公開内容と一致しないため、インストールしませんでした。もう一度お試しください。
+it = Il download non corrisponde a quanto pubblicato da PortMaster, quindi non è stato installato nulla. Riprova.
+
+[portmaster.err_space]
+note = The problem, said in full: %s is the room PortMaster needs free on the card, "108 MB"
+en = The card needs %s free for PortMaster. Make room on it, then try again.
+zh-Hans = 存储卡需要 %s 可用空间才能安装 PortMaster。请腾出空间后重试。
+es = La tarjeta necesita %s libres para PortMaster. Libera espacio y vuelve a intentarlo.
+pt-BR = O cartão precisa de %s livres para o PortMaster. Libere espaço e tente de novo.
+fr = La carte doit avoir %s de libre pour PortMaster. Libérez de la place, puis réessayez.
+de = Die Karte braucht %s freien Platz für PortMaster. Schaffe Platz und versuche es erneut.
+ja = PortMaster には、カードに %s の空きが必要です。空きを作ってから、もう一度お試しください。
+it = La scheda deve avere %s liberi per PortMaster. Libera spazio, poi riprova.
+
+[portmaster.err_unpack]
+note = The problem, said in full: the card refused a write while PortMaster was unpacked onto it
+en = PortMaster could not be written to the card. Check the card, then try again.
+zh-Hans = 无法将 PortMaster 写入存储卡。请检查存储卡后重试。
+es = No se pudo escribir PortMaster en la tarjeta. Revisa la tarjeta y vuelve a intentarlo.
+pt-BR = Não foi possível gravar o PortMaster no cartão. Verifique o cartão e tente de novo.
+fr = Impossible d'écrire PortMaster sur la carte. Vérifiez la carte, puis réessayez.
+de = PortMaster konnte nicht auf die Karte geschrieben werden. Prüfe die Karte und versuche es erneut.
+ja = PortMaster をカードに書き込めませんでした。カードを確認してから、もう一度お試しください。
+it = Impossibile scrivere PortMaster sulla scheda. Controlla la scheda, poi riprova.
+
+[portmaster.err_release]
+note = The problem, said in full: GitHub answered, but PortMaster's list of releases was not what the installer understands
+en = PortMaster's list of releases did not make sense. Try again later.
+zh-Hans = 无法读取 PortMaster 的版本列表。请稍后重试。
+es = No se pudo leer la lista de versiones de PortMaster. Inténtalo más tarde.
+pt-BR = Não foi possível ler a lista de versões do PortMaster. Tente mais tarde.
+fr = La liste des versions de PortMaster est illisible. Réessayez plus tard.
+de = Die Versionsliste von PortMaster ist nicht lesbar. Versuche es später erneut.
+ja = PortMaster のバージョン一覧を読み取れませんでした。しばらくしてから、もう一度お試しください。
+it = Impossibile leggere l'elenco delle versioni di PortMaster. Riprova più tardi.
+
+[portmaster.err_internal]
+note = The problem, said in full: the installer stopped on an error it has no words for
+en = The install stopped with an error. Try again.
+zh-Hans = 安装因错误而停止。请重试。
+es = La instalación se detuvo por un error. Inténtalo de nuevo.
+pt-BR = A instalação parou por um erro. Tente de novo.
+fr = L'installation s'est arrêtée sur une erreur. Réessayez.
+de = Die Installation wurde wegen eines Fehlers abgebrochen. Versuche es erneut.
+ja = エラーのためインストールが止まりました。もう一度お試しください。
+it = L'installazione si è interrotta per un errore. Riprova.
+
+[portmaster.err_stopped]
+note = The problem, said in full: the install was cut off (the handheld turned off) before it finished
+en = The install stopped before it finished. Try again.
+zh-Hans = 安装在完成前停止了。请重试。
+es = La instalación se detuvo antes de terminar. Inténtalo de nuevo.
+pt-BR = A instalação parou antes de terminar. Tente de novo.
+fr = L'installation s'est arrêtée avant la fin. Réessayez.
+de = Die Installation wurde vor dem Ende abgebrochen. Versuche es erneut.
+ja = インストールが完了する前に止まりました。もう一度お試しください。
+it = L'installazione si è interrotta prima della fine. Riprova.
+
+[portmaster.needs_system]
+note = The problem, said in full: the card's system is older than the one PortMaster runs on (it has no Python). MENU and System Update are as the menu says them
+en = PortMaster needs a newer ZyperOS system. Update it in MENU > System Update, then come back.
+zh-Hans = PortMaster 需要更新版本的 ZyperOS 系统。请在 MENU > 系统更新 中更新后再回来。
+es = PortMaster necesita un sistema ZyperOS más reciente. Actualízalo en MENU > Actualización del sistema y vuelve.
+pt-BR = O PortMaster precisa de um sistema ZyperOS mais recente. Atualize em MENU > Atualização do sistema e volte.
+fr = PortMaster a besoin d'un système ZyperOS plus récent. Mettez-le à jour dans MENU > Mise à jour du système, puis revenez.
+de = PortMaster braucht ein neueres ZyperOS-System. Aktualisiere es unter MENU > Systemupdate und komm dann zurück.
+ja = PortMaster には新しい ZyperOS システムが必要です。MENU > システムアップデート で更新してから、もう一度開いてください。
+it = PortMaster richiede un sistema ZyperOS più recente. Aggiornalo in MENU > Aggiornamento di sistema, poi torna qui.

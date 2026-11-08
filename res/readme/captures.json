@@ -159,7 +159,7 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked \u00b7 10 points",
+        "Unlocked · 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
@@ -741,6 +741,44 @@
         "system"
       ],
       "sha256": "d419f0aedf488502a53e756f228cdfb4dc07120d05ab063c279d4c2cae58807b"
+    },
+    {
+      "file": "light/ports.png",
+      "card": "ports",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "b5ec7a8ec2ac053764edfe1dae71796674db19fe67c744de6000b473d512bb51",
+      "source_commit": "bd648711fd5fb771d3b23a7b21852f68fffbbf8e"
+    },
+    {
+      "file": "light/portmaster.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--portmaster",
+        "running"
+      ],
+      "sha256": "b431c20478b19cee370f074be828bc8c506b6baad4e2c134b2b8728a02f9efbb",
+      "source_commit": "829900dedf246417fae9241c9cf910db4b67d818"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"
