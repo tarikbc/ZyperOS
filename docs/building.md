@@ -125,6 +125,9 @@ something once broke in a way nothing noticed:
 | `check-dslang` | the Nintendo DS's language: each language MENU > Language has maps, in Auto, to the DS's own or to English (Português (Brasil) and 简体中文 have none), the Game Language row's eight choices round trip through the database and go round both ways, the core's option and its values are the patch's, and the launcher sends it first with every DS game and with no other; the row is on the DS shelf's menu in every language with nothing cut, and Left, Right and A go round it, saved (builds the host launcher for the second half; skips without SDL2) |
 | `check-dsresume` | a Nintendo DS game's resume by its language: the firmware's language as DSperate's direct boot takes it, the language a game starts in for each option, the `.lang` beside its auto state, and a game left in another language started fresh (src/dsresume.h) |
 | `check-core-stamp` | the patched cores' stamps (mk/core-stamp.sh): a stamped core passes; a core built before a patch changed, one changed after its stamp, one with no stamp and a patch no core claims each fail, with what to run |
+| `check-px2-perf` | px2-perf's arithmetic: percentiles as a spreadsheet gives them, the frame-time spread from the times new frames were seen, a process's CPU ticks from a /proc stat line whose name has spaces and parentheses, and the speed against the clock from two of Diatom's now files, refused across two games or a Diatom started again |
+| `check-px2-snap` | px2-snap on a scratch card: a game's .srm, states, slots and pictures, fbneo's, a NAOMI game's and a ScummVM game's own files, never another game's that starts with its name; its play sessions, favorite and Pak through the host launcher's `--game-rows`, and no other game's; a test's changes undone byte for byte, the files it made removed; an open game, a name that is a path, a name taken, another game's rows and a launcher with no `--game-rows` refused or said (builds the host launcher; skips without SDL2 or sqlite3) |
+| `check-px2` | tools/px2 with a stand-in for ssh: wrong uses refused before the lock or the device, the test card and a VM's card go ahead and any other only with `--real-card`, the lock's owner file, a lock held refused or waited for, the lock let go after a failure, a TERM and a Ctrl-C, and each argument one word on the device |
 | `check-lowbatt` | the start with a battery too low to play: which start shows the screen, its hold, POWER, the charger's moment, and the reading that decides the power-off |
 | `check-heat` | "Getting hot": the 85 C trip, two readings in a row, the hysteresis under 80 C, five quiet minutes, the poll's clock |
 | `check-charging` | the charging screen: the charger's kind, its lines, the time to full through CC and CV, and its rules |
@@ -325,9 +328,11 @@ SFTP server runs, and into `/tmp` first; check that the checksums match on
 both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds
 carry no key and run no SSH server until Developer Mode is on (MENU > About).
 
-Every image has `px2-shot` and `px2-input` in `/usr/bin`, so over SSH a
-screenshot is `px2-shot /tmp/s.ppm` and a press is `px2-input a`, with
-nothing to build or copy.
+Every image has `px2-shot`, `px2-input`, `px2-perf` and `px2-snap` in
+`/usr/bin`, so over SSH a screenshot is `px2-shot /tmp/s.ppm`, a press is
+`px2-input a`, a performance report is `px2-perf 10` and a game's saves set
+aside are `px2-snap save ROM`, with nothing to build or copy. `tools/px2`
+drives them from the Mac (below).
 
 For the Pixel 2 with nobody holding it, `tools/` has more small programs to build
 with plastron's toolchain (`aarch64-buildroot-linux-gnu-gcc -O2`, `-pthread`
@@ -342,6 +347,35 @@ from `/tmp` as root:
   `volup` and `voldown` are the volume keys, sent on their own device, and
   `power` the power key on the PMIC's: it turns the handheld off, but in the
   tutorial's power step.
+- `px2-perf [SECONDS] [--json]` (in the image) reports on whatever runs, over
+  10 seconds by default: the panel's frames a second and the spread of the time
+  between them (min, median, 95th percentile, max, from the new framebuffer
+  seen at each vertical blank, as `px2-shot --fps` counts), the game's speed
+  against the clock and the audio frames Diatom dropped, each core's load,
+  clock and governor, each devfreq device's clock (the GPU's, the memory's),
+  each thermal zone, Diatom's and the launcher's CPU and RSS and the busiest
+  other processes, and the free memory. The game's speed comes from Diatom's
+  now file, `/tmp/diatom-now` (diatom/src/now.h): there while a game is
+  loaded, naming it, and written four times a second while px2-perf asks
+  (`/tmp/diatom-now.ask`), so it costs nothing when nobody does. With a Diatom
+  from before it, the last "x of the clock" line in the log stands in.
+  `--json` is the same for a script.
+- `px2-snap` (in the image, a busybox script) sets one game's saves aside on
+  the card and puts them back byte for byte, so a test can play it and leave
+  it as it was: `px2-snap save ROM [NAME]`, `px2-snap restore NAME`,
+  `px2-snap list`, `px2-snap delete NAME`. A snapshot, in
+  `.userdata/px2-snap/NAME`, has the game's battery save (`Saves/<stem>.srm`,
+  `.sav`, `.dsv`, and the files fbneo, MAME 2003-Plus, Flycast's NAOMI and
+  Atomiswave games and OpenBOR keep in their own folders), its Auto state, the
+  six slots (the quick slot is one) and their pictures and a DS game's
+  `.auto.lang` (`.userdata/shared/.zyperos/<folder>/`), and its rows in the
+  library database: its play sessions (its play time and when it was last
+  played), its favorite and its N64 Pak, through `zyperos.elf --game-rows`
+  (src/gamerows.h), since there is no sqlite3 on the device. Restore puts back
+  each file and removes the game's files the snapshot did not have, then the
+  rows, and restarts the launcher if they changed (`--no-restart` leaves it).
+  Both refuse a game that is open: Diatom's now file names it, `px2-open
+  --status` does, or a process was started with it.
 - `px2-sample TID` profiles a thread without perf, by library and, for Mono
   with `MONO_ENV_OPTIONS=--jitmap`, by method.
 - `px2-lat` measures at the panel what a button costs: `px2-lat press right`
@@ -356,6 +390,45 @@ from `/tmp` as root:
 - `px2-memtest` checks the RAM with patterns under load and times a memcpy,
   for changes to the memory clock. Stop ZyperOS first, so nothing else uses
   the memory meanwhile.
+
+## Debugging on the device
+
+A session on a Pixel 2 nobody is holding goes through `tools/px2`, on the Mac:
+
+```sh
+tools/px2 status                          # px2-open --status: what runs
+tools/px2 snap save "Roms/NES/Contra (USA).nes" contra
+tools/px2 open "Roms/NES/Contra (USA).nes" --fresh
+tools/px2 press start:300 wait:2000 a     # px2-input
+tools/px2 shot contra.png                 # px2-shot, as a PNG here
+tools/px2 perf 10                         # px2-perf; --json for a script
+tools/px2 log                             # this boot's zyperos.log; -f follows it
+tools/px2 quit
+tools/px2 snap restore contra             # the saves as they were
+tools/px2 ssh 'ls /tmp'                   # anything else
+```
+
+Each command first takes the device's lock on the Mac, `/tmp/px2-lock` (a
+folder made with mkdir, so two sessions never both have it, with an `owner`
+file naming the session and its command), and lets it go when it ends, on
+Ctrl-C and on an error too. A lock someone holds is a refusal that names them
+(exit 75), or a wait with `--wait SECONDS`. Remove a lock by hand only when
+its owner is gone. Then it reads the card's size, `/sys/block/mmcblk0/size`:
+the 32 GB test card (62333952 sectors) goes ahead, and the owner's own 128 GB
+card (249737216) or any other only with `--real-card`. A wrong use of a
+command is refused before either.
+
+The device is `PX2_HOST` and `PX2_PORT`, as for `tools/px2-deploy.sh`
+(10.42.0.1 on the USB cable), with `PX2_KEY`; `--vm NAME` is a QEMU VM of
+`tools/qemu-run.sh`'s, with a lock of its own (`/tmp/px2-lock-HOST-PORT`, as
+for any device but the Pixel 2 at 10.42.0.1:22, or `PX2_LOCK`). On an image
+from before px2-perf and px2-snap, `tools/px2` copies them to `/tmp/px2-bin` on
+the device first: px2-snap from `tools/px2-snap.sh`, px2-perf from
+`build/px2/px2-perf`, which `make px2-payload` builds beside the payload.
+
+`open`, `quit` and `status` are `px2-open`'s, which opens a ROM through the
+running launcher; until an image carries it, `tools/px2` copies it from
+`build/px2/px2-open` or `tools/px2-open.sh` where the tree has one.
 
 ## Layout
 

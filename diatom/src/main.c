@@ -24,6 +24,7 @@
 #include "chord.h"
 #include "diatom.h"
 #include "levels.h"
+#include "now.h"
 #include "screens.h"
 
 /* --- the frame the core last handed us ----------------------------------- */
@@ -2207,6 +2208,9 @@ static int run_session_inner(const diatom_session *sn)
 	next_us = (double)t_start;
 	step_t0 = t_start;
 	step_drop0 = diatom_audio_dropped();
+	/* What runs, for a tool on the device (now.h): from here until
+	 * run_session's end, paused or not */
+	diatom_now_begin(sn->core, sn->rom, av.timing.fps);
 
 	while (!diatom_port_should_quit() && !g_terminate && !stop &&
 	       (sn->limit <= 0 || frames < sn->limit)) {
@@ -2341,6 +2345,12 @@ static int run_session_inner(const diatom_session *sn)
 		}
 		step_frames += ran;
 		step_periods += periods;
+		{
+			const uint64_t t = diatom_port_now_us();
+
+			diatom_now_turn(t, frames, t - t_start > paused_us ? t - t_start - paused_us : 0,
+			                speed_half() / 2.0, diatom_audio_dropped());
+		}
 
 		if (fast) {
 			/* Silence for the time this turn stands for, so the queue holds
@@ -2857,6 +2867,7 @@ static int run_session(const diatom_session *sn)
 
 	g_phase = PHASE_LOADING;
 	rc = run_session_inner(sn);
+	diatom_now_end();
 	g_phase = PHASE_IDLE;
 	return rc;
 }

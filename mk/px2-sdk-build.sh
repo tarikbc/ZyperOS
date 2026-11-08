@@ -37,6 +37,13 @@ DEVICE=pixel2 OUT=/zyperos/$B/payload VERSION="$VERSION" \
 	ZYPEROS_ELF=$B/zyperos.elf MUSE_ELF=$B/muse PORTKEYS_ELF=$B/portkeys \
 	UPDATE_ELF=$B/zyperos-update DIATOM_ELF=diatom/build/pixel2/diatom \
 	VENDOR_DIR=/zyperos-vendor sh mk/payload.sh
+# The image's tools for SSH (plastron's zyperos.mk builds them for /usr/bin),
+# beside the payload rather than in it: tools/px2 copies px2-perf to a device
+# whose image is older than it
+for t in px2-shot px2-input px2-perf; do
+	"$CC" -O2 -Wall -Wextra -o "$B/$t" "tools/$t.c" -lm
+	"$STRIP" "$B/$t"
+done
 # Stripped, as plastron's image strips every program it carries
 for f in zyperos.elf muse portkeys zyperos-update diatom; do
 	"$STRIP" "$B/payload/ZyperOS/$f"

@@ -122,21 +122,26 @@ define ZYPEROS_INSTALL_UPDATE
 	$(INSTALL) -D -m 0755 $(@D)/update/apply.sh $(TARGET_DIR)/usr/lib/zyperos/update-apply.sh
 endef
 
-# Every image carries ZyperOS's px2-shot and px2-input in /usr/bin, so a
-# screenshot and a button press are one SSH command away: in QEMU
+# Every image carries ZyperOS's px2-shot, px2-input, px2-perf and px2-snap
+# in /usr/bin, so a screenshot, a button press, a performance report and a
+# game's saves set aside are one SSH command away: in QEMU
 # (tools/qemu-run.sh), on a development image, and on a release image with
-# Developer Mode on. Both are small, need no library, and only root can use
-# them (the framebuffer's GETFB2 and uinput).
+# Developer Mode on. They are small, need no library (px2-snap is a shell
+# script), and only root can use them (the framebuffer's GETFB2 and uinput,
+# the card). tools/px2 on a computer drives them (docs/building.md).
+ZYPEROS_SSH_TOOLS = px2-shot px2-input px2-perf
 define ZYPEROS_BUILD_SSH_TOOLS
-	for t in px2-shot px2-input; do \
+	for t in $(ZYPEROS_SSH_TOOLS); do \
 		$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) -Wall -Wextra \
-			-o $(@D)/$(ZYPEROS_BUILD_DIR)/$$t $(@D)/tools/$$t.c || exit 1; \
+			-o $(@D)/$(ZYPEROS_BUILD_DIR)/$$t $(@D)/tools/$$t.c -lm || exit 1; \
 	done
 endef
 ZYPEROS_POST_BUILD_HOOKS += ZYPEROS_BUILD_SSH_TOOLS
 define ZYPEROS_INSTALL_SSH_TOOLS
-	$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/px2-shot $(TARGET_DIR)/usr/bin/px2-shot
-	$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/px2-input $(TARGET_DIR)/usr/bin/px2-input
+	for t in $(ZYPEROS_SSH_TOOLS); do \
+		$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/$$t $(TARGET_DIR)/usr/bin/$$t || exit 1; \
+	done
+	$(INSTALL) -D -m 0755 $(@D)/tools/px2-snap.sh $(TARGET_DIR)/usr/bin/px2-snap
 endef
 ZYPEROS_POST_INSTALL_TARGET_HOOKS += ZYPEROS_INSTALL_SSH_TOOLS
 
