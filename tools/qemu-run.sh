@@ -13,6 +13,10 @@
 #   tools/qemu-run.sh shot  [-n NAME] [FILE.png]       (px2-shot, as a PNG)
 #   tools/qemu-run.sh dump  [-n NAME] [FILE.png]       (what QEMU's display shows)
 #   tools/qemu-run.sh input [-n NAME] BUTTON...        (px2-input's buttons)
+#   tools/qemu-run.sh open  [-n NAME] [--fresh] [--core NAME] [--wait-running S] PATH
+#                                                      (px2-open: a game, as A opens it)
+#   tools/qemu-run.sh quit  [-n NAME]                  (px2-open --quit)
+#   tools/qemu-run.sh status [-n NAME]                 (px2-open --status)
 #   tools/qemu-run.sh sim   [-n NAME] COMMAND...       (px2sim: battery 15, cable 0,
 #                                                       headphones 1, press a, state)
 #   tools/qemu-run.sh roms  [-n NAME] DIR              (DIR's NES/, SNES/... into Roms/)
@@ -340,6 +344,16 @@ cmd_roms() {
 	vm_ssh 'sync; kill $(pidof zyperos.elf) 2> /dev/null; true'
 }
 
+# px2-open in the VM, its arguments quoted for the VM's shell, so a path with
+# spaces and quotes arrives as it is
+cmd_px2_open() {
+	q=
+	for a in "$@"; do
+		q="$q '$(printf '%s' "$a" | sed "s/'/'\\\\''/g")'"
+	done
+	vm_ssh "px2-open$q"
+}
+
 cmd_stop() {
 	running || { echo "qemu-run: $NAME isn't running"; return 0; }
 	vm_ssh poweroff < /dev/null 2> /dev/null || qmp '{"execute":"system_powerdown"}' > /dev/null
@@ -420,7 +434,7 @@ cmd_list() {
 	done
 }
 
-[ $# -gt 0 ] || { sed -n '3,44p' "$0"; exit 1; }
+[ $# -gt 0 ] || { sed -n '3,48p' "$0"; exit 1; }
 CMD=$1
 shift
 if [ "${1:-}" = -n ]; then NAME=${2:?-n needs a name}; shift 2; fi
@@ -431,6 +445,9 @@ ssh) vm_ssh "$@" ;;
 shot) cmd_shot "$@" ;;
 dump) cmd_dump "$@" ;;
 input) vm_ssh px2-input "$@" ;;
+open) cmd_px2_open "$@" ;;
+quit) cmd_px2_open --quit ;;
+status) cmd_px2_open --status ;;
 sim) vm_ssh px2sim "$@" ;;
 roms) cmd_roms "$@" ;;
 deploy) PX2_HOST=127.0.0.1 PX2_PORT=$(port) PX2_KEY=$KEY sh "$HERE/px2-deploy.sh" "$@" ;;
@@ -449,5 +466,5 @@ info)
 	echo "vnc     $dir/vnc.sock"
 	echo "qemu    $dir/qemu.log"
 	;;
-*) die "unknown command $CMD (start ssh shot dump input sim roms deploy stop kill list info prune)" ;;
+*) die "unknown command $CMD (start ssh shot dump input open quit status sim roms deploy stop kill list info prune)" ;;
 esac

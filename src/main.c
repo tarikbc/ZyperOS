@@ -22,6 +22,7 @@
 #include "cheevos.h"
 #include "clock.h"
 #include "config.h"
+#include "ctl.h"
 #include "bt.h"
 #include "btvol.h"
 #include "bt_menu.h"
@@ -172,6 +173,24 @@ static void muse_ask_shuffle(void);
 static void album_art_screen(app *a);
 /* Same reason: Wi-Fi File Transfer is a screen up here. */
 static void xfer_screen_way(app *a, int way);
+/* The command channel (src/ctl.h), read by every screen's loop and a game's
+ * tick, defined with px2-open's commands at the end of this file */
+enum { CTL_AT_SHELF, CTL_AT_GAME, CTL_AT_SCREEN };
+static bool ctl_poll(app *a, int at);
+static app *g_ctl_app;            /* for a game's tick, which has no app */
+static bool g_ctl_shelf_pass;     /* the shelf's loop is asking: not a screen */
+/* The in-game menu asked to close by a quit from the channel, its game told
+ * to stop already */
+static bool g_ctl_close_menu;
+/* The game Diatom was handed, for px2-open's status: from RUN to the end of
+ * its wait loop, its in-game menu up or not, asked to stop by the channel */
+static struct {
+	bool on, paused, stopping;
+	char tag[8], name[CFG_STR], core[CFG_STR], path[LIB_PATH * 2];
+	long since;
+} g_ctl_game;
+/* The launch under way is px2-open's --fresh: no auto state this once */
+static bool g_ctl_fresh;
 
 volatile sig_atomic_t want_quit;
 static void on_sigterm(int sig) { (void)sig; want_quit = 1; plat_terminate(); }
@@ -1842,6 +1861,8 @@ static void on_game_tick(void)
 
 	/* Developer Mode's SSH, which a game does not end (see dev_ssh_tick) */
 	dev_ssh_tick();
+	/* px2-open's status and quit, and an open that ends this game first */
+	if (g_ctl_app) ctl_poll(g_ctl_app, CTL_AT_GAME);
 	int rc;
 
 	/* Muse, bounded: read what has arrived, and send at most one PLAY when a
@@ -2911,6 +2932,7 @@ bool tick_theme(app *a)
 {
 	xs_tick_behind(a);
 	dev_ssh_tick();
+	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
 	tick_boot_theme();
 	tick_update_daily();
@@ -6694,6 +6716,8 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		 * every pass, and the file Diatom and portkeys read follows. */
 		tick_theme(a);
 		if (a->in.quit_requested) { a->running = false; return MENU_LEFT_GONE; }
+		/* px2-open's quit over the in-game menu: its game is stopping */
+		if (g_ctl_close_menu) return MENU_LEFT_GONE;
 		if (a->in.pressed[IN_POWER] || idle_due(a)) {
 			if (!st->on_power) { power_off(a); return MENU_LEFT_GONE; }
 			if (st->on_power(a, ctx) == MENU_DONE) return MENU_LEFT_GONE;
@@ -16711,6 +16735,13 @@ static menu_result gm_power(app *a, void *ctx)
 	return MENU_DONE;
 }
 
+/* Quit, the in-game menu's row and px2-open's quit (ctl_poll): the wait loop
+ * carries on until EXIT arrives; quitting is asking, not tearing down. */
+static void gm_quit(void)
+{
+	plat_resident_line("STOP");
+}
+
 static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 {
 	gm_ctx *c = ctx;
@@ -16837,9 +16868,7 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		c->resume = true;
 		return MENU_DONE;
 	case GM_QUIT:
-		/* The wait loop carries on until EXIT arrives; quitting is asking,
-		 * not tearing down. */
-		plat_resident_line("STOP");
+		gm_quit();
 		return MENU_DONE;
 	default: break;
 	}
@@ -16892,6 +16921,9 @@ static void game_menu(app *a)
 	if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
 		c.resume = true;
 	g_menu_closing = false;
+	/* Closed by px2-open's quit, which said STOP as Quit does: no Continue */
+	if (g_ctl_close_menu) c.resume = false;
+	g_ctl_close_menu = false;
 
 	/* Its close, over the paused game, while the display is still this
 	 * process's: before the pages are handed back below, and never after
@@ -17124,6 +17156,9 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_ACCEPT);
 	bgm_hold(BGM_HOLD_GAME, true);              /* faded under the loading screen */
 	fprintf(stderr, "port: %s\n", path);
+	/* What px2-open's status says while no launcher runs to say it, with
+	 * launch.sh's process for its quit (src/ctl.h) */
+	ctl_port_write(ctl_dir(), (int)getppid(), (long)time(NULL), path);
 	/* The shelf comes back on this game, and an audiobook keeps its place:
 	 * launch.sh stops Muse too, as the port needs the sound card. */
 	remember_place(a);
@@ -17599,9 +17634,19 @@ static void launch(app *a)
 		 * the in-game menu, which is drawn HERE now, over the frame the
 		 * emulator hands us on the way into its pause. */
 		aout_before_launch();
-		if (plat_resident_send(s->tag, core, rom, ds_fresh ? "" : st, st, pv,
+		if (plat_resident_send(s->tag, core, rom, ds_fresh || g_ctl_fresh ? "" : st, st, pv,
 		                       console, active[0] ? active : NULL)) {
 			int r;
+
+			/* What px2-open's status says from here to the wait's end */
+			memset(&g_ctl_game, 0, sizeof g_ctl_game);
+			g_ctl_game.on = true;
+			snprintf(g_ctl_game.tag, sizeof g_ctl_game.tag, "%s", s->tag);
+			snprintf(g_ctl_game.name, sizeof g_ctl_game.name, "%s", s->name);
+			snprintf(g_ctl_game.core, sizeof g_ctl_game.core, "%s", s->core);
+			snprintf(g_ctl_game.path, sizeof g_ctl_game.path, "%s", rom);
+			g_ctl_game.since = (long)time(NULL);
+			if (g_ctl_fresh) fprintf(stderr, "ctl: %s starts fresh, without its auto state\n", rom);
 
 			/* The list Diatom was just handed, for an early answer to trim. */
 			if (active[0]) {
@@ -17683,9 +17728,15 @@ static void launch(app *a)
 			 * shelf simply holds until the game's first frame replaces it. */
 			for (;;) {
 				r = plat_resident_wait();
-				if (r == RES_PAUSED) { game_menu(a); continue; }
+				if (r == RES_PAUSED) {
+					g_ctl_game.paused = true;
+					game_menu(a);
+					g_ctl_game.paused = false;
+					continue;
+				}
 				break;
 			}
+			g_ctl_game.on = false;
 			resident = (r == RES_EXIT);
 
 			/* The Auto card's picture, written ONLY here - at the same moment
@@ -17783,7 +17834,7 @@ static void launch(app *a)
 			argv[n++] = (char *)aout_channels_wire(
 				aout_channels_for(g_channels, aout_dest_of(&cs, "")));
 		}
-		if (!ds_fresh) {
+		if (!ds_fresh && !g_ctl_fresh) {
 			argv[n++] = (char *)"--load-state";  argv[n++] = st;
 		}
 		argv[n++] = (char *)"--state-on-exit";   argv[n++] = st;
@@ -19859,6 +19910,274 @@ static int port_menu_main(int argc, char **argv)
 	return how;
 }
 
+/* ---------- px2-open: the command channel (src/ctl.h) ---------------------
+ *
+ * A game opened over SSH as A on it in its shelf opens it: the system its
+ * Roms folder is, the core that shelf runs, its auto state, the in-game menu,
+ * the logs, and a port or a "run:" program through launch.sh - the same
+ * launch, by pick_launch, the way Random Game and Search Games start theirs.
+ * `open` on the shelf starts it at once; over a running game, or its in-game
+ * menu, it quits that game first, by the menu's own Quit (gm_quit), and opens
+ * the new one when the shelf is back; on any other screen (a menu over the
+ * shelf, Muse, a message) it is refused as busy, as a press there would not
+ * reach the shelf either. `quit` is the menu's Quit; `status` says where the
+ * launcher is. Debugging only: nothing here is a player's way in. */
+
+static int g_ctl_fd = -1;
+static ctl_cmd g_ctl_next;        /* an open waiting for the game it quit */
+static bool g_ctl_next_on;
+
+typedef struct {
+	int sys, game;                /* its own shelf (never Favorites) and place */
+	char core[CFG_STR];           /* what it runs on this time */
+} ctl_target;
+
+static void ctl_start(app *a)
+{
+	g_ctl_app = a;
+	g_ctl_fd = ctl_listen(ctl_dir());
+	if (g_ctl_fd < 0) return;
+	/* A port that ran has ended: a launcher is up to answer for itself */
+	ctl_port_clear(ctl_dir());
+	fprintf(stderr, "ctl: px2-open's commands on %s/%s\n", ctl_dir(), CTL_SOCK_NAME);
+}
+
+static void ctl_stop(void)
+{
+	ctl_shut(g_ctl_fd, ctl_dir());
+	g_ctl_fd = -1;
+	g_ctl_app = NULL;
+}
+
+/* The shelf a folder is, and the game a file is on it: -1s for none */
+static void ctl_find(app *a, const char *folder, const char *file, int *si, int *gi)
+{
+	const char *folders[CFG_MAX_SYSTEMS];
+	const char **files;
+	int n = a->sys.count < CFG_MAX_SYSTEMS ? a->sys.count : CFG_MAX_SYSTEMS, i;
+	game_list *l;
+
+	*gi = -1;
+	for (i = 0; i < n; i++)
+		folders[i] = a->view[i].owner || is_muse(&a->sys.systems[i]) ? NULL
+		                                                             : a->sys.systems[i].folder;
+	if ((*si = ctl_find_system(folder, folders, n)) < 0) return;
+	l = &a->view[*si].list;
+	if (l->count <= 0 || !(files = malloc(sizeof *files * (size_t)l->count))) return;
+	for (i = 0; i < l->count; i++) files[i] = l->items[i].file;
+	*gi = ctl_find_game(file, files, l->count);
+	free(files);
+}
+
+/* What an open names, as its shelf has it, or why not: `code` one of the
+ * error codes px2-open says (docs/building.md). The shelves are read again
+ * once, on the shelf only, for a game copied onto the card since. */
+static bool ctl_resolve(app *a, const ctl_cmd *c, bool rescan, ctl_target *t,
+                        const char **code, char *msg, size_t mn)
+{
+	char folder[CFG_STR], file[LIB_PATH], why[160];
+	const system_cfg *s;
+	int si, gi;
+
+	if (!ctl_path_split(P_ROMS, c->path, folder, sizeof folder, file, sizeof file,
+	                    why, sizeof why) ||
+	    !ctl_path_real(P_ROMS, c->path, why, sizeof why)) {
+		*code = strstr(why, "no such") ? "no-file" : "bad-path";
+		snprintf(msg, mn, "%s: %s", c->path, why);
+		return false;
+	}
+	ctl_find(a, folder, file, &si, &gi);
+	if (gi < 0 && rescan) {
+		fprintf(stderr, "ctl: %s/%s is not on a shelf: reading the shelves again\n", folder, file);
+		rescan_all(a);
+		ctl_find(a, folder, file, &si, &gi);
+	}
+	if (si < 0) {
+		*code = "unknown-system";
+		snprintf(msg, mn, "no shelf is Roms/%s (a system with no games has none)", folder);
+		return false;
+	}
+	s = &a->sys.systems[si];
+	if (gi < 0) {
+		*code = "not-a-game";
+		snprintf(msg, mn, "%s is not a game on the %s shelf (it takes: %s)", file, s->name,
+		         s->exts[0] ? s->exts : "anything");
+		return false;
+	}
+	t->sys = si;
+	t->game = gi;
+	snprintf(t->core, sizeof t->core, "%s", s->core);
+	if (c->core[0]) {
+		char alt[CFG_STR];
+		int k, n = cfg_core_count(s);
+		bool found = false;
+
+		for (k = 0; k < n && !found; k++)
+			if (cfg_core_at(s, k, alt, sizeof alt) && ctl_core_is(c->core, alt)) found = true;
+		if (!found) {
+			*code = "unknown-core";
+			snprintf(msg, mn, "%s offers %s, not %s", s->name, s->cores[0] ? s->cores : s->core,
+			         c->core);
+			return false;
+		}
+		if (!core_present(alt)) {
+			*code = "unknown-core";
+			snprintf(msg, mn, "%s is not on the card", alt);
+			return false;
+		}
+		snprintf(t->core, sizeof t->core, "%s", alt);
+	}
+	/* A disc that needs firmware, as launch refuses it, said here instead of
+	 * in a message on the handheld that nobody over SSH would see */
+	if (strcmp(t->core, PORT_CORE) && strncmp(t->core, RUN_PREFIX, strlen(RUN_PREFIX)) &&
+	    s->disc_bios[0] && lib_is_disc(a->view[si].list.items[gi].file)) {
+		char bios[CFG_STR * 2];
+
+		snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
+		if (!disc_bios_found(bios, s->disc_bios)) {
+			*code = "needs-bios";
+			snprintf(msg, mn, "%s needs Bios/%.*s", s->name, (int)strcspn(s->disc_bios, ","),
+			         s->disc_bios);
+			return false;
+		}
+	}
+	return true;
+}
+
+/* As A on it: its shelf, its card, the launch. The core is the shelf's for
+ * this launch alone, and nothing is written (core_step writes a choice). */
+static void ctl_open_now(app *a, const ctl_target *t, bool fresh)
+{
+	system_cfg *s = &a->sys.systems[t->sys];
+	char was[CFG_STR];
+
+	snprintf(was, sizeof was, "%s", s->core);
+	snprintf(s->core, sizeof s->core, "%s", t->core);
+	g_ctl_fresh = fresh;
+	memset(&a->in, 0, sizeof a->in);
+	g_pick.shelf = t->sys;
+	g_pick.game = t->game;
+	g_pick.hold_ms = 0;
+	pick_launch(a);
+	g_ctl_fresh = false;
+	snprintf(s->core, sizeof s->core, "%s", was);
+}
+
+/* The running game asked to end, as the in-game menu's Quit asks: over the
+ * menu, the menu closes too (menu_run_body) */
+static void ctl_stop_game(void)
+{
+	if (!g_ctl_game.stopping) gm_quit();
+	g_ctl_game.stopping = true;
+	if (g_ctl_game.paused) g_ctl_close_menu = true;
+}
+
+static void ctl_status(app *a, int at, int cfd)
+{
+	long now = (long)time(NULL);
+	char next[CTL_PATH + 8] = "";
+
+	if (g_ctl_next_on) snprintf(next, sizeof next, "\tnext=%s", g_ctl_next.path);
+	if (g_ctl_game.on) {
+		const char *state = g_ctl_game.stopping ? "stopping"
+		                  : g_ctl_game.paused   ? "paused"
+		                  : plat_resident_started() ? "running" : "starting";
+
+		ctl_answer(cfd, "ok\tstate=%s\tsystem=%s\tname=%s\tpath=%s\tcore=%s\tsince=%ld\tup=%ld%s",
+		           state, g_ctl_game.tag, g_ctl_game.name, g_ctl_game.path, g_ctl_game.core,
+		           g_ctl_game.since, now - g_ctl_game.since, next);
+	} else if (at == CTL_AT_SHELF && a->sys.count > 0) {
+		const sysview *v = &a->view[a->sys_cursor];
+		const system_cfg *s = &a->sys.systems[a->sys_cursor];
+		char on[LIB_PATH + 8] = "";
+
+		if (a->screen == SCREEN_GAMES && v->cursor >= 0 && v->cursor < v->list.count)
+			snprintf(on, sizeof on, "\tgame=%s", v->list.items[v->cursor].file);
+		ctl_answer(cfd, "ok\tstate=shelf\tscreen=%s\tsystem=%s\tname=%s%s%s",
+		           a->screen == SCREEN_GAMES ? "games" : "systems", s->tag, s->name, on, next);
+	} else {
+		ctl_answer(cfd, "ok\tstate=%s%s", at == CTL_AT_SHELF ? "shelf" : "screen", next);
+	}
+}
+
+/* One command, if one is waiting. True when it started a game (on the shelf
+ * only), which has ended by the time this returns. */
+static bool ctl_poll(app *a, int at)
+{
+	char line[CTL_LINE], err[200], msg[CTL_PATH + 200];
+	const char *code = "";
+	ctl_target t;
+	ctl_cmd c;
+	int cfd;
+
+	if (g_ctl_fd < 0 || !a) return false;
+	if ((cfd = ctl_take(g_ctl_fd, line, sizeof line)) < 0) return false;
+	if (!ctl_parse(line, &c, err, sizeof err)) {
+		ctl_answer(cfd, "error\tcode=bad-command\tmsg=%s", err);
+		return false;
+	}
+	if (c.verb == CTL_STATUS) {
+		ctl_status(a, at, cfd);
+		return false;
+	}
+	fprintf(stderr, "ctl: %s\n", line);
+	if (c.verb == CTL_QUIT) {
+		if (!g_ctl_game.on) {
+			ctl_answer(cfd, "error\tcode=not-running\tmsg=no game is running");
+			return false;
+		}
+		ctl_stop_game();
+		ctl_answer(cfd, "ok\tquit=%s", g_ctl_game.path);
+		return false;
+	}
+	if (!ctl_resolve(a, &c, at == CTL_AT_SHELF, &t, &code, msg, sizeof msg)) {
+		fprintf(stderr, "ctl: refused, %s\n", msg);
+		ctl_answer(cfd, "error\tcode=%s\tmsg=%s", code, msg);
+		return false;
+	}
+	if (at == CTL_AT_SHELF) {
+		const system_cfg *s = &a->sys.systems[t.sys];
+
+		ctl_answer(cfd, "ok\topening=%s\tsystem=%s\tcore=%s%s", c.path, s->tag, t.core,
+		           !strcmp(t.core, PORT_CORE) || !strncmp(t.core, RUN_PREFIX, strlen(RUN_PREFIX))
+		               ? "\tport=1" : "");
+		ctl_open_now(a, &t, c.fresh);
+		return true;
+	}
+	if (g_ctl_game.on) {
+		/* Quit first, then this one, from the shelf's loop (ctl_shelf_turn) */
+		g_ctl_next = c;
+		g_ctl_next_on = true;
+		ctl_stop_game();
+		ctl_answer(cfd, "ok\tquit=%s\topening=%s", g_ctl_game.path, c.path);
+		return false;
+	}
+	ctl_answer(cfd, "error\tcode=busy\tmsg=another screen is open over the shelf "
+	                "(a menu, Muse, a message): B back to the shelf first");
+	return false;
+}
+
+/* The shelf's turn: an open waiting for the game it quit, else a command */
+static bool ctl_shelf_turn(app *a)
+{
+	if (g_ctl_next_on) {
+		ctl_cmd c = g_ctl_next;
+		char msg[CTL_PATH + 200];
+		const char *code;
+		ctl_target t;
+
+		g_ctl_next_on = false;
+		if (!ctl_resolve(a, &c, true, &t, &code, msg, sizeof msg)) {
+			fprintf(stderr, "ctl: the open after the quit refused, %s\n", msg);
+			return false;
+		}
+		fprintf(stderr, "ctl: opening %s, the game before it over\n", c.path);
+		ctl_open_now(a, &t, c.fresh);
+		return true;
+	}
+	return ctl_poll(a, CTL_AT_SHELF);
+}
+
 int main(int argc, char *argv[])
 {
 	app a = { 0 };
@@ -21118,6 +21437,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* px2-open's commands, from here on: a game resumed at boot, the
+	 * tutorial and the shelf (src/ctl.h) */
+	ctl_start(&a);
+
 	/* Nothing pressed during the boot is honored. How long that takes is the
 	 * device's to say - see plat_input_settle. */
 	plat_input_settle(&a.in);
@@ -21320,7 +21643,15 @@ int main(int argc, char *argv[])
 		 * a moment or draws nothing: the launch zoom, the power-off, the
 		 * frame a port loads behind, and Muse's lock, whose panel is dark
 		 * until the screen it returns to asks for itself. */
+		/* px2-open's commands on the shelf, where an open is A on its game
+		 * (src/ctl.h), and tick_theme's turn then not a screen's */
+		if (ctl_shelf_turn(&a)) {
+			if (!a.running) break;
+			continue;
+		}
+		g_ctl_shelf_pass = true;
 		tick_theme(&a);
+		g_ctl_shelf_pass = false;
 
 		/* Back on the shelf, so any menu MENU closed is closed: put the flag
 		 * down before anything here can open another. See menu_leaving. And
@@ -21430,6 +21761,7 @@ int main(int argc, char *argv[])
 	xs_end();
 
 done:
+	ctl_stop();
 	free_all_textures(&a);
 	/* First, and before IMG_Quit: the worker is inside IMG_Load, and the
 	 * views it decodes into are freed just below. The resizer too, for the

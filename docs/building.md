@@ -105,6 +105,7 @@ something once broke in a way nothing noticed:
 | `check-sshlink` | USB File Transfer's SSH: what it counts in dropbear's log (sign-ins, wrong PINs, a port it cannot have), names that try to say otherwise, and the shadow it gives dropbear |
 | `check-usblink` | USB charges only until asked: a computer is asked about once per plug and a charger never, every choice ends with its screen or its cable, and Developer Mode keeps the link |
 | `check-devmode` | developer mode on a release image: the unlock hold (L2 and R2 for five seconds, a bar that only rises, and letting go early, another page or holding on starting again), the setting kept in the card's database, a random one-time password in its alphabet, and only public keys without options taken from the card's key file, once each |
+| `check-ctl` | the launcher's command channel, the one `px2-open` talks to: the command lines, good and bad; a game's path split into its system's folder and the file, and anything else turned away (outside `Roms`, relative, `..`, a link that leads out); the system found by its folder in either case and the game by its launch path or its disc folder; a core by its name or its Core row's; the socket in a folder in `/tmp`, closed to others, a command in and an answer out, and the port record |
 | `check-sgdb` | SteamGridDB on the device: the real client and a whole run against a fake API (the key in a header and never a URL, the match, the formats, the refusals, a key refused with a 401 or 403 when it is entered said so and the one before it kept), its title and ratio held to tools/sgdb-check.py |
 | `check-snapshelf` | when the shelf's cover turns into its video snap and back, on a clock the check moves by hand |
 | `check-ss` | whether this build can reach ScreenScraper, and whether an account survives a restart |
@@ -328,11 +329,45 @@ SFTP server runs, and into `/tmp` first; check that the checksums match on
 both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds
 carry no key and run no SSH server until Developer Mode is on (MENU > About).
 
-Every image has `px2-shot`, `px2-input`, `px2-perf` and `px2-snap` in
-`/usr/bin`, so over SSH a screenshot is `px2-shot /tmp/s.ppm`, a press is
-`px2-input a`, a performance report is `px2-perf 10` and a game's saves set
-aside are `px2-snap save ROM`, with nothing to build or copy. `tools/px2`
-drives them from the Mac (below).
+Every image has `px2-shot`, `px2-input`, `px2-open`, `px2-perf` and
+`px2-snap` in `/usr/bin`, so over SSH a screenshot is `px2-shot /tmp/s.ppm`,
+a press is `px2-input a`, a game is
+`px2-open "/mnt/SDCARD/Roms/NES/ZyperOS Test.nes"`, a performance report is
+`px2-perf 10` and a game's saves set aside are `px2-snap save ROM`, with
+nothing to build or copy. `tools/px2` drives them from the Mac (below).
+
+`px2-open` talks to the launcher's command channel (`src/ctl.h`): a Unix
+socket, `/run/zyperos/ctl.sock`, in a folder only root can open, with no
+network side, so on a release image it is reachable only through Developer
+Mode's SSH. The launcher opens the game as A on it in its shelf does: the
+system its `Roms` folder is, the core that shelf runs, the auto state, the
+in-game menu, the logs, and a port or a `run:` program through `launch.sh`. A
+path that is not a game under `/mnt/SDCARD/Roms` (`Ports` included) is
+refused, a link that leads out of it too.
+
+- `px2-open PATH` opens it; `--fresh` without its auto state this once (the
+  auto state the game writes when it ends replaces the old one), `--core NAME`
+  on another core its shelf offers this once (`--core Flycast` for the
+  Dreamcast's standalone Flycast), `--wait-running SECONDS` waits for its
+  first frame and fails if it ends or never starts. A game already running
+  is quit first, as the in-game menu's Quit quits it, and a port too (USR2 to
+  `launch.sh`, the port menu's Quit). On any other screen over the shelf (a
+  menu, Muse, a message) it is refused as `busy`: `px2-input b` back first.
+- `px2-open --quit` quits the running game as the in-game menu's Quit does,
+  its menu open or not, and waits for the shelf.
+- `px2-open --status` prints one `key=value` a line: `state` (`shelf`,
+  `screen`, `starting`, `running`, `paused`, `stopping`, `port`), and for a
+  game its `system`, `path`, `core`, `since` (Unix time) and `up` (seconds).
+  `px2-open --wait-running 20` waits for whatever is opened.
+
+Its errors say a code and why: `bad-path`, `no-file`, `unknown-system`,
+`not-a-game`, `unknown-core`, `needs-bios`, `not-running`, `busy`,
+`bad-command`. It exits 0 when done, 1 for a refusal, 2 when no launcher
+answers or a wait runs out. The launcher reads the channel on the shelf, on
+every screen that runs a loop, and ten times a second in a game; a game
+started without the resident emulator (its fallback) has no launcher to
+answer until it ends. A game copied onto the card after the launcher read the
+shelves is found all the same: an open from the shelf reads them again.
 
 For the Pixel 2 with nobody holding it, `tools/` has more small programs to build
 with plastron's toolchain (`aarch64-buildroot-linux-gnu-gcc -O2`, `-pthread`
@@ -342,6 +377,7 @@ from `/tmp` as root:
 
 - `px2-shot` (in the image) saves what the panel shows as a 640x480 PPM, from any program,
   and `px2-shot --fps` counts the frames a second it shows.
+- `px2-open` (in the image) opens a game, quits it and says what runs (above).
 - `px2-input` (in the image): `px2-input down down a` presses the buttons, as the joypad would, and
   `px2-input select+start` presses them together, for an emulator's quit chord.
   `volup` and `voldown` are the volume keys, sent on their own device, and
