@@ -216,7 +216,7 @@ run_port() {
 	fi
 	# A standalone emulator's script gets the game as its argument ("run:"
 	# shelves); a port's script gets nothing
-	echo "port: $1${2:+ $2}" >> "$LOG"
+	echo "port: $1${2:+ $2}${3:+ (the in-game menu, $3)}" >> "$LOG"
 	# The volume keys, which ZyperOS and Diatom read and which are both stopped
 	# now (tools/portkeys.c); MENU held turns them to brightness, as in ZyperOS.
 	# It steps ZyperOS's own levels, saved in its database, and shows the bar
@@ -238,12 +238,14 @@ run_port() {
 		/usr/bin/splash --still /tmp/zyperos_loading.raw &
 		still=$!
 	fi
-	# OpenBOR has the in-game menu on MENU too, which portkeys shows by
-	# stopping it and starting the launcher for the menu alone (--menu: the
-	# launcher, the system's tag and the game; src/portmenu.h)
+	# A program of its own on a game (OpenBOR, DraStic, the standalone
+	# Flycast) has the in-game menu on MENU too: the launcher names the
+	# system's tag in the request, third, and portkeys shows the menu by
+	# stopping the program and starting the launcher for the menu alone
+	# (--menu: the launcher, the tag and the game; src/portmenu.h)
 	if [ -x "$ZYPEROS_DIR/portkeys" ]; then
-		if [ "${1##*/}" = OpenBOR.sh ] && [ -n "$2" ]; then
-			"$ZYPEROS_DIR/portkeys" --menu "$ZYPEROS_DIR/zyperos.elf" OPENBOR "$2" \
+		if [ -n "$2" ] && [ -n "$3" ]; then
+			"$ZYPEROS_DIR/portkeys" --menu "$ZYPEROS_DIR/zyperos.elf" "$3" "$2" \
 				"$USERDATA_PATH/zyperos.db" \
 				"$SHARED_USERDATA_PATH/.zyperos/library.db" 2>> "$LOG" &
 		else
@@ -357,9 +359,9 @@ while : ; do
 	fi
 	if [ -f "$PORT_REQUEST" ]; then
 		TAB=$(printf '\t')
-		IFS=$TAB read -r PORT GAME < "$PORT_REQUEST"
+		IFS=$TAB read -r PORT GAME TAG < "$PORT_REQUEST"
 		rm -f "$PORT_REQUEST"
-		run_port "$PORT" "$GAME"
+		run_port "$PORT" "$GAME" "$TAG"
 		# POWER, or the battery run flat, over the port (port_power)
 		[ -f /tmp/zyperos_poweroff ] && break
 		cd "$ZYPEROS_DIR"

@@ -14857,9 +14857,12 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	/* Written whole, then renamed into place: launch.sh reads it the moment
 	 * this process is gone, and half a path would run nothing. */
 	f = fopen(PORT_REQUEST ".tmp", "w");
+	/* A program of its own on a game has the in-game menu over it: the
+	 * system's tag after the game says so to launch.sh, which gives it to
+	 * portkeys with --menu (src/portmenu.h) */
 	if (!strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX)))
-		ok = f && fprintf(f, "%s/%s\t%s\n", P_CARD,
-		                  s->core + strlen(RUN_PREFIX), path) > 0;
+		ok = f && fprintf(f, "%s/%s\t%s\t%s\n", P_CARD, s->core + strlen(RUN_PREFIX), path,
+		                  port_menu_for(s->core) ? s->tag : "") > 0;
 	else
 		ok = f && fprintf(f, "%s\n", path) > 0;
 	if (f && fclose(f) != 0) ok = false;
@@ -17095,8 +17098,8 @@ static int scan_thread(void *ctx)
 	return 0;
 }
 
-/* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a port, and
- * only that. What it needs of the launcher's start, in the same order: the
+/* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
+ * its own (OpenBOR, DraStic, the standalone Flycast), and only that. What it needs of the launcher's start, in the same order: the
  * settings, the port's system from systems.cfg (its name and accent, and its
  * buttons for the Controls page), the language and theme, the interface
  * sounds, the display (taken as from the splash: portkeys has let go of it),
@@ -17142,8 +17145,11 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	g_port_menu = true;
-	g_port_ctl = (ctl_game){ s->tag, s->name, home_label(s->tag, s->name), s->map,
-	                         plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, &a, true };
+	/* Its buttons when ZyperOS knows them (OpenBOR's); over DraStic or the
+	 * standalone Flycast, In a game alone (port_menu_pads) */
+	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
+	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true };
 	{
 		char ap[16], lc[16], v[16], dir[CFG_STR * 2];
 

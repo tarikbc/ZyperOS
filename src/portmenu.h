@@ -5,7 +5,8 @@
 /* The in-game menu over a program of its own: OpenBOR, which has no libretro
  * core and so no Diatom to pause it for the launcher's menu.
  *
- * launch.sh starts portkeys beside it with --menu (tools/portkeys.c). A MENU
+ * launch.sh starts portkeys beside it with --menu (tools/portkeys.c), as for
+ * any program a "run:" shelf starts (port_menu_for, below). A MENU
  * tap there stops the port where it is (SIGSTOP), saves the frame on the
  * panel to PORT_MENU_STILL, lets go of the port's display, and starts the
  * launcher with PORT_MENU_ARG, the system's tag and the game. The launcher
@@ -23,11 +24,29 @@
 
 #define PORT_MENU_ARG      "--port-menu"
 
-/* The systems run by a program of their own that have the in-game menu over
- * them, by tag: OpenBOR. launch.sh gives portkeys --menu for its script
- * (sd/pixel2/launch.sh, run_port), and the Controls pages have its buttons
- * (src/controls.c); tools/controls-check.c holds the two to this. */
-static inline bool port_menu_for(const char *tag)
+/* Which games get the menu, by the core that runs them: every game a shelf
+ * hands to a program of its own through a "run:" script. That is OpenBOR,
+ * which ZyperOS ships, and DraStic and the standalone Flycast 2.7, which a
+ * card can add for the Nintendo DS and Dreamcast shelves' Core row. The
+ * launcher names the system's tag in the port request for these alone
+ * (launch_port), and launch.sh gives portkeys --menu when it does.
+ *
+ * Not a port ("port", the Ports shelf): the mechanism is the same, but a
+ * PortMaster game such as Stardew Valley takes most of the 1 GB, and the
+ * launcher started beside it for the menu could push the kernel to kill the
+ * game, unsaved. */
+static inline bool port_menu_for(const char *core)
+{
+	return core && !strncmp(core, "run:", 4);
+}
+
+/* Of those, the programs whose buttons the Controls pages know, by tag:
+ * OpenBOR, whose layout ships with it (src/controls.c). DraStic and Flycast
+ * keep theirs in their own settings, which ZyperOS does not read, so over
+ * them Controls is In a game alone; and the Nintendo DS's page of buttons is
+ * DSperate's, not DraStic's. tools/controls-check.c holds this to the
+ * table. */
+static inline bool port_menu_pads(const char *tag)
 {
 	return tag && !strcmp(tag, "OPENBOR");
 }

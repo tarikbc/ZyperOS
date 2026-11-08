@@ -937,16 +937,18 @@ static bool batt_now(int *pct, bool *charging)
 
 /* ---- the in-game menu, over a port that has one -----------------------------
  *
- * OpenBOR has no libretro core, so it runs as a program of its own, and the
- * launcher, which draws the in-game menu over a game Diatom runs, has exited
- * for it. With --menu (launch.sh gives it for OpenBOR), MENU on its own
+ * OpenBOR has no libretro core, so it runs as a program of its own, as DraStic
+ * and the standalone Flycast do when a card adds them, and the launcher, which
+ * draws the in-game menu over a game Diatom runs, has exited for it. With
+ * --menu (launch.sh gives it for any "run:" program, src/portmenu.h), MENU on its own
  * (pkkeys_menu_tapped: pressed and let go with no brightness step under it,
  * as Diatom reads it) brings the launcher back for its menu, src/portmenu.h:
  *
  *   1. The port stops where it is, its whole process group (SIGSTOP): the
  *      game is paused, its sound with it, and its last frame stays lit, since
- *      nothing flips it. OpenBOR takes a second's gap as one tick of game
- *      time (getinterval), so nothing in the game moved meanwhile.
+ *      nothing flips it; a helper its script started (gptokeyb) stops with
+ *      it. OpenBOR takes a second's gap as one tick of game time
+ *      (getinterval), so nothing in the game moved meanwhile.
  *   2. That frame is saved, as the panel shows it, for the menu's backdrop
  *      (still_save), and the port's display is let go of: DROP_MASTER on the
  *      borrowed copy of its file, which root may do for a file it did not
@@ -958,8 +960,9 @@ static bool batt_now(int *pct, bool *charging)
  *      process waits for it and reads nothing.
  *   4. The display goes back to the port (SET_MASTER on the same copy), its
  *      frame is put back on the panel if the launcher left another, what was
- *      pressed for the menu is emptied out of the port's input queues
- *      (port_input_flush), and the port goes on (SIGCONT). The levels are
+ *      pressed for the menu is emptied out of the input queues of every
+ *      process in the group (port_input_flush), and it goes on (SIGCONT).
+ *      The levels are
  *      read again, and the keys here resynced (in the loop).
  *   5. Quit: launch.sh ends the port, as it ends one for POWER but without
  *      powering off (SIGUSR2), and the shelf comes back. POWER in the menu,
@@ -1112,21 +1115,29 @@ static uint32_t crtc_connector(void)
 
 /* What was pressed while the menu was up was the launcher's, and the port has
  * it all queued for the moment it goes on: the A that chose Continue would be
- * an attack. Each of its event devices has the clock it is read on changed
- * and changed back, which empties its queue and leaves the kernel's
- * SYN_DROPPED in it (evdev_set_clk_type); SDL reads that as events lost and
- * asks the device what is down now, so the port sees the buttons as they are
- * and nothing pressed for the menu. It is left on the wall clock, the
- * kernel's own default, which SDL does not change. */
-static void port_input_flush(int pid, int pidfd)
+ * an attack. So would a helper the port's script started beside it, which
+ * reads the pad too - gptokeyb turning it into keys, DraStic's stylus pad -
+ * and would type it all into the game. Each event device any process of the
+ * port's group has open has the clock it is read on changed and changed
+ * back, which empties that queue and leaves the kernel's SYN_DROPPED in it
+ * (evdev_set_clk_type). SDL reads that as events lost and asks the device
+ * what is down now, so the port sees the buttons as they are and nothing
+ * pressed for the menu; a helper that does not read SYN_DROPPED so (gptokeyb)
+ * loses only a release that came while the menu was up. Each is left on the
+ * wall clock, the kernel's own default, which SDL does not change. */
+static int input_flush_pid(int pid)
 {
 	char dir[64];
 	DIR *fds;
 	struct dirent *fe;
-	int flushed = 0;
+	int flushed = 0, pidfd;
 
 	snprintf(dir, sizeof dir, "/proc/%d/fd", pid);
-	if (pidfd < 0 || !(fds = opendir(dir))) return;
+	if (!(fds = opendir(dir))) return 0;
+	if ((pidfd = (int)syscall(SYS_pidfd_open, pid, 0)) < 0) {
+		closedir(fds);
+		return 0;
+	}
 	while ((fe = readdir(fds))) {
 		char link[352], target[64];
 		ssize_t r;
@@ -1143,8 +1154,45 @@ static void port_input_flush(int pid, int pidfd)
 		close(fd);
 		flushed++;
 	}
+	close(pidfd);
 	closedir(fds);
-	fprintf(stderr, "portkeys: the port's %d input queue(s) emptied of the menu's presses\n", flushed);
+	return flushed;
+}
+
+/* The process group of a process, from its stat line (after the name) */
+static int pgrp_of(int pid)
+{
+	char path[64], buf[512], *p, state;
+	int ppid = 0, pg = -1;
+	ssize_t r;
+	int fd;
+
+	snprintf(path, sizeof path, "/proc/%d/stat", pid);
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) return -1;
+	r = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (r <= 0) return -1;
+	buf[r] = '\0';
+	if (!(p = strrchr(buf, ')')) || sscanf(p + 1, " %c %d %d", &state, &ppid, &pg) != 3) return -1;
+	return pg;
+}
+
+static void port_input_flush(int pg)
+{
+	DIR *proc = opendir("/proc");
+	struct dirent *pe;
+	int queues = 0, procs = 0;
+
+	while (proc && (pe = readdir(proc))) {
+		int pid = atoi(pe->d_name), n;
+
+		if (pid <= 1 || pgrp_of(pid) != pg) continue;
+		if ((n = input_flush_pid(pid)) > 0) procs++;
+		queues += n;
+	}
+	if (proc) closedir(proc);
+	fprintf(stderr, "portkeys: %d input queue(s) of %d process(es) emptied of the menu's presses\n",
+	        queues, procs);
 }
 
 /* MENU tapped: the in-game menu, as at the top of this section. 0 when there
@@ -1220,7 +1268,7 @@ static int menu_show(void)
 				fprintf(stderr, "portkeys: cannot put the port's frame back (%s)\n", strerror(errno));
 		}
 	}
-	port_input_flush(pid, G.pidfd);
+	port_input_flush(pg);
 	release(false);
 	kill(-pg, SIGCONT);
 	/* The launcher's volume and brightness keys, saved where these are */

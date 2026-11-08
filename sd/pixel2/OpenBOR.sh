@@ -14,8 +14,7 @@
 # Y, the two others on L1 and R1, START its pause and SELECT a screenshot
 # (its sdl/control.c; in QEMU its menu answers X and Y so, 2026-11-07). A game
 # ends from OpenBOR's own menus, or from ZyperOS's in-game menu on MENU,
-# which portkeys shows over it (launch.sh gives it --menu for this script;
-# src/portmenu.h).
+# which portkeys shows over it, as over any "run:" program (src/portmenu.h).
 DIR=/mnt/SDCARD/Saves/openbor
 mkdir -p "$DIR"
 cd "$DIR" || exit 1

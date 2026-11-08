@@ -139,6 +139,9 @@ L1 and R1 the third and fourth, START pauses into OpenBOR's own menu, SELECT
 saves a screenshot) and then In a game, where POWER quits and turns the
 handheld off. OpenBOR keeps its own saves and has no save states, so there is
 no Save, Load or Reset. Quit ends the game and goes back to the shelf.
+DraStic and the standalone Flycast, when a card has them for the Nintendo DS
+or the Dreamcast, get the same three rows. Their buttons are set in their own
+menus, so Controls there has only the In a game page.
 
 **About ZyperOS has two pages**, changed with Left/Right. The first shows the
 version, network address, battery charge and awake time. The second shows the
