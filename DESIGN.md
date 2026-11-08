@@ -2085,6 +2085,13 @@ played". A on a game is Delete Game's question, as it is, over this page;
 the page is what every panel it opens stands on. B goes back to the card,
 on the system's row.
 
+The page is a base, as Muse's shelf is: MENU's panel leaves over it as it
+opens, and a panel opened on it - a question, "Deleting...", a result - comes
+from nothing, and leaves over it when it closes. *(2026-11-08, on the Pixel
+2: the question first opened as a swap from the last panel drawn, which left
+over the page before the question came, so a panel showed, went and came
+back.)*
+
 **The recommendations**, each a question as Delete Game's (a paragraph, a
 rule, the answer, Cancel focused), then "Deleting...", then "Deleted. 1.2 GB
 given back.":

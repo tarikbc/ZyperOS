@@ -12538,14 +12538,29 @@ static void store_close(store_view *v)
 	v->games = NULL;
 }
 
+/* The page as a base, as Muse's shelf is: the screen's, and --storage
+ * delete-open's, which holds it to the panel that opens on it */
+static int store_base_open(void)
+{
+	return panel_base();
+}
+
 static void storage_screen(app *a)
 {
 	store_view *v = calloc(1, sizeof *v);
+	int base;
 
 	if (!v) return;
 	store_open(v, a);
 	store_request(v);
 	store_refresh(v);
+	/* The page is a base, as Muse's shelf is (panel_base): MENU's panel
+	 * leaves over it, and a panel opened on it - Delete Game's question,
+	 * a recommendation's, "Deleting...", a result - comes from nothing.
+	 * Without it the question opened as a swap from the last panel drawn,
+	 * which left over the page first: a panel there, gone, and back (seen
+	 * on the Pixel 2, 2026-11-08). */
+	base = store_base_open();
 	g_base_page = store_base;
 	g_base_ctx = v;
 	while (!want_quit && a->running) {
@@ -12604,6 +12619,8 @@ static void storage_screen(app *a)
 		tick_tint(a);
 		tick_theme(a);
 		store_draw(a, v);
+		/* A panel closed onto the page leaving it, with its scrim */
+		panel_leave_draw(a, 0);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -12611,6 +12628,9 @@ static void storage_screen(app *a)
 	/* What the walk finished is kept and cached; nothing walks once the
 	 * page is gone, least of all under a game */
 	st_stop();
+	/* Back to MENU, whose panel comes in again as it opened; or with MENU
+	 * pressed, every screen closing, nothing comes in */
+	mm_close(base, anim_now(), 0, g_menu_closing);
 	g_base_page = NULL;
 	g_base_ctx = NULL;
 	store_close(v);
@@ -12621,11 +12641,14 @@ static void storage_screen(app *a)
  * as the Storage lab drew it. NAME is main, system (the PlayStation shelf
  * of the card the shot runs on), art and states (a recommendation's
  * question), done (the card after Unused Art), delete (Delete Game's
- * question from the system's page) or first (the first walk). ROW is the
+ * question from the system's page), delete-open (that question opening,
+ * with --shot-at, as the page opens it: shot_motion) or first (the first
+ * walk). ROW is the
  * focused row, by number or by what it is (videos, music, books, bios,
  * zyperos, other). */
 static const char *shot_storage;
 static int shot_storage_sel = -1;
+static int shot_lv;              /* --shot-at's panel level (with shot_motion's, below) */
 static const char *shot_storage_row;
 
 static void store_fixture(store_view *v, bool measured)
@@ -12718,7 +12741,7 @@ static void storage_shot(app *a)
 			v.c.free += 1200000000ull;
 			st_totals(&v.c);
 		}
-		if (!strcmp(name, "system") || !strcmp(name, "delete")) {
+		if (!strcmp(name, "system") || !strcmp(name, "delete") || !strcmp(name, "delete-open")) {
 			for (i = 0; i < v.c.nsys; i++)
 				if (!strcmp(v.c.sys[i].folder, "PlayStation")) v.page = i;
 			/* The shelf the shot's card has, sized as a nearly full card's */
@@ -12778,15 +12801,20 @@ static void storage_shot(app *a)
 		ui_scrim(a->r, 0);
 		menu_draw(a, T(art ? S_STORAGE_UNUSED_ART : S_STORAGE_OLD_STATES), rows, nq + 2, nq + 1,
 		          menu_std_width(a), MENU_ZYPEROS);
-	} else if (!strcmp(name, "delete") && v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
+	} else if ((!strcmp(name, "delete") || !strcmp(name, "delete-open")) &&
+	           v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
 		int sh = store_shelf(a, "PlayStation");
 		const char *heading;
 
 		if (sh >= 0) {
+			float k = 1.0f;
+
 			nq = delete_ask_rows(a, a->view[sh].list.items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
 			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
 			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
-			ui_scrim(a->r, 0);
+			/* delete-open: where the question is in its open (shot_motion) */
+			if (shot_lv) panel_frame(a, shot_lv, &k);
+			ui_scrim_k(a->r, 0, k);
 			menu_draw(a, heading, rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
 		}
 	} else if (!strcmp(name, "done")) {
@@ -18935,6 +18963,25 @@ static void shot_motion(app *a)
 			keyboard_panel(&shot_keyboard, KB_PANEL_LEAVE, false);
 		}
 		shot_keyboard_panel = true;
+	} else if (shot_storage && !strcmp(shot_storage, "delete-open")) {
+		/* As on the handheld: MENU's panel at rest and drawn, so it is the
+		 * panel on screen; A on Storage, whose page is a base
+		 * (store_base_open); a second on the page, for MENU's panel to have
+		 * left over it; then A on a game, and Delete Game's question opens.
+		 * Its first frame is the page with nothing on it (2026-11-08: it was
+		 * the panel before it, leaving, and then the question coming) */
+		int row = shot_menu_row(a, "Storage");
+
+		shot_lv = panel_open();
+		mm_press(shot_lv);
+		draw_shelf(a);
+		zyperos_menu_draw(a, row >= 0 ? row : 0);
+		store_base_open();
+		t0 += 1000;
+		g_clock_at = t0;
+		shot_t0 = t0;
+		shot_lv = panel_open();
+		shot_pressed = true;
 	} else if (shot_menu && shot_press != SHOT_STEP) {
 		/* Opened on the shelf, as MENU opens it, by panel_open as menu_run
 		 * does: --open's press. The others' menu is at rest when theirs
