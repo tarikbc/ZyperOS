@@ -61,6 +61,8 @@ typedef struct diatom_session {
 	/* RUN controller=: the libretro controller type for port 0, 0 for the
 	 * plain joypad. See set_controller_port_device below. */
 	unsigned      controller;
+	/* RUN stick=dpad: the d-pad is the left analog stick (stick.h) */
+	bool          dpad_stick;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -764,6 +766,7 @@ static void usage(void)
 		"              [--frameskip late]  leave a late frame undrawn, at 1x too\n"
 		"              [--power light|medium]  run under that clock ceiling\n"
 		"              [--controller <n>]  libretro controller type for port 0\n"
+		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -969,12 +972,21 @@ static double sound_rate(const struct retro_system_info *si,
 
 /* One step's measurement: frames run against the pacing periods that passed,
  * so a step that hit the budget says how far short it fell. Wall time
- * includes the menu; the speed does not. */
+ * includes the menu; the speed does not.
+ *
+ * And against the clock: the frames a second the game really ran, over the
+ * time the step was held less the menu's, as a share of its own rate. The
+ * turns alone said 1.00x for Super Mario 64 at 1x while the game ran at 56%
+ * of its speed (2026-11-08): a turn that runs late still counts one period. */
 static void step_report(int half, long frames, long periods, uint64_t held_us,
-                        uint64_t dropped)
+                        uint64_t paused, double frame_us, uint64_t dropped)
 {
-	printf("diatom: speed %.1fx held %.1fs, reached %.2fx, %llu audio frame(s) dropped\n",
+	double ran_us = held_us > paused ? (double)(held_us - paused) : 0.0;
+
+	printf("diatom: speed %.1fx held %.1fs, reached %.2fx (%.2fx of the clock), "
+	       "%llu audio frame(s) dropped\n",
 	       half / 2.0, held_us / 1000000.0, periods ? (double)frames / (double)periods : 0.0,
+	       ran_us > 0.0 ? (double)frames * frame_us / ran_us : 0.0,
 	       (unsigned long long)dropped);
 	fflush(stdout);
 }
@@ -1855,7 +1867,7 @@ static int run_session_inner(const diatom_session *sn)
 	/* The step in force, measured: what it reached, how long it was held, and
 	 * any audio dropped while it was - logged when it changes and at exit. */
 	long     step_frames = 0, step_periods = 0;
-	uint64_t step_t0 = 0, step_drop0 = 0;
+	uint64_t step_t0 = 0, step_drop0 = 0, step_pause0 = 0;
 	/* Sound dropped at 1x so far, and whether the last turn ran fast, for
 	 * the power ceiling (power_trouble) */
 	uint64_t power_drops = 0;
@@ -1869,6 +1881,9 @@ static int run_session_inner(const diatom_session *sn)
 	 * that sends no map gets no map, and the first poll reports where the
 	 * levels actually are without being asked. */
 	diatom_input_reset_map();
+	diatom_input_set_stick(sn->dpad_stick);
+	if (sn->dpad_stick)
+		printf("diatom: the d-pad is the left stick; SELECT, then the d-pad, its D-pad\n");
 	levels_forget();
 	audio_forget();
 	diatom_levels_invalidate();
@@ -2163,6 +2178,7 @@ static int run_session_inner(const diatom_session *sn)
 		int w;
 		g_audio_warmup = true;
 		for (w = 0; w < 3; w++) {
+			diatom_env_frame_begin();
 			g_core->run();
 			if (diatom_hw_active())
 				present_frame(g_frame_fresh);
@@ -2260,9 +2276,13 @@ static int run_session_inner(const diatom_session *sn)
 			if (!fast && (double)s0 > next_us + frame_us)
 				power_trouble("a late frame", s0);
 
+			/* Never fewer frames than the turn's periods, whatever the
+			 * budget says: below them a fast turn is slower than 1x. The
+			 * budget only decides how far past 1x a turn goes. */
 			if (skips && ran + 1 < speed_half() &&
 			    !(sn->limit > 0 && frames + 1 >= sn->limit))
-				shown = (double)(s0 - batch_t0) + unshown_us + shown_us > budget;
+				shown = ran + 1 >= periods &&
+				        (double)(s0 - batch_t0) + unshown_us + shown_us > budget;
 			/* frameskip=late, at 1x: a frame that starts more than half a
 			 * period behind the schedule is run with its drawing left out,
 			 * so the game keeps its speed and the panel its last picture.
@@ -2282,6 +2302,7 @@ static int run_session_inner(const diatom_session *sn)
 			diatom_env_frame_shown(shown);
 			last_shown = shown;
 
+			diatom_env_frame_begin();
 			g_core->run();
 			frames++;
 			ran++;
@@ -2311,6 +2332,9 @@ static int run_session_inner(const diatom_session *sn)
 
 				if (!fast || ran >= speed_half()) break;
 				if (sn->limit > 0 && frames >= sn->limit) break;
+				/* The turn's periods first, as above: a step the device
+				 * cannot reach runs at 1x, never under it */
+				if (ran < periods) continue;
 				spent = (double)(diatom_port_now_us() - batch_t0);
 				if (spent + spent / ran > budget) break;
 			}
@@ -2456,12 +2480,14 @@ static int run_session_inner(const diatom_session *sn)
 				if (to != g_speed_ix) {
 					step_report(speed_half(), step_frames, step_periods,
 					            diatom_port_now_us() - step_t0,
+					            paused_us - step_pause0, frame_us,
 					            diatom_audio_dropped() - step_drop0);
 					g_speed_ix = to;
 					printf("diatom: speed %.1fx\n", speed_half() / 2.0);
 					fflush(stdout);
 					step_frames = step_periods = 0;
 					step_t0 = diatom_port_now_us();
+					step_pause0 = paused_us;
 					step_drop0 = diatom_audio_dropped();
 				}
 				/* At an end as well: the press is answered on screen */
@@ -2706,6 +2732,7 @@ static int run_session_inner(const diatom_session *sn)
 	if (fast_frames)
 		step_report(speed_half(), step_frames, step_periods,
 		            diatom_port_now_us() - step_t0,
+		            paused_us - step_pause0, frame_us,
 		            diatom_audio_dropped() - step_drop0);
 
 	{
@@ -2853,6 +2880,7 @@ int main(int argc, char **argv)
 	const char *frameskip = "";
 	const char *power = "";
 	unsigned controller = 0;
+	bool dpad_stick = false;
 	int screens = 1;
 	diatom_filter start_filter;
 	long limit = 0;
@@ -2893,6 +2921,8 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--power") && i + 1 < argc) power = argv[++i];
 		else if (!strcmp(argv[i], "--controller") && i + 1 < argc)
 			controller = (unsigned)strtoul(argv[++i], NULL, 10);
+		else if (!strcmp(argv[i], "--stick") && i + 1 < argc)
+			dpad_stick = !strcmp(argv[++i], "dpad");
 		else if (!strcmp(argv[i], "--layout") && i + 1 < argc) {
 			int l = scr_layout_index(argv[++i]);
 			if (l < 0) { usage(); return 1; }
@@ -3059,6 +3089,7 @@ int main(int argc, char **argv)
 			              : !strcmp(m.power, "medium") ? DIATOM_POWER_MEDIUM
 			              : DIATOM_POWER_FULL;
 			sn.controller = m.controller;
+			sn.dpad_stick = !strcmp(m.stick, "dpad");
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			run_session(&sn);   /* its own ERROR/EXIT is the report */
@@ -3085,6 +3116,7 @@ int main(int argc, char **argv)
 			       : !strcmp(power, "medium") ? DIATOM_POWER_MEDIUM
 			       : DIATOM_POWER_FULL,
 			.controller = controller,
+			.dpad_stick = dpad_stick,
 		};
 		int rc = run_session(&sn);
 		if (rc) return rc;

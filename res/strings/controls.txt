@@ -1310,3 +1310,36 @@ fr = Désinstaller
 de = Deinstallieren
 ja = 削除
 it = Disinstalla
+
+[controls.stick]
+note = Nintendo 64: what the d-pad is in its games, the N64 controller's analog stick (Nintendo calls it the Control Stick). The value column beside "D-pad".
+en = Control Stick
+zh-Hans = 摇杆
+es = Palanca
+pt-BR = Analógico
+fr = Stick
+de = Analogstick
+ja = 3D スティック
+it = Levetta
+
+[controls.select_dpad]
+note = The button column: SELECT held, then the d-pad. SELECT is printed on the handheld and never translated; the d-pad is the word of controls.key.dpad.
+en = SELECT+D-pad
+zh-Hans = SELECT+方向键
+es = SELECT+Cruceta
+pt-BR = SELECT+Direcional
+fr = SELECT+Croix
+de = SELECT+Kreuz
+ja = SELECT+十字キー
+it = SELECT+Croce
+
+[controls.n64_dpad]
+note = Nintendo 64: what SELECT+D-pad is, the N64 controller's own D-pad (the d-pad alone is its stick). The value column.
+en = N64 D-pad
+zh-Hans = N64 十字键
+es = Cruceta del N64
+pt-BR = Direcional N64
+fr = Croix de la N64
+de = N64-Steuerkreuz
+ja = N64 の十字キー
+it = Croce del N64

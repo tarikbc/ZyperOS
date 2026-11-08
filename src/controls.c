@@ -370,8 +370,11 @@ static const ctl_pad PADS[] = {
 	/* Mupen64Plus-Next: B the N64's A, Y its B, L2 its Z. The core makes the
 	 * face buttons its C buttons while its R2 is held, and map|N64 puts that
 	 * R2 on SELECT, which the N64 has none of (and takes R2's own away): the
-	 * C buttons have a page of their own */
-	{ "N64", NULL, { [P_B] = BTN("A"), [P_Y] = BTN("B"), [P_L1] = BTN("L"), [P_R1] = BTN("R"),
+	 * C buttons have a page of their own. The d-pad is the N64's stick
+	 * (stick|N64, Diatom's stick.h), its own D-pad SELECT+D-pad, on that
+	 * page too */
+	{ "N64", NULL, { [P_DPAD] = SAYS(S_CONTROLS_STICK),
+	                 [P_B] = BTN("A"), [P_Y] = BTN("B"), [P_L1] = BTN("L"), [P_R1] = BTN("R"),
 	                 [P_L2] = BTN("Z"), [P_START] = BTN("Start") } },
 	/* Beetle NeoPop: the south button is the Pocket's A */
 	{ "NGP", NULL, { [P_A] = BTN("B"), [P_B] = BTN("A"), [P_START] = BTN("Option") } },
@@ -498,7 +501,8 @@ static const ctl_extra EXTRAS[] = {
 	{ "N64", S_CONTROLS_C_BUTTONS, { { BTN("SELECT+X"), S_CONTROLS_C_UP },
 	                                 { BTN("SELECT+A"), S_CONTROLS_C_RIGHT },
 	                                 { BTN("SELECT+B"), S_CONTROLS_C_DOWN },
-	                                 { BTN("SELECT+Y"), S_CONTROLS_C_LEFT } },
+	                                 { BTN("SELECT+Y"), S_CONTROLS_C_LEFT },
+	                                 { SAYS(S_CONTROLS_SELECT_DPAD), S_CONTROLS_N64_DPAD } },
 	  true, S_CONTROLS_PAK_WHERE },
 	/* Diatom's (screens.h): L2 the other screen, R2 the stylus, and while
 	 * it is on the d-pad moves it and A touches. MENU+L1 switched the

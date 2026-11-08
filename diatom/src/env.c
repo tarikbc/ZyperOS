@@ -19,6 +19,7 @@
 
 #include "cheevos.h"
 #include "diatom.h"
+#include "stick.h"
 
 /* Experimental commands carry 0x10000, and the same command reads the same
  * with or without it. ONLY that bit: RetroArch's private commands sit at
@@ -629,9 +630,29 @@ static void turbo_tick(void);
 /* The pad is read here, inside the core's frame, so a press is new to the
  * core on the very frame it is new to Diatom. Whatever judges a press as it
  * comes (SELECT's chords, main.c) judges it here too, or the frame it goes
- * down would reach the game before anything had seen it. */
+ * down would reach the game before anything had seen it.
+ *
+ * Once a frame, at the core's poll or at its first question about the pad,
+ * whichever comes first. Most cores poll at the top of retro_run, and nothing
+ * changes for them. Mupen64Plus-Next polls at the N64's vertical interrupt,
+ * which is the END of its retro_run, and the game reads the pad during the
+ * next one: what it read had waited out the frame loop's sleep, most of the
+ * 16.7 ms of a frame, before the game saw it. Read at the first question
+ * instead, a press is as fresh as the frame that reads it. RetroArch reads
+ * the pad the same way by default (input_poll_type_behavior "late"). A poll
+ * after that in the same frame is a repeat and is dropped, so a frame is still
+ * one turn of SELECT's chords and of the turbo pulse. */
+static bool g_polled;
+
+void diatom_env_frame_begin(void)
+{
+	g_polled = false;
+}
+
 static void cb_input_poll(void)
 {
+	if (g_polled) return;
+	g_polled = true;
 	diatom_port_input_poll();
 	if (g_poll_hook) g_hook_hide = g_poll_hook(diatom_port_input_state(), &g_hook_give);
 	turbo_tick();
@@ -697,6 +718,13 @@ static uint32_t turbo_prev;      /* held mask at the previous poll, for edges */
  * from the host. */
 static long g_input_frame;
 
+/* RUN stick=dpad: the d-pad is the left analog stick (stick.h). g_stick_dpad
+ * is the SELECT rule's answer at the last poll: the d-pad is the game's
+ * D-pad for now. */
+static bool     g_stick_on, g_stick_dpad;
+static stick    g_stick;
+static uint32_t g_stick_was;
+
 /* Labels the core gave us, indexed by canonical button after resolving the
  * active map - so they track a remap for free and a launcher never has to. */
 static char g_label[DIATOM_BTN_COUNT][64];
@@ -756,6 +784,14 @@ static void turbo_tick(void)
 
 	g_input_frame++;
 	held = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
+	if (g_stick_on) {
+		/* The pad as pressed, less only what was held as the game began:
+		 * SELECT goes by the stick's own rule here, not by the chords' */
+		uint32_t pad = diatom_port_input_state() & ~g_suppress;
+
+		g_stick_dpad = stick_turn(&g_stick, pad, g_stick_was);
+		g_stick_was = pad;
+	}
 	for (b = 0; b < DIATOM_BTN_COUNT; b++)
 		if (turbo_period[b] &&
 		    (held & DIATOM_BIT(b)) && !(turbo_prev & DIATOM_BIT(b)))
@@ -774,6 +810,14 @@ void diatom_input_reset_map(void)
 	memset(turbo_anchor, 0, sizeof turbo_anchor);
 	turbo_prev = 0;
 	relabel();
+}
+
+void diatom_input_set_stick(bool dpad)
+{
+	g_stick_on = dpad;
+	g_stick_dpad = false;
+	g_stick_was = 0;
+	stick_reset(&g_stick);
 }
 
 /* `spec` is the state plane's whole-table form: `a:b,x:none`, or `identity`.
@@ -932,9 +976,26 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 		default:                              return 0;
 		}
 	}
+	/* A core that asks before it polls, this frame: see cb_input_poll */
+	if (!g_polled) cb_input_poll();
+
+	/* The left stick, from the d-pad (RUN stick=dpad), with the same buttons
+	 * hidden and given as the joypad's below. Centered while the SELECT rule
+	 * gives the d-pad to the game's D-pad, and always for any other stick. */
+	if (port == 0 && device == RETRO_DEVICE_ANALOG) {
+		int16_t x, y;
+
+		if (!g_stick_on || g_stick_dpad || index != RETRO_DEVICE_INDEX_ANALOG_LEFT)
+			return 0;
+		state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
+		stick_axes(state, &x, &y);
+		return id == RETRO_DEVICE_ID_ANALOG_X ? x : id == RETRO_DEVICE_ID_ANALOG_Y ? y : 0;
+	}
 	if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
 
 	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
+	/* The d-pad is the stick, and only the stick, unless SELECT says */
+	if (g_stick_on && !g_stick_dpad) state &= ~STICK_DPAD;
 
 	/* OR, not first-match. Under an identity map no two canonical buttons
 	 * share a target so returning the first was always correct; remapping

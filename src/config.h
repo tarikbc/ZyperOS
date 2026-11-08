@@ -70,6 +70,11 @@ typedef struct {
 	 * plain joypad; sent with RUN as controller=. From a
 	 * `controller|tag|n` line. */
 	unsigned controller;
+	/* "dpad": the d-pad is the core's left analog stick, for a system its
+	 * games play with a stick and the device has none (Diatom's stick.h);
+	 * sent with RUN as stick=. Empty is the d-pad as the d-pad. From a
+	 * `stick|tag|dpad` line. */
+	char stick[8];
 } system_cfg;
 
 typedef struct {
@@ -81,8 +86,8 @@ typedef struct {
 bool cfg_load_systems(const char *path, systems_cfg *out);
 
 /* The RUN keys a game on `s` needs beyond the usual, tab separated, into
- * `out` ("" for none): two screens for a DS game (`dual`), the clock ceiling
- * and the controller type. */
+ * `out` ("" for none): two screens for a DS game (`dual`), the clock ceiling,
+ * the controller type and the d-pad as a stick. */
 /* Two system names in A to Z order (2026-11-06): case and accents do
  * not count ("Pokémon" is "pokemon") and a run of digits counts as its
  * number, so 3DO comes before 32X and Atari 2600 before Atari 5200 and Atari

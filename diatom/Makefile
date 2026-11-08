@@ -26,7 +26,7 @@ LDFLAGS += -lz
 # Objects live under build/$(PORT)/ so host and cross builds cannot collide:
 # a leftover x86 main.o in a device link fails late and confusingly.
 BUILD := build/$(PORT)
-SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/hw.c port/$(PORT).c
+SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c port/$(PORT).c
 # Expanded where it is used, not here: a port's block below adds its own files
 # to SRC (the Pixel 2's bar, port/osdbar.c), and := took the list before they
 # were in it, so they were never built and the link failed.
@@ -109,7 +109,7 @@ ifeq ($(PORT),pixel2)
 endif
 
 .PHONY: all clean check check-seam check-proto check-port \
-        check-corefacts check-cheevos check-screens check-chord check-bounds check-copies \
+        check-corefacts check-cheevos check-screens check-chord check-stick check-bounds check-copies \
         stub run-stub
 
 all: $(BIN)
@@ -142,7 +142,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-bounds check-proto check-port check-stateplane check-resident check-hotkeys
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-proto check-port check-stateplane check-resident check-hotkeys
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -188,6 +188,19 @@ $(CHORD_TEST): test/chord_test.c src/chord.c src/chord.h include/diatom_port.h
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
 	      -Iinclude -Isrc -o $@ test/chord_test.c src/chord.c
+
+# The d-pad as the left analog stick (src/stick.h), for the N64: each
+# direction's axes, a diagonal as long as a straight push, and the SELECT rule
+# that keeps the N64's own D-pad in reach. Offline: src/stick.c alone.
+STICK_TEST := $(BUILD)/stick-test
+
+check-stick: $(STICK_TEST)
+	@./$(STICK_TEST)
+
+$(STICK_TEST): test/stick_test.c src/stick.c src/stick.h include/diatom_port.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
+	      -Iinclude -Isrc -o $@ test/stick_test.c src/stick.c -lm
 
 # Input that does not fit what reads it: zips too short or too sure of
 # themselves (src/zip.c), and a protocol line longer than its buffer

@@ -266,11 +266,13 @@ static const char *turbo_of(const char *tag)
 }
 
 /* What an in-game page may name at the left: a button, a pair or chord of
- * them ("L1/R1", "R2+X", "MENU+VOL"), the four faces, or the d-pad */
+ * them ("L1/R1", "R2+X", "MENU+VOL"), the four faces, or the d-pad, alone or
+ * in a chord ("SELECT+D-pad", the N64's own D-pad) */
 static int ingame_key(const char *k)
 {
 	static const char *const ONE[] = {
 		"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "START", "SELECT", "MENU", "VOL",
+		"D-pad",
 	};
 	char buf[32], *p, *save = NULL;
 

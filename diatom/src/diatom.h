@@ -165,6 +165,7 @@ bool diatom_env_frame_skippable(void);
  * not pixels. */
 bool diatom_hw_request(struct retro_hw_render_callback *cb, const diatom_port_caps *caps);
 void diatom_hw_load_begin(void);
+
 bool diatom_hw_start(diatom_core *c);
 void diatom_hw_unload(void);
 bool diatom_hw_active(void);
@@ -278,6 +279,10 @@ typedef struct {
 	/* RUN: the libretro controller type for port 0 (pcsx_rearmed's DualShock
 	 * is 517); 0 or absent is the plain joypad. */
 	unsigned controller;
+	/* RUN: "dpad" makes the d-pad the left analog stick (stick.h), for a
+	 * system its games play with a stick; empty or anything else, the
+	 * joypad's d-pad as ever. */
+	char stick[16];
 	char layout[16];       /* SETSCREENS: a name from scr_layout_names */
 	char swap[4];          /* SETSCREENS: "1" | "0"; empty leaves it */
 	int  console;          /* RUN / SETCHEEVOS */
@@ -308,6 +313,12 @@ typedef struct {
 /* Input mapping and labels live in env.c, the one layer a remap touches. */
 void diatom_input_reset_map(void);
 bool diatom_input_set_map(const char *spec);
+/* RUN stick=dpad: the d-pad as the left analog stick (stick.h); off at every
+ * RUN that does not say so */
+void diatom_input_set_stick(bool dpad);
+/* Before each retro_run: the pad is read once a frame, at the core's poll or
+ * its first question, whichever comes first (env.c, cb_input_poll) */
+void diatom_env_frame_begin(void);
 void diatom_input_emit_map(void);
 void diatom_input_emit_labels(void);
 
