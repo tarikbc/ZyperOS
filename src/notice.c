@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "notice.h"
+#include "noticeart.h"
 #include "platform.h"
 #include "ui.h"
 
@@ -123,6 +124,30 @@ static void draw_badge(uint8_t *px, int w, int h, const SDL_Surface *b, int bx, 
 	}
 }
 
+/* A picture laid on the slab by what of the slab is under each of its
+ * pixels: the slab is 85% (217) where it is, and nothing outside its
+ * corners, so a soft shadow in `a` is cut to the slab's shape. */
+static void draw_art(uint8_t *px, int w, int h, const SDL_Surface *a, int ax, int ay)
+{
+	int x, y;
+
+	for (y = 0; y < a->h; y++) {
+		const uint8_t *row = (const uint8_t *)a->pixels + (size_t)y * a->pitch;
+
+		if (ay + y < 0 || ay + y >= h) continue;
+		for (x = 0; x < a->w; x++) {
+			uint8_t *dst;
+			unsigned under, al = row[x * 4 + 3];
+
+			if (!al || ax + x < 0 || ax + x >= w) continue;
+			dst = px + ((size_t)(ay + y) * w + ax + x) * 4;
+			under = dst[3] > 217 ? 217 : dst[3];
+			al = (al * under + 108) / 217;
+			blend(dst, row[x * 4 + 0], row[x * 4 + 1], row[x * 4 + 2], al);
+		}
+	}
+}
+
 /* A bar of `color` from x to x+bw, `bh` tall, its ends round */
 static void draw_bar(uint8_t *px, int w, int h, int x0, int y0, int bw, int bh, ds_rgb c)
 {
@@ -206,30 +231,31 @@ SDL_Surface *notice_heat_mark(int size, ds_rgb ink, ds_rgb fill)
 }
 
 static bool render(const char *heading, const char *body, const char *badge,
-                   notice_mark mark, int value, int target, const char *path,
-                   int theme_ix);
+                   notice_mark mark, unsigned look, int value, int target,
+                   const char *path, int theme_ix);
 
 bool notice_render(const char *heading, const char *body, const char *path,
                    int theme_ix)
 {
-	return render(heading, body, NULL, NOTICE_MARK_NONE, 0, 0, path, theme_ix);
+	return render(heading, body, NULL, NOTICE_MARK_NONE, 0, 0, 0, path, theme_ix);
 }
 
 bool notice_render_ex(const char *heading, const char *body, const char *badge,
-                      int value, int target, const char *path, int theme_ix)
+                      unsigned look, int value, int target, const char *path,
+                      int theme_ix)
 {
-	return render(heading, body, badge, NOTICE_MARK_NONE, value, target, path, theme_ix);
+	return render(heading, body, badge, NOTICE_MARK_NONE, look, value, target, path, theme_ix);
 }
 
 bool notice_render_mark(const char *heading, const char *body, notice_mark mark,
                         const char *path, int theme_ix)
 {
-	return render(heading, body, NULL, mark, 0, 0, path, theme_ix);
+	return render(heading, body, NULL, mark, 0, 0, 0, path, theme_ix);
 }
 
 static bool render(const char *heading, const char *body, const char *badge,
-                   notice_mark mark, int value, int target, const char *path,
-                   int theme_ix)
+                   notice_mark mark, unsigned look, int value, int target,
+                   const char *path, int theme_ix)
 {
 	/* The NAME is the line worth reading, so it gets the larger face and the
 	 * brighter ink; "Achievement unlocked" is context and sits above it,
@@ -248,7 +274,8 @@ static bool render(const char *heading, const char *body, const char *badge,
 	 * two lines, a gap of the horizontal padding after it */
 	bool prog = target > 0;
 	int bsize = 0, bgap = 0, tx0, th, l1, l2, sy = 0, sh = DS_BAR;
-	SDL_Surface *bs = NULL;
+	SDL_Surface *bs = NULL, *zs = NULL;
+	int zw = 0, zgap = 0, zpad = 0;
 	/* The theme the caller says, never one read once and kept: see notice.h */
 	const ds_theme *t = theme_at(theme_ix);
 	const ds_rgb slab = t->surface;
@@ -274,6 +301,9 @@ static bool render(const char *heading, const char *body, const char *badge,
 	 * notice that runs the full width of the screen stops reading as a thing
 	 * laid over the game and starts reading as part of it. */
 	maxw = ZYPEROS_SCREEN_W * 5 / 6;
+	/* With Zyper the slab may run a little wider, so a long name keeps the
+	 * room it had without him: still more than 60 units off each side */
+	if (look & NOTICE_ZYPER) maxw = ZYPEROS_SCREEN_W * 7 / 8;
 	if (maxw > NOTICE_MAX_W) maxw = NOTICE_MAX_W;
 	maxw -= padx * 2;
 	/* The text block: two lines, or for progress the name, the strip with a
@@ -282,11 +312,25 @@ static bool render(const char *heading, const char *body, const char *badge,
 	l2 = prog ? ui_font_line(UI_F_META) : ui_font_line(UI_F_LABEL);
 	th = l1 + l2 + (prog ? sh + pady * 2 : 0);
 	/* A mark is drawn here, as tall as a badge and as narrow as it is */
-	if ((badge && (bs = badge_load(badge, th - pady))) ||
-	    (mark == NOTICE_MARK_HEAT && (bs = notice_heat_mark(th - pady, t->warning, t->warning)))) {
+	if (badge) bs = badge_load(badge, th - pady);
+	if (!bs && mark == NOTICE_MARK_HEAT) bs = notice_heat_mark(th - pady, t->warning, t->warning);
+	/* No art on the card for it, or none yet: the plain badge, the badge's
+	 * own size and corners, so the slab is the same shape when the art lands.
+	 * A progress notice is of an achievement not won, and looks it. */
+	if (!bs && (look & NOTICE_ICON)) bs = noticeart_plain(th - pady, t, prog);
+	if (bs) {
 		bsize = bs->w;
 		bgap = padx;
 		maxw -= bsize + bgap;
+	}
+	/* Zyper at the other end, as tall as the badge. On Beard he casts the
+	 * shadow he casts in the menus (DESIGN.md 10): his beard is the slab's
+	 * own white there. */
+	if ((look & NOTICE_ZYPER) &&
+	    (zs = noticeart_zyper(th - pady, theme_ix == DS_LIGHT, t, &zpad))) {
+		zw = zs->w - zpad * 2;
+		zgap = padx;
+		maxw -= zw + zgap;
 	}
 	/* Not optional. Diatom REFUSES an overlay wider than the panel rather than
 	 * clipping it, which is the right call there and means a long name would
@@ -307,14 +351,22 @@ static bool render(const char *heading, const char *body, const char *badge,
 	/* A strip as wide as the name, and never a stub under a short one */
 	if (prog && w < ui_font_line(UI_F_LABEL) * 4) w = ui_font_line(UI_F_LABEL) * 4;
 	tx0 = padx + bsize + bgap;
-	w += padx * 2 + bsize + bgap;
+	w += padx * 2 + bsize + bgap + zw + zgap;
 	h = th + pady * 2 - (prog ? 0 : ui_font_line(UI_F_LABEL) / 12);
 	if (w > NOTICE_MAX_W) w = NOTICE_MAX_W;
 	if (h > NOTICE_MAX_H) h = NOTICE_MAX_H;
-	if (w <= 0 || h <= 0) { if (bs) SDL_FreeSurface(bs); return false; }
+	if (w <= 0 || h <= 0) {
+		if (bs) SDL_FreeSurface(bs);
+		if (zs) SDL_FreeSurface(zs);
+		return false;
+	}
 
 	px = calloc((size_t)w * (size_t)h, 4);
-	if (!px) { if (bs) SDL_FreeSurface(bs); return false; }
+	if (!px) {
+		if (bs) SDL_FreeSurface(bs);
+		if (zs) SDL_FreeSurface(zs);
+		return false;
+	}
 
 	/* A slab of the theme's **surface** at 85%, rounded the way every menu
 	 * panel in the launcher is rounded, DS_RADIUS_PANEL (DESIGN.md 11.7). The
@@ -352,8 +404,17 @@ static bool render(const char *heading, const char *body, const char *badge,
 		SDL_UnlockSurface(bs);
 		SDL_FreeSurface(bs);
 	}
+	if (zs) {
+		/* Right end of the slab, in the middle of its height. Laid by the
+		 * slab's own coverage, so his shadow never falls outside its
+		 * rounded corners */
+		SDL_LockSurface(zs);
+		draw_art(px, w, h, zs, w - padx - zw - zpad, (h - (zs->h - zpad * 2)) / 2 - zpad);
+		SDL_UnlockSurface(zs);
+		SDL_FreeSurface(zs);
+	}
 	if (prog) {
-		int sw = w - tx0 - padx;
+		int sw = w - tx0 - padx - (zw ? zw + zgap : 0);
 		int fill = value <= 0 ? 0 : value >= target ? sw
 		         : (int)((long long)sw * value / target);
 

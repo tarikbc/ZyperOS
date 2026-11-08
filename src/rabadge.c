@@ -3,6 +3,7 @@
 #include "rabadge.h"
 #include "cheevos.h"
 #include "net.h"
+#include "noticeart.h"
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -166,6 +167,42 @@ SDL_Texture *rb_texture(SDL_Renderer *r, const char *set_path, const char *name,
 	snprintf(g_tex[slot].key, sizeof g_tex[slot].key, "%s", key);
 	g_tex[slot].used = ++g_tick;
 	return g_tex[slot].tex;
+}
+
+/* The plain badge as a texture, 64 pixels as the badges themselves are, in
+ * the cache under a key of its own: its look and the theme's name. */
+static SDL_Texture *rb_plain(SDL_Renderer *r, bool locked, const ds_theme *t)
+{
+	char key[64];
+	SDL_Surface *s;
+	int i, slot = 0;
+
+	if (!r || !t) return NULL;
+	snprintf(key, sizeof key, "P%c%s", locked ? 'L' : 'E', t->name);
+	for (i = 0; i < RB_TEXTURES; i++) {
+		if (g_tex[i].tex && !strcmp(g_tex[i].key, key)) {
+			g_tex[i].used = ++g_tick;
+			return g_tex[i].tex;
+		}
+		if (g_tex[i].used < g_tex[slot].used) slot = i;
+	}
+	if (!(s = noticeart_plain(64, t, locked))) return NULL;
+	if (g_tex[slot].tex) SDL_DestroyTexture(g_tex[slot].tex);
+	g_tex[slot].tex = SDL_CreateTextureFromSurface(r, s);
+	SDL_FreeSurface(s);
+	if (!g_tex[slot].tex) return NULL;
+	SDL_SetTextureBlendMode(g_tex[slot].tex, SDL_BLENDMODE_BLEND);
+	snprintf(g_tex[slot].key, sizeof g_tex[slot].key, "%s", key);
+	g_tex[slot].used = ++g_tick;
+	return g_tex[slot].tex;
+}
+
+SDL_Texture *rb_icon(SDL_Renderer *r, const char *set_path, const char *name,
+                     bool locked, const ds_theme *t)
+{
+	SDL_Texture *tex = rb_texture(r, set_path, name, locked);
+
+	return tex ? tex : rb_plain(r, locked, t);
 }
 
 void rb_textures_free(void)

@@ -29,6 +29,11 @@ void zyper_shadows_free(void);
 /* The battery, as the corner, Diatom's disc and Auto Off read it */
 bool battery_now(int *pct, bool *charging);
 bool battery_empty(void);
+/* Minutes of use left before the battery reaches BATT_EMPTY_PCT, where the
+ * handheld saves and powers off, from how fast it has been falling
+ * (src/battery_eta.h); -1 while there is none to give: off the cable, fewer
+ * than two falls seen since the start or the cable came out. */
+int battery_minutes_left(void);
 /* Has the player been away long enough to power the device off? */
 bool idle_due(app *a);
 

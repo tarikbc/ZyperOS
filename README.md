@@ -39,6 +39,9 @@
     <td align="center"><img src="res/readme/nowplaying.png" width="240" alt="MP4's Now Playing"><br><sub>Now Playing, on SELECT from anywhere</sub></td>
     <td align="center"><img src="res/readme/scraper.png" width="240" alt="MENU > Scraper: Fetch Missing Art, Video Snaps, and the covers ScreenScraper, libretro and SteamGridDB found"><br><sub>Box art from three sources</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="res/readme/battery.png" width="240" alt="MENU > Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery"><br><sub>The battery, as time left</sub></td>
+  </tr>
 </table>
 
 </div>
@@ -62,7 +65,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **A first start that asks:** Zyper says hello in each language until you pick yours, teaches each button and shows where it is on the Pixel 2, then asks for the theme, the home screen, the button sounds and the menu music ([below](#the-first-start)).
 - **An empty card that says what to do:** with no games yet, the home shows the two ways to add them, one button each, and Zyper cheers when the first ones arrive.
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
-- **RetroAchievements:** sign in on the device. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge, and a count like "5 / 10" pops up as you get closer.
+- **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own.
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
@@ -81,7 +84,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Mono audio,** for anyone who hears with one ear: Audio Channels plays games and MP4 in mono, or in mono in just the left or right ear on headphones.
 - **MP4, a media player for music, audiobooks and videos:** your albums, books and films on a shelf of their own covers; every book and every video picks up where you left it, and **Shuffle All** plays every song on the card in a random order. SELECT opens MP4 from anywhere, even the in-game menu, and it keeps playing when you close it. While it plays, the game is silent. **X** locks it: the screen goes dark and every button but volume stops working, POWER included, until you hold **SELECT + START** for two seconds. A volume press lights the screen just long enough to show the volume bar, and a video stays in sight.
 - **Menu music:** ten free 8-bit tracks play behind the shelf and the menus, never over a game, and **MENU > Menu Music** shuffles them, plays one over and over or turns them off. Put your own MP3 or Ogg files in `Roms/BGM` and those play instead. On the shelf, **L2** and **R2** go to the song before or the next, and Zyper pops up with each new song's name, read from its tags. While MP4 plays behind the shelf, L2 and R2 skip its tracks (or a book's chapters) instead.
-- **The status corner:** the clock, Wi-Fi and the battery at the top of the home screen. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** bars or a percentage.
+- **The status corner:** the clock, Wi-Fi and the battery at the top of the home screen. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** shows the battery as bars alone, with its percentage, or with the time left. Time Left counts down from how fast the battery has been falling, to where ZyperOS saves and powers off, and shows the percentage until it has seen a few minutes of use after a start. On the cable it shows the time to full, or to the Charge Limit.
 - **The Pixel 2's side lights** show the battery charging and running low, the volume or brightness as you change it, a climb when files or covers finish, and a sparkle for an achievement; **MENU > Side Lights** turns each on or off. On the charger, the shelf's screen goes dark after the Auto Off time, and any button lights it again.
 - **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%).
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.
@@ -456,7 +459,11 @@ A file that another game on the card still uses stays: a save two systems' games
 <details>
 <summary><b>How do achievements work?</b></summary>
 
-Sign in under **MENU > Cheevos** with your RetroAchievements account. A game's first start needs Wi-Fi, to identify the game and fetch its achievements. From then on it plays offline too: what you unlock without Wi-Fi waits on the card and reaches your account the next time the handheld connects.
+Sign in under **MENU > Achievements** with your RetroAchievements account. A game's first start needs Wi-Fi, to identify the game and fetch its achievements. From then on it plays offline too: what you unlock without Wi-Fi waits on the card and reaches your account the next time the handheld connects.
+
+<img src="res/readme/cheevo-notice.png" width="400" alt="The notice over a game when an achievement unlocks: its badge at the left, 'Unlocked · 10 points' over its name, and Zyper at the right">
+
+An unlock shows its badge, its name and its points for a few seconds, with Zyper at the right. Each achievement's badge is a small picture (64 pixels) from RetroAchievements, kept on the card beside the game's achievements. It is fetched when the handheld is online and the game is not running, never during a game, so no frame waits on the network. Until a badge is on the card, in the list and in the pop-up a trophy takes its place, and it changes to the badge by itself. A handheld that is never online can get them from a computer: `tools/ra-sets.py` puts each game's achievements and badges on the card.
 
 </details>
 

@@ -28,11 +28,11 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-dslang check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-battery-eta check-dslang check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-boottheme check-captive check-qr \
@@ -257,6 +257,18 @@ build-native/battery-check: tools/battery-check.c src/battery_poll.c src/battery
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
 	      -o $@ tools/battery-check.c src/battery_poll.c
+
+# The time left on the battery (src/battery_eta.h): the estimate from how long
+# a percent takes to fall, against a simulated gauge at several loads, across
+# the clock's wrap, through a change of load, a stall, the cable and a gauge
+# that corrects itself. Plain C, no device.
+check-battery-eta: build-native/battery-eta-check
+	@./build-native/battery-eta-check
+
+build-native/battery-eta-check: tools/battery-eta-check.c src/battery_eta.c src/battery_eta.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
+	      -o $@ tools/battery-eta-check.c src/battery_eta.c -lm
 
 # The Nintendo DS's language (src/dslang.h): every language MENU > Language has
 # maps to the DS's own or to English, the core's option and its values are the
@@ -981,7 +993,7 @@ build-native/rahash-check: tools/rahash-check.c src/rahash.c src/rahash.h FORCE
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/rahash-check.c src/rahash.c -lz
 
-.PHONY: check-noticeq check-rasubmit check-lowbatt check-heat check-charging
+.PHONY: check-noticeq check-badges check-badge-shots check-rasubmit check-lowbatt check-heat check-charging
 
 # The pop-ups over a game, one after another (src/noticeq.h)
 check-noticeq: build-native/noticeq-check
@@ -991,6 +1003,39 @@ build-native/noticeq-check: tools/noticeq-check.c src/noticeq.c src/noticeq.h FO
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/noticeq-check.c src/noticeq.c
+
+# Achievement badges (src/rabadge.h) and the two pictures the launcher draws
+# for them (src/noticeart.h): the cache beside the set, the fetch off the
+# frame in one curl for what is missing, the plain badge where the card has
+# none, a 404 page never kept as a badge; then the plain badge and Zyper as
+# pixels. The real rabadge.c and net.c, net.c read in whole with the check as
+# its curl (tools/rabadge-check.c). No network. Needs SDL2 and SDL2_image,
+# and skips cleanly without them.
+check-badges:
+	@if pkg-config --exists sdl2 SDL2_image 2>/dev/null; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
+		  $$(pkg-config --cflags sdl2 SDL2_image) -Isrc \
+		  -DNET_TMP='"$(CURDIR)/build-native/badges-check-tmp"' \
+		  -DZYPEROS_VERSION='"check"' \
+		  -o build-native/rabadge-check tools/rabadge-check.c src/rabadge.c src/noticeart.c \
+		  src/zyperplace.c src/blur.c src/cheevos.c src/atomic.c src/db.c \
+		  $$(pkg-config --libs sdl2 SDL2_image) -lsqlite3 -lz -lpthread -lm && \
+		SDL_VIDEODRIVER=dummy ./build-native/rabadge-check; \
+	else echo "skipped: no SDL2 and SDL2_image for the badge check"; fi
+
+# The same, as the launcher draws them (src/main.c, src/notice.c): an unlock's
+# notice with a badge or the plain one and Zyper, in both themes; a count's
+# with the plain one and no Zyper; the set's arrival with neither; and the
+# achievements list with the plain badge in every row, or the card's own.
+# The host build's --notice and --cheevos-screen shots, read back with
+# Python's standard library (tools/badge-shots-check.py). Needs SDL2, and
+# skips cleanly without it.
+check-badge-shots:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+	fi
+	@python3 tools/badge-shots-check.py
 
 # RetroAchievements sign-in, telling a wrong password from another refusal
 # from no answer: the real rafetch.c and net.c, net.c read in whole with the

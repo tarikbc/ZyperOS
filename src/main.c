@@ -13,6 +13,7 @@
  */
 #include "atomic.h"
 #include "about.h"
+#include "battery_eta.h"
 #include "battery_poll.h"
 #include "bgm.h"
 #include "bgm_menu.h"
@@ -1789,6 +1790,19 @@ static void on_game_tick(void)
 
 static noticeq g_nq;
 
+/* What a notice carries besides its words (src/notice.h), by what it is
+ * about: an unlock, and mastery, which is one, has its badge and Zyper; a
+ * count moving, its badge; the set's arrival has neither. Where the card has
+ * no art for a badge the plain one takes its place (src/noticeart.h). */
+static unsigned notice_look(nq_kind kind)
+{
+	switch (kind) {
+	case NQ_UNLOCK:   return NOTICE_ICON | NOTICE_ZYPER;
+	case NQ_PROGRESS: return NOTICE_ICON;
+	default:          return 0;
+	}
+}
+
 /* The next one, if the one on screen has had its time. From the game tick,
  * and as soon as one is queued. */
 static void notice_pump(void)
@@ -1799,13 +1813,14 @@ static void notice_pump(void)
 	if (it.mark ? notice_render_mark(it.head, it.body, (notice_mark)it.mark,
 	                                 NOTICE_FILE, theme_index())
 	            : notice_render_ex(it.head, it.body, it.badge[0] ? it.badge : NULL,
-	                               it.value, it.target, NOTICE_FILE, theme_index()))
+	                               notice_look(it.kind), it.value, it.target,
+	                               NOTICE_FILE, theme_index()))
 		plat_resident_line("OVERLAY\tpath=%s\tms=%d", NOTICE_FILE, it.ms);
 }
 
 /* "Getting hot" over a game (DESIGN.md 11.23): the notice with a thermometer
  * where a badge goes, held **hold-heat**, ahead of every pop-up waiting.
- * Zyper is never over a game (DESIGN.md 10). */
+ * Zyper is over a game only in an unlock's notice (DESIGN.md 10), not here. */
 static void heat_notice(void)
 {
 	nq_item it;
@@ -1956,17 +1971,27 @@ static void clock24_save(bool on)
 }
 
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
- * default) or with its charge written beside it ("percentage"), my ask
- * of 2026-11-05. Read with the clock's setting; draw_corner_at writes the
- * number. */
-static bool g_batt_pct;
+ * default), with its charge written beside it ("percentage"), my ask of
+ * 2026-11-05, or with the time left written there ("time"), my ask of
+ * 2026-11-07. Read with the clock's setting; draw_corner_at writes the text.
+ * The time left is the estimate in src/battery_eta.h off the cable and the
+ * time to full (or to the charge limit) on it; where there is none yet - the
+ * first minutes after the start, a cable just plugged in, a charger whose
+ * gauge cannot say - it writes the percentage, so the corner is never empty
+ * of a number. */
+enum { BATT_BARS, BATT_PCT, BATT_TIME, BATT_MODES };
+static const char *const BATT_IDS[BATT_MODES] = { "bars", "percentage", "time" };
+static int g_batt_mode;
 
 static void batt_icon_load(void)
 {
 	char v[16];
+	int k;
 
 	db_get_str(db_dev(), "battery_icon", v, sizeof v, "bars");
-	g_batt_pct = !strcmp(v, "percentage");
+	g_batt_mode = BATT_BARS;
+	for (k = 0; k < BATT_MODES; k++)
+		if (!strcmp(v, BATT_IDS[k])) g_batt_mode = k;
 }
 
 /* --status, for a shot: what the corner shows in place of the device's
@@ -1981,8 +2006,10 @@ static struct {
 	bool         set;
 	int          minutes;
 	int          h24;          /* -1 for the saved setting */
+	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          icon;         /* BATT_BARS.., -1 for the saved setting */
 	status_marks m;
-} shot_st = { .minutes = -1, .h24 = -1 };
+} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .icon = -1 };
 
 /* Where the corner (its clock's text box and its marks), the clock alone, the
  * last panel and the games title's capitals were drawn this frame, for a
@@ -1993,12 +2020,16 @@ static SDL_Rect g_corner_box, g_clock_box, g_menu_panel, g_title_caps;
  * screen draws in it beside the rows (About's photo of Zyper) */
 static SDL_Rect g_menu_body;
 static int      g_marks_w;   /* the marks' width as status_marks_width gave it */
+/* The battery's number or time as wide as it wrote, before STATUS_PCT_MAX
+ * held it to its room: a shot checks it fits (shot_corner_clear) */
+static int      g_pct_natural;
 
 /* The screen was cleared: nothing recorded above is on it any more. */
 static void drawn_forget(void)
 {
 	g_corner_box = g_clock_box = g_menu_panel = g_title_caps = (SDL_Rect){ 0 };
 	g_marks_w = 0;
+	g_pct_natural = 0;
 }
 
 static bool status_same(const status_marks *a, const status_marks *b)
@@ -2016,8 +2047,10 @@ static bool status_same(const status_marks *a, const status_marks *b)
  * One for the launcher, as the volume bar's is. */
 static void status_blit(SDL_Renderer *r, const status_marks *m, int theme, int dx, int dy)
 {
-	/* 120 for the three marks and 96 for the battery's number's room */
-	static uint32_t      px[(STATUS_PAD * 2 + 120 + 96) * (STATUS_PAD * 2 + STATUS_ROW)];
+	/* 156 for all four marks (File Transfer's too) and the room of the
+	 * battery's number or time, and the gap between them */
+	static uint32_t      px[(STATUS_PAD * 2 + 156 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
+	                        (STATUS_PAD * 2 + STATUS_ROW)];
 	static SDL_Texture  *tex;
 	static SDL_Renderer *tex_for;
 	static status_marks  painted;
@@ -2115,6 +2148,64 @@ static bool charge_held(void)
 	return held;
 }
 
+/* MENU > Battery Icon > Time Left, on the cable: the minutes to full, or to
+ * the charge limit when one is set, from the gauge's current and charge
+ * (src/charging.h: the charging screen's estimate, the same numbers). Read
+ * every 2 s while the cable is in; -1 where the charger's gauge cannot say,
+ * while the current settles (CH_SETTLE_MS) and when it is held at the limit
+ * or full, and the corner writes the percentage. */
+static int charge_minutes(bool charging)
+{
+	static unsigned at;
+	static bool primed;
+	static ch_eta eta;
+	static int minutes = -1;
+	unsigned now = plat_now_ms();
+
+	if (!charging) {
+		/* Out of the cable: the next one starts from nothing */
+		primed = false;
+		eta = (ch_eta){ 0 };
+		minutes = -1;
+		return -1;
+	}
+	if (!primed || now - at >= 2000) {
+		ch_reading r;
+
+		primed = true;
+		at = now;
+		minutes = -1;
+		if (plat_charge_read(&r)) {
+			r.limit = charge_limit_now();
+			ch_eta_note(&eta, now, &r);
+			minutes = r.held ? -1 : ch_eta_minutes(&eta, now, &r);
+			if (minutes == 0) minutes = -1;
+		}
+	}
+	return minutes;
+}
+
+/* The minutes Time Left shows in the corner, or -1: a shot's own (--status
+ * eta=) or what the cable or the discharge says */
+static int corner_minutes(const status_marks *m)
+{
+	if (m->batt < 0) return -1;
+	if (shot_st.set) return shot_st.eta;
+	return m->charging ? charge_minutes(true) : battery_minutes_left();
+}
+
+/* "45 min", "3 h", "3 h 20 min": to the minute under 10, to 5 under 10
+ * hours and to the hour after (batt_eta_round), so a number changes when it
+ * means something */
+static void corner_time_text(int minutes, char *out, size_t n)
+{
+	int r = batt_eta_round(minutes);
+
+	if (r < 60)            snprintf(out, n, T(S_CORNER_TIME_MIN), r);
+	else if (r % 60 == 0)  snprintf(out, n, T(S_CORNER_TIME_H), r / 60);
+	else                   snprintf(out, n, T(S_CORNER_TIME_H_MIN), r / 60, r % 60);
+}
+
 /* File Transfer behind the shelf, for the corner's mark (xs_*) */
 static void xs_mark(status_marks *m);
 
@@ -2142,6 +2233,9 @@ static void status_gather(status_marks *m, bool moving)
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
+	/* The time to full forgets the cable the moment it is out, whatever the
+	 * setting, so a cable plugged in later starts its estimate afresh */
+	if (!chg) charge_minutes(false);
 	xs_mark(m);
 }
 
@@ -2200,7 +2294,7 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 {
 	status_marks m;
 	struct timespec ts;
-	char clk[16], pct[8];
+	char clk[16], pct[24];
 	int right = compact ? 960 : STATUS_RIGHT, dy = compact ? 28 : 0;
 	int x = right, mw;
 	unsigned wait;
@@ -2210,13 +2304,27 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 	status_gather(&m, moving);
 	wait = status_blink(&m);
 	/* MENU > Battery Icon > Percentage: room left of the mark for "82%", in
-	 * the clock's font and digits in cells, so 9% to 10% moves only itself */
-	if (g_batt_pct && m.batt >= 0) {
+	 * the clock's font and digits in cells, so 9% to 10% moves only itself.
+	 * Time Left writes "3 h 20 min" there when it has one, else the same
+	 * number, and asks for a frame every minute while it does, as the clock
+	 * does, so the time counts down with it. */
+	if (g_batt_mode != BATT_BARS && m.batt >= 0) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
+		int left = g_batt_mode == BATT_TIME ? corner_minutes(&m) : -1;
 
-		snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
-		m.pct_w = ui_text_tabular_width(f, pct);
-		if (m.pct_w > 96) m.pct_w = 96;
+		if (left > 0) {
+			unsigned minute = 60000;
+
+			corner_time_text(left, pct, sizeof pct);
+			redraw_at(plat_now_ms() + minute);
+			if (minute < wait) wait = minute;
+		} else {
+			snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
+		}
+		m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
+		if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+	} else {
+		g_pct_natural = 0;
 	}
 	status_blit(r, &m, theme, right - STATUS_RIGHT, dy);
 	if (m.pct_w > 0) {
@@ -5611,7 +5719,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.appearance = appearance_name(theme_appearance());
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
-		u.battery = g_batt_pct ? T(S_PANEL_BATTERY_PERCENTAGE) : T(S_PANEL_BATTERY_BARS);
+		u.battery = g_batt_mode == BATT_TIME ? T(S_PANEL_BATTERY_TIME)
+		          : g_batt_mode == BATT_PCT ? T(S_PANEL_BATTERY_PERCENTAGE) : T(S_PANEL_BATTERY_BARS);
 		u.ui_sounds  = uisound_setting_name(uisound_setting());
 		u.menu_music = bgm_menu_value(bgm_on(), bgm_count());
 		u.auto_off  = a->auto_off;
@@ -11459,10 +11568,11 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		clock24_save(!g_clock24);
 		return MENU_CHANGED;
 	}
-	/* Bars or Percentage, two positions turned over the same way */
+	/* Bars, Percentage or Time Left: three positions round, as Charge Limit
+	 * goes, Right and A forward and Left back, saved as its word */
 	if (sel == PM_BATTERY && (d || key == IN_ACCEPT)) {
-		g_batt_pct = !g_batt_pct;
-		db_set_str(db_dev(), "battery_icon", g_batt_pct ? "percentage" : "bars");
+		g_batt_mode = (g_batt_mode + (d < 0 ? BATT_MODES - 1 : 1)) % BATT_MODES;
+		db_set_str(db_dev(), "battery_icon", BATT_IDS[g_batt_mode]);
 		redraw_now();
 		return MENU_CHANGED;
 	}
@@ -14249,28 +14359,18 @@ static void synopsis_screen(app *a, const char *title, const char *text,
 	free(rows);
 }
 
-/* The list's badge for row `row`: chv_at(row)'s, greyed until earned, or
- * NULL when the card has none (src/rabadge.h). menu_panel's g_row_icon while
- * the list is drawn. */
+/* The list's icon for row `row`: chv_at(row)'s badge, greyed until earned,
+ * or the plain one where the card has none yet (src/rabadge.h). menu_panel's
+ * g_row_icon while the list is drawn. Every row has one, so nothing moves
+ * when a fetch lands the art: the next frame reads the file. */
 static SDL_Renderer *g_badge_r;
 
 static SDL_Texture *cheevo_row_badge(int row)
 {
 	const cheevo *c = chv_at(row);
 
-	return c ? rb_texture(g_badge_r, chv_source(), c->badge,
-	                      !(c->earned || c->earned_now)) : NULL;
-}
-
-/* Whether any achievement in the set has a badge on the card: a set with
- * none keeps its rows as they were, with no empty squares */
-static bool cheevo_badges_here(void)
-{
-	int i;
-
-	for (i = 0; i < chv_count(); i++)
-		if (rb_have(chv_source(), chv_at(i)->badge)) return true;
-	return false;
+	return c ? rb_icon(g_badge_r, chv_source(), c->badge,
+	                   !(c->earned || c->earned_now), theme()) : NULL;
 }
 
 static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
@@ -14281,7 +14381,6 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	unsigned *vcols;
 	char (*vals)[32];
 	char heading[192];
-	bool badges = cheevo_badges_here();
 
 	if (n <= 0) return;
 	rows  = calloc((size_t)n, sizeof *rows);
@@ -14383,11 +14482,12 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 		chv_backdrop(a, bg, over_shelf, k);
 		/* visits_all: every achievement can be opened, earned or not, so
 		 * `live` here is about color and not about reach. Each row with its
-		 * badge when the card has the set's (g_row_icon). */
-		if (badges || (rb_landed() && (badges = cheevo_badges_here()))) {
-			g_badge_r = a->r;
-			g_row_icon = cheevo_row_badge;
-		}
+		 * badge, or the plain one until the card has it (g_row_icon); the
+		 * count of badges that landed is read so it does not pile up, and
+		 * the frame after a landing reads the files. */
+		rb_landed();
+		g_badge_r = a->r;
+		g_row_icon = cheevo_row_badge;
 		menu_draw_ex(a, heading, rows, n, sel, menu_std_width(a), a->tint,
 		             vcols, true, 0);
 		g_row_icon = NULL;
@@ -15714,6 +15814,10 @@ static const char *shot_notice_head = "Unlocked · 5 points";
  * a badge, or as a progress notice (notice_render_ex) */
 static const char *shot_notice_badge;
 static int shot_notice_value, shot_notice_target;
+/* --notice-kind unlock|progress|set: what the notice is about, which says
+ * what it carries (notice_look): an unlock has the plain badge where no
+ * --notice-badge is given, and Zyper; progress, the plain badge; set, neither */
+static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
@@ -15767,14 +15871,20 @@ static int shot_at = -1;
 static int shot_launch;
 static const char *shot_cheevos_game = "Hagane: The Final Conflict";
 /* --cheevos-badge SET NAME: every row with that badge (src/rabadge.h), the
- * ones not earned greyed, as the list draws them */
+ * ones not earned greyed, as the list draws them; a '#' in NAME is the row's
+ * number, 1 to 8, so each row can have a picture of its own. Without it every
+ * row has the plain badge, as a set the card has no art for does. */
 static const char *shot_badge_set, *shot_badge_name;
 static bool shot_badge_got[8];
 
 static SDL_Texture *shot_row_badge(int row)
 {
-	return row >= 0 && row < 8 ? rb_texture(g_badge_r, shot_badge_set, shot_badge_name,
-	                                        !shot_badge_got[row]) : NULL;
+	char name[64], *hash;
+
+	if (row < 0 || row >= 8) return NULL;
+	snprintf(name, sizeof name, "%s", shot_badge_name ? shot_badge_name : "");
+	if ((hash = strchr(name, '#'))) *hash = (char)('1' + row);
+	return rb_icon(g_badge_r, shot_badge_set, name, !shot_badge_got[row], theme());
 }
 static int shot_syn;       /* --synopsis: the card a scraped game opens */
 static int shot_info;
@@ -15875,6 +15985,18 @@ static bool shot_status_parse(const char *spec)
 		/* on the cable, held at the charge limit: the plug */
 		else if (!strcmp(w, "held")) shot_st.m.charging = shot_st.m.held = true;
 		else if (!strcmp(w, "blinkoff")) shot_st.m.blink_off = true;
+		/* what MENU > Battery Icon > Time Left writes: eta=200 is 3 h 20 min,
+		 * on the cable the time to full; without it, the percentage */
+		else if (!strncmp(w, "eta=", 4) && w[4] >= '0' && w[4] <= '9') shot_st.eta = atoi(w + 4);
+		/* MENU > Battery Icon for this shot, not the saved one: icon=bars,
+		 * icon=percentage or icon=time */
+		else if (!strncmp(w, "icon=", 5)) {
+			int k;
+
+			for (k = 0; k < BATT_MODES && strcmp(w + 5, BATT_IDS[k]); k++) ;
+			if (k == BATT_MODES) return false;
+			shot_st.icon = k;
+		}
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
@@ -16165,6 +16287,15 @@ static const char *shot_corner_clear(app *a)
 	if (g_clock_box.w && !g_clock_left && g_clock_box.x + g_clock_box.w != clock_right) {
 		snprintf(why, sizeof why, "the clock ends at x %d, not at %d, %d from its marks",
 		         g_clock_box.x + g_clock_box.w, clock_right, STATUS_CLOCK_GAP);
+		return why;
+	}
+#ifdef I18N_PSEUDO
+	/* The pseudo-locale is 40% longer on purpose, and meant to overflow */
+	if (i18n_lang() != LANG_PSEUDO)
+#endif
+	if (g_pct_natural > STATUS_PCT_MAX) {
+		snprintf(why, sizeof why, "the battery's text is %d units wide, over the %d "
+		         "its room holds: it would run into the marks", g_pct_natural, STATUS_PCT_MAX);
 		return why;
 	}
 	if (a->sys.count > 0 && a->screen == SCREEN_SYSTEMS) {
@@ -16576,11 +16707,9 @@ static void shot_compose(app *a)
 		 * colors, the shared width - because a shot that composes the panel
 		 * differently from the screen is a picture of something that does not
 		 * exist. It used to call menu_draw with a width of 0. */
-		if (shot_badge_set) {
-			for (ci = 0; ci < cn; ci++) shot_badge_got[ci] = sample[ci].got;
-			g_badge_r = a->r;
-			g_row_icon = shot_row_badge;
-		}
+		for (ci = 0; ci < cn; ci++) shot_badge_got[ci] = sample[ci].got;
+		g_badge_r = a->r;
+		g_row_icon = shot_row_badge;
 		menu_draw_ex(a, head, rows, cn, shot_cheevos_sel, menu_std_width(a),
 		             a->tint, vcols, true, 0);
 		g_row_icon = NULL;
@@ -16594,7 +16723,8 @@ static void shot_compose(app *a)
 		     ? notice_render_mark(shot_notice_head, shot_notice, (notice_mark)shot_notice_mark,
 		                          dt, theme_index())
 		     : notice_render_ex(shot_notice_head, shot_notice, shot_notice_badge,
-		                        shot_notice_value, shot_notice_target, dt, theme_index())) &&
+		                        notice_look(shot_notice_kind), shot_notice_value,
+		                        shot_notice_target, dt, theme_index())) &&
 		    (nf = fopen(dt, "rb"))) {
 			unsigned char hd[8];
 			if (fread(hd, 1, 8, nf) == 8 && !memcmp(hd, "DTOV", 4)) {
@@ -17263,7 +17393,9 @@ int main(int argc, char *argv[])
 		 * host with no radio and no battery. Words, in any order:
 		 * H:MM (the time of day; none is a clock never set), 24h or 12h,
 		 * wifi=off|idle|1|2|3, bt, batt=PCT, chg, and blinkoff for a
-		 * critical battery caught in its second off. */
+		 * critical battery caught in its second off, eta=MIN for what
+		 * MENU > Battery Icon > Time Left writes, icon=bars|percentage|time
+		 * for the setting itself. */
 		else if (!strcmp(argv[i], "--status") && i + 1 < argc) {
 			if (!shot_status_parse(argv[++i])) {
 				fprintf(stderr, "--status: cannot read \"%s\"\n", argv[i]);
@@ -17476,6 +17608,12 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--notice-progress") && i + 2 < argc) {
 			shot_notice_value = atoi(argv[++i]);
 			shot_notice_target = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--notice-kind") && i + 1 < argc) {
+			const char *k = argv[++i];
+
+			shot_notice_kind = !strcmp(k, "unlock") ? NQ_UNLOCK
+			                 : !strcmp(k, "progress") ? NQ_PROGRESS : NQ_SET;
 		}
 		else if (!strcmp(argv[i], "--notice-heat")) shot_notice_mark = NOTICE_MARK_HEAT;
 		else if (!strcmp(argv[i], "--charging") && i + 1 < argc) {
@@ -18157,6 +18295,7 @@ int main(int argc, char *argv[])
 	clock24_load();
 	batt_icon_load();
 	if (shot_path && shot_st.h24 >= 0) g_clock24 = shot_st.h24;
+	if (shot_path && shot_st.icon >= 0) g_batt_mode = shot_st.icon;
 	a.sys_cursor = 0;
 	db_get_str(db_lib(), "startup_system", startup, sizeof startup, "");
 	if (startup[0])

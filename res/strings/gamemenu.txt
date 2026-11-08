@@ -1,6 +1,6 @@
 # A game's menus (src/game_menu.c): the info screen X opens on the shelf, the
 # in-game menu MENU opens over a game, and the display modes both name
-# (src/app.h). Cheevos and Controls are sysmenu.txt's.
+# (src/app.h). Achievements and Controls are sysmenu.txt's.
 
 # ---- the game info screen ---------------------------------------------------
 
@@ -282,7 +282,7 @@ ja = タッチペン
 it = Stilo
 
 [gamemenu.cheevos_none]
-note = The in-game Cheevos' value for a game with no achievements. Lowercase.
+note = The in-game Achievements row's value for a game with no achievements. Lowercase.
 en = none
 zh-Hans = 无
 es = ninguno
