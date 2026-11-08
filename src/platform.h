@@ -150,6 +150,8 @@ bool plat_resident_send(const char *tag, const char *core, const char *rom,
                         const char *preview,
                         int console, const char *cheevos);
 int  plat_resident_wait(void);
+/* Whether the game last sent has said RUNNING: its first frame is up */
+bool plat_resident_started(void);
 
 /* Called from inside plat_resident_wait when Diatom reports an achievement
  * unlocked. A callback rather than a queue because the wait blocks: anything
