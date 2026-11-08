@@ -1973,10 +1973,23 @@ longer and in brackets, to find what a longer translation would meet.
 A game's details (X on the shelf) end in **Delete Game**, after the art
 action *(2026-11-07: "when clicking X on a game to see details, allow
 deleting that game. delete the game, saves, and media")*. A plain row, as
-the art action is: live everywhere but Ports, with no value, since what it
+the art action is: live on every shelf, with no value, since what it
 takes is the question's to say. Never where the page opens, and A on it
 only asks. A BIOS set on a shelf (`neogeo.zip`) is never deleted: A says so
 in a one-line message (11.8), "neogeo is a BIOS other games need. It stays."
+
+**A port** (the Ports shelf) is its script and the folders it runs from,
+which its folder's `port.json` names (PortMaster writes it: its "items",
+`["stardewvalley/", "StardewValley.sh"]`), or, with none, the folder its
+script's `GAMEDIR` names (src/portinfo.h). Its question says so, "Delete
+StardewValley? Its folders go too, its saves with them.", since a port
+keeps its saves in them. A folder another port on the shelf names stays.
+PortMaster itself, which every port runs on, never goes: "PortMaster runs
+every port. It stays."; nor does a port nothing names a folder for:
+"Nothing says which folders are Mystery's. It stays." Both are said before
+anything is asked. *(2026-11-08, from Tarik's Pixel 2: Storage showed each
+port as its script alone, and deleting one from there left its folders.
+Ports had had no Delete Game, since nothing had said what was a port's.)*
 
 - **The question** is the confirm panel every destructive row asks with
   (Forget, Unlink, Delete All, Roll Back): over the shelf on **scrim.menu**,
@@ -2084,6 +2097,23 @@ game's size is what Delete Game gives back (11.31's plan, summed), its facts
 played". A on a game is Delete Game's question, as it is, over this page;
 the page is what every panel it opens stands on. B goes back to the card,
 on the system's row.
+
+**On the Ports shelf's page** a port's size is its script with its own
+folders and cover (11.31's plan), PortMaster's its script with its folder,
+and each folder no script on the shelf names is a row of its own, by its
+`port.json`'s title (a port whose script is gone, "Grand Theft Auto: Vice
+City") or by its name: "Its script is not on the card, so the shelf cannot
+start it." A on it asks before its folder goes; PortMaster's folder is never
+one. On every system's page a last row, **Other Files**, holds what no game
+on it owns (art of games gone, a loose file), so the rows come to the
+system's whole. *(2026-11-08, from Tarik's Pixel 2.)*
+
+The page is a base, as Muse's shelf is: MENU's panel leaves over it as it
+opens, and a panel opened on it - a question, "Deleting...", a result - comes
+from nothing, and leaves over it when it closes. *(2026-11-08, on the Pixel
+2: the question first opened as a swap from the last panel drawn, which left
+over the page before the question came, so a panel showed, went and came
+back.)*
 
 **The recommendations**, each a question as Delete Game's (a paragraph, a
 rule, the answer, Cancel focused), then "Deleting...", then "Deleted. 1.2 GB

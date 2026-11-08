@@ -198,6 +198,10 @@ emptyhome.cheer.other
 gamemenu.replace_art
 gamemenu.delete_ask
 gamemenu.delete_ask_this
+gamemenu.delete_ask_port
+gamemenu.delete_ask_port_this
+gamemenu.delete_runtime
+gamemenu.delete_port_unknown
 gamemenu.deleting
 gamemenu.deleted
 gamemenu.delete_partly
@@ -537,6 +541,8 @@ storage.songs.other
 storage.snaps_caption
 storage.last_played
 storage.progress
+storage.orphan_caption
+storage.orphan_ask
 
 # sysmenu: no shot draws it yet
 sysmenu.wifi_connecting

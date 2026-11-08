@@ -116,7 +116,10 @@ static const char *const DIRS[] = {
 	"Roms/PlayStation", "Saves", ".userdata", ".userdata/shared", ".userdata/shared/.zyperos",
 	".userdata/shared/.zyperos/Game Boy", "Music", "Music/Artist", "Music/Artist/Album",
 	"Videos", "Audiobooks", "Audiobooks/Book", "Bios", "ZyperOS", "Emulators",
-	"Emulators/DraStic", NULL,
+	"Emulators/DraStic", "Roms/Ports", "Roms/Ports/stardewvalley",
+	"Roms/Ports/stardewvalley/gamedata", "Roms/Ports/.media", "Roms/Ports/celeste",
+	"Roms/Ports/PortMaster", "Roms/Ports/PortMaster/libs", "Roms/Ports/gtavc",
+	"Roms/Ports/apotris", NULL,
 };
 
 static void settle(long ago)
@@ -157,6 +160,24 @@ static void card(void)
 	put("Bios/scph5501.bin", 524288);
 	put("ZyperOS/zyperos.elf", 1500000);
 	put("Emulators/DraStic/drastic", 250000);
+	/* The Ports shelf, as PortMaster lays it out (2026-11-08, Tarik's Pixel
+	 * 2): a port by its port.json, one by its GAMEDIR, PortMaster, a port
+	 * whose script is gone, a folder of nothing's, and a loose file */
+	put_text("Roms/Ports/StardewValley.sh", "#!/bin/bash\nGAMEDIR=/$directory/ports/stardewvalley\n");
+	put_text("Roms/Ports/stardewvalley/port.json",
+	         "{\"items\": [\"stardewvalley/\", \"StardewValley.sh\"], \"attr\": {\"title\": \"Stardew Valley\"}}");
+	put("Roms/Ports/stardewvalley/gamedata/Stardew Valley.dll", 900000);
+	put("Roms/Ports/.media/StardewValley.png", 40000);
+	put_text("Roms/Ports/Celeste.sh", "#!/bin/bash\nGAMEDIR=\"/$directory/ports/celeste/\"\n");
+	put("Roms/Ports/celeste/Celeste.exe", 1200000);
+	put("Roms/Ports/PortMaster.sh", 0);
+	put("Roms/Ports/PortMaster/libs/mono.squashfs", 1500000);
+	put_text("Roms/Ports/gtavc/port.json",
+	         "{\"items\": [\"gtavc/\", \"Grand Theft Auto Vice City.sh\"], "
+	         "\"attr\": {\"title\": \"Grand Theft Auto: Vice City\"}}");
+	put("Roms/Ports/gtavc/data.img", 1600000);
+	put("Roms/Ports/apotris/apotris.bin", 140000);
+	put("Roms/Ports/gamelist.xml", 3000);
 }
 
 static st_paths paths(void)
@@ -164,15 +185,15 @@ static st_paths paths(void)
 	return (st_paths){ root, roms, shared, zyp, false };
 }
 
-static const char *SYS_GB = "Game Boy", *SYS_PS = "PlayStation";
+static const char *SYS_GB = "Game Boy", *SYS_PS = "PlayStation", *SYS_PRT = "Ports";
 
 static st_systems systems(void)
 {
-	st_systems s = { { SYS_GB, SYS_PS }, 2 };
+	st_systems s = { { SYS_GB, SYS_PS, SYS_PRT }, 3, SYS_PRT };
 	return s;
 }
 
-static st_game_in GAMES[3];
+static st_game_in GAMES[8];
 static int ngames;
 
 static void games(bool zelda)
@@ -182,6 +203,9 @@ static void games(bool zelda)
 	if (zelda)
 		GAMES[ngames++] = (st_game_in){ SYS_GB, "GB", "mgba", "gb,gbc,zip", "Zelda.gb", "Zelda", false, 0 };
 	GAMES[ngames++] = (st_game_in){ SYS_PS, "PS1", "pcsx", "cue,chd", "Game.cue", "Game", false, 0 };
+	GAMES[ngames++] = (st_game_in){ SYS_PRT, "PRT", "port", "sh", "Celeste.sh", "Celeste", false, 0 };
+	GAMES[ngames++] = (st_game_in){ SYS_PRT, "PRT", "port", "sh", "PortMaster.sh", "PortMaster", false, 0 };
+	GAMES[ngames++] = (st_game_in){ SYS_PRT, "PRT", "port", "sh", "StardewValley.sh", "StardewValley", false, 0 };
 }
 
 static const st_sys *sys_of(const st_card *c, const char *folder)
@@ -261,6 +285,42 @@ static void numbers(const char *when)
 	                  on("Roms/PlayStation/Game (Track 2).bin"));
 	CHECK_EQ(g.saves, on("Saves/Game.srm"));
 
+	/* The Ports shelf: each port its script and its own folders and cover,
+	 * PortMaster its script and its folder, the folders no script names
+	 * rows of their own, and the rows with the loose file come to the
+	 * shelf's whole */
+	{
+		const st_sys *pr = sys_of(&c, SYS_PRT);
+		st_game_size sv, ce, pm;
+		st_orphan o[8];
+		int no = st_orphans(o, 8), i;
+		unsigned long long rows = 0;
+
+		CHECK(pr != NULL);
+		CHECK(st_game(SYS_PRT, "StardewValley.sh", &sv));
+		CHECK_EQ(sv.bytes, on("Roms/Ports/StardewValley.sh") + on("Roms/Ports/stardewvalley/port.json") +
+		                   on("Roms/Ports/stardewvalley/gamedata/Stardew Valley.dll") +
+		                   on("Roms/Ports/.media/StardewValley.png"));
+		CHECK(st_game(SYS_PRT, "Celeste.sh", &ce));
+		CHECK_EQ(ce.bytes, on("Roms/Ports/Celeste.sh") + on("Roms/Ports/celeste/Celeste.exe"));
+		CHECK(st_game(SYS_PRT, "PortMaster.sh", &pm));
+		CHECK_EQ(pm.bytes, on("Roms/Ports/PortMaster.sh") + on("Roms/Ports/PortMaster/libs/mono.squashfs"));
+		CHECK_EQ(no, 2);
+		for (i = 0; i < no; i++) {
+			if (!strcmp(o[i].folder, "gtavc")) {
+				CHECK(!strcmp(o[i].title, "Grand Theft Auto: Vice City"));
+				CHECK_EQ(o[i].bytes, on("Roms/Ports/gtavc/port.json") + on("Roms/Ports/gtavc/data.img"));
+			} else {
+				CHECK(!strcmp(o[i].folder, "apotris"));
+				CHECK(!strcmp(o[i].title, ""));
+				CHECK_EQ(o[i].bytes, on("Roms/Ports/apotris/apotris.bin"));
+			}
+			rows += o[i].bytes;
+		}
+		rows += sv.bytes + ce.bytes + pm.bytes + on("Roms/Ports/gamelist.xml");
+		if (pr) CHECK_EQ(rows, pr->games + pr->covers + pr->snaps + pr->states + pr->saves);
+	}
+
 	/* The recommendations: the gone game's cover and snap, never a Mac's
 	 * twin, and the gone game's two-year-old states, never today's */
 	CHECK_EQ(c.unused_art, on("Roms/Game Boy/.media/Old Game.png") + on("Roms/Game Boy/.media/Old Game.mp4"));
@@ -271,8 +331,13 @@ static void numbers(const char *when)
 	CHECK_EQ(c.old_state_games, 1);
 
 	/* The bar: its parts are the sums, and with free space the whole card */
-	CHECK_EQ(c.cat[STC_GAMES], gb->games + ps->games);
-	CHECK_EQ(c.cat[STC_ART], gb->covers + gb->snaps + ps->covers + ps->snaps);
+	{
+		const st_sys *pr = sys_of(&c, SYS_PRT);
+
+		CHECK_EQ(c.cat[STC_GAMES], gb->games + ps->games + (pr ? pr->games : 0));
+		CHECK_EQ(c.cat[STC_ART], gb->covers + gb->snaps + ps->covers + ps->snaps +
+		                         (pr ? pr->covers + pr->snaps : 0));
+	}
 	CHECK_EQ(c.cat[STC_SAVES], c.saves + c.states);
 	CHECK_EQ(c.cat[STC_MEDIA], c.music + c.videos + c.books + c.bgm);
 	CHECK_EQ(c.cat[STC_ZYPEROS], c.zyperos + c.emulators + c.partitions);
@@ -433,6 +498,26 @@ int main(void)
 		CHECK(given > 0);
 		CHECK(!there(".userdata/shared/.zyperos/Game Boy/Tetris.gb.2.state"));
 		CHECK(there("Saves/Tetris.srm"));
+	}
+
+	printf("a port folder whose script is gone is deleted whole; a port's own and PortMaster's never\n");
+	{
+		st_paths pp = paths();
+		st_systems s = systems();
+		unsigned long long want = on("Roms/Ports/gtavc/port.json") + on("Roms/Ports/gtavc/data.img");
+
+		games(false);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "gtavc"), want);
+		CHECK(!there("Roms/Ports/gtavc"));
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "PortMaster"), 0);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "PortMaster."), 0);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "portmaster"), 0);
+		CHECK(there("Roms/Ports/PortMaster/libs/mono.squashfs"));
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "stardewvalley"), 0);
+		CHECK(there("Roms/Ports/stardewvalley/gamedata/Stardew Valley.dll"));
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "celeste"), 0);
+		CHECK_EQ(st_delete_port_folder(&pp, &s, GAMES, ngames, "../Game Boy"), 0);
+		CHECK(there("Roms/Game Boy/Tetris.gb"));
 	}
 
 	{

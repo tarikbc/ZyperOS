@@ -478,7 +478,7 @@ With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game'
 <details>
 <summary><b>How do I delete a game?</b></summary>
 
-Press X on the game, choose **Delete Game** at the bottom of its details, and answer **Delete**. The cursor starts on **Cancel**, and B is Cancel too. It works from Favorites as well.
+Press X on the game, choose **Delete Game** at the bottom of its details, and answer **Delete**. The cursor starts on **Cancel**, and B is Cancel too. It works from Favorites as well, and on Ports: a port goes with the folders its PortMaster `port.json` names, its saves in them, and PortMaster itself always stays.
 
 <div align="center">
 
