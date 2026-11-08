@@ -570,13 +570,12 @@ static void in_a_game(void)
 		int n = game_rows(&g, all, 64, NULL);
 
 		ck(port_menu_for("run:ZyperOS/openbor/OpenBOR.sh") &&
-		   port_menu_for("run:Emulators/DraStic/DraStic.sh") &&
 		   port_menu_for("run:Emulators/Flycast/Flycast.sh") && port_menu_for("port") &&
 		   !port_menu_for("dsperate") && !port_menu_for("flycast2021"),
 		   "the in-game menu over every \"run:\" program and every port, and not over a Diatom core");
 		ck(port_menu_pads("OPENBOR") && !port_menu_pads("NDS") && !port_menu_pads("DC") &&
 		   !port_menu_pads("PORTS"),
-		   "OpenBOR's buttons on its Controls page; DraStic's and Flycast's are their own");
+		   "OpenBOR's buttons on its Controls page; Flycast 2.7's are its own");
 		ck(says(all, n, "A", "Attack") && says(all, n, "B", "Jump") &&
 		   says(all, n, "X", "Attack 2") && says(all, n, "Y", "Special") &&
 		   says(all, n, "L1/R1", "Attack 3/4") && says(all, n, "START", "Pause") &&
@@ -589,16 +588,16 @@ static void in_a_game(void)
 		n = game_rows(&g, all, 64, NULL);
 		ck(says(all, n, "POWER", "Save and turn off"), "a Diatom game's POWER saves");
 	}
-	/* DraStic or the standalone Flycast under the menu: their buttons are
-	 * their own settings', so In a game alone, with no hotkeys */
+	/* The standalone Flycast under the menu: its buttons are its own
+	 * settings', so In a game alone, with no hotkeys */
 	{
-		ctl_game g = { "", "Nintendo DS", "DS", "", "", "nds", NULL, NULL, true };
+		ctl_game g = { "", "Dreamcast", "Dreamcast", "", "", "chd", NULL, NULL, true };
 		seen_row all[64];
 		int n = game_rows(&g, all, 64, NULL);
 
 		ck(ctl_game_pages(&g) == 1 && says(all, n, "MENU", "Menu") &&
 		   says(all, n, "POWER", "Quit and turn off") && !says(all, n, "A", NULL),
-		   "over DraStic or Flycast: In a game alone, MENU the menu, POWER quits");
+		   "over Flycast 2.7: In a game alone, MENU the menu, POWER quits");
 	}
 	/* A game that took the Controller Pak says so, with where to change it */
 	{

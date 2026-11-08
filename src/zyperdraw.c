@@ -307,8 +307,16 @@ bool battery_now(int *pct, bool *charging)
 
 int battery_minutes_left(void)
 {
+	return battery_minutes_left_with(-1);
+}
+
+int battery_minutes_left_with(int gauge_min)
+{
+	uint32_t now = plat_now_ms();
+
 	battery_now(NULL, NULL);
-	return batt_eta_minutes(&g_eta, plat_now_ms(), BATT_EMPTY_PCT);
+	return batt_eta_blend(gauge_min, batt_eta_minutes(&g_eta, now, BATT_EMPTY_PCT),
+	                      batt_eta_weight(&g_eta, now));
 }
 
 /* Too low to go on, cached as battery_level is. Asked by every screen through

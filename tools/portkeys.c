@@ -4,7 +4,7 @@
  *
  * ZyperOS and Diatom read the volume keys themselves, and launch.sh stops both
  * for a port (or a standalone emulator), so for as long as Stardew Valley or
- * DraStic ran, VOL+ and VOL- did nothing. launch.sh starts this beside the
+ * OpenBOR ran, VOL+ and VOL- did nothing. launch.sh starts this beside the
  * port and stops it after.
  *
  *   VOL+ / VOL-          the volume, a position at a time
@@ -937,8 +937,8 @@ static bool batt_now(int *pct, bool *charging)
 
 /* ---- the in-game menu, over a port that has one -----------------------------
  *
- * OpenBOR has no libretro core, so it runs as a program of its own, as DraStic
- * and the standalone Flycast do when a card adds them, and as every port and
+ * OpenBOR has no libretro core, so it runs as a program of its own, as the
+ * standalone Flycast does when a card adds it, and as every port and
  * PortMaster itself do, and the launcher, which draws the in-game menu over a
  * game Diatom runs, has exited for it. With --menu (launch.sh gives it for
  * any "run:" program and any port, src/portmenu.h), MENU on its own
@@ -1118,7 +1118,7 @@ static uint32_t crtc_connector(void)
 /* What was pressed while the menu was up was the launcher's, and the port has
  * it all queued for the moment it goes on: the A that chose Continue would be
  * an attack. So would a helper the port's script started beside it, which
- * reads the pad too - gptokeyb turning it into keys, DraStic's stylus pad -
+ * reads the pad too, gptokeyb turning it into keys -
  * and would type it all into the game. Each event device any process of the
  * port's group has open has the clock it is read on changed and changed
  * back, which empties that queue and leaves the kernel's SYN_DROPPED in it

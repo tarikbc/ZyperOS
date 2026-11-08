@@ -122,24 +122,23 @@ define ZYPEROS_INSTALL_UPDATE
 	$(INSTALL) -D -m 0755 $(@D)/update/apply.sh $(TARGET_DIR)/usr/lib/zyperos/update-apply.sh
 endef
 
-# QEMU's image (configs/qemu_defconfig, the one with px2sim) carries
-# ZyperOS's px2-shot and px2-input in /usr/bin, so a screenshot and a button
-# press are one SSH command away there (tools/qemu-run.sh). The Pixel 2's
-# image doesn't: there they are built and copied over when needed.
-ifeq ($(BR2_PACKAGE_PX2SIM),y)
-define ZYPEROS_BUILD_QEMU_TOOLS
+# Every image carries ZyperOS's px2-shot and px2-input in /usr/bin, so a
+# screenshot and a button press are one SSH command away: in QEMU
+# (tools/qemu-run.sh), on a development image, and on a release image with
+# Developer Mode on. Both are small, need no library, and only root can use
+# them (the framebuffer's GETFB2 and uinput).
+define ZYPEROS_BUILD_SSH_TOOLS
 	for t in px2-shot px2-input; do \
 		$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) -Wall -Wextra \
 			-o $(@D)/$(ZYPEROS_BUILD_DIR)/$$t $(@D)/tools/$$t.c || exit 1; \
 	done
 endef
-ZYPEROS_POST_BUILD_HOOKS += ZYPEROS_BUILD_QEMU_TOOLS
-define ZYPEROS_INSTALL_QEMU_TOOLS
+ZYPEROS_POST_BUILD_HOOKS += ZYPEROS_BUILD_SSH_TOOLS
+define ZYPEROS_INSTALL_SSH_TOOLS
 	$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/px2-shot $(TARGET_DIR)/usr/bin/px2-shot
 	$(INSTALL) -D -m 0755 $(@D)/$(ZYPEROS_BUILD_DIR)/px2-input $(TARGET_DIR)/usr/bin/px2-input
 endef
-ZYPEROS_POST_INSTALL_TARGET_HOOKS += ZYPEROS_INSTALL_QEMU_TOOLS
-endif
+ZYPEROS_POST_INSTALL_TARGET_HOOKS += ZYPEROS_INSTALL_SSH_TOOLS
 
 # Its start and stop, the same on both devices: copied onto the card from the
 # image when the card has no ZyperOS or an older one, launch.sh run, and at

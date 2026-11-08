@@ -164,3 +164,6 @@ cp "$JAR" "$RT" "$ROOT/vendor/freej2me/"
 printf '%s %s %s\n' "$PIN" "$JAR_SHA" "$RT_SHA" > "$ROOT/vendor/freej2me/.pin"
 echo "  built  freej2me_plus ($PIN)"
 echo "  sha256 $GOT"
+# Which patches are in the core, for mk/payload.sh to hold it to
+# (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" write freej2me_plus

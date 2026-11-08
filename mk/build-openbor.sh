@@ -1,8 +1,7 @@
 #!/bin/sh
 # Build OpenBOR, the beat-'em-up engine the OpenBOR shelf runs. OpenBOR has no
 # libretro core, so it is a program of its own, run from the shelf by
-# sd/pixel2/OpenBOR.sh as DraStic is run by its script, and shipped in
-# ZyperOS/openbor (mk/payload.sh).
+# sd/pixel2/OpenBOR.sh, and shipped in ZyperOS/openbor (mk/payload.sh).
 #
 # DCurrent/openbor at b8303cc, ROCKNIX's pin for the same RK3326 (its
 # standalone openbor package, whose sha256 for the archive is this one too),

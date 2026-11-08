@@ -28,8 +28,8 @@
 
 /* Which games get the menu, by the core that runs them: every game a shelf
  * hands to a program of its own. A "run:" script's: OpenBOR, which ZyperOS
- * ships, and DraStic and the standalone Flycast 2.7, which a card can add
- * for the Nintendo DS and Dreamcast shelves' Core row. And the Ports
+ * ships, and the standalone Flycast 2.7, which a card can add
+ * for the Dreamcast shelf's Core row. And the Ports
  * shelf's ("port"): every PortMaster port, and PortMaster's own app. The
  * launcher names the system's tag in the port request for these
  * (launch_port), and launch.sh gives portkeys --menu when it does.
@@ -50,13 +50,12 @@ static inline bool port_menu_for(const char *core)
 #define PORT_MENU_OOM "1000"
 
 /* Of those, the programs whose buttons the Controls pages know, by tag:
- * OpenBOR, whose layout ships with it (src/controls.c). DraStic and Flycast
- * keep theirs in their own settings, which ZyperOS does not read, so over
- * them Controls is In a game alone; and the Nintendo DS's page of buttons is
- * DSperate's, not DraStic's. A port's pages are its own files' instead
- * (src/portdoc.h: its README, its gptokeyb keymap, its port.json), and
- * PortMaster's are its window's. tools/controls-check.c holds this to the
- * table. */
+ * OpenBOR, whose layout ships with it (src/controls.c). Flycast 2.7 keeps
+ * its own in its settings, which ZyperOS does not read, so over it Controls
+ * is In a game alone; and the Dreamcast's page of buttons is flycast2021's.
+ * A port's pages are its own files' instead (src/portdoc.h: its README,
+ * its gptokeyb keymap, its port.json), and PortMaster's are its window's.
+ * tools/controls-check.c holds this to the table. */
 static inline bool port_menu_pads(const char *tag)
 {
 	return tag && !strcmp(tag, "OPENBOR");

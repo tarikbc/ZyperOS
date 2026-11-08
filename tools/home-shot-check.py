@@ -212,6 +212,21 @@ assert not same(left,pct), 'Time Left with an estimate must write the time'
 assert same(left.crop((0,80,1024,768)),pct.crop((0,80,1024,768))), 'Time Left moved something below the corner'
 assert same(left.crop((0,0,560,80)),pct.crop((0,0,560,80))), 'Time Left moved something left of the corner'
 assert same(corner('time-bars',STATUS+' icon=bars eta=205'),bars), 'Bars must never write a time'
+# No time yet, one coming: three dots in the number's place, nothing else moves,
+# on the cable and off it. On the cable held at the limit or full, the words.
+calc=corner('time-calc',STATUS+' icon=time calc')
+assert not same(calc,pct), 'Time Left with an estimate coming must show the dots'
+assert not same(calc,left), 'the dots are not a time'
+assert same(calc.crop((0,80,1024,768)),pct.crop((0,80,1024,768))), 'the dots moved something below the corner'
+assert not same(calc,corner('time-calc0',STATUS+' icon=time calc=0')), 'the dots must fill in turn'
+assert same(corner('time-calc-bars',STATUS+' icon=bars calc'),bars), 'Bars must never write the dots'
+held=corner('time-held',STATUS+' icon=time held')
+full=corner('time-full',STATUS+' icon=time full')
+assert not same(held,corner('time-held-pct',STATUS+' icon=percentage held')), 'held says On hold'
+assert not same(full,corner('time-full-pct',STATUS+' icon=percentage full')), 'full says Charged'
+assert not same(held,full), 'On hold and Charged are different words'
+assert same(held,corner('time-held-eta',STATUS+' icon=time held eta=45')), 'held says On hold, not a time'
+assert same(full,corner('time-full-eta',STATUS+' icon=time full eta=45')), 'full says Charged, not a time'
 assert not same(corner('time-on-cable',STATUS+' icon=time chg eta=45'),corner('time-on-cable-pct',STATUS+' icon=percentage chg')), 'the time to full on the cable'
 # One, two, empty and an unknown system remain valid native screens.
 for name,tags in [('one',{'GB'}),('two',{'GB','GBA'}),('empty',set())]:

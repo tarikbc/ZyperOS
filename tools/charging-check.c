@@ -20,7 +20,7 @@ static int failures;
 
 static ch_reading rd(int pct, int ma, int mv, int now_mah, int full_mah)
 {
-	ch_reading r = { pct, ma, mv, now_mah, full_mah, CH_WALL, true, false, false, 0 };
+	ch_reading r = { pct, ma, mv, now_mah, full_mah, CH_WALL, true, false, false, 0, true };
 	return r;
 }
 
@@ -265,7 +265,7 @@ int main(void)
 		for (t = 0; t <= 60000; t += 1000) ch_eta_note(&e, t, &a);
 		for (; t <= 60000 + CH_SMOOTH_MS; t += 1000) ch_eta_note(&e, t, &c);
 		CHECK(e.ma > 750 + 750 * 0.30 && e.ma < 750 + 750 * 0.45, "one time constant: about 37% left");
-		ch_eta_note(&e, t, &(ch_reading){ 50, 0, 3900, 1500, 3000, CH_WALL, true, false, false, 0 });
+		ch_eta_note(&e, t, &(ch_reading){ 50, 0, 3900, 1500, 3000, CH_WALL, true, false, false, 0, true });
 		CHECK(!e.primed, "the current gone: start over");
 	}
 

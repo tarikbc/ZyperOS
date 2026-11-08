@@ -13,7 +13,7 @@
  * held MS milliseconds (80 by default) and let go, with 150 ms between
  * presses; wait:MS only waits. Buttons joined by + go down together and come
  * up together, for the chords a port or a standalone emulator quits on
- * (DraStic's SELECT+START). For driving the launcher, a port or a game over
+ * (SELECT+START, for many). For driving the launcher, a port or a game over
  * SSH with nobody at the device (px2-shot shows what it did).
  *
  * An event written to an evdev node goes to everything reading that device,

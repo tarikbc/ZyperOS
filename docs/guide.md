@@ -145,9 +145,9 @@ L1 and R1 the third and fourth, START pauses into OpenBOR's own menu, SELECT
 saves a screenshot) and then In a game, where POWER quits and turns the
 handheld off. OpenBOR keeps its own saves and has no save states, so there is
 no Save, Load or Reset. Quit ends the game and goes back to the shelf.
-DraStic and the standalone Flycast, when a card has them for the Nintendo DS
-or the Dreamcast, get the same three rows. Their buttons are set in their own
-menus, so Controls there has only the In a game page.
+The standalone Flycast, when a card has it for the Dreamcast, gets the same
+three rows. Its buttons are set in its own menus, so Controls there has only
+the In a game page.
 
 **About ZyperOS has two pages**, changed with Left/Right. The first shows the
 version, network address, battery charge and awake time. The second shows the
@@ -299,8 +299,8 @@ The system menu opens on a shelf of games and applies to that system alone:
 | | |
 |---|---|
 | **Games** | how many the shelf found |
-| **Core** | which libretro core runs them |
-| **Game Language** | the Nintendo DS shelf's, while DSperate runs it: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`; a game resumed from its saved state keeps its own until Reset |
+| **Core** | which core runs them; left/right/A choose on a shelf that has two (the Dreamcast's) |
+| **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Box Art** | fetch what this system is missing, and nothing else |

@@ -383,3 +383,47 @@ fr = Mesure…
 de = Wird gemessen …
 ja = 計測中…
 it = Misurazione...
+
+[storage.orphan_caption]
+note = The line under the list for a folder on the Ports shelf whose script is not on the card (a PortMaster port that cannot start): what it is.
+en = Its script is not on the card, so the shelf cannot start it.
+zh-Hans = 它的脚本不在存储卡上，游戏列表无法启动它。
+es = Su script no está en la tarjeta, así que la lista no puede iniciarlo.
+pt-BR = O script dele não está no cartão, então a lista não consegue abri-lo.
+fr = Son script n'est pas sur la carte\u00a0: la liste ne peut pas le lancer.
+de = Sein Skript ist nicht auf der Karte, also kann die Spieleliste es nicht starten.
+ja = スクリプトがカードにないため、ゲーム一覧から起動できません。
+it = Il suo script non è sulla scheda, quindi l'elenco non può avviarlo.
+
+[storage.orphan_ask]
+note = The yes/no question for such a folder; the first %s is its name (its port.json's title, else the folder), the second the room it gives back ("1.6 GB").
+en = Delete %s? Its script is not on the card, so it cannot start. %s. This cannot be undone.
+zh-Hans = 要删除 %s 吗？它的脚本不在存储卡上，无法启动。共 %s。此操作无法撤销。
+es = ¿Borrar %s? Su script no está en la tarjeta, así que no puede iniciarse. %s. No se puede deshacer.
+pt-BR = Apagar %s? O script dele não está no cartão, então ele não abre. %s. Não é possível desfazer.
+fr = Supprimer %s\u00a0? Son script n'est pas sur la carte, il ne peut pas se lancer. %s. Impossible d'annuler.
+de = %s löschen? Sein Skript ist nicht auf der Karte, es kann nicht starten. %s. Das lässt sich nicht rückgängig machen.
+ja = %s を削除しますか？スクリプトがカードにないため起動できません。%s。元に戻せません。
+it = Eliminare %s? Il suo script non è sulla scheda, quindi non può avviarsi. %s. Non si può annullare.
+
+[storage.rest]
+note = The last row on a system's page: the files in its folders that no game on it owns (art of games gone, a loose file), so the rows add up. tight
+en = Other Files
+zh-Hans = 其他文件
+es = Otros archivos
+pt-BR = Outros arquivos
+fr = Autres fichiers
+de = Weitere Dateien
+ja = その他のファイル
+it = Altri file
+
+[storage.rest_caption]
+note = The line under the list for that row: what it holds.
+en = Files in its folders that are no game's
+zh-Hans = 文件夹中不属于任何游戏的文件
+es = Archivos de sus carpetas que no son de ningún juego
+pt-BR = Arquivos das pastas que não são de nenhum jogo
+fr = Fichiers de ses dossiers qui ne sont à aucun jeu
+de = Dateien in seinen Ordnern, die zu keinem Spiel gehören
+ja = どのゲームのものでもない、フォルダー内のファイル
+it = File delle sue cartelle che non sono di nessun gioco

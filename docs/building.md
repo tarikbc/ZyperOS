@@ -75,7 +75,7 @@ something once broke in a way nothing noticed:
 | `check-xfer` | upload paths cannot escape the directory they were aimed at |
 | `check-db` | a shipped default never overwrites a choice, and the two scopes stay apart; fast forward's frameskip on mGBA, Snes9x 2010 and Genesis Plus GX at each core's own automatic value on a new card, and a value the player set kept |
 | `check-gamedel` | Delete Game on a scratch card holding a cartridge, a multi-disc set in its folder, a `.cue` with its tracks and an arcade set beside `neogeo.zip`, each with saves, states, a cover, a video and a set: exactly the game's files go, never a neighbour's, never `neogeo.zip`, never a file another game shares; its rows in the library database go and the neighbours' stay; a sheet or a folder that leads out of its folders is refused with nothing touched. Then the real launcher, headless (`--delete-now`): the shelf after, in place, on the next game or the one before, from Favorites, down to the empty home (builds the host launcher; that part skips without SDL2) |
-| `check-storage` | MENU > Storage's numbers on a scratch card: each part, each game's bytes (what Delete Game gives back) and the bar held to the clusters the files take; a second start reads the cache and lists no folder again, a game added lists its own folder alone, a cache it cannot read is measured again; the walk on its thread ends and stops when asked; Unused Art and Old Save States delete exactly their files |
+| `check-storage` | MENU > Storage's numbers on a scratch card: each part, each game's bytes (what Delete Game gives back) and the bar held to the clusters the files take; a second start reads the cache and lists no folder again, a game added lists its own folder alone, a cache it cannot read is measured again; the walk on its thread ends and stops when asked; Unused Art and Old Save States delete exactly their files. Then the real launcher, headless (`--storage delete-open`): Delete Game's question opens on the page from nothing, never as a swap from the panel before it (builds the host launcher; that part skips without SDL2) |
 | `check-stats` | play time is recorded, and a LAUNCH still writes nothing |
 | `check-sort` | a shelf sorts the way it says it does, and the same shelf twice the same way |
 | `check-bt` | a device name from the air is only ever data; an address is validated |
@@ -123,6 +123,8 @@ something once broke in a way nothing noticed:
 | `check-battery` | a charger change reaches the shared battery cache within 250 ms at the shelf's poll rate |
 | `check-battery-eta` | the time left on the battery: the estimate from how long a percent takes to fall, against a simulated gauge at several loads, across the clock's wrap, a change of load, a stall, the cable and a gauge that corrects itself; and the corner's rounding |
 | `check-dslang` | the Nintendo DS's language: each language MENU > Language has maps, in Auto, to the DS's own or to English (Português (Brasil) and 简体中文 have none), the Game Language row's eight choices round trip through the database and go round both ways, the core's option and its values are the patch's, and the launcher sends it first with every DS game and with no other; the row is on the DS shelf's menu in every language with nothing cut, and Left, Right and A go round it, saved (builds the host launcher for the second half; skips without SDL2) |
+| `check-dsresume` | a Nintendo DS game's resume by its language: the firmware's language as DSperate's direct boot takes it, the language a game starts in for each option, the `.lang` beside its auto state, and a game left in another language started fresh (src/dsresume.h) |
+| `check-core-stamp` | the patched cores' stamps (mk/core-stamp.sh): a stamped core passes; a core built before a patch changed, one changed after its stamp, one with no stamp and a patch no core claims each fail, with what to run |
 | `check-lowbatt` | the start with a battery too low to play: which start shows the screen, its hold, POWER, the charger's moment, and the reading that decides the power-off |
 | `check-heat` | "Getting hot": the 85 C trip, two readings in a row, the hysteresis under 80 C, five quiet minutes, the poll's clock |
 | `check-charging` | the charging screen: the charger's kind, its lines, the time to full through CC and CV, and its rules |
@@ -320,17 +322,21 @@ from `plastron/local/authorized_keys` (ignored by git): `ssh root@10.55.0.2` rea
 Brick and `ssh root@10.42.0.1` the Pixel 2. Copy files with `scp -O`, since no
 SFTP server runs, and into `/tmp` first; check that the checksums match on
 both sides before you move a file into `/mnt/SDCARD/ZyperOS/`. Release builds
-carry no key and run no SSH server.
+carry no key and run no SSH server until Developer Mode is on (MENU > About).
 
-For the Pixel 2 with nobody holding it, `tools/` has small programs to build
+Every image has `px2-shot` and `px2-input` in `/usr/bin`, so over SSH a
+screenshot is `px2-shot /tmp/s.ppm` and a press is `px2-input a`, with
+nothing to build or copy.
+
+For the Pixel 2 with nobody holding it, `tools/` has more small programs to build
 with plastron's toolchain (`aarch64-buildroot-linux-gnu-gcc -O2`, `-pthread`
 for the memory test; the SDK has it as `/sdk/bin/aarch64-buildroot-linux-gnu-gcc`
 in `docker run --rm -v plastron-sdk-px2-<id>:/sdk:ro plastron-builder`) and run
 from `/tmp` as root:
 
-- `px2-shot` saves what the panel shows as a 640x480 PPM, from any program,
+- `px2-shot` (in the image) saves what the panel shows as a 640x480 PPM, from any program,
   and `px2-shot --fps` counts the frames a second it shows.
-- `px2-input down down a` presses the buttons, as the joypad would, and
+- `px2-input` (in the image): `px2-input down down a` presses the buttons, as the joypad would, and
   `px2-input select+start` presses them together, for an emulator's quit chord.
   `volup` and `voldown` are the volume keys, sent on their own device, and
   `power` the power key on the PMIC's: it turns the handheld off, but in the
@@ -364,7 +370,11 @@ res/            the boot animation, the system cards and the marks they are
 config/         systems.cfg as shipped; the rest is compiled in
 sd/             each device's launch.sh, and bt-alsa.sh, as they land on the card
 vendor/         the libretro cores: fetched and hash-pinned by
-                mk/fetch-vendor.sh, the rest built by mk/build-*.sh
+                mk/fetch-vendor.sh, the rest built by mk/build-*.sh; a core
+                ZyperOS patches has a stamp beside it naming its patches
+                (mk/core-stamp.sh), which mk/payload.sh and tools/release.sh
+                hold it to: run its build script, or `sh mk/core-stamp.sh
+                adopt NAME` for one that script already made
 site/           the web page at zyperos.com; mk/site.sh lays it out and
                 Cloudflare Pages publishes it from main (tools/site-art.sh
                 draws its icons and social card)

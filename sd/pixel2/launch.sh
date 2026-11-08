@@ -298,7 +298,7 @@ run_port() {
 		/usr/bin/splash --still /tmp/zyperos_loading.raw &
 		still=$!
 	fi
-	# A program of its own (OpenBOR, DraStic, the standalone Flycast, a port,
+	# A program of its own (OpenBOR, the standalone Flycast, a port,
 	# PortMaster) has the in-game menu on MENU too: the launcher names the
 	# system's tag in the request, third, and portkeys shows the menu by
 	# stopping the program and starting the launcher for the menu alone
@@ -357,8 +357,8 @@ run_port() {
 	[ -n "$still" ] && kill "$still" 2> /dev/null
 	rm -f /tmp/zyperos_loading.raw
 	# A helper left behind would keep the buttons typing keys under the
-	# shelf: gptokeyb, or DraStic's stylus pad
-	killall -9 gptokeyb gptokeyb2 dspen 2> /dev/null
+	# shelf: gptokeyb
+	killall -9 gptokeyb gptokeyb2 2> /dev/null
 	# and a runtime or a folder it left mounted would keep the card in use
 	port_unmount
 }

@@ -80,6 +80,9 @@ if [ $PUBLISH = 1 ]; then
 	! gh release view "$TAG" --repo $REPO >/dev/null 2>&1 || stop "$REPO already has a $TAG release (a draft counts)"
 fi
 [ -d "$VENDOR/cores" ] || stop "no cores in $VENDOR/cores (ZYPEROS_VENDOR)"
+# The patched cores against their stamps now, not an hour into the build,
+# where mk/payload.sh asks the same (mk/core-stamp.sh)
+sh mk/core-stamp.sh check "$VENDOR" || stop "a patched core in $VENDOR is stale or unstamped"
 # With no public key in res/update/keys the image has System Update off, and
 # the release has no update files. With one, a published release must carry a
 # signed list: the private key is checked for now, before the long build.

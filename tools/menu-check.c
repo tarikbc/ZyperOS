@@ -719,11 +719,11 @@ static void system_menu(void)
 	ck(!rows[sm_at(&u, SM_GAMES)].live && !rows[sm_at(&u, SM_CORE)].live, "reported facts are not rows to press");
 	ck(rows[sm_at(&u, SM_BOXART)].live, "Box Art is live on a network");
 
-	/* A shelf that lists two cores, the Nintendo DS's: Core is a choice. */
-	u.sys_core = "DraStic";
+	/* A shelf that lists two cores, the Dreamcast's: Core is a choice. */
+	u.sys_core = "Flycast";
 	u.core_choice = true;
 	sys_menu_build(&u, rows, &b, &heading);
-	ck(rows[sm_at(&u, SM_CORE)].live && !strcmp(val(&rows[sm_at(&u, SM_CORE)]), "DraStic"),
+	ck(rows[sm_at(&u, SM_CORE)].live && !strcmp(val(&rows[sm_at(&u, SM_CORE)]), "Flycast"),
 	   "two cores make Core a row to press, naming the one in use");
 	u.core_choice = false;
 	u.sys_core = "gambatte";
@@ -894,8 +894,8 @@ static void auto_off_words(void)
  * A row that is drawn but cannot be selected is fine; a row that CAN be
  * selected and then does nothing when pressed is the defect. */
 /* Game Language (src/dslang.h): a row of the Nintendo DS shelf's menu, under
- * Core, there while DSperate runs it, and on no other shelf's menu - nor on
- * the DS's with DraStic, which has no use for it */
+ * Core, and on no other shelf's menu. The DS has one core, DSperate, so its
+ * Core row names it and is no row to press. */
 static void dslang_row(void)
 {
 	sys_ui u;
@@ -908,13 +908,15 @@ static void dslang_row(void)
 	memset(&u, 0, sizeof u);
 	u.games = true;
 	u.wifi = WIFI_CONNECTED;
-	u.sys_name = "Nintendo DS"; u.sys_core = "DSperate"; u.core_choice = true;
+	u.sys_name = "Nintendo DS"; u.sys_core = "dsperate"; u.core_choice = false;
 	u.game_count = 20; u.dmode = "Native";
 	np = sys_menu_build(&u, plain, &b, &heading);
 
 	printf("system menu, Game Language:\n");
 	ck(!has_label(plain, np, "Game Language"), "no Game Language row unless the shelf says so");
 	ck(np == SM_ROWS - 1, "and every other row is there");
+	ck(!plain[sm_at(&u, SM_CORE)].live && !strcmp(val(&plain[sm_at(&u, SM_CORE)]), "dsperate"),
+	   "one core: the DS's Core row names DSperate and is no row to press");
 
 	u.dslang = "Auto (English)";
 	n = sys_menu_build(&u, rows, &b, &heading);
@@ -1853,7 +1855,7 @@ static void row_sounds(void)
 
 	memset(&u, 0, sizeof u);
 	u.games = true;
-	u.sys_name = "NDS"; u.sys_core = "drastic"; u.core_choice = true;
+	u.sys_name = "DC"; u.sys_core = "Flycast"; u.core_choice = true;
 	u.game_count = 3; u.dmode = "Native";
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(menu_sound_at(b.sound, n, sm_at(&u, SM_CORE)) == MENU_SND_RING, "a system's Core steps round, on A too");

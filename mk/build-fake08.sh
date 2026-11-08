@@ -95,3 +95,5 @@ mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/"
 echo "  built  fake08 ($PIN)"
 echo "  sha256 $GOT"
+# Which patches are in it, for mk/payload.sh to hold it to (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" write fake08

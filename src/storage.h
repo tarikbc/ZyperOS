@@ -111,11 +111,32 @@ typedef struct {
 	bool own_fs;
 } st_paths;
 
-/* The systems the walk measures, by folder (systems.cfg's, MP4's none) */
+/* The systems the walk measures, by folder (systems.cfg's, MP4's none), and
+ * which of them is the Ports shelf's (core "port"), NULL for none */
 typedef struct {
 	const char *folders[ST_MAX_SYS];
 	int n;
+	const char *ports;
 } st_systems;
+
+/* A folder on the Ports shelf that no port's script on it names: a port
+ * whose script is gone (its port.json says what it was) or a folder of
+ * nothing's. PortMaster's own is never one. */
+#define ST_ORPHANS 64
+typedef struct {
+	char folder[ST_FOLDER];
+	char title[ST_FOLDER];            /* its port.json's attr.title, "" for none */
+	unsigned long long bytes;
+} st_orphan;
+
+/* The Ports shelf's orphans, as the last walk found them: how many */
+int st_orphans(st_orphan *out, int max);
+
+/* Delete an orphan's folder, with the walk stopped: only a folder at the top
+ * of the Ports shelf's, not a link, not PortMaster's, that no port on the
+ * shelf names at this moment. The bytes given back; 0 when it is refused. */
+unsigned long long st_delete_port_folder(const st_paths *p, const st_systems *s,
+                                         const st_game_in *games, int n, const char *folder);
 
 /* Start a refresh on the thread: the cache read first if nothing is in hand,
  * then the walk. A walk under way is left to go on. Everything is copied. */

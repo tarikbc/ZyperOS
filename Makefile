@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-raset check-xfer check-sshlink check-usblink check-devmode check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-core-stamp check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-captive check-qr \
@@ -284,6 +284,27 @@ build-native/dslang-check: tools/dslang-check.c src/dslang.c src/dslang.h src/i1
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g \
 	      -o $@ tools/dslang-check.c src/dslang.c
+
+# A Nintendo DS game's resume by its language (src/dsresume.h): the firmware's
+# language as DSperate's direct boot takes it, the language a game starts in
+# for each option, the .lang beside its auto state, and the start fresh or
+# resume. Plain C, no device.
+check-dsresume: build-native/dsresume-check
+	@./build-native/dsresume-check
+
+build-native/dsresume-check: tools/dsresume-check.c src/dsresume.c src/dsresume.h \
+                             src/atomic.c src/atomic.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/dsresume-check.c src/dsresume.c src/atomic.c
+
+# The patched cores' stamps (mk/core-stamp.sh): a stamp written for a core
+# passes, and a core built before a patch changed, a core changed after its
+# build, a core with no stamp and a patch no core claims each fail, with what
+# to run. On a scratch vendor/ of made-up cores; the real one is the
+# payload's to hold, and release.sh's.
+check-core-stamp:
+	@sh tools/core-stamp-check.sh
 
 # The start with a battery too low to play (src/lowbatt.h): which start shows
 # the screen, its hold, POWER, the charger's moment, the fresh reading that
@@ -1244,12 +1265,12 @@ check-gamedel: build-native/gamedel-check
 	fi
 	@python3 tools/gamedel-e2e.py
 
-build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/library.c \
+build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/portinfo.c src/portinfo.h src/library.c \
                             src/library.h src/db.c src/db.h src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/gamedel-check.c src/gamedel.c src/library.c src/db.c src/favorites.c \
+	      -o $@ tools/gamedel-check.c src/gamedel.c src/portinfo.c src/library.c src/db.c src/favorites.c \
 	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # MENU > Storage's numbers (src/storage.h) on a card made of small files:
@@ -1257,15 +1278,21 @@ build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h sr
 # own files take; the cache read on a second start with no folder listed
 # again, a game added listing its own folder alone, a cache it cannot read
 # measured again; and the two recommendations deleting exactly their files.
+# Then the real launcher, headless (tools/storage-motion-check.py): Delete
+# Game's question opening on the page from nothing, as the page is a base.
 check-storage: build-native/storage-check
 	@./build-native/storage-check
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory native || exit 1; \
+	fi
+	@python3 tools/storage-motion-check.py
 
-build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c \
+build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c src/portinfo.c \
                             src/gamedel.h src/library.c src/db.c src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/library.c src/db.c \
+	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/portinfo.c src/library.c src/db.c \
 	      src/favorites.c src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Play time. The assertion that earns this its place is that a LAUNCH writes

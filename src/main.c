@@ -92,8 +92,10 @@
 #include "game_menu.h"
 #include "portmenu.h"
 #include "gamedel.h"
+#include "portinfo.h"
 #include "dsv.h"
 #include "dslang.h"
+#include "dsresume.h"
 #include "ui.h"
 #include "wifi_menu.h"
 #include "zyperrig.h"
@@ -285,18 +287,22 @@ static void display_save(app *a)
 /* ---------- per-system core ----------------------------------------------- */
 
 /* A shelf whose core field lists more than one core, the first the default -
- * the Nintendo DS: DSperate, a libretro core run in Diatom with ZyperOS's own
- * in-game menu, and DraStic, a standalone program run through a script. The
- * shelf's Core row chooses (core_step, from the system menu), and the choice
- * is kept per system under core.<TAG>, beside display.<TAG>. Everything
- * that runs a game reads s->core, so choosing is writing that field and
- * nothing else follows it.
+ * the Dreamcast: flycast2021, a libretro core run in Diatom with ZyperOS's own
+ * in-game menu, and the standalone Flycast 2.7, a program run through a
+ * script. The shelf's Core row chooses (core_step, from the system menu), and
+ * the choice is kept per system under core.<TAG>, beside display.<TAG>.
+ * Everything that runs a game reads s->core, so choosing is writing that
+ * field and nothing else follows it. A shelf with one core keeps the row, as
+ * a fact rather than a choice: it names the core.
  *
  * A core that is not on the card is passed over when there is no choice on
- * record: a card without DSperate's core plays its DS games on DraStic, if
- * that is there, without anyone visiting a menu, and the row offers both. A
- * choice on record is kept even if its core has gone, so taking DraStic off
- * for a while does not lose it. */
+ * record: a card without flycast2021 plays its Dreamcast games on Flycast
+ * 2.7, if that is there, without anyone visiting a menu, and the row offers
+ * both. A choice on record is kept even if its core has gone, so taking
+ * Flycast 2.7 off for a while does not lose it. A choice on record of a core
+ * the shelf no longer lists is passed over the same way: the Nintendo DS's
+ * core.NDS, which named DraStic's script on a card that chose it before
+ * 2026-11-08, is never read, since the DS has one core now. */
 static bool core_present(const char *core)
 {
 	char path[CFG_STR * 2];
@@ -311,8 +317,8 @@ static bool core_present(const char *core)
 }
 
 /* What the Core row says: a libretro core by its short name, as every other
- * shelf's row always has, and a script by its own name - "DraStic" for
- * run:Emulators/DraStic/DraStic.sh - since the path is the card's business. */
+ * shelf's row always has, and a script by its own name - "Flycast" for
+ * run:Emulators/Flycast/Flycast.sh - since the path is the card's business. */
 static const char *core_label(const char *core, char *buf, size_t n)
 {
 	const char *b, *dot;
@@ -372,12 +378,12 @@ static void core_step(app *a, int sys, int d)
 
 /* ---------- the Nintendo DS's game language ------------------------------- */
 
-/* Game Language, the row under Core on the Nintendo DS shelf's menu while
- * DSperate runs it (src/dslang.h): Auto, the language of MENU > Language
- * where the DS has it and English where not, or one of the choices outright.
- * Saved as ds_language the moment it changes; the next game started runs in
- * it (src/platform.c sends it as the core's dsperate_language). DraStic has
- * its own settings, so with DraStic chosen the shelf has no such row. */
+/* Game Language, the row under Core on the Nintendo DS shelf's menu
+ * (src/dslang.h): Auto, the language of MENU > Language where the DS has it
+ * and English where not, or one of the choices outright. Saved as
+ * ds_language the moment it changes; the next game started runs in it
+ * (src/platform.c sends it as the core's dsperate_language), and so does the
+ * next Reset of the one running (mk/patches/dsperate-lr-language.patch). */
 static dsl_choice dslang_load(void)
 {
 	char v[16];
@@ -406,6 +412,56 @@ static const char *dslang_label(dsl_choice c, char *buf, size_t n)
 		snprintf(buf, n, "%s", lang_name(dslang_label_lang(c)));
 	}
 	return buf;
+}
+
+/* A DS game's resume, by the language it was left in (src/dsresume.h): for
+ * the game about to start, `st` its auto state, the language it will run in
+ * into `lang` ("" when that cannot be known, or the game is not a DS game on
+ * DSperate), and true when its auto state was made in another one, so it
+ * starts fresh instead. The language is the one the core gets: the last
+ * dsperate_language the launcher sends, which is the row's unless the
+ * library database has one of its own (src/platform.c). */
+static bool ds_resume_fresh(const system_cfg *s, const char *romfile, const char *st,
+                            char *lang, size_t n)
+{
+	char fw[CFG_STR * 2], opt[32] = "", was[16];
+	const char *eff, *rec;
+	int i, k = plat_coreopt_count(s->tag);
+
+	lang[0] = '\0';
+	if (strcmp(s->tag, DSLANG_TAG) || strcmp(s->core, "dsperate")) return false;
+	for (i = 0; i < k; i++) {
+		const char *kv = plat_coreopt(s->tag, i);
+
+		if (!strncmp(kv, DSLANG_KEY "=", sizeof DSLANG_KEY))
+			snprintf(opt, sizeof opt, "%s", kv + sizeof DSLANG_KEY);
+	}
+	snprintf(fw, sizeof fw, "%s/Bios/firmware.bin", P_CARD);
+	if (!(eff = dsr_effective(opt, fw))) return false;
+	snprintf(lang, n, "%s", eff);
+	if (access(st, F_OK) != 0) return false;
+	rec = dsr_recorded(st, fw, was, sizeof was);
+	if (!dsr_start_fresh(rec, eff)) return false;
+	fprintf(stderr, "dslang: %s: its auto state was made in %s, the game runs in %s now: "
+	        "starting it fresh\n", romfile, rec, eff);
+	return true;
+}
+
+/* As the game ends: when its auto state was written in this run (it is not
+ * the file `before` saw), the language it was written in goes beside it. The
+ * state's own time and size, not the way the game ended: Diatom writes it at
+ * a quit, at POWER and at a shutdown's TERM alike, and not after a crash. */
+static void ds_resume_record(const char *st, const char *lang, const struct stat *before,
+                             bool had)
+{
+	struct stat now;
+
+	if (!lang[0] || stat(st, &now) != 0) return;
+	if (had && now.st_mtime == before->st_mtime && now.st_size == before->st_size &&
+	    now.st_ino == before->st_ino)
+		return;
+	if (!dsr_record(st, lang))
+		fprintf(stderr, "dslang: could not write the language beside %s\n", st);
 }
 
 /* ---------- two screens ---------------------------------------------------- */
@@ -2154,10 +2210,13 @@ static void clock24_save(bool on)
  * 2026-11-05, or with the time left written there ("time"), my ask of
  * 2026-11-07. Read with the clock's setting; draw_corner_at writes the text.
  * The time left is the estimate in src/battery_eta.h off the cable and the
- * time to full (or to the charge limit) on it; where there is none yet - the
- * first minutes after the start, a cable just plugged in, a charger whose
- * gauge cannot say - it writes the percentage, so the corner is never empty
- * of a number. */
+ * time to full (or to the charge limit) on it, from the gauge's charge and
+ * current at the first read. Where there is none yet but one is coming it
+ * writes three dots filling in turn (2026-11-08, from a first try on the Pixel
+ * 2 that kept the percentage for minutes); held at the charge limit, "On
+ * hold"; full on the cable, "Charged"; and where none can come - a gauge
+ * that cannot say its current on the cable - the percentage, so the corner
+ * is never empty. */
 enum { BATT_BARS, BATT_PCT, BATT_TIME, BATT_MODES };
 static const char *const BATT_IDS[BATT_MODES] = { "bars", "percentage", "time" };
 static int g_batt_mode;
@@ -2186,9 +2245,11 @@ static struct {
 	int          minutes;
 	int          h24;          /* -1 for the saved setting */
 	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          calc;         /* the calculating dots, this many filled, -1 for none */
+	bool         full;         /* on the cable and charged */
 	int          icon;         /* BATT_BARS.., -1 for the saved setting */
 	status_marks m;
-} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .icon = -1 };
+} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .calc = -1, .icon = -1 };
 
 /* Where the corner (its clock's text box and its marks), the clock alone, the
  * last panel and the games title's capitals were drawn this frame, for a
@@ -2216,6 +2277,7 @@ static bool status_same(const status_marks *a, const status_marks *b)
 	return a->wifi == b->wifi && a->bt == b->bt && a->batt == b->batt &&
 	       a->charging == b->charging && a->held == b->held &&
 	       a->blink_off == b->blink_off && a->pct_w == b->pct_w &&
+	       a->calc == b->calc && a->calc_step == b->calc_step &&
 	       a->xfer == b->xfer && a->xfer_moving == b->xfer_moving &&
 	       a->xfer_pct == b->xfer_pct;
 }
@@ -2327,50 +2389,89 @@ static bool charge_held(void)
 	return held;
 }
 
-/* MENU > Battery Icon > Time Left, on the cable: the minutes to full, or to
- * the charge limit when one is set, from the gauge's current and charge
- * (src/charging.h: the charging screen's estimate, the same numbers). Read
- * every 2 s while the cable is in; -1 where the charger's gauge cannot say,
- * while the current settles (CH_SETTLE_MS) and when it is held at the limit
- * or full, and the corner writes the percentage. */
-static int charge_minutes(bool charging)
-{
-	static unsigned at;
-	static bool primed;
-	static ch_eta eta;
-	static int minutes = -1;
-	unsigned now = plat_now_ms();
+/* What MENU > Battery Icon > Time Left writes in the corner: the kind of it
+ * (src/battery_eta.h's batt_corner_kind), the minutes when it is a time, and
+ * how long the dots have been going, for the animation's tick. */
+typedef struct {
+	corner_kind kind;
+	int         minutes;
+	unsigned    calc_ms;
+} corner_view;
 
-	if (!charging) {
-		/* Out of the cable: the next one starts from nothing */
-		primed = false;
+/* The gauge's files, read every 2 s (plat_charge_read: the charging screen's
+ * own, so the one gauge is read the one way) and kept between. On the cable
+ * the time is to full, or to the charge limit when one is set, and is two
+ * estimates blended: the straight line from the gauge's first read, and the
+ * charging screen's (src/charging.h: CC then CV, after its 30 s settle) as it
+ * settles. Off the cable, the gauge's charge over its current from the first
+ * read, blended into the falls' as that earns trust (battery_minutes_left).
+ * A gauge with no current file (the Brick, a simulator) gives the gauge's
+ * half nothing, and the falls carry on alone; on the cable it gives the
+ * percentage, since nothing can ever come. */
+static corner_view corner_view_now(const status_marks *m)
+{
+	static unsigned at, cable_since, calc_since;
+	static bool primed, was, ok, calcing;
+	static ch_reading r;
+	static ch_eta eta;
+	unsigned now = plat_now_ms();
+	corner_in in = { .charging = m->charging, .minutes = -1 };
+	corner_view v;
+
+	if (shot_st.set) {
+		/* A shot's own: eta= the minutes, calc[=N] the dots, full the charge */
+		in.full = shot_st.full;
+		in.held = m->held;
+		in.minutes = shot_st.eta;
+		in.expect = shot_st.calc >= 0;
+		v.kind = m->batt < 0 ? CORNER_PCT : batt_corner_kind(&in);
+		v.minutes = in.minutes;
+		v.calc_ms = 0;
+		return v;
+	}
+	if (m->batt < 0) return (corner_view){ CORNER_PCT, -1, 0 };
+	if (!primed || m->charging != was) {
+		/* The cable came or went: what was learned of the other is over */
+		was = m->charging;
 		eta = (ch_eta){ 0 };
-		minutes = -1;
-		return -1;
+		cable_since = now;
+		primed = false;
 	}
 	if (!primed || now - at >= 2000) {
-		ch_reading r;
-
 		primed = true;
 		at = now;
-		minutes = -1;
-		if (plat_charge_read(&r)) {
+		ok = plat_charge_read(&r);
+		if (ok) {
 			r.limit = charge_limit_now();
-			ch_eta_note(&eta, now, &r);
-			minutes = r.held ? -1 : ch_eta_minutes(&eta, now, &r);
-			if (minutes == 0) minutes = -1;
+			if (m->charging) ch_eta_note(&eta, now, &r);
 		}
 	}
-	return minutes;
-}
+	if (m->charging) {
+		if (ok && r.online) {
+			int quick = batt_gauge_to_full(r.now_mah, r.full_mah, r.limit, r.ma);
+			int slow = ch_eta_minutes(&eta, now, &r);
 
-/* The minutes Time Left shows in the corner, or -1: a shot's own (--status
- * eta=) or what the cable or the discharge says */
-static int corner_minutes(const status_marks *m)
-{
-	if (m->batt < 0) return -1;
-	if (shot_st.set) return shot_st.eta;
-	return m->charging ? charge_minutes(true) : battery_minutes_left();
+			in.full = r.full || r.pct >= 100;
+			in.held = r.held;
+			in.minutes = batt_eta_blend(quick > 0 ? quick : -1, slow > 0 ? slow : -1,
+			                            batt_ramp(now - eta.first_at, CH_SETTLE_MS, CH_SETTLE_MS));
+			/* Dots for the first CH_SETTLE_MS when a current can be read
+			 * and none is going in yet; the percentage when none can be */
+			in.expect = r.ma_known && now - cable_since < CH_SETTLE_MS;
+		}
+	} else {
+		int quick = ok && !r.online
+		          ? batt_gauge_left(r.now_mah, r.full_mah, r.ma, BATT_EMPTY_PCT) : -1;
+
+		in.minutes = battery_minutes_left_with(quick);
+		in.expect = m->batt > BATT_EMPTY_PCT;
+	}
+	v.kind = batt_corner_kind(&in);
+	v.minutes = in.minutes;
+	if (v.kind != CORNER_CALC) calcing = false;
+	else if (!calcing) { calcing = true; calc_since = now; }
+	v.calc_ms = calcing ? now - calc_since : 0;
+	return v;
 }
 
 /* "45 min", "3 h", "3 h 20 min": to the minute under 10, to 5 under 10
@@ -2412,9 +2513,6 @@ static void status_gather(status_marks *m, bool moving)
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
-	/* The time to full forgets the cable the moment it is out, whatever the
-	 * setting, so a cable plugged in later starts its estimate afresh */
-	if (!chg) charge_minutes(false);
 	xs_mark(m);
 }
 
@@ -2489,24 +2587,46 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 	 * does, so the time counts down with it. */
 	if (g_batt_mode != BATT_BARS && m.batt >= 0) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
-		int left = g_batt_mode == BATT_TIME ? corner_minutes(&m) : -1;
+		corner_view cv = g_batt_mode == BATT_TIME ? corner_view_now(&m)
+		                                          : (corner_view){ CORNER_PCT, -1, 0 };
 
-		if (left > 0) {
+		pct[0] = '\0';
+		if (cv.kind == CORNER_TIME) {
 			unsigned minute = 60000;
 
-			corner_time_text(left, pct, sizeof pct);
+			corner_time_text(cv.minutes, pct, sizeof pct);
 			redraw_at(plat_now_ms() + minute);
 			if (minute < wait) wait = minute;
+		} else if (cv.kind == CORNER_HELD) {
+			snprintf(pct, sizeof pct, "%s", T(S_CORNER_HELD));
+		} else if (cv.kind == CORNER_FULL) {
+			snprintf(pct, sizeof pct, "%s", T(S_CORNER_FULL));
+		} else if (cv.kind == CORNER_CALC) {
+			/* Three dots filling in turn where the time will go: a frame
+			 * every CORNER_DOT_MS for the first minute of it, then only as
+			 * the launcher draws anyway, so a gauge that never answers
+			 * does not keep the screen awake */
+			m.calc = true;
+			m.calc_step = shot_st.set ? shot_st.calc : batt_corner_dots(plat_now_ms());
+			if (!shot_st.set && cv.calc_ms < 60000u) {
+				redraw_at(plat_now_ms() + CORNER_DOT_MS);
+				if (CORNER_DOT_MS < wait) wait = CORNER_DOT_MS;
+			}
 		} else {
 			snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
 		}
-		m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
-		if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+		if (m.calc) {
+			m.pct_w = STATUS_CALC_W;
+			g_pct_natural = 0;
+		} else {
+			m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
+			if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+		}
 	} else {
 		g_pct_natural = 0;
 	}
 	status_blit(r, &m, theme, right - STATUS_RIGHT, dy);
-	if (m.pct_w > 0) {
+	if (m.pct_w > 0 && !m.calc) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
 		/* In the mark's own color: text-soft, or warning when it is low */
 		SDL_Color c = status_batt_level(m.batt, m.charging)
@@ -6768,7 +6888,19 @@ static bool timed_message(app *a, const char *heading, const menu_row *rows,
 static bool result_message(app *a, const char *heading, const char *text)
 {
 	menu_row row = { text, NULL, false };
+	int w = menu_std_width(a);
 
+	/* A message wider than the panel goes onto lines, balanced, rather than
+	 * sliding where a word is cut ("neogeo is a BIOS other games need. It
+	 * stays.", "PortMaster runs every port. It stays." in French) */
+	if (ui_text_width(ui_font(UI_F_MENU), text) > w) {
+		char lines[3][LB_LINE];
+		menu_row rows[3];
+		int n = ui_balance_lines(ui_font(UI_F_MENU), text, w, 3, lines), i;
+
+		for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+		if (n > 1) return timed_message(a, heading, rows, n, w, MENU_ZYPEROS);
+	}
 	return timed_message(a, heading, &row, 1, 0, MENU_ZYPEROS);
 }
 
@@ -10250,25 +10382,34 @@ static int delete_ask_fit(bool *rule)
  * A name too long for the question to fit names the game in the heading
  * instead, as the details page under it does, and the question says "this
  * game": a name may slide in a heading, a question may not be cut. */
-static int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
-                           menu_row *rows, const char **heading)
+static int delete_ask_rows_for(app *a, const char *title, bool port, char (*lines)[CHV_WRAP_COLS],
+                               menu_row *rows, const char **heading)
 {
 	char q[LIB_NAME + 512];
 	bool rule;
 	int n, i, fit = delete_ask_fit(&rule), w = menu_std_width(a);
 	TTF_Font *f = ui_font(UI_F_MENU);
 
-	snprintf(q, sizeof q, T(S_GAMEMENU_DELETE_ASK), title);
+	/* A port's question says its folders go, its saves in them (DESIGN.md
+	 * 11.31): a port keeps nothing in Saves/ */
+	snprintf(q, sizeof q, T(port ? S_GAMEMENU_DELETE_ASK_PORT : S_GAMEMENU_DELETE_ASK), title);
 	n = wrap_text(f, q, w, lines, DEL_ASK_LINES);
 	*heading = T(S_GAMEMENU_DELETE);
 	if (n > fit) {
-		n = wrap_text(f, T(S_GAMEMENU_DELETE_ASK_THIS), w, lines, DEL_ASK_LINES);
+		n = wrap_text(f, T(port ? S_GAMEMENU_DELETE_ASK_PORT_THIS : S_GAMEMENU_DELETE_ASK_THIS), w,
+		              lines, DEL_ASK_LINES);
 		*heading = title;
 	}
 	for (i = 0; i < n; i++)
 		rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
 	if (n < fit || rule) rows[n++] = MENU_HR;
 	return n;
+}
+
+static int delete_ask_rows(app *a, const char *title, char (*lines)[CHV_WRAP_COLS],
+                           menu_row *rows, const char **heading)
+{
+	return delete_ask_rows_for(a, title, false, lines, rows, heading);
 }
 
 /* One frame of the question over the shelf, Cancel focused, for a shot */
@@ -10349,6 +10490,8 @@ static bool game_delete_now(app *a, int owner, const game_entry *g, bool wait,
 		        plan->why == GD_BIOS ? "a BIOS set" : plan->why == GD_OUTSIDE
 		        ? "outside its folders" : "too many paths", plan->bad);
 		if (plan->why == GD_BIOS) snprintf(said, n, T(S_GAMEMENU_DELETE_BIOS), name);
+		else if (plan->why == GD_RUNTIME) snprintf(said, n, "%s", T(S_GAMEMENU_DELETE_RUNTIME));
+		else if (plan->why == GD_PORT_UNKNOWN) snprintf(said, n, T(S_GAMEMENU_DELETE_PORT_UNKNOWN), name);
 		else snprintf(said, n, "%s", plan->why == GD_OUTSIDE ? T(S_GAMEMENU_DELETE_OUTSIDE)
 		                                                     : T(S_GAMEMENU_DELETE_FAILED));
 		free(others);
@@ -10397,12 +10540,35 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
 	int nq, lv;
 	bool yes;
 
+	const system_cfg *s = owner >= 0 && owner < a->sys.count ? &a->sys.systems[owner] : NULL;
+	bool port = s && !strcmp(s->core, "port");
+
 	said[0] = '\0';
 	if (gd_is_bios(g->file)) {
 		snprintf(said, n, T(S_GAMEMENU_DELETE_BIOS), g->name);
 		return false;
 	}
-	nq = delete_ask_rows(a, g->title, lines, rows, &heading);
+	/* A port says why it stays before anything is asked: PortMaster, which
+	 * every port runs on, and a port nothing names its folders for
+	 * (src/portinfo.h) */
+	if (port) {
+		char dir[CFG_STR * 2], (*f)[PI_NAME] = malloc(PI_ITEMS * sizeof *f);
+		pi_port *ports = malloc(PI_MAX * sizeof *ports);
+		int np, nf = 0;
+
+		snprintf(dir, sizeof dir, "%s/%s", P_ROMS, s->folder);
+		if (pi_runtime(g->file)) {
+			snprintf(said, n, "%s", T(S_GAMEMENU_DELETE_RUNTIME));
+		} else if (f && ports) {
+			np = pi_scan(dir, ports, PI_MAX);
+			nf = pi_folders(dir, ports, np, g->file, f, PI_ITEMS);
+			if (!nf) snprintf(said, n, T(S_GAMEMENU_DELETE_PORT_UNKNOWN), g->title);
+		}
+		free(f);
+		free(ports);
+		if (said[0]) return false;
+	}
+	nq = delete_ask_rows_for(a, g->title, port, lines, rows, &heading);
 	lv = panel_open();
 	yes = confirm_rows(a, heading, rows, nq, T(S_GAMEMENU_DELETE_YES), menu_std_width(a), lv);
 	panel_close(a, lv, !a->running);
@@ -11735,7 +11901,7 @@ static void update_screen(app *a)
 
 enum {
 	SR_ART, SR_STATES, SR_SYSTEM, SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS,
-	SR_OTHER, SR_SNAPS, SR_GAME
+	SR_OTHER, SR_SNAPS, SR_GAME, SR_ORPHAN, SR_REST
 };
 
 typedef struct {
@@ -11762,6 +11928,8 @@ typedef struct {
 	st_game_in *games;            /* the walk's request */
 	int ngames;
 	st_systems sys;
+	st_orphan orph[ST_ORPHANS];   /* the Ports shelf's folders no script names */
+	int norph;
 	st_paths paths;
 	store_icon icons[ST_MAX_SYS + 8];
 	int nicons;
@@ -11898,6 +12066,10 @@ static void store_request(store_view *v)
 	for (i = 0; v->cfg_ok && i < v->cfg.count && v->sys.n < ST_MAX_SYS; i++)
 		if (v->cfg.systems[i].folder[0] && !is_muse(&v->cfg.systems[i]))
 			v->sys.folders[v->sys.n++] = v->cfg.systems[i].folder;
+	v->sys.ports = NULL;
+	for (i = 0; v->cfg_ok && i < v->cfg.count; i++)
+		if (!strcmp(v->cfg.systems[i].core, "port") && v->cfg.systems[i].folder[0])
+			v->sys.ports = v->cfg.systems[i].folder;
 	v->paths = (st_paths){ P_CARD, P_ROMS, P_SHARED, P_ROOT, store_own_fs() };
 }
 
@@ -12076,6 +12248,12 @@ static void store_caption(store_view *v, sp_row *r)
 		snprintf(r->caption, sizeof r->caption, T(S_STORAGE_SNAPS_CAPTION), s ? s->name : c->sys[v->page].folder);
 		break;
 	}
+	case SR_ORPHAN:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_ORPHAN_CAPTION));
+		break;
+	case SR_REST:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_REST_CAPTION));
+		break;
 	case SR_GAME: {
 		int sh = store_shelf(v->a, c->sys[v->page].folder);
 		const game_entry *g = sh >= 0 && r->index < v->a->view[sh].list.count
@@ -12175,26 +12353,52 @@ static void store_rows(store_view *v)
 				store_row_look(v, r);
 			}
 		}
-		if (cnt > 0 && (it = malloc((size_t)cnt * sizeof *it))) {
+		/* On the Ports shelf, its folders no script names too: a port whose
+		 * script is gone, by its port.json's name, or a folder of nothing's */
+		bool ports = v->sys.ports && !strcmp(s->folder, v->sys.ports);
+		unsigned long long owned = 0, whole = store_sys_bytes(s);
+		bool all_sized = true;
+
+		v->norph = ports && !v->fixture ? st_orphans(v->orph, ST_ORPHANS) : 0;
+		if ((cnt > 0 || v->norph > 0) && (it = malloc((size_t)(cnt + v->norph) * sizeof *it))) {
 			for (i = 0; i < cnt; i++) {
 				const game_entry *g = &v->a->view[sh].list.items[i];
 				st_game_size sz;
 				bool ok = store_game_size(v, s->folder, g, &sz);
 
 				it[n++] = (store_item){ SR_GAME, i, ok ? sz.bytes : 0, ok, g->title };
+				if (ok) owned += sz.bytes;
+				else all_sized = false;
+			}
+			for (i = 0; i < v->norph; i++) {
+				it[n++] = (store_item){ SR_ORPHAN, i, v->orph[i].bytes, true,
+				                        v->orph[i].title[0] ? v->orph[i].title : v->orph[i].folder };
+				owned += v->orph[i].bytes;
 			}
 			qsort(it, (size_t)n, sizeof *it, store_item_cmp);
 			for (i = 0; i < n; i++) {
 				sp_row *r = store_add(v);
 
 				if (!r) break;
-				r->kind = SR_GAME;
+				r->kind = it[i].kind;
 				r->index = it[i].index;
-				r->name = v->a->view[sh].list.items[it[i].index].title;
+				r->name = it[i].kind == SR_GAME ? v->a->view[sh].list.items[it[i].index].title : it[i].title;
 				if (it[i].sized) store_bytes(it[i].bytes, r->value, sizeof r->value);
 				r->icon = SP_ICON_NONE;
 			}
 			free(it);
+		}
+		/* What none of those owns - art of games gone, a loose file, a set
+		 * two games share - so the rows come to the system's whole */
+		if (all_sized && whole > owned && whole - owned >= 1000000ull) {
+			sp_row *r = store_add(v);
+
+			if (r) {
+				r->kind = SR_REST;
+				r->name = T(S_STORAGE_REST);
+				store_bytes(whole - owned, r->value, sizeof r->value);
+				r->icon = SP_ICON_NONE;
+			}
 		}
 	}
 	/* Back on the row it was on, or the nearest */
@@ -12432,6 +12636,26 @@ static void store_act(store_view *v)
 		store_after(v);
 		break;
 	}
+	case SR_ORPHAN: {
+		const st_orphan *o = r->index < v->norph ? &v->orph[r->index] : NULL;
+		char folder[ST_FOLDER];
+		unsigned long long b;
+
+		if (!o) { uisound_play(DS_SOUND_DENY); break; }
+		uisound_play(DS_SOUND_ACCEPT);
+		snprintf(folder, sizeof folder, "%s", o->folder);
+		store_bytes(o->bytes, sz, sizeof sz);
+		snprintf(q, sizeof q, T(S_STORAGE_ORPHAN_ASK), o->title[0] ? o->title : o->folder, sz);
+		if (!store_ask(a, T(S_GAMEMENU_DELETE), q, T(S_GAMEMENU_DELETE_YES))) break;
+		st_stop();
+		wait_panel(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETING));
+		b = st_delete_port_folder(&v->paths, &v->sys, v->games, v->ngames, folder);
+		fprintf(stderr, "storage: port folder %s: %llu bytes\n", folder, b);
+		if (b) store_said(a, T(S_GAMEMENU_DELETE), b, S_GAMEMENU_DELETED);
+		else result_message(a, T(S_GAMEMENU_DELETE), T(S_GAMEMENU_DELETE_FAILED));
+		store_after(v);
+		break;
+	}
 	case SR_GAME: {
 		int sh = store_shelf(a, v->c.sys[v->page].folder);
 		char said[256];
@@ -12474,14 +12698,29 @@ static void store_close(store_view *v)
 	v->games = NULL;
 }
 
+/* The page as a base, as Muse's shelf is: the screen's, and --storage
+ * delete-open's, which holds it to the panel that opens on it */
+static int store_base_open(void)
+{
+	return panel_base();
+}
+
 static void storage_screen(app *a)
 {
 	store_view *v = calloc(1, sizeof *v);
+	int base;
 
 	if (!v) return;
 	store_open(v, a);
 	store_request(v);
 	store_refresh(v);
+	/* The page is a base, as Muse's shelf is (panel_base): MENU's panel
+	 * leaves over it, and a panel opened on it - Delete Game's question,
+	 * a recommendation's, "Deleting...", a result - comes from nothing.
+	 * Without it the question opened as a swap from the last panel drawn,
+	 * which left over the page first: a panel there, gone, and back (seen
+	 * on the Pixel 2, 2026-11-08). */
+	base = store_base_open();
 	g_base_page = store_base;
 	g_base_ctx = v;
 	while (!want_quit && a->running) {
@@ -12540,6 +12779,8 @@ static void storage_screen(app *a)
 		tick_tint(a);
 		tick_theme(a);
 		store_draw(a, v);
+		/* A panel closed onto the page leaving it, with its scrim */
+		panel_leave_draw(a, 0);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -12547,6 +12788,9 @@ static void storage_screen(app *a)
 	/* What the walk finished is kept and cached; nothing walks once the
 	 * page is gone, least of all under a game */
 	st_stop();
+	/* Back to MENU, whose panel comes in again as it opened; or with MENU
+	 * pressed, every screen closing, nothing comes in */
+	mm_close(base, anim_now(), 0, g_menu_closing);
 	g_base_page = NULL;
 	g_base_ctx = NULL;
 	store_close(v);
@@ -12557,11 +12801,14 @@ static void storage_screen(app *a)
  * as the Storage lab drew it. NAME is main, system (the PlayStation shelf
  * of the card the shot runs on), art and states (a recommendation's
  * question), done (the card after Unused Art), delete (Delete Game's
- * question from the system's page) or first (the first walk). ROW is the
+ * question from the system's page), delete-open (that question opening,
+ * with --shot-at, as the page opens it: shot_motion) or first (the first
+ * walk). ROW is the
  * focused row, by number or by what it is (videos, music, books, bios,
- * zyperos, other). */
+ * zyperos, other, rest). */
 static const char *shot_storage;
 static int shot_storage_sel = -1;
+static int shot_lv;              /* --shot-at's panel level (with shot_motion's, below) */
 static const char *shot_storage_row;
 
 static void store_fixture(store_view *v, bool measured)
@@ -12654,7 +12901,7 @@ static void storage_shot(app *a)
 			v.c.free += 1200000000ull;
 			st_totals(&v.c);
 		}
-		if (!strcmp(name, "system") || !strcmp(name, "delete")) {
+		if (!strcmp(name, "system") || !strcmp(name, "delete") || !strcmp(name, "delete-open")) {
 			for (i = 0; i < v.c.nsys; i++)
 				if (!strcmp(v.c.sys[i].folder, "PlayStation")) v.page = i;
 			/* The shelf the shot's card has, sized as a nearly full card's */
@@ -12692,6 +12939,7 @@ static void storage_shot(app *a)
 			static const struct { const char *name; int kind; } ROWS[] = {
 				{ "videos", SR_VIDEOS }, { "music", SR_MUSIC }, { "books", SR_BOOKS },
 				{ "bios", SR_BIOS }, { "zyperos", SR_ZYPEROS }, { "other", SR_OTHER },
+				{ "rest", SR_REST },
 			};
 			size_t k;
 
@@ -12714,15 +12962,20 @@ static void storage_shot(app *a)
 		ui_scrim(a->r, 0);
 		menu_draw(a, T(art ? S_STORAGE_UNUSED_ART : S_STORAGE_OLD_STATES), rows, nq + 2, nq + 1,
 		          menu_std_width(a), MENU_ZYPEROS);
-	} else if (!strcmp(name, "delete") && v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
+	} else if ((!strcmp(name, "delete") || !strcmp(name, "delete-open")) &&
+	           v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
 		int sh = store_shelf(a, "PlayStation");
 		const char *heading;
 
 		if (sh >= 0) {
+			float k = 1.0f;
+
 			nq = delete_ask_rows(a, a->view[sh].list.items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
 			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
 			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
-			ui_scrim(a->r, 0);
+			/* delete-open: where the question is in its open (shot_motion) */
+			if (shot_lv) panel_frame(a, shot_lv, &k);
+			ui_scrim_k(a->r, 0, k);
 			menu_draw(a, heading, rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
 		}
 	} else if (!strcmp(name, "done")) {
@@ -16729,7 +16982,7 @@ static void respawn_resident(app *a)
 }
 
 /* The Ports shelf. A port is a Linux program with a script of its own - a
- * PortMaster port, DraStic, anything that is not a libretro core - and it
+ * PortMaster port, OpenBOR, anything that is not a libretro core - and it
  * wants the display, the buttons and most of the memory, which this process
  * and the resident Diatom are holding. So it does not run under the launcher
  * at all: the launcher names the script in PORT_REQUEST and exits, and
@@ -16739,7 +16992,8 @@ static void respawn_resident(app *a)
  *
  * A shelf whose core is "run:<script>" is the same handoff for a standalone
  * emulator: the script, under the card, is run with the game as its one
- * argument - Nintendo DS through DraStic, which is no libretro core.
+ * argument - OpenBOR, which has no libretro core, or the Dreamcast through
+ * the standalone Flycast.
  *
  * The request is one line of three fields, a tab between each: the script,
  * the game it is given (none for a port, whose script is the game), and the
@@ -17044,6 +17298,11 @@ static void launch(app *a)
 	 * loudly. */
 	char *argv[27 + 2 * 32];
 	bool resident = false, want_menu;
+	/* A DS game's resume by its language (ds_resume_fresh): what it will
+	 * run in, whether it starts fresh, and its auto state as it was */
+	char ds_lang[16] = "";
+	bool ds_fresh = false, ds_had = false;
+	struct stat ds_before;
 	unsigned waited;
 	int n = 0;
 
@@ -17068,10 +17327,11 @@ static void launch(app *a)
 	snprintf(save, sizeof save, "%s/Saves", P_CARD);
 	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
 
-	/* A DS game: two screens in one frame, a DraStic save to take over the
-	 * first time, and frames left undrawn when they run late - DSperate's
-	 * 3D is the heaviest thing a Cortex-A35 is asked to draw, and a skipped
-	 * drawing keeps the game at its speed where a late frame slows it. */
+	/* A DS game: two screens in one frame, a DraStic save (ROGUE OS's) to
+	 * take over the first time, and frames left undrawn when they run late -
+	 * DSperate's 3D is the heaviest thing a Cortex-A35 is asked to draw, and
+	 * a skipped drawing keeps the game at its speed where a late frame slows
+	 * it. */
 	g_game_dual = two_screens(s);
 	if (g_game_dual) dsv_import(save, romfile);
 	{
@@ -17122,6 +17382,10 @@ static void launch(app *a)
 	 * preview live beside each other, the launch hands both over, and a game
 	 * always comes up where it was left. */
 	state_path(a, o, &v->list.items[v->cursor], st, sizeof st);
+	/* Not a resume a DS game would come back from in another language than
+	 * the one Game Language says now (src/dsresume.h) */
+	ds_fresh = ds_resume_fresh(s, romfile, st, ds_lang, sizeof ds_lang);
+	ds_had = ds_lang[0] && stat(st, &ds_before) == 0;
 	quick_bind(a, o, &v->list.items[v->cursor]);
 	/* The scratch, not the Auto card - see pause_preview_path. The card is
 	 * written from this only when the game actually ends, below. */
@@ -17190,6 +17454,18 @@ static void launch(app *a)
 	 * once the game is running (the tick shows it), when the set was here
 	 * before the launch - a first play says it when the set arrives */
 	nq_clear(&g_nq);
+	/* Said as the game starts, ahead of anything else: why it is not where
+	 * it was left */
+	if (ds_fresh) {
+		nq_item it;
+
+		memset(&it, 0, sizeof it);
+		it.kind = NQ_ALERT;
+		it.ms = 4000;
+		snprintf(it.head, sizeof it.head, "%s", T(S_POPUP_DSLANG_HEAD));
+		snprintf(it.body, sizeof it.body, "%s", T(S_POPUP_DSLANG_BODY));
+		nq_push(&g_nq, &it);
+	}
 	if (active[0] || (chv_count() > 0 && !first_play)) {
 		nq_item it;
 
@@ -17241,7 +17517,7 @@ static void launch(app *a)
 		 * the in-game menu, which is drawn HERE now, over the frame the
 		 * emulator hands us on the way into its pause. */
 		aout_before_launch();
-		if (plat_resident_send(s->tag, core, rom, st, st, pv,
+		if (plat_resident_send(s->tag, core, rom, ds_fresh ? "" : st, st, pv,
 		                       console, active[0] ? active : NULL)) {
 			int r;
 
@@ -17425,7 +17701,9 @@ static void launch(app *a)
 			argv[n++] = (char *)aout_channels_wire(
 				aout_channels_for(g_channels, aout_dest_of(&cs, "")));
 		}
-		argv[n++] = (char *)"--load-state";      argv[n++] = st;
+		if (!ds_fresh) {
+			argv[n++] = (char *)"--load-state";  argv[n++] = st;
+		}
 		argv[n++] = (char *)"--state-on-exit";   argv[n++] = st;
 		/* A DS game's screens, as RUN and SETSCREENS give them to the
 		 * resident one. */
@@ -17472,6 +17750,8 @@ static void launch(app *a)
 
 	t_back0 = plat_now_ms();
 	present_ground(a);
+	/* The language its auto state was just written in, if it was */
+	ds_resume_record(st, ds_lang, &ds_before, ds_had);
 
 	/* The game has just written a fresh autosave preview. Throw the card's
 	 * texture away so it picks that up - but only if the preview is what the
@@ -17986,6 +18266,11 @@ static bool shot_status_parse(const char *spec)
 		/* what MENU > Battery Icon > Time Left writes: eta=200 is 3 h 20 min,
 		 * on the cable the time to full; without it, the percentage */
 		else if (!strncmp(w, "eta=", 4) && w[4] >= '0' && w[4] <= '9') shot_st.eta = atoi(w + 4);
+		/* Time Left before it has a time: calc is the dots two filled, calc=N
+		 * N of them (0 to 3); full is Charged, on the cable */
+		else if (!strcmp(w, "calc")) shot_st.calc = 2;
+		else if (!strncmp(w, "calc=", 5) && w[5] >= '0' && w[5] <= '3' && !w[6]) shot_st.calc = w[5] - '0';
+		else if (!strcmp(w, "full")) shot_st.m.charging = shot_st.full = true;
 		/* MENU > Battery Icon for this shot, not the saved one: icon=bars,
 		 * icon=percentage or icon=time */
 		else if (!strncmp(w, "icon=", 5)) {
@@ -18817,6 +19102,10 @@ static void shot_compose(app *a)
 		else if (!strcmp(shot_popup, "no_states")) {
 			shot_notice_head = T(S_POPUP_NO_STATES);
 			snprintf(pbody, sizeof pbody, "%s", "Super Metroid");
+		} else if (!strcmp(shot_popup, "dslang")) {
+			/* A DS game started fresh in a new Game Language (ds_resume_fresh) */
+			shot_notice_head = T(S_POPUP_DSLANG_HEAD);
+			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_DSLANG_BODY));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
 			snprintf(pbody, sizeof pbody,
@@ -18963,6 +19252,25 @@ static void shot_motion(app *a)
 			keyboard_panel(&shot_keyboard, KB_PANEL_LEAVE, false);
 		}
 		shot_keyboard_panel = true;
+	} else if (shot_storage && !strcmp(shot_storage, "delete-open")) {
+		/* As on the handheld: MENU's panel at rest and drawn, so it is the
+		 * panel on screen; A on Storage, whose page is a base
+		 * (store_base_open); a second on the page, for MENU's panel to have
+		 * left over it; then A on a game, and Delete Game's question opens.
+		 * Its first frame is the page with nothing on it (2026-11-08: it was
+		 * the panel before it, leaving, and then the question coming) */
+		int row = shot_menu_row(a, "Storage");
+
+		shot_lv = panel_open();
+		mm_press(shot_lv);
+		draw_shelf(a);
+		zyperos_menu_draw(a, row >= 0 ? row : 0);
+		store_base_open();
+		t0 += 1000;
+		g_clock_at = t0;
+		shot_t0 = t0;
+		shot_lv = panel_open();
+		shot_pressed = true;
 	} else if (shot_menu && shot_press != SHOT_STEP) {
 		/* Opened on the shelf, as MENU opens it, by panel_open as menu_run
 		 * does: --open's press. The others' menu is at rest when theirs
@@ -19357,7 +19665,7 @@ static int scan_thread(void *ctx)
 }
 
 /* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
- * its own (OpenBOR, DraStic, the standalone Flycast, a port from the Ports
+ * its own (OpenBOR, the standalone Flycast, a port from the Ports
  * shelf and PortMaster itself, whose GAME is the port's script), and only
  * that. What it needs of the launcher's start, in the same order: the
  * settings, the port's system from systems.cfg (its name and accent, and its
@@ -19406,8 +19714,8 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	g_port_menu = true;
-	/* Its buttons when ZyperOS knows them (OpenBOR's); over DraStic or the
-	 * standalone Flycast, In a game alone (port_menu_pads) */
+	/* Its buttons when ZyperOS knows them (OpenBOR's); over the standalone
+	 * Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
 	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL };
