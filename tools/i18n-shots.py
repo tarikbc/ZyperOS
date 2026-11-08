@@ -314,6 +314,19 @@ EXTRA.update({name: ("demo", "PS1", ["--portmaster", view]) for name, (_, view) 
 # (The Ports shelf with PortMaster's Install, and the page downloading, are
 # the README's, tools/readme-shots.py's ports and portmaster.)
 
+# Every Controls page of the made-up ports (tools/fixtures/ports) and of
+# PortMaster's own app, on the card that has them (readme-shots.py's
+# portdocs_card): a port's README's words, its keys, In a game and its About,
+# each with the shelf on that port (PORT_FOCUS)
+PORT_FOCUS = {}
+for _script, _pages in (("Star Farm.sh", 5), ("Lone Key.sh", 3), ("Odd Keys.sh", 3), ("Plain.sh", 1),
+                        ("PortMaster.sh", 2)):
+    for _page in range(_pages):
+        _name = "port-%s-%d" % (_script[:-3].replace(" ", "").lower(), _page)
+        EXTRA.setdefault(_name, ("portdocs", "PRT", ["--screen", "games", "--gamecontrols", str(_page), "PRT"]))
+        PORT_FOCUS[_name] = _script
+
+
 # The demonstration card with one game in each system that has none (a name
 # and its first extension, from config/systems.cfg), so that every system is
 # a shelf, and its in-game menu and Controls are the ones of its games
@@ -339,9 +352,11 @@ def run_language(code, shots, binary, keep):
     notes, failures, data, drawn = [], [], {}, set()
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
-                 "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all"}
+                 "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
+                 "portdocs": Path(tmp) / "portdocs"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.ports_card(cards["ports"])
+        R.portdocs_card(cards["portdocs"])
         R.demo_card(cards["all"], None, {"artwork": {}})
         all_systems_card(cards["all"])
         R.scummvm_card(cards["scummvm"])
@@ -351,8 +366,9 @@ def run_language(code, shots, binary, keep):
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
-                     "PRT": "PortMaster.sh"}.get(tag, "")
+            focus = PORT_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
+                {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
+                 "PRT": "PortMaster.sh"}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
             # A state of the update page: its status, with or without a network
             up = card / "userdata/update"

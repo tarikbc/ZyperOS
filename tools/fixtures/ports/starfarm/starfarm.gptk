@@ -1,0 +1,27 @@
+back = esc
+start = enter
+
+a = space
+b = backspace
+x = e
+y = \"
+
+l1 = q
+r1 = w
+l2 = mouse_left
+r2 = mouse_right
+
+up = up
+up = repeat
+down = down
+down = repeat
+left = left
+left = repeat
+right = right
+right = repeat
+
+left_analog_up = up
+left_analog_down = down
+left_analog_left = left
+left_analog_right = right
+right_analog_up = \"

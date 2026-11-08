@@ -971,7 +971,7 @@ ja = スクショ
 it = Screenshot
 
 [controls.menu_port]
-note = What MENU does in OpenBOR, which runs as a program of its own: the in-game menu, with no hotkeys.
+note = What MENU does in OpenBOR or a port, each a program of its own: the in-game menu, with no hotkeys.
 en = Menu
 zh-Hans = 菜单
 es = Menú
@@ -982,7 +982,7 @@ ja = メニュー
 it = Menu
 
 [controls.quit_off]
-note = What POWER does in OpenBOR: the game ends and the handheld turns off (no save state to resume).
+note = What POWER does in OpenBOR or a port: the game ends and the handheld turns off (no save state to resume).
 en = Quit and turn off
 zh-Hans = 退出并关机
 es = Salir y apagar
@@ -1120,3 +1120,193 @@ fr = Touche, stylet actif
 de = Tippt, Touchpen an
 ja = タッチ（ペンオン時）
 it = Tocca, stilo attivo
+
+# A port from the Ports shelf (src/portdoc.h): its README's controls, the
+# keys its gptokeyb keymap types, PortMaster's own buttons, and its About.
+
+[controls.keys_heading]
+note = The heading of a port's page of keys: the keyboard key each button types for it (its PortMaster keymap). %s is the port's name (Stardew Valley). Title size, beside the page count "2 / 4": keep it short.
+en = Keys: %s
+zh-Hans = 键位：%s
+es = Teclas: %s
+pt-BR = Teclas: %s
+fr = Touches : %s
+de = Tasten: %s
+ja = キー：%s
+it = Tasti: %s
+
+[controls.about_heading]
+note = The heading of a port's last page: what to copy where before it runs, and what it is, as its PortMaster entry says. %s is the port's name. Title size: keep it short.
+en = About: %s
+zh-Hans = 关于：%s
+es = Sobre: %s
+pt-BR = Sobre: %s
+fr = À propos : %s
+de = Über: %s
+ja = 概要：%s
+it = Info: %s
+
+[controls.quit_game]
+note = What SELECT+START does in a port that types keys with gptokeyb: PortMaster's own way to end the game, after which the shelf comes back. tight
+en = Quit the game
+zh-Hans = 退出游戏
+es = Salir del juego
+pt-BR = Sair do jogo
+fr = Quitter le jeu
+de = Spiel beenden
+ja = ゲームを終了
+it = Esci dal gioco
+
+[controls.key_arrows]
+note = A port's keys: the d-pad types the keyboard's four arrow keys.
+en = Arrow keys
+zh-Hans = 键盘方向键
+es = Flechas
+pt-BR = Setas
+fr = Flèches
+de = Pfeiltasten
+ja = 矢印キー
+it = Frecce
+
+[controls.middle_click]
+note = A port's keys: the button is the mouse's middle button.
+en = Middle-click
+zh-Hans = 中键点击
+es = Clic central
+pt-BR = Clique do meio
+fr = Clic milieu
+de = Mittelklick
+ja = 中クリック
+it = Clic centrale
+
+[controls.arrow.up]
+note = A port's keys: the button types the keyboard's up arrow key.
+en = Up arrow
+zh-Hans = 上方向键
+es = Flecha arriba
+pt-BR = Seta acima
+fr = Flèche haut
+de = Pfeil hoch
+ja = 上矢印キー
+it = Freccia su
+
+[controls.arrow.down]
+note = A port's keys: the keyboard's down arrow key.
+en = Down arrow
+zh-Hans = 下方向键
+es = Flecha abajo
+pt-BR = Seta abaixo
+fr = Flèche bas
+de = Pfeil runter
+ja = 下矢印キー
+it = Freccia giù
+
+[controls.arrow.left]
+note = A port's keys: the keyboard's left arrow key.
+en = Left arrow
+zh-Hans = 左方向键
+es = Flecha izq.
+pt-BR = Seta esquerda
+fr = Flèche gauche
+de = Pfeil links
+ja = 左矢印キー
+it = Freccia sx
+
+[controls.arrow.right]
+note = A port's keys: the keyboard's right arrow key.
+en = Right arrow
+zh-Hans = 右方向键
+es = Flecha der.
+pt-BR = Seta direita
+fr = Flèche droite
+de = Pfeil rechts
+ja = 右矢印キー
+it = Freccia dx
+
+[controls.key.up]
+note = The button column, in a port's controls: the d-pad's up alone, as Up/Down is the pair.
+en = Up
+zh-Hans = 上
+es = Arriba
+pt-BR = Cima
+fr = Haut
+de = Oben
+ja = 上
+it = Su
+
+[controls.key.down]
+note = The button column: the d-pad's down alone.
+en = Down
+zh-Hans = 下
+es = Abajo
+pt-BR = Baixo
+fr = Bas
+de = Unten
+ja = 下
+it = Giù
+
+[controls.key.left]
+note = The button column: the d-pad's left alone.
+en = Left
+zh-Hans = 左
+es = Izquierda
+pt-BR = Esquerda
+fr = Gauche
+de = Links
+ja = 左
+it = Sinistra
+
+[controls.key.right]
+note = The button column: the d-pad's right alone.
+en = Right
+zh-Hans = 右
+es = Derecha
+pt-BR = Direita
+fr = Droite
+de = Rechts
+ja = 右
+it = Destra
+
+[controls.pm_page]
+note = PortMaster's own app: what L1/R1 do in its lists, a screenful up or down. tight
+en = Page up/down
+zh-Hans = 上/下一页
+es = Página arriba/abajo
+pt-BR = Página acima/abaixo
+fr = Page préc./suiv.
+de = Seite hoch/runter
+ja = ページ送り
+it = Pagina su/giù
+
+[controls.pm_choose]
+note = PortMaster's own app: what A does, open the menu item or the port under the cursor.
+en = Choose
+zh-Hans = 选择
+es = Elegir
+pt-BR = Escolher
+fr = Choisir
+de = Auswählen
+ja = 決定
+it = Scegli
+
+[controls.pm_filters]
+note = PortMaster's own app: what X does in its list of every port, open its filters (genre, ready to run...).
+en = Filters
+zh-Hans = 筛选
+es = Filtros
+pt-BR = Filtros
+fr = Filtres
+de = Filter
+ja = 絞り込み
+it = Filtri
+
+[controls.pm_uninstall]
+note = PortMaster's own app: what Y does on a port that is installed.
+en = Uninstall
+zh-Hans = 卸载
+es = Desinstalar
+pt-BR = Desinstalar
+fr = Désinstaller
+de = Deinstallieren
+ja = 削除
+it = Disinstalla

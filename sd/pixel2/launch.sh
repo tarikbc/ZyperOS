@@ -162,33 +162,93 @@ PORT_REQUEST=/tmp/zyperos_port
 PORTMASTER=$ROMS_PATH/Ports/PortMaster
 # POWER over a port: the launcher, which reads the power key and the battery,
 # is stopped, so portkeys reads them there and sends USR1 here for a press or
-# a battery run flat (tools/portkeys.c). The port is asked to end, its whole
-# process group, with TERM, and whatever of it is left 3 s later is killed:
-# the card must be let go of before the power goes. SDL turns TERM into a
-# quit event, which a program acts on only when its loop next reads events;
-# OpenBOR then saves and exits, 1.5 s after the press on a Pixel 2
-# (2026-11-06), so the 3 s are its save's. Then the loop below powers off, as
-# after the launcher's own power press. The port runs in a session of its own
-# (setsid), so its group is the port, its script and what they started, and
-# nothing of launch.sh's.
+# a battery run flat (tools/portkeys.c). The port is asked to end with TERM,
+# and whatever of it is left 4 s later is killed: the card must be let go of
+# before the power goes. SDL turns TERM into a quit event, which a program
+# acts on only when its loop next reads events; OpenBOR then saves and exits,
+# 1.5 s after the press on a Pixel 2 (2026-11-06). Then the loop below powers
+# off, as after the launcher's own power press. The port runs in a session of
+# its own (setsid), so its group is the port, its script and what they
+# started, and nothing of launch.sh's; its script leads it, PORT_PID.
 PORT_PID=
-# Ended: TERM, and CONT after it, for a port portkeys has stopped under its
-# in-game menu (a stopped process takes TERM only once it goes on); whatever
-# is left 3 s later is killed
+# Every process of the port's group but its script, by the group in each
+# one's stat line (after the name, which can hold spaces and parentheses)
+port_procs() {
+	local p s
+	for p in /proc/[0-9]*; do
+		read -r s < "$p/stat" 2> /dev/null || continue
+		set -- ${s##*) }
+		[ "$3" = "$PORT_PID" ] && [ "${p#/proc/}" != "$PORT_PID" ] && echo "${p#/proc/}"
+	done
+}
+# Ended. The game and the helpers beside it first (gptokeyb, a runtime's
+# program), so that the script goes on to what it does after its game: a
+# PortMaster script stops gptokeyb and unmounts the runtime it mounted (Mono,
+# LOVE), then ends by itself. 2 s later the whole group, the script too; and
+# CONT with each TERM, for a port portkeys has stopped under its in-game menu
+# (a stopped process takes TERM only once it goes on). Whatever is left 4 s
+# after the first TERM is killed.
 port_end() {
+	local procs
 	[ -n "$PORT_PID" ] || return
-	kill -TERM -"$PORT_PID" 2> /dev/null
+	procs=$(port_procs)
+	[ -n "$procs" ] && kill -TERM $procs 2> /dev/null
 	kill -CONT -"$PORT_PID" 2> /dev/null
-	( sleep 3; kill -KILL -"$PORT_PID" 2> /dev/null ) &
+	( sleep 2; kill -TERM -"$PORT_PID" 2> /dev/null; kill -CONT -"$PORT_PID" 2> /dev/null
+	  sleep 2; kill -KILL -"$PORT_PID" 2> /dev/null ) &
+}
+# What a port left mounted once it has ended, killed before its script could
+# unmount it, or never unmounted: a runtime mounted from a file on the card
+# (PortMaster's libs/*.squashfs, on a loop device), a folder bound into $HOME
+# (PortMaster's bind_directories). Each keeps the card in use, so it could
+# not be let go of at the power-off and was checked at the next boot. Every
+# mount under the card's folder and every loop device a file on the card
+# backs, newest first; nothing of ZyperOS's own is mounted there. A mount
+# point's spaces are \040 in /proc/mounts, which printf %b turns back.
+port_unmount() {
+	local dev mnt rest left= m b l
+	while read -r dev mnt rest; do
+		case $mnt in
+		"$SDCARD"/*) left="$mnt
+$left" ;;
+		*)
+			case $dev in
+			/dev/loop*)
+				b=
+				read -r b < "/sys/block/${dev#/dev/}/loop/backing_file" 2> /dev/null
+				case $b in "$SDCARD"/*) left="$mnt
+$left" ;; esac
+				;;
+			esac
+			;;
+		esac
+	done < /proc/mounts
+	printf '%s' "$left" | while IFS= read -r m; do
+		[ -n "$m" ] || continue
+		m=$(printf '%b' "$m")
+		echo "port: unmounting $m, left by the port" >> "$LOG"
+		umount "$m" 2> /dev/null || umount -l "$m" 2> /dev/null
+	done
+	# and the loop devices still holding a file of the card's
+	for l in /sys/block/loop*/loop/backing_file; do
+		[ -f "$l" ] || continue
+		b=
+		read -r b < "$l" 2> /dev/null
+		case $b in "$SDCARD"/*)
+			l=${l#/sys/block/}
+			losetup -d "/dev/${l%%/*}" 2> /dev/null ;;
+		esac
+	done
 }
 port_power() {
 	echo "port: powering off (POWER or the battery), ending it" >> "$LOG"
 	: > /tmp/zyperos_poweroff
 	port_end
 }
-# Quit in the in-game menu over a port (OpenBOR's, tools/portkeys.c --menu):
-# USR2 from portkeys. The port ends as for POWER, and the launcher comes back
-# on its shelf, as after a port that ended by itself
+# Quit in the in-game menu over a port (OpenBOR's, a PortMaster port's,
+# PortMaster's own; tools/portkeys.c --menu): USR2 from portkeys. The port
+# ends as for POWER, and the launcher comes back on its shelf, as after a
+# port that ended by itself
 port_quit() {
 	echo "port: Quit in the in-game menu, ending it" >> "$LOG"
 	port_end
@@ -238,14 +298,15 @@ run_port() {
 		/usr/bin/splash --still /tmp/zyperos_loading.raw &
 		still=$!
 	fi
-	# A program of its own on a game (OpenBOR, DraStic, the standalone
-	# Flycast) has the in-game menu on MENU too: the launcher names the
+	# A program of its own (OpenBOR, DraStic, the standalone Flycast, a port,
+	# PortMaster) has the in-game menu on MENU too: the launcher names the
 	# system's tag in the request, third, and portkeys shows the menu by
 	# stopping the program and starting the launcher for the menu alone
-	# (--menu: the launcher, the tag and the game; src/portmenu.h)
+	# (--menu: the launcher, the tag and the game; src/portmenu.h). A port's
+	# game is its script, which its Controls pages are read beside
 	if [ -x "$ZYPEROS_DIR/portkeys" ]; then
-		if [ -n "$2" ] && [ -n "$3" ]; then
-			"$ZYPEROS_DIR/portkeys" --menu "$ZYPEROS_DIR/zyperos.elf" "$3" "$2" \
+		if [ -n "$3" ]; then
+			"$ZYPEROS_DIR/portkeys" --menu "$ZYPEROS_DIR/zyperos.elf" "$3" "${2:-$1}" \
 				"$USERDATA_PATH/zyperos.db" \
 				"$SHARED_USERDATA_PATH/.zyperos/library.db" 2>> "$LOG" &
 		else
@@ -271,17 +332,35 @@ run_port() {
 		rc=$?
 		[ -d "/proc/$PORT_PID" ] || break
 	done
-	PORT_PID=
 	echo "port: ended, $rc" >> "$LOG"
+	# What the script left running in its group when it ended, a helper
+	# started in the background and never stopped, goes with it
+	if kill -0 -"$PORT_PID" 2> /dev/null; then
+		echo "port: ending what it left running" >> "$LOG"
+		kill -TERM -"$PORT_PID" 2> /dev/null
+		kill -CONT -"$PORT_PID" 2> /dev/null
+		i=0
+		while [ $i -lt 10 ] && kill -0 -"$PORT_PID" 2> /dev/null; do
+			sleep 0.1
+			i=$((i + 1))
+		done
+		kill -KILL -"$PORT_PID" 2> /dev/null
+	fi
+	PORT_PID=
 	# Waited for: while the bar is up it holds a copy of the port's display,
 	# and the launcher cannot take the display until that copy is gone
 	[ -n "$keys" ] && kill "$keys" 2> /dev/null && wait "$keys" 2> /dev/null
+	# An in-game menu still up (a port that ended under it, the kernel's
+	# doing) would hold the display the launcher is about to take
+	[ -n "$3" ] && killall -TERM zyperos.elf 2> /dev/null
 	trap - USR1 USR2
 	[ -n "$still" ] && kill "$still" 2> /dev/null
 	rm -f /tmp/zyperos_loading.raw
 	# A helper left behind would keep the buttons typing keys under the
 	# shelf: gptokeyb, or DraStic's stylus pad
 	killall -9 gptokeyb gptokeyb2 dspen 2> /dev/null
+	# and a runtime or a folder it left mounted would keep the card in use
+	port_unmount
 }
 
 # Whole seconds since boot into NOW, for telling a crash loop from a normal
@@ -358,9 +437,19 @@ while : ; do
 		continue
 	fi
 	if [ -f "$PORT_REQUEST" ]; then
+		# The script, the game and the menu's tag, a tab between each
+		# (launch_port). Split by hand: read would run the two tabs around a
+		# port's empty game together, as it does any whitespace in IFS
 		TAB=$(printf '\t')
-		IFS=$TAB read -r PORT GAME TAG < "$PORT_REQUEST"
+		IFS= read -r REQ < "$PORT_REQUEST"
 		rm -f "$PORT_REQUEST"
+		PORT=${REQ%%"$TAB"*}; GAME=; TAG=
+		case $REQ in *"$TAB"*)
+			REQ=${REQ#*"$TAB"}
+			GAME=${REQ%%"$TAB"*}
+			case $REQ in *"$TAB"*) TAG=${REQ#*"$TAB"} ;; esac
+			;;
+		esac
 		run_port "$PORT" "$GAME" "$TAG"
 		# POWER, or the battery run flat, over the port (port_power)
 		[ -f /tmp/zyperos_poweroff ] && break

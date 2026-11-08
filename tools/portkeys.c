@@ -9,7 +9,7 @@
  *
  *   VOL+ / VOL-          the volume, a position at a time
  *   MENU held + VOL      the backlight instead, a rung at a time
- *   MENU on its own      with --menu (OpenBOR), the in-game menu (menu_show)
+ *   MENU on its own      with --menu (OpenBOR, a port), the in-game menu (menu_show)
  *
  * And over any port, "Getting hot" when the chip passes the kernel's trip, as
  * over a game (heat_check), and POWER and a battery run flat (end_port).
@@ -938,9 +938,10 @@ static bool batt_now(int *pct, bool *charging)
 /* ---- the in-game menu, over a port that has one -----------------------------
  *
  * OpenBOR has no libretro core, so it runs as a program of its own, as DraStic
- * and the standalone Flycast do when a card adds them, and the launcher, which
- * draws the in-game menu over a game Diatom runs, has exited for it. With
- * --menu (launch.sh gives it for any "run:" program, src/portmenu.h), MENU on its own
+ * and the standalone Flycast do when a card adds them, and as every port and
+ * PortMaster itself do, and the launcher, which draws the in-game menu over a
+ * game Diatom runs, has exited for it. With --menu (launch.sh gives it for
+ * any "run:" program and any port, src/portmenu.h), MENU on its own
  * (pkkeys_menu_tapped: pressed and let go with no brightness step under it,
  * as Diatom reads it) brings the launcher back for its menu, src/portmenu.h:
  *
@@ -974,6 +975,7 @@ static bool batt_now(int *pct, bool *charging)
 static const char *menu_elf, *menu_tag, *menu_game;   /* --menu ELF TAG GAME */
 
 static void end_port(void);          /* with the power key, below */
+static void wait_released(int ms);   /* with the keys, below */
 
 /* The process stopped, as /proc says: state T. The name in its stat line can
  * hold spaces and parentheses, so the state is read after the last ')'. */
@@ -1195,6 +1197,22 @@ static void port_input_flush(int pg)
 	        queues, procs);
 }
 
+/* MemAvailable, in MB, -1 when /proc does not say */
+static long mem_available_mb(void)
+{
+	char buf[2048], *p;
+	int fd = open("/proc/meminfo", O_RDONLY | O_CLOEXEC);
+	ssize_t r;
+
+	if (fd < 0) return -1;
+	r = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (r <= 0) return -1;
+	buf[r] = '\0';
+	if (!(p = strstr(buf, "MemAvailable:"))) return -1;
+	return atol(p + 13) / 1024;
+}
+
 /* MENU tapped: the in-game menu, as at the top of this section. 0 when there
  * was none (no --menu, or no port holding the display); 1 when it was up, and
  * this process's keys and levels are then to be read again. */
@@ -1239,8 +1257,18 @@ static int menu_show(void)
 		return 0;
 	}
 
+	/* The memory the menu starts into: a port such as Stardew Valley leaves
+	 * little, and the menu, not the stopped game, is what the kernel takes
+	 * if it runs out (the child's oom_score_adj, src/portmenu.h) */
+	fprintf(stderr, "portkeys: %ld MB free for the menu\n", mem_available_mb());
 	child = fork();
 	if (child == 0) {
+		int fd = open("/proc/self/oom_score_adj", O_WRONLY | O_CLOEXEC);
+
+		if (fd >= 0) {
+			if (write(fd, PORT_MENU_OOM, strlen(PORT_MENU_OOM)) < 0) {}
+			close(fd);
+		}
 		execl(menu_elf, menu_elf, PORT_MENU_ARG, menu_tag, menu_game, (char *)NULL);
 		_exit(127);
 	}
@@ -1268,6 +1296,11 @@ static int menu_show(void)
 				fprintf(stderr, "portkeys: cannot put the port's frame back (%s)\n", strerror(errno));
 		}
 	}
+	/* Nothing held as the game goes on: the A that chose Continue, the B or
+	 * MENU that closed the menu. SDL asks the pad what is down once its
+	 * queue is emptied, so a button still held would reach the game as a
+	 * press, and gptokeyb would type its key */
+	wait_released(1500);
 	port_input_flush(pg);
 	release(false);
 	kill(-pg, SIGCONT);
@@ -1295,6 +1328,42 @@ static int n;
 static pkkeys K;
 /* A removed input invalidates the batch and its held state. */
 static bool lost_menu, lost_vol;
+
+/* Until no key is down on the joypad or the volume keys' device, as the
+ * kernel says (EVIOCGKEY), `ms` at most. Marked unused for
+ * tools/portkeys-flow-check.py, which builds these devices' code with a
+ * menu_show of its own that never calls it. */
+__attribute__((unused)) static void wait_released(int ms)
+{
+	long t0 = now_ms();
+
+	for (;;) {
+		bool held = false;
+		int i;
+
+		for (i = 0; i < n && !held; i++) {
+			unsigned long down[NLONGS(KEY_MAX + 1)] = { 0 };
+			size_t k;
+
+			if (!(has_menu[i] || has_vol[i]) ||
+			    ioctl(fds[i].fd, EVIOCGKEY(sizeof down), down) < 0)
+				continue;
+			for (k = 0; k < NLONGS(KEY_MAX + 1); k++)
+				if (down[k]) held = true;
+		}
+		if (!held || now_ms() - t0 >= ms) {
+			if (now_ms() - t0 > 20)
+				fprintf(stderr, "portkeys: %s the buttons to be let go, %ld ms\n",
+				        held ? "gave up waiting for" : "waited for", now_ms() - t0);
+			return;
+		}
+		{
+			struct timespec nap = { 0, 10 * 1000000L };
+
+			nanosleep(&nap, NULL);
+		}
+	}
+}
 
 /* POWER over a port. ZyperOS reads the power key itself, and launch.sh stops
  * it for a port, so a press during Stardew Valley or OpenBOR did nothing. Its
@@ -1526,7 +1595,7 @@ int main(int argc, char **argv)
 	struct dirent *e;
 
 	/* --menu ELF TAG GAME first, from launch.sh for a port with the in-game
-	 * menu (OpenBOR): the launcher to show it, the system's tag and the
+	 * menu (OpenBOR, a port, PortMaster): the launcher to show it, the system's tag and the
 	 * game, for menu_show */
 	if (argc > 4 && !strcmp(argv[1], "--menu")) {
 		menu_elf = argv[2];

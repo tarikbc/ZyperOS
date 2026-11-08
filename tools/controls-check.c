@@ -571,9 +571,9 @@ static void in_a_game(void)
 
 		ck(port_menu_for("run:ZyperOS/openbor/OpenBOR.sh") &&
 		   port_menu_for("run:Emulators/DraStic/DraStic.sh") &&
-		   port_menu_for("run:Emulators/Flycast/Flycast.sh") &&
-		   !port_menu_for("port") && !port_menu_for("dsperate") && !port_menu_for("flycast2021"),
-		   "the in-game menu over every \"run:\" program, and not over a port or a Diatom core");
+		   port_menu_for("run:Emulators/Flycast/Flycast.sh") && port_menu_for("port") &&
+		   !port_menu_for("dsperate") && !port_menu_for("flycast2021"),
+		   "the in-game menu over every \"run:\" program and every port, and not over a Diatom core");
 		ck(port_menu_pads("OPENBOR") && !port_menu_pads("NDS") && !port_menu_pads("DC") &&
 		   !port_menu_pads("PORTS"),
 		   "OpenBOR's buttons on its Controls page; DraStic's and Flycast's are their own");

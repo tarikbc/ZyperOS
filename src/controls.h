@@ -3,6 +3,7 @@
 #define ZYPEROS_CONTROLS_H
 
 #include "menu.h"
+#include "portdoc.h"
 
 /* Every button, and what it does where: the one place ON THE DEVICE that says
  * so. Eric's, 2026-09-18.
@@ -97,6 +98,11 @@ typedef struct {
 	 * buttons page says which, and where to change it. NULL is the Rumble
 	 * Pak, ZyperOS's default. */
 	const char *accessory;
+	/* A port from the Ports shelf, PortMaster's own app among them: what its
+	 * files say (src/portdoc.h). Its pages are then the port's and not a
+	 * system's (below); NULL for anything else. The caller's, held for as
+	 * long as the pages are. */
+	const port_doc *doc;
 } ctl_game;
 
 /* What a page's rows point into: its heading and the values a pair of rows
@@ -109,8 +115,22 @@ typedef struct {
 	char note[96];
 } ctl_buf;
 
-/* How many pages this game has: always In a game, after the system's. */
+/* How many pages this game has: always In a game, after the system's.
+ *
+ * A port (ctl_game.doc) has its own, in this order, each only when its
+ * files say it: what its README says the buttons do ("Controls: Wordle"),
+ * the keys its gptokeyb keymap types for them ("Keys: Wordle"), then In a
+ * game - MENU, SELECT+START when gptokeyb runs (PortMaster's quit chord),
+ * the volume, the brightness, POWER - and last About, what port.json says
+ * to copy where (inst) and what the port is (desc), as prose. PortMaster's
+ * own app has its buttons ("Controls: PortMaster") and Anywhere's. */
 int ctl_game_pages(const ctl_game *g);
+
+/* Whether page `page` is prose (a port's About): its rows are MENU_BODY
+ * rows of whole paragraphs, which the launcher wraps to the panel and lets
+ * scroll, as a synopsis does, where every other page is a table that must
+ * sit still */
+bool ctl_game_prose(const ctl_game *g, int page);
 
 /* Page `page`'s rows and its heading in b->head ("Controls: Genesis"); the
  * caller says which page of how many at the heading's right ("1 / 3", as

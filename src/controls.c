@@ -690,16 +690,86 @@ static bool is_face(const crow *r)
 	       !strcmp(r->key, "A/B/X/Y");
 }
 
+/* A port's keymap as a pad (src/portdoc.h): each button the key gptokeyb
+ * types for it, a key's printed name or words for the rest; the d-pad's
+ * four one row, "Arrow keys" when they are the four arrows, else their keys
+ * in the order up, down, left, right ("W/S/A/D"). Into *pd, whose names
+ * point into the doc and into dpad[], the caller's. */
+static const str_id KEY_WORD[] = {
+	[PD_SPACE]        = S_CONTROLS_SPACE,
+	[PD_ARROWS]       = S_CONTROLS_KEY_ARROWS,
+	[PD_CLICK_LEFT]   = S_CONTROLS_CLICK,
+	[PD_CLICK_RIGHT]  = S_CONTROLS_RIGHT_CLICK,
+	[PD_CLICK_MIDDLE] = S_CONTROLS_MIDDLE_CLICK,
+	[PD_UP_KEY]       = S_CONTROLS_ARROW_UP,
+	[PD_DOWN_KEY]     = S_CONTROLS_ARROW_DOWN,
+	[PD_LEFT_KEY]     = S_CONTROLS_ARROW_LEFT,
+	[PD_RIGHT_KEY]    = S_CONTROLS_ARROW_RIGHT,
+};
+
+static bool key_set(const pd_key *k)
+{
+	return k->word != PD_NAME || k->name[0];
+}
+
+static ctl_label key_label(const pd_key *k)
+{
+	if (k->word == PD_NAME) return (ctl_label)BTN(k->name);
+	return (ctl_label)SAYS(KEY_WORD[k->word]);
+}
+
+static void keymap_pad(const port_doc *d, ctl_pad *pd, char *dpad, size_t dn)
+{
+	static const int TO[PD_SELECT + 1] = {
+		[PD_A] = P_A, [PD_B] = P_B, [PD_X] = P_X, [PD_Y] = P_Y, [PD_L1] = P_L1,
+		[PD_R1] = P_R1, [PD_L2] = P_L2, [PD_R2] = P_R2, [PD_START] = P_START,
+		[PD_SELECT] = P_SELECT
+	};
+	const pd_key *w = &d->keys[PD_UP];
+	int b, set = 0;
+
+	memset(pd, 0, sizeof *pd);
+	pd->tag = "";
+	for (b = 0; b <= PD_SELECT; b++)
+		if (key_set(&d->keys[b])) pd->pad[TO[b]] = key_label(&d->keys[b]);
+	for (b = 0; b < 4; b++) set += key_set(&w[b]);
+	if (!set) return;
+	if (w[0].word == PD_UP_KEY && w[1].word == PD_DOWN_KEY && w[2].word == PD_LEFT_KEY &&
+	    w[3].word == PD_RIGHT_KEY) {
+		pd->pad[P_DPAD] = (ctl_label)SAYS(S_CONTROLS_KEY_ARROWS);
+		return;
+	}
+	/* The four by their keys, in the order up, down, left, right: a name as
+	 * printed, a word in the language that is on, "-" for none */
+	dpad[0] = '\0';
+	for (b = 0; b < 4; b++) {
+		const char *name = !key_set(&w[b]) ? "-"
+		                 : w[b].word == PD_NAME ? w[b].name : T(KEY_WORD[w[b].word]);
+		size_t at = strlen(dpad);
+
+		snprintf(dpad + at, dn - at, "%s%s", b ? "/" : "", name);
+	}
+	pd->pad[P_DPAD] = (ctl_label)BTN(dpad);
+}
+
 /* The system's buttons as rows, before they are put on pages */
 static int pad_rows(const ctl_game *g, crow *r)
 {
-	const ctl_pad *pd = pad_for(g->tag, g->ext);
 	/* pairs: A/B 0, X/Y 1, L1/R1 2, L2/R2 3, START/SELECT 4; the d-pad
 	 * none */
 	static const int PAIR[P_COUNT] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5 };
+	ctl_pad keymap;
+	char dpad[48];
+	const ctl_pad *pd = pad_for(g->tag, g->ext);
 	int to[P_COUNT], k, n = 0;
 	bool turbo[P_COUNT] = { false };
 
+	/* A port's are its keymap's, and only the keymap's */
+	if (g->doc) {
+		if (!g->doc->nkeys || g->doc->portmaster) return 0;
+		keymap_pad(g->doc, &keymap, dpad, sizeof dpad);
+		pd = &keymap;
+	}
 	if (!pd) return 0;
 	for (k = 0; k < P_COUNT; k++) to[k] = k;
 	apply_map(g->map, to, turbo);
@@ -779,22 +849,61 @@ static void make_plan(const ctl_game *g, plan *pl)
 	pl->start[pl->sys] = pl->nrows;
 }
 
-/* The game's pages after its buttons: its own (the extra), Hotkeys, In a
+/* A game's pages, in order: each a kind, and which of its kind it is.
+ *
+ * A system's: its buttons, a page of its own (the extra), Hotkeys, In a
  * game. A program of its own (a "run:" one, src/portmenu.h) has no Hotkeys:
- * SELECT's chords are Diatom's, and it is not Diatom's game. */
-static int game_pages(const ctl_game *g, const plan *pl)
+ * SELECT's chords are Diatom's, and it is not Diatom's game.
+ *
+ * A port's (ctl_game.doc): what its README says, its keymap (the "buttons"
+ * pages, from the keymap's pad), In a game, and About last, the only page
+ * that is prose. PortMaster's own app: its buttons, and Anywhere. */
+enum { PG_SYS, PG_EXTRA, PG_HOTKEYS, PG_INGAME, PG_SAID, PG_PM, PG_ABOUT };
+typedef struct { int kind, at; } page_ref;
+#define PAGES_MAX 16
+
+static int said_pages(const port_doc *d)
 {
-	return pl->sys + (pl->extra ? 1 : 0) + (g->port ? 0 : 1) + 1;
+	return d->nsaid > 0 ? (d->nsaid + LINES - 1) / LINES : 0;
+}
+
+static int page_list(const ctl_game *g, const plan *pl, page_ref *out)
+{
+	int n = 0, i;
+
+	if (g->doc && g->doc->portmaster) {
+		out[n++] = (page_ref){ PG_PM, 0 };
+		out[n++] = (page_ref){ PG_INGAME, 0 };
+		return n;
+	}
+	for (i = 0; g->doc && i < said_pages(g->doc); i++) out[n++] = (page_ref){ PG_SAID, i };
+	for (i = 0; i < pl->sys; i++) out[n++] = (page_ref){ PG_SYS, i };
+	if (pl->extra) out[n++] = (page_ref){ PG_EXTRA, 0 };
+	if (!g->port) out[n++] = (page_ref){ PG_HOTKEYS, 0 };
+	out[n++] = (page_ref){ PG_INGAME, 0 };
+	if (g->doc && (g->doc->inst[0] || g->doc->desc[0])) out[n++] = (page_ref){ PG_ABOUT, 0 };
+	return n;
 }
 
 int ctl_game_pages(const ctl_game *g)
 {
 	plan pl;
+	page_ref pr[PAGES_MAX];
 
 	make_plan(g, &pl);
-	return game_pages(g, &pl);
+	return page_list(g, &pl, pr);
 }
 
+bool ctl_game_prose(const ctl_game *g, int page)
+{
+	plan pl;
+	page_ref pr[PAGES_MAX];
+	int n;
+
+	make_plan(g, &pl);
+	n = page_list(g, &pl, pr);
+	return page >= 0 && page < n && pr[page].kind == PG_ABOUT;
+}
 /* Whether SELECT is one of the game's buttons, after its map: then the
  * Hotkeys page says a press of it alone is still the game's. Not on a
  * system with none (the N64's goes to its C buttons, the PICO-8 has none),
@@ -825,53 +934,139 @@ static int in_a_game(menu_row *out)
 	return n;
 }
 
-/* The same over a program of its own (OpenBOR): MENU is the menu alone, and
- * POWER ends the game, which has no state to come back to */
-static int in_a_port(menu_row *out)
+/* The same over a program of its own (OpenBOR, a port): MENU is the menu
+ * alone, and POWER ends the game, which has no state to come back to. A
+ * port whose script runs gptokeyb has PortMaster's own way out as well:
+ * SELECT, its hotkey here (res/portmaster/control.txt), with START, which
+ * ends the game, and the shelf comes back. */
+static int in_a_port(const ctl_game *g, menu_row *out)
 {
 	int n = 0;
 
 	out[n++] = (menu_row){ "MENU", T(S_CONTROLS_MENU_PORT), false };
+	if (g->doc && g->doc->gptokeyb && !g->doc->portmaster)
+		out[n++] = (menu_row){ "SELECT+START", T(S_CONTROLS_QUIT_GAME), false };
 	out[n++] = row_volume();
 	out[n++] = row_brightness();
 	out[n++] = (menu_row){ "POWER", T(S_CONTROLS_QUIT_OFF), false };
 	return n;
 }
 
+/* PortMaster's own buttons, as its window reads them (its pylibs, 2026.06:
+ * a list moves on Up/Down and a page at a time on L1/R1, A enters, installs
+ * or shows a port, B goes back and on the main menu asks to quit, X filters
+ * the list of every port, Y uninstalls an installed one). It swaps A and B,
+ * and X and Y, only on a system that asks it to, which ZyperOS does not. */
+static int portmaster_rows(menu_row *out)
+{
+	int n = 0;
+
+	out[n++] = (menu_row){ T(S_CONTROLS_KEY_UP_DOWN), T(S_CONTROLS_MOVE), false };
+	out[n++] = (menu_row){ "L1/R1", T(S_CONTROLS_PM_PAGE), false };
+	out[n++] = (menu_row){ "A", T(S_CONTROLS_PM_CHOOSE), false };
+	out[n++] = (menu_row){ "B", T(S_CONTROLS_BACK), false };
+	out[n++] = (menu_row){ "X", T(S_CONTROLS_PM_FILTERS), false };
+	out[n++] = (menu_row){ "Y", T(S_CONTROLS_PM_UNINSTALL), false };
+	return n;
+}
+
+/* A README row's d-pad directions, in the language that is on */
+static const char *dirs_said(unsigned d)
+{
+	switch (d) {
+	case PD_DIR_UP:                  return T(S_CONTROLS_KEY_UP);
+	case PD_DIR_DOWN:                return T(S_CONTROLS_KEY_DOWN);
+	case PD_DIR_LEFT:                return T(S_CONTROLS_KEY_LEFT);
+	case PD_DIR_RIGHT:               return T(S_CONTROLS_KEY_RIGHT);
+	case PD_DIR_UP | PD_DIR_DOWN:    return T(S_CONTROLS_KEY_UP_DOWN);
+	case PD_DIR_LEFT | PD_DIR_RIGHT: return T(S_CONTROLS_KEY_LEFT_RIGHT);
+	default:                         return T(S_CONTROLS_KEY_DPAD);
+	}
+}
+
+static bool head_fits(const ctl_game *g, const char *head)
+{
+	return g->fits ? g->fits(g->ctx, head) : strlen(head) <= 19;
+}
+
+/* The heading, `fmt` with the page's name or the system's in it. A name too
+ * wide beside the page count gives way to the home's short one:
+ * "Controls: Game Boy Advance" is "Controls: GBA". The launcher measures (594
+ * of the panel's width is left between two counts' room); without it, 19
+ * characters, which every heading that fits measured is under but the
+ * Ataris (2026-11-06). A port's title has no short one, and is cut, a
+ * character at a time, with an ellipsis, until it fits. */
+static void heading_as(const ctl_game *g, const char *fmt, const char *page, ctl_buf *b)
+{
+	char name[64];
+	size_t n;
+	int len = snprintf(b->head, sizeof b->head, fmt, page);
+
+	if (len >= 0 && len < (int)sizeof b->head && head_fits(g, b->head)) return;
+	if (!g->doc && g->short_name && g->short_name[0]) {
+		snprintf(b->head, sizeof b->head, fmt, g->short_name);
+		return;
+	}
+	if (!g->doc) return;
+	snprintf(name, sizeof name, "%s", page);
+	n = strlen(name);
+	/* room for the ellipsis' three bytes and the end */
+	if (n > sizeof name - 4) n = sizeof name - 4;
+	while (n > 1) {
+		/* a character off the end, and the spaces before it */
+		do n--; while (n > 0 && ((unsigned char)name[n] & 0xC0) == 0x80);
+		while (n > 0 && name[n - 1] == ' ') n--;
+		if (!n) break;
+		memcpy(name + n, "\xe2\x80\xa6", 4);                 /* …, and the end */
+		len = snprintf(b->head, sizeof b->head, fmt, name);
+		if (len >= 0 && len < (int)sizeof b->head && head_fits(g, b->head)) return;
+	}
+}
+
 static void heading(const ctl_game *g, const char *page, ctl_buf *b)
 {
-	/* A name too wide beside the page count gives way to the home's short
-	 * one: "Controls: Game Boy Advance" is "Controls: GBA". The launcher
-	 * measures (594 of the panel's width is left between two counts'
-	 * room); without it, 19 characters, which every heading that fits
-	 * measured is under but the Ataris (2026-11-06). */
-	bool fits;
-
-	snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), page);
-	fits = g->fits ? g->fits(g->ctx, b->head) : strlen(b->head) <= 19;
-	if (!fits && g->short_name && g->short_name[0])
-		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), g->short_name);
+	heading_as(g, T(S_CONTROLS_HEADING), page, b);
 }
 
 int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 {
 	plan pl;
+	page_ref pr[PAGES_MAX];
 	int pages, n = 0, i;
+	const char *title = g->doc ? g->doc->title : g->name ? g->name : g->tag;
 
 	make_plan(g, &pl);
-	pages = game_pages(g, &pl);
+	pages = page_list(g, &pl, pr);
 	if (page < 0 || page >= pages) page = 0;
 
-	if (page < pl.sys) {
-		int from = pl.start[page], to = pl.start[page + 1];
+	b->note[0] = '\0';
+	switch (pr[page].kind) {
+	case PG_SAID: {
+		/* What the port's README says each does, in its own words */
+		int from = pr[page].at * LINES, to = from + LINES;
 
-		heading(g, g->name ? g->name : g->tag, b);
+		heading(g, title, b);
+		for (i = from; i < to && i < g->doc->nsaid; i++, n++) {
+			const pd_row *r = &g->doc->said[i];
+
+			out[n] = (menu_row){ r->dirs ? dirs_said(r->dirs) : r->key, r->said, false };
+		}
+		break;
+	}
+	case PG_SYS: {
+		int from = pl.start[pr[page].at], to = pl.start[pr[page].at + 1];
+
+		/* A port's: the keys its keymap types, under "Keys: Wordle" */
+		if (g->doc) heading_as(g, T(S_CONTROLS_KEYS_HEADING), title, b);
+		else heading(g, title, b);
 		for (i = from; i < to; i++, n++) {
 			snprintf(b->key[n], sizeof b->key[n], "%s", pl.rows[i].key);
 			snprintf(b->val[n], sizeof b->val[n], "%s", pl.rows[i].val);
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
 		}
-	} else if (pl.extra && page == pl.sys) {
+		break;
+	}
+	case PG_EXTRA: {
 		const ctl_extra *x = extra_for(g->tag);
 
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), T(x->head));
@@ -889,14 +1084,31 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 		} else if (x->has_note) {
 			out[n++] = MENU_NOTE(T(x->note));
 		}
-	} else if (!g->port && page == pages - 2) {
+		break;
+	}
+	case PG_HOTKEYS:
 		/* No quick save or load where the core keeps no state: SELECT+R1
 		 * and SELECT+L1 are the game's there */
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_HOTKEYS));
 		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g));
-	} else {
-		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_GAME));
-		n = g->port ? in_a_port(out) : in_a_game(out);
+		break;
+	case PG_PM:
+		heading(g, title, b);
+		n = portmaster_rows(out);
+		break;
+	case PG_ABOUT:
+		/* What to copy where, then what the port is: whole paragraphs, which
+		 * the launcher wraps to the panel (ctl_game_prose) */
+		heading_as(g, T(S_CONTROLS_ABOUT_HEADING), title, b);
+		if (g->doc->inst[0]) out[n++] = MENU_BODY(g->doc->inst);
+		if (g->doc->desc[0]) out[n++] = MENU_BODY(g->doc->desc);
+		break;
+	default:
+		/* Anywhere's words in PortMaster, which is no game */
+		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING),
+		         ctl_page_name(g->doc && g->doc->portmaster ? CTL_ANYWHERE : CTL_GAME));
+		n = g->port ? in_a_port(g, out) : in_a_game(out);
+		break;
 	}
 	return n;
 }

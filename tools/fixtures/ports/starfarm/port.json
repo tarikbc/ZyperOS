@@ -1,0 +1,24 @@
+{
+    "version": 4,
+    "name": "starfarm.zip",
+    "items": [
+        "Star Farm.sh",
+        "starfarm/"
+    ],
+    "items_opt": null,
+    "attr": {
+        "title": "Star Farm",
+        "porter": ["Nobody"],
+        "desc": "Star Farm is a made-up farming game, here so the Controls pages have a port to read.\n\nGrow crops under the stars, sell them at dawn, and keep the barn lit through the winter.",
+        "inst": "Copy the game's data folder into ports/starfarm/gamedata before the first start.",
+        "genres": ["simulation"],
+        "image": {"screenshot": "screenshot.png"},
+        "rtr": false,
+        "runtime": [],
+        "arch": ["aarch64"]
+    },
+    "status": {
+        "source": "PortMaster",
+        "status": "Installed"
+    }
+}

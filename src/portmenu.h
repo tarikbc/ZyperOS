@@ -2,11 +2,13 @@
 #ifndef ZYPEROS_PORTMENU_H
 #define ZYPEROS_PORTMENU_H
 
-/* The in-game menu over a program of its own: OpenBOR, which has no libretro
- * core and so no Diatom to pause it for the launcher's menu.
+/* The in-game menu over a program of its own: OpenBOR, a port from the
+ * Ports shelf, PortMaster itself - programs with no libretro core and so no
+ * Diatom to pause them for the launcher's menu.
  *
  * launch.sh starts portkeys beside it with --menu (tools/portkeys.c), as for
- * any program a "run:" shelf starts (port_menu_for, below). A MENU
+ * any program a "run:" shelf or the Ports shelf starts (port_menu_for,
+ * below). A MENU
  * tap there stops the port where it is (SIGSTOP), saves the frame on the
  * panel to PORT_MENU_STILL, lets go of the port's display, and starts the
  * launcher with PORT_MENU_ARG, the system's tag and the game. The launcher
@@ -25,26 +27,35 @@
 #define PORT_MENU_ARG      "--port-menu"
 
 /* Which games get the menu, by the core that runs them: every game a shelf
- * hands to a program of its own through a "run:" script. That is OpenBOR,
- * which ZyperOS ships, and DraStic and the standalone Flycast 2.7, which a
- * card can add for the Nintendo DS and Dreamcast shelves' Core row. The
- * launcher names the system's tag in the port request for these alone
+ * hands to a program of its own. A "run:" script's: OpenBOR, which ZyperOS
+ * ships, and DraStic and the standalone Flycast 2.7, which a card can add
+ * for the Nintendo DS and Dreamcast shelves' Core row. And the Ports
+ * shelf's ("port"): every PortMaster port, and PortMaster's own app. The
+ * launcher names the system's tag in the port request for these
  * (launch_port), and launch.sh gives portkeys --menu when it does.
  *
- * Not a port ("port", the Ports shelf): the mechanism is the same, but a
- * PortMaster game such as Stardew Valley takes most of the 1 GB, and the
- * launcher started beside it for the menu could push the kernel to kill the
- * game, unsaved. */
+ * A port such as Stardew Valley takes most of the 1 GB, and the launcher
+ * started beside it for the menu (86 MB in the VM, on llvmpipe) must never
+ * be why the kernel kills the game, unsaved. So portkeys starts it as the
+ * first thing the kernel would kill (PORT_MENU_OOM): if memory runs out
+ * with the menu up, the menu goes, and a menu that ends without an answer
+ * is Continue (above). */
 static inline bool port_menu_for(const char *core)
 {
-	return core && !strncmp(core, "run:", 4);
+	return core && (!strncmp(core, "run:", 4) || !strcmp(core, "port"));
 }
+
+/* The menu's process to the kernel when memory runs out: the first to go,
+ * its oom_score_adj at the top of the scale */
+#define PORT_MENU_OOM "1000"
 
 /* Of those, the programs whose buttons the Controls pages know, by tag:
  * OpenBOR, whose layout ships with it (src/controls.c). DraStic and Flycast
  * keep theirs in their own settings, which ZyperOS does not read, so over
  * them Controls is In a game alone; and the Nintendo DS's page of buttons is
- * DSperate's, not DraStic's. tools/controls-check.c holds this to the
+ * DSperate's, not DraStic's. A port's pages are its own files' instead
+ * (src/portdoc.h: its README, its gptokeyb keymap, its port.json), and
+ * PortMaster's are its window's. tools/controls-check.c holds this to the
  * table. */
 static inline bool port_menu_pads(const char *tag)
 {

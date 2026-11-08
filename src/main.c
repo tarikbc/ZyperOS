@@ -16147,11 +16147,51 @@ static ctl_game game_controls_of(app *a)
 
 	ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
 	               plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a, is_port(s),
-	               NULL };
+	               NULL, NULL };
 
 	/* What the N64's C buttons page says is in the controller */
 	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s->tag, file));
+	/* A port's pages are what its own files say (src/portdoc.h), read for
+	 * the script on the cursor as port_menu_main reads them over it: for a
+	 * --gamecontrols shot, as a port never runs under this menu */
+	if (!strcmp(s->core, "port") && sv->list.count > 0) {
+		static port_doc doc;
+		char path[LIB_PATH * 2];
+
+		snprintf(path, sizeof path, "%s/%s/%s", P_ROMS, s->folder, file);
+		port_doc_read(path, &doc);
+		g.doc = &doc;
+	}
 	return g;
+}
+
+/* A Controls page as it is drawn: ctl_game_rows', or for a port's About
+ * (ctl_game_prose) its paragraphs wrapped to the panel, `width`, and laid
+ * out as a synopsis is (syn_layout), to scroll through when they outrun it.
+ * The rows point into `b` and the port's doc, the caller's, and into this
+ * function's own lines, which the next call replaces. */
+static int controls_page_rows(const ctl_game *g, int page, int width, ctl_buf *b,
+                              const menu_row **out, int *loop_at)
+{
+	static menu_row rows[SYN_ROWS];
+	static char lines[SYN_WRAP_LINES][CHV_WRAP_COLS];
+	static char text[2 * PD_TEXT + 4];
+	menu_row made[CTL_MAX_ROWS];
+	int n = ctl_game_rows(g, page, made, b), i;
+
+	*loop_at = 0;
+	*out = rows;
+	if (!ctl_game_prose(g, page)) {
+		memcpy(rows, made, (size_t)n * sizeof *rows);
+		return n;
+	}
+	text[0] = '\0';
+	for (i = 0; i < n; i++) {
+		size_t at = strlen(text);
+
+		snprintf(text + at, sizeof text - at, "%s%s", i ? "\n\n" : "", made[i].label);
+	}
+	return syn_layout(text, width, lines, rows, loop_at);
 }
 
 /* The panel of a game's Controls: the standard one, or wider where a page's
@@ -16187,16 +16227,17 @@ static int game_controls_width(app *a, const ctl_game *g)
 static void game_controls_screen(app *a, SDL_Texture *bg)
 {
 	ctl_game g = game_controls_of(a);
-	menu_row rows[CTL_MAX_ROWS];
+	const menu_row *rows;
 	ctl_buf b;
 	char count[16] = "";
-	int page = 0, pages, n, lv, done = 0, width;
+	int page = 0, pages, n, lv, done = 0, width, loop_at;
 	float k;
 
 	ctl_set_fn_volume(plat_brightness_on_volume());
 	pages = ctl_game_pages(&g);
-	n = ctl_game_rows(&g, page, rows, &b);
 	width = game_controls_width(a, &g);
+	n = controls_page_rows(&g, page, width, &b, &rows, &loop_at);
+	mq_reset(MQ_VSCROLL);
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -16218,7 +16259,9 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 		}
 		if (to != page) {
 			page = to;
-			n = ctl_game_rows(&g, page, rows, &b);
+			n = controls_page_rows(&g, page, width, &b, &rows, &loop_at);
+			/* a port's About scrolls from its top */
+			mq_reset(MQ_VSCROLL);
 		}
 		/* which page of how many, at the heading's right (DESIGN.md 11.3) */
 		if (pages > 1) snprintf(count, sizeof count, "%d / %d", page + 1, pages);
@@ -16237,7 +16280,7 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 		tick_theme(a);
 		paused_backdrop(a, bg, k);
 		menu_draw_caption(a, b.head, rows, n, -1, width, a->tint, NULL,
-		                  false, 0, count[0] ? count : NULL);
+		                  false, loop_at, count[0] ? count : NULL);
 		plat_present();
 		ui_frame_rest(8);
 	}
@@ -16696,8 +16739,13 @@ static void respawn_resident(app *a)
  *
  * A shelf whose core is "run:<script>" is the same handoff for a standalone
  * emulator: the script, under the card, is run with the game as its one
- * argument - Nintendo DS through DraStic, which is no libretro core. The
- * request is then the script and the game, a tab between them. */
+ * argument - Nintendo DS through DraStic, which is no libretro core.
+ *
+ * The request is one line of three fields, a tab between each: the script,
+ * the game it is given (none for a port, whose script is the game), and the
+ * tag of the system whose in-game menu goes over it (src/portmenu.h), none
+ * for a program that has no menu. Empty fields stay fields: launch.sh splits
+ * the line by hand, not with read, which would run two tabs together. */
 #define PORT_CORE    "port"
 #define RUN_PREFIX   "run:"
 #define PORT_REQUEST "/tmp/zyperos_port"
@@ -16734,14 +16782,16 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	/* Written whole, then renamed into place: launch.sh reads it the moment
 	 * this process is gone, and half a path would run nothing. */
 	f = fopen(PORT_REQUEST ".tmp", "w");
-	/* A program of its own on a game has the in-game menu over it: the
-	 * system's tag after the game says so to launch.sh, which gives it to
-	 * portkeys with --menu (src/portmenu.h) */
+	/* A program of its own has the in-game menu over it: the system's tag,
+	 * the request's third field, says so to launch.sh, which gives it to
+	 * portkeys with --menu (src/portmenu.h). A standalone emulator's script
+	 * gets the game as its argument, the second field; a port's script is
+	 * the game, and its second field is empty (port_menu_for) */
 	if (!strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX)))
 		ok = f && fprintf(f, "%s/%s\t%s\t%s\n", P_CARD, s->core + strlen(RUN_PREFIX), path,
 		                  port_menu_for(s->core) ? s->tag : "") > 0;
 	else
-		ok = f && fprintf(f, "%s\n", path) > 0;
+		ok = f && fprintf(f, "%s\t\t%s\n", path, port_menu_for(s->core) ? s->tag : "") > 0;
 	if (f && fclose(f) != 0) ok = false;
 	if (!ok || rename(PORT_REQUEST ".tmp", PORT_REQUEST) != 0) {
 		fprintf(stderr, "port: couldn't write %s\n", PORT_REQUEST);
@@ -18077,12 +18127,13 @@ static const char *shot_gamecontrols_tag;
 
 static void shot_draw_gamecontrols(app *a)
 {
-	SDL_Texture *bg = fake_frame(a->r, 4.0f / 3);
-	menu_row rows[CTL_MAX_ROWS];
+	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
+	                                : fake_frame(a->r, 4.0f / 3);
+	const menu_row *rows;
 	ctl_buf b;
 	ctl_game g;
 	char count[16];
-	int i, n, pages;
+	int i, n, pages, width, loop_at;
 
 	for (i = 0; shot_gamecontrols_tag && i < a->sys.count; i++)
 		if (!strcmp(a->sys.systems[i].tag, shot_gamecontrols_tag)) {
@@ -18092,12 +18143,13 @@ static void shot_draw_gamecontrols(app *a)
 		}
 	g = game_controls_of(a);
 	ctl_set_fn_volume(shot_fn_volume || plat_brightness_on_volume());
-	n = ctl_game_rows(&g, shot_gamecontrols, rows, &b);
+	width = game_controls_width(a, &g);
+	n = controls_page_rows(&g, shot_gamecontrols, width, &b, &rows, &loop_at);
 	pages = ctl_game_pages(&g);
 	snprintf(count, sizeof count, "%d / %d",
 	         shot_gamecontrols < pages ? shot_gamecontrols + 1 : 1, pages);
 	paused_backdrop(a, bg, 1.0f);
-	menu_draw_caption(a, b.head, rows, n, -1, game_controls_width(a, &g), a->tint, NULL, false, 0,
+	menu_draw_caption(a, b.head, rows, n, -1, width, a->tint, NULL, false, loop_at,
 	                  pages > 1 ? count : NULL);
 	if (bg) SDL_DestroyTexture(bg);
 }
@@ -18145,6 +18197,50 @@ static int controls_fit_one(app *a, const char *where, const char *head,
 	return bad;
 }
 
+/* The Ports shelf's: PortMaster's own pages, on the card or not, and every
+ * port on this card's (src/portdoc.h), but a port's About, which is prose
+ * and scrolls as a synopsis does. The pages read, into *pages. */
+static int controls_fit_ports(app *a, const char *dev, int *pages)
+{
+	static port_doc doc;
+	char dir[CFG_STR * 2], path[CFG_STR * 3], where[160], count[16];
+	DIR *d;
+	struct dirent *e = NULL;
+	int bad = 0, p;
+	bool pm = true;
+
+	snprintf(dir, sizeof dir, "%s/Ports", P_ROMS);
+	d = opendir(dir);
+	while (pm || (d && (e = readdir(d)))) {
+		const char *name = pm ? PM_SCRIPT : e->d_name;
+		size_t l = strlen(name);
+		ctl_game g;
+		int np;
+
+		if (!pm && (name[0] == '.' || l < 4 || strcasecmp(name + l - 3, ".sh") ||
+		            !strcasecmp(name, PM_SCRIPT)))
+			continue;
+		pm = false;
+		snprintf(path, sizeof path, "%s/%s", dir, name);
+		port_doc_read(path, &doc);
+		g = (ctl_game){ "", "Ports", NULL, "", NULL, "sh", ctl_head_fits, a, true, NULL, &doc };
+		np = ctl_game_pages(&g);
+		for (p = 0; p < np; p++) {
+			menu_row rows[CTL_MAX_ROWS];
+			ctl_buf b;
+			int n = ctl_game_rows(&g, p, rows, &b);
+
+			if (ctl_game_prose(&g, p)) continue;
+			snprintf(where, sizeof where, "%s, the port %s page %d", dev, doc.title, p);
+			snprintf(count, sizeof count, "%d / %d", p + 1, np);
+			bad += controls_fit_one(a, where, b.head, np > 1 ? count : NULL, rows, n);
+			(*pages)++;
+		}
+	}
+	if (d) closedir(d);
+	return bad;
+}
+
 static void controls_fit_report(app *a)
 {
 	static systems_cfg all;
@@ -18175,7 +18271,7 @@ static void controls_fit_report(app *a)
 			for (e = 0; e < 2; e++) {
 				ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
 				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a,
-				               is_port(s), NULL };
+				               is_port(s), NULL, NULL };
 				int np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
 
 				if (e && strcmp(s->tag, "NES")) continue;
@@ -18191,6 +18287,7 @@ static void controls_fit_report(app *a)
 				}
 			}
 		}
+		if (game) bad += controls_fit_ports(a, dev ? "Pixel 2" : "Brick", &pages);
 	}
 	fprintf(stderr, "controls-fit: %d pages measured, %d do not fit\n", pages, bad);
 }
@@ -19260,9 +19357,12 @@ static int scan_thread(void *ctx)
 }
 
 /* --port-menu TAG GAME (src/portmenu.h): the in-game menu over a program of
- * its own (OpenBOR, DraStic, the standalone Flycast), and only that. What it needs of the launcher's start, in the same order: the
+ * its own (OpenBOR, DraStic, the standalone Flycast, a port from the Ports
+ * shelf and PortMaster itself, whose GAME is the port's script), and only
+ * that. What it needs of the launcher's start, in the same order: the
  * settings, the port's system from systems.cfg (its name and accent, and its
- * buttons for the Controls page), the language and theme, the interface
+ * buttons for the Controls page; a port's, what its files say), the
+ * language and theme, the interface
  * sounds, the display (taken as from the splash: portkeys has let go of it),
  * the buttons and the faces. No scan of the card, no Diatom, no MP4, no menu
  * music, no File Transfer: the port has the memory, and the menu wants none
@@ -19310,7 +19410,19 @@ static int port_menu_main(int argc, char **argv)
 	 * standalone Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
-	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL };
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL };
+	/* A port's pages: what its README, its keymap and its port.json say,
+	 * or PortMaster's own buttons over PortMaster (src/portdoc.h) */
+	if (!strcmp(s->core, "port")) {
+		static port_doc doc;
+
+		port_doc_read(game, &doc);
+		g_port_ctl.doc = &doc;
+		fprintf(stderr, "port menu: %s%s: %d of its README's controls, %d keys, %s, %s\n",
+		        doc.title, doc.portmaster ? " (PortMaster)" : "", doc.nsaid, doc.nkeys,
+		        doc.gptokeyb ? "gptokeyb" : "no gptokeyb",
+		        doc.inst[0] || doc.desc[0] ? "an About" : "no About");
+	}
 	{
 		char ap[16], lc[16], v[16], dir[CFG_STR * 2];
 
