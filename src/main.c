@@ -2154,10 +2154,13 @@ static void clock24_save(bool on)
  * 2026-11-05, or with the time left written there ("time"), my ask of
  * 2026-11-07. Read with the clock's setting; draw_corner_at writes the text.
  * The time left is the estimate in src/battery_eta.h off the cable and the
- * time to full (or to the charge limit) on it; where there is none yet - the
- * first minutes after the start, a cable just plugged in, a charger whose
- * gauge cannot say - it writes the percentage, so the corner is never empty
- * of a number. */
+ * time to full (or to the charge limit) on it, from the gauge's charge and
+ * current at the first read. Where there is none yet but one is coming it
+ * writes three dots filling in turn (2026-11-08, from a first try on the Pixel
+ * 2 that kept the percentage for minutes); held at the charge limit, "On
+ * hold"; full on the cable, "Charged"; and where none can come - a gauge
+ * that cannot say its current on the cable - the percentage, so the corner
+ * is never empty. */
 enum { BATT_BARS, BATT_PCT, BATT_TIME, BATT_MODES };
 static const char *const BATT_IDS[BATT_MODES] = { "bars", "percentage", "time" };
 static int g_batt_mode;
@@ -2186,9 +2189,11 @@ static struct {
 	int          minutes;
 	int          h24;          /* -1 for the saved setting */
 	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          calc;         /* the calculating dots, this many filled, -1 for none */
+	bool         full;         /* on the cable and charged */
 	int          icon;         /* BATT_BARS.., -1 for the saved setting */
 	status_marks m;
-} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .icon = -1 };
+} shot_st = { .minutes = -1, .h24 = -1, .eta = -1, .calc = -1, .icon = -1 };
 
 /* Where the corner (its clock's text box and its marks), the clock alone, the
  * last panel and the games title's capitals were drawn this frame, for a
@@ -2216,6 +2221,7 @@ static bool status_same(const status_marks *a, const status_marks *b)
 	return a->wifi == b->wifi && a->bt == b->bt && a->batt == b->batt &&
 	       a->charging == b->charging && a->held == b->held &&
 	       a->blink_off == b->blink_off && a->pct_w == b->pct_w &&
+	       a->calc == b->calc && a->calc_step == b->calc_step &&
 	       a->xfer == b->xfer && a->xfer_moving == b->xfer_moving &&
 	       a->xfer_pct == b->xfer_pct;
 }
@@ -2327,50 +2333,89 @@ static bool charge_held(void)
 	return held;
 }
 
-/* MENU > Battery Icon > Time Left, on the cable: the minutes to full, or to
- * the charge limit when one is set, from the gauge's current and charge
- * (src/charging.h: the charging screen's estimate, the same numbers). Read
- * every 2 s while the cable is in; -1 where the charger's gauge cannot say,
- * while the current settles (CH_SETTLE_MS) and when it is held at the limit
- * or full, and the corner writes the percentage. */
-static int charge_minutes(bool charging)
-{
-	static unsigned at;
-	static bool primed;
-	static ch_eta eta;
-	static int minutes = -1;
-	unsigned now = plat_now_ms();
+/* What MENU > Battery Icon > Time Left writes in the corner: the kind of it
+ * (src/battery_eta.h's batt_corner_kind), the minutes when it is a time, and
+ * how long the dots have been going, for the animation's tick. */
+typedef struct {
+	corner_kind kind;
+	int         minutes;
+	unsigned    calc_ms;
+} corner_view;
 
-	if (!charging) {
-		/* Out of the cable: the next one starts from nothing */
-		primed = false;
+/* The gauge's files, read every 2 s (plat_charge_read: the charging screen's
+ * own, so the one gauge is read the one way) and kept between. On the cable
+ * the time is to full, or to the charge limit when one is set, and is two
+ * estimates blended: the straight line from the gauge's first read, and the
+ * charging screen's (src/charging.h: CC then CV, after its 30 s settle) as it
+ * settles. Off the cable, the gauge's charge over its current from the first
+ * read, blended into the falls' as that earns trust (battery_minutes_left).
+ * A gauge with no current file (the Brick, a simulator) gives the gauge's
+ * half nothing, and the falls carry on alone; on the cable it gives the
+ * percentage, since nothing can ever come. */
+static corner_view corner_view_now(const status_marks *m)
+{
+	static unsigned at, cable_since, calc_since;
+	static bool primed, was, ok, calcing;
+	static ch_reading r;
+	static ch_eta eta;
+	unsigned now = plat_now_ms();
+	corner_in in = { .charging = m->charging, .minutes = -1 };
+	corner_view v;
+
+	if (shot_st.set) {
+		/* A shot's own: eta= the minutes, calc[=N] the dots, full the charge */
+		in.full = shot_st.full;
+		in.held = m->held;
+		in.minutes = shot_st.eta;
+		in.expect = shot_st.calc >= 0;
+		v.kind = m->batt < 0 ? CORNER_PCT : batt_corner_kind(&in);
+		v.minutes = in.minutes;
+		v.calc_ms = 0;
+		return v;
+	}
+	if (m->batt < 0) return (corner_view){ CORNER_PCT, -1, 0 };
+	if (!primed || m->charging != was) {
+		/* The cable came or went: what was learned of the other is over */
+		was = m->charging;
 		eta = (ch_eta){ 0 };
-		minutes = -1;
-		return -1;
+		cable_since = now;
+		primed = false;
 	}
 	if (!primed || now - at >= 2000) {
-		ch_reading r;
-
 		primed = true;
 		at = now;
-		minutes = -1;
-		if (plat_charge_read(&r)) {
+		ok = plat_charge_read(&r);
+		if (ok) {
 			r.limit = charge_limit_now();
-			ch_eta_note(&eta, now, &r);
-			minutes = r.held ? -1 : ch_eta_minutes(&eta, now, &r);
-			if (minutes == 0) minutes = -1;
+			if (m->charging) ch_eta_note(&eta, now, &r);
 		}
 	}
-	return minutes;
-}
+	if (m->charging) {
+		if (ok && r.online) {
+			int quick = batt_gauge_to_full(r.now_mah, r.full_mah, r.limit, r.ma);
+			int slow = ch_eta_minutes(&eta, now, &r);
 
-/* The minutes Time Left shows in the corner, or -1: a shot's own (--status
- * eta=) or what the cable or the discharge says */
-static int corner_minutes(const status_marks *m)
-{
-	if (m->batt < 0) return -1;
-	if (shot_st.set) return shot_st.eta;
-	return m->charging ? charge_minutes(true) : battery_minutes_left();
+			in.full = r.full || r.pct >= 100;
+			in.held = r.held;
+			in.minutes = batt_eta_blend(quick > 0 ? quick : -1, slow > 0 ? slow : -1,
+			                            batt_ramp(now - eta.first_at, CH_SETTLE_MS, CH_SETTLE_MS));
+			/* Dots for the first CH_SETTLE_MS when a current can be read
+			 * and none is going in yet; the percentage when none can be */
+			in.expect = r.ma_known && now - cable_since < CH_SETTLE_MS;
+		}
+	} else {
+		int quick = ok && !r.online
+		          ? batt_gauge_left(r.now_mah, r.full_mah, r.ma, BATT_EMPTY_PCT) : -1;
+
+		in.minutes = battery_minutes_left_with(quick);
+		in.expect = m->batt > BATT_EMPTY_PCT;
+	}
+	v.kind = batt_corner_kind(&in);
+	v.minutes = in.minutes;
+	if (v.kind != CORNER_CALC) calcing = false;
+	else if (!calcing) { calcing = true; calc_since = now; }
+	v.calc_ms = calcing ? now - calc_since : 0;
+	return v;
 }
 
 /* "45 min", "3 h", "3 h 20 min": to the minute under 10, to 5 under 10
@@ -2412,9 +2457,6 @@ static void status_gather(status_marks *m, bool moving)
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
-	/* The time to full forgets the cable the moment it is out, whatever the
-	 * setting, so a cable plugged in later starts its estimate afresh */
-	if (!chg) charge_minutes(false);
 	xs_mark(m);
 }
 
@@ -2489,24 +2531,46 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 	 * does, so the time counts down with it. */
 	if (g_batt_mode != BATT_BARS && m.batt >= 0) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
-		int left = g_batt_mode == BATT_TIME ? corner_minutes(&m) : -1;
+		corner_view cv = g_batt_mode == BATT_TIME ? corner_view_now(&m)
+		                                          : (corner_view){ CORNER_PCT, -1, 0 };
 
-		if (left > 0) {
+		pct[0] = '\0';
+		if (cv.kind == CORNER_TIME) {
 			unsigned minute = 60000;
 
-			corner_time_text(left, pct, sizeof pct);
+			corner_time_text(cv.minutes, pct, sizeof pct);
 			redraw_at(plat_now_ms() + minute);
 			if (minute < wait) wait = minute;
+		} else if (cv.kind == CORNER_HELD) {
+			snprintf(pct, sizeof pct, "%s", T(S_CORNER_HELD));
+		} else if (cv.kind == CORNER_FULL) {
+			snprintf(pct, sizeof pct, "%s", T(S_CORNER_FULL));
+		} else if (cv.kind == CORNER_CALC) {
+			/* Three dots filling in turn where the time will go: a frame
+			 * every CORNER_DOT_MS for the first minute of it, then only as
+			 * the launcher draws anyway, so a gauge that never answers
+			 * does not keep the screen awake */
+			m.calc = true;
+			m.calc_step = shot_st.set ? shot_st.calc : batt_corner_dots(plat_now_ms());
+			if (!shot_st.set && cv.calc_ms < 60000u) {
+				redraw_at(plat_now_ms() + CORNER_DOT_MS);
+				if (CORNER_DOT_MS < wait) wait = CORNER_DOT_MS;
+			}
 		} else {
 			snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
 		}
-		m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
-		if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+		if (m.calc) {
+			m.pct_w = STATUS_CALC_W;
+			g_pct_natural = 0;
+		} else {
+			m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
+			if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
+		}
 	} else {
 		g_pct_natural = 0;
 	}
 	status_blit(r, &m, theme, right - STATUS_RIGHT, dy);
-	if (m.pct_w > 0) {
+	if (m.pct_w > 0 && !m.calc) {
 		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
 		/* In the mark's own color: text-soft, or warning when it is low */
 		SDL_Color c = status_batt_level(m.batt, m.charging)
@@ -17936,6 +18000,11 @@ static bool shot_status_parse(const char *spec)
 		/* what MENU > Battery Icon > Time Left writes: eta=200 is 3 h 20 min,
 		 * on the cable the time to full; without it, the percentage */
 		else if (!strncmp(w, "eta=", 4) && w[4] >= '0' && w[4] <= '9') shot_st.eta = atoi(w + 4);
+		/* Time Left before it has a time: calc is the dots two filled, calc=N
+		 * N of them (0 to 3); full is Charged, on the cable */
+		else if (!strcmp(w, "calc")) shot_st.calc = 2;
+		else if (!strncmp(w, "calc=", 5) && w[5] >= '0' && w[5] <= '3' && !w[6]) shot_st.calc = w[5] - '0';
+		else if (!strcmp(w, "full")) shot_st.m.charging = shot_st.full = true;
 		/* MENU > Battery Icon for this shot, not the saved one: icon=bars,
 		 * icon=percentage or icon=time */
 		else if (!strncmp(w, "icon=", 5)) {

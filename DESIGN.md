@@ -1126,13 +1126,26 @@ it has priority for direct volume or brightness feedback.
   not to 0%, and it is shown to the minute under 10, to 5 minutes under 10
   hours and to the hour after, a number changing when it means something. It
   starts after two falls (the first only marks where a percent began): a few
-  minutes after a start, longer at a light load. The cable, a gauge that
-  rises with no cable and more than a day clear it. On the cable it is the
-  charging screen's time to full (`src/charging.h`, CC then CV from the
-  gauge's current, to the Charge Limit when there is one), after its 30 s
-  settle. Wherever there is none to give - those first minutes, a charger
-  whose gauge cannot say (the Brick), held at the limit or full - the corner
-  writes the percentage, so it is never without a number. Up to
+  minutes after a start, longer at a light load, so the first number is the
+  gauge's own *(2026-11-08, from a first try on the Pixel 2: "after a while
+  the remaining time appeared")*: `charge_now` over `current_avg`, less the
+  charge under BATT_EMPTY_PCT, read through `plat_charge_read` every 2 s
+  from the first read. The falls' number is blended in by a weight that
+  rises in a line over 20 minutes from the first rate, so the shown time
+  does not jump and the better long-run number takes over; a gauge with no
+  current file (the Brick, a simulator) gives the falls alone. The cable, a
+  gauge that rises with no cable and more than a day clear the falls. On the
+  cable the gauge's straight line (the charge to the Charge Limit, or to
+  full, over the current going in; 50 mA or more) is blended over 30 s into
+  the charging screen's time to full (`src/charging.h`, CC then CV, after its
+  30 s settle). `batt_corner_kind` says what the corner writes: the time;
+  three dots filling in turn (STATUS_CALC_W wide, a step every 400 ms,
+  asking for a frame only for the first minute of them) while there is no
+  time yet and one is coming, in **text-soft** and **track** as the fan's lit
+  and unlit parts; "On hold" held at the Charge Limit, and "Charged" when
+  full, in the time's place beside the plug or the bolt *(2026-11-08)*; and
+  the percentage only where none can come (a charger whose gauge cannot say
+  its current), so the corner is never without a number or a word. Up to
   `STATUS_PCT_MAX` (160) units are kept for the text; the corner asks for a
   frame each minute while it shows a time, as the clock does.
 

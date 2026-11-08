@@ -178,6 +178,9 @@ controls.two_screens
 corner.time_min
 corner.time_h
 corner.time_h_min
+# (held and full are drawn by tools/corner-check.sh in every language, which checks they fit)
+corner.held
+corner.full
 
 # datetime: no shot draws it yet
 datetime.change

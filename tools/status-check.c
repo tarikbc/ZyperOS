@@ -220,6 +220,28 @@ static void marks(int theme)
 	draw(&m, theme, "scratch");
 	CK(is(at(0, 1.5, 12.5), th->text_soft), "so its outline is text-soft");
 
+	/* Time Left with no time yet: three dots in the number's room, filling
+	 * in turn, then the battery STATUS_PCT_GAP after them */
+	for (k = 0; k <= 3; k++) {
+		m = (status_marks){ .wifi = STATUS_WIFI_NONE, .batt = 62, .calc = true,
+		                    .calc_step = k, .pct_w = STATUS_CALC_W };
+		snprintf(name, sizeof name, "%s-calc%d", theme ? "dark" : "light", k);
+		draw(&m, theme, name);
+		CK(status_marks_width(&m) == STATUS_CALC_W + STATUS_PCT_GAP + 44,
+		   "%d filled: the dots' room and the battery, %d wide", k, status_marks_width(&m));
+		CK(is(at(0, 2.5f, 12.5f), k >= 1 ? th->text_soft : th->track), "%d filled: the first dot", k);
+		CK(is(at(0, 13.5f, 12.5f), k >= 2 ? th->text_soft : th->track), "%d filled: the second dot", k);
+		CK(is(at(0, 23.5f, 12.5f), k >= 3 ? th->text_soft : th->track), "%d filled: the third dot", k);
+		CK(clear(at(0, 8.5f, 12.5f)) && clear(at(0, 18.5f, 12.5f)), "%d filled: air between the dots", k);
+		CK(clear(at(0, 13.5f, 4.5f)) && clear(at(0, 13.5f, 20.5f)), "%d filled: the dots are small, mid row", k);
+		CK(is(at(STATUS_CALC_W + STATUS_PCT_GAP, 1.5f, 12.5f), th->text_soft),
+		   "%d filled: the battery after them", k);
+	}
+	m = (status_marks){ .wifi = STATUS_WIFI_NONE, .batt = 62, .calc = false, .pct_w = 0 };
+	draw(&m, theme, "scratch");
+	CK(clear(at(0, 2.5f, 12.5f)) || is(at(0, 2.5f, 12.5f), th->text_soft), "no dots when not calculating");
+	CK(status_marks_width(&m) == 44, "and no room taken");
+
 	/* all of them: Bluetooth, Wi-Fi, the battery, 12 apart */
 	m = (status_marks){ .wifi = 3, .bt = true, .batt = 82 };
 	draw(&m, theme, theme ? "dark-all" : "light-all");

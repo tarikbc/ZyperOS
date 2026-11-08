@@ -327,6 +327,24 @@ static void xfer_mark(canvas *cv, const status_marks *m, const ds_theme *th)
 	paint(cv, &dnh, ink);
 }
 
+/* The calculating mark, three dots in the number's place (Time Left, before
+ * it has a time): each 6 across, 10.5 apart, on the row's middle, filling in
+ * turn, `step` of them in **text-soft** and the rest in **track**, as the
+ * fan's lit and unlit parts. They end at the room's right edge, where the
+ * number's digits would. */
+static void calc_mark(canvas *cv, int step, const ds_theme *th)
+{
+	float right = cv->mw, y = STATUS_ROW / 2.0f;
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		float x = right - 3.0f - 10.5f * (float)(2 - i);
+		shape dot = { .kind = SH_LINES, .n = 2, .p = { x, y, x, y }, .w = 3.0f };
+
+		paint(cv, &dot, i < step ? th->text_soft : th->track);
+	}
+}
+
 /* ---- the row ------------------------------------------------------------------- */
 
 #define W_XFER 24
@@ -389,6 +407,10 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 		cv.ox += W_WIFI + STATUS_GAP;
 	}
 	if (m->batt >= 0) {
+		if (m->calc && m->pct_w > 0) {
+			cv.mw = m->pct_w;
+			calc_mark(&cv, m->calc_step, th);
+		}
 		if (m->pct_w > 0) cv.ox += m->pct_w + STATUS_PCT_GAP;   /* the number's room */
 		cv.mw = W_BATT;
 		batt_mark(&cv, m, th);

@@ -1290,7 +1290,10 @@ bool plat_charge_read(ch_reading *r)
 	if ((v = read_int("/sys/class/power_supply/battery/capacity")) < 0) return false;
 	r->pct = v;
 	/* Into the battery positive: rk817_charger says Discharging below 0 */
-	r->ma = read_int("/sys/class/power_supply/battery/current_avg") / 1000;
+	v = read_int("/sys/class/power_supply/battery/current_avg");
+	/* -1 is read_int's no answer, and a current of -1 uA is none either */
+	r->ma_known = v != -1;
+	r->ma = r->ma_known ? v / 1000 : 0;
 	r->mv = read_int("/sys/class/power_supply/battery/voltage_avg") / 1000;
 	v = read_int("/sys/class/power_supply/battery/charge_now");
 	r->now_mah = v >= 0 ? v / 1000 : -1;
