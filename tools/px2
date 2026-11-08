@@ -1,0 +1,245 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+# px2: one door to a GKD Pixel 2 (or a QEMU VM) for a debugging session.
+#
+#   tools/px2 [--vm NAME] [--real-card] [--wait SECONDS] COMMAND [ARGS...]
+#
+#   shot [FILE.png]              px2-shot, as a PNG here (px2-shot.png)
+#   open ROM [--fresh]           px2-open: start a game through the launcher
+#   quit                         px2-open --quit
+#   status                       px2-open --status
+#   press BUTTON...              px2-input (px2-input's buttons and waits)
+#   perf [SECONDS] [--json]      px2-perf (10 s)
+#   snap save ROM [NAME] [--force] | restore NAME [--no-restart] | list | delete NAME
+#                                px2-snap
+#   log [-f]                     the launcher's log of this boot (zyperos.log)
+#   ssh [COMMAND...]             a command, or a shell
+#
+# Every command first takes the device's lock on this computer, a folder
+# made with mkdir (atomic, so two sessions never both have it) with an owner
+# file saying who: /tmp/px2-lock for the Pixel 2 at 10.42.0.1:22, and
+# /tmp/px2-lock-HOST-PORT for anything else (a VM), or PX2_LOCK. A lock held
+# is a refusal naming its owner, or a wait with --wait. It is let go when the
+# command ends, however it ends: Ctrl-C, an error, a dropped cable.
+#
+# Then the card: /sys/block/mmcblk0/size. The 32 GB test card (62333952
+# sectors) and a VM's card are fine; the owner's own 128 GB card (249737216)
+# or any other is refused unless --real-card says so.
+#
+# The device: PX2_HOST (10.42.0.1) and PX2_PORT (22) as tools/px2-deploy.sh
+# takes them, or --vm NAME for a VM of tools/qemu-run.sh's (its port);
+# PX2_KEY (~/.ssh/zyperos_pixel2). A development image, or Developer Mode.
+#
+# The device's own tools are in its image (/usr/bin). On an image from before
+# px2-perf and px2-snap, they are copied to /tmp/px2-bin first: px2-snap from
+# tools/px2-snap.sh, px2-perf from build/px2/px2-perf (make px2-payload
+# builds it). px2-open likewise, from build/px2/px2-open or
+# tools/px2-open.sh where this tree has it.
+set -u
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(cd "$HERE/.." && pwd)
+HOST=${PX2_HOST:-10.42.0.1}
+PORT=${PX2_PORT:-22}
+KEY=${PX2_KEY:-$HOME/.ssh/zyperos_pixel2}
+SSH_BIN=${PX2_SSH:-ssh}
+REAL_CARD_SECTORS=249737216
+TEST_CARD_SECTORS=62333952
+LOG=/mnt/SDCARD/.userdata/pixel2/logs/zyperos.log
+# dropbear makes a new host key at every boot of a read-only root: no key to check
+OPTS="-o ConnectTimeout=8 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+
+die() { echo "px2: $*" >&2; exit 1; }
+usage() { sed -n '5,16p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+
+real_card= wait_s=0 vm=
+while [ $# -gt 0 ]; do
+	case $1 in
+	--vm) [ $# -ge 2 ] || usage; vm=$2; shift ;;
+	--real-card) real_card=1 ;;
+	--wait) [ $# -ge 2 ] || usage; wait_s=$2; shift
+		case $wait_s in '' | *[!0-9]*) echo "px2: --wait takes seconds" >&2; usage ;; esac ;;
+	-h | --help) usage ;;
+	-*) echo "px2: unknown option $1" >&2; usage ;;
+	*) break ;;
+	esac
+	shift
+done
+[ $# -ge 1 ] || usage
+CMD=$1
+shift
+
+if [ -n "$vm" ]; then
+	f=${ZYPEROS_QEMU_HOME:-$HOME/Library/Caches/zyperos-qemu}/$vm/ssh.port
+	[ -f "$f" ] || die "no VM named $vm (tools/qemu-run.sh list)"
+	HOST=127.0.0.1
+	PORT=$(cat "$f")
+fi
+if [ -n "${PX2_LOCK:-}" ]; then LOCK=$PX2_LOCK
+elif [ "$HOST:$PORT" = 10.42.0.1:22 ]; then LOCK=/tmp/px2-lock
+else LOCK=/tmp/px2-lock-$HOST-$PORT
+fi
+
+# What each command needs, checked before the lock is taken or the device
+# reached
+case $CMD in
+shot) [ $# -le 1 ] || usage ;;
+open)
+	[ $# -ge 1 ] && [ $# -le 2 ] || usage
+	[ $# -lt 2 ] || [ "$2" = --fresh ] || usage
+	case $1 in -*) usage ;; esac ;;
+quit | status) [ $# -eq 0 ] || usage ;;
+press) [ $# -ge 1 ] || usage ;;
+perf)
+	for a in "$@"; do
+		case $a in --json) ;; '' | *[!0-9.]*) usage ;; esac
+	done ;;
+snap)
+	[ $# -ge 1 ] || usage
+	case $1 in
+	save) [ $# -ge 2 ] || usage ;;
+	restore | delete) [ $# -ge 2 ] || usage ;;
+	list) [ $# -eq 1 ] || usage ;;
+	*) usage ;;
+	esac ;;
+log) [ $# -eq 0 ] || { [ $# -eq 1 ] && [ "$1" = -f ]; } || usage ;;
+ssh) ;;
+*) echo "px2: unknown command $CMD" >&2; usage ;;
+esac
+
+# --- the lock -------------------------------------------------------------
+
+HELD=
+release() {
+	# Ours: the owner file says so, or Ctrl-C came between the mkdir and
+	# the owner file
+	if [ -n "$HELD" ] && { [ ! -f "$LOCK/owner" ] ||
+		[ "$(sed -n 's/^pid=//p' "$LOCK/owner" 2> /dev/null)" = $$ ]; }; then
+		rm -f "$LOCK/owner"
+		rmdir "$LOCK" 2> /dev/null
+	fi
+	HELD=
+}
+trap 'release' EXIT
+trap 'release; exit 130' INT
+trap 'release; exit 143' TERM
+trap 'release; exit 129' HUP
+
+take_lock() {
+	waited=0
+	while ! mkdir "$LOCK" 2> /dev/null; do
+		if [ "$waited" -ge "$wait_s" ]; then
+			echo "px2: $HOST:$PORT is in use: $LOCK is held" >&2
+			sed 's/^/px2:   /' "$LOCK/owner" >&2 2> /dev/null ||
+				echo "px2:   (no owner file)" >&2
+			echo "px2: wait with --wait SECONDS; remove $LOCK only if its owner is gone" >&2
+			exit 75
+		fi
+		sleep 1
+		waited=$((waited + 1))
+	done
+	HELD=1
+	{
+		echo "pid=$$"
+		echo "user=$(id -un)"
+		echo "since=$(date '+%Y-%m-%d %H:%M:%S')"
+		echo "cwd=$PWD"
+		echo "command=tools/px2 $CMD $*"
+	} > "$LOCK/owner"
+}
+
+# --- the device -----------------------------------------------------------
+
+# The device's shell, with a terminal when the first argument is -t
+rsh() {
+	t=
+	if [ "${1:-}" = -t ]; then t=-t; shift; fi
+	# shellcheck disable=SC2086
+	"$SSH_BIN" $OPTS $t -p "$PORT" -i "$KEY" "root@$HOST" "$@"
+}
+
+# A string as one word for the device's shell
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
+check_card() {
+	size=$(rsh 'if [ -e /sys/block/mmcblk0/size ]; then cat /sys/block/mmcblk0/size;
+		elif [ -e /sys/block/vda/size ]; then echo "vm $(cat /sys/block/vda/size)"; else echo none; fi' < /dev/null) ||
+		die "cannot reach $HOST:$PORT over SSH"
+	case $size in
+	"$TEST_CARD_SECTORS") ;;
+	vm\ *) ;;
+	"$REAL_CARD_SECTORS")
+		[ -n "$real_card" ] ||
+			die "the Pixel 2 has the owner's own 128 GB card in ($size sectors): put the 32 GB test card in, or say --real-card"
+		echo "px2: the owner's own 128 GB card, as --real-card says" >&2 ;;
+	*)
+		[ -n "$real_card" ] ||
+			die "a card that is not the test card ($size sectors): say --real-card to use it" ;;
+	esac
+}
+
+# The device's tool $1, or a copy in /tmp/px2-bin from $2 (a file here) when
+# its image has none; TOOL is what to run
+tool() {
+	TOOL=$1
+	rsh "command -v $1 > /dev/null" < /dev/null && return 0
+	TOOL=/tmp/px2-bin/$1
+	src=
+	for s in "$@"; do [ "$s" = "$1" ] || { [ -f "$s" ] && src=$s && break; }; done
+	[ -n "$src" ] || die "the device has no $1, and this tree has none to copy (${2:-})"
+	want=$(shasum -a 256 "$src" | cut -d' ' -f1)
+	have=$(rsh "sha256sum $TOOL 2> /dev/null" < /dev/null | cut -d' ' -f1)
+	if [ "$want" != "$have" ]; then
+		rsh "mkdir -p /tmp/px2-bin && cat > $TOOL.new && chmod +x $TOOL.new && mv -f $TOOL.new $TOOL" < "$src" ||
+			die "could not copy $src to the device"
+		echo "px2: the image has no $1; copied $src to $TOOL" >&2
+	fi
+}
+
+take_lock "$@"
+check_card
+
+case $CMD in
+shot)
+	out=${1:-px2-shot.png}
+	tmp=$(mktemp -t px2-shot) || die "no temporary file"
+	rsh 'px2-shot /tmp/px2-shot.ppm > /dev/null && cat /tmp/px2-shot.ppm; s=$?; rm -f /tmp/px2-shot.ppm; exit $s' \
+		< /dev/null > "$tmp" || { rm -f "$tmp"; die "px2-shot failed"; }
+	sips -s format png "$tmp" --out "$out" > /dev/null 2>&1 || { rm -f "$tmp"; die "could not make $out"; }
+	rm -f "$tmp"
+	echo "$out"
+	;;
+open | quit | status)
+	tool px2-open "$REPO/build/px2/px2-open" "$REPO/tools/px2-open.sh"
+	case $CMD in
+	open) rsh "$TOOL $(q "$1")${2:+ --fresh}" < /dev/null ;;
+	quit) rsh "$TOOL --quit" < /dev/null ;;
+	status) rsh "$TOOL --status" < /dev/null ;;
+	esac
+	;;
+press)
+	args=
+	for a in "$@"; do args="$args $(q "$a")"; done
+	rsh "px2-input$args" < /dev/null
+	;;
+perf)
+	tool px2-perf "$REPO/build/px2/px2-perf"
+	rsh "$TOOL $*" < /dev/null
+	;;
+snap)
+	tool px2-snap "$REPO/tools/px2-snap.sh"
+	args=
+	for a in "$@"; do args="$args $(q "$a")"; done
+	rsh "$TOOL$args" < /dev/null
+	;;
+log)
+	if [ $# -eq 1 ]; then
+		if [ -t 0 ]; then rsh -t "tail -n 40 -f $LOG"; else rsh "tail -n 40 -f $LOG" < /dev/null; fi
+	else
+		rsh "cat $LOG" < /dev/null
+	fi
+	;;
+ssh)
+	if [ $# -eq 0 ]; then rsh -t; else rsh "$*"; fi
+	;;
+esac

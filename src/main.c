@@ -93,6 +93,7 @@
 #include "game_menu.h"
 #include "portmenu.h"
 #include "gamedel.h"
+#include "gamerows.h"
 #include "portinfo.h"
 #include "dsv.h"
 #include "dslang.h"
@@ -20959,6 +20960,40 @@ int main(int argc, char *argv[])
 		printf("library %s\n", lib);
 		db_dump(db_lib(), stdout);
 		db_shutdown();
+		return 0;
+	}
+
+	/* --game-rows TAG FILE: one game's rows in the library database (its
+	 * play sessions, its favorite, its Pak; src/gamerows.h) on stdout, and
+	 * --game-rows-put TAG FILE: that game's rows made what stdin holds. For
+	 * px2-snap (tools/px2-snap.sh), which keeps a game's saves and states and
+	 * these beside them. Any number of arguments is answered here, never
+	 * by a second launcher. */
+	if (argc > 1 && (!strcmp(argv[1], "--game-rows") || !strcmp(argv[1], "--game-rows-put"))) {
+		char dev[CFG_STR * 2], lib[CFG_STR * 2];
+		bool put = !strcmp(argv[1], "--game-rows-put");
+		int n;
+
+		if (argc != 4 || !argv[2][0] || !argv[3][0]) {
+			fprintf(stderr, "usage: zyperos.elf %s TAG FILE\n", argv[1]);
+			return 2;
+		}
+		paths_init();
+		db_paths_ready(dev, sizeof dev, lib, sizeof lib, NULL, 0);
+		if (!db_init(dev, lib, NULL)) {
+			fprintf(stderr, "cannot open the settings database\n");
+			return 1;
+		}
+		n = put ? gamerows_put(db_lib(), argv[2], argv[3], stdin)
+		        : gamerows_dump(db_lib(), argv[2], argv[3], stdout);
+		db_shutdown();
+		if (n < 0) {
+			fprintf(stderr, put ? "game-rows: not one game's rows for %s %s; nothing changed\n"
+			                    : "game-rows: could not read the rows of %s %s\n",
+			        argv[2], argv[3]);
+			return 1;
+		}
+		if (put) fprintf(stderr, "game-rows: %d row(s) for %s %s\n", n, argv[2], argv[3]);
 		return 0;
 	}
 

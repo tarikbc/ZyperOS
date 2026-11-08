@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-core-stamp check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-captive check-qr \
@@ -305,6 +305,25 @@ build-native/dsresume-check: tools/dsresume-check.c src/dsresume.c src/dsresume.
 # payload's to hold, and release.sh's.
 check-core-stamp:
 	@sh tools/core-stamp-check.sh
+
+# The debugging tools (docs/building.md, "Debugging on the device"). px2-perf's
+# percentiles, frame times, CPU ticks and speed against the clock
+# (tools/px2-perf.h), plain C on this computer; px2-snap's choice of a game's
+# files and rows, put back byte for byte, on a scratch card with the host
+# launcher (skips without SDL2 or sqlite3); and tools/px2's arguments, card
+# and lock, with a stand-in for ssh. None reaches a device.
+check-px2-perf: build-native/px2-perf-check
+	@./build-native/px2-perf-check
+
+build-native/px2-perf-check: tools/px2-perf-check.c tools/px2-perf.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g -o $@ tools/px2-perf-check.c -lm
+
+check-px2-snap:
+	@sh tools/px2-snap-check.sh
+
+check-px2:
+	@sh tools/px2-check.sh
 
 # The start with a battery too low to play (src/lowbatt.h): which start shows
 # the screen, its hold, POWER, the charger's moment, the fresh reading that
