@@ -1,0 +1,97 @@
+# Developer mode on a release image (src/devmode.h): what is said when the
+# unlock works, and the page MENU > Developer Mode opens. The row's own name is
+# sysmenu.developer, Developer Mode, and its On or Off is menu.on and menu.off.
+
+[devmode.is_on]
+note = The line of the message that says the unlock worked. One line, which must fit the message panel: it does not wrap
+en = Developer Mode is on
+zh-Hans = 开发者模式已开启
+es = Modo desarrollador activado
+pt-BR = Modo desenvolvedor ativado
+fr = Mode développeur activé
+de = Entwicklermodus ist an
+ja = 開発者モードがオンになりました
+it = Modalità sviluppatore attiva
+
+[devmode.where]
+note = The second line of that message: what to do next. One line, which must fit the message panel: it does not wrap
+en = Connect a computer.
+zh-Hans = 请连接电脑。
+es = Conecta una computadora.
+pt-BR = Conecte um computador.
+fr = Branchez un ordinateur.
+de = Computer anschließen.
+ja = パソコンをつないでください。
+it = Collega un computer.
+
+[devmode.command]
+note = The Developer (SSH) page's row holding the ssh command to type on the computer
+en = Command
+zh-Hans = 命令
+es = Comando
+pt-BR = Comando
+fr = Commande
+de = Befehl
+ja = コマンド
+it = Comando
+
+[devmode.keys]
+note = The row that says how many public keys the card gave SSH
+en = Keys
+zh-Hans = 密钥
+es = Claves
+pt-BR = Chaves
+fr = Clés
+de = Schlüssel
+ja = 鍵
+it = Chiavi
+
+[devmode.keys_count]
+note = That row's value: public keys read from the card's Developer folder
+en.one = %d on the card
+en.other = %d on the card
+zh-Hans = 卡上有 %d 个
+es.one = %d en la tarjeta
+es.other = %d en la tarjeta
+pt-BR.one = %d no cartão
+pt-BR.other = %d no cartão
+fr.one = %d sur la carte
+fr.other = %d sur la carte
+de.one = %d auf der Karte
+de.other = %d auf der Karte
+ja = カード上に%d個
+it.one = %d sulla scheda
+it.other = %d sulla scheda
+
+[devmode.keys_none]
+note = That row's value when the card has no key file, or none in it
+en = none on the card
+zh-Hans = 卡上没有
+es = ninguna en la tarjeta
+pt-BR = nenhuma no cartão
+fr = aucune sur la carte
+de = keine auf der Karte
+ja = カード上にありません
+it = nessuna sulla scheda
+
+[devmode.key_folder]
+note = The row naming the folder on the card where the player's public key goes. Its value, Developer, is not translated
+en = Key folder
+zh-Hans = 密钥文件夹
+es = Carpeta
+pt-BR = Pasta
+fr = Dossier
+de = Ordner
+ja = 鍵フォルダ
+it = Cartella
+
+[devmode.legend]
+note = The key legend of the Developer Mode page: A turns the mode off, B closes the page. One line, which must fit the panel: it does not wrap
+en = A: turn off   B: close
+zh-Hans = A：关闭模式   B：返回
+es = A: desactivar   B: cerrar
+pt-BR = A: desativar   B: fechar
+fr = A\u00a0: désactiver   B\u00a0: fermer
+de = A: ausschalten   B: schließen
+ja = A：オフ   B：閉じる
+it = A: disattiva   B: chiudi

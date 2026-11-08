@@ -37,7 +37,7 @@ ja = ファイル\n転送
 it = Trasferisci\nfile
 
 [xfer.tile_developer]
-note = A tile, two lines, on a development image only: a developer's SSH link over the cable. tight. review: pt-BR "Desenvolvedor" is 265 units at meta size, inside the 272 tile but past its margin.
+note = A tile, two lines, on a development image or with Developer Mode unlocked (src/devmode.h): a developer's SSH link over the cable. tight. review: pt-BR "Desenvolvedor" is 265 units at meta size, inside the 272 tile but past its margin.
 en = Developer\n(SSH)
 zh-Hans = 开发者\n（SSH）
 es = Desarrollador\n(SSH)

@@ -45,6 +45,7 @@
 #include "emptyhome.h"
 #include "hotpanel.h"
 #include "captive.h"
+#include "devmode.h"
 #include "sshlink.h"
 #include "usblink.h"
 #include "chargedark.h"
@@ -1748,6 +1749,7 @@ static void heat_said(const char *where)
 	        (g_heat.mc % 1000) / 100, where);
 }
 
+static void dev_ssh_tick(void);
 /* The pop-ups over a game, further down */
 static void notice_pump(void);
 static void heat_notice(void);
@@ -1758,6 +1760,8 @@ static void on_game_tick(void)
 {
 	char msg[96];
 
+	/* Developer Mode's SSH, which a game does not end (see dev_ssh_tick) */
+	dev_ssh_tick();
 	int rc;
 
 	/* Muse, bounded: read what has arrived, and send at most one PLAY when a
@@ -2762,6 +2766,7 @@ static void xs_tick_behind(app *a);
 bool tick_theme(app *a)
 {
 	xs_tick_behind(a);
+	dev_ssh_tick();
 	tick_update_trial();
 	tick_boot_theme();
 	tick_update_daily();
@@ -5846,6 +5851,21 @@ static void tick_update_daily(void)
 	up_spawn("check");
 }
 
+/* Developer (SSH) is offered on a development image (dropbear at boot) and
+ * on a release image once the player has unlocked Developer Mode (devmode.h) */
+static bool dev_offered(void)
+{
+	return usblink_dev_image() || devmode_unlocked(db_dev());
+}
+
+/* MENU's Developer Mode row: on a development image the link-always-bound
+ * setting (usblink.h); on a release image, where the row is there only once
+ * Developer Mode is unlocked, that it is on (the row opens its page) */
+static bool dev_row_on(void)
+{
+	return usblink_dev_image() ? usblink_developer(db_dev()) : devmode_unlocked(db_dev());
+}
+
 /* MENU's File Transfer row while it runs behind the shelf (xs_*) */
 static const char *xs_row_value(void);
 static bool xs_row_cable(void);
@@ -5864,8 +5884,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.no_wifi = !plat_has_wifi();
 	u.no_bt   = !plat_has_bluetooth();
 	u.cable_xfer = plat_cable_link(NULL, 0);
-	u.no_developer = !usblink_dev_image();
-	u.developer  = usblink_developer(db_dev());
+	u.no_developer = !dev_offered();
+	u.developer  = dev_row_on();
 	u.hotspot = hotspot_available();     /* two stats, no fork */
 	/* File Transfer behind the shelf: its row says so, under its name */
 	u.xfer = xs_row_value();
@@ -7887,6 +7907,10 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	if (posed) panel_pass_end(a, &panel, pose);
 }
 
+static void dev_screen(app *a);
+static void dev_ssh_tick(void);
+static int menu_measure(const menu_row *rows, int n, const char *heading);
+
 /* A computer on the cable, asked once per plug over the shelf (usblink.h):
  * Charge Only, File Transfer, or on a development image Developer (SSH), as
  * three tiles side by side (DESIGN.md 11.18; my pick in the USB lab,
@@ -8595,6 +8619,176 @@ static void xs_tick(app *a)
 			xs_stop(a, false);
 		}
 	}
+}
+
+/* ---- Developer Mode's SSH, on a release image (devmode.h) -----------------
+ *
+ * While Developer Mode is on and a computer is on the cable, SSH runs on the
+ * cable's address (sshlink.h), with no question and no page open: the link is
+ * kept by usblink (usblink_release_dev), and this starts SSH once per plug,
+ * from every screen's loop (tick_theme) and a game's (on_game_tick), so a
+ * game does not end it. Two ways in, both the player's own: the keys on the
+ * card (the Developer folder, devmode_import_dir) and a password made for
+ * this plug, which only the Developer page shows and nothing keeps. It ends
+ * when the cable comes out, when Developer Mode is turned off, when File
+ * Transfer opens (which runs its own SSH with its PIN, and this one starts
+ * again after it), and with the launcher: a launcher that restarts (a
+ * deploy) ends the sessions and starts SSH again at once, so a key logs in
+ * again a few seconds later. Five wrong passwords lock it until the next
+ * plug. */
+static struct {
+	bool     run;            /* started for this plug: not again until the cable is out */
+	bool     up;             /* sshlink_start said yes */
+	char     pw[16], ip[64];
+	int      nkeys;
+	unsigned at, retry;
+} g_dv;
+
+static void dev_ssh_forget(void)
+{
+	memset(g_dv.pw, 0, sizeof g_dv.pw);
+	memset(&g_dv, 0, sizeof g_dv);
+}
+
+/* The card's Developer folder and the keys the player put in it, joined to
+ * the ones ssh-copy-id saves: how many were read */
+static int dev_keys_read(void)
+{
+	char dir[CFG_STR * 2], keydir[CFG_STR * 2];
+
+	snprintf(dir, sizeof dir, "%s/%s", P_CARD, DEVMODE_KEYS_DIR);
+	mkdir(dir, 0755);                        /* so the card shows where they go */
+	snprintf(keydir, sizeof keydir, "%s/ssh", P_USERDATA);
+	return devmode_import_dir(dir, keydir);
+}
+
+static void dev_ssh_tick(void)
+{
+	unsigned now = plat_now_ms();
+	char keydir[CFG_STR * 2];
+
+	if (usblink_dev_image() || !devmode_unlocked(db_dev()) || g_xs.on) {
+		/* Off, or File Transfer is open. Over the cable it started SSH of its
+		 * own with its PIN, which took ours over (sshlink_start ends the one
+		 * running) and which it polls and locks: left to it. Over Wi-Fi (or
+		 * the hotspot) it runs no SSH, and ours must not go on unpolled - a
+		 * lockout needs the poll, and a radio ends SSH - so it ends here. It
+		 * starts again once File Transfer closes. */
+		if (g_dv.run) {
+			if (!(g_xs.on && g_xs.cable)) sshlink_stop();
+			dev_ssh_forget();
+		}
+		return;
+	}
+	if (g_dv.up) sshlink_poll();
+	/* The port is read five times a second at most */
+	if (g_dv.at && now - g_dv.at < 200u) return;
+	g_dv.at = now ? now : 1;
+	if (plat_usb_peer() != USB_PEER_COMPUTER) {
+		if (g_dv.run) {
+			sshlink_stop();
+			fprintf(stderr, "devmode: the cable is out, SSH stopped\n");
+			dev_ssh_forget();
+		}
+		return;
+	}
+	if (g_dv.run || (g_dv.retry && now - g_dv.retry < 15000u)) return;
+	if (!plat_cable_link(g_dv.ip, sizeof g_dv.ip) || !devmode_password(g_dv.pw, sizeof g_dv.pw)) {
+		g_dv.retry = now ? now : 1;
+		memset(g_dv.pw, 0, sizeof g_dv.pw);
+		return;
+	}
+	g_dv.nkeys = dev_keys_read();
+	snprintf(keydir, sizeof keydir, "%s/ssh", P_USERDATA);
+	g_dv.up = sshlink_start(g_dv.ip, g_dv.pw, keydir);
+	fprintf(stderr, "devmode: SSH %s, %d key%s from the card\n",
+	        g_dv.up ? "on" : "did not start", g_dv.nkeys > 0 ? g_dv.nkeys : 0,
+	        g_dv.nkeys == 1 ? "" : "s");
+	if (g_dv.up) {
+		g_dv.run = true;
+	} else {
+		/* Wi-Fi up, say: tried again in a while */
+		g_dv.retry = now ? now : 1;
+		memset(g_dv.pw, 0, sizeof g_dv.pw);
+	}
+}
+
+/* The page's rows, from what it is told, so the page and its shot (the
+ * overflow check draws it in every language) are one list */
+static int dev_rows(menu_row rows[6], char *cmd, size_t cn, char *keys, size_t kn, bool up,
+                    const char *ip, const char *pw, int nkeys, const char *ssh)
+{
+	int n = 0;
+
+	if (nkeys > 0) snprintf(keys, kn, TN(S_DEVMODE_KEYS_COUNT, nkeys), nkeys);
+	else snprintf(keys, kn, "%s", T(S_DEVMODE_KEYS_NONE));
+	snprintf(cmd, cn, "ssh root@%s", ip);
+	if (up) {
+		rows[n++] = (menu_row){ T(S_DEVMODE_COMMAND), cmd, false };
+		rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), pw, false };
+	}
+	rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
+	rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
+	rows[n++] = (menu_row){ "SSH", ssh, false };
+	rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+	return n;
+}
+
+/* MENU's Developer Mode row opens this page: what to type, the password
+ * (made when SSH started for this plug), where the keys go and how many were
+ * read, and SSH's own status. A turns Developer Mode off (and ends SSH), B
+ * closes the page and leaves everything running. */
+static void dev_screen(app *a)
+{
+	char cmd[96], keys[48];
+	menu_row rows[6];
+	bool done = false;
+	int n, lv, width = 0;
+	float k;
+
+	if (!g_dv.up) g_dv.nkeys = dev_keys_read();
+	lv = panel_open();
+	while (!done && a->running && !want_quit) {
+		plat_input_poll(&a->in);
+		muse_poll();
+		aout_apply(false);
+		tick_theme(a);
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) {
+			panel_close(a, lv, true);
+			power_off(a);
+			return;
+		}
+		if (menu_leaving(a)) done = true;
+		if (a->in.pressed[IN_ACCEPT]) {
+			devmode_set(db_dev(), false);
+			usblink_release_dev(false);
+			fprintf(stderr, "devmode: off\n");
+			dev_ssh_tick();                      /* SSH ends now */
+			uisound_play(DS_SOUND_ACCEPT);
+			done = true;
+		}
+		n = dev_rows(rows, cmd, sizeof cmd, keys, sizeof keys, g_dv.up, g_dv.ip, g_dv.pw,
+		             g_dv.nkeys, sshlink_status());
+		{
+			int m = menu_measure(rows, n, T(S_XFER_DEV_HEADING));
+
+			if (!width) width = menu_std_width(a);
+			if (m > width) width = m;
+		}
+		if (!panel_frame(a, lv, &k)) continue;
+		tick_tint(a);
+		draw_shelf(a);
+		ui_scrim_k(a->r, 0, k);
+		menu_draw_caption(a, T(S_XFER_DEV_HEADING), rows, n, -1, width, MENU_ZYPEROS, NULL,
+		                  false, 0, NULL);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
+	}
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
 }
 
 /* From tick_theme: behind the shelf only, since the screen drives it itself */
@@ -10259,7 +10453,9 @@ static const about_thanks ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = 
 
 typedef struct {
 	char ver[48], addr[80], batt[32], up[48];
-	menu_row system[4], details[ABOUT_DETAIL_ROWS];
+	menu_row system[5], details[ABOUT_DETAIL_ROWS];
+	int nsystem;             /* 4, or 5 with the Developer Mode row (devmode.h) */
+	devmode_hold hold;       /* L2 + R2, five seconds: Developer Mode's unlock */
 	char story_lines[SYN_WRAP_LINES][CHV_WRAP_COLS];
 	menu_row story[SYN_ROWS], thanks[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS + 2];
 	int nstory, story_loop;
@@ -10309,13 +10505,15 @@ static int about_width(app *a, const about_view *v)
 	int w = menu_std_width(a), m, i;
 
 	if ((m = menu_measure(v->details, ABOUT_DETAIL_ROWS, T(S_ABOUT_HEADING))) > w) w = m;
-	if ((m = menu_measure(v->system, 4, T(S_ABOUT_HEADING))) > w) w = m;
+	if ((m = menu_measure(v->system, v->nsystem, T(S_ABOUT_HEADING))) > w) w = m;
 	for (i = 0; i < ABOUT_THANKS_PAGES - 1; i++)
 		if ((m = menu_measure(v->thanks[i], ABOUT_THANKS_ROWS, T(S_ABOUT_THANKS))) > w) w = m;
 	if ((m = menu_measure(v->thanks[2], ABOUT_THANKS_LAST, T(S_ABOUT_THANKS))) > w) w = m;
 	return w;
 }
 
+/* The first page's fifth row, only when there is something to say: Developer
+ * Mode is on, or its hold is under way (devmode.h) */
 static void about_refresh(about_view *v, unsigned now)
 {
 	int pct;
@@ -10345,6 +10543,13 @@ static void about_refresh(about_view *v, unsigned now)
 	v->system[1] = (menu_row){ T(S_ABOUT_ADDRESS), v->addr, false };
 	v->system[2] = (menu_row){ T(S_ABOUT_BATTERY), v->batt, false };
 	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
+	v->nsystem = 4;
+	if (devmode_unlocked(db_dev())) {
+		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON), false };
+	} else if (devmode_hold_permille(&v->hold, now) > 0) {
+		/* The row comes with the hold, its bar drawn over its value (about_draw) */
+		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), NULL, false };
+	}
 }
 
 static void about_draw(app *a, const about_view *v, int page)
@@ -10352,7 +10557,7 @@ static void about_draw(app *a, const about_view *v, int page)
 	const menu_row *rows = v->system;
 	const char *heading = T(S_ABOUT_HEADING);
 	char count[16];
-	int n = 4;
+	int n = v->nsystem;
 
 	int loop_at = 0;
 
@@ -10377,6 +10582,22 @@ static void about_draw(app *a, const about_view *v, int page)
 	menu_draw_caption(a, heading, rows, n, -1, v->width, MENU_ZYPEROS, NULL, false, loop_at,
 	                  count);
 	g_menu_scroll_hold = -1;
+	/* Developer Mode's hold, as the one bar every hold in the system is
+	 * (UI_BAR_H), in the last row's value column once the panel is at rest */
+	{
+		int pm = page == 0 ? devmode_hold_permille(&v->hold, plat_now_ms()) : 0;
+
+		if (pm > 0 && rest && g_menu_body.h > 0 && v->nsystem > 4) {
+			int pitch = g_menu_body.h / v->nsystem;
+			int x0 = g_menu_body.x + g_menu_body.w * 62 / 100;   /* clear of the longest label */
+			SDL_Rect bar = { x0, g_menu_body.y + g_menu_body.h - pitch / 2 - UI_BAR_H / 2,
+			                 g_menu_body.x + g_menu_body.w - x0, UI_BAR_H };
+
+			ui_round_rect(a->r, &bar, UI_BAR_H / 2, ui_col(theme()->track, 255));
+			bar.w = bar.w * pm / 1000;
+			if (bar.w > 0) ui_round_rect(a->r, &bar, UI_BAR_H / 2, UI_TEXT);
+		}
+	}
 	if (page == 2 && v->photo && rest && g_menu_body.h > 0) {
 		/* At the body's right, middle of its height, smaller only if the
 		 * body is shorter than the photo */
@@ -10400,11 +10621,13 @@ static void about_screen(app *a)
 	while (!done && !want_quit && a->running) {
 		unsigned now = plat_now_ms();
 		bool refresh = !v.primed || now - v.refreshed >= 2000;
+		int rows_was = v.nsystem;
 		about_refresh(&v, now);
 		if (!v.nstory) about_pages(a, &v);
 		/* Every page keeps one width. Grow only if their values need it,
-		 * as the shared menu renderer does, instead of clipping a value. */
-		if (refresh) v.width = about_width(a, &v);
+		 * as the shared menu renderer does, instead of clipping a value.
+		 * A row that comes (Developer Mode) is measured too. */
+		if (refresh || v.nsystem != rows_was) v.width = about_width(a, &v);
 		plat_input_poll(&a->in);
 		muse_poll();
 		aout_apply(false);
@@ -10419,6 +10642,23 @@ static void about_screen(app *a)
 		if (in_repeat(&a->in, IN_RIGHT)) {
 			moved_sound(a, IN_RIGHT);
 			page = (page + 1) % ABOUT_PAGES;
+		}
+		/* Developer Mode's unlock (devmode.h): L2 and R2 held together for
+		 * five seconds, on the first page. Another page, or letting go of
+		 * either, starts again; once it is on there is nothing left to hold. */
+		if (page != 0 || devmode_unlocked(db_dev())) {
+			devmode_hold_reset(&v.hold);
+		} else if (devmode_hold_step(&v.hold, plat_tap_held(IN_L2) && plat_tap_held(IN_R2),
+		                             plat_now_ms())) {
+			menu_row said[2] = { { T(S_DEVMODE_IS_ON), NULL, false },
+			                     { T(S_DEVMODE_WHERE), NULL, false } };
+
+			devmode_set(db_dev(), true);
+			usblink_release_dev(true);
+			fprintf(stderr, "devmode: on\n");
+			uisound_play(DS_SOUND_ACCEPT);
+			timed_message(a, T(S_SYSMENU_DEVELOPER), said, 2, 0, MENU_ZYPEROS);
+			v.refreshed = 0;                  /* the row, at once */
 		}
 		/* The story: Up and Down walk it a line at a time, held they repeat,
 		 * and it stops at the top and at the bottom. It never moves by itself. */
@@ -12801,7 +13041,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	{
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
 		               .cable_xfer = plat_cable_link(NULL, 0),
-		               .no_developer = !usblink_dev_image(),
+		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
 		               /* the same rule as the build's (menu_build): a card with
@@ -12886,7 +13126,14 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * go at once unless something holds it, and the next computer is asked
 	 * (src/usblink.h); the card's file says so for the next boot too. */
 	if (sel == PM_DEVELOPER && (d || key == IN_ACCEPT)) {
-		usblink_set_developer(db_dev(), P_USERDATA, !usblink_developer(db_dev()));
+		if (usblink_dev_image()) {
+			usblink_set_developer(db_dev(), P_USERDATA, !usblink_developer(db_dev()));
+		} else {
+			/* A release image: the row is there only while Developer Mode is
+			 * on, and opens its page, where A turns it off. Unlocking again
+			 * is the hold on About. */
+			dev_screen(a);
+		}
 		return MENU_CHANGED;
 	}
 
@@ -17412,6 +17659,7 @@ static int shot_art;
 static const char *shot_art_now = "Legend of Zelda, The - A Link to the Past (USA)";
 static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
+static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
@@ -18146,6 +18394,24 @@ static void shot_compose(app *a)
 
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
+	}
+	if (shot_dev >= 0) {
+		/* Developer Mode's page, as dev_screen builds it, and the message
+		 * the unlock leaves, in the language that is on */
+		char cmd[96], keys[48];
+		menu_row rows[6];
+		int n;
+
+		ui_scrim(a->r, 0);
+		if (shot_dev < 3) {
+			n = dev_rows(rows, cmd, sizeof cmd, keys, sizeof keys, true, "10.42.0.1", "x7k4mq2d",
+			             shot_dev == 0 ? 1 : shot_dev == 1 ? 12 : 0, T(S_SSH_WAITING));
+			menu_draw(a, T(S_XFER_DEV_HEADING), rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		} else {
+			rows[0] = (menu_row){ T(S_DEVMODE_IS_ON), NULL, false };
+			rows[1] = (menu_row){ T(S_DEVMODE_WHERE), NULL, false };
+			menu_draw(a, T(S_SYSMENU_DEVELOPER), rows, 2, -1, 0, MENU_ZYPEROS);
+		}
 	}
 	if (shot_xfer_ask >= 0) {
 		/* The question while files move, from the same words xs_ask shows */
@@ -19226,6 +19492,11 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
 		}
+		else if (!strcmp(argv[i], "--dev-page")) {
+			shot_dev = 0;
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_dev = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--xfer-ask")) {
 			shot_xfer_ask = 0;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -19705,6 +19976,7 @@ int main(int argc, char *argv[])
 		db_write_boot_env();
 		/* Developer Mode's file for plastron's S40usbgadget, the same way */
 		if (!shot_path) usblink_sync(db_dev(), P_USERDATA);
+		if (!shot_path) usblink_release_dev(devmode_unlocked(db_dev()));
 	}
 	/* Local time is the card's chosen zone, in this process, from here on:
 	 * the Brick's launch.sh points the system at it too, but the Pixel 2's
@@ -20243,6 +20515,15 @@ int main(int argc, char *argv[])
 			case CHARGE_GO_DARK: snap_off(); plat_backlight(false); continue;
 			case CHARGE_DARK:
 				/* Dark on the cable, and still moving files behind it */
+				/* Developer Mode on a release image holds its link and its
+				 * SSH with the screen dark: the cable is the very reason it
+				 * is dark (Auto Off on the charger), and a computer plugged
+				 * in then, or a launcher restarted in the dark, must find
+				 * both. The question never comes from here (Developer Mode
+				 * asks none). */
+				if (!usblink_dev_image() && usblink_developer(db_dev()))
+					usblink_follow(db_dev(), plat_now_ms());
+				dev_ssh_tick();
 				if (g_xs.on) { xs_tick(&a); SDL_Delay(xs_moving() ? 4 : 50); }
 				else SDL_Delay(100);
 				continue;
