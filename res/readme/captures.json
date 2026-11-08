@@ -705,6 +705,42 @@
         "PS1"
       ],
       "sha256": "87f433b86258cda9cebbd6e68cdd62fe1ba58d754fdfb628969f308c4f25bd26"
+    },
+    {
+      "file": "light/storage.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "main"
+      ],
+      "sha256": "de10a5af4434544d9d370e80823624fe29e145eb6139ebbdda5b2894bff93eb9"
+    },
+    {
+      "file": "light/storage-system.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "system"
+      ],
+      "sha256": "32b3a965656b1a0d840c287fde7a86d666c036df48737db26d0a3fcf0424f504"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

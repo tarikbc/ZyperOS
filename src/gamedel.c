@@ -326,6 +326,11 @@ static const char *state_base(const char *file, const char *name, bool hooked)
 	return strchr(file, '/') && hooked ? name : base_of(file);
 }
 
+const char *gd_state_base(const char *file, const char *name, bool hooked)
+{
+	return state_base(file, name, hooked);
+}
+
 /* The other games, asked what they share with this one */
 static bool shares_stem(const gd_other *o, int n, const char *stem)
 {

@@ -83,6 +83,8 @@
 #include "status.h"
 #include "sys_menu.h"
 #include "sysupdate.h"
+#include "storage.h"
+#include "storage_page.h"
 #include "controls.h"
 #include "tour.h"
 #include "tourdraw.h"
@@ -155,6 +157,7 @@ static void muse_shelf_screen(app *a, bool now);
 static int  shelf_letter_jump(sysview *v, int dir);
 /* Whether a shelf is Muse's; sorting needs to know, well before Muse's code. */
 static bool is_muse(const system_cfg *s);
+static const char *storage_menu_value(void);
 static bool is_port(const system_cfg *s);
 /* The pocket lock's gate and MENU's way in, defined with the lock itself. */
 static bool lock_allowed(void);
@@ -3656,8 +3659,20 @@ static void draw_no_games(app *a)
 	eh_draw(a->r, &g_eh, empty_zyper);
 }
 
+/* While MENU > Storage's page is up, the shelf's place under every panel it
+ * opens - a question, "Deleting...", a result - is the page's own, so the
+ * question is asked over what it is about (storage_screen) */
+static void (*g_base_page)(app *, void *);
+static void *g_base_ctx;
+
 void draw_shelf(app *a)
 {
+	if (g_base_page) {
+		g_frame_no++;
+		texload_drain(a);
+		g_base_page(a, g_base_ctx);
+		return;
+	}
 	g_frame_no++;
 	/* Install whatever the workers finished, before anything is drawn.
 	 *
@@ -5897,6 +5912,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 			static char upv[48];
 			u.update = up_have() ? su_menu_value(up_view(false), upv, sizeof upv) : NULL;
 		}
+		u.storage = storage_menu_value();
 		u.appearance = appearance_name(theme_appearance());
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
@@ -11454,6 +11470,994 @@ static void update_screen(app *a)
 	}
 }
 
+/* ---------- MENU > Storage (DESIGN.md 11.32) --------------------------------
+ *
+ * How the card is used, as iPhone Storage shows a phone: one stacked bar by
+ * part with the free room, a recommendation or two, then everything sorted
+ * by size, and a page per system with its largest games. The numbers are
+ * src/storage.h's, measured on a thread at the lowest priority while this
+ * page is open and cached on the card, so the page opens at once with the
+ * last numbers and moves to the new ones as the walk reports; it is drawn
+ * by src/storage_page.c. A on a game is Delete Game's own question
+ * (game_delete, DESIGN.md 11.31). My picks in the Storage lab
+ * (docs/design/mock/storage-lab.html), 2026-11-07. */
+
+enum {
+	SR_ART, SR_STATES, SR_SYSTEM, SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS,
+	SR_OTHER, SR_SNAPS, SR_GAME
+};
+
+typedef struct {
+	char key[24];
+	bool sheet;
+	SDL_Texture *tex;
+} store_icon;
+
+typedef struct {
+	app *a;
+	systems_cfg cfg;              /* every system ZyperOS knows, shown or not */
+	bool cfg_ok;
+	st_card c;
+	unsigned gen;
+	bool fixture;                 /* a shot's stand-in card */
+	int fix_count[ST_MAX_SYS];    /* ...and its systems' games */
+	int page;                     /* -1 the card, else a system: its place in c.sys */
+	int main_sel;                 /* the card's cursor while a system's page is up */
+	sp_row *rows;
+	int nrows, cap;
+	sp_page pg;
+	sp_motion m;
+	int cap_for;                  /* the row whose caption is written */
+	st_game_in *games;            /* the walk's request */
+	int ngames;
+	st_systems sys;
+	st_paths paths;
+	store_icon icons[ST_MAX_SYS + 8];
+	int nicons;
+	char used[SP_VALUE];
+} store_view;
+
+/* MENU's row: the room left, asked of the card at most every 2 s, as About
+ * asks it */
+static char     g_store_val[48];
+static unsigned g_store_val_at;
+
+static const char *storage_menu_value(void)
+{
+	struct statvfs vf;
+	unsigned now = plat_now_ms();
+
+	if (g_store_val_at && now - g_store_val_at < 2000) return g_store_val;
+	g_store_val_at = now | 1;
+	if (statvfs(P_CARD, &vf) == 0) {
+		char sz[24];
+
+		sys_menu_bytes((unsigned long long)vf.f_bavail * vf.f_frsize, sz, sizeof sz);
+		snprintf(g_store_val, sizeof g_store_val, T(S_STORAGE_FREE), sz);
+	} else {
+		g_store_val[0] = '\0';
+	}
+	return g_store_val[0] ? g_store_val : NULL;
+}
+
+static const system_cfg *store_cfg(store_view *v, const char *folder)
+{
+	int i;
+
+	for (i = 0; v->cfg_ok && i < v->cfg.count; i++)
+		if (!strcmp(v->cfg.systems[i].folder, folder)) return &v->cfg.systems[i];
+	return NULL;
+}
+
+/* The shelf holding a folder's games, -1 for none (an empty system is off
+ * the home) */
+static int store_shelf(app *a, const char *folder)
+{
+	int i;
+
+	for (i = 0; i < a->sys.count; i++)
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i]) &&
+		    !strcmp(a->sys.systems[i].folder, folder))
+			return i;
+	return -1;
+}
+
+static int store_count(store_view *v, int idx)
+{
+	int s;
+
+	if (v->fixture) return v->fix_count[idx];
+	s = store_shelf(v->a, v->c.sys[idx].folder);
+	return s < 0 ? 0 : v->a->view[s].list.count;
+}
+
+/* A system's sprite or a folder's two frames, loaded once while the page is
+ * up; nearest-neighbour, as the home draws them */
+static SDL_Texture *store_tex(store_view *v, const char *key, bool sheet)
+{
+	char path[CFG_STR * 2];
+	int i;
+
+	if (!key || !key[0]) return NULL;
+	for (i = 0; i < v->nicons; i++)
+		if (v->icons[i].sheet == sheet && !strcmp(v->icons[i].key, key)) return v->icons[i].tex;
+	if (v->nicons >= (int)(sizeof v->icons / sizeof v->icons[0])) return NULL;
+	snprintf(path, sizeof path, "%s/system-icons/%s%s.png", P_ROOT, key, sheet ? "" : "-still");
+	snprintf(v->icons[v->nicons].key, sizeof v->icons[v->nicons].key, "%s", key);
+	v->icons[v->nicons].sheet = sheet;
+	if ((v->icons[v->nicons].tex = IMG_LoadTexture(v->a->r, path))) {
+		SDL_SetTextureScaleMode(v->icons[v->nicons].tex, SDL_ScaleModeNearest);
+		SDL_SetTextureBlendMode(v->icons[v->nicons].tex, SDL_BLENDMODE_BLEND);
+	}
+	return v->icons[v->nicons++].tex;
+}
+
+static void store_free_icons(store_view *v)
+{
+	int i;
+
+	for (i = 0; i < v->nicons; i++)
+		if (v->icons[i].tex) SDL_DestroyTexture(v->icons[i].tex);
+	v->nicons = 0;
+}
+
+static bool store_own_fs(void)
+{
+	char parent[CFG_STR * 2], *slash;
+	struct stat a, b;
+
+	snprintf(parent, sizeof parent, "%s", P_CARD);
+	if (!(slash = strrchr(parent, '/'))) return false;
+	if (slash == parent) slash[1] = '\0';
+	else *slash = '\0';
+	return stat(P_CARD, &a) == 0 && stat(parent, &b) == 0 && a.st_dev != b.st_dev;
+}
+
+/* What the walk is told: every system's folder, and every game on the
+ * card's own shelves with when it was last played */
+static void store_request(store_view *v)
+{
+	app *a = v->a;
+	long now = (long)time(NULL);
+	int i, k, n = 0;
+
+	free(v->games);
+	v->games = NULL;
+	v->ngames = 0;
+	for (i = 0; i < a->sys.count; i++)
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i]) && a->sys.systems[i].folder[0])
+			n += a->view[i].list.count;
+	if (n > 0 && !(v->games = malloc((size_t)n * sizeof *v->games))) n = 0;
+	stats_summarize(STATS_ALL, false, now);
+	for (i = 0; i < a->sys.count && v->games; i++) {
+		const system_cfg *s = &a->sys.systems[i];
+		bool hooked = lib_shelf_hooked(s->exts);
+
+		if (a->view[i].owner || is_muse(s) || !s->folder[0]) continue;
+		for (k = 0; k < a->view[i].list.count && v->ngames < n; k++) {
+			const game_entry *g = &a->view[i].list.items[k];
+			long secs = 0, last = 0;
+
+			stats_lookup(s->tag, g->file, &secs, &last);
+			v->games[v->ngames++] = (st_game_in){ s->folder, s->tag, s->core, s->exts,
+			                                      g->file, g->name, hooked, last };
+		}
+	}
+	v->sys.n = 0;
+	for (i = 0; v->cfg_ok && i < v->cfg.count && v->sys.n < ST_MAX_SYS; i++)
+		if (v->cfg.systems[i].folder[0] && !is_muse(&v->cfg.systems[i]))
+			v->sys.folders[v->sys.n++] = v->cfg.systems[i].folder;
+	v->paths = (st_paths){ P_CARD, P_ROMS, P_SHARED, P_ROOT, store_own_fs() };
+}
+
+static void store_refresh(store_view *v)
+{
+	if (v->fixture) return;
+	st_refresh(&v->paths, &v->sys, v->games, v->ngames, (long)time(NULL));
+}
+
+static void store_bytes(unsigned long long b, char *out, size_t n)
+{
+	sys_menu_bytes(b, out, n);
+}
+
+static unsigned long long store_sys_bytes(const st_sys *s)
+{
+	return s->games + s->covers + s->snaps + s->states + s->saves;
+}
+
+static unsigned long long store_zyperos(const st_card *c)
+{
+	return c->zyperos + c->emulators + c->partitions;
+}
+
+static unsigned long long store_other(const st_card *c)
+{
+	return c->cat[STC_OTHER] > c->bios ? c->cat[STC_OTHER] - c->bios : 0;
+}
+
+/* A row's own bytes, for the card's order */
+static unsigned long long store_row_bytes(store_view *v, int kind, int index)
+{
+	const st_card *c = &v->c;
+
+	switch (kind) {
+	case SR_ART:     return c->unused_art;
+	case SR_STATES:  return c->old_states;
+	case SR_SYSTEM:  return store_sys_bytes(&c->sys[index]);
+	case SR_VIDEOS:  return c->videos;
+	case SR_MUSIC:   return c->music + c->bgm;
+	case SR_BOOKS:   return c->books;
+	case SR_BIOS:    return c->bios;
+	case SR_ZYPEROS: return store_zyperos(c);
+	case SR_OTHER:   return store_other(c);
+	default:         return 0;
+	}
+}
+
+/* The stand-in sizes a shot gives the demonstration card's games */
+static unsigned long long store_fixture_game(const char *title)
+{
+	static const struct { const char *word; unsigned long long mb; } SZ[] = {
+		{ "Metal Gear", 1240 }, { "Castlevania", 690 }, { "Tekken", 560 },
+		{ "Crash", 470 }, { "Tony Hawk", 390 }, { "Peter Pan", 330 },
+	};
+	size_t i;
+
+	for (i = 0; i < sizeof SZ / sizeof SZ[0]; i++)
+		if (strstr(title, SZ[i].word)) return SZ[i].mb * 1000000ull;
+	return 120000000ull;
+}
+
+static bool store_game_size(store_view *v, const char *folder, const game_entry *g, st_game_size *out)
+{
+	if (v->fixture) {
+		memset(out, 0, sizeof *out);
+		out->bytes = store_fixture_game(g->title);
+		out->games = out->bytes * 9 / 10;
+		out->states = out->bytes - out->games;
+		return true;
+	}
+	return st_game(folder, g->file, out);
+}
+
+typedef struct {
+	int kind, index;
+	unsigned long long bytes;
+	bool sized;
+	const char *title;
+} store_item;
+
+static int store_item_cmp(const void *pa, const void *pb)
+{
+	const store_item *x = pa, *y = pb;
+
+	if (x->sized != y->sized) return x->sized ? -1 : 1;
+	if (x->bytes != y->bytes) return x->bytes > y->bytes ? -1 : 1;
+	return x->title && y->title ? strcasecmp(x->title, y->title) : 0;
+}
+
+static sp_row *store_add(store_view *v)
+{
+	if (v->nrows == v->cap) {
+		int cap = v->cap ? v->cap * 2 : 32;
+		sp_row *n = realloc(v->rows, (size_t)cap * sizeof *n);
+
+		if (!n) return NULL;
+		v->rows = n;
+		v->cap = cap;
+	}
+	memset(&v->rows[v->nrows], 0, sizeof v->rows[v->nrows]);
+	return &v->rows[v->nrows++];
+}
+
+static void store_row_look(store_view *v, sp_row *r)
+{
+	const st_card *c = &v->c;
+
+	switch (r->kind) {
+	case SR_ART:     r->name = T(S_STORAGE_UNUSED_ART); r->icon = SP_ICON_SPARK; break;
+	case SR_STATES:  r->name = T(S_STORAGE_OLD_STATES); r->icon = SP_ICON_SPARK; break;
+	case SR_SYSTEM: {
+		const system_cfg *s = store_cfg(v, c->sys[r->index].folder);
+
+		r->name = s ? s->name : c->sys[r->index].folder;
+		r->icon = SP_ICON_TEX;
+		r->tex = s ? store_tex(v, home_art_key(s->tag), false) : NULL;
+		break;
+	}
+	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "VIDEOS", true); break;
+	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "MUSE", true); break;
+	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BOOKS", true); break;
+	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BIOS", true); break;
+	case SR_ZYPEROS: r->name = T(S_STORAGE_CAT_ZYPEROS); r->icon = SP_ICON_ZYPER; break;
+	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER", false); break;
+	case SR_SNAPS:   r->name = T(S_STORAGE_DELETE_SNAPS); r->icon = SP_ICON_NONE; break;
+	default: break;
+	}
+}
+
+/* The focused row's facts, written when the cursor comes to it */
+static void store_caption(store_view *v, sp_row *r)
+{
+	const st_card *c = &v->c;
+	char a[24], b[24], part[96];
+
+	r->caption[0] = '\0';
+	switch (r->kind) {
+	case SR_ART:
+		snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_UNUSED_CAPTION));
+		break;
+	case SR_STATES:
+		snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_OLD_CAPTION, c->old_state_games),
+		         c->old_state_games);
+		break;
+	case SR_SYSTEM: {
+		const st_sys *s = &c->sys[r->index];
+		int n = store_count(v, r->index);
+
+		snprintf(r->caption, sizeof r->caption, TN(S_SHELF_GAMES, n), n);
+		if (s->saves + s->states) {
+			store_bytes(s->saves + s->states, a, sizeof a);
+			snprintf(part, sizeof part, T(S_STORAGE_SAVES_PART), a);
+			snprintf(r->caption + strlen(r->caption), sizeof r->caption - strlen(r->caption), " \xc2\xb7 %s", part);
+		}
+		if (s->covers + s->snaps) {
+			store_bytes(s->covers + s->snaps, b, sizeof b);
+			snprintf(part, sizeof part, T(S_STORAGE_ART_PART), b);
+			snprintf(r->caption + strlen(r->caption), sizeof r->caption - strlen(r->caption), " \xc2\xb7 %s", part);
+		}
+		break;
+	}
+	case SR_VIDEOS: snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_VIDEOS_N, c->nvideos), c->nvideos); break;
+	case SR_MUSIC:  snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_SONGS, c->nmusic), c->nmusic); break;
+	case SR_BOOKS:  snprintf(r->caption, sizeof r->caption, TN(S_STORAGE_BOOKS_N, c->nbooks), c->nbooks); break;
+	case SR_BIOS:   snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_BIOS_CAPTION)); break;
+	case SR_ZYPEROS: snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_ZYPEROS_CAPTION)); break;
+	case SR_OTHER:  snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_OTHER_CAPTION)); break;
+	case SR_SNAPS: {
+		const system_cfg *s = store_cfg(v, c->sys[v->page].folder);
+
+		snprintf(r->caption, sizeof r->caption, T(S_STORAGE_SNAPS_CAPTION), s ? s->name : c->sys[v->page].folder);
+		break;
+	}
+	case SR_GAME: {
+		int sh = store_shelf(v->a, c->sys[v->page].folder);
+		const game_entry *g = sh >= 0 && r->index < v->a->view[sh].list.count
+		                    ? &v->a->view[sh].list.items[r->index] : NULL;
+		const char *tag = sh >= 0 ? v->a->sys.systems[sh].tag : "";
+		long secs = 0, last = 0;
+		st_game_size sz;
+
+		if (!g) break;
+		if (stats_lookup(tag, g->file, &secs, &last) && secs > 0) {
+			char t[32], ago[48], la[64];
+
+			stats_format(secs, t, sizeof t);
+			stats_ago(last, (long)time(NULL), ago, sizeof ago);
+			snprintf(r->caption, sizeof r->caption, T(S_GAMES_PLAYED), t);
+			snprintf(la, sizeof la, T(S_STORAGE_LAST_PLAYED), ago);
+			snprintf(r->caption + strlen(r->caption), sizeof r->caption - strlen(r->caption), " \xc2\xb7 %s", la);
+		} else {
+			snprintf(r->caption, sizeof r->caption, "%s", T(S_STORAGE_NEVER_PLAYED));
+		}
+		if (store_game_size(v, c->sys[v->page].folder, g, &sz) && sz.saves + sz.states) {
+			store_bytes(sz.saves + sz.states, a, sizeof a);
+			snprintf(part, sizeof part, T(S_STORAGE_SAVES_PART), a);
+			snprintf(r->caption + strlen(r->caption), sizeof r->caption - strlen(r->caption), " \xc2\xb7 %s", part);
+		}
+		break;
+	}
+	default: break;
+	}
+}
+
+/* The page's rows from the numbers as they are, the cursor kept on the row
+ * it was on */
+static void store_rows(store_view *v)
+{
+	const st_card *c = &v->c;
+	int was_kind = -1, was_index = -1, i, n = 0;
+	store_item *it;
+
+	if (v->nrows > 0 && v->pg.sel >= 0 && v->pg.sel < v->nrows) {
+		was_kind = v->rows[v->pg.sel].kind;
+		was_index = v->rows[v->pg.sel].index;
+	}
+	v->nrows = 0;
+	v->cap_for = -1;
+	if (v->page < 0) {
+		int nr = 0;
+		store_item recs[2];
+
+		if (!c->measured) { v->pg.sel = 0; return; }
+		if (c->unused_art >= ST_REC_MIN) recs[nr++] = (store_item){ SR_ART, 0, c->unused_art, true, NULL };
+		if (c->old_states >= ST_REC_MIN) recs[nr++] = (store_item){ SR_STATES, 0, c->old_states, true, NULL };
+		if (nr == 2 && recs[1].bytes > recs[0].bytes) { store_item t = recs[0]; recs[0] = recs[1]; recs[1] = t; }
+		for (i = 0; i < nr; i++) {
+			sp_row *r = store_add(v);
+
+			if (!r) break;
+			r->kind = recs[i].kind;
+			store_bytes(recs[i].bytes, r->value, sizeof r->value);
+			r->rule_after = i == nr - 1;
+			store_row_look(v, r);
+		}
+		if (!(it = malloc((size_t)(c->nsys + 8) * sizeof *it))) return;
+		for (i = 0; i < c->nsys; i++)
+			if (store_sys_bytes(&c->sys[i])) it[n++] = (store_item){ SR_SYSTEM, i, store_sys_bytes(&c->sys[i]), true, NULL };
+		{
+			static const int MORE[] = { SR_VIDEOS, SR_MUSIC, SR_BOOKS, SR_BIOS, SR_ZYPEROS, SR_OTHER };
+
+			for (i = 0; i < (int)(sizeof MORE / sizeof MORE[0]); i++) {
+				unsigned long long b = store_row_bytes(v, MORE[i], 0);
+
+				if (b) it[n++] = (store_item){ MORE[i], 0, b, true, NULL };
+			}
+		}
+		qsort(it, (size_t)n, sizeof *it, store_item_cmp);
+		for (i = 0; i < n; i++) {
+			sp_row *r = store_add(v);
+
+			if (!r) break;
+			r->kind = it[i].kind;
+			r->index = it[i].index;
+			store_bytes(it[i].bytes, r->value, sizeof r->value);
+			store_row_look(v, r);
+		}
+		free(it);
+	} else {
+		const st_sys *s = &c->sys[v->page];
+		int sh = store_shelf(v->a, s->folder), cnt = sh >= 0 ? v->a->view[sh].list.count : 0;
+
+		if (s->snaps) {
+			sp_row *r = store_add(v);
+
+			if (r) {
+				r->kind = SR_SNAPS;
+				store_bytes(s->snaps, r->value, sizeof r->value);
+				r->rule_after = cnt > 0;
+				store_row_look(v, r);
+			}
+		}
+		if (cnt > 0 && (it = malloc((size_t)cnt * sizeof *it))) {
+			for (i = 0; i < cnt; i++) {
+				const game_entry *g = &v->a->view[sh].list.items[i];
+				st_game_size sz;
+				bool ok = store_game_size(v, s->folder, g, &sz);
+
+				it[n++] = (store_item){ SR_GAME, i, ok ? sz.bytes : 0, ok, g->title };
+			}
+			qsort(it, (size_t)n, sizeof *it, store_item_cmp);
+			for (i = 0; i < n; i++) {
+				sp_row *r = store_add(v);
+
+				if (!r) break;
+				r->kind = SR_GAME;
+				r->index = it[i].index;
+				r->name = v->a->view[sh].list.items[it[i].index].title;
+				if (it[i].sized) store_bytes(it[i].bytes, r->value, sizeof r->value);
+				r->icon = SP_ICON_NONE;
+			}
+			free(it);
+		}
+	}
+	/* Back on the row it was on, or the nearest */
+	if (v->pg.sel >= v->nrows) v->pg.sel = v->nrows ? v->nrows - 1 : 0;
+	if (was_kind >= 0)
+		for (i = 0; i < v->nrows; i++)
+			if (v->rows[i].kind == was_kind && v->rows[i].index == was_index) { v->pg.sel = i; break; }
+	if (v->pg.sel < 0) v->pg.sel = 0;
+}
+
+static void store_part(sp_page *p, unsigned long long bytes, SDL_Color c, const char *name,
+                       const char *value, bool stripes)
+{
+	sp_part *pt;
+
+	if (p->nparts >= SP_PARTS) return;
+	pt = &p->part[p->nparts++];
+	pt->bytes = bytes;
+	pt->col = c;
+	pt->stripes = stripes;
+	pt->name = name;
+	snprintf(pt->value, sizeof pt->value, "%s", value ? value : "");
+}
+
+/* The page's words and bar from the numbers */
+static void store_page(store_view *v)
+{
+	const ds_theme *th = theme();
+	const st_card *c = &v->c;
+	sp_page *p = &v->pg;
+	char sz[24];
+	int sel = p->sel;
+	sp_row *rows = v->rows;
+
+	memset(p, 0, sizeof *p);
+	p->sel = sel;
+	p->rows = rows;
+	p->nrows = v->nrows;
+	if (v->page < 0 && !c->measured && !c->walking) {
+		/* The few frames before the walk's first word: the heading alone,
+		 * never a flash of the first walk's page on a card with a cache */
+		p->heading = T(S_STORAGE_TITLE);
+		p->nrows = 0;
+		p->used_fmt = NULL;
+		return;
+	}
+	if (v->page < 0) {
+		unsigned long long used = c->total > c->free ? c->total - c->free : 0;
+
+		p->heading = T(S_STORAGE_TITLE);
+		if (c->total) {
+			snprintf(sz, sizeof sz, "%llu", st_nominal(c->total) / 1000000000ull);
+			snprintf(p->heading_right, sizeof p->heading_right, T(S_SYSMENU_SIZE_GB), sz);
+		}
+		p->used_fmt = T(S_STORAGE_USED);
+		store_bytes(used, p->used, sizeof p->used);
+		store_bytes(c->free, sz, sizeof sz);
+		snprintf(p->right, sizeof p->right, T(S_STORAGE_FREE), sz);
+		p->whole = c->total;
+		store_part(p, c->cat[STC_GAMES], ui_col(th->store_games, 255), T(S_STORAGE_CAT_GAMES), NULL, false);
+		store_part(p, c->cat[STC_SAVES], ui_col(th->store_saves, 255), T(S_STORAGE_CAT_SAVES), NULL, false);
+		store_part(p, c->cat[STC_ART], ui_col(th->store_art, 255), T(S_STORAGE_CAT_ART), NULL, false);
+		store_part(p, c->cat[STC_MEDIA], ui_col(th->text_soft, 255), T(S_STORAGE_CAT_MEDIA), NULL, false);
+		store_part(p, c->cat[STC_ZYPEROS], ui_col(th->accent_ink, 255), T(S_STORAGE_CAT_ZYPEROS), NULL, false);
+		if (c->measured) {
+			store_part(p, c->cat[STC_OTHER], ui_col(th->text_dim, 255), T(S_STORAGE_CAT_OTHER), NULL, false);
+		} else {
+			int k;
+
+			/* The first walk: what it has not reached yet is striped, and a
+			 * part with nothing yet is not in the legend */
+			for (k = 0; k < p->nparts; k++) if (!p->part[k].bytes) p->part[k].name = NULL;
+			store_part(p, c->cat[STC_OTHER], ui_col(th->text_dim, 255), T(S_STORAGE_MEASURING_PART), NULL, true);
+			p->measuring = true;
+			p->measure_line = T(S_STORAGE_MEASURING);
+			if (c->at[0]) {
+				const system_cfg *s = store_cfg(v, c->at);
+
+				snprintf(p->measure_at, sizeof p->measure_at, T(S_STORAGE_PROGRESS),
+				         s ? s->name : c->at, c->at_done, c->at_total);
+			}
+			p->note = T(S_STORAGE_FIRST_NOTE);
+		}
+	} else {
+		const st_sys *s = &c->sys[v->page];
+		const system_cfg *cf = store_cfg(v, s->folder);
+		int n = store_count(v, v->page);
+		char g[24], sv[24], ar[24];
+
+		p->heading = cf ? cf->name : s->folder;
+		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag), false) : NULL;
+		p->used_fmt = "%s";
+		store_bytes(store_sys_bytes(s), p->used, sizeof p->used);
+		snprintf(p->right, sizeof p->right, TN(S_SHELF_GAMES, n), n);
+		p->whole = store_sys_bytes(s);
+		store_bytes(s->games, g, sizeof g);
+		store_bytes(s->saves + s->states, sv, sizeof sv);
+		store_bytes(s->covers + s->snaps, ar, sizeof ar);
+		store_part(p, s->games, ui_col(th->store_games, 255), T(S_STORAGE_CAT_GAMES), g, false);
+		store_part(p, s->saves + s->states, ui_col(th->store_saves, 255), T(S_STORAGE_CAT_SAVES), sv, false);
+		store_part(p, s->covers + s->snaps, ui_col(th->store_art, 255), T(S_STORAGE_CAT_ART), ar, false);
+	}
+	if (p->nrows > 0 && v->cap_for != p->sel) {
+		store_caption(v, &v->rows[p->sel]);
+		v->cap_for = p->sel;
+	}
+}
+
+static void store_draw(app *a, store_view *v)
+{
+	draw_background(a);
+	store_page(v);
+	sp_draw(a->r, &v->pg, &v->m, anim_now());
+}
+
+static void store_base(app *a, void *ctx)
+{
+	store_draw(a, ctx);
+}
+
+/* A question as Delete Game asks it (delete_ask_rows): its lines wrapped
+ * to the panel, a rule, then the answer and Cancel. `rows` holds
+ * DEL_ASK_LINES + 2. */
+static int store_ask_rows(app *a, const char *q, char (*lines)[CHV_WRAP_COLS], menu_row *rows)
+{
+	bool rule;
+	int fit = delete_ask_fit(&rule), n, i;
+
+	n = wrap_text(ui_font(UI_F_MENU), q, menu_std_width(a), lines, DEL_ASK_LINES);
+	if (n > fit) n = fit;
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], MENU_NOTE_MARK, false };
+	if (n < fit || rule) rows[n++] = MENU_HR;
+	return n;
+}
+
+static bool store_ask(app *a, const char *heading, const char *q, const char *yes_label)
+{
+	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
+	menu_row rows[DEL_ASK_LINES + 2];
+	int nq = store_ask_rows(a, q, lines, rows), lv = panel_open();
+	bool yes = confirm_rows(a, heading, rows, nq, yes_label, menu_std_width(a), lv);
+
+	panel_close(a, lv, !a->running);
+	return yes && a->running;
+}
+
+/* After a delete: the shelves may have changed, so the walk is told again */
+static void store_after(store_view *v)
+{
+	store_request(v);
+	store_refresh(v);
+}
+
+static void store_said(app *a, const char *heading, unsigned long long bytes, str_id fmt)
+{
+	char sz[24], said[96];
+
+	sys_menu_bytes(bytes, sz, sizeof sz);
+	snprintf(said, sizeof said, T(fmt), sz);
+	result_message(a, heading, said);
+}
+
+/* A on the focused row */
+static void store_act(store_view *v)
+{
+	app *a = v->a;
+	sp_row *r;
+	char q[640], sz[24];
+
+	if (v->nrows <= 0) { uisound_play(DS_SOUND_DENY); return; }
+	r = &v->rows[v->pg.sel];
+	switch (r->kind) {
+	case SR_SYSTEM:
+		uisound_play(DS_SOUND_ACCEPT);
+		v->main_sel = v->pg.sel;
+		v->page = r->index;
+		v->pg.sel = 0;
+		memset(&v->m, 0, sizeof v->m);
+		v->nrows = 0;
+		store_rows(v);
+		break;
+	case SR_ART: {
+		unsigned long long b;
+		int files;
+
+		uisound_play(DS_SOUND_ACCEPT);
+		store_bytes(v->c.unused_art, sz, sizeof sz);
+		snprintf(q, sizeof q, T(S_STORAGE_UNUSED_ASK), sz);
+		if (!store_ask(a, T(S_STORAGE_UNUSED_ART), q, T(S_GAMEMENU_DELETE_YES))) break;
+		st_stop();
+		wait_panel(a, T(S_STORAGE_UNUSED_ART), T(S_GAMEMENU_DELETING));
+		b = st_delete_unused_art(&v->paths, &v->sys, v->games, v->ngames, &files);
+		fprintf(stderr, "storage: unused art: %d files, %llu bytes\n", files, b);
+		store_said(a, T(S_STORAGE_UNUSED_ART), b, S_GAMEMENU_DELETED);
+		store_after(v);
+		break;
+	}
+	case SR_STATES: {
+		unsigned long long b;
+		int games;
+
+		uisound_play(DS_SOUND_ACCEPT);
+		store_bytes(v->c.old_states, sz, sizeof sz);
+		snprintf(q, sizeof q, TN(S_STORAGE_OLD_ASK, v->c.old_state_games), v->c.old_state_games, sz);
+		if (!store_ask(a, T(S_STORAGE_OLD_STATES), q, T(S_GAMEMENU_DELETE_YES))) break;
+		st_stop();
+		wait_panel(a, T(S_STORAGE_OLD_STATES), T(S_GAMEMENU_DELETING));
+		b = st_delete_old_states(&v->paths, &v->sys, v->games, v->ngames, (long)time(NULL), &games);
+		fprintf(stderr, "storage: old states: %d games, %llu bytes\n", games, b);
+		store_said(a, T(S_STORAGE_OLD_STATES), b, S_GAMEMENU_DELETED);
+		store_after(v);
+		break;
+	}
+	case SR_SNAPS: {
+		const char *folder = v->c.sys[v->page].folder;
+		unsigned long long b;
+
+		uisound_play(DS_SOUND_ACCEPT);
+		store_bytes(v->c.sys[v->page].snaps, sz, sizeof sz);
+		snprintf(q, sizeof q, T(S_SNAPS_DELETE_ASK), sz);
+		if (!store_ask(a, T(S_STORAGE_DELETE_SNAPS), q, T(S_SNAPS_DELETE))) break;
+		st_stop();
+		snap_off();
+		b = snaps_delete(P_ROMS, folder);
+		store_said(a, T(S_STORAGE_DELETE_SNAPS), b, S_SNAPS_GIVEN_BACK);
+		store_after(v);
+		break;
+	}
+	case SR_GAME: {
+		int sh = store_shelf(a, v->c.sys[v->page].folder);
+		char said[256];
+
+		if (sh < 0 || r->index >= a->view[sh].list.count) { uisound_play(DS_SOUND_DENY); break; }
+		uisound_play(DS_SOUND_ACCEPT);
+		/* Nothing may make a plan while the walk makes its own (gamedel.c's
+		 * buffers are its own) */
+		st_stop();
+		game_delete(a, sh, &a->view[sh].list.items[r->index], said, sizeof said);
+		if (said[0] && a->running) result_message(a, T(S_GAMEMENU_DELETE), said);
+		store_after(v);
+		break;
+	}
+	default:
+		/* A folder that is only read here: Videos, Music, BIOS... */
+		uisound_play(DS_SOUND_DENY);
+		break;
+	}
+}
+
+static void store_open(store_view *v, app *a)
+{
+	char path[CFG_STR * 2];
+
+	memset(v, 0, sizeof *v);
+	v->a = a;
+	v->page = -1;
+	v->cap_for = -1;
+	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
+	v->cfg_ok = cfg_load_systems(path, &v->cfg);
+}
+
+static void store_close(store_view *v)
+{
+	store_free_icons(v);
+	free(v->rows);
+	free(v->games);
+	v->rows = NULL;
+	v->games = NULL;
+}
+
+static void storage_screen(app *a)
+{
+	store_view *v = calloc(1, sizeof *v);
+
+	if (!v) return;
+	store_open(v, a);
+	store_request(v);
+	store_refresh(v);
+	g_base_page = store_base;
+	g_base_ctx = v;
+	while (!want_quit && a->running) {
+		st_card c;
+
+		plat_input_poll(&a->in);
+		muse_poll();
+		aout_apply(false);
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { st_stop(); power_off(a); break; }
+		if (a->in.pressed[IN_SELECT]) muse_open(a, NULL, NULL);
+		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
+		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
+		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
+		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+
+		/* The walk's latest numbers, and the rows from them when they moved */
+		st_snapshot(&c);
+		if (c.gen != v->gen || v->nrows == 0) {
+			v->c = c;
+			v->gen = c.gen;
+			store_rows(v);
+		}
+
+		if (a->in.pressed[IN_MENU]) {
+			menu_leaving(a);
+			break;
+		}
+		if (a->in.pressed[IN_BACK]) {
+			uisound_play(DS_SOUND_BACK);
+			if (v->page < 0) break;
+			/* From a system back to the card, on its row */
+			v->page = -1;
+			v->pg.sel = v->main_sel;
+			memset(&v->m, 0, sizeof v->m);
+			v->nrows = 0;
+			store_rows(v);
+			v->pg.sel = v->main_sel < v->nrows ? v->main_sel : 0;
+		} else if (v->nrows > 0) {
+			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
+
+			if (b != IN_NONE) {
+				int to = v->pg.sel + (b == IN_UP ? -1 : 1);
+
+				if (to < 0) to = 0;
+				if (to >= v->nrows) to = v->nrows - 1;
+				step_sound(a, b, v->pg.sel, to);
+				v->pg.sel = to;
+			}
+			if (a->in.pressed[IN_ACCEPT]) store_act(v);
+		} else if (a->in.pressed[IN_ACCEPT]) {
+			uisound_play(DS_SOUND_DENY);
+		}
+		if (g_menu_closing) break;
+
+		tick_tint(a);
+		tick_theme(a);
+		store_draw(a, v);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(16);
+	}
+	/* What the walk finished is kept and cached; nothing walks once the
+	 * page is gone, least of all under a game */
+	st_stop();
+	g_base_page = NULL;
+	g_base_ctx = NULL;
+	store_close(v);
+	free(v);
+}
+
+/* --storage NAME [SEL]: the page on a stand-in card of 128 GB nearly full,
+ * as the Storage lab drew it. NAME is main, system (the PlayStation shelf
+ * of the card the shot runs on), art and states (a recommendation's
+ * question), done (the card after Unused Art), delete (Delete Game's
+ * question from the system's page) or first (the first walk). SEL is the
+ * focused row. */
+static const char *shot_storage;
+static int shot_storage_sel = -1;
+
+static void store_fixture(store_view *v, bool measured)
+{
+	static const struct {
+		const char *folder;
+		int count;
+		unsigned long long games, covers, snaps, states, saves;   /* MB */
+	} SYS[] = {
+		{ "PlayStation", 116, 42600, 440, 1660, 1290, 12 },
+		{ "Sega CD", 46, 15900, 18, 70, 180, 4 },
+		{ "TurboGrafx-16", 61, 11200, 22, 60, 90, 3 },
+		{ "Nintendo DS", 105, 8600, 36, 260, 520, 60 },
+		{ "Ports", 12, 4100, 4, 0, 60, 0 },
+		{ "Nintendo 64", 38, 1200, 15, 70, 260, 6 },
+		{ "Game Boy Advance", 92, 800, 30, 60, 90, 9 },
+		{ "Arcade", 140, 900, 50, 40, 20, 2 },
+		{ "SNES", 60, 150, 20, 40, 20, 2 },
+	};
+	st_card *c = &v->c;
+	int i, k;
+
+	memset(c, 0, sizeof *c);
+	c->total = 127900000000ull;
+	c->free = 7400000000ull;
+	c->partitions = 1100000000ull;
+	c->zyperos = 1500000000ull;
+	c->videos = 18400000000ull;
+	c->nvideos = 6;
+	c->music = 5200000000ull;
+	c->nmusic = 318;
+	c->books = 900000000ull;
+	c->nbooks = 2;
+	c->bios = 300000000ull;
+	for (i = 0; i < (int)(sizeof SYS / sizeof SYS[0]) && i < ST_MAX_SYS; i++) {
+		st_sys *s = &c->sys[c->nsys];
+
+		if (!store_cfg(v, SYS[i].folder)) continue;
+		snprintf(s->folder, sizeof s->folder, "%s", SYS[i].folder);
+		s->games = SYS[i].games * 1000000ull;
+		s->covers = SYS[i].covers * 1000000ull;
+		s->snaps = SYS[i].snaps * 1000000ull;
+		s->states = SYS[i].states * 1000000ull;
+		s->saves = SYS[i].saves * 1000000ull;
+		c->saves += s->saves;
+		c->states += s->states;
+		v->fix_count[c->nsys] = SYS[i].count;
+		c->nsys++;
+	}
+	c->sys[0].unused_art = 1200000000ull;
+	c->sys[0].unused_covers = 212;
+	c->sys[0].unused_snaps = 37;
+	c->sys[3].old_states = 940000000ull;
+	c->sys[3].old_state_games = 41;
+	st_totals(c);
+	c->measured = measured;
+	if (!measured) {
+		/* Partway through the first walk: the PlayStation's games */
+		for (k = 1; k < c->nsys; k++) memset(&c->sys[k], 0, sizeof c->sys[k]);
+		c->music = c->videos = c->books = c->bios = c->zyperos = c->partitions = 0;
+		c->saves = c->states = 0;
+		c->sys[0].states = c->sys[0].saves = 0;
+		c->sys[0].games = 28300000000ull;
+		st_totals(c);
+		c->walking = true;
+		snprintf(c->at, sizeof c->at, "%s", "PlayStation");
+		c->at_done = 41;
+		c->at_total = 116;
+	}
+}
+
+static void storage_shot(app *a)
+{
+	static store_view v;
+	static bool made;
+	const char *name = shot_storage;
+	char lines[DEL_ASK_LINES][CHV_WRAP_COLS], q[640], sz[24];
+	menu_row rows[DEL_ASK_LINES + 2];
+	int nq, i;
+
+	if (!made) {
+		made = true;
+		store_open(&v, a);
+		v.fixture = true;
+		store_fixture(&v, strcmp(name, "first") != 0);
+		if (!strcmp(name, "done")) {
+			v.c.sys[0].unused_art = 0;
+			v.c.sys[0].covers -= 400000000ull;
+			v.c.sys[0].snaps -= 800000000ull;
+			v.c.free += 1200000000ull;
+			st_totals(&v.c);
+		}
+		if (!strcmp(name, "system") || !strcmp(name, "delete")) {
+			for (i = 0; i < v.c.nsys; i++)
+				if (!strcmp(v.c.sys[i].folder, "PlayStation")) v.page = i;
+			/* The shelf the shot's card has, sized as a nearly full card's */
+			if (v.page >= 0) {
+				int sh = store_shelf(a, "PlayStation");
+				st_sys *s = &v.c.sys[v.page];
+
+				v.fix_count[v.page] = sh >= 0 ? a->view[sh].list.count : 0;
+				s->games = s->states = 0;
+				for (i = 0; sh >= 0 && i < a->view[sh].list.count; i++) {
+					unsigned long long b = store_fixture_game(a->view[sh].list.items[i].title);
+
+					s->games += b * 9 / 10;
+					s->states += b - b * 9 / 10;
+				}
+				s->saves = 4000000ull;
+				s->covers = 9000000ull;
+				s->snaps = 140000000ull;
+			}
+		}
+		store_rows(&v);
+		/* The focus: the asked row, else the first system's (the card) or
+		 * the third (a system's page) */
+		v.pg.sel = 0;
+		for (i = 0; i < v.nrows; i++)
+			if (v.page < 0 && v.rows[i].kind == SR_SYSTEM) { v.pg.sel = i; break; }
+		if (v.page >= 0) v.pg.sel = v.nrows > 2 ? 2 : 0;
+		if (!strcmp(name, "art") || !strcmp(name, "states"))
+			for (i = 0; i < v.nrows; i++)
+				if (v.rows[i].kind == (!strcmp(name, "art") ? SR_ART : SR_STATES)) v.pg.sel = i;
+		if (!strcmp(name, "done")) v.pg.sel = 0;
+		if (shot_storage_sel >= 0 && shot_storage_sel < v.nrows) v.pg.sel = shot_storage_sel;
+	}
+	store_draw(a, &v);
+	if (!strcmp(name, "art") || !strcmp(name, "states")) {
+		bool art = !strcmp(name, "art");
+
+		store_bytes(art ? v.c.unused_art : v.c.old_states, sz, sizeof sz);
+		if (art) snprintf(q, sizeof q, T(S_STORAGE_UNUSED_ASK), sz);
+		else snprintf(q, sizeof q, TN(S_STORAGE_OLD_ASK, v.c.old_state_games), v.c.old_state_games, sz);
+		nq = store_ask_rows(a, q, lines, rows);
+		rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
+		rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		ui_scrim(a->r, 0);
+		menu_draw(a, T(art ? S_STORAGE_UNUSED_ART : S_STORAGE_OLD_STATES), rows, nq + 2, nq + 1,
+		          menu_std_width(a), MENU_ZYPEROS);
+	} else if (!strcmp(name, "delete") && v.nrows > 0 && v.rows[v.pg.sel].kind == SR_GAME) {
+		int sh = store_shelf(a, "PlayStation");
+		const char *heading;
+
+		if (sh >= 0) {
+			nq = delete_ask_rows(a, a->view[sh].list.items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
+			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
+			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+			ui_scrim(a->r, 0);
+			menu_draw(a, heading, rows, nq + 2, nq + 1, menu_std_width(a), MENU_ZYPEROS);
+		}
+	} else if (!strcmp(name, "done")) {
+		char said[96];
+		menu_row row;
+
+		sys_menu_bytes(1200000000ull, sz, sizeof sz);
+		snprintf(said, sizeof said, T(S_GAMEMENU_DELETED), sz);
+		row = (menu_row){ said, NULL, false };
+		ui_scrim(a->r, 0);
+		menu_message(a, T(S_STORAGE_UNUSED_ART), row, MENU_ZYPEROS);
+	}
+}
+
 /* What --shot-at presses at 0 in a --menu shot (shot_motion): a step onto
  * its row; or with --open, --close and --swap, the top menu opening on the
  * shelf, closing onto it, or giving way to MENU > Controls. `shot_lv` is the
@@ -11931,6 +12935,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	/* Closes the menu: the tutorial ends on the shelf, where its finish
 	 * says to start playing. */
 	case PM_TOUR:         tour_run(a, false); return MENU_DONE;
+	case PM_STORAGE:      storage_screen(a); break;
 	case PM_UPDATE:       update_screen(a); break;
 	case PM_ABOUT:        about_screen(a); break;
 	/* A game by its name: the menu closes once one is picked, and it starts */
@@ -16900,6 +17905,10 @@ static void shot_compose(app *a)
 		          menu_std_width(a), MENU_ZYPEROS);
 		return;
 	}
+	if (shot_storage) {
+		storage_shot(a);
+		return;
+	}
 	if (shot_update >= 0) {
 		su_page p;
 		char notes[UP_NOTES][120];
@@ -18018,6 +19027,11 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--tour-music")) shot_tour_music = true;
 		else if (!strcmp(argv[i], "--portload") && i + 1 < argc)
 			shot_portload = argv[++i];
+		else if (!strcmp(argv[i], "--storage")) {
+			shot_storage = "main";
+			if (i + 1 < argc && argv[i + 1][0] != '-') shot_storage = argv[++i];
+			if (i + 1 < argc && argv[i + 1][0] != '-') shot_storage_sel = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--update")) {
 			shot_update = 1;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')

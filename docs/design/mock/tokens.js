@@ -19,7 +19,10 @@ window.ZYPER_TOKENS = {
         "light": "#9a6200",
         "favorite": "#c2557a",
         "warning": "#b23f28",
-        "ink": "#111310"
+        "ink": "#111310",
+        "store-games": "#2c64c4",
+        "store-saves": "#7a4fc4",
+        "store-art": "#0e8a86"
       },
       "scrim": {
         "menu": 0.28,
@@ -43,7 +46,10 @@ window.ZYPER_TOKENS = {
         "light": "#f2d27a",
         "favorite": "#de929e",
         "warning": "#e0705a",
-        "ink": "#111310"
+        "ink": "#111310",
+        "store-games": "#6b9ef5",
+        "store-saves": "#ae8ef2",
+        "store-art": "#4fc8c0"
       },
       "scrim": {
         "menu": 0.47,

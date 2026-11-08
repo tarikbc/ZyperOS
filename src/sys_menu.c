@@ -504,6 +504,8 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_TOUR]         = (menu_row){ T(S_SYSMENU_TUTORIAL), NULL, true  };
 	full[PM_DEVELOPER]    = (menu_row){ T(S_SYSMENU_DEVELOPER),
 	                                   u->developer ? T(S_MENU_ON) : T(S_MENU_OFF), true };
+	/* How the card is used (src/storage.h): its value the room left */
+	full[PM_STORAGE]      = (menu_row){ T(S_STORAGE_TITLE), u->storage, true };
 	full[PM_UPDATE]       = (menu_row){ T(S_SYSMENU_UPDATE), u->update, true };
 	full[PM_ABOUT]        = (menu_row){ T(S_SYSMENU_ABOUT), NULL, true  };
 	/* Any game by its name, typed (src/search.h) */
