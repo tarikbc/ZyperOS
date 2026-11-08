@@ -217,7 +217,11 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 
 **J2ME games** are the `.jar` files of the Java phones. They run on FreeJ2ME-Plus, which brings its own Java: the first J2ME game you start unpacks it into `Bios/` (about 60 MB), which takes a little while once. A phone's keys are on the pad: the d-pad is its arrows, **A** its OK key, **SELECT** and **START** the left and right soft keys, **X** 0, **B** 7, **Y** 9, **L1** 1, **R1** 3, **L2** `*` and **R2** `#`.
 
-**OpenBOR games** are modules, one `.pak` file each, run by OpenBOR itself rather than a libretro core, so its menus are its own: **A** attacks, **B** jumps, **X** is the special, **START** pauses, and you leave a game from OpenBOR's menus, or with **POWER**, which ends it and turns the handheld off. A module that came as a folder has to be packed into a `.pak` first. The Pixel 2 only.
+<img align="right" width="320" src="res/readme/openbor.png" alt="The in-game menu over a paused OpenBOR game: Continue, Controls and Quit">
+
+**OpenBOR games** are modules, one `.pak` file each, run by OpenBOR itself rather than a libretro core. **A** attacks, **B** jumps, **X** is the second attack, **Y** the special, **L1** and **R1** the third and fourth, **START** pauses into OpenBOR's own menu and **SELECT** saves a screenshot. **MENU** pauses the game under ZyperOS's in-game menu, as in any other game: **Continue**, **Controls**, which lists those buttons, and **Quit**, back to the shelf. OpenBOR keeps its own saves and has no save states, so the menu has no Save, Load or Reset. The volume and brightness bars work over it, and **POWER** ends the game and turns the handheld off. A module that came as a folder has to be packed into a `.pak` first. The Pixel 2 only.
+
+<br clear="right">
 
 **Saturn games** run on YabaSanshiro and need the Saturn's BIOS in `Bios/` (above). The Saturn is the most a Pixel 2 is asked to run: it runs some games, and not at full speed. Flicky's Flock, a homebrew game, ran at about 37 frames a second of 60.
 

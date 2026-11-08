@@ -10,8 +10,12 @@
 #
 # The pad is SDL's: plastron's SDL2 maps the Pixel 2's pad itself (the
 # standard gamepad codes, res/portmaster/control.txt), and OpenBOR lays a
-# known pad out as attack on A, jump on B, special on X, the second attack on
-# Y and the two others on L1 and R1. A game ends from OpenBOR's own menus.
+# known pad out as attack on A, jump on B, the second attack on X, special on
+# Y, the two others on L1 and R1, START its pause and SELECT a screenshot
+# (its sdl/control.c; in QEMU its menu answers X and Y so, 2026-11-07). A game
+# ends from OpenBOR's own menus, or from ZyperOS's in-game menu on MENU,
+# which portkeys shows over it (launch.sh gives it --menu for this script;
+# src/portmenu.h).
 DIR=/mnt/SDCARD/Saves/openbor
 mkdir -p "$DIR"
 cd "$DIR" || exit 1

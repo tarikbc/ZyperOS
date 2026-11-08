@@ -131,6 +131,15 @@ volume, brightness and POWER. Left and right change the page, B goes back to
 the menu, and MENU goes back to the game. There is no save-state or
 screenshot button: Save and Load are in the in-game menu.
 
+**OpenBOR has the in-game menu too**, though it runs as a program of its
+own rather than a libretro core. MENU stops the game where it is and opens
+the menu over it with three rows: Continue, Controls and Quit. Controls lists
+OpenBOR's buttons (A attacks, B jumps, X is the second attack, Y the special,
+L1 and R1 the third and fourth, START pauses into OpenBOR's own menu, SELECT
+saves a screenshot) and then In a game, where POWER quits and turns the
+handheld off. OpenBOR keeps its own saves and has no save states, so there is
+no Save, Load or Reset. Quit ends the game and goes back to the shelf.
+
 **About ZyperOS has two pages**, changed with Left/Right. The first shows the
 version, network address, battery charge and awake time. The second shows the
 card's used, available and total storage in decimal GB, then estimated battery
