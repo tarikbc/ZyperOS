@@ -62,7 +62,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 ## Features
 
 - **Forty systems,** from the Atari 2600 to PlayStation, Nintendo 64, Nintendo DS, Dreamcast and Saturn, with Arcade, MAME, Neo Geo, NAOMI and Atomiswave, ScummVM, PICO-8, OpenBOR and J2ME ([the full list](#supported-systems)).
-- **Ports:** a Ports shelf that runs [PortMaster](https://portmaster.games) games, such as Stardew Valley and Celeste.
+- **Ports:** the Ports shelf installs the official [PortMaster](https://portmaster.games) with one press and runs its games, such as Stardew Valley and Celeste ([how](#portmaster)).
 - **Nintendo DS your way:** [DSperate](https://github.com/beebono/DSperate) inside the emulator, with three screen layouts and a d-pad stylus, or DraStic if you add it. A Mario Kart DS race keeps 60 frames a second on the Pixel 2. **Game Language** in the DS shelf's menu picks the language a game speaks: Auto, the language of **MENU > Language** where the DS has it (English, Español, Français, Deutsch, Italiano, 日本語) and English where it doesn't, or any of them outright, whatever `firmware.bin` says.
 - **Dreamcast** on flycast2021, the 2021 libretro [Flycast](https://github.com/flyinghead/flycast), drawn on the GPU inside the emulator, with saves, states and resume like any other system. Standalone Flycast is the second choice if you add it.
 - **A home screen in pixel art:** every system as its animated console, on a Spotlight or a Gallery home, and your games as a row of covers. The systems go A to Z, or by release date in **MENU > System Order**. Light or dark, [as you like](#light-and-dark).
@@ -115,7 +115,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Languages** | 8: English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語, Italiano | — | 21, in its launcher | English | 36 | 6 |
 | **Menu music** | 10 free tracks, or yours | — | — | — | Yes | — |
 | **Media player** | Music, audiobooks, video | — | Music, video | Music, audiobooks | Music, video | Music |
-| **PortMaster** | Yes, you add PortMaster | Yes | Yes | — | Yes | Yes |
+| **PortMaster** | Yes, installed from the Ports shelf with one press | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
@@ -244,7 +244,7 @@ ZyperOS 1.0.1 is out for the GKD Pixel 2, released in November 2026. [The latest
 2. **Put the card in the Pixel 2 and turn it on.** The first start sets the card up in about a minute, turning the rest of it into space for games, music and saves. Every boot after that comes straight up, and the first one ends with [the tutorial](#the-first-start).
 3. **Set the time zone** under **MENU > Date & Time**. Wi-Fi sets the time whenever it connects; without it, set the time there too, and it keeps it.
 4. **Add games** to the folders in `Roms/`. Put the card back in the computer, where it shows up as ZYPEROS, or send them over, with Wi-Fi or the USB cable: [a card with no games](#a-card-with-no-games) shows both ways.
-5. **Add the extras you want.** Copy a PortMaster setup to `Roms/Ports`, DraStic to `Emulators/DraStic` and Flycast to `Emulators/Flycast`. A shelf with nothing in it stays hidden.
+5. **Add the extras you want.** [PortMaster](#portmaster) installs from the Ports shelf over Wi-Fi. Copy DraStic to `Emulators/DraStic` and Flycast to `Emulators/Flycast`. A shelf with nothing in it stays hidden, except Ports, which holds PortMaster's entry until you install it.
 
 New versions come to the handheld with [System Update](#system-update) over Wi-Fi, or over the USB cable from [the File Transfer page](#the-file-transfer-page). On a computer, the installer's **Update** puts a new version on a card that has ZyperOS and keeps its games, music and saves. To build the card image yourself instead, see [For developers](#for-developers).
 
@@ -387,6 +387,20 @@ The page is light or dark as the phone or computer is. When File Transfer closes
 A new version starts on trial: if it doesn't start, the handheld goes back to the one before by itself. **Y** rolls back one version by hand. A card installed with two 512 MB system slots, which new installs have, updates the system itself too, written to the slot that isn't running. A card from before the slots, or with smaller ones, gets updates of ZyperOS, and a new system for it comes with a fresh install from the ZyperOS Installer.
 
 Without Wi-Fi, **Update ZyperOS** on [the File Transfer page](#the-file-transfer-page) installs a new version over the USB cable, with the same checks.
+
+<br clear="right">
+
+### PortMaster
+
+<img align="right" width="360" src="res/readme/portmaster.png" alt="Install PortMaster: PortMaster's version, what it is, and the download's bar at 9.8 of 24 MB">
+
+[PortMaster](https://portmaster.games) is the port store Linux handhelds share: PC games made to run on them, such as Stardew Valley and Celeste, each with what it needs. ZyperOS installs the official PortMaster app, as muOS, Knulli and ROCKNIX use it.
+
+On the Ports shelf, PortMaster's entry says **Install** until it is on the card. **A** opens its page, and **Install** downloads PortMaster's latest stable release from its GitHub over Wi-Fi (a USB Wi-Fi adapter on the Pixel 2), about 24 MB. ZyperOS checks it against the size and checksums PortMaster and GitHub publish, then unpacks it into `Roms/Ports`. Nothing goes in place until all of it checks out, so a cut-off download leaves no half-installed PortMaster. Then **A** opens it, from the page or the shelf, like any port, and PortMaster updates itself from then on.
+
+Its first start unpacks its own files and downloads its catalog of ports, which takes a few minutes. Pick the ports you want in PortMaster; they are on the Ports shelf when you leave it. Many ports of commercial games need the game's own files from a copy you own, and PortMaster says which and where they go. Ports copied from another system's ports folder run too.
+
+When a port runs, ZyperOS steps aside to give it the memory, puts its own PortMaster settings for the Pixel 2 in place, and keeps the volume keys and **POWER** working. PortMaster is not part of ZyperOS: it comes from the PortMaster team, under the MIT license.
 
 <br clear="right">
 
