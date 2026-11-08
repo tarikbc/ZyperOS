@@ -59,6 +59,12 @@
 	--warning-rgb: 178, 63, 40;
 	--ink: #111310;
 	--ink-rgb: 17, 19, 16;
+	--store-games: #2c64c4;
+	--store-games-rgb: 44, 100, 196;
+	--store-saves: #7a4fc4;
+	--store-saves-rgb: 122, 79, 196;
+	--store-art: #0e8a86;
+	--store-art-rgb: 14, 138, 134;
 	--panel-lift: 0 24px 64px rgba(var(--ink-rgb), 0.18);
 	--small-lift: 0 8px 20px rgba(var(--ink-rgb), 0.18);
 	--scrim-menu: 0.28;
@@ -138,6 +144,12 @@
 		--warning-rgb: 224, 112, 90;
 		--ink: #111310;
 		--ink-rgb: 17, 19, 16;
+		--store-games: #6b9ef5;
+		--store-games-rgb: 107, 158, 245;
+		--store-saves: #ae8ef2;
+		--store-saves-rgb: 174, 142, 242;
+		--store-art: #4fc8c0;
+		--store-art-rgb: 79, 200, 192;
 		--panel-lift: 0 0 105px rgba(var(--text-dim-rgb), 0.017);
 		--small-lift: none;
 		--scrim-menu: 0.47;

@@ -5,9 +5,9 @@
 #include "storage_page.h"
 
 #include "design.h"
+#include "platform.h"
 #include "theme.h"
 #include "ui.h"
-#include "zyperdraw.h"
 #include "zypermark.h"
 
 #include <math.h>
@@ -363,7 +363,7 @@ static void row_draw(SDL_Renderer *r, const sp_page *p, int i, float y, bool sel
 		}
 		break;
 	case SP_ICON_ZYPER:
-		draw_zyper(r, SP_LIST_X + 24 + SP_ICON / 2.0f, mid, 56.0f, 0.0f, 1.0f, 0.0f, 255);
+		if (p->zyper) p->zyper(r, SP_LIST_X + 24 + SP_ICON / 2.0f, mid, 56.0f, 0.0f, false);
 		break;
 	case SP_ICON_SPARK:
 		spark(r, SP_LIST_X + 24 + SP_ICON / 2.0f, mid, sel ? col(th->on_accent) : col(th->accent_ink));
@@ -466,8 +466,7 @@ void sp_draw(SDL_Renderer *r, const sp_page *p, sp_motion *m, unsigned now)
 		 * the walk is in */
 		float bob = 2.0f * sinf((float)(now % DS_MS_ZYPER_BREATHE) * 6.2831853f / DS_MS_ZYPER_BREATHE);
 
-		zyper_shadow_draw(r, 512.0f, 398.0f + bob, 150.0f, ZYPER_TILT_DEG, 1.0f);
-		draw_zyper(r, 512.0f, 398.0f + bob, 150.0f, ZYPER_TILT_DEG, 0.0f, 0.0f, 255);
+		if (p->zyper) p->zyper(r, 512.0f, 398.0f + bob, 150.0f, ZYPER_TILT_DEG, true);
 		if (p->measure_line)
 			ui_text(r, fm, p->measure_line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fm, 540), 0, UI_TEXT_SOFT);
 		if (p->measure_at[0])

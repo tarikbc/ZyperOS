@@ -60,6 +60,10 @@ typedef struct {
 	const char *measure_line;
 	char measure_at[96];
 	const char *note;               /* the foot line when there is no list */
+	/* Zyper, drawn by the caller (src/zyperdraw.c, which the checks that
+	 * link this file do not): about (cx, cy), `h` tall, his head at `tilt`,
+	 * his shadow under him when `shadow` */
+	void (*zyper)(SDL_Renderer *r, float cx, float cy, float h, float tilt, bool shadow);
 } sp_page;
 
 /* Where the list is: the focus fill and the window, gliding to the cursor */

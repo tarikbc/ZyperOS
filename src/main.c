@@ -12048,10 +12048,19 @@ static void store_page(store_view *v)
 	}
 }
 
+/* Zyper for the page: his face on ZyperOS's row (tongue out), and over the
+ * first walk with his head cocked and his shadow on Beard (tongue in) */
+static void store_zyper(SDL_Renderer *r, float cx, float cy, float h, float tilt, bool shadow)
+{
+	if (shadow) zyper_shadow_draw(r, cx, cy, h, tilt, 1.0f);
+	draw_zyper(r, cx, cy, h, tilt, shadow ? 0.0f : 1.0f, 0.0f, 255);
+}
+
 static void store_draw(app *a, store_view *v)
 {
 	draw_background(a);
 	store_page(v);
+	v->pg.zyper = store_zyper;
 	sp_draw(a->r, &v->pg, &v->m, anim_now());
 }
 
@@ -12452,9 +12461,12 @@ static void storage_shot(app *a)
 
 		sys_menu_bytes(1200000000ull, sz, sizeof sz);
 		snprintf(said, sizeof said, T(S_GAMEMENU_DELETED), sz);
+		static const unsigned colors[1] = { VCOL_MESSAGE };
+
 		row = (menu_row){ said, NULL, false };
 		ui_scrim(a->r, 0);
-		menu_message(a, T(S_STORAGE_UNUSED_ART), row, MENU_ZYPEROS);
+		/* As result_message draws it (timed_message): measured to its line */
+		menu_draw_ex(a, T(S_STORAGE_UNUSED_ART), &row, 1, -1, 0, MENU_ZYPEROS, colors, false, 0);
 	}
 }
 
