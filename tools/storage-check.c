@@ -116,7 +116,7 @@ static const char *const DIRS[] = {
 	"Roms/PlayStation", "Saves", ".userdata", ".userdata/shared", ".userdata/shared/.zyperos",
 	".userdata/shared/.zyperos/Game Boy", "Music", "Music/Artist", "Music/Artist/Album",
 	"Videos", "Audiobooks", "Audiobooks/Book", "Bios", "ZyperOS", "Emulators",
-	"Emulators/DraStic", "Roms/Ports", "Roms/Ports/stardewvalley",
+	"Emulators/Flycast", "Roms/Ports", "Roms/Ports/stardewvalley",
 	"Roms/Ports/stardewvalley/gamedata", "Roms/Ports/.media", "Roms/Ports/celeste",
 	"Roms/Ports/PortMaster", "Roms/Ports/PortMaster/libs", "Roms/Ports/gtavc",
 	"Roms/Ports/apotris", NULL,
@@ -159,7 +159,7 @@ static void card(void)
 	put("Audiobooks/Another.m4b", 300000);
 	put("Bios/scph5501.bin", 524288);
 	put("ZyperOS/zyperos.elf", 1500000);
-	put("Emulators/DraStic/drastic", 250000);
+	put("Emulators/Flycast/flycast", 250000);
 	/* The Ports shelf, as PortMaster lays it out (2026-11-08, Tarik's Pixel
 	 * 2): a port by its port.json, one by its GAMEDIR, PortMaster, a port
 	 * whose script is gone, a folder of nothing's, and a loose file */
@@ -268,7 +268,7 @@ static void numbers(const char *when)
 	CHECK_EQ(c.nbooks, 2);
 	CHECK_EQ(c.bios, on("Bios/scph5501.bin"));
 	CHECK_EQ(c.zyperos, on("ZyperOS/zyperos.elf"));
-	CHECK_EQ(c.emulators, on("Emulators/DraStic/drastic"));
+	CHECK_EQ(c.emulators, on("Emulators/Flycast/flycast"));
 	CHECK_EQ(c.saves, on("Saves/Tetris.srm") + on("Saves/Game.srm"));
 
 	/* A game's bytes are what Delete Game gives back, by part */

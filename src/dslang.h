@@ -26,10 +26,13 @@
  * of the firmware and nothing else: the dump on the card and the game's save
  * are not touched.
  *
- * A game resumed from its saved state keeps the language its memory was
- * saved with: the language is copied into the game's memory as it starts, so
- * the in-game menu's Reset (which starts it again, its battery save kept)
- * brings the new one in.
+ * A game resumed from a saved state keeps the language its memory was saved
+ * with: the language is copied into the game's memory as it starts. So the
+ * auto state of a game left in another language is not resumed: the game
+ * starts fresh in the row's language, its battery save kept, with a note
+ * saying why (src/dsresume.h). A state the player loads is loaded as asked,
+ * and the in-game menu's Reset (which starts the game again, its battery
+ * save kept) brings the row's language in: the core sets it at every reset.
  *
  * An entry for dsperate_language in the library database
  * (coreopt.NDS.dsperate_language) is sent after this one and wins, for

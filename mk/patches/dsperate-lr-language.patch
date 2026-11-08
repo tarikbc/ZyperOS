@@ -1,64 +1,112 @@
 diff --git a/src/libretro.cpp b/src/libretro.cpp
-index 76eeee6..db4cf70 100644
 --- a/src/libretro.cpp
 +++ b/src/libretro.cpp
-@@ -44,6 +44,10 @@ retro_log_printf_t         log_cb;
+@@ -44,6 +44,14 @@ bool jit_on = true;
  std::unique_ptr<ds::NDS> nds;
  std::string rom_path;
  bool jit_on = true;
 +// The DS language a game sees, 0 to 6 as the firmware's user settings number
-+// them (6 is the iQue DS's Chinese), or -1 for the firmware's own. See read_options and boot.
++// them (6 is the iQue DS's Chinese), or -1 for the firmware's own. See
++// read_language and apply_language.
 +constexpr const char* kLanguages[] = {"japanese", "english", "french", "german", "italian", "spanish", "chinese"};
 +int ds_language = -1;
++// The firmware's own language, as the dump has it, read at the start: what
++// "firmware" puts back at a reset. -1 when the image has no user settings.
++int fw_language = -1;
  uint32_t frame[W * H * 2];
  ds::s16 audio[4096 * 2];
  size_t state_size;   // fixed for the session: libretro states are a fixed size
-@@ -78,6 +82,16 @@ std::string dir(unsigned cmd) {
- void read_options() {
-   retro_variable v{"dsperate_jit", nullptr};
-   jit_on = !(env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &v) && v.value && !std::strcmp(v.value, "disabled"));
-+  // The language the game sees. A DS game reads it from the firmware's user
-+  // settings, which a firmware.bin in the system directory brings from
-+  // whichever console it was dumped from, whatever the frontend or its
-+  // player speaks. "firmware", and anything not named here, leaves that
-+  // alone.
+@@ -75,9 +83,24 @@ std::string dir(unsigned cmd) {
+   return env_cb(cmd, &d) && d ? d : "";
+ }
+ 
++// The language the game sees. A DS game reads it from the firmware's user
++// settings, which a firmware.bin in the system directory brings from
++// whichever console it was dumped from, whatever the frontend or its player
++// speaks. "firmware", and anything not named here, is the dump's own. Read
++// at each start and again at each reset (retro_reset), so a value the
++// frontend changed while the game ran is the one the reset starts it in.
++void read_language() {
 +  retro_variable lv{"dsperate_language", nullptr};
 +  ds_language = -1;
 +  if (env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &lv) && lv.value)
 +    for (int i = 0; i < 7; ++i)
 +      if (!std::strcmp(lv.value, kLanguages[i])) ds_language = i;
++}
++
+ void read_options() {
+   retro_variable v{"dsperate_jit", nullptr};
+   jit_on = !(env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &v) && v.value && !std::strcmp(v.value, "disabled"));
++  read_language();
  }
  
  // Battery saves are the frontend's (RETRO_MEMORY_SAVE_RAM, a raw chip image,
-@@ -237,6 +251,23 @@ bool boot() {
+@@ -221,6 +244,41 @@ void layout_end() {
+     closedir(d);
+   }
+   ds::set_thread_layout(false);
++}
++
++// The language, in this run's copy of the firmware: the user settings a game
++// is given at direct boot (setup_direct_boot) are copied from it. At the start
++// (boot, just after load_bios), and again before every reset's direct boot
++// (retro_reset): a reset does not load the firmware again, but the copy is
++// the game's to write while it runs (a game's own settings screen writes the
++// firmware's flash), and the option may have changed since the start. The
++// firmware file is never written: DSperate keeps the change as a dirty page
++// of its memory copy, which only its own frontends save (to a sidecar,
++// save_firmware_override), and this wrapper does not. Nothing else of the
++// settings (nickname, birthday, colour) or of the game's save is touched.
++void apply_language(bool start) {
++  ds::bios::UserSettings now;
++  const bool had = nds->read_user_settings(now);
++  if (start) fw_language = had && now.language < 7 ? now.language : -1;
++  if (!had) {
++    if (ds_language >= 0)
++      log(RETRO_LOG_WARN, "dsperate: this firmware has no user settings to set the language in\n");
++    return;
++  }
++  const int want = ds_language >= 0 ? ds_language : fw_language;
++  const bool same = want < 0 || now.language == want;
++  if (!same) {
++    ds::bios::UserSettings user;
++    user.language = static_cast<ds::u8>(want);
++    nds->write_user_settings(ds::NDS::UserField::Language, user);
++  }
++  if (start && ds_language >= 0)
++    log(RETRO_LOG_INFO, "dsperate: language %s (the firmware's was %s)\n", kLanguages[ds_language],
++        fw_language >= 0 ? kLanguages[fw_language] : "not known");
++  else if (!start && want >= 0)
++    log(RETRO_LOG_INFO, same ? "dsperate: reset, language %s\n"
++                             : "dsperate: reset, language %s again (the firmware copy had %s)\n",
++        kLanguages[want], now.language < 7 ? kLanguages[now.language] : "none");
+ }
+ 
+ bool boot() {
+@@ -237,6 +295,7 @@ bool boot() {
      log(RETRO_LOG_ERROR, "dsperate: bios: %s\n", err.c_str());
      return false;
    }
-+  // The language, in this run's copy of the firmware: the user settings the
-+  // game is given at direct boot (setup_direct_boot) are copied from it. The
-+  // firmware file is never written: DSperate keeps the change as a dirty page
-+  // of its memory copy, which only its own frontends save (to a sidecar,
-+  // save_firmware_override), and this wrapper does not. Nothing else of the
-+  // settings (nickname, birthday, colour) or of the game's save is touched.
-+  if (ds_language >= 0) {
-+    ds::bios::UserSettings user;
-+    ds::bios::UserSettings was;
-+    user.language = static_cast<ds::u8>(ds_language);
-+    const bool had = nds->read_user_settings(was);
-+    if (nds->write_user_settings(ds::NDS::UserField::Language, user))
-+      log(RETRO_LOG_INFO, "dsperate: language %s (the firmware's was %s)\n", kLanguages[ds_language],
-+          had && was.language < 7 ? kLanguages[was.language] : "not known");
-+    else
-+      log(RETRO_LOG_WARN, "dsperate: this firmware has no user settings to set the language in\n");
-+  }
++  apply_language(true);
    nds->reset();
    if (!nds->load_rom(rom_path)) {
      log(RETRO_LOG_ERROR, "dsperate: %s: %s\n", rom_path.c_str(), nds->rom_error.c_str());
-@@ -256,6 +287,7 @@ RETRO_API void retro_set_environment(retro_environment_t cb) {
+@@ -256,6 +315,7 @@ RETRO_API void retro_set_environment(retro_environment
    env_cb = cb;
    static const retro_variable vars[] = {
      {"dsperate_jit", "JIT recompiler (restart); enabled|disabled"},
-+    {"dsperate_language", "Game language (restart); firmware|japanese|english|french|german|italian|spanish|chinese"},
++    {"dsperate_language", "Game language (start and reset); firmware|japanese|english|french|german|italian|spanish|chinese"},
      {nullptr, nullptr},
    };
    cb(RETRO_ENVIRONMENT_SET_VARIABLES, const_cast<retro_variable*>(vars));
+@@ -313,6 +373,10 @@ RETRO_API void retro_reset(void) {
+ #if DSPERATE_JIT
+   if (jit_on) ds::jit::flush_all();
+ #endif
++  // The language as the option says now, before the direct boot copies the
++  // settings into the game's memory (apply_language)
++  read_language();
++  apply_language(false);
+   // The cart resets in place: the frontend holds a pointer into its save RAM.
+   nds->reset();
+   nds->setup_direct_boot();

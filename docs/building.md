@@ -123,6 +123,8 @@ something once broke in a way nothing noticed:
 | `check-battery` | a charger change reaches the shared battery cache within 250 ms at the shelf's poll rate |
 | `check-battery-eta` | the time left on the battery: the estimate from how long a percent takes to fall, against a simulated gauge at several loads, across the clock's wrap, a change of load, a stall, the cable and a gauge that corrects itself; and the corner's rounding |
 | `check-dslang` | the Nintendo DS's language: each language MENU > Language has maps, in Auto, to the DS's own or to English (Português (Brasil) and 简体中文 have none), the Game Language row's eight choices round trip through the database and go round both ways, the core's option and its values are the patch's, and the launcher sends it first with every DS game and with no other; the row is on the DS shelf's menu in every language with nothing cut, and Left, Right and A go round it, saved (builds the host launcher for the second half; skips without SDL2) |
+| `check-dsresume` | a Nintendo DS game's resume by its language: the firmware's language as DSperate's direct boot takes it, the language a game starts in for each option, the `.lang` beside its auto state, and a game left in another language started fresh (src/dsresume.h) |
+| `check-core-stamp` | the patched cores' stamps (mk/core-stamp.sh): a stamped core passes; a core built before a patch changed, one changed after its stamp, one with no stamp and a patch no core claims each fail, with what to run |
 | `check-lowbatt` | the start with a battery too low to play: which start shows the screen, its hold, POWER, the charger's moment, and the reading that decides the power-off |
 | `check-heat` | "Getting hot": the 85 C trip, two readings in a row, the hysteresis under 80 C, five quiet minutes, the poll's clock |
 | `check-charging` | the charging screen: the charger's kind, its lines, the time to full through CC and CV, and its rules |
@@ -367,7 +369,11 @@ res/            the boot animation, the system cards and the marks they are
 config/         systems.cfg as shipped; the rest is compiled in
 sd/             each device's launch.sh, and bt-alsa.sh, as they land on the card
 vendor/         the libretro cores: fetched and hash-pinned by
-                mk/fetch-vendor.sh, the rest built by mk/build-*.sh
+                mk/fetch-vendor.sh, the rest built by mk/build-*.sh; a core
+                ZyperOS patches has a stamp beside it naming its patches
+                (mk/core-stamp.sh), which mk/payload.sh and tools/release.sh
+                hold it to: run its build script, or `sh mk/core-stamp.sh
+                adopt NAME` for one that script already made
 site/           the web page at zyperos.com; mk/site.sh lays it out and
                 Cloudflare Pages publishes it from main (tools/site-art.sh
                 draws its icons and social card)

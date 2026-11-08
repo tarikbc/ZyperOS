@@ -36,8 +36,8 @@ typedef struct {
 	char core[CFG_STR];   /* core short name, e.g. "mednafen_pce_fast" - the
 	                       * one in use, of `cores` */
 	/* The core field as written: one core, or several separated by commas,
-	 * the first the default - "dsperate,run:Emulators/DraStic/DraStic.sh" for
-	 * the Nintendo DS. The shelf's Core row chooses among them (src/main.c,
+	 * the first the default - "flycast2021,run:Emulators/Flycast/Flycast.sh"
+	 * for the Dreamcast. The shelf's Core row chooses among them (src/main.c,
 	 * core_step and core_load); everything else reads `core`. */
 	char cores[CFG_STR];
 	char tag[8];          /* saves, states and per-game configs hang off this,

@@ -16,7 +16,7 @@
 - A first-start tutorial that teaches each button and asks for the theme, home screen, button sounds and menu music.
 - Box art fetched on the handheld from libretro, ScreenScraper and SteamGridDB, and video previews on the shelf.
 - RetroAchievements, signed in on the device, working offline after the first download.
-- PortMaster ports, Nintendo DS with DSperate or DraStic, OpenBOR, ScummVM.
+- PortMaster ports, Nintendo DS with DSperate, OpenBOR, ScummVM.
 - MP4: music, audiobooks and videos, opened with SELECT from anywhere.
 - Wi-Fi and USB File Transfer: a web page on any computer or phone, behind a PIN, with the handheld's own network when there is no Wi-Fi.
 - Battery care (charge limit, charging screen when off, low battery and heat warnings), rumble, side lights, per-system clocks, quick save and quick load on SELECT+R1/L1 into a slot picked per system, faster and slower on SELECT+R2/L2, and turbo.

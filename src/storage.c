@@ -553,7 +553,8 @@ static unsigned long long unused_art(const char *roms, const char *folder,
 	return sum;
 }
 
-/* "<base>.<slot>.state" or ".bmp": its base's length, 0 when it is not one */
+/* "<base>.<slot>.state", ".bmp" or ".lang" (the language a DS game's Auto was
+ * left in, src/dsresume.h): its base's length, 0 when it is not one */
 static size_t state_base_len(const char *name)
 {
 	static const char *const SLOTS[] = { "auto", "1", "2", "3", "4", "5", "6" };
@@ -561,6 +562,7 @@ static size_t state_base_len(const char *name)
 
 	if (ends_ci(name, n, ".state")) n -= 6;
 	else if (ends_ci(name, n, ".bmp")) n -= 4;
+	else if (ends_ci(name, n, ".lang")) n -= 5;
 	else return 0;
 	for (i = 0; i < sizeof SLOTS / sizeof SLOTS[0]; i++) {
 		size_t k = strlen(SLOTS[i]);

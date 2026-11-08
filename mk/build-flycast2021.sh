@@ -70,3 +70,5 @@ mkdir -p "$ROOT/vendor/cores"
 cp "$SO" "$ROOT/vendor/cores/flycast2021_libretro.so"
 echo "  built  flycast2021 ($PIN)"
 echo "  sha256 $GOT"
+# Which patch is in it, for mk/payload.sh to hold it to (mk/core-stamp.sh)
+sh "$ROOT/mk/core-stamp.sh" write flycast2021

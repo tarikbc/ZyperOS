@@ -1,6 +1,7 @@
 # The pop-ups over a running game that are not achievements (src/main.c,
-# on_speed and on_quick): drawn by the launcher, shown by Diatom. A small
-# line over a large one: the first says what happened, the second to what.
+# on_speed and on_quick, and a DS game started fresh in another language):
+# drawn by the launcher, shown by Diatom. A small line over a large one: the
+# first says what happened, the second to what.
 
 [popup.speed]
 note = The pop-up as SELECT+R2 or SELECT+L2 changes the game's speed, first line; under it the step (popup.speed_half or popup.speed_whole).
@@ -100,3 +101,25 @@ fr = Pas de sauvegarde d'état sur
 de = Keine Speicherstände auf
 ja = ステートセーブはありません
 it = Nessuno stato salvato su
+
+[popup.dslang_head]
+note = Over a Nintendo DS game as it starts, first line, when Game Language (sysmenu.dslang) changed since the game was left: its resume point was in the old language, so it starts from the beginning in the new one (src/dsresume.h). Under it popup.dslang_body. The term is the row's own name.
+en = Game Language changed
+zh-Hans = 游戏语言已更改
+es = Cambió el idioma del juego
+pt-BR = O idioma do jogo mudou
+fr = Langue du jeu modifiée
+de = Spielsprache geändert
+ja = ゲームの言語が変わりました
+it = Lingua del gioco cambiata
+
+[popup.dslang_body]
+note = Under popup.dslang_head: the game started from the beginning, not where it was left; its in-game saves are kept.
+en = Started fresh
+zh-Hans = 已从头开始
+es = Empezó desde el principio
+pt-BR = Começou do início
+fr = Démarré depuis le début
+de = Von vorn gestartet
+ja = 最初から始めました
+it = Ripartito dall'inizio

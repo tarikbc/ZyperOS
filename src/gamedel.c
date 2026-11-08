@@ -673,6 +673,8 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 			plan_add(p, GD_FILE, "%s/%s/%s.%s.state", card->states, g->folder, sbase, SLOTS[i]);
 			plan_add(p, GD_FILE, "%s/%s/%s.%s.bmp", card->states, g->folder, sbase, SLOTS[i]);
 		}
+		/* and the language a DS game's Auto was left in (src/dsresume.h) */
+		plan_add(p, GD_FILE, "%s/%s/%s.auto.lang", card->states, g->folder, sbase);
 	}
 
 	/* 4. Its cover and video snap, and what a fetch stopped halfway leaves
