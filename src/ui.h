@@ -229,6 +229,10 @@ void ui_text_memo_clear(void);
 /* A new frame starts: the rects and lines the host's overflow check kept of
  * the last are forgotten (src/ui.c, "the box a string must stay inside") */
 void ui_fit_frame(void);
+/* A string drawn some way that is not ui_text (a notice's, rendered for
+ * Diatom to show): said as drawn to the host's check, which holds it to its
+ * box where it is cut (ui_fit_text) */
+void ui_fit_drawn(const char *s);
 #ifdef I18N_PSEUDO
 /* A cleared screen is a new frame for it too */
 #define SDL_RenderClear(r) (ui_fit_frame(), SDL_RenderClear(r))
