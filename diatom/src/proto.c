@@ -261,6 +261,8 @@ static void parse_line(char *line, diatom_msg *out)
 			snprintf(out->power, sizeof out->power, "%s", v);
 		else if (!strcmp(field, "controller"))
 			out->controller = (unsigned)strtoul(v, NULL, 10);
+		else if (!strcmp(field, "stick"))
+			snprintf(out->stick, sizeof out->stick, "%s", v);
 		else if (!strcmp(field, "layout"))
 			snprintf(out->layout, sizeof out->layout, "%s", v);
 		else if (!strcmp(field, "swap")) snprintf(out->swap, sizeof out->swap, "%s", v);
