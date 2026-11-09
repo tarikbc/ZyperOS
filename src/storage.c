@@ -1085,9 +1085,12 @@ static bool media_add(st_media **v, int *n, int *cap, const char *rel, const cha
 		*v = nv;
 		*cap = nc;
 	}
-	m = &(*v)[(*n)++];
+	m = &(*v)[*n];
 	memset(m, 0, sizeof *m);
-	snprintf(m->rel, sizeof m->rel, "%s", rel);
+	/* A path that does not fit is no item: cut short it would name another
+	 * file or folder, and st_delete_media deletes what an item names */
+	if (snprintf(m->rel, sizeof m->rel, "%s", rel) >= (int)sizeof m->rel) return false;
+	(*n)++;
 	snprintf(m->name, sizeof m->name, "%s", name);
 	snprintf(m->parent, sizeof m->parent, "%s", parent);
 	m->bytes = bytes;
@@ -1168,7 +1171,7 @@ static void media_items(const char *card, st_media_kind k)
 						if (kd[0] == '.') continue;
 						if (snprintf(sub, sizeof sub, "%s/%s", p, kd) >= (int)sizeof sub) continue;
 						walk(sub, false, true, false, &t);
-						snprintf(rel, sizeof rel, "%s/%s", e->d_name, kd);
+						if (snprintf(rel, sizeof rel, "%s/%s", e->d_name, kd) >= (int)sizeof rel) continue;
 						media_add(&v, &n, &cap, rel, kd, e->d_name, t.bytes, t.audio_n, true);
 					}
 					free(kids);
@@ -1820,6 +1823,17 @@ unsigned long long st_delete_media(const st_paths *p, st_media_kind k, const cha
 		if (slash && !*c) return 0;
 	}
 	if (snprintf(path, sizeof path, "%s/%s/%s", p->card, st_media_root(k), rel) >= (int)sizeof path) return 0;
+	/* Only what the walk found and listed: a path no item names exactly,
+	 * whatever it is, is never deleted */
+	{
+		bool known = false;
+
+		pthread_mutex_lock(&g_mu);
+		for (i = 0; i < g_nmedia[k] && !known; i++)
+			known = !strcmp(g_media[k][i].rel, rel);
+		pthread_mutex_unlock(&g_mu);
+		if (!known) return 0;
+	}
 	/* Neither it nor the folder it is in may be a link */
 	if (parts == 2) {
 		char up[PATH_MAX_ST];
