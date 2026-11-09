@@ -186,6 +186,17 @@ de = Spieldetails
 ja = ゲームの詳細
 it = Dettagli del gioco
 
+[controls.fresh]
+note = What Y does on a shelf: start the game from its beginning, not from where it was left (its own saves stay).
+en = From the start
+zh-Hans = 从头开始
+es = Desde el inicio
+pt-BR = Do início
+fr = Depuis le début
+de = Von vorn
+ja = 最初から
+it = Dall'inizio
+
 [controls.favorite]
 note = What Y does on a shelf: mark the game a favorite.
 en = Favorite

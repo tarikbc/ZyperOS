@@ -67,27 +67,16 @@ de = Systeme
 ja = システム
 it = Sistemi
 
-[games.favorite]
-note = The hint by Y: mark the game a favorite
-en = Favorite
-zh-Hans = 收藏
-es = Favorito
-pt-BR = Favoritar
-fr = Favori
-de = Favorisieren
-ja = お気に入り
-it = Preferito
-
-[games.favorited]
-note = The hint by Y when the game is a favorite already
-en = Favorited
-zh-Hans = 已收藏
-es = En favoritos
-pt-BR = Favoritado
-fr = Dans les favoris
-de = Favorisiert
-ja = お気に入り済み
-it = Nei preferiti
+[games.fresh]
+note = The hint by Y on a game with a resume point: start it from its beginning instead (the game's own saves stay)
+en = From the Start
+zh-Hans = 从头开始
+es = Desde el inicio
+pt-BR = Do início
+fr = Depuis le début
+de = Von vorn
+ja = 最初から
+it = Dall'inizio
 
 [games.details]
 note = The hint by X: the game's info screen

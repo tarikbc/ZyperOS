@@ -11,7 +11,7 @@ static const char *keep(menu_snap *s, const char *t)
 	char *d;
 
 	if (!t || t == MENU_NOTE_MARK || t == MENU_BODY_MARK || t == MENU_HR_MARK || t == MENU_TICK ||
-	    t == MENU_KEY_X)
+	    t == MENU_KEY_X || t == MENU_KEY_Y_ON || t == MENU_KEY_Y_OFF)
 		return t;
 	len = strlen(t) + 1;
 	if (len > sizeof s->text - s->used) { s->ok = false; return NULL; }

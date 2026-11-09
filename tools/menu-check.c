@@ -1376,7 +1376,19 @@ static void info_rows(void)
 	snprintf(gi.genre, sizeof gi.genre, "Platform,Shoot'em Up");
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with a year, a genre and prose:\n");
-	ck(n == GI_MAX, "three rows more than an unscraped game");
+	ck(n == GI_MAX - 1, "three rows more than an unscraped game");
+	{
+		game_info fg = gi;
+		menu_row fr[GI_MAX];
+		int fn, j, at = -1;
+
+		fg.can_favorite = true;
+		fg.favorite = true;
+		fn = gi_rows(fr, &fg, true);
+		for (j = 0; j < fn; j++) if (!strcmp(fr[j].label, "Favorite")) at = j;
+		ck(fn == GI_MAX && at >= 0 && fr[at].live && fr[at].value == MENU_KEY_Y_ON,
+		   "a game that can be a favorite has the Favorite row, live, with Y's glyph and On");
+	}
 	ck(!strcmp(rows[0].label, "Synopsis"), "what the game IS leads");
 	ck(rows[0].live, "and opens, because the prose does not fit on a row");
 	ck(!strcmp(rows[1].label, "Year") && !strcmp(val(&rows[1]), "1995"),
@@ -1393,7 +1405,7 @@ static void info_rows(void)
 	gi.can_delete = false;
 	n = gi_rows(rows, &gi, true);
 	printf("game info on Ports, whose games are not deleted here:\n");
-	ck(n == GI_MAX - 1, "one row fewer");
+	ck(n == GI_MAX - 2, "one row fewer");
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Delete Game") != 0, "no Delete Game row");
 	ck(!strcmp(rows[n - 1].label, "Replace Box Art"), "the art action last");
@@ -1401,7 +1413,7 @@ static void info_rows(void)
 	gi.own_art = true;
 	n = gi_rows(rows, &gi, true);
 	printf("game info on PortMaster, whose cover is its own:\n");
-	ck(n == GI_MAX - 2, "no art action either");
+	ck(n == GI_MAX - 3, "no art action either");
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Replace Box Art") && strcmp(lbl(&rows[i]), "Get Box Art"),
 		   "no Box Art row");
@@ -1418,14 +1430,14 @@ static void info_rows(void)
 	gi.has_synopsis = true;
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with no year:\n");
-	ck(n == GI_MAX - 1, "the Year row is simply absent");
+	ck(n == GI_MAX - 2, "the Year row is simply absent");
 	ck(!strcmp(rows[0].label, "Synopsis"), "and Synopsis still leads");
 	ck(!strcmp(rows[1].label, "Genre"), "with the genre where the year was");
 
 	gi.genre[0] = '\0';
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with neither year nor genre:\n");
-	ck(n == GI_MAX - 2, "both are simply absent");
+	ck(n == GI_MAX - 3, "both are simply absent");
 	ck(!strcmp(rows[1].label, "Achievements"), "leaving the prose and the two actions");
 }
 
