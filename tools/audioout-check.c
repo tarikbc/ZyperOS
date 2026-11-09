@@ -159,32 +159,54 @@ static void names(void)
 
 /* ---- which ears hear what ---------------------------------------------------
  *
- * Four choices and four destinations, sixteen cases: every one, because the
- * point of the setting is a player who cannot hear one side, and the case
- * nobody thought of is the one that puts the sound there. */
+ * Five choices, four destinations and two speakers - one, as on the Pixel 2,
+ * or two, as on the Brick - forty cases: every one, because the point of the
+ * setting is a player who cannot hear one side, and the case nobody thought
+ * of is the one that puts the sound there. */
 static void channels(void)
 {
 	aout_state s;
-	int c, d, n = 0;
+	char label[64];
+	int c, d, one, n = 0;
 
 	printf("which ears hear what:\n");
-	for (c = 0; c < AOUT_CHANNELS_COUNT; c++)
-		for (d = AOUT_SPK; d <= AOUT_USB; d++) {
-			aout_channels got = aout_channels_for((aout_channels)c, (aout_dest)d);
-			aout_channels want = (aout_channels)c;
+	for (one = 0; one < 2; one++)
+		for (c = 0; c < AOUT_CHANNELS_COUNT; c++)
+			for (d = AOUT_SPK; d <= AOUT_USB; d++) {
+				aout_channels got = aout_channels_for((aout_channels)c, (aout_dest)d, one);
+				aout_channels want = (aout_channels)c;
 
-			if (d == AOUT_SPK && (c == AOUT_MONO_LEFT || c == AOUT_MONO_RIGHT))
-				want = AOUT_MONO;
-			ck(got == want, "the mix for each choice and destination");
-			n++;
-		}
-	ck(n == 16, "sixteen combinations were actually tried");
-	ck(aout_channels_for(AOUT_MONO_LEFT, AOUT_SPK) == AOUT_MONO,
+				if (d == AOUT_SPK && (c == AOUT_MONO_LEFT || c == AOUT_MONO_RIGHT))
+					want = AOUT_MONO;
+				if (c == AOUT_CHANNELS_AUTO)
+					want = d == AOUT_SPK && one ? AOUT_MONO : AOUT_STEREO;
+				ck(got == want, "the mix for each choice, destination and speaker");
+				ck(got != AOUT_CHANNELS_AUTO, "and it is a mix, never Auto");
+				n++;
+			}
+	ck(n == 40, "forty combinations were actually tried");
+	ck(aout_channels_for(AOUT_MONO_LEFT, AOUT_SPK, false) == AOUT_MONO,
 	   "one side on the speaker is mono, never silence");
-	ck(aout_channels_for(AOUT_MONO_RIGHT, AOUT_WIRED) == AOUT_MONO_RIGHT,
+	ck(aout_channels_for(AOUT_MONO_RIGHT, AOUT_WIRED, true) == AOUT_MONO_RIGHT,
 	   "one side on headphones is that side");
-	ck(aout_channels_for(AOUT_MONO_LEFT, AOUT_BT) == AOUT_MONO_LEFT,
+	ck(aout_channels_for(AOUT_MONO_LEFT, AOUT_BT, false) == AOUT_MONO_LEFT,
 	   "and on a headset");
+	/* Auto: mono on the Pixel 2's one speaker, stereo as soon as the jack
+	 * says headphones, and stereo on the Brick's two speakers */
+	ck(aout_channels_for(AOUT_CHANNELS_AUTO, AOUT_SPK, true) == AOUT_MONO,
+	   "Auto on one speaker is mono");
+	ck(aout_channels_for(AOUT_CHANNELS_AUTO, AOUT_WIRED, true) == AOUT_STEREO,
+	   "Auto on headphones is stereo");
+	ck(aout_channels_for(AOUT_CHANNELS_AUTO, AOUT_USB, true) == AOUT_STEREO,
+	   "and on a USB-C DAC");
+	ck(aout_channels_for(AOUT_CHANNELS_AUTO, AOUT_SPK, false) == AOUT_STEREO,
+	   "Auto on two speakers is stereo");
+	ck(aout_channels_for(AOUT_STEREO, AOUT_SPK, true) == AOUT_STEREO,
+	   "Stereo chosen is stereo even on one speaker");
+	aout_channels_label(AOUT_CHANNELS_AUTO, AOUT_MONO, label, sizeof label);
+	ck(!strcmp(label, "auto (mono)"), "Auto's row says the mix it makes");
+	aout_channels_label(AOUT_MONO_LEFT, AOUT_MONO, label, sizeof label);
+	ck(!strcmp(label, "mono left"), "and a choice names itself");
 
 	/* Each program's own destination, from the device it was given. */
 	s = st(AOUT_AUTO, false, BT);
@@ -202,6 +224,7 @@ static void channels(void)
 		   "each wire name parses back to itself");
 	ck(!strcmp(aout_channels_wire(AOUT_MONO_LEFT), "left"), "the wire says left");
 	ck(!strcmp(aout_channels_name(AOUT_MONO_LEFT), "mono left"), "the menu says mono left");
+	ck(!strcmp(aout_channels_wire(AOUT_CHANNELS_AUTO), "auto"), "the setting says auto");
 	ck(aout_channels_parse("both") == AOUT_STEREO, "an unknown name is stereo");
 	ck(aout_channels_parse(NULL) == AOUT_STEREO, "and so is none");
 }

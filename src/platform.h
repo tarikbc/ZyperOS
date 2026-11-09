@@ -401,6 +401,10 @@ void plat_charge_limit_set(int pct);
  * hides everything that needs it (src/sys_menu.h). */
 bool plat_has_wifi(void);
 bool plat_has_bluetooth(void);
+/* Whether the built-in speaker is one speaker, as on the GKD Pixel 2, where
+ * the Brick has two: Audio Channels' Auto is mono there and stereo on
+ * everything else (src/audioout.h). */
+bool plat_speaker_mono(void);
 
 /* Whether brightness is FUNCTION with the volume keys, the device having no
  * brightness keys of its own. What MENU > Controls calls them (controls.h). */

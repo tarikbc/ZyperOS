@@ -289,6 +289,14 @@ void bgm_one_side(int16_t *pcm, int frames, bool left)
 	}
 }
 
+void bgm_mono(int16_t *pcm, int frames)
+{
+	int i;
+
+	for (i = 0; i < frames; i++)
+		pcm[2 * i] = pcm[2 * i + 1] = (int16_t)(((int)pcm[2 * i] + pcm[2 * i + 1]) / 2);
+}
+
 /* ---- the rate ------------------------------------------------------------------------ */
 
 void bgm_rs_init(bgm_rs *r, int in_rate, int out_rate)

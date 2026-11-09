@@ -27,10 +27,14 @@ bool mp4lock_step(mp4lock *l, unsigned now, const bool down[IN_COUNT],
 	l->now = now;
 	if (!l->locked) return false;
 	/* A volume key, pressed or still held: the bar's whole life from now.
-	 * Pressed as well as down, for a tap let go inside one pass. */
-	for (k = 0; k < IN_COUNT; k++)
+	 * Pressed as well as down, for a tap let go inside one pass. Any other
+	 * key pressed: the way out, for a moment, from now. */
+	for (k = 0; k < IN_COUNT; k++) {
 		if (mp4lock_passes((in_button)k) && (down[k] || pressed[k]))
 			l->vol_until = now + MP4_VOLUME_LIT_MS;
+		else if (!mp4lock_passes((in_button)k) && pressed[k])
+			l->lit_until = now + MP4_SHOW_MS;
+	}
 	if (!a && !b) l->armed = true;
 	if (!l->armed || !a || !b) {
 		l->held_from = 0;
@@ -74,4 +78,23 @@ unsigned mp4lock_next(const mp4lock *l)
 	if ((int)(l->vol_until - l->now) > 0 && l->vol_until - l->now < next)
 		next = l->vol_until - l->now;
 	return next;
+}
+
+mp4c_said mp4chord_step(mp4chord *c, const bool down[IN_COUNT],
+                        const bool pressed[IN_COUNT])
+{
+	/* Pressed as well as down, for a tap let go inside one pass */
+	bool a = down[MP4_UNLOCK_A] || pressed[MP4_UNLOCK_A];
+	bool b = down[MP4_UNLOCK_B] || pressed[MP4_UNLOCK_B];
+
+	if (a && b && (pressed[MP4_UNLOCK_A] || pressed[MP4_UNLOCK_B])) {
+		c->select = false;
+		return MP4C_LOCK;
+	}
+	if (pressed[MP4_UNLOCK_A] && !b) c->select = true;
+	if (c->select && !down[MP4_UNLOCK_A]) {
+		c->select = false;
+		return MP4C_SELECT;
+	}
+	return MP4C_NONE;
 }

@@ -414,6 +414,21 @@ static void videos(void)
 	      !strcmp(ml_order_label_kind(ML_BY_ALBUM, ML_VIDEOS), "Title"),
 	      "the video shelf's orders are Folder and Title");
 
+	/* All: the album and the four videos on one shelf, mixed - by folder,
+	 * the folders' names (a loose film's own), and by title, the titles */
+	CHECK(ml_count_kind(&l, ML_ALL) == 5, "All counts every album: %d", ml_count_kind(&l, ML_ALL));
+	n = ml_shelf_order_kind(&l, ML_BY_ARTIST, ML_ALL, out);
+	CHECK(n == 5 && out[0] == album_named(&l, "Another Film") &&
+	      out[1] == album_named(&l, "Parklife") && out[2] == film && out[3] == eps && out[4] == s1,
+	      "All by folder: Another Film, Blur's Parklife, John Mayer, Planet Earth, The Office");
+	n = ml_shelf_order_kind(&l, ML_BY_ALBUM, ML_ALL, out);
+	CHECK(n == 5 && out[0] == album_named(&l, "Another Film") && out[1] == film &&
+	      out[2] == album_named(&l, "Parklife") && out[3] == eps && out[4] == s1,
+	      "All by title, the album among the films");
+	CHECK(!strcmp(ml_order_label_kind(ML_BY_ARTIST, ML_ALL), "Folder") &&
+	      !strcmp(ml_order_label_kind(ML_BY_ALBUM, ML_ALL), "Title"),
+	      "All's orders are Folder and Title");
+
 	ml_cover_base(c, &l, film, img, sizeof img);
 	snprintf(want, sizeof want, "%s/Videos/.media/John Mayer - Where the Light Is", c);
 	CHECK(!strcmp(img, want), "a film's cover is kept by its file: %s", img);

@@ -25,7 +25,7 @@ static const db_default device_defaults[] = {
 	{ "volume",     "8"  },
 	{ "brightness", "7"  },
 	{ "audioout",   "auto" },  /* auto | speaker - see src/audioout.h */
-	{ "channels",   "stereo" },/* stereo | mono | left | right - ditto */
+	{ "channels",   "auto" },  /* auto | stereo | mono | left | right - ditto */
 	{ "home",       "spotlight" }, /* home layout, independent of Appearance */
 	{ "battery_icon", "bars" },  /* bars | percentage | time: the corner's battery */
 	{ "autooff",    "120" },   /* seconds without input, 0 is off */

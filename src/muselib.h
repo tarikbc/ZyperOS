@@ -33,8 +33,12 @@
 
 typedef struct { char name[128]; char path[LIB_PATH]; } ml_track;
 
-/* The three kinds MP4's one shelf holds, each from its own folder. */
-typedef enum { ML_MUSIC, ML_BOOKS, ML_VIDEOS, ML_KINDS } ml_kind;
+/* The three kinds MP4's one shelf holds, each from its own folder. ML_ALL is
+ * no album's kind but a shelf's: every album of every kind on one shelf, which
+ * MENU > Show calls All and starts on (2026-11-09: "Tudo", albums and videos
+ * mixed together). The same number as ML_KINDS, so a table of the three is
+ * never read at it. */
+typedef enum { ML_MUSIC, ML_BOOKS, ML_VIDEOS, ML_KINDS, ML_ALL = ML_KINDS } ml_kind;
 /* `singles`: Music/Singles, the songs the launcher moved there from the top of
  * Music/, where they were in no folder and so on no shelf (Eric's call,
  * 2026-10-05). An ordinary album in every way but one: it is no record, so
@@ -66,7 +70,7 @@ bool ml_scan(const char *root, ml_lib *out);
  * False only when none of the folders is there. */
 bool ml_scan_card(const char *card, ml_lib *out);
 
-/* How many albums of one kind: books, or music. */
+/* How many albums of one kind: books, or music; ML_ALL, every album. */
 int ml_count(const ml_lib *l, bool books);
 int ml_count_kind(const ml_lib *l, ml_kind k);
 void ml_free(ml_lib *lib);
@@ -136,7 +140,8 @@ typedef enum { ML_BY_ARTIST, ML_BY_ALBUM, ML_ORDERS } ml_order;
 const char *ml_order_name(ml_order o);
 const char *ml_order_label(ml_order o, bool books);
 /* The same for any kind: on videos the two orders are Folder - Videos as it
- * is laid out, its folders and then its loose films - and Title. */
+ * is laid out, its folders and then its loose films - and Title, and so they
+ * are on All's shelf. */
 const char *ml_order_label_kind(ml_order o, ml_kind k);
 /* The order a stored name is. By artist for one it does not know. */
 ml_order ml_order_index(const char *name);
@@ -145,6 +150,11 @@ ml_order ml_order_index(const char *name);
  * every album that is a book or is not, as `books` says. Returns how many.
  * Out of memory it is the scan's order, which is a shelf and not a wrong one. */
 int ml_shelf_order(const ml_lib *l, ml_order by, bool books, int *out);
+/* ...of any kind. ML_ALL is every album, music, books and videos mixed: by
+ * title in the album order, and in the folder order by the folder each is
+ * in - the artist's, the author's, the series' - so Music/Radiohead and
+ * Videos/Breaking Bad stand where their names put them, rather than every
+ * song before every film. A film loose in Videos goes by its own name. */
 int ml_shelf_order_kind(const ml_lib *l, ml_order by, ml_kind k, int *out);
 
 #endif

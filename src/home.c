@@ -577,7 +577,7 @@ void home_header(SDL_Renderer *r,const home_song *song,int status_left)
 {
     draw_state saved=save_state(r);
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
-    /* The clock stands at the left end now (draw_corner_at), not the
+    /* The clock stands at the left end now (src/topbar.h), not the
      * wordmark; the song keeps the middle, clear of both. */
     if(song && song->active) {
         const int left=272, right=status_left-24, mark=24, gap=12;

@@ -45,11 +45,26 @@ void aout_save(aout_policy p)
  * aout_channels_for. */
 aout_channels g_channels;
 
+/* Auto has been the default since 2026-11-09 (src/audioout.h). The database
+ * seeds a setting's default once, so every handheld from before holds the
+ * old one, "stereo", whether the player chose it or not - there is no telling
+ * the two apart. Moved to Auto once, which changes nothing but the one
+ * speaker of a Pixel 2 (stereo on the Brick, on headphones, on a headset);
+ * Stereo chosen again after it stays. */
+#define CHANNELS_AUTO_ONCE "channels.auto_once"
+
 aout_channels channels_load(void)
 {
 	char v[16];
 
-	db_get_str(db_dev(), "channels", v, sizeof v, "stereo");
+	db_get_str(db_dev(), "channels", v, sizeof v, "auto");
+	if (!db_has(db_dev(), CHANNELS_AUTO_ONCE)) {
+		if (!strcmp(v, "stereo")) {
+			snprintf(v, sizeof v, "auto");
+			db_set_str(db_dev(), "channels", v);
+		}
+		db_set_str(db_dev(), CHANNELS_AUTO_ONCE, "1");
+	}
 	return aout_channels_parse(v);
 }
 
@@ -66,9 +81,9 @@ static void channels_tell(const aout_state *s, const char *diatom_dev,
                           const char *muse_dev)
 {
 	plat_resident_channels(aout_channels_wire(
-		aout_channels_for(g_channels, aout_dest_of(s, diatom_dev))));
+		aout_channels_for(g_channels, aout_dest_of(s, diatom_dev), plat_speaker_mono())));
 	musec_channels(aout_channels_wire(
-		aout_channels_for(g_channels, aout_dest_of(s, muse_dev))));
+		aout_channels_for(g_channels, aout_dest_of(s, muse_dev), plat_speaker_mono())));
 }
 
 /* The connected sink, published by bt_reconnect in launch.sh.
@@ -318,10 +333,13 @@ static void bt_volume_follow(const char *out, bool fresh)
 static void ui_sounds_route(const aout_state *s)
 {
 	bool l, r;
+	/* The menu music in mono as well where the rest is: its tracks are
+	 * stereo, where the interface's sounds are mono already */
+	bool mono = aout_channels_for(g_channels, aout_resolve(s), plat_speaker_mono()) == AOUT_MONO;
 
 	uisound_sides(g_channels, aout_resolve(s), &l, &r);
 	uisound_route(uisound_device(s), l, r);
-	bgm_route(uisound_device(s), l, r);          /* menu music, the same way */
+	bgm_route(uisound_device(s), l, r, mono);    /* menu music, the same way */
 }
 
 void ui_sounds_follow(void)

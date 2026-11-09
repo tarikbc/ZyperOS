@@ -54,6 +54,7 @@ static struct {
 	unsigned    hold;
 	char        want[64];      /* the device; "" is nowhere */
 	bool        left, right;   /* the sides that carry it */
+	bool        mono;          /* and both channels on both (bgm_route) */
 	unsigned    skips;         /* bgm_skip()s and R2s asked for */
 	unsigned    backs;         /* ...and L2s */
 	bool        rescan;
@@ -283,6 +284,7 @@ static void fade_out(player *p)
 		g1 = (int)((long long)g0 * (left - n) / left);
 		bgm_apply(g_out, n, g0, g1);
 		if (g.left != g.right) bgm_one_side(g_out, n, g.left);
+		else if (g.mono) bgm_mono(g_out, n);
 		p->gain = g1;
 		left -= n;
 		SDL_UnlockMutex(g.lock);
@@ -378,6 +380,7 @@ static int run(void *unused)
 		g1 = bgm_gain(g.volume, p.fade, p.fade_len);
 		bgm_apply(g_out, n, g0, g1);
 		if (g.left != g.right) bgm_one_side(g_out, n, g.left);
+		else if (g.mono) bgm_mono(g_out, n);
 		p.gain = g1;
 		SDL_UnlockMutex(g.lock);
 		n = pcm_out_write(&g_pcm, g_out, n) ? 0 : -1;
@@ -499,15 +502,16 @@ void bgm_rescan(void)                 { SET(g.rescan = true); }
 /* Asked on every pass of the shelf's loop (aout_apply), so the thread is told
  * only of a change: told every time, it woke 65 times a second to find the
  * same device (2026-11-07). uisound_route does the same. */
-void bgm_route(const char *device, bool left, bool right)
+void bgm_route(const char *device, bool left, bool right, bool mono)
 {
 	const char *want = device ? device : "";
 
 	if (g.lock) SDL_LockMutex(g.lock);
-	if (strcmp(g.want, want) || g.left != left || g.right != right) {
+	if (strcmp(g.want, want) || g.left != left || g.right != right || g.mono != mono) {
 		snprintf(g.want, sizeof g.want, "%s", want);
 		g.left = left;
 		g.right = right;
+		g.mono = mono;
 		if (g.lock) SDL_CondSignal(g.wake);
 	}
 	if (g.lock) SDL_UnlockMutex(g.lock);

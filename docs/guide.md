@@ -184,7 +184,7 @@ than any one console:
 | **Wi-Fi** | the network's name when connected, or why it is not |
 | **Bluetooth** | the connected headset, or `not connected` - pair, connect and forget |
 | **Audio Output** | `Auto` or `Speaker`, and where Auto landed - see **Audio** below |
-| **Audio Channels** | `stereo`, `mono`, `mono left` or `mono right` - see **Audio** below |
+| **Audio Channels** | `auto`, `stereo`, `mono`, `mono left` or `mono right` - see **Audio** below. `auto` on a new device and after an upgrade |
 | **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
@@ -241,13 +241,14 @@ west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
 screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
-The shelf shows the time in its top right corner, with Wi-Fi and the battery
-beside it, and a Bluetooth headset on the Brick while one is connected. Wi-Fi's fan is crossed
+The shelf shows the time at its top left, and Wi-Fi and the battery at its
+top right, with a Bluetooth headset on the Brick while one is connected. Wi-Fi's fan is crossed
 while the radio is on and not connected, and gone when it is off. The battery
 turns red at 10%, its fill blinks at 5%, and it shows a bolt while it charges.
 The clock is not shown until it is set to 2026 or later, so a Pixel 2 that was
-never set does not show a time that is not now. The same corner is on Now
-Playing and over the menu of a paused game.
+never set does not show a time that is not now. The same header is on every
+MP4 screen - its shelf, an album's tracks, Now Playing and a video with its
+controls - and over the menu of a paused game.
 
 Wi-Fi File Transfer and Scraper's fetch need a network, and go quiet without one rather than
 disappearing - a row that vanishes teaches nobody why. Achievements stays reachable
@@ -508,12 +509,21 @@ connected, and neither setting can route to one that is not there. The row
 shows where the sound actually went - `auto (wired)` - because `Auto` on its
 own names a rule, not a place you can hear.
 
-The **Audio Channels** row is for anyone who hears with one ear. `mono` plays
+The **Audio Channels** row starts on `auto`: mono on the Pixel 2's speaker,
+which is one speaker, and stereo everywhere else - headphones in the jack, a
+USB-C adapter, and the Brick's two speakers. The row says which it is making
+now, `auto (mono)` or `auto (stereo)`, and plugging headphones in switches it
+as the jack notices them. `stereo` is stereo everywhere, the speaker
+included. Mono is the two channels averaged, so it is never louder than the
+louder of them and never clips.
+
+The other choices are for anyone who hears with one ear. `mono` plays
 the two channels as one in both ears, so nothing a game or a song puts on one
 side alone is lost. `mono left` and `mono right` put that sound in one ear
 only, with the other silent, on headphones, a Bluetooth headset or a USB-C
 adapter. On the speaker they play as `mono`, since a speaker is not on one
-ear. It covers games and MP4 alike, and takes effect as you change it.
+ear. It covers games, MP4 and the menu music alike, and takes effect as you
+change it.
 
 The wired jack has its own volume range, not the speaker's. The two are about
 9 dB apart, and the level is re-mapped the moment a cable goes in or out, so
@@ -610,18 +620,23 @@ album opens its tracks. MENU, anywhere in MP4, has the album count, Show,
 Sort By, Album Art (below), and Rescan Folder for music copied on while the
 Brick was running.
 
-**Show** switches the shelf between music and audiobooks, and is there only
-when the card has both. MP4 opens on whichever you left it on, except that
-SELECT with a book playing lands on the books, on that book.
+**Show** is `All` to start with: your albums, books and videos on one shelf,
+mixed, its count in MENU as the Total. It switches the shelf to music,
+audiobooks or videos alone, and is there only when the card has more than one
+of them. MP4 opens on whichever you left it on, except that SELECT with
+something playing that the shelf does not show lands on that kind, on what is
+playing.
 
 **Sort By** puts the shelf in order by artist, the way the folders are, or by
 album title, two of the same title going in their artists' order. The jump
-goes by the initial of whichever it is: an artist's, or an album's.
+goes by the initial of whichever it is: an artist's, or an album's. On `All`
+the two are Folder, every album, book and series by the name of the folder
+it is in (a film on its own by its own name), and Title.
 
 **SELECT** opens MP4 from anywhere that is not a running game: the
 shelf, every menu, and the in-game menu, where the game waits paused
-underneath. SELECT again closes it from any screen in MP4, and the music keeps
-playing. B goes back one screen: Now Playing to the album's tracks, the tracks
+underneath. SELECT again closes it from any screen in MP4, as you let it go,
+and the music keeps playing; with START, it locks the screen instead (below). B goes back one screen: Now Playing to the album's tracks, the tracks
 to the shelf, and the shelf out of MP4. The exceptions are Wi-Fi File Transfer and a
 Box Art fetch, which only keep working while they are on screen.
 
@@ -652,11 +667,13 @@ Playing Y changes the speed instead of the play mode, and on books Sort By is
 by author or by title and there is no Album Art. A book's cover is the one its files carry, or the picture in its
 folder: one named cover or folder, or the only one there.
 
-**Lock Screen**, for a pocket: press **X** on any MP4 screen while something
-plays, or pick Lock Screen in MP4's menu. With music or a book the screen goes
-dark, which on a book playing measured about 6 hours of listening becoming 10;
-a video stays in sight. Every button is ignored, POWER included, except the
-volume keys and a Bluetooth headset's play, pause and skip. The volume keys
+**Lock Screen**, for a pocket: press **X** or **SELECT + START** together on
+any MP4 screen while something plays, or pick Lock Screen in MP4's menu. With
+music or a book the screen goes dark, which on a book playing measured about 6
+hours of listening becoming 10; a video stays in sight. Every button is
+ignored, POWER included, except the volume keys and a Bluetooth headset's
+play, pause and skip, and each press of an ignored one shows the lock screen
+for four seconds, with how to unlock it. The volume keys
 change the volume in the usual steps and show the volume bar: with music the
 screen lights for as long as the bar shows, about a second and a half after
 the last press, and then goes dark again; over a video the bar shows on the
@@ -682,6 +699,7 @@ sound.
 | **Y** | the play mode for music; the speed for a book, 1x to 2x and 0.75x, kept for each book |
 | **B** | the album's tracks |
 | **MENU** | MP4's menu |
+| **X**, or **SELECT + START** | lock the screen |
 | **SELECT** | close MP4 |
 
 **Y changes the play mode on Now Playing**, and only there: in order, then

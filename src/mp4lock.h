@@ -36,12 +36,22 @@
  * let go once after locking before it counts, so a hold that runs on past
  * the lock does not unlock it again.
  *
- * DARK UNTIL UNLOCKED, also his pick: a press of anything but the volume
- * lights nothing. The lock screen shows for a moment when it locks
- * (MP4_SHOW_MS), so locking is seen to happen and the way out is read once,
- * and then only while the pair is held, with the bar filling, or while the
- * volume bar shows. Pure: no clock and no input of its own, so
- * tools/mp4lock-check.c can walk it. */
+ * DARK UNTIL UNLOCKED, also his pick, but for the way out: the lock screen
+ * shows for a moment when it locks (MP4_SHOW_MS), so locking is seen to
+ * happen and the way out is read, and again for the same moment at every
+ * press of a blocked button - mine, 2026-11-09: "show that popup every time
+ * any button is pressed while the screen is locked, not only once". A press
+ * that does nothing says why and how to open it, rather than nothing; a key
+ * held lights it once, as it goes down, so a pocket leaning on one does not
+ * keep the screen on. Then it shows while the pair is held, with the bar
+ * filling, and while the volume bar shows. Pure: no clock and no input of
+ * its own, so tools/mp4lock-check.c can walk it.
+ *
+ * THE SAME PAIR LOCKS, mine, 2026-11-09: SELECT + START pressed together on
+ * an MP4 screen locks it, as X does, so one gesture locks and unlocks. SELECT
+ * alone still closes MP4, which it did on its press: it now does it as it is
+ * let go, since a SELECT pressed a moment before START is the start of the
+ * pair (mp4chord below). */
 
 #define MP4_UNLOCK_MS     ((unsigned)DS_MS_HOLD_UNLOCK)
 #define MP4_SHOW_MS       ((unsigned)DS_MS_HOLD_LOCK_LIT)
@@ -85,5 +95,24 @@ bool mp4lock_awake(const mp4lock *l);
 /* How long until mp4lock_lit or mp4lock_awake changes by itself, in ms, or
  * (unsigned)-1 when neither will - for the caller's next wake. */
 unsigned mp4lock_next(const mp4lock *l);
+
+/* SELECT on an MP4 screen, unlocked: alone, or the first of the pair. */
+typedef struct {
+	bool select;           /* SELECT pressed alone and still down */
+} mp4chord;
+
+typedef enum {
+	MP4C_NONE,
+	MP4C_SELECT,           /* SELECT let go with START never down: close MP4 */
+	MP4C_LOCK,             /* SELECT and START down together: lock */
+} mp4c_said;
+
+/* One pass, with what is down and what was pressed in it. The pair counts
+ * when either goes down while the other is down, whichever came first, and
+ * once: the SELECT under it then closes nothing as it is let go. A SELECT
+ * that was down before the screen's first pass (the one that opened MP4) is
+ * not this screen's, and is nothing. */
+mp4c_said mp4chord_step(mp4chord *c, const bool down[IN_COUNT],
+                        const bool pressed[IN_COUNT]);
 
 #endif

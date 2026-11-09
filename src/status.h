@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The shelf's status corner, DESIGN.md 11.12: the clock and the marks beside
- * it, top right, on the ground and in no shape. My pick in the status
+/* The status marks, DESIGN.md 11.12: the right end of the top bar
+ * (src/topbar.h), on the ground and in no shape. My pick in the status
  * lab, 2026-11-04, "the quiet corner".
  *
- * Right to left from x 1000 (the screen's edge less the inset), all on one
- * row 24 units tall from y 24: the battery, Wi-Fi, a Bluetooth headset on the
- * Brick, then the clock in **meta** **text-soft**, 16 from the first mark.
- * The marks are 12 apart and drawn here, as pixels, into one small buffer the
+ * Right to left, all on one row 24 units tall: the battery, Wi-Fi, a
+ * Bluetooth headset on the Brick, File Transfer. The top bar puts the row's
+ * right end at x 960 and its top at y 52, and the clock at its left end;
+ * STATUS_RIGHT and STATUS_TOP below are the row as this file measures it, at
+ * the screen's edge less the inset. The marks are 12 apart and drawn here, as pixels, into one small buffer the
  * launcher turns into a texture when one of them changes - the clock goes
  * past every minute, a mark at most every couple of seconds - and blits each
  * frame. The clock is text and the launcher's (ui_text_tabular).
@@ -45,7 +46,6 @@
 #define STATUS_ROW       24                  /* the row's height */
 #define STATUS_MID       (STATUS_TOP + STATUS_ROW / 2)  /* the clock's capitals */
 #define STATUS_GAP       12                  /* between two marks */
-#define STATUS_CLOCK_GAP 16                  /* the clock to the first mark */
 
 /* The buffer's margin around the marks, in units, so an edge's antialiasing
  * at the row's top or bottom is not cut off: the buffer's top left goes at
@@ -129,8 +129,7 @@ typedef struct {
 #define STATUS_CALC_W   27
 
 /* The marks' width in units, gaps between them included: 0 for none, 120
- * for all three, 156 with File Transfer's 24. The clock stands
- * STATUS_CLOCK_GAP to the left of it. */
+ * for all three, 156 with File Transfer's 24. */
 int status_marks_width(const status_marks *m);
 
 /* The buffer for the marks at `scale` pixels a unit, margin and all. */

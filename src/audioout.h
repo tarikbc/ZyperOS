@@ -15,6 +15,7 @@
 #define ZYPEROS_AUDIOOUT_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /* What the player asked for. Two positions, not three.
  *
@@ -78,11 +79,22 @@ const char *aout_dest_label(aout_dest d);
  * rather have nothing in the other ear. Diatom and Muse do the mixing, each in
  * its own stream - the codec has no mono, the Brick's ALSA chain is TrimUI's,
  * and a Bluetooth sink bypasses any chain - so this side only decides. */
+/* AUTO, the default since 2026-11-09, is a choice and not a mix: mono on
+ * the speaker of a handheld with one speaker (the GKD Pixel 2), stereo
+ * everywhere else - headphones, a headset, a DAC, and the Brick's two
+ * speakers. My call: "the Pixel 2 has a single speaker, so audio should be
+ * mono by default there". A stereo mix on one speaker is whatever the codec
+ * makes of two channels at one cone, and a song panned hard to one side lost
+ * that side; mono puts both in it. The cable decides between the speaker and
+ * headphones (the jack switch, SW_HEADPHONE_INSERT), so plugging them in
+ * brings stereo back, and Stereo chosen in the menu is stereo on the speaker
+ * too. Last, so the numbers of the four before it stand. */
 typedef enum {
 	AOUT_STEREO = 0,
 	AOUT_MONO,
 	AOUT_MONO_LEFT,
 	AOUT_MONO_RIGHT,
+	AOUT_CHANNELS_AUTO,
 	AOUT_CHANNELS_COUNT
 } aout_channels;
 
@@ -92,21 +104,27 @@ typedef enum {
  * the codec, and the two need different mixes. */
 aout_dest     aout_dest_of(const aout_state *s, const char *dev);
 
-/* The mix a program sending to `d` makes of what was chosen. One side is about
- * ears, and a speaker is not on one: the Brick's two are a few centimeters
- * apart, so a side would only lose loudness, and the GKD Pixel 2 has one,
- * which a side could silence altogether if the codec feeds it from the other
- * channel. On the speaker, left and right are plain mono. Eric's call,
- * 2026-10-11. */
-aout_channels aout_channels_for(aout_channels chosen, aout_dest d);
+/* The mix a program sending to `d` makes of what was chosen: one of the
+ * first four, never AUTO. One side is about ears, and a speaker is not on
+ * one: the Brick's two are a few centimeters apart, so a side would only lose
+ * loudness, and the GKD Pixel 2 has one, which a side could silence
+ * altogether if the codec feeds it from the other channel. On the speaker,
+ * left and right are plain mono. Eric's call, 2026-10-11. `one_speaker` is
+ * plat_speaker_mono(): AUTO is mono on such a speaker and stereo elsewhere. */
+aout_channels aout_channels_for(aout_channels chosen, aout_dest d, bool one_speaker);
 
 /* The menu's names - "stereo", "mono", "mono left", "mono right", in the
  * language that is on - and the ones on the wire to Diatom and Muse and in the settings database: "stereo",
- * "mono", "left", "right". Parsing takes the wire names; anything else is
- * stereo, which is what every output did before there was a choice. */
+ * "mono", "left", "right", and "auto", which only the settings hold: the
+ * programs are told the mix it makes (aout_channels_for). Parsing takes the
+ * wire names; anything else is stereo, which is what every output did before
+ * there was a choice. aout_channels_name names the four mixes; AUTO's row says
+ * the mix it makes now, "auto (mono)", which aout_channels_label writes. */
 const char   *aout_channels_name(aout_channels c);
 const char   *aout_channels_wire(aout_channels c);
 aout_channels aout_channels_parse(const char *wire);
+void          aout_channels_label(aout_channels chosen, aout_channels now, char *out,
+                                  size_t n);
 
 /* ---- the headphone jack, and why a remembered state is not enough --------- */
 

@@ -504,6 +504,7 @@ int ml_count_kind(const ml_lib *l, ml_kind k)
 {
 	int i, n = 0;
 
+	if (k == ML_ALL) return l->nalbums;
 	for (i = 0; i < l->nalbums; i++)
 		if (l->albums[i].kind == k) n++;
 	return n;
@@ -592,7 +593,8 @@ const char *ml_order_label(ml_order o, bool books)
 const char *ml_order_label_kind(ml_order o, ml_kind k)
 {
 	o = (unsigned)o < ML_ORDERS ? o : ML_BY_ARTIST;
-	return T(k == ML_BOOKS ? ORDERS[o].book : k == ML_VIDEOS ? ORDERS[o].video : ORDERS[o].label);
+	return T(k == ML_BOOKS ? ORDERS[o].book : k == ML_VIDEOS || k == ML_ALL ? ORDERS[o].video
+	       : ORDERS[o].label);
 }
 
 ml_order ml_order_index(const char *name)
@@ -619,6 +621,16 @@ static int by_album(const void *a, const void *b)
 	return c ? c : x->al - y->al;
 }
 
+/* The artist - the folder - album `al` is under */
+static int artist_of(const ml_lib *l, int al)
+{
+	int ar;
+
+	for (ar = 0; ar < l->nartists - 1; ar++)
+		if (al < l->artists[ar].first + l->artists[ar].n) break;
+	return ar;
+}
+
 int ml_shelf_order(const ml_lib *l, ml_order by, bool books, int *out)
 {
 	return ml_shelf_order_kind(l, by, books ? ML_BOOKS : ML_MUSIC, out);
@@ -630,12 +642,15 @@ int ml_shelf_order_kind(const ml_lib *l, ml_order by, ml_kind kind, int *out)
 	int i, n = 0;
 
 	for (i = 0; i < l->nalbums; i++)                  /* the scan's, by artist */
-		if (l->albums[i].kind == kind) out[n++] = i;
-	if (by != ML_BY_ALBUM || n < 2) return n;
+		if (kind == ML_ALL || l->albums[i].kind == kind) out[n++] = i;
+	if ((by != ML_BY_ALBUM && kind != ML_ALL) || n < 2) return n;
 	k = malloc(sizeof *k * (size_t)n);
 	if (!k) return n;
 	for (i = 0; i < n; i++) {
-		k[i].album = l->albums[out[i]].name;
+		const char *folder = l->artists[artist_of(l, out[i])].name;
+
+		/* All by folder: the folder's name, or a loose film's own */
+		k[i].album = by == ML_BY_ALBUM || !folder[0] ? l->albums[out[i]].name : folder;
 		k[i].al    = out[i];
 	}
 	qsort(k, (size_t)n, sizeof *k, by_album);
