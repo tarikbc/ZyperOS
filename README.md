@@ -21,6 +21,13 @@
   <a href="#faq">FAQ</a>
 </p>
 
+<!-- tour-video: the tour on zyperos.com (video/README.md) -->
+<p align="center">
+  <a href="https://zyperos.com/#tour"><img src="res/readme/tour-poster.jpg" width="720" alt="Watch the ZyperOS tour: a green GKD Pixel 2 showing a shelf of PlayStation covers, beside the ZyperOS name"></a><br>
+  <sub>The tour, two minutes on zyperos.com</sub>
+</p>
+<!-- /tour-video -->
+
 <div align="center">
 
 <table>
