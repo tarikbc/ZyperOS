@@ -31,7 +31,10 @@ Promise.all([
 
 /** A settled spring with a touch of overshoot: the motion of everything that arrives */
 export const pop = (frame: number, delay = 0, stiffness = 170, damping = 15) =>
-  spring({ frame: frame - delay, fps: FPS, config: { damping, stiffness, mass: 0.7 } });
+  spring({ frame: frame - delay, fps: FPS, config: { damping, stiffness: stiffness * EASE_K, mass: 0.7 } });
+
+/** How brisk every spring is: below 1 eases them, so nothing feels rushed */
+export const EASE_K = 0.72;
 
 /** Where the device is for a pose: scale k, then a shift */
 export const poseOf = (pose: Pose, d: DeviceInfo): Cam => {
@@ -54,7 +57,7 @@ export const mixCam = (a: Cam, b: Cam, t: number): Cam => ({ k: mix(a.k, b.k, t)
 export const punchAt = (frame: number, start: number, end: number, punches: Punch[] | undefined) => {
   let z = 1, px = 0.5, py = 0.5;
   for (const p of punches ?? []) {
-    const a = pop(frame, start + p.at * 15, 120, 18) * (1 - ease(frame, end - 8, end));
+    const a = pop(frame, start + p.at * 15, 120, 18) * (1 - ease(frame, end - 10, end));
     z = mix(z, p.zoom, a);
     px = mix(px, p.x, a);
     py = mix(py, p.y, a);
@@ -114,7 +117,7 @@ export const Label: React.FC<{
   // A long word shrinks the label until it fits its column
   const longest = Math.max(...words.map((w) => w.length));
   size = Math.min(size, Math.floor((width / (longest * 0.56)) * 1));
-  const out = (i: number) => ease(frame, end - 7 + i * 0.5, end - 2 + i * 0.5);
+  const out = (i: number) => ease(frame, end - 9 + i * 0.5, end - 2 + i * 0.5);
   return (
     <div style={{ position: "absolute", left: x, top: y, width, transform: anchor === "middle" ? "translateY(-50%)" : undefined,
       fontFamily: FONT, textAlign: align }}>
@@ -122,7 +125,7 @@ export const Label: React.FC<{
         marginLeft: align === "center" ? "auto" : 0, marginRight: align === "center" ? "auto" : 0, opacity: 1 - out(0) }} />
       <div style={{ fontSize: size, lineHeight: 1.04, fontWeight: 600, color: t.text, letterSpacing: -1 }}>
         {words.map((w, i) => {
-          const k = pop(frame, at + i * 2, 210, 17);
+          const k = pop(frame, at + i * 3, 210, 17);
           return (
             <span key={i} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "top", paddingBottom: 6, marginRight: "0.24em" }}>
               <span style={{ display: "inline-block", transform: `translateY(${(1 - k) * 105 - out(i) * 110}%)` }}>{w}</span>

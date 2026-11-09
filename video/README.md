@@ -1,6 +1,6 @@
 # The ZyperOS tour video
 
-A 75-second tour of ZyperOS for the README, zyperos.com and anyone who wants to show
+A 95-second tour of ZyperOS for the README, zyperos.com and anyone who wants to show
 it. Every screen in it is the launcher's own: the host build of ZyperOS
 (`make native`) draws each frame, as the Pixel 2 would, on a sample library
 with the games' real box art. [Remotion](https://www.remotion.dev) puts those

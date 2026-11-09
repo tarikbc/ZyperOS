@@ -2,7 +2,7 @@ import React from "react";
 import { CalculateMetadataFunction, Composition, staticFile, Still } from "remotion";
 import { Tour, TourProps } from "./Tour";
 import { Poster, PosterProps } from "./Poster";
-import { FPS, TOTAL } from "./timeline";
+import { CLIPS, FPS, TOTAL } from "./timeline";
 
 /** The footage index (video/footage/takes.py) and the device's screen rect (video/device) */
 const load = async () => {
@@ -13,7 +13,21 @@ const load = async () => {
   return { footage, device };
 };
 
-const tourMeta: CalculateMetadataFunction<TourProps> = async () => ({ props: await load() });
+/** Every clip inside its take: a scene longer than its footage would show black */
+const check = (footage: Record<string, { ms: number }>) => {
+  for (const c of CLIPS) {
+    if (c.kind !== "take") continue;
+    const need = c.fromMs + (c.len / FPS) * 1000 * c.rate;
+    const have = footage[c.take]?.ms ?? 0;
+    if (need > have + 20) throw new Error(`${c.scene}: ${c.take} needs ${Math.round(need)} ms, has ${have}`);
+  }
+};
+
+const tourMeta: CalculateMetadataFunction<TourProps> = async () => {
+  const props = await load();
+  check(props.footage);
+  return { props };
+};
 const posterMeta: CalculateMetadataFunction<PosterProps> = async ({ props }) => ({ props: { ...props, ...(await load()) } });
 
 const empty = { footage: {}, device: { image: "", width: 2000, height: 2400, screen: { x: 0, y: 0, w: 1, h: 1 } } };
