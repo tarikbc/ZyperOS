@@ -251,6 +251,8 @@ static char g_card_root[PATH_MAX_ST];
 static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
 static st_orphan g_orph[ST_ORPHANS];   /* the Ports shelf's, under g_mu */
 static int g_norph;
+static st_media *g_media[STM_KINDS];   /* the media folders' items, under g_mu */
+static int g_nmedia[STM_KINDS];
 static st_card g_pub;
 static atomic_int g_cancel;          /* the page asks the walk to end */
 
@@ -1065,6 +1067,129 @@ static void ports_orphans(const job_view *j)
 	pthread_mutex_unlock(&g_mu);
 }
 
+const char *st_media_root(st_media_kind k)
+{
+	return k == STM_MUSIC ? "Music" : k == STM_VIDEOS ? "Videos" : "Audiobooks";
+}
+
+static bool media_add(st_media **v, int *n, int *cap, const char *rel, const char *name,
+                      const char *parent, unsigned long long bytes, int count, bool folder)
+{
+	st_media *m;
+
+	if (*n == *cap) {
+		int nc = *cap ? *cap * 2 : 64;
+		st_media *nv = realloc(*v, (size_t)nc * sizeof *nv);
+
+		if (!nv) return false;
+		*v = nv;
+		*cap = nc;
+	}
+	m = &(*v)[(*n)++];
+	memset(m, 0, sizeof *m);
+	snprintf(m->rel, sizeof m->rel, "%s", rel);
+	snprintf(m->name, sizeof m->name, "%s", name);
+	snprintf(m->parent, sizeof m->parent, "%s", parent);
+	m->bytes = bytes;
+	m->count = count;
+	m->folder = folder;
+	return true;
+}
+
+/* A name without its last extension */
+static void bare(const char *name, char *out, size_t n)
+{
+	const char *dot = strrchr(name, '.');
+
+	snprintf(out, n, "%.*s", dot && dot != name ? (int)(dot - name) : (int)strlen(name), name);
+}
+
+/* A folder's dnode, as the walk left it: NULL when it has none */
+static dnode *dir_node(const char *abs)
+{
+	void **slot = smap_slot(&g_dirs, rel_of(abs), false);
+
+	return slot ? *slot : NULL;
+}
+
+/* Whether a folder has a folder inside that is not hidden */
+static bool has_folders(const dnode *dn)
+{
+	const char *kd;
+
+	for (kd = dn ? dn->kids : NULL; kd && kd < dn->kids + dn->kids_len; kd += strlen(kd) + 1)
+		if (kd[0] != '.') return true;
+	return false;
+}
+
+/* One media folder's items: its top read here, every folder's bytes from
+ * the walk's listings (the root was walked just before), so the cache's
+ * pass has them as the card's does */
+static void media_items(const char *card, st_media_kind k)
+{
+	char rootp[PATH_MAX_ST];
+	st_media *v = NULL;
+	int n = 0, cap = 0;
+	DIR *d;
+	struct dirent *e;
+	bool video = k == STM_VIDEOS;
+
+	snprintf(rootp, sizeof rootp, "%s/%s", card, st_media_root(k));
+	if ((d = opendir(rootp))) {
+		while ((e = readdir(d)) && !g_cancel) {
+			char p[PATH_MAX_ST], nm[ST_FOLDER];
+			struct stat st;
+
+			if (e->d_name[0] == '.') continue;
+			if (snprintf(p, sizeof p, "%s/%s", rootp, e->d_name) >= (int)sizeof p) continue;
+			if (lstat(p, &st) != 0) continue;
+			if (S_ISREG(st.st_mode)) {
+				/* A track or a film at the top; any other file is the rest */
+				if (!(video ? ext_in(e->d_name, VIDEO_EXT) : ext_in(e->d_name, AUDIO_EXT))) continue;
+				bare(e->d_name, nm, sizeof nm);
+				media_add(&v, &n, &cap, e->d_name, nm, "", alloc_of(&st), 1, false);
+			} else if (S_ISDIR(st.st_mode)) {
+				dnode *dn = dir_node(p);
+				char *kd;
+
+				/* An artist's or an author's folder - folders and no track of
+				 * its own - holds albums or books; any other folder at the top
+				 * is one, as each of Videos' is */
+				if (!video && dn && dn->audio_n == 0 && has_folders(dn)) {
+					size_t len = dn->kids_len;
+					char *kids = malloc(len);
+
+					if (!kids) continue;
+					memcpy(kids, dn->kids, len);
+					for (kd = kids; kd < kids + len; kd += strlen(kd) + 1) {
+						char sub[PATH_MAX_ST], rel[2 * ST_FOLDER + 2];
+						tsum t = { 0 };
+
+						if (kd[0] == '.') continue;
+						if (snprintf(sub, sizeof sub, "%s/%s", p, kd) >= (int)sizeof sub) continue;
+						walk(sub, false, true, false, &t);
+						snprintf(rel, sizeof rel, "%s/%s", e->d_name, kd);
+						media_add(&v, &n, &cap, rel, kd, e->d_name, t.bytes, t.audio_n, true);
+					}
+					free(kids);
+				} else {
+					tsum t = { 0 };
+
+					walk(p, false, true, false, &t);
+					media_add(&v, &n, &cap, e->d_name, e->d_name, "", t.bytes,
+					          video ? t.video_n : t.audio_n, true);
+				}
+			}
+		}
+		closedir(d);
+	}
+	pthread_mutex_lock(&g_mu);
+	free(g_media[k]);
+	g_media[k] = v;
+	g_nmedia[k] = n;
+	pthread_mutex_unlock(&g_mu);
+}
+
 /* Everything, once: from the cache alone with `trust`, else from the card.
  * Publishes as it goes when `live`. False when it was asked to end. */
 static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool live)
@@ -1111,7 +1236,10 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 		c->nbooks = nb;
 	}
 	snprintf(path, sizeof path, "%s/BGM", j->p.roms);
-	c->bgm = root_bytes(path, trust, force, &cut, NULL);
+	c->bgm = root_bytes(path, trust, force, &cut, &ts);
+	c->nbgm = ts.audio_n;
+	/* The media pages' items, now the roots are walked */
+	for (i = 0; i < STM_KINDS && !cut; i++) media_items(j->p.card, (st_media_kind)i);
 	snprintf(path, sizeof path, "%s/Bios", j->p.card);
 	c->bios = root_bytes(path, trust, force, &cut, NULL);
 	c->zyperos = root_bytes(j->p.root, trust, force, &cut, NULL);
@@ -1516,6 +1644,11 @@ void st_reset(void)
 	g_cache_read = false;
 	pthread_mutex_lock(&g_mu);
 	memset(&g_pub, 0, sizeof g_pub);
+	for (int k = 0; k < STM_KINDS; k++) {
+		free(g_media[k]);
+		g_media[k] = NULL;
+		g_nmedia[k] = 0;
+	}
 	pthread_mutex_unlock(&g_mu);
 }
 
@@ -1652,4 +1785,121 @@ unsigned long long st_delete_port_folder(const st_paths *p, const st_systems *s,
 	b = claimed_by(claimed, nc, real) ? 0 : tree_remove(sub, 0);
 	free(claimed);
 	return b;
+}
+
+int st_media_items(st_media_kind k, st_media **out)
+{
+	int n;
+
+	*out = NULL;
+	if (k < 0 || k >= STM_KINDS) return 0;
+	pthread_mutex_lock(&g_mu);
+	n = g_nmedia[k];
+	if (n > 0 && (*out = malloc((size_t)n * sizeof **out))) memcpy(*out, g_media[k], (size_t)n * sizeof **out);
+	else n = 0;
+	pthread_mutex_unlock(&g_mu);
+	return n;
+}
+
+unsigned long long st_delete_media(const st_paths *p, st_media_kind k, const char *rel)
+{
+	char path[PATH_MAX_ST];
+	const char *c;
+	struct stat st;
+	unsigned long long b = 0;
+	int i, parts = 0;
+
+	if (!rel || !rel[0] || k < 0 || k >= STM_KINDS) return 0;
+	/* One or two names, none of them hidden, ".." or empty */
+	for (c = rel; *c; ) {
+		const char *slash = strchr(c, '/');
+		size_t len = slash ? (size_t)(slash - c) : strlen(c);
+
+		if (!len || c[0] == '.' || ++parts > 2) return 0;
+		c += len + (slash ? 1 : 0);
+		if (slash && !*c) return 0;
+	}
+	if (snprintf(path, sizeof path, "%s/%s/%s", p->card, st_media_root(k), rel) >= (int)sizeof path) return 0;
+	/* Neither it nor the folder it is in may be a link */
+	if (parts == 2) {
+		char up[PATH_MAX_ST];
+
+		snprintf(up, sizeof up, "%s/%s/%.*s", p->card, st_media_root(k),
+		         (int)(strchr(rel, '/') - rel), rel);
+		if (lstat(up, &st) != 0 || !S_ISDIR(st.st_mode)) return 0;
+	}
+	if (lstat(path, &st) != 0) return 0;
+	if (S_ISDIR(st.st_mode)) b = tree_remove(path, 0);
+	else if (S_ISREG(st.st_mode) && unlink(path) == 0) b = alloc_of(&st);
+	if (!b) return 0;
+
+	/* Out of the numbers now: the item, its root's bytes, the card's room */
+	pthread_mutex_lock(&g_mu);
+	for (i = 0; i < g_nmedia[k]; i++)
+		if (!strcmp(g_media[k][i].rel, rel)) {
+			unsigned long long *root = k == STM_MUSIC ? &g_pub.music : k == STM_VIDEOS ? &g_pub.videos
+			                                                                           : &g_pub.books;
+			int *count = k == STM_MUSIC ? &g_pub.nmusic : k == STM_VIDEOS ? &g_pub.nvideos : &g_pub.nbooks;
+			int gone = k != STM_BOOKS ? g_media[k][i].count : g_media[k][i].parent[0] ? 0 : 1;
+
+			*root = *root > b ? *root - b : 0;
+			*count = *count > gone ? *count - gone : 0;
+			g_pub.free += b;
+			if (g_pub.free > g_pub.total) g_pub.free = g_pub.total;
+			memmove(&g_media[k][i], &g_media[k][i + 1], (size_t)(g_nmedia[k] - i - 1) * sizeof g_media[k][i]);
+			g_nmedia[k]--;
+			st_totals(&g_pub);
+			g_pub.gen++;
+			break;
+		}
+	pthread_mutex_unlock(&g_mu);
+	return b;
+}
+
+/* ---- the lists' orders ----------------------------------------------------- */
+
+static int item_cmp(const st_item *x, const st_item *y, st_sort mode)
+{
+	int byname = x->title && y->title ? strcasecmp(x->title, y->title) : 0;
+
+	if (mode == ST_SORT_AZ && byname) return byname;
+	if (mode == ST_SORT_LAST && x->last != y->last) return x->last > y->last ? -1 : 1;
+	if (x->sized != y->sized) return x->sized ? -1 : 1;
+	if (x->bytes != y->bytes) return x->bytes > y->bytes ? -1 : 1;
+	if (byname) return byname;
+	if (x->kind != y->kind) return x->kind < y->kind ? -1 : 1;
+	return x->index < y->index ? -1 : x->index > y->index;
+}
+
+/* A merge sort, as qsort carries no mode to its comparator and a list of
+ * three thousand arcade games is too long for anything slower */
+bool st_sort_items(st_item *v, int n, st_sort mode)
+{
+	st_item *t;
+	int w, lo;
+
+	if (!v || n < 2) return true;
+	if (!(t = malloc((size_t)n * sizeof *t))) return false;
+	for (w = 1; w < n; w *= 2) {
+		for (lo = 0; lo < n; lo += 2 * w) {
+			int mid = lo + w < n ? lo + w : n, hi = lo + 2 * w < n ? lo + 2 * w : n;
+			int a = lo, b = mid, o = lo;
+
+			while (a < mid && b < hi) t[o++] = item_cmp(&v[b], &v[a], mode) < 0 ? v[b++] : v[a++];
+			while (a < mid) t[o++] = v[a++];
+			while (b < hi) t[o++] = v[b++];
+		}
+		memcpy(v, t, (size_t)n * sizeof *v);
+	}
+	free(t);
+	return true;
+}
+
+st_sort st_sort_next(st_sort mode, bool has_last)
+{
+	st_sort next = (st_sort)(((int)mode + 1) % ST_SORTS);
+
+	if (next == ST_SORT_LAST && !has_last) next = ST_SORT_SIZE;
+	if (mode < 0 || mode >= ST_SORTS) next = ST_SORT_SIZE;
+	return next;
 }

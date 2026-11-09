@@ -1326,15 +1326,19 @@ build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h sr
 # every part, every game's bytes and the bar held to the clusters the card's
 # own files take; the cache read on a second start with no folder listed
 # again, a game added listing its own folder alone, a cache it cannot read
-# measured again; and the two recommendations deleting exactly their files.
-# Then the real launcher, headless (tools/storage-motion-check.py): Delete
-# Game's question opening on the page from nothing, as the page is a base.
+# measured again; the two recommendations deleting exactly their files; the
+# media pages' albums, films and books coming to their folders and deleting
+# only themselves; and X's orders. Then the real launcher, headless: Delete
+# Game's question opening on the page from nothing, as the page is a base
+# (tools/storage-motion-check.py), and every list in each of X's orders with
+# the media pages, in both themes (tools/storage-pages-check.py).
 check-storage: build-native/storage-check
 	@./build-native/storage-check
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native || exit 1; \
 	fi
 	@python3 tools/storage-motion-check.py
+	@python3 tools/storage-pages-check.py
 
 build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c src/portinfo.c \
                             src/gamedel.h src/library.c src/db.c src/favorites.c src/stats.c \

@@ -72,7 +72,7 @@ typedef struct {
 	unsigned long long partitions;   /* the system's partitions, beside the filesystem */
 	unsigned long long music, videos, books, bgm, bios, zyperos, emulators;
 	unsigned long long saves, states;/* Saves/ and the states folder, whole */
-	int nmusic, nvideos, nbooks;
+	int nmusic, nvideos, nbooks, nbgm;
 	st_sys sys[ST_MAX_SYS];
 	int nsys;
 	unsigned long long cat[STC_COUNT];
@@ -128,6 +128,61 @@ typedef struct {
 	char title[ST_FOLDER];            /* its port.json's attr.title, "" for none */
 	unsigned long long bytes;
 } st_orphan;
+
+/* What a media folder holds, item by item, for its page, read as MP4's
+ * shelf reads the folder (src/muselib.h): in Music and Audiobooks an album
+ * or a book - a folder in an artist's or an author's, a folder at the top
+ * with no folder inside or with tracks of its own, or a track at the top;
+ * in Videos a film at the top or a folder of them (a series), whole. What
+ * none of them is - a cover beside the albums, a playlist, a hidden file -
+ * is the rest of the folder's bytes. */
+typedef enum { STM_MUSIC, STM_VIDEOS, STM_BOOKS, STM_KINDS } st_media_kind;
+typedef struct {
+	char rel[2 * ST_FOLDER + 2];      /* under its root: "Artist/Album", "Film.mp4" */
+	char name[ST_FOLDER];             /* "Album", "Film" */
+	char parent[ST_FOLDER];           /* "Artist", "" at the top */
+	unsigned long long bytes;
+	int count;                        /* its songs or videos */
+	bool folder;
+} st_media;
+
+/* A copy of a media folder's items as the last walk found them, malloc'd
+ * (free it): how many. The walk finds them with the roots' sizes, before
+ * the systems, from the cache as well, so a page opened at once has them. */
+int st_media_items(st_media_kind k, st_media **out);
+
+/* Delete one, with the walk stopped: a file or folder under the root, by
+ * the path the walk gave, never a link, never out of it. The bytes given
+ * back, 0 when it is refused; the item and its bytes leave the numbers at
+ * once, before the next walk says so. */
+unsigned long long st_delete_media(const st_paths *p, st_media_kind k, const char *rel);
+
+/* The root folder of a kind under the card: "Music", "Videos", "Audiobooks" */
+const char *st_media_root(st_media_kind k);
+
+/* A Storage list's order, which X steps through (2026-11-08: "can we have
+ * like press X to change sorting? sort by size, by alphabetic, by last
+ * played"). Size is the largest first; A to Z by name, case not counting;
+ * Last Played the newest first, then what was never played (or cannot say:
+ * MP4 keeps no record of what was played) by size. Every order falls back
+ * to the others and at last to the row's place, so a list never reshuffles
+ * between two draws of the same numbers (src/sort.h's rule). */
+typedef enum { ST_SORT_SIZE, ST_SORT_AZ, ST_SORT_LAST, ST_SORTS } st_sort;
+typedef struct {
+	int kind, index;                  /* the page's own: which row it is */
+	unsigned long long bytes;
+	bool sized;                       /* its bytes are known; an unsized row is after */
+	const char *title;
+	long last;                        /* last played, unix time; 0 never or unknown */
+} st_item;
+
+/* Put `n` rows in `mode`'s order; false when there was no memory, and
+ * nothing moved */
+bool st_sort_items(st_item *v, int n, st_sort mode);
+
+/* The order after `mode`: Size, A to Z, Last Played and round, Last Played
+ * left out of a list that has no such time (`has_last` false) */
+st_sort st_sort_next(st_sort mode, bool has_last);
 
 /* The Ports shelf's orphans, as the last walk found them: how many */
 int st_orphans(st_orphan *out, int max);

@@ -427,3 +427,64 @@ fr = Fichiers de ses dossiers qui ne sont à aucun jeu
 de = Dateien in seinen Ordnern, die zu keinem Spiel gehören
 ja = どのゲームのものでもない、フォルダー内のファイル
 it = File delle sue cartelle che non sono di nessun gioco
+
+[storage.sort_size]
+note = The order of a Storage list, beside X under it: the largest first. tight
+en = Size
+zh-Hans = 大小
+es = Tamaño
+pt-BR = Tamanho
+fr = Taille
+de = Größe
+ja = サイズ
+it = Dimensione
+
+[storage.files]
+note = The line under the list for a book on the Audiobooks page: how many files it is.
+en.one = %d file
+en.other = %d files
+zh-Hans = %d 个文件
+es.one = %d archivo
+es.other = %d archivos
+pt-BR.one = %d arquivo
+pt-BR.other = %d arquivos
+fr.one = %d fichier
+fr.other = %d fichiers
+de.one = %d Datei
+de.other = %d Dateien
+ja = %d 個のファイル
+it.one = %d file
+it.other = %d file
+
+[storage.media_ask_folder]
+note = The yes/no question for an album, a book or a folder of videos on a media page; the first %s is its name, the second the room it gives back ("640 MB").
+en = Delete %s and everything in it? %s. This cannot be undone.
+zh-Hans = 要删除 %s 及其中的所有内容吗？共 %s。此操作无法撤销。
+es = ¿Borrar %s y todo lo que contiene? %s. No se puede deshacer.
+pt-BR = Apagar %s e tudo o que tem dentro? %s. Não é possível desfazer.
+fr = Supprimer %s et tout son contenu\u00a0? %s. Impossible d'annuler.
+de = %s mit allem darin löschen? %s. Das lässt sich nicht rückgängig machen.
+ja = %s と中身をすべて削除しますか？%s。元に戻せません。
+it = Eliminare %s e tutto ciò che contiene? %s. Non si può annullare.
+
+[storage.media_ask_file]
+note = The yes/no question for a single song, book or video on a media page; the first %s is its name, the second the room it gives back.
+en = Delete %s? %s. This cannot be undone.
+zh-Hans = 要删除 %s 吗？共 %s。此操作无法撤销。
+es = ¿Borrar %s? %s. No se puede deshacer.
+pt-BR = Apagar %s? %s. Não é possível desfazer.
+fr = Supprimer %s\u00a0? %s. Impossible d'annuler.
+de = %s löschen? %s. Das lässt sich nicht rückgängig machen.
+ja = %s を削除しますか？%s。元に戻せません。
+it = Eliminare %s? %s. Non si può annullare.
+
+[storage.media_rest_caption]
+note = The line under the list for the last row on a Music, Videos or Audiobooks page: the files in its folders that no row above holds, so the rows add up.
+en = Files in its folders that no row above holds: covers, playlists
+zh-Hans = 文件夹中不属于以上任何一行的文件：封面、播放列表
+es = Archivos de sus carpetas que no son de ninguna fila: portadas, listas
+pt-BR = Arquivos das pastas que não são de nenhuma linha: capas, playlists
+fr = Fichiers de ses dossiers hors des lignes ci-dessus\u00a0: pochettes, listes
+de = Dateien in seinen Ordnern, die zu keiner Zeile gehören: Cover, Playlists
+ja = 上のどの行にも入らない、フォルダー内のファイル：カバー、プレイリスト
+it = File delle sue cartelle che non sono di nessuna riga: copertine, playlist

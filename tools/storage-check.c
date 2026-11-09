@@ -24,8 +24,20 @@
  * did not move; a game added lists its own folder again and nothing else;
  * a cache it cannot read is measured again, never believed. And the two
  * recommendations' work deletes exactly those files and nothing beside
- * them. Links src/storage.c and src/gamedel.c (with what gamedel.c links),
- * not SDL.
+ * them.
+ *
+ * The media pages: Music's and Audiobooks' albums and books in an artist's
+ * or an author's folder, a folder of tracks at the top and a track at the
+ * top; Videos' films and a series whole; each sized from the walk, the
+ * items and what none of them holds (a playlist, a cover beside them) coming
+ * to the folder's whole, from the cache as from the card. Deleting one
+ * gives back its bytes, takes it out of the numbers at once, and refuses a
+ * hidden name, "..", a third level and a link. And X's orders: size, A to
+ * Z, Last Played, each falling back to the others so a list never
+ * reshuffles, Last Played left out of a list with no such time.
+ *
+ * Links src/storage.c and src/gamedel.c (with what gamedel.c links), not
+ * SDL.
  */
 #include "../src/storage.h"
 
@@ -345,6 +357,211 @@ static void numbers(const char *when)
 	CHECK_EQ(cats + c.free, c.total);
 }
 
+/* A media page's item by its path under the root, NULL for none */
+static const st_media *item(const st_media *v, int n, const char *rel)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (!strcmp(v[i].rel, rel)) return &v[i];
+	return NULL;
+}
+
+static unsigned long long items_bytes(const st_media *v, int n)
+{
+	unsigned long long b = 0;
+	int i;
+
+	for (i = 0; i < n; i++) b += v[i].bytes;
+	return b;
+}
+
+/* Music's, Videos' and Audiobooks' items as their pages list them */
+static void media_items_say(const char *when)
+{
+	st_card c;
+	st_media *m;
+	const st_media *it;
+	int n;
+
+	printf("%s\n", when);
+	st_snapshot(&c);
+
+	/* Music: the artist's album, a folder of tracks at the top, a track at
+	 * the top; the playlist, the artist's picture and the covers' .media
+	 * are the rest */
+	n = st_media_items(STM_MUSIC, &m);
+	CHECK_EQ(n, 3);
+	it = item(m, n, "Artist/Album");
+	CHECK(it && it->folder && !strcmp(it->name, "Album") && !strcmp(it->parent, "Artist"));
+	if (it) {
+		CHECK_EQ(it->bytes, on("Music/Artist/Album/01 One.mp3") + on("Music/Artist/Album/02 Two.flac") +
+		                    on("Music/Artist/Album/cover.jpg"));
+		CHECK_EQ(it->count, 2);
+	}
+	it = item(m, n, "Compilation");
+	CHECK(it && it->folder && !it->parent[0] && it->count == 1);
+	if (it) CHECK_EQ(it->bytes, on("Music/Compilation/01 A.mp3"));
+	it = item(m, n, "Loose Song.mp3");
+	CHECK(it && !it->folder && !strcmp(it->name, "Loose Song"));
+	if (it) CHECK_EQ(it->bytes, on("Music/Loose Song.mp3"));
+	CHECK_EQ(items_bytes(m, n) + on("Music/playlist.m3u") + on("Music/Artist/artist.jpg") +
+	         on("Music/.media/Compilation.jpg"), c.music);
+	free(m);
+
+	/* Videos: a film, and a series whole */
+	n = st_media_items(STM_VIDEOS, &m);
+	CHECK_EQ(n, 2);
+	it = item(m, n, "Film.mp4");
+	CHECK(it && !it->folder && !strcmp(it->name, "Film"));
+	it = item(m, n, "Series");
+	CHECK(it && it->folder && it->count == 2);
+	if (it) CHECK_EQ(it->bytes, on("Videos/Series/Ep 1.mp4") + on("Videos/Series/Ep 2.mkv"));
+	CHECK_EQ(items_bytes(m, n) + on("Videos/notes.txt"), c.videos);
+	free(m);
+
+	/* Audiobooks: a book at the top, a file at the top, and an author's */
+	n = st_media_items(STM_BOOKS, &m);
+	CHECK_EQ(n, 3);
+	CHECK(item(m, n, "Book") && item(m, n, "Another.m4b"));
+	it = item(m, n, "Author/Book Two");
+	CHECK(it && !strcmp(it->parent, "Author"));
+	CHECK_EQ(items_bytes(m, n), c.books);
+	free(m);
+
+	/* The menu's own tracks, counted beside Music */
+	CHECK_EQ(c.bgm, on("Roms/BGM/Theme.ogg"));
+	CHECK_EQ(c.nbgm, 1);
+}
+
+static void media_pages(void)
+{
+	st_paths pp = paths();
+	st_card was, c;
+	st_media *m;
+	unsigned long long want;
+	int n;
+	char lnk[1200];
+
+	put("Music/Compilation/01 A.mp3", 200000);
+	put("Music/Loose Song.mp3", 150000);
+	put("Music/playlist.m3u", 5000);
+	put("Music/Artist/artist.jpg", 30000);
+	put("Music/.media/Compilation.jpg", 20000);
+	put("Videos/Series/Ep 1.mp4", 800000);
+	put("Videos/Series/Ep 2.mkv", 700000);
+	put("Videos/notes.txt", 1000);
+	put("Audiobooks/Author/Book Two/Part 1.mp3", 250000);
+	put("Roms/BGM/Theme.ogg", 100000);
+	snprintf(lnk, sizeof lnk, "%s/Music/Link", root);
+	if (symlink("../Roms", lnk) != 0) CHECK(!"a link could be made");
+	games(false);
+	st_reset();
+	measure_now(true);
+	media_items_say("the media pages: albums, books and films by folder, and the rest beside them");
+	st_reset();
+	measure_now(true);
+	media_items_say("and the same from a second start");
+
+	printf("deleting a media item gives back its bytes and takes it out of the numbers at once\n");
+	st_snapshot(&was);
+	want = on("Music/Compilation/01 A.mp3");
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Compilation"), want);
+	CHECK(!there("Music/Compilation"));
+	st_snapshot(&c);
+	CHECK_EQ(c.music, was.music - want);
+	CHECK_EQ(c.free, was.free + want);
+	CHECK(c.gen != was.gen);
+	n = st_media_items(STM_MUSIC, &m);
+	CHECK_EQ(n, 2);
+	CHECK(!item(m, n, "Compilation"));
+	free(m);
+	want = on("Music/Loose Song.mp3");
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Loose Song.mp3"), want);
+	CHECK(!there("Music/Loose Song.mp3"));
+	want = on("Audiobooks/Author/Book Two/Part 1.mp3");
+	CHECK_EQ(st_delete_media(&pp, STM_BOOKS, "Author/Book Two"), want);
+	CHECK(!there("Audiobooks/Author/Book Two") && there("Audiobooks/Author"));
+
+	printf("and refuses a hidden name, \"..\", a third level, a link and a path out of its root\n");
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, ".media"), 0);
+	CHECK(there("Music/.media/Compilation.jpg"));
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, ".."), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "../Roms"), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Artist/.."), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Artist/"), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "/Artist"), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Artist/Album/01 One.mp3"), 0);
+	CHECK(there("Music/Artist/Album/01 One.mp3"));
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Link"), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Link/Game Boy"), 0);
+	CHECK(there("Roms/Game Boy/Tetris.gb"));
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, ""), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, NULL), 0);
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Not There"), 0);
+}
+
+/* X's orders */
+static bool order_is(const st_item *v, int n, const char *want)
+{
+	char got[64] = "";
+	int i;
+
+	for (i = 0; i < n; i++) strncat(got, v[i].title, 1);
+	if (strcmp(got, want)) printf("  (the order is %s, not %s)\n", got, want);
+	return !strcmp(got, want);
+}
+
+static void orders(void)
+{
+	static const st_item ROWS[] = {
+		{ 1, 0, 300, true, "beta", 0 },
+		{ 1, 1, 100, true, "Alpha", 200 },
+		{ 1, 2, 300, true, "gamma", 100 },
+		{ 1, 3, 0, false, "delta", 0 },
+		{ 1, 4, 50, true, "Epsilon", 0 },
+	};
+	st_item v[5], *big;
+	int i, n = 3000;
+	bool ok = true;
+
+	printf("X's orders: by size, A to Z and Last Played, each with the others to break a tie\n");
+	memcpy(v, ROWS, sizeof v);
+	CHECK(st_sort_items(v, 5, ST_SORT_SIZE));
+	CHECK(order_is(v, 5, "bgAEd"));
+	memcpy(v, ROWS, sizeof v);
+	CHECK(st_sort_items(v, 5, ST_SORT_AZ));
+	CHECK(order_is(v, 5, "AbdEg"));
+	memcpy(v, ROWS, sizeof v);
+	CHECK(st_sort_items(v, 5, ST_SORT_LAST));
+	CHECK(order_is(v, 5, "AgbEd"));
+	/* Sorting a sorted list again moves nothing */
+	CHECK(st_sort_items(v, 5, ST_SORT_LAST));
+	CHECK(order_is(v, 5, "AgbEd"));
+	/* Rows alike in all but their place keep it */
+	for (i = 0; i < 5; i++) v[i] = (st_item){ 1, 4 - i, 10, true, "same", 0 };
+	CHECK(st_sort_items(v, 5, ST_SORT_AZ));
+	for (i = 0; i < 5; i++) CHECK_EQ(v[i].index, i);
+	CHECK(st_sort_items(NULL, 0, ST_SORT_SIZE));
+
+	printf("three thousand rows come out in order\n");
+	if (!(big = malloc((size_t)n * sizeof *big))) { CHECK(!"memory"); return; }
+	for (i = 0; i < n; i++) big[i] = (st_item){ 1, i, (unsigned long long)((i * 7919) % 2999), true, "x", 0 };
+	CHECK(st_sort_items(big, n, ST_SORT_SIZE));
+	for (i = 1; i < n; i++)
+		if (big[i - 1].bytes < big[i].bytes) ok = false;
+	CHECK(ok);
+	free(big);
+
+	printf("X steps Size, A to Z, Last Played and round, without Last Played where there is none\n");
+	CHECK_EQ(st_sort_next(ST_SORT_SIZE, true), ST_SORT_AZ);
+	CHECK_EQ(st_sort_next(ST_SORT_AZ, true), ST_SORT_LAST);
+	CHECK_EQ(st_sort_next(ST_SORT_LAST, true), ST_SORT_SIZE);
+	CHECK_EQ(st_sort_next(ST_SORT_SIZE, false), ST_SORT_AZ);
+	CHECK_EQ(st_sort_next(ST_SORT_AZ, false), ST_SORT_SIZE);
+	CHECK_EQ(st_sort_next((st_sort)7, true), ST_SORT_SIZE);
+}
+
 int main(void)
 {
 	st_card c;
@@ -520,6 +737,9 @@ int main(void)
 		CHECK(there("Roms/Game Boy/Tetris.gb"));
 	}
 
+	media_pages();
+	orders();
+
 	{
 		char cmd[1200];
 
@@ -531,6 +751,7 @@ int main(void)
 		return 1;
 	}
 	printf("ok: every part, every game and the bar are the card's own bytes; the cache lists only what moved\n"
-	       "and is never believed when it cannot be read; the recommendations delete exactly their files\n");
+	       "and is never believed when it cannot be read; the recommendations delete exactly their files;\n"
+	       "the media pages' items come to their folders and delete only themselves; X's orders hold\n");
 	return 0;
 }
