@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "games.h"
+#include "artbadge_draw.h"
+#include "zyperdraw.h"
 #include "home.h"
 #include "ui.h"
 #include "theme.h"
@@ -141,6 +143,15 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
             SDL_SetTextureAlphaMod(info->snap,255);
             SDL_RenderSetClipRect(r,NULL);
         }
+        /* Its badge (src/artbadge.h), at the top left: a heart on a
+         * favorite. Scaled with the cover as games_cover_rect scales it, and
+         * fading as the snap mark does when the snap takes the cover's place,
+         * so it never sits over the video. */
+        if(info->badge_of && k<1) {
+            int kind=info->badge_of(ctx,slots[i].item);
+            if(kind!=AB_NONE)
+                ab_draw_at(r,(ab_kind)kind,dst.x,dst.y,.72f+.28f*focus,(Uint8)lroundf(a*(1-k)));
+        }
         /* A cover with a snap says so: a play mark in an accent disc at its
          * bottom right, fading with the cover as the snap takes over (
          * 2026-11-06). Two sizes, the focused card's and the others', so the
@@ -167,14 +178,25 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
     }
     TTF_Font *title=page_font(PAGE_GAME_TITLE);
     const char *name=info->title && info->title[0]?info->title:T(S_GAMES_NO_GAMES);
+    /* A favorite's heart leads its name (2026-11-09: on the cover it was
+     * hard to see), in **favorite** as every heart is, centered on the
+     * first line's capitals; the name moves over for it. Not on Favorites,
+     * where every game is one (info->favorite is false there). */
+    int tx=64,tw=656;
+    if(info->favorite&&info->count) {
+        int cap=ui_cap_height(title);
+        float hr=cap*.55f;
+        draw_heart(r,64+hr,584,hr,ui_col(theme()->favorite,255));
+        tx=64+(int)lroundf(hr*2)+16; tw=656-(tx-64);
+    }
     char lines[2][LB_LINE];
-    int nlines=ui_balance_lines(title,name,656,2,lines);
+    int nlines=ui_balance_lines(title,name,tw,2,lines);
     bool whole=complete_title(name,lines,nlines);
     if(whole) {
-        for(int i=0;i<nlines;i++) ui_text(r,title,lines[i],64,ui_cap_y(title,584+i*44),-1,UI_TEXT);
+        for(int i=0;i<nlines;i++) ui_text(r,title,lines[i],tx,ui_cap_y(title,584+i*44),-1,UI_TEXT);
     } else {
-        ui_text_marquee(r,title,name,64,ui_cap_y(title,584),656,phase,UI_TEXT);
-        unsigned next=ui_pingpong_wait(ui_text_width(title,name)-656,phase); if(next<wait) wait=next;
+        ui_text_marquee(r,title,name,tx,ui_cap_y(title,584),tw,phase,UI_TEXT);
+        unsigned next=ui_pingpong_wait(ui_text_width(title,name)-tw,phase); if(next<wait) wait=next;
     }
     /* The game's own system on Favorites, right under its name (
      * 2026-11-07: "have the system right below the name"): in the second

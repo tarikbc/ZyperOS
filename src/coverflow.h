@@ -130,6 +130,12 @@ typedef SDL_Texture *(*cf_tex_fn)(void *ctx, int index, int *w, int *h,
 typedef void (*cf_lift_fn)(void *ctx, int index, const SDL_Rect *art,
                            const SDL_Rect *content, float focus);
 
+/* The badge on card `index`'s art (src/artbadge.h), or AB_NONE: asked for
+ * every card with a texture, every frame, and drawn at the art's top left
+ * corner as the card is turned and scaled, right after the card, so a nearer
+ * card covers it as it covers the card. */
+typedef int (*cf_badge_fn)(void *ctx, int index);
+
 /* The clock every move is measured on: SDL_GetTicks, or `now` once given
  * one, and SDL_GetTicks again for NULL. The shot harness gives it a clock
  * that stands still where a shot asks (--shot-at), so a frame part way
@@ -143,10 +149,10 @@ void cf_reset(coverflow *cf, int cursor);
  * two has both neighbors one step away, so it is the only size where the
  * shortest-path arithmetic cannot work out which way to turn. */
 void cf_set_cursor_dir(coverflow *cf, int cursor, int count, int dir);
-/* Step animation and draw. Returns true while still animating. `lift` may be
- * NULL; `ctx` is handed to it as it is to `get_tex`. */
+/* Step animation and draw. Returns true while still animating. `lift` and
+ * `badge` may be NULL; `ctx` is handed to them as it is to `get_tex`. */
 bool cf_draw(coverflow *cf, SDL_Renderer *r, int screen_w, int screen_h,
-             int count, cf_tex_fn get_tex, cf_lift_fn lift, void *ctx,
-             const cf_layout *lay);
+             int count, cf_tex_fn get_tex, cf_lift_fn lift, cf_badge_fn badge,
+             void *ctx, const cf_layout *lay);
 
 #endif

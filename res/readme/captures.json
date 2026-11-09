@@ -58,7 +58,8 @@
         "--screen",
         "games"
       ],
-      "sha256": "dcd88d84c586366e900c08a8498614b57da5ab4e8d08ce70de9b4b9a920cad6b"
+      "sha256": "98d9d89f326be9cfd8eb940efafe9907b84369aa18e515d2fc3455bf795842df",
+      "source_commit": "76a5eea6f69f1b85e22490e15a8688b2ed913ac9"
     },
     {
       "file": "light/info.png",
@@ -200,8 +201,8 @@
         "--screen",
         "games"
       ],
-      "sha256": "df2fd93351bd51a8eb88d5a968483494974cd31c4eb87f47151271f98b6efaa0",
-      "source_commit": "4d46b1e95ec2100237a97a31e0b8491da25c5351"
+      "sha256": "f8609d18e498d050da1c8414ac27ff53cb4c796e355461b245e0e2c76dd56037",
+      "source_commit": "76a5eea6f69f1b85e22490e15a8688b2ed913ac9"
     },
     {
       "file": "light/nowplaying.png",

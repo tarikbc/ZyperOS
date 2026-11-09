@@ -19,7 +19,10 @@ The capture uses temporary demonstration cards: empty game and music files
 with freeware or stand-in names, a card with no games for the empty home, and
 curated Metal Gear Solid metadata. The launcher draws every game card itself:
 no box art and no game screens are included. The home screens show the
-system art in res/system-icons. MP4 shows clearly named demonstration albums.
+system art in res/system-icons. MP4 shows clearly named demonstration albums,
+a film named after Blender's freely licensed Sintel and the public-domain
+Treasure Island as a book, all of them empty files. The games page's heart
+marks two demonstration favorites, set for that shot alone.
 Achievement rows, playback timing, transfer progress, the hotspot, the
 Scraper's counts, the Storage page and the System Update page use the launcher's built-in shot
 fixtures and stand-in values. No ROMs, audio, account credentials or personal
