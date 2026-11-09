@@ -50,6 +50,25 @@ the Scraper would fetch. The covers are cached in
 `~/Library/Caches/zyperos-readme-art` and never committed: the games and their
 art belong to their owners.
 
+## A real video snap
+
+The video snap beat plays one input file. By default it is Spyro's libretro
+snap clip from the art cache, which is a still picture. To use a real
+ScreenScraper snap (`Roms/<system>/.media/<game>.mp4` on a card), name it and
+its game on the demonstration card, then render again:
+
+```sh
+SNAP_SOURCE=/path/to/snap.mp4 SNAP_GAME='PS1|Castlevania - Symphony of the Night (USA).chd' \
+  SNAP_START=2 python3 video/footage/takes.py snap
+cd video && npx remotion render ZyperOSTour out/zyperos-tour-raw.mp4 --crf=6 && sh scripts/finish.sh
+```
+
+`SNAP_GAME` is the system's tag and the file on the card (`video/footage/card.py`
+lists them), `SNAP_START` where in the clip to start, in seconds. The snap plays
+from the moment the cover turns, at its own rate. The tour as published uses
+Symphony of the Night's ScreenScraper snap from Tarik's card, from 2 s in; the
+clip itself stays outside the repository.
+
 ## Layout
 
 - `src/music.ts`: the track, its tempo and the downbeat the tour starts on.

@@ -194,12 +194,20 @@ shots('shelf-dark', [(PS1, ['--screen', 'games', '--theme', 'dark'], 100)])
 # Spyro's snap (its libretro screenshot) in place of the test picture. It
 # rests 600 ms first, so the video can start the wait where its beat needs.
 shots('poweroff', [(PS1, ['--screen', 'games', '--poweroff', '--shot-at', '{t}'], motion(0, 1600))])
-SPYRO = ('PS1', 'Spyro the Dragon (USA).chd')
-shots('snap', [(SPYRO, ['--screen', 'games', '--snap-wait', '0'], 600),
-               (SPYRO, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
-               (SPYRO, ['--screen', 'games', '--snap', '{t}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
-               (SPYRO, ['--screen', 'games', '--snap', '1'], 2700)],
-      card='snaps', env={'SNAP_I420': '{work}/spyro.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')})
+# The snap: SNAP_SOURCE, a video snap (.mp4, as ScreenScraper's on a card) or a
+# picture, of SNAP_GAME ("TAG|file on the card"), Spyro's libretro snap clip
+# by default. Its frames go to snapsub.dylib one a shot, at its own rate.
+SNAP_GAME = tuple(os.environ.get('SNAP_GAME', 'PS1|Spyro the Dragon (USA).chd').split('|'))
+SNAP_SOURCE = os.environ.get('SNAP_SOURCE', str(cardlib.ART_CACHE / 'Sony_-_PlayStation/Videos/Spyro the Dragon (USA).mp4'))
+SNAP_FPS = 30
+# Where in the snap the beat starts, in seconds: a lively stretch of a long clip
+SNAP_START = os.environ.get('SNAP_START', '0')
+SNAP_ENV = {'SNAP_I420': '{work}/snap.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')}
+shots('snap', [(SNAP_GAME, ['--screen', 'games', '--snap-wait', '0'], 600),
+               (SNAP_GAME, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
+               (SNAP_GAME, ['--screen', 'games', '--snap', '{t}', '--snap-frame', '{i}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
+               (SNAP_GAME, ['--screen', 'games', '--snap', '1', '--snap-frame', '{i}'], motion(300, 3000))],
+      card='snaps', env=SNAP_ENV)
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
 
@@ -239,6 +247,9 @@ def run_shots(name, spec, cards):
         shutil.rmtree(frames)
     frames.mkdir(parents=True)
     listing, total, n = [], 0, 0
+    # The first shot that shows the snap, for its frames' clock
+    first_turn = sum(len(w) if isinstance(w, list) else 1 for _, ar, w in spec['segments']
+                     if '--snap-frame' not in ar) if any('--snap-frame' in ar for _, ar, _ in spec['segments']) else 0
     env = cardlib.env_for(card)
     env.update({k: v.replace('{work}', str(WORK)) for k, v in spec['env'].items()})
     for last, args, when in spec['segments']:
@@ -247,6 +258,15 @@ def run_shots(name, spec, cards):
         for t in times:
             a = [x.replace('{t}', str(t)).replace('{card}', str(card)).replace('{art}', str(cardlib.ART_CACHE))
                  for x in args]
+            # --snap-frame {i}: the snap's frame for this shot (snapsub.dylib),
+            # counted from the turn's start at the snap's own rate
+            if '--snap-frame' in a:
+                k = a.index('--snap-frame')
+                ms = (n - first_turn) * 1000 / FPS
+                env['SNAP_FRAME'] = str(int(ms * SNAP_FPS / 1000))
+                del a[k:k + 2]
+            elif 'SNAP_FRAME' in env:
+                del env['SNAP_FRAME']
             status = [] if '--status' in a or '--tour' in a or '--charging' in a else ['--status', SHOT_STATUS]
             png = frames / f'{n:05d}.png'
             theme = [] if '--theme' in a else ['--theme', 'light']
@@ -294,15 +314,20 @@ def main():
         sys.exit(f'no take called {", ".join(unknown)}; there are {", ".join(TAKES)}')
     cards = {'demo': cardlib.build(WORK / 'card')}
     cardlib.device_settings(cards['demo'], BINARY, **{'tour.done': 1, 'clock': '24h'})
-    # The demonstration card with Spyro's snap in its .media, for the play
-    # mark and the bar, and that snap as the picture snapsub.dylib gives
+    # The demonstration card with the snap's game holding it in its .media,
+    # for the play mark and the bar, and the snap's frames for snapsub.dylib
     cards['snaps'] = cardlib.build(WORK / 'card-snaps')
     cardlib.device_settings(cards['snaps'], BINARY, **{'tour.done': 1, 'clock': '24h'})
-    spyro = cardlib.ART_CACHE / 'Sony_-_PlayStation'
-    shutil.copyfile(spyro / 'Videos/Spyro the Dragon (USA).mp4',
-                    cards['snaps'] / 'Roms/PlayStation/.media/Spyro the Dragon (USA).mp4')
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(spyro / 'Named_Snaps/Spyro the Dragon (USA).png'),
-                    '-vf', 'scale=320:240', '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'spyro.yuv')], check=True)
+    folder = next(line.split('|')[2] for line in (ROOT / 'config/systems.cfg').read_text().splitlines()
+                  if line.startswith('sys|') and line.split('|')[4] == SNAP_GAME[0])
+    stem = Path(SNAP_GAME[1]).stem
+    media = cards['snaps'] / 'Roms' / folder / '.media' / (stem + '.mp4')
+    if SNAP_SOURCE.endswith('.mp4'):
+        shutil.copyfile(SNAP_SOURCE, media)
+    else:
+        media.touch()
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS},scale=320:240',
+                    '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'snap.yuv')], check=True)
     cards['portdocs'] = WORK / 'card-portdocs'
     cards['empty'] = WORK / 'card-empty'
     for extra, make in (('portdocs', cardlib.rs.portdocs_card), ('empty', cardlib.rs.card_dirs)):
