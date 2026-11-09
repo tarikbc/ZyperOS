@@ -69,92 +69,92 @@ ja = 次：%s
 it = A seguire: %s
 
 [muse.hint_play]
-note = A part of the key legend at the foot, while paused or stopped: A plays
-en = A: play
-zh-Hans = A：播放
-es = A: reproducir
-pt-BR = A: tocar
-fr = A\u00a0: lecture
-de = A: abspielen
-ja = A：再生
-it = A: riproduci
+note = The word by the A hint on Now Playing, while paused or stopped: A plays
+en = Play
+zh-Hans = 播放
+es = Reproducir
+pt-BR = Tocar
+fr = Lecture
+de = Abspielen
+ja = 再生
+it = Riproduci
 
 [muse.hint_pause]
-note = A part of the key legend at the foot, while playing: A pauses
-en = A: pause
-zh-Hans = A：暂停
-es = A: pausar
-pt-BR = A: pausar
-fr = A\u00a0: pause
-de = A: pausieren
-ja = A：一時停止
-it = A: pausa
+note = The word by the A hint on Now Playing, while playing: A pauses
+en = Pause
+zh-Hans = 暂停
+es = Pausar
+pt-BR = Pausar
+fr = Pause
+de = Pausieren
+ja = 一時停止
+it = Pausa
 
 [muse.hint_track]
-note = A part of the key legend, for music: L1/R1 go to the track before or after
-en = L1/R1: track
-zh-Hans = L1/R1：曲目
-es = L1/R1: pista
-pt-BR = L1/R1: faixa
-fr = L1/R1\u00a0: piste
-de = L1/R1: Titel
-ja = L1/R1：曲
-it = L1/R1: traccia
+note = The word by a hint on Now Playing, for music: L1/R1 go to the track before or after
+en = Track
+zh-Hans = 曲目
+es = Pista
+pt-BR = Faixa
+fr = Piste
+de = Titel
+ja = 曲
+it = Traccia
 
 [muse.hint_chapter]
-note = A part of the key legend, for a book with chapters: L1/R1 go to the chapter before or after
-en = L1/R1: chapter
-zh-Hans = L1/R1：章节
-es = L1/R1: capítulo
-pt-BR = L1/R1: capítulo
-fr = L1/R1\u00a0: chapitre
-de = L1/R1: Kapitel
-ja = L1/R1：章
-it = L1/R1: capitolo
+note = The word by a hint on Now Playing, for a book with chapters: L1/R1 go to the chapter before or after
+en = Chapter
+zh-Hans = 章节
+es = Capítulo
+pt-BR = Capítulo
+fr = Chapitre
+de = Kapitel
+ja = 章
+it = Capitolo
 
 [muse.hint_file]
-note = A part of the key legend, for a book in several files: L1/R1 go to the file before or after
-en = L1/R1: file
-zh-Hans = L1/R1：文件
-es = L1/R1: archivo
-pt-BR = L1/R1: arquivo
-fr = L1/R1\u00a0: fichier
-de = L1/R1: Datei
-ja = L1/R1：ファイル
-it = L1/R1: file
+note = The word by a hint on Now Playing, for a book in several files: L1/R1 go to the file before or after
+en = File
+zh-Hans = 文件
+es = Archivo
+pt-BR = Arquivo
+fr = Fichier
+de = Datei
+ja = ファイル
+it = File
 
 [muse.hint_seek]
-note = A part of the key legend: the d-pad's Left and Right move back and forward in what plays. review: the verb for seeking
-en = Left/Right: seek
-zh-Hans = 左/右：快退/快进
-es = Izquierda/Derecha: adelantar
-pt-BR = Esquerda/Direita: avançar
-fr = Gauche/Droite\u00a0: avancer
-de = Links/Rechts: spulen
-ja = 左/右：巻き戻し/早送り
-it = Sinistra/Destra: scorri
+note = The word by the Left/Right hint on Now Playing: the d-pad's Left and Right move back and forward in what plays. review: the verb for seeking
+en = Seek
+zh-Hans = 快退/快进
+es = Adelantar
+pt-BR = Avançar
+fr = Avancer
+de = Spulen
+ja = 巻き戻し/早送り
+it = Scorri
 
 [muse.hint_speed]
-note = A part of the key legend, for a book: Y changes the playing speed
-en = Y: speed
-zh-Hans = Y：速度
-es = Y: velocidad
-pt-BR = Y: velocidade
-fr = Y\u00a0: vitesse
-de = Y: Tempo
-ja = Y：速度
-it = Y: velocità
+note = The word by a hint on Now Playing, for a book: Y changes the playing speed
+en = Speed
+zh-Hans = 速度
+es = Velocidad
+pt-BR = Velocidade
+fr = Vitesse
+de = Tempo
+ja = 速度
+it = Velocità
 
 [muse.hint_mode]
-note = A part of the key legend, for music: Y changes the play mode (in order, repeat, shuffle)
-en = Y: mode
-zh-Hans = Y：模式
-es = Y: modo
-pt-BR = Y: modo
-fr = Y\u00a0: mode
-de = Y: Modus
-ja = Y：モード
-it = Y: modalità
+note = The word by a hint on Now Playing, for music: Y changes the play mode (in order, repeat, shuffle)
+en = Mode
+zh-Hans = 模式
+es = Modo
+pt-BR = Modo
+fr = Mode
+de = Modus
+ja = モード
+it = Modalità
 
 [muse.row_playing]
 note = An album's tracks: the value beside the track that is playing (a status, lowercase)

@@ -112,6 +112,15 @@ SHOTS={
     # the mark of a song paused
     'topbar':('demo','PS1',['--home','spotlight','--song','Night Drive']),
     'topbar-paused':('demo','PS1',['--home','spotlight','--song','Night Drive','--song-paused']),
+    # A song name too long for its room slides (ui_text_marquee's pace, holds and
+    # faded ends): the same name at the start of its travel and a moment into it
+    'topbar-long':('demo','PS1',['--home','spotlight','--song','Night Drive (Extended Mix) - The Midnight Rider Collective','--phase','0']),
+    'topbar-long-moving':('demo','PS1',['--home','spotlight','--song','Night Drive (Extended Mix) - The Midnight Rider Collective','--phase','2600']),
+    # The same short name with its clock at the start: the song's name that fits does not move
+    'topbar-still':('demo','PS1',['--home','spotlight','--song','Night Drive','--phase','0']),
+    # The video with its controls, the foot's hints (Now Playing's own is above)
+    'video-controls':('demo','MUSE',['--nowplaying','0','0','83','--video','controls']),
+    'video-full':('demo','MUSE',['--nowplaying','0','0','83','--video','full']),
     # The quick slot and the hotkeys (2026-11-07): the in-game menu on its
     # Quick Slot row, a PlayStation game's buttons drawn as their shapes, and
     # its Hotkeys page, SELECT with a shoulder
@@ -124,9 +133,10 @@ SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
 # what it shows: icon= is the setting for this shot, eta= the minutes left
 STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
-        'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62'}
+        'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
+        'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
