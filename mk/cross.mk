@@ -89,6 +89,12 @@ $(BUILD)/portkeys: $(PORTKEYS_SRC) tools/pkkeys.h src/keyrepeat.h tools/pkset.h 
 	$(CC) -O2 -mcpu=cortex-a53 -Wall -Wextra -std=gnu11 -Isrc -I$(SYSROOT)/usr/include \
 	      $(LDFLAGS) -o $@ $(PORTKEYS_SRC) -lsqlite3 -lm
 
+# MENU+START held a second, back to the home from anything (tools/zyhome.c),
+# run by launch.sh beside everything
+$(BUILD)/zyhome: tools/zyhome.c tools/zychord.h src/ctl.c src/ctl.h
+	mkdir -p $(BUILD)
+	$(CC) -O2 -mcpu=cortex-a53 -Wall -Wextra -std=gnu11 -Isrc $(LDFLAGS) -o $@ tools/zyhome.c src/ctl.c
+
 $(BUILD)/btplayer: tools/btplayer.c
 	mkdir -p $(BUILD)
 	$(CC) -O2 -mcpu=cortex-a53 -Wall -Wextra -std=gnu11 \

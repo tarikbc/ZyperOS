@@ -4496,6 +4496,8 @@ void power_off_with(app *a, void (*anim)(app *a))
 	snap_off();
 	remember_place(a);
 	book_keep(true);
+	/* Asked for: a game left running continues at the next start */
+	playing_mark_clean();
 	plat_request_poweroff();
 	anim(a);
 	/* And dark the moment it ends. The rest of the shutdown is not instant -
@@ -18398,8 +18400,11 @@ static void launch(app *a)
 	 * kernel's at 115 C (an orderly power-off, src/heat.h), `poweroff` from
 	 * a shell. That is a power-off mid-game,
 	 * as POWER is, so the marker stays and the next start goes back into the
-	 * game; it was cleared below as a return to the shelf. */
+	 * game; it was cleared below as a return to the shelf. Marked as asked
+	 * for (playing_mark_clean), as a crash or a power cut is not - except
+	 * MENU+START's TERM (tools/zyhome.c), which is the way to the home. */
 	if (access(ZYPEROS_POWEROFF_FLAG, F_OK) == 0 || want_quit) {
+		if (access(CTL_HOME_FLAG, F_OK) != 0) playing_mark_clean();
 		a->running = false;
 		return;
 	}
@@ -21824,6 +21829,15 @@ int main(int argc, char *argv[])
 			cf_reset(&a.view[a.sys_cursor].cf, a.view[a.sys_cursor].cursor);
 		games_reset(&a.view[a.sys_cursor].row, a.view[a.sys_cursor].cursor, a.view[a.sys_cursor].list.count, plat_now_ms());
 		}
+	}
+	/* MENU+START (tools/zyhome.c): the home, whatever was running and
+	 * whatever the records say */
+	if (!access(CTL_HOME_FLAG, F_OK)) {
+		unlink(CTL_HOME_FLAG);
+		a.resume_menu = false;
+		playing_clear();
+		a.screen = SCREEN_SYSTEMS;
+		fprintf(stderr, "zyhome: started on the home\n");
 	}
 	home_reset(&a.home, a.sys_cursor, a.sys.count, plat_now_ms());
 	a.tint = a.sys.systems[a.sys_cursor].accent;

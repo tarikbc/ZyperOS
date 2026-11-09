@@ -37,6 +37,9 @@
 #define CTL_DIR        "/run/zyperos"
 #define CTL_SOCK_NAME  "ctl.sock"
 #define CTL_PORT_NAME  "port"
+/* MENU+START's mark (tools/zyhome.c): the launcher that starts next starts
+ * on the home, and continues no game */
+#define CTL_HOME_FLAG  "/tmp/zyperos_home"
 #define CTL_LINE       1400          /* one command or one answer */
 #define CTL_PATH       1024
 #define CTL_CORE       256

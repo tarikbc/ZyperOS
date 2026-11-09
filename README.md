@@ -431,7 +431,8 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
 | **X / Y** | In a game, turbo A and B. On the shelf, X opens a game's details (Favorite, with Y, and Delete Game) and Y starts a game from the start |
-| **POWER** | Save and turn off. Over a port, it ends the port first |
+| **POWER** | Save and turn off. Over a port, it ends the port first. The next start continues the game; after a crash or a power cut it starts on the home |
+| **MENU + START**, held a second | The way out: ends whatever runs, a stuck game or port included, and brings back the home |
 | **MENU** over a port | The in-game menu over it: Continue, Controls, Quit (or **X**) |
 
 The device lists every button under **MENU > Controls**, and in a game, **Controls** in the in-game menu lists what each button does in that game. [The guide](docs/guide.md#controls-and-menus) covers every control, menu and setting in detail.

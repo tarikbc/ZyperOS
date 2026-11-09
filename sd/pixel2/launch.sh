@@ -408,6 +408,12 @@ wifi_follow() {
 }
 wifi_follow &
 
+# MENU+START held a second: whatever runs ends and the home comes back
+# (tools/zyhome.c). Once, for as long as this script runs: it is the way out
+# when the launcher, Diatom or a port is the thing that is stuck, so nothing
+# of theirs may own it. An older payload has none, and goes without.
+[ -x "$ZYPEROS_DIR/zyhome" ] && "$ZYPEROS_DIR/zyhome" >> "$LOG" 2>&1 &
+
 # A Mac or PC leaves its own files on the card. Swept after the launcher is up,
 # as on the Brick, so it costs the boot nothing.
 ( sleep 8
