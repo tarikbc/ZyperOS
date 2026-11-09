@@ -68,15 +68,15 @@ ja = システム
 it = Sistemi
 
 [games.fresh]
-note = The hint by Y on a game with a resume point: start it from the beginning instead
-en = Start Fresh
-zh-Hans = 重新开始
-es = Empezar de nuevo
-pt-BR = Começar do zero
-fr = Recommencer
-de = Neu starten
+note = The hint by Y on a game with a resume point: start it from its beginning instead (the game's own saves stay)
+en = From the Start
+zh-Hans = 从头开始
+es = Desde el inicio
+pt-BR = Do início
+fr = Depuis le début
+de = Von vorn
 ja = 最初から
-it = Ricomincia
+it = Dall'inizio
 
 [games.details]
 note = The hint by X: the game's info screen
