@@ -35,7 +35,7 @@
     <td align="center"><img src="res/readme/menu.png" width="240" alt="The ZyperOS menu, Search Games at the top"><br><sub>The device's settings in one menu</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="res/readme/mp4.png" width="240" alt="MP4's shelf of albums"><br><sub>Your albums, in MP4</sub></td>
+    <td align="center"><img src="res/readme/mp4.png" width="240" alt="MP4's shelf of albums and a film, the clock at the top left"><br><sub>Your albums and films, in MP4</sub></td>
     <td align="center"><img src="res/readme/nowplaying.png" width="240" alt="MP4's Now Playing"><br><sub>Now Playing, on SELECT from anywhere</sub></td>
     <td align="center"><img src="res/readme/scraper.png" width="240" alt="MENU > Scraper: Fetch Missing Art, Video Snaps, and the covers ScreenScraper, libretro and SteamGridDB found"><br><sub>Box art from three sources</sub></td>
   </tr>

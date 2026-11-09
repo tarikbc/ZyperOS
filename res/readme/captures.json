@@ -159,7 +159,7 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked · 10 points",
+        "Unlocked \u00b7 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
@@ -186,7 +186,7 @@
     },
     {
       "file": "light/mp4.png",
-      "card": "demo",
+      "card": "media",
       "args": [
         "--theme",
         "light",
@@ -200,7 +200,8 @@
         "--screen",
         "games"
       ],
-      "sha256": "53f7873c97225415a38af5cb98363e0bc2e0e887eab88179ce1467cdaddfea57"
+      "sha256": "df2fd93351bd51a8eb88d5a968483494974cd31c4eb87f47151271f98b6efaa0",
+      "source_commit": "4d46b1e95ec2100237a97a31e0b8491da25c5351"
     },
     {
       "file": "light/nowplaying.png",
@@ -220,7 +221,8 @@
         "0",
         "83"
       ],
-      "sha256": "fb24d6b36ce0f88cd7e54c3de6da58fc794fba78e82bc71b6c9a00d6f5001ba7"
+      "sha256": "23d6cdc1ebbefe52d5e8b42f229a303cf198e383a103f29cb3b297d4eacbe250",
+      "source_commit": "4d46b1e95ec2100237a97a31e0b8491da25c5351"
     },
     {
       "file": "light/hare.png",
