@@ -13265,7 +13265,7 @@ typedef struct {
 	int          snap_secs;
 	int          video_seen;        /* the download's end, once said */
 	/* The words the page shows, which it points into */
-	char         cap1[160], cap2[256], credit[96], vals[MPG_ROWS][64], lines[3][96];
+	char         cap1[160], cap2[256], credit[96], vals[MPG_ROWS][64], lines[3][96], vnote[256];
 	/* Something on the card changed: the shelf's textures go at the end */
 	bool         changed;
 	bool         shot;              /* a fixture: nothing is asked, nothing written */
@@ -13514,11 +13514,16 @@ static void media_build(media_view *v, unsigned now)
 		p->rows[nr] = (mpg_row){ T(S_MEDIA_WATCH), v->vals[nr], true };
 		nr++;
 	}
-	v->row_job[nr] = MR_GET;
-	{
+	/* Download (Replace, with a video) only when there is one to fetch or
+	 * one coming; otherwise the empty tile and a line where the rows would
+	 * be say why (2026-11-09: "always have the Baixar button, even if no
+	 * wifi or no videos found") */
+	p->vid_note = NULL;
+	if (st->video_coming || (!offline && st->video_offer)) {
 		const char *val = NULL;
 		bool live = false;
 
+		v->row_job[nr] = MR_GET;
 		if (st->video_coming) {
 			char got[24], all[24];
 
@@ -13532,16 +13537,12 @@ static void media_build(media_view *v, unsigned now)
 				p->vid_load = 0;
 			}
 			val = v->vals[nr];
-		} else if (offline) {
-			val = T(S_MENU_NEEDS_WIFI);
-		} else if (st->video_offer) {
+		} else {
 			live = true;
 			if (st->video_size > 0) {
 				sys_menu_bytes((unsigned long long)st->video_size, v->vals[nr], sizeof v->vals[nr]);
 				val = v->vals[nr];
 			}
-		} else if (st->q[AS_SS] == MFQ_OFF) {
-			val = T(S_MEDIA_SRC_NOT_LINKED);
 		}
 		p->rows[nr] = (mpg_row){ T(v->has_snap ? S_MEDIA_REPLACE : S_MEDIA_DOWNLOAD), val, live };
 		nr++;
@@ -13570,8 +13571,18 @@ static void media_build(media_view *v, unsigned now)
 		p->vid_status = T(S_MEDIA_LOOKING);
 	} else if (!offline && st->q[AS_SS] != MFQ_OFF && !st->video_offer) {
 		p->vid_status = T(S_MEDIA_NONE_FOUND);
+		p->vid_note = T(S_MEDIA_VNOTE_NONE);
 	} else {
 		p->vid_status = T(S_MEDIA_NO_VIDEO);
+	}
+	/* Why there is nothing to download, beside a tile with no video */
+	if (!v->has_snap && !st->video_coming && !st->video_offer) {
+		if (offline) {
+			p->vid_note = T(S_MEDIA_VNOTE_OFFLINE);
+		} else if (st->q[AS_SS] == MFQ_OFF) {
+			snprintf(v->vnote, sizeof v->vnote, T(S_MEDIA_VNOTE_LINK), T(S_SCRAPER_HEADING));
+			p->vid_note = v->vnote;
+		}
 	}
 
 	/* Look Closer: the focused picture whole, or its small copy while that

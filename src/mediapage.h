@@ -73,6 +73,7 @@ typedef struct {
 	SDL_Rect     vid_src;      /* its part of the texture (snapv_texture); none: all */
 	bool         vid_disc;     /* the play mark: still, the cursor elsewhere */
 	const char  *vid_status;   /* on the empty tile: "No video", "Looking it up" */
+	const char  *vid_note;     /* where the rows would be, with none: why */
 	float        vid_load;     /* a bar while it downloads; < 0 none */
 	mpg_row      rows[MPG_ROWS];
 	int          nrows, row;   /* row: the cursor's, -1 on the strip */

@@ -270,6 +270,17 @@ static void video_draw(SDL_Renderer *r, const mpg_page *p)
 	}
 	if (p->vid_load >= 0) bar(r, t.x + 20, t.y + t.h - 24, t.w - 40, p->vid_load);
 	rows_draw(r, p);
+	/* No rows: why, where they would be, as the strip's message says why
+	 * it has no pictures (2026-11-09: Download stood there with nothing to
+	 * download) */
+	if (!p->nrows && p->vid_note) {
+		TTF_Font *fm = ui_font(UI_F_META);
+		char lines[3][LB_LINE];
+		int n = ui_balance_lines(fm, p->vid_note, X1 - ROWS_X - ROW_PAD, 3, lines), k;
+
+		for (k = 0; k < n; k++)
+			ui_text(r, fm, lines[k], ROWS_X, ui_cap_y(fm, VTILE_Y + 24 + k * 42), -1, UI_TEXT_DIM);
+	}
 }
 
 static void title_draw(SDL_Renderer *r, const mpg_page *p)

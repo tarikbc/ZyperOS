@@ -2404,8 +2404,14 @@ title is (11.14), sliding when it is longer. A base, as Storage's page is
   answer): where the strip would be, "Connect to Wi-Fi first." in
   **menu** (on two lines where one does not hold it) and "Or add covers from
   a computer with File Transfer." in **meta**, Zyper at the right under
-  them, and Replace or Download dead with "needs Wi-Fi". Before still shows
-  and still puts back.
+  them. Before still shows and still puts back.
+- **The video's rows** are only the ones that work: Watch and Delete with a
+  video on the card, Download (Replace, with one) only while ScreenScraper
+  offers a video or one is coming (2026-11-09: Download stood there with
+  nothing to download). With no rows, the empty tile says "No video", "None
+  found" or "Looking it up", and a line in **meta** where the rows would be
+  says why: no Wi-Fi, ScreenScraper not linked (and where to link it), or
+  ScreenScraper has no video of the game.
 - **Nothing found**: "Nothing found." and a line a source in **meta**,
   "libretro · no match", "ScreenScraper · unknown game", "SteamGridDB · not
   linked" (or "no answer"), with Zyper.

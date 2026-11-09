@@ -327,6 +327,9 @@ media.region_kr
 media.region_au
 media.looking
 media.or_pc
+media.vnote_link
+media.vnote_none
+media.vnote_offline
 media.src_unknown
 media.src_no_match
 media.src_not_linked

@@ -441,3 +441,36 @@ fr = Le téléchargement a échoué. Réessayez.
 de = Nicht geladen. Versuch es noch einmal.
 ja = ダウンロードできませんでした。もう一度お試しください。
 it = Download non riuscito. Riprova.
+
+[media.vnote_offline]
+note = Where the video's rows would be, when there is no video and no Wi-Fi: why nothing can be downloaded. Wrapped to three lines of about 600 units.
+en = Connect to Wi-Fi to look for a video of this game.
+zh-Hans = 连接 Wi-Fi 后即可查找这款游戏的视频。
+es = Conéctate a una red Wi-Fi para buscar un vídeo de este juego.
+pt-BR = Conecte ao Wi-Fi para procurar um vídeo deste jogo.
+fr = Connectez-vous au Wi-Fi pour chercher une vidéo de ce jeu.
+de = Verbinde dich mit WLAN, um ein Video zu diesem Spiel zu suchen.
+ja = Wi-Fi に接続すると、このゲームの動画を探せます。
+it = Connettiti al Wi-Fi per cercare un video di questo gioco.
+
+[media.vnote_link]
+note = Where the video's rows would be, when ScreenScraper, the only source of videos, has no account linked; %s is the name of MENU's Scraper row. Wrapped to three lines of about 600 units.
+en = To find videos, link ScreenScraper in MENU > %s.
+zh-Hans = 要查找视频，请在 MENU > %s 中关联 ScreenScraper。
+es = Para buscar vídeos, vincula ScreenScraper en MENU > %s.
+pt-BR = Para achar vídeos, vincule o ScreenScraper em MENU > %s.
+fr = Pour les vidéos, liez ScreenScraper dans MENU > %s.
+de = Für Videos ScreenScraper unter MENU > %s verknüpfen.
+ja = 動画を探すには、MENU > %s で ScreenScraper を連携してください。
+it = Per i video, collega ScreenScraper in MENU > %s.
+
+[media.vnote_none]
+note = Where the video's rows would be, when ScreenScraper has no video of the game. Wrapped to three lines of about 600 units.
+en = ScreenScraper has no video of this game yet.
+zh-Hans = ScreenScraper 还没有这款游戏的视频。
+es = ScreenScraper aún no tiene un vídeo de este juego.
+pt-BR = O ScreenScraper ainda não tem vídeo deste jogo.
+fr = ScreenScraper n'a pas encore de vidéo de ce jeu.
+de = ScreenScraper hat noch kein Video zu diesem Spiel.
+ja = ScreenScraper にはまだこのゲームの動画がありません。
+it = ScreenScraper non ha ancora un video di questo gioco.

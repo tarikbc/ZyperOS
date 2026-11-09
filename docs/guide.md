@@ -797,7 +797,10 @@ again makes it the cover. The cover it replaces is kept as **Before**, first
 in the row: A on it puts it back (one level, either way). Below, the game's
 video: its picture plays muted while a row of it is chosen; **Watch** plays it
 on the whole screen with its sound, **Download** or **Replace** fetches it
-from ScreenScraper, and **Delete** removes it after a question. With no
+from ScreenScraper, and **Delete** removes it after a question. Download and
+Replace show only when ScreenScraper has a video to fetch; when there is none,
+a line beside the empty picture says why: no Wi-Fi, ScreenScraper not linked,
+or no video of that game. With no
 network the page still shows the cover, plays the video and puts Before back,
 and says to connect, or to add covers from a computer with File Transfer.
 ScreenScraper counts each of its pictures as a request on your account, so
