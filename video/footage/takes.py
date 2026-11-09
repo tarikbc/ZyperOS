@@ -147,9 +147,12 @@ shots('battery', [(PS1, ['--charging', '{t}'], motion(0, 3000)),
 shots('topbar', [(PS1, ['--home', 'spotlight', '--song', 'Night Drive (Extended Mix) - The Midnight Rider Collective',
                         '--phase', '{t}'], motion(0, 4200))])
 # Zyper cheering the first games on an empty card
-shots('cheer', [(PS1, ['--cheer', '{t}'], motion(0, 2600))])
+# Zyper's cheer for the first games: in, held at its height so it can be read,
+# and out (the launcher's own frames, the middle one held)
+shots('cheer', [(PS1, ['--cheer', '{t}'], motion(0, 700)), (PS1, ['--cheer', '700'], 1300),
+                (PS1, ['--cheer', '{t}'], motion(700, 1900)), (PS1, ['--cheer', '1900'], 400)])
 # The empty card: the two ways to add games
-shots('empty', [(('', ''), ['--ways', 'usb'], 1600)], card='empty')
+shots('empty', [(('', ''), ['--ways', 'both'], 3200)], card='empty')
 
 # ---- v2: quicker takes and the features v1 left out ------------------------
 # The PlayStation shelf flown along, then N64's and SNES's (the opening)
