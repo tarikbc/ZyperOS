@@ -3,7 +3,7 @@
 # repository or made from it, none of it committed (video/.gitignore):
 #
 #   fonts/   Lexend and the CJK menu fonts (res/fonts)
-#   img/     the ZyperOS lockups (res/readme), and Sonic 2's libretro screenshot
+#   img/     the ZyperOS lockups and the File Transfer page's shots (res/readme), and Sonic 2's libretro screenshot
 #            from the art cache video/footage/card.py fills
 #   boot/    the boot animation (res/boot)
 #   audio/   the menu music track the video plays (res/bgm) and the launcher's
@@ -23,6 +23,8 @@ mkdir -p "$PUB/fonts" "$PUB/img" "$PUB/boot" "$PUB/audio/ui" "$PUB/device"
 cp "$ROOT/res/fonts/menu.ttf" "$ROOT/res/fonts/title.ttf" "$ROOT/res/fonts/ja-menu.otf" \
    "$ROOT/res/fonts/zh-menu.otf" "$PUB/fonts/"
 cp "$ROOT/res/readme/lockup.png" "$ROOT/res/readme/lockup-light.png" "$PUB/img/"
+# The File Transfer page in a browser, as tools/readme-shots.py drew it
+cp "$ROOT/res/readme/portal.png" "$ROOT/res/readme/portal-phone.png" "$ROOT/res/readme/portal-pin.png" "$PUB/img/"
 cp "$ROOT/res/boot/zyperos-fly.mp4" "$PUB/boot/"
 cp "$ROOT/res/bgm/The Arplands.mp3" "$PUB/audio/music.mp3"
 cp "$ROOT"/res/sounds/wood/*.wav "$PUB/audio/ui/"

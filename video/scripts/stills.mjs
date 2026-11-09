@@ -1,7 +1,7 @@
 // Stills of the tour at chosen frames, and a contact sheet of them, to look at
 // before the full render: npm run stills [-- FRAME ...]
-// Without frames: three of every scene (a second in, the middle, a second
-// before its end). Writes out/stills/<frame>.jpeg and out/contact-sheet.jpg,
+// Without frames: two of every scene (just after it lands, and past its
+// middle). Writes out/stills/<frame>.jpeg and out/contact-sheet.jpg,
 // six to a row in the order given.
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
@@ -17,17 +17,17 @@ mkdirSync(out, { recursive: true });
 
 let frames = process.argv.slice(2).map(Number).filter((n) => !Number.isNaN(n));
 if (!frames.length) {
-  // The scene starts, read from the timeline's SCENES table
+  // The scene starts, from the beats of the timeline's SCENES, in order
   const src = readFileSync(path.join(root, "src/timeline.ts"), "utf8");
-  const table = src.slice(src.indexOf("export const SCENES"), src.indexOf("} as const"));
-  const bars = [...table.matchAll(/bar\(([\d.]+)\)/g)].map((m) => Math.round(Number(m[1]) * 60));
-  bars.push(56 * 60);
-  for (let i = 0; i + 1 < bars.length; i++) {
-    const [a, b] = [bars[i], bars[i + 1]];
-    frames.push(a + 30, Math.round((a + b) / 2), b - 30);
+  const table = src.slice(src.indexOf("export const SCENES"), src.indexOf("/** Scene starts"));
+  const beats = [...table.matchAll(/beats: (\d+)/g)].map((m) => Number(m[1]));
+  let at = 0;
+  for (const b of beats) {
+    const len = b * 15;
+    frames.push(at + Math.min(12, len - 1), at + Math.round(len * 0.6));
+    at += len;
   }
 }
-
 const serveUrl = await bundle({ entryPoint: path.join(root, "src/index.ts") });
 const composition = await selectComposition({ serveUrl, id: "ZyperOSTour" });
 for (const frame of frames) {

@@ -1,149 +1,129 @@
 /**
- * The tour's one source of timing: scenes, what the screen shows, the captions,
- * the camera and the theme, in frames at 30 fps.
+ * The tour's one source of timing, in frames at 30 fps.
  *
  * Music: "The Arplands" by LordZintick (CC0), one of ZyperOS's own menu music
- * tracks (res/bgm). It is 120 BPM, so a beat is exactly 15 frames and a bar 60.
- * Its beat grid starts 0.273 s into the file, so the music starts there and
- * frame 0 is a beat. Its drums come in at bar 8. Every cut and every caption
- * starts on a beat; the device itself never moves to the beat.
+ * tracks (res/bgm), 120 BPM, so a beat is exactly 15 frames. The tour starts it
+ * at 16.273 s, the beat its drums come in on, so frame 0 is a downbeat with the
+ * whole band playing. Every scene starts on a beat and lasts whole beats.
  *
- * Footage: video/footage/takes.py records the launcher's own frames into
- * public/footage/<take>.mp4. A clip plays a take from `fromMs` for `len`
- * frames, at its own speed. A take's presses (public/footage/index.json) play
- * the launcher's own interface sounds (res/sounds/wood) where they are seen.
+ * A scene is a short beat of one feature: what the screen plays (takes of
+ * video/footage/takes.py, cut and sped up), where the device is (a pose, and a
+ * punch-in on the part that matters), how it arrives (a whip or a spring), and a
+ * label of a few words, the site's own.
  */
 export const FPS = 30;
 export const BPM = 120;
 export const BEAT = 15;
-export const BAR = 60;
-export const MUSIC_START_S = 0.273;
-export const BARS = 56;
-export const TOTAL = BARS * BAR;
+export const MUSIC_START_S = 16.273;
 
-const bar = (n: number) => Math.round(n * BAR);
-const s = (seconds: number) => Math.round(seconds * FPS);
+/** A piece of a take, from one ms to another, at `rate` times its speed (to: "fill" runs to the scene's end) */
+export type Step =
+  | { take: string; from: number; to?: number | "fill"; rate?: number }
+  | { image: string; beats?: number };
+
+/** Where the device is. "main": its screen large on the left; "split": smaller,
+ * room for a computer and a phone; "hero": whole, for the start and the end;
+ * "duo": two of them, light and dark; "away": off screen, for the language grid */
+export type Pose = "main" | "split" | "hero" | "duo" | "away";
+
+/** A punch-in: the screen point (0 to 1) brought to the middle of the screen's place, `zoom` times larger */
+export type Punch = { at: number; x: number; y: number; zoom: number; until?: number };
+
+export type Scene = {
+  id: string;
+  beats: number;
+  pose: Pose;
+  enter?: "whip" | "spring" | "cut";
+  screen: Step[];
+  label?: string;
+  sub?: string;
+  /** beats into the scene the label waits */
+  labelAt?: number;
+  punch?: Punch[];
+  /** the computer and the phone of File Transfer */
+  browser?: { laptop?: string; phone?: string; phoneAt?: number; laptopAt?: number };
+  dark?: boolean;
+};
+
+export const SCENES: Scene[] = [
+  { id: "open", beats: 8, pose: "main", enter: "whip", screen: [{ take: "fast-shelf", from: 3400, to: "fill", rate: 1.5 }],
+    label: "Your whole retro library.", sub: "Fast, light firmware for the GKD Pixel 2", labelAt: 1 },
+  { id: "home", beats: 6, pose: "main", screen: [{ take: "home", from: 2100, to: "fill", rate: 1.6 }],
+    label: "Every system in pixel art" },
+  { id: "art", beats: 6, pose: "main", screen: [{ take: "n64", from: 0, to: 1000 }, { take: "scraper", from: 0, to: "fill", rate: 2 }],
+    label: "Box art it finds itself", sub: "libretro, ScreenScraper, SteamGridDB" },
+  { id: "search", beats: 8, pose: "main", screen: [{ take: "search", from: 3200, to: 6400, rate: 2 }, { take: "search", from: 9100, to: "fill", rate: 2 }],
+    label: "Search any game", sub: "A few letters, every system" },
+  { id: "launch", beats: 3, pose: "main", enter: "cut", screen: [{ image: "img/sonic2.png" }],
+    label: "Starts the moment you press A" },
+  { id: "quicksave", beats: 4, pose: "main", screen: [{ take: "quicksave", from: 0, to: "fill" }],
+    label: "Quick save, quick load", sub: "SELECT + R1, SELECT + L1", punch: [{ at: 0, x: 0.5, y: 0.86, zoom: 1.9 }] },
+  { id: "controls", beats: 6, pose: "main", screen: [{ take: "ingame", from: 0, to: 2000, rate: 2 }, { take: "controls-ps1", from: 0, to: "fill" }],
+    label: "Every control, in the game" },
+  { id: "cover", beats: 6, pose: "main", screen: [{ take: "details", from: 4700, to: 7100, rate: 2 }, { take: "media", from: 300, to: "fill", rate: 1.5 }],
+    label: "Pick a game's cover" },
+  { id: "wifi", beats: 12, pose: "split", enter: "whip", screen: [{ take: "wifi-xfer", from: 0, to: "fill", rate: 0.85 }],
+    label: "Wi-Fi File Transfer", sub: "Any browser, behind a PIN", browser: { laptop: "img/portal.png", phone: "img/portal-phone.png", laptopAt: 1, phoneAt: 4 } },
+  { id: "cable", beats: 10, pose: "split", enter: "cut", screen: [{ take: "cable", from: 0, to: "fill", rate: 0.8 }],
+    label: "Or over the USB cable", sub: "Charge only, or File Transfer", browser: { laptop: "img/portal.png", laptopAt: -1 } },
+  { id: "hotspot", beats: 5, pose: "split", enter: "cut", screen: [{ take: "hotspot", from: 0, to: "fill" }],
+    label: "No Wi-Fi around?", sub: "It makes its own network for your phone", browser: { phone: "img/portal-pin.png", phoneAt: 1 } },
+  { id: "ring", beats: 4, pose: "main", enter: "whip", screen: [{ take: "xfer-ring", from: 0, to: "fill", rate: 1.2 }],
+    label: "Keeps going while you play", punch: [{ at: 0.5, x: 0.87, y: 0.083, zoom: 3.4 }] },
+  { id: "update", beats: 4, pose: "main", screen: [{ take: "update", from: 0, to: "fill" }],
+    label: "System Update", sub: "Over Wi-Fi or the cable" },
+  { id: "battery", beats: 8, pose: "main", screen: [{ take: "charge", from: 0, to: 2800 }, { take: "battery", from: 3200, to: "fill" }],
+    label: "Battery care", sub: "A charge limit, and the time left" },
+  { id: "storage", beats: 5, pose: "main", screen: [{ take: "storage", from: 0, to: "fill", rate: 2 }],
+    label: "Storage, as a phone shows it" },
+  { id: "mp4", beats: 6, pose: "main", screen: [{ take: "mp4", from: 1500, to: 4500, rate: 1.5 }, { take: "lock", from: 0, to: "fill" }],
+    label: "MP4", sub: "Music, books and videos. X locks the screen." },
+  { id: "ports", beats: 6, pose: "main", screen: [{ take: "ports", from: 0, to: 4000, rate: 2 }, { take: "portmenu", from: 0, to: "fill" }],
+    label: "PortMaster, one press" },
+  { id: "ds", beats: 6, pose: "main", screen: [{ take: "ds", from: 0, to: "fill", rate: 0.96 }],
+    label: "Nintendo DS your way", sub: "Screen layouts, and a Game Language" },
+  { id: "cheevos", beats: 5, pose: "main", screen: [{ take: "cheevos", from: 700, to: "fill", rate: 1.2 }],
+    label: "RetroAchievements", punch: [{ at: 2, x: 0.5, y: 0.86, zoom: 1.7 }] },
+  { id: "empty", beats: 5, pose: "main", screen: [{ take: "empty", from: 0, to: 900 }, { take: "cheer", from: 300, to: "fill" }],
+    label: "No games yet? It shows how" },
+  { id: "themes", beats: 8, pose: "duo", enter: "whip", screen: [], label: "Light and dark", sub: "Beard and Salt & Pepper" },
+  { id: "languages", beats: 8, pose: "away", screen: [], label: "Eight languages" },
+  { id: "firststart", beats: 6, pose: "main", enter: "whip", screen: [{ take: "firststart", from: 400, to: "fill", rate: 2 }],
+    label: "A first start that asks" },
+  { id: "end", beats: 6, pose: "hero", screen: [{ take: "fast-shelf", from: 3600, to: "fill", rate: 1 }] },
+];
+
+/** Scene starts, in frames */
+export const STARTS: number[] = SCENES.reduce<number[]>((acc, s, i) => [...acc, i ? acc[i - 1] + SCENES[i - 1].beats * BEAT : 0], []);
+export const TOTAL = STARTS[STARTS.length - 1] + SCENES[SCENES.length - 1].beats * BEAT;
 
 export type Clip =
-  | { kind: "take"; take: string; at: number; len: number; fromMs: number; sounds?: boolean }
-  | { kind: "video"; src: string; at: number; len: number; fromMs: number }
-  | { kind: "image"; src: string; at: number; len: number };
+  | { kind: "take"; take: string; at: number; len: number; fromMs: number; rate: number; scene: string }
+  | { kind: "image"; src: string; at: number; len: number; scene: string };
 
-export type Caption = { at: number; len: number; eyebrow?: string; head: string; sub?: string };
-
-/** Where the device is: "hero" whole and to the left, "close" its screen large */
-export type Pose = "hero" | "close";
-export type CameraKey = { at: number; pose: Pose; dur?: number };
-
-/** Clips laid end to end from `start`: a take from one ms to another, a video, or an image for `len` frames */
-type Step =
-  | { take: string; from: number; to: number }
-  | { video: string; from: number; to: number }
-  | { image: string; len: number };
-const run = (start: number, steps: Step[], sounds = true): Clip[] => {
+/** The scenes' steps laid end to end: a clip each, the last one running to its scene's end */
+export const CLIPS: Clip[] = SCENES.flatMap((sc, i) => {
+  const start = STARTS[i];
+  const end = start + sc.beats * BEAT;
   let at = start;
-  return steps.map((st) => {
-    let c: Clip;
-    if ("image" in st) c = { kind: "image", src: st.image, at, len: st.len };
-    else if ("video" in st) c = { kind: "video", src: st.video, at, len: s((st.to - st.from) / 1000), fromMs: st.from };
-    else c = { kind: "take", take: st.take, at, len: s((st.to - st.from) / 1000), fromMs: st.from, sounds };
-    at += c.len;
+  return sc.screen.map((st, k): Clip => {
+    const last = k === sc.screen.length - 1;
+    if ("image" in st) {
+      const len = last ? end - at : (st.beats ?? 1) * BEAT;
+      const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
+      at += len;
+      return c;
+    }
+    const rate = st.rate ?? 1;
+    const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
+    const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
+    at += len;
     return c;
   });
+});
+
+export const sceneAt = (frame: number) => {
+  let i = 0;
+  while (i + 1 < STARTS.length && STARTS[i + 1] <= frame) i++;
+  return i;
 };
-const tk = (take: string, from: number, to: number): Step => ({ take, from, to });
-
-export const SCENES = {
-  intro: bar(0),
-  home: bar(4),
-  shelf: bar(8),
-  search: bar(12),
-  ingame: bar(16),
-  details: bar(20),
-  storage: bar(24),
-  cheevos: bar(27),
-  mp4: bar(30),
-  ports: bar(33),
-  dark: bar(37),
-  language: bar(42),
-  firststart: bar(45),
-  battery: bar(49),
-  outro: bar(52),
-} as const;
-const S = SCENES;
-
-const SONIC2 = "img/sonic2.png";
-
-export const CLIPS: Clip[] = [
-  // The handheld turning on: its boot animation, then the home
-  ...run(S.intro + 15, [{ video: "boot/zyperos-fly.mp4", from: 0, to: 3000 }]),
-  ...run(S.intro + 105, [tk("home", 150, 9983)]),
-  ...run(bar(6.667), [tk("gallery", 3300, 5967)]),
-  ...run(S.shelf, [tk("shelf", 3000, 11000)]),
-  // MENU > Search Games: "s", a cut, "n", the three Sonics, A on the second
-  ...run(S.search, [tk("search", 3200, 6400), tk("search", 9300, 13930)]),
-  // ...its frame, and MENU over it
-  ...run(bar(15.917), [{ image: SONIC2, len: 20 }, tk("ingame", 0, 5380), tk("controls-ps1", 0, 2134)]),
-  // X on Metal Gear Solid, down to Cover and Video, and the page
-  ...run(S.details, [tk("details", 4600, 9300), tk("media", 300, 3600)]),
-  ...run(S.storage, [tk("storage", 0, 6000)]),
-  ...run(S.cheevos, [tk("cheevos", 0, 6000)]),
-  ...run(S.mp4, [tk("mp4", 0, 6000)]),
-  ...run(S.ports, [tk("ports", 0, 4000), tk("portmenu", 0, 4000)]),
-  // MENU near Appearance, A to Dark, the home and a shelf in the dark
-  ...run(S.dark, [tk("dark", 6600, 16600)]),
-  // MENU > Language, down to 日本語, A
-  ...run(S.language, [tk("language", 6300, 12300)]),
-  ...run(S.firststart, [tk("firststart", 400, 8400)]),
-  ...run(S.battery, [tk("battery", 0, 6000)]),
-  ...run(S.outro, [tk("shelf", 5000, 13000)], false),
-];
-
-export const CAPTIONS: Caption[] = [
-  { at: S.home + BEAT * 2, len: bar(4) - BEAT * 2, head: "Every system in pixel art",
-    sub: "Animated consoles on a Spotlight or Gallery home, A to Z or by release date." },
-  { at: S.shelf + BEAT * 2, len: bar(4) - BEAT * 2, head: "Box art it finds itself",
-    sub: "Your games as a row of covers, a heart before each favorite's name." },
-  { at: S.search, len: bar(3) + BEAT, eyebrow: "MENU > Search Games", head: "Search and Random Game",
-    sub: "Find any game by a few letters of its name, or let ZyperOS pick one and start it." },
-  { at: bar(15.25), len: bar(1.75), head: "Starts the moment you press A",
-    sub: "The emulator stays running, so a game is up as soon as you choose it." },
-  { at: S.ingame + BEAT * 3, len: bar(2.5) - BEAT * 3, eyebrow: "MENU in a game", head: "Quick save, quick load",
-    sub: "Hold SELECT and press R1 to save a state, L1 to load it, into the slot you pick for each system." },
-  { at: bar(18.5), len: bar(1.5), head: "Every control, in the game",
-    sub: "Controls in the in-game menu shows what each button does in that game, on its system." },
-  { at: S.details + BEAT * 2, len: bar(4) - BEAT * 2, eyebrow: "X > Cover and Video", head: "Pick a game's cover",
-    sub: "Every box, 3D box, title screen and screenshot the three sources offer, named with where it comes from." },
-  { at: S.storage, len: bar(3), eyebrow: "MENU > Storage", head: "Storage, as a phone shows it",
-    sub: "What fills the card in one bar, then every system by size and each system's games largest first." },
-  { at: S.cheevos, len: bar(3), head: "RetroAchievements",
-    sub: "Achievements download once and then work offline, with each one's badge and a pop-up with Zyper when you unlock one." },
-  { at: S.mp4, len: bar(3), eyebrow: "SELECT", head: "MP4",
-    sub: "Music, audiobooks and videos on one shelf of their own covers, each marked album, book or video." },
-  { at: S.ports, len: bar(2), head: "Ports",
-    sub: "The Ports shelf installs the official PortMaster with one press, then runs its games." },
-  { at: bar(35), len: bar(2), head: "The in-game menu over every port",
-    sub: "MENU pauses any port, and PortMaster itself: Continue, Controls and Quit." },
-  { at: S.dark, len: bar(5), eyebrow: "MENU > Appearance", head: "Light and dark",
-    sub: "Beard in light, Salt & Pepper in dark. Light, Dark or Auto, and the first start asks." },
-  { at: S.language, len: bar(3), eyebrow: "MENU > Language", head: "Eight languages",
-    sub: "English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語 and Italiano." },
-  { at: S.firststart, len: bar(4), head: "A first start that asks",
-    sub: "Zyper says hello in each language until you pick yours, then teaches each button." },
-  { at: S.battery, len: bar(3), head: "Battery care",
-    sub: "A charging screen while the handheld is off, and a corner that can show the time left." },
-];
-
-export const CAMERA: CameraKey[] = [
-  { at: 0, pose: "hero" },
-  { at: S.home, pose: "close", dur: 45 },
-  { at: S.outro, pose: "hero", dur: 45 },
-];
-
-/** The ground: dark from the moment Appearance turns Dark until the next scene */
-export const DARK_AT = S.dark + s(0.65) + 1;
-export const LIGHT_AT = S.language;
-
-/** The hero's words: at the start, and again at the end */
-export const INTRO_TEXT = { at: BEAT * 2, len: bar(4) - BEAT * 2 };
-export const OUTRO_TEXT = { at: S.outro + BEAT * 3, len: bar(4) - BEAT * 3 };

@@ -10,10 +10,9 @@ the ones those files carry there.
 |---|---|---|---|---|
 | `public/audio/music.mp3` | The Arplands (120 BPM, 2:24) | LordZintick | `res/bgm/The Arplands.mp3`, one of ZyperOS's own menu music tracks; its page is listed in `res/bgm/tracks.json` | CC0 1.0 (`res/bgm/LICENSE-CC0-1.0.txt`) |
 
-The tour plays it from 0.273 s, where its beat grid starts, so frame 0 is a beat
-(`MUSIC_START_S` in `src/timeline.ts`), and fades it over the last 2.5 s. Its
-drums come in at bar 8, 16 s in. It is the track the handheld plays in the
-video's own footage, so the song Zyper names on the home is the one heard.
+The tour plays it from 16.273 s, the downbeat its drums come in on, so frame 0
+has the whole band (`MUSIC_START_S` in `src/timeline.ts`), and fades it over the
+last 1.5 s. It is the track the handheld plays in the video's own footage.
 
 ## Sound effects
 
