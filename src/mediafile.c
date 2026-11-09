@@ -6,6 +6,7 @@
  * declarations are in src/mediafetch.h. */
 #include "mediafetch.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -115,33 +116,45 @@ static uint32_t be32(const unsigned char *p)
 	return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
 }
 
-/* The box of `type` among those from `at` to `end` (-1: the file's end): its
- * body's offset and length; false when there is none */
+/* The most boxes walked at one level: a real file has a handful */
+#define MF_MAX_BOXES 4096
+
+/* The box of `type` among those from `at` to `end`: its body's offset and
+ * length; false when there is none.
+ *
+ * THE FILE IS NOT TRUSTED. A video snap is whatever a server sent, so every
+ * size it states is held to the room there is: a box past LONG_MAX, shorter
+ * than its own header, or running past `end` (the parent's end, or the
+ * file's) ends the walk, as does one that would not move it forward, and no
+ * more than MF_MAX_BOXES are looked at. */
 static bool find_box(FILE *f, long at, long end, const char *type, long *body, long *len)
 {
 	unsigned char h[16];
+	int walked;
 
-	while (end < 0 || at + 8 <= end) {
+	for (walked = 0; walked < MF_MAX_BOXES && at >= 0 && end - at >= 8; walked++) {
 		uint64_t size;
-		long hl = 8;
+		long hl = 8, next;
 
 		if (fseek(f, at, SEEK_SET) != 0 || fread(h, 1, 8, f) != 8) return false;
 		size = be32(h);
 		if (size == 1) {
-			if (fread(h + 8, 1, 8, f) != 8) return false;
+			if (end - at < 16 || fread(h + 8, 1, 8, f) != 8) return false;
 			size = (uint64_t)be32(h + 8) << 32 | be32(h + 12);
 			hl = 16;
 		} else if (size == 0) {
-			if (fseek(f, 0, SEEK_END) != 0) return false;
-			size = (uint64_t)(ftell(f) - at);
+			size = (uint64_t)(end - at);       /* to the end of its parent */
 		}
-		if (size < (uint64_t)hl) return false;
+		if (size > (uint64_t)LONG_MAX || size < (uint64_t)hl) return false;
+		if ((long)size > end - at) return false;
+		next = at + (long)size;
+		if (next <= at) return false;
 		if (!memcmp(h + 4, type, 4)) {
 			*body = at + hl;
 			*len = (long)size - hl;
 			return true;
 		}
-		at += (long)size;
+		at = next;
 	}
 	return false;
 }
@@ -150,25 +163,36 @@ int mf_mp4_seconds(const char *path)
 {
 	FILE *f = path ? fopen(path, "rb") : NULL;
 	unsigned char m[32];
-	long moov, moov_len, mvhd, mvhd_len;
-	uint64_t scale, dur;
-	int secs = -1;
+	long end, moov, moov_len, mvhd, mvhd_len;
+	uint64_t scale, dur, secs;
+	size_t want, got;
+	int out = -1;
 
 	if (!f) return -1;
-	if (find_box(f, 0, -1, "moov", &moov, &moov_len) &&
-	    find_box(f, moov, moov + moov_len, "mvhd", &mvhd, &mvhd_len) &&
-	    fseek(f, mvhd, SEEK_SET) == 0 &&
-	    fread(m, 1, mvhd_len < (long)sizeof m ? (size_t)mvhd_len : sizeof m, f) >= 20 &&
-	    (m[0] != 1 || mvhd_len >= 32)) {
-		if (m[0] == 1) {
-			scale = be32(m + 20);
-			dur = (uint64_t)be32(m + 24) << 32 | be32(m + 28);
-		} else {
-			scale = be32(m + 12);
-			dur = be32(m + 16);
-		}
-		if (scale) secs = (int)((dur + scale / 2) / scale);
+	if (fseek(f, 0, SEEK_END) != 0 || (end = ftell(f)) < 0) { fclose(f); return -1; }
+	if (!find_box(f, 0, end, "moov", &moov, &moov_len) ||
+	    !find_box(f, moov, moov + moov_len, "mvhd", &mvhd, &mvhd_len) ||
+	    mvhd_len <= 0 || fseek(f, mvhd, SEEK_SET) != 0) {
+		fclose(f);
+		return -1;
 	}
+	/* The header's version says how much of it there must be: 20 bytes to
+	 * the duration in version 0, 32 in version 1 */
+	want = (unsigned long)mvhd_len < sizeof m ? (size_t)mvhd_len : sizeof m;
+	got = fread(m, 1, want, f);
 	fclose(f);
-	return secs;
+	if (got < 1) return -1;
+	if (m[0] == 1) {
+		if (mvhd_len < 32 || got < 32) return -1;
+		scale = be32(m + 20);
+		dur = (uint64_t)be32(m + 24) << 32 | be32(m + 28);
+	} else {
+		if (mvhd_len < 20 || got < 20) return -1;
+		scale = be32(m + 12);
+		dur = be32(m + 16);
+	}
+	if (!scale) return -1;
+	secs = dur / scale + (dur % scale >= (scale + 1) / 2 ? 1 : 0);
+	if (secs <= (uint64_t)INT_MAX) out = (int)secs;
+	return out;
 }

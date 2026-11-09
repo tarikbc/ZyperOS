@@ -1335,13 +1335,18 @@ build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h sr
 # Cover and Put Back on a card of small files, the cover there was to
 # .media/.before and the records with it, both ways, and a copy that fails
 # changing nothing; an MP4's length from its mvhd (src/mediafile.c).
+# The MP4 parser reads files a server sent: the check runs under
+# AddressSanitizer and UBSan where the compiler has them, so a read out of
+# bounds fails it rather than passing by luck
+MEDIA_SAN := $(shell echo 'int main(void){return 0;}' | $(CC) -fsanitize=address,undefined -x c - -o /dev/null 2>/dev/null && echo -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+
 check-media: build-native/media-check
 	@./build-native/media-check
 
 build-native/media-check: tools/media-check.c src/mediafile.c src/mediafetch.h src/artsrc.c src/artsrc.h \
                           src/db.c src/db.h FORCE
 	@mkdir -p build-native
-	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
 	      -o $@ tools/media-check.c src/mediafile.c src/artsrc.c src/db.c -lsqlite3
 
 # MENU > Storage's numbers (src/storage.h) on a card made of small files:

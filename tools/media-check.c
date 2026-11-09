@@ -12,7 +12,11 @@
  *     a game with no cover keeps no Before; a copy that fails changes
  *     nothing;
  *   - an MP4's length from its mvhd, both versions, and none from what is
- *     not one.
+ *     not one: crafted files (a box of size 0, a 64-bit size past the file
+ *     or under its header, a box past its parent or the file, an empty or
+ *     short mvhd, 5000 boxes before the moov) all say -1, read in bounds
+ *     (the check is built with AddressSanitizer and UBSan where the
+ *     compiler has them).
  *
  * Links src/mediafile.c, src/artsrc.c and src/db.c, and not SDL or the
  * network.
@@ -182,6 +186,148 @@ static void lengths(void)
 	CHECK(mf_mp4_seconds("/nonexistent/x.mp4") == -1, "nor nothing");
 }
 
+/* ---- crafted files: a snap is whatever a server sent ----------------------- */
+
+static unsigned char buf[64 * 1024];
+static size_t blen;
+
+static void b_box(uint32_t size, const char *type)
+{
+	be32(buf + blen, size);
+	memcpy(buf + blen + 4, type, 4);
+	blen += 8;
+}
+
+static void b_bytes(const void *p, size_t n)
+{
+	memcpy(buf + blen, p, n);
+	blen += n;
+}
+
+static void b_zero(size_t n)
+{
+	memset(buf + blen, 0, n);
+	blen += n;
+}
+
+static int crafted(const char *name)
+{
+	char p[700];
+	FILE *f;
+
+	snprintf(p, sizeof p, "%s/%s.mp4", root, name);
+	if ((f = fopen(p, "wb"))) { fwrite(buf, 1, blen, f); fclose(f); }
+	return mf_mp4_seconds(p);
+}
+
+static void crafted_files(void)
+{
+	static const unsigned char huge[8] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf0 };
+	static const unsigned char tiny[8] = { 0, 0, 0, 0, 0, 0, 0, 15 };
+	int i, s;
+
+	printf("crafted files, each no length and nothing read past the file:\n");
+
+	/* A first box of size 0 runs to the file's end: no moov after it */
+	blen = 0;
+	b_box(0, "ftyp");
+	b_zero(16);
+	CHECK((s = crafted("size0")) == -1, "a box of size 0 at the top: %d", s);
+
+	/* Size 1 and a 64-bit size far past the file */
+	blen = 0;
+	b_box(1, "moov");
+	b_bytes(huge, 8);
+	b_zero(32);
+	CHECK((s = crafted("huge")) == -1, "a 64-bit size past LONG_MAX: %d", s);
+
+	/* Size 1 and a 64-bit size shorter than its own header */
+	blen = 0;
+	b_box(1, "moov");
+	b_bytes(tiny, 8);
+	b_zero(32);
+	CHECK((s = crafted("under")) == -1, "a 64-bit size under its header: %d", s);
+
+	/* An mvhd whose 64-bit size is negative as a long: its length must not
+	 * become a read of the whole address space */
+	{
+		static const unsigned char neg[8] = { 0x80, 0, 0, 0, 0, 0, 0, 0x30 };
+
+		blen = 0;
+		b_box(72, "moov");
+		b_box(1, "mvhd");
+		b_bytes(neg, 8);
+		b_zero(48);
+		CHECK((s = crafted("mvhd-negative")) == -1, "an mvhd of a negative size: %d", s);
+	}
+
+	/* A box that says it is longer than the file */
+	blen = 0;
+	b_box(16, "ftyp");
+	b_zero(8);
+	b_box(1000, "moov");
+	b_box(28, "mvhd");
+	b_zero(20);
+	CHECK((s = crafted("past")) == -1, "a moov past the file's end: %d", s);
+
+	/* An mvhd past its moov */
+	blen = 0;
+	b_box(16, "moov");
+	b_box(28, "mvhd");
+	b_zero(20);
+	CHECK((s = crafted("past-parent")) == -1, "an mvhd past its moov: %d", s);
+
+	/* An mvhd with no body, a few bytes of one, and version 1 cut short */
+	blen = 0;
+	b_box(16, "moov");
+	b_box(8, "mvhd");
+	CHECK((s = crafted("mvhd-empty")) == -1, "an empty mvhd: %d", s);
+	blen = 0;
+	b_box(20, "moov");
+	b_box(12, "mvhd");
+	b_zero(4);
+	CHECK((s = crafted("mvhd-tiny")) == -1, "an mvhd of 4 bytes: %d", s);
+	blen = 0;
+	b_box(36, "moov");
+	b_box(28, "mvhd");
+	b_zero(20);
+	buf[16] = 1;                       /* version 1 wants 32 */
+	CHECK((s = crafted("mvhd-v1-short")) == -1, "version 1 in 20 bytes: %d", s);
+
+	/* A box shorter than a header */
+	blen = 0;
+	b_box(4, "free");
+	b_zero(4);
+	b_box(36, "moov");
+	CHECK((s = crafted("short-box")) == -1, "a box of 4 bytes: %d", s);
+
+	/* More boxes than any file has, before the moov: the walk stops */
+	blen = 0;
+	for (i = 0; i < 5000; i++) b_box(8, "free");
+	b_box(36, "moov");
+	b_box(28, "mvhd");
+	b_zero(20);
+	be32(buf + blen - 8, 600);
+	be32(buf + blen - 4, 6000);
+	CHECK((s = crafted("many")) == -1, "5000 boxes before the moov: %d", s);
+
+	/* A scale of 0, and a 64-bit duration that is no int of seconds */
+	blen = 0;
+	b_box(36, "moov");
+	b_box(28, "mvhd");
+	b_zero(20);
+	CHECK((s = crafted("scale0")) == -1, "a timescale of 0: %d", s);
+	blen = 0;
+	b_box(48, "moov");
+	b_box(40, "mvhd");
+	b_zero(32);
+	buf[16] = 1;
+	be32(buf + 16 + 20, 1);
+	be32(buf + 16 + 24, 0xffffffffu);
+	be32(buf + 16 + 28, 0xffffffffu);
+	CHECK((s = crafted("forever")) == -1, "a duration past an int: %d", s);
+}
+
 int main(void)
 {
 	char dev[700], lib[700];
@@ -193,6 +339,7 @@ int main(void)
 	records();
 	use_and_put_back();
 	lengths();
+	crafted_files();
 	db_shutdown();
 	{
 		char cmd[800];
