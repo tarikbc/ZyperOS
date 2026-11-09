@@ -168,6 +168,7 @@ something once broke in a way nothing noticed:
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |
 | `check-home-shots` | the home screens as the launcher draws them in both layouts and themes: footer inside the inset, the song, a flip, a move (builds the host launcher) |
+| `check-np-footer` | the song's name in the top bar slides when too long and stands when it fits, and Now Playing and a video draw their keys as a row of hints between the margins, in both themes (builds the host launcher) |
 | `check-favorites-shots` | the Favorites shelf names each game's own system right under its name (under one line or two), a console's own shelf does not, and every line keeps its margin, in both themes (builds the host launcher) |
 | `check-layout-shots` | a game page's play time sits where Favorites' system line does, and over a paused game the clock is at the top left and the battery's text at the top right, in 8 languages and in both themes (builds the host launcher) |
 | `check-games` | the games row: the aspect, the wrap, tiny lists, rapid reversals and bounded jumps, on the launcher's own objects |
