@@ -8,8 +8,9 @@
 <h3 align="center">A fast, light firmware for the GKD Pixel 2 that plays your whole retro library.</h3>
 
 <p align="center">
-  Forty systems with their box art, PortMaster ports, RetroAchievements, and your music and videos.<br>
-  It boots in under two seconds. Free and open source.
+  <b>On in about 2 seconds. The stock firmware takes 30 to 40.</b><br>
+  Turn it off mid-game; turn it on, and 2 seconds later you're back where you were.<br>
+  Forty systems with their box art, PortMaster ports, RetroAchievements, and your music and videos. Free and open source.
 </p>
 
 <p align="center">
@@ -21,6 +22,7 @@
 <p align="center">
   <a href="https://zyperos.com"><b>zyperos.com</b></a> &nbsp;·&nbsp;
   <a href="#why-zyperos">Why ZyperOS</a> &nbsp;·&nbsp;
+  <a href="#coming-from-the-stock-os">From the stock OS</a> &nbsp;·&nbsp;
   <a href="#features">Features</a> &nbsp;·&nbsp;
   <a href="#how-it-compares">Compare</a> &nbsp;·&nbsp;
   <a href="#supported-systems">Systems</a> &nbsp;·&nbsp;
@@ -35,11 +37,26 @@
 ## Why ZyperOS
 
 - **Your library looks the part.** Every game shows its real box art, found on the handheld itself from libretro, ScreenScraper and SteamGridDB, and a few seconds of video when you rest on it.
-- **Fast everywhere.** About 1.6 seconds from power to home, games start the moment you press A, and they pick up where you left them.
+- **On in about 2 seconds.** The stock firmware takes 30 to 40 (my test, on my Pixel 2). Turn it off mid-game, and the next start puts you back where you were, 2 seconds later. Games start the moment you press A.
 - **Plays more, smoothly.** Forty systems and PortMaster's ports. Mario Kart DS keeps 60 frames a second and Super Mario 64 its 30, on the Pixel 2.
 - **No more taking the card out.** Add games, music and saves from any browser over Wi-Fi or the USB cable, and update ZyperOS the same way.
 - **Made to be picked up.** A first start that teaches every button, eight languages, light and dark, and a menu that never makes you wait.
 - **Free and open source,** under GPL-3.0, with nothing locked behind a payment.
+
+## Coming from the stock OS?
+
+In my test on my Pixel 2, the stock firmware takes over 30 seconds to start, usually close to 40. ZyperOS is on in about 2, and **POWER** in a game saves it, so the next start puts you back in that game. Beyond that, ZyperOS has what the stock column of [the comparison](#how-it-compares) doesn't show:
+
+- **Box art on the handheld,** from three sources, with no computer and no Skraper
+- **RetroAchievements,** signed in on the device
+- **Games over the USB cable** or from any browser, not only Samba
+- **System updates** over Wi-Fi or the cable, with roll back
+- **Charge limit,** battery **time left** and a **charging screen** while it's off
+- **A first-start tutorial** for every button
+- **Eight languages** and **menu music**
+- **Storage**, by part and by game, and **side lights** for the battery, volume and more
+
+Keep the stock card as your way back: ZyperOS goes on a second card, and swapping cards switches systems ([keeping the stock card safe](https://zyperos.com/blog/gkd-pixel-2-stock-firmware/)). Your games come over as files, each into its console's folder under `Roms/` ([the folders](#supported-systems)).
 
 ## Install in three steps
 
@@ -169,7 +186,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Battery time left** | Time left, or time to full on the cable | — | — | — | — | — |
 | **A DS game's language** | Picked per game, whatever `firmware.bin` says | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
-| **Boot time** | 1.6 s<sup>4</sup> | — | — | 2.2 s<sup>4</sup> | — | — |
+| **Boot time** | 1.6 s<sup>4</sup>, about 2 s from power on<sup>5</sup> | 30 to 40 s from power on<sup>5</sup> | — | 2.2 s<sup>4</sup> | — | — |
 
 — means none of the sources below says either way. The Pixel 2 has no Wi-Fi of its own, so on every system a Wi-Fi feature needs a USB Wi-Fi adapter. Knulli, muOS, twigUI (spruceOS) and a MinUI port run on the Pixel 2 too.
 
@@ -177,12 +194,13 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 2. No count is published, so this is the systems in its own list, counted without tools, media players and ports. Hacks and regions can be entries of their own.
 3. In builds made with ScreenScraper's developer key.
 4. Each project's own number, and not measured the same way: ZyperOS's from the kernel's start to the home screen, on the Pixel 2 (mean of 10 starts), and TortOS's from power on to its shelf.
+5. My own count on my Pixel 2, from power on until it can be used, with the stock card it came with and with ZyperOS: the stock firmware takes over 30 seconds, usually close to 40; ZyperOS about 2.
 
 <details>
 <summary><b>Sources</b></summary>
 
-- **ZyperOS:** this README and its code, [v1.0.2](https://github.com/tarikbc/ZyperOS/releases/tag/v1.0.2); the boot time I measured on my Pixel 2 (note 4) and [#83](https://github.com/tarikbc/ZyperOS/pull/83).
-- **Stock:** [Retro Game Corps, February 2025](https://retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/).
+- **ZyperOS:** this README and its code, [v1.0.2](https://github.com/tarikbc/ZyperOS/releases/tag/v1.0.2); the boot times I measured on my Pixel 2 (notes 4 and 5) and [#83](https://github.com/tarikbc/ZyperOS/pull/83).
+- **Stock:** [Retro Game Corps, February 2025](https://retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/); the boot time is my own count (note 5).
 - **ROGUE OS:** [README](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/README.md), [v1.22](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.22), [system list](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/emulationstation/es_systems.cfg), [launcher skins](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/iux/skins), [launcher languages](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/iux/translations).
 - **TortOS:** [README](https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/README.md), [guide](https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/docs/guide.md), [plastron's README](https://github.com/ericreinsmidt/plastron/blob/b67f5ec86a601f878f1bc8452d16af7112950f3d/README.md), [v2.1.1](https://github.com/ericreinsmidt/TortOS/releases/tag/v2.1.1).
 - **ROCKNIX:** [README](https://github.com/ROCKNIX/distribution/blob/13d241a7d35fbe9b895ef04519f62bdb3a57d31f/README.md), [features](https://rocknix.org/), [adding games](https://rocknix.org/play/add-games/), [scraper](https://rocknix.org/configure/scraper/), [RetroAchievements](https://rocknix.org/play/retro-achievements/), [updates](https://rocknix.org/play/update/), [themes](https://rocknix.org/configure/themes/), [RK3326 systems](https://github.com/ROCKNIX/distribution/blob/13d241a7d35fbe9b895ef04519f62bdb3a57d31f/documentation/PER_DEVICE_DOCUMENTATION/RK3326/SUPPORTED_EMULATORS_AND_CORES.md), [Pixel 2 device tree](https://github.com/ROCKNIX/distribution/blob/13d241a7d35fbe9b895ef04519f62bdb3a57d31f/projects/ROCKNIX/devices/RK3326/linux/dts/rockchip/rk3326s-gkd-pixel2.dts) and [settings](https://github.com/ROCKNIX/distribution/tree/13d241a7d35fbe9b895ef04519f62bdb3a57d31f/projects/ROCKNIX/packages/hardware/quirks/devices/GameKiddy%20GKD%20Pixel2), [menu music](https://github.com/ROCKNIX/emulationstation-next/blob/f6c542872e3850c5f432929ead219547a897cd4a/es-app/src/guis/GuiMenu.cpp), [languages](https://github.com/ROCKNIX/emulationstation-next/blob/f6c542872e3850c5f432929ead219547a897cd4a/es-app/src/guis/GuiMenu.cpp#L1627-L1670), [20261101](https://github.com/ROCKNIX/distribution/releases/tag/20261101).

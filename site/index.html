@@ -167,6 +167,13 @@
    * "How it compares" has the boot time's note) */
   .proof { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; font-size: 15px; color: var(--text-soft); }
   .proof b { color: var(--text); font-weight: 600; }
+  .proof sup { font-size: .7em; line-height: 0; }
+  .proof .note { flex-basis: 100%; color: var(--text-dim); font-size: 13px; }
+  .sub .lead { display: block; color: var(--text); font-weight: 600; margin-bottom: 4px; }
+  .stockgain { margin: 18px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 40px; }
+  .stockgain li { color: var(--text-soft); font-size: 17px; padding-left: 22px; position: relative; }
+  .stockgain li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-ink); }
+  .stockgain b { color: var(--text); font-weight: 600; }
   .why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 40px; }
   .why > div { display: grid; gap: 6px; align-content: start; }
   .why p { color: var(--text-soft); font-size: 17px; }
@@ -262,7 +269,7 @@
     .with-device .hero h1 { font-size: 34px; }
     .with-device .device { max-width: 340px; }
     .stage { --sw: 78vw; }
-    .feats, .thanks, .why { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .feats, .thanks, .why, .stockgain { grid-template-columns: minmax(0, 1fr); gap: 22px; }
     .pair { gap: 18px 12px; }
     .split { grid-template-columns: minmax(0, 1fr); gap: 24px; }
     .name { grid-template-columns: minmax(0, 1fr); gap: 20px; }
@@ -292,6 +299,7 @@
 <nav class="nav in" aria-label="Sections">
   <ul>
     <li><a href="#why">Why ZyperOS</a></li>
+    <li><a href="#stock">From stock</a></li>
     <li><a href="#features">Features</a></li>
     <li><a href="#systems">Systems</a></li>
     <li><a href="#compare">Compare</a></li>
@@ -307,16 +315,17 @@
     <img src="img/lockup-light.png" width="1405" height="400" alt="ZyperOS: Zyper, a miniature schnauzer with his head cocked and his tongue out, beside the name">
   </picture>
   <h1>A fast, light firmware for the GKD Pixel 2 that plays your whole retro library.</h1>
-  <p class="sub">Forty systems with their box art, PortMaster ports, RetroAchievements, and your music and videos. Free and open source.</p>
+  <p class="sub"><b class="lead">On in about 2 seconds. The stock firmware takes 30&nbsp;to&nbsp;40.</b> Turn it off mid-game; turn it on, and 2 seconds later you're back where you were.</p>
   <div class="row">
     <a class="btn go" href="https://github.com/tarikbc/ZyperOS/releases/latest"><span class="glyph" aria-hidden="true">A</span>Download ZyperOS 1.0.2</a>
     <a class="btn alt" href="#install">Install in three steps</a>
   </div>
   <ul class="proof" aria-label="ZyperOS at a glance">
-    <li><b>1.6 s</b> from power to home</li>
-    <li><b>40</b> systems, and ports</li>
+    <li><b>2 s</b> on, stock 30 to 40 s<sup>*</sup></li>
+    <li><b>40</b> systems with box art</li>
     <li><b>8</b> languages</li>
     <li><b>Free</b>, GPL-3.0</li>
+    <li class="note"><sup>*</sup> My own test on my Pixel 2</li>
   </ul>
   </div>
   <div class="device"><img class="device-poster" src="models/pixel2-poster.png" width="800" height="960" alt="Green GKD Pixel 2 with a metal shell, standing upright."><canvas tabindex="0" role="img" aria-label="Green GKD Pixel 2 running ZyperOS. Drag or use the left and right arrow keys to turn it."></canvas></div>
@@ -362,12 +371,30 @@
     <h2>Why ZyperOS</h2>
     <div class="why">
       <div><h3>Your library looks the part</h3><p>Every game shows its real box art, found on the handheld from libretro, ScreenScraper and SteamGridDB, and a few seconds of video when you rest on it.</p></div>
-      <div><h3>Fast everywhere</h3><p>About 1.6 seconds from power to home. Games start the moment you press A, and pick up where you left them.</p></div>
+      <div><h3>On in about 2 seconds</h3><p>The stock firmware takes 30 to 40, in my test on my Pixel 2. Turn it off mid-game, and the next start puts you back where you were, 2 seconds later.</p></div>
       <div><h3>Plays more, smoothly</h3><p>Forty systems and PortMaster's ports. Mario Kart DS keeps 60 frames a second and Super Mario 64 its 30, on the Pixel 2.</p></div>
       <div><h3>No more taking the card out</h3><p>Add games, music and saves from any browser over Wi-Fi or the USB cable, and update ZyperOS the same way.</p></div>
       <div><h3>Made to be picked up</h3><p>A first start that teaches every button, eight languages, light and dark, and a menu that never makes you wait.</p></div>
       <div><h3>Free and open source</h3><p>GPL-3.0, with nothing locked behind a payment. Everyone gets the same ZyperOS.</p></div>
     </div>
+  </div>
+</section>
+
+<section id="stock">
+  <div class="in">
+    <h2>Coming from the stock OS?</h2>
+    <p class="soft">In my test on my Pixel 2, the stock firmware takes over 30 seconds to start, usually close to 40. ZyperOS is on in about 2, and POWER in a game saves it, so the next start puts you back in that game. Beyond that, ZyperOS has what the stock column of <a href="#compare">the comparison</a> doesn't show:</p>
+    <ul class="stockgain">
+      <li><b>Box art on the handheld</b>, from three sources, with no computer</li>
+      <li><b>RetroAchievements</b>, signed in on the device</li>
+      <li><b>Games over the USB cable</b> or from any browser, not only Samba</li>
+      <li><b>System updates</b> over Wi-Fi or the cable, with roll back</li>
+      <li><b>Charge limit</b>, battery <b>time left</b> and a <b>charging screen</b></li>
+      <li><b>A first-start tutorial</b> for every button</li>
+      <li><b>Eight languages</b> and <b>menu music</b></li>
+      <li><b>Storage</b> by game, and <b>side lights</b></li>
+    </ul>
+    <p class="soft" style="margin-top:18px">Keep the stock card as your way back: ZyperOS goes on a second card, and swapping cards switches systems (<a href="/blog/gkd-pixel-2-stock-firmware/">keeping the stock card safe</a>). Your games come over as files, each into its console's folder under Roms/.</p>
   </div>
 </section>
 
@@ -504,6 +531,8 @@
      - The others: Knulli release 20260511, muOS's
        _data/devices/rk-pixel-2.yml, spruceUI/twigUI-next,
        NukeBomB3000/minui-gkd-pixel2
+     - Boot time from power on, both columns (note 5): my own count on my
+       Pixel 2, stock card against ZyperOS, 2026-11-09
      - ZyperOS: the README and release v1.0.2; the boot time from plastron#15 (1.58 s, kernel
        to the first frame, mean of 10 starts on the Pixel 2) and ZyperOS#83 -->
 <section id="compare">
@@ -539,7 +568,7 @@
           <tr><th scope="row">Battery time left</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Settings &gt; Battery Icon shows the time left, or the time to full on the cable" data-tip="Settings &gt; Battery Icon shows the time left, or the time to full on the cable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
           <tr><th scope="row">A DS game's language</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. Game Language picks each game's language, whatever the firmware file says" data-tip="Game Language picks each game's language, whatever the firmware file says"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
           <tr><th scope="row">Charging screen when off</th><td class="us"><span class="ic yes" tabindex="0" role="img" aria-label="Yes. A charger plugged in while it is off shows the charge and the time to full; hold POWER to start" data-tip="A charger plugged in while it is off shows the charge and the time to full; hold POWER to start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
-          <tr><th scope="row">Boot time</th><td class="us">1.6 s<sup>4</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td>2.2 s<sup>4</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
+          <tr><th scope="row">Boot time</th><td class="us">1.6 s<sup>4</sup>, about 2 s from power on<sup>5</sup></td><td>30 to 40 s from power on<sup>5</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td>2.2 s<sup>4</sup></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td><td><span class="ic unk" tabindex="0" role="img" aria-label="Unknown. No source we read says either way." data-tip="No source we read says either way.">–</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -550,6 +579,7 @@
         <li>No count is published, so this is the systems in its own list, counted without tools, media players and ports. Hacks and regions can be entries of their own.</li>
         <li>In builds made with ScreenScraper's developer key.</li>
         <li>Each project's own number, and not measured the same way: ZyperOS's from the kernel's start to the home screen, on the Pixel 2 (mean of 10 starts), and TortOS's from power on to its shelf.</li>
+        <li>My own count on my Pixel 2, from power on until it can be used, with the stock card it came with and with ZyperOS: the stock firmware takes over 30 seconds, usually close to 40; ZyperOS about 2.</li>
       </ol>
       <p class="meta">Every source is linked in <a href="https://github.com/tarikbc/ZyperOS#how-it-compares">the README</a>.</p>
     </div>
