@@ -27,7 +27,7 @@
   <tr>
     <td align="center"><img src="res/readme/systems.png" width="240" alt="The Spotlight home: PlayStation's console large, the other systems in a row below"><br><sub>Every system, in pixel art</sub></td>
     <td align="center"><img src="res/readme/gallery.png" width="240" alt="The Gallery home: PlayStation's console centered between its neighbors"><br><sub>Or the Gallery home</sub></td>
-    <td align="center"><img src="res/readme/shelf.png" width="240" alt="A system's games as a row of cards, a heart on each favorite"><br><sub>Your games, cover by cover</sub></td>
+    <td align="center"><img src="res/readme/shelf.png" width="240" alt="A system's games as a row of cards, a heart before a favorite's name"><br><sub>Your games, cover by cover</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="res/readme/info.png" width="240" alt="A game's details"><br><sub>A game's details, one button away</sub></td>
@@ -97,7 +97,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool, over a game or a port; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%).
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.
 - **Play Time:** how long you've played each game or console, today, this week, this month, this year or ever.
-- **Continue or from the start, favorites and sorting:** A continues a game where you left it and Y starts it from the start; Y on a game's details (X) favorites it, and a small heart in the corner of its cover says so on every shelf, Favorites included; each console sorts by name, play time, last played or recently added.
+- **Continue or from the start, favorites and sorting:** A continues a game where you left it and Y starts it from the start; Y on a game's details (X) favorites it, and a heart before its name says so on its console's shelf; each console sorts by name, play time, last played or recently added.
 
 ## How it compares
 

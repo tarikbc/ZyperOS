@@ -179,30 +179,26 @@ OUT.mkdir(parents=True, exist_ok=True)
 base, env = card('card')
 for theme in ('light', 'dark'):
     fav = role('favorite', theme)
-    # On the favorite: a heart on it, on a disc, and none on either neighbor
-    im0 = im = shot(base, env, 'shelf-favorite', 'SFC', theme, FAV)
-    hearts, disc = heart_at(im, theme, *cover_badge(0))
-    assert hearts > 150 and disc > 200, f'{theme}: no heart on the focused favorite ({hearts} pink, {disc} disc)'
-    for off in (-1, 1):
+    # The heart leads the focused favorite's name (2026-11-09), in
+    # **favorite**, and no card carries one any more
+    TITLE_HEART = (48, 568, 136, 648)
+    im = shot(base, env, 'shelf-favorite', 'SFC', theme, FAV)
+    got = count(im, TITLE_HEART, fav)
+    assert got > 100, f'{theme}: no heart before the favorite\'s name ({got})'
+    for off in (-1, 0, 1):
         cx, cy, r = cover_badge(off)
-        got = pink(im, disc_box(cx, cy, r * 1.5))
-        assert got < 5, f'{theme}: a heart on the cover at {off}, which is no favorite ({got})'
-    # Nothing else on the screen in **favorite** but the heart
+        on = pink(im, disc_box(cx, cy, r * 1.5))
+        assert on < 5, f'{theme}: a heart on the cover at {off} ({on})'
     whole = count(im, (0, 0, 1024, 768), fav)
-    assert whole == hearts, f'{theme}: favorite pink outside the heart ({whole} against {hearts})'
-    # On the neighbor after it: none on the focused cover, the favorite's on
-    # the side card to its left, smaller
+    assert whole == got, f'{theme}: favorite pink outside the heart ({whole} against {got})'
+    # On a game that is no favorite: no heart before its name
     im = shot(base, env, 'shelf-plain', 'SFC', theme, SNES[2])
-    cx, cy, r = cover_badge(0)
-    got = pink(im, disc_box(cx, cy, r * 1.5))
-    assert got < 5, f'{theme}: a heart on a focused cover that is no favorite ({got})'
-    side = pink(im, disc_box(*cover_badge(-1)))
-    focused = pink(im0, disc_box(*cover_badge(0)))
-    assert 60 < side < focused, f'{theme}: the side favorite\'s heart is {side} pixels, against {focused} focused'
-    # Favorites: the one game, with its heart
+    got = count(im, TITLE_HEART, fav)
+    assert got < 5, f'{theme}: a heart before a name that is no favorite ({got})'
+    # Favorites: every game there is one, so no heart at all
     im = shot(base, env, 'favorites', 'FAV', theme, FAV)
-    got, _ = heart_at(im, theme, *cover_badge(0))
-    assert got > 150, f'{theme}: no heart on Favorites ({got})'
+    got = count(im, (0, 0, 1024, 768), fav)
+    assert got < 5, f'{theme}: a heart on Favorites ({got})'
 
     # MP4 on All: each card's badge, at its art's top left, focused in turn
     # (a side card's is faded with it): the album (Brass Lanterns), the film
@@ -220,5 +216,5 @@ for theme in ('light', 'dark'):
     got = mp4_kind(im, ink)
     assert got is None, f'{theme}: a badge on Music alone ({got})'
 run(env, '--set', 'muse.show=all')
-print('ok: a heart on a favorite\'s cover and on no other, smaller on a side card; '
+print('ok: a heart before a favorite\'s name, on no cover and not on Favorites; '
       'on MP4\'s All an album, a book and a video each badged, and none on Music alone')

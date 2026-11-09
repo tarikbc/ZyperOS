@@ -627,11 +627,7 @@ any art; drawn by signed distance on the status marks' 24-unit grid, 3:1 or
 better on its disc in both themes. Disc and inset scale with the card as the
 row scales it (a side cover's is 29), the card's fade fades it, and under 20
 there is none. It is the same component everywhere it is used:
-- **favorite**: a heart in **favorite**, the curve of draw_heart, on every
-  cover of a favorite game - its own console's shelf and Favorites alike, and
-  Random Game's pick, which is the shelf put on it. It is read every frame,
-  so Y on the details page shows it, or takes it away, at once. It fades with
-  the cover as a video snap takes the cover's place.
+- The favorite's heart is no badge (below): it leads the game's name.
 - On MP4's **All** (11.14), what each card is, in **accent-ink**: an
   **album**, the top bar's two beamed notes; a **book**, an open book; a
   **video**, a screen with a play mark cut out of it. On one kind alone the
@@ -643,6 +639,12 @@ style as the heart". On the card, not beside the title on the page: a
 title's heart says it of the focused game only, while the card's goes with
 every cover in sight as the row moves, and it is where the tutorial's Keep a
 Favorite step already pops it.)*
+
+**The favorite's heart** leads the focused game's name on the games page, in
+**favorite** (draw_heart), centered on the name's capitals, and the name moves
+over for it. Not on Favorites, where every game is one, and on no card.
+*(2026-11-09: "The heart is very hard to see. Maybe put it to the left of the
+title? No need to show heart when in the favorite page.")*
 
 The original game and music identities, saves, launch paths and controls do
 not change with either home layout or with scraped display names.

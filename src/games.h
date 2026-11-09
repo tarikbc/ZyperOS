@@ -23,6 +23,9 @@ typedef struct {
      * the favorites screen, let's have the system written below the game
      * name"). NULL on a console's own shelf, where the heading says it. */
     const char *origin;
+    /* The game under the cursor is a favorite: a heart before its name.
+     * False on Favorites, where every game is one. */
+    bool favorite;
     int count,cursor,earned,total;
     bool has_achievements,resumable;
     /* The focused entry is PortMaster while it is not on the card

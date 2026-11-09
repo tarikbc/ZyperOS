@@ -3544,21 +3544,6 @@ static bool game_has_snap(void *ctx, int i)
 	       bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp);
 }
 
-/* games_info.badge_of: a heart on the shelf's item `i` when it is a
- * favorite, on its own system's shelf and on Favorites alike. fav_is is a
- * scan of a list of a dozen or so, for the handful of covers in sight. */
-static int game_badge(void *ctx, int i)
-{
-	app *a = ctx;
-	sysview *v = &a->view[a->sys_cursor];
-	int owner;
-
-	if (i < 0 || i >= v->list.count) return AB_NONE;
-	owner = shelf_owner(a, a->sys_cursor, i);
-	if (is_muse(&a->sys.systems[owner])) return AB_NONE;
-	return fav_is(a->sys.systems[owner].tag, v->list.items[i].file) ? AB_FAVORITE : AB_NONE;
-}
-
 static void draw_games(app *a)
 {
 	sysview *v = &a->view[a->sys_cursor];
@@ -3580,7 +3565,9 @@ static void draw_games(app *a)
 		.install = pm_is_offer(a, owner, g),
 		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 		.snap_of = game_has_snap,
-		.badge_of = game_badge
+		/* The heart before the name, not on Favorites (2026-11-09) */
+		.favorite = g && owner == a->sys_cursor && !is_muse(s) &&
+		            fav_is(a->sys.systems[owner].tag, g->file)
 	};
 	shelf_snap(a, v, g, owner, !games_moving(&v->row, now), &info);
 	unsigned wait = games_draw(&v->row, a->r, &info, game_get_tex, a, now, title_phase(a));
