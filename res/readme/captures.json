@@ -77,8 +77,7 @@
         "games",
         "--info"
       ],
-      "sha256": "616976068e3d35d658f876aefc1cfbe1de96a9097392c96ffe10173fdc6c7b5b",
-      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
+      "sha256": "9e11df2762540b3f3ef675f8cc71be380c60cbc19000c917e4a37d72057ddf5a"
     },
     {
       "file": "light/info-delete.png",
@@ -97,8 +96,7 @@
         "games",
         "--info-delete"
       ],
-      "sha256": "57904aa4a678a802699dc9961a5e901ee399709119b62979d9abd76f74852e90",
-      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
+      "sha256": "3ae6828e1b16a0e6efce5bc79fb8ef31c22a108c96e98717cd4a43092b693e95"
     },
     {
       "file": "light/delete-ask.png",
@@ -889,6 +887,94 @@
       ],
       "sha256": "52d3818c5b892162375be40643e3150f1ac002c89a69df5bd950643c79108b37",
       "source_commit": "0ffc223744e8203cceb858a8e8f6e62c97b4e554"
+    },
+    {
+      "file": "light/media.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "page",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "a22855dd60d9a5a270a2ccfafe76160874f67669ff08af4beadc541fbf78ab96"
+    },
+    {
+      "file": "light/media-look.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "look",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "64d1fca8a720e0c2225277dc901a05ae1bc54e3d230384513613f65fd8abe9a9"
+    },
+    {
+      "file": "light/media-video.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "video",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "42736bc4b950db7794966292580133c92c19b121d85808e011596c2acb501989"
+    },
+    {
+      "file": "dark/media.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "page",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "47e47a3a5cae39cad0363339168c83ae732bf53c28dfaaf0d6ed92d19f5f29cf"
     }
   ],
   "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"

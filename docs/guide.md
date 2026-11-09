@@ -777,12 +777,31 @@ neighbors. Its full scraped title, play time and achievement count appear below.
 A resumes an available saved game or starts it otherwise. Y toggles Favorite;
 X opens game details. A game without a cover keeps a readable text fallback.
 
+Above it, **Cover and Video** opens a page for the game's cover and its video
+snap. At the left, **Now** is the cover the shelf shows, with where it came
+from. At the right, **Found** is what the sources offer: libretro first, then
+ScreenScraper (with an account) and SteamGridDB (with a key), each picture
+named under it ("Box Front · USA", "Title Screen", "Fan Cover") with its
+source. Left and right move along them; A shows one big beside Now, and A
+again makes it the cover. The cover it replaces is kept as **Before**, first
+in the row: A on it puts it back (one level, either way). Below, the game's
+video: its picture plays muted while a row of it is chosen; **Watch** plays it
+on the whole screen with its sound, **Download** or **Replace** fetches it
+from ScreenScraper, and **Delete** removes it after a question. With no
+network the page still shows the cover, plays the video and puts Before back,
+and says to connect, or to add covers from a computer with File Transfer.
+ScreenScraper counts each of its pictures as a request on your account, so
+only the small copies of the pictures on screen are fetched, and the whole one
+only when you look closer. The row's value says what is missing: `no cover` or
+`no video`.
+
 The details' last row is **Delete Game**. It asks first, naming the game and
 saying that its saves, states, cover and video go with it and that this cannot
 be undone; the cursor starts on Cancel, and B is Cancel. The game's files go -
 its folder for a game in one, the tracks a top-level `.cue`, `.gdi` or `.toc`
 names, an arcade set's `.zip` - with its saves in `Saves/`, its save states and
-their pictures, its cover and video snap, its cached achievement set, and its
+their pictures, its cover and video snap and the cover kept as Before, its
+cached achievement set, and its
 details, favorite and play time in the library. Each path is built from the
 game's own name, never matched by a pattern; a file another game on the card
 still uses stays, a BIOS set such as `neogeo.zip` is never deleted, and a

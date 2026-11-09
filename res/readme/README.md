@@ -2,8 +2,8 @@
 
 The screenshots in this folder show the current launcher in Beard, the light
 theme: the README and the website show every screen in light. `dark/` holds
-the two screens their light-and-dark sections show in Salt & Pepper, the home
-and the ZyperOS menu, and the top bar's shot (`topbar`, the song's note and the
+the screens their light-and-dark sections show in Salt & Pepper, the home,
+the ZyperOS menu and a game's Cover and Video page, and the top bar's shot (`topbar`, the song's note and the
 headphone mark) in both themes. The 3D device on the website shows the light ones too.
 The logo/wordmark files remain the branding generator's output.
 
@@ -18,7 +18,10 @@ reused from the sessions that built a screen.
 The capture uses temporary demonstration cards: empty game and music files
 with freeware or stand-in names, a card with no games for the empty home, and
 curated Metal Gear Solid metadata. The launcher draws every game card itself:
-no box art and no game screens are included. The home screens show the
+no box art and no game screens are included. The Cover and Video shots
+(`media`, `media-look`, `media-video`) show stand-in pictures readme-shots.py
+draws in the shapes a source offers (a box, a 3D box, a title screen, a fan's
+cover), blends of one color with a diamond, none of any game's art. The home screens show the
 system art in res/system-icons. MP4 shows clearly named demonstration albums.
 Achievement rows, playback timing, transfer progress, the hotspot, the
 Scraper's counts, the Storage page and the System Update page use the launcher's built-in shot
