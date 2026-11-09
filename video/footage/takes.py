@@ -151,6 +151,46 @@ shots('cheer', [(PS1, ['--cheer', '{t}'], motion(0, 2600))])
 # The empty card: the two ways to add games
 shots('empty', [(('', ''), ['--ways', 'usb'], 1600)], card='empty')
 
+# ---- v2: quicker takes and the features v1 left out ------------------------
+# The PlayStation shelf flown along, then N64's and SNES's (the opening)
+live('fast-shelf', ('PS1', 'Castlevania - Symphony of the Night (USA).chd'),
+     ['a', 700] + ['right'] * 5 + [500] + ['left'] * 5 + [400, 'b', 500, 'left', 600, 'a', 700] + ['right'] * 3 +
+     [400, 'b', 500, 'right', 300, 'right', 600, 'a', 700] + ['right'] * 3 + [600], gap=260)
+# The Scraper fetching covers: its states (src/main.c, --scraper)
+shots('scraper', [(PS1, ['--scraper', str(k)], 600) for k in range(6)] +
+      [(PS1, ['--art', 'Super Metroid (USA)'], 1400)])
+# SELECT+R1: the quick save's pop-up over the game, and the load
+shots('quicksave', [(GEN, ['--screen', 'games', '--popup', 'saved', '--backdrop', SONIC_SNAP], 1400),
+                    (GEN, ['--screen', 'games', '--popup', 'loaded', '--backdrop', SONIC_SNAP], 1400)])
+# File Transfer: over Wi-Fi, a computer on the cable, and over the cable
+shots('wifi-xfer', [(PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 5200)])
+shots('cable', [(PS1, ['--usb-ask', '0'], 900), (PS1, ['--usb-ask', '1'], 900),
+                (PS1, ['--hare', 'http://10.42.0.1', '1 connected', 'Super Metroid (USA).sfc'], 2200)])
+shots('hotspot', [(PS1, ['--hotspot', 'ZyperOS-7A2B', 'q7mx-3kpa', '1 joined', 'waiting'], 2800)])
+# Files still moving while a game plays: the ring in the in-game menu's corner, over Sonic 2
+shots('xfer-ring', [(GEN, ['--screen', 'games', '--gamemenu', '0', '--backdrop', SONIC_SNAP,
+                           '--status', f'10:08 24h batt=82 xfer={p}'], 80) for p in range(30, 92, 2)])
+# System Update
+shots('update', [(PS1, ['--update'], 2400)])
+# Battery: held at the charge limit, charging toward it, MENU > Charge Limit
+shots('charge', [(PS1, ['--charging', '{t}', 'kept'], motion(0, 1600)),
+                 (PS1, ['--charging', '{t}', 'limit'], motion(0, 1200))])
+# MP4's lock screen
+shots('lock', [(PS1, ['--nowplaying', '0', '0', '83', '--locked'], 1800)])
+# Nintendo DS: the in-game menu's screen rows, and N64's shelf
+shots('ds', [(('NDS', 'Mario Kart DS (USA).nds'), ['--screen', 'games', '--gamemenu', str(r), 'dual',
+                                                   '--backdrop', '{art}/Nintendo_-_Nintendo_DS/Named_Snaps/Mario Kart DS (USA) (En,Fr,De,Es,It).png'], 500)
+             for r in (8, 9, 10)] +
+     [(('NDS', 'Mario Kart DS (USA).nds'), ['--screen', 'games', '--popup', 'dslang',
+                                           '--backdrop', '{art}/Nintendo_-_Nintendo_DS/Named_Snaps/Mario Kart DS (USA) (En,Fr,De,Es,It).png'], 1400)])
+shots('n64', [(('N64', 'Super Mario 64 (USA).z64'), ['--screen', 'games'], 1500)])
+# Light and dark, the same home; MENU in each of the eight languages
+shots('home-light', [(PS1, ['--home', 'spotlight', '--phase', '3200'], 100)])
+shots('home-dark', [(PS1, ['--home', 'spotlight', '--phase', '3200', '--theme', 'dark'], 100)])
+shots('shelf-dark', [(PS1, ['--screen', 'games', '--theme', 'dark'], 100)])
+for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
+    shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
+
 
 # ---- running them --------------------------------------------------------------
 def write_last(card, tag, game):
@@ -196,7 +236,8 @@ def run_shots(name, spec, cards):
                  for x in args]
             status = [] if '--status' in a or '--tour' in a or '--charging' in a else ['--status', SHOT_STATUS]
             png = frames / f'{n:05d}.png'
-            r = subprocess.run([str(BINARY), '--shot', str(png), '--theme', 'light', '--fn-volume', *status, *a],
+            theme = [] if '--theme' in a else ['--theme', 'light']
+            r = subprocess.run([str(BINARY), '--shot', str(png), *theme, '--fn-volume', *status, *a],
                                cwd=ROOT, env=env, capture_output=True, text=True)
             if not png.is_file():
                 raise RuntimeError(f'{name}: {a}: {r.stderr[-800:]}')
@@ -214,6 +255,9 @@ def run_shots(name, spec, cards):
                     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-movflags', '+faststart',
                     str(OUT / f'{name}.mp4')], check=True)
     (OUT / f'{name}.json').write_text(json.dumps({'fps': FPS, 'ms': round(total)}) + '\n')
+    # A take of one picture is used as a picture too
+    if n == 1:
+        shutil.copyfile(frames / '00000.png', OUT / f'{name}.png')
     shutil.rmtree(frames)
 
 

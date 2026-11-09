@@ -1,6 +1,6 @@
 # The ZyperOS tour video
 
-A 1:52 tour of ZyperOS for the README, zyperos.com and anyone who wants to show
+A 75-second tour of ZyperOS for the README, zyperos.com and anyone who wants to show
 it. Every screen in it is the launcher's own: the host build of ZyperOS
 (`make native`) draws each frame, as the Pixel 2 would, on a sample library
 with the games' real box art. [Remotion](https://www.remotion.dev) puts those
@@ -51,17 +51,24 @@ art belong to their owners.
 
 ## Layout
 
-- `src/timeline.ts`: the one place for timing. Scenes in bars of the music
-  (120 BPM, so a beat is 15 frames), which clip of which take each scene plays,
-  the captions, the camera and the theme.
-- `src/Tour.tsx`, `src/parts.tsx`: the composition, the device, the screen and
-  the captions. `src/sounds.ts` plays the launcher's interface sounds where a
-  press is seen.
+- `src/timeline.ts`: the one place for timing. A list of scenes, each a few
+  beats of the music (120 BPM, so a beat is 15 frames): which takes its screen
+  plays and how fast, the device's pose and any punch-in, how it arrives (a whip
+  or a spring), its label, and the browser windows of File Transfer. Change a
+  scene's beats or its takes there and render again.
+- `src/Tour.tsx`, `src/parts.tsx`: the composition, the device and its camera,
+  the screen, the labels, the laptop and phone windows, the light and dark pair
+  and the language grid. `src/sounds.ts` plays the launcher's interface sounds
+  where a press is seen.
 - `src/Poster.tsx`: the site's poster, and the README's with a play button.
 - `device/render-device.py`: the Pixel 2 straight on, from
   `tools/build-pixel2-model.py`'s scene, with its screen cut out.
 - `public/`: made by the scripts above, and ignored. `LICENSES.md` says where
   each part comes from and under which license.
 
-The captions are the site's own words (`site/index.html`), and the device never
-moves to the beat: cuts and captions do.
+The labels are short, from the site's own words (`site/index.html`). Cuts,
+whips and labels land on the beat; the device does not pulse to it.
+
+To check the pace before a full render: `npm run stills` for the contact sheet,
+and `npx remotion render ZyperOSTour out/excerpt.mp4 --frames=300-599` for ten
+seconds.

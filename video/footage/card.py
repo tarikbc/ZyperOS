@@ -73,6 +73,8 @@ LIBRARY = {
         ('Mario Kart 64 (USA).z64', 'Mario Kart 64 (USA)'),
         ('Super Mario 64 (USA).z64', 'Super Mario 64 (USA)'),
         ('The Legend of Zelda - Ocarina of Time (USA).z64', 'Legend of Zelda, The - Ocarina of Time (USA)')],
+    'Nintendo DS': [
+        ('Mario Kart DS (USA).nds', 'Mario Kart DS (USA) (En,Fr,De,Es,It)')],
     'Dreamcast': [
         ('Crazy Taxi (USA).chd', 'Crazy Taxi (USA)'),
         ('Jet Grind Radio (USA).chd', 'Jet Grind Radio (USA)'),
@@ -82,7 +84,8 @@ LIBRARY = {
 LR_REPO = {'PlayStation': 'Sony_-_PlayStation', 'NES': 'Nintendo_-_Nintendo_Entertainment_System',
            'SNES': 'Nintendo_-_Super_Nintendo_Entertainment_System', 'Game Boy': 'Nintendo_-_Game_Boy',
            'Game Boy Advance': 'Nintendo_-_Game_Boy_Advance', 'Genesis': 'Sega_-_Mega_Drive_-_Genesis',
-           'Nintendo 64': 'Nintendo_-_Nintendo_64', 'Dreamcast': 'Sega_-_Dreamcast'}
+           'Nintendo 64': 'Nintendo_-_Nintendo_64', 'Dreamcast': 'Sega_-_Dreamcast',
+           'Nintendo DS': 'Nintendo_-_Nintendo_DS'}
 
 # The Cover and Video page's pictures (src/main.c's media_shot names them):
 # Metal Gear Solid's box from several regions, its title screen and screenshots
@@ -153,6 +156,8 @@ def build(card, cache=ART_CACHE):
     if card.exists():
         shutil.rmtree(card)
     rs.card_dirs(card)
+    # The version System Update starts from (the one before this release)
+    (card / 'ZyperOS/VERSION').write_text('1.0.1\n')
     for folder, games in LIBRARY.items():
         d = card / 'Roms' / folder
         (d / '.media').mkdir(parents=True)
@@ -160,6 +165,8 @@ def build(card, cache=ART_CACHE):
             (d / file).touch()
             got = art_file(cache, LR_REPO[folder], 'Named_Boxarts', lr)
             shutil.copyfile(got, d / '.media' / (Path(file).stem + '.png'))
+    # The DS game's screenshot, behind its in-game menu
+    art_file(cache, LR_REPO['Nintendo DS'], 'Named_Snaps', LIBRARY['Nintendo DS'][0][1])
     rs.pm_art(card)
     media = card / 'media-art'
     media.mkdir()
@@ -170,7 +177,7 @@ def build(card, cache=ART_CACHE):
     for i, color in enumerate(rs.BADGE_COLORS):
         rs.stand_in_badge(badges / f'b{i + 1}.png', color)
     dbdir = card / 'shared/.zyperos'
-    dbdir.mkdir()
+    dbdir.mkdir(exist_ok=True)
     with sqlite3.connect(dbdir / 'library.db') as db:
         db.execute('CREATE TABLE games(folder TEXT NOT NULL,file TEXT NOT NULL,year TEXT,publisher TEXT,'
                    'developer TEXT,players TEXT,genres TEXT,esrb TEXT,note TEXT,synopsis TEXT,scraped INTEGER,'
@@ -198,7 +205,8 @@ def build(card, cache=ART_CACHE):
     shutil.copytree(ROOT / 'res/tour', card / 'ZyperOS/res/tour')
     up = card / 'userdata/update'
     up.mkdir(parents=True)
-    (up / 'status').write_text(rs.UPDATE_STATUS)
+    # 1.0.1 offered 1.0.2, as it was (83 MB, the two-slot download's size)
+    (up / 'status').write_text('state available\ninstalled 1.0.1\nversion 1.0.2\ndownload 83000000\nkind system\n')
     (up / 'source').write_text('file:///nonexistent\n')
     # Ports: PortMaster's installer, for the Ports shelf's offer
     (card / 'Roms/Ports').mkdir(exist_ok=True)
