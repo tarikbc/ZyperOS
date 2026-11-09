@@ -5,3 +5,4 @@ out/
 # and sounds. Their licenses are in LICENSES.md.
 public/
 rec/rec.dylib
+rec/snapsub.dylib

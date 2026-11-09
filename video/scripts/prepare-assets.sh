@@ -6,8 +6,8 @@
 #   img/     the ZyperOS lockups and the File Transfer page's shots (res/readme), and Sonic 2's libretro screenshot
 #            from the art cache video/footage/card.py fills
 #   boot/    the boot animation (res/boot)
-#   audio/   the menu music track the video plays (res/bgm) and the launcher's
-#            own interface sounds (res/sounds/wood)
+#   music/   ZyperOS's menu music tracks (res/bgm): src/music.ts picks one
+#   audio/   the launcher's own interface sounds (res/sounds/wood)
 #   device/  the Pixel 2 straight on, its screen cut out, rendered in Blender
 #            from tools/build-pixel2-model.py's scene (video/device), once
 #
@@ -26,7 +26,8 @@ cp "$ROOT/res/readme/lockup.png" "$ROOT/res/readme/lockup-light.png" "$PUB/img/"
 # The File Transfer page in a browser, as tools/readme-shots.py drew it
 cp "$ROOT/res/readme/portal.png" "$ROOT/res/readme/portal-phone.png" "$ROOT/res/readme/portal-pin.png" "$PUB/img/"
 cp "$ROOT/res/boot/zyperos-fly.mp4" "$PUB/boot/"
-cp "$ROOT/res/bgm/The Arplands.mp3" "$PUB/audio/music.mp3"
+mkdir -p "$PUB/music"
+cp "$ROOT"/res/bgm/*.mp3 "$PUB/music/"
 cp "$ROOT"/res/sounds/wood/*.wav "$PUB/audio/ui/"
 snap="$ART/Sega_-_Mega_Drive_-_Genesis/Named_Snaps/Sonic The Hedgehog 2 (World).png"
 [ -f "$snap" ] || { echo "no $snap: run video/footage/takes.py first, which fills the art cache" >&2; exit 1; }

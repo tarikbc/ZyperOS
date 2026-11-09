@@ -2,7 +2,7 @@
 # From Remotion's render to the files people see:
 #
 #   MASTER (outside the repository, for YouTube and creators): H.264 at a high
-#     quality, the audio at -16 LUFS integrated, 1.5 dB true peak headroom
+#     quality, the audio at -16 LUFS integrated, 2.5 dB true peak headroom (AAC at web size overshoots)
 #   site/zyperos-tour.mp4: the same at a web size for zyperos.com (under
 #     25 MB, Cloudflare Pages' file limit), with its poster site/zyperos-tour.jpg
 #   res/readme/tour-poster.jpg: the README's poster, with a play button, which
@@ -24,10 +24,10 @@ WEB="$ROOT/site/zyperos-tour.mp4"
 mkdir -p "$(dirname "$MASTER")"
 
 # The loudness, measured first (loudnorm's first pass), then applied exactly
-stats=$(ffmpeg -hide_banner -nostats -i "$RAW" -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null - 2>&1 |
+stats=$(ffmpeg -hide_banner -nostats -i "$RAW" -af loudnorm=I=-16:TP=-2.5:LRA=11:print_format=json -f null - 2>&1 |
 	sed -n '/^{/,/^}/p')
 val() { printf '%s' "$stats" | sed -n "s/.*\"$1\" : \"\([^\"]*\)\".*/\1/p"; }
-norm="loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=$(val input_i):measured_TP=$(val input_tp):measured_LRA=$(val input_lra):measured_thresh=$(val input_thresh):offset=$(val target_offset):linear=true"
+norm="loudnorm=I=-16:TP=-2.5:LRA=11:measured_I=$(val input_i):measured_TP=$(val input_tp):measured_LRA=$(val input_lra):measured_thresh=$(val input_thresh):offset=$(val target_offset):linear=true"
 range="scale=in_range=full:out_range=limited:out_color_matrix=bt709,format=yuv420p"
 tags="-color_range tv -colorspace bt709 -color_primaries bt709 -color_trc bt709 -movflags +faststart"
 

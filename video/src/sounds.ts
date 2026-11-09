@@ -4,7 +4,7 @@
  * take of shots the moments one picture gives way to the next, both at the
  * speed the clip plays its take.
  */
-import { CLIPS, FPS } from "./timeline";
+import { CLIPS, FPS, POWER_MS, SCENES, STARTS } from "./timeline";
 import type { Footage } from "./parts";
 
 export type Cue = { frame: number; sound: string; volume?: number };
@@ -32,8 +32,18 @@ const SHOT_PRESSES: Record<string, [number, string][]> = {
   controls_ps1: [],
 };
 
+/** Scenes' own moments, in seconds into the scene: POWER pressed, and Zyper's
+ * reward sound when ZyperOS is on (src/beats.tsx) */
+const SCENE_PRESSES: Record<string, [number, string][]> = {
+  boot: [[2.3, "reward"]],
+  power: [[POWER_MS.off / 1000, "back"], [POWER_MS.on / 1000, "accept"], [POWER_MS.back / 1000, "reward"]],
+};
+
 export const SOUND_CUES = (footage: Footage): Cue[] => {
   const out: Cue[] = [];
+  SCENES.forEach((sc, i) => {
+    for (const [s, sound] of SCENE_PRESSES[sc.id] ?? []) out.push({ frame: STARTS[i] + Math.round(s * FPS), sound, volume: sound === "reward" ? 0.7 : 1 });
+  });
   for (const c of CLIPS) {
     if (c.kind !== "take" || c.scene === "end") continue;
     const presses: [number, string][] =

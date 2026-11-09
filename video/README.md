@@ -1,11 +1,12 @@
 # The ZyperOS tour video
 
-A 95-second tour of ZyperOS for the README, zyperos.com and anyone who wants to show
+A 105-second tour of ZyperOS for the README, zyperos.com and anyone who wants to show
 it. Every screen in it is the launcher's own: the host build of ZyperOS
 (`make native`) draws each frame, as the Pixel 2 would, on a sample library
 with the games' real box art. [Remotion](https://www.remotion.dev) puts those
 frames in a drawn GKD Pixel 2 beside the site's own words, on the beat of one of
-ZyperOS's menu music tracks.
+ZyperOS's menu music tracks (`src/music.ts`; LICENSES.md has every track's
+tempo and sections).
 
 ## Making it
 
@@ -51,8 +52,9 @@ art belong to their owners.
 
 ## Layout
 
-- `src/timeline.ts`: the one place for timing. A list of scenes, each a few
-  beats of the music (120 BPM, so a beat is 15 frames): which takes its screen
+- `src/music.ts`: the track, its tempo and the downbeat the tour starts on.
+- `src/timeline.ts`: the one place for timing. A list of scenes, each whole
+  bars of the music, laid on its sections: which takes its screen
   plays and how fast, the device's pose and any punch-in, how it arrives (a whip
   or a spring), its label, and the browser windows of File Transfer. Change a
   scene's beats or its takes there and render again.
@@ -60,6 +62,10 @@ art belong to their owners.
   the screen, the labels, the laptop and phone windows, the light and dark pair
   and the language grid. `src/sounds.ts` plays the launcher's interface sounds
   where a press is seen.
+- `src/beats.tsx`: the boot race against stock firmware (a plain loading panel,
+  nothing of its interface) and the power off and on, with their timers.
+- `rec/snapsub.c`: for the video snap beat, gives the host build's `--snap` turn a
+  frame of the game's snap in place of its test picture (no Muse on the host).
 - `src/Poster.tsx`: the site's poster, and the README's with a play button.
 - `device/render-device.py`: the Pixel 2 straight on, from
   `tools/build-pixel2-model.py`'s scene, with its screen cut out.
