@@ -18,6 +18,10 @@
  *     (the check is built with AddressSanitizer and UBSan where the
  *     compiler has them).
  *
+ * And whether there is a network to ask (mf_unreachable): begun offline,
+ * or every source asked gave no answer, as on a Pixel 2 with no Wi-Fi
+ * adapter whose USB cable's network is up.
+ *
  * Links src/mediafile.c, src/artsrc.c and src/db.c, and not SDL or the
  * network.
  */
@@ -328,6 +332,49 @@ static void crafted_files(void)
 	CHECK((s = crafted("forever")) == -1, "a duration past an int: %d", s);
 }
 
+/* No network, whatever an interface says: the page's offline state */
+static void unreachable(void)
+{
+	mf_state st;
+	int i;
+
+	printf("no network to ask:\n");
+	memset(&st, 0, sizeof st);
+	st.offline = true;
+	CHECK(mf_unreachable(&st), "begun offline");
+
+	memset(&st, 0, sizeof st);
+	for (i = 0; i < AS_SOURCES; i++) st.q[i] = MFQ_WAIT;
+	CHECK(!mf_unreachable(&st), "not while the sources wait to be asked");
+
+	/* A Pixel 2 with no adapter: the cable's network is up, and every
+	 * request ends with curl unable to resolve the host */
+	st.q[AS_LR] = MFQ_NO_ANSWER;
+	st.q[AS_SS] = MFQ_ASKING;
+	st.q[AS_SG] = MFQ_WAIT;
+	CHECK(!mf_unreachable(&st), "not while one is still asked");
+	st.q[AS_SS] = MFQ_NO_ANSWER;
+	st.q[AS_SG] = MFQ_OFF;
+	CHECK(mf_unreachable(&st), "every source asked gave no answer, the one with no key not asked");
+	st.q[AS_SG] = MFQ_NO_ANSWER;
+	CHECK(mf_unreachable(&st), "all three gave no answer");
+
+	/* An answer of any kind is a network */
+	st.q[AS_SS] = MFQ_UNKNOWN;
+	CHECK(!mf_unreachable(&st), "ScreenScraper answered: a network, and nothing found");
+	st.q[AS_SS] = MFQ_NONE;
+	CHECK(!mf_unreachable(&st), "an answer with no match is a network");
+	st.q[AS_SS] = MFQ_NO_ANSWER;
+	st.n = 1;
+	CHECK(!mf_unreachable(&st), "a picture came: a network");
+	st.n = 0;
+	st.video_offer = true;
+	CHECK(!mf_unreachable(&st), "a video on offer: a network");
+	st.video_offer = false;
+	for (i = 0; i < AS_SOURCES; i++) st.q[i] = MFQ_OFF;
+	CHECK(!mf_unreachable(&st), "nothing asked at all (no collection, account or key) is not offline");
+}
+
 int main(void)
 {
 	char dev[700], lib[700];
@@ -340,6 +387,7 @@ int main(void)
 	use_and_put_back();
 	lengths();
 	crafted_files();
+	unreachable();
 	db_shutdown();
 	{
 		char cmd[800];

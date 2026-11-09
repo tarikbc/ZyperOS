@@ -108,6 +108,13 @@ void mf_end(void);
 
 /* ---- pure, for tools/media-check.c ---------------------------------------- */
 
+/* No network to ask, whatever said there was one: begun offline, or every
+ * source asked has answered "no answer" (curl could not resolve or reach it)
+ * with nothing found. The page then says "Connect to Wi-Fi first." and not
+ * "Nothing found.": on a Pixel 2 with no Wi-Fi adapter the USB cable's
+ * network is up, so an interface being up proves nothing (2026-11-09). */
+bool mf_unreachable(const mf_state *st);
+
 /* An MP4's length in whole seconds, from its moov's mvhd; -1 when it is not
  * one or does not say */
 int mf_mp4_seconds(const char *path);

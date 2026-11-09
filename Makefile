@@ -30,7 +30,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-gamedel check-media check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-media check-snapsize check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
@@ -1595,6 +1595,21 @@ check-tour-previews: native
 	@'$(PYIMG)' tools/tour-previews.py --check
 
 .PHONY: check-games
+# A video snap of any shape - 640x480, a Nintendo DS game's 320x480, a Game
+# Boy game's, 534x480, a width of 1, odd ones - published as Muse publishes
+# it, read into its texture and drawn on the shelf and on a game's Cover and
+# Video page: its own shape where it is drawn, a texture never under 640x480
+# (src/mp4frame.h, mpf_tex_size: the Pixel 2's GPU faulted on narrower ones),
+# nothing out of bounds (UBSan, and Guard Malloc on a Mac). Needs SDL2.
+check-snapsize:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/snapsize-check || exit 1; \
+		if [ -f /usr/lib/libgmalloc.dylib ]; then gm=/usr/lib/libgmalloc.dylib; else gm=; fi; \
+		SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software DYLD_INSERT_LIBRARIES=$$gm \
+			./build-native/snapsize-check > build-native/snapsize-check.log 2>&1; st=$$?; \
+		grep -v '^fit: ' build-native/snapsize-check.log; exit $$st; \
+	else echo "check-snapsize: skipped, no SDL2"; fi
+
 check-games:
 	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/games-check
 	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/games-check

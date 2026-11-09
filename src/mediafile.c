@@ -109,6 +109,24 @@ bool mf_file_put_back(const char *roms, const char *folder, const char *stem)
 	return true;
 }
 
+/* ---- no way out ------------------------------------------------------------ */
+
+bool mf_unreachable(const mf_state *st)
+{
+	int i, asked = 0;
+
+	if (!st) return false;
+	if (st->offline) return true;
+	if (st->n > 0 || st->video_offer) return false;
+	for (i = 0; i < AS_SOURCES; i++) {
+		if (st->q[i] == MFQ_WAIT || st->q[i] == MFQ_ASKING) return false;
+		if (st->q[i] == MFQ_OFF) continue;
+		if (st->q[i] != MFQ_NO_ANSWER) return false;
+		asked++;
+	}
+	return asked > 0;
+}
+
 /* ---- an MP4's length ------------------------------------------------------- */
 
 static uint32_t be32(const unsigned char *p)

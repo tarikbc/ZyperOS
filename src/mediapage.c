@@ -248,7 +248,7 @@ static void video_draw(SDL_Renderer *r, const mpg_page *p)
 		q.x = (int)f.x;
 		q.y = (int)f.y;
 		if (p->row >= 0) ui_lift(r, &q, CFG_NO_COLOR, UI_LIFT_FOCUS_SMALL);
-		SDL_RenderCopyF(r, p->vid_tex, NULL, &f);
+		SDL_RenderCopyF(r, p->vid_tex, p->vid_src.w > 0 ? &p->vid_src : NULL, &f);
 		if (p->vid_disc) {
 			int d = 40;
 			SDL_Rect disc = { q.x + q.w - 12 - d, q.y + q.h - 12 - d, d, d };

@@ -14,6 +14,9 @@
  * picture is written to are ever there. A snap is small (ScreenScraper's
  * video-normalized), so three of its pictures are a few hundred kilobytes. */
 
+/* A check builds its own reader against a file of its own */
+#ifndef SNAP_FRAMES
 #define SNAP_FRAMES "/tmp/muse-snap"
+#endif
 
 #endif

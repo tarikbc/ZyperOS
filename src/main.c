@@ -3417,7 +3417,7 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 			g_snap_focus.path[0] = '\0';
 	}
 	req = snapshelf_step(&g_snap_shelf, g ? g_snap_focus.path : "", front,
-	                     snapv_texture(NULL, NULL) != NULL, now, &hold, &k);
+	                     snapv_texture(NULL, NULL, NULL) != NULL, now, &hold, &k);
 	snap_ask(req, hold);
 	if (*req) snapv_update(a->r);
 	if (snapshelf_moving(&g_snap_shelf)) redraw_now();
@@ -3439,13 +3439,14 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 	} else if (g_snap_shelf.phase == SNS_ASKED || g_snap_shelf.phase == SNS_IN) {
 		info->snap_wait = 1;
 	}
-	info->snap = k > 0 ? snapv_texture(&w, &h) : NULL;
+	info->snap = k > 0 ? snapv_texture(&w, &h, &info->snap_src) : NULL;
 	/* A host shot of the turn (--snap K): the test picture, K of the way */
 	if (g_shot_snap_k >= 0 && g) {
 		if (!mp4v_texture()) mp4v_test_picture(a->r, 320, 240);
 		info->snap = mp4v_texture();
 		if (info->snap) SDL_SetTextureBlendMode(info->snap, SDL_BLENDMODE_BLEND);
 		w = 320; h = 240;
+		info->snap_src = (SDL_Rect){ 0, 0, 0, 0 };
 		k = g_shot_snap_k;
 	}
 	/* A host shot of the wait (--snap-wait F): the bar F of the way */
@@ -13421,6 +13422,8 @@ static void media_build(media_view *v, unsigned now)
 	int nt = media_tiles(v), i, nr = 0;
 	as_source asking = media_asking(v);
 	bool done = media_done_asking(st);
+	/* No network: begun so, or every source unreachable (mf_unreachable) */
+	bool offline = mf_unreachable(st);
 
 	memset(p, 0, sizeof *p);
 	p->title = v->title;
@@ -13439,7 +13442,7 @@ static void media_build(media_view *v, unsigned now)
 	/* Found */
 	p->found_head = T(S_MEDIA_FOUND);
 	if (v->focus >= nt) v->focus = nt > 0 ? nt - 1 : 0;
-	if (asking != AS_NONE && !st->offline) {
+	if (asking != AS_NONE && !offline) {
 		snprintf(p->found_right, sizeof p->found_right, T(S_MEDIA_ASKING), artsrc_name(asking));
 		p->found_right_short = artsrc_name(asking);
 		p->found_dots = true;
@@ -13448,7 +13451,7 @@ static void media_build(media_view *v, unsigned now)
 		snprintf(p->found_right, sizeof p->found_right, "%d / %d", v->focus + 1, nt);
 	}
 
-	if (st->offline && !v->have_before) {
+	if (offline && !v->have_before) {
 		p->msg = MSG_NEEDS_WIFI;
 		p->msg_wrap = T(S_MEDIA_OR_PC);
 	} else if (done && nt == 0) {
@@ -13527,7 +13530,7 @@ static void media_build(media_view *v, unsigned now)
 				p->vid_load = 0;
 			}
 			val = v->vals[nr];
-		} else if (st->offline) {
+		} else if (offline) {
 			val = T(S_MENU_NEEDS_WIFI);
 		} else if (st->video_offer) {
 			live = true;
@@ -13551,18 +13554,19 @@ static void media_build(media_view *v, unsigned now)
 	if (v->row >= nr) v->row = nr - 1;
 	p->row = v->row;
 	if (v->has_snap) {
-		p->vid_tex = snapv_texture(&p->vid_w, &p->vid_h);
+		p->vid_tex = snapv_texture(&p->vid_w, &p->vid_h, &p->vid_src);
 		if (v->shot && !p->vid_tex) {
 			p->vid_tex = v->tex[MF_MAX - 1];
 			p->vid_w = v->tw[MF_MAX - 1];
 			p->vid_h = v->th[MF_MAX - 1];
+			p->vid_src = (SDL_Rect){ 0, 0, 0, 0 };
 		}
 		p->vid_disc = v->row < 0;
 	} else if (st->video_coming) {
 		p->vid_status = NULL;      /* the bar, and the row's bytes, say it */
-	} else if (!st->offline && (st->q[AS_SS] == MFQ_WAIT || st->q[AS_SS] == MFQ_ASKING)) {
+	} else if (!offline && (st->q[AS_SS] == MFQ_WAIT || st->q[AS_SS] == MFQ_ASKING)) {
 		p->vid_status = T(S_MEDIA_LOOKING);
-	} else if (!st->offline && st->q[AS_SS] != MFQ_OFF && !st->video_offer) {
+	} else if (!offline && st->q[AS_SS] != MFQ_OFF && !st->video_offer) {
 		p->vid_status = T(S_MEDIA_NONE_FOUND);
 	} else {
 		p->vid_status = T(S_MEDIA_NO_VIDEO);
@@ -13679,6 +13683,7 @@ static void media_watch(media_view *v)
 	g_snap_force_vol = -1;
 	while (!want_quit && a->running) {
 		SDL_Texture *t;
+		SDL_Rect src = { 0, 0, 0, 0 };
 		int w = 0, h = 0;
 
 		plat_input_poll(&a->in);
@@ -13701,11 +13706,11 @@ static void media_watch(media_view *v)
 			ui_fit_text(fh, v->title, fit, sizeof fit, 2 * header_half());
 			ui_text(a->r, fh, fit, ZYPEROS_SCREEN_W / 2, ui_cap_y(fh, TOPBAR_MID), 0, UI_TEXT);
 		}
-		if ((t = snapv_texture(&w, &h)) && w > 0 && h > 0) {
+		if ((t = snapv_texture(&w, &h, &src)) && w > 0 && h > 0) {
 			float k = fminf(896.0f / w, 576.0f / h);
 			SDL_FRect d = { 512 - w * k / 2, 104 + (576 - h * k) / 2, w * k, h * k };
 
-			SDL_RenderCopyF(a->r, t, NULL, &d);
+			SDL_RenderCopyF(a->r, t, src.w > 0 ? &src : NULL, &d);
 		}
 		page_hint(a->r, "B", T(S_MEDIA_BACK), 64, 724, false, false);
 		plat_draw_osd(a->r);
@@ -13782,7 +13787,7 @@ static void media_row_act(media_view *v)
 		media_watch(v);
 		break;
 	case MR_GET:
-		if (st->offline) {
+		if (mf_unreachable(st)) {
 			uisound_play(DS_SOUND_DENY);
 			result_message(a, T(S_MEDIA_ROW), MSG_NEEDS_WIFI);
 			break;
@@ -13810,7 +13815,11 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 	if (!v) return;
 	media_open(v, a, owner, g);
-	v->net = net_online();
+	/* Wi-Fi connected, not merely an interface up: on a Pixel 2 with no
+	 * adapter the USB cable's network is up and leads nowhere, and a page
+	 * that asked anyway said "Nothing found." (2026-11-09, from Tarik's
+	 * Pixel 2). mf_unreachable catches what this misses. */
+	v->net = net_online() && menu_wifi(NULL, 0) == WIFI_CONNECTED;
 	/* The one async slot, which an account answer may still hold */
 	if (v->net) sync_abandon();
 	mf_begin(v->folder, v->file, v->stem, v->exts, P_ROMS, v->net);
@@ -13892,7 +13901,7 @@ static void media_screen(app *a, int owner, const game_entry *g)
 				else if (v->pg.rows[v->row].live) media_row_act(v);
 				else {
 					uisound_play(DS_SOUND_DENY);
-					if (st->offline) result_message(a, T(S_MEDIA_ROW), MSG_NEEDS_WIFI);
+					if (mf_unreachable(st)) result_message(a, T(S_MEDIA_ROW), MSG_NEEDS_WIFI);
 				}
 			}
 		}

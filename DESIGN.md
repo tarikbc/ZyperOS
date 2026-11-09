@@ -1592,6 +1592,10 @@ cover's own width, 12 below it, **UI_BAR_H** tall and round-ended, a
 **track** that fills with **accent-ink** over **hold-snap**, held full
 while the first picture comes, and fading with the cover as it turns. Only
 a game that has a snap shows it. Host shot: `--snap-wait F`.
+A snap's picture goes to the GPU in a texture never smaller than 640x480,
+in its corner when it is smaller, and is drawn from its own rectangle:
+the Pixel 2's GPU faulted, and the launcher with it, on narrower ones (a
+Nintendo DS game's 320x480, a Game Boy game's, 534x480), 2026-11-09.
 Halfway through **hold-snap** the snap is asked for held: Muse opens it and
 puts out its first picture with no clock and no sound, so the cover turns
 the frame the bar is full, from the clip's first picture, and its sound
@@ -2395,7 +2399,9 @@ title is (11.14), sliding when it is longer. A base, as Storage's page is
   2 MB". **Watch** plays it on the whole screen under the top bar, with its
   sound (none while MP4 plays music), B's **Back** at the foot. **Delete**
   asks first, as 11.31's question does.
-- **No network**: where the strip would be, "Connect to Wi-Fi first." in
+- **No network** (Wi-Fi not connected, which on a Pixel 2 with no adapter is
+  always, though its USB cable's network is up; or every source asked gave no
+  answer): where the strip would be, "Connect to Wi-Fi first." in
   **menu** (on two lines where one does not hold it) and "Or add covers from
   a computer with File Transfer." in **meta**, Zyper at the right under
   them, and Replace or Download dead with "needs Wi-Fi". Before still shows

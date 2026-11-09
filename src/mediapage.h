@@ -70,6 +70,7 @@ typedef struct {
 	const char  *video_head;
 	SDL_Texture *vid_tex;      /* the video's picture, or NULL */
 	int          vid_w, vid_h;
+	SDL_Rect     vid_src;      /* its part of the texture (snapv_texture); none: all */
 	bool         vid_disc;     /* the play mark: still, the cursor elsewhere */
 	const char  *vid_status;   /* on the empty tile: "No video", "Looking it up" */
 	float        vid_load;     /* a bar while it downloads; < 0 none */
