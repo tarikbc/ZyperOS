@@ -49,7 +49,12 @@
 
 Then add games over Wi-Fi, the USB cable or the card itself. [The full install](#install) covers the card image, updates and the Wi-Fi adapter.
 
-<!-- demo-video -->
+<!-- tour-video: the tour on zyperos.com (video/README.md) -->
+<p align="center">
+  <a href="https://zyperos.com/#tour"><img src="res/readme/tour-poster.jpg" width="720" alt="Watch the ZyperOS tour: a green GKD Pixel 2 showing a shelf of PlayStation covers, beside the ZyperOS name"></a><br>
+  <sub>The tour, two minutes on zyperos.com</sub>
+</p>
+<!-- /tour-video -->
 
 ## Screens
 
