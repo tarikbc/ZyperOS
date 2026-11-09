@@ -249,7 +249,10 @@ turns red at 10%, its fill blinks at 5%, and it shows a bolt while it charges.
 The clock is not shown until it is set to 2026 or later, so a Pixel 2 that was
 never set does not show a time that is not now. The same header is on every
 MP4 screen - its shelf, an album's tracks, Now Playing and a video with its
-controls - and over the menu of a paused game.
+controls - and over the menu of a paused game. While music plays, the song's
+name stands in the header's middle, after a note; a name too long for its room
+slides back and forth there, as a long game title does on the shelf, and one
+that fits stays still.
 
 Wi-Fi File Transfer and Scraper's fetch need a network, and go quiet without one rather than
 disappearing - a row that vanishes teaches nobody why. Achievements stays reachable
@@ -702,6 +705,12 @@ sound.
 | **MENU** | MP4's menu |
 | **X**, or **SELECT + START** | lock the screen |
 | **SELECT** | close MP4 |
+
+The foot of Now Playing shows the keys as the shelves do, a button and a word:
+A pause or play, B back, X lock, Y the mode or the speed, L1/R1 the track, and
+the d-pad's sides seek. A video's two views show the same row, with Y changing
+the view and L1/R1 the video. A language whose words do not fit one row puts
+the rest on a second row above it.
 
 **Y changes the play mode on Now Playing**, and only there: in order, then
 repeat all, then repeat one, then shuffle, and round again. Its mark sits

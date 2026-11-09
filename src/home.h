@@ -38,6 +38,11 @@ void page_fonts_quit(void);
 TTF_Font *page_font(page_font_role role);
 void page_hint(SDL_Renderer *r, const char *key, const char *label,
                int x, int cy, bool focus, bool favorite);
+/* The same, in alpha `alpha` (a screen that fades its keys in and out), and
+ * how wide one is, glyph to the label's end (to lay a row of them out) */
+void page_hint_fade(SDL_Renderer *r, const char *key, const char *label,
+                    int x, int cy, bool focus, bool favorite, Uint8 alpha);
+int page_hint_width(const char *key, const char *label, bool focus);
 
 home_layout home_parse(const char *id);
 const char *home_id(home_layout layout);
@@ -93,6 +98,10 @@ uint32_t home_draw(home *h, SDL_Renderer *r, home_layout layout,
                     const home_item *items, int count, int cursor,
                     const char *count_label, const char *open_label,
                     uint32_t now, bool animate);
-/* status_left is measured by the existing status corner before this call. */
-void home_header(SDL_Renderer *r, const home_song *song, int status_left);
+/* status_left is measured by the existing status corner before this call.
+ * `phase` is ms into the song's name sliding (ui_text_marquee): a name wider
+ * than its room slides, one that fits stands still. Returns the ms until the
+ * picture next changes by itself, 0 while the name moves, UINT32_MAX when it
+ * never will (the caller's redraw_at). */
+uint32_t home_header(SDL_Renderer *r, const home_song *song, int status_left, unsigned phase);
 #endif

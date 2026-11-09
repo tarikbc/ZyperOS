@@ -24,45 +24,45 @@ ja = %s 長押しでロック解除
 it = Tieni premuto %s per sbloccare
 
 [mp4.hint_lock]
-note = A part of a video's key legend: X locks the screen
-en = X: lock
-zh-Hans = X：锁定
-es = X: bloquear
-pt-BR = X: bloquear
-fr = X\u00a0: verrouiller
-de = X: sperren
-ja = X：ロック
-it = X: blocca
+note = The word by the X hint on a video: X locks the screen
+en = Lock
+zh-Hans = 锁定
+es = Bloquear
+pt-BR = Bloquear
+fr = Verrouiller
+de = Sperren
+ja = ロック
+it = Blocca
 
 [mp4.hint_controls]
-note = A part of a video's key legend, in full screen: Y shows the video smaller with its controls under it
-en = Y: controls
-zh-Hans = Y：控制栏
-es = Y: controles
-pt-BR = Y: controles
-fr = Y\u00a0: commandes
-de = Y: Steuerung
-ja = Y：コントロール
-it = Y: controlli
+note = The word by a hint on a video, in full screen: Y shows the video smaller with its controls under it
+en = Controls
+zh-Hans = 控制栏
+es = Controles
+pt-BR = Controles
+fr = Commandes
+de = Steuerung
+ja = コントロール
+it = Controlli
 
 [mp4.hint_full_screen]
-note = A part of a video's key legend, with the controls shown: Y shows the video full screen
-en = Y: full screen
-zh-Hans = Y：全屏
-es = Y: pantalla completa
-pt-BR = Y: tela cheia
-fr = Y\u00a0: plein écran
-de = Y: Vollbild
-ja = Y：全画面
-it = Y: schermo intero
+note = The word by a hint on a video, with the controls shown: Y shows the video full screen
+en = Full screen
+zh-Hans = 全屏
+es = Pantalla completa
+pt-BR = Tela cheia
+fr = Plein écran
+de = Vollbild
+ja = 全画面
+it = Schermo intero
 
 [mp4.hint_video]
-note = A part of a video's key legend, when the folder has more than one: L1/R1 go to the video before or after
-en = L1/R1: video
-zh-Hans = L1/R1：视频
-es = L1/R1: video
-pt-BR = L1/R1: vídeo
-fr = L1/R1\u00a0: vidéo
-de = L1/R1: Video
-ja = L1/R1：動画
-it = L1/R1: video
+note = The word by a hint on a video, when the folder has more than one: L1/R1 go to the video before or after
+en = Video
+zh-Hans = 视频
+es = Video
+pt-BR = Vídeo
+fr = Vidéo
+de = Video
+ja = 動画
+it = Video

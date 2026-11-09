@@ -3016,7 +3016,7 @@ static int shot_focus_from = -1;
  * clocks was never the two columns. It was the selected row against the rest,
  * and only one row is ever selected. */
 enum { MQ_SHELF, MQ_MENU, MQ_FIXED, MQ_NOTE0, MQ_NOTE1, MQ_VSCROLL,
-       MQ_HEAD, MQ_NP, MQ_SLOTS };
+       MQ_HEAD, MQ_NP, MQ_SONG, MQ_SLOTS };
 
 static int      mq_last_a[MQ_SLOTS], mq_last_b[MQ_SLOTS];
 static unsigned mq_since[MQ_SLOTS];
@@ -3843,7 +3843,17 @@ void draw_shelf(app *a)
 	if (!muse_shelf_shown(a)) draw_status(a);
 	if (a->screen == SCREEN_SYSTEMS) g_title_caps = (SDL_Rect){0};
 	if (!muse_shelf_shown(a))
-		home_header(a->r, &g_home_song, g_corner_box.w ? g_corner_box.x : STATUS_RIGHT);
+	{
+		/* The song's name slides when it is wider than its room, on its
+		 * own clock, started over by a new song */
+		uint32_t hash = 5381, w;
+		const char *c;
+
+		for (c = g_home_song.title; *c; c++) hash = hash * 33 + (unsigned char)*c;
+		w = home_header(a->r, &g_home_song, g_corner_box.w ? g_corner_box.x : STATUS_RIGHT,
+		                mq_phase(MQ_SONG, (int)hash, g_home_song.active));
+		if (w != UINT32_MAX) redraw_at(plat_now_ms() + w);
+	}
 }
 
 /* ---------- the song pop-up ------------------------------------------------ */
@@ -15003,7 +15013,8 @@ static void np_line(SDL_Renderer *r, ui_font_role role, const char *s, int y,
 	if (w < *wait) *wait = w;
 }
 
-static void np_legend(char *out, size_t n, const char *const *parts, int np, int w);
+static void np_hints(SDL_Renderer *r, bool playing, int kind, int count, int cy,
+                     bool video, Uint8 alpha);
 
 /* Returns how long until the picture would change by itself, in ms - 0 while
  * a line is sliding - so the loop can leave the screen alone until then. */
@@ -15140,36 +15151,7 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 		        UI_TEXT_DIM);
 	}
 
-	/* The keys, as much of them as fits the screen (np_legend): English's
-	 * longest, a book's, is about 950 of the 1008 */
-	{
-		const char *parts[4] = {
-			state ? T(S_MUSE_HINT_PLAY) : T(S_MUSE_HINT_PAUSE),
-			!musec_is_book() ? T(S_MUSE_HINT_TRACK)
-			: musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER) : T(S_MUSE_HINT_FILE),
-			T(S_MUSE_HINT_SEEK),
-			musec_is_book() ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE),
-		};
-
-		/* All four, on two lines where a language's words do not fit one:
-		 * a key left out is a cut (DESIGN.md 12) */
-		np_legend(line, sizeof line, parts, 4, ZYPEROS_SCREEN_W - 2 * DS_GRID);
-		if (strlen(line) < strlen(parts[0]) + strlen(parts[1]) + strlen(parts[2]) +
-		                   strlen(parts[3]) + 9) {
-			char more[200];
-			int k = 0;
-
-			while (k < 4 && strstr(line, parts[k])) k++;
-			np_legend(more, sizeof more, parts + k, 4 - k, ZYPEROS_SCREEN_W - 2 * DS_GRID);
-			ui_text(r, fs, line, ZYPEROS_SCREEN_W / 2,
-			        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72 - 46), 0, UI_TEXT_DIM);
-			ui_text(r, fs, more, ZYPEROS_SCREEN_W / 2,
-			        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72), 0, UI_TEXT_DIM);
-		} else {
-			ui_text(r, fs, line, ZYPEROS_SCREEN_W / 2, ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 72),
-			        0, UI_TEXT_DIM);
-		}
-	}
+	np_hints(r, state == NULL, musec_is_book() ? 1 : 0, 0, 0, false, 255);
 	{
 		/* The top bar, as on every MP4 screen (2026-11-09): the clock at
 		 * the left, the marks and the battery's words at the right */
@@ -15644,23 +15626,62 @@ static void np_view_toggle(void)
 #define NPV_Y 96
 #define NPV_H (NPV_W * 9 / 16)
 
-/* The key legend, as much of it as fits `w`: the parts are dropped from the
- * end, so they are listed most needed first. */
-static void np_legend(char *out, size_t n, const char *const *parts, int np, int w)
+/* The foot: what the buttons do on Now Playing, as the shelves' hints are
+ * drawn (page_hint: a glyph and a word), in a row from x 64 to 960 with the
+ * room left over shared between them. Listed most needed first; a row that
+ * does not fit its language's words goes on to a second one above it, never
+ * cut (DESIGN.md 12). `kind`: 0 music, 1 a book, 2 a video in full screen, 3
+ * a video with its controls. `count` is a video's folder, `cy` the last
+ * row's middle (0 for the standard 720), `alpha` how much of it shows. */
+static void np_hints(SDL_Renderer *r, bool playing, int kind, int count, int cy,
+                     bool video, Uint8 alpha)
 {
-	TTF_Font *f = ui_font(UI_F_META);
-	int k;
+	struct { const char *key, *word; } h[7];
+	int n = 0, i, row = 0, first = 0, rows = 1, from[3] = { 0, 0, 0 };
+	const int left = 64, right = ZYPEROS_SCREEN_W - 64, gap = 16;
+	int used = 0;
 
-	for (; np > 0; np--) {
-		out[0] = '\0';
-		for (k = 0; k < np; k++) {
-			size_t at = strlen(out);
-
-			snprintf(out + at, n - at, "%s%s", k ? "   " : "", parts[k]);
-		}
-		if (ui_text_width(f, out) <= w) return;
+	if (!cy) cy = 720;
+	h[n].key = "A";  h[n++].word = playing ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
+	h[n].key = "B";  h[n++].word = T(S_CONTROLS_BACK);
+	if (video) {
+		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].word = kind == 2 ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
+		if (count > 1) { h[n].key = "L1/R1"; h[n++].word = T(S_MP4_HINT_VIDEO); }
+	} else {
+		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].word = kind == 1 ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE);
+		h[n].key = "L1/R1"; h[n++].word = !musec_is_book() ? T(S_MUSE_HINT_TRACK)
+		                                 : musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER)
+		                                                        : T(S_MUSE_HINT_FILE);
 	}
-	out[0] = '\0';
+	h[n].key = "< >"; h[n++].word = T(S_MUSE_HINT_SEEK);
+
+	/* Where each row starts: greedily, as many as fit */
+	for (i = 0; i < n; i++) {
+		int w = page_hint_width(h[i].key, h[i].word, false);
+
+		if (i > first && used + gap + w > right - left && rows < 3) {
+			from[rows++] = i;
+			first = i;
+			used = 0;
+		} else if (i > first) {
+			used += gap;
+		}
+		used += w;
+	}
+	from[rows] = n;
+	for (row = 0; row < rows; row++) {
+		int a = from[row], b = row + 1 < rows ? from[row + 1] : n, total = 0, x = left, sp;
+		int y = cy - (rows - 1 - row) * 40;
+
+		for (i = a; i < b; i++) total += page_hint_width(h[i].key, h[i].word, false);
+		sp = b - a > 1 ? (right - left - total) / (b - a - 1) : 0;
+		for (i = a; i < b; i++) {
+			page_hint_fade(r, h[i].key, h[i].word, x, y, false, false, alpha);
+			x += page_hint_width(h[i].key, h[i].word, false) + sp;
+		}
+	}
 }
 
 /* The bar, and with `times` the times under it - "1:26", what is left, and
@@ -15708,9 +15729,7 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 	                    : (SDL_Rect){ NPV_X, NPV_Y, NPV_W, NPV_H };
 	SDL_Rect pic = mp4v_fit(box);
 	ds_rgb g = full ? DS_THEME[DS_DARK].ink : theme()->ground;
-	const char *parts[5];
-	char legend[200], fit[200];
-	int np = 0;
+	char fit[200];
 	Uint8 al;
 
 	if (!full) k = 1;
@@ -15719,12 +15738,6 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 	ui_fit_frame();   /* the picture covers what was drawn (the host's fit check) */
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 
-	parts[np++] = mn->state == MU_PLAYING ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
-	parts[np++] = T(S_MUSE_HINT_SEEK);
-	parts[np++] = T(S_MP4_HINT_LOCK);
-	parts[np++] = full ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
-	if (mn->count > 1) parts[np++] = T(S_MP4_HINT_VIDEO);
-	np_legend(legend, sizeof legend, parts, np, ZYPEROS_SCREEN_W - 2 * NPV_X);
 
 	if (full) {
 		/* The controls over the picture's foot, on the theme's surface, all
@@ -15755,9 +15768,8 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 		}
 		ui_fit_text(fm, mn->title, fit, sizeof fit, NPV_W - tw - 32);
 		ui_text(r, fm, fit, NPV_X, ui_line_y(UI_F_MENU, band.y + 22), -1, text);
-		np_video_bar(r, mn, NPV_X, band.y + 100, NPV_W, al, false);
-		ui_text(r, fs, legend, ZYPEROS_SCREEN_W / 2,
-		        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 62), 0, dim);
+		np_video_bar(r, mn, NPV_X, band.y + 88, NPV_W, al, false);
+		np_hints(r, mn->state == MU_PLAYING, 2, mn->count, 730, true, al);
 		return;
 	}
 	/* With controls: the home's header, as on every MP4 screen (2026-11-09),
@@ -15781,8 +15793,7 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 		ui_round_rect(r, &box, 0, ink);
 	}
 	np_video_bar(r, mn, NPV_X, NPV_Y + NPV_H + 24, NPV_W, 255, true);
-	ui_text(r, fs, legend, ZYPEROS_SCREEN_W / 2,
-	        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 62), 0, UI_TEXT_DIM);
+	np_hints(r, mn->state == MU_PLAYING, 3, mn->count, 730, true, 255);
 }
 
 /* MUSE_CLOSE for SELECT and the power button, which leave Muse altogether;

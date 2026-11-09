@@ -1116,7 +1116,11 @@ playback uses a pause's two bars, 4.5 wide. Both are drawn as the status
 marks are, by signed distance (src/status.c), at the row's height and in
 each theme (2026-11-09: the note of rectangles and discs before it "looks
 bad"). The track uses
-**chrome**, **text-soft**, with a trailing ellipsis when necessary. It never
+**chrome**, **text-soft**. A name wider than its room (at most 256) slides
+back and forth inside it, the launcher's one marquee (ui_text_marquee: the
+same hold, pace and faded ends as a long game title), starting over with each
+new song and drawn only while it moves, the holds slept through
+(ui_pingpong_wait); a name that fits stands still, centered. It never
 scrolls over the clock or changes the status marks' positions. No track means
 no music mark or empty capsule. Cached player state drives updates, not an
 extra socket query during rendering. A track change, pause, resume or stop
@@ -1268,13 +1272,17 @@ Muse, so a card's saved places and modes still read.
   when the card has songs.
 - **Video.** On Now Playing, in one of two views, Y between them, kept:
   **full screen** - the picture as large as it fits on **ink**, the controls
-  (title, the bar, the key legend) on **surface** at 92% over its foot,
+  (title, the bar, the key hints) on **surface** at 92% over its foot,
   in over **quick** after any press and out over **fade-out** after
   **hold-controls**, and up for as long as it is paused; it opens in this
   one - and **with
   controls** - the picture in a 16:9 frame 896 wide on **ground**, the
   header above it with the title in its row, and the bar and legend below,
   always there.
+  Their keys are hints as the shelves draw them (`page_hint`: a glyph and a word,
+  **chrome** type, **text-soft**), from x 64 to 960 with the room shared out, and
+  on a second row above where a language's words need it, never cut: Now
+  Playing's too (A, B, X, Y, L1/R1, the d-pad's sides as a `< >` pill).
   The picture is drawn under the screen at the panel's own resolution
   (plat_video_under), so nothing scales it twice. A video keeps its place
   as a book does, per file; none is kept in its first or last minute.
