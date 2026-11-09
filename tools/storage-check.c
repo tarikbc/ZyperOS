@@ -493,6 +493,10 @@ static void media_pages(void)
 	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "/Artist"), 0);
 	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Artist/Album/01 One.mp3"), 0);
 	CHECK(there("Music/Artist/Album/01 One.mp3"));
+	/* A real folder that is no item of the walk (the artist above its
+	 * albums): what a path cut short would name. Only listed items go */
+	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Artist"), 0);
+	CHECK(there("Music/Artist/Album/01 One.mp3"));
 	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Link"), 0);
 	CHECK_EQ(st_delete_media(&pp, STM_MUSIC, "Link/Game Boy"), 0);
 	CHECK(there("Roms/Game Boy/Tetris.gb"));
