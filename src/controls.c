@@ -90,7 +90,7 @@ static int shelf(menu_row *out)
 	out[n++] = (menu_row){ "A", T(S_CONTROLS_OPEN_PLAY), false };
 	out[n++] = (menu_row){ "B", T(S_CONTROLS_BACK), false };
 	out[n++] = (menu_row){ "X", T(S_CONTROLS_DETAILS), false };
-	out[n++] = (menu_row){ "Y", T(S_CONTROLS_FAVORITE), false };
+	out[n++] = (menu_row){ "Y", T(S_CONTROLS_FRESH), false };
 	/* Here rather than on Anywhere, which is full: it works outside a game,
 	 * and in one L2 and R2 are the game's */
 	if (battery_lights)

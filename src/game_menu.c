@@ -47,6 +47,10 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * question half-answered: which four, and what are the other fifty. A game
 	 * with no set has nothing to open and says so. */
 	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos, gi->has_cheevos };
+	/* Favorite is back here, on 2026-11-08: Y on the shelf now starts a game
+	 * fresh, so marking one moved to this page, Y on it or A on the row */
+	if (gi->can_favorite)
+		out[n++] = (menu_row){ T(S_CONTROLS_FAVORITE), T(gi->favorite ? S_MENU_ON : S_MENU_OFF), true };
 	/* WHAT THIS SCREEN NO LONGER SAYS, and why, because each was removed on a
 	 * reason rather than to make the list shorter:
 	 *

@@ -222,7 +222,7 @@ games.no_games
 games.played
 games.achievements
 games.resume
-games.favorited
+games.fresh
 
 # hare: answers sent to the File Transfer page, which draws them, not the launcher
 hare.waiting

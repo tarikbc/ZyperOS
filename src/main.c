@@ -9479,6 +9479,8 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 	memset(gi, 0, sizeof *gi);
 	gi->can_delete = gd_shelf_deletes(s->core);
+	gi->can_favorite = !is_muse(s);
+	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
 
 	/* The save slots are not read here any more. The row that showed them went
 	 * on 2026-09-17 - the carousel shows them when you load, with the frames
@@ -10260,6 +10262,9 @@ typedef struct {
 	menu_style  st;   /* the accent follows the OWNING system, which can move */
 	/* Delete Game took the game: the page closes, and this is said after */
 	bool        deleted;
+	/* Y on the page (or A on Favorite) changed the favorite: the Favorites
+	 * shelf is rebuilt once the page has closed */
+	bool        fav_changed;
 	char        said[192];
 } info_ctx;
 
@@ -10293,6 +10298,8 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
  * the player is. */
 static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf);
 
+static void fav_toggle_heard(const char *tag, const char *file);
+
 static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 {
 	info_ctx *c = ctx;
@@ -10302,6 +10309,17 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 
 	/* X closes it, the same button that opened it. */
 	if (key == IN_X) { uisound_play(DS_SOUND_BACK); return MENU_DONE; }
+	/* Y, or A on the Favorite row: the favorite, written through at once */
+	if (c->gi.can_favorite && (key == IN_Y || (key == IN_ACCEPT && sel < n
+	    && !strcmp(rows[sel].label, T(S_CONTROLS_FAVORITE))))) {
+		const char *tag = a->sys.systems[c->owner].tag;
+
+		fav_toggle_heard(tag, c->g->file);
+		fav_save();
+		c->gi.favorite = fav_is(tag, c->g->file);
+		c->fav_changed = true;
+		return MENU_STAY;
+	}
 	if (key != IN_ACCEPT || sel >= n || !rows[sel].live) return MENU_STAY;
 
 	if (!strcmp(rows[sel].label, T(S_GAMEMENU_SYNOPSIS))) {
@@ -10379,6 +10397,7 @@ static void game_info_screen(app *a)
 
 	/* The card may now hold art it did not before. */
 	free_all_textures(a);
+	if (c.fav_changed) refresh_favorites_shelf(a);
 	if (c.deleted && c.said[0] && a->running)
 		result_message(a, T(S_GAMEMENU_DELETE), c.said);
 }
@@ -18530,20 +18549,17 @@ static void update_games(app *a)
 		evict_far(v, TEX_KEEP_FAR);
 		return;
 	}
-	/* X opens the game. Y marks it. The pair sits together because they are
-	 * the two things you do to a card without launching it. */
+	/* X opens the game's details, where Y marks it a favorite. */
 	if (a->in.pressed[IN_X] && n > 0) { uisound_play(DS_SOUND_ACCEPT); game_info_screen(a); return; }
-	/* Y favorites what is under the cursor. Written through immediately:
-	 * there is no confirm step to hang the save off, and the alternative is
-	 * losing the choice to a flat battery. */
+	/* Y starts the game under the cursor fresh, without its resume point
+	 * (2026-11-08): A continues it, Y starts over. A game with nothing to
+	 * resume has nothing to start over from, so Y does nothing there.
+	 * Favorites moved to the details page (X, then Y). */
 	if (a->in.pressed[IN_Y] && n > 0) {
-		fav_toggle_heard(a->sys.systems[shelf_owner(a, a->sys_cursor, v->cursor)].tag,
-		                 v->list.items[v->cursor].file);
-		fav_save();
-		/* The shelf follows immediately. Everything below this line may have
-		 * moved - the system indices, sys_cursor, and v itself - so nothing
-		 * from before it can be reused. */
-		refresh_favorites_shelf(a);
+		if (!(g_game_page.valid && g_game_page.resume)) { uisound_play(DS_SOUND_DENY); return; }
+		g_ctl_fresh = true;
+		launch(a);
+		g_ctl_fresh = false;
 		return;
 	}
 	if (a->in.pressed[IN_ACCEPT]) { launch(a); return; }
