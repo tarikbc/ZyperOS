@@ -200,6 +200,8 @@ shots('poweroff', [(PS1, ['--screen', 'games', '--poweroff', '--shot-at', '{t}']
 SNAP_GAME = tuple(os.environ.get('SNAP_GAME', 'PS1|Spyro the Dragon (USA).chd').split('|'))
 SNAP_SOURCE = os.environ.get('SNAP_SOURCE', str(cardlib.ART_CACHE / 'Sony_-_PlayStation/Videos/Spyro the Dragon (USA).mp4'))
 SNAP_FPS = 30
+# Where in the snap the beat starts, in seconds: a lively stretch of a long clip
+SNAP_START = os.environ.get('SNAP_START', '0')
 SNAP_ENV = {'SNAP_I420': '{work}/snap.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')}
 shots('snap', [(SNAP_GAME, ['--screen', 'games', '--snap-wait', '0'], 600),
                (SNAP_GAME, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
@@ -324,7 +326,7 @@ def main():
         shutil.copyfile(SNAP_SOURCE, media)
     else:
         media.touch()
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS},scale=320:240',
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS},scale=320:240',
                     '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'snap.yuv')], check=True)
     cards['portdocs'] = WORK / 'card-portdocs'
     cards['empty'] = WORK / 'card-empty'
