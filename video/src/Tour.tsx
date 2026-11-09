@@ -30,7 +30,7 @@ const camera = (frame: number, d: DeviceInfo): Cam => {
   // Out to the left, quick, when the next scene whips in
   const next = SCENES[i + 1];
   if (next?.enter === "whip" && sc.pose !== "duo" && sc.pose !== "away") {
-    const k = ease(frame, end - 6, end, Easing.in(Easing.cubic));
+    const k = ease(frame, end - 8, end, Easing.in(Easing.cubic));
     cam = { ...cam, x: cam.x - k * WHIP, blur: (cam.blur ?? 0) + k * 22 };
   }
   return cam;
