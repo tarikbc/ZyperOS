@@ -225,11 +225,17 @@ int main(void)
     /* Header pixels must never enter the measured status region. */
     SDL_SetRenderDrawColor(r,71,81,91,255); SDL_RenderClear(r);
     assert(home_song_update(&song,true,false,"A long song title with accents é 日本語 and more words beyond the status corner"));
-    home_header(r,&song,640);
+    /* A name wider than its room slides, so it is due again (after its hold) */
+    assert(home_header(r,&song,640,0)!=UINT32_MAX);
     SDL_RenderPresent(r);
     Uint32 untouched=SDL_MapRGBA(surface->format,71,81,91,255);
     for(int y=0;y<80;y++) for(int x=640;x<1024;x++)
         assert(((Uint32*)((Uint8*)surface->pixels+y*surface->pitch))[x]==untouched);
+    {
+        home_song brief; home_song_update(&brief,true,false,"Night");
+        /* One that fits stands still: nothing to wake for */
+        assert(home_header(r,&brief,720,0)==UINT32_MAX);
+    }
     /* The caller's target, viewport, scale, clip, color and blend all survive. */
     SDL_Texture *target=SDL_CreateTexture(r,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_TARGET,1024,768);
     assert(target); SDL_SetRenderTarget(r,target);
@@ -237,7 +243,7 @@ int main(void)
     SDL_Rect viewport={8,16,900,700},clip={24,40,800,600};
     SDL_RenderSetViewport(r,&viewport); SDL_RenderSetClipRect(r,&clip);
     SDL_SetRenderDrawColor(r,10,20,30,40); SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_ADD);
-    home_header(r,&song,720);
+    home_header(r,&song,720,0);
     home_draw(&h,r,HOME_GALLERY,items,5,0,"1 game","Open games",0,false);
     SDL_Rect got; float sx,sy; Uint8 cr,cg,cb,ca; SDL_BlendMode blend;
     assert(SDL_GetRenderTarget(r)==target);

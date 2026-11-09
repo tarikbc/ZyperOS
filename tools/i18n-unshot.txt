@@ -487,6 +487,7 @@ shelf.list_sep
 # slots: no shot draws it yet
 slots.save_to
 slots.empty
+slots.when
 slots.am
 slots.pm
 slots.jan

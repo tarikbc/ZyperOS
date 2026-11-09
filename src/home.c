@@ -377,14 +377,25 @@ static void sprite(home *h, SDL_Renderer *r, const home_item *item,
         if(dst.w>=256) ui_text(r,ui_font(UI_F_META),T(S_HOME_NO_ARTWORK),cx,ui_cap_y(ui_font(UI_F_META),cy+48),0,c);
     }
 }
-void page_hint(SDL_Renderer *r, const char *key, const char *label,
-               int x, int cy, bool focus, bool favorite)
+void page_hint_fade(SDL_Renderer *r, const char *key, const char *label,
+                    int x, int cy, bool focus, bool favorite, Uint8 alpha)
 {
     int size=focus?40:32, w=ui_button_width(key,size);
     TTF_Font *font=page_font(focus?PAGE_ACTION:PAGE_CHROME);
-    ui_button(r,key,x+w/2,cy,size,focus?UI_BUTTON_ON_ACCENT:UI_BUTTON_PLAIN);
-    ui_text(r,font,label,x+w+12,ui_cap_y(font,cy),-1,
-            favorite?ui_col(theme()->favorite,255):UI_TEXT_SOFT);
+    SDL_Color c=favorite?ui_col(theme()->favorite,255):UI_TEXT_SOFT;
+    c.a=(Uint8)(c.a*alpha/255);
+    ui_button_pressed(r,key,x+w/2,cy,size,focus?UI_BUTTON_ON_ACCENT:UI_BUTTON_PLAIN,
+                      0.0f,1.0f,alpha/255.0f);
+    ui_text(r,font,label,x+w+12,ui_cap_y(font,cy),-1,c);
+}
+void page_hint(SDL_Renderer *r, const char *key, const char *label,
+               int x, int cy, bool focus, bool favorite)
+{
+    page_hint_fade(r,key,label,x,cy,focus,favorite,255);
+}
+int page_hint_width(const char *key, const char *label, bool focus)
+{
+    return ui_button_width(key,focus?40:32)+12+ui_text_width(page_font(focus?PAGE_ACTION:PAGE_CHROME),label);
 }
 /* These draws alter only the draw color/blend. Targets, scale, viewport and
  * clipping stay untouched, including when a menu draws the home into a target. */
@@ -562,8 +573,9 @@ uint32_t home_draw(home *h,SDL_Renderer *r,home_layout layout,
     return wait;
 }
 
-void home_header(SDL_Renderer *r,const home_song *song,int status_left)
+uint32_t home_header(SDL_Renderer *r,const home_song *song,int status_left,unsigned phase)
 {
+    uint32_t wait=UINT32_MAX;
     draw_state saved=save_state(r);
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
     /* The clock stands at the left end now (src/topbar.h), not the
@@ -571,15 +583,24 @@ void home_header(SDL_Renderer *r,const home_song *song,int status_left)
     if(song && song->active) {
         const int left=272, right=status_left-24, mark=24, gap=12;
         if(right-left>=mark+gap+32) {
-            char fitted[128]; TTF_Font *font=page_font(PAGE_CHROME);
+            TTF_Font *font=page_font(PAGE_CHROME);
             int maxw=right-left-mark-gap; if(maxw>256) maxw=256;
-            ui_fit_text(font,song->title,fitted,sizeof fitted,maxw);
-            int width=ui_text_width(font,fitted), x=left+(right-left-width-mark-gap)/2;
+            /* A name wider than its room slides, as every other long name
+             * does (ui_text_marquee: the same hold, pace and faded ends);
+             * one that fits stands still, centered. The room is then the
+             * whole of maxw, so the mark stays where it is while it moves. */
+            int over=ui_text_width(font,song->title)-maxw;
+            int width=over>0?maxw:ui_text_width(font,song->title);
+            int x=left+(right-left-width-mark-gap)/2;
             /* The song's mark, drawn as the bar's other marks are (two
              * eighth notes, or a pause's bars): src/status.h */
             topbar_song_mark(r,x,theme_index(),song->paused);
-            ui_text(r,font,fitted,x+mark+gap,ui_cap_y(font,64),-1,UI_TEXT_SOFT);
+            ui_text_marquee(r,font,song->title,x+mark+gap,ui_cap_y(font,64),width,phase,UI_TEXT_SOFT);
+            /* Only the moments it moves are drawn: the holds at either end
+             * are slept through (ui_pingpong_wait) */
+            if(over>0) wait=ui_pingpong_wait(over,phase);
         }
     }
     restore_state(r,saved);
+    return wait;
 }

@@ -118,6 +118,15 @@ SHOTS={
     # the mark of a song paused
     'topbar':('demo','PS1',['--home','spotlight','--song','Night Drive']),
     'topbar-paused':('demo','PS1',['--home','spotlight','--song','Night Drive','--song-paused']),
+    # A song name too long for its room slides (ui_text_marquee's pace, holds and
+    # faded ends): the same name at the start of its travel and a moment into it
+    'topbar-long':('demo','PS1',['--home','spotlight','--song','Night Drive (Extended Mix) - The Midnight Rider Collective','--phase','0']),
+    'topbar-long-moving':('demo','PS1',['--home','spotlight','--song','Night Drive (Extended Mix) - The Midnight Rider Collective','--phase','2600']),
+    # The same short name with its clock at the start: the song's name that fits does not move
+    'topbar-still':('demo','PS1',['--home','spotlight','--song','Night Drive','--phase','0']),
+    # The video with its controls, the foot's hints (Now Playing's own is above)
+    'video-controls':('demo','MUSE',['--nowplaying','0','0','83','--video','controls']),
+    'video-full':('demo','MUSE',['--nowplaying','0','0','83','--video','full']),
     # The quick slot and the hotkeys (2026-11-07): the in-game menu on its
     # Quick Slot row, a PlayStation game's buttons drawn as their shapes, and
     # its Hotkeys page, SELECT with a shoulder
@@ -125,14 +134,21 @@ SHOTS={
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
 }
+# Favorites for a shot alone, set before it is taken and cleared after: the
+# games page with the focused game and the one before it kept, so the heart
+# shows on a focused cover and on a side one (src/artbadge.h). Only there, so
+# the other shots' homes have no Favorites shelf.
+SHOT_FAVS={'shelf':[('PS1',FOCUS+'.chd'),('PS1',GAMES[1]+'.chd')]}
 # The game a shot's shelf opens on, where it is not its system's own (below)
-SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh'}
+# MP4's on the film, between an album and the book, so its three kinds show
+SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh','mp4':'Videos'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
 # what it shows: icon= is the setting for this shot, eta= the minutes left
 STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
-        'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62'}
+        'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
+        'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar','media']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
@@ -242,11 +258,22 @@ def demo_card(card,art_dir,manifest):
     (up/'source').write_text('file:///nonexistent\n')
 
 def media_card(card,art_dir=None,manifest=None):
-    """The demonstration card and a film, Blender's freely licensed Sintel as
-    a stand-in name: MP4's shelf shows All, the albums and the videos mixed
-    (src/muselib.h), and its menu has Show"""
+    """The demonstration card, a film, Blender's freely licensed Sintel as a
+    stand-in name, and a book, Treasure Island, which is in the public domain:
+    MP4's shelf shows All, the albums, the book and the video mixed
+    (src/muselib.h), each card with its kind's badge, and its menu has Show"""
     demo_card(card,art_dir,manifest if manifest is not None else {'artwork':{}})
     (card/'Videos').mkdir();(card/'Videos/Sintel.mp4').touch()
+    book=card/'Audiobooks/Treasure Island';book.mkdir(parents=True)
+    (book/'01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
+
+def set_favs(card,favs,on):
+    """A shot's favorites (SHOT_FAVS) into the card's library, or out of it"""
+    with sqlite3.connect(card/'shared/.zyperos/library.db') as db:
+        db.execute('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)')
+        for tag,file in favs:
+            if on: db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)',(f'fav.{tag}\t{file}','1'))
+            else: db.execute('DELETE FROM settings WHERE key=?',(f'fav.{tag}\t{file}',))
 
 # The Install PortMaster page's shots: the status file as res/portmaster/
 # pm-install.py writes it, read through ZYPEROS_PM_STATUS (--portmaster)
@@ -502,8 +529,10 @@ def main():
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
                          '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
+                set_favs(card,SHOT_FAVS.get(name,[]),True)
                 result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
                                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                set_favs(card,SHOT_FAVS.get(name,[]),False)
                 (dest/(name+'.log')).write_text(result.stdout)
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')
