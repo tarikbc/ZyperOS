@@ -215,7 +215,7 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
     if(info->count) page_hint(r,"A",T(info->install?S_PORTMASTER_INSTALL:
                                       info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
     page_hint(r,"B",T(S_GAMES_SYSTEMS),64,720,false,false);
-    page_hint(r,"Y",T(info->favorite?S_GAMES_FAVORITED:S_GAMES_FAVORITE),432,720,false,info->favorite);
+    if(info->count&&info->resumable&&!info->install) page_hint(r,"Y",T(S_GAMES_FRESH),432,720,false,false);
     page_hint(r,"X",T(S_GAMES_DETAILS),832,720,false,false);
     SDL_SetRenderDrawColor(r,red,green,blue,alpha);
     SDL_SetRenderDrawBlendMode(r,blend);

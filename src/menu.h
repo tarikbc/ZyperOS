@@ -27,6 +27,12 @@ extern const char MENU_TICK[];
  * Quit (11.28). Known by its address, as MENU_TICK is. */
 extern const char MENU_KEY_X[];
 
+/* Y's glyph at a row's right with On or Off before it: a setting Y toggles
+ * from anywhere on its page, its state still read (the details page's
+ * Favorite, 2026-11-09). Known by their addresses, as MENU_KEY_X is. */
+extern const char MENU_KEY_Y_ON[];
+extern const char MENU_KEY_Y_OFF[];
+
 /* How a row answers left, right and A (DESIGN.md 9). The menu runner plays
  * the sound on the press, before the screen's handler: a handler may take a
  * while - the in-game menu's Display waits up to 150 ms on Diatom's new

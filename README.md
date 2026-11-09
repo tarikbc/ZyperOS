@@ -97,7 +97,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool, over a game or a port; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%).
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.
 - **Play Time:** how long you've played each game or console, today, this week, this month, this year or ever.
-- **Favorites and sorting:** Y favorites a game, and each console sorts by name, play time, last played or recently added.
+- **Continue or from the start, favorites and sorting:** A continues a game where you left it and Y starts it from the start; Y on a game's details (X) favorites it, and each console sorts by name, play time, last played or recently added.
 
 ## How it compares
 
@@ -430,7 +430,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
 | **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
-| **X / Y** | In a game, turbo A and B. On the shelf, a game's details (and Delete Game) and favorite |
+| **X / Y** | In a game, turbo A and B. On the shelf, X opens a game's details (Favorite, with Y, and Delete Game) and Y starts a game from the start |
 | **POWER** | Save and turn off. Over a port, it ends the port first |
 | **MENU** over a port | The in-game menu over it: Continue, Controls, Quit (or **X**) |
 

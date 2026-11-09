@@ -4584,6 +4584,8 @@ static int menu_pad(void)   { return menu_row_h() * 3 / 4; }
 /* X's glyph at a row's right (MENU_KEY_X): the keyboard's action keys' 40,
  * DESIGN.md 11.9, which sits in a menu row as a hint's sits in its legend */
 #define MENU_KEY_SIZE 40
+/* Between On/Off and Y's glyph after it (MENU_KEY_Y_ON, MENU_KEY_Y_OFF) */
+#define MENU_KEY_GAP 16
 
 /* What a row's value takes at the right of the rows, for the measures:
  * its text, a tick (MENU_TICK) or X's glyph (MENU_KEY_X) */
@@ -4591,6 +4593,9 @@ static int menu_value_w(TTF_Font *fm, const char *v)
 {
 	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
 	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
+	if (v == MENU_KEY_Y_ON || v == MENU_KEY_Y_OFF)
+		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF)) + MENU_KEY_GAP
+		       + ui_button_width("Y", MENU_KEY_SIZE);
 	return v ? ui_text_width(fm, v) : 0;
 }
 
@@ -5476,7 +5481,18 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			/* X's glyph where the value goes, on the fill as a selected
 			 * key's (UI_BUTTON_ON_ACCENT) once the plate is mostly there,
 			 * and the label given what is left */
-			if (rows[i].value == MENU_KEY_X) {
+			if (rows[i].value == MENU_KEY_Y_ON || rows[i].value == MENU_KEY_Y_OFF) {
+				/* Y's glyph at the right, as X's is, and the state before it */
+				int bw = ui_button_width("Y", MENU_KEY_SIZE);
+
+				ui_button(a->r, "Y", content_x + content_w - bw / 2,
+				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
+				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
+				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF),
+				        content_x + content_w - bw - MENU_KEY_GAP, ty, 1, vc);
+				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
+				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
+			} else if (rows[i].value == MENU_KEY_X) {
 				ui_button(a->r, "X", content_x + content_w - vw / 2,
 				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
@@ -9479,6 +9495,8 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 	memset(gi, 0, sizeof *gi);
 	gi->can_delete = gd_shelf_deletes(s->core);
+	gi->can_favorite = !is_muse(s);
+	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
 
 	/* The save slots are not read here any more. The row that showed them went
 	 * on 2026-09-17 - the carousel shows them when you load, with the frames
@@ -10260,6 +10278,9 @@ typedef struct {
 	menu_style  st;   /* the accent follows the OWNING system, which can move */
 	/* Delete Game took the game: the page closes, and this is said after */
 	bool        deleted;
+	/* Y on the page (or A on Favorite) changed the favorite: the Favorites
+	 * shelf is rebuilt once the page has closed */
+	bool        fav_changed;
 	char        said[192];
 } info_ctx;
 
@@ -10293,6 +10314,8 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
  * the player is. */
 static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf);
 
+static void fav_toggle_heard(const char *tag, const char *file);
+
 static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 {
 	info_ctx *c = ctx;
@@ -10302,6 +10325,17 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 
 	/* X closes it, the same button that opened it. */
 	if (key == IN_X) { uisound_play(DS_SOUND_BACK); return MENU_DONE; }
+	/* Y, or A on the Favorite row: the favorite, written through at once */
+	if (c->gi.can_favorite && (key == IN_Y || (key == IN_ACCEPT && sel < n
+	    && !strcmp(rows[sel].label, T(S_CONTROLS_FAVORITE))))) {
+		const char *tag = a->sys.systems[c->owner].tag;
+
+		fav_toggle_heard(tag, c->g->file);
+		fav_save();
+		c->gi.favorite = fav_is(tag, c->g->file);
+		c->fav_changed = true;
+		return MENU_STAY;
+	}
 	if (key != IN_ACCEPT || sel >= n || !rows[sel].live) return MENU_STAY;
 
 	if (!strcmp(rows[sel].label, T(S_GAMEMENU_SYNOPSIS))) {
@@ -10379,6 +10413,7 @@ static void game_info_screen(app *a)
 
 	/* The card may now hold art it did not before. */
 	free_all_textures(a);
+	if (c.fav_changed) refresh_favorites_shelf(a);
 	if (c.deleted && c.said[0] && a->running)
 		result_message(a, T(S_GAMEMENU_DELETE), c.said);
 }
@@ -18530,20 +18565,17 @@ static void update_games(app *a)
 		evict_far(v, TEX_KEEP_FAR);
 		return;
 	}
-	/* X opens the game. Y marks it. The pair sits together because they are
-	 * the two things you do to a card without launching it. */
+	/* X opens the game's details, where Y marks it a favorite. */
 	if (a->in.pressed[IN_X] && n > 0) { uisound_play(DS_SOUND_ACCEPT); game_info_screen(a); return; }
-	/* Y favorites what is under the cursor. Written through immediately:
-	 * there is no confirm step to hang the save off, and the alternative is
-	 * losing the choice to a flat battery. */
+	/* Y starts the game under the cursor fresh, without its resume point
+	 * (2026-11-08): A continues it, Y starts over. A game with nothing to
+	 * resume has nothing to start over from, so Y does nothing there.
+	 * Favorites moved to the details page (X, then Y). */
 	if (a->in.pressed[IN_Y] && n > 0) {
-		fav_toggle_heard(a->sys.systems[shelf_owner(a, a->sys_cursor, v->cursor)].tag,
-		                 v->list.items[v->cursor].file);
-		fav_save();
-		/* The shelf follows immediately. Everything below this line may have
-		 * moved - the system indices, sys_cursor, and v itself - so nothing
-		 * from before it can be reused. */
-		refresh_favorites_shelf(a);
+		if (!(g_game_page.valid && g_game_page.resume)) { uisound_play(DS_SOUND_DENY); return; }
+		g_ctl_fresh = true;
+		launch(a);
+		g_ctl_fresh = false;
 		return;
 	}
 	if (a->in.pressed[IN_ACCEPT]) { launch(a); return; }
