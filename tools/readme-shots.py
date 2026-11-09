@@ -87,6 +87,8 @@ SHOTS={
     # full, and the demonstration card's PlayStation page
     'storage':('demo','PS1',['--storage','main']),
     'storage-system':('demo','PS1',['--storage','system']),
+    # ...and its Music page: albums by size, X's order beside the list
+    'storage-music':('demo','PS1',['--storage','music']),
     'empty':('empty','',['--ways','usb']),
     'tour-theme':('demo','PS1',['--tour','theme','2000','--tour-music','--tour-pick','0']),
     'tour-home':('demo','PS1',['--tour','home','2000','--tour-music','--tour-pick','1']),

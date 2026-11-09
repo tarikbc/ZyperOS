@@ -2126,6 +2126,46 @@ one. On every system's page a last row, **Other Files**, holds what no game
 on it owns (art of games gone, a loose file), so the rows come to the
 system's whole. *(2026-11-08, from Tarik's Pixel 2.)*
 
+**A media folder's page**: A on Music, Videos or Audiobooks *(2026-11-08:
+"why can't I explore videos/songs in storage?")*. Its name as the heading,
+its folder picture from the File Transfer page at the left (the first of its
+two frames), its size in **title** and its songs, videos or books at the
+right, and the bar its share of the card. Its rows are what MP4's shelf calls
+an album (src/muselib.h): an album or a book in an artist's or an author's
+folder, a folder at the top with no folder inside or with tracks of its own,
+a track at the top; in Videos a film at the top, or a folder of them (a
+series) whole. Each by its folder's name or its file's without the
+extension; under the list "The Lowlights · 40 songs", "Jane Austen · 61
+files", or a film's file name. Music's has **Menu Music** too, the menu's
+own tracks in `Roms/BGM`, which the card's Music row counts; A on it is
+**deny** (MENU > Menu Music is where they are chosen). A last **Other
+Files** holds what none of the rows does - a cover beside the albums, a
+playlist, a hidden file - so the rows come to the folder's whole. A on an
+album, a film or a book asks as Delete Game does, under the page's name:
+"Delete Neon Harbor and everything in it? 812 MB. This cannot be undone."
+(a file: "Delete Sintel? 4.2 GB."); MP4 stops first if it plays from it, and
+the shelf is read again after. The walk finds the rows with the roots'
+sizes, before the systems, from the cache too, so a page opened at once has
+them; a delete takes its row and its bytes out at once. B goes back to the
+card, on the folder's row.
+
+**The order**, X on every list of the page: the card's, a system's (the
+Ports shelf's with its folders), a media folder's *(2026-11-08: "can we have
+like press X to change sorting? sort by size, by alphabetic, by last
+played")*. X steps Size, A to Z, Last Played and round, with **move**'s
+sound, and the cursor stays on its row. Size is the largest first; A to Z
+by the row's name, case not counting; Last Played the newest first (a
+system's by its newest game), then what was never played by size. A media
+folder has no Last Played, as MP4 keeps no record of what was played, so X
+there steps Size and A to Z. Every order falls back to the others and then
+to the row's place, so a list never reshuffles between two draws (src/sort.h's
+rule). The recommendations stay first on the card, and Delete Video Snaps on
+a system's page. Each list keeps its order, as Sort By keeps a shelf's: the
+card's, each system's by its tag, each media folder's. Under the list at the
+right, on the more-rows mark's line, X's glyph and the order it is now
+("Size", "A to Z", "Last Played") in **meta** **text-dim**: the button and
+what it is, as the keyboard's action row names its keys (11.5).
+
 The page is a base, as Muse's shelf is: MENU's panel leaves over it as it
 opens, and a panel opened on it - a question, "Deleting...", a result - comes
 from nothing, and leaves over it when it closes. *(2026-11-08, on the Pixel
@@ -2162,10 +2202,12 @@ striped where the walk has not been, and Zyper, his head cocked, stands over
 "Measuring the card", the system it is in, "PlayStation · 41 of 116", and
 "Only the first time. After this it opens at once."
 
-Host shots: `--storage main|system|art|states|delete|done|first [ROW]`, on a
-stand-in card of 128 GB nearly full; `tools/storage-shots.py` takes them all
-in both themes and every language. The numbers and the cache are held by
-`make check-storage`.
+Host shots: `--storage main|system|art|states|delete|done|first|music|videos|books|media-delete|videos-delete [ROW]`
+and `--storage-sort size|az|last`, on a stand-in card of 128 GB nearly full;
+`tools/storage-shots.py` takes them all in both themes and every language.
+The numbers, the cache, the media pages' rows and their deletes, and X's
+orders are held by `make check-storage`; what fits, in every language, by
+`make check-i18n-shots`.
 
 ---
 
