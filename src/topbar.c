@@ -16,7 +16,7 @@ static bool marks_same(const status_marks *a, const status_marks *b)
 	       a->blink_off == b->blink_off && a->pct_w == b->pct_w &&
 	       a->calc == b->calc && a->calc_step == b->calc_step &&
 	       a->xfer == b->xfer && a->xfer_moving == b->xfer_moving &&
-	       a->xfer_pct == b->xfer_pct;
+	       a->xfer_pct == b->xfer_pct && a->phones == b->phones;
 }
 
 /* The marks as a texture: painted by status_marks_render when what they show,
@@ -25,9 +25,9 @@ static bool marks_same(const status_marks *a, const status_marks *b)
  * One for the launcher, as the volume bar's is. */
 static void marks_blit(SDL_Renderer *r, const status_marks *m, int theme)
 {
-	/* 156 for all four marks (File Transfer's too) and the room of the
-	 * battery's number or time, and the gap between them */
-	static uint32_t      px[(STATUS_PAD * 2 + 156 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
+	/* 192 for all five marks (File Transfer's and headphones' too) and the
+	 * room of the battery's number or time, and the gap between them */
+	static uint32_t      px[(STATUS_PAD * 2 + 192 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
 	                        (STATUS_PAD * 2 + STATUS_ROW)];
 	static SDL_Texture  *tex;
 	static SDL_Renderer *tex_for;
@@ -57,6 +57,33 @@ static void marks_blit(SDL_Renderer *r, const status_marks *m, int theme)
 	}
 	SDL_RenderCopy(r, tex, NULL, &(SDL_Rect){ TOPBAR_RIGHT - mw - STATUS_PAD,
 	                                          TOPBAR_TOP - STATUS_PAD, w, h });
+}
+
+void topbar_song_mark(SDL_Renderer *r, int x, int theme, bool paused)
+{
+	static uint32_t      px[(STATUS_NOTE + STATUS_PAD * 2) * (STATUS_ROW + STATUS_PAD * 2)];
+	static SDL_Texture  *tex;
+	static SDL_Renderer *tex_for;
+	static int           painted = -1;     /* theme * 2 + paused */
+	int w, h, want = theme * 2 + (paused ? 1 : 0);
+
+	status_note_size(1.0f, &w, &h);
+	if ((size_t)w * h > sizeof px / sizeof px[0]) return;
+	if (tex_for != r) {
+		if (tex) SDL_DestroyTexture(tex);
+		tex = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, w, h);
+		tex_for = NULL;
+		if (!tex) return;
+		SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+		tex_for = r;
+		painted = -1;
+	}
+	if (want != painted) {
+		status_note_render(px, w, h, w, 1.0f, theme, paused);
+		SDL_UpdateTexture(tex, NULL, px, w * 4);
+		painted = want;
+	}
+	SDL_RenderCopy(r, tex, NULL, &(SDL_Rect){ x - STATUS_PAD, TOPBAR_TOP - STATUS_PAD, w, h });
 }
 
 void topbar_draw(SDL_Renderer *r, topbar *t, topbar_drawn *out)

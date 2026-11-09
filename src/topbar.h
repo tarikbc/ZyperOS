@@ -64,4 +64,9 @@ void topbar_draw(SDL_Renderer *r, topbar *t, topbar_drawn *out);
  * screen's half where neither was drawn. */
 int topbar_half(const topbar_drawn *d);
 
+/* The song's mark (status_note_render), STATUS_NOTE wide from x, in the
+ * bar's row: two eighth notes while the song plays, a pause's two bars
+ * while it is paused. Before the song's name on the home (home_header). */
+void topbar_song_mark(SDL_Renderer *r, int x, int theme, bool paused);
+
 #endif

@@ -1069,7 +1069,8 @@ where a ZyperOS wordmark was until I asked for the time there instead
 (2026-11-05). The home and games pages carry no wordmark.
 
 The status row is 24 units high, centered on y64, and right-aligned to x960.
-Battery, Wi-Fi and a connected Bluetooth headset retain the marks below. It
+Battery, Wi-Fi, a connected Bluetooth headset and headphones in the jack
+retain the marks below. It
 is one component in one layout, the top bar (src/topbar.c), and the same
 header, clock at the left and marks at the right, is on every screen over a
 paused game (PR #40) and every MP4 screen (2026-11-09): its shelf, an album's
@@ -1080,7 +1081,12 @@ row between the clock and the marks, 24 clear of each, sliding when it is
 longer, and a video with its controls puts its title there in **action**
 **text**, centered. A background track
 occupies only the space between the logo and the measured status corner. Its
-music mark uses **accent-ink**; paused playback uses pause bars. The track uses
+music mark, two eighth notes on one beam (heads of radius 3.5, stems and
+beam 2.5-unit strokes) in a 24-unit cell, uses **accent-ink**; paused
+playback uses a pause's two bars, 4.5 wide. Both are drawn as the status
+marks are, by signed distance (src/status.c), at the row's height and in
+each theme (2026-11-09: the note of rectangles and discs before it "looks
+bad"). The track uses
 **chrome**, **text-soft**, with a trailing ellipsis when necessary. It never
 scrolls over the clock or changes the status marks' positions. No track means
 no music mark or empty capsule. Cached player state drives updates, not an
@@ -1106,6 +1112,10 @@ it has priority for direct volume or brightness feedback.
   3 units out of it. Off, or no radio (a Pixel 2 with no adapter): no mark.
 - **Bluetooth**, 16 wide: the rune, a 3-unit stroke in **text-soft**, on the
   Brick while a headset is connected.
+- **Headphones**, 24 wide, between the rune and the fan, while a cable is in
+  the jack (the codec's SW_HEADPHONE_INSERT): a headband of radius 9, a
+  3-unit stroke as the rune's, its ends inside two cups 6 by 10, in
+  **text-soft** (2026-11-09). Audio Channels' Auto plays stereo there.
 - **File Transfer**, 24 wide, left of the others while it runs behind the
   shelf (11.23): an arrow up and one down, 2.5-unit strokes, in **text-dim**
   with nothing moving and **text-soft** while files move; then a 2-unit ring

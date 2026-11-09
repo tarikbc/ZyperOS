@@ -242,7 +242,8 @@ screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
 The shelf shows the time at its top left, and Wi-Fi and the battery at its
-top right, with a Bluetooth headset on the Brick while one is connected. Wi-Fi's fan is crossed
+top right, with a Bluetooth headset on the Brick while one is connected, and a
+headphone mark while headphones are in the jack. Wi-Fi's fan is crossed
 while the radio is on and not connected, and gone when it is off. The battery
 turns red at 10%, its fill blinks at 5%, and it shows a bolt while it charges.
 The clock is not shown until it is set to 2026 or later, so a Pixel 2 that was

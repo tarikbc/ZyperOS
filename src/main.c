@@ -2541,6 +2541,7 @@ static void status_gather(status_marks *m, bool moving)
 	}
 	m->wifi = wifi;
 	m->bt = plat_has_bluetooth() && aout_bt_sink()[0];
+	m->phones = plat_headphones_present();
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
@@ -18823,6 +18824,8 @@ static bool shot_status_parse(const char *spec)
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
+		/* headphones in the jack: their mark */
+		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
 			shot_st.m.xfer = shot_st.m.xfer_moving = true;
 			shot_st.m.xfer_pct = atoi(w + 5);

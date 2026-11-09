@@ -59,7 +59,7 @@ run() {
 	ZYPEROS_FONT=res/fonts/menu.ttf "$BIN" "$@"
 }
 
-WIDEST="00:00 24h wifi=3 bt batt=100 chg"
+WIDEST="00:00 24h wifi=3 bt phones=on batt=100 chg"
 fails=0
 shot() {
 	name=$1
@@ -118,7 +118,7 @@ done
 # (STATUS_PCT_MAX) and stay clear of the card, the title and the panels. The
 # launcher says CORNER: when the text is wider than its room.
 echo "the widest Time Left clear of the card, the title and every panel, in every language"
-WIDEST_TIME="00:00 24h wifi=3 bt batt=100 chg xfer=on eta=595 icon=time"
+WIDEST_TIME="00:00 24h wifi=3 bt phones=on batt=100 chg xfer=on eta=595 icon=time"
 for lang in en zh-Hans es pt-BR fr de ja it; do
 	for screen in systems games menu-last; do
 		case $screen in
@@ -150,7 +150,7 @@ for lang in en zh-Hans es pt-BR fr de ja it; do
 	for state in "held" "full" "calc"; do
 		# shellcheck disable=SC2086
 		run --shot "$D/state-$lang-$state.png" --theme light --lang $lang \
-		    --status "00:00 24h wifi=3 bt batt=100 $state xfer=on icon=time" >"$D/one.log" 2>&1
+		    --status "00:00 24h wifi=3 bt phones=on batt=100 $state xfer=on icon=time" >"$D/one.log" 2>&1
 		st=$?
 		cat "$D/one.log" >>"$D/log"
 		if grep -q "CORNER:" "$D/one.log"; then
