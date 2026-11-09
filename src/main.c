@@ -2597,8 +2597,8 @@ bool status_clock(time_t t, char *out, size_t n)
  * blink, the next minute), and tells the shelf's loop the same.
  *
  * On the shelf, Now Playing and every screen over a paused game (the menu,
- * the save slots, the achievements; paused_backdrop): the first two in the
- * theme, the last in Salt & Pepper, since scrim.game is dark in both themes
+ * the save slots, the achievements; paused_backdrop, which uses the shelf's
+ * header form): the first two in the theme, the last in Salt & Pepper, since scrim.game is dark in both themes
  * (see slot_draw). My call, 2026-11-04: the whole corner on all of them,
  * where the low-battery dot was before. `clock` is the clock's color:
  * **text-soft**, but **text** over a paused game, where a white frame under
@@ -13659,8 +13659,12 @@ static void paused_backdrop(app *a, SDL_Texture *bg, float k)
 	drawn_forget();
 	draw_paused_frame(a, bg);
 	ui_scrim_k(a->r, 1, k);
-	draw_corner(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255),
-	            frames_wanted());
+	/* The home screen's own header (draw_corner_at, compact): the clock at
+	 * the top left and the marks with the battery's text at the top right,
+	 * the same fonts, sizes and places, so they match and a long Time Left
+	 * text never meets the clock. */
+	draw_corner_at(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255),
+	               frames_wanted(), true);
 }
 
 /* Copy the paused frame's preview beside a manual save, so the slot strip can
