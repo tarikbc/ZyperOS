@@ -65,12 +65,18 @@ SDL_FRect games_cover_rect(int width,int height,float offset)
 #define GAMES_META_RIGHT (1024-64)
 /* The system's line beside A's hint (page_hint at x 800): 40 short of it */
 #define GAMES_ORIGIN_RIGHT 760
-static int meta_part(SDL_Renderer *r,TTF_Font *f,const char *s,int x)
+/* Where the line under the name sits: a title of one line leaves the second
+ * line's place (44 down) to it, whether it names the system (Favorites) or
+ * gives the play time (a shelf). Both read this, so they cannot drift apart. A
+ * title of two lines leaves the slot below instead. */
+#define GAMES_SUBLINE_Y 628
+#define GAMES_SUBLINE_Y_LOW 664
+static int meta_part(SDL_Renderer *r,TTF_Font *f,const char *s,int x,int y)
 {
     if(x<0) return -1;
     int w=ui_text_width(f,s);
     if(x+w>GAMES_META_RIGHT) return -1;
-    ui_text(r,f,s,x,ui_cap_y(f,664),-1,UI_TEXT_DIM);
+    ui_text(r,f,s,x,ui_cap_y(f,y),-1,UI_TEXT_DIM);
     return x+w+32;
 }
 
@@ -177,22 +183,34 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
      * line instead. */
     bool origin=info->origin && *info->origin;
     if(origin && (!whole || nlines<2) && 64+ui_text_width(chrome,info->origin)<=GAMES_ORIGIN_RIGHT) {
-        ui_text(r,chrome,info->origin,64,ui_cap_y(chrome,584+44),-1,UI_TEXT_DIM);
+        ui_text(r,chrome,info->origin,64,ui_cap_y(chrome,GAMES_SUBLINE_Y),-1,UI_TEXT_DIM);
         origin=false;
     }
     /* The line below: the system when it did not fit above, then Played,
      * then achievements, 32 apart. A part that would pass the right margin
      * is left out with the ones after it, never drawn over the edge. */
     int x=64;
-    if(origin) x=meta_part(r,chrome,info->origin,x);
-    if(info->install) x=meta_part(r,chrome,T(S_PORTMASTER_NOT_INSTALLED),x);
+    /* The slot beside A's hint ends at GAMES_ORIGIN_RIGHT; a line that would
+     * pass it takes the low slot, where the whole width is free. */
+    int my=GAMES_SUBLINE_Y_LOW;
+    if((!whole || nlines<2) && !(info->origin && *info->origin && !origin)) {
+        char pt[64]=""; int w=0, parts=0;
+        if(origin) { w+=ui_text_width(chrome,info->origin); parts++; }
+        if(info->install) { w+=ui_text_width(chrome,T(S_PORTMASTER_NOT_INSTALLED)); parts++; }
+        if(info->played && *info->played) { snprintf(pt,sizeof pt,T(S_GAMES_PLAYED),info->played); w+=ui_text_width(chrome,pt); parts++; }
+        if(info->has_achievements) { char at[64]; snprintf(at,sizeof at,T(S_GAMES_ACHIEVEMENTS),info->earned,info->total); w+=ui_text_width(chrome,at); parts++; }
+        if(parts) w+=(parts-1)*32;
+        if(64+w<=GAMES_ORIGIN_RIGHT) my=GAMES_SUBLINE_Y;
+    }
+    if(origin) x=meta_part(r,chrome,info->origin,x,my);
+    if(info->install) x=meta_part(r,chrome,T(S_PORTMASTER_NOT_INSTALLED),x,my);
     if(info->played && *info->played) {
         char text[64]; snprintf(text,sizeof text,T(S_GAMES_PLAYED),info->played);
-        x=meta_part(r,chrome,text,x);
+        x=meta_part(r,chrome,text,x,my);
     }
     if(info->has_achievements) {
         char text[64]; snprintf(text,sizeof text,T(S_GAMES_ACHIEVEMENTS),info->earned,info->total);
-        meta_part(r,chrome,text,x);
+        meta_part(r,chrome,text,x,my);
     }
     if(info->count) page_hint(r,"A",T(info->install?S_PORTMASTER_INSTALL:
                                       info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
