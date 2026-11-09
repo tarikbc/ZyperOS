@@ -469,6 +469,35 @@ bool sgdb_pick_grid(const char *json, size_t len, char *url, size_t n)
 	return false;
 }
 
+int sgdb_list_grids(const char *json, size_t len, sgdb_grid *out, int max)
+{
+	jsv root, data, it = { 0 }, e, v, who;
+	int n = 0;
+
+	if (!json || !out || max <= 0) return 0;
+	root = js_root(json, len);
+	if (!js_member(root, "data", &data)) return 0;
+	while (n < max && js_next(data, &it, &e)) {
+		char mime[32] = "";
+		sgdb_grid *g = &out[n];
+
+		memset(g, 0, sizeof *g);
+		if (js_member(e, "mime", &v)) js_str(v, mime, sizeof mime);
+		if (strcmp(mime, "image/png") != 0 && strcmp(mime, "image/jpeg") != 0) continue;
+		if (!js_member(e, "url", &v) || !js_str(v, g->url, sizeof g->url) || !fetchable(g->url)) continue;
+		/* The small copy for the strip; the picture itself where there is none */
+		if (!js_member(e, "thumb", &v) || !js_str(v, g->thumb, sizeof g->thumb) || !fetchable(g->thumb))
+			snprintf(g->thumb, sizeof g->thumb, "%s", g->url);
+		if (js_member(e, "id", &v)) g->id = js_int(v);
+		if (js_member(e, "author", &who) && js_member(who, "name", &v))
+			js_str(v, g->author, sizeof g->author);
+		/* A name with "|" or a line in it is no name the page can keep */
+		if (strchr(g->author, '|') || strchr(g->author, '\n')) g->author[0] = '\0';
+		n++;
+	}
+	return n;
+}
+
 bool sgdb_search_url(const char *want, char *out, size_t n)
 {
 	char enc[256 * 3 + 1];

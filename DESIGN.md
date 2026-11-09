@@ -2014,10 +2014,10 @@ longer and in brackets, to find what a longer translation would meet.
 
 ### 11.31 Delete Game
 
-A game's details (X on the shelf) end in **Delete Game**, after the art
-action *(2026-11-07: "when clicking X on a game to see details, allow
+A game's details (X on the shelf) end in **Delete Game**, after Cover and
+Video (11.34) *(2026-11-07: "when clicking X on a game to see details, allow
 deleting that game. delete the game, saves, and media")*. A plain row, as
-the art action is: live on every shelf, with no value, since what it
+Cover and Video is: live on every shelf, with no value, since what it
 takes is the question's to say. Never where the page opens, and A on it
 only asks. A BIOS set on a shelf (`neogeo.zip`) is never deleted: A says so
 in a one-line message (11.8), "neogeo is a BIOS other games need. It stays."
@@ -2069,7 +2069,8 @@ the top of the folder names, a `.cue`'s `.sbi`, a `.ccd`'s `.img` and
 `.sub`; an arcade set's `.zip`, and on NAOMI and Atomiswave the folder of its
 name holding its CHD; its saves (`Saves/<stem>.srm`, `.sav`, `.dsv`, and the
 arcade cores' own folders); the six state slots and Auto with their
-pictures; its cover and video snap and what a fetch stopped halfway left;
+pictures; its cover and video snap, the cover Cover and Video put aside (11.34) and
+what a fetch stopped halfway left;
 its cached achievement set; and its rows in the library: details and
 title, favorite, play sessions. A file another game on the card builds too
 stays. A path that would leave `Roms/<console>/`, `Saves/` or the states
@@ -2294,6 +2295,110 @@ Update's page (11.17) with its own words, and its own art.
 
 Host shots: `--portmaster [running,nonet,nopython,installed]`, the page as
 the file ZYPEROS_PM_STATUS names says.
+
+### 11.34 Cover and Video
+
+A game's details (X on the shelf) have **Cover and Video** where Get Box Art
+and Replace Box Art were, and it opens a page of its own: the cover on the
+shelf beside what the sources offer, each named with its source, picked with
+the d-pad and A; and the game's video snap. *(2026-11-09: "Currently I just
+see 'Trocar capa' which is confusing. I don't know what it is changing to, I
+can't pick, and I don't know what goes on with the video preview." Approved
+as mocked the same day, with libretro asked first and one level of undo.)*
+The row is live with no network too, since what is on the card still works
+there; its value is what is missing, "no cover" or "no video", and none when
+both are there. PortMaster's entry, whose art is its own (11.33), has no row.
+
+**The page** is a full page on **ground** under the top bar (11.12), the
+game's name in the bar's row between the clock and the marks, as a video's
+title is (11.14), sliding when it is longer. A base, as Storage's page is
+(11.32): the details panel leaves over it, and a question opens on it.
+
+- **Now**, the heading in **meta** **text-dim** at x 64, cap y 116, and the
+  cover the shelf shows in a 264 x 232 box standing on y 384, in its own
+  shape, never stretched; under it at cap y 420 its source ("libretro",
+  "ScreenScraper", "SteamGridDB") when the card knows it, "No cover yet" with
+  the generated card (11.1) when there is none.
+- **Found**, the heading at x 352, and at its right the count, "1 / 9", or
+  while a source is asked, "Asking ScreenScraper" in **text-soft** with the
+  status corner's three dots (11.12); the source's name alone where the
+  words would meet the heading. Under them **the strip**: the focused
+  picture in a 264 x 232 box with an **accent** ring 7 out and
+  **focus-small**'s lift, the others at three quarters and a little faded,
+  24 apart, one before the cursor and as many after as the screen holds,
+  every picture standing on y 384. A picture still coming is its place, a
+  **raised** card. Under the strip the focused one's kind and region in
+  **menu** **text** at cap y 420 ("Box Front · USA"; in **meta** where
+  that does not fit), and its source in **meta** **text-dim** at cap y 462
+  ("SteamGridDB · Midgarsormr", the artist's name dropped where it would
+  meet the hint), with A's glyph and **Look Closer** at the right.
+- **Before**, first in the strip after a change: the cover there was, with a
+  **Before** chip (a **surface** chip with its **edge**, **radius-chip**,
+  29-unit words); A on it is **Put Back**, at once. A picture the same as the
+  one on the shelf carries a **Now** chip.
+- **Look Closer** (A on a picture): the picture as large as fits 592 x 488
+  at x 368, lifted, Now beside it at its own size with a chevron between;
+  its kind and region in **menu** **text** centered under it at cap y 640,
+  its source and "4 / 9" in **meta** at cap y 682; B's **Back** at the
+  left and A's **Use as Cover** at the right of the foot, cap y 724.
+  Left/Right go through the pictures there. The small copy stands in, with a
+  bar under it, until the whole picture has come. A makes it the cover; the
+  page comes back with it as Now and the one there was first, as Before.
+- **The video**, under a 2-unit **edge** rule at y 488: **Video** in
+  **meta** at cap y 524, its picture in a 256 x 192 tile at x 64, y 552, in
+  its own shape, with the shelf's play mark (11.19) while the cursor is on
+  the strip; it plays muted while a video row has the cursor. Its rows from
+  y 504, x 344 to 960, as a menu's: **Watch** ("12 s"), **Replace** (the
+  size on offer) and **Delete** (its size) for a game with one;
+  **Download** for one with none. A row's value falls to **meta** where it
+  would meet its label. With no video, the tile says why in **meta**:
+  "No video", "Looking it up" while ScreenScraper is asked, "None found";
+  while one downloads, a bar under the tile fills and the row says "1 MB /
+  2 MB". **Watch** plays it on the whole screen under the top bar, with its
+  sound (none while MP4 plays music), B's **Back** at the foot. **Delete**
+  asks first, as 11.31's question does.
+- **No network**: where the strip would be, "Connect to Wi-Fi first." in
+  **menu** (on two lines where one does not hold it) and "Or add covers from
+  a computer with File Transfer." in **meta**, Zyper at the right under
+  them, and Replace or Download dead with "needs Wi-Fi". Before still shows
+  and still puts back.
+- **Nothing found**: "Nothing found." and a line a source in **meta**,
+  "libretro · no match", "ScreenScraper · unknown game", "SteamGridDB · not
+  linked" (or "no answer"), with Zyper.
+
+Up and Down go between the strip and the rows, the strip one stop above
+them; Left and Right move along the strip, stopping at its ends (11.3's
+rule). B leaves Look Closer, then the page. The cursor opens on the strip,
+or on the video's first row when there is nothing to pick (no network and no
+Before).
+
+**The sources**, asked when the page opens, one request at a time (net.c's
+one slot), each answer appended so no picture moves: **libretro** first,
+needing no account and answering at once (its box, title screen and
+screenshot, by the game's name, else by its catalog's, as a Box Art run
+matches); then **ScreenScraper** with an account, one lookup that also
+keeps the game's text and offers its box in three regions (the shelf's order
+of regions), its 3D box, title screen and screenshot, and its video snap;
+then **SteamGridDB** with a key, three of its covers. ScreenScraper's
+pictures are each a request on the account, so only the small copies of the
+pictures on screen are fetched (at most 256 across), and the whole (512) only
+for Look Closer; libretro's come whole with the answer. They land in RAM and
+are decoded off the frame (src/mediatex.h).
+
+**On the card**, the cover is `.media/<name>.png` as before; Use as Cover
+copies the picture in beside it and renames it over, the one there was
+renamed to `.media/.before/<name>.png` first; Put Back swaps the two. Where
+each came from is kept in the library database (src/artsrc.h), and a Box Art
+run records its covers' too. Delete Game takes Before with the game (11.31),
+Storage counts it as the game's art and as unused art once the game is gone
+(11.32). The video is `.media/<name>.mp4`, downloaded beside it and renamed
+over only once it starts as an MP4 does.
+
+Host shots: `--media page|look|video|videoget|fetching|offline|nothing|after|novideo|delete|failed [TILE]`,
+`--media live` (the real sources for the game under the cursor, over the network, then the page; never in a check),
+from a fixture, with `--media-art DIR`'s pictures (now.png, before.png,
+c0.png..., snap.png) or the generated card; `--info-art`, the details as for
+a game with a cover and no video.
 
 ## 12. Copy
 

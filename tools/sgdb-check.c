@@ -432,6 +432,28 @@ int main(int argc, char **argv)
 	      "took \"%s\" - not the JPEG past the WebP and the plain http", url);
 	CHECK(!sgdb_pick_grid(GRIDS_WEBP_ONLY, strlen(GRIDS_WEBP_ONLY), url, sizeof url),
 	      "a WebP was taken: %s", url);
+	/* Cover and Video's list (DESIGN.md 11.34): every cover this card can
+	 * draw, each with its small copy and who drew it */
+	{
+		static const char *MANY =
+			"{\"success\":true,\"data\":["
+			"{\"id\":7,\"mime\":\"image/png\",\"url\":\"https://cdn2.steamgriddb.com/grid/a.png\","
+			"\"thumb\":\"https://cdn2.steamgriddb.com/thumb/a.png\",\"author\":{\"name\":\"Midgarsormr\"}},"
+			"{\"id\":8,\"mime\":\"image/webp\",\"url\":\"https://cdn2.steamgriddb.com/grid/b.webp\"},"
+			"{\"id\":9,\"mime\":\"image/jpeg\",\"url\":\"https://cdn2.steamgriddb.com/grid/c.jpg\","
+			"\"author\":{\"name\":\"Pipe|Name\"}},"
+			"{\"id\":10,\"mime\":\"image/png\",\"url\":\"https://cdn2.steamgriddb.com/grid/d.png\"}]}";
+		sgdb_grid g[3];
+		int n = sgdb_list_grids(MANY, strlen(MANY), g, 3);
+
+		CHECK(n == 3, "listed %d covers, not the three it can draw", n);
+		CHECK(n >= 1 && g[0].id == 7 && !strcmp(g[0].thumb, "https://cdn2.steamgriddb.com/thumb/a.png") &&
+		      !strcmp(g[0].author, "Midgarsormr"), "the first, its small copy and its artist");
+		CHECK(n >= 2 && g[1].id == 9 && !strcmp(g[1].thumb, g[1].url) && !g[1].author[0],
+		      "the WebP left out; a cover with no small copy is its own, a name with | none");
+		CHECK(n >= 3 && g[2].id == 10, "the third");
+		CHECK(sgdb_list_grids(MANY, strlen(MANY), g, 1) == 1, "and never more than asked");
+	}
 
 	/* ---- one game ------------------------------------------------------- */
 	snprintf(shelf, sizeof shelf, "%s/Game Boy", g_root);

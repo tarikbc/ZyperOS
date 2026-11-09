@@ -119,6 +119,10 @@ def unescape(text):
 UNSHOT = ROOT / "tools" / "i18n-unshot.txt"
 UNSHOT_WHY = {
     "hare": "answers sent to the File Transfer page, which draws them, not the launcher",
+    "media": "drawn composed with another word (\"Box Front · USA\", \"libretro · no match\") or "
+             "wrapped onto balanced lines (the question, the line under \"Connect to Wi-Fi first.\", "
+             "the video's tile), so no drawn line is the string; the media-* shots draw every one "
+             "and fail on any cut (src/mediapage.c, src/main.c's media_shot)",
     "storage": "drawn wrapped to their lines, in pieces of a line (the used number as a title, "
                "a part of the line under the list), with tabular digits, or a plural's one form "
                "the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)",
@@ -238,6 +242,28 @@ EXTRA = {
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
     # A row whose value is "needs Wi-Fi", the longest it has in most languages
     "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),
+    # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
+    # each kind and region focused, Delete's question and the message of a
+    # download that did not come; and the details row's other value
+    "info-art": ("demo", "PS1", ["--screen", "games", "--info", "--info-art"]),
+    "media-fetching": ("demo", "PS1", ["--screen", "games", "--media", "fetching", "--media-art", "{card}/media-art"]),
+    "media-offline": ("demo", "PS1", ["--screen", "games", "--media", "offline", "--media-art", "{card}/media-art"]),
+    "media-nothing": ("demo", "PS1", ["--screen", "games", "--media", "nothing", "--media-art", "{card}/media-art"]),
+    "media-after": ("demo", "PS1", ["--screen", "games", "--media", "after", "--media-art", "{card}/media-art"]),
+    "media-videoget": ("demo", "PS1", ["--screen", "games", "--media", "videoget", "--media-art", "{card}/media-art"]),
+    "media-delete": ("demo", "PS1", ["--screen", "games", "--media", "delete", "--media-art", "{card}/media-art"]),
+    "media-failed": ("demo", "PS1", ["--screen", "games", "--media", "failed", "--media-art", "{card}/media-art"]),
+    "media-novideo": ("demo", "PS1", ["--screen", "games", "--media", "novideo", "--media-art", "{card}/media-art"]),
+    "media-tile-1": ("demo", "PS1", ["--screen", "games", "--media", "page", "1", "--media-art", "{card}/media-art"]),
+    "media-tile-2": ("demo", "PS1", ["--screen", "games", "--media", "page", "2", "--media-art", "{card}/media-art"]),
+    "media-tile-3": ("demo", "PS1", ["--screen", "games", "--media", "page", "3", "--media-art", "{card}/media-art"]),
+    "media-tile-4": ("demo", "PS1", ["--screen", "games", "--media", "page", "4", "--media-art", "{card}/media-art"]),
+    "media-tile-5": ("demo", "PS1", ["--screen", "games", "--media", "page", "5", "--media-art", "{card}/media-art"]),
+    "media-tile-6": ("demo", "PS1", ["--screen", "games", "--media", "page", "6", "--media-art", "{card}/media-art"]),
+    "media-tile-8": ("demo", "PS1", ["--screen", "games", "--media", "page", "8", "--media-art", "{card}/media-art"]),
+    "media-tile-9": ("demo", "PS1", ["--screen", "games", "--media", "page", "9", "--media-art", "{card}/media-art"]),
+    "media-tile-10": ("demo", "PS1", ["--screen", "games", "--media", "page", "10", "--media-art", "{card}/media-art"]),
+    "media-look-after": ("demo", "PS1", ["--screen", "games", "--media", "after", "0", "--media-art", "{card}/media-art"]),
 }
 
 # What the first-start tour says, step by step, and what the in-game Controls
@@ -414,7 +440,8 @@ def run_language(code, shots, binary, keep):
             status = [] if name.startswith(("tour-", "lowbatt", "charging-")) else \
                 ["--status", "10:08 24h wifi=off batt=82"]
             command = [str(binary), "--shot", str(target), "--theme", "light", "--lang", code,
-                       "--screen", "systems", "--phase", "3200", *status, "--fn-volume", *flags]
+                       "--screen", "systems", "--phase", "3200", *status, "--fn-volume",
+                       *[f.replace("{card}", str(card)) for f in flags]]
             # errors=replace: a log line may end mid-character (a cut name)
             env = R.pm_env(R.env_for(card), name, tmp)
             if name in PM_STATES:

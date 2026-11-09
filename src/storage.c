@@ -519,18 +519,14 @@ static bool has_name(const char **v, int n, const char *name)
 	return n > 0 && bsearch(&name, v, (size_t)n, sizeof *v, ci_cmp) != NULL;
 }
 
-/* Its .media's files of no game on its shelf: counted, or deleted too */
-static unsigned long long unused_art(const char *roms, const char *folder,
-                                     const char **names, int nn, bool del,
-                                     int *covers, int *snaps)
+/* One folder's files of no game on its shelf: counted, or deleted too */
+static unsigned long long unused_in(const char *dir, const char **names, int nn, bool del,
+                                    int *covers, int *snaps)
 {
-	char dir[PATH_MAX_ST];
 	DIR *d;
 	struct dirent *e;
 	unsigned long long sum = 0;
 
-	*covers = *snaps = 0;
-	if (snprintf(dir, sizeof dir, "%s/%s/.media", roms, folder) >= (int)sizeof dir) return 0;
 	if (!(d = opendir(dir))) return 0;
 	while ((e = readdir(d))) {
 		char p[PATH_MAX_ST], stem[PATH_MAX_ST];
@@ -552,6 +548,25 @@ static unsigned long long unused_art(const char *roms, const char *folder,
 		else (*covers)++;
 	}
 	closedir(d);
+	return sum;
+}
+
+/* Its .media's files of no game on its shelf, and its .media/.before's (the
+ * covers Cover and Video put aside, DESIGN.md 11.34): counted, or deleted
+ * too, the emptied .before with them */
+static unsigned long long unused_art(const char *roms, const char *folder,
+                                     const char **names, int nn, bool del,
+                                     int *covers, int *snaps)
+{
+	char dir[PATH_MAX_ST];
+	unsigned long long sum;
+
+	*covers = *snaps = 0;
+	if (snprintf(dir, sizeof dir, "%s/%s/.media", roms, folder) >= (int)sizeof dir) return 0;
+	sum = unused_in(dir, names, nn, del, covers, snaps);
+	if (snprintf(dir, sizeof dir, "%s/%s/.media/.before", roms, folder) >= (int)sizeof dir) return sum;
+	sum += unused_in(dir, names, nn, del, covers, snaps);
+	if (del) rmdir(dir);
 	return sum;
 }
 

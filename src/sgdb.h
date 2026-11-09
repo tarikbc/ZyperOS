@@ -137,6 +137,18 @@ bool   sgdb_pick_game(const char *json, size_t len, const char *want,
  * JPEG (the card's SDL_image has no WebP), and an https:// address. */
 bool   sgdb_pick_grid(const char *json, size_t len, char *url, size_t n);
 
+/* Every cover on offer in a grids reply, in its order, up to `max`: PNG or
+ * JPEG, each with its small copy ("thumb", or the picture itself when it has
+ * none) and who drew it, for a game's Cover and Video page (DESIGN.md
+ * 11.34). Pure. */
+typedef struct {
+	long id;
+	char url[512];
+	char thumb[512];
+	char author[64];
+} sgdb_grid;
+int sgdb_list_grids(const char *json, size_t len, sgdb_grid *out, int max);
+
 /* The two API addresses. Neither carries the key. False if cut short. */
 bool   sgdb_search_url(const char *want, char *out, size_t n);
 bool   sgdb_grids_url(long id, char *out, size_t n);

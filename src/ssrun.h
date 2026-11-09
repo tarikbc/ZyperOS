@@ -29,6 +29,14 @@ bool ss_run_begin(const char *folder, const char *file, const char *stem,
  * images are never opened for writing. Requires an open library database. */
 bool ss_run_begin_metadata(const char *folder, const char *file, const char *stem,
                            const char *rom_dir, const char *exts);
+/* The lookup alone, for a game's Cover and Video page (DESIGN.md 11.34):
+ * the same validation, retry and text saved, then done (0) with the reply
+ * kept for ss_run_result - what pictures and video are on offer - and no
+ * file fetched. */
+bool ss_run_begin_lookup(const char *folder, const char *file, const char *stem,
+                         const char *rom_dir, const char *exts);
+/* That reply once the step has said 0, else NULL. Gone at ss_run_cancel. */
+const ss_result *ss_run_result(void);
 int  ss_run_step(void);
 void ss_run_cancel(void);
 

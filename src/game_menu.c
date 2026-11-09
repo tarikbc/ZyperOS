@@ -65,9 +65,8 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * for a thousand of them, and it is not a number anybody acts on.
 	 *
 	 * Box Art, as a count of bytes. The cover is on the shelf behind this
-	 * panel, so whether there is one is already answered by looking; the only
-	 * part worth saying is whether the action below gets one or replaces one,
-	 * which that row says in its own label.
+	 * panel, so whether there is one is already answered by looking; Cover
+	 * and Video below says what is missing, and its page shows the rest.
 	 *
 	 * Favorite. Y does it from the shelf, on both screens that have a cursor,
 	 * and a second way to do the same thing is a second thing to keep working.
@@ -87,9 +86,17 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * is holding; publisher and developer run to 214 and 417 distinct values
 	 * of pure trivia. They stay stored - re-scraping to add a column is an
 	 * hour - and stay off this screen. */
+	/* Cover and Video (DESIGN.md 11.34), the page that shows the cover and
+	 * the video snap there are beside what the sources offer. Live with no
+	 * network too: what is on the card is still shown there, a video still
+	 * plays, and Before is still put back. Its value is what is missing. It
+	 * was Get or Replace Box Art, which fetched one cover nobody saw first
+	 * (2026-11-09: "I don't know what it is changing to, I can't pick"). */
+	(void)net;
 	if (!gi->own_art)
-		out[n++] = (menu_row){ gi->has_art ? T(S_GAMEMENU_REPLACE_ART) : T(S_GAMEMENU_GET_ART),
-		                       net ? NULL : T(S_MENU_NEEDS_WIFI), net };
+		out[n++] = (menu_row){ T(S_MEDIA_ROW),
+		                       !gi->has_art ? T(S_MEDIA_VALUE_NO_COVER)
+		                       : !gi->has_snap ? T(S_MEDIA_VALUE_NO_VIDEO) : NULL, true };
 	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
 	 * cover and video. Never where the screen opens, and never the end of a
 	 * stray press: A on it only asks, and the question opens on Cancel. No

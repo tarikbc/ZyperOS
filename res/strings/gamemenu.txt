@@ -48,28 +48,6 @@ de = Genre
 ja = ジャンル
 it = Genere
 
-[gamemenu.replace_art]
-note = The game info screen's last row, for a game that has a cover: fetch a new one. tight: its value may be "needs Wi-Fi"
-en = Replace Box Art
-zh-Hans = 替换封面
-es = Cambiar carátula
-pt-BR = Trocar capa
-fr = Changer la jaquette
-de = Cover ersetzen
-ja = パッケージ画像を変更
-it = Cambia copertina
-
-[gamemenu.get_art]
-note = The same, for a game with no cover
-en = Get Box Art
-zh-Hans = 获取封面
-es = Obtener carátula
-pt-BR = Baixar capa
-fr = Obtenir la jaquette
-de = Cover holen
-ja = パッケージ画像を取得
-it = Scarica copertina
-
 [gamemenu.delete]
 note = The game info screen's row under the art action: delete the game, its saves, states, cover and video (DESIGN.md 11.31). Also the heading of its question, wait and messages. tight: a row label beside no value
 en = Delete Game

@@ -59,6 +59,22 @@ int ss_system_id(const char *folder);
  * lines carry every lookup's time, so a run that comes near this says so. */
 #define SS_WAIT_S 60
 
+/* The pictures a reply offers that could be a cover, for a game's Cover and
+ * Video page (DESIGN.md 11.34): the box front in up to SS_BOX_REGIONS
+ * regions, the region the shelf would rather have first (art_of's order),
+ * then the 3D box, the title screen and a screenshot, one each in the same
+ * order of regions. Their URLs carry both credentials, as `art` does: never
+ * logged. `size` is the file's, in bytes, when the reply says; 0 when not. */
+typedef enum { SSM_BOX, SSM_BOX3D, SSM_TITLE, SSM_SHOT } ssm_kind;
+#define SS_MEDIA_MAX   6
+#define SS_BOX_REGIONS 3
+typedef struct {
+	ssm_kind kind;
+	char     region[8];
+	char     url[512];
+	long     size;
+} ss_media;
+
 /* What one reply is worth. */
 typedef struct {
 	bool      found;           /* they know this game */
@@ -71,6 +87,10 @@ typedef struct {
 	 * seconds of the game, for the shelf (src/snaps.h). Like `art`, a URL
 	 * with both credentials in it: never logged. */
 	char      video[512];
+	long      video_size;      /* its bytes when the reply says, else 0 */
+	/* Every picture on offer that could be a cover (ss_media, above) */
+	ss_media  media[SS_MEDIA_MAX];
+	int       nmedia;
 	/* WHAT THE ACCOUNT HAS LEFT, WHICH THE REPLY STATES ON EVERY CALL.
 	 *
 	 * Read rather than assumed, and it is what lets a long run stop before
@@ -82,6 +102,11 @@ typedef struct {
 	 * maxthreads 1, and jeuInfos carries the same block ssuserInfos does. */
 	int       used_today, max_today;
 } ss_result;
+
+/* A media URL asked for at most `px` wide and tall: mediaJeu.php's own
+ * maxwidth and maxheight, so a thumbnail is a few kilobytes rather than
+ * the scan. False when it would not fit `n`. A credential, as the URL is. */
+bool ss_media_sized(const char *url, int px, char *out, size_t n);
 
 /* Read a jeuInfos reply. Pure: no network, no card, no clock.
  *

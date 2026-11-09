@@ -101,6 +101,10 @@ int net_get_pngs(const char *const *urls, const char *const *paths, int n,
  * child is a zombie until then. */
 bool net_post_async(const net_field *f, int n, const char *path, int timeout_s);
 int  net_async_poll(void);
+/* Whether the one slot holds a request, finished or not, that nobody has
+ * polled to its end: another screen's, for a caller that waits its turn
+ * (src/mediafetch.c) rather than take its failure to start for an answer */
+bool net_async_held(void);
 
 /* A GET, for things that are not RetroAchievements - a catalog, a checksum
  * list, a cover - started and left running, reaped through net_async_poll.
