@@ -5,8 +5,10 @@
  * The host build has no Muse to decode a snap, so `--snap K` turns the cover
  * into a test picture (src/mp4video.c, mp4v_test_picture), a 320x240 IYUV
  * texture filled with SDL_UpdateYUVTexture. Loaded with DYLD_INSERT_LIBRARIES,
- * this hands that call the planes of SNAP_I420 instead: a raw 320x240 yuv420p
- * picture (ffmpeg -pix_fmt yuv420p -f rawvideo), one frame of the game's snap.
+ * this hands that call the planes of SNAP_I420 instead: raw 320x240 yuv420p
+ * frames of the game's snap (ffmpeg -pix_fmt yuv420p -f rawvideo), frame
+ * SNAP_FRAME of them (0 without it; past the last, it starts over), one shot a
+ * frame, so the snap plays as the shots step through it.
  * Everything else the launcher draws, the turn from the cover to the snap
  * included, is its own. Nothing else is changed.
  */
@@ -33,10 +35,15 @@ static int sub_UpdateYUVTexture(SDL_Texture *t, const SDL_Rect *rect, const Uint
 	if (path && !rect && SDL_QueryTexture(t, NULL, NULL, &w, &h) == 0 && w == W && h == H && yp == W) {
 		if (!tried) {
 			FILE *f = fopen(path, "rb");
+			const char *n = getenv("SNAP_FRAME");
+			long frame = n ? atol(n) : 0, frames = 0, size = W * H * 3 / 2;
+
 			tried = 1;
-			pic = malloc(W * H * 3 / 2);
-			if (!f || fread(pic, 1, W * H * 3 / 2, f) != W * H * 3 / 2) {
-				fprintf(stderr, "snapsub: cannot read %s\n", path);
+			pic = malloc((size_t)size);
+			if (f && fseek(f, 0, SEEK_END) == 0) frames = ftell(f) / size;
+			if (!f || frames < 1 || fseek(f, (frame % frames) * size, SEEK_SET) != 0 ||
+			    fread(pic, 1, (size_t)size, f) != (size_t)size) {
+				fprintf(stderr, "snapsub: cannot read frame %ld of %s\n", frame, path);
 				free(pic);
 				pic = NULL;
 			}
