@@ -276,8 +276,7 @@ static void layout(void)
 	ck(w == 77 && h == 17, "at the Pixel 2's 0.625 the buffer is 77 by 17");
 	ck(STATUS_RIGHT == 1000 && STATUS_TOP == 24 && STATUS_MID == 36,
 	   "the row ends at x 1000, from y 24, its middle on 36");
-	ck(STATUS_GAP == 12 && STATUS_CLOCK_GAP == 16,
-	   "marks 12 apart, the clock 16 from them, as the lab drew them");
+	ck(STATUS_GAP == 12, "marks 12 apart, as the lab drew them");
 
 	/* a theme from a file another process wrote may be anything */
 	{

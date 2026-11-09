@@ -72,6 +72,7 @@
 #include "menusnap.h"
 #include "musec.h"
 #include "mp4lock.h"
+#include "topbar.h"
 #include "mp4video.h"
 #include "museart.h"
 #include "muselib.h"
@@ -811,20 +812,26 @@ cover_state *g_cov;
 /* Which kind Muse's shelf shows, music or books - and now videos, MP4's
  * third kind (ml_kind). Eric's, 2026-09-27: one Muse card and a Show row in
  * its menu, rather than a card for books beside it - two ways into one player
- * read as two players. Kept across restarts. */
-int g_muse_kind;
+ * read as two players. Kept across restarts. Or all three on one shelf,
+ * ML_ALL, which is where it starts (2026-11-09). */
+int g_muse_kind = ML_ALL;
 
 /* Whether each album is a book listened to the end: one per album in g_muse,
  * rebuilt with it, like g_cov. A finished book is marked and not forgotten,
  * and A on it starts it over. Eric's, 2026-09-27. */
 bool *g_book_done;
 
+static int muse_kinds(void);
+
 /* The kind the shelf really shows: the one chosen, unless there is none of it
- * - then the first kind there is some of. */
+ * - then the first kind there is some of. All, on a card with one kind, is
+ * that kind: the shelf and its menu say Albums, not All, when albums are all
+ * there is. */
 ml_kind muse_kind_shown(void)
 {
 	int k;
 
+	if (g_muse_kind == ML_ALL && muse_kinds() > 1) return ML_ALL;
 	if (g_muse_kind >= 0 && g_muse_kind < ML_KINDS && ml_count_kind(&g_muse, (ml_kind)g_muse_kind))
 		return (ml_kind)g_muse_kind;
 	for (k = 0; k < ML_KINDS; k++)
@@ -833,6 +840,16 @@ ml_kind muse_kind_shown(void)
 }
 
 static bool muse_books_shown(void) { return muse_kind_shown() == ML_BOOKS; }
+
+/* The kind MP4's menu has the rows of (sys_menu_muse_rows): the shelf's,
+ * but All on a card with no songs has the videos' - no Shuffle All, no Album
+ * Art - as sys_menu_build makes of the same facts */
+static int muse_rows_kind(void)
+{
+	ml_kind k = muse_kind_shown();
+
+	return k == ML_ALL && !ml_count_kind(&g_muse, ML_MUSIC) ? ML_VIDEOS : k;
+}
 
 /* How many kinds the card has: Show is in the menu only when it is two or
  * more. */
@@ -1597,15 +1614,15 @@ static void free_view_textures(sysview *v)
 	}
 }
 
-/* Muse's shelf onto another kind: music, books or videos, from the first
- * card. The textures go first, while the count is still the old kind's, since
- * every card is about to be a different album. */
-static const char *const MUSE_SHOW[ML_KINDS] = { "music", "books", "videos" };
+/* Muse's shelf onto another kind: all of them, music, books or videos, from
+ * the first card. The textures go first, while the count is still the old
+ * kind's, since every card is about to be a different album. */
+static const char *const MUSE_SHOW[ML_KINDS + 1] = { "music", "books", "videos", "all" };
 
 static void muse_show(sysview *v, ml_kind kind)
 {
 	g_muse_kind = kind;
-	db_set_str(db_dev(), "muse.show", MUSE_SHOW[kind < ML_KINDS ? kind : ML_MUSIC]);
+	db_set_str(db_dev(), "muse.show", MUSE_SHOW[kind >= 0 && kind <= ML_ALL ? kind : ML_ALL]);
 	free_view_textures(v);
 	muse_order_view(v);
 	v->cursor = 0;
@@ -2272,7 +2289,7 @@ static void clock24_save(bool on)
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
  * default), with its charge written beside it ("percentage"), my ask of
  * 2026-11-05, or with the time left written there ("time"), my ask of
- * 2026-11-07. Read with the clock's setting; draw_corner_at writes the text.
+ * 2026-11-07. Read with the clock's setting; draw_topbar writes the text.
  * The time left is the estimate in src/battery_eta.h off the cable and the
  * time to full (or to the charge limit) on it, from the gauge's charge and
  * current at the first read. Where there is none yet but one is coming it
@@ -2334,56 +2351,6 @@ static void drawn_forget(void)
 	g_corner_box = g_clock_box = g_menu_panel = g_title_caps = (SDL_Rect){ 0 };
 	g_marks_w = 0;
 	g_pct_natural = 0;
-}
-
-static bool status_same(const status_marks *a, const status_marks *b)
-{
-	return a->wifi == b->wifi && a->bt == b->bt && a->batt == b->batt &&
-	       a->charging == b->charging && a->held == b->held &&
-	       a->blink_off == b->blink_off && a->pct_w == b->pct_w &&
-	       a->calc == b->calc && a->calc_step == b->calc_step &&
-	       a->xfer == b->xfer && a->xfer_moving == b->xfer_moving &&
-	       a->xfer_pct == b->xfer_pct;
-}
-
-/* The marks as a texture: painted by status_marks_render when what they show,
- * the theme or the renderer changes - a minute's clock does not touch it, a
- * blink does, once a second - and blitted every frame at the row's right end.
- * One for the launcher, as the volume bar's is. */
-static void status_blit(SDL_Renderer *r, const status_marks *m, int theme, int dx, int dy)
-{
-	/* 156 for all four marks (File Transfer's too) and the room of the
-	 * battery's number or time, and the gap between them */
-	static uint32_t      px[(STATUS_PAD * 2 + 156 + STATUS_PCT_GAP + STATUS_PCT_MAX) *
-	                        (STATUS_PAD * 2 + STATUS_ROW)];
-	static SDL_Texture  *tex;
-	static SDL_Renderer *tex_for;
-	static status_marks  painted;
-	static int           painted_theme = -1, tw, th;
-	int w, h, mw = status_marks_width(m);
-
-	if (!mw) return;
-	status_marks_size(m, 1.0f, &w, &h);
-	if ((size_t)w * h > sizeof px / sizeof px[0]) return;
-	if (tex_for != r || w != tw || h != th) {
-		if (tex) SDL_DestroyTexture(tex);
-		tex = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, w, h);
-		tex_for = NULL;
-		if (!tex) return;
-		SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-		tex_for = r;
-		tw = w;
-		th = h;
-		painted_theme = -1;
-	}
-	if (theme != painted_theme || !status_same(m, &painted)) {
-		status_marks_render(px, w, h, w, 1.0f, theme, m);
-		SDL_UpdateTexture(tex, NULL, px, w * 4);
-		painted = *m;
-		painted_theme = theme;
-	}
-	SDL_RenderCopy(r, tex, NULL, &(SDL_Rect){ STATUS_RIGHT - mw - STATUS_PAD + dx,
-	                                          STATUS_TOP - STATUS_PAD + dy, w, h });
 }
 
 /* The critical blink, a second on and a second off, slow enough not to pull
@@ -2574,6 +2541,7 @@ static void status_gather(status_marks *m, bool moving)
 	}
 	m->wifi = wifi;
 	m->bt = plat_has_bluetooth() && aout_bt_sink()[0];
+	m->phones = plat_headphones_present();
 	m->batt = battery_now(&pct, &chg) ? pct : -1;
 	m->charging = chg;
 	m->held = chg && charge_held();
@@ -2609,52 +2577,38 @@ bool status_clock(time_t t, char *out, size_t n)
 	return true;
 }
 
-/* The status corner, DESIGN.md 11.12, my pick in the status lab: the
- * marks at the right end of a row 24 tall from y 24, and the clock in
- * **meta** **text-soft** 16 to their left, its capitals on the row's middle.
- * In `theme`, an index - DS_THEME is a table per file, so theme()'s pointer is
- * not into this one. Returns how long until it changes by itself, in ms (the
- * blink, the next minute), and tells the shelf's loop the same.
- *
- * On the shelf, Now Playing and every screen over a paused game (the menu,
- * the save slots, the achievements; paused_backdrop, which uses the shelf's
- * header form): the first two in the theme, the last in Salt & Pepper, since scrim.game is dark in both themes
- * (see slot_draw). My call, 2026-11-04: the whole corner on all of them,
- * where the low-battery dot was before. `clock` is the clock's color:
- * **text-soft**, but **text** over a paused game, where a white frame under
- * scrim.game leaves text-soft at 4.4:1 and text holds 6.0:1. */
-/* The home and games pages' header (`compact`): the clock stands at its
- * left end, x 64, where the ZyperOS wordmark was (2026-11-05: "remove
- * zyperOS from the top left and put the time there instead"), in **action**
- * **text**; the marks keep the right end. Elsewhere it is beside the marks. */
-#define HEADER_CLOCK_X 64
-static bool g_clock_left;
+/* The top bar on this screen, src/topbar.h: the one header, in one layout,
+ * on every screen that has one - the home, the shelves and the menus over
+ * them, every screen over a paused game, every MP4 screen. This half gathers
+ * what it shows - the radios and the battery (status_gather), the clock in
+ * its setting, the battery's words as MENU > Battery Icon says - and keeps
+ * the frames coming that make it move: the blink, the next minute, Time
+ * Left's minutes and its dots. In `theme`, an index - DS_THEME is a table per
+ * file, so theme()'s pointer is not into this one - with `soft` the battery's
+ * words' colour: **text-soft**, but **text** over a paused game, where a white
+ * frame under scrim.game leaves text-soft at 4.4:1 and text holds 6.0:1.
+ * Returns how long until it changes by itself, in ms, and tells the shelf's
+ * loop the same. */
+static topbar_drawn g_topbar;
 
-static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
-                               bool moving, bool compact)
+static unsigned draw_topbar(SDL_Renderer *r, int theme, SDL_Color soft, bool moving)
 {
-	status_marks m;
+	topbar t = { .theme = theme, .soft = soft };
 	struct timespec ts;
-	char clk[16], pct[24];
-	int right = compact ? 960 : STATUS_RIGHT, dy = compact ? 28 : 0;
-	int x = right, mw;
+	char clk[16], pct[24] = "";
 	unsigned wait;
 
 	/* One reading of the clock for what it says and when it next changes */
 	clock_gettime(CLOCK_REALTIME, &ts);
-	status_gather(&m, moving);
-	wait = status_blink(&m);
-	/* MENU > Battery Icon > Percentage: room left of the mark for "82%", in
-	 * the clock's font and digits in cells, so 9% to 10% moves only itself.
-	 * Time Left writes "3 h 20 min" there when it has one, else the same
-	 * number, and asks for a frame every minute while it does, as the clock
-	 * does, so the time counts down with it. */
-	if (g_batt_mode != BATT_BARS && m.batt >= 0) {
-		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
-		corner_view cv = g_batt_mode == BATT_TIME ? corner_view_now(&m)
+	status_gather(&t.marks, moving);
+	wait = status_blink(&t.marks);
+	/* MENU > Battery Icon > Percentage: "82%". Time Left writes "3 h 20 min"
+	 * when it has one, else the same number, and asks for a frame every
+	 * minute while it does, as the clock does, so the time counts down. */
+	if (g_batt_mode != BATT_BARS && t.marks.batt >= 0) {
+		corner_view cv = g_batt_mode == BATT_TIME ? corner_view_now(&t.marks)
 		                                          : (corner_view){ CORNER_PCT, -1, 0 };
 
-		pct[0] = '\0';
 		if (cv.kind == CORNER_TIME) {
 			unsigned minute = 60000;
 
@@ -2670,77 +2624,38 @@ static unsigned draw_corner_at(SDL_Renderer *r, int theme, SDL_Color clock,
 			 * every CORNER_DOT_MS for the first minute of it, then only as
 			 * the launcher draws anyway, so a gauge that never answers
 			 * does not keep the screen awake */
-			m.calc = true;
-			m.calc_step = shot_st.set ? shot_st.calc : batt_corner_dots(plat_now_ms());
+			t.marks.calc = true;
+			t.marks.calc_step = shot_st.set ? shot_st.calc : batt_corner_dots(plat_now_ms());
 			if (!shot_st.set && cv.calc_ms < 60000u) {
 				redraw_at(plat_now_ms() + CORNER_DOT_MS);
 				if (CORNER_DOT_MS < wait) wait = CORNER_DOT_MS;
 			}
 		} else {
-			snprintf(pct, sizeof pct, "%d%%", m.batt > 100 ? 100 : m.batt);
+			snprintf(pct, sizeof pct, "%d%%", t.marks.batt > 100 ? 100 : t.marks.batt);
 		}
-		if (m.calc) {
-			m.pct_w = STATUS_CALC_W;
-			g_pct_natural = 0;
-		} else {
-			m.pct_w = g_pct_natural = ui_text_tabular_width(f, pct);
-			if (m.pct_w > STATUS_PCT_MAX) m.pct_w = STATUS_PCT_MAX;
-		}
-	} else {
-		g_pct_natural = 0;
+		t.batt = pct;
 	}
-	status_blit(r, &m, theme, right - STATUS_RIGHT, dy);
-	if (m.pct_w > 0 && !m.calc) {
-		TTF_Font *f = compact ? page_font(PAGE_CHROME) : ui_font(UI_F_META);
-		/* In the mark's own color: text-soft, or warning when it is low */
-		SDL_Color c = status_batt_level(m.batt, m.charging)
-		            ? ui_col(DS_THEME[theme < 0 || theme >= DS_THEMES ? DS_LIGHT : theme].warning, 255)
-		            : clock;
-
-		ui_text_tabular(r, f, pct, right - STATUS_BATT_W - STATUS_PCT_GAP,
-		                ui_cap_y(f, STATUS_MID + dy), 1, c);
-	}
-	mw = status_marks_width(&m);
-	if (mw) x -= mw + STATUS_CLOCK_GAP;
-	g_corner_box = (SDL_Rect){ right - mw, STATUS_TOP + dy, mw, STATUS_ROW };
-	g_marks_w = mw;
-	g_clock_left = compact;
 	if (status_clock(ts.tv_sec, clk, sizeof clk)) {
-		TTF_Font *f = compact ? page_font(PAGE_ACTION) : ui_font(UI_F_META);
-		unsigned left;
-		int w;
-
-		/* Digits in cells, so 9:59 to 10:00 moves nothing but the hour */
-		if (compact) {
-			w = ui_text_tabular(r, f, clk, HEADER_CLOCK_X, ui_cap_y(f, STATUS_MID + dy),
-			                    -1, ui_col(DS_THEME[theme < 0 || theme >= DS_THEMES
-			                                        ? DS_LIGHT : theme].text, 255));
-			g_clock_box = (SDL_Rect){ HEADER_CLOCK_X, STATUS_TOP + dy, w, STATUS_ROW };
-		} else {
-			w = ui_text_tabular(r, f, clk, x, ui_cap_y(f, STATUS_MID + dy), 1, clock);
-			g_clock_box = (SDL_Rect){ x - w, STATUS_TOP + dy, w, STATUS_ROW };
-			g_corner_box.x = x - w;
-			g_corner_box.w = right - g_corner_box.x;
-		}
 		/* The next minute. The shelf's one-second heartbeat redraws it
 		 * anyway; this is the clock saying when it changes, as every
 		 * other thing that moves by itself does. */
-		left = 60000 - (unsigned)((ts.tv_sec % 60) * 1000 + ts.tv_nsec / 1000000);
+		unsigned left = 60000 - (unsigned)((ts.tv_sec % 60) * 1000 + ts.tv_nsec / 1000000);
+
+		t.clock = clk;
 		redraw_at(plat_now_ms() + left);
 		if (left < wait) wait = left;
 	}
+	topbar_draw(r, &t, &g_topbar);
+	g_corner_box = g_topbar.marks;
+	g_clock_box = g_topbar.clock;
+	g_marks_w = g_topbar.marks_w;
+	g_pct_natural = g_topbar.batt_natural;
 	return wait;
 }
 
-
-static unsigned draw_corner(SDL_Renderer *r, int theme, SDL_Color clock, bool moving)
-{
-	return draw_corner_at(r, theme, clock, moving, false);
-}
-
-/* MP4's own shelf of albums, which keeps its corner at the right and has no
- * home header. The home with MP4 focused is still the home: its clock stays
- * at the left, where it was a step before. */
+/* MP4's own shelf of albums. It has the home's header since 2026-11-09 (the
+ * clock at the left, the rest at the right; draw_status), as every MP4 screen
+ * has, but not the home's song line in it: MP4 is what plays there. */
 static bool muse_shelf_shown(const app *a)
 {
 	return a->sys.count > 0 && a->screen == SCREEN_GAMES &&
@@ -2755,7 +2670,14 @@ static void draw_status(app *a)
 	bool moving = home_moving(&a->home, plat_now_ms()) || frames_wanted() ||
 	              (a->sys.count > 0 && a->view[a->sys_cursor].cf.active);
 
-	draw_corner_at(a->r, theme_index(), UI_TEXT_SOFT, moving, !muse_shelf_shown(a));
+	draw_topbar(a->r, theme_index(), UI_TEXT_SOFT, moving);
+}
+
+/* topbar_half, as the bar was drawn last: MP4's album title on its shelf,
+ * and a video's title over its frame, stand in its row */
+static int header_half(void)
+{
+	return topbar_half(&g_topbar);
 }
 
 /* ---------- when the next frame is needed -------------------------------- */
@@ -3188,10 +3110,18 @@ static void draw_game_text(app *a, sysview *v, const system_cfg *s, int idx)
 		int hrad = line * 2 / 5;
 		int lead = margin + hrad * 2 + hrad;      /* edge, heart, its gap */
 		int boxx = lead;
-		int boxw = ZYPEROS_SCREEN_W - lead * 2;
+		int boxw = ZYPEROS_SCREEN_W - lead * 2, fullw = boxw;
 		int tw = ui_text_width(ft2, g->title);
 		int tx = ZYPEROS_SCREEN_W / 2;
-		bool slides = tw > boxw;
+		bool slides;
+		/* On MP4's shelf the title stands in the header's row, between its
+		 * clock and its marks (2026-11-09), and a long one slides there; the
+		 * line under it is under the header, and keeps the whole width */
+		if (is_muse(s) && header_half() < boxw / 2) {
+			boxw = header_half() * 2;
+			boxx = ZYPEROS_SCREEN_W / 2 - header_half();
+		}
+		slides = tw > boxw;
 		/* Asked for EVERY frame, not only when something slides. It is a
 		 * clock that has to watch the cursor to know when to restart, and it
 		 * cannot watch it on frames nobody calls it. Reading it only inside
@@ -3271,7 +3201,7 @@ static void draw_game_text(app *a, sysview *v, const system_cfg *s, int idx)
 			           !strcmp(g->name, g->title)) {
 				under = "";
 			}
-			ui_fit_text(ui_font(UI_F_MENU), under, afit, sizeof afit, boxw);
+			ui_fit_text(ui_font(UI_F_MENU), under, afit, sizeof afit, fullw);
 			ui_text(a->r, ui_font(UI_F_MENU), afit, tx,
 			        ui_line_y(UI_F_MENU, TITLE_TOP + line + 4), 0, UI_TEXT_DIM);
 		}
@@ -3881,10 +3811,13 @@ void draw_shelf(app *a)
 	texload_drain(a);
 	prime_home(a);
 	draw_background(a);
+	/* MP4's shelf draws its header first: its album's title stands in the
+	 * header's row, between the clock and the marks (draw_game_text) */
+	if (muse_shelf_shown(a)) draw_status(a);
 	if (no_games(a)) { snap_off(); draw_no_games(a); }
 	else if (a->screen == SCREEN_SYSTEMS) { snap_off(); draw_systems(a); }
 	else draw_games(a);
-	draw_status(a);
+	if (!muse_shelf_shown(a)) draw_status(a);
 	if (a->screen == SCREEN_SYSTEMS) g_title_caps = (SDL_Rect){0};
 	if (!muse_shelf_shown(a))
 		home_header(a->r, &g_home_song, g_corner_box.w ? g_corner_box.x : STATUS_RIGHT);
@@ -6143,6 +6076,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.dmode      = dmode_label(a->view[sys].dmode);
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
+		u.muse_all   = u.muse && muse_kind_shown() == ML_ALL;
+		u.muse_songs = u.muse && ml_count_kind(&g_muse, ML_MUSIC) > 0;
 		u.muse_both  = u.muse && muse_kinds() > 1;
 		u.muse_playing = u.muse && lock_allowed();
 		u.sort       = u.muse ? ml_order_label_kind((ml_order)a->view[sys].sort, muse_kind_shown())
@@ -6185,6 +6120,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.audio_policy = ao.policy;
 		u.audio_dest   = aout_actual(&ao);
 		u.audio_channels = g_channels;
+		u.audio_mix    = aout_channels_for(g_channels, u.audio_dest, plat_speaker_mono());
 
 		/* The connected headset's name.
 		 *
@@ -11387,7 +11323,7 @@ static int menu_shelf_width(app *a)
 		n = menu_build(a, SCREEN_GAMES, i, rows, &bufs, &heading);
 		if (muse) {
 			sm_muse_row ids[SM_MUSE_ROWS];
-			int nn = sys_menu_muse_rows(muse_kind_shown(), muse_kinds() > 1,
+			int nn = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
 			                            !plat_has_wifi(), ids);
 
 			for (k = 0; k < nn; k++) {
@@ -13611,7 +13547,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * the network, and the runner does not land on dead rows. */
 		if (is_muse(&a->sys.systems[a->sys_cursor])) {
 			sm_muse_row ids[SM_MUSE_ROWS];
-			int n = sys_menu_muse_rows(muse_kind_shown(), muse_kinds() > 1,
+			int n = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
 			                           !plat_has_wifi(), ids);
 			sm_muse_row id = sel >= 0 && sel < n ? ids[sel] : SMM_COUNT;
 
@@ -13628,13 +13564,15 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 				muse_ask_shuffle();
 				return MENU_DONE;
 			} else if (id == SMM_SHOW) {
-				/* The kinds the card has, round in either direction; A goes
-				 * forward, as right does. */
+				/* All, then the kinds the card has, round in either
+				 * direction; A goes forward, as right does. ML_ALL is the
+				 * number after the three, so the round is All, Music,
+				 * Audiobooks, Videos. */
 				if (d || key == IN_ACCEPT) {
-					int k = muse_kind_shown(), step = d < 0 ? ML_KINDS - 1 : 1, t;
+					int k = muse_kind_shown(), step = d < 0 ? ML_ALL : 1, t;
 
-					for (t = 0; t < ML_KINDS; t++) {
-						k = (k + step) % ML_KINDS;
+					for (t = 0; t <= ML_ALL; t++) {
+						k = (k + step) % (ML_ALL + 1);
 						if (ml_count_kind(&g_muse, (ml_kind)k)) break;
 					}
 					muse_show(&a->view[a->sys_cursor], (ml_kind)k);
@@ -13890,7 +13828,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		return MENU_CHANGED;
 	}
 
-	/* Four positions, stepped either way like the card sets, A going forward.
+	/* Five positions, Auto after mono right and before stereo, stepped either
+	 * way like the card sets, A going forward.
 	 * Applied at once, to Muse and to Diatom if they are there to be told, so
 	 * a player trying them over music hears each as it is chosen. */
 	if (sel == PM_CHANNELS && (d || key == IN_ACCEPT)) {
@@ -14037,12 +13976,10 @@ static void paused_backdrop(app *a, SDL_Texture *bg, float k)
 	drawn_forget();
 	draw_paused_frame(a, bg);
 	ui_scrim_k(a->r, 1, k);
-	/* The home screen's own header (draw_corner_at, compact): the clock at
-	 * the top left and the marks with the battery's text at the top right,
-	 * the same fonts, sizes and places, so they match and a long Time Left
-	 * text never meets the clock. */
-	draw_corner_at(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255),
-	               frames_wanted(), true);
+	/* The top bar (src/topbar.h): the clock at the top left and the marks
+	 * with the battery's text at the top right, as on the home, so they match
+	 * and a long Time Left text never meets the clock. */
+	draw_topbar(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255), frames_wanted());
 }
 
 /* Copy the paused frame's preview beside a manual save, so the slot strip can
@@ -15211,7 +15148,9 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
 		}
 	}
 	{
-		unsigned corner = draw_corner(r, theme_index(), UI_TEXT_SOFT,
+		/* The top bar, as on every MP4 screen (2026-11-09): the clock at
+		 * the left, the marks and the battery's words at the right */
+		unsigned corner = draw_topbar(r, theme_index(), UI_TEXT_SOFT,
 		                              wait <= 50 || frames_wanted());
 		if (corner < wait) wait = corner;
 	}
@@ -15223,16 +15162,18 @@ static unsigned np_draw(app *a, const mu_now *mn, const char *next)
  * mine, 2026-11-05, in place of Muse's pocket lock (#51, Eric's design,
  * 2026-09-30), whose chord - F1+F2 held for a second, FUNCTION and both volume
  * keys on the Pixel 2 - it replaced. X on any MP4 screen while something
- * plays, or MENU's Lock Screen, locks. While locked every button but the
- * volume keys is blocked, POWER included, and SELECT and START held together
- * for hold-unlock unlock: the rules are src/mp4lock.h's, and why those.
+ * plays, SELECT and START pressed together there (2026-11-09), or MENU's Lock
+ * Screen, locks. While locked every button but the volume keys is blocked,
+ * POWER included, and SELECT and START held together for hold-unlock unlock:
+ * the rules are src/mp4lock.h's, and why those.
  *
  * The lock screen - Now Playing under the scrim, and over it a panel saying
  * it is locked and how to open it, with a bar the hold fills - shows for
- * hold-lock-lit as it locks, and then only while the pair is held. Music:
- * otherwise dark, the backlight out, whatever is pressed (My pick, "dark
- * until unlocked") - a book playing drew about 470 mA with it on and 300 with
- * it off, measured before #51 was built - except the volume keys, which
+ * hold-lock-lit as it locks, again for as long at every press of a blocked
+ * button (2026-11-09), and while the pair is held. Music: otherwise dark, the
+ * backlight out (My pick, "dark until unlocked") - a book playing drew about
+ * 470 mA with it on and 300 with it off, measured before #51 was built -
+ * except the volume keys, which
  * light the lock screen with the volume bar over it for as long as the bar
  * shows, and then let it go dark again. A video keeps playing in sight,
  * since that is what it was locked to watch, and the volume bar comes over
@@ -15290,8 +15231,31 @@ static bool lock_allowed(void)
 	return musec_playing() && !g_muse_over;
 }
 
-/* The volume and brightness keys on an MP4 screen, and X. True when the
- * screen should lock. */
+/* SELECT and START on an MP4 screen, as mp4chord_step reads them (the rule
+ * and why is src/mp4lock.h's): what this pass's press of the two came to.
+ * Every MP4 loop reads its buttons with muse_input, which says it, and asks
+ * muse_select for SELECT rather than its press. */
+static mp4chord  g_muse_chord;
+static mp4c_said g_muse_said;
+
+static void muse_input(app *a)
+{
+	plat_input_poll(&a->in);
+	g_muse_said = mp4chord_step(&g_muse_chord, a->in.down, a->in.pressed);
+}
+
+/* SELECT alone, let go: MP4 closes */
+static bool muse_select(void) { return g_muse_said == MP4C_SELECT; }
+
+/* A screen of MP4's coming up: a SELECT down already is not its own */
+static void muse_input_reset(void)
+{
+	g_muse_chord = (mp4chord){ 0 };
+	g_muse_said = MP4C_NONE;
+}
+
+/* The volume and brightness keys on an MP4 screen, X, and SELECT with START.
+ * True when the screen should lock. */
 static bool muse_keys(app *a)
 {
 	in_state *in = &a->in;
@@ -15300,7 +15264,7 @@ static bool muse_keys(app *a)
 	if (in_repeat(in, IN_VOLDN)) plat_volume_nudge(-1);
 	if (in_repeat(in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
 	if (in_repeat(in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
-	if (in->pressed[IN_X]) {
+	if (in->pressed[IN_X] || g_muse_said == MP4C_LOCK) {
 		if (lock_allowed()) { uisound_play(DS_SOUND_ACCEPT); return true; }
 		uisound_play(DS_SOUND_DENY);       /* nothing playing to lock over */
 	}
@@ -15322,51 +15286,123 @@ static void lock_mark(SDL_Renderer *r, int cx, int top, SDL_Color ink, SDL_Color
 	ui_round_rect(r, &body, DS_RADIUS_ROW * s / 96, ink);
 }
 
+/* "Hold (SELECT) + (START) to unlock" is three pieces - the words before the
+ * pair, the pair drawn as buttons (DESIGN.md 11.9), the words after - and a
+ * row of the lock panel is some of them in that order, centered. */
+enum { LOCK_HOLD = 1, LOCK_PAIR = 2, LOCK_TAIL = 4 };
+#define LOCK_GLYPH 52            /* the buttons' height, and a row's */
+#define LOCK_GAP   14            /* between the words and the pair */
+
+static int lock_row_width(TTF_Font *f, const char *hold, const char *tail, int parts)
+{
+	int w = 0;
+
+	if ((parts & LOCK_HOLD) && hold[0]) w += ui_text_width(f, hold);
+	if (parts & LOCK_PAIR) {
+		if (w) w += LOCK_GAP;
+		w += ui_button_width("SELECT", LOCK_GLYPH) + 12 + ui_text_width(f, "+") + 12 +
+		     ui_button_width("START", LOCK_GLYPH);
+	}
+	if ((parts & LOCK_TAIL) && tail[0]) w += (w ? LOCK_GAP : 0) + ui_text_width(f, tail);
+	return w;
+}
+
+static void lock_row(SDL_Renderer *r, TTF_Font *f, const char *hold, const char *tail,
+                     int parts, int cx, int y, SDL_Color dim)
+{
+	int x = cx - lock_row_width(f, hold, tail, parts) / 2, gs = LOCK_GLYPH;
+	int ty = ui_line_y(UI_F_META, y + (gs - ui_font_line(UI_F_META)) / 2), mid = y + gs / 2;
+	bool any = false;
+
+	if ((parts & LOCK_HOLD) && hold[0]) { x += ui_text(r, f, hold, x, ty, -1, dim); any = true; }
+	if (parts & LOCK_PAIR) {
+		if (any) x += LOCK_GAP;
+		ui_button(r, "SELECT", x + ui_button_width("SELECT", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
+		x += ui_button_width("SELECT", gs) + 12;
+		x += ui_text(r, f, "+", x, ty, -1, dim) + 12;
+		ui_button(r, "START", x + ui_button_width("START", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
+		x += ui_button_width("START", gs);
+		any = true;
+	}
+	if ((parts & LOCK_TAIL) && tail[0]) ui_text(r, f, tail, x + (any ? LOCK_GAP : 0), ty, -1, dim);
+}
+
 /* The panel over the dimmed screen: the mark, "Locked", how to open it, and
- * the bar the hold fills. In the theme's colors, over a video or not. */
+ * the bar the hold fills. In the theme's colors, over a video or not.
+ *
+ * How to open it is one row where it fits the panel, and two where it does
+ * not - mine, 2026-11-09: in Portuguese "Segure SELECT + START para
+ * desbloquear" ran out of the panel on both sides, and so did Spanish,
+ * French and Italian. Broken where the two rows come out the most even:
+ * "Segure SELECT + START" over "para desbloquear". The panel is 720 wide
+ * and as tall as its rows, and wider only for a row no break makes fit
+ * (none of the eight languages has one). check-i18n-shots holds it to its
+ * box in every language (mp4-locked). */
+#define LOCK_PANEL_W   720
+#define LOCK_PANEL_PAD 48        /* the words' air at each side */
+
 static void lock_panel(app *a, const mp4lock *l)
 {
 	SDL_Renderer *r = a->r;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_META);
 	SDL_Color ink = ui_col(theme()->accent_ink, 255), text = UI_TEXT, dim = UI_TEXT_DIM;
 	SDL_Color panel = ui_col(theme()->surface, 255);
-	int pw = 720, ph = 360, px = (ZYPEROS_SCREEN_W - pw) / 2, py = (ZYPEROS_SCREEN_H - ph) / 2;
-	int y = py + 40, cx = ZYPEROS_SCREEN_W / 2, gs = 52, x, w;
 	/* "Hold %s to unlock": the words either side of the pair, which is
 	 * drawn, their spaces off */
 	const char *fmt = T(S_MP4_HOLD_UNLOCK), *at = strstr(fmt, "%s");
-	const char *plus = "+", *tail = at ? at + 2 : "";
+	const char *tail = at ? at + 2 : "";
 	char hold[64];
 	int hn = at ? (int)(at - fmt) : (int)strlen(fmt);
+	int rows[2], nrows = 1, widest, pw, ph, px, py, y, cx = ZYPEROS_SCREEN_W / 2, i;
 	float k = mp4lock_progress(l);
 
 	while (hn > 0 && fmt[hn - 1] == ' ') hn--;
 	snprintf(hold, sizeof hold, "%.*s", hn, fmt);
 	while (*tail == ' ') tail++;
 
+	rows[0] = LOCK_HOLD | LOCK_PAIR | LOCK_TAIL;
+	widest = lock_row_width(fm, hold, tail, rows[0]);
+	if (widest > LOCK_PANEL_W - 2 * LOCK_PANEL_PAD) {
+		/* The words before over the pair and the rest, or the words before
+		 * and the pair over the rest: whichever is the narrower */
+		int a1 = lock_row_width(fm, hold, tail, LOCK_HOLD | LOCK_PAIR);
+		int a2 = lock_row_width(fm, hold, tail, LOCK_TAIL);
+		int b1 = lock_row_width(fm, hold, tail, LOCK_HOLD);
+		int b2 = lock_row_width(fm, hold, tail, LOCK_PAIR | LOCK_TAIL);
+		int wa = a1 > a2 ? a1 : a2, wb = b1 > b2 ? b1 : b2;
+
+		if (tail[0] && (!hold[0] || wa <= wb)) {
+			rows[0] = LOCK_HOLD | LOCK_PAIR;
+			rows[1] = LOCK_TAIL;
+			widest = wa;
+			nrows = 2;
+		} else if (hold[0]) {
+			rows[0] = LOCK_HOLD;
+			rows[1] = LOCK_PAIR | LOCK_TAIL;
+			widest = wb;
+			nrows = 2;
+		}
+	}
+	pw = widest + 2 * LOCK_PANEL_PAD > LOCK_PANEL_W ? widest + 2 * LOCK_PANEL_PAD : LOCK_PANEL_W;
+	if (pw > ZYPEROS_SCREEN_W - 2 * DS_INSET) pw = ZYPEROS_SCREEN_W - 2 * DS_INSET;
+	/* 40 above the mark, 20 under it and under the title, the rows 8 apart,
+	 * 28 to the bar and 40 under it: 360 with one row, as it always was */
+	ph = 40 + LOCK_MARK + 20 + ui_font_line(UI_F_TITLE) + 20 + nrows * LOCK_GLYPH +
+	     (nrows - 1) * 8 + 28 + UI_BAR_H + 40;
+	px = (ZYPEROS_SCREEN_W - pw) / 2;
+	py = (ZYPEROS_SCREEN_H - ph) / 2;
+	y = py + 40;
+
 	ui_panel(r, &(SDL_Rect){ px, py, pw, ph }, DS_RADIUS_PANEL);
 	lock_mark(r, cx, y, ink, panel);
 	y += LOCK_MARK + 20;
 	ui_text(r, ft, T(S_MP4_LOCKED), cx, ui_line_y(UI_F_TITLE, y), 0, text);
 	y += ui_font_line(UI_F_TITLE) + 20;
-	/* "Hold (SELECT) + (START) to unlock", the buttons drawn (DESIGN.md
-	 * 11.9), the pair mp4lock.h unlocks with. */
-	w = (hold[0] ? ui_text_width(fm, hold) + 14 : 0) + ui_button_width("SELECT", gs) + 12 +
-	    ui_text_width(fm, plus) + 12 + ui_button_width("START", gs) +
-	    (tail[0] ? 14 + ui_text_width(fm, tail) : 0);
-	x = cx - w / 2;
-	{
-		int ty = ui_line_y(UI_F_META, y + (gs - ui_font_line(UI_F_META)) / 2), mid = y + gs / 2;
-
-		if (hold[0]) x += ui_text(r, fm, hold, x, ty, -1, dim) + 14;
-		ui_button(r, "SELECT", x + ui_button_width("SELECT", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
-		x += ui_button_width("SELECT", gs) + 12;
-		x += ui_text(r, fm, plus, x, ty, -1, dim) + 12;
-		ui_button(r, "START", x + ui_button_width("START", gs) / 2, mid, gs, UI_BUTTON_PLAIN);
-		x += ui_button_width("START", gs) + 14;
-		if (tail[0]) ui_text(r, fm, tail, x, ty, -1, dim);
+	for (i = 0; i < nrows; i++) {
+		lock_row(r, fm, hold, tail, rows[i], cx, y, dim);
+		y += LOCK_GLYPH + (i + 1 < nrows ? 8 : 0);
 	}
-	y += gs + 28;
+	y += 28;
 	/* The hold, as the one bar every hold in the system is (UI_BAR_H). */
 	{
 		SDL_Rect bar = { cx - 200, y, 400, UI_BAR_H };
@@ -15470,6 +15506,7 @@ static void muse_locked(app *a)
 	fprintf(stderr, "mp4: unlocked\n");
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	muse_input_reset();
 }
 
 /* MENU, from any Muse screen: Muse's own menu, the one its shelf has always
@@ -15696,11 +15733,20 @@ static void np_draw_video(app *a, const mu_now *mn, float k)
 		        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - 62), 0, dim);
 		return;
 	}
-	/* With controls: the title where the shelf's heading is, the clock and
-	 * marks in their corner, the frame, then the bar and the keys. */
-	ui_fit_text(fm, mn->title, fit, sizeof fit, NPV_W - 300);
-	ui_text(r, fm, fit, NPV_X, ui_line_y(UI_F_MENU, 26), -1, UI_TEXT);
-	draw_corner(r, theme_index(), UI_TEXT_SOFT, true);
+	/* With controls: the home's header, as on every MP4 screen (2026-11-09),
+	 * the clock at the left and the marks at the right, and the title
+	 * between them in its row, centered; the frame, then the bar and the
+	 * keys. The title was at the left, where the clock is now. */
+	draw_topbar(r, theme_index(), UI_TEXT_SOFT, true);
+	{
+		/* In the clock's face, which the row is made for: the menu's, over
+		 * the frame's top edge, its descenders touched the picture */
+		TTF_Font *fh = page_font(PAGE_ACTION);
+
+		ui_fit_text(fh, mn->title, fit, sizeof fit, 2 * header_half());
+		ui_text(r, fh, fit, ZYPEROS_SCREEN_W / 2, ui_cap_y(fh, TOPBAR_MID), 0,
+		        UI_TEXT);
+	}
 	if (!tex) {
 		/* Before the first picture: the frame, empty, so nothing jumps. */
 		SDL_Color ink = { 0, 0, 0, 255 };
@@ -15733,6 +15779,7 @@ static muse_exit muse_now_screen_run(app *a)
 	memset(&drawn, 0, sizeof drawn);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	muse_input_reset();
 	ctl_until = plat_now_ms() + DS_MS_HOLD_CONTROLS;
 	ctl_at = plat_now_ms();
 
@@ -15749,12 +15796,12 @@ static muse_exit muse_now_screen_run(app *a)
 		video = musec_video();
 		/* Pictures are decoded only while somebody looks at them. */
 		musec_video_show(video);
-		plat_input_poll(&a->in);
+		muse_input(a);
 		if (a->in.quit_requested) { a->running = false; how = MUSE_CLOSE; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { muse_power(a); how = MUSE_CLOSE; break; }
-		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_SELECT]) uisound_play(DS_SOUND_BACK);
+		if (a->in.pressed[IN_BACK] || muse_select()) uisound_play(DS_SOUND_BACK);
 		if (a->in.pressed[IN_BACK]) break;
-		if (a->in.pressed[IN_SELECT]) { how = MUSE_CLOSE; break; }
+		if (muse_select()) { how = MUSE_CLOSE; break; }
 		if (a->in.pressed[IN_MENU]) {
 			musec_video_show(false);
 			how = muse_menu(a);
@@ -15959,6 +16006,7 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	muse_input_reset();
 	/* Opened from here, after a Now Playing it may have opened onto */
 	lv = done ? 0 : panel_open();
 
@@ -15973,7 +16021,7 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 		mn = musec_now();
 		loaded = mn->state == MU_PLAYING || mn->state == MU_PAUSED;
 		playing = musec_path();
-		plat_input_poll(&a->in);
+		muse_input(a);
 
 		/* The album over its artist - and the album alone when there is no
 		 * artist over it, a folder of tracks or of episodes straight in
@@ -16060,9 +16108,9 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 			}
 			open_now = true;
 		}
-		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_SELECT]) uisound_play(DS_SOUND_BACK);
+		if (a->in.pressed[IN_BACK] || muse_select()) uisound_play(DS_SOUND_BACK);
 		if (a->in.pressed[IN_BACK]) done = 1;
-		if (a->in.pressed[IN_SELECT]) { how = MUSE_CLOSE; break; }
+		if (muse_select()) { how = MUSE_CLOSE; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { muse_power(a); how = MUSE_CLOSE; break; }
 		/* After a rescan `al` is gone with the old library: not one more
 		 * frame from it. */
@@ -16237,6 +16285,7 @@ static void muse_shelf_screen(app *a, bool now)
 	if (muse < 0 || a->view[muse].list.count <= 0) return;
 
 	a->sys_cursor = muse;
+	muse_input_reset();
 	enter_system(a);                      /* the screen, the coverflow, the window */
 	v = &a->view[muse];
 	base = panel_base();
@@ -16244,7 +16293,8 @@ static void muse_shelf_screen(app *a, bool now)
 	/* On the album that is playing, so SELECT lands where the music is - on
 	 * the books when it is a book. */
 	playing = muse_playing_album(NULL);
-	if (playing >= 0 && g_muse.albums[playing].kind != muse_kind_shown())
+	if (playing >= 0 && muse_kind_shown() != ML_ALL &&
+	    g_muse.albums[playing].kind != muse_kind_shown())
 		muse_show(v, g_muse.albums[playing].kind);
 	if (playing >= 0) {
 		int k = muse_card_of(v, playing);
@@ -16269,12 +16319,13 @@ static void muse_shelf_screen(app *a, bool now)
 
 		muse_screen_poll();
 		cover_answers();
-		plat_input_poll(&a->in);
+		muse_input(a);
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { muse_power(a); break; }
 		/* B and SELECT both leave, which is the rule everywhere in Muse: one
-		 * button in, the same button out, and B for the level below. */
-		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_SELECT]) {
+		 * button in, the same button out, and B for the level below. SELECT
+		 * as it is let go, and not with START, which locks (muse_input). */
+		if (a->in.pressed[IN_BACK] || muse_select()) {
 			uisound_play(DS_SOUND_BACK);
 			break;
 		}
@@ -18221,7 +18272,7 @@ static void launch(app *a)
 
 			argv[n++] = (char *)"--channels";
 			argv[n++] = (char *)aout_channels_wire(
-				aout_channels_for(g_channels, aout_dest_of(&cs, "")));
+				aout_channels_for(g_channels, aout_dest_of(&cs, ""), plat_speaker_mono()));
 		}
 		if (!ds_fresh && !core_fresh && !g_ctl_fresh) {
 			argv[n++] = (char *)"--load-state";  argv[n++] = st;
@@ -18455,7 +18506,10 @@ static char shelf_initial(const char *s)
 /* What the letter jump reads: the title, or on Muse's shelf the artist. */
 static const char *shelf_key(const sysview *v, int i)
 {
-	return v->jump_by_name ? v->list.items[i].name : v->list.items[i].title;
+	/* A film loose in Videos is under no name, and goes by its own: MP4's
+	 * All in folder order puts it where its title does (muselib.h) */
+	return v->jump_by_name && v->list.items[i].name[0] ? v->list.items[i].name
+	                                                   : v->list.items[i].title;
 }
 
 static int shelf_group_start(sysview *v, int idx)
@@ -18802,6 +18856,8 @@ static bool shot_status_parse(const char *spec)
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
+		/* headphones in the jack: their mark */
+		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
 			shot_st.m.xfer = shot_st.m.xfer_moving = true;
 			shot_st.m.xfer_pct = atoi(w + 5);
@@ -19117,9 +19173,6 @@ static const char *shot_corner_clear(app *a)
 	static char why[200];
 	const SDL_Rect c = g_corner_box;
 	const int under = g_corner_box.y + g_corner_box.h + DS_GRID;
-	const int corner_right = g_corner_box.x + g_corner_box.w;
-	const int clock_right = g_marks_w ? corner_right - g_marks_w - STATUS_CLOCK_GAP
-	                                  : corner_right;
 	SDL_Rect card;
 
 	if (g_clock_box.w && !shot_st.set) {
@@ -19134,14 +19187,14 @@ static const char *shot_corner_clear(app *a)
 			return "no corner drawn, though --status gave it something to show";
 		return NULL;
 	}
-	if (g_clock_box.w && g_clock_left && g_clock_box.x != HEADER_CLOCK_X) {
-		snprintf(why, sizeof why, "the header's clock starts at x %d, not at %d",
-		         g_clock_box.x, HEADER_CLOCK_X);
+	if (g_clock_box.w && g_clock_box.x != TOPBAR_CLOCK_X) {
+		snprintf(why, sizeof why, "the top bar's clock starts at x %d, not at %d",
+		         g_clock_box.x, TOPBAR_CLOCK_X);
 		return why;
 	}
-	if (g_clock_box.w && !g_clock_left && g_clock_box.x + g_clock_box.w != clock_right) {
-		snprintf(why, sizeof why, "the clock ends at x %d, not at %d, %d from its marks",
-		         g_clock_box.x + g_clock_box.w, clock_right, STATUS_CLOCK_GAP);
+	if (c.x + c.w != TOPBAR_RIGHT) {
+		snprintf(why, sizeof why, "the top bar's marks end at x %d, not at %d",
+		         c.x + c.w, TOPBAR_RIGHT);
 		return why;
 	}
 #ifdef I18N_PSEUDO
@@ -19166,6 +19219,16 @@ static const char *shot_corner_clear(app *a)
 	    g_title_caps.x + g_title_caps.w > c.x && g_title_caps.y < under) {
 		snprintf(why, sizeof why, "the title's capitals start at y %d, under %d",
 		         g_title_caps.y, under);
+		return why;
+	}
+	/* And the header's clock at the left: MP4's album title stands in its
+	 * row, between the clock and the marks (header_half) */
+	if (g_title_caps.w > 0 && g_clock_box.w &&
+	    g_title_caps.x < g_clock_box.x + g_clock_box.w + DS_GRID &&
+	    g_title_caps.y < g_clock_box.y + g_clock_box.h + DS_GRID) {
+		snprintf(why, sizeof why, "the title's capitals (x %d..%d) meet the clock (x %d..%d)",
+		         g_title_caps.x, g_title_caps.x + g_title_caps.w, g_clock_box.x,
+		         g_clock_box.x + g_clock_box.w);
 		return why;
 	}
 	if (g_menu_panel.w > 0 && g_menu_panel.x < c.x + c.w &&

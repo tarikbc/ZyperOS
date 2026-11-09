@@ -3,7 +3,8 @@
 The screenshots in this folder show the current launcher in Beard, the light
 theme: the README and the website show every screen in light. `dark/` holds
 the two screens their light-and-dark sections show in Salt & Pepper, the home
-and the ZyperOS menu. The 3D device on the website shows the light ones too.
+and the ZyperOS menu, and the top bar's shot (`topbar`, the song's note and the
+headphone mark) in both themes. The 3D device on the website shows the light ones too.
 The logo/wordmark files remain the branding generator's output.
 
 These are 1024x768 frames rendered by the native ZyperOS launcher, not edited

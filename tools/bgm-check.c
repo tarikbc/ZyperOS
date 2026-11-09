@@ -155,6 +155,13 @@ static void level(void)
 		ck(s[0] == 2000 && s[1] == 0 && s[2] == -1000 && s[3] == 0,
 		   "one side carries both channels, mixed");
 	}
+	{
+		int16_t s[4] = { 32767, 32767, -32768, 32767 };
+
+		bgm_mono(s, 2);
+		ck(s[0] == 32767 && s[1] == 32767, "mono at full scale both sides does not clip");
+		ck(s[2] == 0 && s[3] == 0, "and opposite sides mix to the average");
+	}
 }
 
 static void rate(void)

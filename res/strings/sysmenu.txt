@@ -60,7 +60,7 @@ ja = 音声出力
 it = Uscita audio
 
 [sysmenu.audio_auto]
-note = review: Audio Output's value when set to Auto; %s is where the sound goes now (speaker, wired, bluetooth, usb). es and pt-BR write auto as English does, for the row's room; the glossary's word is automático.
+note = review: Audio Output's value when set to Auto; %s is where the sound goes now (speaker, wired, bluetooth, usb). Also Audio Channels' value when set to Auto; %s is the mix it makes now (stereo, mono). es and pt-BR write auto as English does, for the row's room; the glossary's word is automático.
 en = auto (%s)
 zh-Hans = 自动（%s）
 es = auto (%s)
@@ -71,7 +71,7 @@ ja = 自動（%s）
 it = auto (%s)
 
 [sysmenu.audio_channels]
-note = A MENU row: stereo, mono, or mono on one side
+note = A MENU row: auto, stereo, mono, or mono on one side
 en = Audio Channels
 zh-Hans = 声道
 es = Canales de audio
@@ -568,6 +568,28 @@ fr = Afficher
 de = Anzeigen
 ja = 表示
 it = Mostra
+
+[sysmenu.muse_all]
+note = Show's value: every kind of the card's files on one shelf, albums, audiobooks and videos mixed
+en = All
+zh-Hans = 全部
+es = Todo
+pt-BR = Tudo
+fr = Tout
+de = Alle
+ja = すべて
+it = Tutto
+
+[sysmenu.muse_total]
+note = Muse's menu, when Show is All: how many albums, audiobooks and videos there are together
+en = Total
+zh-Hans = 总计
+es = Total
+pt-BR = Total
+fr = Total
+de = Gesamt
+ja = 合計
+it = Totale
 
 [sysmenu.muse_audiobooks]
 note = Show's value

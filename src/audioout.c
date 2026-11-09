@@ -2,6 +2,7 @@
 /* See src/audioout.h for why this is a file of its own. */
 #include "audioout.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "i18n.h"
@@ -51,23 +52,35 @@ aout_dest aout_dest_of(const aout_state *s, const char *dev)
 	return strcmp(dev, AOUT_USB_DEVICE) ? AOUT_BT : AOUT_USB;
 }
 
-aout_channels aout_channels_for(aout_channels chosen, aout_dest d)
+aout_channels aout_channels_for(aout_channels chosen, aout_dest d, bool one_speaker)
 {
+	if (chosen == AOUT_CHANNELS_AUTO)
+		return d == AOUT_SPK && one_speaker ? AOUT_MONO : AOUT_STEREO;
 	if (d == AOUT_SPK && (chosen == AOUT_MONO_LEFT || chosen == AOUT_MONO_RIGHT))
 		return AOUT_MONO;
+	if (chosen < 0 || chosen >= AOUT_CHANNELS_COUNT) return AOUT_STEREO;
 	return chosen;
 }
 
+/* AUTO's name is stereo's: it is never drawn alone (aout_channels_label) */
 static const str_id CHANNELS_NAME[AOUT_CHANNELS_COUNT] = {
-	S_AUDIO_STEREO, S_AUDIO_MONO, S_AUDIO_MONO_LEFT, S_AUDIO_MONO_RIGHT,
+	S_AUDIO_STEREO, S_AUDIO_MONO, S_AUDIO_MONO_LEFT, S_AUDIO_MONO_RIGHT, S_AUDIO_STEREO,
 };
 static const char *const CHANNELS_WIRE[AOUT_CHANNELS_COUNT] = {
-	"stereo", "mono", "left", "right",
+	"stereo", "mono", "left", "right", "auto",
 };
 
 const char *aout_channels_name(aout_channels c)
 {
 	return T(c >= 0 && c < AOUT_CHANNELS_COUNT ? CHANNELS_NAME[c] : CHANNELS_NAME[0]);
+}
+
+void aout_channels_label(aout_channels chosen, aout_channels now, char *out, size_t n)
+{
+	if (chosen == AOUT_CHANNELS_AUTO)
+		snprintf(out, n, T(S_SYSMENU_AUDIO_AUTO), aout_channels_name(now));
+	else
+		snprintf(out, n, "%s", aout_channels_name(chosen));
 }
 
 const char *aout_channels_wire(aout_channels c)

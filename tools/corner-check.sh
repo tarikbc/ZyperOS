@@ -5,15 +5,16 @@
 #
 #     make check-corner
 #
-# The corner (DESIGN.md 11.12, src/main.c's draw_corner) is drawn last on the
-# shelf, on Now Playing and over a paused game, at x 1000 back to its clock,
-# on y 24 to 48. What stands near it is laid out elsewhere: the systems card
-# by the horizontal layout (src/coverflow.c), the games title by TITLE_TOP,
-# a panel by menu_draw_ex's MENU_TOP, the clock's place by draw_corner. A
-# shot checks its own frame for all of them (shot_corner_clear: the clock 16
-# from its marks, the corner off the focused card, the title's capitals and
-# a panel's top 8 under the row) and exits 3 with a "CORNER:" line when one
-# is not. So this shoots the widest corner, "00:00" in 24-hour with all three
+# The top bar (DESIGN.md 11.12, src/topbar.h) is the one header of every
+# screen that has one - the shelf, every MP4 screen, over a paused game: the
+# clock from x 64, the marks back from x 960, on y 52 to 76. What stands near
+# it is laid out elsewhere: the systems card by the horizontal layout
+# (src/coverflow.c), MP4's album title by TITLE_TOP and topbar_half, a panel
+# by menu_draw_ex's MENU_TOP. A shot checks its own frame for all of them
+# (shot_corner_clear: the clock at 64 and the marks ending at 960, the marks
+# off the focused card, the title's capitals clear of the clock and the
+# marks, a panel's top 8 under the row) and exits 3 with a "CORNER:" line
+# when one is not. So this shoots the widest corner, "00:00" in 24-hour with all three
 # marks, on the screens that come nearest: the systems row and a long title
 # sliding under it on the horizontal row, the ZyperOS menu with its first row and
 # its last selected, a Nintendo DS game's ten-row menu over a paused game both
@@ -58,7 +59,7 @@ run() {
 	ZYPEROS_FONT=res/fonts/menu.ttf "$BIN" "$@"
 }
 
-WIDEST="00:00 24h wifi=3 bt batt=100 chg"
+WIDEST="00:00 24h wifi=3 bt phones=on batt=100 chg"
 fails=0
 shot() {
 	name=$1
@@ -117,7 +118,7 @@ done
 # (STATUS_PCT_MAX) and stay clear of the card, the title and the panels. The
 # launcher says CORNER: when the text is wider than its room.
 echo "the widest Time Left clear of the card, the title and every panel, in every language"
-WIDEST_TIME="00:00 24h wifi=3 bt batt=100 chg xfer=on eta=595 icon=time"
+WIDEST_TIME="00:00 24h wifi=3 bt phones=on batt=100 chg xfer=on eta=595 icon=time"
 for lang in en zh-Hans es pt-BR fr de ja it; do
 	for screen in systems games menu-last; do
 		case $screen in
@@ -149,7 +150,7 @@ for lang in en zh-Hans es pt-BR fr de ja it; do
 	for state in "held" "full" "calc"; do
 		# shellcheck disable=SC2086
 		run --shot "$D/state-$lang-$state.png" --theme light --lang $lang \
-		    --status "00:00 24h wifi=3 bt batt=100 $state xfer=on icon=time" >"$D/one.log" 2>&1
+		    --status "00:00 24h wifi=3 bt phones=on batt=100 $state xfer=on icon=time" >"$D/one.log" 2>&1
 		st=$?
 		cat "$D/one.log" >>"$D/log"
 		if grep -q "CORNER:" "$D/one.log"; then

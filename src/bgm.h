@@ -152,6 +152,8 @@ int  bgm_gain(int volume, int fade, int fade_len);
 void bgm_apply(int16_t *pcm, int frames, int g0, int g1);
 /* Both channels mixed onto one side, the other silent */
 void bgm_one_side(int16_t *pcm, int frames, bool left);
+/* Both channels mixed onto both: mono, the average, which cannot clip */
+void bgm_mono(int16_t *pcm, int frames);
 
 /* ---- the rate ---------------------------------------------------------------------
  *
@@ -212,8 +214,9 @@ void bgm_hold(unsigned why, bool held);
 /* Where to play: an ALSA device name, NULL for nowhere (a Bluetooth headset,
  * which is one player's at a time - the rule src/uisound.c follows), and
  * which sides carry it (uisound_sides): one side alone is both channels mixed
- * onto it, for Audio Channels' mono on one side. */
-void bgm_route(const char *device, bool left, bool right);
+ * onto it, for Audio Channels' mono on one side. `mono` with both sides is
+ * the two mixed onto both: Audio Channels' mono, and Auto's on one speaker. */
+void bgm_route(const char *device, bool left, bool right, bool mono);
 
 /* The next track now: in shuffle, the next of the deck; on one track, from
  * its start. */

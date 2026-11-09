@@ -327,6 +327,19 @@ static void xfer_mark(canvas *cv, const status_marks *m, const ds_theme *th)
 	paint(cv, &dnh, ink);
 }
 
+/* Headphones in their 24: a headband over the top, a 3-unit stroke as the
+ * rune's, its ends down inside two cups 6 by 10 with the battery's tip's
+ * corners. */
+static void phones_mark(canvas *cv, const ds_theme *th)
+{
+	shape band = { .kind = SH_ARC, .a = 12, .b = 14, .c = 9, .d = 1.75f, .w = 1.5f };
+	shape left = box(1.5f, 13, 7.5f, 23, 2.5f), right = box(16.5f, 13, 22.5f, 23, 2.5f);
+
+	paint(cv, &band, th->text_soft);
+	paint(cv, &left, th->text_soft);
+	paint(cv, &right, th->text_soft);
+}
+
 /* The calculating mark, three dots in the number's place (Time Left, before
  * it has a time): each 6 across, 10.5 apart, on the row's middle, filling in
  * turn, `step` of them in **text-soft** and the rest in **track**, as the
@@ -347,8 +360,9 @@ static void calc_mark(canvas *cv, int step, const ds_theme *th)
 
 /* ---- the row ------------------------------------------------------------------- */
 
-#define W_XFER 24
-#define W_BT   16
+#define W_XFER   24
+#define W_BT     16
+#define W_PHONES 24
 #define W_WIFI 36
 #define W_BATT STATUS_BATT_W
 
@@ -364,6 +378,7 @@ int status_marks_width(const status_marks *m)
 
 	if (m->xfer) { w += W_XFER; n++; }
 	if (m->bt) { w += W_BT; n++; }
+	if (m->phones) { w += W_PHONES; n++; }
 	if (wifi_of(m) != STATUS_WIFI_NONE) { w += W_WIFI; n++; }
 	if (m->batt >= 0) { w += W_BATT; n++; }
 	if (m->batt >= 0 && m->pct_w > 0) w += m->pct_w + STATUS_PCT_GAP;
@@ -389,8 +404,8 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
 	th = &DS_THEME[theme];
 
-	/* Left to right: File Transfer, the rune, the fan, the battery, at the
-	 * row's right end */
+	/* Left to right: File Transfer, the rune, headphones, the fan, the
+	 * battery, at the row's right end */
 	if (m->xfer) {
 		cv.mw = W_XFER;
 		xfer_mark(&cv, m, th);
@@ -400,6 +415,11 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 		cv.mw = W_BT;
 		bt_mark(&cv, th);
 		cv.ox += W_BT + STATUS_GAP;
+	}
+	if (m->phones) {
+		cv.mw = W_PHONES;
+		phones_mark(&cv, th);
+		cv.ox += W_PHONES + STATUS_GAP;
 	}
 	if (wifi != STATUS_WIFI_NONE) {
 		cv.mw = W_WIFI;
@@ -416,6 +436,61 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 		batt_mark(&cv, m, th);
 	}
 
+	for (y = 0; y < h; y++)
+		for (x = 0; x < w; x++) {
+			const float *o = cv.f + ((size_t)y * w + x) * 4;
+			float k = o[3] > 0 ? 1 / o[3] : 0;
+			uint32_t r = (uint32_t)(clampf(o[0] * k, 0, 1) * 255 + 0.5f);
+			uint32_t g = (uint32_t)(clampf(o[1] * k, 0, 1) * 255 + 0.5f);
+			uint32_t b = (uint32_t)(clampf(o[2] * k, 0, 1) * 255 + 0.5f);
+			uint32_t a = (uint32_t)(clampf(o[3], 0, 1) * 255 + 0.5f);
+
+			px[(size_t)y * stride + x] = a << 24 | r << 16 | g << 8 | b;
+		}
+	free(cv.f);
+}
+
+/* ---- the song's mark ------------------------------------------------------------ */
+
+void status_note_size(float scale, int *w, int *h)
+{
+	*w = (int)ceilf((STATUS_NOTE + STATUS_PAD * 2) * scale);
+	*h = (int)ceilf((STATUS_ROW + STATUS_PAD * 2) * scale);
+}
+
+void status_note_render(uint32_t *px, int w, int h, int stride, float scale,
+                        int theme, bool paused)
+{
+	canvas cv = { NULL, w, h, scale, 0, STATUS_NOTE };
+	const ds_theme *th;
+	int x, y;
+
+	if (w <= 0 || h <= 0) return;
+	for (y = 0; y < h; y++) memset(px + (size_t)y * stride, 0, (size_t)w * sizeof *px);
+	if (!(cv.f = calloc((size_t)w * h * 4, sizeof *cv.f))) return;
+	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
+	th = &DS_THEME[theme];
+	if (paused) {
+		shape a = box(6, 3, 10.5f, 21, 1.5f), b = box(13.5f, 3, 18, 21, 1.5f);
+
+		paint(&cv, &a, th->accent_ink);
+		paint(&cv, &b, th->accent_ink);
+	} else {
+		/* Two heads low left and higher right, their stems up from their
+		 * right sides, and one beam across the tops, falling to the left */
+		shape h1 = { .kind = SH_LINES, .n = 2, .p = { 6.5f, 19.5f, 6.5f, 19.5f }, .w = 3.5f };
+		shape h2 = { .kind = SH_LINES, .n = 2, .p = { 17.5f, 17, 17.5f, 17 }, .w = 3.5f };
+		shape s1 = { .kind = SH_LINES, .n = 2, .p = { 8.75f, 19, 8.75f, 6 }, .w = 1.25f };
+		shape s2 = { .kind = SH_LINES, .n = 2, .p = { 19.75f, 16.5f, 19.75f, 3 }, .w = 1.25f };
+		shape beam = { .kind = SH_POLY, .n = 4,
+		               .p = { 7.5f, 4.5f, 21, 1, 21, 5, 7.5f, 8.5f } };
+
+		paint(&cv, &s1, th->accent_ink);
+		paint(&cv, &s2, th->accent_ink);
+		paint(&cv, &beam, th->accent_ink);
+		paint(&cv, &h1, th->accent_ink);
+		paint(&cv, &h2, th->accent_ink);
+	}
 	for (y = 0; y < h; y++)
 		for (x = 0; x < w; x++) {
 			const float *o = cv.f + ((size_t)y * w + x) * 4;

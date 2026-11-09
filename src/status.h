@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The shelf's status corner, DESIGN.md 11.12: the clock and the marks beside
- * it, top right, on the ground and in no shape. My pick in the status
+/* The status marks, DESIGN.md 11.12: the right end of the top bar
+ * (src/topbar.h), on the ground and in no shape. My pick in the status
  * lab, 2026-11-04, "the quiet corner".
  *
- * Right to left from x 1000 (the screen's edge less the inset), all on one
- * row 24 units tall from y 24: the battery, Wi-Fi, a Bluetooth headset on the
- * Brick, then the clock in **meta** **text-soft**, 16 from the first mark.
- * The marks are 12 apart and drawn here, as pixels, into one small buffer the
+ * Right to left, all on one row 24 units tall: the battery, Wi-Fi, a
+ * Bluetooth headset on the Brick, File Transfer. The top bar puts the row's
+ * right end at x 960 and its top at y 52, and the clock at its left end;
+ * STATUS_RIGHT and STATUS_TOP below are the row as this file measures it, at
+ * the screen's edge less the inset. The marks are 12 apart and drawn here, as pixels, into one small buffer the
  * launcher turns into a texture when one of them changes - the clock goes
  * past every minute, a mark at most every couple of seconds - and blits each
  * frame. The clock is text and the launcher's (ui_text_tabular).
@@ -45,7 +46,6 @@
 #define STATUS_ROW       24                  /* the row's height */
 #define STATUS_MID       (STATUS_TOP + STATUS_ROW / 2)  /* the clock's capitals */
 #define STATUS_GAP       12                  /* between two marks */
-#define STATUS_CLOCK_GAP 16                  /* the clock to the first mark */
 
 /* The buffer's margin around the marks, in units, so an edge's antialiasing
  * at the row's top or bottom is not cut off: the buffer's top left goes at
@@ -117,6 +117,11 @@ typedef struct {
 	bool xfer;
 	bool xfer_moving;
 	int  xfer_pct;
+	/* Headphones in the jack (plat_headphones_present, the codec's
+	 * SW_HEADPHONE_INSERT), mine, 2026-11-09: a headband and two cups,
+	 * 24 wide, a 3-unit stroke as the rune's, in **text-soft**, between the
+	 * rune and the fan. Where they are, Audio Channels' Auto plays stereo. */
+	bool phones;
 } status_marks;
 
 /* The battery mark's width and the space between its number and it */
@@ -129,8 +134,7 @@ typedef struct {
 #define STATUS_CALC_W   27
 
 /* The marks' width in units, gaps between them included: 0 for none, 120
- * for all three, 156 with File Transfer's 24. The clock stands
- * STATUS_CLOCK_GAP to the left of it. */
+ * for all three, 156 with File Transfer's 24, and 36 more with headphones'. */
 int status_marks_width(const status_marks *m);
 
 /* The buffer for the marks at `scale` pixels a unit, margin and all. */
@@ -141,5 +145,18 @@ void status_marks_size(const status_marks *m, float scale, int *w, int *h);
  * wants. `theme` is DS_LIGHT or DS_DARK; anything else draws DS_LIGHT. */
 void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
                          int theme, const status_marks *m);
+
+/* The song's mark, which the top bar draws before the name of the menu
+ * music or MP4's song while one plays (src/home.c's home_header): drawn as
+ * the marks are, by signed distance at `scale` pixels a unit, into px,
+ * STATUS_NOTE x STATUS_ROW units with STATUS_PAD round it, cleared first.
+ * Playing, two eighth notes on one beam: heads of radius 3.5, stems and the
+ * beam a 2.5-unit stroke as File Transfer's arrows; paused, the two bars of
+ * a pause, 4.5 wide. In **accent-ink** (DESIGN.md 11.12). Mine, 2026-11-09:
+ * the note of filled rectangles and discs it was "looks bad". */
+#define STATUS_NOTE 24
+void status_note_size(float scale, int *w, int *h);
+void status_note_render(uint32_t *px, int w, int h, int stride, float scale,
+                        int theme, bool paused);
 
 #endif

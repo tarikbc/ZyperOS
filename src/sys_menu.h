@@ -136,6 +136,10 @@ typedef enum {
  * Videos are like books there: no Album Art, and the orders their own
  * (Folder and Title).
  *
+ * All - every kind on one shelf, where Show starts since 2026-11-09 - has
+ * the videos' orders, counts All, and has Shuffle All and Album Art when the
+ * card has songs, which are the two rows' only business.
+ *
  * Lock Screen is the pocket lock, the way to find it without knowing X:
  * live while something plays, and saying so when nothing does. */
 typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
@@ -143,9 +147,11 @@ typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
 #define SM_MUSE_ROWS 7
 
 /* MP4's rows in order, for the kind its shelf shows - 0 music, 1 books,
- * 2 videos, muselib.h's ml_kind - and whether the card has more than one kind.
- * Returns how many. The build and the key handler both ask this, so the two
- * cannot disagree about what row 2 is. */
+ * 2 videos, muselib.h's ml_kind, and 3 all of them with music among them
+ * (all of them with no music has the videos' rows) - and
+ * whether the card has more than one kind. Returns how many. The build and
+ * the key handler both ask this, so the two cannot disagree about what row 2
+ * is. */
 int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out);
 
 /* 28: the ZyperOS menu reached 24 with Developer Mode, and Random Game makes
@@ -187,7 +193,7 @@ _Static_assert(MENU_MAX_ROWS >= SM_ROWS, "MENU_MAX_ROWS < SM_ROWS");
  * handler. Beside the rows rather than in them: a field on menu_row would
  * have every { label, value, live } initializer warn under -Wextra. */
 typedef struct {
-	char a[24], b[CFG_STR], c[16], d[40], e[8];
+	char a[24], b[CFG_STR], c[16], d[40], e[8], ch[40];
 	unsigned char sound[MENU_MAX_ROWS];
 } menu_bufs;
 
@@ -201,6 +207,8 @@ typedef struct {
 	bool muse;               /* or Muse's; see SM_MUSE_ROWS */
 	bool muse_books;         /* and it shows books rather than music */
 	bool muse_videos;        /* or videos */
+	bool muse_all;           /* or every kind, mixed (ML_ALL) */
+	bool muse_songs;         /* and the card has music, for All's rows */
 	bool muse_both;          /* and the card has more than one kind */
 	bool muse_playing;       /* and music is playing, so it can lock */
 
@@ -273,8 +281,11 @@ typedef struct {
 	aout_policy audio_policy;
 	aout_dest   audio_dest;
 	/* Which ears hear what, as chosen. The row names the choice, not what a
-	 * speaker makes of it: "mono left" stays mono left with the cable out. */
+	 * speaker makes of it: "mono left" stays mono left with the cable out.
+	 * Auto is a rule, as Audio Output's is, so its row names the mix it makes
+	 * now, `audio_mix`: "auto (mono)" on the Pixel 2's speaker. */
 	aout_channels audio_channels;
+	aout_channels audio_mix;
 	/* UI Sounds: the voice's name, "Wood", "Glass" or "Bubble", or "Off" -
 	 * uisound_setting_name's. NULL reads the default voice, as Appearance's
 	 * NULL reads Light. A label, for the reason appearance is one. */

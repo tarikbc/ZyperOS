@@ -4,6 +4,7 @@
 #include "theme.h"
 #include "ui.h"
 #include "texload.h"
+#include "topbar.h"
 #include <SDL_image.h>
 #include <math.h>
 #include <stdio.h>
@@ -561,23 +562,11 @@ uint32_t home_draw(home *h,SDL_Renderer *r,home_layout layout,
     return wait;
 }
 
-/* A filled disc, for the music mark's note heads. */
-static void disc(SDL_Renderer *r,float x,float y,float radius,SDL_Color c)
-{
-    SDL_Vertex v[36]; const int n=12;
-    for(int k=0;k<n;k++) {
-        float a=k*6.2831853f/n, b=(k+1)*6.2831853f/n;
-        v[k*3]=(SDL_Vertex){{x,y},c,{0,0}};
-        v[k*3+1]=(SDL_Vertex){{x+cosf(a)*radius,y+sinf(a)*radius},c,{0,0}};
-        v[k*3+2]=(SDL_Vertex){{x+cosf(b)*radius,y+sinf(b)*radius},c,{0,0}};
-    }
-    SDL_RenderGeometry(r,NULL,v,n*3,NULL,0);
-}
 void home_header(SDL_Renderer *r,const home_song *song,int status_left)
 {
     draw_state saved=save_state(r);
     SDL_SetRenderDrawBlendMode(r,SDL_BLENDMODE_BLEND);
-    /* The clock stands at the left end now (draw_corner_at), not the
+    /* The clock stands at the left end now (src/topbar.h), not the
      * wordmark; the song keeps the middle, clear of both. */
     if(song && song->active) {
         const int left=272, right=status_left-24, mark=24, gap=12;
@@ -586,16 +575,9 @@ void home_header(SDL_Renderer *r,const home_song *song,int status_left)
             int maxw=right-left-mark-gap; if(maxw>256) maxw=256;
             ui_fit_text(font,song->title,fitted,sizeof fitted,maxw);
             int width=ui_text_width(font,fitted), x=left+(right-left-width-mark-gap)/2;
-            SDL_Color c=ui_col(theme()->accent_ink,255);
-            SDL_SetRenderDrawColor(r,c.r,c.g,c.b,c.a);
-            if(song->paused) {
-                SDL_Rect bars[]={{x,52,6,24},{x+13,52,6,24}};
-                SDL_RenderFillRects(r,bars,2);
-            } else {
-                SDL_Rect stems[]={{x+8,52,4,20},{x+8,52,16,4},{x+20,52,4,16}};
-                SDL_RenderFillRects(r,stems,3);
-                disc(r,x+5,72,6,c); disc(r,x+17,68,6,c);
-            }
+            /* The song's mark, drawn as the bar's other marks are (two
+             * eighth notes, or a pause's bars): src/status.h */
+            topbar_song_mark(r,x,theme_index(),song->paused);
             ui_text(r,font,fitted,x+mark+gap,ui_cap_y(font,64),-1,UI_TEXT_SOFT);
         }
     }

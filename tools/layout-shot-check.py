@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get('LAYOUT_SHOTS_OUT', ROOT / 'build-native/layout-shots'))
 BIN = ROOT / 'build-native/zyperos'
 STATUS = '10:08 24h wifi=3 bt batt=82'
-LONG = '10:08 24h wifi=3 bt batt=100 chg xfer=on eta=595 icon=time'
+LONG = '10:08 24h wifi=3 bt phones=on batt=100 chg xfer=on eta=595 icon=time'
 GAME = 'Chrono Trigger (USA).sfc'
 GBA = 'Metroid Fusion (USA).gba'
 UNDER = (40, 612, 780, 650)   # ink of cap 628

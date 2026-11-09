@@ -234,9 +234,9 @@ int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out)
 	out[n++] = SMM_COUNT;
 	if (both) out[n++] = SMM_SHOW;
 	out[n++] = SMM_SORT;
-	if (kind == 0) out[n++] = SMM_SHUFFLE;
+	if (kind == 0 || kind == 3) out[n++] = SMM_SHUFFLE;
 	out[n++] = SMM_LOCK;
-	if (kind == 0 && !no_wifi) out[n++] = SMM_ART;
+	if ((kind == 0 || kind == 3) && !no_wifi) out[n++] = SMM_ART;
 	out[n++] = SMM_RESCAN;
 	return n;
 }
@@ -299,7 +299,8 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		}
 		if (u->muse) {
 			sm_muse_row ids[SM_MUSE_ROWS];
-			int k, n = sys_menu_muse_rows(u->muse_books ? 1 : u->muse_videos ? 2 : 0,
+			int k, n = sys_menu_muse_rows(u->muse_books ? 1 : u->muse_videos ? 2
+			                              : u->muse_all ? (u->muse_songs ? 3 : 2) : 0,
 			                              u->muse_both, u->no_wifi, ids);
 
 			for (k = 0; k < n; k++) b->sound[k] = smm_sound(ids[k]);
@@ -308,18 +309,20 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 				case SMM_COUNT:
 					out[k] = (menu_row){ u->muse_books ? T(S_SYSMENU_MUSE_BOOKS)
 					                     : u->muse_videos ? T(S_SYSMENU_MUSE_VIDEOS)
+					                     : u->muse_all ? T(S_SYSMENU_MUSE_TOTAL)
 					                     : T(S_SYSMENU_MUSE_ALBUMS),
 					                     b->a, false };
 					break;
 				case SMM_SHOW:
 					out[k] = (menu_row){ T(S_SYSMENU_MUSE_SHOW), u->muse_books ? T(S_SYSMENU_MUSE_AUDIOBOOKS)
 					                     : u->muse_videos ? T(S_SYSMENU_MUSE_VIDEOS)
+					                     : u->muse_all ? T(S_SYSMENU_MUSE_ALL)
 					                     : T(S_SYSMENU_MUSE_MUSIC), true };
 					break;
 				case SMM_SORT:
 					out[k] = (menu_row){ T(S_SYSMENU_SORT_BY), u->sort ? u->sort
 					                     : u->muse_books ? T(S_SYSMENU_MUSE_AUTHOR)
-					                     : u->muse_videos ? T(S_SYSMENU_MUSE_FOLDER)
+					                     : u->muse_videos || u->muse_all ? T(S_SYSMENU_MUSE_FOLDER)
 					                     : T(S_SYSMENU_MUSE_ARTIST), true };
 					break;
 				case SMM_SHUFFLE:
@@ -414,11 +417,12 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	else
 		snprintf(b->d, sizeof b->d, "%s", aout_dest_label(u->audio_dest));
 	full[PM_AUDIO]        = (menu_row){ T(S_SYSMENU_AUDIO_OUTPUT), b->d, true };
-	/* Stereo, mono, or mono on one side, for a player who hears with one ear.
-	 * On every device and with every output: the speaker makes plain mono of
-	 * a side (src/audioout.h), and the row still says what was chosen. */
-	full[PM_CHANNELS]     = (menu_row){ T(S_SYSMENU_AUDIO_CHANNELS),
-	                                   aout_channels_name(u->audio_channels), true };
+	/* Stereo, mono, or mono on one side, for a player who hears with one ear,
+	 * or Auto, mono on a handheld's one speaker. On every device and with
+	 * every output: the speaker makes plain mono of a side (src/audioout.h),
+	 * and the row still says what was chosen - and, on Auto, what it makes. */
+	aout_channels_label(u->audio_channels, u->audio_mix, b->ch, sizeof b->ch);
+	full[PM_CHANNELS]     = (menu_row){ T(S_SYSMENU_AUDIO_CHANNELS), b->ch, true };
 	/* The launcher's own sounds: which of the three voices, or Off. Live on
 	 * every device and with every output; on a Bluetooth headset the sounds
 	 * are not played at all (src/uisound.h), and the row still says which

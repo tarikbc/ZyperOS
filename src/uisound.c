@@ -68,7 +68,8 @@ const char *uisound_device(const aout_state *s)
 
 void uisound_sides(aout_channels chosen, aout_dest d, bool *left, bool *right)
 {
-	aout_channels c = aout_channels_for(chosen, d);
+	/* Stereo and mono are both sides alike, so a speaker's count is no matter */
+	aout_channels c = aout_channels_for(chosen, d, false);
 
 	*left  = c != AOUT_MONO_RIGHT;
 	*right = c != AOUT_MONO_LEFT;

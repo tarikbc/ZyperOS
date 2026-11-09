@@ -1072,6 +1072,8 @@ void plat_brightness_set(int level)
  * Bluetooth. */
 bool plat_has_wifi(void)      { return true; }
 bool plat_has_bluetooth(void) { return true; }
+/* Two speakers, a few centimeters apart: Auto keeps them stereo */
+bool plat_speaker_mono(void) { return false; }
 
 /* F1 and F2, the front function keys. */
 bool plat_brightness_on_volume(void) { return false; }

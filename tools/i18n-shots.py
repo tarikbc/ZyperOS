@@ -96,8 +96,10 @@ class Strings:
         return "/".join(found[:3]) if found else "(not a string)"
 
 
-# The strings that are drawn as a part of another's text, in a heading
-COMPOSED = ("controls.page.",)
+# The strings that are drawn as a part of another's text: a page's name in a
+# heading, and a mix's in Audio Channels' "auto (mono)" or a place's in Audio
+# Output's "auto (speaker)"
+COMPOSED = ("controls.page.", "audio.")
 
 STRINGS = {}
 
@@ -202,6 +204,12 @@ EXTRA = {
     "keyboard": ("demo", "PS1", ["--keyboard"]),
     "video-controls": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "controls"]),
     "video-full": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "full"]),
+    # MP4's lock screen, its panel with the bar a hold fills: over music, and
+    # over a video, where the panel is the same and the picture is under it
+    # MP4's menu on its shelf, which shows All (albums and videos mixed)
+    "mp4-menu": ("media", "MUSE", ["--screen", "games", "--menu"]),
+    "mp4-locked": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--locked"]),
+    "mp4-locked-video": ("demo", "MUSE", ["--nowplaying", "0", "0", "83", "--video", "controls", "--locked"]),
     "tour-lang": ("demo", "PS1", ["--tour", "lang", "3500"]),
     "tour-lang-ja": ("demo", "PS1", ["--tour", "lang", "3000", "--tour-pick", "6"]),
     "tour-welcome": ("demo", "PS1", ["--tour", "welcome", "3000"]),
@@ -369,8 +377,9 @@ def run_language(code, shots, binary, keep):
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
-                 "portdocs": Path(tmp) / "portdocs"}
+                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
+        R.media_card(cards["media"])
         R.ports_card(cards["ports"])
         R.portdocs_card(cards["portdocs"])
         R.demo_card(cards["all"], None, {"artwork": {}})

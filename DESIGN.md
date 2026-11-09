@@ -1069,11 +1069,24 @@ where a ZyperOS wordmark was until I asked for the time there instead
 (2026-11-05). The home and games pages carry no wordmark.
 
 The status row is 24 units high, centered on y64, and right-aligned to x960.
-Battery, Wi-Fi and a connected Bluetooth headset retain the marks below. Over
-a paused game and in Now Playing, which have no header, the clock stays
-beside the marks, 16 to their left, in **meta** **text-soft**. A background track
+Battery, Wi-Fi, a connected Bluetooth headset and headphones in the jack
+retain the marks below. It
+is one component in one layout, the top bar (src/topbar.c), and the same
+header, clock at the left and marks at the right, is on every screen over a
+paused game (PR #40) and every MP4 screen (2026-11-09): its shelf, an album's
+tracks, Now Playing, a video with its controls and the lock screen over them,
+each in its own theme. The second layout, the clock beside the marks at the
+right, which Now Playing, a video's controls and MP4's shelf drew, is gone. MP4's shelf puts its album's title in the
+row between the clock and the marks, 24 clear of each, sliding when it is
+longer, and a video with its controls puts its title there in **action**
+**text**, centered. A background track
 occupies only the space between the logo and the measured status corner. Its
-music mark uses **accent-ink**; paused playback uses pause bars. The track uses
+music mark, two eighth notes on one beam (heads of radius 3.5, stems and
+beam 2.5-unit strokes) in a 24-unit cell, uses **accent-ink**; paused
+playback uses a pause's two bars, 4.5 wide. Both are drawn as the status
+marks are, by signed distance (src/status.c), at the row's height and in
+each theme (2026-11-09: the note of rectangles and discs before it "looks
+bad"). The track uses
 **chrome**, **text-soft**, with a trailing ellipsis when necessary. It never
 scrolls over the clock or changes the status marks' positions. No track means
 no music mark or empty capsule. Cached player state drives updates, not an
@@ -1099,6 +1112,10 @@ it has priority for direct volume or brightness feedback.
   3 units out of it. Off, or no radio (a Pixel 2 with no adapter): no mark.
 - **Bluetooth**, 16 wide: the rune, a 3-unit stroke in **text-soft**, on the
   Brick while a headset is connected.
+- **Headphones**, 24 wide, between the rune and the fan, while a cable is in
+  the jack (the codec's SW_HEADPHONE_INSERT): a headband of radius 9, a
+  3-unit stroke as the rune's, its ends inside two cups 6 by 10, in
+  **text-soft** (2026-11-09). Audio Channels' Auto plays stereo there.
 - **File Transfer**, 24 wide, left of the others while it runs behind the
   shelf (11.23): an arrow up and one down, 2.5-unit strokes, in **text-dim**
   with nothing moving and **text-soft** while files move; then a 2-unit ring
@@ -1161,12 +1178,10 @@ Status marks are cached in a small texture when their values change; the
 clock requests a frame at the next minute. Cable changes use the shared
 200 ms charger cache while capacity remains on a five-second interval.
 
-The whole corner stands in the same place on Now Playing and on every screen
-over a paused game - its menu, the save slots, the achievements (
-2026-11-04), where the dot was: on Now Playing in the theme, over a paused
-game in Salt & Pepper, as scrim.game is dark in both, and there with the
-clock in **text**, since a white frame under the scrim leaves **text-soft**
-at 4.4:1.
+The whole header stands in the same place on every MP4 screen and on every
+screen over a paused game - its menu, the save slots, the achievements (
+2026-11-04), where the dot was: on MP4's screens in the theme, over a paused
+game in Salt & Pepper, as scrim.game is dark in both.
 
 MENU > Clock, under Date & Time: **12-hour** (the default) or **24-hour**, for
 the corner and for Date & Time's own row and Hour.
@@ -1211,32 +1226,43 @@ its card, its Controls page, the tutorial and every line that names it. Code,
 settings keys (`muse.*`, `book.*`), the daemon and its socket keep the name
 Muse, so a card's saved places and modes still read.
 
-- **Shelf.** One card, three kinds: MENU > Show steps Music, Audiobooks and
-  Videos, only the kinds the card has. A film straight in `Videos/` is a
+- **Shelf.** One card, three kinds: MENU > Show steps All, Music,
+  Audiobooks and Videos, only the kinds the card has, and is there with two
+  or more. All, where it starts (2026-11-09, "Tudo"), is every album, book and
+  video on one shelf, mixed: by Folder, the folders' names (a loose film's
+  own), or by Title; its count row is Total. A film straight in `Videos/` is a
   card of its own and A plays it; a folder of videos lists its files like an
   album. A video's cover is a picture beside it with its name, else one of its
   own frames (src/muse/cover.c). On videos, Sort By is Folder or Title and
-  there is no Album Art; Shuffle All is on music only.
+  there is no Album Art; Shuffle All and Album Art are on music, and on All
+  when the card has songs.
 - **Video.** On Now Playing, in one of two views, Y between them, kept:
   **full screen** - the picture as large as it fits on **ink**, the controls
   (title, the bar, the key legend) on **surface** at 92% over its foot,
   in over **quick** after any press and out over **fade-out** after
   **hold-controls**, and up for as long as it is paused; it opens in this
   one - and **with
-  controls** - the picture in a 16:9 frame 896 wide on **ground**, the title
-  above it, the status corner, and the bar and legend below, always there.
+  controls** - the picture in a 16:9 frame 896 wide on **ground**, the
+  header above it with the title in its row, and the bar and legend below,
+  always there.
   The picture is drawn under the screen at the panel's own resolution
   (plat_video_under), so nothing scales it twice. A video keeps its place
   as a book does, per file; none is kept in its first or last minute.
-- **Lock screen.** X on any MP4 screen while something plays, or MENU > Lock
-  Screen. Every button is blocked, POWER too, but the volume keys;
-  **SELECT** and **START** held together for **hold-unlock** unlock. The
-  lock screen - Now Playing under the menu scrim, and a panel 720 wide: the
-  padlock in **accent-ink**, "Locked" in **title**, "Hold (SELECT) + (START)
-  to unlock" in **meta** **text-dim** with the glyphs of 11.9, and the bar
-  that fills while the pair is held - shows for **hold-lock-lit** as it
-  locks and then only while the pair is held. Dark until unlocked: no other
-  press lights it, and music turns the backlight off. The volume keys step
+- **Lock screen.** X on any MP4 screen while something plays, **SELECT** and
+  **START** pressed together there (2026-11-09: one gesture locks and
+  unlocks), or MENU > Lock Screen. SELECT alone still closes MP4, as it is
+  let go rather than pressed, since it may be the first of the pair. Every
+  button is blocked, POWER too, but the volume keys; **SELECT** and **START**
+  held together for **hold-unlock** unlock. The lock screen - Now Playing
+  under the menu scrim, and a panel 720 wide, wider only for a line no break
+  fits: the padlock in **accent-ink**, "Locked" in **title**, "Hold (SELECT)
+  + (START) to unlock" in **meta** **text-dim** with the glyphs of 11.9, on
+  one line where it fits the panel less 48 each side and else on two, broken
+  where they come out most even ("Segure (SELECT) + (START)" over "para
+  desbloquear"), and the bar that fills while the pair is held - shows for
+  **hold-lock-lit** as it locks, again for as long at every press of a
+  blocked button (2026-11-09), and while the pair is held. Music turns the
+  backlight off between. The volume keys step
   the volume and show the bar of 11.6 as anywhere; with music they light the
   lock screen with the bar over it for the bar's life (**hold-bar** after
   the last press, then **fade-out**), a key held keeping it lit, and then it

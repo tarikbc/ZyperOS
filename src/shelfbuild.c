@@ -584,9 +584,17 @@ static void build_muse_shelf(app *a)
 	{
 		char show[16];
 
-		db_get_str(db_dev(), "muse.show", show, sizeof show, "music");
+		/* All is where the shelf starts since 2026-11-09. A handheld from
+		 * before kept "music" or "videos" - often not chosen at all but
+		 * left by the shelf following what played - so it starts on All
+		 * once, and a kind chosen after that is kept. */
+		if (!db_has(db_dev(), "muse.show_all_once")) {
+			db_set_str(db_dev(), "muse.show", "all");
+			db_set_str(db_dev(), "muse.show_all_once", "1");
+		}
+		db_get_str(db_dev(), "muse.show", show, sizeof show, "all");
 		g_muse_kind = !strcmp(show, "books") ? ML_BOOKS : !strcmp(show, "videos") ? ML_VIDEOS
-		            : ML_MUSIC;
+		            : !strcmp(show, "music") ? ML_MUSIC : ML_ALL;
 	}
 	if (a->sys.count >= CFG_MAX_SYSTEMS) return;
 	i = a->sys.count;

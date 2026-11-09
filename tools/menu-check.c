@@ -280,7 +280,7 @@ static void channels_row(void)
 	menu_row rows[MENU_MAX_ROWS];
 	const char *heading;
 	static const char *const want[AOUT_CHANNELS_COUNT] = {
-		"stereo", "mono", "mono left", "mono right",
+		"stereo", "mono", "mono left", "mono right", "auto (stereo)",
 	};
 	int c;
 
@@ -292,6 +292,12 @@ static void channels_row(void)
 		sys_menu_build(&u, rows, &b, &heading);
 		ck(!strcmp(val(&rows[PM_CHANNELS]), want[c]), "each choice names itself");
 	}
+	/* Auto is a rule, so it says what it makes: mono on the Pixel 2's one
+	 * speaker, as Audio Output's Auto says where the sound went */
+	u.audio_channels = AOUT_CHANNELS_AUTO;
+	u.audio_mix = AOUT_MONO;
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[PM_CHANNELS]), "auto (mono)"), "Auto names the mix it makes");
 }
 
 /* The row has to say a PLACE. "Auto" alone makes the player guess which of
@@ -857,10 +863,31 @@ static void system_menu(void)
 			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
 			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0,
 			   "no Album Art and no Shuffle All on videos");
+		/* All, where Show starts: the count is the Total, the orders the
+		 * videos', and Shuffle All and Album Art when there are songs */
 		m.muse_videos = false;
+		m.muse_all = true;
+		m.muse_songs = true;
+		m.game_count = 7;
+		mn = sys_menu_build(&m, mrows, &mb, &mhead);
+		ck(mn == SM_MUSE_ROWS && !strcmp(mrows[0].label, "Total") &&
+		   !strcmp(val(&mrows[0]), "7") && !strcmp(val(&mrows[1]), "All") &&
+		   !strcmp(val(&mrows[2]), "Folder") && !strcmp(mrows[3].label, "Shuffle All") &&
+		   !strcmp(mrows[5].label, "Album Art"),
+		   "on All: the Total, Show All, by folder, Shuffle All and Album Art");
+		m.muse_songs = false;
+		mn = sys_menu_build(&m, mrows, &mb, &mhead);
+		for (k = 0; k < mn; k++)
+			ck(strcmp(lbl(&mrows[k]), "Album Art") != 0 &&
+			   strcmp(lbl(&mrows[k]), "Shuffle All") != 0,
+			   "All with no songs: no Album Art and no Shuffle All");
+		m.muse_all = false;
 		m.muse_books = true;
 		{
 			sm_muse_row ids[SM_MUSE_ROWS];
+
+			ck(sys_menu_muse_rows(3, true, false, ids) == SM_MUSE_ROWS && ids[3] == SMM_SHUFFLE,
+			   "All with songs has every row");
 
 			ck(sys_menu_muse_rows(true, false, false, ids) == 4 && ids[1] == SMM_SORT &&
 			   ids[2] == SMM_LOCK,

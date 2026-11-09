@@ -1155,6 +1155,8 @@ void plat_brightness_set(int level)
  * as menus are built, and one access() is all it costs. No Bluetooth. */
 bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0; }
 bool plat_has_bluetooth(void) { return false; }
+/* One speaker: Audio Channels' Auto plays it mono (src/audioout.h) */
+bool plat_speaker_mono(void) { return true; }
 
 /* FUNCTION with volume up or down (key_event). */
 bool plat_brightness_on_volume(void) { return true; }
