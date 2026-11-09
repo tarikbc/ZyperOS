@@ -179,6 +179,7 @@ something once broke in a way nothing noticed:
 | `check-importers` | the computer-side importers (--meta, --titles) on a scratch card: a title written over a game's details keeps them (builds the host launcher) |
 | `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores (skips without SDL2) |
 | `check-simulator` | the simulator's Swift tests: its VNC client, the px2sim link, the state lines and the control socket's commands (skips without Swift) |
+| `check-px2sim` | px2sim's choice of the keyboard it takes in the QEMU image: QEMU's virtio or USB one, never a uinput one such as gptokeyb's Fake Keyboard (host compiler, no VM) |
 | `check-sidelights` | what the launcher tells the side lights' gauge: the lines as plastron's gauge reads them, the FIFO writer that never waits and never dies of SIGPIPE, and when a File Transfer batch is over |
 | `check-building-doc` | this table has a row for every check in the Makefile's CHECKS, and none for a check that is gone |
 | `check-blog` | zyperos.com's blog, built as Cloudflare Pages builds the site (mk/blog.py): title and description lengths, structured data, every link and picture reaching a file (or a path in `_redirects`, such as `/tip`), every post in the sitemap and llms.txt, and the landing page's colors |
