@@ -983,6 +983,15 @@ void plat_backlight(bool on)
 	ioctl(disp_fd, on ? DISP_LCD_BACKLIGHT_ENABLE : DISP_LCD_BACKLIGHT_DISABLE, a);
 }
 
+void plat_backlight_dim(bool dim)
+{
+	unsigned long a[4] = { 0, 0, 0, 0 };
+
+	if (disp_fd < 0 || cur_bright < 0) return;
+	a[1] = bright_ladder[dim ? 0 : cur_bright];
+	ioctl(disp_fd, DISP_LCD_SET_BRIGHTNESS, a);
+}
+
 #else   /* not __linux__ */
 
 /* The host build exists to look at the shelf while changing how it looks
@@ -1014,6 +1023,7 @@ bool plat_usb_link(int op) { (void)op; return true; }
 static void jack_forget(void) { }
 static void mute_forget(void) { }
 void plat_backlight(bool on) { (void)on; }
+void plat_backlight_dim(bool dim) { (void)dim; }
 
 /* No settings database on the host, so the config defaults are all there is.
  * Taken anyway rather than ignored: a shelf rendered by --shot should show the

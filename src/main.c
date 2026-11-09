@@ -15463,6 +15463,7 @@ static void muse_locked(app *a)
 		 * the lock does not stand in its way. The light first, so the
 		 * power-off animation is seen. */
 		if (idle_due(a)) {
+			plat_backlight_dim(false);
 			plat_backlight(true);
 			muse_power(a);
 			break;
@@ -15518,13 +15519,16 @@ static void muse_locked(app *a)
 			drawn_k = (int)(mp4lock_progress(&l) * 100);
 			drawn_sec = (int)mn->at;
 			/* The light after the frame, so it comes on to the lock screen
-			 * rather than to whatever the panel held last. */
-			if (dark) { plat_backlight(true); dark = false; }
+			 * rather than to whatever the panel held last; and at the lowest
+			 * rung, since a press in a pocket or in the dark is what wakes
+			 * it (2026-11-09). Unlocking puts the level back. */
+			if (dark) { plat_backlight_dim(true); plat_backlight(true); dark = false; }
 		}
 		panel_was = panel;
 		SDL_Delay(video || awake ? 8 : 30);
 	}
 	musec_video_show(false);
+	plat_backlight_dim(false);
 	plat_backlight(true);
 	fprintf(stderr, "mp4: unlocked\n");
 	plat_input_flush();

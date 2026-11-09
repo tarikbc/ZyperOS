@@ -48,6 +48,7 @@
  */
 #define _GNU_SOURCE   /* accept4 */
 #include <errno.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <linux/uinput.h>
@@ -67,6 +68,8 @@
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
+
+#include "kbdsel.h"
 
 #define SOCKET   "/run/px2sim.sock"
 #define PARAMS   "/sys/module/px2sim_hw/parameters/"
@@ -359,23 +362,29 @@ static void make_volume(void)
 /* ---- the keyboard ------------------------------------------------------- */
 
 /* A keyboard: one with letters, which none of the four has, that QEMU
- * gives the machine (virtio, BUS_VIRTUAL). Not a keyboard a program makes
- * with uinput: PortMaster's gptokeyb makes one for every port, the pad's
- * presses as keys, and taken here they went to the buttons and never to the
- * port (found 2026-11-08: no port in the VM answered a key). */
+ * gives the machine (on the virtio or the USB bus; see kbdsel.h). Not a
+ * keyboard a program makes with uinput: PortMaster's gptokeyb makes one for
+ * every port, the pad's presses as keys, and taken here they went to the
+ * buttons and never to the port, and its Enter was START again (a loop,
+ * found 2026-11-08: no port in the VM answered a key). A uinput device is
+ * told by its place in sysfs, which it can't choose, not by its name, bus or
+ * ids, which it can. Run again for every /dev/input change, so a keyboard
+ * plugged in later (QEMU's device_add) is taken too. */
 static void take(const char *path)
 {
 	unsigned long keys[KEY_MAX / (8 * sizeof(long)) + 1];
-	struct input_id id;
+	char link[64], real[PATH_MAX];
 	int fd, i, slot = -1;
 
 	for (i = 0; i < MAX_KBD; i++)
 		if (kbd[i] < 0) { slot = i; break; }
-	if (slot < 0 || (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) return;
+	if (slot < 0) return;
+	snprintf(link, sizeof link, "/sys/class/input/%s", strrchr(path, '/') + 1);
+	if (!realpath(link, real)) return;
+	if ((fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) return;
 	memset(keys, 0, sizeof keys);
-	if (ioctl(fd, EVIOCGID, &id) < 0 || id.bustype != BUS_VIRTUAL ||
-	    ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys) < 0 ||
-	    !((keys[KEY_A / (8 * sizeof(long))] >> (KEY_A % (8 * sizeof(long)))) & 1) ||
+	if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys) < 0 ||
+	    !kbdsel_is_qemu_keyboard(real, (keys[KEY_A / (8 * sizeof(long))] >> (KEY_A % (8 * sizeof(long)))) & 1) ||
 	    ioctl(fd, EVIOCGRAB, 1) < 0) {
 		close(fd);
 		return;

@@ -12,7 +12,7 @@
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-captive check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
-        check-tour-previews tour-previews check-prep check-diatom check-simulator check-building-doc check-blog \
+        check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
 
 all: check
@@ -37,7 +37,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-captive check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-layout-shots check-artbadge check-artbadge-shots checkmark \
-         check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog \
+         check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
 
 # All of them at once, as many at a time as there are cores (CHECK_JOBS=1 for
@@ -92,6 +92,14 @@ check-simulator:
 	else \
 		echo "check-simulator: skipped, no Swift"; \
 	fi
+
+# px2sim's choice of the keyboard it takes (plastron/.../px2sim/src/kbdsel.h):
+# QEMU's, never a program's uinput one (gptokeyb's Fake Keyboard). Host
+# compiler only, no VM.
+check-px2sim:
+	@mkdir -p build-native && cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror \
+		-o build-native/kbdsel-check plastron/buildroot/package/px2sim/tests/kbdsel-check.c && \
+		build-native/kbdsel-check
 
 # One version number: plastron reads it from here for the card and the About
 # page (its package/zyperos/zyperos.mk), and ZyperOS Installer has it too.
