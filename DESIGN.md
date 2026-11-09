@@ -1881,7 +1881,9 @@ and nothing else. Which page of how many is at the heading's right, "1 / 3"
   Dreamcast's L1/R1 are its triggers. No row for a button that does nothing
   there; an FDS game adds L1/R1, the disk's side and eject.
 - **What a system adds**, a page of its own: the Nintendo 64's C buttons
-  (SELECT held with X, A, B, Y) with "MENU > Pak: Rumble Pak" under them,
+  (SELECT held with X, A, B, Y), and its own D-pad (SELECT, then the d-pad:
+  the d-pad alone is its stick), the same on both its cores, with
+  "MENU > Pak: Rumble Pak" under them,
   which Pak the controller holds and where it is chosen (the in-game menu's
   Pak row, per game); the DS's two screens (L2 the other screen, R2 the
   stylus, then the d-pad moves it and A touches).

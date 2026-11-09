@@ -151,8 +151,10 @@ check("and MENU+R1 stepped no speed", len(speeds) == 5, speeds)
 # SELECT then X: the core reads R2 and X from X's first frame, C up, and
 # never R2 before it (SELECT waits). R2 alone: nothing. X alone: X.
 N64_SCRIPT = ";".join(["60:select", "64:select+x", "70:select", "72:",
-                       "100:r2", "106:", "130:x", "134:"])
+                       "100:r2", "106:", "130:x", "134:",
+                       "150:a", "154:", "170:select", "172:select+a", "178:select", "180:"])
 X = 1 << 9
+RB, RY = 1 << 0, 1 << 1
 SOCK2, LOG2 = f"{TMP}/n64.sock", f"{TMP}/n64.log"
 p = subprocess.Popen([BIN, "--socket", SOCK2, "--save", TMP, "--system", TMP],
                      env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
@@ -167,8 +169,8 @@ s.connect(SOCK2)
 s.settimeout(0.05)
 buf, got = b"", []
 pump(0.3)
-s.sendall(f"RUN\tcore={STUB}\nSETMAP\tmap=select:r2,r2:none\n".encode())
-pump_until(LOG2, 160)
+s.sendall(f"RUN\tcore={STUB}\nSETMAP\tmap=select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y\n".encode())
+pump_until(LOG2, 200)
 s.sendall(b"STOP\n")
 pump(1.0)
 s.sendall(b"QUIT\n")
@@ -183,9 +185,18 @@ check("N64: SELECT then X is R2 and X from X's first frame, C up",
       bool(first_group) and all(frames[i] & R2 for i in first_group) and
       r2_on and r2_on[0] == first_group[0], (first_group[:3], r2_on[:3]))
 check("N64: R2 only while SELECT is the game's, never for the R2 key",
-      bool(r2_on) and r2_on[-1] < first_group[-1] + 8, r2_on)
+      bool(r2_on) and max(i for i in r2_on if i < 145) < first_group[-1] + 8, r2_on)
 check("N64: X alone is X, no C button", any(not frames[i] & R2 for i in x_on[len(first_group):]) and
       len(x_on) > len(first_group), x_on)
+# The A cap: alone, the RetroPad's B (the N64's A), never its A; under SELECT,
+# the RetroPad's A with R2 (C right), never its B
+a_alone = [i for i in range(145, 160) if i < len(frames) and frames[i] & RB]
+check("N64: the A cap alone is the N64's A (the RetroPad's B)",
+      bool(a_alone) and not any(frames[i] & A for i in range(145, 160) if i < len(frames)), a_alone)
+c_right = [i for i in range(168, 182) if i < len(frames) and frames[i] & A]
+check("N64: SELECT+A is C right (the RetroPad's A under R2), not the N64's A",
+      bool(c_right) and all(frames[i] & R2 for i in c_right) and
+      not any(frames[i] & RB for i in range(168, 182) if i < len(frames)), c_right)
 
 if fails:
     print(f"FAIL: {len(fails)} hotkey check(s)")

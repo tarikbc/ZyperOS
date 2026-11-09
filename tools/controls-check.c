@@ -501,12 +501,14 @@ static void in_a_game(void)
 			{ "NES",  "", "fds", "L1/R1", "Disk side/Eject disk" },
 			/* SELECT held makes the face buttons the C buttons, as map|N64
 			 * puts the core's R2 on it */
-			{ "N64",  "select:r2,r2:none", "z64", "SELECT+X", "C up" },
-			{ "N64",  "select:r2,r2:none", "z64", "SELECT+Y", "C left" },
-			{ "N64",  "select:r2,r2:none", "z64", "L2", "Z" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "SELECT+X", "C up" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "SELECT+Y", "C left" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "L2", "Z" },
+			/* each cap the N64 button it names (map|N64's a:b,b:y) */
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "A/B", "A/B" },
 			/* Under the C buttons, which Pak is in and where it is chosen:
 			 * the Rumble Pak until a game takes the Controller Pak */
-			{ "N64",  "select:r2,r2:none", "z64", "(note)", "MENU > Pak: Rumble Pak" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "(note)", "MENU > Pak: Rumble Pak" },
 			/* Every button the PICO-8 reads: its arrows, O and X, its
 			 * pause menu */
 			{ "PICO8", "", "p8", "D-pad", "Arrows" },

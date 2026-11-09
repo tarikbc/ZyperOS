@@ -22,7 +22,7 @@ mkdir -p "$D/root/mk/patches" "$D/vendor/cores" || exit 1
 # patch can be changed without touching the repository's
 cp mk/core-stamp.sh "$D/root/mk/" || exit 1
 cp mk/patches/*.patch "$D/root/mk/patches/" || exit 1
-for b in build-dsperate.sh build-fake08.sh build-flycast2021.sh build-freej2me.sh; do
+for b in build-dsperate.sh build-fake08.sh build-flycast2021.sh build-freej2me.sh build-mupen64plus-next.sh build-parallel-n64.sh; do
 	cp "mk/$b" "$D/root/mk/" || exit 1
 done
 S="sh $D/root/mk/core-stamp.sh"

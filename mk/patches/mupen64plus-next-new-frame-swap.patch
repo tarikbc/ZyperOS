@@ -1,0 +1,79 @@
+mupen64plus_next (libretro/mupen64plus-libretro-nx f275caf, ROCKNIX's
+mupen64plus-nx-lr pin): GLideN64 here swaps at every vertical interrupt,
+the mode hard-coded in Config_mupenplus.cpp, so a 30 fps game hands the
+frontend each picture twice, 60 frames a second. On the GKD Pixel 2 each
+one costs a GPU frame and a wait for the panel's vertical blank, and Super
+Mario 64 ran at 56 to 63% of its speed.
+
+A fourth swap mode, bsOnNewFrame, the default: a frame only when there is a
+new picture - the VI origin changed, the CPU wrote the frame buffer, or the
+buffer on screen was drawn into since it was last shown (a game that draws
+into the buffer it shows still gets its frames). On a repeated VI the core
+calls no video refresh, which Diatom takes as the same frame.
+GLideN64.custom.ini's per-game modes are read after it and still win.
+
+--- a/GLideN64/src/Config.h
++++ b/GLideN64/src/Config.h
+@@ -114,7 +114,11 @@
+ 	enum BufferSwapMode {
+ 		bsOnVerticalInterrupt = 0,
+ 		bsOnVIOriginChange,
+-		bsOnColorImageChange
++		bsOnColorImageChange,
++		/* ZyperOS: on a new picture - the VI origin changed, the CPU wrote
++		 * the frame buffer, or the buffer on screen was drawn into since it
++		 * was last shown. A repeated VI hands the frontend no frame. */
++		bsOnNewFrame
+ 	};
+ 
+ 	enum CopyDepthMode {
+@@ -132,7 +136,7 @@
+ 	struct {
+ 		u32 enable;
+ 		u32 aspect; // 0: stretch ; 1: 4/3 ; 2: 16/9; 3: adjust
+-		u32 bufferSwapMode; // 0: on VI update call; 1: on VI origin change; 2: on main frame buffer update
++		u32 bufferSwapMode; // 0: on VI update call; 1: on VI origin change; 2: on main frame buffer update; 3: on a new picture (ZyperOS)
+ 		u32 nativeResFactor;
+ 		u32 N64DepthCompare;
+ 		u32 forceDepthBufferClear;
+--- a/GLideN64/src/VI.cpp
++++ b/GLideN64/src/VI.cpp
+@@ -295,6 +295,12 @@
+ 			break;
+ 		case Config::bsOnColorImageChange:
+ 			bNeedSwap = bCFB ? true : (gDP.colorImage.changed != 0);
++			break;
++		case Config::bsOnNewFrame:
++			/* A game that draws into the buffer it shows (single
++			 * buffered) still swaps: that buffer is marked changed */
++			bNeedSwap = bCFB || *REG.VI_ORIGIN != VI.lastOrigin ||
++			            (pBuffer != nullptr && pBuffer->m_changed);
+ 			break;
+ 		}
+ 
+@@ -335,6 +341,10 @@
+ 		case Config::bsOnColorImageChange:
+ 			bNeedRender = (gDP.changed & CHANGED_COLORBUFFER) != 0;
+ 			break;
++		case Config::bsOnNewFrame:
++			bNeedRender = *REG.VI_ORIGIN != VI.lastOrigin ||
++			              (gDP.changed & CHANGED_COLORBUFFER) != 0;
++			break;
+ 		}
+ 		if (bNeedRender)
+ 			frameBufferList().renderBuffer();
+--- a/custom/GLideN64/mupenplus/Config_mupenplus.cpp
++++ b/custom/GLideN64/mupenplus/Config_mupenplus.cpp
+@@ -171,7 +171,11 @@
+ 	config.frameBufferEmulation.copyFromRDRAM = EnableCopyColorFromRDRAM;
+ 
+ 	// TODO: Make this a Core options or maybe only default to bsOnVerticalInterrupt on Android with Thr Renderer
+-	config.frameBufferEmulation.bufferSwapMode = Config::bsOnVerticalInterrupt;
++	// ZyperOS: a frame to the frontend only when there is a new picture. At
++	// every VI a 30 fps game handed over each picture twice, and on the GKD
++	// Pixel 2 the second one cost as much as the first. GLideN64.custom.ini
++	// still sets its own mode for the games that need one (it is read after).
++	config.frameBufferEmulation.bufferSwapMode = Config::bsOnNewFrame;
+ 
+ #ifdef HAVE_OPENGLES2
+ 	config.generalEmulation.enableFragmentDepthWrite = 0;

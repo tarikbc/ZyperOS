@@ -97,6 +97,7 @@
 #include "portinfo.h"
 #include "dsv.h"
 #include "dslang.h"
+#include "corestate.h"
 #include "dsresume.h"
 #include "ui.h"
 #include "wifi_menu.h"
@@ -467,6 +468,22 @@ static bool ds_resume_fresh(const system_cfg *s, const char *romfile, const char
 	return true;
 }
 
+/* A game's resume, by the core that left it (src/corestate.h): true when its
+ * auto state `st` was written by another core of the shelf than the one the
+ * game starts on now, so it starts fresh instead of having Diatom refuse the
+ * state without a word. The N64's: a game left on Mupen64Plus-Next, before
+ * ParallelN64 was the default, or on whichever the Core row chose then. */
+static bool core_resume_fresh(const system_cfg *s, const char *romfile, const char *st)
+{
+	char who[96];
+
+	if (cfg_core_count(s) < 2 || !cst_writer(st, who, sizeof who)) return false;
+	if (!cst_other_core(who, s->core, s->cores)) return false;
+	fprintf(stderr, "corestate: %s: its auto state was left by %s, the game runs on %s now: "
+	        "starting it fresh\n", romfile, who, s->core);
+	return true;
+}
+
 /* As the game ends: when its auto state was written in this run (it is not
  * the file `before` saw), the language it was written in goes beside it. The
  * state's own time and size, not the way the game ended: Diatom writes it at
@@ -579,36 +596,39 @@ static struct {
  * nowhere else. Chosen per game in the in-game menu's Pak row, since it is
  * the game that needs one or the other, and kept in the library's database
  * as pak.<TAG>.<file>, beside the system's core options; a game never chosen
- * for has the system's (coreopt.N64.mupen64plus-pak1). Mupen64Plus-Next
- * reads its option again whenever one changes and swaps the pak in the
- * controller there and then, so the row works while the game runs, and the
- * Controller Pak's contents live in the game's own save RAM, its .srm,
- * whichever is in. */
+ * for has the system's (coreopt.N64.parallel-n64-pak1, or
+ * coreopt.N64.mupen64plus-pak1 on the shelf's other core). Both cores read
+ * their option again whenever one changes and swap the pak in the controller
+ * there and then, so the row works while the game runs, and the Controller
+ * Pak's contents live in the game's own save RAM, its .srm, whichever is in.
+ * The choice is the game's, not the core's: it holds on either. */
 static bool pak_system(const system_cfg *s)
 {
-	return s && !strcmp(s->core, "mupen64plus_next");
+	return s && gm_pak_option(s->core) != NULL;
 }
 
-/* The system's own: its core option, or the Rumble Pak */
-static const char *pak_default(const char *tag)
+/* The system's own: its core's option, or the Rumble Pak */
+static const char *pak_default(const system_cfg *s)
 {
-	int i, n = plat_coreopt_count(tag);
+	const char *opt = gm_pak_option(s->core);
+	size_t len = opt ? strlen(opt) : 0;
+	int i, n = plat_coreopt_count(s->tag);
 
-	for (i = 0; i < n; i++) {
-		const char *kv = plat_coreopt(tag, i);
+	for (i = 0; opt && i < n; i++) {
+		const char *kv = plat_coreopt(s->tag, i);
 
-		if (!strncmp(kv, GM_PAK_OPTION "=", sizeof GM_PAK_OPTION))
-			return gm_pak_value(kv + sizeof GM_PAK_OPTION);
+		if (!strncmp(kv, opt, len) && kv[len] == '=')
+			return gm_pak_value(kv + len + 1);
 	}
 	return gm_pak_value(NULL);
 }
 
-static const char *pak_get(const char *tag, const char *file)
+static const char *pak_get(const system_cfg *s, const char *file)
 {
 	char key[CFG_STR + LIB_PATH + 8], v[16];
 
-	gm_pak_key(tag, file, key, sizeof key);
-	return db_get_str(db_lib(), key, v, sizeof v, NULL) ? gm_pak_value(v) : pak_default(tag);
+	gm_pak_key(s->tag, file, key, sizeof key);
+	return db_get_str(db_lib(), key, v, sizeof v, NULL) ? gm_pak_value(v) : pak_default(s);
 }
 
 static void pak_put(const char *tag, const char *file, const char *value)
@@ -13999,9 +14019,9 @@ static void gm_gather(app *a, gm_ui *out)
 		                                      a->view[a->sys_cursor].cursor)];
 
 		u.quick = ctl_has_states(q->tag) ? quick_slot_get(q->tag) : 0;
-		/* An N64 game's Pak, on Mupen64Plus-Next */
+		/* An N64 game's Pak, on either N64 core */
 		if (pak_system(q) && a->view[a->sys_cursor].list.count > 0)
-			u.pak = gm_pak_name(pak_get(q->tag, a->view[a->sys_cursor].list
+			u.pak = gm_pak_name(pak_get(q, a->view[a->sys_cursor].list
 			                                     .items[a->view[a->sys_cursor].cursor].file));
 	}
 	if (u.screens) {
@@ -16489,7 +16509,7 @@ static ctl_game game_controls_of(app *a)
 	               NULL, NULL };
 
 	/* What the N64's C buttons page says is in the controller */
-	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s->tag, file));
+	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s, file));
 	/* A port's pages are what its own files say (src/portdoc.h), read for
 	 * the script on the cursor as port_menu_main reads them over it: for a
 	 * --gamecontrols shot, as a port never runs under this menu */
@@ -16804,10 +16824,11 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 
 		if (sv->list.count > 0) {
 			const char *file = sv->list.items[sv->cursor].file;
-			const char *to = gm_pak_other(pak_get(q->tag, file));
+			const char *to = gm_pak_other(pak_get(q, file));
 
 			pak_put(q->tag, file, to);
-			plat_resident_line("SETOPT\tkey=%s\tvalue=%s", GM_PAK_OPTION, to);
+			if (gm_pak_option(q->core))
+				plat_resident_line("SETOPT\tkey=%s\tvalue=%s", gm_pak_option(q->core), to);
 		}
 		return MENU_STAY;
 	}
@@ -17422,6 +17443,8 @@ static void launch(app *a)
 	 * run in, whether it starts fresh, and its auto state as it was */
 	char ds_lang[16] = "";
 	bool ds_fresh = false, ds_had = false;
+	/* And by the core that left it (core_resume_fresh) */
+	bool core_fresh = false;
 	struct stat ds_before;
 	unsigned waited;
 	int n = 0;
@@ -17466,7 +17489,7 @@ static void launch(app *a)
 		plat_resident_map(s->map);
 		/* And an N64 game's Pak, its own over the system's; none else */
 		if (pak_system(s))
-			plat_resident_opt(GM_PAK_OPTION, pak_get(s->tag, romfile));
+			plat_resident_opt(gm_pak_option(s->core), pak_get(s, romfile));
 		else
 			plat_resident_opt(NULL, NULL);
 	}
@@ -17506,6 +17529,8 @@ static void launch(app *a)
 	/* Not a resume a DS game would come back from in another language than
 	 * the one Game Language says now (src/dsresume.h) */
 	ds_fresh = ds_resume_fresh(s, romfile, st, ds_lang, sizeof ds_lang);
+	/* Nor one the shelf's other core left (src/corestate.h) */
+	core_fresh = !ds_fresh && core_resume_fresh(s, romfile, st);
 	ds_had = ds_lang[0] && stat(st, &ds_before) == 0;
 	quick_bind(a, o, &v->list.items[v->cursor]);
 	/* The scratch, not the Auto card - see pause_preview_path. The card is
@@ -17577,14 +17602,16 @@ static void launch(app *a)
 	nq_clear(&g_nq);
 	/* Said as the game starts, ahead of anything else: why it is not where
 	 * it was left */
-	if (ds_fresh) {
+	if (ds_fresh || core_fresh) {
 		nq_item it;
 
 		memset(&it, 0, sizeof it);
 		it.kind = NQ_ALERT;
 		it.ms = 4000;
-		snprintf(it.head, sizeof it.head, "%s", T(S_POPUP_DSLANG_HEAD));
-		snprintf(it.body, sizeof it.body, "%s", T(S_POPUP_DSLANG_BODY));
+		snprintf(it.head, sizeof it.head, "%s",
+		         ds_fresh ? T(S_POPUP_DSLANG_HEAD) : T(S_POPUP_CORESTATE_HEAD));
+		snprintf(it.body, sizeof it.body, "%s",
+		         ds_fresh ? T(S_POPUP_DSLANG_BODY) : T(S_POPUP_CORESTATE_BODY));
 		nq_push(&g_nq, &it);
 	}
 	if (active[0] || (chv_count() > 0 && !first_play)) {
@@ -17638,7 +17665,7 @@ static void launch(app *a)
 		 * the in-game menu, which is drawn HERE now, over the frame the
 		 * emulator hands us on the way into its pause. */
 		aout_before_launch();
-		if (plat_resident_send(s->tag, core, rom, ds_fresh || g_ctl_fresh ? "" : st, st, pv,
+		if (plat_resident_send(s->tag, core, rom, ds_fresh || core_fresh || g_ctl_fresh ? "" : st, st, pv,
 		                       console, active[0] ? active : NULL)) {
 			int r;
 
@@ -17838,7 +17865,7 @@ static void launch(app *a)
 			argv[n++] = (char *)aout_channels_wire(
 				aout_channels_for(g_channels, aout_dest_of(&cs, "")));
 		}
-		if (!ds_fresh && !g_ctl_fresh) {
+		if (!ds_fresh && !core_fresh && !g_ctl_fresh) {
 			argv[n++] = (char *)"--load-state";  argv[n++] = st;
 		}
 		argv[n++] = (char *)"--state-on-exit";   argv[n++] = st;
@@ -18227,7 +18254,7 @@ static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
-/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|speed N:
+/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|dslang|corestate|speed N:
  * the pop-up of the SELECT hotkeys, as on_quick and on_speed put it over a
  * game (notice_render, no badge, no Zyper); N is the step for speed, in
  * halves (3 is 1.5x) */
@@ -19246,6 +19273,11 @@ static void shot_compose(app *a)
 			/* A DS game started fresh in a new Game Language (ds_resume_fresh) */
 			shot_notice_head = T(S_POPUP_DSLANG_HEAD);
 			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_DSLANG_BODY));
+		} else if (!strcmp(shot_popup, "corestate")) {
+			/* A game started fresh, its resume left by the other core
+			 * (core_resume_fresh) */
+			shot_notice_head = T(S_POPUP_CORESTATE_HEAD);
+			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_CORESTATE_BODY));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
 			snprintf(pbody, sizeof pbody,

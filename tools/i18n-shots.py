@@ -264,8 +264,10 @@ EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
 # whose core keeps no states, and the speed at a half step and a whole one;
-# and the one over a DS game started fresh in a new Game Language
-for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang"):
+# and the ones over a game started fresh: a DS game in a new Game Language,
+# and a game whose resume the shelf's other core left
+for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
+              "corestate"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
