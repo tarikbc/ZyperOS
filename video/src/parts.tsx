@@ -1,7 +1,7 @@
 import React from "react";
 import { continueRender, delayRender, Img, OffthreadVideo, Sequence, spring, staticFile } from "remotion";
 import { ease, mix, mixColor } from "./anim";
-import { Clip, FPS, Pose, Punch } from "./timeline";
+import { BEAT, Clip, FPS, Pose, Punch } from "./timeline";
 
 export type DeviceInfo = { image: string; width: number; height: number; screen: { x: number; y: number; w: number; h: number } };
 export type Take = { fps: number; ms: number; presses?: [number, string, number][] };
@@ -57,7 +57,7 @@ export const mixCam = (a: Cam, b: Cam, t: number): Cam => ({ k: mix(a.k, b.k, t)
 export const punchAt = (frame: number, start: number, end: number, punches: Punch[] | undefined) => {
   let z = 1, px = 0.5, py = 0.5;
   for (const p of punches ?? []) {
-    const a = pop(frame, start + p.at * 15, 120, 18) * (1 - ease(frame, end - 10, end));
+    const a = pop(frame, start + p.at * BEAT, 120, 18) * (1 - ease(frame, end - 10, end));
     z = mix(z, p.zoom, a);
     px = mix(px, p.x, a);
     py = mix(py, p.y, a);
@@ -81,7 +81,7 @@ export const Screen: React.FC<{ clips: Clip[]; d: DeviceInfo; zoom?: { z: number
             {c.kind === "image" ? (
               <Img src={staticFile(c.src)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", imageRendering: "pixelated" }} />
             ) : (
-              <OffthreadVideo muted src={staticFile(`footage/${c.take}.mp4`)} playbackRate={c.rate}
+              <OffthreadVideo muted src={staticFile(c.kind === "take" ? `footage/${c.take}.mp4` : c.src)} playbackRate={c.rate}
                 startFrom={Math.round((c.fromMs / 1000) * FPS)}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
             )}

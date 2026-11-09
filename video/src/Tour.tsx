@@ -1,9 +1,11 @@
 import React from "react";
 import { AbsoluteFill, Audio, Easing, Img, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { ease } from "./anim";
-import { BEAT, CLIPS, MUSIC_START_S, FPS, sceneAt, SCENES, STARTS, TOTAL } from "./timeline";
+import { BEAT, CLIPS, MUSIC_START_S, FPS, sceneAt, sceneEnd, SCENES, STARTS, TOTAL } from "./timeline";
+import { MUSIC } from "./music";
 import { Cam, Device, DeviceInfo, FONT, Footage, Label, Laptop, LIGHT, DARK, mixCam, Phone, pop, poseOf, punchAt, Screen, Tile } from "./parts";
 import { SOUND_CUES } from "./sounds";
+import { Power, Race } from "./beats";
 
 export type TourProps = { footage: Footage; device: DeviceInfo };
 
@@ -15,7 +17,7 @@ const camera = (frame: number, d: DeviceInfo): Cam => {
   const i = sceneAt(frame);
   const sc = SCENES[i];
   const start = STARTS[i];
-  const end = start + sc.beats * BEAT;
+  const end = sceneEnd(i);
   const target = poseOf(sc.pose === "duo" ? "away" : sc.pose, d);
   let cam: Cam;
   if (sc.enter === "whip") {
@@ -41,7 +43,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
   const i = sceneAt(frame);
   const sc = SCENES[i];
   const start = STARTS[i];
-  const end = start + sc.beats * BEAT;
+  const end = sceneEnd(i);
   const cam = camera(frame, device);
   const zoom = punchAt(frame, start, end, sc.punch);
   const labelAt = start + (sc.labelAt ?? 0) * BEAT;
@@ -101,7 +103,12 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
         {sc.label && sc.pose === "main" && (
           <Label frame={frame} at={labelAt} end={end} text={sc.label} sub={sc.sub} dark={0} x={1320} y={540} width={540} size={72} />
         )}
-        {sc.label && sc.pose === "split" && (
+        {sc.id === "boot" && <Race frame={frame} start={start} end={end} />}
+        {sc.id === "power" && <Power frame={frame} start={start} end={end} presses={[0.8, 2.8]} backAt={4.8} />}
+        {sc.label && sc.pose === "split" && sc.id === "boot" && (
+          <Label frame={frame} at={labelAt} end={end} text={sc.label} sub={sc.sub} dark={0} x={960} y={60} width={900} size={70} anchor="top" />
+        )}
+        {sc.label && sc.pose === "split" && sc.id !== "boot" && (
           <Label frame={frame} at={labelAt} end={end} text={sc.label} sub={sc.sub} dark={0}
             x={sc.browser?.laptop ? 900 : 900} y={sc.browser?.laptop ? 40 : 300} width={sc.browser?.laptop ? 1000 : 320} size={62} anchor="top" />
         )}
@@ -115,7 +122,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
         {sc.id === "end" && <EndCard frame={frame} start={start} />}
       </AbsoluteFill>
 
-      <Audio src={staticFile("audio/music.mp3")} startFrom={Math.round(MUSIC_START_S * FPS)}
+      <Audio src={staticFile(`music/${MUSIC.file}`)} startFrom={Math.round(MUSIC_START_S * FPS)}
         volume={(f) => interpolate(f, [0, TOTAL - 45, TOTAL - 2], [0.9, 0.9, 0], { extrapolateRight: "clamp" })} />
       {SOUND_CUES(footage).map((c, n) => (
         <Sequence key={n} from={c.frame} durationInFrames={12} layout="none">
@@ -139,7 +146,7 @@ export const EndCard: React.FC<{ frame: number; start: number; still?: boolean }
       </div>
       <div style={{ ...rise(8), fontSize: 64, fontWeight: 600, color: LIGHT.ink, marginTop: 22, letterSpacing: -1 }}>zyperos.com</div>
       <div style={{ ...rise(14), fontSize: 19, lineHeight: 1.5, color: LIGHT.dim, marginTop: 44 }}>
-        Music: The Arplands by LordZintick (CC0), from ZyperOS's menu music.<br />
+        Music: {MUSIC.title} by {MUSIC.artist} ({MUSIC.license}), from ZyperOS's menu music.<br />
         Games and box art shown belong to their owners.
       </div>
     </div>

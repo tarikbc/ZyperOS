@@ -1,25 +1,30 @@
 /**
  * The tour's one source of timing, in frames at 30 fps.
  *
- * Music: "The Arplands" by LordZintick (CC0), one of ZyperOS's own menu music
- * tracks (res/bgm), 120 BPM, so a beat is exactly 15 frames. The tour starts it
- * at 16.273 s, the beat its drums come in on, so frame 0 is a downbeat with the
- * whole band playing. Every scene starts on a beat and lasts whole beats.
+ * Music: src/music.ts, one of ZyperOS's own menu music tracks, started on a
+ * downbeat of its full band. A scene's `beats` are beats at 120 BPM, its pace;
+ * at the track's own tempo it lasts the nearest whole number of its beats, so
+ * every scene starts on a beat whatever the track.
  *
  * A scene is a short beat of one feature: what the screen plays (takes of
  * video/footage/takes.py, cut and sped up), where the device is (a pose, and a
  * punch-in on the part that matters), how it arrives (a whip or a spring), and a
  * label of a few words, the site's own.
  */
+import { MUSIC } from "./music";
+
 export const FPS = 30;
-export const BPM = 120;
-export const BEAT = 15;
-export const MUSIC_START_S = 16.273;
+export const BPM = MUSIC.bpm;
+/** A beat in frames: 15 at 120 BPM, a fraction at most tempos */
+export const BEAT = (60 * FPS) / BPM;
+export const MUSIC_START_S = MUSIC.startS;
 
 /** A piece of a take, from one ms to another, at `rate` times its speed (to: "fill" runs to the scene's end) */
 export type Step =
   | { take: string; from: number; to?: number | "fill"; rate?: number }
-  | { image: string; beats?: number };
+  | { image: string; beats?: number; ms?: number }
+  | { video: string; from: number; to: number }
+  | { gap: number };
 
 /** Where the device is. "main": its screen large on the left; "split": smaller,
  * room for a computer and a phone; "hero": whole, for the start and the end;
@@ -48,14 +53,26 @@ export type Scene = {
 export const SCENES: Scene[] = [
   { id: "open", beats: 10, pose: "main", enter: "whip", screen: [{ take: "fast-shelf", from: 3400, to: "fill", rate: 1.2 }],
     label: "Your whole retro library.", sub: "Fast, light firmware for the GKD Pixel 2", labelAt: 1 },
+  // ZyperOS on in about 2 s against stock firmware's 30 to 40 (Tarik's own timing)
+  { id: "boot", beats: 10, pose: "split", enter: "whip",
+    screen: [{ gap: 300 }, { video: "boot/zyperos-fly.mp4", from: 0, to: 2000 }, { take: "home", from: 150, to: "fill" }],
+    label: "On in 2 seconds", sub: "Stock firmware: 30 to 40" },
   { id: "home", beats: 8, pose: "main", screen: [{ take: "home", from: 2100, to: "fill", rate: 1.28 }],
     label: "Every system in pixel art" },
   { id: "art", beats: 8, pose: "main", screen: [{ take: "n64", from: 0, to: 1000 }, { take: "scraper", from: 0, to: "fill", rate: 1.6 }],
     label: "Box art it finds itself", sub: "libretro, ScreenScraper, SteamGridDB" },
+  // Rest on a game: the bar fills, and the cover turns into its video snap
+  { id: "snap", beats: 8, pose: "main", screen: [{ take: "snap", from: 0, to: "fill" }],
+    label: "Video snaps", sub: "Rest on a game, and its cover turns into the game", punch: [{ at: 0, x: 0.5, y: 0.42, zoom: 1.45 }] },
   { id: "search", beats: 10, pose: "main", screen: [{ take: "search", from: 3200, to: 6400, rate: 1.6 }, { take: "search", from: 9100, to: "fill", rate: 1.6 }],
     label: "Search any game", sub: "A few letters, every system" },
   { id: "launch", beats: 4, pose: "main", enter: "cut", screen: [{ image: "img/sonic2.png" }],
     label: "Starts the moment you press A" },
+  // POWER in a game, the power-off, dark; POWER, and the same frame 2 s later
+  { id: "power", beats: 12, pose: "main",
+    screen: [{ image: "img/sonic2.png", ms: 800 }, { take: "poweroff", from: 0, to: 1400 }, { gap: 900 },
+             { video: "boot/zyperos-fly.mp4", from: 0, to: 1700 }, { image: "img/sonic2.png" }],
+    label: "Turn it off.", sub: "Back in the game in 2 seconds." },
   { id: "quicksave", beats: 5, pose: "main", screen: [{ take: "quicksave", from: 0, to: "fill" }],
     label: "Quick save, quick load", sub: "SELECT + R1, SELECT + L1", punch: [{ at: 0, x: 0.5, y: 0.86, zoom: 1.9 }] },
   { id: "controls", beats: 8, pose: "main", screen: [{ take: "ingame", from: 0, to: 2000, rate: 1.6 }, { take: "controls-ps1", from: 0, to: "fill", rate: 0.75 }],
@@ -93,32 +110,47 @@ export const SCENES: Scene[] = [
   { id: "end", beats: 6, pose: "hero", screen: [{ take: "fast-shelf", from: 3600, to: "fill", rate: 1 }] },
 ];
 
-/** Scene starts, in frames */
-export const STARTS: number[] = SCENES.reduce<number[]>((acc, s, i) => [...acc, i ? acc[i - 1] + SCENES[i - 1].beats * BEAT : 0], []);
-export const TOTAL = STARTS[STARTS.length - 1] + SCENES[SCENES.length - 1].beats * BEAT;
+/** A scene's length in the track's own beats */
+export const beatsOf = (sc: Scene) => Math.max(1, Math.round((sc.beats * 0.5 * BPM) / 60));
+const CUM = SCENES.reduce<number[]>((acc, sc) => [...acc, acc[acc.length - 1] + beatsOf(sc)], [0]);
+/** Scene starts, in frames, each on a beat */
+export const STARTS: number[] = CUM.slice(0, -1).map((b) => Math.round(b * BEAT));
+export const TOTAL = Math.round(CUM[CUM.length - 1] * BEAT);
+export const sceneEnd = (i: number) => (i + 1 < STARTS.length ? STARTS[i + 1] : TOTAL);
 
 export type Clip =
   | { kind: "take"; take: string; at: number; len: number; fromMs: number; rate: number; scene: string }
+  | { kind: "video"; src: string; at: number; len: number; fromMs: number; rate: number; scene: string }
   | { kind: "image"; src: string; at: number; len: number; scene: string };
 
 /** The scenes' steps laid end to end: a clip each, the last one running to its scene's end */
 export const CLIPS: Clip[] = SCENES.flatMap((sc, i) => {
   const start = STARTS[i];
-  const end = start + sc.beats * BEAT;
+  const end = sceneEnd(i);
   let at = start;
-  return sc.screen.map((st, k): Clip => {
+  return sc.screen.flatMap((st, k): Clip[] => {
     const last = k === sc.screen.length - 1;
+    if ("gap" in st) {
+      at += Math.round((st.gap / 1000) * FPS);
+      return [];
+    }
+    if ("video" in st) {
+      const len = last ? end - at : Math.round(((st.to - st.from) / 1000) * FPS);
+      const c: Clip = { kind: "video", src: st.video, at, len, fromMs: st.from, rate: 1, scene: sc.id };
+      at += len;
+      return [c];
+    }
     if ("image" in st) {
-      const len = last ? end - at : (st.beats ?? 1) * BEAT;
+      const len = last ? end - at : st.ms !== undefined ? Math.round((st.ms / 1000) * FPS) : Math.round((st.beats ?? 1) * BEAT);
       const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
       at += len;
-      return c;
+      return [c];
     }
     const rate = st.rate ?? 1;
     const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
     const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
     at += len;
-    return c;
+    return [c];
   });
 });
 

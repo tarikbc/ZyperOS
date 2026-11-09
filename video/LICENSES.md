@@ -6,13 +6,29 @@ the ones those files carry there.
 
 ## Music
 
-| File | Title | Artist | Source | License |
-|---|---|---|---|---|
-| `public/audio/music.mp3` | The Arplands (120 BPM, 2:24) | LordZintick | `res/bgm/The Arplands.mp3`, one of ZyperOS's own menu music tracks; its page is listed in `res/bgm/tracks.json` | CC0 1.0 (`res/bgm/LICENSE-CC0-1.0.txt`) |
+The tour plays one of ZyperOS's own menu music tracks, `res/bgm/*.mp3`, all of
+them CC0 1.0 (`res/bgm/LICENSE-CC0-1.0.txt`; each one's author and page are in
+`res/bgm/tracks.json`). `scripts/prepare-assets.sh` copies them to
+`public/music/`, and `src/music.ts` picks one: its file, title, artist, tempo
+and the downbeat the tour starts on. The end card credits the track named
+there: "Music: <title> by <artist> (CC0), from ZyperOS's menu music."
 
-The tour plays it from 16.273 s, the downbeat its drums come in on, so frame 0
-has the whole band (`MUSIC_START_S` in `src/timeline.ts`), and fades it over the
-last 1.5 s. It is the track the handheld plays in the video's own footage.
+The tracks, measured with librosa (the tempo from a line through every beat;
+the full band's first downbeat is approximate until a track is picked and its
+start is checked by ear and on the beat grid):
+
+| Track | Artist | BPM | Beat grid from | Full band from | Length |
+|---|---|---|---|---|---|
+| Apple Cider | Zane Little Music | 100.0 | 0.034 s | ~18.6 s | 197 s |
+| Bossa Nova | Joth | 129.0 | 0.278 s | the start | 60 s |
+| Hush Hamlet | Zane Little Music | 75.0 | 0.041 s | ~19.2 s | 134 s |
+| Ice Cave | TAD | 120.0 | 0.045 s | ~1.0 s | 292 s |
+| Leap | nene | 156.7 | 0.302 s | ~0.6 s | 160 s |
+| Napping on a Cloud | congusbongus | 162.0 | 0.212 s | ~23.2 s | 248 s |
+| Scheatt | Spring Spring | 170.0 | 0.035 s | ~11.3 s | 282 s |
+| Starfall Island | John Oestmann | 99.4 | 0.084 s | ~12.8 s | 139 s |
+| The Arplands | LordZintick | 120.0 | 0.273 s | 16.273 s (its drums) | 144 s |
+| Truth | HydroGene | 156.0 | 0.031 s | the start | 111 s |
 
 ## Sound effects
 

@@ -20,10 +20,12 @@ if (!frames.length) {
   // The scene starts, from the beats of the timeline's SCENES, in order
   const src = readFileSync(path.join(root, "src/timeline.ts"), "utf8");
   const table = src.slice(src.indexOf("export const SCENES"), src.indexOf("/** Scene starts"));
-  const beats = [...table.matchAll(/beats: (\d+)/g)].map((m) => Number(m[1]));
+  const bpm = Number(readFileSync(path.join(root, "src/music.ts"), "utf8").match(/bpm: ([\d.]+)/)[1]);
+  const beat = 1800 / bpm;
+  const beats = [...table.matchAll(/beats: (\d+)/g)].map((m) => Math.max(1, Math.round((Number(m[1]) * 0.5 * bpm) / 60)));
   let at = 0;
   for (const b of beats) {
-    const len = b * 15;
+    const len = Math.round(b * beat);
     frames.push(at + Math.min(12, len - 1), at + Math.round(len * 0.6));
     at += len;
   }

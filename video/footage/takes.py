@@ -70,9 +70,9 @@ def live(name, last, steps, tail=900, settings=None, start=LEAD, gap=420):
     TAKES[name] = dict(kind='live', last=last, settings=settings or {}, script=script, end=t + tail)
 
 
-def shots(name, segments, card='demo'):
+def shots(name, segments, card='demo', env=None):
     """segments: (last, args, hold ms) a still, or (last, args with {t}, [ms, ...]) a motion"""
-    TAKES[name] = dict(kind='shots', card=card, segments=segments)
+    TAKES[name] = dict(kind='shots', card=card, segments=segments, env=env or {})
 
 
 def motion(t0, t1):
@@ -188,6 +188,16 @@ shots('n64', [(('N64', 'Super Mario 64 (USA).z64'), ['--screen', 'games'], 1500)
 shots('home-light', [(PS1, ['--home', 'spotlight', '--phase', '3200'], 100)])
 shots('home-dark', [(PS1, ['--home', 'spotlight', '--phase', '3200', '--theme', 'dark'], 100)])
 shots('shelf-dark', [(PS1, ['--screen', 'games', '--theme', 'dark'], 100)])
+# v3: the power-off animation, and a video snap: the bar under the resting
+# cover fills (DESIGN.md 11.19), then the cover turns into the snap. The host
+# has no Muse to decode it, so rec/snapsub.c gives --snap's turn a frame of
+# Spyro's snap (its libretro screenshot) in place of the test picture.
+shots('poweroff', [(PS1, ['--screen', 'games', '--poweroff', '--shot-at', '{t}'], motion(0, 1600))])
+SPYRO = ('PS1', 'Spyro the Dragon (USA).chd')
+shots('snap', [(SPYRO, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
+               (SPYRO, ['--screen', 'games', '--snap', '{t}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
+               (SPYRO, ['--screen', 'games', '--snap', '1'], 2700)],
+      card='snaps', env={'SNAP_I420': '{work}/spyro.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')})
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
 
@@ -228,6 +238,7 @@ def run_shots(name, spec, cards):
     frames.mkdir(parents=True)
     listing, total, n = [], 0, 0
     env = cardlib.env_for(card)
+    env.update({k: v.replace('{work}', str(WORK)) for k, v in spec['env'].items()})
     for last, args, when in spec['segments']:
         write_last(card, *last)
         times = when if isinstance(when, list) else [None]
@@ -262,10 +273,11 @@ def run_shots(name, spec, cards):
 
 
 def build_rec():
-    src = REC.parent / 'rec.c'
-    if not REC.is_file() or REC.stat().st_mtime < src.stat().st_mtime:
-        flags = subprocess.check_output(['pkg-config', '--cflags', '--libs', 'sdl2'], text=True).split()
-        subprocess.run(['cc', '-dynamiclib', '-O2', '-Wall', '-Wextra', '-o', str(REC), str(src), *flags], check=True)
+    flags = subprocess.check_output(['pkg-config', '--cflags', '--libs', 'sdl2'], text=True).split()
+    for name in ('rec', 'snapsub'):
+        src, lib = REC.parent / f'{name}.c', REC.parent / f'{name}.dylib'
+        if not lib.is_file() or lib.stat().st_mtime < src.stat().st_mtime:
+            subprocess.run(['cc', '-dynamiclib', '-O2', '-Wall', '-Wextra', '-o', str(lib), str(src), *flags], check=True)
 
 
 def main():
@@ -280,6 +292,15 @@ def main():
         sys.exit(f'no take called {", ".join(unknown)}; there are {", ".join(TAKES)}')
     cards = {'demo': cardlib.build(WORK / 'card')}
     cardlib.device_settings(cards['demo'], BINARY, **{'tour.done': 1, 'clock': '24h'})
+    # The demonstration card with Spyro's snap in its .media, for the play
+    # mark and the bar, and that snap as the picture snapsub.dylib gives
+    cards['snaps'] = cardlib.build(WORK / 'card-snaps')
+    cardlib.device_settings(cards['snaps'], BINARY, **{'tour.done': 1, 'clock': '24h'})
+    spyro = cardlib.ART_CACHE / 'Sony_-_PlayStation'
+    shutil.copyfile(spyro / 'Videos/Spyro the Dragon (USA).mp4',
+                    cards['snaps'] / 'Roms/PlayStation/.media/Spyro the Dragon (USA).mp4')
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(spyro / 'Named_Snaps/Spyro the Dragon (USA).png'),
+                    '-vf', 'scale=320:240', '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'spyro.yuv')], check=True)
     cards['portdocs'] = WORK / 'card-portdocs'
     cards['empty'] = WORK / 'card-empty'
     for extra, make in (('portdocs', cardlib.rs.portdocs_card), ('empty', cardlib.rs.card_dirs)):
