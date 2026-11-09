@@ -124,7 +124,7 @@ static void age(const char *rel, long ago)
 /* Every folder the walk reads, an hour old: the cache's racy rule lists a
  * folder again while its time is within seconds of its listing */
 static const char *const DIRS[] = {
-	"", "Roms", "Roms/Game Boy", "Roms/Game Boy/.media", "Roms/Game Boy/.cheevos",
+	"", "Roms", "Roms/Game Boy", "Roms/Game Boy/.media", "Roms/Game Boy/.media/.before", "Roms/Game Boy/.cheevos",
 	"Roms/PlayStation", "Saves", ".userdata", ".userdata/shared", ".userdata/shared/.zyperos",
 	".userdata/shared/.zyperos/Game Boy", "Music", "Music/Artist", "Music/Artist/Album",
 	"Videos", "Audiobooks", "Audiobooks/Book", "Bios", "ZyperOS", "Emulators",
@@ -148,6 +148,9 @@ static void card(void)
 	put("Roms/Game Boy/.media/Tetris.mp4", 300000);
 	put("Roms/Game Boy/.media/Old Game.png", 52000);
 	put("Roms/Game Boy/.media/Old Game.mp4", 260000);
+	/* the covers Cover and Video put aside: one a game's, one a gone game's */
+	put("Roms/Game Boy/.media/.before/Tetris.png", 41000);
+	put("Roms/Game Boy/.media/.before/Old Game.png", 37000);
 	put("Roms/Game Boy/.media/._Tetris.png", 4096);          /* a Mac's twin: no cover */
 	put("Roms/Game Boy/.cheevos/Tetris.set", 9000);
 	put_text("Roms/PlayStation/Game.cue",
@@ -259,7 +262,8 @@ static void numbers(const char *when)
 	 * its covers and snaps apart, its states */
 	CHECK_EQ(gb->games, on("Roms/Game Boy/Tetris.gb") + on("Roms/Game Boy/.cheevos/Tetris.set"));
 	CHECK_EQ(gb->covers, on("Roms/Game Boy/.media/Tetris.png") + on("Roms/Game Boy/.media/Old Game.png") +
-	                     on("Roms/Game Boy/.media/._Tetris.png"));
+	                     on("Roms/Game Boy/.media/._Tetris.png") + on("Roms/Game Boy/.media/.before/Tetris.png") +
+	                     on("Roms/Game Boy/.media/.before/Old Game.png"));
 	CHECK_EQ(gb->snaps, on("Roms/Game Boy/.media/Tetris.mp4") + on("Roms/Game Boy/.media/Old Game.mp4"));
 	CHECK_EQ(gb->states, on(".userdata/shared/.zyperos/Game Boy/Tetris.gb.1.state") +
 	                     on(".userdata/shared/.zyperos/Game Boy/Tetris.gb.1.bmp") +
@@ -290,7 +294,9 @@ static void numbers(const char *when)
 	CHECK_EQ(t.saves, on("Saves/Tetris.srm"));
 	CHECK_EQ(t.states, on(".userdata/shared/.zyperos/Game Boy/Tetris.gb.1.state") +
 	                   on(".userdata/shared/.zyperos/Game Boy/Tetris.gb.1.bmp"));
-	CHECK_EQ(t.art, on("Roms/Game Boy/.media/Tetris.png") + on("Roms/Game Boy/.media/Tetris.mp4"));
+	/* its cover, its video, and the cover Cover and Video put aside */
+	CHECK_EQ(t.art, on("Roms/Game Boy/.media/Tetris.png") + on("Roms/Game Boy/.media/Tetris.mp4") +
+	                on("Roms/Game Boy/.media/.before/Tetris.png"));
 	CHECK_EQ(t.bytes, t.games + t.saves + t.states + t.art);
 	CHECK(st_game(SYS_PS, "Game.cue", &g));
 	CHECK_EQ(g.games, on("Roms/PlayStation/Game.cue") + on("Roms/PlayStation/Game (Track 1).bin") +
@@ -335,8 +341,9 @@ static void numbers(const char *when)
 
 	/* The recommendations: the gone game's cover and snap, never a Mac's
 	 * twin, and the gone game's two-year-old states, never today's */
-	CHECK_EQ(c.unused_art, on("Roms/Game Boy/.media/Old Game.png") + on("Roms/Game Boy/.media/Old Game.mp4"));
-	CHECK_EQ(c.unused_covers, 1);
+	CHECK_EQ(c.unused_art, on("Roms/Game Boy/.media/Old Game.png") + on("Roms/Game Boy/.media/Old Game.mp4") +
+	                       on("Roms/Game Boy/.media/.before/Old Game.png"));
+	CHECK_EQ(c.unused_covers, 2);
 	CHECK_EQ(c.unused_snaps, 1);
 	CHECK_EQ(c.old_states, on(".userdata/shared/.zyperos/Game Boy/Gone.gb.auto.state") +
 	                       on(".userdata/shared/.zyperos/Game Boy/Gone.gb.auto.bmp"));
@@ -682,10 +689,13 @@ int main(void)
 		st_paths pp = paths();
 		st_systems s = systems();
 
-		art = on("Roms/Game Boy/.media/Old Game.png") + on("Roms/Game Boy/.media/Old Game.mp4");
+		art = on("Roms/Game Boy/.media/Old Game.png") + on("Roms/Game Boy/.media/Old Game.mp4") +
+		      on("Roms/Game Boy/.media/.before/Old Game.png");
 		given = st_delete_unused_art(&pp, &s, GAMES, ngames, &files);
 		CHECK_EQ(given, art);
-		CHECK_EQ(files, 2);
+		CHECK_EQ(files, 3);
+		CHECK(!there("Roms/Game Boy/.media/.before/Old Game.png"));
+		CHECK(there("Roms/Game Boy/.media/.before/Tetris.png"));
 		CHECK(!there("Roms/Game Boy/.media/Old Game.png"));
 		CHECK(!there("Roms/Game Boy/.media/Old Game.mp4"));
 		CHECK(there("Roms/Game Boy/.media/Tetris.png"));

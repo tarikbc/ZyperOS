@@ -185,4 +185,17 @@ bool art_match_subtitle(const char *base, const char *names, char *out, size_t o
  * file carries a name the catalog no longer uses, found by what it is. */
 bool art_dat_name(const char *dat, uint32_t crc, char *out, size_t outn);
 
+/* ---- for a game's Cover and Video page (DESIGN.md 11.34) ----------------
+ *
+ * libretro's picture of `kind` - "Named_Boxarts", "Named_Titles" or
+ * "Named_Snaps" - for `name` in `collection` (art_collection), and the
+ * listing of a collection's covers; false when either would be cut short. */
+bool art_lr_url(const char *collection, const char *kind, const char *name,
+                char *out, size_t n);
+bool art_lr_index_url(const char *collection, char *out, size_t n);
+/* The name libretro files `base`'s cover under in that listing (as fetched,
+ * HTML, NUL-ended): exact, then normalized with tags scoring a tie, then
+ * loosely - a Box Art run's passes, but the checksum's */
+bool art_match_index(const char *html, const char *base, char *out, size_t outn);
+
 #endif

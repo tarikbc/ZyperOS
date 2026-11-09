@@ -14,6 +14,7 @@
 
 #include "artscrape.h"
 #include "artshrink.h"
+#include "artsrc.h"
 #include "db.h"
 #include "fileio.h"
 #include "i18n.h"
@@ -41,6 +42,7 @@ static struct {
 	int       answer;              /* what the step says once the snap is done */
 	uint32_t  crc;
 	bool      metadata_only;
+	bool      lookup_only;      /* the reply and its text, no file */
 	ss_result got;
 	char      where[64];
 } g_run;
@@ -88,12 +90,14 @@ static bool start_ask(uint32_t crc)
 }
 
 static bool run_begin(const char *folder, const char *file, const char *stem,
-                      const char *rom_dir, const char *exts, bool metadata_only)
+                      const char *rom_dir, const char *exts, bool metadata_only,
+                      bool lookup_only)
 {
 	memset(&g_run, 0, sizeof g_run);
 	g_toomany = false;
 	g_got_video = false;
 	g_run.metadata_only = metadata_only;
+	g_run.lookup_only = lookup_only;
 	if (metadata_only && !db_lib()) return false;
 	if (!ss_signed_in() || !folder || !file || !stem) return false;
 	if (ss_system_id(folder) == 0) return false;
@@ -128,13 +132,24 @@ static bool run_begin(const char *folder, const char *file, const char *stem,
 bool ss_run_begin(const char *folder, const char *file, const char *stem,
                   const char *rom_dir, const char *exts)
 {
-	return run_begin(folder, file, stem, rom_dir, exts, false);
+	return run_begin(folder, file, stem, rom_dir, exts, false, false);
 }
 
 bool ss_run_begin_metadata(const char *folder, const char *file, const char *stem,
                            const char *rom_dir, const char *exts)
 {
-	return run_begin(folder, file, stem, rom_dir, exts, true);
+	return run_begin(folder, file, stem, rom_dir, exts, true, false);
+}
+
+bool ss_run_begin_lookup(const char *folder, const char *file, const char *stem,
+                         const char *rom_dir, const char *exts)
+{
+	return run_begin(folder, file, stem, rom_dir, exts, false, true);
+}
+
+const ss_result *ss_run_result(void)
+{
+	return g_run.phase == R_DONE ? &g_run.got : NULL;
 }
 
 /* One line per request, for the log: the game, how it was asked, what came
@@ -303,6 +318,12 @@ static int run_step(void)
 		 * canceled image fetch. Only a validated answer reaches this write. */
 		saved = db_game_set(db_lib(), g_run.folder, g_run.file, &g_run.got.meta);
 		if (!saved) fprintf(stderr, "ss: %s metadata: not saved\n", g_run.file);
+		/* The page asked what is on offer: the reply is the answer, kept
+		 * for ss_run_result, and nothing is fetched */
+		if (g_run.lookup_only) {
+			g_run.phase = R_DONE;
+			return 0;
+		}
 		/* A metadata-only run never asks for, shrinks, or replaces an image.
 		 * Its success is the persisted row, regardless of available media. */
 		if (g_run.metadata_only) {
@@ -343,6 +364,13 @@ static int run_step(void)
 		/* Down to the size a card is ever drawn at, the same as a libretro
 		 * cover: art_shrink queues it and returns. */
 		art_shrink(g_run.dest);
+		/* Where it came from, for the game's Cover and Video page */
+		{
+			art_source as = { AS_SS, AK_BOX, "", "" };
+
+			snprintf(as.region, sizeof as.region, "%s", g_run.got.art_region);
+			artsrc_set(g_run.folder, g_run.stem, &as);
+		}
 
 		if (start_video(0)) return 1;
 		g_run.phase = R_DONE;

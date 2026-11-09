@@ -36,6 +36,9 @@ typedef struct {
      * its shape, and how far the cover has turned into it, 0 to 1. */
     SDL_Texture *snap;
     int snap_w,snap_h;
+    /* The part of its texture the picture is in (snapv_texture's src); none
+     * drawn from the whole */
+    SDL_Rect snap_src;
     float snap_k;
     /* How far the wait before that snap has gone, 0 to 1, drawn as a bar
      * under the focused cover (DESIGN.md 11.19). 0 or less draws none, so a

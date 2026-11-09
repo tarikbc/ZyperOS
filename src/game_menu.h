@@ -107,7 +107,8 @@ typedef struct {
 	char  year[8];         /* from the scrape, empty when it said nothing */
 	char  genre[GI_GENRE_MAX];   /* the same, comma separated */
 	bool  has_cheevos;     /* there is a set to open, not just a count to read */
-	bool  has_art;         /* chooses the action's label; no longer a row */
+	bool  has_art;         /* Cover and Video's value: "no cover" */
+	bool  has_snap;        /* ...and "no video" */
 	/* Art of its own that no fetch replaces: PortMaster's entry on the
 	 * Ports shelf (src/pminstall.h, PM_COVER_LIGHT), so no Box Art row */
 	bool  own_art;

@@ -1,0 +1,476 @@
+# A game's Cover and Video page (DESIGN.md 11.34): the details page's row
+# that opens it, the cover on the shelf beside what the sources offer, the
+# big look at one, and the game's video snap.
+
+[media.row]
+note = The details page's row (X on a game) that opens the page: the game's cover and its video snap. tight: a row's label, its value may be "no cover"
+en = Cover and Video
+zh-Hans = 封面和视频
+es = Carátula y video
+pt-BR = Capa e vídeo
+fr = Jaquette et vidéo
+de = Cover und Video
+ja = パッケージ画像と動画
+it = Copertina e video
+
+[media.value_no_cover]
+note = The row's value when the game has no cover yet. Lowercase, a status. tight: beside the row's label in the details panel (Italian's "senza copertina" did not fit beside "Copertina e video")
+en = no cover
+zh-Hans = 无封面
+es = sin carátula
+pt-BR = sem capa
+fr = sans jaquette
+de = kein Cover
+ja = 画像なし
+it = senza cover
+
+[media.value_no_video]
+note = The row's value when the game has a cover and no video snap. Lowercase, a status.
+en = no video
+zh-Hans = 无视频
+es = sin video
+pt-BR = sem vídeo
+fr = pas de vidéo
+de = kein Video
+ja = 動画なし
+it = nessun video
+
+[media.now]
+note = The heading over the cover the shelf shows now. tight: 264 units
+en = Now
+zh-Hans = 当前
+es = Ahora
+pt-BR = Agora
+fr = Actuelle
+de = Jetzt
+ja = 現在
+it = Attuale
+
+[media.found]
+note = The heading over the pictures the sources offer, a count at its right. Plural, the pictures found.
+en = Found
+zh-Hans = 找到的图片
+es = Encontradas
+pt-BR = Encontradas
+fr = Trouvées
+de = Gefunden
+ja = 見つかった画像
+it = Trovate
+
+[media.before]
+note = A chip on the picture that was the cover before the last change; A puts it back. tight: a chip on a thumbnail
+en = Before
+zh-Hans = 之前
+es = Antes
+pt-BR = Antes
+fr = Avant
+de = Vorher
+ja = 以前
+it = Prima
+
+[media.video]
+note = The heading over the game's video snap and its rows. The glossary's video snap, short.
+en = Video
+zh-Hans = 视频
+es = Video
+pt-BR = Vídeo
+fr = Vidéo
+de = Video
+ja = 動画
+it = Video
+
+[media.kind_box]
+note = The kind of picture: the front of the game's box.
+en = Box Front
+zh-Hans = 包装正面
+es = Portada
+pt-BR = Frente da caixa
+fr = Face avant
+de = Vorderseite
+ja = パッケージ表面
+it = Fronte della scatola
+
+[media.kind_box3d]
+note = The kind of picture: the box drawn in 3D, at an angle.
+en = 3D Box
+zh-Hans = 3D 包装盒
+es = Caja 3D
+pt-BR = Caixa 3D
+fr = Boîte 3D
+de = 3D-Box
+ja = 3D パッケージ
+it = Scatola 3D
+
+[media.kind_title]
+note = The kind of picture: the game's title screen.
+en = Title Screen
+zh-Hans = 标题画面
+es = Pantalla de título
+pt-BR = Tela de título
+fr = Écran titre
+de = Titelbild
+ja = タイトル画面
+it = Schermata del titolo
+
+[media.kind_shot]
+note = The kind of picture: a screenshot of the game being played.
+en = Screenshot
+zh-Hans = 游戏截图
+es = Captura
+pt-BR = Captura de tela
+fr = Capture d'écran
+de = Screenshot
+ja = スクリーンショット
+it = Screenshot
+
+[media.kind_fan]
+note = The kind of picture: a cover drawn by a fan (SteamGridDB's grids).
+en = Fan Cover
+zh-Hans = 玩家制作的封面
+es = Carátula de fans
+pt-BR = Capa de fã
+fr = Jaquette de fan
+de = Fan-Cover
+ja = ファン制作の画像
+it = Copertina dei fan
+
+[media.region_us]
+note = A picture's region, after its kind: "Box Front · USA".
+en = USA
+zh-Hans = 美国
+es = EE. UU.
+pt-BR = EUA
+fr = États-Unis
+de = USA
+ja = アメリカ
+it = USA
+
+[media.region_eu]
+note = A picture's region.
+en = Europe
+zh-Hans = 欧洲
+es = Europa
+pt-BR = Europa
+fr = Europe
+de = Europa
+ja = ヨーロッパ
+it = Europa
+
+[media.region_jp]
+note = A picture's region.
+en = Japan
+zh-Hans = 日本
+es = Japón
+pt-BR = Japão
+fr = Japon
+de = Japan
+ja = 日本
+it = Giappone
+
+[media.region_wor]
+note = A picture's region: the whole world.
+en = World
+zh-Hans = 全球
+es = Mundial
+pt-BR = Mundial
+fr = Monde
+de = Welt
+ja = ワールド
+it = Mondo
+
+[media.region_br]
+note = A picture's region.
+en = Brazil
+zh-Hans = 巴西
+es = Brasil
+pt-BR = Brasil
+fr = Brésil
+de = Brasilien
+ja = ブラジル
+it = Brasile
+
+[media.region_kr]
+note = A picture's region.
+en = Korea
+zh-Hans = 韩国
+es = Corea
+pt-BR = Coreia
+fr = Corée
+de = Korea
+ja = 韓国
+it = Corea
+
+[media.region_au]
+note = A picture's region.
+en = Australia
+zh-Hans = 澳大利亚
+es = Australia
+pt-BR = Austrália
+fr = Australie
+de = Australien
+ja = オーストラリア
+it = Australia
+
+[media.look]
+note = Beside A's glyph under the pictures: A shows the focused one big, before anything changes.
+en = Look Closer
+zh-Hans = 放大查看
+es = Ver de cerca
+pt-BR = Ampliar
+fr = Agrandir
+de = Vergrößern
+ja = 拡大
+it = Ingrandisci
+
+[media.use]
+note = Beside A's glyph on the big look: A makes this picture the game's cover.
+en = Use as Cover
+zh-Hans = 设为封面
+es = Usar como carátula
+pt-BR = Usar como capa
+fr = Utiliser comme jaquette
+de = Als Cover nehmen
+ja = この画像にする
+it = Usa come copertina
+
+[media.put_back]
+note = Beside A's glyph on Before's picture: A puts the cover there was back.
+en = Put Back
+zh-Hans = 换回
+es = Restaurar
+pt-BR = Restaurar
+fr = Remettre
+de = Zurücksetzen
+ja = 元に戻す
+it = Ripristina
+
+[media.back]
+note = Beside B's glyph on the big look: B goes back to the page.
+en = Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Retour
+de = Zurück
+ja = 戻る
+it = Indietro
+
+[media.watch]
+note = A video row: A plays the video snap on the whole screen with its sound. tight: beside the video's picture, a value "12 s"
+en = Watch
+zh-Hans = 观看
+es = Ver
+pt-BR = Assistir
+fr = Regarder
+de = Ansehen
+ja = 再生
+it = Guarda
+
+[media.replace]
+note = A video row: A downloads the video snap again over the one there is. tight: beside the video's picture, a value "2.4 MB" or "needs Wi-Fi"
+en = Replace
+zh-Hans = 替换
+es = Cambiar
+pt-BR = Trocar
+fr = Remplacer
+de = Ersetzen
+ja = 置き換え
+it = Sostituisci
+
+[media.download]
+note = A video row, for a game with no video snap: A downloads it. tight: beside the video's picture, a value "1.1 / 2.4 MB"
+en = Download
+zh-Hans = 下载
+es = Descargar
+pt-BR = Baixar
+fr = Télécharger
+de = Laden
+ja = ダウンロード
+it = Scarica
+
+[media.delete]
+note = A video row: A deletes the video snap, asking first. tight: beside the video's picture
+en = Delete
+zh-Hans = 删除
+es = Borrar
+pt-BR = Apagar
+fr = Supprimer
+de = Löschen
+ja = 削除
+it = Elimina
+
+[media.asking]
+note = While a source is asked, at the right of the Found heading; %s is its name (ScreenScraper, libretro, SteamGridDB). tight: about 600 units
+en = Asking %s
+zh-Hans = 正在询问 %s
+es = Consultando %s
+pt-BR = Consultando %s
+fr = Recherche sur %s
+de = Frage %s
+ja = %s に問い合わせ中
+it = Ricerca su %s
+
+[media.looking]
+note = On the video's picture while ScreenScraper is asked whether it has one. tight: 256 units, two lines
+en = Looking it up
+zh-Hans = 正在查找
+es = Buscando
+pt-BR = Procurando
+fr = Recherche
+de = Suche läuft
+ja = 検索中
+it = Ricerca
+
+[media.none_found]
+note = On the video's picture when no source has a video for the game. tight: 256 units, two lines
+en = None found
+zh-Hans = 未找到
+es = Ninguno
+pt-BR = Nenhum
+fr = Aucune
+de = Keins gefunden
+ja = 見つかりません
+it = Nessuno
+
+[media.no_video]
+note = On the video's picture when the game has none. tight: 256 units, two lines
+en = No video
+zh-Hans = 无视频
+es = Sin video
+pt-BR = Sem vídeo
+fr = Pas de vidéo
+de = Kein Video
+ja = 動画なし
+it = Nessun video
+
+[media.no_cover]
+note = Under the Now heading's card when the game has no cover yet. tight: 264 units
+en = No cover yet
+zh-Hans = 尚无封面
+es = Sin carátula
+pt-BR = Sem capa ainda
+fr = Sans jaquette
+de = Noch kein Cover
+ja = 画像なし
+it = Senza copertina
+
+[media.or_pc]
+note = Under "Connect to Wi-Fi first." where the pictures would be: the other way to get covers. Wrapped to two lines of about 600 units.
+en = Or add covers from a computer with File Transfer.
+zh-Hans = 也可以用文件传输从电脑添加封面。
+es = O añade carátulas desde un ordenador con la transferencia de archivos.
+pt-BR = Ou envie capas de um computador pela transferência de arquivos.
+fr = Ou ajoutez des jaquettes depuis un ordinateur avec le transfert de fichiers.
+de = Oder füge Cover per Dateiübertragung vom Computer hinzu.
+ja = ファイル転送でパソコンから画像を追加することもできます。
+it = Oppure aggiungi copertine da un computer con il trasferimento file.
+
+[media.nothing]
+note = Where the pictures would be, when every source has answered with none.
+en = Nothing found.
+zh-Hans = 什么也没找到。
+es = No se encontró nada.
+pt-BR = Nada encontrado.
+fr = Rien trouvé.
+de = Nichts gefunden.
+ja = 見つかりませんでした。
+it = Nessun risultato.
+
+[media.src_unknown]
+note = A source's line under "Nothing found.": "ScreenScraper · unknown game". Lowercase, a status.
+en = unknown game
+zh-Hans = 未知游戏
+es = juego desconocido
+pt-BR = jogo desconhecido
+fr = jeu inconnu
+de = unbekanntes Spiel
+ja = 不明なゲーム
+it = gioco sconosciuto
+
+[media.src_no_match]
+note = A source's line: it had no picture for this game. Lowercase, a status.
+en = no match
+zh-Hans = 无匹配
+es = sin resultados
+pt-BR = sem resultado
+fr = aucun résultat
+de = kein Treffer
+ja = 該当なし
+it = nessun risultato
+
+[media.src_not_linked]
+note = A source's line: no account or key is linked to it (MENU > Scraper). Lowercase, a status.
+en = not linked
+zh-Hans = 未关联
+es = sin vincular
+pt-BR = não vinculado
+fr = non lié
+de = nicht verknüpft
+ja = 未連携
+it = non collegato
+
+[media.src_no_answer]
+note = A source's line: it did not answer. Lowercase, a status.
+en = no answer
+zh-Hans = 无响应
+es = sin respuesta
+pt-BR = sem resposta
+fr = pas de réponse
+de = keine Antwort
+ja = 応答なし
+it = nessuna risposta
+
+[media.delete_ask]
+note = A yes/no question, the Delete video row.
+en = Delete this game's video? A fetch can bring it back.
+zh-Hans = 要删除这个游戏的视频吗？之后可以重新获取。
+es = ¿Borrar el video de este juego? Se puede volver a descargar.
+pt-BR = Apagar o vídeo deste jogo? Dá para baixar de novo.
+fr = Supprimer la vidéo de ce jeu\u00a0? Elle peut être téléchargée à nouveau.
+de = Das Video dieses Spiels löschen? Es lässt sich wieder laden.
+ja = このゲームの動画を削除しますか？あとでもう一度取得できます。
+it = Eliminare il video di questo gioco? Si può scaricare di nuovo.
+
+[media.failed]
+note = A one-line message: a picture or a video did not download.
+en = It did not download. Try again.
+zh-Hans = 没有下载成功。请再试一次。
+es = No se descargó. Inténtalo de nuevo.
+pt-BR = Não baixou. Tente de novo.
+fr = Le téléchargement a échoué. Réessayez.
+de = Nicht geladen. Versuch es noch einmal.
+ja = ダウンロードできませんでした。もう一度お試しください。
+it = Download non riuscito. Riprova.
+
+[media.vnote_offline]
+note = Where the video's rows would be, when there is no video and no Wi-Fi: why nothing can be downloaded. Wrapped to three lines of about 600 units.
+en = Connect to Wi-Fi to look for a video of this game.
+zh-Hans = 连接 Wi-Fi 后即可查找这款游戏的视频。
+es = Conéctate a una red Wi-Fi para buscar un vídeo de este juego.
+pt-BR = Conecte ao Wi-Fi para procurar um vídeo deste jogo.
+fr = Connectez-vous au Wi-Fi pour chercher une vidéo de ce jeu.
+de = Verbinde dich mit WLAN, um ein Video zu diesem Spiel zu suchen.
+ja = Wi-Fi に接続すると、このゲームの動画を探せます。
+it = Connettiti al Wi-Fi per cercare un video di questo gioco.
+
+[media.vnote_link]
+note = Where the video's rows would be, when ScreenScraper, the only source of videos, has no account linked; %s is the name of MENU's Scraper row. Wrapped to three lines of about 600 units.
+en = To find videos, link ScreenScraper in MENU > %s.
+zh-Hans = 要查找视频，请在 MENU > %s 中关联 ScreenScraper。
+es = Para buscar vídeos, vincula ScreenScraper en MENU > %s.
+pt-BR = Para achar vídeos, vincule o ScreenScraper em MENU > %s.
+fr = Pour les vidéos, liez ScreenScraper dans MENU > %s.
+de = Für Videos ScreenScraper unter MENU > %s verknüpfen.
+ja = 動画を探すには、MENU > %s で ScreenScraper を連携してください。
+it = Per i video, collega ScreenScraper in MENU > %s.
+
+[media.vnote_none]
+note = Where the video's rows would be, when ScreenScraper has no video of the game. Wrapped to three lines of about 600 units.
+en = ScreenScraper has no video of this game yet.
+zh-Hans = ScreenScraper 还没有这款游戏的视频。
+es = ScreenScraper aún no tiene un vídeo de este juego.
+pt-BR = O ScreenScraper ainda não tem vídeo deste jogo.
+fr = ScreenScraper n'a pas encore de vidéo de ce jeu.
+de = ScreenScraper hat noch kein Video zu diesem Spiel.
+ja = ScreenScraper にはまだこのゲームの動画がありません。
+it = ScreenScraper non ha ancora un video di questo gioco.

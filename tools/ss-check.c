@@ -116,7 +116,12 @@ static const char *FIXTURE =
 "            {\"type\":\"box-3D\",\"region\":\"us\",\"url\":\"https://x/box3d\"},"
 "            {\"type\":\"box-2D\",\"region\":\"us\",\"url\":\"https://x/box-us\"},"
 "            {\"type\":\"video\",\"url\":\"https://x/video-big\"},"
-"            {\"type\":\"video-normalized\",\"url\":\"https://x/video-small\"},"
+"            {\"type\":\"video-normalized\",\"url\":\"https://x/video-small\",\"size\":\"2400000\"},"
+"            {\"type\":\"box-2D\",\"region\":\"wor\",\"url\":\"https://x/box-wor\"},"
+"            {\"type\":\"box-2D\",\"region\":\"eu\",\"url\":\"https://x/box-eu\"},"
+"            {\"type\":\"sstitle\",\"region\":\"jp\",\"url\":\"https://x/title-jp\"},"
+"            {\"type\":\"sstitle\",\"region\":\"wor\",\"url\":\"https://x/title-wor\"},"
+"            {\"type\":\"ss\",\"url\":\"https://x/shot\"},"
 "            {\"type\":\"box-2D-back\",\"region\":\"us\",\"url\":\"https://x/back\"}]"
 "}}}";
 
@@ -144,6 +149,32 @@ static void reads_a_reply(void)
 	ck(!strcmp(r.art, "https://x/box-us"), "the US box-2D is the cover");
 	ck(!strcmp(r.art_region, "us"), "and it says which region that is");
 	ck(!strcmp(r.video, "https://x/video-small"), "the snap is the normalized video, not the big one");
+	ck(r.video_size == 2400000, "and its size, as the reply writes it, a string");
+	/* What Cover and Video offers (DESIGN.md 11.34): the box in three
+	 * regions, the shelf's order, then one of each other kind */
+	ck(r.nmedia == 6, "six pictures that could be a cover");
+	ck(r.nmedia == 6 && r.media[0].kind == SSM_BOX && !strcmp(r.media[0].region, "us") &&
+	   !strcmp(r.media[0].url, "https://x/box-us"), "the shelf's own cover first");
+	ck(r.nmedia == 6 && r.media[1].kind == SSM_BOX && !strcmp(r.media[1].region, "wor") &&
+	   r.media[2].kind == SSM_BOX && !strcmp(r.media[2].region, "eu"),
+	   "then the next two regions in art_of's order; Japan's, fourth, is left out");
+	ck(r.nmedia == 6 && r.media[3].kind == SSM_BOX3D && !strcmp(r.media[3].region, "us"), "then the 3D box");
+	ck(r.nmedia == 6 && r.media[4].kind == SSM_TITLE && !strcmp(r.media[4].region, "wor"),
+	   "then the title screen in the better region");
+	ck(r.nmedia == 6 && r.media[5].kind == SSM_SHOT && !strcmp(r.media[5].url, "https://x/shot"),
+	   "then a screenshot with no region");
+	for (int i = 0; i < r.nmedia; i++)
+		ck(strcmp(r.media[i].url, "https://x/wheel") && strcmp(r.media[i].url, "https://x/back"),
+		   "never the logo or the back of the box");
+	{
+		char sized[600];
+
+		ck(ss_media_sized("https://x/m.php?a=1", 256, sized, sizeof sized) &&
+		   !strcmp(sized, "https://x/m.php?a=1&maxwidth=256&maxheight=256"), "a small copy asked by size");
+		ck(ss_media_sized("https://x/m", 512, sized, sizeof sized) &&
+		   !strcmp(sized, "https://x/m?maxwidth=512&maxheight=512"), "with the query begun where there is none");
+		ck(!ss_media_sized("https://x/m", 512, sized, 10), "and refused where it would be cut");
+	}
 	/* The account's counters, which a bulk run stops on. They arrive as
 	 * STRINGS, and js_int answers 0 for a string - which would read as a
 	 * fresh quota on every reply, so the run would never stop. */

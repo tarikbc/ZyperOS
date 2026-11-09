@@ -24,8 +24,10 @@ bool snapv_pending(void);
 bool snapv_update(SDL_Renderer *r);
 
 /* The picture to draw, or NULL before the asked-for snap's first one. Its
- * size in `w` and `h`, its pixels' own shape counted. */
-SDL_Texture *snapv_texture(int *w, int *h);
+ * size in `w` and `h`, its pixels' own shape counted; and in `src` the part
+ * of the texture it is in, to draw from (a snap smaller than 640x480 is in
+ * the corner of a texture of that size: mpf_tex_size). Any may be NULL. */
+SDL_Texture *snapv_texture(int *w, int *h, SDL_Rect *src);
 
 /* The texture given back: when the snap stops, and before the renderer goes. */
 void snapv_release(void);

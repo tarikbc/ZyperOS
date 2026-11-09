@@ -30,7 +30,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-media check-snapsize check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
@@ -1063,12 +1063,12 @@ check-artscrape: build-native/artscrape-check
 	@ART_SCORING=1 ./build-native/artscrape-check
 	@python3 tools/artscrape-check.py
 
-build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
+build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) src/artsrc.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DZYPEROS_VERSION='"check"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/artscrape-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/artscrape-check-artdat"' \
-	      -o $@ tools/artscrape-check.c src/artscrape.c src/net.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/artscrape-check.c src/artscrape.c src/artsrc.c src/net.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
 
 # Replace fetches over a cover rather than deleting it first. The real scraper
 # against a stubbed network, so a hit and a miss are both pinned with no device
@@ -1076,11 +1076,11 @@ build-native/artscrape-check: tools/artscrape-check.c src/artscrape.c src/artscr
 check-artrun: build-native/artrun-check
 	@./build-native/artrun-check
 
-build-native/artrun-check: tools/artrun-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
+build-native/artrun-check: tools/artrun-check.c src/artscrape.c src/artscrape.h src/urlenc.c src/library.c src/db.c $(I18N_SRC) src/artsrc.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -DSS_BUSY_WAIT=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/artrun-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/artrun-check-artdat"' \
-	      -o $@ tools/artrun-check.c src/artscrape.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/artrun-check.c src/artscrape.c src/artsrc.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3
 
 # SteamGridDB on the device (src/sgdb.h): the real client and a whole run
 # against a fake API - the key in a header and never a URL, the match, the
@@ -1090,13 +1090,13 @@ check-sgdb: build-native/sgdb-check
 	@./build-native/sgdb-check
 	@python3 tools/sgdb-check.py
 
-build-native/sgdb-check: tools/sgdb-check.c src/sgdb.c src/sgdb.h src/sgdbrun.c src/sgdbrun.h src/artscrape.c src/artscrape.h src/rajson.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) FORCE
+build-native/sgdb-check: tools/sgdb-check.c src/sgdb.c src/sgdb.h src/sgdbrun.c src/sgdbrun.h src/artscrape.c src/artscrape.h src/rajson.c src/urlenc.c src/library.c src/db.c $(I18N_SRC) src/artsrc.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DSGDB_GAP_MS=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET -DSGDB_QUIET \
 	      -DSGDB_TMP='"build-native/sgdb-reply.json"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/sgdb-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/sgdb-check-artdat"' \
-	      -o $@ tools/sgdb-check.c src/sgdb.c src/sgdbrun.c src/artscrape.c src/rajson.c \
+	      -o $@ tools/sgdb-check.c src/sgdb.c src/sgdbrun.c src/artscrape.c src/artsrc.c src/rajson.c \
 	      src/urlenc.c src/library.c src/db.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # When the shelf's cover turns into its video snap and back (src/snapshelf.h),
@@ -1219,18 +1219,18 @@ check-titles: build-native/title-check build-native/title-refresh-check build-na
 	@./build-native/title-refresh-check
 	@./build-native/title-bulk-check
 
-build-native/title-check: tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) FORCE
+build-native/title-check: tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) src/artsrc.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
 	      -DSS_TMP='"build-native/title-reply.json"' \
-	      -o $@ tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/title-check.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/artsrc.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
 
-build-native/title-bulk-check: tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) FORCE
+build-native/title-bulk-check: tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) src/artsrc.c FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc -DSS_BUSY_WAIT=0 -DSGDB_BUSY_WAIT=0 -DART_QUIET \
 	      -DSS_TMP='"build-native/title-bulk-reply.json"' \
 	      -DINDEX_TMP='"$(CURDIR)/build-native/title-bulk-check-artindex"' -DDAT_TMP='"$(CURDIR)/build-native/title-bulk-check-artdat"' \
-	      -o $@ tools/title-bulk-check.c src/artscrape.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/title-bulk-check.c src/artscrape.c src/artsrc.c src/db.c src/library.c src/ssfetch.c src/ssrun.c src/rajson.c src/urlenc.c $(I18N_SRC) -lsqlite3
 
 build-native/title-refresh-check: tools/title-refresh-check.c tools/title-refresh-hooks.py src/main.c src/library.c src/db.c src/stats.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
@@ -1338,6 +1338,25 @@ build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h sr
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/gamedel-check.c src/gamedel.c src/portinfo.c src/library.c src/db.c src/favorites.c \
 	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
+
+# A game's Cover and Video page (DESIGN.md 11.34), what a device cannot show
+# you: where a cover came from as its record's line (src/artsrc.h); Use as
+# Cover and Put Back on a card of small files, the cover there was to
+# .media/.before and the records with it, both ways, and a copy that fails
+# changing nothing; an MP4's length from its mvhd (src/mediafile.c).
+# The MP4 parser reads files a server sent: the check runs under
+# AddressSanitizer and UBSan where the compiler has them, so a read out of
+# bounds fails it rather than passing by luck
+MEDIA_SAN := $(shell echo 'int main(void){return 0;}' | $(CC) -fsanitize=address,undefined -x c - -o /dev/null 2>/dev/null && echo -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+
+check-media: build-native/media-check
+	@./build-native/media-check
+
+build-native/media-check: tools/media-check.c src/mediafile.c src/mediafetch.h src/artsrc.c src/artsrc.h \
+                          src/db.c src/db.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
+	      -o $@ tools/media-check.c src/mediafile.c src/artsrc.c src/db.c -lsqlite3
 
 # MENU > Storage's numbers (src/storage.h) on a card made of small files:
 # every part, every game's bytes and the bar held to the clusters the card's
@@ -1585,6 +1604,21 @@ check-tour-previews: native
 	@'$(PYIMG)' tools/tour-previews.py --check
 
 .PHONY: check-games
+# A video snap of any shape - 640x480, a Nintendo DS game's 320x480, a Game
+# Boy game's, 534x480, a width of 1, odd ones - published as Muse publishes
+# it, read into its texture and drawn on the shelf and on a game's Cover and
+# Video page: its own shape where it is drawn, a texture never under 640x480
+# (src/mp4frame.h, mpf_tex_size: the Pixel 2's GPU faulted on narrower ones),
+# nothing out of bounds (UBSan, and Guard Malloc on a Mac). Needs SDL2.
+check-snapsize:
+	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
+		$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/snapsize-check || exit 1; \
+		if [ -f /usr/lib/libgmalloc.dylib ]; then gm=/usr/lib/libgmalloc.dylib; else gm=; fi; \
+		SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software DYLD_INSERT_LIBRARIES=$$gm \
+			./build-native/snapsize-check > build-native/snapsize-check.log 2>&1; st=$$?; \
+		grep -v '^fit: ' build-native/snapsize-check.log; exit $$st; \
+	else echo "check-snapsize: skipped, no SDL2"; fi
+
 check-games:
 	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/games-check
 	@SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build-native/games-check

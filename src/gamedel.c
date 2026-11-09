@@ -459,7 +459,8 @@ static bool port_plan(const gd_card *card, const gd_game *g, const gd_other *oth
                       int nothers, gd_plan *p, const char *romdir)
 {
 	static const char *const MEDIA[] = { "png", "mp4", "png.part", "mp4.part", "mp4.snap",
-	                                     "png.sgdb", "png.tmp" };
+	                                     "mp4.snap.part", "png.sgdb", "png.tmp", "png.pick",
+	                                     "png.swap" };
 	pi_port *ports = malloc(PI_MAX * sizeof *ports);
 	char (*mine)[PI_NAME] = malloc(PI_ITEMS * sizeof *mine);
 	char (*theirs)[PI_NAME] = malloc(PI_ITEMS * sizeof *theirs);
@@ -510,7 +511,9 @@ static bool port_plan(const gd_card *card, const gd_game *g, const gd_other *oth
 	} else {
 		for (i = 0; i < sizeof MEDIA / sizeof MEDIA[0]; i++)
 			plan_add(p, GD_FILE, "%s/.media/%s.%s", romdir, g->name, MEDIA[i]);
+		plan_add(p, GD_FILE, "%s/.media/.before/%s.png", romdir, g->name);
 	}
+	plan_add(p, GD_EMPTY_DIR, "%s/.media/.before", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/.media", romdir);
 	if (p->why != GD_OK) return false;
 	plan_hold(p, card, romdir);
@@ -530,7 +533,8 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	static bool shared[SHEET_NAMES];
 	static const char *const SLOTS[] = { "auto", "1", "2", "3", "4", "5", "6" };
 	static const char *const MEDIA[] = { "png", "mp4", "png.part", "mp4.part", "mp4.snap",
-	                                     "png.sgdb", "png.tmp" };
+	                                     "mp4.snap.part", "png.sgdb", "png.tmp", "png.pick",
+	                                     "png.swap" };
 	char romdir[GD_PATH], stem[LIB_NAME], sbase[LIB_PATH];
 	const char *slash, *core = g->core ? g->core : "";
 	bool hooked = lib_shelf_hooked(g->exts), arcade_set;
@@ -686,9 +690,13 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	} else {
 		for (i = 0; i < sizeof MEDIA / sizeof MEDIA[0]; i++)
 			plan_add(p, GD_FILE, "%s/.media/%s.%s", romdir, g->name, MEDIA[i]);
+		/* and the cover Cover and Video put aside, its Before (DESIGN.md
+		 * 11.34) */
+		plan_add(p, GD_FILE, "%s/.media/.before/%s.png", romdir, g->name);
 		plan_add(p, GD_FILE, "%s/.cheevos/%s.set", romdir, g->name);
 		plan_add(p, GD_FILE, "%s/.cheevos/%s.set.part", romdir, g->name);
 	}
+	plan_add(p, GD_EMPTY_DIR, "%s/.media/.before", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/.media", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/.cheevos", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/%s", card->states, g->folder);

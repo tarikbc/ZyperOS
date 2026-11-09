@@ -585,6 +585,11 @@ bool net_get_async_hdr(const char *url, const char *path, int timeout_s,
 	return true;
 }
 
+bool net_async_held(void)
+{
+	return g_async > 0;
+}
+
 int net_async_poll(void)
 {
 	int st;

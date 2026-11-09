@@ -15,6 +15,7 @@
 
 #include "artscrape.h"
 #include "artshrink.h"
+#include "artsrc.h"
 #include "config.h"
 #include "fileio.h"
 #include "i18n.h"
@@ -793,7 +794,7 @@ static bool consider(const char *base, const char *nb, const char *cand,
 	return false;
 }
 
-static bool match(const char *base, char *out, size_t outn)
+static bool match_in(const char *html, const char *base, char *out, size_t outn)
 {
 	char nb[NAME_MAX_], cand[NAME_MAX_];
 	const char *p;
@@ -802,7 +803,7 @@ static bool match(const char *base, char *out, size_t outn)
 
 	art_norm(base, nb, sizeof nb);
 
-	for (p = g_html; (p = strstr(p, "href=\"")); ) {
+	for (p = html; p && (p = strstr(p, "href=\"")); ) {
 		const char *q;
 		size_t len;
 		char raw[NAME_MAX_ * 2];
@@ -919,7 +920,7 @@ static void consider_loose(const char *base, const char *lb, const char *cand,
 }
 
 /* The loose pass against libretro's listing page, as match() reads it. */
-static bool match_loose(const char *base, char *out, size_t outn)
+static bool match_loose_in(const char *html, const char *base, char *out, size_t outn)
 {
 	char lb[NAME_MAX_], cand[NAME_MAX_];
 	const char *p;
@@ -927,7 +928,7 @@ static bool match_loose(const char *base, char *out, size_t outn)
 	int best = 0;
 
 	art_norm_loose(base, lb, sizeof lb);
-	for (p = g_html; p && (p = strstr(p, "href=\"")); ) {
+	for (p = html; p && (p = strstr(p, "href=\"")); ) {
 		const char *q;
 		size_t len;
 		char raw[NAME_MAX_ * 2];
@@ -943,6 +944,51 @@ static bool match_loose(const char *base, char *out, size_t outn)
 		consider_loose(base, lb, cand, out, outn, &have, &best);
 	}
 	return have;
+}
+
+static bool match(const char *base, char *out, size_t outn)
+{
+	return match_in(g_html, base, out, outn);
+}
+
+static bool match_loose(const char *base, char *out, size_t outn)
+{
+	return match_loose_in(g_html, base, out, outn);
+}
+
+bool art_match_index(const char *html, const char *base, char *out, size_t outn)
+{
+	return match_in(html, base, out, outn) || match_loose_in(html, base, out, outn);
+}
+
+bool art_lr_url(const char *collection, const char *kind, const char *name,
+                char *out, size_t n)
+{
+	char er[384], en[NAME_MAX_ * 3 + 1];
+	int len;
+
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!collection || !kind || !name || !name[0] || strlen(name) >= NAME_MAX_) return false;
+	urlenc(collection, er, sizeof er);
+	urlenc(name, en, sizeof en);
+	len = snprintf(out, n, BASE "/%s/%s/%s.png", er, kind, en);
+	if (len < 0 || (size_t)len >= n) { out[0] = '\0'; return false; }
+	return true;
+}
+
+bool art_lr_index_url(const char *collection, char *out, size_t n)
+{
+	char er[384];
+	int len;
+
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!collection) return false;
+	urlenc(collection, er, sizeof er);
+	len = snprintf(out, n, BASE "/%s/Named_Boxarts/", er);
+	if (len < 0 || (size_t)len >= n) { out[0] = '\0'; return false; }
+	return true;
 }
 
 bool art_match_loose(const char *base, const char *names, char *out, size_t outn)
@@ -1525,6 +1571,16 @@ static int leftover(const int *list, int n, int why)
 	return next_system(why);
 }
 
+/* A libretro cover arrived for `stem`: where it came from, by the name it
+ * was asked for, for the game's Cover and Video page (src/artsrc.h) */
+static void lr_record(const char *stem)
+{
+	art_source as = { AS_LR, AK_BOX, "", "" };
+
+	snprintf(as.by, sizeof as.by, "%s", g_asked);
+	if (g_si < g_nsys) artsrc_set(g_sys[g_si].folder, stem, &as);
+}
+
 int art_step(void)
 {
 	char dir[ARTPATH_MAX], media[ARTPATH_MAX], dest[ARTPATH_MAX];
@@ -1752,7 +1808,7 @@ int art_step(void)
 		/* A miss here is ordinary - it means libretro spells this game
 		 * differently, which is exactly what the catalog is for. It is not
 		 * counted as missing until the fuzzy pass has also failed. */
-		if (r > 0) { art_shrink(g_pending); g_st.found++; g_st.lr_found++; }
+		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_ri]); g_st.found++; g_st.lr_found++; }
 		else       g_retry[g_nretry++] = g_ri;
 		g_ri++;
 		g_phase = P_TRY;
@@ -1847,7 +1903,7 @@ int art_step(void)
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],
 		    g_asked, r > 0 ? "found" : "not there", art_answer());
-		if (r > 0) { art_shrink(g_pending); g_st.found++; g_st.lr_found++; }
+		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_retry[g_qi]]); g_st.found++; g_st.lr_found++; }
 		else       g_left[g_nleft++] = g_retry[g_qi];
 		g_qi++;
 		g_phase = P_FUZZY;
@@ -1921,7 +1977,7 @@ int art_step(void)
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],
 		    g_asked, r > 0 ? "found" : "not there", art_answer());
-		if (r > 0) { art_shrink(g_pending); g_st.found++; g_st.lr_found++; }
+		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_retry[g_qi]]); g_st.found++; g_st.lr_found++; }
 		else       g_left[g_nleft++] = g_retry[g_qi];
 		g_qi++;
 		g_phase = P_CRC;
@@ -1962,6 +2018,9 @@ int art_step(void)
 
 		if (r == 1) return 1;
 		if (r == 0) {
+			art_source as = { AS_SG, AK_FAN, "", "" };
+
+			artsrc_set(g_sys[g_si].folder, g_roms[g_sg[g_sgi]], &as);
 			g_st.found++;
 			g_st.sg_found++;
 			g_sg_quiet = 0;

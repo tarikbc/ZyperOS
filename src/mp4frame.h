@@ -72,6 +72,23 @@ static inline uint8_t *mpf_slot_data(void *base, int s)
 
 static inline uint32_t mpf_chroma(uint32_t n) { return (n + 1) / 2; }
 
+/* THE TEXTURE A SNAP'S PICTURE GOES IN ON THE GPU, never smaller than a
+ * 640x480 one (2026-11-09). On the Pixel 2 the GPU (Mali, Mesa's panfrost)
+ * faulted and took the launcher with it as a snap narrower than that played:
+ * a Nintendo DS game's (320x480, its two screens stacked), 534x480, a Game
+ * Boy game's, while every 640x480 snap played fine; the kernel's log said
+ * "panfrost: Unhandled Page fault ... JOB_BUS_FAULT". So a smaller picture is
+ * put in the top-left corner of a texture of that known-good size, the rest
+ * black, and drawn from its own rectangle (snapview.c). A larger one has a
+ * texture of its own size, as before. Pure, for tools/snapsize-check.c. */
+#define MPF_TEX_MIN_W 640u
+#define MPF_TEX_MIN_H 480u
+static inline void mpf_tex_size(uint32_t w, uint32_t h, uint32_t *tw, uint32_t *th)
+{
+	*tw = w < MPF_TEX_MIN_W ? MPF_TEX_MIN_W : w;
+	*th = h < MPF_TEX_MIN_H ? MPF_TEX_MIN_H : h;
+}
+
 static inline uint32_t mpf_bytes(uint32_t w, uint32_t h)
 {
 	return w * h + 2 * mpf_chroma(w) * mpf_chroma(h);

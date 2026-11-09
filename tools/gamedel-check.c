@@ -435,6 +435,9 @@ static void make_card(void)
 	put("Roms/Game Boy/Tetris (World).gb", "tetris");
 	put("Roms/Game Boy/.media/Tetris (World).png", "png");
 	put("Roms/Game Boy/.media/Tetris (World).mp4", "mp4");
+	/* the cover Cover and Video put aside, and the revision's */
+	put("Roms/Game Boy/.media/.before/Tetris (World).png", "png");
+	put("Roms/Game Boy/.media/.before/Tetris (World) (Rev 1).png", "png");
 	put("Roms/Game Boy/.cheevos/Tetris (World).set", "set");
 	put("Saves/Tetris (World).srm", "srm");
 	put("Saves/Tetris (World).sav", "sav");
@@ -603,6 +606,7 @@ int main(void)
 			"Roms/Game Boy/Tetris (World).gb",
 			"Roms/Game Boy/.media/Tetris (World).png",
 			"Roms/Game Boy/.media/Tetris (World).mp4",
+			"Roms/Game Boy/.media/.before/Tetris (World).png",
 			"Roms/Game Boy/.cheevos/Tetris (World).set",
 			"Saves/Tetris (World).srm",
 			"Saves/Tetris (World).sav",
@@ -613,7 +617,7 @@ int main(void)
 			NULL
 		};
 		deleted("a cartridge: Tetris (World).gb, and not its Rev 1 beside it:",
-		        GB, "Tetris (World).gb", "Tetris (World)", gone, 10);
+		        GB, "Tetris (World).gb", "Tetris (World)", gone, 11);
 		rows_there("the cartridge's neighbour", GB, "Tetris (World) (Rev 1).gb", true);
 	}
 	{
@@ -697,6 +701,8 @@ int main(void)
 		static const char *const gone[] = {
 			"Roms/Game Boy/Tetris (World) (Rev 1).gb",
 			"Roms/Game Boy/.media/Tetris (World) (Rev 1).png",
+			"Roms/Game Boy/.media/.before/Tetris (World) (Rev 1).png",
+			"Roms/Game Boy/.media/.before/",
 			"Roms/Game Boy/.media/",
 			"Roms/Game Boy/.cheevos/Tetris (World) (Rev 1).set",
 			"Roms/Game Boy/.cheevos/",
@@ -706,7 +712,7 @@ int main(void)
 			NULL
 		};
 		deleted("the shelf's last game, with the folders it leaves empty:",
-		        GB, "Tetris (World) (Rev 1).gb", "Tetris (World) (Rev 1)", gone, 5);
+		        GB, "Tetris (World) (Rev 1).gb", "Tetris (World) (Rev 1)", gone, 6);
 		CHECK(there("Roms/Game Boy/"));          /* the console's folder stays */
 	}
 

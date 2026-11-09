@@ -72,7 +72,7 @@ The name is also two words in one: **zippy** and **hyper**. Games start the mome
 - **An empty card that says what to do:** with no games yet, the home shows the two ways to add them, one button each, and Zyper cheers when the first ones arrive.
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
-- **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own.
+- **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own. To change one game's cover, X on it opens **Cover and Video**: every cover, 3D box, title screen and screenshot the three sources offer, each named with where it comes from, a big look before it is used, and the one it replaced kept to put back ([below](#a-game-has-no-box-art)).
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
 - **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back; Music, Videos and Audiobooks open their albums, films and books the same way, and A deletes one. **X** sorts any of these lists by size, A to Z or last played. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
@@ -121,6 +121,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
 | **Storage by part and by game** | Yes, with recommendations and media pages | — | — | — | — | — |
+| **Pick a game's cover on the device** | From three sources, a big look first, the old one kept to put back | — | — | — | — | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
 | **Charge limit** | 80, 85 or 90% | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
@@ -164,6 +165,10 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
   <tr>
     <td><img src="res/readme/menu.png" width="360" alt="The ZyperOS menu in the light theme"></td>
     <td><img src="res/readme/dark/menu.png" width="360" alt="The ZyperOS menu in the dark theme"></td>
+  </tr>
+  <tr>
+    <td><img src="res/readme/media.png" width="360" alt="A game's Cover and Video page in the light theme"></td>
+    <td><img src="res/readme/dark/media.png" width="360" alt="A game's Cover and Video page in the dark theme"></td>
   </tr>
 </table>
 
@@ -457,7 +462,16 @@ Some games aren't in any collection, like fan translations. Add your own: a PNG 
 
 Covers go over USB or Wi-Fi File Transfer too: drag a console's `.media` folder onto that console's folder on the page, and its covers land in the card's `.media` (Cmd-Shift-. shows hidden folders in Finder). Safari leaves hidden folders out of a folder it sends, so a whole console's folder sent from Safari arrives without its covers: send its `.media` folder on its own. The litter a Mac leaves, `.DS_Store` and `._` files, always stays behind.
 
-Don't like a cover? Press X on the game and choose **Replace Box Art**. It looks again, and if nothing turns up, you keep the one you had.
+Don't like a cover? Press X on the game and choose **Cover and Video**. The cover on the shelf is at the left and what libretro, ScreenScraper and SteamGridDB offer is at the right, each named (box front, 3D box, title screen, screenshot, fan cover) with where it comes from. A shows one big beside the one you have, and A again uses it. The cover it replaced stays as **Before**, and A on it puts it back. The same page shows the game's video snap: watch it with sound, download or replace it, or delete it.
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/media.png" width="320" alt="A game's Cover and Video page: Now at the left, the pictures found at the right with the focused one named Box Front, USA, from ScreenScraper, and the game's video with Watch, Replace and Delete"><br><sub>What the sources offer, beside the cover you have</sub></td>
+    <td align="center"><img src="res/readme/media-look.png" width="320" alt="Look Closer: one picture big beside the cover on the shelf, with Back and Use as Cover"><br><sub>A look before anything changes</sub></td>
+  </tr>
+</table>
+</div>
 
 With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game's video snap with its cover. Rest on a game for three seconds and its cover turns into the snap. They take room, a megabyte or three a game: the page shows how much for each console, turns each one on or off, and deletes them all. Their sound is muted to start.
 

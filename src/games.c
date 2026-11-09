@@ -139,7 +139,7 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
                            (int)ceilf(dst.w+(vr.w-dst.w)*k)+1,(int)ceilf(dst.h+(vr.h-dst.h)*k)+1};
             SDL_RenderSetClipRect(r,&clip);
             SDL_SetTextureAlphaMod(info->snap,(Uint8)lroundf(a*k));
-            SDL_RenderCopyF(r,info->snap,NULL,&vr);
+            SDL_RenderCopyF(r,info->snap,info->snap_src.w>0?&info->snap_src:NULL,&vr);
             SDL_SetTextureAlphaMod(info->snap,255);
             SDL_RenderSetClipRect(r,NULL);
         }

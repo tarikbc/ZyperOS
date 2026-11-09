@@ -90,6 +90,12 @@ SHOTS={
     'storage-system':('demo','PS1',['--storage','system']),
     # ...and its Music page: albums by size, X's order beside the list
     'storage-music':('demo','PS1',['--storage','music']),
+    # A game's Cover and Video (DESIGN.md 11.34): what the sources offer
+    # beside the cover there is, one looked at closely, and the video's rows.
+    # Its pictures are the stand-ins media_art draws, not any game's box
+    'media':('demo','PS1',['--screen','games','--media','page','--media-art','{card}/media-art']),
+    'media-look':('demo','PS1',['--screen','games','--media','look','--media-art','{card}/media-art']),
+    'media-video':('demo','PS1',['--screen','games','--media','video','--media-art','{card}/media-art']),
     'empty':('empty','',['--ways','usb']),
     'tour-theme':('demo','PS1',['--tour','theme','2000','--tour-music','--tour-pick','0']),
     'tour-home':('demo','PS1',['--tour','home','2000','--tour-music','--tour-pick','1']),
@@ -142,7 +148,7 @@ STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
         'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
         'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar','nowplaying','video-controls','video-full']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
@@ -178,6 +184,37 @@ def stand_in_badge(path,color):
         rows.append(row)
     png_rgb(path,64,64,rows)
 
+# Stand-ins for the pictures the Cover and Video page shows (--media-art):
+# the shapes a source offers - a portrait box, a landscape box, a box in 3D,
+# a title screen, a screenshot, a fan's tall cover - each a blend of one color
+# with bands and a diamond, so a shot shows their shapes and none of any
+# game's art. The names are the ones src/main.c's media_shot asks for.
+MEDIA_ART=[  # file, width, height, color, kind
+    ('now.png',512,364,(70,120,190),'box'),('c0.png',364,512,(200,90,70),'box'),
+    ('c1.png',512,364,(70,120,190),'box'),('c2.png',360,512,(120,170,90),'box'),
+    ('c3.png',512,360,(190,140,60),'box'),('c4.png',440,512,(150,90,190),'box3d'),
+    ('c5.png',320,240,(40,40,70),'title'),('c6.png',320,240,(80,150,110),'shot'),
+    ('c7.png',512,364,(70,120,190),'box'),('c8.png',320,240,(40,40,70),'title'),
+    ('c9.png',320,240,(80,150,110),'shot'),('c10.png',400,600,(60,70,140),'fan'),
+    ('snap.png',320,240,(90,160,120),'shot'),
+]
+def media_art(dest):
+    dest.mkdir(parents=True,exist_ok=True)
+    for name,w,h,color,kind in MEDIA_ART:
+        rows=[]
+        for y in range(h):
+            row=[]
+            for x in range(w):
+                t=(x/w+y/h)/2
+                c=[round(v*(1.0-0.45*t)) for v in color]
+                if kind=='box3d' and x<w*0.14: c=[round(v*0.45) for v in color]
+                elif kind in ('title','shot') and abs(y-h*0.62)<h*0.06: c=[min(255,round(v*0.4+150)) for v in color]
+                elif kind in ('box','fan') and y>h*0.8: c=[round(v*0.5) for v in color]
+                elif abs(x-w/2)/w+abs(y-h*0.42)/h<0.16: c=[min(255,round(v*0.35+255*0.65)) for v in color]
+                row.append(tuple(c))
+            rows.append(row)
+        png_rgb(dest/name,w,h,rows)
+
 def card_dirs(card):
     for folder in ['ZyperOS','Roms','userdata','shared']: (card/folder).mkdir(parents=True)
     shutil.copyfile(ROOT/'config/systems.cfg',card/'ZyperOS/systems.cfg')
@@ -198,6 +235,8 @@ def demo_card(card,art_dir,manifest):
             manifest['artwork'][name]=hashlib.sha256(art.read_bytes()).hexdigest()
     # Stand-in badges for the achievements list and notice shots, beside the
     # (absent) set of the PlayStation folder as src/rabadge.h keeps them
+    # The Cover and Video page's stand-in pictures, beside the card's files
+    media_art(card/'media-art')
     badges=card/'Roms/PlayStation/.cheevos/badges';badges.mkdir(parents=True)
     for i,color in enumerate(BADGE_COLORS): stand_in_badge(badges/f'b{i+1}.png',color)
     # Curated metadata for the demonstration's focused game. This is

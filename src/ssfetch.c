@@ -348,6 +348,18 @@ static void esrb_of(jsv jeu, char *out, size_t n)
 	}
 }
 
+/* A media entry's "size", which the reply writes as a string of digits;
+ * 0 when it does not say */
+static long media_size(jsv e)
+{
+	jsv v;
+	char num[24];
+
+	if (!js_member(e, "size", &v)) return 0;
+	if (js_str(v, num, sizeof num)) return atol(num);
+	return (long)js_int(v);
+}
+
 /* The box-2D cover, in the region the shelf would rather have. */
 static void art_of(jsv jeu, ss_result *out)
 {
@@ -390,10 +402,89 @@ static void video_of(jsv jeu, ss_result *out)
 
 		if (!js_member(e, "type", &v) || !js_str(v, type, sizeof type)) continue;
 		if (strcmp(type, "video-normalized") != 0) continue;
-		if (js_member(e, "url", &v) && js_str(v, out->video, sizeof out->video) && out->video[0])
+		if (js_member(e, "url", &v) && js_str(v, out->video, sizeof out->video) && out->video[0]) {
+			out->video_size = media_size(e);
 			return;
+		}
 	}
 	out->video[0] = '\0';
+}
+
+/* Where `reg` stands in art_of's order of regions; past the end for one it
+ * does not name */
+static int region_rank(const char *reg)
+{
+	static const char *REG[] = { "us", "wor", "ss", "eu", "au", "br", "jp", "kr" };
+	int rank;
+
+	for (rank = 0; rank < (int)(sizeof REG / sizeof REG[0]); rank++)
+		if (!strcmp(reg, REG[rank])) break;
+	return rank;
+}
+
+/* Every picture that could be a cover, for the Cover and Video page: see
+ * ss_media in ssfetch.h for which and in what order */
+static void media_of(jsv jeu, ss_result *out)
+{
+	static const struct { const char *type; ssm_kind kind; int most; } WANT[] = {
+		{ "box-2D", SSM_BOX, SS_BOX_REGIONS }, { "box-3D", SSM_BOX3D, 1 },
+		{ "sstitle", SSM_TITLE, 1 }, { "ss", SSM_SHOT, 1 },
+	};
+	size_t w;
+
+	out->nmedia = 0;
+	for (w = 0; w < sizeof WANT / sizeof WANT[0]; w++) {
+		int taken = 0;
+
+		/* The best region not yet taken, again, until `most` are */
+		while (taken < WANT[w].most && out->nmedia < SS_MEDIA_MAX) {
+			jsv arr, it = { 0 }, e, v;
+			char best_url[512] = "", best_reg[8] = "";
+			long best_size = 0;
+			int best = -1, k;
+
+			if (!js_member(jeu, "medias", &arr)) return;
+			while (js_next(arr, &it, &e)) {
+				char type[32], reg[16] = "", url[512];
+				bool dup = false;
+				int rank;
+
+				if (!js_member(e, "type", &v) || !js_str(v, type, sizeof type)) continue;
+				if (strcmp(type, WANT[w].type) != 0) continue;
+				if (!js_member(e, "url", &v) || !js_str(v, url, sizeof url) || !url[0]) continue;
+				if (js_member(e, "region", &v)) js_str(v, reg, sizeof reg);
+				for (k = 0; k < out->nmedia; k++)
+					if (out->media[k].kind == WANT[w].kind && !strcmp(out->media[k].region, reg))
+						dup = true;
+				if (dup) continue;
+				rank = region_rank(reg);
+				if (best >= 0 && rank >= best) continue;
+				best = rank;
+				snprintf(best_url, sizeof best_url, "%s", url);
+				snprintf(best_reg, sizeof best_reg, "%s", reg);
+				best_size = media_size(e);
+			}
+			if (best < 0) break;
+			out->media[out->nmedia] = (ss_media){ WANT[w].kind, "", "", best_size };
+			snprintf(out->media[out->nmedia].region, sizeof out->media[0].region, "%s", best_reg);
+			snprintf(out->media[out->nmedia].url, sizeof out->media[0].url, "%s", best_url);
+			out->nmedia++;
+			taken++;
+		}
+	}
+}
+
+bool ss_media_sized(const char *url, int px, char *out, size_t n)
+{
+	int len;
+
+	if (!out || !n) return false;
+	out[0] = '\0';
+	if (!url || !url[0] || px <= 0) return false;
+	len = snprintf(out, n, "%s%cmaxwidth=%d&maxheight=%d", url,
+	               strchr(url, '?') ? '&' : '?', px, px);
+	if (len < 0 || (size_t)len >= n) { out[0] = '\0'; return false; }
+	return true;
 }
 
 bool ss_parse(const char *json, size_t len, const char *file, ss_result *out)
@@ -469,6 +560,7 @@ bool ss_parse(const char *json, size_t len, const char *file, ss_result *out)
 	synopsis_of(jeu, out->meta.synopsis, sizeof out->meta.synopsis);
 	art_of(jeu, out);
 	video_of(jeu, out);
+	media_of(jeu, out);
 	return true;
 }
 

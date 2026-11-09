@@ -316,6 +316,26 @@ lights.some_on.other
 # lowbatt: no shot draws it yet
 lowbatt.charging
 
+# media: drawn composed with another word ("Box Front · USA", "libretro · no match") or wrapped onto balanced lines (the question, the line under "Connect to Wi-Fi first.", the video's tile), so no drawn line is the string; the media-* shots draw every one and fail on any cut (src/mediapage.c, src/main.c's media_shot)
+media.kind_box3d
+media.region_us
+media.region_eu
+media.region_jp
+media.region_wor
+media.region_br
+media.region_kr
+media.region_au
+media.looking
+media.or_pc
+media.vnote_link
+media.vnote_none
+media.vnote_offline
+media.src_unknown
+media.src_no_match
+media.src_not_linked
+media.src_no_answer
+media.delete_ask
+
 # menu: no shot draws it yet
 menu.on
 

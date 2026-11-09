@@ -92,6 +92,14 @@ $(BUILD)/games-check: tools/games-check.c $(CHECK_OBJS) FORCE
 $(BUILD)/cardpaint-check: tools/cardpaint-check.c $(CHECK_OBJS) FORCE
 	$(CC) $(CFLAGS) -o $@ tools/cardpaint-check.c $(CHECK_OBJS) $(LDLIBS)
 
+# A video snap of any shape read and drawn (tools/snapsize-check.c), with
+# src/snapview.c built here against a frames file of the check's own, under
+# UBSan where the compiler has it
+SNAP_SAN := $(shell echo 'int main(void){return 0;}' | $(CC) -fsanitize=undefined -x c - -o /dev/null 2>/dev/null && echo -fsanitize=undefined -fno-sanitize-recover=all)
+$(BUILD)/snapsize-check: tools/snapsize-check.c src/snapview.c $(filter-out $(OBJ)/snapview.o,$(CHECK_OBJS)) FORCE
+	$(CC) $(CFLAGS) $(SNAP_SAN) -DSNAP_FRAMES='"$(CURDIR)/$(BUILD)/snapsize-frames"' -o $@ \
+	      tools/snapsize-check.c src/snapview.c $(filter-out $(OBJ)/snapview.o,$(CHECK_OBJS)) $(LDLIBS)
+
 $(BUILD)/putpace-check: tools/putpace-check.c $(CHECK_OBJS) FORCE
 	$(CC) $(CFLAGS) -o $@ tools/putpace-check.c $(CHECK_OBJS) $(LDLIBS)
 

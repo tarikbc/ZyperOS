@@ -1338,7 +1338,9 @@ static void info_rows(void)
 	ck(!strcmp(rows[0].label, "Achievements"), "Achievements leads when nothing describes the game");
 	ck(!strcmp(val(&rows[0]), "12 of 78"), "and carries the count");
 	ck(rows[0].live, "and opens the set, the way the in-game row does");
-	ck(!strcmp(rows[1].label, "Replace Box Art"), "art present offers a replace");
+	ck(!strcmp(rows[1].label, "Cover and Video"), "art present: Cover and Video");
+	ck(!strcmp(val(&rows[1]), "no video"), "says what is missing: the video");
+	ck(rows[1].live, "and opens its page");
 	ck(!strcmp(rows[2].label, "Delete Game"), "Delete Game last");
 	ck(rows[2].live && !rows[2].value, "live, with no value: the question says what goes");
 	for (i = 0; i < n; i++) {
@@ -1357,13 +1359,19 @@ static void info_rows(void)
 	n = gi_rows(rows, &gi, false);
 	printf("game info, no set, no art and no network:\n");
 	ck(!rows[0].live, "a game with no set has nothing to open");
-	ck(!strcmp(rows[1].label, "Get Box Art"), "no art offers a get, not a replace");
-	ck(!strcmp(val(&rows[1]), "needs Wi-Fi"), "and says why it is dead");
-	ck(!rows[1].live, "which it is");
+	ck(!strcmp(rows[1].label, "Cover and Video"), "no art: the same row");
+	ck(!strcmp(val(&rows[1]), "no cover"), "and says the cover is what is missing");
+	ck(rows[1].live, "live with no network: the page shows what is on the card");
 	ck(!strcmp(rows[2].label, "Delete Game") && rows[2].live,
 	   "Delete Game needs no network");
 	k = reachable(rows, n, got, GI_MAX);
-	ck(k == 1, "Delete Game is the one thing on the screen to choose");
+	ck(k == 2, "Cover and Video and Delete Game are the things to choose");
+	gi.has_art = true;
+	gi.has_snap = true;
+	n = gi_rows(rows, &gi, true);
+	ck(!strcmp(rows[1].label, "Cover and Video") && !val(&rows[1])[0],
+	   "a cover and a video: nothing is missing, no value");
+	gi.has_snap = false;
 
 	/* Scraped, which adds the three rows ABOVE Achievements and nowhere else. The
 	 * shapes below are the whole of what a scrape can leave behind. */
@@ -1397,7 +1405,7 @@ static void info_rows(void)
 	   "then what kind, as the scrape joined it");
 	ck(!strcmp(rows[3].label, "Achievements"),
 	   "then what there is to shoot for, which is worth seeing before starting");
-	ck(!strcmp(rows[4].label, "Replace Box Art"), "then the art action");
+	ck(!strcmp(rows[4].label, "Cover and Video"), "then Cover and Video");
 	ck(!strcmp(rows[5].label, "Delete Game"), "and Delete Game last");
 	k = reachable(rows, n, got, GI_MAX);
 	ck(k == 4, "four stops: the synopsis, the set and the two actions");
@@ -1408,15 +1416,14 @@ static void info_rows(void)
 	ck(n == GI_MAX - 2, "one row fewer");
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Delete Game") != 0, "no Delete Game row");
-	ck(!strcmp(rows[n - 1].label, "Replace Box Art"), "the art action last");
+	ck(!strcmp(rows[n - 1].label, "Cover and Video"), "Cover and Video last");
 	/* PortMaster's entry has its own cover, which no fetch replaces */
 	gi.own_art = true;
 	n = gi_rows(rows, &gi, true);
 	printf("game info on PortMaster, whose cover is its own:\n");
 	ck(n == GI_MAX - 3, "no art action either");
 	for (i = 0; i < n; i++)
-		ck(strcmp(lbl(&rows[i]), "Replace Box Art") && strcmp(lbl(&rows[i]), "Get Box Art"),
-		   "no Box Art row");
+		ck(strcmp(lbl(&rows[i]), "Cover and Video"), "no Cover and Video row");
 	gi.own_art = false;
 	gi.can_delete = true;
 
