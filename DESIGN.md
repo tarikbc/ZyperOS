@@ -617,6 +617,33 @@ whose last row is Delete Game (11.31).
 Long titles wrap or fit within their region, clear of the action and footer.
 Missing box art uses the theme's existing generated text fallback.
 
+**Art badge** (src/artbadge.h): a small mark on a card's art that says one
+thing about it, at the art's top left - the corner opposite the video snap's
+mark (11.19), and clear of the middle, where a cover's subject and title are.
+A glyph on a **surface** disc AB_D 40 across, inset AB_INSET 12 from both
+edges, over a soft shadow of **ink** (down 2, softened over 6, 28% in Beard
+and 47% in Salt & Pepper), so the glyph has the theme's ground under it on
+any art; drawn by signed distance on the status marks' 24-unit grid, 3:1 or
+better on its disc in both themes. Disc and inset scale with the card as the
+row scales it (a side cover's is 29), the card's fade fades it, and under 20
+there is none. It is the same component everywhere it is used:
+- **favorite**: a heart in **favorite**, the curve of draw_heart, on every
+  cover of a favorite game - its own console's shelf and Favorites alike, and
+  Random Game's pick, which is the shelf put on it. It is read every frame,
+  so Y on the details page shows it, or takes it away, at once. It fades with
+  the cover as a video snap takes the cover's place.
+- On MP4's **All** (11.14), what each card is, in **accent-ink**: an
+  **album**, the top bar's two beamed notes; a **book**, an open book; a
+  **video**, a screen with a play mark cut out of it. On one kind alone the
+  shelf says it, and no card carries one.
+
+*(2026-11-09: "show a small heart badge when the game is a favorite", and on
+All "a small badge saying what it is ... in the same badge component and
+style as the heart". On the card, not beside the title on the page: a
+title's heart says it of the focused game only, while the card's goes with
+every cover in sight as the row moves, and it is where the tutorial's Keep a
+Favorite step already pops it.)*
+
 The original game and music identities, saves, launch paths and controls do
 not change with either home layout or with scraped display names.
 
@@ -1230,9 +1257,10 @@ Muse, so a card's saved places and modes still read.
   Audiobooks and Videos, only the kinds the card has, and is there with two
   or more. All, where it starts (2026-11-09, "Tudo"), is every album, book and
   video on one shelf, mixed: by Folder, the folders' names (a loose film's
-  own), or by Title; its count row is Total. A film straight in `Videos/` is a
-  card of its own and A plays it; a folder of videos lists its files like an
-  album. A video's cover is a picture beside it with its name, else one of its
+  own), or by Title; its count row is Total, and each card carries the art
+  badge (11.1) of its kind: an album, a book or a video. A film straight in
+  `Videos/` is a card of its own and A plays it; a folder of videos lists its
+  files like an album. A video's cover is a picture beside it with its name, else one of its
   own frames (src/muse/cover.c). On videos, Sort By is Folder or Title and
   there is no Album Art; Shuffle All and Album Art are on music, and on All
   when the card has songs.

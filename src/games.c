@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "games.h"
+#include "artbadge_draw.h"
 #include "home.h"
 #include "ui.h"
 #include "theme.h"
@@ -140,6 +141,15 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
             SDL_RenderCopyF(r,info->snap,NULL,&vr);
             SDL_SetTextureAlphaMod(info->snap,255);
             SDL_RenderSetClipRect(r,NULL);
+        }
+        /* Its badge (src/artbadge.h), at the top left: a heart on a
+         * favorite. Scaled with the cover as games_cover_rect scales it, and
+         * fading as the snap mark does when the snap takes the cover's place,
+         * so it never sits over the video. */
+        if(info->badge_of && k<1) {
+            int kind=info->badge_of(ctx,slots[i].item);
+            if(kind!=AB_NONE)
+                ab_draw_at(r,(ab_kind)kind,dst.x,dst.y,.72f+.28f*focus,(Uint8)lroundf(a*(1-k)));
         }
         /* A cover with a snap says so: a play mark in an accent disc at its
          * bottom right, fading with the cover as the snap takes over (
