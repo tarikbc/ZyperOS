@@ -426,9 +426,11 @@ void sp_draw(SDL_Renderer *r, const sp_page *p, sp_motion *m, unsigned now)
 
 	/* A system's sprite where System Update has Zyper */
 	if (p->head_tex) {
-		SDL_Rect d = { 56, 92, 112, 112 };
+		SDL_Rect d = { 56, 92, 112, 112 }, src = { 0, 0, 0, 0 };
 
-		SDL_RenderCopy(r, p->head_tex, NULL, &d);
+		SDL_QueryTexture(p->head_tex, NULL, NULL, &src.w, &src.h);
+		if (p->head_sheet) src.w /= 2;
+		SDL_RenderCopy(r, p->head_tex, &src, &d);
 	}
 
 	/* Used, its number as a title and its words in the format's places */
@@ -530,6 +532,16 @@ void sp_draw(SDL_Renderer *r, const sp_page *p, sp_motion *m, unsigned now)
 		SDL_RenderSetClipRect(r, had ? &was : NULL);
 		if (m->top_to + wh < list_h(p) - 0.5f)
 			more_mark(r, ly + (int)((moving ? wh - SP_RULE_H : last) + 0.5f) + 6, false, UI_TEXT_DIM);
+		/* The list's order and the button that changes it, on the more
+		 * mark's line at the right, clear of the line under it: X's glyph,
+		 * then the order it is now (DESIGN.md 11.32) */
+		if (p->sort_label) {
+			int cy = ly + (int)(wh + 0.5f) + 14, gs = 28, tw = ui_text_width(fs, p->sort_label);
+			int gw = ui_button_width("X", gs);
+
+			ui_text(r, fs, p->sort_label, SP_X1, ui_cap_y(fs, cy), 1, UI_TEXT_DIM);
+			ui_button(r, "X", SP_X1 - tw - 10 - gw / 2, cy, gs, UI_BUTTON_PLAIN);
+		}
 		caption_draw(r, p->rows[p->sel].caption, SP_CAP_Y);
 	}
 }

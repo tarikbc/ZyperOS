@@ -543,6 +543,10 @@ storage.last_played
 storage.progress
 storage.orphan_caption
 storage.orphan_ask
+storage.files.one
+storage.media_ask_folder
+storage.media_ask_file
+storage.media_rest_caption
 
 # sysmenu: no shot draws it yet
 sysmenu.wifi_connecting

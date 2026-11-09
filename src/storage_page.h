@@ -50,6 +50,8 @@ typedef struct {
 	char used[SP_VALUE];
 	char right[48];                 /* "7.4 GB free", "116 games" */
 	SDL_Texture *head_tex;          /* a system's sprite, left of the numbers */
+	bool head_sheet;                /* ...a folder's two frames: the first */
+	const char *sort_label;         /* the list's order, beside X under it */
 	sp_part part[SP_PARTS];
 	int nparts;
 	unsigned long long whole;       /* the bar's whole: the card, or the system */

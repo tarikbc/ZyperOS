@@ -8,8 +8,9 @@ Writes DIR/<theme>/<lang>/<name>.png (default build/storage-shots) from the
 launcher's own --storage shots (src/main.c, storage_shot) on the README's
 demonstration card (tools/readme-shots.py): the page on its stand-in card of
 128 GB nearly full, a system's page, the two recommendations' questions,
-Delete Game's question from a system's page, the page after Unused Art, and
-the first walk. For looking at, and for the README's and the site's shot:
+Delete Game's question from a system's page, the page after Unused Art, the
+first walk, the Music, Videos and Audiobooks pages with an album's question,
+and the lists in each of X's orders (A to Z, Last Played). For looking at, and for the README's and the site's shot:
 the checks that hold what is drawn are check-storage (the numbers) and
 check-i18n-shots (what does not fit, in every language).
 """
@@ -38,6 +39,18 @@ SHOTS = {
     "first": ["first"],
     "zyperos": ["main", "zyperos"],
     "bios": ["main", "bios"],
+    "music": ["music"],
+    "videos": ["videos"],
+    "books": ["books"],
+    "music-rest": ["music", "rest"],
+    "music-bgm": ["music", "bgm"],
+    "media-delete": ["media-delete"],
+    "videos-delete": ["videos-delete"],
+    "main-az": ["main", "--storage-sort", "az"],
+    "main-last": ["main", "--storage-sort", "last"],
+    "system-az": ["system", "--storage-sort", "az"],
+    "system-last": ["system", "--storage-sort", "last"],
+    "music-az": ["music", "--storage-sort", "az"],
 }
 
 
