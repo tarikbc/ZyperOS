@@ -308,6 +308,11 @@ void plat_brightness_set(int level);
  * 300, where a dark picture would leave the light burning. On comes back at
  * the level it had. Nothing on the host. */
 void plat_backlight(bool on);
+/* The light at the ladder's lowest rung for now, or back at the level it
+ * has (2026-11-09: "wake up in the lowest brightness" from the pocket lock).
+ * Saves nothing, so the level the rocker set is the one that comes back;
+ * nothing on the host. */
+void plat_backlight_dim(bool dim);
 /* Headphones and the speaker want different volume ladders - the jack covers
  * 61 dB where the speaker covers 45 - so the level has to be re-applied when a
  * plug goes in or comes out, not merely at the next volume press. Call from a

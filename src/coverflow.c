@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+#include "artbadge_draw.h"
 #include "clamp.h"
 #include "coverflow.h"
 #include "design.h"
@@ -450,9 +451,28 @@ static void draw_card(SDL_Renderer *r, SDL_Texture *tex, int tw, int th,
 	}
 }
 
+/* Card k's badge at its art's top left corner: the inset taken along the
+ * card, in its own units at its own scale, and projected as the card is, the
+ * disc as large as the card is there - nearer on the turned card's near side,
+ * further on its far side. Flat to the screen, as a sticker on the card would
+ * read, rather than turned with it. */
+static void draw_badge(SDL_Renderer *r, int kind, const cf_layout *lay, int tw, int th,
+                       float ox, float oy, float hw, float hh, float ang, float scale,
+                       Uint8 alpha)
+{
+	float ahw, ahh, in = (AB_INSET + AB_D / 2.0f) * scale, lx, sx, sy;
+	cf_proj p;
+
+	art_fit(lay, tw, th, hw, hh, &ahw, &ahh);
+	p = card_proj(ox, oy, hw, ang);
+	lx = -ahw + in;
+	proj_point(&p, lx, -ahh + in, &sx, &sy);
+	ab_draw(r, (ab_kind)kind, sx, sy, scale * p.focal / (p.focal + lx * p.sina), alpha);
+}
+
 bool cf_draw(coverflow *cf, SDL_Renderer *r, int screen_w, int screen_h,
-             int count, cf_tex_fn get_tex, cf_lift_fn lift, void *ctx,
-             const cf_layout *lay)
+             int count, cf_tex_fn get_tex, cf_lift_fn lift, cf_badge_fn badge,
+             void *ctx, const cf_layout *lay)
 {
 	if (count <= 0) return false;
 	step_anim(cf, count);
@@ -525,7 +545,7 @@ bool cf_draw(coverflow *cf, SDL_Renderer *r, int screen_w, int screen_h,
 	struct card {
 		SDL_Texture *tex;
 		int tw, th;
-		float cb, c, ox, oy, hw, hh, ang;
+		float cb, c, ox, oy, hw, hh, ang, scale;
 		Uint8 alpha;
 	} cards[CF_WINDOW];
 	for (int a = 0; a < ns; a++) {
@@ -545,6 +565,7 @@ bool cf_draw(coverflow *cf, SDL_Renderer *r, int screen_w, int screen_h,
 		k->oy = cy;
 		k->hw = cw * 0.5f * scale;
 		k->hh = ch * 0.5f * scale;
+		k->scale = scale;
 	}
 	/* The lifts first, under every card and not only under their own: a
 	 * glow is added light, and laid over a neighbor already drawn it would
@@ -561,10 +582,14 @@ bool cf_draw(coverflow *cf, SDL_Renderer *r, int screen_w, int screen_h,
 	}
 	for (int a = 0; a < ns; a++) {
 		const struct card *k = &cards[a];
+		int kind;
 
 		if (!k->tex) continue;
 		draw_card(r, k->tex, k->tw, k->th, k->cb, k->ox, k->oy, k->hw, k->hh,
 		          k->ang, k->alpha, lay, lay->floor * screen_h);
+		if (badge && (kind = badge(ctx, slots[a].item)) != AB_NONE)
+			draw_badge(r, kind, lay, k->tw, k->th, k->ox, k->oy, k->hw, k->hh,
+			           k->ang, k->scale, k->alpha);
 	}
 	return cf->active;
 }

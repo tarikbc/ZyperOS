@@ -11,8 +11,8 @@
         check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-captive check-qr \
-        check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots design sounds strings cjk-font check-strings check-i18n-shots \
-        check-tour-previews tour-previews check-prep check-diatom check-simulator check-building-doc check-blog \
+        check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
+        check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
 
 all: check
@@ -36,8 +36,8 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-captive check-qr \
-         check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots checkmark \
-         check-installer check-from-rogue check-importers check-diatom check-simulator check-building-doc check-blog \
+         check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
+         check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
 
 # All of them at once, as many at a time as there are cores (CHECK_JOBS=1 for
@@ -92,6 +92,14 @@ check-simulator:
 	else \
 		echo "check-simulator: skipped, no Swift"; \
 	fi
+
+# px2sim's choice of the keyboard it takes (plastron/.../px2sim/src/kbdsel.h):
+# QEMU's, never a program's uinput one (gptokeyb's Fake Keyboard). Host
+# compiler only, no VM.
+check-px2sim:
+	@mkdir -p build-native && cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror \
+		-o build-native/kbdsel-check plastron/buildroot/package/px2sim/tests/kbdsel-check.c && \
+		build-native/kbdsel-check
 
 # One version number: plastron reads it from here for the card and the About
 # page (its package/zyperos/zyperos.mk), and ZyperOS Installer has it too.
@@ -1530,6 +1538,24 @@ check-favorites-shots: native
 .PHONY: check-np-footer
 check-np-footer: native
 	@'$(PYIMG)' tools/np-footer-check.py
+
+# The art badge (src/artbadge.c): every badge in both themes at every size a
+# row draws one - placed and sized with its card, its glyph 3:1 on its disc
+# and inside it, the shadow below - and on the real launcher's shelves: a
+# heart on a favorite's cover and none on another's, the three kinds on MP4's
+# All and none on one kind alone (tools/artbadge-shot-check.py)
+check-artbadge: build-native/artbadge-check
+	@./build-native/artbadge-check
+
+build-native/artbadge-check: tools/artbadge-check.c src/artbadge.c src/artbadge.h \
+                            src/design.h src/clamp.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/artbadge-check.c src/artbadge.c -lm
+
+.PHONY: check-artbadge-shots
+check-artbadge-shots: native
+	@'$(PYIMG)' tools/artbadge-shot-check.py
 
 # The play time under a game's name sits where Favorites' system line does, and
 # the status corner over a paused game is the home header (src/games.c, main.c)

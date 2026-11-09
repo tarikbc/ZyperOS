@@ -35,6 +35,7 @@
 #include "texload.h"
 #include "tween.h"
 #include "artshrink.h"
+#include "artbadge.h"
 #include "artscrape.h"
 #include "favorites.h"
 #include "hare.h"
@@ -3224,6 +3225,26 @@ static void draw_game_text(app *a, sysview *v, const system_cfg *s, int idx)
 	}
 }
 
+/* cf_badge_fn on MP4's shelf: on All, what each card is - an album, a book or
+ * a video - since the shelf mixes them; on one kind alone the shelf says it
+ * and the cards carry none. */
+static int album_badge(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+	int al;
+
+	if (muse_kind_shown() != ML_ALL || !v->album || i < 0 || i >= v->list.count)
+		return AB_NONE;
+	al = v->album[i];
+	if (al < 0 || al >= g_muse.nalbums) return AB_NONE;
+	switch (g_muse.albums[al].kind) {
+	case ML_BOOKS:  return AB_BOOK;
+	case ML_VIDEOS: return AB_VIDEO;
+	default:        return AB_ALBUM;
+	}
+}
+
 static void draw_albums(app *a)
 {
 
@@ -3233,7 +3254,7 @@ static void draw_albums(app *a)
 	const cf_layout *row = albums ? &CF_LAYOUT_ALBUMS : &CF_LAYOUT_GAMES;
 
 	if (cf_draw(&v->cf, a->r, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, v->list.count,
-	            game_get_tex, game_lift, a,
+	            game_get_tex, game_lift, albums ? album_badge : NULL, a,
 	            row))
 		redraw_now();
 	/* Warm where the move is about to cut to, one card per frame, underneath
@@ -3540,11 +3561,13 @@ static void draw_games(app *a)
 		.has_achievements = g_game_page.valid && g_game_page.achievements,
 		.earned = g_game_page.earned, .total = g_game_page.total,
 		.resumable = g_game_page.valid && g_game_page.resume,
-		.favorite = g && fav_is(a->sys.systems[owner].tag, g->file),
 		/* PortMaster's entry while it is not on the card: A installs it */
 		.install = pm_is_offer(a, owner, g),
 		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
-		.snap_of = game_has_snap
+		.snap_of = game_has_snap,
+		/* The heart before the name, not on Favorites (2026-11-09) */
+		.favorite = g && owner == a->sys_cursor && !is_muse(s) &&
+		            fav_is(a->sys.systems[owner].tag, g->file)
 	};
 	shelf_snap(a, v, g, owner, !games_moving(&v->row, now), &info);
 	unsigned wait = games_draw(&v->row, a->r, &info, game_get_tex, a, now, title_phase(a));
@@ -15422,6 +15445,7 @@ static void muse_locked(app *a)
 		 * the lock does not stand in its way. The light first, so the
 		 * power-off animation is seen. */
 		if (idle_due(a)) {
+			plat_backlight_dim(false);
 			plat_backlight(true);
 			muse_power(a);
 			break;
@@ -15477,13 +15501,16 @@ static void muse_locked(app *a)
 			drawn_k = (int)(mp4lock_progress(&l) * 100);
 			drawn_sec = (int)mn->at;
 			/* The light after the frame, so it comes on to the lock screen
-			 * rather than to whatever the panel held last. */
-			if (dark) { plat_backlight(true); dark = false; }
+			 * rather than to whatever the panel held last; and at the lowest
+			 * rung, since a press in a pocket or in the dark is what wakes
+			 * it (2026-11-09). Unlocking puts the level back. */
+			if (dark) { plat_backlight_dim(true); plat_backlight(true); dark = false; }
 		}
 		panel_was = panel;
 		SDL_Delay(video || awake ? 8 : 30);
 	}
 	musec_video_show(false);
+	plat_backlight_dim(false);
 	plat_backlight(true);
 	fprintf(stderr, "mp4: unlocked\n");
 	plat_input_flush();

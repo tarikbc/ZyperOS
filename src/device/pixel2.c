@@ -938,6 +938,15 @@ void plat_backlight(bool on)
 	write_file(BACKLIGHT_POWER, on ? "0\n" : "4\n");
 }
 
+void plat_backlight_dim(bool dim)
+{
+	char text[8];
+
+	if (cur_bright < 0) return;
+	snprintf(text, sizeof text, "%d\n", bright_ladder[dim ? 0 : cur_bright]);
+	write_file(BACKLIGHT, text);
+}
+
 /* The windows differ by jack, so the level is re-applied when a plug goes in
  * or out, as on the Brick. */
 void plat_audio_jack_poll(void)
