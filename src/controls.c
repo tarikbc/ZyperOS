@@ -31,6 +31,9 @@ static menu_row row_volume(void)
 }
 /* The Pixel 2's chord by the names its glyphs carry, MENU and VOL, as the
  * tutorial teaches it (DESIGN.md 12: chords with a plus) */
+/* MENU+START, held a second (tools/zyhome.c): the Pixel 2's alone, which is
+ * also the one device with MENU+VOL, so the same test says both */
+static menu_row row_home(void)  { return (menu_row){ "MENU+START", T(S_CONTROLS_HOME), false }; }
 static menu_row row_brightness(void)
 {
 	return (menu_row){ fn_volume ? "MENU+VOL" : "F1/F2", T(S_CONTROLS_BRIGHTNESS), false };
@@ -190,6 +193,7 @@ static int anywhere(menu_row *out)
 	out[n++] = (menu_row){ "MENU",   T(S_CONTROLS_SETTINGS), false };
 	out[n++] = row_volume();
 	out[n++] = row_brightness();
+	if (fn_volume) out[n++] = row_home();
 	out[n++] = (menu_row){ "POWER",  T(S_CONTROLS_TURN_OFF), false };
 	return n;
 }
@@ -944,6 +948,7 @@ static int in_a_game(menu_row *out)
 	out[n++] = row_quit();
 	out[n++] = row_volume();
 	out[n++] = row_brightness();
+	if (fn_volume) out[n++] = row_home();
 	out[n++] = row_save_off();
 	return n;
 }
@@ -963,6 +968,8 @@ static int in_a_port(const ctl_game *g, menu_row *out)
 		out[n++] = (menu_row){ "SELECT+START", T(S_CONTROLS_QUIT_GAME), false };
 	out[n++] = row_volume();
 	out[n++] = row_brightness();
+	/* Not MENU+START's way home: a port's page is full with SELECT+START,
+	 * and the home's Anywhere page says it for every screen */
 	out[n++] = (menu_row){ "POWER", T(S_CONTROLS_QUIT_OFF), false };
 	return n;
 }

@@ -67,6 +67,8 @@ endef
 ZYPEROS_EXTRA = $(if $(filter brick,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/btplayer,$(ZYPEROS_BUILD_DIR)/portkeys)
 # and on the Pixel 2, System Update (ZyperOS's update/, docs/updates.md)
 ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/zyperos-update)
+# and MENU+START's way back to the home (tools/zyhome.c)
+ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/zyhome)
 
 # ZyperOS runs from the card's games partition, as on the Brick, so it can be
 # updated by copying files onto the card. What goes there is ZyperOS's own
@@ -95,6 +97,7 @@ define ZYPEROS_INSTALL_TARGET_CMDS
 		ZYPEROS_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/zyperos.elf \
 		MUSE_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/muse \
 		PORTKEYS_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/portkeys \
+		ZYHOME_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/zyhome \
 		UPDATE_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/zyperos-update \
 		DIATOM_ELF=$(DIATOM_DIR)/build/pixel2/diatom \
 		VENDOR_DIR=/zyperos-vendor \

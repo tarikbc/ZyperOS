@@ -14,6 +14,10 @@ void restore_place(app *a);
 /* The game being played, written as it starts and cleared as it ends */
 void playing_set(app *a);
 void playing_clear(void);
+/* A deliberate power-off (POWER, Auto Off, the battery, the charging
+ * screen) marks the record, so the next start continues that game; a crash
+ * or a power cut leaves it unmarked, and the next start is the home */
+void playing_mark_clean(void);
 /* Back into the game a power-off left, when it has a state to resume */
 bool playing_restore(app *a);
 
