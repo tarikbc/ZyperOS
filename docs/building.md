@@ -300,7 +300,8 @@ Every shot names the screen and the focused item on stderr, so a sequence of
 them reads back as a list of what was actually drawn.
 
 `tools/readme-shots.py` captures the README and website gallery in both themes,
-with an isolated demonstration library and optional local artwork. See
+with an isolated demonstration library; `--art` gives its games their real box
+art from libretro-thumbnails, cached outside the repository. See
 [`res/readme/README.md`](../res/readme/README.md) for capture provenance and
 the refresh steps.
 

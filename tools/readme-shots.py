@@ -6,11 +6,18 @@ python3 tools/readme-shots.py
 
 Writes build/readme-shots/light (every screen, in Beard), build/readme-shots/dark
 (the few screens the README's light-and-dark section shows in Salt & Pepper)
-and a manifest. --out changes that output directory. No device is accessed,
-and nothing is fetched. Temporary demonstration cards use empty ROM and music
-files with freeware or stand-in names; the launcher itself draws every pixel,
-the game cards included. --art-dir copies local covers into the card; leave it
-out for the repository's pictures, which show no commercial box art.
+and a manifest. --out changes that output directory. No device is accessed.
+Temporary demonstration cards use empty ROM and music files named after
+well-known games and freeware; the launcher itself draws every pixel.
+
+--art puts the games' real box art on the demonstration card, as the
+launcher's own Scraper would: the covers, title screens and screenshots of
+the libretro-thumbnails sets (github.com/libretro-thumbnails), fetched once
+into a cache outside the repository (~/Library/Caches/zyperos-readme-art,
+--art-cache moves it) and reused after. Only the composed screenshots go in
+the repository; the games and their art belong to their owners. Without
+--art, nothing is fetched and every game wears the launcher's generated card,
+as the checks that load this file use it.
 Achievements, playback timing, the Scraper's counts and the update page use
 the launcher's built-in shot fixtures and the status file written below.
 
@@ -34,21 +41,85 @@ import struct
 import subprocess
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
 
 ROOT=Path(__file__).resolve().parents[1]
-GAMES=[
-    'Castlevania - Symphony of the Night (USA)', 'Crash Bandicoot (USA)',
-    'Metal Gear Solid (USA)', "Peter Pan in Disney's Return to Never Land (USA)",
-    'Tekken 3 (USA)', "Tony Hawk's Pro Skater 2 (USA)",
-]
+# The demonstration library: well-known games on the systems the home shows,
+# as empty files, each with the libretro-thumbnails name its art is filed
+# under (--art). folder: [(the file on the card, libretro's name)]
+LIBRARY={
+    'PlayStation':[
+        ('Castlevania - Symphony of the Night (USA).chd','Castlevania - Symphony of the Night (USA)'),
+        ('Crash Bandicoot (USA).chd','Crash Bandicoot (USA)'),
+        ('Metal Gear Solid (USA).chd','Metal Gear Solid (USA)'),
+        ('Spyro the Dragon (USA).chd','Spyro the Dragon (USA)'),
+        ('Tekken 3 (USA).chd','Tekken 3 (USA)'),
+        ("Tony Hawk's Pro Skater 2 (USA).chd","Tony Hawk's Pro Skater 2 (USA)")],
+    'NES':[
+        ("Kirby's Adventure (USA).nes","Kirby's Adventure (USA)"),
+        ('Mega Man 2 (USA).nes','Mega Man 2 (USA)'),
+        ('Metroid (USA).nes','Metroid (USA)'),
+        ('Super Mario Bros. 3 (USA).nes','Super Mario Bros. 3 (USA)'),
+        ('The Legend of Zelda (USA).nes','Legend of Zelda, The (USA)')],
+    'SNES':[
+        ('Chrono Trigger (USA).sfc','Chrono Trigger (USA)'),
+        ('Donkey Kong Country (USA).sfc','Donkey Kong Country (USA)'),
+        ('Super Mario World (USA).sfc','Super Mario World (USA)'),
+        ('Super Metroid (USA).sfc','Super Metroid (Japan, USA) (En,Ja)'),
+        ('The Legend of Zelda - A Link to the Past (USA).sfc','Legend of Zelda, The - A Link to the Past (USA)')],
+    'Game Boy':[
+        ('Pokemon - Red Version (USA, Europe).gb','Pokemon - Red Version (USA, Europe) (SGB Enhanced)'),
+        ('Super Mario Land (World).gb','Super Mario Land (World)'),
+        ('Tetris (World).gb','Tetris (World) (Rev 1)'),
+        ("The Legend of Zelda - Link's Awakening (USA, Europe).gb","Legend of Zelda, The - Link's Awakening (USA, Europe)")],
+    'Game Boy Advance':[
+        ('Advance Wars (USA).gba','Advance Wars (USA)'),
+        ('Mario Kart - Super Circuit (USA).gba','Mario Kart - Super Circuit (USA)'),
+        ('Metroid Fusion (USA).gba','Metroid Fusion (USA)'),
+        ('Pokemon - Emerald Version (USA, Europe).gba','Pokemon - Emerald Version (USA, Europe)'),
+        ('The Legend of Zelda - The Minish Cap (USA).gba','Legend of Zelda, The - The Minish Cap (USA)')],
+    'Genesis':[
+        ('Gunstar Heroes (USA).md','Gunstar Heroes (USA)'),
+        ('Sonic The Hedgehog (USA).md','Sonic The Hedgehog (USA)'),
+        ('Sonic The Hedgehog 2 (USA).md','Sonic The Hedgehog 2 (USA)'),
+        ('Streets of Rage 2 (USA).md','Streets of Rage 2 (USA)')],
+    'Nintendo 64':[
+        ('GoldenEye 007 (USA).z64','GoldenEye 007 (USA)'),
+        ('Mario Kart 64 (USA).z64','Mario Kart 64 (USA)'),
+        ('Super Mario 64 (USA).z64','Super Mario 64 (USA)'),
+        ('The Legend of Zelda - Ocarina of Time (USA).z64','Legend of Zelda, The - Ocarina of Time (USA)')],
+    'Dreamcast':[
+        ('Crazy Taxi (USA).chd','Crazy Taxi (USA)'),
+        ('Jet Grind Radio (USA).chd','Jet Grind Radio (USA)'),
+        ('Sonic Adventure (USA).chd','Sonic Adventure (USA)'),
+        ('Soulcalibur (USA).chd','Soulcalibur (USA)')],
+}
+# Each folder's libretro-thumbnails repository
+LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertainment_System',
+         'SNES':'Nintendo_-_Super_Nintendo_Entertainment_System','Game Boy':'Nintendo_-_Game_Boy',
+         'Game Boy Advance':'Nintendo_-_Game_Boy_Advance','Genesis':'Sega_-_Mega_Drive_-_Genesis',
+         'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
+# With --art, the in-game menu and its Controls pages stand over a screenshot
+# of a PlayStation game (--backdrop) rather than a made-up frame
+BACKDROP=['gamemenu','controls-ps1','controls-hotkeys']
+BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
+ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
+GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
 FOCUS=GAMES[2]   # the games page and its details open on Metal Gear Solid
+# Its details' Synopsis, in my words
+SYNOPSIS=('Solid Snake slips into a nuclear weapons base on a snowbound Alaskan island, '
+          'alone, to stop a rogue unit that threatens to launch.')
 # ScummVM's freeware games, as ScummVM's own site gives them away: a folder each
 SCUMMVM=['Beneath a Steel Sky','Drascula - The Vampire Strikes Back',
          'Flight of the Amazon Queen','Lure of the Temptress','Soltys']
 SCUMMVM_FOCUS=SCUMMVM[2]
+# ...and their art in libretro-thumbnails' ScummVM set (--art)
+SCUMMVM_ART={'Beneath a Steel Sky':'Beneath a Steel Sky','Drascula - The Vampire Strikes Back':'Drascula - The Vampire Strikes Back',
+             'Flight of the Amazon Queen':'Flight of the Amazon Queen (CD_DOS_English)',
+             'Lure of the Temptress':'Lure of the Temptress','Soltys':'Soltys'}
 # OpenBOR's shelf: Senile Team's freeware game, as a stand-in module
 OPENBOR=['Beats of Rage.pak']
 # name: (card, the shelf .last names, flags). 'demo' is the library above,
@@ -59,6 +130,10 @@ SHOTS={
     'systems':('demo','PS1',['--home','spotlight']),
     'gallery':('demo','PS1',['--home','gallery']),
     'shelf':('demo','PS1',['--screen','games']),
+    # Other shelves of the demonstration card, and Favorites across systems
+    'shelf-n64':('demo','N64',['--screen','games']),
+    'shelf-snes':('demo','SFC',['--screen','games']),
+    'favorites':('demo','FAV',['--screen','games']),
     'info':('demo','PS1',['--screen','games','--info']),
     'info-delete':('demo','PS1',['--screen','games','--info-delete']),
     'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
@@ -138,17 +213,23 @@ SHOTS={
 # games page with the focused game and the one before it kept, so the heart
 # shows on a focused cover and on a side one (src/artbadge.h). Only there, so
 # the other shots' homes have no Favorites shelf.
-SHOT_FAVS={'shelf':[('PS1',FOCUS+'.chd'),('PS1',GAMES[1]+'.chd')]}
+SHOT_FAVS={'shelf':[('PS1',FOCUS+'.chd'),('PS1',GAMES[1]+'.chd')],
+           # Favorites: one game from each of seven systems
+           'favorites':[('N64','Super Mario 64 (USA).z64'),('SFC','Super Metroid (USA).sfc'),('PS1',FOCUS+'.chd'),
+                        ('GBA','Metroid Fusion (USA).gba'),('MD','Sonic The Hedgehog 2 (USA).md'),
+                        ('NES','Super Mario Bros. 3 (USA).nes'),('DC','Jet Grind Radio (USA).chd')]}
 # The game a shot's shelf opens on, where it is not its system's own (below)
 # MP4's on the film, between an album and the book, so its three kinds show
-SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh','mp4':'Videos'}
+SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh','mp4':'Videos',
+            'shelf-n64':'Super Mario 64 (USA).z64','shelf-snes':'Super Mario World (USA).sfc',
+            'favorites':'Sonic The Hedgehog 2 (USA).md'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
 # what it shows: icon= is the setting for this shot, eta= the minutes left
 STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
         'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
         'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media','shelf-n64']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
@@ -198,8 +279,32 @@ MEDIA_ART=[  # file, width, height, color, kind
     ('c9.png',320,240,(80,150,110),'shot'),('c10.png',400,600,(60,70,140),'fan'),
     ('snap.png',320,240,(90,160,120),'shot'),
 ]
-def media_art(dest):
+# With --art, the page shows Metal Gear Solid's own pictures from the
+# libretro-thumbnails sets in those places: its box from several regions,
+# its title screen and screenshots.
+MEDIA_REAL=[  # file, the set, libretro's name
+    ('now.png','Named_Boxarts','Metal Gear Solid (USA)'),
+    ('c0.png','Named_Boxarts','Metal Gear Solid (USA) (Disc 1)'),
+    ('c1.png','Named_Boxarts','Metal Gear Solid (Japan)'),
+    ('c2.png','Named_Boxarts','Metal Gear Solid (Europe)'),
+    ('c3.png','Named_Boxarts','Metal Gear Solid (Spain) (Disc 1)'),
+    ('c4.png','Named_Boxarts','Metal Gear Solid (Japan, Asia) (Disc 1) (Ichi) (Premium Package)'),
+    ('c5.png','Named_Titles','Metal Gear Solid (USA)'),
+    ('c6.png','Named_Snaps','Metal Gear Solid (USA)'),
+    ('c7.png','Named_Boxarts','Metal Gear Solid (Japan) (Disc 1) (Ichi)'),
+    ('c8.png','Named_Titles','Metal Gear Solid (Japan) (Disc 1) (Ichi)'),
+    ('c9.png','Named_Snaps','Metal Gear Solid (USA) (Disc 1)'),
+    ('c10.png','Named_Boxarts','Metal Gear Solid (Germany) (Disc 1)'),
+    ('snap.png','Named_Snaps','Metal Gear Solid (USA)'),
+]
+def media_art(dest,art=None,manifest=None):
     dest.mkdir(parents=True,exist_ok=True)
+    if art:
+        for name,kind,lr in MEDIA_REAL:
+            got=art_file(art,LR_REPO['PlayStation'],kind,lr)
+            shutil.copyfile(got,dest/name)
+            if manifest is not None: note_art(manifest,'media-art/'+name,'PlayStation',kind,lr,got)
+        return
     for name,w,h,color,kind in MEDIA_ART:
         rows=[]
         for y in range(h):
@@ -215,28 +320,68 @@ def media_art(dest):
             rows.append(row)
         png_rgb(dest/name,w,h,rows)
 
+def art_file(cache,repo,kind,name):
+    """One picture of a libretro-thumbnails set, from the cache, or fetched
+    into it from GitHub the first time. libretro files a name's & * / : ` < >
+    ? \\ | as _, and a set's link to another picture comes back as that
+    picture's name, which is followed."""
+    path=cache/repo/kind/(name+'.png')
+    if path.is_file(): return path
+    safe=''.join('_' if c in '&*/:`<>?\\|' else c for c in name)
+    url=f'https://raw.githubusercontent.com/libretro-thumbnails/{repo}/master/{kind}/'+urllib.parse.quote(safe+'.png')
+    for _ in range(4):
+        with urllib.request.urlopen(url,timeout=60) as reply: data=reply.read()
+        if data.startswith(b'\x89PNG'): break
+        url=urllib.parse.urljoin(url,urllib.parse.quote(data.decode().strip()))
+    else: raise RuntimeError(f'{repo}/{kind}/{name}: no picture')
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_bytes(data)
+    return path
+
+def snap_video(cache,folder,name):
+    """A game's video snap for the shelf's play mark and its details: two
+    seconds of its libretro screenshot (Named_Snaps) as an MP4, made with
+    ffmpeg into the cache. None without ffmpeg or a screenshot."""
+    out=cache/LR_REPO[folder]/'Videos'/(name+'.mp4')
+    if out.is_file(): return out
+    if not shutil.which('ffmpeg'): return None
+    try: still=art_file(cache,LR_REPO[folder],'Named_Snaps',name)
+    except urllib.error.HTTPError: return None
+    out.parent.mkdir(parents=True,exist_ok=True)
+    subprocess.run(['ffmpeg','-v','error','-y','-loop','1','-i',str(still),'-t','2','-r','30',
+                    '-vf','scale=320:-2,format=yuv420p','-c:v','libx264','-movflags','+faststart',str(out)],check=True)
+    return out
+
+def note_art(manifest,where,folder,kind,name,path):
+    manifest['artwork'][where]={'set':f'libretro-thumbnails/{LR_REPO[folder]}/{kind}','name':name,
+                                'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+
 def card_dirs(card):
     for folder in ['ZyperOS','Roms','userdata','shared']: (card/folder).mkdir(parents=True)
     shutil.copyfile(ROOT/'config/systems.cfg',card/'ZyperOS/systems.cfg')
     shutil.copytree(ROOT/'res/system-icons',card/'ZyperOS/system-icons')
     (card/'ZyperOS/VERSION').write_text('0.1.0\n')
 
-def demo_card(card,art_dir,manifest):
+def demo_card(card,art,manifest):
+    """The demonstration card: LIBRARY's games as empty files, and with art
+    (the cache --art fills) each game's box art in its folder's .media, where
+    the Scraper puts it"""
     card_dirs(card)
-    for folder,game in [('NES','Super Mario Bros.nes'),('SNES','Super Metroid.sfc'),('Game Boy','Tetris.gb'),('Genesis','Sonic the Hedgehog.md'),('Dreamcast','Sonic Adventure.chd'),('Game Boy Advance','Metroid Fusion.gba')]:
-        d=card/'Roms'/folder;d.mkdir();(d/game).touch()
+    for folder,games in LIBRARY.items():
+        d=card/'Roms'/folder;(d/'.media').mkdir(parents=True)
+        for file,lr in games:
+            (d/file).touch()
+            if art:
+                got=art_file(art,LR_REPO[folder],'Named_Boxarts',lr)
+                shutil.copyfile(got,d/'.media'/(Path(file).stem+'.png'))
+                note_art(manifest,f'{folder}/{file}',folder,'Named_Boxarts',lr,got)
+                video=snap_video(art,folder,lr)
+                if video: shutil.copyfile(video,d/'.media'/(Path(file).stem+'.mp4'))
     pm_art(card)   # the Install PortMaster page's icon (--portmaster)
-    media=card/'Roms/PlayStation/.media';media.mkdir(parents=True)
-    for name in GAMES:
-        (media.parent/(name+'.chd')).touch()
-        art=art_dir/(name+'.png') if art_dir else None
-        if art and art.is_file():
-            shutil.copyfile(art,media/(name+'.png'))
-            manifest['artwork'][name]=hashlib.sha256(art.read_bytes()).hexdigest()
     # Stand-in badges for the achievements list and notice shots, beside the
     # (absent) set of the PlayStation folder as src/rabadge.h keeps them
-    # The Cover and Video page's stand-in pictures, beside the card's files
-    media_art(card/'media-art')
+    # The Cover and Video page's pictures, beside the card's files
+    media_art(card/'media-art',art,manifest)
     badges=card/'Roms/PlayStation/.cheevos/badges';badges.mkdir(parents=True)
     for i,color in enumerate(BADGE_COLORS): stand_in_badge(badges/f'b{i+1}.png',color)
     # Curated metadata for the demonstration's focused game. This is
@@ -244,7 +389,7 @@ def demo_card(card,art_dir,manifest):
     dbdir=card/'shared/.zyperos';dbdir.mkdir()
     with sqlite3.connect(dbdir/'library.db') as db:
         db.execute('CREATE TABLE games(folder TEXT NOT NULL,file TEXT NOT NULL,year TEXT,publisher TEXT,developer TEXT,players TEXT,genres TEXT,esrb TEXT,note TEXT,synopsis TEXT,scraped INTEGER,PRIMARY KEY(folder,file))')
-        db.execute('INSERT INTO games VALUES(?,?,?,?,?,?,?,?,?,?,?)',('PlayStation',FOCUS+'.chd','1998','Konami','KCEJ','1','Action','','','',0))
+        db.execute('INSERT INTO games VALUES(?,?,?,?,?,?,?,?,?,?,?)',('PlayStation',FOCUS+'.chd','1998','Konami','KCEJ','1','Action','','',SYNOPSIS,0))
     for album in ['First Light','Night Drive','Quiet Hours']:
         d=card/'Music/Demo Library'/album;d.mkdir(parents=True)
         for track in ['01 First Light.mp3','02 Open Road.mp3','03 Home Again.mp3']: (d/track).touch()
@@ -257,18 +402,19 @@ def demo_card(card,art_dir,manifest):
     # (docs/updates.md), so the page offers its download as on Wi-Fi
     (up/'source').write_text('file:///nonexistent\n')
 
-def media_card(card,art_dir=None,manifest=None):
+def media_card(card,art=None,manifest=None):
     """The demonstration card, a film, Blender's freely licensed Sintel as a
     stand-in name, and a book, Treasure Island, which is in the public domain:
     MP4's shelf shows All, the albums, the book and the video mixed
     (src/muselib.h), each card with its kind's badge, and its menu has Show"""
-    demo_card(card,art_dir,manifest if manifest is not None else {'artwork':{}})
+    demo_card(card,art,manifest if manifest is not None else {'artwork':{}})
     (card/'Videos').mkdir();(card/'Videos/Sintel.mp4').touch()
     book=card/'Audiobooks/Treasure Island';book.mkdir(parents=True)
     (book/'01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
 
 def set_favs(card,favs,on):
     """A shot's favorites (SHOT_FAVS) into the card's library, or out of it"""
+    if not favs: return   # a card with no library yet (ScummVM's) keeps none
     with sqlite3.connect(card/'shared/.zyperos/library.db') as db:
         db.execute('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)')
         for tag,file in favs:
@@ -304,10 +450,15 @@ def pm_env(env,name,folder):
         env['ZYPEROS_PM_STATUS']=str(status)
     return env
 
-def scummvm_card(card):
+def scummvm_card(card,art=None,manifest=None):
     card_dirs(card)
     for name in SCUMMVM:
         d=card/'Roms/ScummVM'/name;d.mkdir(parents=True);(d/'readme.txt').touch()
+        if art:
+            got=art_file(art,LR_REPO['ScummVM'],'Named_Boxarts',SCUMMVM_ART[name])
+            (card/'Roms/ScummVM/.media').mkdir(exist_ok=True)
+            shutil.copyfile(got,card/'Roms/ScummVM/.media'/(name+'.png'))
+            if manifest is not None: note_art(manifest,'ScummVM/'+name,'ScummVM','Named_Boxarts',SCUMMVM_ART[name],got)
 
 def portdocs_card(card):
     """A card whose Ports folder has the made-up ports of tools/fixtures/ports
@@ -492,7 +643,8 @@ def env_for(card):
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--art-dir',type=Path)
+    ap.add_argument('--art',action='store_true',help="the games' real box art, from libretro-thumbnails (cached)")
+    ap.add_argument('--art-cache',type=Path,default=ART_CACHE,help='where --art keeps what it fetched')
     ap.add_argument('--out',type=Path,default=ROOT/'build/readme-shots')
     ap.add_argument('--chrome',default=CHROME,help='the browser for the File Transfer page')
     ap.add_argument('--no-page',action='store_true',help='leave out the File Transfer page')
@@ -502,15 +654,17 @@ def main():
     if not binary.is_file(): ap.error('run make native first')
     manifest={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
               'renderer':'current native launcher, SDL software, headless',
-              'data':'demonstration library (freeware or stand-in names, empty files); built-in shot fixtures',
+              'data':'demonstration library (well-known games and freeware by name, empty files); built-in shot fixtures',
               'artwork':{},'screenshots':[]}
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
                'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports',
                'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media'}
-        demo_card(cards['demo'],args.art_dir,manifest)
-        media_card(cards['media'],args.art_dir)
-        scummvm_card(cards['scummvm'])
+        art=args.art_cache if args.art else None
+        demo_card(cards['demo'],art,manifest)
+        media_card(cards['media'],art)
+        scummvm_card(cards['scummvm'],art,manifest)
+        backdrop=art_file(art,LR_REPO['PlayStation'],'Named_Snaps',BACKDROP_GAME) if art else None
         openbor_card(cards['openbor'])
         ports_card(cards['ports'])
         portdocs_card(cards['portdocs'])
@@ -529,6 +683,7 @@ def main():
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
                          '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
+                if backdrop and name in BACKDROP: command+=['--backdrop',str(backdrop)]
                 set_favs(card,SHOT_FAVS.get(name,[]),True)
                 result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
                                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
@@ -537,7 +692,7 @@ def main():
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')
                 if not target.is_file(): raise RuntimeError(f'missing {target}')
-                manifest['screenshots'].append({'file':f'{theme}/{name}.png','card':card_name,'args':[a.replace(str(card),'{card}') for a in command[3:]],
+                manifest['screenshots'].append({'file':f'{theme}/{name}.png','card':card_name,'args':[a.replace(str(card),'{card}').replace(str(args.art_cache),'{art}') for a in command[3:]],
                     'sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
                 print(theme+'/'+name,flush=True)
     if not args.no_page and (not args.only or set(args.only)&set(PAGES)):
