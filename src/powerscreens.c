@@ -742,6 +742,7 @@ bool charge_instead(app *a)
 	book_keep(true);
 	if (musec_playing()) musec_stop();
 	bgm_hold(BGM_HOLD_START, true);
+	playing_mark_clean();
 	anim_poweroff(a);
 	st = charging_until(a);
 	if (st == CS_START) {

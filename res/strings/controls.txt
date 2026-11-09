@@ -880,6 +880,17 @@ de = Schütteln
 ja = 振る
 it = Scuoti
 
+[controls.home]
+note = What MENU+START, held a second, does on the Pixel 2: whatever runs ends and the home screen comes back (tools/zyhome.c). Short: a Controls row's value, beside the wide MENU+START.
+en = Home Screen
+zh-Hans = 主屏幕
+es = Inicio
+pt-BR = Tela inicial
+fr = Accueil
+de = Startseite
+ja = ホーム画面
+it = Home
+
 [controls.power]
 note = Pokémon mini: its power button.
 en = Power

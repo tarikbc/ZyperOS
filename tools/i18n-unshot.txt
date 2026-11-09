@@ -765,3 +765,4 @@ xfer.scanning
 xfer.key_removed
 xfer.err_memory
 xfer.err_could_not_say
+controls.home

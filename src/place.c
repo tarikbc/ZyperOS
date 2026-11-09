@@ -59,6 +59,24 @@ void playing_set(app *a)
 	atomic_commit(f, p);
 }
 
+/* The third line, "off": the power-off was asked for (playing_mark_clean).
+ * Only then does the next start go back into the game (2026-11-09: "if
+ * zyperos crashes and turns off, turning back on should go to home and not
+ * continue the last game"). */
+void playing_mark_clean(void)
+{
+	char p[CFG_STR * 2];
+	FILE *f;
+
+	playing_path(p, sizeof p);
+	if (access(p, F_OK) != 0) return;
+	if (!(f = fopen(p, "a"))) return;
+	fputs("off\n", f);
+	fflush(f);
+	fsync(fileno(f));
+	fclose(f);
+}
+
 void playing_clear(void)
 {
 	char p[CFG_STR * 2];
@@ -74,6 +92,7 @@ void playing_clear(void)
 bool playing_restore(app *a)
 {
 	char p[CFG_STR * 2], tag[64] = { 0 }, file[LIB_PATH] = { 0 }, st[LIB_PATH * 2];
+	char off[8] = { 0 };
 	FILE *f;
 	int i, k;
 
@@ -82,8 +101,11 @@ bool playing_restore(app *a)
 	if (!f) return false;
 	if (fgets(tag, sizeof tag, f)) tag[strcspn(tag, "\r\n")] = 0;
 	if (fgets(file, sizeof file, f)) file[strcspn(file, "\r\n")] = 0;
+	if (fgets(off, sizeof off, f)) off[strcspn(off, "\r\n")] = 0;
 	fclose(f);
 	if (!tag[0] || !file[0]) { playing_clear(); return false; }
+	/* Not powered off on purpose: a crash or a power cut. The home, then */
+	if (strcmp(off, "off") != 0) { playing_clear(); return false; }
 
 	for (i = 0; i < a->sys.count; i++) {
 		if (strcmp(a->sys.systems[i].tag, tag) != 0) continue;

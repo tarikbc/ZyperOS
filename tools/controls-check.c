@@ -40,7 +40,7 @@ static bool pixel;
 static int other_devices(const char *b)
 {
 	return pixel ? !strcmp(b, "F1/F2")
-	             : !strcmp(b, "MENU+VOL") || !strcmp(b, "L2+R2");
+	             : !strcmp(b, "MENU+VOL") || !strcmp(b, "L2+R2") || !strcmp(b, "MENU+START");
 }
 
 /* A ceiling on the value, so a page of rows sits still to be read.

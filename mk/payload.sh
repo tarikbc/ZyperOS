@@ -40,6 +40,7 @@ cp "$ZYPEROS_ELF" "$P/zyperos.elf"
 cp "$MUSE_ELF" "$P/muse"                  # the audio player's engine; Muse cannot play without it
 [ -n "$BTPLAYER_ELF" ] && cp "$BTPLAYER_ELF" "$P/btplayer"   # a headset's keys and volume
 [ -n "${PORTKEYS_ELF:-}" ] && cp "$PORTKEYS_ELF" "$P/portkeys" # the volume keys during a port (Pixel 2)
+[ -n "${ZYHOME_ELF:-}" ] && cp "$ZYHOME_ELF" "$P/zyhome"     # MENU+START, back to the home (Pixel 2)
 [ -n "${UPDATE_ELF:-}" ] && cp "$UPDATE_ELF" "$P/zyperos-update"  # System Update (update/, docs/updates.md)
 cp "$LAUNCH" "$P/launch.sh"
 # Which ZyperOS this is, for plastron: the Pixel's image copies its ZyperOS/ over
@@ -172,6 +173,7 @@ fi
 chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 [ -f "$P/btplayer" ] && chmod +x "$P/btplayer"
 [ -f "$P/portkeys" ] && chmod +x "$P/portkeys"
+[ -f "$P/zyhome" ] && chmod +x "$P/zyhome"
 [ -f "$P/zyperos-update" ] && chmod +x "$P/zyperos-update"
 
 # The headsets' ALSA config: the Brick's launch.sh sources it at boot, and

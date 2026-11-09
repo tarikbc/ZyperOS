@@ -87,7 +87,7 @@ it away.
 | **SELECT+L2** (in game) | slower, a step a press, back to normal speed |
 | **MENU** (inside any menu) | closes the whole menu, however deep in it you are. B goes back one screen |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere but a running game - the in-game menu included. Again to close it |
-| **POWER** | powers off. In a game, the game is saved first |
+| **POWER** | powers off. In a game, the game is saved first, and the next start goes straight back into it. After a crash or a power cut, the next start is the home instead |
 
 **On the Pixel 2:**
 
@@ -95,6 +95,7 @@ it away.
 |---|---|
 | **MENU** (the FUNCTION key) | opens the menu when it is let go, and works as a modifier when held |
 | **MENU+VOL** | brighter / dimmer (VOL+ / VOL-), everywhere, including in game: the Pixel 2 has no brightness keys of its own |
+| **MENU+START**, held a second | the way out of anything: whatever runs ends (a game, saved as POWER saves it; a port; a screen that stopped answering) and the home comes back. Use it when a game or a port will not let you out |
 | **L2+R2** (outside a game) | flash the battery level on the side lights, below. L2 or R2 alone is the menu music's song, and acts as it is let go, so the pair never changes the song |
 
 **The Pixel 2's four side lights** show the battery, and a few things worth a
