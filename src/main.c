@@ -4584,6 +4584,8 @@ static int menu_pad(void)   { return menu_row_h() * 3 / 4; }
 /* X's glyph at a row's right (MENU_KEY_X): the keyboard's action keys' 40,
  * DESIGN.md 11.9, which sits in a menu row as a hint's sits in its legend */
 #define MENU_KEY_SIZE 40
+/* Between On/Off and Y's glyph after it (MENU_KEY_Y_ON, MENU_KEY_Y_OFF) */
+#define MENU_KEY_GAP 16
 
 /* What a row's value takes at the right of the rows, for the measures:
  * its text, a tick (MENU_TICK) or X's glyph (MENU_KEY_X) */
@@ -4591,6 +4593,9 @@ static int menu_value_w(TTF_Font *fm, const char *v)
 {
 	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
 	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
+	if (v == MENU_KEY_Y_ON || v == MENU_KEY_Y_OFF)
+		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF)) + MENU_KEY_GAP
+		       + ui_button_width("Y", MENU_KEY_SIZE);
 	return v ? ui_text_width(fm, v) : 0;
 }
 
@@ -5476,7 +5481,18 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			/* X's glyph where the value goes, on the fill as a selected
 			 * key's (UI_BUTTON_ON_ACCENT) once the plate is mostly there,
 			 * and the label given what is left */
-			if (rows[i].value == MENU_KEY_X) {
+			if (rows[i].value == MENU_KEY_Y_ON || rows[i].value == MENU_KEY_Y_OFF) {
+				/* Y's glyph at the right, as X's is, and the state before it */
+				int bw = ui_button_width("Y", MENU_KEY_SIZE);
+
+				ui_button(a->r, "Y", content_x + content_w - bw / 2,
+				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
+				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
+				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF),
+				        content_x + content_w - bw - MENU_KEY_GAP, ty, 1, vc);
+				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
+				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
+			} else if (rows[i].value == MENU_KEY_X) {
 				ui_button(a->r, "X", content_x + content_w - vw / 2,
 				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);

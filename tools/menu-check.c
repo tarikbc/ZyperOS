@@ -1359,8 +1359,8 @@ static void info_rows(void)
 		fg.favorite = true;
 		fn = gi_rows(fr, &fg, true);
 		for (j = 0; j < fn; j++) if (!strcmp(fr[j].label, "Favorite")) at = j;
-		ck(fn == GI_MAX && at >= 0 && fr[at].live && !strcmp(val(&fr[at]), "on"),
-		   "a game that can be a favorite has the Favorite row, live, saying on");
+		ck(fn == GI_MAX && at >= 0 && fr[at].live && fr[at].value == MENU_KEY_Y_ON,
+		   "a game that can be a favorite has the Favorite row, live, with Y's glyph and On");
 	}
 	ck(!strcmp(rows[0].label, "Synopsis"), "what the game IS leads");
 	ck(rows[0].live, "and opens, because the prose does not fit on a row");
