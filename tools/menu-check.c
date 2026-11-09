@@ -1536,14 +1536,16 @@ static void n64_pak(void)
 	printf("the N64's Pak:\n");
 	ck(!strcmp(gm_pak_value(NULL), "rumble") && !strcmp(gm_pak_value("nonsense"), "rumble"),
 	   "the Rumble Pak until a game takes the other, and for a value it does not know");
-	ck(!strcmp(gm_pak_value("memory"), "memory"), "the Controller Pak is Mupen64Plus-Next's memory");
+	ck(!strcmp(gm_pak_value("memory"), "memory"), "the Controller Pak is both cores' memory");
 	ck(!strcmp(gm_pak_other("rumble"), "memory") && !strcmp(gm_pak_other("memory"), "rumble"),
 	   "the row turns between the two");
 	ck(!strcmp(gm_pak_name("rumble"), "Rumble Pak") &&
 	   !strcmp(gm_pak_name("memory"), "Controller Pak"), "each by its product's name");
 	gm_pak_key("N64", "Mario Kart 64 (USA).z64", key, sizeof key);
 	ck(!strcmp(key, "pak.N64.Mario Kart 64 (USA).z64"), "kept per game, as pak.<TAG>.<file>");
-	ck(!strcmp(GM_PAK_OPTION, "mupen64plus-pak1"), "Mupen64Plus-Next's player 1 pak option");
+	ck(!strcmp(gm_pak_option("parallel_n64"), "parallel-n64-pak1"), "ParallelN64's player 1 pak option");
+	ck(!strcmp(gm_pak_option("mupen64plus_next"), "mupen64plus-pak1"), "Mupen64Plus-Next's");
+	ck(!gm_pak_option("flycast2021") && !gm_pak_option(NULL), "no pak on any other core");
 }
 
 /* The quick slot as the device's database keeps it: per system, slot 1

@@ -131,6 +131,21 @@ static const db_default library_defaults[] = {
 	 * in-game menu's Pak row, which keeps the choice for that game alone
 	 * (src/main.c, pak_*, 2026-11-07). */
 	{ "coreopt.N64.mupen64plus-pak1", "rumble" },
+	/* ParallelN64, the Nintendo 64's default core (config/systems.cfg), as
+	 * ROGUE OS set it (its system.cfg and setsettings.sh): Glide64 at
+	 * medium accuracy, the "fullspeed" frame rate (a frame only for a new
+	 * picture: the same frame again is a dupe), the HLE RSP and the
+	 * dynarec, at the N64's own 320x240. On the Pixel 2 a Mario Kart 64
+	 * race ran at 56 to 58 of 60 frames a second and Super Mario 64 at its
+	 * full speed (2026-11-08). The Rumble Pak in, as Mupen64Plus-Next's
+	 * above. */
+	{ "coreopt.N64.parallel-n64-gfxplugin", "glide64" },
+	{ "coreopt.N64.parallel-n64-gfxplugin-accuracy", "medium" },
+	{ "coreopt.N64.parallel-n64-framerate", "fullspeed" },
+	{ "coreopt.N64.parallel-n64-rspplugin", "hle" },
+	{ "coreopt.N64.parallel-n64-cpucore", "dynamic_recompiler" },
+	{ "coreopt.N64.parallel-n64-screensize", "320x240" },
+	{ "coreopt.N64.parallel-n64-pak1", "rumble" },
 	/* The PlayStation's DualShock (config/systems.cfg, controller|PS1) turns
 	 * analog on a button combo, L1+R1+SELECT by default, which a game's own
 	 * buttons can press. On L3+R3 it cannot be: the Pixel 2 has neither,

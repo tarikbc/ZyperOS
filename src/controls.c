@@ -221,7 +221,7 @@ int ctl_rows(ctl_page p, menu_row *out)
  * measured 2026-11-06 by loading each pinned core in a linux/arm64 container
  * and keeping what RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS said for port 0,
  * and from libretro's documentation where a core says nothing before a real
- * game is loaded (Stella 2014, a5200, Opera, blueMSX, Mupen64Plus-Next,
+ * game is loaded (Stella 2014, a5200, Opera, blueMSX, the N64's two cores,
  * Flycast, FinalBurn Neo, MAME 2003-Plus). Worded for the panel: the core's
  * "(FDS) Disk Side Change" is "Disk side", and a name a core gives a button
  * the system does not have - mGBA names L and R for the Game Boy too, Genesis
@@ -372,7 +372,10 @@ static const ctl_pad PADS[] = {
 	{ "NEOCD", NULL, { [P_A] = BTN("B"), [P_B] = BTN("A"), [P_X] = BTN("D"), [P_Y] = BTN("C"),
 	                   [P_L1] = BTN("B+C"), [P_L2] = BTN("A+B"), [P_R2] = BTN("A+B+C"),
 	                   [P_START] = BTN("Start"), [P_SELECT] = BTN("Select") } },
-	/* Mupen64Plus-Next: B the N64's A, Y its B, L2 its Z. The core makes the
+	/* Both N64 cores, which lay the pad out alike (ParallelN64's default
+	 * mapping and Mupen64Plus-Next's, read in their sources 2026-11-08): the
+	 * RetroPad's B the N64's A, its Y the N64's B, L2 its Z, and map|N64
+	 * puts them on the A and B caps (a:b,b:y). The core makes the
 	 * face buttons its C buttons while its R2 is held, and map|N64 puts that
 	 * R2 on SELECT, which the N64 has none of (and takes R2's own away): the
 	 * C buttons have a page of their own. The d-pad is the N64's stick
@@ -496,8 +499,9 @@ typedef struct {
 
 static const ctl_extra EXTRAS[] = {
 	/* SELECT held turns the face buttons into the C buttons, each the way
-	 * it sits (Mupen64Plus-Next's defaults: C1 right, C2 left, C3 down, C4
-	 * up): the core's own R2 held does it, and map|N64 puts that on SELECT,
+	 * it sits (Mupen64Plus-Next's defaults, C1 right, C2 left, C3 down, C4
+	 * up, and ParallelN64's the same: A, Y, B and X): the core's own R2 held
+	 * does it, and map|N64 puts that on SELECT,
 	 * which the N64 has none of (R2 until 2026-11-07, SELECT's shoulders
 	 * being the hotkeys'). Under them, the Pak the controller holds and where
 	 * it is changed, "MENU > Pak: Rumble Pak" (ctl_game.accessory): it said

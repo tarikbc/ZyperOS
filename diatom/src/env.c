@@ -693,6 +693,18 @@ static int button_map[DIATOM_BTN_COUNT] = {
 static int identity_map[DIATOM_BTN_COUNT];
 static bool g_map_saved;
 
+/* A second layer of the map, in force while one button is held: in a pair
+ * `select+a:a`, SELECT is that button (shift_src) and the pair is a's
+ * binding under it. A button the layer does not name keeps its binding. For
+ * a system whose core reads the same caps two ways - the N64's: the A cap is
+ * the N64's A (a:b, the core reading its A from the RetroPad's B), and under
+ * SELECT, which holds the core's R2, the four caps are the C buttons where
+ * they sit, which the core reads from the RetroPad's own A, B, X and Y. No
+ * turbo in the layer. -1: no layer. */
+static int  shift_src = -1;
+static int  shift_map[DIATOM_BTN_COUNT];
+static bool shift_set[DIATOM_BTN_COUNT];
+
 /* Turbo. A pulse is a property of a BINDING, so this table is written and
  * reset in lockstep with button_map above and never on its own: two tables
  * that both answer "what does X do" would be free to disagree, and that class
@@ -806,6 +818,8 @@ void diatom_input_reset_map(void)
 {
 	ensure_identity();
 	memcpy(button_map, identity_map, sizeof button_map);
+	shift_src = -1;
+	memset(shift_set, 0, sizeof shift_set);
 	memset(turbo_period, 0, sizeof turbo_period);
 	memset(turbo_anchor, 0, sizeof turbo_anchor);
 	turbo_prev = 0;
@@ -826,6 +840,8 @@ void diatom_input_set_stick(bool dpad)
 bool diatom_input_set_map(const char *spec)
 {
 	int next[DIATOM_BTN_COUNT], next_period[DIATOM_BTN_COUNT];
+	int next_shift[DIATOM_BTN_COUNT], next_src = -1;
+	bool next_set[DIATOM_BTN_COUNT];
 	char buf[512], *save = NULL, *pair;
 
 	ensure_identity();
@@ -839,14 +855,40 @@ bool diatom_input_set_map(const char *spec)
 	 * neither the requested map nor the one the launcher still believes in. */
 	memcpy(next, identity_map, sizeof next);
 	memset(next_period, 0, sizeof next_period);
+	memset(next_set, 0, sizeof next_set);
+	memset(next_shift, 0, sizeof next_shift);
 	snprintf(buf, sizeof buf, "%s", spec);
 
 	for (pair = strtok_r(buf, ",", &save); pair; pair = strtok_r(NULL, ",", &save)) {
-		char *colon = strchr(pair, ':'), *tilde;
+		char *colon = strchr(pair, ':'), *tilde, *plus;
 		int from, to, period = 0;
 
 		if (!colon) return false;
 		*colon = '\0';
+		/* The layer's pairs, `held+from:to` (shift_src above): one held
+		 * button for the whole map, never MENU, and no turbo */
+		plus = strchr(pair, '+');
+		if (plus) {
+			int src;
+
+			*plus = '\0';
+			src = button_by_name(pair);
+			from = button_by_name(plus + 1);
+			if (src < 0 || src == DIATOM_BTN_MENU || (next_src >= 0 && src != next_src))
+				return false;
+			if (from < 0 || from == DIATOM_BTN_MENU || from == src) return false;
+			if (strchr(colon + 1, '~')) return false;
+			next_src = src;
+			if (!strcmp(colon + 1, "none")) {
+				next_shift[from] = -1;
+			} else {
+				to = button_by_name(colon + 1);
+				if (to < 0 || to == DIATOM_BTN_MENU) return false;
+				next_shift[from] = identity_map[to];
+			}
+			next_set[from] = true;
+			continue;
+		}
 		from = button_by_name(pair);
 		/* MENU is unmappable BY CONSTRUCTION, not by policy. Refusing it on
 		 * either side is the only place that rule can actually be enforced,
@@ -887,6 +929,9 @@ bool diatom_input_set_map(const char *spec)
 
 	memcpy(button_map, next, sizeof button_map);
 	memcpy(turbo_period, next_period, sizeof turbo_period);
+	shift_src = next_src;
+	memcpy(shift_map, next_shift, sizeof shift_map);
+	memcpy(shift_set, next_set, sizeof shift_set);
 	/* Say what landed. A map arrives once a launch, from a config file nobody
 	 * looks at, and silence here cost an hour on 2026-08-31: a turbo that did
 	 * nothing was indistinguishable from a map that never arrived, from one
@@ -940,6 +985,21 @@ void diatom_input_emit_map(void)
 			                      turbo_period[b]);
 		if (n >= sizeof out) break;
 	}
+	/* And the layer, as it was sent */
+	for (b = 0; shift_src >= 0 && b < DIATOM_BTN_COUNT && n < sizeof out; b++) {
+		const char *to = "none";
+		int t;
+
+		if (!shift_set[b]) continue;
+		for (t = 0; t < DIATOM_BTN_COUNT; t++)
+			if (shift_map[b] >= 0 && identity_map[t] == shift_map[b]) {
+				to = button_names[t];
+				break;
+			}
+		n += (size_t)snprintf(out + n, sizeof out - n, "%s%s+%s:%s", n ? "," : "",
+		                      button_names[shift_src], button_names[b], to);
+	}
+	if (n >= sizeof out) out[sizeof out - 1] = '\0';
 	diatom_proto_send("MAP\tmap=%s", out[0] ? out : "identity");
 }
 
@@ -1007,11 +1067,20 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 	 * continuously held A rather than an interference pattern between the two.
 	 * So a source in its OFF half-cycle keeps looking instead of returning 0.
 	 */
-	for (b = 0; b < DIATOM_BTN_COUNT; b++) {
-		if (button_map[b] != (int)id || !(state & DIATOM_BIT(b))) continue;
-		if (!turbo_period[b]) return 1;
-		if (((g_input_frame - turbo_anchor[b]) / turbo_period[b]) % 2 == 0)
-			return 1;
+	{
+		/* The layer, while its button is held as the game sees it */
+		const bool layer = shift_src >= 0 && (state & DIATOM_BIT(shift_src));
+
+		for (b = 0; b < DIATOM_BTN_COUNT; b++) {
+			if (layer && shift_set[b]) {
+				if (shift_map[b] == (int)id && (state & DIATOM_BIT(b))) return 1;
+				continue;
+			}
+			if (button_map[b] != (int)id || !(state & DIATOM_BIT(b))) continue;
+			if (!turbo_period[b]) return 1;
+			if (((g_input_frame - turbo_anchor[b]) / turbo_period[b]) % 2 == 0)
+				return 1;
+		}
 	}
 	return 0;
 }

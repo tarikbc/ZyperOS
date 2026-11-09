@@ -123,3 +123,25 @@ fr = Démarré depuis le début
 de = Von vorn gestartet
 ja = 最初から始めました
 it = Ripartito dall'inizio
+
+[popup.corestate_head]
+note = Over a game as it starts, first line, when its resume point was left by the system's other core (the Core row, sysmenu.core): that core's save state does not load on this one, so the game starts from the beginning (src/corestate.h). Under it popup.corestate_body. The term is the row's own name.
+en = Core changed
+zh-Hans = 核心已更改
+es = Cambió el núcleo
+pt-BR = O núcleo mudou
+fr = Cœur modifié
+de = Core geändert
+ja = コアが変わりました
+it = Core cambiato
+
+[popup.corestate_body]
+note = Under popup.corestate_head: the game started from the beginning, not where it was left; its in-game saves are kept.
+en = Started fresh
+zh-Hans = 已从头开始
+es = Empezó desde el principio
+pt-BR = Começou do início
+fr = Démarré depuis le début
+de = Von vorn gestartet
+ja = 最初から始めました
+it = Ripartito dall'inizio

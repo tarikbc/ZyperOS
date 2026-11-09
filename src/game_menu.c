@@ -139,6 +139,14 @@ int gm_quick_step(int slot, int d)
 	return ((slot - 1 + d) % GM_SLOTS + GM_SLOTS) % GM_SLOTS + 1;
 }
 
+const char *gm_pak_option(const char *core)
+{
+	if (!core) return NULL;
+	if (!strcmp(core, "parallel_n64")) return "parallel-n64-pak1";
+	if (!strcmp(core, "mupen64plus_next")) return "mupen64plus-pak1";
+	return NULL;
+}
+
 const char *gm_pak_value(const char *stored)
 {
 	return stored && !strcmp(stored, "memory") ? "memory" : "rumble";

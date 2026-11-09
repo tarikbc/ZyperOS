@@ -74,12 +74,14 @@ void gm_quick_key(const char *tag, char *out, size_t n);
 int  gm_quick_slot(const char *stored);
 int  gm_quick_step(int slot, int d);
 
-/* The N64's Pak: Mupen64Plus-Next's mupen64plus-pak1 values the row steps
- * between, "rumble" (ZyperOS's default: the Pixel 2 has a motor) and
- * "memory", and how the row and the Controls page name each, the products'
- * own names in every language. A value it does not know is the Rumble Pak.
- * Pure, for tools/menu-check.c. */
-#define GM_PAK_OPTION "mupen64plus-pak1"
+/* The N64's Pak: the values the row steps between, "rumble" (ZyperOS's
+ * default: the Pixel 2 has a motor) and "memory", which both N64 cores take
+ * for their player 1 pak option, and how the row and the Controls page name
+ * each, the products' own names in every language. A value it does not know
+ * is the Rumble Pak. gm_pak_option is that option's name on the core given,
+ * NULL for a core with no pak: ParallelN64's parallel-n64-pak1 and
+ * Mupen64Plus-Next's mupen64plus-pak1. Pure, for tools/menu-check.c. */
+const char *gm_pak_option(const char *core);
 const char *gm_pak_value(const char *stored);          /* "rumble" | "memory" */
 const char *gm_pak_other(const char *value);           /* the one it steps to */
 const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */

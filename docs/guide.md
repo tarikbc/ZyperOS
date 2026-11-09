@@ -376,6 +376,16 @@ the in-game menu's **Pak** row: left, right or A turns it, at once, and the
 game keeps it. The Controller Pak's saves are kept in the game's own save
 file in `Saves/`, whichever Pak is in.
 
+**The Nintendo 64's two cores.** N64 games run on ParallelN64 with Glide64,
+which keeps Super Mario 64 and Mario Kart 64 at full speed on the Pixel 2.
+For a game it draws badly, pick Mupen64Plus-Next in the N64 shelf's menu,
+on the **Core** row; the shelf keeps the choice. Both read the same battery
+saves, and the buttons work the same on both: A and B are the N64's A and
+B, L2 is Z, the d-pad is the stick, SELECT with X, A, B or Y is a C button,
+and the Pak row is there too. A
+save state is one core's own, so a game left on the other core starts from
+the beginning, says so as it starts, and keeps its battery save.
+
 **SELECT stays a game button.** Most systems have a SELECT of their own, so a
 press of SELECT is either the game's or the hotkeys', decided by what comes
 next. SELECT and then a shoulder (R1, L1, R2, L2) is a hotkey, and the game
