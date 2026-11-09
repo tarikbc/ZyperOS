@@ -1,6 +1,6 @@
 // Stills of the tour at chosen frames, and a contact sheet of them, to look at
 // before the full render: npm run stills [-- FRAME ...]
-// Without frames: two of every scene (just after it lands, and past its
+// Without frames: two of every scene (scenes last whole bars of src/music.ts's track) (just after it lands, and past its
 // middle). Writes out/stills/<frame>.jpeg and out/contact-sheet.jpg,
 // six to a row in the order given.
 import { bundle } from "@remotion/bundler";
@@ -22,7 +22,7 @@ if (!frames.length) {
   const table = src.slice(src.indexOf("export const SCENES"), src.indexOf("/** Scene starts"));
   const bpm = Number(readFileSync(path.join(root, "src/music.ts"), "utf8").match(/bpm: ([\d.]+)/)[1]);
   const beat = 1800 / bpm;
-  const beats = [...table.matchAll(/beats: (\d+)/g)].map((m) => Math.max(1, Math.round((Number(m[1]) * 0.5 * bpm) / 60)));
+  const beats = [...table.matchAll(/bars: ([\d.]+)/g)].map((m) => Math.round(Number(m[1]) * 4));
   let at = 0;
   for (const b of beats) {
     const len = Math.round(b * beat);

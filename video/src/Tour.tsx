@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Audio, Easing, Img, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { ease } from "./anim";
-import { BEAT, CLIPS, MUSIC_START_S, FPS, sceneAt, sceneEnd, SCENES, STARTS, TOTAL } from "./timeline";
+import { BEAT, CLIPS, MUSIC_START_S, FPS, POWER_MS, sceneAt, sceneEnd, SCENES, STARTS, TOTAL } from "./timeline";
 import { MUSIC } from "./music";
 import { Cam, Device, DeviceInfo, FONT, Footage, Label, Laptop, LIGHT, DARK, mixCam, Phone, pop, poseOf, punchAt, Screen, Tile } from "./parts";
 import { SOUND_CUES } from "./sounds";
@@ -81,7 +81,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
         })}
 
         {sc.id === "languages" && LANGS.map((code, n) => {
-          const k = pop(frame, start + 4 + n * 4, 190, 14);
+          const k = pop(frame, start + BEAT / 2 + (n * BEAT) / 2, 190, 14);
           const out = ease(frame, end - 6, end, Easing.in(Easing.cubic));
           return (
             <div key={code} style={{ position: "absolute", inset: 0, transform: `translateX(${-out * 2000}px)` }}>
@@ -104,7 +104,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
           <Label frame={frame} at={labelAt} end={end} text={sc.label} sub={sc.sub} dark={0} x={1320} y={540} width={540} size={72} />
         )}
         {sc.id === "boot" && <Race frame={frame} start={start} end={end} />}
-        {sc.id === "power" && <Power frame={frame} start={start} end={end} presses={[0.8, 2.8]} backAt={4.8} />}
+        {sc.id === "power" && <Power frame={frame} start={start} end={end} presses={[POWER_MS.off / 1000, POWER_MS.on / 1000]} backAt={POWER_MS.back / 1000} />}
         {sc.label && sc.pose === "split" && sc.id === "boot" && (
           <Label frame={frame} at={labelAt} end={end} text={sc.label} sub={sc.sub} dark={0} x={960} y={60} width={900} size={70} anchor="top" />
         )}
@@ -123,7 +123,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
       </AbsoluteFill>
 
       <Audio src={staticFile(`music/${MUSIC.file}`)} startFrom={Math.round(MUSIC_START_S * FPS)}
-        volume={(f) => interpolate(f, [0, TOTAL - 45, TOTAL - 2], [0.9, 0.9, 0], { extrapolateRight: "clamp" })} />
+        volume={(f) => interpolate(f, [0, TOTAL - 2 * BEAT, TOTAL - 1], [0.9, 0.9, 0], { extrapolateRight: "clamp" })} />
       {SOUND_CUES(footage).map((c, n) => (
         <Sequence key={n} from={c.frame} durationInFrames={12} layout="none">
           <Audio src={staticFile(`audio/ui/${c.sound}.wav`)} volume={0.5 * (c.volume ?? 1)} />

@@ -191,10 +191,12 @@ shots('shelf-dark', [(PS1, ['--screen', 'games', '--theme', 'dark'], 100)])
 # v3: the power-off animation, and a video snap: the bar under the resting
 # cover fills (DESIGN.md 11.19), then the cover turns into the snap. The host
 # has no Muse to decode it, so rec/snapsub.c gives --snap's turn a frame of
-# Spyro's snap (its libretro screenshot) in place of the test picture.
+# Spyro's snap (its libretro screenshot) in place of the test picture. It
+# rests 600 ms first, so the video can start the wait where its beat needs.
 shots('poweroff', [(PS1, ['--screen', 'games', '--poweroff', '--shot-at', '{t}'], motion(0, 1600))])
 SPYRO = ('PS1', 'Spyro the Dragon (USA).chd')
-shots('snap', [(SPYRO, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
+shots('snap', [(SPYRO, ['--screen', 'games', '--snap-wait', '0'], 600),
+               (SPYRO, ['--screen', 'games', '--snap-wait', '{t}'], [f'{t / 1000:.4f}' for t in motion(0, 1000)]),
                (SPYRO, ['--screen', 'games', '--snap', '{t}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
                (SPYRO, ['--screen', 'games', '--snap', '1'], 2700)],
       card='snaps', env={'SNAP_I420': '{work}/spyro.yuv', 'DYLD_INSERT_LIBRARIES': str(ROOT / 'video/rec/snapsub.dylib')})

@@ -125,7 +125,7 @@ export const Label: React.FC<{
         marginLeft: align === "center" ? "auto" : 0, marginRight: align === "center" ? "auto" : 0, opacity: 1 - out(0) }} />
       <div style={{ fontSize: size, lineHeight: 1.04, fontWeight: 600, color: t.text, letterSpacing: -1 }}>
         {words.map((w, i) => {
-          const k = pop(frame, at + i * 3, 210, 17);
+          const k = pop(frame, at + (i * BEAT) / 2, 210, 17);
           return (
             <span key={i} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "top", paddingBottom: 6, marginRight: "0.24em" }}>
               <span style={{ display: "inline-block", transform: `translateY(${(1 - k) * 105 - out(i) * 110}%)` }}>{w}</span>
