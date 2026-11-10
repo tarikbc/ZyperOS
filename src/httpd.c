@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <poll.h>
@@ -86,6 +87,7 @@ typedef struct {
 	size_t      used;
 	unsigned    last_ms;
 	bool        close_after;
+	char        peer[48];        /* the client's address, as text */
 	httpd_req   r;
 } conn;
 
@@ -897,6 +899,24 @@ bool httpd_body_progress(long long *got, long long *total)
 	return *total > 0;
 }
 
+const char *httpd_peer(const httpd_req *r)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++)
+		if (g_conn[i].fd >= 0 && &g_conn[i].r == r) return g_conn[i].peer;
+	return "";
+}
+
+int httpd_peers(const char **out, int max)
+{
+	int i, n = 0;
+
+	for (i = 0; i < MAX_CONN && n < max; i++)
+		if (g_conn[i].fd >= 0 && g_conn[i].peer[0]) out[n++] = g_conn[i].peer;
+	return n;
+}
+
 int httpd_conn_count(void)
 {
 	int i, n = 0;
@@ -916,7 +936,9 @@ int httpd_poll(httpd_handler fn, httpd_end end, void *ctx)
 	 * font, and four frames of latency to start four transfers is four frames
 	 * nobody needs to wait. */
 	for (;;) {
-		int fd = accept(g_listen, NULL, NULL);
+		struct sockaddr_storage from;
+		socklen_t fl = sizeof from;
+		int fd = accept(g_listen, (struct sockaddr *)&from, &fl);
 		int slot, on = 1;
 
 		if (fd < 0) break;
@@ -930,6 +952,12 @@ int httpd_poll(httpd_handler fn, httpd_end end, void *ctx)
 		memset(&g_conn[slot], 0, sizeof g_conn[slot]);
 		g_conn[slot].fd = fd;
 		g_conn[slot].st = C_HEAD;
+		if (from.ss_family == AF_INET)
+			inet_ntop(AF_INET, &((struct sockaddr_in *)&from)->sin_addr,
+			          g_conn[slot].peer, sizeof g_conn[slot].peer);
+		else if (from.ss_family == AF_INET6)
+			inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&from)->sin6_addr,
+			          g_conn[slot].peer, sizeof g_conn[slot].peer);
 		g_conn[slot].last_ms = now;
 		did = 1;
 	}

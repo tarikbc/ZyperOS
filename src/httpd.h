@@ -127,6 +127,11 @@ void httpd_traffic(unsigned long *in, unsigned long *out);
 
 /* How many connections are open. */
 int  httpd_conn_count(void);
+/* The address a request came from, as text ("10.42.0.2"), and those of the
+ * connections open now (at most `max`): File Transfer counts browsers by
+ * them, not connections (src/clients.h) */
+const char *httpd_peer(const httpd_req *r);
+int  httpd_peers(const char **out, int max);
 
 /* The bodies arriving into files now (HTTPD_BODY_FILE: uploads), summed:
  * bytes in so far and bytes they will be. False when none is arriving. For
