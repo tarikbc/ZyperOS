@@ -17,6 +17,8 @@
   <a href="https://github.com/tarikbc/ZyperOS/releases/latest"><img src="https://img.shields.io/github/v/release/tarikbc/ZyperOS?style=for-the-badge&label=Download&color=476b00" height="34" alt="Download the latest release of ZyperOS"></a>
   &nbsp;
   <a href="#install-in-three-steps"><img src="https://img.shields.io/badge/Install-in_three_steps-1a1c1a?style=for-the-badge" height="34" alt="Install in three steps"></a>
+  &nbsp;
+  <a href="https://discord.gg/Ust8sE22Tm"><img src="https://img.shields.io/badge/Discord-Join_us-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="34" alt="Join the ZyperOS Discord"></a>
 </p>
 
 <p align="center">
@@ -27,7 +29,8 @@
   <a href="#how-it-compares">Compare</a> &nbsp;·&nbsp;
   <a href="#supported-systems">Systems</a> &nbsp;·&nbsp;
   <a href="#controls">Controls</a> &nbsp;·&nbsp;
-  <a href="#faq">FAQ</a>
+  <a href="#faq">FAQ</a> &nbsp;·&nbsp;
+  <a href="https://discord.gg/Ust8sE22Tm">Discord</a>
 </p>
 
 <p align="center">
@@ -65,6 +68,8 @@ Keep the stock card as your way back: ZyperOS goes on a second card, and swappin
 3. **Play.** Put the card in the Pixel 2 and turn it on. The first start sets the card up in about a minute, then shows you each button.
 
 Then add games over Wi-Fi, the USB cable or the card itself. [The full install](#install) covers the card image, updates and the Wi-Fi adapter.
+
+Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord](https://discord.gg/Ust8sE22Tm).
 
 <!-- tour-video: the tour on zyperos.com (video/README.md) -->
 <p align="center">
