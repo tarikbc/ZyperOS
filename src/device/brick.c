@@ -112,6 +112,7 @@ void plat_present(void)
 {
 	static bool shown;
 
+	plat_overlay_present(ren);
 	if (!shown) {
 		signal_splash(SIGUSR1);
 #ifdef __linux__

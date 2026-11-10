@@ -360,6 +360,9 @@ void plat_draw_osd(SDL_Renderer *r);
  * its bar (plat_draw_osd), under the bar: the replug message (main.c,
  * DESIGN.md 11.36). NULL for none. */
 void plat_set_overlay(void (*fn)(SDL_Renderer *r));
+/* The overlay for a frame that skipped plat_draw_osd: each device's
+ * plat_present calls it before it shows the frame */
+void plat_overlay_present(SDL_Renderer *r);
 /* The renderer the bar is drawn with is about to be destroyed: its texture
  * goes now, and the next plat_draw_osd makes one on whatever renderer it is
  * given. Each device's plat_video_quit calls this before SDL_DestroyRenderer;

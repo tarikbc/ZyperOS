@@ -4297,10 +4297,15 @@ static bool panel_leave_draw(app *a, int game);   /* with the menus, below */
  * Not while anything that is not redrawn here is on screen: the song or heat
  * pop-up, the volume bar. A whole frame still comes at least once a second
  * (HEARTBEAT_MS counts whole frames only). */
+static bool replug_shown(void);
+
 static bool focus_ok(const app *a)
 {
 	return a->screen == SCREEN_SYSTEMS && a->sys.count > 0 && !no_games(a) &&
-	       !g_songpop.on && !g_heatpop.on && plat_osd_until() == UINT32_MAX;
+	       !g_songpop.on && !g_heatpop.on && plat_osd_until() == UINT32_MAX &&
+	       /* the replug message: a focus frame drew the sprite over it
+	        * (2026-11-10, on the device) */
+	       !replug_shown();
 }
 
 /* False, drawing nothing, when the sprite is not one a focus frame can draw */
@@ -8593,6 +8598,8 @@ static void replug_draw_at(SDL_Renderer *r)
 	for (k = 0; k < n; k++)
 		ui_text(r, fm, lines[k], slab.x + tx_off, ui_line_y(UI_F_MENU, y + k * lm), -1, UI_TEXT);
 }
+
+static bool replug_shown(void) { return g_replug.on; }
 
 static void replug_overlay(SDL_Renderer *r)
 {
@@ -21287,6 +21294,9 @@ static void shot_compose(app *a)
 		zr_works(&g_heatpop.rig, T0 + DS_MS_MOVE);
 		heatpop_draw(a, T0 + (unsigned)shot_heatpop);
 	}
+	/* The replug message (--replug) where the overlay goes: over everything
+	 * else, under the bar */
+	if (g_replug.on) replug_draw_at(a->r);
 	/* The volume or brightness bar over whatever else was asked for, held
 	 * until it has slid all the way in. */
 	if (shot_osd_kind) {
@@ -21712,7 +21722,13 @@ static void take_shot(app *a)
 		g_home_phase = shot_focus_from;
 		shot_compose(a);
 		g_home_phase = at;
-		if (!focus_draw(a)) {
+		/* focus_frame's own rule: a whole frame when anything the focus
+		 * frame does not draw again is on screen */
+		if (focus_ok(a) && focus_draw(a)) {
+			/* What plat_present adds to a frame that skipped
+			 * plat_draw_osd (plat_overlay_present) */
+			if (g_replug.on) replug_draw_at(a->r);
+		} else {
 			fprintf(stderr, "focus: not for this sprite, a whole frame\n");
 			shot_compose(a);
 		}
@@ -22530,6 +22546,13 @@ int main(int argc, char *argv[])
 		}
 		/* MENU's USB rows on the host, which has no usbrole: Ask, or
 		 * Automatic with "auto"; "said" for Automatic's message */
+		/* The replug message up, as on the device: drawn over the frame
+		 * where the overlay goes (plat_draw_osd), for the home's focus
+		 * check (tools/home-shot-check.py) */
+		else if (!strcmp(argv[i], "--replug")) {
+			g_replug.on = true;
+			g_replug.plug = 1;
+		}
 		else if (!strcmp(argv[i], "--usb-menu")) {
 			shot_usb_menu = true;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "auto")) { g_usb_auto = true; i++; }

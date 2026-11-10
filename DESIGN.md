@@ -2554,7 +2554,10 @@ the top under the header, 960 wide at y 104: **surface** with the
 **panel** lift, the laptop mark (64) at its left in **text-soft**,
 **Computer** in **meta** **text-dim** over the words in **menu** **text**,
 up to four balanced lines; it is drawn by every screen's frame, under the
-volume bar (plat_set_overlay). USB File Transfer's Cable step says the
+volume bar (plat_set_overlay), and last on a frame that skipped the bar
+(plat_overlay_present); the home's focus frames, which redraw the machine
+alone, stop while it is up (it was drawn under the animated machine on the
+device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
 same after 5 seconds (11.35). The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
 [0|1|said]`.

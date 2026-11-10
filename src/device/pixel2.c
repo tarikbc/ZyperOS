@@ -264,6 +264,7 @@ void plat_present(void)
 	Uint8 r, g, b, a;
 
 	SDL_GetRenderDrawColor(ren, &r, &g, &b, &a);
+	plat_overlay_present(ren);
 	if (!shown) {
 		take_from_splash();
 		show_screen();
