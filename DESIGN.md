@@ -399,6 +399,12 @@ beside a cubic one. One function each, in `src/design.h`.)*
   draw every frame they change (2026-11-10: File Transfer left open drew at
   60 Hz and ran the Pixel 2's chip at 51 to 55 C; paced, see the PR's
   tables).
+- **USB File Transfer left alone on the cable** goes off after Auto Off's
+  time when nothing is moving, and only dims (the brightness ladder's
+  lowest rung) while files are on their way, so a transfer can still be
+  watched. A press, a browser arriving or files starting light it fully;
+  a press that lights it does nothing else, POWER's too. *(Tarik,
+  2026-11-10.)*
 - **Menus now open and close.** A panel opens in **move** (out): from 96% to
   full size and from clear to opaque, with its scrim fading in over the same
   time; it closes in **exit** (in), back the same way. The focus fill glides

@@ -9881,16 +9881,15 @@ static void xfer_screen_way(app *a, int way)
 	bool       done = false, stop = false;
 	float      k;
 	pace       pc;
-	/* Left open on the cable, Auto Off's time turns the screen off as the
-	 * shelf's does (src/chargedark.h): a button, files starting to move or
-	 * the screen's words changing (a browser coming, a step ticked) light
-	 * it again */
-	charge_dark dark = { 0 };
+	/* Left alone on the cable, Auto Off's time turns the screen off, or
+	 * only dims it while files move (src/pace.h, pace_screen_step) */
+	pace_screen scr;
 
 	if (!g_xs.on && !xs_open(a, way)) return;
 	g_xs.shown = true;
 	lv = panel_open();
 	pace_init(&pc, plat_now_ms());
+	pace_screen_init(&scr, plat_now_ms());
 
 	while (!done && !want_quit && a->running && g_xs.on) {
 		unsigned now = plat_now_ms();
@@ -9974,6 +9973,39 @@ static void xfer_screen_way(app *a, int way)
 		 * off under a hostapd nobody stops until the next transfer screen */
 		if (a->in.quit_requested) { xs_end(); a->running = false; return; }
 
+		/* The screen's light, ahead of every press: a press that lights a
+		 * dark or dim screen is the light's alone, POWER's too, as on the
+		 * shelf (src/chargedark.h) */
+		{
+			pace_light was = scr.light, light;
+			bool press = false, spent;
+			int b;
+
+			for (b = 0; b < IN_COUNT && !press; b++) press = a->in.pressed[b];
+			light = pace_screen_step(&scr, plat_now_ms(), a->auto_off, on_charger(),
+			                         musec_playing(), press, xs_moving(), g_xs.st.clients, &spent);
+			if (light != was) {
+				if (was == PACE_OFF) plat_backlight(true);
+				if (was == PACE_DIM) plat_backlight_dim(false);
+				if (light == PACE_OFF) { snap_off(); plat_backlight(false); }
+				if (light == PACE_DIM) plat_backlight_dim(true);
+				fprintf(stderr, "xfer: screen %s\n", light == PACE_OFF ? "off, nothing moving"
+				        : light == PACE_DIM ? "dimmed, files moving" : "lit");
+				pc.drawn = false;           /* a whole frame when it lights */
+			}
+			if (spent) {
+				plat_input_flush();
+				memset(&a->in, 0, sizeof a->in);
+				continue;
+			}
+			if (light == PACE_OFF) {
+				/* Dark: still the server, and nothing drawn */
+				ram_idle_set(!xs_moving());
+				plat_input_wait(xs_moving() ? 4 : 50);
+				continue;
+			}
+		}
+
 		/* Powering off stops the hotspot as every way out does (xfer_stop):
 		 * on the hotspot, a second or two for the supplicant to come back */
 		if (a->in.pressed[IN_POWER] || idle_due(a)) {
@@ -10026,27 +10058,7 @@ static void xfer_screen_way(app *a, int way)
 			    : pace_rows(head, rows, nrows, -1, k, a->tint);
 			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
 			bool busy = moving || pace_busy(a);
-			bool changed = pc.drawn && key != pc.key;
 
-			switch (charge_dark_poll(&dark, a->auto_off, nowp, busy || changed,
-			                         on_charger(), musec_playing())) {
-			case CHARGE_GO_DARK:
-				snap_off();
-				plat_backlight(false);
-				ram_idle_set(true);
-				continue;
-			case CHARGE_DARK:
-				plat_input_wait(xs_moving() ? 4 : 50);
-				continue;
-			case CHARGE_WAKE:
-				plat_backlight(true);
-				plat_input_flush();
-				memset(&a->in, 0, sizeof a->in);
-				pc.drawn = false;
-				break;
-			case CHARGE_LIT:
-				break;
-			}
 			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
 				/* Nothing to draw: the memory's slow clock once still for
 				 * 2 s, and a wait for a button. The server is served each
@@ -10070,7 +10082,8 @@ static void xfer_screen_way(app *a, int way)
 		 * transfer moves POLL_BUDGET per pass. */
 		ui_frame_rest(4);
 	}
-	if (dark.dark) plat_backlight(true);
+	if (scr.light == PACE_OFF) plat_backlight(true);
+	if (scr.light == PACE_DIM) plat_backlight_dim(false);
 	ram_idle_set(false);
 	panel_close(a, lv, false);
 	g_xs.shown = false;

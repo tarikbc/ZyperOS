@@ -95,6 +95,56 @@ int main(void)
 		CHECK(pace_menu(1, NULL, NULL, 0, -1) == pace_menu(1, NULL, NULL, 0, -1), "no rows: not the same key");
 	}
 
+	/* File Transfer's light, Auto Off at 120 s on the cable (Tarik,
+	 * 2026-11-10): off when nothing moves, dim while files move; a press,
+	 * a browser arriving or files starting light it fully */
+	{
+		pace_screen sc;
+		bool spent;
+		const unsigned AO = 120000;
+
+		pace_screen_init(&sc, 0);
+		CHECK(pace_screen_step(&sc, AO - 1, 120, true, false, false, false, 0, &spent) == PACE_LIT,
+		      "off before Auto Off");
+		CHECK(pace_screen_step(&sc, AO, 120, true, false, false, false, 0, &spent) == PACE_OFF,
+		      "still and alone: not off at Auto Off");
+		CHECK(pace_screen_step(&sc, AO + 10, 120, true, false, true, false, 0, &spent) == PACE_LIT && spent,
+		      "a press did not light it, or was not spent on the light");
+		CHECK(pace_screen_step(&sc, AO + 20, 120, true, false, true, false, 0, &spent) == PACE_LIT && !spent,
+		      "a press on a lit screen was spent");
+		/* Files moving the whole time: dim at Auto Off, never off */
+		pace_screen_init(&sc, 0);
+		pace_screen_step(&sc, 0, 120, true, false, false, true, 1, &spent);
+		CHECK(pace_screen_step(&sc, AO, 120, true, false, false, true, 1, &spent) == PACE_DIM,
+		      "files moving: not dim at Auto Off");
+		CHECK(pace_screen_step(&sc, AO * 5, 120, true, false, false, true, 1, &spent) == PACE_DIM,
+		      "files moving: off");
+		/* ...and off once they stop */
+		CHECK(pace_screen_step(&sc, AO * 5 + 10, 120, true, false, false, false, 1, &spent) == PACE_OFF,
+		      "the transfer over, dim: not off");
+		/* Files starting light it fully, from off */
+		CHECK(pace_screen_step(&sc, AO * 6, 120, true, false, false, true, 1, &spent) == PACE_LIT && !spent,
+		      "files starting did not light it");
+		/* A browser arriving lights it; one leaving does not */
+		pace_screen_init(&sc, 0);
+		pace_screen_step(&sc, AO, 120, true, false, false, false, 0, &spent);
+		CHECK(pace_screen_step(&sc, AO + 10, 120, true, false, false, false, 1, &spent) == PACE_LIT,
+		      "a browser arriving did not light it");
+		pace_screen_step(&sc, AO * 3, 120, true, false, false, false, 1, &spent);
+		CHECK(pace_screen_step(&sc, AO * 3 + 10, 120, true, false, false, false, 0, &spent) == PACE_OFF,
+		      "a browser leaving lit it");
+		/* Off the cable, Auto Off at never, music playing: lit */
+		pace_screen_init(&sc, 0);
+		CHECK(pace_screen_step(&sc, AO * 9, 120, false, false, false, false, 0, &spent) == PACE_LIT,
+		      "off the cable: dark");
+		CHECK(pace_screen_step(&sc, AO * 19, 0, true, false, false, false, 0, &spent) == PACE_LIT,
+		      "Auto Off at never: dark");
+		CHECK(pace_screen_step(&sc, AO * 29, 120, true, true, false, false, 0, &spent) == PACE_LIT,
+		      "music playing: dark");
+		CHECK(pace_screen_step(&sc, AO * 29 + AO - 1, 120, true, false, false, false, 0, &spent) == PACE_LIT,
+		      "the countdown did not start again after the music");
+	}
+
 	/* The key's pieces */
 	CHECK(pace_str(1, "a") != pace_str(1, "b") && pace_str(1, NULL) != pace_str(1, ""),
 	      "the key does not tell strings apart");
@@ -105,6 +155,7 @@ int main(void)
 		return 1;
 	}
 	printf("pace-check: a still panel draws its heartbeat (610 frames in 10 min, not 36,000); "
-	       "a change, the clock's moment or anything moving draws at once; the memory idles after 2 s\n");
+	       "a change, the clock's moment or anything moving draws at once; the memory idles after 2 s; "
+	       "File Transfer's screen off when still, dim while files move, lit by a press, a browser or files starting\n");
 	return 0;
 }

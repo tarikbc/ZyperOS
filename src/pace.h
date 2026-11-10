@@ -67,6 +67,29 @@ unsigned pace_rest(const pace *p, unsigned now, unsigned redraw_at, unsigned cap
  * PACE_RAM_IDLE_MS */
 bool pace_ram_idle(const pace *p, unsigned now);
 
+/* USB File Transfer's screen left alone on the cable (Tarik, 2026-11-10):
+ * after Auto Off's time without a press it turns off when nothing is
+ * moving, and only dims while files are on their way, so a transfer can be
+ * watched. A press, a browser arriving (more browsers than before) or files
+ * starting light it fully, and a press that lights it does nothing else.
+ * Off the cable, with Auto Off at never, or with music playing (which holds
+ * Auto Off), it stays lit, and the countdown starts again from there. */
+typedef enum { PACE_LIT, PACE_DIM, PACE_OFF } pace_light;
+
+typedef struct {
+	pace_light light;
+	unsigned   since;       /* the countdown's start */
+	bool       moving;      /* files were moving at the last pass */
+	int        clients;     /* browsers at the last pass */
+} pace_screen;
+
+void pace_screen_init(pace_screen *s, unsigned now);
+
+/* One pass: the screen's light now. *spent is true when a press lit a
+ * dark or dim screen: that press is the light's and nothing else's. */
+pace_light pace_screen_step(pace_screen *s, unsigned now, int auto_off_s, bool on_cable,
+                            bool held, bool press, bool moving, int clients, bool *spent);
+
 /* A panel's heading and rows in the key: every row's label and value, its
  * live flag, the count and the cursor. menu.h's marks (MENU_NOTE_MARK and
  * the rest, small addresses) count by their address and are never read: the

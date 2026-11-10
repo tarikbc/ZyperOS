@@ -51,6 +51,31 @@ bool pace_ram_idle(const pace *p, unsigned now)
 	return p->seen && now - p->busy_at >= PACE_RAM_IDLE_MS;
 }
 
+void pace_screen_init(pace_screen *s, unsigned now)
+{
+	s->light = PACE_LIT;
+	s->since = now;
+	s->moving = false;
+	s->clients = 0;
+}
+
+pace_light pace_screen_step(pace_screen *s, unsigned now, int auto_off_s, bool on_cable,
+                            bool held, bool press, bool moving, int clients, bool *spent)
+{
+	bool wake = press || (moving && !s->moving) || clients > s->clients;
+
+	*spent = press && s->light != PACE_LIT;
+	s->moving = moving;
+	s->clients = clients;
+	if (wake || !on_cable || auto_off_s <= 0 || held) {
+		s->since = now;
+		s->light = PACE_LIT;
+	} else if (now - s->since >= (unsigned)auto_off_s * 1000u) {
+		s->light = moving ? PACE_DIM : PACE_OFF;
+	}
+	return s->light;
+}
+
 static unsigned pace_text(unsigned h, const char *s)
 {
 	return (uintptr_t)s < 4096 ? pace_int(h, (int)(uintptr_t)s) : pace_str(h, s);
