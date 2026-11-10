@@ -203,8 +203,8 @@ static void write_state(const ur_sense *in, const char *role)
 
 	if (!run_ok)
 		return;
-	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%s auto=%d\n",
-	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.computer, role, rule.auto_mode);
+	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%s auto=%d paused=%d\n",
+	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.computer, role, rule.auto_mode, rule.paused);
 	if (n <= 0 || !strcmp(line, last))
 		return;
 	fd = open(STATE_FILE ".new", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
@@ -306,8 +306,9 @@ static unsigned follow_pin(void)
 	write_state(&in, want);
 	if (rule.can_ask && said != rule.plug) {
 		said = rule.plug;
-		log_to_kernel(rule.auto_mode ? "usbrole: a plug wants power: powered after its settle\n"
-		                             : "usbrole: a plug wants power: waiting for the player\n");
+		log_to_kernel(rule.auto_mode && !rule.paused ? "usbrole: a plug wants power: powered after its settle\n"
+		              : rule.auto_mode ? "usbrole: a plug wants power: asked, since a computer was just here\n"
+		              : "usbrole: a plug wants power: waiting for the player\n");
 	}
 	if (in.computer)
 		log_to_kernel("usbrole: a computer on the bus: device until it is unplugged\n");

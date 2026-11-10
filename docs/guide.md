@@ -560,7 +560,11 @@ default, or **Automatic**, where an accessory gets power two seconds after
 it goes in, with no question, under the same rules. Its one risk, said when
 you choose it: a computer that has not connected yet gets about two seconds
 of power before the handheld sees it on the cable and stops; that plug then
-stays unpowered until it comes out.
+stays unpowered until it comes out. Once a computer has shown up, Automatic
+pauses: until the port has been empty for 3 seconds, anything plugged in
+gets the question instead (a computer whose port drops and comes back when
+the power goes is never fed again, and an adapter swapped in is one press
+away), and the message says to plug the computer in again.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so

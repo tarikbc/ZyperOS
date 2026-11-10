@@ -284,6 +284,77 @@ static void computer_then_dac(void)
 	CHECK(s.can_ask, "the DAC after the Mac: not asked about");
 }
 
+/* 2026-11-10 on the device, Automatic: the Mac on its sink side. Fed after
+ * its settle, it shows up on the bus 1.9 s later; the port goes back to
+ * device, the Mac's port drops with the power and comes back half a second
+ * later as a new plug, and again, every 4.5 s until unplugged. A model of
+ * that Mac, against the rule: fed at most once. And its plugs after that
+ * are asked about, so an accessory swapped in is one press away; and once
+ * the port has rested empty, Automatic is back. */
+static void automatic_mac_loop(void)
+{
+	ur_state s;
+	unsigned again, t, host_at = 0, gone_at = 0, asked = 0;
+	int role = UR_DEVICE, hosts = 0, was = UR_DEVICE, pin = 0, seen = 0;
+	ur_sense in;
+
+	memset(&s, 0, sizeof s);
+	s.auto_mode = 1;
+	for (t = 0; t <= 120000; t += 10) {
+		/* The Mac: plugged at 10 s, out at 100 s */
+		if (t == 10000) pin = 1;
+		if (role == UR_HOST && !host_at) host_at = t;
+		if (role != UR_HOST) host_at = 0;
+		seen = host_at && t - host_at >= 1900;
+		/* Fed and then let go: its port drops for half a second */
+		if (was == UR_HOST && role == UR_DEVICE && t < 100000) { pin = 0; gone_at = t; }
+		if (gone_at && t - gone_at >= 500 && t < 100000) { pin = 1; gone_at = 0; }
+		if (t == 100000) { pin = 0; gone_at = 0; }
+		in = (ur_sense)S(pin, 0, 0, seen);
+		was = role;
+		role = ur_decide(&s, &in, t, &again);
+		if (role == UR_HOST && was == UR_DEVICE) hosts++;
+		if (t > 20000 && t < 100000 && s.can_ask && !asked) asked = t;
+	}
+	CHECK(hosts == 1, "Automatic and the Mac's dropping port: fed %d times", hosts);
+	CHECK(asked, "the Mac's plug after the pause: not asked about");
+	CHECK(!s.paused, "the pause outlived 20 s of an empty port");
+
+	/* The pause: a quick swap to an adapter is asked about, granted with one
+	 * press, and that answer ends the pause */
+	{
+		ur_sense want = S(1, 0, 0, 0), none = S(0, 0, 0, 0);
+
+		memset(&s, 0, sizeof s);
+		s.auto_mode = 1;
+		ur_decide(&s, &none, 0, &again);
+		ur_decide(&s, &want, 10000, &again);
+		CHECK(ur_decide(&s, &want, 10000 + UR_SETTLE_MS, &again) == UR_HOST, "auto: not host");
+		CHECK(ur_decide(&s, &(ur_sense)S(1, 0, 0, 1), 13900, &again) == UR_DEVICE, "the Mac seen: still host");
+		CHECK(s.paused, "the Mac seen: Automatic not paused");
+		ur_decide(&s, &none, 14000, &again);
+		CHECK(again && again <= UR_REST_MS, "paused and empty: no time to look again (%u)", again);
+		ur_decide(&s, &want, 15000, &again);        /* the adapter, a second later */
+		CHECK(ur_decide(&s, &want, 15000 + UR_SETTLE_MS + 10, &again) == UR_DEVICE,
+		      "paused: the next plug powered with no answer");
+		CHECK(s.can_ask && ur_grant(&s, s.plug), "paused: the next plug not asked about");
+		CHECK(ur_decide(&s, &want, 17100, &again) == UR_HOST, "paused: not host on the answer");
+		CHECK(!s.paused, "the answer did not end the pause");
+		/* An empty port 2.9 s keeps the pause, 3 s ends it */
+		memset(&s, 0, sizeof s);
+		s.auto_mode = 1;
+		s.paused = 1;
+		ur_decide(&s, &none, 10000, &again);
+		ur_decide(&s, &none, 10000 + UR_REST_MS - 10, &again);
+		CHECK(s.paused, "the pause ended before the port rested");
+		ur_decide(&s, &want, 10000 + UR_REST_MS - 5, &again);
+		ur_decide(&s, &none, 10000 + UR_REST_MS, &again);
+		CHECK(s.paused, "a plug in the rest did not start it again");
+		ur_decide(&s, &none, 10000 + 2 * UR_REST_MS, &again);
+		CHECK(!s.paused, "a rested port kept the pause");
+	}
+}
+
 /* Answered, then power comes in before the role changes: device */
 static void power_after_grant(void)
 {
@@ -326,6 +397,7 @@ int main(void)
 	dac_at_boot();
 	automatic();
 	computer_then_dac();
+	automatic_mac_loop();
 	power_after_grant();
 	never();
 	if (fails) {
@@ -333,7 +405,7 @@ int main(void)
 		return 1;
 	}
 	printf("usbrole rule-check: the Mac's plugs of 2026-11-10 never host unanswered; the quick swap and a "
-	       "game's plug asked and powered on the answer; Power Automatically after its settle; never with "
+	       "game's plug asked and powered on the answer; Power Automatically after its settle, fed to the Mac's dropping port at most once; never with "
 	       "power in, a detection, a failed reading or a computer on the bus\n");
 	return 0;
 }

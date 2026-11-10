@@ -8435,6 +8435,8 @@ static int usb_power_rows(menu_row rows[3])
 
 static void replug_on(unsigned plug);
 
+static void replug_off(void);
+
 static void usb_power_ask(app *a, unsigned plug)
 {
 	menu_row rows[3];
@@ -8442,6 +8444,9 @@ static void usb_power_ask(app *a, unsigned plug)
 	unsigned looked = 0;
 	float f;
 
+	/* The question takes the replug message's place: Computer brings it
+	 * back */
+	replug_off();
 	lv = panel_open();
 	while (choice < 0) {
 		unsigned now = plat_now_ms();
@@ -8533,7 +8538,7 @@ static void power_follow(void)
 	{
 		unsigned was = g_usb_wait;
 
-		g_usb_wait = p.known && p.ask && !p.automatic ? p.plug : 0;
+		g_usb_wait = p.known && p.ask && (!p.automatic || p.paused) ? p.plug : 0;
 		if (g_usb_wait != was) redraw_now();
 	}
 	/* usbrole started after the launcher told it, or again: told again */

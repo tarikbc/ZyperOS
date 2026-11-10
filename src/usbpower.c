@@ -13,17 +13,21 @@
 bool usbpower_parse(const char *text, usb_power *o)
 {
 	char role[16] = "";
-	int ask = 0, computer = 0, automatic = 0;
+	int ask = 0, computer = 0, automatic = 0, paused = 0, got;
 
 	memset(o, 0, sizeof *o);
-	if (!text || sscanf(text, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%15s auto=%d",
-	                    &o->plug, &ask, &o->pin, &o->vbus, &computer, role, &automatic) != 7)
+	if (!text)
+		return false;
+	got = sscanf(text, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%15s auto=%d paused=%d",
+	             &o->plug, &ask, &o->pin, &o->vbus, &computer, role, &automatic, &paused);
+	if (got != 7 && got != 8)
 		return false;
 	if (strcmp(role, "host") && strcmp(role, "device"))
 		return false;
 	o->ask = ask == 1;
 	o->computer = computer == 1;
 	o->automatic = automatic == 1;
+	o->paused = paused == 1;
 	o->host = !strcmp(role, "host");
 	o->known = true;
 	return true;
@@ -92,7 +96,10 @@ bool usbpower_waits(const usb_power *p)
 
 int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now, unsigned *plug)
 {
-	bool replug = usbpower_waits(p) && p->computer && p->plug;
+	/* A computer on the bus during this plug, or a plug that came back
+	 * while one paused Automatic (the Mac's port dropping and coming back
+	 * when its power went, 2026-11-10) */
+	bool replug = usbpower_waits(p) && (p->computer || p->paused) && p->plug;
 
 	*plug = 0;
 	/* A computer on the bus, waiting: said at once, once */
@@ -101,7 +108,7 @@ int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now, 
 		*plug = p->plug;
 		return USBPOWER_REPLUG;
 	}
-	if (!p->known || !p->ask || !p->plug || p->automatic) {
+	if (!p->known || !p->ask || !p->plug || (p->automatic && !p->paused)) {
 		f->since = 0;
 		return USBPOWER_NOTHING;
 	}

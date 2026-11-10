@@ -92,6 +92,20 @@ int main(void)
 		CHECK(usbpower_follow(&g, &p, 30000, &plug) == USBPOWER_NOTHING &&
 		      usbpower_follow(&g, &p, 40000, &plug) == USBPOWER_NOTHING, "asked in automatic");
 		CHECK(p.automatic, "auto=1 not read");
+		CHECK(!p.paused, "a line without paused= read as paused");
+		/* Automatic paused by a computer (the Mac's dropping port,
+		 * 2026-11-10): its next plug gets the replug message at once,
+		 * and the question after 2 s, once each */
+		CHECK(usbpower_parse("plug=7 ask=1 pin=1 vbus=0 computer=0 role=device auto=1 paused=1", &p) &&
+		      p.paused && p.automatic, "paused=1 not read");
+		CHECK(usbpower_follow(&g, &p, 50000, &plug) == USBPOWER_REPLUG && plug == 7,
+		      "paused: the plug after the computer not told to replug");
+		CHECK(usbpower_follow(&g, &p, 50200, &plug) == USBPOWER_NOTHING, "paused: asked at once");
+		CHECK(usbpower_follow(&g, &p, 50200 + USBPOWER_ASK_MS, &plug) == USBPOWER_ASK && plug == 7,
+		      "paused: not asked about after 2 s");
+		CHECK(usbpower_follow(&g, &p, 60000, &plug) == USBPOWER_NOTHING, "paused: asked or told twice");
+		CHECK(!usbpower_parse("plug=7 ask=1 pin=1 vbus=0 computer=0 role=device auto=1 paused=", &p) ||
+		      !p.paused, "an empty paused= read as paused");
 	}
 
 	/* The files, in a scratch folder */

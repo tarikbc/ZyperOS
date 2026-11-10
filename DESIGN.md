@@ -2537,7 +2537,11 @@ every safety rule, and the question, the mark and USB Device are never
 shown. Chosen, it says once, as a message of up to four balanced lines,
 what it does and its one risk: a computer that has not connected yet gets
 about 2 seconds of power before it is seen (on the bus, "Product: Mac") and
-the port goes back for the rest of that plug. Told to usbrole in
+the port goes back for the rest of that plug. A computer seen pauses
+Automatic until the port has rested empty 3 s or the player answers: a plug
+meanwhile gets the question and the replug message (the Mac's port dropped
+and came back half a second after each feed, and was fed every 4.5 s, on
+the device, 2026-11-10). Told to usbrole in
 /run/usbrole/mode, as the request is. Host shots: `--usb-menu
 [auto|said]`, with `--status ... usb=on` for the mark.
 

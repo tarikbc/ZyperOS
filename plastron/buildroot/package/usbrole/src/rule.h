@@ -31,6 +31,13 @@
  *  - Once host, the power reading is the port's own, so it is not asked:
  *    the pin going back, or a computer turning up on the bus, ends it, and a
  *    computer keeps that plug device until it ends.
+ *  - A computer seen on the bus also pauses Automatic for the port
+ *    (ur_state.paused) until the port has been empty, pin 0 and no power
+ *    in, for UR_REST_MS, or the launcher's answer comes for a plug. While
+ *    paused, a plug is asked about instead. 2026-11-10, Automatic on the
+ *    device: the Mac on its sink side, fed and seen, dropped its port when
+ *    the power went, came back half a second later as a new plug, was fed
+ *    after its settle, and so on every 4.5 s until it was unplugged.
  *
  * Pure: no files, no clock of its own. tests/rule-check.c replays plugs.
  */
@@ -39,6 +46,7 @@
 
 #define UR_GRACE_MS   3000u
 #define UR_SETTLE_MS  2000u     /* Power Automatically: a plug's wait first */
+#define UR_REST_MS    3000u     /* empty this long ends a pause (above) */
 
 typedef struct {
 	int pin;        /* the PHY's USB-HOST cable: 1 wants power, 0 not, -1 unreadable */
@@ -57,6 +65,8 @@ typedef struct {
 	int      can_ask;      /* the plug may be asked about now */
 	int      host;         /* what it asks for now */
 	int      auto_mode;    /* Power Automatically, as the launcher says */
+	int      paused;       /* Automatic paused: a computer was seen (above) */
+	unsigned empty_since;  /* since when the port is empty, 0 not empty */
 	int      started;
 } ur_state;
 

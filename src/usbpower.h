@@ -23,7 +23,8 @@
 #include <stdbool.h>
 
 /* usbrole's state line:
- * "plug=3 ask=1 pin=1 vbus=0 computer=0 role=device auto=0" */
+ * "plug=3 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0"
+ * (paused= is read as 0 when a usbrole from before it leaves it out) */
 typedef struct {
 	bool     known;       /* read and whole */
 	unsigned plug;        /* the plug that wants power, 0 none yet */
@@ -32,6 +33,8 @@ typedef struct {
 	bool     computer;    /* a computer showed up on the bus during this plug */
 	bool     host;        /* the port is a host */
 	bool     automatic;   /* usbrole powers accessories by itself (the setting) */
+	bool     paused;      /* ...but not now: a computer was just on the port,
+	                       * so a plug is asked about (rule.h) */
 } usb_power;
 
 bool usbpower_parse(const char *text, usb_power *out);
