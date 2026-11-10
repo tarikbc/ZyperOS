@@ -12,7 +12,7 @@ USBROLE_LICENSE_FILES = LICENSE
 
 define USBROLE_BUILD_CMDS
 	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) -Wall -Wextra \
-		-o $(@D)/usbrole $(@D)/usbrole.c
+		-o $(@D)/usbrole $(@D)/usbrole.c $(@D)/rule.c
 endef
 
 define USBROLE_INSTALL_TARGET_CMDS
