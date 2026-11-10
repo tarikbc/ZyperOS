@@ -19,15 +19,20 @@
  * computer seeing nothing meanwhile (2026-11-05). And on 2026-11-10 it went
  * host with a Mac on the cable whose port had taken the sink side, and fed
  * it: such a Mac looks exactly like a DAC. When the port may be a host is
- * rule.c's: never on its own. A plug that wants power and gives none is
- * asked about by the launcher (Power It, or It's a Computer), and only Power
- * It for that plug, with every safety rule still holding, makes it one.
+ * rule.c's. A plug that wants power and gives none is asked about by the
+ * launcher (What did you plug in?: USB Accessory, or Computer), and only USB
+ * Accessory for that plug makes it one, with every safety rule still
+ * holding; or, with MENU > USB Accessories on Automatic, the plug having
+ * waited UR_SETTLE_MS under the same rules (a computer that shows up on the
+ * bus then ends it at once).
  *
  * The launcher and usbrole meet in /run/usbrole, root's alone (0700, made
  * and checked here): usbrole writes "state" (the plug's number, whether it
- * may be asked about, the readings and the role), and the launcher writes
- * "host" with the plug's number for Power It, which usbrole reads once and
- * deletes. usbrole stays the only writer of the role.
+ * may be asked about, the readings, whether a computer showed up during the
+ * plug, the role and the setting), and the launcher writes "host" with the
+ * plug's number for USB Accessory, which usbrole reads once and deletes, and
+ * "mode" ("auto" or "ask") for the setting. usbrole stays the only writer of
+ * the role.
  *
  * And when a DAC's sound card appears, it turns the DAC's own playback volume
  * to full: the volume the player moves is a software one in front of it
@@ -65,6 +70,7 @@ static char role_file[320];    /* the role switch */
 #define RUN_DIR    "/run/usbrole"
 #define STATE_FILE RUN_DIR "/state"
 #define HOST_FILE  RUN_DIR "/host"
+#define MODE_FILE  RUN_DIR "/mode"
 static int run_ok;             /* RUN_DIR is root's own directory */
 /* Power coming in from the other end: a computer or a charger */
 #define VBUS_IN "/sys/class/power_supply/rk817-charger/online"
@@ -167,6 +173,7 @@ static int computer_on_bus(void)
 }
 
 static ur_state rule;
+static void read_mode(void);
 
 /* RUN_DIR made, or found, and checked to be root's own directory and no
  * link: else nothing is written or read there, and no plug can be powered */
@@ -183,6 +190,7 @@ static void run_dir(void)
 	}
 	unlink(HOST_FILE);             /* a request from before this start */
 	run_ok = 1;
+	read_mode();                   /* the setting the launcher left, if any */
 }
 
 /* The state for the launcher, when it changed: written beside and renamed,
@@ -195,8 +203,8 @@ static void write_state(const ur_sense *in, const char *role)
 
 	if (!run_ok)
 		return;
-	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d powered=%d role=%s\n",
-	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.powered, role);
+	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%s auto=%d\n",
+	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.computer, role, rule.auto_mode);
 	if (n <= 0 || !strcmp(line, last))
 		return;
 	fd = open(STATE_FILE ".new", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
@@ -207,8 +215,38 @@ static void write_state(const ur_sense *in, const char *role)
 	close(fd);
 }
 
-/* The launcher's Power It: the plug's number in HOST_FILE, read once (a
- * regular file of root's, a few bytes) and deleted */
+/* The setting, as the launcher keeps it (MENU > USB Accessories): "auto" in
+ * MODE_FILE is Automatic, anything else (or none) is Ask. Read whenever it is
+ * written; a regular file of root's, a few bytes, as the request is. */
+static void read_mode(void)
+{
+	char text[16] = "";
+	struct stat st;
+	ssize_t got;
+	int fd, was = rule.auto_mode;
+
+	if (!run_ok)
+		return;
+	fd = open(MODE_FILE, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+	if (fd < 0) { rule.auto_mode = 0; return; }
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_uid != 0 ||
+	    st.st_size >= (off_t)sizeof text) {
+		close(fd);
+		rule.auto_mode = 0;
+		return;
+	}
+	got = read(fd, text, sizeof text - 1);
+	close(fd);
+	if (got < 0) got = 0;
+	text[got] = '\0';
+	rule.auto_mode = !strncmp(text, "auto", 4);
+	if (rule.auto_mode != was)
+		log_to_kernel(rule.auto_mode ? "usbrole: accessories powered automatically\n"
+		                             : "usbrole: accessories asked about\n");
+}
+
+/* The launcher's USB Accessory: the plug's number in HOST_FILE, read once
+ * (a regular file of root's, a few bytes) and deleted */
 static void read_request(void)
 {
 	char text[32];
@@ -248,7 +286,7 @@ static unsigned follow_pin(void)
 	const char *want;
 	unsigned again;
 	int fd;
-	static int said;   /* the pin said host on a powered plug: said once a plug */
+	static unsigned said;   /* the plug last said to wait for an answer */
 
 	if (read_line(role_file, role, sizeof role) < 0)
 		return 0;
@@ -266,10 +304,11 @@ static unsigned follow_pin(void)
 	in.computer = !strcmp(role, "host") && computer_on_bus();
 	want = ur_decide(&rule, &in, now_ms(), &again) == UR_HOST ? "host" : "device";
 	write_state(&in, want);
-	if (in.pin != 1 || !rule.powered)
-		said = 0;
-	else if (!said++)
-		log_to_kernel("usbrole: the pin says host, but this plug has power: device\n");
+	if (rule.can_ask && said != rule.plug) {
+		said = rule.plug;
+		log_to_kernel(rule.auto_mode ? "usbrole: a plug wants power: powered after its settle\n"
+		                             : "usbrole: a plug wants power: waiting for the player\n");
+	}
 	if (in.computer)
 		log_to_kernel("usbrole: a computer on the bus: device until it is unplugged\n");
 	if (!strcmp(role, want))
@@ -412,6 +451,7 @@ int main(void)
 			char ev[1024];
 
 			while (read(watch, ev, sizeof ev) > 0) {}
+			read_mode();
 			read_request();
 			again = follow_pin();
 		}

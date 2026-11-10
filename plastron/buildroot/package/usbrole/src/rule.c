@@ -14,7 +14,7 @@ int ur_grant(ur_state *s, unsigned plug)
 
 int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 {
-	int quiet, powered_now, cond;
+	int cond;
 
 	*again = 0;
 	if (!s->started) {
@@ -23,44 +23,31 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 		s->pin_was = 0;
 	}
 	/* The pin going to "wants power" is a new plug: a number of its own,
-	 * and nothing granted for it yet */
+	 * nothing granted and nothing known about it yet */
 	if (in->pin == 1 && s->pin_was != 1) {
 		s->plug++;
 		if (!s->plug) s->plug = 1;
+		s->granted = 0;
+		s->computer = 0;
+		s->since = 0;
 	}
 	if (in->pin != 1)
 		s->granted = 0;
 	s->pin_was = in->pin;
+	/* A computer on the bus: this plug is a computer's until it ends */
+	if (in->computer)
+		s->computer = 1;
 	if (s->host) {
 		/* The port's own power is all the reading would say */
-		if (in->computer) {
-			s->powered = 1;
-			s->host = 0;
-		} else if (in->pin != 1) {
-			s->host = 0;
-		}
-		s->quiet_since = 0;
+		if (in->computer || in->pin != 1) s->host = 0;
 		s->can_ask = 0;
+		s->since = 0;
 		if (!s->host) s->granted = 0;
 		return s->host ? UR_HOST : UR_DEVICE;
 	}
-	/* Empty long enough is a new plug: what the last one was is forgotten */
-	if (s->quiet_since && now - s->quiet_since >= UR_UNPLUG_MS)
-		s->powered = 0;
-	/* Empty from the moment power goes: the PHY's charger detection lingers
-	 * 1.4 to 1.6 s after an unplug (2026-11-10), and that is the last
-	 * plug's, so it is not asked here while no power comes in */
-	quiet = in->pin == 0 && in->vbus == 0 && !in->computer;
-	if (quiet) {
-		if (!s->quiet_since) s->quiet_since = nz(now);
-	} else {
-		s->quiet_since = 0;
-	}
-	/* Unsure is powered: a reading that fails says nothing is safe */
-	powered_now = in->vbus != 0 || in->charger || in->computer;
-	if (powered_now)
-		s->powered = 1;
-	cond = in->pin == 1 && !powered_now && !s->powered;
+	/* Only what is true now: power in, a detection or a failed reading
+	 * (unsure is powered), and a computer seen during this plug */
+	cond = in->pin == 1 && in->vbus == 0 && !in->charger && !s->computer;
 	if (cond && now - s->start < UR_GRACE_MS) {
 		*again = UR_GRACE_MS - (now - s->start);
 		cond = 0;
@@ -68,11 +55,22 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 	s->can_ask = cond;
 	if (!cond) {
 		s->granted = 0;
+		s->since = 0;
 		return UR_DEVICE;
 	}
+	if (!s->since) s->since = nz(now);
 	if (s->granted && s->granted == s->plug) {
 		s->host = 1;
 		return UR_HOST;
+	}
+	/* Power Automatically: once the plug has waited its settle */
+	if (s->auto_mode) {
+		if (now - s->since >= UR_SETTLE_MS) {
+			s->granted = s->plug;
+			s->host = 1;
+			return UR_HOST;
+		}
+		*again = UR_SETTLE_MS - (now - s->since);
 	}
 	return UR_DEVICE;
 }
