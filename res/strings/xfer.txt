@@ -373,7 +373,7 @@ ja = ブラウザで http://%s を開き、VPN やプロキシはオフにして
 it = Digita http://%s in un browser. Disattiva VPN o proxy.
 
 [xfer.hint_wifi_both]
-note = Under Wi-Fi File Transfer's steps when no browser opened the page after 30 s: the two ways to the page, the handheld's name and its address. URLs are never translated. Up to three balanced lines.
+note = Under Wi-Fi File Transfer's steps when no browser opened the page after 30 s: the two ways to the page, the handheld's address first (http://192.168.1.42) and its name second (http://zyperos.local), as the heading has them over Wi-Fi. URLs are never translated. Up to three balanced lines.
 en = On this Wi-Fi, open http://%s or http://%s.
 zh-Hans = 在此 Wi-Fi 下打开 http://%s 或 http://%s。
 es = En este Wi-Fi, abre http://%s o http://%s.

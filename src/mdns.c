@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -359,16 +360,34 @@ void mdns_next_host(char *host, size_t n)
 	}
 }
 
+int mdns_accept(const mdns_self *me, const uint8_t mask[4], const mdns_from *f)
+{
+	bool subnet = true;
+	int i;
+
+	for (i = 0; i < 4; i++)
+		if ((f->src[i] & mask[i]) != (me->addr[i] & mask[i])) subnet = false;
+	if (f->to_group) {
+		static const uint8_t group[4] = { 224, 0, 0, 251 };
+
+		if (memcmp(f->dst, group, 4) || f->ttl != 255) return MDNS_DROP;
+		return subnet ? MDNS_ON_SUBNET : MDNS_ON_LINK;
+	}
+	if (memcmp(f->dst, me->addr, 4) || !subnet) return MDNS_DROP;
+	return MDNS_ON_SUBNET;
+}
+
 /* ---- the responder: when to probe, announce and answer ------------------ */
 
 enum { ST_OFF, ST_PROBING, ST_ANNOUNCING, ST_READY };
 
-void mdns_engine_init(mdns_engine *e, const uint8_t addr[4], bool probe,
-                      mdns_send_fn send, void *ctx)
+void mdns_engine_init(mdns_engine *e, const uint8_t addr[4], const uint8_t mask[4],
+                      bool probe, mdns_send_fn send, void *ctx)
 {
 	memset(e, 0, sizeof *e);
 	snprintf(e->me.host, sizeof e->me.host, "%s", MDNS_BASE);
 	memcpy(e->me.addr, addr, 4);
+	memcpy(e->mask, mask, 4);
 	e->probe = probe;
 	e->send = send;
 	e->ctx = ctx;
@@ -396,21 +415,27 @@ static void announce_from(mdns_engine *e, unsigned now)
 	e->timed = true;
 }
 
-void mdns_engine_packet(mdns_engine *e, const uint8_t *p, size_t n, uint16_t src_port,
+void mdns_engine_packet(mdns_engine *e, const uint8_t *p, size_t n, const mdns_from *f,
                         unsigned now)
 {
 	uint8_t out[512];
-	int clash;
+	int clash, where;
 
 	if (e->state == ST_OFF) return;
+	if ((where = mdns_accept(&e->me, e->mask, f)) == MDNS_DROP) return;
 	clash = mdns_clash(&e->me, p, n);
 	if (clash == MDNS_CLASH) {
 		if (e->state == ST_PROBING) {
-			/* Taken: the next name. Fifteen in a row and it waits five
-			 * seconds before the next probe (8.1) */
+			/* Taken: the next name, a few times. Somebody who claims
+			 * every name it tries gets no more: it stops answering by
+			 * name, and the screen shows the address alone */
+			if (++e->clashes > MDNS_MAX_RENAMES) {
+				e->state = ST_OFF;
+				e->gave_up = true;
+				return;
+			}
 			mdns_next_host(e->me.host, sizeof e->me.host);
-			e->clashes++;
-			probe_from(e, now, e->clashes > 15 ? 5000u : 0u);
+			probe_from(e, now, 0);
 		} else {
 			/* Somebody says our name is theirs: probed again, and
 			 * whichever of us has it answers the other (9) */
@@ -423,9 +448,15 @@ void mdns_engine_packet(mdns_engine *e, const uint8_t *p, size_t n, uint16_t src
 		return;
 	}
 	if (e->state != ST_PROBING) {
-		mdns_reply r = mdns_respond(&e->me, p, n, src_port, out, sizeof out);
+		mdns_reply r = mdns_respond(&e->me, p, n, f->port, out, sizeof out);
 
 		if (!r.len) return;
+		/* Unicast only to the interface's own subnet; a one-shot query
+		 * from elsewhere is not answered, a QU one goes to the group */
+		if (r.unicast && where != MDNS_ON_SUBNET) {
+			if (f->port != MDNS_PORT) return;
+			r.unicast = false;
+		}
 		if (r.unicast) {
 			e->send(e->ctx, out, r.len, true);
 		} else if (!e->last_multi || now - e->last_multi >= 250u) {
@@ -498,7 +529,7 @@ static void sock_send(void *ctx, const uint8_t *b, size_t len, bool unicast)
 
 const char *mdns_name(void)
 {
-	if (!g.on) return NULL;
+	if (!g.on || g.e.gave_up) return NULL;
 	snprintf(g.name, sizeof g.name, "%s.local", g.e.me.host);
 	return g.name;
 }
@@ -564,9 +595,31 @@ bool mdns_start(const char *ifname, const char *addr, bool probe)
 	/* Our own packets back would read as somebody else probing */
 	setsockopt(g.fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof loop);
 
-	snprintf(g.ifname, sizeof g.ifname, "%s", ifname);
-	snprintf(g.addr, sizeof g.addr, "%s", addr);
-	mdns_engine_init(&g.e, (const uint8_t *)&ia, probe, sock_send, NULL);
+	/* Each packet's TTL and where it was sent, for mdns_accept */
+#ifdef IP_PKTINFO
+	setsockopt(g.fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof one);
+#endif
+#ifdef IP_RECVDSTADDR
+	setsockopt(g.fd, IPPROTO_IP, IP_RECVDSTADDR, &one, sizeof one);
+#endif
+	setsockopt(g.fd, IPPROTO_IP, IP_RECVTTL, &one, sizeof one);
+	/* The interface's subnet: a /30 on the cable, the network's on Wi-Fi */
+	{
+		struct ifaddrs *all, *a;
+		uint8_t mask[4] = { 255, 255, 255, 255 };
+
+		if (getifaddrs(&all) == 0) {
+			for (a = all; a; a = a->ifa_next)
+				if (a->ifa_addr && a->ifa_netmask && a->ifa_addr->sa_family == AF_INET &&
+				    !strcmp(a->ifa_name, ifname) &&
+				    ((struct sockaddr_in *)a->ifa_addr)->sin_addr.s_addr == ia.s_addr)
+					memcpy(mask, &((struct sockaddr_in *)a->ifa_netmask)->sin_addr, 4);
+			freeifaddrs(all);
+		}
+		snprintf(g.ifname, sizeof g.ifname, "%s", ifname);
+		snprintf(g.addr, sizeof g.addr, "%s", addr);
+		mdns_engine_init(&g.e, (const uint8_t *)&ia, mask, probe, sock_send, NULL);
+	}
 	g.said[0] = '\0';
 	g.on = true;
 	return true;
@@ -599,15 +652,56 @@ void mdns_poll(unsigned now)
 
 	if (!g.on) return;
 	for (i = 0; i < 8; i++) {
-		socklen_t fl = sizeof g.from;
-		ssize_t got = recvfrom(g.fd, in, sizeof in, 0, (struct sockaddr *)&g.from, &fl);
+		union { struct cmsghdr h; char b[256]; } ctl;
+		struct iovec v = { in, sizeof in };
+		struct msghdr m;
+		struct cmsghdr *c;
+		mdns_from f;
+		ssize_t got;
 
-		if (got <= 0) break;
+		memset(&m, 0, sizeof m);
+		m.msg_name = &g.from;
+		m.msg_namelen = sizeof g.from;
+		m.msg_iov = &v;
+		m.msg_iovlen = 1;
+		m.msg_control = ctl.b;
+		m.msg_controllen = sizeof ctl.b;
+		if ((got = recvmsg(g.fd, &m, 0)) <= 0) break;
 		if (!memcmp(&g.from.sin_addr, g.e.me.addr, 4)) continue;    /* ours */
-		mdns_engine_packet(&g.e, in, (size_t)got, ntohs(g.from.sin_port), now);
+		memset(&f, 0, sizeof f);
+		f.ttl = -1;
+		memcpy(f.src, &g.from.sin_addr, 4);
+		f.port = ntohs(g.from.sin_port);
+		for (c = CMSG_FIRSTHDR(&m); c; c = CMSG_NXTHDR(&m, c)) {
+			if (c->cmsg_level != IPPROTO_IP) continue;
+#ifdef IP_PKTINFO
+			if (c->cmsg_type == IP_PKTINFO)
+				memcpy(f.dst, &((struct in_pktinfo *)CMSG_DATA(c))->ipi_addr, 4);
+#endif
+#ifdef IP_RECVDSTADDR
+			if (c->cmsg_type == IP_RECVDSTADDR)
+				memcpy(f.dst, CMSG_DATA(c), 4);
+#endif
+			/* Linux says IP_TTL with an int, macOS IP_RECVTTL with a byte */
+			if (c->cmsg_type == IP_TTL) {
+				int t;
+
+				memcpy(&t, CMSG_DATA(c), sizeof t);
+				f.ttl = t;
+			}
+#ifdef __APPLE__
+			if (c->cmsg_type == IP_RECVTTL) f.ttl = *(unsigned char *)CMSG_DATA(c);
+#endif
+		}
+		f.to_group = f.dst[0] >= 224 && f.dst[0] <= 239;
+		mdns_engine_packet(&g.e, in, (size_t)got, &f, now);
 	}
 	mdns_engine_tick(&g.e, now);
-	if (mdns_engine_ready(&g.e) && strcmp(g.said, g.e.me.host)) {
+	if (g.e.gave_up && strcmp(g.said, "-")) {
+		snprintf(g.said, sizeof g.said, "-");
+		fprintf(stderr, "mdns: %d names taken on %s: no name this session, the address alone\n",
+		        g.e.clashes - 1, g.ifname);
+	} else if (mdns_engine_ready(&g.e) && strcmp(g.said, g.e.me.host)) {
 		snprintf(g.said, sizeof g.said, "%s", g.e.me.host);
 		fprintf(stderr, "mdns: %s.local is %s on %s\n", g.e.me.host, g.addr, g.ifname);
 	}

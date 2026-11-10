@@ -31,6 +31,16 @@
  *     the name defends it by answering the other's probe.
  *   - On the cable only the computer is on the link, so it takes the name at
  *     once and announces it.
+ *   - Only the link (11): a packet to the group must come with a TTL of 255
+ *     (nothing a router passed on) and to 224.0.0.251; a packet to the
+ *     handheld's own address, and every one-shot query, must come from its
+ *     own subnet. Anything else is dropped unanswered.
+ *   - A name taken from it on Wi-Fi is given up after MDNS_MAX_RENAMES
+ *     renames in a session: somebody on the network who claims every name
+ *     it tries gets no more, and the screen shows the address alone. Over
+ *     Wi-Fi the screen shows the address first anyway, the name beside it,
+ *     so what a person types comes from the handheld's own screen; on the
+ *     cable only the computer can answer, and the name goes first.
  *
  * Linux and macOS (the host check and the desktop build); SO_BINDTODEVICE
  * keeps it to the one interface on Linux. */
@@ -46,6 +56,7 @@
 #define MDNS_PORT      5353
 #define MDNS_TTL       120      /* seconds, RFC 6762's for an A record */
 #define MDNS_LEGACY_TTL 10      /* to a one-shot resolver (6.7) */
+#define MDNS_MAX_RENAMES 3      /* names taken in a session before it gives up */
 
 /* Answer on `ifname` ("usb0", "wlan0") with `addr` ("10.42.0.1"). `probe`:
  * make sure the name is free first (Wi-Fi); else take it at once (the
@@ -63,7 +74,7 @@ void mdns_stop(void);
 void mdns_poll(unsigned now_ms);
 
 /* The name it answers to, or is probing for: "zyperos.local",
- * "zyperos-2.local". NULL while off. */
+ * "zyperos-2.local". NULL while off, and once it gave the name up. */
 const char *mdns_name(void);
 
 /* The name is its own (probing is over): it answers queries. */
@@ -106,6 +117,22 @@ int mdns_clash(const mdns_self *me, const uint8_t *p, size_t n);
 /* The name after a clash: "zyperos" -> "zyperos-2" -> "zyperos-3". */
 void mdns_next_host(char *host, size_t n);
 
+/* Where a packet came from, as the socket tells it (IP_PKTINFO or
+ * IP_RECVDSTADDR, and IP_RECVTTL) */
+typedef struct {
+	uint8_t  src[4], dst[4];
+	uint16_t port;
+	int      ttl;            /* -1 when the socket did not say */
+	bool     to_group;       /* sent to a multicast address */
+} mdns_from;
+
+/* On the link only (RFC 6762 11): MDNS_DROP, MDNS_ON_LINK (to the group
+ * with TTL 255, from another subnet on the same link: answered to the
+ * group only), or MDNS_ON_SUBNET (from the interface's own subnet: may be
+ * answered by unicast, and a one-shot query is answered at all). */
+enum { MDNS_DROP, MDNS_ON_LINK, MDNS_ON_SUBNET };
+int mdns_accept(const mdns_self *me, const uint8_t mask[4], const mdns_from *f);
+
 /* The responder without its socket: what it sends, and when, for the
  * packets it is given and the clock. `send` gets a packet for the group, or
  * (unicast) for the sender of the packet being answered. The socket in
@@ -113,16 +140,17 @@ void mdns_next_host(char *host, size_t n);
 typedef void (*mdns_send_fn)(void *ctx, const uint8_t *b, size_t len, bool unicast);
 typedef struct {
 	mdns_self    me;
+	uint8_t      mask[4];        /* the interface's netmask */
 	int          state, sent, clashes;
 	unsigned     next_at, last_multi;
-	bool         timed, probe;
+	bool         timed, probe, gave_up;
 	mdns_send_fn send;
 	void        *ctx;
 } mdns_engine;
 
-void mdns_engine_init(mdns_engine *e, const uint8_t addr[4], bool probe,
-                      mdns_send_fn send, void *ctx);
-void mdns_engine_packet(mdns_engine *e, const uint8_t *p, size_t n, uint16_t src_port,
+void mdns_engine_init(mdns_engine *e, const uint8_t addr[4], const uint8_t mask[4],
+                      bool probe, mdns_send_fn send, void *ctx);
+void mdns_engine_packet(mdns_engine *e, const uint8_t *p, size_t n, const mdns_from *f,
                         unsigned now_ms);
 void mdns_engine_tick(mdns_engine *e, unsigned now_ms);
 bool mdns_engine_ready(const mdns_engine *e);

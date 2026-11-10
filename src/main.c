@@ -7477,17 +7477,21 @@ static void human_bytes(char *out, size_t n, unsigned long long b)
  * it contains a newline, which is exactly two things worth copying.
  *
  * Everything else is status and belongs below the rule. */
-/* The name first (zyperos.local, mdns.h), as http:// so a browser opens it
- * rather than searching for it, and the address beside the PIN under it:
- * the name is easier to type and survives a network that gives the handheld
- * a new address; the address works where the name does not. With no name
- * (mDNS could not start, or the link is down and `addr` says so), as it was:
- * the address over the PIN. */
-static void hare_head(char *out, size_t n, const char *name, const char *addr, const char *pin)
+/* With the handheld's name (zyperos.local, mdns.h). Over the cable the name
+ * first, as http:// so a browser opens it rather than searching for it, and
+ * the address beside the PIN under it: only the computer is on that link, so
+ * only the handheld can answer for the name. Over Wi-Fi the address first,
+ * as it was, and the name beside the PIN: anybody on the network could
+ * answer for a name, and what a person types should come from the
+ * handheld's own screen. With no name (mDNS could not start, gave the name
+ * up, or the link is down and `addr` says so), the address over the PIN. */
+static void hare_head(char *out, size_t n, bool cable, const char *name, const char *addr,
+                      const char *pin)
 {
 	/* A fixture's "http://192.168.1.42" is the address the screen shows */
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	if (name && name[0]) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
+	if (name && name[0] && cable) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
+	else if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
 	else snprintf(out, n, "%s\nPIN %s", addr, pin);
 }
 
@@ -7535,8 +7539,10 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
 	case LH_NO_BROWSER:
-		if (name && name[0])
-			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_BOTH : S_XFER_HINT_WIFI_BOTH), name, addr);
+		if (name && name[0] && cable)
+			snprintf(hint, hn, T(S_XFER_HINT_TYPE_BOTH), name, addr);
+		else if (name && name[0])          /* Wi-Fi: the address first (hare_head) */
+			snprintf(hint, hn, T(S_XFER_HINT_WIFI_BOTH), addr, name);
 		else
 			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_ONE : S_XFER_HINT_WIFI_ONE), addr);
 		break;
@@ -7590,7 +7596,7 @@ static void hare_preview(app *a, const char *name, const char *addr, const char 
 	char head[192];
 	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
 
-	hare_head(head, sizeof head, name, addr, pin);
+	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -9485,7 +9491,7 @@ static void xfer_screen_way(app *a, int way)
 			if (hare_port() == 80) snprintf(name, sizeof name, "%s", mdns_name());
 			else snprintf(name, sizeof name, "%s:%d", mdns_name(), hare_port());
 		}
-		hare_head(head, sizeof head, name, g_xs.addr, g_xs.pin);
+		hare_head(head, sizeof head, g_xs.cable, name, g_xs.addr, g_xs.pin);
 		if (xs_steps_shown())
 			nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps,
 			                     link_steps_hint(&g_xs.steps, now), g_xs.cable, name,
@@ -20766,8 +20772,8 @@ static void shot_compose(app *a)
 		/* Off Wi-Fi the heading says so, with no name, as the screen does */
 		const char *name = shot_steps_noname ? "" : "zyperos.local";
 
-		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, NULL, T(S_XFER_WIFI_GONE), "4071");
-		else hare_head(head, sizeof head, name, addr, "4071");
+		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
+		else hare_head(head, sizeof head, cable, name, addr, "4071");
 		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
 		                 T(S_PANEL_B_CLOSE));
 		draw_shelf(a);

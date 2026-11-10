@@ -303,7 +303,7 @@ static void names(void)
 static struct {
 	mdns_engine e[HOSTS];
 	int         n;
-	struct { int from, to; uint8_t b[512]; size_t len; } q[256];
+	struct { int from, to, uni; uint8_t b[512]; size_t len; } q[256];
 	int         nq;
 	int         answering;    /* whose packet is being answered */
 } net;
@@ -317,6 +317,7 @@ static void net_send(void *ctx, const uint8_t *b, size_t len, bool unicast)
 		if (to == me || (unicast && to != net.answering) || net.nq >= 256) continue;
 		net.q[net.nq].from = me;
 		net.q[net.nq].to = to;
+		net.q[net.nq].uni = unicast;
 		memcpy(net.q[net.nq].b, b, len);
 		net.q[net.nq].len = len;
 		net.nq++;
@@ -335,12 +336,17 @@ static void net_run(unsigned from_ms, unsigned to_ms)
 		{
 			/* What was sent last tick, delivered now: copied, since the
 			 * answers it brings are queued as it goes */
-			static struct { int from, to; uint8_t b[512]; size_t len; } now_q[256];
+			static struct { int from, to, uni; uint8_t b[512]; size_t len; } now_q[256];
 
 			memcpy(now_q, net.q, sizeof now_q[0] * (size_t)nq);
 			for (i = 0; i < nq; i++) {
+				mdns_from f = { .port = 5353, .ttl = 255, .to_group = !now_q[i].uni,
+				                .dst = { 224, 0, 0, 251 } };
+
+				memcpy(f.src, net.e[now_q[i].from].me.addr, 4);
+				if (now_q[i].uni) memcpy(f.dst, net.e[now_q[i].to].me.addr, 4);
 				net.answering = now_q[i].from;
-				mdns_engine_packet(&net.e[now_q[i].to], now_q[i].b, now_q[i].len, 5353, t);
+				mdns_engine_packet(&net.e[now_q[i].to], now_q[i].b, now_q[i].len, &f, t);
 			}
 		}
 		for (i = 0; i < net.n; i++) mdns_engine_tick(&net.e[i], t);
@@ -349,7 +355,9 @@ static void net_run(unsigned from_ms, unsigned to_ms)
 
 static void add_host(const uint8_t addr[4], bool probe)
 {
-	mdns_engine_init(&net.e[net.n], addr, probe, net_send, (void *)(long)net.n);
+	static const uint8_t mask[4] = { 255, 255, 255, 0 };
+
+	mdns_engine_init(&net.e[net.n], addr, mask, probe, net_send, (void *)(long)net.n);
 	net.n++;
 }
 
@@ -474,8 +482,126 @@ static void probes(void)
 	CHECK(mdns_clash(&ME, out, r.len) == MDNS_NO_CLASH, "an answer with our address read as a clash");
 }
 
+/* On the link only (RFC 6762 11) */
+static void on_link(void)
+{
+	static const uint8_t cable[4] = { 255, 255, 255, 252 };
+	mdns_from f = { .src = { 10, 42, 0, 2 }, .dst = { 224, 0, 0, 251 }, .port = 5353, .ttl = 255,
+	                .to_group = true };
+
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_ON_SUBNET, "the computer on the cable, to the group");
+	f.ttl = 64;
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "TTL 64 to the group was taken");
+	f.ttl = -1;
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "no TTL to the group was taken");
+	f.ttl = 255;
+	f.dst[3] = 1;                                 /* 224.0.0.1 */
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "a packet to 224.0.0.1 was taken");
+	f.dst[3] = 251;
+	f.src[0] = 169; f.src[1] = 254; f.src[2] = 32; f.src[3] = 109;   /* a self-assigned Mac */
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_ON_LINK, "another subnet on the link, to the group");
+	/* To the handheld's own address: from its subnet only, any TTL */
+	f.to_group = false;
+	memcpy(f.dst, ME.addr, 4);
+	f.ttl = 64;
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "unicast from 169.254 was taken");
+	f.src[0] = 10; f.src[1] = 42; f.src[2] = 0; f.src[3] = 2;
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_ON_SUBNET, "unicast from the computer was dropped");
+	f.src[3] = 9;                                  /* 10.42.0.9: off the /30 */
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "unicast from off the /30 was taken");
+	f.src[3] = 2;
+	f.dst[3] = 7;                                  /* to another address */
+	CHECK(mdns_accept(&ME, cable, &f) == MDNS_DROP, "unicast to another address was taken");
+}
+
+/* The engine's answers by where the query came from */
+static struct { int n, unicast; } sent;
+static void count_send(void *ctx, const uint8_t *b, size_t len, bool unicast)
+{
+	(void)ctx; (void)b;
+	if (len) { sent.n++; sent.unicast += unicast; }
+}
+
+static void answers_by_place(void)
+{
+	static const uint8_t cable[4] = { 255, 255, 255, 252 };
+	mdns_engine e;
+	uint8_t q[128];
+	size_t n;
+	mdns_from link = { .src = { 169, 254, 32, 109 }, .dst = { 224, 0, 0, 251 }, .port = 5353,
+	                   .ttl = 255, .to_group = true };
+	mdns_from comp = { .src = { 10, 42, 0, 2 }, .dst = { 224, 0, 0, 251 }, .port = 5353,
+	                   .ttl = 255, .to_group = true };
+	mdns_from far = comp;
+
+	mdns_engine_init(&e, ME.addr, cable, false, count_send, NULL);
+	mdns_engine_tick(&e, 0);
+	mdns_engine_tick(&e, 1000);
+	CHECK(mdns_engine_ready(&e), "the cable's engine is not ready");
+	/* A QU query from another subnet on the link: to the group, not unicast */
+	memset(&sent, 0, sizeof sent);
+	n = unhex(MAC_QU_A, q, sizeof q);
+	mdns_engine_packet(&e, q, n, &link, 5000);
+	CHECK(sent.n == 1 && sent.unicast == 0, "QU from 169.254: %d sent, %d unicast", sent.n, sent.unicast);
+	/* From the computer: unicast */
+	memset(&sent, 0, sizeof sent);
+	mdns_engine_packet(&e, q, n, &comp, 6000);
+	CHECK(sent.n == 1 && sent.unicast == 1, "QU from the computer: %d sent, %d unicast", sent.n, sent.unicast);
+	/* dig's one-shot query from another subnet: nothing; from the computer: answered */
+	memset(&sent, 0, sizeof sent);
+	n = unhex(DIG_LEGACY, q, sizeof q);
+	link.port = 49511;
+	mdns_engine_packet(&e, q, n, &link, 7000);
+	CHECK(sent.n == 0, "a one-shot query from 169.254 was answered");
+	comp.port = 49511;
+	mdns_engine_packet(&e, q, n, &comp, 7100);
+	CHECK(sent.n == 1 && sent.unicast == 1, "a one-shot query from the computer was not answered");
+	/* Through a router (TTL 63): nothing */
+	memset(&sent, 0, sizeof sent);
+	n = unhex(MAC_QM_A, q, sizeof q);
+	far.ttl = 63;
+	mdns_engine_packet(&e, q, n, &far, 8000);
+	CHECK(sent.n == 0, "a query with TTL 63 was answered");
+}
+
+/* Somebody on the Wi-Fi who answers for every name the handheld tries: it
+ * gives up after MDNS_MAX_RENAMES renames rather than going on */
+static void squatter(void)
+{
+	static const uint8_t mask[4] = { 255, 255, 255, 0 };
+	static const uint8_t mine[4] = { 192, 168, 1, 50 };
+	mdns_engine e;
+	unsigned t;
+	int renames = 0;
+	char last[MDNS_HOST_MAX] = "zyperos";
+
+	mdns_engine_init(&e, mine, mask, true, count_send, NULL);
+	for (t = 0; t < 30000 && !e.gave_up; t += 10) {
+		mdns_engine_tick(&e, t);
+		if (t % 100 == 0) {
+			/* Its answer for whatever name the handheld has now */
+			mdns_self them = { "", { 192, 168, 1, 66 } };
+			uint8_t a[256];
+			size_t n;
+			mdns_from f = { .src = { 192, 168, 1, 66 }, .dst = { 224, 0, 0, 251 }, .port = 5353,
+			                .ttl = 255, .to_group = true };
+
+			snprintf(them.host, sizeof them.host, "%s", e.me.host);
+			n = mdns_announce_packet(&them, a, sizeof a, false);
+			mdns_engine_packet(&e, a, n, &f, t);
+			if (strcmp(last, e.me.host)) { renames++; snprintf(last, sizeof last, "%s", e.me.host); }
+		}
+	}
+	CHECK(e.gave_up, "the squatter: never gave up");
+	CHECK(renames == MDNS_MAX_RENAMES, "the squatter: %d renames", renames);
+	CHECK(!mdns_engine_ready(&e), "the squatter: still answering by name");
+}
+
 int main(void)
 {
+	on_link();
+	answers_by_place();
+	squatter();
 	real_queries();
 	hostile();
 	names();
