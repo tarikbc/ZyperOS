@@ -58,7 +58,6 @@ PLAN = [
     ("Development", [
         ("dev-general", TEXT, "Building ZyperOS: code, the simulator, plastron and Diatom. " + REPO, {}),
         ("translations", TEXT, "ZyperOS in eight languages, and more to come", {}),
-        ("github-feed", TEXT, "Pull requests, issues and commits from GitHub", {"ro": True}),
     ]),
     ("Hangout", [
         ("Hangout", VOICE, None, {}),
@@ -271,7 +270,7 @@ def finish(gid, guild, ids, roles, me, everyone):
             "options": [
                 opt("I play on a GKD Pixel 2", "Show me around", "🎮", "Pixel 2 owner"),
                 opt("I'd like to test new builds", "Try things early and report what breaks", "🧪", "Tester"),
-                opt("I write code", "Help build ZyperOS", "🛠️", "Developer", ("dev-general", "github-feed")),
+                opt("I write code", "Help build ZyperOS", "🛠️", "Developer", ("dev-general",)),
                 opt("I can translate", "Help ZyperOS speak your language", "🌍", "Translator", ("translations",)),
             ]}]}
     if not CHECK:
