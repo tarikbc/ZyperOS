@@ -23,7 +23,7 @@ void link_steps_cable(link_steps *s, const link_sense *in, unsigned long request
 		/* Down: whatever asked before was over the link that went, so the
 		 * next browser is counted from here */
 		s->base = requests;
-		at(s, LS_LINK, !in->computer ? 0 : !in->configured ? 1 : 2, now);
+		at(s, LS_LINK, !in->computer ? (in->waits ? 4 : 0) : !in->configured ? 1 : 2, now);
 		return;
 	}
 	/* A request over this link: a browser, so an address too */
@@ -64,6 +64,7 @@ int link_steps_hint(const link_steps *s, unsigned now)
 		case 0:  return waited >= LH_PLUG_MS ? LH_NO_COMPUTER : LH_NONE;
 		case 1:  return waited >= LH_LINK_MS ? LH_NO_ANSWER : LH_NONE;
 		case 2:  return waited >= LH_LINK_MS ? LH_NO_DRIVER : LH_NONE;
+		case 4:  return waited >= LH_PLUG_MS ? LH_REPLUG : LH_NONE;
 		default: return waited >= LH_PLUG_MS ? LH_NO_NETWORK : LH_NONE;
 		}
 	case LS_ADDRESS: return waited >= LH_ADDRESS_MS ? LH_NO_ADDRESS : LH_NONE;

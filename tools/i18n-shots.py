@@ -306,12 +306,16 @@ for _scroll in ("0.5", "1"):
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
 for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver", "address",
-                               "noaddress", "browser", "nobrowser")),
+                               "noaddress", "browser", "nobrowser", "waits", "replug")),
                       ("wifi", ("nonetwork", "browser", "nobrowser"))):
     for _state in _states:
         EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
     # and the browser's hint with no name on the network (mDNS did not start)
     EXTRA.setdefault("steps-%s-nobrowser-noname" % _way, ("demo", "PS1", ["--hare-steps", _way, "nobrowser", "noname"]))
+# USB Device Connected (DESIGN.md 11.36): both tiles focused, and the
+# message after It's a Computer
+for _k in ("0", "1", "said"):
+    EXTRA.setdefault("usb-power-" + _k, ("demo", "PS1", ["--usb-power", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 

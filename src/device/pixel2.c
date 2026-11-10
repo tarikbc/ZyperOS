@@ -1143,6 +1143,13 @@ bool plat_cable_sense(link_sense *o)
 
 	memset(o, 0, sizeof *o);
 	o->computer = plat_usb_peer() == USB_PEER_COMPUTER;
+	/* A computer whose port took the sink side gives no power, so the PHY
+	 * sees no computer: usbrole says something waits for power */
+	if (!o->computer) {
+		usb_power p;
+
+		o->waits = plat_usb_power(&p) && usbpower_waits(&p);
+	}
 	if (o->computer && (d = opendir("/sys/class/udc"))) {
 		while ((e = readdir(d))) {
 			char path[300];
@@ -1185,6 +1192,19 @@ bool plat_cable_sense(link_sense *o)
 		}
 	}
 	return true;
+}
+
+/* plastron's usbrole: its state, and Power It (usbpower.h) */
+#define USBROLE_RUN "/run/usbrole"
+
+bool plat_usb_power(usb_power *out) { return usbpower_read(USBROLE_RUN, out); }
+
+bool plat_usb_power_grant(unsigned plug)
+{
+	bool ok = usbpower_request(USBROLE_RUN, plug);
+
+	fprintf(stderr, "usb: power the device on the port (plug %u)%s\n", plug, ok ? "" : ": not written");
+	return ok;
 }
 
 /* The USB controller lets go of the cable and takes it again, so the computer

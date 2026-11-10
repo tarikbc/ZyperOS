@@ -7538,6 +7538,7 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
+	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
 	case LH_NO_BROWSER:
 		if (name && name[0] && cable)
 			snprintf(hint, hn, T(S_XFER_HINT_TYPE_BOTH), name, addr);
@@ -7997,6 +7998,8 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_CANCEL_NOW,    UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_CANCEL_PLAY,   UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
+		{ S_XFER_TILE_POWER_IT,      UI_GLYPH_USB },
+		{ S_XFER_TILE_ITS_COMPUTER,  UI_GLYPH_TRANSFER },
 	};
 	size_t i;
 
@@ -8279,6 +8282,108 @@ static void usb_ask(app *a)
 	} else {
 		usblink_hold(false);
 	}
+}
+
+/* Something on the USB port wants power and gives none (usbpower.h): a
+ * DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
+ * side, which the handheld cannot tell apart without feeding it. Asked once
+ * per plug over the shelf, as Computer Connected is (DESIGN.md 11.36): two
+ * tiles, Power It and It's a Computer, starting on It's a Computer, so a
+ * quick A or B never feeds a computer. Power It asks usbrole for host for
+ * this plug (it says yes only while no power comes in); It's a Computer, B
+ * or MENU leave the port as it is and say to plug the cable in again, so
+ * the computer can take the side that gives power. The question goes by
+ * itself when the plug stops wanting power (unplugged, or power came). */
+static int usb_power_rows(menu_row rows[3])
+{
+	rows[0] = (menu_row){ T(S_XFER_TILE_POWER_IT), NULL, true };
+	rows[1] = (menu_row){ T(S_XFER_TILE_ITS_COMPUTER), NULL, true };
+	rows[2] = MENU_NOTE(T(S_XFER_LEGEND_POWER));
+	ui_fit_drawn(T(S_XFER_LEGEND_POWER));    /* drawn split at its keys: the whole, for the check */
+	return 3;
+}
+
+/* The message after It's a Computer, balanced as result_message balances
+ * one: the rows, for the screen and its shot (--usb-power-said) */
+static int usb_power_said_rows(app *a, menu_row rows[3], char lines[3][LB_LINE])
+{
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), menu_std_width(a), 3,
+	                         lines), i;
+
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
+	return n;
+}
+
+static void usb_power_ask(app *a, unsigned plug)
+{
+	menu_row rows[3], said[3];
+	char lines[3][LB_LINE];
+	int n = usb_power_rows(rows), sel = 1, choice = -1, lv, k;
+	unsigned looked = 0;
+	float f;
+
+	lv = panel_open();
+	while (choice < 0) {
+		unsigned now = plat_now_ms();
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
+		if (menu_leaving(a)) choice = 1;
+		/* Unplugged, or power came in: nothing to ask any more */
+		if (!looked || now - looked >= 200u) {
+			usb_power p;
+
+			looked = now ? now : 1;
+			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = 2;
+		}
+		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
+			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
+
+			moved_sound(a, b);
+			sel = (sel + (b == IN_LEFT ? -1 : 1) + 2) % 2;
+		}
+		if (a->in.pressed[IN_ACCEPT]) {
+			uisound_play(DS_SOUND_ACCEPT);
+			choice = sel;
+		}
+		if (!panel_frame(a, lv, &f)) continue;
+		tick_tint(a);
+		tick_theme(a);
+		draw_shelf(a);
+		ui_scrim_k(a->r, 0, f);
+		panel_show(a, PANEL_TILES, T(S_XFER_USB_DEVICE_CONNECTED), rows, n, sel, 0, MENU_ZYPEROS,
+		           NULL, false, 0, NULL);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
+	}
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	if (!a->running || choice == 2) return;
+	if (choice == 0) {
+		plat_usb_power_grant(plug);
+		return;
+	}
+	k = usb_power_said_rows(a, said, lines);
+	timed_message(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, menu_std_width(a), MENU_ZYPEROS);
+}
+
+/* The shelf's pass of it: usbrole's state five times a second at most */
+static unsigned usb_power_follow(void)
+{
+	static usbpower_follow_state f;
+	static unsigned looked;
+	unsigned now = plat_now_ms();
+	usb_power p;
+
+	if (looked && now - looked < 200u) return 0;
+	looked = now ? now : 1;
+	if (!plat_usb_power(&p)) return 0;
+	return usbpower_follow(&f, &p, now);
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -19892,6 +19997,9 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
+/* --usb-power [N]: USB Device Connected, tile N focused (1, It's a Computer,
+ * where it starts); --usb-power said: the message after It's a Computer */
+static int shot_power = -1;
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
 static int shot_xfer_ask = -1;
@@ -20709,6 +20817,21 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
 	}
+	if (shot_power >= 0) {
+		menu_row rows[3], said[3];
+		char lines[3][LB_LINE];
+
+		ui_scrim(a->r, 0);
+		if (shot_power < 2) {
+			int nt = usb_power_rows(rows);
+
+			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
+		} else {
+			int k = usb_power_said_rows(a, said, lines);
+
+			menu_draw(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, -1, menu_std_width(a), MENU_ZYPEROS);
+		}
+	}
 	if (shot_dev >= 0) {
 		/* Developer Mode's page, as dev_screen builds it, and the message
 		 * the unlock leaves, in the language that is on */
@@ -20754,6 +20877,8 @@ static void shot_compose(app *a)
 			{ "browser",    LS_BROWSER, 0, LH_NONE },
 			{ "nobrowser",  LS_BROWSER, 0, LH_NO_BROWSER },
 			{ "nonetwork",  LS_LINK,    3, LH_NO_NETWORK },
+			{ "waits",      LS_LINK,    4, LH_NONE },
+			{ "replug",     LS_LINK,    4, LH_REPLUG },
 		};
 		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
 		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
@@ -22178,6 +22303,12 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
 		}
+		else if (!strcmp(argv[i], "--usb-power")) {
+			shot_power = 1;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = 2; i++; }
+			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '1')
+				shot_power = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--dev-page")) {
 			shot_dev = 0;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -23280,6 +23411,12 @@ int main(int argc, char *argv[])
 		 * turn, so it waits for the screen to be lit rather than opening
 		 * in the dark. */
 		if (usblink_follow(db_dev(), plat_now_ms())) usb_ask(&a);
+		/* Something on the port wants power: asked too, once per plug */
+		{
+			unsigned plug = usb_power_follow();
+
+			if (plug) usb_power_ask(&a, plug);
+		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }
 

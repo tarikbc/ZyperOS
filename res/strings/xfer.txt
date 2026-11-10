@@ -58,6 +58,61 @@ de = Links/Rechts: wechseln   A: wählen   B: nur laden
 ja = 左/右：移動   A：選択   B：充電のみ
 it = Sinistra/Destra: sposta   A: scegli   B: solo ricarica
 
+[xfer.usb_device_connected]
+note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a DAC, a Wi-Fi adapter, a keyboard, or a computer whose port waits for power. Two tiles: power it, or it is a computer.
+en = USB Device Connected
+zh-Hans = 已连接 USB 设备
+es = Dispositivo USB conectado
+pt-BR = Dispositivo USB conectado
+fr = Périphérique USB connecté
+de = USB-Gerät verbunden
+ja = USB 機器を接続しました
+it = Dispositivo USB connesso
+
+[xfer.tile_power_it]
+note = A tile, two lines (\n between), of USB Device Connected: give the device on the port power (it is a DAC, an adapter, a keyboard). tight: a tile is 248 units wide.
+en = Power\nIt
+zh-Hans = 为它\n供电
+es = Darle\nenergía
+pt-BR = Dar\nenergia
+fr = Alimenter\nl'appareil
+de = Strom\ngeben
+ja = 給電\nする
+it = Dare\ncorrente
+
+[xfer.tile_its_computer]
+note = A tile, two lines, of USB Device Connected: the thing on the port is a computer; the handheld gives it no power and says to plug the cable in again. tight.
+en = It's a\nComputer
+zh-Hans = 这是\n电脑
+es = Es una\ncomputadora
+pt-BR = É um\ncomputador
+fr = C'est un\nordinateur
+de = Ist ein\nComputer
+ja = パソコン\nです
+it = È un\ncomputer
+
+[xfer.legend_power]
+note = The key legend under USB Device Connected's tiles: Left/Right move, A chooses, B means it is a computer. Three spaces between the keys; it may break onto two lines at them.
+en = Left/Right: move   A: choose   B: it's a computer
+zh-Hans = 左/右：移动   A：选择   B：这是电脑
+es = Izquierda/Derecha: mover   A: elegir   B: es una computadora
+pt-BR = Esquerda/Direita: mover   A: escolher   B: é um computador
+fr = Gauche/Droite : aller   A : choisir   B : c'est un ordinateur
+de = Links/Rechts: wechseln   A: wählen   B: ist ein Computer
+ja = 左/右：移動   A：選択   B：パソコンです
+it = Sinistra/Destra: sposta   A: scegli   B: è un computer
+
+[xfer.replug_computer]
+note = A computer on the USB cable waits for power that the handheld will not give (its port took the sink side): said after It's a Computer, and under USB File Transfer's Cable step after 5 s. Plugging in again lets the computer take the other side. Up to three balanced lines.
+en = The computer is waiting for power. Unplug the cable and plug it in again.
+zh-Hans = 电脑在等待供电。请拔出数据线，再重新插入。
+es = La computadora espera energía. Desconecta el cable y vuelve a conectarlo.
+pt-BR = O computador está esperando energia. Desconecte o cabo e conecte de novo.
+fr = L'ordinateur attend du courant. Débranchez le câble et rebranchez-le.
+de = Der Computer wartet auf Strom. Zieh das Kabel ab und steck es wieder ein.
+ja = パソコンが給電を待っています。ケーブルを抜いて、もう一度差してください。
+it = Il computer aspetta corrente. Scollega il cavo e ricollegalo.
+
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.
 en = Developer (SSH)

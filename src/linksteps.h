@@ -31,6 +31,9 @@ typedef struct {
 	bool configured;   /* the computer took the USB device */
 	bool carrier;      /* its network driver opened the link */
 	bool address;      /* it answers at its address over the link */
+	bool waits;        /* something on the cable waits for power the handheld
+	                    * does not give: a computer whose port took the sink
+	                    * side (usbpower.h) */
 } link_sense;
 
 /* The steps, in order; LS_DONE once all are */
@@ -44,7 +47,8 @@ enum {
 	LH_NO_DRIVER,      /* it took the device and opened no network on it */
 	LH_NO_ADDRESS,     /* the network is up and it has no address on it */
 	LH_NO_BROWSER,     /* all of that, and no browser yet */
-	LH_NO_NETWORK      /* Wi-Fi: not on a network */
+	LH_NO_NETWORK,     /* Wi-Fi: not on a network */
+	LH_REPLUG          /* the computer waits for power: plug it in again */
 };
 
 /* How long a step waits before its hint: long enough that a computer that
@@ -58,7 +62,8 @@ enum {
 
 typedef struct {
 	int           step;       /* the first step not done */
-	int           sub;        /* within LS_LINK: 0 no computer, 1 not taken, 2 no driver */
+	int           sub;        /* within LS_LINK: 0 no computer, 1 not taken, 2 no driver,
+	                           * 3 no Wi-Fi, 4 the computer waits for power */
 	unsigned      since;      /* when it began waiting at that step (and sub) */
 	unsigned long base;       /* requests counted when the link last came up */
 	bool          started;

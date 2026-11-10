@@ -7,6 +7,7 @@
 #include <stdbool.h>
 
 #include "linksteps.h"
+#include "usbpower.h"
 
 /* What is on the other end of the USB port, for USB's charge-only rule
  * (src/usblink.h): the PHY tells a computer's port (SDP, CDP) from a wall
@@ -31,5 +32,9 @@ bool plat_usb_link(int op);
  * False on a device that cannot tell (the Brick), which shows no steps. A few
  * small reads: the screen asks five times a second. */
 bool plat_cable_sense(link_sense *out);
+/* plastron's usbrole and the launcher (usbpower.h): its state now, and Power
+ * It for a plug. False on a device without usbrole (the Brick). */
+bool plat_usb_power(usb_power *out);
+bool plat_usb_power_grant(unsigned plug);
 
 #endif

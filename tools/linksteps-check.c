@@ -16,11 +16,11 @@ static int fails;
 	               fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } \
 } while (0)
 
-static const link_sense NONE_ = { false, false, false, false };
-static const link_sense TAKEN = { true, true, false, false };
-static const link_sense ASKED = { true, false, false, false };
-static const link_sense UP    = { true, true, true, false };
-static const link_sense ADDR  = { true, true, true, true };
+static const link_sense NONE_ = { false, false, false, false, false };
+static const link_sense TAKEN = { true, true, false, false, false };
+static const link_sense ASKED = { true, false, false, false, false };
+static const link_sense UP    = { true, true, true, false, false };
+static const link_sense ADDR  = { true, true, true, true, false };
 
 static void mac_straight_through(unsigned t0)
 {
@@ -127,6 +127,23 @@ static void wifi(void)
 	CHECK(s.step == LS_DONE, "Wi-Fi, a browser: step %d", s.step);
 }
 
+/* A Mac whose port took the sink side: no power, so no computer by the
+ * PHY, but usbrole says something waits for power. "waiting", then after
+ * 5 s the replug hint, not the charging cable's */
+static void computer_waits(void)
+{
+	static const link_sense WAITS = { false, false, false, false, true };
+	link_steps s = { 0 };
+
+	link_steps_cable(&s, &WAITS, 0, 0);
+	CHECK(s.step == LS_LINK && s.sub == 4, "the computer waits: step %d.%d", s.step, s.sub);
+	CHECK(link_steps_hint(&s, LH_PLUG_MS - 1) == LH_NONE, "the replug hint came early");
+	CHECK(link_steps_hint(&s, LH_PLUG_MS) == LH_REPLUG, "no replug hint after 5 s");
+	/* Plugged in again, the Mac gives power: on to the address */
+	link_steps_cable(&s, &UP, 0, 9000);
+	CHECK(s.step == LS_ADDRESS, "after the replug: step %d", s.step);
+}
+
 static void the_files(void)
 {
 	/* /proc/net/arp on the Pixel 2, 2026-11-10, a Mac on the cable */
@@ -176,6 +193,7 @@ int main(void)
 	replug();
 	request_first();
 	wifi();
+	computer_waits();
 	the_files();
 	if (fails) {
 		fprintf(stderr, "linksteps-check: %d failed\n", fails);
