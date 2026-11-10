@@ -82,6 +82,7 @@ static hare_sgdb_fn g_sgdb;
 #endif
 #define ART_NAMES_MAX (8L * 1024 * 1024)
 static unsigned long g_in, g_out;
+static unsigned long g_requests;     /* since hare_start (hare_stats) */
 
 /* ---- randomness ------------------------------------------------------ */
 
@@ -945,6 +946,8 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 	const char *path = httpd_path(r);
 
 	(void)ctx;
+	/* A browser asked: File Transfer's last step (linksteps.h) */
+	if (!done) g_requests++;
 
 	/* The hotspot (hotspot.h): every name is the handheld there, so a
 	 * request for another host is a phone checking for the internet, and
@@ -1857,6 +1860,7 @@ bool hare_start(const char *roms_dir, const char *card_dir,
 	g_shelf_changed = false;
 	g_in = g_out = 0;
 	g_last[0] = '\0';
+	g_requests = 0;
 
 	/* A root that is missing is one nobody can make: the page does not edit
 	 * the roots themselves, and the card's top level is not a root. v1.0
@@ -1906,6 +1910,7 @@ void hare_status(hare_stats *out)
 {
 	if (!out) return;
 	out->clients = httpd_conn_count();
+	out->requests = g_requests;
 	out->in = g_in;
 	out->out = g_out;
 	out->uploads = g_uploads;

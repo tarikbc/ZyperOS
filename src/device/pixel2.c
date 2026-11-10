@@ -21,6 +21,7 @@
 #include "fileio.h"
 #include "platform.h"
 #include "portmenu.h"
+#include "spawn.h"
 
 #include <SDL_syswm.h>
 
@@ -34,6 +35,9 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -1077,6 +1081,110 @@ bool plat_usb_link(int op)
 	close(fd);
 	fprintf(stderr, "usb: the link to the computer is off: charging only\n");
 	return false;
+}
+
+/* File Transfer's steps over the cable (linksteps.h), from the device's own
+ * files: the controller's state, usb0's carrier, which comes on when the
+ * computer's network driver selects NCM's data interface (a Windows computer
+ * with no driver for it takes the device, "configured", and never does), and
+ * the neighbour table. udhcpd gives the computer 10.42.0.2 (/etc/udhcpd.conf;
+ * the computer's side of the link has a fixed MAC address, so it is the same
+ * one every plug), and a datagram to it makes the kernel ask for it by ARP:
+ * a computer that took the address answers, whatever its firewall says. */
+#define CABLE_PEER "10.42.0.2"
+
+/* udhcpd, which S40usbgadget starts at boot, is the computer's only way to
+ * an address: one that died leaves every computer on the cable without one
+ * until a restart. Looked for by name in /proc. */
+static bool dhcpd_running(void)
+{
+	DIR *d = opendir("/proc");
+	struct dirent *e;
+	bool found = false;
+
+	if (!d) return true;                 /* cannot tell: leave it */
+	while (!found && (e = readdir(d))) {
+		char path[300], comm[32] = "";
+		int fd;
+		ssize_t got;
+
+		if (e->d_name[0] < '1' || e->d_name[0] > '9') continue;
+		snprintf(path, sizeof path, "/proc/%s/comm", e->d_name);
+		if ((fd = open(path, O_RDONLY | O_CLOEXEC)) < 0) continue;
+		got = read(fd, comm, sizeof comm - 1);
+		close(fd);
+		if (got > 0) comm[got] = '\0';
+		found = !strncmp(comm, "udhcpd\n", 7);
+	}
+	closedir(d);
+	return found;
+}
+
+static bool read_small(const char *path, char *buf, size_t n)
+{
+	int fd = open(path, O_RDONLY | O_CLOEXEC);
+	ssize_t got;
+
+	if (fd < 0) return false;
+	got = read(fd, buf, n - 1);
+	close(fd);
+	if (got < 0) got = 0;
+	buf[got] = '\0';
+	return got > 0;
+}
+
+bool plat_cable_sense(link_sense *o)
+{
+	static unsigned asked_at, dhcpd_at;
+	char buf[2048];
+	DIR *d;
+	struct dirent *e;
+	unsigned now = plat_now_ms();
+
+	memset(o, 0, sizeof *o);
+	o->computer = plat_usb_peer() == USB_PEER_COMPUTER;
+	if (o->computer && (d = opendir("/sys/class/udc"))) {
+		while ((e = readdir(d))) {
+			char path[300];
+
+			if (e->d_name[0] == '.') continue;
+			snprintf(path, sizeof path, "/sys/class/udc/%s/state", e->d_name);
+			if (read_small(path, buf, sizeof buf) && link_udc_configured(buf)) o->configured = true;
+		}
+		closedir(d);
+	}
+	o->carrier = o->configured &&
+	             read_small("/sys/class/net/usb0/carrier", buf, sizeof buf) && buf[0] == '1';
+	if (!o->carrier) return true;
+	o->address = read_small("/proc/net/arp", buf, sizeof buf) &&
+	             link_arp_complete(buf, "usb0", NULL, 0);
+	/* No address yet: udhcpd started again if it is gone, every 5 s at most */
+	if (!o->address && (!dhcpd_at || now - dhcpd_at >= 5000u)) {
+		dhcpd_at = now ? now : 1;
+		if (!dhcpd_running() && access("/etc/udhcpd.conf", R_OK) == 0) {
+			char *argv[] = { "/usr/sbin/udhcpd", "/etc/udhcpd.conf", NULL };
+
+			fprintf(stderr, "usb: udhcpd was not running, started again (%d)\n",
+			        spawn_capture(argv, NULL, 0, 3));
+		}
+	}
+	if (!o->address && (!asked_at || now - asked_at >= 1000u)) {
+		int fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+
+		asked_at = now ? now : 1;
+		if (fd >= 0) {
+			struct sockaddr_in to;
+
+			memset(&to, 0, sizeof to);
+			to.sin_family = AF_INET;
+			to.sin_port = htons(9);                /* discard */
+			inet_pton(AF_INET, CABLE_PEER, &to.sin_addr);
+			setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, "usb0", 5);
+			if (sendto(fd, "", 0, MSG_DONTWAIT, (struct sockaddr *)&to, sizeof to) < 0) { }
+			close(fd);
+		}
+	}
+	return true;
 }
 
 /* The USB controller lets go of the cable and takes it again, so the computer

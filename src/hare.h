@@ -243,6 +243,7 @@ typedef struct {
 	char          last[128];    /* the most recent thing that happened */
 	char          file[128];    /* the upload on its way, or the last one */
 	long long     up_got, up_total;  /* the uploads on their way: bytes in, and of */
+	unsigned long requests;     /* every request since hare_start: one is a browser */
 } hare_stats;
 
 void hare_status(hare_stats *out);

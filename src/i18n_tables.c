@@ -7,8 +7,8 @@
  * the loader nothing and a language's pages are only read in once used. */
 #include "i18n_ids.h"
 
-/* en: 18839 bytes */
-static const char blob_en[18839] =
+/* en: 19350 bytes */
+static const char blob_en[19350] =
 	"About ZyperOS\0"
 	"Version\0"
 	"Address\0"
@@ -1114,6 +1114,19 @@ static const char blob_en[18839] =
 	"B: hide\0"
 	"Cable unplugged\0"
 	"Wi-Fi went away\0"
+	"Cable\0"
+	"Address\0"
+	"Browser\0"
+	"Wi-Fi\0"
+	"unplugged\0"
+	"No computer found. Some cables only charge: try another.\0"
+	"The computer does not answer. Try another USB port or cable.\0"
+	"The computer has no driver for it. On Windows, look in Device Manager.\0"
+	"The computer took no address. On Windows, check Network adapters in Device Manager.\0"
+	"Type http://%s or http://%s in a browser. Turn off any VPN or proxy.\0"
+	"Type http://%s in a browser. Turn off any VPN or proxy.\0"
+	"On this Wi-Fi, open http://%s or http://%s.\0"
+	"On this Wi-Fi, open http://%s.\0"
 	"on\0"
 	"receiving\0"
 	"sending\0"
@@ -1258,14 +1271,16 @@ static const uint32_t off_en[S_COUNT] = {
 	17623, 17630, 17635, 17640, 17655, 17666, 17676, 17682, 17704, 17722,
 	17734, 17756, 17766, 17785, 17797, 17811, 17827, 17873, 17889, 17926,
 	17950, 17979, 17995, 18004, 18012, 18025, 18038, 18047, 18059, 18063,
-	18080, 18104, 18126, 18134, 18150, 18166, 18169, 18179, 18187, 18195,
-	18218, 18231, 18248, 18259, 18274, 18285, 18321, 18342, 18378, 18389,
-	18423, 18432, 18477, 18485, 18527, 18548, 18590, 18606, 18648, 18664,
-	18686, 18707, 18742, 18763, 18786, 18798, 18811, 18825,
+	18080, 18104, 18126, 18134, 18150, 18166, 18172, 18180, 18188, 18194,
+	18204, 18261, 18322, 18393, 18477, 18546, 18602, 18646, 18677, 18680,
+	18690, 18698, 18706, 18729, 18742, 18759, 18770, 18785, 18796, 18832,
+	18853, 18889, 18900, 18934, 18943, 18988, 18996, 19038, 19059, 19101,
+	19117, 19159, 19175, 19197, 19218, 19253, 19274, 19297, 19309, 19322,
+	19336,
 };
 
-/* zh-Hans: 20585 bytes */
-static const char blob_zh_hans[20585] =
+/* zh-Hans: 21114 bytes */
+static const char blob_zh_hans[21114] =
 	"关于 ZyperOS\0"
 	"版本\0"
 	"地址\0"
@@ -2371,6 +2386,19 @@ static const char blob_zh_hans[20585] =
 	"B：隐藏\0"
 	"数据线已拔出\0"
 	"Wi-Fi 已断开\0"
+	"数据线\0"
+	"地址\0"
+	"客户端\0"
+	"Wi-Fi\0"
+	"已拔出\0"
+	"没有找到电脑。有些数据线只能充电，请换一根。\0"
+	"电脑没有响应。请换一个 USB 接口或数据线。\0"
+	"电脑没有它的驱动。在 Windows 上，请查看设备管理器。\0"
+	"电脑没有获取地址。在 Windows 上，请查看设备管理器中的网络适配器。\0"
+	"打开 http://%s 或 http://%s，并关闭 VPN 或代理。\0"
+	"打开 http://%s，并关闭 VPN 或代理。\0"
+	"在此 Wi-Fi 下打开 http://%s 或 http://%s。\0"
+	"在此 Wi-Fi 下打开 http://%s。\0"
 	"开启\0"
 	"正在接收\0"
 	"正在发送\0"
@@ -2515,14 +2543,16 @@ static const uint32_t off_zh_hans[S_COUNT] = {
 	19262, 19266, 19273, 19277, 19292, 19307, 19319, 19329, 19352, 19368,
 	19384, 19414, 19431, 19447, 19458, 19472, 19492, 19538, 19557, 19615,
 	19637, 19659, 19672, 19682, 19692, 19709, 19726, 19736, 19743, 19750,
-	19770, 19795, 19815, 19826, 19845, 19861, 19868, 19881, 19894, 19907,
-	19926, 19942, 19961, 19977, 19996, 20010, 20041, 20067, 20095, 20109,
-	20143, 20153, 20202, 20216, 20259, 20285, 20319, 20336, 20385, 20404,
-	20426, 20449, 20483, 20502, 20524, 20540, 20559, 20572,
+	19770, 19795, 19815, 19826, 19845, 19861, 19871, 19878, 19888, 19894,
+	19904, 19971, 20031, 20104, 20198, 20258, 20304, 20354, 20390, 20397,
+	20410, 20423, 20436, 20455, 20471, 20490, 20506, 20525, 20539, 20570,
+	20596, 20624, 20638, 20672, 20682, 20731, 20745, 20788, 20814, 20848,
+	20865, 20914, 20933, 20955, 20978, 21012, 21031, 21053, 21069, 21088,
+	21101,
 };
 
-/* es: 22404 bytes */
-static const char blob_es[22404] =
+/* es: 22994 bytes */
+static const char blob_es[22994] =
 	"Acerca de ZyperOS\0"
 	"Versión\0"
 	"Dirección\0"
@@ -3628,6 +3658,19 @@ static const char blob_es[22404] =
 	"B: ocultar\0"
 	"Cable desconectado\0"
 	"Se perdió el Wi-Fi\0"
+	"Cable\0"
+	"Dirección\0"
+	"Navegador\0"
+	"Wi-Fi\0"
+	"desconectado\0"
+	"No se encontró una computadora. Algunos cables solo cargan: prueba otro.\0"
+	"La computadora no responde. Prueba otro puerto USB u otro cable.\0"
+	"Falta un controlador en la computadora. En Windows, revisa el Administrador de dispositivos.\0"
+	"Aún sin dirección. En Windows, ve a Administrador de dispositivos > Adaptadores de red.\0"
+	"Escribe http://%s o http://%s en un navegador. Desactiva cualquier VPN o proxy.\0"
+	"Escribe http://%s en un navegador. Desactiva cualquier VPN o proxy.\0"
+	"En este Wi-Fi, abre http://%s o http://%s.\0"
+	"En este Wi-Fi, abre http://%s.\0"
 	"activado\0"
 	"recibiendo\0"
 	"enviando\0"
@@ -3772,14 +3815,16 @@ static const uint32_t off_es[S_COUNT] = {
 	20907, 20914, 20920, 20927, 20942, 20956, 20969, 20978, 21012, 21036,
 	21048, 21080, 21099, 21121, 21133, 21153, 21173, 21222, 21242, 21311,
 	21335, 21366, 21385, 21397, 21407, 21420, 21434, 21447, 21457, 21463,
-	21488, 21523, 21546, 21557, 21576, 21596, 21605, 21616, 21625, 21634,
-	21672, 21686, 21708, 21720, 21740, 21761, 21799, 21823, 21863, 21878,
-	21916, 21927, 21976, 21985, 22026, 22050, 22097, 22114, 22162, 22179,
-	22204, 22235, 22286, 22308, 22331, 22345, 22362, 22383,
+	21488, 21523, 21546, 21557, 21576, 21596, 21602, 21613, 21623, 21629,
+	21642, 21716, 21781, 21874, 21964, 22044, 22112, 22155, 22186, 22195,
+	22206, 22215, 22224, 22262, 22276, 22298, 22310, 22330, 22351, 22389,
+	22413, 22453, 22468, 22506, 22517, 22566, 22575, 22616, 22640, 22687,
+	22704, 22752, 22769, 22794, 22825, 22876, 22898, 22921, 22935, 22952,
+	22973,
 };
 
-/* pt-BR: 21756 bytes */
-static const char blob_pt_br[21756] =
+/* pt-BR: 22328 bytes */
+static const char blob_pt_br[22328] =
 	"Sobre o ZyperOS\0"
 	"Versão\0"
 	"Endereço\0"
@@ -4885,6 +4930,19 @@ static const char blob_pt_br[21756] =
 	"B: ocultar\0"
 	"Cabo desconectado\0"
 	"O Wi-Fi caiu\0"
+	"Cabo\0"
+	"Endereço\0"
+	"Navegador\0"
+	"Wi-Fi\0"
+	"desconectado\0"
+	"Nenhum computador encontrado. Alguns cabos só carregam: tente outro.\0"
+	"O computador não responde. Tente outra porta USB ou outro cabo.\0"
+	"O computador não tem driver para ele. No Windows, veja o Gerenciador de Dispositivos.\0"
+	"Ainda sem endereço. No Windows, veja Adaptadores de rede no Gerenciador de Dispositivos.\0"
+	"Digite http://%s ou http://%s em um navegador. Desligue qualquer VPN ou proxy.\0"
+	"Digite http://%s em um navegador. Desligue qualquer VPN ou proxy.\0"
+	"Neste Wi-Fi, abra http://%s ou http://%s.\0"
+	"Neste Wi-Fi, abra http://%s.\0"
 	"ativado\0"
 	"recebendo\0"
 	"enviando\0"
@@ -5029,14 +5087,16 @@ static const uint32_t off_pt_br[S_COUNT] = {
 	20281, 20287, 20291, 20297, 20312, 20323, 20335, 20341, 20373, 20397,
 	20409, 20441, 20459, 20480, 20493, 20513, 20533, 20585, 20605, 20672,
 	20693, 20729, 20756, 20768, 20779, 20792, 20806, 20818, 20829, 20835,
-	20854, 20881, 20903, 20914, 20932, 20945, 20953, 20963, 20972, 20981,
-	21018, 21031, 21052, 21064, 21084, 21107, 21147, 21172, 21209, 21224,
-	21257, 21267, 21317, 21328, 21373, 21398, 21444, 21461, 21511, 21528,
-	21552, 21580, 21634, 21651, 21675, 21689, 21705, 21727,
+	20854, 20881, 20903, 20914, 20932, 20945, 20950, 20960, 20970, 20976,
+	20989, 21059, 21124, 21211, 21301, 21380, 21446, 21488, 21517, 21525,
+	21535, 21544, 21553, 21590, 21603, 21624, 21636, 21656, 21679, 21719,
+	21744, 21781, 21796, 21829, 21839, 21889, 21900, 21945, 21970, 22016,
+	22033, 22083, 22100, 22124, 22152, 22206, 22223, 22247, 22261, 22277,
+	22299,
 };
 
-/* fr: 23143 bytes */
-static const char blob_fr[23143] =
+/* fr: 23738 bytes */
+static const char blob_fr[23738] =
 	"À propos de ZyperOS\0"
 	"Version\0"
 	"Adresse\0"
@@ -6142,6 +6202,19 @@ static const char blob_fr[23143] =
 	"B : masquer\0"
 	"Câble débranché\0"
 	"Wi-Fi perdu\0"
+	"Câble\0"
+	"Adresse\0"
+	"Navigateur\0"
+	"Wi-Fi\0"
+	"débranché\0"
+	"Aucun ordinateur trouvé. Certains câbles ne font que charger : essayez-en un autre.\0"
+	"L'ordinateur ne répond pas. Essayez un autre port USB ou un autre câble.\0"
+	"L'ordinateur n'a pas de pilote pour lui. Sous Windows, regardez le Gestionnaire de périphériques.\0"
+	"Pas encore d'adresse. Sous Windows : Gestionnaire de périphériques, Cartes réseau.\0"
+	"Ouvrez http://%s ou http://%s dans un navigateur, sans VPN ni proxy.\0"
+	"Ouvrez http://%s dans un navigateur, sans VPN ni proxy.\0"
+	"Sur ce Wi-Fi, ouvrez http://%s ou http://%s.\0"
+	"Sur ce Wi-Fi, ouvrez http://%s.\0"
 	"activé\0"
 	"réception\0"
 	"envoi\0"
@@ -6286,14 +6359,16 @@ static const uint32_t off_fr[S_COUNT] = {
 	21577, 21582, 21586, 21593, 21608, 21625, 21637, 21649, 21682, 21704,
 	21717, 21746, 21760, 21781, 21796, 21818, 21837, 21892, 21911, 21979,
 	22011, 22054, 22078, 22090, 22101, 22114, 22128, 22142, 22162, 22171,
-	22191, 22219, 22246, 22259, 22278, 22290, 22298, 22309, 22315, 22325,
-	22365, 22382, 22406, 22418, 22437, 22460, 22502, 22529, 22580, 22599,
-	22635, 22646, 22701, 22716, 22761, 22785, 22830, 22847, 22902, 22915,
-	22933, 22966, 23008, 23042, 23073, 23084, 23101, 23123,
+	22191, 22219, 22246, 22259, 22278, 22290, 22297, 22305, 22316, 22322,
+	22334, 22421, 22496, 22596, 22683, 22752, 22808, 22853, 22885, 22893,
+	22904, 22910, 22920, 22960, 22977, 23001, 23013, 23032, 23055, 23097,
+	23124, 23175, 23194, 23230, 23241, 23296, 23311, 23356, 23380, 23425,
+	23442, 23497, 23510, 23528, 23561, 23603, 23637, 23668, 23679, 23696,
+	23718,
 };
 
-/* de: 22073 bytes */
-static const char blob_de[22073] =
+/* de: 22630 bytes */
+static const char blob_de[22630] =
 	"Über ZyperOS\0"
 	"Version\0"
 	"Adresse\0"
@@ -7399,6 +7474,19 @@ static const char blob_de[22073] =
 	"B: ausblenden\0"
 	"Kabel getrennt\0"
 	"WLAN verloren\0"
+	"Kabel\0"
+	"Adresse\0"
+	"Browser\0"
+	"WLAN\0"
+	"getrennt\0"
+	"Kein Computer gefunden. Manche Kabel laden nur: Probiere ein anderes.\0"
+	"Der Computer antwortet nicht. Probiere einen anderen USB-Port oder ein anderes Kabel.\0"
+	"Dem Computer fehlt ein Treiber dafür. Unter Windows: im Geräte-Manager nachsehen.\0"
+	"Noch keine Adresse. Unter Windows: Geräte-Manager, Netzwerkadapter.\0"
+	"Gib http://%s oder http://%s im Browser ein. Schalte VPN oder Proxy aus.\0"
+	"Gib http://%s im Browser ein. Schalte VPN oder Proxy aus.\0"
+	"Öffne in diesem WLAN http://%s oder http://%s.\0"
+	"Öffne in diesem WLAN http://%s.\0"
 	"an\0"
 	"empfängt\0"
 	"sendet\0"
@@ -7543,14 +7631,16 @@ static const uint32_t off_de[S_COUNT] = {
 	20567, 20573, 20577, 20585, 20600, 20617, 20628, 20640, 20671, 20696,
 	20706, 20735, 20749, 20768, 20778, 20798, 20815, 20866, 20883, 20936,
 	20963, 21001, 21022, 21030, 21037, 21050, 21063, 21075, 21087, 21093,
-	21111, 21139, 21168, 21182, 21197, 21211, 21214, 21224, 21231, 21241,
-	21273, 21285, 21305, 21314, 21331, 21350, 21397, 21421, 21479, 21495,
-	21539, 21549, 21597, 21609, 21673, 21699, 21748, 21770, 21823, 21843,
-	21870, 21897, 21939, 21966, 21991, 22011, 22032, 22050,
+	21111, 21139, 21168, 21182, 21197, 21211, 21217, 21225, 21233, 21238,
+	21247, 21317, 21403, 21487, 21556, 21629, 21687, 21735, 21768, 21771,
+	21781, 21788, 21798, 21830, 21842, 21862, 21871, 21888, 21907, 21954,
+	21978, 22036, 22052, 22096, 22106, 22154, 22166, 22230, 22256, 22305,
+	22327, 22380, 22400, 22427, 22454, 22496, 22523, 22548, 22568, 22589,
+	22607,
 };
 
-/* ja: 29191 bytes */
-static const char blob_ja[29191] =
+/* ja: 30031 bytes */
+static const char blob_ja[30031] =
 	"ZyperOS について\0"
 	"バージョン\0"
 	"アドレス\0"
@@ -8656,6 +8746,19 @@ static const char blob_ja[29191] =
 	"B：隠す\0"
 	"ケーブルが抜かれました\0"
 	"Wi-Fi が切断されました\0"
+	"ケーブル\0"
+	"アドレス\0"
+	"ブラウザ\0"
+	"Wi-Fi\0"
+	"未接続\0"
+	"パソコンが見つかりません。充電専用のケーブルもあります。別のケーブルを試してください。\0"
+	"パソコンが応答しません。別の USB ポートかケーブルを試してください。\0"
+	"パソコンにドライバーがありません。Windows ではデバイス マネージャーを確認してください。\0"
+	"アドレスがありません。Windows ではデバイス マネージャーを確認してください。\0"
+	"ブラウザで http://%s か http://%s を開き、VPN やプロキシはオフにしてください。\0"
+	"ブラウザで http://%s を開き、VPN やプロキシはオフにしてください。\0"
+	"この Wi-Fi で http://%s か http://%s を開いてください。\0"
+	"この Wi-Fi で http://%s を開いてください。\0"
 	"オン\0"
 	"受信中\0"
 	"送信中\0"
@@ -8800,14 +8903,16 @@ static const uint32_t off_ja[S_COUNT] = {
 	27272, 27279, 27286, 27293, 27311, 27329, 27347, 27360, 27397, 27440,
 	27459, 27492, 27512, 27546, 27560, 27580, 27600, 27649, 27668, 27747,
 	27784, 27842, 27873, 27886, 27896, 27915, 27934, 27950, 27963, 27970,
-	27989, 28023, 28049, 28060, 28094, 28125, 28132, 28142, 28152, 28162,
-	28193, 28209, 28234, 28250, 28275, 28298, 28362, 28391, 28446, 28463,
-	28515, 28534, 28592, 28609, 28682, 28714, 28778, 28801, 28853, 28881,
-	28918, 28947, 29011, 29057, 29094, 29113, 29144, 29160,
+	27989, 28023, 28049, 28060, 28094, 28125, 28138, 28151, 28164, 28170,
+	28180, 28310, 28409, 28536, 28645, 28750, 28841, 28910, 28965, 28972,
+	28982, 28992, 29002, 29033, 29049, 29074, 29090, 29115, 29138, 29202,
+	29231, 29286, 29303, 29355, 29374, 29432, 29449, 29522, 29554, 29618,
+	29641, 29693, 29721, 29758, 29787, 29851, 29897, 29934, 29953, 29984,
+	30000,
 };
 
-/* it: 21871 bytes */
-static const char blob_it[21871] =
+/* it: 22433 bytes */
+static const char blob_it[22433] =
 	"Informazioni su ZyperOS\0"
 	"Versione\0"
 	"Indirizzo\0"
@@ -9913,6 +10018,19 @@ static const char blob_it[21871] =
 	"B: nascondi\0"
 	"Cavo scollegato\0"
 	"Wi-Fi perso\0"
+	"Cavo\0"
+	"Indirizzo\0"
+	"Browser\0"
+	"Wi-Fi\0"
+	"scollegato\0"
+	"Nessun computer trovato. Alcuni cavi servono solo a ricaricare: provane un altro.\0"
+	"Il computer non risponde. Prova un'altra porta USB o un altro cavo.\0"
+	"Il computer non ha un driver per la console. Su Windows, guarda in Gestione dispositivi.\0"
+	"Il computer non ha un indirizzo. Su Windows: Gestione dispositivi, Schede di rete.\0"
+	"Digita http://%s o http://%s in un browser. Disattiva VPN o proxy.\0"
+	"Digita http://%s in un browser. Disattiva VPN o proxy.\0"
+	"In questo Wi-Fi, apri http://%s o http://%s.\0"
+	"In questo Wi-Fi, apri http://%s.\0"
 	"attivo\0"
 	"ricezione\0"
 	"invio\0"
@@ -10057,15 +10175,17 @@ static const uint32_t off_it[S_COUNT] = {
 	20436, 20442, 20448, 20455, 20469, 20482, 20494, 20502, 20535, 20556,
 	20567, 20600, 20618, 20636, 20650, 20667, 20686, 20741, 20760, 20827,
 	20849, 20880, 20900, 20908, 20918, 20930, 20942, 20955, 20969, 20976,
-	20993, 21019, 21044, 21056, 21072, 21084, 21091, 21101, 21107, 21116,
-	21146, 21162, 21183, 21195, 21212, 21235, 21276, 21299, 21335, 21347,
-	21388, 21396, 21446, 21454, 21499, 21522, 21563, 21579, 21628, 21651,
-	21677, 21704, 21752, 21777, 21802, 21815, 21831, 21848,
+	20993, 21019, 21044, 21056, 21072, 21084, 21089, 21099, 21107, 21113,
+	21124, 21206, 21274, 21363, 21446, 21513, 21568, 21613, 21646, 21653,
+	21663, 21669, 21678, 21708, 21724, 21745, 21757, 21774, 21797, 21838,
+	21861, 21897, 21909, 21950, 21958, 22008, 22016, 22061, 22084, 22125,
+	22141, 22190, 22213, 22239, 22266, 22314, 22339, 22364, 22377, 22393,
+	22410,
 };
 
 #ifdef I18N_PSEUDO
-/* xx: 48701 bytes */
-static const char blob_xx[48701] =
+/* xx: 49951 bytes */
+static const char blob_xx[49951] =
 	"[Àböûţ ŽýpéŕÖŠ······]\0"
 	"[Véŕšîöñ···]\0"
 	"[Àđđŕéšš···]\0"
@@ -11171,6 +11291,19 @@ static const char blob_xx[48701] =
 	"[ß: ĥîđé···]\0"
 	"[Çàbĺé ûñpĺûĝĝéđ······]\0"
 	"[Wî-Fî wéñţ àwàý······]\0"
+	"[Çàbĺé···]\0"
+	"[Àđđŕéšš···]\0"
+	"[ßŕöwšéŕ···]\0"
+	"[Wî-Fî···]\0"
+	"[ûñpĺûĝĝéđ····]\0"
+	"[Ñö çömpûţéŕ föûñđ. Šömé çàbĺéš öñĺý çĥàŕĝé: ţŕý àñöţĥéŕ.·······················]\0"
+	"[Ţĥé çömpûţéŕ đöéš ñöţ àñšwéŕ. Ţŕý àñöţĥéŕ ÛŠß pöŕţ öŕ çàbĺé.························]\0"
+	"[Ţĥé çömpûţéŕ ĥàš ñö đŕîvéŕ föŕ îţ. Öñ Wîñđöwš, ĺööķ îñ Đévîçé Màñàĝéŕ.····························]\0"
+	"[Ţĥé çömpûţéŕ ţööķ ñö àđđŕéšš. Öñ Wîñđöwš, çĥéçķ Ñéţwöŕķ àđàpţéŕš îñ Đévîçé Màñàĝéŕ.··································]\0"
+	"[Ţýpé ĥţţp://%s öŕ ĥţţp://%s îñ à bŕöwšéŕ. Ţûŕñ öff àñý VPÑ öŕ pŕöxý.··························]\0"
+	"[Ţýpé ĥţţp://%s îñ à bŕöwšéŕ. Ţûŕñ öff àñý VPÑ öŕ pŕöxý.······················]\0"
+	"[Öñ ţĥîš Wî-Fî, öpéñ ĥţţp://%s öŕ ĥţţp://%s.················]\0"
+	"[Öñ ţĥîš Wî-Fî, öpéñ ĥţţp://%s.············]\0"
 	"[öñ···]\0"
 	"[ŕéçéîvîñĝ····]\0"
 	"[šéñđîñĝ···]\0"
@@ -11315,10 +11448,12 @@ static const uint32_t off_xx[S_COUNT] = {
 	45570, 45591, 45608, 45624, 45660, 45685, 45706, 45724, 45780, 45827,
 	45859, 45913, 45940, 45992, 46026, 46064, 46104, 46216, 46256, 46350,
 	46413, 46490, 46533, 46559, 46581, 46613, 46645, 46669, 46703, 46717,
-	46759, 46823, 46879, 46900, 46942, 46980, 46993, 47021, 47044, 47067,
-	47126, 47157, 47202, 47230, 47270, 47299, 47388, 47441, 47533, 47562,
-	47650, 47675, 47784, 47805, 47910, 47963, 48071, 48113, 48214, 48252,
-	48308, 48360, 48449, 48502, 48561, 48593, 48626, 48662,
+	46759, 46823, 46879, 46900, 46942, 46980, 46998, 47021, 47043, 47059,
+	47087, 47232, 47386, 47562, 47776, 47932, 48062, 48159, 48230, 48243,
+	48271, 48294, 48317, 48376, 48407, 48452, 48480, 48520, 48549, 48638,
+	48691, 48783, 48812, 48900, 48925, 49034, 49055, 49160, 49213, 49321,
+	49363, 49464, 49502, 49558, 49610, 49699, 49752, 49811, 49843, 49876,
+	49912,
 };
 #endif
 

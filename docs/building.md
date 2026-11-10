@@ -168,6 +168,8 @@ something once broke in a way nothing noticed:
 | `check-portdoc` | what a port's own files say for the Controls pages of the in-game menu over it (src/portdoc.c: port.json, its gptokeyb keymap, its README's controls) and the pages they make, on the made-up ports in tools/fixtures/ports and the forms porters write by hand; PortMaster's own page; the menu over every port |
 | `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
 | `check-captive` | Wi-Fi File Transfer's hotspot, its pure half: the DNS answer for every name, the Host check that tells a phone's internet check from the page, the QR code's text and the password |
+| `check-mdns` | zyperos.local's responder (src/mdns.c): the queries a Mac sent, read off the wire, each answered as RFC 6762 says; every piece of them and random bytes under the address sanitizer; two handhelds on one Wi-Fi named apart on a pretend network |
+| `check-linksteps` | File Transfer's link steps (src/linksteps.c): the cable, the address and the browser, each hint at its time, a replug, Wi-Fi, and the device's /proc/net/arp and UDC state |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |
 | `check-home-shots` | the home screens as the launcher draws them in both layouts and themes: footer inside the inset, the song, a flip, a move (builds the host launcher) |

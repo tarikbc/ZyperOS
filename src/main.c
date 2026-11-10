@@ -49,6 +49,8 @@
 #include "captive.h"
 #include "devmode.h"
 #include "sshlink.h"
+#include "mdns.h"
+#include "linksteps.h"
 #include "usblink.h"
 #include "chargedark.h"
 #include "idle.h"
@@ -7475,9 +7477,82 @@ static void human_bytes(char *out, size_t n, unsigned long long b)
  * it contains a newline, which is exactly two things worth copying.
  *
  * Everything else is status and belongs below the rule. */
-static void hare_head(char *out, size_t n, const char *addr, const char *pin)
+/* The name first (zyperos.local, mdns.h), as http:// so a browser opens it
+ * rather than searching for it, and the address beside the PIN under it:
+ * the name is easier to type and survives a network that gives the handheld
+ * a new address; the address works where the name does not. With no name
+ * (mDNS could not start, or the link is down and `addr` says so), as it was:
+ * the address over the PIN. */
+static void hare_head(char *out, size_t n, const char *name, const char *addr, const char *pin)
 {
-	snprintf(out, n, "%s\nPIN %s", addr, pin);
+	/* A fixture's "http://192.168.1.42" is the address the screen shows */
+	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
+	if (name && name[0]) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
+	else snprintf(out, n, "%s\nPIN %s", addr, pin);
+}
+
+/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), until a browser
+ * opens the page: Cable, Address and Browser over the cable, Wi-Fi and
+ * Browser over the air, each a tick once done, the one waited on saying so
+ * and the ones after it quiet, over the rule and the legend. When a step
+ * stalls, its hint takes the others' room: the stalled step's row alone
+ * and the hint under it, balanced onto at most three lines, over the rule
+ * and the legend. Three rows and a three-line hint do not fit the panel under a
+ * two-line heading, and a hint is about one step. The screen and its shot
+ * (--hare-steps) build them here. `name` is the handheld's name on the
+ * network ("" for none) and `addr` its address, for the browser's hint. */
+#define STEP_ROWS 8
+static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hint, size_t hn,
+                        const link_steps *s, int h, bool cable, const char *name,
+                        const char *addr, const char *legend)
+{
+	menu_row all[3];
+	int n = 0, m = 0, k, i, at = 0;
+
+	if (cable) {
+		all[m++] = (menu_row){ T(S_XFER_STEP_CABLE),
+		                       s->step > LS_LINK ? MENU_TICK
+		                       : s->sub == 0 ? T(S_XFER_STEP_UNPLUGGED) : T(S_XFER_WAITING), true };
+		all[m++] = (menu_row){ T(S_XFER_STEP_ADDRESS),
+		                       s->step > LS_ADDRESS ? MENU_TICK
+		                       : s->step == LS_ADDRESS ? T(S_XFER_WAITING) : "",
+		                       s->step >= LS_ADDRESS };
+		at = s->step < LS_BROWSER ? s->step : 2;
+	} else {
+		all[m++] = (menu_row){ T(S_XFER_STEP_WIFI),
+		                       s->step > LS_LINK ? MENU_TICK : T(S_MENU_NOT_CONNECTED), true };
+		at = s->step == LS_LINK ? 0 : 1;
+	}
+	all[m++] = (menu_row){ T(S_XFER_STEP_BROWSER),
+	                       s->step > LS_BROWSER ? MENU_TICK
+	                       : s->step == LS_BROWSER ? T(S_XFER_WAITING) : "",
+	                       s->step >= LS_BROWSER };
+	hint[0] = '\0';
+	switch (h) {
+	case LH_NO_COMPUTER: snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_COMPUTER)); break;
+	case LH_NO_ANSWER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ANSWER));   break;
+	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
+	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
+	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
+	case LH_NO_BROWSER:
+		if (name && name[0])
+			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_BOTH : S_XFER_HINT_WIFI_BOTH), name, addr);
+		else
+			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_ONE : S_XFER_HINT_WIFI_ONE), addr);
+		break;
+	default: break;
+	}
+	if (hint[0]) {
+		out[n++] = all[at];
+		k = ui_balance_lines(ui_font(UI_F_MENU), hint, menu_std_width(a), 3, lines);
+		for (i = 0; i < k; i++) out[n++] = MENU_NOTE(lines[i]);
+		ui_fit_drawn(hint);          /* drawn in pieces: the whole, for the check */
+	} else {
+		for (i = 0; i < m; i++) out[n++] = all[i];
+	}
+	out[n++] = MENU_RULE;
+	out[n++] = MENU_NOTE(legend);
+	return n;
 }
 
 static int hare_rows(menu_row *out, const char *who, const char *ssh,
@@ -7507,7 +7582,7 @@ static int hare_rows(menu_row *out, const char *who, const char *ssh,
 /* One frame of it, for the shot harness. The rows come from the same
  * function the screen uses, so a picture of this cannot quietly stop being a
  * picture of that. */
-static void hare_preview(app *a, const char *addr, const char *pin,
+static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
                          const char *who, const char *ssh, const char *moved,
                          const char *now)
 {
@@ -7515,7 +7590,7 @@ static void hare_preview(app *a, const char *addr, const char *pin,
 	char head[192];
 	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
 
-	hare_head(head, sizeof head, addr, pin);
+	hare_head(head, sizeof head, name, addr, pin);
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -7873,6 +7948,7 @@ static const char *xfer_folder_icon(const char *folder)
  * the cable goes back to charging only unless Developer Mode keeps it. */
 static void xfer_stop(bool cable)
 {
+	mdns_stop();
 	sshlink_stop();
 	hare_set_ssh(NULL);
 	hare_stop();
@@ -8290,6 +8366,11 @@ typedef struct {
 	hotspot_state hs;
 	unsigned    addr_at, moved_at, link_lost_at, restart_at;
 	int         busy;
+	link_steps  steps;          /* the link, step by step (linksteps.h) */
+	link_sense  sense;          /* the cable's facts, read five times a second */
+	bool        sensed;         /* the device can tell them: steps over the cable */
+	bool        joined;         /* Wi-Fi: on a network */
+	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
 } xfer_sess;
 static xfer_sess g_xs;
@@ -8721,6 +8802,9 @@ static bool xs_open(app *a, int way)
 		if (hare_port() == 80) snprintf(self, sizeof self, "%s", hotspot_addr());
 		else snprintf(self, sizeof self, "%s:%d", hotspot_addr(), hare_port());
 		hare_set_captive(self);
+		/* zyperos.local there too, for a phone that asks by mDNS rather
+		 * than the hotspot's DNS (which answers every name with itself) */
+		mdns_start("wlan0", hotspot_addr(), true);
 	}
 	snprintf(g_xs.pin, sizeof g_xs.pin, "%s", hare_pin());
 	/* SSH over the same cable, behind the same PIN (sshlink.h) */
@@ -8730,6 +8814,9 @@ static bool xs_open(app *a, int way)
 		snprintf(keys, sizeof keys, "%s/ssh", P_USERDATA);
 		snprintf(g_xs.login, sizeof g_xs.login, "root@%s", ip);
 		sshlink_start(ip, g_xs.pin, keys);
+		/* zyperos.local on the cable: only the computer is on this link,
+		 * so the name is ours at once, with no probing (mdns.h) */
+		if (!mdns_start("usb0", ip, false)) fprintf(stderr, "xfer: no zyperos.local on the cable\n");
 	}
 	g_xs.on = true;
 	return true;
@@ -8750,6 +8837,26 @@ static void xs_tick(app *a)
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
+	mdns_poll(now);
+	/* The link, step by step (linksteps.h): the cable's facts five times a
+	 * second; Wi-Fi's from the address check below */
+	if (g_xs.cable) {
+		if (!g_xs.sense_at || now - g_xs.sense_at >= 200u) {
+			int was = g_xs.steps.step, sub = g_xs.steps.sub;
+
+			g_xs.sense_at = now ? now : 1;
+			g_xs.sensed = plat_cable_sense(&g_xs.sense);
+			if (g_xs.sensed) {
+				link_steps_cable(&g_xs.steps, &g_xs.sense, g_xs.st.requests, now);
+				if (g_xs.steps.step != was || g_xs.steps.sub != sub)
+					fprintf(stderr, "xfer: link step %d.%d (computer %d configured %d carrier %d address %d)\n",
+					        g_xs.steps.step, g_xs.steps.sub, g_xs.sense.computer,
+					        g_xs.sense.configured, g_xs.sense.carrier, g_xs.sense.address);
+			}
+		}
+	} else if (!g_xs.hot && g_xs.addr[0]) {
+		link_steps_wifi(&g_xs.steps, g_xs.joined, g_xs.st.requests, now);
+	}
 	if (g_xs.cable) {
 		sshlink_note_web(hare_wrong_pins());
 		sshlink_poll();
@@ -8778,6 +8885,13 @@ static void xs_tick(app *a)
 		        : wifi_status(ssid, sizeof ssid, ip, sizeof ip) == WIFI_CONNECTED && ip[0];
 
 		g_xs.addr_at = now;
+		/* Over Wi-Fi the name follows the network: on it (a new address
+		 * starts it again there), or off with it */
+		if (!g_xs.cable) {
+			g_xs.joined = up;
+			if (up) mdns_start("wlan0", ip, true);
+			else mdns_stop();
+		}
 		if (up) {
 			/* Port 80 needs no colon, and the address is being copied by
 			 * hand off a three-inch screen - so it is only shown when it is
@@ -8896,17 +9010,23 @@ static void dev_ssh_tick(void)
 		 * starts again once File Transfer closes. */
 		if (g_dv.run) {
 			if (!(g_xs.on && g_xs.cable)) sshlink_stop();
+			/* File Transfer runs the name now, wherever it is */
+			if (!g_xs.on) mdns_stop();
 			dev_ssh_forget();
 		}
 		return;
 	}
-	if (g_dv.up) sshlink_poll();
+	if (g_dv.up) {
+		sshlink_poll();
+		mdns_poll(now);
+	}
 	/* The port is read five times a second at most */
 	if (g_dv.at && now - g_dv.at < 200u) return;
 	g_dv.at = now ? now : 1;
 	if (plat_usb_peer() != USB_PEER_COMPUTER) {
 		if (g_dv.run) {
 			sshlink_stop();
+			mdns_stop();
 			fprintf(stderr, "devmode: the cable is out, SSH stopped\n");
 			dev_ssh_forget();
 		}
@@ -8926,6 +9046,8 @@ static void dev_ssh_tick(void)
 	        g_dv.nkeys == 1 ? "" : "s");
 	if (g_dv.up) {
 		g_dv.run = true;
+		/* ssh root@zyperos.local, as File Transfer's cable has it */
+		mdns_start("usb0", g_dv.ip, false);
 	} else {
 		/* Wi-Fi up, say: tried again in a while */
 		g_dv.retry = now ? now : 1;
@@ -9275,6 +9397,15 @@ static bool xs_before_game(app *a)
 	return true;
 }
 
+/* The steps instead of the usual rows (linksteps.h): until a browser asked,
+ * over the cable where the device can tell (plat_cable_sense) and over Wi-Fi
+ * (never the hotspot, whose screen says what it says), and nothing moving */
+static bool xs_steps_shown(void)
+{
+	if (g_xs.hot || !g_xs.steps.started || g_xs.steps.step == LS_DONE || xs_moving()) return false;
+	return g_xs.cable ? g_xs.sensed : true;
+}
+
 /* The way the device has now: over the cable when it links, else over the
  * air, as MENU's row says - or the one already open */
 static void xfer_screen(app *a)
@@ -9287,8 +9418,9 @@ static void xfer_screen(app *a)
  * behind the shelf, it is that one, shown again with the same PIN. */
 static void xfer_screen_way(app *a, int way)
 {
-	char       who[64], moved[64], head[192], now_line[160];
-	menu_row   rows[7];
+	char       who[64], moved[64], head[192], now_line[160], name[96];
+	char       hint[320], lines[3][LB_LINE];
+	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
 	bool       done = false, stop = false;
@@ -9346,9 +9478,21 @@ static void xfer_screen_way(app *a, int way)
 			snprintf(now_line, sizeof now_line, "%s",
 			         g_xs.st.last[0] ? g_xs.st.last : T(S_XFER_WAITING));
 
-		hare_head(head, sizeof head, g_xs.addr, g_xs.pin);
-		nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
-		                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
+		/* The name, with the port when the server is not on 80, while the
+		 * link is there to reach it by */
+		name[0] = '\0';
+		if (mdns_name() && !g_xs.link_lost_at) {
+			if (hare_port() == 80) snprintf(name, sizeof name, "%s", mdns_name());
+			else snprintf(name, sizeof name, "%s:%d", mdns_name(), hare_port());
+		}
+		hare_head(head, sizeof head, name, g_xs.addr, g_xs.pin);
+		if (xs_steps_shown())
+			nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps,
+			                     link_steps_hint(&g_xs.steps, now), g_xs.cable, name,
+			                     g_xs.addr, XS_LEGEND);
+		else
+			nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
+			                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -19754,6 +19898,11 @@ static const char *shot_hot_now    = "receiving Contra (USA).zip";
 static const char *shot_hare_addr = "192.168.1.42";
 static const char *shot_hare_who  = "1 connected";
 static const char *shot_hare_head = "receiving Contra (USA).zip";
+/* --hare-steps usb|wifi STATE: File Transfer's steps (linksteps.h) at one
+ * state, its hint shown where the state has one: unplugged, nocomputer,
+ * noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork */
+static const char *shot_steps_way, *shot_steps_state;
+static bool shot_steps_noname;      /* ... noname: as when mDNS could not start */
 static const char *shot_wait, *shot_wait_msg;   /* NULL: library.scanning's */
 static int shot_osd_kind, shot_osd_val; /* --osd volume|brightness LEVEL */
 /* --tour STEP [MS [DONE]]: one frame of the tutorial, src/tour.h's step by
@@ -20588,8 +20737,45 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_STILL_MOVING), rows, 6, k, PANEL_REST.panel);
 	}
+	if (shot_steps_way) {
+		static const struct { const char *name; int step, sub, hint; } ST[] = {
+			{ "unplugged",  LS_LINK,    0, LH_NONE },
+			{ "nocomputer", LS_LINK,    0, LH_NO_COMPUTER },
+			{ "noanswer",   LS_LINK,    1, LH_NO_ANSWER },
+			{ "nodriver",   LS_LINK,    2, LH_NO_DRIVER },
+			{ "address",    LS_ADDRESS, 0, LH_NONE },
+			{ "noaddress",  LS_ADDRESS, 0, LH_NO_ADDRESS },
+			{ "browser",    LS_BROWSER, 0, LH_NONE },
+			{ "nobrowser",  LS_BROWSER, 0, LH_NO_BROWSER },
+			{ "nonetwork",  LS_LINK,    3, LH_NO_NETWORK },
+		};
+		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
+		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
+		link_steps st = { 0 };
+		menu_row rows[STEP_ROWS];
+		char head[192], hint[320], lines[3][LB_LINE];
+		int k, n, h = LH_NONE;
+
+		st.started = true;
+		for (k = 0; k < (int)(sizeof ST / sizeof ST[0]); k++)
+			if (!strcmp(ST[k].name, shot_steps_state)) {
+				st.step = ST[k].step;
+				st.sub = ST[k].sub;
+				h = ST[k].hint;
+			}
+		/* Off Wi-Fi the heading says so, with no name, as the screen does */
+		const char *name = shot_steps_noname ? "" : "zyperos.local";
+
+		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, NULL, T(S_XFER_WIFI_GONE), "4071");
+		else hare_head(head, sizeof head, name, addr, "4071");
+		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
+		                 T(S_PANEL_B_CLOSE));
+		draw_shelf(a);
+		ui_scrim(a->r, 0);
+		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	}
 	if (shot_hare)
-		hare_preview(a, shot_hare_addr, "4071", shot_hare_who,
+		hare_preview(a, "zyperos.local", shot_hare_addr, "4071", shot_hare_who,
 		             /* the cable's address is USB File Transfer, with SSH */
 		             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL,
 		             "12 KB / 41 MB", shot_hare_head);
@@ -22003,6 +22189,11 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_pass   = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_phones = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_now    = argv[++i];
+		}
+		else if (!strcmp(argv[i], "--hare-steps") && i + 2 < argc) {
+			shot_steps_way = argv[++i];
+			shot_steps_state = argv[++i];
+			if (i + 1 < argc && !strcmp(argv[i + 1], "noname")) { shot_steps_noname = true; i++; }
 		}
 		else if (!strcmp(argv[i], "--hare")) {
 			shot_hare = 1;
