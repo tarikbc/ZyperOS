@@ -7980,6 +7980,7 @@ static void xfer_screen_way(app *a, int way);
 /* 272 holds "Developer" at the menu's size (242) with 12 either side, and
  * three of them with the gaps and pads are 944, inside the screen's insets */
 #define TILE_W   272
+#define TILE_W2  408      /* two tiles: a name on one line, a line under it */
 #define TILE_H   232
 #define TILE_GAP 24
 #define TILE_PAD 40
@@ -7998,8 +7999,8 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_CANCEL_NOW,    UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_CANCEL_PLAY,   UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
-		{ S_XFER_TILE_POWER_IT,      UI_GLYPH_USB },
-		{ S_XFER_TILE_ITS_COMPUTER,  UI_GLYPH_TRANSFER },
+		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
+		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
 	};
 	size_t i;
 
@@ -8093,7 +8094,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
 	SDL_Rect panel, rule;
 	tile_note nsub = { .n = 0 }, nwhat = { .n = 0 }, nleg;
-	int i, k, top, tiles_y, all = n, tiles_w, inner, widest;
+	int i, k, top, tiles_y, all = n, tiles_w, inner, widest, tw;
 	char head[2][LB_LINE];
 	int nhead;
 
@@ -8109,7 +8110,10 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	/* The tiles' width, or the title's if that is wider, and where the lines
 	 * under them do not fit in two lines of it, the screen's inset width: the
 	 * panel is as wide as its words need within the screen, never more */
-	tiles_w = n * TILE_W + (n - 1) * TILE_GAP;
+	/* Two tiles are wider, room for a name on one line and the small line
+	 * under it (What did you plug in?, DESIGN.md 11.36) */
+	tw = n == 2 ? TILE_W2 : TILE_W;
+	tiles_w = n * tw + (n - 1) * TILE_GAP;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
 	panel.w = tiles_w + 2 * TILE_PAD;
 	if (ui_text_width(fh, heading) + 2 * TILE_PAD > panel.w)
@@ -8163,8 +8167,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	tiles_y += 32;
 
 	for (i = 0; i < n; i++) {
-		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (TILE_W + TILE_GAP), tiles_y,
-		               TILE_W, TILE_H };
+		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (tw + TILE_GAP), tiles_y,
+		               tw, TILE_H };
 		bool on = i == sel;
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
 		const char *label = tiles[i].label ? tiles[i].label : "";
@@ -8175,6 +8179,24 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		int lf = lm;
 
 		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
+		if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
+			/* A name and the small line under it: the mark higher, the
+			 * name in the menu's size on one line (the smaller where it
+			 * does not fit), the line in **meta**, up to two balanced */
+			char sl[2][LB_LINE];
+			int ns = ui_balance_lines(fs, tiles[i].value, t.w - 32, 2, sl), y;
+			SDL_Color soft = on ? ink : UI_TEXT_DIM;
+
+			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 48, 64, ink);
+			if (ui_text_width(f, label) > t.w - 24) { f = fs; lf = ls; }
+			y = t.y + 92;
+			ui_text(a->r, f, label, t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
+			y += lf + 4;
+			for (k = 0; k < ns; k++)
+				ui_text(a->r, fs, sl[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
+			ui_fit_drawn(tiles[i].value);
+			continue;
+		}
 		ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 56, 72, ink);
 		snprintf(one, sizeof one, "%.*s", nl ? (int)(nl - label) : (int)strlen(label), label);
 		snprintf(two, sizeof two, "%s", nl ? nl + 1 : "");
@@ -8288,22 +8310,23 @@ static void usb_ask(app *a)
  * DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
  * side, which the handheld cannot tell apart without feeding it. Asked once
  * per plug over the shelf, as Computer Connected is (DESIGN.md 11.36): two
- * tiles, Power It and It's a Computer, starting on It's a Computer, so a
- * quick A or B never feeds a computer. Power It asks usbrole for host for
- * this plug (it says yes only while no power comes in); It's a Computer, B
+ * tiles, USB Accessory and Computer, starting on Computer, so a
+ * quick A or B never feeds a computer. USB Accessory asks usbrole for host for
+ * this plug (it says yes only while no power comes in); Computer, B
  * or MENU leave the port as it is and say to plug the cable in again, so
  * the computer can take the side that gives power. The question goes by
  * itself when the plug stops wanting power (unplugged, or power came). */
 static int usb_power_rows(menu_row rows[3])
 {
-	rows[0] = (menu_row){ T(S_XFER_TILE_POWER_IT), NULL, true };
-	rows[1] = (menu_row){ T(S_XFER_TILE_ITS_COMPUTER), NULL, true };
+	/* A tile's value is the small line under its name (tiles_panel) */
+	rows[0] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
+	rows[1] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
 	rows[2] = MENU_NOTE(T(S_XFER_LEGEND_POWER));
 	ui_fit_drawn(T(S_XFER_LEGEND_POWER));    /* drawn split at its keys: the whole, for the check */
 	return 3;
 }
 
-/* The message after It's a Computer, balanced as result_message balances
+/* The message after Computer, balanced as result_message balances
  * one: the rows, for the screen and its shot (--usb-power-said) */
 static int usb_power_said_rows(app *a, menu_row rows[3], char lines[3][LB_LINE])
 {
@@ -8396,7 +8419,7 @@ static void usb_power_said(app *a)
 	char lines[3][LB_LINE];
 	int k = usb_power_said_rows(a, said, lines);
 
-	timed_message(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, menu_std_width(a), MENU_ZYPEROS);
+	timed_message(a, T(S_XFER_TILE_COMPUTER), said, k, menu_std_width(a), MENU_ZYPEROS);
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -20010,8 +20033,8 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
-/* --usb-power [N]: USB Device Connected, tile N focused (1, It's a Computer,
- * where it starts); --usb-power said: the message after It's a Computer */
+/* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
+ * where it starts); --usb-power said: the message after Computer */
 static int shot_power = -1;
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
@@ -20842,7 +20865,7 @@ static void shot_compose(app *a)
 		} else {
 			int k = usb_power_said_rows(a, said, lines);
 
-			menu_draw(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, -1, menu_std_width(a), MENU_ZYPEROS);
+			menu_draw(a, T(S_XFER_TILE_COMPUTER), said, k, -1, menu_std_width(a), MENU_ZYPEROS);
 		}
 	}
 	if (shot_dev >= 0) {

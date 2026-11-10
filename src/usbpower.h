@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* "USB Device Connected": the launcher's half of plastron's usbrole.
+/* "What did you plug in?": the launcher's half of plastron's usbrole.
  *
  * The Pixel 2's one USB-C port has no Type-C controller, so something that
  * wants power and gives none is a DAC, a Wi-Fi adapter, a keyboard - or a
  * computer whose port took the sink side, which looks exactly the same and
  * must never be fed (2026-11-10: a Mac waited 10, 16 and 34 s for power).
  * So usbrole never makes the port a host on its own: it says in
- * /run/usbrole/state which plug may be asked about, the shelf asks (Power
- * It, or It's a Computer, DESIGN.md 11.36), and Power It writes that plug's
+ * /run/usbrole/state which plug may be asked about, the shelf asks (USB
+ * Accessory, or Computer, DESIGN.md 11.36), and USB Accessory writes that plug's
  * number to /run/usbrole/host, which usbrole reads once and acts on only
- * while its own safety rules hold. It's a Computer, or B, leaves the port
+ * while its own safety rules hold. Computer, or B, leaves the port
  * as it is and says to plug the cable in again, as a computer then gives
  * power. The directory is root's alone (usbrole makes it 0700); the launcher
  * runs as root.

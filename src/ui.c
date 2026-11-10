@@ -3234,6 +3234,26 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.45f, 0.72f, 0.68f, 0.46f, G_W);
 		return;
 	}
+	if (g == UI_GLYPH_HEADPHONES) {
+		/* A band over the head, half a circle, and a cup at each end,
+		 * a stroke of no length's width as the USB trident's discs */
+		g_arc(s, 0.50f, 0.56f, 0.34f, pi, 1.5f * pi);
+		g_arc(s, 0.50f, 0.56f, 0.34f, 1.5f * pi, 2.0f * pi);
+		g_line(s, 0.20f, 0.60f, 0.20f, 0.80f, 0.085f);
+		g_line(s, 0.80f, 0.60f, 0.80f, 0.80f, 0.085f);
+		return;
+	}
+	if (g == UI_GLYPH_LAPTOP) {
+		/* A laptop, open: the screen, and the base wider than it */
+		g_line(s, 0.20f, 0.20f, 0.80f, 0.20f, G_W);
+		g_line(s, 0.80f, 0.20f, 0.80f, 0.64f, G_W);
+		g_line(s, 0.80f, 0.64f, 0.20f, 0.64f, G_W);
+		g_line(s, 0.20f, 0.64f, 0.20f, 0.20f, G_W);
+		g_line(s, 0.20f, 0.64f, 0.08f, 0.80f, G_W);
+		g_line(s, 0.08f, 0.80f, 0.92f, 0.80f, G_W);
+		g_line(s, 0.92f, 0.80f, 0.80f, 0.64f, G_W);
+		return;
+	}
 	if (g == UI_GLYPH_CHECK) {
 		/* A tick, the finish's own, alone and a stroke heavier */
 		g_line(s, 0.14f, 0.54f, 0.38f, 0.78f, G_W * 1.4f);

@@ -59,59 +59,70 @@ ja = 左/右：移動   A：選択   B：充電のみ
 it = Sinistra/Destra: sposta   A: scegli   B: solo ricarica
 
 [xfer.usb_device_connected]
-note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a DAC, a Wi-Fi adapter, a keyboard, or a computer whose port waits for power. Two tiles: power it, or it is a computer.
-en = USB Device Connected
-zh-Hans = 已连接 USB 设备
-es = Dispositivo USB conectado
-pt-BR = Dispositivo USB conectado
-fr = Périphérique USB connecté
-de = USB-Gerät verbunden
-ja = USB 機器を接続しました
-it = Dispositivo USB connesso
+note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer that has not connected yet. Two tiles: USB Accessory, Computer.
+en = What did you plug in?
+zh-Hans = 你插入了什么？
+es = ¿Qué conectaste?
+pt-BR = O que você conectou?
+fr = Qu'avez-vous branché\u00a0?
+de = Was hast du angeschlossen?
+ja = 何を接続しましたか？
+it = Cosa hai collegato?
 
-[xfer.tile_power_it]
-note = A tile, two lines (\n between), of USB Device Connected: give the device on the port power (it is a DAC, an adapter, a keyboard). tight: a tile is 248 units wide.
-en = Power\nIt
-zh-Hans = 为它\n供电
-es = Darle\nenergía
-pt-BR = Dar\nenergia
-fr = Alimenter\nl'appareil
-de = Strom\ngeben
-ja = 給電\nする
-it = Dare\ncorrente
+[xfer.tile_accessory]
+note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (408 units wide), with xfer.tile_accessory_sub under it. tight.
+en = USB Accessory
+zh-Hans = USB 配件
+es = Accesorio USB
+pt-BR = Acessório USB
+fr = Accessoire USB
+de = USB-Zubehör
+ja = USB アクセサリー
+it = Accessorio USB
 
-[xfer.tile_its_computer]
-note = A tile, two lines, of USB Device Connected: the thing on the port is a computer; the handheld gives it no power and says to plug the cable in again. tight.
-en = It's a\nComputer
-zh-Hans = 这是\n电脑
-es = Es una\ncomputadora
-pt-BR = É um\ncomputador
-fr = C'est un\nordinateur
-de = Ist ein\nComputer
-ja = パソコン\nです
-it = È un\ncomputer
+[xfer.tile_accessory_sub]
+note = The small line under USB Accessory: examples of accessories, lowercase, as a list. Up to two lines in the tile at meta size.
+en = headphones, Wi-Fi, keyboard
+zh-Hans = 耳机、Wi-Fi、键盘
+es = audífonos, Wi-Fi, teclado
+pt-BR = fone, Wi-Fi, teclado
+fr = casque, Wi-Fi, clavier
+de = Kopfhörer, WLAN, Tastatur
+ja = イヤホン、Wi-Fi、キーボード
+it = cuffie, Wi-Fi, tastiera
+
+[xfer.tile_computer]
+note = A tile of What did you plug in?: a computer, which the handheld does not power; it says to plug the cable in again. Also the heading of that message. One line. tight.
+en = Computer
+zh-Hans = 电脑
+es = Computadora
+pt-BR = Computador
+fr = Ordinateur
+de = Computer
+ja = パソコン
+it = Computer
 
 [xfer.legend_power]
-note = The key legend under USB Device Connected's tiles: Left/Right move, A chooses, B means it is a computer. Three spaces between the keys; it may break onto two lines at them.
-en = Left/Right: move   A: choose   B: it's a computer
-zh-Hans = 左/右：移动   A：选择   B：这是电脑
-es = Izquierda/Derecha: mover   A: elegir   B: es una computadora
-pt-BR = Esquerda/Direita: mover   A: escolher   B: é um computador
-fr = Gauche/Droite : aller   A : choisir   B : c'est un ordinateur
-de = Links/Rechts: wechseln   A: wählen   B: ist ein Computer
-ja = 左/右：移動   A：選択   B：パソコンです
-it = Sinistra/Destra: sposta   A: scegli   B: è un computer
+note = The key legend under What did you plug in?'s tiles: Left/Right move, A chooses, B means a computer. Three spaces between the keys; it may break onto two lines at them.
+en = Left/Right: move   A: choose   B: computer
+zh-Hans = 左/右：移动   A：选择   B：电脑
+es = Izquierda/Derecha: mover   A: elegir   B: computadora
+pt-BR = Esquerda/Direita: mover   A: escolher   B: computador
+fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: ordinateur
+de = Links/Rechts: wechseln   A: wählen   B: Computer
+ja = 左/右：移動   A：選択   B：パソコン
+it = Sinistra/Destra: sposta   A: scegli   B: computer
 
 [xfer.replug_computer]
-note = A computer on the USB cable waits for power that the handheld will not give (its port took the sink side): said after It's a Computer, and under USB File Transfer's Cable step after 5 s. Plugging in again lets the computer take the other side. Up to three balanced lines.
-en = The computer is waiting for power. Unplug the cable and plug it in again.
-zh-Hans = 电脑在等待供电。请拔出数据线，再重新插入。
-es = La computadora espera energía. Desconecta el cable y vuelve a conectarlo.
-pt-BR = O computador está esperando energia. Desconecte o cabo e conecte de novo.
-fr = L'ordinateur attend du courant. Débranchez le câble et rebranchez-le.
-de = Der Computer wartet auf Strom. Zieh das Kabel ab und steck es wieder ein.
-ja = パソコンが給電を待っています。ケーブルを抜いて、もう一度差してください。
-it = Il computer aspetta corrente. Scollega il cavo e ricollegalo.
+note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer): said after Computer, on a replug too soon to ask about, and under USB File Transfer's Cable step after 5 s. Plugging in again lets it connect. Never say "power" here. Up to three balanced lines.
+en = Your computer didn't connect yet. Unplug the cable and plug it back in.
+zh-Hans = 电脑还没有连接。请拔出数据线，再重新插入。
+es = Tu computadora aún no se conectó. Desconecta el cable y vuelve a conectarlo.
+pt-BR = O computador ainda não conectou. Desconecte o cabo e conecte de novo.
+fr = Votre ordinateur n'est pas encore connecté. Débranchez le câble et rebranchez-le.
+de = Dein Computer ist noch nicht verbunden. Zieh das Kabel ab und steck es wieder ein.
+ja = パソコンがまだ接続されていません。ケーブルを抜いて、もう一度差してください。
+it = Il computer non si è ancora collegato. Scollega il cavo e ricollegalo.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.

@@ -462,7 +462,7 @@ the step it is waiting on dimmed:
 
 | Step | Ticked when | If it waits too long |
 |---|---|---|
-| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that waits for power: after 5 seconds, plug the cable in again. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect yet: after 5 seconds, plug the cable in again. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
 | **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
 | **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
 | **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
@@ -528,25 +528,25 @@ charging only.
 ### Plugging something in
 
 The Pixel 2 powers what is plugged into its port only when you say so. Its
-USB-C port has no chip that tells a Wi-Fi adapter, a USB-C DAC or a
-keyboard from a computer whose port waits for power, and a computer must
-never be fed from the handheld (a Mac waited 10, 16 and over 30 seconds
-for power in my tests). So when something wants power and gives none, the
-shelf asks once per plug, two seconds after it goes in, **USB Device
-Connected**, with two tiles:
+USB-C port has no chip that tells a Wi-Fi adapter, USB-C headphones or a
+keyboard from a computer that has not connected yet (its port is waiting
+to be powered), and a computer must never be powered by the handheld (a
+Mac waited 10, 16 and over 30 seconds in my tests). So when something like
+that is plugged in, the shelf asks once per plug, two seconds after it goes
+in, **What did you plug in?**, with two tiles:
 
 | | |
 |---|---|
-| **Power It** | for an adapter, a DAC or a keyboard: the port gives it power, and it works as before (the adapter brings Wi-Fi, the DAC the sound) |
-| **It's a Computer** | where it starts, and what B and MENU mean: no power, and a message says to unplug the cable and plug it in again. The computer then takes the side that gives power, and the handheld finds it |
+| **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect yet, and to unplug the cable and plug it back in. Then it connects |
 
-The question goes by itself when the thing is unplugged or starts giving
-power. The handheld never powers the port in the first seconds after it
-starts, while power comes in, or for a plug that has just had a computer's
-power (until the port has been empty for 5 seconds, counted from when the
-power went); Power It does not change that. A computer plugged in again
-sooner than that, with its port waiting for power, is not asked about: the
-shelf says to unplug the cable and plug it in again, once per plug. USB File Transfer in MENU turns the link on by itself too.
+The question goes by itself when the thing is unplugged or the computer
+connects. The handheld never powers the port in the first seconds after it
+starts, while a computer or a charger powers it, or for a plug that just
+had a computer on it (until the port has been empty for 5 seconds, counted
+from when the cable came out); USB Accessory does not change that. A
+computer plugged back in sooner than that is not asked about: the shelf
+says it didn't connect yet, and to plug it back in, once per plug. USB File Transfer in MENU turns the link on by itself too.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so
@@ -563,7 +563,7 @@ Sound can come out of four places, and ZyperOS picks in a fixed order:
 speaker.**
 
 The adapter is the Pixel 2's, whose USB-C port powers one once you choose
-**Power It** (see **Plugging something in** below); the Brick's port does
+**USB Accessory** (see **Plugging something in** below); the Brick's port does
 not. Bluetooth is the Brick's; the Pixel 2
 has none.
 

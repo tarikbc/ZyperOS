@@ -463,13 +463,16 @@ SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix);
  * answers while File Transfer's files move (11.14): an arrow up and one down
  * for keep going, a page with a tick for stop after this file, a ring crossed
  * for cancel now, a play triangle for play after this file. And a tick for
- * the choice that is on in a list of choices (MENU > Language, 11.30). */
+ * the choice that is on in a list of choices (MENU > Language, 11.30). And
+ * the two answers when something on the Pixel 2's port wants power (11.36):
+ * headphones for a USB accessory, a laptop for a computer. */
 typedef enum {
 	UI_GLYPH_REPEAT, UI_GLYPH_REPEAT_ONE, UI_GLYPH_SHUFFLE,
 	UI_GLYPH_CHARGE, UI_GLYPH_TRANSFER, UI_GLYPH_TERMINAL,
 	UI_GLYPH_USB, UI_GLYPH_WIFI,
 	UI_GLYPH_ARROWS, UI_GLYPH_FINISH, UI_GLYPH_CANCEL, UI_GLYPH_PLAY,
 	UI_GLYPH_CHECK,
+	UI_GLYPH_HEADPHONES, UI_GLYPH_LAPTOP,
 	UI_GLYPH_COUNT
 } ui_glyph;
 void ui_glyph_draw(SDL_Renderer *r, ui_glyph g, int cx, int cy, int size,

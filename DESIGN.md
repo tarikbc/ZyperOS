@@ -2488,26 +2488,28 @@ out, Now); the steps come back if the cable or the Wi-Fi goes. Host shots:
 `--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged, nocomputer,
 noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork.
 
-### 11.36 USB Device Connected
+### 11.36 What did you plug in?
 The question the shelf asks when something on the Pixel 2's USB port wants
 power and gives none (plastron's usbrole, src/usbpower.h), 2026-11-10: a
-DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
-side, which the handheld cannot tell apart without feeding it. The tiles
-of Computer Connected (11.18): heading **USB Device Connected**, two tiles,
-**Power It** (the USB trident) and **It's a Computer** (the folder with the
-arrow), starting on It's a Computer so a quick A or B never feeds a
-computer; the legend "Left/Right: move   A: choose   B: it's a computer".
-Asked once per plug, two seconds after usbrole says it may be, over the
-lit shelf, never over a game; it goes by itself when the plug stops
-wanting power. It's a Computer, B or MENU answer with a message (11.8)
-under the same heading: "The computer is waiting for power. Unplug the
-cable and plug it in again.", balanced onto up to three lines; USB File
-Transfer's Cable step says the same after 5 seconds (11.35). A plug that
-waits for power but may not be asked about, because a computer's power was
-on the port in the last 5 seconds (usbrole's new-plug rule: it is that
-computer, plugged in again too soon), gets the same message by itself, once
-per plug, two seconds after it goes in. Host shots: `--usb-power
-[0|1|said]`.
+USB accessory (headphones, a Wi-Fi adapter, a keyboard), or a computer
+whose port took the sink side, which the handheld cannot tell apart without
+powering it. The tiles of Computer Connected (11.18), two of them and wider
+(408 each): heading **What did you plug in?**; **USB Accessory**, its mark
+headphones, its name on one line and under it in **meta** (**text-dim**,
+**on-accent** when focused) "headphones, Wi-Fi, keyboard", up to two lines;
+and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
+B never powers a computer; the legend "Left/Right: move   A: choose   B:
+computer". Asked once per plug, two seconds after usbrole says it may be,
+over the lit shelf, never over a game; it goes by itself when the plug
+stops wanting power. Computer, B or MENU answer with a message (11.8)
+headed **Computer**: "Your computer didn't connect yet. Unplug the cable
+and plug it back in.", balanced onto up to three lines; USB File Transfer's
+Cable step says the same after 5 seconds (11.35). A plug that may not be
+asked about because a computer was on the port in the last 5 seconds
+(usbrole's new-plug rule: it is that computer, plugged back in too soon)
+gets the same message by itself, once per plug, two seconds after it goes
+in. The user-facing words never say "power". *(My wording after the plug
+test, 2026-11-10.)* Host shots: `--usb-power [0|1|said]`.
 
 ## 12. Copy
 
