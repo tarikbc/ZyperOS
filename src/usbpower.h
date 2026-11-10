@@ -52,10 +52,19 @@ typedef struct {
 	unsigned plug;        /* the plug being watched */
 	unsigned since;       /* since when it may be asked about, 0 not */
 	unsigned asked;       /* the last plug asked about */
+	unsigned wplug, wsince, told;   /* the same for a plug that waits (below) */
 } usbpower_follow_state;
 
-/* One pass: the plug to ask about now (once per plug, once it may have been
- * for USBPOWER_ASK_MS), or 0 */
-unsigned usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_ms);
+/* What the shelf does about the plug now */
+enum { USBPOWER_NOTHING, USBPOWER_ASK, USBPOWER_REPLUG };
+
+/* One pass: USBPOWER_ASK and the plug in *plug when it may have been asked
+ * about for USBPOWER_ASK_MS (once per plug). USBPOWER_REPLUG when a plug
+ * waits for power and may not be asked about because a computer's power
+ * was on the port seconds before (usbrole's 5 s new-plug rule: it is that
+ * computer, plugged in again too soon, its port on the sink side): the shelf
+ * says to plug it in again, once per plug, after the same 2 s. */
+int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_ms,
+                    unsigned *plug);
 
 #endif

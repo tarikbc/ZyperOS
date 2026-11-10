@@ -69,18 +69,37 @@ bool usbpower_waits(const usb_power *p)
 	return p->known && p->pin == 1 && p->vbus == 0 && !p->host;
 }
 
-unsigned usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now)
+int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now, unsigned *plug)
 {
+	bool replug = usbpower_waits(p) && !p->ask && p->powered && p->plug;
+
+	*plug = 0;
+	/* A plug that waits on a computer's recent power */
+	if (!replug) {
+		f->wsince = 0;
+	} else {
+		if (p->plug != f->wplug) {
+			f->wplug = p->plug;
+			f->wsince = 0;
+		}
+		if (!f->wsince) f->wsince = now ? now : 1;
+		if (f->told != p->plug && now - f->wsince >= USBPOWER_ASK_MS) {
+			f->told = p->plug;
+			*plug = p->plug;
+			return USBPOWER_REPLUG;
+		}
+	}
 	if (!p->known || !p->ask || !p->plug) {
 		f->since = 0;
-		return 0;
+		return USBPOWER_NOTHING;
 	}
 	if (p->plug != f->plug) {
 		f->plug = p->plug;
 		f->since = 0;
 	}
 	if (!f->since) f->since = now ? now : 1;
-	if (f->asked == p->plug || now - f->since < USBPOWER_ASK_MS) return 0;
+	if (f->asked == p->plug || now - f->since < USBPOWER_ASK_MS) return USBPOWER_NOTHING;
 	f->asked = p->plug;
-	return p->plug;
+	*plug = p->plug;
+	return USBPOWER_ASK;
 }

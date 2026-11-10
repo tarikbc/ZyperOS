@@ -8315,11 +8315,12 @@ static int usb_power_said_rows(app *a, menu_row rows[3], char lines[3][LB_LINE])
 	return n;
 }
 
+static void usb_power_said(app *a);
+
 static void usb_power_ask(app *a, unsigned plug)
 {
-	menu_row rows[3], said[3];
-	char lines[3][LB_LINE];
-	int n = usb_power_rows(rows), sel = 1, choice = -1, lv, k;
+	menu_row rows[3];
+	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
 	unsigned looked = 0;
 	float f;
 
@@ -8368,22 +8369,34 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_usb_power_grant(plug);
 		return;
 	}
-	k = usb_power_said_rows(a, said, lines);
-	timed_message(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, menu_std_width(a), MENU_ZYPEROS);
+	usb_power_said(a);
 }
 
-/* The shelf's pass of it: usbrole's state five times a second at most */
-static unsigned usb_power_follow(void)
+/* The shelf's pass of it: usbrole's state five times a second at most.
+ * USBPOWER_ASK with the plug, or USBPOWER_REPLUG for a computer plugged in
+ * again too soon to be asked about (usbpower.h) */
+static int usb_power_follow(unsigned *plug)
 {
 	static usbpower_follow_state f;
 	static unsigned looked;
 	unsigned now = plat_now_ms();
 	usb_power p;
 
-	if (looked && now - looked < 200u) return 0;
+	*plug = 0;
+	if (looked && now - looked < 200u) return USBPOWER_NOTHING;
 	looked = now ? now : 1;
-	if (!plat_usb_power(&p)) return 0;
-	return usbpower_follow(&f, &p, now);
+	if (!plat_usb_power(&p)) return USBPOWER_NOTHING;
+	return usbpower_follow(&f, &p, now, plug);
+}
+
+/* The replug message, under the question's heading */
+static void usb_power_said(app *a)
+{
+	menu_row said[3];
+	char lines[3][LB_LINE];
+	int k = usb_power_said_rows(a, said, lines);
+
+	timed_message(a, T(S_XFER_USB_DEVICE_CONNECTED), said, k, menu_std_width(a), MENU_ZYPEROS);
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -23413,9 +23426,13 @@ int main(int argc, char *argv[])
 		if (usblink_follow(db_dev(), plat_now_ms())) usb_ask(&a);
 		/* Something on the port wants power: asked too, once per plug */
 		{
-			unsigned plug = usb_power_follow();
+			unsigned plug;
 
-			if (plug) usb_power_ask(&a, plug);
+			switch (usb_power_follow(&plug)) {
+			case USBPOWER_ASK:    usb_power_ask(&a, plug); break;
+			case USBPOWER_REPLUG: usb_power_said(&a);      break;
+			default:              break;
+			}
 		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }
