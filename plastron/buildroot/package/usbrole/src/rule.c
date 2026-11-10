@@ -47,7 +47,10 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 	/* Empty long enough is a new plug: what the last one was is forgotten */
 	if (s->quiet_since && now - s->quiet_since >= UR_UNPLUG_MS)
 		s->powered = 0;
-	quiet = in->pin == 0 && in->vbus == 0 && !in->charger && !in->computer;
+	/* Empty from the moment power goes: the PHY's charger detection lingers
+	 * 1.4 to 1.6 s after an unplug (2026-11-10), and that is the last
+	 * plug's, so it is not asked here while no power comes in */
+	quiet = in->pin == 0 && in->vbus == 0 && !in->computer;
 	if (quiet) {
 		if (!s->quiet_since) s->quiet_since = nz(now);
 	} else {

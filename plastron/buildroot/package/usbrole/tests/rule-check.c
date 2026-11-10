@@ -225,8 +225,38 @@ static void never(void)
 	           32055817 - 1, 1, NULL), "the Mac's first six plugs went host on Power It");
 }
 
+/* 2026-11-10, the test after option C: Mac plugs replugged a few seconds
+ * apart, the PHY's detection (CDP) lingering 1.5 s after the power went.
+ * A plug 4.5 s after the power went is still the last one's, not asked
+ * about; one 5.2 s after is a new plug, asked about. */
+static void lingering_detection(void)
+{
+	static const step soon[] = {
+		{ 0,     S(0, 1, 1, 0) },        /* the Mac giving power, CDP */
+		{ 20000, S(0, 0, 1, 0) },        /* out: power gone, CDP lingers */
+		{ 21500, S(0, 0, 0, 0) },
+		{ 24500, S(1, 0, 0, 0) },        /* in again, the Mac waits: 4.5 s after */
+	};
+	static const step later[] = {
+		{ 0,     S(0, 1, 1, 0) },
+		{ 20000, S(0, 0, 1, 0) },
+		{ 21500, S(0, 0, 0, 0) },
+		{ 25200, S(1, 0, 0, 0) },        /* 5.2 s after the power went */
+	};
+	unsigned asked;
+
+	CHECK(!run("replugged 4.5 s after", soon, 4, 40000, 0, &asked) && !asked,
+	      "a plug 4.5 s after the power went was asked about at %u", asked);
+	CHECK(!run("replugged 5.2 s after", later, 4, 40000, 0, &asked) && asked == 25200,
+	      "a plug 5.2 s after the power went was not asked about (%u)", asked);
+	/* And with Power It at every chance, the first never goes host */
+	CHECK(!run("replugged 4.5 s after, Power It", soon, 4, 40000, 1, NULL),
+	      "a plug 4.5 s after a computer's power went host");
+}
+
 int main(void)
 {
+	lingering_detection();
 	mac_replugs();
 	mac_power_it_by_mistake();
 	dac();

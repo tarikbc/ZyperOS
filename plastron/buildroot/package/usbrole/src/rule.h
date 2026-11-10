@@ -19,7 +19,9 @@
  *    device.
  *  - Power in now, a charger detection (SDP, CDP, DCP), a reading that
  *    fails, or a computer seen as a USB device: device, and this plug is a
- *    powered one until the port has been empty for UR_UNPLUG_MS.
+ *    powered one until the port has been empty for UR_UNPLUG_MS, counted
+ *    from when the power went (a detection that lingers after it is the
+ *    last plug's).
  *  - Each time the pin goes to "wants power", that is a new plug, with a
  *    number. It may be asked about (ur_can_ask) while the pin says so with
  *    nothing coming in, on a plug that is not a powered one. Host only when
