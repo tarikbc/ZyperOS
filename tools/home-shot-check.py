@@ -97,6 +97,18 @@ for theme,extra in (('light',()),('dark',('--song','Posters'))):
             assert box[0]>=536 and box[1]>=112 and box[2]<=984 and box[3]<=560, \
                 f'{theme}: the frame at {ph} changed {box}, outside the focus square'
     assert moved, f'{theme}: no atlas frame changed between 0 and 1200 ms'
+# The replug message up (main.c, replug_draw_at; DESIGN.md 11.36): over the
+# focused machine, which a focus frame would draw over it (2026-11-10, on the
+# device). A frame with the message is a whole frame, so the part asked for
+# is the whole one, the message on top.
+for theme in ('light','dark'):
+    for ph in (150,600):
+        whole=shot(env,f'replug-{theme}-whole-{ph}','--home','spotlight','--theme',theme,'--phase',str(ph),'--replug')
+        part=shot(env,f'replug-{theme}-part-{ph}','--home','spotlight','--theme',theme,'--phase',str(ph),
+                  '--focus-from','0','--replug')
+        assert same(whole,part), f'{theme}: a focus frame at {ph} drew the machine over the replug message'
+        plain=shot(env,f'replug-{theme}-plain-{ph}','--home','spotlight','--theme',theme,'--phase',str(ph))
+        assert not same(whole,plain), f'{theme}: --replug drew no message'
 # And every system focused in turn, on a card that has them all, so the row
 # under each sprite is a full one, at every tile of its animation (the middle
 # of each tile's first frame, from src/systemart_data.h): the machines whose

@@ -10,7 +10,7 @@
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
         check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-qr \
+        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbpower check-clients check-keyhints check-pace check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
@@ -35,7 +35,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbpower check-clients check-keyhints check-pace check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
@@ -170,12 +170,12 @@ build-native/cheevos-check: tools/cheevos-check.c src/cheevos.c src/cheevos.h \
 check-hare: build-native/hare-check
 	@./build-native/hare-check
 
-build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
+build-native/hare-check: tools/hare-check.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/hare-check-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/hare-check-artnames"' -DREPO_WEB='"$(CURDIR)/res/web"' \
-	      -o $@ tools/hare-check.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
+	      -o $@ tools/hare-check.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # The File Transfer page on the host, over a scratch card: the same routes and
 # server, for a browser and for tools/readme-shots.py's pictures of the page.
@@ -186,12 +186,12 @@ build-native/hare-check: tools/hare-check.c src/hare.c src/httpd.c src/xfer.c sr
 check-portal: build-native/portal-serve
 	@python3 tools/portal-check.py
 
-build-native/portal-serve: tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
+build-native/portal-serve: tools/portal-serve.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/portal-serve-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/portal-serve-artnames"' \
-	      -o $@ tools/portal-serve.c src/hare.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
+	      -o $@ tools/portal-serve.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # Hare's transport, driven by a real client over a real socket. An HTTP parser
 # is where "looks right" and "is right" part company: every browser sends the
@@ -670,6 +670,80 @@ build-native/captive-check: tools/captive-check.c src/captive.c src/captive.h FO
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/captive-check.c src/captive.c
+
+# zyperos.local (src/mdns.h): the queries a Mac sent, read off the wire, each
+# answered as RFC 6762 says (QU, the group, a one-shot resolver, the NSEC
+# beside the A, known answers kept back); every piece of them and random
+# bytes, under the address sanitizer where the compiler has it; and
+# responders on a pretend network, where two handhelds on one Wi-Fi end with
+# two names.
+check-mdns: build-native/mdns-check
+	@./build-native/mdns-check
+
+build-native/mdns-check: tools/mdns-check.c src/mdns.c src/mdns.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
+	      -o $@ tools/mdns-check.c src/mdns.c
+
+# File Transfer's link steps (src/linksteps.h): the cable, the address and
+# the browser, each hint at its time, a replug, Wi-Fi, and the device's
+# /proc/net/arp and UDC state as they read.
+check-linksteps: build-native/linksteps-check
+	@./build-native/linksteps-check
+
+build-native/linksteps-check: tools/linksteps-check.c src/linksteps.c src/linksteps.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/linksteps-check.c src/linksteps.c
+
+# When the Pixel 2's USB port may be a host (plastron's usbrole, its
+# src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host, and a
+# DAC only on USB Accessory for its own plug; never with power in, a computer's
+# power or a failed reading. Host compiler only, no device.
+check-usbrole:
+	@mkdir -p build-native && cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O1 $(MEDIA_SAN) \
+		-o build-native/usbrole-rule-check plastron/buildroot/package/usbrole/tests/rule-check.c \
+		plastron/buildroot/package/usbrole/src/rule.c && build-native/usbrole-rule-check
+
+# USB Device Connected, the launcher's half of usbrole (src/usbpower.h):
+# usbrole's state lines, a request written whole and never through a link,
+# and the question asked once per plug, after 2 s, never for a computer's.
+check-usbpower: build-native/usbpower-check
+	@./build-native/usbpower-check
+
+build-native/usbpower-check: tools/usbpower-check.c src/usbpower.c src/usbpower.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
+	      -o $@ tools/usbpower-check.c src/usbpower.c
+
+# File Transfer's "1 connected" (src/clients.h): browsers, not sockets: one
+# tab with five keep-alive connections is one, two browsers are two.
+check-clients: build-native/clients-check
+	@./build-native/clients-check
+
+build-native/clients-check: tools/clients-check.c src/clients.c src/clients.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -O1 -g $(MEDIA_SAN) -o $@ tools/clients-check.c src/clients.c
+
+# Button hints (src/keyhints.h), the one component that says what each
+# button does: rows in order and in their room, a list packed into a panel's
+# row and read back in all eight languages.
+# When a panel screen draws (src/pace.h): its heartbeat while still, every
+# pass while anything moves, the memory idle after 2 s
+check-pace: build-native/pace-check
+	@./build-native/pace-check
+
+build-native/pace-check: tools/pace-check.c src/pace.c src/pace.h src/menu.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Werror -O1 -g $(MEDIA_SAN) -Isrc -o $@ tools/pace-check.c src/pace.c
+
+check-keyhints: build-native/keyhints-check
+	@./build-native/keyhints-check
+
+build-native/keyhints-check: tools/keyhints-check.c src/keyhints.c src/keyhints.h $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $(MEDIA_SAN) \
+	      -o $@ tools/keyhints-check.c src/keyhints.c $(I18N_SRC)
 
 # The hotspot's QR code (src/qr.c), read back by zbarimg where the host has it.
 check-qr: build-native/qr-check

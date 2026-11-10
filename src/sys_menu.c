@@ -50,6 +50,8 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 		if (!u->update && r == PM_UPDATE) continue;
 		if (u->no_lights && r == PM_LIGHTS) continue;
 		if (u->no_charge_limit && r == PM_CHARGE) continue;
+		if (u->no_usb_power && r == PM_USB) continue;
+		if ((u->no_usb_power || u->no_usb_wait) && r == PM_USB_WAIT) continue;
 		out[n++] = (pm_row)r;
 	}
 	return n;
@@ -257,6 +259,7 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	[PM_BATTERY]    = MENU_SND_RING,
 	[PM_HOURS]      = MENU_SND_RING,
 	[PM_DEVELOPER]  = MENU_SND_RING,
+	[PM_USB]        = MENU_SND_RING,
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
@@ -508,6 +511,12 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_TOUR]         = (menu_row){ T(S_SYSMENU_TUTORIAL), NULL, true  };
 	full[PM_DEVELOPER]    = (menu_row){ T(S_SYSMENU_DEVELOPER),
 	                                   u->developer ? T(S_MENU_ON) : T(S_MENU_OFF), true };
+	/* Ask or Automatic, stepped round; Automatic says its one risk once,
+	 * as it is chosen (main.c) */
+	full[PM_USB]          = (menu_row){ T(S_SYSMENU_USB_ACCESSORIES),
+	                                   u->usb_auto ? T(S_SYSMENU_USB_AUTO) : T(S_SYSMENU_USB_ASK), true };
+	/* A plug waiting: the question again for it */
+	full[PM_USB_WAIT]     = (menu_row){ T(S_SYSMENU_USB_DEVICE), T(S_SYSMENU_USB_CHOOSE), true };
 	/* How the card is used (src/storage.h): its value the room left */
 	full[PM_STORAGE]      = (menu_row){ T(S_STORAGE_TITLE), u->storage, true };
 	full[PM_UPDATE]       = (menu_row){ T(S_SYSMENU_UPDATE), u->update, true };

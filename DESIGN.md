@@ -391,6 +391,20 @@ beside a cubic one. One function each, in `src/design.h`.)*
 - **Every motion tells the redraw clock when it ends**, the way
   `plat_osd_until` does, so a screen that redraws only on change still draws
   the last frame.
+- **A still screen draws nothing.** The shelf, MENU's panels and USB File
+  Transfer draw a frame when what they show changes, when the redraw clock
+  comes due, or once a second (src/pace.h); a press, a held button, a panel
+  opening or closing, the volume bar and files on their way draw every pass,
+  so saving power never costs a frame of motion. Zyper's breath and blinks
+  draw every frame they change (2026-11-10: File Transfer left open drew at
+  60 Hz and ran the Pixel 2's chip at 51 to 55 C; paced, see the PR's
+  tables).
+- **USB File Transfer left alone on the cable** goes off after Auto Off's
+  time when nothing is moving, and only dims (the brightness ladder's
+  lowest rung) while files are on their way, so a transfer can still be
+  watched. A press, a browser arriving or files starting light it fully;
+  a press that lights it does nothing else, POWER's too. *(Tarik,
+  2026-11-10.)*
 - **Menus now open and close.** A panel opens in **move** (out): from 96% to
   full size and from clear to opaque, with its scrim fading in over the same
   time; it closes in **exit** (in), back the same way. The focus fill glides
@@ -703,10 +717,24 @@ link on the File Transfer page. Notes under a rule fit the panel on one line
 each, about 30 characters at **menu**; a longer one is said in two.
 
 ### 11.4 Key legend
-"A: go   Y: by game   L1/R1: window" - the button, a colon, a lowercase verb,
-three spaces between. **meta**, **text-dim**. *(The audit found 3 and 4
-spaces, "L/R" for two different controls, and "B to close" beside "B: close";
-this is the one form.)*
+**Button hints** are the form now (2026-11-10, src/keyhints.h): what each
+button does as a row of the button's glyph (11.9, 32 units) and its word in
+**chrome** **text-soft**, 12 between them, 32 between hints (at least 16
+in a spread foot), as the
+shelves' feet have always drawn them. One component lays them out: a list
+of {button, word} in order, as many in a row as fit, rows 44 apart, never
+a hint cut or split, centered under a panel's tiles or spread across a
+screen's foot (Now Playing's grows upward from its line). The d-pad's
+Left/Right is the "< >" pill, as seek's. Words are res/strings' keyhint.*
+or a screen's own, a hint's capitals (Title Case in English). Under every
+question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
+for one component to use across the UI.)*
+
+The older form, still written as text where it has not moved yet: "A: go
+Y: by game   L1/R1: window" - the button, a colon, a lowercase verb, three
+spaces between. **meta**, **text-dim**. *(The audit found 3 and 4 spaces,
+"L/R" for two different controls, and "B to close" beside "B: close"; this
+is the one form.)*
 
 ### 11.5 Keyboard
 The whole keyboard of src/keyboard.c, every decision in it kept because each
@@ -1156,6 +1184,11 @@ it has priority for direct volume or brightness feedback.
   **accent-ink** as far as the upload on its way. Not while its own screen is
   up. *(My pick in the File Transfer 2 lab, 2026-11-06: "A mark in the
   corner".)*
+- **USB plug**, 24 wide, leftmost, on the Pixel 2 while something on the
+  USB port waits for an answer to What did you plug in? (11.36): a plug
+  pointing up, its metal end with two slots over a body of radius 2.5 and a
+  1.25-unit cable under it, in **accent-ink**: something waits for you.
+  MENU > USB Device asks again. *(2026-11-10.)*
 - **Battery**, 44 wide: a 40 x 24 body in a **frame** outline with
   **radius-chip** corners, a 3 x 8 tip, and a fill up to 28 x 12, at least 4
   wide while there is any charge. **text-soft**; **warning**, outline and
@@ -1502,7 +1535,7 @@ rule. Each tile is **raised**, **radius.card**, 272 x 232, 24 apart: its
 mark (a bolt, a folder with an arrow up out of it, a terminal's prompt),
 72 across, and its name in **menu** on two lines, in **text-soft**; the
 focused tile is the **accent** fill with both in **on-accent**. The key
-legend (11.4) "Left/Right: move   A: choose   B: charge only" is under the
+button hints (11.4) "< > Move   A Choose   B Charge Only" are under the
 tiles in **meta** **text-dim**. The tiles are **Charge Only**, **File
 Transfer** and, on a development image, **Developer (SSH)**; it starts on
 Charge Only, so a quick A keeps the port charging. B, MENU, or the cable
@@ -2450,6 +2483,99 @@ from a fixture, with `--media-art DIR`'s pictures (now.png, before.png,
 c0.png..., snap.png) or the generated card; `--info-art`, the details as for
 a game with a cover and no video.
 
+### 11.35 File Transfer's heading and steps
+The transfer panel (11.3) of USB and Wi-Fi File Transfer, 2026-11-10. Its
+heading, in **label** **text-soft**, has the handheld's name on the network
+beside its address and the PIN. Over the cable the name comes first:
+"http://zyperos.local" on the first line, "10.42.0.1 · PIN 4071" on the
+second, since only the computer is on that link. Over Wi-Fi the address
+comes first, as it was, and the name beside the PIN: "192.168.1.42" over
+"PIN 4071 · zyperos.local", since anyone on the network could answer for a
+name, and what a person types should come from the handheld's own screen.
+The name over the cable is written with http:// so a browser opens it
+rather than searching for it; with a port other than 80 both carry it. With
+no name (multicast DNS did not start, or gave the name up after three taken
+in a session) or no link (the heading then says "Cable unplugged" or "Wi-Fi
+went away"), the heading is the address over the PIN.
+
+Until a browser opens the page, the rows under the rule are the steps of the
+connection as the handheld sees it (src/linksteps.h): over the cable
+**Cable**, **Address** and **Browser**; over Wi-Fi **Wi-Fi** and **Browser**;
+none on the hotspot screen (11.16), which says what it says. A step that is
+done has MENU_TICK as its value; the step waited on is a live row, its value
+"waiting" (or "unplugged" for a cable with no computer, "not connected" for
+no Wi-Fi); the steps after it are dead rows with no value. The rule and the
+key legend (11.4) follow, "B: close".
+
+A step that waits too long (the cable 5 seconds with no computer and 10 with
+one, the address 10, the browser 30) gets its hint: one sentence saying what
+to do about that step, in **menu** **text-dim**, centered and balanced onto
+at most three lines, in place of the other steps, under the stalled step's
+row and over the rule. Three steps and a three-line hint do not fit under a
+two-line heading, and a hint is about one step. The hints name the things a
+person can act on: another cable or port, Windows' Device Manager and its
+Network adapters, the name and the address to type, a VPN or proxy.
+
+Once a browser has asked, the rows are the usual ones (Browsers, SSH, In /
+out, Now); the steps come back if the cable or the Wi-Fi goes. Host shots:
+`--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged, nocomputer,
+noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork.
+
+### 11.36 What did you plug in?
+The question the shelf asks when something on the Pixel 2's USB port wants
+power and gives none (plastron's usbrole, src/usbpower.h), 2026-11-10: a
+USB accessory (headphones, a Wi-Fi adapter, a keyboard), or a computer
+whose port took the sink side, which the handheld cannot tell apart without
+powering it. The tiles of Computer Connected (11.18), two of them and wider
+(408 each): heading **What did you plug in?**; **USB Accessory**, its mark
+headphones, its name on one line and under it in **meta** (**text-dim**,
+**on-accent** when focused) "headphones, Wi-Fi, keyboard", up to two lines;
+and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
+B never powers a computer; the button hints (11.4) "< > Move   A Choose   B
+Computer". Asked once per plug, two seconds after usbrole says it may be,
+over the lit shelf, never over a game (a plug made in a game is asked about
+back on the shelf); it goes by itself when the plug stops wanting power.
+Every plug is its own: nothing carries over from the plug before, however
+soon (a cable swapped for an adapter in a second, 2026-11-10).
+
+**Asking again.** While a plug waits for an answer (put off, made in a
+game, Computer by mistake), the corner shows the USB plug mark (11.12) and
+MENU's first row is **USB Device**, value "choose": A asks the question
+again for the same plug, no replug needed. Both go when the plug ends or is
+powered.
+
+**The setting.** MENU > **USB Accessories**, under File Transfer, Ask (the
+default) or Automatic, stepped round as Clock is, as on a phone's USB
+preferences. Automatic: usbrole powers a plug that has waited 2 s, under
+every safety rule, and the question, the mark and USB Device are never
+shown. Chosen, it says once, as a message of up to four balanced lines,
+what it does and its one risk: a computer that has not connected yet gets
+about 2 seconds of power before it is seen (on the bus, "Product: Mac") and
+the port goes back for the rest of that plug. A computer seen pauses
+Automatic until the port has rested empty 3 s or the player answers: a plug
+meanwhile gets the question and the replug message (the Mac's port dropped
+and came back half a second after each feed, and was fed every 4.5 s, on
+the device, 2026-11-10). Told to usbrole in
+/run/usbrole/mode, as the request is. Host shots: `--usb-menu
+[auto|said]`, with `--status ... usb=on` for the mark.
+
+**The replug message.** Computer, B or MENU, and a plug a computer showed
+up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
+computer didn't connect yet. Unplug the cable and plug it back in." over
+whatever screen is up, never over a game, and it stays until the plug
+ends: the cable out, another plug, or the computer connected. On the launcher it is a slab at
+the top under the header, 960 wide at y 104: **surface** with the
+**panel** lift, the laptop mark (64) at its left in **text-soft**,
+**Computer** in **meta** **text-dim** over the words in **menu** **text**,
+up to four balanced lines; it is drawn by every screen's frame, under the
+volume bar (plat_set_overlay), and last on a frame that skipped the bar
+(plat_overlay_present); the home's focus frames, which redraw the machine
+alone, stop while it is up (it was drawn under the animated machine on the
+device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
+same after 5 seconds (11.35). The user-facing words never say "power".
+*(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
+[0|1|said]`.
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and
@@ -2474,6 +2600,12 @@ a game with a cover and no video.
   the thing, in every language (*Transferir USB* on the empty home's card
   and in MENU). A UI string that slides in a marquee is cut too, only
   slowly: a marquee is for names, which are data.
+- A menu row is sized with a row's height of air between its label and its
+  value, and may close it to half before anything is cut: the Pixel 2's
+  fonts measure a little wider than the host's ("auto (alto-falante)", 3
+  units to spare on the host, was cut on the device, 2026-11-10). And the
+  host's check says "tight" for a row within 1% of the most it can have, so
+  it is caught before a device shows it.
 
 ---
 
@@ -2556,7 +2688,7 @@ File Transfer 2 lab, `docs/design/mock/transfer2-lab.html`)*:
   its way is in) and **Cancel now** (a ring crossed: closed at once; the file
   that was half written is a `.part` file, deleted with its connection, and
   never shows on the shelf as a broken game). Under the tiles, what the
-  focused one does; legend "Left/Right: move   A: choose   B: keep going".
+  focused one does; button hints (11.4) "< > Move   A Choose   B Keep Going".
   The legend over the panel says "B: keep going or stop", and "B: hide" while
   it closes after the file.
 - **MENU** while files move keeps them going and goes to the shelf, as MENU

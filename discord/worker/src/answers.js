@@ -44,16 +44,17 @@ export const ANSWERS = {
     url: R + "install",
     text:
       "The Pixel 2 has no Wi-Fi of its own. A **USB Wi-Fi adapter** in its USB-C port gives it Wi-Fi while it's plugged in, and with it box art, RetroAchievements, System Update and Wi-Fi File Transfer.\n\n" +
-      "It needs a Realtek chip ZyperOS has a driver for, like the **TP-Link TL-WN725N** on a USB-C adapter.\n\n" +
+      "It needs a Realtek chip ZyperOS has a driver for, like the **TP-Link TL-WN725N** on a USB-C adapter. When the shelf asks **What did you plug in?**, choose **USB Accessory**, or set **MENU > USB Accessories** to **Automatic**.\n\n" +
       "No adapter? **USB File Transfer** moves games over the USB cable instead, and no network around? Wi-Fi File Transfer makes the Pixel 2 its own hotspot.",
   },
   transfer: {
     title: "Adding games",
     url: R + "adding-games-over-wi-fi",
     text:
-      "**Over Wi-Fi:** join a network in **MENU > Wi-Fi**, open **MENU > Wi-Fi File Transfer**, then open the address it shows in a browser and type the PIN.\n" +
-      "**Over the USB cable:** plug the Pixel 2 into a Mac, Linux or Windows 11 computer and choose **File Transfer** when it asks.\n\n" +
-      "Drag games into their console's folder, albums into `Music`, books into `Audiobooks` and films into `Videos`. They're on the shelf when you leave the screen. A card with no games shows both ways on its home.",
+      "**Over Wi-Fi:** join a network in **MENU > Wi-Fi**, open **MENU > Wi-Fi File Transfer**, then open `http://zyperos.local` (or the address it shows) in a browser and type the PIN.\n" +
+      "**Over the USB cable:** plug the Pixel 2 into a Mac, Linux or Windows 11 computer, choose **File Transfer** when it asks, and open `http://zyperos.local` or `http://10.42.0.1`.\n\n" +
+      "Drag games into their console's folder, albums into `Music`, books into `Audiobooks` and films into `Videos`. They're on the shelf when you leave the screen. A card with no games shows both ways on its home.\n\n" +
+      "**Page won't open?** Look at the handheld: until a browser opens the page it ticks off **Cable**, **Address** and **Browser**, and the step that waits says what to do. Turn off any VPN or proxy on the computer.",
   },
   portmaster: {
     title: "PortMaster",

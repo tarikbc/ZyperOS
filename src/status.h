@@ -122,6 +122,11 @@ typedef struct {
 	 * 24 wide, a 3-unit stroke as the rune's, in **text-soft**, between the
 	 * rune and the fan. Where they are, Audio Channels' Auto plays stereo. */
 	bool phones;
+	/* Something on the USB port waits for an answer (What did you plug
+	 * in?, src/usbpower.h), mine, 2026-11-10: a USB plug in **accent-ink**,
+	 * 24 wide, left of the others, so a question answered wrong or put off
+	 * shows it can be answered again (MENU > USB Device). */
+	bool usb;
 } status_marks;
 
 /* The battery mark's width and the space between its number and it */
@@ -134,7 +139,8 @@ typedef struct {
 #define STATUS_CALC_W   27
 
 /* The marks' width in units, gaps between them included: 0 for none, 120
- * for all three, 156 with File Transfer's 24, and 36 more with headphones'. */
+ * for all three, 156 with File Transfer's 24, 36 more with headphones', and
+ * 36 more with a USB plug waiting. */
 int status_marks_width(const status_marks *m);
 
 /* The buffer for the marks at `scale` pixels a unit, margin and all. */

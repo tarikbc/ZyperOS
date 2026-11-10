@@ -164,6 +164,9 @@ def write_unshot(ids):
 # and the power-off's screens, the keyboard, the save slots
 EXTRA = {
     "menu-network": ("demo", "PS1", ["--menu", "Audio Output"]),
+    # Audio Output's value not focused, under the row that is: on the device
+    # "auto (alto-falante)" was cut there and nowhere a shot looked
+    "menu-audio-under": ("demo", "PS1", ["--menu", "Audio Channels"]),
     "menu-clock": ("demo", "PS1", ["--menu", "Language"]),
     "menu-look": ("demo", "PS1", ["--menu", "Appearance"]),
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
@@ -231,6 +234,8 @@ EXTRA = {
     "charging-kept": ("demo", "PS1", ["--charging", "4000", "kept"]),
     "charging-keptfull": ("demo", "PS1", ["--charging", "4000", "keptfull"]),
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
+    # The game's question, its B hint "Not Now" (src/keyhints.h)
+    "xfer-ask-game": ("demo", "PS1", ["--xfer-ask", "0", "game"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two
@@ -304,6 +309,27 @@ for _page in (3, 4, 5):
 for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
+# File Transfer's steps (src/linksteps.h) in every state, with each hint
+for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver", "address",
+                               "noaddress", "browser", "nobrowser", "waits", "replug")),
+                      ("wifi", ("nonetwork", "browser", "nobrowser"))):
+    for _state in _states:
+        EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
+    # and the browser's hint with no name on the network (mDNS did not start)
+    EXTRA.setdefault("steps-%s-nobrowser-noname" % _way, ("demo", "PS1", ["--hare-steps", _way, "nobrowser", "noname"]))
+# USB Device Connected (DESIGN.md 11.36): both tiles focused, and the
+# message after It's a Computer
+for _k in ("0", "1", "said"):
+    EXTRA.setdefault("usb-power-" + _k, ("demo", "PS1", ["--usb-power", _k]))
+# MENU's USB rows (DESIGN.md 11.36): USB Device while a plug waits, with
+# the corner's USB mark; USB Accessories on Ask and on Automatic, and the
+# message Automatic says as it is chosen
+_USB_WAIT = ["--status", "10:08 24h wifi=off batt=82 usb=on"]
+EXTRA.setdefault("usb-menu-wait", ("demo", "PS1", ["--usb-menu", "--menu", "USB Device", *_USB_WAIT]))
+EXTRA.setdefault("usb-menu-ask", ("demo", "PS1", ["--usb-menu", "--menu", "USB Accessories"]))
+EXTRA.setdefault("usb-menu-auto", ("demo", "PS1", ["--usb-menu", "auto", "--menu", "USB Accessories"]))
+EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
+EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 
@@ -452,7 +478,7 @@ def run_language(code, shots, binary, keep):
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             for line in r.stdout.splitlines():
-                if line.startswith(("i18n: cut data: ", "i18n: slides data: ")):
+                if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])
                 elif line.startswith("fit: drawn: "):
                     drawn.add(unescape(line[12:]))

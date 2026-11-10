@@ -49,8 +49,12 @@
 #include "captive.h"
 #include "devmode.h"
 #include "sshlink.h"
+#include "mdns.h"
+#include "linksteps.h"
+#include "keyhints_draw.h"
 #include "usblink.h"
 #include "chargedark.h"
+#include "pace.h"
 #include "idle.h"
 #include "notice.h"
 #include "randgame.h"
@@ -1897,6 +1901,8 @@ static void heat_notice(void);
 static void notice_queue(nq_kind kind, int id, int ms, const char *head,
                          const char *body, const char *badge, int value, int target);
 
+static void replug_game_tick(void);
+
 static void on_game_tick(void)
 {
 	char msg[96];
@@ -1918,6 +1924,9 @@ static void on_game_tick(void)
 	plat_resident_quiet(musec_playing());
 	/* The next pop-up, once the one on screen has had its time */
 	notice_pump();
+	/* A computer on the cable that has not connected: said over the game
+	 * too, until the cable comes out (DESIGN.md 11.36) */
+	replug_game_tick();
 	/* The chip's temperature, every HEAT_POLL_MS; "Getting hot" over the
 	 * game when it passes the trip, ahead of any pop-up waiting */
 	heat_tick();
@@ -2291,6 +2300,35 @@ static void clock24_save(bool on)
 	db_set_str(db_dev(), "clock", on ? "24h" : "12h");
 }
 
+/* MENU > USB Accessories on the Pixel 2: Ask, the default, or Automatic,
+ * saved as "ask" or "auto" under `usb_accessories` and told to usbrole
+ * (plat_usb_power_mode, src/usbpower.h) as the launcher starts and as it
+ * changes */
+static bool g_usb_auto;
+/* A plug that waits for an answer now (it may be asked about, usbrole
+ * powers nothing by itself): the corner's USB mark and MENU > USB Device,
+ * which asks again for it. 0 none. */
+static unsigned g_usb_wait;
+/* --usb-menu: MENU's USB rows on a host shot, which has no usbrole */
+static bool shot_usb_menu;
+static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
+
+static void usb_auto_load(void)
+{
+	char v[8];
+
+	db_get_str(db_dev(), "usb_accessories", v, sizeof v, "ask");
+	g_usb_auto = !strcmp(v, "auto");
+	plat_usb_power_mode(g_usb_auto);
+}
+
+static void usb_auto_save(bool on)
+{
+	g_usb_auto = on;
+	db_set_str(db_dev(), "usb_accessories", on ? "auto" : "ask");
+	plat_usb_power_mode(on);
+}
+
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
  * default), with its charge written beside it ("percentage"), my ask of
  * 2026-11-05, or with the time left written there ("time"), my ask of
@@ -2551,6 +2589,7 @@ static void status_gather(status_marks *m, bool moving)
 	m->charging = chg;
 	m->held = chg && charge_held();
 	xs_mark(m);
+	m->usb = g_usb_wait != 0;
 }
 
 /* The time a shot shows: today at --status's time of day, into *t. False for
@@ -4259,10 +4298,15 @@ static bool panel_leave_draw(app *a, int game);   /* with the menus, below */
  * Not while anything that is not redrawn here is on screen: the song or heat
  * pop-up, the volume bar. A whole frame still comes at least once a second
  * (HEARTBEAT_MS counts whole frames only). */
+static bool replug_shown(void);
+
 static bool focus_ok(const app *a)
 {
 	return a->screen == SCREEN_SYSTEMS && a->sys.count > 0 && !no_games(a) &&
-	       !g_songpop.on && !g_heatpop.on && plat_osd_until() == UINT32_MAX;
+	       !g_songpop.on && !g_heatpop.on && plat_osd_until() == UINT32_MAX &&
+	       /* the replug message: a focus frame drew the sprite over it
+	        * (2026-11-10, on the device) */
+	       !replug_shown();
 }
 
 /* False, drawing nothing, when the sprite is not one a focus frame can draw */
@@ -4789,6 +4833,12 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * bottom border. */
 	int rule_h = pad / 2 + 2;
 	int gap = row_h;                 /* between the label and value columns */
+	/* ...the air a panel is sized with. A row that measures past it on a
+	 * device whose fonts measure a little wider than the host's is not cut
+	 * for that: it may close the gap to half a row before anything is cut
+	 * ("auto (alto-falante)" in MENU, 3 units over on the Pixel 2,
+	 * 2026-11-10) */
+	int fit_gap = row_h / 2;
 	int note_h = ui_font_line(UI_F_MENU) + pad / 3;
 	/* A row's height. A function under the macro, so its row is read once:
 	 * as a macro that read `r` up to four times, the scroll below wrote
@@ -4880,6 +4930,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	if (fixed_w > 0) content_w = fixed_w;
 	if (content_w > ZYPEROS_SCREEN_W - margin * 2 - pad * 2)
 		content_w = ZYPEROS_SCREEN_W - margin * 2 - pad * 2;
+	/* The most a row can have: the fixed width, or the screen's. A row
+	 * that sizes a free panel is as wide as the panel by its own measure,
+	 * so only this cap says a row is near being cut (ui_fit_tight) */
+	int cap_w = fixed_w > 0 && fixed_w < ZYPEROS_SCREEN_W - margin * 2 - pad * 2
+	          ? fixed_w : ZYPEROS_SCREEN_W - margin * 2 - pad * 2;
 
 	{
 		int sum = 0;
@@ -5474,12 +5529,16 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
-			} else if (lw + (vw ? gap + vw : 0) <= content_w) {
+			} else if (lw + (vw ? fit_gap + vw : 0) <= content_w) {
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
 				if (rows[i].value)
 					ui_text(a->r, fm, rows[i].value,
 					        content_x + content_w, ty, 1, vc);
+				/* Both fit, but by how much against the most the row can
+				 * have: the device measures a little wider */
+				if (rows[i].value && rows[i].value != MENU_TICK)
+					ui_fit_tight(rows[i].value, lw + fit_gap + vw, content_w + (cap_w - icon_w0), cap_w);
 				/* The choice that is on: a tick, a capital's height and a
 				 * fifth, where the value's right edge is */
 				if (rows[i].value == MENU_TICK) {
@@ -5492,7 +5551,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				/* The VALUE is the long one. The label keeps its width and
 				 * the value takes everything left of the right edge. */
 				ui_text(a->r, fm, rows[i].label, content_x, ty, -1, lc);
-				room = content_w - lw - gap;
+				room = content_w - lw - fit_gap;
 				if (room <= 0) {
 					/* No room for it at all; the label alone is the row. */
 				} else if (moves) {
@@ -5514,7 +5573,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				}
 			} else {
 				/* The LABEL is the long one: a game's name, an SSID. */
-				room = content_w - (vw ? vw + gap : 0);
+				room = content_w - (vw ? vw + fit_gap : 0);
 				if (rows[i].value) {
 					ui_fit_text(fm, rows[i].value, val, sizeof val, content_w);
 					ui_text(a->r, fm, val, content_x + content_w, ty, 1, vc);
@@ -6073,6 +6132,44 @@ static bool dev_row_on(void)
 static const char *xs_row_value(void);
 static bool xs_row_cable(void);
 
+/* MENU's USB rows: on a device where usbrole decides (or a shot that
+ * says so), and USB Device while a plug waits */
+static bool usb_power_offered(void)
+{
+	usb_power p;
+
+	return shot_usb_menu || plat_usb_power(&p);
+}
+
+static bool usb_wait_row(void) { return shot_usb_menu || g_usb_wait != 0; }
+
+static void usb_power_ask(app *a, unsigned plug);
+
+/* Automatic's message, as it is chosen: what it does and its one risk, on
+ * up to four balanced lines, a line more than result_message's, since the
+ * risk is said whole rather than cut */
+static int usb_auto_lines(app *a, char lines[4][LB_LINE], menu_row rows[4])
+{
+	int w = menu_std_width(a), i;
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_SYSMENU_USB_AUTO_SAID), w, 4, lines);
+
+	ui_fit_drawn(T(S_SYSMENU_USB_AUTO_SAID));
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+	return n;
+}
+
+static bool timed_message(app *a, const char *heading, const menu_row *rows,
+                          int n, int fixed_w, unsigned accent);
+
+static void usb_auto_message(app *a)
+{
+	char lines[4][LB_LINE];
+	menu_row rows[4];
+	int n = usb_auto_lines(a, lines, rows);
+
+	timed_message(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, menu_std_width(a), MENU_ZYPEROS);
+}
+
 static int menu_build(app *a, screen_id screen, int sys,
                       menu_row *out, menu_bufs *b, const char **heading)
 {
@@ -6096,6 +6193,9 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.no_lights = !plat_battery_lights();
 	u.no_charge_limit = !plat_charge_limit_supported();
 	u.charge_limit = g_charge_limit;
+	u.no_usb_power = !usb_power_offered();
+	u.usb_auto = g_usb_auto;
+	u.no_usb_wait = !usb_wait_row();
 
 	if (u.games) {
 		const system_cfg *sc = &a->sys.systems[sys];
@@ -6681,6 +6781,65 @@ static menu_result menu_side_key(app *a, zr_rig *z, menu_build_fn build,
 
 /* The loop itself. Called only through menu_run below, which owns the flush on
  * either side of it. */
+/* A panel screen's picture, for pace_due (src/pace.h): its heading and
+ * rows, the cursor, and what the frame around them shows - the scrim's
+ * strength, the tint, the theme, the replug message */
+static unsigned pace_rows(const char *heading, const menu_row *rows, int n, int sel, float k,
+                          unsigned tint)
+{
+	unsigned h = pace_menu(5381u, heading, rows, n, sel);
+
+	h = pace_int(h, (int)(k * 1000.0f));
+	h = pace_int(h, (int)tint);
+	h = pace_int(h, theme_index());
+	h = pace_int(h, (int)replug_shown());
+	return h;
+}
+
+/* Something on screen whose every frame counts, whatever the screen: the
+ * panel opening or closing, the volume bar, a pop-up, art coming in, or a
+ * button down */
+static bool pace_busy(const app *a)
+{
+	int b;
+
+	for (b = 0; b < IN_COUNT; b++)
+		if (a->in.pressed[b] || a->in.down[b]) return true;
+	return g_pframe.moving || plat_osd_until() != REDRAW_NEVER || texload_ready() ||
+	       g_songpop.on || g_heatpop.on;
+}
+
+/* The memory's slower clock, said once a change, for whichever screen is up:
+ * the shelf's loop and the panels' share it (plat_ram_idle) */
+static bool g_ram_idle;
+
+static void ram_idle_set(bool idle)
+{
+	if (idle == g_ram_idle) return;
+	g_ram_idle = idle;
+	plat_ram_idle(idle);
+}
+
+/* Zyper's pose beside the heading, as a frame shows it: a quarter unit, a
+ * quarter degree, a fiftieth of a blink or of his tongue. A breath moves
+ * him 2 units in 1.2 s, so a still menu draws a few frames a second for
+ * it; a hop or a blink changes it every frame, and draws every frame. */
+static void power_follow(void);
+
+static unsigned zyper_key(const zr_rig *z, unsigned t)
+{
+	zr_pose p = zr_pose_at(z, t);
+	unsigned h = 977u;
+
+	h = pace_int(h, (int)lroundf(p.tilt * 4.0f));
+	h = pace_int(h, (int)lroundf(p.tongue * 50.0f));
+	h = pace_int(h, (int)lroundf(p.ears * 4.0f));
+	h = pace_int(h, (int)lroundf(p.blink * 50.0f));
+	h = pace_int(h, (int)lroundf(p.dy * 4.0f));
+	h = pace_int(h, (int)lroundf(p.squash * 200.0f));
+	return pace_int(h, (int)lroundf(p.mouth * 50.0f));
+}
+
 static menu_exit menu_run_body(app *a, const menu_style *st,
                                menu_build_fn build, menu_key_fn on_key,
                                void *ctx, int lv)
@@ -6689,6 +6848,12 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 	const char *heading = NULL;
 	int sel = st->start_sel, n = 0, b;
 	float k;
+	/* A menu over the shelf draws when its picture changes (src/pace.h).
+	 * One over a game's paused frame or Now Playing (st->backdrop) draws
+	 * every pass, as before: its backdrop is the screen's own. */
+	pace pc;
+
+	pace_init(&pc, plat_now_ms());
 	/* Zyper's moves, in the menu that has him, on this loop's clock: it
 	 * draws every pass, so the breath and the blinks need nothing more */
 	zr_rig zy, *z = st->zyper ? &zy : NULL;
@@ -6816,11 +6981,42 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
-		if (st->backdrop) {
-			st->backdrop(a, ctx, k);
-		} else {
+		if (!st->backdrop) {
+			unsigned nowp = plat_now_ms();
+			unsigned key;
+			/* usbrole's state, followed every pass, as every frame's
+			 * overlay followed it while frames came every pass */
+			power_follow();
+			key = pace_rows(heading, rows, n, sel, k, a->tint);
+			/* Zyper: his pose now, and every frame while the next one's
+			 * differs (a hop, a blink, a breath's step), through the
+			 * redraw clock: his breath is no press, and leaves the
+			 * memory's slow clock alone, as the home's sprite does;
+			 * woken for his next blink or booked move */
+			bool busy = pace_busy(a);
+			unsigned cap = 80;
+
+			if (z && zyper_key(z, nowp) != zyper_key(z, nowp + 17)) redraw_at(nowp);
+
+			if (z) {
+				key = pace_int(key, (int)zyper_key(z, nowp));
+				if ((int)(z->next_blink - nowp) > 0 && z->next_blink - nowp < cap)
+					cap = z->next_blink - nowp;
+				if (z->booked && (int)(z->booked_at - nowp) > 0 && z->booked_at - nowp < cap)
+					cap = z->booked_at - nowp;
+			}
+			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
+				ram_idle_set(pace_ram_idle(&pc, nowp));
+				plat_input_wait(pace_rest(&pc, nowp, g_redraw_at, cap));
+				continue;
+			}
+			ram_idle_set(false);
+			g_redraw_at = REDRAW_NEVER;
+			pace_drawn(&pc, key, nowp);
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
+		} else {
+			st->backdrop(a, ctx, k);
 		}
 		g_menu_zyper = z;
 		g_menu_zyper_at = plat_now_ms();
@@ -7475,9 +7671,89 @@ static void human_bytes(char *out, size_t n, unsigned long long b)
  * it contains a newline, which is exactly two things worth copying.
  *
  * Everything else is status and belongs below the rule. */
-static void hare_head(char *out, size_t n, const char *addr, const char *pin)
+/* With the handheld's name (zyperos.local, mdns.h). Over the cable the name
+ * first, as http:// so a browser opens it rather than searching for it, and
+ * the address beside the PIN under it: only the computer is on that link, so
+ * only the handheld can answer for the name. Over Wi-Fi the address first,
+ * as it was, and the name beside the PIN: anybody on the network could
+ * answer for a name, and what a person types should come from the
+ * handheld's own screen. With no name (mDNS could not start, gave the name
+ * up, or the link is down and `addr` says so), the address over the PIN. */
+static void hare_head(char *out, size_t n, bool cable, const char *name, const char *addr,
+                      const char *pin)
 {
-	snprintf(out, n, "%s\nPIN %s", addr, pin);
+	/* A fixture's "http://192.168.1.42" is the address the screen shows */
+	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
+	if (name && name[0] && cable) snprintf(out, n, "http://%s\n%s · PIN %s", name, addr, pin);
+	else if (name && name[0]) snprintf(out, n, "%s\nPIN %s · %s", addr, pin, name);
+	else snprintf(out, n, "%s\nPIN %s", addr, pin);
+}
+
+/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), until a browser
+ * opens the page: Cable, Address and Browser over the cable, Wi-Fi and
+ * Browser over the air, each a tick once done, the one waited on saying so
+ * and the ones after it quiet, over the rule and the legend. When a step
+ * stalls, its hint takes the others' room: the stalled step's row alone
+ * and the hint under it, balanced onto at most three lines, over the rule
+ * and the legend. Three rows and a three-line hint do not fit the panel under a
+ * two-line heading, and a hint is about one step. The screen and its shot
+ * (--hare-steps) build them here. `name` is the handheld's name on the
+ * network ("" for none) and `addr` its address, for the browser's hint. */
+#define STEP_ROWS 8
+static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hint, size_t hn,
+                        const link_steps *s, int h, bool cable, const char *name,
+                        const char *addr, const char *legend)
+{
+	menu_row all[3];
+	int n = 0, m = 0, k, i, at = 0;
+
+	if (cable) {
+		all[m++] = (menu_row){ T(S_XFER_STEP_CABLE),
+		                       s->step > LS_LINK ? MENU_TICK
+		                       : s->sub == 0 ? T(S_XFER_STEP_UNPLUGGED) : T(S_XFER_WAITING), true };
+		all[m++] = (menu_row){ T(S_XFER_STEP_ADDRESS),
+		                       s->step > LS_ADDRESS ? MENU_TICK
+		                       : s->step == LS_ADDRESS ? T(S_XFER_WAITING) : "",
+		                       s->step >= LS_ADDRESS };
+		at = s->step < LS_BROWSER ? s->step : 2;
+	} else {
+		all[m++] = (menu_row){ T(S_XFER_STEP_WIFI),
+		                       s->step > LS_LINK ? MENU_TICK : T(S_MENU_NOT_CONNECTED), true };
+		at = s->step == LS_LINK ? 0 : 1;
+	}
+	all[m++] = (menu_row){ T(S_XFER_STEP_BROWSER),
+	                       s->step > LS_BROWSER ? MENU_TICK
+	                       : s->step == LS_BROWSER ? T(S_XFER_WAITING) : "",
+	                       s->step >= LS_BROWSER };
+	hint[0] = '\0';
+	switch (h) {
+	case LH_NO_COMPUTER: snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_COMPUTER)); break;
+	case LH_NO_ANSWER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ANSWER));   break;
+	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
+	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
+	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
+	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
+	case LH_NO_BROWSER:
+		if (name && name[0] && cable)
+			snprintf(hint, hn, T(S_XFER_HINT_TYPE_BOTH), name, addr);
+		else if (name && name[0])          /* Wi-Fi: the address first (hare_head) */
+			snprintf(hint, hn, T(S_XFER_HINT_WIFI_BOTH), addr, name);
+		else
+			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_ONE : S_XFER_HINT_WIFI_ONE), addr);
+		break;
+	default: break;
+	}
+	if (hint[0]) {
+		out[n++] = all[at];
+		k = ui_balance_lines(ui_font(UI_F_MENU), hint, menu_std_width(a), 3, lines);
+		for (i = 0; i < k; i++) out[n++] = MENU_NOTE(lines[i]);
+		ui_fit_drawn(hint);          /* drawn in pieces: the whole, for the check */
+	} else {
+		for (i = 0; i < m; i++) out[n++] = all[i];
+	}
+	out[n++] = MENU_RULE;
+	out[n++] = MENU_NOTE(legend);
+	return n;
 }
 
 static int hare_rows(menu_row *out, const char *who, const char *ssh,
@@ -7507,7 +7783,7 @@ static int hare_rows(menu_row *out, const char *who, const char *ssh,
 /* One frame of it, for the shot harness. The rows come from the same
  * function the screen uses, so a picture of this cannot quietly stop being a
  * picture of that. */
-static void hare_preview(app *a, const char *addr, const char *pin,
+static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
                          const char *who, const char *ssh, const char *moved,
                          const char *now)
 {
@@ -7515,7 +7791,7 @@ static void hare_preview(app *a, const char *addr, const char *pin,
 	char head[192];
 	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
 
-	hare_head(head, sizeof head, addr, pin);
+	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -7873,6 +8149,7 @@ static const char *xfer_folder_icon(const char *folder)
  * the cable goes back to charging only unless Developer Mode keeps it. */
 static void xfer_stop(bool cable)
 {
+	mdns_stop();
 	sshlink_stop();
 	hare_set_ssh(NULL);
 	hare_stop();
@@ -7897,6 +8174,7 @@ static void xfer_screen_way(app *a, int way);
 /* 272 holds "Developer" at the menu's size (242) with 12 either side, and
  * three of them with the gaps and pads are 944, inside the screen's insets */
 #define TILE_W   272
+#define TILE_W2  408      /* two tiles: a name on one line, a line under it */
 #define TILE_H   232
 #define TILE_GAP 24
 #define TILE_PAD 40
@@ -7915,6 +8193,8 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_CANCEL_NOW,    UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_CANCEL_PLAY,   UI_GLYPH_CANCEL },
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
+		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
+		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
 	};
 	size_t i;
 
@@ -7997,18 +8277,41 @@ static void tile_note_set(TTF_Font *f, const char *text, int maxw, tile_note *o)
 	if (got != want) o->fits = false;
 }
 
+/* The button hints under a question's tiles (keyhints.h), packed into one
+ * string so they travel as the legend row and in the panel's snapshot:
+ * Left/Right move, A chooses, and B's own answer */
+static const char *tiles_hints(const char *b_word)
+{
+	static char packed[4][256];
+	static int turn;
+	key_hint h[3] = {
+		{ KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) },
+		{ "A", T(S_KEYHINT_CHOOSE) },
+		{ "B", b_word },
+	};
+	char *out = packed[turn++ % 4];
+
+	keyhints_pack(h, 3, out, sizeof packed[0]);
+	return out;
+}
+
+static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
-	const char *legend = T(S_XFER_LEGEND_CHARGE_ONLY);
+	const char *legend = tiles_hints_charge_only();
 	const char *sub = NULL, *what = NULL;
+	key_hint hints[KEYHINTS_MAX];
+	char hbuf[512];
+	int nh;
 	const ds_theme *thm = theme();
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
 	SDL_Rect panel, rule;
 	tile_note nsub = { .n = 0 }, nwhat = { .n = 0 }, nleg;
-	int i, k, top, tiles_y, all = n, tiles_w, inner, widest;
+	int i, k, top, tiles_y, all = n, tiles_w, inner, widest, tw;
 	char head[2][LB_LINE];
 	int nhead;
 
@@ -8021,10 +8324,15 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		legend = tiles[n].label;
 	}
 	if (n < 1) return;
+	/* The legend: button hints (keyhints.h), or a line of text as before */
+	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
 	/* The tiles' width, or the title's if that is wider, and where the lines
 	 * under them do not fit in two lines of it, the screen's inset width: the
 	 * panel is as wide as its words need within the screen, never more */
-	tiles_w = n * TILE_W + (n - 1) * TILE_GAP;
+	/* Two tiles are wider, room for a name on one line and the small line
+	 * under it (What did you plug in?, DESIGN.md 11.36) */
+	tw = n == 2 ? TILE_W2 : TILE_W;
+	tiles_w = n * tw + (n - 1) * TILE_GAP;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
 	panel.w = tiles_w + 2 * TILE_PAD;
 	if (ui_text_width(fh, heading) + 2 * TILE_PAD > panel.w)
@@ -8034,7 +8342,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		inner = panel.w - 2 * TILE_PAD;
 		if (sub) tile_note_set(fs, sub, inner, &nsub);
 		if (what) tile_note_set(fs, what, inner, &nwhat);
-		tile_note_set(fs, legend, inner, &nleg);
+		if (nh) nleg = (tile_note){ .n = 0, .fits = true };
+		else tile_note_set(fs, legend, inner, &nleg);
 		if (panel.w >= widest || ((!sub || nsub.fits) && (!what || nwhat.fits) && nleg.fits)) break;
 		panel.w = widest;
 	}
@@ -8042,7 +8351,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	nhead = ui_balance_lines(fh, heading, inner, 2, head);
 	if (nhead < 1) nhead = 0;
 	panel.h = 32 + (nhead > 1 ? nhead : 1) * lh + 24 + DS_RULE + (sub ? 20 + nsub.n * ls : 0) + 32 + TILE_H +
-	          (what ? 24 + nwhat.n * ls : 0) + 24 + nleg.n * ls + 32;
+	          (what ? 24 + nwhat.n * ls : 0) + 24 +
+	          (nh ? keyhints_height(hints, nh, inner) : nleg.n * ls) + 32;
 	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
 	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
 	if (posed) {
@@ -8078,8 +8388,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	tiles_y += 32;
 
 	for (i = 0; i < n; i++) {
-		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (TILE_W + TILE_GAP), tiles_y,
-		               TILE_W, TILE_H };
+		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (tw + TILE_GAP), tiles_y,
+		               tw, TILE_H };
 		bool on = i == sel;
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
 		const char *label = tiles[i].label ? tiles[i].label : "";
@@ -8090,6 +8400,24 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		int lf = lm;
 
 		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
+		if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
+			/* A name and the small line under it: the mark higher, the
+			 * name in the menu's size on one line (the smaller where it
+			 * does not fit), the line in **meta**, up to two balanced */
+			char sl[2][LB_LINE];
+			int ns = ui_balance_lines(fs, tiles[i].value, t.w - 32, 2, sl), y;
+			SDL_Color soft = on ? ink : UI_TEXT_DIM;
+
+			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 48, 64, ink);
+			if (ui_text_width(f, label) > t.w - 24) { f = fs; lf = ls; }
+			y = t.y + 92;
+			ui_text(a->r, f, label, t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
+			y += lf + 4;
+			for (k = 0; k < ns; k++)
+				ui_text(a->r, fs, sl[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
+			ui_fit_drawn(tiles[i].value);
+			continue;
+		}
 		ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 56, 72, ink);
 		snprintf(one, sizeof one, "%.*s", nl ? (int)(nl - label) : (int)strlen(label), label);
 		snprintf(two, sizeof two, "%s", nl ? nl + 1 : "");
@@ -8121,9 +8449,13 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		tiles_y += nwhat.n * ls;
 	}
 	tiles_y += 24;
-	for (k = 0; k < nleg.n; k++)
-		ui_text(a->r, fs, nleg.l[k], panel.x + panel.w / 2,
-		        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
+	if (nh)
+		keyhints_draw(a->r, hints, nh, panel.x + TILE_PAD, panel.x + panel.w - TILE_PAD,
+		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
+	else
+		for (k = 0; k < nleg.n; k++)
+			ui_text(a->r, fs, nleg.l[k], panel.x + panel.w / 2,
+			        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
 	if (posed) panel_pass_end(a, &panel, pose);
 }
 
@@ -8197,6 +8529,203 @@ static void usb_ask(app *a)
 	} else {
 		usblink_hold(false);
 	}
+}
+
+/* Something on the USB port wants power and gives none (usbpower.h): a
+ * DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
+ * side, which the handheld cannot tell apart without feeding it. Asked once
+ * per plug over the shelf, as Computer Connected is (DESIGN.md 11.36): two
+ * tiles, USB Accessory and Computer, starting on Computer, so a
+ * quick A or B never feeds a computer. USB Accessory asks usbrole for host for
+ * this plug (it says yes only while no power comes in); Computer, B
+ * or MENU leave the port as it is and say to plug the cable in again, so
+ * the computer can take the side that gives power. The question goes by
+ * itself when the plug stops wanting power (unplugged, or power came). */
+static int usb_power_rows(menu_row rows[3])
+{
+	/* A tile's value is the small line under its name (tiles_panel) */
+	rows[0] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
+	rows[1] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
+	rows[2] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
+	return 3;
+}
+
+static void replug_on(unsigned plug);
+
+static void replug_off(void);
+
+static void usb_power_ask(app *a, unsigned plug)
+{
+	menu_row rows[3];
+	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
+	unsigned looked = 0;
+	float f;
+
+	/* The question takes the replug message's place: Computer brings it
+	 * back */
+	replug_off();
+	lv = panel_open();
+	while (choice < 0) {
+		unsigned now = plat_now_ms();
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
+		if (menu_leaving(a)) choice = 1;
+		/* Unplugged, or power came in: nothing to ask any more */
+		if (!looked || now - looked >= 200u) {
+			usb_power p;
+
+			looked = now ? now : 1;
+			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = 2;
+		}
+		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
+			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
+
+			moved_sound(a, b);
+			sel = (sel + (b == IN_LEFT ? -1 : 1) + 2) % 2;
+		}
+		if (a->in.pressed[IN_ACCEPT]) {
+			uisound_play(DS_SOUND_ACCEPT);
+			choice = sel;
+		}
+		if (!panel_frame(a, lv, &f)) continue;
+		tick_tint(a);
+		tick_theme(a);
+		draw_shelf(a);
+		ui_scrim_k(a->r, 0, f);
+		panel_show(a, PANEL_TILES, T(S_XFER_USB_DEVICE_CONNECTED), rows, n, sel, 0, MENU_ZYPEROS,
+		           NULL, false, 0, NULL);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
+	}
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	if (!a->running || choice == 2) return;
+	if (choice == 0) {
+		plat_usb_power_grant(plug);
+		return;
+	}
+	/* A computer: the message, until the cable comes out */
+	replug_on(plug);
+}
+
+/* usbrole's state, five times a second at most, from wherever the launcher
+ * is: the shelf's loop, every screen's frame (the overlay below) and a
+ * game's tick. A plug to ask about waits in g_power_ask for the shelf, the
+ * only place that asks; a computer that has not connected brings up the
+ * replug message (below). */
+static usbpower_follow_state g_power_f;
+static unsigned g_power_ask;            /* a plug to ask about, 0 none */
+static struct {
+	bool     on;                        /* the replug message is up */
+	unsigned plug;                      /* for this plug */
+} g_replug;
+
+static void replug_on(unsigned plug)
+{
+	if (g_replug.on && g_replug.plug == plug) return;
+	g_replug.on = true;
+	g_replug.plug = plug;
+	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+	redraw_now();
+}
+
+static void replug_off(void)
+{
+	if (!g_replug.on) return;
+	g_replug.on = false;
+
+	fprintf(stderr, "usb: replug message down\n");
+	redraw_now();
+}
+
+static void power_follow(void)
+{
+	static unsigned looked;
+	unsigned now = plat_now_ms(), plug;
+	usb_power p;
+
+	if (looked && now - looked < 200u) return;
+	looked = now ? now : 1;
+	if (!plat_usb_power(&p)) { replug_off(); g_usb_wait = 0; return; }
+	{
+		unsigned was = g_usb_wait;
+
+		g_usb_wait = p.known && p.ask && (!p.automatic || p.paused) ? p.plug : 0;
+		if (g_usb_wait != was) redraw_now();
+	}
+	/* usbrole started after the launcher told it, or again: told again */
+	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
+	/* The message stays until the plug ends: unplugged (the pin idle),
+	 * another plug, the computer connected (power in), or the port a host */
+	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
+		replug_off();
+	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
+	switch (usbpower_follow(&g_power_f, &p, now, &plug)) {
+	case USBPOWER_ASK:    g_power_ask = plug; break;
+	case USBPOWER_REPLUG: replug_on(plug);    break;
+	default:              break;
+	}
+}
+
+/* The message's rows: its words balanced onto up to three lines in `w` */
+static int replug_lines(int w, char lines[4][LB_LINE])
+{
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), w, 4, lines);
+
+	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
+	return n;
+}
+
+/* The replug message over whatever screen is up (plat_set_overlay): a slab
+ * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
+ * and 11.36): **surface** with the **panel** lift, the laptop mark at its
+ * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
+ * in **menu** **text** (up to four balanced lines), until the plug ends */
+#define REPLUG_W    960
+#define REPLUG_TOP  104
+static void replug_draw_at(SDL_Renderer *r)
+{
+	char lines[4][LB_LINE];
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
+	SDL_Rect slab;
+	int n, k, y;
+
+	n = replug_lines(REPLUG_W - tx_off - padx, lines);
+	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
+	                   pady + ls + 4 + n * lm + pady };
+	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
+	ui_panel(r, &slab, DS_RADIUS_PANEL);
+	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+	ui_glyph_draw(r, UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2, mark, UI_TEXT_SOFT);
+	y = slab.y + pady;
+	ui_text(r, fs, T(S_XFER_TILE_COMPUTER), slab.x + tx_off, ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
+	y += ls + 4;
+	for (k = 0; k < n; k++)
+		ui_text(r, fm, lines[k], slab.x + tx_off, ui_line_y(UI_F_MENU, y + k * lm), -1, UI_TEXT);
+}
+
+static bool replug_shown(void) { return g_replug.on; }
+
+static void replug_overlay(SDL_Renderer *r)
+{
+	power_follow();
+	if (g_replug.on) replug_draw_at(r);
+}
+
+
+/* In a game nothing is shown (2026-11-10): the plug is only followed, so a
+ * plug that ends is forgotten and one still waiting is asked about once the
+ * player is back on the shelf */
+static void replug_game_tick(void)
+{
+	power_follow();
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -8290,6 +8819,11 @@ typedef struct {
 	hotspot_state hs;
 	unsigned    addr_at, moved_at, link_lost_at, restart_at;
 	int         busy;
+	link_steps  steps;          /* the link, step by step (linksteps.h) */
+	link_sense  sense;          /* the cable's facts, read five times a second */
+	bool        sensed;         /* the device can tell them: steps over the cable */
+	bool        joined;         /* Wi-Fi: on a network */
+	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
 } xfer_sess;
 static xfer_sess g_xs;
@@ -8721,6 +9255,9 @@ static bool xs_open(app *a, int way)
 		if (hare_port() == 80) snprintf(self, sizeof self, "%s", hotspot_addr());
 		else snprintf(self, sizeof self, "%s:%d", hotspot_addr(), hare_port());
 		hare_set_captive(self);
+		/* zyperos.local there too, for a phone that asks by mDNS rather
+		 * than the hotspot's DNS (which answers every name with itself) */
+		mdns_start("wlan0", hotspot_addr(), true);
 	}
 	snprintf(g_xs.pin, sizeof g_xs.pin, "%s", hare_pin());
 	/* SSH over the same cable, behind the same PIN (sshlink.h) */
@@ -8730,6 +9267,9 @@ static bool xs_open(app *a, int way)
 		snprintf(keys, sizeof keys, "%s/ssh", P_USERDATA);
 		snprintf(g_xs.login, sizeof g_xs.login, "root@%s", ip);
 		sshlink_start(ip, g_xs.pin, keys);
+		/* zyperos.local on the cable: only the computer is on this link,
+		 * so the name is ours at once, with no probing (mdns.h) */
+		if (!mdns_start("usb0", ip, false)) fprintf(stderr, "xfer: no zyperos.local on the cable\n");
 	}
 	g_xs.on = true;
 	return true;
@@ -8750,6 +9290,26 @@ static void xs_tick(app *a)
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
+	mdns_poll(now);
+	/* The link, step by step (linksteps.h): the cable's facts five times a
+	 * second; Wi-Fi's from the address check below */
+	if (g_xs.cable) {
+		if (!g_xs.sense_at || now - g_xs.sense_at >= 200u) {
+			int was = g_xs.steps.step, sub = g_xs.steps.sub;
+
+			g_xs.sense_at = now ? now : 1;
+			g_xs.sensed = plat_cable_sense(&g_xs.sense);
+			if (g_xs.sensed) {
+				link_steps_cable(&g_xs.steps, &g_xs.sense, g_xs.st.requests, now);
+				if (g_xs.steps.step != was || g_xs.steps.sub != sub)
+					fprintf(stderr, "xfer: link step %d.%d (computer %d configured %d carrier %d address %d)\n",
+					        g_xs.steps.step, g_xs.steps.sub, g_xs.sense.computer,
+					        g_xs.sense.configured, g_xs.sense.carrier, g_xs.sense.address);
+			}
+		}
+	} else if (!g_xs.hot && g_xs.addr[0]) {
+		link_steps_wifi(&g_xs.steps, g_xs.joined, g_xs.st.requests, now);
+	}
 	if (g_xs.cable) {
 		sshlink_note_web(hare_wrong_pins());
 		sshlink_poll();
@@ -8778,6 +9338,13 @@ static void xs_tick(app *a)
 		        : wifi_status(ssid, sizeof ssid, ip, sizeof ip) == WIFI_CONNECTED && ip[0];
 
 		g_xs.addr_at = now;
+		/* Over Wi-Fi the name follows the network: on it (a new address
+		 * starts it again there), or off with it */
+		if (!g_xs.cable) {
+			g_xs.joined = up;
+			if (up) mdns_start("wlan0", ip, true);
+			else mdns_stop();
+		}
 		if (up) {
 			/* Port 80 needs no colon, and the address is being copied by
 			 * hand off a three-inch screen - so it is only shown when it is
@@ -8896,17 +9463,23 @@ static void dev_ssh_tick(void)
 		 * starts again once File Transfer closes. */
 		if (g_dv.run) {
 			if (!(g_xs.on && g_xs.cable)) sshlink_stop();
+			/* File Transfer runs the name now, wherever it is */
+			if (!g_xs.on) mdns_stop();
 			dev_ssh_forget();
 		}
 		return;
 	}
-	if (g_dv.up) sshlink_poll();
+	if (g_dv.up) {
+		sshlink_poll();
+		mdns_poll(now);
+	}
 	/* The port is read five times a second at most */
 	if (g_dv.at && now - g_dv.at < 200u) return;
 	g_dv.at = now ? now : 1;
 	if (plat_usb_peer() != USB_PEER_COMPUTER) {
 		if (g_dv.run) {
 			sshlink_stop();
+			mdns_stop();
 			fprintf(stderr, "devmode: the cable is out, SSH stopped\n");
 			dev_ssh_forget();
 		}
@@ -8926,6 +9499,8 @@ static void dev_ssh_tick(void)
 	        g_dv.nkeys == 1 ? "" : "s");
 	if (g_dv.up) {
 		g_dv.run = true;
+		/* ssh root@zyperos.local, as File Transfer's cable has it */
+		mdns_start("usb0", g_dv.ip, false);
 	} else {
 		/* Wi-Fi up, say: tried again in a while */
 		g_dv.retry = now ? now : 1;
@@ -9128,10 +9703,10 @@ static const char *const *xs_words(int which)
 }
 #define XS_STOP_L xs_words(0)
 #define XS_STOP_W xs_words(1)
-#define XS_STOP_LEGEND T(S_XFER_LEGEND_KEEP_GOING)
+#define XS_STOP_LEGEND tiles_hints(T(S_KEYHINT_KEEP_GOING))
 #define XS_GAME_L xs_words(2)
 #define XS_GAME_W xs_words(3)
-#define XS_GAME_LEGEND T(S_XFER_LEGEND_NOT_NOW)
+#define XS_GAME_LEGEND tiles_hints(T(S_KEYHINT_NOT_NOW))
 
 /* A question while files move (DESIGN.md 11.14): three tiles over the shelf,
  * as Computer Connected's (My pick in the lab, 2026-11-06), a line under
@@ -9275,6 +9850,15 @@ static bool xs_before_game(app *a)
 	return true;
 }
 
+/* The steps instead of the usual rows (linksteps.h): until a browser asked,
+ * over the cable where the device can tell (plat_cable_sense) and over Wi-Fi
+ * (never the hotspot, whose screen says what it says), and nothing moving */
+static bool xs_steps_shown(void)
+{
+	if (g_xs.hot || !g_xs.steps.started || g_xs.steps.step == LS_DONE || xs_moving()) return false;
+	return g_xs.cable ? g_xs.sensed : true;
+}
+
 /* The way the device has now: over the cable when it links, else over the
  * air, as MENU's row says - or the one already open */
 static void xfer_screen(app *a)
@@ -9287,16 +9871,25 @@ static void xfer_screen(app *a)
  * behind the shelf, it is that one, shown again with the same PIN. */
 static void xfer_screen_way(app *a, int way)
 {
-	char       who[64], moved[64], head[192], now_line[160];
-	menu_row   rows[7];
+	char       who[64], moved[64], head[192], now_line[160], name[96];
+	char       hint[320], lines[3][LB_LINE];
+	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
+	int        cover_left = -1, cover_albums = -1;
+	unsigned long long cover_moved = 0;
 	bool       done = false, stop = false;
 	float      k;
+	pace       pc;
+	/* Left alone on the cable, Auto Off's time turns the screen off, or
+	 * only dims it while files move (src/pace.h, pace_screen_step) */
+	pace_screen scr;
 
 	if (!g_xs.on && !xs_open(a, way)) return;
 	g_xs.shown = true;
 	lv = panel_open();
+	pace_init(&pc, plat_now_ms());
+	pace_screen_init(&scr, plat_now_ms());
 
 	while (!done && !want_quit && a->running && g_xs.on) {
 		unsigned now = plat_now_ms();
@@ -9315,10 +9908,22 @@ static void xfer_screen_way(app *a, int way)
 		muse_poll();
 		cover_answers();
 		muse_file_albums();             /* read again on the way out, if moved */
-		if (g_cov && g_muse.nalbums > 0 && now - cover_at >= 100u) {
+		/* One round of the albums as the screen opens, and another after
+		 * files have moved or the library changed, then still: going round
+		 * for as long as the screen was open asked Muse about every album
+		 * ten times a second on a screen nobody touched (2026-11-10) */
+		if (cover_albums != g_muse.nalbums ||
+		    cover_moved != (unsigned long long)g_xs.in + (unsigned long long)g_xs.out) {
+			cover_albums = g_muse.nalbums;
+			cover_moved = (unsigned long long)g_xs.in + (unsigned long long)g_xs.out;
+			cover_left = g_muse.nalbums;
+		}
+		if (g_cov && g_muse.nalbums > 0 && cover_left > 0 && now - cover_at >= 100u) {
 			char pic[LIB_PATH * 2 + 8];
 
 			int al = (int)(cover_next++ % (unsigned)g_muse.nalbums);
+
+			cover_left--;
 
 			cover_at = now;
 			cover_recheck(al);
@@ -9346,15 +9951,60 @@ static void xfer_screen_way(app *a, int way)
 			snprintf(now_line, sizeof now_line, "%s",
 			         g_xs.st.last[0] ? g_xs.st.last : T(S_XFER_WAITING));
 
-		hare_head(head, sizeof head, g_xs.addr, g_xs.pin);
-		nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
-		                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
+		/* The name, with the port when the server is not on 80, while the
+		 * link is there to reach it by */
+		name[0] = '\0';
+		if (mdns_name() && !g_xs.link_lost_at) {
+			if (hare_port() == 80) snprintf(name, sizeof name, "%s", mdns_name());
+			else snprintf(name, sizeof name, "%s:%d", mdns_name(), hare_port());
+		}
+		hare_head(head, sizeof head, g_xs.cable, name, g_xs.addr, g_xs.pin);
+		if (xs_steps_shown())
+			nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps,
+			                     link_steps_hint(&g_xs.steps, now), g_xs.cable, name,
+			                     g_xs.addr, XS_LEGEND);
+		else
+			nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
+			                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
 		/* The launcher stopping: the hotspot too (xfer_stop), or Wi-Fi stays
 		 * off under a hostapd nobody stops until the next transfer screen */
 		if (a->in.quit_requested) { xs_end(); a->running = false; return; }
+
+		/* The screen's light, ahead of every press: a press that lights a
+		 * dark or dim screen is the light's alone, POWER's too, as on the
+		 * shelf (src/chargedark.h) */
+		{
+			pace_light was = scr.light, light;
+			bool press = false, spent;
+			int b;
+
+			for (b = 0; b < IN_COUNT && !press; b++) press = a->in.pressed[b];
+			light = pace_screen_step(&scr, plat_now_ms(), a->auto_off, on_charger(),
+			                         musec_playing(), press, xs_moving(), g_xs.st.clients, &spent);
+			if (light != was) {
+				if (was == PACE_OFF) plat_backlight(true);
+				if (was == PACE_DIM) plat_backlight_dim(false);
+				if (light == PACE_OFF) { snap_off(); plat_backlight(false); }
+				if (light == PACE_DIM) plat_backlight_dim(true);
+				fprintf(stderr, "xfer: screen %s\n", light == PACE_OFF ? "off, nothing moving"
+				        : light == PACE_DIM ? "dimmed, files moving" : "lit");
+				pc.drawn = false;           /* a whole frame when it lights */
+			}
+			if (spent) {
+				plat_input_flush();
+				memset(&a->in, 0, sizeof a->in);
+				continue;
+			}
+			if (light == PACE_OFF) {
+				/* Dark: still the server, and nothing drawn */
+				ram_idle_set(!xs_moving());
+				plat_input_wait(xs_moving() ? 4 : 50);
+				continue;
+			}
+		}
 
 		/* Powering off stops the hotspot as every way out does (xfer_stop):
 		 * on the hotspot, a second or two for the supplicant to come back */
@@ -9393,17 +10043,48 @@ static void xfer_screen_way(app *a, int way)
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
 		tick_theme(a);
-		draw_shelf(a);
-		ui_scrim_k(a->r, 0, k);
-		if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line,
-		                       hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
-		else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
-		plat_draw_osd(a->r);
-		plat_present();
+		{
+			/* What the frame would show, and whether it must come
+			 * (src/pace.h): files moving and the hotspot coming up draw
+			 * every pass, as before */
+			unsigned nowp = plat_now_ms();
+			const char *legend;
+
+			power_follow();             /* as in the menus' loop */
+			legend = hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND;
+			unsigned key = g_xs.hot
+			    ? pace_str(pace_str(pace_str(pace_str(pace_int(pace_rows(NULL, NULL, 0, -1, k, a->tint),
+			               g_xs.hs), g_xs.name), g_xs.pin), now_line), legend)
+			    : pace_rows(head, rows, nrows, -1, k, a->tint);
+			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
+			bool busy = moving || pace_busy(a);
+
+			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
+				/* Nothing to draw: the memory's slow clock once still for
+				 * 2 s, and a wait for a button. The server is served each
+				 * pass, so its rest is short while a browser is there. */
+				ram_idle_set(pace_ram_idle(&pc, nowp));
+				plat_input_wait(pace_rest(&pc, nowp, g_redraw_at,
+				                          moving ? 4 : g_xs.st.clients ? 10 : 50));
+				continue;
+			}
+			ram_idle_set(false);
+			g_redraw_at = REDRAW_NEVER;
+			draw_shelf(a);
+			ui_scrim_k(a->r, 0, k);
+			if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
+			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
+			plat_draw_osd(a->r);
+			plat_present();
+			pace_drawn(&pc, key, nowp);
+		}
 		/* Shorter than the usual 8ms: this loop is also the server's, and a
 		 * transfer moves POLL_BUDGET per pass. */
 		ui_frame_rest(4);
 	}
+	if (scr.light == PACE_OFF) plat_backlight(true);
+	if (scr.light == PACE_DIM) plat_backlight_dim(false);
+	ram_idle_set(false);
 	panel_close(a, lv, false);
 	g_xs.shown = false;
 	/* The hotspot failing ends it as Y does; anything else that ended the
@@ -14677,6 +15358,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
+		               .no_usb_power = !usb_power_offered(),
+		               .no_usb_wait = !usb_wait_row(),
 		               /* the same rule as the build's (menu_build): a card with
 		                * the update program has the row */
 		               .update = up_have() ? "" : NULL };
@@ -14767,6 +15450,19 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			 * is the hold on About. */
 			dev_screen(a);
 		}
+		return MENU_CHANGED;
+	}
+
+	/* Ask or Automatic, so left, right and A all turn it over; Automatic
+	 * says what it does and its one risk as it is chosen */
+	if (sel == PM_USB && (d || key == IN_ACCEPT)) {
+		usb_auto_save(!g_usb_auto);
+		if (g_usb_auto) usb_auto_message(a);
+		return MENU_CHANGED;
+	}
+	/* A plug waiting: the question again, for that plug */
+	if (sel == PM_USB_WAIT && key == IN_ACCEPT) {
+		if (g_usb_wait) usb_power_ask(a, g_usb_wait);
 		return MENU_CHANGED;
 	}
 
@@ -16574,52 +17270,27 @@ static void np_view_toggle(void)
 static void np_hints(SDL_Renderer *r, bool playing, int kind, int count, int cy,
                      bool video, Uint8 alpha)
 {
-	struct { const char *key, *word; } h[7];
-	int n = 0, i, row = 0, first = 0, rows = 1, from[3] = { 0, 0, 0 };
-	const int left = 64, right = ZYPEROS_SCREEN_W - 64, gap = 16;
-	int used = 0;
+	key_hint h[7];
+	int n = 0;
 
 	if (!cy) cy = 720;
-	h[n].key = "A";  h[n++].word = playing ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
-	h[n].key = "B";  h[n++].word = T(S_CONTROLS_BACK);
+	h[n].key = "A";  h[n++].label = playing ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
+	h[n].key = "B";  h[n++].label = T(S_CONTROLS_BACK);
 	if (video) {
-		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
-		h[n].key = "Y";     h[n++].word = kind == 2 ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
-		if (count > 1) { h[n].key = "L1/R1"; h[n++].word = T(S_MP4_HINT_VIDEO); }
+		h[n].key = "X";     h[n++].label = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].label = kind == 2 ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
+		if (count > 1) { h[n].key = "L1/R1"; h[n++].label = T(S_MP4_HINT_VIDEO); }
 	} else {
-		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
-		h[n].key = "Y";     h[n++].word = kind == 1 ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE);
-		h[n].key = "L1/R1"; h[n++].word = !musec_is_book() ? T(S_MUSE_HINT_TRACK)
-		                                 : musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER)
-		                                                        : T(S_MUSE_HINT_FILE);
+		h[n].key = "X";     h[n++].label = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].label = kind == 1 ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE);
+		h[n].key = "L1/R1"; h[n++].label = !musec_is_book() ? T(S_MUSE_HINT_TRACK)
+		                                  : musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER)
+		                                                         : T(S_MUSE_HINT_FILE);
 	}
-	h[n].key = "< >"; h[n++].word = T(S_MUSE_HINT_SEEK);
-
-	/* Where each row starts: greedily, as many as fit */
-	for (i = 0; i < n; i++) {
-		int w = page_hint_width(h[i].key, h[i].word, false);
-
-		if (i > first && used + gap + w > right - left && rows < 3) {
-			from[rows++] = i;
-			first = i;
-			used = 0;
-		} else if (i > first) {
-			used += gap;
-		}
-		used += w;
-	}
-	from[rows] = n;
-	for (row = 0; row < rows; row++) {
-		int a = from[row], b = row + 1 < rows ? from[row + 1] : n, total = 0, x = left, sp;
-		int y = cy - (rows - 1 - row) * 40;
-
-		for (i = a; i < b; i++) total += page_hint_width(h[i].key, h[i].word, false);
-		sp = b - a > 1 ? (right - left - total) / (b - a - 1) : 0;
-		for (i = a; i < b; i++) {
-			page_hint_fade(r, h[i].key, h[i].word, x, y, false, false, alpha);
-			x += page_hint_width(h[i].key, h[i].word, false) + sp;
-		}
-	}
+	h[n].key = KEYHINT_LEFT_RIGHT; h[n++].label = T(S_MUSE_HINT_SEEK);
+	/* The button hints' component (keyhints.h), spread from x 64 to 960,
+	 * the last row on its line and any more above it */
+	keyhints_draw(r, h, n, 64, ZYPEROS_SCREEN_W - 64, cy, KEYHINTS_SPREAD, true, alpha);
 }
 
 /* The bar, and with `times` the times under it - "1:26", what is left, and
@@ -19742,6 +20413,9 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
+/* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
+ * where it starts); --usb-power said: the message after Computer */
+static int shot_power = -1;
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
 static int shot_xfer_ask = -1;
@@ -19754,6 +20428,11 @@ static const char *shot_hot_now    = "receiving Contra (USA).zip";
 static const char *shot_hare_addr = "192.168.1.42";
 static const char *shot_hare_who  = "1 connected";
 static const char *shot_hare_head = "receiving Contra (USA).zip";
+/* --hare-steps usb|wifi STATE: File Transfer's steps (linksteps.h) at one
+ * state, its hint shown where the state has one: unplugged, nocomputer,
+ * noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork */
+static const char *shot_steps_way, *shot_steps_state;
+static bool shot_steps_noname;      /* ... noname: as when mDNS could not start */
 static const char *shot_wait, *shot_wait_msg;   /* NULL: library.scanning's */
 static int shot_osd_kind, shot_osd_val; /* --osd volume|brightness LEVEL */
 /* --tour STEP [MS [DONE]]: one frame of the tutorial, src/tour.h's step by
@@ -19835,6 +20514,7 @@ static bool shot_status_parse(const char *spec)
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
+		else if (!strcmp(w, "usb=on")) shot_st.m.usb = true;
 		/* headphones in the jack: their mark */
 		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
@@ -20554,6 +21234,32 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
 	}
+	if (shot_power >= 0) {
+		menu_row rows[3], said[3];
+		char lines[3][LB_LINE];
+
+		ui_scrim(a->r, 0);
+		if (shot_power < 2) {
+			int nt = usb_power_rows(rows);
+
+			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
+		} else {
+			/* The replug message over the shelf, as the overlay draws it */
+			(void)said; (void)lines;
+			replug_draw_at(a->r);
+		}
+	}
+	if (shot_usb_said) {
+		/* USB Accessories turned to Automatic: its message, as
+		 * usb_auto_message lays it out */
+		char lines[4][LB_LINE];
+		menu_row rows[4];
+		int n;
+
+		ui_scrim(a->r, 0);
+		n = usb_auto_lines(a, lines, rows);
+		menu_draw(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	}
 	if (shot_dev >= 0) {
 		/* Developer Mode's page, as dev_screen builds it, and the message
 		 * the unlock leaves, in the language that is on */
@@ -20588,8 +21294,47 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_STILL_MOVING), rows, 6, k, PANEL_REST.panel);
 	}
+	if (shot_steps_way) {
+		static const struct { const char *name; int step, sub, hint; } ST[] = {
+			{ "unplugged",  LS_LINK,    0, LH_NONE },
+			{ "nocomputer", LS_LINK,    0, LH_NO_COMPUTER },
+			{ "noanswer",   LS_LINK,    1, LH_NO_ANSWER },
+			{ "nodriver",   LS_LINK,    2, LH_NO_DRIVER },
+			{ "address",    LS_ADDRESS, 0, LH_NONE },
+			{ "noaddress",  LS_ADDRESS, 0, LH_NO_ADDRESS },
+			{ "browser",    LS_BROWSER, 0, LH_NONE },
+			{ "nobrowser",  LS_BROWSER, 0, LH_NO_BROWSER },
+			{ "nonetwork",  LS_LINK,    3, LH_NO_NETWORK },
+			{ "waits",      LS_LINK,    4, LH_NONE },
+			{ "replug",     LS_LINK,    4, LH_REPLUG },
+		};
+		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
+		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
+		link_steps st = { 0 };
+		menu_row rows[STEP_ROWS];
+		char head[192], hint[320], lines[3][LB_LINE];
+		int k, n, h = LH_NONE;
+
+		st.started = true;
+		for (k = 0; k < (int)(sizeof ST / sizeof ST[0]); k++)
+			if (!strcmp(ST[k].name, shot_steps_state)) {
+				st.step = ST[k].step;
+				st.sub = ST[k].sub;
+				h = ST[k].hint;
+			}
+		/* Off Wi-Fi the heading says so, with no name, as the screen does */
+		const char *name = shot_steps_noname ? "" : "zyperos.local";
+
+		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
+		else hare_head(head, sizeof head, cable, name, addr, "4071");
+		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
+		                 T(S_PANEL_B_CLOSE));
+		draw_shelf(a);
+		ui_scrim(a->r, 0);
+		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	}
 	if (shot_hare)
-		hare_preview(a, shot_hare_addr, "4071", shot_hare_who,
+		hare_preview(a, "zyperos.local", shot_hare_addr, "4071", shot_hare_who,
 		             /* the cable's address is USB File Transfer, with SSH */
 		             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL,
 		             "12 KB / 41 MB", shot_hare_head);
@@ -20745,6 +21490,9 @@ static void shot_compose(app *a)
 		zr_works(&g_heatpop.rig, T0 + DS_MS_MOVE);
 		heatpop_draw(a, T0 + (unsigned)shot_heatpop);
 	}
+	/* The replug message (--replug) where the overlay goes: over everything
+	 * else, under the bar */
+	if (g_replug.on) replug_draw_at(a->r);
 	/* The volume or brightness bar over whatever else was asked for, held
 	 * until it has slid all the way in. */
 	if (shot_osd_kind) {
@@ -21170,7 +21918,13 @@ static void take_shot(app *a)
 		g_home_phase = shot_focus_from;
 		shot_compose(a);
 		g_home_phase = at;
-		if (!focus_draw(a)) {
+		/* focus_frame's own rule: a whole frame when anything the focus
+		 * frame does not draw again is on screen */
+		if (focus_ok(a) && focus_draw(a)) {
+			/* What plat_present adds to a frame that skipped
+			 * plat_draw_osd (plat_overlay_present) */
+			if (g_replug.on) replug_draw_at(a->r);
+		} else {
 			fprintf(stderr, "focus: not for this sprite, a whole frame\n");
 			shot_compose(a);
 		}
@@ -21986,6 +22740,26 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
 		}
+		/* MENU's USB rows on the host, which has no usbrole: Ask, or
+		 * Automatic with "auto"; "said" for Automatic's message */
+		/* The replug message up, as on the device: drawn over the frame
+		 * where the overlay goes (plat_draw_osd), for the home's focus
+		 * check (tools/home-shot-check.py) */
+		else if (!strcmp(argv[i], "--replug")) {
+			g_replug.on = true;
+			g_replug.plug = 1;
+		}
+		else if (!strcmp(argv[i], "--usb-menu")) {
+			shot_usb_menu = true;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "auto")) { g_usb_auto = true; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { g_usb_auto = true; shot_usb_said = true; i++; }
+		}
+		else if (!strcmp(argv[i], "--usb-power")) {
+			shot_power = 1;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = 2; i++; }
+			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '1')
+				shot_power = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--dev-page")) {
 			shot_dev = 0;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -22003,6 +22777,11 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_pass   = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_phones = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_now    = argv[++i];
+		}
+		else if (!strcmp(argv[i], "--hare-steps") && i + 2 < argc) {
+			shot_steps_way = argv[++i];
+			shot_steps_state = argv[++i];
+			if (i + 1 < argc && !strcmp(argv[i + 1], "noname")) { shot_steps_noname = true; i++; }
 		}
 		else if (!strcmp(argv[i], "--hare")) {
 			shot_hare = 1;
@@ -22714,6 +23493,8 @@ int main(int argc, char *argv[])
 	t_mark("video");
 	a.r = plat_renderer();
 	t_mark("renderer");
+	/* The replug message, over every screen (DESIGN.md 11.36) */
+	plat_set_overlay(replug_overlay);
 	plat_input_init();
 	t_mark("input");
 	/* Nothing is handed in any more. The two-tier lookup this replaces - a
@@ -22752,6 +23533,7 @@ int main(int argc, char *argv[])
 	/* MENU > Clock, which the corner's first frame is drawn in */
 	clock24_load();
 	batt_icon_load();
+	if (!shot_path) usb_auto_load();
 	if (shot_path && shot_st.h24 >= 0) g_clock24 = shot_st.h24;
 	if (shot_path && shot_st.icon >= 0) g_batt_mode = shot_st.icon;
 	a.sys_cursor = 0;
@@ -22969,11 +23751,11 @@ int main(int argc, char *argv[])
 	 * loop. */
 	const Uint32 RAM_IDLE_MS = 2000;
 	Uint32 last_pass = 0, last_render = 0, last_busy = plat_now_ms();
-	bool ram_idle = false;
 	charge_dark dark = { 0 };    /* the screen off on the charger: src/chargedark.h */
 
 	/* At full, whatever a launcher before this one left it at. */
-	plat_ram_idle(false);
+	g_ram_idle = true;
+	ram_idle_set(false);
 	/* An update the page brought over the cable that is installed now. The
 	 * card's empty .media folders go once the shelf is up (after_start_step). */
 	up_cable_tidy();
@@ -22987,11 +23769,10 @@ int main(int argc, char *argv[])
 		 * opens: a menu, a game, the next shelf's art. Games set their own
 		 * clocks from there (Diatom's power profiles), and a port runs at
 		 * full. */
-		if (ram_idle) {
+		if (g_ram_idle) {
 			for (int b = 0; b < IN_COUNT; b++)
 				if (a.in.pressed[b] || a.in.down[b]) {
-					plat_ram_idle(false);
-					ram_idle = false;
+					ram_idle_set(false);
 					last_busy = plat_now_ms();
 					break;
 				}
@@ -23083,6 +23864,15 @@ int main(int argc, char *argv[])
 		 * turn, so it waits for the screen to be lit rather than opening
 		 * in the dark. */
 		if (usblink_follow(db_dev(), plat_now_ms())) usb_ask(&a);
+		/* Something on the port wants power: asked too, once per plug;
+		 * the replug message is the overlay's, over any screen */
+		power_follow();
+		if (g_power_ask) {
+			unsigned plug = g_power_ask;
+
+			g_power_ask = 0;
+			usb_power_ask(&a, plug);
+		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }
 
@@ -23205,15 +23995,12 @@ int main(int argc, char *argv[])
 			 * nobody has touched for minutes, and Zyper's hop is drawn
 			 * every frame for its two seconds */
 			if (touched || !texload_idle() || g_songpop.on || xs_moving()) last_busy = now;
-			if (ram_idle != (now - last_busy >= RAM_IDLE_MS)) {
-				ram_idle = !ram_idle;
-				plat_ram_idle(ram_idle);
-			}
+			ram_idle_set(now - last_busy >= RAM_IDLE_MS);
 		}
 	}
 	/* A launcher stopped while the shelf sat still leaves nothing slow
 	 * behind for whatever runs next, and nothing dark. */
-	if (ram_idle) plat_ram_idle(false);
+	ram_idle_set(false);
 	if (dark.dark) plat_backlight(true);
 	/* A File Transfer behind the shelf ends with the launcher */
 	xs_end();

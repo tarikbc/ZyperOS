@@ -14,6 +14,7 @@
 #include <time.h>
 
 #include "captive.h"
+#include "clients.h"
 #include "fileio.h"
 #include "hare.h"
 #include "i18n.h"
@@ -82,6 +83,8 @@ static hare_sgdb_fn g_sgdb;
 #endif
 #define ART_NAMES_MAX (8L * 1024 * 1024)
 static unsigned long g_in, g_out;
+static unsigned long g_requests;     /* since hare_start (hare_stats) */
+static clients g_clients;            /* browsers, not sockets (clients.h) */
 
 /* ---- randomness ------------------------------------------------------ */
 
@@ -945,6 +948,16 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 	const char *path = httpd_path(r);
 
 	(void)ctx;
+	/* A browser asked: File Transfer's last step (linksteps.h), and who it
+	 * is, by its address and its session, for the count of browsers */
+	if (!done) {
+		const char *c = httpd_header(r, "Cookie"), *p = c ? strstr(c, "hare=") : NULL;
+		char key[CLIENTS_KEY] = "";
+
+		g_requests++;
+		if (p && session_valid(r)) snprintf(key, sizeof key, "%.*s", CLIENTS_KEY - 1, p + 5);
+		clients_note(&g_clients, httpd_peer(r), key, now_ms32());
+	}
 
 	/* The hotspot (hotspot.h): every name is the handheld there, so a
 	 * request for another host is a phone checking for the internet, and
@@ -1857,6 +1870,8 @@ bool hare_start(const char *roms_dir, const char *card_dir,
 	g_shelf_changed = false;
 	g_in = g_out = 0;
 	g_last[0] = '\0';
+	g_requests = 0;
+	clients_clear(&g_clients);
 
 	/* A root that is missing is one nobody can make: the page does not edit
 	 * the roots themselves, and the card's top level is not a root. v1.0
@@ -1905,7 +1920,13 @@ int hare_poll(void)
 void hare_status(hare_stats *out)
 {
 	if (!out) return;
-	out->clients = httpd_conn_count();
+	{
+		const char *open[64];
+		int n = httpd_peers(open, 64);
+
+		out->clients = clients_count(&g_clients, open, n, now_ms32());
+	}
+	out->requests = g_requests;
 	out->in = g_in;
 	out->out = g_out;
 	out->uploads = g_uploads;

@@ -1085,3 +1085,69 @@ fr = %s Go
 de = %s GB
 ja = %s GB
 it = %s GB
+
+[sysmenu.usb_accessories]
+note = A MENU row on the Pixel 2, under File Transfer: what the handheld does when something that wants power is plugged into its USB port (headphones, a Wi-Fi adapter, a keyboard). Its value is sysmenu.usb_ask or sysmenu.usb_auto. Title Case in English.
+en = USB Accessories
+zh-Hans = USB 配件
+es = Accesorios USB
+pt-BR = Acessórios USB
+fr = Accessoires USB
+de = USB-Zubehör
+ja = USB アクセサリー
+it = Accessori USB
+
+[sysmenu.usb_ask]
+note = USB Accessories' value: the handheld asks "What did you plug in?" each time (the default).
+en = Ask
+zh-Hans = 询问
+es = Preguntar
+pt-BR = Perguntar
+fr = Demander
+de = Fragen
+ja = 確認する
+it = Chiedi
+
+[sysmenu.usb_auto]
+note = USB Accessories' value: accessories get power without a question, two seconds after they go in.
+en = Automatic
+zh-Hans = 自动
+es = Automático
+pt-BR = Automático
+fr = Automatique
+de = Automatisch
+ja = 自動
+it = Automatico
+
+[sysmenu.usb_auto_said]
+note = A message when USB Accessories is turned to Automatic: what it does, and its one risk, plainly. Up to four balanced lines.
+en = Accessories get power right away. A computer not connected yet gets about 2 seconds of power until it is seen.
+zh-Hans = 配件会立即供电。尚未连接的电脑会先得到约 2 秒电力，直到被识别。
+es = Los accesorios reciben energía al momento. Una computadora sin conectar recibe unos 2 segundos de energía hasta detectarse.
+pt-BR = Acessórios recebem energia na hora. Um computador ainda não conectado recebe uns 2 segundos de energia até ser detectado.
+fr = Les accessoires sont alimentés aussitôt. Un ordinateur non connecté reçoit 2 secondes de courant avant d'être vu.
+de = Zubehör bekommt sofort Strom. Ein noch nicht verbundener Computer bekommt etwa 2 Sekunden Strom, bis er erkannt wird.
+ja = アクセサリーにはすぐ給電します。まだ接続していないパソコンには、検出されるまで約 2 秒給電されます。
+it = Gli accessori ricevono subito corrente. Un computer non collegato riceve circa 2 secondi di corrente prima di essere rilevato.
+
+[sysmenu.usb_device]
+note = A MENU row at the top while something on the USB port waits for an answer: A asks "What did you plug in?" again for it, so an answer given wrong, or a plug made during a game, can be answered. Title Case in English.
+en = USB Device
+zh-Hans = USB 设备
+es = Dispositivo USB
+pt-BR = Dispositivo USB
+fr = Périphérique USB
+de = USB-Gerät
+ja = USB 機器
+it = Dispositivo USB
+
+[sysmenu.usb_choose]
+note = USB Device's value: it waits for an answer; A chooses. A lowercase value.
+en = choose
+zh-Hans = 选择
+es = elegir
+pt-BR = escolher
+fr = choisir
+de = wählen
+ja = 選択
+it = scegli

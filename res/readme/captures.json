@@ -483,7 +483,7 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked \u00b7 10 points",
+        "Unlocked · 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
@@ -563,7 +563,7 @@
         "1 connected",
         "Tobu Tobu Girl.gb"
       ],
-      "sha256": "54fb23d626ba08f46755ec5f28e8afbcfb01a23733b96bc87ffce5f3d4021245"
+      "sha256": "f9808f0d1d9af739e71d0c79281b3da41b8e1f9ec43205f42a04c30eae4f677f"
     },
     {
       "file": "light/hotspot.png",
@@ -602,7 +602,7 @@
         "--usb-ask",
         "0"
       ],
-      "sha256": "6a30c8c452dbc8e4e1ab06d8c2c5e8464a4205f01f866defdef7fa41d7f42e4f"
+      "sha256": "b610aecedf41b7933d0db9af9f88d37ff594c20a54c810638a69418639e0cb31"
     },
     {
       "file": "light/scummvm.png",
@@ -1508,6 +1508,25 @@
         "page": "res/web/index.html"
       },
       "sha256": "63fc70bd9264595d9b7d0f219358d2bdaaff11e8c41c294f633cd2fc61951649"
+    },
+    {
+      "file": "light/usb-steps.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--hare-steps",
+        "usb",
+        "browser"
+      ],
+      "sha256": "2bba407d6c44ccf201e5f2f25d112b776388a0746b993e7214eff6cca31ddf91"
     }
   ]
 }

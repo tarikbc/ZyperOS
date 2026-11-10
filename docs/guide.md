@@ -186,10 +186,10 @@ than any one console:
 | **Bluetooth** | the connected headset, or `not connected` - pair, connect and forget |
 | **Audio Output** | `Auto` or `Speaker`, and where Auto landed - see **Audio** below |
 | **Audio Channels** | `auto`, `stereo`, `mono`, `mono left` or `mono right` - see **Audio** below. `auto` on a new device and after an upgrade |
-| **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
+| **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, at `http://zyperos.local`, or always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
-| **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again |
+| **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
 | **Side Lights** | the Pixel 2 only: a page of switches for what the side lights show on their own, `Charging Bar`, `Low Battery`, `Volume and Brightness`, `Files and Covers Done` and `Achievements`, each `On` or `Off`; the row says how many are on. L2+R2 shows the level in all four. `All on` on a new device |
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
@@ -414,9 +414,26 @@ across the top, warm for brightness and cyan for volume.
 **Wi-Fi File Transfer** (MENU, with Wi-Fi) and **USB File Transfer** (the same
 row while a computer is on the USB cable) put the card's folders in a web
 browser: ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. The screen
-shows the address to open and a four-digit PIN, new each time it opens; the
-page asks for the PIN and opens as the fourth digit goes in. Five wrong PINs
-and the page waits 30 seconds.
+shows the handheld's address, its name (`zyperos.local`) and a four-digit
+PIN, new each time it opens. Either opens the page; the name is the easier
+one to type, and the address works where the name does not. Over the USB
+cable the name comes first, `http://zyperos.local`, with the address and the
+PIN under it: only the computer is on that link. Over Wi-Fi the address
+comes first and the name sits beside the PIN: anyone on the network could
+answer for a name, so the address on the handheld's own screen is the one
+to trust.
+The page asks for the PIN and opens as the fourth digit goes in. Five wrong
+PINs and the page waits 30 seconds.
+
+The name is answered by the handheld itself (multicast DNS, which macOS,
+Windows 10 and later, iOS, Android and most Linux desktops ask by
+themselves), on the cable while USB File Transfer is open and on the Wi-Fi
+network while Wi-Fi File Transfer is. With two ZyperOS handhelds on one
+network the second takes `zyperos-2.local`, and each screen shows its own.
+If every name it tries is taken (three in a session), the handheld stops
+using a name until File Transfer opens again, and shows the address alone.
+It answers only its own link: packets that came through a router, or from
+outside its subnet, get no answer.
 
 On a computer the folders are down the left, the open one in lime, and
 the uploads go on under them. On a phone the folders are a row of chips over
@@ -437,20 +454,44 @@ start now is dimmed and says why, and lights up as you plug in or unplug.
 When the first games arrive, by either screen or any other way, the home
 shows them, and Zyper cheers.
 
+### When the page does not open
+
+Until a browser opens the page, the screen shows the connection as the
+handheld sees it, in steps, each ticked when it is done, and the ones after
+the step it is waiting on dimmed:
+
+| Step | Ticked when | If it waits too long |
+|---|---|---|
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect yet: after 5 seconds, unplug the cable and plug it back in. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
+| **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
+| **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
+
+A step that waits too long shows its hint under it, in place of the other
+steps. Once a browser opens the page the screen is the usual one, and if the
+cable comes out the steps come back.
+
+The USB cable is a network of two addresses, the handheld's `10.42.0.1` and
+the computer's `10.42.0.2` (a /30). That is narrower than any other network
+the computer is on, so the computer sends `10.42.0.1` down the cable even
+when its Wi-Fi, a VPN or an office network also uses `10.42.0.x`. On the
+Pixel 2, if the handheld's address server has stopped, USB File Transfer
+starts it again.
+
 ### SSH over the cable
 
 While **USB File Transfer** is open on the Pixel 2, the computer on the
 cable can also open a shell on the handheld:
 
 ```
-ssh root@10.42.0.1
+ssh root@zyperos.local
 ```
 
-The password is the PIN on the screen. To skip it next time, give the
+or `ssh root@10.42.0.1`. The password is the PIN on the screen. To skip it next time, give the
 handheld your key once, with the PIN:
 
 ```
-ssh-copy-id root@10.42.0.1
+ssh-copy-id root@zyperos.local
 ```
 
 The key stays on the card, in `.userdata/pixel2/ssh/`, with the handheld's
@@ -482,7 +523,48 @@ Only):
 | **Developer (SSH)** | development images only: the link stays on until the cable comes out, for the image's own SSH |
 
 A wall charger is never asked about, and unplugging always goes back to
-charging only. USB File Transfer in MENU turns the link on by itself too.
+charging only.
+
+### Plugging something in
+
+The Pixel 2 powers what is plugged into its port only when you say so. Its
+USB-C port has no chip that tells a Wi-Fi adapter, USB-C headphones or a
+keyboard from a computer that has not connected yet (its port is waiting
+to be powered), and a computer must never be powered by the handheld (a
+Mac waited 10, 16 and over 30 seconds in my tests). So when something like
+that is plugged in, the shelf asks, two seconds after it goes in, **What
+did you plug in?**, with two tiles:
+
+| | |
+|---|---|
+| **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect yet: unplug the cable and plug it back in. Then it connects |
+
+The question goes by itself when the thing is unplugged or the computer
+connects. Every plug is asked about on its own, however soon after the last
+one: a cable swapped for an adapter in a second is asked about like any
+other. The handheld never powers the port in the first seconds after it
+starts, while a computer or a charger powers it, or once a computer has
+shown up on it during that plug; USB Accessory does not change that.
+
+Nothing comes up over a game. Something plugged in while you play waits,
+unpowered, and is asked about when you're back on the shelf. While a plug
+waits for an answer (put off, plugged in during a game, or answered
+Computer by mistake), a small USB mark shows in the shelf's top corner, and
+**MENU > USB Device**, at the top of the menu, asks the question again for
+it, with no replug. USB File Transfer in MENU turns the link on by itself
+too.
+
+**MENU > USB Accessories** sets what happens, as on a phone: **Ask**, the
+default, or **Automatic**, where an accessory gets power two seconds after
+it goes in, with no question, under the same rules. Its one risk, said when
+you choose it: a computer that has not connected yet gets about two seconds
+of power before the handheld sees it on the cable and stops; that plug then
+stays unpowered until it comes out. Once a computer has shown up, Automatic
+pauses: until the port has been empty for 3 seconds, anything plugged in
+gets the question instead (a computer whose port drops and comes back when
+the power goes is never fed again, and an adapter swapped in is one press
+away), and the message says to plug the computer in again.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so
@@ -498,8 +580,9 @@ Sound can come out of four places, and ZyperOS picks in a fixed order:
 **a USB-C headphone adapter, then wired headphones, then Bluetooth, then the
 speaker.**
 
-The adapter is the Pixel 2's, whose USB-C port takes one the moment it is
-plugged in; the Brick's port does not. Bluetooth is the Brick's; the Pixel 2
+The adapter is the Pixel 2's, whose USB-C port powers one once you choose
+**USB Accessory** (see **Plugging something in** below); the Brick's port does
+not. Bluetooth is the Brick's; the Pixel 2
 has none.
 
 A cable wins outright, in every setting. Someone who physically plugged

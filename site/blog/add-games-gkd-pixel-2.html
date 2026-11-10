@@ -4,7 +4,7 @@ summary: Folder names and file types, then three ways in: the card in a computer
 crumb: Adding games
 topic: guide
 published: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-10
 image: portal
 image_alt: The File Transfer page on a computer, with an NES folder open and an upload going
 related: gkd-pixel-2-wifi-adapter, box-art-gkd-pixel-2, gkd-pixel-2-bios-files
@@ -51,8 +51,8 @@ weight: 20
 <p>The Pixel 2 has no Wi-Fi of its own, so this needs a USB Wi-Fi adapter in its USB-C port. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> says which ones work.</p>
 <ol>
   <li>Join a network in <strong>MENU &gt; Wi-Fi</strong>.</li>
-  <li>Open <strong>MENU &gt; Wi-Fi File Transfer</strong>. It shows an address and a four-digit PIN.</li>
-  <li>Open that address in a browser on your phone or computer, and type the PIN.</li>
+  <li>Open <strong>MENU &gt; Wi-Fi File Transfer</strong>. It shows an address and a four-digit PIN, and beside the PIN its name, <code>zyperos.local</code>.</li>
+  <li>Open that address (or <code>http://zyperos.local</code>) in a browser on your phone or computer, and type the PIN.</li>
   <li>Drag games into their console's folder. They are on the shelf when you leave the screen.</li>
 </ol>
 <figure class="shot small"><img src="/img/hare.png" alt="Wi-Fi File Transfer on the handheld, showing the address, the PIN and one browser connected"><figcaption>The handheld shows the address, the PIN and who is connected.</figcaption></figure>
@@ -65,10 +65,12 @@ weight: 20
 <p>The same page, over the USB cable, with no Wi-Fi. It works with a Mac, Linux or Windows 11. Windows 10 has no driver for this kind of connection.</p>
 <ol>
   <li>Plug the Pixel 2 into the computer. The port only charges until you say otherwise, so the handheld asks: <strong>Charge Only</strong> or <strong>File Transfer</strong>. Choose File Transfer.</li>
-  <li>Open <code>http://10.42.0.1</code> in a browser on that computer, and type the PIN from the screen.</li>
+  <li>Open <code>http://zyperos.local</code> in a browser on that computer, or <code>http://10.42.0.1</code>, and type the PIN from the screen.</li>
   <li>Drag games into their console's folders.</li>
 </ol>
 <figure class="shot small"><img src="/img/usb-ask.png" alt="Computer Connected: Charge Only, File Transfer or Developer (SSH)"><figcaption>A computer on the cable gets a question first. A wall charger never does.</figcaption></figure>
+<figure class="shot small"><img src="/img/usb-steps.png" alt="USB File Transfer checking the connection: Cable and Address ticked, Browser waiting"><figcaption>Until a browser opens the page, the handheld ticks off each step.</figcaption></figure>
+<p>If the page does not open, look at the handheld. Until a browser opens the page, it shows three steps: <strong>Cable</strong> (the computer took the handheld and opened its network), <strong>Address</strong> (the computer took <code>10.42.0.2</code>) and <strong>Browser</strong>. A step that waits too long gets a hint under it: try another cable or port, check Device Manager on Windows, or turn off a VPN or proxy that sends the address somewhere else.</p>
 <p>While USB File Transfer is open, the computer can also open a shell on the handheld with <code>ssh root@10.42.0.1</code>, the PIN as the password. To copy with <code>scp</code>, add its <code>-O</code> flag, because the handheld has no SFTP server: <code>scp -O game.zip root@10.42.0.1:/roms/SNES/</code>.</p>
 
 <h2>The File Transfer page</h2>

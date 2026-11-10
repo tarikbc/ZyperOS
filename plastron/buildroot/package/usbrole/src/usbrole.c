@@ -16,9 +16,23 @@
  * damage the board. And the pin is not enough on its own: plugged into a
  * computer by a USB-C cable, it read 1 for a moment as the plug settled, and
  * the port went host for 4 to 10 seconds with the computer powering it, the
- * computer seeing nothing meanwhile (2026-11-05). So going host waits for
- * the pin to settle and needs nothing powering the port from outside (the
- * RK817's charger input); a DAC or an adapter wants power and gives none.
+ * computer seeing nothing meanwhile (2026-11-05). And on 2026-11-10 it went
+ * host with a Mac on the cable whose port had taken the sink side, and fed
+ * it: such a Mac looks exactly like a DAC. When the port may be a host is
+ * rule.c's. A plug that wants power and gives none is asked about by the
+ * launcher (What did you plug in?: USB Accessory, or Computer), and only USB
+ * Accessory for that plug makes it one, with every safety rule still
+ * holding; or, with MENU > USB Accessories on Automatic, the plug having
+ * waited UR_SETTLE_MS under the same rules (a computer that shows up on the
+ * bus then ends it at once).
+ *
+ * The launcher and usbrole meet in /run/usbrole, root's alone (0700, made
+ * and checked here): usbrole writes "state" (the plug's number, whether it
+ * may be asked about, the readings, whether a computer showed up during the
+ * plug, the role and the setting), and the launcher writes "host" with the
+ * plug's number for USB Accessory, which usbrole reads once and deletes, and
+ * "mode" ("auto" or "ask") for the setting. usbrole stays the only writer of
+ * the role.
  *
  * And when a DAC's sound card appears, it turns the DAC's own playback volume
  * to full: the volume the player moves is a software one in front of it
@@ -31,24 +45,35 @@
  * finds nothing to load for it.
  */
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/netlink.h>
+#include <poll.h>
 #include <signal.h>
 #include <sound/asound.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
+
+#include "rule.h"
 
 /* Room for a directory name of the most a name can be, 255 */
 static char host_state[320];   /* the USB-HOST cable's state file */
+static char ext_state[320];    /* its extcon's every cable: SDP=1, CDP=0, ... */
 static char role_file[320];    /* the role switch */
+#define RUN_DIR    "/run/usbrole"
+#define STATE_FILE RUN_DIR "/state"
+#define HOST_FILE  RUN_DIR "/host"
+#define MODE_FILE  RUN_DIR "/mode"
+static int run_ok;             /* RUN_DIR is root's own directory */
 /* Power coming in from the other end: a computer or a charger */
 #define VBUS_IN "/sys/class/power_supply/rk817-charger/online"
-/* How long the pin must stay at host before the port follows it */
-#define SETTLE_US 400000
 
 static void log_to_kernel(const char *text)
 {
@@ -95,6 +120,8 @@ static int find_files(void)
 					continue;
 				snprintf(host_state, sizeof host_state,
 				         "/sys/class/extcon/%s/cable.%d/state", e->d_name, i);
+				snprintf(ext_state, sizeof ext_state,
+				         "/sys/class/extcon/%s/state", e->d_name);
 				break;
 			}
 		}
@@ -112,46 +139,190 @@ static int find_files(void)
 	return host_state[0] && role_file[0] ? 0 : -1;
 }
 
-static void follow_pin(void)
+static unsigned now_ms(void)
 {
-	char state[8], role[16];
-	const char *want;
-	int fd;
+	struct timespec t;
 
-	if (read_line(host_state, state, sizeof state) < 0 ||
-	    read_line(role_file, role, sizeof role) < 0)
-		return;
-	static int held;   /* the pin said host with power in: said once */
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (unsigned)(t.tv_sec * 1000u + t.tv_nsec / 1000000);
+}
 
-	want = strcmp(state, "1") ? "device" : "host";
-	if (strcmp(want, "host"))
-		held = 0;
-	if (!strcmp(role, want))
-		return;
-	/* Going host: only if the pin still says so once it has settled, and
-	 * nothing is powering the port. Read once the port is host, the
-	 * charger input would see the port's own power, so it is asked only on
-	 * the way there. */
-	if (!strcmp(want, "host")) {
-		char vbus[8];
+/* A computer on the bus as a USB device: a Mac whose port took the device
+ * side, "Product: Mac" by Apple (2026-11-10). Only there while host. */
+static int computer_on_bus(void)
+{
+	DIR *d = opendir("/sys/bus/usb/devices");
+	struct dirent *e;
+	int found = 0;
 
-		usleep(SETTLE_US);
-		if (read_line(host_state, state, sizeof state) < 0 || strcmp(state, "1"))
-			return;
-		if (read_line(VBUS_IN, vbus, sizeof vbus) == 0 && !strcmp(vbus, "1")) {
-			if (!held++)
-				log_to_kernel("usbrole: the pin says host, but power comes in: device\n");
-			return;
-		}
+	if (!d)
+		return 0;
+	while (!found && (e = readdir(d))) {
+		char path[320], v[16], p[64];
+
+		if (e->d_name[0] == '.' || !strncmp(e->d_name, "usb", 3) || strchr(e->d_name, ':'))
+			continue;
+		snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/idVendor", e->d_name);
+		if (read_line(path, v, sizeof v) < 0 || strcmp(v, "05ac"))
+			continue;
+		snprintf(path, sizeof path, "/sys/bus/usb/devices/%s/product", e->d_name);
+		found = read_line(path, p, sizeof p) == 0 && !strcmp(p, "Mac");
 	}
-	fd = open(role_file, O_WRONLY | O_CLOEXEC);
+	closedir(d);
+	return found;
+}
+
+static ur_state rule;
+static void read_mode(void);
+
+/* RUN_DIR made, or found, and checked to be root's own directory and no
+ * link: else nothing is written or read there, and no plug can be powered */
+static void run_dir(void)
+{
+	struct stat st;
+
+	if (mkdir(RUN_DIR, 0700) < 0 && errno != EEXIST)
+		return;
+	if (lstat(RUN_DIR, &st) < 0 || !S_ISDIR(st.st_mode) || st.st_uid != 0 ||
+	    (st.st_mode & 0077)) {
+		log_to_kernel("usbrole: " RUN_DIR " is not root's own: no plug can be powered\n");
+		return;
+	}
+	unlink(HOST_FILE);             /* a request from before this start */
+	run_ok = 1;
+	read_mode();                   /* the setting the launcher left, if any */
+}
+
+/* The state for the launcher, when it changed: written beside and renamed,
+ * so it is read whole */
+static void write_state(const ur_sense *in, const char *role)
+{
+	static char last[128];
+	char line[128];
+	int fd, n;
+
+	if (!run_ok)
+		return;
+	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%s auto=%d paused=%d\n",
+	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.computer, role, rule.auto_mode, rule.paused);
+	if (n <= 0 || !strcmp(line, last))
+		return;
+	fd = open(STATE_FILE ".new", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
 	if (fd < 0)
 		return;
+	if (write(fd, line, (size_t)n) == n && rename(STATE_FILE ".new", STATE_FILE) == 0)
+		snprintf(last, sizeof last, "%s", line);
+	close(fd);
+}
+
+/* The setting, as the launcher keeps it (MENU > USB Accessories): "auto" in
+ * MODE_FILE is Automatic, anything else (or none) is Ask. Read whenever it is
+ * written; a regular file of root's, a few bytes, as the request is. */
+static void read_mode(void)
+{
+	char text[16] = "";
+	struct stat st;
+	ssize_t got;
+	int fd, was = rule.auto_mode;
+
+	if (!run_ok)
+		return;
+	fd = open(MODE_FILE, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+	if (fd < 0) { rule.auto_mode = 0; return; }
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_uid != 0 ||
+	    st.st_size >= (off_t)sizeof text) {
+		close(fd);
+		rule.auto_mode = 0;
+		return;
+	}
+	got = read(fd, text, sizeof text - 1);
+	close(fd);
+	if (got < 0) got = 0;
+	text[got] = '\0';
+	rule.auto_mode = !strncmp(text, "auto", 4);
+	if (rule.auto_mode != was)
+		log_to_kernel(rule.auto_mode ? "usbrole: accessories powered automatically\n"
+		                             : "usbrole: accessories asked about\n");
+}
+
+/* The launcher's USB Accessory: the plug's number in HOST_FILE, read once
+ * (a regular file of root's, a few bytes) and deleted */
+static void read_request(void)
+{
+	char text[32];
+	struct stat st;
+	ssize_t got;
+	unsigned plug;
+	int fd;
+
+	if (!run_ok)
+		return;
+	fd = open(HOST_FILE, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_uid != 0 ||
+	    st.st_size >= (off_t)sizeof text) {
+		close(fd);
+		unlink(HOST_FILE);
+		return;
+	}
+	got = read(fd, text, sizeof text - 1);
+	close(fd);
+	unlink(HOST_FILE);
+	if (got <= 0)
+		return;
+	text[got] = '\0';
+	plug = (unsigned)strtoul(text, NULL, 10);
+	log_to_kernel(ur_grant(&rule, plug) ? "usbrole: power it, as the player said\n"
+	                                    : "usbrole: a request for a plug that cannot have power now\n");
+}
+
+/* The port's facts, rule.c's answer, and the role switch set to it. How
+ * long until it wants to look again with no event, 0 for not. */
+static unsigned follow_pin(void)
+{
+	char state[8], role[16], vbus[8], ext[256] = "";
+	ur_sense in;
+	const char *want;
+	unsigned again;
+	int fd;
+	static unsigned said;   /* the plug last said to wait for an answer */
+
+	if (read_line(role_file, role, sizeof role) < 0)
+		return 0;
+	in.pin = read_line(host_state, state, sizeof state) < 0 ? -1 : !strcmp(state, "1");
+	in.vbus = read_line(VBUS_IN, vbus, sizeof vbus) < 0 ? -1 : !strcmp(vbus, "1");
+	/* Every cable of the PHY's extcon, one a line: its charger detection */
+	in.charger = 0;
+	if ((fd = open(ext_state, O_RDONLY | O_CLOEXEC)) >= 0) {
+		ssize_t got = read(fd, ext, sizeof ext - 1);
+
+		close(fd);
+		ext[got > 0 ? got : 0] = '\0';
+		in.charger = strstr(ext, "SDP=1") || strstr(ext, "CDP=1") || strstr(ext, "DCP=1");
+	}
+	in.computer = !strcmp(role, "host") && computer_on_bus();
+	want = ur_decide(&rule, &in, now_ms(), &again) == UR_HOST ? "host" : "device";
+	write_state(&in, want);
+	if (rule.can_ask && said != rule.plug) {
+		said = rule.plug;
+		log_to_kernel(rule.auto_mode && !rule.paused ? "usbrole: a plug wants power: powered after its settle\n"
+		              : rule.auto_mode ? "usbrole: a plug wants power: asked, since a computer was just here\n"
+		              : "usbrole: a plug wants power: waiting for the player\n");
+	}
+	if (in.computer)
+		log_to_kernel("usbrole: a computer on the bus: device until it is unplugged\n");
+	if (!strcmp(role, want))
+		return again;
+	fd = open(role_file, O_WRONLY | O_CLOEXEC);
+	if (fd < 0)
+		return again;
 	if (write(fd, want, strlen(want)) > 0)
 		log_to_kernel(strcmp(want, "host") ?
 		              "usbrole: device, nothing plugged in wants power\n" :
 		              "usbrole: host, something plugged in wants power\n");
 	close(fd);
+	return again;
 }
 
 /* The output's controls, "... Playback Volume" and "... Playback Switch", at
@@ -249,7 +420,14 @@ int main(void)
 	}
 
 	signal(SIGCHLD, SIG_IGN);
-	follow_pin();
+	run_dir();
+	int watch = run_ok ? inotify_init1(IN_NONBLOCK | IN_CLOEXEC) : -1;
+
+	if (watch >= 0 && inotify_add_watch(watch, RUN_DIR, IN_CLOSE_WRITE | IN_MOVED_TO) < 0) {
+		close(watch);
+		watch = -1;
+	}
+	unsigned again = follow_pin();
 	/* A DAC already in, if init restarted us. Card 0 is the RK817. */
 	for (int card = 1; card < 8; card++)
 		dac_full(card);
@@ -258,17 +436,38 @@ int main(void)
 	 * "change@/devices/.../extcon/extcon0". A sound card's controls arrive
 	 * as "add@/devices/.../sound/card1/controlC1", the node already made. */
 	for (;;) {
-		ssize_t got = recv(sock, msg, sizeof msg - 1, 0);
+		struct pollfd p[2] = { { .fd = sock, .events = POLLIN }, { .fd = watch, .events = POLLIN } };
+		ssize_t got;
 		const char *last;
+		int r;
 
+		/* The grace running out: looked at again on time, events or not */
+		r = poll(p, watch >= 0 ? 2 : 1, again ? (int)again : -1);
+		if (r == 0) {
+			again = follow_pin();
+			continue;
+		}
+		/* The launcher's request, the moment it is written */
+		if (watch >= 0 && (p[1].revents & POLLIN)) {
+			char ev[1024];
+
+			while (read(watch, ev, sizeof ev) > 0) {}
+			read_mode();
+			read_request();
+			again = follow_pin();
+		}
+		if (!(p[0].revents & POLLIN))
+			continue;
+		got = recv(sock, msg, sizeof msg - 1, 0);
 		if (got <= 0)
 			continue;
 		msg[got] = '\0';
 		last = strrchr(msg, '/');
 		/* The pin's cable, and the charger's input, which can settle
 		 * after it */
-		if (strstr(msg, "/extcon/") || strstr(msg, "/power_supply/"))
-			follow_pin();
+		if (strstr(msg, "/extcon/") || strstr(msg, "/power_supply/") ||
+		    strstr(msg, "/usb1/1-"))
+			again = follow_pin();
 		else if (!strncmp(msg, "add@", 4) && last && !strncmp(last, "/controlC", 9) &&
 		         atoi(last + 9) > 0)
 			dac_full(atoi(last + 9));

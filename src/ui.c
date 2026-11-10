@@ -861,6 +861,21 @@ static void i18n_note(const char *what, const char *s)
 	fprintf(stderr, "i18n: %s: %s\n", what, s);
 }
 
+/* A row's value that fits its room by less than 2% of the row: the Pixel
+ * 2's fonts measure a little wider than the host's, and "auto
+ * (alto-falante)", 3 units to spare in MENU on the host, was cut there
+ * (2026-11-10). "i18n: tight: ..." (or "tight data"), which
+ * tools/i18n-shots.py holds as it holds a cut. Only for a menu row's value,
+ * where the room is what the label leaves: a fitted line elsewhere is tight
+ * by design (a balanced line, a button's word). */
+void ui_fit_tight(const char *s, int w, int room, int row_w)
+{
+	int spare = row_w / 100;
+
+	if (s && w <= room && w > room - spare)
+		i18n_note(i18n_watched(s) ? "tight" : "tight data", s);
+}
+
 /* ---- the box a string must stay inside ---------------------------------
  *
  * A string that is wider than the panel, tile or plate it is drawn on is as
@@ -996,6 +1011,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 #else
 #define i18n_fit_seen(src, dst) ((void)0)
 void ui_fit_frame(void) {}
+void ui_fit_tight(const char *s, int w, int room, int row_w) { (void)s; (void)w; (void)room; (void)row_w; }
 void ui_fit_drawn(const char *s) { (void)s; }
 #endif
 
@@ -3232,6 +3248,26 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.20f, 0.92f, 0.20f, 0.08f, G_W);
 		g_line(s, 0.33f, 0.60f, 0.45f, 0.72f, G_W);
 		g_line(s, 0.45f, 0.72f, 0.68f, 0.46f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_HEADPHONES) {
+		/* A band over the head, half a circle, and a cup at each end,
+		 * a stroke of no length's width as the USB trident's discs */
+		g_arc(s, 0.50f, 0.56f, 0.34f, pi, 1.5f * pi);
+		g_arc(s, 0.50f, 0.56f, 0.34f, 1.5f * pi, 2.0f * pi);
+		g_line(s, 0.20f, 0.60f, 0.20f, 0.80f, 0.085f);
+		g_line(s, 0.80f, 0.60f, 0.80f, 0.80f, 0.085f);
+		return;
+	}
+	if (g == UI_GLYPH_LAPTOP) {
+		/* A laptop, open: the screen, and the base wider than it */
+		g_line(s, 0.20f, 0.20f, 0.80f, 0.20f, G_W);
+		g_line(s, 0.80f, 0.20f, 0.80f, 0.64f, G_W);
+		g_line(s, 0.80f, 0.64f, 0.20f, 0.64f, G_W);
+		g_line(s, 0.20f, 0.64f, 0.20f, 0.20f, G_W);
+		g_line(s, 0.20f, 0.64f, 0.08f, 0.80f, G_W);
+		g_line(s, 0.08f, 0.80f, 0.92f, 0.80f, G_W);
+		g_line(s, 0.92f, 0.80f, 0.80f, 0.64f, G_W);
 		return;
 	}
 	if (g == UI_GLYPH_CHECK) {

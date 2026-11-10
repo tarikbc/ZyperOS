@@ -6,6 +6,9 @@
 
 #include <stdbool.h>
 
+#include "linksteps.h"
+#include "usbpower.h"
+
 /* What is on the other end of the USB port, for USB's charge-only rule
  * (src/usblink.h): the PHY tells a computer's port (SDP, CDP) from a wall
  * charger (DCP) by itself, with the link unbound. UNKNOWN on a device whose
@@ -22,5 +25,18 @@ usb_peer plat_usb_peer(void);
  * a new plug needs), -1 only asks. True when it is bound (after the op); a
  * device whose link is always on says true. */
 bool plat_usb_link(int op);
+/* What the device can tell of the cable's link, for File Transfer's steps
+ * (linksteps.h): the computer, the controller, usb0's carrier and the
+ * computer's address there. While the computer has no address it is asked
+ * for one (an ARP request, by sending it a datagram), at most once a second.
+ * False on a device that cannot tell (the Brick), which shows no steps. A few
+ * small reads: the screen asks five times a second. */
+bool plat_cable_sense(link_sense *out);
+/* plastron's usbrole and the launcher (usbpower.h): its state now, and Power
+ * It for a plug. False on a device without usbrole (the Brick). */
+bool plat_usb_power(usb_power *out);
+bool plat_usb_power_grant(unsigned plug);
+/* MENU > USB Accessories for usbrole: true for Automatic (usbpower_mode) */
+bool plat_usb_power_mode(bool automatic);
 
 #endif

@@ -461,8 +461,25 @@ void plat_osd_forget(void)
 	osd_tex_for = NULL;
 }
 
+/* What the launcher draws over every screen, under the bar (plat_set_overlay) */
+static void (*g_overlay)(SDL_Renderer *r);
+static bool osd_drawn;          /* plat_draw_osd ran since the last present */
+
+void plat_set_overlay(void (*fn)(SDL_Renderer *r)) { g_overlay = fn; }
+
+/* Each device's plat_present first: a frame that did not come through
+ * plat_draw_osd (a cleared screen, a loading screen, a power screen) gets
+ * the overlay here, last, so it is over everything on every frame */
+void plat_overlay_present(SDL_Renderer *r)
+{
+	if (g_overlay && !osd_drawn) g_overlay(r);
+	osd_drawn = false;
+}
+
 void plat_draw_osd(SDL_Renderer *r)
 {
+	if (g_overlay) g_overlay(r);
+	osd_drawn = true;
 	static uint32_t px[OSDBAR_W * OSDBAR_H];
 	Uint32 now = SDL_GetTicks();
 	float a, rise;

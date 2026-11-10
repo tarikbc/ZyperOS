@@ -83,9 +83,10 @@
  * the languages lab, 2026-11-07; DESIGN.md 11.30). Its value is the
  * language's own name; A opens the five. */
 typedef enum {
+	PM_USB_WAIT,
 	PM_SEARCH,
 	PM_STATS, PM_RANDOM,
-	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_CLOCK,
+	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_USB, PM_CLOCK,
 	PM_HOURS, PM_LANGUAGE,
 	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
 	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
@@ -154,10 +155,11 @@ typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
  * is. */
 int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out);
 
-/* 28: the ZyperOS menu reached 24 with Developer Mode, and Random Game makes
- * 25; room for a few more. The menu runner holds MENU_RUN_ROWS (main.c),
- * which must stay at least this. */
-#define MENU_MAX_ROWS 28
+/* 32: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
+ * and the two USB rows (USB Device, USB Accessories) 29 in all; room for a
+ * few more. The menu runner holds MENU_RUN_ROWS (main.c), which must stay at
+ * least this. */
+#define MENU_MAX_ROWS 32
 
 /* The array every caller declares must hold every row a build can produce, and
  * on 2026-09-16 it stopped: PM_ROWS went to 13 against a cap of 12 when the
@@ -243,6 +245,16 @@ typedef struct {
 	/* No charge limit on this device's charger (plat_charge_limit_supported),
 	 * so no Charge Limit row, as no_lights is for Side Lights */
 	bool        no_charge_limit;
+	/* The Pixel 2's USB port powers an accessory only when told (plastron's
+	 * usbrole, src/usbpower.h): USB Accessories, Ask or Automatic, under
+	 * File Transfer; no row where nothing decides that (the Brick). And
+	 * USB Device at the top while a plug waits for an answer, opening the
+	 * question again for it (What did you plug in?, DESIGN.md 11.36). */
+	bool        no_usb_power;
+	bool        usb_auto;
+	bool        no_usb_wait;   /* no plug waits: no USB Device row (every
+	                            * row shows with the struct zeroed, as the
+	                            * checks build it) */
 
 	wifi_state  wifi;        /* already cached by the caller; see menu_wifi */
 	const char *ssid;        /* the network's name when connected, else NULL */

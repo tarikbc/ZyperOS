@@ -47,16 +47,60 @@ de = Entwickler\n(SSH)
 ja = 開発者\n（SSH）
 it = Sviluppatore\n(SSH)
 
-[xfer.legend_charge_only]
-note = The key legend under the tiles: Left/Right move between them, A chooses, B leaves the cable charging only. Three spaces between the keys. tight: one line in a panel 944 units wide at meta size. review: pt-BR is 899 of 944; "Esq./Dir." would give room.
-en = Left/Right: move   A: choose   B: charge only
-zh-Hans = 左/右：移动   A：选择   B：仅充电
-es = Izquierda/Derecha: mover   A: elegir   B: cargar
-pt-BR = Esquerda/Direita: mover   A: escolher   B: carregar
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: recharger
-de = Links/Rechts: wechseln   A: wählen   B: nur laden
-ja = 左/右：移動   A：選択   B：充電のみ
-it = Sinistra/Destra: sposta   A: scegli   B: solo ricarica
+[xfer.usb_device_connected]
+note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer that has not connected yet. Two tiles: USB Accessory, Computer.
+en = What did you plug in?
+zh-Hans = 你插入了什么？
+es = ¿Qué conectaste?
+pt-BR = O que você conectou?
+fr = Qu'avez-vous branché\u00a0?
+de = Was hast du angeschlossen?
+ja = 何を接続しましたか？
+it = Cosa hai collegato?
+
+[xfer.tile_accessory]
+note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (408 units wide), with xfer.tile_accessory_sub under it. tight.
+en = USB Accessory
+zh-Hans = USB 配件
+es = Accesorio USB
+pt-BR = Acessório USB
+fr = Accessoire USB
+de = USB-Zubehör
+ja = USB アクセサリー
+it = Accessorio USB
+
+[xfer.tile_accessory_sub]
+note = The small line under USB Accessory: examples of accessories, lowercase, as a list. Up to two lines in the tile at meta size.
+en = headphones, Wi-Fi, keyboard
+zh-Hans = 耳机、Wi-Fi、键盘
+es = audífonos, Wi-Fi, teclado
+pt-BR = fone, Wi-Fi, teclado
+fr = casque, Wi-Fi, clavier
+de = Kopfhörer, WLAN, Tastatur
+ja = イヤホン、Wi-Fi、キーボード
+it = cuffie, Wi-Fi, tastiera
+
+[xfer.tile_computer]
+note = A tile of What did you plug in?: a computer, which the handheld does not power; it says to plug the cable in again. Also the heading of that message. One line. tight.
+en = Computer
+zh-Hans = 电脑
+es = Computadora
+pt-BR = Computador
+fr = Ordinateur
+de = Computer
+ja = パソコン
+it = Computer
+
+[xfer.replug_computer]
+note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer). Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
+en = Your computer didn't connect yet. Unplug the cable and plug it back in.
+zh-Hans = 电脑还没有连接。请拔出数据线，再重新插入。
+es = Tu computadora aún no se conectó. Desconecta el cable y vuelve a conectarlo.
+pt-BR = O computador ainda não conectou. Desconecte o cabo e conecte de novo.
+fr = L'ordinateur n'est pas encore connecté. Débranchez le câble et rebranchez-le.
+de = Computer noch nicht verbunden. Zieh das Kabel ab und steck es wieder ein.
+ja = パソコンがまだ接続されていません。ケーブルを抜いて、もう一度差してください。
+it = Il computer non si è ancora collegato. Scollega il cavo e ricollegalo.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.
@@ -251,6 +295,149 @@ de = WLAN verloren
 ja = Wi-Fi が切断されました
 it = Wi-Fi perso
 
+[xfer.step_cable]
+note = File Transfer's steps (DESIGN.md 11.35), shown until a browser opens the page: a row label, the USB cable to the computer. Its value is a tick when the computer took the handheld and opened its network.
+en = Cable
+zh-Hans = 数据线
+es = Cable
+pt-BR = Cabo
+fr = Câble
+de = Kabel
+ja = ケーブル
+it = Cavo
+
+[xfer.step_address]
+note = File Transfer's steps: a row label, the computer took its address on the cable. Its value is a tick, or xfer.waiting.
+en = Address
+zh-Hans = 地址
+es = Dirección
+pt-BR = Endereço
+fr = Adresse
+de = Adresse
+ja = アドレス
+it = Indirizzo
+
+[xfer.step_browser]
+note = File Transfer's steps: a row label, a browser opened the page. Its value is xfer.waiting until one does. review: zh-Hans says 客户端 as xfer.browsers does, since the font cut lacks 浏 of 浏览器.
+en = Browser
+zh-Hans = 客户端
+es = Navegador
+pt-BR = Navegador
+fr = Navigateur
+de = Browser
+ja = ブラウザ
+it = Browser
+
+[xfer.step_wifi]
+note = Wi-Fi File Transfer's steps: a row label, the handheld is on a Wi-Fi network. Its value is a tick, or menu.not_connected.
+en = Wi-Fi
+zh-Hans = Wi-Fi
+es = Wi-Fi
+pt-BR = Wi-Fi
+fr = Wi-Fi
+de = WLAN
+ja = Wi-Fi
+it = Wi-Fi
+
+[xfer.step_unplugged]
+note = The Cable step's value when no computer is on the USB cable. A lowercase value.
+en = unplugged
+zh-Hans = 已拔出
+es = desconectado
+pt-BR = desconectado
+fr = débranché
+de = getrennt
+ja = 未接続
+it = scollegato
+
+[xfer.hint_no_computer]
+note = Under File Transfer's steps when the Cable step has waited 5 s with no computer found on the cable: some USB cables only charge. Up to three balanced lines in the panel's inner width at menu size; say it short.
+en = No computer found. Some cables only charge: try another.
+zh-Hans = 没有找到电脑。有些数据线只能充电，请换一根。
+es = No se encontró una computadora. Algunos cables solo cargan: prueba otro.
+pt-BR = Nenhum computador encontrado. Alguns cabos só carregam: tente outro.
+fr = Aucun ordinateur trouvé. Certains câbles ne font que charger : essayez-en un autre.
+de = Kein Computer gefunden. Manche Kabel laden nur: Probiere ein anderes.
+ja = パソコンが見つかりません。充電専用のケーブルもあります。別のケーブルを試してください。
+it = Nessun computer trovato. Alcuni cavi servono solo a ricaricare: provane un altro.
+
+[xfer.hint_no_answer]
+note = Under File Transfer's steps when a computer is on the cable but has not taken the handheld after 10 s. Up to three balanced lines.
+en = The computer does not answer. Try another USB port or cable.
+zh-Hans = 电脑没有响应。请换一个 USB 接口或数据线。
+es = La computadora no responde. Prueba otro puerto USB u otro cable.
+pt-BR = O computador não responde. Tente outra porta USB ou outro cabo.
+fr = L'ordinateur ne répond pas. Essayez un autre port USB ou un autre câble.
+de = Der Computer antwortet nicht. Probiere einen anderen USB-Port oder ein anderes Kabel.
+ja = パソコンが応答しません。別の USB ポートかケーブルを試してください。
+it = Il computer non risponde. Prova un'altra porta USB o un altro cavo.
+
+[xfer.hint_no_driver]
+note = Under File Transfer's steps when the computer took the handheld but opened no network on it after 10 s: it has no driver for it. "Device Manager" is Windows' own name for it, as Windows says it in each language. Up to three balanced lines.
+en = The computer has no driver for it. On Windows, look in Device Manager.
+zh-Hans = 电脑没有它的驱动。在 Windows 上，请查看设备管理器。
+es = Falta un controlador en la computadora. En Windows, revisa el Administrador de dispositivos.
+pt-BR = O computador não tem driver para ele. No Windows, veja o Gerenciador de Dispositivos.
+fr = L'ordinateur n'a pas de pilote pour lui. Sous Windows, regardez le Gestionnaire de périphériques.
+de = Dem Computer fehlt ein Treiber dafür. Unter Windows: im Geräte-Manager nachsehen.
+ja = パソコンにドライバーがありません。Windows ではデバイス マネージャーを確認してください。
+it = Il computer non ha un driver per la console. Su Windows, guarda in Gestione dispositivi.
+
+[xfer.hint_no_address]
+note = Under File Transfer's steps when the computer opened the network but took no address after 10 s. "Network adapters" and "Device Manager" are Windows' own names, as Windows says them in each language. Up to three balanced lines.
+en = The computer took no address. On Windows, check Network adapters in Device Manager.
+zh-Hans = 电脑没有获取地址。在 Windows 上，请查看设备管理器中的网络适配器。
+es = Aún sin dirección. En Windows, ve a Administrador de dispositivos > Adaptadores de red.
+pt-BR = Ainda sem endereço. No Windows, veja Adaptadores de rede no Gerenciador de Dispositivos.
+fr = Pas encore d'adresse. Sous Windows\u00a0: Gestionnaire de périphériques, Cartes réseau.
+de = Noch keine Adresse. Unter Windows: Geräte-Manager, Netzwerkadapter.
+ja = アドレスがありません。Windows ではデバイス マネージャーを確認してください。
+it = Il computer non ha un indirizzo. Su Windows: Gestione dispositivi, Schede di rete.
+
+[xfer.hint_type_both]
+note = Under File Transfer's steps when the computer has its address and no browser opened the page after 30 s: the two ways to the page, http://zyperos.local and http://10.42.0.1, then what most often stands in the way. URLs are never translated. Up to three balanced lines.
+en = Type http://%s or http://%s in a browser. Turn off any VPN or proxy.
+zh-Hans = 打开 http://%s 或 http://%s，并关闭 VPN 或代理。
+es = Escribe http://%s o http://%s en un navegador. Desactiva cualquier VPN o proxy.
+pt-BR = Digite http://%s ou http://%s em um navegador. Desligue qualquer VPN ou proxy.
+fr = Ouvrez http://%s ou http://%s dans un navigateur, sans VPN ni proxy.
+de = Gib http://%s oder http://%s im Browser ein. Schalte VPN oder Proxy aus.
+ja = ブラウザで http://%s か http://%s を開き、VPN やプロキシはオフにしてください。
+it = Digita http://%s o http://%s in un browser. Disattiva VPN o proxy.
+
+[xfer.hint_type_one]
+note = As xfer.hint_type_both, when the handheld has no name on the network (only the address).
+en = Type http://%s in a browser. Turn off any VPN or proxy.
+zh-Hans = 打开 http://%s，并关闭 VPN 或代理。
+es = Escribe http://%s en un navegador. Desactiva cualquier VPN o proxy.
+pt-BR = Digite http://%s em um navegador. Desligue qualquer VPN ou proxy.
+fr = Ouvrez http://%s dans un navigateur, sans VPN ni proxy.
+de = Gib http://%s im Browser ein. Schalte VPN oder Proxy aus.
+ja = ブラウザで http://%s を開き、VPN やプロキシはオフにしてください。
+it = Digita http://%s in un browser. Disattiva VPN o proxy.
+
+[xfer.hint_wifi_both]
+note = Under Wi-Fi File Transfer's steps when no browser opened the page after 30 s: the two ways to the page, the handheld's address first (http://192.168.1.42) and its name second (http://zyperos.local), as the heading has them over Wi-Fi. URLs are never translated. Up to three balanced lines.
+en = On this Wi-Fi, open http://%s or http://%s.
+zh-Hans = 在此 Wi-Fi 下打开 http://%s 或 http://%s。
+es = En este Wi-Fi, abre http://%s o http://%s.
+pt-BR = Neste Wi-Fi, abra http://%s ou http://%s.
+fr = Sur ce Wi-Fi, ouvrez http://%s ou http://%s.
+de = Öffne in diesem WLAN http://%s oder http://%s.
+ja = この Wi-Fi で http://%s か http://%s を開いてください。
+it = In questo Wi-Fi, apri http://%s o http://%s.
+
+[xfer.hint_wifi_one]
+note = As xfer.hint_wifi_both, when the handheld has no name on the network (only the address).
+en = On this Wi-Fi, open http://%s.
+zh-Hans = 在此 Wi-Fi 下打开 http://%s。
+es = En este Wi-Fi, abre http://%s.
+pt-BR = Neste Wi-Fi, abra http://%s.
+fr = Sur ce Wi-Fi, ouvrez http://%s.
+de = Öffne in diesem WLAN http://%s.
+ja = この Wi-Fi で http://%s を開いてください。
+it = In questo Wi-Fi, apri http://%s.
+
 [xfer.row_on]
 note = MENU's File Transfer row's value while it runs behind the shelf with nothing moving. A lowercase value.
 en = on
@@ -427,17 +614,6 @@ de = Die Datei
 ja = そのファイル
 it = Il file
 
-[xfer.legend_keep_going]
-note = The key legend under the question on B. Three spaces between the keys. tight: 944 units at meta size.
-en = Left/Right: move   A: choose   B: keep going
-zh-Hans = 左/右：移动   A：选择   B：继续传输
-es = Izquierda/Derecha: mover   A: elegir   B: seguir
-pt-BR = Esquerda/Direita: mover   A: escolher   B: seguir
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: continuer
-de = Links/Rechts: wechseln   A: wählen   B: weiter
-ja = 左/右：移動   A：選択   B：そのまま続ける
-it = Sinistra/Destra: sposta   A: scegli   B: continua
-
 [xfer.tile_not_now]
 note = The question when a game is started while files move, a tile, two lines: no game now, back to the shelf. tight.
 en = Not\nnow
@@ -492,17 +668,6 @@ fr = Annuler\net jouer
 de = Abbrechen\nund spielen
 ja = 中止して\nプレイ
 it = Annulla\ne gioca
-
-[xfer.legend_not_now]
-note = The key legend under the game's question. Three spaces between the keys. tight: 944 units at meta size.
-en = Left/Right: move   A: choose   B: not now
-zh-Hans = 左/右：移动   A：选择   B：暂不开始
-es = Izquierda/Derecha: mover   A: elegir   B: luego
-pt-BR = Esquerda/Direita: mover   A: escolher   B: depois
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: plus tard
-de = Links/Rechts: wechseln   A: wählen   B: nicht jetzt
-ja = 左/右：移動   A：選択   B：今はやめる
-it = Sinistra/Destra: sposta   A: scegli   B: non ora
 
 [xfer.finishing]
 note = One line on a panel while the game waits for the file on its way; %s is the file's name.

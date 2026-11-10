@@ -112,6 +112,7 @@ void plat_present(void)
 {
 	static bool shown;
 
+	plat_overlay_present(ren);
 	if (!shown) {
 		signal_splash(SIGUSR1);
 #ifdef __linux__
@@ -817,6 +818,10 @@ bool plat_cable_link(char *addr, size_t n)
 /* The Brick's link is its own usbgadget script's, always on: no question. */
 usb_peer plat_usb_peer(void) { return USB_PEER_UNKNOWN; }
 bool plat_usb_link(int op) { (void)op; return true; }
+bool plat_cable_sense(link_sense *out) { (void)out; return false; }
+bool plat_usb_power(usb_power *out) { (void)out; return false; }
+bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
+bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
 
 /* The controller lets go of the cable and takes it again, so the computer
  * sees the Brick plugged in afresh: the Pixel 2's computer once dropped it
@@ -1020,6 +1025,10 @@ bool plat_cable_link(char *addr, size_t n)
 void plat_cable_reconnect(void) { }
 usb_peer plat_usb_peer(void) { return USB_PEER_UNKNOWN; }
 bool plat_usb_link(int op) { (void)op; return true; }
+bool plat_cable_sense(link_sense *out) { (void)out; return false; }
+bool plat_usb_power(usb_power *out) { (void)out; return false; }
+bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
+bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
 static void jack_forget(void) { }
 static void mute_forget(void) { }
 void plat_backlight(bool on) { (void)on; }

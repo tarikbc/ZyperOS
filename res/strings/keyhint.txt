@@ -1,0 +1,61 @@
+# Button hints (src/keyhints.h): the word beside a button's glyph, saying what
+# the button does, wherever a row of them stands (under a question's tiles,
+# a screen's foot). One word or two, a hint's own capital letters: Title Case
+# in English, sentence case in Spanish, Portuguese, French and Italian, nouns
+# capitalized in German.
+
+[keyhint.move]
+note = Beside the d-pad's Left/Right glyph: it moves between the tiles of a question.
+en = Move
+zh-Hans = 移动
+es = Mover
+pt-BR = Mover
+fr = Aller
+de = Wechseln
+ja = 移動
+it = Sposta
+
+[keyhint.choose]
+note = Beside A: it chooses the tile in focus.
+en = Choose
+zh-Hans = 选择
+es = Elegir
+pt-BR = Escolher
+fr = Choisir
+de = Wählen
+ja = 選択
+it = Scegli
+
+[keyhint.charge_only]
+note = Beside B under Computer Connected: B leaves the cable charging only.
+en = Charge Only
+zh-Hans = 仅充电
+es = Cargar
+pt-BR = Carregar
+fr = Recharger
+de = Nur laden
+ja = 充電のみ
+it = Solo ricarica
+
+[keyhint.keep_going]
+note = Beside B under the question while files move: B keeps them moving, the screen goes.
+en = Keep Going
+zh-Hans = 继续传输
+es = Seguir
+pt-BR = Seguir
+fr = Continuer
+de = Weiter
+ja = そのまま続ける
+it = Continua
+
+[keyhint.not_now]
+note = Beside B under the question a game asks while files move: not now, back to the shelf.
+en = Not Now
+zh-Hans = 暂不开始
+es = Luego
+pt-BR = Depois
+fr = Plus tard
+de = Nicht jetzt
+ja = 今はやめる
+it = Non ora
+

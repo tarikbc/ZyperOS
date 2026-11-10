@@ -1129,9 +1129,34 @@ static void radio_less(void)
 	ck(!has_label(rows, n, "Card Style") && has_label(rows, n, "Appearance"),
 	   "Appearance stays; Card Style is absent");
 	ck(pm[n - 1] == PM_ABOUT && !strcmp(rows[n - 1].label, "About ZyperOS") &&
-	   pm[0] == PM_SEARCH && !strcmp(rows[0].label, "Search Games") &&
-	   pm[1] == PM_STATS && !strcmp(rows[1].label, "Play Time"),
+	   pm[0] == PM_USB_WAIT && !strcmp(rows[0].label, "USB Device") &&
+	   pm[1] == PM_SEARCH && !strcmp(rows[1].label, "Search Games") &&
+	   pm[2] == PM_STATS && !strcmp(rows[2].label, "Play Time"),
 	   "and the list names the rows the build drew, first to last");
+
+	/* The Pixel 2's USB rows: USB Device only while a plug waits, at the
+	 * top; USB Accessories always where usbrole decides; neither elsewhere */
+	printf("ZyperOS menu, the USB rows:\n");
+	u.no_usb_wait = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	k = sys_menu_zyperos_rows(&u, pm);
+	ck(n == k && !has_label(rows, n, "USB Device") && has_label(rows, n, "USB Accessories") &&
+	   pm[0] == PM_SEARCH, "no plug waiting: no USB Device, USB Accessories stays");
+	u.usb_auto = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	for (i = 0; i < n && strcmp(rows[i].label, "USB Accessories"); i++) ;
+	ck(i < n && rows[i].value && !strcmp(rows[i].value, "Automatic"), "USB Accessories reads Automatic");
+	u.usb_auto = false;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	for (i = 0; i < n && strcmp(rows[i].label, "USB Accessories"); i++) ;
+	ck(i < n && rows[i].value && !strcmp(rows[i].value, "Ask"), "and Ask, the default");
+	u.no_usb_wait = false;
+	u.no_usb_power = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	k = sys_menu_zyperos_rows(&u, pm);
+	ck(n == k && !has_label(rows, n, "USB Device") && !has_label(rows, n, "USB Accessories"),
+	   "a device where nothing decides it: neither row");
+	u.no_usb_power = false;
 
 	/* The GKD Pixel 2: no radio, and its files go over the USB cable. */
 	u.cable_xfer = true;
