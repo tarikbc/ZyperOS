@@ -375,11 +375,11 @@ A card with no games opens on **No games yet** and the two ways to add them: **A
 <img align="right" width="360" src="res/readme/hare.png" alt="Wi-Fi File Transfer, with a browser connected">
 
 1. Join a network under **MENU > Wi-Fi**.
-2. Open **MENU > Wi-Fi File Transfer**. It shows its name, `http://zyperos.local`, its address and a PIN.
-3. Open `http://zyperos.local` or that address in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
+2. Open **MENU > Wi-Fi File Transfer**. It shows an address and a PIN, and beside the PIN its name, `zyperos.local`.
+3. Open that address (or `http://zyperos.local`) in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
 4. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen.
 
-The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Until a browser opens the page, the screen shows **Wi-Fi** and **Browser** with a tick each, and after 30 seconds with no browser it says what to type.
+The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Until a browser opens the page, the screen shows **Wi-Fi** and **Browser** with a tick each, and after 30 seconds with no browser it says what to type.
 
 <br clear="right">
 

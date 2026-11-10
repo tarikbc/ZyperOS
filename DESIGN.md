@@ -2452,13 +2452,18 @@ a game with a cover and no video.
 
 ### 11.35 File Transfer's heading and steps
 The transfer panel (11.3) of USB and Wi-Fi File Transfer, 2026-11-10. Its
-heading is the handheld's name on the network over its address and the PIN:
+heading, in **label** **text-soft**, has the handheld's name on the network
+beside its address and the PIN. Over the cable the name comes first:
 "http://zyperos.local" on the first line, "10.42.0.1 · PIN 4071" on the
-second, both in **label** **text-soft**. The name is written with http:// so
-a browser opens it rather than searching for it; with a port other than 80
-both carry it. With no name (multicast DNS did not start) or no link (the
-heading then says "Cable unplugged" or "Wi-Fi went away"), the heading is the
-address over the PIN, as before.
+second, since only the computer is on that link. Over Wi-Fi the address
+comes first, as it was, and the name beside the PIN: "192.168.1.42" over
+"PIN 4071 · zyperos.local", since anyone on the network could answer for a
+name, and what a person types should come from the handheld's own screen.
+The name over the cable is written with http:// so a browser opens it
+rather than searching for it; with a port other than 80 both carry it. With
+no name (multicast DNS did not start, or gave the name up after three taken
+in a session) or no link (the heading then says "Cable unplugged" or "Wi-Fi
+went away"), the heading is the address over the PIN.
 
 Until a browser opens the page, the rows under the rule are the steps of the
 connection as the handheld sees it (src/linksteps.h): over the cable

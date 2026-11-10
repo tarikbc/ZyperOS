@@ -414,9 +414,14 @@ across the top, warm for brightness and cyan for volume.
 **Wi-Fi File Transfer** (MENU, with Wi-Fi) and **USB File Transfer** (the same
 row while a computer is on the USB cable) put the card's folders in a web
 browser: ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. The screen
-shows the handheld's name, `http://zyperos.local`, and under it its address
-and a four-digit PIN, new each time it opens. Either opens the page; the name
-is the easier one to type, and the address works where the name does not.
+shows the handheld's address, its name (`zyperos.local`) and a four-digit
+PIN, new each time it opens. Either opens the page; the name is the easier
+one to type, and the address works where the name does not. Over the USB
+cable the name comes first, `http://zyperos.local`, with the address and the
+PIN under it: only the computer is on that link. Over Wi-Fi the address
+comes first and the name sits beside the PIN: anyone on the network could
+answer for a name, so the address on the handheld's own screen is the one
+to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
@@ -425,6 +430,10 @@ Windows 10 and later, iOS, Android and most Linux desktops ask by
 themselves), on the cable while USB File Transfer is open and on the Wi-Fi
 network while Wi-Fi File Transfer is. With two ZyperOS handhelds on one
 network the second takes `zyperos-2.local`, and each screen shows its own.
+If every name it tries is taken (three in a session), the handheld stops
+using a name until File Transfer opens again, and shows the address alone.
+It answers only its own link: packets that came through a router, or from
+outside its subnet, get no answer.
 
 On a computer the folders are down the left, the open one in lime, and
 the uploads go on under them. On a phone the folders are a row of chips over
