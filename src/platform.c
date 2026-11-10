@@ -461,8 +461,14 @@ void plat_osd_forget(void)
 	osd_tex_for = NULL;
 }
 
+/* What the launcher draws over every screen, under the bar (plat_set_overlay) */
+static void (*g_overlay)(SDL_Renderer *r);
+
+void plat_set_overlay(void (*fn)(SDL_Renderer *r)) { g_overlay = fn; }
+
 void plat_draw_osd(SDL_Renderer *r)
 {
+	if (g_overlay) g_overlay(r);
 	static uint32_t px[OSDBAR_W * OSDBAR_H];
 	Uint32 now = SDL_GetTicks();
 	float a, rise;

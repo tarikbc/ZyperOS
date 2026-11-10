@@ -774,7 +774,6 @@ xfer.half_deleted
 xfer.the_file
 xfer.not_now_says
 xfer.play_after_says
-xfer.legend_not_now
 xfer.finishing
 xfer.finishing_the_file
 xfer.b_back_to_shelf

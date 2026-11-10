@@ -171,6 +171,8 @@ something once broke in a way nothing noticed:
 | `check-mdns` | zyperos.local's responder (src/mdns.c): the queries a Mac sent, read off the wire, each answered as RFC 6762 says; every piece of them and random bytes under the address sanitizer; two handhelds on one Wi-Fi named apart on a pretend network |
 | `check-linksteps` | File Transfer's link steps (src/linksteps.c): the cable, the address and the browser, each hint at its time, a replug, Wi-Fi, and the device's /proc/net/arp and UDC state |
 | `check-usbrole` | when the Pixel 2's USB port may be a host (plastron's usbrole, src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host; a DAC only on Power It for its own plug; never with power in, a computer's power or a failed reading |
+| `check-clients` | File Transfer's browser count (src/clients.c): browsers, not sockets; one tab with five keep-alive connections is one, two browsers two |
+| `check-keyhints` | button hints (src/keyhints.c), the one component for what each button does: rows in order and in their room, lists packed and read back in all eight languages |
 | `check-usbpower` | USB Device Connected, the launcher's half of usbrole (src/usbpower.c): usbrole's state lines, the request written whole and never through a link, asked once per plug after 2 s |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |

@@ -47,17 +47,6 @@ de = Entwickler\n(SSH)
 ja = 開発者\n（SSH）
 it = Sviluppatore\n(SSH)
 
-[xfer.legend_charge_only]
-note = The key legend under the tiles: Left/Right move between them, A chooses, B leaves the cable charging only. Three spaces between the keys. tight: one line in a panel 944 units wide at meta size. review: pt-BR is 899 of 944; "Esq./Dir." would give room.
-en = Left/Right: move   A: choose   B: charge only
-zh-Hans = 左/右：移动   A：选择   B：仅充电
-es = Izquierda/Derecha: mover   A: elegir   B: cargar
-pt-BR = Esquerda/Direita: mover   A: escolher   B: carregar
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: recharger
-de = Links/Rechts: wechseln   A: wählen   B: nur laden
-ja = 左/右：移動   A：選択   B：充電のみ
-it = Sinistra/Destra: sposta   A: scegli   B: solo ricarica
-
 [xfer.usb_device_connected]
 note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer that has not connected yet. Two tiles: USB Accessory, Computer.
 en = What did you plug in?
@@ -102,27 +91,16 @@ de = Computer
 ja = パソコン
 it = Computer
 
-[xfer.legend_power]
-note = The key legend under What did you plug in?'s tiles: Left/Right move, A chooses, B means a computer. Three spaces between the keys; it may break onto two lines at them.
-en = Left/Right: move   A: choose   B: computer
-zh-Hans = 左/右：移动   A：选择   B：电脑
-es = Izquierda/Derecha: mover   A: elegir   B: computadora
-pt-BR = Esquerda/Direita: mover   A: escolher   B: computador
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: ordinateur
-de = Links/Rechts: wechseln   A: wählen   B: Computer
-ja = 左/右：移動   A：選択   B：パソコン
-it = Sinistra/Destra: sposta   A: scegli   B: computer
-
 [xfer.replug_computer]
-note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer): said after Computer, on a replug too soon to ask about, and under USB File Transfer's Cable step after 5 s. Plugging in again lets it connect. Never say "power" here. Up to three balanced lines.
-en = Your computer didn't connect yet. Unplug the cable and plug it back in.
-zh-Hans = 电脑还没有连接。请拔出数据线，再重新插入。
-es = Tu computadora aún no se conectó. Desconecta el cable y vuelve a conectarlo.
-pt-BR = O computador ainda não conectou. Desconecte o cabo e conecte de novo.
-fr = Votre ordinateur n'est pas encore connecté. Débranchez le câble et rebranchez-le.
-de = Dein Computer ist noch nicht verbunden. Zieh das Kabel ab und steck es wieder ein.
-ja = パソコンがまだ接続されていません。ケーブルを抜いて、もう一度差してください。
-it = Il computer non si è ancora collegato. Scollega il cavo e ricollegalo.
+note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer). Over any screen and over a game, from Computer or a replug too soon to be asked about, until the cable comes out; and under USB File Transfer's Cable step after 5 s. The 5 seconds are usbrole's new-plug rule: a replug sooner is still the same plug. Never say "power" here. Up to three balanced lines.
+en = Your computer didn't connect yet. Unplug the cable, wait 5 seconds and plug it back in.
+zh-Hans = 电脑还没有连接。请拔出数据线，等 5 秒再重新插入。
+es = Tu computadora aún no se conectó. Desconecta el cable, espera 5 segundos y reconéctalo.
+pt-BR = O computador ainda não conectou. Desconecte o cabo, espere 5 segundos e conecte de novo.
+fr = L'ordinateur n'est pas encore connecté. Débranchez le câble, attendez 5 secondes, rebranchez.
+de = Computer noch nicht verbunden. Zieh das Kabel ab, warte 5 Sekunden und steck es wieder ein.
+ja = パソコンがまだ接続されていません。ケーブルを抜いて 5 秒待ち、もう一度差してください。
+it = Il computer non si è ancora collegato. Scollega il cavo, aspetta 5 secondi e ricollegalo.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.
@@ -636,17 +614,6 @@ de = Die Datei
 ja = そのファイル
 it = Il file
 
-[xfer.legend_keep_going]
-note = The key legend under the question on B. Three spaces between the keys. tight: 944 units at meta size.
-en = Left/Right: move   A: choose   B: keep going
-zh-Hans = 左/右：移动   A：选择   B：继续传输
-es = Izquierda/Derecha: mover   A: elegir   B: seguir
-pt-BR = Esquerda/Direita: mover   A: escolher   B: seguir
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: continuer
-de = Links/Rechts: wechseln   A: wählen   B: weiter
-ja = 左/右：移動   A：選択   B：そのまま続ける
-it = Sinistra/Destra: sposta   A: scegli   B: continua
-
 [xfer.tile_not_now]
 note = The question when a game is started while files move, a tile, two lines: no game now, back to the shelf. tight.
 en = Not\nnow
@@ -701,17 +668,6 @@ fr = Annuler\net jouer
 de = Abbrechen\nund spielen
 ja = 中止して\nプレイ
 it = Annulla\ne gioca
-
-[xfer.legend_not_now]
-note = The key legend under the game's question. Three spaces between the keys. tight: 944 units at meta size.
-en = Left/Right: move   A: choose   B: not now
-zh-Hans = 左/右：移动   A：选择   B：暂不开始
-es = Izquierda/Derecha: mover   A: elegir   B: luego
-pt-BR = Esquerda/Direita: mover   A: escolher   B: depois
-fr = Gauche/Droite\u00a0: aller   A\u00a0: choisir   B\u00a0: plus tard
-de = Links/Rechts: wechseln   A: wählen   B: nicht jetzt
-ja = 左/右：移動   A：選択   B：今はやめる
-it = Sinistra/Destra: sposta   A: scegli   B: non ora
 
 [xfer.finishing]
 note = One line on a panel while the game waits for the file on its way; %s is the file's name.

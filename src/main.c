@@ -51,6 +51,7 @@
 #include "sshlink.h"
 #include "mdns.h"
 #include "linksteps.h"
+#include "keyhints_draw.h"
 #include "usblink.h"
 #include "chargedark.h"
 #include "idle.h"
@@ -1899,6 +1900,8 @@ static void heat_notice(void);
 static void notice_queue(nq_kind kind, int id, int ms, const char *head,
                          const char *body, const char *badge, int value, int target);
 
+static void replug_game_tick(void);
+
 static void on_game_tick(void)
 {
 	char msg[96];
@@ -1920,6 +1923,9 @@ static void on_game_tick(void)
 	plat_resident_quiet(musec_playing());
 	/* The next pop-up, once the one on screen has had its time */
 	notice_pump();
+	/* A computer on the cable that has not connected: said over the game
+	 * too, until the cable comes out (DESIGN.md 11.36) */
+	replug_game_tick();
 	/* The chip's temperature, every HEAT_POLL_MS; "Getting hot" over the
 	 * game when it passes the trip, ahead of any pop-up waiting */
 	heat_tick();
@@ -8083,11 +8089,34 @@ static void tile_note_set(TTF_Font *f, const char *text, int maxw, tile_note *o)
 	if (got != want) o->fits = false;
 }
 
+/* The button hints under a question's tiles (keyhints.h), packed into one
+ * string so they travel as the legend row and in the panel's snapshot:
+ * Left/Right move, A chooses, and B's own answer */
+static const char *tiles_hints(const char *b_word)
+{
+	static char packed[4][256];
+	static int turn;
+	key_hint h[3] = {
+		{ KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) },
+		{ "A", T(S_KEYHINT_CHOOSE) },
+		{ "B", b_word },
+	};
+	char *out = packed[turn++ % 4];
+
+	keyhints_pack(h, 3, out, sizeof packed[0]);
+	return out;
+}
+
+static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
-	const char *legend = T(S_XFER_LEGEND_CHARGE_ONLY);
+	const char *legend = tiles_hints_charge_only();
 	const char *sub = NULL, *what = NULL;
+	key_hint hints[KEYHINTS_MAX];
+	char hbuf[512];
+	int nh;
 	const ds_theme *thm = theme();
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
@@ -8107,6 +8136,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		legend = tiles[n].label;
 	}
 	if (n < 1) return;
+	/* The legend: button hints (keyhints.h), or a line of text as before */
+	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
 	/* The tiles' width, or the title's if that is wider, and where the lines
 	 * under them do not fit in two lines of it, the screen's inset width: the
 	 * panel is as wide as its words need within the screen, never more */
@@ -8123,7 +8154,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		inner = panel.w - 2 * TILE_PAD;
 		if (sub) tile_note_set(fs, sub, inner, &nsub);
 		if (what) tile_note_set(fs, what, inner, &nwhat);
-		tile_note_set(fs, legend, inner, &nleg);
+		if (nh) nleg = (tile_note){ .n = 0, .fits = true };
+		else tile_note_set(fs, legend, inner, &nleg);
 		if (panel.w >= widest || ((!sub || nsub.fits) && (!what || nwhat.fits) && nleg.fits)) break;
 		panel.w = widest;
 	}
@@ -8131,7 +8163,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	nhead = ui_balance_lines(fh, heading, inner, 2, head);
 	if (nhead < 1) nhead = 0;
 	panel.h = 32 + (nhead > 1 ? nhead : 1) * lh + 24 + DS_RULE + (sub ? 20 + nsub.n * ls : 0) + 32 + TILE_H +
-	          (what ? 24 + nwhat.n * ls : 0) + 24 + nleg.n * ls + 32;
+	          (what ? 24 + nwhat.n * ls : 0) + 24 +
+	          (nh ? keyhints_height(hints, nh, inner) : nleg.n * ls) + 32;
 	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
 	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
 	if (posed) {
@@ -8228,9 +8261,13 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		tiles_y += nwhat.n * ls;
 	}
 	tiles_y += 24;
-	for (k = 0; k < nleg.n; k++)
-		ui_text(a->r, fs, nleg.l[k], panel.x + panel.w / 2,
-		        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
+	if (nh)
+		keyhints_draw(a->r, hints, nh, panel.x + TILE_PAD, panel.x + panel.w - TILE_PAD,
+		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
+	else
+		for (k = 0; k < nleg.n; k++)
+			ui_text(a->r, fs, nleg.l[k], panel.x + panel.w / 2,
+			        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
 	if (posed) panel_pass_end(a, &panel, pose);
 }
 
@@ -8321,24 +8358,11 @@ static int usb_power_rows(menu_row rows[3])
 	/* A tile's value is the small line under its name (tiles_panel) */
 	rows[0] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
 	rows[1] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
-	rows[2] = MENU_NOTE(T(S_XFER_LEGEND_POWER));
-	ui_fit_drawn(T(S_XFER_LEGEND_POWER));    /* drawn split at its keys: the whole, for the check */
+	rows[2] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
 	return 3;
 }
 
-/* The message after Computer, balanced as result_message balances
- * one: the rows, for the screen and its shot (--usb-power-said) */
-static int usb_power_said_rows(app *a, menu_row rows[3], char lines[3][LB_LINE])
-{
-	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), menu_std_width(a), 3,
-	                         lines), i;
-
-	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
-	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
-	return n;
-}
-
-static void usb_power_said(app *a);
+static void replug_on(unsigned plug);
 
 static void usb_power_ask(app *a, unsigned plug)
 {
@@ -8392,34 +8416,127 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_usb_power_grant(plug);
 		return;
 	}
-	usb_power_said(a);
+	/* A computer: the message, until the cable comes out */
+	replug_on(plug);
 }
 
-/* The shelf's pass of it: usbrole's state five times a second at most.
- * USBPOWER_ASK with the plug, or USBPOWER_REPLUG for a computer plugged in
- * again too soon to be asked about (usbpower.h) */
-static int usb_power_follow(unsigned *plug)
+/* usbrole's state, five times a second at most, from wherever the launcher
+ * is: the shelf's loop, every screen's frame (the overlay below) and a
+ * game's tick. A plug to ask about waits in g_power_ask for the shelf, the
+ * only place that asks; a computer that has not connected brings up the
+ * replug message (below). */
+static usbpower_follow_state g_power_f;
+static unsigned g_power_ask;            /* a plug to ask about, 0 none */
+static struct {
+	bool     on;                        /* the replug message is up */
+	unsigned plug;                      /* for this plug */
+	unsigned game_at;                   /* a game's last tick that showed it */
+	bool     in_game;                   /* sent to Diatom over the game */
+} g_replug;
+
+static void replug_on(unsigned plug)
 {
-	static usbpower_follow_state f;
+	if (g_replug.on && g_replug.plug == plug) return;
+	g_replug.on = true;
+	g_replug.plug = plug;
+	g_replug.in_game = false;
+	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+	redraw_now();
+}
+
+static void replug_off(void)
+{
+	if (!g_replug.on) return;
+	g_replug.on = false;
+	/* Over a game, the overlay taken away: OVERLAY with no picture */
+	if (g_replug.in_game) plat_resident_line("OVERLAY\tpath=\tms=0");
+	g_replug.in_game = false;
+	fprintf(stderr, "usb: replug message down\n");
+	redraw_now();
+}
+
+static void power_follow(void)
+{
 	static unsigned looked;
-	unsigned now = plat_now_ms();
+	unsigned now = plat_now_ms(), plug;
 	usb_power p;
 
-	*plug = 0;
-	if (looked && now - looked < 200u) return USBPOWER_NOTHING;
+	if (looked && now - looked < 200u) return;
 	looked = now ? now : 1;
-	if (!plat_usb_power(&p)) return USBPOWER_NOTHING;
-	return usbpower_follow(&f, &p, now, plug);
+	if (!plat_usb_power(&p)) { replug_off(); return; }
+	/* The message stays until the plug ends: unplugged (the pin idle),
+	 * another plug, the computer connected (power in), or the port a host */
+	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
+		replug_off();
+	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
+	switch (usbpower_follow(&g_power_f, &p, now, &plug)) {
+	case USBPOWER_ASK:    g_power_ask = plug; break;
+	case USBPOWER_REPLUG: replug_on(plug);    break;
+	default:              break;
+	}
 }
 
-/* The replug message, under the question's heading */
-static void usb_power_said(app *a)
+/* The message's rows: its words balanced onto up to three lines in `w` */
+static int replug_lines(int w, char lines[4][LB_LINE])
 {
-	menu_row said[3];
-	char lines[3][LB_LINE];
-	int k = usb_power_said_rows(a, said, lines);
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), w, 4, lines);
 
-	timed_message(a, T(S_XFER_TILE_COMPUTER), said, k, menu_std_width(a), MENU_ZYPEROS);
+	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
+	return n;
+}
+
+/* The replug message over whatever screen is up (plat_set_overlay): a slab
+ * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
+ * and 11.36): **surface** with the **panel** lift, the laptop mark at its
+ * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
+ * in **menu** **text** (up to four balanced lines), until the plug ends */
+#define REPLUG_W    960
+#define REPLUG_TOP  104
+static void replug_draw_at(SDL_Renderer *r)
+{
+	char lines[4][LB_LINE];
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
+	SDL_Rect slab;
+	int n, k, y;
+
+	n = replug_lines(REPLUG_W - tx_off - padx, lines);
+	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
+	                   pady + ls + 4 + n * lm + pady };
+	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
+	ui_panel(r, &slab, DS_RADIUS_PANEL);
+	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+	ui_glyph_draw(r, UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2, mark, UI_TEXT_SOFT);
+	y = slab.y + pady;
+	ui_text(r, fs, T(S_XFER_TILE_COMPUTER), slab.x + tx_off, ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
+	y += ls + 4;
+	for (k = 0; k < n; k++)
+		ui_text(r, fm, lines[k], slab.x + tx_off, ui_line_y(UI_F_MENU, y + k * lm), -1, UI_TEXT);
+}
+
+static void replug_overlay(SDL_Renderer *r)
+{
+	power_follow();
+	if (g_replug.on) replug_draw_at(r);
+}
+
+/* Over a game: the notice Diatom shows (DESIGN.md 11.7), held for as long as
+ * the plug lasts and taken away when it ends */
+static void replug_game_tick(void)
+{
+	unsigned now = plat_now_ms();
+
+	power_follow();
+	/* A new game since the last tick that showed it: shown again */
+	if (g_replug.game_at && now - g_replug.game_at > 2000u) g_replug.in_game = false;
+	if (g_replug.on) g_replug.game_at = now ? now : 1;
+	if (!g_replug.on || g_replug.in_game) return;
+	if (notice_render_ex(T(S_XFER_TILE_COMPUTER), T(S_XFER_REPLUG_COMPUTER), NULL,
+	                     notice_look(NQ_ALERT), 0, 0, NOTICE_FILE, theme_index())) {
+		plat_resident_line("OVERLAY\tpath=%s\tms=%d", NOTICE_FILE, 30 * 60 * 1000);
+		g_replug.in_game = true;
+	}
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -9397,10 +9514,10 @@ static const char *const *xs_words(int which)
 }
 #define XS_STOP_L xs_words(0)
 #define XS_STOP_W xs_words(1)
-#define XS_STOP_LEGEND T(S_XFER_LEGEND_KEEP_GOING)
+#define XS_STOP_LEGEND tiles_hints(T(S_KEYHINT_KEEP_GOING))
 #define XS_GAME_L xs_words(2)
 #define XS_GAME_W xs_words(3)
-#define XS_GAME_LEGEND T(S_XFER_LEGEND_NOT_NOW)
+#define XS_GAME_LEGEND tiles_hints(T(S_KEYHINT_NOT_NOW))
 
 /* A question while files move (DESIGN.md 11.14): three tiles over the shelf,
  * as Computer Connected's (My pick in the lab, 2026-11-06), a line under
@@ -16865,52 +16982,27 @@ static void np_view_toggle(void)
 static void np_hints(SDL_Renderer *r, bool playing, int kind, int count, int cy,
                      bool video, Uint8 alpha)
 {
-	struct { const char *key, *word; } h[7];
-	int n = 0, i, row = 0, first = 0, rows = 1, from[3] = { 0, 0, 0 };
-	const int left = 64, right = ZYPEROS_SCREEN_W - 64, gap = 16;
-	int used = 0;
+	key_hint h[7];
+	int n = 0;
 
 	if (!cy) cy = 720;
-	h[n].key = "A";  h[n++].word = playing ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
-	h[n].key = "B";  h[n++].word = T(S_CONTROLS_BACK);
+	h[n].key = "A";  h[n++].label = playing ? T(S_MUSE_HINT_PAUSE) : T(S_MUSE_HINT_PLAY);
+	h[n].key = "B";  h[n++].label = T(S_CONTROLS_BACK);
 	if (video) {
-		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
-		h[n].key = "Y";     h[n++].word = kind == 2 ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
-		if (count > 1) { h[n].key = "L1/R1"; h[n++].word = T(S_MP4_HINT_VIDEO); }
+		h[n].key = "X";     h[n++].label = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].label = kind == 2 ? T(S_MP4_HINT_CONTROLS) : T(S_MP4_HINT_FULL_SCREEN);
+		if (count > 1) { h[n].key = "L1/R1"; h[n++].label = T(S_MP4_HINT_VIDEO); }
 	} else {
-		h[n].key = "X";     h[n++].word = T(S_MP4_HINT_LOCK);
-		h[n].key = "Y";     h[n++].word = kind == 1 ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE);
-		h[n].key = "L1/R1"; h[n++].word = !musec_is_book() ? T(S_MUSE_HINT_TRACK)
-		                                 : musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER)
-		                                                        : T(S_MUSE_HINT_FILE);
+		h[n].key = "X";     h[n++].label = T(S_MP4_HINT_LOCK);
+		h[n].key = "Y";     h[n++].label = kind == 1 ? T(S_MUSE_HINT_SPEED) : T(S_MUSE_HINT_MODE);
+		h[n].key = "L1/R1"; h[n++].label = !musec_is_book() ? T(S_MUSE_HINT_TRACK)
+		                                  : musec_chapters() > 1 ? T(S_MUSE_HINT_CHAPTER)
+		                                                         : T(S_MUSE_HINT_FILE);
 	}
-	h[n].key = "< >"; h[n++].word = T(S_MUSE_HINT_SEEK);
-
-	/* Where each row starts: greedily, as many as fit */
-	for (i = 0; i < n; i++) {
-		int w = page_hint_width(h[i].key, h[i].word, false);
-
-		if (i > first && used + gap + w > right - left && rows < 3) {
-			from[rows++] = i;
-			first = i;
-			used = 0;
-		} else if (i > first) {
-			used += gap;
-		}
-		used += w;
-	}
-	from[rows] = n;
-	for (row = 0; row < rows; row++) {
-		int a = from[row], b = row + 1 < rows ? from[row + 1] : n, total = 0, x = left, sp;
-		int y = cy - (rows - 1 - row) * 40;
-
-		for (i = a; i < b; i++) total += page_hint_width(h[i].key, h[i].word, false);
-		sp = b - a > 1 ? (right - left - total) / (b - a - 1) : 0;
-		for (i = a; i < b; i++) {
-			page_hint_fade(r, h[i].key, h[i].word, x, y, false, false, alpha);
-			x += page_hint_width(h[i].key, h[i].word, false) + sp;
-		}
-	}
+	h[n].key = KEYHINT_LEFT_RIGHT; h[n++].label = T(S_MUSE_HINT_SEEK);
+	/* The button hints' component (keyhints.h), spread from x 64 to 960,
+	 * the last row on its line and any more above it */
+	keyhints_draw(r, h, n, 64, ZYPEROS_SCREEN_W - 64, cy, KEYHINTS_SPREAD, true, alpha);
 }
 
 /* The bar, and with `times` the times under it - "1:26", what is left, and
@@ -20863,9 +20955,9 @@ static void shot_compose(app *a)
 
 			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
 		} else {
-			int k = usb_power_said_rows(a, said, lines);
-
-			menu_draw(a, T(S_XFER_TILE_COMPUTER), said, k, -1, menu_std_width(a), MENU_ZYPEROS);
+			/* The replug message over the shelf, as the overlay draws it */
+			(void)said; (void)lines;
+			replug_draw_at(a->r);
 		}
 	}
 	if (shot_dev >= 0) {
@@ -23078,6 +23170,8 @@ int main(int argc, char *argv[])
 	t_mark("video");
 	a.r = plat_renderer();
 	t_mark("renderer");
+	/* The replug message, over every screen (DESIGN.md 11.36) */
+	plat_set_overlay(replug_overlay);
 	plat_input_init();
 	t_mark("input");
 	/* Nothing is handed in any more. The two-tier lookup this replaces - a
@@ -23447,15 +23541,14 @@ int main(int argc, char *argv[])
 		 * turn, so it waits for the screen to be lit rather than opening
 		 * in the dark. */
 		if (usblink_follow(db_dev(), plat_now_ms())) usb_ask(&a);
-		/* Something on the port wants power: asked too, once per plug */
-		{
-			unsigned plug;
+		/* Something on the port wants power: asked too, once per plug;
+		 * the replug message is the overlay's, over any screen */
+		power_follow();
+		if (g_power_ask) {
+			unsigned plug = g_power_ask;
 
-			switch (usb_power_follow(&plug)) {
-			case USBPOWER_ASK:    usb_power_ask(&a, plug); break;
-			case USBPOWER_REPLUG: usb_power_said(&a);      break;
-			default:              break;
-			}
+			g_power_ask = 0;
+			usb_power_ask(&a, plug);
 		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }

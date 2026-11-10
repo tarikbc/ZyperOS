@@ -602,7 +602,7 @@
         "--usb-ask",
         "0"
       ],
-      "sha256": "6a30c8c452dbc8e4e1ab06d8c2c5e8464a4205f01f866defdef7fa41d7f42e4f"
+      "sha256": "b610aecedf41b7933d0db9af9f88d37ff594c20a54c810638a69418639e0cb31"
     },
     {
       "file": "light/scummvm.png",

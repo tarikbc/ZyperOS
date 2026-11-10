@@ -231,6 +231,8 @@ EXTRA = {
     "charging-kept": ("demo", "PS1", ["--charging", "4000", "kept"]),
     "charging-keptfull": ("demo", "PS1", ["--charging", "4000", "keptfull"]),
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
+    # The game's question, its B hint "Not Now" (src/keyhints.h)
+    "xfer-ask-game": ("demo", "PS1", ["--xfer-ask", "0", "game"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two
