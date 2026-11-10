@@ -358,9 +358,27 @@ static void calc_mark(canvas *cv, int step, const ds_theme *th)
 	}
 }
 
+/* A plug waiting in its 24: a USB plug pointing up, its metal end two
+ * prongs over a body, and the cable under it, a 2.5-unit stroke, in
+ * **accent-ink**: something waits for an answer */
+static void usb_mark(canvas *cv, const ds_theme *th)
+{
+	shape shell = box(7, 2, 17, 9, 1.0f);
+	shape body = box(5, 9, 19, 18, 2.5f);
+	shape cable = { .kind = SH_LINES, .n = 2, .p = { 12, 18, 12, 23 }, .w = 1.25f };
+	shape slot1 = box(9, 4, 11, 7, 0.5f), slot2 = box(13, 4, 15, 7, 0.5f);
+
+	paint(cv, &shell, th->accent_ink);
+	cut(cv, &slot1, 0.0f);
+	cut(cv, &slot2, 0.0f);
+	paint(cv, &body, th->accent_ink);
+	paint(cv, &cable, th->accent_ink);
+}
+
 /* ---- the row ------------------------------------------------------------------- */
 
 #define W_XFER   24
+#define W_USB    24
 #define W_BT     16
 #define W_PHONES 24
 #define W_WIFI 36
@@ -376,6 +394,7 @@ int status_marks_width(const status_marks *m)
 {
 	int w = 0, n = 0;
 
+	if (m->usb) { w += W_USB; n++; }
 	if (m->xfer) { w += W_XFER; n++; }
 	if (m->bt) { w += W_BT; n++; }
 	if (m->phones) { w += W_PHONES; n++; }
@@ -404,8 +423,13 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
 	th = &DS_THEME[theme];
 
-	/* Left to right: File Transfer, the rune, headphones, the fan, the
-	 * battery, at the row's right end */
+	/* Left to right: a plug waiting, File Transfer, the rune, headphones,
+	 * the fan, the battery, at the row's right end */
+	if (m->usb) {
+		cv.mw = W_USB;
+		usb_mark(&cv, th);
+		cv.ox += W_USB + STATUS_GAP;
+	}
 	if (m->xfer) {
 		cv.mw = W_XFER;
 		xfer_mark(&cv, m, th);

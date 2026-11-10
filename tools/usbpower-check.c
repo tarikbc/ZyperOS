@@ -36,61 +36,62 @@ int main(void)
 	unsigned t;
 
 	/* usbrole's own line (plastron's usbrole.c write_state) */
-	CHECK(usbpower_parse("plug=7 ask=1 pin=1 vbus=0 powered=0 role=device\n", &p) &&
-	      p.plug == 7 && p.ask && p.pin == 1 && p.vbus == 0 && !p.powered && !p.host,
+	CHECK(usbpower_parse("plug=7 ask=1 pin=1 vbus=0 computer=0 role=device auto=0\n", &p) &&
+	      p.plug == 7 && p.ask && p.pin == 1 && p.vbus == 0 && !p.computer && !p.host,
 	      "a plug that may be asked about");
 	CHECK(usbpower_waits(&p), "a plug that waits for power is not waiting");
-	CHECK(usbpower_parse("plug=3 ask=0 pin=1 vbus=0 powered=1 role=device\n", &p) && !p.ask &&
+	CHECK(usbpower_parse("plug=3 ask=0 pin=1 vbus=0 computer=0 role=device auto=0\n", &p) && !p.ask &&
 	      usbpower_waits(&p), "a computer's plug that waits");
-	CHECK(usbpower_parse("plug=3 ask=0 pin=1 vbus=1 powered=1 role=host\n", &p) && p.host &&
+	CHECK(usbpower_parse("plug=3 ask=0 pin=1 vbus=1 computer=0 role=host auto=0\n", &p) && p.host &&
 	      !usbpower_waits(&p), "a host port waits");
-	CHECK(usbpower_parse("plug=0 ask=0 pin=0 vbus=1 powered=1 role=device\n", &p) &&
+	CHECK(usbpower_parse("plug=0 ask=0 pin=0 vbus=1 computer=0 role=device auto=0\n", &p) &&
 	      !usbpower_waits(&p), "a computer giving power waits");
 	CHECK(!usbpower_parse("plug=1 ask=1 pin=1\n", &p) && !p.known, "half a line read");
-	CHECK(!usbpower_parse("plug=1 ask=1 pin=1 vbus=0 powered=0 role=otg\n", &p), "a role of no kind read");
+	CHECK(!usbpower_parse("plug=1 ask=1 pin=1 vbus=0 computer=0 role=otg auto=0\n", &p), "a role of no kind read");
 	CHECK(!usbpower_parse("", &p) && !usbpower_parse(NULL, &p), "nothing read");
 
 	/* Once per plug, after 2 s of being askable; a plug that stops being
 	 * askable starts again; a new plug is asked about again */
-	usbpower_parse("plug=4 ask=1 pin=1 vbus=0 powered=0 role=device", &p);
+	usbpower_parse("plug=4 ask=1 pin=1 vbus=0 computer=0 role=device auto=0", &p);
 	for (t = 1000; t < 1000 + USBPOWER_ASK_MS; t += 100)
 		CHECK(!follow(&f, &p, t), "asked at %u, before 2 s", t);
 	CHECK(follow(&f, &p, 1000 + USBPOWER_ASK_MS) == 4, "not asked after 2 s");
 	CHECK(!follow(&f, &p, 9000), "asked twice for one plug");
-	usbpower_parse("plug=5 ask=1 pin=1 vbus=0 powered=0 role=device", &p);
+	usbpower_parse("plug=5 ask=1 pin=1 vbus=0 computer=0 role=device auto=0", &p);
 	CHECK(!follow(&f, &p, 10000), "a new plug asked at once");
-	usbpower_parse("plug=5 ask=0 pin=1 vbus=1 powered=1 role=device", &p);
+	usbpower_parse("plug=5 ask=0 pin=1 vbus=1 computer=0 role=device auto=0", &p);
 	CHECK(!follow(&f, &p, 11000), "asked while power comes in");
-	usbpower_parse("plug=5 ask=1 pin=1 vbus=0 powered=0 role=device", &p);
+	usbpower_parse("plug=5 ask=1 pin=1 vbus=0 computer=0 role=device auto=0", &p);
 	CHECK(!follow(&f, &p, 11500), "the wait did not start again");
 	CHECK(follow(&f, &p, 11500 + USBPOWER_ASK_MS) == 5, "plug 5 never asked about");
-	usbpower_parse("plug=6 ask=0 pin=1 vbus=0 powered=1 role=device", &p);
+	usbpower_parse("plug=6 ask=0 pin=1 vbus=0 computer=0 role=device auto=0", &p);
 	CHECK(!follow(&f, &p, 30000) && !follow(&f, &p, 60000),
 	      "a computer's plug was asked about");
 
-	/* A computer replugged too soon (2026-11-10, plugs 1 and 4): it waits,
-	 * may not be asked about, the plug had power: told to replug, once,
-	 * after 2 s; not during usbrole's first seconds (powered=0, ask=0),
-	 * and not when it may be asked about */
+	/* The quick swap of 2026-11-10: a plug right after a computer's is
+	 * asked about like any other, never told to replug; told to replug only
+	 * when a computer showed up on the bus during the plug, once */
 	{
 		usbpower_follow_state g = { 0 };
 
-		usbpower_parse("plug=1 ask=0 pin=1 vbus=0 powered=1 role=device", &p);
-		CHECK(usbpower_follow(&g, &p, 1000, &plug) == USBPOWER_NOTHING, "told at once");
-		CHECK(usbpower_follow(&g, &p, 1000 + USBPOWER_ASK_MS, &plug) == USBPOWER_REPLUG && plug == 1,
-		      "a computer replugged too soon was not told");
-		CHECK(usbpower_follow(&g, &p, 9000, &plug) == USBPOWER_NOTHING, "told twice for one plug");
-		usbpower_parse("plug=2 ask=0 pin=1 vbus=0 powered=0 role=device", &p);
+		usbpower_parse("plug=1 ask=1 pin=1 vbus=0 computer=0 role=device auto=0", &p);
+		CHECK(usbpower_follow(&g, &p, 1000, &plug) == USBPOWER_NOTHING, "asked at once");
+		CHECK(usbpower_follow(&g, &p, 1000 + USBPOWER_ASK_MS, &plug) == USBPOWER_ASK && plug == 1,
+		      "a plug right after a computer's not asked about");
+		usbpower_parse("plug=1 ask=0 pin=1 vbus=0 computer=1 role=device auto=0", &p);
+		CHECK(usbpower_follow(&g, &p, 9000, &plug) == USBPOWER_REPLUG && plug == 1,
+		      "a computer on the bus, waiting: not told to replug");
+		CHECK(usbpower_follow(&g, &p, 9500, &plug) == USBPOWER_NOTHING, "told twice for one plug");
+		/* Waiting with no computer seen and not askable (the boot grace):
+		 * neither asked nor told */
+		usbpower_parse("plug=2 ask=0 pin=1 vbus=0 computer=0 role=device auto=0", &p);
 		CHECK(usbpower_follow(&g, &p, 10000, &plug) == USBPOWER_NOTHING &&
-		      usbpower_follow(&g, &p, 20000, &plug) == USBPOWER_NOTHING, "told in usbrole's grace");
-		usbpower_parse("plug=3 ask=0 pin=1 vbus=0 powered=1 role=device", &p);
-		CHECK(usbpower_follow(&g, &p, 21000, &plug) == USBPOWER_NOTHING, "a new plug told at once");
-		usbpower_parse("plug=3 ask=0 pin=0 vbus=1 powered=1 role=device", &p);
-		CHECK(usbpower_follow(&g, &p, 22000, &plug) == USBPOWER_NOTHING, "told while power comes in");
-		usbpower_parse("plug=3 ask=0 pin=1 vbus=0 powered=1 role=device", &p);
-		CHECK(usbpower_follow(&g, &p, 23000, &plug) == USBPOWER_NOTHING, "the wait did not start again");
-		CHECK(usbpower_follow(&g, &p, 23000 + USBPOWER_ASK_MS, &plug) == USBPOWER_REPLUG && plug == 3,
-		      "plug 3 never told");
+		      usbpower_follow(&g, &p, 20000, &plug) == USBPOWER_NOTHING, "told or asked in the grace");
+		/* Power Automatically: never asked, usbrole powers it */
+		usbpower_parse("plug=3 ask=1 pin=1 vbus=0 computer=0 role=device auto=1", &p);
+		CHECK(usbpower_follow(&g, &p, 30000, &plug) == USBPOWER_NOTHING &&
+		      usbpower_follow(&g, &p, 40000, &plug) == USBPOWER_NOTHING, "asked in automatic");
+		CHECK(p.automatic, "auto=1 not read");
 	}
 
 	/* The files, in a scratch folder */
@@ -98,7 +99,7 @@ int main(void)
 	snprintf(path, sizeof path, "%s/state", dir);
 	CHECK(!usbpower_read(dir, &p), "a missing state read");
 	if ((fp = fopen(path, "w"))) {
-		fputs("plug=9 ask=1 pin=1 vbus=0 powered=0 role=device\n", fp);
+		fputs("plug=9 ask=1 pin=1 vbus=0 computer=0 role=device auto=0\n", fp);
 		fclose(fp);
 	}
 	CHECK(usbpower_read(dir, &p) && p.plug == 9 && p.ask, "the state file not read");
@@ -116,6 +117,20 @@ int main(void)
 	unlink(path);
 	CHECK(symlink("/etc/hosts", path) == 0, "no link made");
 	CHECK(!usbpower_read(dir, &p), "a link read as the state");
+	/* The setting, written whole */
+	CHECK(usbpower_mode(dir, true), "the mode not written");
+	{
+		char mp[256], mt[16] = "";
+		FILE *mf;
+
+		snprintf(mp, sizeof mp, "%s/mode", dir);
+		if ((mf = fopen(mp, "r"))) { if (!fgets(mt, sizeof mt, mf)) mt[0] = 0; fclose(mf); }
+		CHECK(!strcmp(mt, "auto\n"), "the mode reads \"%s\"", mt);
+		CHECK(usbpower_mode(dir, false), "the mode not written back");
+		if ((mf = fopen(mp, "r"))) { if (!fgets(mt, sizeof mt, mf)) mt[0] = 0; fclose(mf); }
+		CHECK(!strcmp(mt, "ask\n"), "the mode reads \"%s\"", mt);
+		unlink(mp);
+	}
 	unlink(path);
 	snprintf(path, sizeof path, "%s/host", dir);
 	unlink(path);

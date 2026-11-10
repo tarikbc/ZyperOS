@@ -2299,6 +2299,35 @@ static void clock24_save(bool on)
 	db_set_str(db_dev(), "clock", on ? "24h" : "12h");
 }
 
+/* MENU > USB Accessories on the Pixel 2: Ask, the default, or Automatic,
+ * saved as "ask" or "auto" under `usb_accessories` and told to usbrole
+ * (plat_usb_power_mode, src/usbpower.h) as the launcher starts and as it
+ * changes */
+static bool g_usb_auto;
+/* A plug that waits for an answer now (it may be asked about, usbrole
+ * powers nothing by itself): the corner's USB mark and MENU > USB Device,
+ * which asks again for it. 0 none. */
+static unsigned g_usb_wait;
+/* --usb-menu: MENU's USB rows on a host shot, which has no usbrole */
+static bool shot_usb_menu;
+static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
+
+static void usb_auto_load(void)
+{
+	char v[8];
+
+	db_get_str(db_dev(), "usb_accessories", v, sizeof v, "ask");
+	g_usb_auto = !strcmp(v, "auto");
+	plat_usb_power_mode(g_usb_auto);
+}
+
+static void usb_auto_save(bool on)
+{
+	g_usb_auto = on;
+	db_set_str(db_dev(), "usb_accessories", on ? "auto" : "ask");
+	plat_usb_power_mode(on);
+}
+
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
  * default), with its charge written beside it ("percentage"), my ask of
  * 2026-11-05, or with the time left written there ("time"), my ask of
@@ -2559,6 +2588,7 @@ static void status_gather(status_marks *m, bool moving)
 	m->charging = chg;
 	m->held = chg && charge_held();
 	xs_mark(m);
+	m->usb = g_usb_wait != 0;
 }
 
 /* The time a shot shows: today at --status's time of day, into *t. False for
@@ -6081,6 +6111,44 @@ static bool dev_row_on(void)
 static const char *xs_row_value(void);
 static bool xs_row_cable(void);
 
+/* MENU's USB rows: on a device where usbrole decides (or a shot that
+ * says so), and USB Device while a plug waits */
+static bool usb_power_offered(void)
+{
+	usb_power p;
+
+	return shot_usb_menu || plat_usb_power(&p);
+}
+
+static bool usb_wait_row(void) { return shot_usb_menu || g_usb_wait != 0; }
+
+static void usb_power_ask(app *a, unsigned plug);
+
+/* Automatic's message, as it is chosen: what it does and its one risk, on
+ * up to four balanced lines, a line more than result_message's, since the
+ * risk is said whole rather than cut */
+static int usb_auto_lines(app *a, char lines[4][LB_LINE], menu_row rows[4])
+{
+	int w = menu_std_width(a), i;
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_SYSMENU_USB_AUTO_SAID), w, 4, lines);
+
+	ui_fit_drawn(T(S_SYSMENU_USB_AUTO_SAID));
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+	return n;
+}
+
+static bool timed_message(app *a, const char *heading, const menu_row *rows,
+                          int n, int fixed_w, unsigned accent);
+
+static void usb_auto_message(app *a)
+{
+	char lines[4][LB_LINE];
+	menu_row rows[4];
+	int n = usb_auto_lines(a, lines, rows);
+
+	timed_message(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, menu_std_width(a), MENU_ZYPEROS);
+}
+
 static int menu_build(app *a, screen_id screen, int sys,
                       menu_row *out, menu_bufs *b, const char **heading)
 {
@@ -6104,6 +6172,9 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.no_lights = !plat_battery_lights();
 	u.no_charge_limit = !plat_charge_limit_supported();
 	u.charge_limit = g_charge_limit;
+	u.no_usb_power = !usb_power_offered();
+	u.usb_auto = g_usb_auto;
+	u.no_usb_wait = !usb_wait_row();
 
 	if (u.games) {
 		const system_cfg *sc = &a->sys.systems[sys];
@@ -8430,8 +8501,6 @@ static unsigned g_power_ask;            /* a plug to ask about, 0 none */
 static struct {
 	bool     on;                        /* the replug message is up */
 	unsigned plug;                      /* for this plug */
-	unsigned game_at;                   /* a game's last tick that showed it */
-	bool     in_game;                   /* sent to Diatom over the game */
 } g_replug;
 
 static void replug_on(unsigned plug)
@@ -8439,7 +8508,6 @@ static void replug_on(unsigned plug)
 	if (g_replug.on && g_replug.plug == plug) return;
 	g_replug.on = true;
 	g_replug.plug = plug;
-	g_replug.in_game = false;
 	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
 	redraw_now();
 }
@@ -8448,9 +8516,7 @@ static void replug_off(void)
 {
 	if (!g_replug.on) return;
 	g_replug.on = false;
-	/* Over a game, the overlay taken away: OVERLAY with no picture */
-	if (g_replug.in_game) plat_resident_line("OVERLAY\tpath=\tms=0");
-	g_replug.in_game = false;
+
 	fprintf(stderr, "usb: replug message down\n");
 	redraw_now();
 }
@@ -8463,7 +8529,15 @@ static void power_follow(void)
 
 	if (looked && now - looked < 200u) return;
 	looked = now ? now : 1;
-	if (!plat_usb_power(&p)) { replug_off(); return; }
+	if (!plat_usb_power(&p)) { replug_off(); g_usb_wait = 0; return; }
+	{
+		unsigned was = g_usb_wait;
+
+		g_usb_wait = p.known && p.ask && !p.automatic ? p.plug : 0;
+		if (g_usb_wait != was) redraw_now();
+	}
+	/* usbrole started after the launcher told it, or again: told again */
+	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
 	/* The message stays until the plug ends: unplugged (the pin idle),
 	 * another plug, the computer connected (power in), or the port a host */
 	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
@@ -8521,22 +8595,13 @@ static void replug_overlay(SDL_Renderer *r)
 	if (g_replug.on) replug_draw_at(r);
 }
 
-/* Over a game: the notice Diatom shows (DESIGN.md 11.7), held for as long as
- * the plug lasts and taken away when it ends */
+
+/* In a game nothing is shown (2026-11-10): the plug is only followed, so a
+ * plug that ends is forgotten and one still waiting is asked about once the
+ * player is back on the shelf */
 static void replug_game_tick(void)
 {
-	unsigned now = plat_now_ms();
-
 	power_follow();
-	/* A new game since the last tick that showed it: shown again */
-	if (g_replug.game_at && now - g_replug.game_at > 2000u) g_replug.in_game = false;
-	if (g_replug.on) g_replug.game_at = now ? now : 1;
-	if (!g_replug.on || g_replug.in_game) return;
-	if (notice_render_ex(T(S_XFER_TILE_COMPUTER), T(S_XFER_REPLUG_COMPUTER), NULL,
-	                     notice_look(NQ_ALERT), 0, 0, NOTICE_FILE, theme_index())) {
-		plat_resident_line("OVERLAY\tpath=%s\tms=%d", NOTICE_FILE, 30 * 60 * 1000);
-		g_replug.in_game = true;
-	}
 }
 
 /* The File Transfer page's SteamGridDB key (hare_set_sgdb). What goes back
@@ -15085,6 +15150,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
+		               .no_usb_power = !usb_power_offered(),
+		               .no_usb_wait = !usb_wait_row(),
 		               /* the same rule as the build's (menu_build): a card with
 		                * the update program has the row */
 		               .update = up_have() ? "" : NULL };
@@ -15175,6 +15242,19 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			 * is the hold on About. */
 			dev_screen(a);
 		}
+		return MENU_CHANGED;
+	}
+
+	/* Ask or Automatic, so left, right and A all turn it over; Automatic
+	 * says what it does and its one risk as it is chosen */
+	if (sel == PM_USB && (d || key == IN_ACCEPT)) {
+		usb_auto_save(!g_usb_auto);
+		if (g_usb_auto) usb_auto_message(a);
+		return MENU_CHANGED;
+	}
+	/* A plug waiting: the question again, for that plug */
+	if (sel == PM_USB_WAIT && key == IN_ACCEPT) {
+		if (g_usb_wait) usb_power_ask(a, g_usb_wait);
 		return MENU_CHANGED;
 	}
 
@@ -20226,6 +20306,7 @@ static bool shot_status_parse(const char *spec)
 		/* File Transfer behind the shelf: xfer=on, nothing moving; xfer=62,
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
+		else if (!strcmp(w, "usb=on")) shot_st.m.usb = true;
 		/* headphones in the jack: their mark */
 		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
@@ -20959,6 +21040,17 @@ static void shot_compose(app *a)
 			(void)said; (void)lines;
 			replug_draw_at(a->r);
 		}
+	}
+	if (shot_usb_said) {
+		/* USB Accessories turned to Automatic: its message, as
+		 * usb_auto_message lays it out */
+		char lines[4][LB_LINE];
+		menu_row rows[4];
+		int n;
+
+		ui_scrim(a->r, 0);
+		n = usb_auto_lines(a, lines, rows);
+		menu_draw(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
 	}
 	if (shot_dev >= 0) {
 		/* Developer Mode's page, as dev_screen builds it, and the message
@@ -22431,6 +22523,13 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
 		}
+		/* MENU's USB rows on the host, which has no usbrole: Ask, or
+		 * Automatic with "auto"; "said" for Automatic's message */
+		else if (!strcmp(argv[i], "--usb-menu")) {
+			shot_usb_menu = true;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "auto")) { g_usb_auto = true; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { g_usb_auto = true; shot_usb_said = true; i++; }
+		}
 		else if (!strcmp(argv[i], "--usb-power")) {
 			shot_power = 1;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = 2; i++; }
@@ -23210,6 +23309,7 @@ int main(int argc, char *argv[])
 	/* MENU > Clock, which the corner's first frame is drawn in */
 	clock24_load();
 	batt_icon_load();
+	if (!shot_path) usb_auto_load();
 	if (shot_path && shot_st.h24 >= 0) g_clock24 = shot_st.h24;
 	if (shot_path && shot_st.icon >= 0) g_batt_mode = shot_st.icon;
 	a.sys_cursor = 0;

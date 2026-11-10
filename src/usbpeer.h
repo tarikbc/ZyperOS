@@ -36,5 +36,7 @@ bool plat_cable_sense(link_sense *out);
  * It for a plug. False on a device without usbrole (the Brick). */
 bool plat_usb_power(usb_power *out);
 bool plat_usb_power_grant(unsigned plug);
+/* MENU > USB Accessories for usbrole: true for Automatic (usbpower_mode) */
+bool plat_usb_power_mode(bool automatic);
 
 #endif

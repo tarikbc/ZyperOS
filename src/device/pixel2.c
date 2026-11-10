@@ -1194,7 +1194,7 @@ bool plat_cable_sense(link_sense *o)
 	return true;
 }
 
-/* plastron's usbrole: its state, and Power It (usbpower.h) */
+/* plastron's usbrole: its state, USB Accessory and the setting (usbpower.h) */
 #define USBROLE_RUN "/run/usbrole"
 
 bool plat_usb_power(usb_power *out) { return usbpower_read(USBROLE_RUN, out); }
@@ -1204,6 +1204,15 @@ bool plat_usb_power_grant(unsigned plug)
 	bool ok = usbpower_request(USBROLE_RUN, plug);
 
 	fprintf(stderr, "usb: power the device on the port (plug %u)%s\n", plug, ok ? "" : ": not written");
+	return ok;
+}
+
+bool plat_usb_power_mode(bool automatic)
+{
+	bool ok = usbpower_mode(USBROLE_RUN, automatic);
+
+	fprintf(stderr, "usb: accessories %s%s\n", automatic ? "powered automatically" : "asked about",
+	        ok ? "" : ": not written");
 	return ok;
 }
 

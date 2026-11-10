@@ -13,16 +13,17 @@
 bool usbpower_parse(const char *text, usb_power *o)
 {
 	char role[16] = "";
-	int ask = 0, powered = 0;
+	int ask = 0, computer = 0, automatic = 0;
 
 	memset(o, 0, sizeof *o);
-	if (!text || sscanf(text, "plug=%u ask=%d pin=%d vbus=%d powered=%d role=%15s",
-	                    &o->plug, &ask, &o->pin, &o->vbus, &powered, role) != 6)
+	if (!text || sscanf(text, "plug=%u ask=%d pin=%d vbus=%d computer=%d role=%15s auto=%d",
+	                    &o->plug, &ask, &o->pin, &o->vbus, &computer, role, &automatic) != 7)
 		return false;
 	if (strcmp(role, "host") && strcmp(role, "device"))
 		return false;
 	o->ask = ask == 1;
-	o->powered = powered == 1;
+	o->computer = computer == 1;
+	o->automatic = automatic == 1;
 	o->host = !strcmp(role, "host");
 	o->known = true;
 	return true;
@@ -64,6 +65,26 @@ bool usbpower_request(const char *dir, unsigned plug)
 	return true;
 }
 
+bool usbpower_mode(const char *dir, bool automatic)
+{
+	char tmp[256], path[256];
+	const char *text = automatic ? "auto\n" : "ask\n";
+	int fd;
+	bool ok;
+
+	snprintf(tmp, sizeof tmp, "%s/mode.new", dir);
+	snprintf(path, sizeof path, "%s/mode", dir);
+	if ((fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600)) < 0)
+		return false;
+	ok = write(fd, text, strlen(text)) == (ssize_t)strlen(text);
+	close(fd);
+	if (!ok || rename(tmp, path) < 0) {
+		unlink(tmp);
+		return false;
+	}
+	return true;
+}
+
 bool usbpower_waits(const usb_power *p)
 {
 	return p->known && p->pin == 1 && p->vbus == 0 && !p->host;
@@ -71,25 +92,16 @@ bool usbpower_waits(const usb_power *p)
 
 int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now, unsigned *plug)
 {
-	bool replug = usbpower_waits(p) && !p->ask && p->powered && p->plug;
+	bool replug = usbpower_waits(p) && p->computer && p->plug;
 
 	*plug = 0;
-	/* A plug that waits on a computer's recent power */
-	if (!replug) {
-		f->wsince = 0;
-	} else {
-		if (p->plug != f->wplug) {
-			f->wplug = p->plug;
-			f->wsince = 0;
-		}
-		if (!f->wsince) f->wsince = now ? now : 1;
-		if (f->told != p->plug && now - f->wsince >= USBPOWER_ASK_MS) {
-			f->told = p->plug;
-			*plug = p->plug;
-			return USBPOWER_REPLUG;
-		}
+	/* A computer on the bus, waiting: said at once, once */
+	if (replug && f->told != p->plug) {
+		f->told = p->plug;
+		*plug = p->plug;
+		return USBPOWER_REPLUG;
 	}
-	if (!p->known || !p->ask || !p->plug) {
+	if (!p->known || !p->ask || !p->plug || p->automatic) {
 		f->since = 0;
 		return USBPOWER_NOTHING;
 	}

@@ -318,6 +318,15 @@ for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver"
 # message after It's a Computer
 for _k in ("0", "1", "said"):
     EXTRA.setdefault("usb-power-" + _k, ("demo", "PS1", ["--usb-power", _k]))
+# MENU's USB rows (DESIGN.md 11.36): USB Device while a plug waits, with
+# the corner's USB mark; USB Accessories on Ask and on Automatic, and the
+# message Automatic says as it is chosen
+_USB_WAIT = ["--status", "10:08 24h wifi=off batt=82 usb=on"]
+EXTRA.setdefault("usb-menu-wait", ("demo", "PS1", ["--usb-menu", "--menu", "USB Device", *_USB_WAIT]))
+EXTRA.setdefault("usb-menu-ask", ("demo", "PS1", ["--usb-menu", "--menu", "USB Accessories"]))
+EXTRA.setdefault("usb-menu-auto", ("demo", "PS1", ["--usb-menu", "auto", "--menu", "USB Accessories"]))
+EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
+EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 
