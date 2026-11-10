@@ -309,10 +309,12 @@ def finish(gid, guild, ids, roles, me, everyone):
          "actions": [{"type": 1}, alert]},
         {"name": "Other servers' invites", "event_type": 1, "trigger_type": 1,
          "trigger_metadata": {"regex_patterns": [r"(discord\.gg|discord(app)?\.com/invite)/[a-z0-9-]+"]},
-         "actions": [{"type": 1}, alert], "exempt_roles": [roles["Developer"]["id"]]},
+         "actions": [{"type": 1}, alert]},
     ]
     for r in automod:
         r["enabled"] = True
+        # No role is exempt: onboarding hands every role to whoever picks it
+        r["exempt_roles"] = []
         if r["name"] in rules_now:
             change(f"update AutoMod rule {r['name']}", "PATCH",
                    f"/guilds/{gid}/auto-moderation/rules/{rules_now[r['name']]['id']}",

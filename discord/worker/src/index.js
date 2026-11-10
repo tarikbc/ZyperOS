@@ -101,10 +101,21 @@ function bugModal() {
   };
 }
 
+// Another server's invite, which the server's AutoMod blocks in messages; a
+// report Zyper posts never passes AutoMod, so the same rule is applied here
+const INVITE = /(discord\.gg|discord(app)?\.com\/invite)\/[a-z0-9-]+/i;
+const REPORT_EVERY_S = 120;
+
 async function bugReport(it, env) {
   const v = {};
   for (const row of it.data.components) for (const c of row.components) v[c.custom_id] = c.value.trim();
   const who = it.member?.user || it.user;
+  const nope = (content) => json({ type: MESSAGE, data: { content, flags: EPHEMERAL } });
+  if (Object.values(v).some((s) => INVITE.test(s))) return nope("Invite links can't go in a bug report.");
+  // One report per member every two minutes, by the edge cache (a soft limit)
+  const cache = caches.default, key = new Request(`https://zyper.cache/bug/${who.id}`);
+  if (await cache.match(key)) return nope("Thanks! One report every two minutes, please. Try again in a moment.");
+  await cache.put(key, new Response("1", { headers: { "Cache-Control": `max-age=${REPORT_EVERY_S}` } }));
   const body =
     `**Version:** ${v.version}\n**Where:** ${v.where}\n\n**Steps**\n${v.steps}\n\n**What happened**\n${v.what}`;
   const issue = new URL(`https://github.com/${REPO}/issues/new`);

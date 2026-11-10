@@ -26,4 +26,4 @@ cd ..
 python3 register.py https://zyper-bot.tarikcaramanico.workers.dev
 ```
 
-GitHub feeds the server with two repository webhooks: releases into #releases, and pull requests and issues into #github-feed.
+GitHub posts each new release into #releases with one repository webhook. Pull requests and issues are left out on purpose, to keep the server quiet.
