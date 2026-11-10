@@ -10,7 +10,7 @@
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
         check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-captive check-qr \
+        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
@@ -35,7 +35,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-raha
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-captive check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
@@ -470,6 +470,12 @@ build-native/portdoc-check: tools/portdoc-check.c src/portdoc.c src/portdoc.h sr
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ tools/portdoc-check.c src/portdoc.c \
 	      src/rajson.c src/controls.c $(I18N_SRC)
+
+# plastron's make push writes the system slot the Pixel 2 is not running,
+# never the one it runs from (scripts/px2-slot.sh): the slot choice, the
+# bootstate.txt edits, and the device's script parsing. Host shell only.
+check-px2-push:
+	@sh plastron/scripts/px2-slot-check.sh
 
 # The boot screen's theme words (src/boottheme.h, DESIGN.md 11.21)
 check-boottheme: build-native/boottheme-check

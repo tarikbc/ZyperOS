@@ -167,6 +167,7 @@ something once broke in a way nothing noticed:
 | `check-pmart` | PortMaster's covers in both themes and its page's icon (res/portmaster/*.png) are what tools/genportmaster.py draws, pixel for pixel (needs Pillow) |
 | `check-portdoc` | what a port's own files say for the Controls pages of the in-game menu over it (src/portdoc.c: port.json, its gptokeyb keymap, its README's controls) and the pages they make, on the made-up ports in tools/fixtures/ports and the forms porters write by hand; PortMaster's own page; the menu over every port |
 | `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
+| `check-px2-push` | plastron's `make push` (scripts/px2-slot.sh): it writes the system slot the Pixel 2 is not running and never the running one, a card with one system or a command line that does not add up gets nothing, bootstate.txt edited as System Update does, and the device's script parses and writes no partition by number |
 | `check-captive` | Wi-Fi File Transfer's hotspot, its pure half: the DNS answer for every name, the Host check that tells a phone's internet check from the page, the QR code's text and the password |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |
