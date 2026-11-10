@@ -54,6 +54,7 @@
 #include "keyhints_draw.h"
 #include "usblink.h"
 #include "chargedark.h"
+#include "pace.h"
 #include "idle.h"
 #include "notice.h"
 #include "randgame.h"
@@ -4832,6 +4833,12 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * bottom border. */
 	int rule_h = pad / 2 + 2;
 	int gap = row_h;                 /* between the label and value columns */
+	/* ...the air a panel is sized with. A row that measures past it on a
+	 * device whose fonts measure a little wider than the host's is not cut
+	 * for that: it may close the gap to half a row before anything is cut
+	 * ("auto (alto-falante)" in MENU, 3 units over on the Pixel 2,
+	 * 2026-11-10) */
+	int fit_gap = row_h / 2;
 	int note_h = ui_font_line(UI_F_MENU) + pad / 3;
 	/* A row's height. A function under the macro, so its row is read once:
 	 * as a macro that read `r` up to four times, the scroll below wrote
@@ -4923,6 +4930,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	if (fixed_w > 0) content_w = fixed_w;
 	if (content_w > ZYPEROS_SCREEN_W - margin * 2 - pad * 2)
 		content_w = ZYPEROS_SCREEN_W - margin * 2 - pad * 2;
+	/* The most a row can have: the fixed width, or the screen's. A row
+	 * that sizes a free panel is as wide as the panel by its own measure,
+	 * so only this cap says a row is near being cut (ui_fit_tight) */
+	int cap_w = fixed_w > 0 && fixed_w < ZYPEROS_SCREEN_W - margin * 2 - pad * 2
+	          ? fixed_w : ZYPEROS_SCREEN_W - margin * 2 - pad * 2;
 
 	{
 		int sum = 0;
@@ -5517,12 +5529,16 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
-			} else if (lw + (vw ? gap + vw : 0) <= content_w) {
+			} else if (lw + (vw ? fit_gap + vw : 0) <= content_w) {
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
 				if (rows[i].value)
 					ui_text(a->r, fm, rows[i].value,
 					        content_x + content_w, ty, 1, vc);
+				/* Both fit, but by how much against the most the row can
+				 * have: the device measures a little wider */
+				if (rows[i].value && rows[i].value != MENU_TICK)
+					ui_fit_tight(rows[i].value, lw + fit_gap + vw, content_w + (cap_w - icon_w0), cap_w);
 				/* The choice that is on: a tick, a capital's height and a
 				 * fifth, where the value's right edge is */
 				if (rows[i].value == MENU_TICK) {
@@ -5535,7 +5551,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				/* The VALUE is the long one. The label keeps its width and
 				 * the value takes everything left of the right edge. */
 				ui_text(a->r, fm, rows[i].label, content_x, ty, -1, lc);
-				room = content_w - lw - gap;
+				room = content_w - lw - fit_gap;
 				if (room <= 0) {
 					/* No room for it at all; the label alone is the row. */
 				} else if (moves) {
@@ -5557,7 +5573,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				}
 			} else {
 				/* The LABEL is the long one: a game's name, an SSID. */
-				room = content_w - (vw ? vw + gap : 0);
+				room = content_w - (vw ? vw + fit_gap : 0);
 				if (rows[i].value) {
 					ui_fit_text(fm, rows[i].value, val, sizeof val, content_w);
 					ui_text(a->r, fm, val, content_x + content_w, ty, 1, vc);
@@ -6765,6 +6781,65 @@ static menu_result menu_side_key(app *a, zr_rig *z, menu_build_fn build,
 
 /* The loop itself. Called only through menu_run below, which owns the flush on
  * either side of it. */
+/* A panel screen's picture, for pace_due (src/pace.h): its heading and
+ * rows, the cursor, and what the frame around them shows - the scrim's
+ * strength, the tint, the theme, the replug message */
+static unsigned pace_rows(const char *heading, const menu_row *rows, int n, int sel, float k,
+                          unsigned tint)
+{
+	unsigned h = pace_menu(5381u, heading, rows, n, sel);
+
+	h = pace_int(h, (int)(k * 1000.0f));
+	h = pace_int(h, (int)tint);
+	h = pace_int(h, theme_index());
+	h = pace_int(h, (int)replug_shown());
+	return h;
+}
+
+/* Something on screen whose every frame counts, whatever the screen: the
+ * panel opening or closing, the volume bar, a pop-up, art coming in, or a
+ * button down */
+static bool pace_busy(const app *a)
+{
+	int b;
+
+	for (b = 0; b < IN_COUNT; b++)
+		if (a->in.pressed[b] || a->in.down[b]) return true;
+	return g_pframe.moving || plat_osd_until() != REDRAW_NEVER || texload_ready() ||
+	       g_songpop.on || g_heatpop.on;
+}
+
+/* The memory's slower clock, said once a change, for whichever screen is up:
+ * the shelf's loop and the panels' share it (plat_ram_idle) */
+static bool g_ram_idle;
+
+static void ram_idle_set(bool idle)
+{
+	if (idle == g_ram_idle) return;
+	g_ram_idle = idle;
+	plat_ram_idle(idle);
+}
+
+/* Zyper's pose beside the heading, as a frame shows it: a quarter unit, a
+ * quarter degree, a fiftieth of a blink or of his tongue. A breath moves
+ * him 2 units in 1.2 s, so a still menu draws a few frames a second for
+ * it; a hop or a blink changes it every frame, and draws every frame. */
+static void power_follow(void);
+
+static unsigned zyper_key(const zr_rig *z, unsigned t)
+{
+	zr_pose p = zr_pose_at(z, t);
+	unsigned h = 977u;
+
+	h = pace_int(h, (int)lroundf(p.tilt * 4.0f));
+	h = pace_int(h, (int)lroundf(p.tongue * 50.0f));
+	h = pace_int(h, (int)lroundf(p.ears * 4.0f));
+	h = pace_int(h, (int)lroundf(p.blink * 50.0f));
+	h = pace_int(h, (int)lroundf(p.dy * 4.0f));
+	h = pace_int(h, (int)lroundf(p.squash * 200.0f));
+	return pace_int(h, (int)lroundf(p.mouth * 50.0f));
+}
+
 static menu_exit menu_run_body(app *a, const menu_style *st,
                                menu_build_fn build, menu_key_fn on_key,
                                void *ctx, int lv)
@@ -6773,6 +6848,12 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 	const char *heading = NULL;
 	int sel = st->start_sel, n = 0, b;
 	float k;
+	/* A menu over the shelf draws when its picture changes (src/pace.h).
+	 * One over a game's paused frame or Now Playing (st->backdrop) draws
+	 * every pass, as before: its backdrop is the screen's own. */
+	pace pc;
+
+	pace_init(&pc, plat_now_ms());
 	/* Zyper's moves, in the menu that has him, on this loop's clock: it
 	 * draws every pass, so the breath and the blinks need nothing more */
 	zr_rig zy, *z = st->zyper ? &zy : NULL;
@@ -6900,11 +6981,42 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
-		if (st->backdrop) {
-			st->backdrop(a, ctx, k);
-		} else {
+		if (!st->backdrop) {
+			unsigned nowp = plat_now_ms();
+			unsigned key;
+			/* usbrole's state, followed every pass, as every frame's
+			 * overlay followed it while frames came every pass */
+			power_follow();
+			key = pace_rows(heading, rows, n, sel, k, a->tint);
+			/* Zyper: his pose now, and every frame while the next one's
+			 * differs (a hop, a blink, a breath's step), through the
+			 * redraw clock: his breath is no press, and leaves the
+			 * memory's slow clock alone, as the home's sprite does;
+			 * woken for his next blink or booked move */
+			bool busy = pace_busy(a);
+			unsigned cap = 80;
+
+			if (z && zyper_key(z, nowp) != zyper_key(z, nowp + 17)) redraw_at(nowp);
+
+			if (z) {
+				key = pace_int(key, (int)zyper_key(z, nowp));
+				if ((int)(z->next_blink - nowp) > 0 && z->next_blink - nowp < cap)
+					cap = z->next_blink - nowp;
+				if (z->booked && (int)(z->booked_at - nowp) > 0 && z->booked_at - nowp < cap)
+					cap = z->booked_at - nowp;
+			}
+			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
+				ram_idle_set(pace_ram_idle(&pc, nowp));
+				plat_input_wait(pace_rest(&pc, nowp, g_redraw_at, cap));
+				continue;
+			}
+			ram_idle_set(false);
+			g_redraw_at = REDRAW_NEVER;
+			pace_drawn(&pc, key, nowp);
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
+		} else {
+			st->backdrop(a, ctx, k);
 		}
 		g_menu_zyper = z;
 		g_menu_zyper_at = plat_now_ms();
@@ -9764,12 +9876,21 @@ static void xfer_screen_way(app *a, int way)
 	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
+	int        cover_left = -1, cover_albums = -1;
+	unsigned long long cover_moved = 0;
 	bool       done = false, stop = false;
 	float      k;
+	pace       pc;
+	/* Left open on the cable, Auto Off's time turns the screen off as the
+	 * shelf's does (src/chargedark.h): a button, files starting to move or
+	 * the screen's words changing (a browser coming, a step ticked) light
+	 * it again */
+	charge_dark dark = { 0 };
 
 	if (!g_xs.on && !xs_open(a, way)) return;
 	g_xs.shown = true;
 	lv = panel_open();
+	pace_init(&pc, plat_now_ms());
 
 	while (!done && !want_quit && a->running && g_xs.on) {
 		unsigned now = plat_now_ms();
@@ -9788,10 +9909,22 @@ static void xfer_screen_way(app *a, int way)
 		muse_poll();
 		cover_answers();
 		muse_file_albums();             /* read again on the way out, if moved */
-		if (g_cov && g_muse.nalbums > 0 && now - cover_at >= 100u) {
+		/* One round of the albums as the screen opens, and another after
+		 * files have moved or the library changed, then still: going round
+		 * for as long as the screen was open asked Muse about every album
+		 * ten times a second on a screen nobody touched (2026-11-10) */
+		if (cover_albums != g_muse.nalbums ||
+		    cover_moved != (unsigned long long)g_xs.in + (unsigned long long)g_xs.out) {
+			cover_albums = g_muse.nalbums;
+			cover_moved = (unsigned long long)g_xs.in + (unsigned long long)g_xs.out;
+			cover_left = g_muse.nalbums;
+		}
+		if (g_cov && g_muse.nalbums > 0 && cover_left > 0 && now - cover_at >= 100u) {
 			char pic[LIB_PATH * 2 + 8];
 
 			int al = (int)(cover_next++ % (unsigned)g_muse.nalbums);
+
+			cover_left--;
 
 			cover_at = now;
 			cover_recheck(al);
@@ -9878,17 +10011,67 @@ static void xfer_screen_way(app *a, int way)
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
 		tick_theme(a);
-		draw_shelf(a);
-		ui_scrim_k(a->r, 0, k);
-		if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line,
-		                       hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
-		else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
-		plat_draw_osd(a->r);
-		plat_present();
+		{
+			/* What the frame would show, and whether it must come
+			 * (src/pace.h): files moving and the hotspot coming up draw
+			 * every pass, as before */
+			unsigned nowp = plat_now_ms();
+			const char *legend;
+
+			power_follow();             /* as in the menus' loop */
+			legend = hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND;
+			unsigned key = g_xs.hot
+			    ? pace_str(pace_str(pace_str(pace_str(pace_int(pace_rows(NULL, NULL, 0, -1, k, a->tint),
+			               g_xs.hs), g_xs.name), g_xs.pin), now_line), legend)
+			    : pace_rows(head, rows, nrows, -1, k, a->tint);
+			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
+			bool busy = moving || pace_busy(a);
+			bool changed = pc.drawn && key != pc.key;
+
+			switch (charge_dark_poll(&dark, a->auto_off, nowp, busy || changed,
+			                         on_charger(), musec_playing())) {
+			case CHARGE_GO_DARK:
+				snap_off();
+				plat_backlight(false);
+				ram_idle_set(true);
+				continue;
+			case CHARGE_DARK:
+				plat_input_wait(xs_moving() ? 4 : 50);
+				continue;
+			case CHARGE_WAKE:
+				plat_backlight(true);
+				plat_input_flush();
+				memset(&a->in, 0, sizeof a->in);
+				pc.drawn = false;
+				break;
+			case CHARGE_LIT:
+				break;
+			}
+			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
+				/* Nothing to draw: the memory's slow clock once still for
+				 * 2 s, and a wait for a button. The server is served each
+				 * pass, so its rest is short while a browser is there. */
+				ram_idle_set(pace_ram_idle(&pc, nowp));
+				plat_input_wait(pace_rest(&pc, nowp, g_redraw_at,
+				                          moving ? 4 : g_xs.st.clients ? 10 : 50));
+				continue;
+			}
+			ram_idle_set(false);
+			g_redraw_at = REDRAW_NEVER;
+			draw_shelf(a);
+			ui_scrim_k(a->r, 0, k);
+			if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
+			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
+			plat_draw_osd(a->r);
+			plat_present();
+			pace_drawn(&pc, key, nowp);
+		}
 		/* Shorter than the usual 8ms: this loop is also the server's, and a
 		 * transfer moves POLL_BUDGET per pass. */
 		ui_frame_rest(4);
 	}
+	if (dark.dark) plat_backlight(true);
+	ram_idle_set(false);
 	panel_close(a, lv, false);
 	g_xs.shown = false;
 	/* The hotspot failing ends it as Y does; anything else that ended the
@@ -23555,11 +23738,11 @@ int main(int argc, char *argv[])
 	 * loop. */
 	const Uint32 RAM_IDLE_MS = 2000;
 	Uint32 last_pass = 0, last_render = 0, last_busy = plat_now_ms();
-	bool ram_idle = false;
 	charge_dark dark = { 0 };    /* the screen off on the charger: src/chargedark.h */
 
 	/* At full, whatever a launcher before this one left it at. */
-	plat_ram_idle(false);
+	g_ram_idle = true;
+	ram_idle_set(false);
 	/* An update the page brought over the cable that is installed now. The
 	 * card's empty .media folders go once the shelf is up (after_start_step). */
 	up_cable_tidy();
@@ -23573,11 +23756,10 @@ int main(int argc, char *argv[])
 		 * opens: a menu, a game, the next shelf's art. Games set their own
 		 * clocks from there (Diatom's power profiles), and a port runs at
 		 * full. */
-		if (ram_idle) {
+		if (g_ram_idle) {
 			for (int b = 0; b < IN_COUNT; b++)
 				if (a.in.pressed[b] || a.in.down[b]) {
-					plat_ram_idle(false);
-					ram_idle = false;
+					ram_idle_set(false);
 					last_busy = plat_now_ms();
 					break;
 				}
@@ -23800,15 +23982,12 @@ int main(int argc, char *argv[])
 			 * nobody has touched for minutes, and Zyper's hop is drawn
 			 * every frame for its two seconds */
 			if (touched || !texload_idle() || g_songpop.on || xs_moving()) last_busy = now;
-			if (ram_idle != (now - last_busy >= RAM_IDLE_MS)) {
-				ram_idle = !ram_idle;
-				plat_ram_idle(ram_idle);
-			}
+			ram_idle_set(now - last_busy >= RAM_IDLE_MS);
 		}
 	}
 	/* A launcher stopped while the shelf sat still leaves nothing slow
 	 * behind for whatever runs next, and nothing dark. */
-	if (ram_idle) plat_ram_idle(false);
+	ram_idle_set(false);
 	if (dark.dark) plat_backlight(true);
 	/* A File Transfer behind the shelf ends with the launcher */
 	xs_end();

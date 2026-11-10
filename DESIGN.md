@@ -391,6 +391,14 @@ beside a cubic one. One function each, in `src/design.h`.)*
 - **Every motion tells the redraw clock when it ends**, the way
   `plat_osd_until` does, so a screen that redraws only on change still draws
   the last frame.
+- **A still screen draws nothing.** The shelf, MENU's panels and USB File
+  Transfer draw a frame when what they show changes, when the redraw clock
+  comes due, or once a second (src/pace.h); a press, a held button, a panel
+  opening or closing, the volume bar and files on their way draw every pass,
+  so saving power never costs a frame of motion. Zyper's breath and blinks
+  draw every frame they change (2026-11-10: File Transfer left open drew at
+  60 Hz and ran the Pixel 2's chip at 51 to 55 C; paced, see the PR's
+  tables).
 - **Menus now open and close.** A panel opens in **move** (out): from 96% to
   full size and from clear to opaque, with its scrim fading in over the same
   time; it closes in **exit** (in), back the same way. The focus fill glides
@@ -2586,6 +2594,12 @@ same after 5 seconds (11.35). The user-facing words never say "power".
   the thing, in every language (*Transferir USB* on the empty home's card
   and in MENU). A UI string that slides in a marquee is cut too, only
   slowly: a marquee is for names, which are data.
+- A menu row is sized with a row's height of air between its label and its
+  value, and may close it to half before anything is cut: the Pixel 2's
+  fonts measure a little wider than the host's ("auto (alto-falante)", 3
+  units to spare on the host, was cut on the device, 2026-11-10). And the
+  host's check says "tight" for a row within 1% of the most it can have, so
+  it is caught before a device shows it.
 
 ---
 

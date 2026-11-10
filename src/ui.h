@@ -233,6 +233,9 @@ void ui_fit_frame(void);
  * Diatom to show): said as drawn to the host's check, which holds it to its
  * box where it is cut (ui_fit_text) */
 void ui_fit_drawn(const char *s);
+/* A menu row's value `s`, `w` wide, in `room` of a row `row_w` wide: said
+ * on a host when it fits by less than 2% of the row (see ui.c) */
+void ui_fit_tight(const char *s, int w, int room, int row_w);
 #ifdef I18N_PSEUDO
 /* A cleared screen is a new frame for it too */
 #define SDL_RenderClear(r) (ui_fit_frame(), SDL_RenderClear(r))

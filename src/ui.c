@@ -861,6 +861,21 @@ static void i18n_note(const char *what, const char *s)
 	fprintf(stderr, "i18n: %s: %s\n", what, s);
 }
 
+/* A row's value that fits its room by less than 2% of the row: the Pixel
+ * 2's fonts measure a little wider than the host's, and "auto
+ * (alto-falante)", 3 units to spare in MENU on the host, was cut there
+ * (2026-11-10). "i18n: tight: ..." (or "tight data"), which
+ * tools/i18n-shots.py holds as it holds a cut. Only for a menu row's value,
+ * where the room is what the label leaves: a fitted line elsewhere is tight
+ * by design (a balanced line, a button's word). */
+void ui_fit_tight(const char *s, int w, int room, int row_w)
+{
+	int spare = row_w / 100;
+
+	if (s && w <= room && w > room - spare)
+		i18n_note(i18n_watched(s) ? "tight" : "tight data", s);
+}
+
 /* ---- the box a string must stay inside ---------------------------------
  *
  * A string that is wider than the panel, tile or plate it is drawn on is as
@@ -996,6 +1011,7 @@ static void i18n_fit_seen(const char *src, const char *dst)
 #else
 #define i18n_fit_seen(src, dst) ((void)0)
 void ui_fit_frame(void) {}
+void ui_fit_tight(const char *s, int w, int room, int row_w) { (void)s; (void)w; (void)room; (void)row_w; }
 void ui_fit_drawn(const char *s) { (void)s; }
 #endif
 

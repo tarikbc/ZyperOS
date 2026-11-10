@@ -164,6 +164,9 @@ def write_unshot(ids):
 # and the power-off's screens, the keyboard, the save slots
 EXTRA = {
     "menu-network": ("demo", "PS1", ["--menu", "Audio Output"]),
+    # Audio Output's value not focused, under the row that is: on the device
+    # "auto (alto-falante)" was cut there and nowhere a shot looked
+    "menu-audio-under": ("demo", "PS1", ["--menu", "Audio Channels"]),
     "menu-clock": ("demo", "PS1", ["--menu", "Language"]),
     "menu-look": ("demo", "PS1", ["--menu", "Appearance"]),
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
@@ -475,7 +478,7 @@ def run_language(code, shots, binary, keep):
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             for line in r.stdout.splitlines():
-                if line.startswith(("i18n: cut data: ", "i18n: slides data: ")):
+                if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])
                 elif line.startswith("fit: drawn: "):
                     drawn.add(unescape(line[12:]))
