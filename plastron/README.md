@@ -169,6 +169,13 @@ interface, and gives the computer an address:
 | Pixel 2 | 10.42.0.1 | 10.42.0.2 | `ssh root@10.42.0.1`, with the key above |
 | Brick | 10.55.0.2 | 10.55.0.1 | `ssh root@10.55.0.2`, with the key above |
 
+The Pixel 2's link is a /30 (`/etc/udhcpd.conf` hands out the one address,
+`10.42.0.2`, with netmask 255.255.255.252): narrower than any other network
+the computer is on, so `10.42.0.1` is always routed down the cable, even when
+the computer's Wi-Fi or a VPN also uses `10.42.0.0/24`. While ZyperOS's USB
+File Transfer (or Developer Mode's SSH) has the link, the launcher answers
+multicast DNS on `usb0` for `zyperos.local`.
+
 On the Pixel 2 the USB port charges only until asked. A development build
 starts in Developer Mode, so the link above is up from boot with no
 question. A release build (or Developer Mode turned off in ZyperOS's menu)

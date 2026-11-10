@@ -9,9 +9,12 @@
 # so Windows loads it when the cable goes in rather than showing an unknown
 # device: Windows 10 needs that, Windows 11 is said not to, and both take it.
 #
-# And 10.42.0.1, with udhcpd giving the computer an address beside it
+# And 10.42.0.1, with udhcpd giving the computer the one address beside it
 # (/etc/udhcpd.conf): browsers won't open a link-local address, and
-# ZyperOS's USB File Transfer shows this one.
+# ZyperOS's USB File Transfer shows this one, beside zyperos.local (the
+# launcher answers mDNS on usb0 while the link is its). A /30: the link has
+# two ends, and a computer whose other network also uses 10.42.0.0/24 still
+# routes 10.42.0.1 down the cable, by the longest prefix.
 #
 # Bound only in Developer Mode (below): otherwise USB charges only until
 # ZyperOS's question says otherwise.
@@ -73,7 +76,7 @@ start)
 	fi
 	[ "$dev" = 1 ] && ls /sys/class/udc | head -n1 > UDC
 	ip link set usb0 up
-	ip addr add 10.42.0.1/24 dev usb0
+	ip addr add 10.42.0.1/30 brd + dev usb0
 	udhcpd /etc/udhcpd.conf
 	;;
 stop)
