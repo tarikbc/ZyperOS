@@ -8,7 +8,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 // The README's screenshots, all in the light theme, as on the page beside it
-const SHOTS = ["systems", "gallery", "shelf", "info", "cheevos", "menu", "mp4", "nowplaying", "gamemenu"];
+const SHOTS = ["shelf-n64", "systems", "favorites", "shelf-snes", "gallery", "shelf", "info", "cheevos", "menu", "mp4", "nowplaying", "gamemenu"];
 const REST = { pitch: 0, yaw: -0.28, roll: 0 };
 
 export async function mount(canvas) {

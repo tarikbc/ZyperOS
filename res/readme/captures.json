@@ -1,8 +1,284 @@
 {
-  "source_commit": "642bc2aae5042491c320976a7e317edcd3f3e65f",
+  "source_commit": "0a36a2dd8991e65dc1d5c2025a57e583539aaea7",
   "renderer": "current native launcher, SDL software, headless",
-  "data": "demonstration library (freeware or stand-in names, empty files); built-in shot fixtures",
-  "artwork": {},
+  "data": "demonstration library (well-known games and freeware by name, empty files); built-in shot fixtures",
+  "artwork": {
+    "PlayStation/Castlevania - Symphony of the Night (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Castlevania - Symphony of the Night (USA)",
+      "sha256": "0a3064fc4eaa9c9fab4885dc5b65dac044b4079ab731a036f06411bb20048b57"
+    },
+    "PlayStation/Crash Bandicoot (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Crash Bandicoot (USA)",
+      "sha256": "53da89f702471310d68dda076f42490e7f6bfcc22dd7402917c6a8077bf85a77"
+    },
+    "PlayStation/Metal Gear Solid (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "PlayStation/Spyro the Dragon (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Spyro the Dragon (USA)",
+      "sha256": "14d9a52c23559fbce8e337363c674d9a9abac3d81d2ba17fc9775d98728f303b"
+    },
+    "PlayStation/Tekken 3 (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tekken 3 (USA)",
+      "sha256": "080ad8cba468ea08f0d3c25b4396e586043852814a5e6d3690d86c41d8c6b1e1"
+    },
+    "PlayStation/Tony Hawk's Pro Skater 2 (USA).chd": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tony Hawk's Pro Skater 2 (USA)",
+      "sha256": "a901005870f4f3be71be4b95a2066b18e7d2b935b5d086bc308624eb2cab482a"
+    },
+    "NES/Kirby's Adventure (USA).nes": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Kirby's Adventure (USA)",
+      "sha256": "cd449ee183cfa05ec6d74381a11fa39aeea631bf9bb85d3e8078fbe75030546e"
+    },
+    "NES/Mega Man 2 (USA).nes": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Mega Man 2 (USA)",
+      "sha256": "507e52d5994f415e3df8f50735a7b845a055ecfffbd063b227ed80513fbeb8f7"
+    },
+    "NES/Metroid (USA).nes": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Metroid (USA)",
+      "sha256": "005aa3de5152eabcaf4038df012acb0810e2835ec1dadbe7d4123a37b1a29063"
+    },
+    "NES/Super Mario Bros. 3 (USA).nes": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Super Mario Bros. 3 (USA)",
+      "sha256": "3840a9a5992533c9d1c5f474cbe8bc6216dce441c9628564c62549f456d839b1"
+    },
+    "NES/The Legend of Zelda (USA).nes": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Legend of Zelda, The (USA)",
+      "sha256": "4ab0be443b2c3ed4a2d1520f85068877873c457c5c95809ba86c30f7ad7cf622"
+    },
+    "SNES/Chrono Trigger (USA).sfc": {
+      "set": "libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Chrono Trigger (USA)",
+      "sha256": "424f3104c6a62d7f50b01059cfa1d80cce594e5ce7b89b7040252d12deda160b"
+    },
+    "SNES/Donkey Kong Country (USA).sfc": {
+      "set": "libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Donkey Kong Country (USA)",
+      "sha256": "f2f8873d7433212f811aeff06f56681b7101eb532d1c2b21511cc7d7e5faa315"
+    },
+    "SNES/Super Mario World (USA).sfc": {
+      "set": "libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Super Mario World (USA)",
+      "sha256": "8c2bb5b52df24943e057efed073646fb9d3658348800602d23430dfd02812193"
+    },
+    "SNES/Super Metroid (USA).sfc": {
+      "set": "libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Super Metroid (Japan, USA) (En,Ja)",
+      "sha256": "5f2ee5da7bbc2fc4042ba77726e0fa19a9619bd427fa04d780d1ce1210de7d65"
+    },
+    "SNES/The Legend of Zelda - A Link to the Past (USA).sfc": {
+      "set": "libretro-thumbnails/Nintendo_-_Super_Nintendo_Entertainment_System/Named_Boxarts",
+      "name": "Legend of Zelda, The - A Link to the Past (USA)",
+      "sha256": "ad56494a337cd5d2bf0477c7c8f2f344ef661ff43158f58cd2593b625ba2fddc"
+    },
+    "Game Boy/Pokemon - Red Version (USA, Europe).gb": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy/Named_Boxarts",
+      "name": "Pokemon - Red Version (USA, Europe) (SGB Enhanced)",
+      "sha256": "48f38b05a808b61aa7578260b94dcbf9826597fb0b4cc1b0b274ff07eeb66c5c"
+    },
+    "Game Boy/Super Mario Land (World).gb": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy/Named_Boxarts",
+      "name": "Super Mario Land (World)",
+      "sha256": "8376e6c016a5bd50a2a3600966fd88d5d67dc70e90d590f9a83d1e21f4153a78"
+    },
+    "Game Boy/Tetris (World).gb": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy/Named_Boxarts",
+      "name": "Tetris (World) (Rev 1)",
+      "sha256": "73624db64263bca50e8a65678b6075fd35d0c364599e4ddd46f558fcf555641f"
+    },
+    "Game Boy/The Legend of Zelda - Link's Awakening (USA, Europe).gb": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy/Named_Boxarts",
+      "name": "Legend of Zelda, The - Link's Awakening (USA, Europe)",
+      "sha256": "87bf63bb1ee64dc69b51448f84f9d9194cb88f626aabdc520e427de7b8b0056a"
+    },
+    "Game Boy Advance/Advance Wars (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Advance Wars (USA)",
+      "sha256": "e8bc3d7e27d8902b639c2b4834e072a93cb81389b51bdf1278681738cad0a45c"
+    },
+    "Game Boy Advance/Mario Kart - Super Circuit (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Mario Kart - Super Circuit (USA)",
+      "sha256": "21e774463bbb272670484d070b281f1a7c16c3a2bfe0a8ff1b6ffadabd8e01c9"
+    },
+    "Game Boy Advance/Metroid Fusion (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Metroid Fusion (USA)",
+      "sha256": "bb0c041dda892fc734b42491e45a6ffa34d0d52577a176133988421095e7db67"
+    },
+    "Game Boy Advance/Pokemon - Emerald Version (USA, Europe).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Pokemon - Emerald Version (USA, Europe)",
+      "sha256": "f39a4d3d7044d2ad693a60f6af362619f7268cd9187c6576f3d4e3373dfa49b5"
+    },
+    "Game Boy Advance/The Legend of Zelda - The Minish Cap (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Legend of Zelda, The - The Minish Cap (USA)",
+      "sha256": "299ec4f71780caf229616286d13e5a57e135427814be00000ede6589eb627642"
+    },
+    "Genesis/Gunstar Heroes (USA).md": {
+      "set": "libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/Named_Boxarts",
+      "name": "Gunstar Heroes (USA)",
+      "sha256": "74ce0af2572dc5ab5c50ecf8330511575964861adfd0107137b7be31acca00c3"
+    },
+    "Genesis/Sonic The Hedgehog (USA).md": {
+      "set": "libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/Named_Boxarts",
+      "name": "Sonic The Hedgehog (USA)",
+      "sha256": "6fb5e8f86532044471761ffebc9e557764ea7c2354b8c11d859d1665372ffd40"
+    },
+    "Genesis/Sonic The Hedgehog 2 (USA).md": {
+      "set": "libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/Named_Boxarts",
+      "name": "Sonic The Hedgehog 2 (USA)",
+      "sha256": "00551991d5fbb78c824e4a3f97f11060a6d2123e89e78afe6a75bf954bd82649"
+    },
+    "Genesis/Streets of Rage 2 (USA).md": {
+      "set": "libretro-thumbnails/Sega_-_Mega_Drive_-_Genesis/Named_Boxarts",
+      "name": "Streets of Rage 2 (USA)",
+      "sha256": "393034ba5b05e851decad54748b57997732097ea584c770a7f558b9fba2723ff"
+    },
+    "Nintendo 64/GoldenEye 007 (USA).z64": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_64/Named_Boxarts",
+      "name": "GoldenEye 007 (USA)",
+      "sha256": "e3a2cfed3e140e14a738a8ecf5afb12740645ef4d793b2da0b99d3fa21434049"
+    },
+    "Nintendo 64/Mario Kart 64 (USA).z64": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_64/Named_Boxarts",
+      "name": "Mario Kart 64 (USA)",
+      "sha256": "c6de99137340869eaa86200ab8209b161c2daad6a7bdd0241d585a3603df22ce"
+    },
+    "Nintendo 64/Super Mario 64 (USA).z64": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_64/Named_Boxarts",
+      "name": "Super Mario 64 (USA)",
+      "sha256": "ec5ba1a5967bf2b5276ac164e5ce2970cee6c5bec4eb3013396faf2a6aa1ec2c"
+    },
+    "Nintendo 64/The Legend of Zelda - Ocarina of Time (USA).z64": {
+      "set": "libretro-thumbnails/Nintendo_-_Nintendo_64/Named_Boxarts",
+      "name": "Legend of Zelda, The - Ocarina of Time (USA)",
+      "sha256": "1d71330d40934b4234901ea1df7d835eab74f7cc26fa2f45b2d4214ebb8f4890"
+    },
+    "Dreamcast/Crazy Taxi (USA).chd": {
+      "set": "libretro-thumbnails/Sega_-_Dreamcast/Named_Boxarts",
+      "name": "Crazy Taxi (USA)",
+      "sha256": "8e07bc902b28445319bd5630e6df4aab0e8ca2c232dae559f6e1379b4c8f5eac"
+    },
+    "Dreamcast/Jet Grind Radio (USA).chd": {
+      "set": "libretro-thumbnails/Sega_-_Dreamcast/Named_Boxarts",
+      "name": "Jet Grind Radio (USA)",
+      "sha256": "7f1166ce1dc61531749a190bcf34c4e26d8083f18a5ee05c3f062d828fa7d9e9"
+    },
+    "Dreamcast/Sonic Adventure (USA).chd": {
+      "set": "libretro-thumbnails/Sega_-_Dreamcast/Named_Boxarts",
+      "name": "Sonic Adventure (USA)",
+      "sha256": "33fb22ec996af12b3a801aed06ff218b87b7c8b840219028657539146affa1cd"
+    },
+    "Dreamcast/Soulcalibur (USA).chd": {
+      "set": "libretro-thumbnails/Sega_-_Dreamcast/Named_Boxarts",
+      "name": "Soulcalibur (USA)",
+      "sha256": "62d9c9f621c2784317eb2fbeb7bf64f62d728fbf13bf52b58a270589beebb0ad"
+    },
+    "media-art/now.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "media-art/c0.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA) (Disc 1)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "media-art/c1.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Japan)",
+      "sha256": "5fd5550f12b79cbde6603287a330ce78aa6c5b9e0f305f574dea8728781e627c"
+    },
+    "media-art/c2.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Europe)",
+      "sha256": "ed2a57f3d24e97037d616d42279c19cc378a123b97aed482d8f85b64c773689f"
+    },
+    "media-art/c3.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Spain) (Disc 1)",
+      "sha256": "6ca17212936cb4c53e2fa290835467bf806a2e7c75d560359f15c1d32d28ad58"
+    },
+    "media-art/c4.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Japan, Asia) (Disc 1) (Ichi) (Premium Package)",
+      "sha256": "7af1d79ae8ac508da0a5a42251afb6fe56b93f5bd9a4e2e97be8c18dc7a62d6e"
+    },
+    "media-art/c5.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Titles",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "a68a56d4d5245503eaafcc00bb70bd4f9a673ea7783d1da4c9b29e2cbb98cd20"
+    },
+    "media-art/c6.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Snaps",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "6c9fec69ebcd71636dce05e16d538cc7f8a98158948fe5293df65dc05e21b978"
+    },
+    "media-art/c7.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Japan) (Disc 1) (Ichi)",
+      "sha256": "5fd5550f12b79cbde6603287a330ce78aa6c5b9e0f305f574dea8728781e627c"
+    },
+    "media-art/c8.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Titles",
+      "name": "Metal Gear Solid (Japan) (Disc 1) (Ichi)",
+      "sha256": "e9c6e54f51fe1414d964b45ab9e6bc4b24b466791e2cc537877251fe74b3f3dc"
+    },
+    "media-art/c9.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Snaps",
+      "name": "Metal Gear Solid (USA) (Disc 1)",
+      "sha256": "be1dd3063532f910ade3533d5e66f6e0aa317d553580e574aec26ddcbed0c5c0"
+    },
+    "media-art/c10.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (Germany) (Disc 1)",
+      "sha256": "ed2a57f3d24e97037d616d42279c19cc378a123b97aed482d8f85b64c773689f"
+    },
+    "media-art/snap.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Snaps",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "6c9fec69ebcd71636dce05e16d538cc7f8a98158948fe5293df65dc05e21b978"
+    },
+    "ScummVM/Beneath a Steel Sky": {
+      "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
+      "name": "Beneath a Steel Sky",
+      "sha256": "2cdff43c9db0bc2176be1d7597f4c0f5a4052b7ea15b46f5fb65237a77194331"
+    },
+    "ScummVM/Drascula - The Vampire Strikes Back": {
+      "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
+      "name": "Drascula - The Vampire Strikes Back",
+      "sha256": "12c6ee5ee5a86aa88f4c22847a5fd2815709e80e5dc8a216db9d95a5204e19f8"
+    },
+    "ScummVM/Flight of the Amazon Queen": {
+      "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
+      "name": "Flight of the Amazon Queen (CD_DOS_English)",
+      "sha256": "b9a45a96b5e42c91c44415772ef2f3f942c95fbc46cc511cbf59a1b05dcb6e02"
+    },
+    "ScummVM/Lure of the Temptress": {
+      "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
+      "name": "Lure of the Temptress",
+      "sha256": "a3953fae6ee1c7a5ad61852011d5bd2fdd19b6bbd7507f7536b45e628bfdca8f"
+    },
+    "ScummVM/Soltys": {
+      "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
+      "name": "Soltys",
+      "sha256": "1b32cbfbe0f9da2748ff8b3615542861cf1a4675018c651e6d471cdaba6d5fd5"
+    }
+  },
   "screenshots": [
     {
       "file": "light/systems.png",
@@ -20,8 +296,7 @@
         "--home",
         "spotlight"
       ],
-      "sha256": "03f2f86944e4e2e3ed5dbe966dd6cedeb7e1a41ac3c61862a1b9f705caa35e44",
-      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
+      "sha256": "62aec47a8de381677bf931efcde6ccdcd826559c8a857bd575284a3690df90c5"
     },
     {
       "file": "light/gallery.png",
@@ -39,8 +314,7 @@
         "--home",
         "gallery"
       ],
-      "sha256": "bb80a19fedd50dc4f2a1ee2ea780d9dbc6f2899b27e18699f5bad342c3ef419d",
-      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
+      "sha256": "fc9f7a224e3c8c6803cc212cf60bf4b609143b6466ba7ac5de47e0e8f61bfb8c"
     },
     {
       "file": "light/shelf.png",
@@ -58,8 +332,61 @@
         "--screen",
         "games"
       ],
-      "sha256": "98d9d89f326be9cfd8eb940efafe9907b84369aa18e515d2fc3455bf795842df",
-      "source_commit": "76a5eea6f69f1b85e22490e15a8688b2ed913ac9"
+      "sha256": "1784c6f1b1d6b8463d507a4370d12121b21e3c3aa2326affc1ed3b93126451c0"
+    },
+    {
+      "file": "light/shelf-n64.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "b2e88b660826271d998b3fd6f8423cf41e146b83734a3f1aeb63449e18d4e856"
+    },
+    {
+      "file": "light/shelf-snes.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "d3c3a6d533b172ad300eea8f2a68ca0d879aed22574ef3fbfdde82b1bde323f2"
+    },
+    {
+      "file": "light/favorites.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "9d6b49ccedbe6a970f194db0d0d321a5d4cb994f35887cca7e949b68e07728c7"
     },
     {
       "file": "light/info.png",
@@ -78,7 +405,7 @@
         "games",
         "--info"
       ],
-      "sha256": "9e11df2762540b3f3ef675f8cc71be380c60cbc19000c917e4a37d72057ddf5a"
+      "sha256": "2ae6aeceb344638fc5813cc2fd39e31e312c02bb17a12e5da251f18e17442861"
     },
     {
       "file": "light/info-delete.png",
@@ -97,7 +424,7 @@
         "games",
         "--info-delete"
       ],
-      "sha256": "3ae6828e1b16a0e6efce5bc79fb8ef31c22a108c96e98717cd4a43092b693e95"
+      "sha256": "136fdcf7b26b12081d885196bb8b83f3cb5e799a77af3ef7c116d0dac8082b19"
     },
     {
       "file": "light/delete-ask.png",
@@ -116,8 +443,7 @@
         "games",
         "--delete-ask"
       ],
-      "sha256": "f68467086bde7322d8f8dff4e5a6aa6363eedacfadaba2126d0c66e97db45e4b",
-      "source_commit": "c04731c39dca9751387269001723c5831b3d4387"
+      "sha256": "02781fd3d26aa2a3bcf2f8051a6f4bfffdbc54f2020a2a0e6b073e3bf5dfe601"
     },
     {
       "file": "light/cheevos.png",
@@ -138,8 +464,7 @@
         "{card}/Roms/PlayStation/.cheevos/Hagane.set",
         "b#"
       ],
-      "sha256": "e1d1b2292121197be1f105db0710487aba38fa3ec266c7b43841ca317003fe87",
-      "source_commit": "a7a594b3183cc59372b11be52b8da7883718e2cf"
+      "sha256": "7a3896f4168f272a718e270b49753a4ed59a0d58b7d96db7d0d0d64fd7753590"
     },
     {
       "file": "light/cheevo-notice.png",
@@ -162,8 +487,7 @@
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
-      "sha256": "d128b7bac15f3c55252988c9ca0a5920acff2a3e96de5165521fbb3bc0fa36a3",
-      "source_commit": "a7a594b3183cc59372b11be52b8da7883718e2cf"
+      "sha256": "da99740ac9abe477ff6cb2b7b99651884a4652d125fde31b16018eb4d9df858c"
     },
     {
       "file": "light/menu.png",
@@ -181,7 +505,7 @@
         "--menu",
         "Search Games"
       ],
-      "sha256": "2dabb030569182ad068cbdcccfe1e9a3dd963d910b9a190f2d60ef688b5a3af0"
+      "sha256": "36333338b8b1971bab4d48b6f604748f7116197d1030bff7679f709878b55b06"
     },
     {
       "file": "light/mp4.png",
@@ -199,8 +523,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "f8609d18e498d050da1c8414ac27ff53cb4c796e355461b245e0e2c76dd56037",
-      "source_commit": "76a5eea6f69f1b85e22490e15a8688b2ed913ac9"
+      "sha256": "f8609d18e498d050da1c8414ac27ff53cb4c796e355461b245e0e2c76dd56037"
     },
     {
       "file": "light/nowplaying.png",
@@ -220,8 +543,7 @@
         "0",
         "83"
       ],
-      "sha256": "7547dc533e6c4cf8c982acc9c46a606b6d7deded073cb98fbd66873f34fef680",
-      "source_commit": "4d46b1e95ec2100237a97a31e0b8491da25c5351"
+      "sha256": "7547dc533e6c4cf8c982acc9c46a606b6d7deded073cb98fbd66873f34fef680"
     },
     {
       "file": "light/hare.png",
@@ -241,8 +563,7 @@
         "1 connected",
         "Tobu Tobu Girl.gb"
       ],
-      "sha256": "2923783813a9d1cf27c4852617d09c1e9c817a54ed7f6127fc3a22c6aa5f9b0d",
-      "source_commit": "70992931130292c04696593745b57a3f8c6fa726"
+      "sha256": "54fb23d626ba08f46755ec5f28e8afbcfb01a23733b96bc87ffce5f3d4021245"
     },
     {
       "file": "light/hotspot.png",
@@ -281,7 +602,7 @@
         "--usb-ask",
         "0"
       ],
-      "sha256": "7253e2fe98cae3cd34c6fc52ba8929d30b376b90de6ee97a61a851f2aaaa7ce6"
+      "sha256": "6a30c8c452dbc8e4e1ab06d8c2c5e8464a4205f01f866defdef7fa41d7f42e4f"
     },
     {
       "file": "light/scummvm.png",
@@ -299,7 +620,28 @@
         "--screen",
         "games"
       ],
-      "sha256": "c4ca9c17cbb8f7ff416e066f72a9531fb61e31efafa36605fa96ffc2eed8eb23"
+      "sha256": "12cc3bf9eed360e62ddffc94850a079867c8bbfcf60eee07f0c38e2138f15013"
+    },
+    {
+      "file": "light/openbor.png",
+      "card": "openbor",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "0",
+        "port"
+      ],
+      "sha256": "e09493a701568a3b5798f89a239caa400d2554268e8fe74880ba0a79ee7e1b10"
     },
     {
       "file": "light/scraper.png",
@@ -317,8 +659,7 @@
         "--scraper",
         "2"
       ],
-      "sha256": "ae34b32228001f66b0617e818a519aede54c2e19c2a55fe830542811d79ecbfd",
-      "source": "reused: the Scraper session's host frame of --scraper 2 (2026-11-06, the merged Scraper code), drawn over a card with one system; this tool draws the same panel over the demonstration card, sha256 ab8df6764c766976fb0c6b65c78aeda500d7a17337dbbe54540dd5d2662acc21"
+      "sha256": "bc90bfb99115b36797727b1250a8a911ea41e8b38f150cf8b4322d204d4c93b5"
     },
     {
       "file": "light/update.png",
@@ -336,6 +677,204 @@
         "--update"
       ],
       "sha256": "1eb4f64e067e7123aa2a357f212cfb8f5fb2797123e7c15e07a37a82afe0ea91"
+    },
+    {
+      "file": "light/ports.png",
+      "card": "ports",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "4d013d60b8d8eb6cd84eb52a16c958927c54febc24cb162165956d192fd658ea"
+    },
+    {
+      "file": "light/ports-menu.png",
+      "card": "portdocs",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "0",
+        "port"
+      ],
+      "sha256": "e09493a701568a3b5798f89a239caa400d2554268e8fe74880ba0a79ee7e1b10"
+    },
+    {
+      "file": "light/ports-controls.png",
+      "card": "portdocs",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "0",
+        "PRT"
+      ],
+      "sha256": "b0fb310088e591d9c4bf4ca27c63841ef502f6870c7f5842d9e9894d095d1a85"
+    },
+    {
+      "file": "light/portmaster.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--portmaster",
+        "running"
+      ],
+      "sha256": "b92537c0839e774d3c51c0339b08193651409776957088fd2d9732e88496200e"
+    },
+    {
+      "file": "light/storage.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "main"
+      ],
+      "sha256": "00f598069ccd7b17ebccf14beaadce97749356d5f401bc5fdb9269b48f7feab3"
+    },
+    {
+      "file": "light/storage-system.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "system"
+      ],
+      "sha256": "b07a60955cbdfc837b8cc81560e06b92c782f2d47c88e89742f8630583419530"
+    },
+    {
+      "file": "light/storage-music.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--storage",
+        "music"
+      ],
+      "sha256": "966ae702e9f276186cbebe21228c3451a5c1d459b1abcb926bac53f870245858"
+    },
+    {
+      "file": "light/media.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "page",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "a4eb68d92a31c748b3de95c2a0c3cc3731782eb0dfe04484de1259a9f1ac1172"
+    },
+    {
+      "file": "light/media-look.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "look",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "f0c5292eb5e257281ad42c9c231eb144b6e047e89119559a2399909eed5ade3a"
+    },
+    {
+      "file": "light/media-video.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--media",
+        "video",
+        "--media-art",
+        "{card}/media-art"
+      ],
+      "sha256": "02da9b86d186129b8a1d445cbb35db6b73d542ece17f6376d52ac9e4c6556b9c"
     },
     {
       "file": "light/empty.png",
@@ -373,8 +912,7 @@
         "--tour-pick",
         "0"
       ],
-      "sha256": "f9115a49d27f645f8f2561b5fed1cbdcd61d7d4215824ac91324e2cda3ce1a6c",
-      "source": "reused: the onboarding session's host frame, byte for byte what this tool draws"
+      "sha256": "34ca861ce43af47b74dca1d667c414b8a25d80cf82fe3d58345e6ceac45601ba"
     },
     {
       "file": "light/tour-home.png",
@@ -394,7 +932,7 @@
         "--tour-pick",
         "1"
       ],
-      "sha256": "4e640e4b04345526779d90720fefd8c1a87f06fa411334963c3eba9350a005ac"
+      "sha256": "bfd8ca62e7dd589ba8ff7c704f13855bba1ad2bc54b2fd4b30e42faf4423787f"
     },
     {
       "file": "light/tour-sounds.png",
@@ -414,8 +952,7 @@
         "--tour-pick",
         "1"
       ],
-      "sha256": "2363632f95805cd7b3ecfc0f82e402e48646f7df75b94ca148f05274b220e92d",
-      "source": "reused: the onboarding session's host frame, byte for byte what this tool draws"
+      "sha256": "2363632f95805cd7b3ecfc0f82e402e48646f7df75b94ca148f05274b220e92d"
     },
     {
       "file": "light/tour-music.png",
@@ -438,92 +975,6 @@
       "sha256": "9c9bacda749075fb651c2ed0958fd9c42fb1beecd84e86c0abf419af425340f8"
     },
     {
-      "file": "dark/systems.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "dark",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--home",
-        "spotlight"
-      ],
-      "sha256": "b1b9aeebf9a8db9d07a03bea1449bd943f2b022e0552c5e6950804af495712c3",
-      "source_commit": "23e4d4f5e09a27bcba5a747c60cbfc2c90c7ddda"
-    },
-    {
-      "file": "dark/menu.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "dark",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--menu",
-        "Search Games"
-      ],
-      "sha256": "716ae34e841de0be4a559567f67f887cb6da5914159109371d7665466b526b01"
-    },
-    {
-      "file": "light/portal.png",
-      "card": "portal",
-      "args": {
-        "width": 1280,
-        "height": 800,
-        "scale": 1,
-        "phone": false,
-        "folder": "roms/NES",
-        "upload": [
-          "Super Tilt Bro.nes",
-          524304
-        ],
-        "page": "res/web/index.html"
-      },
-      "sha256": "2f1071c9dc19090f852ea46469016ac8f472adaa4830daa3523336d6a87dacf0",
-      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
-      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
-    },
-    {
-      "file": "light/portal-pin.png",
-      "card": "portal",
-      "args": {
-        "width": 390,
-        "height": 844,
-        "scale": 2,
-        "phone": true,
-        "gate": true,
-        "page": "res/web/index.html"
-      },
-      "sha256": "e6132f1359a5e5e0070e768126381dcc1bbbfa3c1e422ae3a7d90bae0f7102ad",
-      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
-      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
-    },
-    {
-      "file": "light/portal-phone.png",
-      "card": "portal",
-      "args": {
-        "width": 390,
-        "height": 844,
-        "scale": 2,
-        "phone": true,
-        "folder": "roms",
-        "page": "res/web/index.html"
-      },
-      "sha256": "7d2142cc09013df450509c33785435a5562c9bb5d9d148c75a089d8c0662ca5e",
-      "source_commit": "70992931130292c04696593745b57a3f8c6fa726",
-      "renderer": "headless Chrome over the DevTools protocol, the page served by build-native/portal-serve"
-    },
-    {
       "file": "light/charging.png",
       "card": "demo",
       "args": [
@@ -539,8 +990,7 @@
         "--charging",
         "4000"
       ],
-      "sha256": "b1fba038aa10f4f934acfcba2acbf2f75ce5196e576f4f40e82dc2eb392dc65b",
-      "source_commit": "61913935902163db09b0db7a061ddfdbba7f2fec"
+      "sha256": "b1fba038aa10f4f934acfcba2acbf2f75ce5196e576f4f40e82dc2eb392dc65b"
     },
     {
       "file": "light/heat.png",
@@ -558,8 +1008,7 @@
         "--heatpop",
         "1600"
       ],
-      "sha256": "4b833fada10ac6e55bc81472671086e254680b366c958589776a39f4ecd0192a",
-      "source_commit": "61913935902163db09b0db7a061ddfdbba7f2fec"
+      "sha256": "b8061dd03cd7d374b2f963ff687a81baf27e52774e6b982d639223945ff311f6"
     },
     {
       "file": "light/tour-language.png",
@@ -578,8 +1027,7 @@
         "--tour-pick",
         "1"
       ],
-      "sha256": "00c929278b96a3e8ff719c4d879d805d5701ad8079ce19ff553994fe8c64caa5",
-      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+      "sha256": "00c929278b96a3e8ff719c4d879d805d5701ad8079ce19ff553994fe8c64caa5"
     },
     {
       "file": "light/menu-pt.png",
@@ -599,8 +1047,7 @@
         "--menu",
         "Language"
       ],
-      "sha256": "813cec980ed621a76002a021e604d62517b14efb2ca9d78f62bc90a284418c03",
-      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+      "sha256": "cb225454f2556bb148d4ba8616e8fd7f102f9d8eb899b2b7e4ff19c293a095fb"
     },
     {
       "file": "light/menu-ja.png",
@@ -620,33 +1067,10 @@
         "--menu",
         "Search Games"
       ],
-      "sha256": "b664fa29952faddc7301905bf60bffe3deeeaa3eb47e95e687db4caf16071086",
-      "source_commit": "087603e8f5d6f4be845b860c1d3239102d3e8922"
+      "sha256": "c4940f8d0b4fb58f21b142d29b9b78101fff8045a736861bc3255221c8e25c67"
     },
     {
-      "file": "light/openbor.png",
-      "card": "openbor",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--gamemenu",
-        "0",
-        "port"
-      ],
-      "sha256": "3b510aa57528e8fbc3f9a6a52daa5da7a16c8645d98b35f5a3cecab163777d5c",
-      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
-    },
-    {
-      "file": "light/gamemenu.png",
+      "file": "light/battery.png",
       "card": "demo",
       "args": [
         "--theme",
@@ -656,174 +1080,12 @@
         "--phase",
         "3200",
         "--status",
-        "10:08 24h wifi=off batt=82",
+        "10:08 24h wifi=3 batt=62 eta=205 icon=time",
         "--fn-volume",
-        "--screen",
-        "games",
-        "--gamemenu",
-        "3"
+        "--menu",
+        "Battery Icon"
       ],
-      "sha256": "038d416a1408a7166372bd7a007dadd195b622134a3805369c76722b1794fb41"
-    },
-    {
-      "file": "light/controls-ps1.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--gamecontrols",
-        "0",
-        "PS1"
-      ],
-      "sha256": "0a5f7e31e61e115b547dc911805ff95c938ed49deac880513436b02c285bb4a0"
-    },
-    {
-      "file": "light/controls-hotkeys.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--gamecontrols",
-        "2",
-        "PS1"
-      ],
-      "sha256": "87f433b86258cda9cebbd6e68cdd62fe1ba58d754fdfb628969f308c4f25bd26"
-    },
-    {
-      "file": "light/storage.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--storage",
-        "main"
-      ],
-      "sha256": "de10a5af4434544d9d370e80823624fe29e145eb6139ebbdda5b2894bff93eb9"
-    },
-    {
-      "file": "light/storage-system.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--storage",
-        "system"
-      ],
-      "sha256": "d419f0aedf488502a53e756f228cdfb4dc07120d05ab063c279d4c2cae58807b"
-    },
-    {
-      "file": "light/ports.png",
-      "card": "ports",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games"
-      ],
-      "sha256": "6ec8e8ddda137bafea694fd499fd085a7402129ecfe3ee1ca0fc03c4d1d34822",
-      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
-    },
-    {
-      "file": "light/portmaster.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--portmaster",
-        "running"
-      ],
-      "sha256": "b92537c0839e774d3c51c0339b08193651409776957088fd2d9732e88496200e",
-      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
-    },
-    {
-      "file": "light/ports-menu.png",
-      "card": "portdocs",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--gamemenu",
-        "0",
-        "port"
-      ],
-      "sha256": "3b510aa57528e8fbc3f9a6a52daa5da7a16c8645d98b35f5a3cecab163777d5c",
-      "source_commit": "56cce5e91c5ad347ea83ac989fe41edea3ac4fe2"
-    },
-    {
-      "file": "light/ports-controls.png",
-      "card": "portdocs",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--gamecontrols",
-        "0",
-        "PRT"
-      ],
-      "sha256": "e4e47f6c76efeb7504d88418a216b842ec01bdfd2cde6b98b3638d083ad0ed1d",
-      "source_commit": "a5409f66d37aec320a9c1b3898e5df99f1f49d4b"
+      "sha256": "360092be17cb4fef8f26947733e2471606af3798eb1767b8a4b632386c85b9e8"
     },
     {
       "file": "light/topbar.png",
@@ -843,8 +1105,7 @@
         "--song",
         "Night Drive"
       ],
-      "sha256": "c864d76acb8681d6e949e8e2eaf2b63d77c2af1d0c8e8429ba3fbd1b11c82960",
-      "source_commit": "0ffc223744e8203cceb858a8e8f6e62c97b4e554"
+      "sha256": "1aa6a418a7a6225dbd56e56e82a0d3cd39bbec5f4a54f686e81fc53d10a3a6d1"
     },
     {
       "file": "light/topbar-paused.png",
@@ -865,15 +1126,14 @@
         "Night Drive",
         "--song-paused"
       ],
-      "sha256": "325533f6c5049bb237894693b90fcf3f18f3eb18fed07081afa763e8512a956f",
-      "source_commit": "0ffc223744e8203cceb858a8e8f6e62c97b4e554"
+      "sha256": "4d1e5a4664b8b4023e83e758c515b47e64f3c343ae5345fd6429c7cfe5dbc1ee"
     },
     {
-      "file": "dark/topbar.png",
+      "file": "light/topbar-long.png",
       "card": "demo",
       "args": [
         "--theme",
-        "dark",
+        "light",
         "--screen",
         "systems",
         "--phase",
@@ -884,13 +1144,102 @@
         "--home",
         "spotlight",
         "--song",
-        "Night Drive"
+        "Night Drive (Extended Mix) - The Midnight Rider Collective",
+        "--phase",
+        "0"
       ],
-      "sha256": "52d3818c5b892162375be40643e3150f1ac002c89a69df5bd950643c79108b37",
-      "source_commit": "0ffc223744e8203cceb858a8e8f6e62c97b4e554"
+      "sha256": "4aa5d0d6ef893b3c689c4c4f906f1062cef1f0d7350abc5b517c475674aa4ad6"
     },
     {
-      "file": "light/media.png",
+      "file": "light/topbar-long-moving.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=3 phones=on batt=62",
+        "--fn-volume",
+        "--home",
+        "spotlight",
+        "--song",
+        "Night Drive (Extended Mix) - The Midnight Rider Collective",
+        "--phase",
+        "2600"
+      ],
+      "sha256": "837cb939249baabd5d2ccb04a41105a1e63cd1ce324cf60e93374b625275c30b"
+    },
+    {
+      "file": "light/topbar-still.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=3 phones=on batt=62",
+        "--fn-volume",
+        "--home",
+        "spotlight",
+        "--song",
+        "Night Drive",
+        "--phase",
+        "0"
+      ],
+      "sha256": "1aa6a418a7a6225dbd56e56e82a0d3cd39bbec5f4a54f686e81fc53d10a3a6d1"
+    },
+    {
+      "file": "light/video-controls.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83",
+        "--video",
+        "controls"
+      ],
+      "sha256": "00e3c013b193830a24457d5f52da4e96d629a8e8d46761d0e34f7d988cf0eedf"
+    },
+    {
+      "file": "light/video-full.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83",
+        "--video",
+        "full"
+      ],
+      "sha256": "c2a4f340882560f3b1910c38df7a27a3c5cc6874c67315dcc1b378694e507263"
+    },
+    {
+      "file": "light/gamemenu.png",
       "card": "demo",
       "args": [
         "--theme",
@@ -904,15 +1253,15 @@
         "--fn-volume",
         "--screen",
         "games",
-        "--media",
-        "page",
-        "--media-art",
-        "{card}/media-art"
+        "--gamemenu",
+        "3",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "a22855dd60d9a5a270a2ccfafe76160874f67669ff08af4beadc541fbf78ab96"
+      "sha256": "92b20bcdb0d26e4bc3c4909274a3792b879478cfa789044ef0701e4f111895dd"
     },
     {
-      "file": "light/media-look.png",
+      "file": "light/controls-ps1.png",
       "card": "demo",
       "args": [
         "--theme",
@@ -926,15 +1275,16 @@
         "--fn-volume",
         "--screen",
         "games",
-        "--media",
-        "look",
-        "--media-art",
-        "{card}/media-art"
+        "--gamecontrols",
+        "0",
+        "PS1",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "64d1fca8a720e0c2225277dc901a05ae1bc54e3d230384513613f65fd8abe9a9"
+      "sha256": "d0c691526d2a32c63c709ae54bd8192cd26f565eb88d510fd755de438d52ab7e"
     },
     {
-      "file": "light/media-video.png",
+      "file": "light/controls-hotkeys.png",
       "card": "demo",
       "args": [
         "--theme",
@@ -948,12 +1298,87 @@
         "--fn-volume",
         "--screen",
         "games",
-        "--media",
-        "video",
-        "--media-art",
-        "{card}/media-art"
+        "--gamecontrols",
+        "2",
+        "PS1",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "42736bc4b950db7794966292580133c92c19b121d85808e011596c2acb501989"
+      "sha256": "8cc8c20eeacec80fd5a78ae480830094eaec2638b4a44def2eaee8bd7e7d1f2f"
+    },
+    {
+      "file": "dark/systems.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--home",
+        "spotlight"
+      ],
+      "sha256": "d6763415289bb523d44db78fa03ba4354397e66831605779b81c1db694cf505a"
+    },
+    {
+      "file": "dark/shelf-n64.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "0df829b24406f86e5ea940d2b424c66b505bc8794aa9a2d4a5e3f6fbe5ddbdcc"
+    },
+    {
+      "file": "dark/menu.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--menu",
+        "Search Games"
+      ],
+      "sha256": "9a0396364886b44ba80d70e1d797f90fbd6d8523ab74bcef4e343e73289d5ea8"
+    },
+    {
+      "file": "dark/nowplaying.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83"
+      ],
+      "sha256": "d35bd12c4fb60e1ae5f27fb65b889d38ec49e649fa07459a25b82eedc9c1790b"
     },
     {
       "file": "dark/media.png",
@@ -975,8 +1400,114 @@
         "--media-art",
         "{card}/media-art"
       ],
-      "sha256": "47e47a3a5cae39cad0363339168c83ae732bf53c28dfaaf0d6ed92d19f5f29cf"
+      "sha256": "c836a4acf5c06acf41d95781337799beae80b70654cbde432d92a3646e916cce"
+    },
+    {
+      "file": "dark/topbar.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=3 phones=on batt=62",
+        "--fn-volume",
+        "--home",
+        "spotlight",
+        "--song",
+        "Night Drive"
+      ],
+      "sha256": "d46565e076575649609611528a777939711f273b5c25eb432001d0f740084d1a"
+    },
+    {
+      "file": "dark/video-controls.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83",
+        "--video",
+        "controls"
+      ],
+      "sha256": "620c6a918dcdf159ea5ed63f80aad281e2e3280ef8a1737c8908d15b455f69cd"
+    },
+    {
+      "file": "dark/video-full.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--nowplaying",
+        "0",
+        "0",
+        "83",
+        "--video",
+        "full"
+      ],
+      "sha256": "eabd4e2253b7e1687d87af0aee2e4030f6ae65b5f09f2f61845fdb3593beb789"
+    },
+    {
+      "file": "light/portal.png",
+      "card": "portal",
+      "args": {
+        "width": 1280,
+        "height": 800,
+        "scale": 1,
+        "phone": false,
+        "folder": "roms/NES",
+        "upload": [
+          "Super Tilt Bro.nes",
+          524304
+        ],
+        "page": "res/web/index.html"
+      },
+      "sha256": "eb375b07f588e5264afffd37b20e96b29e112c918c1e465911c0d223d59e85d1"
+    },
+    {
+      "file": "light/portal-pin.png",
+      "card": "portal",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 2,
+        "phone": true,
+        "gate": true,
+        "page": "res/web/index.html"
+      },
+      "sha256": "73d45cbaf9345705b933f57c5123170eb38a014a48b0cec4b56a76582071aa6a"
+    },
+    {
+      "file": "light/portal-phone.png",
+      "card": "portal",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 2,
+        "phone": true,
+        "folder": "roms",
+        "page": "res/web/index.html"
+      },
+      "sha256": "63fc70bd9264595d9b7d0f219358d2bdaaff11e8c41c294f633cd2fc61951649"
     }
-  ],
-  "layout": "light/NAME.png is res/readme/NAME.png; dark/NAME.png is res/readme/dark/NAME.png"
+  ]
 }

@@ -1,0 +1,8 @@
+node_modules/
+out/
+# Made by scripts/prepare-assets.sh and footage/takes.py from the repository
+# and the art cache: the launcher's frames, the device render, fonts, music
+# and sounds. Their licenses are in LICENSES.md.
+public/
+rec/rec.dylib
+rec/snapsub.dylib

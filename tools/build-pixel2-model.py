@@ -490,7 +490,7 @@ if '--render' in sys.argv:
     # Only the review/poster render uses a screenshot; the GLB is independent
     # of screenshot revisions and the website supplies its live texture.
     nodes=display.node_tree.nodes; nodes.clear()
-    image=nodes.new('ShaderNodeTexImage'); image.image=bpy.data.images.load(str(ROOT/'res/readme/systems.png'))
+    image=nodes.new('ShaderNodeTexImage'); image.image=bpy.data.images.load(str(ROOT/'res/readme/shelf-n64.png'))
     emission=nodes.new('ShaderNodeEmission'); output=nodes.new('ShaderNodeOutputMaterial')
     display.node_tree.links.new(image.outputs['Color'],emission.inputs['Color'])
     display.node_tree.links.new(emission.outputs[0],output.inputs['Surface'])

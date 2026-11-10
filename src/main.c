@@ -12252,7 +12252,7 @@ static unsigned long long store_fixture_game(const char *title)
 {
 	static const struct { const char *word; unsigned long long mb; } SZ[] = {
 		{ "Metal Gear", 1240 }, { "Castlevania", 690 }, { "Tekken", 560 },
-		{ "Crash", 470 }, { "Tony Hawk", 390 }, { "Peter Pan", 330 },
+		{ "Crash", 470 }, { "Tony Hawk", 390 }, { "Spyro", 330 },
 	};
 	size_t i;
 
