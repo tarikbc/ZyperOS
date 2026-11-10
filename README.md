@@ -327,6 +327,8 @@ New versions come to the handheld with [System Update](#system-update) over Wi-F
 
 The Pixel 2 has no radio of its own. A USB Wi-Fi adapter in its USB-C port gives it Wi-Fi while it's plugged in, and with it box art, RetroAchievements and Wi-Fi File Transfer: one whose Realtek chip ZyperOS has a driver for, like the TP-Link TL-WN725N on a USB-C adapter. Without one, USB File Transfer (below) moves files over the USB cable. There's no Bluetooth.
 
+The Pixel 2 powers what you plug into its port only when you say so. Its USB-C port has no chip to tell a Wi-Fi adapter or a USB-C DAC from a computer that is waiting for power, and a computer must never be fed from the handheld. So when something wants power, the shelf asks once, **USB Device Connected**: **Power It** for an adapter, a DAC or a keyboard, or **It's a Computer**, where it starts. For a computer the handheld gives no power and says to plug the cable in again: the computer then gives the power, and the handheld finds it.
+
 ### Languages
 
 ZyperOS speaks English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語 and Italiano. The first start asks for yours before anything else, and **MENU > Language** changes it at once, with no restart. Every screen follows it, down to the charging screen and the boot screen's line, and the File Transfer page follows the handheld. Chinese and Japanese each have a face of their own. Text is never cut to fit: where a language's words run long, that place gets a short form of its own.
@@ -422,6 +424,8 @@ On the Pixel 2, until a browser opens the page, USB File Transfer shows the conn
 - **Browser**: a browser asked for the page. After 30 seconds without one, the screen says what to type, and to turn off any VPN or proxy, which can send the address somewhere else.
 
 Once a browser opens the page, the screen shows File Transfer as usual. If the cable comes out, the steps come back.
+
+- **Cable** says `waiting` with a computer on it that is waiting for power: its USB-C port took the side that takes power, and the handheld does not give power to a computer. Plug the cable in again, and the computer gives the power instead. The hint says so after 5 seconds.
 
 The cable is its own small network, the handheld at `10.42.0.1` and the computer at `10.42.0.2`, with nothing else on it. That is narrower than any other network the computer is on, so the computer always sends `10.42.0.1` down the cable, even when its Wi-Fi, a VPN or an office network also uses addresses that start with `10.42.0`.
 
