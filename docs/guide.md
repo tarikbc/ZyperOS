@@ -186,7 +186,7 @@ than any one console:
 | **Bluetooth** | the connected headset, or `not connected` - pair, connect and forget |
 | **Audio Output** | `Auto` or `Speaker`, and where Auto landed - see **Audio** below |
 | **Audio Channels** | `auto`, `stereo`, `mono`, `mono left` or `mono right` - see **Audio** below. `auto` on a new device and after an upgrade |
-| **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
+| **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, at `http://zyperos.local`, or always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
 | **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again |
@@ -414,9 +414,17 @@ across the top, warm for brightness and cyan for volume.
 **Wi-Fi File Transfer** (MENU, with Wi-Fi) and **USB File Transfer** (the same
 row while a computer is on the USB cable) put the card's folders in a web
 browser: ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. The screen
-shows the address to open and a four-digit PIN, new each time it opens; the
-page asks for the PIN and opens as the fourth digit goes in. Five wrong PINs
-and the page waits 30 seconds.
+shows the handheld's name, `http://zyperos.local`, and under it its address
+and a four-digit PIN, new each time it opens. Either opens the page; the name
+is the easier one to type, and the address works where the name does not.
+The page asks for the PIN and opens as the fourth digit goes in. Five wrong
+PINs and the page waits 30 seconds.
+
+The name is answered by the handheld itself (multicast DNS, which macOS,
+Windows 10 and later, iOS, Android and most Linux desktops ask by
+themselves), on the cable while USB File Transfer is open and on the Wi-Fi
+network while Wi-Fi File Transfer is. With two ZyperOS handhelds on one
+network the second takes `zyperos-2.local`, and each screen shows its own.
 
 On a computer the folders are down the left, the open one in lime, and
 the uploads go on under them. On a phone the folders are a row of chips over
@@ -437,20 +445,44 @@ start now is dimmed and says why, and lights up as you plug in or unplug.
 When the first games arrive, by either screen or any other way, the home
 shows them, and Zyper cheers.
 
+### When the page does not open
+
+Until a browser opens the page, the screen shows the connection as the
+handheld sees it, in steps, each ticked when it is done, and the ones after
+the step it is waiting on dimmed:
+
+| Step | Ticked when | If it waits too long |
+|---|---|---|
+| **Cable** (USB) | the computer took the handheld and opened its network | `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
+| **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
+| **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
+
+A step that waits too long shows its hint under it, in place of the other
+steps. Once a browser opens the page the screen is the usual one, and if the
+cable comes out the steps come back.
+
+The USB cable is a network of two addresses, the handheld's `10.42.0.1` and
+the computer's `10.42.0.2` (a /30). That is narrower than any other network
+the computer is on, so the computer sends `10.42.0.1` down the cable even
+when its Wi-Fi, a VPN or an office network also uses `10.42.0.x`. On the
+Pixel 2, if the handheld's address server has stopped, USB File Transfer
+starts it again.
+
 ### SSH over the cable
 
 While **USB File Transfer** is open on the Pixel 2, the computer on the
 cable can also open a shell on the handheld:
 
 ```
-ssh root@10.42.0.1
+ssh root@zyperos.local
 ```
 
-The password is the PIN on the screen. To skip it next time, give the
+or `ssh root@10.42.0.1`. The password is the PIN on the screen. To skip it next time, give the
 handheld your key once, with the PIN:
 
 ```
-ssh-copy-id root@10.42.0.1
+ssh-copy-id root@zyperos.local
 ```
 
 The key stays on the card, in `.userdata/pixel2/ssh/`, with the handheld's

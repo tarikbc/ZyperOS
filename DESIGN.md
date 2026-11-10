@@ -2450,6 +2450,39 @@ from a fixture, with `--media-art DIR`'s pictures (now.png, before.png,
 c0.png..., snap.png) or the generated card; `--info-art`, the details as for
 a game with a cover and no video.
 
+### 11.35 File Transfer's heading and steps
+The transfer panel (11.3) of USB and Wi-Fi File Transfer, 2026-11-10. Its
+heading is the handheld's name on the network over its address and the PIN:
+"http://zyperos.local" on the first line, "10.42.0.1 · PIN 4071" on the
+second, both in **label** **text-soft**. The name is written with http:// so
+a browser opens it rather than searching for it; with a port other than 80
+both carry it. With no name (multicast DNS did not start) or no link (the
+heading then says "Cable unplugged" or "Wi-Fi went away"), the heading is the
+address over the PIN, as before.
+
+Until a browser opens the page, the rows under the rule are the steps of the
+connection as the handheld sees it (src/linksteps.h): over the cable
+**Cable**, **Address** and **Browser**; over Wi-Fi **Wi-Fi** and **Browser**;
+none on the hotspot screen (11.16), which says what it says. A step that is
+done has MENU_TICK as its value; the step waited on is a live row, its value
+"waiting" (or "unplugged" for a cable with no computer, "not connected" for
+no Wi-Fi); the steps after it are dead rows with no value. The rule and the
+key legend (11.4) follow, "B: close".
+
+A step that waits too long (the cable 5 seconds with no computer and 10 with
+one, the address 10, the browser 30) gets its hint: one sentence saying what
+to do about that step, in **menu** **text-dim**, centered and balanced onto
+at most three lines, in place of the other steps, under the stalled step's
+row and over the rule. Three steps and a three-line hint do not fit under a
+two-line heading, and a hint is about one step. The hints name the things a
+person can act on: another cable or port, Windows' Device Manager and its
+Network adapters, the name and the address to type, a VPN or proxy.
+
+Once a browser has asked, the rows are the usual ones (Browsers, SSH, In /
+out, Now); the steps come back if the cable or the Wi-Fi goes. Host shots:
+`--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged, nocomputer,
+noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork.
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and

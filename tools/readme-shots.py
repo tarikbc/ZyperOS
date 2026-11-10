@@ -147,6 +147,9 @@ SHOTS={
     'hare':('demo','PS1',['--hare','http://192.168.1.42','1 connected','Tobu Tobu Girl.gb']),
     'hotspot':('demo','PS1',['--hotspot','ZyperOS-7A2B','q7mx-3kpa','1 joined','waiting']),
     'usb-ask':('demo','PS1',['--usb-ask','0']),
+    # USB File Transfer's steps (DESIGN.md 11.35): the cable and the address
+    # ticked, the browser awaited
+    'usb-steps':('demo','PS1',['--hare-steps','usb','browser']),
     'scummvm':('scummvm','SCUMMVM',['--screen','games']),
     # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
     # made-up frame rather than a game's

@@ -133,7 +133,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
 - **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back; Music, Videos and Audiobooks open their albums, films and books the same way, and A deletes one. **X** sorts any of these lists by size, A to Z or last played. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
-- **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
+- **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. Open it by name, `http://zyperos.local`, or by its address, and until a browser opens the page the screen checks the connection step by step and says what to do if a step stalls. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
 - **Autosave and resume,** plus six save slots for when you want a checkpoint.
@@ -174,7 +174,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Source, license** | GPL-3.0 | — | Its changed files, no license named | GPL-3.0 | GPL-2.0 for its own code | MIT for its own code |
 | **Install, latest** | Card image or ZyperOS Installer, v1.0.2 (Nov 2026) | On the card it comes with | Card image, then v1.22's files (Aug 2025) | Card image or TortOS Installer, v2.1.1 (Oct 2026) | Card image, 20261101 (Nov 2026) | Card image, v0.1.4 (Aug 2026), in testing |
 | **Systems** | 40, and Ports | Over 100 folders | 117<sup>2</sup> | 11 | 120<sup>2</sup> | 86<sup>2</sup> |
-| **Games without taking the card out** | Wi-Fi or USB web page, its own hotspot, SSH | Samba | USB cable, SSH | Wi-Fi or USB web page | Samba, SFTP, USB cable | Samba, SFTP, FTP |
+| **Games without taking the card out** | Wi-Fi or USB web page at zyperos.local, its own hotspot, SSH | Samba | USB cable, SSH | Wi-Fi or USB web page | Samba, SFTP, USB cable | Samba, SFTP, FTP |
 | **Box art on the device** | libretro, ScreenScraper<sup>3</sup>, SteamGridDB | On a computer (Skraper) | ScreenScraper | libretro, ScreenScraper | ScreenScraper | libretro |
 | **RetroAchievements** | Yes | — | — | Yes | Yes | — |
 | **System updates** | Over Wi-Fi or the USB cable, A/B with roll back | — | Copy the new files | TortOS Installer, on a computer | Over the air, or a file | A file you copy, A/B with roll back |
@@ -375,11 +375,11 @@ A card with no games opens on **No games yet** and the two ways to add them: **A
 <img align="right" width="360" src="res/readme/hare.png" alt="Wi-Fi File Transfer, with a browser connected">
 
 1. Join a network under **MENU > Wi-Fi**.
-2. Open **MENU > Wi-Fi File Transfer**. It shows an address and a PIN.
-3. Open that address in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
+2. Open **MENU > Wi-Fi File Transfer**. It shows its name, `http://zyperos.local`, its address and a PIN.
+3. Open `http://zyperos.local` or that address in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
 4. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen.
 
-The PIN is new every time you open Wi-Fi File Transfer.
+The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Until a browser opens the page, the screen shows **Wi-Fi** and **Browser** with a tick each, and after 30 seconds with no browser it says what to type.
 
 <br clear="right">
 
@@ -405,13 +405,29 @@ The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works w
 
 On the Pixel 2 the USB port only charges until you say otherwise, so a computer sees nothing at first. When one is plugged in, the shelf asks once, **Computer Connected**: **Charge Only** (where it starts, and what **B** means), **File Transfer**, or, on development images, **Developer (SSH)**. A wall charger is never asked about.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows an address and a PIN.
-2. Open that address in a browser on that computer, `http://10.55.0.2` on the Brick or `http://10.42.0.1` on the Pixel 2, and type the PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows its name, `http://zyperos.local`, its address and a PIN.
+2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
 <br clear="right">
 
-While USB File Transfer is open on the Pixel 2, the computer can also open a shell on it: `ssh root@10.42.0.1`, with the PIN as the password. `ssh-copy-id root@10.42.0.1` saves your key on the card, so later logins skip the PIN. Closing File Transfer ends every session.
+#### If the page does not open
+
+<img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer checking the connection: Cable and Address ticked, Browser waiting">
+
+On the Pixel 2, until a browser opens the page, USB File Transfer shows the connection as the handheld sees it, in three steps that tick as the computer gets there:
+
+- **Cable**: the computer took the handheld and opened its network. `unplugged` means no computer is on the cable: some USB cables only charge, so try another. Still waiting after 10 seconds, the screen says why: the computer did not answer (try another port or cable), or it has no driver for the handheld (on Windows, look in Device Manager).
+- **Address**: the computer took the address the handheld gives it, `10.42.0.2`. After 10 seconds without one, the screen points to Network adapters in Windows' Device Manager.
+- **Browser**: a browser asked for the page. After 30 seconds without one, the screen says what to type, and to turn off any VPN or proxy, which can send the address somewhere else.
+
+Once a browser opens the page, the screen shows File Transfer as usual. If the cable comes out, the steps come back.
+
+The cable is its own small network, the handheld at `10.42.0.1` and the computer at `10.42.0.2`, with nothing else on it. That is narrower than any other network the computer is on, so the computer always sends `10.42.0.1` down the cable, even when its Wi-Fi, a VPN or an office network also uses addresses that start with `10.42.0`.
+
+<br clear="right">
+
+While USB File Transfer is open on the Pixel 2, the computer can also open a shell on it: `ssh root@zyperos.local` (or `ssh root@10.42.0.1`), with the PIN as the password. `ssh-copy-id root@zyperos.local` saves your key on the card, so later logins skip the PIN. Closing File Transfer ends every session.
 
 ### Leaving the transfer screen
 
@@ -669,7 +685,7 @@ ZyperOS is C and SDL2, two repositories that build together:
 
 A release image starts no SSH and holds no key, so a shell on it is yours to ask for. Developer mode is how, and it stays out of the way until you look for it. On **MENU > About**, on the first page (the one with the version), hold **L2 and R2 together for five seconds**. A **Developer Mode** row appears with a bar that fills as the seconds pass, and letting go of either button, or leaving the page, starts again. When it is full, a message says **Developer Mode is on**, and the row stays on the first page as *on*. **MENU > Developer Mode** then opens its page, where **A** turns developer mode off again.
 
-With it on, the Pixel 2 behaves like a development build for as long as a computer is on the cable. The USB link stays up with no question, and SSH runs on the cable's address, `ssh root@10.42.0.1`, never over Wi-Fi. Closing a page or starting a game does not end it, and when the launcher restarts (a `tools/px2-deploy.sh` run does that) the sessions drop and SSH is back a few seconds later, so a key logs in again. Pulling the cable out, or turning developer mode off, ends it. There are two ways in, and both are yours:
+With it on, the Pixel 2 behaves like a development build for as long as a computer is on the cable. The USB link stays up with no question, and SSH runs on the cable's address, `ssh root@zyperos.local` or `ssh root@10.42.0.1`, never over Wi-Fi. Closing a page or starting a game does not end it, and when the launcher restarts (a `tools/px2-deploy.sh` run does that) the sessions drop and SSH is back a few seconds later, so a key logs in again. Pulling the cable out, or turning developer mode off, ends it. There are two ways in, and both are yours:
 
 - **A key from the card.** Copy your public key, `id_ed25519.pub` or any `.pub` file (or an `authorized_keys` file), into the `Developer` folder at the card's root; the Pixel makes the folder the first time. Plain public keys only: a line with options in front, such as a forced command, is skipped. A key taken is kept with the ones `ssh-copy-id` saves. The folder is outside `ZyperOS/` because an update swaps that one for the new version's.
 - **A password for this plug.** The Pixel makes eight random characters each time a computer is plugged in. Only **MENU > Developer Mode** shows them, and nothing keeps them. Five wrong ones lock SSH until the next plug, as File Transfer's PIN does. This is also how the first key gets in without taking the card out: sign in with the password, then run `ssh-copy-id root@10.42.0.1`.
