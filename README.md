@@ -327,7 +327,7 @@ New versions come to the handheld with [System Update](#system-update) over Wi-F
 
 The Pixel 2 has no radio of its own. A USB Wi-Fi adapter in its USB-C port gives it Wi-Fi while it's plugged in, and with it box art, RetroAchievements and Wi-Fi File Transfer: one whose Realtek chip ZyperOS has a driver for, like the TP-Link TL-WN725N on a USB-C adapter. Without one, USB File Transfer (below) moves files over the USB cable. There's no Bluetooth.
 
-The Pixel 2 powers what you plug into its port only when you say so. Its USB-C port has no chip to tell a Wi-Fi adapter or USB-C headphones from a computer that has not connected yet, and a computer must never be powered by the handheld. So when something like that is plugged in, the shelf asks once, **What did you plug in?**: **USB Accessory** (headphones, Wi-Fi, keyboard) or **Computer**, where it starts. For a computer it says your computer didn't connect yet: unplug the cable, wait 5 seconds and plug it back in, and then it connects. The message stays over whatever you are doing, a game included, until the cable comes out. A computer plugged back in within 5 seconds is not asked about; the message says the same.
+The Pixel 2 powers what you plug into its port only when you say so. Its USB-C port has no chip to tell a Wi-Fi adapter or USB-C headphones from a computer that has not connected yet, and a computer must never be powered by the handheld. So when something like that is plugged in, the shelf asks, **What did you plug in?**: **USB Accessory** (headphones, Wi-Fi, keyboard) or **Computer**, where it starts. For a computer it says your computer didn't connect yet: unplug the cable and plug it back in, and then it connects. Nothing comes up over a game: something plugged in while you play is asked about when you're back on the shelf. While a plug waits for an answer, a small USB mark shows in the top corner, and **MENU > USB Device** asks again, so a wrong answer is never stuck. To skip the question, set **MENU > USB Accessories** to **Automatic**: accessories get power two seconds after they go in. Its one risk, said when you choose it: a computer that has not connected yet gets about two seconds of power before the handheld sees it and stops.
 
 ### Languages
 
@@ -425,7 +425,7 @@ On the Pixel 2, until a browser opens the page, USB File Transfer shows the conn
 
 Once a browser opens the page, the screen shows File Transfer as usual. If the cable comes out, the steps come back.
 
-- **Cable** says `waiting` when the computer is on the cable but didn't connect yet. After 5 seconds the hint says to unplug the cable, wait 5 seconds and plug it back in, and then it connects.
+- **Cable** says `waiting` when the computer is on the cable but didn't connect yet. After 5 seconds the hint says to unplug the cable and plug it back in, and then it connects.
 
 The cable is its own small network, the handheld at `10.42.0.1` and the computer at `10.42.0.2`, with nothing else on it. That is narrower than any other network the computer is on, so the computer always sends `10.42.0.1` down the cable, even when its Wi-Fi, a VPN or an office network also uses addresses that start with `10.42.0`.
 

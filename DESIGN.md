@@ -1170,6 +1170,11 @@ it has priority for direct volume or brightness feedback.
   **accent-ink** as far as the upload on its way. Not while its own screen is
   up. *(My pick in the File Transfer 2 lab, 2026-11-06: "A mark in the
   corner".)*
+- **USB plug**, 24 wide, leftmost, on the Pixel 2 while something on the
+  USB port waits for an answer to What did you plug in? (11.36): a plug
+  pointing up, its metal end with two slots over a body of radius 2.5 and a
+  1.25-unit cable under it, in **accent-ink**: something waits for you.
+  MENU > USB Device asks again. *(2026-11-10.)*
 - **Battery**, 44 wide: a 40 x 24 body in a **frame** outline with
   **radius-chip** corners, a 3 x 8 tip, and a fill up to 28 x 12, at least 4
   wide while there is any charge. **text-soft**; **warning**, outline and
@@ -2514,16 +2519,33 @@ headphones, its name on one line and under it in **meta** (**text-dim**,
 and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
 B never powers a computer; the button hints (11.4) "< > Move   A Choose   B
 Computer". Asked once per plug, two seconds after usbrole says it may be,
-over the lit shelf, never over a game; it goes by itself when the plug
-stops wanting power.
+over the lit shelf, never over a game (a plug made in a game is asked about
+back on the shelf); it goes by itself when the plug stops wanting power.
+Every plug is its own: nothing carries over from the plug before, however
+soon (a cable swapped for an adapter in a second, 2026-11-10).
 
-**The replug message.** Computer, B or MENU, and a plug that may not be
-asked about because a computer was on the port in the last 5 seconds
-(usbrole's new-plug rule: it is that computer, plugged back in too soon),
-bring up "Your computer didn't connect yet. Unplug the cable, wait 5
-seconds and plug it back in." over whatever screen is up, and over a game
-as Diatom's notice (11.7), and it stays until the plug ends: the cable out,
-another plug, or the computer connected. On the launcher it is a slab at
+**Asking again.** While a plug waits for an answer (put off, made in a
+game, Computer by mistake), the corner shows the USB plug mark (11.12) and
+MENU's first row is **USB Device**, value "choose": A asks the question
+again for the same plug, no replug needed. Both go when the plug ends or is
+powered.
+
+**The setting.** MENU > **USB Accessories**, under File Transfer, Ask (the
+default) or Automatic, stepped round as Clock is, as on a phone's USB
+preferences. Automatic: usbrole powers a plug that has waited 2 s, under
+every safety rule, and the question, the mark and USB Device are never
+shown. Chosen, it says once, as a message of up to four balanced lines,
+what it does and its one risk: a computer that has not connected yet gets
+about 2 seconds of power before it is seen (on the bus, "Product: Mac") and
+the port goes back for the rest of that plug. Told to usbrole in
+/run/usbrole/mode, as the request is. Host shots: `--usb-menu
+[auto|said]`, with `--status ... usb=on` for the mark.
+
+**The replug message.** Computer, B or MENU, and a plug a computer showed
+up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
+computer didn't connect yet. Unplug the cable and plug it back in." over
+whatever screen is up, never over a game, and it stays until the plug
+ends: the cable out, another plug, or the computer connected. On the launcher it is a slab at
 the top under the header, 960 wide at y 104: **surface** with the
 **panel** lift, the laptop mark (64) at its left in **text-soft**,
 **Computer** in **meta** **text-dim** over the words in **menu** **text**,

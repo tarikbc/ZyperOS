@@ -44,7 +44,7 @@ export const ANSWERS = {
     url: R + "install",
     text:
       "The Pixel 2 has no Wi-Fi of its own. A **USB Wi-Fi adapter** in its USB-C port gives it Wi-Fi while it's plugged in, and with it box art, RetroAchievements, System Update and Wi-Fi File Transfer.\n\n" +
-      "It needs a Realtek chip ZyperOS has a driver for, like the **TP-Link TL-WN725N** on a USB-C adapter.\n\n" +
+      "It needs a Realtek chip ZyperOS has a driver for, like the **TP-Link TL-WN725N** on a USB-C adapter. When the shelf asks **What did you plug in?**, choose **USB Accessory**, or set **MENU > USB Accessories** to **Automatic**.\n\n" +
       "No adapter? **USB File Transfer** moves games over the USB cable instead, and no network around? Wi-Fi File Transfer makes the Pixel 2 its own hotspot.",
   },
   transfer: {
