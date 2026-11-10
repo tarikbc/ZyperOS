@@ -692,7 +692,7 @@ build-native/linksteps-check: tools/linksteps-check.c src/linksteps.c src/linkst
 
 # When the Pixel 2's USB port may be a host (plastron's usbrole, its
 # src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host, and a
-# DAC only on Power It for its own plug; never with power in, a computer's
+# DAC only on USB Accessory for its own plug; never with power in, a computer's
 # power or a failed reading. Host compiler only, no device.
 check-usbrole:
 	@mkdir -p build-native && cc -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O1 $(MEDIA_SAN) \
