@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * usbrole's rule (src/rule.h), replayed: the boot of 2026-11-10 with a Mac on
- * the cable, as the kernel's log has it, and the plugs around it. The sense
- * at each moment is set by hand; events come when the log says, and between
- * them the rule is asked again when it says to, as usbrole's loop does.
- * Fails on any moment the port would be host while power comes in, a
- * charger detection says a computer or a charger, a reading failed, or a
- * computer is on the bus.
+ * usbrole's rule (src/rule.h), replayed. First the nine plugs of a Mac that
+ * usbrole's data build traced on 2026-11-10 (/run/usbrole/trace.log), as
+ * the readings came: none of them may make the port a host, whatever the
+ * launcher is asked. Then the launcher's question: a DAC is host only after
+ * Power It for its own plug, never for another plug's, never while power
+ * comes in, and a computer that turns up on the bus ends it.
  */
 #include <stdio.h>
 #include <string.h>
@@ -20,218 +19,225 @@ static int fails;
 	               fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); } \
 } while (0)
 
-/* A timeline: from each step's time, the port reads `in` until the next */
 typedef struct { unsigned at; ur_sense in; } step;
 
-/* Runs it from t0 to `end`, asking at each step and whenever the rule asks
- * to be asked again. Returns the time it first went host, or 0. Every
- * answer is held to the safety rule. */
-static unsigned run(const char *what, unsigned t0, const step *st, int n, unsigned end)
+#define S(p, v, c, k) { (p), (v), (c), (k) }
+
+/* Readings from t0 to `end`, the rule asked at each change and every 50 ms
+ * (usbrole asks at each event; asking more often must change nothing).
+ * `grant_all`: the launcher says Power It the moment it may be asked, as a
+ * player who presses A at once would. Returns how many times it went host;
+ * every decision held to the safety rule. */
+static int run(const char *what, const step *st, int n, unsigned end, int grant_all,
+               unsigned *asked_at)
 {
 	ur_state s;
-	unsigned now = t0, again = 0, first_host = 0, next_check = 0, powered_at = 0;
-	int i = 0, role = UR_DEVICE;
+	unsigned now, again;
+	int i = 0, role = UR_DEVICE, hosts = 0;
 
 	memset(&s, 0, sizeof s);
-	for (; now <= end; now += 10) {
+	if (asked_at) *asked_at = 0;
+	for (now = st[0].at; now <= end; now += 10) {
 		const ur_sense *in;
-		int event = 0, was = role;
+		int was = role;
 
-		while (i < n && st[i].at <= now) { i++; event = 1; }
-		if (!i) continue;
+		while (i < n && st[i].at <= now) i++;
 		in = &st[i - 1].in;
-		/* What the test knows: the last moment power or a computer was there */
-		if (in->vbus != 0 || in->charger || in->computer) powered_at = now;
-		if (!event && !(next_check && now >= next_check)) continue;
 		role = ur_decide(&s, in, now, &again);
-		next_check = again ? now + again : 0;
+		if (s.can_ask && asked_at && !*asked_at) *asked_at = now;
+		if (s.can_ask && grant_all) {
+			ur_grant(&s, s.plug);
+			role = ur_decide(&s, in, now, &again);
+		}
 		if (role == UR_HOST && was == UR_DEVICE) {
-			if (!first_host) first_host = now;
-			/* Going host: the pin says so, every reading was made, no
-			 * power in, no detection, no computer, none for the hold */
+			hosts++;
 			CHECK(in->pin == 1 && in->vbus == 0 && !in->charger && !in->computer,
 			      "%s: host at %u with pin %d power %d detection %d computer %d",
 			      what, now, in->pin, in->vbus, in->charger, in->computer);
-			CHECK(!powered_at || now - powered_at >= UR_HOLD_MS,
-			      "%s: host at %u, %u ms after power", what, now, now - powered_at);
-			CHECK(now - t0 >= UR_GRACE_MS, "%s: host %u ms after the start", what, now - t0);
+			CHECK(s.granted == s.plug, "%s: host at %u without Power It for plug %u", what, now, s.plug);
 		}
 	}
-	return first_host;
+	return hosts;
 }
 
-#define PIN(p, v, c, k) { (p), (v), (c), (k) }
+/* The data build's trace, 2026-11-10 (times in ms of uptime): the Mac on
+ * the cable from boot; then Tarik's plugs in the order he made them. The
+ * port is never host and the launcher would ask about one plug only, the
+ * seventh, where the Mac's port sat on the sink side after the cable had
+ * been out for half a minute. */
+static const step MAC[] = {
+	{ 1115,     S(0, 1, 0, 0) },        /* booted with the Mac giving power */
+	{ 2330,     S(0, 1, 1, 0) },        /* SDP */
+	{ 31920225, S(0, 0, 1, 0) },        /* out */
+	{ 31921330, S(0, 0, 0, 0) },
+	{ 31945071, S(0, 1, 0, 0) },        /* plug 1, side A: power at once */
+	{ 31945166, S(0, 1, 1, 0) },        /* CDP */
+	{ 31955720, S(0, 0, 1, 0) },        /* out */
+	{ 31955887, S(0, 0, 0, 0) },
+	{ 31962090, S(0, 1, 0, 0) },        /* plug 2, side B */
+	{ 31962179, S(0, 1, 1, 0) },
+	{ 31969184, S(0, 0, 1, 0) },        /* out */
+	{ 31970608, S(0, 0, 0, 0) },
+	{ 31971407, S(1, 0, 0, 0) },        /* plug 3, side A: the Mac waits, 16.1 s */
+	{ 31987526, S(0, 0, 0, 0) },        /* out */
+	{ 31989092, S(1, 0, 0, 0) },        /* plug 4, side A: waits, 10.3 s */
+	{ 31999346, S(0, 0, 0, 0) },        /* out */
+	{ 32001438, S(0, 1, 0, 0) },        /* plug 5, side A: power */
+	{ 32001732, S(0, 1, 1, 0) },
+	{ 32010984, S(0, 0, 1, 0) },        /* out */
+	{ 32012421, S(0, 0, 0, 0) },
+	{ 32013342, S(0, 1, 0, 0) },        /* plug 6, side B: power */
+	{ 32013436, S(0, 1, 1, 0) },
+	{ 32026789, S(0, 0, 1, 0) },        /* out */
+	{ 32028420, S(0, 0, 0, 0) },
+	{ 32055817, S(1, 0, 0, 0) },        /* plug 7, back in: the Mac waits */
+	{ 32107539, S(0, 0, 0, 0) },        /* it turns to the source side by itself */
+	{ 32109030, S(0, 1, 0, 0) },
+	{ 32109892, S(0, 1, 1, 0) },        /* CDP: the link */
+};
 
-/* 2026-11-10, a boot with a Mac on the cable (usbrole starts about 5.1 s
- * in): the pin said host at 5.13 s with no power in, went to 0 at 8.12 s,
- * host again at 9.30 s; the old rule went host at 5.13 s and 9.30 s, and
- * the Mac was found as a charging port (CDP) once the port stayed device.
- * That a Mac whose port tries both roles gives power within the hold when
- * the port stays device is what this replays (it did, once the port stayed
- * device); mac_as_sink is the Mac that does not. */
-static void mac_boot(void)
+static void mac_replugs(void)
 {
-	static const step st[] = {
-		{ 5130, PIN(1, 0, 0, 0) },
-		{ 8120, PIN(0, 0, 0, 0) },
-		{ 9300, PIN(1, 0, 0, 0) },
-		{ 10200, PIN(0, 1, 0, 0) },      /* the Mac's port takes the source side */
-		{ 10600, PIN(0, 1, 1, 0) },      /* CDP */
-		{ 12300, PIN(1, 1, 1, 0) },      /* the pin flickers with power in */
-		{ 12400, PIN(0, 1, 1, 0) },
-	};
-	unsigned h = run("Mac at boot", 5100, st, (int)(sizeof st / sizeof st[0]), 30000);
+	int n = (int)(sizeof MAC / sizeof MAC[0]);
+	unsigned asked;
 
-	CHECK(!h, "Mac at boot: went host at %u", h);
+	/* Nobody answers: never host */
+	CHECK(!run("the Mac, nobody answers", MAC, n, 32115000, 0, &asked), "the Mac's plugs: host");
+	/* Plugs 3 and 4 came within 5 s of a powered plug: not asked about
+	 * (they are the computer's); plug 7 came after half a minute: asked */
+	CHECK(asked >= 32055817 && asked < 32055817 + 100, "the Mac's plugs: first asked at %u, not plug 7", asked);
 }
 
-/* The same Mac that holds the sink side for a long while with no power: the
- * rule goes host after the grace and the hold; the Mac shows up on the bus
- * and the port goes device at once, and stays device for that plug */
-static void mac_as_sink(void)
+/* The Mac's plug 7, answered "It's a Computer": nothing; answered
+ * "Power It" by mistake, the Mac shows up on the bus and the port goes back
+ * to device for the rest of the plug */
+static void mac_power_it_by_mistake(void)
 {
 	static const step st[] = {
-		{ 5130, PIN(1, 0, 0, 0) },
-		{ 10200, PIN(1, 0, 0, 1) },      /* "Product: Mac" enumerated */
-		{ 10300, PIN(1, 0, 0, 0) },      /* back to device: the bus is gone */
-		{ 11000, PIN(1, 1, 0, 0) },      /* now the Mac gives power */
-		{ 12000, PIN(0, 1, 1, 0) },
-		{ 15000, PIN(1, 0, 0, 0) },      /* a flicker without power: same plug */
+		{ 0,     S(0, 0, 0, 0) },
+		{ 40000, S(1, 0, 0, 0) },        /* the Mac waits */
+		{ 42500, S(1, 0, 0, 1) },        /* fed: "Product: Mac" on the bus */
+		{ 42600, S(1, 0, 0, 0) },
+		{ 60000, S(0, 0, 0, 0) },
+		{ 61500, S(0, 1, 1, 0) },        /* it gives power: the link */
 	};
 	ur_state s;
 	unsigned again, t;
-	int i, hosts = 0, role;
+	int i = 0, role, hosts = 0, was = UR_DEVICE;
 
 	memset(&s, 0, sizeof s);
-	for (t = 5130, i = 0; t < 30000; t += 10) {
-		while (i < (int)(sizeof st / sizeof st[0]) - 1 && st[i + 1].at <= t) i++;
-		role = ur_decide(&s, &st[i].in, t, &again);
-		if (role == UR_HOST && (st[i].in.vbus != 0 || st[i].in.charger) && !s.host)
-			CHECK(0, "Mac as sink: host with power in at %u", t);
-		if (role == UR_HOST && t > 10200 && st[i].in.computer)
-			CHECK(0, "Mac as sink: host with the Mac on the bus at %u", t);
-		if (role == UR_HOST) hosts++;
-		if (t >= 10200) CHECK(role == UR_DEVICE, "Mac as sink: host again at %u", t);
+	for (t = 0; t <= 70000; t += 10) {
+		while (i < 6 && st[i].at <= t) i++;
+		if (t == 41000) CHECK(ur_grant(&s, s.plug), "Power It on the Mac's plug was refused");
+		role = ur_decide(&s, &st[i - 1].in, t, &again);
+		if (role == UR_HOST && was == UR_DEVICE) hosts++;
+		if (t >= 42500) CHECK(role == UR_DEVICE, "the Mac on the bus: host at %u", t);
+		was = role;
 	}
-	CHECK(hosts > 0, "Mac as sink: never host, so the Mac never showed itself (this replay expects one)");
+	CHECK(hosts == 1, "Power It by mistake: host %d times", hosts);
+	CHECK(!s.can_ask, "the Mac's plug may still be asked about");
 }
 
-/* A computer or a charger: power from the first moment, the pin flickering
- * as the plug settles (2026-11-05): never host */
-static void computer_flicker(void)
-{
-	static const step st[] = {
-		{ 0,    PIN(0, 1, 0, 0) },
-		{ 100,  PIN(1, 1, 0, 0) },
-		{ 300,  PIN(1, 1, 1, 0) },
-		{ 4000, PIN(1, 0, 0, 0) },       /* power drops for a moment */
-		{ 4300, PIN(1, 1, 1, 0) },
-	};
-
-	CHECK(!run("computer", 0, st, 5, 20000), "computer: went host");
-}
-
-/* A charger reading that fails: never host */
-static void unreadable(void)
-{
-	static const step a[] = { { 0, PIN(1, -1, 0, 0) } };
-	static const step b[] = { { 0, PIN(-1, 0, 0, 0) } };
-
-	CHECK(!run("no power reading", 0, a, 1, 20000), "a failed power reading went host");
-	CHECK(!run("no pin reading", 0, b, 1, 20000), "a failed pin reading went host");
-}
-
-/* A USB-C DAC plugged in a minute after boot: host, after the hold */
+/* A USB-C DAC a minute after boot: asked about after the grace, host the
+ * moment Power It comes for its plug, and back to device when it goes */
 static void dac(void)
 {
 	static const step st[] = {
-		{ 0,     PIN(0, 0, 0, 0) },
-		{ 60000, PIN(1, 0, 0, 0) },
+		{ 0,     S(0, 0, 0, 0) },
+		{ 60000, S(1, 0, 0, 0) },
+		{ 90000, S(0, 0, 0, 0) },       /* out */
+		{ 91000, S(1, 0, 0, 0) },       /* in again, a second later */
 	};
-	unsigned h = run("DAC", 0, st, 2, 70000);
+	ur_state s;
+	unsigned again, t, first;
+	int i = 0, role;
 
-	CHECK(h >= 60000 + UR_HOLD_MS && h <= 60000 + UR_HOLD_MS + 20, "DAC: host at %u", h);
+	memset(&s, 0, sizeof s);
+	for (t = 0; t <= 95000; t += 10) {
+		while (i < 4 && st[i].at <= t) i++;
+		role = ur_decide(&s, &st[i - 1].in, t, &again);
+		if (t == 59990) CHECK(!ur_grant(&s, 1), "Power It before anything wanted power was kept");
+		if (t == 60000) {
+			first = s.plug;
+			CHECK(s.can_ask, "the DAC: not asked about");
+			CHECK(role == UR_DEVICE, "the DAC: host before Power It");
+			CHECK(!ur_grant(&s, first + 1), "Power It for another plug was kept");
+			CHECK(ur_grant(&s, first), "Power It for the DAC's plug was refused");
+		}
+		if (t == 60010) CHECK(role == UR_HOST, "the DAC: not host after Power It");
+		if (t > 60010 && t < 90000) CHECK(role == UR_HOST, "the DAC: host ended at %u", t);
+		if (t >= 90000) CHECK(role == UR_DEVICE, "the DAC out, or in again unasked: host at %u", t);
+		if (t == 91000) {
+			CHECK(s.plug == first + 1, "in again: the same plug number");
+			CHECK(s.can_ask, "in again: not asked about");
+		}
+	}
 }
 
-/* A DAC in at boot: not before the grace and the hold */
+/* At boot: not asked about in the grace */
 static void dac_at_boot(void)
 {
-	static const step st[] = { { 1000, PIN(1, 0, 0, 0) } };
-	unsigned h = run("DAC at boot", 1000, st, 1, 20000);
+	static const step st[] = { { 1000, S(1, 0, 0, 0) } };
+	unsigned asked;
 
-	CHECK(h >= 1000 + UR_GRACE_MS + UR_HOLD_MS && h <= 1000 + UR_GRACE_MS + UR_HOLD_MS + 20,
-	      "DAC at boot: host at %u", h);
+	CHECK(!run("DAC at boot", st, 1, 1000 + UR_GRACE_MS + 5000, 0, &asked), "DAC at boot: host unasked");
+	CHECK(asked == 1000 + UR_GRACE_MS, "DAC at boot: asked at %u", asked);
+	CHECK(run("DAC at boot, Power It", st, 1, 1000 + UR_GRACE_MS + 5000, 1, NULL) == 1,
+	      "DAC at boot: not host after Power It");
 }
 
-/* A partner that tries both roles, the pin flipping every 40 ms with no
- * power: never held long enough */
-static void toggler(void)
-{
-	step st[400];
-	int i;
-
-	for (i = 0; i < 400; i++) {
-		st[i].at = 6000 + (unsigned)i * 40;
-		st[i].in = (ur_sense)PIN(i & 1, 0, 0, 0);
-	}
-	CHECK(!run("toggler", 6000, st, 400, 6000 + 400 * 40), "a toggling partner went host");
-}
-
-/* The computer's cable out, a DAC in: a new plug once the port has been
- * empty long enough, and not before */
-static void computer_then_dac(void)
-{
-	static const step quick[] = {
-		{ 0,     PIN(0, 1, 1, 0) },
-		{ 20000, PIN(0, 0, 0, 0) },              /* out */
-		{ 20500, PIN(1, 0, 0, 0) },              /* a DAC 0.5 s later */
-	};
-	static const step slow[] = {
-		{ 0,     PIN(0, 1, 1, 0) },
-		{ 20000, PIN(0, 0, 0, 0) },
-		{ 25000, PIN(1, 0, 0, 0) },              /* 5 s later */
-	};
-	unsigned h = run("computer then DAC, quick", 0, quick, 3, 40000);
-
-	CHECK(!h, "the computer's plug was forgotten after 0.5 s (host at %u)", h);
-	h = run("computer then DAC", 0, slow, 3, 40000);
-	CHECK(h == 25000 + UR_HOLD_MS, "a DAC after the computer was unplugged: host at %u", h);
-}
-
-/* Host, then the DAC unplugged: device */
-static void dac_out(void)
+/* Power It, then power comes in before the role changes: device */
+static void power_after_grant(void)
 {
 	ur_state s;
 	unsigned again;
-	ur_sense in = PIN(1, 0, 0, 0);
+	ur_sense dac = S(1, 0, 0, 0), powered = S(1, 1, 0, 0);
 
 	memset(&s, 0, sizeof s);
-	ur_decide(&s, &in, 0, &again);
-	ur_decide(&s, &in, UR_GRACE_MS, &again);
-	CHECK(ur_decide(&s, &in, UR_GRACE_MS + UR_HOLD_MS, &again) == UR_HOST, "the DAC: not host");
-	in.vbus = 1;                                  /* the port's own power, while host */
-	CHECK(ur_decide(&s, &in, UR_GRACE_MS + UR_HOLD_MS + 10, &again) == UR_HOST,
-	      "the port's own power ended host");
-	in.pin = 0;
-	CHECK(ur_decide(&s, &in, UR_GRACE_MS + UR_HOLD_MS + 20, &again) == UR_DEVICE, "the DAC out: still host");
+	ur_decide(&s, &dac, 0, &again);
+	ur_decide(&s, &dac, UR_GRACE_MS, &again);
+	CHECK(ur_grant(&s, s.plug), "Power It refused");
+	CHECK(ur_decide(&s, &powered, UR_GRACE_MS + 10, &again) == UR_DEVICE, "host with power in");
+	CHECK(ur_decide(&s, &dac, UR_GRACE_MS + 20, &again) == UR_DEVICE,
+	      "a plug that had power in went host on an old Power It");
+}
+
+/* Every plug of a computer or a charger, and failed readings, with Power
+ * It pressed at every chance: never host */
+static void never(void)
+{
+	static const step computer[] = {
+		{ 0,    S(0, 1, 0, 0) }, { 100, S(1, 1, 0, 0) }, { 300, S(1, 1, 1, 0) },
+		{ 4000, S(1, 0, 0, 0) }, { 4300, S(1, 1, 1, 0) },
+	};
+	static const step no_power_reading[] = { { 0, S(1, -1, 0, 0) } };
+	static const step no_pin_reading[] = { { 0, S(-1, 0, 0, 0) } };
+	static const step quick_after_computer[] = {
+		{ 0, S(0, 1, 1, 0) }, { 20000, S(0, 0, 0, 0) }, { 20500, S(1, 0, 0, 0) },
+	};
+
+	CHECK(!run("computer", computer, 5, 30000, 1, NULL), "a computer went host");
+	CHECK(!run("no power reading", no_power_reading, 1, 30000, 1, NULL), "a failed power reading went host");
+	CHECK(!run("no pin reading", no_pin_reading, 1, 30000, 1, NULL), "a failed pin reading went host");
+	CHECK(!run("quick after a computer", quick_after_computer, 3, 40000, 1, NULL),
+	      "a plug 0.5 s after a computer's went host");
+	CHECK(!run("the Mac, Power It at every chance", MAC, (int)(sizeof MAC / sizeof MAC[0]),
+	           32055817 - 1, 1, NULL), "the Mac's first six plugs went host on Power It");
 }
 
 int main(void)
 {
-	mac_boot();
-	mac_as_sink();
-	computer_flicker();
-	unreadable();
+	mac_replugs();
+	mac_power_it_by_mistake();
 	dac();
 	dac_at_boot();
-	toggler();
-	computer_then_dac();
-	dac_out();
+	power_after_grant();
+	never();
 	if (fails) {
 		fprintf(stderr, "usbrole rule-check: %d failed\n", fails);
 		return 1;
 	}
-	printf("usbrole rule-check: the Mac's boot of 2026-11-10 stays device, power or a computer on the bus "
-	       "keep a plug device, a DAC is host after the hold\n");
+	printf("usbrole rule-check: the Mac's nine plugs of 2026-11-10 never host, asked about once; "
+	       "a DAC host only on Power It for its own plug; never with power in\n");
 	return 0;
 }

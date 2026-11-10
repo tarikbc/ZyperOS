@@ -4,6 +4,14 @@
 
 static unsigned nz(unsigned t) { return t ? t : 1; }
 
+int ur_grant(ur_state *s, unsigned plug)
+{
+	if (!plug || plug != s->plug || !s->can_ask)
+		return 0;
+	s->granted = plug;
+	return 1;
+}
+
 int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 {
 	int quiet, powered_now, cond;
@@ -12,7 +20,17 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 	if (!s->started) {
 		s->started = 1;
 		s->start = now;
+		s->pin_was = 0;
 	}
+	/* The pin going to "wants power" is a new plug: a number of its own,
+	 * and nothing granted for it yet */
+	if (in->pin == 1 && s->pin_was != 1) {
+		s->plug++;
+		if (!s->plug) s->plug = 1;
+	}
+	if (in->pin != 1)
+		s->granted = 0;
+	s->pin_was = in->pin;
 	if (s->host) {
 		/* The port's own power is all the reading would say */
 		if (in->computer) {
@@ -21,8 +39,9 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 		} else if (in->pin != 1) {
 			s->host = 0;
 		}
-		s->since = 0;
 		s->quiet_since = 0;
+		s->can_ask = 0;
+		if (!s->host) s->granted = 0;
 		return s->host ? UR_HOST : UR_DEVICE;
 	}
 	/* Empty long enough is a new plug: what the last one was is forgotten */
@@ -39,22 +58,18 @@ int ur_decide(ur_state *s, const ur_sense *in, unsigned now, unsigned *again)
 	if (powered_now)
 		s->powered = 1;
 	cond = in->pin == 1 && !powered_now && !s->powered;
-	if (!cond) {
-		s->since = 0;
-		return UR_DEVICE;
-	}
-	if (now - s->start < UR_GRACE_MS) {
-		s->since = 0;
+	if (cond && now - s->start < UR_GRACE_MS) {
 		*again = UR_GRACE_MS - (now - s->start);
+		cond = 0;
+	}
+	s->can_ask = cond;
+	if (!cond) {
+		s->granted = 0;
 		return UR_DEVICE;
 	}
-	if (!s->since)
-		s->since = nz(now);
-	if (now - s->since >= UR_HOLD_MS) {
+	if (s->granted && s->granted == s->plug) {
 		s->host = 1;
-		s->since = 0;
 		return UR_HOST;
 	}
-	*again = UR_STEP_MS;
 	return UR_DEVICE;
 }

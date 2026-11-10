@@ -17,12 +17,17 @@
  * computer by a USB-C cable, it read 1 for a moment as the plug settled, and
  * the port went host for 4 to 10 seconds with the computer powering it, the
  * computer seeing nothing meanwhile (2026-11-05). And on 2026-11-10 it went
- * host twice in a boot with a Mac on the cable, with no power in at those
- * moments, and the cable had to go in three times. When the port may be a
- * host is rule.c's: never in the first seconds, never on a plug that has had
- * power in (until it is unplugged), never when a reading fails, and only
- * after the pin has said so, with nothing coming in, for two seconds
- * unbroken. A DAC or an adapter wants power and gives none.
+ * host with a Mac on the cable whose port had taken the sink side, and fed
+ * it: such a Mac looks exactly like a DAC. When the port may be a host is
+ * rule.c's: never on its own. A plug that wants power and gives none is
+ * asked about by the launcher (Power It, or It's a Computer), and only Power
+ * It for that plug, with every safety rule still holding, makes it one.
+ *
+ * The launcher and usbrole meet in /run/usbrole, root's alone (0700, made
+ * and checked here): usbrole writes "state" (the plug's number, whether it
+ * may be asked about, the readings and the role), and the launcher writes
+ * "host" with the plug's number for Power It, which usbrole reads once and
+ * deletes. usbrole stays the only writer of the role.
  *
  * And when a DAC's sound card appears, it turns the DAC's own playback volume
  * to full: the volume the player moves is a software one in front of it
@@ -35,6 +40,7 @@
  * finds nothing to load for it.
  */
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/netlink.h>
 #include <poll.h>
@@ -44,7 +50,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/inotify.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -54,6 +62,10 @@
 static char host_state[320];   /* the USB-HOST cable's state file */
 static char ext_state[320];    /* its extcon's every cable: SDP=1, CDP=0, ... */
 static char role_file[320];    /* the role switch */
+#define RUN_DIR    "/run/usbrole"
+#define STATE_FILE RUN_DIR "/state"
+#define HOST_FILE  RUN_DIR "/host"
+static int run_ok;             /* RUN_DIR is root's own directory */
 /* Power coming in from the other end: a computer or a charger */
 #define VBUS_IN "/sys/class/power_supply/rk817-charger/online"
 
@@ -156,11 +168,82 @@ static int computer_on_bus(void)
 
 static ur_state rule;
 
+/* RUN_DIR made, or found, and checked to be root's own directory and no
+ * link: else nothing is written or read there, and no plug can be powered */
+static void run_dir(void)
+{
+	struct stat st;
+
+	if (mkdir(RUN_DIR, 0700) < 0 && errno != EEXIST)
+		return;
+	if (lstat(RUN_DIR, &st) < 0 || !S_ISDIR(st.st_mode) || st.st_uid != 0 ||
+	    (st.st_mode & 0077)) {
+		log_to_kernel("usbrole: " RUN_DIR " is not root's own: no plug can be powered\n");
+		return;
+	}
+	unlink(HOST_FILE);             /* a request from before this start */
+	run_ok = 1;
+}
+
+/* The state for the launcher, when it changed: written beside and renamed,
+ * so it is read whole */
+static void write_state(const ur_sense *in, const char *role)
+{
+	static char last[128];
+	char line[128];
+	int fd, n;
+
+	if (!run_ok)
+		return;
+	n = snprintf(line, sizeof line, "plug=%u ask=%d pin=%d vbus=%d powered=%d role=%s\n",
+	             rule.plug, rule.can_ask, in->pin, in->vbus, rule.powered, role);
+	if (n <= 0 || !strcmp(line, last))
+		return;
+	fd = open(STATE_FILE ".new", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
+	if (fd < 0)
+		return;
+	if (write(fd, line, (size_t)n) == n && rename(STATE_FILE ".new", STATE_FILE) == 0)
+		snprintf(last, sizeof last, "%s", line);
+	close(fd);
+}
+
+/* The launcher's Power It: the plug's number in HOST_FILE, read once (a
+ * regular file of root's, a few bytes) and deleted */
+static void read_request(void)
+{
+	char text[32];
+	struct stat st;
+	ssize_t got;
+	unsigned plug;
+	int fd;
+
+	if (!run_ok)
+		return;
+	fd = open(HOST_FILE, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_uid != 0 ||
+	    st.st_size >= (off_t)sizeof text) {
+		close(fd);
+		unlink(HOST_FILE);
+		return;
+	}
+	got = read(fd, text, sizeof text - 1);
+	close(fd);
+	unlink(HOST_FILE);
+	if (got <= 0)
+		return;
+	text[got] = '\0';
+	plug = (unsigned)strtoul(text, NULL, 10);
+	log_to_kernel(ur_grant(&rule, plug) ? "usbrole: power it, as the player said\n"
+	                                    : "usbrole: a request for a plug that cannot have power now\n");
+}
+
 /* The port's facts, rule.c's answer, and the role switch set to it. How
  * long until it wants to look again with no event, 0 for not. */
 static unsigned follow_pin(void)
 {
-	char state[8], role[16], vbus[8], ext[256];
+	char state[8], role[16], vbus[8], ext[256] = "";
 	ur_sense in;
 	const char *want;
 	unsigned again;
@@ -182,6 +265,7 @@ static unsigned follow_pin(void)
 	}
 	in.computer = !strcmp(role, "host") && computer_on_bus();
 	want = ur_decide(&rule, &in, now_ms(), &again) == UR_HOST ? "host" : "device";
+	write_state(&in, want);
 	if (in.pin != 1 || !rule.powered)
 		said = 0;
 	else if (!said++)
@@ -296,6 +380,13 @@ int main(void)
 	}
 
 	signal(SIGCHLD, SIG_IGN);
+	run_dir();
+	int watch = run_ok ? inotify_init1(IN_NONBLOCK | IN_CLOEXEC) : -1;
+
+	if (watch >= 0 && inotify_add_watch(watch, RUN_DIR, IN_CLOSE_WRITE | IN_MOVED_TO) < 0) {
+		close(watch);
+		watch = -1;
+	}
 	unsigned again = follow_pin();
 	/* A DAC already in, if init restarted us. Card 0 is the RK817. */
 	for (int card = 1; card < 8; card++)
@@ -305,16 +396,27 @@ int main(void)
 	 * "change@/devices/.../extcon/extcon0". A sound card's controls arrive
 	 * as "add@/devices/.../sound/card1/controlC1", the node already made. */
 	for (;;) {
-		struct pollfd p = { .fd = sock, .events = POLLIN };
+		struct pollfd p[2] = { { .fd = sock, .events = POLLIN }, { .fd = watch, .events = POLLIN } };
 		ssize_t got;
 		const char *last;
+		int r;
 
-		/* A hold or the grace running: looked at again on time, events
-		 * or not */
-		if (poll(&p, 1, again ? (int)again : -1) == 0) {
+		/* The grace running out: looked at again on time, events or not */
+		r = poll(p, watch >= 0 ? 2 : 1, again ? (int)again : -1);
+		if (r == 0) {
 			again = follow_pin();
 			continue;
 		}
+		/* The launcher's request, the moment it is written */
+		if (watch >= 0 && (p[1].revents & POLLIN)) {
+			char ev[1024];
+
+			while (read(watch, ev, sizeof ev) > 0) {}
+			read_request();
+			again = follow_pin();
+		}
+		if (!(p[0].revents & POLLIN))
+			continue;
 		got = recv(sock, msg, sizeof msg - 1, 0);
 		if (got <= 0)
 			continue;
