@@ -1,0 +1,18 @@
+# Zyper, the ZyperOS Discord bot (src/index.js). Deploy: npx wrangler deploy
+# The bot token is a secret: npx wrangler secret put DISCORD_TOKEN
+name = "zyper-bot"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+# The Discord application's public key, which signs every interaction (not a secret)
+PUBLIC_KEY = "69318beada9de21817da7b62be816e5f549285f1129dd480a240d0cb15b756f0"
+APPLICATION_ID = "1569500359448338452"
+GUILD_ID = "1569495086528729141"
+PLAYING_CHANNEL = "1569502652432130149"
+BUGS_CHANNEL = "1569502699223781466"
+
+# Mondays at 15:00 UTC: the week's "What are you playing?" thread
+[triggers]
+crons = ["0 15 * * MON"]
