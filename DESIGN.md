@@ -703,10 +703,24 @@ link on the File Transfer page. Notes under a rule fit the panel on one line
 each, about 30 characters at **menu**; a longer one is said in two.
 
 ### 11.4 Key legend
-"A: go   Y: by game   L1/R1: window" - the button, a colon, a lowercase verb,
-three spaces between. **meta**, **text-dim**. *(The audit found 3 and 4
-spaces, "L/R" for two different controls, and "B to close" beside "B: close";
-this is the one form.)*
+**Button hints** are the form now (2026-11-10, src/keyhints.h): what each
+button does as a row of the button's glyph (11.9, 32 units) and its word in
+**chrome** **text-soft**, 12 between them, 32 between hints (at least 16
+in a spread foot), as the
+shelves' feet have always drawn them. One component lays them out: a list
+of {button, word} in order, as many in a row as fit, rows 44 apart, never
+a hint cut or split, centered under a panel's tiles or spread across a
+screen's foot (Now Playing's grows upward from its line). The d-pad's
+Left/Right is the "< >" pill, as seek's. Words are res/strings' keyhint.*
+or a screen's own, a hint's capitals (Title Case in English). Under every
+question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
+for one component to use across the UI.)*
+
+The older form, still written as text where it has not moved yet: "A: go
+Y: by game   L1/R1: window" - the button, a colon, a lowercase verb, three
+spaces between. **meta**, **text-dim**. *(The audit found 3 and 4 spaces,
+"L/R" for two different controls, and "B to close" beside "B: close"; this
+is the one form.)*
 
 ### 11.5 Keyboard
 The whole keyboard of src/keyboard.c, every decision in it kept because each
@@ -1502,7 +1516,7 @@ rule. Each tile is **raised**, **radius.card**, 272 x 232, 24 apart: its
 mark (a bolt, a folder with an arrow up out of it, a terminal's prompt),
 72 across, and its name in **menu** on two lines, in **text-soft**; the
 focused tile is the **accent** fill with both in **on-accent**. The key
-legend (11.4) "Left/Right: move   A: choose   B: charge only" is under the
+button hints (11.4) "< > Move   A Choose   B Charge Only" are under the
 tiles in **meta** **text-dim**. The tiles are **Charge Only**, **File
 Transfer** and, on a development image, **Developer (SSH)**; it starts on
 Charge Only, so a quick A keeps the port charging. B, MENU, or the cable
@@ -2498,18 +2512,26 @@ powering it. The tiles of Computer Connected (11.18), two of them and wider
 headphones, its name on one line and under it in **meta** (**text-dim**,
 **on-accent** when focused) "headphones, Wi-Fi, keyboard", up to two lines;
 and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
-B never powers a computer; the legend "Left/Right: move   A: choose   B:
-computer". Asked once per plug, two seconds after usbrole says it may be,
+B never powers a computer; the button hints (11.4) "< > Move   A Choose   B
+Computer". Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game; it goes by itself when the plug
-stops wanting power. Computer, B or MENU answer with a message (11.8)
-headed **Computer**: "Your computer didn't connect yet. Unplug the cable
-and plug it back in.", balanced onto up to three lines; USB File Transfer's
-Cable step says the same after 5 seconds (11.35). A plug that may not be
+stops wanting power.
+
+**The replug message.** Computer, B or MENU, and a plug that may not be
 asked about because a computer was on the port in the last 5 seconds
-(usbrole's new-plug rule: it is that computer, plugged back in too soon)
-gets the same message by itself, once per plug, two seconds after it goes
-in. The user-facing words never say "power". *(My wording after the plug
-test, 2026-11-10.)* Host shots: `--usb-power [0|1|said]`.
+(usbrole's new-plug rule: it is that computer, plugged back in too soon),
+bring up "Your computer didn't connect yet. Unplug the cable, wait 5
+seconds and plug it back in." over whatever screen is up, and over a game
+as Diatom's notice (11.7), and it stays until the plug ends: the cable out,
+another plug, or the computer connected. On the launcher it is a slab at
+the top under the header, 960 wide at y 104: **surface** with the
+**panel** lift, the laptop mark (64) at its left in **text-soft**,
+**Computer** in **meta** **text-dim** over the words in **menu** **text**,
+up to four balanced lines; it is drawn by every screen's frame, under the
+volume bar (plat_set_overlay). USB File Transfer's Cable step says the
+same after 5 seconds (11.35). The user-facing words never say "power".
+*(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
+[0|1|said]`.
 
 ## 12. Copy
 
@@ -2617,7 +2639,7 @@ File Transfer 2 lab, `docs/design/mock/transfer2-lab.html`)*:
   its way is in) and **Cancel now** (a ring crossed: closed at once; the file
   that was half written is a `.part` file, deleted with its connection, and
   never shows on the shelf as a broken game). Under the tiles, what the
-  focused one does; legend "Left/Right: move   A: choose   B: keep going".
+  focused one does; button hints (11.4) "< > Move   A Choose   B Keep Going".
   The legend over the panel says "B: keep going or stop", and "B: hide" while
   it closes after the file.
 - **MENU** while files move keeps them going and goes to the shelf, as MENU

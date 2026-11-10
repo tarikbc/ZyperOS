@@ -538,7 +538,7 @@ in, **What did you plug in?**, with two tiles:
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
-| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect yet, and to unplug the cable and plug it back in. Then it connects |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect yet: unplug the cable, wait 5 seconds and plug it back in. Then it connects |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. The handheld never powers the port in the first seconds after it
@@ -546,7 +546,9 @@ starts, while a computer or a charger powers it, or for a plug that just
 had a computer on it (until the port has been empty for 5 seconds, counted
 from when the cable came out); USB Accessory does not change that. A
 computer plugged back in sooner than that is not asked about: the shelf
-says it didn't connect yet, and to plug it back in, once per plug. USB File Transfer in MENU turns the link on by itself too.
+says it didn't connect yet, and to wait 5 seconds before plugging it back
+in. The message stays over any screen, and over a game, until the cable
+comes out. USB File Transfer in MENU turns the link on by itself too.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so
