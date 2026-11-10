@@ -543,8 +543,10 @@ Connected**, with two tiles:
 The question goes by itself when the thing is unplugged or starts giving
 power. The handheld never powers the port in the first seconds after it
 starts, while power comes in, or for a plug that has just had a computer's
-power (until the port has been empty for 5 seconds); Power It does not
-change that. USB File Transfer in MENU turns the link on by itself too.
+power (until the port has been empty for 5 seconds, counted from when the
+power went); Power It does not change that. A computer plugged in again
+sooner than that, with its port waiting for power, is not asked about: the
+shelf says to unplug the cable and plug it in again, once per plug. USB File Transfer in MENU turns the link on by itself too.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so

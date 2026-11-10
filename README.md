@@ -327,7 +327,7 @@ New versions come to the handheld with [System Update](#system-update) over Wi-F
 
 The Pixel 2 has no radio of its own. A USB Wi-Fi adapter in its USB-C port gives it Wi-Fi while it's plugged in, and with it box art, RetroAchievements and Wi-Fi File Transfer: one whose Realtek chip ZyperOS has a driver for, like the TP-Link TL-WN725N on a USB-C adapter. Without one, USB File Transfer (below) moves files over the USB cable. There's no Bluetooth.
 
-The Pixel 2 powers what you plug into its port only when you say so. Its USB-C port has no chip to tell a Wi-Fi adapter or a USB-C DAC from a computer that is waiting for power, and a computer must never be fed from the handheld. So when something wants power, the shelf asks once, **USB Device Connected**: **Power It** for an adapter, a DAC or a keyboard, or **It's a Computer**, where it starts. For a computer the handheld gives no power and says to plug the cable in again: the computer then gives the power, and the handheld finds it.
+The Pixel 2 powers what you plug into its port only when you say so. Its USB-C port has no chip to tell a Wi-Fi adapter or a USB-C DAC from a computer that is waiting for power, and a computer must never be fed from the handheld. So when something wants power, the shelf asks once, **USB Device Connected**: **Power It** for an adapter, a DAC or a keyboard, or **It's a Computer**, where it starts. For a computer the handheld gives no power and says to plug the cable in again: the computer then gives the power, and the handheld finds it. A computer plugged in again within 5 seconds of being unplugged is not asked about; the shelf says to plug it in again.
 
 ### Languages
 

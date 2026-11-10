@@ -2502,8 +2502,12 @@ lit shelf, never over a game; it goes by itself when the plug stops
 wanting power. It's a Computer, B or MENU answer with a message (11.8)
 under the same heading: "The computer is waiting for power. Unplug the
 cable and plug it in again.", balanced onto up to three lines; USB File
-Transfer's Cable step says the same after 5 seconds (11.35). Host shots:
-`--usb-power [0|1|said]`.
+Transfer's Cable step says the same after 5 seconds (11.35). A plug that
+waits for power but may not be asked about, because a computer's power was
+on the port in the last 5 seconds (usbrole's new-plug rule: it is that
+computer, plugged in again too soon), gets the same message by itself, once
+per plug, two seconds after it goes in. Host shots: `--usb-power
+[0|1|said]`.
 
 ## 12. Copy
 
