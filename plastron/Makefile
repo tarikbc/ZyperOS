@@ -193,15 +193,22 @@ copy-out:
 	@ls -l out/$(CARD)
 
 # Put the last build's system on a GKD Pixel 2 on the USB cable, written by
-# the device itself (scripts/px2-push.sh); BOOT=1 also writes the boot
-# partition, LOADER=1 the bootloader (board/px2/bootloader/u-boot-px2.bin).
-# Needs a development build's SSH key on the card already.
+# the device itself into the system slot it is not running, with that slot's
+# kernel and device tree, on trial (scripts/px2-push.sh); BOOT=1 also
+# boot.scr, LOADER=1 the bootloader (board/px2/bootloader/u-boot-px2.bin),
+# both shared by the slots. Needs a development build's SSH key on the card
+# already, and a card with two slots.
 push:
 	mkdir -p out/push
 	docker run --rm -v $(VOLUME):/work -v $(CURDIR):/src:ro -v $(CURDIR)/out/push:/out --user root $(IMAGE) \
-		sh -c '. /src/scripts/lock.sh && plastron_lock /work/output -s && cp /work/output/images/rootfs.squashfs /work/output/images/boot.vfat /out/ && chown $(shell id -u):$(shell id -g) /out/*'
+		sh -c '. /src/scripts/lock.sh && plastron_lock /work/output -s && \
+		  cd /work/output/images && cp rootfs.squashfs Image rk3326s-gkd-pixel2.dtb boot.scr /out/ && \
+		  sed -n "s/^version //p" /work/output/target/etc/zyperos/system > /out/system && \
+		  chown $(shell id -u):$(shell id -g) /out/*'
+	PX2_SYSTEM=$$(cat out/push/system) \
+	$(if $(BOOT),PX2_BOOTSCR=out/push/boot.scr) \
 	$(if $(LOADER),PX2_LOADER=buildroot/board/px2/bootloader/u-boot-px2.bin) \
-		sh scripts/px2-push.sh out/push/rootfs.squashfs $(if $(BOOT),out/push/boot.vfat)
+		sh scripts/px2-push.sh out/push/rootfs.squashfs out/push/Image out/push/rk3326s-gkd-pixel2.dtb
 
 # A cross SDK for building ZyperOS without this volume (scripts/sdk.sh): the
 # toolchain and libraries of the last SDK_OUTPUT build, copied into a Docker
