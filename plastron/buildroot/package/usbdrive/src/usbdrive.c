@@ -14,8 +14,8 @@
  * nothing holds the card while it is the computer's.
  *
  * With ZyperOS's atlas in FRAMES too (atlas.h), connected.raw is held here
- * rather than by splash, and its card's rows say what moves, how fast and
- * how much, from the games partition's /sys stat once a second
+ * rather than by splash, and its two tiles say what moves, how fast and
+ * how much each way, from the games partition's /sys stat once a second
  * (drivestat.h); only a change is drawn, so an idle drive costs nothing.
  */
 #include <dirent.h>
@@ -149,14 +149,35 @@ static bool live_start(void)
 	return true;
 }
 
-/* The stat once a second; the rows drawn when what they say changed */
+/* A way's three slots: its mark, moving or idle, its speed, its total */
+static void live_way(const dst_way *w, int mark_slot, int on, int off, int speed_slot, int total_slot)
+{
+	int tok[DST_FMT_MAX], n, k;
+	const int slots[3] = { mark_slot, speed_slot, total_slot };
+
+	for (k = 0; k < 3; k++) {
+		const at_rect *r = &live.l.slot[slots[k]];
+
+		if (k == 0) {
+			tok[0] = w->active ? on : off;
+			n = 1;
+		} else {
+			int fam = k == 1 ? AT_BIG : AT_SMALL, i;
+
+			n = k == 1 ? dst_fmt_rate(w->rate, tok, DST_FMT_MAX) : dst_fmt_total(w->total, tok, DST_FMT_MAX);
+			for (i = 0; i < n; i++) tok[i] += fam;
+		}
+		at_compose(&live.l, slots[k], tok, n, live.atlas, live.page);
+		panel_update(live.page, r->x, r->y, r->w, r->h);
+	}
+}
+
+/* The stat once a second; the tiles drawn when what they say changed */
 static void live_follow(void)
 {
-	static const int status_glyph[] = { AT_G_ST_IDLE, AT_G_ST_WRITE, AT_G_ST_READ };
 	unsigned long long f[7] = { 0 };
 	char text[256];
 	unsigned now = now_ms();
-	int tok[DST_FMT_MAX], n, s;
 
 	if (!live.on || (live.looked && now - live.looked < 1000u)) return;
 	live.looked = now;
@@ -164,20 +185,8 @@ static void live_follow(void)
 	    sscanf(text, "%llu %llu %llu %llu %llu %llu %llu", &f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6]) != 7)
 		return;
 	if (!dst_step(&live.d, f[2], f[6], now)) return;
-	for (s = 0; s < AT_SLOTS; s++) {
-		const at_rect *r = &live.l.slot[s];
-
-		if (s == AT_SLOT_STATUS) {
-			tok[0] = status_glyph[live.d.status];
-			n = 1;
-		} else if (s == AT_SLOT_SPEED) {
-			n = live.d.status == DST_IDLE ? 0 : dst_fmt_rate(live.d.rate, tok, DST_FMT_MAX);
-		} else {
-			n = dst_fmt_total(s == AT_SLOT_WRITTEN ? live.d.wrote : live.d.read, tok, DST_FMT_MAX);
-		}
-		at_compose(&live.l, s, tok, n, live.atlas, live.page);
-		panel_update(live.page, r->x, r->y, r->w, r->h);
-	}
+	live_way(&live.d.in, AT_SLOT_MARK_IN, AT_G_IN_ON, AT_G_IN_OFF, AT_SLOT_SPEED_IN, AT_SLOT_TOTAL_IN);
+	live_way(&live.d.out, AT_SLOT_MARK_OUT, AT_G_OUT_ON, AT_G_OUT_OFF, AT_SLOT_SPEED_OUT, AT_SLOT_TOTAL_OUT);
 }
 
 /* The live page down: whatever splash put up since is on glass */

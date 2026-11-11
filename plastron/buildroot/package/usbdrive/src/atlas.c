@@ -6,11 +6,31 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *const SLOT[AT_SLOTS] = { "status", "speed", "written", "read" };
-static const char *const GLYPH[AT_GLYPHS] = {
+static const char *const SLOT[AT_SLOTS] = { "speed_in", "speed_out", "total_in", "total_out",
+                                            "mark_in", "mark_out" };
+static const char *const TOKEN[DST_TOKENS] = {
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp", "B", "KB", "MB", "GB", "ps",
-	"st_write", "st_read", "st_idle",
 };
+static const char *const MARK[4] = { "in_on", "in_off", "out_on", "out_off" };
+
+/* A glyph's name in atlas.txt */
+static void glyph_name(int g, char *out, size_t n)
+{
+	if (g < AT_SMALL) snprintf(out, n, "b%s", TOKEN[g - AT_BIG]);
+	else if (g < AT_MARK) snprintf(out, n, "s%s", TOKEN[g - AT_SMALL]);
+	else snprintf(out, n, "%s", MARK[g - AT_MARK]);
+}
+
+/* The lowest of the slots a glyph's family is drawn in */
+static int family_room(const at_layout *l, int g)
+{
+	const at_rect *a, *b;
+
+	if (g < AT_SMALL) a = &l->slot[AT_SLOT_SPEED_IN], b = &l->slot[AT_SLOT_SPEED_OUT];
+	else if (g < AT_MARK) a = &l->slot[AT_SLOT_TOTAL_IN], b = &l->slot[AT_SLOT_TOTAL_OUT];
+	else a = &l->slot[AT_SLOT_MARK_IN], b = &l->slot[AT_SLOT_MARK_OUT];
+	return a->h < b->h ? a->h : b->h;
+}
 
 /* Inside the picture, with no sum that could overflow: the file is read as
  * untrusted, whoever wrote it */
@@ -38,7 +58,7 @@ bool at_parse(const char *text, at_layout *l)
 		memcpy(line, p, n);
 		line[n] = '\0';
 		p = nl ? nl + 1 : NULL;
-		if (sscanf(line, "zyperos-drive-atlas %d", &v) == 1) head = v == 1;
+		if (sscanf(line, "zyperos-drive-atlas %d", &v) == 1) head = v == 2;
 		else if (sscanf(line, "size %d %d", &l->w, &l->h) == 2) continue;
 		else if (sscanf(line, "slot %15s %d %d %d %d %7s", a, &r.x, &r.y, &r.w, &r.h, side) == 6) {
 			/* X0 Y0 X1 Y1: an inverted or empty one is refused, and the
@@ -54,25 +74,23 @@ bool at_parse(const char *text, at_layout *l)
 					got_slot[i] = true;
 				}
 		} else if (sscanf(line, "glyph %15s %d %d %d %d", b, &r.x, &r.y, &r.w, &r.h) == 5) {
-			for (i = 0; i < AT_GLYPHS; i++)
-				if (!strcmp(b, GLYPH[i])) {
+			for (i = 0; i < AT_GLYPHS; i++) {
+				char name[16];
+
+				glyph_name(i, name, sizeof name);
+				if (!strcmp(b, name)) {
 					l->glyph[i] = r;
 					got_glyph[i] = true;
 				}
+			}
 		}
 	}
 	if (!head || l->w <= 0 || l->h <= 0 || l->w > 4096 || l->h > 4096) return false;
 	for (i = 0; i < AT_SLOTS; i++)
 		if (!got_slot[i] || !inside(l, &l->slot[i])) return false;
-	/* A glyph no taller than the lowest slot, so it fits in any of them */
-	{
-		int low = l->slot[0].h;
-
-		for (i = 1; i < AT_SLOTS; i++)
-			if (l->slot[i].h < low) low = l->slot[i].h;
-		for (i = 0; i < AT_GLYPHS; i++)
-			if (!got_glyph[i] || !inside(l, &l->glyph[i]) || l->glyph[i].h > low) return false;
-	}
+	/* A glyph no taller than any slot its family is drawn in */
+	for (i = 0; i < AT_GLYPHS; i++)
+		if (!got_glyph[i] || !inside(l, &l->glyph[i]) || l->glyph[i].h > family_room(l, i)) return false;
 	return true;
 }
 

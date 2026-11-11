@@ -8563,36 +8563,37 @@ enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_FRAMES };
 /* The pages' geometry, in the launcher's 1024 x 768. The saved pictures are
  * 640 x 480 (5/8 of it), so every edge a slot or a glyph's cell starts on is
  * a multiple of 8 and lands on a whole pixel there. */
-#define UD_CARD_X   DS_INSET
-#define UD_CARD_W   (ZYPEROS_SCREEN_W - 2 * DS_INSET)
-#define UD_CARD_Y   248
-#define UD_PAD      40
-#define UD_ROW      64          /* rows' middles 64 apart */
-#define UD_BAND     64          /* a slot's height about a row's middle: a row, accents and descenders in it */
-#define UD_GAP      32          /* between a label and its number */
-#define UD_SAVE_W   640
-#define UD_SAVE_H   480
+#define UD_TILE_Y    256
+#define UD_TILE_H    280
+#define UD_TILE_W    472
+#define UD_TILE_X0   DS_INSET                                   /* 24 */
+#define UD_TILE_X1   (ZYPEROS_SCREEN_W - DS_INSET - UD_TILE_W)  /* 528 */
+#define UD_PAD       32
+#define UD_MARK      64          /* the mark's slot, square */
+#define UD_MARK_CY   312
+#define UD_SPEED_CY  416
+#define UD_SPEED_H   80          /* the speed's slot: the title face's line */
+#define UD_TOTAL_CY  488
+#define UD_TOTAL_H   48          /* the total's: the meta face's */
+#define UD_SAVE_W    640
+#define UD_SAVE_H    480
 
 /* The tokens of a number, as plastron's usbdrive makes them (its
  * drivestat.h): each digit, the mark, the space, a unit, "/s" */
 enum { UT_DEC = 10, UT_SP, UT_B, UT_KB, UT_MB, UT_GB, UT_PS, UT_TOKENS };
-enum { UT_ST_WRITE = UT_TOKENS, UT_ST_READ, UT_ST_IDLE, UT_GLYPHS };
 
 /* A token's words in the language that is on */
 static const char *ud_token(int t, char *buf)
 {
 	if (t >= 0 && t <= 9) { buf[0] = (char)('0' + t); buf[1] = '\0'; return buf; }
 	switch (t) {
-	case UT_DEC:      return T(S_USBDRIVE_DECIMAL);
-	case UT_SP:       return " ";
-	case UT_B:        return T(S_USBDRIVE_UNIT_B);
-	case UT_KB:       return T(S_USBDRIVE_UNIT_KB);
-	case UT_MB:       return T(S_USBDRIVE_UNIT_MB);
-	case UT_GB:       return T(S_USBDRIVE_UNIT_GB);
-	case UT_PS:       return T(S_USBDRIVE_PER_SECOND);
-	case UT_ST_WRITE: return T(S_USBDRIVE_STATUS_WRITING);
-	case UT_ST_READ:  return T(S_USBDRIVE_STATUS_READING);
-	default:          return T(S_USBDRIVE_STATUS_IDLE);
+	case UT_DEC: return T(S_USBDRIVE_DECIMAL);
+	case UT_SP:  return " ";
+	case UT_B:   return T(S_USBDRIVE_UNIT_B);
+	case UT_KB:  return T(S_USBDRIVE_UNIT_KB);
+	case UT_MB:  return T(S_USBDRIVE_UNIT_MB);
+	case UT_GB:  return T(S_USBDRIVE_UNIT_GB);
+	default:     return T(S_USBDRIVE_PER_SECOND);
 	}
 }
 
@@ -8641,23 +8642,12 @@ static int ud_tokens_width(TTF_Font *f, const int *tok, int n)
 	return w;
 }
 
-/* The widest number a row can show (999.9 MB/s; 999.99 GB), whose room the
- * labels leave */
-static int ud_widest(TTF_Font *f, bool speed)
-{
-	int tok[16], n = speed ? ud_tokens("999.9", UT_MB, true, tok, 16) : ud_tokens("999.99", UT_GB, false, tok, 16);
-
-	return ud_tokens_width(f, tok, n);
-}
-
-/* The tokens drawn from x (left) or up to x (right), as usbdrive composes
- * them from the atlas */
-static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, int x, int cy, bool right)
+/* The tokens drawn from x, as usbdrive composes them from the atlas */
+static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, int x, int cy, SDL_Color c)
 {
 	char buf[2];
 	int i;
 
-	if (right) x -= ud_tokens_width(f, tok, n);
 	for (i = 0; i < n; i++) {
 		int cw = ud_cell(f, tok[i]);
 
@@ -8665,185 +8655,192 @@ static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, 
 			/* A digit in the middle of its cell */
 			const char *s = ud_token(tok[i], buf);
 
-			ui_text(r, f, s, x + (cw - ui_text_width(f, s)) / 2, ui_cap_y(f, cy), -1, UI_TEXT);
+			ui_text(r, f, s, x + (cw - ui_text_width(f, s)) / 2, ui_cap_y(f, cy), -1, c);
 		} else if (tok[i] != UT_SP) {
-			ui_text(r, f, ud_token(tok[i], buf), x, ui_cap_y(f, cy), -1, UI_TEXT);
+			ui_text(r, f, ud_token(tok[i], buf), x, ui_cap_y(f, cy), -1, c);
 		}
 		x += cw;
 	}
 }
 
-/* The page's rows: the status (from the left) with the speed beside it,
- * then the two totals under their labels. `vals` the speed and the totals
- * as tokens, NULL for none; the status one of UT_ST_*. The slots' rects
- * come back in `slot` (the launcher's units) when it is not NULL. */
-typedef struct { int x0, y0, x1, y1; } ud_rect;
-enum { UD_S_STATUS, UD_S_SPEED, UD_S_WRITTEN, UD_S_READ, UD_SLOTS };
-
-static void ud_rows(SDL_Renderer *r, int status, const int *const vals[3], const int nval[3],
-                    ud_rect slot[UD_SLOTS])
+/* The widest number a slot can show (999.9 MB/s; 999.99 GB): said to the
+ * host's fit check when it is wider than the tile's room */
+static void ud_fit_widest(TTF_Font *f, bool speed, int room)
 {
-	TTF_Font *fm = ui_font(UI_F_MENU);
-	int left = UD_CARD_X + UD_PAD, right = UD_CARD_X + UD_CARD_W - UD_PAD;
-	int wspeed = ud_widest(fm, true), wtotal = ud_widest(fm, false);
-	/* The slots' left edges down to the 8 the saved picture needs */
-	int speed_x = (right - wspeed) / 8 * 8, total_x = (right - wtotal) / 8 * 8;
-	static const str_id LABEL[2] = { S_USBDRIVE_COPIED, S_USBDRIVE_READ };
-	char fit[160], buf[2];
-	int i, cy;
+	int tok[16], n = speed ? ud_tokens("999.9", UT_MB, true, tok, 16) : ud_tokens("999.99", UT_GB, false, tok, 16);
 
-	/* The status, cut short of the widest speed */
-	cy = UD_CARD_Y + UD_PAD + UD_BAND / 2;
-	ui_fit_text(fm, ud_token(status, buf), fit, sizeof fit, speed_x - UD_GAP - left);
-	ui_text(r, fm, fit, left, ui_cap_y(fm, cy), -1, UI_TEXT);
-	if (vals && vals[0]) ud_draw_tokens(r, fm, vals[0], nval[0], right, cy, true);
+	if (ud_tokens_width(f, tok, n) > room)
+		printf("i18n: cut data: %s (the widest number, %d of %d)\n", speed ? "999.9 MB/s" : "999.99 GB",
+		       ud_tokens_width(f, tok, n), room);
+}
+
+/* One way's tile on the page: its mark, moving in **accent-ink** or idle in
+ * **text-dim**, and its name in **meta** **text**; its speed big in
+ * **title** **text**; its total in **meta** **text-soft**. `speed` and
+ * `total` as tokens, NULL for none (the atlas's page). */
+typedef struct { int x0, y0, x1, y1; } ud_rect;
+enum { UD_S_SPEED_IN, UD_S_SPEED_OUT, UD_S_TOTAL_IN, UD_S_TOTAL_OUT, UD_S_MARK_IN, UD_S_MARK_OUT, UD_SLOTS };
+
+static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *speed, int ns, const int *total,
+                    int nt, ud_rect slot[UD_SLOTS])
+{
+	const ds_theme *t = theme();
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	SDL_Rect q = { x, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
+	int left = x + UD_PAD, room = UD_TILE_W - 2 * UD_PAD;
+	char fit[160];
+
+	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, UD_MARK_CY, 56,
+	              active ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
+	ui_fit_text(fs, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
+	            room - UD_MARK - 16);
+	ui_text(r, fs, fit, left + UD_MARK + 16, ui_cap_y(fs, UD_MARK_CY), -1, UI_TEXT);
+	if (speed) ud_draw_tokens(r, ft, speed, ns, left, UD_SPEED_CY, UI_TEXT);
+	if (total) ud_draw_tokens(r, fs, total, nt, left, UD_TOTAL_CY, UI_TEXT_SOFT);
+	ud_fit_widest(ft, true, room);
+	ud_fit_widest(fs, false, room);
 	if (slot) {
-		slot[UD_S_STATUS] = (ud_rect){ left, cy - UD_BAND / 2, speed_x - UD_GAP, cy + UD_BAND / 2 };
-		slot[UD_S_SPEED] = (ud_rect){ speed_x, cy - UD_BAND / 2, right, cy + UD_BAND / 2 };
-	}
-	for (i = 0; i < 2; i++) {
-		cy = UD_CARD_Y + UD_PAD + UD_BAND / 2 + UD_ROW * (i + 1);
-		ui_fit_text(fm, T(LABEL[i]), fit, sizeof fit, total_x - UD_GAP - left);
-		ui_text(r, fm, fit, left, ui_cap_y(fm, cy), -1, UI_TEXT_SOFT);
-		if (vals && vals[i + 1]) ud_draw_tokens(r, fm, vals[i + 1], nval[i + 1], right, cy, true);
-		if (slot) slot[UD_S_WRITTEN + i] = (ud_rect){ total_x, cy - UD_BAND / 2, right, cy + UD_BAND / 2 };
+		int k = in ? 0 : 1;
+
+		slot[UD_S_MARK_IN + k] = (ud_rect){ left, UD_MARK_CY - UD_MARK / 2, left + UD_MARK, UD_MARK_CY + UD_MARK / 2 };
+		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, UD_SPEED_CY - UD_SPEED_H / 2, left + room,
+		                                     UD_SPEED_CY + UD_SPEED_H / 2 };
+		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, UD_TOTAL_CY - UD_TOTAL_H / 2, left + room,
+		                                     UD_TOTAL_CY + UD_TOTAL_H / 2 };
 	}
 }
 
-/* The card's height: three rows, or the words of a page without them */
-#define UD_CARD_H (2 * UD_PAD + UD_BAND + 2 * UD_ROW)
-
-/* What a shot shows in the rows (--usb-drive 0 sample|wide): 0 the page as
- * usbdrive starts it, 1 a copy going on, 2 the widest numbers */
+/* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
+ * page as usbdrive starts it, both idle; 1 a copy to the card; 2 one from
+ * it; 3 both ways; 4 the widest numbers */
 static int shot_usbdrive_vals;
 
-/* One of the pages: Zyper beside the heading, as on the empty home, and
- * under them a raised card (**radius-card**). Connected: the status and the
- * speed, then what was copied to the card and read from it, the eject line
- * under the card in **meta** **text-soft**, and POWER's hint at the foot.
- * One moment and The card is busy: their words in the card. */
+/* One of the pages: Zyper beside the heading, as on the empty home.
+ * Connected: two **raised** tiles (**radius-card**) side by side, to the
+ * card and from it, the eject line under them in **meta** **text-soft**, and
+ * POWER's hint at the foot as the shelves' are. One moment and The card is
+ * busy: their words in one tile the width of both. */
 static void usb_drive_draw(app *a, int which)
 {
 	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED };
 	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY };
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	SDL_Rect card = { UD_CARD_X, UD_CARD_Y, UD_CARD_W, UD_CARD_H };
 	char lines[3][LB_LINE];
 	int n, k;
 
 	draw_background(a);
-	draw_zyper(a->r, 123.0f, 160.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
+	draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
 	/* The heading on one line, or two balanced beside him */
 	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - 208, 2, lines);
 	if (n > 1) ui_fit_drawn(T(HEAD[which]));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 160 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
-	ui_round_rect(a->r, &card, DS_RADIUS_CARD, ui_col(t->raised, 255));
+		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
 	if (which != UD_CONNECTED) {
-		/* The words in the card, balanced, in the middle of it */
-		n = ui_balance_lines(fm, T(BODY[which]), UD_CARD_W - 2 * UD_PAD, 3, lines);
+		/* The words in one tile, balanced, in the middle of it */
+		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
+
+		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+		n = ui_balance_lines(fm, T(BODY[which]), q.w - 2 * UD_PAD, 3, lines);
 		if (n > 1) ui_fit_drawn(T(BODY[which]));
 		for (k = 0; k < n; k++)
 			ui_text(a->r, fm, lines[k], ZYPEROS_SCREEN_W / 2,
-			        ui_cap_y(fm, UD_CARD_Y + UD_CARD_H / 2 + (2 * k - (n - 1)) * 26), 0, UI_TEXT_SOFT);
+			        ui_cap_y(fm, UD_TILE_Y + UD_TILE_H / 2 + (2 * k - (n - 1)) * 26), 0, UI_TEXT_SOFT);
 		return;
 	}
 	{
-		/* The rows: as usbdrive starts them (nothing moved yet), or a
+		/* The tiles: as usbdrive starts them (nothing moved yet), or a
 		 * shot's numbers */
-		int sp[16], wr[16], rd[16], nv[3] = { 0, 0, 0 };
-		const int *v[3] = { NULL, NULL, NULL };
-		int status = UT_ST_IDLE;
+		static const struct { const char *s; int su; const char *t; int tu; } V[5][2] = {
+			{ { "0", UT_MB, "0", UT_B },          { "0", UT_MB, "0", UT_B } },
+			{ { "23.4", UT_MB, "1.24", UT_GB },   { "0", UT_MB, "312", UT_MB } },
+			{ { "0", UT_MB, "1.24", UT_GB },      { "41.7", UT_MB, "312", UT_MB } },
+			{ { "18.2", UT_MB, "1.24", UT_GB },   { "6.5", UT_MB, "312", UT_MB } },
+			{ { "999.9", UT_MB, "999.99", UT_GB }, { "999.9", UT_MB, "999.99", UT_GB } },
+		};
+		static const bool ACTIVE[5][2] = { { false, false }, { true, false }, { false, true }, { true, true },
+		                                   { true, true } };
+		int v = shot_usbdrive_vals >= 0 && shot_usbdrive_vals < 5 ? shot_usbdrive_vals : 0, w;
 
-		if (shot_usbdrive_vals == 1) {
-			status = UT_ST_WRITE;
-			nv[0] = ud_tokens("23.4", UT_MB, true, sp, 16);
-			nv[1] = ud_tokens("1.24", UT_GB, false, wr, 16);
-			nv[2] = ud_tokens("312", UT_MB, false, rd, 16);
-		} else if (shot_usbdrive_vals == 2) {
-			status = UT_ST_READ;
-			nv[0] = ud_tokens("999.9", UT_MB, true, sp, 16);
-			nv[1] = ud_tokens("999.99", UT_GB, false, wr, 16);
-			nv[2] = ud_tokens("999.99", UT_GB, false, rd, 16);
-		} else {
-			nv[1] = ud_tokens("0", UT_B, false, wr, 16);
-			nv[2] = ud_tokens("0", UT_B, false, rd, 16);
+		for (w = 0; w < 2; w++) {
+			int sp[16], to[16];
+			int ns = ud_tokens(V[v][w].s, V[v][w].su, true, sp, 16);
+			int nt = ud_tokens(V[v][w].t, V[v][w].tu, false, to, 16);
+
+			ud_tile(a->r, w ? UD_TILE_X1 : UD_TILE_X0, w == 0, ACTIVE[v][w], sp, ns, to, nt, NULL);
 		}
-		if (nv[0]) v[0] = sp;
-		v[1] = wr;
-		v[2] = rd;
-		ud_rows(a->r, status, v, nv, NULL);
 	}
-	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), UD_CARD_W, 2, lines);
+	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
 	if (n > 1) ui_fit_drawn(T(S_USBDRIVE_EJECT));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, UD_CARD_Y + UD_CARD_H + 56 + k * 40), 0,
-		        UI_TEXT_SOFT);
+		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 592 + k * 40), 0, UI_TEXT_SOFT);
 	{
-		key_hint h = { "POWER", T(S_USBDRIVE_STOP) };
+		/* POWER's hint, the shelves' foot's size, in the middle */
+		const char *stop = T(S_USBDRIVE_STOP);
 
-		keyhints_draw(a->r, &h, 1, 0, ZYPEROS_SCREEN_W, 704, KEYHINTS_CENTER, false, 255);
+		page_hint(a->r, "POWER", stop, (ZYPEROS_SCREEN_W - page_hint_width("POWER", stop, false)) / 2, 704,
+		          false, false);
 	}
 }
 
-/* usbdrive's atlas (plastron's package/usbdrive/src/atlas.h): every token
- * and the three statuses on the card's color, each from an edge that is a
- * multiple of 8, saved as atlas.raw beside the pages, and atlas.txt saying
- * where they and the page's slots are in the saved 640 x 480. */
+/* usbdrive's atlas (plastron's package/usbdrive/src/atlas.h): every token in
+ * the speeds' face and in the totals', and each way's mark moving and idle,
+ * on the tiles' color, each from an edge that is a multiple of 8, saved as
+ * atlas.raw beside the pages, and atlas.txt saying where they and the
+ * page's slots are in the saved 640 x 480. A shot (`shot`, --usb-drive 3)
+ * prints atlas.txt there and saves nothing. */
 static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot)
 {
-	static const char *const NAME[UT_GLYPHS] = {
+	static const char *const TOKEN[UT_TOKENS] = {
 		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp", "B", "KB", "MB", "GB", "ps",
-		"st_write", "st_read", "st_idle",
 	};
-	static const char *const SLOT[UD_SLOTS] = { "status", "speed", "written", "read" };
-	TTF_Font *fm = ui_font(UI_F_MENU);
+	static const char *const MARK[4] = { "in_on", "in_off", "out_on", "out_off" };
+	static const char *const SLOT[UD_SLOTS] = { "speed_in", "speed_out", "total_in", "total_out",
+	                                            "mark_in", "mark_out" };
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
 	const ds_theme *th = theme();
 	ud_rect slot[UD_SLOTS];
-	int x[UT_GLYPHS], cy[UT_GLYPHS], i;
-	char buf[2];
+	int bx[UT_TOKENS], bcy[UT_TOKENS], i;
 	FILE *f;
 
-	/* Where the slots are: the connected page's own rows */
+	/* Where the slots are: the connected page's own tiles */
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
-	ud_rows(a->r, UT_ST_IDLE, NULL, NULL, slot);
+	ud_tile(a->r, UD_TILE_X0, true, false, NULL, 0, NULL, 0, slot);
+	ud_tile(a->r, UD_TILE_X1, false, false, NULL, 0, NULL, 0, slot);
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
-	/* The digits on a row, then the mark, the space, the units and "/s",
-	 * then each status on its own row; every cell from a multiple of 8, a
-	 * row's middle on one too, as the slots' are */
-	for (i = 0; i < UT_GLYPHS; i++) {
-		if (i <= 9) { x[i] = 64 + i * 64; cy[i] = 64; }
-		else if (i < UT_TOKENS) { x[i] = 64 + (i - 10) * 128; cy[i] = 160; }
-		else { x[i] = 64; cy[i] = 256 + (i - UT_TOKENS) * 96; }
-	}
-	{
-		int tok[1];
+	/* The speeds' tokens: the digits, the mark and the space on a row, the
+	 * units and "/s" on the next; the totals' all on a third; the marks on a
+	 * fourth. Every cell from a multiple of 8, a row's middle on one too. */
+	for (i = 0; i < UT_TOKENS; i++) {
+		int tok = i;
 
-		for (i = 0; i < UT_GLYPHS; i++) {
-			tok[0] = i;
-			if (i >= UT_TOKENS) ui_text(a->r, fm, ud_token(i, buf), x[i], ui_cap_y(fm, cy[i]), -1, UI_TEXT);
-			else ud_draw_tokens(a->r, fm, tok, 1, x[i], cy[i], false);
-		}
+		bx[i] = i <= UT_SP ? 32 + i * 64 : 32 + (i - UT_B) * 128;
+		bcy[i] = i <= UT_SP ? 64 : 160;
+		ud_draw_tokens(a->r, ft, &tok, 1, bx[i], bcy[i], UI_TEXT);
+		ud_draw_tokens(a->r, fs, &tok, 1, 32 + i * 56, 248, UI_TEXT_SOFT);
 	}
-	/* A shot (--usb-drive 3) says where they are and saves nothing */
+	for (i = 0; i < 4; i++)
+		ui_glyph_draw(a->r, i < 2 ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, 32 + i * 96 + UD_MARK / 2, 336, 56,
+		              i % 2 ? UI_TEXT_DIM : ui_col(th->accent_ink, 255));
 	if (shot) f = shot;
 	else if (!plat_save_screen(raw) || !(f = fopen(txt, "w"))) return false;
-	fprintf(f, "zyperos-drive-atlas 1\nsize %d %d\n", UD_SAVE_W, UD_SAVE_H);
+	fprintf(f, "zyperos-drive-atlas 2\nsize %d %d\n", UD_SAVE_W, UD_SAVE_H);
 	for (i = 0; i < UD_SLOTS; i++)
-		fprintf(f, "slot %s %d %d %d %d %s\n", SLOT[i], slot[i].x0 * 5 / 8, slot[i].y0 * 5 / 8,
-		        slot[i].x1 * 5 / 8, slot[i].y1 * 5 / 8, i == UD_S_STATUS ? "left" : "right");
-	for (i = 0; i < UT_GLYPHS; i++) {
-		int w = i >= UT_TOKENS ? ui_text_width(fm, ud_token(i, buf)) : ud_cell(fm, i);
-
-		/* The cell up to the pixel its width ends in, no wider than its
-		 * slot can hold */
-		w = (w * 5 + 7) / 8;
-		fprintf(f, "glyph %s %d %d %d %d\n", NAME[i], x[i] * 5 / 8, (cy[i] - UD_BAND / 2) * 5 / 8, w,
-		        UD_BAND * 5 / 8);
+		fprintf(f, "slot %s %d %d %d %d left\n", SLOT[i], slot[i].x0 * 5 / 8, slot[i].y0 * 5 / 8,
+		        slot[i].x1 * 5 / 8, slot[i].y1 * 5 / 8);
+	/* A cell up to the pixel its width ends in */
+	for (i = 0; i < UT_TOKENS; i++) {
+		fprintf(f, "glyph b%s %d %d %d %d\n", TOKEN[i], bx[i] * 5 / 8, (bcy[i] - UD_SPEED_H / 2) * 5 / 8,
+		        (ud_cell(ft, i) * 5 + 7) / 8, UD_SPEED_H * 5 / 8);
+		fprintf(f, "glyph s%s %d %d %d %d\n", TOKEN[i], (32 + i * 56) * 5 / 8, (248 - UD_TOTAL_H / 2) * 5 / 8,
+		        (ud_cell(fs, i) * 5 + 7) / 8, UD_TOTAL_H * 5 / 8);
 	}
+	for (i = 0; i < 4; i++)
+		fprintf(f, "glyph %s %d %d %d %d\n", MARK[i], (32 + i * 96) * 5 / 8, (336 - UD_MARK / 2) * 5 / 8,
+		        UD_MARK * 5 / 8, UD_MARK * 5 / 8);
 	return shot ? true : fclose(f) == 0;
 }
 
@@ -23178,9 +23175,15 @@ int main(int argc, char *argv[])
 		/* --usb-drive N: USB Drive's picture N (connected, finishing, failed) */
 		else if (!strcmp(argv[i], "--usb-drive") && i + 1 < argc) {
 			shot_usbdrive = atoi(argv[++i]);
-			/* The rows' numbers: a copy going on, or the widest */
-			if (i + 1 < argc && !strcmp(argv[i + 1], "sample")) { shot_usbdrive_vals = 1; i++; }
-			else if (i + 1 < argc && !strcmp(argv[i + 1], "wide")) { shot_usbdrive_vals = 2; i++; }
+			/* The tiles' numbers: a copy to the card, one from it, both
+			 * ways, or the widest */
+			if (i + 1 < argc) {
+				static const char *const V[] = { "idle", "in", "out", "both", "wide" };
+				int v;
+
+				for (v = 0; v < 5; v++)
+					if (!strcmp(argv[i + 1], V[v])) { shot_usbdrive_vals = v; i++; break; }
+			}
 		}
 		/* MENU's USB rows on the host, which has no usbrole: Ask, or
 		 * Automatic with "auto"; "said" for Automatic's message */

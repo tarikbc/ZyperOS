@@ -100,9 +100,9 @@ int main(void)
 			{ 999990000000ull, "999.99 GB" }, { 999995000000ull, "1000 GB" },
 		};
 		static const struct { unsigned long long b; const char *want; } R[] = {
-			{ 0, "0 KB/s" }, { 512000, "512 KB/s" }, { 999499, "999 KB/s" }, { 999500, "1.0 MB/s" },
-			{ 23400000ull, "23.4 MB/s" }, { 23449999ull, "23.4 MB/s" }, { 23450000ull, "23.5 MB/s" },
-			{ 999949999ull, "999.9 MB/s" }, { 999950000ull, "1.00 GB/s" },
+			{ 0, "0 MB/s" }, { 1, "0 KB/s" }, { 512000, "512 KB/s" }, { 999499, "999 KB/s" },
+			{ 999500, "1.0 MB/s" }, { 23400000ull, "23.4 MB/s" }, { 23449999ull, "23.4 MB/s" },
+			{ 23450000ull, "23.5 MB/s" }, { 999949999ull, "999.9 MB/s" }, { 999950000ull, "1.00 GB/s" },
 		};
 		dst_state d;
 		size_t i;
@@ -121,87 +121,95 @@ int main(void)
 		n = dst_fmt_rate(999949999ull, tok, DST_FMT_MAX);
 		CHECK(n == 8, "999.9 MB/s: %d tokens", n);
 
-		/* Idle at the start, a copy, a pause, idle, reading */
+		/* Both idle at the start */
 		memset(&d, 0, sizeof d);
 		CHECK(dst_step(&d, 1000, 5000, 10000), "the first look shows nothing");
-		CHECK(d.status == DST_IDLE && d.wrote == 0 && d.read == 0, "the first look moved something");
+		CHECK(!d.in.active && !d.out.active && d.in.total == 0 && d.out.total == 0, "the first look moved");
 		CHECK(!dst_step(&d, 1000, 5000, 11000), "nothing moved, but it changed");
-		/* 23.4 MB in a second, as sectors */
+		/* To the card: 23.4 MB in a second, as sectors; a few reads with it */
 		CHECK(dst_step(&d, 1000 + 64, 5000 + 45703, 12000), "a copy did not change the page");
-		CHECK(d.status == DST_WRITING, "writing: status %d", (int)d.status);
-		CHECK(!strcmp(rate(d.rate), "23.4 MB/s"), "writing: %s", rate(d.rate));
-		CHECK(d.wrote == 45703ull * 512 && d.read == 64 * 512, "the totals: %llu %llu", d.wrote, d.read);
-		/* A second with nothing: still copying at the last speed (a pause
-		 * between two files) */
-		dst_step(&d, 1064, 50703, 13000);
-		CHECK(d.status == DST_WRITING && !strcmp(rate(d.rate), "23.4 MB/s"), "a pause: %d %s",
-		      (int)d.status, rate(d.rate));
-		/* Two seconds with nothing: idle, no speed */
+		CHECK(d.in.active && !strcmp(rate(d.in.rate), "23.4 MB/s"), "in: %d %s", d.in.active, rate(d.in.rate));
+		CHECK(d.out.active && d.out.total == 64 * 512, "out with it: %d %llu", d.out.active, d.out.total);
+		CHECK(d.in.total == 45703ull * 512, "in total: %llu", d.in.total);
+		/* A second with nothing: both still moving at their last speed (a
+		 * pause between two files) */
+		CHECK(!dst_step(&d, 1064, 50703, 13000), "a pause redrew");
+		CHECK(d.in.active && !strcmp(rate(d.in.rate), "23.4 MB/s"), "a pause: %d %s", d.in.active,
+		      rate(d.in.rate));
+		/* Two seconds with nothing: idle at 0, the totals kept */
 		CHECK(dst_step(&d, 1064, 50703, 14000), "idle did not change the page");
-		CHECK(d.status == DST_IDLE && d.rate == 0, "idle: %d %llu", (int)d.status, d.rate);
+		CHECK(!d.in.active && d.in.rate == 0 && !d.out.active && d.out.rate == 0, "idle: %d %llu",
+		      d.in.active, d.in.rate);
+		CHECK(d.in.total == 45703ull * 512, "idle lost the total");
 		CHECK(!dst_step(&d, 1064, 50703, 15000), "idle redrew");
 		CHECK(!dst_step(&d, 1064, 50703, 60000), "idle redrew a minute on");
-		/* Only reads: reading, at their speed */
+		/* From the card alone: out moves, in stays idle */
 		dst_step(&d, 1064 + 2000, 50703, 61000);
-		CHECK(d.status == DST_READING && !strcmp(rate(d.rate), "1.0 MB/s"), "reading: %d %s",
-		      (int)d.status, rate(d.rate));
-		/* Reads and writes: writing names it */
-		dst_step(&d, 3064 + 100, 50703 + 100, 62000);
-		CHECK(d.status == DST_WRITING, "both ways: %d", (int)d.status);
+		CHECK(d.out.active && !strcmp(rate(d.out.rate), "1.0 MB/s") && !d.in.active, "out alone: %d %s %d",
+		      d.out.active, rate(d.out.rate), d.in.active);
+		/* Both ways at once, each at its own speed */
+		dst_step(&d, 3064 + 9766, 50703 + 19532, 62000);
+		CHECK(d.in.active && d.out.active && !strcmp(rate(d.in.rate), "10.0 MB/s") &&
+		      !strcmp(rate(d.out.rate), "5.0 MB/s"), "both: %s %s", rate(d.in.rate), rate(d.out.rate));
 		/* A counter that goes back: a new start for it, nothing negative */
 		{
-			unsigned long long wrote = d.wrote, read = d.read;
+			unsigned long long in = d.in.total, out = d.out.total;
 
 			dst_step(&d, 10, 20, 63000);
-			CHECK(d.wrote == wrote && d.read == read, "went back: %llu %llu", d.wrote, d.read);
+			CHECK(d.in.total == in && d.out.total == out, "went back: %llu %llu", d.in.total, d.out.total);
 			dst_step(&d, 10 + 2, 20 + 2, 64000);
-			CHECK(d.wrote == wrote + 1024 && d.read == read + 1024, "after going back: %llu %llu",
-			      d.wrote - wrote, d.read - read);
+			CHECK(d.in.total == in + 1024 && d.out.total == out + 1024, "after going back: %llu %llu",
+			      d.in.total - in, d.out.total - out);
 		}
 		/* The clock's wrap: a second is a second */
 		memset(&d, 0, sizeof d);
 		dst_step(&d, 0, 0, 0xfffffc00u);
 		dst_step(&d, 0, 1954, 0xfffffc00u + 1000u);
-		CHECK(!strcmp(rate(d.rate), "1.0 MB/s"), "across the wrap: %s", rate(d.rate));
+		CHECK(!strcmp(rate(d.in.rate), "1.0 MB/s"), "across the wrap: %s", rate(d.in.rate));
+		dst_step(&d, 0, 1954, 0xfffffc00u + 3000u);
+		CHECK(!d.in.active, "idle across the wrap");
 	}
 
 	/* The atlas (atlas.h): read, and a row drawn into its slot */
 	{
-		static const char *const GL[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp",
-		                                  "B", "KB", "MB", "GB", "ps", "st_write", "st_read", "st_idle" };
-		char text[2048];
+		static const char *const TOK[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp",
+		                                   "B", "KB", "MB", "GB", "ps" };
+		static const char *const MK[] = { "in_on", "in_off", "out_on", "out_off" };
+		/* 64 x 48: the speeds' slots 10 tall, the totals' 6, the marks' 8;
+		 * the big glyphs on row 30 (10 tall), small on 40 (6), marks on 20 */
+		static const char HEAD[] =
+			"zyperos-drive-atlas 2\nsize 64 48\n"
+			"slot speed_in 0 0 30 10 left\nslot speed_out 32 0 62 10 left\n"
+			"slot total_in 0 10 30 16 left\nslot total_out 32 10 62 16 left\n"
+			"slot mark_in 0 16 8 24 left\nslot mark_out 32 16 40 24 left\n";
+		char text[3000];
 		size_t at = 0, k;
 		at_layout l;
-		uint32_t *atl = calloc(64 * 32, 4), *out = calloc(64 * 32, 4);
-		int g[3] = { 1, DST_T_DEC, 2 }, x;
+		uint32_t *atl = calloc(64 * 48, 4), *out = calloc(64 * 48, 4);
+		int g[3] = { AT_BIG + 1, AT_BIG + DST_T_DEC, AT_BIG + 2 }, x, y;
 
-		at += (size_t)snprintf(text + at, sizeof text - at, "zyperos-drive-atlas 1\nsize 64 30\n"
-		                       "slot status 0 0 30 8 left\nslot speed 30 0 60 8 right\n"
-		                       "slot written 30 10 60 18 right\nslot read 30 20 60 28 right\n");
-		/* glyph i at (i * 3, 24), 3 wide, 8 tall, colored i + 1 */
-		for (k = 0; k < sizeof GL / sizeof GL[0]; k++)
-			at += (size_t)snprintf(text + at, sizeof text - at, "glyph %s %d 24 3 8\n", GL[k], (int)k * 3);
-		CHECK(!at_parse(text, &l), "an atlas taller than the picture was taken");
-		at = 0;
-		at += (size_t)snprintf(text + at, sizeof text - at, "zyperos-drive-atlas 1\nsize 64 32\n"
-		                       "slot status 0 0 30 8 left\nslot speed 30 0 60 8 right\n"
-		                       "slot written 30 10 60 18 right\nslot read 30 20 60 28 right\n");
-		for (k = 0; k < sizeof GL / sizeof GL[0]; k++)
-			at += (size_t)snprintf(text + at, sizeof text - at, "glyph %s %d 24 3 8\n", GL[k], (int)k * 3);
+		at += (size_t)snprintf(text + at, sizeof text - at, "%s", HEAD);
+		for (k = 0; k < DST_TOKENS; k++) {
+			at += (size_t)snprintf(text + at, sizeof text - at, "glyph b%s %d 30 3 10\n", TOK[k], (int)k * 3);
+			at += (size_t)snprintf(text + at, sizeof text - at, "glyph s%s %d 40 3 6\n", TOK[k], (int)k * 3);
+		}
+		for (k = 0; k < 4; k++)
+			at += (size_t)snprintf(text + at, sizeof text - at, "glyph %s %d 20 8 8\n", MK[k], (int)k * 8);
 		CHECK(at_parse(text, &l), "a good atlas refused");
-		/* Untrusted: an oversized glyph, huge numbers, an inverted rect */
 		{
-			char bad[2400];
+			char bad[3200];
 			const char *const BAD[] = {
-				"glyph 0 0 0 3 31\n",                          /* taller than every slot */
-				"glyph 1 2147483000 0 2147483000 8\n",         /* x + w overflows */
-				"glyph 2 0 2147483000 3 2147483000\n",         /* y + h overflows */
-				"glyph 3 -5 0 3 8\n",                          /* off the left */
-				"slot read 60 20 30 28 right\n",               /* X1 < X0 */
-				"slot read 30 28 60 20 right\n",               /* Y1 < Y0 */
-				"slot read 30 20 2147483647 28 right\n",       /* past the picture */
-				"slot read -2147483647 20 60 28 right\n",      /* a huge negative */
-				"size 2147483647 2147483647\n",                /* a huge picture */
+				"glyph s0 0 30 3 10\n",                         /* a small one as tall as a speed */
+				"glyph in_on 0 0 8 9\n",                        /* a mark taller than its slot */
+				"glyph b1 2147483000 0 2147483000 8\n",         /* x + w overflows */
+				"glyph b2 0 2147483000 3 2147483000\n",         /* y + h overflows */
+				"glyph b3 -5 0 3 8\n",                          /* off the left */
+				"slot total_out 60 10 30 16 left\n",            /* X1 < X0 */
+				"slot total_out 32 16 62 10 left\n",            /* Y1 < Y0 */
+				"slot total_out 32 10 2147483647 16 left\n",    /* past the picture */
+				"slot total_out -2147483647 10 62 16 left\n",   /* a huge negative */
+				"size 2147483647 2147483647\n",                 /* a huge picture */
+				"zyperos-drive-atlas 1\n",                      /* the one-card page's */
 			};
 			at_layout lb;
 
@@ -209,57 +217,63 @@ int main(void)
 				snprintf(bad, sizeof bad, "%s%s", text, BAD[k]);   /* the later line wins */
 				CHECK(!at_parse(bad, &lb), "a bad atlas taken: %s", BAD[k]);
 			}
-			/* A glyph as tall as the speed slot but taller than a shorter
-			 * one: refused, it would run past the shorter slot */
-			snprintf(bad, sizeof bad, "%sslot written 30 10 60 14 right\n", text);
-			CHECK(!at_parse(bad, &lb), "a glyph taller than the written slot taken");
-		}
-		CHECK(l.right[AT_SLOT_SPEED] && !l.right[AT_SLOT_STATUS], "the sides");
-		{
-			char bad[2048];
-
+			/* A speed slot lower than the big glyphs: refused */
+			snprintf(bad, sizeof bad, "%sslot speed_out 32 0 62 8 left\n", text);
+			CHECK(!at_parse(bad, &lb), "a big glyph taller than a speed slot taken");
+			/* A missing glyph */
 			snprintf(bad, sizeof bad, "%s", text);
-			bad[strlen(bad) - 2] = '\0';   /* the last glyph line cut */
-			*strrchr(bad, '\n') = '\0';
-			CHECK(!at_parse(bad, &l), "an atlas missing a glyph was taken");
-			CHECK(at_parse(text, &l), "a good atlas refused again");
+			*strstr(bad, "glyph sKB") = 'x';
+			CHECK(!at_parse(bad, &lb), "an atlas missing a glyph taken");
 		}
-		for (k = 0; k < 64 * 32; k++) atl[k] = 0xAA;   /* the atlas's ground */
-		for (k = 0; k < sizeof GL / sizeof GL[0]; k++)
+		for (k = 0; k < 64 * 48; k++) atl[k] = 0xAA;   /* the atlas's ground */
+		for (k = 0; k < DST_TOKENS; k++)
 			for (x = 0; x < 3; x++) {
-				int y;
-
-				for (y = 24; y < 32; y++) atl[y * 64 + (int)k * 3 + x] = (uint32_t)k + 1;
+				for (y = 30; y < 40; y++) atl[y * 64 + (int)k * 3 + x] = 0x100 + (uint32_t)k;
+				for (y = 40; y < 46; y++) atl[y * 64 + (int)k * 3 + x] = 0x200 + (uint32_t)k;
 			}
-		/* "1.2" right-aligned in speed (30..60): the glyphs at 51, 54, 57 */
-		at_compose(&l, AT_SLOT_SPEED, g, 3, atl, out);
-		CHECK(out[3 * 64 + 50] == 0xAA && out[3 * 64 + 51] == 2 && out[3 * 64 + 54] == DST_T_DEC + 1 &&
-		      out[3 * 64 + 57] == 3 && out[3 * 64 + 59] == 3, "right-aligned: %x %x %x %x",
-		      out[3 * 64 + 50], out[3 * 64 + 51], out[3 * 64 + 54], out[3 * 64 + 57]);
-		CHECK(out[3 * 64 + 29] == 0 && out[9 * 64 + 40] == 0, "drawn outside its slot");
-		/* The page's own first numbers never show through a shorter row */
-		CHECK(out[3 * 64 + 31] == 0xAA, "the slot not cleared to the card's color: %x", out[3 * 64 + 31]);
-		/* The status from the left; a row wider than the slot is cut at it */
+		for (k = 0; k < 4; k++)
+			for (x = 0; x < 8; x++)
+				for (y = 20; y < 28; y++) atl[y * 64 + (int)k * 8 + x] = 0x300 + (uint32_t)k;
+		/* "1.2" in the in speed, from the left: big glyphs at 0, 3, 6 */
+		at_compose(&l, AT_SLOT_SPEED_IN, g, 3, atl, out);
+		CHECK(out[5 * 64 + 0] == 0x101 && out[5 * 64 + 3] == 0x100 + DST_T_DEC && out[5 * 64 + 6] == 0x102 &&
+		      out[5 * 64 + 9] == 0xAA, "from the left: %x %x %x %x", out[5 * 64], out[5 * 64 + 3],
+		      out[5 * 64 + 6], out[5 * 64 + 9]);
+		CHECK(out[5 * 64 + 31] == 0 && out[11 * 64 + 1] == 0, "drawn outside its slot");
+		/* A mark moving, then idle: the slot holds the other picture */
 		{
-			int st = AT_G_ST_READ, many[12] = { 0 };
+			int m = AT_G_OUT_ON;
 
-			at_compose(&l, AT_SLOT_STATUS, &st, 1, atl, out);
-			CHECK(out[0] == AT_G_ST_READ + 1 && out[3] == 0xAA, "left: %x %x", out[0], out[3]);
-			at_compose(&l, AT_SLOT_WRITTEN, many, 12, atl, out);
-			CHECK(out[10 * 64 + 29] == 0 && out[10 * 64 + 30] == 1 && out[10 * 64 + 59] == 1,
-			      "a wide row ran past its slot");
+			at_compose(&l, AT_SLOT_MARK_OUT, &m, 1, atl, out);
+			CHECK(out[20 * 64 + 32] == 0x302, "out moving: %x", out[20 * 64 + 32]);
+			m = AT_G_OUT_OFF;
+			at_compose(&l, AT_SLOT_MARK_OUT, &m, 1, atl, out);
+			CHECK(out[20 * 64 + 32] == 0x303, "out idle: %x", out[20 * 64 + 32]);
+		}
+		/* A right-aligned slot, a row cut at it, and a shorter row clearing
+		 * the longer one before it */
+		{
+			int many[12], two[2] = { AT_SMALL + 7, AT_SMALL + 7 };
+
+			for (k = 0; k < 12; k++) many[k] = AT_SMALL + 0;
+			l.right[AT_SLOT_TOTAL_IN] = true;
+			at_compose(&l, AT_SLOT_TOTAL_IN, many, 12, atl, out);
+			CHECK(out[12 * 64 + 29] == 0x200 && out[12 * 64 + 30] == 0, "a wide row ran past its slot");
+			at_compose(&l, AT_SLOT_TOTAL_IN, two, 2, atl, out);
+			CHECK(out[12 * 64 + 29] == 0x207 && out[12 * 64 + 24] == 0x207 && out[12 * 64 + 23] == 0xAA,
+			      "right-aligned and cleared: %x %x %x", out[12 * 64 + 29], out[12 * 64 + 24], out[12 * 64 + 23]);
 		}
 		/* A layout that never went through at_parse: a glyph taller than
 		 * its slot at the picture's top edge draws only inside the slot */
 		{
 			at_layout raw = l;
-			int g0 = 0;
+			int g0 = AT_BIG;
 
-			raw.slot[AT_SLOT_STATUS] = (at_rect){ 0, 0, 30, 4 };
-			raw.glyph[0] = (at_rect){ 0, 0, 3, 32 };
-			for (k = 0; k < 64 * 32; k++) out[k] = 0x11;
-			at_compose(&raw, AT_SLOT_STATUS, &g0, 1, atl, out);
-			CHECK(out[4 * 64] == 0x11 && out[31 * 64] == 0x11, "drawn past a slot's rows");
+			raw.slot[AT_SLOT_SPEED_IN] = (at_rect){ 0, 0, 30, 4 };
+			raw.glyph[AT_BIG] = (at_rect){ 0, 0, 3, 48 };
+			for (k = 0; k < 64 * 48; k++) out[k] = 0x11;
+			at_compose(&raw, AT_SLOT_SPEED_IN, &g0, 1, atl, out);
+			CHECK(out[4 * 64] == 0x11 && out[47 * 64] == 0x11, "drawn past a slot's rows");
 		}
 		free(atl);
 		free(out);
@@ -270,6 +284,6 @@ int main(void)
 		return 1;
 	}
 	printf("usbdrive drive-check: never exported mounted or held; ejected, unplugged (1.5 s), POWER, "
-	       "no computer in a minute; the page's numbers, idle in 2 s, a counter going back; the atlas\n");
+	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas, read as untrusted\n");
 	return 0;
 }

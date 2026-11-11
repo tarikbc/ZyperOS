@@ -58,6 +58,8 @@ int dst_fmt_total(unsigned long long b, int *tok, int max)
 
 int dst_fmt_rate(unsigned long long b, int *tok, int max)
 {
+	/* Nothing moving reads as the unit the speeds are mostly in */
+	if (b == 0) return put_scaled(0, MB, 0, DST_T_MB, true, tok, max);
 	if (b < 999500ull) return put_scaled(b, KB, 0, DST_T_KB, true, tok, max);
 	if (b < 999950000ull) return put_scaled(b, MB, 1, DST_T_MB, true, tok, max);
 	return put_scaled(b, GB, 2, DST_T_GB, true, tok, max);
@@ -84,12 +86,37 @@ void dst_tokens_text(const int *tok, int n, char dec, char *out, size_t on)
 	}
 }
 
+/* One way's look: `d` bytes moved over `dt` ms */
+static void way_step(dst_way *w, unsigned long long d, unsigned dt, unsigned now)
+{
+	w->total += d;
+	if (d) {
+		w->moved_ms = now;
+		w->active = true;
+		if (dt) w->rate = d * 1000 / dt;
+	} else if (w->active && now - w->moved_ms >= DST_IDLE_MS) {
+		w->active = false;
+	}
+	/* A look with nothing new inside the idle wait keeps the last speed,
+	 * so a pause between two files does not blink */
+	if (!w->active) w->rate = 0;
+}
+
+static void way_text(const dst_way *w, char *out, size_t on)
+{
+	char a[32], b[32];
+	int tok[DST_FMT_MAX], n;
+
+	n = dst_fmt_rate(w->rate, tok, DST_FMT_MAX);
+	dst_tokens_text(tok, n, '.', a, sizeof a);
+	n = dst_fmt_total(w->total, tok, DST_FMT_MAX);
+	dst_tokens_text(tok, n, '.', b, sizeof b);
+	snprintf(out, on, "%d|%s|%s", (int)w->active, a, b);
+}
+
 bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsigned now)
 {
-	unsigned long long dr, dw;
-	unsigned dt;
-	char shown[sizeof s->shown], a[24], b[24], c[24];
-	int tok[DST_FMT_MAX], n;
+	char shown[sizeof s->shown], a[60], b[60];
 
 	if (!s->started) {
 		memset(s, 0, sizeof *s);
@@ -97,35 +124,18 @@ bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsign
 		s->rd0 = rd;
 		s->wr0 = wr;
 		s->last_ms = now;
-		s->moved_ms = now - DST_IDLE_MS;   /* idle until something moves */
-		s->status = DST_IDLE;
 	} else {
-		dr = moved(s->rd0, rd) * 512;
-		dw = moved(s->wr0, wr) * 512;
-		dt = now - s->last_ms;
+		unsigned dt = now - s->last_ms;
+
+		way_step(&s->in, moved(s->wr0, wr) * 512, dt, now);
+		way_step(&s->out, moved(s->rd0, rd) * 512, dt, now);
 		s->rd0 = rd;
 		s->wr0 = wr;
 		s->last_ms = now;
-		s->read += dr;
-		s->wrote += dw;
-		if (dr || dw) s->moved_ms = now;
-		/* Writing names the status whenever it happens: a copy reads the
-		 * card's folders too, but it is the copy that is waited on */
-		if (dw) s->status = DST_WRITING;
-		else if (dr) s->status = DST_READING;
-		else if (now - s->moved_ms >= DST_IDLE_MS) s->status = DST_IDLE;
-		/* A look with nothing new inside the idle wait keeps the status and
-		 * the last speed, so a pause between two files does not blink */
-		if ((dr || dw) && dt) s->rate = (dw ? dw : dr) * 1000 / dt;
-		if (s->status == DST_IDLE) s->rate = 0;
 	}
-	n = dst_fmt_rate(s->rate, tok, DST_FMT_MAX);
-	dst_tokens_text(tok, n, '.', a, sizeof a);
-	n = dst_fmt_total(s->wrote, tok, DST_FMT_MAX);
-	dst_tokens_text(tok, n, '.', b, sizeof b);
-	n = dst_fmt_total(s->read, tok, DST_FMT_MAX);
-	dst_tokens_text(tok, n, '.', c, sizeof c);
-	snprintf(shown, sizeof shown, "%d|%s|%s|%s", (int)s->status, s->status == DST_IDLE ? "" : a, b, c);
+	way_text(&s->in, a, sizeof a);
+	way_text(&s->out, b, sizeof b);
+	snprintf(shown, sizeof shown, "%s/%s", a, b);
 	if (!strcmp(shown, s->shown)) return false;
 	snprintf(s->shown, sizeof s->shown, "%s", shown);
 	return true;

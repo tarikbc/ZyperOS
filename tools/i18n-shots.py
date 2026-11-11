@@ -245,7 +245,9 @@ EXTRA = {
     "usb-drive-0": ("demo", "PS1", ["--usb-drive", "0"]),
     "usb-drive-1": ("demo", "PS1", ["--usb-drive", "1"]),
     "usb-drive-2": ("demo", "PS1", ["--usb-drive", "2"]),
-    "usb-drive-sample": ("demo", "PS1", ["--usb-drive", "0", "sample"]),
+    "usb-drive-in": ("demo", "PS1", ["--usb-drive", "0", "in"]),
+    "usb-drive-out": ("demo", "PS1", ["--usb-drive", "0", "out"]),
+    "usb-drive-both": ("demo", "PS1", ["--usb-drive", "0", "both"]),
     "usb-drive-wide": ("demo", "PS1", ["--usb-drive", "0", "wide"]),
     "usb-drive-atlas": ("demo", "PS1", ["--usb-drive", "3"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two

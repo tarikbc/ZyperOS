@@ -3270,6 +3270,21 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.92f, 0.80f, 0.80f, 0.64f, G_W);
 		return;
 	}
+	if (g == UI_GLYPH_TO_CARD || g == UI_GLYPH_FROM_CARD) {
+		/* A tray, and an arrow down into it (to the card) or up out of it
+		 * (from the card): System Update's corner mark's family, at a size */
+		g_line(s, 0.16f, 0.60f, 0.16f, 0.86f, G_W);
+		g_line(s, 0.16f, 0.86f, 0.84f, 0.86f, G_W);
+		g_line(s, 0.84f, 0.86f, 0.84f, 0.60f, G_W);
+		if (g == UI_GLYPH_TO_CARD) {
+			g_line(s, 0.50f, 0.10f, 0.50f, 0.56f, G_W);
+			g_head(s, 0.50f, 0.72f, 0.0f, 1.0f);
+		} else {
+			g_line(s, 0.50f, 0.72f, 0.50f, 0.28f, G_W);
+			g_head(s, 0.50f, 0.10f, 0.0f, -1.0f);
+		}
+		return;
+	}
 	if (g == UI_GLYPH_CHECK) {
 		/* A tick, the finish's own, alone and a stroke heavier */
 		g_line(s, 0.14f, 0.54f, 0.38f, 0.78f, G_W * 1.4f);
