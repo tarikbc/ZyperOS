@@ -11,7 +11,7 @@ mGBA core) and, for regenerating art, Python with Pillow, plus ffmpeg.
 
 ```sh
 make check      # every check below, offline (also plain `make`)
-make vendor     # the fetched libretro cores -> vendor/ (mk/fetch-vendor.sh)
+make vendor     # the fetched libretro cores -> vendor/ (mk/fetch-vendor.sh, from the cores release)
 mk/build-mgba-bridge.sh  # mGBA, built  -> vendor/            (see below)
 make native     # host build of the launcher, for working on how it looks
                 # (driven from the keyboard: the arrows, Return A, Escape or
@@ -77,6 +77,7 @@ something once broke in a way nothing noticed:
 | `check-gamedel` | Delete Game on a scratch card holding a cartridge, a multi-disc set in its folder, a `.cue` with its tracks and an arcade set beside `neogeo.zip`, each with saves, states, a cover, a video and a set: exactly the game's files go, never a neighbour's, never `neogeo.zip`, never a file another game shares; its rows in the library database go and the neighbours' stay; a sheet or a folder that leads out of its folders is refused with nothing touched. Then the real launcher, headless (`--delete-now`): the shelf after, in place, on the next game or the one before, from Favorites, down to the empty home (builds the host launcher; that part skips without SDL2) |
 | `check-media` | A game's Cover and Video page, what a device cannot show: where a cover came from as its record's line in the library database; Use as Cover and Put Back on a scratch card, the cover there was to `.media/.before` and the records with it, both ways, a copy that fails changing nothing; an MP4's length from its `mvhd`, and crafted MP4s (a box of size 0, a 64-bit size past the file, under its header or negative, a box past its parent or the file, an empty or short `mvhd`, 5000 boxes) that all give none and read nothing out of bounds, built with AddressSanitizer and UBSan where the compiler has them |
 | `check-snapsize` | A video snap of any shape (640x480, a Nintendo DS game's 320x480, a Game Boy game's, 534x480, a width of 1, odd ones) published as Muse publishes it, read into its texture and drawn on the shelf and on a game's Cover and Video page: its own shape where it is drawn, a texture never under 640x480 (the Pixel 2's GPU faulted on narrower ones), nothing out of bounds under UBSan and, on a Mac, Guard Malloc (builds the host launcher's objects; skips without SDL2) |
+| `check-corepins` | `mk/fetch-vendor.sh` fetches the cores from ZyperOS's cores release and never from libretro's buildbot, whose files change under the same name (nine of nineteen pins had stopped matching it); the release's tag is no v<number>, so the installer and System Update never take it for a version; each pin is a sha256, each core pinned once and with its source in THIRD-PARTY-LICENSES.md (offline; no vendor/) |
 | `check-targets` | every texture the launcher draws into is made `PLAT_TARGET_FORMAT` (src/platform.h), a format SDL's GLES2 renderer keeps unswapped: in an ARGB8888 one a video snap on the Pixel 2 came out with red and blue swapped; `make yuvtarget` shows it with the device's own SDL, in Docker (a reading of the source; no SDL) |
 | `check-storage` | MENU > Storage's numbers on a scratch card: each part, each game's bytes (what Delete Game gives back) and the bar held to the clusters the files take; a second start reads the cache and lists no folder again, a game added lists its own folder alone, a cache it cannot read is measured again; the walk on its thread ends and stops when asked; Unused Art and Old Save States delete exactly their files. Then the real launcher, headless (`--storage delete-open`): Delete Game's question opens on the page from nothing, never as a swap from the panel before it (builds the host launcher; that part skips without SDL2) |
 | `check-stats` | play time is recorded, and a LAUNCH still writes nothing |
@@ -193,7 +194,7 @@ something once broke in a way nothing noticed:
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
 | `check-from-rogue` | tools/from-rogue.sh's table against systems.cfg and against the folders on a ROGUE OS card |
 | `check-importers` | the computer-side importers (--meta, --titles) on a scratch card: a title written over a game's details keeps them (builds the host launcher) |
-| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores (skips without SDL2) |
+| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores; then the launcher's own Diatom link against it (tools/gamezone-check.c): the zone chosen in Date & Time reaches a game's clock, a new zone the next game with no restart, and a Diatom started again its first game (skips without SDL2) |
 | `check-simulator` | the simulator's Swift tests: its VNC client, the px2sim link, the state lines and the control socket's commands (skips without Swift) |
 | `check-px2sim` | px2sim's choice of the keyboard it takes in the QEMU image: QEMU's virtio or USB one, never a uinput one such as gptokeyb's Fake Keyboard (host compiler, no VM) |
 | `check-sidelights` | what the launcher tells the side lights' gauge: the lines as plastron's gauge reads them, the FIFO writer that never waits and never dies of SIGPIPE, and when a File Transfer batch is over |
@@ -500,7 +501,10 @@ res/            the boot animation, the system cards and the marks they are
 config/         systems.cfg as shipped; the rest is compiled in
 sd/             each device's launch.sh, and bt-alsa.sh, as they land on the card
 vendor/         the libretro cores: fetched and hash-pinned by
-                mk/fetch-vendor.sh, the rest built by mk/build-*.sh; a core
+                mk/fetch-vendor.sh from ZyperOS's cores release (a
+                pre-release whose files never change; mk/release-cores.sh
+                makes a new one when a core changes), the rest built by
+                mk/build-*.sh; a core
                 ZyperOS patches has a stamp beside it naming its patches
                 (mk/core-stamp.sh), which mk/payload.sh and tools/release.sh
                 hold it to: run its build script, or `sh mk/core-stamp.sh

@@ -23775,9 +23775,9 @@ int main(int argc, char *argv[])
 		if (!shot_path) usblink_sync(db_dev(), P_USERDATA);
 		if (!shot_path) usblink_release_dev(devmode_unlocked(db_dev()));
 	}
-	/* Local time is the card's chosen zone, in this process, from here on:
-	 * the Brick's launch.sh points the system at it too, but the Pixel 2's
-	 * system has no other way to know it */
+	/* Local time is the card's chosen zone, in this process, from here on,
+	 * and Diatom's with each game (resident.c's RUN). The system itself stays
+	 * on UTC. */
 	{
 		char tz[64];
 

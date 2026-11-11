@@ -1840,6 +1840,26 @@ static void power_trouble(const char *why, uint64_t now)
 	       g_power_level == DIATOM_POWER_FULL ? "full" : "medium", why);
 }
 
+/* The player's zone, which a cartridge's clock reads through localtime. This
+ * process is started by launch.sh, which has no zone to give it, so the
+ * launcher sends it with every game: a Diatom that has restarted since the
+ * last one has forgotten. Said in the log when it changes. */
+static void apply_zone(const char *tz)
+{
+	static char current[64];
+	char offset[48] = "";
+	struct tm tm;
+	time_t now;
+
+	if (!tz[0] || !strcmp(tz, current)) return;
+	snprintf(current, sizeof current, "%s", tz);
+	setenv("TZ", tz, 1);
+	tzset();
+	now = time(NULL);
+	if (localtime_r(&now, &tm)) strftime(offset, sizeof offset, "%z %Z", &tm);
+	fprintf(stderr, "diatom: time zone %s, %s\n", tz, offset);
+}
+
 static int run_session_inner(const diatom_session *sn)
 {
 	struct retro_system_av_info av;
@@ -3081,6 +3101,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
+			apply_zone(m.tz);
 			memset(&sn, 0, sizeof sn);
 			sn.core     = m.core;
 			sn.rom      = m.rom[0] ? m.rom : NULL;

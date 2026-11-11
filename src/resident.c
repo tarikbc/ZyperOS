@@ -347,13 +347,20 @@ bool plat_resident_send(const char *tag, const char *core, const char *rom,
 		 * process holds it. */
 		device_display_release();
 		d_stylus = d_swap = false;
+		/* The zone Date & Time chose, which this process holds in TZ
+		 * (plat_clock_zone), for a game's real-time clock: Diatom is started
+		 * by launch.sh with none, so its cores read UTC without it. With
+		 * every game, so a Diatom that has restarted has it again and a new
+		 * zone reaches the next game. Ignored by an older Diatom. */
+		const char *zone = getenv("TZ");
+
 		if (!dsend("RUN\tcore=%s\trom=%s\ttag=%s"
 		           "\tresume=%s\texit_state=%s\tpreview=%s"
-		           "\tconsole=%d\tcheevos=%s%s%s",
+		           "\tconsole=%d\tcheevos=%s\ttz=%s%s%s",
 		           core, rom, tag,
 		           resume ? resume : "", exit_state ? exit_state : "",
 		           preview ? preview : "",
-		           console, cheevos ? cheevos : "",
+		           console, cheevos ? cheevos : "", zone ? zone : "",
 		           d_run_keys[0] ? "\t" : "", d_run_keys)) {
 			d_run_keys[0] = '\0';
 			device_display_take();      /* no game is coming */
