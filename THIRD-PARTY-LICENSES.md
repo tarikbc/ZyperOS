@@ -42,14 +42,15 @@ Diatom and for plastron, the Linux system under ZyperOS, and ZyperOS's own
 
 Every core is the work of its authors. Unless a row says otherwise, the
 libretro buildbot (https://buildbot.libretro.com) built it, and
-`mk/fetch-vendor.sh` pins it by its sha256. The commit given is the source the
+`mk/fetch-vendor.sh` fetches it from ZyperOS's cores release and pins it by
+its sha256. The commit given is the source the
 binary names; Beetle PCE Fast's binary names none, so its row gives the commit
 that rebuilds it to the same bytes.
 
 | Core | Systems | License | Source |
 |------|---------|---------|--------|
 | `fceumm_libretro.so` | NES | GPL-2.0-or-later | https://github.com/libretro/libretro-fceumm at 236ccdf |
-| `mednafen_pce_fast_libretro.so` | TurboGrafx-16 and CD | GPL-2.0 (Mednafen-derived) | https://github.com/libretro/beetle-pce-fast-libretro at bebe2b1 (no commit in the binary; this one rebuilds the same bytes, `mk/fetch-vendor.sh`) |
+| `mednafen_pce_fast_libretro.so` | TurboGrafx-16 and CD | GPL-2.0 (Mednafen-derived) | https://github.com/libretro/beetle-pce-fast-libretro at bebe2b1 (no commit in the binary; this one rebuilds the buildbot's bytes, and the file shipped is that build without its .comment section, `mk/fetch-vendor.sh`) |
 | `mednafen_ngp_libretro.so` | Neo Geo Pocket and Color | GPL-2.0 (Mednafen-derived) | https://github.com/libretro/beetle-ngp-libretro at a50d5ac |
 | `pcsx_rearmed_libretro.so` | PlayStation | GPL-2.0 | https://github.com/libretro/pcsx_rearmed at 7b0e8f8 |
 | `mgba_libretro.so` | Game Boy, Color and Advance | MPL-2.0 | https://github.com/libretro/mgba at e31759b plus mGBA's fix 543a197 (https://github.com/mgba-emu/mgba); `mk/build-mgba-bridge.sh` builds it |
@@ -67,7 +68,7 @@ that rebuilds it to the same bytes.
 | `a5200_libretro.so` | Atari 5200 | GPL-2.0 | https://github.com/libretro/a5200 at 40c6f2f |
 | `handy_libretro.so` | Atari Lynx | zlib | https://github.com/libretro/libretro-handy at bc55d46 |
 | `mednafen_wswan_libretro.so` | WonderSwan and Color | GPL-2.0 (Mednafen-derived) | https://github.com/libretro/beetle-wswan-libretro at 4b01295 |
-| `pokemini_libretro.so` | Pokémon Mini | GPL-3.0 | https://github.com/libretro/PokeMini (the binary names v0.60 and no commit) |
+| `pokemini_libretro.so` | Pokémon Mini | GPL-3.0 | https://github.com/libretro/PokeMini at 132111b (the binary names v0.60 and no commit; the newest commit when it was pinned, 2026-11-04, and still the newest on 2026-11-11, when the buildbot's build was still the same file) |
 | `bluemsx_libretro.so` | MSX2 | GPL-2.0 | https://github.com/libretro/blueMSX-libretro at e3086eb |
 | `opera_libretro.so` | 3DO | **LGPL-2.1 and non-commercial** | https://github.com/libretro/opera-libretro at 370d9a2 |
 | `mame2003_plus_libretro.so` | MAME | **Non-commercial** (the MAME license) | https://github.com/libretro/mame2003-plus-libretro at 91f2f15 |

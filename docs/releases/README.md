@@ -5,7 +5,7 @@ Every ZyperOS version is one release on GitHub, tagged `v<version>`, with:
 | File | What |
 |---|---|
 | `ZyperOS-v<version>-pixel2.img.xz` | The GKD Pixel 2's card image |
-| `ZyperOS-v<version>-pixel2-sources.tar` | The licenses and sources of everything in it |
+| `ZyperOS-v<version>-pixel2-sources.tar` | The licenses and sources of everything in it; for the libretro cores that `mk/fetch-vendor.sh` fetches, its `CORES-SOURCE.txt` points to the cores release |
 | `ZyperOS-v<version>-pixel2-update.zpk` | System Update's pack: every file of the image's ZyperOS folder (docs/updates.md) |
 | `ZyperOS-pixel2-update.txt` | System Update's list of those files, signed; no version in its name, so `releases/latest/download/` finds the newest |
 | `ZyperOS-Installer-<version>-macOS.zip` | ZyperOS Installer for macOS (Apple Silicon and Intel) |
@@ -26,6 +26,9 @@ image joins once the Mac that makes releases has the Brick's GPU files
    and the installer's `Cargo.toml` and `Cargo.lock`; `make check-installer`
    says when they disagree). Merge it to main.
 2. Write the release notes in `docs/releases/v<version>.md` and merge them.
+   Their Thanks section names the sources tar, and the cores release
+   (`https://github.com/tarikbc/ZyperOS/releases/tag/<CORES_TAG>`, the tag in
+   `mk/fetch-vendor.sh`) for the libretro cores' sources.
 3. On the Mac, in the main checkout on main, with plastron's checkout on its
    main: `make release` builds the Pixel 2's image from this commit with
    plastron's release build (clean, so it takes a while, holding
@@ -45,7 +48,7 @@ image joins once the Mac that makes releases has the Brick's GPU files
    release. A tag pushed with no draft waiting is refused.
 
 Why the image is built on the Mac and the installer on GitHub: the image's
-inputs are on the Mac (the cores in `vendor/`, which `mk/fetch-vendor.sh` can
-no longer fetch exactly as they are, and plastron's build volume), and the
+inputs are on the Mac (the cores in `vendor/`, part fetched by
+`mk/fetch-vendor.sh` and part built, and plastron's build volume), and the
 installer builds anywhere, so GitHub's machines build it on all three
 systems, the Mac's own included.
