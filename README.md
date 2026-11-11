@@ -172,7 +172,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | | ZyperOS | Stock<sup>1</sup> | ROGUE OS | TortOS | ROCKNIX | plumOS Pixel2 |
 |---|---|---|---|---|---|---|
 | **Source, license** | GPL-3.0 | — | Its changed files, no license named | GPL-3.0 | GPL-2.0 for its own code | MIT for its own code |
-| **Install, latest** | Card image or ZyperOS Installer, v1.0.2 (Nov 2026) | On the card it comes with | Card image, then v1.22's files (Aug 2025) | Card image or TortOS Installer, v2.1.1 (Oct 2026) | Card image, 20261101 (Nov 2026) | Card image, v0.1.4 (Aug 2026), in testing |
+| **Install, latest** | Card image or ZyperOS Installer, v1.0.3 (Nov 2026) | On the card it comes with | Card image, then v1.22's files (Aug 2025) | Card image or TortOS Installer, v2.1.1 (Oct 2026) | Card image, 20261101 (Nov 2026) | Card image, v0.1.4 (Aug 2026), in testing |
 | **Systems** | 40, and Ports | Over 100 folders | 117<sup>2</sup> | 11 | 120<sup>2</sup> | 86<sup>2</sup> |
 | **Games without taking the card out** | Wi-Fi or USB web page at zyperos.local, its own hotspot, SSH | Samba | USB cable, SSH | Wi-Fi or USB web page | Samba, SFTP, USB cable | Samba, SFTP, FTP |
 | **Box art on the device** | libretro, ScreenScraper<sup>3</sup>, SteamGridDB | On a computer (Skraper) | ScreenScraper | libretro, ScreenScraper | ScreenScraper | libretro |
@@ -206,7 +206,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 <details>
 <summary><b>Sources</b></summary>
 
-- **ZyperOS:** this README and its code, [v1.0.2](https://github.com/tarikbc/ZyperOS/releases/tag/v1.0.2); the boot times I measured on my Pixel 2 (notes 4 and 5) and [#83](https://github.com/tarikbc/ZyperOS/pull/83).
+- **ZyperOS:** this README and its code, [v1.0.3](https://github.com/tarikbc/ZyperOS/releases/tag/v1.0.3); the boot times I measured on my Pixel 2 (notes 4 and 5) and [#83](https://github.com/tarikbc/ZyperOS/pull/83).
 - **Stock:** [Retro Game Corps, February 2025](https://retrogamecorps.com/2025/02/01/how-to-make-the-gkd-pixel-ii-software-suck-less/); the boot time is my own count (note 5).
 - **ROGUE OS:** [README](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/README.md), [v1.22](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/releases/tag/GKDPIXELII_1.22), [system list](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/blob/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/emulationstation/es_systems.cfg), [launcher skins](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/iux/skins), [launcher languages](https://github.com/Ninoh-FOX/PIXEL2-ROGUE-OS/tree/f567073e9dd9d5f688a23728067d043af2fbdc20/EMUELEC/SYSTEM/usr/local/share/iux/translations).
 - **TortOS:** [README](https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/README.md), [guide](https://github.com/ericreinsmidt/TortOS/blob/aafe6dee0d8221642e68d8b17fb17c6c5a39f8e1/docs/guide.md), [plastron's README](https://github.com/ericreinsmidt/plastron/blob/b67f5ec86a601f878f1bc8452d16af7112950f3d/README.md), [v2.1.1](https://github.com/ericreinsmidt/TortOS/releases/tag/v2.1.1).
@@ -315,7 +315,7 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 
 ## Install
 
-ZyperOS 1.0.2 is out for the GKD Pixel 2, released in November 2026. [The latest release](https://github.com/tarikbc/ZyperOS/releases/latest) on GitHub has the card image and [ZyperOS Installer](installer/) for macOS, Windows and Linux. The TrimUI Brick's image comes later.
+ZyperOS 1.0.3 is out for the GKD Pixel 2, released in November 2026. [The latest release](https://github.com/tarikbc/ZyperOS/releases/latest) on GitHub has the card image and [ZyperOS Installer](installer/) for macOS, Windows and Linux. The TrimUI Brick's image comes later.
 
 1. **Write the card.** Download ZyperOS Installer for your computer from [the latest release](https://github.com/tarikbc/ZyperOS/releases/latest): the `.zip` for macOS, the `.exe` for Windows, the `.deb` or `.rpm` for Linux. Put the microSD card in the computer, pick the GKD Pixel 2, the latest release and the card, then choose **Fresh install**, which erases the card. Or download the card image, `ZyperOS-v<version>-pixel2.img.xz`, and write it with any program that writes disk images, like Raspberry Pi Imager.
 2. **Put the card in the Pixel 2 and turn it on.** The first start sets the card up in about a minute, turning the rest of it into space for games, music and saves. Every boot after that comes straight up, and the first one ends with [the tutorial](#the-first-start).
