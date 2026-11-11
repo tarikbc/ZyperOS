@@ -176,6 +176,7 @@ something once broke in a way nothing noticed:
 | `check-clients` | File Transfer's browser count (src/clients.c): browsers, not sockets; one tab with five keep-alive connections is one, two browsers two |
 | `check-pace` | when a panel screen draws (src/pace.c): a still one its heartbeat (about 610 frames in 10 minutes, not 36,000), a change, the redraw clock's moment or anything moving at once, the memory's slow clock after 2 s still |
 | `check-keyhints` | button hints (src/keyhints.c), the one component for what each button does: rows in order and in their room, lists packed and read back in all eight languages |
+| `check-usblog` | the USB port's log for support (src/usblog.c): a plug a line, grown as it goes and closed with its time in, power in alone a line, the last 50 under 8 KB, read back from the file |
 | `check-usbpower` | What did you plug in?, the launcher's half of usbrole (src/usbpower.c): usbrole's state lines, the request and the setting written whole and never through a link, asked once per plug after 2 s (never on Automatic unless a computer paused it), the replug message for a plug a computer showed up on or came back to while paused |
 | `check-qr` | the hotspot's QR code, read back by zbarimg where the host has it |
 | `check-home` | the home's choice, labels, motion, cached music, renderer state, bounded assets, worker isolation and missing art, on the launcher's own objects |

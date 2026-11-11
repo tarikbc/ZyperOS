@@ -53,6 +53,7 @@
 #include "linksteps.h"
 #include "keyhints_draw.h"
 #include "usblink.h"
+#include "usblog.h"
 #include "chargedark.h"
 #include "pace.h"
 #include "idle.h"
@@ -8480,6 +8481,8 @@ static int usb_ask_tiles(menu_row tiles[3], bool dev)
 	return n;
 }
 
+static void ulog_note(const char *what);
+
 static void usb_ask(app *a)
 {
 	menu_row tiles[3];
@@ -8519,6 +8522,8 @@ static void usb_ask(app *a)
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	ulog_note(choice == 1 ? "Computer Connected: File Transfer"
+	          : choice == 2 ? "Computer Connected: Developer" : "Computer Connected: Charge Only");
 	if (choice == 1) {
 		xfer_screen(a);
 	} else if (choice == 2) {
@@ -8553,6 +8558,65 @@ static int usb_power_rows(menu_row rows[3])
 static void replug_on(unsigned plug);
 
 static void replug_off(void);
+
+/* The port's log for support (src/usblog.h): read from the card at the
+ * first look, kept as the port is followed, written back at most every 2 s
+ * when it changed, whole under another name and renamed over */
+static usblog g_ulog;
+
+static void ulog_path(char *out, size_t n)
+{
+	snprintf(out, n, "%s/logs/usb.log", P_USERDATA);
+}
+
+static void ulog_save(bool now)
+{
+	static unsigned saved_at;
+	static char text[USBLOG_MAX * USBLOG_LINE + 64];
+	char path[512], tmp[520];
+	unsigned t = plat_now_ms();
+	FILE *f;
+
+	if (!g_ulog.dirty || (!now && saved_at && t - saved_at < 2000)) return;
+	saved_at = t ? t : 1;
+	g_ulog.dirty = false;
+	ulog_path(path, sizeof path);
+	snprintf(tmp, sizeof tmp, "%s.new", path);
+	usblog_text(&g_ulog, text, sizeof text);
+	if (!(f = fopen(tmp, "w"))) return;
+	fputs(text, f);
+	if (fclose(f) == 0) rename(tmp, path);
+	else remove(tmp);
+}
+
+static void ulog_follow(const usb_power *p)
+{
+	static bool loaded;
+
+	if (!loaded) {
+		static char text[USBLOG_MAX * USBLOG_LINE + 64];
+		char path[512];
+		FILE *f;
+		size_t got = 0;
+
+		loaded = true;
+		ulog_path(path, sizeof path);
+		if ((f = fopen(path, "r"))) {
+			got = fread(text, 1, sizeof text - 1, f);
+			fclose(f);
+		}
+		text[got] = '\0';
+		usblog_load(&g_ulog, text);
+	}
+	usblog_follow(&g_ulog, p, (long long)time(NULL));
+	ulog_save(false);
+}
+
+static void ulog_note(const char *what)
+{
+	usblog_note(&g_ulog, what);
+	ulog_save(true);
+}
 
 static void usb_power_ask(app *a, unsigned plug)
 {
@@ -8604,6 +8668,8 @@ static void usb_power_ask(app *a, unsigned plug)
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	if (a->running) ulog_note(choice == 0 ? "asked: USB Accessory" : choice == 1 ? "asked: Computer"
+	                                                               : "asked: gone before an answer");
 	if (!a->running || choice == 2) return;
 	if (choice == 0) {
 		plat_usb_power_grant(plug);
@@ -8631,6 +8697,7 @@ static void replug_on(unsigned plug)
 	g_replug.on = true;
 	g_replug.plug = plug;
 	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+	ulog_note("replug message");
 	redraw_now();
 }
 
@@ -8652,6 +8719,7 @@ static void power_follow(void)
 	if (looked && now - looked < 200u) return;
 	looked = now ? now : 1;
 	if (!plat_usb_power(&p)) { replug_off(); g_usb_wait = 0; return; }
+	ulog_follow(&p);
 	{
 		unsigned was = g_usb_wait;
 
