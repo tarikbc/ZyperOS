@@ -36,6 +36,7 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
@@ -1047,6 +1048,56 @@ usb_peer plat_usb_peer(void)
  * binds it at boot only in Developer Mode (usblink.h). */
 #define GADGET_UDC "/sys/kernel/config/usb_gadget/px2/UDC"
 
+static bool dhcpd_running(void);
+
+/* usb0 up, with 10.42.0.1/30 and udhcpd, as S40usbgadget does at boot. The
+ * kernel registers NCM's usb0 only when the gadget is first bound, so on a
+ * release image, which binds nothing at boot, S40usbgadget's
+ * "ip link set usb0 up", address and udhcpd all failed: no usb0 yet. Bound
+ * later for File Transfer, usb0 came up down, with no address, so NCM never
+ * told the computer it was connected (a Mac's en8 "inactive", the steps'
+ * "no driver" hint). Only what is missing is done: an address already there
+ * is left alone, never flushed. */
+static void cable_netdev_up(void)
+{
+	char buf[32];
+	unsigned long flags = 0;
+	int fd;
+	ssize_t got;
+
+	if ((fd = open("/sys/class/net/usb0/flags", O_RDONLY | O_CLOEXEC)) < 0) return;
+	got = read(fd, buf, sizeof buf - 1);
+	close(fd);
+	if (got > 0) { buf[got] = '\0'; flags = strtoul(buf, NULL, 16); }
+	if (!(flags & 1)) {                        /* IFF_UP */
+		char *argv[] = { "/sbin/ip", "link", "set", "usb0", "up", NULL };
+
+		fprintf(stderr, "usb: usb0 was down, up (%d)\n", spawn_capture(argv, NULL, 0, 3));
+	}
+	if ((fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0)) >= 0) {
+		struct ifreq ifr;
+		bool has;
+
+		memset(&ifr, 0, sizeof ifr);
+		snprintf(ifr.ifr_name, sizeof ifr.ifr_name, "usb0");
+		ifr.ifr_addr.sa_family = AF_INET;
+		has = ioctl(fd, SIOCGIFADDR, &ifr) == 0;
+		close(fd);
+		if (!has) {
+			char *argv[] = { "/sbin/ip", "addr", "add", "10.42.0.1/30", "brd", "+",
+			                 "dev", "usb0", NULL };
+
+			fprintf(stderr, "usb: usb0 had no address, 10.42.0.1/30 (%d)\n",
+			        spawn_capture(argv, NULL, 0, 3));
+		}
+	}
+	if (!dhcpd_running() && access("/etc/udhcpd.conf", R_OK) == 0) {
+		char *argv[] = { "/usr/sbin/udhcpd", "/etc/udhcpd.conf", NULL };
+
+		fprintf(stderr, "usb: udhcpd started for the cable (%d)\n", spawn_capture(argv, NULL, 0, 3));
+	}
+}
+
 bool plat_usb_link(int op)
 {
 	char cur[64] = "";
@@ -1074,6 +1125,7 @@ bool plat_usb_link(int op)
 		if (write(fd, udc, strlen(udc)) < 0) { close(fd); return false; }
 		close(fd);
 		fprintf(stderr, "usb: the link to the computer is on (%s)\n", udc);
+		cable_netdev_up();
 		return true;
 	}
 	if ((fd = open(GADGET_UDC, O_WRONLY | O_CLOEXEC)) < 0) return true;
@@ -1136,7 +1188,7 @@ static bool read_small(const char *path, char *buf, size_t n)
 
 bool plat_cable_sense(link_sense *o)
 {
-	static unsigned asked_at, dhcpd_at;
+	static unsigned asked_at, dhcpd_at, netdev_at;
 	char buf[2048];
 	DIR *d;
 	struct dirent *e;
@@ -1160,6 +1212,12 @@ bool plat_cable_sense(link_sense *o)
 			if (read_small(path, buf, sizeof buf) && link_udc_configured(buf)) o->configured = true;
 		}
 		closedir(d);
+	}
+	/* A gadget bound before this launcher (or by an older one) with usb0
+	 * left down: brought up here too, every 2 s at most */
+	if (o->configured && (!netdev_at || now - netdev_at >= 2000u)) {
+		netdev_at = now ? now : 1;
+		cable_netdev_up();
 	}
 	o->carrier = o->configured &&
 	             read_small("/sys/class/net/usb0/carrier", buf, sizeof buf) && buf[0] == '1';
