@@ -206,6 +206,9 @@ void muse_poll(void);
 int  charge_limit_now(void);
 void charge_full_once(void);
 void charge_full_end(void);
+/* A full charge asked for and not over; the limit saved in MENU (0 Off) */
+bool charge_full_active(void);
+int  charge_limit_saved(void);
 
 /* "Getting hot": the chip's temperature, read */
 void heat_tick(void);

@@ -7,6 +7,7 @@
 #include "place.h"
 #include "status.h"
 #include "theme.h"
+#include "uisound.h"
 #include "ui.h"
 #include "zyperdraw.h"
 #include "zypermark.h"
@@ -273,14 +274,6 @@ static bool chg_held(void)
 	       g_chg.s.step != CS_UNPLUGGED && g_chg.s.step != CS_OFF;
 }
 
-/* And short of full: "Kept at 85%" and "Hold A for a full charge". A battery
- * charged full before the limit was set is held there too, and a full charge
- * is nothing to offer it (I saw it at 100% on a Pixel 2, 2026-11-06). */
-static bool chg_kept(void)
-{
-	return chg_held() && !g_chg.r.full && g_chg.r.pct < 100;
-}
-
 /* Zyper asleep at `t` ms into the screen: eyes and mouth shut, at rest's
  * tilt, rising and falling with a slow breath */
 static zr_pose chg_pose(unsigned t)
@@ -341,6 +334,7 @@ static int hint_gap(const char *post)
 /* Its width: the words either side of the button's glyph, `bw` wide, and the gaps */
 static int hint_width(TTF_Font *f, const char *pre, int bw, const char *post)
 {
+	if (!bw) return ui_text_width(f, pre);   /* words alone, no button */
 	return (pre[0] ? ui_text_width(f, pre) + 14 : 0) + bw +
 	       (post[0] ? hint_gap(post) + ui_text_width(f, post) : 0);
 }
@@ -352,6 +346,7 @@ static int hint_draw(SDL_Renderer *r, TTF_Font *f, const char *pre, const char *
 {
 	int x0 = x;
 
+	if (!button) return ui_text(r, f, pre, x, ty, -1, c);
 	if (pre[0]) x += ui_text(r, f, pre, x, ty, -1, c) + 14;
 	ui_button(r, button, x + bw / 2, mid, CHG_GLYPH, UI_BUTTON_PLAIN);
 	x += bw;
@@ -460,30 +455,41 @@ void chg_draw(app *a, unsigned now, float dim, float k)
 	 * for a full charge" before it (11.26), and the bar under them fills
 	 * for whichever is held */
 	{
-		char start_pre[64], full_pre[64];
+		char start_pre[64], full_pre[96];
 		const char *start_post, *full_post, *dot = "·";
-		const bool kept = chg_kept();
+		/* Y to 100% this time, offered with a limit saved and short of
+		 * full; once asked for, what it does, in its place, with no button */
+		const bool active = charge_full_active() && g_chg.valid && g_chg.r.online;
+		const bool kept = active || (g_chg.valid && g_chg.s.step != CS_UNPLUGGED &&
+		                             ch_full_offered(&g_chg.r, charge_limit_saved(), false));
+		const char *fbtn = active ? NULL : "Y";
 		SDL_Color dimc = ui_fade(ui_col(t->text_dim, 255), k);
-		int gw = ui_button_width("POWER", CHG_GLYPH), ga = ui_button_width("A", CHG_GLYPH);
+		int gw = ui_button_width("POWER", CHG_GLYPH), ga = active ? 0 : ui_button_width("Y", CHG_GLYPH);
 		int x, w, ty = ui_cap_y(fm, CHG_HINT_MID);
 		float held = ch_screen_hold(&g_chg.s, now);
 		bool kept_split = false;
 
 		hint_split(T(S_CHARGING_HOLD_START), start_pre, sizeof start_pre, &start_post);
-		hint_split(T(S_CHARGING_HOLD_FULL), full_pre, sizeof full_pre, &full_post);
+		if (active) {
+			snprintf(full_pre, sizeof full_pre, "%s", T(S_CHARGING_FULL_ACTIVE));
+			full_post = "";
+		} else {
+			hint_split(T(S_CHARGING_Y_FULL), full_pre, sizeof full_pre, &full_post);
+		}
+		/* Drawn whole, around their buttons: said so (the fit check) */
+		ui_fit_drawn(T(S_CHARGING_HOLD_START));
+		if (kept && !active) ui_fit_drawn(T(S_CHARGING_Y_FULL));
 		w = hint_width(fm, start_pre, gw, start_post);
 		/* The two in a language whose words do not fit one line (French):
 		 * a line each, the full charge's first, both centered, never cut */
 		if (kept && w + hint_width(fm, full_pre, ga, full_post) + 44 + ui_text_width(fm, dot) >
 		            ZYPEROS_SCREEN_W - 2 * DS_INSET) {
 			const int fw = hint_width(fm, full_pre, ga, full_post);
-			float fh = ch_screen_full_hold(&g_chg.s, now);
 
-			hint_draw(a->r, fm, full_pre, "A", ga, full_post, (ZYPEROS_SCREEN_W - fw) / 2,
+			hint_draw(a->r, fm, full_pre, fbtn, ga, full_post, (ZYPEROS_SCREEN_W - fw) / 2,
 			          ui_cap_y(fm, CHG_HINT_MID - 30), CHG_HINT_MID - 30, dimc);
 			hint_draw(a->r, fm, start_pre, "POWER", gw, start_post, (ZYPEROS_SCREEN_W - w) / 2,
 			          ui_cap_y(fm, CHG_HINT_MID + 26), CHG_HINT_MID + 26, dimc);
-			if (fh > held) held = fh;
 			kept_split = true;
 		}
 		if (kept && !kept_split)
@@ -493,12 +499,9 @@ void chg_draw(app *a, unsigned now, float dim, float k)
 		if (kept_split) {
 			/* drawn above */
 		} else if (kept) {
-			float fh = ch_screen_full_hold(&g_chg.s, now);
-
-			x += hint_draw(a->r, fm, full_pre, "A", ga, full_post, x, ty, CHG_HINT_MID, dimc);
+			x += hint_draw(a->r, fm, full_pre, fbtn, ga, full_post, x, ty, CHG_HINT_MID, dimc);
 			x += 22;
 			x += ui_text(a->r, fm, dot, x, ty, -1, dimc) + 22;
-			if (fh > held) held = fh;
 		}
 		if (!kept_split)
 			hint_draw(a->r, fm, start_pre, "POWER", gw, start_post, x, ty, CHG_HINT_MID, dimc);
@@ -634,6 +637,8 @@ static int charging_run(app *a)
 		if (a->in.quit_requested || want_quit) return -1;
 		now = plat_now_ms();
 		chg_read(now, false);
+		bool was_lit = g_chg.s.step == CS_LIT;
+
 		for (b = 0; b < IN_COUNT; b++) any = any || a->in.pressed[b];
 		step = ch_screen_tick(&g_chg.s, now, any, a->in.down[IN_POWER],
 		                      g_chg.valid ? g_chg.r.online : on_charger());
@@ -642,10 +647,22 @@ static int charging_run(app *a)
 			                                                   : "unplugged, turning off");
 			return step;
 		}
-		/* "Hold A for a full charge", at the limit: this charge to 100% */
-		if (ch_screen_full(&g_chg.s, now, chg_kept() && a->in.down[IN_ACCEPT])) {
-			charge_full_once();
-			chg_read(now, true);
+		/* Y: to 100% this time; over with the cable out or full */
+		if (g_chg.valid) {
+			switch (ch_full_step(&g_chg.r, charge_limit_saved(), charge_full_active(),
+			                     a->in.pressed[IN_Y], was_lit)) {
+			case CH_FULL_START:
+				uisound_play(DS_SOUND_ACCEPT);
+				charge_full_once();
+				chg_read(now, true);
+				break;
+			case CH_FULL_END:
+				charge_full_end();
+				chg_read(now, true);
+				break;
+			default:
+				break;
+			}
 		}
 		if (step == CS_DARK) {
 			if (!dark) { plat_backlight(false); dark = true; }

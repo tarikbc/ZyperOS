@@ -233,6 +233,8 @@ EXTRA = {
     "charging-limit": ("demo", "PS1", ["--charging", "4000", "limit"]),
     "charging-kept": ("demo", "PS1", ["--charging", "4000", "kept"]),
     "charging-keptfull": ("demo", "PS1", ["--charging", "4000", "keptfull"]),
+    # Y pressed under a limit: to 100% this time (2026-11-11)
+    "charging-tofull": ("demo", "PS1", ["--charging", "4000", "tofull"]),
     "xfer-ask": ("demo", "PS1", ["--xfer-ask", "0"]),
     # The game's question, its B hint "Not Now" (src/keyhints.h)
     "xfer-ask-game": ("demo", "PS1", ["--xfer-ask", "0", "game"]),

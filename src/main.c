@@ -1754,6 +1754,10 @@ void charge_full_once(void)
 	fprintf(stderr, "charging: a full charge, this time\n");
 }
 
+static bool g_full_shot;          /* --charging N tofull: asked for, in a shot */
+bool charge_full_active(void) { return g_full_shot || access(CHG_FULL_ONCE, F_OK) == 0; }
+int  charge_limit_saved(void) { return g_charge_limit; }
+
 /* The cable out: a full charge asked for is over, and the limit back */
 void charge_full_end(void)
 {
@@ -22132,6 +22136,10 @@ static void shot_charging_draw(app *a)
 	              : shot_charging_kind == 7 ? "100 -5 4290 wall 1 1"
 	              : shot_charging_kind == 8 ? "92 1480 4150 wall 1" : "62 1480 4120 wall 1", &g_chg.r);
 	if (shot_charging_kind >= 5 && shot_charging_kind != 8) g_chg.r.limit = 85;
+	/* The limit saved in MENU, for Y's hint: 85 but for soon's, which has
+	 * none; tofull, Y pressed: the limit off this time, to 100% */
+	g_charge_limit = shot_charging_kind == 8 ? 0 : 85;
+	if (shot_charging_kind == 9) { g_full_shot = true; g_chg.r.limit = 0; }
 	/* pending: the PHY has not named the charger yet */
 	if (shot_charging_kind == 4) g_chg.r.kind = CH_PENDING;
 	g_chg.valid = true;
@@ -23127,6 +23135,7 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "limit")) { shot_charging_kind = 6; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "keptfull")) { shot_charging_kind = 7; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "soon")) { shot_charging_kind = 8; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "tofull")) { shot_charging_kind = 9; i++; }
 		}
 		else if (!strcmp(argv[i], "--heatpop") && i + 1 < argc) {
 			shot_heatpop = atoi(argv[++i]);

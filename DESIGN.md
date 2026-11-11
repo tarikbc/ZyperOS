@@ -1893,13 +1893,17 @@ kernel to keep the limit, charges it.
 On the charging screen (11.25), with a limit: the time is to the limit, "85%
 in about 40 min" ("Working out the time to 85%", "Almost at 85%"); held at
 it, the speed line is "Kept at 85% · wall charger", the time line "Charge
-Limit in MENU", the battery mark has the plug (11.12), and the hint grows to
-"Hold (A) for a full charge · Hold (POWER) to start", the bar under it
-filling for whichever is held. A battery charged full before the limit was
-set is held at 100%: the screen says "Charged" and "Fully charged" as any
-full one, with the plug, and offers no full charge. A held for **hold-unlock** is a full charge,
-this charge only: the limit is off until the cable comes out, and on again
-then (a file in /tmp, so a power-off ends it too). The corner's battery has
+Limit in MENU", and the battery mark has the plug (11.12). With a limit
+saved and the battery short of full, charging up to the limit or held at
+it, the hint grows to "(Y) Charge to 100% · Hold (POWER) to start"; Y, on a
+lit screen, is a full charge this time only: the hint says "Charging to 100%
+this time" in its place, the time goes to full, and the saved limit is back
+when the cable comes out or the battery is full (a file in /tmp, so a
+restart ends it too). A Y that lights a dark screen only lights it.
+*(Tarik, 2026-11-11: until then it was "Hold (A) for a full charge", and only
+once held at the limit.)* A battery charged full before the limit was set is
+held at 100%: the screen says "Charged" and "Fully charged" as any full one,
+with the plug, and offers no full charge. The corner's battery has
 the plug while it is held, everywhere.
 
 ### 11.27 Side lights
