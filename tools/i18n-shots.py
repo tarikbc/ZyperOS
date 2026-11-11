@@ -240,6 +240,20 @@ EXTRA = {
     "xfer-ask-game": ("demo", "PS1", ["--xfer-ask", "0", "game"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
+    # Computer Connected with Flash Drive (an image with usbdrive), two to a
+    # row: three tiles and, on a development image, four; and its pictures
+    "usb-ask-drive": ("demo", "PS1", ["--usb-ask", "2", "plain", "drive"]),
+    "usb-ask-drive-dev": ("demo", "PS1", ["--usb-ask", "3", "drive"]),
+    "usb-drive-0": ("demo", "PS1", ["--usb-drive", "0"]),
+    "usb-drive-1": ("demo", "PS1", ["--usb-drive", "1"]),
+    "usb-drive-2": ("demo", "PS1", ["--usb-drive", "2"]),
+    "usb-drive-in": ("demo", "PS1", ["--usb-drive", "0", "in"]),
+    "usb-drive-out": ("demo", "PS1", ["--usb-drive", "0", "out"]),
+    "usb-drive-both": ("demo", "PS1", ["--usb-drive", "0", "both"]),
+    "usb-drive-wide": ("demo", "PS1", ["--usb-drive", "0", "wide"]),
+    "usb-drive-3": ("demo", "PS1", ["--usb-drive", "3"]),
+    "usb-drive-bright": ("demo", "PS1", ["--usb-drive", "0", "bright"]),
+    "usb-drive-atlas": ("demo", "PS1", ["--usb-drive", "4"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two
     # figures (the plural's other), and none, and the message of the unlock
     "dev-page": ("demo", "PS1", ["--dev-page", "0"]),

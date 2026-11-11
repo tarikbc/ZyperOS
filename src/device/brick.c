@@ -145,6 +145,7 @@ void plat_video_under(SDL_Texture *tex, const SDL_Rect *dst, SDL_Color bg)
 
 /* No ports on the Brick, and no splash --still to hold a picture */
 bool plat_save_screen(const char *path) { (void)path; return false; }
+bool plat_save_screen_hidden(const char *path) { (void)path; return false; }
 SDL_Texture *plat_load_screen(const char *path) { (void)path; return NULL; }
 
 bool plat_video_init(void)
@@ -1056,6 +1057,7 @@ void device_levels_forget(void)
 
 int plat_volume_get(void)     { return cur_vol; }
 int plat_brightness_get(void) { return cur_bright; }
+int plat_brightness_raw(int level) { (void)level; return -1; }
 
 void plat_volume_nudge(int delta)
 {

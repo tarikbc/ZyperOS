@@ -434,6 +434,19 @@ while : ; do
 	# System Update's Restart Now: the switch to the new version runs at
 	# the next start (the image's update-apply.sh)
 	[ -f /tmp/zyperos_reboot ] && break
+	# Computer Connected > USB Drive (src/main.c, usb_drive): the card is
+	# the computer's until it ejects it. usbdrive, the image's own, takes
+	# over from here: it stops what still holds the card (this script's
+	# helpers too), unmounts it, exports it, and when it is back runs this
+	# script again. Nothing of the card's may run meanwhile, this shell
+	# included, hence the exec, from /, with nothing open on the card.
+	if [ -f /tmp/zyperos_usbdrive ] && [ -x /usr/sbin/usbdrive ]; then
+		rm -f /tmp/zyperos_usbdrive
+		kill $(jobs -p) 2> /dev/null
+		cd /
+		exec /usr/sbin/usbdrive /tmp/zyperos_usbdrive.d "$ZYPEROS_DIR/launch.sh" \
+			< /dev/null > /dev/null 2>&1
+	fi
 	# The charging screen's Hold POWER to start (src/charging.h): ZyperOS
 	# afresh, at once, as a start from off is
 	if [ -f /tmp/zyperos_restart ]; then
