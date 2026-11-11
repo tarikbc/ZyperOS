@@ -97,6 +97,12 @@ void usblink_release_dev(bool on)
 	}
 }
 
+void usblink_skip_ask(void)
+{
+	g_asked = true;
+	g_peer = USB_PEER_COMPUTER;
+}
+
 bool usblink_follow(db *dev, unsigned now_ms)
 {
 	usb_peer peer;

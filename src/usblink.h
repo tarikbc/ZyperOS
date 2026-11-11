@@ -64,6 +64,10 @@ bool usblink_follow(db *dev, unsigned now_ms);
  * and goes with its screen (usblink_for_transfer, usblink_after_transfer). */
 void usblink_hold(bool on);
 
+/* This plug was answered before the launcher started (USB Drive's: the
+ * card came back with the cable still in): not asked again */
+void usblink_skip_ask(void);
+
 /* After USB File Transfer closes: off again unless Developer Mode or a
  * Developer (SSH) answer keeps it. */
 void usblink_after_transfer(db *dev);

@@ -1,0 +1,211 @@
+# The USB Drive screens (src/main.c, usb_drive; plastron's usbdrive shows
+# them): the card as a USB drive for the computer, while ZyperOS steps aside.
+
+[usbdrive.connected]
+note = The heading while the card is the computer's, as a flash drive (each language's everyday word for a USB stick, as the tile's). Sentence case.
+en = Connected as a flash drive
+zh-Hans = 已作为 U 盘连接
+es = Conectado como memoria USB
+pt-BR = Conectado como pen drive
+fr = Connecté comme clé USB
+de = Als USB-Stick verbunden
+ja = USBメモリとして接続中
+it = Collegato come chiavetta USB
+
+[usbdrive.eject]
+note = Under the card while the card is the computer's, quieter: what to do to get the handheld back. Up to two balanced lines.
+en = Eject it on the computer to finish.
+zh-Hans = 在电脑上弹出它即可结束。
+es = Expúlsalo en la computadora para terminar.
+pt-BR = Ejete no computador para terminar.
+fr = Éjectez-le sur l'ordinateur pour terminer.
+de = Wirf ihn am Computer aus, um fertig zu werden.
+ja = 終わるときはパソコンで取り出してください。
+it = Espellilo sul computer per finire.
+
+[usbdrive.finishing]
+note = The heading while the card is being freed for the computer, and again while it comes back after. Sentence case.
+en = One moment
+zh-Hans = 请稍候
+es = Un momento
+pt-BR = Um momento
+fr = Un instant
+de = Einen Moment
+ja = 少々お待ちください
+it = Un momento
+
+[usbdrive.finishing_body]
+note = Under "One moment": the card is getting ready, for the computer or for the handheld after it.
+en = The card is getting ready.
+zh-Hans = 存储卡正在准备。
+es = La tarjeta se está preparando.
+pt-BR = O cartão está sendo preparado.
+fr = La carte se prépare.
+de = Die Karte wird vorbereitet.
+ja = カードを準備しています。
+it = La scheda si sta preparando.
+
+[usbdrive.failed]
+note = The heading when the card could not be freed for the computer (something still used it): nothing was shared, and ZyperOS comes back. Sentence case.
+en = The card is busy
+zh-Hans = 存储卡正在使用中
+es = La tarjeta está ocupada
+pt-BR = O cartão está ocupado
+fr = La carte est occupée
+de = Die Karte wird verwendet
+ja = カードを使用中です
+it = La scheda è occupata
+
+[usbdrive.failed_body]
+note = Under "The card is busy". Up to three balanced lines.
+en = It stays on the handheld. Try again in a moment.
+zh-Hans = 它会留在本机上。请稍后再试。
+es = Se queda en la consola. Inténtalo de nuevo en un momento.
+pt-BR = Ele continua no aparelho. Tente de novo em instantes.
+fr = Elle reste sur la console. Réessayez dans un instant.
+de = Sie bleibt auf dem Gerät. Versuche es gleich noch einmal.
+ja = カードは本体に残ります。少しして、もう一度お試しください。
+it = Resta sulla console. Riprova tra un momento.
+
+[usbdrive.stop]
+note = POWER's button hint at the foot while the card is the computer's: the card is let go safely, then the handheld turns off. Two or three words.
+en = Stop and power off
+zh-Hans = 停止并关机
+es = Detener y apagar
+pt-BR = Parar e desligar
+fr = Arrêter et éteindre
+de = Beenden und ausschalten
+ja = 止めて電源を切る
+it = Interrompi e spegni
+
+[usbdrive.decimal]
+note = The decimal mark in the card's numbers (23.4 MB/s): the language's own, one character.
+en = .
+zh-Hans = .
+es = ,
+pt-BR = ,
+fr = ,
+de = ,
+ja = .
+it = ,
+
+[usbdrive.unit_b]
+note = Bytes, the unit after a number ("0 B"). The language's own abbreviation.
+en = B
+zh-Hans = B
+es = B
+pt-BR = B
+fr = o
+de = B
+ja = B
+it = B
+
+[usbdrive.unit_kb]
+note = Kilobytes (1000 bytes), after a number.
+en = KB
+zh-Hans = KB
+es = KB
+pt-BR = KB
+fr = Ko
+de = KB
+ja = KB
+it = KB
+
+[usbdrive.unit_mb]
+note = Megabytes, after a number.
+en = MB
+zh-Hans = MB
+es = MB
+pt-BR = MB
+fr = Mo
+de = MB
+ja = MB
+it = MB
+
+[usbdrive.unit_gb]
+note = Gigabytes, after a number.
+en = GB
+zh-Hans = GB
+es = GB
+pt-BR = GB
+fr = Go
+de = GB
+ja = GB
+it = GB
+
+[usbdrive.per_second]
+note = After a unit for a speed ("23.4 MB/s").
+en = /s
+zh-Hans = /s
+es = /s
+pt-BR = /s
+fr = /s
+de = /s
+ja = /s
+it = /s
+
+[usbdrive.to_card]
+note = The left tile's label, beside an arrow down into a tray: data coming in to the card (the computer writes to it). The everyday word for download in the language's own computer use; one word.
+en = Download
+zh-Hans = 下载
+es = Descarga
+pt-BR = Download
+fr = Réception
+de = Download
+ja = ダウンロード
+it = Download
+
+[usbdrive.from_card]
+note = The right tile's label, beside an arrow up out of a tray: data going out of the card (the computer reads it). The everyday word for upload; one word.
+en = Upload
+zh-Hans = 上传
+es = Subida
+pt-BR = Upload
+fr = Envoi
+de = Upload
+ja = アップロード
+it = Upload
+
+[usbdrive.eject_key]
+note = B's button hint at the foot while the card is the computer's, and A's on the question: eject the card from the handheld. One word.
+en = Eject
+zh-Hans = 弹出
+es = Expulsar
+pt-BR = Ejetar
+fr = Éjecter
+de = Auswerfen
+ja = 取り出す
+it = Espelli
+
+[usbdrive.keep]
+note = B's hint on the question: do not eject, the card stays the computer's. One word.
+en = Keep
+zh-Hans = 保留
+es = Mantener
+pt-BR = Manter
+fr = Garder
+de = Behalten
+ja = そのまま
+it = Mantieni
+
+[usbdrive.confirm_head]
+note = The question's heading, when B is pressed while the computer wrote to the card in the last five seconds. Sentence case, ends with a question mark.
+en = Eject anyway?
+zh-Hans = 仍要弹出吗？
+es = ¿Expulsar de todos modos?
+pt-BR = Ejetar mesmo assim?
+fr = Éjecter quand même ?
+de = Trotzdem auswerfen?
+ja = それでも取り出しますか？
+it = Espellere comunque?
+
+[usbdrive.confirm_body]
+note = Under the question's heading: why it asks. Up to three balanced lines.
+en = The computer may still be copying to the card.
+zh-Hans = 电脑可能仍在向存储卡复制。
+es = La computadora aún puede estar copiando a la tarjeta.
+pt-BR = O computador ainda pode estar copiando para o cartão.
+fr = L'ordinateur copie peut-être encore vers la carte.
+de = Der Computer kopiert vielleicht noch auf die Karte.
+ja = パソコンがまだカードにコピー中かもしれません。
+it = Il computer potrebbe ancora copiare sulla scheda.

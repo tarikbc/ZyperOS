@@ -35,6 +35,9 @@ typedef struct {
 	char cable_addr[32];
 	/* MP4 has something to play, so the footer offers SELECT */
 	bool music;
+	/* The image has Flash Drive (Computer Connected's fourth tile), so the
+	 * USB card says it is a way too */
+	bool drive;
 } eh_state;
 
 /* One way as the screen says it */
@@ -43,6 +46,8 @@ typedef struct {
 	const char *key;        /* the button that starts it: "A", "Y" */
 	const char *step[3];    /* what to do, in order */
 	const char *why;        /* why it cannot start now; NULL when it can */
+	const char *also;       /* the other way on the same cable, in why's place
+	                           when nothing is missing: Flash Drive */
 } eh_text;
 
 /* `s`'s words for `w`. `buf` holds the one step with an address in it. */

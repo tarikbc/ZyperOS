@@ -745,3 +745,14 @@ fr = réponse impossible
 de = keine Antwort möglich
 ja = 応答できませんでした
 it = impossibile rispondere
+
+[xfer.tile_usb_drive]
+note = A tile of Computer Connected (the question a computer on the USB cable gets): the card becomes a plain flash drive the computer opens with no driver, until it is ejected; ZyperOS steps aside meanwhile. The idea in each language's everyday word for a USB stick, not the English one: Flash Drive, Pen drive (pt-BR), U 盘, Memoria USB, Clé USB, USB-Stick, USBメモリ, Chiavetta USB. Title Case in English.
+en = Flash Drive
+zh-Hans = U 盘
+es = Memoria USB
+pt-BR = Pen drive
+fr = Clé USB
+de = USB-Stick
+ja = USBメモリ
+it = Chiavetta USB

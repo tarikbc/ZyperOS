@@ -280,6 +280,36 @@ void plat_present(void)
 
 void plat_draw_to_screen(void) { SDL_SetRenderTarget(ren, screen_tex); }
 
+/* The picture as plat_save_screen writes it, drawn in a texture of the
+ * panel's size and read back from there: the panel itself is not touched,
+ * so pages made only to be saved (Flash Drive's, which usbdrive shows
+ * later) never flash past (2026-11-11: three pages and the atlas went over
+ * the panel before "One moment"). */
+bool plat_save_screen_hidden(const char *path)
+{
+	SDL_Rect dest = { (panel_w - 640) / 2, (panel_h - 480) / 2, 640, 480 };
+	size_t n = (size_t)panel_w * (size_t)panel_h * 4;
+	SDL_Texture *t = SDL_CreateTexture(ren, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET, panel_w, panel_h);
+	void *px = malloc(n);
+	FILE *f;
+	bool ok = false;
+
+	if (t && px && SDL_SetRenderTarget(ren, t) == 0) {
+		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+		SDL_RenderClear(ren);
+		SDL_RenderCopyEx(ren, screen_tex, NULL, &dest, panel_turn, NULL, SDL_FLIP_NONE);
+		if (SDL_RenderReadPixels(ren, NULL, SDL_PIXELFORMAT_XRGB8888, px, panel_w * 4) == 0 &&
+		    (f = fopen(path, "wb"))) {
+			ok = fwrite(px, 1, n, f) == n;
+			if (fclose(f) != 0) ok = false;
+		}
+	}
+	free(px);
+	SDL_SetRenderTarget(ren, screen_tex);
+	if (t) SDL_DestroyTexture(t);
+	return ok;
+}
+
 /* show_screen's picture, read back from the panel's own buffer before it is
  * presented, so the file is what the panel shows: 480x640, turned (640x480
  * on a landscape display). */
@@ -1347,6 +1377,11 @@ void plat_volume_set_pct(int pct)
 	if (mixer_fd < 0) return;
 	apply_volume(clampi((pct * VOL_MAX + 50) / 100, 0, VOL_MAX));
 	levels_save();
+}
+
+int plat_brightness_raw(int level)
+{
+	return level >= 0 && level <= BRIGHT_MAX ? bright_ladder[level] : -1;
 }
 
 void plat_brightness_set(int level)

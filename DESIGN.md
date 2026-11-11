@@ -1569,6 +1569,62 @@ it." Opens and closes as every panel does (8.2). A host shot:
 lab, `docs/design/mock/usb-lab.html`, 2026-11-05: Three tiles, starting on
 Charge Only.)*
 
+**Flash Drive** (2026-11-11; each language's everyday word for a USB
+stick: "Pen drive", "Clé USB", "USB-Stick", "USBメモリ"), UI_GLYPH_USB.
+With it the tiles go two to a row, a grid of TILE_W2 (408) by 164: Charge
+Only and File Transfer, then Flash Drive and, on a development image,
+Developer (SSH); a last row of one centered. A grid's tile has its mark at
+54 and its name on one line at 110 (its two lines joined, with no space
+after a hyphen), in **meta** where **menu** does not fit. Up and down move
+between the rows. It starts on Charge Only, the safe answer. Chosen, ZyperOS
+draws three full pages for plastron's usbdrive, which has no words or theme
+of its own, saves them in /tmp and leaves. Each page is the empty home's
+top (11.19): Zyper (124) at (123, 168) beside the heading in **title**
+**text** at x 208 (two balanced lines when one is too long). "Connected as
+a flash drive" has two **raised** tiles side by side under it
+(**radius-card**, 472 wide from **inset**, y 256, 280 tall), one for each
+way (2026-11-11, my pick): **Download**, to the card (the computer writes), an arrow down
+into a tray (UI_GLYPH_TO_CARD, System Update's corner mark's family), and
+**Upload**, from the card (it reads), an arrow up out of a tray
+(UI_GLYPH_FROM_CARD). Each language's everyday words for them ("Réception" and
+"Envoi" in French, "Descarga" and "Subida" in Spanish).
+In each, the mark (56) and its name in **menu** **text** at the top, the
+speed big in **title** **text**, and the total since the start under it in
+**meta** **text-soft**. A way that moved in the last 2 s has its mark in
+**accent-ink**; an idle one's is **text-dim** and its speed reads 0 MB/s.
+No status row: the two tiles say it. Under them "Eject it on the computer
+to finish." in **meta** **text-soft**, and at the foot two hints, the
+shelves' foot's size (11.9), centered as a pair: B "Eject" and POWER "Stop
+and power off". B ejects from the handheld (the medium taken away, so the
+computer lets go of it, then back as after the computer's eject); if the
+computer wrote in the last 5 s, it asks first, on a page of the same make:
+"Eject anyway?" over "The computer may still be copying to the card." in
+the wide tile, A "Eject" and B "Keep" at the foot. Ejecting on the computer
+stays the way the eject line names. FUNCTION and volume step the
+brightness on its usual rungs, and the brightness bar (11.6) shows at the
+top as everywhere, pre-drawn at every rung by the launcher on the ground
+it sits on (bright.raw), up for 1.5 s; the rung is kept as the launcher
+keeps its own. "One moment / The
+card is getting ready." (both ways) and "The card is busy / It stays on the
+handheld. Try again in a moment." (fail closed: never exported while
+mounted or held) have their words in one tile the width of both, in
+**menu** **text-soft**. The tiles are live: ZyperOS also leaves an atlas,
+each token of a number in the speeds' face and in the totals' (a digit in a
+cell as wide as the widest digit, so a number does not shift as it counts),
+the language's decimal mark and units ("1,24 Go"), "/s", and each way's
+mark moving and idle, on the tiles' color, with where they and the six
+slots are; usbdrive reads the games partition's /sys stat once a second and
+draws only a tile that changed, so an idle drive costs nothing (plastron's
+package/usbdrive/src/atlas.h and drivestat.h; the atlas is read as
+untrusted). Speeds 1000-based, one decimal in MB/s (999.9 MB/s at most),
+totals with two in GB (999.99 GB); never a time left, as the handheld sees
+blocks, not files. Every slot edge is a multiple of 8 so it lands on a
+pixel of the saved 640 x 480. Without the atlas the page shows as drawn,
+both ways idle. Host shots: `--usb-ask N [plain] drive`, `--usb-drive N
+[in|out|both|wide]` (a copy each way, both, the widest numbers), and
+`--usb-drive 3` for the question, `--usb-drive 0 bright` with the bar,
+and `--usb-drive 4` for the atlas, which prints where everything is.
+
 MENU > **Developer Mode** (on or off, between Show Tutorial and System
 Update) is a development image's only: on, the link is always up and nothing
 is asked.

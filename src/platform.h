@@ -100,6 +100,8 @@ void plat_video_under(SDL_Texture *tex, const SDL_Rect *dst, SDL_Color bg);
  * plastron's splash --still to hold while a port loads (launch_port). False
  * where there is nothing to hold it with. */
 bool plat_save_screen(const char *path);
+/* The same file, with nothing shown: the panel keeps what it had */
+bool plat_save_screen_hidden(const char *path);
 /* plat_save_screen's opposite: a picture of the panel as the panel shows it,
  * src/portmenu.h's still (a port's frame, saved by portkeys under the in-game
  * menu), turned back into the landscape this process draws in, as a texture
@@ -327,6 +329,9 @@ void plat_volume_nudge(int delta);
 void plat_brightness_nudge(int delta);
 void plat_volume_set_pct(int pct);
 void plat_brightness_set(int level);
+/* The backlight's own value at rung `level` (its ladder), -1 where there is
+ * none to hand to another program: Flash Drive's usbdrive steps the same rungs */
+int  plat_brightness_raw(int level);
 
 /* The panel's backlight off or on, leaving the brightness level as it was -
  * Muse's pocket lock. Off is the display engine's own switch, not a black
