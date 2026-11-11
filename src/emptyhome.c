@@ -37,6 +37,8 @@ void eh_words(const eh_state *s, eh_way w, eh_text *out, char *buf, size_t n)
 		if (!s->ok[EH_USB])
 			out->why = s->shared_port ? T(S_EMPTYHOME_UNPLUG_ADAPTER)
 			                          : T(S_EMPTYHOME_PLUG_COMPUTER_FIRST);
+		else if (s->drive)
+			out->also = T(S_EMPTYHOME_FLASH_DRIVE);
 	} else {
 		out->name = T(S_EMPTYHOME_CARD_WIFI);
 		out->step[0] = s->builtin_wifi ? T(S_EMPTYHOME_CONNECT_WIFI)

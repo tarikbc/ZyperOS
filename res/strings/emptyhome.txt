@@ -166,6 +166,17 @@ de = BIOS-Dateien gehören in Bios/ auf der Karte.
 ja = BIOS ファイルはカードの Bios/ に入れます。
 it = I file BIOS vanno in Bios/ sulla scheda.
 
+[emptyhome.flash_drive]
+note = In the USB card, at its foot where the Wi-Fi card says what is missing, where the image has Flash Drive: the other choice on the same cable, where the computer opens the card as a USB stick. Its name is xfer.tile_usb_drive's, as the Computer Connected tile says it; Says no more: the Flash Drive screen says where games go. tight: about 420 units.
+en = Or choose Flash Drive
+zh-Hans = 或选择 U 盘
+es = O elige Memoria USB
+pt-BR = Ou escolha Pen drive
+fr = Ou choisissez Clé USB
+de = Oder USB-Stick wählen
+ja = または USBメモリ を選択
+it = Oppure scegli Chiavetta USB
+
 [emptyhome.settings]
 note = The footer's hint beside the MENU button: MENU opens the settings.
 en = Settings
