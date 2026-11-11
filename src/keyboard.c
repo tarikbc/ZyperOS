@@ -79,7 +79,7 @@ typedef struct {
 	 * and theme it holds them in when grid_ok */
 	key_cache grid;
 	bool grid_ok;
-	int grid_layer, grid_theme;
+	int grid_layer, grid_theme, grid_y;
 	SDL_Texture *field;
 	char field_text[512];
 	SDL_Color field_color;
@@ -147,31 +147,62 @@ static bool act(kb_state *k, kb_action a, int cap, unsigned now)
 
 /* ---------- drawing ------------------------------------------------------- */
 
-/* The panel and what is in it, in units from the panel's corner: the keyboard
- * lab's layout (docs/design/mock/kit.css, .kb2.wide, with the one quiet line),
- * which is 940 wide so that a button and its label fit in each action key at
- * **meta** size. The keys' own sizes are src/kbnav.h's. */
-#define PANEL_W      940
-#define PANEL_H      604
-#define FIELD_INSET   28     /* the field from the panel's sides */
-#define FIELD_Y       82
+/* The keys' own sizes are src/kbnav.h's, and the panel around them is a
+ * menu's (main.c's menu_draw): its padding at the sides, its heading in the
+ * same band over the same rule, and its top where a tall menu's is. The field
+ * is as wide as the keys, so their edges line up under it. The panel grows
+ * with the fonts the language has, as a menu's does (kb_geo). */
 #define FIELD_H       64
 #define FIELD_PAD     16     /* the text from the field's ends */
-#define GRID_Y       150
-#define ACTIONS_Y    (GRID_Y + KB_ROWS * (KB_KEY_H + KB_KEY_GAP))
 #define ACT_GLYPH     40     /* an action key's button glyph */
 /* A glyph to its label. The lab drew 10; Lexend's "unshift" beside X fills
  * all but 5 units of its key at that, so the grid's 8 gives it two more. */
 #define ACT_GAP  DS_GRID
 #define LINE_GLYPH    44     /* the line's glyphs */
 #define LINE_SEP      28     /* between the line's two pairs */
-#define LINE_BOTTOM   39     /* the line's middle, up from the panel's bottom */
 /* Space is drawn as the space mark, a bracket open at the top: the lab's 56
  * by 16 in 4-unit strokes, at 80% of the label's color. */
 #define SPACE_W       56
 #define SPACE_H       16
 #define SPACE_STROKE   4
 #define SPACE_ALPHA  204
+/* A tall menu's top: a grid step under the status corner's row, the same 96
+ * as main.c's MENU_TOP */
+#define KB_TOP        96
+
+/* Where everything is, on the screen. pad is a menu's (main.c's menu_pad: three
+ * quarters of a **menu** row), head the band its heading is centered in, down
+ * to the rule. Under the rule half a pad to the field; the field and the keys
+ * a key's gap apart, the grid and the action row as they always were; half a
+ * pad, the quiet line, and half a pad to the bottom, as a menu's footer has. */
+typedef struct {
+	SDL_Rect panel;
+	int pad, head;          /* from the panel's top: the rule's y */
+	int field_y, grid_y, actions_y, line_cy;   /* on the screen */
+} kb_geo;
+
+static kb_geo kb_geometry(void)
+{
+	kb_geo g;
+	int line_top, h;
+
+	g.pad = ui_font_line(UI_F_MENU) * 3 / 2 * 3 / 4;
+	g.head = ui_font_line(UI_F_LABEL) + g.pad;
+	h = g.head + g.pad / 2 + FIELD_H + KB_KEY_GAP
+	  + KB_ROWS * (KB_KEY_H + KB_KEY_GAP) + KB_KEY_H
+	  + g.pad / 2 + LINE_GLYPH + g.pad / 2;
+	g.panel.w = KB_GRID_W + 2 * g.pad;
+	g.panel.h = h;
+	g.panel.x = (ZYPEROS_SCREEN_W - g.panel.w) / 2;
+	g.panel.y = (ZYPEROS_SCREEN_H - h) / 2;
+	if (g.panel.y < KB_TOP) g.panel.y = KB_TOP;
+	g.field_y = g.panel.y + g.head + g.pad / 2;
+	g.grid_y = g.field_y + FIELD_H + KB_KEY_GAP;
+	g.actions_y = g.grid_y + KB_ROWS * (KB_KEY_H + KB_KEY_GAP);
+	line_top = g.actions_y + KB_KEY_H + g.pad / 2;
+	g.line_cy = line_top + LINE_GLYPH / 2;
+	return g;
+}
 
 /* Every line here is centered by its capitals, ui_cap_y, the rule ui_button
  * centers its letter by, so a glyph and the label beside it share a middle.
@@ -388,9 +419,9 @@ static void action_key(SDL_Renderer *r, kb_state *k, const ds_theme *t,
 }
 
 /* The grid and the action row's rect on the screen */
-static SDL_Rect keys_rect(int gx, int gy, const SDL_Rect *panel)
+static SDL_Rect keys_rect(int gx, int gy, const kb_geo *g)
 {
-	return (SDL_Rect){ gx, gy, KB_GRID_W, panel->y + ACTIONS_Y + KB_KEY_H - gy };
+	return (SDL_Rect){ gx, gy, KB_GRID_W, g->actions_y + KB_KEY_H - gy };
 }
 
 /* Every key at rest and unselected, drawn once into a screen-sized texture
@@ -405,7 +436,7 @@ static SDL_Rect keys_rect(int gx, int gy, const SDL_Rect *panel)
  * leaves the panel between them. The texture is copied 1:1 and nearest.
  * False when there is no texture, and every key is drawn as before. */
 static bool keys_kept(SDL_Renderer *r, kb_state *k, const ds_theme *t, TTF_Font *fk,
-                      int gx, int gy, const SDL_Rect *panel)
+                      int gx, int gy, const kb_geo *g)
 {
 	key_pass saved;
 	bool drawn = false;
@@ -424,7 +455,8 @@ static bool keys_kept(SDL_Renderer *r, kb_state *k, const ds_theme *t, TTF_Font 
 		}
 	}
 	if (!k->grid.texture) return false;
-	if (k->grid_ok && k->grid_layer == k->layer && k->grid_theme == theme_index()) return true;
+	if (k->grid_ok && k->grid_layer == k->layer && k->grid_theme == theme_index() &&
+	    k->grid_y == gy) return true;
 
 	saved = key_save(r);
 	if (SDL_SetRenderTarget(r, k->grid.texture) == 0 &&
@@ -436,7 +468,7 @@ static bool keys_kept(SDL_Renderer *r, kb_state *k, const ds_theme *t, TTF_Font 
 			for (c = 0; c < KB_COLS; c++)
 				grid_key(r, k, t, fk, gx, gy, i, c, false, 1.0f);
 		for (i = 0; i < KB_ACTIONS; i++)
-			action_key(r, k, t, gx, panel->y + ACTIONS_Y, i, false, 1.0f);
+			action_key(r, k, t, gx, g->actions_y, i, false, 1.0f);
 		drawn = true;
 	}
 	k->grid_ok = false;
@@ -444,6 +476,7 @@ static bool keys_kept(SDL_Renderer *r, kb_state *k, const ds_theme *t, TTF_Font 
 	k->grid_ok = true;
 	k->grid_layer = k->layer;
 	k->grid_theme = theme_index();
+	k->grid_y = gy;
 	return true;
 }
 
@@ -454,10 +487,10 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
                      bool lift)
 {
 	const ds_theme *t = theme();
-	SDL_Rect panel = { (ZYPEROS_SCREEN_W - PANEL_W) / 2,
-	                   (ZYPEROS_SCREEN_H - PANEL_H) / 2, PANEL_W, PANEL_H };
-	int gx = panel.x + (PANEL_W - KB_GRID_W) / 2;
-	int gy = panel.y + GRID_Y;
+	const kb_geo g = kb_geometry();
+	SDL_Rect panel = g.panel;
+	int gx = panel.x + g.pad;
+	int gy = g.grid_y;
 	TTF_Font *fk = ui_font(UI_F_MENU);
 	TTF_Font *fl = ui_font(UI_F_LABEL);
 	TTF_Font *fm = ui_font(UI_F_META);
@@ -471,16 +504,18 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 	ui_panel(r, &panel, DS_RADIUS_PANEL);
 
 	/* The title, centered by its capitals in the band between the panel's
-	 * inner edge and the field, the way a menu centers its heading. */
-	ui_text(r, fl, title, panel.x + PANEL_W / 2,
-	        ui_cap_y(fl, panel.y + (UI_PANEL_BORDER + FIELD_Y) / 2), 0,
+	 * inner edge and the rule, over a rule in **edge**: a menu's heading */
+	ui_text(r, fl, title, panel.x + panel.w / 2,
+	        ui_cap_y(fl, panel.y + (UI_PANEL_BORDER + g.head) / 2), 0,
 	        ui_col(t->text_soft, 255));
+	SDL_SetRenderDrawColor(r, t->edge.r, t->edge.g, t->edge.b, 255);
+	SDL_RenderFillRect(r, &(SDL_Rect){ panel.x + g.pad, panel.y + g.head,
+	                                   KB_GRID_W, DS_RULE });
 
 	/* The field: **ground** inside an **edge** line. Always in clear - see
 	 * the note in keyboard.h. */
 	{
-		SDL_Rect f = { panel.x + FIELD_INSET, panel.y + FIELD_Y,
-		               PANEL_W - FIELD_INSET * 2, FIELD_H };
+		SDL_Rect f = { gx, g.field_y, KB_GRID_W, FIELD_H };
 		SDL_Rect in = { f.x + DS_RULE, f.y + DS_RULE,
 		                f.w - DS_RULE * 2, f.h - DS_RULE * 2 };
 		/* Inside the line across, and the whole field down: a descender
@@ -552,8 +587,8 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 	 * kept one, so its rect is given back to the panel's **surface** first,
 	 * which is what is under every key. Without a texture, every key. */
 	{
-		SDL_Rect kr = keys_rect(gx, gy, &panel);
-		bool kept = keys_kept(r, k, t, fk, gx, gy, &panel);
+		SDL_Rect kr = keys_rect(gx, gy, &g);
+		bool kept = keys_kept(r, k, t, fk, gx, gy, &g);
 
 		if (kept) SDL_RenderCopy(r, k->grid.texture, &kr, &kr);
 		for (i = 0; i <= KB_ROWS; i++) {
@@ -574,14 +609,14 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 						int x, w;
 
 						kb_action_span(c, &x, &w);
-						q = (SDL_Rect){ gx + x, panel.y + ACTIONS_Y, w, KB_KEY_H };
+						q = (SDL_Rect){ gx + x, g.actions_y, w, KB_KEY_H };
 					}
 					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 					SDL_SetRenderDrawColor(r, t->surface.r, t->surface.g, t->surface.b, 255);
 					SDL_RenderFillRect(r, &q);
 				}
 				if (i < KB_ROWS) grid_key(r, k, t, fk, gx, gy, i, c, sel, scale);
-				else action_key(r, k, t, gx, panel.y + ACTIONS_Y, c, sel, scale);
+				else action_key(r, k, t, gx, g.actions_y, c, sel, scale);
 			}
 		}
 	}
@@ -592,14 +627,14 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 		static const char *btn[2] = { "L1/R1", "MENU" };
 		const char *lbl[2] = { T(S_KEYBOARD_CURSOR), T(S_KEYBOARD_CANCEL) };
 		int wd[2], total = LINE_SEP, x;
-		int cy = panel.y + PANEL_H - LINE_BOTTOM;
+		int cy = g.line_cy;
 
 		for (i = 0; i < 2; i++) {
 			wd[i] = ui_button_width(btn[i], LINE_GLYPH) + ACT_GAP
 			        + ui_text_width(fm, lbl[i]);
 			total += wd[i];
 		}
-		x = panel.x + (PANEL_W - total) / 2;
+		x = panel.x + (panel.w - total) / 2;
 		for (i = 0; i < 2; i++) {
 			glyph_label(r, btn[i], LINE_GLYPH, UI_BUTTON_PLAIN, lbl[i],
 			            ui_col(t->text_dim, 255), x + wd[i] / 2, cy, 0);
@@ -614,8 +649,7 @@ static void kb_draw(SDL_Renderer *r, kb_state *k, const char *title, unsigned no
 static void kb_draw_pose(SDL_Renderer *r, kb_state *k, const char *title,
                           unsigned now, kb_pose pose)
 {
-	SDL_Rect q = {(ZYPEROS_SCREEN_W - PANEL_W) / 2,
-	              (ZYPEROS_SCREEN_H - PANEL_H) / 2, PANEL_W, PANEL_H};
+	SDL_Rect q = kb_geometry().panel;
 	SDL_FRect dst = {q.x + q.w * (1 - pose.scale) / 2,
 	                 q.y + q.h * (1 - pose.scale) / 2,
 	                 q.w * pose.scale, q.h * pose.scale};

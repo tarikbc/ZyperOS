@@ -753,7 +753,11 @@ cursor, MENU cancel. A has no caption: it is OK everywhere. *(
 2026-11-04, in the keyboard lab: the action row, with one quiet line instead
 of the two rows of seven captions it had.)*
 
-The panel is 940 wide, so a button and its label fit in each action key at
+The panel is a menu's around the keys: a menu's padding at each side (about
+940 wide in all), its heading band and **edge** rule, its top at a tall menu's,
+and the field as wide as the keys, so their edges line up. *(2026-11-11: it
+had a tighter band, no rule and a wider field than the keys, and sat higher
+than a menu.)* A button and its label fit in each action key at
 **meta** size. In Lexend the longest, "unshift", has 3 to 4 units to spare at
 each side of its key; a face that sets it wider gives up half the gap between
 button and label and then the end of the label, never the key's edge. Keys are
