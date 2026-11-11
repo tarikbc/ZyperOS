@@ -520,8 +520,8 @@ Only):
 |---|---|
 | **Charge Only** | nothing more; B, or no answer, means the same |
 | **File Transfer** | opens USB File Transfer, with the link to the computer for as long as that screen is open |
-| **USB Drive** | release images: the card becomes a USB drive the computer opens like any other, with no driver (Windows 10 too). ZyperOS steps aside: the screen says "Connected as a USB drive. Eject it on the computer to finish." When you eject it on the computer, or pull the cable, the card comes back (checked first if the computer left it unfinished) and ZyperOS starts again where it was. POWER meanwhile stops it and turns the handheld off safely. If something still uses the card, nothing is shared and ZyperOS comes back |
-| **Developer (SSH)** | development images only, in USB Drive's place: the link stays on until the cable comes out, for the image's own SSH |
+| **Flash Drive** | release images: the card becomes a USB drive the computer opens like any other, with no driver (Windows 10 too). ZyperOS steps aside: the screen says "Connected as a flash drive. Eject it on the computer to finish." When you eject it on the computer, or pull the cable, the card comes back (checked first if the computer left it unfinished) and ZyperOS starts again where it was. POWER meanwhile stops it and turns the handheld off safely. If something still uses the card, nothing is shared and ZyperOS comes back |
+| **Developer (SSH)** | development images only, in Flash Drive's place: the link stays on until the cable comes out, for the image's own SSH |
 
 A wall charger is never asked about, and unplugging always goes back to
 charging only.

@@ -2,14 +2,14 @@
 # them): the card as a USB drive for the computer, while ZyperOS steps aside.
 
 [usbdrive.connected]
-note = The heading while the card is the computer's, as a USB drive. Sentence case.
-en = Connected as a USB drive
+note = The heading while the card is the computer's, as a flash drive (each language's everyday word for a USB stick, as the tile's). Sentence case.
+en = Connected as a flash drive
 zh-Hans = 已作为 U 盘连接
 es = Conectado como memoria USB
 pt-BR = Conectado como pen drive
 fr = Connecté comme clé USB
 de = Als USB-Stick verbunden
-ja = USB ドライブとして接続中
+ja = USBメモリとして接続中
 it = Collegato come chiavetta USB
 
 [usbdrive.eject]

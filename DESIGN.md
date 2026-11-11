@@ -1547,18 +1547,23 @@ it." Opens and closes as every panel does (8.2). A host shot:
 lab, `docs/design/mock/usb-lab.html`, 2026-11-05: Three tiles, starting on
 Charge Only.)*
 
-**USB Drive** (2026-11-11), a release image's third tile (UI_GLYPH_USB;
-"Pen drive" in Brazilian Portuguese), where a development image has
-Developer (SSH): four tiles left a two-line name no room. Chosen, ZyperOS
+**Flash Drive** (2026-11-11; each language's everyday word for a USB
+stick: "Pen drive", "Clé USB", "USB-Stick", "USBメモリ"), UI_GLYPH_USB.
+With it the tiles go two to a row, a grid of TILE_W2 (408) by 164: Charge
+Only and File Transfer, then Flash Drive and, on a development image,
+Developer (SSH); a last row of one centered. A grid's tile has its mark at
+54 and its name on one line at 110 (its two lines joined, with no space
+after a hyphen), in **meta** where **menu** does not fit. Up and down move
+between the rows. It starts on Charge Only, the safe answer. Chosen, ZyperOS
 draws three full pages for plastron's usbdrive, which has no words or theme
 of its own, saves them in /tmp and leaves: the ground, Zyper (200) at
 (512, 250), the heading in **title** **text** at y 450 and the words in
 **menu** **text-soft** balanced from y 528 every 52, and on the first the
-POWER line in **meta** **text-dim** at the foot. "Connected as a USB drive
+POWER line in **meta** **text-dim** at the foot. "Connected as a flash drive
 / Eject it on the computer to finish.", "One moment / The card is getting
 ready." (both ways), and "The card is busy / It stays on the handheld. Try
 again in a moment." (fail closed: never exported while mounted or held).
-Host shots: `--usb-ask 2 plain drive`, `--usb-drive N`.
+Host shots: `--usb-ask N [plain] drive`, `--usb-drive N`.
 
 MENU > **Developer Mode** (on or off, between Show Tutorial and System
 Update) is a development image's only: on, the link is always up and nothing

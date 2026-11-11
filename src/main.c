@@ -8181,6 +8181,7 @@ static void xfer_screen_way(app *a, int way);
  * three of them with the gaps and pads are 944, inside the screen's insets */
 #define TILE_W   272
 #define TILE_W2  408      /* two tiles: a name on one line, a line under it */
+#define TILE_HG  164      /* a grid's tile (Computer Connected): the mark, a name on one line */
 #define TILE_H   232
 #define TILE_GAP 24
 #define TILE_PAD 40
@@ -8319,7 +8320,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	SDL_Rect panel, rule;
 	tile_note nsub = { .n = 0 }, nwhat = { .n = 0 }, nleg;
 	int i, k, top, tiles_y, all = n, tiles_w, inner, widest, tw;
-	int tile_gap = TILE_GAP, tile_pad = TILE_PAD;
+	int tile_gap = TILE_GAP, tile_pad = TILE_PAD, cols, trows, th, tiles_h;
+	bool g_tiles_grid;
 	char head[2][LB_LINE];
 	int nhead;
 
@@ -8339,8 +8341,17 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	 * panel is as wide as its words need within the screen, never more */
 	/* Two tiles are wider, room for a name on one line and the small line
 	 * under it (What did you plug in?, DESIGN.md 11.36) */
-	tw = n == 2 ? TILE_W2 : TILE_W;
-	tiles_w = n * tw + (n - 1) * tile_gap;
+	/* Computer Connected's tiles two to a row, TILE_W2 by TILE_HG
+	 * (2026-11-11, with Flash Drive: four in a row left the longer names
+	 * no room); known by its first tile, Charge Only, so the panel drawn
+	 * again leaving (its snapshot) is the same grid */
+	g_tiles_grid = n >= 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_CHARGE;
+	tw = n == 2 || g_tiles_grid ? TILE_W2 : TILE_W;
+	cols = g_tiles_grid && n > 2 ? 2 : n;
+	trows = (n + cols - 1) / cols;
+	th = g_tiles_grid && n > 2 ? TILE_HG : TILE_H;
+	tiles_w = cols * tw + (cols - 1) * tile_gap;
+	tiles_h = trows * th + (trows - 1) * tile_gap;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
 	panel.w = tiles_w + 2 * tile_pad;
 	if (ui_text_width(fh, heading) + 2 * tile_pad > panel.w)
@@ -8358,7 +8369,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	/* A title wider than the panel is broken onto a second line, never cut */
 	nhead = ui_balance_lines(fh, heading, inner, 2, head);
 	if (nhead < 1) nhead = 0;
-	panel.h = 32 + (nhead > 1 ? nhead : 1) * lh + 24 + DS_RULE + (sub ? 20 + nsub.n * ls : 0) + 32 + TILE_H +
+	panel.h = 32 + (nhead > 1 ? nhead : 1) * lh + 24 + DS_RULE + (sub ? 20 + nsub.n * ls : 0) + 32 + tiles_h +
 	          (what ? 24 + nwhat.n * ls : 0) + 24 +
 	          (nh ? keyhints_height(hints, nh, inner) : nleg.n * ls) + 32;
 	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
@@ -8396,8 +8407,12 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	tiles_y += 32;
 
 	for (i = 0; i < n; i++) {
-		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (tw + tile_gap), tiles_y,
-		               tw, TILE_H };
+		/* By its row and column; a last row short of a whole one centered */
+		int row = i / cols, col = i % cols;
+		int in_row = row == trows - 1 ? n - row * cols : cols;
+		int row_w = in_row * tw + (in_row - 1) * tile_gap;
+		SDL_Rect t = { panel.x + (panel.w - row_w) / 2 + col * (tw + tile_gap),
+		               tiles_y + row * (th + tile_gap), tw, th };
 		bool on = i == sel;
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
 		const char *label = tiles[i].label ? tiles[i].label : "";
@@ -8426,6 +8441,31 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 			ui_fit_drawn(tiles[i].value);
 			continue;
 		}
+		if (th == TILE_HG) {
+			/* A grid's tile: the mark, and the name on one line under it
+			 * (its two lines joined), the smaller size where it does not
+			 * fit, on two lines only past that */
+			char joined[128];
+			char *c;
+
+			/* A line broken at a hyphen ("Datei-\nübertragung") joins
+			 * with none between; any other with a space */
+			snprintf(joined, sizeof joined, "%s", label);
+			for (c = joined; *c; c++)
+				if (*c == '\n') {
+					if (c > joined && c[-1] == '-') memmove(c, c + 1, strlen(c));
+					else *c = ' ';
+				}
+			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 54, 72, ink);
+			if (ui_text_width(fm, joined) <= t.w - 24 || ui_text_width(fs, joined) <= t.w - 24) {
+				f = ui_text_width(fm, joined) <= t.w - 24 ? fm : fs;
+				ui_text(a->r, f, joined, t.x + t.w / 2,
+				        ui_line_y(f == fs ? UI_F_META : UI_F_MENU, t.y + 110 + (f == fs ? (lm - ls) / 2 : 0)),
+				        0, ink);
+				ui_fit_drawn(label);
+				continue;
+			}
+		}
 		ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 56, 72, ink);
 		snprintf(one, sizeof one, "%.*s", nl ? (int)(nl - label) : (int)strlen(label), label);
 		snprintf(two, sizeof two, "%s", nl ? nl + 1 : "");
@@ -8447,7 +8487,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 				        ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y + lf), 0, ink);
 		}
 	}
-	tiles_y += TILE_H;
+	tiles_y += tiles_h;
 	/* What the focused one does, in **meta** **text-soft** under the tiles */
 	if (what) {
 		tiles_y += 24;
@@ -8495,13 +8535,12 @@ static int usb_ask_tiles(menu_row tiles[4], int what[4], bool dev)
 
 	what[n] = UA_CHARGE; tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
 	what[n] = UA_XFER;   tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
-	/* Three at most, each name on its two lines: a development image's
-	 * third is Developer (SSH), and USB Drive is a release image's (four
-	 * tiles left Développeur, Desenvolvedor, Sviluppatore no room) */
-	if (dev) { what[n] = UA_DEV; tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true }; }
-	else if (usb_drive_offered()) {
+	/* Two to a row (tiles_panel's grid): Charge Only and File Transfer,
+	 * then Flash Drive and, on a development image, Developer (SSH) */
+	if (usb_drive_offered()) {
 		what[n] = UA_DRIVE; tiles[n++] = (menu_row){ T(S_XFER_TILE_USB_DRIVE), NULL, true };
 	}
+	if (dev) { what[n] = UA_DEV; tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true }; }
 	return n;
 }
 
@@ -8602,6 +8641,14 @@ static void usb_ask(app *a)
 
 			moved_sound(a, b);
 			sel = (sel + (b == IN_LEFT ? -1 : 1) + n) % n;
+		}
+		/* Up and down between the grid's two rows */
+		if ((in_repeat(&a->in, IN_UP) || in_repeat(&a->in, IN_DOWN)) && n > 2) {
+			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : IN_DOWN;
+			int to = sel >= 2 ? sel - 2 : sel + 2;
+
+			if (to >= n) to = n - 1;
+			if (to != sel) { moved_sound(a, b); sel = to; }
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
