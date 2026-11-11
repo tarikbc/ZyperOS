@@ -330,5 +330,5 @@ bool idle_due(app *a)
 	 * counting as input: an album is somebody using the device with nobody
 	 * touching it, and when it stops the countdown starts fresh. */
 	return idle_check(&a->idle, plat_now_ms(), b < IN_COUNT,
-	                  on_charger() || musec_playing());
+	                  on_charger() || musec_playing() || up_working());
 }

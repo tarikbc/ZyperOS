@@ -1504,9 +1504,15 @@ on (158, 232); the versions in **title** **text** from x 270 on y 200,
 faces have no U+2192), or the installed version alone; under them at y 270
 one line in **meta** **text-dim** (what downloads and the whole folder, "Up
 to date · checked 9:41", "Looking for updates…"), **warning** when it says
-something went wrong. Then What's New, the release notes' first points in
-**menu** **text-soft** with a **text-dim** dot, a point at most two balanced
-lines, four lines in all, from y 348 every 52. While it works, one bar from
+something went wrong. Then What's New: the release notes' points whole, in
+**meta**, filled a word at a time onto lines of 804 from x 130 (a point's
+lead, its words before the first ": ", in **text**, the rest in
+**text-soft**), a **text-dim** dot at each point's first line, from y 348
+(362 under a two-line line) every 42, 14 more between points, down to y 548
+over a bar or a line, 640 when there is none; up and down scroll it a line
+at a time, and a small **text-dim** triangle at the right says there is
+more above or below. *(2026-11-11: the first release's points were cut at
+two lines, and at 110 characters by the release tool.)* While it works, one bar from
 x 90 to 934 at y 572, 18 tall, round, **track** with **accent-ink** over it,
 and its two words under it at y 626 in **meta** **text-dim** ("Downloading"
 and "6.1 of 14 MB"); when there is no bar, one centered **meta** line at
@@ -1521,8 +1527,17 @@ and its word in **meta** **text-soft**, 40 between pairs. A is the page's
 action (Download, Continue, Restart Now, Look Again, Try Again), B is Back
 ("Back, it goes on" while it works; "Later" when it is ready), Y is "Roll
 Back to 0.0.9" when the image allows one. Opened with a network and no look
-in the last ten minutes, it looks at once; once a day on a network it looks
-by itself, and only MENU's row says what it found. Every state's words are
+in the last ten minutes, it looks at once. It also looks each time Wi-Fi
+connects and once a day, and a release it finds is said once, by Zyper's
+bubble on the shelf (11.23's, "ZyperOS 1.0.4 is ready to download" over
+"Open MENU > System Update.", the lines balanced onto two each, no
+thermometer) or as a notice over a game. A download goes on behind every
+screen and game: the corner shows it (11.12, an arrow into a tray in File
+Transfer's ring, swept as far as the download), Auto Off waits for it, and
+when it is in, Zyper says "ready to install" the same way. One cut short (Wi-Fi
+gone, the handheld off) goes on by itself from where it stopped once
+Wi-Fi is back, and the page says so: "It goes on from where it stopped
+when Wi-Fi is back." Every state's words are
 in tools/sysupdate-check.c. *(My picks in the update lab, 2026-11-05:
 its own row, the full page, once a day on Wi-Fi.)*
 

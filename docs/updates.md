@@ -23,7 +23,7 @@ Next to the card image, the installers and `SHA256SUMS`, every release from
 | File | What it is |
 |---|---|
 | `ZyperOS-v<ver>-pixel2-update.zpk` | Every file of the image's own ZyperOS folder, one after the other: a gzip member where that is at least 5% smaller, else the bytes as they are. |
-| `ZyperOS-pixel2-update.txt` | The list: for each file its path, size, SHA-256, and place and length in the pack. Signed. The name has no version, so `releases/latest/download/` always finds the newest. |
+| `ZyperOS-pixel2-update.txt` | The list: for each file its path, size, SHA-256, and place and length in the pack. Signed. Its `note` lines are What's New: the points under the release notes' "## What's new" heading, each whole, as plain text (tools/update-pack.py; until 2026-11-11 cut at 110 characters). The name has no version, so `releases/latest/download/` always finds the newest. |
 
 The list (format 1, read by `update/manifest.c`):
 
@@ -78,6 +78,12 @@ libcurl, OpenSSL and zlib) does the work beside the launcher, so a download
 goes on when the player leaves the screen. The launcher starts it and reads
 its status file (`.userdata/pixel2/update/status`).
 
+The launcher looks by itself each time Wi-Fi connects (unless it looked in
+the last 5 minutes) and once a day, and says a new release once, by Zyper
+on the shelf or a notice over a game. While the program downloads or
+installs, Auto Off waits (on every screen and in a game, as for the
+charger), and the status corner shows it with how far it is.
+
 **check** reads the list from
 `https://github.com/tarikbc/ZyperOS/releases/latest/download/ZyperOS-pixel2-update.txt`
 (the folder's `cacert.pem` for TLS), checks the signature against the image's
@@ -107,7 +113,11 @@ keys and the device, and compares:
    and renamed into place; a journal (`ZyperOS.next/.staged`) records it.
 5. Cut short (Wi-Fi gone, power off, B and the device off): the next
    download keeps every journaled file and goes on from the byte the cut
-   `.zpart` ended at (`stopped`).
+   `.zpart` ended at (`stopped`). The launcher starts that next download by
+   itself (src/sysupdate.c, `su_auto_step`): as soon as Wi-Fi connects,
+   whether the download stopped or the handheld went off in the middle of
+   it, and again after 2, 4, 8 ... up to 32 minutes while it keeps stopping
+   on the same network. The page says so while there is no network.
 6. Every file again, read back off the card (the page cache dropped), against
    the signed list. A file that does not match is fetched again once, then
    the update is refused (`error`).

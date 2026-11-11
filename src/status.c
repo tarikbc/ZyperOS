@@ -327,6 +327,29 @@ static void xfer_mark(canvas *cv, const status_marks *m, const ds_theme *th)
 	paint(cv, &dnh, ink);
 }
 
+/* System Update at work in its 24: an arrow down into a tray, in
+ * **text-soft**, in the File Transfer mark's ring: **track**, swept
+ * clockwise from the top in **accent-ink** as far as the download */
+static void update_mark(canvas *cv, const status_marks *m, const ds_theme *th)
+{
+	shape shaft = { .kind = SH_LINES, .n = 2, .p = { 12, 5, 12, 13 }, .w = 1.25f };
+	shape head  = { .kind = SH_POLY,  .n = 3, .p = { 12, 16.5f, 7.5f, 11.5f, 16.5f, 11.5f } };
+	shape tray  = { .kind = SH_LINES, .n = 4, .p = { 7, 15.5f, 7, 18.5f, 17, 18.5f, 17, 15.5f }, .w = 1.0f };
+	shape track = { .kind = SH_ARC, .a = 12, .b = 12, .c = 11, .d = (float)M_PI, .w = 1 };
+	int pct = m->update_pct < 0 ? 0 : m->update_pct > 100 ? 100 : m->update_pct;
+
+	paint(cv, &track, th->track);
+	if (pct > 0) {
+		shape sweep = { .kind = SH_SWEEP, .a = 12, .b = 12, .c = 11,
+		                .d = 2 * (float)M_PI * (float)pct / 100.0f, .w = 1 };
+
+		paint(cv, &sweep, th->accent_ink);
+	}
+	paint(cv, &shaft, th->text_soft);
+	paint(cv, &head, th->text_soft);
+	paint(cv, &tray, th->text_soft);
+}
+
 /* Headphones in their 24: a headband over the top, a 3-unit stroke as the
  * rune's, its ends down inside two cups 6 by 10 with the battery's tip's
  * corners. */
@@ -378,6 +401,7 @@ static void usb_mark(canvas *cv, const ds_theme *th)
 /* ---- the row ------------------------------------------------------------------- */
 
 #define W_XFER   24
+#define W_UPDATE 24
 #define W_USB    24
 #define W_BT     16
 #define W_PHONES 24
@@ -395,6 +419,7 @@ int status_marks_width(const status_marks *m)
 	int w = 0, n = 0;
 
 	if (m->usb) { w += W_USB; n++; }
+	if (m->update) { w += W_UPDATE; n++; }
 	if (m->xfer) { w += W_XFER; n++; }
 	if (m->bt) { w += W_BT; n++; }
 	if (m->phones) { w += W_PHONES; n++; }
@@ -429,6 +454,11 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 		cv.mw = W_USB;
 		usb_mark(&cv, th);
 		cv.ox += W_USB + STATUS_GAP;
+	}
+	if (m->update) {
+		cv.mw = W_UPDATE;
+		update_mark(&cv, m, th);
+		cv.ox += W_UPDATE + STATUS_GAP;
 	}
 	if (m->xfer) {
 		cv.mw = W_XFER;

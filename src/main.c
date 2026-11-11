@@ -1903,12 +1903,17 @@ static void notice_queue(nq_kind kind, int id, int ms, const char *head,
 
 static void replug_game_tick(void);
 
+static void tick_update_daily(bool in_game);
+
 static void on_game_tick(void)
 {
 	char msg[96];
 
 	/* Developer Mode's SSH, which a game does not end (see dev_ssh_tick) */
 	dev_ssh_tick();
+	/* System Update behind the game: its looks, a cut download going on,
+	 * and its news as a notice */
+	tick_update_daily(true);
 	/* px2-open's status and quit, and an open that ends this game first */
 	if (g_ctl_app) ctl_poll(g_ctl_app, CTL_AT_GAME);
 	int rc;
@@ -1965,8 +1970,11 @@ static void on_game_tick(void)
 	g_game_ticking = false;
 	aout_retry_in_game();
 
+	/* Held on the charger, and while an update downloads or installs
+	 * behind the game (2026-11-11: Auto Off powered the Pixel down in the
+	 * middle of one) */
 	if (g_idle_secs > 0) {
-		bool ch = on_charger();
+		bool ch = on_charger() || up_working();
 
 		if (ch != g_idle_charging) {
 			g_idle_charging = ch;
@@ -2562,6 +2570,9 @@ static void corner_time_text(int minutes, char *out, size_t n)
 
 /* File Transfer behind the shelf, for the corner's mark (xs_*) */
 static void xs_mark(status_marks *m);
+/* System Update's page is up: the corner's update mark stays off there */
+static bool g_up_shown;
+static const su_view *up_view(bool now);
 
 static void status_gather(status_marks *m, bool moving)
 {
@@ -2590,6 +2601,14 @@ static void status_gather(status_marks *m, bool moving)
 	m->held = chg && charge_held();
 	xs_mark(m);
 	m->usb = g_usb_wait != 0;
+	/* System Update at work behind the screen, and how far its download is:
+	 * not on its own page, which shows it whole */
+	if (!g_up_shown && up_working()) {
+		const su_view *v = up_view(false);
+
+		m->update = true;
+		m->update_pct = v->st.total ? (int)(v->st.done * 100 / v->st.total) : 0;
+	}
 }
 
 /* The time a shot shows: today at --status's time of day, into *t. False for
@@ -2788,7 +2807,7 @@ static void theme_changed(app *a)
  * trial, and a third start without this word goes back to the version
  * before by itself. The word is ten seconds of a launcher whose screens are
  * running, asked from every screen's loop through tick_theme below. */
-static void tick_update_daily(void);   /* with System Update's screen */
+static void tick_update_daily(bool in_game);   /* with System Update's screen */
 static void up_spawn(const char *cmd);
 
 static void tick_update_trial(void)
@@ -2921,7 +2940,7 @@ bool tick_theme(app *a)
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
 	tick_boot_theme();
-	tick_update_daily();
+	tick_update_daily(false);
 	if (!theme_tick() && !g_theme_late) return false;
 	theme_changed(a);
 	return true;
@@ -4109,14 +4128,17 @@ static void song_popup_draw(app *a, unsigned now)
 #define HEATPOP_PAD_X   30
 #define HEATPOP_PAD_Y   18
 #define HEATPOP_GAP     18        /* the thermometer to the words */
-#define HEATPOP_LINE1   T(S_HEAT_ZYPER)
-#define HEATPOP_LINE2   T(S_HEAT_SLOWING)
+#define HEATPOP_LINE1   (g_heatpop.line1[0] ? g_heatpop.line1 : T(S_HEAT_ZYPER))
+#define HEATPOP_LINE2   (g_heatpop.line1[0] ? g_heatpop.line2 : T(S_HEAT_SLOWING))
 
 static struct {
 	bool     on;
 	unsigned at;       /* when he started up */
 	unsigned drawn;    /* render's last frame of it */
 	zr_rig   rig;
+	/* Another word of his in the same bubble (System Update's news,
+	 * up_notice_watch): its two lines and no thermometer; "" for the heat */
+	char     line1[160], line2[160];
 } g_heatpop;
 
 /* Its times, from `at`: up, the bubble in, held, out */
@@ -4126,6 +4148,7 @@ static struct {
 
 static void heatpop_show(unsigned now)
 {
+	g_heatpop.line1[0] = g_heatpop.line2[0] = '\0';
 	g_heatpop.on = true;
 	g_heatpop.at = now;
 	g_heatpop.drawn = now;
@@ -4206,15 +4229,30 @@ static void heatpop_draw(app *a, unsigned now)
 		SDL_Vertex v[3];
 		int i, l1 = ui_font_line(UI_F_LABEL), l2 = ui_font_line(UI_F_META);
 
+		/* News (System Update's) has no thermometer, and its lines are
+		 * balanced onto two each in the room right of him, the bubble
+		 * growing upward from where the heat's stands */
+		char a1[2][LB_LINE], a2[2][LB_LINE];
+		int n1 = 1, n2 = 1, k, room = ZYPEROS_SCREEN_W - 24 - HEATPOP_BUBBLE_X - 2 * HEATPOP_PAD_X;
+
 		mh = heatpop_mark_h();
-		mw = (mh + 1) / 2;
-		w1 = ui_text_width(f1, HEATPOP_LINE1);
-		w2 = ui_text_width(f2, HEATPOP_LINE2);
+		mw = g_heatpop.line1[0] ? -HEATPOP_GAP : (mh + 1) / 2;
+		if (g_heatpop.line1[0]) {
+			n1 = ui_balance_lines(f1, HEATPOP_LINE1, room, 2, a1);
+			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 2, a2);
+			for (k = 0, w1 = 0; k < n1; k++) if (ui_text_width(f1, a1[k]) > w1) w1 = ui_text_width(f1, a1[k]);
+			for (k = 0, w2 = 0; k < n2; k++) if (ui_text_width(f2, a2[k]) > w2) w2 = ui_text_width(f2, a2[k]);
+		} else {
+			snprintf(a1[0], LB_LINE, "%s", HEATPOP_LINE1);
+			snprintf(a2[0], LB_LINE, "%s", HEATPOP_LINE2);
+			w1 = ui_text_width(f1, a1[0]);
+			w2 = ui_text_width(f2, a2[0]);
+		}
 		w = HEATPOP_PAD_X + mw + HEATPOP_GAP + (w1 > w2 ? w1 : w2) + HEATPOP_PAD_X;
-		h = HEATPOP_PAD_Y + l1 + l2 + HEATPOP_PAD_Y;
+		h = HEATPOP_PAD_Y + n1 * l1 + n2 * l2 + HEATPOP_PAD_Y;
 		/* Sliding up the last few units as it fades in, as the tutorial's */
 		x = HEATPOP_BUBBLE_X;
-		y = HEATPOP_BUBBLE_Y + (int)(6.0f * (1.0f - op) + 0.5f);
+		y = HEATPOP_BUBBLE_Y - (n1 - 1) * l1 - (n2 - 1) * l2 + (int)(6.0f * (1.0f - op) + 0.5f);
 		ui_round_rect(a->r, &(SDL_Rect){ x, y, w, h }, DS_RADIUS_PANEL, slab);
 		/* The tail, toward his mouth */
 		v[0].position = (SDL_FPoint){ (float)x + 2.0f, (float)(y + h - 58) };
@@ -4222,11 +4260,17 @@ static void heatpop_draw(app *a, unsigned now)
 		v[2].position = (SDL_FPoint){ (float)x - 18.0f, (float)(y + h - 30) };
 		for (i = 0; i < 3; i++) { v[i].color = slab; v[i].tex_coord = (SDL_FPoint){ 0, 0 }; }
 		SDL_RenderGeometry(a->r, NULL, v, 3, NULL, 0);
-		heatpop_mark(a->r, x + HEATPOP_PAD_X, y + (h - mh) / 2, mh, ink.a);
-		ui_text(a->r, f1, HEATPOP_LINE1, x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
-		        ui_line_y(UI_F_LABEL, y + HEATPOP_PAD_Y), -1, ink);
-		ui_text(a->r, f2, HEATPOP_LINE2, x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
-		        ui_line_y(UI_F_META, y + HEATPOP_PAD_Y + l1), -1, ink);
+		if (!g_heatpop.line1[0]) heatpop_mark(a->r, x + HEATPOP_PAD_X, y + (h - mh) / 2, mh, ink.a);
+		if (g_heatpop.line1[0]) {           /* drawn whole, in pieces: said so */
+			ui_fit_drawn(HEATPOP_LINE1);
+			ui_fit_drawn(HEATPOP_LINE2);
+		}
+		for (k = 0; k < n1; k++)
+			ui_text(a->r, f1, a1[k], x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
+			        ui_line_y(UI_F_LABEL, y + HEATPOP_PAD_Y + k * l1), -1, ink);
+		for (k = 0; k < n2; k++)
+			ui_text(a->r, f2, a2[k], x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
+			        ui_line_y(UI_F_META, y + HEATPOP_PAD_Y + n1 * l1 + k * l2), -1, ink);
 	}
 	g_heatpop.drawn = now;
 	redraw_now();
@@ -6080,6 +6124,20 @@ static const su_view *up_view(bool now)
 	return &g_up;
 }
 
+/* At work on an update: downloading, checking what it fetched, copying the
+ * folder or writing the system. A look (checking) is not: it is one small
+ * request, and Auto Off may come. */
+bool up_working(void)
+{
+	const su_view *v;
+
+	if (!up_have()) return false;
+	v = up_view(false);
+	if (!v->running) return false;
+	return v->st.state == SU_DOWNLOADING || v->st.state == SU_COPYING ||
+	       v->st.state == SU_VERIFYING || v->st.state == SU_INSTALLING;
+}
+
 /* Start the program: check, download or rollback, on its own, as the device
  * name of the card's .userdata folder */
 static void up_spawn(const char *cmd)
@@ -6095,22 +6153,76 @@ static void up_spawn(const char *cmd)
 	g_up_read_at = 0;
 }
 
-/* Once a day on a network, a look at the newest release (the update lab's
- * pick): one small request, nothing downloaded, and only MENU's row says
- * what it found. Asked from every screen's loop through tick_theme. */
-static void tick_update_daily(void)
+/* System Update's news, said once per release (DESIGN.md 11.17): a new
+ * release a look found, and a download done in the background. Zyper's
+ * bubble on the shelf (the heat pop-up's, with these words), or a notice
+ * over a game; one that comes over a menu waits for the shelf. */
+static char g_up_news[2][160];
+
+static void up_news(const char *key, const char *fmt, const char *version, bool in_game)
+{
+	char told[40] = "";
+
+	db_get_str(db_dev(), key, told, sizeof told, "");
+	if (!version[0] || !strcmp(told, version)) return;
+	db_set_str(db_dev(), key, version);
+	snprintf(g_up_news[0], sizeof g_up_news[0], fmt, version);
+	snprintf(g_up_news[1], sizeof g_up_news[1], "%s", T(S_UPDATE_NEWS_WHERE));
+	fprintf(stderr, "update: news: %s\n", g_up_news[0]);
+	if (in_game) {
+		nq_item it = { .kind = NQ_SET, .ms = 5000 };
+
+		snprintf(it.head, sizeof it.head, "%s", T(S_SYSMENU_UPDATE));
+		snprintf(it.body, sizeof it.body, "%s", g_up_news[0]);
+		nq_push(&g_nq, &it);
+		g_up_news[0][0] = '\0';
+	}
+}
+
+/* The shelf's pass: the news up in Zyper's bubble, when there is some and
+ * nothing else of his is up */
+static void up_news_watch(void)
+{
+	unsigned now = plat_now_ms();
+
+	if (!g_up_news[0][0] || g_heatpop.on || g_songpop.on) return;
+	heatpop_show(now);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, "%s", g_up_news[0]);
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", g_up_news[1]);
+	g_up_news[0][0] = '\0';
+}
+
+/* The update's own clock, every 2 s, from every screen's loop through
+ * tick_theme and from a game's tick: su_auto_step's looks and resumes
+ * (src/sysupdate.h), and the news, once per release */
+static void tick_update_daily(bool in_game)
 {
 	static unsigned last;
+	static su_auto au;
 	unsigned t = plat_now_ms();
 	const su_view *v;
 
-	if (last && t - last < 60000) return;
+	if (last && t - last < 2000) return;
 	last = t ? t : 1;
 	if (t - t_boot0 < 30000 || !up_have()) return;
 	v = up_view(true);
-	if (v->running || !v->wifi || v->st.state == SU_UNSUPPORTED) return;
-	if (v->st.time && time(NULL) - (time_t)v->st.time < 24 * 3600) return;
-	up_spawn("check");
+	if (v->st.state == SU_UNSUPPORTED) return;
+	/* The news: a release found, and one ready */
+	if (!v->running && v->st.state == SU_AVAILABLE)
+		up_news("update.told", T(S_UPDATE_NEWS_AVAILABLE), v->st.version, in_game);
+	if (!v->running && v->st.state == SU_READY)
+		up_news("update.ready_told", T(S_UPDATE_NEWS_READY), v->st.version, in_game);
+	switch (su_auto_step(&au, v, t, (long long)time(NULL))) {
+	case SU_AUTO_RESUME:
+		fprintf(stderr, "update: the download was cut short: going on\n");
+		up_spawn("download");
+		break;
+	case SU_AUTO_CHECK:
+		up_spawn("check");
+		break;
+	default:
+		break;
+	}
 }
 
 /* Developer (SSH) is offered on a development image (dropbear at boot) and
@@ -12444,13 +12556,15 @@ static void bgm_screen(app *a)
  * B leaves; this page starts it and draws what it says. */
 #define UP_X       90                         /* the page's left and right edge */
 #define UP_W       (ZYPEROS_SCREEN_W - 2 * UP_X)
-#define UP_NOTES   3
+#define UP_NOTES   12
+#define UP_NOTE_W  512
 
 /* What's New: the release's own points, the list's "note" lines, signed with
- * it; the first UP_NOTES */
-static int up_notes(char out[UP_NOTES][120])
+ * it; the first UP_NOTES, each whole (a list from tools/update-pack.py since
+ * 2026-11-11 carries them uncut; one before, cut at 110 with "...") */
+static int up_notes(char out[UP_NOTES][UP_NOTE_W])
 {
-	char p[512], line[256];
+	char p[512], line[UP_NOTE_W + 8];
 	FILE *f;
 	int n = 0;
 
@@ -12461,10 +12575,25 @@ static int up_notes(char out[UP_NOTES][120])
 	while (f && n < UP_NOTES && fgets(line, sizeof line, f)) {
 		if (strncmp(line, "note ", 5)) continue;
 		line[strcspn(line, "\n")] = 0;
-		snprintf(out[n++], 120, "%s", line + 5);
+		snprintf(out[n++], UP_NOTE_W, "%s", line + 5);
 	}
 	if (f) fclose(f);
 	return n;
+}
+
+/* What's New's "more above" (up) or "more below" mark: a small triangle in
+ * **text-dim**, centered on x, its flat side at y */
+static void up_arrow_v(SDL_Renderer *r, int x, int y, bool up)
+{
+	SDL_Color c = UI_TEXT_DIM;
+	SDL_Vertex v[3];
+	int i, hw = 12, h = 10;
+
+	v[0].position = (SDL_FPoint){ (float)(x - hw), (float)(up ? y + h : y) };
+	v[1].position = (SDL_FPoint){ (float)(x + hw), (float)(up ? y + h : y) };
+	v[2].position = (SDL_FPoint){ (float)x, (float)(up ? y : y + h) };
+	for (i = 0; i < 3; i++) { v[i].color = c; v[i].tex_coord = (SDL_FPoint){ 0, 0 }; }
+	SDL_RenderGeometry(r, NULL, v, 3, NULL, 0);
 }
 
 /* The arrow between the versions, drawn: the faces have no U+2192. A shaft
@@ -12488,8 +12617,86 @@ static void up_arrow(SDL_Renderer *r, int x, int mid, int w)
  * PortMaster's, which is this page with its own words (src/pminstall.h).
  * `notes` are the points under the line, What's New on System Update's.
  * `icon`, PortMaster's (pm_icon_tex), stands where Zyper does, NULL for him. */
+/* What's New's lines, from its first at y 348 every UP_NOTE_STEP, as many
+ * as reach UP_NOTE_END: a point's lines balanced in **meta**, its lead
+ * ("**USB Accessories:**" in the release notes, the words before its first
+ * ": ") in **text** and the rest in **text-soft**, a dot at its first line,
+ * and air between points. Scrolled a line at a time (up and down); an
+ * arrow at the right says there is more above or below. */
+#define UP_NOTE_STEP 42
+#define UP_NOTE_GAP  14
+#define UP_NOTE_END  548
+#define UP_NOTE_LINES 8
+
+typedef struct { const char *text; int len, lead, first; } up_note_line;
+
+static int g_up_scroll;           /* What's New's first line on screen */
+static bool g_up_more;            /* ...and lines below the last on screen */
+
+/* `text` filled onto lines of `maxw` a word at a time, as a page of text
+ * is set (a balanced line, ui_balance_lines, is for a title or a message
+ * of two or three: over seven lines it set a point narrow and ragged). A
+ * word wider than a line goes on one of its own, cut there with the
+ * fitter's ellipsis, which says so on a host (the fit check). The count. */
+static int up_fill_lines(TTF_Font *f, const char *text, int maxw, int cap, char lines[][LB_LINE])
+{
+	char line[LB_LINE] = "", tryl[LB_LINE];
+	const char *p = text;
+	int n = 0;
+
+	while (*p && n < cap) {
+		const char *e;
+		size_t wl;
+
+		while (*p == ' ') p++;
+		if (!*p) break;
+		e = strchr(p, ' ');
+		wl = e ? (size_t)(e - p) : strlen(p);
+		snprintf(tryl, sizeof tryl, "%s%s%.*s", line, line[0] ? " " : "", (int)wl, p);
+		/* A "word" wider than the line: Chinese or Japanese, set without
+		 * spaces, which the line breaker breaks between characters */
+		if (!line[0] && ui_text_width(f, tryl) > maxw)
+			return ui_balance_lines(f, text, maxw, cap, lines);
+		if (!line[0] || ui_text_width(f, tryl) <= maxw) {
+			snprintf(line, sizeof line, "%s", tryl);
+			p += wl;
+			continue;
+		}
+		ui_fit_text(f, line, lines[n++], LB_LINE, maxw);
+		line[0] = '\0';
+	}
+	if (line[0] && n < cap) ui_fit_text(f, line, lines[n++], LB_LINE, maxw);
+	else if (*p) ui_fit_text(f, text, lines[n - 1], LB_LINE, 1);   /* more than cap lines: said */
+	return n;
+}
+
+/* Every line of the points, in order, into out (up to cap), with where
+ * each starts; the count */
+static int up_note_lines(TTF_Font *fs, const char *const *notes, int nnotes,
+                         char buf[][LB_LINE], up_note_line *out, int cap)
+{
+	int i, k, n = 0;
+
+	for (i = 0; i < nnotes && n < cap; i++) {
+		char lines[UP_NOTE_LINES][LB_LINE];
+		const char *colon = strstr(notes[i], ": ");
+		int lead = colon && colon - notes[i] <= 60 ? (int)(colon - notes[i]) + 1 : 0;
+		int m = up_fill_lines(fs, notes[i], UP_W - 40, UP_NOTE_LINES, lines);
+
+		for (k = 0; k < m && n < cap; k++, n++) {
+			snprintf(buf[n], LB_LINE, "%s", lines[k]);
+			out[n].text = buf[n];
+			out[n].len = (int)strlen(buf[n]);
+			out[n].first = k == 0;
+			/* The lead on the first line: the whole line when it is longer */
+			out[n].lead = k == 0 ? (lead < out[n].len ? lead : out[n].len) : 0;
+		}
+	}
+	return n;
+}
+
 static void update_page_draw(app *a, const char *heading, const su_page *p,
-                             char notes[][120], int nnotes, SDL_Texture *icon)
+                             const char *const *notes, int nnotes, SDL_Texture *icon)
 {
 	const ds_theme *thm = theme();
 	SDL_Renderer *r = a->r;
@@ -12525,9 +12732,13 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 	/* The line under the versions wraps to a second line before it is cut
 	 * (a long sentence in French or Portuguese); the second sits under it,
 	 * clear of What's New at 348 */
+	int sub_lines;
 	{
 		char sl[2][LB_LINE];
 		int n = ui_balance_lines(fs, p->sub, ZYPEROS_SCREEN_W - 272 - UP_X, 2, sl), k;
+
+		sub_lines = n;
+		if (n > 1) ui_fit_drawn(p->sub);        /* drawn whole, in pieces */
 		for (k = 0; k < n; k++)
 			ui_text(r, fs, sl[k], 272, ui_cap_y(fs, 270 + k * 38), -1, p->sub_warn ? warn : UI_TEXT_DIM);
 	}
@@ -12543,17 +12754,54 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		for (k = 0; k < n; k++)
 			ui_text(r, fm, lines[k], UP_X + 34, ui_cap_y(fm, 348 + k * 52), -1, UI_TEXT);
 	}
-	/* What's New: a point at most two lines, four lines in all, in **menu**
-	 * from y 348, a line every 52, clear of the bar at 572 */
-	for (i = 0, y = 348; p->notes && i < nnotes && y <= 348 + 3 * 52; i++) {
-		char lines[2][LB_LINE];
-		int n = ui_balance_lines(fm, notes[i], UP_W - 40, 2, lines), k;
+	g_up_more = false;
+	/* What's New (UP_NOTE_STEP above) */
+	if (p->notes && !p->warn[0] && nnotes > 0) {
+		static char buf[UP_NOTES * UP_NOTE_LINES][LB_LINE];
+		static up_note_line ln[UP_NOTES * UP_NOTE_LINES];
+		/* Down to the bar's room, or to the buttons' when there is no bar
+		 * and no line where it goes */
+		int note_end = p->bar || p->line[0] ? UP_NOTE_END : 640;
+		/* Under a two-line sub, a little lower, so the two read apart */
+		int top = sub_lines > 1 ? 362 : 348;
+		int n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES), fits, k;
 
-		/* A drawn dot, not the "·" glyph: Noto Sans SC's is full width,
-		 * and in Chinese it ran into the point's first character */
-		ui_round_rect(r, &(SDL_Rect){ UP_X + 4, y - 5, 10, 10 }, 5, UI_TEXT_DIM);
-		for (k = 0; k < n && y <= 348 + 3 * 52; k++, y += 52)
-			ui_text(r, fm, lines[k], UP_X + 40, ui_cap_y(fm, y), -1, UI_TEXT_SOFT);
+		/* Each line's place from the first point's top, the air before
+		 * each point after the first counted; the scroll held to what
+		 * shows the last line */
+		static int at[UP_NOTES * UP_NOTE_LINES];
+
+		for (k = 0, y = 0; k < n; k++) {
+			if (k > 0 && ln[k].first) y += UP_NOTE_GAP;
+			at[k] = y;
+			y += UP_NOTE_STEP;
+		}
+		for (fits = 0; fits < n && at[n - 1] - at[fits] > note_end - top; fits++) {}
+		if (g_up_scroll > fits) g_up_scroll = fits;
+		if (g_up_scroll < 0) g_up_scroll = 0;
+		for (k = g_up_scroll; k < n; k++) {
+			y = top + at[k] - at[g_up_scroll];
+			if (y > note_end) break;
+			/* A drawn dot, not the "·" glyph: Noto Sans SC's is full
+			 * width, and in Chinese it ran into the point's first
+			 * character */
+			if (ln[k].first)
+				ui_round_rect(r, &(SDL_Rect){ UP_X + 4, y - 5, 10, 10 }, 5, UI_TEXT_DIM);
+			if (ln[k].lead > 0) {
+				char lead[LB_LINE];
+
+				snprintf(lead, sizeof lead, "%.*s", ln[k].lead, ln[k].text);
+				x = UP_X + 40 + ui_text(r, fs, lead, UP_X + 40, ui_cap_y(fs, y), -1, UI_TEXT);
+				if (ln[k].text[ln[k].lead])
+					ui_text(r, fs, ln[k].text + ln[k].lead, x, ui_cap_y(fs, y), -1, UI_TEXT_SOFT);
+			} else {
+				ui_text(r, fs, ln[k].text, UP_X + 40, ui_cap_y(fs, y), -1, UI_TEXT_SOFT);
+			}
+		}
+		/* More above, more below: the menus' arrows, at the right */
+		if (g_up_scroll > 0) up_arrow_v(r, UP_X + UP_W - 8, top - 30, true);
+		if (k < n) up_arrow_v(r, UP_X + UP_W - 8, note_end + 4, false);
+		g_up_more = k < n;
 	}
 
 	/* The bar, track with accent-ink over it, and its two words under it */
@@ -12601,11 +12849,25 @@ static su_action update_page_key(const su_page *p, const char *button)
 	return SUA_NONE;
 }
 
+static void update_screen_body(app *a);
+
 static void update_screen(app *a)
 {
+	g_up_shown = true;
+	update_screen_body(a);
+	g_up_shown = false;
+}
+
+static void update_screen_body(app *a)
+{
 	const su_view *v = up_view(true);
-	char notes[UP_NOTES][120];
-	int nnotes = up_notes(notes);
+
+	char notes[UP_NOTES][UP_NOTE_W];
+	const char *np[UP_NOTES];
+	int nnotes = up_notes(notes), i;
+
+	for (i = 0; i < UP_NOTES; i++) np[i] = notes[i];
+	g_up_scroll = 0;
 	unsigned notes_at = plat_now_ms();
 
 	/* Opened with a network and nothing in hand: it looks now, one small
@@ -12634,6 +12896,9 @@ static void update_screen(app *a)
 		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
 		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
 		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		/* What's New, a line at a time: up and down (held, it goes on) */
+		if (in_repeat(&a->in, IN_UP) && g_up_scroll > 0) { g_up_scroll--; moved_sound(a, IN_UP); }
+		if (in_repeat(&a->in, IN_DOWN) && g_up_more) { g_up_scroll++; moved_sound(a, IN_DOWN); }
 		if (a->in.pressed[IN_ACCEPT])      act = update_page_key(&p, "A");
 		else if (a->in.pressed[IN_Y])      act = update_page_key(&p, "Y");
 		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_MENU]) {
@@ -12686,7 +12951,7 @@ static void update_screen(app *a)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nnotes, NULL);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, np, nnotes, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -19436,7 +19701,13 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nnotes, icon);
+		{
+			const char *np[PM_NOTES];
+			int i;
+
+			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
+			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nnotes, icon);
+		}
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -19776,7 +20047,7 @@ static void launch(app *a)
 			 * battery reason and no cost to leaving it. on_game_tick keeps
 			 * this true if the cable changes mid-game. */
 			g_idle_secs = a->auto_off;
-			g_idle_charging = on_charger();
+			g_idle_charging = on_charger() || up_working();
 			plat_resident_line("SETIDLE\tms=%d",
 			                   (g_idle_secs > 0 && !g_idle_charging)
 			                       ? g_idle_secs * 1000 : 0);
@@ -20325,6 +20596,8 @@ static int shot_popup_half = 2;
 static int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 static int shot_heatpop = -1;
+/* --upnews available|ready: his bubble with System Update's news instead */
+static const char *shot_upnews;
 /* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull|soon]: the
  * charging screen MS ms in (DESIGN.md 11.25), a wall charger putting 1480 mA
  * into a 62% battery; with hold, POWER held half way; unplugged, the cable
@@ -20515,6 +20788,11 @@ static bool shot_status_parse(const char *spec)
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
 		else if (!strcmp(w, "usb=on")) shot_st.m.usb = true;
+		/* System Update downloading behind: update=42, the ring that far */
+		else if (!strncmp(w, "update=", 7) && w[7] >= '0' && w[7] <= '9') {
+			shot_st.m.update = true;
+			shot_st.m.update_pct = atoi(w + 7);
+		}
 		/* headphones in the jack: their mark */
 		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
@@ -21050,11 +21328,14 @@ static void shot_compose(app *a)
 	}
 	if (shot_update >= 0) {
 		su_page p;
-		char notes[UP_NOTES][120];
-		int nn = up_notes(notes);
+		char notes[UP_NOTES][UP_NOTE_W];
+		const char *np[UP_NOTES];
+		int nn = up_notes(notes), i;
+
+		for (i = 0; i < UP_NOTES; i++) np[i] = notes[i];
 
 		su_page_build(up_view(true), &p);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nn, NULL);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, np, nn, NULL);
 		return;
 	}
 	if (g_pm_shot >= 0) {
@@ -21066,7 +21347,13 @@ static void shot_compose(app *a)
 		SDL_Texture *icon = pm_icon_tex(a);
 
 		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nn, icon);
+		{
+			const char *np[PM_NOTES];
+			int i;
+
+			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
+			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nn, icon);
+		}
 		if (icon) SDL_DestroyTexture(icon);
 		return;
 	}
@@ -21486,6 +21773,11 @@ static void shot_compose(app *a)
 		const unsigned T0 = 100000;
 
 		heatpop_show(T0);
+		if (shot_upnews) {
+			snprintf(g_heatpop.line1, sizeof g_heatpop.line1,
+			         T(strcmp(shot_upnews, "ready") ? S_UPDATE_NEWS_AVAILABLE : S_UPDATE_NEWS_READY), "1.0.4");
+			snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_UPDATE_NEWS_WHERE));
+		}
 		zr_init(&g_heatpop.rig, T0, 1);
 		zr_works(&g_heatpop.rig, T0 + DS_MS_MOVE);
 		heatpop_draw(a, T0 + (unsigned)shot_heatpop);
@@ -22638,6 +22930,14 @@ int main(int argc, char *argv[])
 				if (argv[i][0] >= '0' && argv[i][0] <= '9') shot_storage_sel = atoi(argv[i]);
 				else shot_storage_row = argv[i];
 			}
+		}
+		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
+			shot_upnews = argv[++i];
+			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
+		/* What's New scrolled N lines (System Update's page) */
+		else if (!strcmp(argv[i], "--update-scroll") && i + 1 < argc) {
+			g_up_scroll = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--update")) {
 			shot_update = 1;
@@ -23914,6 +24214,7 @@ int main(int argc, char *argv[])
 		song_watch();
 		/* ...and "Getting hot", when the chip has passed the trip */
 		heat_watch();
+		up_news_watch();
 
 		/* SELECT is Muse, on the shelf and on every screen but a running
 		 * game - see muse_open. Before the shelf's own keys, which do not use

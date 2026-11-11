@@ -84,6 +84,25 @@ typedef struct {
 } su_page;
 
 void su_page_build(const su_view *v, su_page *p);
+
+/* What the launcher starts by itself, from every screen's loop and a
+ * game's tick (2026-11-11, Tarik's first update over slow Wi-Fi):
+ * - a look each time Wi-Fi connects (the adapter at boot, a network joined
+ *   by hand), unless one came in the last 5 minutes, and once a day;
+ * - a download cut short (Wi-Fi gone, the handheld off) going on, from the
+ *   byte it stopped at: as Wi-Fi connects, and then after 2, 4, 8 ... up to
+ *   32 minutes while it keeps stopping.
+ * Nothing while the program is at work, with no network, or on an image
+ * without updates. */
+typedef enum { SU_AUTO_NONE, SU_AUTO_CHECK, SU_AUTO_RESUME } su_auto_do;
+
+typedef struct {
+	bool     wifi_was;
+	unsigned resumed_at;      /* 0 for not since the last cut was over */
+	unsigned backoff;
+} su_auto;
+
+su_auto_do su_auto_step(su_auto *a, const su_view *v, unsigned now_ms, long long now_s);
 /* The value of MENU's System Update row: the installed version, or the news. */
 const char *su_menu_value(const su_view *v, char *buf, size_t n);
 /* 0.10.0 > 0.9.2; 0.2.0-beta.1 < 0.2.0, as the update program compares */

@@ -330,6 +330,12 @@ EXTRA.setdefault("usb-menu-ask", ("demo", "PS1", ["--usb-menu", "--menu", "USB A
 EXTRA.setdefault("usb-menu-auto", ("demo", "PS1", ["--usb-menu", "auto", "--menu", "USB Accessories"]))
 EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
 EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
+# System Update (DESIGN.md 11.17, 2026-11-11): What's New scrolled to its
+# end, the corner's mark of a download behind the shelf, and Zyper's news
+EXTRA.setdefault("update-notes-end", ("demo", "PS1", ["--update", "--update-scroll", "99"]))
+EXTRA.setdefault("update-mark", ("demo", "PS1", ["--status", "10:08 24h wifi=3 batt=82 update=42"]))
+for _k in ("available", "ready"):
+    EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 
@@ -356,6 +362,9 @@ UPDATE_STATES = {
     "update-unsupported-offline": ("state unsupported\n", False),
     "update-uptodate": ("state uptodate\nversion 0.1.0\ntime {now}\n", True),
     "update-idle-offline": ("state idle\n", False),
+    # A download cut short, Wi-Fi gone: it says it goes on by itself
+    "update-stopped-offline": ("state stopped\ninstalled 0.1.0\nversion 0.1.1\nkind system\n"
+                               "done 31000000\ntotal 83000000\ndownload 83000000\ntime {now}\n", False),
     "update-error": ("state error\ntime {now}\n", True),
     "update-error-download": ("state error\nversion 0.1.1\ndownload 83000000\nkind system\ntime {now}\n", True),
     "update-needs-system": ("state needs-system\nversion 0.3.0\ntime {now}\n", True),
