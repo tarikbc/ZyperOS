@@ -144,24 +144,3 @@ de = Anmeldung fehlgeschlagen
 ja = サインインに失敗しました
 it = Accesso non riuscito
 
-[panel.b_close]
-note = A key legend at a panel's foot: B closes it. B is the button's name.
-en = B: close
-zh-Hans = B：关闭
-es = B: cerrar
-pt-BR = B: fechar
-fr = B\u00a0: fermer
-de = B: schließen
-ja = B：閉じる
-it = B: chiudi
-
-[panel.b_stop]
-note = A key legend at a panel's foot while something runs: B stops it.
-en = B: stop
-zh-Hans = B：停止
-es = B: detener
-pt-BR = B: parar
-fr = B\u00a0: arrêter
-de = B: stoppen
-ja = B：停止
-it = B: interrompi

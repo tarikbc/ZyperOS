@@ -234,6 +234,20 @@ static unsigned t_back0;
  * drawn last remembers the count it was drawn at (g_snap), and is still the
  * one on screen only while the count has not moved since: a keyboard, a slot
  * strip or Now Playing drawn after it has moved it. */
+/* A screen's one-button hint, B and its word (keyhints.h), for a row */
+static const char *b_legend(str_id word)
+{
+	return keyhints_legend((key_hint[]){ { "B", T(word) } }, 1);
+}
+
+/* The tutorial's START hint, as every hint (tour_hint_draw_set) */
+static void tour_hint(SDL_Renderer *r, const char *key, const char *label, int x, int cy)
+{
+	key_hint h = { key, label };
+
+	keyhints_draw(r, &h, 1, x, x + keyhints_width(key, label), cy, KEYHINTS_CENTER, false, 255);
+}
+
 static unsigned g_frame_no;
 
 /* One present of nothing but `c`, over the whole screen. */
@@ -4904,7 +4918,9 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		int w;
 
 		if (!rows[i].label) continue;          /* a rule measures nothing */
-		w = ui_text_width(fm, rows[i].label);
+		/* A legend of button hints (keyhints.h) on its one row */
+		w = keyhints_is(rows[i].label) ? keyhints_line_width(rows[i].label)
+		                               : ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
 			w += gap + menu_value_w(fm, rows[i].value);
 		if (w > content_w) content_w = w;
@@ -5431,7 +5447,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 *
 		 * The VALUE yields first: labels are short and fixed ("File", "Size"),
 		 * values are whatever the card happens to hold. */
-		if (ROW_IS_NOTE(rows[i])) {
+		if (keyhints_is(rows[i].label)) {
+			/* Button hints: a glyph and a word each, centered */
+			keyhints_draw_packed(a->r, rows[i].label, content_x, content_x + content_w,
+			                     y + ROW_H(rows[i]) / 2, lc.a);
+		} else if (ROW_IS_NOTE(rows[i])) {
 			char note[192];
 
 			/* A note that fits is centered, which is what a caption wants.
@@ -7789,7 +7809,7 @@ static void hare_preview(app *a, const char *name, const char *addr, const char 
 {
 	menu_row rows[7];
 	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
+	int n = hare_rows(rows, who, ssh, moved, now, b_legend(S_KEYHINT_CLOSE));
 
 	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
 	draw_shelf(a);
@@ -7859,7 +7879,7 @@ static void hot_preview(app *a, const char *ssid, const char *pass,
 	rows[3] = (menu_row){ "PIN",                 "4071", false };
 	rows[4] = (menu_row){ T(S_HOTPANEL_PHONES),  phones, false };
 	rows[5] = (menu_row){ T(S_XFER_NOW),         now,    false };
-	rows[6] = MENU_NOTE(T(S_PANEL_B_CLOSE));
+	rows[6] = MENU_NOTE(b_legend(S_KEYHINT_CLOSE));
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	panel_show(a, PANEL_HOT, XFER_NAME_WIFI, rows, 7, -1, 0, 0u, NULL, false, 0, NULL);
@@ -8802,9 +8822,9 @@ static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
 #define XS_SHELF_MS   3000u             /* the files still this long: rescan */
 #define XS_RESTART_MS 1500u             /* the page's restart answered first */
 #define XS_WRONG_MAX  10                /* wrong PINs that end it behind the shelf */
-#define XS_LEGEND     T(S_PANEL_B_CLOSE)
-#define XS_LEGEND_MOV T(S_XFER_LEGEND_MOVING)
-#define XS_LEGEND_END T(S_XFER_LEGEND_HIDE)
+#define XS_LEGEND     b_legend(S_KEYHINT_CLOSE)
+#define XS_LEGEND_MOV b_legend(S_KEYHINT_KEEP_GOING_OR_STOP)
+#define XS_LEGEND_END b_legend(S_KEYHINT_HIDE)
 
 typedef struct {
 	bool        on;             /* the server is up */
@@ -9525,7 +9545,7 @@ static int dev_rows(menu_row rows[6], char *cmd, size_t cn, char *keys, size_t k
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
 	rows[n++] = (menu_row){ "SSH", ssh, false };
-	rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+	rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_TURN_OFF_MODE) }, { "B", T(S_KEYHINT_CLOSE) } }, 2));
 	return n;
 }
 
@@ -9826,7 +9846,7 @@ static bool xs_before_game(app *a)
 				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
 			rows[0] = MENU_NOTE(line);
 			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE(T(S_XFER_B_BACK_TO_SHELF));
+			rows[2] = MENU_NOTE(b_legend(S_KEYHINT_BACK_TO_SHELF));
 			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -10128,7 +10148,7 @@ static int art_rows(menu_row *out, const char *where, const char *counts,
 {
 	out[0] = (menu_row){ T(S_SCRAPER_SYSTEMS), where,  false };
 	out[1] = (menu_row){ T(S_SCRAPER_ART),     counts, false };
-	out[2] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE), NULL, false };
+	out[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 	return 3;
 }
 
@@ -10333,7 +10353,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 					art_head(head, sizeof head, one);
 					row[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
 					                     T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND), false };
-					row[1] = (menu_row){ T(S_PANEL_B_CLOSE), NULL, false };
+					row[1] = (menu_row){ b_legend(S_KEYHINT_CLOSE), NULL, false };
 					timed_message(a, head, row, 2, menu_std_width(a), accent);
 					ss_run_cancel();
 					free_all_textures(a);
@@ -10343,7 +10363,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 
 				art_head(head, sizeof head, one);
 				rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART), ss_run_where(), false };
-				rows[1] = (menu_row){ T(S_PANEL_B_STOP), NULL, false };
+				rows[1] = (menu_row){ b_legend(S_KEYHINT_STOP), NULL, false };
 				if (!panel_frame(a, lv, &k)) continue;
 				tick_tint(a);
 				tick_theme(a);
@@ -10415,7 +10435,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 			                      : p.found ? T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND)
 			                      : had ? T(S_SCRAPER_NOT_FOUND_KEPT)
 			                            : T(S_SCRAPER_NOT_FOUND), false };
-			rows[1] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE),
+			rows[1] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE),
 			                      NULL, false };
 			nrows = 2;
 		} else {
@@ -12299,7 +12319,7 @@ static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
 	n = clock_rows(time(NULL), g_clock24, c->zone, rows, max, &c->b);
 	if (n + 3 <= max) {
 		rows[n++] = MENU_RULE;
-		rows[n++] = MENU_NOTE(T(S_DATETIME_CHANGE));
+		rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_CHANGE) } }, 1));
 		/* Only where it is true: the Brick's ntpd sets the clock again once
 		 * Wi-Fi connects, so a time set here lasts until then */
 		if (plat_has_wifi()) rows[n++] = MENU_NOTE(T(S_DATETIME_WIFI_SETS));
@@ -18300,7 +18320,7 @@ static void album_art_screen(app *a)
 			snprintf(counts, sizeof counts, T(S_MUSE_ART_COUNTS), st.found, st.missing);
 		rows[0] = (menu_row){ T(S_MUSE_ART_ALBUMS), where,  false };
 		rows[1] = (menu_row){ T(S_MUSE_ART_COVERS), counts, false };
-		rows[2] = (menu_row){ working ? T(S_MUSE_ART_STOP) : T(S_MUSE_ART_CLOSE), NULL, false };
+		rows[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -21328,7 +21348,7 @@ static void shot_compose(app *a)
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
 		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
-		                 T(S_PANEL_B_CLOSE));
+		                 b_legend(S_KEYHINT_CLOSE));
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
 		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -22076,6 +22096,7 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	plat_input_init();
 	plat_settings_init();
 	if (!ui_init(a.r, P_FONT)) fprintf(stderr, "port menu: font init failed\n");
@@ -23492,6 +23513,7 @@ int main(int argc, char *argv[])
 	}
 	t_mark("video");
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	t_mark("renderer");
 	/* The replug message, over every screen (DESIGN.md 11.36) */
 	plat_set_overlay(replug_overlay);

@@ -251,28 +251,6 @@ de = schließt nach dieser Datei
 ja = このファイルの後に終了
 it = chiusura dopo questo file
 
-[xfer.legend_moving]
-note = The key legend while files move: B asks whether to keep going behind the shelf or stop.
-en = B: keep going or stop
-zh-Hans = B：继续或停止
-es = B: continuar o detener
-pt-BR = B: continuar ou parar
-fr = B\u00a0: continuer ou arrêter
-de = B: weitermachen oder stoppen
-ja = B：続行または停止
-it = B: continua o interrompi
-
-[xfer.legend_hide]
-note = The key legend once it closes after the file on its way: B hides the screen.
-en = B: hide
-zh-Hans = B：隐藏
-es = B: ocultar
-pt-BR = B: ocultar
-fr = B\u00a0: masquer
-de = B: ausblenden
-ja = B：隠す
-it = B: nascondi
-
 [xfer.cable_unplugged]
 note = In the heading, where the address goes, when the USB cable came out.
 en = Cable unplugged
@@ -690,17 +668,6 @@ fr = Fin du fichier...
 de = Schließe die Datei ab ...
 ja = ファイルの転送を完了中…
 it = Completamento del file...
-
-[xfer.b_back_to_shelf]
-note = The key legend under it: B goes back to the shelf, the file still on its way.
-en = B: back to the shelf
-zh-Hans = B：返回游戏列表
-es = B: volver a la lista de juegos
-pt-BR = B: voltar à lista de jogos
-fr = B\u00a0: retour à la liste des jeux
-de = B: zurück zur Spieleliste
-ja = B：ゲーム一覧に戻る
-it = B: torna all'elenco giochi
 
 [xfer.closed_for_game]
 note = The message when a game starts and File Transfer closes for it.

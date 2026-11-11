@@ -1015,18 +1015,42 @@ static void glyph(SDL_Renderer *r, const tour *t, tour_step s, float cx, float c
 #undef P
 }
 
-/* "START: skip", DESIGN.md 11.4's form, at the bottom right; and where it
- * starts, which his bubble keeps clear of. */
-#define LEGEND T(S_TOUR_SKIP)
+/* START's hint, "(START) skip" (DESIGN.md 11.4), at the bottom right; and
+ * where it starts, which his bubble keeps clear of. Drawn as every button
+ * hint is (keyhints.h) through the hook the launcher sets
+ * (tour_hint_draw_set); without it - a check that links this file alone -
+ * a glyph and the word in **meta**. */
+static int  (*g_hint_w)(const char *key, const char *label);
+static void (*g_hint)(SDL_Renderer *r, const char *key, const char *label, int x, int cy);
 
-static void legend(SDL_Renderer *r)
+void tour_hint_draw_set(int (*width)(const char *key, const char *label),
+                        void (*draw)(SDL_Renderer *r, const char *key, const char *label, int x, int cy))
 {
-	words(r, UI_F_META, LEGEND, SCR_W - DS_INSET, SCR_H - 44, 1, theme()->text_dim, 1.0f);
+	g_hint_w = width;
+	g_hint = draw;
+}
+
+static float legend_w(void)
+{
+	return g_hint_w ? (float)g_hint_w("START", T(S_KEYHINT_SKIP))
+	                : (float)(ui_button_width("START", 32) + 12) + words_w(UI_F_META, T(S_KEYHINT_SKIP));
 }
 
 static float legend_left(void)
 {
-	return SCR_W - DS_INSET - words_w(UI_F_META, LEGEND);
+	return SCR_W - DS_INSET - legend_w();
+}
+
+static void legend(SDL_Renderer *r)
+{
+	int x = (int)legend_left(), cy = SCR_H - 44, bw = ui_button_width("START", 32);
+
+	if (g_hint) {
+		g_hint(r, "START", T(S_KEYHINT_SKIP), x, cy);
+		return;
+	}
+	ui_button(r, "START", x + bw / 2, cy, 32, UI_BUTTON_PLAIN);
+	words(r, UI_F_META, T(S_KEYHINT_SKIP), SCR_W - DS_INSET, cy, 1, theme()->text_soft, 1.0f);
 }
 
 /* The handheld's opacity: on through the lessons, it fades in with the

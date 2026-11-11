@@ -277,24 +277,3 @@ de = %d gefunden · %d nicht gefunden · %d fehlgeschlagen
 ja = %d 件取得 · %d 件なし · %d 件失敗
 it = %d trovate · %d non trovate · %d errori
 
-[muse.art_stop]
-note = Album Art: the last row while it works, B stops it
-en = B: stop
-zh-Hans = B：停止
-es = B: detener
-pt-BR = B: parar
-fr = B\u00a0: arrêter
-de = B: stoppen
-ja = B：停止
-it = B: interrompi
-
-[muse.art_close]
-note = Album Art: the last row once it has finished, B closes the panel
-en = B: close
-zh-Hans = B：关闭
-es = B: cerrar
-pt-BR = B: fechar
-fr = B\u00a0: fermer
-de = B: schließen
-ja = B：閉じる
-it = B: chiudi
