@@ -123,11 +123,41 @@ int main(void)
 	usbpower_parse("plug=1 ask=0 pin=1 vbus=0 computer=1 role=device auto=0 paused=0", &p);
 	CHECK(!usbpower_resume(&p, true, 4000), "a computer seen: powered again");
 
-	/* A question that came by itself takes no button for its first second */
-	CHECK(!usbpower_takes_input(5000, 5000) && !usbpower_takes_input(5000, 5000 + USBPOWER_TAKES_MS - 1),
-	      "a button taken in the first second");
-	CHECK(usbpower_takes_input(5000, 5000 + USBPOWER_TAKES_MS), "no button taken after a second");
-	CHECK(usbpower_takes_input(0xfffffc00u, 0xfffffc00u + USBPOWER_TAKES_MS), "the clock's wrap");
+	/* A question that came by itself: a button held through its start, or
+	 * pressed in its first half second, counts only after a release */
+	{
+		usbpower_guard g;
+		const unsigned A = 1u << 1, B = 1u << 2, L = 1u << 3;
+
+		/* B held as it appeared (the menus' back), still down: nothing */
+		usbpower_guard_start(&g, 10000, B);
+		CHECK(usbpower_guard_pass(&g, 10100, B, 0) == 0, "held through: counted");
+		CHECK(usbpower_guard_pass(&g, 11000, B, B) == 0, "held through, past the half second: counted");
+		/* Let go, then pressed again: answers at once */
+		CHECK(usbpower_guard_pass(&g, 11100, 0, 0) == 0, "a release counted as a press");
+		CHECK(usbpower_guard_pass(&g, 11200, B, B) == B, "released then pressed: not counted");
+		/* A pressed at 0.4 s: not counted, and not after either while it is down */
+		usbpower_guard_start(&g, 20000, 0);
+		CHECK(usbpower_guard_pass(&g, 20000 + USBPOWER_TAKES_MS - 1, A, A) == 0, "a press at 0.499 s counted");
+		CHECK(usbpower_guard_pass(&g, 20000 + USBPOWER_TAKES_MS + 50, A, A) == 0, "the early press, still down, counted");
+		CHECK(usbpower_guard_pass(&g, 20000 + USBPOWER_TAKES_MS + 100, 0, 0) == 0, "its release counted");
+		CHECK(usbpower_guard_pass(&g, 20000 + USBPOWER_TAKES_MS + 150, A, A) == A, "pressed again: not counted");
+		/* At 0.5 s exactly: counts */
+		usbpower_guard_start(&g, 30000, 0);
+		CHECK(usbpower_guard_pass(&g, 30000 + USBPOWER_TAKES_MS, L, L) == L, "a press at 0.5 s not counted");
+		/* One held, another pressed after the half second: that one counts */
+		usbpower_guard_start(&g, 40000, B);
+		CHECK(usbpower_guard_pass(&g, 40000 + USBPOWER_TAKES_MS + 10, B | A, A) == A, "a fresh press beside a held one");
+		/* The hints from the half second */
+		CHECK(!usbpower_guard_hints(&g, 40000 + USBPOWER_TAKES_MS - 1) && usbpower_guard_hints(&g, 40000 + USBPOWER_TAKES_MS),
+		      "the hints before the half second, or not after");
+		/* The clock's wrap */
+		usbpower_guard_start(&g, 0xfffffe00u, 0);
+		CHECK(usbpower_guard_pass(&g, 0xfffffe00u + 100, A, A) == 0, "early across the wrap counted");
+		CHECK(usbpower_guard_pass(&g, 0xfffffe00u + USBPOWER_TAKES_MS + 200, 0, 0) == 0 &&
+		      usbpower_guard_pass(&g, 0xfffffe00u + USBPOWER_TAKES_MS + 300, A, A) == A,
+		      "after the wrap, a fresh press not counted");
+	}
 
 	/* The files, in a scratch folder */
 	CHECK(mkdtemp(dir) != NULL, "no scratch folder");

@@ -91,10 +91,26 @@ int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_m
 bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms);
 
 /* A question that comes by itself (What did you plug in?, Computer
- * Connected) takes no button for its first USBPOWER_TAKES_MS, and shows its
- * button hints only then: one comes while the player is pressing through
- * the menus, and a press meant for them answered it (the same report) */
-#define USBPOWER_TAKES_MS 1000u
-bool usbpower_takes_input(unsigned opened_ms, unsigned now_ms);
+ * Connected) came while the player was pressing through the menus, and a
+ * press meant for them answered it (the same report). So a button that was
+ * down when it appeared counts only once it has been let go and pressed
+ * again, and one pressed in its first USBPOWER_TAKES_MS counts the same
+ * way; after that, a press answers at once. Its button hints show from
+ * USBPOWER_TAKES_MS. Buttons are bits (1 << button); the caller keeps POWER
+ * out of it, which always works. */
+#define USBPOWER_TAKES_MS 500u
+
+typedef struct {
+	unsigned opened;      /* when it appeared */
+	unsigned held;        /* buttons that count only after a release */
+} usbpower_guard;
+
+void usbpower_guard_start(usbpower_guard *g, unsigned now_ms, unsigned down);
+
+/* One pass: the buttons down and pressed now; the presses that count */
+unsigned usbpower_guard_pass(usbpower_guard *g, unsigned now_ms, unsigned down, unsigned pressed);
+
+/* Its button hints shown */
+bool usbpower_guard_hints(const usbpower_guard *g, unsigned now_ms);
 
 #endif

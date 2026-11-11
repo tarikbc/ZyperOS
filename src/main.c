@@ -8335,19 +8335,36 @@ static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHIN
  * takes no button yet */
 static bool g_tiles_hints = true;
 
-/* A question that came by itself, this pass: no button but POWER until it
- * has been up USBPOWER_TAKES_MS, and its hints only from then */
-static void ask_settle(app *a, unsigned opened)
+/* A question that came by itself, this pass (usbpower_guard): a button
+ * down when it appeared, or pressed in its first half second, counts only
+ * once let go and pressed again; POWER always. Its hints from then. */
+static void ask_settle(app *a, usbpower_guard *g)
 {
-	bool takes = usbpower_takes_input(opened, plat_now_ms());
+	unsigned down = 0, pressed = 0, ok;
+	int b;
 
-	g_tiles_hints = takes;
-	if (!takes) {
-		bool power = a->in.pressed[IN_POWER];
-
-		memset(a->in.pressed, 0, sizeof a->in.pressed);
-		a->in.pressed[IN_POWER] = power;
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (a->in.down[b]) down |= 1u << b;
+		if (a->in.pressed[b]) pressed |= 1u << b;
 	}
+	ok = usbpower_guard_pass(g, plat_now_ms(), down, pressed);
+	g_tiles_hints = usbpower_guard_hints(g, plat_now_ms());
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (b == IN_POWER) continue;
+		if (!(ok & (1u << b))) a->in.pressed[b] = false;
+		/* Held over: no repeat from it either */
+		if (g->held & (1u << b)) a->in.down[b] = false;
+	}
+}
+
+static void ask_guard_start(app *a, usbpower_guard *g)
+{
+	unsigned down = 0;
+	int b;
+
+	for (b = 0; b < IN_COUNT && b < 32; b++)
+		if (a->in.down[b] && b != IN_POWER) down |= 1u << b;
+	usbpower_guard_start(g, plat_now_ms(), down);
 }
 
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
@@ -8539,15 +8556,15 @@ static void usb_ask(app *a)
 {
 	menu_row tiles[3];
 	int n, sel = 0, choice = -1, lv;
-	unsigned opened;
+	usbpower_guard guard;
 	float k;
 
 	n = usb_ask_tiles(tiles, usblink_dev_image());
 	lv = panel_open();
-	opened = plat_now_ms();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		plat_input_poll(&a->in);
-		ask_settle(a, opened);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8617,19 +8634,20 @@ static void usb_power_ask(app *a, unsigned plug)
 {
 	menu_row rows[3];
 	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
-	unsigned looked = 0, opened;
+	unsigned looked = 0;
+	usbpower_guard guard;
 	float f;
 
 	/* The question takes the replug message's place: Computer brings it
 	 * back */
 	replug_off();
 	lv = panel_open();
-	opened = plat_now_ms();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		unsigned now = plat_now_ms();
 
 		plat_input_poll(&a->in);
-		ask_settle(a, opened);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }

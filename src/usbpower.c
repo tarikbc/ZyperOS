@@ -75,9 +75,27 @@ bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms)
 	       !p->computer && !p->automatic && since_start_ms < USBPOWER_RESUME_MS;
 }
 
-bool usbpower_takes_input(unsigned opened_ms, unsigned now_ms)
+void usbpower_guard_start(usbpower_guard *g, unsigned now_ms, unsigned down)
 {
-	return now_ms - opened_ms >= USBPOWER_TAKES_MS;
+	g->opened = now_ms;
+	g->held = down;
+}
+
+unsigned usbpower_guard_pass(usbpower_guard *g, unsigned now_ms, unsigned down, unsigned pressed)
+{
+	/* Let go: counts from its next press */
+	g->held &= down;
+	/* Pressed too soon: held over until it is let go */
+	if (now_ms - g->opened < USBPOWER_TAKES_MS) {
+		g->held |= pressed;
+		return 0;
+	}
+	return pressed & ~g->held;
+}
+
+bool usbpower_guard_hints(const usbpower_guard *g, unsigned now_ms)
+{
+	return now_ms - g->opened >= USBPOWER_TAKES_MS;
 }
 
 bool usbpower_mode(const char *dir, bool automatic)

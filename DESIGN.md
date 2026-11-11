@@ -2541,10 +2541,12 @@ powered again at the next start, with no question, when it is the first
 plug and there from the start (usbpower_resume; the handheld cannot see
 what happened while it was off, so a computer put in its place gets the 2 s
 Automatic gives one). And a question that comes by itself, this one or
-Computer Connected (11.18), takes no button but POWER for its first second
-and shows its button hints only then, their room kept: it came while the
-player was pressing through the menus, and a press meant for them answered
-it (Discord, 2026-11-11).
+Computer Connected (11.18), came while the player was pressing through the
+menus, and a press meant for them answered it (Discord, 2026-11-11): a
+button that was down as it appeared counts only once let go and pressed
+again, and so does one pressed in its first half second; after that a
+press answers at once, POWER always. Its button hints show from the half
+second, their room kept.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
