@@ -701,7 +701,8 @@ build-native/linksteps-check: tools/linksteps-check.c src/linksteps.c src/linkst
 check-usbdrive:
 	@mkdir -p build-native && $(CC) -std=c11 -Wall -Wextra -Werror -O1 $(MEDIA_SAN) \
 		-o build-native/usbdrive-check plastron/buildroot/package/usbdrive/tests/drive-check.c \
-		plastron/buildroot/package/usbdrive/src/drive.c && build-native/usbdrive-check
+		plastron/buildroot/package/usbdrive/src/drive.c plastron/buildroot/package/usbdrive/src/drivestat.c \
+		plastron/buildroot/package/usbdrive/src/atlas.c && build-native/usbdrive-check
 
 # When the Pixel 2's USB port may be a host (plastron's usbrole, its
 # src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host, and a

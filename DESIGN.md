@@ -1556,14 +1556,34 @@ Developer (SSH); a last row of one centered. A grid's tile has its mark at
 after a hyphen), in **meta** where **menu** does not fit. Up and down move
 between the rows. It starts on Charge Only, the safe answer. Chosen, ZyperOS
 draws three full pages for plastron's usbdrive, which has no words or theme
-of its own, saves them in /tmp and leaves: the ground, Zyper (200) at
-(512, 250), the heading in **title** **text** at y 450 and the words in
-**menu** **text-soft** balanced from y 528 every 52, and on the first the
-POWER line in **meta** **text-dim** at the foot. "Connected as a flash drive
-/ Eject it on the computer to finish.", "One moment / The card is getting
-ready." (both ways), and "The card is busy / It stays on the handheld. Try
-again in a moment." (fail closed: never exported while mounted or held).
-Host shots: `--usb-ask N [plain] drive`, `--usb-drive N`.
+of its own, saves them in /tmp and leaves. Each page is the empty home's
+top (11.19): Zyper (124) at (123, 160) beside the heading in **title**
+**text** at x 208 (two balanced lines when one is too long), then a
+**raised** card at y 248 the screen's width less **inset**, with
+**radius-card**. "Connected as a flash drive" has three rows in the card
+in **menu**, 64 apart: the status from the left in **text** ("Copying to
+the card", "Reading from the card", "Nothing copying"), with the speed of
+that way at the right; "Copied to the card" and "Read from the card" in
+**text-soft**, each with its total at the right in **text**. Under the card
+"Eject it on the computer to finish." in **meta** **text-soft**, and at the
+foot POWER's button hint, "Stop and power off" (11.4). "One moment / The
+card is getting ready." (both ways) and "The card is busy / It stays on the
+handheld. Try again in a moment." (fail closed: never exported while
+mounted or held) have their words in the card in **menu** **text-soft**.
+The rows are live (2026-11-11, my pick): ZyperOS also leaves an atlas, a
+glyph for each digit (each in a cell as wide as the widest digit, so a
+number does not shift as it counts), the language's decimal mark and
+units ("1,24 Go"), "/s" and the three statuses, on the card's color, with
+where they and the four slots are; usbdrive reads the games partition's
+/sys stat once a second and draws only a row that changed, so an idle
+drive costs nothing (plastron's package/usbdrive/src/atlas.h and
+drivestat.h). Speeds 1000-based with one decimal in MB/s (999.9 MB/s at
+most), totals with two in GB (999.99 GB); never a time left, as the
+handheld sees blocks, not files. Every slot edge is a multiple of 8 so it
+lands on a pixel of the saved 640 x 480. Without the atlas the page shows
+as drawn, with its first numbers. Host shots: `--usb-ask N [plain] drive`,
+`--usb-drive N [sample|wide]` (a copy going on; the widest numbers), and
+`--usb-drive 3` for the atlas, which prints where everything is.
 
 MENU > **Developer Mode** (on or off, between Show Tutorial and System
 Update) is a development image's only: on, the link is always up and nothing

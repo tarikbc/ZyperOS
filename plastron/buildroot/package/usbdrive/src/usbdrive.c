@@ -12,6 +12,11 @@
  * finish."), finishing.raw and failed.raw. LAUNCH is launch.sh on the card,
  * run again once the card is back. Everything here is the image's, so
  * nothing holds the card while it is the computer's.
+ *
+ * With ZyperOS's atlas in FRAMES too (atlas.h), connected.raw is held here
+ * rather than by splash, and its card's rows say what moves, how fast and
+ * how much, from the games partition's /sys stat once a second
+ * (drivestat.h); only a change is drawn, so an idle drive costs nothing.
  */
 #include <dirent.h>
 #include <errno.h>
@@ -30,7 +35,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "atlas.h"
 #include "drive.h"
+#include "drivestat.h"
+#include "panel.h"
 
 #define CARD       "/mnt/SDCARD"
 #define PART       "/dev/mmcblk0p3"
@@ -38,6 +46,7 @@
 #define MS         GADGET "/functions/mass_storage.0"
 #define LUN        MS "/lun.0"
 #define VBUS_IN    "/sys/class/power_supply/rk817-charger/online"
+#define PART_STAT  "/sys/class/block/mmcblk0p3/stat"
 
 static pid_t still;          /* splash --still showing a frame */
 static char  frames[PATH_MAX];
@@ -98,6 +107,84 @@ static void show(const char *name)
 		execl("/usr/bin/splash", "splash", "--still", path, (char *)NULL);
 		_exit(127);
 	}
+}
+
+/* The connected page with its live rows (atlas.h): the page ZyperOS drew,
+ * the atlas, and the page being made, all landscape */
+static struct {
+	bool on;
+	at_layout l;
+	uint32_t *base, *atlas, *page;
+	dst_state d;
+	unsigned looked;
+} live;
+
+static bool live_start(void)
+{
+	char path[PATH_MAX + 32], text[4096];
+	size_t n = 0;
+	FILE *f;
+
+	snprintf(path, sizeof path, "%s/atlas.txt", frames);
+	if (!(f = fopen(path, "r"))) return false;
+	n = fread(text, 1, sizeof text - 1, f);
+	fclose(f);
+	text[n] = '\0';
+	if (!at_parse(text, &live.l)) {
+		say("usbdrive: the atlas is not usable: the page as it is\n", NULL);
+		return false;
+	}
+	n = (size_t)live.l.w * live.l.h;
+	live.base = malloc(n * 4);
+	live.atlas = malloc(n * 4);
+	live.page = malloc(n * 4);
+	if (!live.base || !live.atlas || !live.page) return false;
+	snprintf(path, sizeof path, "%s/connected.raw", frames);
+	if (!at_load(path, live.l.w, live.l.h, true, live.base)) return false;
+	snprintf(path, sizeof path, "%s/atlas.raw", frames);
+	if (!at_load(path, live.l.w, live.l.h, true, live.atlas)) return false;
+	memcpy(live.page, live.base, n * 4);
+	if (!panel_open(live.page, live.l.w, live.l.h)) return false;
+	live.on = true;
+	return true;
+}
+
+/* The stat once a second; the rows drawn when what they say changed */
+static void live_follow(void)
+{
+	static const int status_glyph[] = { AT_G_ST_IDLE, AT_G_ST_WRITE, AT_G_ST_READ };
+	unsigned long long f[7] = { 0 };
+	char text[256];
+	unsigned now = now_ms();
+	int tok[DST_FMT_MAX], n, s;
+
+	if (!live.on || (live.looked && now - live.looked < 1000u)) return;
+	live.looked = now;
+	if (get(PART_STAT, text, sizeof text) ||
+	    sscanf(text, "%llu %llu %llu %llu %llu %llu %llu", &f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6]) != 7)
+		return;
+	if (!dst_step(&live.d, f[2], f[6], now)) return;
+	for (s = 0; s < AT_SLOTS; s++) {
+		const at_rect *r = &live.l.slot[s];
+
+		if (s == AT_SLOT_STATUS) {
+			tok[0] = status_glyph[live.d.status];
+			n = 1;
+		} else if (s == AT_SLOT_SPEED) {
+			n = live.d.status == DST_IDLE ? 0 : dst_fmt_rate(live.d.rate, tok, DST_FMT_MAX);
+		} else {
+			n = dst_fmt_total(s == AT_SLOT_WRITTEN ? live.d.wrote : live.d.read, tok, DST_FMT_MAX);
+		}
+		at_compose(&live.l, s, tok, n, live.atlas, live.page);
+		panel_update(live.page, r->x, r->y, r->w, r->h);
+	}
+}
+
+/* The live page down: whatever splash put up since is on glass */
+static void live_stop(void)
+{
+	if (live.on) panel_close();
+	live.on = false;
 }
 
 static bool mounted(void)
@@ -324,7 +411,16 @@ int main(int argc, char **argv)
 		back_to_zyperos(argv[2]);
 	}
 	say("usbdrive: the card is the computer's\n", NULL);
-	show("connected.raw");
+	/* The live page when the atlas is there; else the page as ZyperOS drew
+	 * it, as before. The page goes up before splash lets go, so the panel
+	 * never goes black between them. */
+	if (live_start()) {
+		if (still > 0) { kill(still, SIGTERM); waitpid(still, NULL, 0); still = 0; }
+		say("usbdrive: the page's rows follow the card\n", NULL);
+		live_follow();
+	} else {
+		show("connected.raw");
+	}
 	pfd = power_open();
 	while (end == DRV_STAY) {
 		usleep(200000);
@@ -338,11 +434,15 @@ int main(int argc, char **argv)
 			end = drv_wait_step(&w, !strcmp(v, "1"), file[0] != '\0', !strcmp(st, "configured"),
 			                    power_pressed(pfd), now_ms());
 		}
+		live_follow();
 	}
 	say(end == DRV_EJECTED ? "usbdrive: ejected by the computer\n"
 	    : end == DRV_UNPLUGGED ? "usbdrive: the cable came out\n"
 	    : end == DRV_POWER ? "usbdrive: POWER\n" : "usbdrive: no computer took it\n", NULL);
 	show("finishing.raw");
+	/* splash has the display now; the live page's buffer can go */
+	usleep(100000);
+	live_stop();
 	export_off();
 	sync();
 	if (pfd >= 0) { ioctl(pfd, EVIOCGRAB, 0); close(pfd); }

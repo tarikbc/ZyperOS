@@ -13,7 +13,7 @@ ja = USBメモリとして接続中
 it = Collegato come chiavetta USB
 
 [usbdrive.eject]
-note = Under the heading: what to do to get the handheld back. Up to three balanced lines.
+note = Under the card while the card is the computer's, quieter: what to do to get the handheld back. Up to two balanced lines.
 en = Eject it on the computer to finish.
 zh-Hans = 在电脑上弹出它即可结束。
 es = Expúlsalo en la computadora para terminar.
@@ -22,17 +22,6 @@ fr = Éjectez-le sur l'ordinateur pour terminer.
 de = Wirf ihn am Computer aus, um fertig zu werden.
 ja = 終わるときはパソコンで取り出してください。
 it = Espellilo sul computer per finire.
-
-[usbdrive.power]
-note = At the foot while the card is the computer's: POWER is safe too.
-en = POWER stops it and turns the handheld off safely.
-zh-Hans = 按 POWER 可停止并安全关机。
-es = POWER lo detiene y apaga la consola con seguridad.
-pt-BR = POWER interrompe e desliga o aparelho com segurança.
-fr = POWER l'arrête et éteint la console en toute sécurité.
-de = POWER beendet es und schaltet das Gerät sicher aus.
-ja = POWER で止めて、安全に電源を切れます。
-it = POWER lo interrompe e spegne la console in sicurezza.
 
 [usbdrive.finishing]
 note = The heading while the card is being freed for the computer, and again while it comes back after. Sentence case.
@@ -77,3 +66,135 @@ fr = Elle reste sur la console. Réessayez dans un instant.
 de = Sie bleibt auf dem Gerät. Versuche es gleich noch einmal.
 ja = カードは本体に残ります。少しして、もう一度お試しください。
 it = Resta sulla console. Riprova tra un momento.
+
+[usbdrive.status_writing]
+note = The card's first row while the computer writes to the card (blocks, not files: never say a file or a count). One line, beside the speed.
+en = Copying to the card
+zh-Hans = 正在复制到存储卡
+es = Copiando a la tarjeta
+pt-BR = Copiando para o cartão
+fr = Copie vers la carte
+de = Kopiert auf die Karte
+ja = カードにコピー中
+it = Copia sulla scheda
+
+[usbdrive.status_reading]
+note = The card's first row while the computer only reads the card. One line, beside the speed.
+en = Reading from the card
+zh-Hans = 正在从存储卡读取
+es = Leyendo de la tarjeta
+pt-BR = Lendo do cartão
+fr = Lecture de la carte
+de = Liest von der Karte
+ja = カードから読み込み中
+it = Lettura dalla scheda
+
+[usbdrive.status_idle]
+note = The card's first row when nothing has moved for two seconds. One line.
+en = Nothing copying
+zh-Hans = 没有在复制
+es = Nada copiándose
+pt-BR = Nada sendo copiado
+fr = Aucune copie en cours
+de = Nichts wird kopiert
+ja = コピーしていません
+it = Nessuna copia in corso
+
+[usbdrive.copied]
+note = A row's label: bytes written to the card since it became the computer's. One line, beside the number.
+en = Copied to the card
+zh-Hans = 已复制到存储卡
+es = Copiado a la tarjeta
+pt-BR = Copiado para o cartão
+fr = Copié vers la carte
+de = Auf die Karte kopiert
+ja = カードにコピー
+it = Copiato sulla scheda
+
+[usbdrive.read]
+note = A row's label: bytes read from the card since it became the computer's. One line, beside the number.
+en = Read from the card
+zh-Hans = 已从存储卡读取
+es = Leído de la tarjeta
+pt-BR = Lido do cartão
+fr = Lu depuis la carte
+de = Von der Karte gelesen
+ja = カードから読み込み
+it = Letto dalla scheda
+
+[usbdrive.stop]
+note = POWER's button hint at the foot while the card is the computer's: the card is let go safely, then the handheld turns off. Two or three words.
+en = Stop and power off
+zh-Hans = 停止并关机
+es = Detener y apagar
+pt-BR = Parar e desligar
+fr = Arrêter et éteindre
+de = Beenden und ausschalten
+ja = 止めて電源を切る
+it = Interrompi e spegni
+
+[usbdrive.decimal]
+note = The decimal mark in the card's numbers (23.4 MB/s): the language's own, one character.
+en = .
+zh-Hans = .
+es = ,
+pt-BR = ,
+fr = ,
+de = ,
+ja = .
+it = ,
+
+[usbdrive.unit_b]
+note = Bytes, the unit after a number ("0 B"). The language's own abbreviation.
+en = B
+zh-Hans = B
+es = B
+pt-BR = B
+fr = o
+de = B
+ja = B
+it = B
+
+[usbdrive.unit_kb]
+note = Kilobytes (1000 bytes), after a number.
+en = KB
+zh-Hans = KB
+es = KB
+pt-BR = KB
+fr = Ko
+de = KB
+ja = KB
+it = KB
+
+[usbdrive.unit_mb]
+note = Megabytes, after a number.
+en = MB
+zh-Hans = MB
+es = MB
+pt-BR = MB
+fr = Mo
+de = MB
+ja = MB
+it = MB
+
+[usbdrive.unit_gb]
+note = Gigabytes, after a number.
+en = GB
+zh-Hans = GB
+es = GB
+pt-BR = GB
+fr = Go
+de = GB
+ja = GB
+it = GB
+
+[usbdrive.per_second]
+note = After a unit for a speed ("23.4 MB/s").
+en = /s
+zh-Hans = /s
+es = /s
+pt-BR = /s
+fr = /s
+de = /s
+ja = /s
+it = /s

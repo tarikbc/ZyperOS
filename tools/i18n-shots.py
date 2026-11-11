@@ -245,6 +245,9 @@ EXTRA = {
     "usb-drive-0": ("demo", "PS1", ["--usb-drive", "0"]),
     "usb-drive-1": ("demo", "PS1", ["--usb-drive", "1"]),
     "usb-drive-2": ("demo", "PS1", ["--usb-drive", "2"]),
+    "usb-drive-sample": ("demo", "PS1", ["--usb-drive", "0", "sample"]),
+    "usb-drive-wide": ("demo", "PS1", ["--usb-drive", "0", "wide"]),
+    "usb-drive-atlas": ("demo", "PS1", ["--usb-drive", "3"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two
     # figures (the plural's other), and none, and the message of the unlock
     "dev-page": ("demo", "PS1", ["--dev-page", "0"]),
