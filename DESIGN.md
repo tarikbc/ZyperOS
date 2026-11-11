@@ -1511,9 +1511,15 @@ on (158, 232); the versions in **title** **text** from x 270 on y 200,
 faces have no U+2192), or the installed version alone; under them at y 270
 one line in **meta** **text-dim** (what downloads and the whole folder, "Up
 to date · checked 9:41", "Looking for updates…"), **warning** when it says
-something went wrong. Then What's New, the release notes' first points in
-**menu** **text-soft** with a **text-dim** dot, a point at most two balanced
-lines, four lines in all, from y 348 every 52. While it works, one bar from
+something went wrong. Then What's New: the release notes' points whole, in
+**meta**, filled a word at a time onto lines of 804 from x 130 (a point's
+lead, its words before the first ": ", in **text**, the rest in
+**text-soft**), a **text-dim** dot at each point's first line, from y 348
+(362 under a two-line line) every 42, 14 more between points, down to y 548
+over a bar or a line, 640 when there is none; up and down scroll it a line
+at a time, and a small **text-dim** triangle at the right says there is
+more above or below. *(2026-11-11: the first release's points were cut at
+two lines, and at 110 characters by the release tool.)* While it works, one bar from
 x 90 to 934 at y 572, 18 tall, round, **track** with **accent-ink** over it,
 and its two words under it at y 626 in **meta** **text-dim** ("Downloading"
 and "6.1 of 14 MB"); when there is no bar, one centered **meta** line at
@@ -1526,10 +1532,19 @@ versions stays short ("Back on 0.1.0"). *(2026-11-05: the error was
 hard to read as a cut **meta** line in **warning**.)* The buttons at the foot, centered on y 714: 11.9's glyph at 48
 and its word in **meta** **text-soft**, 40 between pairs. A is the page's
 action (Download, Continue, Restart Now, Look Again, Try Again), B is Back
-("Back, it goes on" while it works; "Later" when it is ready), Y is "Roll
+("Continue in background" while it works; "Later" when it is ready), Y is "Roll
 Back to 0.0.9" when the image allows one. Opened with a network and no look
-in the last ten minutes, it looks at once; once a day on a network it looks
-by itself, and only MENU's row says what it found. Every state's words are
+in the last ten minutes, it looks at once. It also looks each time Wi-Fi
+connects and once a day, and a release it finds is said once, by Zyper's
+bubble on the shelf (11.23's, "ZyperOS 1.0.4 is ready to download" over
+"Open MENU > System Update.", the lines balanced onto two each, no
+thermometer) or as a notice over a game. A download goes on behind every
+screen and game: the corner shows it (11.12, an arrow into a tray in File
+Transfer's ring, swept as far as the download), Auto Off waits for it, and
+when it is in, Zyper says "ready to install" the same way. One cut short (Wi-Fi
+gone, the handheld off) goes on by itself from where it stopped once
+Wi-Fi is back, and the page says so: "It goes on from where it stopped
+when Wi-Fi is back." Every state's words are
 in tools/sysupdate-check.c. *(My picks in the update lab, 2026-11-05:
 its own row, the full page, once a day on Wi-Fi.)*
 
@@ -1885,13 +1900,17 @@ kernel to keep the limit, charges it.
 On the charging screen (11.25), with a limit: the time is to the limit, "85%
 in about 40 min" ("Working out the time to 85%", "Almost at 85%"); held at
 it, the speed line is "Kept at 85% · wall charger", the time line "Charge
-Limit in MENU", the battery mark has the plug (11.12), and the hint grows to
-"Hold (A) for a full charge · Hold (POWER) to start", the bar under it
-filling for whichever is held. A battery charged full before the limit was
-set is held at 100%: the screen says "Charged" and "Fully charged" as any
-full one, with the plug, and offers no full charge. A held for **hold-unlock** is a full charge,
-this charge only: the limit is off until the cable comes out, and on again
-then (a file in /tmp, so a power-off ends it too). The corner's battery has
+Limit in MENU", and the battery mark has the plug (11.12). With a limit
+saved and the battery short of full, charging up to the limit or held at
+it, the hint grows to "(Y) Charge to 100% · Hold (POWER) to start"; Y, on a
+lit screen, is a full charge this time only: the hint says "Charging to 100%
+this time" in its place, the time goes to full, and the saved limit is back
+when the cable comes out or the battery is full (a file in /tmp, so a
+restart ends it too). A Y that lights a dark screen only lights it.
+*(Tarik, 2026-11-11: until then it was "Hold (A) for a full charge", and only
+once held at the limit.)* A battery charged full before the limit was set is
+held at 100%: the screen says "Charged" and "Fully charged" as any full one,
+with the plug, and offers no full charge. The corner's battery has
 the plug while it is held, everywhere.
 
 ### 11.27 Side lights

@@ -102,7 +102,7 @@ int main(void)
 	p = page(&v, &nn, notes);
 	CHECK(!strcmp(p.sub, "Looking for the newest release…") && !p.bar, "looking");
 	CHECK(p.notes && nn == 2, "what PortMaster is, while it looks");
-	CHECK(is(&p, "B", "Back, it goes on", SUA_BACK) && p.nkeys == 1, "B leaves it working");
+	CHECK(is(&p, "B", "Continue in background", SUA_BACK) && p.nkeys == 1, "B leaves it working");
 	v = view("", true);
 	p = page(&v, &nn, notes);
 	CHECK(!strcmp(p.sub, "Looking for the newest release…"), "running with no word yet is looking");
@@ -114,7 +114,7 @@ int main(void)
 	CHECK(!strcmp(p.bar_left, "Downloading") && !strcmp(p.bar_right, "6.1 of 24 MB"), "6.1 of 24 MB");
 	CHECK(!strcmp(p.sub, "Version 2026.06.23-0015"), "the version while it downloads");
 	CHECK(p.notes && nn == 2 && !p.warn[0], "and what PortMaster is, above the bar");
-	CHECK(is(&p, "B", "Back, it goes on", SUA_BACK) && !btn(&p, "A"), "only Back while it works");
+	CHECK(is(&p, "B", "Continue in background", SUA_BACK) && !btn(&p, "A"), "only Back while it works");
 	v = view("state verifying\nversion 2026.06.23-0015\n", true);
 	p = page(&v, &nn, notes);
 	CHECK(p.bar && p.frac == 1.0f && !strcmp(p.bar_left, "Checking the download") && !p.bar_right[0],

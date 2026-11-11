@@ -96,7 +96,7 @@ int main(void)
 	su_page_build(&v, &pg);
 	CHECK(pg.bar && !strcmp(pg.bar_left, "Downloading") && !strcmp(pg.bar_right, "6.1 of 14 MB"), "Downloading 6.1 of 14 MB");
 	CHECK(pg.frac > 0.42f && pg.frac < 0.44f, "the bar is 43% full");
-	CHECK(pg.nkeys == 1 && is(&pg, "B", "Back, it goes on", SUA_BACK), "only B, and it goes on");
+	CHECK(pg.nkeys == 1 && is(&pg, "B", "Continue in background", SUA_BACK), "only B, and it goes on");
 	CHECK(!strcmp(su_menu_value(&v, buf, sizeof buf), "downloading"), "MENU's row: downloading");
 
 	/* The same status with nothing running: it was cut short */
@@ -218,6 +218,62 @@ int main(void)
 	v = base("state ready\nversion 0.3.0\nkind system\n");
 	su_page_build(&v, &pg);
 	CHECK(!strcmp(pg.sub, "Installed and checked") && is(&pg, "A", "Restart Now", SUA_RESTART), "a system ready: Restart Now");
+
+	/* A cut download, with no network: it says it goes on by itself */
+	v = base("state stopped\nversion 0.3.0\nkind system\ndone 50\ntotal 200\n");
+	v.wifi = false;
+	su_page_build(&v, &pg);
+	CHECK(!strcmp(pg.sub, "It goes on from where it stopped when Wi-Fi is back."), "stopped offline: it goes on by itself");
+
+	/* What the launcher starts by itself (su_auto_step) */
+	{
+		su_auto au;
+		const long long T0 = 1793900000LL;
+
+		memset(&au, 0, sizeof au);
+		v = base("state uptodate\ntime 1793899000\n");
+		v.wifi = false;
+		CHECK(su_auto_step(&au, &v, 1000, T0) == SU_AUTO_NONE, "auto: no network, nothing");
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 3000, T0) == SU_AUTO_CHECK, "auto: Wi-Fi joined, a look");
+		v.st.time = T0;
+		CHECK(su_auto_step(&au, &v, 5000, T0 + 10) == SU_AUTO_NONE, "auto: looked a moment ago, nothing");
+		v.wifi = false; su_auto_step(&au, &v, 7000, T0 + 20);
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 9000, T0 + 60) == SU_AUTO_NONE, "auto: joined again within 5 min of a look, nothing");
+		v.wifi = false; su_auto_step(&au, &v, 11000, T0 + 300);
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 13000, T0 + 301) == SU_AUTO_CHECK, "auto: joined 5 min after a look, a look");
+		CHECK(su_auto_step(&au, &v, 15000, T0 + 24 * 3600) == SU_AUTO_CHECK, "auto: a day on, a look");
+		/* A download cut short by the power: going on as soon as there is Wi-Fi */
+		memset(&au, 0, sizeof au);
+		v = base("state downloading\nversion 0.3.0\ndone 50\ntotal 200\n");
+		v.wifi = false;
+		CHECK(su_auto_step(&au, &v, 1000, T0) == SU_AUTO_NONE, "auto: cut, no network, nothing");
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 3000, T0) == SU_AUTO_RESUME, "auto: cut, Wi-Fi joined: going on");
+		v.running = true;
+		CHECK(su_auto_step(&au, &v, 5000, T0) == SU_AUTO_NONE, "auto: at work, nothing");
+		/* It stops again on the same network: 2 min, then 4, then 8 */
+		v.running = false;
+		v = base("state stopped\nversion 0.3.0\ndone 60\ntotal 200\n");
+		CHECK(su_auto_step(&au, &v, 3000 + 119000, T0) == SU_AUTO_NONE, "auto: again before 2 min");
+		CHECK(su_auto_step(&au, &v, 3000 + 120000, T0) == SU_AUTO_RESUME, "auto: again at 2 min");
+		CHECK(su_auto_step(&au, &v, 123000 + 239000, T0) == SU_AUTO_NONE, "auto: again before 4 min");
+		CHECK(su_auto_step(&au, &v, 123000 + 240000, T0) == SU_AUTO_RESUME, "auto: again at 4 min");
+		/* Wi-Fi back after a drop: at once, the wait back to 2 min */
+		v.wifi = false; su_auto_step(&au, &v, 400000, T0);
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 401000, T0) == SU_AUTO_RESUME, "auto: Wi-Fi back after a drop: going on at once");
+		CHECK(su_auto_step(&au, &v, 401000 + 120000, T0) == SU_AUTO_RESUME, "auto: the wait back to 2 min after a join");
+		/* A battery refusal or an error is not a cut: nothing */
+		memset(&au, 0, sizeof au);
+		v = base("state battery\nversion 0.3.0\n");
+		v.st.time = T0;
+		CHECK(su_auto_step(&au, &v, 1000, T0) != SU_AUTO_RESUME, "auto: a battery refusal is not resumed");
+		v = base("state unsupported\n");
+		CHECK(su_auto_step(&au, &v, 1000, T0) == SU_AUTO_NONE, "auto: no updates on this image, nothing");
+	}
 
 	if (fails) { printf("check-sysupdate: %d failed\n", fails); return 1; }
 	printf("check-sysupdate: all passed\n");
