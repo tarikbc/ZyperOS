@@ -112,24 +112,3 @@ de = Suche ...
 ja = スキャン中…
 it = Ricerca...
 
-[wifimenu.legend_forget]
-note = The note under the list: what Y and X do; the three spaces stay
-en = Y: rescan   X: forget
-zh-Hans = Y：重新扫描   X：忘记
-es = Y: buscar de nuevo   X: olvidar
-pt-BR = Y: buscar de novo   X: esquecer
-fr = Y : relancer   X : oublier
-de = Y: neu suchen   X: entfernen
-ja = Y：再スキャン   X：削除
-it = Y: cerca di nuovo   X: dimentica
-
-[wifimenu.legend]
-note = The same with no saved network to forget
-en = Y: rescan
-zh-Hans = Y：重新扫描
-es = Y: buscar de nuevo
-pt-BR = Y: buscar de novo
-fr = Y : relancer
-de = Y: neu suchen
-ja = Y：再スキャン
-it = Y: cerca di nuovo

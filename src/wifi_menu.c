@@ -9,6 +9,7 @@
  * The half that needs a screen - wifi_key, wifi_screen - stays in main.c.
  */
 #include "wifi_menu.h"
+#include "keyhints.h"
 #include "i18n.h"
 
 #include <stdio.h>
@@ -131,7 +132,10 @@ int wifi_build(void *ctx, menu_row *rows, int max, const char **heading)
 	 * means the screen never has to put a modal in front of you. */
 	rows[nrows++] = w->scanning
 	              ? MENU_NOTE(T(S_WIFIMENU_SCANNING))
-	              : MENU_NOTE(any_saved ? T(S_WIFIMENU_LEGEND_FORGET) : T(S_WIFIMENU_LEGEND));
+	              : MENU_NOTE(any_saved
+	                          ? keyhints_legend((key_hint[]){ { "Y", T(S_KEYHINT_RESCAN) },
+	                                                          { "X", T(S_KEYHINT_FORGET) } }, 2)
+	                          : keyhints_legend((key_hint[]){ { "Y", T(S_KEYHINT_RESCAN) } }, 1));
 	return nrows;
 }
 

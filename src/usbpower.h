@@ -77,4 +77,40 @@ enum { USBPOWER_NOTHING, USBPOWER_ASK, USBPOWER_REPLUG };
 int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_ms,
                     unsigned *plug);
 
+/* Back on after the handheld was turned off (its sleep: off, and the game
+ * where it was at the next start) with an accessory powered (Discord,
+ * metior, 2026-11-11: the Wi-Fi adapter asked about again at every start,
+ * just as the player was in the menus). The launcher keeps "an accessory
+ * was powered" when it turns off (`kept`), and the first plug of this start,
+ * there from the start (askable within USBPOWER_RESUME_MS of the launcher's
+ * start), is that plug again: powered with no question. The handheld cannot
+ * tell what happened while it was off, so a computer put in its place gets
+ * the same 2 s Automatic gives one before usbrole sees it on the bus and
+ * stops. Never on Automatic, which powers it anyway. */
+#define USBPOWER_RESUME_MS 8000u
+bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms);
+
+/* A question that comes by itself (What did you plug in?, Computer
+ * Connected) came while the player was pressing through the menus, and a
+ * press meant for them answered it (the same report). So a button that was
+ * down when it appeared counts only once it has been let go and pressed
+ * again, and one pressed in its first USBPOWER_TAKES_MS counts the same
+ * way; after that, a press answers at once. Its button hints show from
+ * USBPOWER_TAKES_MS. Buttons are bits (1 << button); the caller keeps POWER
+ * out of it, which always works. */
+#define USBPOWER_TAKES_MS 500u
+
+typedef struct {
+	unsigned opened;      /* when it appeared */
+	unsigned held;        /* buttons that count only after a release */
+} usbpower_guard;
+
+void usbpower_guard_start(usbpower_guard *g, unsigned now_ms, unsigned down);
+
+/* One pass: the buttons down and pressed now; the presses that count */
+unsigned usbpower_guard_pass(usbpower_guard *g, unsigned now_ms, unsigned down, unsigned pressed);
+
+/* Its button hints shown */
+bool usbpower_guard_hints(const usbpower_guard *g, unsigned now_ms);
+
 #endif

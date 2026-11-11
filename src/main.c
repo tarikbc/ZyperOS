@@ -53,6 +53,7 @@
 #include "linksteps.h"
 #include "keyhints_draw.h"
 #include "usblink.h"
+#include "usblog.h"
 #include "chargedark.h"
 #include "pace.h"
 #include "idle.h"
@@ -234,6 +235,20 @@ static unsigned t_back0;
  * drawn last remembers the count it was drawn at (g_snap), and is still the
  * one on screen only while the count has not moved since: a keyboard, a slot
  * strip or Now Playing drawn after it has moved it. */
+/* A screen's one-button hint, B and its word (keyhints.h), for a row */
+static const char *b_legend(str_id word)
+{
+	return keyhints_legend((key_hint[]){ { "B", T(word) } }, 1);
+}
+
+/* The tutorial's START hint, as every hint (tour_hint_draw_set) */
+static void tour_hint(SDL_Renderer *r, const char *key, const char *label, int x, int cy)
+{
+	key_hint h = { key, label };
+
+	keyhints_draw(r, &h, 1, x, x + keyhints_width(key, label), cy, KEYHINTS_CENTER, false, 255);
+}
+
 static unsigned g_frame_no;
 
 /* One present of nothing but `c`, over the whole screen. */
@@ -2325,6 +2340,18 @@ static unsigned g_usb_wait;
 static bool shot_usb_menu;
 static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
 
+/* An accessory powered when the handheld turned off, kept on the card for
+ * the next start (usbpower_resume): read once there and gone */
+static bool g_usb_kept;
+
+static const char *usb_kept_path(void)
+{
+	static char p[512];
+
+	snprintf(p, sizeof p, "%s/usb-kept", P_USERDATA);
+	return p;
+}
+
 static void usb_auto_load(void)
 {
 	char v[8];
@@ -2332,6 +2359,26 @@ static void usb_auto_load(void)
 	db_get_str(db_dev(), "usb_accessories", v, sizeof v, "ask");
 	g_usb_auto = !strcmp(v, "auto");
 	plat_usb_power_mode(g_usb_auto);
+	g_usb_kept = access(usb_kept_path(), F_OK) == 0;
+	if (g_usb_kept) {
+		remove(usb_kept_path());
+		fprintf(stderr, "usb: an accessory was powered at the last power-off\n");
+	}
+}
+
+/* Turning off: an accessory powered now (the port a host, no computer
+ * seen) is kept for the next start */
+static void usb_kept_save(void)
+{
+	usb_power p;
+	FILE *f;
+
+	remove(usb_kept_path());
+	if (!plat_usb_power(&p) || !p.host || p.computer) return;
+	if ((f = fopen(usb_kept_path(), "w"))) {
+		fprintf(f, "accessory plug %u\n", p.plug);
+		fclose(f);
+	}
 }
 
 static void usb_auto_save(bool on)
@@ -4598,6 +4645,8 @@ void power_off_with(app *a, void (*anim)(app *a))
 	book_keep(true);
 	/* Asked for: a game left running continues at the next start */
 	playing_mark_clean();
+	/* ...and an accessory powered now is powered again then, unasked */
+	usb_kept_save();
 	plat_request_poweroff();
 	anim(a);
 	/* And dark the moment it ends. The rest of the shutdown is not instant -
@@ -4952,7 +5001,9 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		int w;
 
 		if (!rows[i].label) continue;          /* a rule measures nothing */
-		w = ui_text_width(fm, rows[i].label);
+		/* A legend of button hints (keyhints.h) on its one row */
+		w = keyhints_is(rows[i].label) ? keyhints_line_width(rows[i].label)
+		                               : ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
 			w += gap + menu_value_w(fm, rows[i].value);
 		if (w > content_w) content_w = w;
@@ -5479,7 +5530,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 *
 		 * The VALUE yields first: labels are short and fixed ("File", "Size"),
 		 * values are whatever the card happens to hold. */
-		if (ROW_IS_NOTE(rows[i])) {
+		if (keyhints_is(rows[i].label)) {
+			/* Button hints: a glyph and a word each, centered */
+			keyhints_draw_packed(a->r, rows[i].label, content_x, content_x + content_w,
+			                     y + ROW_H(rows[i]) / 2, lc.a);
+		} else if (ROW_IS_NOTE(rows[i])) {
 			char note[192];
 
 			/* A note that fits is centered, which is what a caption wants.
@@ -5760,7 +5815,7 @@ static bool panel_pass_begin(app *a)
 	static bool said;
 
 	if (!g_panel_tex) {
-		g_panel_tex = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_ARGB8888,
+		g_panel_tex = SDL_CreateTexture(a->r, PLAT_TARGET_FORMAT,
 		                                SDL_TEXTUREACCESS_TARGET,
 		                                ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (!g_panel_tex) {
@@ -7905,7 +7960,7 @@ static void hare_preview(app *a, const char *name, const char *addr, const char 
 {
 	menu_row rows[7];
 	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
+	int n = hare_rows(rows, who, ssh, moved, now, b_legend(S_KEYHINT_CLOSE));
 
 	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
 	draw_shelf(a);
@@ -7975,7 +8030,7 @@ static void hot_preview(app *a, const char *ssid, const char *pass,
 	rows[3] = (menu_row){ "PIN",                 "4071", false };
 	rows[4] = (menu_row){ T(S_HOTPANEL_PHONES),  phones, false };
 	rows[5] = (menu_row){ T(S_XFER_NOW),         now,    false };
-	rows[6] = MENU_NOTE(T(S_PANEL_B_CLOSE));
+	rows[6] = MENU_NOTE(b_legend(S_KEYHINT_CLOSE));
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	panel_show(a, PANEL_HOT, XFER_NAME_WIFI, rows, 7, -1, 0, 0u, NULL, false, 0, NULL);
@@ -8413,6 +8468,42 @@ static const char *tiles_hints(const char *b_word)
 
 static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
 
+/* The tiles' button hints shown: off while a question that came by itself
+ * takes no button yet */
+static bool g_tiles_hints = true;
+
+/* A question that came by itself, this pass (usbpower_guard): a button
+ * down when it appeared, or pressed in its first half second, counts only
+ * once let go and pressed again; POWER always. Its hints from then. */
+static void ask_settle(app *a, usbpower_guard *g)
+{
+	unsigned down = 0, pressed = 0, ok;
+	int b;
+
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (a->in.down[b]) down |= 1u << b;
+		if (a->in.pressed[b]) pressed |= 1u << b;
+	}
+	ok = usbpower_guard_pass(g, plat_now_ms(), down, pressed);
+	g_tiles_hints = usbpower_guard_hints(g, plat_now_ms());
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (b == IN_POWER) continue;
+		if (!(ok & (1u << b))) a->in.pressed[b] = false;
+		/* Held over: no repeat from it either */
+		if (g->held & (1u << b)) a->in.down[b] = false;
+	}
+}
+
+static void ask_guard_start(app *a, usbpower_guard *g)
+{
+	unsigned down = 0;
+	int b;
+
+	for (b = 0; b < IN_COUNT && b < 32; b++)
+		if (a->in.down[b] && b != IN_POWER) down |= 1u << b;
+	usbpower_guard_start(g, plat_now_ms(), down);
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -8565,7 +8656,9 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		tiles_y += nwhat.n * ls;
 	}
 	tiles_y += 24;
-	if (nh)
+	/* Not while the question takes no button yet (usbpower_takes_input):
+	 * its room kept, so nothing moves when they come */
+	if (nh && g_tiles_hints)
 		keyhints_draw(a->r, hints, nh, panel.x + TILE_PAD, panel.x + panel.w - TILE_PAD,
 		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
 	else
@@ -8596,16 +8689,21 @@ static int usb_ask_tiles(menu_row tiles[3], bool dev)
 	return n;
 }
 
+static void ulog_note(const char *what);
+
 static void usb_ask(app *a)
 {
 	menu_row tiles[3];
 	int n, sel = 0, choice = -1, lv;
+	usbpower_guard guard;
 	float k;
 
 	n = usb_ask_tiles(tiles, usblink_dev_image());
 	lv = panel_open();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		plat_input_poll(&a->in);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8632,9 +8730,12 @@ static void usb_ask(app *a)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	ulog_note(choice == 1 ? "Computer Connected: File Transfer"
+	          : choice == 2 ? "Computer Connected: Developer" : "Computer Connected: Charge Only");
 	if (choice == 1) {
 		xfer_screen(a);
 	} else if (choice == 2) {
@@ -8670,21 +8771,83 @@ static void replug_on(unsigned plug);
 
 static void replug_off(void);
 
+/* The port's log for support (src/usblog.h): read from the card at the
+ * first look, kept as the port is followed, written back at most every 2 s
+ * when it changed, whole under another name and renamed over */
+static usblog g_ulog;
+
+static void ulog_path(char *out, size_t n)
+{
+	snprintf(out, n, "%s/logs/usb.log", P_USERDATA);
+}
+
+static void ulog_save(bool now)
+{
+	static unsigned saved_at;
+	static char text[USBLOG_MAX * USBLOG_LINE + 64];
+	char path[512], tmp[520];
+	unsigned t = plat_now_ms();
+	FILE *f;
+
+	if (!g_ulog.dirty || (!now && saved_at && t - saved_at < 2000)) return;
+	saved_at = t ? t : 1;
+	g_ulog.dirty = false;
+	ulog_path(path, sizeof path);
+	snprintf(tmp, sizeof tmp, "%s.new", path);
+	usblog_text(&g_ulog, text, sizeof text);
+	if (!(f = fopen(tmp, "w"))) return;
+	fputs(text, f);
+	if (fclose(f) == 0) rename(tmp, path);
+	else remove(tmp);
+}
+
+static void ulog_follow(const usb_power *p)
+{
+	static bool loaded;
+
+	if (!loaded) {
+		static char text[USBLOG_MAX * USBLOG_LINE + 64];
+		char path[512];
+		FILE *f;
+		size_t got = 0;
+
+		loaded = true;
+		ulog_path(path, sizeof path);
+		if ((f = fopen(path, "r"))) {
+			got = fread(text, 1, sizeof text - 1, f);
+			fclose(f);
+		}
+		text[got] = '\0';
+		usblog_load(&g_ulog, text);
+	}
+	usblog_follow(&g_ulog, p, (long long)time(NULL));
+	ulog_save(false);
+}
+
+static void ulog_note(const char *what)
+{
+	usblog_note(&g_ulog, what);
+	ulog_save(true);
+}
+
 static void usb_power_ask(app *a, unsigned plug)
 {
 	menu_row rows[3];
 	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
 	unsigned looked = 0;
+	usbpower_guard guard;
 	float f;
 
 	/* The question takes the replug message's place: Computer brings it
 	 * back */
 	replug_off();
 	lv = panel_open();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		unsigned now = plat_now_ms();
 
 		plat_input_poll(&a->in);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8717,9 +8880,12 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	if (a->running) ulog_note(choice == 0 ? "asked: USB Accessory" : choice == 1 ? "asked: Computer"
+	                                                               : "asked: gone before an answer");
 	if (!a->running || choice == 2) return;
 	if (choice == 0) {
 		plat_usb_power_grant(plug);
@@ -8747,6 +8913,7 @@ static void replug_on(unsigned plug)
 	g_replug.on = true;
 	g_replug.plug = plug;
 	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+	ulog_note("replug message");
 	redraw_now();
 }
 
@@ -8768,6 +8935,7 @@ static void power_follow(void)
 	if (looked && now - looked < 200u) return;
 	looked = now ? now : 1;
 	if (!plat_usb_power(&p)) { replug_off(); g_usb_wait = 0; return; }
+	ulog_follow(&p);
 	{
 		unsigned was = g_usb_wait;
 
@@ -8781,6 +8949,18 @@ static void power_follow(void)
 	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
+	/* The accessory powered when the handheld turned off, there again from
+	 * the start: powered, and never asked about (usbpower_resume) */
+	if (g_usb_kept) {
+		if (usbpower_resume(&p, true, now - t_boot0)) {
+			fprintf(stderr, "usb: plug %u is the accessory powered before: powered again\n", p.plug);
+			plat_usb_power_grant(p.plug);
+			g_power_f.asked = p.plug;
+			g_usb_kept = false;
+		} else if (now - t_boot0 >= USBPOWER_RESUME_MS || (p.known && p.plug > 1)) {
+			g_usb_kept = false;
+		}
+	}
 	switch (usbpower_follow(&g_power_f, &p, now, &plug)) {
 	case USBPOWER_ASK:    g_power_ask = plug; break;
 	case USBPOWER_REPLUG: replug_on(plug);    break;
@@ -8918,9 +9098,9 @@ static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
 #define XS_SHELF_MS   3000u             /* the files still this long: rescan */
 #define XS_RESTART_MS 1500u             /* the page's restart answered first */
 #define XS_WRONG_MAX  10                /* wrong PINs that end it behind the shelf */
-#define XS_LEGEND     T(S_PANEL_B_CLOSE)
-#define XS_LEGEND_MOV T(S_XFER_LEGEND_MOVING)
-#define XS_LEGEND_END T(S_XFER_LEGEND_HIDE)
+#define XS_LEGEND     b_legend(S_KEYHINT_CLOSE)
+#define XS_LEGEND_MOV b_legend(S_KEYHINT_KEEP_GOING_OR_STOP)
+#define XS_LEGEND_END b_legend(S_KEYHINT_HIDE)
 
 typedef struct {
 	bool        on;             /* the server is up */
@@ -9641,7 +9821,7 @@ static int dev_rows(menu_row rows[6], char *cmd, size_t cn, char *keys, size_t k
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
 	rows[n++] = (menu_row){ "SSH", ssh, false };
-	rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+	rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_TURN_OFF_MODE) }, { "B", T(S_KEYHINT_CLOSE) } }, 2));
 	return n;
 }
 
@@ -9942,7 +10122,7 @@ static bool xs_before_game(app *a)
 				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
 			rows[0] = MENU_NOTE(line);
 			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE(T(S_XFER_B_BACK_TO_SHELF));
+			rows[2] = MENU_NOTE(b_legend(S_KEYHINT_BACK_TO_SHELF));
 			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -10244,7 +10424,7 @@ static int art_rows(menu_row *out, const char *where, const char *counts,
 {
 	out[0] = (menu_row){ T(S_SCRAPER_SYSTEMS), where,  false };
 	out[1] = (menu_row){ T(S_SCRAPER_ART),     counts, false };
-	out[2] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE), NULL, false };
+	out[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 	return 3;
 }
 
@@ -10449,7 +10629,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 					art_head(head, sizeof head, one);
 					row[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
 					                     T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND), false };
-					row[1] = (menu_row){ T(S_PANEL_B_CLOSE), NULL, false };
+					row[1] = (menu_row){ b_legend(S_KEYHINT_CLOSE), NULL, false };
 					timed_message(a, head, row, 2, menu_std_width(a), accent);
 					ss_run_cancel();
 					free_all_textures(a);
@@ -10459,7 +10639,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 
 				art_head(head, sizeof head, one);
 				rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART), ss_run_where(), false };
-				rows[1] = (menu_row){ T(S_PANEL_B_STOP), NULL, false };
+				rows[1] = (menu_row){ b_legend(S_KEYHINT_STOP), NULL, false };
 				if (!panel_frame(a, lv, &k)) continue;
 				tick_tint(a);
 				tick_theme(a);
@@ -10531,7 +10711,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 			                      : p.found ? T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND)
 			                      : had ? T(S_SCRAPER_NOT_FOUND_KEPT)
 			                            : T(S_SCRAPER_NOT_FOUND), false };
-			rows[1] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE),
+			rows[1] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE),
 			                      NULL, false };
 			nrows = 2;
 		} else {
@@ -12415,7 +12595,7 @@ static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
 	n = clock_rows(time(NULL), g_clock24, c->zone, rows, max, &c->b);
 	if (n + 3 <= max) {
 		rows[n++] = MENU_RULE;
-		rows[n++] = MENU_NOTE(T(S_DATETIME_CHANGE));
+		rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_CHANGE) } }, 1));
 		/* Only where it is true: the Brick's ntpd sets the clock again once
 		 * Wi-Fi connects, so a time set here lasts until then */
 		if (plat_has_wifi()) rows[n++] = MENU_NOTE(T(S_DATETIME_WIFI_SETS));
@@ -18569,7 +18749,7 @@ static void album_art_screen(app *a)
 			snprintf(counts, sizeof counts, T(S_MUSE_ART_COUNTS), st.found, st.missing);
 		rows[0] = (menu_row){ T(S_MUSE_ART_ALBUMS), where,  false };
 		rows[1] = (menu_row){ T(S_MUSE_ART_COVERS), counts, false };
-		rows[2] = (menu_row){ working ? T(S_MUSE_ART_STOP) : T(S_MUSE_ART_CLOSE), NULL, false };
+		rows[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -21619,7 +21799,7 @@ static void shot_compose(app *a)
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
 		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
-		                 T(S_PANEL_B_CLOSE));
+		                 b_legend(S_KEYHINT_CLOSE));
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
 		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -22376,6 +22556,7 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	plat_input_init();
 	plat_settings_init();
 	if (!ui_init(a.r, P_FONT)) fprintf(stderr, "port menu: font init failed\n");
@@ -23801,6 +23982,7 @@ int main(int argc, char *argv[])
 	}
 	t_mark("video");
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	t_mark("renderer");
 	/* The replug message, over every screen (DESIGN.md 11.36) */
 	plat_set_overlay(replug_overlay);
