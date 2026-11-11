@@ -1547,6 +1547,19 @@ it." Opens and closes as every panel does (8.2). A host shot:
 lab, `docs/design/mock/usb-lab.html`, 2026-11-05: Three tiles, starting on
 Charge Only.)*
 
+**USB Drive** (2026-11-11), a release image's third tile (UI_GLYPH_USB;
+"Pen drive" in Brazilian Portuguese), where a development image has
+Developer (SSH): four tiles left a two-line name no room. Chosen, ZyperOS
+draws three full pages for plastron's usbdrive, which has no words or theme
+of its own, saves them in /tmp and leaves: the ground, Zyper (200) at
+(512, 250), the heading in **title** **text** at y 450 and the words in
+**menu** **text-soft** balanced from y 528 every 52, and on the first the
+POWER line in **meta** **text-dim** at the foot. "Connected as a USB drive
+/ Eject it on the computer to finish.", "One moment / The card is getting
+ready." (both ways), and "The card is busy / It stays on the handheld. Try
+again in a moment." (fail closed: never exported while mounted or held).
+Host shots: `--usb-ask 2 plain drive`, `--usb-drive N`.
+
 MENU > **Developer Mode** (on or off, between Show Tutorial and System
 Update) is a development image's only: on, the link is always up and nothing
 is asked.

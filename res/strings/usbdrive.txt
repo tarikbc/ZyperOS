@@ -1,0 +1,79 @@
+# The USB Drive screens (src/main.c, usb_drive; plastron's usbdrive shows
+# them): the card as a USB drive for the computer, while ZyperOS steps aside.
+
+[usbdrive.connected]
+note = The heading while the card is the computer's, as a USB drive. Sentence case.
+en = Connected as a USB drive
+zh-Hans = 已作为 U 盘连接
+es = Conectado como memoria USB
+pt-BR = Conectado como pen drive
+fr = Connecté comme clé USB
+de = Als USB-Stick verbunden
+ja = USB ドライブとして接続中
+it = Collegato come chiavetta USB
+
+[usbdrive.eject]
+note = Under the heading: what to do to get the handheld back. Up to three balanced lines.
+en = Eject it on the computer to finish.
+zh-Hans = 在电脑上弹出它即可结束。
+es = Expúlsalo en la computadora para terminar.
+pt-BR = Ejete no computador para terminar.
+fr = Éjectez-le sur l'ordinateur pour terminer.
+de = Wirf ihn am Computer aus, um fertig zu werden.
+ja = 終わるときはパソコンで取り出してください。
+it = Espellilo sul computer per finire.
+
+[usbdrive.power]
+note = At the foot while the card is the computer's: POWER is safe too.
+en = POWER stops it and turns the handheld off safely.
+zh-Hans = 按 POWER 可停止并安全关机。
+es = POWER lo detiene y apaga la consola con seguridad.
+pt-BR = POWER interrompe e desliga o aparelho com segurança.
+fr = POWER l'arrête et éteint la console en toute sécurité.
+de = POWER beendet es und schaltet das Gerät sicher aus.
+ja = POWER で止めて、安全に電源を切れます。
+it = POWER lo interrompe e spegne la console in sicurezza.
+
+[usbdrive.finishing]
+note = The heading while the card is being freed for the computer, and again while it comes back after. Sentence case.
+en = One moment
+zh-Hans = 请稍候
+es = Un momento
+pt-BR = Um momento
+fr = Un instant
+de = Einen Moment
+ja = 少々お待ちください
+it = Un momento
+
+[usbdrive.finishing_body]
+note = Under "One moment": the card is getting ready, for the computer or for the handheld after it.
+en = The card is getting ready.
+zh-Hans = 存储卡正在准备。
+es = La tarjeta se está preparando.
+pt-BR = O cartão está sendo preparado.
+fr = La carte se prépare.
+de = Die Karte wird vorbereitet.
+ja = カードを準備しています。
+it = La scheda si sta preparando.
+
+[usbdrive.failed]
+note = The heading when the card could not be freed for the computer (something still used it): nothing was shared, and ZyperOS comes back. Sentence case.
+en = The card is busy
+zh-Hans = 存储卡正在使用中
+es = La tarjeta está ocupada
+pt-BR = O cartão está ocupado
+fr = La carte est occupée
+de = Die Karte wird verwendet
+ja = カードを使用中です
+it = La scheda è occupata
+
+[usbdrive.failed_body]
+note = Under "The card is busy". Up to three balanced lines.
+en = It stays on the handheld. Try again in a moment.
+zh-Hans = 它会留在本机上。请稍后再试。
+es = Se queda en la consola. Inténtalo de nuevo en un momento.
+pt-BR = Ele continua no aparelho. Tente de novo em instantes.
+fr = Elle reste sur la console. Réessayez dans un instant.
+de = Sie bleibt auf dem Gerät. Versuche es gleich noch einmal.
+ja = カードは本体に残ります。少しして、もう一度お試しください。
+it = Resta sulla console. Riprova tra un momento.

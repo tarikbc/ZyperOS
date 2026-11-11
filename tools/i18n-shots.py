@@ -238,6 +238,12 @@ EXTRA = {
     "xfer-ask-game": ("demo", "PS1", ["--xfer-ask", "0", "game"]),
     "usb-ask": ("demo", "PS1", ["--usb-ask", "1"]),
     "usb-ask-plain": ("demo", "PS1", ["--usb-ask", "1", "plain"]),
+    # Computer Connected with USB Drive (an image with usbdrive), focused,
+    # and its three pictures (2026-11-11)
+    "usb-ask-drive": ("demo", "PS1", ["--usb-ask", "2", "plain", "drive"]),
+    "usb-drive-0": ("demo", "PS1", ["--usb-drive", "0"]),
+    "usb-drive-1": ("demo", "PS1", ["--usb-drive", "1"]),
+    "usb-drive-2": ("demo", "PS1", ["--usb-drive", "2"]),
     # Developer Mode (src/devmode.h): its page with one key, a count of two
     # figures (the plural's other), and none, and the message of the unlock
     "dev-page": ("demo", "PS1", ["--dev-page", "0"]),

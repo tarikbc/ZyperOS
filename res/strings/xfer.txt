@@ -778,3 +778,14 @@ fr = réponse impossible
 de = keine Antwort möglich
 ja = 応答できませんでした
 it = impossibile rispondere
+
+[xfer.tile_usb_drive]
+note = A tile of Computer Connected (the question a computer on the USB cable gets): the card becomes a USB drive the computer opens with no driver, until it is ejected; ZyperOS steps aside meanwhile. Up to two lines in a narrow tile (204 units). Title Case in English; Brazilian Portuguese says "Pen drive".
+en = USB Drive
+zh-Hans = U 盘
+es = Memoria USB
+pt-BR = Pen drive
+fr = Clé USB
+de = USB-Stick
+ja = USB\nドライブ
+it = Chiavetta\nUSB

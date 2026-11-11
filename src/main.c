@@ -2320,6 +2320,12 @@ static void usb_auto_load(void)
 	db_get_str(db_dev(), "usb_accessories", v, sizeof v, "ask");
 	g_usb_auto = !strcmp(v, "auto");
 	plat_usb_power_mode(g_usb_auto);
+	/* Back from USB Drive with the cable in: that plug was answered */
+	if (access("/tmp/zyperos_usbdrive_back", F_OK) == 0) {
+		remove("/tmp/zyperos_usbdrive_back");
+		usblink_skip_ask();
+		fprintf(stderr, "usb: back from USB Drive: not asked again for this plug\n");
+	}
 }
 
 static void usb_auto_save(bool on)
@@ -8195,6 +8201,7 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
 		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
 		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
+		{ S_XFER_TILE_USB_DRIVE,     UI_GLYPH_USB },
 	};
 	size_t i;
 
@@ -8312,6 +8319,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	SDL_Rect panel, rule;
 	tile_note nsub = { .n = 0 }, nwhat = { .n = 0 }, nleg;
 	int i, k, top, tiles_y, all = n, tiles_w, inner, widest, tw;
+	int tile_gap = TILE_GAP, tile_pad = TILE_PAD;
 	char head[2][LB_LINE];
 	int nhead;
 
@@ -8332,14 +8340,14 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	/* Two tiles are wider, room for a name on one line and the small line
 	 * under it (What did you plug in?, DESIGN.md 11.36) */
 	tw = n == 2 ? TILE_W2 : TILE_W;
-	tiles_w = n * tw + (n - 1) * TILE_GAP;
+	tiles_w = n * tw + (n - 1) * tile_gap;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
-	panel.w = tiles_w + 2 * TILE_PAD;
-	if (ui_text_width(fh, heading) + 2 * TILE_PAD > panel.w)
-		panel.w = ui_text_width(fh, heading) + 2 * TILE_PAD;
+	panel.w = tiles_w + 2 * tile_pad;
+	if (ui_text_width(fh, heading) + 2 * tile_pad > panel.w)
+		panel.w = ui_text_width(fh, heading) + 2 * tile_pad;
 	if (panel.w > widest) panel.w = widest;
 	for (;;) {
-		inner = panel.w - 2 * TILE_PAD;
+		inner = panel.w - 2 * tile_pad;
 		if (sub) tile_note_set(fs, sub, inner, &nsub);
 		if (what) tile_note_set(fs, what, inner, &nwhat);
 		if (nh) nleg = (tile_note){ .n = 0, .fits = true };
@@ -8372,8 +8380,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	for (k = 0; k < nhead; k++)
 		ui_text(a->r, fh, head[k], panel.x + panel.w / 2, ui_line_y(UI_F_LABEL, top + k * lh), 0,
 		        UI_TEXT_SOFT);
-	rule = (SDL_Rect){ panel.x + TILE_PAD, top + (nhead > 1 ? nhead : 1) * lh + 24,
-	                   panel.w - 2 * TILE_PAD, DS_RULE };
+	rule = (SDL_Rect){ panel.x + tile_pad, top + (nhead > 1 ? nhead : 1) * lh + 24,
+	                   panel.w - 2 * tile_pad, DS_RULE };
 	SDL_SetRenderDrawColor(a->r, thm->edge.r, thm->edge.g, thm->edge.b, 255);
 	SDL_RenderFillRect(a->r, &rule);
 	tiles_y = rule.y + DS_RULE;
@@ -8388,7 +8396,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	tiles_y += 32;
 
 	for (i = 0; i < n; i++) {
-		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (tw + TILE_GAP), tiles_y,
+		SDL_Rect t = { panel.x + (panel.w - tiles_w) / 2 + i * (tw + tile_gap), tiles_y,
 		               tw, TILE_H };
 		bool on = i == sel;
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
@@ -8450,7 +8458,7 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	}
 	tiles_y += 24;
 	if (nh)
-		keyhints_draw(a->r, hints, nh, panel.x + TILE_PAD, panel.x + panel.w - TILE_PAD,
+		keyhints_draw(a->r, hints, nh, panel.x + tile_pad, panel.x + panel.w - tile_pad,
 		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
 	else
 		for (k = 0; k < nleg.n; k++)
@@ -8470,23 +8478,117 @@ static int menu_measure(const menu_row *rows, int n, const char *heading);
  * charging. Left/Right move, A chooses; B, MENU or the cable coming out
  * keep charging only. */
 /* The tiles of that question: two, and on a development image a third */
-static int usb_ask_tiles(menu_row tiles[3], bool dev)
+/* What a tile of Computer Connected does */
+enum { UA_CHARGE, UA_XFER, UA_DEV, UA_DRIVE };
+
+/* USB Drive is offered by an image that has usbdrive (plastron), whose
+ * kernel exports the card (f_mass_storage); --usb-ask's shots say so */
+static bool shot_usb_drive;
+static bool usb_drive_offered(void)
+{
+	return shot_usb_drive || access("/usr/sbin/usbdrive", X_OK) == 0;
+}
+
+static int usb_ask_tiles(menu_row tiles[4], int what[4], bool dev)
 {
 	int n = 0;
 
-	tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
-	tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
-	if (dev) tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true };
+	what[n] = UA_CHARGE; tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
+	what[n] = UA_XFER;   tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
+	/* Three at most, each name on its two lines: a development image's
+	 * third is Developer (SSH), and USB Drive is a release image's (four
+	 * tiles left Développeur, Desenvolvedor, Sviluppatore no room) */
+	if (dev) { what[n] = UA_DEV; tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true }; }
+	else if (usb_drive_offered()) {
+		what[n] = UA_DRIVE; tiles[n++] = (menu_row){ T(S_XFER_TILE_USB_DRIVE), NULL, true };
+	}
 	return n;
+}
+
+static void usb_drive(app *a);
+
+/* ---------- USB Drive (plastron's usbdrive, DESIGN.md 11.18) -----------
+ *
+ * Computer Connected > USB Drive: the card as a USB drive, which any
+ * computer opens with no driver (a Windows 10 player met File Transfer's
+ * "no driver" hint, 2026-11-11). The card is where ZyperOS itself lives, so
+ * ZyperOS leaves: it draws the pictures the image's usbdrive shows (it has
+ * no fonts, no words and no theme of its own), in /tmp, asks launch.sh for
+ * the mode and exits; usbdrive frees and unmounts the card, exports it until
+ * the computer ejects it or the cable comes out, mounts it again and starts
+ * ZyperOS again (plastron's package/usbdrive). */
+#define USB_DRIVE_DIR "/tmp/zyperos_usbdrive.d"
+#define USB_DRIVE_ASK "/tmp/zyperos_usbdrive"
+enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_FRAMES };
+
+/* One of them: the theme's ground, Zyper in the middle, the heading in
+ * **title** and the words under it in **menu**, balanced, and on the
+ * connected one POWER's line at the foot in **meta** **text-dim** */
+static void usb_drive_draw(app *a, int which)
+{
+	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED };
+	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY };
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	char lines[3][LB_LINE];
+	int n, k;
+
+	draw_background(a);
+	draw_zyper(a->r, ZYPEROS_SCREEN_W / 2.0f, 250.0f, 200.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f,
+	           0.0f, 255);
+	ui_text(a->r, ft, T(HEAD[which]), ZYPEROS_SCREEN_W / 2, ui_cap_y(ft, 450), 0, UI_TEXT);
+	n = ui_balance_lines(fm, T(BODY[which]), ZYPEROS_SCREEN_W - 2 * 96, 3, lines);
+	if (n > 1) ui_fit_drawn(T(BODY[which]));
+	for (k = 0; k < n; k++)
+		ui_text(a->r, fm, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fm, 528 + k * 52), 0, UI_TEXT_SOFT);
+	if (which == UD_CONNECTED) {
+		n = ui_balance_lines(fs, T(S_USBDRIVE_POWER), ZYPEROS_SCREEN_W - 2 * 160, 2, lines);
+		if (n > 1) ui_fit_drawn(T(S_USBDRIVE_POWER));
+		for (k = 0; k < n; k++)
+			ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 704 - (n - 1 - k) * 40), 0,
+			        UI_TEXT_DIM);
+	}
+}
+
+static void usb_drive(app *a)
+{
+	static const char *const NAME[UD_FRAMES] = { "connected.raw", "finishing.raw", "failed.raw" };
+	char path[256];
+	int i;
+	FILE *f;
+
+	mkdir(USB_DRIVE_DIR, 0755);
+	for (i = 0; i < UD_FRAMES; i++) {
+		usb_drive_draw(a, i);
+		snprintf(path, sizeof path, "%s/%s", USB_DRIVE_DIR, NAME[i]);
+		unlink(path);
+		if (!plat_save_screen(path)) {
+			/* No picture to leave (a host): nothing is asked */
+			fprintf(stderr, "usb: USB Drive: could not save %s\n", path);
+			plat_present();
+			return;
+		}
+	}
+	/* What it was doing comes back after, as from a power-off */
+	xs_end();
+	snap_off();
+	remember_place(a);
+	book_keep(true);
+	if (!(f = fopen(USB_DRIVE_ASK, "w"))) return;
+	fclose(f);
+	fprintf(stderr, "usb: USB Drive: ZyperOS leaves the card to the computer\n");
+	usb_drive_draw(a, UD_FINISHING);
+	plat_present();
+	a->running = false;
 }
 
 static void usb_ask(app *a)
 {
-	menu_row tiles[3];
+	menu_row tiles[4];
+	int what[4];
 	int n, sel = 0, choice = -1, lv;
 	float k;
 
-	n = usb_ask_tiles(tiles, usblink_dev_image());
+	n = usb_ask_tiles(tiles, what, usblink_dev_image());
 	lv = panel_open();
 	while (choice < 0) {
 		plat_input_poll(&a->in);
@@ -8519,9 +8621,12 @@ static void usb_ask(app *a)
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
-	if (choice == 1) {
+	choice = choice >= 0 && choice < n ? what[choice] : UA_CHARGE;
+	if (choice == UA_DRIVE) {
+		usb_drive(a);
+	} else if (choice == UA_XFER) {
 		xfer_screen(a);
-	} else if (choice == 2) {
+	} else if (choice == UA_DEV) {
 		menu_row row = { T(S_XFER_DEV_LINK_ON), NULL, false };
 
 		usblink_hold(true);
@@ -20416,6 +20521,7 @@ static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development
 /* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
  * where it starts); --usb-power said: the message after Computer */
 static int shot_power = -1;
+static int shot_usbdrive = -1;   /* --usb-drive N */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
 static int shot_xfer_ask = -1;
@@ -21228,11 +21334,16 @@ static void shot_compose(app *a)
 		/* The question a computer gets, at rest, as usb_ask asks it: all three tiles,
 		 * or with --usb-ask N plain the two a card without the development image has. In the language that is on, since the
 		 * overflow is in the translation */
-		menu_row tiles[3];
-		int nt = usb_ask_tiles(tiles, shot_usb_dev);
+		menu_row tiles[4];
+		int what[4];
+		int nt = usb_ask_tiles(tiles, what, shot_usb_dev);
 
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
+	}
+	if (shot_usbdrive >= 0 && shot_usbdrive < UD_FRAMES) {
+		usb_drive_draw(a, shot_usbdrive);
+		return;
 	}
 	if (shot_power >= 0) {
 		menu_row rows[3], said[3];
@@ -22739,6 +22850,12 @@ int main(int argc, char *argv[])
 			shot_usb = 0;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_usb = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "plain")) { shot_usb_dev = false; i++; }
+			/* "drive": with USB Drive, as an image with usbdrive asks it */
+			if (i + 1 < argc && !strcmp(argv[i + 1], "drive")) { shot_usb_drive = true; i++; }
+		}
+		/* --usb-drive N: USB Drive's picture N (connected, finishing, failed) */
+		else if (!strcmp(argv[i], "--usb-drive") && i + 1 < argc) {
+			shot_usbdrive = atoi(argv[++i]);
 		}
 		/* MENU's USB rows on the host, which has no usbrole: Ask, or
 		 * Automatic with "auto"; "said" for Automatic's message */
