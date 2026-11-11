@@ -74,6 +74,8 @@ void plat_video_under(SDL_Texture *tex, const SDL_Rect *dst, SDL_Color bg);
  * plastron's splash --still to hold while a port loads (launch_port). False
  * where there is nothing to hold it with. */
 bool plat_save_screen(const char *path);
+/* The same file, with nothing shown: the panel keeps what it had */
+bool plat_save_screen_hidden(const char *path);
 /* plat_save_screen's opposite: a picture of the panel as the panel shows it,
  * src/portmenu.h's still (a port's frame, saved by portkeys under the in-game
  * menu), turned back into the landscape this process draws in, as a texture

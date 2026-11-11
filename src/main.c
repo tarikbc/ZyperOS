@@ -8826,7 +8826,7 @@ static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot
 		ui_glyph_draw(a->r, i < 2 ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, 32 + i * 96 + UD_MARK / 2, 336, 56,
 		              i % 2 ? UI_TEXT_DIM : ui_col(th->accent_ink, 255));
 	if (shot) f = shot;
-	else if (!plat_save_screen(raw) || !(f = fopen(txt, "w"))) return false;
+	else if (!plat_save_screen_hidden(raw) || !(f = fopen(txt, "w"))) return false;
 	fprintf(f, "zyperos-drive-atlas 2\nsize %d %d\n", UD_SAVE_W, UD_SAVE_H);
 	for (i = 0; i < UD_SLOTS; i++)
 		fprintf(f, "slot %s %d %d %d %d left\n", SLOT[i], slot[i].x0 * 5 / 8, slot[i].y0 * 5 / 8,
@@ -8853,11 +8853,16 @@ static void usb_drive(app *a)
 
 	mkdir(USB_DRIVE_DIR, 0755);
 	shot_usbdrive_vals = 0;
+	/* "One moment" up at once and held: the pages below are made and saved
+	 * out of sight (plat_save_screen_hidden), so nothing else flashes past
+	 * before usbdrive shows the same "One moment" */
+	usb_drive_draw(a, UD_FINISHING);
+	plat_present();
 	for (i = 0; i < UD_FRAMES; i++) {
 		usb_drive_draw(a, i);
 		snprintf(path, sizeof path, "%s/%s", USB_DRIVE_DIR, NAME[i]);
 		unlink(path);
-		if (!plat_save_screen(path)) {
+		if (!plat_save_screen_hidden(path)) {
 			/* No picture to leave (a host): nothing is asked */
 			fprintf(stderr, "usb: USB Drive: could not save %s\n", path);
 			plat_present();
