@@ -1057,6 +1057,7 @@ void device_levels_forget(void)
 
 int plat_volume_get(void)     { return cur_vol; }
 int plat_brightness_get(void) { return cur_bright; }
+int plat_brightness_raw(int level) { (void)level; return -1; }
 
 void plat_volume_nudge(int delta)
 {

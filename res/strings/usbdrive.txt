@@ -165,3 +165,47 @@ fr = Envoi
 de = Upload
 ja = アップロード
 it = Upload
+
+[usbdrive.eject_key]
+note = B's button hint at the foot while the card is the computer's, and A's on the question: eject the card from the handheld. One word.
+en = Eject
+zh-Hans = 弹出
+es = Expulsar
+pt-BR = Ejetar
+fr = Éjecter
+de = Auswerfen
+ja = 取り出す
+it = Espelli
+
+[usbdrive.keep]
+note = B's hint on the question: do not eject, the card stays the computer's. One word.
+en = Keep
+zh-Hans = 保留
+es = Mantener
+pt-BR = Manter
+fr = Garder
+de = Behalten
+ja = そのまま
+it = Mantieni
+
+[usbdrive.confirm_head]
+note = The question's heading, when B is pressed while the computer wrote to the card in the last five seconds. Sentence case, ends with a question mark.
+en = Eject anyway?
+zh-Hans = 仍要弹出吗？
+es = ¿Expulsar de todos modos?
+pt-BR = Ejetar mesmo assim?
+fr = Éjecter quand même ?
+de = Trotzdem auswerfen?
+ja = それでも取り出しますか？
+it = Espellere comunque?
+
+[usbdrive.confirm_body]
+note = Under the question's heading: why it asks. Up to three balanced lines.
+en = The computer may still be copying to the card.
+zh-Hans = 电脑可能仍在向存储卡复制。
+es = La computadora aún puede estar copiando a la tarjeta.
+pt-BR = O computador ainda pode estar copiando para o cartão.
+fr = L'ordinateur copie peut-être encore vers la carte.
+de = Der Computer kopiert vielleicht noch auf die Karte.
+ja = パソコンがまだカードにコピー中かもしれません。
+it = Il computer potrebbe ancora copiare sulla scheda.

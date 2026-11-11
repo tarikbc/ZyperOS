@@ -1321,6 +1321,11 @@ void plat_volume_set_pct(int pct)
 	levels_save();
 }
 
+int plat_brightness_raw(int level)
+{
+	return level >= 0 && level <= BRIGHT_MAX ? bright_ladder[level] : -1;
+}
+
 void plat_brightness_set(int level)
 {
 	apply_brightness(clampi(level, 0, BRIGHT_MAX));

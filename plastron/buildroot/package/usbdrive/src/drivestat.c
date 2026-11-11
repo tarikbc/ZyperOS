@@ -116,7 +116,7 @@ static void way_text(const dst_way *w, char *out, size_t on)
 
 bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsigned now)
 {
-	char shown[sizeof s->shown], a[60], b[60];
+	char shown[sizeof s->shown], a[80], b[80];
 
 	if (!s->started) {
 		memset(s, 0, sizeof *s);

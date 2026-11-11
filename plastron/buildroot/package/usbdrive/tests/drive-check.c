@@ -279,11 +279,70 @@ int main(void)
 		free(out);
 	}
 
+	/* The handheld's buttons on the page (drv_key) */
+	{
+		drv_keys k = { .level = 5, .max = 11 };
+
+		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 5,
+		      "volume alone changed the brightness");
+		drv_key(&k, DRV_K_FN, true, 1000, false, 0);
+		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 6, "FN+up: %d", k.level);
+		CHECK(drv_key(&k, DRV_K_VOLUP, false, 1000, false, 0) == DRV_A_NONE, "a release did something");
+		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 5, "FN+down: %d", k.level);
+		k.level = 11;
+		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 11, "past the top");
+		k.level = 0;
+		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE && k.level == 0, "past the bottom");
+		drv_key(&k, DRV_K_FN, false, 1000, false, 0);
+		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE, "FN let go, still brightness");
+		/* B: nothing written, or long ago: eject at once */
+		CHECK(drv_key(&k, DRV_K_B, true, 10000, false, 0) == DRV_A_EJECT, "B with nothing written did not eject");
+		CHECK(drv_key(&k, DRV_K_B, true, 10000, true, 10000 - DRV_ASK_MS) == DRV_A_EJECT, "B 5 s after a write asked");
+		/* Written just now: asked; B keeps it, the page back */
+		CHECK(drv_key(&k, DRV_K_B, true, 10000, true, 9000) == DRV_A_ASK && k.asking, "B 1 s after a write: not asked");
+		CHECK(drv_key(&k, DRV_K_B, false, 10050, true, 9000) == DRV_A_NONE && k.asking, "B's release answered");
+		CHECK(drv_key(&k, DRV_K_B, true, 10500, true, 9000) == DRV_A_KEEP && !k.asking, "B on the question did not keep it");
+		/* Asked again; A ejects */
+		CHECK(drv_key(&k, DRV_K_A, true, 11000, true, 9000) == DRV_A_NONE, "A with no question did something");
+		CHECK(drv_key(&k, DRV_K_B, true, 11000, true, 9000) == DRV_A_ASK, "not asked again");
+		CHECK(drv_key(&k, DRV_K_A, true, 11500, true, 9000) == DRV_A_EJECT && !k.asking, "A on the question did not eject");
+		/* The clock's wrap: a write just before it is just now */
+		memset(&k, 0, sizeof k);
+		CHECK(drv_key(&k, DRV_K_B, true, 500, true, 0xfffffe00u) == DRV_A_ASK, "a write across the wrap");
+	}
+
+	/* bright.txt (at_parse_bright), read as untrusted */
+	{
+		static const char GOOD[] = "zyperos-drive-bright 1\nlevel 7\n"
+		                           "ladder 17 22 28 36 46 58 74 95 122 156 199 255\nbar 171 6 298 58\n";
+		const char *const BAD[] = {
+			"zyperos-drive-bright 2\nlevel 1\nladder 1 2\nbar 0 0 10 10\n",                 /* another format */
+			"zyperos-drive-bright 1\nlevel 12\nladder 17 22 28 36 46 58 74 95 122 156 199 255\nbar 171 6 298 58\n",
+			"zyperos-drive-bright 1\nlevel -1\nladder 17 22\nbar 0 0 10 10\n",
+			"zyperos-drive-bright 1\nlevel 0\nladder 17\nbar 0 0 10 10\n",                  /* one rung */
+			"zyperos-drive-bright 1\nlevel 0\nladder 0 22\nbar 0 0 10 10\n",                /* 0 is dark */
+			"zyperos-drive-bright 1\nlevel 0\nladder 17 256\nbar 0 0 10 10\n",
+			"zyperos-drive-bright 1\nlevel 0\nladder 22 17\nbar 0 0 10 10\n",               /* going down */
+			"zyperos-drive-bright 1\nlevel 0\nladder 17 22\nbar 600 0 100 10\n",            /* past the edge */
+			"zyperos-drive-bright 1\nlevel 0\nladder 17 22\nbar 2147483000 0 2147483000 10\n",
+			"zyperos-drive-bright 1\nlevel 0\nladder 17 22\n",                              /* no bar */
+			("zyperos-drive-bright 1\nlevel 0\nladder 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 "
+			 "23 24 25 26 27 28 29 30 31 32 33\nbar 0 0 10 10\n"),                         /* too many */
+		};
+		at_bright b;
+		size_t i;
+
+		CHECK(at_parse_bright(GOOD, 640, 480, &b) && b.level == 7 && b.rungs == 12 && b.ladder[11] == 255 &&
+		      b.bar.w == 298, "a good bright.txt refused");
+		for (i = 0; i < sizeof BAD / sizeof BAD[0]; i++)
+			CHECK(!at_parse_bright(BAD[i], 640, 480, &b), "a bad bright.txt taken: %zu", i);
+	}
+
 	if (fails) {
 		fprintf(stderr, "usbdrive drive-check: %d failed\n", fails);
 		return 1;
 	}
 	printf("usbdrive drive-check: never exported mounted or held; ejected, unplugged (1.5 s), POWER, "
-	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas, read as untrusted\n");
+	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas and bright.txt, read as untrusted; B's eject and its question; FN + volume\n");
 	return 0;
 }

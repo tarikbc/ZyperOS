@@ -1571,8 +1571,18 @@ speed big in **title** **text**, and the total since the start under it in
 **meta** **text-soft**. A way that moved in the last 2 s has its mark in
 **accent-ink**; an idle one's is **text-dim** and its speed reads 0 MB/s.
 No status row: the two tiles say it. Under them "Eject it on the computer
-to finish." in **meta** **text-soft**, and at the foot POWER's hint, "Stop
-and power off", the shelves' foot's size (11.9), centered. "One moment / The
+to finish." in **meta** **text-soft**, and at the foot two hints, the
+shelves' foot's size (11.9), centered as a pair: B "Eject" and POWER "Stop
+and power off". B ejects from the handheld (the medium taken away, so the
+computer lets go of it, then back as after the computer's eject); if the
+computer wrote in the last 5 s, it asks first, on a page of the same make:
+"Eject anyway?" over "The computer may still be copying to the card." in
+the wide tile, A "Eject" and B "Keep" at the foot. Ejecting on the computer
+stays the way the eject line names. FUNCTION and volume step the
+brightness on its usual rungs, and the brightness bar (11.6) shows at the
+top as everywhere, pre-drawn at every rung by the launcher on the ground
+it sits on (bright.raw), up for 1.5 s; the rung is kept as the launcher
+keeps its own. "One moment / The
 card is getting ready." (both ways) and "The card is busy / It stays on the
 handheld. Try again in a moment." (fail closed: never exported while
 mounted or held) have their words in one tile the width of both, in
@@ -1590,7 +1600,8 @@ blocks, not files. Every slot edge is a multiple of 8 so it lands on a
 pixel of the saved 640 x 480. Without the atlas the page shows as drawn,
 both ways idle. Host shots: `--usb-ask N [plain] drive`, `--usb-drive N
 [in|out|both|wide]` (a copy each way, both, the widest numbers), and
-`--usb-drive 3` for the atlas, which prints where everything is.
+`--usb-drive 3` for the question, `--usb-drive 0 bright` with the bar,
+and `--usb-drive 4` for the atlas, which prints where everything is.
 
 MENU > **Developer Mode** (on or off, between Show Tutorial and System
 Update) is a development image's only: on, the link is always up and nothing

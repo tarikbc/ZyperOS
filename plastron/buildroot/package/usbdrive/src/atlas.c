@@ -147,3 +147,47 @@ bool at_load(const char *path, int w, int h, bool turned, uint32_t *out)
 	free(in);
 	return ok;
 }
+
+bool at_parse_bright(const char *text, int w, int h, at_bright *b)
+{
+	const char *p = text;
+	bool head = false, level = false, bar = false;
+	at_layout pic;
+	int i;
+
+	memset(b, 0, sizeof *b);
+	memset(&pic, 0, sizeof pic);
+	pic.w = w;
+	pic.h = h;
+	while (p && *p) {
+		char line[256];
+		const char *nl = strchr(p, '\n');
+		size_t n = nl ? (size_t)(nl - p) : strlen(p);
+		int v;
+
+		if (n >= sizeof line) n = sizeof line - 1;
+		memcpy(line, p, n);
+		line[n] = '\0';
+		p = nl ? nl + 1 : NULL;
+		if (sscanf(line, "zyperos-drive-bright %d", &v) == 1) head = v == 1;
+		else if (sscanf(line, "level %d", &b->level) == 1) level = true;
+		else if (sscanf(line, "bar %d %d %d %d", &b->bar.x, &b->bar.y, &b->bar.w, &b->bar.h) == 4) bar = true;
+		else if (!strncmp(line, "ladder ", 7)) {
+			const char *q = line + 7;
+			int got;
+
+			b->rungs = 0;
+			while (b->rungs < AT_RUNGS && sscanf(q, "%d%n", &v, &got) == 1) {
+				if (v < 1 || v > 255) return false;
+				b->ladder[b->rungs++] = v;
+				q += got;
+			}
+			if (sscanf(q, "%d", &v) == 1) return false;   /* more than AT_RUNGS */
+		}
+	}
+	if (!head || !level || !bar || b->rungs < 2 || b->level < 0 || b->level >= b->rungs) return false;
+	if (w <= 0 || h <= 0 || !inside(&pic, &b->bar)) return false;
+	for (i = 1; i < b->rungs; i++)
+		if (b->ladder[i] < b->ladder[i - 1]) return false;
+	return true;
+}

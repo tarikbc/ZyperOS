@@ -63,6 +63,28 @@ bool at_parse(const char *text, at_layout *l);
 void at_compose(const at_layout *l, int s, const int *glyphs, int n, const uint32_t *atlas,
                 uint32_t *out);
 
+/* The brightness (bright.txt, beside the atlas, written by the same
+ * launcher): its rung now, the ladder of backlight values it steps on (the
+ * launcher's own, so a rung here is a rung there), and where its bar goes
+ * on the page, in the landscape picture's pixels:
+ *
+ *   zyperos-drive-bright 1
+ *   level 7
+ *   ladder 17 22 28 36 46 58 74 95 122 156 199 255
+ *   bar X Y W H
+ *
+ * bright.raw is the bar at every rung, rung 0 first, each W x H landscape
+ * XRGB, already laid on the page's ground. Untrusted too: a ladder of 2 to
+ * AT_RUNGS values from 1 to 255, a level on it, a bar inside the picture. */
+#define AT_RUNGS 32
+typedef struct {
+	int level, rungs;              /* the rung now; how many */
+	int ladder[AT_RUNGS];          /* each rung's backlight value */
+	at_rect bar;                   /* where the bar goes */
+} at_bright;
+
+bool at_parse_bright(const char *text, int w, int h, at_bright *b);
+
 /* A raw picture (the panel's turned rows) read into landscape `w` x `h`;
  * `turned` false for a display that is landscape itself */
 bool at_load(const char *path, int w, int h, bool turned, uint32_t *out);

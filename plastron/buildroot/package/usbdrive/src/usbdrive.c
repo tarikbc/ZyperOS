@@ -17,11 +17,19 @@
  * rather than by splash, and its two tiles say what moves, how fast and
  * how much each way, from the games partition's /sys stat once a second
  * (drivestat.h); only a change is drawn, so an idle drive costs nothing.
+ *
+ * The handheld's own buttons work on it too (drive.h's drv_key): FUNCTION
+ * and volume step the brightness on the launcher's ladder (bright.txt), its
+ * bar shown for a moment (bright.raw) and the rung left for ZyperOS to keep;
+ * B ejects from the handheld (f_mass_storage's forced_eject, so the computer
+ * sees the medium go), asking first on confirm.raw if the computer wrote in
+ * the last 5 s.
  */
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <linux/input.h>
 #include <signal.h>
 #include <stdio.h>
@@ -47,6 +55,10 @@
 #define LUN        MS "/lun.0"
 #define VBUS_IN    "/sys/class/power_supply/rk817-charger/online"
 #define PART_STAT  "/sys/class/block/mmcblk0p3/stat"
+#define BACKLIGHT  "/sys/class/backlight/backlight/brightness"
+#define BRIGHT_OUT "/tmp/zyperos_usbdrive_bright"   /* the rung, for ZyperOS to keep */
+#define BTN_FN     BTN_TRIGGER_HAPPY1               /* FUNCTION, the launcher's MENU */
+#define BAR_MS     1500u                            /* the bar up this long after a press */
 
 static pid_t still;          /* splash --still showing a frame */
 static char  frames[PATH_MAX];
@@ -115,9 +127,19 @@ static struct {
 	bool on;
 	at_layout l;
 	uint32_t *base, *atlas, *page;
+	uint32_t *confirm;           /* the question's page, NULL for none */
+	bool covered;                /* the question is up over the page */
 	dst_state d;
 	unsigned looked;
 } live;
+
+/* The brightness: the launcher's ladder and rung, and its bar at each rung */
+static struct {
+	bool on;
+	at_bright b;
+	uint32_t *bars;              /* rungs x bar.w x bar.h, NULL for no bar */
+	unsigned until;              /* the bar comes down then, 0 not up */
+} bri;
 
 static bool live_start(void)
 {
@@ -144,9 +166,87 @@ static bool live_start(void)
 	snprintf(path, sizeof path, "%s/atlas.raw", frames);
 	if (!at_load(path, live.l.w, live.l.h, true, live.atlas)) return false;
 	memcpy(live.page, live.base, n * 4);
+	/* The question's page, for B while the computer may still be copying */
+	if ((live.confirm = malloc(n * 4))) {
+		snprintf(path, sizeof path, "%s/confirm.raw", frames);
+		if (!at_load(path, live.l.w, live.l.h, true, live.confirm)) {
+			free(live.confirm);
+			live.confirm = NULL;
+		}
+	}
 	if (!panel_open(live.page, live.l.w, live.l.h)) return false;
 	live.on = true;
 	return true;
+}
+
+/* What is on the panel now: the page, or the question over it */
+static const uint32_t *live_shown(void)
+{
+	return live.covered && live.confirm ? live.confirm : live.page;
+}
+
+/* bright.txt, and on the live page the bar's pictures */
+static void bright_start(void)
+{
+	char path[PATH_MAX + 32], text[1024];
+	size_t n;
+	FILE *f;
+
+	snprintf(path, sizeof path, "%s/bright.txt", frames);
+	if (!(f = fopen(path, "r"))) return;
+	n = fread(text, 1, sizeof text - 1, f);
+	fclose(f);
+	text[n] = '\0';
+	if (!at_parse_bright(text, live.on ? live.l.w : 640, live.on ? live.l.h : 480, &bri.b)) {
+		say("usbdrive: bright.txt is not usable: no brightness\n", NULL);
+		return;
+	}
+	bri.on = true;
+	if (!live.on) return;
+	n = (size_t)bri.b.rungs * bri.b.bar.w * bri.b.bar.h;
+	snprintf(path, sizeof path, "%s/bright.raw", frames);
+	if ((bri.bars = malloc(n * 4)) && (f = fopen(path, "rb"))) {
+		if (fread(bri.bars, 4, n, f) != n) { free(bri.bars); bri.bars = NULL; }
+		fclose(f);
+	} else {
+		free(bri.bars);
+		bri.bars = NULL;
+	}
+}
+
+/* The rung set, kept for ZyperOS, and its bar shown */
+static void bright_set(int level, unsigned now)
+{
+	char text[16];
+
+	snprintf(text, sizeof text, "%d\n", bri.b.ladder[level]);
+	put(BACKLIGHT, text);
+	{
+		int fd = open(BRIGHT_OUT, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+
+		snprintf(text, sizeof text, "%d\n", level);
+		if (fd >= 0) {
+			if (write(fd, text, strlen(text)) < 0) { /* the next start keeps its own */ }
+			close(fd);
+		}
+	}
+	if (live.on && bri.bars) {
+		const at_rect *r = &bri.b.bar;
+
+		panel_blit(bri.bars + (size_t)level * r->w * r->h, r->w, r->h, r->x, r->y);
+		bri.until = now + BAR_MS;
+		if (!bri.until) bri.until = 1;
+	}
+}
+
+/* The bar down once its time is up: the panel's own picture back under it */
+static void bright_follow(unsigned now)
+{
+	const at_rect *r = &bri.b.bar;
+
+	if (!bri.until || (int)(now - bri.until) < 0) return;
+	bri.until = 0;
+	if (live.on) panel_update(live_shown(), r->x, r->y, r->w, r->h);
 }
 
 /* A way's three slots: its mark, moving or idle, its speed, its total */
@@ -168,7 +268,8 @@ static void live_way(const dst_way *w, int mark_slot, int on, int off, int speed
 			for (i = 0; i < n; i++) tok[i] += fam;
 		}
 		at_compose(&live.l, slots[k], tok, n, live.atlas, live.page);
-		panel_update(live.page, r->x, r->y, r->w, r->h);
+		/* Under the question, the page is kept up to date out of sight */
+		if (!live.covered) panel_update(live.page, r->x, r->y, r->w, r->h);
 	}
 }
 
@@ -179,12 +280,14 @@ static void live_follow(void)
 	char text[256];
 	unsigned now = now_ms();
 
-	if (!live.on || (live.looked && now - live.looked < 1000u)) return;
+	/* Followed with or without the live page: B's question needs when the
+	 * computer last wrote */
+	if (live.looked && now - live.looked < 1000u) return;
 	live.looked = now;
 	if (get(PART_STAT, text, sizeof text) ||
 	    sscanf(text, "%llu %llu %llu %llu %llu %llu %llu", &f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6]) != 7)
 		return;
-	if (!dst_step(&live.d, f[2], f[6], now)) return;
+	if (!dst_step(&live.d, f[2], f[6], now) || !live.on) return;
 	live_way(&live.d.in, AT_SLOT_MARK_IN, AT_G_IN_ON, AT_G_IN_OFF, AT_SLOT_SPEED_IN, AT_SLOT_TOTAL_IN);
 	live_way(&live.d.out, AT_SLOT_MARK_OUT, AT_G_OUT_ON, AT_G_OUT_OFF, AT_SLOT_SPEED_OUT, AT_SLOT_TOTAL_OUT);
 }
@@ -373,6 +476,52 @@ static bool power_pressed(int fd)
 	return down;
 }
 
+/* The joypad (A, B, FUNCTION) and the volume keys, read but not grabbed:
+ * nothing else reads them while ZyperOS is away */
+static int input_with(int code)
+{
+	for (int i = 0; i < 32; i++) {
+		char path[32];
+		unsigned char keys[KEY_MAX / 8 + 1] = { 0 };
+		int fd;
+
+		snprintf(path, sizeof path, "/dev/input/event%d", i);
+		if ((fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)) < 0) continue;
+		if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof keys), keys) >= 0 && (keys[code / 8] & (1 << (code % 8))))
+			return fd;
+		close(fd);
+	}
+	return -1;
+}
+
+/* Each press and release on `fd` through drv_key; the first action that
+ * ends or changes the page is acted on, the rest of the batch read */
+static drv_act keys_read(int fd, drv_keys *k, unsigned now)
+{
+	struct input_event ev;
+	drv_act act = DRV_A_NONE;
+
+	while (fd >= 0 && read(fd, &ev, sizeof ev) == sizeof ev) {
+		int key = -1;
+		drv_act a;
+
+		if (ev.type != EV_KEY || ev.value == 2) continue;
+		switch (ev.code) {
+		case BTN_FN:        key = DRV_K_FN; break;
+		case KEY_VOLUMEUP:  key = DRV_K_VOLUP; break;
+		case KEY_VOLUMEDOWN:key = DRV_K_VOLDN; break;
+		case BTN_SOUTH:     key = DRV_K_A; break;
+		case BTN_EAST:      key = DRV_K_B; break;
+		default:            continue;
+		}
+		if (!bri.on && (key == DRV_K_VOLUP || key == DRV_K_VOLDN)) continue;
+		a = drv_key(k, key, ev.value == 1, now, live.d.in.total > 0, live.d.in.moved_ms);
+		if (a == DRV_A_BRIGHT) bright_set(k->level, now);
+		else if (a != DRV_A_NONE && act == DRV_A_NONE) act = a;
+	}
+	return act;
+}
+
 static void back_to_zyperos(const char *launch)
 {
 	/* For ZyperOS: this plug was answered (its usblink_skip_ask) */
@@ -391,7 +540,8 @@ int main(int argc, char **argv)
 	drv_wait w = { 0 };
 	drv_end end = DRV_STAY;
 	char v[64], st[32];
-	int pfd;
+	int pfd, pad, vol;
+	drv_keys keys = { 0 };
 
 	if (argc < 3) {
 		fprintf(stderr, "usage: usbdrive FRAMES LAUNCH\n");
@@ -430,9 +580,46 @@ int main(int argc, char **argv)
 	} else {
 		show("connected.raw");
 	}
+	bright_start();
 	pfd = power_open();
+	pad = input_with(BTN_SOUTH);
+	vol = input_with(KEY_VOLUMEUP);
+	keys.level = bri.on ? bri.b.level : 0;
+	keys.max = bri.on ? bri.b.rungs - 1 : 0;
 	while (end == DRV_STAY) {
-		usleep(200000);
+		struct pollfd pf[3] = { { pfd, POLLIN, 0 }, { pad, POLLIN, 0 }, { vol, POLLIN, 0 } };
+		unsigned now;
+		drv_act act;
+
+		/* A press wakes it at once; else five looks a second */
+		poll(pf, 3, 200);
+		now = now_ms();
+		act = keys_read(pad, &keys, now);
+		if (act == DRV_A_NONE) act = keys_read(vol, &keys, now);
+		else keys_read(vol, &keys, now);
+		if (act == DRV_A_ASK) {
+			say("usbdrive: B while the computer may still be copying: asked\n", NULL);
+			if (live.on && live.confirm) {
+				live.covered = true;
+				panel_update(live.confirm, 0, 0, live.l.w, live.l.h);
+			} else {
+				show("confirm.raw");
+			}
+		} else if (act == DRV_A_KEEP) {
+			if (live.on) {
+				live.covered = false;
+				panel_update(live.page, 0, 0, live.l.w, live.l.h);
+			} else {
+				show("connected.raw");
+			}
+		} else if (act == DRV_A_EJECT) {
+			/* The medium taken away, as a computer sees a card pulled from
+			 * its reader: it lets go of it, then the export ends as an eject */
+			put(LUN "/forced_eject", "1");
+			end = DRV_PIXEL;
+			break;
+		}
+		bright_follow(now);
 		get(VBUS_IN, v, sizeof v);
 		{
 			char p[160], file[PATH_MAX];
@@ -446,6 +633,7 @@ int main(int argc, char **argv)
 		live_follow();
 	}
 	say(end == DRV_EJECTED ? "usbdrive: ejected by the computer\n"
+	    : end == DRV_PIXEL ? "usbdrive: ejected on the handheld\n"
 	    : end == DRV_UNPLUGGED ? "usbdrive: the cable came out\n"
 	    : end == DRV_POWER ? "usbdrive: POWER\n" : "usbdrive: no computer took it\n", NULL);
 	show("finishing.raw");
@@ -455,6 +643,8 @@ int main(int argc, char **argv)
 	export_off();
 	sync();
 	if (pfd >= 0) { ioctl(pfd, EVIOCGRAB, 0); close(pfd); }
+	if (pad >= 0) close(pad);
+	if (vol >= 0) close(vol);
 	if (end == DRV_POWER) {
 		if (still > 0) { kill(still, SIGTERM); waitpid(still, NULL, 0); }
 		execl("/sbin/poweroff", "poweroff", (char *)NULL);

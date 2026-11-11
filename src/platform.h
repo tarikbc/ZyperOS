@@ -303,6 +303,9 @@ void plat_volume_nudge(int delta);
 void plat_brightness_nudge(int delta);
 void plat_volume_set_pct(int pct);
 void plat_brightness_set(int level);
+/* The backlight's own value at rung `level` (its ladder), -1 where there is
+ * none to hand to another program: Flash Drive's usbdrive steps the same rungs */
+int  plat_brightness_raw(int level);
 
 /* The panel's backlight off or on, leaving the brightness level as it was -
  * Muse's pocket lock. Off is the display engine's own switch, not a black

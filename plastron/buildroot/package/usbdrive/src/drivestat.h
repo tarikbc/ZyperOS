@@ -44,7 +44,7 @@ typedef struct {
 	unsigned long long rd0, wr0;     /* the sectors at the last look */
 	unsigned last_ms;                /* the last look */
 	dst_way in, out;                 /* to the card (written), from it (read) */
-	char shown[128];                 /* what the page shows, to see a change */
+	char shown[168];                 /* what the page shows, to see a change */
 } dst_state;
 
 /* One look: the stat's sectors read and written, at now_ms. True when what

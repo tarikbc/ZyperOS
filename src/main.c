@@ -2326,6 +2326,21 @@ static void usb_auto_load(void)
 		usblink_skip_ask();
 		fprintf(stderr, "usb: back from USB Drive: not asked again for this plug\n");
 	}
+	/* The brightness set on Flash Drive's page (usbdrive), kept as if set
+	 * here: the same rungs, saved as the launcher saves its own */
+	{
+		FILE *f = fopen("/tmp/zyperos_usbdrive_bright", "r");
+		int level;
+
+		if (f) {
+			if (fscanf(f, "%d", &level) == 1 && level >= 0 && level <= PLAT_BRIGHT_MAX) {
+				plat_brightness_set(level);
+				fprintf(stderr, "usb: the brightness set on Flash Drive's page: %d\n", level);
+			}
+			fclose(f);
+			remove("/tmp/zyperos_usbdrive_bright");
+		}
+	}
 }
 
 static void usb_auto_save(bool on)
@@ -8558,7 +8573,7 @@ static void usb_drive(app *a);
  * ZyperOS again (plastron's package/usbdrive). */
 #define USB_DRIVE_DIR "/tmp/zyperos_usbdrive.d"
 #define USB_DRIVE_ASK "/tmp/zyperos_usbdrive"
-enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_FRAMES };
+enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_CONFIRM, UD_FRAMES };
 
 /* The pages' geometry, in the launcher's 1024 x 768. The saved pictures are
  * 640 x 480 (5/8 of it), so every edge a slot or a glyph's cell starts on is
@@ -8711,6 +8726,16 @@ static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *spe
 	}
 }
 
+/* Two button hints at the foot, the shelves' size, centered as a pair */
+static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+{
+	int w1 = page_hint_width(k1, l1, false), w2 = page_hint_width(k2, l2, false), gap = 48;
+	int x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+
+	page_hint(r, k1, l1, x, 704, false, false);
+	page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+}
+
 /* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
  * page as usbdrive starts it, both idle; 1 a copy to the card; 2 one from
  * it; 3 both ways; 4 the widest numbers */
@@ -8723,8 +8748,10 @@ static int shot_usbdrive_vals;
  * busy: their words in one tile the width of both. */
 static void usb_drive_draw(app *a, int which)
 {
-	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED };
-	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY };
+	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED,
+	                                        S_USBDRIVE_CONFIRM_HEAD };
+	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY,
+	                                        S_USBDRIVE_CONFIRM_BODY };
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
@@ -8747,6 +8774,8 @@ static void usb_drive_draw(app *a, int which)
 		for (k = 0; k < n; k++)
 			ui_text(a->r, fm, lines[k], ZYPEROS_SCREEN_W / 2,
 			        ui_cap_y(fm, UD_TILE_Y + UD_TILE_H / 2 + (2 * k - (n - 1)) * 26), 0, UI_TEXT_SOFT);
+		if (which == UD_CONFIRM)
+			ud_foot(a->r, "A", T(S_USBDRIVE_EJECT_KEY), "B", T(S_USBDRIVE_KEEP));
 		return;
 	}
 	{
@@ -8761,7 +8790,7 @@ static void usb_drive_draw(app *a, int which)
 		};
 		static const bool ACTIVE[5][2] = { { false, false }, { true, false }, { false, true }, { true, true },
 		                                   { true, true } };
-		int v = shot_usbdrive_vals >= 0 && shot_usbdrive_vals < 5 ? shot_usbdrive_vals : 0, w;
+		int v = shot_usbdrive_vals >= 0 && shot_usbdrive_vals < 5 ? shot_usbdrive_vals : 3, w;
 
 		for (w = 0; w < 2; w++) {
 			int sp[16], to[16];
@@ -8775,12 +8804,22 @@ static void usb_drive_draw(app *a, int which)
 	if (n > 1) ui_fit_drawn(T(S_USBDRIVE_EJECT));
 	for (k = 0; k < n; k++)
 		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 592 + k * 40), 0, UI_TEXT_SOFT);
-	{
-		/* POWER's hint, the shelves' foot's size, in the middle */
-		const char *stop = T(S_USBDRIVE_STOP);
+	ud_foot(a->r, "B", T(S_USBDRIVE_EJECT_KEY), "POWER", T(S_USBDRIVE_STOP));
+	/* A shot of FUNCTION and volume on the page (--usb-drive 0 bright): the
+	 * bar usbdrive shows, at a rung, where it shows it */
+	if (shot_usbdrive_vals == 5) {
+		static uint32_t px[OSDBAR_W * OSDBAR_H];
+		SDL_Texture *tx;
 
-		page_hint(a->r, "POWER", stop, (ZYPEROS_SCREEN_W - page_hint_width("POWER", stop, false)) / 2, 704,
-		          false, false);
+		osdbar_render(px, OSDBAR_W, OSDBAR_H, OSDBAR_W, 1.0f, theme_index(), OSDBAR_BRIGHT, 8,
+		              PLAT_BRIGHT_MAX, 1.0f, false);
+		if ((tx = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, OSDBAR_W,
+		                            OSDBAR_H))) {
+			SDL_SetTextureBlendMode(tx, SDL_BLENDMODE_BLEND);
+			SDL_UpdateTexture(tx, NULL, px, OSDBAR_W * 4);
+			SDL_RenderCopy(a->r, tx, NULL, &(SDL_Rect){ OSDBAR_X, OSDBAR_Y, OSDBAR_W, OSDBAR_H });
+			SDL_DestroyTexture(tx);
+		}
 	}
 }
 
@@ -8844,9 +8883,52 @@ static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot
 	return shot ? true : fclose(f) == 0;
 }
 
+/* usbdrive's brightness (its atlas.h's at_bright): bright.txt, the rung now
+ * and the backlight's ladder, the launcher's own so FUNCTION and volume step
+ * the same rungs there, and where the bar goes; and bright.raw, the bar
+ * (src/osdbar.h, the one every other place shows) at each rung, already laid
+ * on the page's ground, where it sits at the top. False where the backlight
+ * has no ladder to hand on (the Brick). */
+#define UD_BAR_X ((OSDBAR_X * 5) / 8)
+#define UD_BAR_Y ((OSDBAR_Y * 5) / 8)
+#define UD_BAR_W ((OSDBAR_W * 5 + 7) / 8)
+#define UD_BAR_H ((OSDBAR_H * 5 + 7) / 8)
+
+static bool usb_drive_bright(const char *txt, const char *raw)
+{
+	static uint32_t px[UD_BAR_W * UD_BAR_H];
+	const ds_theme *t = theme();
+	FILE *f;
+	int k, i;
+
+	if (plat_brightness_raw(0) < 0 || !(f = fopen(txt, "w"))) return false;
+	fprintf(f, "zyperos-drive-bright 1\nlevel %d\nladder", plat_brightness_get());
+	for (k = 0; k <= PLAT_BRIGHT_MAX; k++) fprintf(f, " %d", plat_brightness_raw(k));
+	fprintf(f, "\nbar %d %d %d %d\n", UD_BAR_X, UD_BAR_Y, UD_BAR_W, UD_BAR_H);
+	if (fclose(f) != 0 || !(f = fopen(raw, "wb"))) return false;
+	for (k = 0; k <= PLAT_BRIGHT_MAX; k++) {
+		osdbar_render(px, UD_BAR_W, UD_BAR_H, UD_BAR_W, 0.625f, theme_index(), OSDBAR_BRIGHT, k,
+		              PLAT_BRIGHT_MAX, 1.0f, false);
+		/* Over the ground, as the page has it there */
+		for (i = 0; i < UD_BAR_W * UD_BAR_H; i++) {
+			uint32_t c = px[i], al = c >> 24;
+			uint32_t r = ((c >> 16 & 255) * al + t->ground.r * (255 - al) + 127) / 255;
+			uint32_t g = ((c >> 8 & 255) * al + t->ground.g * (255 - al) + 127) / 255;
+			uint32_t b = ((c & 255) * al + t->ground.b * (255 - al) + 127) / 255;
+
+			px[i] = 0xFF000000u | r << 16 | g << 8 | b;
+		}
+		if (fwrite(px, 4, (size_t)UD_BAR_W * UD_BAR_H, f) != (size_t)UD_BAR_W * UD_BAR_H) {
+			fclose(f);
+			return false;
+		}
+	}
+	return fclose(f) == 0;
+}
+
 static void usb_drive(app *a)
 {
-	static const char *const NAME[UD_FRAMES] = { "connected.raw", "finishing.raw", "failed.raw" };
+	static const char *const NAME[UD_FRAMES] = { "connected.raw", "finishing.raw", "failed.raw", "confirm.raw" };
 	char path[256], txt[256];
 	int i;
 	FILE *f;
@@ -8877,6 +8959,15 @@ static void usb_drive(app *a)
 	unlink(txt);
 	if (!usb_drive_atlas(a, path, txt, NULL)) {
 		fprintf(stderr, "usb: USB Drive: no atlas; the page without live rows\n");
+		unlink(txt);
+	}
+	/* And the brightness for its page; without it the chord does nothing */
+	snprintf(path, sizeof path, "%s/bright.raw", USB_DRIVE_DIR);
+	snprintf(txt, sizeof txt, "%s/bright.txt", USB_DRIVE_DIR);
+	unlink(path);
+	unlink(txt);
+	if (!usb_drive_bright(txt, path)) {
+		fprintf(stderr, "usb: USB Drive: no brightness for its page\n");
 		unlink(txt);
 	}
 	/* What it was doing comes back after, as from a power-off */
@@ -23183,10 +23274,10 @@ int main(int argc, char *argv[])
 			/* The tiles' numbers: a copy to the card, one from it, both
 			 * ways, or the widest */
 			if (i + 1 < argc) {
-				static const char *const V[] = { "idle", "in", "out", "both", "wide" };
+				static const char *const V[] = { "idle", "in", "out", "both", "wide", "bright" };
 				int v;
 
-				for (v = 0; v < 5; v++)
+				for (v = 0; v < 6; v++)
 					if (!strcmp(argv[i + 1], V[v])) { shot_usbdrive_vals = v; i++; break; }
 			}
 		}

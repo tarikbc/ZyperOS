@@ -36,6 +36,16 @@ void panel_update(const uint32_t *page, int x, int y, int rw, int rh)
 			*px(i, j) = page[(size_t)j * P.w + i];
 }
 
+void panel_blit(const uint32_t *src, int w, int h, int x, int y)
+{
+	int i, j;
+
+	if (!P.map || x < 0 || y < 0 || w > P.w - x || h > P.h - y) return;
+	for (i = 0; i < w; i++)
+		for (j = 0; j < h; j++)
+			*px(x + i, y + j) = src[(size_t)j * w + i];
+}
+
 bool panel_open(const uint32_t *page, int w, int h)
 {
 	drmModeRes *res = NULL;

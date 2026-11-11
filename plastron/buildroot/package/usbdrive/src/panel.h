@@ -19,6 +19,9 @@ bool panel_open(const uint32_t *page, int w, int h);
 /* The rect of `page` (landscape) onto the panel again */
 void panel_update(const uint32_t *page, int x, int y, int rw, int rh);
 
+/* A small landscape picture `w` x `h` onto the panel at (x, y) */
+void panel_blit(const uint32_t *px, int w, int h, int x, int y);
+
 /* Let go of the buffer (after another program put its picture up) */
 void panel_close(void);
 
