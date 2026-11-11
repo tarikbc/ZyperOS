@@ -9,6 +9,25 @@ int keyhints_width(const char *key, const char *label)
 	return page_hint_width(key, label, false);
 }
 
+int keyhints_line_width(const char *packed)
+{
+	key_hint h[KEYHINTS_MAX];
+	char buf[512];
+	int n = keyhints_unpack(packed, buf, sizeof buf, h, KEYHINTS_MAX), i, w = 0;
+
+	for (i = 0; i < n; i++) w += keyhints_width(h[i].key, h[i].label) + (i ? KEYHINTS_GAP : 0);
+	return w;
+}
+
+int keyhints_draw_packed(SDL_Renderer *r, const char *packed, int x0, int x1, int cy, Uint8 alpha)
+{
+	key_hint h[KEYHINTS_MAX];
+	char buf[512];
+	int n = keyhints_unpack(packed, buf, sizeof buf, h, KEYHINTS_MAX);
+
+	return n ? keyhints_draw(r, h, n, x0, x1, cy, KEYHINTS_CENTER, false, alpha) : 0;
+}
+
 int keyhints_height(const key_hint *h, int n, int maxw)
 {
 	int start[KEYHINTS_MAX + 1];

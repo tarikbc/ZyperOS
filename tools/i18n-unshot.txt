@@ -42,7 +42,6 @@ art.sg_busy
 art.sg_no_answer
 
 # audio: no shot draws it yet
-audio.speaker
 audio.wired
 audio.bluetooth
 audio.usb
@@ -103,8 +102,6 @@ charging.to_limit_h_min
 charging.to_full_working
 charging.to_full_almost
 charging.to_full_h
-charging.hold_full
-charging.hold_start
 
 # cheevolist: no shot draws it yet
 cheevolist.no_description
@@ -178,7 +175,6 @@ controls.two_screens
 corner.time_min
 corner.time_h
 corner.time_h_min
-# (held and full are drawn by tools/corner-check.sh in every language, which checks they fit)
 corner.held
 corner.full
 
@@ -186,27 +182,22 @@ corner.full
 datetime.change
 datetime.wifi_sets
 
-# devmode: its plural's other form reads like its one in a drawn text, so a shot cannot tell them apart (the page is drawn with 1 and with 12 keys)
-devmode.keys_count.other
-
 # emptyhome: no shot draws it yet
 emptyhome.unplug_adapter
 emptyhome.cheer.one
 emptyhome.cheer.other
 
 # gamemenu: no shot draws it yet
-gamemenu.replace_art
 gamemenu.delete_ask
 gamemenu.delete_ask_this
 gamemenu.delete_ask_port
 gamemenu.delete_ask_port_this
-gamemenu.delete_runtime
-gamemenu.delete_port_unknown
 gamemenu.deleting
-gamemenu.deleted
 gamemenu.delete_partly
 gamemenu.delete_failed
 gamemenu.delete_outside
+gamemenu.delete_runtime
+gamemenu.delete_port_unknown
 gamemenu.delete_bios
 gamemenu.layout_stacked
 gamemenu.layout_focus
@@ -219,7 +210,6 @@ gamemenu.dmode_native
 
 # games: no shot draws it yet
 games.no_games
-games.played
 games.achievements
 games.resume
 games.fresh
@@ -310,8 +300,6 @@ lights.low
 lights.level
 lights.done
 lights.all_on
-lights.some_on.one
-lights.some_on.other
 
 # lowbatt: no shot draws it yet
 lowbatt.charging
@@ -327,25 +315,20 @@ media.region_kr
 media.region_au
 media.looking
 media.or_pc
-media.vnote_link
-media.vnote_none
-media.vnote_offline
 media.src_unknown
 media.src_no_match
 media.src_not_linked
 media.src_no_answer
 media.delete_ask
+media.vnote_offline
+media.vnote_link
+media.vnote_none
 
 # menu: no shot draws it yet
 menu.on
 
 # mp4: no shot draws it yet
-mp4.locked
 mp4.hold_unlock
-mp4.hint_lock
-mp4.hint_controls
-mp4.hint_full_screen
-mp4.hint_video
 
 # muse: no shot draws it yet
 muse.chapter_of
@@ -353,18 +336,10 @@ muse.chapter
 muse.paused
 muse.stopped
 muse.finished
-muse.hint_play
-muse.hint_pause
-muse.hint_track
 muse.hint_chapter
-muse.hint_file
-muse.hint_seek
-muse.hint_speed
-muse.hint_mode
 muse.row_playing
 muse.row_paused
 muse.paused_note
-muse.art_title
 muse.art_starting
 muse.art_all_crisp
 muse.art_done
@@ -375,7 +350,6 @@ muse.art_counts_failed
 muse.art_stop
 
 # music: no shot draws it yet
-music.track
 music.popup
 music.playing
 music.shuffle
@@ -392,7 +366,6 @@ musiclib.sort_artist
 musiclib.sort_album
 musiclib.sort_author
 musiclib.sort_title
-musiclib.sort_folder
 musiclib.art_no_network
 
 # panel: no shot draws it yet
@@ -400,7 +373,6 @@ panel.order_release
 panel.battery_percentage
 panel.battery_time
 panel.side_lights
-panel.needs_wifi
 panel.signing_in
 panel.signed_in_as
 panel.sign_in_failed
@@ -422,6 +394,18 @@ portload.starting_a_minute
 portload.starting
 portload.a_minute
 
+# portmaster: no shot draws it yet
+portmaster.point_store
+portmaster.point_files
+portmaster.err_network
+portmaster.err_checksum
+portmaster.err_space
+portmaster.err_unpack
+portmaster.err_release
+portmaster.err_internal
+portmaster.err_stopped
+portmaster.needs_system
+
 # ra: no shot draws it yet
 ra.sign_in_need_both
 ra.sign_in_no_network
@@ -435,7 +419,6 @@ ra.sign_in_no_token
 scraper.complete
 scraper.on
 scraper.key_refused
-scraper.art
 scraper.found_n.one
 scraper.found_n.other
 scraper.already_n.one
@@ -465,7 +448,6 @@ scraper.unlink_key_ask
 
 # search: no shot draws it yet
 search.heading
-search.found.one
 search.some_of
 search.none
 
@@ -478,13 +460,9 @@ sgdb.try_bad
 sgdb.try_busy
 
 # shelf: no shot draws it yet
-shelf.games.one
 shelf.no_games
 shelf.albums.one
 shelf.books.one
-shelf.books.other
-shelf.videos.one
-shelf.videos.other
 shelf.list_sep
 
 # slots: no shot draws it yet
@@ -511,7 +489,6 @@ snaps.delete_ask
 snaps.given_back
 
 # sort: no shot draws it yet
-sort.last_played
 sort.recently_added
 
 # ss: no shot draws it yet
@@ -546,7 +523,6 @@ stats.days_ago
 stats.weeks_ago
 stats.months_ago
 
-
 # storage: drawn wrapped to their lines, in pieces of a line (the used number as a title, a part of the line under the list), with tabular digits, or a plural's one form the stand-in card has none of (src/storage_page.c, src/main.c's storage_shot)
 storage.used
 storage.unused_caption
@@ -558,7 +534,6 @@ storage.old_ask.other
 storage.saves_part
 storage.art_part
 storage.songs.one
-storage.songs.other
 storage.snaps_caption
 storage.last_played
 storage.progress
@@ -579,21 +554,12 @@ sysmenu.side_lights
 sysmenu.order_release
 sysmenu.battery_percent
 sysmenu.battery_time
-sysmenu.developer
 sysmenu.dslang
 sysmenu.dslang_auto
 sysmenu.muse_books
-sysmenu.muse_videos
 sysmenu.muse_albums
-sysmenu.muse_show
-sysmenu.muse_audiobooks
 sysmenu.muse_author
-sysmenu.muse_folder
 sysmenu.muse_artist
-sysmenu.muse_shuffle
-sysmenu.muse_lock
-sysmenu.muse_lock_when
-sysmenu.muse_art
 sysmenu.sc_fetching
 sysmenu.sc_complete
 sysmenu.not_in_build
@@ -642,10 +608,6 @@ tour.cheer.saved
 tour.wrong
 tour.wrong.hold_menu
 tour.wrong.chord
-tour.key.up
-tour.key.down
-tour.key.left
-tour.key.right
 tour.key.volume
 tour.key.brightness
 tour.try.dpad
@@ -658,39 +620,17 @@ tourrun.skip_message
 
 # transfer: no shot draws it yet
 transfer.root_roms
-transfer.root_books
-transfer.root_videos
-transfer.root_bios
-transfer.root_saves
 transfer.root_states
 transfer.why_outside
 transfer.why_root
 transfer.why_console
 transfer.why_empty
 
-# portmaster: drawn through the Install PortMaster page's buffers (src/pminstall.c
-# fills System Update's su_page, as its own update.* words are), split into
-# balanced lines, so no drawn line is the string; the portmaster-* shots draw
-# every one and fail on any cut
-portmaster.point_store
-portmaster.point_files
-portmaster.installed
-portmaster.done_open
-portmaster.err_network
-portmaster.err_checksum
-portmaster.err_space
-portmaster.err_unpack
-portmaster.err_release
-portmaster.err_internal
-portmaster.err_stopped
-portmaster.needs_system
-
 # update: no shot draws it yet
 update.value_restart_update
 update.value_restart_back
 update.value_downloading
 update.value_available
-update.unsupported
 update.unsupported_how
 update.not_looked
 update.look
@@ -703,10 +643,8 @@ update.bytes
 update.battery_low
 update.preparing
 update.files_of
-update.downloading
 update.installing
 update.checking_files
-update.back_goes_on
 update.stopped
 update.downloaded_checked
 update.download_failed
@@ -750,7 +688,6 @@ wifimenu.legend_forget
 wifimenu.legend
 
 # xfer: no shot draws it yet
-xfer.dev_heading
 xfer.dev_link_on
 xfer.starting_hotspot
 xfer.hotspot_failed
@@ -761,7 +698,6 @@ xfer.closing_after_this_file
 xfer.legend_moving
 xfer.legend_hide
 xfer.cable_unplugged
-xfer.wifi_gone
 xfer.row_on
 xfer.row_receiving
 xfer.row_sending
@@ -772,7 +708,6 @@ xfer.sending_a_file
 xfer.stop_after_says
 xfer.half_deleted
 xfer.the_file
-xfer.not_now_says
 xfer.play_after_says
 xfer.finishing
 xfer.finishing_the_file
@@ -785,3 +720,23 @@ xfer.key_removed
 xfer.err_memory
 xfer.err_could_not_say
 controls.home
+# keyhint: the words of button hints that were text legends listed here (Bluetooth, Wi-Fi, Play Time,
+# Date & Time, Album Art, File Transfer while files move); no shot draws those screens yet
+keyhint.turn_on
+keyhint.turn_on_boot
+keyhint.search
+keyhint.disconnect
+keyhint.unpair
+keyhint.connect
+keyhint.pair
+keyhint.rescan
+keyhint.forget
+keyhint.go
+keyhint.by_game
+keyhint.window
+keyhint.by_system
+keyhint.change
+keyhint.stop
+keyhint.keep_going_or_stop
+keyhint.hide
+keyhint.back_to_shelf

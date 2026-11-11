@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "stats_screen.h"
+#include "keyhints.h"
 
 #include "aout_route.h"
 #include "design.h"
@@ -159,8 +160,10 @@ bool stats_screen(app *a)
 			rows[shown++] = MENU_RULE;
 			rows[shown++] = MENU_NOTE(detail);
 		}
-		rows[shown++] = MENU_NOTE(by_sys ? T(S_PLAYTIME_HINT_BY_SYSTEM)
-		                                 : T(S_PLAYTIME_HINT_BY_GAME));
+		rows[shown++] = MENU_NOTE(keyhints_legend((key_hint[]){
+			{ "A", T(S_KEYHINT_GO) },
+			{ "Y", by_sys ? T(S_KEYHINT_BY_GAME) : T(S_KEYHINT_BY_SYSTEM) },
+			{ "L1/R1", T(S_KEYHINT_WINDOW) } }, 3));
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();

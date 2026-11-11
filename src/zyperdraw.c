@@ -244,7 +244,9 @@ bool battery_now(int *pct, bool *charging)
 	uint32_t now = plat_now_ms();
 
 	if (battery_poll_update(&g_battery, now, plat_battery)) redraw_now();
+	/* A full charge asked for ends with the cable out, or full */
 	if (was && !g_battery.charging) charge_full_end();
+	if (g_battery.valid && g_battery.pct >= 100) charge_full_end();
 	was = g_battery.charging;
 	/* Every reading goes to the time-left estimate, whatever draws or does
 	 * not: the falls it learns from happen with the screen as it is. It
@@ -330,5 +332,5 @@ bool idle_due(app *a)
 	 * counting as input: an album is somebody using the device with nobody
 	 * touching it, and when it stops the countdown starts fresh. */
 	return idle_check(&a->idle, plat_now_ms(), b < IN_COUNT,
-	                  on_charger() || musec_playing());
+	                  on_charger() || musec_playing() || up_working());
 }

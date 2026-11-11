@@ -92,15 +92,15 @@ ja = パソコン
 it = Computer
 
 [xfer.replug_computer]
-note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer). Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
-en = Your computer didn't connect yet. Unplug the cable and plug it back in.
-zh-Hans = 电脑还没有连接。请拔出数据线，再重新插入。
-es = Tu computadora aún no se conectó. Desconecta el cable y vuelve a conectarlo.
-pt-BR = O computador ainda não conectou. Desconecte o cabo e conecte de novo.
-fr = L'ordinateur n'est pas encore connecté. Débranchez le câble et rebranchez-le.
-de = Computer noch nicht verbunden. Zieh das Kabel ab und steck es wieder ein.
-ja = パソコンがまだ接続されていません。ケーブルを抜いて、もう一度差してください。
-it = Il computer non si è ancora collegato. Scollega il cavo e ricollegalo.
+note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
+en = Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.
+zh-Hans = 电脑没有连接。可能要试几次：请拔出数据线，再重新插入。
+es = La computadora no se conectó. Puede tomar unos intentos: desconecta el cable y reconéctalo.
+pt-BR = O computador não conectou. Pode levar umas tentativas: tire o cabo e conecte de novo.
+fr = L'ordinateur ne s'est pas connecté. Il faut parfois plusieurs essais : rebranchez le câble.
+de = Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel ab und steck es wieder ein.
+ja = パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。
+it = Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.
@@ -250,28 +250,6 @@ fr = fermeture après ce fichier
 de = schließt nach dieser Datei
 ja = このファイルの後に終了
 it = chiusura dopo questo file
-
-[xfer.legend_moving]
-note = The key legend while files move: B asks whether to keep going behind the shelf or stop.
-en = B: keep going or stop
-zh-Hans = B：继续或停止
-es = B: continuar o detener
-pt-BR = B: continuar ou parar
-fr = B\u00a0: continuer ou arrêter
-de = B: weitermachen oder stoppen
-ja = B：続行または停止
-it = B: continua o interrompi
-
-[xfer.legend_hide]
-note = The key legend once it closes after the file on its way: B hides the screen.
-en = B: hide
-zh-Hans = B：隐藏
-es = B: ocultar
-pt-BR = B: ocultar
-fr = B\u00a0: masquer
-de = B: ausblenden
-ja = B：隠す
-it = B: nascondi
 
 [xfer.cable_unplugged]
 note = In the heading, where the address goes, when the USB cable came out.
@@ -690,17 +668,6 @@ fr = Fin du fichier...
 de = Schließe die Datei ab ...
 ja = ファイルの転送を完了中…
 it = Completamento del file...
-
-[xfer.b_back_to_shelf]
-note = The key legend under it: B goes back to the shelf, the file still on its way.
-en = B: back to the shelf
-zh-Hans = B：返回游戏列表
-es = B: volver a la lista de juegos
-pt-BR = B: voltar à lista de jogos
-fr = B\u00a0: retour à la liste des jeux
-de = B: zurück zur Spieleliste
-ja = B：ゲーム一覧に戻る
-it = B: torna all'elenco giochi
 
 [xfer.closed_for_game]
 note = The message when a game starts and File Transfer closes for it.

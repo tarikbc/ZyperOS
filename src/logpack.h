@@ -5,7 +5,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* The logs, packed to send to whoever is helping: every boot's zyperos.log, an
+/* The logs, packed to send to whoever is helping: every boot's zyperos.log,
+ * usb.log (the USB port's last plugs, src/usblog.h), an
  * about.txt the caller writes, gzipped into one tar by the device's own tar.
  * Over The Hare's Download logs button is the one caller.
  *

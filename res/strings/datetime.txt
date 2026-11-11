@@ -12,17 +12,6 @@ de = Datum und Uhrzeit
 ja = 日付と時刻
 it = Data e ora
 
-[datetime.change]
-note = A note under the rows: the d-pad's Left and Right change the row's value
-en = Left/Right: change
-zh-Hans = 左/右：更改
-es = Izquierda/Derecha: cambiar
-pt-BR = Esquerda/Direita: alterar
-fr = Gauche/Droite\u00a0: modifier
-de = Links/Rechts: ändern
-ja = 左/右：変更
-it = Sinistra/Destra: cambia
-
 [datetime.wifi_sets]
 note = A note under the rows, on a handheld with Wi-Fi: once Wi-Fi connects, the clock is set from the network (a time set here lasts until then)
 en = Wi-Fi sets the clock when connected

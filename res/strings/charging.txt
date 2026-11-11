@@ -222,16 +222,27 @@ de = Kabel getrennt
 ja = 電源が外れました
 it = Scollegato
 
-[charging.hold_full]
-note = The hint at the foot, held at the charge limit, before "Hold %s to start" with a · between: %s is the A button, drawn as a glyph. Keep it short.
-en = Hold %s for a full charge
-zh-Hans = 按住 %s 充满电
-es = Mantén %s: carga total
-pt-BR = Segure %s: carga total
-fr = Maintenez %s\u00a0: charge complète
-de = Halte %s für volle Ladung
-ja = %s 長押しで満充電
-it = Tieni %s: carica completa
+[charging.y_full]
+note = The hint at the foot of the charging screen while a charge limit is set and the battery is short of full, before "Hold %s to start" with a · between: %s is the Y button, drawn as a glyph, and pressing it charges to 100% this one time. Keep it short.
+en = %s Charge to 100%
+zh-Hans = %s 充到 100%
+es = %s Cargar al 100\u00a0%
+pt-BR = %s Carregar até 100%
+fr = %s Charger à 100\u00a0%
+de = %s Auf 100\u00a0% laden
+ja = %s 100% まで充電
+it = %s Carica al 100%
+
+[charging.full_active]
+note = In the Y hint's place once it was pressed: this charge goes to 100%, and the saved limit is back when the cable comes out or the battery is full. Keep it short.
+en = Charging to 100% this time
+zh-Hans = 本次充到 100%
+es = Esta vez, carga al 100\u00a0%
+pt-BR = Desta vez, até 100%
+fr = Cette fois, jusqu'à 100\u00a0%
+de = Diesmal bis 100\u00a0%
+ja = 今回は 100% まで充電
+it = Stavolta fino al 100%
 
 [charging.hold_start]
 note = The hint at the foot: %s is the POWER button, drawn as a glyph

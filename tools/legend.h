@@ -8,6 +8,7 @@
 #ifndef ZYPEROS_TOOLS_LEGEND_H
 #define ZYPEROS_TOOLS_LEGEND_H
 
+#include <stdio.h>
 #include <string.h>
 
 /* Every button on the Brick that ZyperOS reads, by the name the pages use.
@@ -37,9 +38,40 @@ static int is_button(const char *s)
  * button, a colon, a lowercase verb, and exactly three spaces between the
  * pairs. The buttons are the names above, so "L/R" and "B to close" are not
  * legends. */
+/* A legend of button hints (src/keyhints.h, packed: "\x1bkeys", then each
+ * key, \x1f, its word, \x1e) in the text form below, "A: go   Y: by game",
+ * so a check holds both alike; "< >", the d-pad's sides, as "Left/Right".
+ * Text that is not packed comes back as it is. */
+static const char *legend_text(const char *s)
+{
+	static char out[4][256];
+	static int turn;
+	char *o = out[turn++ % 4];
+	const char *p;
+	size_t used = 0;
+
+	if (!s || strncmp(s, "\x1bkeys", 5)) return s;
+	o[0] = '\0';
+	for (p = s + 5; *p && used < sizeof out[0] - 1; ) {
+		const char *sep = strchr(p, '\x1f'), *end = sep ? strchr(sep + 1, '\x1e') : NULL;
+		int kl;
+
+		if (!sep || !end) break;
+		kl = (int)(sep - p);
+		used += (size_t)snprintf(o + used, sizeof out[0] - used, "%s%.*s: %.*s", used ? "   " : "",
+		                         kl == 3 && !strncmp(p, "< >", 3) ? 10 : kl,
+		                         kl == 3 && !strncmp(p, "< >", 3) ? "Left/Right" : p,
+		                         (int)(end - sep - 1), sep + 1);
+		p = end + 1;
+	}
+	return o;
+}
+
 static int legend_form(const char *s)
 {
 	char buf[128], *part, *next;
+
+	s = legend_text(s);
 
 	if (strlen(s) >= sizeof buf) return 0;
 	strcpy(buf, s);
