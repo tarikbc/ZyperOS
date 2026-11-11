@@ -145,23 +145,23 @@ ja = /s
 it = /s
 
 [usbdrive.to_card]
-note = The left tile's label: data coming in to the card (the computer writes to it), beside an arrow down into a tray. Two or three words; the speed and the total under it say the rest.
-en = To the card
-zh-Hans = 写入存储卡
-es = A la tarjeta
-pt-BR = Para o cartão
-fr = Vers la carte
-de = Auf die Karte
-ja = カードへ
-it = Sulla scheda
+note = The left tile's label, beside an arrow down into a tray: data coming in to the card (the computer writes to it). The everyday word for download in the language's own computer use; one word.
+en = Download
+zh-Hans = 下载
+es = Descarga
+pt-BR = Download
+fr = Réception
+de = Download
+ja = ダウンロード
+it = Download
 
 [usbdrive.from_card]
-note = The right tile's label: data going out of the card (the computer reads it), beside an arrow up out of a tray. Two or three words.
-en = From the card
-zh-Hans = 从存储卡读取
-es = Desde la tarjeta
-pt-BR = Do cartão
-fr = Depuis la carte
-de = Von der Karte
-ja = カードから
-it = Dalla scheda
+note = The right tile's label, beside an arrow up out of a tray: data going out of the card (the computer reads it). The everyday word for upload; one word.
+en = Upload
+zh-Hans = 上传
+es = Subida
+pt-BR = Upload
+fr = Envoi
+de = Upload
+ja = アップロード
+it = Upload

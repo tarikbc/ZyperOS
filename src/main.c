@@ -8675,7 +8675,7 @@ static void ud_fit_widest(TTF_Font *f, bool speed, int room)
 }
 
 /* One way's tile on the page: its mark, moving in **accent-ink** or idle in
- * **text-dim**, and its name in **meta** **text**; its speed big in
+ * **text-dim**, and its name in **menu** **text**; its speed big in
  * **title** **text**; its total in **meta** **text-soft**. `speed` and
  * `total` as tokens, NULL for none (the atlas's page). */
 typedef struct { int x0, y0, x1, y1; } ud_rect;
@@ -8685,7 +8685,7 @@ static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *spe
                     int nt, ud_rect slot[UD_SLOTS])
 {
 	const ds_theme *t = theme();
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	SDL_Rect q = { x, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
 	int left = x + UD_PAD, room = UD_TILE_W - 2 * UD_PAD;
 	char fit[160];
@@ -8693,9 +8693,9 @@ static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *spe
 	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
 	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, UD_MARK_CY, 56,
 	              active ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
-	ui_fit_text(fs, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
+	ui_fit_text(fm, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
 	            room - UD_MARK - 16);
-	ui_text(r, fs, fit, left + UD_MARK + 16, ui_cap_y(fs, UD_MARK_CY), -1, UI_TEXT);
+	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, UD_MARK_CY), -1, UI_TEXT);
 	if (speed) ud_draw_tokens(r, ft, speed, ns, left, UD_SPEED_CY, UI_TEXT);
 	if (total) ud_draw_tokens(r, fs, total, nt, left, UD_TOTAL_CY, UI_TEXT_SOFT);
 	ud_fit_widest(ft, true, room);

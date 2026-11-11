@@ -1561,10 +1561,12 @@ top (11.19): Zyper (124) at (123, 168) beside the heading in **title**
 **text** at x 208 (two balanced lines when one is too long). "Connected as
 a flash drive" has two **raised** tiles side by side under it
 (**radius-card**, 472 wide from **inset**, y 256, 280 tall), one for each
-way (2026-11-11, my pick): to the card (the computer writes), an arrow down
+way (2026-11-11, my pick): **Download**, to the card (the computer writes), an arrow down
 into a tray (UI_GLYPH_TO_CARD, System Update's corner mark's family), and
-from the card (it reads), an arrow up out of a tray (UI_GLYPH_FROM_CARD).
-In each, the mark (56) and its name in **meta** **text** at the top, the
+**Upload**, from the card (it reads), an arrow up out of a tray
+(UI_GLYPH_FROM_CARD). Each language's everyday words for them ("Réception" and
+"Envoi" in French, "Descarga" and "Subida" in Spanish).
+In each, the mark (56) and its name in **menu** **text** at the top, the
 speed big in **title** **text**, and the total since the start under it in
 **meta** **text-soft**. A way that moved in the last 2 s has its mark in
 **accent-ink**; an idle one's is **text-dim** and its speed reads 0 MB/s.
