@@ -42,10 +42,12 @@ static void card(SDL_Renderer *r, const eh_state *s, eh_way w, int x)
 		ui_fit_text(fs, tx.step[i], fit, sizeof fit, room - 36);
 		ui_text(r, fs, fit, x + EH_PAD_X + 36, ui_cap_y(fs, cy), -1, step);
 	}
-	if (tx.why) {
-		ui_fit_text(fs, tx.why, fit, sizeof fit, room);
+	/* At the card's foot: what is missing, or else the other way on the
+	 * same cable, quieter, since nothing waits on it */
+	if (tx.why || tx.also) {
+		ui_fit_text(fs, tx.why ? tx.why : tx.also, fit, sizeof fit, room);
 		ui_text(r, fs, fit, x + EH_PAD_X, ui_cap_y(fs, EH_CARD_Y + EH_CARD_H - 42), -1,
-		        UI_TEXT_SOFT);
+		        tx.why ? UI_TEXT_SOFT : UI_TEXT_DIM);
 	}
 }
 

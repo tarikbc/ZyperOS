@@ -3658,6 +3658,7 @@ static bool no_games(const app *a)
  * 4 for a Brick-like device (no shared port, Wi-Fi built in). */
 static eh_state g_eh;
 static int g_eh_shot = -1;
+static bool usb_drive_offered(void);
 static void eh_poll(bool force)
 {
 	static unsigned at, wifi_at;
@@ -3676,7 +3677,8 @@ static void eh_poll(bool force)
 		s.ok[EH_WIFI] = g_eh_shot & (1 << EH_WIFI);
 		s.shared_port = !(g_eh_shot & 4);
 		s.builtin_wifi = !s.shared_port;
-		snprintf(s.cable_addr, sizeof s.cable_addr, "%s", s.shared_port ? "10.42.0.1" : "10.55.0.2");
+		snprintf(s.cable_addr, sizeof s.cable_addr, "%s", s.shared_port ? "zyperos.local" : "10.55.0.2");
+		s.drive = s.shared_port;
 	} else {
 		/* A port the launcher asks about is the Pixel 2's, which the Wi-Fi
 		 * adapter takes too (usblink.h); the Brick's links on its own */
@@ -3684,7 +3686,11 @@ static void eh_poll(bool force)
 		s.builtin_wifi = !s.shared_port;
 		s.ok[EH_USB] = plat_cable_link(addr, sizeof addr);
 		if (addr[0]) snprintf(last_addr, sizeof last_addr, "%s", addr);
-		snprintf(s.cable_addr, sizeof s.cable_addr, "%s", last_addr);
+		/* The Pixel 2 answers zyperos.local on the cable (mdns.h), a name
+		 * to type where 10.42.0.1 is numbers to copy */
+		snprintf(s.cable_addr, sizeof s.cable_addr, "%s",
+		         s.shared_port && last_addr[0] ? "zyperos.local" : last_addr);
+		s.drive = usb_drive_offered();
 		/* Wi-Fi File Transfer shows its address on a network, or makes its
 		 * own where it can (xfer_wants_hotspot): only the first needs
 		 * wpa_cli, which forks, so it is asked every two seconds */
