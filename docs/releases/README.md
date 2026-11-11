@@ -32,9 +32,14 @@ image joins once the Mac that makes releases has the Brick's GPU files
 3. On the Mac, in the main checkout on main, with plastron's checkout on its
    main: `make release` builds the Pixel 2's image from this commit with
    plastron's release build (clean, so it takes a while, holding
-   `/tmp/plastron-build-lock`) into `out/release/v<version>/`, and checks it.
-   Nothing leaves the Mac. Try the image if you like.
-4. `make release PUBLISH=1` builds it again the same way, signs System
+   `/tmp/plastron-build-lock`) into `out/release/v<version>/`, signs System
+   Update's lists when the key is there, and checks it. Nothing leaves the
+   Mac. Try those exact files on a device: File Transfer's "Update ZyperOS"
+   takes the update packs and lists from the computer.
+   Then `tools/release.sh --publish-built` publishes them as they are, with
+   no second build, as step 4 does: it refuses unless they were built from
+   main as GitHub has it now and still match their `SHA256SUMS`.
+4. Or `make release PUBLISH=1` builds it again the same way, signs System
    Update's list with the key in `~/.config/zyperos/update-signing-key.pem`
    (`ZYPEROS_UPDATE_KEY`; it refuses without it once `res/update/keys` has a
    key), makes a **draft** release `v<version>` with the image, its sources,
