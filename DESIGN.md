@@ -2540,7 +2540,17 @@ Computer". Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game (a plug made in a game is asked about
 back on the shelf); it goes by itself when the plug stops wanting power.
 Every plug is its own: nothing carries over from the plug before, however
-soon (a cable swapped for an adapter in a second, 2026-11-10).
+soon (a cable swapped for an adapter in a second, 2026-11-10). One thing does: an accessory powered when the handheld turns off is
+powered again at the next start, with no question, when it is the first
+plug and there from the start (usbpower_resume; the handheld cannot see
+what happened while it was off, so a computer put in its place gets the 2 s
+Automatic gives one). And a question that comes by itself, this one or
+Computer Connected (11.18), came while the player was pressing through the
+menus, and a press meant for them answered it (Discord, 2026-11-11): a
+button that was down as it appeared counts only once let go and pressed
+again, and so does one pressed in its first half second; after that a
+press answers at once, POWER always. Its button hints show from the half
+second, their room kept.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2565,7 +2575,9 @@ the device, 2026-11-10). Told to usbrole in
 
 **The replug message.** Computer, B or MENU, and a plug a computer showed
 up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
-computer didn't connect yet. Unplug the cable and plug it back in." over
+computer didn't connect. It can take a few tries: unplug the cable and plug
+it back in." (a few tries: the two ports settle which side gives power
+at each plug, at random, 2026-11-11) over
 whatever screen is up, never over a game, and it stays until the plug
 ends: the cable out, another plug, or the computer connected. On the launcher it is a slab at
 the top under the header, 960 wide at y 104: **surface** with the
