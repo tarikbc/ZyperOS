@@ -333,15 +333,15 @@ ja = %d / %d
 it = %d di %d
 
 [update.back_goes_on]
-note = review: pt-BR "Voltar, continua" says B leaves while the download goes on; is it clear? The B button's label while it downloads
-en = Back, it goes on
-zh-Hans = 返回，继续更新
-es = Volver, continúa
-pt-BR = Voltar, continua
-fr = Retour, ça continue
-de = Zurück, läuft weiter
-ja = 戻る（続行されます）
-it = Indietro, continua
+note = The B button's label while System Update downloads (or PortMaster installs): B leaves the page and the work keeps going in the background (2026-11-11: "Voltar, continua" read as unclear). Short: a button hint.
+en = Continue in background
+zh-Hans = 后台继续
+es = Seguir en segundo plano
+pt-BR = Continuar em segundo plano
+fr = Continuer en arrière-plan
+de = Im Hintergrund weiter
+ja = バックグラウンドで続行
+it = Continua in background
 
 [update.stopped]
 note = Left of the bar: a download that was cut short

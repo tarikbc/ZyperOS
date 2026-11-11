@@ -96,7 +96,7 @@ int main(void)
 	su_page_build(&v, &pg);
 	CHECK(pg.bar && !strcmp(pg.bar_left, "Downloading") && !strcmp(pg.bar_right, "6.1 of 14 MB"), "Downloading 6.1 of 14 MB");
 	CHECK(pg.frac > 0.42f && pg.frac < 0.44f, "the bar is 43% full");
-	CHECK(pg.nkeys == 1 && is(&pg, "B", "Back, it goes on", SUA_BACK), "only B, and it goes on");
+	CHECK(pg.nkeys == 1 && is(&pg, "B", "Continue in background", SUA_BACK), "only B, and it goes on");
 	CHECK(!strcmp(su_menu_value(&v, buf, sizeof buf), "downloading"), "MENU's row: downloading");
 
 	/* The same status with nothing running: it was cut short */

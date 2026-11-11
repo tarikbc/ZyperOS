@@ -1525,7 +1525,7 @@ versions stays short ("Back on 0.1.0"). *(2026-11-05: the error was
 hard to read as a cut **meta** line in **warning**.)* The buttons at the foot, centered on y 714: 11.9's glyph at 48
 and its word in **meta** **text-soft**, 40 between pairs. A is the page's
 action (Download, Continue, Restart Now, Look Again, Try Again), B is Back
-("Back, it goes on" while it works; "Later" when it is ready), Y is "Roll
+("Continue in background" while it works; "Later" when it is ready), Y is "Roll
 Back to 0.0.9" when the image allows one. Opened with a network and no look
 in the last ten minutes, it looks at once. It also looks each time Wi-Fi
 connects and once a day, and a release it finds is said once, by Zyper's
