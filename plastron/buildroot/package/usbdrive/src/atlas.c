@@ -12,9 +12,12 @@ static const char *const GLYPH[AT_GLYPHS] = {
 	"st_write", "st_read", "st_idle",
 };
 
+/* Inside the picture, with no sum that could overflow: the file is read as
+ * untrusted, whoever wrote it */
 static bool inside(const at_layout *l, const at_rect *r)
 {
-	return r->w > 0 && r->h > 0 && r->x >= 0 && r->y >= 0 && r->x + r->w <= l->w && r->y + r->h <= l->h;
+	return r->x >= 0 && r->y >= 0 && r->w > 0 && r->h > 0 && r->x < l->w && r->y < l->h &&
+	       r->w <= l->w - r->x && r->h <= l->h - r->y;
 }
 
 bool at_parse(const char *text, at_layout *l)
@@ -38,7 +41,10 @@ bool at_parse(const char *text, at_layout *l)
 		if (sscanf(line, "zyperos-drive-atlas %d", &v) == 1) head = v == 1;
 		else if (sscanf(line, "size %d %d", &l->w, &l->h) == 2) continue;
 		else if (sscanf(line, "slot %15s %d %d %d %d %7s", a, &r.x, &r.y, &r.w, &r.h, side) == 6) {
-			/* X0 Y0 X1 Y1 */
+			/* X0 Y0 X1 Y1: an inverted or empty one is refused, and the
+			 * subtraction cannot overflow once both are in the picture's
+			 * range (checked below with the rest) */
+			if (r.w <= r.x || r.h <= r.y || r.x < 0 || r.y < 0 || r.w > 4096 || r.h > 4096) return false;
 			r.w -= r.x;
 			r.h -= r.y;
 			for (i = 0; i < AT_SLOTS; i++)
@@ -58,9 +64,15 @@ bool at_parse(const char *text, at_layout *l)
 	if (!head || l->w <= 0 || l->h <= 0 || l->w > 4096 || l->h > 4096) return false;
 	for (i = 0; i < AT_SLOTS; i++)
 		if (!got_slot[i] || !inside(l, &l->slot[i])) return false;
-	for (i = 0; i < AT_GLYPHS; i++)
-		if (!got_glyph[i] || !inside(l, &l->glyph[i]) || l->glyph[i].h > l->slot[AT_SLOT_SPEED].h)
-			return false;
+	/* A glyph no taller than the lowest slot, so it fits in any of them */
+	{
+		int low = l->slot[0].h;
+
+		for (i = 1; i < AT_SLOTS; i++)
+			if (l->slot[i].h < low) low = l->slot[i].h;
+		for (i = 0; i < AT_GLYPHS; i++)
+			if (!got_glyph[i] || !inside(l, &l->glyph[i]) || l->glyph[i].h > low) return false;
+	}
 	return true;
 }
 
@@ -84,12 +96,17 @@ void at_compose(const at_layout *l, int s, const int *g, int n, const uint32_t *
 		if (g[i] < 0 || g[i] >= AT_GLYPHS) continue;
 		gr = &l->glyph[g[i]];
 		top = sl->y + (sl->h - gr->h) / 2;
+		/* Only inside the slot, rows and columns, whatever the layout says */
 		for (cx = 0; cx < gr->w; cx++) {
 			int dx = x + cx;
 
 			if (dx < sl->x || dx >= sl->x + sl->w) continue;
-			for (y = 0; y < gr->h; y++)
-				out[(size_t)(top + y) * l->w + dx] = atlas[(size_t)(gr->y + y) * l->w + gr->x + cx];
+			for (y = 0; y < gr->h; y++) {
+				int dy = top + y;
+
+				if (dy < sl->y || dy >= sl->y + sl->h) continue;
+				out[(size_t)dy * l->w + dx] = atlas[(size_t)(gr->y + y) * l->w + gr->x + cx];
+			}
 		}
 		x += gr->w;
 	}

@@ -189,6 +189,31 @@ int main(void)
 		for (k = 0; k < sizeof GL / sizeof GL[0]; k++)
 			at += (size_t)snprintf(text + at, sizeof text - at, "glyph %s %d 24 3 8\n", GL[k], (int)k * 3);
 		CHECK(at_parse(text, &l), "a good atlas refused");
+		/* Untrusted: an oversized glyph, huge numbers, an inverted rect */
+		{
+			char bad[2400];
+			const char *const BAD[] = {
+				"glyph 0 0 0 3 31\n",                          /* taller than every slot */
+				"glyph 1 2147483000 0 2147483000 8\n",         /* x + w overflows */
+				"glyph 2 0 2147483000 3 2147483000\n",         /* y + h overflows */
+				"glyph 3 -5 0 3 8\n",                          /* off the left */
+				"slot read 60 20 30 28 right\n",               /* X1 < X0 */
+				"slot read 30 28 60 20 right\n",               /* Y1 < Y0 */
+				"slot read 30 20 2147483647 28 right\n",       /* past the picture */
+				"slot read -2147483647 20 60 28 right\n",      /* a huge negative */
+				"size 2147483647 2147483647\n",                /* a huge picture */
+			};
+			at_layout lb;
+
+			for (k = 0; k < sizeof BAD / sizeof BAD[0]; k++) {
+				snprintf(bad, sizeof bad, "%s%s", text, BAD[k]);   /* the later line wins */
+				CHECK(!at_parse(bad, &lb), "a bad atlas taken: %s", BAD[k]);
+			}
+			/* A glyph as tall as the speed slot but taller than a shorter
+			 * one: refused, it would run past the shorter slot */
+			snprintf(bad, sizeof bad, "%sslot written 30 10 60 14 right\n", text);
+			CHECK(!at_parse(bad, &lb), "a glyph taller than the written slot taken");
+		}
 		CHECK(l.right[AT_SLOT_SPEED] && !l.right[AT_SLOT_STATUS], "the sides");
 		{
 			char bad[2048];
@@ -223,6 +248,18 @@ int main(void)
 			at_compose(&l, AT_SLOT_WRITTEN, many, 12, atl, out);
 			CHECK(out[10 * 64 + 29] == 0 && out[10 * 64 + 30] == 1 && out[10 * 64 + 59] == 1,
 			      "a wide row ran past its slot");
+		}
+		/* A layout that never went through at_parse: a glyph taller than
+		 * its slot at the picture's top edge draws only inside the slot */
+		{
+			at_layout raw = l;
+			int g0 = 0;
+
+			raw.slot[AT_SLOT_STATUS] = (at_rect){ 0, 0, 30, 4 };
+			raw.glyph[0] = (at_rect){ 0, 0, 3, 32 };
+			for (k = 0; k < 64 * 32; k++) out[k] = 0x11;
+			at_compose(&raw, AT_SLOT_STATUS, &g0, 1, atl, out);
+			CHECK(out[4 * 64] == 0x11 && out[31 * 64] == 0x11, "drawn past a slot's rows");
 		}
 		free(atl);
 		free(out);
