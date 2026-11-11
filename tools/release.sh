@@ -8,6 +8,12 @@
 #                               v<VERSION> with the image, its sources, the
 #                               System Update pack and signed list, and
 #                               SHA256SUMS, and the tag pushed
+#   tools/release.sh --publish-built
+#                               publish what the first form built, without
+#                               building again: the files tested on a device
+#                               are the files released. Refused unless they
+#                               were built from main as GitHub has it now and
+#                               still match their SHA256SUMS
 #
 # (make release, and make release PUBLISH=1.) The tag starts GitHub's
 # .github/workflows/release.yml, which builds ZyperOS Installer for macOS,
@@ -54,14 +60,32 @@ SYSTEM_LIST=ZyperOS-pixel2-system.txt
 UPDATE_KEY=${ZYPEROS_UPDATE_KEY:-$HOME/.config/zyperos/update-signing-key.pem}
 
 PUBLISH=0
+BUILT=0
 case "${1:-}" in
 --publish) PUBLISH=1 ;;
+--publish-built) PUBLISH=1; BUILT=1 ;;
 "") ;;
-*) echo "usage: tools/release.sh [--publish]" >&2; exit 2 ;;
+*) echo "usage: tools/release.sh [--publish | --publish-built]" >&2; exit 2 ;;
 esac
 
 say() { printf '\n== %s\n' "$*"; }
 stop() { echo "release.sh: $*" >&2; exit 1; }
+
+# The draft and the tag, from the files in $OUT
+publish() {
+	say "Publishing $TAG"
+	# A draft first, with the image on it: the tag's workflow adds the installer
+	# to this release and publishes it, and refuses a tag with no draft waiting
+	[ $UPDATES = 0 ] || [ -n "$UPDATE_FILES" ] || stop "the update list is not signed"
+	gh release create "$TAG" --repo $REPO --draft $PRERELEASE --target "$HEAD" --title "ZyperOS $VERSION" \
+		--notes-file "$ROOT/$NOTES" "$IMAGE" "$SOURCES" $UPDATE_FILES SHA256SUMS
+	cd "$ROOT"
+	git tag -a "$TAG" -m "ZyperOS $VERSION" "$HEAD"
+	git -c credential.helper= -c "credential.helper=!gh auth git-credential" push origin "refs/tags/$TAG"
+	echo
+	echo "The draft is up and $TAG is pushed. GitHub now builds ZyperOS Installer and publishes the release:"
+	echo "  https://github.com/$REPO/actions/workflows/release.yml"
+}
 
 say "Checks"
 sh tools/check-version.sh
@@ -102,6 +126,24 @@ else
 	echo "release.sh: no key in res/update/keys: System Update is off in this image, and the release has no update files"
 fi
 echo "ZyperOS $VERSION from $(git rev-parse --short HEAD), plastron/ with it"
+
+# --publish-built: the files of an earlier build, as they are
+if [ $BUILT = 1 ]; then
+	[ -f "$OUT/BUILT-FROM" ] || stop "nothing built in $OUT: run tools/release.sh first"
+	grep -q "($HEAD)" "$OUT/BUILT-FROM" || stop "$OUT is from another commit: $(cat "$OUT/BUILT-FROM")"
+	cd "$OUT"
+	shasum -a 256 -c SHA256SUMS > /dev/null || stop "a file in $OUT no longer matches SHA256SUMS"
+	UPDATE_FILES=
+	if [ $UPDATES = 1 ]; then
+		for f in "$UPDATE_PACK" "$UPDATE_LIST" "$SYSTEM_PACK" "$SYSTEM_LIST"; do
+			[ -s "$f" ] || stop "$OUT has no signed $f"
+			UPDATE_FILES="$UPDATE_FILES $f"
+		done
+	fi
+	xz -t "$IMAGE"
+	publish
+	exit 0
+fi
 
 # The source as committed, never the working tree: a clean worktree of HEAD
 SRC=$(mktemp -d)/zyperos
@@ -173,16 +215,4 @@ if [ $PUBLISH = 0 ]; then
 	echo "Built in $OUT. Nothing was published: tools/release.sh --publish does that."
 	exit 0
 fi
-
-say "Publishing $TAG"
-# A draft first, with the image on it: the tag's workflow adds the installer
-# to this release and publishes it, and refuses a tag with no draft waiting
-[ $UPDATES = 0 ] || [ -n "$UPDATE_FILES" ] || stop "the update list is not signed"
-gh release create "$TAG" --repo $REPO --draft $PRERELEASE --target "$HEAD" --title "ZyperOS $VERSION" \
-	--notes-file "$ROOT/$NOTES" "$IMAGE" "$SOURCES" $UPDATE_FILES SHA256SUMS
-cd "$ROOT"
-git tag -a "$TAG" -m "ZyperOS $VERSION" "$HEAD"
-git -c credential.helper= -c "credential.helper=!gh auth git-credential" push origin "refs/tags/$TAG"
-echo
-echo "The draft is up and $TAG is pushed. GitHub now builds ZyperOS Installer and publishes the release:"
-echo "  https://github.com/$REPO/actions/workflows/release.yml"
+publish
