@@ -5712,7 +5712,7 @@ static bool panel_pass_begin(app *a)
 	static bool said;
 
 	if (!g_panel_tex) {
-		g_panel_tex = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_ARGB8888,
+		g_panel_tex = SDL_CreateTexture(a->r, PLAT_TARGET_FORMAT,
 		                                SDL_TEXTUREACCESS_TARGET,
 		                                ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (!g_panel_tex) {
