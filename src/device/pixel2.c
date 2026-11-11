@@ -392,7 +392,7 @@ bool plat_video_init(void)
 		fprintf(stderr, "renderer: %s\n", SDL_GetError());
 		return false;
 	}
-	screen_tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+	screen_tex = SDL_CreateTexture(ren, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
 	                               ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 	if (!screen_tex) {
 		fprintf(stderr, "screen texture: %s\n", SDL_GetError());

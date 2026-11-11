@@ -34,6 +34,7 @@
 #include "config.h"   /* CFG_NO_COLOR: the keyboard is no system's */
 #include "kbnav.h"
 #include "keyboard.h"
+#include "platform.h"   /* PLAT_TARGET_FORMAT */
 #include "ui.h"
 #include "uisound.h"
 
@@ -292,7 +293,7 @@ static key_pass key_begin(SDL_Renderer *r, key_cache *cache, SDL_Rect *q,
 			kb_action_span(a, &x, &w);
 			if (w > widest) widest = w;
 		}
-		cache->texture = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888,
+		cache->texture = SDL_CreateTexture(r, PLAT_TARGET_FORMAT,
 		                                    SDL_TEXTUREACCESS_TARGET,
 		                                    widest + 2 * KEY_PASS_PAD,
 		                                    KB_KEY_H + 2 * KEY_PASS_PAD);
@@ -412,7 +413,7 @@ static bool keys_kept(SDL_Renderer *r, kb_state *k, const ds_theme *t, TTF_Font 
 
 	if (!k->grid.tried) {
 		k->grid.tried = true;
-		k->grid.texture = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888,
+		k->grid.texture = SDL_CreateTexture(r, PLAT_TARGET_FORMAT,
 		                                     SDL_TEXTUREACCESS_TARGET,
 		                                     ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (k->grid.texture &&
@@ -630,7 +631,7 @@ static void kb_draw_pose(SDL_Renderer *r, kb_state *k, const char *title,
 	saved = key_save(r);
 	if (!k->panel.tried) {
 		k->panel.tried = true;
-		k->panel.texture = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888,
+		k->panel.texture = SDL_CreateTexture(r, PLAT_TARGET_FORMAT,
 		                                      SDL_TEXTUREACCESS_TARGET,
 		                                      ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (k->panel.texture &&

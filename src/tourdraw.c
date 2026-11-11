@@ -650,7 +650,7 @@ static void details_make(SDL_Renderer *r)
 	                       details_lang == i18n_lang()))
 		return;
 	if (!details_tex)
-		details_tex = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+		details_tex = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
 		                                DETAILS_W, DETAILS_H);
 	if (!details_tex || SDL_SetRenderTarget(r, details_tex) != 0) {
 		fprintf(stderr, "tour: no details panel, drawn without: %s\n", SDL_GetError());
@@ -1483,7 +1483,7 @@ static void tiles_make(SDL_Renderer *r)
 		const ch_box b = choice_box(k >= TILE_NOTES ? 2 : 4, 0.0f);
 
 		if (!tile_tex[k]) {
-			tile_tex[k] = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+			tile_tex[k] = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
 			                                (int)b.w, (int)b.h);
 			if (tile_tex[k]) SDL_SetTextureBlendMode(tile_tex[k], SDL_BLENDMODE_BLEND);
 		}
