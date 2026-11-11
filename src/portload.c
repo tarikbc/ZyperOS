@@ -4,6 +4,7 @@
 #include "blur.h"
 #include "design.h"
 #include "linebreak.h"
+#include "platform.h"   /* PLAT_TARGET_FORMAT */
 #include "shelfbuild.h"
 #include "theme.h"
 #include "ui.h"
@@ -106,7 +107,7 @@ static back_grid *back_read(app *a, SDL_Texture *cover, int tw, int th)
 	if ((float)ZYPEROS_SCREEN_H * ar > fw) fw = (float)ZYPEROS_SCREEN_H * ar;
 	fw *= BACK_FILL;
 	fh = fw / ar;
-	t = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, sw, sh);
+	t = SDL_CreateTexture(a->r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET, sw, sh);
 	if (!t || SDL_SetRenderTarget(a->r, t) != 0) goto out;
 	SDL_SetRenderDrawColor(a->r, g0.r, g0.g, g0.b, 255);
 	SDL_RenderClear(a->r);
