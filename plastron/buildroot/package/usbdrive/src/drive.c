@@ -34,3 +34,39 @@ drv_end drv_wait_step(drv_wait *w, bool vbus, bool lun_file, bool configured, bo
 	if (!w->configured && now - w->start >= DRV_NOHOST_MS) return DRV_NOHOST;
 	return DRV_STAY;
 }
+
+drv_act drv_key(drv_keys *k, int key, bool down, unsigned now, bool wrote, unsigned last_write)
+{
+	if (key == DRV_K_FN) {
+		k->fn = down;
+		return DRV_A_NONE;
+	}
+	if (!down) return DRV_A_NONE;
+	switch (key) {
+	case DRV_K_VOLUP:
+	case DRV_K_VOLDN: {
+		int to = k->level + (key == DRV_K_VOLUP ? 1 : -1);
+
+		/* Volume alone does nothing here: there is no sound */
+		if (!k->fn || to < 0 || to > k->max) return DRV_A_NONE;
+		k->level = to;
+		return DRV_A_BRIGHT;
+	}
+	case DRV_K_B:
+		if (k->asking) {
+			k->asking = false;
+			return DRV_A_KEEP;
+		}
+		if (wrote && now - last_write < DRV_ASK_MS) {
+			k->asking = true;
+			return DRV_A_ASK;
+		}
+		return DRV_A_EJECT;
+	case DRV_K_A:
+		if (!k->asking) return DRV_A_NONE;
+		k->asking = false;
+		return DRV_A_EJECT;
+	default:
+		return DRV_A_NONE;
+	}
+}

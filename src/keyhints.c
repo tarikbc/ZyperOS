@@ -41,6 +41,21 @@ size_t keyhints_pack(const key_hint *h, int n, char *out, size_t on)
 	return used;
 }
 
+const char *keyhints_legend(const key_hint *h, int n)
+{
+	static char buf[16][512];
+	static unsigned turn;
+	char *out = buf[turn++ % 16];
+
+	keyhints_pack(h, n, out, sizeof buf[0]);
+	return out;
+}
+
+bool keyhints_is(const char *text)
+{
+	return text && !strncmp(text, KEYHINTS_MARK, strlen(KEYHINTS_MARK));
+}
+
 int keyhints_unpack(const char *text, char *buf, size_t bn, key_hint *out, int max)
 {
 	size_t ml = strlen(KEYHINTS_MARK);

@@ -206,31 +206,15 @@ cs_step ch_screen_tick(ch_screen *s, unsigned now, bool any_press, bool power_do
 	return s->step = now - s->lit_at < DS_MS_HOLD_CHARGE_LIT ? CS_LIT : CS_DARK;
 }
 
-bool ch_screen_full(ch_screen *s, unsigned now, bool a_down)
+bool ch_full_offered(const ch_reading *r, int saved, bool active)
 {
-	if (!a_down) {
-		s->full_holding = false;
-		return false;
-	}
-	if (!s->full_holding) {
-		s->full_holding = true;
-		s->full_at = now;
-		return false;
-	}
-	if (now - s->full_at < DS_MS_HOLD_UNLOCK) return false;
-	/* Once: it starts over only from A up and down again */
-	s->full_at = now - DS_MS_HOLD_UNLOCK;
-	s->full_holding = false;
-	return true;
+	return saved > 0 && !active && r->online && !r->full && r->pct >= 0 && r->pct < 100;
 }
 
-float ch_screen_full_hold(const ch_screen *s, unsigned now)
+ch_full_do ch_full_step(const ch_reading *r, int saved, bool active, bool y_pressed, bool was_lit)
 {
-	unsigned t;
-
-	if (!s->full_holding) return 0.0f;
-	t = now - s->full_at;
-	return t >= DS_MS_HOLD_UNLOCK ? 1.0f : (float)t / DS_MS_HOLD_UNLOCK;
+	if (active) return !r->online || r->full || r->pct >= 100 ? CH_FULL_END : CH_FULL_NONE;
+	return y_pressed && was_lit && ch_full_offered(r, saved, active) ? CH_FULL_START : CH_FULL_NONE;
 }
 
 float ch_screen_hold(const ch_screen *s, unsigned now)

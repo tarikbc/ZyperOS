@@ -150,11 +150,20 @@ cs_step ch_screen_tick(ch_screen *s, unsigned now, bool any_press, bool power_do
 /* How far POWER's hold has got, 0 to 1 */
 float ch_screen_hold(const ch_screen *s, unsigned now);
 
-/* "Hold A for a full charge", offered while held at the charge limit: one
- * pass, A down; true once, when it has been down for **hold-unlock** */
-bool ch_screen_full(ch_screen *s, unsigned now, bool a_down);
+/* Y: charge to 100% this time (Tarik, 2026-11-11; until then "Hold A for a
+ * full charge", and only once held at the limit). Offered with a charge
+ * limit saved (MENU > Charge Limit), the cable in and the battery short of
+ * full, whether it is still charging up to the limit or held there. It
+ * lasts until the cable comes out or the battery is full; then the saved
+ * limit is back. A restart ends it too: the launcher keeps it in /tmp. */
+typedef enum { CH_FULL_NONE, CH_FULL_START, CH_FULL_END } ch_full_do;
 
-/* How far A's hold has got, 0 to 1 */
-float ch_screen_full_hold(const ch_screen *s, unsigned now);
+/* Y offered now: `saved` the saved limit (0 for Off), `active` a full
+ * charge already asked for */
+bool ch_full_offered(const ch_reading *r, int saved, bool active);
+
+/* One pass: Y pressed this pass on a screen that was lit before it (a
+ * press that lights a dark screen does only that) */
+ch_full_do ch_full_step(const ch_reading *r, int saved, bool active, bool y_pressed, bool was_lit);
 
 #endif

@@ -63,6 +63,43 @@ def walk(top):
     return files, empty
 
 
+def release_notes(path, most=12, longest=500):
+    """What's New for the device's System Update page: the points under the
+    release notes' "## What's new" heading (every point of the file when it
+    has none), each whole, as plain text: links to their words, the
+    Markdown marks gone, one line each. The page wraps them and scrolls
+    (src/main.c, update_page_draw); a point longer than `longest` is cut at a
+    word with an ellipsis, which no release has needed. Until 2026-11-11 each
+    was cut at 110 characters, and the "Good to know" points came too."""
+    if not path or not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        text = f.read().splitlines()
+    heads = [i for i, l in enumerate(text) if re.match(r"^#{1,6}\s", l)]
+    new = [i for i in heads if re.match(r"^#{1,6}\s+what'?s new\s*$", text[i], re.I)]
+    if new:
+        start = new[0] + 1
+        end = next((i for i in heads if i > new[0]), len(text))
+        text = text[start:end]
+    notes = []
+    for raw in text:
+        m = re.match(r"^\s*[-*] +(.*)$", raw)
+        if not m:
+            continue
+        t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", m.group(1))   # [text](url)
+        t = re.sub(r"\*\*|__|`", "", t)
+        t = re.sub(r"(?<![\w*])[*_](\S[^*_]*)[*_](?!\w)", r"\1", t)   # *emphasis*
+        t = " ".join(t.split())
+        t = "".join(c for c in t if ord(c) >= 0x20 and ord(c) != 0x7F)
+        if len(t) > longest:
+            t = t[:longest].rsplit(" ", 1)[0] + "\u2026"
+        if t:
+            notes.append(t)
+        if len(notes) == most:
+            break
+    return notes
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--payload", required=True)
@@ -158,20 +195,7 @@ def main():
         "min-system " + min_system,
         "pack %s %d %s" % (pack_name, offset, whole.hexdigest()),
     ]
-    notes = []
-    if a.notes and os.path.isfile(a.notes):
-        with open(a.notes) as f:
-            for raw in f:
-                m = re.match(r"^\s*[-*] +(.*)$", raw)
-                if not m:
-                    continue
-                t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", m.group(1))   # [text](url)
-                t = re.sub(r"[*_`]", "", t).strip()
-                t = "".join(c for c in t if ord(c) >= 0x20 and ord(c) != 0x7F)
-                if t:
-                    notes.append("note " + (t if len(t) <= 110 else t[:107] + "..."))
-                if len(notes) == 8:
-                    break
+    notes = ["note " + t for t in release_notes(a.notes)] if a.notes else []
     body = head + notes + ["dir " + d for d in sorted(set(dirs))] + lines + ["end %d" % len(lines)]
     unsigned = os.path.join(a.out, "ZyperOS-%s-%s.txt.unsigned" % (a.device, word))
     with open(unsigned, "w", newline="\n") as f:

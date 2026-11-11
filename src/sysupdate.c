@@ -266,6 +266,10 @@ void su_page_build(const su_view *v, su_page *p)
 		return;
 	case SU_STOPPED:
 		size_line(v, p->sub, sizeof p->sub);
+		/* With no network it waits, and says it goes on by itself: the
+		 * launcher continues a cut download once Wi-Fi is back (main.c,
+		 * tick_update_daily), from the byte it stopped at */
+		if (!v->wifi) snprintf(p->sub, sizeof p->sub, "%s", T(S_UPDATE_RESUMES));
 		p->notes = v->notes;
 		if (v->st.total) {
 			p->bar = true;
@@ -331,6 +335,29 @@ void su_page_build(const su_view *v, su_page *p)
 	rollback_key(p, v);
 	/* A problem takes What's New's place */
 	if (p->warn[0]) p->notes = false;
+}
+
+su_auto_do su_auto_step(su_auto *a, const su_view *v, unsigned now_ms, long long now_s)
+{
+	bool joined = v->wifi && !a->wifi_was, cut;
+
+	a->wifi_was = v->wifi;
+	if (!a->backoff) a->backoff = 120000;
+	if (v->st.state == SU_UNSUPPORTED || v->running || !v->wifi) return SU_AUTO_NONE;
+	/* Cut short: stopped, or killed at work (the power went) */
+	cut = v->st.state == SU_STOPPED || v->st.state == SU_DOWNLOADING || v->st.state == SU_COPYING ||
+	      v->st.state == SU_VERIFYING || v->st.state == SU_INSTALLING;
+	if (cut) {
+		if (joined) a->backoff = 120000;
+		if (!joined && a->resumed_at && now_ms - a->resumed_at < a->backoff) return SU_AUTO_NONE;
+		if (!joined && a->resumed_at && a->backoff < 32u * 60000u) a->backoff *= 2;
+		a->resumed_at = now_ms ? now_ms : 1;
+		return SU_AUTO_RESUME;
+	}
+	a->resumed_at = 0;
+	a->backoff = 120000;
+	if (joined) return !v->st.time || now_s - v->st.time >= 300 ? SU_AUTO_CHECK : SU_AUTO_NONE;
+	return !v->st.time || now_s - v->st.time >= 24 * 3600 ? SU_AUTO_CHECK : SU_AUTO_NONE;
 }
 
 const char *su_menu_value(const su_view *v, char *buf, size_t n)

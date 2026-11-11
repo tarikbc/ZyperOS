@@ -53,6 +53,7 @@
 #include "linksteps.h"
 #include "keyhints_draw.h"
 #include "usblink.h"
+#include "usblog.h"
 #include "chargedark.h"
 #include "pace.h"
 #include "idle.h"
@@ -234,6 +235,20 @@ static unsigned t_back0;
  * drawn last remembers the count it was drawn at (g_snap), and is still the
  * one on screen only while the count has not moved since: a keyboard, a slot
  * strip or Now Playing drawn after it has moved it. */
+/* A screen's one-button hint, B and its word (keyhints.h), for a row */
+static const char *b_legend(str_id word)
+{
+	return keyhints_legend((key_hint[]){ { "B", T(word) } }, 1);
+}
+
+/* The tutorial's START hint, as every hint (tour_hint_draw_set) */
+static void tour_hint(SDL_Renderer *r, const char *key, const char *label, int x, int cy)
+{
+	key_hint h = { key, label };
+
+	keyhints_draw(r, &h, 1, x, x + keyhints_width(key, label), cy, KEYHINTS_CENTER, false, 255);
+}
+
 static unsigned g_frame_no;
 
 /* One present of nothing but `c`, over the whole screen. */
@@ -1754,6 +1769,10 @@ void charge_full_once(void)
 	fprintf(stderr, "charging: a full charge, this time\n");
 }
 
+static bool g_full_shot;          /* --charging N tofull: asked for, in a shot */
+bool charge_full_active(void) { return g_full_shot || access(CHG_FULL_ONCE, F_OK) == 0; }
+int  charge_limit_saved(void) { return g_charge_limit; }
+
 /* The cable out: a full charge asked for is over, and the limit back */
 void charge_full_end(void)
 {
@@ -1903,12 +1922,17 @@ static void notice_queue(nq_kind kind, int id, int ms, const char *head,
 
 static void replug_game_tick(void);
 
+static void tick_update_daily(bool in_game);
+
 static void on_game_tick(void)
 {
 	char msg[96];
 
 	/* Developer Mode's SSH, which a game does not end (see dev_ssh_tick) */
 	dev_ssh_tick();
+	/* System Update behind the game: its looks, a cut download going on,
+	 * and its news as a notice */
+	tick_update_daily(true);
 	/* px2-open's status and quit, and an open that ends this game first */
 	if (g_ctl_app) ctl_poll(g_ctl_app, CTL_AT_GAME);
 	int rc;
@@ -1965,8 +1989,11 @@ static void on_game_tick(void)
 	g_game_ticking = false;
 	aout_retry_in_game();
 
+	/* Held on the charger, and while an update downloads or installs
+	 * behind the game (2026-11-11: Auto Off powered the Pixel down in the
+	 * middle of one) */
 	if (g_idle_secs > 0) {
-		bool ch = on_charger();
+		bool ch = on_charger() || up_working();
 
 		if (ch != g_idle_charging) {
 			g_idle_charging = ch;
@@ -2313,6 +2340,18 @@ static unsigned g_usb_wait;
 static bool shot_usb_menu;
 static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
 
+/* An accessory powered when the handheld turned off, kept on the card for
+ * the next start (usbpower_resume): read once there and gone */
+static bool g_usb_kept;
+
+static const char *usb_kept_path(void)
+{
+	static char p[512];
+
+	snprintf(p, sizeof p, "%s/usb-kept", P_USERDATA);
+	return p;
+}
+
 static void usb_auto_load(void)
 {
 	char v[8];
@@ -2325,6 +2364,41 @@ static void usb_auto_load(void)
 		remove("/tmp/zyperos_usbdrive_back");
 		usblink_skip_ask();
 		fprintf(stderr, "usb: back from USB Drive: not asked again for this plug\n");
+	}
+	/* The brightness set on Flash Drive's page (usbdrive), kept as if set
+	 * here: the same rungs, saved as the launcher saves its own */
+	{
+		FILE *f = fopen("/tmp/zyperos_usbdrive_bright", "r");
+		int level;
+
+		if (f) {
+			if (fscanf(f, "%d", &level) == 1 && level >= 0 && level <= PLAT_BRIGHT_MAX) {
+				plat_brightness_set(level);
+				fprintf(stderr, "usb: the brightness set on Flash Drive's page: %d\n", level);
+			}
+			fclose(f);
+			remove("/tmp/zyperos_usbdrive_bright");
+		}
+	}
+	g_usb_kept = access(usb_kept_path(), F_OK) == 0;
+	if (g_usb_kept) {
+		remove(usb_kept_path());
+		fprintf(stderr, "usb: an accessory was powered at the last power-off\n");
+	}
+}
+
+/* Turning off: an accessory powered now (the port a host, no computer
+ * seen) is kept for the next start */
+static void usb_kept_save(void)
+{
+	usb_power p;
+	FILE *f;
+
+	remove(usb_kept_path());
+	if (!plat_usb_power(&p) || !p.host || p.computer) return;
+	if ((f = fopen(usb_kept_path(), "w"))) {
+		fprintf(f, "accessory plug %u\n", p.plug);
+		fclose(f);
 	}
 }
 
@@ -2568,6 +2642,9 @@ static void corner_time_text(int minutes, char *out, size_t n)
 
 /* File Transfer behind the shelf, for the corner's mark (xs_*) */
 static void xs_mark(status_marks *m);
+/* System Update's page is up: the corner's update mark stays off there */
+static bool g_up_shown;
+static const su_view *up_view(bool now);
 
 static void status_gather(status_marks *m, bool moving)
 {
@@ -2596,6 +2673,14 @@ static void status_gather(status_marks *m, bool moving)
 	m->held = chg && charge_held();
 	xs_mark(m);
 	m->usb = g_usb_wait != 0;
+	/* System Update at work behind the screen, and how far its download is:
+	 * not on its own page, which shows it whole */
+	if (!g_up_shown && up_working()) {
+		const su_view *v = up_view(false);
+
+		m->update = true;
+		m->update_pct = v->st.total ? (int)(v->st.done * 100 / v->st.total) : 0;
+	}
 }
 
 /* The time a shot shows: today at --status's time of day, into *t. False for
@@ -2794,7 +2879,7 @@ static void theme_changed(app *a)
  * trial, and a third start without this word goes back to the version
  * before by itself. The word is ten seconds of a launcher whose screens are
  * running, asked from every screen's loop through tick_theme below. */
-static void tick_update_daily(void);   /* with System Update's screen */
+static void tick_update_daily(bool in_game);   /* with System Update's screen */
 static void up_spawn(const char *cmd);
 
 static void tick_update_trial(void)
@@ -2927,7 +3012,7 @@ bool tick_theme(app *a)
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
 	tick_boot_theme();
-	tick_update_daily();
+	tick_update_daily(false);
 	if (!theme_tick() && !g_theme_late) return false;
 	theme_changed(a);
 	return true;
@@ -4121,14 +4206,17 @@ static void song_popup_draw(app *a, unsigned now)
 #define HEATPOP_PAD_X   30
 #define HEATPOP_PAD_Y   18
 #define HEATPOP_GAP     18        /* the thermometer to the words */
-#define HEATPOP_LINE1   T(S_HEAT_ZYPER)
-#define HEATPOP_LINE2   T(S_HEAT_SLOWING)
+#define HEATPOP_LINE1   (g_heatpop.line1[0] ? g_heatpop.line1 : T(S_HEAT_ZYPER))
+#define HEATPOP_LINE2   (g_heatpop.line1[0] ? g_heatpop.line2 : T(S_HEAT_SLOWING))
 
 static struct {
 	bool     on;
 	unsigned at;       /* when he started up */
 	unsigned drawn;    /* render's last frame of it */
 	zr_rig   rig;
+	/* Another word of his in the same bubble (System Update's news,
+	 * up_notice_watch): its two lines and no thermometer; "" for the heat */
+	char     line1[160], line2[160];
 } g_heatpop;
 
 /* Its times, from `at`: up, the bubble in, held, out */
@@ -4138,6 +4226,7 @@ static struct {
 
 static void heatpop_show(unsigned now)
 {
+	g_heatpop.line1[0] = g_heatpop.line2[0] = '\0';
 	g_heatpop.on = true;
 	g_heatpop.at = now;
 	g_heatpop.drawn = now;
@@ -4218,15 +4307,30 @@ static void heatpop_draw(app *a, unsigned now)
 		SDL_Vertex v[3];
 		int i, l1 = ui_font_line(UI_F_LABEL), l2 = ui_font_line(UI_F_META);
 
+		/* News (System Update's) has no thermometer, and its lines are
+		 * balanced onto two each in the room right of him, the bubble
+		 * growing upward from where the heat's stands */
+		char a1[2][LB_LINE], a2[2][LB_LINE];
+		int n1 = 1, n2 = 1, k, room = ZYPEROS_SCREEN_W - 24 - HEATPOP_BUBBLE_X - 2 * HEATPOP_PAD_X;
+
 		mh = heatpop_mark_h();
-		mw = (mh + 1) / 2;
-		w1 = ui_text_width(f1, HEATPOP_LINE1);
-		w2 = ui_text_width(f2, HEATPOP_LINE2);
+		mw = g_heatpop.line1[0] ? -HEATPOP_GAP : (mh + 1) / 2;
+		if (g_heatpop.line1[0]) {
+			n1 = ui_balance_lines(f1, HEATPOP_LINE1, room, 2, a1);
+			n2 = ui_balance_lines(f2, HEATPOP_LINE2, room, 2, a2);
+			for (k = 0, w1 = 0; k < n1; k++) if (ui_text_width(f1, a1[k]) > w1) w1 = ui_text_width(f1, a1[k]);
+			for (k = 0, w2 = 0; k < n2; k++) if (ui_text_width(f2, a2[k]) > w2) w2 = ui_text_width(f2, a2[k]);
+		} else {
+			snprintf(a1[0], LB_LINE, "%s", HEATPOP_LINE1);
+			snprintf(a2[0], LB_LINE, "%s", HEATPOP_LINE2);
+			w1 = ui_text_width(f1, a1[0]);
+			w2 = ui_text_width(f2, a2[0]);
+		}
 		w = HEATPOP_PAD_X + mw + HEATPOP_GAP + (w1 > w2 ? w1 : w2) + HEATPOP_PAD_X;
-		h = HEATPOP_PAD_Y + l1 + l2 + HEATPOP_PAD_Y;
+		h = HEATPOP_PAD_Y + n1 * l1 + n2 * l2 + HEATPOP_PAD_Y;
 		/* Sliding up the last few units as it fades in, as the tutorial's */
 		x = HEATPOP_BUBBLE_X;
-		y = HEATPOP_BUBBLE_Y + (int)(6.0f * (1.0f - op) + 0.5f);
+		y = HEATPOP_BUBBLE_Y - (n1 - 1) * l1 - (n2 - 1) * l2 + (int)(6.0f * (1.0f - op) + 0.5f);
 		ui_round_rect(a->r, &(SDL_Rect){ x, y, w, h }, DS_RADIUS_PANEL, slab);
 		/* The tail, toward his mouth */
 		v[0].position = (SDL_FPoint){ (float)x + 2.0f, (float)(y + h - 58) };
@@ -4234,11 +4338,17 @@ static void heatpop_draw(app *a, unsigned now)
 		v[2].position = (SDL_FPoint){ (float)x - 18.0f, (float)(y + h - 30) };
 		for (i = 0; i < 3; i++) { v[i].color = slab; v[i].tex_coord = (SDL_FPoint){ 0, 0 }; }
 		SDL_RenderGeometry(a->r, NULL, v, 3, NULL, 0);
-		heatpop_mark(a->r, x + HEATPOP_PAD_X, y + (h - mh) / 2, mh, ink.a);
-		ui_text(a->r, f1, HEATPOP_LINE1, x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
-		        ui_line_y(UI_F_LABEL, y + HEATPOP_PAD_Y), -1, ink);
-		ui_text(a->r, f2, HEATPOP_LINE2, x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
-		        ui_line_y(UI_F_META, y + HEATPOP_PAD_Y + l1), -1, ink);
+		if (!g_heatpop.line1[0]) heatpop_mark(a->r, x + HEATPOP_PAD_X, y + (h - mh) / 2, mh, ink.a);
+		if (g_heatpop.line1[0]) {           /* drawn whole, in pieces: said so */
+			ui_fit_drawn(HEATPOP_LINE1);
+			ui_fit_drawn(HEATPOP_LINE2);
+		}
+		for (k = 0; k < n1; k++)
+			ui_text(a->r, f1, a1[k], x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
+			        ui_line_y(UI_F_LABEL, y + HEATPOP_PAD_Y + k * l1), -1, ink);
+		for (k = 0; k < n2; k++)
+			ui_text(a->r, f2, a2[k], x + HEATPOP_PAD_X + mw + HEATPOP_GAP,
+			        ui_line_y(UI_F_META, y + HEATPOP_PAD_Y + n1 * l1 + k * l2), -1, ink);
 	}
 	g_heatpop.drawn = now;
 	redraw_now();
@@ -4562,6 +4672,8 @@ void power_off_with(app *a, void (*anim)(app *a))
 	book_keep(true);
 	/* Asked for: a game left running continues at the next start */
 	playing_mark_clean();
+	/* ...and an accessory powered now is powered again then, unasked */
+	usb_kept_save();
 	plat_request_poweroff();
 	anim(a);
 	/* And dark the moment it ends. The rest of the shutdown is not instant -
@@ -4916,7 +5028,9 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		int w;
 
 		if (!rows[i].label) continue;          /* a rule measures nothing */
-		w = ui_text_width(fm, rows[i].label);
+		/* A legend of button hints (keyhints.h) on its one row */
+		w = keyhints_is(rows[i].label) ? keyhints_line_width(rows[i].label)
+		                               : ui_text_width(fm, rows[i].label);
 		if (two_col && rows[i].value && !ROW_IS_NOTE(rows[i]))
 			w += gap + menu_value_w(fm, rows[i].value);
 		if (w > content_w) content_w = w;
@@ -5443,7 +5557,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 *
 		 * The VALUE yields first: labels are short and fixed ("File", "Size"),
 		 * values are whatever the card happens to hold. */
-		if (ROW_IS_NOTE(rows[i])) {
+		if (keyhints_is(rows[i].label)) {
+			/* Button hints: a glyph and a word each, centered */
+			keyhints_draw_packed(a->r, rows[i].label, content_x, content_x + content_w,
+			                     y + ROW_H(rows[i]) / 2, lc.a);
+		} else if (ROW_IS_NOTE(rows[i])) {
 			char note[192];
 
 			/* A note that fits is centered, which is what a caption wants.
@@ -5724,7 +5842,7 @@ static bool panel_pass_begin(app *a)
 	static bool said;
 
 	if (!g_panel_tex) {
-		g_panel_tex = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_ARGB8888,
+		g_panel_tex = SDL_CreateTexture(a->r, PLAT_TARGET_FORMAT,
 		                                SDL_TEXTUREACCESS_TARGET,
 		                                ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H);
 		if (!g_panel_tex) {
@@ -6092,6 +6210,20 @@ static const su_view *up_view(bool now)
 	return &g_up;
 }
 
+/* At work on an update: downloading, checking what it fetched, copying the
+ * folder or writing the system. A look (checking) is not: it is one small
+ * request, and Auto Off may come. */
+bool up_working(void)
+{
+	const su_view *v;
+
+	if (!up_have()) return false;
+	v = up_view(false);
+	if (!v->running) return false;
+	return v->st.state == SU_DOWNLOADING || v->st.state == SU_COPYING ||
+	       v->st.state == SU_VERIFYING || v->st.state == SU_INSTALLING;
+}
+
 /* Start the program: check, download or rollback, on its own, as the device
  * name of the card's .userdata folder */
 static void up_spawn(const char *cmd)
@@ -6107,22 +6239,76 @@ static void up_spawn(const char *cmd)
 	g_up_read_at = 0;
 }
 
-/* Once a day on a network, a look at the newest release (the update lab's
- * pick): one small request, nothing downloaded, and only MENU's row says
- * what it found. Asked from every screen's loop through tick_theme. */
-static void tick_update_daily(void)
+/* System Update's news, said once per release (DESIGN.md 11.17): a new
+ * release a look found, and a download done in the background. Zyper's
+ * bubble on the shelf (the heat pop-up's, with these words), or a notice
+ * over a game; one that comes over a menu waits for the shelf. */
+static char g_up_news[2][160];
+
+static void up_news(const char *key, const char *fmt, const char *version, bool in_game)
+{
+	char told[40] = "";
+
+	db_get_str(db_dev(), key, told, sizeof told, "");
+	if (!version[0] || !strcmp(told, version)) return;
+	db_set_str(db_dev(), key, version);
+	snprintf(g_up_news[0], sizeof g_up_news[0], fmt, version);
+	snprintf(g_up_news[1], sizeof g_up_news[1], "%s", T(S_UPDATE_NEWS_WHERE));
+	fprintf(stderr, "update: news: %s\n", g_up_news[0]);
+	if (in_game) {
+		nq_item it = { .kind = NQ_SET, .ms = 5000 };
+
+		snprintf(it.head, sizeof it.head, "%s", T(S_SYSMENU_UPDATE));
+		snprintf(it.body, sizeof it.body, "%s", g_up_news[0]);
+		nq_push(&g_nq, &it);
+		g_up_news[0][0] = '\0';
+	}
+}
+
+/* The shelf's pass: the news up in Zyper's bubble, when there is some and
+ * nothing else of his is up */
+static void up_news_watch(void)
+{
+	unsigned now = plat_now_ms();
+
+	if (!g_up_news[0][0] || g_heatpop.on || g_songpop.on) return;
+	heatpop_show(now);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, "%s", g_up_news[0]);
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", g_up_news[1]);
+	g_up_news[0][0] = '\0';
+}
+
+/* The update's own clock, every 2 s, from every screen's loop through
+ * tick_theme and from a game's tick: su_auto_step's looks and resumes
+ * (src/sysupdate.h), and the news, once per release */
+static void tick_update_daily(bool in_game)
 {
 	static unsigned last;
+	static su_auto au;
 	unsigned t = plat_now_ms();
 	const su_view *v;
 
-	if (last && t - last < 60000) return;
+	if (last && t - last < 2000) return;
 	last = t ? t : 1;
 	if (t - t_boot0 < 30000 || !up_have()) return;
 	v = up_view(true);
-	if (v->running || !v->wifi || v->st.state == SU_UNSUPPORTED) return;
-	if (v->st.time && time(NULL) - (time_t)v->st.time < 24 * 3600) return;
-	up_spawn("check");
+	if (v->st.state == SU_UNSUPPORTED) return;
+	/* The news: a release found, and one ready */
+	if (!v->running && v->st.state == SU_AVAILABLE)
+		up_news("update.told", T(S_UPDATE_NEWS_AVAILABLE), v->st.version, in_game);
+	if (!v->running && v->st.state == SU_READY)
+		up_news("update.ready_told", T(S_UPDATE_NEWS_READY), v->st.version, in_game);
+	switch (su_auto_step(&au, v, t, (long long)time(NULL))) {
+	case SU_AUTO_RESUME:
+		fprintf(stderr, "update: the download was cut short: going on\n");
+		up_spawn("download");
+		break;
+	case SU_AUTO_CHECK:
+		up_spawn("check");
+		break;
+	default:
+		break;
+	}
 }
 
 /* Developer (SSH) is offered on a development image (dropbear at boot) and
@@ -7801,7 +7987,7 @@ static void hare_preview(app *a, const char *name, const char *addr, const char 
 {
 	menu_row rows[7];
 	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, T(S_PANEL_B_CLOSE));
+	int n = hare_rows(rows, who, ssh, moved, now, b_legend(S_KEYHINT_CLOSE));
 
 	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
 	draw_shelf(a);
@@ -7871,7 +8057,7 @@ static void hot_preview(app *a, const char *ssid, const char *pass,
 	rows[3] = (menu_row){ "PIN",                 "4071", false };
 	rows[4] = (menu_row){ T(S_HOTPANEL_PHONES),  phones, false };
 	rows[5] = (menu_row){ T(S_XFER_NOW),         now,    false };
-	rows[6] = MENU_NOTE(T(S_PANEL_B_CLOSE));
+	rows[6] = MENU_NOTE(b_legend(S_KEYHINT_CLOSE));
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	panel_show(a, PANEL_HOT, XFER_NAME_WIFI, rows, 7, -1, 0, 0u, NULL, false, 0, NULL);
@@ -8311,6 +8497,42 @@ static const char *tiles_hints(const char *b_word)
 
 static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
 
+/* The tiles' button hints shown: off while a question that came by itself
+ * takes no button yet */
+static bool g_tiles_hints = true;
+
+/* A question that came by itself, this pass (usbpower_guard): a button
+ * down when it appeared, or pressed in its first half second, counts only
+ * once let go and pressed again; POWER always. Its hints from then. */
+static void ask_settle(app *a, usbpower_guard *g)
+{
+	unsigned down = 0, pressed = 0, ok;
+	int b;
+
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (a->in.down[b]) down |= 1u << b;
+		if (a->in.pressed[b]) pressed |= 1u << b;
+	}
+	ok = usbpower_guard_pass(g, plat_now_ms(), down, pressed);
+	g_tiles_hints = usbpower_guard_hints(g, plat_now_ms());
+	for (b = 0; b < IN_COUNT && b < 32; b++) {
+		if (b == IN_POWER) continue;
+		if (!(ok & (1u << b))) a->in.pressed[b] = false;
+		/* Held over: no repeat from it either */
+		if (g->held & (1u << b)) a->in.down[b] = false;
+	}
+}
+
+static void ask_guard_start(app *a, usbpower_guard *g)
+{
+	unsigned down = 0;
+	int b;
+
+	for (b = 0; b < IN_COUNT && b < 32; b++)
+		if (a->in.down[b] && b != IN_POWER) down |= 1u << b;
+	usbpower_guard_start(g, plat_now_ms(), down);
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -8503,7 +8725,9 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		tiles_y += nwhat.n * ls;
 	}
 	tiles_y += 24;
-	if (nh)
+	/* Not while the question takes no button yet (usbpower_takes_input):
+	 * its room kept, so nothing moves when they come */
+	if (nh && g_tiles_hints)
 		keyhints_draw(a->r, hints, nh, panel.x + tile_pad, panel.x + panel.w - tile_pad,
 		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
 	else
@@ -8564,54 +8788,402 @@ static void usb_drive(app *a);
  * ZyperOS again (plastron's package/usbdrive). */
 #define USB_DRIVE_DIR "/tmp/zyperos_usbdrive.d"
 #define USB_DRIVE_ASK "/tmp/zyperos_usbdrive"
-enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_FRAMES };
+enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_CONFIRM, UD_FRAMES };
 
-/* One of them: the theme's ground, Zyper in the middle, the heading in
- * **title** and the words under it in **menu**, balanced, and on the
- * connected one POWER's line at the foot in **meta** **text-dim** */
+/* The pages' geometry, in the launcher's 1024 x 768. The saved pictures are
+ * 640 x 480 (5/8 of it), so every edge a slot or a glyph's cell starts on is
+ * a multiple of 8 and lands on a whole pixel there. */
+#define UD_TILE_Y    256
+#define UD_TILE_H    280
+#define UD_TILE_W    472
+#define UD_TILE_X0   DS_INSET                                   /* 24 */
+#define UD_TILE_X1   (ZYPEROS_SCREEN_W - DS_INSET - UD_TILE_W)  /* 528 */
+#define UD_PAD       32
+#define UD_MARK      64          /* the mark's slot, square */
+#define UD_MARK_CY   312
+#define UD_SPEED_CY  416
+#define UD_SPEED_H   80          /* the speed's slot: the title face's line */
+#define UD_TOTAL_CY  488
+#define UD_TOTAL_H   48          /* the total's: the meta face's */
+#define UD_SAVE_W    640
+#define UD_SAVE_H    480
+
+/* The tokens of a number, as plastron's usbdrive makes them (its
+ * drivestat.h): each digit, the mark, the space, a unit, "/s" */
+enum { UT_DEC = 10, UT_SP, UT_B, UT_KB, UT_MB, UT_GB, UT_PS, UT_TOKENS };
+
+/* A token's words in the language that is on */
+static const char *ud_token(int t, char *buf)
+{
+	if (t >= 0 && t <= 9) { buf[0] = (char)('0' + t); buf[1] = '\0'; return buf; }
+	switch (t) {
+	case UT_DEC: return T(S_USBDRIVE_DECIMAL);
+	case UT_SP:  return " ";
+	case UT_B:   return T(S_USBDRIVE_UNIT_B);
+	case UT_KB:  return T(S_USBDRIVE_UNIT_KB);
+	case UT_MB:  return T(S_USBDRIVE_UNIT_MB);
+	case UT_GB:  return T(S_USBDRIVE_UNIT_GB);
+	default:     return T(S_USBDRIVE_PER_SECOND);
+	}
+}
+
+/* How wide a token's cell is: a digit as wide as the widest digit (the
+ * numbers do not shift as they count), anything else its own width */
+static int ud_cell(TTF_Font *f, int t)
+{
+	char buf[2];
+
+	if (t >= 0 && t <= 9) {
+		int w = 0, d;
+
+		for (d = 0; d <= 9; d++) {
+			int dw;
+
+			buf[0] = (char)('0' + d);
+			buf[1] = '\0';
+			dw = ui_text_width(f, buf);
+			if (dw > w) w = dw;
+		}
+		return w;
+	}
+	return ui_text_width(f, ud_token(t, buf));
+}
+
+/* A number written as usbdrive writes it, "23.4" "MB" per-second, into
+ * tokens; how many */
+static int ud_tokens(const char *num, int unit, bool per_s, int *tok, int max)
+{
+	int n = 0;
+
+	for (; *num && n < max - 3; num++)
+		tok[n++] = *num == '.' ? UT_DEC : *num - '0';
+	tok[n++] = UT_SP;
+	tok[n++] = unit;
+	if (per_s) tok[n++] = UT_PS;
+	return n;
+}
+
+/* Their width, cell by cell as usbdrive puts them side by side */
+static int ud_tokens_width(TTF_Font *f, const int *tok, int n)
+{
+	int w = 0, i;
+
+	for (i = 0; i < n; i++) w += ud_cell(f, tok[i]);
+	return w;
+}
+
+/* The tokens drawn from x, as usbdrive composes them from the atlas */
+static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, int x, int cy, SDL_Color c)
+{
+	char buf[2];
+	int i;
+
+	for (i = 0; i < n; i++) {
+		int cw = ud_cell(f, tok[i]);
+
+		if (tok[i] >= 0 && tok[i] <= 9) {
+			/* A digit in the middle of its cell */
+			const char *s = ud_token(tok[i], buf);
+
+			ui_text(r, f, s, x + (cw - ui_text_width(f, s)) / 2, ui_cap_y(f, cy), -1, c);
+		} else if (tok[i] != UT_SP) {
+			ui_text(r, f, ud_token(tok[i], buf), x, ui_cap_y(f, cy), -1, c);
+		}
+		x += cw;
+	}
+}
+
+/* The widest number a slot can show (999.9 MB/s; 999.99 GB): said to the
+ * host's fit check when it is wider than the tile's room */
+static void ud_fit_widest(TTF_Font *f, bool speed, int room)
+{
+	int tok[16], n = speed ? ud_tokens("999.9", UT_MB, true, tok, 16) : ud_tokens("999.99", UT_GB, false, tok, 16);
+
+	if (ud_tokens_width(f, tok, n) > room)
+		printf("i18n: cut data: %s (the widest number, %d of %d)\n", speed ? "999.9 MB/s" : "999.99 GB",
+		       ud_tokens_width(f, tok, n), room);
+}
+
+/* One way's tile on the page: its mark, moving in **accent-ink** or idle in
+ * **text-dim**, and its name in **menu** **text**; its speed big in
+ * **title** **text**; its total in **meta** **text-soft**. `speed` and
+ * `total` as tokens, NULL for none (the atlas's page). */
+typedef struct { int x0, y0, x1, y1; } ud_rect;
+enum { UD_S_SPEED_IN, UD_S_SPEED_OUT, UD_S_TOTAL_IN, UD_S_TOTAL_OUT, UD_S_MARK_IN, UD_S_MARK_OUT, UD_SLOTS };
+
+static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *speed, int ns, const int *total,
+                    int nt, ud_rect slot[UD_SLOTS])
+{
+	const ds_theme *t = theme();
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	SDL_Rect q = { x, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
+	int left = x + UD_PAD, room = UD_TILE_W - 2 * UD_PAD;
+	char fit[160];
+
+	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, UD_MARK_CY, 56,
+	              active ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
+	ui_fit_text(fm, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
+	            room - UD_MARK - 16);
+	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, UD_MARK_CY), -1, UI_TEXT);
+	if (speed) ud_draw_tokens(r, ft, speed, ns, left, UD_SPEED_CY, UI_TEXT);
+	if (total) ud_draw_tokens(r, fs, total, nt, left, UD_TOTAL_CY, UI_TEXT_SOFT);
+	ud_fit_widest(ft, true, room);
+	ud_fit_widest(fs, false, room);
+	if (slot) {
+		int k = in ? 0 : 1;
+
+		slot[UD_S_MARK_IN + k] = (ud_rect){ left, UD_MARK_CY - UD_MARK / 2, left + UD_MARK, UD_MARK_CY + UD_MARK / 2 };
+		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, UD_SPEED_CY - UD_SPEED_H / 2, left + room,
+		                                     UD_SPEED_CY + UD_SPEED_H / 2 };
+		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, UD_TOTAL_CY - UD_TOTAL_H / 2, left + room,
+		                                     UD_TOTAL_CY + UD_TOTAL_H / 2 };
+	}
+}
+
+/* Two button hints at the foot, the shelves' size, centered as a pair */
+static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+{
+	int w1 = page_hint_width(k1, l1, false), w2 = page_hint_width(k2, l2, false), gap = 48;
+	int x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+
+	page_hint(r, k1, l1, x, 704, false, false);
+	page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+}
+
+/* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
+ * page as usbdrive starts it, both idle; 1 a copy to the card; 2 one from
+ * it; 3 both ways; 4 the widest numbers */
+static int shot_usbdrive_vals;
+
+/* One of the pages: Zyper beside the heading, as on the empty home.
+ * Connected: two **raised** tiles (**radius-card**) side by side, to the
+ * card and from it, the eject line under them in **meta** **text-soft**, and
+ * POWER's hint at the foot as the shelves' are. One moment and The card is
+ * busy: their words in one tile the width of both. */
 static void usb_drive_draw(app *a, int which)
 {
-	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED };
-	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY };
+	static const str_id HEAD[UD_FRAMES] = { S_USBDRIVE_CONNECTED, S_USBDRIVE_FINISHING, S_USBDRIVE_FAILED,
+	                                        S_USBDRIVE_CONFIRM_HEAD };
+	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY,
+	                                        S_USBDRIVE_CONFIRM_BODY };
+	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
 	int n, k;
 
 	draw_background(a);
-	draw_zyper(a->r, ZYPEROS_SCREEN_W / 2.0f, 250.0f, 200.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f,
-	           0.0f, 255);
-	ui_text(a->r, ft, T(HEAD[which]), ZYPEROS_SCREEN_W / 2, ui_cap_y(ft, 450), 0, UI_TEXT);
-	n = ui_balance_lines(fm, T(BODY[which]), ZYPEROS_SCREEN_W - 2 * 96, 3, lines);
-	if (n > 1) ui_fit_drawn(T(BODY[which]));
+	draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
+	/* The heading on one line, or two balanced beside him */
+	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - 208, 2, lines);
+	if (n > 1) ui_fit_drawn(T(HEAD[which]));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, fm, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fm, 528 + k * 52), 0, UI_TEXT_SOFT);
-	if (which == UD_CONNECTED) {
-		n = ui_balance_lines(fs, T(S_USBDRIVE_POWER), ZYPEROS_SCREEN_W - 2 * 160, 2, lines);
-		if (n > 1) ui_fit_drawn(T(S_USBDRIVE_POWER));
+		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+	if (which != UD_CONNECTED) {
+		/* The words in one tile, balanced, in the middle of it */
+		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
+
+		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+		n = ui_balance_lines(fm, T(BODY[which]), q.w - 2 * UD_PAD, 3, lines);
+		if (n > 1) ui_fit_drawn(T(BODY[which]));
 		for (k = 0; k < n; k++)
-			ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 704 - (n - 1 - k) * 40), 0,
-			        UI_TEXT_DIM);
+			ui_text(a->r, fm, lines[k], ZYPEROS_SCREEN_W / 2,
+			        ui_cap_y(fm, UD_TILE_Y + UD_TILE_H / 2 + (2 * k - (n - 1)) * 26), 0, UI_TEXT_SOFT);
+		if (which == UD_CONFIRM)
+			ud_foot(a->r, "A", T(S_USBDRIVE_EJECT_KEY), "B", T(S_USBDRIVE_KEEP));
+		return;
 	}
+	{
+		/* The tiles: as usbdrive starts them (nothing moved yet), or a
+		 * shot's numbers */
+		static const struct { const char *s; int su; const char *t; int tu; } V[5][2] = {
+			{ { "0", UT_MB, "0", UT_B },          { "0", UT_MB, "0", UT_B } },
+			{ { "23.4", UT_MB, "1.24", UT_GB },   { "0", UT_MB, "312", UT_MB } },
+			{ { "0", UT_MB, "1.24", UT_GB },      { "41.7", UT_MB, "312", UT_MB } },
+			{ { "18.2", UT_MB, "1.24", UT_GB },   { "6.5", UT_MB, "312", UT_MB } },
+			{ { "999.9", UT_MB, "999.99", UT_GB }, { "999.9", UT_MB, "999.99", UT_GB } },
+		};
+		static const bool ACTIVE[5][2] = { { false, false }, { true, false }, { false, true }, { true, true },
+		                                   { true, true } };
+		int v = shot_usbdrive_vals >= 0 && shot_usbdrive_vals < 5 ? shot_usbdrive_vals : 3, w;
+
+		for (w = 0; w < 2; w++) {
+			int sp[16], to[16];
+			int ns = ud_tokens(V[v][w].s, V[v][w].su, true, sp, 16);
+			int nt = ud_tokens(V[v][w].t, V[v][w].tu, false, to, 16);
+
+			ud_tile(a->r, w ? UD_TILE_X1 : UD_TILE_X0, w == 0, ACTIVE[v][w], sp, ns, to, nt, NULL);
+		}
+	}
+	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
+	if (n > 1) ui_fit_drawn(T(S_USBDRIVE_EJECT));
+	for (k = 0; k < n; k++)
+		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 592 + k * 40), 0, UI_TEXT_SOFT);
+	ud_foot(a->r, "B", T(S_USBDRIVE_EJECT_KEY), "POWER", T(S_USBDRIVE_STOP));
+	/* A shot of FUNCTION and volume on the page (--usb-drive 0 bright): the
+	 * bar usbdrive shows, at a rung, where it shows it */
+	if (shot_usbdrive_vals == 5) {
+		static uint32_t px[OSDBAR_W * OSDBAR_H];
+		SDL_Texture *tx;
+
+		osdbar_render(px, OSDBAR_W, OSDBAR_H, OSDBAR_W, 1.0f, theme_index(), OSDBAR_BRIGHT, 8,
+		              PLAT_BRIGHT_MAX, 1.0f, false);
+		if ((tx = SDL_CreateTexture(a->r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, OSDBAR_W,
+		                            OSDBAR_H))) {
+			SDL_SetTextureBlendMode(tx, SDL_BLENDMODE_BLEND);
+			SDL_UpdateTexture(tx, NULL, px, OSDBAR_W * 4);
+			SDL_RenderCopy(a->r, tx, NULL, &(SDL_Rect){ OSDBAR_X, OSDBAR_Y, OSDBAR_W, OSDBAR_H });
+			SDL_DestroyTexture(tx);
+		}
+	}
+}
+
+/* usbdrive's atlas (plastron's package/usbdrive/src/atlas.h): every token in
+ * the speeds' face and in the totals', and each way's mark moving and idle,
+ * on the tiles' color, each from an edge that is a multiple of 8, saved as
+ * atlas.raw beside the pages, and atlas.txt saying where they and the
+ * page's slots are in the saved 640 x 480. A shot (`shot`, --usb-drive 3)
+ * prints atlas.txt there and saves nothing. */
+static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot)
+{
+	static const char *const TOKEN[UT_TOKENS] = {
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp", "B", "KB", "MB", "GB", "ps",
+	};
+	static const char *const MARK[4] = { "in_on", "in_off", "out_on", "out_off" };
+	static const char *const SLOT[UD_SLOTS] = { "speed_in", "speed_out", "total_in", "total_out",
+	                                            "mark_in", "mark_out" };
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	const ds_theme *th = theme();
+	ud_rect slot[UD_SLOTS];
+	int bx[UT_TOKENS], bcy[UT_TOKENS], i;
+	FILE *f;
+
+	/* Where the slots are: the connected page's own tiles */
+	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
+	SDL_RenderClear(a->r);
+	ud_tile(a->r, UD_TILE_X0, true, false, NULL, 0, NULL, 0, slot);
+	ud_tile(a->r, UD_TILE_X1, false, false, NULL, 0, NULL, 0, slot);
+	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
+	SDL_RenderClear(a->r);
+	/* The speeds' tokens: the digits, the mark and the space on a row, the
+	 * units and "/s" on the next; the totals' all on a third; the marks on a
+	 * fourth. Every cell from a multiple of 8, a row's middle on one too. */
+	for (i = 0; i < UT_TOKENS; i++) {
+		int tok = i;
+
+		bx[i] = i <= UT_SP ? 32 + i * 64 : 32 + (i - UT_B) * 128;
+		bcy[i] = i <= UT_SP ? 64 : 160;
+		ud_draw_tokens(a->r, ft, &tok, 1, bx[i], bcy[i], UI_TEXT);
+		ud_draw_tokens(a->r, fs, &tok, 1, 32 + i * 56, 248, UI_TEXT_SOFT);
+	}
+	for (i = 0; i < 4; i++)
+		ui_glyph_draw(a->r, i < 2 ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, 32 + i * 96 + UD_MARK / 2, 336, 56,
+		              i % 2 ? UI_TEXT_DIM : ui_col(th->accent_ink, 255));
+	if (shot) f = shot;
+	else if (!plat_save_screen_hidden(raw) || !(f = fopen(txt, "w"))) return false;
+	fprintf(f, "zyperos-drive-atlas 2\nsize %d %d\n", UD_SAVE_W, UD_SAVE_H);
+	for (i = 0; i < UD_SLOTS; i++)
+		fprintf(f, "slot %s %d %d %d %d left\n", SLOT[i], slot[i].x0 * 5 / 8, slot[i].y0 * 5 / 8,
+		        slot[i].x1 * 5 / 8, slot[i].y1 * 5 / 8);
+	/* A cell up to the pixel its width ends in */
+	for (i = 0; i < UT_TOKENS; i++) {
+		fprintf(f, "glyph b%s %d %d %d %d\n", TOKEN[i], bx[i] * 5 / 8, (bcy[i] - UD_SPEED_H / 2) * 5 / 8,
+		        (ud_cell(ft, i) * 5 + 7) / 8, UD_SPEED_H * 5 / 8);
+		fprintf(f, "glyph s%s %d %d %d %d\n", TOKEN[i], (32 + i * 56) * 5 / 8, (248 - UD_TOTAL_H / 2) * 5 / 8,
+		        (ud_cell(fs, i) * 5 + 7) / 8, UD_TOTAL_H * 5 / 8);
+	}
+	for (i = 0; i < 4; i++)
+		fprintf(f, "glyph %s %d %d %d %d\n", MARK[i], (32 + i * 96) * 5 / 8, (336 - UD_MARK / 2) * 5 / 8,
+		        UD_MARK * 5 / 8, UD_MARK * 5 / 8);
+	return shot ? true : fclose(f) == 0;
+}
+
+/* usbdrive's brightness (its atlas.h's at_bright): bright.txt, the rung now
+ * and the backlight's ladder, the launcher's own so FUNCTION and volume step
+ * the same rungs there, and where the bar goes; and bright.raw, the bar
+ * (src/osdbar.h, the one every other place shows) at each rung, already laid
+ * on the page's ground, where it sits at the top. False where the backlight
+ * has no ladder to hand on (the Brick). */
+#define UD_BAR_X ((OSDBAR_X * 5) / 8)
+#define UD_BAR_Y ((OSDBAR_Y * 5) / 8)
+#define UD_BAR_W ((OSDBAR_W * 5 + 7) / 8)
+#define UD_BAR_H ((OSDBAR_H * 5 + 7) / 8)
+
+static bool usb_drive_bright(const char *txt, const char *raw)
+{
+	static uint32_t px[UD_BAR_W * UD_BAR_H];
+	const ds_theme *t = theme();
+	FILE *f;
+	int k, i;
+
+	if (plat_brightness_raw(0) < 0 || !(f = fopen(txt, "w"))) return false;
+	fprintf(f, "zyperos-drive-bright 1\nlevel %d\nladder", plat_brightness_get());
+	for (k = 0; k <= PLAT_BRIGHT_MAX; k++) fprintf(f, " %d", plat_brightness_raw(k));
+	fprintf(f, "\nbar %d %d %d %d\n", UD_BAR_X, UD_BAR_Y, UD_BAR_W, UD_BAR_H);
+	if (fclose(f) != 0 || !(f = fopen(raw, "wb"))) return false;
+	for (k = 0; k <= PLAT_BRIGHT_MAX; k++) {
+		osdbar_render(px, UD_BAR_W, UD_BAR_H, UD_BAR_W, 0.625f, theme_index(), OSDBAR_BRIGHT, k,
+		              PLAT_BRIGHT_MAX, 1.0f, false);
+		/* Over the ground, as the page has it there */
+		for (i = 0; i < UD_BAR_W * UD_BAR_H; i++) {
+			uint32_t c = px[i], al = c >> 24;
+			uint32_t r = ((c >> 16 & 255) * al + t->ground.r * (255 - al) + 127) / 255;
+			uint32_t g = ((c >> 8 & 255) * al + t->ground.g * (255 - al) + 127) / 255;
+			uint32_t b = ((c & 255) * al + t->ground.b * (255 - al) + 127) / 255;
+
+			px[i] = 0xFF000000u | r << 16 | g << 8 | b;
+		}
+		if (fwrite(px, 4, (size_t)UD_BAR_W * UD_BAR_H, f) != (size_t)UD_BAR_W * UD_BAR_H) {
+			fclose(f);
+			return false;
+		}
+	}
+	return fclose(f) == 0;
 }
 
 static void usb_drive(app *a)
 {
-	static const char *const NAME[UD_FRAMES] = { "connected.raw", "finishing.raw", "failed.raw" };
-	char path[256];
+	static const char *const NAME[UD_FRAMES] = { "connected.raw", "finishing.raw", "failed.raw", "confirm.raw" };
+	char path[256], txt[256];
 	int i;
 	FILE *f;
 
 	mkdir(USB_DRIVE_DIR, 0755);
+	shot_usbdrive_vals = 0;
+	/* "One moment" up at once and held: the pages below are made and saved
+	 * out of sight (plat_save_screen_hidden), so nothing else flashes past
+	 * before usbdrive shows the same "One moment" */
+	usb_drive_draw(a, UD_FINISHING);
+	plat_present();
 	for (i = 0; i < UD_FRAMES; i++) {
 		usb_drive_draw(a, i);
 		snprintf(path, sizeof path, "%s/%s", USB_DRIVE_DIR, NAME[i]);
 		unlink(path);
-		if (!plat_save_screen(path)) {
+		if (!plat_save_screen_hidden(path)) {
 			/* No picture to leave (a host): nothing is asked */
 			fprintf(stderr, "usb: USB Drive: could not save %s\n", path);
 			plat_present();
 			return;
 		}
+	}
+	/* The atlas for the live rows; without it usbdrive shows the page as
+	 * it is, so a failure here is no reason to stop */
+	snprintf(path, sizeof path, "%s/atlas.raw", USB_DRIVE_DIR);
+	snprintf(txt, sizeof txt, "%s/atlas.txt", USB_DRIVE_DIR);
+	unlink(path);
+	unlink(txt);
+	if (!usb_drive_atlas(a, path, txt, NULL)) {
+		fprintf(stderr, "usb: USB Drive: no atlas; the page without live rows\n");
+		unlink(txt);
+	}
+	/* And the brightness for its page; without it the chord does nothing */
+	snprintf(path, sizeof path, "%s/bright.raw", USB_DRIVE_DIR);
+	snprintf(txt, sizeof txt, "%s/bright.txt", USB_DRIVE_DIR);
+	unlink(path);
+	unlink(txt);
+	if (!usb_drive_bright(txt, path)) {
+		fprintf(stderr, "usb: USB Drive: no brightness for its page\n");
+		unlink(txt);
 	}
 	/* What it was doing comes back after, as from a power-off */
 	xs_end();
@@ -8625,18 +9197,22 @@ static void usb_drive(app *a)
 	plat_present();
 	a->running = false;
 }
+static void ulog_note(const char *what);
 
 static void usb_ask(app *a)
 {
 	menu_row tiles[4];
 	int what[4];
 	int n, sel = 0, choice = -1, lv;
+	usbpower_guard guard;
 	float k;
 
 	n = usb_ask_tiles(tiles, what, usblink_dev_image());
 	lv = panel_open();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		plat_input_poll(&a->in);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8671,10 +9247,14 @@ static void usb_ask(app *a)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
 	choice = choice >= 0 && choice < n ? what[choice] : UA_CHARGE;
+	ulog_note(choice == UA_XFER ? "Computer Connected: File Transfer"
+	          : choice == UA_DEV ? "Computer Connected: Developer"
+	          : choice == UA_DRIVE ? "Computer Connected: Flash Drive" : "Computer Connected: Charge Only");
 	if (choice == UA_DRIVE) {
 		usb_drive(a);
 	} else if (choice == UA_XFER) {
@@ -8712,21 +9292,83 @@ static void replug_on(unsigned plug);
 
 static void replug_off(void);
 
+/* The port's log for support (src/usblog.h): read from the card at the
+ * first look, kept as the port is followed, written back at most every 2 s
+ * when it changed, whole under another name and renamed over */
+static usblog g_ulog;
+
+static void ulog_path(char *out, size_t n)
+{
+	snprintf(out, n, "%s/logs/usb.log", P_USERDATA);
+}
+
+static void ulog_save(bool now)
+{
+	static unsigned saved_at;
+	static char text[USBLOG_MAX * USBLOG_LINE + 64];
+	char path[512], tmp[520];
+	unsigned t = plat_now_ms();
+	FILE *f;
+
+	if (!g_ulog.dirty || (!now && saved_at && t - saved_at < 2000)) return;
+	saved_at = t ? t : 1;
+	g_ulog.dirty = false;
+	ulog_path(path, sizeof path);
+	snprintf(tmp, sizeof tmp, "%s.new", path);
+	usblog_text(&g_ulog, text, sizeof text);
+	if (!(f = fopen(tmp, "w"))) return;
+	fputs(text, f);
+	if (fclose(f) == 0) rename(tmp, path);
+	else remove(tmp);
+}
+
+static void ulog_follow(const usb_power *p)
+{
+	static bool loaded;
+
+	if (!loaded) {
+		static char text[USBLOG_MAX * USBLOG_LINE + 64];
+		char path[512];
+		FILE *f;
+		size_t got = 0;
+
+		loaded = true;
+		ulog_path(path, sizeof path);
+		if ((f = fopen(path, "r"))) {
+			got = fread(text, 1, sizeof text - 1, f);
+			fclose(f);
+		}
+		text[got] = '\0';
+		usblog_load(&g_ulog, text);
+	}
+	usblog_follow(&g_ulog, p, (long long)time(NULL));
+	ulog_save(false);
+}
+
+static void ulog_note(const char *what)
+{
+	usblog_note(&g_ulog, what);
+	ulog_save(true);
+}
+
 static void usb_power_ask(app *a, unsigned plug)
 {
 	menu_row rows[3];
 	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
 	unsigned looked = 0;
+	usbpower_guard guard;
 	float f;
 
 	/* The question takes the replug message's place: Computer brings it
 	 * back */
 	replug_off();
 	lv = panel_open();
+	ask_guard_start(a, &guard);
 	while (choice < 0) {
 		unsigned now = plat_now_ms();
 
 		plat_input_poll(&a->in);
+		ask_settle(a, &guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8759,9 +9401,12 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	if (a->running) ulog_note(choice == 0 ? "asked: USB Accessory" : choice == 1 ? "asked: Computer"
+	                                                               : "asked: gone before an answer");
 	if (!a->running || choice == 2) return;
 	if (choice == 0) {
 		plat_usb_power_grant(plug);
@@ -8789,6 +9434,7 @@ static void replug_on(unsigned plug)
 	g_replug.on = true;
 	g_replug.plug = plug;
 	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+	ulog_note("replug message");
 	redraw_now();
 }
 
@@ -8810,6 +9456,7 @@ static void power_follow(void)
 	if (looked && now - looked < 200u) return;
 	looked = now ? now : 1;
 	if (!plat_usb_power(&p)) { replug_off(); g_usb_wait = 0; return; }
+	ulog_follow(&p);
 	{
 		unsigned was = g_usb_wait;
 
@@ -8823,6 +9470,18 @@ static void power_follow(void)
 	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
+	/* The accessory powered when the handheld turned off, there again from
+	 * the start: powered, and never asked about (usbpower_resume) */
+	if (g_usb_kept) {
+		if (usbpower_resume(&p, true, now - t_boot0)) {
+			fprintf(stderr, "usb: plug %u is the accessory powered before: powered again\n", p.plug);
+			plat_usb_power_grant(p.plug);
+			g_power_f.asked = p.plug;
+			g_usb_kept = false;
+		} else if (now - t_boot0 >= USBPOWER_RESUME_MS || (p.known && p.plug > 1)) {
+			g_usb_kept = false;
+		}
+	}
 	switch (usbpower_follow(&g_power_f, &p, now, &plug)) {
 	case USBPOWER_ASK:    g_power_ask = plug; break;
 	case USBPOWER_REPLUG: replug_on(plug);    break;
@@ -8960,9 +9619,9 @@ static char *xfer_sgdb(int op, const char *body, size_t n, size_t *len,
 #define XS_SHELF_MS   3000u             /* the files still this long: rescan */
 #define XS_RESTART_MS 1500u             /* the page's restart answered first */
 #define XS_WRONG_MAX  10                /* wrong PINs that end it behind the shelf */
-#define XS_LEGEND     T(S_PANEL_B_CLOSE)
-#define XS_LEGEND_MOV T(S_XFER_LEGEND_MOVING)
-#define XS_LEGEND_END T(S_XFER_LEGEND_HIDE)
+#define XS_LEGEND     b_legend(S_KEYHINT_CLOSE)
+#define XS_LEGEND_MOV b_legend(S_KEYHINT_KEEP_GOING_OR_STOP)
+#define XS_LEGEND_END b_legend(S_KEYHINT_HIDE)
 
 typedef struct {
 	bool        on;             /* the server is up */
@@ -9683,7 +10342,7 @@ static int dev_rows(menu_row rows[6], char *cmd, size_t cn, char *keys, size_t k
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEY_FOLDER), DEVMODE_KEYS_DIR, false };
 	rows[n++] = (menu_row){ T(S_DEVMODE_KEYS), keys, false };
 	rows[n++] = (menu_row){ "SSH", ssh, false };
-	rows[n++] = MENU_NOTE(T(S_DEVMODE_LEGEND));
+	rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_TURN_OFF_MODE) }, { "B", T(S_KEYHINT_CLOSE) } }, 2));
 	return n;
 }
 
@@ -9984,7 +10643,7 @@ static bool xs_before_game(app *a)
 				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
 			rows[0] = MENU_NOTE(line);
 			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE(T(S_XFER_B_BACK_TO_SHELF));
+			rows[2] = MENU_NOTE(b_legend(S_KEYHINT_BACK_TO_SHELF));
 			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -10286,7 +10945,7 @@ static int art_rows(menu_row *out, const char *where, const char *counts,
 {
 	out[0] = (menu_row){ T(S_SCRAPER_SYSTEMS), where,  false };
 	out[1] = (menu_row){ T(S_SCRAPER_ART),     counts, false };
-	out[2] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE), NULL, false };
+	out[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 	return 3;
 }
 
@@ -10491,7 +11150,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 					art_head(head, sizeof head, one);
 					row[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
 					                     T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND), false };
-					row[1] = (menu_row){ T(S_PANEL_B_CLOSE), NULL, false };
+					row[1] = (menu_row){ b_legend(S_KEYHINT_CLOSE), NULL, false };
 					timed_message(a, head, row, 2, menu_std_width(a), accent);
 					ss_run_cancel();
 					free_all_textures(a);
@@ -10501,7 +11160,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 
 				art_head(head, sizeof head, one);
 				rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART), ss_run_where(), false };
-				rows[1] = (menu_row){ T(S_PANEL_B_STOP), NULL, false };
+				rows[1] = (menu_row){ b_legend(S_KEYHINT_STOP), NULL, false };
 				if (!panel_frame(a, lv, &k)) continue;
 				tick_tint(a);
 				tick_theme(a);
@@ -10573,7 +11232,7 @@ static menu_result art_run(app *a, const char *only, const char *one,
 			                      : p.found ? T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND)
 			                      : had ? T(S_SCRAPER_NOT_FOUND_KEPT)
 			                            : T(S_SCRAPER_NOT_FOUND), false };
-			rows[1] = (menu_row){ working ? T(S_PANEL_B_STOP) : T(S_PANEL_B_CLOSE),
+			rows[1] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE),
 			                      NULL, false };
 			nrows = 2;
 		} else {
@@ -12457,7 +13116,7 @@ static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
 	n = clock_rows(time(NULL), g_clock24, c->zone, rows, max, &c->b);
 	if (n + 3 <= max) {
 		rows[n++] = MENU_RULE;
-		rows[n++] = MENU_NOTE(T(S_DATETIME_CHANGE));
+		rows[n++] = MENU_NOTE(keyhints_legend((key_hint[]){ { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_CHANGE) } }, 1));
 		/* Only where it is true: the Brick's ntpd sets the clock again once
 		 * Wi-Fi connects, so a time set here lasts until then */
 		if (plat_has_wifi()) rows[n++] = MENU_NOTE(T(S_DATETIME_WIFI_SETS));
@@ -12602,13 +13261,15 @@ static void bgm_screen(app *a)
  * B leaves; this page starts it and draws what it says. */
 #define UP_X       90                         /* the page's left and right edge */
 #define UP_W       (ZYPEROS_SCREEN_W - 2 * UP_X)
-#define UP_NOTES   3
+#define UP_NOTES   12
+#define UP_NOTE_W  512
 
 /* What's New: the release's own points, the list's "note" lines, signed with
- * it; the first UP_NOTES */
-static int up_notes(char out[UP_NOTES][120])
+ * it; the first UP_NOTES, each whole (a list from tools/update-pack.py since
+ * 2026-11-11 carries them uncut; one before, cut at 110 with "...") */
+static int up_notes(char out[UP_NOTES][UP_NOTE_W])
 {
-	char p[512], line[256];
+	char p[512], line[UP_NOTE_W + 8];
 	FILE *f;
 	int n = 0;
 
@@ -12619,10 +13280,25 @@ static int up_notes(char out[UP_NOTES][120])
 	while (f && n < UP_NOTES && fgets(line, sizeof line, f)) {
 		if (strncmp(line, "note ", 5)) continue;
 		line[strcspn(line, "\n")] = 0;
-		snprintf(out[n++], 120, "%s", line + 5);
+		snprintf(out[n++], UP_NOTE_W, "%s", line + 5);
 	}
 	if (f) fclose(f);
 	return n;
+}
+
+/* What's New's "more above" (up) or "more below" mark: a small triangle in
+ * **text-dim**, centered on x, its flat side at y */
+static void up_arrow_v(SDL_Renderer *r, int x, int y, bool up)
+{
+	SDL_Color c = UI_TEXT_DIM;
+	SDL_Vertex v[3];
+	int i, hw = 12, h = 10;
+
+	v[0].position = (SDL_FPoint){ (float)(x - hw), (float)(up ? y + h : y) };
+	v[1].position = (SDL_FPoint){ (float)(x + hw), (float)(up ? y + h : y) };
+	v[2].position = (SDL_FPoint){ (float)x, (float)(up ? y : y + h) };
+	for (i = 0; i < 3; i++) { v[i].color = c; v[i].tex_coord = (SDL_FPoint){ 0, 0 }; }
+	SDL_RenderGeometry(r, NULL, v, 3, NULL, 0);
 }
 
 /* The arrow between the versions, drawn: the faces have no U+2192. A shaft
@@ -12646,8 +13322,86 @@ static void up_arrow(SDL_Renderer *r, int x, int mid, int w)
  * PortMaster's, which is this page with its own words (src/pminstall.h).
  * `notes` are the points under the line, What's New on System Update's.
  * `icon`, PortMaster's (pm_icon_tex), stands where Zyper does, NULL for him. */
+/* What's New's lines, from its first at y 348 every UP_NOTE_STEP, as many
+ * as reach UP_NOTE_END: a point's lines balanced in **meta**, its lead
+ * ("**USB Accessories:**" in the release notes, the words before its first
+ * ": ") in **text** and the rest in **text-soft**, a dot at its first line,
+ * and air between points. Scrolled a line at a time (up and down); an
+ * arrow at the right says there is more above or below. */
+#define UP_NOTE_STEP 42
+#define UP_NOTE_GAP  14
+#define UP_NOTE_END  548
+#define UP_NOTE_LINES 8
+
+typedef struct { const char *text; int len, lead, first; } up_note_line;
+
+static int g_up_scroll;           /* What's New's first line on screen */
+static bool g_up_more;            /* ...and lines below the last on screen */
+
+/* `text` filled onto lines of `maxw` a word at a time, as a page of text
+ * is set (a balanced line, ui_balance_lines, is for a title or a message
+ * of two or three: over seven lines it set a point narrow and ragged). A
+ * word wider than a line goes on one of its own, cut there with the
+ * fitter's ellipsis, which says so on a host (the fit check). The count. */
+static int up_fill_lines(TTF_Font *f, const char *text, int maxw, int cap, char lines[][LB_LINE])
+{
+	char line[LB_LINE] = "", tryl[LB_LINE];
+	const char *p = text;
+	int n = 0;
+
+	while (*p && n < cap) {
+		const char *e;
+		size_t wl;
+
+		while (*p == ' ') p++;
+		if (!*p) break;
+		e = strchr(p, ' ');
+		wl = e ? (size_t)(e - p) : strlen(p);
+		snprintf(tryl, sizeof tryl, "%s%s%.*s", line, line[0] ? " " : "", (int)wl, p);
+		/* A "word" wider than the line: Chinese or Japanese, set without
+		 * spaces, which the line breaker breaks between characters */
+		if (!line[0] && ui_text_width(f, tryl) > maxw)
+			return ui_balance_lines(f, text, maxw, cap, lines);
+		if (!line[0] || ui_text_width(f, tryl) <= maxw) {
+			snprintf(line, sizeof line, "%s", tryl);
+			p += wl;
+			continue;
+		}
+		ui_fit_text(f, line, lines[n++], LB_LINE, maxw);
+		line[0] = '\0';
+	}
+	if (line[0] && n < cap) ui_fit_text(f, line, lines[n++], LB_LINE, maxw);
+	else if (*p) ui_fit_text(f, text, lines[n - 1], LB_LINE, 1);   /* more than cap lines: said */
+	return n;
+}
+
+/* Every line of the points, in order, into out (up to cap), with where
+ * each starts; the count */
+static int up_note_lines(TTF_Font *fs, const char *const *notes, int nnotes,
+                         char buf[][LB_LINE], up_note_line *out, int cap)
+{
+	int i, k, n = 0;
+
+	for (i = 0; i < nnotes && n < cap; i++) {
+		char lines[UP_NOTE_LINES][LB_LINE];
+		const char *colon = strstr(notes[i], ": ");
+		int lead = colon && colon - notes[i] <= 60 ? (int)(colon - notes[i]) + 1 : 0;
+		int m = up_fill_lines(fs, notes[i], UP_W - 40, UP_NOTE_LINES, lines);
+
+		for (k = 0; k < m && n < cap; k++, n++) {
+			snprintf(buf[n], LB_LINE, "%s", lines[k]);
+			out[n].text = buf[n];
+			out[n].len = (int)strlen(buf[n]);
+			out[n].first = k == 0;
+			/* The lead on the first line: the whole line when it is longer */
+			out[n].lead = k == 0 ? (lead < out[n].len ? lead : out[n].len) : 0;
+		}
+	}
+	return n;
+}
+
 static void update_page_draw(app *a, const char *heading, const su_page *p,
-                             char notes[][120], int nnotes, SDL_Texture *icon)
+                             const char *const *notes, int nnotes, SDL_Texture *icon)
 {
 	const ds_theme *thm = theme();
 	SDL_Renderer *r = a->r;
@@ -12683,9 +13437,13 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 	/* The line under the versions wraps to a second line before it is cut
 	 * (a long sentence in French or Portuguese); the second sits under it,
 	 * clear of What's New at 348 */
+	int sub_lines;
 	{
 		char sl[2][LB_LINE];
 		int n = ui_balance_lines(fs, p->sub, ZYPEROS_SCREEN_W - 272 - UP_X, 2, sl), k;
+
+		sub_lines = n;
+		if (n > 1) ui_fit_drawn(p->sub);        /* drawn whole, in pieces */
 		for (k = 0; k < n; k++)
 			ui_text(r, fs, sl[k], 272, ui_cap_y(fs, 270 + k * 38), -1, p->sub_warn ? warn : UI_TEXT_DIM);
 	}
@@ -12701,17 +13459,54 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		for (k = 0; k < n; k++)
 			ui_text(r, fm, lines[k], UP_X + 34, ui_cap_y(fm, 348 + k * 52), -1, UI_TEXT);
 	}
-	/* What's New: a point at most two lines, four lines in all, in **menu**
-	 * from y 348, a line every 52, clear of the bar at 572 */
-	for (i = 0, y = 348; p->notes && i < nnotes && y <= 348 + 3 * 52; i++) {
-		char lines[2][LB_LINE];
-		int n = ui_balance_lines(fm, notes[i], UP_W - 40, 2, lines), k;
+	g_up_more = false;
+	/* What's New (UP_NOTE_STEP above) */
+	if (p->notes && !p->warn[0] && nnotes > 0) {
+		static char buf[UP_NOTES * UP_NOTE_LINES][LB_LINE];
+		static up_note_line ln[UP_NOTES * UP_NOTE_LINES];
+		/* Down to the bar's room, or to the buttons' when there is no bar
+		 * and no line where it goes */
+		int note_end = p->bar || p->line[0] ? UP_NOTE_END : 640;
+		/* Under a two-line sub, a little lower, so the two read apart */
+		int top = sub_lines > 1 ? 362 : 348;
+		int n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES), fits, k;
 
-		/* A drawn dot, not the "·" glyph: Noto Sans SC's is full width,
-		 * and in Chinese it ran into the point's first character */
-		ui_round_rect(r, &(SDL_Rect){ UP_X + 4, y - 5, 10, 10 }, 5, UI_TEXT_DIM);
-		for (k = 0; k < n && y <= 348 + 3 * 52; k++, y += 52)
-			ui_text(r, fm, lines[k], UP_X + 40, ui_cap_y(fm, y), -1, UI_TEXT_SOFT);
+		/* Each line's place from the first point's top, the air before
+		 * each point after the first counted; the scroll held to what
+		 * shows the last line */
+		static int at[UP_NOTES * UP_NOTE_LINES];
+
+		for (k = 0, y = 0; k < n; k++) {
+			if (k > 0 && ln[k].first) y += UP_NOTE_GAP;
+			at[k] = y;
+			y += UP_NOTE_STEP;
+		}
+		for (fits = 0; fits < n && at[n - 1] - at[fits] > note_end - top; fits++) {}
+		if (g_up_scroll > fits) g_up_scroll = fits;
+		if (g_up_scroll < 0) g_up_scroll = 0;
+		for (k = g_up_scroll; k < n; k++) {
+			y = top + at[k] - at[g_up_scroll];
+			if (y > note_end) break;
+			/* A drawn dot, not the "·" glyph: Noto Sans SC's is full
+			 * width, and in Chinese it ran into the point's first
+			 * character */
+			if (ln[k].first)
+				ui_round_rect(r, &(SDL_Rect){ UP_X + 4, y - 5, 10, 10 }, 5, UI_TEXT_DIM);
+			if (ln[k].lead > 0) {
+				char lead[LB_LINE];
+
+				snprintf(lead, sizeof lead, "%.*s", ln[k].lead, ln[k].text);
+				x = UP_X + 40 + ui_text(r, fs, lead, UP_X + 40, ui_cap_y(fs, y), -1, UI_TEXT);
+				if (ln[k].text[ln[k].lead])
+					ui_text(r, fs, ln[k].text + ln[k].lead, x, ui_cap_y(fs, y), -1, UI_TEXT_SOFT);
+			} else {
+				ui_text(r, fs, ln[k].text, UP_X + 40, ui_cap_y(fs, y), -1, UI_TEXT_SOFT);
+			}
+		}
+		/* More above, more below: the menus' arrows, at the right */
+		if (g_up_scroll > 0) up_arrow_v(r, UP_X + UP_W - 8, top - 30, true);
+		if (k < n) up_arrow_v(r, UP_X + UP_W - 8, note_end + 4, false);
+		g_up_more = k < n;
 	}
 
 	/* The bar, track with accent-ink over it, and its two words under it */
@@ -12759,11 +13554,25 @@ static su_action update_page_key(const su_page *p, const char *button)
 	return SUA_NONE;
 }
 
+static void update_screen_body(app *a);
+
 static void update_screen(app *a)
 {
+	g_up_shown = true;
+	update_screen_body(a);
+	g_up_shown = false;
+}
+
+static void update_screen_body(app *a)
+{
 	const su_view *v = up_view(true);
-	char notes[UP_NOTES][120];
-	int nnotes = up_notes(notes);
+
+	char notes[UP_NOTES][UP_NOTE_W];
+	const char *np[UP_NOTES];
+	int nnotes = up_notes(notes), i;
+
+	for (i = 0; i < UP_NOTES; i++) np[i] = notes[i];
+	g_up_scroll = 0;
 	unsigned notes_at = plat_now_ms();
 
 	/* Opened with a network and nothing in hand: it looks now, one small
@@ -12792,6 +13601,9 @@ static void update_screen(app *a)
 		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
 		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
 		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		/* What's New, a line at a time: up and down (held, it goes on) */
+		if (in_repeat(&a->in, IN_UP) && g_up_scroll > 0) { g_up_scroll--; moved_sound(a, IN_UP); }
+		if (in_repeat(&a->in, IN_DOWN) && g_up_more) { g_up_scroll++; moved_sound(a, IN_DOWN); }
 		if (a->in.pressed[IN_ACCEPT])      act = update_page_key(&p, "A");
 		else if (a->in.pressed[IN_Y])      act = update_page_key(&p, "Y");
 		if (a->in.pressed[IN_BACK] || a->in.pressed[IN_MENU]) {
@@ -12844,7 +13656,7 @@ static void update_screen(app *a)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nnotes, NULL);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, np, nnotes, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -18458,7 +19270,7 @@ static void album_art_screen(app *a)
 			snprintf(counts, sizeof counts, T(S_MUSE_ART_COUNTS), st.found, st.missing);
 		rows[0] = (menu_row){ T(S_MUSE_ART_ALBUMS), where,  false };
 		rows[1] = (menu_row){ T(S_MUSE_ART_COVERS), counts, false };
-		rows[2] = (menu_row){ working ? T(S_MUSE_ART_STOP) : T(S_MUSE_ART_CLOSE), NULL, false };
+		rows[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -19594,7 +20406,13 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 
 		tick_tint(a);
 		tick_theme(a);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nnotes, icon);
+		{
+			const char *np[PM_NOTES];
+			int i;
+
+			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
+			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nnotes, icon);
+		}
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(16);
@@ -19934,7 +20752,7 @@ static void launch(app *a)
 			 * battery reason and no cost to leaving it. on_game_tick keeps
 			 * this true if the cable changes mid-game. */
 			g_idle_secs = a->auto_off;
-			g_idle_charging = on_charger();
+			g_idle_charging = on_charger() || up_working();
 			plat_resident_line("SETIDLE\tms=%d",
 			                   (g_idle_secs > 0 && !g_idle_charging)
 			                       ? g_idle_secs * 1000 : 0);
@@ -20483,6 +21301,8 @@ static int shot_popup_half = 2;
 static int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 static int shot_heatpop = -1;
+/* --upnews available|ready: his bubble with System Update's news instead */
+static const char *shot_upnews;
 /* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull|soon]: the
  * charging screen MS ms in (DESIGN.md 11.25), a wall charger putting 1480 mA
  * into a 62% battery; with hold, POWER held half way; unplugged, the cable
@@ -20674,6 +21494,11 @@ static bool shot_status_parse(const char *spec)
 		 * files moving and the ring that far round */
 		else if (!strcmp(w, "xfer=on")) shot_st.m.xfer = true;
 		else if (!strcmp(w, "usb=on")) shot_st.m.usb = true;
+		/* System Update downloading behind: update=42, the ring that far */
+		else if (!strncmp(w, "update=", 7) && w[7] >= '0' && w[7] <= '9') {
+			shot_st.m.update = true;
+			shot_st.m.update_pct = atoi(w + 7);
+		}
 		/* headphones in the jack: their mark */
 		else if (!strcmp(w, "phones=on")) shot_st.m.phones = true;
 		else if (!strncmp(w, "xfer=", 5) && w[5] >= '0' && w[5] <= '9') {
@@ -21209,11 +22034,14 @@ static void shot_compose(app *a)
 	}
 	if (shot_update >= 0) {
 		su_page p;
-		char notes[UP_NOTES][120];
-		int nn = up_notes(notes);
+		char notes[UP_NOTES][UP_NOTE_W];
+		const char *np[UP_NOTES];
+		int nn = up_notes(notes), i;
+
+		for (i = 0; i < UP_NOTES; i++) np[i] = notes[i];
 
 		su_page_build(up_view(true), &p);
-		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, notes, nn, NULL);
+		update_page_draw(a, T(S_UPDATEPAGE_TITLE), &p, np, nn, NULL);
 		return;
 	}
 	if (g_pm_shot >= 0) {
@@ -21225,7 +22053,13 @@ static void shot_compose(app *a)
 		SDL_Texture *icon = pm_icon_tex(a);
 
 		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
-		update_page_draw(a, T(S_PORTMASTER_TITLE), &p, notes, nn, icon);
+		{
+			const char *np[PM_NOTES];
+			int i;
+
+			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
+			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nn, icon);
+		}
 		if (icon) SDL_DestroyTexture(icon);
 		return;
 	}
@@ -21398,6 +22232,11 @@ static void shot_compose(app *a)
 		usb_drive_draw(a, shot_usbdrive);
 		return;
 	}
+	/* usbdrive's atlas, and where its glyphs are, on stdout */
+	if (shot_usbdrive == UD_FRAMES) {
+		usb_drive_atlas(a, NULL, NULL, stdout);
+		return;
+	}
 	if (shot_power >= 0) {
 		menu_row rows[3], said[3];
 		char lines[3][LB_LINE];
@@ -21492,7 +22331,7 @@ static void shot_compose(app *a)
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
 		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
-		                 T(S_PANEL_B_CLOSE));
+		                 b_legend(S_KEYHINT_CLOSE));
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
 		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
@@ -21650,6 +22489,11 @@ static void shot_compose(app *a)
 		const unsigned T0 = 100000;
 
 		heatpop_show(T0);
+		if (shot_upnews) {
+			snprintf(g_heatpop.line1, sizeof g_heatpop.line1,
+			         T(strcmp(shot_upnews, "ready") ? S_UPDATE_NEWS_AVAILABLE : S_UPDATE_NEWS_READY), "1.0.4");
+			snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_UPDATE_NEWS_WHERE));
+		}
 		zr_init(&g_heatpop.rig, T0, 1);
 		zr_works(&g_heatpop.rig, T0 + DS_MS_MOVE);
 		heatpop_draw(a, T0 + (unsigned)shot_heatpop);
@@ -22004,6 +22848,10 @@ static void shot_charging_draw(app *a)
 	              : shot_charging_kind == 7 ? "100 -5 4290 wall 1 1"
 	              : shot_charging_kind == 8 ? "92 1480 4150 wall 1" : "62 1480 4120 wall 1", &g_chg.r);
 	if (shot_charging_kind >= 5 && shot_charging_kind != 8) g_chg.r.limit = 85;
+	/* The limit saved in MENU, for Y's hint: 85 but for soon's, which has
+	 * none; tofull, Y pressed: the limit off this time, to 100% */
+	g_charge_limit = shot_charging_kind == 8 ? 0 : 85;
+	if (shot_charging_kind == 9) { g_full_shot = true; g_chg.r.limit = 0; }
 	/* pending: the PHY has not named the charger yet */
 	if (shot_charging_kind == 4) g_chg.r.kind = CH_PENDING;
 	g_chg.valid = true;
@@ -22240,6 +23088,7 @@ static int port_menu_main(int argc, char **argv)
 		return PORT_MENU_CONTINUE;
 	}
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	plat_input_init();
 	plat_settings_init();
 	if (!ui_init(a.r, P_FONT)) fprintf(stderr, "port menu: font init failed\n");
@@ -22803,6 +23652,14 @@ int main(int argc, char *argv[])
 				else shot_storage_row = argv[i];
 			}
 		}
+		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
+			shot_upnews = argv[++i];
+			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
+		/* What's New scrolled N lines (System Update's page) */
+		else if (!strcmp(argv[i], "--update-scroll") && i + 1 < argc) {
+			g_up_scroll = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "--update")) {
 			shot_update = 1;
 			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
@@ -22909,6 +23766,15 @@ int main(int argc, char *argv[])
 		/* --usb-drive N: USB Drive's picture N (connected, finishing, failed) */
 		else if (!strcmp(argv[i], "--usb-drive") && i + 1 < argc) {
 			shot_usbdrive = atoi(argv[++i]);
+			/* The tiles' numbers: a copy to the card, one from it, both
+			 * ways, or the widest */
+			if (i + 1 < argc) {
+				static const char *const V[] = { "idle", "in", "out", "both", "wide", "bright" };
+				int v;
+
+				for (v = 0; v < 6; v++)
+					if (!strcmp(argv[i + 1], V[v])) { shot_usbdrive_vals = v; i++; break; }
+			}
 		}
 		/* MENU's USB rows on the host, which has no usbrole: Ask, or
 		 * Automatic with "auto"; "said" for Automatic's message */
@@ -22997,6 +23863,7 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "limit")) { shot_charging_kind = 6; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "keptfull")) { shot_charging_kind = 7; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "soon")) { shot_charging_kind = 8; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "tofull")) { shot_charging_kind = 9; i++; }
 		}
 		else if (!strcmp(argv[i], "--heatpop") && i + 1 < argc) {
 			shot_heatpop = atoi(argv[++i]);
@@ -23455,9 +24322,9 @@ int main(int argc, char *argv[])
 		if (!shot_path) usblink_sync(db_dev(), P_USERDATA);
 		if (!shot_path) usblink_release_dev(devmode_unlocked(db_dev()));
 	}
-	/* Local time is the card's chosen zone, in this process, from here on:
-	 * the Brick's launch.sh points the system at it too, but the Pixel 2's
-	 * system has no other way to know it */
+	/* Local time is the card's chosen zone, in this process, from here on,
+	 * and Diatom's with each game (resident.c's RUN). The system itself stays
+	 * on UTC. */
 	{
 		char tz[64];
 
@@ -23662,6 +24529,7 @@ int main(int argc, char *argv[])
 	}
 	t_mark("video");
 	a.r = plat_renderer();
+	tour_hint_draw_set(keyhints_width, tour_hint);
 	t_mark("renderer");
 	/* The replug message, over every screen (DESIGN.md 11.36) */
 	plat_set_overlay(replug_overlay);
@@ -24084,6 +24952,7 @@ int main(int argc, char *argv[])
 		song_watch();
 		/* ...and "Getting hot", when the chip has passed the trip */
 		heat_watch();
+		up_news_watch();
 
 		/* SELECT is Muse, on the shelf and on every screen but a running
 		 * game - see muse_open. Before the shelf's own keys, which do not use

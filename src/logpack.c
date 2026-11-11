@@ -142,7 +142,8 @@ bool logpack_build(const char *logs_dir, const char *about,
 
 	if ((d = opendir(logs_dir))) {
 		while ((e = readdir(d))) {
-			if (strncmp(e->d_name, "zyperos.log", 10) != 0) continue;
+			/* Every boot's zyperos.log, and the USB port's plugs (usblog.h) */
+			if (strncmp(e->d_name, "zyperos.log", 10) != 0 && strcmp(e->d_name, "usb.log") != 0) continue;
 			snprintf(from, sizeof from, "%s/%s", logs_dir, e->d_name);
 			snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
 			if (copy_masked(from, path, secrets, n)) logs++;

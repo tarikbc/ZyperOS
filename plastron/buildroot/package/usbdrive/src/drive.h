@@ -40,6 +40,7 @@ typedef enum {
 	DRV_UNPLUGGED,   /* the cable came out */
 	DRV_POWER,       /* POWER: un-export, then off */
 	DRV_NOHOST,      /* no computer took it (a charger, a cable for power only) */
+	DRV_PIXEL,       /* ejected from the handheld (B): the medium taken away first */
 } drv_end;
 
 typedef struct {
@@ -54,5 +55,34 @@ typedef struct {
  * configured by a computer, POWER pressed */
 drv_end drv_wait_step(drv_wait *w, bool vbus, bool lun_file, bool configured, bool power,
                       unsigned now);
+
+/* The handheld's own buttons on the page (2026-11-11). The brightness chord
+ * is the launcher's: FUNCTION (MENU) held, a volume key, one rung of the
+ * same ladder a press. B ejects from the handheld, as the computer's eject
+ * would end it; if the computer wrote to the card in the last DRV_ASK_MS
+ * (it may still be copying, its cache not yet on the card) it asks first,
+ * A to eject anyway, B to keep it. POWER is not here: it is the computer's
+ * end of the export, drv_wait_step's. */
+#define DRV_ASK_MS 5000u
+
+enum { DRV_K_FN, DRV_K_VOLUP, DRV_K_VOLDN, DRV_K_A, DRV_K_B };
+typedef enum {
+	DRV_A_NONE,
+	DRV_A_BRIGHT,   /* the level changed: set it and show the bar */
+	DRV_A_ASK,      /* show the question */
+	DRV_A_KEEP,     /* the question answered no: back to the page */
+	DRV_A_EJECT,    /* eject from the handheld */
+} drv_act;
+
+typedef struct {
+	bool fn;        /* FUNCTION held */
+	bool asking;    /* the question is up */
+	int  level;     /* the brightness rung */
+	int  max;       /* the top rung */
+} drv_keys;
+
+/* A button down or up at now_ms; `wrote` whether the computer wrote at all,
+ * `last_write` when it last did */
+drv_act drv_key(drv_keys *k, int key, bool down, unsigned now, bool wrote, unsigned last_write);
 
 #endif

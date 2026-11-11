@@ -131,6 +131,28 @@ BUILDROOT_VERSION=$(sed -n 's/^BUILDROOT_VERSION=//p' /src/scripts/build.sh)
 mkdir -p "$OUTPUT/legal-info/buildroot-source"
 cp "/work/dl/buildroot-$BUILDROOT_VERSION.tar.xz" "$OUTPUT/legal-info/buildroot-source/"
 
+# The libretro cores ZyperOS fetches are not Buildroot packages, so
+# legal-info has no source for them: their sources are in ZyperOS's cores
+# release, each copyleft one at the commit of the binary it ships
+# (ZyperOS's mk/release-cores.sh). Said here, where the rest of the sources
+# are.
+CORES_TAG=$(sed -n 's/^CORES_TAG=//p' /zyperos/mk/fetch-vendor.sh 2>/dev/null || true)
+if [ -n "$CORES_TAG" ]; then
+	cat > "$OUTPUT/legal-info/CORES-SOURCE.txt" <<-EOF
+	The libretro cores in ZyperOS/cores that mk/fetch-vendor.sh fetches are
+	not built here, so their sources are not in this archive. They are in
+	ZyperOS's cores release, $CORES_TAG:
+
+	  https://github.com/tarikbc/ZyperOS/releases/tag/$CORES_TAG
+
+	with the exact binaries, and for each core under a GPL or an LGPL an
+	archive of its source at the commit of that binary,
+	<core>-<commit>-source.tar.gz, all in its SHA256SUMS. Each core, its
+	license and its source are listed in THIRD-PARTY-LICENSES.md in
+	ZyperOS's repository and in the card's Licenses folder.
+	EOF
+fi
+
 mkdir -p "$RELEASE"
 rm -f "$RELEASE/$NAME.img.xz" "$RELEASE/$NAME-sources.tar"
 xz -T0 -9 -c "$OUTPUT/images/sdcard.img" > "$RELEASE/$NAME.img.xz"

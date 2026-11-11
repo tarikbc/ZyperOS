@@ -59,3 +59,245 @@ de = Nicht jetzt
 ja = 今はやめる
 it = Non ora
 
+
+[keyhint.close]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): B closes the panel or the screen. Short, as each language writes a hint's word (English's lowercase).
+en = close
+zh-Hans = 关闭
+es = cerrar
+pt-BR = fechar
+fr = fermer
+de = schließen
+ja = 閉じる
+it = chiudi
+
+[keyhint.turn_on]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio on. Short, as each language writes a hint's word (English's lowercase).
+en = turn on
+zh-Hans = 开启
+es = activar
+pt-BR = ativar
+fr = activer
+de = einschalten
+ja = オンにする
+it = attiva
+
+[keyhint.turn_on_boot]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns it on at the next start. Short, as each language writes a hint's word (English's lowercase).
+en = turn on at the next boot
+zh-Hans = 下次开机时开启
+es = activar al próximo inicio
+pt-BR = ativar na próxima inicialização
+fr = activer au prochain démarrage
+de = beim nächsten Start einschalten
+ja = 次回起動時にオン
+it = attiva al prossimo avvio
+
+[keyhint.search]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: Y searches for headsets. Short, as each language writes a hint's word (English's lowercase).
+en = search
+zh-Hans = 搜索
+es = buscar
+pt-BR = procurar
+fr = chercher
+de = suchen
+ja = 検索
+it = cerca
+
+[keyhint.turn_off]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A turns the radio off. Short, as each language writes a hint's word (English's lowercase).
+en = turn off
+zh-Hans = 关闭
+es = desactivar
+pt-BR = desativar
+fr = désactiver
+de = ausschalten
+ja = オフにする
+it = disattiva
+
+[keyhint.disconnect]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A disconnects the headset. Short, as each language writes a hint's word (English's lowercase).
+en = disconnect
+zh-Hans = 断开
+es = desconectar
+pt-BR = desconectar
+fr = déconnecter
+de = trennen
+ja = 切断
+it = disconnetti
+
+[keyhint.unpair]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: X forgets (unpairs) the headset. Short, as each language writes a hint's word (English's lowercase).
+en = forget
+zh-Hans = 忘记
+es = olvidar
+pt-BR = esquecer
+fr = oublier
+de = entfernen
+ja = 登録解除
+it = dissocia
+
+[keyhint.connect]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A connects the headset. Short, as each language writes a hint's word (English's lowercase).
+en = connect
+zh-Hans = 连接
+es = conectar
+pt-BR = conectar
+fr = connecter
+de = verbinden
+ja = 接続
+it = connetti
+
+[keyhint.pair]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Bluetooth: A pairs the headset. Short, as each language writes a hint's word (English's lowercase).
+en = pair
+zh-Hans = 配对
+es = vincular
+pt-BR = parear
+fr = associer
+de = koppeln
+ja = ペアリング
+it = associa
+
+[keyhint.rescan]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: Y looks for networks again. Short, as each language writes a hint's word (English's lowercase).
+en = rescan
+zh-Hans = 重新扫描
+es = buscar de nuevo
+pt-BR = buscar de novo
+fr = relancer
+de = neu suchen
+ja = 再スキャン
+it = cerca di nuovo
+
+[keyhint.forget]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Wi-Fi: X forgets the saved network. Short, as each language writes a hint's word (English's lowercase).
+en = forget
+zh-Hans = 忘记
+es = olvidar
+pt-BR = esquecer
+fr = oublier
+de = entfernen
+ja = 削除
+it = dimentica
+
+[keyhint.go]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: A goes to the game or the system. Short, as each language writes a hint's word (English's lowercase).
+en = go
+zh-Hans = 前往
+es = ir
+pt-BR = ir
+fr = aller
+de = öffnen
+ja = 移動
+it = vai
+
+[keyhint.by_game]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by game. Short, as each language writes a hint's word (English's lowercase).
+en = by game
+zh-Hans = 按游戏
+es = por juego
+pt-BR = por jogo
+fr = par jeu
+de = nach Spiel
+ja = ゲーム別
+it = per gioco
+
+[keyhint.window]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: L1/R1 change the window of time. Short, as each language writes a hint's word (English's lowercase).
+en = window
+zh-Hans = 时段
+es = período
+pt-BR = período
+fr = période
+de = Zeitraum
+ja = 期間
+it = periodo
+
+[keyhint.by_system]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Play Time: Y lists by system. Short, as each language writes a hint's word (English's lowercase).
+en = by system
+zh-Hans = 按系统
+es = por sistema
+pt-BR = por sistema
+fr = par système
+de = nach System
+ja = システム別
+it = per sistema
+
+[keyhint.change]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Left and right change the row's value (Date & Time). Short, as each language writes a hint's word (English's lowercase).
+en = change
+zh-Hans = 更改
+es = cambiar
+pt-BR = alterar
+fr = modifier
+de = ändern
+ja = 変更
+it = cambia
+
+[keyhint.turn_off_mode]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): Developer Mode: A turns it off. Short, as each language writes a hint's word (English's lowercase).
+en = turn off
+zh-Hans = 关闭模式
+es = desactivar
+pt-BR = desativar
+fr = désactiver
+de = ausschalten
+ja = オフ
+it = disattiva
+
+[keyhint.stop]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): B stops what is running (a download, a look). Short, as each language writes a hint's word (English's lowercase).
+en = stop
+zh-Hans = 停止
+es = detener
+pt-BR = parar
+fr = arrêter
+de = stoppen
+ja = 停止
+it = interrompi
+
+[keyhint.keep_going_or_stop]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer while files move: B asks whether to keep going behind the shelf or stop. Short, as each language writes a hint's word (English's lowercase).
+en = keep going or stop
+zh-Hans = 继续或停止
+es = continuar o detener
+pt-BR = continuar ou parar
+fr = continuer ou arrêter
+de = weitermachen oder stoppen
+ja = 続行または停止
+it = continua o interrompi
+
+[keyhint.hide]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer closing after the file on its way: B hides it. Short, as each language writes a hint's word (English's lowercase).
+en = hide
+zh-Hans = 隐藏
+es = ocultar
+pt-BR = ocultar
+fr = masquer
+de = ausblenden
+ja = 隠す
+it = nascondi
+
+[keyhint.back_to_shelf]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): File Transfer: B goes back to the shelf, the transfer going on behind it. Short, as each language writes a hint's word (English's lowercase).
+en = back to the shelf
+zh-Hans = 返回游戏列表
+es = volver a la lista de juegos
+pt-BR = voltar à lista de jogos
+fr = retour à la liste des jeux
+de = zurück zur Spieleliste
+ja = ゲーム一覧に戻る
+it = torna all'elenco giochi
+
+[keyhint.skip]
+note = A button hint's word, beside its button's glyph (src/keyhints.h): The tutorial: START skips the rest. Short, as each language writes a hint's word (English's lowercase).
+en = skip
+zh-Hans = 跳过
+es = omitir
+pt-BR = pular
+fr = passer
+de = beenden
+ja = スキップ
+it = salta

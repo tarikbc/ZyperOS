@@ -39,6 +39,9 @@ int battery_minutes_left(void);
 int battery_minutes_left_with(int gauge_min);
 /* Has the player been away long enough to power the device off? */
 bool idle_due(app *a);
+/* The update program at work on an update (downloading, checking its files,
+ * installing): Auto Off waits for it, as it waits for the charger (main.c) */
+bool up_working(void);
 
 /* 0 when the battery is fine or charging, 1 when it is low, 2 when it is
  * critical: status_batt_level's, for Diatom's disc over a game. */

@@ -20,6 +20,32 @@
 #define ZYPEROS_SCREEN_W 1024
 #define ZYPEROS_SCREEN_H 768
 
+/* THE FORMAT OF EVERY TEXTURE ZYPEROS DRAWS INTO (SDL_TEXTUREACCESS_TARGET):
+ * the screen itself on the Pixel 2, the menus' panel pass, the keyboard's and
+ * the tour's. ABGR8888, never ARGB8888 (2026-11-11).
+ *
+ * On the Pixel 2 every video snap came out with red and blue swapped - FireRed's
+ * Charmander blue - while covers were right. SDL's GLES2 renderer (2.32.10)
+ * keeps an ARGB8888 target with red and blue changed over in the GPU's
+ * texture: it swaps every draw color and picks a swapping shader for every
+ * RGB texture drawn into one, and swaps back when the target is drawn out.
+ * But a YUV texture's shader writes plain RGB into any target, with no swap
+ * (SDL_render_gles2.c, SetCopyState), so a snap drawn into the ARGB8888 screen
+ * came out swapped on the panel. In an ABGR8888 target, GLES2's own byte
+ * order, nothing is swapped, so YUV and RGB textures both come out right;
+ * read back with the device's SDL and Mesa, a BT.601 red drew #0000fe in an
+ * ARGB8888 target and #fe0000 in an ABGR8888 one (tools/yuvtarget-check.c),
+ * and in QEMU (docs/qemu.md, the same SDL) a color-bars snap on the shelf had
+ * its red and blue bars, and its yellow and cyan, changed over, and has not
+ * since.
+ * MP4's player was right all along: its picture goes under the screen,
+ * straight onto the panel (plat_video_under), in no target at all.
+ *
+ * The Mac's Metal renderer and the Brick's OpenGL one hold both formats as
+ * they are, so there it changes nothing. tools/targets-check.py holds every
+ * SDL_TEXTUREACCESS_TARGET texture in src/ to this. */
+#define PLAT_TARGET_FORMAT SDL_PIXELFORMAT_ABGR8888
+
 /* launch.sh polls for this and powers the device down when it appears. */
 #define ZYPEROS_POWEROFF_FLAG "/tmp/zyperos_poweroff"
 /* And restarts it with this one: System Update's Restart Now, which the next
@@ -74,6 +100,8 @@ void plat_video_under(SDL_Texture *tex, const SDL_Rect *dst, SDL_Color bg);
  * plastron's splash --still to hold while a port loads (launch_port). False
  * where there is nothing to hold it with. */
 bool plat_save_screen(const char *path);
+/* The same file, with nothing shown: the panel keeps what it had */
+bool plat_save_screen_hidden(const char *path);
 /* plat_save_screen's opposite: a picture of the panel as the panel shows it,
  * src/portmenu.h's still (a port's frame, saved by portkeys under the in-game
  * menu), turned back into the landscape this process draws in, as a texture
@@ -301,6 +329,9 @@ void plat_volume_nudge(int delta);
 void plat_brightness_nudge(int delta);
 void plat_volume_set_pct(int pct);
 void plat_brightness_set(int level);
+/* The backlight's own value at rung `level` (its ladder), -1 where there is
+ * none to hand to another program: Flash Drive's usbdrive steps the same rungs */
+int  plat_brightness_raw(int level);
 
 /* The panel's backlight off or on, leaving the brightness level as it was -
  * Muse's pocket lock. Off is the display engine's own switch, not a black

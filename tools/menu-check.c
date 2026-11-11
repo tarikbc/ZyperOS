@@ -123,12 +123,12 @@ static void scanned_state(void)
 	printf("scan done, one unsaved network:\n");
 	ck(n == 4, "switch, network, rule, note");
 	ck(!strcmp(rows[1].value, "strong"), "-55 dBm reads as strong");
-	ck(!strcmp(rows[3].label, "Y: rescan"), "no forget offered with nothing saved");
+	ck(!strcmp(legend_text(rows[3].label), "Y: rescan"), "no forget offered with nothing saved");
 
 	w.nets[0].known = true;
 	wifi_label(&w);
 	n = wifi_build(&w, rows, 64, &heading);
-	ck(!strcmp(rows[3].label, "Y: rescan   X: forget"), "forget offered once saved");
+	ck(!strcmp(legend_text(rows[3].label), "Y: rescan   X: forget"), "forget offered once saved");
 	ck(!strcmp(rows[1].value, "strong - saved"), "a saved network in range shows both");
 }
 
@@ -170,9 +170,9 @@ static void wifi_footer_is_a_legend(void)
 		ck(n > 0 && ROW_IS_NOTE(rows[n - 1]), "the screen ends in a footer");
 		if (n <= 0 || !ROW_IS_NOTE(rows[n - 1])) continue;
 		note = rows[n - 1].label;
-		if (!strstr(note, ": ")) continue;
+		if (!strstr(legend_text(note), ": ")) continue;
 		legends++;
-		snprintf(msg, sizeof msg, "\"%s\" is not a legend", note);
+		snprintf(msg, sizeof msg, "\"%s\" is not a legend", legend_text(note));
 		ck(legend_form(note), msg);
 	}
 	ck(legends == 2, "both footers after a scan name buttons");

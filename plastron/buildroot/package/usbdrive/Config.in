@@ -1,5 +1,6 @@
 config BR2_PACKAGE_USBDRIVE
 	bool "usbdrive"
+	select BR2_PACKAGE_LIBDRM
 	help
 	  The games partition as a USB drive (configfs f_mass_storage) for
 	  ZyperOS's Computer Connected > USB Drive: the card unmounted first,

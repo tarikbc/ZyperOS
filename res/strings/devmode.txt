@@ -85,13 +85,3 @@ de = Ordner
 ja = 鍵フォルダ
 it = Cartella
 
-[devmode.legend]
-note = The key legend of the Developer Mode page: A turns the mode off, B closes the page. One line, which must fit the panel: it does not wrap
-en = A: turn off   B: close
-zh-Hans = A：关闭模式   B：返回
-es = A: desactivar   B: cerrar
-pt-BR = A: desativar   B: fechar
-fr = A\u00a0: désactiver   B\u00a0: fermer
-de = A: ausschalten   B: schließen
-ja = A：オフ   B：閉じる
-it = A: disattiva   B: chiudi

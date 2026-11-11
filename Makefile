@@ -8,9 +8,9 @@
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
         check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-        check-db check-gamedel check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
+        check-db check-gamedel check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-clients check-keyhints check-pace check-qr \
+        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
@@ -30,12 +30,12 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # exist, and check-menus was about to join eight others in that state.
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-gamedel check-media check-snapsize check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-clients check-keyhints check-pace check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
@@ -65,7 +65,9 @@ check-prep:
 check-diatom:
 	@if pkg-config --exists sdl2 2>/dev/null || command -v sdl2-config > /dev/null; then \
 		$(MAKE) --no-print-directory -C diatom $(NATIVE_J) all stub && \
-		$(MAKE) --no-print-directory -C diatom check; \
+		$(MAKE) --no-print-directory -C diatom check && \
+		$(MAKE) --no-print-directory build-native/gamezone-check && \
+		./build-native/gamezone-check diatom/build/desktop/diatom; \
 	else \
 		echo "check-diatom: skipped, no SDL2"; \
 	fi
@@ -701,7 +703,8 @@ build-native/linksteps-check: tools/linksteps-check.c src/linksteps.c src/linkst
 check-usbdrive:
 	@mkdir -p build-native && $(CC) -std=c11 -Wall -Wextra -Werror -O1 $(MEDIA_SAN) \
 		-o build-native/usbdrive-check plastron/buildroot/package/usbdrive/tests/drive-check.c \
-		plastron/buildroot/package/usbdrive/src/drive.c && build-native/usbdrive-check
+		plastron/buildroot/package/usbdrive/src/drive.c plastron/buildroot/package/usbdrive/src/drivestat.c \
+		plastron/buildroot/package/usbdrive/src/atlas.c && build-native/usbdrive-check
 
 # When the Pixel 2's USB port may be a host (plastron's usbrole, its
 # src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host, and a
@@ -715,6 +718,11 @@ check-usbrole:
 # USB Device Connected, the launcher's half of usbrole (src/usbpower.h):
 # usbrole's state lines, a request written whole and never through a link,
 # and the question asked once per plug, after 2 s, never for a computer's.
+# The USB port's log for support (src/usblog.h): a plug a line, the last 50
+check-usblog:
+	@mkdir -p build-native && $(CC) -std=gnu11 -Wall -Wextra -Werror -O1 $(MEDIA_SAN) -Isrc \
+		-o build-native/usblog-check tools/usblog-check.c src/usblog.c src/usbpower.c && build-native/usblog-check
+
 check-usbpower: build-native/usbpower-check
 	@./build-native/usbpower-check
 
@@ -1046,7 +1054,7 @@ build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/w
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
 	      src/menu.c src/game_menu.c src/controls.c src/audioout.c src/sidelights.c \
-	      src/spawn.c $(I18N_SRC)
+	      src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never
@@ -1138,6 +1146,14 @@ build-native/idle-check: tools/idle-check.c src/idle.c src/idle.h src/chargedark
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
+
+# The launcher's resident.c, the device stubbed, against a real Diatom: the
+# zone chosen in Date & Time reaches a game's clock (tools/gamezone-check.c).
+# Run by check-diatom, after Diatom's own build.
+build-native/gamezone-check: tools/gamezone-check.c src/resident.c src/platform.h src/device.h FORCE
+	@mkdir -p build-native
+	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
+	      -o $@ tools/gamezone-check.c src/resident.c $$(sdl2-config --libs)
 
 build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
@@ -1335,11 +1351,18 @@ native:
 px2-payload:
 	sh tools/px2-payload.sh
 
-# The libretro cores ZyperOS redistributes, hash-pinned from libretro's own
-# buildbot. Needed once, before the first payload. No runtime libraries: the
-# cores need only what the device's firmware already has.
+# The libretro cores ZyperOS redistributes, fetched from its own cores
+# release and hash-pinned (mk/fetch-vendor.sh). Needed once, before the first
+# payload. No runtime libraries: the cores need only what the device's
+# firmware already has.
 vendor:
 	./mk/fetch-vendor.sh
+
+# mk/fetch-vendor.sh's pins, offline: the cores release and nothing else, a
+# tag no installer takes for a version, and each core's source named
+# (tools/corepins-check.py).
+check-corepins:
+	@python3 tools/corepins-check.py
 
 # Assets in res/ are committed ready to ship; nothing needs generating to build.
 # Four have make rules, run by hand when what they are drawn from changes: the
@@ -1505,7 +1528,7 @@ build-native/bt-check: tools/bt-check.c tools/legend.h src/bt.c src/bt.h src/bt_
                       src/bt_menu.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/spawn.c $(I18N_SRC)
+	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # Muse's view of the Music folder: the two shapes it reads, the litter a Mac
 # leaves beside every track, and where an album's cover is kept.
@@ -1705,6 +1728,19 @@ check-snapsize:
 			./build-native/snapsize-check > build-native/snapsize-check.log 2>&1; st=$$?; \
 		grep -v '^fit: ' build-native/snapsize-check.log; exit $$st; \
 	else echo "check-snapsize: skipped, no SDL2"; fi
+
+# Every texture the launcher draws into (SDL_TEXTUREACCESS_TARGET) made
+# PLAT_TARGET_FORMAT, and that a format SDL's GLES2 renderer keeps unswapped:
+# in an ARGB8888 one, a video snap on the Pixel 2 came out with red and blue
+# swapped (src/platform.h). A reading of the source; no SDL.
+check-targets:
+	@python3 tools/targets-check.py
+
+# The same with the device's own SDL and its GLES2 renderer, in Docker
+# (tools/yuvtarget-check.sh): video bars through a PLAT_TARGET_FORMAT target
+# come out their own colors. Not in CHECKS: Docker, the network, minutes.
+yuvtarget:
+	sh tools/yuvtarget-check.sh
 
 check-games:
 	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/games-check

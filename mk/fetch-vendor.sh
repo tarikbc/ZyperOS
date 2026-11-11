@@ -11,46 +11,78 @@
 # ZyperOS's own code in src/device/, against each device's ALSA controls and
 # display.
 #
-# Cores come from libretro's own buildbot, pinned by sha256 - the same hashes
-# Diatom's CORES.md verifies, because they are the same binaries. The
-# buildbot path is unpinned; these hashes are the pin.
+# Where they come from. Every core below was built by libretro's buildbot
+# (each one's version is beside it), but they are fetched from ZyperOS's own
+# release of them, CORES_TAG on github.com/tarikbc/ZyperOS: the exact files
+# ZyperOS ships, each pinned here by its sha256. The buildbot only keeps its
+# latest build of a core, under the same name, so a pin to the buildbot broke
+# whenever libretro rebuilt one: on 2026-11-11 nine of these nineteen were no
+# longer what the buildbot had (FCEUmm, Snes9x 2010, Genesis Plus GX, Beetle
+# PCE Fast and NeoPop, FinalBurn Neo, PCSX-ReARMed, Opera, MAME 2003-Plus),
+# and `make vendor` on a fresh clone stopped at the first. A release's files
+# never change under the same tag.
 #
-# Usage: mk/fetch-vendor.sh
+# The release is not a ZyperOS version: its tag is not v<number> and it is a
+# pre-release, not "latest", so System Update, the installer and the site
+# never take it for one. A core that changes goes into a new release
+# (mk/release-cores.sh, a new dated tag), with its pin here and its row in
+# THIRD-PARTY-LICENSES.md in the same change.
+#
+# Usage: mk/fetch-vendor.sh [DOWNLOAD_DIR]
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VENDOR=$ROOT/vendor
 DL=${1:-/tmp/zyperos-vendor}
-BB=https://buildbot.libretro.com/nightly/linux/aarch64/latest
+CORES_TAG=cores-2026-11-11
+FROM=${ZYPEROS_CORES_URL:-https://github.com/tarikbc/ZyperOS/releases/download/$CORES_TAG}
 
 command -v curl   > /dev/null || { echo "need curl" >&2; exit 1; }
-command -v unzip  > /dev/null || { echo "need unzip" >&2; exit 1; }
 command -v shasum > /dev/null || { echo "need shasum" >&2; exit 1; }
 
 mkdir -p "$DL" "$VENDOR/cores"
 
 fetch_core() { # name sha256
-	if [ -f "$VENDOR/cores/${1}_libretro.so" ] &&
-	   [ "$(shasum -a 256 "$VENDOR/cores/${1}_libretro.so" | cut -d' ' -f1)" = "$2" ]; then
+	so=${1}_libretro.so
+	if [ -f "$VENDOR/cores/$so" ] &&
+	   [ "$(shasum -a 256 "$VENDOR/cores/$so" | cut -d' ' -f1)" = "$2" ]; then
 		echo "  ok      $1"
 		return
 	fi
-	curl -sSfL -o "$DL/$1.zip" "$BB/${1}_libretro.so.zip"
-	unzip -o -j "$DL/$1.zip" -d "$VENDOR/cores" > /dev/null
-	GOT=$(shasum -a 256 "$VENDOR/cores/${1}_libretro.so" | cut -d' ' -f1)
+	curl -sSfL -o "$DL/$so" "$FROM/$so" || {
+		echo "  FAILED  $1: no $FROM/$so" >&2
+		exit 1
+	}
+	GOT=$(shasum -a 256 "$DL/$so" | cut -d' ' -f1)
 	if [ "$GOT" != "$2" ]; then
 		echo "  MISMATCH $1" >&2
 		echo "    want $2" >&2
 		echo "    got  $GOT" >&2
-		echo "  The buildbot republished this core. Verify it, then update the" >&2
-		echo "  hash here and in Diatom's CORES.md together." >&2
+		echo "  Not the file this pin names: vendor/ is left as it was." >&2
 		exit 1
 	fi
+	# Into place only once it is the right file, so vendor/ never holds a
+	# half-downloaded or wrong core
+	cp "$DL/$so" "$VENDOR/cores/$so.part"
+	chmod 755 "$VENDOR/cores/$so.part"
+	mv "$VENDOR/cores/$so.part" "$VENDOR/cores/$so"
 	echo "  fetched $1"
 }
 
-fetch_core fceumm            1b13b00d4680394dad8000d5175f97be727107e0945bc9b412da91d70c07b267
-fetch_core snes9x2010        3933890f520abb9dbb0e5276460785b20ce54d25f552b369cafeca270b9dd44c
-# mgba IS NOT FETCHED, and that is the one exception here. Run
+# The first five's pins were written from libretro's buildbot zips, but the
+# files every release has shipped (1.0.0 to 1.0.3, by their update manifests)
+# are other builds, each without the .comment section the buildbot's has:
+# the versions THIRD-PARTY-LICENSES.md names, read from the files with
+# retro_get_system_info. The pins are those files now.
+#
+#   fceumm             FCEUmm (SVN) 236ccdf
+#   snes9x2010         Snes9x 2010 1.52.4 7db129b
+#   genesis_plus_gx    Genesis Plus GX v1.7.4 b7e79b3
+#   mednafen_pce_fast  Beetle PCE Fast v1.31.0.0 (no commit in the binary)
+#   mednafen_ngp       Beetle NeoPop v1.29.0.0 a50d5ac
+fetch_core fceumm            94203b0be9c3a28acb32f2086415a01f20ab0e3b035a8fce5f079e64048d7123
+fetch_core snes9x2010        95abe14c494ee0bddeeacd8a372737ec14f9fbf052feccc9728c95fc08e9e7a8
+# mgba IS NOT FETCHED: it is built, like the other cores the comments below
+# name. Run
 # mk/build-mgba-bridge.sh instead; it builds this exact commit plus upstream's
 # own fix for a crash the buildbot core still has.
 #
@@ -62,17 +94,20 @@ fetch_core snes9x2010        3933890f520abb9dbb0e5276460785b20ce54d25f552b369caf
 # and in no downloadable core because libretro builds from its own fork which
 # has not synced since 2026-08-06.
 #
-# RESTORE THE LINE ABOVE AND DELETE THE BRIDGE the day that fork syncs. The
+# RESTORE THE LINE ABOVE AND DELETE THE BRIDGE the day that fork syncs, with
+# the buildbot's file in a new cores release (mk/release-cores.sh). The
 # official binary will contain exactly the change we are carrying.
 # mk/build-mgba-bridge.sh says what to re-verify when swapping back.
-fetch_core genesis_plus_gx   3673a22b906509461e23a5a118b1d1bec15cbda105f260cbcbc08a16b2124e48
+fetch_core genesis_plus_gx   33b694f2240068565057f0f96fd1b7aaba05f5a5252e5d2e4f9804fb9f3cf73d
 # Unlike the other binaries, Beetle PCE Fast's carries no commit. Its source is
 # beetle-pce-fast-libretro bebe2b13a840fbfd45cb501f5cd0efe01bdb1735: built from
 # that commit with the buildbot's setup (Ubuntu 20.04, GCC
 # 12.5.0-8ubuntu2~20~ppa3 from ppa:ubuntu-toolchain-r/test, make platform=unix,
-# strip), it gives this exact file, byte for byte (checked 2026-10-25).
-fetch_core mednafen_pce_fast aca90a14b18108c86398da2267ef40d5145eaddbc1c1b310614d745b258552b1
-fetch_core mednafen_ngp      a2015668f9a9403b8bf6941b550fae2c618f37b79173e8ba27c95b95f96bdd99
+# strip), it gave the buildbot's file byte for byte (checked 2026-10-25),
+# aca90a14b18108c8..., of which the file pinned here is that build without
+# its .comment section.
+fetch_core mednafen_pce_fast 861204b008dfadc76109cce72c26b275ba584657473dddf19fe646e562cd8d0e
+fetch_core mednafen_ngp      b8fb0ae8ce8ae7677c6898d7e5adb484de6d1ebe014ea34e6183db552420327b
 # The four small systems, pinned 2026-11-03 from the buildbot's latest that
 # day. Like mednafen_ngp they are pinned here and not yet in Diatom's CORES.md,
 # whose core-facts.md wants a device measurement first. Each was run in a
