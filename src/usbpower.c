@@ -69,6 +69,17 @@ bool usbpower_request(const char *dir, unsigned plug)
 	return true;
 }
 
+bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms)
+{
+	return kept && p->known && p->ask && p->plug == 1 && p->pin == 1 && p->vbus == 0 &&
+	       !p->computer && !p->automatic && since_start_ms < USBPOWER_RESUME_MS;
+}
+
+bool usbpower_takes_input(unsigned opened_ms, unsigned now_ms)
+{
+	return now_ms - opened_ms >= USBPOWER_TAKES_MS;
+}
+
 bool usbpower_mode(const char *dir, bool automatic)
 {
 	char tmp[256], path[256];

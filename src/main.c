@@ -2313,6 +2313,18 @@ static unsigned g_usb_wait;
 static bool shot_usb_menu;
 static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
 
+/* An accessory powered when the handheld turned off, kept on the card for
+ * the next start (usbpower_resume): read once there and gone */
+static bool g_usb_kept;
+
+static const char *usb_kept_path(void)
+{
+	static char p[512];
+
+	snprintf(p, sizeof p, "%s/usb-kept", P_USERDATA);
+	return p;
+}
+
 static void usb_auto_load(void)
 {
 	char v[8];
@@ -2320,6 +2332,26 @@ static void usb_auto_load(void)
 	db_get_str(db_dev(), "usb_accessories", v, sizeof v, "ask");
 	g_usb_auto = !strcmp(v, "auto");
 	plat_usb_power_mode(g_usb_auto);
+	g_usb_kept = access(usb_kept_path(), F_OK) == 0;
+	if (g_usb_kept) {
+		remove(usb_kept_path());
+		fprintf(stderr, "usb: an accessory was powered at the last power-off\n");
+	}
+}
+
+/* Turning off: an accessory powered now (the port a host, no computer
+ * seen) is kept for the next start */
+static void usb_kept_save(void)
+{
+	usb_power p;
+	FILE *f;
+
+	remove(usb_kept_path());
+	if (!plat_usb_power(&p) || !p.host || p.computer) return;
+	if ((f = fopen(usb_kept_path(), "w"))) {
+		fprintf(f, "accessory plug %u\n", p.plug);
+		fclose(f);
+	}
 }
 
 static void usb_auto_save(bool on)
@@ -4550,6 +4582,8 @@ void power_off_with(app *a, void (*anim)(app *a))
 	book_keep(true);
 	/* Asked for: a game left running continues at the next start */
 	playing_mark_clean();
+	/* ...and an accessory powered now is powered again then, unasked */
+	usb_kept_save();
 	plat_request_poweroff();
 	anim(a);
 	/* And dark the moment it ends. The rest of the shutdown is not instant -
@@ -8297,6 +8331,25 @@ static const char *tiles_hints(const char *b_word)
 
 static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
 
+/* The tiles' button hints shown: off while a question that came by itself
+ * takes no button yet */
+static bool g_tiles_hints = true;
+
+/* A question that came by itself, this pass: no button but POWER until it
+ * has been up USBPOWER_TAKES_MS, and its hints only from then */
+static void ask_settle(app *a, unsigned opened)
+{
+	bool takes = usbpower_takes_input(opened, plat_now_ms());
+
+	g_tiles_hints = takes;
+	if (!takes) {
+		bool power = a->in.pressed[IN_POWER];
+
+		memset(a->in.pressed, 0, sizeof a->in.pressed);
+		a->in.pressed[IN_POWER] = power;
+	}
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -8449,7 +8502,9 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		tiles_y += nwhat.n * ls;
 	}
 	tiles_y += 24;
-	if (nh)
+	/* Not while the question takes no button yet (usbpower_takes_input):
+	 * its room kept, so nothing moves when they come */
+	if (nh && g_tiles_hints)
 		keyhints_draw(a->r, hints, nh, panel.x + TILE_PAD, panel.x + panel.w - TILE_PAD,
 		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
 	else
@@ -8484,12 +8539,15 @@ static void usb_ask(app *a)
 {
 	menu_row tiles[3];
 	int n, sel = 0, choice = -1, lv;
+	unsigned opened;
 	float k;
 
 	n = usb_ask_tiles(tiles, usblink_dev_image());
 	lv = panel_open();
+	opened = plat_now_ms();
 	while (choice < 0) {
 		plat_input_poll(&a->in);
+		ask_settle(a, opened);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8516,6 +8574,7 @@ static void usb_ask(app *a)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -8558,17 +8617,19 @@ static void usb_power_ask(app *a, unsigned plug)
 {
 	menu_row rows[3];
 	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
-	unsigned looked = 0;
+	unsigned looked = 0, opened;
 	float f;
 
 	/* The question takes the replug message's place: Computer brings it
 	 * back */
 	replug_off();
 	lv = panel_open();
+	opened = plat_now_ms();
 	while (choice < 0) {
 		unsigned now = plat_now_ms();
 
 		plat_input_poll(&a->in);
+		ask_settle(a, opened);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
@@ -8601,6 +8662,7 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_present();
 		ui_frame_rest(8);
 	}
+	g_tiles_hints = true;
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -8665,6 +8727,18 @@ static void power_follow(void)
 	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
+	/* The accessory powered when the handheld turned off, there again from
+	 * the start: powered, and never asked about (usbpower_resume) */
+	if (g_usb_kept) {
+		if (usbpower_resume(&p, true, now - t_boot0)) {
+			fprintf(stderr, "usb: plug %u is the accessory powered before: powered again\n", p.plug);
+			plat_usb_power_grant(p.plug);
+			g_power_f.asked = p.plug;
+			g_usb_kept = false;
+		} else if (now - t_boot0 >= USBPOWER_RESUME_MS || (p.known && p.plug > 1)) {
+			g_usb_kept = false;
+		}
+	}
 	switch (usbpower_follow(&g_power_f, &p, now, &plug)) {
 	case USBPOWER_ASK:    g_power_ask = plug; break;
 	case USBPOWER_REPLUG: replug_on(plug);    break;

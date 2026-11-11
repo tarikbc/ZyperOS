@@ -77,4 +77,24 @@ enum { USBPOWER_NOTHING, USBPOWER_ASK, USBPOWER_REPLUG };
 int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_ms,
                     unsigned *plug);
 
+/* Back on after the handheld was turned off (its sleep: off, and the game
+ * where it was at the next start) with an accessory powered (Discord,
+ * metior, 2026-11-11: the Wi-Fi adapter asked about again at every start,
+ * just as the player was in the menus). The launcher keeps "an accessory
+ * was powered" when it turns off (`kept`), and the first plug of this start,
+ * there from the start (askable within USBPOWER_RESUME_MS of the launcher's
+ * start), is that plug again: powered with no question. The handheld cannot
+ * tell what happened while it was off, so a computer put in its place gets
+ * the same 2 s Automatic gives one before usbrole sees it on the bus and
+ * stops. Never on Automatic, which powers it anyway. */
+#define USBPOWER_RESUME_MS 8000u
+bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms);
+
+/* A question that comes by itself (What did you plug in?, Computer
+ * Connected) takes no button for its first USBPOWER_TAKES_MS, and shows its
+ * button hints only then: one comes while the player is pressing through
+ * the menus, and a press meant for them answered it (the same report) */
+#define USBPOWER_TAKES_MS 1000u
+bool usbpower_takes_input(unsigned opened_ms, unsigned now_ms);
+
 #endif

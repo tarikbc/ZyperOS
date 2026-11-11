@@ -108,6 +108,27 @@ int main(void)
 		      !p.paused, "an empty paused= read as paused");
 	}
 
+	/* Back on with the accessory that was powered at the power-off: powered
+	 * again unasked, only the first plug, there from the start */
+	usbpower_parse("plug=1 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_resume(&p, true, 4000), "the kept accessory at the start: not powered again");
+	CHECK(!usbpower_resume(&p, false, 4000), "nothing kept: powered unasked");
+	CHECK(!usbpower_resume(&p, true, USBPOWER_RESUME_MS), "a plug made after the start: powered unasked");
+	usbpower_parse("plug=2 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(!usbpower_resume(&p, true, 4000), "a second plug: powered unasked");
+	usbpower_parse("plug=1 ask=0 pin=1 vbus=1 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(!usbpower_resume(&p, true, 4000), "power coming in: powered");
+	usbpower_parse("plug=1 ask=1 pin=1 vbus=0 computer=0 role=device auto=1 paused=0", &p);
+	CHECK(!usbpower_resume(&p, true, 4000), "on Automatic: granted besides usbrole's own");
+	usbpower_parse("plug=1 ask=0 pin=1 vbus=0 computer=1 role=device auto=0 paused=0", &p);
+	CHECK(!usbpower_resume(&p, true, 4000), "a computer seen: powered again");
+
+	/* A question that came by itself takes no button for its first second */
+	CHECK(!usbpower_takes_input(5000, 5000) && !usbpower_takes_input(5000, 5000 + USBPOWER_TAKES_MS - 1),
+	      "a button taken in the first second");
+	CHECK(usbpower_takes_input(5000, 5000 + USBPOWER_TAKES_MS), "no button taken after a second");
+	CHECK(usbpower_takes_input(0xfffffc00u, 0xfffffc00u + USBPOWER_TAKES_MS), "the clock's wrap");
+
 	/* The files, in a scratch folder */
 	CHECK(mkdtemp(dir) != NULL, "no scratch folder");
 	snprintf(path, sizeof path, "%s/state", dir);
