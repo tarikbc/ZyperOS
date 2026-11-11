@@ -108,7 +108,7 @@ ifeq ($(PORT),pixel2)
   LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PIXEL2_PKGS)) -lm -ldl -lpthread
 endif
 
-.PHONY: all clean check check-seam check-proto check-port \
+.PHONY: all clean check check-cpufreq check-seam check-proto check-port \
         check-corefacts check-cheevos check-screens check-chord check-stick check-bounds check-copies \
         stub run-stub
 
@@ -142,7 +142,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-proto check-port check-stateplane check-resident check-hotkeys check-now
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-cpufreq check-stick check-bounds check-proto check-port check-stateplane check-resident check-hotkeys check-now
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -179,6 +179,18 @@ $(SCREENS_TEST): test/screens_test.c src/screens.c src/scale.c src/screens.h src
 # by turn, as a game reads the pad - a tap given back as it is let go, a chord
 # hidden whole, SELECT with another button the game's at once, the soft reset,
 # a core with no states. Offline, like check-screens: src/chord.c alone.
+# The CPU clock holds (port/port_cpufreq.h), against a folder standing in for
+# cpufreq's sysfs: the Pixel 2's fast forward at its 1512 MHz boost step, a
+# hold at 1x at 1296, and boost's ceiling never left behind at 1x.
+CPUFREQ_TEST := $(BUILD)/cpufreq-test
+
+check-cpufreq: $(CPUFREQ_TEST)
+	@./$(CPUFREQ_TEST)
+
+$(CPUFREQ_TEST): test/cpufreq_test.c port/port_cpufreq.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -O2 -Iinclude -o $@ test/cpufreq_test.c
+
 CHORD_TEST := $(BUILD)/chord-test
 
 check-chord: $(CHORD_TEST)

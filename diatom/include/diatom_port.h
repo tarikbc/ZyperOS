@@ -423,8 +423,14 @@ void diatom_port_low_battery(bool on, bool blink);
  * spent 7 s of 30 at 1008 or 1200 MHz, 4.3% of the frames undrawn and 57.3
  * fps at the panel, a second at 37; held at the top, 2.0% and 59.6, no
  * second under 58. Its GPU only puts the picture on the panel, so it is left
- * to its governor. */
-void diatom_port_fast_clock(bool cpu, bool gpu);
+ * to its governor.
+ *
+ * `boost` is fast forward's alone: a device with clock steps kept for bursts
+ * (the Pixel 2's 1416 and 1512 MHz, turbo-mode in its device tree) holds the
+ * CPU at the top of those, and at 1x only ever at the top outside them.
+ * Measured on the Pixel 2 by Eric Reinsmidt (diatom 7649d4e), Mario Kart:
+ * Super Circuit at 4x, 2.28x at 1512 MHz against 1.88x and 1.90x at 1296. */
+void diatom_port_fast_clock(bool cpu, bool gpu, bool boost);
 
 /* How much clock a game gets. FULL is the device's top clocks; MEDIUM and
  * LIGHT are lower ceilings for systems that keep their speed under them

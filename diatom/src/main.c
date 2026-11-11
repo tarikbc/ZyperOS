@@ -2236,7 +2236,7 @@ static int run_session_inner(const diatom_session *sn)
 			const bool full = g_power_level == DIATOM_POWER_FULL;
 			const bool gpu_top = fast || (diatom_hw_active() && full);
 
-			diatom_port_fast_clock(gpu_top || (sn->late_skip && full), gpu_top);
+			diatom_port_fast_clock(gpu_top || (sn->late_skip && full), gpu_top, fast);
 		}
 		if (!fast && power_fast) {
 			diatom_port_power(g_power_level);
@@ -2598,7 +2598,7 @@ static int run_session_inner(const diatom_session *sn)
 				/* The menu is the launcher's, at the governor's clock and
 				 * under no ceiling; a fast game takes the top one back on
 				 * its next turn, and a game at 1x its ceiling here. */
-				diatom_port_fast_clock(false, false);
+				diatom_port_fast_clock(false, false, false);
 				diatom_port_power(DIATOM_POWER_FULL);
 				resumed = menu_pause(sn);
 				diatom_port_power(power_fast ? DIATOM_POWER_FULL : g_power_level);
@@ -2719,7 +2719,7 @@ static int run_session_inner(const diatom_session *sn)
 	 * game this way and the device powers off after them (the core's stop
 	 * resets the hold). */
 	diatom_rumble_hold(true);
-	diatom_port_fast_clock(false, false);
+	diatom_port_fast_clock(false, false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
 
 	/* A quick save still on its thread is finished and said before EXIT; a
@@ -3008,7 +3008,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "diatom: port init failed\n");
 		return 2;
 	}
-	diatom_port_fast_clock(false, false);
+	diatom_port_fast_clock(false, false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
 
 	/* Once for the life of the process, not per session: the first thing a

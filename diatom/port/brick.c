@@ -2060,11 +2060,12 @@ void diatom_port_mute_set(bool on)
 bool diatom_port_mute_get(void) { return g_muted; }
 
 /* The Brick has no GPU clock to hold: the CPU alone */
-void diatom_port_fast_clock(bool cpu, bool gpu)
+void diatom_port_fast_clock(bool cpu, bool gpu, bool boost)
 {
 	static bool said;
 
 	(void)gpu;
+	(void)boost;
 	if (!diatom_cpufreq_hold_top(cpu) && !said) {
 		said = true;
 		diatom_port_log(DIATOM_LOG_WARN, "brick: could not set the CPU's lowest clock");

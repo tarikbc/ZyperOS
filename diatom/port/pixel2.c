@@ -2360,14 +2360,17 @@ bool diatom_port_mute_get(void) { return g_muted; }
 
 static bool sysfs_put(const char *path, const char *v);
 
-void diatom_port_fast_clock(bool cpu, bool gpu)
+void diatom_port_fast_clock(bool cpu, bool gpu, bool boost)
 {
 	static bool said;
 	static int gpu_held = -1;
 
-	if (!diatom_cpufreq_hold_top(cpu) && !said) {
+	/* Fast forward at 1512 MHz, boost's top; a hold at 1x (a GPU core, a DS
+	 * game) at 1296, the top outside boost (port_cpufreq.h) */
+	if (!diatom_cpufreq_hold(!cpu ? DIATOM_HOLD_NONE
+	                         : boost ? DIATOM_HOLD_BOOST : DIATOM_HOLD_TOP) && !said) {
 		said = true;
-		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the CPU's lowest clock");
+		diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set the CPU's clock");
 	}
 	/* And the GPU's floor at its top step, 520 MHz, for the same reason
 	 * (see diatom_port.h); 0 is no floor, the governor's again. The first
@@ -2381,7 +2384,7 @@ void diatom_port_fast_clock(bool cpu, bool gpu)
 }
 
 /* The ceilings, off this board's own tables: the CPU's steps (1296 MHz at
- * the top), the DDR's three trained rates (194, 328, 1056 MHz) and the GPU's
+ * the top outside boost, which fast forward alone turns on), the DDR's three trained rates (194, 328, 1056 MHz) and the GPU's
  * steps (200 to 520 MHz). FULL gives each back its top: the CPU its own
  * maximum, and 0 to a devfreq max_freq, which the kernel reads as no
  * ceiling. The DDR runs under the performance governor (plastron's
@@ -2409,10 +2412,11 @@ void diatom_port_power(int level)
 
 	if (level < DIATOM_POWER_FULL || level > DIATOM_POWER_LIGHT || level == now) return;
 	now = level;
+	/* FULL's CPU ceiling is the top outside boost, not cpuinfo_max_freq,
+	 * which stays at 1512 MHz once boost has been on (port_cpufreq.h) */
 	ok = lv[level].cpu
 	   ? sysfs_put(DIATOM_CPUFREQ "scaling_max_freq", lv[level].cpu)
-	   : diatom_cpufreq_copy(DIATOM_CPUFREQ "cpuinfo_max_freq",
-	                         DIATOM_CPUFREQ "scaling_max_freq");
+	   : diatom_cpufreq_cap_unboosted();
 	ok &= sysfs_put("/sys/class/devfreq/dmc/max_freq", lv[level].ram);
 	ok &= sysfs_put("/sys/class/devfreq/ff400000.gpu/max_freq", lv[level].gpu);
 	if (!ok) diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not set every clock ceiling");
