@@ -242,6 +242,10 @@ west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
 screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
+Games read the same zone: a game with a clock of its own, such as Pokemon's
+day and night, keeps the time of the zone chosen here, and a new zone
+reaches the next game started.
+
 The shelf shows the time at its top left, and Wi-Fi and the battery at its
 top right, with a Bluetooth headset on the Brick while one is connected, and a
 headphone mark while headphones are in the jack. Wi-Fi's fan is crossed

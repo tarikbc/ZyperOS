@@ -65,7 +65,9 @@ check-prep:
 check-diatom:
 	@if pkg-config --exists sdl2 2>/dev/null || command -v sdl2-config > /dev/null; then \
 		$(MAKE) --no-print-directory -C diatom $(NATIVE_J) all stub && \
-		$(MAKE) --no-print-directory -C diatom check; \
+		$(MAKE) --no-print-directory -C diatom check && \
+		$(MAKE) --no-print-directory build-native/gamezone-check && \
+		./build-native/gamezone-check diatom/build/desktop/diatom; \
 	else \
 		echo "check-diatom: skipped, no SDL2"; \
 	fi
@@ -1131,6 +1133,14 @@ build-native/idle-check: tools/idle-check.c src/idle.c src/idle.h src/chargedark
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
+
+# The launcher's resident.c, the device stubbed, against a real Diatom: the
+# zone chosen in Date & Time reaches a game's clock (tools/gamezone-check.c).
+# Run by check-diatom, after Diatom's own build.
+build-native/gamezone-check: tools/gamezone-check.c src/resident.c src/platform.h src/device.h FORCE
+	@mkdir -p build-native
+	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
+	      -o $@ tools/gamezone-check.c src/resident.c $$(sdl2-config --libs)
 
 build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native

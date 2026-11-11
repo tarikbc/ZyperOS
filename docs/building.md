@@ -191,7 +191,7 @@ something once broke in a way nothing noticed:
 | `check-installer` | ZyperOS Installer's version is ZyperOS's, and its page wears this repository's colors, fonts and Zyper (its Rust tests run in CI) |
 | `check-from-rogue` | tools/from-rogue.sh's table against systems.cfg and against the folders on a ROGUE OS card |
 | `check-importers` | the computer-side importers (--meta, --titles) on a scratch card: a title written over a game's details keeps them (builds the host launcher) |
-| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores (skips without SDL2) |
+| `check-diatom` | Diatom's own suite (diatom/Makefile's check) on its desktop port with the stub core: the port seam, core facts, achievements, screens, the protocol, the state plane, resident cores; then the launcher's own Diatom link against it (tools/gamezone-check.c): the zone chosen in Date & Time reaches a game's clock, a new zone the next game with no restart, and a Diatom started again its first game (skips without SDL2) |
 | `check-simulator` | the simulator's Swift tests: its VNC client, the px2sim link, the state lines and the control socket's commands (skips without Swift) |
 | `check-px2sim` | px2sim's choice of the keyboard it takes in the QEMU image: QEMU's virtio or USB one, never a uinput one such as gptokeyb's Fake Keyboard (host compiler, no VM) |
 | `check-sidelights` | what the launcher tells the side lights' gauge: the lines as plastron's gauge reads them, the FIFO writer that never waits and never dies of SIGPIPE, and when a File Transfer batch is over |
