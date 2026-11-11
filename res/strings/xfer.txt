@@ -92,15 +92,15 @@ ja = パソコン
 it = Computer
 
 [xfer.replug_computer]
-note = A computer on the USB cable has not connected yet (its port took the side that waits for power, which the handheld never gives a computer). Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
-en = Your computer didn't connect yet. Unplug the cable and plug it back in.
-zh-Hans = 电脑还没有连接。请拔出数据线，再重新插入。
-es = Tu computadora aún no se conectó. Desconecta el cable y vuelve a conectarlo.
-pt-BR = O computador ainda não conectou. Desconecte o cabo e conecte de novo.
-fr = L'ordinateur n'est pas encore connecté. Débranchez le câble et rebranchez-le.
-de = Computer noch nicht verbunden. Zieh das Kabel ab und steck es wieder ein.
-ja = パソコンがまだ接続されていません。ケーブルを抜いて、もう一度差してください。
-it = Il computer non si è ancora collegato. Scollega il cavo e ricollegalo.
+note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
+en = Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.
+zh-Hans = 电脑没有连接。可能要试几次：请拔出数据线，再重新插入。
+es = La computadora no se conectó. Puede tomar unos intentos: desconecta el cable y reconéctalo.
+pt-BR = O computador não conectou. Pode levar umas tentativas: tire o cabo e conecte de novo.
+fr = L'ordinateur ne s'est pas connecté. Il faut parfois plusieurs essais : rebranchez le câble.
+de = Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel ab und steck es wieder ein.
+ja = パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。
+it = Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.

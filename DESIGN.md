@@ -2571,7 +2571,9 @@ the device, 2026-11-10). Told to usbrole in
 
 **The replug message.** Computer, B or MENU, and a plug a computer showed
 up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
-computer didn't connect yet. Unplug the cable and plug it back in." over
+computer didn't connect. It can take a few tries: unplug the cable and plug
+it back in." (a few tries: the two ports settle which side gives power
+at each plug, at random, 2026-11-11) over
 whatever screen is up, never over a game, and it stays until the plug
 ends: the cable out, another plug, or the computer connected. On the launcher it is a slab at
 the top under the header, 960 wide at y 104: **surface** with the
