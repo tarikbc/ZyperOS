@@ -207,20 +207,20 @@ static void rows_are_shaped_like_the_others(void)
 	u.cursor = -1;
 	/* "turn off", not "turn Bluetooth off" - the heading and the row it sits
 	 * under both say Bluetooth, so the footer repeating it is noise. */
-	ck(!strcmp(bt_menu_footer(&u), "A: turn off   Y: search"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: turn off   Y: search"),
 	   "on the toggle it offers the toggle, without repeating the word");
 	u.cursor = 0;
-	ck(!strcmp(bt_menu_footer(&u), "A: connect   Y: search   X: forget"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: connect   Y: search   X: forget"),
 	   "on a bonded device, connect and forget");
 	u.cursor = 1;
-	ck(!strcmp(bt_menu_footer(&u), "A: pair   Y: search"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: pair   Y: search"),
 	   "on one merely in range, pair and nothing to forget");
 	u.dev[1].connected = true;
-	ck(strstr(bt_menu_footer(&u), "A: disconnect") != NULL,
+	ck(strstr(legend_text(bt_menu_footer(&u)), "A: disconnect") != NULL,
 	   "and connected offers disconnect");
 
 	snprintf(u.note, sizeof u.note, "Forgotten");
-	ck(!strcmp(bt_menu_footer(&u), "Forgotten"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "Forgotten"),
 	   "a message about what just happened takes the same slot");
 	u.note[0] = '\0';
 
@@ -234,7 +234,7 @@ static void rows_are_shaped_like_the_others(void)
 	u.n = 0;
 	n = bt_menu_build(&u, r, 16, 7);
 	ck(!strcmp(r[0].value, "off"), "the toggle says off");
-	ck(!strcmp(bt_menu_footer(&u), "A: turn on"),
+	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: turn on"),
 	   "and the footer says how to fix it");
 }
 
@@ -275,9 +275,9 @@ static void footers_are_legends(void)
 	u.dev[0].connected = true;
 	f[n++] = bt_menu_footer(&u);
 	for (i = 0; i < n; i++) {
-		if (!strstr(f[i], ": ")) continue;
+		if (!strstr(legend_text(f[i]), ": ")) continue;
 		legends++;
-		snprintf(msg, sizeof msg, "\"%s\" is not a legend", f[i]);
+		snprintf(msg, sizeof msg, "\"%s\" is not a legend", legend_text(f[i]));
 		ck(legend_form(f[i]), msg);
 	}
 	ck(legends == n - 1, "every footer but the one that says it is searching names a button");

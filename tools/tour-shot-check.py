@@ -67,11 +67,12 @@ EAR, TONGUE = zc.EAR, zc.TONGUE
 ACCENT = (190, 242, 60)                       # **accent**, both themes
 TEXT = {"light": (26, 28, 26), "dark": (228, 226, 216)}         # **text**
 TEXT_DIM = {"light": (90, 93, 90), "dark": (150, 153, 152)}     # **text-dim**
+TEXT_SOFT = {"light": (61, 64, 62), "dark": (195, 195, 186)}    # **text-soft**: a button hint's word
 
 CORNER = (20, 580, 172, 768)    # Zyper's corner, his hop and his bubble's start
 STAGE = (172, 84, 852, 424)     # the stage
 BUBBLE = (168, 600, 1000, 720)  # his bubble beside him, one line or two
-LEGEND = (600, 700, 1024, 750)  # "START: skip"
+LEGEND = (600, 700, 1024, 750)  # START's hint, "(START) skip"
 CHECK = (852, 59)               # inside the check disc, above its tick
 HELLO = (100, 180, 440, 570)    # the finish's large Zyper, away from the corner
 GROUND = {"light": (230, 228, 218), "dark": (17, 19, 16)}         # **ground**
@@ -230,7 +231,7 @@ def pixel2():
                        "3000", "--tour-wrong", "select", "420")
         if None not in (done, longest):
             ck(count(done, EAR, CORNER) > 40, "%s: the Pixel 2's reward has Zyper in the corner" % th)
-            bub, leg = xs(longest, TEXT[th], BUBBLE), xs(longest, TEXT_DIM[th], LEGEND)
+            bub, leg = xs(longest, TEXT[th], BUBBLE), xs(longest, TEXT_SOFT[th], LEGEND)
             ck(bub and leg and max(bub) + 8 <= min(leg),
                "%s: on the Pixel 2 the longest answer stays clear of START: skip" % th)
         # Not on the welcome or the finish: those are the Brick's, pixel for pixel.
@@ -361,7 +362,7 @@ def main():
         ck(count(wrong, EAR, CORNER) > 40 and count(wrong, TONGUE, CORNER) == 0,
            "%s: a wrong press has him up with his tongue in" % th)
         ck(count(wrong, TEXT[th], BUBBLE) > 2000, "%s: and his bubble" % th)
-        bub, leg = xs(longest, TEXT[th], BUBBLE), xs(longest, TEXT_DIM[th], LEGEND)
+        bub, leg = xs(longest, TEXT[th], BUBBLE), xs(longest, TEXT_SOFT[th], LEGEND)
         ck(bub and leg and max(bub) + 8 <= min(leg),
            "%s: the longest answer ends at %s, clear of START: skip at %s"
            % (th, max(bub) if bub else None, min(leg) if leg else None))

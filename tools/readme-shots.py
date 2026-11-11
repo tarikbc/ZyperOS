@@ -240,6 +240,15 @@ DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','medi
 CORNER_OWN={'charging':'no corner drawn, though --status gave it something to show'}
 # MENU > System Update as a card with two system slots sees an update (83 MB,
 # the size of the Pixel 2's two-slot test download, tarikbc/ZyperOS#59)
+UPDATE_NOTES=[
+    'http://zyperos.local: USB File Transfer now has a name you can type, next to its address. The page opens from any browser on the computer, and the address now wins over any other network that uses the same numbers, which fixes File Transfer on some Windows 11 computers.',
+    'The connection, step by step: File Transfer shows Cable, Address and Browser as they connect, and if one stalls, a short hint says what to do. It counts browsers, not connections, so one browser shows as one.',
+    '"What did you plug in?": when something on the USB port wants power, the Pixel 2 asks: a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer. It never powers a computer by itself. If a computer doesn\'t connect, the Pixel 2 tells you to plug the cable in again. Answered by mistake? The USB mark at the top, or MENU > USB Device, asks again.',
+    'MENU > USB Accessories: keep it on Ask, or set Automatic to power accessories right away with no question.',
+    'Cooler File Transfer: the File Transfer screen and the open MENU no longer redraw when nothing changes. On my Pixel 2, File Transfer left open on the cable now stays around 37 \u00b0C instead of passing 50 \u00b0C, and uses a sixth of the battery. Its screen turns off after Auto Off, and only dims while files are copying.',
+    'Button hints in the new questions show each button\'s glyph, the same way everywhere.',
+    'Fixes: the Pixel 2 is recognized by a Mac on the first plug, and longer words, like "auto (alto-falante)" in Audio Output, no longer get cut.',
+]
 UPDATE_STATUS='state available\ninstalled 0.1.0\nversion 0.1.1\ndownload 83000000\nkind system\n'
 
 def png_rgb(path,w,h,rows):
@@ -401,6 +410,10 @@ def demo_card(card,art,manifest):
     shutil.copytree(ROOT/'res/tour',card/'ZyperOS/res/tour')
     up=card/'userdata/update';up.mkdir(parents=True)
     (up/'status').write_text(UPDATE_STATUS)
+    # What's New as a release's list carries it: 1.0.3's points, whole, as
+    # tools/update-pack.py takes them from its notes (the page wraps and
+    # scrolls them, DESIGN.md 11.17)
+    (up/'latest-system.txt').write_text('zyperos-update 1\nkind system\n'+''.join('note %s\n'%n for n in UPDATE_NOTES),encoding='utf-8')
     # A test release's source on the card counts as a network to look with
     # (docs/updates.md), so the page offers its download as on Wi-Fi
     (up/'source').write_text('file:///nonexistent\n')

@@ -730,11 +730,14 @@ or a screen's own, a hint's capitals (Title Case in English). Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
 
-The older form, still written as text where it has not moved yet: "A: go
-Y: by game   L1/R1: window" - the button, a colon, a lowercase verb, three
-spaces between. **meta**, **text-dim**. *(The audit found 3 and 4 spaces,
-"L/R" for two different controls, and "B to close" beside "B: close"; this
-is the one form.)*
+Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
+Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
+close" and "B stop"), the hotspot's page and the tutorial's "(START) skip".
+A screen hands a panel its list packed as a row's label
+(`keyhints_legend`), and the panel draws it centered on that row; the
+checks read it back as text (tools/legend.h, `legend_text`). The words are
+keyhint.*, each language's as it wrote the old legend's. The older text
+form, "A: go   Y: by game", is gone.
 
 ### 11.5 Keyboard
 The whole keyboard of src/keyboard.c, every decision in it kept because each
@@ -753,7 +756,11 @@ cursor, MENU cancel. A has no caption: it is OK everywhere. *(
 2026-11-04, in the keyboard lab: the action row, with one quiet line instead
 of the two rows of seven captions it had.)*
 
-The panel is 940 wide, so a button and its label fit in each action key at
+The panel is a menu's around the keys: a menu's padding at each side (about
+940 wide in all), its heading band and **edge** rule, its top at a tall menu's,
+and the field as wide as the keys, so their edges line up. *(2026-11-11: it
+had a tighter band, no rule and a wider field than the keys, and sat higher
+than a menu.)* A button and its label fit in each action key at
 **meta** size. In Lexend the longest, "unshift", has 3 to 4 units to spare at
 each side of its key; a face that sets it wider gives up half the gap between
 button and label and then the end of the label, never the key's edge. Keys are
@@ -1504,9 +1511,15 @@ on (158, 232); the versions in **title** **text** from x 270 on y 200,
 faces have no U+2192), or the installed version alone; under them at y 270
 one line in **meta** **text-dim** (what downloads and the whole folder, "Up
 to date · checked 9:41", "Looking for updates…"), **warning** when it says
-something went wrong. Then What's New, the release notes' first points in
-**menu** **text-soft** with a **text-dim** dot, a point at most two balanced
-lines, four lines in all, from y 348 every 52. While it works, one bar from
+something went wrong. Then What's New: the release notes' points whole, in
+**meta**, filled a word at a time onto lines of 804 from x 130 (a point's
+lead, its words before the first ": ", in **text**, the rest in
+**text-soft**), a **text-dim** dot at each point's first line, from y 348
+(362 under a two-line line) every 42, 14 more between points, down to y 548
+over a bar or a line, 640 when there is none; up and down scroll it a line
+at a time, and a small **text-dim** triangle at the right says there is
+more above or below. *(2026-11-11: the first release's points were cut at
+two lines, and at 110 characters by the release tool.)* While it works, one bar from
 x 90 to 934 at y 572, 18 tall, round, **track** with **accent-ink** over it,
 and its two words under it at y 626 in **meta** **text-dim** ("Downloading"
 and "6.1 of 14 MB"); when there is no bar, one centered **meta** line at
@@ -1519,10 +1532,19 @@ versions stays short ("Back on 0.1.0"). *(2026-11-05: the error was
 hard to read as a cut **meta** line in **warning**.)* The buttons at the foot, centered on y 714: 11.9's glyph at 48
 and its word in **meta** **text-soft**, 40 between pairs. A is the page's
 action (Download, Continue, Restart Now, Look Again, Try Again), B is Back
-("Back, it goes on" while it works; "Later" when it is ready), Y is "Roll
+("Continue in background" while it works; "Later" when it is ready), Y is "Roll
 Back to 0.0.9" when the image allows one. Opened with a network and no look
-in the last ten minutes, it looks at once; once a day on a network it looks
-by itself, and only MENU's row says what it found. Every state's words are
+in the last ten minutes, it looks at once. It also looks each time Wi-Fi
+connects and once a day, and a release it finds is said once, by Zyper's
+bubble on the shelf (11.23's, "ZyperOS 1.0.4 is ready to download" over
+"Open MENU > System Update.", the lines balanced onto two each, no
+thermometer) or as a notice over a game. A download goes on behind every
+screen and game: the corner shows it (11.12, an arrow into a tray in File
+Transfer's ring, swept as far as the download), Auto Off waits for it, and
+when it is in, Zyper says "ready to install" the same way. One cut short (Wi-Fi
+gone, the handheld off) goes on by itself from where it stopped once
+Wi-Fi is back, and the page says so: "It goes on from where it stopped
+when Wi-Fi is back." Every state's words are
 in tools/sysupdate-check.c. *(My picks in the update lab, 2026-11-05:
 its own row, the full page, once a day on Wi-Fi.)*
 
@@ -1934,13 +1956,17 @@ kernel to keep the limit, charges it.
 On the charging screen (11.25), with a limit: the time is to the limit, "85%
 in about 40 min" ("Working out the time to 85%", "Almost at 85%"); held at
 it, the speed line is "Kept at 85% · wall charger", the time line "Charge
-Limit in MENU", the battery mark has the plug (11.12), and the hint grows to
-"Hold (A) for a full charge · Hold (POWER) to start", the bar under it
-filling for whichever is held. A battery charged full before the limit was
-set is held at 100%: the screen says "Charged" and "Fully charged" as any
-full one, with the plug, and offers no full charge. A held for **hold-unlock** is a full charge,
-this charge only: the limit is off until the cable comes out, and on again
-then (a file in /tmp, so a power-off ends it too). The corner's battery has
+Limit in MENU", and the battery mark has the plug (11.12). With a limit
+saved and the battery short of full, charging up to the limit or held at
+it, the hint grows to "(Y) Charge to 100% · Hold (POWER) to start"; Y, on a
+lit screen, is a full charge this time only: the hint says "Charging to 100%
+this time" in its place, the time goes to full, and the saved limit is back
+when the cable comes out or the battery is full (a file in /tmp, so a
+restart ends it too). A Y that lights a dark screen only lights it.
+*(Tarik, 2026-11-11: until then it was "Hold (A) for a full charge", and only
+once held at the limit.)* A battery charged full before the limit was set is
+held at 100%: the screen says "Charged" and "Fully charged" as any full one,
+with the plug, and offers no full charge. The corner's battery has
 the plug while it is held, everywhere.
 
 ### 11.27 Side lights
@@ -2592,7 +2618,17 @@ Computer". Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game (a plug made in a game is asked about
 back on the shelf); it goes by itself when the plug stops wanting power.
 Every plug is its own: nothing carries over from the plug before, however
-soon (a cable swapped for an adapter in a second, 2026-11-10).
+soon (a cable swapped for an adapter in a second, 2026-11-10). One thing does: an accessory powered when the handheld turns off is
+powered again at the next start, with no question, when it is the first
+plug and there from the start (usbpower_resume; the handheld cannot see
+what happened while it was off, so a computer put in its place gets the 2 s
+Automatic gives one). And a question that comes by itself, this one or
+Computer Connected (11.18), came while the player was pressing through the
+menus, and a press meant for them answered it (Discord, 2026-11-11): a
+button that was down as it appeared counts only once let go and pressed
+again, and so does one pressed in its first half second; after that a
+press answers at once, POWER always. Its button hints show from the half
+second, their room kept.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2617,7 +2653,9 @@ the device, 2026-11-10). Told to usbrole in
 
 **The replug message.** Computer, B or MENU, and a plug a computer showed
 up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
-computer didn't connect yet. Unplug the cable and plug it back in." over
+computer didn't connect. It can take a few tries: unplug the cable and plug
+it back in." (a few tries: the two ports settle which side gives power
+at each plug, at random, 2026-11-11) over
 whatever screen is up, never over a game, and it stays until the plug
 ends: the cable out, another plug, or the computer connected. On the launcher it is a slab at
 the top under the header, 960 wide at y 104: **surface** with the

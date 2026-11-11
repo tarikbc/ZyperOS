@@ -17,6 +17,7 @@
 
 #include "clamp.h"
 #include "design.h"
+#include "platform.h"   /* PLAT_TARGET_FORMAT */
 #include "theme.h"
 #include "tourdevice.h"
 #include "ui.h"
@@ -800,7 +801,7 @@ static bool keep_ready(SDL_Renderer *r)
 			SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD,
 			SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
 
-		g_keep = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET,
+		g_keep = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
 		                           KEEP_W, KEEP_H);
 		g_keep_can = g_keep && SDL_SetTextureBlendMode(g_keep, pm) == 0;
 		if (g_keep_can) {

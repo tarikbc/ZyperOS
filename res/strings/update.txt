@@ -333,15 +333,15 @@ ja = %d / %d
 it = %d di %d
 
 [update.back_goes_on]
-note = review: pt-BR "Voltar, continua" says B leaves while the download goes on; is it clear? The B button's label while it downloads
-en = Back, it goes on
-zh-Hans = 返回，继续更新
-es = Volver, continúa
-pt-BR = Voltar, continua
-fr = Retour, ça continue
-de = Zurück, läuft weiter
-ja = 戻る（続行されます）
-it = Indietro, continua
+note = The B button's label while System Update downloads (or PortMaster installs): B leaves the page and the work keeps going in the background (2026-11-11: "Voltar, continua" read as unclear). Short: a button hint.
+en = Continue in background
+zh-Hans = 后台继续
+es = Seguir en segundo plano
+pt-BR = Continuar em segundo plano
+fr = Continuer en arrière-plan
+de = Im Hintergrund weiter
+ja = バックグラウンドで続行
+it = Continua in background
 
 [update.stopped]
 note = Left of the bar: a download that was cut short
@@ -573,3 +573,47 @@ fr = Revenir à %s
 de = Zurückstufen auf %s
 ja = %s に戻す
 it = Torna a %s
+
+[update.resumes]
+note = Under the versions on System Update, a download that was cut short (Wi-Fi gone, the handheld turned off) with no Wi-Fi now: it goes on by itself, from where it stopped, once Wi-Fi is back. Up to two balanced lines.
+en = It goes on from where it stopped when Wi-Fi is back.
+zh-Hans = Wi-Fi 恢复后，会从停下的地方继续。
+es = Seguirá desde donde se detuvo cuando vuelva el Wi-Fi.
+pt-BR = Ele continua de onde parou quando o Wi-Fi voltar.
+fr = Il reprendra là où il s'est arrêté au retour du Wi-Fi.
+de = Es geht dort weiter, wo es aufgehört hat, sobald WLAN wieder da ist.
+ja = Wi-Fi が戻ると、止まったところから続きます。
+it = Riprende da dove si è fermato quando torna il Wi-Fi.
+
+[update.news_available]
+note = Zyper's bubble on the shelf, or a notice over a game, the first time a look finds a new release: %s is its version. Sentence case, no full stop.
+en = ZyperOS %s is ready to download
+zh-Hans = ZyperOS %s 可以下载了
+es = ZyperOS %s está listo para descargar
+pt-BR = O ZyperOS %s está pronto para baixar
+fr = ZyperOS %s est prêt à télécharger
+de = ZyperOS %s kann geladen werden
+ja = ZyperOS %s をダウンロードできます
+it = ZyperOS %s è pronto da scaricare
+
+[update.news_ready]
+note = Zyper's bubble on the shelf, or a notice over a game, when a download in the background is done and checked: %s is its version. Sentence case, no full stop.
+en = ZyperOS %s is ready to install
+zh-Hans = ZyperOS %s 可以安装了
+es = ZyperOS %s está listo para instalar
+pt-BR = O ZyperOS %s está pronto para instalar
+fr = ZyperOS %s est prêt à installer
+de = ZyperOS %s kann installiert werden
+ja = ZyperOS %s をインストールできます
+it = ZyperOS %s è pronto da installare
+
+[update.news_where]
+note = The second line of Zyper's bubble (and of the notice over a game) under update.news_available or update.news_ready: where to go.
+en = Open MENU > System Update.
+zh-Hans = 打开 MENU > 系统更新。
+es = Abre MENU > Actualización del sistema.
+pt-BR = Abra MENU > Atualização do sistema.
+fr = Ouvrez MENU > Mise à jour du système.
+de = Öffne MENU > Systemupdate.
+ja = MENU > システムアップデートを開いてください。
+it = Apri MENU > Aggiornamento di sistema.

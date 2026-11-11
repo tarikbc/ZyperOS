@@ -127,6 +127,12 @@ typedef struct {
 	 * 24 wide, left of the others, so a question answered wrong or put off
 	 * shows it can be answered again (MENU > USB Device). */
 	bool usb;
+	/* System Update downloading or installing behind the screen (MENU >
+	 * System Update, 2026-11-11): an arrow down into a tray, in File
+	 * Transfer's ring, swept as far as the download, `update_pct` (0 to
+	 * 100; 0 the ring's track alone). Right of the USB plug. */
+	bool update;
+	int  update_pct;
 } status_marks;
 
 /* The battery mark's width and the space between its number and it */

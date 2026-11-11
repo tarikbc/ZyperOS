@@ -242,6 +242,10 @@ west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
 screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
+Games read the same zone: a game with a clock of its own, such as Pokemon's
+day and night, keeps the time of the zone chosen here, and a new zone
+reaches the next game started.
+
 The shelf shows the time at its top left, and Wi-Fi and the battery at its
 top right, with a Bluetooth headset on the Brick while one is connected, and a
 headphone mark while headphones are in the jack. Wi-Fi's fan is crossed
@@ -462,7 +466,7 @@ the step it is waiting on dimmed:
 
 | Step | Ticked when | If it waits too long |
 |---|---|---|
-| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect yet: after 5 seconds, unplug the cable and plug it back in. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in; it can take a few tries. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
 | **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
 | **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
 | **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
@@ -539,7 +543,7 @@ did you plug in?**, with two tiles:
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
-| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect yet: unplug the cable and plug it back in. Then it connects |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. Every plug is asked about on its own, however soon after the last

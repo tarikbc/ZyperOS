@@ -85,23 +85,33 @@ static void kind_wait(unsigned b)
 	CHECK(q.kind == CH_WALL, "then named");
 }
 
-/* "Hold A for a full charge": once, after hold-unlock of A down */
-static void full_hold(unsigned b)
+/* Y: to 100% this time (2026-11-11). Offered with a limit saved and the
+ * battery short of full, charging up to the limit or held at it; a press
+ * that only lights a dark screen does nothing more; over with the cable out
+ * or full */
+static void full_once(void)
 {
-	ch_screen s;
+	ch_reading r;
 
-	ch_screen_start(&s, b);
-	CHECK(!ch_screen_full(&s, b, true), "A down: not yet");
-	CHECK(ch_screen_full_hold(&s, b + DS_MS_HOLD_UNLOCK / 2) > 0.49f, "the bar fills");
-	CHECK(!ch_screen_full(&s, b + DS_MS_HOLD_UNLOCK - 1, true), "nor just before");
-	CHECK(ch_screen_full(&s, b + DS_MS_HOLD_UNLOCK, true), "held long enough: a full charge");
-	CHECK(!ch_screen_full(&s, b + DS_MS_HOLD_UNLOCK + 500, true), "once, though A stays down");
-	CHECK(ch_screen_full_hold(&s, b + DS_MS_HOLD_UNLOCK + 500) == 0.0f, "and the bar is gone");
-	CHECK(!ch_screen_full(&s, b + 5000, false), "A up");
-	CHECK(!ch_screen_full(&s, b + 6000, true), "down again: a new hold");
-	CHECK(!ch_screen_full(&s, b + 6000 + DS_MS_HOLD_UNLOCK - 1, true), "counted from its own start");
-	CHECK(!ch_screen_full(&s, b + 9000, false) && ch_screen_full_hold(&s, b + 9000) == 0.0f,
-	      "let go early: nothing, and the bar empties");
+	ch_fake_parse("62 1480 4120 wall 1", &r);            /* charging, under the limit */
+	CHECK(ch_full_offered(&r, 85, false), "under the limit: Y offered");
+	CHECK(ch_full_step(&r, 85, false, true, true) == CH_FULL_START, "Y: to 100% this time");
+	CHECK(ch_full_step(&r, 85, false, true, false) == CH_FULL_NONE, "Y lighting a dark screen: only that");
+	CHECK(ch_full_step(&r, 85, false, false, true) == CH_FULL_NONE, "no Y: nothing");
+	CHECK(!ch_full_offered(&r, 0, false) && ch_full_step(&r, 0, false, true, true) == CH_FULL_NONE,
+	      "no limit saved: no Y");
+	CHECK(!ch_full_offered(&r, 85, true), "asked for already: no Y");
+	CHECK(ch_full_step(&r, 85, true, true, true) == CH_FULL_NONE, "asked for, charging: it goes on");
+	ch_fake_parse("85 -5 4100 wall 1 1", &r);              /* held at the limit */
+	CHECK(ch_full_step(&r, 85, false, true, true) == CH_FULL_START, "held at the limit: Y too");
+	ch_fake_parse("100 -5 4290 wall 1 1", &r);             /* full */
+	CHECK(!ch_full_offered(&r, 85, false), "full: no Y");
+	CHECK(ch_full_step(&r, 85, true, false, false) == CH_FULL_END, "asked for, now full: over, the limit back");
+	ch_fake_parse("70 0 3900 wall 0", &r);                 /* the cable out */
+	CHECK(!ch_full_offered(&r, 85, false), "the cable out: no Y");
+	CHECK(ch_full_step(&r, 85, true, false, true) == CH_FULL_END, "asked for, the cable out: over");
+	ch_fake_parse("99 300 4280 wall 1", &r);
+	CHECK(ch_full_step(&r, 85, true, false, true) == CH_FULL_NONE, "asked for at 99%: still on");
 }
 
 static void rules(unsigned b)
@@ -274,8 +284,7 @@ int main(void)
 	kind_wait(0xFFFFFFFFu - 3000u);
 
 	printf("charging: a full charge, held for\n");
-	full_hold(1000);
-	full_hold(0xFFFFFFFFu - 1000u);
+	full_once();
 
 	printf("charging: the screen's rules\n");
 	rules(1000);

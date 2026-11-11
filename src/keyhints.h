@@ -20,6 +20,7 @@
 #ifndef KEYHINTS_H
 #define KEYHINTS_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct {
@@ -47,6 +48,15 @@ int keyhints_rows(const key_hint *h, int n, int maxw, int gap, keyhint_width_fn 
  * legend written as text). `buf` holds the pieces `out` points into. */
 #define KEYHINTS_MARK "\x1bkeys"
 size_t keyhints_pack(const key_hint *h, int n, char *out, size_t on);
+
+/* A legend for a screen's rows, packed (as keyhints_pack) into one of a few
+ * buffers that turn round, so a screen may make one every frame and hand it
+ * on as a row's label: menu.h's panels, the hotspot's and the tutorial's
+ * draw it as button hints. Up to KEYHINTS_MAX. */
+const char *keyhints_legend(const key_hint *h, int n);
+
+/* `text` is a packed list */
+bool keyhints_is(const char *text);
 int keyhints_unpack(const char *text, char *buf, size_t bn, key_hint *out, int max);
 
 #endif
