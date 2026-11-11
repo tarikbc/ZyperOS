@@ -730,11 +730,14 @@ or a screen's own, a hint's capitals (Title Case in English). Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
 
-The older form, still written as text where it has not moved yet: "A: go
-Y: by game   L1/R1: window" - the button, a colon, a lowercase verb, three
-spaces between. **meta**, **text-dim**. *(The audit found 3 and 4 spaces,
-"L/R" for two different controls, and "B to close" beside "B: close"; this
-is the one form.)*
+Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
+Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
+close" and "B stop"), the hotspot's page and the tutorial's "(START) skip".
+A screen hands a panel its list packed as a row's label
+(`keyhints_legend`), and the panel draws it centered on that row; the
+checks read it back as text (tools/legend.h, `legend_text`). The words are
+keyhint.*, each language's as it wrote the old legend's. The older text
+form, "A: go   Y: by game", is gone.
 
 ### 11.5 Keyboard
 The whole keyboard of src/keyboard.c, every decision in it kept because each

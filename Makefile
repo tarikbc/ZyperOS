@@ -1044,7 +1044,7 @@ build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/w
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
 	      src/menu.c src/game_menu.c src/controls.c src/audioout.c src/sidelights.c \
-	      src/spawn.c $(I18N_SRC)
+	      src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never
@@ -1503,7 +1503,7 @@ build-native/bt-check: tools/bt-check.c tools/legend.h src/bt.c src/bt.h src/bt_
                       src/bt_menu.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/spawn.c $(I18N_SRC)
+	      -o $@ tools/bt-check.c src/bt.c src/bt_menu.c src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # Muse's view of the Music folder: the two shapes it reads, the litter a Mac
 # leaves beside every track, and where an album's cover is kept.

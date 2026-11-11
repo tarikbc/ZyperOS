@@ -15,6 +15,14 @@ enum {
 	KEYHINTS_SPREAD       /* each row from x0 to x1, the room shared: a screen's foot */
 };
 
+/* A packed list's width on one row (KEYHINTS_GAP between), 0 for text that
+ * is not one */
+int keyhints_line_width(const char *packed);
+
+/* A packed list drawn centered between x0 and x1 on one row's middle `cy`
+ * (KEYHINTS_CENTER); its rows */
+int keyhints_draw_packed(SDL_Renderer *r, const char *packed, int x0, int x1, int cy, Uint8 alpha);
+
 /* How wide one is, and how tall `n` are laid out in `maxw` */
 int keyhints_width(const char *key, const char *label);
 int keyhints_height(const key_hint *h, int n, int maxw);

@@ -2,9 +2,22 @@
 /* See bt_menu.h. No SDL, deliberately. */
 #include "bt_menu.h"
 #include "i18n.h"
+#include "keyhints.h"
 
 #include <stdio.h>
 #include <string.h>
+
+/* Button hints (keyhints.h): up to three of A, Y and X with their words */
+static const char *legend(const char *a, const char *y, const char *x)
+{
+	key_hint h[3];
+	int n = 0;
+
+	if (a) h[n++] = (key_hint){ "A", a };
+	if (y) h[n++] = (key_hint){ "Y", y };
+	if (x) h[n++] = (key_hint){ "X", x };
+	return keyhints_legend(h, n);
+}
 
 const char *bt_menu_footer(const bt_ui *u)
 {
@@ -13,20 +26,20 @@ const char *bt_menu_footer(const bt_ui *u)
 	/* No adapter means the stack was never started, which only launch.sh can
 	 * do and only at boot. A toggle is still worth offering - it saves the
 	 * preference - but it must not promise anything for right now. */
-	if (u->state == BT_NO_ADAPTER)  return T(S_BTMENU_TURN_ON_BOOT);
-	if (u->state == BT_POWERED_OFF) return T(S_BTMENU_TURN_ON);
+	if (u->state == BT_NO_ADAPTER)  return legend(T(S_KEYHINT_TURN_ON_BOOT), NULL, NULL);
+	if (u->state == BT_POWERED_OFF) return legend(T(S_KEYHINT_TURN_ON), NULL, NULL);
 	if (u->scanning)                return T(S_BTMENU_SEARCHING);
-	if (u->n == 0)                  return T(S_BTMENU_SEARCH);
+	if (u->n == 0)                  return legend(NULL, T(S_KEYHINT_SEARCH), NULL);
 	/* On the toggle row rather than a device. */
 	/* Not "turn Bluetooth off": the heading and the row it is under both
 	 * say Bluetooth already, and a footer repeating it is noise. */
-	if (u->cursor < 0) return T(S_BTMENU_TURN_OFF_SEARCH);
-	if (u->cursor >= u->n) return T(S_BTMENU_SEARCH);
+	if (u->cursor < 0) return legend(T(S_KEYHINT_TURN_OFF), T(S_KEYHINT_SEARCH), NULL);
+	if (u->cursor >= u->n) return legend(NULL, T(S_KEYHINT_SEARCH), NULL);
 	if (u->dev[u->cursor].connected)
-		return T(S_BTMENU_DISCONNECT);
+		return legend(T(S_KEYHINT_DISCONNECT), T(S_KEYHINT_SEARCH), T(S_KEYHINT_UNPAIR));
 	if (u->dev[u->cursor].bonded)
-		return T(S_BTMENU_CONNECT);
-	return T(S_BTMENU_PAIR);
+		return legend(T(S_KEYHINT_CONNECT), T(S_KEYHINT_SEARCH), T(S_KEYHINT_UNPAIR));
+	return legend(T(S_KEYHINT_PAIR), T(S_KEYHINT_SEARCH), NULL);
 }
 
 int bt_menu_build(const bt_ui *u, menu_row *out, int max, int visible)

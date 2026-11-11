@@ -10,6 +10,8 @@
 #include "platform.h"
 #include "qr.h"
 #include "ui.h"
+#include "keyhints.h"
+#include "keyhints_draw.h"
 
 /* Everything starts 6 grid steps in from the left, as the lab drew it */
 #define HOT_LEFT     (6 * DS_GRID)
@@ -145,9 +147,17 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms)
 	status(r, kx, room, HOT_ROWS_Y, T(S_HOTPANEL_PHONES), p->phones, 0);
 	status(r, kx, room, HOT_ROWS_Y + HOT_ROW_STEP, T(S_XFER_NOW), p->now, now_ms - now_since);
 
-	/* The key legend (DESIGN.md 11.4), centered at the foot */
-	ui_text(r, ui_font(UI_F_META), p->legend ? p->legend : T(S_PANEL_B_CLOSE),
-	        ZYPEROS_SCREEN_W / 2,
-	        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - DS_INSET - DS_GRID -
-	                             ui_font_line(UI_F_META)), 0, UI_TEXT_DIM);
+	/* The button hints (DESIGN.md 11.4, keyhints.h), centered at the foot */
+	{
+		const char *leg = p->legend ? p->legend
+		                : keyhints_legend((key_hint[]){ { "B", T(S_KEYHINT_CLOSE) } }, 1);
+		int cy = ZYPEROS_SCREEN_H - DS_INSET - DS_GRID - ui_font_line(UI_F_META) / 2;
+
+		if (keyhints_is(leg))
+			keyhints_draw_packed(r, leg, DS_INSET, ZYPEROS_SCREEN_W - DS_INSET, cy, 255);
+		else
+			ui_text(r, ui_font(UI_F_META), leg, ZYPEROS_SCREEN_W / 2,
+			        ui_line_y(UI_F_META, ZYPEROS_SCREEN_H - DS_INSET - DS_GRID -
+			                             ui_font_line(UI_F_META)), 0, UI_TEXT_DIM);
+	}
 }

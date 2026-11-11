@@ -75,24 +75,3 @@ ja = " · %d 回未記録"
 it.one = " · %d persa"
 it.other = " · %d perse"
 
-[playtime.hint_by_system]
-note = The key legend at the foot while the list is by system: A goes to the shelf, Y lists by game, L1/R1 change the window of time
-en = A: go   Y: by game   L1/R1: window
-zh-Hans = A：前往   Y：按游戏   L1/R1：时段
-es = A: ir   Y: por juego   L1/R1: período
-pt-BR = A: ir   Y: por jogo   L1/R1: período
-fr = A\u00a0: aller   Y\u00a0: par jeu   L1/R1\u00a0: période
-de = A: öffnen   Y: nach Spiel   L1/R1: Zeitraum
-ja = A：移動   Y：ゲーム別   L1/R1：期間
-it = A: vai   Y: per gioco   L1/R1: periodo
-
-[playtime.hint_by_game]
-note = The key legend at the foot while the list is by game: A goes to the game, Y lists by system, L1/R1 change the window of time
-en = A: go   Y: by system   L1/R1: window
-zh-Hans = A：前往   Y：按系统   L1/R1：时段
-es = A: ir   Y: por sistema   L1/R1: período
-pt-BR = A: ir   Y: por sistema   L1/R1: período
-fr = A\u00a0: aller   Y\u00a0: par système   L1/R1\u00a0: période
-de = A: öffnen   Y: nach System   L1/R1: Zeitraum
-ja = A：移動   Y：システム別   L1/R1：期間
-it = A: vai   Y: per sistema   L1/R1: periodo

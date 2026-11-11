@@ -61,4 +61,9 @@ void tour_message(SDL_Renderer *r, const char *s, float op);
  * - goes, before its renderer does. Made again the next time it is drawn. */
 void tour_draw_free(void);
 
+/* How START's hint "(START) skip" is drawn: the launcher's button hints
+ * (keyhints.h), its width and a draw from x with the row's middle at cy */
+void tour_hint_draw_set(int (*width)(const char *key, const char *label),
+                        void (*draw)(SDL_Renderer *r, const char *key, const char *label, int x, int cy));
+
 #endif

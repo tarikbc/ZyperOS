@@ -746,19 +746,6 @@ de = LINKS/RECHTS
 ja = 左、右か A
 it = SINISTRA/DESTRA
 
-[tour.skip]
-note = The key legend at the bottom right of every step: START skips the rest.
-en = START: skip
-zh-Hans = START：跳过
-es = START: omitir
-pt-BR = START: pular
-fr = START : passer
-de = START: beenden
-ja = START：スキップ
-it = START: salta
-
-# The stage's stand-ins: a game's details, MP4 playing, the power-off
-
 [tour.demo.played]
 note = The stand-in details panel of a game (Chrono Trigger): its play time, 12 hours.
 en = Played 12 h
