@@ -6,7 +6,7 @@
 # docs/building.md says how to work on a device.
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-signin check-search \
+        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
         check-db check-gamedel check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
@@ -1140,6 +1140,29 @@ build-native/idle-check: tools/idle-check.c src/idle.c src/idle.h src/chargedark
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/idle-check.c src/idle.c src/chargedark.c
+
+# Long tasks and Auto Off (src/taskhold.h): what a loop says holds the clock,
+# lets go by itself, and the real clock does not fire during a task and comes
+# back whole after it. Which jobs hold is long_task_busy (src/zyperdraw.c).
+check-taskhold: build-native/taskhold-check
+	@./build-native/taskhold-check
+
+build-native/taskhold-check: tools/taskhold-check.c src/taskhold.c src/taskhold.h src/idle.c \
+                             src/idle.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/taskhold-check.c src/taskhold.c src/idle.c
+
+# The screensaver's policy (src/saver.h): when it starts and what keeps it from
+# starting, when it ends on its own, a clip's fades, which one is next, and the
+# rule it is built on - Auto Off fires at its own time whatever it does.
+check-saver: build-native/saver-check
+	@./build-native/saver-check
+
+build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c src/idle.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/saver-check.c src/saver.c src/idle.c
 
 # Date & Time: each row moving only itself, the 12-hour and 24-hour words, the
 # shelf's short clock, and the zone list running west to east - see

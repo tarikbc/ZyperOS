@@ -158,6 +158,9 @@ SHOTS={
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
     'scraper':('demo','PS1',['--scraper','2']),
     'update':('demo','PS1',['--update']),
+    # The screensaver (DESIGN.md 11.37) over the focused game's screenshot,
+    # which is the picture its video snap would be
+    'screensaver':('demo','PS1',['--saver','--saver-pic','{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png']),
     'ports':('ports','PRT',['--screen','games']),
     # The in-game menu over a port, and the first of its Controls pages: what
     # its README says the buttons do (the made-up Star Farm, SHOT_FOCUS)
@@ -716,7 +719,7 @@ def main():
                 status=[] if name.startswith('tour-') else ['--status',STATUS.get(name,'10:08 24h wifi=off batt=82')]
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
-                         '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
+                         '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)).replace('{art}',str(args.art_cache)) for f in flags]]
                 if backdrop and name in BACKDROP: command+=['--backdrop',str(backdrop)]
                 set_favs(card,SHOT_FAVS.get(name,[]),True)
                 set_settings(card,SHOT_SETTINGS.get(name),True)

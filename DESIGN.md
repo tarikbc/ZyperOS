@@ -2713,6 +2713,99 @@ same after 5 seconds (11.35). The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
 [0|1|said]`.
 
+### 11.37 Screensaver
+After a while with nothing pressed on the shelf, the video snaps of random
+games play over the whole screen, one after another, each named; **START**
+boots the game on screen, as A on its card would, and any other button goes
+back to the shelf as it was. *(A request, 2026-11-12: "a screensaver that
+plays videos from random games in the collection; if you press Start on one
+of the videos, that game boots".)* Host shot: `--saver [cover]`, with
+`--saver-pic FILE` and `--saver-alpha F`.
+
+**When.** **MENU > Screensaver**, after Side Lights: **off**, 30s, 1m, 2m,
+5m or 10m with nothing pressed, Auto Off's ladder, stepped with Left and
+Right; **1m** to start with, shorter than Auto Off's two minutes so that a
+handheld on battery shows it before it powers off. It starts only on the
+shelf, the home or a games shelf, once its delay has passed with no button
+down. Never in a game, over a menu, MP4, Muse's player or File Transfer, and
+not while music plays, File Transfer is on behind the shelf or a long task
+runs (11.38): the countdown does not run while any of them does, and a
+whole delay passes after it ends, as Auto Off's does on the charger. A game,
+a menu or any other screen in between restarts it. The charger does not
+hold it: a handheld on the cable shows it too. Under 20% on battery it does
+not start (src/saver.h).
+
+**What.** The shelf's loop goes on, and where it would draw the shelf it
+draws this, so every other thing the shelf does keeps working: the power
+button, Auto Off, the dark screen on the cable, a computer plugged in,
+px2-open's commands. The picture on **ink**, which both themes keep for
+content (MP4's full view, 11.14), as large as the screen takes it, in its
+own shape, never stretched, fading up from black over **SAVER_IN_MS**
+(400 ms, **out**), shown for 15 s (it loops when it is shorter) and fading
+to black over 300 ms (**fade**, linear) before the next. The next is picked
+at random from every game on the systems row's menu that has a snap on the
+card and on for its console, never one of the last twelve shown; a clip
+whose first picture does not come in 4 s is skipped. It is muted always,
+whatever Video Snaps' Sound says for the shelf: the snap is asked of the
+daemon the shelf's own snap uses (11.19), and a muted one opens no sound.
+
+Two slabs in the notice's shape (11.7, **surface** at 85%, **radius.panel**),
+fading with the clip. At the foot, 48 from the left and the bottom: the
+game's system in **meta** **text-dim** behind a disc of its mark (as the
+rail's), over its name in **label** **text**, as a notice says its heading
+over its body, up to the screen's width less the margins, cut with an
+ellipsis. At the top right, 48 in: **START**'s hint with **Play** (the games
+shelf's word) over "Any other button goes back" in **chrome** **text-dim**.
+
+**With no snap on the card** it shows the games' covers instead, one at a
+time, each for 8 s, the cover in its own shape at most a third larger than it
+is and above the foot's slab, on the same ink. A game with no cover is not
+picked. With neither, **nothing**: it does not start, the shelf stays as it
+is, and it does not try again until a button is pressed.
+
+**Auto Off and the battery.** It never keeps the device on past Auto Off:
+every pass of the shelf's loop asks idle_due before it asks the
+screensaver, so Auto Off fires at its own time with the screensaver up as
+with the shelf up, and nothing here touches its clock. On the charger Auto
+Off's time darkens the screen (11.25), which ends the screensaver. A
+delay as long as Auto Off's or longer is never seen on battery, since Auto
+Off comes first. Its cost is kept low by what it does not do: it plays muted,
+draws a frame only when the daemon has put out a new picture, while a fade
+moves, for the volume bar and once a second (a cover is one drawn frame
+for 8 s), and ends by itself, until a button, when the chip reports
+"Getting hot" (11.23), the battery falls under 20% off the cable, a long
+task begins, or - on battery only - it has run for 10 minutes, so a
+forgotten handheld with Auto Off at never does not play video until it is
+flat.
+
+**Buttons.** START boots the game as Random Game's pick does (pick_launch:
+the shelf is put on the game and A's launch runs). The volume and brightness
+buttons do their own work and leave it be. POWER powers off as it does
+everywhere. Any other button, MENU and SELECT too, leaves, and is spent
+doing so: it opens nothing. Nothing is heard. *(Defaults mine: a minute, 15 s
+a clip, START and then anything.)*
+
+### 11.38 Long tasks and Auto Off
+**One rule.** A job the device was asked to do holds Auto Off the way the
+charger does: the countdown does not run while it works, and a whole fresh
+one starts when it ends. The jobs: the scraper's art and video downloads
+(MENU > Scraper > Fetch Missing Art, and a Box Art run from a game),
+System Update's download, check of its files and install, PortMaster's install (whichever
+screen is up, or a game), Storage's walk of the card, File Transfer's copies
+and connected browsers, and Muse's album covers. The rule is one function,
+`long_task_busy` in src/zyperdraw.c, asked by `idle_due` for every screen
+and by the game's SETIDLE; a new long job is a line there or a `task_note`
+from its loop (src/taskhold.h), never a clock reset of its own. A job that
+is a process or a state of its own is asked; a loop says it each pass and the
+note lasts 2 s, so a loop that ends by any road out stops holding by itself.
+The battery running flat still ends everything, and the power button always
+does. The log says it once when it changes: "idle: Auto Off waits, Scraper is
+running", "idle: Auto Off is back, nothing long is running".
+*(2026-11-12, a request: "While the scraper runs, Auto Off must not put
+the device to sleep." It had been the other way on purpose - "a library left
+scraping unattended on battery is exactly what Auto Off is for" - and was
+the one job of these that did not hold.)*
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and

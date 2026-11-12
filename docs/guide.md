@@ -189,7 +189,8 @@ than any one console:
 | **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, at `http://zyperos.local`, or always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
-| **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
+| **Auto Off** | how long without a button before the device powers itself down. It waits while a long job runs (a scraper run, a System Update download, PortMaster's install, Storage measuring the card, files moving over File Transfer) and counts again from the start when the job ends. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
+| **Screensaver** | `off`, `30s`, `1m`, `2m`, `5m` or `10m` with nothing pressed on the shelf before the video snaps of random games play over the whole screen, each with its game's name and system. START boots the game on screen; any other button goes back. `1m` on a new device. It never starts in a game, a menu, MP4 or File Transfer, while music plays or a long job runs, or under 20% on battery; on battery it ends by itself after 10 minutes, and Auto Off still powers the device off at its own time. With no video snaps on the card it shows covers instead, and with neither, nothing - see **Screensaver** below |
 | **Side Lights** | the Pixel 2 only: a page of switches for what the side lights show on their own, `Charging Bar`, `Low Battery`, `Volume and Brightness`, `Files and Covers Done` and `Achievements`, each `On` or `Off`; the row says how many are on. L2+R2 shows the level in all four. `All on` on a new device |
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
@@ -235,6 +236,37 @@ it goes back to the cover when the focus moves or a menu opens. Its page:
 
 A snap is `Roms/<console>/.media/<name>.mp4`, beside its cover, so one put
 there by hand plays too.
+
+**Auto Off waits for a fetch.** While Fetch Missing Art, a Box Art run or its
+video snaps are fetching, Auto Off does not count, so a library left to
+scrape overnight is not cut short; the count starts again, whole, when the run
+ends. The power button still powers the device off, and so does the battery
+running flat. System Update's download, PortMaster's install, Storage
+measuring the card and files moving over File Transfer wait the same way.
+
+### Screensaver
+
+MENU > **Screensaver** plays the video snaps of random games over the whole
+screen after the delay you pick, `off` or 30 seconds to 10 minutes, `1m` to
+start with, when nothing has been pressed on the shelf. Each clip shows for
+15 seconds with its game's name and system, then the next fades in.
+
+- **START** boots the game on screen, as A on its card would.
+- **Any other button** goes back to the shelf as it was, and does nothing else.
+  The volume and brightness buttons change their own setting and leave it be.
+- It never starts in a game or over a menu, MP4 or File Transfer, while music
+  plays, File Transfer is on or a long job (a fetch, an update, PortMaster's
+  install) runs, or under 20% on battery.
+- **It never keeps the device on past Auto Off.** Auto Off powers the device
+  off at its own time with the screensaver up; on the cable, its time turns the
+  screen off as it does for the shelf. A delay as long as Auto Off's is never
+  seen on battery.
+- **It is cheap:** muted, drawn only when the picture changes, and on battery
+  it ends by itself after 10 minutes, or when the chip gets hot or the battery
+  falls under 20%, and waits for a button.
+- It plays the snaps on the card (`Roms/<console>/.media/<name>.mp4`) of the
+  consoles whose Video Snaps are on. **With no snaps on the card it shows the
+  games' covers**, each for 8 seconds; with no covers either, it does nothing.
 
 Date & Time has a row for each part of the clock and one for the time zone,
 each changed with left and right and set the moment it changes, so the time

@@ -1858,6 +1858,57 @@ static void charge_row(void)
 	for (i = 0; i < k; i++) ck(pm[i] != PM_CHARGE, "and the list does not name it");
 }
 
+/* The Screensaver row (src/saver.h): after Side Lights, on every device, its
+ * value the delay in Auto Off's words or off, stepped round with left and
+ * right the way Auto Off is. */
+static void saver_row(void)
+{
+	sys_ui u;
+	menu_bufs b;
+	menu_row rows[MENU_MAX_ROWS];
+	pm_row pm[PM_ROWS];
+	const char *heading;
+	char s[16];
+	struct { int sec; const char *want; } t[] = {
+		{ 0, "off" }, { 30, "30s" }, { 60, "1m" }, { 120, "2m" }, { 300, "5m" }, { 600, "10m" },
+	};
+	int n, k, i, found = 0;
+	size_t j;
+
+	printf("the Screensaver row:\n");
+	ck(PM_SAVER == PM_LIGHTS + 1, "sits after Side Lights");
+	for (j = 0; j < sizeof t / sizeof t[0]; j++) {
+		sys_menu_saver_label(t[j].sec, s, sizeof s);
+		ck(!strcmp(s, t[j].want), t[j].want);
+	}
+	/* The Pixel 2, then the Brick: a row on both, with or without lights */
+	memset(&u, 0, sizeof u);
+	u.no_wifi = true;
+	u.no_bt = true;
+	u.cable_xfer = true;
+	u.saver = 60;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	for (i = 0; i < n; i++)
+		if (rows[i].label && !strcmp(rows[i].label, "Screensaver")) {
+			found++;
+			ck(rows[i].live, "is live");
+			ck(!strcmp(val(&rows[i]), "1m"), "reads its delay");
+			ck(menu_sound_at(b.sound, n, i) == MENU_SND_NO_A,
+			   "steps with left and right and is heard after, as Auto Off is");
+		}
+	ck(found == 1, "is there once");
+	u.saver = 0;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[PM_SAVER - 2]), "off"), "and off when it is off");
+	u.no_lights = true;
+	u.no_charge_limit = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	k = sys_menu_zyperos_rows(&u, pm);
+	ck(n == k && has_label(rows, n, "Screensaver"), "a device without lights has it too");
+	for (i = 0, found = 0; i < k; i++) found += pm[i] == PM_SAVER;
+	ck(found == 1, "and the list names it");
+}
+
 static void lights_row(void)
 {
 	sys_ui u;
@@ -2059,6 +2110,7 @@ int main(void)
 	wifi_row_wording();
 	system_menu();
 	auto_off_words();
+	saver_row();
 	cursor_reaches();
 	radio_less();
 	dslang_row();

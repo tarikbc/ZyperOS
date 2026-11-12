@@ -133,6 +133,8 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
 - **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back; Music, Videos and Audiobooks open their albums, films and books the same way, and A deletes one. **X** sorts any of these lists by size, A to Z or last played. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
+- **A screensaver of your games:** after a minute with nothing pressed on the shelf, the video snaps of random games play over the whole screen, each with its name and system. **START** boots the one on screen and any other button goes back. **MENU > Screensaver** sets the delay or turns it off. It never starts in a game or while a long job runs, never keeps the handheld on past Auto Off, and shows covers when there are no video snaps (more in the questions below).
+- **Auto Off waits for long jobs:** a Scraper run, a System Update download, PortMaster's install, Storage measuring the card and files moving over File Transfer hold it, and a whole countdown starts when they end.
 - **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. Open it by name, `http://zyperos.local`, or by its address, and until a browser opens the page the screen checks the connection step by step and says what to do if a step stalls. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
@@ -568,6 +570,25 @@ Don't like a cover? Press X on the game and choose **Cover and Video**. The cove
 </div>
 
 With ScreenScraper linked, **MENU > Scraper > Video Snaps** can fetch each game's video snap with its cover. Rest on a game for three seconds and its cover turns into the snap. They take room, a megabyte or three a game: the page shows how much for each console, turns each one on or off, and deletes them all. Their sound is muted to start.
+
+Auto Off waits while a fetch runs, so a library left to scrape overnight is not cut short. The power button and a flat battery still power the device off.
+
+</details>
+
+<details>
+<summary><b>What is the screensaver?</b></summary>
+
+<div align="center">
+<img src="res/readme/screensaver.png" width="640" alt="The screensaver: Metal Gear Solid's video snap over the whole screen, its system and name at the foot, and START's hint, Play, at the top right">
+</div>
+
+**MENU > Screensaver** plays the video snaps of random games over the whole screen after a delay with nothing pressed on the shelf: `off`, 30 seconds, or 1, 2, 5 or 10 minutes, `1m` to start with. Each clip shows for 15 seconds with its game's name and system, then fades to the next.
+
+- **START** boots the game on screen, as A on its card would. Any other button goes back to the shelf as it was; the volume and brightness buttons do their own work and leave it be.
+- It never starts in a game or over a menu, MP4 or File Transfer, nor while music plays or a long job runs, nor under 20% on battery.
+- **It never keeps the handheld on past Auto Off.** Auto Off powers it off at its own time with the screensaver up, and on the cable its time turns the screen off as it does for the shelf.
+- It plays muted and draws a frame only when the picture changes. On battery it stops by itself after 10 minutes, when the chip gets hot, or when the battery falls under 20%, and waits for a button.
+- With no video snaps on the card it shows the games' covers, 8 seconds each; with no covers either, it does nothing.
 
 </details>
 

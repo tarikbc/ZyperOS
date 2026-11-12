@@ -1359,6 +1359,11 @@ bool art_dat_name(const char *dat, uint32_t crc, char *out, size_t outn)
 
 static void tidy_media(void);
 
+bool art_running(void)
+{
+	return g_running;
+}
+
 void art_cancel(void)
 {
 	/* Whatever was in flight is not wanted, and leaving it in flight holds
