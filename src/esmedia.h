@@ -107,11 +107,16 @@ void es_import_free(es_import_list *l);
 /* ---- for Rename (src/gamern.h) ------------------------------------------
  *
  * The game's own ES files, relative to the folder: each that gamelist.xml's
- * entry names, and each es_media's names find (images/<name>-image.png and
- * the rest), into `rel`, up to `max`, with what each becomes when the game
- * is named `to` into `rel_to`: the game's name in it changed, in the same
- * folder. A file whose name does not hold the game's keeps its name. How
- * many. */
+ * entry names inside ES's media folders (images/, videos/, media/...,
+ * lib_es_media_dir: a list never moves a game of the folder), and each
+ * es_media's names find (images/<name>-image.png and the rest), into `rel`,
+ * up to `max`, with what each becomes when the game is named `to` into
+ * `rel_to`: the game's name in it changed, in the same folder. A file whose
+ * name does not hold the game's keeps its name. How many.
+ *
+ * A path gamelist.xml writes longer than ES_PATH is no path (cut short, it
+ * would name another file), and a list whose values hold one another is
+ * not written back by es_list_rename. */
 int es_files(const char *roms, const char *folder, const char *file, const char *name,
              const char *to, char (*rel)[ES_PATH], char (*rel_to)[ES_PATH], int max);
 

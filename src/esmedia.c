@@ -123,12 +123,13 @@ static void put_utf8(char **o, char *end, unsigned cp)
 }
 
 /* XML's text, its five entities and its numbered ones, and a CDATA section
- * as it stands, into `out`, cut at `n` */
-static void unescape(const char *p, const char *e, char *out, size_t n)
+ * as it stands, into `out`, cut at `n`. False when it was cut: a path cut
+ * short names another file, and is no path (field_path). */
+static bool unescape(const char *p, const char *e, char *out, size_t n)
 {
 	char *o = out, *end = out + n;
 
-	if (!n) return;
+	if (!n) return false;
 	while (p < e && o + 1 < end) {
 		if (e - p >= 9 && !memcmp(p, "<![CDATA[", 9)) {
 			const char *c = p + 9, *x = c;
@@ -160,6 +161,7 @@ static void unescape(const char *p, const char *e, char *out, size_t n)
 		*o++ = *p++;
 	}
 	*o = '\0';
+	return p >= e;
 }
 
 /* `tag`'s text in an element's body, where [b, e) is the body: the first
@@ -175,6 +177,21 @@ static bool field_at(const char *b, const char *e, const char *tag,
 		const char *gt, *close;
 		char after;
 
+		/* Text that only looks like a tag: a comment, a CDATA section */
+		if ((size_t)(e - p) >= 4 && !memcmp(p, "<!--", 4)) {
+			const char *x = memmem(p + 4, (size_t)(e - p - 4), "-->", 3);
+
+			if (!x) return false;
+			p = x + 3;
+			continue;
+		}
+		if ((size_t)(e - p) >= 9 && !memcmp(p, "<![CDATA[", 9)) {
+			const char *x = memmem(p + 9, (size_t)(e - p - 9), "]]>", 3);
+
+			if (!x) return false;
+			p = x + 3;
+			continue;
+		}
 		if ((size_t)(e - p) < tl + 2 || memcmp(p + 1, tag, tl)) { p++; continue; }
 		after = p[1 + tl];
 		if (after != '>' && after != ' ' && after != '\t' && after != '/' && after != '\n' &&
@@ -220,6 +237,37 @@ static bool field(const char *b, const char *e, const char *tag, char *out, size
 		while (t > out && (t[-1] == ' ' || t[-1] == '\t' || t[-1] == '\n' || t[-1] == '\r')) *--t = '\0';
 	}
 	return true;
+}
+
+/* A path-like value: false too when it did not fit `out` whole */
+static bool field_path(const char *b, const char *e, const char *tag, char *out, size_t n)
+{
+	const char *vb, *ve;
+	char *s, *t;
+
+	if (n) out[0] = '\0';
+	if (!field_at(b, e, tag, &vb, &ve) || !unescape(vb, ve, out, n)) {
+		if (n) out[0] = '\0';
+		return false;
+	}
+	for (s = out; *s == ' ' || *s == '\t' || *s == '\n' || *s == '\r'; s++) {}
+	if (s != out) memmove(out, s, strlen(s) + 1);
+	t = out + strlen(out);
+	while (t > out && (t[-1] == ' ' || t[-1] == '\t' || t[-1] == '\n' || t[-1] == '\r')) *--t = '\0';
+	return true;
+}
+
+/* Inside one of the folders ES's scrapers fill (images/, videos/, media/...,
+ * lib_es_media_dir): the only place a file of the game's that gamelist.xml
+ * names is moved from by Rename, never a game of the folder */
+static bool in_media_dir(const char *rel)
+{
+	const char *slash = strchr(rel, '/');
+	char first[LIB_NAME];
+
+	if (!slash || slash == rel || (size_t)(slash - rel) >= sizeof first) return false;
+	snprintf(first, sizeof first, "%.*s", (int)(slash - rel), rel);
+	return lib_es_media_dir(first);
 }
 
 /* The next <game> element at or after `p`: its start and end (past
@@ -442,7 +490,7 @@ static es_index *index_make(const char *roms, const char *folder)
 	for (at = buf; next_game(at, buf + len, &gs, &ge, &bb, &be); at = ge) {
 		es_game *g;
 
-		if (!field(bb, be, "path", v, sizeof v) || !rel_of(v, folder, rel, sizeof rel)) continue;
+		if (!field_path(bb, be, "path", v, sizeof v) || !rel_of(v, folder, rel, sizeof rel)) continue;
 		if (x->n == cap) {
 			int more = cap ? cap * 2 : 256;
 			es_game *bigger = realloc(x->g, (size_t)more * sizeof *bigger);
@@ -458,7 +506,7 @@ static es_index *index_make(const char *roms, const char *folder)
 		stem_of(rel, v, sizeof v);
 		g->stem = strdup(v);
 		for (int k = 0; k < M_COUNT; k++)
-			if (field(bb, be, MEDIA_TAGS[k], v, sizeof v) && v[0] &&
+			if (field_path(bb, be, MEDIA_TAGS[k], v, sizeof v) && v[0] &&
 			    rel_of(v, folder, rel, sizeof rel))
 				g->media[k] = strdup(rel);
 		g->off = (long)(gs - buf);
@@ -859,8 +907,8 @@ int es_files(const char *roms, const char *folder, const char *file, const char 
 
 		if (el && next_game(el, el + len, &gs, &ge, &bb, &be))
 			for (int t = 0; ALL_MEDIA_TAGS[t]; t++)
-				if (field(bb, be, ALL_MEDIA_TAGS[t], v, sizeof v) && v[0] &&
-				    rel_of(v, folder, r, sizeof r) &&
+				if (field_path(bb, be, ALL_MEDIA_TAGS[t], v, sizeof v) && v[0] &&
+				    rel_of(v, folder, r, sizeof r) && in_media_dir(r) &&
 				    snprintf(p, sizeof p, "%s/%s/%s", roms, folder, r) < (int)sizeof p &&
 				    is_file(p))
 					k = pair_add(rel, rel_to, k, max, r, name, to);
@@ -942,9 +990,9 @@ bool es_list_rename(const char *roms, const char *folder, const char *file, cons
 	/* Each picture or video it names that went with the game: the value as
 	 * it was written, its last part the file's new name */
 	for (int t = 0; ALL_MEDIA_TAGS[t] && ne < ES_EDITS; t++) {
-		if (!field_at(bb, be, ALL_MEDIA_TAGS[t], &vb, &ve)) continue;
-		unescape(vb, ve, v, sizeof v);
-		if (!rel_of(v, folder, r, sizeof r)) continue;
+		if (!field_at(bb, be, ALL_MEDIA_TAGS[t], &vb, &ve) || !unescape(vb, ve, v, sizeof v) ||
+		    !rel_of(v, folder, r, sizeof r))
+			continue;
 		for (int i = 0; i < nrel; i++) {
 			const char *slash, *base_to = strrchr(rel_to[i], '/');
 
@@ -961,6 +1009,16 @@ bool es_list_rename(const char *roms, const char *folder, const char *file, cons
 		}
 	}
 	qsort(ed, (size_t)ne, sizeof *ed, edit_cmp);
+	/* Each value its own stretch of the element, in order: a list whose
+	 * values hold one another (a tag inside a <path>) is not one to write
+	 * back, and is left as it was */
+	for (int i = 0; i < ne; i++)
+		if (ed[i].ve < ed[i].vb || ed[i].vb < gs || ed[i].ve > ge || (i && ed[i].vb < ed[i - 1].ve)) {
+			free(ed);
+			free(buf);
+			forget_one(folder);
+			return false;
+		}
 	snprintf(p, sizeof p, "%s/%s/gamelist.xml", roms, folder);
 	snprintf(tmp, sizeof tmp, "%s.part", p);
 	if ((f = fopen(tmp, "wb"))) {

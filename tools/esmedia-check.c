@@ -58,6 +58,14 @@ static void put(const char *rel, const char *text)
 	fclose(f);
 }
 
+static bool there_rom(const char *name)
+{
+	char p[1200];
+
+	snprintf(p, sizeof p, "%s/nds/%s", roms, name);
+	return access(p, F_OK) == 0;
+}
+
 static bool ends(const char *s, const char *tail)
 {
 	size_t a = strlen(s), b = strlen(tail);
@@ -102,6 +110,7 @@ static const char LIST[] =
 	"\t\t<genre>Racing</genre>\n"
 	"\t\t<players>1-8</players>\n"
 	"\t\t<favorite>true</favorite>\n"
+	"\t\t<manual>./Mario Kart DS (USA) Bonus.nds</manual>\n"
 	"\t</game>\n"
 	"\t<game>\n"
 	"\t\t<path>/userdata/roms/nds/Tetris DS (Europe).nds</path>\n"
@@ -130,6 +139,9 @@ int main(void)
 	put("Roms/nds/Picross DS (Europe).nds", "rom");
 	put("Roms/nds/Disc Set/Disc Set.cue", "cue");
 	put("Roms/nds/gamelist.xml", LIST);
+	/* A game of the folder that the list names as Mario Kart's manual: never
+	 * moved by its rename, which takes only what is in ES's media folders */
+	put("Roms/nds/Mario Kart DS (USA) Bonus.nds", "rom");
 	put("Roms/nds/images/Mario Kart DS (USA)-image.png", "png");
 	put("Roms/nds/images/Mario Kart DS (USA)-thumb.png", "png");
 	put("Roms/nds/images/Mario Kart DS (USA)-marquee.png", "png");
@@ -220,7 +232,7 @@ int main(void)
 		char t[256];
 
 		CHECK(lib_scan_listing(roms, "nds", "nds,zip", &l));
-		CHECK(l.count == 4);
+		CHECK(l.count == 5);
 		CHECK(l.skipped == 0);                    /* not images/, videos/ or gamelist.xml */
 		snprintf(have.title, sizeof have.title, "%s", "Scraped Name");
 		CHECK(db_game_set(db_lib(), "nds", "Disc Set/Disc Set.cue", &have));
@@ -259,6 +271,7 @@ int main(void)
 			if (!strcmp(rel[i], "images/Mario Kart DS (USA)-marquee.png")) marquee = true;
 		}
 		CHECK(image && video && marquee);
+		for (i = 0; i < n; i++) CHECK(strstr(rel[i], "Bonus") == NULL);
 		before = slurp("Roms/nds/gamelist.xml");
 		CHECK(es_list_rename(roms, "nds", "Mario Kart DS (USA).nds", "Mario Kart DS (USA)", "MKDS.nds",
 		                     rel, to, n));
@@ -267,7 +280,7 @@ int main(void)
 		      strstr(after, "<image>./images/MKDS-image.png</image>") &&
 		      strstr(after, "<video>./videos/MKDS-video.mp4</video>") &&
 		      strstr(after, "<marquee>./images/MKDS-marquee.png</marquee>") &&
-		      !strstr(after, "Mario Kart DS (USA)"));
+		      !strstr(after, "Mario Kart DS (USA).nds") && !strstr(after, "Mario Kart DS (USA)-"));
 		/* the rest as it was: the Tetris entry, byte for byte */
 		CHECK(before && after && strstr(before, "<path>/userdata/roms/nds/Tetris DS (Europe).nds</path>") &&
 		      strstr(after, "<path>/userdata/roms/nds/Tetris DS (Europe).nds</path>") &&
@@ -282,8 +295,41 @@ int main(void)
 		CHECK(es_media(roms, "nds", "MKDS.nds", "MKDS", ES_VIDEO, true, out, sizeof out) &&
 		      ends(out, "/nds/videos/MKDS-video.mp4"));
 		CHECK(es_details(roms, "nds", "MKDS.nds", "MKDS", &m, NULL) && !strcmp(m.title, "Mario Kart DS"));
+		CHECK(after && strstr(after, "<manual>./Mario Kart DS (USA) Bonus.nds</manual>"));
+		CHECK(there_rom("Mario Kart DS (USA) Bonus.nds"));
 		free(before);
 		free(after);
+	}
+
+	printf("a list made to mislead:\n");
+	{
+		/* A path too long for ES_PATH, cut, would name another file: no game */
+		char *big = malloc(ES_PATH + 400), *list = malloc(ES_PATH + 800);
+
+		memset(big, 'a', ES_PATH + 100);
+		big[ES_PATH + 100] = '\0';
+		memcpy(big, "./Zelda", 7);
+		snprintf(list, ES_PATH + 800, "<gameList><game><path>%s.nds</path><name>Cut</name>"
+		         "<image>./images/Zelda-image.png</image></game></gameList>\n", big);
+		put("Roms/cut/Zelda.nds", "rom");
+		put("Roms/cut/images/Zelda-image.png", "png");
+		put("Roms/cut/gamelist.xml", list);
+		CHECK(!es_details(roms, "cut", "Zelda.nds", "Zelda", &m, NULL));
+		CHECK(es_media(roms, "cut", "Zelda.nds", "Zelda", ES_COVER, true, out, sizeof out) &&
+		      ends(out, "/cut/images/Zelda-image.png"));   /* by ES's names still */
+		free(big);
+		free(list);
+	}
+	{
+		/* A <path> in a comment or a CDATA section ahead of the real one is
+		 * no path */
+		put("Roms/cdata/Real.nds", "rom");
+		put("Roms/cdata/gamelist.xml",
+		    "<gameList><game><!-- <path>./Fake.nds</path> --><desc><![CDATA[<path>./Fake.nds</path>]]></desc>"
+		    "<path>./Real.nds</path><name>Real Name</name></game></gameList>\n");
+		CHECK(es_details(roms, "cdata", "Real.nds", "Real", &m, NULL) && !strcmp(m.title, "Real Name"));
+		CHECK(!strcmp(m.synopsis, "<path>./Fake.nds</path>"));
+		CHECK(!es_details(roms, "cdata", "Fake.nds", "Fake", &m, NULL));
 	}
 
 	printf("the shelf's folder:\n");
