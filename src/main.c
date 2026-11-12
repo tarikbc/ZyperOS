@@ -24383,6 +24383,9 @@ static void saver_pool_build(app *a, bool video)
 	saver_pool_free();
 	for (i = 0; i < a->sys.count; i++) {
 		const system_cfg *s = &a->sys.systems[i];
+		/* Every game of the system, in every folder (sys_games): the index
+		 * is pick_launch's, which opens the game's folder */
+		const game_list *gl = sys_games(&a->view[i]);
 		char **stems = NULL;
 		int n = 0;
 
@@ -24397,8 +24400,8 @@ static void saver_pool_build(app *a, bool video)
 			stems = saver_cover_stems(s->folder, &n);
 			if (!n) continue;
 		}
-		for (j = 0; j < a->view[i].list.count; j++) {
-			const char *name = a->view[i].list.items[j].name;
+		for (j = 0; j < gl->count; j++) {
+			const char *name = gl->items[j].name;
 
 			if (bsearch(&name, stems, (size_t)n, sizeof *stems, snap_name_cmp) &&
 			    !saver_pool_add(i, j))
@@ -24448,10 +24451,10 @@ static bool saver_next(app *a, unsigned now)
 
 		if (i < 0) return false;
 		saver_recent_add(&g_sv.recent, i);
-		if (g_sv.shelf[i] >= a->sys.count || g_sv.game[i] >= a->view[g_sv.shelf[i]].list.count)
+		if (g_sv.shelf[i] >= a->sys.count || g_sv.game[i] >= sys_games(&a->view[g_sv.shelf[i]])->count)
 			continue;
 		s = &a->sys.systems[g_sv.shelf[i]];
-		g = &a->view[g_sv.shelf[i]].list.items[g_sv.game[i]];
+		g = &sys_games(&a->view[g_sv.shelf[i]])->items[g_sv.game[i]];
 		if (g_sv.video) {
 			if (!snaps_path(P_ROMS, s->folder, g->name, path, sizeof path) ||
 			    stat(path, &st) != 0 || st.st_size <= 0)
