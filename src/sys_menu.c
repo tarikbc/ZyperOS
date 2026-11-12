@@ -254,6 +254,7 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	[PM_SLEEP]      = MENU_SND_NO_A,
 	[PM_CHARGE]     = MENU_SND_RING,
 	[PM_APPEARANCE] = MENU_SND_RING,
+	[PM_SHADER]     = MENU_SND_RING,
 	[PM_HOME]       = MENU_SND_RING,
 	[PM_ORDER]      = MENU_SND_RING,
 	[PM_BATTERY]    = MENU_SND_RING,
@@ -263,13 +264,14 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core and Game Language step on A as well; Sort By and Display Mode do
- * nothing with it. */
+/* Core, Game Language and Shader step on A as well; Sort By and Display
+ * Mode do nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
 	[SM_DSLANG]  = MENU_SND_RING,
 	[SM_SORT]    = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
+	[SM_SHADER]  = MENU_SND_RING,
 	[SM_RANDOM]  = MENU_SND_OWN,
 };
 static unsigned char smm_sound(sm_muse_row r)
@@ -356,6 +358,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		full[SM_SORT]    = (menu_row){ T(S_SYSMENU_SORT_BY),
 		                              u->sort ? u->sort : T(S_SORT_NAME), true  };
 		full[SM_DISPLAY] = (menu_row){ T(S_SYSMENU_DISPLAY_MODE), u->dmode, true  };
+		/* How the picture is drawn at its last step, Off or a shader: this
+		 * system's, as Display Mode is (src/app.h SHADERS) */
+		full[SM_SHADER]  = (menu_row){ T(S_GAMEMENU_SHADER),
+		                              u->shader ? u->shader : T(S_MENU_OFF_TITLE), true };
 		/* Button Mapping is out until there is something behind it. Diatom
 		 * supplies core button labels, so the hook is real - but a dead row
 		 * in a menu of live ones is a promise the launcher is not keeping,
@@ -502,6 +508,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ACHIEVEMENTS] = (menu_row){ T(S_SYSMENU_CHEEVOS),
 	                                   u->ra_in ? u->ra_name : T(S_SYSMENU_SIGN_IN),
 	                                   true };
+	/* The shader for every system at once; each system's own menu and the
+	 * in-game menu choose one for that system alone (src/app.h SHADERS) */
+	full[PM_SHADER]       = (menu_row){ T(S_GAMEMENU_SHADER),
+	                                   u->shader_all ? u->shader_all : T(S_MENU_OFF_TITLE), true };
 	/* What every button does, per screen. Needs nothing of the device, which
 	 * is the point: it is the page you reach when the thing you have forgotten
 	 * is which button opens Muse. See src/controls.h. */

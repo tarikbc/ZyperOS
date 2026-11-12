@@ -304,7 +304,7 @@ typedef struct {
 	char dmode[32];        /* SETDISPLAY: a name from diatom_modes[].
 	                        * SETCHANNELS: one from diatom_channels_names[].
 	                        * Both arrive as `mode=`, so one slot. */
-	char dfilter[16];      /* SETDISPLAY: nearest | sharp */
+	char dfilter[16];      /* SETDISPLAY: a name from diatom_filters[] */
 	int  index, count;     /* SETLEVEL: `count` is POSITIONS, not a max index.
 	                        * OVERLAY: `count` is the duration in ms, sent as
 	                        * `ms=`. One slot, two verbs, no second name.
@@ -419,6 +419,21 @@ typedef struct {
 
 extern const diatom_display_mode_info diatom_modes[];
 extern const int                      diatom_mode_count;
+
+/* The filters by name, as SETDISPLAY's `filter=` and --filter take them and
+ * DISPLAY reports them, in diatom_filter's order: diatom_filters[f] is f's.
+ * A shader for the final scale is one more row here and one more program in
+ * the ports that draw with one (port/pixel2.c), so an LCD grid or a CRT goes
+ * in as a name, not as a second axis. */
+typedef struct {
+	const char   *name;
+	diatom_filter filter;
+	const char   *note;
+} diatom_filter_info;
+
+extern const diatom_filter_info diatom_filters[DIATOM_FILTER_COUNT];
+/* The filter called `name`, or -1 */
+int diatom_filter_index(const char *name);
 
 /* audio.c - cores emit 32040..131072 Hz; the device runs at whatever it runs at.
  * A polyphase windowed sinc, with dynamic rate control holding the port's buffer

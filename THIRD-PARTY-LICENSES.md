@@ -35,6 +35,12 @@ Diatom and for plastron, the Linux system under ZyperOS, and ZyperOS's own
   it carries.
 - ZyperOS starts it as a process of its own and talks to it through a Unix
   socket. The launcher does not link to it.
+- **Sharp-Shimmerless**, the shader the Shader rows offer, is zadpos's
+  (https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader at 2a74e7a),
+  under **CC0 1.0 Universal**: public domain, as its source says. Diatom
+  carries it ported to OpenGL ES 3.0 in `diatom/port/pixel2.c` and as the
+  Brick's resampling map in `diatom/port/brick.c`; `diatom/THIRD-PARTY.md`
+  says more.
 
 ---
 

@@ -1258,7 +1258,29 @@
         "--backdrop",
         "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "92b20bcdb0d26e4bc3c4909274a3792b879478cfa789044ef0701e4f111895dd"
+      "sha256": "aa0dbfbd8b3c35d6d77fe7b9cd1e36d9f39d7b03105d58af0fea3e8d1d4ddbea"
+    },
+    {
+      "file": "light/gamemenu-shader.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "5",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "6ac7d81bc37b680da825d301ed611798743a6f6d63a165ffb3a3f46f5d6cb0d5"
     },
     {
       "file": "light/controls-ps1.png",

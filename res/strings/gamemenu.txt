@@ -447,3 +447,41 @@ fr = Natif 1:1
 de = Nativ 1:1
 ja = 等倍 1:1
 it = Nativo 1:1
+
+# ---- the shader -------------------------------------------------------------
+# How the game's picture is drawn onto the screen at its last step (src/app.h
+# SHADERS): Off, or a shader by its name. The in-game menu's row after
+# Display, the system menu's after Display Mode, and MENU's for every system.
+
+[gamemenu.shader]
+note = A row in the in-game menu, the system menu and MENU: the shader the game's picture is drawn with; its value is Off or a shader's name. Shader is the word players know from RetroArch, kept in the Latin languages.
+en = Shader
+zh-Hans = 着色器
+es = Shader
+pt-BR = Shader
+fr = Shader
+de = Shader
+ja = シェーダー
+it = Shader
+
+[gamemenu.shader_shimmerless]
+note = The Shader row's value: the Sharp-Shimmerless shader, by its author's name for it, never translated. Pixels stay sharp and even while the picture scrolls.
+en = Sharp-Shimmerless
+zh-Hans = Sharp-Shimmerless
+es = Sharp-Shimmerless
+pt-BR = Sharp-Shimmerless
+fr = Sharp-Shimmerless
+de = Sharp-Shimmerless
+ja = Sharp-Shimmerless
+it = Sharp-Shimmerless
+
+[gamemenu.shader_mixed]
+note = MENU's Shader row's value when the systems do not all have the same shader: each system has its own, chosen in its menu or in a game. Lowercase, as a status value.
+en = per system
+zh-Hans = 按系统
+es = por sistema
+pt-BR = por sistema
+fr = par système
+de = je System
+ja = システムごと
+it = per sistema

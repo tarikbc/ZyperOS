@@ -136,8 +136,9 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
 
 /* GM_ROWS is every game's menu. A game with two screens - a Nintendo DS
  * game on DSperate, whose one frame Diatom cuts into its top and bottom
- * screens - has three rows more, after Display, where the picture is
- * already the subject: Screens (the layout), Swap Screens and Stylus. Their
+ * screens - has three rows more, after Display and Shader, where the
+ * picture is already the subject: Screens (the layout), Swap Screens and
+ * Stylus. Their
  * ids come after GM_ROWS so that every other game's rows are still their own
  * ids, in order; gm_row_ids says which rows a menu has, in the order shown. */
 /* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
@@ -150,13 +151,18 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * step it. With Save and Load, where states are. A system whose core keeps
  * no state (controls.h, ctl_has_states) has no quick slot and no row, so
  * its menu has a row fewer: gm_row_ids says which rows a menu has. */
-/* Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
+/* Shader, right after Display (2026-11-12): how the picture is drawn at its
+ * last step, Off or a shader by its name (src/app.h SHADERS), kept for the
+ * game's system and sent to the game at once. Every game's, so it is one of
+ * GM_ROWS, and Controls is a row further down.
+ *
+ * Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
  * Rumble Pak or the Controller Pak (the memory card some games save to),
  * kept for the game. Right before Controls, whose C buttons page says which
  * one is in. Its id comes after the screens' rows, as theirs do. */
 typedef enum {
-	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_CONTROLS, GM_CHEEVOS, GM_RESET,
-	GM_QUIT,
+	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
+	GM_RESET, GM_QUIT,
 	GM_ROWS,
 	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK,
 	GM_MAX_ROWS
@@ -177,6 +183,7 @@ int gm_layout_index(const char *name);                   /* 0 for one it does no
 /* What the in-game menu needs to know, gathered by the caller. */
 typedef struct {
 	const char *dmode;    /* the display mode's label */
+	const char *shader;   /* the shader's label; NULL reads Off */
 	int         earned;
 	int         total;    /* 0: this game has no achievement set */
 	/* Two screens in this game's frame, and how they are shown now. */
