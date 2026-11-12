@@ -28,7 +28,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
@@ -1290,6 +1290,23 @@ build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h 
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
+
+# Achievements earned offline, sent when a network is back: the store, the
+# unlock queue's worker and the request, with this check's own binary for curl
+# answering as RetroAchievements does (tools/raoffline-check.c). Makes no
+# request. Needs SDL2, for the worker's thread.
+check-raoffline:
+	@if pkg-config --exists sdl2 2>/dev/null; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+		  $$(pkg-config --cflags sdl2) -Isrc \
+		  -DNET_TMP='"$(CURDIR)/build-native/raoffline-check-tmp"' \
+		  -DZYPEROS_VERSION='"check"' \
+		  -o build-native/raoffline-check tools/raoffline-check.c src/raqueue.c \
+		  src/cheevos.c src/rafetch.c src/rajson.c src/rahash.c src/atomic.c src/db.c \
+		  $(I18N_SRC) $$(pkg-config --libs sdl2) -lsqlite3 -lz -lpthread && \
+		./build-native/raoffline-check; \
+	else echo "skipped: no SDL2 for the offline achievements check"; fi
 
 # The two set converters - one C on the device, one Python in the bulk tool -
 # over real RetroAchievements responses. Needs credentials and a network;
