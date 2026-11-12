@@ -134,6 +134,24 @@ static inline int lib_name_cmp(const game_entry *a, const game_entry *b)
 	return c ? c : strcmp(a->file, b->file);
 }
 
+/* The folder a system's shelf reads when it is not the one systems.cfg names
+ * (`home`): an EmulationStation name of the system's (its es line), chosen
+ * by the shelf's scan (src/shelfbuild.c, shelf_folder_choose). Keyed on the
+ * home folder, which is one system's alone. lib_folder_set with `folder`
+ * the home itself, or NULL, forgets it; lib_folder_get answers the folder
+ * in use for `home`, `home` itself when none; lib_folder_home the home of a
+ * folder in use, the folder itself when it is no other system's. Safe from
+ * any thread: Box Art and ScreenScraper ask on theirs. */
+void lib_folder_set(const char *home, const char *folder);
+const char *lib_folder_get(const char *home, char *out, size_t n);
+const char *lib_folder_home(const char *folder, char *out, size_t n);
+void lib_folder_reset(void);
+/* Which folder a shelf with EmulationStation names reads, by the games each
+ * holds: -1 for its own (`home_games` of them) while that has any, else the
+ * index into `games` of the folder with the most, the first on a tie; -1 too
+ * when none has any. Pure, for tools/esmedia-check.c. */
+int lib_folder_pick(int home_games, const int *games, int n);
+
 /* Restore selection after a title sort. The owner is part of the identity on
  * Favorites, where two systems can have the same file name. */
 int lib_find_entry(const game_list *list, const int *owners,

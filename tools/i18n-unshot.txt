@@ -206,6 +206,10 @@ gamemenu.delete_outside
 gamemenu.delete_runtime
 gamemenu.delete_port_unknown
 gamemenu.delete_bios
+gamemenu.rename_invalid
+gamemenu.rename_taken
+gamemenu.rename_failed
+gamemenu.rename_partly
 gamemenu.layout_stacked
 gamemenu.layout_focus
 gamemenu.dmode_aspect

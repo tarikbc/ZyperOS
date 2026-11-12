@@ -130,6 +130,8 @@
 #include "raqueue.h"
 #include "shelfbuild.h"
 #include "shelfdir.h"
+#include "esmedia.h"
+#include "gamern.h"
 #include "stats_screen.h"
 #include "zyperdraw.h"
 #include "zypermark.h"
@@ -1530,6 +1532,72 @@ static bool has_box_art(const char *folder, const char *name)
 	return stat(p, &st) == 0 && st.st_size > 0;
 }
 
+/* EmulationStation's picture for a game with no box art of its own
+ * (src/esmedia.h), as the cover worker's second file: the key is the game's
+ * folder, file and name, a tab between, found on the worker (TEXLOAD_LATE),
+ * where the folder's gamelist.xml may be read the first time */
+static void es_cover_key(const char *folder, const game_entry *g, char *out, size_t n)
+{
+	snprintf(out, n, "%s%s\t%s\t%s", TEXLOAD_LATE, folder, g->file, g->name);
+}
+
+/* The folder a computer's file names (--meta, --titles: systems.cfg's, as
+ * tools/scrape-art.py writes them) as the card's shelf reads it: an
+ * EmulationStation folder where that shelf reads one (DESIGN.md 11.40).
+ * The card is read for it once. */
+static const char *card_folder(const char *folder)
+{
+	static systems_cfg cfg;
+	static bool read;
+	static char out[CFG_STR];
+
+	if (!read) {
+		char path[CFG_STR * 2];
+
+		read = true;
+		snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
+		if (cfg_load_systems(path, &cfg)) shelf_folders_from_card(&cfg);
+	}
+	for (int i = 0; i < cfg.count; i++)
+		if (!strcmp(cfg.systems[i].home, folder)) {
+			snprintf(out, sizeof out, "%s", cfg.systems[i].folder);
+			return out;
+		}
+	return folder;
+}
+
+/* Box Art's question (art_es_media): `dir` is Roms/<folder> */
+static bool es_art_has(const char *dir, const char *file, const char *stem, es_kind kind)
+{
+	char roms[LIB_PATH * 2], p[ES_PATH];
+	const char *slash = strrchr(dir, '/');
+
+	if (!slash) return false;
+	snprintf(roms, sizeof roms, "%.*s", (int)(slash - dir), dir);
+	return es_media(roms, slash + 1, file, stem, kind, true, p, sizeof p);
+}
+
+static bool es_art_cover(const char *dir, const char *file, const char *stem)
+{
+	return es_art_has(dir, file, stem, ES_COVER);
+}
+
+static bool es_art_video(const char *dir, const char *file, const char *stem)
+{
+	return es_art_has(dir, file, stem, ES_VIDEO);
+}
+
+static bool es_cover_late(const char *key, char *path, size_t n)
+{
+	char k[LIB_PATH * 3], *file, *name;
+
+	snprintf(k, sizeof k, "%s", key);
+	if (!(file = strchr(k, '\t')) || !(name = strchr(file + 1, '\t'))) return false;
+	*file++ = '\0';
+	*name++ = '\0';
+	return es_media(P_ROMS, k, file, name, ES_COVER, true, path, n);
+}
+
 /* Whether game `i`'s slot on a shelf wants a card: it has none, or it holds a
  * generated card made for the theme that was, which stays on the shelf until
  * its replacement comes (theme_changed). Box art is no theme's and never is
@@ -1591,8 +1659,12 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 		char art[LIB_PATH * 3];
 		ui_card_order card;
 
+		char es[LIB_PATH * 3];
+
 		box_art_path(a->sys.systems[o].folder, v->list.items[i].name,
 		             art, sizeof art);
+		/* and EmulationStation's, for a game with none of its own */
+		es_cover_key(a->sys.systems[o].folder, &v->list.items[i], es, sizeof es);
 		/* Hand it to the worker and draw what the slot holds this frame:
 		 * nothing, or the card of the theme that was until its replacement
 		 * lands (theme_changed). Asking is cheap and ignores a card already
@@ -1600,13 +1672,15 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 		 * there is no box art, so that is the worker's to draw as well. */
 		ui_card_order_set(&card, v->list.items[i].title,
 		                  a->sys.systems[o].accent, false);
-		bool asked = texload_want_or_draw(s, i, art, NULL, &card);
+		bool asked = texload_want_or_draw(s, i, art, es, &card);
 
 		if (!asked && !g_loads_held) {
 			/* No worker. Exactly what this did before, on the frame, over
 			 * the card of the theme that was if there is one. */
 			if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
 			v->tex[i] = load_image(a->r, art, &v->tw[i], &v->th[i], &v->cb[i]);
+			if (!v->tex[i] && es_cover_late(es + 1, es, sizeof es))
+				v->tex[i] = load_image(a->r, es, &v->tw[i], &v->th[i], &v->cb[i]);
 			if (!v->tex[i])
 				v->tex[i] = ui_make_card(a->r, v->list.items[i].title,
 				                         a->sys.systems[o].accent,
@@ -3723,7 +3797,10 @@ static int       g_snap_vol;              /* and the sound it was asked with */
 /* A sound the next ask takes in place of the setting's, -1 for the setting:
  * the Cover and Video page's picture plays muted, Watch at full */
 static int       g_snap_force_vol = -1;
-static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; } g_snap_focus;
+/* `es_wait`: the game's folder had no EmulationStation index yet when its
+ * file was worked out (src/esmedia.h), so it is worked out again once there
+ * is one - the covers' worker builds it, a moment after the shelf asks */
+static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; bool es_wait; } g_snap_focus;
 
 /* Its sound as set, and none while Muse plays somebody's music. Read when a
  * snap is asked for: on every frame it was two settings reads from the
@@ -3790,18 +3867,28 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 		g_snap_focus.sys = -1;
 		g_snap_focus.path[0] = '\0';
 	} else if (g_snap_focus.sys != a->sys_cursor || g_snap_focus.cursor != v->cursor ||
-	           strcmp(g_snap_focus.file, g->file)) {
+	           strcmp(g_snap_focus.file, g->file) ||
+	           (g_snap_focus.es_wait && es_ready(a->sys.systems[owner].folder))) {
 		const char *folder = a->sys.systems[owner].folder;
 		struct stat st;
+		bool on = snaps_play() && folder[0] && snaps_console_on(folder);
 
 		g_snap_focus.sys = a->sys_cursor;
 		g_snap_focus.cursor = v->cursor;
 		snprintf(g_snap_focus.file, sizeof g_snap_focus.file, "%s", g->file);
 		g_snap_focus.path[0] = '\0';
-		if (snaps_play() && folder[0] && snaps_console_on(folder) &&
+		g_snap_focus.es_wait = false;
+		if (on &&
 		    snaps_path(P_ROMS, folder, g->name, g_snap_focus.path, sizeof g_snap_focus.path) &&
 		    (stat(g_snap_focus.path, &st) != 0 || st.st_size <= 0))
 			g_snap_focus.path[0] = '\0';
+		/* No snap of its own: EmulationStation's video, if its folder has
+		 * one (src/esmedia.h). Not built on the frame: asked again once
+		 * the covers' worker has built the folder's index. */
+		if (on && !g_snap_focus.path[0] &&
+		    !es_media(P_ROMS, folder, g->file, g->name, ES_VIDEO, false,
+		              g_snap_focus.path, sizeof g_snap_focus.path))
+			g_snap_focus.es_wait = !es_ready(folder);
 	}
 	req = snapshelf_step(&g_snap_shelf, g ? g_snap_focus.path : "", front,
 	                     snapv_texture(NULL, NULL, NULL) != NULL, now, &hold, &k);
@@ -3935,8 +4022,9 @@ static bool game_has_snap(void *ctx, int i)
 	if (!folder[0] || is_muse(&a->sys.systems[owner])) return false;
 	s = snap_names_for(folder);
 	name = v->list.items[i].name;
-	return s->on && s->n &&
-	       bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp);
+	if (!s->on) return false;
+	return (s->n && bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp)) ||
+	       es_has_video(folder, v->list.items[i].file, name);
 }
 
 /* The heading of a shelf: its system, and on a folder of its games the
@@ -10403,9 +10491,55 @@ static int after_start_thread(void *unused)
 {
 	(void)unused;
 	if (g_after.check) lib_check_run(g_after.check);
+	if (g_after.check) lib_check_import(g_after.check);
 	media_tidy();
 	SDL_AtomicSet(&g_after.done, 1);
 	return 0;
+}
+
+/* gamelist.xml's names and favorites, which lib_check_import just wrote to
+ * the card's library, on the shelves at once: each game's title, its
+ * favorite, and its shelf put in order again on the game it was on. `ctx`
+ * says whether a favorite was added. */
+typedef struct { app *a; bool fav, titles; } es_apply;
+
+static void es_imported(const char *folder, const es_import_list *l, void *ctx)
+{
+	app *a = ((es_apply *)ctx)->a;
+	bool *fav = &((es_apply *)ctx)->fav;
+
+	for (int si = 0; si < a->sys.count; si++) {
+		sysview *v = &a->view[si];
+		const system_cfg *sc = &a->sys.systems[si];
+		char file[LIB_PATH] = "";
+		bool changed = false;
+		int at;
+
+		if (v->owner || is_muse(sc) || strcmp(sc->folder, folder) || v->list.count <= 0) continue;
+		snprintf(file, sizeof file, "%s", v->list.items[v->cursor].file);
+		for (int i = 0; i < l->n; i++) {
+			int k = lib_find_entry(&v->list, NULL, 0, l->got[i].file);
+			game_entry *e;
+
+			if (k < 0) continue;
+			e = &v->list.items[k];
+			if (l->got[i].title[0] && strcmp(e->title, l->got[i].title)) {
+				snprintf(e->title, sizeof e->title, "%s", l->got[i].title);
+				changed = true;
+			}
+			if (l->got[i].favorite && !fav_is(sc->tag, e->file)) {
+				fav_toggle(sc->tag, e->file);
+				*fav = true;
+			}
+		}
+		if (!changed) continue;
+		((es_apply *)ctx)->titles = true;
+		free_view_textures(v);
+		sort_shelf(a, si);
+		if ((at = lib_find_entry(&v->list, NULL, 0, file)) >= 0) v->cursor = at;
+		cf_reset(&v->cf, v->cursor);
+		redraw_now();
+	}
 }
 
 /* A shelf pass's share of it: begun at the first pass after the first frame,
@@ -10435,7 +10569,13 @@ static void after_start_step(app *a, bool drawn)
 		return;
 	}
 	if (g_after.check && SDL_AtomicGet(&g_after.done)) {
+		es_apply ea = { a, false, false };
+
 		if (lib_check_apply(a, g_after.check)) redraw_now();
+		lib_check_imported(g_after.check, es_imported, &ea);
+		if (ea.fav) fav_save();
+		/* its copies of the games, with their names and the new ones */
+		if (ea.fav || ea.titles) refresh_favorites_shelf(a);
 		lib_check_free(g_after.check);
 		g_after.check = NULL;
 	}
@@ -10491,6 +10631,8 @@ static bool xs_open(app *a, int way)
 	hare_set_cable(cable);
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	g_xfer_sys_ok = cfg_load_systems(path, &g_xfer_sys);
+	/* The folders the shelves read, EmulationStation's where they chose one */
+	if (g_xfer_sys_ok) shelf_folders_apply(&g_xfer_sys);
 	hare_set_folder_color(xfer_folder_color);
 	hare_set_folder_icon(xfer_folder_icon);
 	snprintf(path, sizeof path, "%s/system-icons", P_ROOT);
@@ -11428,6 +11570,7 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 	memset(gi, 0, sizeof *gi);
 	gi->can_delete = gd_shelf_deletes(s->core);
+	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file);
 	gi->can_favorite = !is_muse(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
 
@@ -11436,9 +11579,11 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * rather than a count - and with it went a stat of every slot plus the
 	 * autosave each time this screen opened. */
 	box_art_path(s->folder, g->name, p, sizeof p);
-	gi->has_art = (stat(p, &st) == 0 && st.st_size > 0);
-	gi->has_snap = snaps_path(P_ROMS, s->folder, g->name, p, sizeof p) &&
-	               stat(p, &st) == 0 && st.st_size > 0;
+	gi->has_art = (stat(p, &st) == 0 && st.st_size > 0) ||
+	              es_media(P_ROMS, s->folder, g->file, g->name, ES_COVER, true, p, sizeof p);
+	gi->has_snap = (snaps_path(P_ROMS, s->folder, g->name, p, sizeof p) &&
+	                stat(p, &st) == 0 && st.st_size > 0) ||
+	               es_media(P_ROMS, s->folder, g->file, g->name, ES_VIDEO, true, p, sizeof p);
 	gi->own_art = pm_cover_path(a, owner, g, theme_index(), p, sizeof p);
 	/* PortMaster's entry with PortMaster on the card: Reinstall PortMaster */
 	gi->can_reinstall = pm_is_entry(a, owner, g) && pm_on_card(s->folder);
@@ -11474,7 +11619,11 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	{
 		game_meta m;
 
-		if (db_game_get(db_lib(), s->folder, g->file, &m)) {
+		/* A game the card's library has nothing on yet may have
+		 * EmulationStation's details, which the next start writes there
+		 * (es_import): read from its gamelist.xml until then */
+		if (db_game_get(db_lib(), s->folder, g->file, &m) ||
+		    es_details(P_ROMS, s->folder, g->file, g->name, &m, NULL)) {
 			gi->scraped = true;
 			gi->has_synopsis = m.synopsis[0] != '\0';
 			snprintf(gi->year, sizeof gi->year, "%.4s", m.year);
@@ -12256,6 +12405,9 @@ static void synopsis_screen(app *a, const char *title, const char *text,
 /* Delete Game, below with the wrap it needs (DESIGN.md 11.31) */
 static bool game_delete(app *a, int owner, const game_entry *g, char *said, size_t n);
 
+/* Rename, below it (DESIGN.md 11.41) */
+static bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n);
+
 /* The achievement list, which the in-game menu opens over a paused frame and
  * this screen opens over the shelf. `over_shelf` says which, rather than the
  * absence of a frame saying it: in-game, a capture that failed also leaves no
@@ -12300,8 +12452,10 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		/* Read again here rather than carried in game_info: it is up to 4 KB
 		 * of prose for a row that is usually not opened, and the gatherer runs
 		 * on every action this screen takes. */
-		if (db_game_get(db_lib(), a->sys.systems[c->owner].folder, c->g->file, &m)
-		    && m.synopsis[0])
+		const char *folder = a->sys.systems[c->owner].folder;
+
+		if ((db_game_get(db_lib(), folder, c->g->file, &m) ||
+		     es_details(P_ROMS, folder, c->g->file, c->g->name, &m, NULL)) && m.synopsis[0])
 			synopsis_screen(a, c->g->title, m.synopsis, c->st.accent);
 		return MENU_STAY;
 	}
@@ -12312,6 +12466,23 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		 * shelf rather than a paused frame: no game is running here. */
 		if (c->gi.has_cheevos) cheevos_screen(a, NULL, true);
 		else if (c->gi.cheevos_unchecked) cheevos_unchecked_message(a);
+		return MENU_STAY;
+	}
+
+	if (!strcmp(rows[sel].label, T(S_GAMEMENU_RENAME))) {
+		/* Renamed: the page stays, on the game under its new name, which
+		 * its shelf may have put somewhere else */
+		c->said[0] = '\0';
+		if (game_rename(a, c->owner, c->g, c->said, sizeof c->said)) {
+			c->v = &a->view[a->sys_cursor];
+			c->g = &c->v->list.items[c->v->cursor];
+			c->owner = shelf_owner(a, a->sys_cursor, c->v->cursor);
+			c->st.accent = a->sys.systems[c->owner].accent;
+		}
+		if (c->said[0]) result_message(a, T(S_GAMEMENU_RENAME), c->said);
+		gi_gather(a, c->owner, c->g, &c->gi);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
 		return MENU_STAY;
 	}
 
@@ -12389,7 +12560,7 @@ static void game_info_screen(app *a)
  * rather than of numbers somebody typed. */
 static bool shot_info_art;
 
-static void info_preview(app *a, bool net, bool on_delete)
+static void info_preview(app *a, bool net, const char *on_row)
 {
 	sysview   *v = &a->view[a->sys_cursor];
 	menu_row   rows[GI_MAX];
@@ -12408,10 +12579,10 @@ static void info_preview(app *a, bool net, bool on_delete)
 	 * until the rows were reordered and then was Saves - so the shot showed a
 	 * highlight on a dead row, which the real screen cannot do. */
 	sel = rows[0].live ? 0 : menu_step_sel(rows, n, 0, +1);
-	/* --info-delete: the cursor on Delete Game, by its label as info_key
-	 * finds it */
-	for (int i = 0; on_delete && i < n; i++)
-		if (!strcmp(rows[i].label, T(S_GAMEMENU_DELETE))) sel = i;
+	/* --info-delete and --info-rename: the cursor on Delete Game or Rename,
+	 * by its label as info_key finds it */
+	for (int i = 0; on_row && i < n; i++)
+		if (!strcmp(rows[i].label, on_row)) sel = i;
 
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
@@ -12673,6 +12844,123 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
 	panel_close(a, lv, !a->running);
 	if (!yes || !a->running) return false;
 	return game_delete_now(a, owner, g, true, said, n);
+}
+
+/* ---- Rename (DESIGN.md 11.41, src/gamern.h) --------------------------------
+ *
+ * The details page's row above Delete Game. A opens the keyboard on the
+ * game's name, its file's stem, as the card has it; START takes the new
+ * one. A name no card takes, or one another game or file has, says why
+ * and opens the keyboard again on what was typed. Then the plan, held
+ * against every other game on the shelves as Delete Game's is, is run, the
+ * library's rows follow, and the shelf puts the game in its place under its
+ * new name, its title emptied so the new name is what shows. True when it
+ * was renamed; `said` the message either way, empty for none. */
+static bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n)
+{
+	const system_cfg *s = &a->sys.systems[owner];
+	char tag[sizeof s->tag], folder[CFG_STR], core[CFG_STR], exts[CFG_STR];
+	char file[LIB_PATH], name[LIB_NAME], typed[LIB_NAME], clean[LIB_NAME];
+	char card_saves[CFG_STR * 2], card_states[CFG_STR * 2];
+	gd_card card;
+	gd_game gg;
+	gd_other *others = NULL;
+	gr_plan *plan;
+	gr_done done;
+	int no = 0, cap = 0, i, k;
+
+	/* Copies: the shelf's entries move once the game takes its name */
+	snprintf(tag, sizeof tag, "%s", s->tag);
+	snprintf(folder, sizeof folder, "%s", s->folder);
+	snprintf(core, sizeof core, "%s", s->core);
+	snprintf(exts, sizeof exts, "%s", s->exts);
+	snprintf(file, sizeof file, "%s", g->file);
+	snprintf(name, sizeof name, "%s", g->name);
+	snprintf(typed, sizeof typed, "%s", g->name);
+	snprintf(card_saves, sizeof card_saves, "%s/Saves", P_CARD);
+	snprintf(card_states, sizeof card_states, "%s/.zyperos", P_SHARED);
+	said[0] = '\0';
+
+	for (i = 0; i < a->sys.count; i++)
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += a->view[i].list.count;
+	if (cap > 0 && !(others = malloc((size_t)cap * sizeof *others))) cap = 0;
+	for (i = 0; i < a->sys.count && others; i++) {
+		const system_cfg *o = &a->sys.systems[i];
+		bool hooked = lib_shelf_hooked(o->exts);
+
+		if (a->view[i].owner || is_muse(o) || !o->folder[0]) continue;
+		for (k = 0; k < a->view[i].list.count && no < cap; k++) {
+			const game_entry *e = &a->view[i].list.items[k];
+
+			if (!strcmp(o->folder, folder) && !strcmp(e->file, file)) continue;
+			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked };
+		}
+	}
+	if (!(plan = malloc(sizeof *plan)) || (cap > 0 && !others)) {
+		free(others);
+		free(plan);
+		snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+		return false;
+	}
+	card = (gd_card){ P_ROMS, card_saves, card_states };
+	gg = (gd_game){ folder, tag, core, exts, file, name };
+	for (;;) {
+		if (keyboard_prompt(a, T(S_GAMEMENU_RENAME), typed, (int)sizeof typed) != KB_ACCEPT ||
+		    !a->running) {
+			free(others);
+			free(plan);
+			return false;
+		}
+		if (gr_plan_make(&card, &gg, others, no, typed, plan)) break;
+		fprintf(stderr, "rename: %s %s to \"%s\" refused (%d): %s\n", tag, file, typed,
+		        (int)plan->why, plan->bad);
+		if (plan->why == GR_SAME) { free(others); free(plan); return false; }
+		if (plan->why != GR_BAD_NAME && plan->why != GR_TAKEN) {
+			snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+			free(others);
+			free(plan);
+			return false;
+		}
+		/* Said, and the keyboard again on what was typed, tidied */
+		result_message(a, T(S_GAMEMENU_RENAME),
+		               T(plan->why == GR_TAKEN ? S_GAMEMENU_RENAME_TAKEN : S_GAMEMENU_RENAME_INVALID));
+		if (!a->running) { free(others); free(plan); return false; }
+		if (gr_name_ok(typed, clean, sizeof clean)) snprintf(typed, sizeof typed, "%s", clean);
+	}
+	free(others);
+
+	/* Its video may be the one playing on the shelf behind the panel */
+	snap_off();
+	gr_plan_run(plan, &done);
+	for (i = 0; i < plan->n; i++)
+		fprintf(stderr, "rename: %s %s -> %s\n", plan->copy[i] ? "copy" : "move", plan->from[i], plan->to[i]);
+	fprintf(stderr, "rename: %s %s is %s: %d moved, %d copied, %d stayed, gamelist.xml %s\n", tag, file,
+	        plan->new_file, done.moved + done.game_moved, done.copied, done.failed,
+	        done.es_list ? "followed" : "untouched");
+	if (!done.game_moved) {
+		free(plan);
+		snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+		return false;
+	}
+	fprintf(stderr, "rename: %d library rows\n",
+	        gr_follow(folder, tag, file, name, plan->new_file, plan->new_name));
+	shelf_rename_game(a, tag, file, plan->new_file, plan->new_name);
+	/* On Favorites, the game where its copy went */
+	{
+		sysview *v = &a->view[a->sys_cursor];
+
+		if (v->owner)
+			for (k = 0; k < v->list.count; k++)
+				if (!strcmp(v->list.items[k].file, plan->new_file) &&
+				    !strcmp(a->sys.systems[v->owner[k]].tag, tag)) {
+					v->cursor = k;
+					cf_reset(&v->cf, k);
+					break;
+				}
+	}
+	if (done.failed) snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_PARTLY));
+	free(plan);
+	return true;
 }
 
 /* Six pages: the system, its details, the name, and three of thanks (
@@ -15289,6 +15577,7 @@ static void store_open(store_view *v, app *a)
 	v->cap_for = -1;
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	v->cfg_ok = cfg_load_systems(path, &v->cfg);
+	if (v->cfg_ok) shelf_folders_apply(&v->cfg);
 }
 
 static void store_close(store_view *v)
@@ -15443,6 +15732,11 @@ typedef struct {
 	int          now_w, now_h, before_w, before_h, tw[MF_MAX], th[MF_MAX], big_w, big_h;
 	int          big_key;           /* the picture big_tex is, MK_BIG + tile */
 	bool         asked[MF_MAX], now_gen, have_now, have_before;
+	/* No cover of its own, and EmulationStation's in its place on the shelf
+	 * (src/esmedia.h): shown as Now, credited to EmulationStation. Not
+	 * have_now: nothing here moves or deletes it, and a cover picked
+	 * here is ZyperOS's own, which comes first. */
+	bool         now_es;
 	art_source   now_as, before_as;
 	/* The cursor: a tile of the strip, or a video row */
 	int          focus, row;
@@ -15526,7 +15820,9 @@ static void media_read_card(media_view *v)
 	media_tex_free(&v->before_tex);
 	v->now_gen = false;
 	v->have_now = mf_media_path(P_ROMS, v->folder, v->stem, ".png", p, sizeof p) && art_is_cover(p);
-	if (v->have_now) {
+	v->now_es = !v->have_now && !v->shot &&
+	            es_media(P_ROMS, v->folder, v->file, v->stem, ES_COVER, true, p, sizeof p);
+	if (v->have_now || v->now_es) {
 		mt_ask(MK_NOW, p, MF_FULL_PX);
 	} else {
 		v->now_tex = ui_make_card(v->a->r, v->title, v->sys_rgb, &v->now_w, &v->now_h);
@@ -15628,7 +15924,8 @@ static void media_build(media_view *v, unsigned now)
 	p->now_tex = v->now_tex;
 	p->now_w = v->now_w;
 	p->now_h = v->now_h;
-	if (!v->have_now) p->now_credit = T(S_MEDIA_NO_COVER);
+	if (v->now_es) p->now_credit = "EmulationStation";
+	else if (!v->have_now) p->now_credit = T(S_MEDIA_NO_COVER);
 	else if (v->now_as.src != AS_NONE) p->now_credit = artsrc_name(v->now_as.src);
 
 	/* Found */
@@ -23022,7 +23319,8 @@ static void shot_compose(app *a)
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
-	if (shot_info) info_preview(a, true, shot_info == 2);
+	if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
+	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
 	if (shot_controls >= 0 && (shot_press != SHOT_SWAP || shot_pressed)) {
 		menu_row rows[CTL_MAX_ROWS];
@@ -24868,6 +25166,7 @@ int main(int argc, char *argv[])
 		/* The details page with the cursor on Delete Game, and its question
 		 * over the shelf (DESIGN.md 11.31) */
 		else if (!strcmp(argv[i], "--info-delete")) shot_info = 2;
+		else if (!strcmp(argv[i], "--info-rename")) shot_info = 3;
 		else if (!strcmp(argv[i], "--info-art")) shot_info_art = true;
 		else if (!strcmp(argv[i], "--delete-ask")) shot_delete_ask = 1;
 		/* The game under the cursor deleted as Delete Game's yes deletes it,
@@ -25487,7 +25786,7 @@ int main(int argc, char *argv[])
 			snprintf(m.genres,    sizeof m.genres,    "%s", fld[6]);
 			snprintf(m.esrb,      sizeof m.esrb,      "%s", fld[7]);
 			snprintf(m.note,      sizeof m.note,      "%s", fld[8]);
-			if (db_game_set(db_lib(), fld[0], fld[1], &m)) wrote++;
+			if (db_game_set(db_lib(), card_folder(fld[0]), fld[1], &m)) wrote++;
 			else bad++;
 		}
 		fclose(f);
@@ -25539,6 +25838,7 @@ int main(int argc, char *argv[])
 			*title++ = '\0';
 			if ((end = strchr(title, '\t'))) *end = '\0';
 			if (!folder[0] || !file[0] || !title[0]) { bad++; continue; }
+			folder = (char *)card_folder(folder);
 			db_game_get(db_lib(), folder, file, &m);
 			snprintf(m.title, sizeof m.title, "%s", title);
 			if (db_game_set(db_lib(), folder, file, &m)) wrote++;
@@ -25579,6 +25879,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "no usable %s\n", path);
 			return 1;
 		}
+		/* The folders the shelves read, EmulationStation's where they read
+		 * one, and its covers and videos counted as covers and videos */
+		shelf_folders_from_card(&all);
+		art_es_media(es_art_cover, es_art_video);
 		db_paths_ready(dev, sizeof dev, lib, sizeof lib, NULL, 0);
 		if (!db_init(dev, lib, NULL)) {
 			fprintf(stderr, "cannot open the databases\n");
@@ -25596,7 +25900,7 @@ int main(int argc, char *argv[])
 
 			memset(&one, 0, sizeof one);
 			for (i = 0; i < all.count; i++)
-				if (!strcmp(all.systems[i].folder, only_sys)) {
+				if (!strcmp(all.systems[i].folder, only_sys) || !strcmp(all.systems[i].home, only_sys)) {
 					one.systems[0] = all.systems[i];
 					one.count = 1;
 					break;
@@ -25906,6 +26210,8 @@ int main(int argc, char *argv[])
 		snprintf(fp, sizeof fp, "%s/system-icons/FOLDER-still.png", P_ROOT);
 		ui_card_folder_art(IMG_Load(fp));
 	}
+	texload_set_late(es_cover_late);
+	art_es_media(es_art_cover, es_art_video);
 	if (!shot_path) texload_start();
 
 	/* The interface sounds, which read their files on a thread of their own,

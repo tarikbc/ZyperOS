@@ -632,6 +632,49 @@ bool db_game_del(db *d, const char *folder, const char *file)
 	return ok;
 }
 
+bool db_game_move(db *d, const char *folder, const char *from, const char *to)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !folder || !from || !to ||
+	    sqlite3_prepare_v2(d->h, "UPDATE OR REPLACE games SET file=?, title='' WHERE folder=? AND file=?;",
+	                       -1, &st, NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, to, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 3, from, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_key_move(db *d, const char *from, const char *to)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !from || !to ||
+	    sqlite3_prepare_v2(d->h, "UPDATE OR REPLACE settings SET key=? WHERE key=?;", -1, &st,
+	                       NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, to, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, from, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_begin(db *d)
+{
+	return d && run(d, "BEGIN;");
+}
+
+bool db_commit(db *d)
+{
+	return d && run(d, "COMMIT;");
+}
+
 void db_each_prefix(db *d, const char *prefix, db_each_fn fn, void *ctx)
 {
 	sqlite3_stmt *st = NULL;

@@ -134,6 +134,18 @@ bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m
 /* A game's row gone, details and title with it: the game was deleted from
  * the card (src/gamedel.h). True when there was one. */
 bool db_game_del(db *d, const char *folder, const char *file);
+/* A game's row following its file to `to` (Rename, src/gamern.h), its title
+ * emptied so the new name is what the shelf shows: what a scrape found stays
+ * with it, and a scrape names it again. True when there was a row. */
+bool db_game_move(db *d, const char *folder, const char *from, const char *to);
+/* A setting's key changed, its value kept, over any setting `to` was. True
+ * when there was one. */
+bool db_key_move(db *d, const char *from, const char *to);
+/* Many writes as one transaction, for an import of a few thousand rows: one
+ * commit where there would be one each. False when it could not begin, and
+ * then each write commits on its own, as without it. */
+bool db_begin(db *d);
+bool db_commit(db *d);
 
 /* Inspectable without being editable. Nothing on the device can read a
  * database - there is no sqlite3 binary - and losing the ability to SEE what a

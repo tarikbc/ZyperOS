@@ -8,6 +8,7 @@
 
 #include "ssfetch.h"
 
+#include "library.h"
 #include "net.h"
 #include "rajson.h"
 #include "ss.h"
@@ -87,11 +88,15 @@ static const struct { const char *folder; int id; } SYS[] = {
 
 int ss_system_id(const char *folder)
 {
+	char home[LIB_NAME];
 	size_t i;
 
 	if (!folder) return 0;
+	/* A shelf reading an EmulationStation folder ("nds") is still its
+	 * system ("Nintendo DS", src/library.h) */
+	lib_folder_home(folder, home, sizeof home);
 	for (i = 0; i < sizeof SYS / sizeof SYS[0]; i++)
-		if (strcmp(SYS[i].folder, folder) == 0) return SYS[i].id;
+		if (strcmp(SYS[i].folder, home) == 0) return SYS[i].id;
 	return 0;
 }
 

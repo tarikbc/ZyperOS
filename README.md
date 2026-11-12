@@ -63,6 +63,18 @@ In my test on my Pixel 2, the stock firmware takes over 30 seconds to start, usu
 
 Keep the stock card as your way back: ZyperOS goes on a second card, and swapping cards switches systems ([keeping the stock card safe](https://zyperos.com/blog/gkd-pixel-2-stock-firmware/)). Your games come over as files, each into its console's folder under `Roms/` ([the folders](#supported-systems)).
 
+## Coming from EmulationStation
+
+Knulli, ROCKNIX, ArkOS, AmberELEC, ROGUE OS and the other systems built on EmulationStation keep each console's games in a short folder (`roms/nds`), with what their scraper found beside them. Copy those folders into `Roms/` as they are: `nds` is read as `Nintendo DS`, `psx` as `PlayStation`, `megadrive` as `Genesis`, and so on for every system ([the whole list](docs/guide.md#coming-from-emulationstation)). A shelf reads its ZyperOS folder while that has games, and otherwise the EmulationStation one with the most; a new ZyperOS card's folders start empty, so the copied ones are read.
+
+What their scrapers left is used where ZyperOS has nothing of its own, in this order:
+
+- **Covers:** ZyperOS's own (`.media/`, from Box Art or Cover and Video), then `gamelist.xml`'s `<thumbnail>` and `<image>`, then `images/<game>-thumb`, `-image` and plain, `media/box2dfront/`, `media/images/`, `boxart/` and `downloaded_images/`, and last the game's logo (`<marquee>`). Box Art fetches covers only for games with none.
+- **Video snaps:** ZyperOS's own, then `gamelist.xml`'s `<video>`, then `videos/<game>-video.mp4`, `videos/` and `media/videos/`.
+- **Names and details:** a moment after each start, `gamelist.xml`'s `<name>`, `<desc>`, `<releasedate>`, `<genre>`, `<players>`, `<developer>`, `<publisher>`, `<rating>` and `<favorite>` go into ZyperOS's library for each game that has no details yet. A ScreenScraper scrape later replaces them; they never replace a scrape.
+
+The folders still work in the other system: ZyperOS writes nothing in them but its own covers, in `.media/`, and a game you rename takes its EmulationStation pictures, video and `gamelist.xml` entry with it.
+
 ## Install in three steps
 
 1. **Download ZyperOS Installer** for macOS, Windows or Linux from [the latest release](https://github.com/tarikbc/ZyperOS/releases/latest).
@@ -115,6 +127,11 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
     <td align="center"><img src="res/readme/list.png" width="240" alt="The Game Boy Advance shelf as a list: four folders with their counts, then the games, each with a small card, the focused folder's card on the right"><br><sub>Or a list, per system</sub></td>
     <td align="center"><img src="res/readme/list-inside.png" width="240" alt="Inside the folder Commercial Owned as a list: Golden Sun focused, its box art on the right, B Back"><br><sub>A folder open, its covers beside it</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="res/readme/es-shelf.png" width="240" alt="The PlayStation shelf read from Knulli's psx folder: Metal Gear Solid's box between Crash Bandicoot and Spyro the Dragon, each with a play mark for its video"><br><sub>Your EmulationStation art, as it is</sub></td>
+    <td align="center"><img src="res/readme/info-rename.png" width="240" alt="Metal Gear Solid's details: Genre, Achievements, Favorite, Cover and Video, Rename (chosen) and Delete Game"><br><sub>Rename a game on the handheld</sub></td>
+    <td align="center"><img src="res/readme/rename.png" width="240" alt="The keyboard titled Rename, holding Metal Gear Solid (USA)"><br><sub>The new name, on the keyboard</sub></td>
+  </tr>
 </table>
 
 <sub>The shots show real box art to show what the Scraper does. The games and their art belong to their owners: ZyperOS comes with no games and no art.</sub>
@@ -137,6 +154,8 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download the first time you play it with Wi-Fi, and then work offline: an unlock shows at once, waits on the card, and goes to your account as soon as the handheld is on Wi-Fi again, dated when you earned it. The game's list says how many wait, and Zyper says when they are sent. A game never played with Wi-Fi says "not checked yet" on its Achievements row. Each achievement has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own. To change one game's cover, X on it opens **Cover and Video**: every cover, 3D box, title screen and screenshot the three sources offer, each named with where it comes from, a big look before it is used, and the one it replaced kept to put back ([below](#a-game-has-no-box-art)).
+- **Coming from Knulli, ROCKNIX, ArkOS or ROGUE OS:** copy their `roms` folders over as they are. The folders EmulationStation names (`nds`, `gba`, `psx`, `megadrive` and the rest) are read as ZyperOS's own, and the covers, video snaps, names, details and favorites their scrapers left (`gamelist.xml`, `images/`, `videos/`, `media/`) show on the shelf with no new scrape. ZyperOS's own covers come first, and the folders still work in the other system ([what ZyperOS reads](#coming-from-emulationstation)).
+- **Rename a game from the handheld:** X on a game, then **Rename**, types a new name on the keyboard. Its saves, save states, cover, video snap, achievements, favorite and play time follow the file, and so does its EmulationStation art and entry. Handy for a name no scrape finds.
 - **Delete a game from the handheld:** press X on a game and choose **Delete Game**. It asks first, naming the game, with the cursor on Cancel. The game's file or files go (a disc set's folder, a `.cue` with its tracks, an arcade set), with its saves, save states, cover, video snap, cached achievements, details and play time, and the shelf moves on to the next game. A file another game still uses stays, and so does a BIOS set like `neogeo.zip`.
 - **Storage, as a phone shows it:** **MENU > Storage** shows what fills the card in one bar, games, saves, art, media and ZyperOS, then every system and folder by size. A system's page lists its games largest first, each with the room Delete Game would give back; Music, Videos and Audiobooks open their albums, films and books the same way, and A deletes one. **X** sorts any of these lists by size, A to Z or last played. Two recommendations clear the covers and video snaps of games no longer on the card, and the save states of games you have not played for a year (the saves stay). It opens at once: the sizes are measured in the background and kept on the card ([below](#what-fills-my-card)).
 - **Video snaps:** rest on a game for a second, while a bar under its cover fills, and the cover turns into a few seconds of the game itself, from ScreenScraper. A play mark on a cover says its game has one. **MENU > Scraper > Video Snaps** turns them on, per console, and their sound starts muted.
@@ -201,6 +220,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Folders of games, and a list** | Folders to any depth, each with its count; covers or a list for each system | EmulationStation's | — | — | EmulationStation's | — |
 | **Storage by part and by game** | Yes, with recommendations and media pages | — | — | — | — | — |
 | **Pick a game's cover on the device** | From three sources, a big look first, the old one kept to put back | — | — | — | — | — |
+| **Rename a game on the device** | With its saves, states, art and EmulationStation entry | — | — | — | — | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
 | **Charge limit** | 80, 85 or 90% | — | — | — | — | — |
 | **Battery time left** | Time left, or time to full on the cable | — | — | — | — | — |
@@ -309,6 +329,8 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 | NAOMI | `Roms/NAOMI` | `.zip` `.7z` | flycast2021 |
 | Atomiswave | `Roms/Atomiswave` | `.zip` `.7z` | flycast2021 |
 | Ports | `Roms/Ports` | `.sh`, with the port's folder beside it | PortMaster |
+
+EmulationStation's folder names work too, as they are: `nds`, `gba`, `psx`, `megadrive`, `pcengine` and the rest ([coming from EmulationStation](#coming-from-emulationstation)).
 
 **BIOS files** go loose in `Bios/`. TurboGrafx-CD games need `syscard3.pce` and PlayStation games `scph5501.bin`. Sega CD games need `bios_CD_U.bin`, and a European or Japanese disc `bios_CD_E.bin` or `bios_CD_J.bin` as well. Neo Geo CD games need the Neo Geo CD BIOS in a folder of its own, `Bios/neocd/neocd.bin`. The 32X needs no BIOS. A multi-disc PlayStation game goes in a folder of its own with an `.m3u` listing its discs. Game Boy Advance runs without its BIOS; add `gba_bios.bin` if you want the original boot animation. The Atari 7800 runs without one too; add `7800 BIOS (U).rom` for the Atari logo at start. The Dreamcast, NAOMI and Atomiswave need their BIOS in `Bios/dc/`: `dc_boot.bin`, `naomi.zip` and `awbios.zip`. The 3DO needs `panafz10.bin` and the Lynx `lynxboot.img`; the Atari 5200 and the Pokémon Mini run without theirs (`5200.rom`, `bios.min`). MSX2 games need blueMSX's `Machines` and `Databases` folders in `Bios/`. Saturn games need the Saturn's BIOS, `saturn_bios.bin` (or `sega_101.bin` or `mpr-17933.bin`). ColecoVision games need the ColecoVision's BIOS, `coleco.rom` (or `colecovision.rom` or `os7.u2`): without it the shelf says so under the game. The PSP needs no BIOS.
 

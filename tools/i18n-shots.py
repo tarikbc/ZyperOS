@@ -485,9 +485,10 @@ def run_language(code, shots, binary, keep):
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
                  "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media",
-                 "pmcard": Path(tmp) / "pmcard", "psp": Path(tmp) / "psp"}
+                 "pmcard": Path(tmp) / "pmcard", "psp": Path(tmp) / "psp", "es": Path(tmp) / "es"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.media_card(cards["media"])
+        R.es_card(cards["es"])
         R.ports_card(cards["ports"])
         R.portdocs_card(cards["portdocs"])
         R.portdocs_card(cards["pmcard"])

@@ -307,6 +307,36 @@
       "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
       "name": "Mother 3 (Japan)",
       "sha256": "22c66f14c081190febb8ede167f9553ce425a2fa277b6bda3c2dd490cb0ab141"
+    },
+    "psx/images/Castlevania - Symphony of the Night (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Castlevania - Symphony of the Night (USA)",
+      "sha256": "0a3064fc4eaa9c9fab4885dc5b65dac044b4079ab731a036f06411bb20048b57"
+    },
+    "psx/images/Crash Bandicoot (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Crash Bandicoot (USA)",
+      "sha256": "53da89f702471310d68dda076f42490e7f6bfcc22dd7402917c6a8077bf85a77"
+    },
+    "psx/images/Metal Gear Solid (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "psx/images/Spyro the Dragon (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Spyro the Dragon (USA)",
+      "sha256": "14d9a52c23559fbce8e337363c674d9a9abac3d81d2ba17fc9775d98728f303b"
+    },
+    "psx/images/Tekken 3 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tekken 3 (USA)",
+      "sha256": "080ad8cba468ea08f0d3c25b4396e586043852814a5e6d3690d86c41d8c6b1e1"
+    },
+    "psx/images/Tony Hawk's Pro Skater 2 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tony Hawk's Pro Skater 2 (USA)",
+      "sha256": "a901005870f4f3be71be4b95a2066b18e7d2b935b5d086bc308624eb2cab482a"
     }
   },
   "screenshots": [
@@ -1758,6 +1788,65 @@
         "list"
       ],
       "sha256": "2e7582472a3fa8b35f3caf15eb3bdf2e163aca66963039a08ad6a93f6f148822"
+    },
+    {
+      "file": "light/es-shelf.png",
+      "card": "es",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "8bb689f76afb72e8b0ec2ebfc0a3cc0e2329ee41b165ded3526ec4ab6c659762"
+    },
+    {
+      "file": "light/info-rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--info-rename"
+      ],
+      "sha256": "3f31de337d32cb41bd82af483c9751245f557f27330d5a106abd98b6faf5b154"
+    },
+    {
+      "file": "light/rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--keyboard",
+        "0",
+        "Metal Gear Solid (USA)",
+        "Rename"
+      ],
+      "sha256": "e49030e8f94cac69eb2132b84bc9a66f37b30080dc7050f96691206b8e7bad1a"
     }
   ]
 }

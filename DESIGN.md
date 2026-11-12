@@ -2895,6 +2895,88 @@ shots:
 `--folder DIR`, `--game FILE`, `--view list|covers` and `--shelf-press
 a,b,up...`.)*
 
+### 11.40 EmulationStation's folders and media
+
+A card, or a folder, copied from a system built on EmulationStation (ES) -
+Knulli and Batocera, ROCKNIX, ArkOS, AmberELEC, ROGUE OS, RetroPie, Recalbox
+- is read as it is *(2026-11-12, from a player: "All of my games had scraped
+data already from previous installations of RogueOS and Knulli, the videos
+and images folders don't get used by this OS ... It'd be great if it also
+used or recognized the folders like they're named for ES (nds instead of
+Nintendo DS for example)")*. Nothing on the card is moved or written but the
+library's rows, so the card still works in the other system.
+
+- **Folders.** Each system has ES's names for its folder beside ZyperOS's
+  (config/systems.cfg, `es` lines: `nds` for Nintendo DS, `megadrive` and
+  `md` for Genesis, `pcengine`, `tg16`, `pcenginecd` for TurboGrafx-16, ROGUE
+  OS's as tools/from-rogue.sh copies them). A shelf reads ONE folder: its
+  own while that has a game, else the ES folder with the most games, the
+  first listed on a tie. Every new card has ZyperOS's folders, empty
+  (mk/payload.sh), so a copied ES folder is read; a card set up for ZyperOS
+  reads as it always did. The log names the folder a shelf reads and any it
+  leaves, with its game count. The choice is made when the card is read (a
+  rescan, the check after a start) and kept by the saved library, so a
+  start reads nothing more. States, the library's rows and covers go with
+  the folder read, as they always went with a shelf's folder; the libretro
+  and ScreenScraper tables still know the system by ZyperOS's name.
+- **Covers and video snaps.** ZyperOS's own come first (`.media/`). A game
+  with none shows ES's: `gamelist.xml`'s `<thumbnail>` (the box, on
+  Batocera), `<image>`, then the files ES's scrapers name after the game in
+  `images/`, `media/box2dfront/`, `media/images/`, `boxart/`,
+  `downloaded_images/`, and its logo (`<marquee>`) last; `<video>`, then
+  `videos/` and `media/videos/` (src/esmedia.h has the whole order). Found on
+  the cover worker, never on the frame: a folder's `gamelist.xml` is read
+  once, the first time one of its games asks. A cover with an ES video has
+  the play mark, and the video plays as a snap does.
+- **Box Art** counts an ES cover as a cover: it fetches only for games with
+  neither, and **Cover and Video** (11.34) shows an ES cover as Now,
+  credited "EmulationStation". A cover chosen there is ZyperOS's own, and
+  comes first from then on.
+- **Names and details.** After a start's first frame, with the check of the
+  saved library, each folder's `gamelist.xml` is written into the card's
+  library for its games with no row there yet: `<name>` as the title (not
+  when it is only the file's name, which ZyperOS tidies better),
+  `<desc>`, `<releasedate>`'s year, `<genre>`, `<players>`, `<developer>`,
+  `<publisher>` and `<rating>` out of 20; `<favorite>` makes it a favorite.
+  The shelf takes the names at once, in place. A game with a row - a scrape,
+  a rename, an earlier import - keeps it, and a scrape later writes over
+  what came from ES. Until the import has run, the details page reads the
+  game's entry itself.
+
+Host shots: an ES card is a fixture of `Roms/nds` with `gamelist.xml`,
+`images/` and `videos/`; `--screen games` and `--info` draw from it.
+
+### 11.41 Rename
+
+A game's details (X on the shelf) have **Rename** above Delete Game
+*(2026-11-12: a player asked to rename a game on the device, for a name no
+scrape could find)*: a plain row, live, with no value. A opens the keyboard
+(11.5) with the game's name, its file's name without the extension; START
+renames. The details page stays open on the game, under its new name.
+
+- **What follows the name**, every path built from the game's key as Delete
+  Game's are (11.31, src/gamern.h): its file (the extension kept), or its
+  folder for a game that is one (a disc set, a ScummVM game; the disc inside
+  keeps its name); what its format keeps beside it by name (a `.ccd`'s
+  `.img` and `.sub`, a `.cue`'s `.sbi`); its saves (`Saves/<name>.srm`,
+  `.sav`, `.dsv`, OpenBOR's); the six slots and Auto with their pictures and
+  Auto's DS language; its cover, video snap and Before; its cached
+  achievement set; the ES pictures and video named after it, and its
+  `gamelist.xml` entry, so the other system still finds it; and its rows in
+  the library: details, favorite, play sessions, Pak, where its covers came
+  from. The title is emptied, so the shelf shows the new name, and a scrape
+  can name it again. A file another game builds too (a `.gb` and a `.gbc`
+  of one name share a save) is copied, and that game keeps its own.
+- **Refused, with nothing moved**: a name no card takes (empty, a dot first
+  or last, `/ \ : * ? " < > |`), another game's name on the shelf, or a
+  name whose save, state or cover is already another file's. The message
+  says which (11.8), and the keyboard opens again on what was typed. A
+  change of case alone is a rename, though the card ignores case.
+- **No Rename** for an arcade set, a BIOS set or a port: their names are
+  what the core or PortMaster runs them by.
+
+Host shots: `--info-delete` shows the row above Delete Game.
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and

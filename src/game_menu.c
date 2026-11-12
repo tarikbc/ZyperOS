@@ -103,6 +103,11 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * will not start, its ports and their saves kept */
 	else if (gi->can_reinstall)
 		out[n++] = (menu_row){ T(S_PORTMASTER_REINSTALL_TITLE), NULL, true };
+	/* Rename (DESIGN.md 11.41), a name typed on the keyboard for the game's
+	 * file and all that goes by it, for a name no scrape can find: above
+	 * Delete Game, which stays last. No value: the heading is the name. */
+	if (gi->can_rename)
+		out[n++] = (menu_row){ T(S_GAMEMENU_RENAME), NULL, true };
 	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
 	 * cover and video. Never where the screen opens, and never the end of a
 	 * stray press: A on it only asks, and the question opens on Cancel. No

@@ -202,6 +202,61 @@ de = %s ist ein BIOS, das andere Spiele brauchen. Es bleibt.
 ja = %s は他のゲームが必要とする BIOS です。削除しません。
 it = %s è un BIOS che serve ad altri giochi. Resta.
 
+[gamemenu.rename]
+note = The game info screen's row above Delete Game: a new name for the game's file and everything named after it, typed on the keyboard (DESIGN.md 11.41). Also the keyboard's title and the heading of its messages. tight: a row label beside no value
+en = Rename
+zh-Hans = 重命名
+es = Renombrar
+pt-BR = Renomear
+fr = Renommer
+de = Umbenennen
+ja = 名前を変更
+it = Rinomina
+
+[gamemenu.rename_invalid]
+note = The message when the name typed cannot be a file's name on the card. The characters are the ones a card's file names cannot hold: keep them as they are, with their spaces.
+en = That name can't be used. A name can't be empty, start or end with a dot, or have / \\ : * ? " < > |
+zh-Hans = 无法使用这个名称。名称不能为空，不能以点开头或结尾，也不能包含 / \\ : * ? " < > |
+es = Ese nombre no se puede usar. No puede estar vacío, empezar ni terminar con un punto, ni llevar / \\ : * ? " < > |
+pt-BR = Esse nome não pode ser usado. Ele não pode ficar vazio, começar ou terminar com ponto, nem ter / \\ : * ? " < > |
+fr = Ce nom ne peut pas être utilisé. Il ne peut pas être vide, commencer ou finir par un point, ni contenir / \\ : * ? " < > |
+de = Dieser Name geht nicht. Er darf nicht leer sein, nicht mit einem Punkt beginnen oder enden und kein / \\ : * ? " < > | enthalten.
+ja = この名前は使えません。空の名前、ピリオドで始まる名前や終わる名前、/ \\ : * ? " < > | を含む名前は使えません。
+it = Questo nome non si può usare. Non può essere vuoto, iniziare o finire con un punto, né contenere / \\ : * ? " < > |
+
+[gamemenu.rename_taken]
+note = The message when another game on the shelf, or one of the files the rename would make, already has the name typed. Nothing was renamed.
+en = Another game or file on the card already has that name.
+zh-Hans = 存储卡上已有同名的游戏或文件。
+es = Otro juego o archivo de la tarjeta ya tiene ese nombre.
+pt-BR = Outro jogo ou arquivo do cartão já tem esse nome.
+fr = Un autre jeu ou fichier de la carte porte déjà ce nom.
+de = Ein anderes Spiel oder eine andere Datei auf der Karte hat schon diesen Namen.
+ja = カードには同じ名前のゲームまたはファイルがすでにあります。
+it = Un altro gioco o file sulla scheda ha già questo nome.
+
+[gamemenu.rename_failed]
+note = The message when the game's own file would not take its new name, so nothing else was touched.
+en = Nothing was renamed. Check the card and try again.
+zh-Hans = 没有重命名任何内容。请检查存储卡后重试。
+es = No se renombró nada. Revisa la tarjeta e inténtalo de nuevo.
+pt-BR = Nada foi renomeado. Verifique o cartão e tente de novo.
+fr = Rien n'a été renommé. Vérifiez la carte et réessayez.
+de = Nichts wurde umbenannt. Prüfe die Karte und versuche es erneut.
+ja = 何も名前を変更しませんでした。カードを確認して、もう一度お試しください。
+it = Non è stato rinominato nulla. Controlla la scheda e riprova.
+
+[gamemenu.rename_partly]
+note = The message when the game took its new name but some of its other files (saves, states, cover) would not.
+en = Renamed, but some of its files kept the old name.
+zh-Hans = 已重命名，但有部分文件仍是旧名称。
+es = Renombrado, pero algunos de sus archivos conservan el nombre anterior.
+pt-BR = Renomeado, mas alguns arquivos dele ficaram com o nome antigo.
+fr = Renommé, mais certains de ses fichiers ont gardé l'ancien nom.
+de = Umbenannt, aber einige seiner Dateien haben noch den alten Namen.
+ja = 名前を変更しましたが、一部のファイルは古い名前のままです。
+it = Rinominato, ma alcuni suoi file hanno ancora il vecchio nome.
+
 # ---- the in-game menu -------------------------------------------------------
 
 [gamemenu.continue]

@@ -162,23 +162,24 @@ static const struct { const char *folder, *remote, *remote2; } MAP[] = {
 #define MAP_N ((int)(sizeof MAP / sizeof MAP[0]))
 
 /* The nth collection for a shelf, or NULL when it has no more. */
+/* The nth collection for a shelf, or NULL when it has no more. By the
+ * folder systems.cfg names: a shelf reading an EmulationStation folder
+ * ("nds", src/library.h) is that system still. */
 static const char *remote_nth(const char *folder, int n)
 {
+	char home[LIB_NAME];
 	int i;
 
+	lib_folder_home(folder, home, sizeof home);
 	for (i = 0; i < MAP_N; i++)
-		if (!strcmp(MAP[i].folder, folder))
+		if (!strcmp(MAP[i].folder, home))
 			return n == 0 ? MAP[i].remote : n == 1 ? MAP[i].remote2 : NULL;
 	return NULL;
 }
 
 static const char *remote_for(const char *folder)
 {
-	int i;
-
-	for (i = 0; i < MAP_N; i++)
-		if (!strcmp(MAP[i].folder, folder)) return MAP[i].remote;
-	return NULL;
+	return remote_nth(folder, 0);
 }
 
 /* ---- the normalization, which is the whole matching rule ---------------- */
@@ -572,6 +573,24 @@ static game_list g_meta_games;
 static int       g_meta_i;
 static bool      g_meta_untitled;     /* the game asked about had no title */
 
+/* EmulationStation's cover and video for a game (src/esmedia.h), asked
+ * through the launcher (art_es_media): a game with one has a cover, and a
+ * video, for every pass here. Unset, none. */
+static bool (*g_es_cover)(const char *dir, const char *file, const char *stem);
+static bool (*g_es_video)(const char *dir, const char *file, const char *stem);
+
+void art_es_media(bool (*cover)(const char *dir, const char *file, const char *stem),
+                  bool (*video)(const char *dir, const char *file, const char *stem))
+{
+	g_es_cover = cover;
+	g_es_video = video;
+}
+
+/* A game with no cover of its own and EmulationStation's: not one to fetch
+ * for. A replace (g_only) wants its game whatever it has, so a run asks
+ * this only outside one. */
+static bool es_cover_at(const char *dir, const char *stem, const char *ext);
+
 /* A game whose console wants video snaps and has none for it yet: worth a
  * metadata lookup even when its cover and its title are both there, since
  * that lookup is what brings the snap (ss_run_videos). */
@@ -581,6 +600,7 @@ static bool snap_missing(const char *dir, const char *folder, const char *stem)
 	struct stat st;
 
 	if (!ss_run_video_wanted(folder)) return false;
+	if (g_es_video && g_es_video(dir, stem, stem)) return false;
 	if (snprintf(p, sizeof p, "%s/.media/%s.mp4", dir, stem) >= (int)sizeof p) return false;
 	return stat(p, &st) != 0 || st.st_size == 0;
 }
@@ -1175,6 +1195,15 @@ bool art_is_cover(const char *path)
 	       (head[0] == 0xFF && head[1] == 0xD8);
 }
 
+static bool es_cover_at(const char *dir, const char *stem, const char *ext)
+{
+	char file[NAME_MAX_ + 16];
+
+	if (!g_es_cover) return false;
+	snprintf(file, sizeof file, "%s%s", stem, ext ? ext : "");
+	return g_es_cover(dir, file, stem);
+}
+
 static void count_one(const char *stem, void *ctx)
 {
 	(void)stem;
@@ -1251,6 +1280,7 @@ int art_missing(const char *dir, const char *exts,
 		const char *stem = g_roms[i];
 
 		if (nhave && bsearch(&stem, have, (size_t)nhave, sizeof *have, cmp_name)) continue;
+		if (es_cover_at(dir, g_roms[i], g_rext[i])) continue;
 		if (fn) fn(g_roms[i], ctx);
 		n++;
 	}
@@ -1672,7 +1702,7 @@ int art_step(void)
 		while (g_meta_i < g_meta_games.count) {
 			game = &g_meta_games.items[g_meta_i];
 			if (art_paths(dir, game->name, media, sizeof media, dest, sizeof dest) &&
-			    art_is_cover(dest)) {
+			    (art_is_cover(dest) || (g_es_cover && g_es_cover(dir, game->file, game->name)))) {
 				g_meta_untitled = !db_game_title(db_lib(), g_sys[g_si].folder, game->file,
 				                                 title, sizeof title);
 				if (g_meta_untitled ||
@@ -1741,7 +1771,7 @@ int art_step(void)
 
 				if (snprintf(have, sizeof have, "%s/.media/%s.png",
 				             dir, g_roms[i]) >= (int)sizeof have) continue;
-				if (art_is_cover(have)) g_st.skipped++;
+				if (art_is_cover(have) || es_cover_at(dir, g_roms[i], g_rext[i])) g_st.skipped++;
 				else want++;
 			}
 			if (want == 0) return next_system(NO_WHY);
@@ -1766,7 +1796,7 @@ int art_step(void)
 				if (!g_only[0] &&
 				    (snprintf(have, sizeof have, "%s/.media/%s.png", dir,
 				              g_roms[i]) >= (int)sizeof have ||
-				     art_is_cover(have)))
+				     art_is_cover(have) || es_cover_at(dir, g_roms[i], g_rext[i])))
 					continue;
 				g_retry[g_nretry++] = i;
 			}
@@ -1789,7 +1819,10 @@ int art_step(void)
 		g_ss_until = 0;
 		if (!art_paths(dir, g_roms[g_ri], media, sizeof media,
 		               dest, sizeof dest)) { g_ri++; return 1; }
-		if (art_is_cover(dest)) { g_ri++; return 1; }
+		if (art_is_cover(dest) || (!g_only[0] && es_cover_at(dir, g_roms[g_ri], g_rext[g_ri]))) {
+			g_ri++;
+			return 1;
+		}
 		snprintf(g_st.now, sizeof g_st.now, "%s", g_roms[g_ri]);
 		mkdir(media, 0777);
 		{
@@ -1835,7 +1868,10 @@ int art_step(void)
 			g_ri++;
 			return 1;
 		}
-		if (!g_only[0] && art_is_cover(dest)) { g_ri++; return 1; }
+		if (!g_only[0] && (art_is_cover(dest) || es_cover_at(dir, g_roms[g_ri], g_rext[g_ri]))) {
+			g_ri++;
+			return 1;
+		}
 
 		snprintf(g_st.now, sizeof g_st.now, "%s", g_roms[g_ri]);
 		mkdir(media, 0777);
