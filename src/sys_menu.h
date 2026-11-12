@@ -188,11 +188,13 @@ typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
  * is. */
 int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out);
 
-/* 32: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
- * and the two USB rows (USB Device, USB Accessories) 29 in all; room for a
- * few more. The menu runner holds MENU_RUN_ROWS (main.c), which must stay at
- * least this. */
-#define MENU_MAX_ROWS 32
+/* 40: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
+ * and the two USB rows (USB Device, USB Accessories) 29 in all; 1.0.5's
+ * Auto Hours, Theme, Screensaver and Shader made 34, every tab's rows
+ * together (a tab shows its own, but the build for every tab, PT_TABS, holds
+ * them all); room for a few more. The menu runner holds MENU_RUN_ROWS
+ * (main.c), which must stay at least this. */
+#define MENU_MAX_ROWS 40
 
 /* The array every caller declares must hold every row a build can produce, and
  * on 2026-09-16 it stopped: PM_ROWS went to 13 against a cap of 12 when the
