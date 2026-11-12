@@ -328,10 +328,13 @@ static void outside(gd_plan *p, const char *what)
 }
 
 /* What the states folder calls a game: its launch file's base, or on a
- * hooked shelf its folder's name (persist_base in main.c) */
+ * hooked shelf its folder's name, and a PSP game's folder name for its
+ * EBOOT.PBP (persist_base in main.c) */
 static const char *state_base(const char *file, const char *name, bool hooked)
 {
-	return strchr(file, '/') && hooked ? name : base_of(file);
+	const char *base = base_of(file);
+
+	return base != file && (hooked || !strcasecmp(base, "EBOOT.PBP")) ? name : base;
 }
 
 const char *gd_state_base(const char *file, const char *name, bool hooked)

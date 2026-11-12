@@ -17,11 +17,20 @@
 
 /* ---- names ---------------------------------------------------------------- */
 
+static const char *base_of(const char *path)
+{
+	const char *s = strrchr(path, '/');
+
+	return s ? s + 1 : path;
+}
+
+/* The last part's: a dot in a folder of games' name is no extension */
 static const char *ext_of(const char *name)
 {
-	const char *dot = strrchr(name, '.');
+	const char *b = base_of(name);
+	const char *dot = strrchr(b, '.');
 
-	return dot && dot != name ? dot + 1 : NULL;
+	return dot && dot != b ? dot + 1 : NULL;
 }
 
 static bool ext_is(const char *name, const char *ext)
@@ -31,11 +40,24 @@ static bool ext_is(const char *name, const char *ext)
 	return e && !strcasecmp(e, ext);
 }
 
-static const char *base_of(const char *path)
+/* The launch path past the folders of games it is kept in (gd_game.dir):
+ * "Pokemon.gba", or a disc folder's "FF7/ff7.cue". NULL for a `dir` that
+ * is not a run of whole folder names in front of it. */
+static const char *own_part(const char *file, unsigned dir)
 {
-	const char *s = strrchr(path, '/');
+	size_t len = strlen(file);
 
-	return s ? s + 1 : path;
+	if (!dir) return file;
+	if (dir >= len || file[dir] != '/' || file[dir - 1] == '/') return NULL;
+	for (const char *p = file, *s; p < file + dir; p = s + 1) {
+		size_t l;
+
+		s = memchr(p, '/', (size_t)(file + dir - p));
+		if (!s) s = file + dir;
+		l = (size_t)(s - p);
+		if (!l || (l == 1 && p[0] == '.') || (l == 2 && p[0] == '.' && p[1] == '.')) return NULL;
+	}
+	return file + dir + 1;
 }
 
 /* The base without its last extension, as Diatom names a save */
@@ -75,12 +97,15 @@ bool gr_name_ok(const char *typed, char *out, size_t n)
 }
 
 /* An arcade set (its name is the game, for the core), a BIOS set, a port */
-bool gr_renames(const char *core, const char *file)
+bool gr_renames(const char *core, const char *file, unsigned dir)
 {
-	if (!core || !file) return false;
-	if (!strcmp(core, "port") || gd_is_bios(file)) return false;
+	const char *own;
+
+	if (!core || !file || !(own = own_part(file, dir))) return false;
+	/* Its own part: "Arcade/neogeo.zip" in a folder of games is the set */
+	if (!strcmp(core, "port") || gd_is_bios(own)) return false;
 	if (!strcmp(core, "fbneo") || !strncmp(core, "mame", 4)) return false;
-	if (!strncmp(core, "flycast", 7) && !strchr(file, '/') && (ext_is(file, "zip") || ext_is(file, "7z")))
+	if (!strncmp(core, "flycast", 7) && !strchr(own, '/') && (ext_is(own, "zip") || ext_is(own, "7z")))
 		return false;
 	return true;
 }
@@ -182,7 +207,8 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 	static const char *const SLOTS[] = { "auto", "1", "2", "3", "4", "5", "6" };
 	static const char *const MEDIA[] = { "png", "mp4" };
 	char to[LIB_NAME], romdir[GD_PATH], stem[LIB_NAME], ob[LIB_PATH], nb[LIB_PATH], a[GD_PATH], b[GD_PATH];
-	const char *slash, *core = g->core ? g->core : "";
+	char pre[LIB_PATH];
+	const char *own, *slash, *core = g->core ? g->core : "";
 	bool hooked = lib_shelf_hooked(g->exts);
 	size_t i;
 
@@ -190,19 +216,23 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 	p->why = GR_OK;
 	if (!gr_name_ok(typed, to, sizeof to)) { p->why = GR_BAD_NAME; return false; }
 	if (!card || !card->roms || !card->saves || !card->states || !g->folder || !g->tag ||
-	    !g->file || !g->name) {
+	    !g->file || !g->name || !(own = own_part(g->file, g->dir))) {
 		p->why = GR_TOO_MANY;
 		return false;
 	}
 	if (!strcmp(to, g->name)) { p->why = GR_SAME; return false; }
-	if (!gr_renames(core, g->file)) { p->why = GR_KEEPS_NAME; return false; }
+	if (!gr_renames(core, g->file, g->dir)) { p->why = GR_KEEPS_NAME; return false; }
 	snprintf(p->roms, sizeof p->roms, "%s", card->roms);
 	snprintf(p->folder, sizeof p->folder, "%s", g->folder);
 	snprintf(p->file, sizeof p->file, "%s", g->file);
 	snprintf(p->name, sizeof p->name, "%s", g->name);
 	snprintf(p->new_name, sizeof p->new_name, "%s", to);
 	if (!fmt(romdir, sizeof romdir, "%s/%s", card->roms, g->folder)) { too_long(p); return false; }
-	slash = strchr(g->file, '/');
+	/* The folder of games it is kept in stays as it is: "Rom Hacks/" of
+	 * "Rom Hacks/Pokemon.gba", nothing at the top. Only the game's own part
+	 * takes the name: its file, or the disc folder that is the game. */
+	if (!fmt(pre, sizeof pre, "%.*s", (int)(own - g->file), g->file)) { too_long(p); return false; }
+	slash = strchr(own, '/');
 
 	/* Another game on the shelf by that name: the covers, the video and the
 	 * achievement set would be its. Any case: the card ignores it. */
@@ -216,23 +246,23 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 	/* 1. The game: its file, its extension kept, or the folder that is
 	 * the game, the disc in it as it is */
 	if (slash) {
-		if (!fmt(p->new_file, sizeof p->new_file, "%s%s", to, slash) ||
+		if (!fmt(p->new_file, sizeof p->new_file, "%s%s%s", pre, to, slash) ||
 		    !fmt(a, sizeof a, "%s/%.*s", romdir, (int)(slash - g->file), g->file) ||
-		    !fmt(b, sizeof b, "%s/%s", romdir, to)) { too_long(p); return false; }
+		    !fmt(b, sizeof b, "%s/%s%s", romdir, pre, to)) { too_long(p); return false; }
 	} else {
-		const char *ext = ext_of(g->file);
+		const char *ext = ext_of(own);
 
-		if (!fmt(p->new_file, sizeof p->new_file, "%s%s%s", to, ext ? "." : "", ext ? ext : "") ||
+		if (!fmt(p->new_file, sizeof p->new_file, "%s%s%s%s", pre, to, ext ? "." : "", ext ? ext : "") ||
 		    !fmt(a, sizeof a, "%s/%s", romdir, g->file) ||
 		    !fmt(b, sizeof b, "%s/%s", romdir, p->new_file)) { too_long(p); return false; }
 	}
 	pair(p, a, b, false, true);
 	if (p->why != GR_OK) return false;
 
-	/* 2. A file at the top: what its format keeps beside it by its stem (a
-	 * .ccd's image and subchannel, an .mds's data, the .sbi PCSX ReARMed
-	 * reads beside a .cue), its saves flat in Saves/ by the stem, and
-	 * OpenBOR's under its own */
+	/* 2. A file of its own (no disc folder): what its format keeps beside it
+	 * by its stem (a .ccd's image and subchannel, an .mds's data, the .sbi
+	 * PCSX ReARMed reads beside a .cue), in the same folder of games; its
+	 * saves flat in Saves/ by the stem, and OpenBOR's under its own */
 	stem_of(g->file, stem, sizeof stem);
 	if (!slash) {
 		static const struct { const char *ext, *with[2]; } SIDE[] = {
@@ -247,9 +277,9 @@ bool gr_plan_make(const gd_card *card, const gd_game *g, const gd_other *others,
 			for (int k = 0; k < 2 && SIDE[i].with[k]; k++) {
 				char rel[LIB_PATH];
 
-				if (!fmt(rel, sizeof rel, "%s.%s", stem, SIDE[i].with[k]) ||
+				if (!fmt(rel, sizeof rel, "%s%s.%s", pre, stem, SIDE[i].with[k]) ||
 				    !fmt(a, sizeof a, "%s/%s", romdir, rel) ||
-				    !fmt(b, sizeof b, "%s/%s.%s", romdir, to, SIDE[i].with[k])) { too_long(p); return false; }
+				    !fmt(b, sizeof b, "%s/%s%s.%s", romdir, pre, to, SIDE[i].with[k])) { too_long(p); return false; }
 				pair(p, a, b, shares_file(others, nothers, g->folder, rel), false);
 			}
 		}

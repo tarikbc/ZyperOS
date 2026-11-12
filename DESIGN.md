@@ -2967,6 +2967,11 @@ renames. The details page stays open on the game, under its new name.
   from. The title is emptied, so the shelf shows the new name, and a scrape
   can name it again. A file another game builds too (a `.gb` and a `.gbc`
   of one name share a save) is copied, and that game keeps its own.
+- **In a folder of games** (11.39) the folder stays where it is: only the
+  game's own part takes the name, its file or its disc folder, and what its
+  format keeps beside it is looked for in that folder. Its saves, states and
+  cover are by name, as at the top, so a name another game has in any
+  folder of the shelf is taken.
 - **Refused, with nothing moved**: a name no card takes (empty, a dot first
   or last, `/ \ : * ? " < > |`), another game's name on the shelf, or a
   name whose save, state or cover is already another file's. The message

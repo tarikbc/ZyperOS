@@ -1544,15 +1544,26 @@ bool shelf_rename_game(app *a, const char *tag, const char *file, const char *ne
 
 	for (si = 0; si < a->sys.count; si++)
 		if (!a->view[si].owner && !strcmp(a->sys.systems[si].tag, tag)) break;
-	if (si >= a->sys.count || (k = lib_find_entry(&a->view[si].list, NULL, 0, file)) < 0) return false;
+	if (si >= a->sys.count) return false;
 	v = &a->view[si];
-	e = &v->list.items[k];
+	/* Every game of the system (sys_games), and on a shelf with folders the
+	 * folder it shows too, if the game is in it: two copies of one entry,
+	 * since `list` is made from `all` (src/shelfdir.h). The folder of games
+	 * stays the game's, so it stays in the folder shown. */
+	if ((k = lib_find_entry(sys_games(v), NULL, 0, file)) < 0) return false;
 	snprintf(folder, sizeof folder, "%s", a->sys.systems[si].folder);
+	k = lib_find_entry(&v->list, NULL, 0, file);
 	if (v->cursor >= 0 && v->cursor < v->list.count)
 		snprintf(was, sizeof was, "%s", v->cursor == k ? new_file : v->list.items[v->cursor].file);
-	snprintf(e->file, sizeof e->file, "%s", new_file);
-	snprintf(e->name, sizeof e->name, "%s", new_name);
-	lib_display_title(db_lib(), folder, e->file, e->name, e->title, sizeof e->title);
+	for (int c = 0; c < 2; c++) {
+		game_list *gl = c ? &v->list : v->all;
+
+		if (!gl || (k = lib_find_entry(gl, NULL, 0, file)) < 0) continue;
+		e = &gl->items[k];
+		snprintf(e->file, sizeof e->file, "%s", new_file);
+		snprintf(e->name, sizeof e->name, "%s", new_name);
+		lib_display_title(db_lib(), folder, e->file, e->name, e->title, sizeof e->title);
+	}
 	/* Every index from here on can name another game */
 	free_all_textures(a);
 	SDL_AtomicIncRef(&g_lib_gen);       /* a check that read the card before is moot */

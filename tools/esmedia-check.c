@@ -231,7 +231,9 @@ int main(void)
 		game_meta have = { 0 };
 		char t[256];
 
-		CHECK(lib_scan_listing(roms, "nds", "nds,zip", &l));
+		/* "cue" too: Disc Set is a disc folder, and since the scan reads
+		 * folders of games a folder is one game only on a shelf of discs */
+		CHECK(lib_scan_listing(roms, "nds", "nds,zip,cue", &l));
 		CHECK(l.count == 5);
 		CHECK(l.skipped == 0);                    /* not images/, videos/ or gamelist.xml */
 		snprintf(have.title, sizeof have.title, "%s", "Scraped Name");

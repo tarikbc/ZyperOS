@@ -43,8 +43,9 @@
 #define GR_NAME_MAX 160
 bool gr_name_ok(const char *typed, char *out, size_t n);
 
-/* Whether a game on this shelf can be renamed at all: GR_KEEPS_NAME's */
-bool gr_renames(const char *core, const char *file);
+/* Whether a game on this shelf can be renamed at all: GR_KEEPS_NAME's.
+ * `dir` is game_entry.dir: the folders of games in front of its own part. */
+bool gr_renames(const char *core, const char *file, unsigned dir);
 
 typedef enum {
 	GR_OK,
