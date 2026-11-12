@@ -3,6 +3,7 @@
 #include "artbadge.h"
 
 #include "clamp.h"
+#include "theme.h"
 
 #include <math.h>
 #include <string.h>
@@ -27,7 +28,7 @@ int ab_buf_side(int d) { return d + AB_PAD * 2; }
 ds_rgb ab_disc_color(int theme)
 {
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
-	return DS_THEME[theme].surface;
+	return theme_at(theme)->surface;
 }
 
 ds_rgb ab_glyph_color(ab_kind kind, int theme)
@@ -35,7 +36,7 @@ ds_rgb ab_glyph_color(ab_kind kind, int theme)
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
 	/* Pink is love (DESIGN.md 1), and lime is MP4's, as its song mark in the
 	 * top bar is */
-	return kind == AB_FAVORITE ? DS_THEME[theme].favorite : DS_THEME[theme].accent_ink;
+	return kind == AB_FAVORITE ? theme_at(theme)->favorite : theme_at(theme)->accent_ink;
 }
 
 /* ---- distances, in glyph units, negative inside ------------------------------ */
@@ -180,7 +181,7 @@ void ab_render(uint32_t *px, int side, int stride, int d, int theme, ab_kind kin
 	for (y = 0; y < side; y++) memset(px + (size_t)y * stride, 0, (size_t)side * sizeof *px);
 	if (d <= 0 || kind < 0 || kind >= AB_KINDS) return;
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
-	th = &DS_THEME[theme];
+	th = theme_at(theme);
 	sh_a = (theme == DS_DARK ? AB_SHADOW_DARK : AB_SHADOW_LIGHT) / 255.0f;
 	glyph = ab_glyph_color(kind, theme);
 	disc = ab_disc_color(theme);

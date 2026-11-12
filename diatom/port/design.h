@@ -88,6 +88,31 @@ static const ds_theme DS_THEME[DS_THEMES] = {
 	  120, 186, 102 },
 };
 
+/* The player's look (DESIGN.md 3.5, src/look.h): the accents and each
+ * theme's background tones, the first of each as the themes ship. */
+enum { DS_ACCENTS = 10, DS_TONES = 3 };
+static const ds_rgb DS_ACCENT[DS_ACCENTS] = {
+	{ 190, 242,  60 },   /* lime */
+	{  94, 224, 138 },   /* green */
+	{  63, 212, 192 },   /* teal */
+	{ 116, 176, 255 },   /* blue */
+	{ 181, 155, 255 },   /* purple */
+	{ 255, 148, 200 },   /* pink */
+	{ 255, 122, 112 },   /* red */
+	{ 255, 160,  77 },   /* orange */
+	{ 255, 216,  77 },   /* yellow */
+	{ 211, 213, 207 },   /* silver */
+};
+static const char *const DS_ACCENT_ID[DS_ACCENTS] = { "lime", "green", "teal", "blue", "purple", "pink", "red", "orange", "yellow", "silver" };
+static const ds_rgb DS_TONE[DS_THEMES][DS_TONES] = {
+	{ { 230, 228, 218 }, { 227, 227, 225 }, { 221, 226, 231 } },
+	{ { 17, 19, 16 }, { 14, 21, 38 }, { 30, 33, 32 } },
+};
+static const char *const DS_TONE_ID[DS_THEMES][DS_TONES] = {
+	{ "warm", "neutral", "cool" },
+	{ "black", "deepblue", "darkgrey" },
+};
+
 /* Type: pixels in the 1024x768 design space. */
 #define DS_TYPE_TITLE 60
 #define DS_TYPE_LABEL 55

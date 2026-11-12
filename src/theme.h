@@ -51,6 +51,23 @@ typedef enum { APPEAR_LIGHT, APPEAR_DARK, APPEAR_AUTO } appearance;
  * night: it is Light, the default, whatever the setting is called. */
 int theme_resolve(appearance a, int hour);
 
+/* Auto's hours (MENU > Display > Auto Hours, my pick 2026-11-12): Light
+ * from `light_min` minutes into the local day, Dark from `dark_min`, each
+ * on a THEME_HOURS_STEP; 7:00 and 19:00 as it ships. Hours that go round
+ * midnight are fine, and the same two never make it dark. Anything off the
+ * day is the default. The caller reads them from the database
+ * (auto.light, auto.dark) and calls this before theme_init, as it reads
+ * the appearance. */
+#define THEME_LIGHT_FROM (7 * 60)
+#define THEME_DARK_FROM  (19 * 60)
+#define THEME_HOURS_STEP 30
+void theme_set_hours(int light_min, int dark_min);
+void theme_hours(int *light_min, int *dark_min);
+
+/* theme_resolve to the minute of the local day (0 to 1439): what Auto is at
+ * `minute` by the hours set; theme_resolve is it at the hour's start */
+int theme_resolve_min(appearance a, int minute);
+
 /* The theme the saved word `saved` makes at `now`: the word read as the
  * launcher reads it (appearance_parse, so NULL, "" and a word that is none of
  * the three are Light) and Auto resolved at the local hour of `now`, in the
@@ -131,20 +148,18 @@ bool theme_refresh_at(time_t now);
 
 /* A theme's index as one of the two: DS_DARK for DS_DARK and DS_LIGHT for
  * anything else, the default, so an index handed in from anywhere picks a
- * table that exists. And that theme's table, for drawing in a theme a caller
- * names rather than the one on: a card drawn on the loader's workers, a
- * notice, what sits on scrim.game. Inline and plain, so the checks that link
- * no theme.c (tools/cardgen-check.c) can use them, and each points into the
- * including file's own copy of DS_THEME. */
+ * table that exists. Inline and plain, so the checks that link no theme.c
+ * can use it. */
 static inline int theme_clamp(int ix)
 {
 	return ix == DS_DARK ? DS_DARK : DS_LIGHT;
 }
 
-static inline const ds_theme *theme_at(int ix)
-{
-	return &DS_THEME[theme_clamp(ix)];
-}
+/* The theme `ix`'s table as the player's look has it (src/look.c, which
+ * defines this): the tokens' own DS_THEME until a look other than the one
+ * that ships is set, then the tables look_set worked out. Every screen that
+ * draws in a theme asks this or theme(), so a look reaches all of them. */
+const ds_theme *theme_at(int ix);
 
 /* The theme that is on: its table in src/design.h, and its index into
  * DS_THEME, which is DS_LIGHT or DS_DARK. Beard until theme_init is called,

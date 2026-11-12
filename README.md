@@ -120,7 +120,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
   <tr>
     <td align="center"><img src="res/readme/mp4.png" width="240" alt="MP4's shelf of an album, a film and a book, each marked with what it is"><br><sub>Your albums, books and films, in MP4</sub></td>
     <td align="center"><img src="res/readme/info.png" width="240" alt="Metal Gear Solid's details: Synopsis, Year, Genre, Achievements, Favorite, Cover and Video"><br><sub>A game's details, one button away</sub></td>
-    <td align="center"><img src="res/readme/menu.png" width="240" alt="The ZyperOS menu, Search Games at the top"><br><sub>The device's settings in one menu</sub></td>
+    <td align="center"><img src="res/readme/menu.png" width="240" alt="The ZyperOS menu on its Games tab, About and Display beside it"><br><sub>The device's settings in six tabs</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="res/readme/folders.png" width="240" alt="The Game Boy Advance shelf: the folder Commercial Owned as a pixel folder with 4 on its label, Friends Games beside it, 4 games under its name"><br><sub>Your folders, as you made them</sub></td>
@@ -151,6 +151,8 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **An empty card that says what to do:** with no games yet, the home shows the two ways to add them, one button each, and Zyper cheers when the first ones arrive.
 - **Your folders, kept:** sort a system's games into folders on the card, "Homebrew", "Rom Hacks", "Translations" inside it, as deep as you like, and the shelf shows them as you made them: the folders first, each a pixel folder with its count of games, then the loose games. A opens a folder, B goes back up. A disc set, a ScummVM game and a port stay one game each, as before. Favorites, Search Games, Random Game, Storage, Delete Game, play time and resume all reach the games inside folders.
 - **Covers or a list:** **MENU > View** on a system's shelf turns its row of covers into a list of names, each with a small card in the system's color, and the focused game's cover and play time beside it. Up and Down step, Left and Right jump a letter. Each system keeps its own choice, as it keeps its sort order.
+- **MENU in tabs:** Games, Display, Sound, Connections, System and About, with **L1** and **R1** going round them. MENU opens on the tab you left it on, and every list goes round: Down on the last row goes to the first, and a long list carries on past its end, while a held button stops at the end.
+- **Your look:** **MENU > Display > Theme** picks the accent (ten of them, lime as it ships), a background tone for the light theme (warm, neutral or cool) and one for the dark (black, deep blue or dark grey), rounded or square corners, and Zyper on or off, with both themes shown small as you go. Every color is worked out to stay readable, and the volume bar over a game follows ([below](#light-and-dark)).
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download the first time you play it with Wi-Fi, and then work offline: an unlock shows at once, waits on the card, and goes to your account as soon as the handheld is on Wi-Fi again, dated when you earned it. The game's list says how many wait, and Zyper says when they are sent. A game never played with Wi-Fi says "not checked yet" on its Achievements row. Each achievement has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own. To change one game's cover, X on it opens **Cover and Video**: every cover, 3D box, title screen and screenshot the three sources offer, each named with where it comes from, a big look before it is used, and the one it replaced kept to put back ([below](#a-game-has-no-box-art)).
@@ -209,7 +211,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Achievements offline** | Yes: sent when Wi-Fi is back, dated when earned | — | — | Yes: sent later | No: needs the internet | — |
 | **System updates** | Over Wi-Fi or the USB cable, A/B with roll back | — | Copy the new files | TortOS Installer, on a computer | Over the air, or a file | A file you copy, A/B with roll back |
 | **First-start tutorial** | Yes | — | — | — | — | — |
-| **Themes** | Light and dark | EmulationStation themes | 13 launcher skins | 2 card art styles | Yes, with a downloader | Your own themes |
+| **Themes** | Light and dark, or by the clock; ten accents, three backgrounds each, square or rounded corners | EmulationStation themes | 13 launcher skins | 2 card art styles | Yes, with a downloader | Your own themes |
 | **Languages** | 8: English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語, Italiano | — | 21, in its launcher | English | 36 | 6 |
 | **Menu music** | 10 free tracks, or yours | — | — | — | Yes | — |
 | **Media player** | Music, audiobooks, video | — | Music, video | Music, audiobooks | Music, video | Music |
@@ -251,7 +253,16 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 
 ## Light and dark
 
-ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appearance** chooses `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock, and the first start asks too. Every screen follows it. The File Transfer page follows the phone or computer it is open on instead.
+ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Display > Appearance** chooses `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock or at the hours you set in **Auto Hours**, and the first start asks too. Every screen follows it. The File Transfer page follows the phone or computer it is open on instead.
+
+**MENU > Display > Theme** makes them yours: an accent from ten (lime, green, teal, blue, purple, pink, red, orange, yellow and silver), a background for each theme (warm, neutral or cool grey in light; black, deep blue or dark grey in dark), rounded or square corners, and Zyper on or off. Both themes are drawn small at the top as you change them, and **Reset to Default** puts them back. ZyperOS works out every other color from the two you pick and keeps every word at the contrast it has as it ships.
+
+<table>
+  <tr>
+    <td><img src="res/readme/display.png" width="360" alt="MENU's Display tab, on Theme, with both themes' chips beside it"></td>
+    <td><img src="res/readme/theme.png" width="360" alt="The Theme page: both themes drawn small, then Accent, Light Background and Dark Background"></td>
+  </tr>
+</table>
 
 <div align="center">
 

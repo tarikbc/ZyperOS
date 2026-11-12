@@ -274,6 +274,11 @@ static uint64_t g_osd_shown, g_osd_changed;
 static bool     g_osd_on;
 static int      g_osd_level, g_osd_max, g_osd_kind;   /* kind 0 volume, 1 brightness */
 static int      g_osd_theme;                          /* DS_LIGHT or DS_DARK */
+/* The bar's colors in that theme, as the player's look has them (the theme
+ * file's second line, themefile_read_bar), and a count that moves when they
+ * do, for the render thread to hand them to osdbar_colors */
+static ds_theme g_osd_colors;
+static unsigned g_osd_colors_gen;
 static bool     g_lowbat, g_lowbat_blink;   /* the low-battery disc; under g_mx */
 
 /* ---------- levels ---------------------------------------------------------- */
@@ -551,9 +556,15 @@ static void osd_show(int kind, int level, int max)
 	/* The theme is the launcher's, in a file: read before g_mx is taken, so
 	 * the render thread is never kept waiting on the filesystem, and again
 	 * on every press, so a change while the bar is up shows on the next one. */
-	int theme = themefile_read(THEME_FILE);
+	ds_theme colors;
+	int theme = themefile_read_bar(THEME_FILE, &colors);
 
 	pthread_mutex_lock(&g_mx);
+	if (theme != g_osd_theme || memcmp(&colors.ground, &g_osd_colors.ground,
+	                                   sizeof colors.ground * 18)) {
+		g_osd_colors = colors;
+		g_osd_colors_gen++;
+	}
 	uint64_t now = diatom_port_now_us();
 	float a, rise;
 
@@ -868,17 +879,22 @@ static void upload_frame(const mailbox_frame *f)
  * with straight alpha, the overlay's own layout, so it goes up the overlay's
  * way. Not through the panel's color matrix: the shelf is not, and the bar is
  * the shelf's. */
+/* The look's colors as last handed to osdbar_colors, for draw_level_bar to
+ * paint again when they move (render thread) */
+static unsigned g_osd_colors_seen;
+
 static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
                            float rise, bool turned)
 {
 	static uint32_t px[OSDBAR_W * OSDBAR_H];
 	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme, drawn_a, w, h;
+	static unsigned drawn_gen;
 	const float s = (float)g_surface_w / 1024.0f;
 	int a = (int)(alpha * 255 + 0.5f);
 
 	if (s <= 0 || s > 1) return;
 	if (kind != drawn_kind || level != drawn_level || max != drawn_max ||
-	    theme != drawn_theme || a != drawn_a) {
+	    theme != drawn_theme || a != drawn_a || drawn_gen != g_osd_colors_seen) {
 		osdbar_size(s, &w, &h);
 		osdbar_render(px, w, h, w, s, theme, kind ? OSDBAR_BRIGHT : OSDBAR_VOLUME,
 		              level, max, alpha, false);
@@ -886,7 +902,7 @@ static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
 		drawn_kind = kind; drawn_level = level; drawn_max = max;
-		drawn_theme = theme; drawn_a = a;
+		drawn_theme = theme; drawn_a = a; drawn_gen = g_osd_colors_seen;
 	}
 	glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
 	glUseProgram(g_prog_plain);
@@ -1505,6 +1521,12 @@ static void *present_thread(void *arg)
 		osd_level = g_osd_level;
 		osd_max   = g_osd_max;
 		osd_theme = g_osd_theme;
+		/* The look's colors for the bar, handed over once each time they
+		 * move, on this thread, which is the one that paints the bar */
+		if (g_osd_colors_gen != g_osd_colors_seen) {
+			osdbar_colors(osd_theme, &g_osd_colors);
+			g_osd_colors_seen = g_osd_colors_gen;
+		}
 		/* Blinking: the even seconds, the launcher's rhythm. */
 		lowbat    = g_lowbat && (!g_lowbat_blink || (now / 1000000u) % 2 == 0);
 		pthread_mutex_unlock(&g_mx);

@@ -205,6 +205,32 @@ int main(void)
 		ck(!themefile_write(longp, DS_DARK), "a path too long for its temporary is refused");
 	}
 
+	/* The bar's colors under the word, as the player's look has them
+	 * (themefile_write_bar): written, and read back as the six roles, the
+	 * rest the theme's own; the word alone gives the tokens' table; a bar
+	 * line that is not whole gives the tokens' colors and still the theme */
+	{
+		ds_theme bar = DS_THEME[DS_DARK], got;
+
+		bar.surface = (ds_rgb){ 0x1a, 0x20, 0x30 };
+		bar.accent_ink = (ds_rgb){ 0x7a, 0xb8, 0xff };
+		ck(themefile_write_bar(p, DS_DARK, &bar), "writes the bar's colors");
+		ck(slurp(p, text) > 0 && !strcmp(text, "dark\nbar 1a2030 3a3e3c 3f4341 7ab8ff f2d27a 111310\n"),
+		   "as the word and a line of six colors");
+		ck(themefile_read_bar(p, &got) == DS_DARK && got.surface.b == 0x30 &&
+		   got.accent_ink.r == 0x7a && got.text.r == DS_THEME[DS_DARK].text.r,
+		   "read back: the six roles, the rest Salt & Pepper's");
+		ck(themefile_read(p) == DS_DARK, "and themefile_read still says dark");
+		ck(themefile_write_bar(p, DS_LIGHT, NULL) && themefile_read_bar(p, &got) == DS_LIGHT &&
+		   got.surface.r == DS_THEME[DS_LIGHT].surface.r, "no colors is the word alone, the tokens'");
+		put(p, "dark\nbar 1a2030 zz\n", 18);
+		ck(themefile_read_bar(p, &got) == DS_DARK && got.surface.r == DS_THEME[DS_DARK].surface.r,
+		   "a bar line that is not whole: dark, in the tokens' colors");
+		put(p, "light\nbar 1a2030 3a3e3c 3f4341 7ab8ff f2d27a 111310 ffffff\n", 58);
+		ck(themefile_read_bar(p, &got) == DS_LIGHT && got.surface.r == DS_THEME[DS_LIGHT].surface.r,
+		   "a seventh color is no bar line either");
+	}
+
 	/* A temporary left by a launcher that was killed mid-write is no reason
 	 * the next write cannot happen */
 	put(tmp, "dar", 3);

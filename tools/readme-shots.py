@@ -160,6 +160,10 @@ SHOTS={
     'cheevo-notice':('demo','PS1',['--notice-kind','unlock','--notice',"Violated Heavens",'Unlocked \u00b7 10 points',
                                    '--notice-badge','{card}/Roms/PlayStation/.cheevos/badges/b3.png']),
     'menu':('demo','PS1',['--menu','Search Games']),
+    # MENU's Display tab on Theme, its chips, and the Theme page with both
+    # themes small (DESIGN.md 11.3, 11.42)
+    'display':('demo','PS1',['--menu-tab','1','--menu','Theme']),
+    'theme':('demo','PS1',['--look-page','theme','0']),
     'mp4':('media','MUSE',['--screen','games']),
     'nowplaying':('demo','MUSE',['--nowplaying','0','0','83']),
     'hare':('demo','PS1',['--hare','http://192.168.1.42','1 connected','Tobu Tobu Girl.gb']),

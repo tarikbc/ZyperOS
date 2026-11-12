@@ -8,6 +8,7 @@
 #include "sysmark.h"  /* a system's color as a mark */
 #include "config.h"   /* CFG_NO_COLOR: a system with no color of its own */
 #include "linebreak.h" /* where a name too wide for its box breaks or is cut */
+#include "look.h"      /* Corners: Square */
 #include "padglyph.h"  /* the PlayStation's shapes, drawn in running text */
 
 #include <math.h>
@@ -2044,6 +2045,10 @@ void ui_round_rect(SDL_Renderer *r, const SDL_Rect *q, int radius, SDL_Color col
 	fit_box(q);
 #endif
 	radius = round_rect_radius(q->w, q->h, radius);
+	/* Corners: Square (DESIGN.md 3.5): every corner under a pill's goes
+	 * square - a panel, the focus fill, a key, a chip - and a pill, whose
+	 * radius is half its height, stays a pill, as a circle stays a circle */
+	if (look_square() && radius * 2 < (q->w < q->h ? q->w : q->h)) radius = 0;
 
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColor(r, col.r, col.g, col.b, col.a);
@@ -3153,7 +3158,11 @@ SDL_Surface *ui_card_paint(const ui_card_order *o, bool away)
  * into slots that are allocated, reordered, moved and freed in a dozen places
  * in src/main.c, and a mark that lives with the texture cannot be left behind
  * by any of them. */
-static char card_made_for[DS_THEMES];
+/* And by the look it was made in (src/look.h): a card made before the
+ * player's look changed is made again, in its new colors, as one of the
+ * other theme is. Four looks round is enough to tell the last from this. */
+#define CARD_LOOKS 4
+static char card_made_for[DS_THEMES][CARD_LOOKS];
 
 SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 {
@@ -3161,7 +3170,7 @@ SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 
 	if (!t) return NULL;
 	SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
-	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)]);
+	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)][look_gen() % CARD_LOOKS]);
 	return t;
 }
 
@@ -3189,10 +3198,14 @@ static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 int ui_card_theme(SDL_Texture *t)
 {
 	void *p = t ? SDL_GetTextureUserData(t) : NULL;
-	int i;
+	int i, g;
 
+	/* A card of an older look reads as made for the other theme, which is
+	 * what makes it stale (tex_stale) and made again */
 	for (i = 0; i < DS_THEMES; i++)
-		if (p == &card_made_for[i]) return i;
+		for (g = 0; g < CARD_LOOKS; g++)
+			if (p == &card_made_for[i][g])
+				return g == (int)(look_gen() % CARD_LOOKS) ? i : (i == DS_DARK ? DS_LIGHT : DS_DARK);
 	return -1;
 }
 

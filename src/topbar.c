@@ -7,6 +7,8 @@
 
 #include "design.h"
 #include "home.h"
+#include "look.h"
+#include "theme.h"
 #include "ui.h"
 
 static bool marks_same(const status_marks *a, const status_marks *b)
@@ -33,6 +35,7 @@ static void marks_blit(SDL_Renderer *r, const status_marks *m, int theme)
 	static SDL_Renderer *tex_for;
 	static status_marks  painted;
 	static int           painted_theme = -1, tw, th;
+	static unsigned      painted_gen;
 	int w, h, mw = status_marks_width(m);
 
 	if (!mw) return;
@@ -49,11 +52,13 @@ static void marks_blit(SDL_Renderer *r, const status_marks *m, int theme)
 		th = h;
 		painted_theme = -1;
 	}
-	if (theme != painted_theme || !marks_same(m, &painted)) {
+	/* and again when the look changed under the same theme (look_gen) */
+	if (theme != painted_theme || !marks_same(m, &painted) || look_gen() != painted_gen) {
 		status_marks_render(px, w, h, w, 1.0f, theme, m);
 		SDL_UpdateTexture(tex, NULL, px, w * 4);
 		painted = *m;
 		painted_theme = theme;
+		painted_gen = look_gen();
 	}
 	SDL_RenderCopy(r, tex, NULL, &(SDL_Rect){ TOPBAR_RIGHT - mw - STATUS_PAD,
 	                                          TOPBAR_TOP - STATUS_PAD, w, h });
@@ -65,6 +70,7 @@ void topbar_song_mark(SDL_Renderer *r, int x, int theme, bool paused)
 	static SDL_Texture  *tex;
 	static SDL_Renderer *tex_for;
 	static int           painted = -1;     /* theme * 2 + paused */
+	static unsigned      painted_gen;
 	int w, h, want = theme * 2 + (paused ? 1 : 0);
 
 	status_note_size(1.0f, &w, &h);
@@ -78,17 +84,18 @@ void topbar_song_mark(SDL_Renderer *r, int x, int theme, bool paused)
 		tex_for = r;
 		painted = -1;
 	}
-	if (want != painted) {
+	if (want != painted || look_gen() != painted_gen) {
 		status_note_render(px, w, h, w, 1.0f, theme, paused);
 		SDL_UpdateTexture(tex, NULL, px, w * 4);
 		painted = want;
+		painted_gen = look_gen();
 	}
 	SDL_RenderCopy(r, tex, NULL, &(SDL_Rect){ x - STATUS_PAD, TOPBAR_TOP - STATUS_PAD, w, h });
 }
 
 void topbar_draw(SDL_Renderer *r, topbar *t, topbar_drawn *out)
 {
-	const ds_theme *th = &DS_THEME[t->theme < 0 || t->theme >= DS_THEMES ? DS_LIGHT : t->theme];
+	const ds_theme *th = theme_at(t->theme);
 	TTF_Font *fb = page_font(PAGE_CHROME), *fc = page_font(PAGE_ACTION);
 	int mw;
 

@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-task
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
@@ -255,7 +255,7 @@ build-native/status-check: tools/status-check.c src/status.c src/status.h \
                           src/design.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/status-check.c src/status.c -lm
+	      -o $@ tools/status-check.c src/status.c src/look.c -lm
 
 # Charger changes reach the shared battery cache within 250 ms at the shelf's
 # 16 ms poll rate. Stable samples request no redraw; capacity stays at 5 s.
@@ -415,11 +415,22 @@ build-native/pkkeys-check: tools/pkkeys-check.c tools/pkkeys.c tools/pkkeys.h sr
 check-theme: build-native/theme-check
 	@./build-native/theme-check
 
-build-native/theme-check: tools/theme-check.c src/theme.c src/theme.h \
+# The player's look (src/look.h, DESIGN.md 3.5): every accent with every
+# background tone, in both themes, held to the contrast DESIGN.md 3.2 owes
+# each color; the look as it ships is the tokens to the byte.
+check-look: build-native/look-check
+	@./build-native/look-check
+
+build-native/look-check: tools/look-check.c src/look.c src/look.h src/theme.h src/design.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/look-check.c src/look.c -lm
+
+build-native/theme-check: tools/theme-check.c src/theme.c src/theme.h src/look.c src/look.h \
                           src/themefile.c src/themefile.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/theme-check.c src/theme.c src/themefile.c $(I18N_SRC)
+	      -o $@ tools/theme-check.c src/theme.c src/themefile.c src/look.c $(I18N_SRC) -lm
 
 # System Update end to end (update/, docs/updates.md): two fake releases,
 # packed and signed with a throwaway key, a fake card, check, download, a cut
@@ -518,8 +529,8 @@ build-native/portkeys-check: tools/portkeys-check.c tools/pkset.c tools/pkset.h 
                              src/clock.c src/clock.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
-	      -o $@ tools/portkeys-check.c tools/pkset.c src/theme.c src/themefile.c \
-	      src/clock.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/portkeys-check.c tools/pkset.c src/theme.c src/themefile.c src/look.c \
+	      src/clock.c $(I18N_SRC) -lsqlite3 -lm
 
 # systems.cfg's accent field: six hex digits are that color, and anything else
 # - an empty field, a line that stops before it, a word - is no color at all
@@ -611,7 +622,7 @@ build-native/cardgen-check: tools/cardgen-check.c src/cardgen.c src/cardgen.h \
                             src/design.h src/theme.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/cardgen-check.c src/cardgen.c -lm
+	      -o $@ tools/cardgen-check.c src/cardgen.c src/look.c -lm
 
 # Beard's shadows: a pass of the box blur keeps its light, three passes reach
 # exactly as far as a shadow's texture is padded, the nine pieces it is drawn
@@ -813,7 +824,7 @@ build-native/sysmark-check: tools/sysmark-check.c src/sysmark.c src/sysmark.h \
                             src/config.c src/config.h src/design.h src/theme.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sysmark-check.c src/sysmark.c src/config.c
+	      -o $@ tools/sysmark-check.c src/sysmark.c src/config.c src/look.c -lm
 
 # A change of theme leaves nothing drawn for the old one on the systems row,
 # the games shelf or Now Playing's cover, nor Plain Jane's art of the old one
@@ -1674,7 +1685,7 @@ check-textfade:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c \
+		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c src/look.c \
 		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
@@ -1689,7 +1700,7 @@ check-tour-colors:
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
 		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/roundrect.c \
-		  src/theme.c src/themefile.c src/linebreak.c src/blur.c src/cardgen.c \
+		  src/theme.c src/themefile.c src/look.c src/linebreak.c src/blur.c src/cardgen.c \
 		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
@@ -1766,7 +1777,7 @@ build-native/artbadge-check: tools/artbadge-check.c src/artbadge.c src/artbadge.
                             src/design.h src/clamp.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/artbadge-check.c src/artbadge.c -lm
+	      -o $@ tools/artbadge-check.c src/artbadge.c src/look.c -lm
 
 .PHONY: check-artbadge-shots
 check-artbadge-shots: native
