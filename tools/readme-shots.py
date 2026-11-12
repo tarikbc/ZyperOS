@@ -136,6 +136,11 @@ SHOTS={
     'favorites':('demo','FAV',['--screen','games']),
     'info':('demo','PS1',['--screen','games','--info']),
     'info-delete':('demo','PS1',['--screen','games','--info-delete']),
+    # A card copied from Knulli (DESIGN.md 11.37): the PlayStation's games in
+    # psx/, their covers and video ES's, and Rename's keyboard (11.38)
+    'es-shelf':('es','PS1',['--screen','games']),
+    'info-rename':('demo','PS1',['--screen','games','--info-rename']),
+    'rename':('demo','PS1',['--screen','games','--keyboard','0','Metal Gear Solid (USA)','Rename']),
     'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
     'cheevos':('demo','PS1',['--cheevos-screen','0','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
     # An unlock over a game (DESIGN.md 11.7): its badge, and Zyper at the right
@@ -428,6 +433,34 @@ def media_card(card,art=None,manifest=None):
     book=card/'Audiobooks/Treasure Island';book.mkdir(parents=True)
     (book/'01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
 
+def es_card(card,art=None,manifest=None):
+    """A card copied from a system built on EmulationStation (DESIGN.md
+    11.37): every ZyperOS folder empty, as a new card has them, and the
+    PlayStation's games in Knulli's psx/, with what its scraper left beside
+    them - images/<game>-thumb.png, videos/<game>-video.mp4 and gamelist.xml
+    with their names and details. Nothing in .media: the shelf shows ES's."""
+    card_dirs(card)
+    for line in (ROOT/'config/systems.cfg').read_text(encoding='utf-8').splitlines():
+        if line.startswith('sys|'): (card/'Roms'/line.split('|')[2].strip()).mkdir(parents=True,exist_ok=True)
+    d=card/'Roms/psx';(d/'images').mkdir(parents=True);(d/'videos').mkdir()
+    entries=[]
+    for file,lr in LIBRARY['PlayStation']:
+        stem=Path(file).stem;(d/file).touch()
+        if art:
+            got=art_file(art,LR_REPO['PlayStation'],'Named_Boxarts',lr)
+            shutil.copyfile(got,d/'images'/(stem+'-thumb.png'))
+            if manifest is not None: note_art(manifest,f'psx/images/{stem}-thumb.png','PlayStation','Named_Boxarts',lr,got)
+            video=snap_video(art,'PlayStation',lr)
+            if video: shutil.copyfile(video,d/'videos'/(stem+'-video.mp4'))
+        name=stem.split(' (')[0].replace(' - ',': ')
+        desc=SYNOPSIS if stem==FOCUS else ''
+        entries.append('\t<game>\n\t\t<path>./%s</path>\n\t\t<name>%s</name>\n\t\t<desc>%s</desc>\n'
+                       '\t\t<thumbnail>./images/%s-thumb.png</thumbnail>\n\t\t<video>./videos/%s-video.mp4</video>\n'
+                       '\t\t<releasedate>19981021T000000</releasedate>\n\t\t<genre>Action</genre>\n\t</game>\n'
+                       %(file.replace('&','&amp;'),name.replace('&','&amp;'),desc.replace('&','&amp;'),
+                         stem.replace('&','&amp;'),stem.replace('&','&amp;')))
+    (d/'gamelist.xml').write_text('<?xml version="1.0"?>\n<gameList>\n'+''.join(entries)+'</gameList>\n',encoding='utf-8')
+
 def set_favs(card,favs,on):
     """A shot's favorites (SHOT_FAVS) into the card's library, or out of it"""
     if not favs: return   # a card with no library yet (ScummVM's) keeps none
@@ -675,10 +708,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
                'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports',
-               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media'}
+               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media','es':Path(temporary)/'es'}
         art=args.art_cache if args.art else None
         demo_card(cards['demo'],art,manifest)
         media_card(cards['media'],art)
+        es_card(cards['es'],art,manifest)
         scummvm_card(cards['scummvm'],art,manifest)
         backdrop=art_file(art,LR_REPO['PlayStation'],'Named_Snaps',BACKDROP_GAME) if art else None
         openbor_card(cards['openbor'])

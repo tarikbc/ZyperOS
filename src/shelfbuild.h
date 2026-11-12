@@ -6,12 +6,22 @@
  * with its albums; the card read at start and read again (Rescan, File
  * Transfer). Each is described in src/shelfbuild.c. */
 #include "app.h"
+#include "esmedia.h"
 #include "savedlib.h"
 
 #include <stdbool.h>
 
 /* Every shelf read from the card again, keeping the system */
 void rescan_all(app *a);
+
+/* EmulationStation's folders (config/systems.cfg, es lines): each system's
+ * folder set to the one its shelf reads, after a load of
+ * systems.cfg: what the last read of the card chose (lib_folder_get) */
+void shelf_folders_apply(systems_cfg *s);
+/* The same choice made from the card, for a process with no shelves: the
+ * computer's --scrape, --meta and --titles, whose folders are systems.cfg's.
+ * Reads Roms/ and the folders of each system with EmulationStation names. */
+void shelf_folders_from_card(systems_cfg *s);
 /* Every shelf built: each folder's listing from `saved` where it has one
  * (taken out of it), else off the card; `save` writes the saved library
  * after. How many came from `saved`. */
@@ -29,6 +39,14 @@ typedef struct lib_check lib_check;
 lib_check *lib_check_begin(void);
 void lib_check_run(lib_check *c);
 bool lib_check_apply(app *a, lib_check *c);
+/* After lib_check_run, on its thread: each folder's gamelist.xml, where
+ * EmulationStation left one, into the card's library for its games with no
+ * row there (es_import, src/esmedia.h). And after lib_check_apply, on the
+ * frame's: `fn` once for each folder something was written for, with what,
+ * for the shelves to show the names and favorites at once. */
+void lib_check_import(lib_check *c);
+void lib_check_imported(lib_check *c,
+                        void (*fn)(const char *folder, const es_import_list *l, void *ctx), void *ctx);
 void lib_check_free(lib_check *c);
 
 /* MENU > System Order (2026-11-06, docs/design/mock/controls-lab.html,
@@ -72,6 +90,12 @@ void refresh_favorites_shelf(app *a);
 /* A game deleted from the card (src/gamedel.h): off its shelf and Favorites,
  * in place, the shelf stood on moved to the next game or the home */
 void shelf_drop_game(app *a, const char *tag, const char *file);
+
+/* A game renamed (src/gamern.h): its entry on its shelf under its new file
+ * and name, in place, its shelf in order again and Favorites made again.
+ * False when no shelf has it. */
+bool shelf_rename_game(app *a, const char *tag, const char *file, const char *new_file,
+                       const char *new_name);
 /* Muse's shelf in the order its view is set to */
 void muse_order_view(sysview *v);
 /* The Singles album's cover, made once there is a Singles */

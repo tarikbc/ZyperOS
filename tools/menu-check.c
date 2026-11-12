@@ -1345,6 +1345,9 @@ static void what_scrolls(void)
  * byte count, no Favorite, which Y does from the shelf, and no Saves, which
  * the carousel shows with the frames themselves. A row is easy to put back by
  * habit. */
+/* Every row of a scraped game but Rename: GI_MAX less that one */
+#define INFO_FULL (GI_MAX - 1)
+
 static void info_rows(void)
 {
 	game_info gi;
@@ -1409,7 +1412,7 @@ static void info_rows(void)
 	snprintf(gi.genre, sizeof gi.genre, "Platform,Shoot'em Up");
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with a year, a genre and prose:\n");
-	ck(n == GI_MAX - 1, "three rows more than an unscraped game");
+	ck(n == INFO_FULL - 1, "three rows more than an unscraped game");
 	{
 		game_info fg = gi;
 		menu_row fr[GI_MAX];
@@ -1419,7 +1422,7 @@ static void info_rows(void)
 		fg.favorite = true;
 		fn = gi_rows(fr, &fg, true);
 		for (j = 0; j < fn; j++) if (!strcmp(fr[j].label, "Favorite")) at = j;
-		ck(fn == GI_MAX && at >= 0 && fr[at].live && fr[at].value == MENU_KEY_Y_ON,
+		ck(fn == INFO_FULL && at >= 0 && fr[at].live && fr[at].value == MENU_KEY_Y_ON,
 		   "a game that can be a favorite has the Favorite row, live, with Y's glyph and On");
 	}
 	ck(!strcmp(rows[0].label, "Synopsis"), "what the game IS leads");
@@ -1438,7 +1441,7 @@ static void info_rows(void)
 	gi.can_delete = false;
 	n = gi_rows(rows, &gi, true);
 	printf("game info on Ports, whose games are not deleted here:\n");
-	ck(n == GI_MAX - 2, "one row fewer");
+	ck(n == INFO_FULL - 2, "one row fewer");
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Delete Game") != 0, "no Delete Game row");
 	ck(!strcmp(rows[n - 1].label, "Cover and Video"), "Cover and Video last");
@@ -1446,7 +1449,7 @@ static void info_rows(void)
 	gi.own_art = true;
 	n = gi_rows(rows, &gi, true);
 	printf("game info on PortMaster, whose cover is its own:\n");
-	ck(n == GI_MAX - 3, "no art action either");
+	ck(n == INFO_FULL - 3, "no art action either");
 	for (i = 0; i < n; i++)
 		ck(strcmp(lbl(&rows[i]), "Cover and Video"), "no Cover and Video row");
 	gi.own_art = false;
@@ -1462,15 +1465,36 @@ static void info_rows(void)
 	gi.has_synopsis = true;
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with no year:\n");
-	ck(n == GI_MAX - 2, "the Year row is simply absent");
+	ck(n == INFO_FULL - 2, "the Year row is simply absent");
 	ck(!strcmp(rows[0].label, "Synopsis"), "and Synopsis still leads");
 	ck(!strcmp(rows[1].label, "Genre"), "with the genre where the year was");
 
 	gi.genre[0] = '\0';
 	n = gi_rows(rows, &gi, true);
 	printf("game info, scraped with neither year nor genre:\n");
-	ck(n == GI_MAX - 3, "both are simply absent");
+	ck(n == INFO_FULL - 3, "both are simply absent");
 	ck(!strcmp(rows[1].label, "Achievements"), "leaving the prose and the two actions");
+
+	/* Rename, where the game can take a name (src/gamern.h): right above
+	 * Delete Game, which stays last, live, with no value */
+	{
+		game_info rg = gi;
+		menu_row rr[GI_MAX];
+		int rn, j;
+
+		rg.can_rename = true;
+		rg.can_favorite = true;
+		rg.scraped = true;
+		rg.has_synopsis = true;
+		snprintf(rg.year, sizeof rg.year, "1995");
+		snprintf(rg.genre, sizeof rg.genre, "Platform");
+		rn = gi_rows(rr, &rg, true);
+		printf("game info, a game that can be renamed:\n");
+		ck(rn == GI_MAX, "every row at once fits GI_MAX");
+		for (j = 0; j < rn && strcmp(rr[j].label, "Rename"); j++) {}
+		ck(j == rn - 2 && rr[j].live && !rr[j].value, "Rename, live, just above Delete Game");
+		ck(!strcmp(rr[rn - 1].label, "Delete Game"), "and Delete Game still last");
+	}
 }
 
 

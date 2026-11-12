@@ -2,6 +2,7 @@
 #include "shelfbuild.h"
 
 #include "db.h"
+#include "esmedia.h"
 #include "favorites.h"
 #include "gamedel.h"
 #include "musec.h"
@@ -630,6 +631,9 @@ static void build_muse_shelf(app *a)
 
 static struct {
 	char     folder[LIB_NAME], exts[LIB_NAME];
+	/* The folder systems.cfg names and its EmulationStation names, for the
+	 * check to choose the folder again (shelf_folder_choose) */
+	char     home[LIB_NAME], es[160];
 	uint64_t shown;           /* lib_listing_digest of the listing the shelf showed */
 	uint64_t saved;           /* and of the saved file's, when it had one */
 	bool     in_file;
@@ -733,27 +737,200 @@ bool pm_only_offer(const app *a, int sys)
 	return a->view[sys].list.count == 1 && pm_shelf_offers(a, sys) == 1;
 }
 
+/* ---------- EmulationStation's folders (config/systems.cfg, es lines) ----
+ *
+ * A system's shelf reads ONE folder: its own while that has a game, and
+ * otherwise the one of its EmulationStation names on the card with the most
+ * games, the first listed on a tie. Chosen whenever the card is read - a
+ * rescan, and the check after a start that came from the saved library -
+ * and kept by home folder (lib_folder_set) for every load of systems.cfg
+ * after it (shelf_folders_apply). A start from the saved library takes the
+ * folder the file has, so it reads nothing more off the card. */
+
+void shelf_folders_apply(systems_cfg *s)
+{
+	for (int i = 0; s && i < s->count; i++)
+		lib_folder_get(s->systems[i].home, s->systems[i].folder, sizeof s->systems[i].folder);
+}
+
+/* Roms/'s folders, read once for a scan that reads the card and only when a
+ * system there has EmulationStation names: one listing of about forty
+ * entries */
+typedef struct {
+	char (*name)[LIB_NAME];
+	int  n;
+	bool read;
+} roms_dirs;
+
+static void roms_dirs_read(roms_dirs *d)
+{
+	DIR *dh;
+	struct dirent *e;
+	int cap = 0;
+
+	d->read = true;
+	if (!(dh = opendir(P_ROMS))) return;
+	while ((e = readdir(dh))) {
+		if (e->d_name[0] == '.') continue;
+		if (e->d_type != DT_DIR && e->d_type != DT_UNKNOWN) continue;
+		if (e->d_type == DT_UNKNOWN) {
+			char p[LIB_PATH * 2];
+			struct stat st;
+
+			snprintf(p, sizeof p, "%s/%s", P_ROMS, e->d_name);
+			if (stat(p, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+		}
+		if (d->n == cap) {
+			int more = cap ? cap * 2 : 64;
+			char (*bigger)[LIB_NAME] = realloc(d->name, (size_t)more * sizeof *bigger);
+
+			if (!bigger) break;
+			d->name = bigger;
+			cap = more;
+		}
+		snprintf(d->name[d->n++], LIB_NAME, "%s", e->d_name);
+	}
+	closedir(dh);
+}
+
+static void roms_dirs_free(roms_dirs *d)
+{
+	free(d->name);
+	memset(d, 0, sizeof *d);
+}
+
+/* The folder of that name on the card, as the card spells it: exFAT takes
+ * any case, a host's file system may not */
+static const char *roms_dirs_find(const roms_dirs *d, const char *name)
+{
+	for (int i = 0; i < d->n; i++)
+		if (!strcasecmp(d->name[i], name)) return d->name[i];
+	return NULL;
+}
+
+#define ES_PICK_MAX 12
+
+/* Which folder a system with EmulationStation names reads, into `folder`,
+ * with its listing in `out`. The losers are named in the log, with what
+ * they hold. `tag` is for the log only. */
+static void shelf_folder_choose(const char *tag, const char *home, const char *es,
+                                const char *exts, const roms_dirs *d,
+                                char *folder, size_t fn, game_list *out)
+{
+	system_cfg one;
+	const char *there[ES_PICK_MAX];
+	game_list lists[ES_PICK_MAX];
+	int games[ES_PICK_MAX], n = 0, k, pick, home_games;
+	char name[LIB_NAME];
+
+	memset(&one, 0, sizeof one);
+	snprintf(one.es, sizeof one.es, "%s", es);
+	for (k = 0; n < ES_PICK_MAX && cfg_es_at(&one, k, name, sizeof name); k++) {
+		const char *on_card = roms_dirs_find(d, name);
+
+		if (on_card && strcasecmp(on_card, home)) there[n++] = on_card;
+	}
+	lib_scan_listing(P_ROMS, home, exts, out);
+	snprintf(folder, fn, "%s", home);
+	if (n == 0) return;
+	home_games = out->count;
+	memset(lists, 0, sizeof lists);
+	for (k = 0; k < n; k++) {
+		lib_scan_listing(P_ROMS, there[k], exts, &lists[k]);
+		games[k] = lists[k].count;
+	}
+	pick = lib_folder_pick(home_games, games, n);
+	if (pick >= 0) {
+		fprintf(stderr, "scan: %-16s reads Roms/%s (%d game%s): Roms/%s has none\n", tag,
+		        there[pick], games[pick], games[pick] == 1 ? "" : "s", home);
+		lib_free(out);
+		*out = lists[pick];
+		memset(&lists[pick], 0, sizeof lists[pick]);
+		snprintf(folder, fn, "%s", there[pick]);
+	}
+	for (k = 0; k < n; k++) {
+		if (k != pick && games[k] > 0)
+			fprintf(stderr, "scan: %-16s does not read Roms/%s (%d game%s): one folder a shelf, "
+			        "Roms/%s's\n", tag, there[k], games[k], games[k] == 1 ? "" : "s", folder);
+		lib_free(&lists[k]);
+	}
+}
+
+void shelf_folders_from_card(systems_cfg *s)
+{
+	roms_dirs dirs = { 0 };
+	game_list l = { 0 };
+
+	for (int i = 0; s && i < s->count; i++) {
+		system_cfg *sc = &s->systems[i];
+
+		if (!sc->es[0]) continue;
+		if (!dirs.read) roms_dirs_read(&dirs);
+		shelf_folder_choose(sc->tag, sc->home, sc->es, sc->exts, &dirs, sc->folder,
+		                    sizeof sc->folder, &l);
+		lib_free(&l);
+		lib_folder_set(sc->home, sc->folder);
+	}
+	roms_dirs_free(&dirs);
+}
+
+/* An untaken saved shelf for one of a system's EmulationStation names,
+ * taken: the folder a start before this one chose (shelf_folder_choose).
+ * `folder` gets the saved spelling. */
+static bool saved_take_es(saved_lib *saved, const system_cfg *sc, char *folder, size_t fn,
+                          game_list *out)
+{
+	char name[LIB_NAME];
+
+	for (int k = 0; cfg_es_at(sc, k, name, sizeof name); k++)
+		for (int i = 0; i < saved->count; i++) {
+			saved_shelf *sh = &saved->shelves[i];
+
+			if (sh->taken || strcasecmp(sh->folder, name) || strcmp(sh->exts, sc->exts)) continue;
+			snprintf(folder, fn, "%s", sh->folder);
+			return savedlib_take(saved, sh->folder, sh->exts, out);
+		}
+	return false;
+}
+
 int scan_all_from(app *a, saved_lib *saved, bool save)
 {
 	int from_saved = 0;
 	bool pm_installer = pm_installer_here();
+	roms_dirs dirs = { 0 };
 
 	SDL_AtomicIncRef(&g_lib_gen);
 	g_nshown = 0;
 	for (int i = 0; i < a->sys.count; i++) {
 		sysview *v = &a->view[i];
-		const system_cfg *sc = &a->sys.systems[i];
+		system_cfg *sc = &a->sys.systems[i];
 		bool kept = saved && savedlib_take(saved, sc->folder, sc->exts, &v->list);
 		uint64_t digest;
 
 		bool pm = is_ports(sc) && pm_installer;
 
-		if (!kept) lib_scan_listing(P_ROMS, sc->folder, sc->exts, &v->list);
+		/* The saved library under one of its EmulationStation names: the
+		 * folder the last read of the card chose */
+		if (!kept && saved && sc->es[0] &&
+		    saved_take_es(saved, sc, sc->folder, sizeof sc->folder, &v->list)) {
+			kept = true;
+			lib_folder_set(sc->home, sc->folder);
+		}
+		if (!kept && sc->es[0]) {
+			if (!dirs.read) roms_dirs_read(&dirs);
+			shelf_folder_choose(sc->tag, sc->home, sc->es, sc->exts, &dirs,
+			                    sc->folder, sizeof sc->folder, &v->list);
+			lib_folder_set(sc->home, sc->folder);
+		} else if (!kept) {
+			lib_scan_listing(P_ROMS, sc->folder, sc->exts, &v->list);
+		}
 		if (pm) pm_listing_add(&v->list);
 		digest = lib_listing_digest(&v->list);
 		if (g_nshown < CFG_MAX_SYSTEMS) {
 			snprintf(g_shown[g_nshown].folder, sizeof g_shown[0].folder, "%s", sc->folder);
 			snprintf(g_shown[g_nshown].exts, sizeof g_shown[0].exts, "%s", sc->exts);
+			snprintf(g_shown[g_nshown].home, sizeof g_shown[0].home, "%s", sc->home);
+			snprintf(g_shown[g_nshown].es, sizeof g_shown[0].es, "%s", sc->es);
 			g_shown[g_nshown].shown = digest;
 			g_shown[g_nshown].saved = kept ? digest : 0;
 			g_shown[g_nshown].in_file = kept;
@@ -763,6 +940,7 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 		from_saved += kept;
 		lib_scan_finish(sc->folder, &v->list);
 	}
+	roms_dirs_free(&dirs);
 	g_saved_extra = saved ? savedlib_untaken(saved) : 0;
 	/* Read off the card (a rescan): the file is this now */
 	if (save) {
@@ -851,6 +1029,12 @@ struct lib_check {
 	uint64_t    shown[CFG_MAX_SYSTEMS], saved[CFG_MAX_SYSTEMS];
 	bool        in_file[CFG_MAX_SYSTEMS];
 	bool        pm[CFG_MAX_SYSTEMS];
+	/* Each shelf's folder systems.cfg names and its EmulationStation names,
+	 * and whether the check chose another folder than the one shown */
+	char        home[CFG_MAX_SYSTEMS][LIB_NAME], es[CFG_MAX_SYSTEMS][160];
+	bool        moved[CFG_MAX_SYSTEMS];
+	/* What lib_check_import wrote of each folder's gamelist.xml */
+	es_import_list got[CFG_MAX_SYSTEMS];
 	bool        rewrite;          /* the file is not the card, or there is none */
 	char        changed[96];      /* the folders the shelves are behind on, for the log */
 	bool        behind;           /* and whether there are any */
@@ -875,6 +1059,8 @@ lib_check *lib_check_begin(void)
 		c->saved[k] = g_shown[k].saved;
 		c->in_file[k] = g_shown[k].in_file;
 		c->pm[k] = g_shown[k].pm;
+		memcpy(c->home[k], g_shown[k].home, sizeof c->home[k]);
+		memcpy(c->es[k], g_shown[k].es, sizeof c->es[k]);
 	}
 	return c;
 }
@@ -883,15 +1069,31 @@ void lib_check_run(lib_check *c)
 {
 	unsigned t0 = plat_now_ms();
 	char path[LIB_PATH];
+	roms_dirs dirs = { 0 };
 
 	for (int k = 0; k < c->n; k++) {
 		uint64_t d;
 
-		lib_scan_listing(P_ROMS, c->fresh[k].folder, c->fresh[k].exts, &c->fresh[k].list);
+		if (c->es[k][0]) {
+			char was[LIB_NAME];
+
+			/* The folder chosen again, from the card as it is now: an
+			 * EmulationStation folder copied on since the saved library
+			 * was written, or ZyperOS's own given games */
+			if (!dirs.read) roms_dirs_read(&dirs);
+			snprintf(was, sizeof was, "%s", c->fresh[k].folder);
+			shelf_folder_choose(c->home[k], c->home[k], c->es[k], c->fresh[k].exts, &dirs,
+			                    c->fresh[k].folder, sizeof c->fresh[k].folder,
+			                    &c->fresh[k].list);
+			c->moved[k] = strcmp(was, c->fresh[k].folder) != 0;
+			if (c->moved[k]) c->rewrite = true;
+		} else {
+			lib_scan_listing(P_ROMS, c->fresh[k].folder, c->fresh[k].exts, &c->fresh[k].list);
+		}
 		if (c->pm[k]) pm_listing_add(&c->fresh[k].list);
 		d = lib_listing_digest(&c->fresh[k].list);
 		if (!c->in_file[k] || d != c->saved[k]) c->rewrite = true;
-		if (d != c->shown[k]) {
+		if (d != c->shown[k] || c->moved[k]) {
 			size_t at = strlen(c->changed);
 
 			if (at + strlen(c->fresh[k].folder) + 3 < sizeof c->changed)
@@ -913,6 +1115,7 @@ void lib_check_run(lib_check *c)
 			fprintf(stderr, "saved library: could not write %s\n", path);
 		SDL_UnlockMutex(g_save_lock);
 	}
+	roms_dirs_free(&dirs);
 	c->ms = plat_now_ms() - t0;
 }
 
@@ -989,7 +1192,8 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 	a->menu_w = 0;
 
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
-	if (!cfg_load_systems(path, &a->sys)) {
+	if (cfg_load_systems(path, &a->sys)) shelf_folders_apply(&a->sys);
+	else {
 		/* The card was readable a moment ago, so this is a card that has gone
 		 * away underneath us. An empty shelf is the honest picture. */
 		fprintf(stderr, "rescan: no usable %s\n", path);
@@ -1041,6 +1245,8 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 
 void rescan_all(app *a)
 {
+	/* The card read again: EmulationStation's indexes with it */
+	es_forget();
 	rebuild(a, NULL, false);
 }
 
@@ -1201,6 +1407,43 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 	home_reset(&a->home, a->sys_cursor, a->sys.count, plat_now_ms());
 }
 
+/* Rename (src/gamern.h, DESIGN.md 11.38): the game's entry under its new
+ * file and name, in place, as shelf_drop_game takes one off - no read of the
+ * card. Its title is the library's for the new file, which a rename empties
+ * (db_game_move), so the new name tidied (lib_title). Its shelf put in
+ * order again, its cursor still on it where it was on it; Favorites made
+ * again from the shelves; the saved library told. */
+bool shelf_rename_game(app *a, const char *tag, const char *file, const char *new_file,
+                       const char *new_name)
+{
+	char folder[CFG_STR], was[LIB_PATH] = "";
+	int si, k, at;
+	sysview *v;
+	game_entry *e;
+
+	for (si = 0; si < a->sys.count; si++)
+		if (!a->view[si].owner && !strcmp(a->sys.systems[si].tag, tag)) break;
+	if (si >= a->sys.count || (k = lib_find_entry(&a->view[si].list, NULL, 0, file)) < 0) return false;
+	v = &a->view[si];
+	e = &v->list.items[k];
+	snprintf(folder, sizeof folder, "%s", a->sys.systems[si].folder);
+	if (v->cursor >= 0 && v->cursor < v->list.count)
+		snprintf(was, sizeof was, "%s", v->cursor == k ? new_file : v->list.items[v->cursor].file);
+	snprintf(e->file, sizeof e->file, "%s", new_file);
+	snprintf(e->name, sizeof e->name, "%s", new_name);
+	lib_display_title(db_lib(), folder, e->file, e->name, e->title, sizeof e->title);
+	/* Every index from here on can name another game */
+	free_all_textures(a);
+	SDL_AtomicIncRef(&g_lib_gen);       /* a check that read the card before is moot */
+	sort_shelf(a, si);
+	if (was[0] && (at = lib_find_entry(&v->list, NULL, 0, was)) >= 0) v->cursor = at;
+	cf_reset(&v->cf, v->cursor);
+	fprintf(stderr, "rename: %s %s is %s on its shelf\n", tag, file, new_file);
+	saved_follow(a, folder);
+	refresh_favorites_shelf(a);
+	return true;
+}
+
 bool lib_check_apply(app *a, lib_check *c)
 {
 	saved_lib pre;
@@ -1212,6 +1455,9 @@ bool lib_check_apply(app *a, lib_check *c)
 	}
 	if (c->gen != SDL_AtomicGet(&g_lib_gen)) return false;      /* read again since */
 	fprintf(stderr, "saved library: the card changed (%s), the shelves read again\n", c->changed);
+	/* A folder the check chose again, for the systems.cfg rebuild reads */
+	for (int k = 0; k < c->n; k++)
+		if (c->moved[k]) lib_folder_set(c->home[k], c->fresh[k].folder);
 	pre.shelves = c->fresh;
 	pre.count = c->n;
 	rebuild(a, &pre, true);
@@ -1227,6 +1473,29 @@ bool lib_check_apply(app *a, lib_check *c)
 void lib_check_free(lib_check *c)
 {
 	if (!c) return;
-	for (int k = 0; k < c->n; k++) lib_free(&c->fresh[k].list);
+	for (int k = 0; k < c->n; k++) {
+		lib_free(&c->fresh[k].list);
+		es_import_free(&c->got[k]);
+	}
 	free(c);
+}
+
+void lib_check_import(lib_check *c)
+{
+	unsigned t0 = plat_now_ms();
+	int rows = 0;
+
+	for (int k = 0; c && k < c->n; k++)
+		if (c->fresh[k].list.count > 0)
+			rows += es_import(P_ROMS, c->fresh[k].folder, &c->fresh[k].list, &c->got[k]);
+	if (rows)
+		fprintf(stderr, "gamelist.xml: details of %d game%s into the library (%u ms)\n", rows,
+		        rows == 1 ? "" : "s", plat_now_ms() - t0);
+}
+
+void lib_check_imported(lib_check *c,
+                        void (*fn)(const char *folder, const es_import_list *l, void *ctx), void *ctx)
+{
+	for (int k = 0; c && k < c->n; k++)
+		if (c->got[k].n) fn(c->fresh[k].folder, &c->got[k], ctx);
 }

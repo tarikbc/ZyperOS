@@ -14,6 +14,14 @@
 # card with little room: `--dry-run CARD psx` says how big before anything is
 # written.
 #
+# OR NO TOOL AT ALL. ZyperOS reads ROGUE's folders as they are (DESIGN.md
+# 11.37): roms/nds copied to Roms/nds shows on the Nintendo DS shelf, with
+# ROGUE's images/, videos/ and gamelist.xml for its covers, names, details
+# and favorites. config/systems.cfg's es lines name each ROGUE folder this
+# table copies (tools/config-check.c holds the two together). This tool is
+# for a card in ZyperOS's own folders, with the saves, BIOS files and the
+# arcade checks below.
+#
 # THE RULES. Nothing on the ROGUE side is ever written: the tool reads it, and
 # refuses a CARD on ROGUE's own partition (on FAT, CARD/Roms would be ROGUE's
 # roms/). Nothing on the ZyperOS side is ever overwritten: a file already

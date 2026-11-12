@@ -3,6 +3,7 @@
 #include "titletext.h"
 
 #include <dirent.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -298,6 +299,88 @@ static bool folder_hook_file(const char *dirpath, const char *exts, char *out, s
 	return true;
 }
 
+/* What EmulationStation's scrapers and its systems put in a console's folder
+ * (Skraper's media/ layout, Batocera's images/ and videos/, ArkOS's and
+ * ROGUE OS's downloaded_images/, RetroPie's and Recalbox's media/ folders) */
+bool lib_es_media_dir(const char *name)
+{
+	static const char *const DIRS[] = {
+		"images", "videos", "media", "manuals", "downloaded_images", "downloaded_videos",
+		"boxart", "box2dfront", "box3d", "covers", "marquees", "wheel", "snap", "snaps",
+		"screenshots", "titles", "titleshots", "fanart", "thumbnails", "mixart", NULL
+	};
+	int i;
+
+	for (i = 0; name && DIRS[i]; i++)
+		if (!strcasecmp(name, DIRS[i])) return true;
+	return false;
+}
+
+/* The folders in use that systems.cfg does not name, by home folder */
+#define LIB_FOLDERS 64
+static struct { char home[LIB_NAME], folder[LIB_NAME]; } g_folders[LIB_FOLDERS];
+static int g_nfolders;
+static pthread_mutex_t g_folders_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void lib_folder_set(const char *home, const char *folder)
+{
+	int i;
+
+	if (!home || !home[0]) return;
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].home, home)) break;
+	if (!folder || !folder[0] || !strcmp(folder, home)) {
+		if (i < g_nfolders) g_folders[i] = g_folders[--g_nfolders];
+	} else if (i < g_nfolders || g_nfolders < LIB_FOLDERS) {
+		if (i == g_nfolders) g_nfolders++;
+		snprintf(g_folders[i].home, sizeof g_folders[i].home, "%s", home);
+		snprintf(g_folders[i].folder, sizeof g_folders[i].folder, "%s", folder);
+	}
+	pthread_mutex_unlock(&g_folders_lock);
+}
+
+const char *lib_folder_get(const char *home, char *out, size_t n)
+{
+	int i;
+
+	snprintf(out, n, "%s", home ? home : "");
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; home && i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].home, home)) { snprintf(out, n, "%s", g_folders[i].folder); break; }
+	pthread_mutex_unlock(&g_folders_lock);
+	return out;
+}
+
+const char *lib_folder_home(const char *folder, char *out, size_t n)
+{
+	int i;
+
+	snprintf(out, n, "%s", folder ? folder : "");
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; folder && i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].folder, folder)) { snprintf(out, n, "%s", g_folders[i].home); break; }
+	pthread_mutex_unlock(&g_folders_lock);
+	return out;
+}
+
+void lib_folder_reset(void)
+{
+	pthread_mutex_lock(&g_folders_lock);
+	g_nfolders = 0;
+	pthread_mutex_unlock(&g_folders_lock);
+}
+
+int lib_folder_pick(int home_games, const int *games, int n)
+{
+	int best = -1, i;
+
+	if (home_games > 0) return -1;
+	for (i = 0; i < n; i++)
+		if (games[i] > 0 && (best < 0 || games[i] > games[best])) best = i;
+	return best;
+}
+
 static void note_skip(game_list *out, const char *name)
 {
 	if (out->skipped < LIB_SKIPS_SHOWN)
@@ -373,7 +456,9 @@ bool lib_scan_listing(const char *roms_root, const char *folder, const char *ext
 			continue;
 		}
 		if (!lib_ext_allowed(ext_of(e->d_name), exts)) {
-			if (type == DT_REG) note_skip(out, e->d_name);
+			/* EmulationStation's list of the folder's games is no game
+			 * the shelf left out (src/esmedia.h reads it) */
+			if (type == DT_REG && strcasecmp(e->d_name, "gamelist.xml")) note_skip(out, e->d_name);
 			continue;
 		}
 		if (type != DT_REG) continue;
@@ -410,6 +495,9 @@ bool lib_scan_listing(const char *roms_root, const char *folder, const char *ext
 		for (int k = 0; k < files_n; k++)
 			if (strcasecmp(list[k].name, name) == 0) { shadowed = true; break; }
 		if (shadowed) continue;
+		/* EmulationStation's art and video, read by src/esmedia.c, and
+		 * nothing anyone copied in as a game: not left out either */
+		if (lib_es_media_dir(name)) continue;
 		/* A hooked shelf's folder by its hook alone: a ScummVM game's own
 		 * .bin or .img is game data, not a disc to launch. */
 		if (lib_shelf_hooked(exts) ? !folder_hook_file(full, exts, inside, sizeof inside)

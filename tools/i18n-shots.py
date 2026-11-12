@@ -455,9 +455,10 @@ def run_language(code, shots, binary, keep):
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
-                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media"}
+                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media", "es": Path(tmp) / "es"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.media_card(cards["media"])
+        R.es_card(cards["es"])
         R.ports_card(cards["ports"])
         R.portdocs_card(cards["portdocs"])
         R.demo_card(cards["all"], None, {"artwork": {}})

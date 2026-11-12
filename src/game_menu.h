@@ -87,7 +87,7 @@ const char *gm_pak_other(const char *value);           /* the one it steps to */
 const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */
 void gm_pak_key(const char *tag, const char *file, char *out, size_t n);
 
-#define GI_MAX 7          /* four facts at most, Favorite and two actions */
+#define GI_MAX 8          /* four facts at most, Favorite and three actions */
 
 /* The genre line, from the scrape. Sized from the card rather than guessed:
  * measured 2026-09-17 over 1,704 rows, the whole comma-separated value has a
@@ -122,6 +122,9 @@ typedef struct {
 	/* Delete Game is offered (src/gamedel.h): everywhere but Ports, whose
 	 * games are scripts beside folders nothing says are theirs */
 	bool  can_delete;
+	/* Rename is offered (src/gamern.h): not for an arcade set, a BIOS set
+	 * or a port, whose names are what runs them */
+	bool  can_rename;
 	/* The Favorite row: Y on this page (and A on the row) marks it, since
 	 * Y on the shelf starts a game fresh (2026-11-08) */
 	bool  can_favorite;

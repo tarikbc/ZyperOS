@@ -162,6 +162,23 @@ static SDL_Surface *decode(const char *path)
 	return conv;
 }
 
+static bool (*g_late)(const char *key, char *path, size_t n);
+
+void texload_set_late(bool (*late)(const char *key, char *path, size_t n))
+{
+	g_late = late;
+}
+
+/* The second file, found here when the frame gave its key (TEXLOAD_LATE) */
+static SDL_Surface *decode_second(const char *second)
+{
+	char path[PATHN];
+
+	if (second[0] != TEXLOAD_LATE[0]) return decode(second);
+	if (!g_late || !g_late(second + 1, path, sizeof path)) return NULL;
+	return decode(path);
+}
+
 static int worker(void *arg)
 {
 	const int me = (int)(intptr_t)arg;
@@ -188,7 +205,7 @@ static int worker(void *arg)
 		SDL_UnlockMutex(g_lock);
 
 		s = decode(job.first);
-		if (!s) s = decode(job.second);
+		if (!s) s = decode_second(job.second);
 		/* No file, so the card in its place, here rather than on the frame:
 		 * several times an upload, and a shelf of games with no art asks for
 		 * a window of them at once. Not for a shelf that has gone since it

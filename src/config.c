@@ -52,10 +52,10 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 	FILE *f = fopen(path, "r");
 	if (!f) return false;
 	char line[1024];
-	/* power|tag|level, map|tag|spec, controller|tag|n and stick|tag|dpad
-	 * lines, applied once every system is read, so they may sit anywhere in
-	 * the file */
-	struct { char kind[12], tag[8], value[96]; } extra[CFG_MAX_SYSTEMS * 4];
+	/* power|tag|level, map|tag|spec, controller|tag|n, stick|tag|dpad and
+	 * es|tag|names lines, applied once every system is read, so they may sit
+	 * anywhere in the file */
+	struct { char kind[12], tag[8], value[160]; } extra[CFG_MAX_SYSTEMS * 4];
 	int nextra = 0;
 	while (fgets(line, sizeof line, f) && out->count < CFG_MAX_SYSTEMS) {
 		strip(line);
@@ -63,7 +63,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 		char *fld[9] = { 0 };
 		int n = split(line, fld, 9);
 		if (n == 3 && (!strcmp(fld[0], "power") || !strcmp(fld[0], "map") ||
-		               !strcmp(fld[0], "controller") || !strcmp(fld[0], "stick"))) {
+		               !strcmp(fld[0], "controller") || !strcmp(fld[0], "stick") ||
+		               !strcmp(fld[0], "es"))) {
 			if (nextra < (int)(sizeof extra / sizeof extra[0])) {
 				snprintf(extra[nextra].kind, sizeof extra[0].kind, "%s", fld[0]);
 				snprintf(extra[nextra].tag, sizeof extra[0].tag, "%s", fld[1]);
@@ -76,6 +77,7 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 		system_cfg *s = &out->systems[out->count];
 		snprintf(s->name, CFG_STR, "%s", fld[1]);
 		snprintf(s->folder, CFG_STR, "%s", fld[2]);
+		snprintf(s->home, CFG_STR, "%s", fld[2]);
 		snprintf(s->cores, CFG_STR, "%s", fld[3]);
 		if (!cfg_core_at(s, 0, s->core, CFG_STR)) s->core[0] = '\0';
 		snprintf(s->tag, sizeof s->tag, "%s", fld[4]);
@@ -98,6 +100,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 				snprintf(s->map, sizeof s->map, "%s", extra[i].value);
 			else if (!strcmp(extra[i].kind, "stick"))
 				snprintf(s->stick, sizeof s->stick, "%s", extra[i].value);
+			else if (!strcmp(extra[i].kind, "es"))
+				snprintf(s->es, sizeof s->es, "%s", extra[i].value);
 			else
 				s->controller = (unsigned)strtoul(extra[i].value, NULL, 10);
 		}
@@ -130,9 +134,8 @@ int cfg_core_count(const system_cfg *s)
 
 /* Comma separated, spaces around each name dropped. A script path holds no
  * comma - the card's paths are ZyperOS's own - so nothing needs quoting. */
-bool cfg_core_at(const system_cfg *s, int i, char *out, int cap)
+static bool list_at(const char *p, int i, char *out, int cap)
 {
-	const char *p = s->cores;
 	int k;
 
 	for (k = 0; k < i; k++) {
@@ -151,6 +154,16 @@ bool cfg_core_at(const system_cfg *s, int i, char *out, int cap)
 		out[len] = '\0';
 	}
 	return true;
+}
+
+bool cfg_core_at(const system_cfg *s, int i, char *out, int cap)
+{
+	return list_at(s->cores, i, out, cap);
+}
+
+bool cfg_es_at(const system_cfg *s, int i, char *out, int cap)
+{
+	return s->es[0] && list_at(s->es, i, out, cap);
 }
 
 /* The base letter of a UTF-8 Latin-1 letter, U+00C0 to U+00FF, whose lead

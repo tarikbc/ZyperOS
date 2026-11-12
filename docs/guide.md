@@ -898,6 +898,82 @@ only the small copies of the pictures on screen are fetched, and the whole one
 only when you look closer. The row's value says what is missing: `no cover` or
 `no video`.
 
+**Rename**, above Delete Game, gives the game a new name. A opens the
+keyboard with the game's name as its file has it. START renames. The game's
+file takes the new name, with its extension. A disc set or ScummVM game in a
+folder of its own renames the folder. Its saves, its save states and Auto,
+its cover and video snap, its achievement set, the EmulationStation pictures
+and video named after it and its `gamelist.xml` entry follow, and so do its
+favorite, play time and details. The shelf shows the new name, and the next
+scrape can find the game by it. A file another game uses too, such as the
+save a `.gb` and a `.gbc` of one name share, is copied, so the other game
+keeps it. A name cannot be empty, start or end with a dot, or have
+`/ \ : * ? " < > |`, and it cannot be another game's name on the shelf: the
+message says why, and the keyboard opens again. Arcade sets, BIOS sets and
+ports have no Rename, because the core or PortMaster finds them by their
+names.
+
+## Coming from EmulationStation
+
+Knulli, ROCKNIX, ArkOS, AmberELEC, ROGUE OS, RetroPie, Recalbox and the other
+systems built on EmulationStation (ES) keep each console's games in a short
+folder, such as `roms/nds`, with the pictures, videos and details they
+scraped beside the games. Copy those folders into `Roms/` on the ZyperOS card
+as they are. ZyperOS reads them, and they still work in the other system:
+ZyperOS writes nothing in them but its own covers in `.media/`.
+
+**Folders.** Each system reads its ZyperOS folder or its ES folder:
+
+| ZyperOS folder | ES folders it also reads |
+|---|---|
+| `Nintendo DS` | `nds` |
+| `Game Boy Advance`, `Game Boy Color`, `Game Boy` | `gba`, `gbc`, `gb` |
+| `SNES` | `snes`, `sfc`, `superfamicom` |
+| `NES` | `nes`, `famicom`, `fds` |
+| `Genesis` | `genesis`, `megadrive`, `md` |
+| `PlayStation` | `psx`, `ps1` |
+| `Nintendo 64` | `n64` |
+| `TurboGrafx-16` | `pcengine`, `tg16`, `pcenginecd`, `tg16cd`, `tg-cd`, `supergrafx` |
+| `Sega CD`, `32X`, `Master System`, `Game Gear` | `segacd`, `megacd`, `sega32x`, `mastersystem`, `sms`, `gamegear`, `gg` |
+| `Neo Geo`, `Neo Geo CD`, `Neo Geo Pocket (Color)` | `neogeo`, `neocd`, `neogeocd`, `ngp`, `ngpc` |
+| `Arcade`, `MAME` | `fbneo`, `fba`, `cps1`, `cps2`, `cps3`; `mame2003`, `mame2003plus` |
+
+The rest are in `ZyperOS/systems.cfg` on the card, on its `es|` lines (Atari
+2600 is `atari2600`, WonderSwan is `wswan`, and so on). Capitals do not
+count. A shelf reads one folder: its ZyperOS folder while that has a game,
+and otherwise the ES folder with the most games. A new ZyperOS card has
+every ZyperOS folder, empty, so a copied ES folder is read. When both have
+games, the ZyperOS folder is read: move the games into one of them.
+
+**What ZyperOS reads, in order.** ZyperOS's own cover and video snap come
+first: `.media/<game>.png` and `.media/<game>.mp4`, from Box Art, the
+Scraper or Cover and Video. A game with none uses ES's:
+
+- the cover: `gamelist.xml`'s `<thumbnail>`, then `<image>`, then
+  `images/<game>-thumb`, `images/<game>-image`, `images/<game>`,
+  `media/box2dfront/<game>`, `media/images/<game>`, `boxart/<game>` and
+  `downloaded_images/<game>` (`.png`, then `.jpg`), and last the game's
+  logo, `<marquee>` or `images/<game>-marquee.png`;
+- the video snap: `gamelist.xml`'s `<video>`, then `videos/<game>-video.mp4`,
+  `videos/<game>.mp4`, `media/videos/<game>.mp4` and
+  `downloaded_videos/<game>.mp4`.
+
+A cover with an ES video has the play mark, and the video plays when you rest
+on the game, as a ZyperOS snap does. **Box Art** counts an ES cover as a
+cover, so it fetches covers only for games with none. **Cover and Video**
+shows an ES cover as Now, from EmulationStation; a cover you choose there is
+ZyperOS's own, and shows from then on.
+
+**Names, details and favorites.** A moment after each start, ZyperOS reads
+each folder's `gamelist.xml` and keeps, for each game that has no details
+yet, its `<name>`, `<desc>`, `<releasedate>`, `<genre>`, `<players>`,
+`<developer>`, `<publisher>` and `<rating>`, and makes a game with
+`<favorite>true</favorite>` a favorite. The shelf shows the names at once.
+A game that has details from the Scraper or a rename keeps them, and a
+ScreenScraper scrape later replaces what came from `gamelist.xml`. ES's
+`<name>` is not used when it is only the file's name: ZyperOS's own tidy
+name is shorter.
+
 The details' last row is **Delete Game**. It asks first, naming the game and
 saying that its saves, states, cover and video go with it and that this cannot
 be undone; the cursor starts on Cancel, and B is Cancel. The game's files go -

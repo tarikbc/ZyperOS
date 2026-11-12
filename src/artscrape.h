@@ -103,6 +103,15 @@ void art_status(art_progress *out);
  * screen opens, never per frame. Not while a run is going (art_missing). */
 int art_count_missing(const systems_cfg *sys, const char *roms_dir);
 
+/* EmulationStation's cover and video for a game in Roms/<folder>, `dir`
+ * that folder's path (src/esmedia.h): a game with one counts as having a
+ * cover, or a video, in the count above and in every pass of a run, so Box
+ * Art fetches only for games with neither. A replace (one game, by Cover
+ * and Video) fetches whatever the game has. Set once by the launcher;
+ * unset, a game has only its own. */
+void art_es_media(bool (*cover)(const char *dir, const char *file, const char *stem),
+                  bool (*video)(const char *dir, const char *file, const char *stem));
+
 /* Whether there is a cover at `path`: a file that starts as a PNG or a JPEG
  * does, not merely one that is there. For the runs here and SteamGridDB's
  * (src/sgdbrun.c). */
