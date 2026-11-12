@@ -1307,6 +1307,29 @@
       "sha256": "8cc8c20eeacec80fd5a78ae480830094eaec2638b4a44def2eaee8bd7e7d1f2f"
     },
     {
+      "file": "light/controls-psp.png",
+      "card": "psp",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "1",
+        "PSP",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "7c7701841de73d7c54a230ed9537453d9c03f0f227283ed91d66dde1a8cefb23"
+    },
+    {
       "file": "dark/systems.png",
       "card": "demo",
       "args": [
