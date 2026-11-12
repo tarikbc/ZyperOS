@@ -736,6 +736,10 @@ static long g_input_frame;
 static bool     g_stick_on, g_stick_dpad;
 static stick    g_stick;
 static uint32_t g_stick_was;
+/* RUN stick=toggle: the d-pad is the d-pad or the stick, and only R2 turns it
+ * from one to the other (main.c), never SELECT's rule. g_stick_dpad is then
+ * the side it is on. */
+static bool     g_stick_toggle;
 
 /* Labels the core gave us, indexed by canonical button after resolving the
  * active map - so they track a remap for free and a launcher never has to. */
@@ -796,7 +800,7 @@ static void turbo_tick(void)
 
 	g_input_frame++;
 	held = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
-	if (g_stick_on) {
+	if (g_stick_on && !g_stick_toggle) {
 		/* The pad as pressed, less only what was held as the game began:
 		 * SELECT goes by the stick's own rule here, not by the chords' */
 		uint32_t pad = diatom_port_input_state() & ~g_suppress;
@@ -830,8 +834,22 @@ void diatom_input_set_stick(bool dpad)
 {
 	g_stick_on = dpad;
 	g_stick_dpad = false;
+	g_stick_toggle = false;
 	g_stick_was = 0;
 	stick_reset(&g_stick);
+}
+
+void diatom_input_set_stick_toggle(bool as_stick)
+{
+	diatom_input_set_stick(true);
+	g_stick_toggle = true;
+	g_stick_dpad = !as_stick;
+}
+
+bool diatom_input_stick_flip(void)
+{
+	if (g_stick_toggle) g_stick_dpad = !g_stick_dpad;
+	return g_stick_on && !g_stick_dpad;
 }
 
 /* `spec` is the state plane's whole-table form: `a:b,x:none`, or `identity`.

@@ -80,7 +80,8 @@ const char *home_label(const char *key, const char *canonical)
         {"VB","Virtual Boy"}, {"PS1","PS1"}, {"NEOCD","Neo Geo CD"},
         {"N64","N64"}, {"NGP","NGP"}, {"GBC","GBC"}, {"WS","WS"},
         {"NGPC","NGPC"}, {"DC","Dreamcast"}, {"WSC","WSC"}, {"GBA","GBA"},
-        {"PKMINI","PokéMini"}, {"NDS","NDS"}, {"PICO8","PICO-8"},
+        {"PKMINI","PokéMini"}, {"NDS","NDS"}, {"PSP","PSP"}, {"PICO8","PICO-8"},
+        {"TIC80","TIC-80"}, {"COLECO","Coleco"}, {"DOOM","Doom"},
         {"ARCADE","Arcade"}, {"MAME","MAME"}, {"NAOMI","NAOMI"},
         {"AW","Atomiswave"}, {"PRT","Ports"}, {"MUSE","MP4"}
     };

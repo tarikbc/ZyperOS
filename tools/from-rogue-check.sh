@@ -8,7 +8,7 @@
 # and file types that shelf lists; its track files ("also": a .bin beside a
 # .cue) are ones the shelf does not list, or each track would show as a game.
 # The set rows' three shelves (Neo Geo, Arcade, MAME) are shelves. A skip
-# row's system (PSP, by my decision) is not a shelf either. A pending
+# row's system is not a shelf either (there is none now). A pending
 # row's folder is NOT a shelf yet: the day it is, the check fails, and the row
 # becomes a game row. BGM and Music are the folders src/bgm.h and
 # src/muselib.c read, in types they play. Every disc BIOS systems.cfg names
@@ -24,7 +24,7 @@
 # rest; the ROGUE side is the same, file for file, after it; a file already on
 # the card is not touched and nothing is left as .part; a second run copies
 # nothing; a card on ROGUE's own partition is refused; with no room nothing
-# is written; a skipped folder never comes over, and a pending one only when
+# is written; a pending folder comes over only when
 # named; --covers brings
 # the art; and the favorites come out as ZyperOS keys them.
 set -u
@@ -180,6 +180,8 @@ file pico-8/image.p8.png image-cart
 file pico-8/Splore.png picture
 file pico-8/cdata/cart.p8d.txt cart-data
 file psp/Game.iso psp-game
+file psp/PSP/SAVEDATA/ULUS10391/DATA.BIN psp-save
+file psp/PSP/PPSSPP_STATE/ULUS10391_1.00_0.ppst psp-state
 file saturn/Game.chd saturn-game
 file bios/saturn_bios.bin saturn-bios
 # a pending folder's game: the first pending row's, while the table has one
@@ -211,7 +213,6 @@ run --dry-run "$C" || fail "the dry run failed: $(cat "$D/out.txt")"
 [ "$(snap "$C")" = "$card_before" ] || fail "the dry run wrote on the card"
 [ -z "$pend" ] || grep -q "$pend_dir -> $pend_place: TODO" "$D/out.txt" ||
 	fail "the dry run does not name $pend_dir as a TODO"
-grep -q "left: skipped by decision (no PSP on ZyperOS): 1" "$D/out.txt" || fail "the dry run does not name psp as skipped by decision"
 
 run "$C" || fail "the run failed: $(cat "$D/out.txt")"
 same() { # ROGUE-PATH CARD-PATH
@@ -255,12 +256,15 @@ same pico-8/cart.p8                       Roms/PICO-8/cart.p8
 same pico-8/image.p8.png                  Roms/PICO-8/image.p8.png
 same pico-8/cdata/cart.p8d.txt            Saves/cdata/cart.p8d.txt
 same saturn/Game.chd                      Roms/Saturn/Game.chd
+same psp/Game.iso                         Roms/PSP/Game.iso
+same psp/PSP/SAVEDATA/ULUS10391/DATA.BIN  Saves/PSP/SAVEDATA/ULUS10391/DATA.BIN
+gone Saves/PSP/PPSSPP_STATE; gone Roms/PSP/PSP
 same bios/saturn_bios.bin                 Bios/saturn_bios.bin
 gone "Roms/NES/Empty.nes"; gone "Roms/NES/._Alpha (USA).nes"; gone "Roms/NES/.media"
 gone "Saves/Lonely (USA).srm"; gone Roms/Arcade/hackset.zip; gone Roms/Arcade/neogeo.zip
 gone "Roms/Neo Geo/neogeo.zip"; gone Saves/mame2003-plus/hi/pacman.hi.part
 gone Bios/scph1000.bin; gone Roms/Ports/._Game.sh; gone Roms/Ports/gamelist.xml
-gone Roms/Ports/media; gone Roms/BGM/notes.txt; gone Roms/PICO-8/Splore.png; gone Roms/PSP
+gone Roms/Ports/media; gone Roms/BGM/notes.txt; gone Roms/PICO-8/Splore.png
 [ -z "$pend" ] || gone "$pend_place"
 gone Roms/mystery
 [ "$(cat "$C/Roms/NES/Zeta (USA).nes")" = zeta-already-there ] || fail "a file already on the card was written over"
@@ -287,7 +291,6 @@ env RESERVE_MB=999999999 ROGUE="$R" sh "$T" "$C" nes > "$D/out.txt" 2>&1 || fail
 [ -z "$(find "$C" -type f)" ] || fail "with no room, files were written: $(find "$C" -type f | head -3)"
 grep -q "NO ROOM" "$D/out.txt" || fail "with no room, the report does not say so"
 
-if run "$C" psp; then fail "psp, skipped by decision, could be named"; fi
 run --covers "$C" nes $pend_dir || fail "the run with --covers and ${pend_dir:-no pending folder} failed"
 same "nes/A-M/images/Alpha (USA).png" "Roms/NES/.media/Alpha (USA).png"
 [ -z "$pend" ] || same "$pend_dir/Game.$pend_ext" "$pend_place/Game.$pend_ext"

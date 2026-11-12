@@ -172,6 +172,11 @@ controls.y_up
 controls.return
 controls.c_buttons
 controls.two_screens
+controls.strafe_left
+controls.strafe_right
+controls.prev_weapon
+controls.next_weapon
+controls.map
 
 # corner: no shot draws it yet
 corner.time_min

@@ -104,7 +104,7 @@ LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertain
          'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
 # With --art, the in-game menu and its Controls pages stand over a screenshot
 # of a PlayStation game (--backdrop) rather than a made-up frame
-BACKDROP=['gamemenu','gamemenu-shader','controls-ps1','controls-hotkeys']
+BACKDROP=['gamemenu','gamemenu-shader','controls-ps1','controls-hotkeys','controls-psp']
 BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
 ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
 GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
@@ -218,6 +218,8 @@ SHOTS={
     'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','5']),
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
+    # The PSP's buttons, with R2, which turns the d-pad into its stick
+    'controls-psp':('psp','PSP',['--screen','games','--gamecontrols','1','PSP']),
 }
 # Favorites for a shot alone, set before it is taken and cleared after: the
 # games page with the focused game and the one before it kept, so the heart
@@ -511,6 +513,14 @@ def openbor_card(card):
     d=card/'Roms/OpenBOR';d.mkdir(parents=True)
     for name in OPENBOR: (d/name).touch()
 
+# The PSP's shelf, for its Controls page with R2 on it: a file stands in for a
+# game, as OpenBOR's does
+PSP=['Game.iso']
+def psp_card(card):
+    card_dirs(card)
+    d=card/'Roms/PSP';d.mkdir(parents=True)
+    for name in PSP: (d/name).touch()
+
 # The File Transfer page: a computer's window on a console's folder with an
 # upload going (throttled to 64 KB/s, shot 4.5 s in, once its time left shows), and a phone's on the PIN
 # and on ROMs, a folder per console with its color
@@ -696,13 +706,15 @@ def main():
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
                'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports',
-               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media'}
+               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media',
+               'psp':Path(temporary)/'psp'}
         art=args.art_cache if args.art else None
         demo_card(cards['demo'],art,manifest)
         media_card(cards['media'],art)
         scummvm_card(cards['scummvm'],art,manifest)
         backdrop=art_file(art,LR_REPO['PlayStation'],'Named_Snaps',BACKDROP_GAME) if art else None
         openbor_card(cards['openbor'])
+        psp_card(cards['psp'])
         ports_card(cards['ports'])
         portdocs_card(cards['portdocs'])
         card_dirs(cards['empty'])

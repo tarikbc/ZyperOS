@@ -133,6 +133,16 @@ if [ -f "$P/cores/scummvm_libretro.so" ]; then
 	cp -R "$VENDOR_DIR/scummvm" "$P/scummvm"
 fi
 
+# PPSSPP's assets, from mk/build-ppsspp.sh with its core: the PSP's fonts,
+# its VFPU tables, the game fixes and the system dialogs' languages. The core
+# reads them from Bios/PPSSPP, which launch.sh fills from here, as it fills
+# Bios/scummvm.
+if [ -f "$P/cores/ppsspp_libretro.so" ]; then
+	[ -f "$VENDOR_DIR/ppsspp/.pin" ] ||
+		{ echo "payload: PPSSPP's assets are missing; run mk/build-ppsspp.sh" >&2; exit 1; }
+	cp -R "$VENDOR_DIR/ppsspp" "$P/ppsspp"
+fi
+
 # FreeJ2ME-Plus's Java app and the Java runtime it starts that app with,
 # from mk/build-freej2me.sh with its core. The core reads them from Bios/,
 # which launch.sh fills from here: a payload cannot write Bios/ over a
@@ -166,7 +176,8 @@ done
 if [ -n "$missing" ]; then
 	echo "payload: systems.cfg needs cores that vendor/ does not have:$missing" >&2
 	echo "payload: run mk/fetch-vendor.sh, mk/build-mgba-bridge.sh, mk/build-dsperate.sh," >&2
-	echo "payload: mk/build-fake08.sh, mk/build-flycast2021.sh, mk/build-scummvm.sh and mk/build-freej2me.sh" >&2
+	echo "payload: mk/build-fake08.sh, mk/build-flycast2021.sh, mk/build-scummvm.sh, mk/build-freej2me.sh," >&2
+	echo "payload: mk/build-small-cores.sh, mk/build-ppsspp.sh and mk/build-tic80.sh" >&2
 	exit 1
 fi
 
@@ -204,7 +215,8 @@ fi
 # One ROM folder per system. Read from systems.cfg (awk, not sed: folder names
 # contain spaces). No .media in them: that is where a system's covers go, and
 # whatever puts the first cover there makes it. Made here, it was an empty
-# folder in all 41 systems on every new card, and every update brought them
+# folder in all 41 systems (45 since the PSP, Doom, ColecoVision and TIC-80)
+# on every new card, and every update brought them
 # back through the pack's .card list (2026-11-06: ".media folders
 # basically everywhere").
 awk -F'|' '$1=="sys"{gsub(/^[ \t]+|[ \t]+$/,"",$3); print $3}' "$ROOT/config/systems.cfg" |

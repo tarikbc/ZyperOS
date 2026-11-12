@@ -69,6 +69,20 @@ if [ -n "$pin_new" ] && [ "$pin_new" != "$pin_old" ]; then
 		cp "$ZYPEROS_DIR/scummvm/.pin" "$BIOS_PATH/scummvm/.pin"
 fi
 
+# PPSSPP's assets (mk/build-ppsspp.sh) where the PSP's core looks,
+# Bios/PPSSPP, copied from ZyperOS/ppsspp again whenever a new ZyperOS brings
+# another build of them: the two .pin files name the PPSSPP commit. Copied
+# over what is there, never removed first: the core keeps files of its own
+# in the same folder
+pin_new=; pin_old=
+[ -f "$ZYPEROS_DIR/ppsspp/.pin" ] && read -r pin_new < "$ZYPEROS_DIR/ppsspp/.pin"
+[ -f "$BIOS_PATH/PPSSPP/.pin" ] && read -r pin_old < "$BIOS_PATH/PPSSPP/.pin"
+if [ -n "$pin_new" ] && [ "$pin_new" != "$pin_old" ]; then
+	mkdir -p "$BIOS_PATH/PPSSPP" &&
+		cp -R "$ZYPEROS_DIR/ppsspp/." "$BIOS_PATH/PPSSPP/" &&
+		cp "$ZYPEROS_DIR/ppsspp/.pin" "$BIOS_PATH/PPSSPP/.pin"
+fi
+
 # FreeJ2ME-Plus's Java app and the Java runtime it runs on (mk/build-
 # freej2me.sh) where its core looks, Bios/, copied from ZyperOS/freej2me again
 # whenever a new ZyperOS brings another build of them: the .pin files name the

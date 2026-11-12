@@ -134,7 +134,8 @@ A Nintendo 64 game has a page for its C buttons (hold SELECT and press X, A, B
 or Y) and, under them, which Pak its controller holds and where to change it:
 "MENU > Pak: Rumble Pak". A PICO-8 game lists its
 arrows, O and X and its pause menu. A DS game has a page for its two screens
-and the stylus. Then Hotkeys, SELECT with a shoulder: quick save and load, and
+and the stylus. A PSP game's R2 row turns the d-pad into the PSP's analog
+stick and back, kept for that game; a pop-up says which it is. Then Hotkeys, SELECT with a shoulder: quick save and load, and
 faster and slower. The last page, In a game, is MENU, MENU then X (Quit),
 volume, brightness and POWER. Left and right change the page, B goes back to the menu, and MENU goes
 back to the game.

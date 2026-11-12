@@ -317,7 +317,7 @@ def crumb_graph(trail):
 ZBOX = """<aside class="zbox" aria-label="About ZyperOS">
   <img src="/img/zyper.svg" width="76" height="80" alt="">
   <div>
-    <p><b>ZyperOS</b> is a fast, light firmware for the GKD Pixel 2: forty systems, PortMaster ports, box art, RetroAchievements, music and video. It is free, and version 1.0.4 is out: a card image and ZyperOS Installer, on GitHub.</p>
+    <p><b>ZyperOS</b> is a fast, light firmware for the GKD Pixel 2: forty-four systems, PortMaster ports, box art, RetroAchievements, music and video. It is free, and version 1.0.4 is out: a card image and ZyperOS Installer, on GitHub.</p>
     <span class="row"><a class="btn go" href="https://github.com/tarikbc/ZyperOS"><span class="glyph" aria-hidden="true">A</span>See it on GitHub</a><a class="btn alt" href="/#compare">How it compares</a></span>
   </div>
 </aside>"""

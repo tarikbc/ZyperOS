@@ -22,7 +22,7 @@
       "kind": "generated",
       "method": "tools/systemart-draw.py, 2026-11-05: real hardware photos from Wikimedia Commons, reduced to pixel maps (res/system-art/drawn) and styled like the pack: its tone ramps, a one-pixel black outline, the console rising one pixel for 400 ms while the pad stays",
       "credit": "ZyperOS drawings after the photographers named on each row; not artwork by BenJelter or YOjeremyRaps",
-      "license": "Each drawing keeps its photos' terms: from public-domain photos it is public domain; from a CC BY or CC BY-SA photo it is shared under that license, crediting the photographer. Artwork is separate from the code. No hardware maker endorsement is implied."
+      "license": "Each drawing keeps its photos' terms: from public-domain photos it is public domain; from a CC BY or CC BY-SA photo it is shared under that license, crediting the photographer; from an MIT image (TIC-80's icon) it keeps the MIT license and its notice. Artwork is separate from the code. No hardware maker endorsement is implied."
     }
   },
   "assets": [
@@ -543,6 +543,74 @@
       ],
       "note": "Nokia's N-Gage, a phone that ran J2ME's MIDP games beside its own: the pack has no phone.",
       "sha256": "ea797c209ca0a2db39caecdb65762fd64ae215802906261132e1d7f5bb446baf"
+    },
+    {
+      "key": "PSP",
+      "tag": "PSP",
+      "name": "PSP",
+      "status": "ready",
+      "source": "source/PSP.gif",
+      "origin": "smart-folders-v1.4",
+      "archive_path": "by_platform/psp/logo.gif",
+      "sha256": "e7cfb251e54b52da7fdd81b17d2a71e52cdb95649a9ad82f34a239e5b8140961"
+    },
+    {
+      "key": "COLECO",
+      "tag": "COLECO",
+      "name": "ColecoVision",
+      "status": "ready",
+      "source": "source/COLECO.gif",
+      "origin": "zyperos-photo-pixel",
+      "drawn": "drawn/COLECO.txt",
+      "photos": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:ColecoVision-Console-FL.jpg",
+          "author": "Evan-Amos",
+          "license": "Public domain"
+        },
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:ColecoVision-Controller-FL.jpg",
+          "author": "Evan-Amos",
+          "license": "Public domain"
+        }
+      ],
+      "sha256": "73e5b71f4e1eeb39f663d1fbe6b354864eefb57e9628bc0adf8d809f6663fe77"
+    },
+    {
+      "key": "DOOM",
+      "tag": "DOOM",
+      "name": "Doom",
+      "status": "ready",
+      "source": "source/DOOM.gif",
+      "origin": "zyperos-photo-pixel",
+      "drawn": "drawn/DOOM.txt",
+      "photos": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:Doom_classic_box_art.png",
+          "author": "Bethesda",
+          "license": "CC BY 3.0"
+        }
+      ],
+      "note": "Doom has no hardware, so its shelf shows its logo, as the pack shows PICO-8's: the logo from the classic box art, which Bethesda published under CC BY 3.0 (the Commons page says how). DOOM is a trademark of its owner; no endorsement is implied.",
+      "sha256": "e21e950e4eec3491aeaae9bdd03b6c3437ba716fef1a784d46aefbaa3d911292"
+    },
+    {
+      "key": "TIC80",
+      "tag": "TIC80",
+      "name": "TIC-80",
+      "status": "ready",
+      "source": "source/TIC80.gif",
+      "origin": "zyperos-photo-pixel",
+      "drawn": "drawn/TIC80.txt",
+      "photos": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:TIC-80_Icon.svg",
+          "author": "Vadim Grigoruk (nesbox)",
+          "license": "MIT"
+        }
+      ],
+      "note": "TIC-80 is a fantasy console with no hardware, so its shelf shows TIC-80's own icon (MIT, Copyright (c) 2017 Vadim Grigoruk), as the pack shows PICO-8's logo.",
+      "sha256": "c7b1296b3d9ab1bbaf5c64a4c8aae8e413c5181fc9166cb4ab852d0dbaceeef6"
     },
     {
       "key": "ROMS",

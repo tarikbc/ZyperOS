@@ -10,7 +10,7 @@
 <p align="center">
   <b>On in about 2 seconds. The stock firmware takes 30 to 40.</b><br>
   Turn it off mid-game; turn it on, and 2 seconds later you're back where you were.<br>
-  Forty systems with their box art, PortMaster ports, RetroAchievements, and your music and videos. Free and open source.
+  Forty-four systems with their box art, PortMaster ports, RetroAchievements, and your music and videos. Free and open source.
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@
 
 - **Your library looks the part.** Every game shows its real box art, found on the handheld itself from libretro, ScreenScraper and SteamGridDB, and a few seconds of video when you rest on it.
 - **On in about 2 seconds.** The stock firmware takes 30 to 40 (my test, on my Pixel 2). Turn it off mid-game, and the next start puts you back where you were, 2 seconds later. Games start the moment you press A.
-- **Plays more, smoothly.** Forty systems and PortMaster's ports. Mario Kart DS keeps 60 frames a second and Super Mario 64 its 30, on the Pixel 2.
+- **Plays more, smoothly.** Forty-four systems, the PSP among them, and PortMaster's ports. Mario Kart DS keeps 60 frames a second and Super Mario 64 its 30, on the Pixel 2.
 - **No more taking the card out.** Add games, music and saves from any browser over Wi-Fi or the USB cable, and update ZyperOS the same way.
 - **Made to be picked up.** A first start that teaches every button, eight languages, light and dark, and a menu that never makes you wait.
 - **Free and open source,** under GPL-3.0, with nothing locked behind a payment.
@@ -118,7 +118,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 
 ## Features
 
-- **Forty systems,** from the Atari 2600 to PlayStation, Nintendo 64, Nintendo DS, Dreamcast and Saturn, with Arcade, MAME, Neo Geo, NAOMI and Atomiswave, ScummVM, PICO-8, OpenBOR and J2ME ([the full list](#supported-systems)).
+- **Forty-four systems,** from the Atari 2600 and ColecoVision to PlayStation, Nintendo 64, Nintendo DS, PSP, Dreamcast and Saturn, with Arcade, MAME, Neo Geo, NAOMI and Atomiswave, Doom, ScummVM, PICO-8, TIC-80, OpenBOR and J2ME ([the full list](#supported-systems)).
 - **Ports:** the Ports shelf installs the official [PortMaster](https://portmaster.games) with one press and runs its games, such as Stardew Valley and Celeste. **MENU** over any port, and over PortMaster itself, pauses it under ZyperOS's in-game menu, with **Controls** for that port ([how](#portmaster)).
 - **Nintendo DS your way:** [DSperate](https://github.com/beebono/DSperate) inside the emulator, with three screen layouts and a d-pad stylus. A Mario Kart DS race keeps 60 frames a second on the Pixel 2. **Game Language** in the DS shelf's menu picks the language a game speaks: Auto, the language of **MENU > Language** where the DS has it (English, Español, Français, Deutsch, Italiano, 日本語) and English where it doesn't, or any of them outright, whatever `firmware.bin` says. A game left in another language starts fresh in the new one, with its battery save.
 - **Nintendo 64 at full speed:** [ParallelN64](https://github.com/libretro/parallel-n64) with Glide64, as ROGUE OS ran it. Super Mario 64 and a Mario Kart 64 race hold their 30 frames a second on the Pixel 2, and the d-pad is the N64's stick. Mupen64Plus-Next is the second choice on the shelf's **Core** row, for a game Glide64 draws badly. A game left on the other core starts fresh, with its battery save.
@@ -176,7 +176,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 |---|---|---|---|---|---|---|
 | **Source, license** | GPL-3.0 | — | Its changed files, no license named | GPL-3.0 | GPL-2.0 for its own code | MIT for its own code |
 | **Install, latest** | Card image or ZyperOS Installer, v1.0.4 (Nov 2026) | On the card it comes with | Card image, then v1.22's files (Aug 2025) | Card image or TortOS Installer, v2.1.1 (Oct 2026) | Card image, 20261101 (Nov 2026) | Card image, v0.1.4 (Aug 2026), in testing |
-| **Systems** | 40, and Ports | Over 100 folders | 117<sup>2</sup> | 11 | 120<sup>2</sup> | 86<sup>2</sup> |
+| **Systems** | 44, and Ports | Over 100 folders | 117<sup>2</sup> | 11 | 120<sup>2</sup> | 86<sup>2</sup> |
 | **Games without taking the card out** | Wi-Fi or USB web page at zyperos.local, its own hotspot, SSH | Samba | USB cable, SSH | Wi-Fi or USB web page | Samba, SFTP, USB cable | Samba, SFTP, FTP |
 | **Box art on the device** | libretro, ScreenScraper<sup>3</sup>, SteamGridDB | On a computer (Skraper) | ScreenScraper | libretro, ScreenScraper | ScreenScraper | libretro |
 | **RetroAchievements** | Yes | — | — | Yes | Yes | — |
@@ -254,6 +254,7 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 |---|---|---|---|
 | Atari 2600 | `Roms/Atari 2600` | `.a26` `.bin` `.zip` | Stella 2014 |
 | Game & Watch | `Roms/Game & Watch` | `.mgw` | Game & Watch |
+| ColecoVision | `Roms/ColecoVision` | `.col` `.cv` `.bin` `.rom` `.zip` | Gearcoleco |
 | Atari 5200 | `Roms/Atari 5200` | `.a52` `.bin` `.zip` | a5200 |
 | Vectrex | `Roms/Vectrex` | `.vec` `.bin` `.zip` | vecx |
 | NES | `Roms/NES` | `.nes` `.fds` `.unf` `.unif` `.zip` | FCEUmm |
@@ -269,6 +270,7 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 | SNES | `Roms/SNES` | `.sfc` `.smc` `.zip` | Snes9x 2010 |
 | Sega CD | `Roms/Sega CD` | `.chd` `.cue` `.iso` `.m3u` | PicoDrive |
 | 3DO | `Roms/3DO` | `.iso` `.chd` `.cue` | Opera |
+| Doom | `Roms/Doom` | `.wad` `.iwad` `.pwad` `.m3u` | PrBoom |
 | 32X | `Roms/32X` | `.32x` `.zip` | PicoDrive |
 | Saturn | `Roms/Saturn` | `.cue` `.chd` `.iso` `.ccd` `.mds` | YabaSanshiro |
 | Virtual Boy | `Roms/Virtual Boy` | `.vb` `.vboy` `.zip` | Beetle VB |
@@ -287,14 +289,16 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 | Pokémon Mini | `Roms/Pokemon Mini` | `.min` `.zip` | PokeMini |
 | OpenBOR | `Roms/OpenBOR` | `.pak` | OpenBOR |
 | Nintendo DS | `Roms/Nintendo DS` | `.nds` `.zip` | DSperate |
+| PSP | `Roms/PSP` | `.iso` `.cso` `.chd` `.pbp` | PPSSPP |
 | PICO-8 | `Roms/PICO-8` | `.p8` `.png` | FAKE-08 |
+| TIC-80 | `Roms/TIC-80` | `.tic` `.png` | TIC-80 |
 | Arcade | `Roms/Arcade` | `.zip` `.7z` | FinalBurn Neo |
 | MAME | `Roms/MAME` | `.zip` | MAME 2003-Plus |
 | NAOMI | `Roms/NAOMI` | `.zip` `.7z` | flycast2021 |
 | Atomiswave | `Roms/Atomiswave` | `.zip` `.7z` | flycast2021 |
 | Ports | `Roms/Ports` | `.sh`, with the port's folder beside it | PortMaster |
 
-**BIOS files** go loose in `Bios/`. TurboGrafx-CD games need `syscard3.pce` and PlayStation games `scph5501.bin`. Sega CD games need `bios_CD_U.bin`, and a European or Japanese disc `bios_CD_E.bin` or `bios_CD_J.bin` as well. Neo Geo CD games need the Neo Geo CD BIOS in a folder of its own, `Bios/neocd/neocd.bin`. The 32X needs no BIOS. A multi-disc PlayStation game goes in a folder of its own with an `.m3u` listing its discs. Game Boy Advance runs without its BIOS; add `gba_bios.bin` if you want the original boot animation. The Atari 7800 runs without one too; add `7800 BIOS (U).rom` for the Atari logo at start. The Dreamcast, NAOMI and Atomiswave need their BIOS in `Bios/dc/`: `dc_boot.bin`, `naomi.zip` and `awbios.zip`. The 3DO needs `panafz10.bin` and the Lynx `lynxboot.img`; the Atari 5200 and the Pokémon Mini run without theirs (`5200.rom`, `bios.min`). MSX2 games need blueMSX's `Machines` and `Databases` folders in `Bios/`. Saturn games need the Saturn's BIOS, `saturn_bios.bin` (or `sega_101.bin` or `mpr-17933.bin`).
+**BIOS files** go loose in `Bios/`. TurboGrafx-CD games need `syscard3.pce` and PlayStation games `scph5501.bin`. Sega CD games need `bios_CD_U.bin`, and a European or Japanese disc `bios_CD_E.bin` or `bios_CD_J.bin` as well. Neo Geo CD games need the Neo Geo CD BIOS in a folder of its own, `Bios/neocd/neocd.bin`. The 32X needs no BIOS. A multi-disc PlayStation game goes in a folder of its own with an `.m3u` listing its discs. Game Boy Advance runs without its BIOS; add `gba_bios.bin` if you want the original boot animation. The Atari 7800 runs without one too; add `7800 BIOS (U).rom` for the Atari logo at start. The Dreamcast, NAOMI and Atomiswave need their BIOS in `Bios/dc/`: `dc_boot.bin`, `naomi.zip` and `awbios.zip`. The 3DO needs `panafz10.bin` and the Lynx `lynxboot.img`; the Atari 5200 and the Pokémon Mini run without theirs (`5200.rom`, `bios.min`). MSX2 games need blueMSX's `Machines` and `Databases` folders in `Bios/`. Saturn games need the Saturn's BIOS, `saturn_bios.bin` (or `sega_101.bin` or `mpr-17933.bin`). ColecoVision games need the ColecoVision's BIOS, `coleco.rom` (or `colecovision.rom` or `os7.u2`): without it the shelf says so under the game. The PSP needs no BIOS.
 
 **Nintendo DS** runs on DSperate, which ZyperOS ships, with ZyperOS's own in-game menu. A game starts with the top screen alone. While it runs, DSperate gives its threads a core each, as its own frontend does, and the CPU stays at its top clock: a Mario Kart DS race keeps 60 frames a second on the Pixel 2. **L1** and **R1** are the DS's L and R. **L2** shows the other screen. **R2** shows the bottom screen and turns the stylus on: the d-pad moves a cursor and **A** touches. **R2** again turns the stylus off and goes back. The in-game menu also has **Screens** (Single, Stacked or Top Focus), **Swap Screens** and **Stylus**. A DraStic save (`Saves/<game>.dsv`, from ROGUE OS or another system) is taken over the first time a game runs on DSperate. Encrypted ROM dumps need `bios7.bin`, `bios9.bin` and `firmware.bin` in `Bios/`. A DS game reads its language from the firmware, and a `firmware.bin` carries the language of the console it was dumped from, so ZyperOS tells DSperate which language to use with each game and leaves the file alone. **Game Language** in the console's menu, under **Core**, is **Auto** to start with (the language of **MENU > Language** where the DS has it, English where it doesn't, as Português (Brasil) and 简体中文 are not on a DS) or one of English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文 outright; 简体中文 is for the iQue DS's games, which are the only ones that have it. A game resumes where you left it only in the language it was left in: after a change of **Game Language** it starts fresh, in the new one, with a note that says why, and its battery save keeps your progress. A save state you load yourself keeps the language it was saved in, and **Reset** in the in-game menu starts the game again in the row's language.
 
@@ -317,6 +321,18 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 **Saturn games** run on YabaSanshiro and need the Saturn's BIOS in `Bios/` (above). The Saturn is the most a Pixel 2 is asked to run: it runs some games, and not at full speed. Flicky's Flock, a homebrew game, ran at about 37 frames a second of 60.
 
 **PICO-8 carts** are `.p8` files or `.p8.png` images and run on FAKE-08, an open reimplementation: you don't need Lexaloffle's PICO-8.
+
+<img align="right" width="320" src="res/readme/controls-psp.png" alt="A PSP game's Controls page in the in-game menu: L1/R1 are L/R, R2 is the d-pad as the stick, START/SELECT are Start/Select">
+
+**PSP games** run on PPSSPP, with no BIOS: copy the `.iso`, `.cso`, `.chd` or `.pbp` into `Roms/PSP`. ZyperOS ships PPSSPP's own files, the PSP's fonts among them, and puts them in `Bios/PPSSPP`. The PSP's buttons are where a PlayStation pad has them, **L1** and **R1** its L and R. The Pixel 2 has no analog stick, and a PSP game moves with its stick or with its d-pad, game by game. A game starts with the d-pad as the d-pad; **R2** turns it into the analog stick, and **R2** again turns it back. ZyperOS remembers this for each game, so a game you play with the stick starts with it the next time. A game's own saves are in `Saves/PSP/SAVEDATA`, as on a PSP's memory stick, so saves from PPSSPP on another system copy straight in. PPSSPP runs at the PSP's own 480x272 and leaves a frame undrawn when a game falls behind, to keep its speed. A heavy 3D game can still run slower than a real PSP on the Pixel 2.
+
+<br clear="right">
+
+**Doom games** are WADs, run by PrBoom. An IWAD is a whole game: `doom.wad`, `doom2.wad`, `tnt.wad` and `plutonia.wad` from id Software's games, or `freedoom1.wad` and `freedoom2.wad` from [Freedoom](https://freedoom.github.io), which are free. A mod is a PWAD: put it beside its IWAD, and it runs with the first IWAD it finds there, Doom II's first. For a mod that wants another IWAD, or several mods at once, write an `.m3u` that lists the IWAD and then the mods, one file a line. The d-pad walks and turns, **B** fires, **Y** runs, **A** opens doors and presses switches, **L1** and **R1** step sideways, **L2** and **R2** change the weapon, **SELECT** shows the map and **START** opens Doom's menu. The handheld rumbles when you are hit. Save states work inside a level.
+
+**ColecoVision games** run on Gearcoleco and need its BIOS (above). **B** and **A** are the controller's left and right buttons. Its keypad is on the rest: **Y** 1, **X** 2, **L1** 3, **R1** 4, **L2** 5, **R2** 6, **START** `*` and **SELECT** `#`. A game's menu asks for 1 to 4 for a one-player game.
+
+**TIC-80 carts** are `.tic` files, or `.png` cart images, and run on TIC-80's own core, in any of its languages: Lua, MoonScript, Fennel, JavaScript, Python, Wren, Squirrel, Janet, Scheme or WebAssembly. A cart's saved data is kept, but TIC-80 has no save states.
 
 ## Install
 

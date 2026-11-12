@@ -64,6 +64,9 @@ typedef struct diatom_session {
 	unsigned      controller;
 	/* RUN stick=dpad: the d-pad is the left analog stick (stick.h) */
 	bool          dpad_stick;
+	/* RUN stick=toggle (1) or toggle-stick (2): R2 turns the d-pad into the
+	 * left stick and back, from the d-pad (1) or the stick (2). 0: no R2 */
+	int           stick_toggle;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -768,6 +771,7 @@ static void usage(void)
 		"              [--power light|medium]  run under that clock ceiling\n"
 		"              [--controller <n>]  libretro controller type for port 0\n"
 		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
+		"              [--stick toggle]    R2 turns the d-pad into the left stick and back (PSP)\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -1515,6 +1519,21 @@ static void screens_set(const diatom_msg *m)
 	screens_emit();
 }
 
+/* RUN stick=toggle, the PSP's: R2 turned the d-pad into the left stick or
+ * back. "STICK\ton=1" while it is the stick, sent at every turn, so the
+ * launcher says it over the game and keeps it for the game. Additive: an old
+ * launcher ignores the line, and an old Diatom ignores stick=toggle and
+ * leaves the d-pad the d-pad. */
+static bool g_stick_toggle;
+
+static void stick_emit(bool on)
+{
+	printf("diatom: the d-pad is the %s\n", on ? "left stick" : "d-pad");
+	fflush(stdout);
+	if (diatom_proto_connected())
+		diatom_proto_send("STICK\ton=%d", on ? 1 : 0);
+}
+
 static void stylus_emit(void)
 {
 	if (diatom_proto_connected())
@@ -1910,6 +1929,13 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_input_set_stick(sn->dpad_stick);
 	if (sn->dpad_stick)
 		printf("diatom: the d-pad is the left stick; SELECT, then the d-pad, its D-pad\n");
+	g_stick_toggle = !sn->dpad_stick && sn->stick_toggle;
+	if (g_stick_toggle) {
+		diatom_input_set_stick_toggle(sn->stick_toggle == 2);
+		printf("diatom: the d-pad is the %s; R2 turns it into the %s\n",
+		       sn->stick_toggle == 2 ? "left stick" : "d-pad",
+		       sn->stick_toggle == 2 ? "d-pad" : "left stick");
+	}
 	levels_forget();
 	audio_forget();
 	diatom_levels_invalidate();
@@ -2581,6 +2607,19 @@ static int run_session_inner(const diatom_session *sn)
 				}
 			}
 
+			/* A game whose d-pad R2 turns into the stick and back (RUN
+			 * stick=toggle, the PSP's, which has no R2): a press of R2
+			 * turns it, and R2 never reaches the core. Under MENU, R2 is
+			 * MENU's; under SELECT, the speed's (sel_took). */
+			if (g_stick_toggle) {
+				uint32_t down = buttons & ~prev_buttons & ~sel_took;
+
+				if ((down & DIATOM_BIT(DIATOM_BTN_R2)) &&
+				    !(buttons & DIATOM_BIT(DIATOM_BTN_MENU)))
+					stick_emit(diatom_input_stick_flip());
+				sty_mask |= DIATOM_BIT(DIATOM_BTN_R2);
+			}
+
 			/* The single writer. Every reason to hide a button from the core
 			 * is composed here, so no reason can clear another. */
 			diatom_env_suppress(held_at_entry | sty_mask);
@@ -2917,6 +2956,7 @@ int main(int argc, char **argv)
 	const char *power = "";
 	unsigned controller = 0;
 	bool dpad_stick = false;
+	int  stick_toggle = 0;
 	int screens = 1;
 	diatom_filter start_filter;
 	long limit = 0;
@@ -2957,8 +2997,12 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--power") && i + 1 < argc) power = argv[++i];
 		else if (!strcmp(argv[i], "--controller") && i + 1 < argc)
 			controller = (unsigned)strtoul(argv[++i], NULL, 10);
-		else if (!strcmp(argv[i], "--stick") && i + 1 < argc)
-			dpad_stick = !strcmp(argv[++i], "dpad");
+		else if (!strcmp(argv[i], "--stick") && i + 1 < argc) {
+			const char *v = argv[++i];
+
+			dpad_stick = !strcmp(v, "dpad");
+			stick_toggle = !strcmp(v, "toggle") ? 1 : !strcmp(v, "toggle-stick") ? 2 : 0;
+		}
 		else if (!strcmp(argv[i], "--layout") && i + 1 < argc) {
 			int l = scr_layout_index(argv[++i]);
 			if (l < 0) { usage(); return 1; }
@@ -3126,6 +3170,8 @@ int main(int argc, char **argv)
 			              : DIATOM_POWER_FULL;
 			sn.controller = m.controller;
 			sn.dpad_stick = !strcmp(m.stick, "dpad");
+			sn.stick_toggle = !strcmp(m.stick, "toggle") ? 1
+			                : !strcmp(m.stick, "toggle-stick") ? 2 : 0;
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			run_session(&sn);   /* its own ERROR/EXIT is the report */
@@ -3153,6 +3199,7 @@ int main(int argc, char **argv)
 			       : DIATOM_POWER_FULL,
 			.controller = controller,
 			.dpad_stick = dpad_stick,
+			.stick_toggle = stick_toggle,
 		};
 		int rc = run_session(&sn);
 		if (rc) return rc;

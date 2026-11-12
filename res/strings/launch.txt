@@ -2,7 +2,7 @@
 # says when it cannot start.
 
 [launch.needs_bios]
-note = A message under the game's name when a disc game needs a firmware file the card lacks: %.*s is the file's name; Bios/ is the folder on the card (never translated)
+note = A message under the game's name when a game (a disc, or any ColecoVision game) needs a firmware file the card lacks: %.*s is the file's name; Bios/ is the folder on the card (never translated)
 en = needs Bios/%.*s
 zh-Hans = 需要 Bios/%.*s
 es = requiere Bios/%.*s

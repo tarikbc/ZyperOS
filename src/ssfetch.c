@@ -77,6 +77,12 @@ static const struct { const char *folder; int id; } SYS[] = {
 	/* ScreenScraper's ScummVM, which looks a game up by its folder's name */
 	{ "ScummVM",             123 },
 	{ "Saturn",               22 },
+	/* ROGUE's scraper's ids again, read 2026-11-12, for the four that came
+	 * that day, the first it asks for each; not measured here */
+	{ "PSP",                  61 },
+	{ "ColecoVision",        183 },
+	{ "Doom",                290 },
+	{ "TIC-80",              222 },
 };
 
 int ss_system_id(const char *folder)

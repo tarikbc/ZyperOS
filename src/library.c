@@ -15,9 +15,11 @@
  * multi-disc set is a single entry with disc switching. .mdf and .cbn are
  * PlayStation images pcsx_rearmed loads directly, so they are discs too, and
  * need the shelf's disc BIOS like any other. .mds is the Saturn's, last so a
- * PlayStation folder that holds an .mds beside its .mdf still opens the .mdf. */
+ * PlayStation folder that holds an .mds beside its .mdf still opens the .mdf.
+ * .cso is the PSP's compressed .iso, so a PSP game in a folder of its own is
+ * one entry whichever of the two it is. */
 static const char *DISC_EXTS[] = {
-	"m3u", "chd", "cue", "ccd", "toc", "iso", "img", "pbp", "mdf", "cbn", "bin", "mds", NULL
+	"m3u", "chd", "cue", "ccd", "toc", "iso", "cso", "img", "pbp", "mdf", "cbn", "bin", "mds", NULL
 };
 
 static const char *ext_of(const char *name)

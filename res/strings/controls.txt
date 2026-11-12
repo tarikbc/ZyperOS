@@ -993,7 +993,7 @@ ja = スクショ
 it = Screenshot
 
 [controls.menu_port]
-note = What MENU does in OpenBOR or a port, each a program of its own: the in-game menu, with no hotkeys.
+note = What MENU does in OpenBOR or a port, each a program of its own: the in-game menu, with no hotkeys. Also what START does in Doom: Doom's own menu.
 en = Menu
 zh-Hans = 菜单
 es = Menú
@@ -1365,3 +1365,135 @@ fr = Croix de la N64
 de = N64-Steuerkreuz
 ja = N64 の十字キー
 it = Croce del N64
+
+[controls.left_button]
+note = ColecoVision: the button on the controller's left side (its yellow one). The value column.
+en = Left button
+zh-Hans = 左侧按钮
+es = Botón izquierdo
+pt-BR = Botão esquerdo
+fr = Bouton gauche
+de = Linke Taste
+ja = 左ボタン
+it = Tasto sinistro
+
+[controls.right_button]
+note = ColecoVision: the button on the controller's right side (its red one). The value column.
+en = Right button
+zh-Hans = 右侧按钮
+es = Botón derecho
+pt-BR = Botão direito
+fr = Bouton droit
+de = Rechte Taste
+ja = 右ボタン
+it = Tasto destro
+
+[controls.move_turn]
+note = Doom: what the d-pad does, walk forward and back (up, down) and turn (left, right). The value column.
+en = Move and turn
+zh-Hans = 移动和转向
+es = Mover y girar
+pt-BR = Andar e virar
+fr = Avancer, tourner
+de = Gehen, drehen
+ja = 移動・向きを変える
+it = Muovi e gira
+
+[controls.use]
+note = Doom: the button that opens doors and presses switches. The value column.
+en = Use
+zh-Hans = 使用
+es = Usar
+pt-BR = Usar
+fr = Utiliser
+de = Benutzen
+ja = 使う
+it = Usa
+
+[controls.strafe]
+note = Doom: held, the d-pad's left and right step sideways instead of turning. The value column.
+en = Strafe
+zh-Hans = 平移
+es = Paso lateral
+pt-BR = Passo lateral
+fr = Pas latéral
+de = Seitwärts
+ja = 横移動
+it = Passo laterale
+
+[controls.run]
+note = Doom: held, the player runs. The value column.
+en = Run
+zh-Hans = 奔跑
+es = Correr
+pt-BR = Correr
+fr = Courir
+de = Rennen
+ja = ダッシュ
+it = Corri
+
+[controls.strafe_left]
+note = Doom: a step sideways to the left. The value column.
+en = Strafe left
+zh-Hans = 向左平移
+es = Paso a la izquierda
+pt-BR = Passo à esquerda
+fr = Pas à gauche
+de = Seitwärts links
+ja = 左へ横移動
+it = Passo a sinistra
+
+[controls.strafe_right]
+note = Doom: a step sideways to the right. The value column.
+en = Strafe right
+zh-Hans = 向右平移
+es = Paso a la derecha
+pt-BR = Passo à direita
+fr = Pas à droite
+de = Seitwärts rechts
+ja = 右へ横移動
+it = Passo a destra
+
+[controls.prev_weapon]
+note = Doom: switches to the weapon before the one in hand. The value column.
+en = Previous weapon
+zh-Hans = 上一件武器
+es = Arma anterior
+pt-BR = Arma anterior
+fr = Arme précédente
+de = Vorherige Waffe
+ja = 前の武器
+it = Arma precedente
+
+[controls.next_weapon]
+note = Doom: switches to the weapon after the one in hand. The value column.
+en = Next weapon
+zh-Hans = 下一件武器
+es = Arma siguiente
+pt-BR = Próxima arma
+fr = Arme suivante
+de = Nächste Waffe
+ja = 次の武器
+it = Arma successiva
+
+[controls.map]
+note = Doom: shows and hides the map of the level (its automap). The value column.
+en = Map
+zh-Hans = 地图
+es = Mapa
+pt-BR = Mapa
+fr = Carte
+de = Karte
+ja = マップ
+it = Mappa
+
+[controls.dpad_stick]
+note = PSP: R2 turns the d-pad into the PSP's analog stick and back (the PSP's games move with one or the other; the handheld has no stick). The value column beside R2.
+en = D-pad as stick
+zh-Hans = 方向键当摇杆
+es = Cruceta como palanca
+pt-BR = Direcional como analógico
+fr = Croix en stick
+de = Kreuz als Stick
+ja = 十字キーをスティックに
+it = Croce come levetta

@@ -193,6 +193,11 @@ void plat_resident_on_unlock(void (*fn)(int id));
  * reason. NULL to stop. */
 void plat_resident_on_speed(void (*fn)(int half));
 
+/* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
+ * into the left stick (true) or back (false): RUN stick=toggle, Diatom's
+ * STICK line. NULL to stop. */
+void plat_resident_on_stick(void (*fn)(bool on));
+
 /* Called from inside plat_resident_wait for the quick slot: Diatom's SELECT+R1
  * and SELECT+L1 (PLAT_QUICK_ASK_*, no path), and the answers to a SAVE or
  * LOAD sent while the game runs, with the state's path: SAVED and LOADED, or

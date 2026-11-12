@@ -26,6 +26,10 @@ static bool g_live;             /* the context is up and the core was told */
 static diatom_core *g_core;
 static void       (*g_core_run)(void);
 
+/* The framebuffer's name, as the port's turn to the frame's texture gave it
+ * on this thread (hw_run, diatom_hw_start). The same name all session. */
+static uintptr_t    g_fb;
+
 /* In place of the core's retro_run while its context is up, so every place
  * that runs a frame (the loop, the warmup, fast forward) does this too.
  *
@@ -34,13 +38,19 @@ static void       (*g_core_run)(void);
  * the next texture has to come from here. */
 static void hw_run(void)
 {
-	diatom_port_gpu_target();
+	g_fb = diatom_port_gpu_target();
 	g_core_run();
 }
 
+/* The name alone, with no GL call and no turn: a core may ask from a thread
+ * of its own. PPSSPP does, from its emulation thread (libretro.cpp's
+ * EmuFrame), which has no context: the port's turn ran there attached
+ * nothing, yet marked the texture attached, and every frame was drawn into
+ * the last one's texture while the new one went to the panel, black
+ * (2026-11-12). The turn is hw_run's, on this thread, before each frame. */
 static uintptr_t hw_framebuffer(void)
 {
-	return diatom_port_gpu_target();
+	return g_fb;
 }
 
 static retro_proc_address_t hw_proc(const char *sym)
@@ -102,6 +112,8 @@ bool diatom_hw_start(diatom_core *c)
 	g_core = c;
 	g_core_run = c->run;
 	c->run = hw_run;
+	/* For a core that asks as its context comes up, before its first frame */
+	g_fb = diatom_port_gpu_target();
 	if (g_hw.context_reset) g_hw.context_reset();
 	return true;
 }
@@ -117,6 +129,7 @@ void diatom_hw_unload(void)
 	diatom_port_gpu_end();
 	g_core->run = g_core_run;
 	g_core = NULL;
+	g_fb = 0;
 	g_live = false;
 	g_asked = false;
 }
