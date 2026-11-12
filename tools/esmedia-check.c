@@ -303,6 +303,22 @@ int main(void)
 
 	printf("a list made to mislead:\n");
 	{
+		/* A path through ".", an empty part or a link out of the media
+		 * folder: no file of the game's for Rename */
+		char rel[8][ES_PATH], to[8][ES_PATH], p[1200], q[1200];
+
+		put("Roms/lnk/Tetris.nds", "rom");
+		put("Roms/lnk/Tetris Bonus.nds", "rom");
+		snprintf(p, sizeof p, "%s/lnk", roms);
+		snprintf(q, sizeof q, "%s/lnk/images", roms);
+		CHECK(symlink(p, q) == 0);             /* images/ is the folder itself */
+		put("Roms/lnk/gamelist.xml",
+		    "<gameList><game><path>./Tetris.nds</path><name>Tetris DS</name>"
+		    "<image>./images/Tetris Bonus.nds</image><thumbnail>./images/./Tetris Bonus.nds</thumbnail>"
+		    "<marquee>./images//Tetris Bonus.nds</marquee></game></gameList>\n");
+		CHECK(es_files(roms, "lnk", "Tetris.nds", "Tetris", "Tet", rel, to, 8) == 0);
+	}
+	{
 		/* A path too long for ES_PATH, cut, would name another file: no game */
 		char *big = malloc(ES_PATH + 400), *list = malloc(ES_PATH + 800);
 

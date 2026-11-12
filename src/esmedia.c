@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -259,15 +260,32 @@ static bool field_path(const char *b, const char *e, const char *tag, char *out,
 
 /* Inside one of the folders ES's scrapers fill (images/, videos/, media/...,
  * lib_es_media_dir): the only place a file of the game's that gamelist.xml
- * names is moved from by Rename, never a game of the folder */
-static bool in_media_dir(const char *rel)
+ * names is moved from by Rename, never a game of the folder. `rel` has
+ * been through rel_of (no "..", "." or empty part); and where the file
+ * really is, links followed, is that media folder of Roms/<folder> too, as
+ * Delete Game holds its paths (a host's card can have links where exFAT
+ * has none). */
+static bool in_media_dir(const char *roms, const char *folder, const char *rel)
 {
 	const char *slash = strchr(rel, '/');
-	char first[LIB_NAME];
+	char first[LIB_NAME], sys[ES_PATH], dir[ES_PATH], file[ES_PATH];
+	char rs[PATH_MAX], rd[PATH_MAX], rf[PATH_MAX];
+	size_t ns, nd;
 
 	if (!slash || slash == rel || (size_t)(slash - rel) >= sizeof first) return false;
 	snprintf(first, sizeof first, "%.*s", (int)(slash - rel), rel);
-	return lib_es_media_dir(first);
+	if (!lib_es_media_dir(first)) return false;
+	if (snprintf(sys, sizeof sys, "%s/%s", roms, folder) >= (int)sizeof sys ||
+	    snprintf(dir, sizeof dir, "%s/%s", sys, first) >= (int)sizeof dir ||
+	    snprintf(file, sizeof file, "%s/%s", sys, rel) >= (int)sizeof file ||
+	    !realpath(sys, rs) || !realpath(dir, rd) || !realpath(file, rf))
+		return false;
+	/* the media folder a folder of the system's own, not a link to the
+	 * system's folder or anywhere else; the file under it */
+	ns = strlen(rs);
+	nd = strlen(rd);
+	return !strncmp(rd, rs, ns) && rd[ns] == '/' && !strchr(rd + ns + 1, '/') &&
+	       !strncmp(rf, rd, nd) && rf[nd] == '/';
 }
 
 /* The next <game> element at or after `p`: its start and end (past
@@ -323,12 +341,14 @@ static bool rel_of(const char *path, const char *folder, char *out, size_t n)
 	}
 	while (r[0] == '.' && r[1] == '/') r += 2;
 	if (!r[0]) return false;
-	/* never out of the folder */
-	for (const char *s = r; *s; ) {
+	/* never out of the folder, and one spelling for each file: no "..",
+	 * no ".", no empty part (backslashes are slashes above) */
+	for (const char *s = r; ; ) {
 		const char *slash = strchr(s, '/');
 		size_t len = slash ? (size_t)(slash - s) : strlen(s);
 
-		if (len == 2 && s[0] == '.' && s[1] == '.') return false;
+		if (len == 0 || (len == 1 && s[0] == '.') || (len == 2 && s[0] == '.' && s[1] == '.'))
+			return false;
 		if (!slash) break;
 		s = slash + 1;
 	}
@@ -908,7 +928,7 @@ int es_files(const char *roms, const char *folder, const char *file, const char 
 		if (el && next_game(el, el + len, &gs, &ge, &bb, &be))
 			for (int t = 0; ALL_MEDIA_TAGS[t]; t++)
 				if (field_path(bb, be, ALL_MEDIA_TAGS[t], v, sizeof v) && v[0] &&
-				    rel_of(v, folder, r, sizeof r) && in_media_dir(r) &&
+				    rel_of(v, folder, r, sizeof r) && in_media_dir(roms, folder, r) &&
 				    snprintf(p, sizeof p, "%s/%s/%s", roms, folder, r) < (int)sizeof p &&
 				    is_file(p))
 					k = pair_add(rel, rel_to, k, max, r, name, to);
