@@ -395,7 +395,7 @@ static const ctl_pad PADS[] = {
 	                  [P_R1] = SAYS(S_CONTROLS_STRAFE_RIGHT),
 	                  [P_L2] = SAYS(S_CONTROLS_PREV_WEAPON),
 	                  [P_R2] = SAYS(S_CONTROLS_NEXT_WEAPON),
-	                  [P_START] = SAYS(S_CONTROLS_PAUSE_MENU),
+	                  [P_START] = SAYS(S_CONTROLS_MENU_PORT),
 	                  [P_SELECT] = SAYS(S_CONTROLS_MAP) } },
 	/* Beetle VB: the right d-pad's up and left, on L2 and R2; its down and
 	 * right are on L3 and R3, which the handheld does not have */

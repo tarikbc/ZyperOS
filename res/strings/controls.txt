@@ -993,7 +993,7 @@ ja = スクショ
 it = Screenshot
 
 [controls.menu_port]
-note = What MENU does in OpenBOR or a port, each a program of its own: the in-game menu, with no hotkeys.
+note = What MENU does in OpenBOR or a port, each a program of its own: the in-game menu, with no hotkeys. Also what START does in Doom: Doom's own menu.
 en = Menu
 zh-Hans = 菜单
 es = Menú
