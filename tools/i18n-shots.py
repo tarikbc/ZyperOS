@@ -355,6 +355,14 @@ for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
+# ...on its Stylus row, which the Shader row (2026-11-12) put below the first
+# window of rows
+EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "8", "dual"]))
+# MENU's Shader when a system has its own (SHOT_SETTINGS below): "per system"
+EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
+
+# The README's shots' own settings, and these shots'
+SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"}}
 
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
@@ -503,10 +511,10 @@ def run_language(code, shots, binary, keep):
                 env["ZYPEROS_PM_STATUS"] = str(pm / "status")
             # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
             # is taken: the Shader row at its widest value
-            R.set_settings(card, R.SHOT_SETTINGS.get(name), True)
+            R.set_settings(card, SHOT_SETTINGS.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            R.set_settings(card, R.SHOT_SETTINGS.get(name), False)
+            R.set_settings(card, SHOT_SETTINGS.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])
