@@ -102,7 +102,8 @@ typedef struct {
 bool gd_is_bios(const char *file);
 
 /* What the states folder calls a game: its launch file's base, or on a
- * hooked shelf (its games are folders) the folder's name. MENU > Storage
+ * hooked shelf (its games are folders) or for a PSP game's EBOOT.PBP the
+ * folder's name, as persist_base in main.c has it. MENU > Storage
  * asks it of each game, to know whose old states are whose (src/storage.h). */
 const char *gd_state_base(const char *file, const char *name, bool hooked);
 

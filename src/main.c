@@ -11829,7 +11829,7 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 	memset(gi, 0, sizeof *gi);
 	gi->can_delete = gd_shelf_deletes(s->core);
-	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file);
+	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file, g->dir);
 	gi->can_favorite = !is_muse(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
 
@@ -13140,19 +13140,24 @@ static bool game_rename(app *a, int owner, const game_entry *g, char *said, size
 	snprintf(card_states, sizeof card_states, "%s/.zyperos", P_SHARED);
 	said[0] = '\0';
 
+	/* Every other game of every system, at every depth of its folders
+	 * (sys_games): what one folder of a shelf shows is not all that shares
+	 * a name */
 	for (i = 0; i < a->sys.count; i++)
-		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += a->view[i].list.count;
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += sys_games(&a->view[i])->count;
 	if (cap > 0 && !(others = malloc((size_t)cap * sizeof *others))) cap = 0;
 	for (i = 0; i < a->sys.count && others; i++) {
 		const system_cfg *o = &a->sys.systems[i];
 		bool hooked = lib_shelf_hooked(o->exts);
 
 		if (a->view[i].owner || is_muse(o) || !o->folder[0]) continue;
-		for (k = 0; k < a->view[i].list.count && no < cap; k++) {
-			const game_entry *e = &a->view[i].list.items[k];
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && no < cap; k++) {
+			const game_entry *e = &gl->items[k];
 
 			if (!strcmp(o->folder, folder) && !strcmp(e->file, file)) continue;
-			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked };
+			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked, e->dir };
 		}
 	}
 	if (!(plan = malloc(sizeof *plan)) || (cap > 0 && !others)) {
@@ -13162,7 +13167,7 @@ static bool game_rename(app *a, int owner, const game_entry *g, char *said, size
 		return false;
 	}
 	card = (gd_card){ P_ROMS, card_saves, card_states };
-	gg = (gd_game){ folder, tag, core, exts, file, name };
+	gg = (gd_game){ folder, tag, core, exts, file, name, g->dir };
 	for (;;) {
 		if (keyboard_prompt(a, T(S_GAMEMENU_RENAME), typed, (int)sizeof typed) != KB_ACCEPT ||
 		    !a->running) {
