@@ -409,6 +409,16 @@ SDL_Texture *ui_make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 /* The same, square and square-cornered, for an album with no cover. */
 SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h);
+/* A folder's card on a shelf (src/shelfdir.h): the game card's slab and
+ * band, the pixel folder (ui_card_folder_art) with how many games it holds
+ * on a label, and its name under it. */
+SDL_Texture *ui_make_folder_card(SDL_Renderer *r, const char *title, unsigned rgb,
+                                 int games, int *w, int *h);
+/* The folder a folder's card draws: the system sprites' FOLDER still, a
+ * 128-unit picture, handed over (this file frees it) once on the frame
+ * thread before any folder card is asked for. Without it a folder's card has
+ * its label alone. */
+void ui_card_folder_art(SDL_Surface *still);
 
 /* The theme a card's texture was made for, DS_LIGHT or DS_DARK - a card from
  * this file - or -1 for any other texture: art that is no theme's. With cardgen_kept (src/cardgen.h), what
@@ -433,11 +443,15 @@ typedef struct {
 	bool     album;      /* an album's square cover, not a game's card */
 	int      theme_ix;   /* DS_LIGHT or DS_DARK: the theme it is drawn in */
 	int      lang_set;   /* whose faces a Chinese or Japanese title is in */
+	int      folder;     /* a folder's card, holding this many games; 0 a game's */
 } ui_card_order;
 
 /* An order for a card in the theme and language that are on: on the frame. */
 void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
                        bool album);
+/* The same for a folder holding `games` games (ui_make_folder_card) */
+void ui_card_order_folder(ui_card_order *o, const char *title, unsigned rgb,
+                          int games);
 
 /* The card the order describes, as an ARGB8888 surface the caller frees: a
  * game's 512 x 656 with round corners, an album's 512 x 512 with square ones.

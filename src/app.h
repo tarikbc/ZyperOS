@@ -8,6 +8,7 @@
 #include "config.h"
 #include "coverflow.h"
 #include "games.h"
+#include "gamelist.h"
 #include "home.h"
 #include "i18n.h"
 #include "idle.h"
@@ -56,7 +57,34 @@ typedef struct {
 	 * the title is the order, and the jump goes by it as a games shelf's
 	 * does. */
 	bool jump_by_name;
+	/* Folders on the shelf (src/shelfdir.h). `all`: every game of the
+	 * system at every depth, when some are in folders, and `list` is then
+	 * what the shelf shows of folder `dir` ("" the top) - its folders, the
+	 * first `nfold` entries, then its games. NULL when no game is in a
+	 * folder, and `list` is all of them, as it always was: sys_games says
+	 * which, for whatever is about the system's games and not its shelf. */
+	game_list *all;
+	char dir[LIB_PATH];
+	int nfold;
+	/* The list view's place and motion (src/gamelist.h); unset places it
+	 * again on the cursor */
+	gl_motion lm;
+	/* MENU's View for this shelf: its covers in a row (false), as it always
+	 * was, or a list of names (DESIGN.md 11.37) */
+	bool listed;
 } sysview;
+
+/* Every game of a system, at every depth of its folders: Favorites, search,
+ * Random Game, Storage, the scraper and the saved library go by this, never
+ * by what one folder of its shelf shows */
+static inline game_list *sys_games(sysview *v)
+{
+	return v->all ? v->all : &v->list;
+}
+static inline const game_list *sys_games_c(const sysview *v)
+{
+	return v->all ? v->all : &v->list;
+}
 
 /* Diatom's display modes, in the order ZyperOS offers them: the sensible
  * default first, then whole-pixel scaling, then the ones that trade shape or
@@ -188,6 +216,14 @@ extern volatile sig_atomic_t want_quit;
 
 /* ---- main.c's, for the files split from it; each is described there ---- */
 
+/* Folders on a shelf (src/shelfdir.h): shelf `s` on folder `dir` of its
+ * games, or the nearest one up that still holds a game, sorted, its cursor
+ * on the entry whose file is `select` (none: the first) and its row still -
+ * nothing on a shelf with no folders; and shelf `s` on game `file` of its
+ * system, into the folder it is kept in first */
+void shelf_open_dir(app *a, int s, const char *dir, const char *select);
+void shelf_reveal(app *a, int s, const char *file);
+
 /* The cards' textures and the paths they come from */
 SDL_Texture *load_image(SDL_Renderer *r, const char *path, int *w, int *h,
                         float *cb);
@@ -225,6 +261,9 @@ void snap_off(void);
 void display_load(app *a);
 void core_load(app *a);
 void sort_load(app *a);
+/* MENU > View, each shelf's: its covers or a list (DESIGN.md 11.37) */
+void view_load(app *a);
+bool view_listed(const char *tag);
 void sort_shelf(app *a, int sys);
 void sort_all(app *a);
 /* Every texture of the renderer the launcher holds, let go */

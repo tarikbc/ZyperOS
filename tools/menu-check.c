@@ -758,11 +758,12 @@ static void system_menu(void)
 		f.sys_core = "";
 		fn = sys_menu_build(&f, frows, &fb, &fhead);
 		printf("the Favorites shelf's menu:\n");
-		ck(fn == SM_FAV_ROWS, "three rows and a count, not seven");
+		ck(fn == SM_FAV_ROWS, "four rows, not eight");
 		ck(!strcmp(frows[0].label, "Games"), "how many are on it");
 		ck(!strcmp(frows[1].label, "Random Game"), "one of them, picked for you");
 		ck(!frows[1].live, "which an empty Favorites cannot do");
 		ck(!strcmp(frows[2].label, "Sort By"), "and what order they are in");
+		ck(!strcmp(frows[3].label, "View") && frows[3].live, "and how the shelf shows them");
 		f.game_count = 4;
 		fn = sys_menu_build(&f, frows, &fb, &fhead);
 		ck(frows[1].live, "and one with games can");
@@ -1026,8 +1027,17 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 5, "five rows, not eight");
+	ck(k == 6, "six rows, not nine");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
+	/* 1.0.5: the shelf's covers or a list, under Sort By */
+	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
+	ck(sm_at(&u, SM_VIEW) == sm_at(&u, SM_SORT) + 1, "right under Sort By");
+	ck(!strcmp(val(&rows[sm_at(&u, SM_VIEW)]), "Covers"), "the covers, as it always was");
+	u.listed = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[sm_at(&u, SM_VIEW)]), "List"), "or a list");
+	u.listed = false;
+	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(holds(got, k, sm_at(&u, SM_DISPLAY)), "Display Mode");
 	/* Live since sorting stopped being alphabetical-only. It was a
 	 * placeholder for long enough that this check counted three. */

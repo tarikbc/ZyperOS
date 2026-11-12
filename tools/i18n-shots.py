@@ -172,6 +172,8 @@ EXTRA = {
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),
     "system-menu": ("demo", "PS1", ["--screen", "games", "--menu"]),
+    # View's other value, List, over the list it shows (DESIGN.md 11.37)
+    "system-menu-list": ("demo", "GBA", ["--screen", "games", "--view", "list", "--menu", "View"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),

@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ftw.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -280,22 +281,32 @@ static void library(void)
 	/* ScummVM's shelf: a game is a folder, launched by its .scummvm hook,
 	 * else by its first file (the core detects the game from the folder);
 	 * a game's own .bin is data, never a disc to launch; a folder with no
-	 * file at all is no game. Elsewhere a folder of loose files stays one
-	 * skip, not one game. */
+	 * file at all is a folder of games, and with none in it no game. Since
+	 * 1.0.5 a folder of loose files elsewhere is a folder of games, to any
+	 * depth: each file in it a game of its own, never the folder one game. */
 	directory("ScummVM"); directory("ScummVM/Sky"); directory("ScummVM/Queen");
 	directory("ScummVM/Empty"); directory("NES/Hacks");
+	directory("ScummVM/LucasArts"); directory("ScummVM/LucasArts/Monkey");
 	touch("ScummVM/Sky/sky.dnr"); touch("ScummVM/Sky/a.bin"); touch("ScummVM/Sky/sky.scummvm");
 	touch("ScummVM/Queen/readme.txt"); touch("ScummVM/Queen/queen.1");
+	touch("ScummVM/LucasArts/Monkey/monkey.000"); touch("ScummVM/LucasArts/Monkey/monkey.scummvm");
 	touch("NES/Hacks/a.nes"); touch("NES/Hacks/b.nes");
-	CHECK(lib_scan(root, "ScummVM", "scummvm", &list) && list.count == 2);
+	CHECK(lib_scan(root, "ScummVM", "scummvm", &list) && list.count == 3);
 	CHECK(lib_find_entry(&list, NULL, 0, "Sky/sky.scummvm") >= 0);
 	i = lib_find_entry(&list, NULL, 0, "Queen/queen.1");
-	CHECK(i >= 0 && !strcmp(list.items[i].name, "Queen"));
+	CHECK(i >= 0 && !strcmp(list.items[i].name, "Queen") && list.items[i].dir == 0);
+	i = lib_find_entry(&list, NULL, 0, "LucasArts/Monkey/monkey.scummvm");
+	CHECK(i >= 0 && !strcmp(list.items[i].name, "Monkey") && list.items[i].dir == 9);
+	CHECK(list.skipped == 1 && !strcmp(list.skipped_eg[0], "Empty/"));
 	lib_free(&list);
-	CHECK(lib_scan(root, "NES", "zip,chd,m3u,nes", &list) && list.count == 4);
-	CHECK(lib_find_entry(&list, NULL, 0, "Hacks/a.nes") == -1);
-	/* Read once, as it is (lib_scan): a folder of loose files is the one
-	 * thing left out, and said as a folder */
+	CHECK(lib_scan(root, "NES", "zip,chd,m3u,nes", &list) && list.count == 6);
+	i = lib_find_entry(&list, NULL, 0, "Hacks/a.nes");
+	CHECK(i >= 0 && list.items[i].dir == 5 && !strcmp(list.items[i].name, "a"));
+	CHECK(list.skipped == 0);
+	lib_free(&list);
+	/* A folder of files the shelf does not take is still one thing left out,
+	 * said as a folder, not each file in it */
+	CHECK(lib_scan(root, "NES", "zip,chd,m3u", &list) && list.count == 4);
 	CHECK(list.skipped == 1 && !strcmp(list.skipped_eg[0], "Hacks/"));
 	lib_free(&list);
 	/* A folder whose name looks like a game file is a folder all the same:
@@ -303,14 +314,95 @@ static void library(void)
 	directory("NES/Odd.zip");
 	touch("NES/Odd.zip/Disc 1.chd");
 	touch("NES/readme.txt");
-	CHECK(lib_scan(root, "NES", "zip,chd,m3u,nes", &list) && list.count == 5);
+	CHECK(lib_scan(root, "NES", "zip,chd,m3u,nes", &list) && list.count == 7);
 	i = lib_find_entry(&list, NULL, 0, "Odd.zip/Disc 1.chd");
 	CHECK(i >= 0 && !strcmp(list.items[i].name, "Odd.zip"));
 	CHECK(lib_find_entry(&list, NULL, 0, "Odd.zip") == -1);
-	/* The files left out first, then the folders, as the two reads had it */
-	CHECK(list.skipped == 2 && !strcmp(list.skipped_eg[0], "readme.txt") &&
-	      !strcmp(list.skipped_eg[1], "Hacks/"));
+	CHECK(list.skipped == 1 && !strcmp(list.skipped_eg[0], "readme.txt"));
 	lib_free(&list);
+}
+
+/* 1.0.5: a disc set's folder against a folder of several games' discs */
+static void disc_folders(void)
+{
+	game_list list = {0};
+	int i;
+
+	directory("PS"); directory("PS/FF7"); directory("PS/RPGs"); directory("PS/RPGs/Xeno");
+	directory("PS/Pol"); directory("PS/Tracks"); directory("PS/Mixed"); directory("PS/Media");
+	directory("PS/Imgs");
+	/* One game's discs, with no playlist: one game, Disc 1 */
+	touch("PS/FF7/Final Fantasy VII (USA) (Disc 2).cue"); touch("PS/FF7/Final Fantasy VII (USA) (Disc 2).bin");
+	touch("PS/FF7/Final Fantasy VII (USA) (Disc 1).cue"); touch("PS/FF7/Final Fantasy VII (USA) (Disc 1).bin");
+	/* Numbered discs with no game's name at all */
+	touch("PS/Pol/Disc 1.chd"); touch("PS/Pol/DISC2.chd");
+	/* A sheet and its tracks, each track named its own way */
+	touch("PS/Tracks/Game.cue"); touch("PS/Tracks/Game (Track 01).bin"); touch("PS/Tracks/other.bin");
+	/* Several games' discs: a folder of them, and a set folder inside */
+	touch("PS/RPGs/Chrono Cross (USA) (Disc 1).chd"); touch("PS/RPGs/Chrono Cross (USA) (Disc 2).chd");
+	touch("PS/RPGs/Vagrant Story (USA).chd");
+	touch("PS/RPGs/Xeno/Xenogears (USA) (Disc 1).cue"); touch("PS/RPGs/Xeno/Xenogears (USA) (Disc 1).bin");
+	/* A playlist makes a folder one game whatever else is in it */
+	touch("PS/Mixed/A.chd"); touch("PS/Mixed/B.chd"); touch("PS/Mixed/Mixed.m3u");
+	/* Another frontend's pictures, never games, whatever they are */
+	touch("PS/Media/x.chd"); touch("PS/Imgs/y.chd");
+	CHECK(lib_scan(root, "PS", "cue,chd,m3u", &list) && list.count == 8);
+	i = lib_find_entry(&list, NULL, 0, "FF7/Final Fantasy VII (USA) (Disc 1).cue");
+	CHECK(i >= 0 && list.items[i].dir == 0 && !strcmp(list.items[i].name, "FF7"));
+	CHECK(lib_find_entry(&list, NULL, 0, "Pol/Disc 1.chd") >= 0);
+	CHECK(lib_find_entry(&list, NULL, 0, "Tracks/Game.cue") >= 0);
+	CHECK(lib_find_entry(&list, NULL, 0, "Mixed/Mixed.m3u") >= 0);
+	i = lib_find_entry(&list, NULL, 0, "RPGs/Chrono Cross (USA) (Disc 1).chd");
+	CHECK(i >= 0 && list.items[i].dir == 4 && !strcmp(list.items[i].name, "Chrono Cross (USA) (Disc 1)"));
+	CHECK(lib_find_entry(&list, NULL, 0, "RPGs/Vagrant Story (USA).chd") >= 0);
+	i = lib_find_entry(&list, NULL, 0, "RPGs/Xeno/Xenogears (USA) (Disc 1).cue");
+	CHECK(i >= 0 && list.items[i].dir == 4 && !strcmp(list.items[i].name, "Xeno"));
+	CHECK(list.skipped == 0);
+	lib_free(&list);
+
+	/* A Dreamcast .gdi set starts by its sheet, never its track01.bin */
+	directory("DC"); directory("DC/Game");
+	touch("DC/Game/Game.gdi"); touch("DC/Game/track01.bin"); touch("DC/Game/track03.bin");
+	touch("DC/Game/track02.raw");
+	CHECK(lib_scan(root, "DC", "chd,cdi,gdi,cue", &list) && list.count == 1);
+	CHECK(lib_find_entry(&list, NULL, 0, "Game/Game.gdi") >= 0);
+	lib_free(&list);
+
+	/* A shelf that takes no disc: its folder of .bin dumps is a folder of
+	 * games, not one game launching the first */
+	directory("MD"); directory("MD/Hacks");
+	touch("MD/Hacks/one.bin"); touch("MD/Hacks/two.bin");
+	CHECK(lib_scan(root, "MD", "md,gen,bin,smd,zip", &list) && list.count == 2);
+	i = lib_find_entry(&list, NULL, 0, "Hacks/two.bin");
+	CHECK(i >= 0 && list.items[i].dir == 5);
+	lib_free(&list);
+
+	/* Ports: a port's folder is its data, never looked into, as before */
+	directory("PORTS"); directory("PORTS/game"); directory("PORTS/More");
+	touch("PORTS/Game.sh"); touch("PORTS/game/run.sh"); touch("PORTS/More/Other.sh");
+	CHECK(lib_scan(root, "PORTS", "sh", &list) && list.count == 1);
+	CHECK(lib_find_entry(&list, NULL, 0, "Game.sh") >= 0);
+	CHECK(list.skipped == 2);
+	lib_free(&list);
+
+	/* The added time is the game's own: a loose game's file, a set's folder,
+	 * never the folder of games it is kept in */
+	{
+		char p[1200];
+		struct stat st;
+
+		snprintf(p, sizeof p, "%s/PS/RPGs/Xeno", root);
+		CHECK(stat(p, &st) == 0);
+		CHECK(lib_added(root, "PS", "RPGs/Xeno/Xenogears (USA) (Disc 1).cue", 4) == (long)st.st_mtime);
+		CHECK(lib_added(root, "PS", "FF7/Final Fantasy VII (USA) (Disc 1).cue", 0) > 0);
+		CHECK(lib_added(root, "PS", "RPGs/Gone.chd", 4) == 0);
+	}
+}
+
+static int rm_one(const char *path, const struct stat *st, int flag, struct FTW *ftw)
+{
+	(void)st; (void)flag; (void)ftw;
+	return remove(path);
 }
 
 int main(void)
@@ -318,14 +410,9 @@ int main(void)
 	CHECK(mkdtemp(root) != NULL);
 	snprintf(libpath, sizeof libpath, "%s/library.db", root);
 	snprintf(devpath, sizeof devpath, "%s/device.db", root);
-	parse_titles(); upgrade(); runner(); library(); db_shutdown();
-	/* A unique fixture tree; remove only the paths this test owns. */
-	const char *files[] = { "NES/Zeta (USA).zip", "NES/abbrev.zip", "NES/Shadow.zip", "NES/Shadow/Disc 1.chd", "NES/Set/Disc 1.chd", "NES/Set/Disc 2.chd", "NES/Set/Set.m3u", "NES/Hacks/a.nes", "NES/Hacks/b.nes", "ScummVM/Sky/sky.dnr", "ScummVM/Sky/a.bin", "ScummVM/Sky/sky.scummvm", "ScummVM/Queen/readme.txt", "ScummVM/Queen/queen.1", "library.db", "library.db-wal", "library.db-shm", "device.db", "device.db-wal", "device.db-shm" };
-	char path[1200];
-	for (unsigned i = 0; i < sizeof files / sizeof files[0]; i++) { snprintf(path, sizeof path, "%s/%s", root, files[i]); unlink(path); }
-	const char *dirs[] = { "NES/Shadow", "NES/Set", "NES/Hacks", "NES", "ScummVM/Sky", "ScummVM/Queen", "ScummVM/Empty", "ScummVM" };
-	for (unsigned i = 0; i < sizeof dirs / sizeof dirs[0]; i++) { snprintf(path, sizeof path, "%s/%s", root, dirs[i]); rmdir(path); }
-	rmdir(root);
+	parse_titles(); upgrade(); runner(); library(); disc_folders(); db_shutdown();
+	/* A unique fixture tree (mkdtemp's), removed whole */
+	nftw(root, rm_one, 16, FTW_DEPTH | FTW_PHYS);
 	if (failures) return 1;
 	puts("ok: parsed titles survive upgrades, cover failures and library scans");
 	return 0;

@@ -127,6 +127,7 @@
 #include "powerscreens.h"
 #include "raqueue.h"
 #include "shelfbuild.h"
+#include "shelfdir.h"
 #include "stats_screen.h"
 #include "zyperdraw.h"
 #include "zypermark.h"
@@ -685,6 +686,32 @@ void sort_load(app *a)
 	}
 }
 
+/* MENU > View, per shelf like Sort By: "list" or none (the covers), kept
+ * in the device's database by the system's tag (DESIGN.md 11.37) */
+bool view_listed(const char *tag)
+{
+	char key[CFG_STR + 16], v[16];
+
+	snprintf(key, sizeof key, "view.%s", tag);
+	return db_get_str(db_dev(), key, v, sizeof v, NULL) && !strcmp(v, "list");
+}
+
+void view_load(app *a)
+{
+	for (int i = 0; i < a->sys.count; i++) {
+		a->view[i].listed = view_listed(a->sys.systems[i].tag);
+		a->view[i].lm.set = false;
+	}
+}
+
+static void view_save(app *a, int sys)
+{
+	char key[CFG_STR + 16];
+
+	snprintf(key, sizeof key, "view.%s", a->sys.systems[sys].tag);
+	db_set_str(db_dev(), key, a->view[sys].listed ? "list" : "covers");
+}
+
 static void sort_save(app *a)
 {
 	char key[CFG_STR + 16];
@@ -724,11 +751,11 @@ void sort_shelf(app *a, int sys)
 	/* The added times this order reads, each game's from its own system's
 	 * folder (Favorites' from its owner's), where the scan left them unknown */
 	if (sort_needs_added(v->sort))
-		for (int i = 0; i < v->list.count; i++)
+		for (int i = v->nfold; i < v->list.count; i++)
 			if (v->list.items[i].added == LIB_ADDED_UNKNOWN)
 				v->list.items[i].added = lib_added(P_ROMS,
 					a->sys.systems[v->owner ? v->owner[i] : sys].folder,
-					v->list.items[i].file);
+					v->list.items[i].file, v->list.items[i].dir);
 	if (v->owner) {
 		const char *tags[CFG_MAX_SYSTEMS];
 		int i;
@@ -738,7 +765,10 @@ void sort_shelf(app *a, int sys)
 		sort_apply_owned(v->list.items, v->owner, v->list.count, v->sort, tags);
 		return;
 	}
-	sort_apply(v->list.items, v->list.count, v->sort, a->sys.systems[sys].tag);
+	/* A shelf's folders stay first, A to Z (src/shelfdir.h): the order is
+	 * its games' */
+	sort_apply(v->list.items + v->nfold, v->list.count - v->nfold, v->sort,
+	           a->sys.systems[sys].tag);
 }
 
 void sort_all(app *a)
@@ -1410,6 +1440,19 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 
 	if (is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		muse_card_want(a, s, i);
+	} else if (game_card_wanted(v, i) && v->list.items[i].folder) {
+		/* A folder on the shelf (src/shelfdir.h): its own card, no art */
+		ui_card_order card;
+
+		ui_card_order_folder(&card, v->list.items[i].title, a->sys.systems[o].accent,
+		                     v->list.items[i].folder);
+		if (!texload_want_or_draw(s, i, NULL, NULL, &card) && !g_loads_held) {
+			if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
+			v->tex[i] = ui_make_folder_card(a->r, v->list.items[i].title,
+			                                a->sys.systems[o].accent,
+			                                v->list.items[i].folder, &v->tw[i], &v->th[i]);
+			v->cb[i] = 1.0f;
+		}
 	} else if (game_card_wanted(v, i) &&
 	           pm_cover_path(a, o, &v->list.items[i], theme_index(), pm, sizeof pm)) {
 		/* PortMaster's own cover, in the theme that is on, made a card of
@@ -1523,6 +1566,10 @@ static void shelf_put(void *ctx, texload_got *g)
 		v->tex[i] = is_muse(&a->sys.systems[s])
 		          ? ui_make_cover(a->r, v->list.items[i].title,
 		                          a->sys.systems[o].accent, &v->tw[i], &v->th[i])
+		          : v->list.items[i].folder
+		          ? ui_make_folder_card(a->r, v->list.items[i].title,
+		                                a->sys.systems[o].accent, v->list.items[i].folder,
+		                                &v->tw[i], &v->th[i])
 		          : ui_make_card(a->r, v->list.items[i].title,
 		                         a->sys.systems[o].accent,
 		                         &v->tw[i], &v->th[i]);
@@ -1638,6 +1685,61 @@ static void free_view_textures(sysview *v)
 	}
 }
 
+/* ---- folders on a shelf (src/shelfdir.h) ---- */
+
+/* The list view's pixel folder (folder_icon, with draw_games) */
+static SDL_Texture *g_folder_icon;
+
+void shelf_open_dir(app *a, int s, const char *dir, const char *select)
+{
+	sysview *v = &a->view[s];
+	int i;
+
+	if (!v->all) return;
+	texload_bump();
+	shelf_show_dir(v, dir);
+	sort_shelf(a, s);
+	v->cursor = 0;
+	for (i = 0; select && i < v->list.count; i++)
+		if (!strcmp(v->list.items[i].file, select)) { v->cursor = i; break; }
+	v->lm.set = false;                   /* the list finds its window again */
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+}
+
+void shelf_reveal(app *a, int s, const char *file)
+{
+	sysview *v = &a->view[s];
+	char dir[LIB_PATH];
+	int k;
+
+	if (v->all && (k = lib_find_entry(v->all, NULL, 0, file)) >= 0) {
+		sd_dir_of(&v->all->items[k], dir, sizeof dir);
+		if (strcmp(dir, v->dir)) { shelf_open_dir(a, s, dir, file); return; }
+	}
+	if ((k = lib_find_entry(&v->list, NULL, 0, file)) >= 0) v->cursor = k;
+}
+
+/* The folder on the shelf under the cursor, opened (A), or the shelf's own
+ * folder left for the one it is in (B), its cursor on the folder it left */
+static void shelf_into(app *a, sysview *v)
+{
+	char dir[LIB_PATH];
+
+	snprintf(dir, sizeof dir, "%s", v->list.items[v->cursor].file);
+	fprintf(stderr, "shelf: into %s/%s\n", a->sys.systems[a->sys_cursor].folder, dir);
+	shelf_open_dir(a, a->sys_cursor, dir, NULL);
+}
+
+static void shelf_up(app *a, sysview *v)
+{
+	char was[LIB_PATH], up[LIB_PATH];
+
+	snprintf(was, sizeof was, "%s", v->dir);
+	sd_parent(was, up, sizeof up);
+	shelf_open_dir(a, a->sys_cursor, up, was);
+}
+
 /* Muse's shelf onto another kind: all of them, music, books or videos, from
  * the first card. The textures go first, while the count is still the old
  * kind's, since every card is about to be a different album. */
@@ -1665,6 +1767,7 @@ void free_all_textures(app *a)
 	 * g_np.tex would dangle, and np_cover, which sees it made, would draw it.
 	 * Forgotten, np_cover makes it again on the frame that next draws it. */
 	np_forget();
+	if (g_folder_icon) { SDL_DestroyTexture(g_folder_icon); g_folder_icon = NULL; }
 	for (int i = 0; i < a->sys.count; i++) {
 		for (int k = 0; k < a->view[i].list.count; k++)
 			if (a->view[i].tex[k]) {
@@ -3075,7 +3178,7 @@ static void draw_systems(app *a)
 		snprintf(line, sizeof line, "%s%s%s%s%s", al, al[0] && bk[0] ? sep : "", bk,
 		         (al[0] || bk[0]) && vd[0] ? sep : "", vd);
 	} else {
-		int gc = a->view[a->sys_cursor].list.count;
+		int gc = sys_games(&a->view[a->sys_cursor])->count;
 
 		/* A shelf of one read "1 games". Favorites hits it first because it
 		 * starts empty and grows one at a time, but any system with a single
@@ -3425,6 +3528,8 @@ static void game_page_facts(app *a, bool settled)
 	if (v->list.count <= 0) { g_game_page.valid = false; return; }
 	game_entry *g = &v->list.items[v->cursor];
 	unsigned now = plat_now_ms();
+	/* A folder (src/shelfdir.h) has no play time, state or achievements */
+	if (g->folder) { g_game_page.valid = false; return; }
 	bool same = g_game_page.sys == a->sys_cursor && g_game_page.cursor == v->cursor &&
 	            !strcmp(g_game_page.file, g->file);
 	if (!same || now - g_game_page.seen > 250) g_game_page.valid = false;
@@ -3672,7 +3777,7 @@ static bool game_has_snap(void *ctx, int i)
 	const char *folder, *name;
 	int owner;
 
-	if (i < 0 || i >= v->list.count) return false;
+	if (i < 0 || i >= v->list.count || v->list.items[i].folder) return false;
 	owner = shelf_owner(a, a->sys_cursor, i);
 	folder = a->sys.systems[owner].folder;
 	if (!folder[0] || is_muse(&a->sys.systems[owner])) return false;
@@ -3682,18 +3787,120 @@ static bool game_has_snap(void *ctx, int i)
 	       bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp);
 }
 
+/* The heading of a shelf: its system, and on a folder of its games the
+ * folders down to it, "Game Boy Advance / Rom Hacks / Pokemon" */
+static void shelf_heading(const system_cfg *s, const sysview *v, char *out, size_t n)
+{
+	const char *p = v->dir;
+	size_t at = (size_t)snprintf(out, n, "%s", s->name);
+
+	while (*p && at < n) {
+		const char *slash = strchr(p, '/');
+		int len = slash ? (int)(slash - p) : (int)strlen(p);
+		int k = snprintf(out + at, n - at, " / %.*s", len, p);
+
+		if (k < 0) break;
+		at += (size_t)k;
+		p += len + (slash ? 1 : 0);
+	}
+}
+
+/* The list view's rows (src/gamelist.h), from the shelf on screen */
+static const char *list_title(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count ? v->list.items[i].title : "";
+}
+
+static int list_folder(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count ? v->list.items[i].folder : 0;
+}
+
+static unsigned list_accent(void *ctx, int i)
+{
+	app *a = ctx;
+
+	return a->sys.systems[shelf_owner(a, a->sys_cursor, i)].accent;
+}
+
+static bool list_fav(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count && !v->list.items[i].folder &&
+	       fav_is(a->sys.systems[a->sys_cursor].tag, v->list.items[i].file);
+}
+
+/* The pixel folder the list's rows draw: the system sprites' FOLDER still,
+ * read once, nearest so its pixels stay whole; let go with every other
+ * texture (free_all_textures) */
+static SDL_Texture *folder_icon(app *a)
+{
+	char path[CFG_STR * 2];
+
+	if (g_folder_icon) return g_folder_icon;
+	snprintf(path, sizeof path, "%s/system-icons/FOLDER-still.png", P_ROOT);
+	if ((g_folder_icon = IMG_LoadTexture(a->r, path))) {
+		SDL_SetTextureScaleMode(g_folder_icon, SDL_ScaleModeNearest);
+		SDL_SetTextureBlendMode(g_folder_icon, SDL_BLENDMODE_BLEND);
+	}
+	return g_folder_icon;
+}
+
 static void draw_games(app *a)
 {
 	sysview *v = &a->view[a->sys_cursor];
 	const system_cfg *s = &a->sys.systems[a->sys_cursor];
 	if (is_muse(s)) { snap_off(); draw_albums(a); return; }
 	unsigned now = g_games_phase >= 0 ? v->row.moved + g_games_phase : plat_now_ms();
+	char head[LIB_PATH + CFG_STR + 64];
+
+	shelf_heading(s, v, head, sizeof head);
+	if (v->listed) {
+		/* MENU > View > List (DESIGN.md 11.37): no video snap there; the
+		 * cover on its panel is the picture */
+		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
+		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
+		games_info none = { 0 };
+		gl_info li;
+		unsigned wait;
+
+		game_page_facts(a, !gl_moving(&v->lm, now));
+		shelf_snap(a, v, NULL, owner, true, &none);
+		li = (gl_info){
+			.heading = head, .count = v->list.count, .cursor = v->cursor,
+			.accent = s->accent, .accent_of = v->owner ? list_accent : NULL,
+			.title_of = list_title, .folder_of = list_folder,
+			.fav_of = v->owner || is_muse(s) ? NULL : list_fav,
+			.folder_icon = v->nfold ? folder_icon(a) : NULL,
+			.played = g_game_page.valid ? g_game_page.played : "",
+			.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
+			.has_achievements = g_game_page.valid && g_game_page.achievements,
+			.resumable = g_game_page.valid && g_game_page.resume,
+			.install = pm_is_offer(a, owner, g),
+			.inside = v->dir[0] != '\0',
+			.earned = g_game_page.earned, .total = g_game_page.total,
+		};
+		wait = gl_draw(&v->lm, a->r, &li, game_get_tex, a, now, title_phase(a));
+		if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
+		evict_far(v, TEX_KEEP_NEAR);
+		g_title_caps = (SDL_Rect){ 0, 0, 0, 0 };
+		return;
+	}
 	games_select(&v->row, v->cursor, v->list.count, 0, now);
 	game_page_facts(a, !games_moving(&v->row, now));
 	const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 	int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
+	bool folder = g && g->folder;
 	games_info info = {
-		.system = s->name, .title = g ? g->title : T(S_SHELF_NO_GAMES),
+		.system = head, .title = g ? g->title : T(S_SHELF_NO_GAMES),
 		.count = v->list.count, .cursor = v->cursor,
 		.played = g_game_page.valid ? g_game_page.played : "",
 		.has_achievements = g_game_page.valid && g_game_page.achievements,
@@ -3704,10 +3911,13 @@ static void draw_games(app *a)
 		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 		.snap_of = game_has_snap,
 		/* The heart before the name, not on Favorites (2026-11-09) */
-		.favorite = g && owner == a->sys_cursor && !is_muse(s) &&
-		            fav_is(a->sys.systems[owner].tag, g->file)
+		.favorite = g && !folder && owner == a->sys_cursor && !is_muse(s) &&
+		            fav_is(a->sys.systems[owner].tag, g->file),
+		/* A folder of games (src/shelfdir.h): A opens it */
+		.folder = folder ? g->folder : 0,
+		.inside = v->dir[0] != '\0'
 	};
-	shelf_snap(a, v, g, owner, !games_moving(&v->row, now), &info);
+	shelf_snap(a, v, folder ? NULL : g, owner, !games_moving(&v->row, now), &info);
 	unsigned wait = games_draw(&v->row, a->r, &info, game_get_tex, a, now, title_phase(a));
 	if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
 	evict_far(v, TEX_KEEP_NEAR);
@@ -3806,7 +4016,7 @@ static int games_on_card(const app *a)
 		const system_cfg *sc = &a->sys.systems[i];
 
 		if (is_muse(sc) || (!sc->core[0] && !sc->folder[0])) continue;
-		n += a->view[i].list.count - pm_shelf_offers(a, i);
+		n += sys_games_c(&a->view[i])->count - pm_shelf_offers(a, i);
 	}
 	return n;
 }
@@ -6423,8 +6633,11 @@ static int menu_build(app *a, screen_id screen, int sys,
 		 * over without inventing a flag day. */
 		u.muse       = is_muse(sc);
 		u.fav        = !u.muse && sc->core[0] == '\0' && sc->folder[0] == '\0';
-		u.game_count = a->view[sys].list.count;
+		/* Every game of the system, in its folders too: the shelf's own
+		 * entries would count a folder as one */
+		u.game_count = sys_games(&a->view[sys])->count;
 		u.dmode      = dmode_label(a->view[sys].dmode);
+		u.listed     = a->view[sys].listed;
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
 		u.muse_all   = u.muse && muse_kind_shown() == ML_ALL;
@@ -6524,7 +6737,9 @@ static bool random_pick(app *a, bool all, int *shelf, int *game)
 	for (i = 0; i < a->sys.count; i++) {
 		const system_cfg *s = &a->sys.systems[i];
 
-		count[i] = a->view[i].list.count;
+		/* Every game of the system, in its folders too: the pick is an
+		 * index of sys_games, which pick_launch opens the folder of */
+		count[i] = sys_games(&a->view[i])->count;
 		/* Not Muse, whose cards are albums, nor - from every system -
 		 * Favorites, whose games are on their own shelves too */
 		use[i] = all ? !is_muse(s) && !a->view[i].owner && !pm_only_offer(a, i)
@@ -8145,7 +8360,7 @@ static bool pack_logs(char *path, size_t pn, char *name, size_t nn)
 			ABOUT("  %-22s %d albums, %d books, %d tracks\n", sc->name,
 			      ml_count(&g_muse, false), ml_count(&g_muse, true), g_muse.ntracks);
 		else
-			ABOUT("  %-22s %d\n", sc->name, g_logs_app->view[i].list.count);
+			ABOUT("  %-22s %d\n", sc->name, sys_games(&g_logs_app->view[i])->count);
 	}
 #undef ABOUT
 
@@ -11093,8 +11308,13 @@ static void refresh_game_titles(app *a)
 		if (is_muse(&a->sys.systems[si]) || v->list.count <= 0) continue;
 		owner = shelf_owner(a, si, v->cursor);
 		snprintf(file, sizeof file, "%s", v->list.items[v->cursor].file);
+		/* A folder's name is its own (src/shelfdir.h); every game of a
+		 * shelf with folders, and the shelf's copies of its folder's */
+		for (i = 0; v->all && i < v->all->count; i++)
+			lib_refresh_title(db_lib(), a->sys.systems[si].folder, &v->all->items[i]);
 		for (i = 0; i < v->list.count; i++) {
 			int o = shelf_owner(a, si, i);
+			if (v->list.items[i].folder) continue;
 			if (lib_refresh_title(db_lib(), a->sys.systems[o].folder, &v->list.items[i]))
 				changed = true;
 		}
@@ -12114,23 +12334,25 @@ static bool game_delete_now(app *a, int owner, const game_entry *g, bool wait,
 	/* Every other game on the card's own shelves - not Favorites', whose
 	 * games are on them too, and not MP4's albums */
 	for (i = 0; i < a->sys.count; i++)
-		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += a->view[i].list.count;
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += sys_games(&a->view[i])->count;
 	if (cap > 0 && !(others = malloc((size_t)cap * sizeof *others))) cap = 0;
 	for (i = 0; i < a->sys.count && others; i++) {
 		const system_cfg *o = &a->sys.systems[i];
 		bool hooked = lib_shelf_hooked(o->exts);
 
 		if (a->view[i].owner || is_muse(o) || !o->folder[0]) continue;
-		for (k = 0; k < a->view[i].list.count && no < cap; k++) {
-			const game_entry *e = &a->view[i].list.items[k];
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && no < cap; k++) {
+			const game_entry *e = &gl->items[k];
 
 			if (!strcmp(o->folder, folder) && !strcmp(e->file, file)) continue;
-			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked };
+			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked, e->dir };
 		}
 	}
 
 	card = (gd_card){ P_ROMS, card_saves, card_states };
-	gg = (gd_game){ folder, tag, core, exts, file, name };
+	gg = (gd_game){ folder, tag, core, exts, file, name, g->dir };
 	if (!(plan = malloc(sizeof *plan)) || (cap > 0 && !others)) {
 		free(others);
 		free(plan);
@@ -12913,6 +13135,7 @@ static int menu_shelf_width(app *a)
 		int  drow = own ? -1 : sm_pos(a, i, SM_DISPLAY);
 		int  crow = own ? -1 : sm_pos(a, i, SM_CORE);
 		int  lrow = own ? -1 : sm_pos(a, i, SM_DSLANG);
+		int  vrow = muse ? -1 : a->view[i].owner ? 3 : sm_pos(a, i, SM_VIEW);
 
 		n = menu_build(a, SCREEN_GAMES, i, rows, &bufs, &heading);
 		if (muse) {
@@ -12966,6 +13189,17 @@ static int menu_shelf_width(app *a)
 				if (mw > w) w = mw;
 			}
 			rows[lrow].value = keep;
+		}
+		/* View's two values, the longer kept */
+		if (vrow >= 0 && vrow < n) {
+			const char *keep = rows[vrow].value;
+			int mw;
+
+			rows[vrow].value = T(S_SYSMENU_VIEW_COVERS);
+			if ((mw = menu_measure(rows, n, heading)) > w) w = mw;
+			rows[vrow].value = T(S_SYSMENU_VIEW_LIST);
+			if ((mw = menu_measure(rows, n, heading)) > w) w = mw;
+			rows[vrow].value = keep;
 		}
 		for (k = 0; k < (muse ? ML_ORDERS : SORT_COUNT); k++) {
 			int mw;
@@ -13093,7 +13327,7 @@ static bool search_screen(app *a, int *shelf, int *game)
 	int i, k, n = 0, total = 0;
 	bool picked = false;
 
-	for (i = 0; i < a->sys.count; i++) total += a->view[i].list.count;
+	for (i = 0; i < a->sys.count; i++) total += sys_games(&a->view[i])->count;
 	if (total <= 0 || !(items = malloc((size_t)total * sizeof *items))) {
 		uisound_play(DS_SOUND_DENY);
 		return false;
@@ -13102,8 +13336,12 @@ static bool search_screen(app *a, int *shelf, int *game)
 		const sysview *sv = &a->view[i];
 
 		if (is_muse(&a->sys.systems[i]) || sv->owner) continue;
-		for (k = 0; k < sv->list.count; k++)
-			items[n++] = (sr_item){ sv->list.items[k].title, sv->list.items[k].name, i, k };
+		const game_list *gl = sys_games_c(sv);
+
+		/* Every game, in its folders too: the hit is an index of
+		 * sys_games, which pick_launch opens the folder of */
+		for (k = 0; k < gl->count; k++)
+			items[n++] = (sr_item){ gl->items[k].title, gl->items[k].name, i, k };
 	}
 	memset(&v, 0, sizeof v);
 	v.a = a;
@@ -13811,7 +14049,7 @@ static int store_count(store_view *v, int idx)
 
 	if (v->fixture) return v->fix_count[idx];
 	s = store_shelf(v->a, v->c.sys[idx].folder);
-	return s < 0 ? 0 : v->a->view[s].list.count;
+	return s < 0 ? 0 : sys_games(&v->a->view[s])->count;
 }
 
 /* A system's sprite or a folder's two frames, loaded once while the page is
@@ -13869,7 +14107,7 @@ static void store_request(store_view *v)
 	v->ngames = 0;
 	for (i = 0; i < a->sys.count; i++)
 		if (!a->view[i].owner && !is_muse(&a->sys.systems[i]) && a->sys.systems[i].folder[0])
-			n += a->view[i].list.count;
+			n += sys_games(&a->view[i])->count;
 	if (n > 0 && !(v->games = malloc((size_t)n * sizeof *v->games))) n = 0;
 	stats_summarize(STATS_ALL, false, now);
 	for (i = 0; i < a->sys.count && v->games; i++) {
@@ -13877,13 +14115,15 @@ static void store_request(store_view *v)
 		bool hooked = lib_shelf_hooked(s->exts);
 
 		if (a->view[i].owner || is_muse(s) || !s->folder[0]) continue;
-		for (k = 0; k < a->view[i].list.count && v->ngames < n; k++) {
-			const game_entry *g = &a->view[i].list.items[k];
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && v->ngames < n; k++) {
+			const game_entry *g = &gl->items[k];
 			long secs = 0, last = 0;
 
 			stats_lookup(s->tag, g->file, &secs, &last);
 			v->games[v->ngames++] = (st_game_in){ s->folder, s->tag, s->core, s->exts,
-			                                      g->file, g->name, hooked, last };
+			                                      g->file, g->name, hooked, last, g->dir };
 		}
 	}
 	v->sys.n = 0;
@@ -14227,8 +14467,8 @@ static void store_caption(store_view *v, sp_row *r)
 		break;
 	case SR_GAME: {
 		int sh = store_shelf(v->a, c->sys[v->page].folder);
-		const game_entry *g = sh >= 0 && r->index < v->a->view[sh].list.count
-		                    ? &v->a->view[sh].list.items[r->index] : NULL;
+		const game_entry *g = sh >= 0 && r->index < sys_games(&v->a->view[sh])->count
+		                    ? &sys_games(&v->a->view[sh])->items[r->index] : NULL;
 		const char *tag = sh >= 0 ? v->a->sys.systems[sh].tag : "";
 		long secs = 0, last = 0;
 		st_game_size sz;
@@ -14373,7 +14613,7 @@ static void store_rows(store_view *v)
 		free(it);
 	} else {
 		const st_sys *s = &c->sys[v->page];
-		int sh = store_shelf(v->a, s->folder), cnt = sh >= 0 ? v->a->view[sh].list.count : 0;
+		int sh = store_shelf(v->a, s->folder), cnt = sh >= 0 ? sys_games(&v->a->view[sh])->count : 0;
 
 		if (s->snaps) {
 			sp_row *r = store_add(v);
@@ -14394,7 +14634,7 @@ static void store_rows(store_view *v)
 		v->norph = ports && !v->fixture ? st_orphans(v->orph, ST_ORPHANS) : 0;
 		if ((cnt > 0 || v->norph > 0) && (it = malloc((size_t)(cnt + v->norph) * sizeof *it))) {
 			for (i = 0; i < cnt; i++) {
-				const game_entry *g = &v->a->view[sh].list.items[i];
+				const game_entry *g = &sys_games(&v->a->view[sh])->items[i];
 				st_game_size sz;
 				bool ok = store_game_size(v, s->folder, g, &sz);
 				long secs = 0, last = 0;
@@ -14421,7 +14661,7 @@ static void store_rows(store_view *v)
 				if (!r) break;
 				r->kind = it[i].kind;
 				r->index = it[i].index;
-				r->name = it[i].kind == SR_GAME ? v->a->view[sh].list.items[it[i].index].title : it[i].title;
+				r->name = it[i].kind == SR_GAME ? sys_games(&v->a->view[sh])->items[it[i].index].title : it[i].title;
 				if (it[i].sized) store_bytes(it[i].bytes, r->value, sizeof r->value);
 				r->icon = SP_ICON_NONE;
 			}
@@ -14769,12 +15009,12 @@ static void store_act(store_view *v)
 		int sh = store_shelf(a, v->c.sys[v->page].folder);
 		char said[256];
 
-		if (sh < 0 || r->index >= a->view[sh].list.count) { uisound_play(DS_SOUND_DENY); break; }
+		if (sh < 0 || r->index >= sys_games(&a->view[sh])->count) { uisound_play(DS_SOUND_DENY); break; }
 		uisound_play(DS_SOUND_ACCEPT);
 		/* Nothing may make a plan while the walk makes its own (gamedel.c's
 		 * buffers are its own) */
 		st_stop();
-		game_delete(a, sh, &a->view[sh].list.items[r->index], said, sizeof said);
+		game_delete(a, sh, &sys_games(&a->view[sh])->items[r->index], said, sizeof said);
 		if (said[0] && a->running) result_message(a, T(S_GAMEMENU_DELETE), said);
 		store_after(v);
 		break;
@@ -15954,12 +16194,12 @@ static void storage_shot(app *a)
 				int sh = store_shelf(a, "PlayStation");
 				st_sys *s = &v.c.sys[v.page];
 
-				v.fix_count[v.page] = sh >= 0 ? a->view[sh].list.count : 0;
+				v.fix_count[v.page] = sh >= 0 ? sys_games(&a->view[sh])->count : 0;
 				s->games = s->states = 0;
-				for (i = 0; sh >= 0 && i < a->view[sh].list.count; i++) {
+				for (i = 0; sh >= 0 && i < sys_games(&a->view[sh])->count; i++) {
 					st_game_size gz;
 
-					store_game_size(&v, "PlayStation", &a->view[sh].list.items[i], &gz);
+					store_game_size(&v, "PlayStation", &sys_games(&a->view[sh])->items[i], &gz);
 					s->games += gz.games;
 					s->states += gz.states;
 				}
@@ -16021,7 +16261,7 @@ static void storage_shot(app *a)
 		if (sh >= 0) {
 			float k = 1.0f;
 
-			nq = delete_ask_rows(a, a->view[sh].list.items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
+			nq = delete_ask_rows(a, sys_games(&a->view[sh])->items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
 			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
 			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
 			/* delete-open: where the question is in its open (shot_motion) */
@@ -16170,17 +16410,22 @@ static void pick_launch(app *a)
 	int shelf = g_pick.shelf, game = g_pick.game, was = a->sys_cursor;
 	Uint32 until = plat_now_ms() + g_pick.hold_ms;
 
+	char file[LIB_PATH];
+
 	g_pick.shelf = -1;
 	if (shelf < 0 || shelf >= a->sys.count || game < 0 ||
-	    game >= a->view[shelf].list.count)
+	    game >= sys_games(&a->view[shelf])->count)
 		return;
-	fprintf(stderr, "pick: %s/%s\n", a->sys.systems[shelf].folder,
-	        a->view[shelf].list.items[game].file);
+	/* The game by its file: the index is of every game of the system, and
+	 * the shelf may show one folder of them (src/shelfdir.h) */
+	snprintf(file, sizeof file, "%s", sys_games(&a->view[shelf])->items[game].file);
+	fprintf(stderr, "pick: %s/%s\n", a->sys.systems[shelf].folder, file);
 	if (a->screen == SCREEN_GAMES && shelf != was)
 		evict_far(&a->view[was], TEX_KEEP_FAR);
 	a->sys_cursor = shelf;
 	home_reset(&a->home, shelf, a->sys.count, plat_now_ms());
-	a->view[shelf].cursor = game;
+	if (a->view[shelf].all) shelf_reveal(a, shelf, file);
+	else a->view[shelf].cursor = game;
 	enter_system(a);
 	do {
 		plat_input_poll(&a->in);
@@ -16258,7 +16503,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * knew that from the day the menu was cut to two rows, and left and
 		 * right on Favorites' Sort By did nothing at all. */
 		if (a->view[a->sys_cursor].owner)
-			sel = sel == 1 ? SM_RANDOM : sel == 2 ? SM_SORT : SM_GAMES;
+			sel = sel == 1 ? SM_RANDOM : sel == 2 ? SM_SORT : sel == 3 ? SM_VIEW : SM_GAMES;
 		/* And a console's rows lose Box Art on a device with no radio, which
 		 * moves Rescan Folder up one: which row is which comes from the same
 		 * list the build used. */
@@ -16288,6 +16533,19 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		}
 		/* Display mode, saved the moment it changes because there is no
 		 * confirm step to hang the write off. */
+		/* View: the covers or a list, this shelf's (DESIGN.md 11.37). Left,
+		 * Right and A turn it over, as a choice of two does; the shelf under
+		 * the menu turns with it, on the game it was on. */
+		if ((d || key == IN_ACCEPT) && sel == SM_VIEW) {
+			sysview *v = &a->view[a->sys_cursor];
+
+			v->listed = !v->listed;
+			v->lm.set = false;
+			view_save(a, a->sys_cursor);
+			cf_reset(&v->cf, v->cursor);
+			games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+			return MENU_STAY;
+		}
 		if (d && sel == SM_DISPLAY) {
 			sysview *v = &a->view[a->sys_cursor];
 
@@ -21253,6 +21511,12 @@ static void update_games(app *a)
 	in_button jup = IN_UP, jdn = IN_DOWN;
 	in_button sb = IN_NONE;              /* the step's button, for its sound */
 	int dir = 0, was = v->cursor;
+	/* L1/R1's jump: a screenful of covers, or of the list's rows */
+	int page = v->listed ? GL_ROWS : CF_WINDOW;
+
+	/* The list (MENU > View) is the row turned: Up and Down step along it,
+	 * Left and Right jump a letter (DESIGN.md 11.37) */
+	if (v->listed) { back = IN_UP; fwd = IN_DOWN; jup = IN_LEFT; jdn = IN_RIGHT; }
 
 	if (in_repeat(&a->in, back)) { v->cursor = (v->cursor - 1 + n) % n; dir = -1; sb = back; }
 	if (in_repeat(&a->in, fwd))  { v->cursor = (v->cursor + 1) % n; dir = +1; sb = fwd; }
@@ -21262,8 +21526,8 @@ static void update_games(app *a)
 	 * way round on purpose: C's % truncates toward zero, so on a shelf of
 	 * three games the obvious `(cursor - CF_WINDOW + n*2) % n` lands on -1 and
 	 * the draw walks off the front of the list. */
-	if (in_repeat(&a->in, IN_L1))    { v->cursor = ((v->cursor - CF_WINDOW) % n + n) % n; sb = IN_L1; }
-	if (in_repeat(&a->in, IN_R1))    { v->cursor = (v->cursor + CF_WINDOW) % n; sb = IN_R1; }
+	if (in_repeat(&a->in, IN_L1))    { v->cursor = ((v->cursor - page) % n + n) % n; sb = IN_L1; }
+	if (in_repeat(&a->in, IN_R1))    { v->cursor = (v->cursor + page) % n; sb = IN_R1; }
 	if (sb != IN_NONE)
 		step_sound(a, sb, was, v->cursor);
 	/* HERE, AND NOT AT THE END OF THE PASS, because four of the handlers below
@@ -21287,10 +21551,29 @@ static void update_games(app *a)
 	 * move the cursor without a direction, and cf_set_cursor_dir works out the
 	 * rest itself. It returns immediately when the cursor has not moved. */
 	games_select(&v->row, v->cursor, n, dir, plat_now_ms());
+	/* B in a folder goes up one (src/shelfdir.h), onto the folder it left;
+	 * at the top, to the systems */
+	if (a->in.pressed[IN_BACK] && v->dir[0]) {
+		uisound_play(DS_SOUND_BACK);
+		shelf_up(a, v);
+		return;
+	}
 	if (a->in.pressed[IN_BACK]) {
 		uisound_play(DS_SOUND_BACK);
 		a->screen = SCREEN_SYSTEMS;
 		evict_far(v, TEX_KEEP_FAR);
+		return;
+	}
+	/* A folder has no details and nothing to start over: a press nobody can
+	 * act on still gets its sound (DESIGN.md 1) */
+	if ((a->in.pressed[IN_X] || a->in.pressed[IN_Y]) && v->list.items[v->cursor].folder) {
+		uisound_play(DS_SOUND_DENY);
+		return;
+	}
+	/* A on a folder opens it */
+	if (a->in.pressed[IN_ACCEPT] && v->list.items[v->cursor].folder) {
+		uisound_play(DS_SOUND_ACCEPT);
+		shelf_into(a, v);
 		return;
 	}
 	/* X opens the game's details, where Y marks it a favorite. */
@@ -21316,6 +21599,15 @@ static void update_games(app *a)
  * the host build renders exactly what the handheld renders. */
 static const char *shot_path;
 static int shot_screen = -1;
+/* --folder DIR: the shelf on that folder of its games (src/shelfdir.h);
+ * --game FILE: its cursor on that game or folder, opening the folder it is
+ * in; --view list|covers: MENU > View for the shot, whatever is saved */
+static const char *shot_folder, *shot_game, *shot_view;
+/* --shelf-press KEYS: the shelf's own presses before the shot, comma
+ * separated - a, b, x, y, up, down, left, right, l1, r1 - each one pass of
+ * update_games, as the device's loop makes them (never A on a game: that
+ * starts it) */
+static const char *shot_shelf_press;
 static int shot_menu, shot_menu_sel;
 static int shot_kb, shot_kb_layer;
 static keyboard_transition shot_keyboard;
@@ -23214,7 +23506,7 @@ static void ctl_find(app *a, const char *folder, const char *file, int *si, int 
 		folders[i] = a->view[i].owner || is_muse(&a->sys.systems[i]) ? NULL
 		                                                             : a->sys.systems[i].folder;
 	if ((*si = ctl_find_system(folder, folders, n)) < 0) return;
-	l = &a->view[*si].list;
+	l = sys_games(&a->view[*si]);
 	if (l->count <= 0 || !(files = malloc(sizeof *files * (size_t)l->count))) return;
 	for (i = 0; i < l->count; i++) files[i] = l->items[i].file;
 	*gi = ctl_find_game(file, files, l->count);
@@ -23282,7 +23574,7 @@ static bool ctl_resolve(app *a, const ctl_cmd *c, bool rescan, ctl_target *t,
 	/* A disc that needs firmware, as launch refuses it, said here instead of
 	 * in a message on the handheld that nobody over SSH would see */
 	if (strcmp(t->core, PORT_CORE) && strncmp(t->core, RUN_PREFIX, strlen(RUN_PREFIX)) &&
-	    s->disc_bios[0] && lib_is_disc(a->view[si].list.items[gi].file)) {
+	    s->disc_bios[0] && lib_is_disc(sys_games(&a->view[si])->items[gi].file)) {
 		char bios[CFG_STR * 2];
 
 		snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
@@ -23472,6 +23764,16 @@ int main(int argc, char *argv[])
 		 * device or a hand on it. */
 		else if (!strcmp(argv[i], "--jump") && i + 1 < argc) {
 			shot_jump = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--folder") && i + 1 < argc) shot_folder = argv[++i];
+		else if (!strcmp(argv[i], "--shelf-press") && i + 1 < argc) shot_shelf_press = argv[++i];
+		else if (!strcmp(argv[i], "--game") && i + 1 < argc) shot_game = argv[++i];
+		else if (!strcmp(argv[i], "--view") && i + 1 < argc) {
+			shot_view = argv[++i];
+			if (strcmp(shot_view, "list") && strcmp(shot_view, "covers")) {
+				fprintf(stderr, "--view needs list or covers\n");
+				return 2;
+			}
 		}
 		/* --keyboard [layer] [text] draws one frame of the text-entry panel,
 		 * for the same reason --menu and --slots exist: it is dense, and
@@ -24525,6 +24827,14 @@ int main(int argc, char *argv[])
 	 * what a tool for checking one frame wants: the right picture, not a fast
 	 * one. */
 	IMG_Init(IMG_INIT_PNG);
+	/* The pixel folder a folder's card draws (src/shelfdir.h), before any
+	 * worker can be asked for one */
+	{
+		char fp[CFG_STR * 2];
+
+		snprintf(fp, sizeof fp, "%s/system-icons/FOLDER-still.png", P_ROOT);
+		ui_card_folder_art(IMG_Load(fp));
+	}
 	if (!shot_path) texload_start();
 
 	/* The interface sounds, which read their files on a thread of their own,
@@ -24613,6 +24923,7 @@ int main(int argc, char *argv[])
 	display_load(&a);
 	core_load(&a);
 	sort_load(&a);
+	view_load(&a);
 	sort_all(&a);
 	t_mark("scan");
 
@@ -24668,6 +24979,35 @@ int main(int argc, char *argv[])
 
 	if (shot_path) {
 		if (shot_screen >= 0) a.screen = (screen_id)shot_screen;
+		if (shot_view) a.view[a.sys_cursor].listed = !strcmp(shot_view, "list");
+		if (shot_folder) shelf_open_dir(&a, a.sys_cursor, shot_folder, NULL);
+		if (shot_game) shelf_reveal(&a, a.sys_cursor, shot_game);
+		for (const char *k = shot_shelf_press; k && *k; ) {
+			static const struct { const char *w; in_button b; } KEYS[] = {
+				{ "a", IN_ACCEPT }, { "b", IN_BACK }, { "x", IN_X }, { "y", IN_Y },
+				{ "up", IN_UP }, { "down", IN_DOWN }, { "left", IN_LEFT },
+				{ "right", IN_RIGHT }, { "l1", IN_L1 }, { "r1", IN_R1 },
+			};
+			size_t len = strcspn(k, ",");
+			unsigned j;
+
+			for (j = 0; j < sizeof KEYS / sizeof KEYS[0]; j++)
+				if (strlen(KEYS[j].w) == len && !strncmp(KEYS[j].w, k, len)) break;
+			if (j == sizeof KEYS / sizeof KEYS[0]) {
+				fprintf(stderr, "--shelf-press: %.*s is no key\n", (int)len, k);
+				return 2;
+			}
+			memset(&a.in, 0, sizeof a.in);
+			a.in.pressed[KEYS[j].b] = true;
+			a.screen = SCREEN_GAMES;
+			update_games(&a);
+			memset(&a.in, 0, sizeof a.in);
+			fprintf(stderr, "shelf-press: %s -> %s [%s] %d/%d\n", KEYS[j].w,
+			        a.view[a.sys_cursor].dir[0] ? a.view[a.sys_cursor].dir : "top",
+			        a.view[a.sys_cursor].list.count ? a.view[a.sys_cursor].list.items[a.view[a.sys_cursor].cursor].file : "",
+			        a.view[a.sys_cursor].cursor + 1, a.view[a.sys_cursor].list.count);
+			k += len + (k[len] == ',');
+		}
 		if (shot_jump) {
 			sysview *v = &a.view[a.sys_cursor];
 			int k, dir = shot_jump > 0 ? 1 : -1;

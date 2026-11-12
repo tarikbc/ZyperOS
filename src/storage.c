@@ -701,7 +701,8 @@ static int others_of(const st_game_in *all, int n, int self, int lo, int hi,
 	int no = 0, a = 0, b = n, i;
 
 	for (i = lo; i < hi; i++)
-		if (i != self) out[no++] = (gd_other){ all[i].folder, all[i].file, all[i].name, all[i].hooked };
+		if (i != self) out[no++] = (gd_other){ all[i].folder, all[i].file, all[i].name, all[i].hooked,
+		                                       all[i].dir };
 	while (a < b) {
 		int m = (a + b) / 2;
 
@@ -712,7 +713,7 @@ static int others_of(const st_game_in *all, int n, int self, int lo, int hi,
 		const st_game_in *o = &all[hs[i].i];
 
 		if (hs[i].i == self || !strcmp(o->folder, g->folder)) continue;
-		out[no++] = (gd_other){ o->folder, o->file, o->name, o->hooked };
+		out[no++] = (gd_other){ o->folder, o->file, o->name, o->hooked, o->dir };
 	}
 	return no;
 }
@@ -731,7 +732,7 @@ static void size_game(const st_paths *p, const st_game_in *g, const gd_other *ot
 	snprintf(romdir, sizeof romdir, "%s/%s", p->roms, g->folder);
 	snprintf(media, sizeof media, "%s/.media", romdir);
 	card = (gd_card){ p->roms, saves, states };
-	gg = (gd_game){ g->folder, g->tag, g->core, g->exts, g->file, g->name };
+	gg = (gd_game){ g->folder, g->tag, g->core, g->exts, g->file, g->name, g->dir };
 	if (!gd_plan_make(&card, &gg, others, no, plan) &&
 	    plan->why != GD_RUNTIME && plan->why != GD_PORT_UNKNOWN) {
 		/* A BIOS set, or a sheet that leads away: the file alone. PortMaster
@@ -1377,8 +1378,9 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 			if (strcmp(g->folder, s->folder)) continue;
 			if (g_cancel) { free(plan); free(others); free(hs); return false; }
 			snprintf(key, sizeof key, "%s\t%s", g->folder, g->file);
-			/* A game that is a folder moves with its own folder too */
-			if ((slash = strchr(g->file, '/'))) {
+			/* A game that is a folder moves with its own folder too (past
+			 * the folders of games it is kept in) */
+			if ((slash = strchr(g->file + (g->dir ? g->dir + 1 : 0), '/'))) {
 				char gdir[PATH_MAX_ST];
 
 				snprintf(gdir, sizeof gdir, "%s/%s/%.*s", j->p.roms, g->folder, (int)(slash - g->file), g->file);

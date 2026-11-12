@@ -263,12 +263,13 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core and Game Language step on A as well; Sort By and Display Mode do
- * nothing with it. */
+/* Core, Game Language and View step on A as well; Sort By and Display Mode
+ * do nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
 	[SM_DSLANG]  = MENU_SND_RING,
 	[SM_SORT]    = MENU_SND_RING | MENU_SND_NO_A,
+	[SM_VIEW]    = MENU_SND_RING,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_RANDOM]  = MENU_SND_OWN,
 };
@@ -296,8 +297,11 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 			out[0] = (menu_row){ T(S_SYSMENU_GAMES), b->a,               false };
 			out[1] = (menu_row){ T(S_SYSMENU_RANDOM_GAME), NULL, u->game_count > 0 };
 			out[2] = (menu_row){ T(S_SYSMENU_SORT_BY), u->sort ? u->sort : T(S_SORT_NAME), true };
+			out[3] = (menu_row){ T(S_SYSMENU_VIEW),
+			                     T(u->listed ? S_SYSMENU_VIEW_LIST : S_SYSMENU_VIEW_COVERS), true };
 			b->sound[1] = SM_SOUND[SM_RANDOM];
 			b->sound[2] = SM_SOUND[SM_SORT];
+			b->sound[3] = SM_SOUND[SM_VIEW];
 			return SM_FAV_ROWS;
 		}
 		if (u->muse) {
@@ -355,6 +359,9 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		full[SM_DSLANG]  = (menu_row){ T(S_SYSMENU_DSLANG), u->dslang, u->dslang != NULL };
 		full[SM_SORT]    = (menu_row){ T(S_SYSMENU_SORT_BY),
 		                              u->sort ? u->sort : T(S_SORT_NAME), true  };
+		/* The covers in a row, or a list of names (DESIGN.md 11.37) */
+		full[SM_VIEW]    = (menu_row){ T(S_SYSMENU_VIEW),
+		                              T(u->listed ? S_SYSMENU_VIEW_LIST : S_SYSMENU_VIEW_COVERS), true };
 		full[SM_DISPLAY] = (menu_row){ T(S_SYSMENU_DISPLAY_MODE), u->dmode, true  };
 		/* Button Mapping is out until there is something behind it. Diatom
 		 * supplies core button labels, so the hook is real - but a dead row

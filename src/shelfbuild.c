@@ -7,6 +7,7 @@
 #include "musec.h"
 #include "pminstall.h"
 #include "savedlib.h"
+#include "shelfdir.h"
 #include "texload.h"
 #include "theme.h"
 #include "ui.h"
@@ -52,6 +53,80 @@ static void hide_empty_systems(app *a)
 	if (a->sys_cursor >= n) a->sys_cursor = n ? n - 1 : 0;
 }
 
+/* ---- folders on a shelf (src/shelfdir.h) ---- */
+
+void shelf_dirs_init(sysview *v)
+{
+	game_list *all;
+	int nf;
+
+	v->dir[0] = '\0';
+	v->nfold = 0;
+	if (v->all || !sd_any(&v->list) || !(all = malloc(sizeof *all))) return;
+	*all = v->list;
+	memset(&v->list, 0, sizeof v->list);
+	if ((nf = sd_build(all, "", &v->list)) < 0) {
+		/* No memory for the top's folders: every game, as it always was */
+		lib_free(&v->list);
+		v->list = *all;
+		free(all);
+		return;
+	}
+	v->all = all;
+	v->nfold = nf;
+}
+
+void shelf_dirs_free(sysview *v)
+{
+	if (v->all) {
+		lib_free(v->all);
+		free(v->all);
+		v->all = NULL;
+	}
+	v->nfold = 0;
+	v->dir[0] = '\0';
+}
+
+bool shelf_show_dir(sysview *v, const char *dir)
+{
+	game_list shown = { 0 };
+	char want[LIB_PATH];
+	int nf, i;
+
+	if (!v->all) return false;
+	snprintf(want, sizeof want, "%s", dir ? dir : "");
+	/* Up to the nearest folder that still holds a game: one emptied under
+	 * it (a delete, a transfer) is no folder any more */
+	for (;;) {
+		if ((nf = sd_build(v->all, want, &shown)) < 0) return false;
+		if (shown.count > 0 || !want[0]) break;
+		sd_parent(want, want, sizeof want);
+	}
+	for (i = 0; v->tex && i < v->list.count; i++)
+		if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
+	free(v->tex); free(v->tw); free(v->th); free(v->cb);
+	v->tex = NULL; v->tw = NULL; v->th = NULL; v->cb = NULL;
+	lib_free(&v->list);
+	v->list = shown;
+	v->nfold = nf;
+	snprintf(v->dir, sizeof v->dir, "%s", want);
+	if (v->list.count > 0) {
+		v->tex = calloc((size_t)v->list.count, sizeof *v->tex);
+		v->tw = calloc((size_t)v->list.count, sizeof *v->tw);
+		v->th = calloc((size_t)v->list.count, sizeof *v->th);
+		v->cb = calloc((size_t)v->list.count, sizeof *v->cb);
+		if (!v->tex || !v->tw || !v->th || !v->cb) {
+			free(v->tex); free(v->tw); free(v->th); free(v->cb);
+			v->tex = NULL; v->tw = NULL; v->th = NULL; v->cb = NULL;
+			lib_free(&v->list);
+			v->nfold = 0;
+			return false;
+		}
+	}
+	if (v->cursor >= v->list.count) v->cursor = v->list.count > 0 ? v->list.count - 1 : 0;
+	return true;
+}
+
 /* Build the Favorites shelf: one shelf whose games come from every other.
  *
  * Resolved against the shelves that actually scanned, so a favorite whose ROM
@@ -90,9 +165,11 @@ static void build_favorites_shelf(app *a)
 		if (!fav_at(i, &tag, &file)) continue;
 		for (si = 0; si < real; si++) {
 			if (strcmp(a->sys.systems[si].tag, tag)) continue;
-			for (k = 0; k < a->view[si].list.count; k++) {
-				if (strcmp(a->view[si].list.items[k].file, file)) continue;
-				items[n] = a->view[si].list.items[k];
+			const game_list *gl = sys_games(&a->view[si]);
+
+			for (k = 0; k < gl->count; k++) {
+				if (strcmp(gl->items[k].file, file)) continue;
+				items[n] = gl->items[k];
 				owner[n] = si;
 				n++;
 				found = true;
@@ -141,6 +218,8 @@ static void build_favorites_shelf(app *a)
 	a->view[0].list.count = n;
 	a->view[0].list.scanned = true;
 	a->view[0].owner = owner;
+	/* Its View, which it keeps as a console's shelf does (MENU > View) */
+	a->view[0].listed = view_listed("FAV");
 	a->view[0].tex = calloc((size_t)n, sizeof *a->view[0].tex);
 	a->view[0].tw  = calloc((size_t)n, sizeof *a->view[0].tw);
 	a->view[0].th  = calloc((size_t)n, sizeof *a->view[0].th);
@@ -722,9 +801,11 @@ int pm_shelf_offers(const app *a, int sys)
 {
 	const sysview *v = &a->view[sys];
 
+	const game_list *gl = sys_games_c(v);
+
 	if (!g_pm_offer || a->view[sys].owner || !is_ports(&a->sys.systems[sys])) return 0;
-	for (int i = 0; i < v->list.count; i++)
-		if (!strcasecmp(v->list.items[i].file, PM_SCRIPT)) return 1;
+	for (int i = 0; i < gl->count; i++)
+		if (!strcasecmp(gl->items[i].file, PM_SCRIPT)) return 1;
 	return 0;
 }
 
@@ -762,6 +843,7 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 		}
 		from_saved += kept;
 		lib_scan_finish(sc->folder, &v->list);
+		shelf_dirs_init(v);
 	}
 	g_saved_extra = saved ? savedlib_untaken(saved) : 0;
 	/* Read off the card (a rescan): the file is this now */
@@ -772,7 +854,7 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 
 		for (int i = 0; i < a->sys.count && n < CFG_MAX_SYSTEMS; i++, n++)
 			rows[n] = (savedlib_row){ a->sys.systems[i].folder, a->sys.systems[i].exts,
-			                          &a->view[i].list };
+			                          sys_games(&a->view[i]) };
 		saved_path(path, sizeof path);
 		if (g_save_lock) SDL_LockMutex(g_save_lock);
 		if (!savedlib_write(path, ZYPEROS_VERSION, rows, n))
@@ -781,6 +863,8 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 	}
 	for (int i = 0; i < a->sys.count; i++) {
 		sysview *v = &a->view[i];
+		const game_list *gl = sys_games(v);
+
 		if (v->list.count > 0) {
 			v->tex = calloc((size_t)v->list.count, sizeof *v->tex);
 			v->tw = calloc((size_t)v->list.count, sizeof *v->tw);
@@ -792,27 +876,33 @@ int scan_all_from(app *a, saved_lib *saved, bool save)
 				free(v->tex); free(v->tw); free(v->th); free(v->cb);
 				v->tex = NULL; v->tw = NULL; v->th = NULL; v->cb = NULL;
 				lib_free(&v->list);
+				shelf_dirs_free(v);
+				gl = &v->list;
 			}
 		}
-		fprintf(stderr, "scan: %-16s %d game%s\n", a->sys.systems[i].folder,
-		        v->list.count, v->list.count == 1 ? "" : "s");
+		if (v->all)
+			fprintf(stderr, "scan: %-16s %d game%s, %d folder%s at the top\n",
+			        a->sys.systems[i].folder, gl->count, gl->count == 1 ? "" : "s",
+			        v->nfold, v->nfold == 1 ? "" : "s");
+		else
+			fprintf(stderr, "scan: %-16s %d game%s\n", a->sys.systems[i].folder,
+			        gl->count, gl->count == 1 ? "" : "s");
 		/* What was left out, and what the folder takes, so a game that is
 		 * on the card and not on the shelf has its reason in the log. */
-		if (v->list.skipped) {
+		if (gl->skipped) {
 			char names[LIB_SKIPS_SHOWN * (LIB_NAME + 4)] = "";
-			int k, shown = v->list.skipped < LIB_SKIPS_SHOWN ? v->list.skipped
-			                                                 : LIB_SKIPS_SHOWN;
+			int k, shown = gl->skipped < LIB_SKIPS_SHOWN ? gl->skipped : LIB_SKIPS_SHOWN;
 
 			for (k = 0; k < shown; k++) {
 				size_t at = strlen(names);
 
 				snprintf(names + at, sizeof names - at, "%s\"%s\"", k ? ", " : "",
-				         v->list.skipped_eg[k]);
+				         gl->skipped_eg[k]);
 			}
 			fprintf(stderr, "scan: %-16s left out %d (it takes %s): %s%s\n",
-			        a->sys.systems[i].folder, v->list.skipped,
+			        a->sys.systems[i].folder, gl->skipped,
 			        a->sys.systems[i].exts[0] ? a->sys.systems[i].exts : "anything",
-			        names, v->list.skipped > shown ? ", and more" : "");
+			        names, gl->skipped > shown ? ", and more" : "");
 		}
 	}
 	hide_empty_systems(a);
@@ -953,12 +1043,15 @@ void system_order_apply(systems_cfg *s)
 static void rebuild(app *a, saved_lib *pre, bool keep_place)
 {
 	char tag[sizeof a->sys.systems[0].tag];
-	char path[CFG_STR * 2], file[LIB_PATH] = "";
+	char path[CFG_STR * 2], file[LIB_PATH] = "", dir[LIB_PATH] = "";
 	int i;
 
 	/* Indices move when a system appears or empties, so the tag is the only
 	 * handle on "where the player was" that survives the rebuild. */
 	snprintf(tag, sizeof tag, "%s", a->sys.systems[a->sys_cursor].tag);
+	/* The folder of it the shelf showed, which a rescan keeps: a game copied
+	 * into it shows where it went */
+	if (a->sys.count > 0) snprintf(dir, sizeof dir, "%s", a->view[a->sys_cursor].dir);
 	if (keep_place && a->sys.count > 0) {
 		const sysview *v = &a->view[a->sys_cursor];
 
@@ -976,6 +1069,7 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 		free(a->view[i].cb);
 		free(a->view[i].album);                         /* Muse's, else NULL */
 		lib_free(&a->view[i].list);
+		shelf_dirs_free(&a->view[i]);
 		memset(&a->view[i], 0, sizeof a->view[i]);
 	}
 
@@ -1006,6 +1100,7 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 	display_load(a);     /* indexes by tag, so it is safe to run again */
 	core_load(a);
 	sort_load(a);
+	view_load(a);
 	sort_all(a);
 
 	a->sys_cursor = 0;
@@ -1026,6 +1121,8 @@ static void rebuild(app *a, saved_lib *pre, bool keep_place)
 		sysview *v = &a->view[a->sys_cursor];
 		int at = 0;
 
+		/* Into the folder again, or as near it as is still there */
+		if (dir[0] && v->all && i < a->sys.count) shelf_open_dir(a, a->sys_cursor, dir, NULL);
 		for (int k = 0; file[0] && k < v->list.count; k++)
 			if (!strcmp(v->list.items[k].file, file)) { at = k; break; }
 		a->tint = a->sys.systems[a->sys_cursor].accent;
@@ -1060,14 +1157,14 @@ static void saved_follow(app *a, const char *folder)
 		g_shown[i].shown = 0;
 		for (k = 0; k < a->sys.count; k++)
 			if (!a->view[k].owner && !strcmp(a->sys.systems[k].folder, folder))
-				g_shown[i].shown = lib_listing_digest(&a->view[k].list);
+				g_shown[i].shown = lib_listing_digest(sys_games(&a->view[k]));
 		g_shown[i].saved = g_shown[i].shown;
 	}
 	for (i = 0; i < a->sys.count && n < CFG_MAX_SYSTEMS; i++) {
 		const system_cfg *sc = &a->sys.systems[i];
 
 		if (a->view[i].owner || !strcmp(sc->tag, "MUSE") || !sc->folder[0]) continue;
-		rows[n++] = (savedlib_row){ sc->folder, sc->exts, &a->view[i].list };
+		rows[n++] = (savedlib_row){ sc->folder, sc->exts, sys_games(&a->view[i]) };
 	}
 	saved_path(path, sizeof path);
 	if (g_save_lock) SDL_LockMutex(g_save_lock);
@@ -1086,6 +1183,7 @@ static void drop_system(app *a, int si)
 	free(v->tex); free(v->tw); free(v->th); free(v->cb);
 	free(v->album);
 	lib_free(&v->list);
+	shelf_dirs_free(v);
 	for (i = si; i + 1 < a->sys.count; i++) {
 		a->sys.systems[i] = a->sys.systems[i + 1];
 		a->view[i] = a->view[i + 1];
@@ -1136,7 +1234,30 @@ void shelf_drop_game(app *a, const char *tag, const char *file)
 
 	for (si = 0; si < a->sys.count; si++)
 		if (!strcmp(a->sys.systems[si].tag, tag)) break;
-	if (si < a->sys.count && (k = lib_find_entry(&a->view[si].list, NULL, 0, file)) >= 0) {
+	if (si < a->sys.count && a->view[si].all &&
+	    (k = lib_find_entry(a->view[si].all, NULL, 0, file)) >= 0) {
+		/* A shelf with folders: off every game of the system, and the
+		 * folder shown made again, its cursor on the entry that took the
+		 * game's place, or up a folder when that one emptied */
+		sysview *v = &a->view[si];
+		game_list *all = v->all;
+		int at = v->cursor;
+
+		snprintf(folder, sizeof folder, "%s", a->sys.systems[si].folder);
+		memmove(&all->items[k], &all->items[k + 1],
+		        (size_t)(all->count - k - 1) * sizeof *all->items);
+		all->count--;
+		shelf_show_dir(v, v->dir);
+		sort_shelf(a, si);
+		v->cursor = at < v->list.count ? at : v->list.count > 0 ? v->list.count - 1 : 0;
+		fprintf(stderr, "delete: %s %s off its shelf, %d game%s left\n", tag, file,
+		        all->count, all->count == 1 ? "" : "s");
+		saved_follow(a, folder);
+		if (all->count == 0) {
+			fprintf(stderr, "delete: %s has no games left, off the home\n", tag);
+			drop_system(a, si);
+		}
+	} else if (si < a->sys.count && (k = lib_find_entry(&a->view[si].list, NULL, 0, file)) >= 0) {
 		sysview *v = &a->view[si];
 		size_t rest = (size_t)(v->list.count - k - 1);
 

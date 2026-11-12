@@ -99,8 +99,10 @@ typedef enum {
  * than no row. The rest name capabilities that already exist on the emulator
  * side - Diatom has per-system display modes and core-supplied button labels -
  * so these are hooks waiting to be wired, not wishes. */
+/* View, under Sort By (1.0.5, DESIGN.md 11.37): the shelf's covers in a
+ * row, or its games as a list, this shelf's own choice as Sort By is. */
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT,
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT, SM_VIEW,
 	SM_DISPLAY, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
@@ -117,8 +119,9 @@ typedef enum {
  * Games and Sort By are both true of a shelf of favorites, so those are what
  * it gets. Eric's call, 2026-09-17. */
 /* Random Game joined them 2026-11-05: a favorite picked for you is the shelf's
- * own question, and it is between the two as it is on a console's menu. */
-#define SM_FAV_ROWS 3
+ * own question, and it is between the two as it is on a console's menu. View
+ * (1.0.5) is the shelf's, under Sort By as on a console's. */
+#define SM_FAV_ROWS 4
 
 /* What MP4's shelf menu is (Muse's, before it played video): how many
  * albums, Show - music, audiobooks or videos, the kinds its one shelf holds -
@@ -329,6 +332,8 @@ typedef struct {
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */
 	const char *sort;
+	/* The shelf shows a list rather than its covers (View, SM_VIEW) */
+	bool        listed;
 } sys_ui;
 
 /* The ZyperOS menu's rows and the system menu's, in order, for what the device

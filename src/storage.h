@@ -92,6 +92,7 @@ typedef struct {
 	const char *folder, *tag, *core, *exts, *file, *name;
 	bool hooked;          /* its shelf's games are folders (ScummVM's) */
 	long last_played;     /* unix time, 0 for never (stats_lookup) */
+	unsigned dir;         /* the folder of games it is in (game_entry.dir) */
 } st_game_in;
 
 /* What a game's bytes are, by part */
