@@ -25,7 +25,9 @@ The file is read by two programs and is deliberately one file:
     76195     0xH06f3=0_0xH0400=3_0xH00ba=0_0xH06f0<d0xH06f0
 
 Version 2 (2026-11-05) adds the last field of a `#:` line, the badge's name
-on media.retroachievements.org; a version 1 line has no badge.
+on media.retroachievements.org; a version 1 line has no badge. Since
+2026-11-12 the header ends with `hash=<md5>`, the ROM's RetroAchievements hash,
+which an unlock earned offline is sent with; a set without it still loads.
 
 Diatom reads the bare `<id>\\t<condition>` lines and skips every `#` line, which
 its format says it will. ZyperOS reads the `#` lines for the menu. One file
@@ -129,11 +131,15 @@ def badge_safe(s):
     return out
 
 
-def write_set(path, game, console, title, achievements):
+def write_set(path, game, console, title, achievements, md5=None):
+    # The ROM's hash last, and only when given: the device's converter writes
+    # the same line (ra_set_from_json_hash), and every unlock earned from the
+    # set carries it, offline ones too (src/cheevos.h, chv_game_hash).
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(f"#! zyperos-cheevos 2\tgame={game}\tconsole={console}"
-                f"\ttitle={tsv_safe(title)}\n")
+                f"\ttitle={tsv_safe(title)}"
+                + (f"\thash={md5}" if md5 and len(md5) == 32 else "") + "\n")
         for a in achievements:
             f.write("#:\t{}\t{}\t{}\t{}\t{}\n".format(
                 a["ID"], a.get("Points", 0),
@@ -258,7 +264,7 @@ def main():
             if not a.dry_run:
                 os.makedirs(out_dir, exist_ok=True)
                 write_set(out, gid, pd.get("ConsoleID", 0),
-                          pd.get("Title", ""), keep)
+                          pd.get("Title", ""), keep, md5=h)
                 if not a.no_badges:
                     badges += fetch_badges(out_dir, keep)
             wrote += 1

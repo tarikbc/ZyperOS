@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 /* Pull down what the account already holds for the loaded game, and mark
  * those earned locally so they are not watched, not re-announced, and not
@@ -56,10 +57,15 @@ int ra_merge_unlocks(const int *ids, int n)
  * together are taken for the account's, which would refuse every row */
 #define FLUSH_REFUSALS 3
 
+/* Unlocks that had waited and are on the account now, for the notice:
+ * main thread, taken by ra_flush_take_sent */
+static int g_fl_held_sent;
+
 static void ra_flush_unlocks(const char *rom, const char *tag, int cur)
 {
 	char hash[33] = "";
-	int game, id, sent = 0, settled = 0;
+	chv_owed o;
+	int sent = 0, settled = 0;
 
 	if (!ra_signed_in() || chv_pending_count() == 0 || !net_online()) return;
 
@@ -75,8 +81,14 @@ static void ra_flush_unlocks(const char *rom, const char *tag, int cur)
 	 * a row are taken for the account's, and stop the loop too. */
 	int k = 0, refused = 0;
 
-	while (chv_pending_at(k, &game, &id)) {
-		int rc = ra_submit_unlock(id, game == cur ? hash : NULL);
+	char user[RA_USER_MAX], token[RA_TOKEN_MAX];
+
+	ra_creds_copy(user, sizeof user, token, sizeof token);
+	while (chv_pending_get(k, &o)) {
+		int rc = ra_submit_unlock_at(user, token, o.id,
+		                             o.hash[0] ? o.hash : o.game == cur ? hash : NULL,
+		                             o.hardcore,
+		                             ra_unlock_offset(o.when, (long)time(NULL)));
 
 		if (rc == RA_SUBMIT_FAILED) break;
 		if (rc == RA_SUBMIT_REFUSED) {
@@ -85,10 +97,12 @@ static void ra_flush_unlocks(const char *rom, const char *tag, int cur)
 			continue;
 		}
 		refused = 0;
-		chv_mark_synced(game, id);
+		if (chv_mark_synced(o.game, o.id)) g_fl_held_sent++;
 		settled++;
 		if (rc > 0) sent++;
 	}
+	memset(token, 0, sizeof token);
+	chv_hold_pending();
 	/* On `settled`, not on `sent`. A row the account already had is settled
 	 * without being sent, and writing only when something was sent left that
 	 * mark in memory only - so it came back pending on the next boot and was
@@ -143,7 +157,8 @@ static bool g_fl_busy;                   /* the worker has one in hand */
 static char g_fl_rom[LIB_PATH * 2], g_fl_tag[16];
 static char g_fl_user[RA_USER_MAX], g_fl_token[RA_TOKEN_MAX];
 static int  g_fl_cur;                    /* whose unlocks carry the ROM hash */
-static int  g_fl_game[FLUSH_MAX], g_fl_id[FLUSH_MAX], g_fl_n;
+static chv_owed g_fl_owed[FLUSH_MAX];    /* with when, mode and hash each */
+static int  g_fl_n;
 
 /* The answers, written by the worker and applied here. */
 static int  g_fl_rgame[FLUSH_MAX], g_fl_rid[FLUSH_MAX], g_fl_rrc[FLUSH_MAX];
@@ -163,6 +178,7 @@ static char g_fl_next_rom[LIB_PATH * 2], g_fl_next_tag[16];
 static int  g_fl_next_cur;
 static bool g_fl_again;
 static int  g_fl_settled;
+static bool g_fl_last_failed;            /* the last pass stopped short */
 
 static int flush_worker(void *unused)
 {
@@ -171,7 +187,8 @@ static int flush_worker(void *unused)
 	for (;;) {
 		char rom[LIB_PATH * 2], tag[16], user[RA_USER_MAX], token[RA_TOKEN_MAX];
 		char hash[33] = "";
-		int  game[FLUSH_MAX], id[FLUSH_MAX], n, cur, i;
+		static chv_owed owed[FLUSH_MAX];  /* the worker's own: 16KB, off its stack */
+		int  n, cur, i;
 		bool failed = false, hashed = false;
 		int refused = 0;
 
@@ -183,8 +200,7 @@ static int flush_worker(void *unused)
 		memcpy(token, g_fl_token, sizeof token);
 		n = g_fl_n;
 		cur = g_fl_cur;
-		memcpy(game, g_fl_game, (size_t)n * sizeof game[0]);
-		memcpy(id, g_fl_id, (size_t)n * sizeof id[0]);
+		memcpy(owed, g_fl_owed, (size_t)n * sizeof owed[0]);
 		g_fl_job = false;
 		g_fl_busy = true;
 		SDL_UnlockMutex(g_fl_lock);
@@ -198,14 +214,21 @@ static int flush_worker(void *unused)
 			if (g_fl_stop) { SDL_UnlockMutex(g_fl_lock); break; }
 			SDL_UnlockMutex(g_fl_lock);
 
-			/* The hash only for the game just played, and only once, since
-			 * it reads the whole ROM. */
-			if (game[i] == cur && !hashed) {
+			/* The hash the unlock was earned with, from its set's header.
+			 * A set written before the header kept one has none: then the
+			 * ROM's, for the game just played - read once, since it reads
+			 * the whole ROM - and none for any other. */
+			if (!owed[i].hash[0] && owed[i].game == cur && !hashed) {
 				ra_hash_rom(rom, tag, hash);
 				hashed = true;
 			}
-			rc = ra_submit_unlock_as(user, token, id[i],
-			                         game[i] == cur ? hash : NULL);
+			/* Dated when it was earned: its age now, at the moment it is
+			 * sent, rather than when the pass was handed over */
+			rc = ra_submit_unlock_at(user, token, owed[i].id,
+			                         owed[i].hash[0] ? owed[i].hash
+			                         : owed[i].game == cur ? hash : NULL,
+			                         owed[i].hardcore,
+			                         ra_unlock_offset(owed[i].when, (long)time(NULL)));
 
 			/* Bounded although it cannot fill: a pass never starts while the
 			 * answers to the last one are waiting (see ra_flush_start), so
@@ -214,8 +237,8 @@ static int flush_worker(void *unused)
 			 * already held. */
 			SDL_LockMutex(g_fl_lock);
 			if (g_fl_rn < FLUSH_MAX) {
-				g_fl_rgame[g_fl_rn] = game[i];
-				g_fl_rid[g_fl_rn]   = id[i];
+				g_fl_rgame[g_fl_rn] = owed[i].game;
+				g_fl_rid[g_fl_rn]   = owed[i].id;
 				g_fl_rrc[g_fl_rn]   = rc;
 				g_fl_rn++;
 			}
@@ -233,6 +256,7 @@ static int flush_worker(void *unused)
 			}
 		}
 
+		memset(token, 0, sizeof token);
 		SDL_LockMutex(g_fl_lock);
 		g_fl_busy = false;
 		g_fl_finished = true;
@@ -262,8 +286,10 @@ static bool flush_started(void)
 /* Hand what is owed to the worker and return at once. Main thread. */
 void ra_flush_start(const char *rom, const char *tag, int cur)
 {
-	int n = 0, game, id;
+	int n = 0;
 
+	if (!rom) rom = "";
+	if (!tag) tag = "";
 	if (!ra_signed_in() || chv_pending_count() == 0 || !net_online()) return;
 	if (!flush_started()) { ra_flush_unlocks(rom, tag, cur); return; }
 
@@ -289,11 +315,7 @@ void ra_flush_start(const char *rom, const char *tag, int cur)
 		SDL_UnlockMutex(g_fl_lock);
 		return;
 	}
-	while (n < FLUSH_MAX && chv_pending_at(n, &game, &id)) {
-		g_fl_game[n] = game;
-		g_fl_id[n]   = id;
-		n++;
-	}
+	while (n < FLUSH_MAX && chv_pending_get(n, &g_fl_owed[n])) n++;
 	snprintf(g_fl_rom, sizeof g_fl_rom, "%s", rom);
 	snprintf(g_fl_tag, sizeof g_fl_tag, "%s", tag);
 	ra_creds_copy(g_fl_user, sizeof g_fl_user, g_fl_token, sizeof g_fl_token);
@@ -329,7 +351,7 @@ void ra_flush_poll(void)
 
 	for (i = 0; i < rn; i++) {
 		if (rrc[i] < 0) continue;
-		chv_mark_synced(rgame[i], rid[i]);
+		if (chv_mark_synced(rgame[i], rid[i])) g_fl_held_sent++;
 		settled++;
 		if (rrc[i] > 0) sent++;
 	}
@@ -342,6 +364,10 @@ void ra_flush_poll(void)
 	}
 
 	if (!finished) return;
+	/* What this pass left owed has now waited through one: when it goes,
+	 * the notice says so */
+	chv_hold_pending();
+	g_fl_last_failed = failed;
 	/* Another pass when a later game was quit during this one, or when this one
 	 * ran out of room with more still owed. The second only if it settled
 	 * something, so a pass that achieved nothing cannot keep starting itself. */
@@ -366,4 +392,63 @@ void ra_flush_stop(void)
 	SDL_UnlockMutex(g_fl_lock);
 	SDL_DetachThread(g_fl_thread);
 	g_fl_thread = NULL;
+}
+
+int ra_flush_take_sent(void)
+{
+	int n = g_fl_held_sent;
+
+	g_fl_held_sent = 0;
+	return n;
+}
+
+/* ---------- a network back --------------------------------------------------
+ *
+ * Most play on the Pixel 2 is offline: it has Wi-Fi only with a USB adapter.
+ * So what waits is sent when the adapter is in and a network is up, from the
+ * shelf - not only at the end of the next game played online, which was the
+ * only time it ever went before. Never during a game: a TLS request beside
+ * Diatom is a frame it does not need to lose. */
+
+/* How often the shelf looks, and how often it tries again while a network is
+ * up and the last pass stopped short (RetroAchievements down, a network with
+ * no way out - the USB link to a computer is an address too) */
+#define WATCH_MS  2000u
+#define RETRY_MS  (5u * 60u * 1000u)
+
+/* A pass handed over and not yet applied: one more would only be noted for
+ * later (ra_flush_start) */
+static bool flush_in_flight(void)
+{
+	bool busy;
+
+	if (!g_fl_thread) return false;
+	SDL_LockMutex(g_fl_lock);
+	busy = g_fl_job || g_fl_busy || g_fl_finished || g_fl_rn > 0;
+	SDL_UnlockMutex(g_fl_lock);
+	return busy;
+}
+
+void ra_flush_watch(unsigned now_ms)
+{
+	static unsigned last, tried;
+	static bool was_online;
+	bool online;
+
+	if (last && now_ms - last < WATCH_MS) return;
+	last = now_ms ? now_ms : 1;
+	if (!ra_signed_in() || chv_pending_count() == 0) { was_online = false; return; }
+	online = net_online();
+	/* The pass that follows a game is on its way: this one would be the
+	 * same unlocks again, and that pass is this network's turn */
+	if (flush_in_flight()) { was_online = online; tried = now_ms; return; }
+	if (online && (!was_online || (g_fl_last_failed && now_ms - tried >= RETRY_MS))) {
+		fprintf(stderr, "ra: a network, and %d unlock%s waiting: sending\n",
+		        chv_pending_count(), chv_pending_count() == 1 ? "" : "s");
+		tried = now_ms;
+		g_fl_last_failed = false;
+		/* No game: every row carries its own hash, or goes without */
+		ra_flush_start("", "", 0);
+	}
+	was_online = online;
 }

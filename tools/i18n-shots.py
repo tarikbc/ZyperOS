@@ -204,6 +204,13 @@ EXTRA = {
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
     "gamemenu": ("demo", "PS1", ["--gamemenu", "0"]),
+    # Achievements offline: the list with unlocks waiting, Zyper saying they
+    # went, and the rows of a game never played with a network
+    "cheevos-waiting": ("demo", "PS1", ["--cheevos-screen", "0", "--cheevos-waiting", "2"]),
+    "ranews": ("demo", "PS1", ["--ranews", "3"]),
+    "ranews-one": ("demo", "PS1", ["--ranews", "1"]),
+    "gamemenu-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-unchecked"]),
+    "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
     "gamemenu-display": ("demo", "PS1", ["--gamemenu", "3"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),

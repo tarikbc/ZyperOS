@@ -467,6 +467,29 @@
       "sha256": "7a3896f4168f272a718e270b49753a4ed59a0d58b7d96db7d0d0d64fd7753590"
     },
     {
+      "file": "light/cheevos-waiting.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--cheevos-screen",
+        "0",
+        "--cheevos-waiting",
+        "2",
+        "--cheevos-badge",
+        "{card}/Roms/PlayStation/.cheevos/Hagane.set",
+        "b#"
+      ],
+      "sha256": "cee0da60eb6a0fd30464ddd20798cff47f434a9c1f9ce64bcdbe559a1b831720"
+    },
+    {
       "file": "light/cheevo-notice.png",
       "card": "demo",
       "args": [

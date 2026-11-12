@@ -46,7 +46,8 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * comes from. Reading "4/54" and having nowhere to go with it is the
 	 * question half-answered: which four, and what are the other fifty. A game
 	 * with no set has nothing to open and says so. */
-	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos, gi->has_cheevos };
+	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos,
+	                       gi->has_cheevos || gi->cheevos_unchecked };
 	/* Favorite is back here, on 2026-11-08: Y on the shelf now starts a game
 	 * fresh, so marking one moved to this page, Y on it or A on the row */
 	if (gi->can_favorite)
@@ -246,6 +247,10 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	 * cursor steps over it rather than resting on a row that ignores A. */
 	if (u->total > 0)
 		snprintf(b->cheevos, sizeof b->cheevos, "%d / %d", u->earned, u->total);
+	/* Never played with a network, so nobody has asked whether it has any:
+	 * said, and A on it says how it gets them (cheevos_unchecked_message) */
+	else if (u->unchecked)
+		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
 	else {
 		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_GAMEMENU_CHEEVOS_NONE));
 		full[GM_CHEEVOS].live = false;

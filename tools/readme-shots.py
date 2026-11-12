@@ -138,6 +138,8 @@ SHOTS={
     'info-delete':('demo','PS1',['--screen','games','--info-delete']),
     'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
     'cheevos':('demo','PS1',['--cheevos-screen','0','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
+    # ...with two of its unlocks earned offline and waiting to be sent
+    'cheevos-waiting':('demo','PS1',['--cheevos-screen','0','--cheevos-waiting','2','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
     # An unlock over a game (DESIGN.md 11.7): its badge, and Zyper at the right
     'cheevo-notice':('demo','PS1',['--notice-kind','unlock','--notice',"Violated Heavens",'Unlocked \u00b7 10 points',
                                    '--notice-badge','{card}/Roms/PlayStation/.cheevos/badges/b3.png']),

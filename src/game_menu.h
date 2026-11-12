@@ -107,6 +107,9 @@ typedef struct {
 	char  year[8];         /* from the scrape, empty when it said nothing */
 	char  genre[GI_GENRE_MAX];   /* the same, comma separated */
 	bool  has_cheevos;     /* there is a set to open, not just a count to read */
+	/* No set because the game was never played with a network: the row says
+	 * "not checked yet", and A on it says how it gets one (chv_state_of) */
+	bool  cheevos_unchecked;
 	bool  has_art;         /* Cover and Video's value: "no cover" */
 	bool  has_snap;        /* ...and "no video" */
 	/* Art of its own that no fetch replaces: PortMaster's entry on the
@@ -186,6 +189,8 @@ typedef struct {
 	const char *shader;   /* the shader's label; NULL reads Off */
 	int         earned;
 	int         total;    /* 0: this game has no achievement set */
+	/* ...because it was never played with a network: not asked yet */
+	bool        unchecked;
 	/* Two screens in this game's frame, and how they are shown now. */
 	bool        screens;
 	int         layout;   /* into gm_layout_names */
@@ -219,7 +224,7 @@ gm_row gm_x_row(void);
  * a pointer rather than a copy. And each row's sound class (MENU_SND_*,
  * menu.h), set by gm_rows by the row's id, for the menu runner. */
 typedef struct {
-	char cheevos[24];
+	char cheevos[48];
 	char quick[8];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;

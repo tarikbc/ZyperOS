@@ -44,6 +44,14 @@ bool ra_sign_in(const char *user, const char *password, char *err, size_t errn);
  * files tools/ra-sets.py writes from the same JSON. */
 bool ra_set_from_json(const char *json, size_t len, long gameid,
                       const char *out_path);
+/* The same, with the ROM's hash in the header (`hash=`), which every unlock
+ * earned from this set then carries - see chv_game_hash. NULL or "" writes
+ * the header ra_set_from_json does. */
+bool ra_set_from_json_hash(const char *json, size_t len, long gameid,
+                           const char *rom_hash, const char *out_path);
+/* Whether a patch answer is RetroAchievements saying "nothing to earn" (a
+ * set with no achievements a player can earn) rather than no answer at all */
+bool ra_set_json_empty(const char *json, size_t len);
 
 /* ---- the account ---------------------------------------------------------
  *
@@ -97,7 +105,11 @@ void ra_sync_abandon(void);
  *
  * `rom_hash` is the caller's, because hashing is local work and does not
  * belong in a state machine about network requests. Drive with ra_fetch_step:
- * 0 still working, 1 the set is written, -1 idle or failed. */
+ * 0 still working, 1 the set is written, -1 idle or failed, RA_FETCH_NOTHING
+ * RetroAchievements answered that there is nothing to earn for this ROM (it
+ * does not know it, or its set has nothing a player can earn). The set is
+ * written with the hash in its header (ra_set_from_json_hash). */
+#define RA_FETCH_NOTHING -2
 void ra_fetch_begin(const char *rom_hash, const char *set_path);
 int  ra_fetch_step(void);
 
@@ -132,5 +144,35 @@ int ra_refusal(const char *error, const char *code);
  * its own. ra_submit_unlock is this with the account held here. */
 int ra_submit_unlock_as(const char *user, const char *token,
                         int achievement_id, const char *rom_hash);
+
+/* An unlock as it was earned: in which mode, and how many seconds ago - what
+ * rcheevos's rc_client sends as `o` when it retries one that did not go the
+ * first time, and the only way an unlock earned offline is dated when it was
+ * earned rather than when a network came back. 0 seconds sends none.
+ *
+ * RetroAchievements' rules (RAWeb, app/Connect/Actions/AwardAchievementAction):
+ *   - an offset over RA_OFFSET_MAX, 14 days, is clamped by the server, and a
+ *     clamped one no longer matches its signature, so the server drops it and
+ *     dates the unlock now - and logs the request as suspect. ra_unlock_offset
+ *     clamps first, so an unlock older than that is dated 14 days back.
+ *   - `h=1` is taken only from a client RA has approved for hardcore; from
+ *     any other it is kept as softcore. ZyperOS is not one (RA answers it with
+ *     "Warning: Unknown Emulator"), and plays softcore only. */
+int ra_submit_unlock_at(const char *user, const char *token, int achievement_id,
+                        const char *rom_hash, bool hardcore, unsigned seconds_ago);
+
+#define RA_OFFSET_MAX (14L * 24 * 60 * 60)
+/* An unlock's age to send, from when it was earned and the time now, both
+ * Unix time. 0 - send none, the account dates it on arrival - when the time
+ * it was earned is unknown or before RA_CLOCK_FLOOR (a clock never set: the
+ * Pixel 2's reads 2018 until it is), or later than now (the clock went back);
+ * at most RA_OFFSET_MAX. Pure, for the check. */
+#define RA_CLOCK_FLOOR 1767225600L      /* 2026-01-01: before ZyperOS existed */
+unsigned ra_unlock_offset(long earned, long now);
+/* The `v` the server checks (rc_api_init_award_achievement_request): md5 of
+ * id, user and h, and with an offset the id again and the offset. Into a
+ * 33-byte `out`. Pure, for the check. */
+void ra_award_signature(int achievement_id, const char *user, bool hardcore,
+                        unsigned seconds_ago, char *out);
 
 #endif

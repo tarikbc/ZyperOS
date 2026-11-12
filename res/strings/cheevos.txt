@@ -94,3 +94,53 @@ fr = Utilisateur RetroAchievements
 de = RetroAchievements-Benutzer
 ja = RetroAchievements ユーザー名
 it = Utente RetroAchievements
+
+[cheevos.unchecked]
+note = The game info screen and the in-game menu: the Achievements row's value for a game never played with a network, so nobody has asked RetroAchievements about it yet. A lowercase value; it stands for the achievements (plural).
+en = not checked yet
+zh-Hans = 尚未查询
+es = sin consultar
+pt-BR = não verificadas
+fr = pas encore vérifiés
+de = noch nicht geprüft
+ja = 未確認
+it = non ancora verificati
+
+[cheevos.unchecked_said]
+note = The message when A is pressed on that row: how the game gets its achievements, and that they then work offline. One sentence or two, balanced onto up to four lines.
+en = This game's achievements come the first time you play it with Wi-Fi. Then they stay on the card and work offline too.
+zh-Hans = 第一次连接 Wi-Fi 玩这个游戏时会获取它的成就。之后成就会保存在存储卡上，离线也能使用。
+es = Los logros de este juego llegan la primera vez que lo juegas con Wi-Fi. Luego se quedan en la tarjeta y funcionan sin conexión.
+pt-BR = As conquistas deste jogo chegam na primeira vez que você joga com Wi-Fi. Depois ficam no cartão e funcionam offline também.
+fr = Les succès de ce jeu arrivent la première fois que vous y jouez avec le Wi-Fi. Ils restent ensuite sur la carte et marchent hors ligne.
+de = Die Erfolge dieses Spiels kommen beim ersten Spielen mit WLAN. Danach bleiben sie auf der Karte und gehen auch offline.
+ja = このゲームの実績は、Wi-Fi に接続して初めて遊んだときに取得されます。その後はカードに保存され、オフラインでも使えます。
+it = Gli obiettivi di questo gioco arrivano la prima volta che ci giochi con il Wi-Fi. Poi restano sulla scheda e funzionano anche offline.
+
+[cheevos.sent]
+note = Zyper's bubble on the shelf, first line: achievements earned offline were sent to RetroAchievements once a network was back. %d is how many.
+en.one = %d achievement sent
+en.other = %d achievements sent
+zh-Hans = 已发送 %d 个成就
+es.one = %d logro enviado
+es.other = %d logros enviados
+pt-BR.one = %d conquista enviada
+pt-BR.other = %d conquistas enviadas
+fr.one = %d succès envoyé
+fr.other = %d succès envoyés
+de.one = %d Erfolg gesendet
+de.other = %d Erfolge gesendet
+ja = 実績 %d 個を送信しました
+it.one = %d obiettivo inviato
+it.other = %d obiettivi inviati
+
+[cheevos.sent_where]
+note = The same bubble, second line: they were earned offline and are on the RetroAchievements account now
+en = Earned offline, now on RetroAchievements
+zh-Hans = 离线解锁的成就已同步到 RetroAchievements
+es = Conseguidos sin conexión, ya en RetroAchievements
+pt-BR = Feitas offline, agora na RetroAchievements
+fr = Obtenus hors ligne, maintenant sur RetroAchievements
+de = Offline erhalten, jetzt bei RetroAchievements
+ja = オフラインの実績を RetroAchievements に送りました
+it = Ottenuti offline, ora su RetroAchievements

@@ -2108,7 +2108,12 @@ static void on_game_tick(void)
 	 * lookup answered and then thrown away. */
 	rc = ra_fetch_step();
 	if (rc == 0) return;                        /* still working */
-	if (rc < 0) { g_pending_set[0] = '\0'; return; }  /* RA has never seen it */
+	/* RA has nothing for this ROM: said so on its Achievements rows, "none"
+	 * rather than "not checked yet" (chv_state_of). A fetch that failed
+	 * says nothing, and the next launch with a network asks again. */
+	if (rc == RA_FETCH_NOTHING) chv_none_mark(g_pending_set, true);
+	if (rc < 0) { g_pending_set[0] = '\0'; return; }
+	chv_none_mark(g_pending_set, false);        /* a set now: it has one */
 
 	/* A FETCH CAN OUTLIVE THE GAME IT WAS FOR, and handing over the wrong set
 	 * is not a cosmetic mistake. This runs on the game tick, so the game that
@@ -2241,7 +2246,11 @@ static void on_cheevo_unlocked(int id)
 	const cheevo *c = NULL;
 	int i;
 
-	if (!chv_note_unlock(id)) return;
+	/* Recorded with when it was earned, in which mode (softcore, the only
+	 * one), with the ROM's hash from the set (chv_note_unlock_at), and
+	 * whether there was a network: an unlock earned offline is shown here
+	 * the same as any other, and sent when one is back (ra_flush_watch). */
+	if (!chv_note_unlock_at(id, (long)time(NULL), false, !net_online())) return;
 
 	/* Written through immediately rather than at exit. A game ends by power
 	 * button as often as by menu, and an achievement lost to a flat battery is
@@ -6363,6 +6372,29 @@ static void up_news_watch(void)
 	g_up_news[0][0] = '\0';
 }
 
+/* Unlocks that had waited - earned offline - on the account now: said once,
+ * in Zyper's bubble on the shelf, as the update's news is. Counted up until
+ * it is said, so two passes close together make one notice. */
+static int g_ra_news;
+
+static void ra_sent_news(int n)
+{
+	if (n <= 0) return;
+	g_ra_news += n;
+	fprintf(stderr, "ra: %d waiting unlock%s on the account now\n", n, n == 1 ? "" : "s");
+}
+
+static void ra_news_watch(void)
+{
+	unsigned now = plat_now_ms();
+
+	if (g_ra_news <= 0 || g_heatpop.on || g_songpop.on || g_up_news[0][0]) return;
+	heatpop_show(now);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, TN(S_CHEEVOS_SENT, g_ra_news), g_ra_news);
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_CHEEVOS_SENT_WHERE));
+	g_ra_news = 0;
+}
+
 /* The update's own clock, every 2 s, from every screen's loop through
  * tick_theme and from a game's tick: su_auto_step's looks and resumes
  * (src/sysupdate.h), and the news, once per release */
@@ -6443,6 +6475,24 @@ static int usb_auto_lines(app *a, char lines[4][LB_LINE], menu_row rows[4])
 
 static bool timed_message(app *a, const char *heading, const menu_row *rows,
                           int n, int fixed_w, unsigned accent);
+
+/* --cheevos-unchecked, for a shot: the Achievements rows as a game never
+ * played with a network has them, whatever the card holds */
+static bool g_shot_unchecked;
+
+/* A on an Achievements row that says "not checked yet": how a game gets its
+ * set - one play with a network - and that it then works offline */
+static void cheevos_unchecked_message(app *a)
+{
+	char lines[4][LB_LINE];
+	menu_row rows[4];
+	int w = menu_std_width(a), i;
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_CHEEVOS_UNCHECKED_SAID), w, 4, lines);
+
+	ui_fit_drawn(T(S_CHEEVOS_UNCHECKED_SAID));
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+	timed_message(a, T(S_SYSMENU_CHEEVOS), rows, n, w, MENU_ZYPEROS);
+}
 
 static void usb_auto_message(app *a)
 {
@@ -11112,6 +11162,9 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * this count was taken from is the one that screen reads. */
 	chv_path(P_ROMS, s->folder, g->name, p, sizeof p);
 	gi->has_cheevos = chv_load(p) && chv_count() > 0;
+	gi->cheevos_unchecked = !gi->has_cheevos &&
+	                        (g_shot_unchecked ||
+	                         chv_state_of(p, ra_signed_in()) == CHV_UNCHECKED);
 	/* Its badges, behind the screen, if the card lacks them */
 	if (gi->has_cheevos) rb_fetch_loaded();
 	/* The count alone, as DESIGN.md 12 writes one and as the in-game menu's
@@ -11122,6 +11175,8 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	if (gi->has_cheevos)
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%d / %d",
 		         chv_earned(), chv_count());
+	else if (gi->cheevos_unchecked)
+		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
 	else
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_NONE));
 
@@ -11957,7 +12012,8 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		/* The set the gatherer loaded to count this row is still the loaded
 		 * one, so the list has what it needs without reloading it. Over the
 		 * shelf rather than a paused frame: no game is running here. */
-		cheevos_screen(a, NULL, true);
+		if (c->gi.has_cheevos) cheevos_screen(a, NULL, true);
+		else if (c->gi.cheevos_unchecked) cheevos_unchecked_message(a);
 		return MENU_STAY;
 	}
 
@@ -17121,6 +17177,10 @@ static void gm_gather(app *a, gm_ui *out)
 	u.shader = shader_label(owner_view(a)->shader);
 	u.earned = chv_earned();
 	u.total  = chv_count();
+	/* g_game_set is the game running's, written at every launch */
+	u.unchecked = u.total == 0 && !g_port_menu &&
+	              (g_shot_unchecked ||
+	               chv_state_of(g_game_set, ra_signed_in()) == CHV_UNCHECKED);
 	u.screens = g_game_dual;
 	u.port   = g_port_menu;
 	/* The game's own system, on Favorites too (shelf_owner); none where its
@@ -17333,8 +17393,11 @@ static bool cheevo_detail_screen(app *a, SDL_Texture *bg, bool over_shelf,
 	rows[n++] = MENU_RULE;
 	snprintf(pts, sizeof pts, "%d", c->points);
 	rows[n++] = (menu_row){ T(S_CHEEVOLIST_POINTS), pts, true };
+	/* Earned and not on the account yet - earned offline - says so */
 	rows[n]   = (menu_row){ T(S_CHEEVOLIST_STATUS),
-	                        got ? T(S_CHEEVOLIST_EARNED) : T(S_CHEEVOLIST_NOT_EARNED), true };
+	                        !got ? T(S_CHEEVOLIST_NOT_EARNED)
+	                        : chv_is_pending(c->id) ? T(S_CHEEVOLIST_EARNED_WAITING)
+	                        : T(S_CHEEVOLIST_EARNED), true };
 	vcols[n]  = got ? VCOL_EARNED : 0u;
 	n++;
 
@@ -19600,9 +19663,17 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	 * With "cheevos" after the first it was 818 wide in Lexend, more than
 	 * the panel's content, and the line scrolled; at 585 it fits with room
 	 * for a set of hundreds, and the list under it says what it counts. */
-	snprintf(heading, sizeof heading, T(S_CHEEVOLIST_HEADING),
-	         chv_game_title(), chv_earned(), n,
-	         chv_points_earned(), chv_points_total());
+	/* And how many of this game's wait to be sent, earned offline, when any
+	 * do: in the points' place, since the line with both was wider than the
+	 * panel and scrolled its count off the left. Each row has its points. */
+	if (chv_pending_for(chv_game()) > 0)
+		snprintf(heading, sizeof heading,
+		         TN(S_CHEEVOLIST_HEADING_WAITING, chv_pending_for(chv_game())),
+		         chv_game_title(), chv_earned(), n, chv_pending_for(chv_game()));
+	else
+		snprintf(heading, sizeof heading, T(S_CHEEVOLIST_HEADING),
+		         chv_game_title(), chv_earned(), n,
+		         chv_points_earned(), chv_points_total());
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -20108,7 +20179,8 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		game_controls_screen(a, c->bg);
 		break;
 	case GM_CHEEVOS:
-		cheevos_screen(a, c->bg, false);
+		if (chv_count() > 0) cheevos_screen(a, c->bg, false);
+		else cheevos_unchecked_message(a);
 		break;
 	case GM_RESET:
 		plat_resident_line("RESET");
@@ -20975,6 +21047,10 @@ static void launch(app *a)
 					chv_active_path(g_pending_active, sizeof g_pending_active);
 					snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
 					ra_fetch_begin(h, set);
+				} else {
+					/* A file the launcher cannot hash (a disc image it has
+					 * no reader for): nothing will ever be asked about it */
+					chv_none_mark(set, true);
 				}
 			}
 			/* Coming back from a shutdown: the game loads and the menu is
@@ -21505,6 +21581,10 @@ static int shot_popup_half = 2;
 static int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 static int shot_heatpop = -1;
+/* --ranews N: Zyper's bubble saying N achievements earned offline went */
+static int shot_ranews;
+/* --cheevos-waiting N: the list's heading with N of its unlocks waiting */
+static int shot_cheevos_waiting;
 /* --upnews available|ready: his bubble with System Update's news instead */
 static const char *shot_upnews;
 /* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull|soon]: the
@@ -22594,8 +22674,12 @@ static void shot_compose(app *a)
 			rows[ci] = (menu_row){ sample[ci].t, vals[ci], sample[ci].got };
 			vcols[ci] = sample[ci].got ? VCOL_EARNED : 0u;
 		}
-		snprintf(head, sizeof head, T(S_CHEEVOLIST_HEADING),
-		         shot_cheevos_game, 3, 36, 25, 415);
+		if (shot_cheevos_waiting > 0)
+			snprintf(head, sizeof head, TN(S_CHEEVOLIST_HEADING_WAITING, shot_cheevos_waiting),
+			         shot_cheevos_game, 3, 36, shot_cheevos_waiting);
+		else
+			snprintf(head, sizeof head, T(S_CHEEVOLIST_HEADING),
+			         shot_cheevos_game, 3, 36, 25, 415);
 		/* Drawn the way cheevos_screen draws it - menu_draw_ex, the earned
 		 * colors, the shared width - because a shot that composes the panel
 		 * differently from the screen is a picture of something that does not
@@ -22693,6 +22777,10 @@ static void shot_compose(app *a)
 		const unsigned T0 = 100000;
 
 		heatpop_show(T0);
+		if (shot_ranews > 0) {
+			snprintf(g_heatpop.line1, sizeof g_heatpop.line1, TN(S_CHEEVOS_SENT, shot_ranews), shot_ranews);
+			snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_CHEEVOS_SENT_WHERE));
+		}
 		if (shot_upnews) {
 			snprintf(g_heatpop.line1, sizeof g_heatpop.line1,
 			         T(strcmp(shot_upnews, "ready") ? S_UPDATE_NEWS_AVAILABLE : S_UPDATE_NEWS_READY), "1.0.4");
@@ -23856,6 +23944,15 @@ int main(int argc, char *argv[])
 				else shot_storage_row = argv[i];
 			}
 		}
+		else if (!strcmp(argv[i], "--ranews") && i + 1 < argc) {
+			shot_ranews = atoi(argv[++i]);
+			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
+		else if (!strcmp(argv[i], "--cheevos-waiting") && i + 1 < argc)
+			shot_cheevos_waiting = atoi(argv[++i]);
+		/* The Achievements rows of a game never played with a network, in
+		 * the in-game menu (--gamemenu) and the game's details (--info) */
+		else if (!strcmp(argv[i], "--cheevos-unchecked")) g_shot_unchecked = true;
 		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
 			shot_upnews = argv[++i];
 			if (shot_heatpop < 0) shot_heatpop = 3000;
@@ -25029,8 +25126,12 @@ int main(int argc, char *argv[])
 		 * then whatever was waiting on it sent. */
 		sync_poll();
 
-		/* Unlocks sent in the background: apply what the account answered. */
+		/* Unlocks sent in the background: apply what the account answered.
+		 * And a network that came back with unlocks waiting sends them, from
+		 * here only - never during a game (ra_flush_watch). */
 		ra_flush_poll();
+		ra_flush_watch(plat_now_ms());
+		ra_sent_news(ra_flush_take_sent());
 
 		/* What Muse said since the last pass - including END, which is how
 		 * the next track of an album starts while nobody is on its screen -
@@ -25157,6 +25258,7 @@ int main(int argc, char *argv[])
 		/* ...and "Getting hot", when the chip has passed the trip */
 		heat_watch();
 		up_news_watch();
+		ra_news_watch();
 
 		/* SELECT is Muse, on the shelf and on every screen but a running
 		 * game - see muse_open. Before the shelf's own keys, which do not use

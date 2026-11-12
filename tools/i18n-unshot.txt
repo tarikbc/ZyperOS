@@ -110,6 +110,7 @@ cheevolist.status
 cheevolist.earned
 cheevolist.not_earned
 cheevolist.unlocked
+cheevolist.earned_waiting
 
 # cheevos: no shot draws it yet
 cheevos.to_earn
@@ -119,6 +120,7 @@ cheevos.unlocked
 cheevos.mastered
 cheevos.progress
 cheevos.ra_user
+cheevos.unchecked_said
 
 # clock: no shot draws it yet
 clock.time_zone
