@@ -64,7 +64,8 @@ cmake /src -DCMAKE_BUILD_TYPE=Release -DBUILD_LIBRETRO=ON \
 	-DBUILD_WITH_ALL=ON -DBUILD_WITH_RUBY=OFF -DBUILD_WITH_FORTH=OFF \
 	-DBUILD_WITH_GRAVITY=OFF -DBUILD_WITH_MINISCRIPT=OFF -DBUILD_WITH_ZLIB=ON \
 	> cmake.log 2>&1 || { tail -30 cmake.log >&2; exit 1; }
-make -j3 tic80_libretro > make.log 2>&1 || { grep -i error make.log | head -20 >&2; exit 1; }
+make -j3 tic80_libretro > make.log 2>&1 ||
+	{ grep -E -B2 -A6 "error:|Error [0-9]|undefined reference" make.log | head -60 >&2; exit 1; }
 so=bin/tic80_libretro.so
 strip --strip-unneeded $so
 [ "$(nm -D -u $so | grep -v " w " | grep -vc "@")" = 0 ] \
