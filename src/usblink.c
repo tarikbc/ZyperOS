@@ -17,6 +17,7 @@
 
 static int      g_peer = -2;       /* what the port had at the last look */
 static bool     g_asked;           /* this plug has had its question */
+static bool     g_want;            /* the last look: a computer on the cable, not asked yet */
 static bool     g_held;            /* the link is on for this plug */
 static bool     g_dev_answer;      /* ... because of Developer (SSH) */
 static unsigned g_at;
@@ -78,6 +79,7 @@ void usblink_set_developer(db *dev, const char *userdata, bool on)
 	if (on) {
 		plat_usb_link(1);
 		g_asked = true;                   /* nothing left to ask this plug */
+		g_want = false;
 	} else if (!g_held) {
 		plat_usb_link(0);
 	}
@@ -92,6 +94,7 @@ void usblink_release_dev(bool on)
 	if (on) {
 		plat_usb_link(1);
 		g_asked = true;                   /* nothing left to ask this plug */
+		g_want = false;
 	} else if (!g_held) {
 		plat_usb_link(0);
 	}
@@ -100,54 +103,80 @@ void usblink_release_dev(bool on)
 void usblink_skip_ask(void)
 {
 	g_asked = true;
+	g_want = false;
 	g_peer = USB_PEER_COMPUTER;
 }
 
-bool usblink_follow(db *dev, unsigned now_ms)
+/* One look at the cable (five a second at most; between, the last look
+ * stands): binds or lets go as Developer Mode says, ends a plug that went,
+ * and says whether a computer waits for its question; `take` asks it */
+static bool look(db *dev, unsigned now_ms, bool take)
 {
 	usb_peer peer;
 
 	/* Five looks a second: a quick replug is a new plug, and two small
 	 * reads cost nothing beside a frame */
-	if (g_peer != -2 && now_ms - g_at < 200u) return false;
-	g_at = now_ms;
-	peer = plat_usb_peer();
-	if (peer == USB_PEER_UNKNOWN) return false;
-	if (usblink_developer(dev)) {
-		/* A computer plugged in again gets a fresh link. Kept bound across
-		 * the unplug, the controller could come back from it - through the
-		 * port's host role, which usbrole gives it while the plug settles -
-		 * not offering itself, and the computer saw nothing until another
-		 * replug (Pixel 2, 2026-11-05). File Transfer's screen makes a fresh
-		 * one as it opens for the same reason (plat_cable_reconnect). */
-		if (peer == USB_PEER_COMPUTER && g_peer != USB_PEER_COMPUTER && g_peer != -2) {
-			plat_usb_link(2);
-			fprintf(stderr, "usb: a computer is on the cable: a fresh link\n");
-		} else if (!plat_usb_link(-1)) {
-			plat_usb_link(1);
+	if (g_peer == -2 || now_ms - g_at >= 200u) {
+		g_at = now_ms;
+		peer = plat_usb_peer();
+		if (peer == USB_PEER_UNKNOWN) {
+			g_want = false;
+			return false;
 		}
+		if (usblink_developer(dev)) {
+			/* A computer plugged in again gets a fresh link. Kept bound
+			 * across the unplug, the controller could come back from it -
+			 * through the port's host role, which usbrole gives it while
+			 * the plug settles - not offering itself, and the computer saw
+			 * nothing until another replug (Pixel 2, 2026-11-05). File
+			 * Transfer's screen makes a fresh one as it opens for the same
+			 * reason (plat_cable_reconnect). */
+			if (peer == USB_PEER_COMPUTER && g_peer != USB_PEER_COMPUTER && g_peer != -2) {
+				plat_usb_link(2);
+				fprintf(stderr, "usb: a computer is on the cable: a fresh link\n");
+			} else if (!plat_usb_link(-1)) {
+				plat_usb_link(1);
+			}
+			g_peer = peer;
+			g_asked = peer == USB_PEER_COMPUTER;
+			g_want = false;
+			return false;
+		}
+		if (peer != USB_PEER_COMPUTER) {
+			/* Out, or only a charger: whatever this plug had ends */
+			if (g_held || plat_usb_link(-1)) plat_usb_link(0);
+			if (g_peer == USB_PEER_COMPUTER) fprintf(stderr, "usb: the computer went away\n");
+			g_held = g_dev_answer = g_asked = false;
+			g_peer = peer;
+			g_want = false;
+			return false;
+		}
+		if (g_peer != USB_PEER_COMPUTER) fprintf(stderr, "usb: a computer is on the cable\n");
 		g_peer = peer;
-		g_asked = peer == USB_PEER_COMPUTER;
-		return false;
+		g_want = !g_asked;
 	}
-	if (peer != USB_PEER_COMPUTER) {
-		/* Out, or only a charger: whatever this plug had ends */
-		if (g_held || plat_usb_link(-1)) plat_usb_link(0);
-		if (g_peer == USB_PEER_COMPUTER) fprintf(stderr, "usb: the computer went away\n");
-		g_held = g_dev_answer = g_asked = false;
-		g_peer = peer;
-		return false;
+	if (!g_want) return false;
+	if (take) {
+		g_asked = true;
+		g_want = false;
 	}
-	if (g_peer != USB_PEER_COMPUTER) fprintf(stderr, "usb: a computer is on the cable\n");
-	g_peer = peer;
-	if (g_asked) return false;
-	g_asked = true;
 	return true;
+}
+
+bool usblink_follow(db *dev, unsigned now_ms)
+{
+	return look(dev, now_ms, true);
+}
+
+bool usblink_wants_ask(db *dev, unsigned now_ms)
+{
+	return look(dev, now_ms, false);
 }
 
 void usblink_hold(bool on)
 {
 	g_asked = true;
+	g_want = false;
 	g_held = on;
 	g_dev_answer = on;
 	plat_usb_link(on ? 1 : 0);
@@ -156,6 +185,7 @@ void usblink_hold(bool on)
 void usblink_for_transfer(void)
 {
 	g_asked = true;
+	g_want = false;
 	if (plat_usb_peer() == USB_PEER_UNKNOWN) return;
 	plat_usb_link(1);
 }

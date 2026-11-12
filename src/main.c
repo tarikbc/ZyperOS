@@ -6579,6 +6579,9 @@ void wait_panel(app *a, const char *heading, const char *msg)
  * never when a menu opens: a screen that opens a second one after the first
  * came back has to see it still up, or that second one would stay open. */
 static bool g_menu_closing;
+/* The in-game menu is up, over a paused game (game_menu): nothing may close
+ * it from outside, as a plugged-in computer closes the others */
+static bool g_in_game_menu;
 
 /* ---- the interface sounds' hooks (DESIGN.md 9, src/uisound.h) ----------
  *
@@ -7112,6 +7115,16 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		}
 		if (menu_leaving(a))
 			return MENU_LEFT_BACK;
+		/* A computer plugged in while a menu is open: the menus close back
+		 * to the shelf, whose loop asks Computer Connected at once
+		 * (2026-11-12: the question waited, unseen, until the player closed
+		 * MENU by hand). Not over a game's or a port's menu: a game is
+		 * never interrupted, and is asked about back on the shelf. */
+		if (!g_in_game_menu && !g_port_menu && usblink_wants_ask(db_dev(), plat_now_ms())) {
+			fprintf(stderr, "usb: a computer on the cable with a menu open: back to the shelf to ask\n");
+			g_menu_closing = true;
+			return MENU_LEFT_BACK;
+		}
 		/* The in-game menu too: its game is paused underneath, and Muse
 		 * borrows its backdrop and its power rule for as long as it is up.
 		 * Rebuilt on the way back, because anything may have changed while
@@ -20000,8 +20013,10 @@ static void game_menu(app *a)
 	 * screen this menu opened - the save slots, Achievements - comes back as
 	 * MENU_LEFT_BACK too, so it is Continue from there as well. */
 	g_menu_closing = false;
+	g_in_game_menu = true;
 	if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
 		c.resume = true;
+	g_in_game_menu = false;
 	g_menu_closing = false;
 	/* Closed by px2-open's quit, which said STOP as Quit does: no Continue */
 	if (g_ctl_close_menu) c.resume = false;
@@ -20101,8 +20116,10 @@ static int port_menu(app *a)
 	c.st.on_power    = gm_power;
 
 	g_menu_closing = false;
+	g_in_game_menu = true;
 	if (menu_run(a, &c.st, gm_menu_build, gm_key, &c) == MENU_LEFT_BACK)
 		c.resume = true;
+	g_in_game_menu = false;
 	g_menu_closing = false;
 	if (c.resume) {
 		leave_end how = panel_leave_run(a, gm_backdrop, &c);

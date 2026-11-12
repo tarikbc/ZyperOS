@@ -50,6 +50,8 @@ bool plat_usb_link(int op)
 
 static unsigned t;
 static bool step(void) { t += 600; return usblink_follow(db_dev(), t); }
+/* The menus' look: the question waiting, not taken */
+static bool wants(void) { t += 600; return usblink_wants_ask(db_dev(), t); }
 
 static char flag_path[256];
 static int flag(void)
@@ -100,6 +102,29 @@ int main(void)
 	g_port = USB_PEER_COMPUTER;
 	CHECK(step(), "a second plug was not asked about");
 
+	printf("  a menu sees the question waiting and leaves it to the shelf (usblink_wants_ask):\n");
+	g_port = USB_PEER_NONE;
+	step();
+	g_port = USB_PEER_COMPUTER;
+	CHECK(wants() && wants(), "a menu did not see a computer waiting, or took its question");
+	CHECK(usblink_wants_ask(db_dev(), t + 50), "between two looks, the last look did not stand");
+	CHECK(step(), "the shelf did not ask after the menu saw it");
+	CHECK(!wants() && !step(), "asked, but still waiting");
+	/* Unplugged and plugged again while the menu is open (only the menu's
+	 * looks see it): a new plug, asked about */
+	g_port = USB_PEER_NONE;
+	CHECK(!wants(), "the cable out, still waiting");
+	g_port = USB_PEER_COMPUTER;
+	CHECK(wants(), "a computer plugged in again under a menu was not seen");
+	CHECK(step(), "and was not asked about");
+	/* A charger is never waiting */
+	g_port = USB_PEER_NONE;
+	step();
+	g_port = USB_PEER_CHARGER;
+	CHECK(!wants() && !step(), "a charger waits for a question");
+	g_port = USB_PEER_COMPUTER;
+	CHECK(step(), "a computer after the charger was not asked about");
+
 	printf("  Charge Only keeps the link off:\n");
 	usblink_hold(false);
 	CHECK(!g_bound && !step(), "Charge Only bound, or asked again");
@@ -126,6 +151,7 @@ int main(void)
 	usblink_release_dev(true);
 	CHECK(usblink_developer(db_dev()), "the launcher's Developer Mode is not Developer Mode");
 	g_port = USB_PEER_COMPUTER;
+	CHECK(!wants(), "a menu would close for a computer in Developer Mode");
 	CHECK(!step(), "asked about a computer in Developer Mode");
 	CHECK(g_bound, "Developer Mode left the link off");
 	usblink_for_transfer();
@@ -154,6 +180,7 @@ int main(void)
 	usblink_sync(db_dev(), dir);
 	CHECK(flag() == 1, "the card's file says %d, not 1", flag());
 	g_port = USB_PEER_COMPUTER;
+	CHECK(!wants(), "a menu would close for a computer in Developer Mode");
 	CHECK(!step(), "asked about a computer in Developer Mode");
 	CHECK(g_bound, "Developer Mode left the link off");
 	usblink_after_transfer(db_dev());

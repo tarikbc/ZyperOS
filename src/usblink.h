@@ -59,6 +59,13 @@ void usblink_sync(db *dev, const char *userdata);
  * is to be asked. Cheap: the port is read five times a second at most. */
 bool usblink_follow(db *dev, unsigned now_ms);
 
+/* The same look from anywhere else (the menus' loop), the question not
+ * taken: true while a computer on the cable waits for it, so a menu can
+ * close back to the shelf, whose usblink_follow then asks. It ends a plug
+ * that went as usblink_follow does, so one replugged while a menu is open
+ * is a new plug. */
+bool usblink_wants_ask(db *dev, unsigned now_ms);
+
 /* The link for this plug, from the question's answer: on until the cable
  * comes out (Developer (SSH)), or off (Charge Only). File Transfer's comes
  * and goes with its screen (usblink_for_transfer, usblink_after_transfer). */
