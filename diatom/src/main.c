@@ -753,7 +753,7 @@ static void usage(void)
 	int i;
 	fprintf(stderr,
 		"usage: diatom --core <core.so> --rom <file> [--system <dir>] [--save <dir>]\n"
-		"              [--display <mode>] [--filter nearest|sharp]\n"
+		"              [--display <mode>] [--filter nearest|sharp|shimmerless]\n"
 		"              [--channels stereo|mono|left|right]\n"
 		"              [--load-state <file>] [--state-on-exit <file>]\n"
 		"              [--firmware <name>]  required in --system, checked first\n"
@@ -777,11 +777,15 @@ static void usage(void)
 	for (i = 0; i < diatom_mode_count; i++)
 		fprintf(stderr, "  %-10s %s\n",
 		        diatom_modes[i].name, diatom_modes[i].note);
+	fprintf(stderr, "\n");
+	for (i = 0; i < DIATOM_FILTER_COUNT; i++)
+		fprintf(stderr, "  %-11s %s\n",
+		        diatom_filters[i].name, diatom_filters[i].note);
 }
 
 static const char *filter_name(diatom_filter f)
 {
-	return f == DIATOM_FILTER_SHARP ? "sharp" : "nearest";
+	return diatom_filters[f >= 0 && f < DIATOM_FILTER_COUNT ? f : 0].name;
 }
 
 static void apply_display(int mode, diatom_filter filter)
@@ -1452,8 +1456,9 @@ static void display_set(const diatom_msg *m)
 		mode = i;
 	}
 	if (m->dfilter[0]) {
-		if      (!strcmp(m->dfilter, "nearest")) filter = DIATOM_FILTER_NEAREST;
-		else if (!strcmp(m->dfilter, "sharp"))   filter = DIATOM_FILTER_SHARP;
+		int k = diatom_filter_index(m->dfilter);
+
+		if (k >= 0) filter = diatom_filters[k].filter;
 		else {
 			diatom_proto_send("ERROR\tcode=bad_display\tmsg=%s", m->dfilter);
 			return;
@@ -2983,8 +2988,7 @@ int main(int argc, char **argv)
 		usage();
 		return 1;
 	}
-	if (!strcmp(filter, "sharp"))        start_filter = DIATOM_FILTER_SHARP;
-	else if (!strcmp(filter, "nearest")) start_filter = DIATOM_FILTER_NEAREST;
+	if ((i = diatom_filter_index(filter)) >= 0) start_filter = diatom_filters[i].filter;
 	else {
 		fprintf(stderr, "diatom: unknown filter '%s'\n", filter);
 		usage();

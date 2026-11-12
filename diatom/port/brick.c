@@ -1274,6 +1274,24 @@ static diatom_tap *build_map(int src, int dst, diatom_filter filter)
 		int    p  = (int)floor(c);
 		double fr = c - (double)p;
 
+		/* Sharp-Shimmerless, as pixel2.c's SHIMMERLESS_SHADER: the source
+		 * pixels under this pixel's two edges, and where they differ, the
+		 * right one's share of the pixel's area. */
+		if (filter == DIATOM_FILTER_SHIMMERLESS) {
+			int l = (int)floor((double)i / scale);
+			int r = (int)floor((double)(i + 1) / scale);
+
+			p  = r > l ? r - 1 : l;
+			fr = r > l ? 1.0 - (scale * (double)r - (double)i) : 0.0;
+			if (fr < 0.0) fr = 0.0;
+			if (fr > 1.0) fr = 1.0;
+			if (p >= src - 1) { p = src - 1; fr = 0.0; }
+			if (p < 0) p = 0;
+			m[i].idx = p;
+			m[i].w   = (int)(fr * 256.0 + 0.5);
+			continue;
+		}
+
 		fr = (fr - 0.5) * scale + 0.5;
 		if (fr < 0.0) fr = 0.0;
 		if (fr > 1.0) fr = 1.0;

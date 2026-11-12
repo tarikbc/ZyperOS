@@ -43,11 +43,24 @@ typedef enum {
  * that straddles a source-pixel boundary, leaving every interior pixel exact.
  * At an integer factor it is identical to NEAREST by construction.
  *
+ * SHIMMERLESS is zadpos's Sharp-Shimmerless (public domain): a box filter.
+ * Source and destination pixels are rectangles, and a destination pixel is
+ * the mix of the source pixels it covers, by area. A destination pixel inside
+ * one source pixel is that pixel exactly; only one straddling a boundary
+ * mixes, so a scroll at a fractional factor keeps every column the same
+ * width - nearest's columns of 2 and 3 are what shimmer. At an integer factor
+ * it is NEAREST too.
+ *
+ * A port without a way to draw one draws the closest it has (the desktop:
+ * SDL's linear); the host never asks which.
+ *
  * Passed per frame rather than set once, so the port holds no policy state and
  * cannot be asked to present before it has been told how. */
 typedef enum {
 	DIATOM_FILTER_NEAREST,
-	DIATOM_FILTER_SHARP
+	DIATOM_FILTER_SHARP,
+	DIATOM_FILTER_SHIMMERLESS,
+	DIATOM_FILTER_COUNT
 } diatom_filter;
 
 typedef struct { int x, y, w, h; } diatom_rect;
