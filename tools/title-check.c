@@ -330,7 +330,7 @@ static void disc_folders(void)
 
 	directory("PS"); directory("PS/FF7"); directory("PS/RPGs"); directory("PS/RPGs/Xeno");
 	directory("PS/Pol"); directory("PS/Tracks"); directory("PS/Mixed"); directory("PS/Media");
-	directory("PS/Imgs");
+	directory("PS/Imgs"); directory("PS/box3d"); directory("PS/Snaps"); directory("PS/downloaded_videos");
 	/* One game's discs, with no playlist: one game, Disc 1 */
 	touch("PS/FF7/Final Fantasy VII (USA) (Disc 2).cue"); touch("PS/FF7/Final Fantasy VII (USA) (Disc 2).bin");
 	touch("PS/FF7/Final Fantasy VII (USA) (Disc 1).cue"); touch("PS/FF7/Final Fantasy VII (USA) (Disc 1).bin");
@@ -346,8 +346,12 @@ static void disc_folders(void)
 	/* A playlist makes a folder one game whatever else is in it */
 	touch("PS/Mixed/A.chd"); touch("PS/Mixed/B.chd"); touch("PS/Mixed/Mixed.m3u");
 	/* Another frontend's pictures, never games, whatever they are */
-	touch("PS/Media/x.chd"); touch("PS/Imgs/y.chd");
+	touch("PS/Media/x.chd"); touch("PS/Imgs/y.chd"); touch("PS/box3d/z.chd");
+	touch("PS/Snaps/notes.txt"); touch("PS/downloaded_videos/v.mp4");
 	CHECK(lib_scan(root, "PS", "cue,chd,m3u", &list) && list.count == 10);
+	/* ...and never counted as left out: nobody put games there */
+	CHECK(lib_es_media_dir("Box3D") && lib_es_media_dir("downloaded_media") &&
+	      !lib_es_media_dir("Rom Hacks") && !lib_es_media_dir("Imgs"));
 	i = lib_find_entry(&list, NULL, 0, "FF7/Final Fantasy VII (USA) (Disc 1).cue");
 	CHECK(i >= 0 && list.items[i].dir == 0 && !strcmp(list.items[i].name, "FF7"));
 	CHECK(lib_find_entry(&list, NULL, 0, "Pol/Disc 1.chd") >= 0);

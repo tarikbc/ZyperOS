@@ -2702,7 +2702,10 @@ ScummVM's, a folder with a file in it (a folder of game folders is a
 folder of games); on Ports', every folder is a port's own and is never
 looked into. A folder of several games' discs is a folder of games, each
 image a game in it. A shelf that takes no disc (the Atari 2600's and the
-Genesis's `.bin` are cartridges) has only folders of games.
+Genesis's `.bin` are cartridges) has only folders of games. The folders
+EmulationStation keeps a system's art in (images, videos, media, boxart,
+snaps, wheel, box3d and the rest, lib_es_media_dir) and MinUI's Imgs are
+never folders of games, and are not counted as left out.
 
 Everything about a system's games rather than what its shelf shows goes by
 all of them, in every folder: the home's count, Favorites, Search Games,

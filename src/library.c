@@ -456,19 +456,31 @@ void lib_scan_finish(const char *folder, game_list *l)
 	qsort(l->items, (size_t)l->count, sizeof *l->items, game_cmp);
 }
 
-/* Folders that hold a shelf's pictures by another frontend's habit, never its
- * games: MinUI's Imgs, EmulationStation's media and downloaded_media. Only
- * PICO-8's shelf, whose games are .png files, would take what is in them. */
-static bool art_folder(const char *name)
+/* See library.h. The names EmulationStation's scrapers, and the cards of
+ * Knulli, ROCKNIX, ArkOS and ROGUE OS that use it, give the folders they keep
+ * a system's art in, beside its games (es-compat's list, 2026-11-12), and
+ * ES-DE's downloaded_media. */
+bool lib_es_media_dir(const char *name)
 {
-	static const char *const ART[] = {
-		"Imgs", "media", "downloaded_media", "downloaded_images", "images", "videos",
-		"manuals", NULL
+	static const char *const ES[] = {
+		"images", "videos", "media", "manuals", "downloaded_images", "downloaded_videos",
+		"downloaded_media", "boxart", "snap", "snaps", "wheel", "marquees", "covers",
+		"screenshots", "titles", "fanart", "thumbnails", "box2dfront", "box3d", NULL
 	};
 
-	for (int i = 0; ART[i]; i++)
-		if (!strcasecmp(name, ART[i])) return true;
+	for (int i = 0; name && ES[i]; i++)
+		if (!strcasecmp(name, ES[i])) return true;
 	return false;
+}
+
+/* Folders that hold a shelf's pictures by another frontend's habit, never its
+ * games: EmulationStation's (lib_es_media_dir) and MinUI's Imgs. Never a
+ * folder of games, and never left out either: nobody put games there. Most
+ * shelves would find no game in them anyway, but PICO-8's, whose games are
+ * .png files, would take every picture in them. */
+static bool art_folder(const char *name)
+{
+	return lib_es_media_dir(name) || !strcasecmp(name, "Imgs");
 }
 
 /* A walk over a shelf's folder and the folders in it */

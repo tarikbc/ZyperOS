@@ -75,6 +75,10 @@ bool lib_shelf_hooked(const char *exts);
 /* Whether a shelf's games are scripts (Ports'): its folders are the scripts'
  * data, never folders to look into, from its extension list. */
 bool lib_shelf_scripts(const char *exts);
+/* Whether a folder in a system's folder is one EmulationStation keeps its art
+ * in (images, videos, media, boxart, snaps, wheel, box3d...), in any case:
+ * never a folder of games on the shelf, and never counted as left out */
+bool lib_es_media_dir(const char *name);
 /* How deep folders in folders are read on a shelf: deeper than anyone sorts
  * games, and an end to a host's link that leads back up (the card has none) */
 #define LIB_DEPTH 8
