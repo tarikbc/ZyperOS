@@ -384,12 +384,12 @@ static void look_rows(void)
 	sys_menu_build(&u, rows, &b, &heading);
 	ck(!strcmp(val(&rows[PM_APPEARANCE]), "Light"), "and with none it reads Light, the default");
 
-	/* Shader, every system's (2026-11-12): after Achievements, above
-	 * Controls, which Scraper's and Controls' places above and below keep.
-	 * Off with none said; the shader's name, or "per system", as given. */
+	/* Shader, every system's (2026-11-12): on Display, the tab of how
+	 * things look, last, after Screensaver. Off with none said; the
+	 * shader's name, or "per system", as given. */
 	printf("MENU's Shader row:\n");
-	ck(PM_SHADER == PM_ACHIEVEMENTS + 1 && PM_CONTROLS == PM_SHADER + 1,
-	   "Shader sits under Achievements, above Controls");
+	ck(sys_menu_tab_of(PM_SHADER) == PT_DISPLAY && PM_SHADER == PM_SAVER + 1,
+	   "Shader is on Display, after Screensaver");
 	ck(!strcmp(rows[PM_SHADER].label, "Shader") && !strcmp(val(&rows[PM_SHADER]), "Off") &&
 	   rows[PM_SHADER].live, "Shader, Off when nothing is said, a stop");
 	ck(b.sound[PM_SHADER] == MENU_SND_RING, "it steps round, on A too");
@@ -1074,7 +1074,7 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 6, "six rows, not nine");
+	ck(k == 7, "seven rows, not the facts");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
 	/* 1.0.5: the shelf's covers or a list, under Sort By */
 	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
@@ -1373,9 +1373,10 @@ static void menu_tabs(void)
 	}
 	ck(ok && at == n_all, "the tabs, one after another, are every row the device has");
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 6 && tab[0] == PM_APPEARANCE && tab[1] == PM_AUTOHOURS && tab[2] == PM_THEME &&
-	   tab[3] == PM_HOME && tab[4] == PM_ORDER && tab[5] == PM_BATTERY,
-	   "Display: Appearance, Auto Hours, Theme, Home Screen, System Order, Battery Icon");
+	ck(m == 8 && tab[0] == PM_APPEARANCE && tab[1] == PM_AUTOHOURS && tab[2] == PM_THEME &&
+	   tab[3] == PM_HOME && tab[4] == PM_ORDER && tab[5] == PM_BATTERY &&
+	   tab[6] == PM_SAVER && tab[7] == PM_SHADER,
+	   "Display: Appearance, Auto Hours, Theme, Home Screen, System Order, Battery Icon, Screensaver, Shader");
 	m = sys_menu_tab_rows(&u, PT_GAMES, tab);
 	ck(m == 5 && tab[0] == PM_SEARCH, "Games opens on Search Games");
 	m = sys_menu_tab_rows(&u, PT_CONNECTIONS, tab);
@@ -1391,7 +1392,7 @@ static void menu_tabs(void)
 	u.auto_hours = "7:00 AM to 7:00 PM";
 	u.theme = "Lime";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 6 && !strcmp(rows[1].label, "Auto Hours") && !strcmp(val(&rows[1]), "7:00 AM to 7:00 PM") &&
+	ck(n == 8 && !strcmp(rows[1].label, "Auto Hours") && !strcmp(val(&rows[1]), "7:00 AM to 7:00 PM") &&
 	   !strcmp(rows[2].label, "Theme") && !strcmp(val(&rows[2]), "Lime"),
 	   "Auto Hours says its hours, Theme its accent");
 	ck(!strcmp(sys_menu_tab_name(PT_CONNECTIONS), "Connections") &&
@@ -2024,7 +2025,7 @@ static void charge_row(void)
 	for (i = 0; i < k; i++) ck(pm[i] != PM_CHARGE, "and the list does not name it");
 }
 
-/* The Screensaver row (src/saver.h): after Side Lights, on every device, its
+/* The Screensaver row (src/saver.h): on Display, after Battery Icon, on every device, its
  * value the delay in Auto Off's words or off, stepped round with left and
  * right the way Auto Off is. */
 static void saver_row(void)
@@ -2042,7 +2043,8 @@ static void saver_row(void)
 	size_t j;
 
 	printf("the Screensaver row:\n");
-	ck(PM_SAVER == PM_LIGHTS + 1, "sits after Side Lights");
+	ck(sys_menu_tab_of(PM_SAVER) == PT_DISPLAY && PM_SAVER == PM_BATTERY + 1,
+	   "is on Display, after Battery Icon");
 	for (j = 0; j < sizeof t / sizeof t[0]; j++) {
 		sys_menu_saver_label(t[j].sec, s, sizeof s);
 		ck(!strcmp(s, t[j].want), t[j].want);
@@ -2065,7 +2067,10 @@ static void saver_row(void)
 	ck(found == 1, "is there once");
 	u.saver = 0;
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(!strcmp(val(&rows[PM_SAVER - 2]), "off"), "and off when it is off");
+	for (i = 0, found = 0; i < n; i++)
+		if (rows[i].label && !strcmp(rows[i].label, "Screensaver"))
+			found += !strcmp(val(&rows[i]), "off");
+	ck(found == 1, "and off when it is off");
 	u.no_lights = true;
 	u.no_charge_limit = true;
 	n = sys_menu_build(&u, rows, &b, &heading);

@@ -57,8 +57,8 @@
  * Off, 80%, 85% or 90%, stepped round (DESIGN.md 11.26; my picks in
  * the charge limit lab, 2026-11-06). Only where the charger can stop short
  * (no_charge_limit). */
-/* PM_SAVER is Screensaver, after Side Lights, the last of the rows about the
- * handheld left alone: the video snaps of random games over the whole screen
+/* PM_SAVER is Screensaver, on Display after Battery Icon (1.0.5's tabs): the
+ * video snaps of random games over the whole screen
  * after this long with nothing pressed on the shelf (src/saver.h, DESIGN.md
  * 11.37). Its value is the delay, in Auto Off's words, stepped round with
  * left and right the way Auto Off is, or off. On every device. */

@@ -2820,7 +2820,7 @@ plays videos from random games in the collection; if you press Start on one
 of the videos, that game boots".)* Host shot: `--saver [cover]`, with
 `--saver-pic FILE` and `--saver-alpha F`.
 
-**When.** **MENU > Screensaver**, after Side Lights: **off**, 30s, 1m, 2m,
+**When.** **MENU > Screensaver**, on Display after Battery Icon: **off**, 30s, 1m, 2m,
 5m or 10m with nothing pressed, Auto Off's ladder, stepped with Left and
 Right; **1m** to start with, shorter than Auto Off's two minutes so that a
 handheld on battery shows it before it powers off. It starts only on the

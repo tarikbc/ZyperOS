@@ -174,6 +174,9 @@ EXTRA = {
     "system-menu": ("demo", "PS1", ["--screen", "games", "--menu"]),
     # View's other value, List, over the list it shows (DESIGN.md 11.39)
     "system-menu-list": ("demo", "GBA", ["--screen", "games", "--view", "list", "--menu", "View"]),
+    # ...and at its end: with View and Shader (1.0.5), Box Art is below the
+    # first shot's rows
+    "system-menu-end": ("demo", "PS1", ["--screen", "games", "--menu", "Box Art"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
