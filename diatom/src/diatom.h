@@ -281,8 +281,10 @@ typedef struct {
 	 * is 517); 0 or absent is the plain joypad. */
 	unsigned controller;
 	/* RUN: "dpad" makes the d-pad the left analog stick (stick.h), for a
-	 * system its games play with a stick; empty or anything else, the
-	 * joypad's d-pad as ever. */
+	 * system its games play with a stick; "toggle" and "toggle-stick" let
+	 * R2 turn the d-pad into the stick and back, starting as the d-pad or
+	 * as the stick (the PSP's, whose games play with one or the other);
+	 * empty or anything else, the joypad's d-pad as ever. */
 	char stick[16];
 	char layout[16];       /* SETSCREENS: a name from scr_layout_names */
 	char swap[4];          /* SETSCREENS: "1" | "0"; empty leaves it */
@@ -317,6 +319,12 @@ bool diatom_input_set_map(const char *spec);
 /* RUN stick=dpad: the d-pad as the left analog stick (stick.h); off at every
  * RUN that does not say so */
 void diatom_input_set_stick(bool dpad);
+/* RUN stick=toggle: the d-pad is the d-pad, or the stick when `as_stick`,
+ * until diatom_input_stick_flip turns it; SELECT's rule is not used */
+void diatom_input_set_stick_toggle(bool as_stick);
+/* R2 under stick=toggle: the d-pad goes to the other side. True when it is
+ * the stick now. Nothing turns outside stick=toggle. */
+bool diatom_input_stick_flip(void);
 /* Before each retro_run: the pad is read once a frame, at the core's poll or
  * its first question, whichever comes first (env.c, cb_input_poll) */
 void diatom_env_frame_begin(void);
