@@ -57,7 +57,7 @@ PACK_MAP = {
     "SNES": "snes", "SEGACD": "segacd", "32X": "sega32x", "VB": "virtualboy",
     "PS1": "psx", "N64": "n64", "NGP": "ngp", "GBC": "gbc", "WS": "wonderswan",
     "NGPC": "ngpc", "DC": "dreamcast", "GBA": "gba", "PKMINI": "pokemini",
-    "NDS": "nds", "PICO8": "pico8", "ARCADE": "fbneo", "MAME": "mame",
+    "NDS": "nds", "PICO8": "pico8", "ARCADE": "fbneo", "MAME": "mame", "PSP": "psp",
 }
 
 

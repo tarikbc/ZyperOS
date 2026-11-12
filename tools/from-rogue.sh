@@ -67,10 +67,10 @@
 #   bgm      ROGUE's menu music, Roms/BGM on both (src/bgm.h).
 #   music    ROGUE's music folder into Muse's Music/; a song loose at its top
 #            into Music/Singles, where the launcher would move it anyway.
-#   skip     a folder left behind by decision, all of it, with the reason:
-#            ZyperOS has no PSP (2026-11-06: PPSSPP does not run well
-#            on the Pixel 2's CPU, and the Pixel 2 has no analog sticks). The
-#            check fails the day such a folder's system becomes a shelf.
+#   skip     a folder left behind by decision, all of it, with the reason.
+#            The check fails the day such a folder's system becomes a shelf.
+#            None now: the PSP was one until 2026-11-12, when it became a
+#            shelf.
 #   pending  a system ZyperOS has no shelf for yet. Left out unless named, and
 #            then copied into the folder its shelf is expected to use; the
 #            check fails the day that folder becomes a shelf, so the row
@@ -103,6 +103,9 @@
 #   dreamcast/data/vmu_save_*.bin, dc_nvmem.bin
 #                          Saves/flycast/, the standalone Flycast's (launch.sh)
 #   pico-8/cdata/          Saves/cdata/, fake08's cart data
+#   psp/PSP/SAVEDATA/      Saves/PSP/SAVEDATA/, the PSP's own saves, where
+#                          ROGUE's standalone PPSSPP kept its memory stick
+#                          and ZyperOS's PPSSPP core keeps it in Saves/
 #   3do/opera/             Saves/opera/, Opera's per-game NVRAM
 #   bios/scd_U.brm, _E, _J Saves/<disc>.srm, for each Sega CD disc of that
 #                          region: ROGUE ran the Sega CD on genesis_plus_gx,
@@ -169,6 +172,9 @@ game|pokemini|Roms/Pokemon Mini|min zip|
 game|openbor|Roms/OpenBOR|pak|
 game|nds|Roms/Nintendo DS|nds zip|
 game|pico-8|Roms/PICO-8|p8 png|
+game|psp|Roms/PSP|iso cso chd pbp|
+game|coleco|Roms/ColecoVision|col cv bin rom zip|
+game|tic-80|Roms/TIC-80|tic png|
 sets|arcade|Roms/Arcade|zip 7z|
 sets|neogeo|Roms/Neo Geo|zip 7z|
 sets|fbneo|Roms/Arcade|zip 7z|
@@ -180,7 +186,6 @@ keep|atomiswave|Roms/Atomiswave|zip 7z|chd
 port|ports|Roms/Ports|sh|
 bgm|BGM|Roms/BGM|mp3 ogg|
 music|music|Music|mp3 flac m4a m4b aac ogg oga opus wav|
-skip|psp||no PSP on ZyperOS|
 # bios|ROGUE bios/ path|Bios/ path||the ROGUE folders it serves. Only what a
 # ZyperOS core reads with ZyperOS's settings: pcsx_rearmed 7b0e8f8 looks for
 # these six PlayStation BIOS names, by the disc's region; Opera's is the 3DO
@@ -221,6 +226,8 @@ bios|bios7.bin|Bios/bios7.bin||nds
 bios|bios9.bin|Bios/bios9.bin||nds
 bios|firmware.bin|Bios/firmware.bin||nds
 bios|bios.min|Bios/bios.min||pokemini
+bios|coleco.rom|Bios/coleco.rom||coleco
+bios|colecovision.rom|Bios/colecovision.rom||coleco
 other|bios|Bios|||
 other|saves|Saves|||
 other|savestates||||
@@ -583,6 +590,11 @@ function save(    i, d, sub2, rows) {
 		if (ext == "state") { left(top, "save state: ZyperOS's cores are not ROGUE's", size, rel); return }
 	}
 	if (top == "pico-8" && tolower(c[2]) == "cdata") { nw("pico-8", "save", "Saves/cdata/" base); return }
+	if (top == "psp" && tolower(c[2]) == "psp" && n > 3 && tolower(c[3]) == "savedata") {
+		d = "Saves/PSP/SAVEDATA"
+		for (i = 4; i <= n; i++) d = d "/" c[i]
+		nw("psp", "save", d); return
+	}
 	if (top == "3do" && tolower(c[2]) == "opera") { nw("3do", "save", "Saves/" under()); return }
 	if (top == "segacd" && ext == "srm") {
 		left(top, "ROGUE's own Sega CD .srm, 2017's and empty: scd_U.brm is what ROGUE wrote", size, rel); return

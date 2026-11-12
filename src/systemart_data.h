@@ -60,9 +60,17 @@ static const sa_frame SA_FRAMES_BOOKS[] = {
     { 0, 400 }, { 1, 400 },
 };
 
+static const sa_frame SA_FRAMES_COLECO[] = {
+    { 0, 400 }, { 1, 400 },
+};
+
 static const sa_frame SA_FRAMES_DC[] = {
     { 0, 400 }, { 1, 400 }, { 0, 400 }, { 1, 400 }, { 2, 400 }, { 3, 400 }, { 2, 400 }, { 3, 400 },
     { 2, 400 }, { 3, 400 }, { 2, 400 }, { 3, 400 }, { 2, 400 }, { 3, 400 }, { 0, 400 }, { 1, 400 },
+};
+
+static const sa_frame SA_FRAMES_DOOM[] = {
+    { 0, 400 }, { 1, 400 },
 };
 
 static const sa_frame SA_FRAMES_FAVORITES[] = {
@@ -226,6 +234,17 @@ static const sa_frame SA_FRAMES_PS1[] = {
     { 0, 400 }, { 1, 400 },
 };
 
+static const sa_frame SA_FRAMES_PSP[] = {
+    { 0, 120 }, { 0, 120 }, { 0, 120 }, { 1, 120 }, { 1, 120 }, { 1, 120 }, { 2, 120 }, { 3, 120 },
+    { 4, 120 }, { 5, 120 }, { 6, 120 }, { 7, 120 }, { 8, 120 }, { 9, 120 }, { 10, 120 }, { 11, 120 },
+    { 12, 120 }, { 13, 120 }, { 14, 120 }, { 15, 120 }, { 16, 120 }, { 17, 120 }, { 18, 120 }, { 19, 120 },
+    { 20, 120 }, { 21, 130 }, { 22, 130 }, { 23, 130 }, { 24, 140 }, { 25, 140 }, { 26, 140 }, { 27, 140 },
+    { 28, 140 }, { 29, 140 }, { 30, 120 }, { 31, 100 }, { 32, 120 }, { 33, 120 }, { 34, 120 }, { 35, 120 },
+    { 35, 120 }, { 35, 120 }, { 36, 120 }, { 36, 120 }, { 36, 120 }, { 35, 120 }, { 35, 120 }, { 35, 120 },
+    { 36, 120 }, { 36, 120 }, { 36, 120 }, { 35, 120 }, { 35, 120 }, { 35, 120 }, { 36, 120 }, { 36, 120 },
+    { 37, 120 }, { 38, 120 }, { 39, 120 },
+};
+
 static const sa_frame SA_FRAMES_ROMS[] = {
     { 0, 400 }, { 1, 400 },
 };
@@ -265,6 +284,10 @@ static const sa_frame SA_FRAMES_STATES[] = {
     { 0, 400 }, { 1, 400 },
 };
 
+static const sa_frame SA_FRAMES_TIC80[] = {
+    { 0, 400 }, { 1, 400 },
+};
+
 static const sa_frame SA_FRAMES_VB[] = {
     { 0, 400 }, { 1, 400 },
 };
@@ -296,7 +319,9 @@ static const sa_asset SA_ASSETS[] = {
     { "BGM", "system-icons/BGM.png", "system-icons/BGM-still.png", 128, 2, 1, 2, 800, SA_FRAMES_BGM },
     { "BIOS", "system-icons/BIOS.png", "system-icons/BIOS-still.png", 128, 2, 1, 2, 800, SA_FRAMES_BIOS },
     { "BOOKS", "system-icons/BOOKS.png", "system-icons/BOOKS-still.png", 128, 2, 1, 2, 800, SA_FRAMES_BOOKS },
+    { "COLECO", "system-icons/COLECO.png", "system-icons/COLECO-still.png", 128, 2, 1, 2, 800, SA_FRAMES_COLECO },
     { "DC", "system-icons/DC.png", "system-icons/DC-still.png", 128, 4, 1, 16, 6400, SA_FRAMES_DC },
+    { "DOOM", "system-icons/DOOM.png", "system-icons/DOOM-still.png", 128, 2, 1, 2, 800, SA_FRAMES_DOOM },
     { "FAVORITES", "system-icons/FAVORITES.png", "system-icons/FAVORITES-still.png", 128, 8, 2, 11, 1100, SA_FRAMES_FAVORITES },
     { "FOLDER", "system-icons/FOLDER.png", "system-icons/FOLDER-still.png", 128, 2, 1, 2, 800, SA_FRAMES_FOLDER },
     { "GB", "system-icons/GB.png", "system-icons/GB-still.png", 128, 8, 2, 48, 6240, SA_FRAMES_GB },
@@ -324,6 +349,7 @@ static const sa_asset SA_ASSETS[] = {
     { "PKMINI", "system-icons/PKMINI.png", "system-icons/PKMINI-still.png", 128, 8, 2, 18, 4800, SA_FRAMES_PKMINI },
     { "PORTS", "system-icons/PORTS.png", "system-icons/PORTS-still.png", 128, 8, 6, 58, 7600, SA_FRAMES_PORTS },
     { "PS1", "system-icons/PS1.png", "system-icons/PS1-still.png", 128, 2, 1, 2, 800, SA_FRAMES_PS1 },
+    { "PSP", "system-icons/PSP.png", "system-icons/PSP-still.png", 128, 8, 5, 59, 7210, SA_FRAMES_PSP },
     { "ROMS", "system-icons/ROMS.png", "system-icons/ROMS-still.png", 128, 2, 1, 2, 800, SA_FRAMES_ROMS },
     { "SATURN", "system-icons/SATURN.png", "system-icons/SATURN-still.png", 128, 2, 1, 2, 800, SA_FRAMES_SATURN },
     { "SAVES", "system-icons/SAVES.png", "system-icons/SAVES-still.png", 128, 2, 1, 2, 800, SA_FRAMES_SAVES },
@@ -332,6 +358,7 @@ static const sa_asset SA_ASSETS[] = {
     { "SMS", "system-icons/SMS.png", "system-icons/SMS-still.png", 128, 2, 1, 2, 800, SA_FRAMES_SMS },
     { "SNES", "system-icons/SNES.png", "system-icons/SNES-still.png", 128, 2, 1, 2, 800, SA_FRAMES_SNES },
     { "STATES", "system-icons/STATES.png", "system-icons/STATES-still.png", 128, 2, 1, 2, 800, SA_FRAMES_STATES },
+    { "TIC80", "system-icons/TIC80.png", "system-icons/TIC80-still.png", 128, 2, 1, 2, 800, SA_FRAMES_TIC80 },
     { "VB", "system-icons/VB.png", "system-icons/VB-still.png", 128, 2, 1, 2, 800, SA_FRAMES_VB },
     { "VECTREX", "system-icons/VECTREX.png", "system-icons/VECTREX-still.png", 128, 2, 1, 2, 800, SA_FRAMES_VECTREX },
     { "VIDEOS", "system-icons/VIDEOS.png", "system-icons/VIDEOS-still.png", 128, 2, 1, 2, 800, SA_FRAMES_VIDEOS },

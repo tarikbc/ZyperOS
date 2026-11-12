@@ -606,6 +606,7 @@ static void quick_slot_put(const char *tag, int slot)
 static struct {
 	char tag[CFG_STR];
 	char name[CFG_STR];
+	char file[LIB_PATH];  /* the game's, for what is kept per game (stick_put) */
 	char stem[LIB_PATH * 2];
 	bool states;
 	int  asked;
@@ -662,6 +663,41 @@ static void pak_put(const char *tag, const char *file, const char *value)
 
 	gm_pak_key(tag, file, key, sizeof key);
 	db_set_str(db_lib(), key, gm_pak_value(value));
+}
+
+/* ---------- the PSP's d-pad: the d-pad, or the analog stick ----------------
+ *
+ * The handheld has no stick, and a PSP game moves with its analog stick or
+ * with its d-pad, game by game. A system with stick|tag|toggle
+ * (config/systems.cfg, the PSP's) starts a game with the d-pad as the d-pad,
+ * and R2 turns it into the left stick and back (Diatom's RUN stick=toggle),
+ * as the Pixel 2's own firmware and Deadstation Portable do it. The side a
+ * game was left on is kept for that game, so a game that moves with the
+ * stick starts with it the next time. */
+static bool stick_toggles(const system_cfg *s)
+{
+	return s && !strcmp(s->stick, "toggle");
+}
+
+static void stick_key(const char *tag, const char *file, char *out, size_t n)
+{
+	snprintf(out, n, "stick.%s.%s", tag ? tag : "", file ? file : "");
+}
+
+static bool stick_get(const char *tag, const char *file)
+{
+	char key[CFG_STR + LIB_PATH + 8], v[4];
+
+	stick_key(tag, file, key, sizeof key);
+	return db_get_str(db_lib(), key, v, sizeof v, NULL) && v[0] == '1';
+}
+
+static void stick_put(const char *tag, const char *file, bool on)
+{
+	char key[CFG_STR + LIB_PATH + 8];
+
+	stick_key(tag, file, key, sizeof key);
+	db_set_str(db_lib(), key, on ? "1" : "0");
 }
 
 /* ---------- per-system sort order ----------------------------------------- */
@@ -1287,6 +1323,7 @@ static void quick_bind(app *a, int s, const game_entry *g)
 	memset(&g_quick, 0, sizeof g_quick);
 	snprintf(g_quick.tag, sizeof g_quick.tag, "%s", sc->tag);
 	snprintf(g_quick.name, sizeof g_quick.name, "%s", sc->name);
+	snprintf(g_quick.file, sizeof g_quick.file, "%s", g->file);
 	snprintf(g_quick.stem, sizeof g_quick.stem, "%s/.zyperos/%s/%s",
 	         P_SHARED, sc->folder, persist_base(a, s, g));
 	g_quick.states = ctl_has_states(sc->tag);
@@ -2254,6 +2291,15 @@ static void on_speed(int half)
 	if (half % 2) snprintf(body, sizeof body, T(S_POPUP_SPEED_HALF), half / 2);
 	else          snprintf(body, sizeof body, T(S_POPUP_SPEED_WHOLE), half / 2);
 	popup_now(T(S_POPUP_SPEED), body);
+}
+
+/* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
+ * into the analog stick (on) or back: said over the game, and kept for the
+ * game (stick_put) */
+static void on_stick(bool on)
+{
+	popup_now(T(S_POPUP_STICK), T(on ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
+	if (g_quick.tag[0] && g_quick.file[0]) stick_put(g_quick.tag, g_quick.file, on);
 }
 
 /* Called from inside plat_resident_wait for the quick slot (platform.h's
@@ -20565,6 +20611,12 @@ static void launch(app *a)
 		char keys[96];
 
 		cfg_run_keys(s, g_game_dual, keys, (int)sizeof keys);
+		/* A PSP game left with its d-pad as the stick starts with it
+		 * (stick_get): stick=toggle, the last key, becomes toggle-stick */
+		if (stick_toggles(s) && stick_get(s->tag, romfile) &&
+		    strlen(keys) >= 12 && !strcmp(keys + strlen(keys) - 12, "stick=toggle") &&
+		    strlen(keys) + 6 < sizeof keys)
+			strcat(keys, "-stick");
 		if (keys[0]) plat_resident_run_keys(keys);
 		plat_resident_map(s->map);
 		/* And an N64 game's Pak, its own over the system's; none else */
@@ -20584,8 +20636,10 @@ static void launch(app *a)
 	 *
 	 * Disc images only. A HuCard needs no System Card, and refusing every
 	 * cartridge on the shelf because a CD would have needed one is a worse
-	 * failure than the one being fixed. */
-	if (s->disc_bios[0] && lib_is_disc(v->list.items[v->cursor].file)) {
+	 * failure than the one being fixed. Every game where the shelf's whole
+	 * library needs it (bios_every, a `bios|tag|names` line: the
+	 * ColecoVision's). */
+	if (s->disc_bios[0] && (s->bios_every || lib_is_disc(v->list.items[v->cursor].file))) {
 		if (!disc_bios_found(bios, s->disc_bios)) {
 			char msg[CFG_STR + 96];
 
@@ -21337,7 +21391,7 @@ static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
-/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|dslang|corestate|speed N:
+/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|dslang|corestate|stick_on|stick_off|speed N:
  * the pop-up of the SELECT hotkeys, as on_quick and on_speed put it over a
  * game (notice_render, no badge, no Zyper); N is the step for speed, in
  * halves (3 is 1.5x) */
@@ -22475,6 +22529,11 @@ static void shot_compose(app *a)
 			 * (core_resume_fresh) */
 			shot_notice_head = T(S_POPUP_CORESTATE_HEAD);
 			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_CORESTATE_BODY));
+		} else if (!strcmp(shot_popup, "stick_on") || !strcmp(shot_popup, "stick_off")) {
+			/* R2 in a PSP game (on_stick) */
+			shot_notice_head = T(S_POPUP_STICK);
+			snprintf(pbody, sizeof pbody, "%s",
+			         T(!strcmp(shot_popup, "stick_on") ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
 			snprintf(pbody, sizeof pbody,
@@ -23282,7 +23341,7 @@ static bool ctl_resolve(app *a, const ctl_cmd *c, bool rescan, ctl_target *t,
 	/* A disc that needs firmware, as launch refuses it, said here instead of
 	 * in a message on the handheld that nobody over SSH would see */
 	if (strcmp(t->core, PORT_CORE) && strncmp(t->core, RUN_PREFIX, strlen(RUN_PREFIX)) &&
-	    s->disc_bios[0] && lib_is_disc(a->view[si].list.items[gi].file)) {
+	    s->disc_bios[0] && (s->bios_every || lib_is_disc(a->view[si].list.items[gi].file))) {
 		char bios[CFG_STR * 2];
 
 		snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
@@ -24403,6 +24462,7 @@ int main(int argc, char *argv[])
 		plat_resident_on_unlock(on_cheevo_unlocked);
 		plat_resident_on_progress(on_cheevo_progress);
 		plat_resident_on_speed(on_speed);
+		plat_resident_on_stick(on_stick);
 		plat_resident_on_quick(on_quick);
 		plat_resident_on_tick(on_game_tick);
 		plat_resident_on_battery_empty(battery_empty);

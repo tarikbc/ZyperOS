@@ -153,12 +153,13 @@ int main(void)
 	{
 		static const char *const AZ[] = {
 			"3DO", "32X", "Arcade", "Atari 2600", "Atari 5200", "Atari 7800", "Atari Lynx",
-			"Atomiswave", "Dreamcast", "Game & Watch", "Game Boy", "Game Boy Advance",
+			"Atomiswave", "ColecoVision", "Doom", "Dreamcast", "Game & Watch", "Game Boy",
+			"Game Boy Advance",
 			"Game Boy Color", "Game Gear", "Genesis", "J2ME", "MAME", "Master System",
 			"MSX2", "NAOMI", "Neo Geo", "Neo Geo CD", "Neo Geo Pocket",
 			"Neo Geo Pocket Color", "NES", "Nintendo 64", "Nintendo DS", "OpenBOR",
-			"PICO-8", "PlayStation", "Pokémon Mini", "Saturn", "ScummVM", "Sega CD",
-			"SNES", "TurboGrafx-16", "Vectrex", "Virtual Boy", "WonderSwan",
+			"PICO-8", "PlayStation", "Pokémon Mini", "PSP", "Saturn", "ScummVM", "Sega CD",
+			"SNES", "TIC-80", "TurboGrafx-16", "Vectrex", "Virtual Boy", "WonderSwan",
 			"WonderSwan Color", "Ports",
 		};
 		int i, n = (int)(sizeof AZ / sizeof AZ[0]), same = 1;

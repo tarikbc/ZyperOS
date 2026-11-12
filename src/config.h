@@ -55,6 +55,11 @@ typedef struct {
 	 * because a PC Engine HuCard runs with no System Card and a CD does not -
 	 * declaring it for the whole shelf would refuse the cartridges too. */
 	char disc_bios[CFG_STR];
+	/* The firmware above is needed by every game on the shelf, cartridges
+	 * too, not by discs alone: a ColecoVision game does not start without
+	 * the console's BIOS. From a `bios|tag|names` line, which also sets
+	 * disc_bios. */
+	bool bios_every;
 	/* How much clock its games get: "light" or "medium" caps the CPU, the
 	 * memory and the GPU for a system measured to keep its speed under that
 	 * ceiling, empty is full. From a `power|tag|level` line; sent to Diatom
@@ -72,8 +77,10 @@ typedef struct {
 	unsigned controller;
 	/* "dpad": the d-pad is the core's left analog stick, for a system its
 	 * games play with a stick and the device has none (Diatom's stick.h);
-	 * sent with RUN as stick=. Empty is the d-pad as the d-pad. From a
-	 * `stick|tag|dpad` line. */
+	 * "toggle": R2 turns the d-pad into the stick and back, for a system
+	 * whose games move with one or the other (the PSP's; src/main.c,
+	 * stick_get). Sent with RUN as stick=. Empty is the d-pad as the d-pad.
+	 * From a `stick|tag|dpad` or `stick|tag|toggle` line. */
 	char stick[8];
 } system_cfg;
 

@@ -362,7 +362,7 @@ EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 # and the ones over a game started fresh: a DS game in a new Game Language,
 # and a game whose resume the shelf's other core left
 for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
-              "corestate"):
+              "corestate", "stick_on", "stick_off"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
@@ -455,7 +455,7 @@ def run_language(code, shots, binary, keep):
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
-                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media"}
+                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media", "psp": Path(tmp) / "psp"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.media_card(cards["media"])
         R.ports_card(cards["ports"])
@@ -464,6 +464,7 @@ def run_language(code, shots, binary, keep):
         all_systems_card(cards["all"])
         R.scummvm_card(cards["scummvm"])
         R.openbor_card(cards["openbor"])
+        R.psp_card(cards["psp"])
         R.card_dirs(cards["empty"])
         out = (keep / code) if keep else Path(tmp) / "out"
         out.mkdir(parents=True, exist_ok=True)

@@ -8,7 +8,9 @@ Run: systemart-reduce.py KEY PART PHOTO --size 48x40 --url URL \\
      the same name; then systemart-draw.py styles the maps into GIFs)
 
 PHOTO is a real photo from Wikimedia Commons under public domain, CC0, CC BY
-or CC BY-SA; URL is its file page. The part's "## photo:" line names it, its
+or CC BY-SA; URL is its file page. A system with no hardware (a fantasy
+console, as the pack draws PICO-8 by its logo) takes its own logo from
+Commons instead, under MIT where that is the project's license (TIC-80's). The part's "## photo:" line names it, its
 author and its license, and its "## reduced:" line the options that made it.
 I rejected invented hardware (2026-11-04), so the map is the photo and
 nothing else: cropped (fractions of the photo's width and height, so any copy
@@ -32,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DRAWN = ROOT / "res/system-art/drawn"
 CHARS = "0123456789abcdefghijklmnopqrstuv"
 WORK = 16  # the backdrop is found at this many photo pixels per map pixel
-LICENSE = re.compile(r"Public domain|CC0( 1\.0)?|CC BY(-SA)? \d\.\d")
+LICENSE = re.compile(r"Public domain|CC0( 1\.0)?|CC BY(-SA)? \d\.\d|MIT")
 URL = re.compile(r"https://commons\.wikimedia\.org/wiki/File:\S+")
 
 
@@ -244,7 +246,7 @@ def main():
     if not re.fullmatch(r"[A-Z0-9_]{1,32}", args.key) or not re.fullmatch(r"[a-z]+", args.part):
         parser.error("KEY is A-Z, 0-9 and _; PART is a-z")
     if not LICENSE.fullmatch(args.license):
-        parser.error("the photo must be Public domain, CC0, CC BY x.y or CC BY-SA x.y")
+        parser.error("the photo must be Public domain, CC0, CC BY x.y, CC BY-SA x.y or MIT")
     if not URL.fullmatch(args.url) or "|" in args.author:
         parser.error("--url is a Commons file page; --author has no |")
     if args.backdrop and args.vignette:

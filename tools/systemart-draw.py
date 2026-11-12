@@ -65,6 +65,10 @@ RECIPES = {
               ("disc", 38, 38, False, ("keep", 1.15, 1.2), "")],
     "MUSE": [("body", 8, 12, True, ("ramp", "gray", 1.0), "fedc")],
     "J2ME": [("body", 8, 20, True, ("ramp", "slate", 0.9), "")],
+    "DOOM": [("logo", 2, 19, True, ("keep", 1.15, 1.1), "")],
+    "TIC80": [("body", 8, 9, True, ("keep", 1.0, 1.0), "")],
+    "COLECO": [("console", 9, 10, True, ("ramp", "slate", 0.7), ""),
+               ("pad", 4, 31, False, ("ramp", "slate", 0.7), "")],
     # Not shelves: the File Transfer page shows these beside the card's
     # folders (tools/systemart-reduce.py made their maps from the photos).
     "ROMS": [("body", 10, 11, True, ("ramp", "slate", 0.9), "")],

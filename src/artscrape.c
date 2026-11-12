@@ -146,6 +146,14 @@ static const struct { const char *folder, *remote, *remote2; } MAP[] = {
 	 * Floppy_DOS)"), so a folder finds its cover only when named that way. */
 	{ "ScummVM",              "ScummVM", NULL },
 	{ "Saturn",               "Sega - Saturn", NULL },
+	/* The four of 2026-11-12, under libretro-thumbnails' names (each one's
+	 * repository checked that day). Doom's are titled by the WAD's game
+	 * ("Doom II - Hell on Earth"), so a doom2.wad finds its cover only
+	 * when named that way. */
+	{ "PSP",                  "Sony - PlayStation Portable", NULL },
+	{ "ColecoVision",         "Coleco - ColecoVision", NULL },
+	{ "Doom",                 "DOOM", NULL },
+	{ "TIC-80",               "TIC-80", NULL },
 	/* PICO-8 is not here: the thumbnail server has no collection for it
 	 * (checked 2026-11-03), so its misses are reported as an unmapped
 	 * folder. Covers come from ROGUE's images (tools/from-rogue.sh
