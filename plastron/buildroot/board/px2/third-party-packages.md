@@ -53,6 +53,7 @@ the boot loader and the closed parts.
 | splash | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | sqlite | 3.51.3 | blessing | https://www.sqlite.org/2026 |
 | tzdata | 2026b | Public domain | https://www.iana.org/time-zones/repository/releases |
+| usbdrive | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | usbrole | 1.0 | GPL-3.0+ | plastron, https://github.com/ericreinsmidt/plastron |
 | util-linux | 2.41.4 | GPL-2.0+, BSD-4-Clause, LGPL-2.1+ (libblkid, libfdisk, libmount), BSD-3-Clause (libuuid), BSD-2-Clause (xxhash), ISC (rfkill), MIT (hardlink, flock) | https://cdn.kernel.org/pub/linux/utils/util-linux/v2.41 |
 | wireless-regdb | 2026.05.30 | ISC | https://cdn.kernel.org/pub/software/network/wireless-regdb |
