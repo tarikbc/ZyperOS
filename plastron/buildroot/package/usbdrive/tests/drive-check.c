@@ -11,6 +11,19 @@
 
 static int fails;
 
+/* A button with the gadget's counters read (sure) and nothing dirty: the
+ * question is the last write's age alone */
+static drv_act key(drv_keys *k, int which, bool down, unsigned now, bool wrote, unsigned last)
+{
+	return drv_key(k, which, down, drv_copying(true, wrote, now, last, 0));
+}
+
+/* drivestat counts bytes; these cases were written in 512-byte sectors */
+static bool step(dst_state *d, unsigned long long rd, unsigned long long wr, unsigned now)
+{
+	return dst_step(d, rd * 512, wr * 512, now);
+}
+
 /* A number as the page would show it, '.' for the mark */
 static const char *total(unsigned long long b)
 {
@@ -123,50 +136,50 @@ int main(void)
 
 		/* Both idle at the start */
 		memset(&d, 0, sizeof d);
-		CHECK(dst_step(&d, 1000, 5000, 10000), "the first look shows nothing");
+		CHECK(step(&d, 1000, 5000, 10000), "the first look shows nothing");
 		CHECK(!d.in.active && !d.out.active && d.in.total == 0 && d.out.total == 0, "the first look moved");
-		CHECK(!dst_step(&d, 1000, 5000, 11000), "nothing moved, but it changed");
+		CHECK(!step(&d, 1000, 5000, 11000), "nothing moved, but it changed");
 		/* To the card: 23.4 MB in a second, as sectors; a few reads with it */
-		CHECK(dst_step(&d, 1000 + 64, 5000 + 45703, 12000), "a copy did not change the page");
+		CHECK(step(&d, 1000 + 64, 5000 + 45703, 12000), "a copy did not change the page");
 		CHECK(d.in.active && !strcmp(rate(d.in.rate), "23.4 MB/s"), "in: %d %s", d.in.active, rate(d.in.rate));
 		CHECK(d.out.active && d.out.total == 64 * 512, "out with it: %d %llu", d.out.active, d.out.total);
 		CHECK(d.in.total == 45703ull * 512, "in total: %llu", d.in.total);
 		/* A second with nothing: both still moving at their last speed (a
 		 * pause between two files) */
-		CHECK(!dst_step(&d, 1064, 50703, 13000), "a pause redrew");
+		CHECK(!step(&d, 1064, 50703, 13000), "a pause redrew");
 		CHECK(d.in.active && !strcmp(rate(d.in.rate), "23.4 MB/s"), "a pause: %d %s", d.in.active,
 		      rate(d.in.rate));
 		/* Two seconds with nothing: idle at 0, the totals kept */
-		CHECK(dst_step(&d, 1064, 50703, 14000), "idle did not change the page");
+		CHECK(step(&d, 1064, 50703, 14000), "idle did not change the page");
 		CHECK(!d.in.active && d.in.rate == 0 && !d.out.active && d.out.rate == 0, "idle: %d %llu",
 		      d.in.active, d.in.rate);
 		CHECK(d.in.total == 45703ull * 512, "idle lost the total");
-		CHECK(!dst_step(&d, 1064, 50703, 15000), "idle redrew");
-		CHECK(!dst_step(&d, 1064, 50703, 60000), "idle redrew a minute on");
+		CHECK(!step(&d, 1064, 50703, 15000), "idle redrew");
+		CHECK(!step(&d, 1064, 50703, 60000), "idle redrew a minute on");
 		/* From the card alone: out moves, in stays idle */
-		dst_step(&d, 1064 + 2000, 50703, 61000);
+		step(&d, 1064 + 2000, 50703, 61000);
 		CHECK(d.out.active && !strcmp(rate(d.out.rate), "1.0 MB/s") && !d.in.active, "out alone: %d %s %d",
 		      d.out.active, rate(d.out.rate), d.in.active);
 		/* Both ways at once, each at its own speed */
-		dst_step(&d, 3064 + 9766, 50703 + 19532, 62000);
+		step(&d, 3064 + 9766, 50703 + 19532, 62000);
 		CHECK(d.in.active && d.out.active && !strcmp(rate(d.in.rate), "10.0 MB/s") &&
 		      !strcmp(rate(d.out.rate), "5.0 MB/s"), "both: %s %s", rate(d.in.rate), rate(d.out.rate));
 		/* A counter that goes back: a new start for it, nothing negative */
 		{
 			unsigned long long in = d.in.total, out = d.out.total;
 
-			dst_step(&d, 10, 20, 63000);
+			step(&d, 10, 20, 63000);
 			CHECK(d.in.total == in && d.out.total == out, "went back: %llu %llu", d.in.total, d.out.total);
-			dst_step(&d, 10 + 2, 20 + 2, 64000);
+			step(&d, 10 + 2, 20 + 2, 64000);
 			CHECK(d.in.total == in + 1024 && d.out.total == out + 1024, "after going back: %llu %llu",
 			      d.in.total - in, d.out.total - out);
 		}
 		/* The clock's wrap: a second is a second */
 		memset(&d, 0, sizeof d);
-		dst_step(&d, 0, 0, 0xfffffc00u);
-		dst_step(&d, 0, 1954, 0xfffffc00u + 1000u);
+		step(&d, 0, 0, 0xfffffc00u);
+		step(&d, 0, 1954, 0xfffffc00u + 1000u);
 		CHECK(!strcmp(rate(d.in.rate), "1.0 MB/s"), "across the wrap: %s", rate(d.in.rate));
-		dst_step(&d, 0, 1954, 0xfffffc00u + 3000u);
+		step(&d, 0, 1954, 0xfffffc00u + 3000u);
 		CHECK(!d.in.active, "idle across the wrap");
 	}
 
@@ -283,32 +296,32 @@ int main(void)
 	{
 		drv_keys k = { .level = 5, .max = 11 };
 
-		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 5,
+		CHECK(key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 5,
 		      "volume alone changed the brightness");
-		drv_key(&k, DRV_K_FN, true, 1000, false, 0);
-		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 6, "FN+up: %d", k.level);
-		CHECK(drv_key(&k, DRV_K_VOLUP, false, 1000, false, 0) == DRV_A_NONE, "a release did something");
-		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 5, "FN+down: %d", k.level);
+		key(&k, DRV_K_FN, true, 1000, false, 0);
+		CHECK(key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 6, "FN+up: %d", k.level);
+		CHECK(key(&k, DRV_K_VOLUP, false, 1000, false, 0) == DRV_A_NONE, "a release did something");
+		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_BRIGHT && k.level == 5, "FN+down: %d", k.level);
 		k.level = 11;
-		CHECK(drv_key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 11, "past the top");
+		CHECK(key(&k, DRV_K_VOLUP, true, 1000, false, 0) == DRV_A_NONE && k.level == 11, "past the top");
 		k.level = 0;
-		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE && k.level == 0, "past the bottom");
-		drv_key(&k, DRV_K_FN, false, 1000, false, 0);
-		CHECK(drv_key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE, "FN let go, still brightness");
+		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE && k.level == 0, "past the bottom");
+		key(&k, DRV_K_FN, false, 1000, false, 0);
+		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE, "FN let go, still brightness");
 		/* B: nothing written, or long ago: eject at once */
-		CHECK(drv_key(&k, DRV_K_B, true, 10000, false, 0) == DRV_A_EJECT, "B with nothing written did not eject");
-		CHECK(drv_key(&k, DRV_K_B, true, 10000, true, 10000 - DRV_ASK_MS) == DRV_A_EJECT, "B 5 s after a write asked");
+		CHECK(key(&k, DRV_K_B, true, 10000, false, 0) == DRV_A_EJECT, "B with nothing written did not eject");
+		CHECK(key(&k, DRV_K_B, true, 10000, true, 10000 - DRV_ASK_MS) == DRV_A_EJECT, "B 5 s after a write asked");
 		/* Written just now: asked; B keeps it, the page back */
-		CHECK(drv_key(&k, DRV_K_B, true, 10000, true, 9000) == DRV_A_ASK && k.asking, "B 1 s after a write: not asked");
-		CHECK(drv_key(&k, DRV_K_B, false, 10050, true, 9000) == DRV_A_NONE && k.asking, "B's release answered");
-		CHECK(drv_key(&k, DRV_K_B, true, 10500, true, 9000) == DRV_A_KEEP && !k.asking, "B on the question did not keep it");
+		CHECK(key(&k, DRV_K_B, true, 10000, true, 9000) == DRV_A_ASK && k.asking, "B 1 s after a write: not asked");
+		CHECK(key(&k, DRV_K_B, false, 10050, true, 9000) == DRV_A_NONE && k.asking, "B's release answered");
+		CHECK(key(&k, DRV_K_B, true, 10500, true, 9000) == DRV_A_KEEP && !k.asking, "B on the question did not keep it");
 		/* Asked again; A ejects */
-		CHECK(drv_key(&k, DRV_K_A, true, 11000, true, 9000) == DRV_A_NONE, "A with no question did something");
-		CHECK(drv_key(&k, DRV_K_B, true, 11000, true, 9000) == DRV_A_ASK, "not asked again");
-		CHECK(drv_key(&k, DRV_K_A, true, 11500, true, 9000) == DRV_A_EJECT && !k.asking, "A on the question did not eject");
+		CHECK(key(&k, DRV_K_A, true, 11000, true, 9000) == DRV_A_NONE, "A with no question did something");
+		CHECK(key(&k, DRV_K_B, true, 11000, true, 9000) == DRV_A_ASK, "not asked again");
+		CHECK(key(&k, DRV_K_A, true, 11500, true, 9000) == DRV_A_EJECT && !k.asking, "A on the question did not eject");
 		/* The clock's wrap: a write just before it is just now */
 		memset(&k, 0, sizeof k);
-		CHECK(drv_key(&k, DRV_K_B, true, 500, true, 0xfffffe00u) == DRV_A_ASK, "a write across the wrap");
+		CHECK(key(&k, DRV_K_B, true, 500, true, 0xfffffe00u) == DRV_A_ASK, "a write across the wrap");
 	}
 
 	/* bright.txt (at_parse_bright), read as untrusted */
@@ -338,11 +351,41 @@ int main(void)
 			CHECK(!at_parse_bright(BAD[i], 640, 480, &b), "a bad bright.txt taken: %zu", i);
 	}
 
+	/* B's question fails safe (drv_copying), and what it reads */
+	{
+		unsigned long long rc = 0, wc = 0;
+		unsigned long kb = 0;
+		drv_keys k = { .max = 11 };
+
+		/* The gadget's counters not readable: always asked, never skipped */
+		CHECK(drv_copying(false, false, 100000, 0, 0), "not sure, but not asked");
+		CHECK(drv_key(&k, DRV_K_B, true, drv_copying(false, false, 100000, 0, 0)) == DRV_A_ASK,
+		      "not sure: B ejected without asking");
+		CHECK(drv_key(&k, DRV_K_A, true, true) == DRV_A_EJECT, "A after the not-sure question");
+		/* Sure, nothing written, little dirty: B ejects; much dirty: asked */
+		CHECK(!drv_copying(true, false, 100000, 0, 1024), "1 MB dirty asked");
+		CHECK(drv_copying(true, false, 100000, 0, 1025), "past 1 MB dirty, not asked");
+		CHECK(drv_copying(true, true, 100000, 96000, 0), "a write 4 s ago, not asked");
+		CHECK(!drv_copying(true, true, 100000, 95000, 0), "a write 5 s ago asked");
+		/* /proc/<pid>/io, as the kernel writes it */
+		CHECK(dst_parse_io("rchar: 1234\nwchar: 56789\nsyscr: 0\nsyscw: 0\nread_bytes: 0\n"
+		                   "write_bytes: 4096\ncancelled_write_bytes: 0\n", &rc, &wc) &&
+		      rc == 1234 && wc == 56789, "io: %llu %llu", rc, wc);
+		CHECK(!dst_parse_io("rchar: 1\n", &rc, &wc), "io without wchar taken");
+		CHECK(!dst_parse_io("xrchar: 1\nxwchar: 2\n", &rc, &wc), "io with other names taken");
+		CHECK(!dst_parse_io("", &rc, &wc), "empty io taken");
+		/* /proc/meminfo's Dirty */
+		CHECK(drv_parse_dirty("MemTotal: 1000 kB\nDirty:            4160 kB\nWriteback: 0 kB\n", &kb) && kb == 4160,
+		      "dirty: %lu", kb);
+		CHECK(drv_parse_dirty("Dirty: 8 kB\n", &kb) && kb == 8, "dirty first: %lu", kb);
+		CHECK(!drv_parse_dirty("MemTotal: 1000 kB\nNotDirty: 5 kB\n", &kb), "no Dirty taken");
+	}
+
 	if (fails) {
 		fprintf(stderr, "usbdrive drive-check: %d failed\n", fails);
 		return 1;
 	}
 	printf("usbdrive drive-check: never exported mounted or held; ejected, unplugged (1.5 s), POWER, "
-	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas and bright.txt, read as untrusted; B's eject and its question; FN + volume\n");
+	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas and bright.txt, read as untrusted; B's eject and its question, failing safe; the gadget's counters; FN + volume\n");
 	return 0;
 }

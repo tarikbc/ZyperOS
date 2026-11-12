@@ -4,13 +4,19 @@
  * way, to the card (the computer writes) and from it (the computer reads),
  * whether it moves, how fast, and how much since the export began.
  *
- * The handheld sees blocks, not files: the games partition's /sys stat
- * (sectors read, field 3, and written, field 7, 512 bytes each whatever the
- * card's own block size). So each way says what its blocks say: moving
- * while its sectors move and for DST_IDLE_MS after (a pause between two
- * files keeps the last speed), then idle at 0; its speed over the last
- * look; its total. No time left: a block count cannot know how many files
- * are coming.
+ * The handheld sees blocks, not files. What moves is counted where the
+ * gadget serves it (2026-11-12): the bytes the f_mass_storage kernel thread
+ * ("file-storage") read and wrote, its /proc/<pid>/io rchar and wchar, as
+ * each USB command is served. The games partition's /sys stat, which this
+ * first read, counts a write only once the kernel writes its page cache to
+ * the card, up to dirty_expire (30 s) later: a copy that ended seconds ago
+ * read as nothing written, and B ejected without asking (measured on the
+ * Pixel 2: 4 MB written, the stat still flat at 30 s). The stat stays as a
+ * fallback when the thread cannot be read, and then B always asks
+ * (drive.h's drv_copying). Each way is moving while its bytes move and for
+ * DST_IDLE_MS after (a pause between two files keeps the last speed), then
+ * idle at 0; its speed over the last look; its total. No time left: a
+ * block count cannot know how many files are coming.
  *
  * A stat that goes back (a counter that wrapped, or a partition that came
  * back) is taken as a new start for that counter, never as a negative
@@ -41,16 +47,20 @@ typedef struct {
 
 typedef struct {
 	bool started;
-	unsigned long long rd0, wr0;     /* the sectors at the last look */
+	unsigned long long rd0, wr0;     /* the bytes at the last look */
 	unsigned last_ms;                /* the last look */
 	dst_way in, out;                 /* to the card (written), from it (read) */
 	char shown[168];                 /* what the page shows, to see a change */
 } dst_state;
 
-/* One look: the stat's sectors read and written, at now_ms. True when what
- * the page shows changed (a way's state, speed or total, as tokens). */
-bool dst_step(dst_state *s, unsigned long long rd_sectors, unsigned long long wr_sectors,
-              unsigned now_ms);
+/* One look: the bytes read from the card and written to it so far, at
+ * now_ms. True when what the page shows changed (a way's state, speed or
+ * total, as tokens). */
+bool dst_step(dst_state *s, unsigned long long rd_bytes, unsigned long long wr_bytes, unsigned now_ms);
+
+/* A task's /proc/<pid>/io read: its rchar and wchar. False when either is
+ * missing. */
+bool dst_parse_io(const char *text, unsigned long long *rchar, unsigned long long *wchar);
 
 /* The tokens of a number on the page */
 enum {
