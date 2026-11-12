@@ -24,8 +24,9 @@ written to match. Change a term here first, then everywhere it is used.
 - **Never translated:** ZyperOS, Zyper, Diatom, Muse, MP4 (the video
   player's name), PortMaster, RetroAchievements, ScreenScraper, SteamGridDB,
   Wi-Fi, Bluetooth, USB, SSH, PIN, Linux, macOS, Windows, system names
-  (Game Boy, SNES, PlayStation...), core names, game names, file and folder
-  names on the card (Roms, BIOS), and URLs.
+  (Game Boy, SNES, PlayStation...), core names, shader names
+  (Sharp-Shimmerless), game names, file and folder names on the card (Roms,
+  BIOS), and URLs.
 - **Button names as printed on the handheld, never translated:** A, B, X, Y,
   L1, R1, L2, R2, START, SELECT, MENU, VOL+, VOL-, POWER. The d-pad's
   directions are not printed, so they are translated, in capitals where
@@ -122,6 +123,7 @@ written to match. Change a term here first, then everywhere it is used.
 | Reset / Quit | 重置 / 退出 | Reiniciar / Salir | Reiniciar / Sair | Réinitialiser / Quitter | Neustart / Beenden | リセット / 終了 | Riavvia / Esci |
 | Play / Resume | 开始 / 继续 | Jugar / Continuar | Jogar / Continuar | Jouer / Reprendre | Spielen / Fortsetzen | プレイ / 再開 | Gioca / Riprendi |
 | Display (in-game) | 画面 | Pantalla | Tela | Affichage | Anzeige | 画面 | Schermo |
+| Shader (in-game, a system's menu, MENU) | 着色器 | Shader | Shader | Shader | Shader | シェーダー | Shader |
 | Controls | 按键说明 | Controles | Controles | Commandes | Steuerung | 操作方法 | Comandi |
 | Achievements (the row and its page) | 成就 | Logros | Conquistas | Succès | Erfolge | 実績 | Obiettivi |
 | Favorites | 收藏 | Favoritos | Favoritos | Favoris | Favoriten | お気に入り | Preferiti |

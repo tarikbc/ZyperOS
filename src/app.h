@@ -34,6 +34,9 @@ typedef struct {
 	 * whatever sits at index 0 is what an untouched card plays at - see the
 	 * note on DMODES itself. */
 	int dmode;
+	/* Index into SHADERS, this system's: its own choice, or the one MENU set
+	 * for every system (shader_load). Zero is Off. */
+	int shader;
 	/* Index into SORTS. Zero is by name, which is what every shelf was
 	 * before this existed and what an untouched one still is. On Muse's
 	 * shelf an ml_order instead, whose zero is by artist. */
@@ -88,6 +91,25 @@ static const struct { const char *name, *label; str_id text; } DMODES[] = {
 static inline const char *dmode_label(int k)
 {
 	return T(DMODES[k >= 0 && k < DMODE_COUNT ? k : 0].text);
+}
+
+/* The shaders the Shader rows offer, in their order: Off first, and Off is
+ * the default, today's picture at today's cost. `name` is Diatom's filter
+ * (SETDISPLAY filter=, its src/scale.c diatom_filters), so Off is its
+ * nearest. Kept per system as shader.<TAG> beside display.<TAG>, and for
+ * every system as `shader`, what MENU's row sets (shader_load). One more is
+ * a row here, a string, and Diatom's filter of that name: an LCD grid or a
+ * CRT. */
+static const struct { const char *name; str_id text; } SHADERS[] = {
+	{ "nearest",     S_MENU_OFF_TITLE              },
+	{ "shimmerless", S_GAMEMENU_SHADER_SHIMMERLESS },
+};
+#define SHADER_COUNT ((int)(sizeof SHADERS / sizeof SHADERS[0]))
+
+/* Shader k's label in the language that is on; past the ends, Off's */
+static inline const char *shader_label(int k)
+{
+	return T(SHADERS[k >= 0 && k < SHADER_COUNT ? k : 0].text);
 }
 
 typedef struct {

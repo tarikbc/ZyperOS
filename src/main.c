@@ -291,15 +291,37 @@ static const ds_rgb DIATOM_PAGE = { 0, 0, 0 };
 
 /* ---------- per-system display mode --------------------------------------- */
 
+/* MENU's shader, every system's that has not chosen its own (SHADERS) */
+static int g_shader_all;
+
+/* A shader by Diatom's name for it (SHADERS), or -1 */
+static int shader_index(const char *name)
+{
+	int k;
+
+	for (k = 0; k < SHADER_COUNT; k++)
+		if (!strcmp(SHADERS[k].name, name)) return k;
+	return -1;
+}
+
 /* Keyed on the system's tag rather than its folder or its place in the list,
  * for the same reason saves are: renaming a ROM folder or reordering
- * systems.cfg then cannot quietly hand a system somebody else's setting. */
+ * systems.cfg then cannot quietly hand a system somebody else's setting.
+ * The shaders too, each system's: its own shader.<TAG>, else MENU's
+ * `shader`, else Off. */
 void display_load(app *a)
 {
 	char key[CFG_STR + 16], name[CFG_STR];
 	int i, k;
 
+	g_shader_all = 0;
+	if (db_get_str(db_dev(), "shader", name, sizeof name, NULL) && (k = shader_index(name)) >= 0)
+		g_shader_all = k;
 	for (i = 0; i < a->sys.count; i++) {
+		snprintf(key, sizeof key, "shader.%s", a->sys.systems[i].tag);
+		a->view[i].shader = g_shader_all;
+		if (db_get_str(db_dev(), key, name, sizeof name, NULL) && (k = shader_index(name)) >= 0)
+			a->view[i].shader = k;
 		snprintf(key, sizeof key, "display.%s", a->sys.systems[i].tag);
 		if (!db_get_str(db_dev(), key, name, sizeof name, NULL)) continue;
 		for (k = 0; k < DMODE_COUNT; k++)
@@ -328,6 +350,59 @@ static void display_save(app *a)
 		snprintf(key, sizeof key, "display.%s", a->sys.systems[i].tag);
 		db_set_str(db_dev(), key, DMODES[a->view[i].dmode].name);
 	}
+}
+
+/* ---------- the shader ------------------------------------------------------ */
+
+/* System `sys`'s own shader, kept the moment it changes, as its display mode
+ * is: the system menu's row and the in-game menu's. */
+static void shader_save(app *a, int sys)
+{
+	char key[CFG_STR + 16];
+
+	snprintf(key, sizeof key, "shader.%s", a->sys.systems[sys].tag);
+	db_set_str(db_dev(), key, SHADERS[a->view[sys].shader].name);
+}
+
+/* Every key a system's own shader is kept under, gathered before any goes:
+ * a walk is not the place to delete what it walks */
+typedef struct { char key[CFG_MAX_SYSTEMS * 2][CFG_STR + 16]; int n; } shader_keys;
+
+static bool shader_key_note(const char *key, const char *value, void *ctx)
+{
+	shader_keys *k = ctx;
+
+	(void)value;
+	if (k->n >= (int)(sizeof k->key / sizeof k->key[0])) return false;
+	snprintf(k->key[k->n++], sizeof k->key[0], "%s", key);
+	return true;
+}
+
+/* MENU's row: shader `k` for every system, those whose games are off the card
+ * now too, so each system's own choice goes and the next game of any of them
+ * plays with it. */
+static void shader_set_all(app *a, int k)
+{
+	static shader_keys keys;
+	int i;
+
+	g_shader_all = k;
+	db_set_str(db_dev(), "shader", SHADERS[k].name);
+	keys.n = 0;
+	db_each_prefix(db_dev(), "shader.", shader_key_note, &keys);
+	for (i = 0; i < keys.n; i++) db_del(db_dev(), keys.key[i]);
+	for (i = 0; i < a->sys.count; i++) a->view[i].shader = k;
+}
+
+/* What MENU's row says: the shader every system has, or "per system" when one
+ * of them chose another in its own menu or in a game */
+static const char *shader_all_label(const app *a)
+{
+	int i;
+
+	for (i = 0; i < a->sys.count; i++)
+		if (a->view[i].shader != g_shader_all) return T(S_GAMEMENU_SHADER_MIXED);
+	return shader_label(g_shader_all);
 }
 
 /* ---------- per-system core ----------------------------------------------- */
@@ -6425,6 +6500,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.fav        = !u.muse && sc->core[0] == '\0' && sc->folder[0] == '\0';
 		u.game_count = a->view[sys].list.count;
 		u.dmode      = dmode_label(a->view[sys].dmode);
+		u.shader     = shader_label(a->view[sys].shader);
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
 		u.muse_all   = u.muse && muse_kind_shown() == ML_ALL;
@@ -6447,6 +6523,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 		}
 		u.storage = storage_menu_value();
 		u.appearance = appearance_name(theme_appearance());
+		u.shader_all = shader_all_label(a);
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
 		u.battery = g_batt_mode == BATT_TIME ? T(S_PANEL_BATTERY_TIME)
@@ -12896,6 +12973,22 @@ static int menu_shelf_width(app *a)
 
 	n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
 	w = menu_measure(rows, n, heading);
+	/* MENU's Shader at each of its values, "per system" too, so stepping it
+	 * does not resize the panel under it */
+	for (k = 0; k < n; k++)
+		if (rows[k].label == T(S_GAMEMENU_SHADER)) break;
+	if (k < n) {
+		const char *keep = rows[k].value;
+		int j;
+
+		for (j = 0; j <= SHADER_COUNT; j++) {
+			int mw;
+			rows[k].value = j < SHADER_COUNT ? shader_label(j) : T(S_GAMEMENU_SHADER_MIXED);
+			mw = menu_measure(rows, n, heading);
+			if (mw > w) w = mw;
+		}
+		rows[k].value = keep;
+	}
 
 	/* Every value that can be cycled on this menu, at its widest, so the
 	 * panel does not resize under the row being cycled. Sort By joined
@@ -12911,6 +13004,7 @@ static int menu_shelf_width(app *a)
 		bool own  = muse || a->view[i].owner;
 		int  srow = own ? 1 : sm_pos(a, i, SM_SORT), show = -1;
 		int  drow = own ? -1 : sm_pos(a, i, SM_DISPLAY);
+		int  hrow = own ? -1 : sm_pos(a, i, SM_SHADER);
 		int  crow = own ? -1 : sm_pos(a, i, SM_CORE);
 		int  lrow = own ? -1 : sm_pos(a, i, SM_DSLANG);
 
@@ -12941,6 +13035,14 @@ static int menu_shelf_width(app *a)
 			if (mw > w) w = mw;
 		}
 		if (drow >= 0) rows[drow].value = dmode_label(0);
+		/* And each shader, for the same reason */
+		for (k = 0; hrow >= 0 && k < SHADER_COUNT; k++) {
+			int mw;
+			rows[hrow].value = shader_label(k);
+			mw = menu_measure(rows, n, heading);
+			if (mw > w) w = mw;
+		}
+		if (hrow >= 0) rows[hrow].value = shader_label(0);
 		/* And each core a shelf can choose, for the same reason. */
 		if (crow >= 0 && cfg_core_count(&a->sys.systems[i]) > 1) {
 			char alt[CFG_STR], lb[CFG_STR];
@@ -16286,6 +16388,16 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			db_set_str(db_dev(), DSLANG_SETTING, dslang_id(c));
 			return MENU_STAY;
 		}
+		/* The shader, stepped round on left, right and A and kept at once,
+		 * for this system alone: its next game plays with it. MENU's row
+		 * sets every system's. */
+		if ((d || key == IN_ACCEPT) && sel == SM_SHADER) {
+			sysview *v = &a->view[a->sys_cursor];
+
+			v->shader = (v->shader + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT;
+			shader_save(a, a->sys_cursor);
+			return MENU_STAY;
+		}
 		/* Display mode, saved the moment it changes because there is no
 		 * confirm step to hang the write off. */
 		if (d && sel == SM_DISPLAY) {
@@ -16449,6 +16561,14 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		db_set_str(db_dev(), "appearance", appearance_id(k));
 		boot_theme_changed();
 		if (theme_index() != was) theme_changed(a);
+		return MENU_CHANGED;
+	}
+
+	/* The shader for every system, stepped round with A going forward:
+	 * kept as MENU's, and each system's own choice goes with it
+	 * (shader_set_all). From "per system" a step goes on from MENU's last. */
+	if (sel == PM_SHADER && (d || key == IN_ACCEPT)) {
+		shader_set_all(a, (g_shader_all + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT);
 		return MENU_CHANGED;
 	}
 
@@ -16973,6 +17093,20 @@ static void gm_cycle_display(app *a, int d)
 	plat_resident_sync_rect(150);
 }
 
+/* The shader the same way, the owner's too: kept for the system and sent to
+ * the game, which draws with it from the frame after Continue. The paused
+ * picture under the menu is the core's frame, drawn by this process, so it
+ * does not change; Diatom's DISPLAY answer is read off as Display's is. */
+static void gm_cycle_shader(app *a, int d)
+{
+	sysview *v = owner_view(a);
+
+	v->shader = (v->shader + d + SHADER_COUNT) % SHADER_COUNT;
+	shader_save(a, (int)(v - a->view));
+	plat_resident_line("SETDISPLAY\tfilter=%s", SHADERS[v->shader].name);
+	plat_resident_sync_rect(150);
+}
+
 /* What the in-game menu needs from the app, handed to gm_rows to become rows.
  * Same split as everywhere else. */
 /* What the in-game menu shows, gathered: for its rows, and for where each
@@ -16983,6 +17117,8 @@ static void gm_gather(app *a, gm_ui *out)
 
 	memset(&u, 0, sizeof u);
 	u.dmode  = dmode_label(a->view[a->sys_cursor].dmode);
+	/* The owner's, which is the one its row sets (gm_cycle_shader) */
+	u.shader = shader_label(owner_view(a)->shader);
 	u.earned = chv_earned();
 	u.total  = chv_count();
 	u.screens = g_game_dual;
@@ -19741,6 +19877,17 @@ static int gm_width(app *a)
 		if (mw > w) w = mw;
 	}
 	if (disp >= 0) rows[disp].value = dmode_label(0);
+	/* Shader, at each, for the same reason */
+	{
+		int sh = gm_row_at(&u, GM_SHADER);
+
+		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
+			int mw;
+			rows[sh].value = shader_label(k);
+			mw = menu_measure(rows, n, NULL);
+			if (mw > w) w = mw;
+		}
+	}
 	/* An N64 game's Pak, at each */
 	{
 		int pk = gm_row_at(&u, GM_PAK);
@@ -19752,7 +19899,7 @@ static int gm_width(app *a)
 			if (mw > w) w = mw;
 		}
 	}
-	/* A DS game's Screens row, right under Display, at each layout. */
+	/* A DS game's Screens row, right under Shader, at each layout. */
 	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
 		int mw;
 		rows[scr].value = gm_layout_label(k);
@@ -19880,6 +20027,11 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	 * into it. */
 	if (sel == GM_DISPLAY && (key == IN_LEFT || key == IN_RIGHT)) {
 		gm_cycle_display(a, key == IN_RIGHT ? 1 : -1);
+		return MENU_STAY;
+	}
+	/* The shader, on left, right and A, sent to the game the same way */
+	if (sel == GM_SHADER && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		gm_cycle_shader(a, key == IN_LEFT ? -1 : 1);
 		return MENU_STAY;
 	}
 	/* The quick slot steps round 1 to 6 on left, right and A, kept for the
@@ -20512,12 +20664,12 @@ static void launch(app *a)
 	char set[LIB_PATH * 2];
 	int  console = 0;
 	bool first_play = false;
-	/* 18 fixed entries plus NULL, seven more for a DS game's two screens,
-	 * then two per core option. Sized off the loader's own cap so the two
-	 * cannot drift apart: the previous 20 was already 18 full, and a silent
-	 * bound check would have dropped every option rather than failing
-	 * loudly. */
-	char *argv[27 + 2 * 32];
+	/* 20 fixed entries (the shader's two since 1.0.5) plus NULL, seven more
+	 * for a DS game's two screens, then two per core option. Sized off the
+	 * loader's own cap so the two cannot drift apart: the previous 20 was
+	 * already 18 full, and a silent bound check would have dropped every
+	 * option rather than failing loudly. */
+	char *argv[29 + 2 * 32];
 	bool resident = false, want_menu;
 	/* A DS game's resume by its language (ds_resume_fresh): what it will
 	 * run in, whether it starts fresh, and its auto state as it was */
@@ -20775,9 +20927,11 @@ static void launch(app *a)
 			 * mode is Diatom's own global and survives from the last game, so
 			 * a system that has never been set would otherwise inherit
 			 * whatever the previous one chose. Ordered on the same socket, so
-			 * it lands before the first frame. */
-			plat_resident_line("SETDISPLAY\tmode=%s",
-			                   DMODES[a->view[o].dmode].name);
+			 * it lands before the first frame. The shader with it, Diatom's
+			 * global as well. */
+			plat_resident_line("SETDISPLAY\tmode=%s\tfilter=%s",
+			                   DMODES[a->view[o].dmode].name,
+			                   SHADERS[a->view[o].shader].name);
 			/* The DS layout, for the same reason and in the same place: the
 			 * layout is Diatom's own global too. */
 			if (g_game_dual) {
@@ -20935,6 +21089,8 @@ static void launch(app *a)
 		argv[n++] = (char *)"--system";          argv[n++] = bios;
 		argv[n++] = (char *)"--display";
 		argv[n++] = (char *)DMODES[a->view[o].dmode].name;
+		argv[n++] = (char *)"--filter";
+		argv[n++] = (char *)SHADERS[a->view[o].shader].name;
 		/* The channels too: this path is rare, but a player who hears with
 		 * one ear should not lose half a game to it. It plays on the codec,
 		 * so the cable decides between headphones and the speaker. */

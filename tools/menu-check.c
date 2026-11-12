@@ -373,6 +373,20 @@ static void look_rows(void)
 	sys_menu_build(&u, rows, &b, &heading);
 	ck(!strcmp(val(&rows[PM_APPEARANCE]), "Light"), "and with none it reads Light, the default");
 
+	/* Shader, every system's (2026-11-12): after Achievements, above
+	 * Controls, which Scraper's and Controls' places above and below keep.
+	 * Off with none said; the shader's name, or "per system", as given. */
+	printf("MENU's Shader row:\n");
+	ck(PM_SHADER == PM_ACHIEVEMENTS + 1 && PM_CONTROLS == PM_SHADER + 1,
+	   "Shader sits under Achievements, above Controls");
+	ck(!strcmp(rows[PM_SHADER].label, "Shader") && !strcmp(val(&rows[PM_SHADER]), "Off") &&
+	   rows[PM_SHADER].live, "Shader, Off when nothing is said, a stop");
+	ck(b.sound[PM_SHADER] == MENU_SND_RING, "it steps round, on A too");
+	u.shader_all = "per system";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[PM_SHADER]), "per system"), "and says what it is given");
+	u.shader_all = NULL;
+
 	/* The system menu is about a system, not about the look of the shelf */
 	memset(&u, 0, sizeof u);
 	u.games = true;
@@ -721,6 +735,16 @@ static void system_menu(void)
 	ck(!strcmp(val(&rows[sm_at(&u, SM_GAMES)]), "412"), "the count is the real one");
 	ck(!strcmp(val(&rows[sm_at(&u, SM_CORE)]), "gambatte"), "the core is the real one");
 	ck(!strcmp(val(&rows[sm_at(&u, SM_DISPLAY)]), "Sharp"), "display mode is passed through");
+	ck(sm_at(&u, SM_SHADER) == sm_at(&u, SM_DISPLAY) + 1 &&
+	   !strcmp(rows[sm_at(&u, SM_SHADER)].label, "Shader") &&
+	   !strcmp(val(&rows[sm_at(&u, SM_SHADER)]), "Off") && rows[sm_at(&u, SM_SHADER)].live,
+	   "Shader right after Display Mode, Off when nothing is said, a stop");
+	ck(b.sound[sm_at(&u, SM_SHADER)] == MENU_SND_RING, "and it steps round, on A too");
+	u.shader = "Sharp-Shimmerless";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[sm_at(&u, SM_SHADER)]), "Sharp-Shimmerless"), "the shader is passed through");
+	u.shader = NULL;
+	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(rows[sm_at(&u, SM_DISPLAY)].live && rows[sm_at(&u, SM_RESCAN)].live, "the two live rows are live");
 	ck(!rows[sm_at(&u, SM_GAMES)].live && !rows[sm_at(&u, SM_CORE)].live, "reported facts are not rows to press");
 	ck(rows[sm_at(&u, SM_BOXART)].live, "Box Art is live on a network");
@@ -1026,9 +1050,10 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 5, "five rows, not eight");
+	ck(k == 6, "six rows, not nine");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
 	ck(holds(got, k, sm_at(&u, SM_DISPLAY)), "Display Mode");
+	ck(holds(got, k, sm_at(&u, SM_SHADER)), "Shader");
 	/* Live since sorting stopped being alphabetical-only. It was a
 	 * placeholder for long enough that this check counted three. */
 	ck(holds(got, k, sm_at(&u, SM_SORT)), "Sort By");
@@ -1490,7 +1515,7 @@ static void ingame_rows(void)
 	n = gm_rows(&u, rows, &b);
 
 	printf("in-game menu, a game with a set:\n");
-	ck(n == GM_ROWS, "nine rows");
+	ck(n == GM_ROWS, "ten rows");
 	ck(!strcmp(rows[GM_CONTINUE].label, "Continue"), "Continue leads");
 	/* The quick slot right after Load (2026-11-07): the slot SELECT+R1 and
 	 * SELECT+L1 use, its number at the right, stepped round like Display */
@@ -1498,10 +1523,15 @@ static void ingame_rows(void)
 	   "Quick Slot right after Load");
 	ck(!strcmp(val(&rows[GM_QUICK]), "2") && rows[GM_QUICK].live,
 	   "and says the slot, a stop");
-	/* Controls right after Display (2026-11-06): a page to read,
-	 * so it is always a stop and says nothing at the right */
-	ck(!strcmp(rows[GM_DISPLAY + 1].label, "Controls") && GM_CONTROLS == GM_DISPLAY + 1,
-	   "Controls right after Display");
+	/* Shader right after Display (2026-11-12), Off with no shader said,
+	 * stepped round like Display; then Controls (2026-11-06), a page to
+	 * read, so it is always a stop and says nothing at the right */
+	ck(!strcmp(rows[GM_DISPLAY + 1].label, "Shader") && GM_SHADER == GM_DISPLAY + 1,
+	   "Shader right after Display");
+	ck(!strcmp(val(&rows[GM_SHADER]), "Off") && rows[GM_SHADER].live,
+	   "and says Off when no shader is given, a stop");
+	ck(!strcmp(rows[GM_SHADER + 1].label, "Controls") && GM_CONTROLS == GM_SHADER + 1,
+	   "Controls right after Shader");
 	ck(rows[GM_CONTROLS].live && !rows[GM_CONTROLS].value, "and opens with A, no value");
 	ck(!strcmp(val(&rows[GM_DISPLAY]), "Native"), "Display carries the mode");
 	ck(!strcmp(val(&rows[GM_CHEEVOS]), "12 / 40"), "Achievements counts the set");
@@ -1546,7 +1576,7 @@ static void ingame_rows(void)
 	u.earned = 12; u.total = 40; u.quick = 0;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a system with no save states:\n");
-	ck(n == GM_ROWS - 1, "eight rows, no Quick Slot");
+	ck(n == GM_ROWS - 1, "nine rows, no Quick Slot");
 	ck(gm_row_at(&u, GM_QUICK) == -1 && gm_row_at(&u, GM_DISPLAY) == GM_DISPLAY - 1 &&
 	   !strcmp(rows[gm_row_at(&u, GM_DISPLAY)].label, "Display"),
 	   "Display a row up, where gm_row_at says");
@@ -1563,16 +1593,17 @@ static void ingame_rows(void)
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a game with two screens:\n");
-	ck(n == GM_MAX_ROWS - 1, "twelve rows: every row but the N64's Pak");
+	ck(n == GM_MAX_ROWS - 1, "thirteen rows: every row but the N64's Pak");
 	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_QUICK && ids[4] == GM_DISPLAY &&
-	   ids[5] == GM_SCREENS && ids[6] == GM_SWAP && ids[7] == GM_STYLUS &&
-	   ids[8] == GM_CONTROLS && ids[9] == GM_CHEEVOS && ids[11] == GM_QUIT,
-	   "Screens, Swap Screens and Stylus right after Display, then Controls");
-	ck(!strcmp(rows[5].label, "Screens") && !strcmp(val(&rows[5]), "Top Focus"),
+	   ids[5] == GM_SHADER && ids[6] == GM_SCREENS && ids[7] == GM_SWAP &&
+	   ids[8] == GM_STYLUS && ids[9] == GM_CONTROLS && ids[10] == GM_CHEEVOS &&
+	   ids[12] == GM_QUIT,
+	   "Screens, Swap Screens and Stylus right after Display and Shader, then Controls");
+	ck(!strcmp(rows[6].label, "Screens") && !strcmp(val(&rows[6]), "Top Focus"),
 	   "Screens says the layout");
-	ck(!strcmp(val(&rows[6]), "on") && !strcmp(val(&rows[7]), "off"),
+	ck(!strcmp(val(&rows[7]), "on") && !strcmp(val(&rows[8]), "off"),
 	   "Swap Screens and Stylus say on or off, lowercase like any status");
-	ck(!strcmp(rows[9].label, "Achievements") && !strcmp(val(&rows[9]), "12 / 40"),
+	ck(!strcmp(rows[10].label, "Achievements") && !strcmp(val(&rows[10]), "12 / 40"),
 	   "Achievements moves down with its value");
 	k = reachable(rows, n, got, GM_MAX_ROWS - 1);
 	ck(k == GM_MAX_ROWS - 1, "every row is a stop");
@@ -1583,15 +1614,20 @@ static void ingame_rows(void)
 
 	u.screens = false;
 	ck(gm_row_ids(&u, ids) == GM_ROWS && ids[GM_CHEEVOS] == GM_CHEEVOS,
-	   "and any other game keeps nine, each its own id");
+	   "and any other game keeps ten, each its own id");
 
 	/* A Nintendo 64 game: its Pak, right before Controls, saying which */
 	u.pak = gm_pak_name("rumble");
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a Nintendo 64 game:\n");
-	ck(n == GM_ROWS + 1, "ten rows");
-	ck(gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_DISPLAY) + 1 &&
-	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PAK) + 1, "Pak between Display and Controls");
+	ck(n == GM_ROWS + 1, "eleven rows");
+	ck(gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_SHADER) + 1 &&
+	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PAK) + 1, "Pak between Shader and Controls");
+	u.shader = "Sharp-Shimmerless";
+	n = gm_rows(&u, rows, &b);
+	ck(!strcmp(val(&rows[gm_row_at(&u, GM_SHADER)]), "Sharp-Shimmerless"),
+	   "Shader says the shader it is given");
+	u.shader = NULL;
 	ck(!strcmp(rows[gm_row_at(&u, GM_PAK)].label, "Pak") &&
 	   !strcmp(val(&rows[gm_row_at(&u, GM_PAK)]), "Rumble Pak"), "Pak says Rumble Pak");
 	k = reachable(rows, n, got, GM_ROWS + 1);
@@ -1978,17 +2014,18 @@ static void row_sounds(void)
 	}
 
 	/* The in-game menu's Display steps on A as well as left and right
-	 * (gm_key's GM_DISPLAY), so A is accept there, not deny. */
+	 * (gm_key's GM_DISPLAY), so A is accept there, not deny. Shader too. */
 	g.dmode = "Native"; g.screens = true; g.quick = 3;
 	n = gm_rows(&g, gr, &gb);
 	gm_row_ids(&g, ids);
 	for (i = 0; i < n; i++) {
-		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_QUICK || ids[i] == GM_SCREENS ||
-		                ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
+		unsigned want = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
+		                ids[i] == GM_SCREENS || ids[i] == GM_SWAP || ids[i] == GM_STYLUS ||
+		                ids[i] == GM_PAK
 		                ? MENU_SND_RING : 0;
 
 		ck(menu_sound_at(gb.sound, n, i) == want,
-		   "in-game: Display, Quick Slot and the screens' rows step round, on A too; the rest plain");
+		   "in-game: Display, Shader, Quick Slot and the screens' rows step round, on A too; the rest plain");
 	}
 
 	/* The Wi-Fi screen's rows are networks, named by whoever runs them, and

@@ -89,7 +89,7 @@ typedef enum {
 	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_USB, PM_CLOCK,
 	PM_HOURS, PM_LANGUAGE,
 	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
-	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
+	PM_SHADER, PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
 } pm_row;
 
 /* Random Game is under Games: one of the games that row counts, picked and
@@ -101,7 +101,7 @@ typedef enum {
  * so these are hooks waiting to be wired, not wishes. */
 typedef enum {
 	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT,
-	SM_DISPLAY, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
+	SM_DISPLAY, SM_SHADER, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
 /* What the Favorites shelf's menu is, which is two of those rows.
@@ -275,6 +275,10 @@ typedef struct {
 	 * is the clock's to say. NULL reads Light, the default. A label and not
 	 * an enum, as cards and dmode are, so this file need not link theme.c. */
 	const char *appearance;
+	/* Shader, for every system (src/app.h SHADERS): Off, a shader's name, or
+	 * "per system" when systems differ. NULL reads Off. A label, for the
+	 * reason appearance is one. */
+	const char *shader_all;
 	const char *home;       /* Spotlight (default) or Gallery */
 	/* System Order, under Home Screen: "A to Z" (default, NULL reads it) or
 	 * "Release Date", systems.cfg's order (2026-11-06) */
@@ -325,6 +329,8 @@ typedef struct {
 	const char *dslang;
 	int         game_count;
 	const char *dmode;
+	/* This system's shader's label, after Display Mode; NULL reads Off */
+	const char *shader;
 	/* The label of the shelf's sort order. A label rather than an index for
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */
