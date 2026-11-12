@@ -44,7 +44,8 @@ fake08 fake08- build-fake08.sh
 flycast2021 flycast2021- build-flycast2021.sh
 freej2me_plus freej2me-plus- build-freej2me.sh
 mupen64plus_next mupen64plus-next- build-mupen64plus-next.sh
-parallel_n64 parallel-n64- build-parallel-n64.sh'
+parallel_n64 parallel-n64- build-parallel-n64.sh
+tic80 tic80- build-tic80.sh'
 
 die() { echo "core-stamp: $*" >&2; exit 1; }
 

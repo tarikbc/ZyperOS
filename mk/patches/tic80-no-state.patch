@@ -1,0 +1,19 @@
+diff --git a/src/system/libretro/tic80_libretro.c b/src/system/libretro/tic80_libretro.c
+index f03f20d..bc147ce 100644
+--- a/src/system/libretro/tic80_libretro.c
++++ b/src/system/libretro/tic80_libretro.c
+@@ -1294,7 +1294,13 @@ RETRO_API bool retro_load_game_special(unsigned type, const struct retro_game_in
+  */
+ size_t retro_serialize_size(void)
+ {
+-    return TIC_PERSISTENT_SIZE * sizeof(u32);
++    /* ZyperOS: no save states. What this core serializes is the cart's
++     * persistent memory alone, which the frontend already keeps as the save
++     * RAM (retro_get_memory_data), and a "state" of it restores no game: a
++     * frontend that saw a state size offered Save, Load and a resume point
++     * that all started the cart over. 0 says there is no state, as ScummVM's
++     * core does. */
++    return 0;
+ }
+ 
+ /**
