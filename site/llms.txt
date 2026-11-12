@@ -12,7 +12,7 @@
 - [Building ZyperOS](https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md): how to build the card image from source, for developers.
 
 ## What it does
-- Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers; search and Random Game.
+- Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers or a list, in the folders you made on the card; search and Random Game.
 - A first-start tutorial that teaches each button and asks for the theme, home screen, button sounds and menu music.
 - Box art fetched on the handheld from libretro, ScreenScraper and SteamGridDB, and video previews on the shelf.
 - RetroAchievements, signed in on the device, working offline after the first download.

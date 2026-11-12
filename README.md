@@ -110,6 +110,11 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
     <td align="center"><img src="res/readme/info.png" width="240" alt="Metal Gear Solid's details: Synopsis, Year, Genre, Achievements, Favorite, Cover and Video"><br><sub>A game's details, one button away</sub></td>
     <td align="center"><img src="res/readme/menu.png" width="240" alt="The ZyperOS menu, Search Games at the top"><br><sub>The device's settings in one menu</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="res/readme/folders.png" width="240" alt="The Game Boy Advance shelf: the folder Commercial Owned as a pixel folder with 4 on its label, Friends Games beside it, 4 games under its name"><br><sub>Your folders, as you made them</sub></td>
+    <td align="center"><img src="res/readme/list.png" width="240" alt="The Game Boy Advance shelf as a list: four folders with their counts, then the games, each with a small card, the focused folder's card on the right"><br><sub>Or a list, per system</sub></td>
+    <td align="center"><img src="res/readme/list-inside.png" width="240" alt="Inside the folder Commercial Owned as a list: Golden Sun focused, its box art on the right, B Back"><br><sub>A folder open, its covers beside it</sub></td>
+  </tr>
 </table>
 
 <sub>The shots show real box art to show what the Scraper does. The games and their art belong to their owners: ZyperOS comes with no games and no art.</sub>
@@ -127,6 +132,8 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Eight languages:** English, 简体中文, Español, Português (Brasil), Français, Deutsch, 日本語 and Italiano, chosen on the first start or in **MENU > Language**. Every word follows it: the menus, the in-game menu, the charging and low battery screens, the boot screen's line while ZyperOS is copied onto the card, and the File Transfer page. Chinese and Japanese each have a face of their own, so they read as clearly as the rest, and switching languages costs no speed ([below](#languages)).
 - **A first start that asks:** Zyper says hello in each language until you pick yours, teaches each button and shows where it is on the Pixel 2, then asks for the theme, the home screen, the button sounds and the menu music ([below](#the-first-start)).
 - **An empty card that says what to do:** with no games yet, the home shows the two ways to add them, one button each, and Zyper cheers when the first ones arrive.
+- **Your folders, kept:** sort a system's games into folders on the card, "Homebrew", "Rom Hacks", "Translations" inside it, as deep as you like, and the shelf shows them as you made them: the folders first, each a pixel folder with its count of games, then the loose games. A opens a folder, B goes back up. A disc set, a ScummVM game and a port stay one game each, as before. Favorites, Search Games, Random Game, Storage, Delete Game, play time and resume all reach the games inside folders.
+- **Covers or a list:** **MENU > View** on a system's shelf turns its row of covers into a list of names, each with a small card in the system's color, and the focused game's cover and play time beside it. Up and Down step, Left and Right jump a letter. Each system keeps its own choice, as it keeps its sort order.
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
 - **RetroAchievements:** sign in on the device, under **MENU > Achievements**. A game's achievements download once and then work offline, and anything you unlock offline is sent later. Each one has its badge in the list and in the pop-up when you unlock it, a trophy standing in until the badge is on the card, Zyper cheers from the pop-up, and a count like "5 / 10" pops up as you get closer.
 - **Box art the device finds itself,** in **MENU > Scraper**: from libretro's collection with no account; from ScreenScraper with a free account, which brings each game's name, year, genre and synopsis too, in a build made with ScreenScraper's developer pair (the page says `not in this build` otherwise); and from SteamGridDB, with your own free key typed or pasted, for what neither has. Renamed ROM packs are matched by checksum, and each game shows under its proper name with its file left as it is. Or add your own. To change one game's cover, X on it opens **Cover and Video**: every cover, 3D box, title screen and screenshot the three sources offer, each named with where it comes from, a big look before it is used, and the one it replaced kept to put back ([below](#a-game-has-no-box-art)).
@@ -186,6 +193,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **PortMaster** | Yes, installed from the Ports shelf with one press, with the in-game menu over every port | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
+| **Folders of games, and a list** | Folders to any depth, each with its count; covers or a list for each system | EmulationStation's | — | — | EmulationStation's | — |
 | **Storage by part and by game** | Yes, with recommendations and media pages | — | — | — | — | — |
 | **Pick a game's cover on the device** | From three sources, a big look first, the old one kept to put back | — | — | — | — | — |
 | **Video previews on the shelf** | Yes | — | — | — | — | — |
@@ -230,6 +238,10 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
   <tr>
     <td><img src="res/readme/shelf-n64.png" width="360" alt="The Nintendo 64 shelf in the light theme, Super Mario 64's box in the middle"></td>
     <td><img src="res/readme/dark/shelf-n64.png" width="360" alt="The Nintendo 64 shelf in the dark theme, Super Mario 64's box in the middle"></td>
+  </tr>
+  <tr>
+    <td><img src="res/readme/list.png" width="360" alt="The Game Boy Advance shelf as a list in the light theme"></td>
+    <td><img src="res/readme/dark/list.png" width="360" alt="The Game Boy Advance shelf as a list in the dark theme"></td>
   </tr>
   <tr>
     <td><img src="res/readme/systems.png" width="360" alt="The Spotlight home in the light theme"></td>
@@ -290,6 +302,8 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Appea
 | Ports | `Roms/Ports` | `.sh`, with the port's folder beside it | PortMaster |
 
 **BIOS files** go loose in `Bios/`. TurboGrafx-CD games need `syscard3.pce` and PlayStation games `scph5501.bin`. Sega CD games need `bios_CD_U.bin`, and a European or Japanese disc `bios_CD_E.bin` or `bios_CD_J.bin` as well. Neo Geo CD games need the Neo Geo CD BIOS in a folder of its own, `Bios/neocd/neocd.bin`. The 32X needs no BIOS. A multi-disc PlayStation game goes in a folder of its own with an `.m3u` listing its discs. Game Boy Advance runs without its BIOS; add `gba_bios.bin` if you want the original boot animation. The Atari 7800 runs without one too; add `7800 BIOS (U).rom` for the Atari logo at start. The Dreamcast, NAOMI and Atomiswave need their BIOS in `Bios/dc/`: `dc_boot.bin`, `naomi.zip` and `awbios.zip`. The 3DO needs `panafz10.bin` and the Lynx `lynxboot.img`; the Atari 5200 and the Pokémon Mini run without theirs (`5200.rom`, `bios.min`). MSX2 games need blueMSX's `Machines` and `Databases` folders in `Bios/`. Saturn games need the Saturn's BIOS, `saturn_bios.bin` (or `sega_101.bin` or `mpr-17933.bin`).
+
+**Folders inside a system's folder** are folders of games on its shelf, as deep as you like: `Roms/Game Boy Advance/Rom Hacks/Translations/Mother 3.gba` shows as the folder Rom Hacks, with Translations in it. A folder that holds one game's discs (a `.cue` with its tracks, `.chd` discs, an `.m3u`) is that game, as before; a folder of several games' discs is a folder of games, so give a multi-disc game a folder of its own or an `.m3u`. On the ScummVM shelf a folder with a game's files in it is the game, and on the Ports shelf the folders are the ports' own. Saves and save states go by the game's file name, as they always have, so two copies of one game in two folders share them.
 
 **Nintendo DS** runs on DSperate, which ZyperOS ships, with ZyperOS's own in-game menu. A game starts with the top screen alone. While it runs, DSperate gives its threads a core each, as its own frontend does, and the CPU stays at its top clock: a Mario Kart DS race keeps 60 frames a second on the Pixel 2. **L1** and **R1** are the DS's L and R. **L2** shows the other screen. **R2** shows the bottom screen and turns the stylus on: the d-pad moves a cursor and **A** touches. **R2** again turns the stylus off and goes back. The in-game menu also has **Screens** (Single, Stacked or Top Focus), **Swap Screens** and **Stylus**. A DraStic save (`Saves/<game>.dsv`, from ROGUE OS or another system) is taken over the first time a game runs on DSperate. Encrypted ROM dumps need `bios7.bin`, `bios9.bin` and `firmware.bin` in `Bios/`. A DS game reads its language from the firmware, and a `firmware.bin` carries the language of the console it was dumped from, so ZyperOS tells DSperate which language to use with each game and leaves the file alone. **Game Language** in the console's menu, under **Core**, is **Auto** to start with (the language of **MENU > Language** where the DS has it, English where it doesn't, as Português (Brasil) and 简体中文 are not on a DS) or one of English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文 outright; 简体中文 is for the iQue DS's games, which are the only ones that have it. A game resumes where you left it only in the language it was left in: after a change of **Game Language** it starts fresh, in the new one, with a note that says why, and its battery save keeps your progress. A save state you load yourself keeps the language it was saved in, and **Reset** in the in-game menu starts the game again in the row's language.
 
@@ -515,11 +529,11 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 
 | Button | What it does |
 |---|---|
-| **A / B** | Choose and back |
+| **A / B** | Choose and back. On a shelf, A opens a folder of games and B goes back up one |
 | **MENU** | Settings for whatever you're looking at. In a game: save, load, quit and more |
 | **X** in the in-game menu | Quit, from any row: the Quit row shows the X button |
 | **SELECT** | MP4, the music, audiobook and video player, from anywhere. In MP4, **X** or **SELECT + START** locks the screen and holding **SELECT + START** unlocks it |
-| **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
+| **Up / Down** | In a menu, move the cursor; it stops at the first and the last row and does not wrap. On a shelf, jump to the next or previous letter; on a shelf shown as a list (MENU > View), step along it, and Left and Right jump a letter. On the home, jump a letter with MENU > System Order on A to Z, three systems with it on release date |
 | **L1 / R1** | Jump three systems on the home, a screenful of games on a shelf |
 | **L2 / R2** | The previous and next song on the home and a shelf: MP4's while it plays, else the menu music's |
 | **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
@@ -605,7 +619,7 @@ Press X on the game, choose **Delete Game** at the bottom of its details, and an
 
 What goes, and nothing else:
 
-- **The game:** its file, or its folder for a game in a folder of its own (a multi-disc set with its `.m3u`, a ScummVM game). A `.cue`, `.gdi` or `.toc` at the top of the folder takes the track files it names, and a `.cue` its `.sbi`. An arcade set is its `.zip`, and on NAOMI and Atomiswave the folder of its name that holds its CHD.
+- **The game:** its file, or its folder for a game in a folder of its own (a multi-disc set with its `.m3u`, a ScummVM game). A folder of games it is kept in stays, with the other games in it. A `.cue`, `.gdi` or `.toc` at the top of the folder takes the track files it names, and a `.cue` its `.sbi`. An arcade set is its `.zip`, and on NAOMI and Atomiswave the folder of its name that holds its CHD.
 - **Its saves:** `Saves/<game>.srm`, `.sav` and DraStic's `.dsv`, and the arcade cores' own, in `Saves/fbneo/`, `Saves/mame2003-plus/` and `Saves/reicast/`.
 - **Its save states:** the six slots and the autosave, with their pictures.
 - **Its cover and video snap** in `.media/`, and its cached achievement set.

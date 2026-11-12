@@ -68,11 +68,11 @@ it away.
 | | |
 |---|---|
 | **Left/Right** | move left or right along the shelf |
-| **Up/Down** | jump to the previous or next initial on the games shelf |
+| **Up/Down** | jump to the previous or next initial on the games shelf. On a shelf shown as a list (MENU > View), Up and Down step along it and Left and Right jump an initial |
 | **L1/R1** | jump three systems on the systems row, a screenful on a games shelf, coming round at the ends |
 | **L2/R2** | the previous / next song on the systems row and a games shelf: MP4's while it plays (a book's chapter, as L1/R1 in MP4), else the menu music's. Zyper pops up with its name |
-| **A** | open a system or start a game |
-| **B** | back to the systems row |
+| **A** | open a system, a folder of games, or start a game |
+| **B** | up one folder of games, or back to the systems row from a shelf's top |
 | **X** | game info for the card under the cursor |
 | **Y** | favorite it - Favorites is a shelf of its own. Nothing on MP4's shelf |
 | **Volume rocker** | volume, everywhere, including in game |
@@ -314,11 +314,12 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Core** | which core runs them; left/right/A choose on a shelf that has two (the Dreamcast's) |
 | **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
+| **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
-On Favorites the menu is only Games and Sort By. The rest is about one
+On Favorites the menu is only Games, Random Game, Sort By and View. The rest is about one
 console, and a game there takes its console's Display Mode wherever it was
 started from.
 
@@ -337,6 +338,21 @@ on the card. Whichever order you pick, games it knows nothing about sort to
 the bottom rather than into the middle, and two games it cannot tell apart
 fall back to name - a shelf that reshuffles itself when nothing has changed
 reads as broken even when the top of it is right.
+
+View is per-system too: a shelf with good covers reads well as a row, and an
+Arcade shelf or a library of hundreds of games reads better as a list.
+
+**Folders of games.** A folder inside a system's folder on the card is a
+folder on its shelf, as deep as you like: the folders come first, A to Z,
+each a pixel folder with how many games it holds, then the games loose in
+it, in the shelf's Sort By order. A opens a folder and B goes back up one,
+onto the folder you left. A folder that is one game's discs (a `.cue` and
+its tracks, a game's `.chd` discs, an `.m3u` with them) stays that game, as
+does a ScummVM game's folder; a folder of several games' discs is a folder
+of games. The Ports shelf never looks into its folders: they are the ports'
+own. Favorites, Search Games, Random Game, Storage, Delete Game and Play
+Time all find the games in folders, and after a game the shelf comes back
+in the folder it was in.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer
