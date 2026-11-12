@@ -1249,12 +1249,15 @@ static const char *slot_name(int slot)
 /* The name a game's states and previews go by: its file's, which for a disc
  * game in a folder is the disc's ("Game (Disc 1).chd"). On a hooked shelf the
  * folder is the game and the file is whatever it held first - readme.txt for
- * two different ScummVM games - so the folder's name. */
+ * two different ScummVM games - so the folder's name. And so for a PSN game:
+ * a folder holding EBOOT.PBP, the same name in every such game's folder (a
+ * PSP game's, a PlayStation classic's), whose states would all be one. */
 static const char *persist_base(app *a, int s, const game_entry *g)
 {
 	const char *base = strrchr(g->file, '/');
 
-	if (base && lib_shelf_hooked(a->sys.systems[s].exts)) return g->name;
+	if (base && (lib_shelf_hooked(a->sys.systems[s].exts) || !strcasecmp(base + 1, "EBOOT.PBP")))
+		return g->name;
 	return base ? base + 1 : g->file;
 }
 
