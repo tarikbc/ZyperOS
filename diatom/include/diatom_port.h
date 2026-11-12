@@ -209,8 +209,9 @@ bool  diatom_port_gpu_begin(const diatom_gpu_spec *spec);
 void  diatom_port_gpu_end(void);
 /* The framebuffer to draw into, as a GL name: always the same one, with the
  * frame's own texture put under it here. The host calls it before every
- * frame, since a core may read the name once and keep it; a core may also
- * ask as often as it likes. */
+ * frame, on its thread, since a core may read the name once and keep it; a
+ * core that asks itself is given the name the host's last call returned
+ * (src/hw.c), as it may ask from a thread with no context. */
 uintptr_t diatom_port_gpu_target(void);
 void *diatom_port_gpu_proc(const char *name);
 /* The frame just drawn: w x h at the framebuffer's bottom-left corner, GL's
