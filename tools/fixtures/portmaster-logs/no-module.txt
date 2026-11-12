@@ -1,0 +1,12 @@
+2026-11-12 18:32:12.796 | DEBUG    | harbourmaster.config:<module>:231 - HM_DEFAULT_TOOLS_DIR:   /roms/ports
+2026-11-12 18:32:12.796 | DEBUG    | harbourmaster.config:<module>:232 - HM_DEFAULT_PORTS_DIR:   /roms/ports
+2026-11-12 18:32:12.796 | DEBUG    | harbourmaster.config:<module>:233 - HM_DEFAULT_SCRIPTS_DIR: /roms/ports
+Traceback (most recent call last):
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/./pugwash", line 95, in <module>
+    from pugwash.main import main  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/pugwash/main.py", line 14, in <module>
+    from pugwash.app import PortMasterGUI
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/pugwash/app.py", line 20, in <module>
+    from pugwash.theme import ThemeEngine
+ModuleNotFoundError: No module named 'pugwash.theme'

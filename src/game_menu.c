@@ -98,6 +98,11 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 		out[n++] = (menu_row){ T(S_MEDIA_ROW),
 		                       !gi->has_art ? T(S_MEDIA_VALUE_NO_COVER)
 		                       : !gi->has_snap ? T(S_MEDIA_VALUE_NO_VIDEO) : NULL, true };
+	/* PortMaster's own page in its place, to put a fresh copy over the one
+	 * on the card (DESIGN.md 11.33): the way back from a PortMaster that
+	 * will not start, its ports and their saves kept */
+	else if (gi->can_reinstall)
+		out[n++] = (menu_row){ T(S_PORTMASTER_REINSTALL_TITLE), NULL, true };
 	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
 	 * cover and video. Never where the screen opens, and never the end of a
 	 * stray press: A on it only asks, and the question opens on Cancel. No

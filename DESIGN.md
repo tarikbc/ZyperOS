@@ -2458,8 +2458,43 @@ Update's page (11.17) with its own words, and its own art.
   (from before PortMaster could run) says to update it in MENU > System
   Update, and has only Back.
 
-Host shots: `--portmaster [running,nonet,nopython,installed]`, the page as
-the file ZYPEROS_PM_STATUS names says.
+- **Reinstall PortMaster** is the same page with its own heading, for a
+  PortMaster that is on the card (`pm-install.py --reinstall`): a fresh copy
+  of the latest stable release, the ports beside it and their saves never
+  touched, its runtimes (`libs/*.squashfs`), downloaded themes and waiting
+  autoinstall zips kept, its settings (`config/`) started over. The offer
+  names the version on the card and has two points (what stays, the
+  settings start over), **Reinstall** and **Back**; then the install's bar,
+  "A fresh PortMaster is on the card." and **Open PortMaster**. A reinstall
+  that fails or is cut off leaves the PortMaster that was there, and the
+  page names it. It opens from a **Reinstall PortMaster** row on
+  PortMaster's details page (**X**), where another game's page has Cover and
+  Video, above Delete Game; and A on the entry while a reinstall still runs
+  opens it again rather than a PortMaster about to be swapped.
+  *(2026-11-12: a player's PortMaster closed at every start after its own
+  update and a few ports, with no way back but deleting it.)*
+- **A PortMaster that closed with an error** opens this page by itself when
+  the launcher comes back (launch.sh's `/tmp/zyperos_pm_ran`, its log read
+  by `pm_failure`): the problem in full where the points go ("PortMaster
+  closed with an error. Reinstall it to fix it: your ports and their saves
+  stay."), the line of its log that says how where the bar goes, in
+  PortMaster's own English, and **Reinstall**. An error is its program
+  killed by a signal, a fatal Python error, an exception nothing caught
+  with no more than a few lines after it in the log (a traceback it logged
+  and went on from is none), or no display; and a start that left no log
+  and ended within 20 s.
+- **Before each start**, the launcher removes a file of PortMaster's
+  `config/` that a cut-off write left (empty, cut short, zeros: the whole of
+  the ones up to 256 KB checked, the ends of the bigger), and its settings
+  with a cut-off source list; PortMaster makes them again. Its stable
+  release 2026.06.23-0015 never starts again with a cut-off
+  `runtimes.json`. And launch.sh puts PortMaster's own `PortMaster.sh` back
+  over the shelf's each start, as PortMaster's update replaces only the
+  folder's copy on a system it has no layout for.
+
+Host shots: `--portmaster [running,nonet,nopython,installed,repair,failed]`,
+the page as the file ZYPEROS_PM_STATUS names says (`failed` with the log
+line ZYPEROS_PM_WHY gives).
 
 ### 11.34 Cover and Video
 

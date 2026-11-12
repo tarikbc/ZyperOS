@@ -115,6 +115,10 @@ typedef struct {
 	/* Art of its own that no fetch replaces: PortMaster's entry on the
 	 * Ports shelf (src/pminstall.h, PM_COVER_LIGHT), so no Box Art row */
 	bool  own_art;
+	/* PortMaster's entry with PortMaster on the card: Reinstall PortMaster,
+	 * in the place the Cover and Video row has on another game's page, so
+	 * the page has no more rows than GI_MAX */
+	bool  can_reinstall;
 	/* Whether this game has a row in the card's games table at all, and
 	 * whether that row carries a synopsis. Two flags rather than one, because
 	 * they answer different questions: a game nobody has scraped shows neither

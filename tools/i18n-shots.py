@@ -426,8 +426,20 @@ PM_STATES = {
     "portmaster-space": ("state error\nversion 2026.06.23-0015\nerror space\nneed 108000000\n", "none"),
     "portmaster-unpack": ("state error\nversion 2026.06.23-0015\nerror unpack\n", "nonet"),
     "portmaster-release": ("state error\nerror release\n", "none"),
+    # Reinstall PortMaster: the offer from its details page, the page that
+    # says it closed with an error, at work, done, failed
+    "portmaster-reinstall": ("", "installed,repair"),
+    "portmaster-reinstall-failed": ("", "installed,failed"),
+    "portmaster-reinstalling": ("state downloading\nkind reinstall\nversion 2026.06.23-0015\n"
+                                "total 24121702\ndone 6100000\n", "installed,repair,running"),
+    "portmaster-reinstalled": ("state done\nkind reinstall\nversion 2026.06.23-0015\n", "installed,repair"),
+    "portmaster-reinstall-error": ("state error\nkind reinstall\nversion 2026.06.23-0015\nerror checksum\n",
+                                   "installed,repair"),
 }
 EXTRA.update({name: ("demo", "PS1", ["--portmaster", view]) for name, (_, view) in PM_STATES.items()})
+# PortMaster's details page (X on its entry) with PortMaster on the card:
+# its Reinstall PortMaster row, on a card of its own that has PortMaster
+EXTRA["portmaster-details"] = ("pmcard", "PRT", ["--screen", "games", "--info"])
 # (The Ports shelf with PortMaster's Install, and the page downloading, are
 # the README's, tools/readme-shots.py's ports and portmaster.)
 
@@ -470,11 +482,16 @@ def run_language(code, shots, binary, keep):
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
-                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media"}
+                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media",
+                 "pmcard": Path(tmp) / "pmcard"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.media_card(cards["media"])
         R.ports_card(cards["ports"])
         R.portdocs_card(cards["portdocs"])
+        R.portdocs_card(cards["pmcard"])
+        (cards["pmcard"] / "Roms/Ports/PortMaster").mkdir()
+        (cards["pmcard"] / "Roms/Ports/PortMaster/pugwash").touch()
+        (cards["pmcard"] / "Roms/Ports/PortMaster/version").write_text("2026.11.12-1059\n")
         R.demo_card(cards["all"], None, {"artwork": {}})
         all_systems_card(cards["all"])
         R.scummvm_card(cards["scummvm"])

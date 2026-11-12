@@ -1,0 +1,37 @@
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:231 - HM_DEFAULT_TOOLS_DIR:   /roms/ports
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:232 - HM_DEFAULT_PORTS_DIR:   /roms/ports
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:233 - HM_DEFAULT_SCRIPTS_DIR: /roms/ports
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+2026-11-12 18:36:02.101 | ERROR    | harbourmaster.util:download:540 - Unable to download featured image
+Traceback (most recent call last):
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/harbourmaster/util.py", line 520, in download
+    r = requests.get(url, timeout=20)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='github.com', port=443): Max retries exceeded
+2026-11-12 18:36:03.200 | INFO     | harbourmaster.harbour:load_sources:494 - Loading Sources.
+2026-11-12 18:36:03.300 | INFO     | harbourmaster.harbour:load_ports:712 - Loading Ports.
+2026-11-12 18:36:04.000 | DEBUG    | __main__:main:2095 - Main menu.
+2026-11-12 18:36:09.000 | DEBUG    | __main__:main:2100 - Ports list.
+2026-11-12 18:36:12.000 | DEBUG    | __main__:main:2101 - Port info.
+2026-11-12 18:36:20.000 | DEBUG    | __main__:main:2102 - Options.
+2026-11-12 18:36:25.000 | DEBUG    | __main__:main:2110 - Exit.
+2026-11-12 18:36:25.500 | INFO     | __main__:main:2111 - Bye.
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+Attempting to delete file at path: /roms/ports/PortMaster/utils/pmsplash/stopsplash
+File 'stopsplash' deleted successfully.
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+ERROR: Could not restore CRTC
+0: 1
+{'name': 'zyperos', 'version': '1.0.3', 'kernel_version': '7.1.2', 'device': 'gkd pixel 2', 'model': 'GKD Pixel 2', 'resolution': (640, 480), 'refresh_rate': 120, 'orientation': 0, 'analogsticks': 0, 'analogtriggers': 'N', 'touch': 'N', 'rumble': 'Y', 'gpu_driver': 'Unknown', 'gpu_driver_version': 'Unknown', 'has_swap': 'N', 'has_zram': 'N', 'cpu': 'RK3326', 'capabilities': ['1gb', '4:3', '640x480', 'aarch64', 'analog_0', 'power', 'restore', 'rumble', 'en_US'], 'primary_arch': 'aarch64', 'ram': 1024, 'glibc': '2.42'}

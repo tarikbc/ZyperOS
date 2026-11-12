@@ -1,7 +1,10 @@
 /* What the Install PortMaster page says in each state (src/pminstall.c), and
  * the Ports shelf's PortMaster entry (pm_listing_add). No SDL, no device:
  * the page is a function of the installer's status file and what the device
- * knows, and the entry of a listing.
+ * knows, and the entry of a listing. And Reinstall PortMaster's page, what
+ * PortMaster's log says when it closed with an error (pm_failure, on real
+ * logs in tools/fixtures/portmaster-logs), and which of its config/ files
+ * are cut off (pm_json_whole, pm_json_balanced).
  *
  *     make check-pminstall */
 #include <stdio.h>
@@ -45,6 +48,57 @@ static su_page page(const pm_view *v, int *nnotes, char notes[PM_NOTES][120])
 	su_page p;
 	pm_page_build(v, &p, notes, nnotes);
 	return p;
+}
+
+/* Reinstall PortMaster's page over the PortMaster on the card */
+static pm_view repair(const char *status, bool running, bool asked)
+{
+	pm_view v = view(status, running);
+	v.installed = true;
+	v.repair = true;
+	v.asked = asked;
+	snprintf(v.have, sizeof v.have, "2026.11.12-1059");
+	return v;
+}
+
+static char *slurp(const char *name)
+{
+	char path[256];
+	FILE *f;
+	long n;
+	char *b;
+
+	snprintf(path, sizeof path, "tools/fixtures/portmaster-logs/%s", name);
+	if (!(f = fopen(path, "rb"))) { printf("  FAIL no %s\n", path); fails++; return NULL; }
+	fseek(f, 0, SEEK_END);
+	n = ftell(f);
+	rewind(f);
+	b = calloc(1, (size_t)n + 1);
+	if (b && fread(b, 1, (size_t)n, f) != (size_t)n) b[0] = 0;
+	fclose(f);
+	return b;
+}
+
+/* pm_failure on a fixture: whether it fails, and the line it says */
+static void log_case(const char *name, bool want, const char *why_want)
+{
+	char why[PM_WHY];
+	char *b = slurp(name);
+	bool got;
+
+	if (!b) return;
+	got = pm_failure(b, why, sizeof why);
+	if (got != want || (why_want && strcmp(why, why_want))) {
+		printf("  FAIL log %s: %s \"%s\"\n", name, got ? "failed" : "fine", why);
+		fails++;
+	}
+	free(b);
+}
+
+static bool whole(const char *s)
+{
+	size_t n = strlen(s);
+	return pm_json_whole(s, n < 64 ? n : 64, n < 64 ? s : s + n - 64, n < 64 ? n : 64);
 }
 
 int main(void)
@@ -204,6 +258,132 @@ int main(void)
 		}
 		i18n_set(LANG_EN);
 	}
+
+	/* Reinstall PortMaster: the offer, over the PortMaster on the card */
+	v = repair("state done\nversion 2026.06.23-0015\n", false, false);
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.sub, "Version 2026.11.12-1059 · installed"), "a reinstall names what is on the card");
+	CHECK(p.notes && nn == 2 && !strcmp(notes[0], "Your ports, their saves and the runtimes stay.") &&
+	      !strcmp(notes[1], "PortMaster's own settings start over."),
+	      "its two points, the first install's done status not its word");
+	CHECK(is(&p, "A", "Reinstall", SUA_DOWNLOAD) && is(&p, "B", "Back", SUA_BACK) && !p.warn[0],
+	      "Reinstall and Back");
+	CHECK(!strcmp(p.line, "It downloads from GitHub over Wi-Fi."), "where the reinstall comes from");
+	v.network = false;
+	p = page(&v, &nn, notes);
+	CHECK(!btn(&p, "A") && !strcmp(p.line, "Connect to Wi-Fi to download."), "no Reinstall without a network");
+	v = repair("", false, false);
+	v.python = false;
+	p = page(&v, &nn, notes);
+	CHECK(!btn(&p, "A") && strstr(p.warn, "MENU > System Update") &&
+	      !strcmp(p.sub, "Version 2026.11.12-1059 · installed"), "no Reinstall on a system with no Python");
+
+	/* It closed with an error: said, with the line of its log, and Reinstall */
+	v = repair("", false, false);
+	v.crashed = true;
+	snprintf(v.failed, sizeof v.failed, "AttributeError: 'NoneType' object has no attribute 'items'");
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.warn, "PortMaster closed with an error. Reinstall it to fix it: your ports and their saves stay."),
+	      "the error said in full");
+	CHECK(!strcmp(p.line, "AttributeError: 'NoneType' object has no attribute 'items'") &&
+	      !strcmp(p.sub, "Version 2026.11.12-1059 · installed"),
+	      "and the line of its log that says how, under the version that failed");
+	CHECK(!p.notes && nn == 0 && is(&p, "A", "Reinstall", SUA_DOWNLOAD), "Reinstall offered there");
+	v.network = false;
+	p = page(&v, &nn, notes);
+	CHECK(!btn(&p, "A") && !strcmp(p.line, "Connect to Wi-Fi to download.") && p.warn[0],
+	      "with no network, that it needs one in the log line's place");
+	v.network = true;
+	v.failed[0] = 0;
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.line, "It downloads from GitHub over Wi-Fi.") && p.warn[0],
+	      "an error with no line in its log says where the reinstall comes from");
+
+	/* A reinstall at work, then done, failed, cut off */
+	v = repair("state checking\nkind reinstall\n", true, true);
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.sub, "Looking for the newest release…") && nn == 2, "a reinstall looking");
+	v = repair("state downloading\nkind reinstall\nversion 2026.06.23-0015\ntotal 24121702\ndone 6100000\n",
+	           true, false);
+	p = page(&v, &nn, notes);
+	CHECK(v.st.reinstall && p.bar && !strcmp(p.sub, "Version 2026.06.23-0015") &&
+	      is(&p, "B", "Continue in background", SUA_BACK) && !btn(&p, "A"),
+	      "a reinstall running is followed, opened again or not");
+	v = repair("state done\nkind reinstall\nversion 2026.06.23-0015\n", false, true);
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.sub, "Version 2026.06.23-0015 · installed") && nn == 2 &&
+	      !strcmp(notes[0], "A fresh PortMaster is on the card.") &&
+	      is(&p, "A", "Open PortMaster", SUA_OPEN), "a reinstall done: the fresh version, Open PortMaster");
+	v = repair("state error\nkind reinstall\nerror checksum\n", false, true);
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.sub, "Version 2026.11.12-1059 · installed") && strstr(p.warn, "did not match") &&
+	      is(&p, "A", "Try Again", SUA_DOWNLOAD), "a reinstall that failed: the old one stays, Try Again");
+	v = repair("state unpacking\nkind reinstall\nversion 2026.06.23-0015\n", false, true);
+	p = page(&v, &nn, notes);
+	CHECK(!strcmp(p.sub, "Version 2026.11.12-1059 · installed") && strstr(p.warn, "stopped") &&
+	      is(&p, "A", "Try Again", SUA_DOWNLOAD), "a reinstall cut off: the old one stays");
+
+	/* Every language has words for the reinstall's pages */
+	{
+		int lg;
+		for (lg = 0; lg < LANG_COUNT; lg++) {
+			i18n_set((lang)lg);
+			v = repair("", false, false);
+			p = page(&v, &nn, notes);
+			if (nn != 2 || !notes[1][0] || !p.keys[0].label[0]) {
+				printf("  FAIL %s: the reinstall offer has an empty part\n", lang_code((lang)lg));
+				fails++;
+			}
+			v.crashed = true;
+			p = page(&v, &nn, notes);
+			if (!p.warn[0]) {
+				printf("  FAIL %s: the error page has no words\n", lang_code((lang)lg));
+				fails++;
+			}
+		}
+		i18n_set(LANG_EN);
+	}
+
+	/* PortMaster's log: what it closed with, on logs from a VM running the
+	 * Pixel 2's Python 3.14 (2026-11-12) */
+	log_case("runtimes-cut.txt", true, "AttributeError: 'NoneType' object has no attribute 'items'");
+	log_case("no-module.txt", true, "ModuleNotFoundError: No module named 'pugwash.theme'");
+	log_case("segfault.txt", true, "Segmentation fault");
+	log_case("quit.txt", false, NULL);
+	log_case("caught.txt", false, NULL);
+	{
+		char why[PM_WHY];
+		char long_line[400];
+
+		CHECK(pm_failure("Fatal Python error: Segmentation fault\n\nCurrent thread 0x0000:\n", why, sizeof why) &&
+		      !strcmp(why, "Fatal Python error: Segmentation fault"), "a fatal Python error");
+		CHECK(pm_failure("ERROR: No available video device\n", why, sizeof why) &&
+		      !strcmp(why, "No available video device"), "no display");
+		CHECK(!pm_failure("", why, sizeof why) && !why[0], "an empty log is no error");
+		CHECK(pm_failure("line 9: 77 Killed  ./pugwash\n", why, sizeof why) && !strcmp(why, "Killed"),
+		      "the program killed (out of memory)");
+		CHECK(!pm_failure("line 9: 77 Terminated  ./pugwash\n", why, sizeof why),
+		      "the program ended by Quit (TERM) is no error");
+		snprintf(long_line, sizeof long_line, "Traceback (most recent call last):\nValueError: %0300d\n", 7);
+		CHECK(pm_failure(long_line, why, sizeof why) && strlen(why) < PM_WHY &&
+		      !strncmp(why, "ValueError: 000", 15) && strstr(why, "…"), "a long line cut, with an ellipsis");
+	}
+
+	/* PortMaster's config/ files: whole, or cut off */
+	CHECK(whole("{\"a\": 1}\n") && whole("[1, 2]") && whole("\xEF\xBB\xBF {\"a\": [1]}  \r\n"),
+	      "whole JSON is whole");
+	CHECK(!whole("") && !whole("   \n") && !whole("{\"a\": [1, 2") && !whole("<html>") &&
+	      !pm_json_whole("\0\0\0\0", 4, "\0\0\0\0", 4) &&
+	      !pm_json_whole("{\"a\": 1}\0\0", 10, "{\"a\": 1}\0\0", 10),
+	      "empty, cut short and zeros are not");
+	CHECK(pm_json_balanced("{\"a\": \"}{][\\\"\", \"b\": [{}]}\n", 26) &&
+	      !pm_json_balanced("{\"a\": {\"b\": 1}", 15) &&
+	      !pm_json_balanced("{\"a\": 1}\0", 9) && !pm_json_balanced("{} {}", 5) &&
+	      !pm_json_balanced("", 0) && !pm_json_balanced("{\"a\": \"}", 8),
+	      "the whole of a small one: closed outside its strings, nothing after");
+	CHECK(pm_json_resets_settings("config.json") && pm_json_resets_settings("020_portmaster.source.json") &&
+	      !pm_json_resets_settings("runtimes.json") && !pm_json_resets_settings("ports_info.json"),
+	      "a cut-off source list takes the settings with it, a cut-off cache does not");
 
 	/* PortMaster's entry on the Ports shelf: added when the folder lacks it,
 	 * as a scan would list it, and never twice */
