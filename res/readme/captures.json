@@ -1527,6 +1527,25 @@
         "browser"
       ],
       "sha256": "2bba407d6c44ccf201e5f2f25d112b776388a0746b993e7214eff6cca31ddf91"
+    },
+    {
+      "file": "light/screensaver.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--saver",
+        "--saver-pic",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png"
+      ],
+      "sha256": "692ef7648aca32156df4cf7e0b52df574748fab59ea88eabc19224f3bafd017f"
     }
   ]
 }

@@ -57,6 +57,11 @@
  * Off, 80%, 85% or 90%, stepped round (DESIGN.md 11.26; my picks in
  * the charge limit lab, 2026-11-06). Only where the charger can stop short
  * (no_charge_limit). */
+/* PM_SAVER is Screensaver, after Side Lights, the last of the rows about the
+ * handheld left alone: the video snaps of random games over the whole screen
+ * after this long with nothing pressed on the shelf (src/saver.h, DESIGN.md
+ * 11.37). Its value is the delay, in Auto Off's words, stepped round with
+ * left and right the way Auto Off is, or off. On every device. */
 /* PM_LIGHTS is Side Lights, under Auto Off and Charge Limit: what the battery
  * lights show (src/sidelights.h), the other row about the battery, a page of
  * switches since the side lights lab (2026-11-06). Only where the device has
@@ -88,7 +93,7 @@ typedef enum {
 	PM_STATS, PM_RANDOM,
 	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_USB, PM_CLOCK,
 	PM_HOURS, PM_LANGUAGE,
-	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
+	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_SAVER, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
 	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
 } pm_row;
 
@@ -195,7 +200,7 @@ _Static_assert(MENU_MAX_ROWS >= SM_ROWS, "MENU_MAX_ROWS < SM_ROWS");
  * handler. Beside the rows rather than in them: a field on menu_row would
  * have every { label, value, live } initializer warn under -Wextra. */
 typedef struct {
-	char a[24], b[CFG_STR], c[16], d[40], e[8], ch[40];
+	char a[24], b[CFG_STR], c[16], d[40], e[8], ch[40], sv[16];
 	unsigned char sound[MENU_MAX_ROWS];
 } menu_bufs;
 
@@ -281,6 +286,7 @@ typedef struct {
 	const char *order;
 	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
+	int         saver;       /* the screensaver's delay, seconds, 0 for off */
 	int         charge_limit;   /* percent, 0 for Off */
 	/* Side Lights: side_lights_value's, "All on", "3 on" or "Off". NULL
 	 * reads All on, the default. A label, for the reason appearance is one. */
@@ -341,6 +347,8 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out);
 /* Seconds to the label a row shows. Pure, and here rather than in main.c so
  * the check can hold it to "never", "30s" and "2m" without a device. */
 void sys_menu_auto_off_label(int seconds, char *out, size_t n);
+/* The screensaver's delay in the same words: "off" for 0, then "30s", "1m" */
+void sys_menu_saver_label(int seconds, char *out, size_t n);
 
 /* System Order's value, "A to Z" or "Release Date", and Battery Icon's,
  * "Bars" (0), "Percentage" (1) or "Time Left" (2), in the language that is

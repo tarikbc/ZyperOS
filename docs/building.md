@@ -65,6 +65,8 @@ something once broke in a way nothing noticed:
 | `check-status` | the shelf's status corner: the battery's warnings at 10% and 5% and none on the charger, the signal's steps and `wpa_cli signal_poll` read for them, and the marks drawn as the status lab drew them, probed in both themes (no SDL) |
 | `check-audioout` | where sound goes given a cable, a headset and a setting - all eight combinations |
 | `check-idle` | the Auto Off clock, including the charger case and the counter wrapping |
+| `check-taskhold` | long tasks and Auto Off (src/taskhold.h): what a loop says holds the clock for 2 s and lets go by itself, across the counter's wrap, and the real clock does not fire during a task and starts a whole countdown after it |
+| `check-saver` | the screensaver's policy (src/saver.h): the delay's ladder, when it starts and what holds it back (a button, music, a long task, a low battery, time away), when it ends on its own (the cable-less cap, a low battery), a clip's fades and timing, which game is next (none of the last twelve), and that Auto Off fires at its own time with it up, down or off |
 | `check-cheevos` | the achievement half: parsing and filtering |
 | `check-rahash` | the C and Python ROM hashers agree, over the whole library |
 | `check-raset` | the C and Python set converters agree (needs `RA_USER`/`RA_PASS`) |

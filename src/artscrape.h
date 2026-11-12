@@ -65,6 +65,10 @@
  * exactly those. */
 void art_begin(const systems_cfg *sys, const char *roms_dir, const char *only);
 void art_cancel(void);
+/* A run is under way: begun and neither finished nor cancelled. Auto Off waits
+ * for it (src/taskhold.h): it is the one place that knows, whichever screen
+ * stepped it. */
+bool art_running(void);
 
 /* One unit of work, so the caller can draw between them. Returns:
  *

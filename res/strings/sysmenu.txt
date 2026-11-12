@@ -224,6 +224,17 @@ de = %d min
 ja = %d 分
 it = %d min
 
+[sysmenu.screensaver]
+note = A MENU row: after this long with nothing pressed on the shelf, the video snaps of random games play over the whole screen. Its value is the delay (the same words as Auto Off's), or off
+en = Screensaver
+zh-Hans = 屏幕保护
+es = Protector de pantalla
+pt-BR = Protetor de tela
+fr = Écran de veille
+de = Bildschirmschoner
+ja = スクリーンセーバー
+it = Salvaschermo
+
 [sysmenu.charge_limit]
 note = A MENU row: the battery stops charging at this level
 en = Charge Limit

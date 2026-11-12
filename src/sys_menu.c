@@ -17,6 +17,12 @@ void sys_menu_auto_off_label(int seconds, char *out, size_t n)
 	else                   snprintf(out, n, T(S_SYSMENU_AUTO_OFF_MINS), seconds / 60);
 }
 
+void sys_menu_saver_label(int seconds, char *out, size_t n)
+{
+	if (seconds <= 0) snprintf(out, n, "%s", T(S_MENU_OFF));
+	else              sys_menu_auto_off_label(seconds, out, n);
+}
+
 const char *sys_menu_order_name(bool release)
 {
 	return T(release ? S_SYSMENU_ORDER_RELEASE : S_SYSMENU_ORDER_AZ);
@@ -253,6 +259,7 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	[PM_SOUNDS]     = MENU_SND_OWN,
 	[PM_SLEEP]      = MENU_SND_NO_A,
 	[PM_CHARGE]     = MENU_SND_RING,
+	[PM_SAVER]      = MENU_SND_NO_A,
 	[PM_APPEARANCE] = MENU_SND_RING,
 	[PM_HOME]       = MENU_SND_RING,
 	[PM_ORDER]      = MENU_SND_RING,
@@ -481,6 +488,9 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	 * setting. */
 	full[PM_LIGHTS]       = (menu_row){ T(S_SYSMENU_SIDE_LIGHTS),
 	                                   u->lights ? u->lights : T(S_LIGHTS_ALL_ON), true };
+	/* The screensaver's delay, or off (src/saver.h) */
+	sys_menu_saver_label(u->saver, b->sv, sizeof b->sv);
+	full[PM_SAVER]        = (menu_row){ T(S_SYSMENU_SCREENSAVER), b->sv, true };
 	full[PM_HOME] = (menu_row){ T(S_SYSMENU_HOME_SCREEN), u->home ? u->home : T(S_HOME_SPOTLIGHT), true };
 	/* The systems' order on the home, A to Z or by release date, stepped
 	 * round like Home Screen (docs/design/mock/controls-lab.html) */

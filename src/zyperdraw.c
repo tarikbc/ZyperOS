@@ -3,11 +3,13 @@
 #include "zyperplace.h"
 
 #include "battery_eta.h"
+#include "artscrape.h"
 #include "battery_poll.h"
 #include "blur.h"
 #include "design.h"
 #include "musec.h"
 #include "status.h"
+#include "taskhold.h"
 #include "theme.h"
 
 #include <math.h>
@@ -299,6 +301,44 @@ bool battery_empty(void)
 	return seen >= 2;
 }
 
+/* A long task is running, and Auto Off waits for it (src/taskhold.h).
+ *
+ * THE ONE PLACE. The jobs the device was asked to do - the scraper's art and
+ * video downloads, System Update's download, PortMaster's install, Storage's
+ * walk, File Transfer's copies, Muse's covers - hold Auto Off the way the
+ * charger does, and this is the whole list. A new long job is a line here (or
+ * a task_note from its loop), never a clock reset of its own: three of them
+ * held the clock each their own way and the rest did not hold it at all.
+ *
+ * Asked by idle_due for every screen, and by the game's SETIDLE, which hands
+ * Diatom the same answer. The reason is said once in the log when it changes,
+ * so "why did it not turn off" has an answer on a card read afterwards. */
+bool long_task_busy(void)
+{
+	static const char *said;
+	const char *what = NULL;
+	task_id which = TASK_COUNT;
+	unsigned now = plat_now_ms();
+
+	if (up_working())            what = "System Update";
+	else if (art_running())      what = "Scraper";
+	else if (pm_installing())    what = "PortMaster install";
+	else if (task_noted(now, &which)) what = task_name(which);
+	if (what != said && (!what || !said || strcmp(what, said))) {
+		if (what) fprintf(stderr, "idle: Auto Off waits, %s is running\n", what);
+		else      fprintf(stderr, "idle: Auto Off is back, nothing long is running\n");
+		said = what;
+	}
+	return what != NULL;
+}
+
+/* What keeps the countdown from running: the charger or a long task. The
+ * music is the screens' own, and is added by idle_due. */
+bool idle_held(void)
+{
+	return on_charger() || long_task_busy();
+}
+
 /* Has the player been away long enough to power the device off?
  *
  * The gathering half; the policy is idle_check, in src/idle.c, where a check
@@ -332,5 +372,5 @@ bool idle_due(app *a)
 	 * counting as input: an album is somebody using the device with nobody
 	 * touching it, and when it stops the countdown starts fresh. */
 	return idle_check(&a->idle, plat_now_ms(), b < IN_COUNT,
-	                  on_charger() || musec_playing() || up_working());
+	                  idle_held() || musec_playing());
 }
