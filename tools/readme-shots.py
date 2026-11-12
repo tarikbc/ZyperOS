@@ -80,7 +80,18 @@ LIBRARY={
         ('Mario Kart - Super Circuit (USA).gba','Mario Kart - Super Circuit (USA)'),
         ('Metroid Fusion (USA).gba','Metroid Fusion (USA)'),
         ('Pokemon - Emerald Version (USA, Europe).gba','Pokemon - Emerald Version (USA, Europe)'),
-        ('The Legend of Zelda - The Minish Cap (USA).gba','Legend of Zelda, The - The Minish Cap (USA)')],
+        ('The Legend of Zelda - The Minish Cap (USA).gba','Legend of Zelda, The - The Minish Cap (USA)'),
+        # Folders of games (src/shelfdir.h), as someone sorts a shelf: the
+        # folders shot and the list. A hack and a homebrew game with no art
+        # of their own show the generated card.
+        ('Commercial Owned/Castlevania - Aria of Sorrow (USA).gba','Castlevania - Aria of Sorrow (USA)'),
+        ('Commercial Owned/Final Fantasy Tactics Advance (USA).gba','Final Fantasy Tactics Advance (USA)'),
+        ('Commercial Owned/Golden Sun (USA).gba','Golden Sun (USA, Europe)'),
+        ('Commercial Owned/Kirby & The Amazing Mirror (USA).gba','Kirby & The Amazing Mirror (USA)'),
+        ('Friends Games/Fire Emblem (USA).gba','Fire Emblem (USA, Australia)'),
+        ('Homebrew and Aftermarket/Goodboy Galaxy.gba',None),
+        ('Rom Hacks/Metroid Zero Mission Redux.gba',None),
+        ('Rom Hacks/Translations/Mother 3 (English).gba','Mother 3 (Japan)')],
     'Genesis':[
         ('Gunstar Heroes (USA).md','Gunstar Heroes (USA)'),
         ('Sonic The Hedgehog (USA).md','Sonic The Hedgehog (USA)'),
@@ -153,6 +164,13 @@ SHOTS={
     # ticked, the browser awaited
     'usb-steps':('demo','PS1',['--hare-steps','usb','browser']),
     'scummvm':('scummvm','SCUMMVM',['--screen','games']),
+    # Folders of games on a shelf, and the list (DESIGN.md 11.39): the Game
+    # Boy Advance shelf's top, its folders first with their games counted;
+    # inside one; and MENU > View > List, its covers' panel beside the rows
+    'folders':('demo','GBA',['--screen','games']),
+    'folder-inside':('demo','GBA',['--screen','games']),
+    'list':('demo','GBA',['--screen','games','--view','list']),
+    'list-inside':('demo','GBA',['--screen','games','--view','list']),
     # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
     # made-up frame rather than a game's
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
@@ -233,6 +251,9 @@ SHOT_FAVS={'shelf':[('PS1',FOCUS+'.chd'),('PS1',GAMES[1]+'.chd')],
 # The game a shot's shelf opens on, where it is not its system's own (below)
 # MP4's on the film, between an album and the book, so its three kinds show
 SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh','mp4':'Videos',
+            'folders':'Commercial Owned','list':'Commercial Owned',
+            'folder-inside':'Commercial Owned/Golden Sun (USA).gba',
+            'list-inside':'Commercial Owned/Golden Sun (USA).gba',
             'shelf-n64':'Super Mario 64 (USA).z64','shelf-snes':'Super Mario World (USA).sfc',
             'favorites':'Sonic The Hedgehog 2 (USA).md'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
@@ -241,7 +262,8 @@ STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
         'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
         'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media','shelf-n64']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media','shelf-n64',
+      'folders','list']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
@@ -391,8 +413,9 @@ def demo_card(card,art,manifest):
     for folder,games in LIBRARY.items():
         d=card/'Roms'/folder;(d/'.media').mkdir(parents=True)
         for file,lr in games:
+            (d/file).parent.mkdir(parents=True,exist_ok=True)
             (d/file).touch()
-            if art:
+            if art and lr:
                 got=art_file(art,LR_REPO[folder],'Named_Boxarts',lr)
                 shutil.copyfile(got,d/'.media'/(Path(file).stem+'.png'))
                 note_art(manifest,f'{folder}/{file}',folder,'Named_Boxarts',lr,got)

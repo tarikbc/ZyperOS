@@ -665,47 +665,80 @@ static bool ext_allowed(const char *name, const char *exts)
 	return lib_ext_allowed(dot && dot[1] ? dot + 1 : NULL, exts);
 }
 
-/* The ROM stems in one folder. `.media/` and any dotfile are not games, and
- * neither is a stray text file - which is what the extension list in
- * systems.cfg is for. Without it this reports missing art for things that
- * were never going to have any. */
+/* The folders of games each ROM is kept in (src/shelfdir.h, 1.0.5): g_rdir
+ * is 0 for the top of its system's folder, else 1 + its folder's place
+ * here. Few on any card, so a table rather than a path a game. */
+#define RDIRS_MAX 256
+static char           g_rdirs[RDIRS_MAX][LIB_PATH];
+static int            g_nrdirs;
+static unsigned short g_rdir[ENTRIES_MAX];
+
+/* The launch path of ROM `i` in its system's folder: its folder of games,
+ * its stem and its extension, the key the shelf and the database know it by */
+static void rom_file(int i, char *out, size_t n)
+{
+	if (g_rdir[i]) snprintf(out, n, "%s/%s%s", g_rdirs[g_rdir[i] - 1], g_roms[i], g_rext[i]);
+	else snprintf(out, n, "%s%s", g_roms[i], g_rext[i]);
+}
+
+/* The ROM stems of one system's folder, and of the folders of games in it, as
+ * the shelf lists them (lib_scan_listing): a game is a file the extension
+ * list in systems.cfg takes, so `.media/`, dotfiles and a stray text file
+ * are no games, which reported missing art for things that were never going
+ * to have any. A disc set is a folder of its own and stays out, as it always
+ * did here. */
 static void read_roms(const char *dir, const char *exts)
 {
-	DIR *d = opendir(dir);
-	struct dirent *e;
+	char root[ARTPATH_MAX];
+	const char *slash = strrchr(dir, '/');
+	game_list l = { 0 };
 
 	g_nroms = 0;
-	if (!d) return;
-	while ((e = readdir(d)) && g_nroms < ENTRIES_MAX) {
-		char full[ARTPATH_MAX], *dot;
-		struct stat st;
+	g_nrdirs = 0;
+	snprintf(root, sizeof root, "%.*s", slash ? (int)(slash - dir) : 1, slash ? dir : ".");
+	if (!lib_scan_listing(root, slash ? slash + 1 : dir, exts, &l)) { lib_free(&l); return; }
+	for (int k = 0; k < l.count && g_nroms < ENTRIES_MAX; k++) {
+		const game_entry *e = &l.items[k];
+		const char *own = e->file + (e->dir ? e->dir + 1 : 0), *dot;
+		int d = 0;
 
-		if (e->d_name[0] == '.') continue;
-		/* A path or a name cut short does not crash, it names a DIFFERENT
-		 * file - so truncation is skipped rather than survived. */
-		if (snprintf(full, sizeof full, "%s/%s", dir, e->d_name)
-		    >= (int)sizeof full) continue;
-		if (!ext_allowed(e->d_name, exts)) continue;
+		/* A disc set's own folder */
+		if (strchr(own, '/')) continue;
 		/* PortMaster's script on the Ports shelf has its own cover in
 		 * every theme (src/pminstall.h, PM_COVER_LIGHT): no game of a
 		 * scrape, which would fetch art the shelf never shows */
-		if (!strcasecmp(e->d_name, PM_SCRIPT)) continue;
-		/* The listing's own type where the filesystem gives one (exFAT
-		 * does): a stat per game was 8,800 of them on my card for
-		 * MENU > Scraper's count alone, 2026-11-06 */
-		if (e->d_type == DT_DIR) continue;
-		if (e->d_type != DT_REG && (stat(full, &st) != 0 || !S_ISREG(st.st_mode))) continue;
-		if (snprintf(g_roms[g_nroms], NAME_MAX_, "%s", e->d_name)
-		    >= NAME_MAX_) continue;
-		g_rext[g_nroms][0] = '\0';
-		dot = strrchr(g_roms[g_nroms], '.');
-		if (dot) {
-			snprintf(g_rext[g_nroms], sizeof g_rext[0], "%s", dot);
-			*dot = '\0';
+		if (!strcasecmp(own, PM_SCRIPT)) continue;
+		/* A name cut short does not crash, it names a DIFFERENT file - so
+		 * truncation is skipped rather than survived */
+		dot = strrchr(own, '.');
+		if (snprintf(g_roms[g_nroms], NAME_MAX_, "%.*s",
+		             dot && dot != own ? (int)(dot - own) : (int)strlen(own), own) >= NAME_MAX_ ||
+		    (dot && strlen(dot) >= sizeof g_rext[0]))
+			continue;
+		snprintf(g_rext[g_nroms], sizeof g_rext[0], "%s", dot && dot != own ? dot : "");
+		if (e->dir) {
+			for (d = 0; d < g_nrdirs; d++)
+				if (!strncmp(g_rdirs[d], e->file, e->dir) && !g_rdirs[d][e->dir]) break;
+			if (d == g_nrdirs) {
+				if (g_nrdirs == RDIRS_MAX) continue;
+				snprintf(g_rdirs[g_nrdirs++], LIB_PATH, "%.*s", (int)e->dir, e->file);
+			}
+			d++;
 		}
+		g_rdir[g_nroms] = (unsigned short)d;
 		g_nroms++;
 	}
-	closedir(d);
+	lib_free(&l);
+}
+
+/* art_rom_crc for ROM `i`, in the folder of games it is kept in */
+static bool art_rom_crc_at(const char *dir, int i, const char *exts, uint32_t *crc)
+{
+	char stem[LIB_PATH];
+
+	if (!g_rdir[i]) return art_rom_crc(dir, g_roms[i], exts, crc);
+	snprintf(stem, sizeof stem, "%s/%s", g_rdirs[g_rdir[i] - 1], g_roms[i]);
+	return art_rom_crc(dir, stem, exts, crc);
 }
 
 /* ---- the index ---------------------------------------------------------- */
@@ -1686,6 +1719,8 @@ int art_step(void)
 		 * list, and its cover lives at the same .media path all the same. */
 		if (g_only[0]) {
 			snprintf(g_roms[0], NAME_MAX_, "%s", g_only);
+			g_rext[0][0] = '\0';
+			g_rdir[0] = 0;
 			g_nroms = 1;
 		} else {
 			read_roms(dir, g_sys[g_si].exts);
@@ -1758,9 +1793,9 @@ int art_step(void)
 		snprintf(g_st.now, sizeof g_st.now, "%s", g_roms[g_ri]);
 		mkdir(media, 0777);
 		{
-			char file[NAME_MAX_ + 16];
+			char file[LIB_PATH];
 
-			snprintf(file, sizeof file, "%s%s", g_roms[g_ri], g_rext[g_ri]);
+			rom_file(g_ri, file, sizeof file);
 			if (!ss_run_begin(g_sys[g_si].folder, file, g_roms[g_ri], dir,
 			                  g_sys[g_si].exts)) {
 				/* No account, or a system they have no id for. Either way
@@ -1962,7 +1997,7 @@ int art_step(void)
 		/* Logged, because a checksum that names a game is a claim worth
 		 * being able to check: it says which file became which cover. And
 		 * where the checksum names nothing, the loose pass, last of all. */
-		if (g_dat && art_rom_crc(dir, g_roms[ri], g_sys[g_si].exts, &crc) &&
+		if (g_dat && art_rom_crc_at(dir, ri, g_sys[g_si].exts, &crc) &&
 		    dat_name(crc, dname, sizeof dname) && match(dname, hitbuf, sizeof hitbuf)) {
 			fprintf(stderr, "art: %s is %s by checksum, cover %s\n",
 			        g_roms[ri], dname, hitbuf);

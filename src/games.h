@@ -51,6 +51,12 @@ typedef struct {
      * none on any. Asked with games_draw's ctx, for every cover drawn, every
      * frame, so a favorite set on the details page shows the next frame. */
     int (*badge_of)(void *ctx,int i);
+    /* The focused entry is a folder of games (src/shelfdir.h) holding this
+     * many: A says Open, the line under its name its count, and there is
+     * no X or Y. 0 for a game. */
+    int folder;
+    /* The shelf shows a folder of its games, not its top: B says Back */
+    bool inside;
 } games_info;
 void games_reset(games_row *row,int cursor,int count,uint32_t now);
 void games_select(games_row *row,int cursor,int count,int direction,uint32_t now);

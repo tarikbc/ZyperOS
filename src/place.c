@@ -22,8 +22,10 @@ void remember_place(app *a)
 	snprintf(p, sizeof p, "%s/.last", P_ROOT);
 	f = atomic_open(p, 0644);
 	if (!f) return;
-	fprintf(f, "%s\n%s\n", a->sys.systems[a->sys_cursor].tag,
-	        v->list.count ? v->list.items[v->cursor].file : "");
+	/* And the folder of its games the shelf showed (src/shelfdir.h), a
+	 * third line a launcher before 1.0.5 never read */
+	fprintf(f, "%s\n%s\n%s\n", a->sys.systems[a->sys_cursor].tag,
+	        v->list.count ? v->list.items[v->cursor].file : "", v->dir);
 	atomic_commit(f, p);
 }
 
@@ -108,11 +110,14 @@ bool playing_restore(app *a)
 	if (strcmp(off, "off") != 0) { playing_clear(); return false; }
 
 	for (i = 0; i < a->sys.count; i++) {
-		if (strcmp(a->sys.systems[i].tag, tag) != 0) continue;
-		for (k = 0; k < a->view[i].list.count; k++) {
-			if (strcmp(a->view[i].list.items[k].file, file) != 0) continue;
+		const game_list *gl = sys_games(&a->view[i]);
 
-			state_path(a, i, &a->view[i].list.items[k], st, sizeof st);
+		if (strcmp(a->sys.systems[i].tag, tag) != 0) continue;
+		/* Every game of the system: it may be in a folder of them */
+		for (k = 0; k < gl->count; k++) {
+			if (strcmp(gl->items[k].file, file) != 0) continue;
+
+			state_path(a, i, &gl->items[k], st, sizeof st);
 			if (access(st, R_OK) != 0) {
 				/* The game is gone from under the state, or the autosave
 				 * never landed. Clear the marker rather than trying every
@@ -121,7 +126,8 @@ bool playing_restore(app *a)
 				return false;
 			}
 			a->sys_cursor = i;
-			a->view[i].cursor = k;
+			if (a->view[i].all) shelf_reveal(a, i, file);
+			else a->view[i].cursor = k;
 			return true;
 		}
 	}
@@ -131,17 +137,25 @@ bool playing_restore(app *a)
 
 void restore_place(app *a)
 {
-	char p[CFG_STR * 2], tag[64] = { 0 }, file[LIB_PATH] = { 0 };
+	char p[CFG_STR * 2], tag[64] = { 0 }, file[LIB_PATH] = { 0 }, dir[LIB_PATH] = { 0 };
 	FILE *f;
 	snprintf(p, sizeof p, "%s/.last", P_ROOT);
 	f = fopen(p, "r");
 	if (!f) return;
 	if (fgets(tag, sizeof tag, f)) tag[strcspn(tag, "\r\n")] = 0;
 	if (fgets(file, sizeof file, f)) file[strcspn(file, "\r\n")] = 0;
+	if (fgets(dir, sizeof dir, f)) dir[strcspn(dir, "\r\n")] = 0;
 	fclose(f);
 	for (int i = 0; i < a->sys.count; i++) {
 		if (strcmp(a->sys.systems[i].tag, tag) != 0) continue;
 		a->sys_cursor = i;
+		/* Into the folder the shelf was on (or the nearest one up still
+		 * there), on the entry it was on: a game or a folder */
+		if (a->view[i].all) {
+			if (dir[0]) shelf_open_dir(a, i, dir, file);
+			else shelf_reveal(a, i, file);
+			return;
+		}
 		for (int k = 0; k < a->view[i].list.count; k++)
 			if (strcmp(a->view[i].list.items[k].file, file) == 0) {
 				a->view[i].cursor = k;

@@ -67,6 +67,16 @@ bool pm_cover_path(const app *a, int sys, const game_entry *g, int theme_ix,
 /* The icon the Install PortMaster page draws where System Update's draws
  * Zyper, into `out`; false when the card has none */
 bool pm_icon_path(char *out, size_t n);
+/* Folders on a shelf (src/shelfdir.h). shelf_dirs_init: after a scan, the
+ * system's games moved to `all` when any is in a folder, and the shelf on
+ * the top's folders and games; shelf_dirs_free: `all` let go, the shelf on
+ * the top. shelf_show_dir: the shelf on folder `dir`, or the nearest one up
+ * that holds a game, its textures let go and its arrays made again; not
+ * sorted (sort_shelf), its cursor kept in range. False with no folders, or
+ * no memory, which leaves an empty shelf. */
+void shelf_dirs_init(sysview *v);
+void shelf_dirs_free(sysview *v);
+bool shelf_show_dir(sysview *v, const char *dir);
 /* The Favorites shelf rebuilt after a favorite changed */
 void refresh_favorites_shelf(app *a);
 /* A game deleted from the card (src/gamedel.h): off its shelf and Favorites,

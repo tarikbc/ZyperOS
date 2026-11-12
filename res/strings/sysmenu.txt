@@ -1162,3 +1162,36 @@ fr = choisir
 de = wählen
 ja = 選択
 it = scegli
+
+[sysmenu.view]
+note = A system menu row, under Sort By: how the shelf shows its games, its covers in a row or a list of names (DESIGN.md 11.39). Title Case in English.
+en = View
+zh-Hans = 视图
+es = Vista
+pt-BR = Exibição
+fr = Affichage
+de = Ansicht
+ja = 表示
+it = Vista
+
+[sysmenu.view_covers]
+note = View's value: the shelf shows its games' covers in a row, as it always did. A named choice; the Box Art term.
+en = Covers
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = パッケージ画像
+it = Copertine
+
+[sysmenu.view_list]
+note = View's value: the shelf shows its games as a list of names, a small cover beside each. A named choice.
+en = List
+zh-Hans = 列表
+es = Lista
+pt-BR = Lista
+fr = Liste
+de = Liste
+ja = リスト
+it = Elenco

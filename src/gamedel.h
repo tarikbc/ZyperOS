@@ -54,6 +54,10 @@ typedef struct {
 	const char *exts;     /* the shelf's extension list */
 	const char *file;     /* the launch path: "x.gb", or "<dir>/<disc>" */
 	const char *name;     /* the stem: art, achievements, identity */
+	/* The folder of games it is kept in on its shelf: the length of `file`'s
+	 * leading folders that are not the game's (game_entry.dir, 1.0.5), 0 at
+	 * the top. Never in the plan: a folder of games is no game's. */
+	unsigned    dir;
 } gd_game;
 
 /* Every other game on the card's shelves, for what they share */
@@ -62,6 +66,7 @@ typedef struct {
 	const char *file;
 	const char *name;
 	bool        hooked;   /* its shelf's games are folders (ScummVM's) */
+	unsigned    dir;      /* game_entry.dir */
 } gd_other;
 
 typedef enum {

@@ -148,6 +148,7 @@ something once broke in a way nothing noticed:
 | `check-config` | systems.cfg's accent field: six hex digits are that color, anything else is no color at all (CFG_NO_COLOR); and the systems in A to Z order |
 | `check-kbnav` | the on-screen keyboard's d-pad: onto and off the action row, the wraps at every edge, and the action keys' labels on each layer |
 | `check-randgame` | Random Game's pick: every game as likely as every other, nothing off a shelf, never the last pick again |
+| `check-shelfdir` | Folders on a shelf: what a folder shows, its folders first by name with their games counted at every depth, then its games; a disc set in a folder a game there |
 | `check-tween` | the menus' focus plate and the give of their list: a press mid-move takes it on from where it is, and held, it is on its row before the d-pad's next repeat |
 | `check-menumotion` | a menu's panel opening and closing: its curves and scrim, one panel at a time over a submenu and back, a press that puts it at rest, and a held d-pad that starts nothing |
 | `check-menusnap` | a menu's panel kept whole for the next screen to draw it leaving: every row's text copied, its marks kept, nothing past the bounds |

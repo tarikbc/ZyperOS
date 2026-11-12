@@ -199,7 +199,11 @@ bool stats_screen(app *a)
 					a->sys_cursor = si;
 					/* By system there is no file to look for, so the shelf
 					 * keeps whichever game it was already on. */
-					if (!by_sys)
+					/* A game kept in a folder of games (src/shelfdir.h):
+					 * its folder opened, its cursor on it */
+					if (!by_sys && a->view[si].all)
+						shelf_reveal(a, si, file);
+					else if (!by_sys)
 						for (gi = 0; gi < a->view[si].list.count; gi++)
 							if (!strcmp(a->view[si].list.items[gi].file, file)) {
 								a->view[si].cursor = gi;

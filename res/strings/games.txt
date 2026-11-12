@@ -88,3 +88,25 @@ fr = Détails
 de = Details
 ja = 詳細
 it = Dettagli
+
+[games.open]
+note = The hint by A on a folder of games on a shelf: it opens the folder and shows its games
+en = Open
+zh-Hans = 打开
+es = Abrir
+pt-BR = Abrir
+fr = Ouvrir
+de = Öffnen
+ja = 開く
+it = Apri
+
+[games.back]
+note = The hint by B in a folder of games on a shelf: back to the folder it is in, or the shelf's top
+en = Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Retour
+de = Zurück
+ja = 戻る
+it = Indietro

@@ -212,7 +212,7 @@ static int others_of(const char *folder, const char *skip, gd_other *out, int ma
 
 			if (!strcmp(g_shelf[s].folder, folder) && !strcmp(e->file, skip)) continue;
 			out[n++] = (gd_other){ g_shelf[s].folder, e->file, e->name,
-			                       lib_shelf_hooked(g_shelf[s].exts) };
+			                       lib_shelf_hooked(g_shelf[s].exts), e->dir };
 		}
 	}
 	return n;
@@ -319,8 +319,14 @@ static bool delete_game(const shelf *s, const char *file, const char *name, gd_w
                         gd_done *done)
 {
 	gd_card card = { roms, saves, states };
-	gd_game g = { s->folder, s->tag, s->core, s->exts, file, name };
+	gd_game g = { s->folder, s->tag, s->core, s->exts, file, name, 0 };
 	int n = others_of(s->folder, file, g_others, 256);
+
+	/* The folder of games it is kept in, as the shelf's scan has it */
+	for (int k = 0; k < g_nshelves; k++)
+		if (!strcmp(g_shelf[k].folder, s->folder))
+			for (int i = 0; i < g_list[k].count; i++)
+				if (!strcmp(g_list[k].items[i].file, file)) g.dir = g_list[k].items[i].dir;
 
 	memset(done, 0, sizeof *done);
 	if (!gd_plan_make(&card, &g, g_others, n, &g_plan)) {
@@ -600,6 +606,56 @@ int main(void)
 	        PS1, "Linked (USA)/Linked (USA).m3u", "Linked (USA)", GD_OUTSIDE);
 	refused("a key that climbs out is refused:",
 	        PS1, "../Game Boy/Tetris (World).gb", "Tetris (World)", GD_OUTSIDE);
+
+	/* 1.0.5: games kept in folders of games (src/shelfdir.h). A game goes
+	 * alone, never the folder it is kept in; a disc set in one goes with its
+	 * own folder; a sheet's tracks beside it in the folder go with it. */
+	put("Roms/Game Boy/Rom Hacks/Tetris DX Hack.gb", "hack");
+	put("Roms/Game Boy/Rom Hacks/Other Hack.gb", "other");
+	put("Roms/Game Boy/.media/Tetris DX Hack.png", "png");
+	put("Saves/Tetris DX Hack.srm", "srm");
+	put("shared/.zyperos/Game Boy/Tetris DX Hack.gb.auto.state", "state");
+	put("Roms/PlayStation/RPGs/Xenogears (USA)/Xenogears (USA) (Disc 1).cue",
+	    "FILE \"Xenogears (USA) (Disc 1).bin\" BINARY\n");
+	put("Roms/PlayStation/RPGs/Xenogears (USA)/Xenogears (USA) (Disc 1).bin", "x");
+	put("Roms/PlayStation/RPGs/Vagrant Story (USA).chd", "vs");
+	put("Roms/PlayStation/RPGs/Legend (USA).cue", "FILE \"Legend (USA) (Track 1).bin\" BINARY\n");
+	put("Roms/PlayStation/RPGs/Legend (USA) (Track 1).bin", "l");
+	put("Saves/Xenogears (USA) (Disc 1).srm", "srm");
+	{
+		static const char *const gone[] = {
+			"Roms/Game Boy/Rom Hacks/Tetris DX Hack.gb",
+			"Roms/Game Boy/.media/Tetris DX Hack.png",
+			"Saves/Tetris DX Hack.srm",
+			"shared/.zyperos/Game Boy/Tetris DX Hack.gb.auto.state",
+			NULL
+		};
+		deleted("a game in a folder of games: the game, never the folder or its neighbour:",
+		        GB, "Rom Hacks/Tetris DX Hack.gb", "Tetris DX Hack", gone, 4);
+		CHECK(there("Roms/Game Boy/Rom Hacks/Other Hack.gb"));
+	}
+	{
+		static const char *const gone[] = {
+			"Roms/PlayStation/RPGs/Xenogears (USA)/",
+			"Roms/PlayStation/RPGs/Xenogears (USA)/Xenogears (USA) (Disc 1).cue",
+			"Roms/PlayStation/RPGs/Xenogears (USA)/Xenogears (USA) (Disc 1).bin",
+			"Saves/Xenogears (USA) (Disc 1).srm",
+			NULL
+		};
+		deleted("a disc set in a folder of games: its own folder, and not the one it is in:",
+		        PS1, "RPGs/Xenogears (USA)/Xenogears (USA) (Disc 1).cue", "Xenogears (USA)", gone, 3);
+		CHECK(there("Roms/PlayStation/RPGs/Vagrant Story (USA).chd"));
+	}
+	{
+		static const char *const gone[] = {
+			"Roms/PlayStation/RPGs/Legend (USA).cue",
+			"Roms/PlayStation/RPGs/Legend (USA) (Track 1).bin",
+			NULL
+		};
+		deleted("a sheet loose in a folder of games: its track beside it goes too:",
+		        PS1, "RPGs/Legend (USA).cue", "Legend (USA)", gone, 2);
+		CHECK(there("Roms/PlayStation/RPGs/Vagrant Story (USA).chd"));
+	}
 
 	{
 		static const char *const gone[] = {

@@ -277,6 +277,36 @@
       "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
       "name": "Soltys",
       "sha256": "1b32cbfbe0f9da2748ff8b3615542861cf1a4675018c651e6d471cdaba6d5fd5"
+    },
+    "Game Boy Advance/Commercial Owned/Castlevania - Aria of Sorrow (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Castlevania - Aria of Sorrow (USA)",
+      "sha256": "801302e90259bf53c714bbb50c53a92ed8b9023f1accf7676a988841255cddc3"
+    },
+    "Game Boy Advance/Commercial Owned/Final Fantasy Tactics Advance (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Final Fantasy Tactics Advance (USA)",
+      "sha256": "3078970248e49c557409980579c96d53063a0a60b50b224ed5ce67613df08ea9"
+    },
+    "Game Boy Advance/Commercial Owned/Golden Sun (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Golden Sun (USA, Europe)",
+      "sha256": "e1e96c261bea930a23c966ae2a5fc80a318e9f509af5480b450a6e6309bc2574"
+    },
+    "Game Boy Advance/Commercial Owned/Kirby & The Amazing Mirror (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Kirby & The Amazing Mirror (USA)",
+      "sha256": "d7052e92dbe6a8da7f3b7b5fb623b131958f21bf04d2c29ad90666a5faaf3a85"
+    },
+    "Game Boy Advance/Friends Games/Fire Emblem (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Fire Emblem (USA, Australia)",
+      "sha256": "8d7967af431410a81c9871f47db15d5b52b221bd2f58c5b887df0cd1a49f1703"
+    },
+    "Game Boy Advance/Rom Hacks/Translations/Mother 3 (English).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Mother 3 (Japan)",
+      "sha256": "22c66f14c081190febb8ede167f9553ce425a2fa277b6bda3c2dd490cb0ab141"
     }
   },
   "screenshots": [
@@ -1614,6 +1644,120 @@
         "{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png"
       ],
       "sha256": "692ef7648aca32156df4cf7e0b52df574748fab59ea88eabc19224f3bafd017f"
+    },
+    {
+      "file": "light/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "0d7703812334a5e3fbcdf3baeb5ccc0556b61675747600fd17dbe8f99f2a4b60"
+    },
+    {
+      "file": "light/folder-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "165a6b6ce3ce7609a6c5d14bd0450ccdcd0d1eb93603c071a11854560bba1405"
+    },
+    {
+      "file": "light/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "1fd70ad0bba7ddc1b4926be6a9d2d44de30c55b7ea875973958b6db81d5e4cf6"
+    },
+    {
+      "file": "light/list-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "dd7f09a82ba4374988127436e3a8d41caac5f3b851ec77bbbad8273976d72610"
+    },
+    {
+      "file": "dark/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "48304bead3d1c47578f1cb5f8e1465e1d802d389975522ee9123f9202355ae34"
+    },
+    {
+      "file": "dark/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "2e7582472a3fa8b35f3caf15eb3bdf2e163aca66963039a08ad6a93f6f148822"
     }
   ]
 }

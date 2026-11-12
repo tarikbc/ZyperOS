@@ -2806,6 +2806,95 @@ the device to sleep." It had been the other way on purpose - "a library left
 scraping unattended on battery is exactly what Auto Off is for" - and was
 the one job of these that did not hold.)*
 
+### 11.39 Folders on a shelf, and the list
+
+**Folders** (src/shelfdir.h, src/library.c). A folder in a system's folder
+on the card is a folder of games on its shelf, to any depth: someone's
+"Homebrew and Aftermarket", "Commercial Owned", "Rom Hacks/Translations".
+The shelf shows one folder at a time: the folders in it first, A to Z, then
+its own games in the shelf's Sort By order (a sort orders games, never the
+folders). A on a folder opens it, on its first entry; B goes up one, its
+cursor back on the folder it left, and at the top B goes to the systems as
+it always did. X and Y on a folder have nothing to do and play **deny**.
+The heading names the way down, "Game Boy Advance / Rom Hacks / Pokemon",
+in the heading's place and style, sliding when it is too long; the count
+beside it is the folder's entries. A folder with no game at any depth is
+left out, as an empty system is, and is one line in the log's left-out
+names.
+
+A folder that **is** a game stays one game: on a shelf that takes discs, a
+folder whose disc images are one game's (their names the same game's,
+"Disc 2" and "Track 01" aside, or an `.m3u` with them), launched by its
+best image as before, and a Dreamcast `.gdi` set by its sheet; on
+ScummVM's, a folder with a file in it (a folder of game folders is a
+folder of games); on Ports', every folder is a port's own and is never
+looked into. A folder of several games' discs is a folder of games, each
+image a game in it. A shelf that takes no disc (the Atari 2600's and the
+Genesis's `.bin` are cartridges) has only folders of games. The folders
+EmulationStation keeps a system's art in (images, videos, media, boxart,
+snaps, wheel, box3d and the rest, lib_es_media_dir) and MinUI's Imgs are
+never folders of games, and are not counted as left out.
+
+Everything about a system's games rather than what its shelf shows goes by
+all of them, in every folder: the home's count, Favorites, Search Games,
+Random Game (which opens the folder of the game it picked), Storage,
+Delete Game (a game in a folder of games goes alone, the folder stays),
+px2-open, the Scraper, the saved library and the place a start comes back
+to, folder and all. Saves and states go by the game's file name, as they
+always have.
+
+**A folder's card** (ui_make_folder_card): the generated card's slab and
+band in the system's color, and in place of its letter the pixel FOLDER
+still the home and Storage draw, at three units a pixel, its top at -28
+on the 512 x 656 card. On the folder's front a paper label (`#f5f4ee`, its
+edge `#6b6040` and a pixel's shadow down and right) holds the count of
+games in pixel digits 5 x 7, three sprite pixels a digit pixel (two from
+four digits), in **ink**: part of the picture, the same in both themes, as
+the folder's manila is. The folder's name under it in the card's title
+face at y 356, its rule under it. Under the row the name is the title and
+the line under it "12 games" (shelf.games); A's hint is **Open**
+(games.open), and in a folder B's is **Back** (games.back).
+
+**The list** (MENU > View > List, src/gamelist.h). A system's menu has
+**View** under Sort By: **Covers**, the row as it always was, or **List**.
+Each shelf keeps its own, Favorites too, in the device's database by the
+system's tag (`view.<tag>`): the choice belongs with Sort By and Display
+Mode, which are per shelf, because it follows what a shelf holds - a
+shelf with good covers reads as a row, an Arcade or a long library as a
+list. A, Left, Right turn it over; the shelf under the menu turns with it,
+on the same entry.
+
+The heading and the foot are the cover row's, so turning View moves only
+the middle:
+- Rows down the left: the focus plate from x 40, 552 wide, rows 56 tall
+  from y 200, eight in sight; names in **meta** at x 120, **text-soft**,
+  the focused one on an **accent** plate in **on-accent** (radius.row),
+  sliding when too long; the others fitted. The plate and the window glide
+  in **ms.move** and **out**; a jump of more than a row lands with a short
+  glide, as the cover row's jumps do. More rows above or below: the menus'
+  small triangle in **text-dim**.
+- Each row's mark, centered at x 80: a game's, a small card 36 x 46 of
+  **surface** in an **edge** frame, its band and its name's first letter in
+  the system's mark color (ui_sys_mark) - the generated card, small,
+  drawn rather than loaded, so a list of a thousand games costs no art
+  reads and no textures, and a 512-unit cover is never squeezed to 40
+  units; a folder's, the pixel folder at half its size, its count at the
+  row's end (x 568) in **chrome**. A favorite has the heart at the row's
+  end, not on Favorites.
+- The focused entry on the right: its card or box art whole in a box 320
+  x 320 from x 640, y 200; its facts under it from cap y 552, 32 apart, in
+  **chrome** **text-dim** (its system on Favorites, Played, Achievements,
+  or a folder's "12 games"); A's hint at cap y 664.
+- Up and Down step, Left and Right jump a letter, L1 and R1 a page: the
+  row turned, as the cover row's d-pad turns with it. It comes round past
+  its ends: a shelf, not a menu (11.3). No video snap plays in the list.
+
+*(2026-11-12: I wanted my folders in a system kept on the shelf, with
+their own look in the pixel style, and a list to switch to from MENU. Host
+shots:
+`--folder DIR`, `--game FILE`, `--view list|covers` and `--shelf-press
+a,b,up...`.)*
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and
