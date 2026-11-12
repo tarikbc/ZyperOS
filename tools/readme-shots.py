@@ -104,7 +104,7 @@ LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertain
          'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
 # With --art, the in-game menu and its Controls pages stand over a screenshot
 # of a PlayStation game (--backdrop) rather than a made-up frame
-BACKDROP=['gamemenu','controls-ps1','controls-hotkeys']
+BACKDROP=['gamemenu','gamemenu-shader','controls-ps1','controls-hotkeys']
 BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
 ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
 GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
@@ -209,6 +209,8 @@ SHOTS={
     # Quick Slot row, a PlayStation game's buttons drawn as their shapes, and
     # its Hotkeys page, SELECT with a shoulder
     'gamemenu':('demo','PS1',['--screen','games','--gamemenu','3']),
+    # ...on its Shader row, Sharp-Shimmerless (SHOT_SETTINGS)
+    'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','5']),
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
 }
@@ -427,6 +429,20 @@ def media_card(card,art=None,manifest=None):
     (card/'Videos').mkdir();(card/'Videos/Sintel.mp4').touch()
     book=card/'Audiobooks/Treasure Island';book.mkdir(parents=True)
     (book/'01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
+
+# A shot's settings in the handheld's own database (userdata/zyperos.db, as
+# the launcher's db_dev keeps them), there only while it is taken
+SHOT_SETTINGS={'gamemenu-shader':{'shader.PS1':'shimmerless'}}
+
+def set_settings(card,settings,on):
+    """A shot's settings (SHOT_SETTINGS) into the handheld's database, or out"""
+    if not settings: return
+    (card/'userdata').mkdir(parents=True,exist_ok=True)
+    with sqlite3.connect(card/'userdata/zyperos.db') as db:
+        db.execute('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)')
+        for key,value in settings.items():
+            if on: db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)',(key,value))
+            else: db.execute('DELETE FROM settings WHERE key=?',(key,))
 
 def set_favs(card,favs,on):
     """A shot's favorites (SHOT_FAVS) into the card's library, or out of it"""
@@ -701,9 +717,11 @@ def main():
                          '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
                 if backdrop and name in BACKDROP: command+=['--backdrop',str(backdrop)]
                 set_favs(card,SHOT_FAVS.get(name,[]),True)
+                set_settings(card,SHOT_SETTINGS.get(name),True)
                 result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
                                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 set_favs(card,SHOT_FAVS.get(name,[]),False)
+                set_settings(card,SHOT_SETTINGS.get(name),False)
                 (dest/(name+'.log')).write_text(result.stdout)
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')

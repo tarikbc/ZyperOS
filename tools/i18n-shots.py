@@ -501,8 +501,12 @@ def run_language(code, shots, binary, keep):
                 pm.mkdir(exist_ok=True)
                 (pm / "status").write_text(PM_STATES[name][0])
                 env["ZYPEROS_PM_STATUS"] = str(pm / "status")
+            # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
+            # is taken: the Shader row at its widest value
+            R.set_settings(card, R.SHOT_SETTINGS.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            R.set_settings(card, R.SHOT_SETTINGS.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])

@@ -79,7 +79,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
 | **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -195,6 +195,7 @@ than any one console:
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
 | **Achievements** | the RetroAchievements account, or `sign in` |
+| **Shader** | `Off` or `Sharp-Shimmerless`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
@@ -315,6 +316,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
+| **Shader** | `Off` or `Sharp-Shimmerless`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
@@ -337,6 +339,21 @@ on the card. Whichever order you pick, games it knows nothing about sort to
 the bottom rather than into the middle, and two games it cannot tell apart
 fall back to name - a shelf that reshuffles itself when nothing has changed
 reads as broken even when the top of it is right.
+
+**Shaders.** How a game's picture is drawn onto the screen at its last step.
+`Off` draws each of the game's pixels as the nearest screen pixels, so at a
+size that is not a whole number of times the game's (a 256-wide NES picture
+stretched to 640 is 2.5 times) some of its pixels are two screen pixels wide
+and some three, and a scrolling picture shimmers as they swap.
+`Sharp-Shimmerless`, zadpos's shader, keeps every pixel the same size: a
+screen pixel inside one of the game's pixels is that pixel exactly, and only
+one that falls across two of them mixes the two, by how much of it each
+covers. The picture stays as sharp as it can at that size and a scroll stays
+steady. At a whole number of times (Integer, Native 1:1) the two are the
+same. The in-game menu's **Shader** row, right under Display, changes it for
+the game's system, from the next frame after Continue (the paused picture
+behind the menu stays as it was); the system menu's row does the same from
+the shelf, and **MENU > Shader** sets every system at once.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer
