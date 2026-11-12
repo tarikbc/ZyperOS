@@ -243,6 +243,7 @@ EXTRA = {
     # Computer Connected with Flash Drive (an image with usbdrive), two to a
     # row: three tiles and, on a development image, four; and its pictures
     "usb-ask-drive": ("demo", "PS1", ["--usb-ask", "2", "plain", "drive"]),
+    "usb-ask-drive-0": ("demo", "PS1", ["--usb-ask", "0", "plain", "drive"]),
     "usb-ask-drive-dev": ("demo", "PS1", ["--usb-ask", "3", "drive"]),
     "usb-drive-0": ("demo", "PS1", ["--usb-drive", "0"]),
     "usb-drive-1": ("demo", "PS1", ["--usb-drive", "1"]),

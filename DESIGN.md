@@ -1573,7 +1573,7 @@ Charge Only.)*
 stick: "Pen drive", "Clé USB", "USB-Stick", "USBメモリ"), UI_GLYPH_USB.
 With it the tiles go two to a row, a grid of TILE_W2 (408) by 164: Charge
 Only and File Transfer, then Flash Drive and, on a development image,
-Developer (SSH); a last row of one centered. A grid's tile has its mark at
+Developer (SSH); a last row of one as wide as the grid (a release image's Flash Drive under Charge Only and File Transfer, 2026-11-12). A grid's tile has its mark at
 54 and its name on one line at 110 (its two lines joined, with no space
 after a hyphen), in **meta** where **menu** does not fit. Up and down move
 between the rows. It starts on Charge Only, the safe answer. Chosen, ZyperOS
@@ -1597,7 +1597,9 @@ to finish." in **meta** **text-soft**, and at the foot two hints, the
 shelves' foot's size (11.9), centered as a pair: B "Eject" and POWER "Stop
 and power off". B ejects from the handheld (the medium taken away, so the
 computer lets go of it, then back as after the computer's eject); if the
-computer wrote in the last 5 s, it asks first, on a page of the same make:
+computer wrote in the last 5 s, or more than 1 MB of its writes is not on
+the card yet, or usbdrive cannot read the gadget's counters at all, it asks
+first, on a page of the same make:
 "Eject anyway?" over "The computer may still be copying to the card." in
 the wide tile, A "Eject" and B "Keep" at the foot. Ejecting on the computer
 stays the way the eject line names. FUNCTION and volume step the
@@ -1613,8 +1615,10 @@ each token of a number in the speeds' face and in the totals' (a digit in a
 cell as wide as the widest digit, so a number does not shift as it counts),
 the language's decimal mark and units ("1,24 Go"), "/s", and each way's
 mark moving and idle, on the tiles' color, with where they and the six
-slots are; usbdrive reads the games partition's /sys stat once a second and
-draws only a tile that changed, so an idle drive costs nothing (plastron's
+slots are; usbdrive reads, once a second, the bytes the gadget itself
+served (the f_mass_storage thread's /proc io counters: the card's /sys stat
+counted a write only when the page cache reached the card, up to 30 s
+late, 2026-11-12) and draws only a tile that changed, so an idle drive costs nothing (plastron's
 package/usbdrive/src/atlas.h and drivestat.h; the atlas is read as
 untrusted). Speeds 1000-based, one decimal in MB/s (999.9 MB/s at most),
 totals with two in GB (999.99 GB); never a time left, as the handheld sees

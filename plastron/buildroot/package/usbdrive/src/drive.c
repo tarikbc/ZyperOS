@@ -2,6 +2,9 @@
 /* See drive.h. */
 #include "drive.h"
 
+#include <stdio.h>
+#include <string.h>
+
 bool drv_may_export(bool mounted, int holders)
 {
 	return !mounted && holders == 0;
@@ -35,7 +38,22 @@ drv_end drv_wait_step(drv_wait *w, bool vbus, bool lun_file, bool configured, bo
 	return DRV_STAY;
 }
 
-drv_act drv_key(drv_keys *k, int key, bool down, unsigned now, bool wrote, unsigned last_write)
+bool drv_copying(bool sure, bool wrote, unsigned now, unsigned last_write, unsigned long dirty_kb)
+{
+	if (!sure) return true;
+	if (dirty_kb > DRV_DIRTY_KB) return true;
+	return wrote && now - last_write < DRV_ASK_MS;
+}
+
+bool drv_parse_dirty(const char *m, unsigned long *kb)
+{
+	const char *d = strstr(m, "\nDirty:");
+
+	if (!d && !strncmp(m, "Dirty:", 6)) d = m - 1;
+	return d && sscanf(d + 1, "Dirty: %lu", kb) == 1;
+}
+
+drv_act drv_key(drv_keys *k, int key, bool down, bool copying)
 {
 	if (key == DRV_K_FN) {
 		k->fn = down;
@@ -57,7 +75,7 @@ drv_act drv_key(drv_keys *k, int key, bool down, unsigned now, bool wrote, unsig
 			k->asking = false;
 			return DRV_A_KEEP;
 		}
-		if (wrote && now - last_write < DRV_ASK_MS) {
+		if (copying) {
 			k->asking = true;
 			return DRV_A_ASK;
 		}

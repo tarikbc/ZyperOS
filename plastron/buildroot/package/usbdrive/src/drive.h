@@ -61,7 +61,7 @@ drv_end drv_wait_step(drv_wait *w, bool vbus, bool lun_file, bool configured, bo
  * same ladder a press. B ejects from the handheld, as the computer's eject
  * would end it; if the computer wrote to the card in the last DRV_ASK_MS
  * (it may still be copying, its cache not yet on the card) it asks first,
- * A to eject anyway, B to keep it. POWER is not here: it is the computer's
+ * A to eject anyway, B to keep it; and whenever it cannot tell, it asks. POWER is not here: it is the computer's
  * end of the export, drv_wait_step's. */
 #define DRV_ASK_MS 5000u
 
@@ -81,8 +81,19 @@ typedef struct {
 	int  max;       /* the top rung */
 } drv_keys;
 
-/* A button down or up at now_ms; `wrote` whether the computer wrote at all,
- * `last_write` when it last did */
-drv_act drv_key(drv_keys *k, int key, bool down, unsigned now, bool wrote, unsigned last_write);
+/* A button down or up; `copying` whether the computer may still be copying
+ * (drv_copying) */
+drv_act drv_key(drv_keys *k, int key, bool down, bool copying);
+
+/* May the computer still be copying, so B asks first. Fails safe: whenever
+ * the handheld cannot tell (`sure` false: the gadget thread's own counters
+ * could not be read), it may be. Else: it wrote in the last DRV_ASK_MS, or
+ * more than DRV_DIRTY_KB of what it wrote is not on the card yet (the
+ * kernel's page cache, /proc/meminfo's Dirty). */
+#define DRV_DIRTY_KB 1024u
+bool drv_copying(bool sure, bool wrote, unsigned now, unsigned last_write, unsigned long dirty_kb);
+
+/* /proc/meminfo's Dirty, in kB; false when it is not there */
+bool drv_parse_dirty(const char *meminfo, unsigned long *kb);
 
 #endif

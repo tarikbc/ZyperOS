@@ -127,8 +127,8 @@ bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsign
 	} else {
 		unsigned dt = now - s->last_ms;
 
-		way_step(&s->in, moved(s->wr0, wr) * 512, dt, now);
-		way_step(&s->out, moved(s->rd0, rd) * 512, dt, now);
+		way_step(&s->in, moved(s->wr0, wr), dt, now);
+		way_step(&s->out, moved(s->rd0, rd), dt, now);
 		s->rd0 = rd;
 		s->wr0 = wr;
 		s->last_ms = now;
@@ -139,4 +139,12 @@ bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsign
 	if (!strcmp(shown, s->shown)) return false;
 	snprintf(s->shown, sizeof s->shown, "%s", shown);
 	return true;
+}
+
+bool dst_parse_io(const char *text, unsigned long long *rchar, unsigned long long *wchar)
+{
+	const char *r = strstr(text, "rchar:"), *w = strstr(text, "wchar:");
+
+	return r && w && (r == text || r[-1] == '\n') && (w == text || w[-1] == '\n') &&
+	       sscanf(r, "rchar: %llu", rchar) == 1 && sscanf(w, "wchar: %llu", wchar) == 1;
 }

@@ -15,8 +15,10 @@
  *
  * With ZyperOS's atlas in FRAMES too (atlas.h), connected.raw is held here
  * rather than by splash, and its two tiles say what moves, how fast and
- * how much each way, from the games partition's /sys stat once a second
- * (drivestat.h); only a change is drawn, so an idle drive costs nothing.
+ * how much each way, once a second, from what the gadget itself served
+ * (drivestat.h: the f_mass_storage thread's own bytes, the card's /sys
+ * stat only as a fallback); only a change is drawn, so an idle drive costs
+ * nothing.
  *
  * The handheld's own buttons work on it too (drive.h's drv_key): FUNCTION
  * and volume step the brightness on the launcher's ladder (bright.txt), its
@@ -273,21 +275,100 @@ static void live_way(const dst_way *w, int mark_slot, int on, int off, int speed
 	}
 }
 
-/* The stat once a second; the tiles drawn when what they say changed */
+/* What moves, counted where the gadget serves it: the f_mass_storage
+ * kernel thread's own I/O counters (drivestat.h). Found by name once the
+ * gadget is bound, looked for again until then; while it cannot be read
+ * the block stat stands in for the tiles and B always asks. */
+static struct {
+	int pid;                     /* "file-storage", 0 not found yet */
+	bool sure;                   /* the last look read its counters */
+	int source;                  /* what live.d counts: 0 none yet, 1 the thread, 2 the stat */
+} io;
+
+static int io_find(void)
+{
+	DIR *d = opendir("/proc");
+	struct dirent *e;
+	int pid = 0;
+
+	while (d && (e = readdir(d)) && !pid) {
+		char p[64], comm[32];
+		int n = atoi(e->d_name);
+
+		if (n <= 1) continue;
+		snprintf(p, sizeof p, "/proc/%d/comm", n);
+		if (!get(p, comm, sizeof comm) && !strcmp(comm, "file-storage")) pid = n;
+	}
+	if (d) closedir(d);
+	return pid;
+}
+
+/* The bytes read from the card and written to it: the thread's, or the
+ * stat's sectors when it cannot be read (io.sure says which) */
+static bool io_read(unsigned long long *rd, unsigned long long *wr)
+{
+	char text[512], p[64];
+	unsigned long long f[7] = { 0 };
+	int fd;
+	ssize_t n;
+
+	if (!io.pid) io.pid = io_find();
+	io.sure = false;
+	if (io.pid) {
+		snprintf(p, sizeof p, "/proc/%d/io", io.pid);
+		if ((fd = open(p, O_RDONLY | O_CLOEXEC)) >= 0) {
+			n = read(fd, text, sizeof text - 1);
+			close(fd);
+			text[n > 0 ? n : 0] = '\0';
+			io.sure = n > 0 && dst_parse_io(text, rd, wr);
+		}
+		if (!io.sure) io.pid = 0;     /* gone, or not that thread: looked for again */
+	}
+	if (io.sure) return true;
+	if (get(PART_STAT, text, sizeof text) ||
+	    sscanf(text, "%llu %llu %llu %llu %llu %llu %llu", &f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6]) != 7)
+		return false;
+	*rd = f[2] * 512;
+	*wr = f[6] * 512;
+	return true;
+}
+
+/* /proc/meminfo's Dirty: written by the computer, not on the card yet */
+static unsigned long io_dirty_kb(void)
+{
+	char text[2048];
+	unsigned long kb = 0;
+	int fd = open("/proc/meminfo", O_RDONLY | O_CLOEXEC);
+	ssize_t n;
+
+	if (fd < 0) return 0;
+	n = read(fd, text, sizeof text - 1);
+	close(fd);
+	text[n > 0 ? n : 0] = '\0';
+	return n > 0 && drv_parse_dirty(text, &kb) ? kb : 0;
+}
+
+/* Once a second; the tiles drawn when what they say changed */
 static void live_follow(void)
 {
-	unsigned long long f[7] = { 0 };
-	char text[256];
+	unsigned long long rd, wr;
 	unsigned now = now_ms();
+	int source;
 
 	/* Followed with or without the live page: B's question needs when the
 	 * computer last wrote */
 	if (live.looked && now - live.looked < 1000u) return;
 	live.looked = now;
-	if (get(PART_STAT, text, sizeof text) ||
-	    sscanf(text, "%llu %llu %llu %llu %llu %llu %llu", &f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6]) != 7)
-		return;
-	if (!dst_step(&live.d, f[2], f[6], now) || !live.on) return;
+	if (!io_read(&rd, &wr)) return;
+	/* A new source counts from where it is: the thread's bytes and the
+	 * stat's are not the same count */
+	source = io.sure ? 1 : 2;
+	if (source != io.source) {
+		if (io.source) say("usbdrive: counting %s\n", io.sure ? "the gadget's own bytes" : "the card's blocks");
+		memset(&live.d, 0, sizeof live.d);
+		io.source = source;
+	}
+	if (!dst_step(&live.d, rd, wr, now) || !live.on) return;
 	live_way(&live.d.in, AT_SLOT_MARK_IN, AT_G_IN_ON, AT_G_IN_OFF, AT_SLOT_SPEED_IN, AT_SLOT_TOTAL_IN);
 	live_way(&live.d.out, AT_SLOT_MARK_OUT, AT_G_OUT_ON, AT_G_OUT_OFF, AT_SLOT_SPEED_OUT, AT_SLOT_TOTAL_OUT);
 }
@@ -515,7 +596,8 @@ static drv_act keys_read(int fd, drv_keys *k, unsigned now)
 		default:            continue;
 		}
 		if (!bri.on && (key == DRV_K_VOLUP || key == DRV_K_VOLDN)) continue;
-		a = drv_key(k, key, ev.value == 1, now, live.d.in.total > 0, live.d.in.moved_ms);
+		a = drv_key(k, key, ev.value == 1,
+		            drv_copying(io.sure, live.d.in.total > 0, now, live.d.in.moved_ms, io_dirty_kb()));
 		if (a == DRV_A_BRIGHT) bright_set(k->level, now);
 		else if (a != DRV_A_NONE && act == DRV_A_NONE) act = a;
 	}
@@ -598,7 +680,11 @@ int main(int argc, char **argv)
 		if (act == DRV_A_NONE) act = keys_read(vol, &keys, now);
 		else keys_read(vol, &keys, now);
 		if (act == DRV_A_ASK) {
-			say("usbdrive: B while the computer may still be copying: asked\n", NULL);
+			char why[96];
+
+			snprintf(why, sizeof why, "%s, last write %u ms ago, %lu kB dirty",
+			         io.sure ? "the gadget's bytes" : "not sure", now - live.d.in.moved_ms, io_dirty_kb());
+			say("usbdrive: B while the computer may still be copying: asked (%s)\n", why);
 			if (live.on && live.confirm) {
 				live.covered = true;
 				panel_update(live.confirm, 0, 0, live.l.w, live.l.h);

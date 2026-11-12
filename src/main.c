@@ -8641,6 +8641,14 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		int row_w = in_row * tw + (in_row - 1) * tile_gap;
 		SDL_Rect t = { panel.x + (panel.w - row_w) / 2 + col * (tw + tile_gap),
 		               tiles_y + row * (th + tile_gap), tw, th };
+
+		/* A grid's last tile alone on its row (a release image's Flash
+		 * Drive) spans the grid's width rather than sitting small in the
+		 * middle of empty room */
+		if (cols == 2 && trows > 1 && in_row == 1) {
+			t.x = panel.x + (panel.w - tiles_w) / 2;
+			t.w = tiles_w;
+		}
 		bool on = i == sel;
 		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
 		const char *label = tiles[i].label ? tiles[i].label : "";
