@@ -208,9 +208,11 @@ typedef struct {
 	bool m3u;              /* a playlist, which makes them one game whatever */
 } set_info;
 
-/* Add `key` to up to two distinct ones */
+/* Add `key` to up to two distinct ones; past two, *n is 3 and nothing more
+ * is kept or read (keys has two places) */
 static void key_add(char keys[2][LIB_NAME], int *n, const char *key)
 {
+	if (*n > 2) return;
 	for (int i = 0; i < *n; i++)
 		if (!strcmp(keys[i], key)) return;
 	if (*n < 2) snprintf(keys[(*n)++], LIB_NAME, "%s", key);

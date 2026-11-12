@@ -340,13 +340,14 @@ static void disc_folders(void)
 	touch("PS/Tracks/Game.cue"); touch("PS/Tracks/Game (Track 01).bin"); touch("PS/Tracks/other.bin");
 	/* Several games' discs: a folder of them, and a set folder inside */
 	touch("PS/RPGs/Chrono Cross (USA) (Disc 1).chd"); touch("PS/RPGs/Chrono Cross (USA) (Disc 2).chd");
-	touch("PS/RPGs/Vagrant Story (USA).chd");
+	touch("PS/RPGs/Vagrant Story (USA).chd"); touch("PS/RPGs/Parasite Eve (USA).chd");
+	touch("PS/RPGs/Legend of Mana (USA).chd");
 	touch("PS/RPGs/Xeno/Xenogears (USA) (Disc 1).cue"); touch("PS/RPGs/Xeno/Xenogears (USA) (Disc 1).bin");
 	/* A playlist makes a folder one game whatever else is in it */
 	touch("PS/Mixed/A.chd"); touch("PS/Mixed/B.chd"); touch("PS/Mixed/Mixed.m3u");
 	/* Another frontend's pictures, never games, whatever they are */
 	touch("PS/Media/x.chd"); touch("PS/Imgs/y.chd");
-	CHECK(lib_scan(root, "PS", "cue,chd,m3u", &list) && list.count == 8);
+	CHECK(lib_scan(root, "PS", "cue,chd,m3u", &list) && list.count == 10);
 	i = lib_find_entry(&list, NULL, 0, "FF7/Final Fantasy VII (USA) (Disc 1).cue");
 	CHECK(i >= 0 && list.items[i].dir == 0 && !strcmp(list.items[i].name, "FF7"));
 	CHECK(lib_find_entry(&list, NULL, 0, "Pol/Disc 1.chd") >= 0);
