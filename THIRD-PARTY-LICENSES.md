@@ -32,7 +32,8 @@ Diatom and for plastron, the Linux system under ZyperOS, and ZyperOS's own
 - **License:** **Mozilla Public License 2.0**; its code from before 2026-10-25
   is also under the MIT License. The `libretro.h` it carries is MIT, under the
   RetroArch team's notice, and so is the part of RetroAchievements' rcheevos
-  it carries.
+  it carries. The LZ4 it packs save states with is Yann Collet's, under the
+  BSD 2-Clause License, its notice in Diatom's own (`Licenses/Diatom.md`).
 - ZyperOS starts it as a process of its own and talks to it through a Unix
   socket. The launcher does not link to it.
 
