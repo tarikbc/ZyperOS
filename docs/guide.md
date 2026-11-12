@@ -516,7 +516,9 @@ used.
 ### Plugging into a computer
 
 On the Pixel 2 the USB port only charges until you say otherwise: a computer
-sees no device at first. When a computer is plugged in, the shelf asks once,
+sees no device at first. When a computer is plugged in, the shelf asks once
+(with MENU open, MENU closes and the question comes at once; during a game,
+it comes when you are back on the shelf),
 with three tiles (left and right to move, A to choose; it starts on Charge
 Only):
 

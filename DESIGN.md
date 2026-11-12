@@ -1550,7 +1550,11 @@ its own row, the full page, once a day on Wi-Fi.)*
 
 ### 11.18 Computer Connected
 The question the shelf asks when a computer is plugged into the Pixel 2,
-whose USB port only charges until then (src/usblink.h): three tiles side by
+whose USB port only charges until then (src/usblink.h). Plugged in with a
+menu open, the menus close back to the shelf, which asks at once
+(usblink_wants_ask, 2026-11-12: the question had waited, unseen, for the
+menu to be closed by hand); over a game's or a port's menu nothing closes,
+and the shelf asks once the game is left. Three tiles side by
 side on a panel (11.3's slab, **elevation.panel**, over **scrim.menu**),
 heading **Computer Connected** in **label** **text-soft** over an **edge**
 rule. Each tile is **raised**, **radius.card**, 272 x 232, 24 apart: its
