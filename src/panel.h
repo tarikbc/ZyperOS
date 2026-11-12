@@ -66,6 +66,23 @@ typedef struct {
 	/* The row the cursor starts on: 0, the first, unless a screen says
 	 * otherwise (MENU > Language starts on the language that is on) */
 	int      start_sel;
+	/* MENU's tabs (src/sys_menu.h, DESIGN.md 11.3): the tab row in place of
+	 * the heading, L1 and R1 going round it, and a panel as tall as the
+	 * screen allows on every tab, so it does not change size as they go.
+	 * NULL for every other menu. */
+	const struct menu_tabs *tabs;
+	/* Where the cursor is, written on every pass, for a screen that keeps
+	 * it when the menu closes (MENU, by tab); NULL for none */
+	int     *sel_out;
+	/* A mark drawn before a row's value, at the value's left with its
+	 * right edge at `right` and centered on `cy`: Theme's accent dot and
+	 * the themes' chips (DESIGN.md 11.37). `on_fill` is how much of the
+	 * focus fill is under it, 0 to 1. NULL: none. */
+	void   (*row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
+	/* A picture between the heading's rule and the rows, `header_h` tall
+	 * with the gap under it: Theme's two small themes. NULL: none. */
+	void   (*header)(app *a, const SDL_Rect *r);
+	int      header_h;
 } menu_style;
 
 /* What a screen with a panel draws under it, and asks every frame */
@@ -81,6 +98,10 @@ void panel_close(app *a, int lv, bool cut);
 bool menu_leaving(app *a);
 /* A step along a list or shelf, heard */
 void step_sound(app *a, in_button b, int from, int to);
+/* A list kept as a plain index 0 to n - 1, stepped by Up or Down `b` as
+ * every menu steps (menu_step_index: a press goes round, a held direction
+ * stops at the end) and heard; the new index */
+int list_step_heard(app *a, in_button b, int n, int sel);
 
 /* A menu's panel: `n` rows, `sel` focused, `fixed_w` wide (0 measures) */
 void menu_draw(app *a, const char *heading, const menu_row *rows, int n,

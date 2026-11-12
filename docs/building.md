@@ -141,7 +141,8 @@ something once broke in a way nothing noticed:
 | `check-dsv` | DraStic's DS saves taken over by DSperate: footer off, the chip's bytes kept, an .srm already there never touched, written whole and flushed |
 | `check-osdbar` | the volume and brightness bar the launcher, Diatom and portkeys all draw: a segment lit per step and no more, at both scales, and its in, hold and out |
 | `check-themefile` | the theme file the launcher writes and Diatom and portkeys read: a missing or nonsense file reads as Beard, the word written reads back, no half-written file is ever seen |
-| `check-theme` | which theme is on: MENU > Appearance's three settings, Auto's seven to seven and the minute it may be late by, and the file the bar's other programs read after every kind of change |
+| `check-theme` | which theme is on: MENU > Appearance's three settings, Auto's seven to seven and the hours MENU > Display > Auto Hours sets (round midnight too), the minute it may be late by, and the file the bar's other programs read after every kind of change |
+| `check-look` | the player's look (MENU > Display > Theme): every accent with every background tone, in both themes, held to the contrast each color is owed; the look as it ships is the tokens to the byte, and its words read back |
 | `check-config` | systems.cfg's accent field: six hex digits are that color, anything else is no color at all (CFG_NO_COLOR); and the systems in A to Z order |
 | `check-kbnav` | the on-screen keyboard's d-pad: onto and off the action row, the wraps at every edge, and the action keys' labels on each layer |
 | `check-randgame` | Random Game's pick: every game as likely as every other, nothing off a shelf, never the last pick again |

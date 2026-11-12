@@ -50,4 +50,21 @@ int themefile_read(const char *path);
  * could not be made; the file then still says what it did. */
 bool themefile_write(const char *path, int theme);
 
+/* THE BAR'S COLORS, when the player's look changed them (src/look.h,
+ * DESIGN.md 3.5): a second line under the word, `bar` and six colors as six
+ * hex digits each, the roles the bar draws with - surface, edge, track,
+ * accent-ink, light and ink:
+ *
+ *     dark
+ *     bar 1a2030 333d52 3a4560 7ab8ff f2d27a 111310
+ *
+ * themefile_write_bar writes it, or the word alone for `bar` NULL (the look
+ * as it ships), as themefile_write. themefile_read_bar reads the theme as
+ * themefile_read does and fills `bar` (when not NULL) with that theme's
+ * table, its six roles from the line when there is one and it is whole;
+ * anything else on it is the tokens'. A reader before this one sees two
+ * lines, which are not one word, and draws Beard: they ship together. */
+bool themefile_write_bar(const char *path, int theme, const ds_theme *bar);
+int themefile_read_bar(const char *path, ds_theme *bar);
+
 #endif

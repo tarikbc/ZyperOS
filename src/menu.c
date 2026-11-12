@@ -19,6 +19,75 @@ int menu_step_sel(const menu_row *rows, int n, int sel, int dir)
 	return sel;
 }
 
+int menu_step_round(const menu_row *rows, int n, int sel, int dir)
+{
+	int k, i;
+
+	if (n <= 0) return 0;
+	if (sel < 0 || sel >= n) sel = dir > 0 ? n - 1 : 0;
+	for (i = 1, k = sel; i <= n; i++) {
+		k = ((k + dir) % n + n) % n;
+		if (rows[k].live) return k;
+	}
+	return sel;
+}
+
+int menu_step_index(int n, int sel, int dir, bool fresh)
+{
+	int to = sel + dir;
+
+	if (n <= 0) return 0;
+	if (to >= 0 && to < n) return to;
+	if (!fresh) return sel;
+	return to < 0 ? n - 1 : 0;
+}
+
+int menu_loop_row(int n, int slot)
+{
+	int r;
+
+	if (n <= 0) return -1;
+	r = ((slot % (n + 1)) + (n + 1)) % (n + 1);
+	return r == n ? -1 : r;
+}
+
+int menu_loop_slot(int n, int sel, int near)
+{
+	int len = n + 1, base, best, d, k;
+
+	if (n <= 0) return 0;
+	/* the copy of `sel` in near's lap, and the ones either side of it */
+	base = near - ((near % len) + len) % len + sel;
+	best = base;
+	d = base - near < 0 ? near - base : base - near;
+	for (k = -1; k <= 1; k += 2) {
+		int c = base + k * len, e = c - near < 0 ? near - c : c - near;
+
+		if (e < d) { d = e; best = c; }
+	}
+	return best;
+}
+
+int menu_loop_first(const menu_row *rows, int n, int slot, int vis, int first)
+{
+	int top = slot, k;
+
+	if (n <= 0 || vis <= 0) return slot;
+	/* The dead rows above the cursor come with it, as menu_window_first
+	 * says why; never past the seam, which is the list's own top, and never
+	 * more than a window's worth */
+	for (k = 0; k < vis - 1; k++) {
+		int r = menu_loop_row(n, top - 1);
+
+		if (r < 0 || rows[r].live) break;
+		top--;
+	}
+	if (top < first)            first = top;
+	if (slot < first)           first = slot;
+	if (slot > first + vis - 1) first = slot - vis + 1;
+	return first;
+}
+
 int menu_window_first(const menu_row *rows, int n, int sel, int vis, int first)
 {
 	int top = sel;

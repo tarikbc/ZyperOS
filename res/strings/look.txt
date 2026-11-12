@@ -1,0 +1,311 @@
+# MENU > Display > Theme and Auto Hours (src/look.h, DESIGN.md 3.5): the
+# player's look, my picks of 2026-11-12. The accent and tone names are
+# named choices: capitals as each language writes a choice (GLOSSARY.md).
+
+[look.accent]
+note = A row of the Theme page: the color of the focus, the same in both themes
+en = Accent
+zh-Hans = 强调色
+es = Color de acento
+pt-BR = Cor de destaque
+fr = Couleur d'accent
+de = Akzentfarbe
+ja = アクセント
+it = Colore d'accento
+
+[look.bg_light]
+note = A row of the Theme page: the light theme's background tone
+en = Light Background
+zh-Hans = 浅色背景
+es = Fondo claro
+pt-BR = Fundo claro
+fr = Fond clair
+de = Heller Hintergrund
+ja = ライトの背景
+it = Sfondo chiaro
+
+[look.bg_dark]
+note = A row of the Theme page: the dark theme's background tone
+en = Dark Background
+zh-Hans = 深色背景
+es = Fondo oscuro
+pt-BR = Fundo escuro
+fr = Fond sombre
+de = Dunkler Hintergrund
+ja = ダークの背景
+it = Sfondo scuro
+
+[look.corners]
+note = A row of the Theme page: panels and highlights rounded or square
+en = Corners
+zh-Hans = 边角
+es = Esquinas
+pt-BR = Cantos
+fr = Coins
+de = Ecken
+ja = 角
+it = Angoli
+
+[look.rounded]
+note = Corners' value
+en = Rounded
+zh-Hans = 圆角
+es = Redondeadas
+pt-BR = Arredondados
+fr = Arrondis
+de = Abgerundet
+ja = 丸
+it = Arrotondati
+
+[look.square]
+note = Corners' value
+en = Square
+zh-Hans = 直角
+es = Rectas
+pt-BR = Retos
+fr = Droits
+de = Eckig
+ja = 四角
+it = Squadrati
+
+[look.zyper]
+note = A row of the Theme page: Zyper in the menus' corner, the song pop-up and the achievement notice, On or Off
+en = Zyper
+zh-Hans = Zyper
+es = Zyper
+pt-BR = Zyper
+fr = Zyper
+de = Zyper
+ja = Zyper
+it = Zyper
+
+[look.reset]
+note = The Theme page's last row: the accent, tones, corners and Zyper as ZyperOS ships them
+en = Reset to Default
+zh-Hans = 恢复默认
+es = Restablecer
+pt-BR = Restaurar padrão
+fr = Réinitialiser
+de = Zurücksetzen
+ja = 初期設定に戻す
+it = Ripristina
+
+[look.accent_lime]
+note = An accent's name, Accent's value
+en = Lime
+zh-Hans = 青柠
+es = Lima
+pt-BR = Lima
+fr = Citron vert
+de = Limette
+ja = ライム
+it = Lime
+
+[look.accent_green]
+note = An accent's name, Accent's value
+en = Green
+zh-Hans = 绿色
+es = Verde
+pt-BR = Verde
+fr = Vert
+de = Grün
+ja = グリーン
+it = Verde
+
+[look.accent_teal]
+note = An accent's name, Accent's value
+en = Teal
+zh-Hans = 青色
+es = Turquesa
+pt-BR = Turquesa
+fr = Turquoise
+de = Petrol
+ja = ティール
+it = Verde acqua
+
+[look.accent_blue]
+note = An accent's name, Accent's value
+en = Blue
+zh-Hans = 蓝色
+es = Azul
+pt-BR = Azul
+fr = Bleu
+de = Blau
+ja = ブルー
+it = Blu
+
+[look.accent_purple]
+note = An accent's name, Accent's value
+en = Purple
+zh-Hans = 紫色
+es = Morado
+pt-BR = Roxo
+fr = Violet
+de = Lila
+ja = パープル
+it = Viola
+
+[look.accent_pink]
+note = An accent's name, Accent's value
+en = Pink
+zh-Hans = 粉色
+es = Rosa
+pt-BR = Rosa
+fr = Rose
+de = Rosa
+ja = ピンク
+it = Rosa
+
+[look.accent_red]
+note = An accent's name, Accent's value
+en = Red
+zh-Hans = 红色
+es = Rojo
+pt-BR = Vermelho
+fr = Rouge
+de = Rot
+ja = レッド
+it = Rosso
+
+[look.accent_orange]
+note = An accent's name, Accent's value
+en = Orange
+zh-Hans = 橙色
+es = Naranja
+pt-BR = Laranja
+fr = Orange
+de = Orange
+ja = オレンジ
+it = Arancione
+
+[look.accent_yellow]
+note = An accent's name, Accent's value
+en = Yellow
+zh-Hans = 黄色
+es = Amarillo
+pt-BR = Amarelo
+fr = Jaune
+de = Gelb
+ja = イエロー
+it = Giallo
+
+[look.accent_silver]
+note = An accent's name, Accent's value
+en = Silver
+zh-Hans = 银色
+es = Plata
+pt-BR = Prata
+fr = Argent
+de = Silber
+ja = シルバー
+it = Argento
+
+[look.tone_warm]
+note = The light background as it ships, Beard: a warm grey
+en = Warm
+zh-Hans = 暖色
+es = Cálido
+pt-BR = Quente
+fr = Chaud
+de = Warm
+ja = ウォーム
+it = Caldo
+
+[look.tone_neutral]
+note = A light background: a neutral grey
+en = Neutral
+zh-Hans = 中性
+es = Neutro
+pt-BR = Neutro
+fr = Neutre
+de = Neutral
+ja = ニュートラル
+it = Neutro
+
+[look.tone_cool]
+note = A light background: a cool grey
+en = Cool
+zh-Hans = 冷色
+es = Frío
+pt-BR = Frio
+fr = Froid
+de = Kühl
+ja = クール
+it = Freddo
+
+[look.tone_black]
+note = The dark background as it ships, Salt & Pepper: black
+en = Black
+zh-Hans = 黑色
+es = Negro
+pt-BR = Preto
+fr = Noir
+de = Schwarz
+ja = ブラック
+it = Nero
+
+[look.tone_deepblue]
+note = A dark background: a deep blue
+en = Deep Blue
+zh-Hans = 深蓝
+es = Azul oscuro
+pt-BR = Azul escuro
+fr = Bleu nuit
+de = Tiefblau
+ja = ディープブルー
+it = Blu notte
+
+[look.tone_darkgrey]
+note = A dark background: a dark grey
+en = Dark Grey
+zh-Hans = 深灰
+es = Gris oscuro
+pt-BR = Cinza escuro
+fr = Gris foncé
+de = Dunkelgrau
+ja = ダークグレー
+it = Grigio scuro
+
+[look.light_from]
+note = A row of Auto Hours: the time Auto turns light
+en = Light From
+zh-Hans = 浅色开始
+es = Claro desde
+pt-BR = Claro desde
+fr = Clair dès
+de = Hell ab
+ja = ライト開始
+it = Chiaro dalle
+
+[look.dark_from]
+note = A row of Auto Hours: the time Auto turns dark
+en = Dark From
+zh-Hans = 深色开始
+es = Oscuro desde
+pt-BR = Escuro desde
+fr = Sombre dès
+de = Dunkel ab
+ja = ダーク開始
+it = Scuro dalle
+
+[look.hours]
+note = Auto Hours' value in MENU: the time Auto turns light, then the time it turns dark
+en = %s to %s
+zh-Hans = %s至%s
+es = de %s a %s
+pt-BR = das %s às %s
+fr = de %s à %s
+de = %s bis %s
+ja = %s〜%s
+it = da %s a %s
+
+[look.time_12h]
+note = A time of day in 12-hour time on Auto Hours: %1$d:%2$02d the time, %3$s AM or PM (7:00 AM)
+en = %d:%02d %s
+zh-Hans = %3$s%1$d:%2$02d
+es = %1$d:%2$02d %3$s
+pt-BR = %1$d:%2$02d %3$s
+fr = %1$d:%2$02d %3$s
+de = %1$d:%2$02d %3$s
+ja = %3$s%1$d:%2$02d
+it = %1$d:%2$02d %3$s

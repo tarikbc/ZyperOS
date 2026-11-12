@@ -82,15 +82,40 @@
  * settings together, as a phone keeps Language and Region (My pick in
  * the languages lab, 2026-11-07; DESIGN.md 11.30). Its value is the
  * language's own name; A opens the five. */
+/* MENU IS IN TABS (DESIGN.md 11.3, my picks 2026-11-12): Games, Display,
+ * Sound, Connections, System and About, L1 and R1 going round them. The rows
+ * are in the enum by tab, and in a tab in the enum's order; which tab a row
+ * is in is sys_menu_tab_of's to say. A row added to MENU goes into this enum
+ * where its tab's rows are, and into sys_menu_tab_of's switch, which the
+ * compiler checks has every row (-Wswitch), and tools/menu-check.c that each
+ * row is in a tab. */
+/* PM_AUTOHOURS is Auto Hours, under Appearance: when Auto turns light and
+ * when dark, by the half hour (src/theme.h), 7:00 and 19:00 as it ships.
+ * PM_THEME is Theme, under it: the accent, a background tone for each theme,
+ * the corners and Zyper (src/look.h, DESIGN.md 3.5). My picks 2026-11-12. */
 typedef enum {
-	PM_USB_WAIT,
-	PM_SEARCH,
-	PM_STATS, PM_RANDOM,
-	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_USB, PM_CLOCK,
-	PM_HOURS, PM_LANGUAGE,
-	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
-	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
+	/* Games */
+	PM_SEARCH, PM_STATS, PM_RANDOM, PM_ACHIEVEMENTS, PM_SCRAPER,
+	/* Display */
+	PM_APPEARANCE, PM_AUTOHOURS, PM_THEME, PM_HOME, PM_ORDER, PM_BATTERY,
+	/* Sound */
+	PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC,
+	/* Connections: USB Device first, while a plug waits for its answer */
+	PM_USB_WAIT, PM_WIFI, PM_BT, PM_XFER, PM_USB, PM_DEVELOPER,
+	/* System */
+	PM_CLOCK, PM_HOURS, PM_LANGUAGE, PM_SLEEP, PM_CHARGE, PM_LIGHTS,
+	PM_STORAGE, PM_UPDATE,
+	/* About */
+	PM_ABOUT, PM_CONTROLS, PM_TOUR,
+	PM_ROWS
 } pm_row;
+
+/* MENU's tabs, in the order L1 and R1 go round them. MENU opens on Games
+ * after a start, and on the tab and row it was closed on after that, until
+ * the handheld powers off; on Connections' USB Device while a plug waits. */
+typedef enum { PT_GAMES, PT_DISPLAY, PT_SOUND, PT_CONNECTIONS, PT_SYSTEM,
+               PT_ABOUT, PT_TABS } pm_tab;
+
 
 /* Random Game is under Games: one of the games that row counts, picked and
  * started (src/randgame.h). */
@@ -259,7 +284,14 @@ typedef struct {
 	wifi_state  wifi;        /* already cached by the caller; see menu_wifi */
 	const char *ssid;        /* the network's name when connected, else NULL */
 
-	/* The ZyperOS menu */
+	/* The ZyperOS menu: the tab it shows (pm_tab), or PT_TABS for every row
+	 * in the enum's order (a measure, a check) */
+	int         tab;
+	/* Auto Hours' value, "7:00 AM to 7:00 PM" as MENU > Clock writes the
+	 * time; NULL reads nothing */
+	const char *auto_hours;
+	/* Theme's value: the accent's name (src/look.h); NULL reads Lime */
+	const char *theme;
 	bool        ra_in;
 	const char *ra_name;     /* only read when ra_in */
 	/* The Scraper row's value: "142 missing", "complete", or NULL until a
@@ -337,6 +369,15 @@ typedef struct {
  * sys_menu_muse_rows exists. */
 int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out);
 int sys_menu_system_rows(const sys_ui *u, sm_row *out);
+
+/* The tab `r` is in; PT_TABS for a value that is no row */
+pm_tab sys_menu_tab_of(pm_row r);
+/* A tab's name, in the language that is on: the tab row's words */
+const char *sys_menu_tab_name(pm_tab t);
+/* The rows of tab `t` the device has, in order (sys_menu_zyperos_rows,
+ * kept to the tab). Returns how many. The build and the key handler both
+ * ask, so they cannot disagree about what row 3 of a tab is. */
+int sys_menu_tab_rows(const sys_ui *u, pm_tab t, pm_row *out);
 
 /* Seconds to the label a row shows. Pure, and here rather than in main.c so
  * the check can hold it to "never", "30s" and "2m" without a device. */

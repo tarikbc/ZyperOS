@@ -559,5 +559,95 @@ window.ZYPER_TOKENS = {
     },
     "default": "wood",
     "held": 0.5
+  },
+  "look": {
+    "accents": [
+      {
+        "id": "lime",
+        "name": "Lime",
+        "fill": "#bef23c"
+      },
+      {
+        "id": "green",
+        "name": "Green",
+        "fill": "#5ee08a"
+      },
+      {
+        "id": "teal",
+        "name": "Teal",
+        "fill": "#3fd4c0"
+      },
+      {
+        "id": "blue",
+        "name": "Blue",
+        "fill": "#74b0ff"
+      },
+      {
+        "id": "purple",
+        "name": "Purple",
+        "fill": "#b59bff"
+      },
+      {
+        "id": "pink",
+        "name": "Pink",
+        "fill": "#ff94c8"
+      },
+      {
+        "id": "red",
+        "name": "Red",
+        "fill": "#ff7a70"
+      },
+      {
+        "id": "orange",
+        "name": "Orange",
+        "fill": "#ffa04d"
+      },
+      {
+        "id": "yellow",
+        "name": "Yellow",
+        "fill": "#ffd84d"
+      },
+      {
+        "id": "silver",
+        "name": "Silver",
+        "fill": "#d3d5cf"
+      }
+    ],
+    "tones": {
+      "light": [
+        {
+          "id": "warm",
+          "name": "Warm",
+          "ground": "#e6e4da"
+        },
+        {
+          "id": "neutral",
+          "name": "Neutral",
+          "ground": "#e3e3e1"
+        },
+        {
+          "id": "cool",
+          "name": "Cool",
+          "ground": "#dde2e7"
+        }
+      ],
+      "dark": [
+        {
+          "id": "black",
+          "name": "Black",
+          "ground": "#111310"
+        },
+        {
+          "id": "deepblue",
+          "name": "Deep Blue",
+          "ground": "#0e1526"
+        },
+        {
+          "id": "darkgrey",
+          "name": "Dark Grey",
+          "ground": "#1e2120"
+        }
+      ]
+    }
   }
 };

@@ -356,6 +356,27 @@ for _k in ("available", "ready"):
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
 
+# MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
+# and its neighbours' beside it; Display on its Theme row, with its chips
+for _tab in range(6):
+    EXTRA.setdefault("menu-tab-%d" % _tab, ("demo", "PS1", ["--menu-tab", str(_tab), "--menu", "0"]))
+EXTRA.setdefault("menu-display-theme", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Theme"]))
+# Display's Theme page (DESIGN.md 11.37) in each of the ten accents, the
+# tones going round in both themes and the corners turning over, so every
+# accent's, tone's and value's name is drawn; its foot, Zyper and Reset to
+# Default, both ways; and Auto Hours
+_TONES = (("warm", "black"), ("neutral", "deepblue"), ("cool", "darkgrey"))
+for _i, _acc in enumerate(("lime", "green", "teal", "blue", "purple", "pink", "red", "orange",
+                           "yellow", "silver")):
+    _lt, _dk = _TONES[_i % 3]
+    EXTRA.setdefault("theme-" + _acc, ("demo", "PS1", [
+        "--look", "%s,%s,%s,%s,on" % (_acc, _lt, _dk, "square" if _i % 2 else "rounded"),
+        "--look-page", "theme", "0"]))
+EXTRA.setdefault("theme-foot-on", ("demo", "PS1", ["--look-page", "theme", "5"]))
+EXTRA.setdefault("theme-foot-off", ("demo", "PS1", ["--look", "lime,warm,black,square,off",
+                                                    "--look-page", "theme", "5"]))
+EXTRA.setdefault("auto-hours", ("demo", "PS1", ["--look-page", "hours", "0"]))
+
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
 # whose core keeps no states, and the speed at a half step and a whole one;

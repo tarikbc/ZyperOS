@@ -238,14 +238,8 @@ bool stats_screen(app *a)
 		}
 
 		if (ngames > 0) {
-			if (in_repeat(&a->in, IN_DOWN)) {
-				step_sound(a, IN_DOWN, cursor, cursor < ngames - 1 ? cursor + 1 : cursor);
-				if (cursor < ngames - 1) cursor++;
-			}
-			if (in_repeat(&a->in, IN_UP)) {
-				step_sound(a, IN_UP, cursor, cursor > 0 ? cursor - 1 : cursor);
-				if (cursor > 0) cursor--;
-			}
+			if (in_repeat(&a->in, IN_DOWN)) cursor = list_step_heard(a, IN_DOWN, ngames, cursor);
+			if (in_repeat(&a->in, IN_UP))   cursor = list_step_heard(a, IN_UP, ngames, cursor);
 			/* The window follows the cursor rather than the other way round,
 			 * so a long list scrolls one row at a time from either end. */
 			if (cursor < top) top = cursor;

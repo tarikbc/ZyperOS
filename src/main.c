@@ -36,6 +36,7 @@
 #include "tween.h"
 #include "artshrink.h"
 #include "artbadge.h"
+#include "look.h"
 #include "artscrape.h"
 #include "favorites.h"
 #include "hare.h"
@@ -2100,7 +2101,8 @@ static noticeq g_nq;
 static unsigned notice_look(nq_kind kind)
 {
 	switch (kind) {
-	case NQ_UNLOCK:   return NOTICE_ICON | NOTICE_ZYPER;
+	/* Zyper at its end unless the look has him off (DESIGN.md 3.5) */
+	case NQ_UNLOCK:   return NOTICE_ICON | (look_zyper_off() ? 0 : NOTICE_ZYPER);
 	case NQ_PROGRESS: return NOTICE_ICON;
 	default:          return 0;
 	}
@@ -4138,7 +4140,10 @@ static void song_popup_draw(app *a, unsigned now)
 {
 	const ds_theme *t = theme();
 	TTF_Font *fh = ui_font(UI_F_META), *fb = ui_font(UI_F_LABEL);
-	const int padx = song_pad_x(), pady = song_pad_y(), zw = song_zyper_w();
+	/* With Zyper off (DESIGN.md 3.5) the slab is the two lines alone: his
+	 * width and the pad after him come off */
+	const int padx = song_pad_x(), pady = song_pad_y(),
+	          zw = look_zyper_off() ? -padx : song_zyper_w();
 	const int l1 = ui_font_line(UI_F_META), l2 = ui_font_line(UI_F_LABEL);
 	int tw, bw, hw, h, w, x, y, tx;
 	float k, rise, zcx, zcy;
@@ -4176,10 +4181,12 @@ static void song_popup_draw(app *a, unsigned now)
 	zcy = y + h / 2.0f;
 	zr_tick(&g_songpop_zyper, now);
 	p = zr_pose_at(&g_songpop_zyper, now);
-	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
-	zyper_shadow_draw(a->r, zcx, zcy, SONG_ZYPER_H, p.tilt, k);
-	draw_zyper_pose(a->r, zcx, zcy, SONG_ZYPER_H, &p, zyper_brow_lift(p.tilt), 0.0f,
-	                (Uint8)(255 * k + 0.5f));
+	if (!look_zyper_off()) {
+		SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
+		zyper_shadow_draw(a->r, zcx, zcy, SONG_ZYPER_H, p.tilt, k);
+		draw_zyper_pose(a->r, zcx, zcy, SONG_ZYPER_H, &p, zyper_brow_lift(p.tilt), 0.0f,
+		                (Uint8)(255 * k + 0.5f));
+	}
 	g_songpop_drawn = now;
 	redraw_now();
 }
@@ -4811,6 +4818,28 @@ static int menu_notes_fit(void)
 static const zr_rig *g_menu_zyper;
 static unsigned      g_menu_zyper_at;
 
+/* MENU's tabs (src/sys_menu.h, DESIGN.md 11.3): the tab on, the one it came
+ * from and which way (+1 for R1, -1 for L1), and when on the animation clock,
+ * for the move between them; t0 0 is at rest. One for the launcher, as MENU
+ * is one, kept while the handheld is on: MENU opens where it was closed.
+ * `g_menu_tabs` is set around MENU's own draw, as g_menu_zyper is, and NULL
+ * everywhere else, so the screens it opens draw their own headings. */
+struct menu_tabs { int at, from, dir; unsigned t0; };
+typedef struct menu_tabs menu_tabs;
+static menu_tabs        g_tabs;
+static const menu_tabs *g_menu_tabs;
+/* The row each tab was left on, by identity (PM_ROWS: its first) */
+static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
+                                               PM_ROWS, PM_ROWS, PM_ROWS };
+/* Set by a key handler to move the runner's cursor, which it owns: MENU's
+ * tabs, whose rows change under it. -1, none. */
+static int g_menu_sel_to = -1;
+/* menu_style's row marks and header picture, set around the draw of the
+ * menu that has them as g_menu_zyper is */
+static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
+static void (*g_menu_header)(app *a, const SDL_Rect *r);
+static int    g_menu_header_h;
+
 #define MENU_ZYPER_H 64.0f
 
 /* DESIGN.md 10: 64 units tall at the right end of the heading band, his
@@ -4830,7 +4859,8 @@ static void menu_zyper_draw(app *a, const SDL_Rect *panel, int pad)
 	const float cy = panel->y + UI_PANEL_BORDER + ZR_REACH + MENU_ZYPER_H / 2.0f;
 	zr_pose p;
 
-	if (!g_menu_zyper) return;
+	/* and none when the look has him off (DESIGN.md 3.5) */
+	if (!g_menu_zyper || look_zyper_off()) return;
 	p = zr_pose_at(g_menu_zyper, g_menu_zyper_at);
 	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
 	zyper_shadow_draw(a->r, cx, cy, MENU_ZYPER_H, p.tilt, 1.0f);
@@ -4924,6 +4954,106 @@ static int panel_row_h(menu_row r, int rule_h, int note_h, int row_h)
 	return !r.label ? rule_h : (ROW_IS_NOTE(r) ? note_h : row_h);
 }
 
+/* A slot's (SLOT_H): in a list that goes round (menu_loop_*), slot `v`'s row
+ * or the seam, which is a row high; otherwise row `v`'s */
+static int panel_slot_h(const menu_row *rows, int n, bool loop, int v,
+                        int rule_h, int note_h, int row_h)
+{
+	int r = loop ? menu_loop_row(n, v) : v;
+
+	return r < 0 ? row_h : panel_row_h(rows[r], rule_h, note_h, row_h);
+}
+
+/* A new list in the same panel, which the window, the give and the plate
+ * take as another menu even when it has as many rows as the last: MENU's
+ * tabs (sys_menu.h). Their state is keyed on the row count otherwise. */
+static unsigned g_menu_epoch;
+
+/* How far a tab move is, 0 to 1 on **out** in **move**, and whether it
+ * still moves (asking for the next frame if it does) */
+static float menu_tabs_p(const menu_tabs *t)
+{
+	unsigned now = anim_now(), el;
+
+	if (!t || !t->t0) return 1.0f;
+	el = now - t->t0;
+	if (el >= DS_MS_MOVE) return 1.0f;
+	redraw_now();
+	return ds_out((float)el / DS_MS_MOVE);
+}
+
+/* One tab's row: the tab in **label** **text**, centered as the heading was;
+ * its neighbours in **meta** **text-dim**, each beside the shoulder button
+ * that goes there (DESIGN.md 11.9's pill, at 40 as the keyboard's action
+ * keys); a neighbour that does not fit whole on its side, between the
+ * content's inset and Zyper, is left out and its button stands beside the
+ * name, since a name is never cut. Returns the tab's name's width, for the
+ * bar under it. `dx` and `op` draw it moved and faded, for a move. */
+static int menu_tab_row(app *a, int at, int cx, int cy, int zone_l, int zone_r,
+                        int dx, float op)
+{
+	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
+	const char *cur = sys_menu_tab_name((pm_tab)at);
+	const char *prev = sys_menu_tab_name((pm_tab)((at + PT_TABS - 1) % PT_TABS));
+	const char *next = sys_menu_tab_name((pm_tab)((at + 1) % PT_TABS));
+	const int gap = 28, gpad = 10, size = 40;
+	int aw = ui_text_width(fh, cur), pw = ui_text_width(fm, prev), nw = ui_text_width(fm, next);
+	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
+	int cur_x = cx - aw / 2, prev_x = cur_x - gap - pw, next_x = cx + aw / 2 + gap;
+	bool show_prev = prev_x - gpad - lw >= zone_l;
+	bool show_next = next_x + nw + gpad + rw <= zone_r;
+	int l1 = show_prev ? prev_x - gpad - lw / 2 : cur_x - 28 - lw / 2;
+	int r1 = show_next ? next_x + nw + gpad + rw / 2 : cx + aw / 2 + 28 + rw / 2;
+	Uint8 al = (Uint8)(op * 255.0f + 0.5f);
+	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
+
+	dim.a = (Uint8)(dim.a * op);
+	txt.a = al;
+	if (show_prev) ui_text(a->r, fm, prev, prev_x + dx, ui_cap_y(fm, cy), -1, dim);
+	if (show_next) ui_text(a->r, fm, next, next_x + dx, ui_cap_y(fm, cy), -1, dim);
+	ui_text(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), -1, txt);
+	ui_button_pressed(a->r, "L1", l1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
+	ui_button_pressed(a->r, "R1", r1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
+	return aw;
+}
+
+/* MENU's tab row in the heading band, centered on the capitals at `cy`.
+ * Moving, the tab it came from slides out the way the press went and the new
+ * one in from the other side, in **move** on **out**. Returns the width of
+ * the bar under the name (menu_tabs_bar), which takes the new name's width
+ * as it goes. */
+static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
+                          int zone_l, int zone_r)
+{
+	float p = menu_tabs_p(t);
+	int aw, w;
+
+	if (p < 1.0f && t->from != t->at) {
+		/* the old one gone in the first two fifths, as its rows are */
+		float op = 1.0f - p * 2.5f;
+		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, zone_l, zone_r,
+		                                  (int)(-t->dir * 96 * p), op)
+		                   : ui_text_width(ui_font(UI_F_LABEL),
+		                                   sys_menu_tab_name((pm_tab)t->from));
+
+		aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r,
+		                  (int)(t->dir * 96 * (1.0f - p)), p);
+		w = (int)(ow + (aw - ow) * p + 0.5f);
+	} else {
+		w = aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r, 0, 1.0f);
+	}
+	(void)aw;
+	return w;
+}
+
+/* The bar on the heading's rule at `rule_y` under the tab's name: the home's
+ * underline, **accent-ink**, the bar's 6 high (DESIGN.md 11.3) */
+static void menu_tabs_bar(app *a, int cx, int rule_y, int w)
+{
+	ui_round_rect(a->r, &(SDL_Rect){ cx - w / 2, rule_y + DS_RULE / 2 - DS_BAR / 2, w, DS_BAR },
+	              DS_BAR / 2, ui_col(theme()->accent_ink, 255));
+}
+
 static void menu_panel(app *a, const char *heading, const menu_row *rows,
                        int n, int sel, int fixed_w, unsigned accent,
                        const unsigned *vcolors, bool visits_all, int loop_at,
@@ -4970,6 +5100,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * which crashed the launcher whenever DOWN was held in MENU while the
 	 * list still eased (2026-11-05). tools/rowmacro-check.py holds it. */
 #define ROW_H(r) panel_row_h((r), rule_h, note_h, row_h)
+#define SLOT_H(v) panel_slot_h(rows, n, loop, (v), rule_h, note_h, row_h)
 	/* A row's text is centered on its capitals (ui_cap_y), not on its box.
 	 * The box reserves a descender's depth below the baseline that labels
 	 * like "Wi-Fi" and "Bluetooth" never use, so centering the box leaves
@@ -5008,7 +5139,8 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	char head1[192];
 	int head_lines = head2 ? 2 : 1;
 	int head_h      = heading ? line_head * head_lines + pad : 0;
-	int content_off = heading ? head_h + pad / 2 : pad;
+	int content_off = (heading ? head_h + pad / 2 : pad)
+	                  + (g_menu_header ? g_menu_header_h : 0);
 	bool two_col = false;
 	int content_w = 0, i, k, rows_h = 0;
 	SDL_Rect panel;
@@ -5019,11 +5151,25 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * top is worse than one that scrolls. */
 	const int margin = MENU_MARGIN;
 	int vis = n, first = 0;
+	/* A list too long for its window goes round without end (menu_loop_*,
+	 * DESIGN.md 11.3): `first` and `vsel` are then slots, not rows */
+	bool loop = false;
+	int vsel = sel, v;
+	/* MENU's tabs: the bar's width under the name, and the rows of a tab
+	 * just come sliding in the way the press went and fading up, in
+	 * **move** on **out** as the tab row (menu_tabs_draw) */
+	int tab_bar_w = 0;
+	float tab_p = g_menu_tabs ? menu_tabs_p(g_menu_tabs) : 1.0f;
+	bool tab_moving = tab_p < 1.0f;
+	int tab_dx = tab_moving ? (int)(g_menu_tabs->dir * 64 * (1.0f - tab_p)) : 0;
 
 	/* A rule's sentinel is no value: a list with a rule in it and no values,
 	 * Delete Game's question over its answers, stays a centered list */
 	for (i = 0; i < n; i++)
 		if (rows[i].value && !ROW_IS_NOTE(rows[i]) && !ROW_IS_HR(rows[i])) two_col = true;
+	/* MENU's tabs are one list in pieces: a tab whose rows have no values
+	 * (About) is laid out as the others are, not centered */
+	if (g_menu_tabs) two_col = true;
 	for (i = 0; i < n; i++) {
 		int w;
 
@@ -5084,15 +5230,26 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			 * menu_draw keeps nothing between frames and every screen shares
 			 * it. A different row count is a different menu and starts at the
 			 * top rather than inheriting someone else's scroll. */
-			static int win_n = -1, win_first;
+			static int win_n = -1, win_first, win_slot;
+			static unsigned win_epoch;
 
 			vis = avail / row_h;
 			if (vis < 1) vis = 1;
 			if (vis > n) vis = n;
 
-			if (win_n != n) win_first = 0;
+			if (win_n != n || win_epoch != g_menu_epoch) { win_first = 0; win_slot = sel; }
 			win_n = n;
-			win_first = menu_window_first(rows, n, sel, vis, win_first);
+			win_epoch = g_menu_epoch;
+			/* AND IT GOES ROUND. Past the last row the list goes on: a seam,
+			 * then its first row, and on (menu_loop_*). The cursor's slot is
+			 * the copy of its row nearest the last one, so a step past the
+			 * end is a step, two slots over the seam, and the window follows
+			 * it as it follows any step. (2026-11-12: lists go round, and
+			 * the list I see moves on rather than jumping back to its top.) */
+			loop = true;
+			vsel = menu_loop_slot(n, sel, win_slot);
+			win_slot = vsel;
+			win_first = menu_loop_first(rows, n, vsel, vis, win_first);
 			first = win_first;
 		} else {
 			/* NO CURSOR MEANS NOTHING CAN SCROLL IT, so it scrolls itself.
@@ -5161,7 +5318,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	{   /* the heights actually on screen, not vis * row_h */
 		int sum = 0, j, last = first + vis - 1;
 
-		for (j = first; j < first + vis && j < n; j++) sum += ROW_H(rows[j]);
+		for (j = first; j < first + vis && (loop || j < n); j++) sum += SLOT_H(j);
 		/* A scrolling card is as tall as its viewport plus its pinned footer.
 		 * Summing the rows would size the panel to text that is deliberately
 		 * not all on it. */
@@ -5178,9 +5335,17 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * A body row is not a footer. A synopsis short enough to fit without
 		 * scrolling ends in prose, which is the panel's content and wants the
 		 * same pad under it that a list does. */
-		if (!scroll_h && last >= 0 && last < n && rows[last].label &&
+		if (!scroll_h && !loop && last >= 0 && last < n && rows[last].label &&
 		    ROW_IS_NOTE(rows[last]) && !ROW_IS_BODY(rows[last]))
 			panel.h -= pad * 5 / 12;
+	}
+	/* MENU's tabs: as tall as the screen allows whichever tab is on, so the
+	 * panel holds still as L1 and R1 go round (DESIGN.md 11.3) */
+	if (g_menu_tabs) {
+		int most = (MENU_AVAIL_H - content_off - pad) / row_h;
+		int tall = content_off + most * row_h + pad;
+
+		if (panel.h < tall) panel.h = tall;
 	}
 	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
 	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
@@ -5288,7 +5453,17 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				ui_text(a->r, meta, heading_note, content_x + content_w,
 				        ui_cap_y(meta, hy + asc - cap / 2), 1, UI_TEXT_DIM);
 
-			if (hw <= title_room) {
+			if (g_menu_tabs) {
+				/* MENU's tab row, between the content's inset and Zyper
+				 * (his width and a grid step clear of him, as the mock) */
+				int zr = content_x + content_w;
+
+				if (g_menu_zyper && !look_zyper_off())
+					zr = panel.x + panel.w - pad
+					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - 4;
+				tab_bar_w = menu_tabs_draw(a, g_menu_tabs, cx, hy + asc - cap / 2,
+				                           content_x, zr);
+			} else if (hw <= title_room) {
 				ui_fit_text(fh, head1, h1, sizeof h1, title_room);
 				ui_text(a->r, fh, h1, title_cx, hy, 0, UI_TEXT_SOFT);
 			} else {
@@ -5309,7 +5484,12 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		SDL_SetRenderDrawColor(a->r, rule.r, rule.g, rule.b, 255);
 		SDL_RenderFillRect(a->r, &(SDL_Rect){ content_x, panel.y + head_h,
 		                                      content_w, DS_RULE });
+		if (g_menu_tabs) menu_tabs_bar(a, cx, panel.y + head_h, tab_bar_w);
 		menu_zyper_draw(a, &panel, pad);
+		/* the screen's picture under the rule, its gap under it */
+		if (g_menu_header)
+			g_menu_header(a, &(SDL_Rect){ content_x, panel.y + head_h + pad / 2,
+			                              content_w, g_menu_header_h - pad / 2 });
 	}
 
 	/* THE HIGHLIGHT SLIDES. It used to be drawn inside the row loop at
@@ -5342,10 +5522,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * (below), and the give stays within a row and a half even then: at
 		 * the d-pad's repeat it is a row and a thousandth. */
 		static int   wn = -1, wfirst = -1;
+		static unsigned wep;
 		static tween give;
 		unsigned nw = anim_now();
 
-		if (wn != n) tween_snap(&give, 0.0f);
+		if (wn != n || wep != g_menu_epoch) tween_snap(&give, 0.0f);
 		else if (wfirst != first) {
 			int a0 = first < wfirst ? first : wfirst;
 			int b0 = first < wfirst ? wfirst : first;
@@ -5357,20 +5538,22 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			 * shoulder button pages it by eight; easing across either drags
 			 * rows in from the far end and reads as the list skipping. Only
 			 * a single row's move is softened. */
-			if (b0 - a0 > 1) {
+			/* Going round is two slots, the seam and the row: a step */
+			if (b0 - a0 > (loop ? 2 : 1)) {
 				tween_snap(&give, 0.0f);
 			} else {
-				for (j2 = a0; j2 < b0 && j2 < n; j2++) d += ROW_H(rows[j2]);
+				for (j2 = a0; j2 < b0 && (loop || j2 < n); j2++) d += SLOT_H(j2);
 				tween_kick(&give, (first > wfirst) ? d : -d, DS_MS_QUICK, nw);
 			}
 		}
-		wn = n; wfirst = first;
+		wn = n; wfirst = first; wep = g_menu_epoch;
 		win_off = tween_at(&give, nw);
 		if (tween_moving(&give, nw)) redraw_now();    /* the list still easing: moving */
 	}
 
 	if (sel >= 0 && sel < n && rows[sel].label) {
-		static int   pl_n = -1, pl_sel = -1;
+		static int   pl_n = -1;
+		static unsigned pl_ep;
 		static tween pl_y, pl_h;
 		/* A MOVE IN **QUICK** THAT TAKES OVER FROM WHERE THE PLATE IS,
 		 * DESIGN.md 8.2's focus fill (src/tween.h). REPEAT_RATE_MS is 90 and
@@ -5396,30 +5579,19 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		float tgt_h = (float)ROW_H(rows[sel]);
 		SDL_Rect plate;
 
-		for (jj = first; jj < sel && jj < n; jj++) ty_sel += ROW_H(rows[jj]);
+		for (jj = first; jj < vsel && (loop || jj < n); jj++) ty_sel += SLOT_H(jj);
 
-		if (pl_n != n) {                       /* another menu: no journey */
+		/* Another menu, or another tab of MENU: no journey. Anything else
+		 * glides, a wrap too: in a list that fits, the fill goes back up
+		 * (or down) to the other end in **quick** as any step does, and in
+		 * a list that goes round it is the next slot anyway (DESIGN.md
+		 * 11.3, 2026-11-12; until then a wrap snapped, and from 1.0.1 there
+		 * was none). */
+		if (pl_n != n || pl_ep != g_menu_epoch) {
 			tween_snap(&pl_y, (float)ty_sel);
 			tween_snap(&pl_h, tgt_h);
-		} else if (pl_sel != sel) {
-			/* A step is a move to the next SELECTABLE row, whatever its
-			 * index. Distance cannot tell a wrap from a step in a menu whose
-			 * top rows are placeholders - the cursor goes 6 to 3 there, and
-			 * a step past one placeholder goes 3 to 5. What separates them is
-			 * whether anything selectable lies between. */
-			int lo2 = sel < pl_sel ? sel : pl_sel;
-			int hi2 = sel < pl_sel ? pl_sel : sel;
-			bool jump = false;
-			int q;
-
-			for (q = lo2 + 1; q < hi2; q++)
-				if (rows[q].label && rows[q].live) { jump = true; break; }
-			if (jump) {
-				tween_snap(&pl_y, (float)ty_sel);
-				tween_snap(&pl_h, tgt_h);
-			}
 		}
-		pl_n = n; pl_sel = sel;
+		pl_n = n; pl_ep = g_menu_epoch;
 		tween_to(&pl_y, (float)ty_sel, DS_MS_QUICK, nowp);
 		tween_to(&pl_h, tgt_h, DS_MS_QUICK, nowp);
 		/* the plate still on its way: moving */
@@ -5439,11 +5611,15 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * rather than as a selection. */
 		plate_y = tween_at(&pl_y, nowp);
 		plate_h = tween_at(&pl_h, nowp);
-		plate.x = panel.x + pad / 2;
+		plate.x = panel.x + pad / 2 + tab_dx;
 		plate.y = (int)(plate_y + 0.5f);
 		plate.w = panel.w - pad;
 		plate.h = (int)(plate_h + 0.5f);
-		ui_round_rect(a->r, &plate, DS_RADIUS_ROW, ui_col(thm->accent, 255));
+		if (tab_moving)
+			SDL_RenderSetClipRect(a->r, &(SDL_Rect){ panel.x + UI_PANEL_BORDER, panel.y,
+			                                         panel.w - UI_PANEL_BORDER * 2, panel.h });
+		ui_round_rect(a->r, &plate, DS_RADIUS_ROW,
+		              ui_col(thm->accent, (Uint8)(255.0f * tab_p + 0.5f)));
 	}
 
 	notes_drawn = 0;
@@ -5456,7 +5632,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * the gap is empty, and without the clip the overflow draws outside the
 	 * panel. Leaving either out is what made the first attempt at this look
 	 * like the list was wrapping. */
-	int lo = first > 0 ? first - 1 : first, hi = first + vis;
+	int lo = first > 0 || loop ? first - 1 : first, hi = first + vis;
 
 	if (vis < n) {
 		SDL_Rect rc = { panel.x + UI_PANEL_BORDER, content_y,
@@ -5465,22 +5641,31 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		float cover;
 
 		SDL_RenderSetClipRect(a->r, &rc);
-		cover = lo < first ? ROW_H(rows[lo]) : 0;
-		while (lo > 0 && cover < win_off) {
+		cover = lo < first ? SLOT_H(lo) : 0;
+		while ((loop || lo > 0) && cover < win_off) {
 			lo--;
-			cover += ROW_H(rows[lo]);
+			cover += SLOT_H(lo);
 		}
-		cover = hi < n ? ROW_H(rows[hi]) : 0;
-		while (hi + 1 < n && cover < -win_off) {
+		cover = loop || hi < n ? SLOT_H(hi) : 0;
+		while ((loop || hi + 1 < n) && cover < -win_off) {
 			hi++;
-			cover += ROW_H(rows[hi]);
+			cover += SLOT_H(hi);
 		}
 	}
-	for (k = 0, i = lo; i < n && i <= hi; k++, i++) {
+	if (tab_moving) {
+		if (vis >= n)
+			SDL_RenderSetClipRect(a->r, &(SDL_Rect){ panel.x + UI_PANEL_BORDER, panel.y,
+			                                         panel.w - UI_PANEL_BORDER * 2, panel.h });
+		content_x += tab_dx;
+	}
+	/* `v` walks the slots on screen and `i` is the row each holds: one and
+	 * the same unless the list goes round */
+	for (k = 0, v = lo; (loop || v < n) && v <= hi; k++, v++) {
 		int y, ty, j;
 		float sel_w;
 		SDL_Color lc, vc;
 
+		i = loop ? menu_loop_row(n, v) : v;
 		if (scroll_h && i >= scroll_split) {
 			/* Pinned. Measured from the bottom of the viewport rather than
 			 * from the top of the rows, so the footer does not move when the
@@ -5490,8 +5675,17 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			for (j = scroll_split; j < i; j++) y += ROW_H(rows[j]);
 		} else {
 			y = content_y - scroll + (int)win_off;
-			if (i >= first) for (j = first; j < i; j++) y += ROW_H(rows[j]);
-			else            for (j = i; j < first; j++) y -= ROW_H(rows[j]);
+			if (v >= first) for (j = first; j < v; j++) y += SLOT_H(j);
+			else            for (j = v; j < first; j++) y -= SLOT_H(j);
+		}
+		/* The seam, where a list that goes round starts again: the
+		 * heading's rule, across the middle of a row's height */
+		if (i < 0) {
+			SDL_SetRenderDrawColor(a->r, rule.r, rule.g, rule.b, 255);
+			SDL_RenderFillRect(a->r, &(SDL_Rect){ content_x,
+			                                      y + (row_h - DS_RULE) / 2,
+			                                      content_w, DS_RULE });
+			continue;
 		}
 		/* Centered in ITS OWN row, not in row_h: a note is shorter. */
 		ty = ui_cap_y(fm, y + ROW_H(rows[i]) / 2);
@@ -5541,6 +5735,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		vc = col_mix(vcolors && vcolors[i] == VCOL_EARNED
 		             ? ui_col(thm->accent_ink, 255) : UI_TEXT_DIM,
 		             on_quiet, sel_w);
+		/* a tab's rows fade up as they slide in */
+		if (tab_moving) {
+			lc.a = (Uint8)(lc.a * tab_p);
+			vc.a = (Uint8)(vc.a * tab_p);
+		}
 
 		/* Trimmed to the panel, HERE, rather than by every caller.
 		 *
@@ -5665,6 +5864,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				if (rows[i].value)
 					ui_text(a->r, fm, rows[i].value,
 					        content_x + content_w, ty, 1, vc);
+				/* The screen's mark before the value (menu_style's
+				 * row_mark): Theme's dot and chips */
+				if (g_row_mark && rows[i].value && rows[i].value != MENU_TICK)
+					g_row_mark(a, &rows[i], content_x + content_w - vw - DS_GRID * 2,
+					           y + ROW_H(rows[i]) / 2, sel_w);
 				/* Both fit, but by how much against the most the row can
 				 * have: the device measures a little wider */
 				if (rows[i].value && rows[i].value != MENU_TICK)
@@ -5746,7 +5950,8 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			}
 		}
 	}
-	if (vis < n) SDL_RenderSetClipRect(a->r, NULL);
+	if (vis < n || tab_moving) SDL_RenderSetClipRect(a->r, NULL);
+	content_x -= tab_dx;
 
 	if (scroll_h) {
 		/* Faded where the text runs out of viewport, and faded by laying the
@@ -5799,10 +6004,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			int up_w   = tw * (k + 1) / th;      /* apex at the top */
 			int down_w = tw * (th - k) / th;     /* apex at the bottom */
 
-			if (first > 0)
+			/* a list that goes round carries on both ways, always */
+			if (first > 0 || loop)
 				SDL_RenderFillRect(a->r, &(SDL_Rect){ cx - up_w / 2,
 				                   content_y - off - th + k, up_w, 1 });
-			if (first + vis < n)
+			if (first + vis < n || loop)
 				SDL_RenderFillRect(a->r, &(SDL_Rect){ cx - down_w / 2,
 				                   content_y + vis * row_h + off + k, down_w, 1 });
 		}
@@ -5927,6 +6133,10 @@ static void snap_record(menu_snap *s, int kind, const char *heading,
 	s->level = mm_depth();
 	s->frame = g_frame_no;
 	s->kind  = kind;
+	s->tab   = g_menu_tabs ? g_menu_tabs->at : -1;
+	s->row_mark = (void *)g_row_mark;
+	s->header = (void *)g_menu_header;
+	s->header_h = g_menu_header_h;
 }
 
 /* The panel on screen again, at `pose`, Zyper going on from where he was:
@@ -5947,11 +6157,30 @@ static void snap_draw(app *a, mm_pose pose)
 		hot_panel(a, s->heading, s->rows, s->n, pose);
 		return;
 	}
+	static menu_tabs rest;
+	const menu_tabs *tabs = g_menu_tabs;
+
 	g_menu_zyper = s->zyper ? &s->zy : NULL;
 	g_menu_zyper_at = anim_now() + s->zy_ahead;
-	menu_panel(a, s->heading, s->rows, s->n, s->sel, s->fixed_w, s->accent,
-	           s->has_vcolors ? s->vcolors : NULL, s->visits_all, s->loop_at,
-	           s->note, pose);
+	/* the tab row as it was, at rest */
+	rest = (menu_tabs){ s->tab, s->tab, 0, 0 };
+	g_menu_tabs = s->tab >= 0 ? &rest : NULL;
+	{
+		void (*mark)(app *, const menu_row *, int, int, float) = g_row_mark;
+		void (*head)(app *, const SDL_Rect *) = g_menu_header;
+		int head_h = g_menu_header_h;
+
+		g_row_mark = (void (*)(app *, const menu_row *, int, int, float))s->row_mark;
+		g_menu_header = (void (*)(app *, const SDL_Rect *))s->header;
+		g_menu_header_h = s->header_h;
+		menu_panel(a, s->heading, s->rows, s->n, s->sel, s->fixed_w, s->accent,
+		           s->has_vcolors ? s->vcolors : NULL, s->visits_all, s->loop_at,
+		           s->note, pose);
+		g_row_mark = mark;
+		g_menu_header = head;
+		g_menu_header_h = head_h;
+	}
+	g_menu_tabs = tabs;
 	g_menu_zyper = z;
 	g_menu_zyper_at = at;
 }
@@ -6378,6 +6607,9 @@ static void usb_auto_message(app *a)
 	timed_message(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, menu_std_width(a), MENU_ZYPEROS);
 }
 
+static const char *look_accent_name(void);   /* with the Theme page */
+static const char *auto_hours_value(void);
+
 static int menu_build(app *a, screen_id screen, int sys,
                       menu_row *out, menu_bufs *b, const char **heading)
 {
@@ -6404,6 +6636,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.no_usb_power = !usb_power_offered();
 	u.usb_auto = g_usb_auto;
 	u.no_usb_wait = !usb_wait_row();
+	u.tab = g_tabs.at;
 
 	if (u.games) {
 		const system_cfg *sc = &a->sys.systems[sys];
@@ -6447,6 +6680,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		}
 		u.storage = storage_menu_value();
 		u.appearance = appearance_name(theme_appearance());
+		u.auto_hours = auto_hours_value();
+		u.theme = look_accent_name();
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
 		u.battery = g_batt_mode == BATT_TIME ? T(S_PANEL_BATTERY_TIME)
@@ -6602,6 +6837,16 @@ void step_sound(app *a, in_button b, int from, int to)
 	                         !a->in.pressed[b]));
 }
 
+/* A list kept as a plain index (0 to n - 1) by a screen with its own loop,
+ * stepped by the rule every menu has (menu_step_index) and heard */
+int list_step_heard(app *a, in_button b, int n, int sel)
+{
+	int to = menu_step_index(n, sel, b == IN_UP ? -1 : +1, a->in.pressed[b]);
+
+	step_sound(a, b, sel, to);
+	return to;
+}
+
 /* A step that always lands somewhere new, and never goes round: a track
  * skipped, a seek. */
 static void moved_sound(app *a, in_button b)
@@ -6609,11 +6854,14 @@ static void moved_sound(app *a, in_button b)
 	step_sound(a, b, 0, 1);
 }
 
-/* menu_step_sel, heard. */
+/* A step along a menu, heard: a fresh press goes round past either end, a
+ * held direction stops at the end (DESIGN.md 11.3, my pick 2026-11-12), so
+ * a thumb left on the d-pad never runs the list past where it wanted. */
 static int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
                            int dir, in_button b)
 {
-	int to = menu_step_sel(rows, n, sel, dir);
+	int to = a->in.pressed[b] ? menu_step_round(rows, n, sel, dir)
+	                          : menu_step_sel(rows, n, sel, dir);
 
 	step_sound(a, b, sel, to);
 	return to;
@@ -6825,13 +7073,11 @@ static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
 		{
 			in_button b = in_repeat(&a->in, IN_UP)   ? IN_UP
 			            : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
-			int to = b == IN_UP ? nq : nq + 1;
-
-			/* Up is the answer row, Down is Cancel, and neither goes round */
-			if (b != IN_NONE) {
-				step_sound(a, b, sel, to);
-				sel = to;
-			}
+			/* The two answers are a list of two, which goes round as every
+			 * list does: a fresh press from either end lands on the other,
+			 * a held one stops (menu_step_index) */
+			if (b != IN_NONE)
+				sel = nq + list_step_heard(a, b, 2, sel - nq);
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
@@ -7090,6 +7336,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			sel = menu_step_sel(rows, n, sel, +1);
 			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
 		}
+		if (st->sel_out) *st->sel_out = sel;
 
 		plat_input_poll(&a->in);
 		/* Where the sound goes, followed in the menus too: a headset connected
@@ -7191,6 +7438,11 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 				             ? DS_SOUND_ACCEPT : DS_SOUND_DENY);
 			if (on_key && menu_send(a, z, on_key, ctx, (in_button)b, sel) == MENU_DONE)
 				return MENU_LEFT_SCREEN;
+			/* The handler moved the cursor: MENU's tab changed under it */
+			if (g_menu_sel_to >= 0) {
+				sel = g_menu_sel_to;
+				g_menu_sel_to = -1;
+			}
 			if (!a->running || want_quit || g_message_stopped) return MENU_LEFT_GONE;
 			/* The screen it opened was left with MENU: out of this one too,
 			 * without drawing it again first. */
@@ -7241,8 +7493,15 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		}
 		g_menu_zyper = z;
 		g_menu_zyper_at = plat_now_ms();
+		g_menu_tabs = st->tabs;
+		g_row_mark = st->row_mark;
+		g_menu_header = st->header;
+		g_menu_header_h = st->header_h;
 		menu_draw(a, heading, rows, n, sel, st->fixed_w,
 		          st->follow_tint ? a->tint : st->accent);
+		g_menu_header = NULL;
+		g_row_mark = NULL;
+		g_menu_tabs = NULL;
 		g_menu_zyper = NULL;
 		plat_draw_osd(a->r);
 		plat_present();
@@ -12894,8 +13153,19 @@ static int menu_shelf_width(app *a)
 
 	if (a->menu_w) return a->menu_w;
 
-	n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
-	w = menu_measure(rows, n, heading);
+	/* MENU's every tab, so the panel is one width on all of them */
+	{
+		int t, at = g_tabs.at, mw;
+
+		w = 0;
+		for (t = 0; t < PT_TABS; t++) {
+			g_tabs.at = t;
+			n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
+			mw = menu_measure(rows, n, heading);
+			if (mw > w) w = mw;
+		}
+		g_tabs.at = at;
+	}
 
 	/* Every value that can be cycled on this menu, at its widest, so the
 	 * panel does not resize under the row being cycled. Sort By joined
@@ -14876,12 +15146,7 @@ static void storage_screen(app *a)
 			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
 
 			if (b != IN_NONE) {
-				int to = v->pg.sel + (b == IN_UP ? -1 : 1);
-
-				if (to < 0) to = 0;
-				if (to >= v->nrows) to = v->nrows - 1;
-				step_sound(a, b, v->pg.sel, to);
-				v->pg.sel = to;
+				v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
 			}
 			if (a->in.pressed[IN_ACCEPT]) store_act(v);
 			/* X: the list's next order, the cursor kept on its row; a value
@@ -15590,12 +15855,8 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 			if (b == IN_UP || b == IN_DOWN) {
 				/* The strip is one stop above the rows */
-				int from = v->row, to = v->row + (b == IN_UP ? -1 : 1);
-
-				if (to < -1) to = -1;
-				if (to >= v->pg.nrows) to = v->pg.nrows - 1;
-				step_sound(a, b, from, to);
-				v->row = to;
+				/* the strip is stop 0 of the list, the rows after it */
+				v->row = list_step_heard(a, b, v->pg.nrows + 1, v->row + 1) - 1;
 			} else if ((b == IN_LEFT || b == IN_RIGHT) && v->row < 0 && nt > 0) {
 				int to = v->focus + (b == IN_LEFT ? -1 : 1);
 
@@ -16084,6 +16345,8 @@ static unsigned shot_zyper_ms(void)
  * row, the top one, which is the one Zyper is in, and a system's on a game
  * list, which is where it gains rows that belong to that system. The menu
  * and its --menu shot both take it from here. */
+static void look_row_mark(app *a, const menu_row *row, int right, int cy, float on_fill);
+
 static menu_style zyperos_menu_style(app *a, int screen)
 {
 	return (menu_style){
@@ -16095,6 +16358,10 @@ static menu_style zyperos_menu_style(app *a, int screen)
 		 * shelf's color - which tick_tint is still moving while it is open. */
 		.follow_tint = screen != SCREEN_SYSTEMS,
 		.zyper       = screen == SCREEN_SYSTEMS,
+		/* The ZyperOS menu's tabs; a system's menu is one list */
+		.tabs        = screen != SCREEN_GAMES ? &g_tabs : NULL,
+		/* and the themes' chips on Display's Theme row */
+		.row_mark    = screen != SCREEN_GAMES ? look_row_mark : NULL,
 	};
 }
 
@@ -16125,7 +16392,11 @@ static void zyperos_menu_draw(app *a, int sel)
 		g_menu_zyper = &zy;
 		g_menu_zyper_at = zms;
 	}
+	g_menu_tabs = st.tabs;
+	g_row_mark = st.row_mark;
 	menu_draw(a, heading, rows, n, sel, st.fixed_w, st.follow_tint ? a->tint : st.accent);
+	g_row_mark = NULL;
+	g_menu_tabs = NULL;
 	g_menu_zyper = NULL;
 }
 
@@ -16140,6 +16411,8 @@ typedef struct {
 	 * Both has no screens to be on: there MENU means the firmware and B
 	 * means this system, and neither can be inferred from where you are. */
 	int       screen;
+	/* MENU's cursor as the runner last had it (menu_style's sel_out) */
+	int       seen;
 } sysmenu_ctx;
 
 static int sysmenu_build(void *ctx, menu_row *rows, int max,
@@ -16197,6 +16470,282 @@ static void pick_launch(app *a)
 	} while ((int)(until - plat_now_ms()) > 0 && a->running && !want_quit);
 	memset(&a->in, 0, sizeof a->in);
 	launch(a);
+}
+
+/* ---------- MENU > Display: Auto Hours and Theme (DESIGN.md 3.5, 11.37) ---- */
+
+/* The volume and brightness bar the launcher draws (src/osdbar.c) in the
+ * look's colors, or the tokens' for the look as it ships */
+static void look_bar_colors(void)
+{
+	int t;
+
+	for (t = 0; t < DS_THEMES; t++)
+		osdbar_colors(t, look_is_default(look_now()) ? NULL : theme_at(t));
+}
+
+/* The look and Auto's hours as the database keeps them (src/look.h,
+ * src/theme.h): read at start before theme_init, and written as a row
+ * changes. Words for the look, minutes for the hours. */
+static void look_load(void)
+{
+	char ac[16], li[16], dk[16], co[16], zy[8];
+	look l;
+
+	db_get_str(db_dev(), "look.accent", ac, sizeof ac, DS_ACCENT_ID[0]);
+	db_get_str(db_dev(), "look.light", li, sizeof li, DS_TONE_ID[DS_LIGHT][0]);
+	db_get_str(db_dev(), "look.dark", dk, sizeof dk, DS_TONE_ID[DS_DARK][0]);
+	db_get_str(db_dev(), "look.corners", co, sizeof co, "rounded");
+	db_get_str(db_dev(), "look.zyper", zy, sizeof zy, "on");
+	l = look_parse(ac, li, dk, co, zy);
+	look_set(&l);
+	look_bar_colors();
+	theme_set_hours(db_get_int(db_dev(), "auto.light", THEME_LIGHT_FROM),
+	                db_get_int(db_dev(), "auto.dark", THEME_DARK_FROM));
+}
+
+/* A new look: on, kept, and every screen told. The bar's other programs read
+ * it from the theme file theme_init writes (themefile.h), so that is written
+ * again too; cards and marks drawn in the old colors are drawn again. */
+static void look_change(app *a, const look *l)
+{
+	look_set(l);
+	look_bar_colors();
+	db_set_str(db_dev(), "look.accent", DS_ACCENT_ID[l->accent]);
+	db_set_str(db_dev(), "look.light", DS_TONE_ID[DS_LIGHT][l->tone[DS_LIGHT]]);
+	db_set_str(db_dev(), "look.dark", DS_TONE_ID[DS_DARK][l->tone[DS_DARK]]);
+	db_set_str(db_dev(), "look.corners", l->square ? "square" : "rounded");
+	db_set_str(db_dev(), "look.zyper", l->zyper_off ? "off" : "on");
+	theme_init(theme_appearance());
+	theme_changed(a);
+}
+
+/* A time of day, `m` minutes in, as MENU > Clock writes one: "7:00 AM",
+ * or "07:00" in 24-hour */
+static void time_of_day(int m, char *out, size_t n)
+{
+	int h = m / 60, mi = m % 60;
+
+	if (g_clock24) snprintf(out, n, "%02d:%02d", h, mi);
+	else snprintf(out, n, T(S_LOOK_TIME_12H), h % 12 ? h % 12 : 12, mi,
+	              T(h < 12 ? S_CLOCK_AM : S_CLOCK_PM));
+}
+
+/* Auto Hours' value in MENU: "7:00 AM to 7:00 PM" */
+static const char *auto_hours_value(void)
+{
+	static char v[64];
+	char l[24], d[24];
+	int lm, dm;
+
+	theme_hours(&lm, &dm);
+	time_of_day(lm, l, sizeof l);
+	time_of_day(dm, d, sizeof d);
+	snprintf(v, sizeof v, T(S_LOOK_HOURS), l, d);
+	return v;
+}
+
+/* MENU > Display > Auto Hours: Light From and Dark From, by the half hour,
+ * Left and Right round the day, A forward; applied at once, so a theme that
+ * turns on the change turns on screen */
+typedef struct { app *a; char l[24], d[24]; } hours_view;
+static const unsigned char HOURS_SOUND[2] = { MENU_SND_RING, MENU_SND_RING };
+
+static int hours_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	hours_view *v = ctx;
+	int lm, dm;
+
+	(void)max;
+	theme_hours(&lm, &dm);
+	time_of_day(lm, v->l, sizeof v->l);
+	time_of_day(dm, v->d, sizeof v->d);
+	*heading = T(S_SYSMENU_AUTO_HOURS);
+	rows[0] = (menu_row){ T(S_LOOK_LIGHT_FROM), v->l, true };
+	rows[1] = (menu_row){ T(S_LOOK_DARK_FROM), v->d, true };
+	return 2;
+}
+
+static menu_result hours_key(app *a, void *ctx, in_button key, int sel)
+{
+	int d = key == IN_RIGHT || key == IN_ACCEPT ? 1 : key == IN_LEFT ? -1 : 0;
+	int lm, dm, *m, was = theme_index();
+	const int day = 24 * 60;
+
+	(void)ctx;
+	if (!d || sel < 0 || sel > 1) return MENU_STAY;
+	theme_hours(&lm, &dm);
+	m = sel == 0 ? &lm : &dm;
+	*m = ((*m + d * THEME_HOURS_STEP) % day + day) % day;
+	theme_set_hours(lm, dm);
+	db_set_int(db_dev(), "auto.light", lm);
+	db_set_int(db_dev(), "auto.dark", dm);
+	theme_init(theme_appearance());
+	if (theme_index() != was) theme_changed(a);
+	return MENU_CHANGED;
+}
+
+static void auto_hours_screen(app *a)
+{
+	hours_view v = { .a = a };
+	menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS,
+	                  .sound = HOURS_SOUND };
+
+	menu_run(a, &st, hours_build, hours_key, &v);
+}
+
+/* A theme's chip, 64 by 36: its ground in its edge, its accent on it, so
+ * the row says what the theme is now (DESIGN.md 11.37) */
+static void look_chip(app *a, const ds_theme *t, int x, int cy)
+{
+	SDL_Rect c = { x, cy - 18, 64, 36 };
+
+	ui_round_rect(a->r, &c, DS_RADIUS_CHIP + 1, ui_col(t->edge, 255));
+	ui_round_rect(a->r, &(SDL_Rect){ c.x + 3, c.y + 3, c.w - 6, c.h - 6 }, DS_RADIUS_CHIP - 2,
+	              ui_col(t->ground, 255));
+	ui_round_rect(a->r, &(SDL_Rect){ c.x + 12, cy - 6, 40, 12 }, 6, ui_col(t->accent, 255));
+}
+
+/* The marks before Theme's values: the accent's dot on Accent, each theme's
+ * chip on its background's row, and both on MENU's Theme row */
+static void look_row_mark(app *a, const menu_row *row, int right, int cy, float on_fill)
+{
+	const char *l = row->label;
+
+	(void)on_fill;
+	if (l == T(S_LOOK_BG_LIGHT)) look_chip(a, theme_at(DS_LIGHT), right - 64, cy);
+	else if (l == T(S_LOOK_BG_DARK)) look_chip(a, theme_at(DS_DARK), right - 64, cy);
+	else if (l == T(S_SYSMENU_THEME)) {
+		look_chip(a, theme_at(DS_DARK), right - 64, cy);
+		look_chip(a, theme_at(DS_LIGHT), right - 64 - DS_GRID - 64, cy);
+	} else if (l == T(S_LOOK_ACCENT)) {
+		const ds_rgb ac = DS_ACCENT[look_now()->accent];
+
+		ui_round_rect(a->r, &(SDL_Rect){ right - 34, cy - 17, 34, 34 }, 17,
+		              ui_col(theme()->edge, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ right - 32, cy - 15, 30, 30 }, 15,
+		              ui_col(theme()->surface, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ right - 28, cy - 11, 22, 22 }, 11,
+		              (SDL_Color){ ac.r, ac.g, ac.b, 255 });
+	}
+}
+
+/* One theme, small: the home with a menu over it, drawn from shapes (text is
+ * never under 37 units), in that theme as the look has it now. */
+static void look_thumb(app *a, const ds_theme *t, const SDL_Rect *q)
+{
+	SDL_Renderer *r = a->r;
+	const int rad = 16;
+	int mx = q->x + q->w * 48 / 100, my = q->y + 12, mw = q->w * 48 / 100, mh = q->h - 24;
+	int bx = q->x + 16, i;
+#define BAR(x, y, w, h, c) ui_round_rect(r, &(SDL_Rect){ (x), (y), (w), (h) }, (h) / 2, ui_col((c), 255))
+
+	ui_round_rect(r, q, rad, ui_col(t->edge, 255));
+	ui_round_rect(r, &(SDL_Rect){ q->x + 2, q->y + 2, q->w - 4, q->h - 4 }, rad - 2,
+	              ui_col(t->ground, 255));
+	/* the home: the system's name and count, A, the art, the dock and its
+	 * mark under the one in focus */
+	BAR(bx, q->y + 22, q->w * 22 / 100, 13, t->text);
+	BAR(bx, q->y + 44, q->w * 13 / 100, 8, t->text_dim);
+	ui_round_rect(r, &(SDL_Rect){ bx, q->y + 60, 16, 16 }, 8, ui_col(t->accent, 255));
+	BAR(bx + 22, q->y + 64, q->w * 11 / 100, 8, t->text_soft);
+	ui_round_rect(r, &(SDL_Rect){ q->x + q->w * 27 / 100, q->y + 14, q->w * 16 / 100, q->w * 12 / 100 },
+	              6, ui_col(t->raised, 255));
+	for (i = 0; i < 4; i++)
+		ui_round_rect(r, &(SDL_Rect){ bx + i * (q->w / 10), q->y + q->h - 46, q->w / 14, q->w / 14 },
+		              4, ui_col(i == 2 ? t->text_soft : t->text_dim, 255));
+	BAR(bx + 2 * (q->w / 10), q->y + q->h - 14, q->w / 14, 4, t->accent_ink);
+	/* a menu over it: its heading, rule and bar, three rows, one in focus */
+	ui_round_rect(r, &(SDL_Rect){ mx, my, mw, mh }, 12, ui_col(t->edge, 255));
+	ui_round_rect(r, &(SDL_Rect){ mx + 2, my + 2, mw - 4, mh - 4 }, 10, ui_col(t->surface, 255));
+	BAR(mx + mw / 2 - mw / 6, my + 12, mw / 3, 8, t->text_soft);
+	ui_round_rect(r, &(SDL_Rect){ mx + 10, my + 28, mw - 20, 2 }, 0, ui_col(t->edge, 255));
+	BAR(mx + mw / 2 - mw / 6, my + 27, mw / 3, 4, t->accent_ink);
+	BAR(mx + 14, my + 40, mw * 35 / 100, 8, t->text_soft);
+	BAR(mx + mw - 14 - mw / 5, my + 40, mw / 5, 8, t->text_dim);
+	ui_round_rect(r, &(SDL_Rect){ mx + 6, my + 56, mw - 12, 22 }, 6, ui_col(t->accent, 255));
+	BAR(mx + 14, my + 63, mw * 40 / 100, 8, t->on_accent);
+	BAR(mx + 14, my + mh - 18, mw * 30 / 100, 8, t->text_soft);
+	BAR(mx + mw - 14 - mw / 4, my + mh - 18, mw / 4, 8, t->text_dim);
+	/* Zyper in its corner, a dot at this size, while he is on */
+	if (!look_zyper_off())
+		ui_round_rect(r, &(SDL_Rect){ mx + mw - 22, my + 7, 12, 12 }, 6, ui_col(t->text_dim, 255));
+#undef BAR
+}
+
+/* Theme's picture: Beard and Salt & Pepper as the look has them, side by
+ * side, Light at the left whatever is on */
+static void look_header(app *a, const SDL_Rect *q)
+{
+	int gap = DS_GRID * 3, w = (q->w - gap) / 2;
+
+	look_thumb(a, theme_at(DS_LIGHT), &(SDL_Rect){ q->x, q->y, w, q->h });
+	look_thumb(a, theme_at(DS_DARK), &(SDL_Rect){ q->x + w + gap, q->y, w, q->h });
+}
+
+/* MENU > Display > Theme: Accent, Light Background, Dark Background,
+ * Corners, Zyper and Reset to Default. Left and Right step a row round and
+ * apply it at once; A steps forward, and on Reset puts all four back. */
+enum { LK_ACCENT, LK_LIGHT, LK_DARK, LK_CORNERS, LK_ZYPER, LK_RESET, LK_ROWS };
+static const unsigned char LOOK_SOUND[LK_ROWS] = {
+	MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, 0 };
+static const int ACCENT_NAME[DS_ACCENTS] = {
+	S_LOOK_ACCENT_LIME, S_LOOK_ACCENT_GREEN, S_LOOK_ACCENT_TEAL, S_LOOK_ACCENT_BLUE,
+	S_LOOK_ACCENT_PURPLE, S_LOOK_ACCENT_PINK, S_LOOK_ACCENT_RED, S_LOOK_ACCENT_ORANGE,
+	S_LOOK_ACCENT_YELLOW, S_LOOK_ACCENT_SILVER };
+static const int TONE_NAME[DS_THEMES][DS_TONES] = {
+	{ S_LOOK_TONE_WARM, S_LOOK_TONE_NEUTRAL, S_LOOK_TONE_COOL },
+	{ S_LOOK_TONE_BLACK, S_LOOK_TONE_DEEPBLUE, S_LOOK_TONE_DARKGREY } };
+
+static const char *look_accent_name(void)
+{
+	return T(ACCENT_NAME[look_now()->accent]);
+}
+
+static int look_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	const look *l = look_now();
+
+	(void)ctx; (void)max;
+	*heading = T(S_SYSMENU_THEME);
+	rows[LK_ACCENT]  = (menu_row){ T(S_LOOK_ACCENT), T(ACCENT_NAME[l->accent]), true };
+	rows[LK_LIGHT]   = (menu_row){ T(S_LOOK_BG_LIGHT), T(TONE_NAME[DS_LIGHT][l->tone[DS_LIGHT]]), true };
+	rows[LK_DARK]    = (menu_row){ T(S_LOOK_BG_DARK), T(TONE_NAME[DS_DARK][l->tone[DS_DARK]]), true };
+	rows[LK_CORNERS] = (menu_row){ T(S_LOOK_CORNERS), T(l->square ? S_LOOK_SQUARE : S_LOOK_ROUNDED), true };
+	rows[LK_ZYPER]   = (menu_row){ T(S_LOOK_ZYPER), T(l->zyper_off ? S_MENU_OFF_TITLE : S_MENU_ON_TITLE), true };
+	rows[LK_RESET]   = (menu_row){ T(S_LOOK_RESET), NULL, true };
+	return LK_ROWS;
+}
+
+static menu_result look_key(app *a, void *ctx, in_button key, int sel)
+{
+	int d = key == IN_RIGHT || key == IN_ACCEPT ? 1 : key == IN_LEFT ? -1 : 0;
+	look l = *look_now();
+
+	(void)ctx;
+	if (!d || sel < 0 || sel >= LK_ROWS) return MENU_STAY;
+	switch (sel) {
+	case LK_ACCENT:  l.accent = (l.accent + d + DS_ACCENTS) % DS_ACCENTS; break;
+	case LK_LIGHT:   l.tone[DS_LIGHT] = (l.tone[DS_LIGHT] + d + DS_TONES) % DS_TONES; break;
+	case LK_DARK:    l.tone[DS_DARK] = (l.tone[DS_DARK] + d + DS_TONES) % DS_TONES; break;
+	case LK_CORNERS: l.square = !l.square; break;
+	case LK_ZYPER:   l.zyper_off = !l.zyper_off; break;
+	case LK_RESET:
+		if (key != IN_ACCEPT) return MENU_STAY;
+		l = LOOK_DEFAULT;
+		break;
+	}
+	look_change(a, &l);
+	return MENU_CHANGED;
+}
+
+static void look_screen(app *a)
+{
+	menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS,
+	                  .sound = LOOK_SOUND, .row_mark = look_row_mark,
+	                  .header = look_header, .header_h = 150 };
+
+	menu_run(a, &st, look_build, look_key, NULL);
 }
 
 static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
@@ -16378,8 +16927,27 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		                * the update program has the row */
 		               .update = up_have() ? "" : NULL };
 		pm_row ids[PM_ROWS];
-		int n = sys_menu_zyperos_rows(&dev, ids);
+		int n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 
+		/* L1 and R1 go round the tabs (DESIGN.md 11.3): the row each tab
+		 * is on is kept, and the cursor lands on the next tab's own */
+		if (key == IN_L1 || key == IN_R1) {
+			int dir = key == IN_R1 ? +1 : -1, k;
+
+			if (sel >= 0 && sel < n) g_tab_row[g_tabs.at] = ids[sel];
+			g_tabs.from = g_tabs.at;
+			g_tabs.at = (g_tabs.at + dir + PT_TABS) % PT_TABS;
+			g_tabs.dir = dir;
+			g_tabs.t0 = anim_now();
+			if (!g_tabs.t0) g_tabs.t0 = 1;
+			g_menu_epoch++;
+			n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+			for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
+			g_menu_sel_to = k < n ? k : 0;
+			moved_sound(a, key);
+			redraw_now();
+			return MENU_STAY;
+		}
 		sel = sel >= 0 && sel < n ? (int)ids[sel] : PM_ROWS;
 	}
 
@@ -16558,6 +17126,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * says to start playing. */
 	case PM_TOUR:         tour_run(a, false); return MENU_DONE;
 	case PM_STORAGE:      storage_screen(a); break;
+	case PM_AUTOHOURS:    auto_hours_screen(a); return MENU_CHANGED;
+	case PM_THEME:        look_screen(a); return MENU_CHANGED;
 	case PM_UPDATE:       update_screen(a); break;
 	case PM_ABOUT:        about_screen(a); break;
 	/* A game by its name: the menu closes once one is picked, and it starts */
@@ -16582,8 +17152,40 @@ static void zyperos_menu_for(app *a, int screen)
 	/* Each row's sound class, which the build sets beside the rows */
 	st.sound = c.bufs.sound;
 
-	g_pick.shelf = -1;
-	menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+	if (st.tabs) {
+		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
+		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .no_developer = !dev_offered(),
+		               .no_lights = !plat_battery_lights(),
+		               .no_charge_limit = !plat_charge_limit_supported(),
+		               .no_usb_power = !usb_power_offered(),
+		               .no_usb_wait = !usb_wait_row(),
+		               .update = up_have() ? "" : NULL };
+		pm_row ids[PM_ROWS];
+		int n, k;
+
+		/* A plug waiting for its answer: Connections, on USB Device */
+		if (!dev.no_usb_wait && !dev.no_usb_power) {
+			g_tabs.at = PT_CONNECTIONS;
+			g_tab_row[PT_CONNECTIONS] = PM_USB_WAIT;
+		}
+		g_tabs.from = g_tabs.at;
+		g_tabs.t0 = 0;
+		g_menu_epoch++;
+		n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+		for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
+		st.start_sel = k < n ? k : 0;
+		c.seen = st.start_sel;
+		st.sel_out = &c.seen;
+		g_pick.shelf = -1;
+		menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+		/* where it was closed, for the next time it opens */
+		n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+		if (c.seen >= 0 && c.seen < n) g_tab_row[g_tabs.at] = ids[c.seen];
+	} else {
+		g_pick.shelf = -1;
+		menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+	}
 	/* A game Random Game or Search Games picked, once the menu has gone */
 	if (g_pick.shelf >= 0 && a->running && !want_quit) pick_launch(a);
 	g_pick.shelf = -1;
@@ -16660,7 +17262,7 @@ static void paused_backdrop(app *a, SDL_Texture *bg, float k)
 	/* The top bar (src/topbar.h): the clock at the top left and the marks
 	 * with the battery's text at the top right, as on the home, so they match
 	 * and a long Time Left text never meets the clock. */
-	draw_topbar(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255), frames_wanted());
+	draw_topbar(a->r, DS_DARK, ui_col(theme_at(DS_DARK)->text, 255), frames_wanted());
 }
 
 /* Copy the paused frame's preview beside a manual save, so the slot strip can
@@ -16739,7 +17341,7 @@ static void slot_when(char *out, size_t n, const struct tm *tm)
  * which brings its own surface and needs none of this. */
 static void slot_draw(app *a, const slot_view *sv, int sel)
 {
-	const ds_theme *dk = &DS_THEME[DS_DARK];
+	const ds_theme *dk = theme_at(DS_DARK);
 	/* `area` is the layout slot the picture is fitted into; nothing is ever
 	 * drawn to it. The border is the picture's own edge - a 240x160 GBA frame
 	 * and a 256x224 NES frame are different shapes, and neither should be
@@ -18724,14 +19326,8 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 		}
 
 		if (items > 0) {
-			if (in_repeat(&a->in, IN_UP)) {
-				step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
-				if (sel > 0) sel--;
-			}
-			if (in_repeat(&a->in, IN_DOWN)) {
-				step_sound(a, IN_DOWN, sel, sel < items - 1 ? sel + 1 : sel);
-				if (sel < items - 1) sel++;
-			}
+			if (in_repeat(&a->in, IN_UP))   sel = list_step_heard(a, IN_UP, items, sel);
+			if (in_repeat(&a->in, IN_DOWN)) sel = list_step_heard(a, IN_DOWN, items, sel);
 		}
 		if (in_repeat(&a->in, IN_LEFT))     { moved_sound(a, IN_LEFT); musec_seek_by(-seek_step(&a->in, IN_LEFT)); }
 		if (in_repeat(&a->in, IN_RIGHT))    { moved_sound(a, IN_RIGHT); musec_seek_by(+seek_step(&a->in, IN_RIGHT)); }
@@ -19476,14 +20072,8 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
 
-		if (in_repeat(&a->in, IN_UP)) {
-			step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
-			if (sel > 0) sel--;
-		}
-		if (in_repeat(&a->in, IN_DOWN)) {
-			step_sound(a, IN_DOWN, sel, sel < n - 1 ? sel + 1 : sel);
-			if (sel < n - 1) sel++;
-		}
+		if (in_repeat(&a->in, IN_UP))   sel = list_step_heard(a, IN_UP, n, sel);
+		if (in_repeat(&a->in, IN_DOWN)) sel = list_step_heard(a, IN_DOWN, n, sel);
 		/* A set runs to well over a hundred entries, so the shoulder buttons
 		 * page it the same way they page a shelf. */
 		if (in_repeat(&a->in, IN_L1)) {
@@ -21317,6 +21907,17 @@ static void update_games(app *a)
 static const char *shot_path;
 static int shot_screen = -1;
 static int shot_menu, shot_menu_sel;
+/* --menu-steps N: N presses of Down (Up when N is negative) on --menu's
+ * list before the shot, a second apart on a held clock, so a list that
+ * goes round can be looked at past its end (DESIGN.md 11.3) */
+static int shot_menu_steps;
+/* --menu-tab-from M: the tab MENU's move comes from, or -1 */
+static int shot_tab_from = -1, shot_tab_ms;
+/* --look ACCENT,LIGHT,DARK,CORNERS,ZYPER: the look for the shot; and
+ * --look-page theme|hours [row]: Theme's page or Auto Hours' (DESIGN.md
+ * 11.37), the cursor on `row` */
+static const char *shot_look, *shot_look_page;
+static int shot_look_row;
 static int shot_kb, shot_kb_layer;
 static keyboard_transition shot_keyboard;
 static bool shot_keyboard_panel;
@@ -22009,6 +22610,28 @@ static void muse_covers_settle(void)
 	}
 }
 
+/* --look-page: Theme's page or Auto Hours', over the shelf, as menu_run
+ * draws them, the cursor on --look-page's row */
+static void shot_draw_look(app *a)
+{
+	menu_row rows[LK_ROWS];
+	const char *heading;
+	hours_view hv = { .a = a };
+	bool hours = !strcmp(shot_look_page, "hours");
+	int n = hours ? hours_build(&hv, rows, 2, &heading) : look_build(NULL, rows, LK_ROWS, &heading);
+
+	ui_scrim(a->r, 0);
+	if (!hours) {
+		g_row_mark = look_row_mark;
+		g_menu_header = look_header;
+		g_menu_header_h = 150;
+	}
+	menu_draw(a, heading, rows, n, shot_look_row < n ? shot_look_row : 0,
+	          menu_std_width(a), MENU_ZYPEROS);
+	g_row_mark = NULL;
+	g_menu_header = NULL;
+}
+
 /* Everything a shot draws, in the theme that is on. */
 static void shot_compose(app *a)
 {
@@ -22043,6 +22666,21 @@ static void shot_compose(app *a)
 		i18n_set(LANG_EN);
 		n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
 		for (k = 0; k < n && !(rows[k].label && !strcmp(rows[k].label, shot_menu_label)); k++) ;
+		/* In MENU, on whichever tab has it (sys_menu.h) */
+		if (k == n && a->screen != SCREEN_GAMES) {
+			int t, at = g_tabs.at;
+
+			for (t = 0; t < PT_TABS && k == n; t++) {
+				g_tabs.at = t;
+				n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
+				for (k = 0; k < n && !(rows[k].label && !strcmp(rows[k].label, shot_menu_label)); k++) ;
+			}
+			if (k == n) {
+				g_tabs.at = at;
+				n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
+				k = n;
+			}
+		}
 		i18n_set(was);
 		if (k == n) {
 			fprintf(stderr, "--menu: no row called %s\n", shot_menu_label);
@@ -22059,6 +22697,13 @@ static void shot_compose(app *a)
 		c.screen = a->screen;
 		sysmenu_key(a, &c, (in_button)shot_key, shot_menu_sel);
 		shot_key = -1;   /* once: --flip composes the shot more than once */
+		/* L1 or R1 moved MENU's tab and its cursor, as the runner would;
+		 * the shot is the tab at rest */
+		if (g_menu_sel_to >= 0) {
+			shot_menu_sel = g_menu_sel_to;
+			g_menu_sel_to = -1;
+			g_tabs.t0 = 0;
+		}
 	}
 	draw_shelf(a);
 	if (shot_language > -2) {
@@ -22131,6 +22776,35 @@ static void shot_compose(app *a)
 		about_draw(a, &v, shot_about);
 		return;
 	}
+	if (shot_menu && shot_tab_from >= 0) {
+		if (!g_clock_held) { g_clock_held = true; g_clock_at = plat_now_ms(); }
+		g_tabs.from = shot_tab_from;
+		g_tabs.dir = (g_tabs.at - shot_tab_from + PT_TABS) % PT_TABS == 1 ? +1 : -1;
+		g_tabs.t0 = g_clock_at - (unsigned)shot_tab_ms;
+		if (!g_tabs.t0) g_tabs.t0 = 1;
+		g_menu_epoch++;
+		shot_tab_from = -1;
+	}
+	if (shot_menu && shot_menu_steps) {
+		menu_row rows[MENU_MAX_ROWS];
+		menu_bufs b;
+		const char *h;
+		int n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &h);
+		int k, d = shot_menu_steps > 0 ? 1 : -1;
+
+		if (!g_clock_held) { g_clock_held = true; g_clock_at = plat_now_ms(); }
+		for (k = 0; k < (shot_menu_steps > 0 ? shot_menu_steps : -shot_menu_steps); k++) {
+			zyperos_menu_draw(a, shot_menu_sel);
+			g_clock_at += 1000;
+			shot_menu_sel = menu_step_round(rows, n, shot_menu_sel, d);
+		}
+		/* and the last press drawn, then let settle: the shot is the list
+		 * at rest after it */
+		zyperos_menu_draw(a, shot_menu_sel);
+		g_clock_at += 1000;
+		shot_menu_steps = 0;    /* once: --flip composes the shot twice */
+		draw_shelf(a);
+	}
 	/* After --close's press the menu is the shelf's to draw leaving, and
 	 * after --swap's it has given way to the page below */
 	if (shot_menu) {
@@ -22138,6 +22812,7 @@ static void shot_compose(app *a)
 		else if (!shot_pressed || shot_press != SHOT_SWAP)
 			zyperos_menu_draw(a, shot_menu_sel);
 	}
+	if (shot_look_page) shot_draw_look(a);
 	if (shot_slots) shot_draw_slots(a);
 	if (shot_gamemenu && a->sys.count > 0) shot_draw_gamemenu(a);
 	if (shot_gamecontrols >= 0 && a->sys.count > 0) shot_draw_gamecontrols(a);
@@ -22589,6 +23264,18 @@ static int shot_menu_row(app *a, const char *label)
 	n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading);
 	for (i = 0; i < n; i++)
 		if (rows[i].label && !strcmp(rows[i].label, label)) break;
+	/* In MENU, on whichever tab has it, and that tab is then on */
+	if (i == n && a->screen != SCREEN_GAMES) {
+		int t, at = g_tabs.at;
+
+		for (t = 0; t < PT_TABS && i == n; t++) {
+			g_tabs.at = t;
+			n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading);
+			for (i = 0; i < n; i++)
+				if (rows[i].label && !strcmp(rows[i].label, label)) break;
+		}
+		if (i == n) g_tabs.at = at;
+	}
 	i18n_set(was);
 	return i < n ? i : -1;
 }
@@ -23124,6 +23811,7 @@ static int port_menu_main(int argc, char **argv)
 		db_get_str(db_dev(), "language", lc, sizeof lc, "en");
 		i18n_set(lang_parse(lc));
 		db_get_str(db_dev(), "appearance", ap, sizeof ap, appearance_id(APPEAR_LIGHT));
+		look_load();
 		theme_init(appearance_parse(ap));
 		IMG_Init(IMG_INIT_PNG);
 		db_get_str(db_dev(), "uisounds", v, sizeof v, uisound_setting_id(DS_VOICE_DEFAULT));
@@ -23464,6 +24152,24 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && argv[i + 1][0] != '-')
 				shot_menu_label = argv[++i];
 		}
+		else if (!strcmp(argv[i], "--menu-steps") && i + 1 < argc)
+			shot_menu_steps = atoi(argv[++i]);
+		/* --menu-tab N: MENU on tab N (pm_tab, 0 Games to 5 About), and
+		 * --menu-tab-from M MS on its way there from tab M, MS into the
+		 * move (DESIGN.md 11.3) */
+		else if (!strcmp(argv[i], "--look") && i + 1 < argc)
+			shot_look = argv[++i];
+		else if (!strcmp(argv[i], "--look-page") && i + 1 < argc) {
+			shot_look_page = argv[++i];
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_look_row = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--menu-tab") && i + 1 < argc)
+			g_tabs.at = g_tabs.from = atoi(argv[++i]) % PT_TABS;
+		else if (!strcmp(argv[i], "--menu-tab-from") && i + 2 < argc) {
+			shot_tab_from = atoi(argv[++i]) % PT_TABS;
+			shot_tab_ms = atoi(argv[++i]);
+		}
 		/* --slots <sel> [aspect] draws one frame of the save/load carousel
 		 * over synthetic frames, which is the only way to look at it without
 		 * a game running on a device. */
@@ -23623,9 +24329,11 @@ int main(int argc, char *argv[])
 			i++;
 			shot_key = !strcmp(argv[i], "left")  ? IN_LEFT
 			           : !strcmp(argv[i], "right") ? IN_RIGHT
+			           : !strcmp(argv[i], "l1")    ? IN_L1
+			           : !strcmp(argv[i], "r1")    ? IN_R1
 			           : !strcmp(argv[i], "a")     ? IN_ACCEPT : -1;
 			if (shot_key < 0) {
-				fprintf(stderr, "--press: %s is not left, right or a\n", argv[i]);
+				fprintf(stderr, "--press: %s is not left, right, l1, r1 or a\n", argv[i]);
 				return 2;
 			}
 		}
@@ -24500,6 +25208,19 @@ int main(int argc, char *argv[])
 
 			db_get_str(db_dev(), "language", lc, sizeof lc, "en");
 			i18n_set(lang_parse(shot_path && shot_lang ? shot_lang : lc));
+		}
+		look_load();
+		/* --look's, for a shot: ACCENT,LIGHT,DARK,CORNERS,ZYPER as the
+		 * database keeps them ("blue,cool,deepblue,square,off") */
+		if (shot_path && shot_look) {
+			char w[5][16] = { "", "", "", "", "" };
+			look l;
+
+			sscanf(shot_look, "%15[^,],%15[^,],%15[^,],%15[^,],%15s",
+			       w[0], w[1], w[2], w[3], w[4]);
+			l = look_parse(w[0], w[1], w[2], w[3], w[4]);
+			look_set(&l);
+			look_bar_colors();
 		}
 		theme_init(shot_path && shot_theme >= 0 ? (appearance)shot_theme
 		                                        : appearance_parse(ap));

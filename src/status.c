@@ -3,6 +3,7 @@
 #include "status.h"
 
 #include "clamp.h"
+#include "theme.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -446,7 +447,7 @@ void status_marks_render(uint32_t *px, int w, int h, int stride, float scale,
 	for (y = 0; y < h; y++) memset(px + (size_t)y * stride, 0, (size_t)w * sizeof *px);
 	if (!(cv.f = calloc((size_t)w * h * 4, sizeof *cv.f))) return;
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
-	th = &DS_THEME[theme];
+	th = theme_at(theme);
 
 	/* Left to right: a plug waiting, File Transfer, the rune, headphones,
 	 * the fan, the battery, at the row's right end */
@@ -523,7 +524,7 @@ void status_note_render(uint32_t *px, int w, int h, int stride, float scale,
 	for (y = 0; y < h; y++) memset(px + (size_t)y * stride, 0, (size_t)w * sizeof *px);
 	if (!(cv.f = calloc((size_t)w * h * 4, sizeof *cv.f))) return;
 	if (theme < 0 || theme >= DS_THEMES) theme = DS_LIGHT;
-	th = &DS_THEME[theme];
+	th = theme_at(theme);
 	if (paused) {
 		shape a = box(6, 3, 10.5f, 21, 1.5f), b = box(13.5f, 3, 18, 21, 1.5f);
 

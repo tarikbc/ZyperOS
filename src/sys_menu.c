@@ -57,6 +57,56 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 	return n;
 }
 
+pm_tab sys_menu_tab_of(pm_row r)
+{
+	/* No default: -Wswitch names a row that has no tab */
+	switch (r) {
+	case PM_SEARCH: case PM_STATS: case PM_RANDOM: case PM_ACHIEVEMENTS:
+	case PM_SCRAPER:
+		return PT_GAMES;
+	case PM_APPEARANCE: case PM_AUTOHOURS: case PM_THEME: case PM_HOME:
+	case PM_ORDER: case PM_BATTERY:
+		return PT_DISPLAY;
+	case PM_AUDIO: case PM_CHANNELS: case PM_SOUNDS: case PM_MUSIC:
+		return PT_SOUND;
+	case PM_USB_WAIT: case PM_WIFI: case PM_BT: case PM_XFER: case PM_USB:
+	case PM_DEVELOPER:
+		return PT_CONNECTIONS;
+	case PM_CLOCK: case PM_HOURS: case PM_LANGUAGE: case PM_SLEEP:
+	case PM_CHARGE: case PM_LIGHTS: case PM_STORAGE: case PM_UPDATE:
+		return PT_SYSTEM;
+	case PM_ABOUT: case PM_CONTROLS: case PM_TOUR:
+		return PT_ABOUT;
+	case PM_ROWS:
+		break;
+	}
+	return PT_TABS;
+}
+
+const char *sys_menu_tab_name(pm_tab t)
+{
+	switch (t) {
+	case PT_GAMES:       return T(S_SYSMENU_TAB_GAMES);
+	case PT_DISPLAY:     return T(S_SYSMENU_TAB_DISPLAY);
+	case PT_SOUND:       return T(S_SYSMENU_TAB_SOUND);
+	case PT_CONNECTIONS: return T(S_SYSMENU_TAB_CONNECTIONS);
+	case PT_SYSTEM:      return T(S_SYSMENU_TAB_SYSTEM);
+	case PT_ABOUT:       return T(S_SYSMENU_TAB_ABOUT);
+	case PT_TABS:        break;
+	}
+	return "ZyperOS";
+}
+
+int sys_menu_tab_rows(const sys_ui *u, pm_tab t, pm_row *out)
+{
+	pm_row all[PM_ROWS];
+	int n = sys_menu_zyperos_rows(u, all), k, m = 0;
+
+	for (k = 0; k < n; k++)
+		if (sys_menu_tab_of(all[k]) == t) out[m++] = all[k];
+	return m;
+}
+
 int sys_menu_system_rows(const sys_ui *u, sm_row *out)
 {
 	int n = 0, r;
@@ -395,7 +445,13 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 
 	menu_row full[PM_ROWS];
 
-	*heading = "ZyperOS";
+	/* The tab's name: drawn as MENU's tab row (main.c, menu_tabs_draw),
+	 * and the heading anything else that draws these rows reads. A `tab`
+	 * that is none (PT_TABS) is every row, in the enum's order, under the
+	 * old heading: for measuring the panel and for tools/menu-check.c. */
+	bool all = u->tab < 0 || u->tab >= PT_TABS;
+
+	*heading = all ? "ZyperOS" : sys_menu_tab_name((pm_tab)u->tab);
 	/* The network's name, not its address. A settings row should say what the
 	 * setting IS; the address is a fact about the machine and lives on the
 	 * About page with the other ones. */
@@ -523,9 +579,16 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ABOUT]        = (menu_row){ T(S_SYSMENU_ABOUT), NULL, true  };
 	/* Any game by its name, typed (src/search.h) */
 	full[PM_SEARCH]       = (menu_row){ T(S_SYSMENU_SEARCH), NULL, true  };
+	/* When Auto turns light and dark; A opens its two rows */
+	full[PM_AUTOHOURS]    = (menu_row){ T(S_SYSMENU_AUTO_HOURS), u->auto_hours, true };
+	/* The look: its value the accent's name, both themes' chips before it
+	 * (main.c draws them); A opens the page */
+	full[PM_THEME]        = (menu_row){ T(S_SYSMENU_THEME),
+	                                   u->theme ? u->theme : T(S_LOOK_ACCENT_LIME), true };
 	{
 		pm_row ids[PM_ROWS];
-		int k, n = sys_menu_zyperos_rows(u, ids);
+		int k, n = all ? sys_menu_zyperos_rows(u, ids)
+		               : sys_menu_tab_rows(u, (pm_tab)u->tab, ids);
 
 		for (k = 0; k < n; k++) {
 			out[k] = full[ids[k]];

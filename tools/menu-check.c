@@ -20,6 +20,16 @@
 #include <stdbool.h>
 #include <string.h>
 
+/* MENU is in tabs (DESIGN.md 11.3): the checks below are of its rows, every
+ * one, so they build it with no tab, which is every row in the enum's order
+ * under the old heading. The tabs themselves are checked in menu_tabs(). */
+static int build_every_row(sys_ui *u, menu_row *out, menu_bufs *b, const char **heading)
+{
+	if (!u->games) u->tab = PT_TABS;
+	return sys_menu_build(u, out, b, heading);
+}
+#define sys_menu_build(u, out, b, heading) build_every_row(u, out, b, heading)
+
 static int sm_at(const sys_ui *u, sm_row which);
 static int fails;
 
@@ -218,6 +228,7 @@ static const char *val(const menu_row *r) { return r->value ? r->value : ""; }
 /* A row's label, "" for a rule, which has none: every loop over a menu's
  * rows compares through this, so a rule in the list is not a NULL strcmp. */
 static const char *lbl(const menu_row *r) { return r->label ? r->label : ""; }
+static const char *val_of(const menu_row *rows, int n, const char *label);
 
 /* A device with no network. Three rows depend on one, and all three have to
  * say so rather than silently doing nothing: Wi-Fi File Transfer, Box Art, and Box
@@ -433,6 +444,17 @@ static void clock_row(void)
 
 /* Connected and signed in. The Wi-Fi row shows the network's NAME - a settings
  * row says what the setting is, and the address lives on the About page. */
+/* The value of the row called `label`, "" for none: for a device whose rows
+ * are fewer than the enum's, where a row's place is not its enum value */
+static const char *val_of(const menu_row *rows, int n, const char *label)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (rows[i].label && !strcmp(rows[i].label, label)) return val(&rows[i]);
+	return "";
+}
+
 static bool has_label(const menu_row *rows, int n, const char *label)
 {
 	int i;
@@ -473,8 +495,8 @@ static void zyperos_menu_online(void)
 	 * three sources behind it (My picks in the Scraper lab, 2026-11-06;
 	 * DESIGN.md 11.19). The two account rows it replaces are gone. */
 	printf("the Scraper row and its screen:\n");
-	ck(PM_SCRAPER == PM_APPEARANCE + 1 && PM_ACHIEVEMENTS == PM_SCRAPER + 1,
-	   "Scraper sits where Box Art was, above Achievements");
+	ck(PM_SCRAPER == PM_ACHIEVEMENTS + 1 && sys_menu_tab_of(PM_SCRAPER) == PT_GAMES,
+	   "Scraper is in Games, under Achievements");
 	{
 		int j;
 
@@ -625,8 +647,8 @@ static void zyperos_menu_online(void)
 	ck(!strcmp(rows[PM_TOUR].label, "Show Tutorial"), "it is there");
 	ck(rows[PM_TOUR].live, "and live with the radio down and nobody signed in");
 	ck(!rows[PM_TOUR].value, "and says nothing in the value column");
-	ck(PM_TOUR == PM_DEVELOPER - 1 && PM_DEVELOPER == PM_STORAGE - 1,
-	   "and sits just above Developer Mode, then Storage");
+	ck(PM_TOUR == PM_ROWS - 1 && sys_menu_tab_of(PM_TOUR) == PT_ABOUT,
+	   "and closes About, the last tab");
 
 	/* Storage (DESIGN.md 11.32): just above System Update, live on every
 	 * device, its value the room left on the card */
@@ -642,12 +664,13 @@ static void zyperos_menu_online(void)
 	ck(!strcmp(rows[PM_UPDATE].label, "System Update"), "it is there");
 	ck(rows[PM_UPDATE].live && !strcmp(val(&rows[PM_UPDATE]), "0.2.0 available"),
 	   "live, and its value says the news");
-	ck(PM_UPDATE == PM_ABOUT - 1, "and sits just above About ZyperOS");
+	ck(sys_menu_tab_of(PM_UPDATE) == PT_SYSTEM && PM_UPDATE == PM_ABOUT - 1,
+	   "and closes System, the tab before About");
 	u.update = NULL;
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(n == PM_ROWS - 1 && !has_label(rows, n, "System Update") &&
-	   !strcmp(rows[n - 1].label, "About ZyperOS"),
-	   "a card without the program has no row, and About stays last");
+	   !strcmp(rows[n - 1].label, "Show Tutorial"),
+	   "a card without the program has no row, and Show Tutorial stays last");
 
 	/* Developer Mode (src/usblink.h): a development image's, on or off,
 	 * between Show Tutorial and System Update; a release image has none.
@@ -1128,10 +1151,9 @@ static void radio_less(void)
 	   "the rest is all there, Date & Time with it");
 	ck(!has_label(rows, n, "Card Style") && has_label(rows, n, "Appearance"),
 	   "Appearance stays; Card Style is absent");
-	ck(pm[n - 1] == PM_ABOUT && !strcmp(rows[n - 1].label, "About ZyperOS") &&
-	   pm[0] == PM_USB_WAIT && !strcmp(rows[0].label, "USB Device") &&
-	   pm[1] == PM_SEARCH && !strcmp(rows[1].label, "Search Games") &&
-	   pm[2] == PM_STATS && !strcmp(rows[2].label, "Play Time"),
+	ck(pm[n - 1] == PM_TOUR && !strcmp(rows[n - 1].label, "Show Tutorial") &&
+	   pm[0] == PM_SEARCH && !strcmp(rows[0].label, "Search Games") &&
+	   pm[1] == PM_STATS && !strcmp(rows[1].label, "Play Time"),
 	   "and the list names the rows the build drew, first to last");
 
 	/* The Pixel 2's USB rows: USB Device only while a plug waits, at the
@@ -1214,7 +1236,7 @@ static void step_does_not_wrap(void)
 	rows[0].live = false;           /* a dead row above the first stop */
 	rows[5].live = false;           /* and one below the last */
 
-	printf("a list does not wrap:\n");
+	printf("a held direction stops at the end (menu_step_sel):\n");
 	sel = menu_step_sel(rows, 6, 1, -1);
 	ck(sel == 1, "up on the first row stays on it");
 	for (i = 0; i < 10; i++) sel = menu_step_sel(rows, 6, sel, +1);
@@ -1231,11 +1253,121 @@ static void step_does_not_wrap(void)
 	   "a list of one has nowhere to go");
 }
 
-/* The shared engine is the only place a menu list wraps by arithmetic: every
- * panel with rows goes through menu_step_sel or, for the three loops of their
- * own (Muse's list, the achievement list, the yes/cancel panel), clamps. A
- * `% n` on the cursor in main.c on the up or down press brings the wrap back,
- * so the source is read for it. */
+/* A PRESS goes round (DESIGN.md 11.3, my pick 2026-11-12): menu_step_round
+ * for a list of rows, past dead rows at either end, and menu_step_index for a
+ * plain index, which goes round on a press and stops on a hold. And a list
+ * longer than its window goes on round: slots, the seam, the window. */
+static void step_goes_round(void)
+{
+	menu_row rows[6], dead[3];
+	int i, s, f;
+
+	for (i = 0; i < 6; i++) rows[i] = (menu_row){ "row", NULL, true };
+	rows[0].live = false;
+	rows[5].live = false;
+	printf("a press goes round (menu_step_round, menu_step_index):\n");
+	ck(menu_step_round(rows, 6, 4, +1) == 1, "down on the last row that can be selected goes to the first");
+	ck(menu_step_round(rows, 6, 1, -1) == 4, "up on the first goes to the last");
+	ck(menu_step_round(rows, 6, 2, +1) == 3 && menu_step_round(rows, 6, 3, -1) == 2,
+	   "and in the middle it steps");
+	for (i = 0; i < 3; i++) dead[i] = (menu_row){ "row", NULL, false };
+	ck(menu_step_round(dead, 3, 1, +1) == 1, "a list with nothing to select stays put");
+	ck(menu_step_round(rows, 1, 0, +1) == 0, "a list of one has nowhere to go");
+	ck(menu_step_index(5, 4, +1, true) == 0 && menu_step_index(5, 0, -1, true) == 4,
+	   "an index goes round on a press");
+	ck(menu_step_index(5, 4, +1, false) == 4 && menu_step_index(5, 0, -1, false) == 0,
+	   "and stops at the end held");
+	ck(menu_step_index(2, 0, +1, true) == 1 && menu_step_index(2, 1, +1, true) == 0,
+	   "the yes/cancel pair turns over");
+
+	printf("a long list goes on round (menu_loop_*):\n");
+	ck(menu_loop_row(8, 0) == 0 && menu_loop_row(8, 7) == 7 && menu_loop_row(8, 8) == -1 &&
+	   menu_loop_row(8, 9) == 0 && menu_loop_row(8, -1) == -1 && menu_loop_row(8, -2) == 7,
+	   "the rows, a seam, the rows again, either way");
+	ck(menu_loop_slot(8, 0, 7) == 9, "down from the last row is two slots on, over the seam");
+	ck(menu_loop_slot(8, 7, 0) == -2, "up from the first is two slots back");
+	ck(menu_loop_slot(8, 3, 2) == 3 && menu_loop_slot(8, 3, 13) == 12,
+	   "a step lands on the next slot, on whichever lap");
+	for (i = 0; i < 6; i++) rows[i].live = true;
+	{
+		menu_row r8[8];
+
+		for (i = 0; i < 8; i++) r8[i] = (menu_row){ "row", NULL, true };
+		f = menu_loop_first(r8, 8, 7, 6, 0);
+		ck(f == 2, "the window follows the cursor to the last row");
+		s = menu_loop_slot(8, 0, 7);
+		f = menu_loop_first(r8, 8, s, 6, f);
+		ck(s == 9 && f == 4 && menu_loop_row(8, f + 4) == -1,
+		   "and on past it: the seam, then the first row, in sight");
+		s = menu_loop_slot(8, 7, s);
+		f = menu_loop_first(r8, 8, s, 6, f);
+		ck(s == 7 && f == 4, "and back over the seam with no jump");
+	}
+}
+
+/* MENU's tabs (DESIGN.md 11.3): every row is in one, in the enum's order
+ * inside it, the tabs in a row are the whole menu, and a tab's build is
+ * headed by its name */
+static void menu_tabs(void)
+{
+	sys_ui u;
+	menu_bufs b;
+	menu_row rows[MENU_MAX_ROWS];
+	const char *heading;
+	pm_row all[PM_ROWS], tab[PM_ROWS];
+	int r, t, n, k, m, at = 0, n_all;
+	bool ok = true;
+
+	printf("MENU's tabs:\n");
+	for (r = 0; r < PM_ROWS; r++)
+		if (sys_menu_tab_of((pm_row)r) >= PT_TABS) {
+			printf("  row %d is in no tab\n", r);
+			ok = false;
+		}
+	ck(ok, "every row is in a tab");
+	for (r = 1; r < PM_ROWS; r++)
+		if (sys_menu_tab_of((pm_row)r) < sys_menu_tab_of((pm_row)(r - 1))) ok = false;
+	ck(ok, "the enum is in the tabs' order, so a tab's rows are the enum's in order");
+	memset(&u, 0, sizeof u);
+	u.update = "0.1.0";
+	n_all = sys_menu_zyperos_rows(&u, all);
+	for (t = 0; t < PT_TABS; t++) {
+		m = sys_menu_tab_rows(&u, (pm_tab)t, tab);
+		for (k = 0; k < m; k++, at++)
+			if (at >= n_all || all[at] != tab[k]) ok = false;
+	}
+	ck(ok && at == n_all, "the tabs, one after another, are every row the device has");
+	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
+	ck(m == 6 && tab[0] == PM_APPEARANCE && tab[1] == PM_AUTOHOURS && tab[2] == PM_THEME &&
+	   tab[3] == PM_HOME && tab[4] == PM_ORDER && tab[5] == PM_BATTERY,
+	   "Display: Appearance, Auto Hours, Theme, Home Screen, System Order, Battery Icon");
+	m = sys_menu_tab_rows(&u, PT_GAMES, tab);
+	ck(m == 5 && tab[0] == PM_SEARCH, "Games opens on Search Games");
+	m = sys_menu_tab_rows(&u, PT_CONNECTIONS, tab);
+	ck(m > 0 && tab[0] == PM_USB_WAIT, "Connections starts on USB Device while a plug waits");
+	u.no_usb_wait = true;
+	m = sys_menu_tab_rows(&u, PT_CONNECTIONS, tab);
+	ck(m > 0 && tab[0] == PM_WIFI, "and on Wi-Fi when none does");
+	u.tab = PT_SOUND;
+	n = (sys_menu_build)(&u, rows, &b, &heading);
+	ck(n == 4 && !strcmp(heading, "Sound") && !strcmp(rows[0].label, "Audio Output") &&
+	   !strcmp(rows[3].label, "Menu Music"), "a tab's build: its rows, headed by its name");
+	u.tab = PT_DISPLAY;
+	u.auto_hours = "7:00 AM to 7:00 PM";
+	u.theme = "Lime";
+	n = (sys_menu_build)(&u, rows, &b, &heading);
+	ck(n == 6 && !strcmp(rows[1].label, "Auto Hours") && !strcmp(val(&rows[1]), "7:00 AM to 7:00 PM") &&
+	   !strcmp(rows[2].label, "Theme") && !strcmp(val(&rows[2]), "Lime"),
+	   "Auto Hours says its hours, Theme its accent");
+	ck(!strcmp(sys_menu_tab_name(PT_CONNECTIONS), "Connections") &&
+	   !strcmp(sys_menu_tab_name(PT_ABOUT), "About"), "the tabs' names");
+}
+
+/* The shared engine is the only place a menu list goes round by arithmetic:
+ * every panel with rows goes through menu_step_round and menu_step_sel, and
+ * the loops of their own through menu_step_index (list_step_heard). A `% n`
+ * on the cursor in main.c on the up or down press would be a second rule, so
+ * the source is read for it. */
 static void source_does_not_wrap(void)
 {
 	static const char *const bad[] = {
@@ -1247,7 +1379,7 @@ static void source_does_not_wrap(void)
 	int ln = 0, hits = 0;
 	size_t i;
 
-	printf("no menu loop wraps its cursor:\n");
+	printf("no menu loop goes round by hand:\n");
 	ck(f != NULL, "src/main.c is there to read");
 	while (f && fgets(line, sizeof line, f)) {
 		ln++;
@@ -1255,7 +1387,7 @@ static void source_does_not_wrap(void)
 			if (strstr(line, bad[i])) { printf("  src/main.c:%d: %s", ln, line); hits++; }
 	}
 	if (f) fclose(f);
-	ck(hits == 0, "no up or down press steps a menu cursor round the end");
+	ck(hits == 0, "no up or down press steps a menu cursor round the end but the engine");
 }
 
 /* Walking down a list and back must end up looking at the top of it again.
@@ -1744,7 +1876,7 @@ static void sounds_row(void)
 	for (i = 0; i < 4; i++) {
 		u.ui_sounds = names[i];
 		n = sys_menu_build(&u, rows, &b, &heading);
-		ck(!strcmp(val(&rows[PM_SOUNDS - 2]), names[i]), "each setting names itself");
+		ck(!strcmp(val_of(rows, n, "UI Sounds"), names[i]), "each setting names itself");
 	}
 
 	printf("the Menu Music row:\n");
@@ -1764,7 +1896,7 @@ static void sounds_row(void)
 	ck(found == 1, "is there once");
 	u.menu_music = "no tracks";
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(!strcmp(val(&rows[PM_MUSIC - 2]), "no tracks"), "says why it is silent");
+	ck(!strcmp(val_of(rows, n, "Menu Music"), "no tracks"), "says why it is silent");
 
 	/* A system's menu is about the system. */
 	memset(&u, 0, sizeof u);
@@ -1809,11 +1941,11 @@ static void charge_row(void)
 	ck(found == 1, "is there once");
 	u.charge_limit = 85;
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(has_label(rows, n, "Charge Limit") && !strcmp(val(&rows[PM_CHARGE - 2]), "85%"),
+	ck(has_label(rows, n, "Charge Limit") && !strcmp(val_of(rows, n, "Charge Limit"), "85%"),
 	   "a limit names itself in percent");
 	u.charge_limit = 80;
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(!strcmp(val(&rows[PM_CHARGE - 2]), "80%"), "80% too");
+	ck(!strcmp(val_of(rows, n, "Charge Limit"), "80%"), "80% too");
 
 	u.no_charge_limit = true;
 	n = sys_menu_build(&u, rows, &b, &heading);
@@ -1856,7 +1988,7 @@ static void lights_row(void)
 	ck(found == 1, "is there once");
 	u.lights = side_lights_value(1u << LP_LOW, buf, sizeof buf);
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(!strcmp(val(&rows[PM_LIGHTS - 2]), "1 on"), "the row counts the parts on");
+	ck(!strcmp(val_of(rows, n, "Side Lights"), "1 on"), "the row counts the parts on");
 
 	/* The Brick: no lights, no row, and the list agrees with the build */
 	u.no_lights = true;
@@ -2029,6 +2161,8 @@ int main(void)
 	save_slot();
 	step_terminates();
 	step_does_not_wrap();
+	step_goes_round();
+	menu_tabs();
 	source_does_not_wrap();
 	window_returns();
 	what_scrolls();
