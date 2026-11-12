@@ -274,6 +274,25 @@ run_port() {
 		cp -f "$ZYPEROS_DIR/portmaster/libgl_ZyperOS.txt" "$PORTMASTER/libgl_ZyperOS.txt"
 		cp -f "$ZYPEROS_DIR/portmaster/mod_ZyperOS.txt" "$PORTMASTER/mod_ZyperOS.txt"
 	fi
+	# PortMaster itself: the script the shelf runs is a copy of the one in
+	# its folder (pm-install.py puts it there), and PortMaster's own update
+	# replaces only the folder's on a system it has no layout for, so the
+	# shelf went on running the script of the release first installed. Since
+	# 2026.11 the folder's is a stub that hands over to its utils/
+	# pm_launch.txt, and the old one runs the new program its own old way.
+	# The folder's copy is put back over the shelf's before each start. And
+	# the start is timed, for the launcher to tell a PortMaster that closed
+	# as it started from one the player closed (pm_failure, src/pminstall.h)
+	local pm_start=
+	case $1 in "$ROMS_PATH"/Ports/[Pp][Oo][Rr][Tt][Mm][Aa][Ss][Tt][Ee][Rr].[Ss][Hh])
+		if [ -f "$PORTMASTER/PortMaster.sh" ]; then
+			cmp -s "$PORTMASTER/PortMaster.sh" "$1" 2> /dev/null ||
+				cp -f "$PORTMASTER/PortMaster.sh" "$1"
+		fi
+		rm -f /tmp/zyperos_pm_ran
+		pm_start=$(date +%s)
+		;;
+	esac
 	# A standalone emulator's script gets the game as its argument ("run:"
 	# shelves); a port's script gets nothing
 	echo "port: $1${2:+ $2}${3:+ (the in-game menu, $3)}" >> "$LOG"
@@ -333,6 +352,9 @@ run_port() {
 		[ -d "/proc/$PORT_PID" ] || break
 	done
 	echo "port: ended, $rc" >> "$LOG"
+	# PortMaster's run, for the launcher that starts next: when it began and
+	# ended, and how it ended
+	[ -n "$pm_start" ] && echo "$pm_start $(date +%s) $rc" > /tmp/zyperos_pm_ran
 	# What the script left running in its group when it ended, a helper
 	# started in the background and never stopped, goes with it
 	if kill -0 -"$PORT_PID" 2> /dev/null; then

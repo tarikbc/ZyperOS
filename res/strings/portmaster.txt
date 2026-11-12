@@ -256,3 +256,75 @@ fr = PortMaster a besoin d'un système ZyperOS plus récent. Mettez-le à jour d
 de = PortMaster braucht ein neueres ZyperOS-System. Aktualisiere es unter MENU > Systemupdate und komm dann zurück.
 ja = PortMaster には新しい ZyperOS システムが必要です。MENU > システムアップデート で更新してから、もう一度開いてください。
 it = PortMaster richiede un sistema ZyperOS più recente. Aggiornalo in MENU > Aggiornamento di sistema, poi torna qui.
+
+# Reinstall PortMaster (pm-install.py --reinstall): the same page, opened from
+# the row on PortMaster's details page (X on its entry), or by itself when
+# PortMaster closed with an error. A fresh copy of the newest stable release;
+# the ports, their saves, PortMaster's runtimes and themes stay; its settings
+# start over.
+
+[portmaster.reinstall_title]
+note = The page's heading when it reinstalls PortMaster, and the row on PortMaster's details page that opens it
+en = Reinstall PortMaster
+zh-Hans = 重新安装 PortMaster
+es = Reinstalar PortMaster
+pt-BR = Reinstalar PortMaster
+fr = Réinstaller PortMaster
+de = PortMaster neu installieren
+ja = PortMaster を再インストール
+it = Reinstalla PortMaster
+
+[portmaster.reinstall]
+note = The A button's label on the Reinstall PortMaster page: starts the reinstall
+en = Reinstall
+zh-Hans = 重新安装
+es = Reinstalar
+pt-BR = Reinstalar
+fr = Réinstaller
+de = Neu installieren
+ja = 再インストール
+it = Reinstalla
+
+[portmaster.reinstall_keeps]
+note = The first of the Reinstall page's two points, at most two lines: what stays. Ports are the games PortMaster installed; their saves are inside their folders; runtimes are the programs some ports run on (Mono, LÖVE), which PortMaster downloads
+en = Your ports, their saves and the runtimes stay.
+zh-Hans = 你的移植游戏、游戏存档和运行库都会保留。
+es = Tus ports, sus partidas guardadas y los runtimes se quedan.
+pt-BR = Seus ports, os saves deles e os runtimes ficam.
+fr = Vos portages, leurs sauvegardes et les runtimes restent.
+de = Deine Ports, ihre Spielstände und die Runtimes bleiben.
+ja = 移植ゲーム、そのセーブデータ、ランタイムは残ります。
+it = I tuoi port, i loro salvataggi e i runtime restano.
+
+[portmaster.reinstall_resets]
+note = The second point, at most two lines: PortMaster's own settings (its theme, its release channel, its language) go back to how a new install has them
+en = PortMaster's own settings start over.
+zh-Hans = PortMaster 自己的设置会恢复初始状态。
+es = Los ajustes propios de PortMaster vuelven al inicio.
+pt-BR = As configurações do próprio PortMaster recomeçam.
+fr = Les réglages propres à PortMaster repartent de zéro.
+de = PortMasters eigene Einstellungen fangen neu an.
+ja = PortMaster 自体の設定は最初の状態に戻ります。
+it = Le impostazioni di PortMaster ripartono da zero.
+
+[portmaster.reinstalled]
+note = The first point once a reinstall is done, before "Open it to get ports. It updates itself."
+en = A fresh PortMaster is on the card.
+zh-Hans = 卡上已是全新的 PortMaster。
+es = Ya hay un PortMaster nuevo en la tarjeta.
+pt-BR = Já há um PortMaster novo no cartão.
+fr = Un PortMaster neuf est sur la carte.
+de = Ein frisches PortMaster ist auf der Karte.
+ja = カードに新しい PortMaster が入りました。
+it = Sulla scheda c'è un PortMaster nuovo.
+
+[portmaster.failed]
+note = The problem, said in full, when PortMaster closed with an error (often as it started, after its own update): the page offers Reinstall, which keeps the ports and their saves. The line of PortMaster's log that says what went wrong shows under it, in English, as PortMaster wrote it
+en = PortMaster closed with an error. Reinstall it to fix it: your ports and their saves stay.
+zh-Hans = PortMaster 出错关闭了。重新安装即可修复，你的移植游戏和游戏存档都会保留。
+es = PortMaster se cerró con un error. Reinstálalo para arreglarlo: tus ports y sus partidas guardadas se quedan.
+pt-BR = O PortMaster fechou com um erro. Reinstale para corrigir: seus ports e os saves deles ficam.
+fr = PortMaster s'est fermé sur une erreur. Réinstallez-le pour le réparer : vos portages et leurs sauvegardes restent.
+de = PortMaster wurde mit einem Fehler beendet. Installiere es neu, um es zu reparieren: Deine Ports und ihre Spielstände bleiben.
+ja = PortMaster はエラーで終了しました。再インストールで直せます。移植ゲームとそのセーブデータは残ります。
+it = PortMaster si è chiuso con un errore. Reinstallalo per sistemarlo: i tuoi port e i loro salvataggi restano.

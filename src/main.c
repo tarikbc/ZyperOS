@@ -11028,6 +11028,8 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	gi->has_snap = snaps_path(P_ROMS, s->folder, g->name, p, sizeof p) &&
 	               stat(p, &st) == 0 && st.st_size > 0;
 	gi->own_art = pm_cover_path(a, owner, g, theme_index(), p, sizeof p);
+	/* PortMaster's entry with PortMaster on the card: Reinstall PortMaster */
+	gi->can_reinstall = pm_is_entry(a, owner, g) && pm_on_card(s->folder);
 
 	/* Loading the set clobbers whatever set is loaded, which is nobody's
 	 * during shelf browsing - no game is running. It stays loaded after this
@@ -11842,6 +11844,10 @@ static void fav_toggle_heard(const char *tag, const char *file);
 /* A game's Cover and Video page, with the storage page's question below */
 static void media_screen(app *a, int owner, const game_entry *g);
 
+/* PortMaster's page, below with the Ports shelf (src/pminstall.h) */
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed);
+
 static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 {
 	info_ctx *c = ctx;
@@ -11894,6 +11900,18 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 			return MENU_DONE;
 		}
 		if (c->said[0]) result_message(a, T(S_GAMEMENU_DELETE), c->said);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
+		return MENU_STAY;
+	}
+
+	if (!strcmp(rows[sel].label, T(S_PORTMASTER_REINSTALL_TITLE))) {
+		/* PortMaster's page, to reinstall it (DESIGN.md 11.33). It can end
+		 * in PortMaster itself (Open PortMaster), which closes this page
+		 * with the launcher */
+		pm_install_screen(a, &a->sys.systems[c->owner], true, NULL, false);
+		if (!a->running) return MENU_DONE;
+		gi_gather(a, c->owner, c->g, &c->gi);
 		plat_input_flush();
 		memset(&a->in, 0, sizeof a->in);
 		return MENU_STAY;
@@ -13500,6 +13518,7 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		SDL_Rect mark = { UP_X, 348 - 30, 8, (n - 1) * 52 + 60 };
 
 		ui_round_rect(r, &mark, 4, warn);
+		if (n > 1) ui_fit_drawn(p->warn);       /* drawn whole, in pieces */
 		for (k = 0; k < n; k++)
 			ui_text(r, fm, lines[k], UP_X + 34, ui_cap_y(fm, 348 + k * 52), -1, UI_TEXT);
 	}
@@ -13514,6 +13533,9 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		/* Under a two-line sub, a little lower, so the two read apart */
 		int top = sub_lines > 1 ? 362 : 348;
 		int n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES), fits, k;
+
+		/* Each point drawn whole, in pieces when it wraps */
+		for (k = 0; k < nnotes; k++) ui_fit_drawn(notes[k]);
 
 		/* Each line's place from the first point's top, the air before
 		 * each point after the first counted; the scroll held to what
@@ -20212,7 +20234,60 @@ static bool is_port(const system_cfg *s)
 	       !strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX));
 }
 
-static void pm_install_screen(app *a, const system_cfg *s);
+static bool pm_locked(void);
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed);
+
+/* PortMaster's config/ before it starts: a file of it cut off is removed,
+ * for PortMaster to make again, and the settings with a cut-off source list
+ * (src/pminstall.h, pm_json_whole). Its first and last bytes read of each,
+ * the whole of the small ones: a few reads, where PortMaster's own start
+ * takes seconds. */
+static void pm_heal_config(const char *folder)
+{
+	static char buf[PM_JSON_SCAN];
+	char dir[LIB_PATH], path[LIB_PATH * 2];
+	bool reset = false;
+	struct dirent *e;
+	DIR *d;
+
+	snprintf(dir, sizeof dir, "%s/%s/%s/%s", P_ROMS, folder, PM_FOLDER, PM_CONFIG);
+	if (!(d = opendir(dir))) return;
+	while ((e = readdir(d))) {
+		size_t len = strlen(e->d_name);
+		char head[64], tail[64];
+		size_t hn = 0, tn = 0;
+		bool whole;
+		long size;
+		FILE *f;
+
+		if (len < 6 || strcasecmp(e->d_name + len - 5, ".json") || e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+		if (!(f = fopen(path, "rb"))) continue;
+		if (fseek(f, 0, SEEK_END) != 0 || (size = ftell(f)) < 0) { fclose(f); continue; }
+		rewind(f);
+		if (size <= (long)sizeof buf) {
+			size_t got = fread(buf, 1, sizeof buf, f);
+			whole = got == (size_t)size && pm_json_balanced(buf, got);
+		} else {
+			hn = fread(head, 1, sizeof head, f);
+			if (fseek(f, -(long)sizeof tail, SEEK_END) == 0) tn = fread(tail, 1, sizeof tail, f);
+			whole = pm_json_whole(head, hn, tail, tn);
+		}
+		fclose(f);
+		if (whole) continue;
+		fprintf(stderr, "portmaster: %s/%s was cut off (%ld bytes): removed, PortMaster makes it again\n",
+		        PM_CONFIG, e->d_name, size);
+		unlink(path);
+		if (pm_json_resets_settings(e->d_name)) reset = true;
+	}
+	closedir(d);
+	if (reset) {
+		snprintf(path, sizeof path, "%s/%s", dir, PM_SETTINGS);
+		if (!unlink(path))
+			fprintf(stderr, "portmaster: its settings removed with it, for its first start's sources\n");
+	}
+}
 
 static void launch_port(app *a, const system_cfg *s, const char *file)
 {
@@ -20221,14 +20296,19 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	bool ok;
 
 	/* PortMaster's entry while PortMaster is not on the card, asked of the
-	 * card now: its page, which installs it (src/pminstall.h) */
-	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT) && pm_offer_refresh(a)) {
+	 * card now: its page, which installs it (src/pminstall.h). And while
+	 * its installer runs, a reinstall left going on its page: its page
+	 * again, not a PortMaster whose folder is about to be swapped */
+	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT) &&
+	    (pm_offer_refresh(a) || pm_locked())) {
 		if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_ACCEPT);
-		pm_install_screen(a, s);
+		pm_install_screen(a, s, pm_on_card(s->folder), NULL, false);
 		return;
 	}
 
 	snprintf(path, sizeof path, "%s/%s/%s", P_ROMS, s->folder, file);
+	/* PortMaster itself: its cached lists and settings as it can start on */
+	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT)) pm_heal_config(s->folder);
 	/* Written whole, then renamed into place: launch.sh reads it the moment
 	 * this process is gone, and half a path would run nothing. */
 	f = fopen(PORT_REQUEST ".tmp", "w");
@@ -20333,10 +20413,26 @@ static bool pm_network(void)
 
 static pm_view g_pm;
 static unsigned g_pm_read_at, g_pm_started;
+/* The page's errand, kept beside the view it reads again: a reinstall
+ * (pm_install_screen's `repair`), A pressed on it this visit, and the error
+ * PortMaster closed with when that is why it opened */
+static bool g_pm_repair, g_pm_asked, g_pm_crashed;
+static char g_pm_failed[PM_WHY];
 /* --portmaster [running,nonet,nopython,installed]: a host shot's view, the
  * status from ZYPEROS_PM_STATUS; -1 none */
 static int g_pm_shot = -1;
-enum { PM_SHOT_RUNNING = 1, PM_SHOT_NONET = 2, PM_SHOT_NOPYTHON = 4, PM_SHOT_INSTALLED = 8 };
+enum { PM_SHOT_RUNNING = 1, PM_SHOT_NONET = 2, PM_SHOT_NOPYTHON = 4, PM_SHOT_INSTALLED = 8,
+       PM_SHOT_REPAIR = 16, PM_SHOT_FAILED = 32 };
+
+/* The version of the PortMaster in a Ports folder, "" when it has none */
+static void pm_have(const char *folder, char *out, size_t n)
+{
+	char p[LIB_PATH];
+
+	snprintf(p, sizeof p, "%s/%s/%s/version", P_ROMS, folder, PM_FOLDER);
+	up_first_line(p, out, n);
+	if (strlen(out) > 31 || strchr(out, ' ')) out[0] = 0;
+}
 
 /* Everything the page shows, read again at most four times a second: the
  * page asks every frame */
@@ -20351,13 +20447,27 @@ static const pm_view *pm_view_read(const system_cfg *s, bool now)
 	pm_status_path(p, sizeof p);
 	up_read(p, text, sizeof text);
 	pm_status_parse(text, &g_pm.st);
+	g_pm.repair = g_pm_repair;
+	g_pm.asked = g_pm_asked;
+	g_pm.crashed = g_pm_crashed;
+	snprintf(g_pm.failed, sizeof g_pm.failed, "%s", g_pm_failed);
 	if (g_pm_shot >= 0) {
+		const char *why = getenv("ZYPEROS_PM_WHY");
+
 		g_pm.running = g_pm_shot & PM_SHOT_RUNNING;
 		g_pm.network = !(g_pm_shot & PM_SHOT_NONET);
 		g_pm.python = !(g_pm_shot & PM_SHOT_NOPYTHON);
 		g_pm.installed = g_pm_shot & PM_SHOT_INSTALLED;
+		g_pm.repair = g_pm_shot & (PM_SHOT_REPAIR | PM_SHOT_FAILED);
+		g_pm.asked = g_pm.repair && (g_pm.running || g_pm.st.reinstall);
+		g_pm.crashed = g_pm_shot & PM_SHOT_FAILED;
+		if (g_pm.crashed)
+			snprintf(g_pm.failed, sizeof g_pm.failed, "%s",
+			         why ? why : "ModuleNotFoundError: No module named 'sdl2'");
+		snprintf(g_pm.have, sizeof g_pm.have, "%s", "2026.11.12-1059");
 		return &g_pm;
 	}
+	pm_have(s->folder, g_pm.have, sizeof g_pm.have);
 	/* Python takes a moment to start and take its lock: a run just begun
 	 * is running until it says it is done or failed */
 	g_pm.running = pm_locked() ||
@@ -20369,11 +20479,11 @@ static const pm_view *pm_view_read(const system_cfg *s, bool now)
 	return &g_pm;
 }
 
-static void pm_spawn(const system_cfg *s)
+static void pm_spawn(const system_cfg *s, bool reinstall)
 {
 	char script[LIB_PATH], ports[LIB_PATH], status[LIB_PATH];
 	char *argv[] = { (char *)PM_PYTHON, (char *)"-I", script, (char *)"--ports", ports,
-	                 (char *)"--status", status, NULL };
+	                 (char *)"--status", status, reinstall ? (char *)"--reinstall" : NULL, NULL };
 	FILE *f;
 
 	snprintf(script, sizeof script, "%s/%s", P_ROOT, PM_INSTALLER);
@@ -20383,10 +20493,10 @@ static void pm_spawn(const system_cfg *s)
 	 * from the press on, until the installer writes its own */
 	mkdir(PM_STATUS_DIR, 0755);
 	if ((f = fopen(status, "w"))) {
-		fputs("state checking\n", f);
+		fputs(reinstall ? "state checking\nkind reinstall\n" : "state checking\n", f);
 		fclose(f);
 	}
-	fprintf(stderr, "portmaster: installing into %s\n", ports);
+	fprintf(stderr, "portmaster: %s into %s\n", reinstall ? "reinstalling" : "installing", ports);
 	plat_spawn_detached(argv, NULL, P_ROOT);
 	g_pm_started = plat_now_ms();
 	if (!g_pm_started) g_pm_started = 1;
@@ -20412,6 +20522,9 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 		su_page p;
 		int nnotes;
 
+		/* A reinstall seen at work is this page's to follow to its end,
+		 * started here or before the page opened */
+		if (g_pm_repair && v->running) g_pm_asked = true;
 		pm_page_build(v, &p, notes, &nnotes);
 		/* Installed while the page is up: the shelf's A says Play now */
 		if (v->installed && !had) {
@@ -20437,7 +20550,8 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 		switch (act) {
 		case SUA_DOWNLOAD:
 			uisound_play(DS_SOUND_ACCEPT);
-			pm_spawn(s);
+			pm_spawn(s, g_pm_repair);
+			g_pm_asked = true;
 			break;
 		case SUA_OPEN:
 			/* PortMaster, run as any port is: the launcher exits for it */
@@ -20459,7 +20573,8 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 			int i;
 
 			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
-			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nnotes, icon);
+			update_page_draw(a, T(g_pm_repair ? S_PORTMASTER_REINSTALL_TITLE : S_PORTMASTER_TITLE),
+			                 &p, np, nnotes, icon);
 		}
 		plat_draw_osd(a->r);
 		plat_present();
@@ -20468,12 +20583,85 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 	pm_offer_refresh(a);
 }
 
-static void pm_install_screen(app *a, const system_cfg *s)
+/* The page: Install PortMaster, or with `repair` Reinstall PortMaster, the
+ * error it closed with in `failed` when `crashed` (pm_after_run) */
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed)
 {
 	SDL_Texture *icon = pm_icon_tex(a);
 
+	g_pm_repair = repair;
+	g_pm_asked = false;
+	g_pm_crashed = repair && crashed;
+	snprintf(g_pm_failed, sizeof g_pm_failed, "%s", failed ? failed : "");
+	g_pm_read_at = 0;
 	pm_install_loop(a, s, icon);
+	g_pm_repair = g_pm_asked = g_pm_crashed = false;
+	g_pm_failed[0] = 0;
+	g_pm_read_at = 0;
 	if (icon) SDL_DestroyTexture(icon);
+}
+
+/* The last `n` bytes of a file at most, from a line's start, into a buffer
+ * of n + 1; false when it cannot be read */
+static bool pm_read_tail(const char *path, char *buf, size_t n)
+{
+	FILE *f = fopen(path, "r");
+	long size;
+	size_t got;
+	char *nl;
+
+	buf[0] = 0;
+	if (!f) return false;
+	if (fseek(f, 0, SEEK_END) == 0 && (size = ftell(f)) > (long)n)
+		fseek(f, size - (long)n, SEEK_SET);
+	else
+		fseek(f, 0, SEEK_SET);
+	got = fread(buf, 1, n, f);
+	fclose(f);
+	buf[got] = 0;
+	/* Cut into the middle of a line: from the next one */
+	if (got == n && (nl = strchr(buf, '\n'))) memmove(buf, nl + 1, strlen(nl + 1) + 1);
+	return true;
+}
+
+/* How long a PortMaster that left no word in its log may have run for it
+ * still to be one that never started: its launcher script truncates the log
+ * as one of its first steps */
+#define PM_QUIET_START_S 20
+
+/* Back from PortMaster (launch.sh's PM_RAN): when it closed with an error,
+ * its page says so, with the line of its log that says how, and offers
+ * Reinstall PortMaster, before the shelf (DESIGN.md 11.33). Before this a
+ * PortMaster that could not start fell back to the shelf with nothing said,
+ * every time it was opened. */
+static void pm_after_run(app *a)
+{
+	static char tail[32 * 1024 + 1];
+	char ran[96], log[LIB_PATH * 2], why[PM_WHY] = "";
+	long long start = 0, end = 0;
+	const system_cfg *s = NULL;
+	struct stat st;
+	bool crashed;
+	int rc = 0, i;
+
+	if (!up_read(PM_RAN, ran, sizeof ran)) return;
+	unlink(PM_RAN);
+	if (sscanf(ran, "%lld %lld %d", &start, &end, &rc) < 2) return;
+	for (i = 0; i < a->sys.count && !s; i++)
+		if (!strcmp(a->sys.systems[i].core, PORT_CORE) && pm_on_card(a->sys.systems[i].folder))
+			s = &a->sys.systems[i];
+	if (!s) return;
+	snprintf(log, sizeof log, "%s/%s/%s/%s", P_ROMS, s->folder, PM_FOLDER, PM_LOG);
+	if (stat(log, &st) != 0 || (long long)st.st_mtime + 2 < start)
+		/* Its log not written this run: the script stopped before it */
+		crashed = end - start < PM_QUIET_START_S;
+	else
+		crashed = pm_read_tail(log, tail, sizeof tail - 1) && pm_failure(tail, why, sizeof why);
+	if (!crashed) return;
+	fprintf(stderr, "portmaster: closed with an error after %llds (status %d): %s\n",
+	        end - start, rc, why[0] ? why : "nothing in its log");
+	pm_install_screen(a, s, true, why, true);
 }
 
 /* A shelf's disc bios in Bios/: any one of its names, which config/systems.cfg
@@ -22099,14 +22287,16 @@ static void shot_compose(app *a)
 		int nn;
 
 		SDL_Texture *icon = pm_icon_tex(a);
+		const pm_view *v = pm_view_read(&ports, true);
 
-		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
+		pm_page_build(v, &p, notes, &nn);
 		{
 			const char *np[PM_NOTES];
 			int i;
 
 			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
-			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nn, icon);
+			update_page_draw(a, T(v->repair ? S_PORTMASTER_REINSTALL_TITLE : S_PORTMASTER_TITLE),
+			                 &p, np, nn, icon);
 		}
 		if (icon) SDL_DestroyTexture(icon);
 		return;
@@ -23670,7 +23860,9 @@ int main(int argc, char *argv[])
 			shot_portload = argv[++i];
 		else if (!strcmp(argv[i], "--portmaster")) {
 			/* The Install PortMaster page, as ZYPEROS_PM_STATUS's file
-			 * says, with any of running, nonet, nopython, installed */
+			 * says, with any of running, nonet, nopython, installed; and
+			 * Reinstall PortMaster's with repair, or failed (the error
+			 * ZYPEROS_PM_WHY says, a missing module when it says none) */
 			g_pm_shot = 0;
 			if (i + 1 < argc && argv[i + 1][0] != '-') {
 				const char *w = argv[++i];
@@ -23678,6 +23870,8 @@ int main(int argc, char *argv[])
 				if (strstr(w, "nonet"))     g_pm_shot |= PM_SHOT_NONET;
 				if (strstr(w, "nopython"))  g_pm_shot |= PM_SHOT_NOPYTHON;
 				if (strstr(w, "installed")) g_pm_shot |= PM_SHOT_INSTALLED;
+				if (strstr(w, "repair"))    g_pm_shot |= PM_SHOT_REPAIR;
+				if (strstr(w, "failed"))    g_pm_shot |= PM_SHOT_FAILED;
 			}
 		}
 		else if (!strcmp(argv[i], "--storage-sort") && i + 1 < argc) {
@@ -24796,6 +24990,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "tour: %s is not set, so the tutorial comes first\n", TOUR_DONE_KEY);
 		tour_run(&a, true);
 	}
+	/* Or, back from a PortMaster that closed with an error, its page with
+	 * what happened and Reinstall PortMaster */
+	else if (a.running && !shot_path) {
+		pm_after_run(&a);
+	}
+	/* Its record read or not, it is this start's alone */
+	if (!shot_path) unlink(PM_RAN);
 
 	/* Drawing only when something changed. See g_redraw_at.
 	 *

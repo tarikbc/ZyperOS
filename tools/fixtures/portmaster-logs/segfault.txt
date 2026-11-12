@@ -1,0 +1,15 @@
+2026-11-12 18:32:36.096 | DEBUG    | harbourmaster.config:<module>:231 - HM_DEFAULT_TOOLS_DIR:   /roms/ports
+2026-11-12 18:32:36.096 | DEBUG    | harbourmaster.config:<module>:232 - HM_DEFAULT_PORTS_DIR:   /roms/ports
+2026-11-12 18:32:36.096 | DEBUG    | harbourmaster.config:<module>:233 - HM_DEFAULT_SCRIPTS_DIR: /roms/ports
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+/roms/ports/PortMaster/utils/pm_launch.txt: line 57: 11943 Segmentation fault      $ESUDO ./pugwash $PORTMASTER_CMDS
