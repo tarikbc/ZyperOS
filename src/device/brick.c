@@ -823,6 +823,12 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
+bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
+{
+	(void)ifname; (void)in; (void)ip; (void)n;
+	return false;
+}
+bool plat_usb_iphone(void) { return false; }
 
 /* The controller lets go of the cable and takes it again, so the computer
  * sees the Brick plugged in afresh: the Pixel 2's computer once dropped it
@@ -1030,6 +1036,12 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
+bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
+{
+	(void)ifname; (void)in; (void)ip; (void)n;
+	return false;
+}
+bool plat_usb_iphone(void) { return false; }
 static void jack_forget(void) { }
 static void mute_forget(void) { }
 void plat_backlight(bool on) { (void)on; }

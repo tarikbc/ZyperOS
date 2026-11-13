@@ -5,6 +5,7 @@
 #define USBPEER_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "linksteps.h"
 #include "usbpower.h"
@@ -38,5 +39,14 @@ bool plat_usb_power(usb_power *out);
 bool plat_usb_power_grant(unsigned plug);
 /* MENU > USB Accessories for usbrole: true for Automatic (usbpower_mode) */
 bool plat_usb_power_mode(bool automatic);
+/* A phone's USB tethering on the port (phonelink.h): true while a phone's
+ * network interface is there, its name in `ifname` and its IPv4 address in
+ * `ip` once the phone gave one (else ""). It is brought up and a lease
+ * asked for as it comes; the lease's client goes with it. False with none,
+ * and on a device whose port is never a host (the Brick). */
+bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n);
+/* The device the port powers is an iPhone (or an iPad), which shares its
+ * network only with a computer it trusts */
+bool plat_usb_iphone(void);
 
 #endif

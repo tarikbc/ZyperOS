@@ -156,5 +156,7 @@ bool usbpower_said_ends(int say, unsigned plug, const usb_power *p)
 {
 	if (say == USBPOWER_SAY_NONE || !p->known || p->plug != plug || p->pin != 1)
 		return true;
+	if (say == USBPOWER_SAY_PHONE || say == USBPOWER_SAY_IPHONE)
+		return !p->host && p->vbus == 1;
 	return p->vbus == 1 || p->host;
 }
