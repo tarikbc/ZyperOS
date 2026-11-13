@@ -1,0 +1,111 @@
+{
+  "key": "WS",
+  "name": "WonderSwan",
+  "description": "Original startup \u00b7 Bandai mark",
+  "cell": 256,
+  "cols": 8,
+  "rows": 2,
+  "unique": 15,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    81,
+    97,
+    107,
+    62
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 375
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 94
+    },
+    {
+      "tile": 4,
+      "ms": 93
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 94
+    },
+    {
+      "tile": 8,
+      "ms": 93
+    },
+    {
+      "tile": 9,
+      "ms": 469
+    },
+    {
+      "tile": 10,
+      "ms": 1969
+    },
+    {
+      "tile": 10,
+      "ms": 1875
+    },
+    {
+      "tile": 11,
+      "ms": 94
+    },
+    {
+      "tile": 12,
+      "ms": 93
+    },
+    {
+      "tile": 13,
+      "ms": 94
+    },
+    {
+      "tile": 14,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 187
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 4194304,
+  "inputs": [
+    "source/WS.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/WS.png": "0c8b9b34b2b29247b35b590cfed4ef97c709bcca83093d5b6f77c7b2f61a59f2"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "WS.png",
+  "still": "WS-still.png",
+  "atlas_sha256": "05d2a73b587f43730102dc009720d3dcc7e7bf96d5a99062da8077067755bbe6",
+  "still_sha256": "6bfcc223d221b0cd086096422951076bb9b7162e20b141dfb29a78fd7e6e0573"
+}

@@ -1,0 +1,63 @@
+{
+  "key": "J2ME",
+  "name": "Java ME",
+  "description": "Nokia 6600 \u00b7 display backlight",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    93,
+    52,
+    70,
+    82
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 563
+    },
+    {
+      "tile": 1,
+      "ms": 1969
+    },
+    {
+      "tile": 1,
+      "ms": 1968
+    },
+    {
+      "tile": 1,
+      "ms": 282
+    },
+    {
+      "tile": 0,
+      "ms": 1218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/J2ME.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/J2ME.png": "ccced6ffa1befc6793c6f90d129afc65fc32d7355a6c93ac4db01b605bd7db22"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "J2ME.png",
+  "still": "J2ME-still.png",
+  "atlas_sha256": "d27df5f27623c7455930baea58d8307dbe40a4d05d03a084e39ca309de0a2aac",
+  "still_sha256": "4c7fc9a4131fbf2120194106b2065d6388808a2dae7cddee5c4ea3f520914999"
+}

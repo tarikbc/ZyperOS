@@ -1,0 +1,47 @@
+{
+  "key": "FOLDER_SMALL",
+  "name": "Folder \u00b7 list",
+  "description": "Simple folder for list rows",
+  "cell": 256,
+  "cols": 1,
+  "rows": 1,
+  "unique": 1,
+  "duration_ms": 1000,
+  "kind": "utility",
+  "static": true,
+  "expected_poses": 1,
+  "motion_bounds": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 1000
+    }
+  ],
+  "still_time_ms": 900,
+  "decoded_atlas_bytes": 262144,
+  "inputs": [
+    "source/FOLDER_SMALL.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/utility.js"
+  ],
+  "input_sha256": {
+    "source/FOLDER_SMALL.png": "1935e343d29ef0d680bb0582d196e86d55a01c2698f05e19064830db2b889082"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/utility.js": "3e9f4302dffce99a22937b88c966df4deea66095873b9c6de0b48194573eaba2"
+  },
+  "atlas": "FOLDER_SMALL.png",
+  "still": "FOLDER_SMALL-still.png",
+  "atlas_sha256": "2c4b3056e15cfd2e7c14b78a974969aa7b08dfa954a586d0f1f59ed231636398",
+  "still_sha256": "84360364a76fb66a48c810c80d6861863d0b51fc2b4ed62e0ac8b41979b17149"
+}

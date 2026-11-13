@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZyperOS original system art</title><link rel="icon" href="data:,">
+<style>
+  :root{font:16px system-ui,sans-serif;color:#262830;background:#f1efe9;color-scheme:light}
+  body{max-width:1160px;margin:32px auto;padding:0 20px}
+  h1{font-size:28px;letter-spacing:-.03em;margin:0 0 8px}p{line-height:1.5}
+  header p{color:#646671;margin:0 0 24px}.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%}
+  button,select{font:inherit;background:transparent;color:inherit;border:1px solid #92949d;border-radius:8px;padding:8px 12px;max-width:100%}
+  button:focus-visible,select:focus-visible{outline:3px solid #6972a5;outline-offset:3px}
+  .stage{display:grid;place-items:center;margin:20px 0;background:#f1efe9}
+  canvas{width:min(100%,512px);height:auto;image-rendering:pixelated}
+  .dark .stage,.dark .tile{background:#191b23}
+  #caption{text-align:center;color:#646671;margin:8px 0 32px}
+  #grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:18px}
+  .tile{border:0;border-radius:0;display:grid;justify-items:center;gap:10px;padding:12px 4px;background:#f1efe9}
+  .tile[aria-pressed="true"]{box-shadow:inset 0 -3px #626b9d}
+  .tile img{width:128px;height:128px;image-rendering:pixelated}
+  .dark .tile span{color:#e5e6eb}
+  footer{margin-top:36px;color:#646671;font-size:14px}
+</style>
+<header><h1>Original system art</h1><p id="summary">Loading the catalogue…</p><p><a href="utility-review.html">PortMaster covers and folder sizes</a></p></header>
+<main>
+ <div class="controls"><label>Artwork <select id="system"></select></label><button id="play" type="button">Pause</button><label><input id="dark" type="checkbox">Dark background</label></div>
+ <div class="stage"><canvas id="stage" width="256" height="256" role="img" aria-label="Animated system image"></canvas></div>
+ <p id="caption" aria-live="polite"></p>
+ <div id="grid" aria-label="System catalogue"></div>
+</main>
+<footer>Original hardware illustrations. Startup marks belong to their makers. Animations are silent visual recreations.</footer>
+<script>
+(() => {
+ const stage=document.getElementById('stage'),ctx=stage.getContext('2d'),select=document.getElementById('system');
+ const play=document.getElementById('play'),caption=document.getElementById('caption'),grid=document.getElementById('grid');
+ const cache=new Map();let assets=[],current=null,texture=null,time=0,previous=null;
+ let running=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const update=()=>{play.textContent=running?'Pause':'Play';play.setAttribute('aria-pressed',String(running));};update();
+ async function choose(key){
+  const asset=assets.find(a=>a.key===key);if(!asset)return;
+  current=asset;select.value=key;texture=null;time=running?0:asset.still_time_ms;previous=null;
+  stage.setAttribute('aria-label',asset.name+' animation');caption.textContent=asset.name;
+  for(const button of grid.children)button.setAttribute('aria-pressed',String(button.dataset.key===key));
+  try{
+   if(!cache.has(key)){const image=new Image();image.src='animations/'+asset.atlas+'?v='+asset.atlas_sha256;await image.decode();cache.set(key,image);}
+   if(current===asset){texture=cache.get(key);draw();}
+   // Keep only the current atlas and the last two selections.
+   while(cache.size>3){const first=cache.keys().next().value;if(first===key){const im=cache.get(first);cache.delete(first);cache.set(first,im);}else cache.delete(first);}
+  }catch(error){caption.textContent='The animation could not load.';}
+ }
+ function draw(){
+  if(!current||!texture)return;let elapsed=time%current.duration_ms,tile=current.frames[0].tile;
+  for(const frame of current.frames){tile=frame.tile;if(elapsed<frame.ms)break;elapsed-=frame.ms;}
+  ctx.clearRect(0,0,256,256);ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(texture,(tile%current.cols)*256,Math.floor(tile/current.cols)*256,256,256,0,0,256,256);
+ }
+ function tick(now){if(previous!==null&&running&&!document.hidden)time+=Math.min(now-previous,100);previous=now;draw();requestAnimationFrame(tick);}
+ play.addEventListener('click',()=>{running=!running;previous=null;update();});
+ select.addEventListener('change',()=>choose(select.value));
+ document.getElementById('dark').addEventListener('change',event=>document.body.classList.toggle('dark',event.target.checked));
+ fetch('animations/catalogue.json',{cache:'no-store'}).then(r=>r.json()).then(async data=>{
+  assets=data.assets.sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('summary').textContent=assets.length+' designs · 256 × 256 pixels';
+  for(const asset of assets){
+   const option=document.createElement('option');option.value=asset.key;option.textContent=asset.name;select.append(option);
+   const button=document.createElement('button');button.className='tile';button.dataset.key=asset.key;button.type='button';button.setAttribute('aria-pressed','false');
+   const image=document.createElement('img');image.src='animations/'+asset.still+'?v='+asset.still_sha256;image.alt='';image.loading='lazy';
+   const label=document.createElement('span');label.textContent=asset.name;button.append(image,label);button.addEventListener('click',()=>choose(asset.key));grid.append(button);
+  }
+  const rawKey=new URLSearchParams(location.search).get('key');
+  const requested=rawKey==='MP4'?'MUSE':rawKey;
+  await choose(assets.some(a=>a.key===requested)?requested:(assets.some(a=>a.key==='MUSE')?'MUSE':assets[0].key));requestAnimationFrame(tick);
+ }).catch(()=>{document.getElementById('summary').textContent='The catalogue could not load.';});
+})();
+</script>
+</html>

@@ -1,0 +1,342 @@
+{
+  "date": "2026-11-12",
+  "browser": {
+    "frames": [
+      {
+        "key": "GB",
+        "changedPixels": 320,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PS1",
+        "changedPixels": 22704,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "3DO",
+        "changedPixels": 6763,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SNES",
+        "changedPixels": 25174,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GBA",
+        "changedPixels": 2417,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "32X",
+        "changedPixels": 60,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SATURN",
+        "changedPixels": 60,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A2600",
+        "changedPixels": 177,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A5200",
+        "changedPixels": 508,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A7800",
+        "changedPixels": 36,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "DC",
+        "changedPixels": 111,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GENESIS",
+        "changedPixels": 45,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "N64",
+        "changedPixels": 120,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NEOCD",
+        "changedPixels": 36,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NEOGEO",
+        "changedPixels": 531,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NES",
+        "changedPixels": 75,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PCE",
+        "changedPixels": 537,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SEGACD",
+        "changedPixels": 66,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SMS",
+        "changedPixels": 66,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "VB",
+        "changedPixels": 342,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "COLECO",
+        "changedPixels": 240,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GBC",
+        "changedPixels": 1472,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GG",
+        "changedPixels": 15360,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GW",
+        "changedPixels": 16,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "LYNX",
+        "changedPixels": 19750,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NDS",
+        "changedPixels": 3260,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NGP",
+        "changedPixels": 14866,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NGPC",
+        "changedPixels": 17053,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PKMINI",
+        "changedPixels": 2814,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "WS",
+        "changedPixels": 1954,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "WSC",
+        "changedPixels": 17404,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "J2ME",
+        "changedPixels": 14068,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PSP",
+        "changedPixels": 20811,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "ARCADE",
+        "changedPixels": 554,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "AW",
+        "changedPixels": 334,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "FAVORITES",
+        "changedPixels": 6679,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SCUMMVM",
+        "changedPixels": 342,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MAME",
+        "changedPixels": 5693,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MSX2",
+        "changedPixels": 60,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MUSE",
+        "changedPixels": 1264,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NAOMI",
+        "changedPixels": 220,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PICO8",
+        "changedPixels": 481,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "OPENBOR",
+        "changedPixels": 650,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PORTS",
+        "changedPixels": 4197,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "VECTREX",
+        "changedPixels": 1800,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "DOOM",
+        "changedPixels": 7204,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "TIC80",
+        "changedPixels": 1757,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      }
+    ],
+    "controls": "passed",
+    "narrowLayout": "passed",
+    "reducedMotion": "passed"
+  },
+  "independent_visual_review": "No remaining material findings.",
+  "export_check": "47/47 systems; source and renderer hashes, alpha, unique poses, motion bounds, frame edges, and budgets verified.",
+  "revision": "Two-frame symbols, mechanical loading, MP4, PortMaster, and folders"
+}

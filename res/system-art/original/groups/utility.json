@@ -1,0 +1,71 @@
+{
+  "id": "utility",
+  "generator": "Built-in image_gen",
+  "created": "2026-11-12",
+  "assets": [
+    {
+      "key": "PORTMASTER",
+      "refs": [
+        "/Users/tarikbc/Programacao/ZyperOS/res/system-art/original/source/PS1-ports.png",
+        "/Users/tarikbc/Programacao/ZyperOS/res/portmaster/icon.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nCreate original ZyperOS PortMaster pixel art.\nImage 1 is the approved pixel style reference.\nImage 2 shows the existing concept, not the desired detail level.\nDraw a small yellow dock crane lowering a gray game cartridge.\nGive the cartridge a lime-green label with a simple dark gear symbol.\nShow pink, blue, and teal shipping containers on a short gray dock.\nUse a coherent shallow front-right three-quarter view.\nAll container depth edges recede up-right.\nKeep the crane mast vertical and the crane beam horizontal.\nThe hanging cable is vertical, taut, and attached to the cartridge.\nLeave a clear gap between the cartridge and the top container.\nKeep the cartridge clear of the crane mast.\nThe art stands alone on a genuinely transparent background.\nUse a square canvas with generous empty margins.\nUse clear square pixel clusters, dark blue-gray outlines, warm highlights, and cool shadows.\nUse flat color groups with crisp stepped edges.\nKeep the machinery simple and readable at 256 pixels.\nAvoid text, logos, sky, sun, moon, water, gradients, glow, and floor shadows.\nDo not copy any public icon pack.",
+      "sourceFile": "source/PORTMASTER.png",
+      "sha256": "71e86c60861a70293e13c78c35818561fb031351785a0686e8eb0d56085cd599",
+      "size": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "key": "FOLDER",
+      "refs": [
+        "/Users/tarikbc/Programacao/ZyperOS/res/system-art/original/source/PS1-ports.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nCreate an original large folder icon for ZyperOS.\nThe reference supplies the pixel art style only.\nDraw one warm manila-gold folder with its raised tab at the upper left.\nUse a shallow front-right three-quarter view.\nShow a narrow right side and a small opening along the top.\nKeep the front face broad and nearly upright.\nPut one blank cream paper label in the center of the front face.\nThe blank label must have room for a short game count.\nDo not draw numbers, letters, symbols, or logos.\nUse clear square pixel clusters, a dark blue-gray outline, and three main gold tones.\nUse restrained warm highlights and cool brown shadows.\nKeep the folder recognizable at 256 pixels.\nPlace it in the center of a square transparent canvas with generous empty margins.\nAvoid photo texture, fine grain, gradients, glow, loose papers, extra objects, and cast shadows.\nDo not copy any public icon pack.",
+      "sourceFile": "source/FOLDER.png",
+      "sha256": "588ac24d893fabed9a94266a7acd32b1dafbac62e487f70a3266f29f13635960",
+      "size": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "key": "FOLDER_SMALL",
+      "refs": [],
+      "prompt": "Use case: stylized-concept.\nCreate a separate small pixel art folder icon for a retro game list.\nThis is a deliberately simple icon for display at 24 to 32 pixels.\nDraw the design on a strict 16 by 16 logical pixel grid.\nShow that grid at a large integer scale with crisp square pixels.\nUse a warm gold folder silhouette with its tab at the upper left.\nShow it almost from the front, with only a one-pixel right-side depth cue.\nUse one dark blue-gray outline, three gold tones, and one small cream highlight.\nUse large connected color blocks.\nKeep the shape broad and low.\nLeave a two-pixel margin on the logical canvas.\nUse a genuinely transparent background.\nDo not include a label, count, text, music note, paper sheets, logo, or small decorative details.\nAvoid smooth gradients, glow, shadow, dithering, and anti-aliasing.\nThis is an original icon, not a reduced photograph.",
+      "sourceFile": "source/FOLDER_SMALL.png",
+      "sha256": "1935e343d29ef0d680bb0582d196e86d55a01c2698f05e19064830db2b889082",
+      "size": [
+        1261,
+        1247
+      ]
+    }
+  ],
+  "perspectiveChecks": [
+    "Crane mast and rope remain vertical.",
+    "Container depth edges agree.",
+    "The cartridge moves along the rope axis.",
+    "Both folders keep the tab at the upper left."
+  ],
+  "sizes": {
+    "FOLDER": 256,
+    "FOLDER_SMALL": [
+      24,
+      32,
+      40,
+      48,
+      64
+    ]
+  },
+  "browserReview": {
+    "status": "passed",
+    "checks": [
+      "unchanged pixels outside motion",
+      "transparent margins",
+      "loop return",
+      "correct pose count",
+      "perspective review"
+    ]
+  }
+}

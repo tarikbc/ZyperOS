@@ -1,0 +1,55 @@
+{
+  "key": "MAME",
+  "name": "MAME",
+  "description": "Arcade letters bounce",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 800,
+  "kind": "system",
+  "static": false,
+  "expected_poses": 2,
+  "motion_bounds": [
+    7,
+    83,
+    241,
+    101
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 400
+    },
+    {
+      "tile": 1,
+      "ms": 400
+    }
+  ],
+  "still_time_ms": 700,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/MAME.png",
+    "source/AW-cartridge.png",
+    "source/NAOMI-rom-case.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/arcade.js"
+  ],
+  "input_sha256": {
+    "source/MAME.png": "fb110afa9f2a198fcf09b985bb73026eada12b73b7f7edc04aa6947db174ced4",
+    "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+    "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+  },
+  "atlas": "MAME.png",
+  "still": "MAME-still.png",
+  "atlas_sha256": "5021442d519552e2e92093e2d58cf3954b35d5d26dd0e2cc184cc444ec532069",
+  "still_sha256": "6f25c0275ec781341dfda12d28079c00af5af0a12d412204c5d15a99b38828cf"
+}

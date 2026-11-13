@@ -1,0 +1,127 @@
+{
+  "key": "WSC",
+  "name": "WonderSwan Color",
+  "description": "Original startup \u00b7 Bandai mark",
+  "cell": 256,
+  "cols": 8,
+  "rows": 3,
+  "unique": 20,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    85,
+    99,
+    99,
+    59
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 375
+    },
+    {
+      "tile": 1,
+      "ms": 188
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 187
+    },
+    {
+      "tile": 4,
+      "ms": 188
+    },
+    {
+      "tile": 5,
+      "ms": 93
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 94
+    },
+    {
+      "tile": 8,
+      "ms": 94
+    },
+    {
+      "tile": 9,
+      "ms": 93
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 94
+    },
+    {
+      "tile": 12,
+      "ms": 94
+    },
+    {
+      "tile": 13,
+      "ms": 93
+    },
+    {
+      "tile": 14,
+      "ms": 1969
+    },
+    {
+      "tile": 14,
+      "ms": 1594
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 93
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 94
+    },
+    {
+      "tile": 19,
+      "ms": 187
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 6291456,
+  "inputs": [
+    "source/WSC.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/WSC.png": "2adaf7eea0f39ee57c41ab367be5f9cd5ae98791b2cddb8de1faaed28b7a83c2"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "WSC.png",
+  "still": "WSC-still.png",
+  "atlas_sha256": "f1e5838b2a02448f229b18c07874af3b8300b2aadc873203afc8b3d0a6433fc9",
+  "still_sha256": "720489e430bf46129b472b4c817508a0dfd1ec120f4e623ab9df1e0a8771aa07"
+}
