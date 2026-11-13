@@ -539,8 +539,13 @@ static void guest_notices(void)
 	g_guests = 1 | 2;                         /* player 3: not on the NES */
 	ticks(200);
 	CHECK(g_nlog == at && p2_guests() == 1);
+	/* Gone: said after 5 s of it, and the row says connected until then */
 	g_guests = 0;
 	ticks(200);
+	CHECK(g_nlog == at && p2_state_now() == P2_CONNECTED && p2_guests() == 1);
+	ticks(4600);
+	CHECK(g_nlog == at && p2_guests() == 1);
+	ticks(300);
 	CHECK(log_is(at, left) && p2_state_now() == P2_WAITING && p2_guests() == 0);
 	/* p2d crashed with a guest in: one notice that Player 2 stopped (its
 	 * guest with it), Diatom off, and it failed */
@@ -557,6 +562,97 @@ static void guest_notices(void)
 	at = g_nlog;
 	ticks(1000);                              /* and nothing more from the tick */
 	CHECK(g_nlog == at);
+	p2_stop();
+}
+
+/* A guest's link that drops and comes back by itself (the page tries again
+ * every 2 s): nothing said, the row connected throughout. An iPhone's did
+ * right after it joined, and the handheld said "left" and "joined" over a
+ * game nobody had left. A guest on the way out when Player 2 stops, or the
+ * game ends, is not said to go either. */
+static void blip_says_nothing(void)
+{
+	static const char *const joined[] = { "notice 2 joined", NULL };
+	int at;
+
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	at = g_nlog;
+	g_guests = 1;
+	ticks(200);
+	CHECK(log_is(at, joined));
+	at = g_nlog;
+	g_guests = 0;                             /* the link drops */
+	ticks(2300);
+	CHECK(g_nlog == at && p2_guests() == 1 && p2_state_now() == P2_CONNECTED);
+	g_guests = 1;                             /* and the page is back */
+	ticks(200);
+	CHECK(g_nlog == at && p2_guests() == 1);
+	ticks(6000);                              /* and stays: still nothing */
+	CHECK(g_nlog == at);
+	g_guests = 0;                             /* gone again, then stopped */
+	ticks(1000);
+	p2_stop();
+	{
+		int i;
+		bool said_left = false;
+
+		for (i = at; i < g_nlog; i++)
+			if (!strcmp(g_log[i], "notice 2 left")) said_left = true;
+		CHECK(!said_left);
+	}
+	/* On the way out, then stopped and started again: the new start owes
+	 * nobody a "left", and its first guest is said to join */
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	g_guests = 0;
+	ticks(1000);
+	p2_stop();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	at = g_nlog;
+	ticks(6000);
+	CHECK(g_nlog == at && p2_guests() == 0 && p2_state_now() == P2_WAITING);
+	g_guests = 1;
+	ticks(200);
+	CHECK(log_is(at, joined) && p2_guests() == 1);
+	p2_stop();
+	/* Across the clock's wrap (a uint of milliseconds, 49 days): gone just
+	 * before it, said gone 5 s later, just after it */
+	fresh();
+	g_clock = 0xFFFFF000u;                    /* 4 s before the wrap */
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	at = g_nlog;
+	g_guests = 0;
+	ticks(4500);                              /* past the wrap, 4.5 s gone */
+	CHECK(g_nlog == at && p2_guests() == 1 && g_clock < 0x1000u);
+	ticks(800);
+	{
+		static const char *const left[] = { "notice 2 left", NULL };
+		CHECK(log_is(at, left) && p2_guests() == 0);
+	}
+	p2_stop();
+	/* The game ends while a guest is on the way out: nothing said */
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	at = g_nlog;
+	g_guests = 0;
+	ticks(1000);
+	p2_game_over();
+	ticks(6000);
+	{
+		int i;
+		bool said_left = false;
+
+		for (i = at; i < g_nlog; i++)
+			if (!strcmp(g_log[i], "notice 2 left")) said_left = true;
+		CHECK(!said_left);
+	}
 	p2_stop();
 }
 
@@ -722,6 +818,7 @@ int main(void)
 	p2_stop_after_any_end();
 	game_end_is_quiet();
 	guest_notices();
+	blip_says_nothing();
 	hotspot_failures();
 	restart_reads_its_own_answer();
 	theme_follows();
