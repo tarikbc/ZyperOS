@@ -15,6 +15,13 @@
  *     brightness while it changes, a climb when files or covers finish, a
  *     sparkle for an achievement. My picks in ZyperOS's side lights lab
  *     (2026-11-06; its DESIGN.md 11.27 has them all).
+ *   - While files move to or from the card, from usbdrive (Flash Drive) or
+ *     ZyperOS (File Transfer's page) on the same FIFO: a wave that fills and
+ *     empties the four, down for files coming in and up for files going out,
+ *     at a pace by the speed (my picks in the transfer lights lab,
+ *     2026-11-13). Over the bar; the patterns above show over it.
+ *   - On ZyperOS's MENU > Side Lights, the row under the cursor: its part in
+ *     a loop, On or Off, over everything but L2+R2.
  *   - Asked (SIGUSR1, which ZyperOS sends on L2+R2 outside a game): the level
  *     flashes four times in two seconds, over everything.
  *   - Otherwise nothing, so they cost nothing.

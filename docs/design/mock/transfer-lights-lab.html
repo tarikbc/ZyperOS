@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transfer lights lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin: 0; padding: 0 16px 64px; }
+  .lab-head { padding-block: 32px 12px; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+  .lab-head > svg { width: 70px; height: 74px; }
+  .status { font: 13px var(--zk-f-mono); color: var(--zk-ink-3); padding-top: 8px; }
+  .keep { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--zk-line); border-radius: 12px; color: var(--zk-ink-2); max-width: 86ch; }
+  .keep b { color: var(--zk-ink); font-weight: 600; }
+  .keep ul { margin: 6px 0 0; padding-left: 18px; }
+  .keep li { margin: 3px 0; }
+  .cap { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin: 0 2px; }
+  .pair { display: grid; gap: 10px; }
+
+  /* ---- the side of the handheld: MENU, POWER and the four lights -------- */
+  .stage { display: flex; gap: 22px; align-items: center; justify-content: center; background: #0d0f0e; border: 1px solid var(--zk-line); border-radius: 12px; padding: 12px; min-width: 0; }
+  .stage .side { flex: none; width: 74px; }
+  .stage .side svg { width: 74px; height: auto; display: block; }
+  .say { font: 12px/1.45 var(--zk-f-mono); color: #c9d3c2; min-height: 4.4em; min-width: 0; flex: 1; white-space: pre-line; }
+  .lens-off { fill: #4f6b35; }
+  .glow { opacity: 0; transition: opacity 30ms linear; }
+  .glow.on { opacity: 1; }
+  .play { align-self: flex-start; }
+
+  /* ---- the try-it panel ----------------------------------------------- */
+  .try { margin-top: 26px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; padding: 18px; border: 1px solid var(--zk-line); border-radius: 14px; background: var(--zk-page-2); }
+  .try .side svg { width: 110px; height: auto; display: block; }
+  .try h2 { margin: 0 0 4px; }
+  .try .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .try .btns .zk-btn[aria-pressed="true"] { background: var(--zk-ink); color: var(--zk-page); border-color: var(--zk-ink); }
+  .try label.batt { display: flex; align-items: center; gap: 10px; margin-top: 12px; font: 13px var(--zk-f-mono); color: var(--zk-ink-2); flex-wrap: wrap; }
+  .try input[type=range] { width: min(260px, 100%); accent-color: var(--zk-hi); }
+  .try select { font: 13px var(--zk-f-mono); }
+  .try .now { font: 13px/1.5 var(--zk-f-mono); color: var(--zk-ink-2); margin-top: 12px; min-height: 3em; }
+  .try .uses { font: 12px var(--zk-f-mono); color: var(--zk-ink-3); margin-top: 8px; }
+  @media (max-width: 560px) { .try { grid-template-columns: 1fr; justify-items: start; } .try .side svg { width: 84px; } .stage { gap: 14px; } }
+  @media (prefers-reduced-motion: reduce) { .glow { transition: none; } }
+</style>
+</head>
+<body>
+<!--ZYPER-->
+<div class="zk-page"><div class="zk-wrap">
+  <header class="lab-head">
+    <svg aria-label="Zyper"><use href="#zyper"/></svg>
+    <div>
+      <h1 class="zk-h1">Transfer lights <b>lab</b></h1>
+      <p class="zk-lede">While files move to or from the card, the four side lights can show it: in Flash Drive (the card as a USB drive) and on File Transfer's web page, over Wi-Fi or the cable. Each section plays an option on a drawing of the Pixel 2's right side, top to bottom as on the device. Press Play, pick one option in each section, and add a note if you want a change. The panel under this text lets you try it all together, with your picks.</p>
+      <p class="status" id="status">Connecting…</p>
+    </div>
+  </header>
+  <div class="keep"><b>Kept in every option</b>
+    <ul>
+      <li><b>Download</b> is data that comes in to the card (the computer writes, or the web page sends a file to the handheld). <b>Upload</b> is data that goes out of the card (the computer reads, or the page downloads a file). The same words and arrows as the Flash Drive screen's two tiles.</li>
+      <li><b>Only while bytes move.</b> About 1 s after the last bytes, the lights show what they showed before: the charging bar on the cable, or nothing. Flash Drive looks once a second, as its tiles do. A way that moves less than 64 KB in that second counts as still (a computer's own small writes when it opens the drive, a folder list).</li>
+      <li><b>Green only.</b> The low-battery red still shows through, and L2+R2 still flashes the battery level over everything.</li>
+      <li><b>Newest on top, as today.</b> The transfer takes the lights over the charging bar. A volume or brightness change, a Done or a sparkle shows over the transfer for its time, then the transfer comes back while files still move.</li>
+      <li><b>Off is off.</b> MENU &gt; Side Lights decides, as for every part. A card with every part off shows nothing.</li>
+      <li><b>No cost to the transfer.</b> Flash Drive sends one short line a second and the web page at most two; neither waits for the lights. The gauge wakes only for each step of the pattern. No game is involved: File Transfer closes before a game starts.</li>
+    </ul>
+  </div>
+
+  <section class="try" aria-labelledby="try-h">
+    <div class="side" id="try-side"></div>
+    <div style="min-width:0">
+      <h2 class="zk-h2" id="try-h">Try it</h2>
+      <p class="zk-why">Start and stop the two ways as a computer would. The lights follow your picks below; a section with no pick uses its suggested option.</p>
+      <div class="btns" role="group" aria-label="What moves">
+        <button type="button" class="zk-btn" id="t-down" aria-pressed="false">Download (to the card)</button>
+        <button type="button" class="zk-btn" id="t-up" aria-pressed="false">Upload (from the card)</button>
+        <label class="batt" for="t-rate" style="margin:0">Speed
+          <select id="t-rate">
+            <option value="600000">600 KB/s (Wi-Fi, far)</option>
+            <option value="4200000" selected>4.2 MB/s (Wi-Fi, near)</option>
+            <option value="24000000">24 MB/s (Flash Drive)</option>
+          </select>
+        </label>
+      </div>
+      <div class="btns" role="group" aria-label="Buttons and the battery">
+        <button type="button" class="zk-btn" id="t-volup">VOL+</button>
+        <button type="button" class="zk-btn" id="t-voldn">VOL−</button>
+        <button type="button" class="zk-btn" id="t-l2r2">L2 + R2</button>
+        <button type="button" class="zk-btn" id="t-cable" aria-pressed="true">Cable in</button>
+        <button type="button" class="zk-btn" id="t-switch" aria-pressed="true">Side Lights part on</button>
+      </div>
+      <label class="batt" for="t-pct">Battery <input type="range" id="t-pct" min="1" max="100" value="40"> <span id="t-pctv">40%</span></label>
+      <p class="now" id="t-now"></p>
+      <p class="uses" id="t-uses"></p>
+    </div>
+  </section>
+
+  <main id="board"></main>
+</div></div>
+<script src="tokens.js"></script>
+<script src="kit.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* ======================================================================
+   * The lights. Bit 0 is battery0 (the bottom light's red), bit 1 battery1
+   * (its green), bits 2 to 4 the three green lights above it, as plastron's
+   * gauge numbers them.
+   * ==================================================================== */
+  const RED = 1, G1 = 2, ALL = 2 | 4 | 8 | 16;
+  const greens = n => { let b = 0; for (let i = 0; i < n && i < 4; i++) b |= G1 << i; return b; };
+  const dot = i => G1 << i;   /* one green light, 0 the bottom one */
+  /* The same lights upside down: light i becomes light 3 - i */
+  const flip = b => { let o = b & RED; for (let i = 0; i < 4; i++) if (b & dot(i)) o |= dot(3 - i); return o; };
+
+  let sides = 0;
+  function side() {
+    const id = "sd" + (++sides);
+    const lens = (i, y) => {
+      const glow = (cls, col) => `<circle class="glow ${cls}" data-i="${i}" cx="37" cy="${y}" r="8.5" fill="${col}" filter="url(#${id}-b)"/><circle class="glow ${cls}" data-i="${i}" cx="37" cy="${y}" r="5.6" fill="${col}"/>`;
+      return `<circle class="lens-off" cx="37" cy="${y}" r="5.6"/>` +
+        (i === 0 ? glow("r", "#ff4a3a") + glow("g", "#86ff4f") + glow("a", "#ffd02a") : glow("g", "#86ff4f"));
+    };
+    return `<svg viewBox="0 0 74 260" role="img" aria-label="The side lights" data-side="${id}">
+      <defs><linearGradient id="${id}-body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#86a23c"/><stop offset=".45" stop-color="#b0c967"/><stop offset="1" stop-color="#9cb849"/></linearGradient>
+      <filter id="${id}-b" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="4"/></filter></defs>
+      <rect x="9" y="2" width="56" height="256" rx="18" fill="url(#${id}-body)"/>
+      <circle cx="37" cy="30" r="12" fill="#343638"/><circle cx="37" cy="25.5" r="1.4" fill="#9a9d9f"/><circle cx="37" cy="30" r="1.4" fill="#9a9d9f"/><circle cx="37" cy="34.5" r="1.4" fill="#9a9d9f"/>
+      <rect x="22" y="70" width="30" height="11" rx="5.5" fill="#343638" transform="rotate(-45 37 75.5)"/>
+      <text x="37" y="104" text-anchor="middle" font-size="7" font-family="IBM Plex Mono, monospace" fill="#5d7a2a">POWER</text>
+      ${lens(4, 126)}${lens(3, 156)}${lens(2, 186)}${lens(0, 216)}
+    </svg>`;
+  }
+  function paint(svg, bits) {
+    svg.querySelectorAll(".glow").forEach(g => {
+      const i = +g.dataset.i;
+      let on;
+      if (i === 0) {
+        const r = bits & RED, gr = bits & G1;
+        on = g.classList.contains("a") ? (r && gr) : g.classList.contains("r") ? (r && !gr) : (gr && !r);
+      } else on = bits & (1 << i);
+      g.classList.toggle("on", !!on);
+    });
+  }
+
+  /* ======================================================================
+   * Today's side lights (DESIGN.md 11.27, the picks of 2026-11-06), and the
+   * new transfer layer over the charging bar. plastron's gauge gets the
+   * same rules in C, with host checks; this is the page's copy.
+   * ==================================================================== */
+  const HOLD_BAR = 1500, STEP_MS = 400, ASK_MS = 2000, PACE = 100;
+  const MOVE_HOLD = 1500;   /* the transfer holds this long after its last line */
+
+  /* One run of each shape, Download's way (top to bottom); Upload's is the
+   * same upside down. Each ends with the lights dark for a step but the gap,
+   * so one run reads apart from the next. */
+  const SHAPE = {
+    dot:  [dot(3), dot(2), dot(1), dot(0), 0],
+    pair: [dot(3), dot(3) | dot(2), dot(2) | dot(1), dot(1) | dot(0), dot(0), 0],
+    wave: [dot(3), dot(3) | dot(2), greens(4) & ~dot(0), greens(4), greens(3), greens(2), dot(0), 0],
+    gap:  [ALL & ~dot(3), ALL & ~dot(2), ALL & ~dot(1), ALL & ~dot(0)],
+  };
+  /* A step's length: even, or by the speed of the way that shows */
+  const paceOf = (c, rate) => c.pace === "speed" ? (rate < 1e6 ? 200 : rate < 1e7 ? 100 : 60) : 100;
+
+  /* The transfer's lights now, stepping it on; -1 when it is over */
+  function moving(c, s, now) {
+    const m = s.mv;
+    if (!m) return -1;
+    if (now - m.last > MOVE_HOLD) { s.mv = null; return -1; }
+    const seq = SHAPE[c.shape] || SHAPE.dot;
+    /* A run is never cut: which way shows is chosen as one begins */
+    const pick = () => {
+      const d = m.down > 0, u = m.up > 0;
+      if (d && u) {
+        if (c.both === "cross") return "both";
+        if (c.both === "bigger") return m.down >= m.up ? "down" : "up";
+        return m.way === "down" ? "up" : "down";   /* take turns */
+      }
+      return d ? "down" : u ? "up" : m.way;
+    };
+    if (!m.way) { m.way = pick(); m.k = 0; m.next = now + paceOf(c, rateOf(m)); }
+    if (now - m.next > 2000) m.next = now;   /* a page that slept: no catching up */
+    while (now >= m.next) {
+      m.k++;
+      if (m.k >= seq.length) { m.k = 0; m.way = pick(); }
+      m.next += paceOf(c, rateOf(m));
+    }
+    const runDown = b => c.dir === "fill" ? flip(b) : b;   /* Download runs up instead */
+    const b = seq[m.k];
+    if (m.way === "both") return runDown(b) | runDown(flip(b));
+    return m.way === "down" ? runDown(b) : runDown(flip(b));
+  }
+  function rateOf(m) { return m.way === "down" ? m.down : m.way === "up" ? m.up : Math.max(m.down, m.up); }
+
+  /* The line a sender says once a look: bytes a second each way */
+  function sayMove(c, s, now, down, up) {
+    if (!c.moveOn) return;
+    if (!down && !up) { s.mv = null; return; }
+    if (!s.mv) s.mv = { way: null, k: 0, next: 0 };
+    Object.assign(s.mv, { down, up, last: now });
+  }
+
+  function chargeBar(s, now) {
+    const held = s.pct >= 100 ? 4 : Math.floor(s.pct / 25);
+    if (held >= 4) return greens(4);
+    const steps = 4 - held + 1;
+    return greens(held + Math.floor((now - s.barAt) / STEP_MS) % steps);
+  }
+  function levelBits(pct) {
+    if (pct >= 75) return greens(4);
+    if (pct >= 50) return greens(3);
+    if (pct >= 25) return greens(2);
+    if (pct >= 10) return greens(1);
+    return RED;
+  }
+  function lowRed(s, now) {
+    if (s.plugged || s.pct >= 10) return false;
+    const t = now - s.lowAt;
+    if (s.pct < 5) { const u = t % 2000; return u < 150 || (u >= 300 && u < 450); }
+    return (t % 5000) < 200;
+  }
+  /* Today's one-shot patterns that matter here: the level and Done */
+  function pattern(e, now) {
+    const t = now - e.at;
+    if (e.kind === "level") {
+      if (now - e.last > HOLD_BAR) return -1;
+      if (e.val <= 0) return RED;
+      const n = Math.max(1, Math.ceil(8 * e.val / e.max)), full = n >> 1, half = n & 1;
+      return greens(full) | (half && (t % 500) < 250 ? dot(full) : 0);
+    }
+    if (e.kind === "done") { const k = Math.floor(t / PACE); return k < 8 ? dot(k % 4) : -1; }
+    return -1;
+  }
+
+  function frame(c, s, now) {
+    let bits = s.plugged ? chargeBar(s, now) : 0;
+    const mv = moving(c, s, now);
+    if (mv >= 0) bits = mv;
+    if (s.ev) { const b = pattern(s.ev, now); if (b < 0) s.ev = null; else bits = b; }
+    if (s.askAt >= 0) {
+      const t = now - s.askAt;
+      if (t < ASK_MS) bits = Math.floor(t / 250) % 2 ? 0 : levelBits(s.pct); else s.askAt = -1;
+    }
+    if (lowRed(s, now)) bits |= RED;
+    return bits;
+  }
+  function setPlugged(s, on, now) { if (s.plugged !== on) { s.plugged = on; s.barAt = now; s.lowAt = now; } }
+  const fresh = (o = {}) => Object.assign({ pct: 40, plugged: false, barAt: 0, lowAt: -100000, ev: null, askAt: -1, mv: null }, o);
+
+  /* The suggested option of every section */
+  const DEFAULT = { shape: "dot", dir: "arrows", pace: "speed", both: "turns", end: "rest", moveOn: true };
+
+  /* ======================================================================
+   * Playing a scenario: steps [ms, f(s, t, say, c)] and a length
+   * ==================================================================== */
+  const live = new Map();
+  function playOn(card, cfg, steps, len) {
+    const old = live.get(card);
+    if (old) old.stop = true;
+    const run = { stop: false };
+    live.set(card, run);
+    const c = Object.assign({}, DEFAULT, cfg), s = fresh();
+    const svgs = [...card.querySelectorAll("svg[data-side]")], says = [...card.querySelectorAll(".say")];
+    const say = t => says.forEach(e => (e.textContent = t));
+    const t0 = performance.now();
+    let i = 0;
+    function tick() {
+      if (run.stop) return;
+      const now = performance.now() - t0;
+      while (i < steps.length && steps[i][0] <= now) steps[i++][1](s, steps[i - 1][0], say, c);
+      svgs.forEach(v => paint(v, frame(c, s, now)));
+      if (now < len) requestAnimationFrame(tick);
+      else { svgs.forEach(v => paint(v, 0)); say("Press Play to see it again."); }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const fmt = r => r >= 1e6 ? (r / 1e6).toFixed(1) + " MB/s" : Math.round(r / 1e3) + " KB/s";
+  const tiles = (d, u) => `Download ${d ? fmt(d) : "0 MB/s"} · Upload ${u ? fmt(u) : "0 MB/s"}`;
+  /* A sender's lines, once a second from `at` to `to`, and the stop */
+  function flow(at, to, down, up, text) {
+    const out = [];
+    for (let t = at; t < to; t += 1000) out.push([t, (s, tt, say, c) => { sayMove(c, s, tt, down, up); say(text + "\n" + tiles(down, up)); }]);
+    out.push([to, (s, tt, say, c) => { sayMove(c, s, tt, 0, 0); say("Nothing moves: the lights go back to the battery.\n" + tiles(0, 0)); }]);
+    return out;
+  }
+  const doneAfter = (at) => [at, (s, t, say, c) => { if (c.end === "climb" && c.flash) { s.ev = { kind: "done", at: t }; say("2 s with no write: Done, as File Transfer's batch.\n" + tiles(0, 0)); } }];
+  const cable = (pct, text) => [0, (s, t, say) => { s.pct = pct; setPlugged(s, true, t); say(text); }];
+
+  const SC = {
+    basic: [
+      cable(40, "Flash Drive, on the cable at 40%: the charging bar."),
+      ...flow(1500, 6500, 18e6, 0, "The computer copies a folder to the card."),
+      ...flow(8500, 13000, 0, 21e6, "The computer copies a folder from the card."),
+    ],
+    pace: [
+      [0, (s, t, say) => { s.pct = 62; say("File Transfer on Wi-Fi, on the battery."); }],
+      ...flow(800, 4800, 6e5, 0, "A file arrives over Wi-Fi, far from the router."),
+      ...flow(5000, 9000, 4.2e6, 0, "A file arrives over Wi-Fi, near the router."),
+      ...flow(9200, 13200, 2.4e7, 0, "Flash Drive: the computer writes to the card."),
+    ],
+    both: [
+      cable(55, "Flash Drive, on the cable at 55%."),
+      ...flow(1200, 7200, 1.5e7, 9e6, "The computer copies from one folder of the card to another:\nit reads and writes at once."),
+      ...flow(7400, 12400, 3e6, 2e7, "Now it reads more than it writes."),
+    ],
+    end: [
+      [0, (s, t, say, c) => { c.flash = true; s.pct = 70; setPlugged(s, true, t); say("Flash Drive, on the cable at 70%."); }],
+      ...flow(1000, 5000, 1.6e7, 0, "The computer copies 60 MB to the card."),
+      doneAfter(7000),
+      ...flow(9500, 11500, 0, 8e6, "Later, the computer reads a file."),
+    ],
+  };
+
+  document.getElementById("board").addEventListener("click", e => {
+    const b = e.target.closest("[data-play]");
+    if (!b) return;
+    const card = b.closest(".zk-card"), [key, opt] = b.dataset.play.split(":");
+    const d = list.find(x => x.key === key), op = d && d.options[opt];
+    if (op && op.play) op.play(card);
+  });
+  const lone = () => `<div class="stage"><div class="side">${side()}</div><div class="say">Press Play.</div></div>`;
+  const playBtn = id => `<button type="button" class="zk-btn play" data-play="${id}">Play</button>`;
+  const opt = (key, id, cfg, sc, len, o) => Object.assign({ draw: () => lone() + playBtn(`${key}:${id}`), play: card => playOn(card, cfg, SC[sc], len) }, o);
+
+  /* ---- MENU pictures --------------------------------------------------- */
+  const both = draw => `<div class="pair">${ZK.screen("light", draw("light"))}<span class="cap">Beard</span>${ZK.screen("dark", draw("dark"))}<span class="cap">Salt &amp; Pepper</span></div>`;
+  const page = (rows, sel) => both(th => ZK.shelf(th, {}) + ZK.menu(th, { heading: "Side Lights", rows, sel }));
+  const OWN = [["Charging Bar", "On"], ["Low Battery", "On"], ["Volume and Brightness", "On"], ["Files Moving", "On"], ["Files and Covers Done", "On"], ["Achievements", "On"]];
+  const SHARED = [["Charging Bar", "On"], ["Low Battery", "On"], ["Volume and Brightness", "On"], ["Files and Covers", "On"], ["Achievements", "On"]];
+
+  /* ======================================================================
+   * The decisions
+   * ==================================================================== */
+  const list = [
+    { key: "shape", title: "How the lights move",
+      why: "The shape of one run. Play: Flash Drive on the cable at 40%, so the charging bar shows first. The computer copies a folder to the card (Download) for 5 s, then nothing moves for 2 s, then it copies a folder from the card (Upload).",
+      options: {
+        dot: opt("shape", "dot", { shape: "dot" }, "basic", 14500, { name: "One light runs", tag: "suggested", blurb: "One light runs across the four, then a dark step, again and again. Light, quiet, and never like the charging bar, which fills." }),
+        pair: opt("shape", "pair", { shape: "pair" }, "basic", 14500, { name: "Two lights run", blurb: "A light with one behind it, like a comet. Easier to see from the side of an eye, a little busier." }),
+        wave: opt("shape", "wave", { shape: "wave" }, "basic", 14500, { name: "Fill and empty", blurb: "The lights fill from the start end, then empty the same way, like a wave going through. The loudest. Upload fills from the bottom, as the charging bar does." }),
+        gap: opt("shape", "gap", { shape: "gap" }, "basic", 14500, { name: "A dark light runs", blurb: "All four on, and one dark light runs through them. Very easy to see, but four green lights also mean a full battery." }),
+      } },
+
+    { key: "dir", title: "Which way is which",
+      why: "The Flash Drive screen draws Download as an arrow down into a tray and Upload as an arrow up out of it. Play: the same copy to the card, then from it.",
+      options: {
+        arrows: opt("dir", "arrows", { dir: "arrows" }, "basic", 14500, { name: "As the screen's arrows", tag: "suggested", blurb: "Download runs down, from the top light to the bottom one. Upload runs up." }),
+        fill: opt("dir", "fill", { dir: "fill" }, "basic", 14500, { name: "Download fills up", blurb: "Download runs up, as the card fills, like the charging bar. Upload runs down. The other way from the screen's arrows." }),
+      } },
+
+    { key: "pace", title: "How fast the lights move",
+      why: "Play: a file over Wi-Fi far from the router (600 KB/s), near it (4.2 MB/s), then Flash Drive (24 MB/s), 4 s each, on the battery.",
+      options: {
+        speed: opt("pace", "speed", { pace: "speed" }, "pace", 14500, { name: "Follows the speed", tag: "suggested", blurb: "Three steps: under 1 MB/s, 200 ms a step; up to 10 MB/s, 100 ms (the pace of the other patterns); 10 MB/s and faster, 60 ms. A slow transfer looks slow, and a stuck one stops." }),
+        even: opt("pace", "even", { pace: "even" }, "pace", 14500, { name: "Even, 100 ms", blurb: "Always 100 ms a step, the pace of Done and the sparkle. Says that files move, not how fast." }),
+      } },
+
+    { key: "both", title: "When both ways move at once",
+      why: "For example, the computer copies from one folder of the card to another, so it reads and writes at the same time. Or one browser sends a file while another downloads one. Play: reads and writes together, first more writing, then more reading.",
+      options: {
+        turns: opt("both", "turns", { both: "turns" }, "both", 13500, { name: "Take turns", tag: "suggested", blurb: "One run down, one run up, and again, while both move. Each way stays readable." }),
+        bigger: opt("both", "bigger", { both: "bigger" }, "both", 13500, { name: "The bigger one", blurb: "Only the way that moves more bytes, chosen again at each run." }),
+        cross: opt("both", "cross", { both: "cross" }, "both", 13500, { name: "Both at once", blurb: "A light runs down and another runs up at the same time; they cross in the middle. Says \"both\", but not which is bigger." }),
+      } },
+
+    { key: "end", title: "When a copy to the card ends (Flash Drive)",
+      why: "On File Transfer's web page, a batch that arrived already ends with Done (one light climbs twice), and stays so. A Flash Drive copy does not, today. Play: a copy to the card, then, later, a read.",
+      options: {
+        rest: opt("end", "rest", { end: "rest" }, "end", 13000, { name: "Back to the battery", tag: "suggested", blurb: "The lights go back to the charging bar. A computer also writes small files of its own when it opens the drive, so a Done here could come with no copy of yours." }),
+        climb: opt("end", "climb", { end: "climb" }, "end", 13000, { name: "Done, as the web page", blurb: "2 s after the last write, one light climbs twice, as after a web page batch. One meaning for both ways in." }),
+      } },
+
+    { key: "row", title: "The switch in MENU > Side Lights",
+      why: "Every part of the lights has an On/Off row on the Side Lights page. A new card and a card with every part on get it on; a card with every part off keeps it off.",
+      options: {
+        own: { name: "A row of its own", tag: "suggested", blurb: "Files Moving, under Volume and Brightness. You can keep Done and turn the moving lights off, or the other way.", draw: () => page(OWN, 3) },
+        shared: { name: "With Files and Covers Done", blurb: "One row for both, named Files and Covers. Fewer rows, less choice.", draw: () => page(SHARED, 3) },
+      } },
+  ];
+
+  /* ======================================================================
+   * The try-it panel, on the picks
+   * ==================================================================== */
+  const PICK = { shape: o => ({ shape: o }), dir: o => ({ dir: o }), pace: o => ({ pace: o }), both: o => ({ both: o }), end: o => ({ end: o }) };
+  let board = null;
+  function tryCfg() {
+    const c = Object.assign({}, DEFAULT, { moveOn: T.on, flash: true }), used = [];
+    const p = (board && board.picks) || {};
+    Object.keys(PICK).forEach(k => {
+      const ch = p[k] && p[k].choice, d = list.find(x => x.key === k);
+      if (ch && d.options[ch]) { Object.assign(c, PICK[k](ch)); used.push(`${d.title}: ${d.options[ch].name}`); }
+    });
+    return { c, used };
+  }
+  const T = { s: fresh({ plugged: true }), t0: performance.now(), vol: 8, down: false, up: false, on: true, lookAt: 0, lastWrite: -1 };
+  const tnow = () => performance.now() - T.t0;
+  const $ = id => document.getElementById(id);
+  $("try-side").innerHTML = side();
+  const trySvg = $("try-side").querySelector("svg");
+  let tryTxt = "On the cable at 40%: the charging bar. Start a way above.";
+  const toggle = (id, f) => { const b = $(id); b.onclick = () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); f(on); }; };
+  const rate = () => +$("t-rate").value;
+  toggle("t-down", on => { T.down = on; if (!on && !T.up) tryStop(); tryTxt = on ? "The computer writes to the card." : "Download stopped."; });
+  toggle("t-up", on => { T.up = on; if (!on && !T.down) tryStop(); tryTxt = on ? "The computer reads from the card." : "Upload stopped."; });
+  toggle("t-cable", on => { setPlugged(T.s, on, tnow()); tryTxt = on ? "The cable is in." : "The cable is out (File Transfer on Wi-Fi)."; });
+  toggle("t-switch", on => { T.on = on; if (!on) T.s.mv = null; tryTxt = on ? "The transfer part is on in MENU > Side Lights." : "The transfer part is off: nothing shows for it."; });
+  function tryStop() {
+    const { c } = tryCfg();
+    sayMove(c, T.s, tnow(), 0, 0);
+    if (T.wrote && c.end === "climb") T.doneAt = tnow() + 2000;
+    T.wrote = false;
+  }
+  const level = d => { T.vol = Math.max(0, Math.min(20, T.vol + d)); const n = tnow(); const e = T.s.ev; if (e && e.kind === "level") Object.assign(e, { val: T.vol, last: n }); else T.s.ev = { kind: "level", at: n, last: n, val: T.vol, max: 20 }; tryTxt = `Volume ${T.vol} of 20.`; };
+  $("t-volup").onclick = () => level(1);
+  $("t-voldn").onclick = () => level(-1);
+  $("t-l2r2").onclick = () => { T.s.askAt = tnow(); tryTxt = `L2 + R2: the battery level, ${T.s.pct}%.`; };
+  $("t-pct").oninput = e => { const was = T.s.pct, p = +e.target.value; T.s.pct = p; if ((was >= 10 && p < 10) || (was >= 5 && p < 5)) T.s.lowAt = tnow(); $("t-pctv").textContent = p + "%"; };
+  (function loop() {
+    const { c, used } = tryCfg(), now = tnow();
+    /* The sender: one line a second while a way moves */
+    if ((T.down || T.up) && now - T.lookAt >= 1000) {
+      T.lookAt = now;
+      sayMove(c, T.s, now, T.down ? rate() : 0, T.up ? rate() * 0.9 : 0);
+      if (T.down) T.wrote = true;
+    }
+    if (T.doneAt && now >= T.doneAt) { T.doneAt = 0; if (!T.down) T.s.ev = { kind: "done", at: now }; }
+    paint(trySvg, frame(c, T.s, now));
+    $("t-now").textContent = tryTxt;
+    $("t-uses").textContent = used.length ? "Your picks: " + used.join(" · ") : "No picks yet: every section's suggested option.";
+    requestAnimationFrame(loop);
+  })();
+
+  board = ZK.decisions(document.getElementById("board"), list, { storeKey: "zk-transfer-lights", status: t => ($("status").textContent = t) });
+})();
+</script>
+</body>
+</html>

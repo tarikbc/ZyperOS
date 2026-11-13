@@ -10025,7 +10025,8 @@ static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char 
  * it; 3 both ways; 4 the widest numbers */
 static int shot_usbdrive_vals;
 
-/* One of the pages: Zyper beside the heading, as on the empty home.
+/* One of the pages: Zyper beside the heading, as on the empty home, unless
+ * the look has him off.
  * Connected: two **raised** tiles (**radius-card**) side by side, to the
  * card and from it, the eject line under them in **meta** **text-soft**, and
  * POWER's hint at the foot as the shelves' are. One moment and The card is
@@ -10039,15 +10040,18 @@ static void usb_drive_draw(app *a, int which)
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
+	/* With Zyper off (Theme), the heading starts where the tiles do */
+	int hx = look_zyper_off() ? UD_TILE_X0 : 208;
 	int n, k;
 
 	draw_background(a);
-	draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
+	if (!look_zyper_off())
+		draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
 	/* The heading on one line, or two balanced beside him */
-	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - 208, 2, lines);
+	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
 	if (n > 1) ui_fit_drawn(T(HEAD[which]));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+		ui_text(a->r, ft, lines[k], hx, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
 	if (which != UD_CONNECTED) {
 		/* The words in one tile, balanced, in the middle of it */
 		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
@@ -10719,6 +10723,7 @@ typedef struct {
 	unsigned    load_ms;
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
+	side_lights_move  mv;       /* files moving either way, for their wave */
 } xfer_sess;
 static xfer_sess g_xs;
 
@@ -11237,6 +11242,15 @@ static void xs_tick(app *a)
 	/* A batch of files in: the side lights say so (src/sidelights.h) */
 	if (side_lights_batch_done(&g_xs.lit, g_xs.st.uploads > 0, now))
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
+	/* Files moving: the side lights' wave, down while a file comes in and
+	 * up while one goes out; a file's bytes only (side_lights_move_files) */
+	{
+		char line[64];
+
+		if (side_lights_move_files(&g_xs.mv, g_xs.st.uploads, g_xs.st.sends, g_xs.st.in, g_xs.st.out,
+		                           now, line, sizeof line))
+			plat_side_lights_say(line);
+	}
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
 	mdns_poll(now);
@@ -11607,6 +11621,12 @@ static void xs_stop(app *a, bool panels)
 	xfer_stop(g_xs.cable);
 	g_xs.on = false;
 	g_xs.shown = false;
+	{
+		char line[64];
+
+		/* A file cut off on its way: the side lights rest at once */
+		if (side_lights_move_end(&g_xs.mv, line, sizeof line)) plat_side_lights_say(line);
+	}
 	media_tidy();
 	up_cable_tidy();
 	/* The point of the whole feature is getting ROMs onto the card, and the
@@ -12835,17 +12855,29 @@ static menu_result snaps_screen(app *a)
 
 /* MENU > Side Lights: a switch for each part of what the lights show
  * (src/sidelights.h, sys_menu_lights_rows). Each change goes to the card at
- * once and the gauge reads it again, so the lights follow the row. */
+ * once and the gauge reads it again, so the lights follow the row. The row
+ * under the cursor plays its part on the lights, On or Off, while the
+ * cursor stays on it (side_lights_preview_step, each pass of the menu). */
+typedef struct {
+	unsigned char sound[LP_COUNT];
+	int sel;                      /* the menu's cursor (menu_style.sel_out) */
+	side_lights_preview pv;
+} lights_page;
+
 static int lights_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
-	unsigned char *sound = ctx;
+	lights_page *pg = ctx;
 	side_light_part ids[LP_COUNT];
+	char line[48];
 	int n, i;
 
 	(void)max;
 	*heading = T(S_PANEL_SIDE_LIGHTS);
 	n = sys_menu_lights_rows(plat_side_lights(), rows, ids);
-	for (i = 0; i < n; i++) sound[i] = MENU_SND_RING;
+	for (i = 0; i < n; i++) pg->sound[i] = MENU_SND_RING;
+	if (n > 0 && side_lights_preview_step(&pg->pv, ids[pg->sel < 0 ? 0 : pg->sel >= n ? n - 1 : pg->sel],
+	                                      plat_now_ms(), line, sizeof line))
+		plat_side_lights_say(line);
 	return n;
 }
 
@@ -12921,10 +12953,14 @@ static void language_screen(app *a)
 
 static void lights_screen(app *a)
 {
-	static unsigned char sound[LP_COUNT];
+	lights_page pg = { .sel = 0 };
+	char line[48];
 
-	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = sound },
-	         lights_build, lights_key, sound);
+	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = pg.sound,
+	                           .sel_out = &pg.sel },
+	         lights_build, lights_key, &pg);
+	/* The lights back to what they show on their own */
+	if (side_lights_preview_end(&pg.pv, line, sizeof line)) plat_side_lights_say(line);
 }
 
 /* One game, and the two things you can do to it from here.

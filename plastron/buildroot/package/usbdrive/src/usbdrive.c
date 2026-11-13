@@ -18,7 +18,9 @@
  * how much each way, once a second, from what the gadget itself served
  * (drivestat.h: the f_mass_storage thread's own bytes, the card's /sys
  * stat only as a fallback); only a change is drawn, so an idle drive costs
- * nothing.
+ * nothing. The same look tells the side lights' gauge what moves, one short
+ * line on its FIFO, never waited for: a wave down while the computer writes,
+ * up while it reads (drivestat.h's dst_lights_line).
  *
  * The handheld's own buttons work on it too (drive.h's drv_key): FUNCTION
  * and volume step the brightness on the launcher's ladder (bright.txt), its
@@ -58,6 +60,7 @@
 #define VBUS_IN    "/sys/class/power_supply/rk817-charger/online"
 #define PART_STAT  "/sys/class/block/mmcblk0p3/stat"
 #define BACKLIGHT  "/sys/class/backlight/backlight/brightness"
+#define GAUGE_FIFO "/run/gauge"   /* the side lights' gauge (package/gauge) */
 #define BRIGHT_OUT "/tmp/zyperos_usbdrive_bright"   /* the rung, for ZyperOS to keep */
 #define BTN_FN     BTN_TRIGGER_HAPPY1               /* FUNCTION, the launcher's MENU */
 #define BAR_MS     1500u                            /* the bar up this long after a press */
@@ -75,6 +78,29 @@ static void say(const char *fmt, const char *arg)
 		if (write(fd, line, strlen(line)) < 0) { /* nothing to do */ }
 		close(fd);
 	}
+}
+
+/* One line to the side lights' gauge, on the FIFO it makes and holds, never
+ * waiting: nothing when no gauge reads it (ENXIO) or its pipe is full, and
+ * nothing kept for later. A gauge that dies between the open and the write
+ * raises SIGPIPE, which is taken here rather than ending the export. */
+static void gauge_say(const char *line)
+{
+	char buf[64];
+	int n = snprintf(buf, sizeof buf, "%s\n", line), fd;
+	sigset_t pipe_sig, old;
+	struct timespec none = { 0, 0 };
+
+	if (n <= 1 || n >= (int)sizeof buf) return;
+	fd = open(GAUGE_FIFO, O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+	if (fd < 0) return;
+	sigemptyset(&pipe_sig);
+	sigaddset(&pipe_sig, SIGPIPE);
+	sigprocmask(SIG_BLOCK, &pipe_sig, &old);
+	if (write(fd, buf, (size_t)n) < 0 && errno == EPIPE)
+		sigtimedwait(&pipe_sig, NULL, &none);   /* the pending SIGPIPE, taken */
+	sigprocmask(SIG_SETMASK, &old, NULL);
+	close(fd);
 }
 
 static unsigned now_ms(void)
@@ -348,11 +374,15 @@ static unsigned long io_dirty_kb(void)
 	return n > 0 && drv_parse_dirty(text, &kb) ? kb : 0;
 }
 
-/* Once a second; the tiles drawn when what they say changed */
+/* Once a second; the tiles drawn when what they say changed, and the side
+ * lights told what moves (drivestat.h's dst_lights_line): a wave while it
+ * moves, rest when it stops */
 static void live_follow(void)
 {
 	unsigned long long rd, wr;
 	unsigned now = now_ms();
+	char line[64];
+	bool changed;
 	int source;
 
 	/* Followed with or without the live page: B's question needs when the
@@ -365,10 +395,13 @@ static void live_follow(void)
 	source = io.sure ? 1 : 2;
 	if (source != io.source) {
 		if (io.source) say("usbdrive: counting %s\n", io.sure ? "the gadget's own bytes" : "the card's blocks");
+		if (live.d.lit) gauge_say("move 0 0");
 		memset(&live.d, 0, sizeof live.d);
 		io.source = source;
 	}
-	if (!dst_step(&live.d, rd, wr, now) || !live.on) return;
+	changed = dst_step(&live.d, rd, wr, now);
+	if (dst_lights_line(&live.d, line, sizeof line)) gauge_say(line);
+	if (!changed || !live.on) return;
 	live_way(&live.d.in, AT_SLOT_MARK_IN, AT_G_IN_ON, AT_G_IN_OFF, AT_SLOT_SPEED_IN, AT_SLOT_TOTAL_IN);
 	live_way(&live.d.out, AT_SLOT_MARK_OUT, AT_G_OUT_ON, AT_G_OUT_OFF, AT_SLOT_SPEED_OUT, AT_SLOT_TOTAL_OUT);
 }
@@ -598,7 +631,13 @@ static drv_act keys_read(int fd, drv_keys *k, unsigned now)
 		if (!bri.on && (key == DRV_K_VOLUP || key == DRV_K_VOLDN)) continue;
 		a = drv_key(k, key, ev.value == 1,
 		            drv_copying(io.sure, live.d.in.total > 0, now, live.d.in.moved_ms, io_dirty_kb()));
-		if (a == DRV_A_BRIGHT) bright_set(k->level, now);
+		if (a == DRV_A_BRIGHT) {
+			char line[48];
+
+			bright_set(k->level, now);
+			/* The level on the side lights too, as on the shelf */
+			if (drv_bright_line(line, sizeof line, k->level, k->max) > 0) gauge_say(line);
+		}
 		else if (a != DRV_A_NONE && act == DRV_A_NONE) act = a;
 	}
 	return act;
@@ -718,6 +757,8 @@ int main(int argc, char **argv)
 		}
 		live_follow();
 	}
+	/* The side lights back to the battery at once */
+	if (live.d.lit) gauge_say("move 0 0");
 	say(end == DRV_EJECTED ? "usbdrive: ejected by the computer\n"
 	    : end == DRV_PIXEL ? "usbdrive: ejected on the handheld\n"
 	    : end == DRV_UNPLUGGED ? "usbdrive: the cable came out\n"

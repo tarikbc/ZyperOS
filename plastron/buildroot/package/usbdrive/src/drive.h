@@ -26,6 +26,7 @@
 #define USBDRIVE_DRIVE_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #define DRV_UNPLUG_MS 1500u    /* no power in this long: the cable is out */
 #define DRV_NOHOST_MS 60000u   /* exported, and no computer took it: given up */
@@ -84,6 +85,12 @@ typedef struct {
 /* A button down or up; `copying` whether the computer may still be copying
  * (drv_copying) */
 drv_act drv_key(drv_keys *k, int key, bool down, bool copying);
+
+/* A new rung on the side lights too (plastron's gauge, package/gauge/src/
+ * lights.h), as ZyperOS shows its own brightness chord there (its
+ * src/sidelights.c, side_lights_level_line): "level brightness RUNG TOP".
+ * snprintf's answer. */
+int drv_bright_line(char *out, size_t cap, int level, int max);
 
 /* May the computer still be copying, so B asks first. Fails safe: whenever
  * the handheld cannot tell (`sure` false: the gadget thread's own counters

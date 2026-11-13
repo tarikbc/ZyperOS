@@ -210,8 +210,9 @@ Pepper's), rounded, and Zyper on. *(My picks for the first version,
 - **Square** takes every radius under a pill's to 0: panels, the focus fill,
   keys, chips. A pill stays a pill (the bar, a button glyph, the bar under a
   tab), a circle a circle, and covers keep their own corners.
-- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22)
-  and the achievement notice (11.7). He stays where he is the moment itself:
+- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22),
+  the achievement notice (11.7) and the Flash Drive pages (the heading then
+  starts where the tiles do). He stays where he is the moment itself:
   the boot, the loading loop, the tutorial, Getting hot, the battery and the
   charging screens.
 - The bar over a game and over a port follows the look too: the launcher
@@ -2145,33 +2146,59 @@ loses no frames. A step of a moving pattern lasts 100 ms ("Even, 100 ms").
   keys on the shelf and in menus, from Diatom's LEVEL lines in a game (a
   move only: the levels Diatom reports as a game starts are not a press), and
   from portkeys over a port.
-- **Files and Covers Done** ("Climb twice"): one light runs up the four,
+- **Files and Covers**, Done ("Climb twice"): one light runs up the four,
   twice, 0.8 s, when a File Transfer batch is in (files arrived, then none
   for 2 s: the page sends a batch one file at a time) and when a Scraper run
   ends without a problem.
+- **Files and Covers**, files moving: my picks in the transfer lights lab
+  (`docs/design/mock/transfer-lights-lab.html`, 2026-11-13), after I asked
+  for an upload and download animation in Flash Drive and on the web page.
+  While files move to or from the card, a wave fills the four lights and
+  empties them ("Fill and empty"): from the top down while they come in to
+  the card (Download), from the bottom up while they go out of it (Upload),
+  as the Flash Drive screen's arrows point ("As the screen's arrows"). Eight
+  steps a run, the last one dark. Its pace follows the speed ("Follows the
+  speed"): under 1 MB/s 200 ms a step, under 10 MB/s 100 ms, faster 60 ms.
+  With both ways moving, the way moving more bytes shows ("The bigger one"),
+  chosen again as each run begins, so a run is never cut. It lasts as long
+  as bytes move, and 1.5 s past the last word of it; then the lights show
+  what they showed before ("Back to the battery": a Flash Drive copy ends
+  with no Done, since a computer writes small files of its own when it
+  opens the drive). Flash Drive (plastron's usbdrive) says so once a second
+  from the gadget's own counters, a way under 64 KB/s taken as still; the
+  web page at most every 500 ms, counting only a file's bytes (an upload or
+  a download on its way), never the page, its covers or its lists. One row
+  with Done in MENU ("With Files and Covers Done"), named Files and Covers.
 - **Achievements** ("A sparkle"): the bottom and third lights, then the
   second and top, three times each, 150 ms a step, 0.9 s, the moment one
   unlocks in a game, while its pop-up waits for the menu.
 - **No game light** ("Not on the lights"): nothing shows that a game runs.
 
 Sharing them ("Newest on top"): a level, a Done or a sparkle takes the lights
-for its time, over the charging bar, and the newest replaces the one before;
-then the bar comes back. The low-battery red is laid over everything, a
+for its time, over the charging bar and over files moving, and the newest
+replaces the one before; then the wave or the bar comes back. Files moving
+is over the charging bar for as long as they move. The low-battery red is laid over everything, a
 pattern included (it is the bottom light's red, which no pattern uses but
 silence), and is hidden only when Low Battery is off. L2+R2 flashes the
 battery level over all of it, four times in 2 s, in every setting.
 
 **Side Lights** in MENU, under Charge Limit, says how many parts are on ("All
 on", "3 on", "Off"); A opens its page ("A page of switches"): Charging Bar,
-Low Battery, Volume and Brightness, Files and Covers Done, Achievements, each
+Low Battery, Volume and Brightness, Files and Covers, Achievements, each
 On or Off, stepped by Left, Right or A and heard as a ring. Every change is
 written to the card at once and the gauge reads it again, so the lights
-follow the row. Everything is on for a new card and for a card that said
+follow the row. The row under the cursor plays its part on the lights in a
+loop, On or Off, for as long as the cursor stays on it (my ask, 2026-11-13):
+the bar filling from none, one red flash then two, the level up its eight
+steps then silence's red, the wave down and up then Done, the sparkle. It
+takes the lights over everything but L2+R2, and they go back to what they
+show on their own as the page closes. Everything is on for a new card and for a card that said
 Auto ("Everything on"); a card set to Charging, Low Battery or Off before
 keeps what it said, the newer parts off. The setting is a line in
 `.userdata/pixel2/side-lights`: the old word first (auto, charging, low,
 off), which an older gauge reads alone, then `level`/`-level`, `done`/`-done`,
-`cheer`/`-cheer`.
+`cheer`/`-cheer`; `done` covers files moving too, so the line needed no new
+word for it.
 
 ### 11.28 Controls in a game
 
