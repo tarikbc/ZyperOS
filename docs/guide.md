@@ -631,12 +631,13 @@ keyboard from a computer that has not connected yet (its port is waiting
 to be powered), and a computer must never be powered by the handheld (a
 Mac waited 10, 16 and over 30 seconds in my tests). So when something like
 that is plugged in, the shelf asks, two seconds after it goes in, **What
-did you plug in?**, with two tiles:
+did you plug in?**, with three tiles:
 
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
 | **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link |
+| **Phone** | the port powers it, and a message says how a phone connects. A phone's USB-C port takes the side that waits for power every time, so plugging it in again never helps, and the handheld can't ask it to swap. On an **Android** phone, tap its USB notification, then **USB controlled by: This device**: the phone takes the other side, the message goes, and **Computer Connected** asks as for a computer, **Flash Drive** included. An **iPhone** has no such setting: connect it with a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable to the handheld, and Computer Connected asks |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. Every plug is asked about on its own, however soon after the last
