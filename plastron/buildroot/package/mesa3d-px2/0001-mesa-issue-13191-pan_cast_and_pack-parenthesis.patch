@@ -1,0 +1,38 @@
+From 455b93601a19536bed7195b3fde8d7cf13a48e6a Mon Sep 17 00:00:00 2001
+From: Mary Guillemard <mary.guillemard@collabora.com>
+Date: Mon, 21 Jul 2025 16:17:34 +0200
+Subject: [PATCH] pan/genxml: Add missing parenthesis on pan_cast_and_pack
+ macros
+
+We were missing parenthesis on pan_cast_and_pack macros causing various
+issues.
+
+Fixes: 410e5a36ec88 ("pan/genxml: Rework gen_pack.py to support OpenCL")
+
+Upstream: https://gitlab.freedesktop.org/mesa/mesa/-/commit/455b93601a19536bed7195b3fde8d7cf13a48e6a
+(merge request 36261), for Mesa issue 13191
+(https://gitlab.freedesktop.org/mesa/mesa/-/issues/13191). Debian carries
+the same backport for 25.0.7: https://bugs.debian.org/1116427.
+
+ZyperOS: without it, pan_preload_emit_varying_buffer() (pan_fb_preload.c)
+casts varying_buffer.cpu before adding pan_size(ATTRIBUTE_BUFFER), so
+Bifrost's padding descriptor is written 256 bytes into a 32-byte pool
+block, not 16 ("str q31, [x0, #256]" in the built library). Every
+framebuffer reload does it. On the Pixel 2 (Mali-G31) PPSSPP segfaulted
+there in LocoRoco when the block was at the end of a mapping.
+---
+--- a/src/panfrost/lib/genxml/pan_pack_helpers.h
++++ b/src/panfrost/lib/genxml/pan_pack_helpers.h
+@@ -98,10 +98,10 @@
+         }))
+ 
+ #define pan_cast_and_pack(dst, T, name)                                        \
+-   pan_pack((PREFIX2(T, PACKED_T) *)dst, T, name)
++   pan_pack((PREFIX2(T, PACKED_T) *)(dst), T, name)
+ 
+ #define pan_cast_and_pack_nodefaults(dst, T, name)                             \
+-   pan_pack_nodefaults((PREFIX2(T, PACKED_T) *)dst, T, name)
++   pan_pack_nodefaults((PREFIX2(T, PACKED_T) *)(dst), T, name)
+ 
+ #define pan_unpack(src, T, name)                                               \
+    UNUSED struct PREFIX1(T) name;                                              \
