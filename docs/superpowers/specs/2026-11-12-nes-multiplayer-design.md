@@ -372,6 +372,8 @@ The answers decide section 7's last point and the join steps on the Player
 
 ## Decided on 2026-11-12
 
+I approved this design on 2026-11-12.
+
 - HTTPS from the start, with a certificate per Pixel.
 - Setup is opt-in, from the first Player 2, with Wi-Fi or a computer, or
   later (section 6).
