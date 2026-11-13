@@ -107,12 +107,12 @@ const PLACE_MARK = { roms: 'roms', music: 'music', books: 'books', videos: 'vide
 /* Every folder wears ZyperOS's pixel art (2026-11-06: "can we use our
  * pixel art icon for all folders in the portal?"): a system's folder the
  * shelf's own picture of it, on a tile in its color, which the listing names
- * ("icon", "color"); any other folder the plain one. Served by the device
- * from the shelf's pictures, /icons/KEY.png. Of the card's own folders,
- * Music and Videos wear MP4's, which shows both; the others, which ZyperOS's
- * art has no picture of, their line marks. A picture that does not come is
- * the line mark, never a broken image. */
-const PLACE_ICON = { music: 'MUSE', videos: 'MUSE' };
+ * ("icon", "color"); the card's own folders theirs (Music MP4's); and any
+ * other folder the plain one. Served by the device from the shelf's
+ * pictures, /icons/KEY.png. A picture that does not come is the line mark,
+ * never a broken image. */
+const PLACE_ICON = { roms: 'ROMS', music: 'MUSE', books: 'BOOKS', videos: 'VIDEOS',
+                     bios: 'BIOS', saves: 'SAVES', states: 'STATES' };
 function pix(key, color, fallback) {
 	const s = document.createElement('span');
 	s.className = 'sico';
@@ -369,8 +369,7 @@ function places() {
 			b.type = 'button';
 			b.textContent = r.name;
 			if (rows) {
-				/* The pixel art, or the line mark when it has none or
-				 * it does not come */
+				/* The pixel art, or the line mark when it does not come */
 				const mark = PLACE_MARK[r.path] || 'folder';
 				const key = PLACE_MARK[r.path] ? PLACE_ICON[r.path] : 'FOLDER';
 				if (key) {

@@ -1,0 +1,47 @@
+{
+  "key": "BOOKS",
+  "name": "Audiobooks",
+  "description": "Book with headphones",
+  "cell": 256,
+  "cols": 1,
+  "rows": 1,
+  "unique": 1,
+  "duration_ms": 1000,
+  "kind": "card-folder",
+  "static": true,
+  "expected_poses": 1,
+  "motion_bounds": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 1000
+    }
+  ],
+  "still_time_ms": 900,
+  "decoded_atlas_bytes": 262144,
+  "inputs": [
+    "source/BOOKS.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/card-folders.js"
+  ],
+  "input_sha256": {
+    "source/BOOKS.png": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+  },
+  "atlas": "BOOKS.png",
+  "still": "BOOKS-still.png",
+  "atlas_sha256": "3c0faada60920562c52aee21881a3a0e526379cffdcf615232fd6a0922548bdb",
+  "still_sha256": "f968f67753a7714848172f84b344c220b43cf8161991bea3e3386d5981c62625"
+}

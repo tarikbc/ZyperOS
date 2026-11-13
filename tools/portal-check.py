@@ -205,10 +205,11 @@ def main():
                                                     : [...b.classList].find((c) => c.startsWith('i-'))) }; })()""")
             check(got['nes'] == '/icons/NES.png' and got['snes'] == '/icons/SNES.png', f"consoles wear the shelf's art: {got}")
             check(got['aw'] == '/icons/AW.png', 'Atomiswave, with no games, has its art')
-            check(got['bgm'] == '/icons/MUSE.png', "BGM wears MP4's")
+            check(got['bgm'] == '/icons/BGM.png', 'BGM has the cassette')
             check(bool(got['tile']), "a console's tile is in its color")
-            check(got['places'][:4] == ['i-roms', '/icons/MUSE.png', 'i-books', '/icons/MUSE.png'],
-                  f"Music and Videos wear MP4's, the other card folders their line marks: {got['places']}")
+            check(got['places'] == ['/icons/ROMS.png', '/icons/MUSE.png', '/icons/BOOKS.png', '/icons/VIDEOS.png',
+                                    '/icons/BIOS.png', '/icons/SAVES.png', '/icons/STATES.png'],
+                  f"the card's folders wear theirs, Music MP4's: {got['places']}")
             # Lazy, so the ones on screen: those below come as they scroll in
             check(page.until("[...document.querySelectorAll('#list .sico img, #places img')]"
                              ".filter((i) => i.getBoundingClientRect().top < innerHeight)"

@@ -1540,10 +1540,11 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   corners: the system's color at 14% over **surface**, ringed at 30%; a folder
   of no system on the same tile in **text-dim**. A system's folder in ROMs and
   Save States has its own picture - every system the card knows, not only
-  the shelves with games; BGM, the menu music's, MP4's; any other folder the
-  small folder drawn for rows. Of the card's own folders, Music and Videos
-  wear MP4's, which shows both, and ROMs, Audiobooks, BIOS, Saves and Save
-  States, which ZyperOS's art has no picture of, their line marks. A picture
+  the shelves with games; BGM, the menu music's, a cassette; the card's
+  folders theirs (ROMs a cartridge, Music MP4's, Audiobooks a book with
+  headphones, Videos a video tape, BIOS a chip, Saves a memory card, Save
+  States a floppy disk); any other folder the small folder drawn for rows.
+  All are ZyperOS's own system art (`res/system-art/original`). A picture
   that does not come leaves the line mark on the tile.
 - **Hidden folders**: a name that starts with a dot (`.media`, where covers
   go) is not listed, unless Settings' **Show hidden folders** is on.
@@ -2473,8 +2474,9 @@ asks it.
   **recommendations**, a sparkle in **accent-ink** for their mark, the larger
   saving first, shown when one gives back 10 MB or more, a rule under them;
   then everything by size: each system with its home sprite (its games, its
-  saves and states, its art), Videos and Music with MP4's, Audiobooks, BIOS
-  and Other with the small folder, ZyperOS with Zyper's face. The more-rows triangles of 11.3.
+  saves and states, its art), Videos, Music, Audiobooks and BIOS with
+  their folder pictures from the File Transfer page, ZyperOS with Zyper's
+  face, and Other with the small folder. The more-rows triangles of 11.3.
 - **Under the list**, at cap y 702, the focused row's facts in **meta**
   **text-dim**, at most two balanced lines: "116 games · saves and states
   1.3 GB · art 900 MB", "318 songs", what a recommendation is.

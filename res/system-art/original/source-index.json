@@ -248,5 +248,40 @@
     "key": "FOLDER_SMALL",
     "name": "Folder \u00b7 list",
     "file": "source/FOLDER_SMALL.png"
+  },
+  {
+    "key": "ROMS",
+    "name": "ROMs",
+    "file": "source/ROMS.png"
+  },
+  {
+    "key": "BOOKS",
+    "name": "Audiobooks",
+    "file": "source/BOOKS.png"
+  },
+  {
+    "key": "VIDEOS",
+    "name": "Videos",
+    "file": "source/VIDEOS.png"
+  },
+  {
+    "key": "BIOS",
+    "name": "BIOS",
+    "file": "source/BIOS.png"
+  },
+  {
+    "key": "SAVES",
+    "name": "Saves",
+    "file": "source/SAVES.png"
+  },
+  {
+    "key": "STATES",
+    "name": "Save States",
+    "file": "source/STATES.png"
+  },
+  {
+    "key": "BGM",
+    "name": "Menu music",
+    "file": "source/BGM.png"
   }
 ]
