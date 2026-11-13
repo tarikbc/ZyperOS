@@ -375,6 +375,10 @@ EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
 
 # The README's shots' own settings, and these shots'
 SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"}}
+# The in-game menu's Shader at each old screen, so each name is drawn and fit
+for _s in ("crt", "crt-curved", "scanlines", "lcd"):
+    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
+    SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
 
 # MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
 # and its neighbours' beside it; Display on its Theme row, with its chips

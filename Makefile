@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-task
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
@@ -172,12 +172,12 @@ build-native/cheevos-check: tools/cheevos-check.c src/cheevos.c src/cheevos.h \
 check-hare: build-native/hare-check
 	@./build-native/hare-check
 
-build-native/hare-check: tools/hare-check.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
+build-native/hare-check: tools/hare-check.c src/hare.c src/sheet.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/hare-check-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/hare-check-artnames"' -DREPO_WEB='"$(CURDIR)/res/web"' \
-	      -o $@ tools/hare-check.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
+	      -o $@ tools/hare-check.c src/hare.c src/sheet.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # The File Transfer page on the host, over a scratch card: the same routes and
 # server, for a browser and for tools/readme-shots.py's pictures of the page.
@@ -188,12 +188,12 @@ build-native/hare-check: tools/hare-check.c src/hare.c src/clients.c src/httpd.c
 check-portal: build-native/portal-serve
 	@python3 tools/portal-check.py
 
-build-native/portal-serve: tools/portal-serve.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
+build-native/portal-serve: tools/portal-serve.c src/hare.c src/sheet.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O1 -g \
 	      -DHARE_PORTS=0 -DPICK_TMP='"$(CURDIR)/build-native/portal-serve-albumpick"' \
 	      -DART_NAMES_TMP='"$(CURDIR)/build-native/portal-serve-artnames"' \
-	      -o $@ tools/portal-serve.c src/hare.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
+	      -o $@ tools/portal-serve.c src/hare.c src/sheet.c src/clients.c src/httpd.c src/xfer.c src/muselib.c src/captive.c $(I18N_SRC) -lz
 
 # Hare's transport, driven by a real client over a real socket. An HTTP parser
 # is where "looks right" and "is right" part company: every browser sends the
@@ -326,6 +326,11 @@ build-native/dsresume-check: tools/dsresume-check.c src/dsresume.c src/dsresume.
 # payload's to hold, and release.sh's.
 check-core-stamp:
 	@sh tools/core-stamp-check.sh
+
+# Diatom's resident registry against the cores systems.cfg ships
+# (tools/core-room-check.sh: 1.0.5 had 34 for 32 slots)
+check-core-room:
+	@sh tools/core-room-check.sh
 
 # The debugging tools (docs/building.md, "Debugging on the device"). px2-perf's
 # percentiles, frame times, CPU ticks and speed against the clock
@@ -1493,12 +1498,12 @@ check-gamedel: build-native/gamedel-check
 check-gamern: build-native/gamern-check
 	@./build-native/gamern-check
 
-build-native/gamern-check: tools/gamern-check.c src/gamern.c src/gamern.h src/gamedel.c src/gamedel.h \
+build-native/gamern-check: tools/gamern-check.c src/gamern.c src/gamern.h src/gamedel.c src/sheet.c src/gamedel.h \
                            src/esmedia.c src/esmedia.h src/library.c src/db.c src/favorites.c src/stats.c \
                            src/portinfo.c src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
-	      -o $@ tools/gamern-check.c src/gamern.c src/gamedel.c src/esmedia.c src/library.c src/db.c \
+	      -o $@ tools/gamern-check.c src/gamern.c src/gamedel.c src/sheet.c src/esmedia.c src/library.c src/db.c \
 	      src/favorites.c src/stats.c src/portinfo.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # EmulationStation's folders and media (src/esmedia.h): covers, videos,
@@ -1516,12 +1521,12 @@ build-native/esmedia-check: tools/esmedia-check.c src/esmedia.c src/esmedia.h sr
 	fi
 	@python3 tools/gamedel-e2e.py
 
-build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/gamedel.h src/portinfo.c src/portinfo.h src/library.c \
+build-native/gamedel-check: tools/gamedel-check.c src/gamedel.c src/sheet.c src/gamedel.h src/portinfo.c src/portinfo.h src/library.c \
                             src/library.h src/db.c src/db.h src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/gamedel-check.c src/gamedel.c src/portinfo.c src/library.c src/db.c src/favorites.c \
+	      -o $@ tools/gamedel-check.c src/gamedel.c src/sheet.c src/portinfo.c src/library.c src/db.c src/favorites.c \
 	      src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # A game's Cover and Video page (DESIGN.md 11.34), what a device cannot show
@@ -1561,12 +1566,12 @@ check-storage: build-native/storage-check
 	@python3 tools/storage-motion-check.py
 	@python3 tools/storage-pages-check.py
 
-build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c src/portinfo.c \
+build-native/storage-check: tools/storage-check.c src/storage.c src/storage.h src/gamedel.c src/sheet.c src/portinfo.c \
                             src/gamedel.h src/library.c src/db.c src/favorites.c src/stats.c \
                             src/atomic.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/portinfo.c src/library.c src/db.c \
+	      -o $@ tools/storage-check.c src/storage.c src/gamedel.c src/sheet.c src/portinfo.c src/library.c src/db.c \
 	      src/favorites.c src/stats.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Play time. The assertion that earns this its place is that a LAUNCH writes
@@ -1685,7 +1690,7 @@ check-textfade:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c src/look.c \
+		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/folderart.c src/roundrect.c src/theme.c src/look.c \
 		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
@@ -1699,7 +1704,7 @@ check-tour-colors:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/roundrect.c \
+		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/folderart.c src/roundrect.c \
 		  src/theme.c src/themefile.c src/look.c src/linebreak.c src/blur.c src/cardgen.c \
 		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \

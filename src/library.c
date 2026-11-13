@@ -209,6 +209,10 @@ typedef struct {
 	char pick[LIB_NAME];   /* the one to launch: the best by SET_EXTS, then by name */
 	int  games;            /* how many games they are discs of: 0, 1, or 2 for more */
 	bool m3u;              /* a playlist, which makes them one game whatever */
+	bool eboot;            /* an EBOOT.PBP: a PSP game's own folder, as the PSP keeps it */
+	bool tracks;           /* a sheet with a track of its beside it (.cue and .bin) */
+	int  images;           /* its discs: images, a track beside a sheet not counted */
+	char key[LIB_NAME];    /* the game they are discs of, when games is 1 (set_key) */
 } set_info;
 
 /* Add `key` to up to two distinct ones; past two, *n is 3 and nothing more
@@ -229,7 +233,7 @@ static void key_add(char keys[2][LIB_NAME], int *n, const char *key)
 static void set_read(const dir_list *l, set_info *s)
 {
 	char strong[2][LIB_NAME], weak[2][LIB_NAME], key[LIB_NAME];
-	int ns = 0, nw = 0, best = 9999;
+	int ns = 0, nw = 0, best = 9999, nstrong = 0, nweak = 0;
 	bool sheet = false;
 
 	memset(s, 0, sizeof *s);
@@ -244,16 +248,42 @@ static void set_read(const dir_list *l, set_info *s)
 		}
 		if (ext_index(name, SHEET_EXTS) >= 0) sheet = true;
 		if (!strcasecmp(SET_EXTS[r], "m3u")) s->m3u = true;
+		if (!strcasecmp(name, "EBOOT.PBP")) s->eboot = true;
 		set_key(name, key, sizeof key);
-		if (!strcasecmp(SET_EXTS[r], "bin") || !strcasecmp(SET_EXTS[r], "img"))
+		if (!strcasecmp(SET_EXTS[r], "bin") || !strcasecmp(SET_EXTS[r], "img")) {
 			key_add(weak, &nw, key);
-		else
+			nweak++;
+		} else {
 			key_add(strong, &ns, key);
+			nstrong++;
+		}
 	}
 	if (!sheet)
 		for (int i = 0; i < nw && i < 2; i++) key_add(strong, &ns, weak[i]);
 	if (!sheet && nw > 2) ns = 3;
 	s->games = ns > 2 ? 2 : ns;
+	s->tracks = sheet && nweak > 0;
+	s->images = nstrong + (sheet ? 0 : nweak);
+	if (s->games == 1) snprintf(s->key, sizeof s->key, "%s", strong[0]);
+}
+
+/* Whether a folder holding disc images is that game's own folder, not a
+ * folder of games that happens to hold one (2026-11-13: a PSP folder of one
+ * game opened straight into it). It is the game's when its images are a set:
+ * a playlist, a PSP game's EBOOT.PBP, two or more discs of the one game, or a
+ * sheet with its tracks beside it; or when its one image is named as the
+ * folder is ("God of War/God of War (USA).iso"). Discs of several games are
+ * never one game's. */
+static bool set_is_game(const set_info *s, const char *folder)
+{
+	char fkey[LIB_NAME];
+
+	if (!s->pick[0]) return false;
+	if (s->m3u || s->eboot) return true;
+	if (s->games != 1) return false;
+	if (s->images >= 2 || s->tracks) return true;
+	set_key(folder, fkey, sizeof fkey);
+	return !strcmp(fkey, s->key);
 }
 
 static int game_cmp(const void *pa, const void *pb)
@@ -663,12 +693,13 @@ static int walk_folder(scan_walk *w, const char *abs, const char *rel,
 			set_info s;
 
 			set_read(&in, &s);
-			/* A disc set: the discs of one game, or a playlist. On Ports'
-			 * shelf any disc image, as it always was: a port's folder is
-			 * never looked into. Discs of several games are a folder of
-			 * them, on a shelf that takes discs. */
+			/* A disc set (set_is_game). On Ports' shelf any disc image, as
+			 * it always was: a port's folder is never looked into. A
+			 * folder of one game's image named otherwise, or of several
+			 * games' discs, is a folder of games, on a shelf that takes
+			 * discs. */
 			game = s.pick[0] && (w->scripts || !w->discs ? w->scripts
-			                                             : s.m3u || s.games <= 1);
+			                                             : set_is_game(&s, nm));
 			if (game) snprintf(inside, sizeof inside, "%s", s.pick);
 		}
 		if (game) {

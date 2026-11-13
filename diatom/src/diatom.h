@@ -22,12 +22,12 @@
 #include "libretro.h"
 
 /* How many cores one Diatom process keeps open (the resident registry in
- * core.c, whose comment says why 32), and so how many need a table of their
+ * core.c, whose comment says why 64), and so how many need a table of their
  * own wherever Diatom keeps something per core (options.c). One number, here,
  * because two once drifted apart: the registry went from 8 to 32 and the
  * option tables stayed at 8, so from the ninth core a run opened, a core got
  * no options at all - pcsx_rearmed then has no memory card. */
-#define DIATOM_MAX_RESIDENT 32
+#define DIATOM_MAX_RESIDENT 64
 
 /* ---- resolved once at game load; the frame loop only reads ---------------- */
 typedef struct {

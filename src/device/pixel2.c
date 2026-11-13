@@ -1395,6 +1395,8 @@ void plat_brightness_set(int level)
  * as menus are built, and one access() is all it costs. No Bluetooth. */
 bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0; }
 bool plat_has_bluetooth(void) { return false; }
+/* Diatom's last pass is the GPU's here (port/pixel2.c): every shader */
+bool plat_gpu_shaders(void)   { return true; }
 /* One speaker: Audio Channels' Auto plays it mono (src/audioout.h) */
 bool plat_speaker_mono(void) { return true; }
 

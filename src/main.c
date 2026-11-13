@@ -310,6 +310,26 @@ static int shader_index(const char *name)
 	return -1;
 }
 
+/* Whether this device offers shader k: the old screens only where Diatom
+ * draws them with a GPU (plat_gpu_shaders) */
+static bool shader_offered(int k)
+{
+	return k >= 0 && k < SHADER_COUNT && (!SHADERS[k].gpu || plat_gpu_shaders());
+}
+
+/* The shader a step `d` comes to from k, round the ones this device offers:
+ * each Shader row steps with it */
+static int shader_step(int k, int d)
+{
+	int i;
+
+	for (i = 0; i < SHADER_COUNT; i++) {
+		k = (k + d + SHADER_COUNT) % SHADER_COUNT;
+		if (shader_offered(k)) break;
+	}
+	return k;
+}
+
 /* Keyed on the system's tag rather than its folder or its place in the list,
  * for the same reason saves are: renaming a ROM folder or reordering
  * systems.cfg then cannot quietly hand a system somebody else's setting.
@@ -4080,19 +4100,22 @@ static bool list_fav(void *ctx, int i)
 	       fav_is(a->sys.systems[a->sys_cursor].tag, v->list.items[i].file);
 }
 
-/* The pixel folder the list's rows draw: the system sprites' FOLDER still,
- * read once, nearest so its pixels stay whole; let go with every other
- * texture (free_all_textures) */
-static SDL_Texture *folder_icon(app *a)
-{
-	char path[CFG_STR * 2];
+/* The pixel folder the list's rows draw (src/folderart.h), in the shelf's
+ * color, made again when the color or the theme changes; nearest so
+ * its pixels stay whole; let go with every other texture (free_all_textures) */
+static unsigned g_folder_icon_rgb;
+static int g_folder_icon_theme = -1;
 
-	if (g_folder_icon) return g_folder_icon;
-	snprintf(path, sizeof path, "%s/system-icons/FOLDER-still.png", P_ROOT);
-	if ((g_folder_icon = IMG_LoadTexture(a->r, path))) {
-		SDL_SetTextureScaleMode(g_folder_icon, SDL_ScaleModeNearest);
-		SDL_SetTextureBlendMode(g_folder_icon, SDL_BLENDMODE_BLEND);
-	}
+static SDL_Texture *folder_icon(app *a, unsigned rgb)
+{
+	int w, h;
+
+	if (g_folder_icon && g_folder_icon_rgb == rgb && g_folder_icon_theme == theme_index())
+		return g_folder_icon;
+	if (g_folder_icon) SDL_DestroyTexture(g_folder_icon);
+	g_folder_icon = ui_make_folder_icon(a->r, rgb, &w, &h);
+	g_folder_icon_rgb = rgb;
+	g_folder_icon_theme = theme_index();
 	return g_folder_icon;
 }
 
@@ -4106,22 +4129,25 @@ static void draw_games(app *a)
 
 	shelf_heading(s, v, head, sizeof head);
 	if (v->listed) {
-		/* MENU > View > List (DESIGN.md 11.39): no video snap there; the
-		 * cover on its panel is the picture */
+		/* MENU > View > List (DESIGN.md 11.39): the focused game's video
+		 * snap plays in its cover's place on the panel, as on the cover row
+		 * (2026-11-13: "the list mode should also play the video preview"),
+		 * when the list has stopped on it */
 		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
-		games_info none = { 0 };
+		bool settled = !gl_moving(&v->lm, now);
+		games_info si = { 0 };
 		gl_info li;
 		unsigned wait;
 
-		game_page_facts(a, !gl_moving(&v->lm, now));
-		shelf_snap(a, v, NULL, owner, true, &none);
+		game_page_facts(a, settled);
+		shelf_snap(a, v, g && !g->folder ? g : NULL, owner, settled, &si);
 		li = (gl_info){
 			.heading = head, .count = v->list.count, .cursor = v->cursor,
 			.accent = s->accent, .accent_of = v->owner ? list_accent : NULL,
 			.title_of = list_title, .folder_of = list_folder,
 			.fav_of = v->owner || is_muse(s) ? NULL : list_fav,
-			.folder_icon = v->nfold ? folder_icon(a) : NULL,
+			.folder_icon = v->nfold ? folder_icon(a, s->accent) : NULL,
 			.played = g_game_page.valid ? g_game_page.played : "",
 			.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 			.has_achievements = g_game_page.valid && g_game_page.achievements,
@@ -4129,6 +4155,9 @@ static void draw_games(app *a)
 			.install = pm_is_offer(a, owner, g),
 			.inside = v->dir[0] != '\0',
 			.earned = g_game_page.earned, .total = g_game_page.total,
+			.snap = si.snap, .snap_w = si.snap_w, .snap_h = si.snap_h,
+			.snap_src = si.snap_src, .snap_k = si.snap_k, .snap_wait = si.snap_wait,
+			.has_snap = g && game_has_snap(a, v->cursor),
 		};
 		wait = gl_draw(&v->lm, a->r, &li, game_get_tex, a, now, title_phase(a));
 		if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
@@ -5432,65 +5461,80 @@ static float menu_tabs_p(const menu_tabs *t)
 	return ds_out((float)el / DS_MS_MOVE);
 }
 
-/* One tab's row: the tab in **label** **text**, centered as the heading was;
- * its neighbours in **meta** **text-dim**, each beside the shoulder button
- * that goes there (DESIGN.md 11.9's pill, at 40 as the keyboard's action
- * keys); a neighbour that does not fit whole on its side, between the
- * content's inset and Zyper, is left out and its button stands beside the
- * name, since a name is never cut. Returns the tab's name's width, for the
- * bar under it. `dx` and `op` draw it moved and faded, for a move. */
-static int menu_tab_row(app *a, int at, int cx, int cy, int zone_l, int zone_r,
-                        int dx, float op)
+/* How many tabs MENU's tab row shows either side of the one that is on, as
+ * far as they reach: the next and the one after, and the same back */
+#define MENU_TAB_SIDE 2
+
+/* One tab's row (DESIGN.md 11.3): the tab in **label** **text**, centered as
+ * the heading was, and the tabs either side of it in **meta** **text-dim**,
+ * going on round, laid out from it outward across the whole band between
+ * the L1 and R1 glyphs (`lo` to `hi`); what reaches an end fades into it
+ * over MENU_TAB_FADE, so a long name is shown as far as it fits and never
+ * cut hard (2026-11-12: "use the full width up to the zyper icon (if
+ * present) and kinda fade away on the extremes before the shoulder
+ * buttons"). Returns the tab's name's width, for the bar under it. `dx` and
+ * `op` draw it moved and faded, for a move. */
+#define MENU_TAB_FADE 64
+static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, float op)
 {
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
 	const char *cur = sys_menu_tab_name((pm_tab)at);
-	const char *prev = sys_menu_tab_name((pm_tab)((at + PT_TABS - 1) % PT_TABS));
-	const char *next = sys_menu_tab_name((pm_tab)((at + 1) % PT_TABS));
-	const int gap = 28, gpad = 10, size = 40;
-	int aw = ui_text_width(fh, cur), pw = ui_text_width(fm, prev), nw = ui_text_width(fm, next);
-	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
-	int cur_x = cx - aw / 2, prev_x = cur_x - gap - pw, next_x = cx + aw / 2 + gap;
-	bool show_prev = prev_x - gpad - lw >= zone_l;
-	bool show_next = next_x + nw + gpad + rw <= zone_r;
-	int l1 = show_prev ? prev_x - gpad - lw / 2 : cur_x - 28 - lw / 2;
-	int r1 = show_next ? next_x + nw + gpad + rw / 2 : cx + aw / 2 + 28 + rw / 2;
-	Uint8 al = (Uint8)(op * 255.0f + 0.5f);
+	const int gap = 32, apart = 40;
+	int aw = ui_text_width(fh, cur), cur_x = cx - aw / 2, k, x;
 	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
 
 	dim.a = (Uint8)(dim.a * op);
-	txt.a = al;
-	if (show_prev) ui_text(a->r, fm, prev, prev_x + dx, ui_cap_y(fm, cy), -1, dim);
-	if (show_next) ui_text(a->r, fm, next, next_x + dx, ui_cap_y(fm, cy), -1, dim);
-	ui_text(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), -1, txt);
-	ui_button_pressed(a->r, "L1", l1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
-	ui_button_pressed(a->r, "R1", r1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
+	txt.a = (Uint8)(op * 255.0f + 0.5f);
+	/* back: the tab before, ending a gap left of the name, then the one
+	 * before that, while any of it is still inside */
+	for (k = 1, x = cur_x - gap; k <= MENU_TAB_SIDE && x + dx > lo; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at - k + 2 * PT_TABS) % PT_TABS));
+
+		x -= ui_text_width(fm, t);
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x -= apart;
+	}
+	/* on: the tab after, then the one after that */
+	for (k = 1, x = cx + aw / 2 + gap; k <= MENU_TAB_SIDE && x + dx < hi; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at + k) % PT_TABS));
+
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x += ui_text_width(fm, t) + apart;
+	}
+	ui_text_faded(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), lo, hi, MENU_TAB_FADE, txt);
 	return aw;
 }
 
-/* MENU's tab row in the heading band, centered on the capitals at `cy`.
- * Moving, the tab it came from slides out the way the press went and the new
- * one in from the other side, in **move** on **out**. Returns the width of
- * the bar under the name (menu_tabs_bar), which takes the new name's width
- * as it goes. */
+/* MENU's tab row in the heading band, centered on the capitals at `cy`, the
+ * L1 glyph at the band's left end (`zone_l`) and R1 at its right end
+ * (`zone_r`, before Zyper, or the content's edge with him off), and the tabs
+ * between them. Moving, the tab it came from slides out the way the press
+ * went and the new one in from the other side, in **move** on **out**, and
+ * the glyphs hold still. Returns the width of the bar under the name
+ * (menu_tabs_bar), which takes the new name's width as it goes. */
 static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
                           int zone_l, int zone_r)
 {
+	const int size = 40, gpad = 12;
+	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
+	int lo = zone_l + lw + gpad, hi = zone_r - rw - gpad;
 	float p = menu_tabs_p(t);
 	int aw, w;
 
+	ui_button(a->r, "L1", zone_l + lw / 2, cy, size, UI_BUTTON_PLAIN);
+	ui_button(a->r, "R1", zone_r - rw / 2, cy, size, UI_BUTTON_PLAIN);
 	if (p < 1.0f && t->from != t->at) {
 		/* the old one gone in the first two fifths, as its rows are */
 		float op = 1.0f - p * 2.5f;
-		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, zone_l, zone_r,
+		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, lo, hi,
 		                                  (int)(-t->dir * 96 * p), op)
 		                   : ui_text_width(ui_font(UI_F_LABEL),
 		                                   sys_menu_tab_name((pm_tab)t->from));
 
-		aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r,
-		                  (int)(t->dir * 96 * (1.0f - p)), p);
+		aw = menu_tab_row(a, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
 		w = (int)(ow + (aw - ow) * p + 0.5f);
 	} else {
-		w = aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r, 0, 1.0f);
+		w = aw = menu_tab_row(a, t->at, cx, cy, lo, hi, 0, 1.0f);
 	}
 	(void)aw;
 	return w;
@@ -5904,13 +5948,14 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				        ui_cap_y(meta, hy + asc - cap / 2), 1, UI_TEXT_DIM);
 
 			if (g_menu_tabs) {
-				/* MENU's tab row, between the content's inset and Zyper
-				 * (his width and a grid step clear of him, as the mock) */
+				/* MENU's tab row, the whole band from the content's inset
+				 * to Zyper, a grid step and a half clear of him, or to the
+				 * content's edge with him off */
 				int zr = content_x + content_w;
 
 				if (g_menu_zyper && !look_zyper_off())
 					zr = panel.x + panel.w - pad
-					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - 4;
+					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - DS_GRID * 3 / 2;
 				tab_bar_w = menu_tabs_draw(a, g_menu_tabs, cx, hy + asc - cap / 2,
 				                           content_x, zr);
 			} else if (hw <= title_room) {
@@ -13910,6 +13955,7 @@ static int menu_shelf_width(app *a)
 				int j;
 
 				for (j = 0; j <= SHADER_COUNT; j++) {
+					if (j < SHADER_COUNT && !shader_offered(j)) continue;
 					rows[k].value = j < SHADER_COUNT ? shader_label(j) : T(S_GAMEMENU_SHADER_MIXED);
 					mw = menu_measure(rows, n, heading);
 					if (mw > w) w = mw;
@@ -13969,6 +14015,7 @@ static int menu_shelf_width(app *a)
 		/* And each shader, for the same reason */
 		for (k = 0; hrow >= 0 && k < SHADER_COUNT; k++) {
 			int mw;
+			if (!shader_offered(k)) continue;
 			rows[hrow].value = shader_label(k);
 			mw = menu_measure(rows, n, heading);
 			if (mw > w) w = mw;
@@ -17642,7 +17689,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if ((d || key == IN_ACCEPT) && sel == SM_SHADER) {
 			sysview *v = &a->view[a->sys_cursor];
 
-			v->shader = (v->shader + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT;
+			v->shader = shader_step(v->shader, d ? d : 1);
 			shader_save(a, a->sys_cursor);
 			return MENU_STAY;
 		}
@@ -17857,7 +17904,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * kept as MENU's, and each system's own choice goes with it
 	 * (shader_set_all). From "per system" a step goes on from MENU's last. */
 	if (sel == PM_SHADER && (d || key == IN_ACCEPT)) {
-		shader_set_all(a, (g_shader_all + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT);
+		shader_set_all(a, shader_step(g_shader_all, d ? d : 1));
 		return MENU_CHANGED;
 	}
 
@@ -18424,7 +18471,7 @@ static void gm_cycle_shader(app *a, int d)
 {
 	sysview *v = owner_view(a);
 
-	v->shader = (v->shader + d + SHADER_COUNT) % SHADER_COUNT;
+	v->shader = shader_step(v->shader, d);
 	shader_save(a, (int)(v - a->view));
 	plat_resident_line("SETDISPLAY\tfilter=%s", SHADERS[v->shader].name);
 	plat_resident_sync_rect(150);
@@ -21210,6 +21257,7 @@ static int gm_width(app *a)
 
 		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
 			int mw;
+			if (!shader_offered(k)) continue;
 			rows[sh].value = shader_label(k);
 			mw = menu_measure(rows, n, NULL);
 			if (mw > w) w = mw;
@@ -26927,14 +26975,6 @@ int main(int argc, char *argv[])
 	 * what a tool for checking one frame wants: the right picture, not a fast
 	 * one. */
 	IMG_Init(IMG_INIT_PNG);
-	/* The pixel folder a folder's card draws (src/shelfdir.h), before any
-	 * worker can be asked for one */
-	{
-		char fp[CFG_STR * 2];
-
-		snprintf(fp, sizeof fp, "%s/system-icons/FOLDER-still.png", P_ROOT);
-		ui_card_folder_art(IMG_Load(fp));
-	}
 	texload_set_late(es_cover_late);
 	art_es_media(es_art_cover, es_art_video);
 	if (!shot_path) texload_start();

@@ -237,6 +237,10 @@ hare.sent
 hare.failed
 hare.made
 hare.renamed
+hare.moved
+hare.cannot_move
+hare.move_into_itself
+hare.move_exists
 hare.tidied.one
 hare.tidied.other
 hare.deleted

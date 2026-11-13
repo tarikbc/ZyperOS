@@ -348,6 +348,7 @@ function crumbs() {
 		const b = document.createElement('button');
 		b.type = 'button';
 		b.textContent = label;
+		b.dataset.path = path;      /* a folder above, to drop onto (moving) */
 		b.onclick = () => go(path);
 		const sep = document.createElement('span');
 		sep.className = 'sep';
@@ -401,6 +402,7 @@ async function go(path, hist) {
 	if (!path) path = roots.length ? roots[0].path : 'roms';
 	const r = await api('GET', '/api/list?p=' + enc(path) + (showHidden ? '&hidden=1' : ''));
 	const data = await r.json();
+	if (data.path !== cwd) selected.clear();
 	cwd = data.path;
 	settingsShown(false);
 	/* Sorted: vfat's readdir order is creation order, which is no order at all
@@ -520,7 +522,17 @@ function draw() {
 
 	for (const e of entries) {
 		const li = document.createElement('li');
-		li.className = 'row' + (e.dir ? ' dir' : '');
+		li.className = 'row' + (e.dir ? ' dir' : '') + (selected.has(e.path) ? ' sel' : '');
+		li.dataset.path = e.path;
+		if (selected.size) li.setAttribute('aria-selected', selected.has(e.path) ? 'true' : 'false');
+		/* Ctrl, Cmd or Shift with a press picks the row, to drag several */
+		li.addEventListener('click', (ev) => {
+			if (!(ev.ctrlKey || ev.metaKey || ev.shiftKey) || ev.target.closest('.iconbtn')) return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			pick(e, li);
+		}, true);
+		li.addEventListener('pointerdown', (ev) => dragDown(ev, e, li));
 
 		/* What leads the row: an artist's albums, an album's cover, a game's
 		 * box art (or its empty frame, so a folder of games lines up), a
@@ -578,6 +590,8 @@ function draw() {
 		}
 		/* A right-click is the same menu, where the pointer is. */
 		li.addEventListener('contextmenu', (ev) => {
+			/* A finger held on a row lifts it to move, not the menu */
+			if (drag) { ev.preventDefault(); return; }
 			if (narrow.matches) return;
 			ev.preventDefault();
 			openRowMenu(e, { x: ev.clientX, y: ev.clientY }, li);
@@ -705,8 +719,137 @@ function openRowMenu(e, at, row) {
 	if (e.dir) nodes.push(item(t('act.open'), 'folder', () => go(e.path)));
 	else nodes.push(item(t('act.download'), 'down', '/api/file?p=' + enc(e.path)));
 	nodes.push(item(t('act.rename'), 'pen', () => rename(e)));
+	/* Picked rows go together when one of them is dragged: on a phone, this
+	 * is how several are picked (a mouse has Ctrl or Cmd) */
+	nodes.push(item(selected.has(e.path) ? t('act.deselect') : t('act.select'), 'check', () => pick(e, row)));
 	nodes.push(item(t('act.delete'), 'bin', () => del(e), 'danger'));
 	openMenu(nodes, at, row);
+}
+
+/* ---- moving: pick and drag (2026-11-13) -------------------------------- *
+ *
+ * "we should be able to drag files around to organize them": a row, or the
+ * rows picked with it, dragged onto a folder's row or onto a crumb of a
+ * folder above, moves there on the card (/api/move, src/hare.c), a disc set
+ * whole and a .cue with its tracks. A mouse drags once it has gone a few
+ * pixels; a finger once it has been held still a moment, so a swipe still
+ * scrolls the list. A name already in the folder is refused, and said. */
+const selected = new Set();
+let drag = null;            /* the press that may become a drag */
+let swallowClick = false;   /* the click a drop ends in is not a press */
+const LIFT_MS = 450;        /* a finger held this long lifts the row */
+
+function pick(e, li, on) {
+	if (on === undefined) on = !selected.has(e.path);
+	if (on) selected.add(e.path); else selected.delete(e.path);
+	for (const row of document.querySelectorAll('#list li.row')) {
+		row.classList.toggle('sel', selected.has(row.dataset.path));
+		if (selected.size) row.setAttribute('aria-selected', selected.has(row.dataset.path) ? 'true' : 'false');
+		else row.removeAttribute('aria-selected');
+	}
+}
+
+function dragDown(ev, e, li) {
+	if (ev.button !== 0 || ev.target.closest('.iconbtn') || drag) return;
+	drag = { paths: selected.has(e.path) ? [...selected] : [e.path], name: e.name,
+	         id: ev.pointerId, x0: ev.clientX, y0: ev.clientY, x: ev.clientX, y: ev.clientY,
+	         touch: ev.pointerType !== 'mouse', on: false, over: null, ghost: null, timer: 0 };
+	if (drag.touch) drag.timer = setTimeout(dragLift, LIFT_MS);
+}
+
+/* The rows go up: a chip with the name, or how many, follows the pointer */
+function dragLift() {
+	if (!drag || drag.on) return;
+	drag.on = true;
+	const g = document.createElement('div');
+	g.className = 'ghost';
+	g.textContent = drag.paths.length > 1 ? tn('move.count', drag.paths.length, drag.paths.length) : drag.name;
+	document.body.append(g);
+	drag.ghost = g;
+	for (const row of document.querySelectorAll('#list li.row'))
+		if (drag.paths.includes(row.dataset.path)) row.classList.add('lifted');
+	if (drag.touch && navigator.vibrate) navigator.vibrate(12);
+	dragAt(drag.x, drag.y);
+}
+
+/* What is under the pointer, if it can take what is dragged: a folder's row
+ * or a crumb, never one of the dragged or a folder inside one of them */
+function dropAt(x, y) {
+	const el = document.elementFromPoint(x, y);
+	const t = el && el.closest('#list li.dir, #crumbs button[data-path]');
+	if (!t) return null;
+	const to = t.dataset.path;
+	if (drag.paths.some((p) => to === p || to.startsWith(p + '/'))) return null;
+	return t;
+}
+
+function dragAt(x, y) {
+	drag.x = x;
+	drag.y = y;
+	if (!drag.on) return;
+	drag.ghost.style.transform = `translate(${x + 14}px, ${y + 10}px)`;
+	const t = dropAt(x, y);
+	if (t !== drag.over) {
+		if (drag.over) drag.over.classList.remove('over');
+		if (t) t.classList.add('over');
+		drag.over = t;
+	}
+}
+
+function dragEnd(dropping) {
+	if (!drag) return;
+	clearTimeout(drag.timer);
+	const d = drag;
+	drag = null;
+	if (d.ghost) d.ghost.remove();
+	if (d.over) d.over.classList.remove('over');
+	for (const row of document.querySelectorAll('#list li.lifted')) row.classList.remove('lifted');
+	if (!d.on) return;
+	swallowClick = true;
+	setTimeout(() => { swallowClick = false; }, 0);
+	if (dropping && d.over) moveAll(d.paths, d.over.dataset.path);
+}
+
+addEventListener('pointermove', (ev) => {
+	if (!drag || ev.pointerId !== drag.id) return;
+	const far = Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0);
+	if (!drag.on) {
+		/* A finger that moves before it is held is scrolling */
+		if (drag.touch) { if (far > 10) dragEnd(false); else dragAt(ev.clientX, ev.clientY); return; }
+		if (far < 6) return;
+		dragLift();
+	}
+	dragAt(ev.clientX, ev.clientY);
+});
+addEventListener('pointerup', (ev) => { if (drag && ev.pointerId === drag.id) dragEnd(true); });
+addEventListener('pointercancel', (ev) => { if (drag && ev.pointerId === drag.id) dragEnd(false); });
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && drag) dragEnd(false); });
+/* While a finger drags, the page does not scroll under it */
+addEventListener('touchmove', (ev) => { if (drag && drag.on) ev.preventDefault(); }, { passive: false });
+addEventListener('click', (ev) => {
+	if (!swallowClick) return;
+	ev.preventDefault();
+	ev.stopPropagation();
+	swallowClick = false;
+}, true);
+
+/* Each into folder `to`, one at a time; what went is said, and what did not,
+ * with the handheld's reason ("Contra.nes is already in Hacks") */
+async function moveAll(paths, to) {
+	let moved = 0, why = '';
+	for (const p of paths) {
+		try {
+			await api('POST', '/api/move?p=' + enc(p) + '&to=' + enc(to));
+			moved++;
+			selected.delete(p);
+		} catch (err) {
+			if (err.message === 'unauthorized') return;
+			why = err.message;
+		}
+	}
+	if (moved) toast(t('move.done', nameOf(to)));
+	if (why) toast(why, true);
+	await go(cwd, 'none');
 }
 
 /* A phone's ⋯: everything the sidebar holds but the folders. */

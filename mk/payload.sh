@@ -181,6 +181,17 @@ if [ -n "$missing" ]; then
 	exit 1
 fi
 
+# And no more than the resident Diatom keeps open. It premaps every core in
+# the folder, in folder order, and refuses the ones past DIATOM_MAX_RESIDENT:
+# 1.0.5's card had 34 for 32, and Vectrex and Saturn ran every game in the
+# launcher's one-off Diatom (tools/core-room-check.sh checks systems.cfg).
+room=$(awk '$1 == "#define" && $2 == "DIATOM_MAX_RESIDENT" { print $3 }' "$ROOT/diatom/src/diatom.h")
+ncores=$(ls "$P/cores" | grep -c '_libretro\.so$')
+if [ -z "$room" ] || [ "$ncores" -gt "$room" ]; then
+	echo "payload: $ncores cores, and Diatom keeps ${room:-?} open (DIATOM_MAX_RESIDENT in diatom/src/diatom.h)" >&2
+	exit 1
+fi
+
 chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 [ -f "$P/btplayer" ] && chmod +x "$P/btplayer"
 [ -f "$P/portkeys" ] && chmod +x "$P/portkeys"

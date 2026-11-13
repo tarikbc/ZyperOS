@@ -146,7 +146,13 @@ static int              g_thread_ready;     /* 0 waiting, 1 ok, -1 failed */
 static bool g_present_debug;
 
 /* GL objects, all owned by the thread. */
-static GLuint g_prog_plain, g_prog_sharp, g_prog_shimmerless, g_prog_solid;
+static GLuint g_prog_plain, g_prog_solid;
+/* The final pass's program for each filter but nearest (g_prog_plain),
+ * linked the first time a frame asks for it (filter_prog); 0 until then, and
+ * after a link that failed, which g_prog_failed keeps from being tried every
+ * frame. */
+static GLuint g_prog_filter[DIATOM_FILTER_COUNT];
+static bool   g_prog_failed[DIATOM_FILTER_COUNT];
 static GLuint g_frame_tex, g_overlay_tex, g_osdbar_tex;
 static int    g_tex_w = -1, g_tex_h = -1;
 static diatom_pixfmt g_tex_fmt;
@@ -699,6 +705,118 @@ static const char *SHIMMERLESS_SHADER =
 	"	o_color = panel(texture(u_tex, (t + u_origin) / u_size));\n"
 	"}\n";
 
+/* What the shaders below work from, the same as Sharp-Shimmerless's, and
+ * u_quad: the quad's source size in texels, which the CRT clamps its reads
+ * to and warps over (quad_scale). */
+#define QUAD_UNIFORMS \
+	"uniform sampler2D u_tex;\n" \
+	"uniform vec2 u_size;\n" \
+	"uniform vec2 u_scale;\n" \
+	"uniform vec2 u_inv;\n" \
+	"uniform vec2 u_origin;\n" \
+	"uniform vec2 u_quad;\n" \
+	"in vec2 v_src;\n" \
+	"out vec4 o_color;\n"
+
+/* Sharp-Shimmerless with gaps: zadpos's sharp-shimmerless-grid and
+ * -scanlines (CC0, the same repository at 2a74e7a), whose main() this is in
+ * this pass's terms. Each game pixel is a rectangle with a dark band along
+ * its right and bottom edges, RATIO of it wide and OPACITY dark, and a
+ * screen pixel is what it covers, by area: the band stays the same width
+ * however the picture is scaled, and nothing shimmers. One texture read.
+ * `ratio` and `opacity` are vec2s, across and down: with nothing across it is
+ * scanlines; with both, an LCD's grid. */
+#define GRID_SHADER(ratio, opacity) \
+	"#version 300 es\n" \
+	"precision highp float;\n" \
+	QUAD_UNIFORMS \
+	PANEL_COLOR \
+	"const vec2 RATIO = 1.0 - " ratio ";\n" \
+	"const vec2 ALPHA = 1.0 - " opacity ";\n" \
+	"void main() {\n" \
+	"	vec2 px = (v_src - u_origin) * u_scale;\n" \
+	"	vec2 tl = u_inv * floor(px), br = u_inv * ceil(px);\n" \
+	"	vec2 t_tl = floor(tl), t_br = floor(br);\n" \
+	"	vec2 ftl = fract(tl), fbr = fract(br);\n" \
+	"	vec2 a_tl = mix(RATIO - ftl + ALPHA * (1.0 - RATIO), ALPHA * (1.0 - RATIO), step(RATIO, ftl));\n" \
+	"	vec2 a_br = mix(fbr, RATIO + ALPHA * (fbr - RATIO), step(RATIO, fbr));\n" \
+	"	vec2 w = mix(a_br / (a_tl + a_br), vec2(1.0), step(t_br, t_tl));\n" \
+	"	vec2 f = (fbr + clamp(RATIO - ftl, 0.0, 1.0)) * u_scale;\n" \
+	"	f = mix(f, RATIO * u_scale, step(RATIO, fbr));\n" \
+	"	f = mix(f, clamp((RATIO - ftl) * u_scale, 0.0, 1.0), step(t_br, t_tl));\n" \
+	"	f = ALPHA + (1.0 - ALPHA) * f;\n" \
+	"	vec2 t = t_br - 0.5 + w;\n" \
+	"	o_color = panel(vec4(f.x * f.y * texture(u_tex, (t + u_origin) / u_size).rgb, 1.0));\n" \
+	"}\n"
+
+/* A handheld's LCD: the grid both ways, the original's defaults */
+static const char *LCD_SHADER = GRID_SHADER("vec2(0.3, 0.3)", "vec2(0.3, 0.3)");
+/* Scanlines: the band only down, the -scanlines variant's defaults */
+static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0.3)");
+
+/* A CRT: Timothy Lottes's CRTS (public domain; libretro glsl-shaders'
+ * crt/shaders/crt-lottes-fast.glsl, its 20180120b), its 2-tap filter: two
+ * reads a pixel, one on each of the two scanlines nearest, each bilinear at
+ * a point Inigo Quilez's quintic moves so the pixel stays sharp across. The
+ * scanlines are its windowed cosines, the phosphors its brighter aperture
+ * grille (one channel of every three screen columns down to DARK), and its
+ * tone curve gives back the light the two take. Its parameters' defaults,
+ * fixed: thin 0.75, mask 0.5, and TONE is CrtsTone(1, 0, 0.75, 0.5) for
+ * that grille.
+ *
+ * Changed for this GPU: gamma 2 (a square in, a square root out) where it
+ * has 2.4 and pow() on every read, and the panel's color matrix applied in
+ * its linear light, so the pass takes no pow() at all, where Off takes six.
+ * The mask goes by the screen column within the picture, so it stays
+ * upright on the turned panel. With WARP, its curvature and corners, the
+ * original's defaults: warp 0.02 across and 0.015 down (a 4:3 screen),
+ * corner 3. Reads stay inside the quad, so nothing comes from the
+ * other DS screen or past a GPU frame's last row. */
+#define CRT_SHADER_SRC(warp) \
+	"#version 300 es\n" \
+	"precision highp float;\n" \
+	warp \
+	QUAD_UNIFORMS \
+	"uniform mat3 u_matrix;\n" \
+	"uniform bool u_panel;\n" \
+	"const float THIN = 0.75;\n" \
+	"const float DARK = 0.5;\n" \
+	"const vec2 TONE = vec2(0.419207, 0.580793);\n" \
+	"vec3 fetch(vec2 p) {\n" \
+	"	vec3 c = texture(u_tex, (clamp(p, vec2(0.5), u_quad - 0.5) + u_origin) / u_size).rgb;\n" \
+	"	return c * c;\n" \
+	"}\n" \
+	"void main() {\n" \
+	"	vec2 px = (v_src - u_origin) * u_scale;\n" \
+	"	vec2 pos = px * u_inv;\n" \
+	"	float vin = 1.0;\n" \
+	"#ifdef WARP\n" \
+	"	vec2 q = px / (u_quad * u_scale) * 2.0 - 1.0;\n" \
+	"	q *= vec2(1.0 + q.y * q.y * 0.02, 1.0 + q.x * q.x * 0.015);\n" \
+	"	vin = (1.0 - (1.0 - clamp(q.x * q.x, 0.0, 1.0)) * (1.0 - clamp(q.y * q.y, 0.0, 1.0))) * 1.001;\n" \
+	"	vin = clamp(u_quad.y - vin * u_quad.y, 0.0, 1.0);\n" \
+	"	pos = (q + 1.0) * 0.5 * u_quad;\n" \
+	"#endif\n" \
+	"	float y0 = floor(pos.y - 0.5) + 0.5;\n" \
+	"	float x = pos.x + 0.5, xi = floor(x), xf = x - xi;\n" \
+	"	xf = xf * xf * xf * (xf * (xf * 6.0 - 15.0) + 10.0);\n" \
+	"	vec2 p = vec2(xi + xf - 0.5, y0);\n" \
+	"	vec3 a = fetch(p), b = fetch(p + vec2(0.0, 1.0));\n" \
+	"	float off = pos.y - y0;\n" \
+	"	float sa = cos(min(0.5, off * THIN) * 6.2831853) * 0.5 + 0.5;\n" \
+	"	float sb = cos(min(0.5, (1.0 - off) * THIN) * 6.2831853) * 0.5 + 0.5;\n" \
+	"	vec3 c = (a * sa + b * sb) * vin;\n" \
+	"	float m = fract(px.x * (1.0 / 3.0));\n" \
+	"	c *= m < 1.0 / 3.0 ? vec3(DARK, 1.0, 1.0) : m < 2.0 / 3.0 ? vec3(1.0, DARK, 1.0) : vec3(1.0, 1.0, DARK);\n" \
+	"	float peak = max(1.0 / (256.0 * 65536.0), max(c.r, max(c.g, c.b)));\n" \
+	"	c = c / peak * (peak / (peak * TONE.x + TONE.y));\n" \
+	"	if (u_panel) c = clamp(u_matrix * c, 0.0, 1.0);\n" \
+	"	o_color = vec4(sqrt(c), 1.0);\n" \
+	"}\n"
+
+static const char *CRT_SHADER = CRT_SHADER_SRC("");
+static const char *CRT_CURVED_SHADER = CRT_SHADER_SRC("#define WARP 1\n");
+
 static const char *SOLID_SHADER =
 	"#version 300 es\n"
 	"precision mediump float;\n"
@@ -730,7 +848,7 @@ static GLuint compile(GLenum type, const char *src)
  * the disc's). Emptied when a program is linked and when the context goes,
  * so a new program that gets an old one's id is asked again. The present
  * thread's GL alone calls this. */
-#define ULOCS 24
+#define ULOCS 64
 static struct {
 	GLuint prog;
 	char   name[16];
@@ -977,32 +1095,54 @@ static void matrix_load(void)
 	port_logf(DIATOM_LOG_INFO, "pixel2: color matrix from %s", MATRIX_PATH);
 }
 
-/* The final pass's program for a filter: nearest is the sampler's own, the
- * other two are shaders over a LINEAR sampler. A shader to come (an LCD
- * grid, a CRT) is a case here and a row in diatom_filters. */
+/* Each filter's shader, in diatom_filter's order; nearest is the sampler's
+ * own (PLAIN_SHADER), the rest are shaders over a LINEAR sampler. A shader
+ * to come is a row here and in diatom_filters. */
+static const char *const *const FILTER_SHADER[DIATOM_FILTER_COUNT] = {
+	[DIATOM_FILTER_NEAREST]     = &PLAIN_SHADER,
+	[DIATOM_FILTER_SHARP]       = &SHARP_SHADER,
+	[DIATOM_FILTER_SHIMMERLESS] = &SHIMMERLESS_SHADER,
+	[DIATOM_FILTER_CRT]         = &CRT_SHADER,
+	[DIATOM_FILTER_CRT_CURVED]  = &CRT_CURVED_SHADER,
+	[DIATOM_FILTER_SCANLINES]   = &SCANLINES_SHADER,
+	[DIATOM_FILTER_LCD]         = &LCD_SHADER,
+};
+
+/* The final pass's program for a filter, linked the first time it is asked
+ * for rather than at start: Diatom starts with the device, and six programs
+ * nobody may choose are time spent then, where one link as the game the
+ * player chose it for continues is a frame. Nearest's, the one the overlay
+ * and the level bar use too, at start (gl_start). A link that fails draws
+ * nearest, and says so once. */
 static GLuint filter_prog(diatom_filter f)
 {
-	switch (f) {
-	case DIATOM_FILTER_SHARP:       return g_prog_sharp;
-	case DIATOM_FILTER_SHIMMERLESS: return g_prog_shimmerless;
-	default:                        return g_prog_plain;
+	if (f <= DIATOM_FILTER_NEAREST || f >= DIATOM_FILTER_COUNT) return g_prog_plain;
+	if (!g_prog_filter[f] && !g_prog_failed[f]) {
+		g_prog_filter[f] = link_program(*FILTER_SHADER[f]);
+		g_prog_failed[f] = !g_prog_filter[f];
+		if (g_prog_failed[f])
+			port_logf(DIATOM_LOG_ERROR, "pixel2: filter %d did not link; nearest", (int)f);
 	}
+	return g_prog_filter[f] ? g_prog_filter[f] : g_prog_plain;
 }
 
 /* A quad's scale, for the programs that read one: destination pixels per
- * source texel on each axis, and for Sharp-Shimmerless its inverse and the
- * quad's first texel, the low corner of its source whichever way the rows
- * are read (sh < 0: a GPU frame, bottom-up). Plain reads none of it and is
- * not asked. */
-static void quad_scale(GLuint prog, float dw, float dh,
+ * source texel on each axis; and for the shaders that work in destination
+ * pixels (Sharp-Shimmerless, the grid, the scanlines, the CRT) its inverse,
+ * the quad's first texel, the low corner of its source whichever way the
+ * rows are read (sh < 0: a GPU frame, bottom-up), and its size in texels.
+ * Nearest reads none of it and is not asked; a uniform a program does not
+ * have is location -1, which GL ignores. */
+static void quad_scale(diatom_filter filter, GLuint prog, float dw, float dh,
                        float sx, float sy, float sw, float sh)
 {
 	sh = fabsf(sh);
 	if (prog == g_prog_plain || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
 	glUniform2f(uloc(prog, "u_scale"), dw / sw, dh / sh);
-	if (prog != g_prog_shimmerless) return;
+	if (filter == DIATOM_FILTER_SHARP) return;
 	glUniform2f(uloc(prog, "u_inv"), sw / dw, sh / dh);
 	glUniform2f(uloc(prog, "u_origin"), sx, sy);
+	glUniform2f(uloc(prog, "u_quad"), sw, sh);
 }
 
 /* Draw one frame and whatever is over it, onto the current target. */
@@ -1049,7 +1189,7 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 			const diatom_plane *p = &f->planes[i];
 			const float sy = top + down * (float)p->src.y;
 
-			quad_scale(prog, (float)p->dst.w, (float)p->dst.h, (float)p->src.x,
+			quad_scale(f->filter, prog, (float)p->dst.w, (float)p->dst.h, (float)p->src.x,
 			           flip ? sy - (float)p->src.h : sy,
 			           (float)p->src.w, (float)p->src.h);
 			draw_quad_from((float)p->dst.x, (float)p->dst.y,
@@ -1058,7 +1198,7 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 			               (float)p->src.w, down * (float)p->src.h, turned);
 		}
 	} else {
-		quad_scale(prog, (float)f->dst.w, (float)f->dst.h,
+		quad_scale(f->filter, prog, (float)f->dst.w, (float)f->dst.h,
 		           0.0f, 0.0f, (float)f->w, (float)f->h);
 		/* dst may reach past the surface (fill, overscale): GL clips it. */
 		draw_quad_from((float)f->dst.x, (float)f->dst.y, (float)f->dst.w, (float)f->dst.h,
@@ -1351,10 +1491,8 @@ static bool gl_start(void)
 	}
 
 	g_prog_plain = link_program(PLAIN_SHADER);
-	g_prog_sharp = link_program(SHARP_SHADER);
-	g_prog_shimmerless = link_program(SHIMMERLESS_SHADER);
 	g_prog_solid = link_program(SOLID_SHADER);
-	if (!g_prog_plain || !g_prog_sharp || !g_prog_shimmerless || !g_prog_solid) return false;
+	if (!g_prog_plain || !g_prog_solid) return false;
 	matrix_load();
 
 	glGenTextures(1, &g_frame_tex);
@@ -1391,6 +1529,9 @@ static void gl_stop(void)
 	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	if (g_egl_surface != EGL_NO_SURFACE) eglDestroySurface(g_egl_display, g_egl_surface);
 	g_nuloc = 0;
+	/* The programs go with the context; a new one links them again */
+	memset(g_prog_filter, 0, sizeof g_prog_filter);
+	memset(g_prog_failed, 0, sizeof g_prog_failed);
 	if (g_egl_context != EGL_NO_CONTEXT) eglDestroyContext(g_egl_display, g_egl_context);
 	eglTerminate(g_egl_display);
 	g_egl_display = EGL_NO_DISPLAY;

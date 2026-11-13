@@ -1093,6 +1093,10 @@ void plat_brightness_set(int level)
  * Bluetooth. */
 bool plat_has_wifi(void)      { return true; }
 bool plat_has_bluetooth(void) { return true; }
+/* Diatom scales on the CPU here (port/brick.c): Off and Sharp-Shimmerless.
+ * A host build shot or checked (ZYPEROS_HEADLESS) stands for the Pixel 2's
+ * menus, so it offers them all, and the fit check measures them. */
+bool plat_gpu_shaders(void)   { return getenv("ZYPEROS_HEADLESS") != NULL; }
 /* Two speakers, a few centimeters apart: Auto keeps them stereo */
 bool plat_speaker_mono(void) { return false; }
 

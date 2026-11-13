@@ -128,6 +128,7 @@ written to match. Change a term here first, then everywhere it is used.
 | Play / Resume | 开始 / 继续 | Jugar / Continuar | Jogar / Continuar | Jouer / Reprendre | Spielen / Fortsetzen | プレイ / 再開 | Gioca / Riprendi |
 | Display (in-game) | 画面 | Pantalla | Tela | Affichage | Anzeige | 画面 | Schermo |
 | Shader (in-game, a system's menu, MENU) | 着色器 | Shader | Shader | Shader | Shader | シェーダー | Shader |
+| CRT / CRT Curved / Scanlines / LCD Grid (Shader's values) | CRT / CRT 曲面 / 扫描线 / LCD 网格 | CRT / CRT curva / Líneas de escaneo / Rejilla LCD | CRT / CRT curva / Linhas de varredura / Grade LCD | CRT / CRT incurvé / Lignes de balayage / Grille LCD | CRT / CRT gewölbt / Scanlines / LCD-Raster | CRT / CRT 曲面 / 走査線 / LCD グリッド | CRT / CRT curvo / Scanline / Griglia LCD |
 | Controls | 按键说明 | Controles | Controles | Commandes | Steuerung | 操作方法 | Comandi |
 | Achievements (the row and its page) | 成就 | Logros | Conquistas | Succès | Erfolge | 実績 | Obiettivi |
 | Favorites | 收藏 | Favoritos | Favoritos | Favoris | Favoriten | お気に入り | Preferiti |

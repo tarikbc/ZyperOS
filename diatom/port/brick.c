@@ -1293,8 +1293,10 @@ static diatom_tap *build_map(int src, int dst, diatom_filter filter)
 
 		/* Sharp-Shimmerless, as pixel2.c's SHIMMERLESS_SHADER: the source
 		 * pixels under this pixel's two edges, and where they differ, the
-		 * right one's share of the pixel's area. */
-		if (filter == DIATOM_FILTER_SHIMMERLESS) {
+		 * right one's share of the pixel's area. The old screens (the CRT,
+		 * scanlines, the LCD grid) are shaders this CPU path does not draw,
+		 * and come out as this, the closest it has. */
+		if (filter >= DIATOM_FILTER_SHIMMERLESS) {
 			int l = (int)floor((double)i / scale);
 			int r = (int)floor((double)(i + 1) / scale);
 
