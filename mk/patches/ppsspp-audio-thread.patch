@@ -1,0 +1,136 @@
+diff --git a/libretro/libretro.cpp b/libretro/libretro.cpp
+index 3b2f103..f9aa9c9 100644
+--- a/libretro/libretro.cpp
++++ b/libretro/libretro.cpp
+@@ -68,11 +68,26 @@
+ #define SAMPLERATE 44100
+ 
+ /* AUDIO output buffer */
+-static struct {
++struct AudioBuffer {
+    int16_t *data;
+    int32_t size;
+    int32_t capacity;
+-} output_audio_buffer = {NULL, 0, 0};
++};
++// ZyperOS: two buffers and a lock. With the OpenGL backends the PSP's sound
++// is mixed on the emulation thread (System_AudioPushSamples, 64 frames every
++// 1.45 ms), while retro_run hands the buffer to the frontend on the libretro
++// thread and then empties it. Nothing kept the two apart, so the blocks the
++// emulation thread pushed while the frontend was taking the buffer were wiped
++// by the reset after it, and a realloc there could free the buffer under the
++// reader. Each lost block is a 1.45 ms gap: the PSP's sound crackled. Now the
++// emulation thread fills one buffer under the lock, and retro_run swaps it
++// for the drained one under the lock and hands it over outside it, so neither
++// thread waits on the other for longer than a swap. (PPSSPP fixed the race
++// after v1.20.4, in 00f5f4fc90, by holding its lock across the frontend's
++// callback; this does not stall the emulation thread on the frontend.)
++static AudioBuffer output_audio_buffer = {NULL, 0, 0};    // the emulation thread's
++static AudioBuffer drained_audio_buffer = {NULL, 0, 0};   // retro_run's
++static std::mutex output_audio_buffer_mutex;
+ 
+ // Calculated swap interval is 'stable' if the same
+ // value is recorded for a number of retro_run()
+@@ -123,37 +138,46 @@ namespace Libretro
+    static float runSpeed = 0.0f;
+    static s64 runTicksLast = 0;
+ 
+-   static void ensure_output_audio_buffer_capacity(int32_t capacity)
++   // With output_audio_buffer_mutex held, for output_audio_buffer.
++   static bool ensure_audio_buffer_capacity(AudioBuffer &b, int32_t capacity)
+    {
+-      if (capacity <= output_audio_buffer.capacity) {
+-         return;
++      if (capacity <= b.capacity) {
++         return true;
+       }
+ 
+-      output_audio_buffer.data = (int16_t*)realloc(output_audio_buffer.data, capacity * sizeof(*output_audio_buffer.data));
+-      output_audio_buffer.capacity = capacity;
+-      log_cb(RETRO_LOG_DEBUG, "Output audio buffer capacity set to %d\n", capacity);
++      int16_t *data = (int16_t*)realloc(b.data, capacity * sizeof(*b.data));
++      if (!data)
++         return false;
++      b.data = data;
++      b.capacity = capacity;
++      return true;
+    }
+ 
+    static void init_output_audio_buffer(int32_t capacity)
+    {
+-      output_audio_buffer.data = NULL;
+-      output_audio_buffer.size = 0;
+-      output_audio_buffer.capacity = 0;
+-      ensure_output_audio_buffer_capacity(capacity);
++      std::lock_guard<std::mutex> lock(output_audio_buffer_mutex);
++      output_audio_buffer = drained_audio_buffer = {NULL, 0, 0};
++      ensure_audio_buffer_capacity(output_audio_buffer, capacity);
++      ensure_audio_buffer_capacity(drained_audio_buffer, capacity);
+    }
+ 
+    static void free_output_audio_buffer()
+    {
++      std::lock_guard<std::mutex> lock(output_audio_buffer_mutex);
+       free(output_audio_buffer.data);
+-      output_audio_buffer.data = NULL;
+-      output_audio_buffer.size = 0;
+-      output_audio_buffer.capacity = 0;
++      free(drained_audio_buffer.data);
++      output_audio_buffer = drained_audio_buffer = {NULL, 0, 0};
+    }
+ 
+    static void upload_output_audio_buffer()
+    {
+-      audio_batch_cb(output_audio_buffer.data, output_audio_buffer.size / 2);
+-      output_audio_buffer.size = 0;
++      {
++         std::lock_guard<std::mutex> lock(output_audio_buffer_mutex);
++         std::swap(output_audio_buffer, drained_audio_buffer);
++      }
++      if (drained_audio_buffer.data && drained_audio_buffer.size > 0)
++         audio_batch_cb(drained_audio_buffer.data, drained_audio_buffer.size / 2);
++      drained_audio_buffer.size = 0;
+    }
+ 
+ 
+@@ -2049,24 +2073,23 @@ inline int16_t Clamp16(int32_t sample) {
+ void System_AudioPushSamples(const int32_t *audio, int numSamples, float volume) {
+    // We ignore volume here, because it's handled by libretro presumably.
+ 
+-   // Convert to 16-bit audio for further processing.
+-   int16_t buffer[1024 * 2];
+-   int origSamples = numSamples * 2;
+-
+-   while (numSamples > 0) {
+-      int blockSize = std::min(1024, numSamples);
+-      for (int i = 0; i < blockSize; i++) {
+-         buffer[i * 2] = Clamp16(audio[i * 2]);
+-         buffer[i * 2 + 1] = Clamp16(audio[i * 2 + 1]);
+-      }
+-
+-      numSamples -= blockSize;
+-   }
++   if (!audio || numSamples <= 0)
++      return;
+ 
+-   if (output_audio_buffer.capacity - output_audio_buffer.size < origSamples)
+-      ensure_output_audio_buffer_capacity((output_audio_buffer.capacity + origSamples) * 1.5);
+-   memcpy(output_audio_buffer.data + output_audio_buffer.size, buffer, origSamples * sizeof(*output_audio_buffer.data));
+-   output_audio_buffer.size += origSamples;
++   // ZyperOS: under the lock (see output_audio_buffer), and converted
++   // straight into the buffer. The 1024-frame stack buffer this went through
++   // was converted over and over from the same first frames, and then read
++   // past its end, for a block longer than 1024 frames.
++   std::lock_guard<std::mutex> lock(output_audio_buffer_mutex);
++   int32_t values = numSamples * 2;
++   if (output_audio_buffer.capacity - output_audio_buffer.size < values &&
++       !ensure_audio_buffer_capacity(output_audio_buffer,
++                                     (int32_t)((output_audio_buffer.capacity + values) * 1.5f)))
++      return;
++   int16_t *dst = output_audio_buffer.data + output_audio_buffer.size;
++   for (int32_t i = 0; i < values; i++)
++      dst[i] = Clamp16(audio[i]);
++   output_audio_buffer.size += values;
+ }
+ 
+ void System_AudioGetDebugStats(char *buf, size_t bufSize) { if (buf) buf[0] = '\0'; }
