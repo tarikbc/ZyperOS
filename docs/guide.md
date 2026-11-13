@@ -26,7 +26,11 @@ the battery, and every message from the system. If the first start ever
 stops, or the handheld restarts in the middle of it, put the card in a
 computer and send me that file ([a GitHub issue](https://github.com/tarikbc/ZyperOS/issues)
 or the Discord): it says what happened up to that moment. Each start adds to
-it, so a card that tried twice has both.
+it, so a card that tried twice has both. When the handheld restarted by
+itself, the next start also puts in the system's own report of what went
+wrong, which it keeps in memory across the restart. Turning the handheld off
+with the power button loses that report, so if it freezes, wait a minute
+before you do.
 
 The device itself is never written to. The Brick boots from the card before
 its own system, so **removing the card brings the stock system back**;
