@@ -77,6 +77,25 @@ static int lookup(p2c_enc *e, uint32_t c)
 	return (int)e->npal++;
 }
 
+/* Map a frame to indices in e->cur; -1 when the palette overflows. */
+static int map_frame(p2c_enc *e, const uint8_t *xrgb, size_t n)
+{
+	uint32_t last = 0;
+	int lastidx = -1;
+	for (size_t i = 0; i < n; i++) {
+		uint32_t c;
+		memcpy(&c, xrgb + i * 4, 4);
+		c &= 0xFFFFFF;
+		if (lastidx < 0 || c != last) {
+			lastidx = lookup(e, c);
+			if (lastidx < 0) return -1;
+			last = c;
+		}
+		e->cur[i] = (uint8_t)lastidx;
+	}
+	return 0;
+}
+
 long p2c_encode(p2c_enc *e, const uint8_t *xrgb, unsigned w, unsigned h,
                 uint32_t frame, uint8_t *out, size_t cap)
 {
@@ -98,26 +117,17 @@ long p2c_encode(p2c_enc *e, const uint8_t *xrgb, unsigned w, unsigned h,
 	}
 
 	unsigned before = e->npal;
-	int key = e->need_key || e->w != w || e->h != h || e->since_key >= KEY_EVERY;
-	int pal = e->need_key || e->npal == 0;
-
-	uint32_t last = 0;
-	int lastidx = -1;
-	for (size_t i = 0; i < n; i++) {
-		uint32_t c;
-		memcpy(&c, xrgb + i * 4, 4);
-		c &= 0xFFFFFF;
-		if (lastidx < 0 || c != last) {
-			lastidx = lookup(e, c);
-			if (lastidx < 0) {
-				p2c_reset(e);
-				return -1;
-			}
-			last = c;
+	if (map_frame(e, xrgb, n) < 0) {
+		/* Old colors may fill the palette: start a fresh one, once. */
+		p2c_reset(e);
+		before = 0;
+		if (map_frame(e, xrgb, n) < 0) {
+			p2c_reset(e);
+			return -1;
 		}
-		e->cur[i] = (uint8_t)lastidx;
 	}
-	if (e->npal != before) key = pal = 1;
+	int key = e->need_key || e->w != w || e->h != h || e->since_key >= KEY_EVERY || e->npal != before;
+	int pal = e->need_key || e->npal != before;
 
 	const uint8_t *src = e->cur;
 	if (!key) {

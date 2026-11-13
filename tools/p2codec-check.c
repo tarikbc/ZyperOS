@@ -157,6 +157,24 @@ static void too_many_colors(void)
 	p2c_free(e);
 }
 
+static void full_palette_history_restarts(void)
+{
+	p2c_enc *e = p2c_new();
+	p2c_dec *d = p2c_dec_new();
+	static uint8_t a[CAP];
+	unsigned w, h;
+	for (unsigned f = 1; f <= 2; f++) {
+		for (unsigned i = 0; i < W * H; i++) src[i] = 0x200000u + (f - 1) * 0x1000u + (i % 200);
+		long n = p2c_encode(e, (const uint8_t *)src, W, H, f, a, CAP);
+		CHECK(n > 0 && (a[1] & 3) == 3);
+		memset(dst, 0, sizeof dst);
+		CHECK(n > 0 && p2c_decode(d, a, (size_t)n, (uint8_t *)dst, &w, &h) == (long)f);
+		CHECK(memcmp(src, dst, sizeof src) == 0);
+	}
+	p2c_dec_free(d);
+	p2c_free(e);
+}
+
 static void size_change_is_key(void)
 {
 	p2c_enc *e = p2c_new();
@@ -225,6 +243,7 @@ int main(int argc, char **argv)
 	still_frame_is_small();
 	new_color_sends_palette();
 	too_many_colors();
+	full_palette_history_restarts();
 	size_change_is_key();
 	periodic_key_and_bad_messages();
 	encode_time();
