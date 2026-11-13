@@ -2128,7 +2128,7 @@ static void lights_row(void)
 	ck(n == 5, "the page has five rows");
 	ck(!strcmp(lbl(&page[0]), "Charging Bar") && !strcmp(lbl(&page[1]), "Low Battery") &&
 	   !strcmp(lbl(&page[2]), "Volume and Brightness") &&
-	   !strcmp(lbl(&page[3]), "Files and Covers Done") && !strcmp(lbl(&page[4]), "Achievements"),
+	   !strcmp(lbl(&page[3]), "Files and Covers") && !strcmp(lbl(&page[4]), "Achievements"),
 	   "named in the lab's order");
 	for (i = 0; i < n; i++)
 		ck(page[i].live && !strcmp(val(&page[i]), "On") && ids[i] == (side_light_part)i,

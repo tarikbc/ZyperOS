@@ -10444,6 +10444,7 @@ typedef struct {
 	bool        joined;         /* Wi-Fi: on a network */
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
+	side_lights_move  mv;       /* files moving either way, for their wave */
 } xfer_sess;
 static xfer_sess g_xs;
 
@@ -10961,6 +10962,16 @@ static void xs_tick(app *a)
 	/* A batch of files in: the side lights say so (src/sidelights.h) */
 	if (side_lights_batch_done(&g_xs.lit, g_xs.st.uploads > 0, now))
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
+	/* Files moving: the side lights' wave, down while a file comes in and
+	 * up while one goes out. Only a file's bytes: the page itself, its
+	 * covers and its lists, which a browser loads too, are not a transfer. */
+	{
+		char line[64];
+
+		if (side_lights_move_step(&g_xs.mv, g_xs.st.uploads > 0 ? g_xs.st.in : 0,
+		                          g_xs.st.sends > 0 ? g_xs.st.out : 0, now, line, sizeof line))
+			plat_side_lights_say(line);
+	}
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
 	mdns_poll(now);
@@ -11331,6 +11342,12 @@ static void xs_stop(app *a, bool panels)
 	xfer_stop(g_xs.cable);
 	g_xs.on = false;
 	g_xs.shown = false;
+	{
+		char line[64];
+
+		/* A file cut off on its way: the side lights rest at once */
+		if (side_lights_move_end(&g_xs.mv, line, sizeof line)) plat_side_lights_say(line);
+	}
 	media_tidy();
 	up_cable_tidy();
 	/* The point of the whole feature is getting ROMs onto the card, and the

@@ -208,6 +208,58 @@ static void batches(void)
 	CHECK(side_lights_batch_done(&b, false, 0xFFFFFF00u + SIDE_LIGHTS_BATCH_MS), "done after the wrap too");
 }
 
+/* Files moving on File Transfer's page: a line at most every
+ * SIDE_LIGHTS_MOVE_MS while bytes move, the speed over that time, and
+ * "move 0 0" once SIDE_LIGHTS_MOVE_IDLE_MS after the last of them */
+static void moves(void)
+{
+	side_lights_move m = { 0 };
+	char l[64] = "";
+	unsigned t;
+
+	side_lights_move_line(l, sizeof l, 18000000, 0);
+	CHECK(!strcmp(l, "move 18000000 0"), "the line, as the gauge reads it: \"%s\"", l);
+	side_lights_move_line(l, sizeof l, 0, 600000);
+	CHECK(!strcmp(l, "move 0 600000"), "files going out: \"%s\"", l);
+
+	CHECK(!side_lights_move_step(&m, 0, 0, 1000, l, sizeof l), "nothing moves: a line");
+	CHECK(!side_lights_move_step(&m, 0, 0, 1600, l, sizeof l), "nothing moves, later: a line");
+	CHECK(!side_lights_move_step(&m, 0, 0, 61000, l, sizeof l), "nothing moves, a minute on: a line");
+	/* A file arrives at 600 KB/s, a frame every 50 ms */
+	CHECK(!side_lights_move_step(&m, 30000, 0, 62000, l, sizeof l), "the first bytes: a line at once");
+	for (t = 62050; t < 62500; t += 50)
+		CHECK(!side_lights_move_step(&m, 30000, 0, t, l, sizeof l), "a line before the window at %u", t);
+	CHECK(side_lights_move_step(&m, 30000, 0, 62500, l, sizeof l) && !strcmp(l, "move 660000 0"),
+	      "the window: \"%s\"", l);
+	for (t = 62550; t < 63000; t += 50)
+		CHECK(!side_lights_move_step(&m, 30000, 0, t, l, sizeof l), "two lines in a window at %u", t);
+	CHECK(side_lights_move_step(&m, 30000, 0, 63000, l, sizeof l) && !strcmp(l, "move 600000 0"),
+	      "the next window: \"%s\"", l);
+	/* A pause of 700 ms between two files: the wave goes on */
+	for (t = 63050; t <= 63700; t += 50)
+		CHECK(!side_lights_move_step(&m, 0, 0, t, l, sizeof l), "a pause said \"%s\" at %u", l, t);
+	CHECK(side_lights_move_step(&m, 0, 2100000, 64000, l, sizeof l) && !strcmp(l, "move 0 4200000"),
+	      "a download after the pause: \"%s\"", l);
+	/* The last bytes at 64000: "move 0 0" a second on, once */
+	for (t = 64050; t < 65000; t += 50)
+		CHECK(!side_lights_move_step(&m, 0, 0, t, l, sizeof l), "stopped early at %u: \"%s\"", t, l);
+	CHECK(side_lights_move_step(&m, 0, 0, 65000, l, sizeof l) && !strcmp(l, "move 0 0"), "the stop: \"%s\"", l);
+	CHECK(!side_lights_move_step(&m, 0, 0, 65500, l, sizeof l) && !side_lights_move_step(&m, 0, 0, 70000, l, sizeof l),
+	      "move 0 0 twice");
+	CHECK(!side_lights_move_end(&m, l, sizeof l), "an end with nothing moving said \"%s\"", l);
+	/* The screen closes while a file arrives: "move 0 0" at once */
+	side_lights_move_step(&m, 50000, 0, 71000, l, sizeof l);
+	side_lights_move_step(&m, 50000, 0, 71500, l, sizeof l);
+	CHECK(side_lights_move_end(&m, l, sizeof l) && !strcmp(l, "move 0 0"), "the end while moving: \"%s\"", l);
+	CHECK(!side_lights_move_end(&m, l, sizeof l), "the end said twice");
+	/* Across the clock's wrap */
+	memset(&m, 0, sizeof m);
+	side_lights_move_step(&m, 0, 0, 0xFFFFFE00u, l, sizeof l);
+	side_lights_move_step(&m, 100000, 0, 0xFFFFFF00u, l, sizeof l);
+	CHECK(side_lights_move_step(&m, 100000, 0, 0xFFFFFF00u + SIDE_LIGHTS_MOVE_MS, l, sizeof l) &&
+	      !strcmp(l, "move 400000 0"), "across the wrap: \"%s\"", l);
+}
+
 int main(void)
 {
 	setting();
@@ -215,6 +267,7 @@ int main(void)
 	fifo();
 	sigpipe();
 	batches();
+	moves();
 	printf("sidelights-check: %d checks, %d failed\n", checks, fails);
 	return fails != 0;
 }
