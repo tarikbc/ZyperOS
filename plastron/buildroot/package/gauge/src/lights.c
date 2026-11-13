@@ -196,11 +196,111 @@ static int moving(const struct lights_cfg *c, struct lights_state *s, long now, 
 	return s->mv_way == MV_IN ? WAVE_IN[s->mv_step] : upside_down(WAVE_IN[s->mv_step]);
 }
 
+/* ---- previews --------------------------------------------------------------
+ *
+ * MENU > Side Lights: the row under the cursor shows its part on the lights,
+ * in a loop, whether the part is on or off (Side Lights' own page is where
+ * you look at them; 2026-11-13). Each loop is the part's own pattern, short:
+ *
+ *   bar    the bar filling from none to four, STEP_MS a light
+ *   low    one red flash, then the two of the second stage
+ *   level  up the eight steps, the half light blinking, then the red of
+ *          silence
+ *   done   the wave down, the wave up, then Done's climb
+ *   cheer  the sparkle
+ */
+static const char *const PREVIEW_WORD[] = { NULL, "bar", "low", "level", "done", "cheer" };
+#define PV_LOW_MS   2600
+#define PV_LEVEL_MS 500                  /* a step of the level's */
+#define PV_DONE_MS  3000
+#define PV_CHEER_MS 1500
+
+/* The preview at t ms into it, and in *w the ms to its next change */
+static int preview_bits(int part, long t, int *w)
+{
+	switch (part) {
+	case PV_BAR:
+		soon(w, STEP_MS - t % STEP_MS);
+		return greens((int)(t / STEP_MS % 5));
+	case PV_LOW: {
+		static const long edge[] = { LOW_ON_MS, 1000, 1000 + VLOW_ON_MS, 1000 + 2 * VLOW_ON_MS,
+		                             1000 + 3 * VLOW_ON_MS, PV_LOW_MS };
+		long u = t % PV_LOW_MS;
+
+		for (int i = 0; i < 6; i++)
+			if (u < edge[i]) {
+				soon(w, edge[i] - u);
+				return i == 0 || i == 2 || i == 4 ? L_RED : 0;
+			}
+		return 0;
+	}
+	case PV_LEVEL: {
+		long u = t % (9 * PV_LEVEL_MS);
+		int n = (int)(u / PV_LEVEL_MS) + 1;   /* eighths, 9 the silence */
+
+		soon(w, HALF_MS - t % HALF_MS);
+		if (n > 8)
+			return L_RED;
+		return greens(n / 2) | (n % 2 && u % PV_LEVEL_MS < HALF_MS ? dot(n / 2) : 0);
+	}
+	case PV_DONE: {
+		long u = t % PV_DONE_MS;
+
+		if (u >= 24 * PACE_MS) {
+			soon(w, PV_DONE_MS - u);
+			return 0;
+		}
+		soon(w, PACE_MS - u % PACE_MS);
+		if (u < 8 * PACE_MS)
+			return WAVE_IN[u / PACE_MS];
+		if (u < 16 * PACE_MS)
+			return upside_down(WAVE_IN[u / PACE_MS - 8]);
+		return dot((int)(u / PACE_MS % 4));
+	}
+	case PV_CHEER: {
+		long u = t % PV_CHEER_MS, step = PACE_MS * 3 / 2;
+
+		if (u >= 6 * step) {
+			soon(w, PV_CHEER_MS - u);
+			return 0;
+		}
+		soon(w, step - u % step);
+		return u / step % 2 ? dot(1) | dot(3) : dot(0) | dot(2);
+	}
+	}
+	return 0;
+}
+
+/* "preview WORD": the part's number, PV_NONE for "off", -1 for anything else */
+static int preview_parse(const char *line)
+{
+	const char *w = line + 8;
+
+	if (!strcmp(w, "off"))
+		return PV_NONE;
+	for (int i = PV_BAR; i <= PV_CHEER; i++)
+		if (!strcmp(w, PREVIEW_WORD[i]))
+			return i;
+	return -1;
+}
+
 void lights_line(struct lights_state *s, const struct lights_cfg *c, const char *line, long now)
 {
 	char kind[16];
 	int a, b;
 	unsigned long long in, out;
+
+	if (!strncmp(line, "preview ", 8)) {
+		int part = preview_parse(line);
+
+		if (part < 0)
+			return;
+		if (part != s->pv_part)
+			s->pv_at = now;
+		s->pv_part = part;
+		s->pv_last = now;
+		return;
+	}
 
 	if (!strncmp(line, "move ", 5)) {
 		if (!c->done || !move_parse(line, &in, &out))
@@ -333,7 +433,7 @@ static int low_red(const struct lights_cfg *c, const struct lights_state *s, lon
 
 int lights_frame(const struct lights_cfg *c, struct lights_state *s, long now, int *wait)
 {
-	int bits = 0, w = IDLE_MS;
+	int bits = 0, w = IDLE_MS, previewing = 0;
 	if (s->known && s->plugged && c->bar)
 		bits = bar(s, now, &w);
 
@@ -357,6 +457,20 @@ int lights_frame(const struct lights_cfg *c, struct lights_state *s, long now, i
 		}
 	}
 
+	/* MENU > Side Lights' preview over all of that, the low red included:
+	 * it is what you are looking at */
+	if (s->pv_part != PV_NONE) {
+		if (now - s->pv_last >= PREVIEW_HOLD_MS) {
+			s->pv_part = PV_NONE;
+		} else {
+			long t = now - s->pv_at;
+
+			bits = preview_bits(s->pv_part, t < 0 ? 0 : t, &w);
+			soon(&w, s->pv_last + PREVIEW_HOLD_MS - now);
+			previewing = 1;
+		}
+	}
+
 	/* Asked: four flashes of the level over the rest */
 	if (s->asked_at >= 0) {
 		long t = now - s->asked_at;
@@ -371,7 +485,7 @@ int lights_frame(const struct lights_cfg *c, struct lights_state *s, long now, i
 
 	/* The red flash shows through everything: it is the bottom light's red,
 	 * which no pattern uses but silence */
-	if (low_red(c, s, now, &w))
+	if (low_red(c, s, now, &w) && !previewing)
 		bits |= L_RED;
 
 	*wait = w;

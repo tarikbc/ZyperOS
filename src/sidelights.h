@@ -135,4 +135,21 @@ bool side_lights_move_files(side_lights_move *m, int uploads, int sends, unsigne
  * the state as new. True with the line when there is one to say. */
 bool side_lights_move_end(side_lights_move *m, char *line, size_t cap);
 
+/* MENU > Side Lights: the row under the cursor played on the lights, On or
+ * Off, for as long as the cursor stays on it; the gauge loops it
+ * (package/gauge/src/lights.h, "preview bar" to "preview cheer"). Said again
+ * every SIDE_LIGHTS_PREVIEW_MS, as the gauge keeps a preview 2.5 s past its
+ * last line; another row at once; "preview off" as the page closes. */
+#define SIDE_LIGHTS_PREVIEW_MS 1000u
+typedef struct { bool on; int part; unsigned at; } side_lights_preview;
+
+/* One pass of the page, with the part under the cursor (not a part: none).
+ * True with the line in `line` when the gauge is to hear one. */
+bool side_lights_preview_step(side_lights_preview *p, side_light_part part, unsigned now_ms,
+                              char *line, size_t cap);
+
+/* The page closing: "preview off" if a preview was said, and the state as
+ * new. True with the line when there is one to say. */
+bool side_lights_preview_end(side_lights_preview *p, char *line, size_t cap);
+
 #endif

@@ -12542,17 +12542,29 @@ static menu_result snaps_screen(app *a)
 
 /* MENU > Side Lights: a switch for each part of what the lights show
  * (src/sidelights.h, sys_menu_lights_rows). Each change goes to the card at
- * once and the gauge reads it again, so the lights follow the row. */
+ * once and the gauge reads it again, so the lights follow the row. The row
+ * under the cursor plays its part on the lights, On or Off, while the
+ * cursor stays on it (side_lights_preview_step, each pass of the menu). */
+typedef struct {
+	unsigned char sound[LP_COUNT];
+	int sel;                      /* the menu's cursor (menu_style.sel_out) */
+	side_lights_preview pv;
+} lights_page;
+
 static int lights_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
-	unsigned char *sound = ctx;
+	lights_page *pg = ctx;
 	side_light_part ids[LP_COUNT];
+	char line[48];
 	int n, i;
 
 	(void)max;
 	*heading = T(S_PANEL_SIDE_LIGHTS);
 	n = sys_menu_lights_rows(plat_side_lights(), rows, ids);
-	for (i = 0; i < n; i++) sound[i] = MENU_SND_RING;
+	for (i = 0; i < n; i++) pg->sound[i] = MENU_SND_RING;
+	if (n > 0 && side_lights_preview_step(&pg->pv, ids[pg->sel < 0 ? 0 : pg->sel >= n ? n - 1 : pg->sel],
+	                                      plat_now_ms(), line, sizeof line))
+		plat_side_lights_say(line);
 	return n;
 }
 
@@ -12628,10 +12640,14 @@ static void language_screen(app *a)
 
 static void lights_screen(app *a)
 {
-	static unsigned char sound[LP_COUNT];
+	lights_page pg = { .sel = 0 };
+	char line[48];
 
-	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = sound },
-	         lights_build, lights_key, sound);
+	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = pg.sound,
+	                           .sel_out = &pg.sel },
+	         lights_build, lights_key, &pg);
+	/* The lights back to what they show on their own */
+	if (side_lights_preview_end(&pg.pv, line, sizeof line)) plat_side_lights_say(line);
 }
 
 /* One game, and the two things you can do to it from here.

@@ -20,6 +20,8 @@
  *     empties the four, down for files coming in and up for files going out,
  *     at a pace by the speed (my picks in the transfer lights lab,
  *     2026-11-13). Over the bar; the patterns above show over it.
+ *   - On ZyperOS's MENU > Side Lights, the row under the cursor: its part in
+ *     a loop, On or Off, over everything but L2+R2.
  *   - Asked (SIGUSR1, which ZyperOS sends on L2+R2 outside a game): the level
  *     flashes four times in two seconds, over everything.
  *   - Otherwise nothing, so they cost nothing.

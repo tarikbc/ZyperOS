@@ -409,6 +409,110 @@ static void moving(void)
 	CHECK(w >= 1 && w <= 60, "a late wake waits a step at most (%d)", w);
 }
 
+/* MENU > Side Lights: the row under the cursor plays its part on the lights,
+ * in a loop, On or Off, over everything but L2+R2 */
+static void previews(void)
+{
+	struct lights_cfg c = cfg("auto");
+	struct lights_state s = battery(60, 0, 0);
+	int w;
+
+	/* Charging Bar: filling from none to four, 400 ms a light, again */
+	lights_line(&s, &c, "preview bar", 0);
+	CHECK(at(&c, &s, 0) == 0 && at(&c, &s, 400) == BAR(1) && at(&c, &s, 800) == BAR(2) &&
+	      at(&c, &s, 1200) == BAR(3) && at(&c, &s, 1600) == L_ALL && at(&c, &s, 2000) == 0, "bar preview");
+	lights_frame(&c, &s, 2100, &w);
+	CHECK(w == 300, "bar preview: wakes at its next step (%d)", w);
+
+	/* Low Battery: one red flash, then two */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview low", 0);
+	CHECK(at(&c, &s, 0) == L_RED && at(&c, &s, 199) == L_RED && at(&c, &s, 200) == 0 && at(&c, &s, 999) == 0 &&
+	      at(&c, &s, 1000) == L_RED && at(&c, &s, 1150) == 0 && at(&c, &s, 1300) == L_RED &&
+	      at(&c, &s, 1450) == 0, "low preview");
+	lights_line(&s, &c, "preview low", 2000);
+	CHECK(at(&c, &s, 2599) == 0 && at(&c, &s, 2600) == L_RED,
+	      "low preview: again from 2.6 s, the same part said again not restarting it");
+
+	/* Volume and Brightness: up the eight steps, half a light blinking, then
+	 * the bottom red for silence */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview level", 0);
+	CHECK(at(&c, &s, 0) == G(0) && at(&c, &s, 250) == 0, "level preview: a half, blinking");
+	CHECK(at(&c, &s, 500) == BAR(1) && at(&c, &s, 1500) == BAR(2), "level preview: up the steps");
+	lights_line(&s, &c, "preview level", 2000);
+	CHECK(at(&c, &s, 3500) == L_ALL, "level preview: all four at the top");
+	CHECK(at(&c, &s, 4000) == L_RED, "level preview: silence");
+	lights_line(&s, &c, "preview level", 4000);
+	CHECK(at(&c, &s, 4500) == G(0), "level preview: and again");
+
+	/* Files and Covers: the wave down, the wave up, then Done */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview done", 0);
+	CHECK(at(&c, &s, 0) == WIN[0] && at(&c, &s, 300) == WIN[3], "files preview: the wave down");
+	CHECK(at(&c, &s, 800) == WOUT[0] && at(&c, &s, 1100) == WOUT[3], "files preview: the wave up");
+	CHECK(at(&c, &s, 1600) == G(0) && at(&c, &s, 1900) == G(3), "files preview: Done");
+	lights_line(&s, &c, "preview done", 2000);
+	CHECK(at(&c, &s, 2300) == G(3) && at(&c, &s, 2400) == 0 && at(&c, &s, 2999) == 0, "files preview: a rest");
+	CHECK(at(&c, &s, 3000) == WIN[0], "files preview: and again");
+
+	/* Achievements: the sparkle, a rest, again */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview cheer", 0);
+	CHECK(at(&c, &s, 0) == (G(0) | G(2)) && at(&c, &s, 150) == (G(1) | G(3)) && at(&c, &s, 900) == 0 &&
+	      at(&c, &s, 1500) == (G(0) | G(2)), "cheer preview");
+
+	/* A part turned off still previews: the row is there to show it */
+	c = cfg("off");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview cheer", 0);
+	CHECK(at(&c, &s, 0) == (G(0) | G(2)), "a preview with every part off");
+	c = cfg("auto");
+
+	/* Another row: its own, from its start */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview bar", 0);
+	at(&c, &s, 500);
+	lights_line(&s, &c, "preview cheer", 500);
+	CHECK(at(&c, &s, 500) == (G(0) | G(2)) && at(&c, &s, 650) == (G(1) | G(3)), "the next row from its start");
+
+	/* Over the bar, a wave and a pattern; the low red hidden under it;
+	 * L2+R2 over it */
+	s = battery(40, 1, 0);
+	lights_line(&s, &c, "move 4200000 0", 0);
+	lights_line(&s, &c, "done", 0);
+	lights_line(&s, &c, "preview cheer", 0);
+	CHECK(at(&c, &s, 0) == (G(0) | G(2)), "the preview over everything");
+	s = battery(8, 0, 0);
+	lights_line(&s, &c, "preview cheer", 0);
+	CHECK(at(&c, &s, 0) == (G(0) | G(2)), "the low red hidden under a preview");
+	lights_ask(&s, 100);
+	CHECK(at(&c, &s, 100) == L_RED, "L2+R2 over a preview (the level at 8%%: red)");
+
+	/* Its end: 2.5 s past the last line, or "preview off" at once; then
+	 * what was there before */
+	s = battery(40, 1, 0);
+	lights_line(&s, &c, "preview cheer", 0);
+	CHECK(at(&c, &s, 2499) == 0, "the preview at 2.5 s less a ms (the sparkle's rest)");
+	{
+		int b = at(&c, &s, 2500);
+
+		CHECK(s.pv_part == PV_NONE && (b == BAR(1) || b == BAR(2) || b == BAR(3) || b == BAR(4)),
+		      "2.5 s with no line: the bar again (%x)", b);
+	}
+	lights_line(&s, &c, "preview level", 3000);
+	lights_line(&s, &c, "preview off", 3100);
+	CHECK(s.pv_part == PV_NONE, "preview off ends it at once");
+
+	/* Lines it does not take */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "preview", 0);
+	lights_line(&s, &c, "preview shiny", 0);
+	lights_line(&s, &c, "preview bar x", 0);
+	lights_line(&s, &c, "previewbar", 0);
+	CHECK(s.pv_part == PV_NONE && at(&c, &s, 0) == 0, "a preview line it does not know: nothing");
+}
+
 static void asked(void)
 {
 	struct lights_cfg c = cfg("off");
@@ -441,6 +545,11 @@ static void never_spins(void)
 		if (t == 12000) lights_battery(&s, 30, 1, 0, t);
 		if (t >= 14000 && t < 17000 && t % 1000 < 7)
 			lights_line(&s, &c, t < 15000 ? "move 600000 0" : t < 16000 ? "move 0 24000000" : "move 9000000 9000000", t);
+		if (t >= 17000 && t < 19500 && t % 500 < 7) {
+			static const char *const PV[] = { "preview bar", "preview low", "preview level", "preview done", "preview cheer" };
+
+			lights_line(&s, &c, PV[(t - 17000) / 500 % 5], t);
+		}
 		lights_frame(&c, &s, t, &w);
 		if (w < worst) worst = w;
 		CHECK(w >= 1 && w <= IDLE_MS, "wake in range at %ld (%d)", t, w);
@@ -456,6 +565,7 @@ int main(void)
 	level();
 	events();
 	moving();
+	previews();
 	asked();
 	never_spins();
 	printf("gauge-check: %d checks, %d failed\n", checks, fails);

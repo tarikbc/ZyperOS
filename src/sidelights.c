@@ -189,3 +189,29 @@ bool side_lights_move_end(side_lights_move *m, char *line, size_t cap)
 	if (on) side_lights_move_line(line, cap, 0, 0);
 	return on;
 }
+
+bool side_lights_preview_step(side_lights_preview *p, side_light_part part, unsigned now_ms,
+                              char *line, size_t cap)
+{
+	if (part < 0 || part >= LP_COUNT) {
+		if (!p->on) return false;
+		p->on = false;
+		snprintf(line, cap, "preview off");
+		return true;
+	}
+	if (p->on && p->part == (int)part && now_ms - p->at < SIDE_LIGHTS_PREVIEW_MS) return false;
+	p->on = true;
+	p->part = (int)part;
+	p->at = now_ms;
+	snprintf(line, cap, "preview %s", WORD[part]);
+	return true;
+}
+
+bool side_lights_preview_end(side_lights_preview *p, char *line, size_t cap)
+{
+	bool on = p->on;
+
+	memset(p, 0, sizeof *p);
+	if (on) snprintf(line, cap, "preview off");
+	return on;
+}

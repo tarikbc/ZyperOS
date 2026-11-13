@@ -2148,7 +2148,12 @@ on", "3 on", "Off"); A opens its page ("A page of switches"): Charging Bar,
 Low Battery, Volume and Brightness, Files and Covers, Achievements, each
 On or Off, stepped by Left, Right or A and heard as a ring. Every change is
 written to the card at once and the gauge reads it again, so the lights
-follow the row. Everything is on for a new card and for a card that said
+follow the row. The row under the cursor plays its part on the lights in a
+loop, On or Off, for as long as the cursor stays on it (my ask, 2026-11-13):
+the bar filling from none, one red flash then two, the level up its eight
+steps then silence's red, the wave down and up then Done, the sparkle. It
+takes the lights over everything but L2+R2, and they go back to what they
+show on their own as the page closes. Everything is on for a new card and for a card that said
 Auto ("Everything on"); a card set to Charging, Low Battery or Off before
 keeps what it said, the newer parts off. The setting is a line in
 `.userdata/pixel2/side-lights`: the old word first (auto, charging, low,

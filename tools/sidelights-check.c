@@ -271,6 +271,38 @@ static void moves(void)
 	      !strcmp(l, "move 400000 0"), "across the wrap: \"%s\"", l);
 }
 
+/* MENU > Side Lights: the row under the cursor on the lights, said again
+ * every SIDE_LIGHTS_PREVIEW_MS, another row at once, "preview off" as the
+ * page closes */
+static void previews(void)
+{
+	side_lights_preview p = { 0 };
+	char l[48] = "";
+
+	CHECK(side_lights_preview_step(&p, LP_BAR, 1000, l, sizeof l) && !strcmp(l, "preview bar"),
+	      "the first row: \"%s\"", l);
+	CHECK(!side_lights_preview_step(&p, LP_BAR, 1500, l, sizeof l), "said again too soon");
+	CHECK(side_lights_preview_step(&p, LP_BAR, 1000 + SIDE_LIGHTS_PREVIEW_MS, l, sizeof l) && !strcmp(l, "preview bar"),
+	      "said again a second on: \"%s\"", l);
+	CHECK(side_lights_preview_step(&p, LP_LOW, 2050, l, sizeof l) && !strcmp(l, "preview low"), "the next row: \"%s\"", l);
+	CHECK(side_lights_preview_step(&p, LP_LEVEL, 2060, l, sizeof l) && !strcmp(l, "preview level"), "\"%s\"", l);
+	CHECK(side_lights_preview_step(&p, LP_DONE, 2070, l, sizeof l) && !strcmp(l, "preview done"), "\"%s\"", l);
+	CHECK(side_lights_preview_step(&p, LP_CHEER, 2080, l, sizeof l) && !strcmp(l, "preview cheer"), "\"%s\"", l);
+	CHECK(side_lights_preview_end(&p, l, sizeof l) && !strcmp(l, "preview off"), "the page closing: \"%s\"", l);
+	CHECK(!side_lights_preview_end(&p, l, sizeof l), "preview off twice");
+	/* Not a part: nothing, or the preview off */
+	CHECK(!side_lights_preview_step(&p, LP_COUNT, 3000, l, sizeof l), "no part, no preview: a line");
+	side_lights_preview_step(&p, LP_BAR, 3100, l, sizeof l);
+	CHECK(side_lights_preview_step(&p, (side_light_part)-1, 3200, l, sizeof l) && !strcmp(l, "preview off"),
+	      "no part while one showed: \"%s\"", l);
+	/* Across the clock's wrap */
+	memset(&p, 0, sizeof p);
+	side_lights_preview_step(&p, LP_CHEER, 0xFFFFFF00u, l, sizeof l);
+	CHECK(!side_lights_preview_step(&p, LP_CHEER, 0xFFFFFF00u + 500, l, sizeof l) &&
+	      side_lights_preview_step(&p, LP_CHEER, 0xFFFFFF00u + SIDE_LIGHTS_PREVIEW_MS, l, sizeof l),
+	      "a second across the wrap");
+}
+
 int main(void)
 {
 	setting();
@@ -279,6 +311,7 @@ int main(void)
 	sigpipe();
 	batches();
 	moves();
+	previews();
 	printf("sidelights-check: %d checks, %d failed\n", checks, fails);
 	return fails != 0;
 }

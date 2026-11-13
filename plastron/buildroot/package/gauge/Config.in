@@ -6,7 +6,8 @@ config BR2_PACKAGE_GAUGE
 	  when asked (SIGUSR1). ZyperOS sends it more on the FIFO /run/gauge:
 	  the volume or brightness while it changes, a climb when files or
 	  covers finish, a sparkle for an achievement; and from usbdrive or
-	  ZyperOS, a wave while files move to or from the card. ZyperOS's
+	  ZyperOS, a wave while files move to or from the card; and on
+	  MENU > Side Lights, the row under the cursor in a loop. ZyperOS's
 	  MENU > Side Lights picks which parts show
 	  (words in .userdata/pixel2/side-lights on the card, read again on
 	  SIGHUP). Started by init, with respawn.
