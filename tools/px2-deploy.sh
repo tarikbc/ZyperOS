@@ -46,7 +46,7 @@ find . -type f ! -name '._*' ! -name .DS_Store | sort | while read -r f; do
 		[ \"\$got\" = $want ] || { echo 'px2-deploy: $rel arrived damaged' >&2; exit 1; }
 		mkdir -p \"$DEST/\$(dirname '$rel')\"
 		mv -f /tmp/px2-deploy/file '$DEST/$rel'
-		case '$rel' in *.sh|zyperos.elf|diatom|muse|btplayer|openbor/OpenBOR) chmod +x '$DEST/$rel' ;; esac" < /dev/null
+		case '$rel' in *.sh|zyperos.elf|diatom|muse|btplayer|p2d|openbor/OpenBOR) chmod +x '$DEST/$rel' ;; esac" < /dev/null
 	echo "  sent $rel"
 	echo "$rel" >> "$LIST"
 done

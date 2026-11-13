@@ -69,6 +69,11 @@ ZYPEROS_EXTRA = $(if $(filter brick,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/btpl
 ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/zyperos-update)
 # and MENU+START's way back to the home (tools/zyhome.c)
 ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/zyhome)
+# and p2d, NES Player 2's server (ZyperOS's src/p2d/): the launcher starts it
+# from the card, beside itself, for a friend's browser to play a game. The
+# Pixel 2 only, the one device that offers Player 2 (its plat_player2);
+# zlib, which it links, is in the dependencies above
+ZYPEROS_EXTRA += $(if $(filter pixel2,$(ZYPEROS_DEVICE)),$(ZYPEROS_BUILD_DIR)/p2d)
 
 # ZyperOS runs from the card's games partition, as on the Brick, so it can be
 # updated by copying files onto the card. What goes there is ZyperOS's own
@@ -99,6 +104,7 @@ define ZYPEROS_INSTALL_TARGET_CMDS
 		PORTKEYS_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/portkeys \
 		ZYHOME_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/zyhome \
 		UPDATE_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/zyperos-update \
+		P2D_ELF=$(@D)/$(ZYPEROS_BUILD_DIR)/p2d \
 		DIATOM_ELF=$(DIATOM_DIR)/build/pixel2/diatom \
 		VENDOR_DIR=/zyperos-vendor \
 		sh $(@D)/mk/payload.sh

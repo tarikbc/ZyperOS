@@ -343,10 +343,11 @@ tools/qemu-run.sh deploy -n mine build/px2/payload/ZyperOS   # or a VM (docs/qem
 ```
 
 `make px2-payload` (`tools/px2-payload.sh`) builds the launcher, Muse,
-portkeys, System Update's program and Diatom from this working tree in
-Docker, against plastron's SDK: a read-only volume that plastron's `make sdk`
-packs from its last Pixel 2 build, with the cross-compiler and the system's own
-SDL2, FFmpeg and ALSA, so what links is what runs. Then `mk/payload.sh` lays
+portkeys, System Update's program, p2d (NES Player 2's server) and Diatom
+from this working tree in Docker, against plastron's SDK: a read-only volume
+that plastron's `make sdk` packs from its last Pixel 2 build, with the
+cross-compiler and the system's own SDL2, FFmpeg and ALSA, so what links is
+what runs. Then `mk/payload.sh` lays
 it out with the cores from the main checkout's `vendor/`. The objects stay
 unstripped in `build/px2/` and `diatom/build/pixel2/`; the payload's
 programs are stripped, as the image's are. Nothing it uses can change under
