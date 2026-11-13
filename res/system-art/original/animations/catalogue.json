@@ -1111,7 +1111,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "BGM.png",
       "still": "BGM-still.png",
@@ -1158,7 +1158,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "BIOS.png",
       "still": "BIOS-still.png",
@@ -1205,7 +1205,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "BOOKS.png",
       "still": "BOOKS-still.png",
@@ -3118,6 +3118,53 @@
       "still": "MUSE-still.png",
       "atlas_sha256": "c9024eb9b48f7829c98d7fe45d0430b5129ca3aeb45e92d221c6a31bd29f8df5",
       "still_sha256": "b48c764c44b08ead136bb4a4880fbc292224ba7d5f28afb298137df5c65124bf"
+    },
+    {
+      "key": "MUSIC",
+      "name": "Music",
+      "description": "Vinyl record with album sleeve",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/MUSIC.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/MUSIC.png": "e3fc6b6284c04f5b21acc945ca0d86060ffac0d54e91fff3845e56b358be8fc6"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "MUSIC.png",
+      "still": "MUSIC-still.png",
+      "atlas_sha256": "51165f9e788f7945b416d05b93d85d3ac8c2043d62bb0a7e99192a35d1e925e3",
+      "still_sha256": "c91598385fbd22ed1f3294db73d468d0390a9883d6e500be86bf9250e063c1c0"
     },
     {
       "key": "N64",
@@ -5332,7 +5379,7 @@
     {
       "key": "ROMS",
       "name": "ROMs",
-      "description": "Generic game cartridge",
+      "description": "Purple game cartridge with illustrated paper label and gold contacts",
       "cell": 256,
       "cols": 1,
       "rows": 1,
@@ -5356,7 +5403,7 @@
       "still_time_ms": 900,
       "decoded_atlas_bytes": 262144,
       "inputs": [
-        "source/ROMS.png"
+        "source/ROMS-game.png"
       ],
       "renderers": [
         "animation.js",
@@ -5364,17 +5411,17 @@
         "groups/card-folders.js"
       ],
       "input_sha256": {
-        "source/ROMS.png": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c"
+        "source/ROMS-game.png": "2b68ef853740c1db8b19d21ba00d9abb30fc320479072e1944520ea22634e7d2"
       },
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "ROMS.png",
       "still": "ROMS-still.png",
-      "atlas_sha256": "3be0c853c0f569b6ea2b4cc178cf9dcd7000697cd881ac55f9d07f556c888031",
-      "still_sha256": "141774e85ebd8d33d72806e11d4a728f51f1b4d27dcd1f5b808a79bc25ab88fd"
+      "atlas_sha256": "ef77a7e2637f14de1c7c0226f50803cdb928e6cf1c05f6402edea22f4340e1e8",
+      "still_sha256": "7003063f17663a7880ab21e8f0afbbc44254304714ee83c8b81fbae4e9ece29f"
     },
     {
       "key": "SATURN",
@@ -5579,7 +5626,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "SAVES.png",
       "still": "SAVES-still.png",
@@ -6208,7 +6255,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "STATES.png",
       "still": "STATES-still.png",
@@ -6790,7 +6837,7 @@
       "renderer_sha256": {
         "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
         "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
       },
       "atlas": "VIDEOS.png",
       "still": "VIDEOS-still.png",
@@ -7036,6 +7083,6 @@
       "still_sha256": "720489e430bf46129b472b4c817508a0dfd1ec120f4e623ab9df1e0a8771aa07"
     }
   ],
-  "total_png_bytes": 20771325,
+  "total_png_bytes": 20864767,
   "largest_decoded_atlas_bytes": 12582912
 }

@@ -79,13 +79,14 @@
     "VB_CARTRIDGE": "source/VB-cartridge.png",
     "COLECO_CARTRIDGE": "source/COLECO-cartridge.png",
     "MSX2_CARTRIDGE": "source/MSX2-cartridge.png",
-    "ROMS": "source/ROMS.png",
+    "ROMS": "source/ROMS-game.png",
     "BOOKS": "source/BOOKS.png",
     "VIDEOS": "source/VIDEOS.png",
     "BIOS": "source/BIOS.png",
     "SAVES": "source/SAVES.png",
     "STATES": "source/STATES.png",
-    "BGM": "source/BGM.png"
+    "BGM": "source/BGM.png",
+    "MUSIC": "source/MUSIC.png"
   },
   "animation_catalogue": "animations/catalogue.json",
   "prompt_records": [
@@ -346,6 +347,12 @@
       "bytes": 479508
     },
     {
+      "file": "source/MUSIC.png",
+      "selected": true,
+      "sha256": "e3fc6b6284c04f5b21acc945ca0d86060ffac0d54e91fff3845e56b358be8fc6",
+      "bytes": 576540
+    },
+    {
       "file": "source/N64-cartridge.png",
       "selected": true,
       "sha256": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
@@ -490,8 +497,20 @@
       "bytes": 933076
     },
     {
-      "file": "source/ROMS.png",
+      "file": "source/ROMS-game.png",
       "selected": true,
+      "sha256": "2b68ef853740c1db8b19d21ba00d9abb30fc320479072e1944520ea22634e7d2",
+      "bytes": 819890
+    },
+    {
+      "file": "source/ROMS-pins.png",
+      "selected": false,
+      "sha256": "f25f43c16a61b21c8dc3b3e2ffe83237770f03f7e94f4d99ccbaa533c45b1f2d",
+      "bytes": 670932
+    },
+    {
+      "file": "source/ROMS.png",
+      "selected": false,
       "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
       "bytes": 754530
     },
@@ -612,16 +631,16 @@
     "loop_return": true,
     "source_and_renderer_hashes": true,
     "independent_perspective_review": "No remaining material findings.",
-    "designs": 57,
+    "designs": 58,
     "two_pose_symbols": 10,
     "utility_files": 9,
     "mechanical_loading_added": 19,
-    "static_card_folders": 7,
+    "static_card_folders": 8,
     "card_folder_review_sizes": [
       256,
       56,
       40
     ]
   },
-  "design_count": 57
+  "design_count": 58
 }

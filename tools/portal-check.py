@@ -207,9 +207,9 @@ def main():
             check(got['aw'] == '/icons/AW.png', 'Atomiswave, with no games, has its art')
             check(got['bgm'] == '/icons/BGM.png', 'BGM has the cassette')
             check(bool(got['tile']), "a console's tile is in its color")
-            check(got['places'] == ['/icons/ROMS.png', '/icons/MUSE.png', '/icons/BOOKS.png', '/icons/VIDEOS.png',
+            check(got['places'] == ['/icons/ROMS.png', '/icons/MUSIC.png', '/icons/BOOKS.png', '/icons/VIDEOS.png',
                                     '/icons/BIOS.png', '/icons/SAVES.png', '/icons/STATES.png'],
-                  f"the card's folders wear theirs, Music MP4's: {got['places']}")
+                  f"the card's folders wear theirs, Music its vinyl album: {got['places']}")
             # Lazy, so the ones on screen: those below come as they scroll in
             check(page.until("[...document.querySelectorAll('#list .sico img, #places img')]"
                              ".filter((i) => i.getBoundingClientRect().top < innerHeight)"

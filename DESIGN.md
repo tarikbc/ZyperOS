@@ -1541,7 +1541,7 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   of no system on the same tile in **text-dim**. A system's folder in ROMs and
   Save States has its own picture - every system the card knows, not only
   the shelves with games; BGM, the menu music's, a cassette; the card's
-  folders theirs (ROMs a cartridge, Music MP4's, Audiobooks a book with
+  folders theirs (ROMs a cartridge, Music a vinyl album, Audiobooks a book with
   headphones, Videos a video tape, BIOS a chip, Saves a memory card, Save
   States a floppy disk); any other folder the small folder drawn for rows.
   All are ZyperOS's own system art (`res/system-art/original`). A picture
@@ -2477,7 +2477,8 @@ asks it.
   saving first, shown when one gives back 10 MB or more, a rule under them;
   then everything by size: each system with its home sprite (its games, its
   saves and states, its art), Videos, Music, Audiobooks and BIOS with
-  their folder pictures from the File Transfer page, ZyperOS with Zyper's
+  their folder pictures from the File Transfer page (Music's vinyl album,
+  Videos' tape, Audiobooks' book with headphones, BIOS' chip), ZyperOS with Zyper's
   face, and Other with the small folder. The more-rows triangles of 11.3.
 - **Under the list**, at cap y 702, the focused row's facts in **meta**
   **text-dim**, at most two balanced lines: "116 games · saves and states

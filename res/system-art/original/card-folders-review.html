@@ -12,7 +12,7 @@ img{display:block;margin:auto;image-rendering:pixelated;max-width:100%;height:au
 <h1>Card folder artwork</h1><button id="theme" type="button">Dark background</button>
 <table><thead><tr><th>Folder</th><th>256 px</th><th>56 px</th><th>40 px</th></tr></thead><tbody id="art"></tbody></table>
 <script>
-for(const [key,name]of [['ROMS','ROMs'],['BOOKS','Audiobooks'],['VIDEOS','Videos'],['BIOS','BIOS'],['SAVES','Saves'],['STATES','Save States'],['BGM','Menu music']]){
+for(const [key,name]of [['ROMS','ROMs'],['MUSIC','Music'],['BOOKS','Audiobooks'],['VIDEOS','Videos'],['BIOS','BIOS'],['SAVES','Saves'],['STATES','Save States'],['BGM','Menu music']]){
  const row=document.createElement('tr'),label=document.createElement('td');label.textContent=name;row.append(label);
  for(const size of [256,56,40]){const cell=document.createElement('td'),image=document.createElement('img');image.width=image.height=size;image.alt=name+' at '+size+' pixels';image.src=size===256?'animations/'+key+'-still.png':'review/card-folders/'+key+'-'+size+'.png';cell.append(image);row.append(cell);}
  document.getElementById('art').append(row);

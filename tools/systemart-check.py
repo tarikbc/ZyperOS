@@ -168,7 +168,7 @@ class BuildTests(unittest.TestCase):
         export(art, "FAVORITES", moving, [(0, 400), (1, 400)])
         export(art, "MUSE", moving, [(0, 400), (1, 400)])
         export(art, "FOLDER_SMALL", [pose()], [(0, 1000)])
-        for key in ("ROMS", "BOOKS", "VIDEOS", "BIOS", "SAVES", "STATES", "BGM"):
+        for key in ("ROMS", "MUSIC", "BOOKS", "VIDEOS", "BIOS", "SAVES", "STATES", "BGM"):
             export(art, key, [pose()], [(0, 1000)])
 
     def tearDown(self):
@@ -179,7 +179,7 @@ class BuildTests(unittest.TestCase):
         program = r'''
 #include "systemart_data.h"
 #include <string.h>
-_Static_assert(SA_ASSET_COUNT == 11, "every shelf, the folder and the card's folders, nothing else");
+_Static_assert(SA_ASSET_COUNT == 12, "every shelf, the folder and the card's folders, nothing else");
 _Static_assert(SA_CELL == 256 && SA_STILL == 128, "cell and still sizes");
 int main(void) {
     const sa_asset *a = &SA_ASSETS[5], *f = &SA_ASSETS[4], *b = &SA_ASSETS[0];
@@ -192,6 +192,10 @@ int main(void) {
     if (a->rx != 100 || a->ry != 60 || a->rw != 10 || a->rh != 8) return 4;
     if (strcmp(f->key, "FOLDER") || f->rw || f->nframes != 1 || f->duration_ms) return 5;
     if (strcmp(b->key, "BGM") || strcmp(b->still, "system-icons/BGM-still.png") || b->rw) return 6;
+    const sa_asset *m = &SA_ASSETS[7], *mp4 = &SA_ASSETS[6];
+    if (strcmp(m->key, "MUSIC") || strcmp(m->still, "system-icons/MUSIC-still.png") ||
+        m->rw || m->nframes != 1 || m->duration_ms) return 7;
+    if (strcmp(mp4->key, "MUSE") || mp4->nframes != 2) return 8;
     return 0;
 }
 '''

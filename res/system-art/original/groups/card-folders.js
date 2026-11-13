@@ -4,10 +4,10 @@
     {
       "key": "ROMS",
       "name": "ROMs",
-      "file": "ROMS.png",
+      "file": "ROMS-game.png",
       "width": 1254,
       "height": 1254,
-      "description": "Generic game cartridge",
+      "description": "Purple game cartridge with illustrated paper label and gold contacts",
       "duration": 1000,
       "poseCount": 1,
       "expected_poses": 1,
@@ -122,6 +122,25 @@
       "width": 1254,
       "height": 1254,
       "description": "Generic audio cassette",
+      "duration": 1000,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "static": true,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ]
+    },
+    {
+      "key": "MUSIC",
+      "name": "Music",
+      "file": "MUSIC.png",
+      "width": 1254,
+      "height": 1254,
+      "description": "Vinyl record with album sleeve",
       "duration": 1000,
       "poseCount": 1,
       "expected_poses": 1,

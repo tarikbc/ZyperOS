@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # list; then the designs that are not shelves: PortMaster, the two generic
 # folders and the card's own folders
 SYNTHETIC = {'FAVORITES','MUSE'}
-CARD_FOLDERS = {'ROMS','BOOKS','VIDEOS','BIOS','SAVES','STATES','BGM'}
+CARD_FOLDERS = {'MUSIC','ROMS','BOOKS','VIDEOS','BIOS','SAVES','STATES','BGM'}
 SUPPLEMENTAL = {'PORTMASTER','FOLDER','FOLDER_SMALL'} | CARD_FOLDERS
 TWO_POSE = {'FAVORITES','MUSE','ARCADE','SCUMMVM','MAME','PICO8','OPENBOR','PORTS','DOOM','TIC80','PORTMASTER'}
 LIDS = {'SATURN','DC','NEOCD','SEGACD','NES'}
