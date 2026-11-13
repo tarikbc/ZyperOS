@@ -118,9 +118,18 @@ typedef struct {
 	bool started, on;             /* on: the gauge was told files move */
 	unsigned at, moved;           /* the window's start; the last bytes */
 	unsigned long long in, out;   /* bytes in the window */
+	bool up_was, send_was;        /* side_lights_move_files: the last frame's */
 } side_lights_move;
 bool side_lights_move_step(side_lights_move *m, unsigned long long in, unsigned long long out,
                            unsigned now_ms, char *line, size_t cap);
+
+/* The same from the server's own counts (hare_stats): the bytes in count
+ * only while an upload is on its way, the bytes out only while a download
+ * is, so the page itself, its covers and its lists, which a browser loads
+ * too, are not a transfer. Or was, the frame before: a file's last bytes
+ * land in the poll that ends it. */
+bool side_lights_move_files(side_lights_move *m, int uploads, int sends, unsigned long long in,
+                            unsigned long long out, unsigned now_ms, char *line, size_t cap);
 
 /* The page closing: "move 0 0" now if the gauge was told files move, and
  * the state as new. True with the line when there is one to say. */

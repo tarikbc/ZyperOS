@@ -384,7 +384,23 @@ static void moving(void)
 	lights_line(&s, &c, "move 1 2 3", 0);
 	lights_line(&s, &c, "move 1 2x", 0);
 	lights_line(&s, &c, "move 123456789012345678901234 0", 0);
+	lights_line(&s, &c, "move 123456789012345678901", 0);
 	CHECK(!s.mv_on && at(&c, &s, 0) == 0, "a line that is not two numbers: nothing");
+	lights_line(&s, &c, "move 7 0\n", 0);
+	CHECK(s.mv_on && s.mv_in == 7, "a line with its newline still read");
+
+	/* Even again at a run's end: files coming in */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 0 9000000", 0);
+	for (long t = 0; t <= 700; t += 50) at(&c, &s, t);
+	lights_line(&s, &c, "move 9000000 9000000", 700);
+	CHECK(at(&c, &s, 800) == WIN[0], "as much each way at a run's end: the download wave");
+
+	/* Files and Covers off: "move 0 0" leaves nothing on either */
+	c = cfg("auto -done");
+	lights_line(&s, &c, "move 0 0", 850);
+	CHECK(at(&c, &s, 850) == 0 && !s.mv_on, "the part off and move 0 0: nothing left on");
+	c = cfg("auto");
 
 	/* Woken late: on from there, no catching up and no wait under 1 ms */
 	lights_line(&s, &c, "move 24000000 0", 0);

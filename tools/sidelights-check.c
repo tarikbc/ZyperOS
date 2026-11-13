@@ -252,6 +252,17 @@ static void moves(void)
 	side_lights_move_step(&m, 50000, 0, 71500, l, sizeof l);
 	CHECK(side_lights_move_end(&m, l, sizeof l) && !strcmp(l, "move 0 0"), "the end while moving: \"%s\"", l);
 	CHECK(!side_lights_move_end(&m, l, sizeof l), "the end said twice");
+	/* From the server's counts: a page and its covers are not a transfer;
+	 * an upload's last bytes, in the poll that ends it, are */
+	memset(&m, 0, sizeof m);
+	for (t = 80000; t <= 82000; t += 50)
+		CHECK(!side_lights_move_files(&m, 0, 0, 2000, 400000, t, l, sizeof l), "the page lit the lights: \"%s\"", l);
+	side_lights_move_files(&m, 1, 0, 100000, 9000, 82050, l, sizeof l);
+	CHECK(!side_lights_move_files(&m, 0, 0, 100000, 9000, 82100, l, sizeof l), "a line before the window");
+	CHECK(side_lights_move_files(&m, 0, 0, 0, 0, 82550, l, sizeof l) && !strcmp(l, "move 400000 0"),
+	      "the upload's last bytes counted, the page's not: \"%s\"", l);
+	CHECK(side_lights_move_files(&m, 0, 2, 0, 300000, 83050, l, sizeof l) && !strcmp(l, "move 0 600000"),
+	      "a download's bytes out: \"%s\"", l);
 	/* Across the clock's wrap */
 	memset(&m, 0, sizeof m);
 	side_lights_move_step(&m, 0, 0, 0xFFFFFE00u, l, sizeof l);

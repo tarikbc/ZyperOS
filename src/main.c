@@ -10963,13 +10963,12 @@ static void xs_tick(app *a)
 	if (side_lights_batch_done(&g_xs.lit, g_xs.st.uploads > 0, now))
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
 	/* Files moving: the side lights' wave, down while a file comes in and
-	 * up while one goes out. Only a file's bytes: the page itself, its
-	 * covers and its lists, which a browser loads too, are not a transfer. */
+	 * up while one goes out; a file's bytes only (side_lights_move_files) */
 	{
 		char line[64];
 
-		if (side_lights_move_step(&g_xs.mv, g_xs.st.uploads > 0 ? g_xs.st.in : 0,
-		                          g_xs.st.sends > 0 ? g_xs.st.out : 0, now, line, sizeof line))
+		if (side_lights_move_files(&g_xs.mv, g_xs.st.uploads, g_xs.st.sends, g_xs.st.in, g_xs.st.out,
+		                           now, line, sizeof line))
 			plat_side_lights_say(line);
 	}
 	/* A key the page sent, settled the frame its check ends */

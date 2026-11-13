@@ -171,6 +171,16 @@ bool side_lights_move_step(side_lights_move *m, unsigned long long in, unsigned 
 	return false;
 }
 
+bool side_lights_move_files(side_lights_move *m, int uploads, int sends, unsigned long long in,
+                            unsigned long long out, unsigned now_ms, char *line, size_t cap)
+{
+	bool up = uploads > 0 || m->up_was, send = sends > 0 || m->send_was;
+
+	m->up_was = uploads > 0;
+	m->send_was = sends > 0;
+	return side_lights_move_step(m, up ? in : 0, send ? out : 0, now_ms, line, cap);
+}
+
 bool side_lights_move_end(side_lights_move *m, char *line, size_t cap)
 {
 	bool on = m->on;

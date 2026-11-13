@@ -161,12 +161,14 @@ static unsigned long long move_rate(const struct lights_state *s)
 	return s->mv_way == MV_IN ? s->mv_in : s->mv_out;
 }
 
-/* "move IN OUT": two counts of digits and nothing after them */
+/* "move IN OUT": two counts of digits, a space between them, nothing after */
 static int move_parse(const char *line, unsigned long long *in, unsigned long long *out)
 {
 	char a[21], b[21], more;
+	int end = 0;
 
-	if (sscanf(line, "move %20[0-9] %20[0-9] %c", a, b, &more) != 2)
+	if (sscanf(line, "move %20[0-9]%n %20[0-9] %c", a, &end, b, &more) != 2
+	    || (line[end] != ' ' && line[end] != '\t'))
 		return 0;
 	*in = strtoull(a, NULL, 10);
 	*out = strtoull(b, NULL, 10);
