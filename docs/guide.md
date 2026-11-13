@@ -74,7 +74,7 @@ it away.
 | **A** | open a system, a folder of games, or start a game |
 | **B** | up one folder of games, or back to the systems row from a shelf's top |
 | **X** | game info for the card under the cursor |
-| **Y** | favorite it - Favorites is a shelf of its own. Nothing on MP4's shelf |
+| **Y** | start the game from the start, without its resume point, when it has one. In a game's details (X), Y favorites it - Favorites is a shelf of its own. Nothing on MP4's shelf |
 | **Volume rocker** | volume, everywhere, including in game |
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
@@ -164,8 +164,9 @@ refreshes its storage and capacity readings every two seconds; the charge state
 uses the status corner's shared fast cache.
 
 **The first time ZyperOS starts on a handheld it teaches the buttons**: Zyper
-says hello, and then each button is a step of its own - the D-pad, A, B, Y, X,
-MENU, SELECT, the volume, the brightness and POWER - where a small picture
+says hello, and then each button is a step of its own - the D-pad, A, B, X, Y
+(a favorite, in the details), MENU, SELECT, the volume, the brightness and
+POWER - where a small picture
 shows what it does and the step waits for you to press it. The shoulder keys
 come with two of them, lit on the picture of the handheld: L1/R1 jump with
 the D-pad, and L2/R2 change the song with SELECT. A press of another
