@@ -1,0 +1,55 @@
+{
+  "key": "TIC80",
+  "name": "TIC-80",
+  "description": "Code brackets open",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 800,
+  "kind": "system",
+  "static": false,
+  "expected_poses": 2,
+  "motion_bounds": [
+    53,
+    63,
+    150,
+    75
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 400
+    },
+    {
+      "tile": 1,
+      "ms": 400
+    }
+  ],
+  "still_time_ms": 700,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/TIC80.png",
+    "source/AW-cartridge.png",
+    "source/NAOMI-rom-case.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/arcade.js"
+  ],
+  "input_sha256": {
+    "source/TIC80.png": "56b92ce73301516ce4d1bb5625bc4b9f1dfbaefcb726df2ac16137ea84966f4d",
+    "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+    "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+  },
+  "atlas": "TIC80.png",
+  "still": "TIC80-still.png",
+  "atlas_sha256": "60ad384aefb550200aacd4d2e87ee8d28cb06c889051636180408ccc4b982bee",
+  "still_sha256": "63f46fb1fc720b9d2b8ee4680e1c58e280ca0eb859803676f4d1a7f0249e72cf"
+}

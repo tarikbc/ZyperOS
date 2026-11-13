@@ -1,0 +1,55 @@
+{
+  "key": "MUSE",
+  "name": "MP4",
+  "description": "Video and audio playback",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 800,
+  "kind": "system",
+  "static": false,
+  "expected_poses": 2,
+  "motion_bounds": [
+    162,
+    77,
+    84,
+    119
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 400
+    },
+    {
+      "tile": 1,
+      "ms": 400
+    }
+  ],
+  "still_time_ms": 700,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/MP4.png",
+    "source/AW-cartridge.png",
+    "source/NAOMI-rom-case.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/arcade.js"
+  ],
+  "input_sha256": {
+    "source/MP4.png": "dc13cd075b53d9da375419926ee0048ff33873e931000a9f7b78a01ba174156e",
+    "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+    "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+  },
+  "atlas": "MUSE.png",
+  "still": "MUSE-still.png",
+  "atlas_sha256": "c9024eb9b48f7829c98d7fe45d0430b5129ca3aeb45e92d221c6a31bd29f8df5",
+  "still_sha256": "b48c764c44b08ead136bb4a4880fbc292224ba7d5f28afb298137df5c65124bf"
+}

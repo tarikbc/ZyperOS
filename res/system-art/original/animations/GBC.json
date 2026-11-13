@@ -1,0 +1,171 @@
+{
+  "key": "GBC",
+  "name": "Game Boy Color",
+  "description": "Original startup \u00b7 color sweep",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 30,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    90,
+    60,
+    75,
+    62
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 375
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 94
+    },
+    {
+      "tile": 4,
+      "ms": 93
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 94
+    },
+    {
+      "tile": 8,
+      "ms": 93
+    },
+    {
+      "tile": 9,
+      "ms": 94
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 94
+    },
+    {
+      "tile": 12,
+      "ms": 93
+    },
+    {
+      "tile": 13,
+      "ms": 94
+    },
+    {
+      "tile": 14,
+      "ms": 94
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 93
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 94
+    },
+    {
+      "tile": 19,
+      "ms": 94
+    },
+    {
+      "tile": 20,
+      "ms": 93
+    },
+    {
+      "tile": 21,
+      "ms": 94
+    },
+    {
+      "tile": 22,
+      "ms": 94
+    },
+    {
+      "tile": 23,
+      "ms": 94
+    },
+    {
+      "tile": 24,
+      "ms": 93
+    },
+    {
+      "tile": 25,
+      "ms": 1969
+    },
+    {
+      "tile": 25,
+      "ms": 750
+    },
+    {
+      "tile": 26,
+      "ms": 94
+    },
+    {
+      "tile": 27,
+      "ms": 94
+    },
+    {
+      "tile": 28,
+      "ms": 93
+    },
+    {
+      "tile": 29,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 281
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/GBC.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/GBC.png": "f26cecc23be1ab88d817f35b077b7d2609755aa315df690409c4a36984b6fa3d"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "GBC.png",
+  "still": "GBC-still.png",
+  "atlas_sha256": "5f7d0c9c56699cee667b0d74f027eac2987f8ce35ff98aed1d87ad0610dbf119",
+  "still_sha256": "df69da9a4b98a1bb60a4d7ef2063a007d804f9e2837baae0aa33ff9e48aa1122"
+}

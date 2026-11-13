@@ -1,0 +1,151 @@
+{
+  "key": "NGP",
+  "name": "Neo Geo Pocket",
+  "description": "Original startup \u00b7 monochrome",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 26,
+  "duration_ms": 7000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    87,
+    97,
+    81,
+    73
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 438
+    },
+    {
+      "tile": 1,
+      "ms": 109
+    },
+    {
+      "tile": 2,
+      "ms": 110
+    },
+    {
+      "tile": 3,
+      "ms": 109
+    },
+    {
+      "tile": 4,
+      "ms": 109
+    },
+    {
+      "tile": 5,
+      "ms": 110
+    },
+    {
+      "tile": 6,
+      "ms": 109
+    },
+    {
+      "tile": 7,
+      "ms": 110
+    },
+    {
+      "tile": 8,
+      "ms": 109
+    },
+    {
+      "tile": 9,
+      "ms": 109
+    },
+    {
+      "tile": 10,
+      "ms": 110
+    },
+    {
+      "tile": 11,
+      "ms": 109
+    },
+    {
+      "tile": 12,
+      "ms": 109
+    },
+    {
+      "tile": 13,
+      "ms": 110
+    },
+    {
+      "tile": 14,
+      "ms": 109
+    },
+    {
+      "tile": 15,
+      "ms": 110
+    },
+    {
+      "tile": 16,
+      "ms": 109
+    },
+    {
+      "tile": 17,
+      "ms": 109
+    },
+    {
+      "tile": 18,
+      "ms": 438
+    },
+    {
+      "tile": 19,
+      "ms": 109
+    },
+    {
+      "tile": 20,
+      "ms": 110
+    },
+    {
+      "tile": 21,
+      "ms": 1968
+    },
+    {
+      "tile": 21,
+      "ms": 1532
+    },
+    {
+      "tile": 22,
+      "ms": 109
+    },
+    {
+      "tile": 23,
+      "ms": 109
+    },
+    {
+      "tile": 24,
+      "ms": 110
+    },
+    {
+      "tile": 25,
+      "ms": 218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/NGP.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/NGP.png": "5d8814003fddc83956cff619c596853bc3a4ef8221a67e31d98ffa6673b19adf"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "NGP.png",
+  "still": "NGP-still.png",
+  "atlas_sha256": "a72174b15c1e355175992a2c2b48353d87f53f1f29cb3ac9dadc49be4d769f1b",
+  "still_sha256": "c528d4b3f6c20afee6646871cdecb7154e4eed5a0df10b0adf8c0f09114b4dc1"
+}

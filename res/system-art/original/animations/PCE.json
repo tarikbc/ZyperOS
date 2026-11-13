@@ -1,0 +1,177 @@
+{
+  "key": "PCE",
+  "name": "TurboGrafx-16",
+  "description": "TurboChip slides into the front card channel",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 26,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    130,
+    121,
+    70,
+    55
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 844
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 93
+    },
+    {
+      "tile": 4,
+      "ms": 94
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 93
+    },
+    {
+      "tile": 8,
+      "ms": 94
+    },
+    {
+      "tile": 9,
+      "ms": 94
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 93
+    },
+    {
+      "tile": 12,
+      "ms": 94
+    },
+    {
+      "tile": 13,
+      "ms": 1688
+    },
+    {
+      "tile": 14,
+      "ms": 93
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 94
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 93
+    },
+    {
+      "tile": 19,
+      "ms": 94
+    },
+    {
+      "tile": 20,
+      "ms": 94
+    },
+    {
+      "tile": 21,
+      "ms": 94
+    },
+    {
+      "tile": 22,
+      "ms": 93
+    },
+    {
+      "tile": 23,
+      "ms": 94
+    },
+    {
+      "tile": 24,
+      "ms": 94
+    },
+    {
+      "tile": 25,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 1218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/PCE.png",
+    "source/32X-cartridge-v2.png",
+    "source/A2600-cartridge.png",
+    "source/A5200-cartridge.png",
+    "source/A7800-cartridge.png",
+    "source/GENESIS-cartridge.png",
+    "source/N64-cartridge.png",
+    "source/NEOGEO-cartridge.png",
+    "source/PCE-cartridge.png",
+    "source/SMS-cartridge.png",
+    "source/VB-cartridge.png",
+    "source/COLECO-cartridge.png",
+    "source/MSX2-cartridge.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/consoles.js",
+    "groups/console-cartridges.js"
+  ],
+  "input_sha256": {
+    "source/PCE.png": "5496e99011cc5f8601ea848b9ca428c467050e551042dc97400a1cb305473c2f",
+    "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+    "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+    "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+    "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+    "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+    "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+    "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+    "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+    "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+    "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+    "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+    "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+    "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+  },
+  "atlas": "PCE.png",
+  "still": "PCE-still.png",
+  "atlas_sha256": "50ba047852523eacd35f9c3ba5e902baf919de648d08ef542f7c1533fca5eb75",
+  "still_sha256": "ea5e2224430266c641fc87fee81b230cce4625d09bda5f707acd1edbb981d48f"
+}

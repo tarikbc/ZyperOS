@@ -1,0 +1,91 @@
+{
+  "key": "GW",
+  "name": "Game & Watch",
+  "description": "Ball clock \u00b7 segmented LCD",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    82,
+    106,
+    92,
+    59
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 563
+    },
+    {
+      "tile": 1,
+      "ms": 469
+    },
+    {
+      "tile": 0,
+      "ms": 468
+    },
+    {
+      "tile": 1,
+      "ms": 563
+    },
+    {
+      "tile": 0,
+      "ms": 469
+    },
+    {
+      "tile": 1,
+      "ms": 468
+    },
+    {
+      "tile": 0,
+      "ms": 563
+    },
+    {
+      "tile": 1,
+      "ms": 469
+    },
+    {
+      "tile": 0,
+      "ms": 468
+    },
+    {
+      "tile": 1,
+      "ms": 563
+    },
+    {
+      "tile": 0,
+      "ms": 469
+    },
+    {
+      "tile": 1,
+      "ms": 468
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/GW.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/handhelds.js"
+  ],
+  "input_sha256": {
+    "source/GW.png": "afe7d4b02e5f185e8981041b905f7060fbf133a5db6356a4b78881b383c48e5c"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+  },
+  "atlas": "GW.png",
+  "still": "GW-still.png",
+  "atlas_sha256": "74e9eec0f7f735d5346ae8e57162279ddc5847b2dc4e8f386dab54ff178c0afc",
+  "still_sha256": "83cc33fcca4e1b6313ea59e8d33029f0278cfc5446ce9e82a19e302c11cd12eb"
+}

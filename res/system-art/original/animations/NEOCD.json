@@ -1,0 +1,163 @@
+{
+  "key": "NEOCD",
+  "name": "Neo Geo CD",
+  "description": "Disc lid opens and closes",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 26,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    77,
+    3,
+    119,
+    128
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 844
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 93
+    },
+    {
+      "tile": 4,
+      "ms": 94
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 93
+    },
+    {
+      "tile": 8,
+      "ms": 94
+    },
+    {
+      "tile": 9,
+      "ms": 94
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 93
+    },
+    {
+      "tile": 12,
+      "ms": 94
+    },
+    {
+      "tile": 13,
+      "ms": 1688
+    },
+    {
+      "tile": 14,
+      "ms": 93
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 94
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 93
+    },
+    {
+      "tile": 19,
+      "ms": 94
+    },
+    {
+      "tile": 20,
+      "ms": 94
+    },
+    {
+      "tile": 21,
+      "ms": 94
+    },
+    {
+      "tile": 22,
+      "ms": 93
+    },
+    {
+      "tile": 23,
+      "ms": 94
+    },
+    {
+      "tile": 24,
+      "ms": 94
+    },
+    {
+      "tile": 25,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 1218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/NEOCD.png",
+    "source/SATURN-bay.png",
+    "source/DC-bay.png",
+    "source/NEOCD-bay.png",
+    "source/SEGACD-tray.png",
+    "source/NES-cartridge.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/consoles.js",
+    "groups/console-lids.js"
+  ],
+  "input_sha256": {
+    "source/NEOCD.png": "b44d6e3e646b072102e5ed0dc806fc301e6b6618613e5edab26e2a71c917db3a",
+    "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+    "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+    "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+    "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+    "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+    "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+  },
+  "atlas": "NEOCD.png",
+  "still": "NEOCD-still.png",
+  "atlas_sha256": "633ffbbda66aadda624574e8f1c431d0b0f88ae8af353f3b34495c07876bfa92",
+  "still_sha256": "18ee51d2fd04615b232dbafbd9c5165156d2956a6f4652fee9b34f7eb2de36ba"
+}
