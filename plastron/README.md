@@ -74,6 +74,11 @@ with any program that writes disk images. It erases the whole card.
 
 The first boot adds an exFAT partition over the rest of the card, for games,
 saves and music, which a Mac or PC can read and write (labeled ZYPEROS).
+While ZyperOS's first start copies it onto the card, `setuplog`
+(`buildroot/board/px2/rootfs-overlay/usr/sbin/setuplog`) writes the device's
+details, a status line a second and every kernel message to
+`zyperos-setup.txt` on the boot partition, so a first start that hangs can
+be read on a computer.
 
 ## Building
 

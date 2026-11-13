@@ -18,6 +18,16 @@ Bluetooth pairings. At the first boot, in about a minute, the rest of the
 card becomes ZYPEROS, an exFAT partition, with ZyperOS on it. Games, music,
 saves and settings live there, and it is the partition a computer sees.
 
+The first start writes down what it does as it goes, in `zyperos-setup.txt`
+on the card's small PX2BOOT partition, which a computer shows as a drive of
+its own: the handheld's memory, the card and how fast it runs, then a line
+every second with how far the copy has got, the clocks, the temperature and
+the battery, and every message from the system. If the first start ever
+stops, or the handheld restarts in the middle of it, put the card in a
+computer and send me that file ([a GitHub issue](https://github.com/tarikbc/ZyperOS/issues)
+or the Discord): it says what happened up to that moment. Each start adds to
+it, so a card that tried twice has both.
+
 The device itself is never written to. The Brick boots from the card before
 its own system, so **removing the card brings the stock system back**;
 [Undoing it](#undoing-it) covers the rest.
