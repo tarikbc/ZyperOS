@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: MPL-2.0
 """Are the launcher's files that Diatom carries copies of still copies?
 
-port/osdbar.c, osdbar.h, themefile.c, themefile.h and design.h, and src/p2share.h (the
-shared file of the NES player 2 feature), are ZyperOS's
-src/ files of the same names, which is where they are changed: the launcher,
-the Pixel 2's and the Brick's ports and portkeys draw the volume bar and read
-the theme from the same code. They are copies rather than an include of
-../src because plastron's Buildroot takes only diatom/ to build Diatom.
+port/osdbar.c, osdbar.h, themefile.c, themefile.h, design.h, panelgamma.c and
+panelgamma.h, and src/p2share.h (the shared file of the NES player 2 feature),
+are ZyperOS's src/ files of the same names, which is where they are changed: the
+launcher, the Pixel 2's and the Brick's ports and portkeys draw the volume bar
+and read the theme from the same code, and the launcher and the Pixel 2's port
+empty the display's gamma table with the same code. They are copies rather
+than an include of ../src because plastron's Buildroot takes only diatom/ to
+build Diatom.
 
 A copy nothing compares goes stale without a sound. design.h did: a review on
 2026-11-06 found 35 lines of src/design.h missing from it and 16 old ones in
@@ -27,7 +29,8 @@ SRC = ROOT.parent / "src"
 # (folder under diatom/, file): the copy is diatom/<folder>/<file>, its source src/<file>
 COPIES = (
     ("port", "osdbar.c"), ("port", "osdbar.h"), ("port", "themefile.c"),
-    ("port", "themefile.h"), ("port", "design.h"), ("src", "p2share.h"),
+    ("port", "themefile.h"), ("port", "design.h"), ("port", "panelgamma.c"),
+    ("port", "panelgamma.h"), ("src", "p2share.h"),
 )
 
 if not SRC.is_dir():

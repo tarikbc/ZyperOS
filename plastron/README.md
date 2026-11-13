@@ -20,8 +20,8 @@ It started as Eric Reinsmidt's
 ZyperOS runs on both. The shelf is up about 2.2 s from power on on the
 Pixel 2, and about 1.9 s on the Brick.
 
-The Pixel 2's hardware all works: the display (Panfrost, with the panel's
-colors corrected in the display controller's gamma table), sound with
+The Pixel 2's hardware all works: the display (Panfrost, showing each
+frame's colors as they are, as the stock firmware does), sound with
 headphone switching and USB-C headphone adapters, every button, the
 rumble motor (force feedback on the joypad's own input device), power,
 brightness and battery. It has no radio of its own; a USB Wi-Fi adapter on

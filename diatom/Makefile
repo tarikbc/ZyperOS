@@ -106,8 +106,9 @@ ifeq ($(PORT),pixel2)
   PIXEL2_PKGS := sdl2 egl glesv2 gbm libdrm
   # The level bar, ZyperOS's own drawing of it (port/osdbar.c), and the theme
   # file the launcher writes for it to read (port/themefile.c); the rumble
-  # motor, through the joypad's force feedback (port/rumble_evdev.c)
-  SRC += port/osdbar.c port/themefile.c port/rumble_evdev.c
+  # motor, through the joypad's force feedback (port/rumble_evdev.c); the
+  # display's gamma table, emptied (port/panelgamma.c)
+  SRC += port/osdbar.c port/themefile.c port/rumble_evdev.c port/panelgamma.c
   CFLAGS  += $(shell $(PKG_CONFIG) --cflags $(PIXEL2_PKGS))
   LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PIXEL2_PKGS)) -lm -ldl -lpthread
 endif
