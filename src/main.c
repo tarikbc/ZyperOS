@@ -15915,9 +15915,9 @@ static sp_row *store_add(store_view *v)
 }
 
 /* The card's folders that are no system's, by the design they wear
- * (res/system-art/original): music MP4's, the others their own, as on the
- * File Transfer page */
-#define STORE_ART_MUSIC  "MUSE"
+ * (res/system-art/original): Music's vinyl album and the others' own art,
+ * as on the File Transfer page */
+#define STORE_ART_MUSIC  "MUSIC"
 #define STORE_ART_VIDEOS "VIDEOS"
 #define STORE_ART_BOOKS  "BOOKS"
 #define STORE_ART_BIOS   "BIOS"

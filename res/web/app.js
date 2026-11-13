@@ -111,7 +111,7 @@ const PLACE_MARK = { roms: 'roms', music: 'music', books: 'books', videos: 'vide
  * other folder the plain one. Served by the device from the shelf's
  * pictures, /icons/KEY.png. A picture that does not come is the line mark,
  * never a broken image. */
-const PLACE_ICON = { roms: 'ROMS', music: 'MUSE', books: 'BOOKS', videos: 'VIDEOS',
+const PLACE_ICON = { roms: 'ROMS', music: 'MUSIC', books: 'BOOKS', videos: 'VIDEOS',
                      bios: 'BIOS', saves: 'SAVES', states: 'STATES' };
 function pix(key, color, fallback) {
 	const s = document.createElement('span');

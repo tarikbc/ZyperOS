@@ -170,6 +170,10 @@ static const sa_frame SA_FRAMES_MUSE[] = {
     { 1, 400 }, { 0, 400 },
 };
 
+static const sa_frame SA_FRAMES_MUSIC[] = {
+    { 0, 0 },
+};
+
 static const sa_frame SA_FRAMES_N64[] = {
     { 20, 94 }, { 21, 94 }, { 22, 93 }, { 23, 94 }, { 24, 94 }, { 25, 94 }, { 0, 1218 }, { 0, 844 },
     { 1, 94 }, { 2, 94 }, { 3, 93 }, { 4, 94 }, { 5, 94 }, { 6, 94 }, { 7, 93 }, { 8, 94 },
@@ -378,6 +382,7 @@ static const sa_asset SA_ASSETS[] = {
     { "MAME", "system-icons/MAME.png", "system-icons/MAME-still.png", 256, 1, 2, 2, 12, 90, 232, 87, 800, SA_FRAMES_MAME },
     { "MSX2", "system-icons/MSX2.png", "system-icons/MSX2-still.png", 256, 4, 10, 41, 155, 42, 64, 61, 6000, SA_FRAMES_MSX2 },
     { "MUSE", "system-icons/MUSE.png", "system-icons/MUSE-still.png", 256, 2, 1, 2, 168, 82, 71, 105, 800, SA_FRAMES_MUSE },
+    { "MUSIC", "system-icons/MUSIC.png", "system-icons/MUSIC-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_MUSIC },
     { "N64", "system-icons/N64.png", "system-icons/N64-still.png", 256, 4, 7, 27, 110, 16, 68, 57, 6000, SA_FRAMES_N64 },
     { "NAOMI", "system-icons/NAOMI.png", "system-icons/NAOMI-still.png", 256, 2, 13, 27, 21, 31, 142, 126, 6000, SA_FRAMES_NAOMI },
     { "NDS", "system-icons/NDS.png", "system-icons/NDS-still.png", 256, 4, 3, 18, 94, 74, 66, 133, 6000, SA_FRAMES_NDS },

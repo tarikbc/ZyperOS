@@ -5,13 +5,13 @@
       "key": "ROMS",
       "size": 56,
       "file": "review/card-folders/ROMS-56.png",
-      "sha256": "b5e9f7ea7119cec77c29a3c918504c21b7bd84b693bc193416fdc2c724e614bb"
+      "sha256": "a326ce780b986b3ebc5f58ea3eae9fbb0d21b4d8ad441465a30c5783cec0b2e7"
     },
     {
       "key": "ROMS",
       "size": 40,
       "file": "review/card-folders/ROMS-40.png",
-      "sha256": "bf83fe21ce27cfd4128242a14c1cd938ee6091af384de28092339ee1813f1e2e"
+      "sha256": "422306743cfa9c0083eeba94c3d5405830fbef0e1dbb59bbfc10f2356f272f40"
     },
     {
       "key": "BOOKS",
@@ -84,6 +84,18 @@
       "size": 40,
       "file": "review/card-folders/BGM-40.png",
       "sha256": "3358b99dc88b9c8a08a46fbba045cd2314e224a8248a5b5b592ebf44ad69bc83"
+    },
+    {
+      "key": "MUSIC",
+      "size": 56,
+      "file": "review/card-folders/MUSIC-56.png",
+      "sha256": "8f2867d73afc75d18d7cb5a131f00ada2edbe58aceec86e45ca86713a87923b7"
+    },
+    {
+      "key": "MUSIC",
+      "size": 40,
+      "file": "review/card-folders/MUSIC-40.png",
+      "sha256": "2c4aedcdb70dd0d7d3ed6ba733f3a5d2ff308698ce636b934e1b0e8779fad80a"
     }
   ]
 }

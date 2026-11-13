@@ -48,9 +48,9 @@ KEY = re.compile(r"[A-Z0-9_]{1,32}\Z")
 # The launcher's key for a design that is not a shelf's: FOLDER, a folder of
 # no system on the File Transfer page and the Storage page, is the small
 # folder drawn for rows; the card's own folders have theirs, the same in
-# both places, and the menu music's Roms/BGM its cassette (Music wears MP4's,
-# MUSE) (res/system-art/original/README.md).
-EXTRA = {"FOLDER": "FOLDER_SMALL", "ROMS": "ROMS", "BOOKS": "BOOKS", "VIDEOS": "VIDEOS",
+# both places: Music wears its vinyl album, and the menu music's Roms/BGM
+# its cassette (res/system-art/original/README.md).
+EXTRA = {"FOLDER": "FOLDER_SMALL", "ROMS": "ROMS", "MUSIC": "MUSIC", "BOOKS": "BOOKS", "VIDEOS": "VIDEOS",
          "BIOS": "BIOS", "SAVES": "SAVES", "STATES": "STATES", "BGM": "BGM"}
 # Shelves that are not in config/systems.cfg
 SYNTHETIC = [("FAVORITES", "FAV", "Favorites"), ("MUSE", "MUSE", "Muse")]

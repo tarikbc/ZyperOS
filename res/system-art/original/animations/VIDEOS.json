@@ -38,7 +38,7 @@
   "renderer_sha256": {
     "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
     "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
-    "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+    "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
   },
   "atlas": "VIDEOS.png",
   "still": "VIDEOS-still.png",

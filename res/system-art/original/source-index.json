@@ -252,7 +252,7 @@
   {
     "key": "ROMS",
     "name": "ROMs",
-    "file": "source/ROMS.png"
+    "file": "source/ROMS-game.png"
   },
   {
     "key": "BOOKS",
@@ -283,5 +283,10 @@
     "key": "BGM",
     "name": "Menu music",
     "file": "source/BGM.png"
+  },
+  {
+    "key": "MUSIC",
+    "name": "Music",
+    "file": "source/MUSIC.png"
   }
 ]

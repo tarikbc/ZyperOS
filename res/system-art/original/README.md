@@ -1,13 +1,13 @@
 # Original ZyperOS system art
 
-The review set contains 57 designs: 47 systems and shelves, PortMaster, two generic folders, and seven card folders.
+The review set contains 58 designs: 47 systems and shelves, PortMaster, two generic folders, and eight card folders.
 Every animated design has a 256 × 256 atlas and a separate still image.
 The folders also have standalone PNGs for their actual display sizes.
 
 ## View
 
 Open `gallery.html` through a local HTTP server to view the exported animations.
-The gallery includes all 57 designs, pause, and a dark background.
+The gallery includes all 58 designs, pause, and a dark background.
 It starts paused when the system requests reduced motion.
 
 ```sh
@@ -18,7 +18,7 @@ Then open `http://127.0.0.1:8881/gallery.html`.
 `index.html` runs the source animation renderer for editing and export.
 `source-review.html` shows the generated source illustrations.
 `utility-review.html` shows the PortMaster covers and the folders at list size.
-`card-folders-review.html` shows the seven card folders at 256, 56, and 40 pixels on light and dark backgrounds.
+`card-folders-review.html` shows the eight card folders at 256, 56, and 40 pixels on light and dark backgrounds.
 
 ## Artwork and motion
 
@@ -58,7 +58,7 @@ Each animated layer stays inside its declared region.
 - `groups/console-lids.json` records five disc and front-loading mechanisms.
 - `groups/console-cartridges.json` records 12 cartridge-loading mechanisms.
 - `groups/utility.json` records PortMaster and both folder designs.
-- `groups/card-folders.json` records the seven static card folders, full prompts, source hashes, and size reviews.
+- `groups/card-folders.json` records the eight static card folders, full prompts, source hashes, and size reviews.
 - `manifest.json` records the selected PNGs and source hashes.
 - `animations/catalogue.json` records every exported atlas, still, frame duration, and source hash.
 
@@ -88,7 +88,7 @@ Run `check.js` through the Playwright `browser_run_code` tool against `index.htm
 The browser check covers every system, fixed case pixels, moving regions, clipping, loop return, controls, narrow layout, and reduced motion.
 The PNG check covers full catalogue coverage, every unique pose, alpha, source hashes, renderer hashes, dimensions, and frame budgets.
 
-The PNG check covers all 57 designs.
+The PNG check covers all 58 designs.
 The independent visual review has no remaining material findings.
 The review corrected controller colors, cable plugs, screen proportions, and the TurboGrafx-16 regional model.
 PICO-8 and TIC-80 use isolated symbols and whole-pixel motion.
@@ -112,7 +112,8 @@ The card folders use one static pose each. Their generic objects contain no bran
 
 | Key | Folder | Artwork |
 | --- | --- | --- |
-| `ROMS` | ROMs | Game cartridge |
+| `ROMS` | ROMs | Purple game cartridge with an original label illustration |
+| `MUSIC` | Music | Vinyl record with album sleeve |
 | `BOOKS` | Audiobooks | Book with headphones |
 | `VIDEOS` | Videos | Video tape |
 | `BIOS` | BIOS | Chip |
@@ -123,7 +124,8 @@ The card folders use one static pose each. Their generic objects contain no bran
 `animations/<KEY>-still.png` contains each 256-pixel still.
 `review/card-folders/` contains the 56- and 40-pixel browser exports and their hashes.
 The review checks subject recognition, perspective, transparent margins, and visible glow on both backgrounds.
-Music keeps MP4's art (`MUSE`). Any other folder keeps the small folder (`FOLDER_SMALL`).
+`all-light.png` and `all-dark.png` show all eight designs together at the three review sizes.
+The Music folder uses `MUSIC`. MP4's shelf and player keep `MUSE`. Any other folder keeps the small folder (`FOLDER_SMALL`).
 The File Transfer page and the Storage page show each card folder's still under its key.
 
 ## Runtime
@@ -134,6 +136,6 @@ The launcher writes the region of the pose due into the first pose's texture.
 This keeps each decoded atlas under 4 MiB; the largest is 2.1 MiB.
 The 128-pixel stills serve the home's row, the Storage page and the File Transfer page.
 The small folder is the launcher's `FOLDER`: a folder of no system.
-The seven card folders keep their keys.
+The eight card folders keep their keys.
 PortMaster's covers and icon are copied to `res/portmaster`.
 The payload carries only the compiled files, not this source and review directory.

@@ -2,7 +2,7 @@
   "id": "card-folders",
   "generator": "Built-in image_gen",
   "created": "2026-11-13",
-  "scope": "Seven original static designs for card folders.",
+  "scope": "Eight original static designs for card folders.",
   "styleReferences": [
     "source/GB.png",
     "source/PS1-ports.png",
@@ -11,20 +11,20 @@
   "styleReferenceUse": "Inspected all three approved images before generation. Used them only for visual style and included their style in each full prompt. Did not copy subjects, brands, logos, or source pixels.",
   "hardwareReferences": [],
   "hardwareReferenceNote": "The requested subjects are generic objects without real product markings.",
-  "generationPolicy": "One separate initial image_gen call per design. VIDEOS also required one targeted image_gen correction after its first attempt failed review.",
+  "generationPolicy": "Each new design used a separate initial image_gen call. MUSIC and VIDEOS required corrections. ROMS was redrawn after user feedback; the user selected the purple version and requested a picture on its paper label.",
   "assets": [
     {
       "key": "ROMS",
       "name": "ROMs",
-      "subject": "Generic game cartridge",
+      "subject": "Generic purple game cartridge with an illustrated paper label and exposed gold contacts",
       "refs": [
         "source/GB.png",
         "source/PS1-ports.png",
         "source/FOLDER_SMALL.png"
       ],
-      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic game cartridge, shown almost from the front with a narrow right side. Use a warm light-gray shell, a single large blank muted-teal inset panel, two broad shoulder steps, and a short dark connector recess along the bottom. Give the shell a solid blocky silhouette. Keep the inset panel completely blank. Draw no screws, ribs, tiny contacts, or separate objects. This is a new object design; do not reproduce a real console's cartridge.",
-      "sourceFile": "source/ROMS.png",
-      "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art ROMs folder icon for ZyperOS.\nPrimary request: A distinctly new game-cartridge design, different from an upright gray memory card. Make a broad horizontal console game cartridge with a dark plum-blue plastic shell, a warm cream paper label, and a clearly visible bottom connector. It should read as a retro game cartridge even at 40 pixels.\nSubject: one squat wide game cartridge, about 1.45 times wider than tall. Straight front view. The main shell has chunky stepped round corners, two short broad horizontal grip ridges on each outer side, and a short wide raised ridge across the top. A completely blank warm cream paper label occupies the central upper half. It is flat matte paper, not glass, not an inset screen. Below it, the shell has a wide rectangular cutout at the bottom center, leaving two short plastic legs at the bottom corners. A narrow green circuit-board tongue extends slightly below the shell between those legs, carrying EIGHT simple broad gold contact bars along its bottom edge. Clearly separate the gold contacts with dark gaps. The green board and gold contacts must be visible from the front, not hidden behind the plastic. Give the whole cartridge a firm, simple game-cartridge silhouette, unlike an SD card, diskette, screen, or handheld console.\nStyle references: approved ZyperOS GB.png, PS1-ports.png, FOLDER_SMALL.png are style references only, already inspected. Match the chunky square pixel clusters, dark blue-gray outlines, warm upper-left highlights, cool lower-right shadows, and flat three-tone ramps. Do not copy source pixels or real product markings.\nStyle: bold coarse-grid pixel art, hard stepped edges, flat shading, large clear features, no fine texture and no gradients. Keep the label cream and the shell plum-blue. Small bright gold contact bars provide a clear connector edge.\nComposition: square canvas, centered complete cartridge, at least 15 percent transparent margin on every side. Object occupies at most 70 percent of canvas width. No crop.\nBackground: true transparent alpha. No floor, background color, shadows outside the object, glow, haze, or checkerboard.\nConstraints: original generic cartridge. No text, numbers, symbols, logos, brand, game character, artwork on the paper label, buttons, screen, disc, separate objects, photos, tracing, or any existing icon pack.",
+      "sourceFile": "source/ROMS-game.png",
+      "sha256": "2b68ef853740c1db8b19d21ba00d9abb30fc320479072e1944520ea22634e7d2",
       "size": [
         1254,
         1254
@@ -38,15 +38,15 @@
       ],
       "alphaBounds": [
         0,
-        99,
-        1222,
-        1224
+        149,
+        1200,
+        1238
       ],
       "visibleAlphaBounds": [
-        149,
-        227,
-        1105,
-        1045
+        107,
+        310,
+        1148,
+        942
       ],
       "static": true,
       "poseCount": 1,
@@ -63,10 +63,10 @@
       "sourceReview": {
         "status": "passed",
         "checks": [
-          "The stepped shoulder and bottom connector recess identify a game cartridge.",
-          "The blank teal inset is large and has no text or marking.",
-          "The dark outline, warm highlight, and cool right edge match the inspected references.",
-          "The source has no separate object, floor shadow, or background scene."
+          "The wide purple shell, grip ribs, and exposed circuit board identify a game cartridge.",
+          "The cream paper label contains an original mountain scene without words, logos, or game characters.",
+          "Eight gold contacts sit along the lower edge, with green and dark gaps between them.",
+          "The front view keeps the shell, paper label, and connector aligned."
         ]
       },
       "actualSizeReview": {
@@ -80,8 +80,15 @@
           "light",
           "dark"
         ],
-        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
-      }
+        "note": "The purple cartridge, exposed gold contacts, and original mountain scene remain clear at each size. The paper border stays distinct. No visible glow, text, or brand appears."
+      },
+      "correctionPrompts": [
+        {
+          "prompt": "Edit the paper label of this exact purple game cartridge. Preserve the purple plastic shell, silhouette, grip ribs, top ridge, highlights, green connector, eight gold contacts, orientation, object position, transparent square canvas, and all areas outside the label.\nReplace the empty cream label with a simple original pixel-art game scene printed on paper. Keep a broad warm-cream paper border around the illustration. Inside that border draw a muted teal sky, one large gold square-pixel sun in the upper-right, two bold dark blue stepped mountain peaks, and a low green ground strip. Use very few large blocks, like a tiny original retro adventure-game cover. The scene should fill most of the label and remain readable as printed artwork at 40 pixels. It must look like ink printed on a paper cartridge label, not a glowing screen. No shine, bezel, glow, glass, icons outside the label, or added objects.\nMatch the existing coarse square pixel clusters and restrained flat color ramps. No text, letters, numbers, logos, game characters, trademarks, references to real games, copied artwork, or other icon packs. Keep all transparent areas transparent.",
+          "reason": "The user selected the purple cartridge and wanted artwork on the paper label.",
+          "result": "Added an original mountain scene with a teal sky, gold sun, and green ground inside the paper border."
+        }
+      ]
     },
     {
       "key": "BOOKS",
@@ -505,14 +512,92 @@
         ],
         "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
       }
+    },
+    {
+      "key": "MUSIC",
+      "name": "Music",
+      "subject": "Generic vinyl record with album sleeve",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic vinyl record half out of its square album sleeve, treated as one compact icon. Show the sleeve upright almost from the front, in a warm mustard-gold with a completely blank front. The record slides out of the sleeve's right side and shows a little more than half of its circle. Make the record near-black, with one or two slightly lighter rings for the grooves and a large blank muted-teal center label with a small dark spindle hole. Keep a clear light gap between the record and the sleeve edge. Use only these large shapes. No music notes, letters, stickers, small details, or separate objects. It must not look like a game disc, a CD, a cassette, or a video tape.",
+      "correctionPrompts": [
+        {
+          "prompt": "Correct this ZyperOS MUSIC folder icon. Preserve the chunky pixel-art style, dark blue-gray outline, warm mustard-gold sleeve, near-black vinyl record, and muted-teal label. The sleeve must be completely blank: remove the strange dark multicolor mark and all haze from its center. Fill the sleeve face with clean flat mustard-gold shading in only three solid tones. No marks, print, symbols, text, texture noise, or holes on the sleeve. Move the vinyl record to the right relative to the sleeve so a little more than half of its circle is exposed, with its entire large teal center label and small dark spindle hole visible. Keep one or two broad slightly lighter groove rings. The sleeve stays a square seen almost straight from the front. A narrow warm-light sleeve edge separates its front from the dark record, without making either object float separately. Center the combined compact icon on a square canvas and leave at least 15 percent fully transparent margin on every side. No background, floor shadow, outer glow, or crop. The subject must read as a vinyl album and sleeve, not a game disc or CD.",
+          "reason": "The first source had a dark multicolor mark on the sleeve and obscured part of the record label.",
+          "result": "The corrected sleeve is blank and the full teal label is visible."
+        }
+      ],
+      "sourceFile": "source/MUSIC.png",
+      "sha256": "e3fc6b6284c04f5b21acc945ca0d86060ffac0d54e91fff3845e56b358be8fc6",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        65,
+        1201,
+        1198
+      ],
+      "visibleAlphaBounds": [
+        162,
+        328,
+        1085,
+        978
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The blank mustard sleeve and dark grooved record identify a vinyl album.",
+          "The complete teal label has only a small spindle hole.",
+          "The front view keeps the sleeve and record aligned.",
+          "No text, product marking, or separate decorative object appears."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "The sleeve and grooved record remain distinct from the video tape, cassette, headphones, and game discs. The silhouette, blank sleeve, and teal label remain clear. No visible glow, text, or cropped shape appears."
+      }
     }
   ],
   "perspectiveChecks": [
-    "ROMS and VIDEOS use a near-front view with a narrow right side.",
+    "ROMS uses a front view with aligned shell edges, paper label, and connector. VIDEOS uses a near-front view with a narrow right side.",
     "BOOKS uses a near-front book view with a right page block; the headphone arch stays around the book.",
     "BIOS uses a top view with three broad contact pins on each side.",
     "SAVES, STATES, and BGM use a straight front view.",
-    "All shapes remain fixed; no motion or screen projection is needed."
+    "All shapes remain fixed; no motion or screen projection is needed.",
+    "MUSIC uses a near-front sleeve and record; their top and bottom edges share the same plane."
   ],
   "browserReview": {
     "status": "passed",
@@ -544,6 +629,153 @@
       "light",
       "dark"
     ],
-    "result": "No material findings. All seven subjects remain recognizable at 40 and 56 pixels. Perspective stays consistent. No visible glow, text, brand, or logo appears."
-  }
+    "result": "All eight folder designs passed review. The final purple ROMS cartridge remains recognizable with visible contacts and a distinct paper-label illustration. MUSIC reads as a vinyl album. No visible glow, text, or brand appears."
+  },
+  "supersededSources": [
+    {
+      "reason": "The user could not identify the cartridge because the contacts were not visible. Replaced with a new design from scratch.",
+      "asset": {
+        "key": "ROMS",
+        "name": "ROMs",
+        "subject": "Generic game cartridge",
+        "refs": [
+          "source/GB.png",
+          "source/PS1-ports.png",
+          "source/FOLDER_SMALL.png"
+        ],
+        "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic game cartridge, shown almost from the front with a narrow right side. Use a warm light-gray shell, a single large blank muted-teal inset panel, two broad shoulder steps, and a short dark connector recess along the bottom. Give the shell a solid blocky silhouette. Keep the inset panel completely blank. Draw no screws, ribs, tiny contacts, or separate objects. This is a new object design; do not reproduce a real console's cartridge.",
+        "sourceFile": "source/ROMS.png",
+        "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
+        "size": [
+          1254,
+          1254
+        ],
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaExtrema": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          0,
+          99,
+          1222,
+          1224
+        ],
+        "visibleAlphaBounds": [
+          149,
+          227,
+          1105,
+          1045
+        ],
+        "static": true,
+        "poseCount": 1,
+        "expected_poses": 1,
+        "duration": 1000,
+        "kind": "card-folder",
+        "motionBounds": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "motionChoice": "Static source only. No moving parts and no screen.",
+        "sourceReview": {
+          "status": "passed",
+          "checks": [
+            "The stepped shoulder and bottom connector recess identify a game cartridge.",
+            "The blank teal inset is large and has no text or marking.",
+            "The dark outline, warm highlight, and cool right edge match the inspected references.",
+            "The source has no separate object, floor shadow, or background scene."
+          ]
+        },
+        "actualSizeReview": {
+          "status": "passed",
+          "sizes": [
+            256,
+            56,
+            40
+          ],
+          "backgrounds": [
+            "light",
+            "dark"
+          ],
+          "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+        }
+      }
+    },
+    {
+      "reason": "The user requested another shape, then selected the wide purple cartridge and asked for artwork on its paper label.",
+      "asset": {
+        "key": "ROMS",
+        "name": "ROMs",
+        "subject": "Generic game cartridge with six exposed gold contacts",
+        "refs": [
+          "source/GB.png",
+          "source/PS1-ports.png",
+          "source/FOLDER_SMALL.png"
+        ],
+        "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art ROMs folder icon for ZyperOS.\nPrimary request: Create a brand-new generic game cartridge from scratch. It must be immediately recognizable as a game cartridge at 40 pixels, with a clearly visible row of large exposed gold electrical contacts along its bottom edge.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png establish style only: chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, limited three-tone color ramps. Do not copy their subjects, markings, or pixels.\nSubject: one broad upright rectangular game cartridge, seen directly from the front with a very narrow right side. Its shell is warm light gray with two shallow stepped shoulders at the top, two broad short rib shapes on each side, and a small blank muted coral label in the upper third. The label is printed flat on the plastic, not inset glass and not a screen. The lower third has a wide open dark connector recess spanning most of the cartridge width. Inside that recess, show SIX large separate rectangular gold contact pads in a clear single row. The six gold pads extend all the way down to the bottom edge of the cartridge, with dark gaps between them. The contacts must be a major visible part of the silhouette and remain recognizable at 40 pixels, not hidden behind a lip. Keep the plastic shell short enough that the contacts are visually prominent.\nStyle/medium: clean game pixel art, built from visibly square coarse clusters. Hard stepped edges. Flat three-tone shading per color, no texture noise or gradients. One bold object and few large features.\nComposition: square transparent canvas. Entire cartridge centered, occupying at most 70 percent of the canvas width and height, with at least 15 percent fully transparent margin on every side. No crop.\nConstraints: original generic cartridge, not any real product. No logo, brand, label text, letters, numbers, symbols, screws, hands, console, game screen, reflective glass, decorations, photos, tracing, or other icon set.\nBackground: truly transparent alpha. No background color, floor, external shadow, haze, glow, or checkerboard.",
+        "sourceFile": "source/ROMS-pins.png",
+        "sha256": "f25f43c16a61b21c8dc3b3e2ffe83237770f03f7e94f4d99ccbaa533c45b1f2d",
+        "size": [
+          1254,
+          1254
+        ],
+        "width": 1254,
+        "height": 1254,
+        "mode": "RGBA",
+        "alphaExtrema": [
+          0,
+          255
+        ],
+        "alphaBounds": [
+          0,
+          53,
+          1253,
+          1222
+        ],
+        "visibleAlphaBounds": [
+          199,
+          246,
+          1055,
+          1010
+        ],
+        "static": true,
+        "poseCount": 1,
+        "expected_poses": 1,
+        "duration": 1000,
+        "kind": "card-folder",
+        "motionBounds": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "motionChoice": "Static source only. No moving parts and no screen.",
+        "sourceReview": {
+          "status": "passed",
+          "checks": [
+            "Six large gold contact pads sit in an open connector recess along the bottom edge.",
+            "Stepped shoulders and broad side ribs identify the cartridge shell.",
+            "A small flat coral label replaces the previous screen-like inset.",
+            "The front view keeps the shell and contacts aligned; no text, logo, or outer shadow appears."
+          ]
+        },
+        "actualSizeReview": {
+          "status": "pending",
+          "sizes": [
+            256,
+            56,
+            40
+          ],
+          "backgrounds": [
+            "light",
+            "dark"
+          ]
+        }
+      }
+    }
+  ]
 }
