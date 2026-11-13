@@ -33,6 +33,21 @@ diatom's own license, so the project's founding goal - escaping GPL inheritance 
 untouched. The networking halves (`rc_client`, `rapi`, `rurl`) are deliberately
 not vendored; `vendor/rcheevos/README.md` lists every omission and why.
 
+## Sharp-Shimmerless, in `port/pixel2.c` and `port/brick.c`
+
+zadpos's box filter for pixel art at fractional scales: the `shimmerless`
+filter (`src/scale.c`), which ZyperOS's Shader rows call Sharp-Shimmerless.
+
+- **By zadpos**, from https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader
+  at `2a74e7a` (2024-11-25), its `shaders_glsl/shaders/sharp-shimmerless.glsl`.
+- **CC0 1.0 Universal** (the repository's `LICENSE.txt`): dedicated to the
+  public domain, and the shader's own header says *"License: Public domain"*.
+  Nothing is owed, and it is named here because the idea is the author's.
+- `port/pixel2.c` (`SHIMMERLESS_SHADER`) is its fragment shader rewritten for
+  OpenGL ES 3.0 and this port's one pass; `port/brick.c` (`build_map`) is the
+  same arithmetic as the Brick's CPU resampling map. Both are Diatom's files,
+  under its Mozilla Public License 2.0.
+
 ## Cores
 
 **Diatom ships no cores and has no core list.** It loads whatever shared library

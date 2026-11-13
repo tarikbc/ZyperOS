@@ -277,6 +277,66 @@
       "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
       "name": "Soltys",
       "sha256": "1b32cbfbe0f9da2748ff8b3615542861cf1a4675018c651e6d471cdaba6d5fd5"
+    },
+    "Game Boy Advance/Commercial Owned/Castlevania - Aria of Sorrow (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Castlevania - Aria of Sorrow (USA)",
+      "sha256": "801302e90259bf53c714bbb50c53a92ed8b9023f1accf7676a988841255cddc3"
+    },
+    "Game Boy Advance/Commercial Owned/Final Fantasy Tactics Advance (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Final Fantasy Tactics Advance (USA)",
+      "sha256": "3078970248e49c557409980579c96d53063a0a60b50b224ed5ce67613df08ea9"
+    },
+    "Game Boy Advance/Commercial Owned/Golden Sun (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Golden Sun (USA, Europe)",
+      "sha256": "e1e96c261bea930a23c966ae2a5fc80a318e9f509af5480b450a6e6309bc2574"
+    },
+    "Game Boy Advance/Commercial Owned/Kirby & The Amazing Mirror (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Kirby & The Amazing Mirror (USA)",
+      "sha256": "d7052e92dbe6a8da7f3b7b5fb623b131958f21bf04d2c29ad90666a5faaf3a85"
+    },
+    "Game Boy Advance/Friends Games/Fire Emblem (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Fire Emblem (USA, Australia)",
+      "sha256": "8d7967af431410a81c9871f47db15d5b52b221bd2f58c5b887df0cd1a49f1703"
+    },
+    "Game Boy Advance/Rom Hacks/Translations/Mother 3 (English).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Mother 3 (Japan)",
+      "sha256": "22c66f14c081190febb8ede167f9553ce425a2fa277b6bda3c2dd490cb0ab141"
+    },
+    "psx/images/Castlevania - Symphony of the Night (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Castlevania - Symphony of the Night (USA)",
+      "sha256": "0a3064fc4eaa9c9fab4885dc5b65dac044b4079ab731a036f06411bb20048b57"
+    },
+    "psx/images/Crash Bandicoot (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Crash Bandicoot (USA)",
+      "sha256": "53da89f702471310d68dda076f42490e7f6bfcc22dd7402917c6a8077bf85a77"
+    },
+    "psx/images/Metal Gear Solid (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "psx/images/Spyro the Dragon (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Spyro the Dragon (USA)",
+      "sha256": "14d9a52c23559fbce8e337363c674d9a9abac3d81d2ba17fc9775d98728f303b"
+    },
+    "psx/images/Tekken 3 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tekken 3 (USA)",
+      "sha256": "080ad8cba468ea08f0d3c25b4396e586043852814a5e6d3690d86c41d8c6b1e1"
+    },
+    "psx/images/Tony Hawk's Pro Skater 2 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tony Hawk's Pro Skater 2 (USA)",
+      "sha256": "a901005870f4f3be71be4b95a2066b18e7d2b935b5d086bc308624eb2cab482a"
     }
   },
   "screenshots": [
@@ -465,6 +525,29 @@
         "b#"
       ],
       "sha256": "7a3896f4168f272a718e270b49753a4ed59a0d58b7d96db7d0d0d64fd7753590"
+    },
+    {
+      "file": "light/cheevos-waiting.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--cheevos-screen",
+        "0",
+        "--cheevos-waiting",
+        "2",
+        "--cheevos-badge",
+        "{card}/Roms/PlayStation/.cheevos/Hagane.set",
+        "b#"
+      ],
+      "sha256": "cee0da60eb6a0fd30464ddd20798cff47f434a9c1f9ce64bcdbe559a1b831720"
     },
     {
       "file": "light/cheevo-notice.png",
@@ -1258,7 +1341,29 @@
         "--backdrop",
         "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "92b20bcdb0d26e4bc3c4909274a3792b879478cfa789044ef0701e4f111895dd"
+      "sha256": "aa0dbfbd8b3c35d6d77fe7b9cd1e36d9f39d7b03105d58af0fea3e8d1d4ddbea"
+    },
+    {
+      "file": "light/gamemenu-shader.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "5",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "6ac7d81bc37b680da825d301ed611798743a6f6d63a165ffb3a3f46f5d6cb0d5"
     },
     {
       "file": "light/controls-ps1.png",
@@ -1305,6 +1410,29 @@
         "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
       "sha256": "8cc8c20eeacec80fd5a78ae480830094eaec2638b4a44def2eaee8bd7e7d1f2f"
+    },
+    {
+      "file": "light/controls-psp.png",
+      "card": "psp",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "1",
+        "PSP",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "7c7701841de73d7c54a230ed9537453d9c03f0f227283ed91d66dde1a8cefb23"
     },
     {
       "file": "dark/systems.png",
@@ -1527,6 +1655,198 @@
         "browser"
       ],
       "sha256": "2bba407d6c44ccf201e5f2f25d112b776388a0746b993e7214eff6cca31ddf91"
+    },
+    {
+      "file": "light/screensaver.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--saver",
+        "--saver-pic",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png"
+      ],
+      "sha256": "692ef7648aca32156df4cf7e0b52df574748fab59ea88eabc19224f3bafd017f"
+    },
+    {
+      "file": "light/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "0d7703812334a5e3fbcdf3baeb5ccc0556b61675747600fd17dbe8f99f2a4b60"
+    },
+    {
+      "file": "light/folder-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "165a6b6ce3ce7609a6c5d14bd0450ccdcd0d1eb93603c071a11854560bba1405"
+    },
+    {
+      "file": "light/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "1fd70ad0bba7ddc1b4926be6a9d2d44de30c55b7ea875973958b6db81d5e4cf6"
+    },
+    {
+      "file": "light/list-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "dd7f09a82ba4374988127436e3a8d41caac5f3b851ec77bbbad8273976d72610"
+    },
+    {
+      "file": "dark/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "48304bead3d1c47578f1cb5f8e1465e1d802d389975522ee9123f9202355ae34"
+    },
+    {
+      "file": "dark/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "2e7582472a3fa8b35f3caf15eb3bdf2e163aca66963039a08ad6a93f6f148822"
+    },
+    {
+      "file": "light/es-shelf.png",
+      "card": "es",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "8bb689f76afb72e8b0ec2ebfc0a3cc0e2329ee41b165ded3526ec4ab6c659762"
+    },
+    {
+      "file": "light/info-rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--info-rename"
+      ],
+      "sha256": "3f31de337d32cb41bd82af483c9751245f557f27330d5a106abd98b6faf5b154"
+    },
+    {
+      "file": "light/rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--keyboard",
+        "0",
+        "Metal Gear Solid (USA)",
+        "Rename"
+      ],
+      "sha256": "e49030e8f94cac69eb2132b84bc9a66f37b30080dc7050f96691206b8e7bad1a"
     }
   ]
 }

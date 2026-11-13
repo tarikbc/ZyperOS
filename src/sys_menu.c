@@ -17,6 +17,12 @@ void sys_menu_auto_off_label(int seconds, char *out, size_t n)
 	else                   snprintf(out, n, T(S_SYSMENU_AUTO_OFF_MINS), seconds / 60);
 }
 
+void sys_menu_saver_label(int seconds, char *out, size_t n)
+{
+	if (seconds <= 0) snprintf(out, n, "%s", T(S_MENU_OFF));
+	else              sys_menu_auto_off_label(seconds, out, n);
+}
+
 const char *sys_menu_order_name(bool release)
 {
 	return T(release ? S_SYSMENU_ORDER_RELEASE : S_SYSMENU_ORDER_AZ);
@@ -55,6 +61,56 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 		out[n++] = (pm_row)r;
 	}
 	return n;
+}
+
+pm_tab sys_menu_tab_of(pm_row r)
+{
+	/* No default: -Wswitch names a row that has no tab */
+	switch (r) {
+	case PM_SEARCH: case PM_STATS: case PM_RANDOM: case PM_ACHIEVEMENTS:
+	case PM_SCRAPER:
+		return PT_GAMES;
+	case PM_APPEARANCE: case PM_AUTOHOURS: case PM_THEME: case PM_HOME:
+	case PM_ORDER: case PM_BATTERY: case PM_SAVER: case PM_SHADER:
+		return PT_DISPLAY;
+	case PM_AUDIO: case PM_CHANNELS: case PM_SOUNDS: case PM_MUSIC:
+		return PT_SOUND;
+	case PM_USB_WAIT: case PM_WIFI: case PM_BT: case PM_XFER: case PM_USB:
+	case PM_DEVELOPER:
+		return PT_CONNECTIONS;
+	case PM_CLOCK: case PM_HOURS: case PM_LANGUAGE: case PM_SLEEP:
+	case PM_CHARGE: case PM_LIGHTS: case PM_STORAGE: case PM_UPDATE:
+		return PT_SYSTEM;
+	case PM_ABOUT: case PM_CONTROLS: case PM_TOUR:
+		return PT_ABOUT;
+	case PM_ROWS:
+		break;
+	}
+	return PT_TABS;
+}
+
+const char *sys_menu_tab_name(pm_tab t)
+{
+	switch (t) {
+	case PT_GAMES:       return T(S_SYSMENU_TAB_GAMES);
+	case PT_DISPLAY:     return T(S_SYSMENU_TAB_DISPLAY);
+	case PT_SOUND:       return T(S_SYSMENU_TAB_SOUND);
+	case PT_CONNECTIONS: return T(S_SYSMENU_TAB_CONNECTIONS);
+	case PT_SYSTEM:      return T(S_SYSMENU_TAB_SYSTEM);
+	case PT_ABOUT:       return T(S_SYSMENU_TAB_ABOUT);
+	case PT_TABS:        break;
+	}
+	return "ZyperOS";
+}
+
+int sys_menu_tab_rows(const sys_ui *u, pm_tab t, pm_row *out)
+{
+	pm_row all[PM_ROWS];
+	int n = sys_menu_zyperos_rows(u, all), k, m = 0;
+
+	for (k = 0; k < n; k++)
+		if (sys_menu_tab_of(all[k]) == t) out[m++] = all[k];
+	return m;
 }
 
 int sys_menu_system_rows(const sys_ui *u, sm_row *out)
@@ -253,7 +309,9 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	[PM_SOUNDS]     = MENU_SND_OWN,
 	[PM_SLEEP]      = MENU_SND_NO_A,
 	[PM_CHARGE]     = MENU_SND_RING,
+	[PM_SAVER]      = MENU_SND_NO_A,
 	[PM_APPEARANCE] = MENU_SND_RING,
+	[PM_SHADER]     = MENU_SND_RING,
 	[PM_HOME]       = MENU_SND_RING,
 	[PM_ORDER]      = MENU_SND_RING,
 	[PM_BATTERY]    = MENU_SND_RING,
@@ -263,13 +321,15 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core and Game Language step on A as well; Sort By and Display Mode do
- * nothing with it. */
+/* Core, Game Language, View and Shader step on A as well; Sort By and
+ * Display Mode do nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
 	[SM_DSLANG]  = MENU_SND_RING,
 	[SM_SORT]    = MENU_SND_RING | MENU_SND_NO_A,
+	[SM_VIEW]    = MENU_SND_RING,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
+	[SM_SHADER]  = MENU_SND_RING,
 	[SM_RANDOM]  = MENU_SND_OWN,
 };
 static unsigned char smm_sound(sm_muse_row r)
@@ -296,8 +356,11 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 			out[0] = (menu_row){ T(S_SYSMENU_GAMES), b->a,               false };
 			out[1] = (menu_row){ T(S_SYSMENU_RANDOM_GAME), NULL, u->game_count > 0 };
 			out[2] = (menu_row){ T(S_SYSMENU_SORT_BY), u->sort ? u->sort : T(S_SORT_NAME), true };
+			out[3] = (menu_row){ T(S_SYSMENU_VIEW),
+			                     T(u->listed ? S_SYSMENU_VIEW_LIST : S_SYSMENU_VIEW_COVERS), true };
 			b->sound[1] = SM_SOUND[SM_RANDOM];
 			b->sound[2] = SM_SOUND[SM_SORT];
+			b->sound[3] = SM_SOUND[SM_VIEW];
 			return SM_FAV_ROWS;
 		}
 		if (u->muse) {
@@ -355,7 +418,14 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		full[SM_DSLANG]  = (menu_row){ T(S_SYSMENU_DSLANG), u->dslang, u->dslang != NULL };
 		full[SM_SORT]    = (menu_row){ T(S_SYSMENU_SORT_BY),
 		                              u->sort ? u->sort : T(S_SORT_NAME), true  };
+		/* The covers in a row, or a list of names (DESIGN.md 11.39) */
+		full[SM_VIEW]    = (menu_row){ T(S_SYSMENU_VIEW),
+		                              T(u->listed ? S_SYSMENU_VIEW_LIST : S_SYSMENU_VIEW_COVERS), true };
 		full[SM_DISPLAY] = (menu_row){ T(S_SYSMENU_DISPLAY_MODE), u->dmode, true  };
+		/* How the picture is drawn at its last step, Off or a shader: this
+		 * system's, as Display Mode is (src/app.h SHADERS) */
+		full[SM_SHADER]  = (menu_row){ T(S_GAMEMENU_SHADER),
+		                              u->shader ? u->shader : T(S_MENU_OFF_TITLE), true };
 		/* Button Mapping is out until there is something behind it. Diatom
 		 * supplies core button labels, so the hook is real - but a dead row
 		 * in a menu of live ones is a promise the launcher is not keeping,
@@ -395,7 +465,13 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 
 	menu_row full[PM_ROWS];
 
-	*heading = "ZyperOS";
+	/* The tab's name: drawn as MENU's tab row (main.c, menu_tabs_draw),
+	 * and the heading anything else that draws these rows reads. A `tab`
+	 * that is none (PT_TABS) is every row, in the enum's order, under the
+	 * old heading: for measuring the panel and for tools/menu-check.c. */
+	bool all = u->tab < 0 || u->tab >= PT_TABS;
+
+	*heading = all ? "ZyperOS" : sys_menu_tab_name((pm_tab)u->tab);
 	/* The network's name, not its address. A settings row should say what the
 	 * setting IS; the address is a fact about the machine and lives on the
 	 * About page with the other ones. */
@@ -481,6 +557,9 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	 * setting. */
 	full[PM_LIGHTS]       = (menu_row){ T(S_SYSMENU_SIDE_LIGHTS),
 	                                   u->lights ? u->lights : T(S_LIGHTS_ALL_ON), true };
+	/* The screensaver's delay, or off (src/saver.h) */
+	sys_menu_saver_label(u->saver, b->sv, sizeof b->sv);
+	full[PM_SAVER]        = (menu_row){ T(S_SYSMENU_SCREENSAVER), b->sv, true };
 	full[PM_HOME] = (menu_row){ T(S_SYSMENU_HOME_SCREEN), u->home ? u->home : T(S_HOME_SPOTLIGHT), true };
 	/* The systems' order on the home, A to Z or by release date, stepped
 	 * round like Home Screen (docs/design/mock/controls-lab.html) */
@@ -502,6 +581,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ACHIEVEMENTS] = (menu_row){ T(S_SYSMENU_CHEEVOS),
 	                                   u->ra_in ? u->ra_name : T(S_SYSMENU_SIGN_IN),
 	                                   true };
+	/* The shader for every system at once; each system's own menu and the
+	 * in-game menu choose one for that system alone (src/app.h SHADERS) */
+	full[PM_SHADER]       = (menu_row){ T(S_GAMEMENU_SHADER),
+	                                   u->shader_all ? u->shader_all : T(S_MENU_OFF_TITLE), true };
 	/* What every button does, per screen. Needs nothing of the device, which
 	 * is the point: it is the page you reach when the thing you have forgotten
 	 * is which button opens Muse. See src/controls.h. */
@@ -523,9 +606,16 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	full[PM_ABOUT]        = (menu_row){ T(S_SYSMENU_ABOUT), NULL, true  };
 	/* Any game by its name, typed (src/search.h) */
 	full[PM_SEARCH]       = (menu_row){ T(S_SYSMENU_SEARCH), NULL, true  };
+	/* When Auto turns light and dark; A opens its two rows */
+	full[PM_AUTOHOURS]    = (menu_row){ T(S_SYSMENU_AUTO_HOURS), u->auto_hours, true };
+	/* The look: its value the accent's name, both themes' chips before it
+	 * (main.c draws them); A opens the page */
+	full[PM_THEME]        = (menu_row){ T(S_SYSMENU_THEME),
+	                                   u->theme ? u->theme : T(S_LOOK_ACCENT_LIME), true };
 	{
 		pm_row ids[PM_ROWS];
-		int k, n = sys_menu_zyperos_rows(u, ids);
+		int k, n = all ? sys_menu_zyperos_rows(u, ids)
+		               : sys_menu_tab_rows(u, (pm_tab)u->tab, ids);
 
 		for (k = 0; k < n; k++) {
 			out[k] = full[ids[k]];

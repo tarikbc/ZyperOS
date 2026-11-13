@@ -1,6 +1,6 @@
 [package]
 name = "zyperos-installer"
-version = "1.0.4"
+version = "1.0.5"
 description = "Puts ZyperOS on a microSD card for the GKD Pixel 2 or the TrimUI Brick, or updates one"
 # Built on TortOS Installer by Eric Reinsmidt
 authors = ["Tarik Caramanico", "Eric Reinsmidt"]

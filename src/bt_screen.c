@@ -99,14 +99,9 @@ void bt_screen(app *a)
 		if (menu_leaving(a)) done = true;
 		if (a->in.pressed[IN_SELECT]) muse_open(a, NULL, NULL);
 
-		if (in_repeat(&a->in, IN_DOWN)) {
-			step_sound(a, IN_DOWN, sel, sel < u.n ? sel + 1 : sel);
-			if (sel < u.n) sel++;
-		}
-		if (in_repeat(&a->in, IN_UP)) {
-			step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
-			if (sel > 0) sel--;
-		}
+		/* sel runs 0 to u.n: the devices, then the row after them */
+		if (in_repeat(&a->in, IN_DOWN)) sel = list_step_heard(a, IN_DOWN, u.n + 1, sel);
+		if (in_repeat(&a->in, IN_UP))   sel = list_step_heard(a, IN_UP, u.n + 1, sel);
 		/* The window follows the cursor, so a long list scrolls a row at a
 		 * time from either end. */
 		if (u.cursor >= 0) {

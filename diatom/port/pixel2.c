@@ -146,7 +146,7 @@ static int              g_thread_ready;     /* 0 waiting, 1 ok, -1 failed */
 static bool g_present_debug;
 
 /* GL objects, all owned by the thread. */
-static GLuint g_prog_plain, g_prog_sharp, g_prog_solid;
+static GLuint g_prog_plain, g_prog_sharp, g_prog_shimmerless, g_prog_solid;
 static GLuint g_frame_tex, g_overlay_tex, g_osdbar_tex;
 static int    g_tex_w = -1, g_tex_h = -1;
 static diatom_pixfmt g_tex_fmt;
@@ -274,6 +274,11 @@ static uint64_t g_osd_shown, g_osd_changed;
 static bool     g_osd_on;
 static int      g_osd_level, g_osd_max, g_osd_kind;   /* kind 0 volume, 1 brightness */
 static int      g_osd_theme;                          /* DS_LIGHT or DS_DARK */
+/* The bar's colors in that theme, as the player's look has them (the theme
+ * file's second line, themefile_read_bar), and a count that moves when they
+ * do, for the render thread to hand them to osdbar_colors */
+static ds_theme g_osd_colors;
+static unsigned g_osd_colors_gen;
 static bool     g_lowbat, g_lowbat_blink;   /* the low-battery disc; under g_mx */
 
 /* ---------- levels ---------------------------------------------------------- */
@@ -551,9 +556,15 @@ static void osd_show(int kind, int level, int max)
 	/* The theme is the launcher's, in a file: read before g_mx is taken, so
 	 * the render thread is never kept waiting on the filesystem, and again
 	 * on every press, so a change while the bar is up shows on the next one. */
-	int theme = themefile_read(THEME_FILE);
+	ds_theme colors;
+	int theme = themefile_read_bar(THEME_FILE, &colors);
 
 	pthread_mutex_lock(&g_mx);
+	if (theme != g_osd_theme || memcmp(&colors.ground, &g_osd_colors.ground,
+	                                   sizeof colors.ground * 18)) {
+		g_osd_colors = colors;
+		g_osd_colors_gen++;
+	}
 	uint64_t now = diatom_port_now_us();
 	float a, rise;
 
@@ -651,6 +662,41 @@ static const char *SHARP_SHADER =
 	"	vec2 p = floor(c);\n"
 	"	vec2 f = clamp((c - p - 0.5) * u_scale + 0.5, 0.0, 1.0);\n"
 	"	o_color = panel(texture(u_tex, (p + 0.5 + f) / u_size));\n"
+	"}\n";
+
+/* Sharp-Shimmerless, zadpos's box filter (public domain; THIRD-PARTY.md),
+ * from its shaders_glsl/shaders/sharp-shimmerless.glsl at 2a74e7a, in GLES
+ * 3.0 and in this pass's terms: v_src is in texels already, so the
+ * destination pixel is (v_src - u_origin) * u_scale, measured from the
+ * quad's first texel, and the original's per-vertex `pixel`, `scale` and
+ * `invscale` are that, u_scale and u_inv. The rest is its main(): the
+ * texels under the pixel's two edges, and where they differ, the point
+ * between them whose bilinear weights are the areas each covers - one
+ * texture read, the sampler doing the mix. Measured from v_src rather than
+ * gl_FragCoord so that neither the panel's turn nor a GPU frame read
+ * bottom-up changes the arithmetic: the box filter is the same both ways
+ * along an axis.
+ *
+ * A pixel inside one texel lands on that texel's centre, so with LINEAR the
+ * neighbour's weight is 0 and nothing bleeds past a DS screen's edge or a
+ * GPU frame's last row, which sharp's comment below warns of. */
+static const char *SHIMMERLESS_SHADER =
+	"#version 300 es\n"
+	"precision highp float;\n"
+	"uniform sampler2D u_tex;\n"
+	"uniform vec2 u_size;\n"
+	"uniform vec2 u_scale;\n"
+	"uniform vec2 u_inv;\n"
+	"uniform vec2 u_origin;\n"
+	PANEL_COLOR
+	"in vec2 v_src;\n"
+	"out vec4 o_color;\n"
+	"void main() {\n"
+	"	vec2 px = (v_src - u_origin) * u_scale;\n"
+	"	vec2 tl = floor(px), br = ceil(px);\n"
+	"	vec2 t_tl = floor(u_inv * tl), t_br = floor(u_inv * br);\n"
+	"	vec2 t = t_br + 0.5 - (1.0 - step(t_br, t_tl)) * (u_scale * t_br - tl);\n"
+	"	o_color = panel(texture(u_tex, (t + u_origin) / u_size));\n"
 	"}\n";
 
 static const char *SOLID_SHADER =
@@ -833,17 +879,22 @@ static void upload_frame(const mailbox_frame *f)
  * with straight alpha, the overlay's own layout, so it goes up the overlay's
  * way. Not through the panel's color matrix: the shelf is not, and the bar is
  * the shelf's. */
+/* The look's colors as last handed to osdbar_colors, for draw_level_bar to
+ * paint again when they move (render thread) */
+static unsigned g_osd_colors_seen;
+
 static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
                            float rise, bool turned)
 {
 	static uint32_t px[OSDBAR_W * OSDBAR_H];
 	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme, drawn_a, w, h;
+	static unsigned drawn_gen;
 	const float s = (float)g_surface_w / 1024.0f;
 	int a = (int)(alpha * 255 + 0.5f);
 
 	if (s <= 0 || s > 1) return;
 	if (kind != drawn_kind || level != drawn_level || max != drawn_max ||
-	    theme != drawn_theme || a != drawn_a) {
+	    theme != drawn_theme || a != drawn_a || drawn_gen != g_osd_colors_seen) {
 		osdbar_size(s, &w, &h);
 		osdbar_render(px, w, h, w, s, theme, kind ? OSDBAR_BRIGHT : OSDBAR_VOLUME,
 		              level, max, alpha, false);
@@ -851,7 +902,7 @@ static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
 		drawn_kind = kind; drawn_level = level; drawn_max = max;
-		drawn_theme = theme; drawn_a = a;
+		drawn_theme = theme; drawn_a = a; drawn_gen = g_osd_colors_seen;
 	}
 	glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
 	glUseProgram(g_prog_plain);
@@ -926,14 +977,42 @@ static void matrix_load(void)
 	port_logf(DIATOM_LOG_INFO, "pixel2: color matrix from %s", MATRIX_PATH);
 }
 
+/* The final pass's program for a filter: nearest is the sampler's own, the
+ * other two are shaders over a LINEAR sampler. A shader to come (an LCD
+ * grid, a CRT) is a case here and a row in diatom_filters. */
+static GLuint filter_prog(diatom_filter f)
+{
+	switch (f) {
+	case DIATOM_FILTER_SHARP:       return g_prog_sharp;
+	case DIATOM_FILTER_SHIMMERLESS: return g_prog_shimmerless;
+	default:                        return g_prog_plain;
+	}
+}
+
+/* A quad's scale, for the programs that read one: destination pixels per
+ * source texel on each axis, and for Sharp-Shimmerless its inverse and the
+ * quad's first texel, the low corner of its source whichever way the rows
+ * are read (sh < 0: a GPU frame, bottom-up). Plain reads none of it and is
+ * not asked. */
+static void quad_scale(GLuint prog, float dw, float dh,
+                       float sx, float sy, float sw, float sh)
+{
+	sh = fabsf(sh);
+	if (prog == g_prog_plain || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
+	glUniform2f(uloc(prog, "u_scale"), dw / sw, dh / sh);
+	if (prog != g_prog_shimmerless) return;
+	glUniform2f(uloc(prog, "u_inv"), sw / dw, sh / dh);
+	glUniform2f(uloc(prog, "u_origin"), sx, sy);
+}
+
 /* Draw one frame and whatever is over it, onto the current target. */
 static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
                        int osd_kind, int osd_level, int osd_max, int osd_theme,
                        float osd_alpha, float osd_rise, bool lowbat,
                        bool turned)
 {
-	GLuint prog = f->filter == DIATOM_FILTER_SHARP ? g_prog_sharp : g_prog_plain;
-	GLint  filter = f->filter == DIATOM_FILTER_SHARP ? GL_LINEAR : GL_NEAREST;
+	GLuint prog = filter_prog(f->filter);
+	GLint  filter = prog == g_prog_plain ? GL_NEAREST : GL_LINEAR;
 	/* A GPU frame is GL's way up, its first row at the bottom of a texture
 	 * larger than it: sampled from row h down to row 0, so the same quads
 	 * draw it upright. Unless its core draws the first row at the top. */
@@ -959,28 +1038,28 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 		/* A DS frame's two screens, each its own quad out of the one
 		 * texture (diatom_port_planes). Sharp's steepness is per quad: the
 		 * two screens of a focus layout are at 2x and 0.5x. The sampler
-		 * clamps only at the texture's edge, so with a linear filter a
-		 * screen's last row can take a little of the other screen's first,
-		 * where the two meet in the middle of the texture; nearest never
-		 * reaches past its own texel. */
+		 * clamps only at the texture's edge, so with sharp a screen's last
+		 * row can take a little of the other screen's first, where the two
+		 * meet in the middle of the texture; nearest never reaches past its
+		 * own texel, and Sharp-Shimmerless reads a screen's last texel at
+		 * its centre (SHIMMERLESS_SHADER). */
 		int i;
 
 		for (i = 0; i < f->nplanes; i++) {
 			const diatom_plane *p = &f->planes[i];
+			const float sy = top + down * (float)p->src.y;
 
-			if (prog == g_prog_sharp)
-				glUniform2f(uloc(prog, "u_scale"),
-				            (float)p->dst.w / (float)p->src.w,
-				            (float)p->dst.h / (float)p->src.h);
+			quad_scale(prog, (float)p->dst.w, (float)p->dst.h, (float)p->src.x,
+			           flip ? sy - (float)p->src.h : sy,
+			           (float)p->src.w, (float)p->src.h);
 			draw_quad_from((float)p->dst.x, (float)p->dst.y,
 			               (float)p->dst.w, (float)p->dst.h,
 			               (float)p->src.x, top + down * (float)p->src.y,
 			               (float)p->src.w, down * (float)p->src.h, turned);
 		}
 	} else {
-		if (prog == g_prog_sharp)
-			glUniform2f(uloc(prog, "u_scale"),
-			            (float)f->dst.w / (float)f->w, (float)f->dst.h / (float)f->h);
+		quad_scale(prog, (float)f->dst.w, (float)f->dst.h,
+		           0.0f, 0.0f, (float)f->w, (float)f->h);
 		/* dst may reach past the surface (fill, overscale): GL clips it. */
 		draw_quad_from((float)f->dst.x, (float)f->dst.y, (float)f->dst.w, (float)f->dst.h,
 		               0.0f, top, (float)f->w, down * (float)f->h, turned);
@@ -1273,8 +1352,9 @@ static bool gl_start(void)
 
 	g_prog_plain = link_program(PLAIN_SHADER);
 	g_prog_sharp = link_program(SHARP_SHADER);
+	g_prog_shimmerless = link_program(SHIMMERLESS_SHADER);
 	g_prog_solid = link_program(SOLID_SHADER);
-	if (!g_prog_plain || !g_prog_sharp || !g_prog_solid) return false;
+	if (!g_prog_plain || !g_prog_sharp || !g_prog_shimmerless || !g_prog_solid) return false;
 	matrix_load();
 
 	glGenTextures(1, &g_frame_tex);
@@ -1441,6 +1521,12 @@ static void *present_thread(void *arg)
 		osd_level = g_osd_level;
 		osd_max   = g_osd_max;
 		osd_theme = g_osd_theme;
+		/* The look's colors for the bar, handed over once each time they
+		 * move, on this thread, which is the one that paints the bar */
+		if (g_osd_colors_gen != g_osd_colors_seen) {
+			osdbar_colors(osd_theme, &g_osd_colors);
+			g_osd_colors_seen = g_osd_colors_gen;
+		}
 		/* Blinking: the even seconds, the launcher's rhythm. */
 		lowbat    = g_lowbat && (!g_lowbat_blink || (now / 1000000u) % 2 == 0);
 		pthread_mutex_unlock(&g_mx);

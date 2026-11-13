@@ -13,7 +13,9 @@
 #define CFG_MAX_SYSTEMS 4
 typedef struct { char folder[64], tag[16]; } system_cfg;
 typedef struct { int cursor; } coverflow;
-typedef struct { game_list list; int *owner; int sort, cursor, dropped; coverflow cf; } sysview;
+/* A shelf with folders (src/shelfdir.h) has every game in `all` and its
+ * folders first in `list`; these have none */
+typedef struct { game_list list; game_list *all; int *owner; int sort, cursor, dropped, nfold; coverflow cf; } sysview;
 typedef struct { struct { int count; system_cfg systems[4]; } sys; sysview view[4]; int sys_cursor; bool running; } app;
 typedef enum { MENU_STAY, MENU_CHANGED, MENU_FAILED } menu_result;
 static int failures;

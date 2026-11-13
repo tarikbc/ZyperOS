@@ -70,6 +70,14 @@ enum { OSDBAR_BRIGHT = 1, OSDBAR_VOLUME = 2 };   /* plat_osd_show's kinds */
 /* The buffer's size in pixels at `scale`. */
 void osdbar_size(float scale, int *w, int *h);
 
+/* Theme `theme`'s colors for the bar from now on: the six roles it draws with
+ * (surface, edge, track, accent-ink, light, ink) taken from `t`, the player's
+ * look (src/look.h, DESIGN.md 3.5), or the tokens' again for NULL. The
+ * launcher says it as the look changes; Diatom and portkeys from the theme
+ * file (themefile_read_bar). For the thread that draws the bar, as
+ * osdbar_render is. */
+void osdbar_colors(int theme, const ds_theme *t);
+
 /* Draws the bar into px, w x h from osdbar_size, `stride` pixels a row,
  * clearing what is there. `theme` is DS_LIGHT or DS_DARK (src/design.h);
  * anything else draws DS_LIGHT, Beard, the default, as a theme read from a

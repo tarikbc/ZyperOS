@@ -97,6 +97,11 @@ LIBRETRO = {
     "Atomiswave": ["Atomiswave"],
     "ScummVM": ["ScummVM"],
     "Saturn": ["Sega - Saturn"],
+    # The four of 2026-11-12.
+    "PSP": ["Sony - PlayStation Portable"],
+    "ColecoVision": ["Coleco - ColecoVision"],
+    "Doom": ["DOOM"],
+    "TIC-80": ["TIC-80"],
     # No "PICO-8": libretro has no collection for it (checked 2026-11-03).
 }
 

@@ -55,6 +55,11 @@ typedef struct {
 	 * because a PC Engine HuCard runs with no System Card and a CD does not -
 	 * declaring it for the whole shelf would refuse the cartridges too. */
 	char disc_bios[CFG_STR];
+	/* The firmware above is needed by every game on the shelf, cartridges
+	 * too, not by discs alone: a ColecoVision game does not start without
+	 * the console's BIOS. From a `bios|tag|names` line, which also sets
+	 * disc_bios. */
+	bool bios_every;
 	/* How much clock its games get: "light" or "medium" caps the CPU, the
 	 * memory and the GPU for a system measured to keep its speed under that
 	 * ceiling, empty is full. From a `power|tag|level` line; sent to Diatom
@@ -72,9 +77,23 @@ typedef struct {
 	unsigned controller;
 	/* "dpad": the d-pad is the core's left analog stick, for a system its
 	 * games play with a stick and the device has none (Diatom's stick.h);
-	 * sent with RUN as stick=. Empty is the d-pad as the d-pad. From a
-	 * `stick|tag|dpad` line. */
+	 * "toggle": R2 turns the d-pad into the stick and back, for a system
+	 * whose games move with one or the other (the PSP's; src/main.c,
+	 * stick_get). Sent with RUN as stick=. Empty is the d-pad as the d-pad.
+	 * From a `stick|tag|dpad` or `stick|tag|toggle` line. */
 	char stick[8];
+	/* EmulationStation's names for this shelf's folder, comma separated, in
+	 * the order they are preferred: "nds" for Nintendo DS, "megadrive,md"
+	 * for Genesis. The folders Knulli, ROCKNIX, ArkOS, ROGUE OS and the other
+	 * systems built on EmulationStation use, so a card copied from one shows
+	 * its games. From an `es|tag|names` line; empty for none. */
+	char es[160];
+	/* The folder this file names, whatever `folder` became: `folder` is the
+	 * one on the card the shelf reads, which is an `es` name when ZyperOS's
+	 * own folder has no games and that one has (src/shelfbuild.c,
+	 * shelf_folder_choose). What a system IS to the tables keyed on
+	 * ZyperOS's names, libretro's and ScreenScraper's, goes by this. */
+	char home[CFG_STR];
 } system_cfg;
 
 typedef struct {
@@ -108,5 +127,9 @@ void cfg_run_keys(const system_cfg *s, bool dual, char *out, int cap);
  * end). A system with one core lists one. */
 int  cfg_core_count(const system_cfg *s);
 bool cfg_core_at(const system_cfg *s, int i, char *out, int cap);
+
+/* The i-th of `s`'s EmulationStation folder names (its `es` line) into
+ * `out`, false past the end */
+bool cfg_es_at(const system_cfg *s, int i, char *out, int cap);
 
 #endif

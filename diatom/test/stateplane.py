@@ -182,6 +182,18 @@ send("DISPLAY"); got = drain()
 check_that("mode did not move either",
            len(got) == 1 and got[0].startswith("DISPLAY\tmode=integer"), got)
 
+# Sharp-Shimmerless, the Shader row's: a filter alone, the mode kept, and
+# said back by its name; then Off, which is nearest
+send("SETDISPLAY\tfilter=shimmerless"); got = drain()
+check_that("shimmerless is a filter, the mode kept",
+           len(got) == 1 and got[0].startswith("DISPLAY\tmode=integer\tfilter=shimmerless\trect="),
+           got)
+send("SETDISPLAY\tmode=stretch\tfilter=nearest"); got = drain()
+check_that("and nearest again with a mode",
+           len(got) == 1 and got[0].startswith("DISPLAY\tmode=stretch\tfilter=nearest\trect="),
+           got)
+send("SETDISPLAY\tmode=integer"); drain()
+
 send("LEVELS"); check("desktop has no levels", drain(), ["LEVELS\tcount=0"])
 send("SETLEVEL\tkind=brightness\tindex=3\tcount=12")
 check("setlevel refused with no control", drain(), ["ERROR\tcode=bad_level\tmsg=brightness"])

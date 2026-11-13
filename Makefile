@@ -6,9 +6,9 @@
 # docs/building.md says how to work on a device.
 
 .PHONY: all clean native px2-payload vendor boot system-art checkmark \
-        check check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-signin check-search \
+        check check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-signin check-search \
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-        check-db check-gamedel check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame \
+        check-db check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
         check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
@@ -28,11 +28,11 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 # had to be remembered by name, which is a suite in the same sense that a list
 # of good intentions is a plan. A check nobody runs is a check that does not
 # exist, and check-menus was about to join eight others in that state.
-CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-rahash check-rasubmit check-signin check-noticeq check-badges check-badge-shots \
+CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
-         check-db check-gamedel check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
+         check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
@@ -107,7 +107,7 @@ check-px2sim:
 # page (its package/zyperos/zyperos.mk), and ZyperOS Installer has it too.
 # ZyperOS counts from 0.1.0. Change it with
 # tools/set-version.sh, which sets the installer's with it.
-VERSION ?= 1.0.4
+VERSION ?= 1.0.5
 
 # A release, from this Mac (tools/release.sh): the Pixel 2's card image built
 # clean by plastron from this commit; PUBLISH=1 then makes the draft GitHub
@@ -255,7 +255,7 @@ build-native/status-check: tools/status-check.c src/status.c src/status.h \
                           src/design.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/status-check.c src/status.c -lm
+	      -o $@ tools/status-check.c src/status.c src/look.c -lm
 
 # Charger changes reach the shared battery cache within 250 ms at the shelf's
 # 16 ms poll rate. Stable samples request no redraw; capacity stays at 5 s.
@@ -415,11 +415,22 @@ build-native/pkkeys-check: tools/pkkeys-check.c tools/pkkeys.c tools/pkkeys.h sr
 check-theme: build-native/theme-check
 	@./build-native/theme-check
 
-build-native/theme-check: tools/theme-check.c src/theme.c src/theme.h \
+# The player's look (src/look.h, DESIGN.md 3.5): every accent with every
+# background tone, in both themes, held to the contrast DESIGN.md 3.2 owes
+# each color; the look as it ships is the tokens to the byte.
+check-look: build-native/look-check
+	@./build-native/look-check
+
+build-native/look-check: tools/look-check.c src/look.c src/look.h src/theme.h src/design.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/look-check.c src/look.c -lm
+
+build-native/theme-check: tools/theme-check.c src/theme.c src/theme.h src/look.c src/look.h \
                           src/themefile.c src/themefile.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/theme-check.c src/theme.c src/themefile.c $(I18N_SRC)
+	      -o $@ tools/theme-check.c src/theme.c src/themefile.c src/look.c $(I18N_SRC) -lm
 
 # System Update end to end (update/, docs/updates.md): two fake releases,
 # packed and signed with a throwaway key, a fake card, check, download, a cut
@@ -518,8 +529,8 @@ build-native/portkeys-check: tools/portkeys-check.c tools/pkset.c tools/pkset.h 
                              src/clock.c src/clock.h src/design.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
-	      -o $@ tools/portkeys-check.c tools/pkset.c src/theme.c src/themefile.c \
-	      src/clock.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/portkeys-check.c tools/pkset.c src/theme.c src/themefile.c src/look.c \
+	      src/clock.c $(I18N_SRC) -lsqlite3 -lm
 
 # systems.cfg's accent field: six hex digits are that color, and anything else
 # - an empty field, a line that stops before it, a word - is no color at all
@@ -611,7 +622,7 @@ build-native/cardgen-check: tools/cardgen-check.c src/cardgen.c src/cardgen.h \
                             src/design.h src/theme.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/cardgen-check.c src/cardgen.c -lm
+	      -o $@ tools/cardgen-check.c src/cardgen.c src/look.c -lm
 
 # Beard's shadows: a pass of the box blur keeps its light, three passes reach
 # exactly as far as a shadow's texture is padded, the nine pieces it is drawn
@@ -813,7 +824,7 @@ build-native/sysmark-check: tools/sysmark-check.c src/sysmark.c src/sysmark.h \
                             src/config.c src/config.h src/design.h src/theme.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/sysmark-check.c src/sysmark.c src/config.c
+	      -o $@ tools/sysmark-check.c src/sysmark.c src/config.c src/look.c -lm
 
 # A change of theme leaves nothing drawn for the old one on the systems row,
 # the games shelf or Now Playing's cover, nor Plain Jane's art of the old one
@@ -1141,6 +1152,29 @@ build-native/idle-check: tools/idle-check.c src/idle.c src/idle.h src/chargedark
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/idle-check.c src/idle.c src/chargedark.c
 
+# Long tasks and Auto Off (src/taskhold.h): what a loop says holds the clock,
+# lets go by itself, and the real clock does not fire during a task and comes
+# back whole after it. Which jobs hold is long_task_busy (src/zyperdraw.c).
+check-taskhold: build-native/taskhold-check
+	@./build-native/taskhold-check
+
+build-native/taskhold-check: tools/taskhold-check.c src/taskhold.c src/taskhold.h src/idle.c \
+                             src/idle.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/taskhold-check.c src/taskhold.c src/idle.c
+
+# The screensaver's policy (src/saver.h): when it starts and what keeps it from
+# starting, when it ends on its own, a clip's fades, which one is next, and the
+# rule it is built on - Auto Off fires at its own time whatever it does.
+check-saver: build-native/saver-check
+	@./build-native/saver-check
+
+build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c src/idle.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/saver-check.c src/saver.c src/idle.c
+
 # Date & Time: each row moving only itself, the 12-hour and 24-hour words, the
 # shelf's short clock, and the zone list running west to east - see
 # tools/clock-check.c.
@@ -1291,6 +1325,23 @@ build-native/rasubmit-check: tools/rasubmit-check.c src/rafetch.c src/rafetch.h 
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -DZYPEROS_VERSION='"check"' \
 	      -o $@ tools/rasubmit-check.c src/rafetch.c src/rajson.c src/rahash.c src/net.c src/atomic.c src/db.c $(I18N_SRC) -lsqlite3 -lz
 
+# Achievements earned offline, sent when a network is back: the store, the
+# unlock queue's worker and the request, with this check's own binary for curl
+# answering as RetroAchievements does (tools/raoffline-check.c). Makes no
+# request. Needs SDL2, for the worker's thread.
+check-raoffline:
+	@if pkg-config --exists sdl2 2>/dev/null; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+		  $$(pkg-config --cflags sdl2) -Isrc \
+		  -DNET_TMP='"$(CURDIR)/build-native/raoffline-check-tmp"' \
+		  -DZYPEROS_VERSION='"check"' \
+		  -o build-native/raoffline-check tools/raoffline-check.c src/raqueue.c \
+		  src/cheevos.c src/rafetch.c src/rajson.c src/rahash.c src/atomic.c src/db.c \
+		  $(I18N_SRC) $$(pkg-config --libs sdl2) -lsqlite3 -lz -lpthread && \
+		./build-native/raoffline-check; \
+	else echo "skipped: no SDL2 for the offline achievements check"; fi
+
 # The two set converters - one C on the device, one Python in the bulk tool -
 # over real RetroAchievements responses. Needs credentials and a network;
 # skips cleanly without them.
@@ -1308,12 +1359,12 @@ build-native/raset-check: tools/raset-check.c src/rafetch.c src/rajson.c src/rah
 check-ss: build-native/ss-check
 	@./build-native/ss-check
 
-build-native/ss-check: tools/ss-check.c src/ss.c src/ss.h src/ssfetch.c src/ssfetch.h src/db.c src/net.c src/urlenc.c src/rajson.c $(I18N_SRC) FORCE
+build-native/ss-check: tools/ss-check.c src/ss.c src/ss.h src/ssfetch.c src/ssfetch.h src/db.c src/net.c src/urlenc.c src/rajson.c src/library.c $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	@$(MAKE) -f mk/native.mk VERSION=$(VERSION) creds
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Ibuild-native \
 	      -DZYPEROS_VERSION='"check"' \
-	      -o $@ tools/ss-check.c src/ss.c src/ssfetch.c src/db.c src/net.c src/urlenc.c src/rajson.c $(I18N_SRC) -lsqlite3
+	      -o $@ tools/ss-check.c src/ss.c src/ssfetch.c src/db.c src/net.c src/urlenc.c src/rajson.c src/library.c $(I18N_SRC) -lsqlite3 -lpthread
 
 # Scraped display names: SQLite upgrade, real parser/runner, library fallback,
 # and the actual main.c refresh hooks with headless view stubs.
@@ -1436,6 +1487,30 @@ build-native/db-check: tools/db-check.c src/db.c src/db.h src/atomic.c FORCE
 # library a start reads first.
 check-gamedel: build-native/gamedel-check
 	@./build-native/gamedel-check
+
+# Rename (src/gamern.h): a game and everything named after it, on a card
+# of small files, what others share copied, the library rows following
+check-gamern: build-native/gamern-check
+	@./build-native/gamern-check
+
+build-native/gamern-check: tools/gamern-check.c src/gamern.c src/gamern.h src/gamedel.c src/gamedel.h \
+                           src/esmedia.c src/esmedia.h src/library.c src/db.c src/favorites.c src/stats.c \
+                           src/portinfo.c src/atomic.c $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/gamern-check.c src/gamern.c src/gamedel.c src/esmedia.c src/library.c src/db.c \
+	      src/favorites.c src/stats.c src/portinfo.c src/atomic.c $(I18N_SRC) -lsqlite3 -lpthread
+
+# EmulationStation's folders and media (src/esmedia.h): covers, videos,
+# details and the import on a card of small files in three ES layouts
+check-esmedia: build-native/esmedia-check
+	@./build-native/esmedia-check
+
+build-native/esmedia-check: tools/esmedia-check.c src/esmedia.c src/esmedia.h src/library.c src/library.h \
+                            src/db.c src/db.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -Isrc \
+	      -o $@ tools/esmedia-check.c src/esmedia.c src/library.c src/db.c -lsqlite3 -lpthread
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native || exit 1; \
 	fi
@@ -1610,7 +1685,7 @@ check-textfade:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c \
+		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/roundrect.c src/theme.c src/look.c \
 		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
@@ -1625,7 +1700,7 @@ check-tour-colors:
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
 		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/roundrect.c \
-		  src/theme.c src/themefile.c src/linebreak.c src/blur.c src/cardgen.c \
+		  src/theme.c src/themefile.c src/look.c src/linebreak.c src/blur.c src/cardgen.c \
 		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
@@ -1657,6 +1732,19 @@ build-native/randgame-check: tools/randgame-check.c src/randgame.c src/randgame.
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/randgame-check.c src/randgame.c
+
+# Folders on a shelf (src/shelfdir.h): what a folder shows, its folders first
+# by name with their games counted at every depth, then its games; a disc set
+# kept in a folder a game there; a folder's own folder.
+check-shelfdir: build-native/shelfdir-check
+	@./build-native/shelfdir-check
+
+build-native/shelfdir-check: tools/shelfdir-check.c src/shelfdir.c src/shelfdir.h src/library.c \
+                             src/library.h src/db.c src/atomic.c FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/shelfdir-check.c src/shelfdir.c src/library.c src/db.c src/atomic.c \
+	      -lsqlite3 -lpthread
 .PHONY: check-home
 check-home:
 	@$(MAKE) --no-print-directory $(NATIVE_J) -f mk/native.mk VERSION=$(VERSION) build-native/home-check
@@ -1689,7 +1777,7 @@ build-native/artbadge-check: tools/artbadge-check.c src/artbadge.c src/artbadge.
                             src/design.h src/clamp.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/artbadge-check.c src/artbadge.c -lm
+	      -o $@ tools/artbadge-check.c src/artbadge.c src/look.c -lm
 
 .PHONY: check-artbadge-shots
 check-artbadge-shots: native

@@ -62,6 +62,15 @@ void texload_forget(void);
  * asking being cheap. */
 bool texload_want(int sys, int idx, const char *first, const char *second);
 
+/* A second file found on the worker rather than named by the frame: a
+ * `second` that starts with TEXLOAD_LATE is a key, which the function given
+ * here turns into a path there, reading the card if it must. For
+ * EmulationStation's art (src/esmedia.h), where finding a game's picture can
+ * mean reading its folder's gamelist.xml the first time. Set once, before
+ * texload_start; NULL, or unset, and such a key names no file. */
+#define TEXLOAD_LATE "\001"
+void texload_set_late(bool (*late)(const char *key, char *path, size_t n));
+
 
 /* Art drawn for one theme, as PortMaster's cover is (one file a theme):
  * the result is tagged with `theme_ix`, so a later theme change replaces it,

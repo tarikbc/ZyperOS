@@ -46,7 +46,8 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * comes from. Reading "4/54" and having nowhere to go with it is the
 	 * question half-answered: which four, and what are the other fifty. A game
 	 * with no set has nothing to open and says so. */
-	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos, gi->has_cheevos };
+	out[n++] = (menu_row){ T(S_SYSMENU_CHEEVOS), gi->cheevos,
+	                       gi->has_cheevos || gi->cheevos_unchecked };
 	/* Favorite is back here, on 2026-11-08: Y on the shelf now starts a game
 	 * fresh, so marking one moved to this page, Y on it or A on the row */
 	if (gi->can_favorite)
@@ -97,6 +98,16 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 		out[n++] = (menu_row){ T(S_MEDIA_ROW),
 		                       !gi->has_art ? T(S_MEDIA_VALUE_NO_COVER)
 		                       : !gi->has_snap ? T(S_MEDIA_VALUE_NO_VIDEO) : NULL, true };
+	/* PortMaster's own page in its place, to put a fresh copy over the one
+	 * on the card (DESIGN.md 11.33): the way back from a PortMaster that
+	 * will not start, its ports and their saves kept */
+	else if (gi->can_reinstall)
+		out[n++] = (menu_row){ T(S_PORTMASTER_REINSTALL_TITLE), NULL, true };
+	/* Rename (DESIGN.md 11.41), a name typed on the keyboard for the game's
+	 * file and all that goes by it, for a name no scrape can find: above
+	 * Delete Game, which stays last. No value: the heading is the name. */
+	if (gi->can_rename)
+		out[n++] = (menu_row){ T(S_GAMEMENU_RENAME), NULL, true };
 	/* DELETE GAME LAST (DESIGN.md 11.31): the game, its saves and states, its
 	 * cover and video. Never where the screen opens, and never the end of a
 	 * stray press: A on it only asks, and the question opens on Cancel. No
@@ -194,12 +205,13 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 	for (i = 0; i < GM_ROWS; i++) {
 		if (i == GM_QUICK && !u->quick) continue;
 		ids[n++] = (gm_row)i;
-		if (i == GM_DISPLAY && u->screens) {
+		/* A DS game's three come after Shader, which is every game's */
+		if (i == GM_SHADER && u->screens) {
 			ids[n++] = GM_SCREENS;
 			ids[n++] = GM_SWAP;
 			ids[n++] = GM_STYLUS;
 		}
-		if (i == GM_DISPLAY && u->pak) ids[n++] = GM_PAK;
+		if (i == GM_SHADER && u->pak) ids[n++] = GM_PAK;
 	}
 	return n;
 }
@@ -223,7 +235,8 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 {
 	static const str_id label[GM_MAX_ROWS] = {
 		S_GAMEMENU_CONTINUE, S_GAMEMENU_SAVE, S_GAMEMENU_LOAD, S_GAMEMENU_QUICK,
-		S_GAMEMENU_DISPLAY, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS, S_GAMEMENU_RESET,
+		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS,
+		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
 		S_GAMEMENU_PAK
 	};
@@ -233,6 +246,7 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 
 	for (i = 0; i < GM_MAX_ROWS; i++) full[i] = (menu_row){ T(label[i]), NULL, true };
 	full[GM_DISPLAY].value = u->dmode;
+	full[GM_SHADER].value  = u->shader ? u->shader : T(S_MENU_OFF_TITLE);
 	/* The slot's number alone: the row says what it is */
 	snprintf(b->quick, sizeof b->quick, "%d", u->quick);
 	full[GM_QUICK].value = b->quick;
@@ -243,6 +257,10 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	 * cursor steps over it rather than resting on a row that ignores A. */
 	if (u->total > 0)
 		snprintf(b->cheevos, sizeof b->cheevos, "%d / %d", u->earned, u->total);
+	/* Never played with a network, so nobody has asked whether it has any:
+	 * said, and A on it says how it gets them (cheevos_unchecked_message) */
+	else if (u->unchecked)
+		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
 	else {
 		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_GAMEMENU_CHEEVOS_NONE));
 		full[GM_CHEEVOS].live = false;
@@ -258,9 +276,11 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	n = gm_row_ids(u, ids);
 	for (i = 0; i < n; i++) {
 		out[i] = full[ids[i]];
-		/* Display steps round on left and right and on A; so do the quick
-		 * slot and the three for two screens. Every other row is plain. */
-		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_QUICK || ids[i] == GM_SCREENS ||
+		/* Display steps round on left and right and on A; so do Shader,
+		 * the quick slot and the three for two screens. Every other row is
+		 * plain. */
+		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
+		              ids[i] == GM_SCREENS ||
 		              ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
 		              ? MENU_SND_RING : 0;
 	}

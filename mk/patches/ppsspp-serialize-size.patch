@@ -1,0 +1,27 @@
+diff --git a/libretro/libretro.cpp b/libretro/libretro.cpp
+index 3b2f10317e..96f4f57e17 100644
+--- a/libretro/libretro.cpp
++++ b/libretro/libretro.cpp
+@@ -1803,12 +1803,20 @@ size_t retro_serialize_size(void)
+       return 134217728; // 128MB ought to be enough for anybody.
+ 
+    SaveState::SaveStart state;
++   // ZyperOS: the emulation thread is started again after the measure, as
++   // retro_serialize starts it after the save. Left paused, retro_run only
++   // swapped the last picture from then on: a frontend that asks the size
++   // alone (Diatom does, once a game, to know whether the core keeps states)
++   // got a game stopped on a black screen.
++   bool running = useEmuThread && emuThreadState == EmuThreadState::RUNNING;
+    // TODO: Libretro API extension to use the savestate queue
+    if (useEmuThread)
+       EmuThreadPause();
+ 
+-   return (CChunkFileReader::MeasurePtr(state) + 0x800000) & ~0x7FFFFF;
+-   // We don't unpause intentionally
++   size_t size = (CChunkFileReader::MeasurePtr(state) + 0x800000) & ~0x7FFFFF;
++   if (running)
++      EmuThreadStart();
++   return size;
+ }
+ 
+ bool retro_serialize(void *data, size_t size)

@@ -304,6 +304,10 @@ static int      g_osd_level;    /* what the bar shows - volume OR brightness */
 static int      g_osd_max = GAIN_LEVELS;   /* out of what: the two differ now */
 static int      g_osd_kind;     /* 0 volume, 1 brightness */
 static int      g_osd_theme;    /* DS_LIGHT or DS_DARK */
+/* The bar's colors in that theme, as the player's look has them (the theme
+ * file's second line, themefile_read_bar); the gen moves when they do */
+static ds_theme g_osd_colors;
+static unsigned g_osd_colors_gen;
 
 /* Is there a plug in the headphone jack?
  *
@@ -495,7 +499,8 @@ static void osd_show(int kind, int level, int max)
 	 * last press (OSDBAR_HOLD_MS), so holding a key keeps the bar up. The
 	 * theme is the launcher's, in a file, read again on every press, so a
 	 * change while the bar is up shows on the next one. */
-	int theme = themefile_read(THEME_FILE);
+	ds_theme colors;
+	int theme = themefile_read_bar(THEME_FILE, &colors);
 	uint64_t now = diatom_port_now_us();
 	float a, rise;
 
@@ -508,6 +513,11 @@ static void osd_show(int kind, int level, int max)
 	g_osd_kind    = kind;
 	g_osd_level   = level;
 	g_osd_max     = max;
+	if (theme != g_osd_theme || memcmp(&colors.ground, &g_osd_colors.ground,
+	                                   sizeof colors.ground * 18)) {
+		g_osd_colors = colors;
+		g_osd_colors_gen++;
+	}
 	g_osd_theme   = theme;
 	g_osd_changed = now;
 }
@@ -751,6 +761,7 @@ static void bar_frame(void)
 {
 	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme;
 	static float drawn_alpha;
+	static unsigned colors_seen;
 	const float s = (float)g_vinfo.xres / 1024.0f;
 	const uint64_t now = diatom_port_now_us();
 	float alpha, rise;
@@ -765,6 +776,12 @@ static void bar_frame(void)
 		return;
 	}
 	if (s <= 0 || s > 1) return;
+	/* The look's colors, handed to the bar once each time they move */
+	if (colors_seen != g_osd_colors_gen) {
+		osdbar_colors(g_osd_theme, &g_osd_colors);
+		colors_seen = g_osd_colors_gen;
+		drawn_kind = -1;
+	}
 	if (g_osd_kind != drawn_kind || g_osd_level != drawn_level ||
 	    g_osd_max != drawn_max || g_osd_theme != drawn_theme || alpha != drawn_alpha) {
 		osdbar_size(s, &g_bar_w, &g_bar_h);
@@ -1273,6 +1290,24 @@ static diatom_tap *build_map(int src, int dst, diatom_filter filter)
 		double c  = ((double)i + 0.5) / scale - 0.5;   /* source coordinate */
 		int    p  = (int)floor(c);
 		double fr = c - (double)p;
+
+		/* Sharp-Shimmerless, as pixel2.c's SHIMMERLESS_SHADER: the source
+		 * pixels under this pixel's two edges, and where they differ, the
+		 * right one's share of the pixel's area. */
+		if (filter == DIATOM_FILTER_SHIMMERLESS) {
+			int l = (int)floor((double)i / scale);
+			int r = (int)floor((double)(i + 1) / scale);
+
+			p  = r > l ? r - 1 : l;
+			fr = r > l ? 1.0 - (scale * (double)r - (double)i) : 0.0;
+			if (fr < 0.0) fr = 0.0;
+			if (fr > 1.0) fr = 1.0;
+			if (p >= src - 1) { p = src - 1; fr = 0.0; }
+			if (p < 0) p = 0;
+			m[i].idx = p;
+			m[i].w   = (int)(fr * 256.0 + 0.5);
+			continue;
+		}
 
 		fr = (fr - 0.5) * scale + 0.5;
 		if (fr < 0.0) fr = 0.0;

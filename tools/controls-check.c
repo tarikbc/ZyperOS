@@ -532,6 +532,19 @@ static void in_a_game(void)
 			/* too wide as one row, so two */
 			{ "J2ME", "a:y,y:a", "jar", "START", "Right soft key" },
 			{ "LYNX", "", "lnx", "SELECT", "Turn the screen" },
+			/* The four of 2026-11-12: the PSP's shapes and its R2, which
+			 * turns the d-pad into the stick (stick|PSP|toggle); Doom's Fire
+			 * on the B cap by map|DOOM; the ColecoVision's side buttons and
+			 * keypad; TIC-80's gamepad by position */
+			{ "PSP",  "", "iso", "A", PAD_CIRCLE },
+			{ "PSP",  "", "iso", "Y", PAD_SQUARE },
+			{ "PSP",  "", "iso", "R2", "D-pad as stick" },
+			{ "DOOM", "b:x,x:b", "wad", "B", "Fire" },
+			{ "DOOM", "b:x,x:b", "wad", "X", "Strafe" },
+			{ "DOOM", "b:x,x:b", "wad", "D-pad", "Move and turn" },
+			{ "COLECO", "", "col", "A", "Right button" },
+			{ "COLECO", "", "col", "X/Y", "Keypad 2/1" },
+			{ "TIC80", "", "tic", "B", "Button A" },
 		};
 		size_t k;
 

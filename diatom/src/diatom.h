@@ -281,8 +281,10 @@ typedef struct {
 	 * is 517); 0 or absent is the plain joypad. */
 	unsigned controller;
 	/* RUN: "dpad" makes the d-pad the left analog stick (stick.h), for a
-	 * system its games play with a stick; empty or anything else, the
-	 * joypad's d-pad as ever. */
+	 * system its games play with a stick; "toggle" and "toggle-stick" let
+	 * R2 turn the d-pad into the stick and back, starting as the d-pad or
+	 * as the stick (the PSP's, whose games play with one or the other);
+	 * empty or anything else, the joypad's d-pad as ever. */
 	char stick[16];
 	char layout[16];       /* SETSCREENS: a name from scr_layout_names */
 	char swap[4];          /* SETSCREENS: "1" | "0"; empty leaves it */
@@ -304,7 +306,7 @@ typedef struct {
 	char dmode[32];        /* SETDISPLAY: a name from diatom_modes[].
 	                        * SETCHANNELS: one from diatom_channels_names[].
 	                        * Both arrive as `mode=`, so one slot. */
-	char dfilter[16];      /* SETDISPLAY: nearest | sharp */
+	char dfilter[16];      /* SETDISPLAY: a name from diatom_filters[] */
 	int  index, count;     /* SETLEVEL: `count` is POSITIONS, not a max index.
 	                        * OVERLAY: `count` is the duration in ms, sent as
 	                        * `ms=`. One slot, two verbs, no second name.
@@ -317,6 +319,12 @@ bool diatom_input_set_map(const char *spec);
 /* RUN stick=dpad: the d-pad as the left analog stick (stick.h); off at every
  * RUN that does not say so */
 void diatom_input_set_stick(bool dpad);
+/* RUN stick=toggle: the d-pad is the d-pad, or the stick when `as_stick`,
+ * until diatom_input_stick_flip turns it; SELECT's rule is not used */
+void diatom_input_set_stick_toggle(bool as_stick);
+/* R2 under stick=toggle: the d-pad goes to the other side. True when it is
+ * the stick now. Nothing turns outside stick=toggle. */
+bool diatom_input_stick_flip(void);
 /* Before each retro_run: the pad is read once a frame, at the core's poll or
  * its first question, whichever comes first (env.c, cb_input_poll) */
 void diatom_env_frame_begin(void);
@@ -419,6 +427,21 @@ typedef struct {
 
 extern const diatom_display_mode_info diatom_modes[];
 extern const int                      diatom_mode_count;
+
+/* The filters by name, as SETDISPLAY's `filter=` and --filter take them and
+ * DISPLAY reports them, in diatom_filter's order: diatom_filters[f] is f's.
+ * A shader for the final scale is one more row here and one more program in
+ * the ports that draw with one (port/pixel2.c), so an LCD grid or a CRT goes
+ * in as a name, not as a second axis. */
+typedef struct {
+	const char   *name;
+	diatom_filter filter;
+	const char   *note;
+} diatom_filter_info;
+
+extern const diatom_filter_info diatom_filters[DIATOM_FILTER_COUNT];
+/* The filter called `name`, or -1 */
+int diatom_filter_index(const char *name);
 
 /* audio.c - cores emit 32040..131072 Hz; the device runs at whatever it runs at.
  * A polyphase windowed sinc, with dynamic rate control holding the port's buffer

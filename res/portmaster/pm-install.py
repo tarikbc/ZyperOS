@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """pm-install: puts the official PortMaster on the card, for the Ports shelf.
 
-    python3 -I pm-install.py --ports /mnt/SDCARD/Roms/Ports
+    python3 -I pm-install.py --ports /mnt/SDCARD/Roms/Ports [--reinstall]
 
 The launcher (src/main.c, pm_install_screen) starts it when PortMaster is not
 on the card and the player asks for it, and draws what it writes to the
 status file (src/pminstall.h reads it). Nothing is drawn here.
+
+--reinstall puts a fresh copy over a PortMaster that is on the card: Reinstall
+PortMaster, on its details page and on the page that says it did not start.
+The same steps as an install; what is kept of the old folder is below (4).
 
 What it does, as PortMaster's own Install.PortMaster.sh does on a system it
 does not know (tools/installer.sh in PortsMaster/PortMaster-GUI), with the
@@ -25,9 +29,14 @@ download added:
    thrown away, never unpacked.
 4. Unpacks it there, beside the Ports, and only then moves PortMaster/ into
    place: a cut-off install never leaves half a PortMaster where the shelf
-   would run it. A PortMaster/ already there without its program (a copied
-   folder of runtimes) keeps its runtimes, libs/*.squashfs, as PortMaster's
-   own installer keeps them.
+   would run it. A PortMaster/ already there (a copied folder of runtimes, or
+   the one a reinstall replaces) keeps what is the player's rather than
+   PortMaster's: its runtimes, libs/*.squashfs, as PortMaster's own installer
+   keeps them, the themes it downloaded, and the zips waiting in its
+   autoinstall/. Its settings, config/, start over: a setting or a cached
+   list that stops PortMaster starting is what a reinstall is for. The ports
+   themselves, their scripts and folders beside PortMaster/ with their saves
+   in them, are never touched.
 5. Puts PortMaster.sh at the top of Roms/Ports, where the Ports shelf lists
    it, as the generic installer does (it copies; PortMaster/ keeps its own).
 
@@ -38,6 +47,7 @@ window among them, because PortMaster's updates write their own.
 The status file, a "key value" line each, replaced whole as it changes:
 
     state checking|downloading|verifying|unpacking|done|error
+    kind reinstall               a --reinstall run (an install says none)
     version 2026.06.23-0015      the release, once known
     total N                      bytes: the download, or what unpacks
     done N                       of them so far
@@ -99,7 +109,7 @@ def write_status(force=False, **kv):
     last_write = now
     tmp = status_path + ".tmp"
     with open(tmp, "w") as f:
-        for k in ("state", "version", "total", "done", "error", "need", "time"):
+        for k in ("state", "kind", "version", "total", "done", "error", "need", "time"):
             if k in status:
                 f.write("%s %s\n" % (k, status[k]))
     os.replace(tmp, status_path)
@@ -306,27 +316,74 @@ def remove_tree(path):
             os.unlink(path)
 
 
+# What a PortMaster/ already on the card keeps through an install over it:
+# the player's, not PortMaster's (step 4 above). Each a folder under
+# PortMaster/ and which of its entries go across: runtimes, by name, as
+# PortMaster's own installer keeps them (with the .md5 beside one, which
+# harbourmaster checks it against), every theme, every waiting zip.
+KEEP = (
+    ("libs", lambda n: n.lower().endswith((".squashfs", ".squashfs.md5"))),
+    ("themes", lambda n: True),
+    ("autoinstall", lambda n: n.lower().endswith((".zip", ".squashfs"))),
+)
+
+
+def keep_old(old, live):
+    """Moves what KEEP names from the PortMaster/ that was on the card, now
+    `old`, into the one put in its place; an entry the new one has already
+    stays the new's. False when something could not be moved."""
+    ok = True
+    for sub, wanted in KEEP:
+        src, dst = os.path.join(old, sub), os.path.join(live, sub)
+        if not os.path.isdir(src) or os.path.islink(src):
+            continue
+        for n in os.listdir(src):
+            if not wanted(n) or os.path.lexists(os.path.join(dst, n)):
+                continue
+            try:
+                os.makedirs(dst, exist_ok=True)
+                os.replace(os.path.join(src, n), os.path.join(dst, n))
+                log("kept %s/%s" % (sub, n))
+            except OSError as e:
+                log("could not keep %s/%s: %s" % (sub, n, e))
+                ok = False
+    return ok
+
+
 def put_in_place(ports, stage):
-    """The unpacked PortMaster/ where the shelf finds it, keeping the
-    runtimes of a PortMaster/ that was there, and PortMaster.sh beside it."""
+    """The unpacked PortMaster/ where the shelf finds it, keeping what is the
+    player's of a PortMaster/ that was there, and PortMaster.sh beside it.
+
+    The old folder is moved aside whole first, and back again if the new one
+    cannot take its place: a reinstall that fails leaves the PortMaster that
+    was there. What it keeps goes across once the new one is in, and a
+    folder something of the player's could not leave is kept beside the
+    Ports, never deleted."""
     new = os.path.join(stage, "unpack", "PortMaster")
     live = os.path.join(ports, "PortMaster")
     old = os.path.join(stage, "old")
+    had = os.path.isdir(live)
     try:
-        if os.path.isdir(live):
-            libs, keep = os.path.join(live, "libs"), os.path.join(new, "libs")
-            if os.path.isdir(libs):
-                os.makedirs(keep, exist_ok=True)
-                for n in os.listdir(libs):
-                    if n.lower().endswith(".squashfs") and not os.path.exists(os.path.join(keep, n)):
-                        os.replace(os.path.join(libs, n), os.path.join(keep, n))
-                        log("kept the runtime " + n)
+        if had:
             remove_tree(old)
             os.replace(live, old)
-        os.replace(new, live)
-        launcher(ports)
+        try:
+            os.replace(new, live)
+        except OSError:
+            if had:
+                os.replace(old, live)
+            raise
     except OSError as e:
         raise Failed("unpack", "putting PortMaster in place: %s" % e)
+    if had and not keep_old(old, live):
+        spare = os.path.join(ports, "%s-old-%d" % (STAGE, int(time.time())))
+        with contextlib.suppress(OSError):
+            os.replace(old, spare)
+            log("the old PortMaster folder is kept as " + spare)
+    try:
+        launcher(ports)
+    except OSError as e:
+        raise Failed("unpack", "PortMaster.sh: %s" % e)
     remove_tree(old)
 
 
@@ -357,9 +414,18 @@ def run(args):
     if not os.path.isdir(ports):
         raise Failed("unpack", "no Ports folder at " + ports)
     stage = os.path.join(ports, STAGE)
+    # A run cut off between moving the PortMaster that was there aside and
+    # putting the new one in its place: the old one back, runtimes and all
+    old, live = os.path.join(stage, "old"), os.path.join(ports, "PortMaster")
+    if os.path.isdir(old) and not os.path.lexists(live):
+        with contextlib.suppress(OSError):
+            os.replace(old, live)
+            log("put back the PortMaster a cut-off run had moved aside")
     # Whatever a cut-off run left: its download, its half-unpacked folder
     remove_tree(stage)
-    if installed(ports):
+    if args.reinstall:
+        status["kind"] = "reinstall"
+    elif installed(ports):
         # The folder is whole (a card that has PortMaster/ and lost the
         # script, or a second press): only the script is put back
         if not os.path.isfile(os.path.join(ports, "PortMaster.sh")):
@@ -393,6 +459,8 @@ def main():
     ap.add_argument("--status", default="/tmp/zyperos-pm/status")
     ap.add_argument("--cacert", default=CACERT)
     ap.add_argument("--channel", default="stable", choices=("stable", "beta", "alpha"))
+    # A fresh copy over the PortMaster on the card (Reinstall PortMaster)
+    ap.add_argument("--reinstall", action="store_true")
     # For the checks (tools/pminstall-run.sh): a version.json and a tag API
     # served from elsewhere, plain http and file:// allowed, any zip address
     ap.add_argument("--source", default=None)

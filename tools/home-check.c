@@ -19,7 +19,8 @@ int main(void)
     menu_row rows[MENU_MAX_ROWS];
     menu_bufs b;
     const char *heading;
-    sys_ui menu = {0};
+    /* every row of MENU, in the enum's order: no tab (sys_menu.h) */
+    sys_ui menu = { .tab = PT_TABS };
     /* These assertions fail if the default changes or the setting row disappears. */
     assert(home_parse(NULL) == HOME_SPOTLIGHT);
     assert(home_parse("gallery") == HOME_GALLERY);

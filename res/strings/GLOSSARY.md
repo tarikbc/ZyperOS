@@ -24,8 +24,9 @@ written to match. Change a term here first, then everywhere it is used.
 - **Never translated:** ZyperOS, Zyper, Diatom, Muse, MP4 (the video
   player's name), PortMaster, RetroAchievements, ScreenScraper, SteamGridDB,
   Wi-Fi, Bluetooth, USB, SSH, PIN, Linux, macOS, Windows, system names
-  (Game Boy, SNES, PlayStation...), core names, game names, file and folder
-  names on the card (Roms, BIOS), and URLs.
+  (Game Boy, SNES, PlayStation...), core names, shader names
+  (Sharp-Shimmerless), game names, file and folder names on the card (Roms,
+  BIOS), and URLs.
 - **Button names as printed on the handheld, never translated:** A, B, X, Y,
   L1, R1, L2, R2, START, SELECT, MENU, VOL+, VOL-, POWER. The d-pad's
   directions are not printed, so they are translated, in capitals where
@@ -110,6 +111,10 @@ written to match. Change a term here first, then everywhere it is used.
 | Language | 语言 | Idioma | Idioma | Langue | Sprache | 言語 | Lingua |
 | Appearance | 外观 | Apariencia | Aparência | Apparence | Erscheinungsbild | 外観 | Aspetto |
 | Light / Dark / Auto | 浅色 / 深色 / 自动 | Claro / Oscuro / Automático | Claro / Escuro / Automático | Clair / Sombre / Auto | Hell / Dunkel / Automatisch | ライト / ダーク / 自動 | Chiaro / Scuro / Automatico |
+| MENU's tabs: Games / Display / Sound / Connections / System / About | 游戏 / 显示 / 声音 / 连接 / 系统 / 关于 | Juegos / Pantalla / Sonido / Conexiones / Sistema / Acerca de | Jogos / Tela / Som / Conexões / Sistema / Sobre | Jeux / Affichage / Son / Connexions / Système / À propos | Spiele / Anzeige / Ton / Verbindungen / System / Info | ゲーム / 画面 / サウンド / 接続 / システム / 情報 | Giochi / Schermo / Audio / Connessioni / Sistema / Info |
+| Theme (the look: accent, backgrounds, corners, Zyper) | 主题 | Tema | Tema | Thème | Design | テーマ | Tema |
+| Accent (the focus's color) | 强调色 | Color de acento | Cor de destaque | Couleur d'accent | Akzentfarbe | アクセント | Colore d'accento |
+| Auto Hours | 自动时段 | Horario auto | Horário auto | Horaires auto | Auto-Zeiten | 自動の時間帯 | Orari automatici |
 | on / off (a value) | 开启 / 关闭 | activado / desactivado | ativado / desativado | activé / désactivé | an / aus | オン / オフ | attivo / disattivo |
 | not connected | 未连接 | sin conexión | não conectado | non connecté | nicht verbunden | 未接続 | non connesso |
 | connecting | 正在连接 | conectando | conectando | connexion… | verbindet … | 接続中 | connessione… |
@@ -122,6 +127,7 @@ written to match. Change a term here first, then everywhere it is used.
 | Reset / Quit | 重置 / 退出 | Reiniciar / Salir | Reiniciar / Sair | Réinitialiser / Quitter | Neustart / Beenden | リセット / 終了 | Riavvia / Esci |
 | Play / Resume | 开始 / 继续 | Jugar / Continuar | Jogar / Continuar | Jouer / Reprendre | Spielen / Fortsetzen | プレイ / 再開 | Gioca / Riprendi |
 | Display (in-game) | 画面 | Pantalla | Tela | Affichage | Anzeige | 画面 | Schermo |
+| Shader (in-game, a system's menu, MENU) | 着色器 | Shader | Shader | Shader | Shader | シェーダー | Shader |
 | Controls | 按键说明 | Controles | Controles | Commandes | Steuerung | 操作方法 | Comandi |
 | Achievements (the row and its page) | 成就 | Logros | Conquistas | Succès | Erfolge | 実績 | Obiettivi |
 | Favorites | 收藏 | Favoritos | Favoritos | Favoris | Favoriten | お気に入り | Preferiti |

@@ -57,6 +57,11 @@
  * Off, 80%, 85% or 90%, stepped round (DESIGN.md 11.26; my picks in
  * the charge limit lab, 2026-11-06). Only where the charger can stop short
  * (no_charge_limit). */
+/* PM_SAVER is Screensaver, on Display after Battery Icon (1.0.5's tabs): the
+ * video snaps of random games over the whole screen
+ * after this long with nothing pressed on the shelf (src/saver.h, DESIGN.md
+ * 11.37). Its value is the delay, in Auto Off's words, stepped round with
+ * left and right the way Auto Off is, or off. On every device. */
 /* PM_LIGHTS is Side Lights, under Auto Off and Charge Limit: what the battery
  * lights show (src/sidelights.h), the other row about the battery, a page of
  * switches since the side lights lab (2026-11-06). Only where the device has
@@ -82,15 +87,40 @@
  * settings together, as a phone keeps Language and Region (My pick in
  * the languages lab, 2026-11-07; DESIGN.md 11.30). Its value is the
  * language's own name; A opens the five. */
+/* MENU IS IN TABS (DESIGN.md 11.3, my picks 2026-11-12): Games, Display,
+ * Sound, Connections, System and About, L1 and R1 going round them. The rows
+ * are in the enum by tab, and in a tab in the enum's order; which tab a row
+ * is in is sys_menu_tab_of's to say. A row added to MENU goes into this enum
+ * where its tab's rows are, and into sys_menu_tab_of's switch, which the
+ * compiler checks has every row (-Wswitch), and tools/menu-check.c that each
+ * row is in a tab. */
+/* PM_AUTOHOURS is Auto Hours, under Appearance: when Auto turns light and
+ * when dark, by the half hour (src/theme.h), 7:00 and 19:00 as it ships.
+ * PM_THEME is Theme, under it: the accent, a background tone for each theme,
+ * the corners and Zyper (src/look.h, DESIGN.md 3.5). My picks 2026-11-12. */
 typedef enum {
-	PM_USB_WAIT,
-	PM_SEARCH,
-	PM_STATS, PM_RANDOM,
-	PM_WIFI, PM_BT, PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC, PM_XFER, PM_USB, PM_CLOCK,
-	PM_HOURS, PM_LANGUAGE,
-	PM_SLEEP, PM_CHARGE, PM_LIGHTS, PM_HOME, PM_ORDER, PM_BATTERY, PM_APPEARANCE, PM_SCRAPER, PM_ACHIEVEMENTS,
-	PM_CONTROLS, PM_TOUR, PM_DEVELOPER, PM_STORAGE, PM_UPDATE, PM_ABOUT, PM_ROWS
+	/* Games */
+	PM_SEARCH, PM_STATS, PM_RANDOM, PM_ACHIEVEMENTS, PM_SCRAPER,
+	/* Display */
+	PM_APPEARANCE, PM_AUTOHOURS, PM_THEME, PM_HOME, PM_ORDER, PM_BATTERY, PM_SAVER, PM_SHADER,
+	/* Sound */
+	PM_AUDIO, PM_CHANNELS, PM_SOUNDS, PM_MUSIC,
+	/* Connections: USB Device first, while a plug waits for its answer */
+	PM_USB_WAIT, PM_WIFI, PM_BT, PM_XFER, PM_USB, PM_DEVELOPER,
+	/* System */
+	PM_CLOCK, PM_HOURS, PM_LANGUAGE, PM_SLEEP, PM_CHARGE, PM_LIGHTS,
+	PM_STORAGE, PM_UPDATE,
+	/* About */
+	PM_ABOUT, PM_CONTROLS, PM_TOUR,
+	PM_ROWS
 } pm_row;
+
+/* MENU's tabs, in the order L1 and R1 go round them. MENU opens on Games
+ * after a start, and on the tab and row it was closed on after that, until
+ * the handheld powers off; on Connections' USB Device while a plug waits. */
+typedef enum { PT_GAMES, PT_DISPLAY, PT_SOUND, PT_CONNECTIONS, PT_SYSTEM,
+               PT_ABOUT, PT_TABS } pm_tab;
+
 
 /* Random Game is under Games: one of the games that row counts, picked and
  * started (src/randgame.h). */
@@ -99,9 +129,11 @@ typedef enum {
  * than no row. The rest name capabilities that already exist on the emulator
  * side - Diatom has per-system display modes and core-supplied button labels -
  * so these are hooks waiting to be wired, not wishes. */
+/* View, under Sort By (1.0.5, DESIGN.md 11.39): the shelf's covers in a
+ * row, or its games as a list, this shelf's own choice as Sort By is. */
 typedef enum {
-	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT,
-	SM_DISPLAY, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
+	SM_GAMES, SM_RANDOM, SM_CORE, SM_DSLANG, SM_SORT, SM_VIEW,
+	SM_DISPLAY, SM_SHADER, /* SM_BUTTONS, */ SM_BOXART, SM_RESCAN, SM_ROWS
 } sm_row;
 
 /* What the Favorites shelf's menu is, which is two of those rows.
@@ -117,8 +149,9 @@ typedef enum {
  * Games and Sort By are both true of a shelf of favorites, so those are what
  * it gets. Eric's call, 2026-09-17. */
 /* Random Game joined them 2026-11-05: a favorite picked for you is the shelf's
- * own question, and it is between the two as it is on a console's menu. */
-#define SM_FAV_ROWS 3
+ * own question, and it is between the two as it is on a console's menu. View
+ * (1.0.5) is the shelf's, under Sort By as on a console's. */
+#define SM_FAV_ROWS 4
 
 /* What MP4's shelf menu is (Muse's, before it played video): how many
  * albums, Show - music, audiobooks or videos, the kinds its one shelf holds -
@@ -155,11 +188,13 @@ typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
  * is. */
 int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out);
 
-/* 32: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
- * and the two USB rows (USB Device, USB Accessories) 29 in all; room for a
- * few more. The menu runner holds MENU_RUN_ROWS (main.c), which must stay at
- * least this. */
-#define MENU_MAX_ROWS 32
+/* 40: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
+ * and the two USB rows (USB Device, USB Accessories) 29 in all; 1.0.5's
+ * Auto Hours, Theme, Screensaver and Shader made 34, every tab's rows
+ * together (a tab shows its own, but the build for every tab, PT_TABS, holds
+ * them all); room for a few more. The menu runner holds MENU_RUN_ROWS
+ * (main.c), which must stay at least this. */
+#define MENU_MAX_ROWS 40
 
 /* The array every caller declares must hold every row a build can produce, and
  * on 2026-09-16 it stopped: PM_ROWS went to 13 against a cap of 12 when the
@@ -195,7 +230,7 @@ _Static_assert(MENU_MAX_ROWS >= SM_ROWS, "MENU_MAX_ROWS < SM_ROWS");
  * handler. Beside the rows rather than in them: a field on menu_row would
  * have every { label, value, live } initializer warn under -Wextra. */
 typedef struct {
-	char a[24], b[CFG_STR], c[16], d[40], e[8], ch[40];
+	char a[24], b[CFG_STR], c[16], d[40], e[8], ch[40], sv[16];
 	unsigned char sound[MENU_MAX_ROWS];
 } menu_bufs;
 
@@ -259,7 +294,14 @@ typedef struct {
 	wifi_state  wifi;        /* already cached by the caller; see menu_wifi */
 	const char *ssid;        /* the network's name when connected, else NULL */
 
-	/* The ZyperOS menu */
+	/* The ZyperOS menu: the tab it shows (pm_tab), or PT_TABS for every row
+	 * in the enum's order (a measure, a check) */
+	int         tab;
+	/* Auto Hours' value, "7:00 AM to 7:00 PM" as MENU > Clock writes the
+	 * time; NULL reads nothing */
+	const char *auto_hours;
+	/* Theme's value: the accent's name (src/look.h); NULL reads Lime */
+	const char *theme;
 	bool        ra_in;
 	const char *ra_name;     /* only read when ra_in */
 	/* The Scraper row's value: "142 missing", "complete", or NULL until a
@@ -275,12 +317,17 @@ typedef struct {
 	 * is the clock's to say. NULL reads Light, the default. A label and not
 	 * an enum, as cards and dmode are, so this file need not link theme.c. */
 	const char *appearance;
+	/* Shader, for every system (src/app.h SHADERS): Off, a shader's name, or
+	 * "per system" when systems differ. NULL reads Off. A label, for the
+	 * reason appearance is one. */
+	const char *shader_all;
 	const char *home;       /* Spotlight (default) or Gallery */
 	/* System Order, under Home Screen: "A to Z" (default, NULL reads it) or
 	 * "Release Date", systems.cfg's order (2026-11-06) */
 	const char *order;
 	const char *battery;    /* the corner's battery: Bars (default), Percentage or Time Left */
 	int         auto_off;    /* seconds, 0 for off */
+	int         saver;       /* the screensaver's delay, seconds, 0 for off */
 	int         charge_limit;   /* percent, 0 for Off */
 	/* Side Lights: side_lights_value's, "All on", "3 on" or "Off". NULL
 	 * reads All on, the default. A label, for the reason appearance is one. */
@@ -325,10 +372,14 @@ typedef struct {
 	const char *dslang;
 	int         game_count;
 	const char *dmode;
+	/* This system's shader's label, after Display Mode; NULL reads Off */
+	const char *shader;
 	/* The label of the shelf's sort order. A label rather than an index for
 	 * the same reason dmode is one: this file must not know the table, or a
 	 * check that links it would have to link the table too. */
 	const char *sort;
+	/* The shelf shows a list rather than its covers (View, SM_VIEW) */
+	bool        listed;
 } sys_ui;
 
 /* The ZyperOS menu's rows and the system menu's, in order, for what the device
@@ -338,9 +389,20 @@ typedef struct {
 int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out);
 int sys_menu_system_rows(const sys_ui *u, sm_row *out);
 
+/* The tab `r` is in; PT_TABS for a value that is no row */
+pm_tab sys_menu_tab_of(pm_row r);
+/* A tab's name, in the language that is on: the tab row's words */
+const char *sys_menu_tab_name(pm_tab t);
+/* The rows of tab `t` the device has, in order (sys_menu_zyperos_rows,
+ * kept to the tab). Returns how many. The build and the key handler both
+ * ask, so they cannot disagree about what row 3 of a tab is. */
+int sys_menu_tab_rows(const sys_ui *u, pm_tab t, pm_row *out);
+
 /* Seconds to the label a row shows. Pure, and here rather than in main.c so
  * the check can hold it to "never", "30s" and "2m" without a device. */
 void sys_menu_auto_off_label(int seconds, char *out, size_t n);
+/* The screensaver's delay in the same words: "off" for 0, then "30s", "1m" */
+void sys_menu_saver_label(int seconds, char *out, size_t n);
 
 /* System Order's value, "A to Z" or "Release Date", and Battery Icon's,
  * "Bars" (0), "Percentage" (1) or "Time Left" (2), in the language that is

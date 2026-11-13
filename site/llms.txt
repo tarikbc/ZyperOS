@@ -1,9 +1,9 @@
 # ZyperOS
 
-> ZyperOS is a fast, light custom firmware (operating system) for the GKD Pixel 2 retro handheld, made by Tarik Caramanico and named after his dog Zyper. It plays forty systems from a microSD card you can take out at any time, plus PortMaster ports, music, audiobooks and videos. The emulator stays running, so a game starts the moment you press A. ZyperOS 1.0.4 is out for the GKD Pixel 2, released in November 2026: download ZyperOS Installer (macOS, Windows, Linux) from the latest release on GitHub, or write the card image with any disk image writer. The TrimUI Brick's image comes later. It is free and open source, under the GNU GPL version 3 (GPL-3.0-only), with the name ZyperOS and Zyper kept as trademarks.
+> ZyperOS is a fast, light custom firmware (operating system) for the GKD Pixel 2 retro handheld, made by Tarik Caramanico and named after his dog Zyper. It plays forty-four systems from a microSD card you can take out at any time, plus PortMaster ports, music, audiobooks and videos. The emulator stays running, so a game starts the moment you press A. ZyperOS 1.0.5 is out for the GKD Pixel 2, released in November 2026: download ZyperOS Installer (macOS, Windows, Linux) from the latest release on GitHub, or write the card image with any disk image writer. The TrimUI Brick's image comes later. It is free and open source, under the GNU GPL version 3 (GPL-3.0-only), with the name ZyperOS and Zyper kept as trademarks.
 
 ## Pages
-- [ZyperOS home](https://zyperos.com/): what it does, the screens, the forty systems, how it compares with the stock firmware, ROGUE OS, TortOS, ROCKNIX and plumOS, and how to install it.
+- [ZyperOS home](https://zyperos.com/): what it does, the screens, the forty-four systems, how it compares with the stock firmware, ROGUE OS, TortOS, ROCKNIX and plumOS, and how to install it.
 - [Blog](https://zyperos.com/blog/): guides for the GKD Pixel 2 (installing custom firmware, Wi-Fi adapters, adding games, PortMaster, RetroAchievements, box art, Nintendo DS, BIOS files, battery care, music and video) and sourced comparisons of ZyperOS with the other systems for it. Every post is listed under Blog at the end of this file.
 - [Latest release](https://github.com/tarikbc/ZyperOS/releases/latest): the card image, ZyperOS Installer for macOS, Windows and Linux, and checksums.
 - [Source code on GitHub](https://github.com/tarikbc/ZyperOS): the launcher, the card's scripts, the Diatom emulator frontend, ZyperOS Installer and the tools.
@@ -12,7 +12,7 @@
 - [Building ZyperOS](https://github.com/tarikbc/ZyperOS/blob/main/docs/building.md): how to build the card image from source, for developers.
 
 ## What it does
-- Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers; search and Random Game.
+- Animated pixel-art consoles on a Spotlight or Gallery home; games as a row of covers or a list, in the folders you made on the card; search and Random Game.
 - A first-start tutorial that teaches each button and asks for the theme, home screen, button sounds and menu music.
 - Box art fetched on the handheld from libretro, ScreenScraper and SteamGridDB, and video previews on the shelf.
 - RetroAchievements, signed in on the device, working offline after the first download.

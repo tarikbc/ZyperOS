@@ -224,6 +224,17 @@ de = %d min
 ja = %d 分
 it = %d min
 
+[sysmenu.screensaver]
+note = A MENU row: after this long with nothing pressed on the shelf, the video snaps of random games play over the whole screen. Its value is the delay (the same words as Auto Off's), or off
+en = Screensaver
+zh-Hans = 屏幕保护
+es = Protector de pantalla
+pt-BR = Protetor de tela
+fr = Écran de veille
+de = Bildschirmschoner
+ja = スクリーンセーバー
+it = Salvaschermo
+
 [sysmenu.charge_limit]
 note = A MENU row: the battery stops charging at this level
 en = Charge Limit
@@ -432,6 +443,96 @@ fr = À propos de ZyperOS
 de = Über ZyperOS
 ja = ZyperOS について
 it = Informazioni su ZyperOS
+
+# ---- MENU's tabs (DESIGN.md 11.3): the tab row, L1 and R1 going round them
+
+[sysmenu.tab_games]
+note = A MENU tab: the rows about playing
+en = Games
+zh-Hans = 游戏
+es = Juegos
+pt-BR = Jogos
+fr = Jeux
+de = Spiele
+ja = ゲーム
+it = Giochi
+
+[sysmenu.tab_display]
+note = A MENU tab: Appearance, Theme, Home Screen and the look
+en = Display
+zh-Hans = 显示
+es = Pantalla
+pt-BR = Tela
+fr = Affichage
+de = Anzeige
+ja = 画面
+it = Schermo
+
+[sysmenu.tab_sound]
+note = A MENU tab: Audio Output, UI Sounds, Menu Music
+en = Sound
+zh-Hans = 声音
+es = Sonido
+pt-BR = Som
+fr = Son
+de = Ton
+ja = サウンド
+it = Audio
+
+[sysmenu.tab_connections]
+note = A MENU tab: Wi-Fi, Bluetooth, USB, File Transfer
+en = Connections
+zh-Hans = 连接
+es = Conexiones
+pt-BR = Conexões
+fr = Connexions
+de = Verbindungen
+ja = 接続
+it = Connessioni
+
+[sysmenu.tab_system]
+note = A MENU tab: date and time, language, battery, storage, updates
+en = System
+zh-Hans = 系统
+es = Sistema
+pt-BR = Sistema
+fr = Système
+de = System
+ja = システム
+it = Sistema
+
+[sysmenu.tab_about]
+note = A MENU tab: About ZyperOS, Controls, Show Tutorial
+en = About
+zh-Hans = 关于
+es = Acerca de
+pt-BR = Sobre
+fr = À propos
+de = Info
+ja = 情報
+it = Info
+
+[sysmenu.auto_hours]
+note = A MENU row under Appearance: when Auto turns light and dark
+en = Auto Hours
+zh-Hans = 自动时段
+es = Horario auto
+pt-BR = Horário auto
+fr = Horaires auto
+de = Auto-Zeiten
+ja = 自動の時間帯
+it = Orari automatici
+
+[sysmenu.theme]
+note = A MENU row: the accent, background tones, corners and Zyper
+en = Theme
+zh-Hans = 主题
+es = Tema
+pt-BR = Tema
+fr = Thème
+de = Design
+ja = テーマ
+it = Tema
 
 # ---- a shelf's system menu --------------------------------------------------
 
@@ -1151,3 +1252,36 @@ fr = choisir
 de = wählen
 ja = 選択
 it = scegli
+
+[sysmenu.view]
+note = A system menu row, under Sort By: how the shelf shows its games, its covers in a row or a list of names (DESIGN.md 11.39). Title Case in English.
+en = View
+zh-Hans = 视图
+es = Vista
+pt-BR = Exibição
+fr = Affichage
+de = Ansicht
+ja = 表示
+it = Vista
+
+[sysmenu.view_covers]
+note = View's value: the shelf shows its games' covers in a row, as it always did. A named choice; the Box Art term.
+en = Covers
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = パッケージ画像
+it = Copertine
+
+[sysmenu.view_list]
+note = View's value: the shelf shows its games as a list of names, a small cover beside each. A named choice.
+en = List
+zh-Hans = 列表
+es = Lista
+pt-BR = Lista
+fr = Liste
+de = Liste
+ja = リスト
+it = Elenco

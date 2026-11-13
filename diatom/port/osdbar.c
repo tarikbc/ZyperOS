@@ -263,6 +263,20 @@ void osdbar_size(float scale, int *w, int *h)
 	*h = (int)ceilf(OSDBAR_H * scale);
 }
 
+/* The look's colors for each theme, when it has any (osdbar_colors), and a
+ * count that moves with them so a painted bar is painted again */
+static ds_theme colors[DS_THEMES];
+static bool     colors_on[DS_THEMES];
+static unsigned colors_gen;
+
+void osdbar_colors(int theme, const ds_theme *t)
+{
+	if (theme < 0 || theme >= DS_THEMES) return;
+	if (t) colors[theme] = *t;
+	colors_on[theme] = t != NULL;
+	colors_gen++;
+}
+
 void osdbar_render(uint32_t *px, int w, int h, int stride, float scale,
                    int theme, int kind, int level, int max, float alpha, bool premul)
 {
@@ -277,6 +291,7 @@ void osdbar_render(uint32_t *px, int w, int h, int stride, float scale,
 		bool valid;
 		int theme, kind, level, max, w, h;
 		float scale;
+		unsigned gen;
 	} painted;
 	int x, y;
 
@@ -287,9 +302,9 @@ void osdbar_render(uint32_t *px, int w, int h, int stride, float scale,
 	if (level > max) level = max;
 	if (!painted.valid || painted.theme != theme || painted.kind != kind ||
 	    painted.level != level || painted.max != max || painted.w != w || painted.h != h ||
-	    painted.scale != scale) {
+	    painted.scale != scale || painted.gen != colors_gen) {
 		canvas cv = { f, w, h, scale };
-		const ds_theme *th = &DS_THEME[theme];
+		const ds_theme *th = colors_on[theme] ? &colors[theme] : &DS_THEME[theme];
 		float col[3], track[3], surface[3], edge[3], ink[3];
 		const float pix = 1.0f / scale;            /* a pixel, in units */
 		const float cy = PILL_Y0 + PILL_H / 2;
@@ -326,6 +341,7 @@ void osdbar_render(uint32_t *px, int w, int h, int stride, float scale,
 		painted.w = w;
 		painted.h = h;
 		painted.scale = scale;
+		painted.gen = colors_gen;
 	}
 
 	if (alpha < 0) alpha = 0;

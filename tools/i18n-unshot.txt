@@ -110,6 +110,7 @@ cheevolist.status
 cheevolist.earned
 cheevolist.not_earned
 cheevolist.unlocked
+cheevolist.earned_waiting
 
 # cheevos: no shot draws it yet
 cheevos.to_earn
@@ -119,6 +120,7 @@ cheevos.unlocked
 cheevos.mastered
 cheevos.progress
 cheevos.ra_user
+cheevos.unchecked_said
 
 # clock: no shot draws it yet
 clock.time_zone
@@ -170,6 +172,11 @@ controls.y_up
 controls.return
 controls.c_buttons
 controls.two_screens
+controls.strafe_left
+controls.strafe_right
+controls.prev_weapon
+controls.next_weapon
+controls.map
 
 # corner: no shot draws it yet
 corner.time_min
@@ -199,6 +206,10 @@ gamemenu.delete_outside
 gamemenu.delete_runtime
 gamemenu.delete_port_unknown
 gamemenu.delete_bios
+gamemenu.rename_invalid
+gamemenu.rename_taken
+gamemenu.rename_failed
+gamemenu.rename_partly
 gamemenu.layout_stacked
 gamemenu.layout_focus
 gamemenu.dmode_aspect
@@ -395,16 +406,7 @@ portload.starting
 portload.a_minute
 
 # portmaster: no shot draws it yet
-portmaster.point_store
-portmaster.point_files
-portmaster.err_network
-portmaster.err_checksum
-portmaster.err_space
-portmaster.err_unpack
-portmaster.err_release
 portmaster.err_internal
-portmaster.err_stopped
-portmaster.needs_system
 
 # ra: no shot draws it yet
 ra.sign_in_need_both
@@ -647,10 +649,6 @@ update.installing
 update.checking_files
 update.stopped
 update.downloaded_checked
-update.download_failed
-update.no_server
-update.card_full
-update.too_big
 update.going_back_to
 update.goes_back_next_start
 update.back_on

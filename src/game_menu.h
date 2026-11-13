@@ -87,7 +87,7 @@ const char *gm_pak_other(const char *value);           /* the one it steps to */
 const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */
 void gm_pak_key(const char *tag, const char *file, char *out, size_t n);
 
-#define GI_MAX 7          /* four facts at most, Favorite and two actions */
+#define GI_MAX 8          /* four facts at most, Favorite and three actions */
 
 /* The genre line, from the scrape. Sized from the card rather than guessed:
  * measured 2026-09-17 over 1,704 rows, the whole comma-separated value has a
@@ -107,11 +107,18 @@ typedef struct {
 	char  year[8];         /* from the scrape, empty when it said nothing */
 	char  genre[GI_GENRE_MAX];   /* the same, comma separated */
 	bool  has_cheevos;     /* there is a set to open, not just a count to read */
+	/* No set because the game was never played with a network: the row says
+	 * "not checked yet", and A on it says how it gets one (chv_state_of) */
+	bool  cheevos_unchecked;
 	bool  has_art;         /* Cover and Video's value: "no cover" */
 	bool  has_snap;        /* ...and "no video" */
 	/* Art of its own that no fetch replaces: PortMaster's entry on the
 	 * Ports shelf (src/pminstall.h, PM_COVER_LIGHT), so no Box Art row */
 	bool  own_art;
+	/* PortMaster's entry with PortMaster on the card: Reinstall PortMaster,
+	 * in the place the Cover and Video row has on another game's page, so
+	 * the page has no more rows than GI_MAX */
+	bool  can_reinstall;
 	/* Whether this game has a row in the card's games table at all, and
 	 * whether that row carries a synopsis. Two flags rather than one, because
 	 * they answer different questions: a game nobody has scraped shows neither
@@ -122,6 +129,9 @@ typedef struct {
 	/* Delete Game is offered (src/gamedel.h): everywhere but Ports, whose
 	 * games are scripts beside folders nothing says are theirs */
 	bool  can_delete;
+	/* Rename is offered (src/gamern.h): not for an arcade set, a BIOS set
+	 * or a port, whose names are what runs them */
+	bool  can_rename;
 	/* The Favorite row: Y on this page (and A on the row) marks it, since
 	 * Y on the shelf starts a game fresh (2026-11-08) */
 	bool  can_favorite;
@@ -136,8 +146,9 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
 
 /* GM_ROWS is every game's menu. A game with two screens - a Nintendo DS
  * game on DSperate, whose one frame Diatom cuts into its top and bottom
- * screens - has three rows more, after Display, where the picture is
- * already the subject: Screens (the layout), Swap Screens and Stylus. Their
+ * screens - has three rows more, after Display and Shader, where the
+ * picture is already the subject: Screens (the layout), Swap Screens and
+ * Stylus. Their
  * ids come after GM_ROWS so that every other game's rows are still their own
  * ids, in order; gm_row_ids says which rows a menu has, in the order shown. */
 /* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
@@ -150,13 +161,18 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * step it. With Save and Load, where states are. A system whose core keeps
  * no state (controls.h, ctl_has_states) has no quick slot and no row, so
  * its menu has a row fewer: gm_row_ids says which rows a menu has. */
-/* Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
+/* Shader, right after Display (2026-11-12): how the picture is drawn at its
+ * last step, Off or a shader by its name (src/app.h SHADERS), kept for the
+ * game's system and sent to the game at once. Every game's, so it is one of
+ * GM_ROWS, and Controls is a row further down.
+ *
+ * Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
  * Rumble Pak or the Controller Pak (the memory card some games save to),
  * kept for the game. Right before Controls, whose C buttons page says which
  * one is in. Its id comes after the screens' rows, as theirs do. */
 typedef enum {
-	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_CONTROLS, GM_CHEEVOS, GM_RESET,
-	GM_QUIT,
+	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
+	GM_RESET, GM_QUIT,
 	GM_ROWS,
 	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK,
 	GM_MAX_ROWS
@@ -177,8 +193,11 @@ int gm_layout_index(const char *name);                   /* 0 for one it does no
 /* What the in-game menu needs to know, gathered by the caller. */
 typedef struct {
 	const char *dmode;    /* the display mode's label */
+	const char *shader;   /* the shader's label; NULL reads Off */
 	int         earned;
 	int         total;    /* 0: this game has no achievement set */
+	/* ...because it was never played with a network: not asked yet */
+	bool        unchecked;
 	/* Two screens in this game's frame, and how they are shown now. */
 	bool        screens;
 	int         layout;   /* into gm_layout_names */
@@ -212,7 +231,7 @@ gm_row gm_x_row(void);
  * a pointer rather than a copy. And each row's sound class (MENU_SND_*,
  * menu.h), set by gm_rows by the row's id, for the menu runner. */
 typedef struct {
-	char cheevos[24];
+	char cheevos[48];
 	char quick[8];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;

@@ -199,7 +199,11 @@ bool stats_screen(app *a)
 					a->sys_cursor = si;
 					/* By system there is no file to look for, so the shelf
 					 * keeps whichever game it was already on. */
-					if (!by_sys)
+					/* A game kept in a folder of games (src/shelfdir.h):
+					 * its folder opened, its cursor on it */
+					if (!by_sys && a->view[si].all)
+						shelf_reveal(a, si, file);
+					else if (!by_sys)
 						for (gi = 0; gi < a->view[si].list.count; gi++)
 							if (!strcmp(a->view[si].list.items[gi].file, file)) {
 								a->view[si].cursor = gi;
@@ -238,14 +242,8 @@ bool stats_screen(app *a)
 		}
 
 		if (ngames > 0) {
-			if (in_repeat(&a->in, IN_DOWN)) {
-				step_sound(a, IN_DOWN, cursor, cursor < ngames - 1 ? cursor + 1 : cursor);
-				if (cursor < ngames - 1) cursor++;
-			}
-			if (in_repeat(&a->in, IN_UP)) {
-				step_sound(a, IN_UP, cursor, cursor > 0 ? cursor - 1 : cursor);
-				if (cursor > 0) cursor--;
-			}
+			if (in_repeat(&a->in, IN_DOWN)) cursor = list_step_heard(a, IN_DOWN, ngames, cursor);
+			if (in_repeat(&a->in, IN_UP))   cursor = list_step_heard(a, IN_UP, ngames, cursor);
 			/* The window follows the cursor rather than the other way round,
 			 * so a long list scrolls one row at a time from either end. */
 			if (cursor < top) top = cursor;

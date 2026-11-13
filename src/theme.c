@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include "i18n.h"
+#include "look.h"
 #include "themefile.h"
 
 /* How long the clock is trusted for, in seconds: Auto's hours are whole hours,
@@ -21,21 +22,51 @@
  * the whole of ui.c's signatures changing for nothing. */
 static appearance cur = APPEAR_LIGHT;
 static int idx = DS_LIGHT;
+/* Auto's hours, minutes into the local day (theme_set_hours) */
+static int light_from = THEME_LIGHT_FROM, dark_from = THEME_DARK_FROM;
 static time_t looked;          /* when the clock was last read, for Auto */
 static const char *file = THEME_FILE;
 
-int theme_resolve(appearance a, int hour)
+int theme_resolve_min(appearance a, int minute)
 {
 	switch (a) {
 	case APPEAR_DARK:  return DS_DARK;
 	case APPEAR_AUTO:
-		/* 7:00 up to 19:00, so hours 7 through 18. Not a clock that could
-		 * not be read: see theme.h. */
-		if (hour < 0 || hour > 23) return DS_LIGHT;
-		return hour >= 7 && hour < 19 ? DS_LIGHT : DS_DARK;
+		/* Light from light_from up to dark_from, and dark from there round
+		 * to light_from: 7:00 up to 19:00 as it ships. Hours that go round
+		 * midnight (light from 20:00 to 6:00) are the same rule the other
+		 * way; the same hour twice is never dark. Not a clock that could not
+		 * be read: see theme.h. */
+		if (minute < 0 || minute >= 24 * 60) return DS_LIGHT;
+		if (light_from == dark_from) return DS_LIGHT;
+		if (light_from < dark_from)
+			return minute >= light_from && minute < dark_from ? DS_LIGHT : DS_DARK;
+		return minute >= light_from || minute < dark_from ? DS_LIGHT : DS_DARK;
 	case APPEAR_LIGHT:
 	default:           return DS_LIGHT;
 	}
+}
+
+int theme_resolve(appearance a, int hour)
+{
+	return theme_resolve_min(a, hour < 0 || hour > 23 ? -1 : hour * 60);
+}
+
+static int hours_clamp(int m, int fallback)
+{
+	return m >= 0 && m < 24 * 60 ? m - m % THEME_HOURS_STEP : fallback;
+}
+
+void theme_set_hours(int light_min, int dark_min)
+{
+	light_from = hours_clamp(light_min, THEME_LIGHT_FROM);
+	dark_from = hours_clamp(dark_min, THEME_DARK_FROM);
+}
+
+void theme_hours(int *light_min, int *dark_min)
+{
+	if (light_min) *light_min = light_from;
+	if (dark_min) *dark_min = dark_from;
 }
 
 const char *appearance_name(appearance a)
@@ -78,15 +109,15 @@ appearance appearance_step(appearance a, int d)
 	return (appearance)((((i + d) % 3) + 3) % 3);
 }
 
-/* The local hour of `t`, or -1 if the time cannot be made into one (a time_t
- * so far from now that the year does not fit), which theme_resolve reads as
- * the default and not as night. */
-static int hour_of(time_t t)
+/* The local minute of the day of `t`, or -1 if the time cannot be made into
+ * one (a time_t so far from now that the year does not fit), which
+ * theme_resolve_min reads as the default and not as night. */
+static int minute_of(time_t t)
 {
 	struct tm tm;
 
 	if (!localtime_r(&t, &tm)) return -1;
-	return tm.tm_hour;
+	return tm.tm_hour * 60 + tm.tm_min;
 }
 
 int theme_saved_at(const char *saved, time_t now)
@@ -95,7 +126,7 @@ int theme_saved_at(const char *saved, time_t now)
 	 * parses it, and the clock asked only when the setting is Auto. */
 	appearance a = appearance_parse(saved);
 
-	return theme_resolve(a, a == APPEAR_AUTO ? hour_of(now) : 0);
+	return theme_resolve_min(a, a == APPEAR_AUTO ? minute_of(now) : 0);
 }
 
 void theme_set_file(const char *path)
@@ -108,7 +139,8 @@ void theme_set_file(const char *path)
 static void publish(void)
 {
 	if (!file) return;
-	if (!themefile_write(file, idx))
+	/* with the bar's colors when the player's look has its own (look.h) */
+	if (!themefile_write_bar(file, idx, look_is_default(look_now()) ? NULL : theme_at(idx)))
 		fprintf(stderr, "theme: %s: %s\n", file, strerror(errno));
 }
 
@@ -119,7 +151,7 @@ void theme_init_at(appearance a, time_t now)
 	 * for. */
 	cur = a == APPEAR_DARK || a == APPEAR_AUTO ? a : APPEAR_LIGHT;
 	looked = now;
-	idx = theme_resolve(cur, cur == APPEAR_AUTO ? hour_of(now) : 0);
+	idx = theme_resolve_min(cur, cur == APPEAR_AUTO ? minute_of(now) : 0);
 	publish();
 }
 
@@ -135,7 +167,7 @@ bool theme_refresh_at(time_t now)
 	if (cur != APPEAR_AUTO) return false;
 
 	looked = now;
-	next = theme_resolve(cur, hour_of(now));
+	next = theme_resolve_min(cur, minute_of(now));
 	if (next == idx) return false;
 	idx = next;
 	publish();
@@ -165,7 +197,7 @@ bool theme_tick(void)
 
 const ds_theme *theme(void)
 {
-	return &DS_THEME[idx];
+	return theme_at(idx);
 }
 
 int theme_index(void)

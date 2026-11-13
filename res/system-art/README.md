@@ -40,6 +40,7 @@ CC BY or CC BY-SA photo is shared under that license, crediting the
 photographer below.
 
 - `source/3DO.gif`, 3DO: [3DO-FZ-1-Console-FL.png](https://commons.wikimedia.org/wiki/File:3DO-FZ-1-Console-FL.png) by Evan-Amos, modified by Gunnar.offel (Public domain); [3DO-FZ1-Console-Set.jpg](https://commons.wikimedia.org/wiki/File:3DO-FZ1-Console-Set.jpg) by Evan-Amos (CC BY-SA 3.0)
+- `source/COLECO.gif`, ColecoVision: [ColecoVision-Console-FL.jpg](https://commons.wikimedia.org/wiki/File:ColecoVision-Console-FL.jpg) by Evan-Amos (Public domain); [ColecoVision-Controller-FL.jpg](https://commons.wikimedia.org/wiki/File:ColecoVision-Controller-FL.jpg) by Evan-Amos (Public domain)
 - `source/AW.gif`, Atomiswave: [Atomiswave.jpg](https://commons.wikimedia.org/wiki/File:Atomiswave.jpg) by Black Squirrel (CC BY 4.0); [Cartouche Atomiswave.jpg](https://commons.wikimedia.org/wiki/File:Cartouche_Atomiswave.jpg) by Jpl752 (CC BY-SA 4.0)
 - `source/GW.gif`, Game & Watch: [Game&watch-donkey-kong-2.png](https://commons.wikimedia.org/wiki/File:Game&watch-donkey-kong-2.png) by Evan-Amos (Public domain)
 - `source/J2ME.gif`, J2ME: [Nokia-NGage-Front-Flat.jpg](https://commons.wikimedia.org/wiki/File:Nokia-NGage-Front-Flat.jpg) by Evan-Amos (Public domain)
@@ -48,6 +49,15 @@ photographer below.
 - `source/NAOMI.gif`, NAOMI: [Naomi 2.jpg](https://commons.wikimedia.org/wiki/File:Naomi_2.jpg) by Mahcann (CC BY-SA 4.0)
 - `source/NEOCD.gif`, Neo Geo CD: [Neo-Geo-CD-TL-FL.png](https://commons.wikimedia.org/wiki/File:Neo-Geo-CD-TL-FL.png) by Evan-Amos (Public domain); [Neo-Geo-CD-Controller-FL.jpg](https://commons.wikimedia.org/wiki/File:Neo-Geo-CD-Controller-FL.jpg) by Evan-Amos (Public domain)
 - `source/VECTREX.gif`, Vectrex: [Vectrex-Console-Set.png](https://commons.wikimedia.org/wiki/File:Vectrex-Console-Set.png) by Evan-Amos (CC BY-SA 3.0); [GCE-Vectrex-Controller-FL.jpg](https://commons.wikimedia.org/wiki/File:GCE-Vectrex-Controller-FL.jpg) by Evan-Amos (Public domain)
+
+Two shelves have no hardware to draw, so they show their logos, as the
+pack shows PICO-8's (2026-11-12). The same tools reduce them from
+Commons, with each one's own license:
+
+- `source/DOOM.gif`, Doom: the logo from [Doom classic box art.png](https://commons.wikimedia.org/wiki/File:Doom_classic_box_art.png) by Bethesda (CC BY 3.0, from a YouTube upload its copyright holder marked Creative Commons). DOOM is a trademark of its owner.
+- `source/TIC80.gif`, TIC-80: [TIC-80 Icon.svg](https://commons.wikimedia.org/wiki/File:TIC-80_Icon.svg), TIC-80's own icon by Vadim Grigoruk (nesbox), MIT, Copyright (c) 2017 Vadim Grigoruk. Drawn at three times its 16 pixels, each one read at its center from the SVG.
+
+The PSP's icon is the pack's own (`by_platform/psp/logo.gif`).
 
 The eight below are not shelves. They are for the File Transfer page's
 folders: the page shows them beside each folder that holds no system, as

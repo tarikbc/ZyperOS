@@ -266,6 +266,97 @@ int main(void)
 		CHECK(chv_earned() == 0, "a fresh store came back with rows in it");
 	}
 
+	/* ---- offline: what an owed row carries -------------------------------
+	 *
+	 * An unlock earned offline is sent days later, so the row is all there is
+	 * of it: when, in which mode, and the ROM's hash from the set's header.
+	 * A row from before those were kept reads as a bare "p". */
+	printf("  an owed row keeps when, the mode and the hash:\n");
+	{
+		FILE *f;
+		chv_owed o;
+		char v[128];
+
+		store_reset();
+		f = fopen(g_set, "w");
+		fputs("#! zyperos-cheevos 2\tgame=1459\tconsole=7\ttitle=Blaster Master"
+		      "\thash=0123456789abcdef0123456789abcdef\n", f);
+		fputs("#:\t24698\t5\tA\tB\t1\n24698\t0xH0=1\n", f);
+		fputs("#:\t24699\t10\tC\tD\t2\n24699\t0xH0=2\n", f);
+		fputs("#:\t24700\t50\tE\tF\t3\n24700\t0xH0=3\n", f);
+		fclose(f);
+		db_set_str(db_lib(), "chv.1459.24700", "p");     /* from before */
+		chv_earned_load();
+		CHECK(chv_load(g_set), "the set with a hash did not load");
+		CHECK(!strcmp(chv_game_hash(), "0123456789abcdef0123456789abcdef"),
+		      "the header's hash: %s", chv_game_hash());
+		CHECK(chv_note_unlock_at(24698, 1767400000L, false, true), "an offline unlock is news");
+		CHECK(chv_earned_save(), "the store did not write");
+		CHECK(db_get_str(db_lib(), "chv.1459.24698", v, sizeof v, "") &&
+		      !strcmp(v, "p\t1767400000\t0\t0123456789abcdef0123456789abcdef"),
+		      "the row as written: %s", v);
+		CHECK(chv_pending_for(1459) == 2 && chv_pending_for(1) == 0,
+		      "owed by game: %d", chv_pending_for(1459));
+		CHECK(chv_is_pending(24698) && chv_is_pending(24700) && !chv_is_pending(24699),
+		      "owed by achievement");
+
+		/* Only what changed is written: a row put there behind the store's
+		 * back survives the next save, which it would not if every row were
+		 * written each time (thousands of writes for one unlock) */
+		db_set_str(db_lib(), "chv.1459.24700", "p\tmarker");
+		CHECK(chv_note_unlock_at(24699, 1767400100L, false, false), "an online unlock is news");
+		CHECK(chv_earned_save(), "the store did not write");
+		CHECK(db_get_str(db_lib(), "chv.1459.24700", v, sizeof v, "") && !strcmp(v, "p\tmarker"),
+		      "a save wrote a row that had not changed: %s", v);
+		db_set_str(db_lib(), "chv.1459.24700", "p");
+
+		chv_clear();
+		chv_earned_load();
+		CHECK(chv_load(g_set), "the set did not reload");
+		CHECK(chv_pending_count() == 3, "three owed after a reload: %d", chv_pending_count());
+		{
+			int k, seen = 0;
+
+			for (k = 0; chv_pending_get(k, &o); k++) {
+				if (o.id == 24698) {
+					seen++;
+					CHECK(o.when == 1767400000L && !o.hardcore &&
+					      !strcmp(o.hash, "0123456789abcdef0123456789abcdef"),
+					      "24698 came back as %ld %d %s", o.when, o.hardcore, o.hash);
+				}
+				if (o.id == 24700) {
+					seen++;
+					CHECK(o.when == 0 && !o.hash[0], "the old row has no age and no hash");
+				}
+			}
+			CHECK(seen == 2, "both rows were read back: %d", seen);
+		}
+		/* Everything owed at a start has waited: the notice counts it */
+		CHECK(chv_mark_synced(1459, 24699), "a row owed at the start had waited");
+		CHECK(chv_earned_save(), "the store did not write");
+		CHECK(db_get_str(db_lib(), "chv.1459.24699", v, sizeof v, "") && !strcmp(v, "s"),
+		      "a sent row is s: %s", v);
+	}
+
+	/* ---- a game never played with a network ------------------------------ */
+	printf("  a game with no set says why:\n");
+	{
+		char none[160], absent[160];
+
+		snprintf(absent, sizeof absent, "/tmp/zyperos-chv-%ld-absent.set", (long)getpid());
+		chv_none_path(absent, none, sizeof none);
+		CHECK(strstr(none, "-absent.none") != NULL, "the marker's name: %s", none);
+		remove(none);
+		CHECK(chv_state_of(g_set, true) == CHV_SET, "a set on the card");
+		CHECK(chv_state_of(absent, true) == CHV_UNCHECKED, "no set, signed in: not checked yet");
+		CHECK(chv_state_of(absent, false) == CHV_NONE, "no set, nobody signed in: none");
+		chv_none_mark(absent, true);
+		CHECK(chv_state_of(absent, true) == CHV_NONE, "RetroAchievements said none");
+		chv_none_mark(absent, false);
+		CHECK(chv_state_of(absent, true) == CHV_UNCHECKED, "a set arriving takes the marker away");
+		remove(none);
+	}
+
 	remove(g_set); remove(g_active);
 	store_reset();
 	db_shutdown();

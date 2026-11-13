@@ -77,3 +77,31 @@ fr = %d sur %d débloqués
 de = %d von %d freigeschaltet
 ja = %d / %d 解除済み
 it = %d di %d sbloccati
+
+[cheevolist.heading_waiting]
+note = The list's heading as cheevolist.heading, when some of this game's achievements were earned offline and wait to be sent: %s the game's name, then earned of all achievements, then how many wait. The points are left out so the line fits; each row still shows its points.
+en.one = %s\n%d / %d · %d waiting to send
+en.other = %s\n%d / %d · %d waiting to send
+zh-Hans = %s\n%d / %d · %d 个待发送
+es.one = %s\n%d / %d · %d por enviar
+es.other = %s\n%d / %d · %d por enviar
+pt-BR.one = %s\n%d / %d · %d a enviar
+pt-BR.other = %s\n%d / %d · %d a enviar
+fr.one = %s\n%d / %d · %d à envoyer
+fr.other = %s\n%d / %d · %d à envoyer
+de.one = %s\n%d / %d · %d noch zu senden
+de.other = %s\n%d / %d · %d noch zu senden
+ja = %s\n%d / %d · 送信待ち %d
+it.one = %s\n%d / %d · %d da inviare
+it.other = %s\n%d / %d · %d da inviare
+
+[cheevolist.earned_waiting]
+note = The Status row's value: earned, offline, and not on the RetroAchievements account yet (pt-BR: a conquista, feminine)
+en = earned, not sent yet
+zh-Hans = 已解锁，待发送
+es = conseguido, sin enviar
+pt-BR = conquistada, a enviar
+fr = obtenu, pas encore envoyé
+de = erhalten, noch nicht gesendet
+ja = 解除済み・送信待ち
+it = ottenuto, da inviare

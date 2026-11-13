@@ -94,6 +94,8 @@
 
 #include "device/pixel2_levels.h"
 #include "heat.h"
+#include "look.h"
+#include "theme.h"
 #include "osdbar.h"
 #include "pkkeys.h"
 #include "pkset.h"
@@ -165,6 +167,30 @@ static sqlite3 *db;
  * database answered at all: if not, the bar goes by THEME_FILE. */
 static char appearance_word[16];
 static bool appearance_read;
+
+/* The look and Auto's hours from the device's database, as the launcher reads
+ * them (main.c, look_load): look.* words and auto.* minutes. The bar's colors
+ * for both themes are then the look's (osdbar_colors), or the tokens' for the
+ * look as it ships. */
+static void look_load_db(sqlite3 *d)
+{
+	char ac[16] = "", li[16] = "", dk[16] = "", co[16] = "", zy[8] = "", m[16];
+	int lm = THEME_LIGHT_FROM, dm = THEME_DARK_FROM, t;
+	look l;
+
+	pkset_text(d, "look.accent", ac, sizeof ac);
+	pkset_text(d, "look.light", li, sizeof li);
+	pkset_text(d, "look.dark", dk, sizeof dk);
+	pkset_text(d, "look.corners", co, sizeof co);
+	pkset_text(d, "look.zyper", zy, sizeof zy);
+	l = look_parse(ac, li, dk, co, zy);
+	look_set(&l);
+	for (t = 0; t < DS_THEMES; t++)
+		osdbar_colors(t, look_is_default(&l) ? NULL : theme_at(t));
+	if (pkset_text(d, "auto.light", m, sizeof m)) lm = atoi(m);
+	if (pkset_text(d, "auto.dark", m, sizeof m)) dm = atoi(m);
+	theme_set_hours(lm, dm);
+}
 
 static long now_ms(void)
 {
@@ -593,6 +619,14 @@ static void bar_show(int kind, int level, int max)
 	 * up in the new theme either way. */
 	B.theme = pkset_bar_theme(appearance_read ? appearance_word : NULL, time(NULL),
 	                          THEME_FILE);
+	/* With no database, the look's colors are the file's too, as the
+	 * launcher last wrote them (themefile_read_bar); with one, they were
+	 * set at start (look_load_db) */
+	if (!appearance_read) {
+		ds_theme c;
+
+		if (themefile_read_bar(THEME_FILE, &c) == B.theme) osdbar_colors(B.theme, &c);
+	}
 	if (!B.live || !osdbar_envelope((uint32_t)(now - B.shown), (uint32_t)(now - B.changed), &a, &rise))
 		B.shown = now;
 	B.kind = kind;
@@ -1630,6 +1664,10 @@ int main(int argc, char **argv)
 	 * database the launcher reads it from, and the zone from the card's
 	 * library, from launch.sh: $SHARED_USERDATA_PATH/.zyperos/library.db */
 	appearance_read = pkset_text(db, "appearance", appearance_word, sizeof appearance_word);
+	/* And the player's look and Auto's hours, which nothing changes while a
+	 * port runs either: the bar's colors in both themes, and the hours the
+	 * clock turns it at (src/look.h, src/theme.h) */
+	if (appearance_read) look_load_db(db);
 	pkset_zone_load(argc > 2 ? argv[2] : NULL);
 	/* The heat notice the launcher left, in both themes (heat_check) */
 	heat_init(&H);

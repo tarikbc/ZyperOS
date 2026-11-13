@@ -9,14 +9,18 @@
 
 /* The file, a line each:
  *
- *   ZyperOS saved library 1 <TAB> version
+ *   ZyperOS saved library 2 <TAB> version
  *   shelf <TAB> games <TAB> left out <TAB> extensions <TAB> folder
  *   skip <TAB> name          one per left-out name the listing kept
- *   game <TAB> file <TAB> name     one per game, in the folder's order
+ *   game <TAB> file <TAB> name <TAB> dir     one per game, in the folder's order
+ *
+ * `dir` is game_entry.dir: how much of the launch path is the folder the game
+ * is kept in on its shelf (src/shelfdir.h), 0 at the top. Version 2 since
+ * 1.0.5, which has folders on a shelf; a version 1 file is no saved library.
  *
  * Every text field escaped: backslash, tab, newline and return as \\ \t \n
  * \r. exFAT allows none of the last three in a name, but a host's card can. */
-#define SAVEDLIB_MAGIC "ZyperOS saved library 1"
+#define SAVEDLIB_MAGIC "ZyperOS saved library 2"
 /* No library the launcher writes comes near this; a file that does is not
  * one, and is not read into memory */
 #define SAVEDLIB_MAX   (64L << 20)
@@ -66,7 +70,7 @@ bool savedlib_write(const char *path, const char *version, const savedlib_row *r
 			put_text(f, l->items[k].file);
 			fputc('\t', f);
 			put_text(f, l->items[k].name);
-			fputc('\n', f);
+			fprintf(f, "\t%u\n", (unsigned)l->items[k].dir);
 		}
 	}
 	if (ferror(f)) {
@@ -201,10 +205,15 @@ bool savedlib_load(const char *path, const char *version, saved_lib *out)
 		if (!(sh->list.items = calloc((size_t)games, sizeof *sh->list.items))) goto bad;
 		for (k = 0; k < games; k++) {
 			game_entry *g = &sh->list.items[k];
+			int dir;
 
 			if (!(s = next_line(&at, end)) || !word(&s, "game") ||
-			    !field(&s, g->file, sizeof g->file) || !field(&s, g->name, sizeof g->name) || s)
+			    !field(&s, g->file, sizeof g->file) || !field(&s, g->name, sizeof g->name) ||
+			    !count_field(&s, LIB_PATH, &dir) || s)
 				goto bad;
+			/* The folder a game is in ends where a slash of its path is */
+			if (dir && ((size_t)dir >= strlen(g->file) || g->file[dir] != '/')) goto bad;
+			g->dir = (unsigned short)dir;
 			g->added = LIB_ADDED_UNKNOWN;
 		}
 		sh->list.count = games;

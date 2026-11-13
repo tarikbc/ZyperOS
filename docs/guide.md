@@ -68,18 +68,18 @@ it away.
 | | |
 |---|---|
 | **Left/Right** | move left or right along the shelf |
-| **Up/Down** | jump to the previous or next initial on the games shelf |
+| **Up/Down** | jump to the previous or next initial on the games shelf. On a shelf shown as a list (MENU > View), Up and Down step along it and Left and Right jump an initial |
 | **L1/R1** | jump three systems on the systems row, a screenful on a games shelf, coming round at the ends |
 | **L2/R2** | the previous / next song on the systems row and a games shelf: MP4's while it plays (a book's chapter, as L1/R1 in MP4), else the menu music's. Zyper pops up with its name |
-| **A** | open a system or start a game |
-| **B** | back to the systems row |
+| **A** | open a system, a folder of games, or start a game |
+| **B** | up one folder of games, or back to the systems row from a shelf's top |
 | **X** | game info for the card under the cursor |
 | **Y** | favorite it - Favorites is a shelf of its own. Nothing on MP4's shelf |
 | **Volume rocker** | volume, everywhere, including in game |
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
 | **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -134,7 +134,8 @@ A Nintendo 64 game has a page for its C buttons (hold SELECT and press X, A, B
 or Y) and, under them, which Pak its controller holds and where to change it:
 "MENU > Pak: Rumble Pak". A PICO-8 game lists its
 arrows, O and X and its pause menu. A DS game has a page for its two screens
-and the stylus. Then Hotkeys, SELECT with a shoulder: quick save and load, and
+and the stylus. A PSP game's R2 row turns the d-pad into the PSP's analog
+stick and back, kept for that game; a pop-up says which it is. Then Hotkeys, SELECT with a shoulder: quick save and load, and
 faster and slower. The last page, In a game, is MENU, MENU then X (Quit),
 volume, brightness and POWER. Left and right change the page, B goes back to the menu, and MENU goes
 back to the game.
@@ -189,12 +190,14 @@ than any one console:
 | **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, at `http://zyperos.local`, or always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
-| **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
+| **Auto Off** | how long without a button before the device powers itself down. It waits while a long job runs (a scraper run, a System Update download, PortMaster's install, Storage measuring the card, files moving over File Transfer) and counts again from the start when the job ends. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
+| **Screensaver** | `off`, `30s`, `1m`, `2m`, `5m` or `10m` with nothing pressed on the shelf before the video snaps of random games play over the whole screen, each with its game's name and system. START boots the game on screen; any other button goes back. `1m` on a new device. It never starts in a game, a menu, MP4 or File Transfer, while music plays or a long job runs, or under 20% on battery; on battery it ends by itself after 10 minutes, and Auto Off still powers the device off at its own time. With no video snaps on the card it shows covers instead, and with neither, nothing - see **Screensaver** below |
 | **Side Lights** | the Pixel 2 only: a page of switches for what the side lights show on their own, `Charging Bar`, `Low Battery`, `Volume and Brightness`, `Files and Covers Done` and `Achievements`, each `On` or `Off`; the row says how many are on. L2+R2 shows the level in all four. `All on` on a new device |
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
 | **Achievements** | the RetroAchievements account, or `sign in` |
+| **Shader** | `Off` or `Sharp-Shimmerless`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
@@ -234,6 +237,37 @@ it goes back to the cover when the focus moves or a menu opens. Its page:
 
 A snap is `Roms/<console>/.media/<name>.mp4`, beside its cover, so one put
 there by hand plays too.
+
+**Auto Off waits for a fetch.** While Fetch Missing Art, a Box Art run or its
+video snaps are fetching, Auto Off does not count, so a library left to
+scrape overnight is not cut short; the count starts again, whole, when the run
+ends. The power button still powers the device off, and so does the battery
+running flat. System Update's download, PortMaster's install, Storage
+measuring the card and files moving over File Transfer wait the same way.
+
+### Screensaver
+
+MENU > **Screensaver** plays the video snaps of random games over the whole
+screen after the delay you pick, `off` or 30 seconds to 10 minutes, `1m` to
+start with, when nothing has been pressed on the shelf. Each clip shows for
+15 seconds with its game's name and system, then the next fades in.
+
+- **START** boots the game on screen, as A on its card would.
+- **Any other button** goes back to the shelf as it was, and does nothing else.
+  The volume and brightness buttons change their own setting and leave it be.
+- It never starts in a game or over a menu, MP4 or File Transfer, while music
+  plays, File Transfer is on or a long job (a fetch, an update, PortMaster's
+  install) runs, or under 20% on battery.
+- **It never keeps the device on past Auto Off.** Auto Off powers the device
+  off at its own time with the screensaver up; on the cable, its time turns the
+  screen off as it does for the shelf. A delay as long as Auto Off's is never
+  seen on battery.
+- **It is cheap:** muted, drawn only when the picture changes, and on battery
+  it ends by itself after 10 minutes, or when the chip gets hot or the battery
+  falls under 20%, and waits for a button.
+- It plays the snaps on the card (`Roms/<console>/.media/<name>.mp4`) of the
+  consoles whose Video Snaps are on. **With no snaps on the card it shows the
+  games' covers**, each for 8 seconds; with no covers either, it does nothing.
 
 Date & Time has a row for each part of the clock and one for the time zone,
 each changed with left and right and set the moment it changes, so the time
@@ -314,11 +348,13 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Core** | which core runs them; left/right/A choose on a shelf that has two (the Dreamcast's) |
 | **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
+| **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
+| **Shader** | `Off` or `Sharp-Shimmerless`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
-On Favorites the menu is only Games and Sort By. The rest is about one
+On Favorites the menu is only Games, Random Game, Sort By and View. The rest is about one
 console, and a game there takes its console's Display Mode wherever it was
 started from.
 
@@ -337,6 +373,36 @@ on the card. Whichever order you pick, games it knows nothing about sort to
 the bottom rather than into the middle, and two games it cannot tell apart
 fall back to name - a shelf that reshuffles itself when nothing has changed
 reads as broken even when the top of it is right.
+
+View is per-system too: a shelf with good covers reads well as a row, and an
+Arcade shelf or a library of hundreds of games reads better as a list.
+
+**Folders of games.** A folder inside a system's folder on the card is a
+folder on its shelf, as deep as you like: the folders come first, A to Z,
+each a pixel folder with how many games it holds, then the games loose in
+it, in the shelf's Sort By order. A opens a folder and B goes back up one,
+onto the folder you left. A folder that is one game's discs (a `.cue` and
+its tracks, a game's `.chd` discs, an `.m3u` with them) stays that game, as
+does a ScummVM game's folder; a folder of several games' discs is a folder
+of games. The Ports shelf never looks into its folders: they are the ports'
+own. Favorites, Search Games, Random Game, Storage, Delete Game and Play
+Time all find the games in folders, and after a game the shelf comes back
+in the folder it was in.
+
+**Shaders.** How a game's picture is drawn onto the screen at its last step.
+`Off` draws each of the game's pixels as the nearest screen pixels, so at a
+size that is not a whole number of times the game's (a 256-wide NES picture
+stretched to 640 is 2.5 times) some of its pixels are two screen pixels wide
+and some three, and a scrolling picture shimmers as they swap.
+`Sharp-Shimmerless`, zadpos's shader, keeps every pixel the same size: a
+screen pixel inside one of the game's pixels is that pixel exactly, and only
+one that falls across two of them mixes the two, by how much of it each
+covers. The picture stays as sharp as it can at that size and a scroll stays
+steady. At a whole number of times (Integer, Native 1:1) the two are the
+same. The in-game menu's **Shader** row, right under Display, changes it for
+the game's system, from the next frame after Continue (the paused picture
+behind the menu stays as it was); the system menu's row does the same from
+the shelf, and **MENU > Shader** sets every system at once.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer
@@ -897,6 +963,82 @@ ScreenScraper counts each of its pictures as a request on your account, so
 only the small copies of the pictures on screen are fetched, and the whole one
 only when you look closer. The row's value says what is missing: `no cover` or
 `no video`.
+
+**Rename**, above Delete Game, gives the game a new name. A opens the
+keyboard with the game's name as its file has it. START renames. The game's
+file takes the new name, with its extension. A disc set or ScummVM game in a
+folder of its own renames the folder. Its saves, its save states and Auto,
+its cover and video snap, its achievement set, the EmulationStation pictures
+and video named after it and its `gamelist.xml` entry follow, and so do its
+favorite, play time and details. The shelf shows the new name, and the next
+scrape can find the game by it. A file another game uses too, such as the
+save a `.gb` and a `.gbc` of one name share, is copied, so the other game
+keeps it. A name cannot be empty, start or end with a dot, or have
+`/ \ : * ? " < > |`, and it cannot be another game's name on the shelf: the
+message says why, and the keyboard opens again. Arcade sets, BIOS sets and
+ports have no Rename, because the core or PortMaster finds them by their
+names.
+
+## Coming from EmulationStation
+
+Knulli, ROCKNIX, ArkOS, AmberELEC, ROGUE OS, RetroPie, Recalbox and the other
+systems built on EmulationStation (ES) keep each console's games in a short
+folder, such as `roms/nds`, with the pictures, videos and details they
+scraped beside the games. Copy those folders into `Roms/` on the ZyperOS card
+as they are. ZyperOS reads them, and they still work in the other system:
+ZyperOS writes nothing in them but its own covers in `.media/`.
+
+**Folders.** Each system reads its ZyperOS folder or its ES folder:
+
+| ZyperOS folder | ES folders it also reads |
+|---|---|
+| `Nintendo DS` | `nds` |
+| `Game Boy Advance`, `Game Boy Color`, `Game Boy` | `gba`, `gbc`, `gb` |
+| `SNES` | `snes`, `sfc`, `superfamicom` |
+| `NES` | `nes`, `famicom`, `fds` |
+| `Genesis` | `genesis`, `megadrive`, `md` |
+| `PlayStation` | `psx`, `ps1` |
+| `Nintendo 64` | `n64` |
+| `TurboGrafx-16` | `pcengine`, `tg16`, `pcenginecd`, `tg16cd`, `tg-cd`, `supergrafx` |
+| `Sega CD`, `32X`, `Master System`, `Game Gear` | `segacd`, `megacd`, `sega32x`, `mastersystem`, `sms`, `gamegear`, `gg` |
+| `Neo Geo`, `Neo Geo CD`, `Neo Geo Pocket (Color)` | `neogeo`, `neocd`, `neogeocd`, `ngp`, `ngpc` |
+| `Arcade`, `MAME` | `fbneo`, `fba`, `cps1`, `cps2`, `cps3`; `mame2003`, `mame2003plus` |
+
+The rest are in `ZyperOS/systems.cfg` on the card, on its `es|` lines (Atari
+2600 is `atari2600`, WonderSwan is `wswan`, and so on). Capitals do not
+count. A shelf reads one folder: its ZyperOS folder while that has a game,
+and otherwise the ES folder with the most games. A new ZyperOS card has
+every ZyperOS folder, empty, so a copied ES folder is read. When both have
+games, the ZyperOS folder is read: move the games into one of them.
+
+**What ZyperOS reads, in order.** ZyperOS's own cover and video snap come
+first: `.media/<game>.png` and `.media/<game>.mp4`, from Box Art, the
+Scraper or Cover and Video. A game with none uses ES's:
+
+- the cover: `gamelist.xml`'s `<thumbnail>`, then `<image>`, then
+  `images/<game>-thumb`, `images/<game>-image`, `images/<game>`,
+  `media/box2dfront/<game>`, `media/images/<game>`, `boxart/<game>` and
+  `downloaded_images/<game>` (`.png`, then `.jpg`), and last the game's
+  logo, `<marquee>` or `images/<game>-marquee.png`;
+- the video snap: `gamelist.xml`'s `<video>`, then `videos/<game>-video.mp4`,
+  `videos/<game>.mp4`, `media/videos/<game>.mp4` and
+  `downloaded_videos/<game>.mp4`.
+
+A cover with an ES video has the play mark, and the video plays when you rest
+on the game, as a ZyperOS snap does. **Box Art** counts an ES cover as a
+cover, so it fetches covers only for games with none. **Cover and Video**
+shows an ES cover as Now, from EmulationStation; a cover you choose there is
+ZyperOS's own, and shows from then on.
+
+**Names, details and favorites.** A moment after each start, ZyperOS reads
+each folder's `gamelist.xml` and keeps, for each game that has no details
+yet, its `<name>`, `<desc>`, `<releasedate>`, `<genre>`, `<players>`,
+`<developer>`, `<publisher>` and `<rating>`, and makes a game with
+`<favorite>true</favorite>` a favorite. The shelf shows the names at once.
+A game that has details from the Scraper or a rename keeps them, and a
+ScreenScraper scrape later replaces what came from `gamelist.xml`. ES's
+`<name>` is not used when it is only the file's name: ZyperOS's own tidy
+name is shorter.
 
 The details' last row is **Delete Game**. It asks first, naming the game and
 saying that its saves, states, cover and video go with it and that this cannot

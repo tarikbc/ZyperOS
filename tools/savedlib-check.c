@@ -81,7 +81,7 @@ static bool same_list(const game_list *a, const game_list *b)
 		const game_entry *x = &a->items[i], *y = &b->items[i];
 
 		if (strcmp(x->file, y->file) || strcmp(x->name, y->name) || strcmp(x->title, y->title) ||
-		    x->added != y->added)
+		    x->added != y->added || x->dir != y->dir)
 			return false;
 	}
 	return true;
@@ -115,6 +115,15 @@ static void round_trip(void)
 	touch("PS1/Final Disc/Final Disc.bin");
 	touch("PS1/Nothing Here/notes.txt");
 	touch("PS1/Solo.chd");
+	/* Folders of games, to any depth, keep where each game is (1.0.5) */
+	directory("NES/Hacks");
+	directory("NES/Hacks/Deep");
+	touch("NES/Hacks/Hack.nes");
+	touch("NES/Hacks/Deep/Two.nes");
+	directory("PS1/RPGs");
+	directory("PS1/RPGs/Set");
+	touch("PS1/RPGs/Set/Set (Disc 1).chd");
+	touch("PS1/RPGs/Set/Set (Disc 2).chd");
 	strcpy(m.title, "The Legend of Zelda");
 	CHECK(db_game_set(db_lib(), "NES", "Zelda.nes", &m));
 
@@ -123,8 +132,12 @@ static void round_trip(void)
 		lib_scan(roms, FOLDERS[i], EXTS[i], &full[i]);
 		rows[i] = (savedlib_row){ FOLDERS[i], EXTS[i], &listing[i] };
 	}
-	CHECK(full[0].count == 5 && full[0].skipped == 1 && !strcmp(full[0].skipped_eg[0], "readme.txt"));
-	CHECK(full[1].count == 2 && full[1].skipped == 1 && !strcmp(full[1].skipped_eg[0], "Nothing Here/"));
+	CHECK(full[0].count == 7 && full[0].skipped == 1 && !strcmp(full[0].skipped_eg[0], "readme.txt"));
+	CHECK(full[1].count == 3 && full[1].skipped == 1 && !strcmp(full[1].skipped_eg[0], "Nothing Here/"));
+	i = lib_find_entry(&full[0], NULL, 0, "Hacks/Deep/Two.nes");
+	CHECK(i >= 0 && full[0].items[i].dir == 10 && !strcmp(full[0].items[i].name, "Two"));
+	i = lib_find_entry(&full[1], NULL, 0, "RPGs/Set/Set (Disc 1).chd");
+	CHECK(i >= 0 && full[1].items[i].dir == 4 && !strcmp(full[1].items[i].name, "Set"));
 	CHECK(full[2].count == 0 && full[3].count == 0);
 	CHECK(savedlib_write(saved, "v1", rows, NFOLDERS));
 	CHECK(savedlib_load(saved, "v1", &s) && s.count == NFOLDERS);
@@ -201,6 +214,19 @@ static void digests(void)
 	lib_scan_listing(roms, "NES", "nes", &l);
 	CHECK(lib_listing_digest(&l) != d0);
 	gone("NES/notes.txt");
+	{
+		/* A game moved into a folder of games is another listing */
+		char a[1200], b[1200];
+
+		snprintf(a, sizeof a, "%s/NES/Zelda.nes", roms);
+		snprintf(b, sizeof b, "%s/NES/Hacks/Zelda.nes", roms);
+		CHECK(rename(a, b) == 0);
+		lib_scan_listing(roms, "NES", "nes", &l);
+		CHECK(lib_listing_digest(&l) != d0);
+		CHECK(rename(b, a) == 0);
+		lib_scan_listing(roms, "NES", "nes", &l);
+		CHECK(lib_listing_digest(&l) == d0);
+	}
 	lib_free(&l);
 }
 
@@ -236,15 +262,29 @@ static void refusals(void)
 	free(text);
 	write_text("hello\n");
 	CHECK(!savedlib_load(saved, "v1", &s));
-	write_text("ZyperOS saved library 1\tv1\nshelf\t2\t0\tnes\tNES\ngame\ta.nes\ta\n");
+	write_text("ZyperOS saved library 2\tv1\nshelf\t2\t0\tnes\tNES\ngame\ta.nes\ta\t0\n");
 	CHECK(!savedlib_load(saved, "v1", &s));     /* a game short */
-	write_text("ZyperOS saved library 1\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta\\q.nes\ta\n");
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta\\q.nes\ta\t0\n");
 	CHECK(!savedlib_load(saved, "v1", &s));     /* no such escape */
-	write_text("ZyperOS saved library 1\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta.nes\ta\textra\n");
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta.nes\ta\t0\textra\n");
 	CHECK(!savedlib_load(saved, "v1", &s));     /* a field too many */
-	write_text("ZyperOS saved library 1\tv1\nshelf\t-1\t0\tnes\tNES\n");
+	write_text("ZyperOS saved library 2\tv1\nshelf\t-1\t0\tnes\tNES\n");
 	CHECK(!savedlib_load(saved, "v1", &s));
+	/* Version 1 (1.0.4), with no folders on a shelf, is no saved library */
 	write_text("ZyperOS saved library 1\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta.nes\ta\n");
+	CHECK(!savedlib_load(saved, "v1", &s));
+	/* A game's folder ends at a slash of its path, and inside it */
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\tHacks/a.nes\ta\t3\n");
+	CHECK(!savedlib_load(saved, "v1", &s));
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\tHacks/a.nes\ta\t11\n");
+	CHECK(!savedlib_load(saved, "v1", &s));
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\tHacks/a.nes\ta\n");
+	CHECK(!savedlib_load(saved, "v1", &s));     /* no folder field */
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\tHacks/a.nes\ta\t5\n");
+	CHECK(savedlib_load(saved, "v1", &s) && s.count == 1 && s.shelves[0].list.count == 1 &&
+	      s.shelves[0].list.items[0].dir == 5);
+	savedlib_free(&s);
+	write_text("ZyperOS saved library 2\tv1\nshelf\t1\t0\tnes\tNES\ngame\ta.nes\ta\t0\n");
 	CHECK(savedlib_load(saved, "v1", &s) && s.count == 1 && s.shelves[0].list.count == 1);
 	savedlib_free(&s);
 	unlink(saved);

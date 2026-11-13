@@ -105,15 +105,22 @@ static bool name_ok(const char *s)
 	return s && part_ok(s, strlen(s));
 }
 
-/* The launch path: one part, or a folder and the disc in it */
-static bool file_ok(const char *f)
+/* The launch path: one part, or a folder and the disc in it, after `dir`
+ * bytes of the folders of games it is kept in, each a part as well */
+static bool file_ok(const char *f, unsigned dir)
 {
-	const char *slash;
+	const char *slash, *own;
 
-	if (!f || !*f) return false;
-	slash = strchr(f, '/');
-	if (!slash) return name_ok(f);
-	return part_ok(f, (size_t)(slash - f)) && !strchr(slash + 1, '/') && name_ok(slash + 1);
+	if (!f || !*f || dir >= strlen(f) || (dir && f[dir] != '/')) return false;
+	for (const char *p = f; dir && p < f + dir; p = slash + 1) {
+		slash = memchr(p, '/', (size_t)(f + dir - p));
+		if (!slash) slash = f + dir;
+		if (!part_ok(p, (size_t)(slash - p))) return false;
+	}
+	own = f + (dir ? dir + 1 : 0);
+	slash = strchr(own, '/');
+	if (!slash) return name_ok(own);
+	return part_ok(own, (size_t)(slash - own)) && !strchr(slash + 1, '/') && name_ok(slash + 1);
 }
 
 /* A name a sheet gives, against the folder the sheet is in (`dir`, relative
@@ -321,10 +328,13 @@ static void outside(gd_plan *p, const char *what)
 }
 
 /* What the states folder calls a game: its launch file's base, or on a
- * hooked shelf its folder's name (persist_base in main.c) */
+ * hooked shelf its folder's name, and a PSP game's folder name for its
+ * EBOOT.PBP (persist_base in main.c) */
 static const char *state_base(const char *file, const char *name, bool hooked)
 {
-	return strchr(file, '/') && hooked ? name : base_of(file);
+	const char *base = base_of(file);
+
+	return base != file && (hooked || !strcasecmp(base, "EBOOT.PBP")) ? name : base;
 }
 
 const char *gd_state_base(const char *file, const char *name, bool hooked)
@@ -543,7 +553,7 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	memset(p, 0, sizeof *p);
 	p->why = GD_OK;
 	if (!card || !card->roms || !card->saves || !card->states ||
-	    !name_ok(g->folder) || !g->tag || !file_ok(g->file) || !name_ok(g->name)) {
+	    !name_ok(g->folder) || !g->tag || !file_ok(g->file, g->dir) || !name_ok(g->name)) {
 		outside(p, g->file ? g->file : "");
 		return false;
 	}
@@ -558,7 +568,9 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 	 * whole, as on any shelf */
 	if (!strcmp(core, "port") && !strchr(g->file, '/'))
 		return port_plan(card, g, others, nothers, p, romdir);
-	slash = strchr(g->file, '/');
+	/* The game's own folder, if it is one: past the folders of games it is
+	 * kept in, which are no game's and never go with it */
+	slash = strchr(g->file + (g->dir ? g->dir + 1 : 0), '/');
 	stem_of(g->file, stem, sizeof stem);
 	snprintf(sbase, sizeof sbase, "%s", state_base(g->file, g->name, hooked));
 	arcade_set = !slash && (ext_is(g->file, "zip") || ext_is(g->file, "7z"));
@@ -579,8 +591,12 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 			 * track two sheets share stays with the one that is left. One
 			 * sheet at a time, held against this one's names. */
 			for (int k = 0; k < nothers && mine.n; k++) {
-				if (strcmp(others[k].folder, g->folder) || strchr(others[k].file, '/') ||
-				    !is_sheet(others[k].file))
+				const char *of = others[k].file;
+
+				/* Loose in the same folder of games: no folder of its own */
+				if (strcmp(others[k].folder, g->folder) || others[k].dir != g->dir ||
+				    strncmp(of, g->file, g->dir) || strchr(of + (g->dir ? g->dir + 1 : 0), '/') ||
+				    !is_sheet(of))
 					continue;
 				theirs.n = 0;
 				theirs.outside = false;
@@ -607,7 +623,9 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 			for (i = 0; i < sizeof SIDE / sizeof SIDE[0]; i++) {
 				if (!ext_is(g->file, SIDE[i].ext)) continue;
 				for (int k = 0; k < 2 && SIDE[i].with[k]; k++) {
-					snprintf(rel, sizeof rel, "%s.%s", stem, SIDE[i].with[k]);
+					/* Beside it, in the folder of games it is in */
+					snprintf(rel, sizeof rel, "%.*s%s%s.%s", (int)g->dir, g->file,
+					         g->dir ? "/" : "", stem, SIDE[i].with[k]);
 					add_rom(p, card->roms, g, rel, others, nothers, false);
 				}
 			}
@@ -619,7 +637,8 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 			struct stat st;
 			char dir[GD_PATH];
 
-			snprintf(dir, sizeof dir, "%s/%s", romdir, stem);
+			snprintf(dir, sizeof dir, "%s/%.*s%s%s", romdir, (int)g->dir, g->file,
+			         g->dir ? "/" : "", stem);
 			if (lstat(dir, &st) == 0 && S_ISDIR(st.st_mode) &&
 			    !shares_name(others, nothers, g->folder, stem))
 				plan_add(p, GD_TREE, "%s", dir);

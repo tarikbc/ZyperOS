@@ -176,6 +176,36 @@ static const db_default library_defaults[] = {
 	 * value is the core's own label for the file, which is why the Neo Geo
 	 * CD shelf's disc bios is neocd/neocd.bin (config/systems.cfg). */
 	{ "coreopt..neocd_bios",        "neocd.bin (CDZ)" },
+	/* PPSSPP v1.20.4, the PSP's (mk/build-ppsspp.sh), set as the systems
+	 * that run the PSP on an RK3326 set it (ROCKNIX, Knulli, ArkOS; ROGUE OS
+	 * sets the same in its standalone PPSSPP): OpenGL ES, the JIT and fast
+	 * memory, the PSP's own 480x272, hardware transform and software
+	 * skinning, lazy texture caching, low spline quality, GPU readbacks
+	 * skipped, no anisotropic filtering (the core's default is 16x, and the
+	 * Mali-G31 has little bandwidth to spare) and no texture scaling. Each
+	 * key and value as libretro/libretro_core_options.h has them at the pin.
+	 * Frames are left undrawn only when the game falls behind: auto
+	 * frameskip with at most 2 in a row, Knulli's default. Auto frameskip
+	 * does nothing while ppsspp_frameskip is "disabled" (Core/HLE/
+	 * sceDisplay.cpp), which is why both are set. Not yet measured on the
+	 * Pixel 2. */
+	{ "coreopt.PSP.ppsspp_backend",                       "opengl" },
+	{ "coreopt.PSP.ppsspp_cpu_core",                      "JIT" },
+	{ "coreopt.PSP.ppsspp_fast_memory",                   "enabled" },
+	{ "coreopt.PSP.ppsspp_internal_resolution",           "480x272" },
+	{ "coreopt.PSP.ppsspp_auto_frameskip",                "enabled" },
+	{ "coreopt.PSP.ppsspp_frameskip",                     "2" },
+	{ "coreopt.PSP.ppsspp_frame_duplication",             "disabled" },
+	{ "coreopt.PSP.ppsspp_gpu_hardware_transform",        "enabled" },
+	{ "coreopt.PSP.ppsspp_software_skinning",             "enabled" },
+	{ "coreopt.PSP.ppsspp_lazy_texture_caching",          "enabled" },
+	{ "coreopt.PSP.ppsspp_spline_quality",                "Low" },
+	{ "coreopt.PSP.ppsspp_skip_gpu_readbacks",            "enabled" },
+	{ "coreopt.PSP.ppsspp_texture_anisotropic_filtering", "disabled" },
+	{ "coreopt.PSP.ppsspp_texture_scaling_level",         "disabled" },
+	/* PrBoom's rumble, off by its own default: the Pixel 2 has a motor, and
+	 * a shot or a hit is felt (libretro_core_options.h at the pin) */
+	{ "coreopt.DOOM.prboom-rumble",  "enabled" },
 };
 
 const db_default *db_defaults(db_scope scope, size_t *count)
@@ -600,6 +630,49 @@ bool db_game_del(db *d, const char *folder, const char *file)
 	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
 	sqlite3_finalize(st);
 	return ok;
+}
+
+bool db_game_move(db *d, const char *folder, const char *from, const char *to)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !folder || !from || !to ||
+	    sqlite3_prepare_v2(d->h, "UPDATE OR REPLACE games SET file=?, title='' WHERE folder=? AND file=?;",
+	                       -1, &st, NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, to, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 3, from, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_key_move(db *d, const char *from, const char *to)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !from || !to ||
+	    sqlite3_prepare_v2(d->h, "UPDATE OR REPLACE settings SET key=? WHERE key=?;", -1, &st,
+	                       NULL) != SQLITE_OK)
+		return false;
+	sqlite3_bind_text(st, 1, to, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, from, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(d->h) > 0;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_begin(db *d)
+{
+	return d && run(d, "BEGIN;");
+}
+
+bool db_commit(db *d)
+{
+	return d && run(d, "COMMIT;");
 }
 
 void db_each_prefix(db *d, const char *prefix, db_each_fn fn, void *ctx)

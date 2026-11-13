@@ -22,6 +22,15 @@ static bool g_message_stopped, g_menu_closing, want_quit;
 static menu_snap snaps[2], *g_snap = &snaps[0], *g_snap_next = &snaps[1];
 static unsigned g_frame_no, g_menu_zyper_at;
 static const zr_rig *g_menu_zyper;
+/* MENU's tabs, a screen's row marks and header picture, which snap_record
+ * keeps with a panel and snap_draw puts back (src/main.c): none here */
+typedef struct { int x, y, w, h; } SDL_Rect;
+struct menu_tabs { int at, from, dir; unsigned t0; };
+typedef struct menu_tabs menu_tabs;
+static const menu_tabs *g_menu_tabs;
+static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
+static void (*g_menu_header)(app *a, const SDL_Rect *r);
+static int g_menu_header_h;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
 enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, VCOL_MESSAGE };

@@ -293,6 +293,21 @@ static const ctl_pad PADS[] = {
 	                   [P_L2] = SAYS_ON(S_CONTROLS_KEYPAD, "3"),
 	                   [P_R2] = SAYS_ON(S_CONTROLS_KEYPAD, "1"),
 	                   [P_START] = BTN("Start"), [P_SELECT] = BTN("Pause") } },
+	/* Gearcoleco: the controller's two side buttons, the right one on A and
+	 * the left on B, and its keypad on the rest, as far as the handheld
+	 * reaches: the core puts 7 and 8 on L3 and R3 and 9 and 0 on a stick,
+	 * which the Pixel 2 does not have (platforms/libretro/libretro.cpp at
+	 * the pin). A game's menu asks for 1 to 4 for a one-player game. */
+	{ "COLECO", NULL, { [P_A] = SAYS(S_CONTROLS_RIGHT_BUTTON),
+	                    [P_B] = SAYS(S_CONTROLS_LEFT_BUTTON),
+	                    [P_X] = SAYS_ON(S_CONTROLS_KEYPAD, "2"),
+	                    [P_Y] = SAYS_ON(S_CONTROLS_KEYPAD, "1"),
+	                    [P_L1] = SAYS_ON(S_CONTROLS_KEYPAD, "3"),
+	                    [P_R1] = SAYS_ON(S_CONTROLS_KEYPAD, "4"),
+	                    [P_L2] = SAYS_ON(S_CONTROLS_KEYPAD, "5"),
+	                    [P_R2] = SAYS_ON(S_CONTROLS_KEYPAD, "6"),
+	                    [P_START] = SAYS_ON(S_CONTROLS_KEYPAD, "*"),
+	                    [P_SELECT] = SAYS_ON(S_CONTROLS_KEYPAD, "#") } },
 	{ "VECTREX", NULL, { [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "1"),
 	                     [P_B] = SAYS_ON(S_CONTROLS_BUTTON, "2"),
 	                     [P_X] = SAYS_ON(S_CONTROLS_BUTTON, "3"),
@@ -360,6 +375,28 @@ static const ctl_pad PADS[] = {
 	{ "SATURN", NULL, { [P_A] = BTN("B"), [P_B] = BTN("A"), [P_X] = BTN("Y"), [P_Y] = BTN("X"),
 	                    [P_L1] = BTN("C"), [P_R1] = BTN("Z"), [P_L2] = BTN("L"),
 	                    [P_R2] = BTN("R"), [P_START] = BTN("Start") } },
+	/* PPSSPP's pad (libretro/libretro.cpp at the pin): the faces by
+	 * position, as the PlayStation's, and its shapes as the pad has them.
+	 * The PSP has no L2 or R2; R2 turns the d-pad into its analog stick and
+	 * back (stick|PSP|toggle, Diatom's RUN stick=toggle) */
+	{ "PSP", NULL, { [P_A] = BTN(PAD_CIRCLE), [P_B] = BTN(PAD_CROSS),
+	                 [P_X] = BTN(PAD_TRIANGLE), [P_Y] = BTN(PAD_SQUARE),
+	                 [P_L1] = BTN("L"), [P_R1] = BTN("R"),
+	                 [P_R2] = SAYS(S_CONTROLS_DPAD_STICK),
+	                 [P_START] = BTN("Start"), [P_SELECT] = BTN("Select") } },
+	/* PrBoom's classic layout (libretro/libretro.c at the pin, after the
+	 * PlayStation's Doom): the d-pad walks and turns, the RetroPad's B
+	 * strafes while held and its X fires. map|DOOM swaps the two, so Fire is
+	 * the B cap, under the thumb beside Run on Y, and Strafe the X cap */
+	{ "DOOM", NULL, { [P_DPAD] = SAYS(S_CONTROLS_MOVE_TURN),
+	                  [P_A] = SAYS(S_CONTROLS_USE), [P_B] = SAYS(S_CONTROLS_STRAFE),
+	                  [P_X] = SAYS(S_CONTROLS_FIRE), [P_Y] = SAYS(S_CONTROLS_RUN),
+	                  [P_L1] = SAYS(S_CONTROLS_STRAFE_LEFT),
+	                  [P_R1] = SAYS(S_CONTROLS_STRAFE_RIGHT),
+	                  [P_L2] = SAYS(S_CONTROLS_PREV_WEAPON),
+	                  [P_R2] = SAYS(S_CONTROLS_NEXT_WEAPON),
+	                  [P_START] = SAYS(S_CONTROLS_MENU_PORT),
+	                  [P_SELECT] = SAYS(S_CONTROLS_MAP) } },
 	/* Beetle VB: the right d-pad's up and left, on L2 and R2; its down and
 	 * right are on L3 and R3, which the handheld does not have */
 	{ "VB", NULL, { [P_A] = BTN("A"), [P_B] = BTN("B"), [P_L1] = BTN("L"), [P_R1] = BTN("R"),
@@ -444,6 +481,14 @@ static const ctl_pad PADS[] = {
 	                   [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "X"),
 	                   [P_B] = SAYS_ON(S_CONTROLS_BUTTON, "O"),
 	                   [P_START] = SAYS(S_CONTROLS_PAUSE_MENU) } },
+	/* TIC-80's gamepad by position, as PICO-8's is: its A at the bottom and
+	 * B to the right, X to the left and Y on top (the core's
+	 * tic80_libretro.c at the pin). Its mouse is on L2 and R2 only with a
+	 * mouse device, which the handheld has none of */
+	{ "TIC80", NULL, { [P_A] = SAYS_ON(S_CONTROLS_BUTTON, "B"),
+	                   [P_B] = SAYS_ON(S_CONTROLS_BUTTON, "A"),
+	                   [P_X] = SAYS_ON(S_CONTROLS_BUTTON, "Y"),
+	                   [P_Y] = SAYS_ON(S_CONTROLS_BUTTON, "X") } },
 	/* DSperate as the DS's pad; L2 and R2 are Diatom's, on the page after
 	 * (EXTRAS) */
 	{ "NDS", NULL, { [P_A] = BTN("A"), [P_B] = BTN("B"), [P_X] = BTN("X"), [P_Y] = BTN("Y"),
@@ -572,7 +617,7 @@ bool ctl_game_known(const char *tag)
 
 bool ctl_has_states(const char *tag)
 {
-	static const char *const NONE[] = { "SCUMMVM", "J2ME" };
+	static const char *const NONE[] = { "SCUMMVM", "J2ME", "TIC80" };
 	size_t i;
 
 	if (!tag) return false;
