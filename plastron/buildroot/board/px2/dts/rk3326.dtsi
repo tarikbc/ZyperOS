@@ -11,6 +11,29 @@
 		#size-cells = <2>;
 		ranges;
 
+		/*
+		 * The kernel's log kept across a reset (pstore's ramoops,
+		 * linux-px2.config): its console, a panic's or oops's dump,
+		 * read back from /sys/fs/pstore on the next start. A reboot
+		 * after a panic leaves the DDR powered, so they survive it; a
+		 * power-off does not. Where the GKD Pixel 2's own firmware
+		 * and twigUI keep theirs, 0x110000 for 960 KB: after BL31's
+		 * share memory, below U-Boot's text at 2 MiB, in the 2 MiB
+		 * U-Boot keeps from Linux for BL31 (here loaded at
+		 * 0x40000-0x77000), so nothing else in the boot touches it.
+		 * Their 512 KB console and 128 KB records; their 320 KB for
+		 * userspace's messages (pmsg) goes to records instead, three
+		 * of them, so three panics in a row are all kept.
+		 */
+		ramoops: ramoops@110000 {
+			compatible = "ramoops";
+			reg = <0x0 0x110000 0x0 0xf0000>;
+			record-size = <0x20000>;
+			console-size = <0x80000>;
+			ftrace-size = <0x0>;
+			pmsg-size = <0x0>;
+		};
+
 		linux,cma {
 			compatible = "shared-dma-pool";
 			reusable;
