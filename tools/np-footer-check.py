@@ -40,12 +40,14 @@ def main():
     def img(theme, name):
         return Image.open(OUT / theme / f'{name}.png').convert('RGB')
 
-    a, b = img('light', 'topbar'), img('light', 'topbar-still')
+    # The bar's row only: the focused system's own motion moves below it
+    # between the two moments (src/home.c)
+    a, b = img('light', 'topbar').crop(BAR), img('light', 'topbar-still').crop(BAR)
     assert ImageChops.difference(a, b).getbbox() is None, 'a name that fits moved'
     a, b = img('light', 'topbar-long'), img('light', 'topbar-long-moving')
-    diff = ImageChops.difference(a, b).getbbox()
+    diff = ImageChops.difference(a.crop(BAR), b.crop(BAR)).getbbox()
     assert diff, 'a long name did not move between two moments'
-    assert diff[0] >= SONG[0] and diff[2] <= SONG[2], f'more than the name moved: {diff}'
+    assert diff[0] + BAR[0] >= SONG[0] and diff[2] + BAR[0] <= SONG[2], f'more than the name moved: {diff}'
     cols = ink_cols(a, SONG)
     assert cols and max(cols) - min(cols) <= 256 + 24 + 12 + 4, 'the long name was not held to its room'
 
