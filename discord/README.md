@@ -26,4 +26,4 @@ cd ..
 python3 register.py https://zyper-bot.tarikcaramanico.workers.dev
 ```
 
-GitHub posts each new release into #releases with one repository webhook. Pull requests and issues are left out on purpose, to keep the server quiet.
+Each new release goes into #releases with its notes: `tools/release.sh --publish` ends by waiting for GitHub to publish the release, then `tools/discord-release.py` posts the notes as Zyper (the first paragraph, What's new, Updating and Good to know; Install and Thanks stay on GitHub behind the link) and publishes the post to the servers that follow the channel. `tools/discord-release.py v<version>` posts them by hand, once; `--show` prints the post. GitHub's own webhook is gone: it posted only the title and a link. Pull requests and issues are left out on purpose, to keep the server quiet.

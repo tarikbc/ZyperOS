@@ -218,6 +218,7 @@ something once broke in a way nothing noticed:
 | `check-sidelights` | what the launcher tells the side lights' gauge: the lines as plastron's gauge reads them, the FIFO writer that never waits and never dies of SIGPIPE, when a File Transfer batch is over, and files moving on its page: a line at most every 500 ms with the speed over that time, a pause between two files kept, `move 0 0` a second after the last bytes and at once when the page closes, across the clock's wrap; and MENU > Side Lights' preview lines, said again each second, another row at once, `preview off` as the page closes |
 | `check-building-doc` | this table has a row for every check in the Makefile's CHECKS, and none for a check that is gone |
 | `check-blog` | zyperos.com's blog, built as Cloudflare Pages builds the site (mk/blog.py): title and description lengths, structured data, every link and picture reaching a file (or a path in `_redirects`, such as `/tip`), every post in the sitemap and llms.txt, and the landing page's colors |
+| `check-discord-release` | The release notes as `tools/release.sh` posts them in the Discord's #releases (`tools/discord-release.py`): every `docs/releases/v*.md` within Discord's limits (4096 characters an embed, 6000 a message), with What's new, without Install and Thanks, and ending with the release's link |
 
 They are offline and need no device. A screen's rows are a pure function of
 its state precisely so the first two can exist.

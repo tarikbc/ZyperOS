@@ -51,6 +51,11 @@ image joins once the Mac that makes releases has the Brick's GPU files
    builds the installer for macOS, Windows and Linux with its tests, adds the
    four files to the draft, puts them in `SHA256SUMS`, and publishes the
    release. A tag pushed with no draft waiting is refused.
+6. `tools/release.sh` waits for that, then posts the notes in the Discord's
+   #releases (`tools/discord-release.py`, with Zyper's token from
+   `~/.config/zyperos/discord-bot.token`): the first paragraph, What's new,
+   Updating and Good to know, with the release's link for the rest. If the
+   wait was stopped, `tools/discord-release.py v<version>` posts them.
 
 Why the image is built on the Mac and the installer on GitHub: the image's
 inputs are on the Mac (the cores in `vendor/`, part fetched by
