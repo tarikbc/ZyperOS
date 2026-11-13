@@ -249,6 +249,150 @@ static void events(void)
 	CHECK(at(&c, &s, 20) == 0, "a line it does not know: nothing");
 }
 
+/* Files moving (my picks in the transfer lights lab, 2026-11-13): a wave
+ * that fills the four and empties them, from the top down for files coming
+ * in to the card, from the bottom up for files going out of it */
+static const int WIN[8] = { G(3), G(3) | G(2), G(3) | G(2) | G(1), L_ALL, G(2) | G(1) | G(0), G(1) | G(0), G(0), 0 };
+static const int WOUT[8] = { G(0), G(0) | G(1), G(0) | G(1) | G(2), L_ALL, G(1) | G(2) | G(3), G(2) | G(3), G(3), 0 };
+
+/* A step's length for a speed: the second step's time after a line at 0 */
+static long pace_of(const char *line)
+{
+	struct lights_cfg c = cfg("auto");
+	struct lights_state s = battery(60, 0, 0);
+	long t;
+	int first;
+
+	lights_line(&s, &c, line, 0);
+	first = at(&c, &s, 0);
+	for (t = 1; t < 400 && at(&c, &s, t) == first; t++) { }
+	return t;
+}
+
+static void moving(void)
+{
+	struct lights_cfg c = cfg("auto");
+	struct lights_state s = battery(60, 0, 0);
+	int w;
+
+	/* Download at 4.2 MB/s, a line a second as Flash Drive sends them */
+	for (int k = 0; k < 24; k++) {
+		if (k % 10 == 0) lights_line(&s, &c, "move 4200000 0", k * 100);
+		CHECK(at(&c, &s, k * 100) == WIN[k % 8], "download: step %d", k);
+	}
+	lights_frame(&c, &s, 2330, &w);
+	CHECK(w == 70, "wakes at each step (%d)", w);
+	for (long t = 2350; t < 3499; t += 50) at(&c, &s, t);
+	CHECK(at(&c, &s, 3499) == WIN[34 % 8], "still moving 1.5 s after the last line");
+	CHECK(at(&c, &s, 3500) == 0 && !s.mv_on, "then over: dark off the cable");
+	lights_frame(&c, &s, 3600, &w);
+	CHECK(w == IDLE_MS, "and nothing to wake for (%d)", w);
+
+	/* Upload: the same wave upside down */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 0 4200000", 0);
+	for (int k = 0; k < 10; k++)
+		CHECK(at(&c, &s, k * 100) == WOUT[k % 8], "upload: step %d", k);
+
+	/* The pace follows the speed of the way that shows */
+	CHECK(pace_of("move 600000 0") == 200, "600 KB/s: 200 ms (%ld)", pace_of("move 600000 0"));
+	CHECK(pace_of("move 999999 0") == 200, "under 1 MB/s: 200 ms");
+	CHECK(pace_of("move 1000000 0") == 100, "1 MB/s: 100 ms");
+	CHECK(pace_of("move 9999999 0") == 100, "under 10 MB/s: 100 ms");
+	CHECK(pace_of("move 10000000 0") == 60, "10 MB/s: 60 ms");
+	CHECK(pace_of("move 0 24000000") == 60, "24 MB/s out: 60 ms");
+	CHECK(pace_of("move 500000 24000000") == 60, "both: the pace of the way that shows");
+
+	/* Both ways: the bigger one, chosen as each run begins */
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 3000000 20000000", 0);
+	CHECK(at(&c, &s, 0) == WOUT[0], "more out than in: the upload wave");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 20000000 3000000", 0);
+	CHECK(at(&c, &s, 0) == WIN[0], "more in than out: the download wave");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 5000000 5000000", 0);
+	CHECK(at(&c, &s, 0) == WIN[0], "as much each way: the download wave");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 9000000 1000000", 0);
+	for (long t = 0; t <= 350; t += 50) at(&c, &s, t);
+	lights_line(&s, &c, "move 1000000 9000000", 350);
+	CHECK(at(&c, &s, 400) == WIN[4], "a run is never cut");
+	for (long t = 450; t < 700; t += 50) at(&c, &s, t);
+	CHECK(at(&c, &s, 700) == WIN[7], "a run is never cut, to its end");
+	CHECK(at(&c, &s, 800) == WOUT[0], "the next run takes the bigger way");
+
+	/* "move 0 0": over at once */
+	lights_line(&s, &c, "move 0 0", 850);
+	CHECK(at(&c, &s, 850) == 0 && !s.mv_on, "move 0 0 ends it");
+
+	/* Over the charging bar, and the bar back after */
+	s = battery(40, 1, 0);
+	CHECK(at(&c, &s, 0) == BAR(1), "the bar first");
+	lights_line(&s, &c, "move 18000000 0", 100);
+	CHECK(at(&c, &s, 100) == WIN[0] && at(&c, &s, 160) == WIN[1], "the wave over the bar");
+	CHECK(at(&c, &s, 520) == 0, "its dark step dark on the cable too");
+	lights_line(&s, &c, "move 0 0", 1000);
+	{
+		int b = at(&c, &s, 1000);
+
+		CHECK(b == BAR(1) || b == BAR(2) || b == BAR(3) || b == BAR(4), "then the bar again (%x)", b);
+	}
+
+	/* The newest pattern on top, then the wave again */
+	s = battery(60, 0, 0);
+	for (long t = 0; t <= 2000; t += 50) {
+		if (t % 1000 == 0) lights_line(&s, &c, "move 4200000 0", t);
+		if (t == 300) lights_line(&s, &c, "level volume 20 20", t);
+		if (t == 300) CHECK(at(&c, &s, t) == L_ALL, "a level over the wave");
+		if (t == 1850) CHECK(at(&c, &s, t) == WIN[18 % 8], "the wave once the level's hold is over");
+		at(&c, &s, t);
+	}
+	lights_line(&s, &c, "done", 2000);
+	CHECK(at(&c, &s, 2000) == G(0) && at(&c, &s, 2300) == G(3), "Done over the wave");
+
+	/* The low-battery red shows through; L2+R2 over everything */
+	s = battery(8, 0, 0);
+	lights_line(&s, &c, "move 4200000 0", 0);
+	CHECK(at(&c, &s, 0) == (WIN[0] | L_RED), "the red through the wave");
+	s = battery(80, 0, 0);
+	lights_line(&s, &c, "move 4200000 0", 0);
+	lights_ask(&s, 0);
+	CHECK(at(&c, &s, 0) == L_ALL && at(&c, &s, 250) == 0, "asked: over the wave");
+
+	/* Files and Covers off: nothing, and off while it moves: gone */
+	c = cfg("auto -done");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move 4200000 0", 0);
+	CHECK(at(&c, &s, 0) == 0 && !s.mv_on, "the part off: nothing");
+	c = cfg("off");
+	lights_line(&s, &c, "move 4200000 0", 0);
+	lights_frame(&c, &s, 0, &w);
+	CHECK(!s.mv_on && w == IDLE_MS, "every part off: nothing, nothing to wake for");
+	c = cfg("auto");
+	lights_line(&s, &c, "move 4200000 0", 0);
+	c = cfg("auto -done");   /* MENU, then SIGHUP */
+	CHECK(at(&c, &s, 100) == 0 && !s.mv_on, "turned off while it moves: gone");
+
+	/* Lines it does not take */
+	c = cfg("auto");
+	s = battery(60, 0, 0);
+	lights_line(&s, &c, "move", 0);
+	lights_line(&s, &c, "move 5", 0);
+	lights_line(&s, &c, "move -5 3", 0);
+	lights_line(&s, &c, "move x 3", 0);
+	lights_line(&s, &c, "move 1 2 3", 0);
+	lights_line(&s, &c, "move 1 2x", 0);
+	lights_line(&s, &c, "move 123456789012345678901234 0", 0);
+	CHECK(!s.mv_on && at(&c, &s, 0) == 0, "a line that is not two numbers: nothing");
+
+	/* Woken late: on from there, no catching up and no wait under 1 ms */
+	lights_line(&s, &c, "move 24000000 0", 0);
+	lights_line(&s, &c, "move 24000000 0", 1400);
+	lights_frame(&c, &s, 1450, &w);
+	CHECK(w >= 1 && w <= 60, "a late wake waits a step at most (%d)", w);
+}
+
 static void asked(void)
 {
 	struct lights_cfg c = cfg("off");
@@ -279,6 +423,8 @@ static void never_spins(void)
 		if (t == 7000) lights_line(&s, &c, "level volume 3 20", t);
 		if (t == 9000) lights_ask(&s, t);
 		if (t == 12000) lights_battery(&s, 30, 1, 0, t);
+		if (t >= 14000 && t < 17000 && t % 1000 < 7)
+			lights_line(&s, &c, t < 15000 ? "move 600000 0" : t < 16000 ? "move 0 24000000" : "move 9000000 9000000", t);
 		lights_frame(&c, &s, t, &w);
 		if (w < worst) worst = w;
 		CHECK(w >= 1 && w <= IDLE_MS, "wake in range at %ld (%d)", t, w);
@@ -293,6 +439,7 @@ int main(void)
 	low_battery();
 	level();
 	events();
+	moving();
 	asked();
 	never_spins();
 	printf("gauge-check: %d checks, %d failed\n", checks, fails);

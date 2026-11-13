@@ -5,6 +5,8 @@ config BR2_PACKAGE_GAUGE
 	  while charging, a red flash when the battery is low, and the level
 	  when asked (SIGUSR1). ZyperOS sends it more on the FIFO /run/gauge:
 	  the volume or brightness while it changes, a climb when files or
-	  covers finish, a sparkle for an achievement. ZyperOS's MENU > Side Lights picks which parts show
+	  covers finish, a sparkle for an achievement; and from usbdrive or
+	  ZyperOS, a wave while files move to or from the card. ZyperOS's
+	  MENU > Side Lights picks which parts show
 	  (words in .userdata/pixel2/side-lights on the card, read again on
 	  SIGHUP). Started by init, with respawn.

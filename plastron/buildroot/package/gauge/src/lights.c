@@ -3,6 +3,7 @@
 #include "lights.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define STEP_MS      400    /* the charging bar's pace */
@@ -16,6 +17,12 @@
                              * as the screen's bar does (DESIGN.md hold-bar) */
 #define PACE_MS      100    /* a step of the climb and the sparkle */
 #define HALF_MS      250    /* a half step of the level: on this long, off as long */
+#define MOVE_SLOW    1000000ULL    /* files moving: under this many bytes a second, */
+#define MOVE_SLOW_MS 200           /* this long a step; */
+#define MOVE_FAST    10000000ULL   /* at this many and more, */
+#define MOVE_FAST_MS 60            /* this long; between them, PACE_MS */
+#define MOVE_LATE_MS 1000   /* woken this much after a step was due: on from
+                             * now, with no catching up */
 
 /* Parts the setting file does not name are on after "auto" */
 #define PARTS_AFTER_AUTO 1
@@ -32,6 +39,17 @@ static int greens(int n)
 
 /* One green light, 0 the bottom one */
 static int dot(int i) { return L_GREEN << i; }
+
+/* The same lights upside down: light i is light 3 - i */
+static int upside_down(int bits)
+{
+	int out = bits & L_RED;
+
+	for (int i = 0; i < 4; i++)
+		if (bits & dot(i))
+			out |= dot(3 - i);
+	return out;
+}
 
 /* *w is the soonest the lights could change; ms from now is another */
 static void soon(int *w, long ms)
@@ -106,10 +124,100 @@ void lights_battery(struct lights_state *s, int pct, int plugged, int held, long
 	s->known = 1;
 }
 
+/* ---- files moving -----------------------------------------------------------
+ *
+ * My picks in the transfer lights lab (2026-11-13; ZyperOS's DESIGN.md 11.27):
+ * a wave that fills the four and empties them ("Fill and empty"), the way the
+ * files go, as the Flash Drive screen's arrows point: from the top down while
+ * they come in to the card, from the bottom up while they go out of it. Its
+ * pace follows the speed ("Follows the speed"); with both ways moving, the
+ * one moving more bytes shows ("The bigger one"), chosen again as each run
+ * begins, so a run is never cut. Files and Covers in MENU turns it on and off
+ * with the climb, one row for both (my pick). */
+
+/* One run, for files coming in: top to bottom */
+static const int WAVE_IN[] = {
+	L_GREEN << 3,
+	L_GREEN << 3 | L_GREEN << 2,
+	L_GREEN << 3 | L_GREEN << 2 | L_GREEN << 1,
+	L_ALL,
+	L_GREEN << 2 | L_GREEN << 1 | L_GREEN,
+	L_GREEN << 1 | L_GREEN,
+	L_GREEN,
+	0,
+};
+#define WAVE_STEPS ((int)(sizeof WAVE_IN / sizeof WAVE_IN[0]))
+
+static long move_pace(unsigned long long bps)
+{
+	return bps < MOVE_SLOW ? MOVE_SLOW_MS : bps < MOVE_FAST ? PACE_MS : MOVE_FAST_MS;
+}
+
+/* The way that moves more bytes; files coming in when it is even */
+static int move_way(const struct lights_state *s) { return s->mv_in >= s->mv_out ? MV_IN : MV_OUT; }
+
+static unsigned long long move_rate(const struct lights_state *s)
+{
+	return s->mv_way == MV_IN ? s->mv_in : s->mv_out;
+}
+
+/* "move IN OUT": two counts of digits and nothing after them */
+static int move_parse(const char *line, unsigned long long *in, unsigned long long *out)
+{
+	char a[21], b[21], more;
+
+	if (sscanf(line, "move %20[0-9] %20[0-9] %c", a, b, &more) != 2)
+		return 0;
+	*in = strtoull(a, NULL, 10);
+	*out = strtoull(b, NULL, 10);
+	return 1;
+}
+
+/* The wave now, stepping it on; -1 when it is over */
+static int moving(const struct lights_cfg *c, struct lights_state *s, long now, int *w)
+{
+	if (!c->done || now - s->mv_last >= MOVE_HOLD_MS) {
+		s->mv_on = 0;   /* turned off, or no line for a while */
+		return -1;
+	}
+	if (now - s->mv_next > MOVE_LATE_MS)
+		s->mv_next = now;
+	while (now >= s->mv_next) {
+		if (++s->mv_step >= WAVE_STEPS) {
+			s->mv_step = 0;
+			s->mv_way = move_way(s);
+		}
+		s->mv_next += move_pace(move_rate(s));
+	}
+	soon(w, s->mv_next - now);
+	soon(w, s->mv_last + MOVE_HOLD_MS - now);
+	return s->mv_way == MV_IN ? WAVE_IN[s->mv_step] : upside_down(WAVE_IN[s->mv_step]);
+}
+
 void lights_line(struct lights_state *s, const struct lights_cfg *c, const char *line, long now)
 {
 	char kind[16];
 	int a, b;
+	unsigned long long in, out;
+
+	if (!strncmp(line, "move ", 5)) {
+		if (!c->done || !move_parse(line, &in, &out))
+			return;
+		if (!in && !out) {
+			s->mv_on = 0;
+			return;
+		}
+		s->mv_in = in;
+		s->mv_out = out;
+		s->mv_last = now;
+		if (!s->mv_on) {
+			s->mv_on = 1;
+			s->mv_step = 0;
+			s->mv_way = move_way(s);
+			s->mv_next = now + move_pace(move_rate(s));
+		}
+		return;
+	}
 
 	if (sscanf(line, "level %15s %d %d", kind, &a, &b) == 3) {
 		int vol = !strcmp(kind, "volume");
@@ -226,6 +334,14 @@ int lights_frame(const struct lights_cfg *c, struct lights_state *s, long now, i
 	int bits = 0, w = IDLE_MS;
 	if (s->known && s->plugged && c->bar)
 		bits = bar(s, now, &w);
+
+	/* Files moving, over the bar, for as long as they move */
+	if (s->mv_on) {
+		int b = moving(c, s, now, &w);
+
+		if (b >= 0)
+			bits = b;
+	}
 
 	/* The newest pattern over the bar, for its time */
 	if (s->ev != LE_NONE) {
