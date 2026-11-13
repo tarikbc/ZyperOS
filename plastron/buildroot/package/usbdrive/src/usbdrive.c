@@ -631,7 +631,13 @@ static drv_act keys_read(int fd, drv_keys *k, unsigned now)
 		if (!bri.on && (key == DRV_K_VOLUP || key == DRV_K_VOLDN)) continue;
 		a = drv_key(k, key, ev.value == 1,
 		            drv_copying(io.sure, live.d.in.total > 0, now, live.d.in.moved_ms, io_dirty_kb()));
-		if (a == DRV_A_BRIGHT) bright_set(k->level, now);
+		if (a == DRV_A_BRIGHT) {
+			char line[48];
+
+			bright_set(k->level, now);
+			/* The level on the side lights too, as on the shelf */
+			if (drv_bright_line(line, sizeof line, k->level, k->max) > 0) gauge_say(line);
+		}
 		else if (a != DRV_A_NONE && act == DRV_A_NONE) act = a;
 	}
 	return act;

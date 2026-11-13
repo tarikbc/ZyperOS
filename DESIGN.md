@@ -210,8 +210,9 @@ Pepper's), rounded, and Zyper on. *(My picks for the first version,
 - **Square** takes every radius under a pill's to 0: panels, the focus fill,
   keys, chips. A pill stays a pill (the bar, a button glyph, the bar under a
   tab), a circle a circle, and covers keep their own corners.
-- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22)
-  and the achievement notice (11.7). He stays where he is the moment itself:
+- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22),
+  the achievement notice (11.7) and the Flash Drive pages (the heading then
+  starts where the tiles do). He stays where he is the moment itself:
   the boot, the loading loop, the tutorial, Getting hot, the battery and the
   charging screens.
 - The bar over a game and over a port follows the look too: the launcher

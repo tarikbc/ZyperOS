@@ -53,6 +53,11 @@ bool drv_parse_dirty(const char *m, unsigned long *kb)
 	return d && sscanf(d + 1, "Dirty: %lu", kb) == 1;
 }
 
+int drv_bright_line(char *out, size_t cap, int level, int max)
+{
+	return snprintf(out, cap, "level brightness %d %d", level, max);
+}
+
 drv_act drv_key(drv_keys *k, int key, bool down, bool copying)
 {
 	if (key == DRV_K_FN) {

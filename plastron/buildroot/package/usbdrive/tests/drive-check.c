@@ -356,6 +356,13 @@ int main(void)
 		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE && k.level == 0, "past the bottom");
 		key(&k, DRV_K_FN, false, 1000, false, 0);
 		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE, "FN let go, still brightness");
+		/* The rung on the side lights, as ZyperOS says its own */
+		{
+			char l[48] = "";
+
+			CHECK(drv_bright_line(l, sizeof l, 6, 11) > 0 && !strcmp(l, "level brightness 6 11"), "the line: %s", l);
+			CHECK(drv_bright_line(l, sizeof l, 0, 11) > 0 && !strcmp(l, "level brightness 0 11"), "the bottom: %s", l);
+		}
 		/* B: nothing written, or long ago: eject at once */
 		CHECK(key(&k, DRV_K_B, true, 10000, false, 0) == DRV_A_EJECT, "B with nothing written did not eject");
 		CHECK(key(&k, DRV_K_B, true, 10000, true, 10000 - DRV_ASK_MS) == DRV_A_EJECT, "B 5 s after a write asked");
@@ -434,6 +441,6 @@ int main(void)
 		return 1;
 	}
 	printf("usbdrive drive-check: never exported mounted or held; ejected, unplugged (1.5 s), POWER, "
-	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the side lights' line, still under 64 KB/s; the atlas and bright.txt, read as untrusted; B's eject and its question, failing safe; the gadget's counters; FN + volume\n");
+	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the side lights' line, still under 64 KB/s; the atlas and bright.txt, read as untrusted; B's eject and its question, failing safe; the gadget's counters; FN + volume, its rung on the side lights\n");
 	return 0;
 }

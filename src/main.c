@@ -9758,7 +9758,8 @@ static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char 
  * it; 3 both ways; 4 the widest numbers */
 static int shot_usbdrive_vals;
 
-/* One of the pages: Zyper beside the heading, as on the empty home.
+/* One of the pages: Zyper beside the heading, as on the empty home, unless
+ * the look has him off.
  * Connected: two **raised** tiles (**radius-card**) side by side, to the
  * card and from it, the eject line under them in **meta** **text-soft**, and
  * POWER's hint at the foot as the shelves' are. One moment and The card is
@@ -9772,15 +9773,18 @@ static void usb_drive_draw(app *a, int which)
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
+	/* With Zyper off (Theme), the heading starts where the tiles do */
+	int hx = look_zyper_off() ? UD_TILE_X0 : 208;
 	int n, k;
 
 	draw_background(a);
-	draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
+	if (!look_zyper_off())
+		draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
 	/* The heading on one line, or two balanced beside him */
-	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - 208, 2, lines);
+	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
 	if (n > 1) ui_fit_drawn(T(HEAD[which]));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+		ui_text(a->r, ft, lines[k], hx, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
 	if (which != UD_CONNECTED) {
 		/* The words in one tile, balanced, in the middle of it */
 		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
