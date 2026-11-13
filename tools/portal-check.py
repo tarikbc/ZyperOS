@@ -200,13 +200,15 @@ def main():
                     return i ? i.getAttribute('src') : null; };
                 return { nes: src('NES'), aw: src('Atomiswave'), bgm: src('BGM'), snes: src('SNES'),
                          tile: row('NES') && row('NES').querySelector('.sico').style.getPropertyValue('--sys'),
-                         places: [...document.querySelectorAll('#places img')].map((i) => i.getAttribute('src')) }; })()""")
+                         places: [...document.querySelectorAll('#places button')].map((b) =>
+                             b.querySelector('img') ? b.querySelector('img').getAttribute('src')
+                                                    : [...b.classList].find((c) => c.startsWith('i-'))) }; })()""")
             check(got['nes'] == '/icons/NES.png' and got['snes'] == '/icons/SNES.png', f"consoles wear the shelf's art: {got}")
             check(got['aw'] == '/icons/AW.png', 'Atomiswave, with no games, has its art')
-            check(got['bgm'] == '/icons/BGM.png', 'BGM has the cassette')
+            check(got['bgm'] == '/icons/MUSE.png', "BGM wears MP4's")
             check(bool(got['tile']), "a console's tile is in its color")
-            check(got['places'][:3] == ['/icons/ROMS.png', '/icons/MUSE.png', '/icons/BOOKS.png'],
-                  f"the card's folders wear theirs: {got['places']}")
+            check(got['places'][:4] == ['i-roms', '/icons/MUSE.png', 'i-books', '/icons/MUSE.png'],
+                  f"Music and Videos wear MP4's, the other card folders their line marks: {got['places']}")
             # Lazy, so the ones on screen: those below come as they scroll in
             check(page.until("[...document.querySelectorAll('#list .sico img, #places img')]"
                              ".filter((i) => i.getBoundingClientRect().top < innerHeight)"

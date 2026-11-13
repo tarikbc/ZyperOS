@@ -471,11 +471,13 @@ build-native/pminstall-check: tools/pminstall-check.c src/pminstall.c src/pminst
 	$(CC) -std=gnu11 -Wall -Wextra -O1 -g -o $@ tools/pminstall-check.c src/pminstall.c src/sysupdate.c $(I18N_SRC)
 
 # PortMaster's cover in each theme and its page's icon (res/portmaster/*.png)
-# against what tools/genportmaster.py draws, pixel for pixel. Needs Pillow.
+# are ZyperOS's art's (res/system-art/original/utility), byte for byte
 .PHONY: check-pmart
 check-pmart:
-	@py='$(PYIMG)'; if [ -z "$$py" ]; then echo "check-pmart: skipped, no Pillow"; \
-	else "$$py" -B tools/genportmaster.py --check; fi
+	@for f in icon cover-light cover-dark; do \
+		cmp -s res/portmaster/$$f.png res/system-art/original/utility/portmaster-$$f.png || \
+		{ echo "check-pmart: res/portmaster/$$f.png is not res/system-art/original/utility/portmaster-$$f.png" >&2; exit 1; }; \
+	done
 
 # The PortMaster installer itself (res/portmaster/pm-install.py), on this
 # computer against a made-up release served from a folder: an install, a
@@ -1053,18 +1055,24 @@ PY_PIL91 = $(foreach p,$(PY_CANDIDATES),\
               $(shell $(p) -c 'import sys, PIL; sys.exit(tuple(map(int, PIL.__version__.split(".")[:2])) < (9, 1))' 2>/dev/null && echo $(p)))
 PYART ?= $(firstword $(PY_PIL91))
 
-# The compiler requires Pillow 9.1 or newer. PYART can select a local venv.
+# The system art (res/system-art/original, ZyperOS's own) compiled for the
+# launcher: res/system-icons and src/systemart_data.h (tools/systemart.py).
+# The check holds the compiler, its output against the art, and the art
+# against its own records (tools/systemart-original-check.py, its hashes,
+# poses and timing; tools/systemart-symbol-pixels-check.py, PICO-8's and
+# TIC-80's moving symbols). The compiler requires Pillow 9.1 or newer. PYART
+# can select a local venv.
 .PHONY: system-art check-systemart
 system-art:
 	@py='$(PYART)'; [ -n "$$py" ] || { echo "Pillow 9.1+ is required; set PYART" >&2; exit 1; }; \
 	"$$py" -c 'import PIL; assert tuple(map(int, PIL.__version__.split(".")[:2])) >= (9,1), "Pillow 9.1+ is required"' && \
-	"$$py" -B tools/systemart-draw.py && "$$py" -B tools/systemart.py
+	"$$py" -B tools/systemart.py
 
 check-systemart:
 	@py='$(PYART)'; [ -n "$$py" ] || { echo "Pillow 9.1+ is required; set PYART" >&2; exit 1; }; \
 	"$$py" -c 'import PIL; assert tuple(map(int, PIL.__version__.split(".")[:2])) >= (9,1), "Pillow 9.1+ is required"' && \
-	"$$py" -B tools/systemart-check.py && "$$py" -B tools/systemart-draw.py --check && \
-	"$$py" -B tools/systemart.py --check
+	"$$py" -B tools/systemart-check.py && "$$py" -B tools/systemart.py --check && \
+	"$$py" -B tools/systemart-original-check.py && "$$py" -B tools/systemart-symbol-pixels-check.py
 
 # What MENU > Controls says: every button on exactly one page, and rows short
 # enough to sit still. The page is the device's own copy of the controls list,
@@ -1472,8 +1480,8 @@ check-corepins:
 # the token block in res/web/app.css). Two have generators of their own, run as
 # they say: tools/gensingles.py writes res/singles.png, and tools/genzyper.py
 # the stills of Zyper and the ZyperOS lettering (res/readme/, res/web/ and
-# src/zypermark.h). tools/genportmaster.py draws PortMaster's covers and icon
-# (res/portmaster/), which check-pmart holds.
+# src/zypermark.h). PortMaster's covers and icon (res/portmaster/) are copies
+# of the system art's (res/system-art/original/utility), which check-pmart holds.
 boot:
 	python3 tools/genboot.py
 

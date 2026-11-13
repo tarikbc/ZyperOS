@@ -36,7 +36,8 @@ picture used, its set and its checksum. The games and their art belong to
 their owners: ZyperOS ships no games and no art, and only these composed
 screenshots are in the repository.
 
-The home screens show the system art in res/system-icons. MP4 shows clearly
+The home screens show ZyperOS's own system art (res/system-art/original,
+compiled into res/system-icons). MP4 shows clearly
 named demonstration albums, a film named after Blender's freely licensed
 Sintel and the public-domain Treasure Island as a book, all of them empty
 files. The ScummVM shelf shows the freeware games ScummVM's own site gives

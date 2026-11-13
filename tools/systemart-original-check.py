@@ -8,7 +8,9 @@ from pathlib import Path
 from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
-FOLDERS = {'ROMS','BIOS','SAVES','STATES','BGM','VIDEOS','BOOKS','FOLDER'}
+# Every shelf: config/systems.cfg's card stems and the shelves it does not
+# list; then the designs that are not shelves
+SYNTHETIC = {'FAVORITES','MUSE'}
 SUPPLEMENTAL = {'PORTMASTER','FOLDER','FOLDER_SMALL'}
 TWO_POSE = {'FAVORITES','MUSE','ARCADE','SCUMMVM','MAME','PICO8','OPENBOR','PORTS','DOOM','TIC80','PORTMASTER'}
 LIDS = {'SATURN','DC','NEOCD','SEGACD','NES'}
@@ -19,7 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--partial', action='store_true', help='allow a work-in-progress catalogue')
     args = parser.parse_args()
-    expected = ({row['key'] for row in json.loads((ROOT/'res/system-art/manifest.json').read_text())['assets']} - FOLDERS) | SUPPLEMENTAL
+    shelves = {Path(line.split('|')[5]).stem for line in (ROOT/'config/systems.cfg').read_text().splitlines()
+               if line.startswith('sys|')}
+    expected = shelves | SYNTHETIC | SUPPLEMENTAL
     directory = ROOT/'res/system-art/original/animations'
     data = json.loads((directory/'catalogue.json').read_text())
     assets = data['assets']

@@ -351,15 +351,10 @@ static void row_draw(SDL_Renderer *r, const sp_page *p, int i, float y, bool sel
 
 	switch (row->icon) {
 	case SP_ICON_TEX:
-	case SP_ICON_SHEET:
 		if (row->tex) {
-			int tw = 0, th2 = 0;
-			SDL_Rect src;
 			SDL_FRect dst = { (float)(SP_LIST_X + 24), iy, SP_ICON, SP_ICON };
 
-			SDL_QueryTexture(row->tex, NULL, NULL, &tw, &th2);
-			src = (SDL_Rect){ 0, 0, row->icon == SP_ICON_SHEET ? tw / 2 : tw, th2 };
-			SDL_RenderCopyF(r, row->tex, &src, &dst);
+			SDL_RenderCopyF(r, row->tex, NULL, &dst);
 		}
 		break;
 	case SP_ICON_ZYPER:
@@ -426,11 +421,9 @@ void sp_draw(SDL_Renderer *r, const sp_page *p, sp_motion *m, unsigned now)
 
 	/* A system's sprite where System Update has Zyper */
 	if (p->head_tex) {
-		SDL_Rect d = { 56, 92, 112, 112 }, src = { 0, 0, 0, 0 };
+		SDL_Rect d = { 56, 92, 112, 112 };
 
-		SDL_QueryTexture(p->head_tex, NULL, NULL, &src.w, &src.h);
-		if (p->head_sheet) src.w /= 2;
-		SDL_RenderCopy(r, p->head_tex, &src, &d);
+		SDL_RenderCopy(r, p->head_tex, NULL, &d);
 	}
 
 	/* Used, its number as a title and its words in the format's places */

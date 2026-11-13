@@ -26,14 +26,16 @@ make design     # write the design tokens (tools/designdef.py) into DESIGN.md,
 ```
 
 `make system-art` and `check-systemart` need Python 3.9+ with Pillow 9.1+.
-`PYIMG=/path/to/python` selects a suitable environment. Source files and credits
-are in `res/system-art/`; the manifest covers every configured system and the
-synthetic shelves. The compiler preserves original GIF frame colors, alpha and
-delays, deduplicates identical frames, and emits bounded PNG atlases and C frame
-tables. It never treats opaque black as a transparency key. The standalone check
-compares real GB/GBA frames against their decoded sources and rejects malformed,
-oversized, cropped or inconsistent assets. Generated outputs ship directly, so
-end users do not need Python. Runtime frame selection performs no image decode.
+`PYART=/path/to/python` selects a suitable environment. The art is ZyperOS's
+own, in `res/system-art/original` (its README says how it was made and
+exported); it covers every configured system, the synthetic shelves and the
+folder. The compiler (`tools/systemart.py`) keeps each design's frame colors,
+alpha and delays, and writes for each one its first pose whole with the moving
+region of every pose packed under it, a 128-pixel still, and the C frame
+tables with each region. The check rebuilds every pose of every design from
+the atlas and compares it with the export, and rejects malformed, oversized
+or inconsistent exports. Generated outputs ship directly, so end users do not
+need Python. Runtime frame selection performs no image decode.
 
 **mGBA is built rather than fetched, and is meant to stop being.** Every MBC2
 Game Boy cartridge segfaults on the buildbot core - Kirby's Pinball Land, Wave
@@ -88,7 +90,7 @@ something once broke in a way nothing noticed:
 | `check-sort` | a shelf sorts the way it says it does, and the same shelf twice the same way |
 | `check-bt` | a device name from the air is only ever data; an address is validated |
 | `check-pkkeys` | the volume keys over a port: MENU+VOL is the backlight whichever device is read first, the kernel's autorepeat is no step, a hold repeats on the launcher's clock, and the levels saved are the ones pressed |
-| `check-systemart` | bounded sprite compilation, original frame colors/alpha/timing, disposal, deduplication, source attribution, catalogue coverage and generated output consistency |
+| `check-systemart` | the system art compiler: each pose rebuilt exactly from its atlas, frame timing, moving regions inside their bounds, the decoded budget, catalogue coverage and generated output consistency; and the art itself against its records (tools/systemart-original-check.py, tools/systemart-symbol-pixels-check.py) |
 | `check-design` | DESIGN.md's tables, `src/design.h`, the mock kit's `tokens.js`, Wi-Fi File Transfer's colors and the play page's are what `tools/designdef.py` writes, and every text pair the launcher and the page draw meets its contrast |
 | `check-strings` | every string in `res/strings/` in all five languages with English's printf conversions, every ID used and defined, every character in the font that draws it, and `src/i18n_ids.h`, `src/i18n_tables.c` and `res/web/i18n/` what `tools/i18n.py` writes |
 | `check-i18n-shots` | the main screens in all five languages and the pseudo-locale, from the host build: no string from `res/strings` cut, broken past its lines or off the screen in any language, and a list of what the pseudo-locale's longer words do not fit |
@@ -182,7 +184,7 @@ something once broke in a way nothing noticed:
 | `check-sysupdate` | what MENU > System Update says in each state, held to the update lab's screens |
 | `check-pminstall` | what the Install PortMaster page says in each state (src/pminstall.c), and the Ports shelf's PortMaster entry added to a listing that lacks it, once |
 | `check-pmhelper` | the PortMaster installer (res/portmaster/pm-install.py) against a made-up release in a folder: an install, a second run, a lost PortMaster.sh put back, an MD5, SHA-256 or size that does not match, members outside PortMaster/, a release list that makes no sense, runtimes kept, a second run at once turned away |
-| `check-pmart` | PortMaster's covers in both themes and its page's icon (res/portmaster/*.png) are what tools/genportmaster.py draws, pixel for pixel (needs Pillow) |
+| `check-pmart` | PortMaster's covers in both themes and its page's icon (res/portmaster/*.png) are the system art's (res/system-art/original/utility), byte for byte |
 | `check-portdoc` | what a port's own files say for the Controls pages of the in-game menu over it (src/portdoc.c: port.json, its gptokeyb keymap, its README's controls) and the pages they make, on the made-up ports in tools/fixtures/ports and the forms porters write by hand; PortMaster's own page; the menu over every port |
 | `check-boottheme` | the boot screen's theme and language words (DESIGN.md 11.21) |
 | `check-panelgamma` | the display's gamma table emptied (src/panelgamma.h), against a stand-in display with Linux's request numbers: an older splash's table emptied on its CRTC alone, an empty one left alone, a kernel with none, and a refusal without DRM master |

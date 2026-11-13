@@ -110,8 +110,10 @@ for theme in ('light','dark'):
         plain=shot(env,f'replug-{theme}-plain-{ph}','--home','spotlight','--theme',theme,'--phase',str(ph))
         assert not same(whole,plain), f'{theme}: --replug drew no message'
 # And every system focused in turn, on a card that has them all, so the row
-# under each sprite is a full one, at every tile of its animation (the middle
-# of each tile's first frame, from src/systemart_data.h): the machines whose
+# under each sprite is a full one, at its animation's poses (the middle of
+# each pose's first frame, from src/systemart_data.h; at most twelve, spread
+# over the loop from its first, which keeps the run near what it was when an
+# atlas had a third of the poses): the machines whose
 # frames reach the row have the row's sprites drawn again over them, and no
 # tile of any falls back to a whole frame. Each on a card of its own (its
 # .last puts the cursor there), four at a time.
@@ -120,6 +122,7 @@ ALL = [l.split('|') for l in (ROOT/'config/systems.cfg').read_text().splitlines(
 FRAMES = {m.group(1): [(int(t), int(ms)) for t, ms in re.findall(r'\{\s*(\d+),\s*(\d+)\s*\}', m.group(2))]
           for m in re.finditer(r'static const sa_frame SA_FRAMES_(\w+)\[\] = \{(.*?)\};',
                                (ROOT/'src/systemart_data.h').read_text(), re.S)}
+SWEEP_POSES = 12
 def tile_phases(tag):
     seen, at, out = set(), 0, []
     for t, ms in FRAMES.get(tag, []):
@@ -127,6 +130,8 @@ def tile_phases(tag):
             seen.add(t)
             out.append(at + ms // 2)
         at += ms
+    if len(out) > SWEEP_POSES:
+        out = [out[i * (len(out) - 1) // (SWEEP_POSES - 1)] for i in range(SWEEP_POSES)]
     return out
 def sweep(f):
     tag = f[4]

@@ -72,7 +72,7 @@ bool pm_offer_refresh(const app *a);
 bool pm_is_offer(const app *a, int sys, const game_entry *g);
 int  pm_shelf_offers(const app *a, int sys);
 bool pm_only_offer(const app *a, int sys);
-/* PortMaster's own cover (tools/genportmaster.py, DESIGN.md 11.33): whether
+/* PortMaster's own cover (res/portmaster, DESIGN.md 11.33): whether
  * `g`, a game of system `sys`, is the Ports shelf's PortMaster entry, on the
  * card or not; and that entry's cover for theme `theme_ix` (DS_LIGHT or
  * DS_DARK), in the card's ZyperOS folder, into `out`, false when `g` is no

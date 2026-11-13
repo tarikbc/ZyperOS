@@ -224,7 +224,8 @@ chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 # PortMaster's control.txt for the Ports shelf, which launch.sh puts in place
 # before each port, and the installer the shelf runs when PortMaster is not on
 # the card (src/pminstall.h), with its entry's covers and its page's icon
-# (tools/genportmaster.py). Only the Pixel 2's launch.sh runs ports.
+# (the system art's, res/system-art/original/utility). Only the Pixel 2's
+# launch.sh runs ports.
 if [ "$DEVICE" = pixel2 ]; then
 	mkdir -p "$P/portmaster"
 	cp "$ROOT/res/portmaster/control.txt" "$ROOT/res/portmaster/libgl_ZyperOS.txt" \

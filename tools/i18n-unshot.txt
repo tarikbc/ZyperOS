@@ -17,7 +17,6 @@ about.thanks_rocknix
 about.thanks_buildroot
 about.thanks_libretro
 about.thanks_portmaster
-about.thanks_benjelter
 about.thanks_lexend
 about.thanks_sdl
 about.thanks_ffmpeg
