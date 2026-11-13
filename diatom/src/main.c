@@ -1743,6 +1743,7 @@ static void bg_report(bool wait, bool apply)
 		diatom_proto_send(ok ? "SAVED\tpath=%s" : "ERROR\tcode=save_failed\tmsg=%s", path);
 		break;
 	case DIATOM_BG_LOAD:
+		if (apply && ok) diatom_rumble_forget();
 		if (apply)
 			diatom_proto_send(ok ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
 			                  path);
@@ -1783,9 +1784,12 @@ static bool game_msg(const diatom_msg *m)
 				diatom_proto_send("ERROR\tcode=state_rejected\tmsg=%s", m->path);
 			return true;
 		}
-		diatom_proto_send(diatom_state_load(g_core, m->path)
-		                  ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
-		                  m->path);
+		if (diatom_state_load(g_core, m->path)) {
+			diatom_rumble_forget();
+			diatom_proto_send("LOADED\tpath=%s", m->path);
+		} else {
+			diatom_proto_send("ERROR\tcode=state_rejected\tmsg=%s", m->path);
+		}
 		return true;
 	case DIATOM_MSG_RESET:
 		/* The menu's Reset row, or a launcher's reset while the game runs.
@@ -1795,6 +1799,7 @@ static bool game_msg(const diatom_msg *m)
 		/* Same reason as a state load, one step further: the game is back at
 		 * the title screen and nothing in progress survived. */
 		diatom_cheevos_runtime_reset();
+		diatom_rumble_forget();
 		diatom_proto_send("RESETDONE");
 		return true;
 	case DIATOM_MSG_OPTIONS:

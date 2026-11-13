@@ -110,7 +110,7 @@ endif
 
 .PHONY: all clean check check-seam check-proto check-port \
         check-corefacts check-cheevos check-screens check-chord check-stick check-bounds check-copies \
-        stub run-stub
+        check-rumble check-rumble-e2e stub run-stub
 
 all: $(BIN)
 
@@ -142,7 +142,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-proto check-port check-stateplane check-resident check-hotkeys check-now
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -201,6 +201,27 @@ $(STICK_TEST): test/stick_test.c src/stick.c src/stick.h include/diatom_port.h
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
 	      -Iinclude -Isrc -o $@ test/stick_test.c src/stick.c -lm
+
+# The GKD Pixel 2's rumble motor (port/rumble_evdev.c), built unchanged on a
+# model of the kernel's ff-memless under it: every stop a game asks for
+# reaches the motor (an N64 Rumble Pak's never did on 1.0.4), a close stops
+# it, and a game's call never waits on the device. Offline: the device's
+# calls go to the model (test/rumble_fake.h) and <linux/input.h> is
+# test/fakeinc's, so it runs on macOS too.
+RUMBLE_TEST := $(BUILD)/rumble-test
+
+check-rumble: $(RUMBLE_TEST)
+	@./$(RUMBLE_TEST)
+
+$(RUMBLE_TEST): test/rumble_test.c test/rumble_fake.h test/fakeinc/linux/input.h \
+                port/rumble_evdev.c port/rumble_evdev.h include/diatom_port.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g \
+	      -Itest/fakeinc -Iinclude -Iport -include test/rumble_fake.h \
+	      -c -o $(BUILD)/rumble_evdev_model.o port/rumble_evdev.c
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g \
+	      -Itest/fakeinc -Iinclude -Iport -o $@ test/rumble_test.c \
+	      $(BUILD)/rumble_evdev_model.o -lpthread
 
 # Input that does not fit what reads it: zips too short or too sure of
 # themselves (src/zip.c), and a protocol line longer than its buffer
@@ -277,6 +298,15 @@ check-now:
 	$(FRESH_IF_BUILT)
 	@python3 test/now.py
 .PHONY: check-now
+
+# The motor end to end, against the stub core asking as an N64 Rumble Pak
+# game does (STUBCORE_RUMBLE) and a pretend motor in the desktop port
+# (DIATOM_RUMBLE_LOG): it stops when the game stops it, under MENU, at a
+# reset, a state load, a STOP and a QUIT. On check-stateplane's terms: a
+# few seconds, skipped unbuilt.
+check-rumble-e2e:
+	$(FRESH_IF_BUILT)
+	@python3 test/rumble.py
 
 # SELECT's hotkeys end to end (src/chord.h): the pad by script, what the stub
 # core read written down, the quick slot's SAVE and LOAD answered while the

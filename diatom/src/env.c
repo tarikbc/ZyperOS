@@ -118,6 +118,20 @@ void diatom_rumble_hold(bool held)
 	pthread_mutex_unlock(&g_rumble_mx);
 }
 
+/* A game sent somewhere else - reset to its title, a state loaded - says
+ * nothing of the motor it had going: a core says a strength when the game
+ * changes it, and the game it is now may never stop what the game it was
+ * started. So the motor stops, as at a stop, but a hold stays: the menu's
+ * Reset and Load rows act while it is open. */
+void diatom_rumble_forget(void)
+{
+	if (!g_caps || !g_caps->rumble) return;
+	pthread_mutex_lock(&g_rumble_mx);
+	g_rumble[RETRO_RUMBLE_STRONG] = g_rumble[RETRO_RUMBLE_WEAK] = 0;
+	rumble_apply();
+	pthread_mutex_unlock(&g_rumble_mx);
+}
+
 void diatom_rumble_reset(void)
 {
 	if (!g_caps || !g_caps->rumble) return;
