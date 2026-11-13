@@ -420,6 +420,34 @@ def serves_the_page(tmp):
 
 
 @test
+def theme_css_from_the_option(tmp):
+    css = b':root { --accent: #ff00ff; }\n'
+    file = tmp / 'handheld-theme.css'
+    file.write_bytes(css)
+    # --theme PATH: the file's bytes, as CSS, never cached; the next request
+    # after the file changes has the new one
+    with Rig(tmp, ['--theme', str(file)]) as r:
+        s, h, body = r.get('/play/theme.css')
+        check(s == 200 and body == css, f'/play/theme.css was {s} {body!r}')
+        check(h.get('content-type', '').startswith('text/css'), f'/play/theme.css is {h.get("content-type")}')
+        check('no-cache' in h.get('cache-control', ''), f'/play/theme.css cache-control is {h.get("cache-control")}')
+        file.write_bytes(b':root { --accent: #00ff00; }\n')
+        s, _, body = r.get('/play/theme.css')
+        check(s == 200 and b'#00ff00' in body, f'/play/theme.css after a change was {s} {body!r}')
+        file.unlink()
+        s, _, _ = r.get('/play/theme.css')
+        check(s == 404, f'/play/theme.css with the file gone was {s}, wanted 404')
+    # no option: 404, even with a theme.css in the page's own folder
+    with Rig(tmp) as r:
+        s, _, _ = r.get('/play/theme.css')
+        check(s == 404, f'/play/theme.css with no --theme was {s}, wanted 404')
+    # an option naming a file that was never there
+    with Rig(tmp, ['--theme', str(tmp / 'never-written.css')]) as r:
+        s, _, _ = r.get('/play/theme.css')
+        check(s == 404, f'/play/theme.css with a missing file was {s}, wanted 404')
+
+
+@test
 def i18n_in_the_language(tmp):
     for args, want in (([], b"'en'"), (['--lang', 'fr'], b"'fr'"), (['--lang', 'xx'], b"'en'"),
                        (['--lang', '../../etc'], b"'en'")):

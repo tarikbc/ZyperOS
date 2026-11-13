@@ -7,10 +7,13 @@
  * with SIGTERM:
  *
  *     p2d --root DIR --share PATH --addr IP [--port N] [--dns] [--dns-port N]
- *         [--lang CODE]
+ *         [--lang CODE] [--theme PATH]
  *
  * It serves DIR/play/ over plain HTTP, and DIR/i18n/CODE.js as /i18n.js, the
- * page's words in the handheld's language. One WebSocket on /p2ws per
+ * page's words in the handheld's language, and PATH as /play/theme.css, the
+ * handheld's look (src/webtheme.h), read afresh at each request so a page
+ * reload after a theme change has the new one; with no --theme, or no file,
+ * that is a 404 and the page keeps its own tokens. One WebSocket on /p2ws per
  * browser: the frames out (codec.h), the acks and the pad in (guest.h).
  *
  * The share says what the system gives a guest (p2share.h): its buttons and
@@ -68,7 +71,7 @@
 
 #define RAW_CAP ((size_t)P2S_MAX_W * P2S_MAX_H * 4)
 
-static const char *g_root, *g_share_path, *g_addr, *g_lang = "en";
+static const char *g_root, *g_share_path, *g_addr, *g_lang = "en", *g_theme;
 static int g_port = 80, g_dns_port = 53;
 static bool g_want_dns;
 
@@ -446,6 +449,14 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		httpd_reply_static(r, file, mime_for(file));
 		return;
 	}
+	/* The handheld's theme is one file wherever the launcher writes it, not
+	 * one in the page's folder; with no file the answer is httpd's 404 and
+	 * the page wears its own tokens */
+	if (!strcmp(path, "/play/theme.css")) {
+		if (!g_theme) httpd_reply_status(r, 404, "no");
+		else httpd_reply_static(r, g_theme, "text/css; charset=utf-8");
+		return;
+	}
 	if (!strncmp(path, "/play/", 6)) {
 		const char *name = path[6] ? path + 6 : "index.html";
 		int n;
@@ -554,7 +565,7 @@ static int finish(int code)
 static void usage(void)
 {
 	fprintf(stderr, "usage: p2d --root DIR --share PATH --addr IP [--port N] [--dns]"
-	                " [--dns-port N] [--lang CODE]\n");
+	                " [--dns-port N] [--lang CODE] [--theme PATH]\n");
 	exit(2);
 }
 
@@ -593,6 +604,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--dns")) g_want_dns = true;
 		else if (!strcmp(argv[i], "--dns-port") && i + 1 < argc) g_dns_port = port_arg(argv[++i]);
 		else if (!strcmp(argv[i], "--lang") && i + 1 < argc) g_lang = lang_arg(argv[++i]);
+		else if (!strcmp(argv[i], "--theme") && i + 1 < argc) g_theme = argv[++i];
 		else usage();
 	}
 	if (!g_root || !g_share_path || !g_addr || inet_pton(AF_INET, g_addr, g_ip) != 1) usage();

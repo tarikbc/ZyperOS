@@ -31,7 +31,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-p2ws check-p2codec check-p2d check-play check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
@@ -51,15 +51,15 @@ check: check-prep
 # What more than one check builds, built once before any of them starts: the
 # host launcher, which nine checks draw with, and the ScreenScraper header it
 # shares with check-ss (without SDL2, the header alone); and player 2's p2d,
-# its feed and the codec check, which check-p2d, check-p2codec and check-play
-# run.
+# its feed, the codec check and the theme writer's check, which check-p2d,
+# check-p2codec, check-webtheme and check-play run.
 check-prep:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native; \
 	else \
 		$(MAKE) --no-print-directory -f mk/native.mk VERSION=$(VERSION) creds; \
 	fi
-	@$(MAKE) --no-print-directory build-native/p2d build-native/p2d-feed build-native/p2codec-check
+	@$(MAKE) --no-print-directory build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
 
 # Diatom's own suite (diatom/Makefile's check) on its desktop port: SDL2's
 # dummy drivers and the stub core, no device and no ROM. It was only ever run
@@ -1684,6 +1684,22 @@ build-native/p2share-check: tools/p2share-check.c src/p2share.h FORCE
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/p2share-check.c
 
+# The handheld's theme as the play page's theme.css (src/webtheme.c): with
+# nothing customised the file gives the very values of play.css's own token
+# blocks, for the properties play.css lets it set and no others; a custom
+# look moves the accent, Square makes the corners 0, dark says so, a buffer
+# too small is refused and the write leaves a whole file. check-play serves
+# a file this binary makes (--emit), so it is built by its sources rather
+# than FORCE, and in check-prep.
+check-webtheme: build-native/webtheme-check
+	@./build-native/webtheme-check
+
+build-native/webtheme-check: tools/webtheme-check.c src/webtheme.c src/webtheme.h src/look.c \
+                             src/look.h src/theme.h src/design.h res/web/play/play.css
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/webtheme-check.c src/webtheme.c src/look.c -lm
+
 # p2d, NES player 2's server (src/p2d/main.c), on the host: the play page,
 # the WebSocket of frames and buttons, the hotspot's DNS. The launcher's own
 # httpd and captive.c, linked as mk/cross.mk links them for the device, and
@@ -1724,7 +1740,7 @@ check-p2d: build-native/p2d build-native/p2d-feed
 # for the page, and the game's end. The fixtures go
 # into the check's own temp folder, never build-native's, which check-p2codec
 # may be writing at the same moment. Chrome is needed.
-check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check
+check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
 	@python3 tools/play-check.py
 
 check-musequeue: build-native/musequeue-check

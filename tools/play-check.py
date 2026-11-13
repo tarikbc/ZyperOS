@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """The play page, a guest player's picture and pad, in a browser: make check-play.
 
-    make build-native/p2d build-native/p2d-feed build-native/p2codec-check
+    make build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
     python3 tools/play-check.py [--chrome PATH]
 
 build-native/p2codec-check writes its fixtures into this check's own temp
@@ -40,8 +40,9 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
   - picture_off: switched on, the picture hides and the pad takes the
     screen, the canvas holds still for a second while the acks go on; off
     again, the picture is the game's again
-  - theme_from_handheld: a theme.css beside the page (the handheld's look)
-    wins over the page's tokens and the browser's light or dark: its accent
+  - theme_from_handheld: the theme file p2d is given (--theme; the handheld's
+    look, once by hand and once as build-native/webtheme-check's writer makes
+    it) wins over the page's tokens and the browser's light or dark: its accent
     on a held button, its ground, its color-scheme, its square corners;
     without one, the page's own tokens by prefers-color-scheme
   - old_browser_message: with DecompressionStream deleted before the
@@ -87,6 +88,7 @@ import i18n  # noqa: E402
 P2D = ROOT / 'build-native/p2d'
 FEED = ROOT / 'build-native/p2d-feed'
 CODEC = ROOT / 'build-native/p2codec-check'
+WEBTHEME = ROOT / 'build-native/webtheme-check'
 LANG = 'fr'
 
 W, H, FRAMES = 256, 240, 100          # the fixture's (tools/p2codec-check.c)
@@ -170,7 +172,8 @@ class Rig:
             self.m = mmap.mmap(f.fileno(), SHARE_SIZE, access=mmap.ACCESS_READ)
         with open(self.log, 'wb') as log:
             self.p2d = subprocess.Popen([str(P2D), '--root', str(root), '--share', str(self.share),
-                                         '--addr', '127.0.0.1', '--port', '0', '--lang', LANG],
+                                         '--addr', '127.0.0.1', '--port', '0', '--lang', LANG,
+                                         '--theme', str(Path(root).parent / 'theme.css')],
                                         stdout=log, stderr=log)
         port = wait_for(lambda: re.search(r'p2d: http on port (\d+)', self.log.read_text(errors='replace')), 10)
         if not port:
@@ -579,6 +582,8 @@ THEME = """:root {
     --corner: 0;
 }
 """
+# The writer's own file, made by build-native/webtheme-check --emit
+WRITER = object()
 LOOK = """(() => { const html = getComputedStyle(document.documentElement);
     return { scheme: html.colorScheme, ground: html.backgroundColor,
              a: getComputedStyle(document.getElementById('a')).backgroundColor,
@@ -586,15 +591,21 @@ LOOK = """(() => { const html = getComputedStyle(document.documentElement);
 
 
 def theme_from_handheld(browser, origin, root, say):
-    css = root / 'play/theme.css'
+    css = root.parent / 'theme.css'            # p2d's --theme
     for case, theme, scheme, want in (
             ('the handheld\'s theme, the browser light', THEME, 'light',
              {'scheme': 'dark', 'ground': 'rgb(0, 0, 0)', 'a': 'rgb(255, 0, 255)', 'corner': '0px'}),
+            ('the writer\'s file, the browser light', WRITER, 'light',
+             {'scheme': 'dark', 'ground': 'rgb(14, 21, 38)', 'a': 'rgb(255, 0, 255)', 'corner': '0px'}),
             ('no theme, the browser light', None, 'light',
              {'scheme': 'light dark', 'ground': 'rgb(230, 228, 218)', 'a': 'rgb(190, 242, 60)', 'corner': '5px'}),
             ('no theme, the browser dark', None, 'dark',
              {'scheme': 'light dark', 'ground': 'rgb(17, 19, 16)', 'a': 'rgb(190, 242, 60)', 'corner': '5px'})):
-        if theme:
+        if theme == WRITER:
+            # The launcher's own writer (src/webtheme.c): dark, square, a
+            # magenta accent, the deep blue tone
+            subprocess.run([str(WEBTHEME), '--emit', str(css)], check=True)
+        elif theme:
             css.write_text(theme)
         elif css.exists():
             css.unlink()
@@ -692,7 +703,7 @@ def main():
     if not Path(args.chrome).is_file():
         print(f'play: FAIL: no browser at {args.chrome} (--chrome PATH)')
         return 1
-    for p in (P2D, FEED, CODEC):
+    for p in (P2D, FEED, CODEC, WEBTHEME):
         if not p.is_file():
             print(f'play: FAIL: {p.relative_to(ROOT)} is missing (make {p.relative_to(ROOT)})')
             return 1
