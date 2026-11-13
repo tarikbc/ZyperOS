@@ -530,6 +530,50 @@ de = Sharp-Shimmerless
 ja = Sharp-Shimmerless
 it = Sharp-Shimmerless
 
+[gamemenu.shader_crt]
+note = The Shader row's value: an old tube TV's look, its scanlines and the colored dots of its screen. CRT is the word players use; the Pixel 2 only.
+en = CRT
+zh-Hans = CRT
+es = CRT
+pt-BR = CRT
+fr = CRT
+de = CRT
+ja = CRT
+it = CRT
+
+[gamemenu.shader_crt_curved]
+note = The Shader row's value: the same CRT look with its glass curved and its corners round. A named choice: Title Case in English, sentence case in the Latin languages.
+en = CRT Curved
+zh-Hans = CRT 曲面
+es = CRT curva
+pt-BR = CRT curva
+fr = CRT incurvé
+de = CRT gewölbt
+ja = CRT 曲面
+it = CRT curvo
+
+[gamemenu.shader_scanlines]
+note = The Shader row's value: dark lines between the picture's lines, as on an old TV, and nothing more
+en = Scanlines
+zh-Hans = 扫描线
+es = Líneas de escaneo
+pt-BR = Linhas de varredura
+fr = Lignes de balayage
+de = Scanlines
+ja = 走査線
+it = Scanline
+
+[gamemenu.shader_lcd]
+note = The Shader row's value: the thin dark grid between the pixels of a handheld's LCD (Game Boy, Game Gear, Game Boy Advance)
+en = LCD Grid
+zh-Hans = LCD 网格
+es = Rejilla LCD
+pt-BR = Grade LCD
+fr = Grille LCD
+de = LCD-Raster
+ja = LCD グリッド
+it = Griglia LCD
+
 [gamemenu.shader_mixed]
 note = MENU's Shader row's value when the systems do not all have the same shader: each system has its own, chosen in its menu or in a game. Lowercase, as a status value.
 en = per system

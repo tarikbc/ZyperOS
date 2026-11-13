@@ -55,6 +55,14 @@ const diatom_filter_info diatom_filters[DIATOM_FILTER_COUNT] = {
 	  "sharp-bilinear: one blended pixel at each boundary" },
 	{ "shimmerless", DIATOM_FILTER_SHIMMERLESS,
 	  "Sharp-Shimmerless: pixels mixed by the area they cover" },
+	{ "crt",         DIATOM_FILTER_CRT,
+	  "a CRT: scanlines and an aperture grille (Lottes's CRTS)" },
+	{ "crt-curved",  DIATOM_FILTER_CRT_CURVED,
+	  "the CRT, its glass curved and its corners round" },
+	{ "scanlines",   DIATOM_FILTER_SCANLINES,
+	  "Sharp-Shimmerless with dark bands between the lines" },
+	{ "lcd",         DIATOM_FILTER_LCD,
+	  "a handheld LCD's grid, Sharp-Shimmerless underneath" },
 };
 
 int diatom_filter_index(const char *name)

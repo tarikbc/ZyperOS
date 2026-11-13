@@ -310,6 +310,26 @@ static int shader_index(const char *name)
 	return -1;
 }
 
+/* Whether this device offers shader k: the old screens only where Diatom
+ * draws them with a GPU (plat_gpu_shaders) */
+static bool shader_offered(int k)
+{
+	return k >= 0 && k < SHADER_COUNT && (!SHADERS[k].gpu || plat_gpu_shaders());
+}
+
+/* The shader a step `d` comes to from k, round the ones this device offers:
+ * each Shader row steps with it */
+static int shader_step(int k, int d)
+{
+	int i;
+
+	for (i = 0; i < SHADER_COUNT; i++) {
+		k = (k + d + SHADER_COUNT) % SHADER_COUNT;
+		if (shader_offered(k)) break;
+	}
+	return k;
+}
+
 /* Keyed on the system's tag rather than its folder or its place in the list,
  * for the same reason saves are: renaming a ROM folder or reordering
  * systems.cfg then cannot quietly hand a system somebody else's setting.
@@ -13926,6 +13946,7 @@ static int menu_shelf_width(app *a)
 				int j;
 
 				for (j = 0; j <= SHADER_COUNT; j++) {
+					if (j < SHADER_COUNT && !shader_offered(j)) continue;
 					rows[k].value = j < SHADER_COUNT ? shader_label(j) : T(S_GAMEMENU_SHADER_MIXED);
 					mw = menu_measure(rows, n, heading);
 					if (mw > w) w = mw;
@@ -13985,6 +14006,7 @@ static int menu_shelf_width(app *a)
 		/* And each shader, for the same reason */
 		for (k = 0; hrow >= 0 && k < SHADER_COUNT; k++) {
 			int mw;
+			if (!shader_offered(k)) continue;
 			rows[hrow].value = shader_label(k);
 			mw = menu_measure(rows, n, heading);
 			if (mw > w) w = mw;
@@ -17658,7 +17680,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if ((d || key == IN_ACCEPT) && sel == SM_SHADER) {
 			sysview *v = &a->view[a->sys_cursor];
 
-			v->shader = (v->shader + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT;
+			v->shader = shader_step(v->shader, d ? d : 1);
 			shader_save(a, a->sys_cursor);
 			return MENU_STAY;
 		}
@@ -17873,7 +17895,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * kept as MENU's, and each system's own choice goes with it
 	 * (shader_set_all). From "per system" a step goes on from MENU's last. */
 	if (sel == PM_SHADER && (d || key == IN_ACCEPT)) {
-		shader_set_all(a, (g_shader_all + (d ? d : 1) + SHADER_COUNT) % SHADER_COUNT);
+		shader_set_all(a, shader_step(g_shader_all, d ? d : 1));
 		return MENU_CHANGED;
 	}
 
@@ -18440,7 +18462,7 @@ static void gm_cycle_shader(app *a, int d)
 {
 	sysview *v = owner_view(a);
 
-	v->shader = (v->shader + d + SHADER_COUNT) % SHADER_COUNT;
+	v->shader = shader_step(v->shader, d);
 	shader_save(a, (int)(v - a->view));
 	plat_resident_line("SETDISPLAY\tfilter=%s", SHADERS[v->shader].name);
 	plat_resident_sync_rect(150);
@@ -21226,6 +21248,7 @@ static int gm_width(app *a)
 
 		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
 			int mw;
+			if (!shader_offered(k)) continue;
 			rows[sh].value = shader_label(k);
 			mw = menu_measure(rows, n, NULL);
 			if (mw > w) w = mw;
