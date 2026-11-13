@@ -172,7 +172,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Clocks per system:** 8-bit and handheld systems run the CPU, memory and GPU under lower ceilings, measured to keep every frame, and so does the 16-bit generation a step higher. Lower clocks run at lower voltage, which saves battery. At the first frame that comes late, a game goes back to full clocks for the rest of the session.
 - **Turbo buttons:** X and Y press A and B for you, on the nine consoles whose controllers had two face buttons. On Game Boy Advance, L2 and R2 do the same for L and R.
 - **Faster and slower:** hold SELECT and press **R2** to run a game at 1.5x, 2x or 3x, and **L2** to step back down to normal speed. A pop-up says the speed.
-- **Sharp pixels that don't shimmer:** **Shader** in the in-game menu turns on [Sharp-Shimmerless](https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader), zadpos's shader for pixel art drawn at a size that is not a whole number of times the game's, as a 256-pixel-wide game is on the 640-pixel screen. Every pixel stays the same size and as sharp as it can be, so a scrolling picture doesn't shimmer. Choose it for one system in a game or in that system's menu, or for every system in **MENU > Shader**. It starts Off.
+- **Shaders, from sharp pixels to an old TV:** **Shader** in the in-game menu draws the game five more ways. [Sharp-Shimmerless](https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader), zadpos's shader for pixel art drawn at a size that is not a whole number of times the game's, as a 256-pixel-wide game is on the 640-pixel screen: every pixel stays the same size and as sharp as it can be, so a scrolling picture doesn't shimmer. **CRT** and **CRT Curved**, Timothy Lottes's CRT shader: scanlines and the colored stripes of a TV tube, flat or with curved glass. **Scanlines** alone, and **LCD Grid**, the grid of a Game Boy's screen, both from zadpos's shader too. Choose one for one system in a game or in that system's menu, or for every system in **MENU > Display > Shader**. It starts Off ([how they look](#shaders)).
 - **Every control, in the game:** **Controls** in the in-game menu shows what each button does in the game you are playing: its system's own buttons as its emulator reads them (the PlayStation's as their cross, circle, triangle and square), the turbo buttons, the hotkeys, the Nintendo 64's A and B on the A and B buttons, its stick on the d-pad (its own D-pad is SELECT with the d-pad), its C buttons (SELECT with X, A, B or Y) and Rumble Pak, the PICO-8's arrows, O, X and pause menu, and the DS's screens and stylus. Over a port it shows what the port documents: the controls in its README, the key each button types for it, and what to copy where before it runs.
 - **Rumble on the Pixel 2:** Dreamcast games, PlayStation games (as a DualShock) and Game Boy Color rumble cartridges shake the handheld, and Nintendo 64 games get a Rumble Pak. A game that saves to the Controller Pak, the N64's memory card, takes it instead in the in-game menu's **Pak** row, which keeps the choice for that game. The motor stops while the in-game menu is open.
 - **A USB-C headphone adapter on the Pixel 2:** plug one in and the sound goes there, ahead of the headphone jack, in games and in MP4. It's a choice of its own in Audio Output.
@@ -217,7 +217,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Media player** | Music, audiobooks, video | — | Music, video | Music, audiobooks | Music, video | Music |
 | **PortMaster** | Yes, installed from the Ports shelf with one press, with the in-game menu over every port | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
-| **Shaders** | Sharp-Shimmerless, for one system or every system | — | A screen filter in DraStic | — | Built in, per game or per system | — |
+| **Shaders** | Sharp-Shimmerless, CRT (flat or curved), scanlines and an LCD grid, for one system or every system | — | A screen filter in DraStic | — | Built in, per game or per system | — |
 | **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
 | **Folders of games, and a list** | Folders to any depth, each with its count; covers or a list for each system | EmulationStation's | — | — | EmulationStation's | — |
 | **Storage by part and by game** | Yes, with recommendations and media pages | — | — | — | — | — |
@@ -290,6 +290,18 @@ ZyperOS has two themes, Beard in light and Salt & Pepper in dark. **MENU > Displ
 </table>
 
 </div>
+
+## Shaders
+
+**Shader**, under Display in the in-game menu, draws the game one of six ways: `Off`, then Sharp-Shimmerless for sharp, even pixels, CRT and CRT Curved for an old TV, Scanlines alone, and LCD Grid for a handheld's screen. It is kept for the game's system and changes the game when you continue; a system's own menu has the same row, and **MENU > Display > Shader** sets every system at once. Here they are on the Pixel 2's 640x480 screen, a part of the picture at twice its size:
+
+<div align="center">
+
+<img src="res/readme/shaders.png" width="720" alt="Balloon Fight's balloon fighters six ways: Off, Sharp-Shimmerless, CRT, CRT Curved, Scanlines and LCD Grid">
+
+</div>
+
+The CRT's lines are most even where the picture's height is a whole number of times the game's, as with **Display** on `Integer tall`. The CRT, Scanlines and LCD Grid are drawn by the Pixel 2's GPU. Sharp-Shimmerless is zadpos's, and so are the scanlines and the grid; the CRT is Timothy Lottes's. Each is in the public domain ([Credits](#credits)).
 
 ## Supported systems
 
@@ -809,6 +821,7 @@ ZyperOS stands on other people's work:
 - **[OpenBOR](https://github.com/DCurrent/openbor)**, by Senile Team and the OpenBOR Team, which runs the OpenBOR shelf.
 - **Eclipse Temurin** (OpenJDK) and **DejaVu Sans**, the Java runtime and the font J2ME games run with.
 - **minimp3** by lieff and **stb_vorbis** by Sean Barrett, which decode the menu music.
+- **zadpos**, for [Sharp-Shimmerless](https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader) and its scanlines and grid (CC0), and **Timothy Lottes**, for his CRT shader, CRTS (public domain), which the Shader row draws with.
 - **Rockchip**, for the firmware that starts the Pixel 2 and runs its memory at full speed.
 
 ## License
