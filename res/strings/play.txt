@@ -1,0 +1,132 @@
+# NES player 2's page (res/web/play, served by p2d): what a friend's phone
+# or laptop shows while it is player 2 of the game on the handheld, in the
+# handheld's language. tools/i18n.py writes these into res/web/i18n/<code>.js
+# beside the File Transfer page's, by their whole ID; play.js's t() reads
+# them. The page's style is the File Transfer page's (web.txt): sentence
+# case, messages end with a full stop. The pad's buttons keep the names
+# printed on the handheld (A, B, SELECT, START), never translated.
+
+[play.name]
+note = The page's name, in the browser's tab and over the too-old message: the friend's browser is player 2 of an NES game on the handheld
+en = Player 2
+zh-Hans = 玩家 2
+es = Jugador 2
+pt-BR = Jogador 2
+fr = Joueur 2
+de = Spieler 2
+ja = プレイヤー 2
+it = Giocatore 2
+
+# ---- the status, at the top -----------------------------------------------
+
+[play.state.connecting]
+note = The status at the top while the page reaches the handheld, and again after the link is lost (it tries every 2 seconds)
+en = Connecting
+zh-Hans = 正在连接
+es = Conectando
+pt-BR = Conectando
+fr = Connexion en cours
+de = Verbindung wird hergestellt
+ja = 接続中
+it = Connessione in corso
+
+[play.state.player2]
+note = The status once the handheld has taken this browser as player 2: its pad is player 2's
+en = Player 2
+zh-Hans = 玩家 2
+es = Jugador 2
+pt-BR = Jogador 2
+fr = Joueur 2
+de = Spieler 2
+ja = プレイヤー 2
+it = Giocatore 2
+
+[play.state.taken]
+note = The status when another browser is player 2 already; this one gets no picture and its pad does nothing. review: pt-BR
+en = Player 2 is taken
+zh-Hans = 玩家 2 已被占用
+es = Ya hay un jugador 2
+pt-BR = Já existe um jogador 2
+fr = Il y a déjà un joueur 2
+de = Spieler 2 ist schon belegt
+ja = プレイヤー 2 はすでに参加中です
+it = C'è già un giocatore 2
+
+[play.state.ended]
+note = The status when the game on the handheld ended: quit, turned off, or Player 2 switched off there
+en = The game ended
+zh-Hans = 游戏已结束
+es = El juego terminó
+pt-BR = O jogo acabou
+fr = La partie est terminée
+de = Das Spiel ist beendet
+ja = ゲームが終了しました
+it = La partita è finita
+
+[play.old_browser]
+note = Instead of the game, on a browser that cannot unpack the game's pictures (Safari before 16.4, Chrome before 103). review: zh-Hans says "this app" (应用): the font cut has no 浏 for 浏览器
+en = This browser is too old to show the game. Update it, or open this page in another browser.
+zh-Hans = 此应用版本过旧，无法显示游戏。请更新后再试，或用其他应用打开此页面。
+es = Este navegador es demasiado antiguo para mostrar el juego. Actualízalo o abre esta página en otro navegador.
+pt-BR = Este navegador é antigo demais para mostrar o jogo. Atualize-o ou abra esta página em outro navegador.
+fr = Ce navigateur est trop ancien pour afficher le jeu. Mettez-le à jour ou ouvrez cette page dans un autre navigateur.
+de = Dieser Browser ist zu alt, um das Spiel anzuzeigen. Aktualisiere ihn oder öffne diese Seite in einem anderen Browser.
+ja = このブラウザは古いため、ゲームを表示できません。ブラウザを更新するか、別のブラウザでこのページを開いてください。
+it = Questo browser è troppo vecchio per mostrare il gioco. Aggiornalo o apri questa pagina in un altro browser.
+
+# ---- the pad ----------------------------------------------------------------
+
+[play.picture_off]
+note = A switch at the top. On, the game's picture goes and the pad takes the whole screen: the friend watches the handheld and uses the phone as a pad only
+en = Picture off
+zh-Hans = 关闭画面
+es = Sin imagen
+pt-BR = Sem imagem
+fr = Sans image
+de = Ohne Bild
+ja = 画面オフ
+it = Senza immagine
+
+[play.dpad]
+note = The pad's d-pad: read aloud by a screen reader, and in the keys line under the pad on a computer (the arrow keys are the d-pad). As controls.key.dpad
+en = D-pad
+zh-Hans = 方向键
+es = Cruceta
+pt-BR = Direcional
+fr = Croix
+de = Steuerkreuz
+ja = 十字キー
+it = Croce
+
+[play.key.arrows]
+note = The keys line under the pad on a computer: the keyboard's four arrow keys, on a key cap, then the button they are. As controls.key_arrows
+en = Arrow keys
+zh-Hans = 键盘方向键
+es = Flechas
+pt-BR = Setas
+fr = Flèches
+de = Pfeiltasten
+ja = 矢印キー
+it = Frecce
+
+[play.key.shift]
+note = The keys line: the keyboard's Shift key, on a key cap, as the keyboards of the language print it; it is SELECT
+en = Shift
+zh-Hans = Shift
+es = Mayús
+pt-BR = Shift
+fr = Maj
+de = Umschalt
+ja = Shift
+it = Maiusc
+
+[play.key.enter]
+note = The keys line: the keyboard's Enter key, on a key cap; it is START. As controls.return
+en = Enter
+zh-Hans = 回车
+es = Intro
+pt-BR = Enter
+fr = Entrée
+de = Eingabe
+ja = Enter
+it = Invio

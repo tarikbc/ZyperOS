@@ -31,7 +31,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-p2ws check-p2codec check-p2d check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-p2ws check-p2codec check-p2d check-play check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
@@ -50,13 +50,16 @@ check: check-prep
 
 # What more than one check builds, built once before any of them starts: the
 # host launcher, which nine checks draw with, and the ScreenScraper header it
-# shares with check-ss. Without SDL2, the header alone.
+# shares with check-ss (without SDL2, the header alone); and player 2's p2d,
+# its feed and the codec check, which check-p2d, check-p2codec and check-play
+# run.
 check-prep:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native; \
 	else \
 		$(MAKE) --no-print-directory -f mk/native.mk VERSION=$(VERSION) creds; \
 	fi
+	@$(MAKE) --no-print-directory build-native/p2d build-native/p2d-feed build-native/p2codec-check
 
 # Diatom's own suite (diatom/Makefile's check) on its desktop port: SDL2's
 # dummy drivers and the stub core, no device and no ROM. It was only ever run
@@ -918,7 +921,8 @@ check-portkeys-flow:
 	@CC="$(CC)" python3 tools/portkeys-flow-check.py
 
 # The design tokens: DESIGN.md's tables, src/design.h, the mock kit's
-# tokens.js and Over The Hare's colors in res/web/app.css are all written by
+# tokens.js and Over The Hare's colors in res/web/app.css (and the play page's
+# in res/web/play/play.css) are all written by
 # tools/designdef.py, and every color meets the contrast DESIGN.md owes it.
 # `make design` writes them; this only compares.
 check-design:
@@ -1659,11 +1663,12 @@ build-native/mp4frame-check: tools/mp4frame-check.c src/mp4frame.h FORCE
 # Player 2's frame codec (src/p2d/codec.c): a frame of palette indices, XORed
 # with the last one, raw-deflated; and the decoder the page mirrors. The check
 # round-trips 100 frames, writes the fixtures the page's test reads, and prints
-# the encode time, so it builds with -O2 to mean something.
+# the encode time, so it builds with -O2 to mean something. check-play runs it
+# too, so it is built by its sources rather than FORCE, and in check-prep.
 check-p2codec: build-native/p2codec-check
 	@./build-native/p2codec-check
 
-build-native/p2codec-check: tools/p2codec-check.c src/p2d/codec.c src/p2d/codec.h FORCE
+build-native/p2codec-check: tools/p2codec-check.c src/p2d/codec.c src/p2d/codec.h
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/p2codec-check.c src/p2d/codec.c -lz
@@ -1681,10 +1686,13 @@ build-native/p2share-check: tools/p2share-check.c src/p2share.h FORCE
 # p2d, NES player 2's server (src/p2d/main.c), on the host: the play page,
 # the WebSocket of frames and buttons, the hotspot's DNS. The launcher's own
 # httpd and captive.c, linked as mk/cross.mk links them for the device, and
-# -O2 as there: it encodes 60 frames a second.
+# -O2 as there: it encodes 60 frames a second. Built by its sources rather
+# than FORCE, as is p2d-feed below: check-p2d and check-play both run them,
+# and two makes writing one binary at once under make check's parallel run
+# was a race. check-prep builds them first, so neither check builds them then.
 P2D_SRC = $(wildcard src/p2d/*.c) src/httpd.c src/captive.c
 build-native/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h src/p2share.h \
-                  src/monoclock.h src/xfer.h FORCE
+                  src/monoclock.h src/xfer.h
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O2 -g \
 	      -o $@ $(P2D_SRC) -lz
@@ -1692,7 +1700,7 @@ build-native/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h s
 # Frames into a share file as Diatom writes them (tools/p2d-feed.c): a moving
 # picture, or a fixture's frames in order, for p2d's check and the play
 # page's.
-build-native/p2d-feed: tools/p2d-feed.c src/p2share.h FORCE
+build-native/p2d-feed: tools/p2d-feed.c src/p2share.h
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/p2d-feed.c
@@ -1703,6 +1711,17 @@ build-native/p2d-feed: tools/p2d-feed.c src/p2share.h FORCE
 # turned away, the end of the game however it comes, and the DNS answer.
 check-p2d: build-native/p2d build-native/p2d-feed
 	@python3 tools/p2d-check.py
+
+# The play page (res/web/play), player 2's picture and pad, in headless Chrome
+# over build-native/p2d and a feed of the codec check's fixture frames
+# (tools/play-check.py): the canvas the frame it says it drew, every key and
+# touch to the share's pad, the pad drawn from the game's buttons and nothing
+# sent outside them, Picture off, a second browser told player 2 is taken, a
+# browser too old for the page, and the game's end. The fixtures go
+# into the check's own temp folder, never build-native's, which check-p2codec
+# may be writing at the same moment. Chrome is needed.
+check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check
+	@python3 tools/play-check.py
 
 check-musequeue: build-native/musequeue-check
 	@./build-native/musequeue-check

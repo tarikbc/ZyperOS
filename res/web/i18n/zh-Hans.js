@@ -2,6 +2,17 @@
 window.ZYPEROS_LANG = "zh-Hans";
 window.ZYPEROS_PLURAL = n => 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "玩家 2",
+  "play.state.connecting": "正在连接",
+  "play.state.player2": "玩家 2",
+  "play.state.taken": "玩家 2 已被占用",
+  "play.state.ended": "游戏已结束",
+  "play.old_browser": "此应用版本过旧，无法显示游戏。请更新后再试，或用其他应用打开此页面。",
+  "play.picture_off": "关闭画面",
+  "play.dpad": "方向键",
+  "play.key.arrows": "键盘方向键",
+  "play.key.shift": "Shift",
+  "play.key.enter": "回车",
   "name.wifi": "Wi-Fi 文件传输",
   "name.usb": "USB 文件传输",
   "gate.sub": "请输入掌机屏幕上显示的 PIN。",

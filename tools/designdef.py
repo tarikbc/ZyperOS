@@ -16,6 +16,8 @@ Writes, from the tables in this file alone:
                                its generated:tokens marks, Beard and Salt &
                                Pepper by the browser's prefers-color-scheme;
                                --check also holds the page's text pairs
+  res/web/play/play.css        the same block, for NES player 2's play page,
+                               held to the same pairs
 
 DESIGN.md says what each token is for and why; this file only says what it
 is. Standard library only, so `make check` runs it anywhere, as
@@ -362,18 +364,24 @@ def contrast_failures():
     return bad
 
 
-def page_role_failures(css):
-    """The roles res/web/app.css sets as a text color or a background,
-    outside its generated block, that PAGE_TEXT_ON and PAGE_FILLS do not name."""
+# The pages that wear the tokens: Wi-Fi File Transfer's, and NES player 2's
+# play page in its clothes. The panel lift is for the File Transfer page's
+# panel (fill_css), the play page's too-old panel being as wide.
+PAGE_CSS = ("res/web/app.css", "res/web/play/play.css")
+
+
+def page_role_failures(css, name):
+    """The roles a page's CSS sets as a text color or a background, outside
+    its generated block, that PAGE_TEXT_ON and PAGE_FILLS do not name."""
     css = re.sub(r"/\* generated:tokens \*/.*?/\* /generated:tokens \*/", "", css, flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     texts = set(re.findall(r"(?<![-\w])color:\s*var\(--([a-z-]+)\)", css))
     grounds = set(re.findall(r"background(?:-color)?:\s*var\(--([a-z-]+)\)", css))
     grounds |= set(re.findall(r"background(?:-color)?:\s*rgba\(var\(--([a-z-]+)-rgb\)", css))
     named = {g for gs in PAGE_TEXT_ON.values() for g in gs} | set(PAGE_FILLS)
-    bad = ["res/web/app.css sets text in %s, which PAGE_TEXT_ON does not hold to its grounds" % r
+    bad = ["%s sets text in %s, which PAGE_TEXT_ON does not hold to its grounds" % (name, r)
            for r in sorted(texts - set(PAGE_TEXT_ON))]
-    bad += ["res/web/app.css fills a background with %s, which PAGE_TEXT_ON and PAGE_FILLS do not name" % r
+    bad += ["%s fills a background with %s, which PAGE_TEXT_ON and PAGE_FILLS do not name" % (name, r)
             for r in sorted(grounds - named)]
     return bad
 
@@ -637,13 +645,14 @@ def css_tokens(panel_w):
     return "\n".join(L)
 
 
-def fill_css(text):
-    """The page's token block, for a panel as wide as the page's own
-    .gate .panel says (its max-width), so the two cannot drift."""
+def fill_css(text, app_css, name):
+    """A page's token block, for a panel as wide as the File Transfer page's
+    own .gate .panel says (its max-width, in app_css), so the two cannot
+    drift."""
     pat = re.compile(r"(/\* generated:tokens \*/\n).*?(/\* /generated:tokens \*/)", re.S)
     if not pat.search(text):
-        raise SystemExit("res/web/app.css has no generated:tokens block")
-    w = re.search(r"\.gate \.panel \{[^}]*?max-width:\s*(\d+)px", text, re.S)
+        raise SystemExit("%s has no generated:tokens block" % name)
+    w = re.search(r"\.gate \.panel \{[^}]*?max-width:\s*(\d+)px", app_css, re.S)
     if not w:
         raise SystemExit("res/web/app.css's .gate .panel has no max-width in px")
     return pat.sub(lambda m: m.group(1) + css_tokens(int(w.group(1))) + "\n" + m.group(2), text)
@@ -712,24 +721,29 @@ def fill_md(text):
 
 def outputs():
     md_path = os.path.join(ROOT, "DESIGN.md")
-    css_path = os.path.join(ROOT, "res", "web", "app.css")
     with open(md_path) as f:
         md = f.read()
-    with open(css_path) as f:
-        css = f.read()
-    return {
+    css = {}
+    for name in PAGE_CSS:
+        with open(os.path.join(ROOT, name)) as f:
+            css[name] = f.read()
+    out = {
         md_path: fill_md(md),
         os.path.join(ROOT, "src", "design.h"): design_h(),
         os.path.join(ROOT, "docs", "design", "mock", "tokens.js"): tokens_js(),
-        css_path: fill_css(css),
     }
+    for name, text in css.items():
+        out[os.path.join(ROOT, name)] = fill_css(text, css[PAGE_CSS[0]], name)
+    return out
 
 
 def main():
     check = "--check" in sys.argv[1:]
     bad = contrast_failures()
-    with open(os.path.join(ROOT, "res", "web", "app.css")) as f:
-        unlisted = page_role_failures(f.read())
+    unlisted = []
+    for name in PAGE_CSS:
+        with open(os.path.join(ROOT, name)) as f:
+            unlisted += page_role_failures(f.read(), name)
     same = same_failures()
     stale = []
     for path, want in outputs().items():
@@ -756,7 +770,7 @@ def main():
         print("  FAIL %s is not what tools/designdef.py writes: run `make design`" % s)
     if bad or unlisted or same or stale:
         sys.exit(1)
-    print("design: tokens, DESIGN.md, src/design.h, the mock kit and Wi-Fi File Transfer's page agree;"
+    print("design: tokens, DESIGN.md, src/design.h, the mock kit, Wi-Fi File Transfer's page and the play page agree;"
           " every color meets its contrast, the page's text pairs too; the accent is one value in both themes")
 
 

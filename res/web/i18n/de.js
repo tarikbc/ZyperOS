@@ -2,6 +2,17 @@
 window.ZYPEROS_LANG = "de";
 window.ZYPEROS_PLURAL = n => n === 1 ? 0 : 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "Spieler 2",
+  "play.state.connecting": "Verbindung wird hergestellt",
+  "play.state.player2": "Spieler 2",
+  "play.state.taken": "Spieler 2 ist schon belegt",
+  "play.state.ended": "Das Spiel ist beendet",
+  "play.old_browser": "Dieser Browser ist zu alt, um das Spiel anzuzeigen. Aktualisiere ihn oder öffne diese Seite in einem anderen Browser.",
+  "play.picture_off": "Ohne Bild",
+  "play.dpad": "Steuerkreuz",
+  "play.key.arrows": "Pfeiltasten",
+  "play.key.shift": "Umschalt",
+  "play.key.enter": "Eingabe",
   "name.wifi": "WLAN-Dateiübertragung",
   "name.usb": "USB-Dateiübertragung",
   "gate.sub": "Gib die PIN vom Bildschirm der Konsole ein.",
