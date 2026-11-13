@@ -131,8 +131,16 @@ bool diatom_core_open(diatom_core *c, const char *path)
  *
  * Sixteen was exact by 2026-11-04 (a Pixel 2 card premapped 16), the day
  * ROGUE OS's other systems brought ten more cores: 26, and Nintendo 64, MAME
- * and the rest refused at RUN. Thirty-two leaves room again. The number is
- * DIATOM_MAX_RESIDENT, in diatom.h, which options.c sizes its tables by. */
+ * and the rest refused at RUN. Thirty-two left room again, until 1.0.5's
+ * PSP, Doom, ColecoVision and TIC-80 made 34 (2026-11-12): the Pixel 2 card
+ * premapped 32 and refused the last two in folder order, vecx and
+ * yabasanshiro, so every Vectrex and Saturn game started in the launcher's
+ * one-off Diatom instead. Sixty-four, and tools/core-room-check.sh (make
+ * check) and mk/payload.sh now fail a build whose cores outnumber it, so the
+ * next shelf that crosses it is caught before a card has it. An empty slot
+ * costs its path, 1 kB, and options.c's table for it, untouched BSS until a
+ * core uses it. The number is DIATOM_MAX_RESIDENT, in diatom.h, which
+ * options.c sizes its tables by. */
 #define MAX_RESIDENT DIATOM_MAX_RESIDENT
 static diatom_core      g_resident[MAX_RESIDENT];
 static char             g_resident_path[MAX_RESIDENT][1024];
