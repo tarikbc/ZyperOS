@@ -55,6 +55,7 @@ int         hotspot_phones(void)   { return g_phones; }
 
 static pid_t    g_hostapd, g_udhcpd;
 static int      g_dns = -1, g_ctrl = -1;
+static bool     g_own_dns = true;    /* this file answers the DNS */
 static bool     g_was_on;            /* the supplicant ran before us */
 static unsigned g_t0, g_next_ask;
 
@@ -254,7 +255,8 @@ static void bring_up(void)
 
 	set_addr(CAPTIVE_ADDR, true);
 	inet_pton(AF_INET, CAPTIVE_ADDR, &a.sin_addr);
-	g_dns = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	/* Without its own DNS (a game's hotspot) port 53 is p2d's: no socket. */
+	g_dns = g_own_dns ? socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0) : -1;
 	if (g_dns >= 0) {
 		setsockopt(g_dns, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
 		if (bind(g_dns, (struct sockaddr *)&a, sizeof a) < 0) {
@@ -301,7 +303,9 @@ static bool ask_status(void)
 	return strstr(out, "state=ENABLED") != NULL;
 }
 
-bool hotspot_start(void)
+bool hotspot_start(void) { return hotspot_start_dns(true); }
+
+bool hotspot_start_dns(bool own_dns)
 {
 	uint8_t rnd[CAPTIVE_PASS_RANDOM];
 	char mac[32], conf[1024];
@@ -313,6 +317,7 @@ bool hotspot_start(void)
 
 	if (g_state != HOTSPOT_OFF) hotspot_stop();
 	if (!hotspot_available()) return false;
+	g_own_dns = own_dns;
 	mkdir(DIR, 0700);
 	reap_stale(DIR "/hostapd.pid", "hostapd");
 	reap_stale(DIR "/udhcpd.pid", "udhcpd");
@@ -458,6 +463,7 @@ void hotspot_stop(void)
 
 bool          hotspot_available(void) { return false; }
 bool          hotspot_start(void)     { return false; }
+bool          hotspot_start_dns(bool own_dns) { (void)own_dns; return false; }
 hotspot_state hotspot_poll(void)      { return g_state; }
 void          hotspot_stop(void)      { g_state = HOTSPOT_OFF; }
 
