@@ -188,6 +188,11 @@ send("SETDISPLAY\tfilter=shimmerless"); got = drain()
 check_that("shimmerless is a filter, the mode kept",
            len(got) == 1 and got[0].startswith("DISPLAY\tmode=integer\tfilter=shimmerless\trect="),
            got)
+# The old screens, each by its name (src/scale.c diatom_filters)
+for name in ("crt", "crt-curved", "scanlines", "lcd"):
+    send("SETDISPLAY\tfilter=" + name); got = drain()
+    check_that("filter " + name + " is taken and said back",
+               len(got) == 1 and ("\tfilter=" + name + "\t") in got[0], got)
 send("SETDISPLAY\tmode=stretch\tfilter=nearest"); got = drain()
 check_that("and nearest again with a mode",
            len(got) == 1 and got[0].startswith("DISPLAY\tmode=stretch\tfilter=nearest\trect="),

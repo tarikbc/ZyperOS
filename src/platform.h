@@ -449,6 +449,10 @@ void plat_charge_limit_set(int pct);
  * hides everything that needs it (src/sys_menu.h). */
 bool plat_has_wifi(void);
 bool plat_has_bluetooth(void);
+/* Whether Diatom draws its old screens here, the shaders a GPU draws (the
+ * CRT, scanlines, the LCD grid; src/app.h SHADERS' gpu): on the Pixel 2,
+ * whose pass is a GPU's; not on the Brick, whose is the CPU's */
+bool plat_gpu_shaders(void);
 /* Whether the built-in speaker is one speaker, as on the GKD Pixel 2, where
  * the Brick has two: Audio Channels' Auto is mono there and stereo on
  * everything else (src/audioout.h). */

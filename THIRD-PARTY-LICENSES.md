@@ -35,12 +35,19 @@ Diatom and for plastron, the Linux system under ZyperOS, and ZyperOS's own
   it carries.
 - ZyperOS starts it as a process of its own and talks to it through a Unix
   socket. The launcher does not link to it.
-- **Sharp-Shimmerless**, the shader the Shader rows offer, is zadpos's
-  (https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader at 2a74e7a),
-  under **CC0 1.0 Universal**: public domain, as its source says. Diatom
-  carries it ported to OpenGL ES 3.0 in `diatom/port/pixel2.c` and as the
-  Brick's resampling map in `diatom/port/brick.c`; `diatom/THIRD-PARTY.md`
-  says more.
+- **The Shader rows' shaders**, ported to OpenGL ES 3.0 in
+  `diatom/port/pixel2.c`; `diatom/THIRD-PARTY.md` says more. None is GPL, so
+  Diatom's own files stay under its license:
+  - **Sharp-Shimmerless**, and its grid and scanlines variants (Scanlines,
+    LCD Grid), are zadpos's
+    (https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader at 2a74e7a),
+    under **CC0 1.0 Universal**: public domain, as their source says.
+    Sharp-Shimmerless is the Brick's resampling map in
+    `diatom/port/brick.c` too.
+  - **CRT** and **CRT Curved** are Timothy Lottes's CRTS,
+    *"PUBLIC DOMAIN CRT-STYLED SCALAR - 20180120b"*, from libretro's
+    glsl-shaders (https://github.com/libretro/glsl-shaders at a350698,
+    `crt/shaders/crt-lottes-fast.glsl`): **public domain**.
 
 ---
 
