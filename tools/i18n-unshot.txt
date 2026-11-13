@@ -340,7 +340,6 @@ media.vnote_link
 media.vnote_none
 
 # menu: no shot draws it yet
-menu.on
 
 # mp4: no shot draws it yet
 mp4.hold_unlock

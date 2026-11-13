@@ -5224,7 +5224,7 @@ static int menu_value_w(TTF_Font *fm, const char *v)
 	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
 	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
 	if (v == MENU_KEY_Y_ON || v == MENU_KEY_Y_OFF)
-		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF)) + MENU_KEY_GAP
+		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE)) + MENU_KEY_GAP
 		       + ui_button_width("Y", MENU_KEY_SIZE);
 	return v ? ui_text_width(fm, v) : 0;
 }
@@ -6345,7 +6345,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				ui_button(a->r, "Y", content_x + content_w - bw / 2,
 				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
-				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF),
+				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE),
 				        content_x + content_w - bw - MENU_KEY_GAP, ty, 1, vc);
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
@@ -8827,6 +8827,94 @@ static void xs_way_draw(app *a, const menu_row *rows, int n)
 	g_menu_header_h = 0;
 }
 
+/* THE CABLE'S LOADING BAR (DESIGN.md 11.35, 2026-11-12: "usb file transfer
+ * takes a while to start, we need a loading state"). Over the cable the
+ * address and the PIN cannot work until the computer has taken the handheld,
+ * opened its network on it and taken its address, a few seconds and more the
+ * first time Windows sees it. Until then the way in's panel says so, in the
+ * same place: the screen's name, "Connecting to the computer" in **label**,
+ * and a **bar** on **track** filling with **accent-ink**, a third for each
+ * of the three. While one is waited on, its third creeps toward three
+ * quarters of the way (never the whole: the computer has not done it yet);
+ * the step row under the rule says which. Once the address is in, the bar
+ * runs to its end and the way in takes its place. A stalled step's hint
+ * still takes the whole panel (xs_step_rows). g_load_k is what the header
+ * draws. */
+static float g_load_k;
+
+#define XS_LOAD_BAR_W 420
+#define XS_LOAD_CREEP_MS 3000.0f   /* a waited step's creep: 63% of its room in this */
+#define XS_LOAD_EASE_MS  150.0f    /* the fill catching up with where it should be */
+
+/* Where the bar should be: a third for each of the computer taking the
+ * handheld, its network and its address, and the creep of the one waited
+ * on. No computer (sub 0) or one waiting for power (sub 4) does not creep:
+ * nothing is coming. */
+static float xs_load_target(const link_steps *s, unsigned now)
+{
+	float creep = 0.0f;
+	int k;
+
+	if (!s->started) return 0.0f;
+	if (s->step >= LS_BROWSER) return 1.0f;
+	k = s->step == LS_ADDRESS ? 2 : s->sub == 2 ? 1 : 0;
+	if (s->step == LS_ADDRESS || s->sub == 1 || s->sub == 2)
+		creep = 0.75f * (1.0f - expf(-(float)(now - s->since) / XS_LOAD_CREEP_MS));
+	return ((float)k + creep) / 3.0f;
+}
+
+/* One pass of the bar (the session's fill `k` and the moment `ms` it last
+ * moved): the fill eases up toward where it should be, and drops at once
+ * when a step is lost (the cable out). True while it is short of its end,
+ * when the loading view is the one up. */
+static bool xs_load_step(const link_steps *s, float *k, unsigned *ms, unsigned now)
+{
+	float target = xs_load_target(s, now), dt;
+
+	dt = *ms ? (float)(now - *ms) : 0.0f;
+	if (dt > 100.0f) dt = 100.0f;
+	*ms = now ? now : 1;
+	if (target < *k) *k = target;
+	else *k += (target - *k) * (dt >= XS_LOAD_EASE_MS ? 1.0f : dt / XS_LOAD_EASE_MS);
+	if (target >= 1.0f && *k > 0.995f) *k = 1.0f;
+	return *k < 1.0f;
+}
+
+static void xs_load_header(app *a, const SDL_Rect *q)
+{
+	const ds_theme *t = theme();
+	const char *say = T(S_XFER_CONNECTING);
+	TTF_Font *fm = ui_font(UI_F_META), *fl = ui_font(UI_F_LABEL);
+	const int cx = q->x + q->w / 2, y = q->y;
+	SDL_Rect bar = { cx - XS_LOAD_BAR_W / 2, y + 232, XS_LOAD_BAR_W, UI_BAR_H };
+	int fill = (int)(XS_LOAD_BAR_W * (g_load_k < 0 ? 0 : g_load_k > 1 ? 1 : g_load_k) + 0.5f);
+
+	ui_text(a->r, fm, g_way.title, cx, ui_cap_y(fm, y + 18), 0, UI_TEXT_DIM);
+	/* **label**, or **menu** where a language's words do not fit it whole,
+	 * and sliding past that, never cut */
+	if (ui_text_width(fl, say) > q->w) fl = ui_font(UI_F_MENU);
+	if (ui_text_width(fl, say) <= q->w)
+		ui_text(a->r, fl, say, cx, ui_cap_y(fl, y + 160), 0, UI_TEXT);
+	else
+		ui_text_marquee(a->r, fl, say, q->x, ui_cap_y(fl, y + 160), q->w, plat_now_ms(), UI_TEXT);
+	ui_round_rect(a->r, &bar, UI_BAR_H / 2, ui_col(t->track, 255));
+	if (fill > 0)
+		ui_round_rect(a->r, &(SDL_Rect){ bar.x, bar.y, fill, UI_BAR_H }, UI_BAR_H / 2,
+		              ui_col(t->accent_ink, 255));
+}
+
+/* One frame of the loading view: the way in's panel, rows and all, with
+ * the bar in place of what to type */
+static void xs_load_draw(app *a, const menu_row *rows, int n, float k)
+{
+	g_load_k = k;
+	g_menu_header = xs_load_header;
+	g_menu_header_h = XS_WAY_H;
+	menu_draw(a, NULL, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
+}
+
 /* The hotspot's heading once someone came in (the news replaces its code):
  * its network and password, then the PIN, for another phone. Where the
  * network and the password do not fit one line of the panel's heading
@@ -10612,6 +10700,10 @@ typedef struct {
 	 * signed in. The screen is the way in until then and its news after,
 	 * and stays the news when they leave (DESIGN.md 11.35) */
 	bool        met;
+	/* The cable's loading bar (xs_load_step): its fill as drawn, 0..1, and
+	 * the moment it last moved */
+	float       load_k;
+	unsigned    load_ms;
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
 } xfer_sess;
@@ -11720,8 +11812,9 @@ static void xfer_screen_way(app *a, int way)
 	char       hint[320], lines[3][LB_LINE];
 	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
-	/* which view is up: the way in, the steps, the news, the hotspot's */
-	enum { WAY_IN, WAY_STEPS, WAY_NEWS, WAY_HOT } view;
+	/* which view is up: the way in, the cable's loading bar, the steps, the
+	 * news, the hotspot's */
+	enum { WAY_IN, WAY_LOAD, WAY_STEPS, WAY_NEWS, WAY_HOT } view;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
 	int        cover_left = -1, cover_albums = -1;
 	unsigned long long cover_moved = 0;
@@ -11820,6 +11913,11 @@ static void xfer_screen_way(app *a, int way)
 			else {
 				xs_way_set(g_xs.cable, name, g_xs.addr, g_xs.pin);
 				nrows = xs_way_rows(rows, &g_xs.steps, g_xs.cable, XS_LEGEND);
+				/* Over a cable the device can read, the loading bar until
+				 * the computer has its address and the bar its end */
+				if (g_xs.cable && g_xs.sensed
+				    && xs_load_step(&g_xs.steps, &g_xs.load_k, &g_xs.load_ms, now))
+					view = WAY_LOAD;
 			}
 		} else if (!g_xs.met) {
 			view = WAY_HOT;
@@ -11924,8 +12022,13 @@ static void xfer_screen_way(app *a, int way)
 			    : view == WAY_IN
 			    ? pace_str(pace_str(pace_rows(NULL, rows, nrows, -1, k, a->tint), g_way.first),
 			               g_way.second)
+			    : view == WAY_LOAD
+			    ? pace_int(pace_rows(NULL, rows, nrows, -1, k, a->tint), (int)(g_xs.load_k * 1000.0f))
 			    : pace_rows(head, rows, nrows, -1, k, a->tint);
-			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
+			/* the bar catching up draws every pass; its creep, slow, by its key */
+			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING)
+			              || (view == WAY_LOAD
+			                  && xs_load_target(&g_xs.steps, nowp) - g_xs.load_k > 0.002f);
 			bool busy = moving || pace_busy(a);
 
 			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
@@ -11943,6 +12046,7 @@ static void xfer_screen_way(app *a, int way)
 			ui_scrim_k(a->r, 0, k);
 			if (view == WAY_HOT) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
 			else if (view == WAY_IN) xs_way_draw(a, rows, nrows);
+			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
 			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -13563,7 +13667,7 @@ static void about_refresh(about_view *v, unsigned now)
 	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
 	v->nsystem = 4;
 	if (devmode_unlocked(db_dev())) {
-		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON), false };
+		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON_TITLE), false };
 	} else if (devmode_hold_permille(&v->hold, now) > 0) {
 		/* The row comes with the hold, its bar drawn over its value (about_draw) */
 		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), NULL, false };
@@ -24362,6 +24466,10 @@ static void shot_compose(app *a)
 	if (shot_steps_way) {
 		static const struct { const char *name; int step, sub, hint; } ST[] = {
 			{ "unplugged",  LS_LINK,    0, LH_NONE },
+			/* a computer that has not taken the handheld yet, and one
+			 * that took it and has not opened its network: the loading bar */
+			{ "taking",     LS_LINK,    1, LH_NONE },
+			{ "opening",    LS_LINK,    2, LH_NONE },
 			{ "nocomputer", LS_LINK,    0, LH_NO_COMPUTER },
 			{ "noanswer",   LS_LINK,    1, LH_NO_ANSWER },
 			{ "nodriver",   LS_LINK,    2, LH_NO_DRIVER },
@@ -24405,7 +24513,12 @@ static void shot_compose(app *a)
 		} else {
 			xs_way_set(cable, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
 			n = xs_way_rows(rows, &st, cable, b_legend(S_KEYHINT_CLOSE));
-			xs_way_draw(a, rows, n);
+			/* over the cable, before the address: the loading bar, its
+			 * step waited on for a second and a half */
+			if (cable && st.step < LS_BROWSER)
+				xs_load_draw(a, rows, n, xs_load_target(&st, 1500));
+			else
+				xs_way_draw(a, rows, n);
 		}
 	}
 	if (shot_hare)

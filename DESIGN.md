@@ -284,8 +284,10 @@ Lexend's time the first time it is drawn, then cached like any line.
   where the mock's is 77.
 - Digits that change while on screen are tabular (`ui_text_tabular`).
 - **Title Case** for headings, menu rows and named choices ("Audio Output",
-  "Light"). **lowercase** for status words in the value column
-  ("off", "not connected", "needs Wi-Fi"). **Sentence case** for lines and
+  "Light"), a switch's "On" and "Off" among them (Developer Mode, Wi-Fi
+  and Bluetooth, Swap Screens, 2026-11-12: "Off/On in the dev mode row in
+  settings should be capitalized"). **lowercase** for status words in the
+  value column ("not connected", "needs Wi-Fi", "never"). **Sentence case** for lines and
   messages ("Press A to open the game you are on.").
 - No italics, no letter spacing, no all-caps except button names, which are
   written as printed on the handheld: A, B, X, Y, L1, R1, L2, R2, START,
@@ -2766,6 +2768,22 @@ connected", **Address** "waiting", **Browser** "waiting", or **PIN**
 "waiting" once a browser has the page), then the rule and the key legend
 (11.4), "B: close".
 
+**Connecting** (2026-11-12: "usb file transfer takes a while to start, we
+need a loading state"). Over the cable the address and the PIN cannot work
+until the computer has taken the handheld, opened its network on it and
+taken its address: a few seconds, and more the first time Windows sees it.
+Until then, on a device that can see those steps (the Pixel 2), the way in's
+panel says so in the same place and size: the screen's name, "Connecting to
+the computer" in **label** **text** (**menu** where a language's words do not
+fit it whole) with its cap centre 160 down the header, and under it a
+**bar** 420 wide at 232 on **track**, filling with **accent-ink**, a third
+for each of the three. While one is waited on, its third creeps toward three
+quarters of the way, 63% of that in 3 s (never the whole: the computer has
+not done it yet); no computer, or one waiting for power, does not creep.
+The fill eases up in 150 ms and drops at once when a step is lost (the cable
+out). The step row under the rule says which step it is on. Once the address
+is in, the bar runs to its end and the way in takes its place.
+
 The hotspot screen (11.16) keeps its code, network and password and PIN
 until someone comes in; it is its own way in.
 
@@ -2796,9 +2814,10 @@ type, at full size. The way in comes back as the step moves on, and the
 steps come back if the cable or the Wi-Fi goes before anyone came in.
 
 Host shots: `--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged,
-nocomputer, noanswer, nodriver, address, noaddress, browser, nobrowser,
-waits, replug, nonetwork and pin (a stalled step shows the steps, the rest
-the way in); `--hare-addr
+taking, opening, nocomputer, noanswer, nodriver, address, noaddress,
+browser, nobrowser, waits, replug, nonetwork and pin (a stalled step shows
+the steps; over the cable a step before the browser shows Connecting, its
+step waited on for 1.5 s; the rest the way in); `--hare-addr
 ADDR` for the way in's address (a long one, for the fit); `--hotspot SSID
 PASS PHONES NOW --hotspot-in` for the hotspot after someone came in.
 

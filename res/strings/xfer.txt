@@ -135,6 +135,17 @@ de = Hotspot wird gestartet ...
 ja = ホットスポットを起動中…
 it = Avvio dell'hotspot...
 
+[xfer.connecting]
+note = The line over the bar while USB File Transfer waits for the computer to take the handheld, open its network and take an address, before the address and the PIN can work (DESIGN.md 11.35). One line in label size, about 750 units at most.
+en = Connecting to the computer
+zh-Hans = 正在连接电脑
+es = Conectando con la computadora
+pt-BR = Conectando ao computador
+fr = Connexion à l'ordinateur
+de = Verbindung zum Computer
+ja = パソコンに接続中
+it = Connessione al computer
+
 [xfer.hotspot_failed]
 note = The message when the hotspot did not start.
 en = Could not start the hotspot.

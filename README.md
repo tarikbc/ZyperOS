@@ -487,7 +487,7 @@ The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works w
 
 On the Pixel 2 the USB port only charges until you say otherwise, so a computer sees nothing at first. When one is plugged in, the shelf asks once (MENU closes for it; a game is never interrupted), **Computer Connected**: **Charge Only** (where it starts, and what **B** means), **File Transfer**, **Flash Drive** (and on development images **Developer (SSH)**). A wall charger is never asked about. **Flash Drive** makes the card a plain flash drive that any computer opens with no driver, Windows 10 included: ZyperOS steps aside, its screen showing how fast the computer copies to the card and reads from it, and how much, until you eject it on the computer or pull the cable, then the card is checked if needed and ZyperOS comes back where it was. The handheld never uses the card while the computer has it.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
 2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
@@ -497,7 +497,7 @@ On the Pixel 2 the USB port only charges until you say otherwise, so a computer 
 
 <img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer when the computer takes no address: Address waiting, and a hint to check Network adapters in Device Manager">
 
-On the Pixel 2, until someone types the PIN, USB File Transfer shows under the PIN where the connection is: **Cable**, **Address**, **Browser** or **PIN**, waiting. When a step before the browser waits too long, the screen shows the connection as the handheld sees it, in three steps that tick as the computer gets there, with what to do about the one that waits:
+On the Pixel 2, USB File Transfer shows **Connecting to the computer** and a bar until the computer has its address, then the address and the PIN. Under them it says where the connection is: **Cable**, **Address**, **Browser** or **PIN**, waiting. When a step before the browser waits too long, the screen shows the connection as the handheld sees it, in three steps that tick as the computer gets there, with what to do about the one that waits:
 
 - **Cable**: the computer took the handheld and opened its network. `unplugged` means no computer is on the cable: some USB cables only charge, so try another. Still waiting after 10 seconds, the screen says why: the computer did not answer (try another port or cable), or it has no driver for the handheld (on Windows, look in Device Manager).
 - **Address**: the computer took the address the handheld gives it, `10.42.0.2`. After 10 seconds without one, the screen points to Network adapters in Windows' Device Manager.
