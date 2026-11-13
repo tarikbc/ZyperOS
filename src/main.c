@@ -7202,7 +7202,14 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.games = screen == SCREEN_GAMES;
 	u.no_wifi = !plat_has_wifi();
 	u.no_bt   = !plat_has_bluetooth();
-	u.cable_xfer = plat_cable_link(NULL, 0);
+	/* USB File Transfer over the cable, or over a phone's tethering that
+	 * has its address (only looked at: phone_link_due set it up) */
+	{
+		char pip[64];
+
+		u.cable_xfer = plat_cable_link(NULL, 0) ||
+		               (plat_phone_link(false, NULL, 0, pip, sizeof pip) && pip[0]);
+	}
 	u.no_developer = !dev_offered();
 	u.developer  = dev_row_on();
 	u.hotspot = hotspot_available();     /* two stats, no fork */
@@ -10564,6 +10571,9 @@ static int usb_power_rows(menu_row rows[UP_TILES + 1])
 static void replug_on(unsigned plug);
 
 static void phone_said_on(unsigned plug);
+/* The plug answered Phone, 0 none: only its tethering is acted on by itself
+ * (phone_link_due) */
+static unsigned g_phone_plug;
 
 static void replug_off(void);
 
@@ -10697,6 +10707,7 @@ static void usb_power_ask(app *a, unsigned plug)
 	 * message once it is seen (power_follow) */
 	if (choice == UP_PHONE) {
 		plat_usb_power_grant(plug);
+		g_phone_plug = plug;
 		phone_said_on(plug);
 		return;
 	}
@@ -10747,26 +10758,38 @@ static void replug_off(void)
 }
 
 /* A phone's USB tethering (phonelink.h), looked at twice a second while
- * the port is a host: true once a link, when it has its address and File
- * Transfer is not on (`xfer_on`), so the shelf opens it there. The phone
- * message goes then: its words are done. */
+ * the port powers the plug the player answered Phone for: true once a link,
+ * when it has its address and File Transfer is not on (`xfer_on`), so the
+ * shelf opens it there. The phone message goes then: its words are done.
+ * Only for that plug: a network device on a plug answered USB Accessory, or
+ * powered by Automatic, is never given a lease or a File Transfer by itself
+ * (anything can say it is a USB network). MENU's USB File Transfer opens
+ * on the phone's link again once it has its address. */
 static bool phone_link_due(bool xfer_on)
 {
 	static unsigned looked;
 	static char last[64];
+	static bool acted;                  /* plat_phone_link set it up */
 	unsigned now = plat_now_ms();
 	char ifname[32], ip[64];
-	usb_power p;
+	usb_power p = { 0 };
 
 	if (looked && now - looked < 500u) return false;
 	looked = now ? now : 1;
-	if (!plat_usb_power(&p) || !p.host) {
-		/* the port no host: no phone's network can be there, and none is
-		 * looked for (the scan is for the host's devices) */
+	if (!g_phone_plug || !plat_usb_power(&p) || !p.host || p.plug != g_phone_plug) {
+		/* not the phone's plug, or the port no host: none is looked for
+		 * (the scan is for the host's devices); the phone just gone, its
+		 * lease's client goes too (plat_phone_link finds no interface) */
+		if (acted && !p.host) {
+			plat_phone_link(true, NULL, 0, NULL, 0);
+			acted = false;
+		}
 		if (last[0]) phonelink_new(last, NULL, NULL);
+		if (g_phone_plug && p.known && p.plug != g_phone_plug) g_phone_plug = 0;
 		return false;
 	}
-	if (!plat_phone_link(ifname, sizeof ifname, ip, sizeof ip)) ifname[0] = ip[0] = '\0';
+	acted = true;
+	if (!plat_phone_link(true, ifname, sizeof ifname, ip, sizeof ip)) ifname[0] = ip[0] = '\0';
 	if (!phonelink_new(last, ifname, ip) || xfer_on) return false;
 	fprintf(stderr, "usb: the phone shared its network: %s on %s\n", ip, ifname);
 	ulog_note("phone network");
@@ -11442,7 +11465,7 @@ static bool xs_open(app *a, int way)
 	/* A phone's tethering (way 2, or whichever: the port a host with a
 	 * phone's network on it, which the cable cannot be then) */
 	const bool  phone = way == 2 || (way < 0 && !plat_cable_link(NULL, 0) &&
-	                                 plat_phone_link(NULL, 0, ip, sizeof ip) && ip[0]);
+	                                 plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]);
 	const bool  cable = !phone && (way < 0 ? plat_cable_link(NULL, 0) : way == 1);
 	const char *name  = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
 	const bool  hot   = !cable && !phone && xfer_wants_hotspot();
@@ -11619,7 +11642,7 @@ static void xs_tick(app *a)
 		else snprintf(g_xs.addr, sizeof g_xs.addr, "%s:%d", hotspot_addr(), hare_port());
 	} else if (!g_xs.addr[0] || now - g_xs.addr_at > 2000u) {
 		bool up = g_xs.cable ? plat_cable_link(ip, sizeof ip)
-		        : g_xs.phone ? plat_phone_link(NULL, 0, ip, sizeof ip) && ip[0]
+		        : g_xs.phone ? plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]
 		        : wifi_status(ssid, sizeof ssid, ip, sizeof ip) == WIFI_CONNECTED && ip[0];
 
 		g_xs.addr_at = now;
@@ -11900,7 +11923,7 @@ static bool xs_shelf_due(void)
 	return false;
 }
 
-static bool xs_row_cable(void) { return g_xs.cable; }
+static bool xs_row_cable(void) { return g_xs.cable || g_xs.phone; }
 
 /* The corner's mark: on behind the shelf, and the ring as far as the
  * upload on its way (status.h). Not while its own screen is up. */
@@ -24235,9 +24258,10 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
-/* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
+/* --usb-power [N]: What did you plug in?, row N focused (1, Computer,
  * where it starts; 2, Phone); --usb-power said: the message after
- * Computer; --usb-power phone: the message after Phone */
+ * Computer; --usb-power phone: the message after Phone; --usb-power
+ * iphone: an iPhone's */
 static int shot_power = -1;
 static int shot_usbdrive = -1;   /* --usb-drive N */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
@@ -25200,7 +25224,8 @@ static void shot_compose(app *a)
 			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
 		} else {
 			/* The answer's message over the shelf, as the overlay draws it */
-			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER : USBPOWER_SAY_PHONE;
+			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER
+			             : shot_power == UP_TILES + 1 ? USBPOWER_SAY_PHONE : USBPOWER_SAY_IPHONE;
 			replug_draw_at(a->r);
 		}
 	}
@@ -27358,6 +27383,7 @@ int main(int argc, char *argv[])
 			shot_power = UP_COMPUTER;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = UP_TILES; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { shot_power = UP_TILES + 1; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "iphone")) { shot_power = UP_TILES + 2; i++; }
 			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '2')
 				shot_power = atoi(argv[++i]);
 		}

@@ -1,6 +1,6 @@
 # USB that just works: the phone link (1.0.5)
 
-2026-11-13. Branch `usb-phone-link`. Status: design, waiting for the device proof and Tarik's OK.
+2026-11-13. Branch `usb-phone-link`. Status: Tarik approved the screens (real launcher shots, 2026-11-13); built; the device proof waits for Tarik.
 
 ## What the hardware does (evidence)
 
@@ -44,6 +44,14 @@
 
 An iPhone: when the device on the bus is Apple's, the message says an iPhone opens the files over
 Wi-Fi File Transfer, or with a USB-C to USB-A adapter and a USB-A to USB-C cable.
+
+Only for the plug the player answered Phone: anything can say it is a USB network device, so a plug
+powered as USB Accessory or by Automatic gets no lease and no File Transfer by itself. MENU's row is USB
+File Transfer while the phone's link has its address.
+
+"What did you plug in?" becomes a list (Tarik: "improve the what did you plug in screen design"): each
+row its mark, its name and one line of what it does (headphones, Wi-Fi, keyboard / files, or the card as
+a flash drive / files in the phone's browser). Hints A Choose, B Computer; Up and Down move.
 
 ## What does not change
 

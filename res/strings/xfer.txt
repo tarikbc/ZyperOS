@@ -94,7 +94,7 @@ it = file, o la scheda come chiavetta USB
 [xfer.tile_phone_sub]
 note = The small line under Phone in the same list: USB File Transfer in the phone's own browser, over its USB tethering (xfer.phone_said). Lowercase. One line at meta size, two at most.
 en = files in the phone's browser
-zh-Hans = 在手机的浏览器中传文件
+zh-Hans = 在手机网页中传文件
 es = archivos en el navegador del celular
 pt-BR = arquivos no navegador do celular
 fr = fichiers dans le navigateur du téléphone
@@ -193,7 +193,7 @@ it = Un iPhone non può aprire i file della console con un cavo da USB-C a USB-C
 [xfer.phone_where]
 note = USB File Transfer on a phone's USB tethering: under the address the phone gave the handheld (shown large, where the cable shows http://zyperos.local), where to type it. Lower case, no full stop: it reads on from the address. One line at the menu's size in the panel's inner width (784 units).
 en = in the phone's browser
-zh-Hans = 在手机的浏览器中打开
+zh-Hans = 在手机上用网页打开
 es = en el navegador del celular
 pt-BR = no navegador do celular
 fr = dans le navigateur du téléphone

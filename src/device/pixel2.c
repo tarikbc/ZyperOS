@@ -1328,8 +1328,9 @@ bool plat_usb_power_mode(bool automatic)
  * Wi-Fi's is (wifi.c): udhcpc stays and renews, its script sets the address
  * and a default route through the phone (whose internet the handheld then
  * has: the clock syncs, as on Wi-Fi). When the interface goes (the cable
- * out, tethering off), the client goes too. A few small reads; asked twice a
- * second at most. */
+ * out, tethering off), the client goes too. All that only with `act` (the
+ * plug answered Phone); otherwise it is only looked at. A few small reads;
+ * asked twice a second at most. */
 #define PHONE_DHCP_PID "/var/run/udhcpc." PHONELINK_IF ".pid"
 
 static pid_t phone_dhcp_running(void)
@@ -1371,7 +1372,7 @@ static bool netdev_up(const char *ifname)
 	return read_small(path, buf, sizeof buf) && (strtoul(buf, NULL, 16) & 1);   /* IFF_UP */
 }
 
-bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
 {
 	char names[16][IFNAMSIZ], drivers[16][32], name[IFNAMSIZ];
 	const char *np[16], *dp[16];
@@ -1399,7 +1400,7 @@ bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
 	}
 	if (d) closedir(d);
 	if ((k = phonelink_pick(np, dp, count)) < 0) {
-		pid_t pid = phone_dhcp_running();
+		pid_t pid = act ? phone_dhcp_running() : 0;
 
 		if (pid) {
 			kill(pid, SIGTERM);
@@ -1409,7 +1410,7 @@ bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
 		return false;
 	}
 	snprintf(name, sizeof name, "%s", names[k]);
-	if (strcmp(name, PHONELINK_IF) && !netdev_up(name)) {
+	if (act && strcmp(name, PHONELINK_IF) && !netdev_up(name)) {
 		char *argv[] = { "/sbin/ip", "link", "set", "dev", name, "name", PHONELINK_IF, NULL };
 		int r = spawn_capture(argv, NULL, 0, 3);
 
@@ -1417,12 +1418,12 @@ bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
 		        PHONELINK_IF, r);
 		if (r == 0) snprintf(name, sizeof name, "%s", PHONELINK_IF);
 	}
-	if (!netdev_up(name)) {
+	if (act && !netdev_up(name)) {
 		char *argv[] = { "/sbin/ip", "link", "set", name, "up", NULL };
 
 		fprintf(stderr, "usb: the phone's network up (%d)\n", spawn_capture(argv, NULL, 0, 3));
 	}
-	if (!phone_dhcp_running()) phone_dhcp_start(name);
+	if (act && !phone_dhcp_running()) phone_dhcp_start(name);
 	if (ifname && in) snprintf(ifname, in, "%s", name);
 	if (ip && n && (fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0)) >= 0) {
 		struct ifreq ifr;

@@ -823,9 +823,9 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
-bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
 {
-	(void)ifname; (void)in; (void)ip; (void)n;
+	(void)act; (void)ifname; (void)in; (void)ip; (void)n;
 	return false;
 }
 bool plat_usb_iphone(void) { return false; }
@@ -1036,9 +1036,9 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
-bool plat_phone_link(char *ifname, size_t in, char *ip, size_t n)
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
 {
-	(void)ifname; (void)in; (void)ip; (void)n;
+	(void)act; (void)ifname; (void)in; (void)ip; (void)n;
 	return false;
 }
 bool plat_usb_iphone(void) { return false; }

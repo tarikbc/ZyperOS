@@ -555,6 +555,21 @@ to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
+On the Pixel 2, an Android phone on the USB cable opens it too, with no
+adapter: answer **Phone** when the handheld asks what you plugged in, and
+turn on the phone's **USB tethering**. The phone shares its network over the
+cable and gives the handheld an address there, and **USB File Transfer**
+opens by itself with that address first (`192.168.x.y`) and "in the phone's
+browser" under it: type it in the phone's browser, then the PIN. No name is
+shown there, since a phone's browser does not look `.local` names up. Close
+the screen and the phone stays connected and charging; **MENU > USB File
+Transfer** opens it again. Unplug the phone or turn USB tethering off, and
+the screen says the cable is unplugged (behind the shelf, it closes 10
+seconds later). While USB tethering is on, the handheld also has
+the phone's internet (its clock sets itself from it). An iPhone shares its
+network over USB only with a computer it trusts, which the handheld cannot
+be, so use Wi-Fi File Transfer with an iPhone.
+
 The name is answered by the handheld itself (multicast DNS, which macOS,
 Windows 10 and later, iOS, Android and most Linux desktops ask by
 themselves), on the cable while USB File Transfer is open and on the Wi-Fi
@@ -666,13 +681,14 @@ keyboard from a computer that has not connected yet (its port is waiting
 to be powered), and a computer must never be powered by the handheld (a
 Mac waited 10, 16 and over 30 seconds in my tests). So when something like
 that is plugged in, the shelf asks, two seconds after it goes in, **What
-did you plug in?**, with three tiles:
+did you plug in?**, a list of three, each with a line that says what it is
+for (Up and Down move, **A** chooses):
 
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
 | **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link. Some computers' USB-C ports take the waiting side every time, as a phone's does, and then plugging in again never helps. Under the message, a smaller line names the way that always works: a USB-A to USB-C cable, with USB-A at the computer, whose port always gives power. A computer with only USB-C ports can use a USB-C to USB-A adapter, or a USB-C hub, with that cable |
-| **Phone** | no power, and a message says plainly that a phone can't open the handheld's files on a USB-C to USB-C cable. A phone's USB-C port takes the side that waits for power every time, so plugging it in again never helps, and the handheld can't make it swap (Android's own **USB controlled by** setting didn't either, in my test). Connect the phone with a USB-C to USB-A adapter (an "OTG" adapter) on the phone and a USB-A to USB-C cable to the handheld: the phone then gives power, and **Computer Connected** asks, as for a computer. To only charge the phone, choose **MENU > USB Device**, then **USB Accessory** |
+| **Phone** (files in the phone's browser) | the port powers the phone, and a message asks you to turn on **USB tethering** on it (on Android: **Settings > Network & internet > Hotspot & tethering > USB tethering**; Samsung: **Connections > Mobile Hotspot and Tethering**). A phone's USB-C port takes the side that waits for power every time, so the handheld is its USB host, and USB tethering shares the phone's network over the cable. A few seconds later **USB File Transfer** opens by itself with the address the phone gave the handheld (192.168.x.y): open it in the phone's browser and type the PIN, as below. An iPhone shares its network over USB only with a computer it trusts, so when the handheld sees an iPhone the message says so instead: use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable. **Flash Drive** on a phone needs that adapter too: with it, the phone gives power and **Computer Connected** asks, as for a computer. The phone charges from the handheld while it is connected |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. Every plug is asked about on its own, however soon after the last
