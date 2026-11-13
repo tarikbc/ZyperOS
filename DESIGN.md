@@ -681,8 +681,10 @@ keeps its aspect ratio. There is no perspective tilt, reflection or added
 card frame. The full scraped title appears below, followed by play time and
 the achievement count. Missing metadata is omitted rather than invented.
 A is **Resume** only when the existing resume path is available, otherwise
-**Play**. B returns to systems, Y toggles Favorite, and X opens game details,
-whose last row is Delete Game (11.31).
+**Play**. B returns to systems, START turns the shelf into the list and back
+(11.39), Y starts the game from the start, and X opens game details, whose
+last row is Delete Game (11.31). The foot spreads their hints from B at the
+left to X at the right (11.4).
 Long titles wrap or fit within their region, clear of the action and footer.
 Missing box art uses the theme's existing generated text fallback.
 
@@ -834,6 +836,10 @@ Left/Right is the "< >" pill, as seek's. Words are res/strings' keyhint.*
 or a screen's own, a hint's capitals (Title Case in English). Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
+
+The game shelves' feet are one too since 2026-11-13, spread from x 64 to
+960: B, START (List or Covers), Y when the game resumes, X. They were at
+fixed places (B 64, Y 432, X 832), with no room kept for a fourth.
 
 Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
 Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
@@ -3004,8 +3010,19 @@ shelf with good covers reads as a row, an Arcade or a long library as a
 list. A, Left, Right turn it over; the shelf under the menu turns with it,
 on the same entry.
 
-The heading and the foot are the cover row's, so turning View moves only
-the middle:
+**START** on the shelf turns it over too, with no menu *(2026-11-13: "make
+clicking start in a system change view mode to list and vice versa")*: the
+row's own setting, saved the same way, the shelf on the same entry, with
+the move sound. Favorites, folders and Ports alike; MP4's shelf is MP4's
+own screen, where START does nothing alone. Not with MENU or SELECT held:
+MENU + START is the way out (tools/zyhome.c) and SELECT + START MP4's lock.
+Before, START did nothing on a shelf. The foot names it: **START List**
+under the covers, **START Covers** under the list; MENU > Controls has it
+on the shelf's page. The tutorial is as it was: it teaches one button a
+step, its START skips it, and its last page sends you to MENU > Controls.
+
+The heading and the foot are the cover row's (START's word apart), so
+turning View moves only the middle:
 - Rows down the left: the focus plate from x 40, 552 wide, rows 56 tall
   from y 200, eight in sight; names in **meta** at x 120, **text-soft**,
   the focused one on an **accent** plate in **on-accent** (radius.row),
