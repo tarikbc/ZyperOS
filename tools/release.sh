@@ -15,6 +15,11 @@
 #                               were built from main as GitHub has it now and
 #                               still match their SHA256SUMS
 #
+# Both --publish forms end by waiting for GitHub to publish the release, then
+# post its notes in the Discord's #releases channel (tools/discord-release.py,
+# with Zyper's token from ~/.config/zyperos/discord-bot.token). Ctrl-C stops
+# the wait; tools/discord-release.py v<VERSION> posts them later.
+#
 # (make release, and make release PUBLISH=1.) The tag starts GitHub's
 # .github/workflows/release.yml, which builds ZyperOS Installer for macOS,
 # Windows and Linux, adds the apps to the same release, puts them in its
@@ -85,6 +90,14 @@ publish() {
 	echo
 	echo "The draft is up and $TAG is pushed. GitHub now builds ZyperOS Installer and publishes the release:"
 	echo "  https://github.com/$REPO/actions/workflows/release.yml"
+	say "Discord"
+	if [ -f "$HOME/.config/zyperos/discord-bot.token" ]; then
+		echo "Waiting for GitHub to publish $TAG; then its notes go to #releases (Ctrl-C stops the wait)"
+		python3 tools/discord-release.py --wait "$TAG" ||
+			echo "release.sh: the notes did not go to Discord; run tools/discord-release.py $TAG once $TAG is published" >&2
+	else
+		echo "No Discord bot token here: run tools/discord-release.py $TAG once $TAG is published"
+	fi
 }
 
 say "Checks"
