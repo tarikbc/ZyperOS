@@ -49,10 +49,50 @@ static bool mac_at(const char *p, char sep)
 	return !isxdigit((unsigned char)p[17]);
 }
 
+/* The name in a Wi-Fi supplicant line, whatever it is: `SSID 'name'`,
+ * `(SSID='name' freq=...)` and `ssid="name"`, as wpa_supplicant writes them
+ * (wifi.log). By where it stands, not by the saved names: a network forgotten
+ * since is no longer one, and the supplicant writes a name with its odd
+ * characters escaped (printf_encode: \xNN, \", \\), which a saved name would
+ * not match. A name in single quotes runs to the line's last single quote,
+ * since a quote inside it is not escaped; one in double quotes to the next
+ * double quote that no backslash escapes. */
+static void mask_ssids(char *line, size_t cap)
+{
+	static const char *const opens[] = { "SSID '", "SSID='", "ssid=\"" };
+	char word[256], masked[128];
+	size_t k;
+
+	for (k = 0; k < sizeof opens / sizeof opens[0]; k++) {
+		char q = opens[k][strlen(opens[k]) - 1], *p = line;
+
+		while ((p = strstr(p, opens[k]))) {
+			char *name = p + strlen(opens[k]), *end;
+			size_t len;
+
+			if (q == '\'') {
+				end = strrchr(name, '\'');
+			} else {
+				for (end = name; *end && !(*end == '"' && (end == name || end[-1] != '\\')); end++) {}
+				if (!*end) end = NULL;
+			}
+			if (!end || end == name) { p = name; continue; }
+			len = (size_t)(end - name);
+			snprintf(word, sizeof word, "%.*s", (int)(len < sizeof word ? len : sizeof word - 1), name);
+			logpack_mask_word(word, masked, sizeof masked);
+			splice(line, cap, name, len, masked);
+			p = name + strlen(masked);
+			if (p >= line + strlen(line)) break;
+		}
+	}
+}
+
 void logpack_mask_line(char *line, size_t cap, const char *const *secrets, int n)
 {
 	char masked[128], *p;
 	int order[64], m = 0, a, b;
+
+	mask_ssids(line, cap);
 
 	/* Longest first, so a network named "Home" cannot eat into one named
 	 * "Home 5G" before that one is found. */
@@ -93,14 +133,26 @@ void logpack_mask_line(char *line, size_t cap, const char *const *secrets, int n
 
 /* ---- the pack ------------------------------------------------------------- */
 
+/* `from` copied to `to`, every line masked. With `tail` above 0, only the
+ * last `tail` bytes of a longer file, from its first whole line: wifi.log
+ * grows for as long as the radio stays on (it is cut when the radio starts),
+ * and the pack must stay small whatever its size. */
 static bool copy_masked(const char *from, const char *to,
-                        const char *const *secrets, int n)
+                        const char *const *secrets, int n, long tail)
 {
 	FILE *in = fopen(from, "r"), *out;
 	char line[4096];
 
 	if (!in) return false;
 	if (!(out = fopen(to, "w"))) { fclose(in); return false; }
+	if (tail > 0 && fseek(in, 0, SEEK_END) == 0 && ftell(in) > tail) {
+		int c;
+
+		fseek(in, -tail, SEEK_END);
+		while ((c = fgetc(in)) != EOF && c != '\n') {}
+	} else {
+		rewind(in);
+	}
 	while (fgets(line, sizeof line, in)) {
 		logpack_mask_line(line, sizeof line, secrets, n);
 		fputs(line, out);
@@ -149,7 +201,8 @@ bool logpack_build(const char *logs_dir, const char *about,
 			    strcmp(e->d_name, "wifi.log") != 0 && strcmp(e->d_name, "wifi.log.1") != 0) continue;
 			snprintf(from, sizeof from, "%s/%s", logs_dir, e->d_name);
 			snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
-			if (copy_masked(from, path, secrets, n)) logs++;
+			if (copy_masked(from, path, secrets, n,
+			                strncmp(e->d_name, "wifi.log", 8) ? 0 : LOGPACK_WIFI_TAIL)) logs++;
 		}
 		closedir(d);
 	}

@@ -63,6 +63,17 @@ static void lines(void)
 	masked("a TV and a crc32=0123456789abcdef0123", "a TV and a crc32=0123456789abcdef0123");
 	masked("md5 c086b3a748 and 12:34:56 stay", "md5 c086b3a748 and 12:34:56 stay");
 	masked("", "");
+	/* wpa_supplicant's lines (wifi.log): the name by where it stands, saved
+	 * or not, escaped or not, and the BSSID by its shape */
+	masked("1763071200.1: wlan0: Trying to associate with SSID 'OldCafe'",
+	       "1763071200.1: wlan0: Trying to associate with SSID 'O...e'");
+	masked("wlan0: SME: Trying to authenticate with c0:86:b3:a7:48:7f (SSID='Bob's Net' freq=2437 MHz)",
+	       "wlan0: SME: Trying to authenticate with XX:XX:XX:XX:XX:7f (SSID='B...t' freq=2437 MHz)");
+	masked("wlan0: CTRL-EVENT-SSID-TEMP-DISABLED id=0 ssid=\"Caf\\xc3\\xa9 \\\"5\\\"\" auth_failures=1",
+	       "wlan0: CTRL-EVENT-SSID-TEMP-DISABLED id=0 ssid=\"C...\"\" auth_failures=1");
+	masked("wlan0: CTRL-EVENT-DISCONNECTED bssid=c0:86:b3:a7:48:7f reason=4 locally_generated=1",
+	       "wlan0: CTRL-EVENT-DISCONNECTED bssid=XX:XX:XX:XX:XX:7f reason=4 locally_generated=1");
+	masked("wlan0: SSID '' and ssid=\"\" stay empty", "wlan0: SSID '' and ssid=\"\" stay empty");
 }
 
 static void pack(void)
@@ -123,12 +134,54 @@ static void pack(void)
 	if (system(cmd) != 0) { }
 }
 
+/* A wifi.log far past the cap goes in as its last 256 KB, from a whole line */
+static void tail(void)
+{
+	char dir[] = "/tmp/logpack-tail.XXXXXX", p[600], out[600], cmd[1400], line[512];
+	char err[128];
+	FILE *f;
+	long size = 0;
+	bool first = false, last = false, whole = true;
+	int i;
+
+	printf("a long wifi.log, its end only\n");
+	if (!mkdtemp(dir)) { perror("mkdtemp"); failures++; return; }
+	snprintf(p, sizeof p, "%s/logs", dir);
+	mkdir(p, 0755);
+	snprintf(p, sizeof p, "%s/logs/wifi.log", dir);
+	if ((f = fopen(p, "w"))) {
+		fputs("FIRSTLINE wlan0: Trying to associate with SSID 'ReinFi'\n", f);
+		for (i = 0; i < 20000; i++)
+			fprintf(f, "%d.000000: wlan0: CTRL-EVENT-DISCONNECTED bssid=c0:86:b3:a7:48:7f reason=4\n", i);
+		fputs("LASTLINE\n", f);
+		fclose(f);
+	}
+	snprintf(p, sizeof p, "%s/logs", dir);
+	snprintf(out, sizeof out, "%s/pack.tar.gz", dir);
+	CHECK(logpack_build(p, "", SECRETS, NSECRETS, "t", out, err, sizeof err), "built: %s", err);
+	snprintf(cmd, sizeof cmd, "cd '%s' && tar -xzf pack.tar.gz && wc -c < t/wifi.log && cat t/wifi.log", dir);
+	if ((f = popen(cmd, "r"))) {
+		if (fgets(line, sizeof line, f)) size = atol(line);
+		if (fgets(line, sizeof line, f) && !strstr(line, ".000000: wlan0:")) whole = false;
+		do {
+			if (strstr(line, "FIRSTLINE")) first = true;
+			if (strstr(line, "LASTLINE")) last = true;
+		} while (fgets(line, sizeof line, f));
+		pclose(f);
+	}
+	CHECK(size > 0 && size <= LOGPACK_WIFI_TAIL, "at most the cap: %ld bytes", size);
+	CHECK(!first && last && whole, "its end, from a whole line: first %d last %d whole %d", first, last, whole);
+	snprintf(cmd, sizeof cmd, "rm -rf '%s'", dir);
+	if (system(cmd) != 0) { }
+}
+
 int main(void)
 {
 	printf("logpack: the logs, masked and packed\n");
 	words();
 	lines();
 	pack();
+	tail();
 	if (failures) {
 		printf("\n%d failure%s\n", failures, failures == 1 ? "" : "s");
 		return 1;
