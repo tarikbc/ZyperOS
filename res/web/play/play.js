@@ -361,7 +361,13 @@ function letGo() {
  * another player's who leaves. "Full" stays only while the tries reach p2d;
  * one that does not (p2d gone with the game, the link lost) is connecting.
  * "Stopped" stays while the tries reach nothing, as they do until the
- * handheld turns multiplayer on again: then the page plays again. */
+ * handheld turns multiplayer on again: then the page plays again. A link
+ * lost while playing is tried again at once (a quarter of a second): a
+ * blip on the Wi-Fi, or p2d letting go of a page that was busy 5 s, and the
+ * buttons held are sent again the moment it is back, so as few presses as
+ * can be fall in the gap. */
+const RETRY_MS = 2000, BACK_MS = 250;
+
 function connect() {
 	const sock = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/p2ws');
 	let frames = Promise.resolve();
@@ -399,8 +405,9 @@ function connect() {
 		if (ws !== sock) return;
 		ws = null;
 		if (state === 'ended') return;
+		const was = state;
 		if (state !== 'stopped' && (state !== 'full' || !opened)) show('connecting');
-		retry = setTimeout(connect, 2000);
+		retry = setTimeout(connect, was === 'playing' ? BACK_MS : RETRY_MS);
 	};
 }
 
