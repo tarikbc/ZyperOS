@@ -56,6 +56,13 @@ static int failures;
 
 static char g_sink[256];        /* where the last upload was told to go */
 static int  g_calls;            /* how many times the handler was entered */
+static volatile int g_taken = -1;   /* the socket a 101 handed over */
+
+static void on_taken(int fd, void *ctx)
+{
+	(void)ctx;
+	g_taken = fd;
+}
 
 static void handler(httpd_req *r, bool done, void *ctx)
 {
@@ -99,6 +106,8 @@ static void handler(httpd_req *r, bool done, void *ctx)
 		httpd_reply(r, 200, "text/plain", n, strlen(n), NULL);
 	} else if (!strcmp(p, "/file")) {
 		httpd_reply_file(r, (const char *)ctx, "application/octet-stream", NULL);
+	} else if (!strcmp(p, "/up")) {
+		httpd_reply_upgrade(r, "Upgrade: test\r\nConnection: Upgrade\r\n", on_taken, NULL);
 	} else {
 		httpd_reply_status(r, 404, "no");
 	}
@@ -572,6 +581,71 @@ int main(void)
 		CHECK(g_ends == 1 && g_end_whole == 0,
 		      "an upload cut off halfway reported its end %d time(s), whole=%d",
 		      g_ends, g_end_whole);
+	}
+
+	/* p2d's WebSocket: after the 101 the socket is the taker's, and httpd
+	 * must not read a byte more of it, time it out, or close it */
+	printf("  a 101 hands the socket over:\n");
+	fresh(tmpf);
+	{
+		int fd = cl_connect(), i;
+		const char *req = "GET /up HTTP/1.1\r\nHost: x\r\n\r\n";
+		size_t got = 0;
+		char buf[8];
+
+		g_taken = -1;
+		resp[0] = '\0';
+		cl_write(fd, req, strlen(req));
+		while (got + 1 < sizeof resp && !strstr(resp, "\r\n\r\n")) {
+			ssize_t n = recv(fd, resp + got, sizeof resp - got - 1, 0);
+
+			if (n <= 0) break;
+			got += (size_t)n;
+			resp[got] = '\0';
+		}
+		CHECK(status_of(resp) == 101, "the upgrade was answered %d", status_of(resp));
+		CHECK(strstr(resp, "\r\nUpgrade: test\r\nConnection: Upgrade\r\n\r\n") != NULL,
+		      "the 101's headers are not the route's: \"%s\"", resp);
+		CHECK(strstr(resp, "Content-Length") == NULL, "a 101 said it has a body");
+		for (i = 0; i < 600 && g_taken < 0; i++) usleep(500);
+		CHECK(g_taken >= 0, "the socket was never handed over");
+		CHECK(httpd_conn_count() == 0, "httpd still counts the connection it handed over");
+		CHECK(g_ends == 1 && g_end_whole == 1,
+		      "the upgrade reported its end %d time(s), whole=%d", g_ends, g_end_whole);
+		if (g_taken >= 0) {
+			ssize_t n = 0;
+
+			/* The client's bytes reach the taker, not httpd */
+			cl_write(fd, "ping", 4);
+			for (i = 0; i < 600; i++) {
+				n = read(g_taken, buf, 4);
+				if (n > 0) break;
+				usleep(500);
+			}
+			CHECK(n == 4 && !memcmp(buf, "ping", 4), "the taker did not read what came");
+			/* And httpd_stop leaves it open */
+			shutdown_server();
+			CHECK(write(g_taken, "pong", 4) == 4, "the socket was closed under its taker");
+			CHECK(recv(fd, buf, 4, 0) == 4 && !memcmp(buf, "pong", 4),
+			      "the client did not get what the taker wrote");
+			close(g_taken);
+		}
+		close(fd);
+	}
+
+	printf("  a 101 is refused with bytes behind the request:\n");
+	fresh(tmpf);
+	{
+		int fd = cl_connect();
+		const char *req = "GET /up HTTP/1.1\r\nHost: x\r\n\r\nearly";
+
+		g_taken = -1;
+		talk(fd, req, strlen(req), resp, sizeof resp);
+		CHECK(status_of(resp) == 400, "an upgrade with bytes behind it was answered %d",
+		      status_of(resp));
+		CHECK(g_taken < 0, "an upgrade with bytes behind it was handed over");
+		close(fd);
+		settle();
 	}
 
 	shutdown_server();

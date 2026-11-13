@@ -66,6 +66,18 @@ $(BUILD)/muse: $(MUSE_SRC) $(wildcard src/muse/*.h) src/mp4frame.h src/monoclock
 	      -D_GNU_SOURCE -I$(SYSROOT)/usr/include $(LDFLAGS) -o $@ $(MUSE_SRC) \
 	      -lavformat -lavcodec -lavfilter -lswscale -lswresample -lavutil -lasound -lpthread -lm
 
+# p2d, NES player 2's server (src/p2d/main.c): a program of its own beside
+# the launcher, started by it for a game with a guest, so the network is on
+# neither the game's thread nor the launcher's loop. SRC above does not
+# descend into src/p2d/; the launcher's httpd and captive.c are linked in
+# again, and zlib for the frames.
+P2D_SRC := $(wildcard src/p2d/*.c) src/httpd.c src/captive.c
+$(BUILD)/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h src/p2share.h \
+              src/monoclock.h src/xfer.h
+	mkdir -p $(BUILD)
+	$(CC) -O2 -mcpu=cortex-a53 -Wall -Wextra -Wno-unused-parameter -std=gnu11 \
+	      -D_GNU_SOURCE -I$(SYSROOT)/usr/include $(LDFLAGS) -o $@ $(P2D_SRC) -lz
+
 # Registers a do-nothing media player with BlueZ so a headset's absolute
 # volume is not dropped, and hands a headset's keys to Muse; see the file.
 # Linked against SYSROOT's libdbus, whose arch header lives under lib.

@@ -68,6 +68,8 @@ struct httpd_req {
 	FILE  *resp_f;              /* streaming a file out */
 	long   resp_f_left;
 	bool   replied;
+	httpd_taken taken;          /* a 101: who gets the socket once it is out */
+	void  *taken_ctx;
 
 	/* --- bookkeeping --------------------------------------------------- */
 	int    tag;                 /* the handler's own, see httpd_set_tag */
@@ -297,6 +299,47 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
 	return true;
 }
 
+/* ---- a 101, and the socket handed over ---------------------------------- */
+
+static const conn *conn_of(const httpd_req *r)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++)
+		if (g_conn[i].fd >= 0 && &g_conn[i].r == r) return &g_conn[i];
+	return NULL;
+}
+
+void httpd_reply_upgrade(httpd_req *r, const char *extra_headers,
+                         httpd_taken fn, void *ctx)
+{
+	const conn *c = conn_of(r);
+	int n;
+
+	if (r->replied) return;
+	/* Bytes read past the headers are in c->buf, which the taker never
+	 * sees, so there must be none (httpd.h); a body would be such bytes */
+	if (!c || !fn || c->used > 0 || r->content_len > 0) {
+		httpd_reply_status(r, 400, "nothing may follow an upgrade request");
+		return;
+	}
+	/* No Content-Length, unlike build_head: a 1xx reply has no body and
+	 * must not say it has one (RFC 9110, 8.6) */
+	n = snprintf(r->resp_head, sizeof r->resp_head,
+	             "HTTP/1.1 101 Switching Protocols\r\n%s\r\n",
+	             extra_headers ? extra_headers : "");
+	if (n < 0 || (size_t)n >= sizeof r->resp_head) {
+		httpd_reply_status(r, 500, "the upgrade's headers are too long");
+		return;
+	}
+	r->status = 101;
+	r->resp_head_len = (size_t)n;
+	r->resp_head_sent = 0;
+	r->replied = true;
+	r->taken = fn;
+	r->taken_ctx = ctx;
+}
+
 /* ---- the page's own files --------------------------------------------- */
 
 /* The page's files, once a phone has them, are asked for again with their tag
@@ -482,6 +525,20 @@ static void conn_close(conn *c)
 	req_reset(&c->r);
 	c->fd = -1;
 	c->st = C_FREE;
+}
+
+/* A 101 is out (httpd_reply_upgrade): the socket to its taker and the slot
+ * free, as conn_close but for the close */
+static void hand_over(conn *c)
+{
+	httpd_taken fn = c->r.taken;
+	void *ctx = c->r.taken_ctx;
+	int fd = c->fd;
+
+	req_reset(&c->r);
+	c->fd = -1;
+	c->st = C_FREE;
+	fn(fd, ctx);
 }
 
 /* Split the header block in place into NUL-separated lines, and pull out what
@@ -773,6 +830,10 @@ static bool pump_write(conn *c, httpd_end end, void *ctx, int *did)
 			/* Everything is out. Said before the close below, which would
 			 * otherwise report this as cut off. */
 			end_request(c, true, end, ctx);
+			if (r->taken) {
+				hand_over(c);
+				return true;
+			}
 			if (c->close_after) return false;
 			/* The request is finished; the connection's buffer is not
 			 * necessarily empty. Anything still in it is the next request,
@@ -984,6 +1045,7 @@ int httpd_poll(httpd_handler fn, httpd_end end, void *ctx)
 			conn_close(c);
 			continue;
 		}
+		if (c->fd < 0) continue;          /* handed over after a 101 */
 
 		/* A FRESH reading, not the `now` taken before this connection did its
 		 * work. pump_read and pump_write stamp last_ms from their own call to

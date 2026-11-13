@@ -31,7 +31,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-p2ws check-p2codec check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-p2ws check-p2codec check-p2d check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
@@ -1677,6 +1677,32 @@ build-native/p2share-check: tools/p2share-check.c src/p2share.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/p2share-check.c
+
+# p2d, NES player 2's server (src/p2d/main.c), on the host: the play page,
+# the WebSocket of frames and buttons, the hotspot's DNS. The launcher's own
+# httpd and captive.c, linked as mk/cross.mk links them for the device, and
+# -O2 as there: it encodes 60 frames a second.
+P2D_SRC = $(wildcard src/p2d/*.c) src/httpd.c src/captive.c
+build-native/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h src/p2share.h \
+                  src/monoclock.h src/xfer.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O2 -g \
+	      -o $@ $(P2D_SRC) -lz
+
+# Frames into a share file as Diatom writes them (tools/p2d-feed.c): a moving
+# picture, or a fixture's frames in order, for p2d's check and the play
+# page's.
+build-native/p2d-feed: tools/p2d-feed.c src/p2share.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/p2d-feed.c
+
+# p2d against a feed, over real sockets (tools/p2d-check.py): the page and
+# the captive redirect, frames only as fast as they are acked, the pad into
+# the share and let go when the guest goes quiet or leaves, a second guest
+# turned away, the end of the game however it comes, and the DNS answer.
+check-p2d: build-native/p2d build-native/p2d-feed
+	@python3 tools/p2d-check.py
 
 check-musequeue: build-native/musequeue-check
 	@./build-native/musequeue-check
