@@ -2877,15 +2877,17 @@ PASS PHONES NOW --hotspot-in` for the hotspot after someone came in.
 ### 11.36 What did you plug in?
 The question the shelf asks when something on the Pixel 2's USB port wants
 power and gives none (plastron's usbrole, src/usbpower.h), 2026-11-10: a
-USB accessory (headphones, a Wi-Fi adapter, a keyboard), or a computer
-whose port took the sink side, which the handheld cannot tell apart without
-powering it. The tiles of Computer Connected (11.18), two of them and wider
-(408 each): heading **What did you plug in?**; **USB Accessory**, its mark
-headphones, its name on one line and under it in **meta** (**text-dim**,
-**on-accent** when focused) "headphones, Wi-Fi, keyboard", up to two lines;
-and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
-B never powers a computer; the button hints (11.4) "< > Move   A Choose   B
-Computer". Asked once per plug, two seconds after usbrole says it may be,
+USB accessory (headphones, a Wi-Fi adapter, a keyboard), a computer
+whose port took the sink side, or a phone, which the handheld cannot tell
+apart without powering it. The tiles of Computer Connected (11.18), three
+of them (272 each, 232 tall, all taller together when a name or its small
+line needs it): heading **What did you plug in?**; **USB Accessory**, its mark
+headphones, its name on one line (the smaller size, then two lines, where
+it does not fit) and under it in **meta** (**text-dim**, **on-accent** when
+focused) "headphones, Wi-Fi, keyboard", up to three lines; **Computer**,
+its mark a laptop; and **Phone**, its mark a phone (2026-11-13). It starts
+on Computer, so a quick A or B never powers a computer; the button hints
+(11.4) "< > Move   A Choose   B Computer". Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game (a plug made in a game is asked about
 back on the shelf); it goes by itself when the plug stops wanting power.
 Every plug is its own: nothing carries over from the plug before, however
@@ -2900,6 +2902,30 @@ button that was down as it appeared counts only once let go and pressed
 again, and so does one pressed in its first half second; after that a
 press answers at once, POWER always. Its button hints show from the half
 second, their room kept.
+
+**Phone.** A phone takes the side that waits for power at every plug: its
+port prefers it, where a computer's takes either at random (Tarik, an iPhone
+and an Android phone, 2026-11-13: Computer, then the replug message, again
+and again, for good). The handheld has no Type-C controller and no USB Power
+Delivery, so it cannot ask the phone to swap, and on a USB-C cable a phone
+is always the device. Phone powers it, as USB Accessory does (a phone is
+fed safely, and a powered Android phone shows its USB settings), and puts
+up the phone message, the replug message's slab with the phone mark under
+**Phone**: "Android: tap the phone's USB notification, then USB controlled
+by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A
+to USB-C cable." Android's own words in each language, read from AOSP's
+Settings (usb_control_title, usb_control_device). Android's "This device"
+makes the phone the host with no Power Delivery (its port's mode changes,
+UsbPortManager's MODE_DFP), so the handheld then gets power and Computer
+Connected (11.18) asks, Flash Drive and all. An iPhone has no such setting;
+through the adapter (whose plug says "wants power" to the phone) and an
+A-to-C cable (whose plug says "gives power" to the handheld), it is the host
+too. The message stays while the port powers the phone and goes when the
+plug ends: the cable out, another plug, the phone giving power (Android's
+swap), or a computer seen on the bus (a Mac answered Phone; Computer's
+message comes instead) (usbpower_said_ends). In **menu** up to four
+balanced lines, else in **meta** up to six. Never on Automatic, which powers
+a phone as any plug and asks nothing.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2939,7 +2965,7 @@ alone, stop while it is up (it was drawn under the animated machine on the
 device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
 same after 5 seconds (11.35). The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
-[0|1|said]`.
+[0|1|2|said|phone]`, `--replug [phone]`.
 
 ### 11.37 Screensaver
 After a while with nothing pressed on the shelf, the video snaps of random

@@ -108,6 +108,37 @@ int main(void)
 		      !p.paused, "an empty paused= read as paused");
 	}
 
+	/* The message an answer leaves up, until its plug ends. Computer's:
+	 * the cable out, another plug, power in (the computer connected), or
+	 * the port a host (USB Accessory after all) */
+	usbpower_parse("plug=4 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(!usbpower_said_ends(USBPOWER_SAY_COMPUTER, 4, &p), "Computer's message gone while the plug waits");
+	CHECK(usbpower_said_ends(USBPOWER_SAY_COMPUTER, 3, &p), "Computer's message kept for another plug");
+	usbpower_parse("plug=4 ask=0 pin=0 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_COMPUTER, 4, &p), "Computer's message kept, the cable out");
+	usbpower_parse("plug=4 ask=0 pin=1 vbus=1 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_COMPUTER, 4, &p), "Computer's message kept, power in");
+	usbpower_parse("plug=4 ask=0 pin=1 vbus=1 computer=0 role=host auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_COMPUTER, 4, &p), "Computer's message kept, the port a host");
+	CHECK(usbpower_said_ends(USBPOWER_SAY_NONE, 4, &p), "no message is up, yet it goes on");
+	/* Phone's: up while the port powers the phone (a host, its own power
+	 * read as power in, rule.h), until the cable comes out, another plug,
+	 * the phone giving power (Android's This device: the pin goes back), or
+	 * a computer on the bus (a Mac answered Phone: Computer's takes over) */
+	CHECK(!usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message gone while the port powers the phone");
+	usbpower_parse("plug=4 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(!usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message gone before the port is a host");
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 5, &p), "Phone's message kept for another plug");
+	usbpower_parse("plug=4 ask=0 pin=0 vbus=1 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message kept, the phone giving power");
+	usbpower_parse("plug=4 ask=0 pin=0 vbus=0 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message kept, the cable out");
+	usbpower_parse("plug=4 ask=0 pin=1 vbus=0 computer=1 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message kept, a computer on the bus");
+	usbpower_parse("plug=4 ask=0 pin=1 vbus=1 computer=0 role=device auto=0 paused=0", &p);
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &p), "Phone's message kept, power in and no host");
+	CHECK(usbpower_said_ends(USBPOWER_SAY_PHONE, 4, &(usb_power){ 0 }), "Phone's message kept, usbrole unread");
+
 	/* Back on with the accessory that was powered at the power-off: powered
 	 * again unasked, only the first plug, there from the start */
 	usbpower_parse("plug=1 ask=1 pin=1 vbus=0 computer=0 role=device auto=0 paused=0", &p);
