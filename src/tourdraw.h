@@ -7,10 +7,9 @@
  * lab draws it. Every size is in the launcher's 1024x768 units and every
  * color is a role of the theme that is on.
  *
- * Zyper and the heart are main.c's, handed in, so there is one of each:
- * Zyper's moves and his shadow on Beard are draw_zyper's, and the heart is
- * the shelf's own. The volume and brightness bar is the launcher's real one
- * (plat_draw_osd), which the caller draws over this. */
+ * Zyper is main.c's, handed in, so there is one of him: his moves and his
+ * shadow on Beard are draw_zyper's. The volume and brightness bar is the
+ * launcher's real one (plat_draw_osd), which the caller draws over this. */
 
 #include <SDL.h>
 #include <stdbool.h>
@@ -34,8 +33,6 @@ typedef struct {
 	/* Zyper `h` tall about (cx, cy), the middle of his box where he
 	 * stands. */
 	void (*zyper)(void *ctx, float cx, float cy, float h, const tour_zyper *z);
-	/* The shelf's heart, `rad` half its width, about (cx, cy). */
-	void (*heart)(void *ctx, float cx, float cy, float rad, SDL_Color c);
 	/* The power-off's Zyper, `t` ms into it, `h` tall, standing at (cx, cy)
 	 * once in, in from `from_x` (the launcher's own frames, poweroff_frame's
 	 * without the ground), at `alpha`: the power step's stage plays it. */
