@@ -301,17 +301,41 @@ static void redirect(httpd_req *r, const char *to)
 	httpd_reply(r, 302, "text/plain; charset=utf-8", "", 0, loc);
 }
 
+/* Whether `origin` is "http://<host>" on p2d's own port: none or :80 when
+ * that is 80, else :PORT. A scheme and a host have no case. */
+static bool origin_is(const char *origin, const char *host)
+{
+	size_t k = strlen(host);
+	char port[8];
+
+	if (strncasecmp(origin, "http://", 7) || strncasecmp(origin + 7, host, k)) return false;
+	origin += 7 + k;
+	if (!*origin) return httpd_port() == 80;
+	snprintf(port, sizeof port, ":%d", httpd_port());
+	return !strcmp(origin, port);
+}
+
 /* GET /p2ws: the handshake (RFC 6455, 4.2), then the socket to on_taken */
 static void upgrade(httpd_req *r)
 {
 	const char *up = httpd_header(r, "Upgrade");
 	const char *key = httpd_header(r, "Sec-WebSocket-Key");
 	const char *ver = httpd_header(r, "Sec-WebSocket-Version");
+	const char *origin = httpd_header(r, "Origin");
 	char accept[29], extra[160];
 
 	if (!up || strcasecmp(up, "websocket") || !ver || strcmp(ver, "13") ||
 	    !key || !*key || !ws_accept_key(key, accept)) {
 		httpd_reply_status(r, 400, "not a WebSocket request");
+		return;
+	}
+	/* The play page's own origin only. A browser lets any page open a
+	 * WebSocket anywhere, and on the cable the laptop has the internet, so
+	 * a site in another tab could open ws://zyperos.local/p2ws and take
+	 * player 2 or watch the game. Every browser sends Origin, so none is
+	 * not a browser on the page either. (Plan 2's HTTPS origin joins these.) */
+	if (!origin || !(origin_is(origin, g_addr) || origin_is(origin, "zyperos.local"))) {
+		httpd_reply_status(r, 403, "only the play page may open this");
 		return;
 	}
 	snprintf(extra, sizeof extra,

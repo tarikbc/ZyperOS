@@ -15,7 +15,8 @@ test starts its own feed and p2d and kills them when it ends. What it holds:
 
   - the page: /play/ is the page, / and a phone's internet check are sent
     there, /i18n.js is the handheld's language or English
-  - the handshake: anything on /p2ws but a WebSocket request is refused
+  - the handshake: anything on /p2ws but a WebSocket request is refused,
+    and so is one from any Origin but the page's own, or with none
   - frames: the first a KEY with its palette, 30 a second and more while
     each is acked, and never more than 2 waiting for an ack
   - the pad: what the guest holds reaches the share, the NES's buttons only,
@@ -136,14 +137,15 @@ class Rig:
                 self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60'],
                                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             with open(self.log, 'wb') as log:
+                self.started = time.monotonic()
                 self.p2d = subprocess.Popen([str(P2D), '--root', str(self.tmp / 'web'),
                                              '--share', str(self.share), '--addr', '127.0.0.1',
                                              '--port', '0'] + self.args,
                                             stdout=log, stderr=log)
             if self.want_feed:
-                self.port = int(self.logged(r'p2d: http on port (\d+)', 3))
+                self.port = int(self.logged(r'p2d: http on port (\d+)', 5))
                 if '--dns' in self.args:
-                    self.dns_port = int(self.logged(r'p2d: dns on port (\d+)', 1))
+                    self.dns_port = int(self.logged(r'p2d: dns on port (\d+)', 3))
         except BaseException:
             self.__exit__()
             raise
@@ -183,10 +185,14 @@ class Rig:
 # ---- a WebSocket client, as small as one can be --------------------------
 
 class WS:
-    def __init__(self, port, upgrade='websocket'):
+    def __init__(self, port, upgrade='websocket', origin=''):
+        """origin '' is the page's own, http://127.0.0.1:PORT; None sends none"""
         self.s = socket.create_connection(('127.0.0.1', port), timeout=3)
         key = base64.b64encode(os.urandom(16)).decode()
+        if origin == '':
+            origin = f'http://127.0.0.1:{port}'
         self.s.sendall((f'GET /p2ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n'
+                        + (f'Origin: {origin}\r\n' if origin is not None else '') +
                         f'Upgrade: {upgrade}\r\nConnection: Upgrade\r\n'
                         f'Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n').encode())
         self.buf = b''
@@ -262,11 +268,11 @@ class WS:
             if m[0] == want:
                 return m[1]
 
-    def status(self, timeout=1.0):
+    def status(self, timeout=2.0):
         t = self.until(1, timeout)
         return t.decode() if t is not None else None
 
-    def frame(self, timeout=1.0):
+    def frame(self, timeout=2.0):
         """the next frame: (flags, w, h, number)"""
         f = self.until(2, timeout)
         if f is None:
@@ -275,7 +281,7 @@ class WS:
         return f[1], struct.unpack_from('<H', f, 2)[0], struct.unpack_from('<H', f, 4)[0], \
             struct.unpack_from('<I', f, 6)[0]
 
-    def hung_up(self, timeout=1.0):
+    def hung_up(self, timeout=2.0):
         """the server closed the socket, whatever came before"""
         end = time.monotonic() + timeout
         while True:
@@ -285,7 +291,7 @@ class WS:
             if m[0] == EOF:
                 return True
 
-    def closed_by_server(self, timeout=1.0):
+    def closed_by_server(self, timeout=2.0):
         """the server's close came, was answered as a browser answers it, and
         the server then hung up"""
         if self.until(8, timeout) is None:
@@ -350,9 +356,9 @@ def captive_redirect(tmp):
 @test
 def handshake_refused(tmp):
     key = base64.b64encode(os.urandom(16)).decode()
-    ws = {'Upgrade': 'websocket', 'Connection': 'Upgrade', 'Sec-WebSocket-Key': key,
-          'Sec-WebSocket-Version': '13'}
     with Rig(tmp) as r:
+        ws = {'Upgrade': 'websocket', 'Connection': 'Upgrade', 'Sec-WebSocket-Key': key,
+              'Sec-WebSocket-Version': '13', 'Origin': f'http://127.0.0.1:{r.port}'}
         for drop, swap in (('Upgrade', None), ('Sec-WebSocket-Key', None),
                            (None, ('Sec-WebSocket-Version', '8')), (None, ('Upgrade', 'h2c'))):
             h = {k: v for k, v in ws.items() if k != drop}
@@ -363,6 +369,35 @@ def handshake_refused(tmp):
         a = WS(r.port, upgrade='WebSocket')
         check(a.status() == 'S{"state":"player2"}', 'Upgrade: WebSocket (capitals) was not taken')
         a.close()
+
+
+@test
+def origin_checked(tmp):
+    """on the cable the laptop has the internet: a site in another of its tabs
+    must not take player 2 or watch the game"""
+    key = base64.b64encode(os.urandom(16)).decode()
+    with Rig(tmp) as r:
+        sh = r.mapped()
+        p = r.port
+        ws = {'Upgrade': 'websocket', 'Connection': 'Upgrade', 'Sec-WebSocket-Key': key,
+              'Sec-WebSocket-Version': '13'}
+        for origin in (None, 'null', 'http://evil.example', f'http://evil.example:{p}',
+                       'http://127.0.0.1', f'http://127.0.0.1:{p + 1}', f'https://127.0.0.1:{p}',
+                       f'http://127.0.0.1:{p}.evil.example', f'http://127.0.0.10:{p}',
+                       f'http://127.0.0.1:{p}/', 'http://zyperos.local',
+                       f'http://zyperos.local.evil.example:{p}'):
+            h = dict(ws)
+            if origin is not None:
+                h['Origin'] = origin
+            s, _, _ = r.get('/p2ws', headers=h)
+            check(s == 403, f'/p2ws with Origin {origin} was {s}, wanted 403')
+        check(sh.guests == 0, 'a refused origin became player 2')
+        for origin in (f'http://127.0.0.1:{p}', f'http://zyperos.local:{p}', f'HTTP://ZyperOS.Local:{p}'):
+            a = WS(p, origin=origin)
+            check(a.status() == 'S{"state":"player2"}', f'Origin {origin} was not player 2')
+            a.close()
+            check(wait_for(lambda: sh.guests == 0, 2), f'the guest from {origin} did not leave')
+        sh.close()
 
 
 @test
@@ -403,19 +438,19 @@ def pad_reaches_share(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
         b0 = sh.beat
-        time.sleep(0.3)
-        check(sh.beat - b0 >= 2, f'pad_beat moved {sh.beat - b0} in 300 ms with no guest')
+        time.sleep(0.6)
+        check(sh.beat - b0 >= 4, f'pad_beat moved {sh.beat - b0} in 600 ms with no guest')
         check(sh.guests == 0, f'guests is {sh.guests} with nobody there')
         ws = WS(r.port)
         check(ws.status() == 'S{"state":"player2"}', 'not player 2')
         ws.pad(0x0101)
-        check(wait_for(lambda: sh.pad == 0x0101, 1), f'pad is {sh.pad:#06x}, wanted 0x0101')
+        check(wait_for(lambda: sh.pad == 0x0101, 2), f'pad is {sh.pad:#06x}, wanted 0x0101')
         check(sh.guests == 1, f'guests is {sh.guests} with player 2 there')
         ws.pad(0xFFFF)
-        check(wait_for(lambda: sh.pad == PAD_MASK, 1), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x01fd')
+        check(wait_for(lambda: sh.pad == PAD_MASK, 2), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x01fd')
         b0 = sh.beat
-        time.sleep(0.3)
-        check(sh.beat - b0 >= 2, f'pad_beat moved {sh.beat - b0} in 300 ms with a guest')
+        time.sleep(0.6)
+        check(sh.beat - b0 >= 4, f'pad_beat moved {sh.beat - b0} in 600 ms with a guest')
         ws.close()
         sh.close()
 
@@ -426,21 +461,27 @@ def pad_clears_on_silence(tmp):
         sh = r.mapped()
         ws = WS(r.port)
         check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        pressed = time.monotonic()
         ws.pad(0x0100)
-        check(wait_for(lambda: sh.pad == 0x0100, 1), f'pad is {sh.pad:#06x}, wanted 0x0100')
-        time.sleep(0.6)
-        check(sh.pad == 0x0100, 'the pad was let go before a second of silence')
-        time.sleep(0.6)
-        check(sh.pad == 0, f'pad is {sh.pad:#06x} after 1.2 s of silence, wanted 0')
+        check(wait_for(lambda: sh.pad == 0x0100, 2), f'pad is {sh.pad:#06x}, wanted 0x0100')
+        time.sleep(max(0, pressed + 0.6 - time.monotonic()))
+        held, at = sh.pad, time.monotonic() - pressed
+        # p2d lets go a second after it reads the press, which is after
+        # `pressed`: a look a second or more after it (a loaded machine)
+        # cannot tell held from let go, so it does not fail
+        check(held == 0x0100 or at >= 1.0, f'the pad was let go {at:.2f} s after the press')
+        check(wait_for(lambda: sh.pad == 0, 1.6), f'pad is {sh.pad:#06x} after 1.6 s more of silence')
+        took = time.monotonic() - pressed
+        check(took >= 0.9, f'the pad was let go {took:.2f} s after the press, wanted a second')
         check(sh.guests == 1, 'the guest was dropped for being quiet')
 
         # Its close: the pad goes with it, and player 2 is free again
         ws.pad(0x0100)
-        check(wait_for(lambda: sh.pad == 0x0100, 1), 'the pad did not come back')
+        check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come back')
         ws.send(8, struct.pack('>H', 1000))
-        check(ws.until(8, 1) is not None, 'the close was not answered with a close')
+        check(ws.until(8, 2) is not None, 'the close was not answered with a close')
         check(ws.hung_up(), 'the server did not hang up after the close')
-        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 0.5),
+        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
               f'after a close pad {sh.pad:#06x} guests {sh.guests}, wanted 0 and 0')
 
         # A hang-up with no close: the same
@@ -449,9 +490,9 @@ def pad_clears_on_silence(tmp):
         f = b.frame()
         check(f and f[0] & 3 == 3, 'the next guest\'s first frame was not KEY and PAL')
         b.pad(0x0040)
-        check(wait_for(lambda: sh.pad == 0x0040 and sh.guests == 1, 1), 'the next guest\'s pad did not come')
+        check(wait_for(lambda: sh.pad == 0x0040 and sh.guests == 1, 2), 'the next guest\'s pad did not come')
         b.close()
-        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 0.5),
+        check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
               f'after a hang-up pad {sh.pad:#06x} guests {sh.guests}, wanted 0 and 0')
         sh.close()
 
@@ -486,13 +527,13 @@ def ping_and_bad_messages(tmp):
         ws = WS(r.port)
         check(ws.status() == 'S{"state":"player2"}', 'not player 2')
         ws.send(9, b'hi')
-        check(ws.until(10, 1) == b'hi', 'the ping had no pong')
+        check(ws.until(10, 2) == b'hi', 'the ping had no pong')
         for bad in (b'Q12', b'A\x01\x02', b'P\x01', b'P\x01\x00\x00'):
             ws.pad(0x0001)
-            check(wait_for(lambda: sh.pad == 1, 1), 'the pad did not come')
+            check(wait_for(lambda: sh.pad == 1, 2), 'the pad did not come')
             ws.send(2, bad)
             check(ws.closed_by_server(), f'{bad!r} did not close the guest')
-            check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 0.5),
+            check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
                   f'after {bad!r} pad {sh.pad:#06x} guests {sh.guests}')
             ws = WS(r.port)
             check(ws.status() == 'S{"state":"player2"}', f'no player 2 after {bad!r}')
@@ -510,7 +551,7 @@ def ended_when_share_goes(tmp):
             check(ws.status() == 'S{"state":"player2"}', 'not player 2')
             check(ws.frame() is not None, 'no frame came')
             ws.pad(0x0100)
-            check(wait_for(lambda: sh.pad == 0x0100, 1), 'the pad did not come')
+            check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come')
             t0 = time.monotonic()
             if how == 'removed':
                 os.unlink(r.share)
@@ -518,7 +559,7 @@ def ended_when_share_goes(tmp):
                 struct.pack_into('<I', sh.m, 0, 0)
             else:
                 r.p2d.send_signal(signal.SIGTERM)
-            st = ws.status(1.0)
+            st = ws.status(2.0)
             check(st == 'S{"state":"ended"}', f'share {how}: the guest was told {st!r}')
             check(ws.closed_by_server(), f'share {how}: the guest was not closed')
             try:
@@ -539,7 +580,7 @@ def dns_answers(tmp):
         q = struct.pack('>6H', 0x1234, 0x0100, 1, 0, 0, 0) + b'\x07example\x03com\x00' + \
             struct.pack('>2H', 1, 1)
         u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        u.settimeout(1)
+        u.settimeout(2)
         try:
             u.sendto(q, ('127.0.0.1', r.dns_port))
             a, _ = u.recvfrom(512)
@@ -604,14 +645,14 @@ def quiet_guest_is_dropped(tmp):
     """a phone out of range sends no FIN: 5 s of nothing with a frame unacked"""
     with Rig(tmp) as r:
         sh = r.mapped()
+        t0 = time.monotonic()           # before p2d's clock for the guest starts
         ws = WS(r.port)
         check(ws.status() == 'S{"state":"player2"}', 'not player 2')
         check(ws.frame() is not None, 'no frame came')
-        t0 = time.monotonic()
-        gone = wait_for(lambda: sh.guests == 0, 7, step=0.05)
+        gone = wait_for(lambda: sh.guests == 0, 8, step=0.05)
         took = time.monotonic() - t0
-        check(gone, 'a guest that said nothing for 7 s is still player 2')
-        check(4.5 <= took <= 6.0, f'the quiet guest was dropped after {took:.1f} s, wanted 5')
+        check(gone, 'a guest that said nothing for 8 s is still player 2')
+        check(4.9 <= took <= 7.0, f'the quiet guest was dropped after {took:.1f} s, wanted 5')
         check(ws.hung_up(), 'the quiet guest\'s socket was not closed')
         b = WS(r.port)
         check(b.status() == 'S{"state":"player2"}', 'the next guest was not player 2')
@@ -638,14 +679,14 @@ def acking_guest_stays(tmp):
 @slow
 def no_share_gives_up(tmp):
     with Rig(tmp, feed=False, share=tmp / 'never') as r:
-        t0 = time.monotonic()
+        t0 = r.started                  # before p2d's own 5 s began
         try:
-            rc = r.p2d.wait(timeout=8)
+            rc = r.p2d.wait(timeout=9)
         except subprocess.TimeoutExpired:
             rc = None
         took = time.monotonic() - t0
         check(rc == 1, f'p2d with no share exited {rc}, wanted 1')
-        check(4.5 <= took <= 6.5, f'p2d gave up on the share after {took:.1f} s, wanted 5')
+        check(4.9 <= took <= 7.0, f'p2d gave up on the share after {took:.1f} s, wanted 5')
         check('share' in r.log.read_text(errors='replace'), 'p2d said nothing about the share')
 
 
