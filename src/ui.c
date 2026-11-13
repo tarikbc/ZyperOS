@@ -3429,6 +3429,20 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.92f, 0.80f, 0.80f, 0.64f, G_W);
 		return;
 	}
+	if (g == UI_GLYPH_PHONE) {
+		/* A phone, upright: its body, a little rounded at the corners, and
+		 * the short bar at its foot, the laptop's family */
+		g_line(s, 0.36f, 0.08f, 0.64f, 0.08f, G_W);
+		g_line(s, 0.72f, 0.16f, 0.72f, 0.84f, G_W);
+		g_line(s, 0.64f, 0.92f, 0.36f, 0.92f, G_W);
+		g_line(s, 0.28f, 0.84f, 0.28f, 0.16f, G_W);
+		g_arc(s, 0.36f, 0.16f, 0.08f, pi, 1.5f * pi);
+		g_arc(s, 0.64f, 0.16f, 0.08f, 1.5f * pi, 2.0f * pi);
+		g_arc(s, 0.64f, 0.84f, 0.08f, 0.0f, 0.5f * pi);
+		g_arc(s, 0.36f, 0.84f, 0.08f, 0.5f * pi, pi);
+		g_line(s, 0.44f, 0.80f, 0.56f, 0.80f, G_W);
+		return;
+	}
 	if (g == UI_GLYPH_TO_CARD || g == UI_GLYPH_FROM_CARD) {
 		/* A tray, and an arrow down into it (to the card) or up out of it
 		 * (from the card): System Update's corner mark's family, at a size */

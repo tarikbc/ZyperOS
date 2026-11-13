@@ -55,7 +55,10 @@ Diatom's.
   U-Boot's FSP_INIT patch, and the order they go in from Rockchip's U-Boot's
   `dmc_fsp.c` (GPL-2.0-or-later).
 - **Mesa** (MIT and others), https://mesa3d.org: OpenGL ES for the Mali GPU,
-  through Panfrost.
+  through Panfrost. 25.0.7 with one upstream fix in `package/mesa3d-px2/`
+  (commit 455b9360, Mesa issue 13191): `pan_cast_and_pack` parenthesizes its
+  destination, so a framebuffer reload writes its padding descriptor inside
+  its block.
 - **rtl8188eu** (GPL-2.0), https://github.com/benetti-engineering/rtl8188eu:
   Realtek's driver for the RTL8188EU USB Wi-Fi adapters, which the ZyperOS
   image loads for them in place of the kernel's rtl8xxxu, since it can be an

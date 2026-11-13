@@ -151,3 +151,12 @@ int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now, 
 	*plug = p->plug;
 	return USBPOWER_ASK;
 }
+
+bool usbpower_said_ends(int say, unsigned plug, const usb_power *p)
+{
+	if (say == USBPOWER_SAY_NONE || !p->known || p->plug != plug || p->pin != 1)
+		return true;
+	if (say == USBPOWER_SAY_PHONE)
+		return p->computer || (p->vbus == 1 && !p->host);
+	return p->vbus == 1 || p->host;
+}

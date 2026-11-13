@@ -20,11 +20,12 @@
  *   --panel-lift --small-lift     the theme's lifts, as the block has them
  *   --corner                      1 for rounded corners, 0 for Square
  *
- * A game pad, not a document: nothing on it selects, and the game takes
- * every touch (touch-action: none), so a finger on it never scrolls, pinches
- * or double-tap zooms the page. The picture is as large as its room takes it
- * (play.js's fit) and drawn as pixels. Every control is 48 CSS px or more
- * each way, a thumb's.
+ * A game pad, not a document: nothing on it selects, and the page takes
+ * every touch (touch-action: none, on the page and every element in it),
+ * so a finger anywhere on it never scrolls, pinches or double-tap zooms it
+ * (play.js's noZoom says the rest). The picture is as large as its room
+ * takes it (play.js's fit) and drawn as pixels. Every control is 48 CSS px
+ * or more each way, a thumb's.
  *
  * Two layouts: a phone held upright has the picture right under the bar and
  * the pad in the rest, the d-pad left and B and A right, SELECT and START
@@ -217,7 +218,11 @@ html, body {
 	-webkit-user-select: none;
 	user-select: none;
 	overscroll-behavior: none;
+	touch-action: none;
 }
+/* And on every element, rather than trusting each browser to take it from
+ * the page: a double tap that lands anywhere is a pad's, never a zoom */
+body * { touch-action: none; }
 html { background: var(--ground); }
 
 button {

@@ -48,7 +48,7 @@ ja = 開発者\n（SSH）
 it = Sviluppatore\n(SSH)
 
 [xfer.usb_device_connected]
-note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer that has not connected yet. Two tiles: USB Accessory, Computer.
+note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard), a computer that has not connected yet, or a phone. Three tiles: USB Accessory, Computer, Phone.
 en = What did you plug in?
 zh-Hans = 你插入了什么？
 es = ¿Qué conectaste?
@@ -59,7 +59,7 @@ ja = 何を接続しましたか？
 it = Cosa hai collegato?
 
 [xfer.tile_accessory]
-note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (408 units wide), with xfer.tile_accessory_sub under it. tight.
+note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (272 units wide; the smaller size where it does not fit), with xfer.tile_accessory_sub under it. tight.
 en = USB Accessory
 zh-Hans = USB 配件
 es = Accesorio USB
@@ -91,6 +91,17 @@ de = Computer
 ja = パソコン
 it = Computer
 
+[xfer.tile_phone]
+note = A tile of What did you plug in?: a phone (or a tablet), which the handheld then powers, and says how a phone connects (xfer.phone_said). Also the heading of that message. One line, 272 units wide at the menu's size. tight.
+en = Phone
+zh-Hans = 手机
+es = Celular
+pt-BR = Celular
+fr = Téléphone
+de = Handy
+ja = スマートフォン
+it = Telefono
+
 [xfer.replug_computer]
 note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
 en = Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.
@@ -101,6 +112,17 @@ fr = L'ordinateur ne s'est pas connecté. Il faut parfois plusieurs essais : reb
 de = Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel ab und steck es wieder ein.
 ja = パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。
 it = Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.
+
+[xfer.phone_said]
+note = After the player answers Phone: how a phone opens the handheld's files. A phone always takes the side of the USB-C cable that waits for power, and the handheld cannot ask it to swap, so plugging in again never helps. An Android phone swaps from its own USB settings: name them exactly as Android does in this language (Settings' usb_control_title and usb_control_device, read from AOSP 2026-11-13). An iPhone cannot: it needs a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable to the handheld. Over any screen but a game, under the heading xfer.tile_phone, until the phone connects or the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
+en = Android: tap the phone's USB notification, then USB controlled by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A to USB-C cable.
+zh-Hans = Android：点按手机的 USB 通知，再选“USB 受控于：此设备”。iPhone：请用 USB-C 转 USB-A 转接头和 USB-A 转 USB-C 数据线连接。
+es = Android: toca la notificación USB del celular y luego USB controlado por: Este dispositivo. iPhone: conéctalo con un adaptador USB-C a USB-A y un cable USB-A a USB-C.
+pt-BR = Android: toque na notificação USB do celular e depois em USB controlado por: Este dispositivo. iPhone: conecte com um adaptador USB-C para USB-A e um cabo USB-A para USB-C.
+fr = Android : touchez la notification USB du téléphone, puis USB contrôlé par : Cet appareil. iPhone : branchez-le avec un adaptateur USB-C vers USB-A et un câble USB-A vers USB-C.
+de = Android: Tippe auf die USB-Benachrichtigung des Handys, dann auf „Gerät, das die USB-Verbindung steuert“: „Dieses Gerät“. iPhone: Schließ es mit einem Adapter von USB-C auf USB-A und einem Kabel von USB-A auf USB-C an.
+ja = Android：スマートフォンの USB 通知をタップし、「USB のコントロール」で「このデバイス」を選びます。iPhone：USB-C - USB-A アダプタと USB-A - USB-C ケーブルで接続します。
+it = Android: tocca la notifica USB del telefono, poi Connessione USB controllata da: Questo dispositivo. iPhone: collegalo con un adattatore da USB-C a USB-A e un cavo da USB-A a USB-C.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.

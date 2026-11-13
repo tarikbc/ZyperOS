@@ -1005,8 +1005,8 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
-| See the Details | X | the card turns into a details panel | X |
-| Keep a Favorite | Y | a heart pops onto the card; the line says Y does it in the details | Y |
+| See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
+| Keep a Favorite | Y | in those details Favorite turns from Off to On, the row's own Y pressing with the glyph; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf | MENU, which opens nothing here |
 | Music | SELECT, and L2/R2 lit on the handheld | Muse's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
@@ -1024,10 +1024,18 @@ shelf starts a game without its resume point and Favorite is a row of the
 details page X opens, and the step still taught Y on the shelf as a
 favorite.)*
 
+*(2026-11-13, after I tried 1.0.5: the step still drew a heart popping onto
+the little shelf's card, where a favorite has had no heart since 2026-11-09,
+and the details X opened were a panel the info screen stopped being long
+ago, a cover beside the name, system, year and play time. Both are the info
+screen now, in its own words, and Y does there what it does on the
+handheld.)*
+
 The demonstrations are drawn from shapes and tokens on the stage - a little
 shelf of five system-colored cards (Game Boy, NES, SNES, Game Boy Color, Neo
 Geo Pocket Color, by systems.cfg's accents), a stand-in game in shades of the
-SNES's color, a menu and Muse whose words are bars - never the player's
+SNES's color, a menu and Muse whose words are bars, the details in the info
+screen's own words - never the player's
 library, so the tutorial is the same on a card with no games. Each plays as a
 loop half a second after its step comes on, pressing its own glyph; a press
 of the player's own goes on from wherever the loop was.
@@ -1098,14 +1106,20 @@ of the player's own goes on from wherever the loop was.
     theme too), POWER (the diagonal
     capsule) and the four light lenses as **edge** marks (20% toward
     **text-dim** on Beard). Pressed, a key is 92% of its size. No words
-    on it (principle 5): the glyph under the stage names the key. The
+    on it (principle 5): the glyph under the stage names the key. But the
+    volume keys carry a + and a -, 2.4 mm long and 0.65 thick, in the
+    colors MENU's dots have, so which one turns it up shows in both
+    lessons that light them *(my ask after trying 1.0.5, 2026-11-13: the
+    brightness step's keys had no + and -; the model's chevrons are not
+    drawn)*. The
     handheld's own green is not drawn: lime is the lit key's alone (3.3).
   - **Turned to the key**: orthographic, turned about its upright axis, its
     middle at (138, 262). The D-pad, A, B, Y, X and SELECT: 10 degrees to
     show its right side, 3.55 units a millimetre. MENU and POWER: 52 degrees
     to the right, VOL 52 degrees to the left, both at 3.95, a little nearer.
     Brightness needs MENU and VOL, on opposite sides, so it faces front at
-    3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit. A
+    3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit,
+    the volume keys 4.6 so their + and - fit on them pressed too. A
     step turns it from the last lesson's pose in **turn**, as the step comes
     on; the first lesson fades it in with the stage.
   - **The lit key**: **accent**, ringed in **accent-ink** (Beard) or
@@ -2863,15 +2877,17 @@ PASS PHONES NOW --hotspot-in` for the hotspot after someone came in.
 ### 11.36 What did you plug in?
 The question the shelf asks when something on the Pixel 2's USB port wants
 power and gives none (plastron's usbrole, src/usbpower.h), 2026-11-10: a
-USB accessory (headphones, a Wi-Fi adapter, a keyboard), or a computer
-whose port took the sink side, which the handheld cannot tell apart without
-powering it. The tiles of Computer Connected (11.18), two of them and wider
-(408 each): heading **What did you plug in?**; **USB Accessory**, its mark
-headphones, its name on one line and under it in **meta** (**text-dim**,
-**on-accent** when focused) "headphones, Wi-Fi, keyboard", up to two lines;
-and **Computer**, its mark a laptop. It starts on Computer, so a quick A or
-B never powers a computer; the button hints (11.4) "< > Move   A Choose   B
-Computer". Asked once per plug, two seconds after usbrole says it may be,
+USB accessory (headphones, a Wi-Fi adapter, a keyboard), a computer
+whose port took the sink side, or a phone, which the handheld cannot tell
+apart without powering it. The tiles of Computer Connected (11.18), three
+of them (272 each, 232 tall, all taller together when a name or its small
+line needs it): heading **What did you plug in?**; **USB Accessory**, its mark
+headphones, its name on one line (the smaller size, then two lines, where
+it does not fit) and under it in **meta** (**text-dim**, **on-accent** when
+focused) "headphones, Wi-Fi, keyboard", up to three lines; **Computer**,
+its mark a laptop; and **Phone**, its mark a phone (2026-11-13). It starts
+on Computer, so a quick A or B never powers a computer; the button hints
+(11.4) "< > Move   A Choose   B Computer". Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game (a plug made in a game is asked about
 back on the shelf); it goes by itself when the plug stops wanting power.
 Every plug is its own: nothing carries over from the plug before, however
@@ -2886,6 +2902,30 @@ button that was down as it appeared counts only once let go and pressed
 again, and so does one pressed in its first half second; after that a
 press answers at once, POWER always. Its button hints show from the half
 second, their room kept.
+
+**Phone.** A phone takes the side that waits for power at every plug: its
+port prefers it, where a computer's takes either at random (Tarik, an iPhone
+and an Android phone, 2026-11-13: Computer, then the replug message, again
+and again, for good). The handheld has no Type-C controller and no USB Power
+Delivery, so it cannot ask the phone to swap, and on a USB-C cable a phone
+is always the device. Phone powers it, as USB Accessory does (a phone is
+fed safely, and a powered Android phone shows its USB settings), and puts
+up the phone message, the replug message's slab with the phone mark under
+**Phone**: "Android: tap the phone's USB notification, then USB controlled
+by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A
+to USB-C cable." Android's own words in each language, read from AOSP's
+Settings (usb_control_title, usb_control_device). Android's "This device"
+makes the phone the host with no Power Delivery (its port's mode changes,
+UsbPortManager's MODE_DFP), so the handheld then gets power and Computer
+Connected (11.18) asks, Flash Drive and all. An iPhone has no such setting;
+through the adapter (whose plug says "wants power" to the phone) and an
+A-to-C cable (whose plug says "gives power" to the handheld), it is the host
+too. The message stays while the port powers the phone and goes when the
+plug ends: the cable out, another plug, the phone giving power (Android's
+swap), or a computer seen on the bus (a Mac answered Phone; Computer's
+message comes instead) (usbpower_said_ends). In **menu** up to four
+balanced lines, else in **meta** up to six. Never on Automatic, which powers
+a phone as any plug and asks nothing.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2925,7 +2965,7 @@ alone, stop while it is up (it was drawn under the animated machine on the
 device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
 same after 5 seconds (11.35). The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
-[0|1|said]`.
+[0|1|2|said|phone]`, `--replug [phone]`.
 
 ### 11.37 Screensaver
 After a while with nothing pressed on the shelf, the video snaps of random
@@ -3281,7 +3321,15 @@ cable the line says "Open zyperos.local/play on the computer."; with
 neither plugged in, "Plug in a Wi-Fi adapter or a computer." and only B. A
 notice over the game (11.7), **Multiplayer** over "Player 2 joined" or
 "Player 2 left", says when a browser comes and goes, and "Player 2 stopped"
-when it stopped by itself. src/p2panel.c draws the page; src/main.c's
+when it stopped by itself. A guest is said to have left only once it has
+been gone 5 s (src/p2.c's LEAVE_GRACE_MS), the row saying connected until
+then: a link that drops and comes back by itself is never said to go. On
+the first test with an iPhone the handheld said "left" and "joined" one
+after the other over a game nobody had left, most likely such a drop as
+the iPhone set up its sign-in sheet; the launcher's log says "player 2:
+player N back after T ms" for each one, which shows how long they last. A
+page that goes quiet is let go by p2d after its own 5 s, so its "left"
+comes some 10 s after it went. src/p2panel.c draws the page; src/main.c's
 `player2_page` runs it.
 
 **On the friend's screen** (res/web/play), the File Transfer page's clothes
@@ -3292,7 +3340,18 @@ Held upright, the status and **Picture off** in a bar at the top, the
 picture right under it, and the pad in the rest: the d-pad left, B and A
 right, SELECT and START under them, each control 48 CSS px or more, a
 thumb's, **raised** on **ground** and filled with **accent** while it is
-held. On its side, and on a computer, the picture takes the whole height
+held, with a 15 ms tick under the finger as it goes down where the browser
+can: Chrome on Android, not on silent. Android's sign-in sheet is a
+WebView in an app without the right to vibrate, so there the call does
+nothing; Safari has no Vibration API, and its one haptic, a switch
+control's, comes on a finished tap, so on the lift. Nothing zooms the page
+(a double tap in iOS's sign-in sheet had zoomed it with no way back): the
+viewport's limits, which the sign-in sheet keeps and Safari drops;
+`touch-action: none` on every element; and play.js's noZoom, which cancels
+Safari's gesture events, a double tap's second tap (never on Picture off)
+and two fingers moving off the pad, and where the limits hold undoes a
+zoom that came anyway by putting them again. On its side, and on a
+computer, the picture takes the whole height
 between the pad's halves. Picture off drops the picture and the pad grows
 into the room, for a friend who watches the handheld. A computer with a
 mouse shows its keys in the bar: the arrows, Z for B, X for A, Shift for

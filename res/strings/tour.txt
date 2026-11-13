@@ -746,17 +746,6 @@ de = LINKS/RECHTS
 ja = 左、右か A
 it = SINISTRA/DESTRA
 
-[tour.demo.played]
-note = The stand-in details panel of a game (Chrono Trigger): its play time, 12 hours.
-en = Played 12 h
-zh-Hans = 已玩 12 小时
-es = Jugado 12 h
-pt-BR = Jogado 12 h
-fr = Joué 12 h
-de = 12 h gespielt
-ja = プレイ時間 12 時間
-it = Giocato 12 h
-
 [tour.demo.now_playing]
 note = The stand-in MP4 screen's heading.
 en = Now Playing

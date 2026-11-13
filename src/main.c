@@ -9469,6 +9469,7 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
 		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
 		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
+		{ S_XFER_TILE_PHONE,         UI_GLYPH_PHONE },
 		{ S_XFER_TILE_USB_DRIVE,     UI_GLYPH_USB },
 	};
 	size_t i;
@@ -9608,6 +9609,42 @@ static void ask_guard_start(app *a, usbpower_guard *g)
 	usbpower_guard_start(g, plat_now_ms(), down);
 }
 
+/* A tile with a small line under its name (What did you plug in?'s USB
+ * Accessory): the name in the menu's size on one line, the smaller where it
+ * does not fit, and on two lines at the smaller past that; the small line in
+ * **meta**, up to three balanced lines (three tiles leave it 272 wide, where
+ * "headphones, Wi-Fi, keyboard" takes three, 2026-11-13). `h` is the words'
+ * height from the name's top. */
+#define TILE_SUB_TOP 92   /* the name's top in the tile, under the mark */
+typedef struct {
+	char name[2][LB_LINE];
+	int  nn;
+	bool small;
+	char sub[3][LB_LINE];
+	int  ns;
+	int  h;
+} tile_sub;
+
+static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *o)
+{
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+
+	o->small = ui_text_width(fm, label) > w - 24;
+	o->nn = 1;
+	snprintf(o->name[0], sizeof o->name[0], "%s", label);
+	if (o->small && ui_text_width(fs, label) > w - 24) {
+		o->nn = ui_balance_lines(fs, label, w - 24, 2, o->name);
+		if (o->nn < 1) {
+			snprintf(o->name[0], sizeof o->name[0], "%s", label);
+			o->nn = 1;
+		}
+	}
+	o->ns = ui_balance_lines(fs, value, w - 32, 3, o->sub);
+	if (o->ns < 0) o->ns = 0;
+	o->h = o->nn * (o->small ? ls : lm) + 4 + o->ns * ls;
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -9653,6 +9690,17 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	cols = g_tiles_grid && n > 2 ? 2 : n;
 	trows = (n + cols - 1) / cols;
 	th = g_tiles_grid && n > 2 ? TILE_HG : TILE_H;
+	/* A small line that takes a third line, or a name two, makes every
+	 * tile of the row as much taller, the room under them kept */
+	if (th == TILE_H)
+		for (i = 0; i < n; i++)
+			if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
+				tile_sub ts;
+				int room = TILE_H - TILE_SUB_TOP - (lm + 4 + 2 * ls);
+
+				tile_sub_lay(tiles[i].label ? tiles[i].label : "", tiles[i].value, tw, &ts);
+				if (TILE_SUB_TOP + ts.h + room > th) th = TILE_SUB_TOP + ts.h + room;
+			}
 	tiles_w = cols * tw + (cols - 1) * tile_gap;
 	tiles_h = trows * th + (trows - 1) * tile_gap;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
@@ -9736,19 +9784,21 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
 		if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
 			/* A name and the small line under it: the mark higher, the
-			 * name in the menu's size on one line (the smaller where it
-			 * does not fit), the line in **meta**, up to two balanced */
-			char sl[2][LB_LINE];
-			int ns = ui_balance_lines(fs, tiles[i].value, t.w - 32, 2, sl), y;
+			 * words as tile_sub_lay lays them */
+			tile_sub ts;
+			int y;
 			SDL_Color soft = on ? ink : UI_TEXT_DIM;
 
+			tile_sub_lay(label, tiles[i].value, t.w, &ts);
+			if (ts.small) { f = fs; lf = ls; }
 			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 48, 64, ink);
-			if (ui_text_width(f, label) > t.w - 24) { f = fs; lf = ls; }
-			y = t.y + 92;
-			ui_text(a->r, f, label, t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
-			y += lf + 4;
-			for (k = 0; k < ns; k++)
-				ui_text(a->r, fs, sl[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
+			y = t.y + TILE_SUB_TOP;
+			for (k = 0; k < ts.nn; k++, y += lf)
+				ui_text(a->r, f, ts.name[k], t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
+			if (ts.nn > 1) ui_fit_drawn(label);
+			y += 4;
+			for (k = 0; k < ts.ns; k++)
+				ui_text(a->r, fs, ts.sub[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
 			ui_fit_drawn(tiles[i].value);
 			continue;
 		}
@@ -10370,25 +10420,33 @@ static void usb_ask(app *a)
 }
 
 /* Something on the USB port wants power and gives none (usbpower.h): a
- * DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
- * side, which the handheld cannot tell apart without feeding it. Asked once
- * per plug over the shelf, as Computer Connected is (DESIGN.md 11.36): two
- * tiles, USB Accessory and Computer, starting on Computer, so a
- * quick A or B never feeds a computer. USB Accessory asks usbrole for host for
- * this plug (it says yes only while no power comes in); Computer, B
- * or MENU leave the port as it is and say to plug the cable in again, so
- * the computer can take the side that gives power. The question goes by
- * itself when the plug stops wanting power (unplugged, or power came). */
-static int usb_power_rows(menu_row rows[3])
+ * DAC, a Wi-Fi adapter, a keyboard, a computer whose port took the sink
+ * side, or a phone, which the handheld cannot tell apart without feeding it.
+ * Asked once per plug over the shelf, as Computer Connected is (DESIGN.md
+ * 11.36): three tiles, USB Accessory, Computer and Phone, starting on
+ * Computer, so a quick A or B never feeds a computer. USB Accessory asks
+ * usbrole for host for this plug (it says yes only while no power comes
+ * in); Computer, B or MENU leave the port as it is and say to plug the cable
+ * in again, so the computer can take the side that gives power. Phone powers
+ * it as USB Accessory does and says how a phone connects (a phone takes the
+ * side that waits for power at every plug, so a replug never helps). The
+ * question goes by itself when the plug stops wanting power (unplugged, or
+ * power came). */
+enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
+
+static int usb_power_rows(menu_row rows[UP_TILES + 1])
 {
 	/* A tile's value is the small line under its name (tiles_panel) */
-	rows[0] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
-	rows[1] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
-	rows[2] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
-	return 3;
+	rows[UP_ACCESSORY] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
+	rows[UP_COMPUTER] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
+	rows[UP_PHONE] = (menu_row){ T(S_XFER_TILE_PHONE), NULL, true };
+	rows[UP_TILES] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
+	return UP_TILES + 1;
 }
 
 static void replug_on(unsigned plug);
+
+static void phone_said_on(unsigned plug);
 
 static void replug_off(void);
 
@@ -10453,8 +10511,8 @@ static void ulog_note(const char *what)
 
 static void usb_power_ask(app *a, unsigned plug)
 {
-	menu_row rows[3];
-	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
+	menu_row rows[UP_TILES + 1];
+	int n = usb_power_rows(rows), sel = UP_COMPUTER, choice = -1, lv;
 	unsigned looked = 0;
 	usbpower_guard guard;
 	float f;
@@ -10472,19 +10530,19 @@ static void usb_power_ask(app *a, unsigned plug)
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
-		if (menu_leaving(a)) choice = 1;
+		if (menu_leaving(a)) choice = UP_COMPUTER;
 		/* Unplugged, or power came in: nothing to ask any more */
 		if (!looked || now - looked >= 200u) {
 			usb_power p;
 
 			looked = now ? now : 1;
-			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = 2;
+			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = UP_GONE;
 		}
 		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
 			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
 
 			moved_sound(a, b);
-			sel = (sel + (b == IN_LEFT ? -1 : 1) + 2) % 2;
+			sel = (sel + (b == IN_LEFT ? -1 : 1) + UP_TILES) % UP_TILES;
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
@@ -10505,11 +10563,20 @@ static void usb_power_ask(app *a, unsigned plug)
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
-	if (a->running) ulog_note(choice == 0 ? "asked: USB Accessory" : choice == 1 ? "asked: Computer"
-	                                                               : "asked: gone before an answer");
-	if (!a->running || choice == 2) return;
-	if (choice == 0) {
+	if (a->running) ulog_note(choice == UP_ACCESSORY ? "asked: USB Accessory"
+	                          : choice == UP_COMPUTER ? "asked: Computer"
+	                          : choice == UP_PHONE ? "asked: Phone" : "asked: gone before an answer");
+	if (!a->running || choice == UP_GONE) return;
+	if (choice == UP_ACCESSORY) {
 		plat_usb_power_grant(plug);
+		return;
+	}
+	/* A phone: powered, so an Android phone shows its USB settings and can
+	 * take the other side from there; and how a phone connects, until the
+	 * phone connects or the cable comes out */
+	if (choice == UP_PHONE) {
+		plat_usb_power_grant(plug);
+		phone_said_on(plug);
 		return;
 	}
 	/* A computer: the message, until the cable comes out */
@@ -10524,19 +10591,30 @@ static void usb_power_ask(app *a, unsigned plug)
 static usbpower_follow_state g_power_f;
 static unsigned g_power_ask;            /* a plug to ask about, 0 none */
 static struct {
-	bool     on;                        /* the replug message is up */
+	bool     on;                        /* the message is up */
 	unsigned plug;                      /* for this plug */
+	int      say;                       /* USBPOWER_SAY_COMPUTER or _PHONE */
 } g_replug;
 
-static void replug_on(unsigned plug)
+static void said_on(unsigned plug, int say)
 {
-	if (g_replug.on && g_replug.plug == plug) return;
+	if (g_replug.on && g_replug.plug == plug && g_replug.say == say) return;
 	g_replug.on = true;
 	g_replug.plug = plug;
-	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
-	ulog_note("replug message");
+	g_replug.say = say;
+	if (say == USBPOWER_SAY_PHONE) {
+		fprintf(stderr, "usb: a phone: powered, and how it connects (plug %u)\n", plug);
+		ulog_note("phone message");
+	} else {
+		fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+		ulog_note("replug message");
+	}
 	redraw_now();
 }
+
+static void replug_on(unsigned plug) { said_on(plug, USBPOWER_SAY_COMPUTER); }
+
+static void phone_said_on(unsigned plug) { said_on(plug, USBPOWER_SAY_PHONE); }
 
 static void replug_off(void)
 {
@@ -10566,8 +10644,9 @@ static void power_follow(void)
 	/* usbrole started after the launcher told it, or again: told again */
 	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
 	/* The message stays until the plug ends: unplugged (the pin idle),
-	 * another plug, the computer connected (power in), or the port a host */
-	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
+	 * another plug, the computer or the phone connected (power in), or for
+	 * Computer's the port a host (usbpower_said_ends) */
+	if (g_replug.on && usbpower_said_ends(g_replug.say, g_replug.plug, &p))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
 	/* The accessory powered when the handheld turned off, there again from
@@ -10589,12 +10668,29 @@ static void power_follow(void)
 	}
 }
 
-/* The message's rows: its words balanced onto up to three lines in `w` */
-static int replug_lines(int w, char lines[4][LB_LINE])
+/* The message's rows: its words balanced onto up to four lines in `w`;
+ * Phone's, longer, at the smaller size (**meta**) when the menu's takes
+ * more, onto up to six. *small says which. */
+#define REPLUG_LINES 6
+static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
 {
-	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), w, 4, lines);
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
+	const char *text = T(phone ? S_XFER_PHONE_SAID : S_XFER_REPLUG_COMPUTER);
+	int n;
 
-	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
+	*small = false;
+	if (!phone) {
+		n = ui_balance_lines(ui_font(UI_F_MENU), text, w, 4, lines);
+	} else {
+		/* Room for all of it first, so the fewest lines it takes are
+		 * known without a cut: four or under stay at the menu's size */
+		n = ui_balance_lines(ui_font(UI_F_MENU), text, w, LB_MAX_LINES, lines);
+		if (n > 4) {
+			*small = true;
+			n = ui_balance_lines(ui_font(UI_F_META), text, w, REPLUG_LINES, lines);
+		}
+	}
+	ui_fit_drawn(text);
 	return n;
 }
 
@@ -10602,30 +10698,38 @@ static int replug_lines(int w, char lines[4][LB_LINE])
  * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
  * and 11.36): **surface** with the **panel** lift, the laptop mark at its
  * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
- * in **menu** **text** (up to four balanced lines), until the plug ends */
+ * in **menu** **text** (up to four balanced lines), until the plug ends.
+ * Phone's message the same, with the phone mark, "Phone" and up to five. */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
 static void replug_draw_at(SDL_Renderer *r)
 {
-	char lines[4][LB_LINE];
-	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
+	char lines[LB_MAX_LINES][LB_LINE];
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
 	SDL_Rect slab;
-	int n, k, y;
+	bool small;
+	int n, k, y, lb;
 
-	n = replug_lines(REPLUG_W - tx_off - padx, lines);
+	n = replug_lines(REPLUG_W - tx_off - padx, lines, &small);
+	fb = small ? fs : fm;
+	lb = small ? ls : lm;
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
-	                   pady + ls + 4 + n * lm + pady };
+	                   pady + ls + 4 + n * lb + pady };
 	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
 	ui_panel(r, &slab, DS_RADIUS_PANEL);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-	ui_glyph_draw(r, UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2, mark, UI_TEXT_SOFT);
+	ui_glyph_draw(r, phone ? UI_GLYPH_PHONE : UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2,
+	              mark, UI_TEXT_SOFT);
 	y = slab.y + pady;
-	ui_text(r, fs, T(S_XFER_TILE_COMPUTER), slab.x + tx_off, ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
+	ui_text(r, fs, T(phone ? S_XFER_TILE_PHONE : S_XFER_TILE_COMPUTER), slab.x + tx_off,
+	        ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
 	y += ls + 4;
 	for (k = 0; k < n; k++)
-		ui_text(r, fm, lines[k], slab.x + tx_off, ui_line_y(UI_F_MENU, y + k * lm), -1, UI_TEXT);
+		ui_text(r, fb, lines[k], slab.x + tx_off, ui_line_y(small ? UI_F_META : UI_F_MENU, y + k * lb), -1,
+		        UI_TEXT);
 }
 
 static bool replug_shown(void) { return g_replug.on; }
@@ -13955,7 +14059,7 @@ static void controls_screen(app *a)
 /* DESIGN.md 11.10: the first thing a new handheld shows, and again from MENU >
  * Show Tutorial. The steps are src/tour.c's and the screens src/tourdraw.c's;
  * this is the loop that reads the buttons, plays the sounds, turns the real
- * volume and brightness, and lends the drawing Zyper and the heart. */
+ * volume and brightness, and lends the drawing Zyper. */
 
 /* Zyper as the tutorial poses him, by the menu's draw_zyper_pose: the high
  * brow following his tilt (zyper_brow_lift) as the menu's does, and on Beard
@@ -13969,11 +14073,6 @@ static void tour_zyper_draw(void *ctx, float cx, float cy, float h, const tour_z
 		zyper_shadow_draw(a->r, cx, cy, h, z->pose.tilt, z->shadow * (1.0f - z->dim));
 	draw_zyper_pose(a->r, cx, cy, h, &z->pose, zyper_brow_lift(z->pose.tilt), z->dim,
 	                z->alpha);
-}
-
-static void tour_heart_draw(void *ctx, float cx, float cy, float rad, SDL_Color c)
-{
-	draw_heart(((app *)ctx)->r, cx, cy, rad, c);
 }
 
 /* The power step's stage plays the power-off's own frames, small. */
@@ -14082,7 +14181,7 @@ static void tour_apply(app *a, int c, int v, bool save)
 
 static void tour_run(app *a, bool first)
 {
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	bool saved = false, shown = false, kept[TOUR_CHOICES] = { false };
 	int snd[IN_COUNT], n, i, at[TOUR_CHOICES], looked[TOUR_CHOICES];
@@ -23936,7 +24035,8 @@ static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
 /* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
- * where it starts); --usb-power said: the message after Computer */
+ * where it starts; 2, Phone); --usb-power said: the message after
+ * Computer; --usb-power phone: the message after Phone */
 static int shot_power = -1;
 static int shot_usbdrive = -1;   /* --usb-drive N */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
@@ -24890,17 +24990,16 @@ static void shot_compose(app *a)
 		return;
 	}
 	if (shot_power >= 0) {
-		menu_row rows[3], said[3];
-		char lines[3][LB_LINE];
+		menu_row rows[UP_TILES + 1];
 
 		ui_scrim(a->r, 0);
-		if (shot_power < 2) {
+		if (shot_power < UP_TILES) {
 			int nt = usb_power_rows(rows);
 
 			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
 		} else {
-			/* The replug message over the shelf, as the overlay draws it */
-			(void)said; (void)lines;
+			/* The answer's message over the shelf, as the overlay draws it */
+			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER : USBPOWER_SAY_PHONE;
 			replug_draw_at(a->r);
 		}
 	}
@@ -25510,7 +25609,7 @@ static void shot_portload_take(app *a)
 static void shot_tour_draw(app *a)
 {
 	const uint32_t now = 1000000u;
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	int at[TOUR_CHOICES];
 
@@ -27044,6 +27143,8 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--replug")) {
 			g_replug.on = true;
 			g_replug.plug = 1;
+			g_replug.say = USBPOWER_SAY_COMPUTER;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { g_replug.say = USBPOWER_SAY_PHONE; i++; }
 		}
 		else if (!strcmp(argv[i], "--usb-menu")) {
 			shot_usb_menu = true;
@@ -27051,9 +27152,10 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { g_usb_auto = true; shot_usb_said = true; i++; }
 		}
 		else if (!strcmp(argv[i], "--usb-power")) {
-			shot_power = 1;
-			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = 2; i++; }
-			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '1')
+			shot_power = UP_COMPUTER;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = UP_TILES; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { shot_power = UP_TILES + 1; i++; }
+			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '2')
 				shot_power = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--dev-page")) {
