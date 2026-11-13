@@ -74,6 +74,11 @@ static void lines(void)
 	masked("wlan0: CTRL-EVENT-DISCONNECTED bssid=c0:86:b3:a7:48:7f reason=4 locally_generated=1",
 	       "wlan0: CTRL-EVENT-DISCONNECTED bssid=XX:XX:XX:XX:XX:7f reason=4 locally_generated=1");
 	masked("wlan0: SSID '' and ssid=\"\" stay empty", "wlan0: SSID '' and ssid=\"\" stay empty");
+	/* A name ending in a backslash (written \\\\), and a line cut before
+	 * its closing quote: neither lets the name through */
+	masked("id=0 ssid=\"Lab\\\\\" auth_failures=1", "id=0 ssid=\"L...\\\" auth_failures=1");
+	masked("id=0 ssid=\"SecretPlace", "id=0 ssid=\"S...e");
+	masked("with SSID 'SecretPlace", "with SSID 'S...e");
 }
 
 static void pack(void)

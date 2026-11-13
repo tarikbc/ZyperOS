@@ -55,8 +55,9 @@ static bool mac_at(const char *p, char sep)
  * since is no longer one, and the supplicant writes a name with its odd
  * characters escaped (printf_encode: \xNN, \", \\), which a saved name would
  * not match. A name in single quotes runs to the line's last single quote,
- * since a quote inside it is not escaped; one in double quotes to the next
- * double quote that no backslash escapes. */
+ * since a quote inside it is not escaped; one in double quotes to the first
+ * double quote that is not part of an escape. With no closing quote, the
+ * rest of the line is masked: a name is never let through. */
 static void mask_ssids(char *line, size_t cap)
 {
 	static const char *const opens[] = { "SSID '", "SSID='", "ssid=\"" };
@@ -73,10 +74,18 @@ static void mask_ssids(char *line, size_t cap)
 			if (q == '\'') {
 				end = strrchr(name, '\'');
 			} else {
-				for (end = name; *end && !(*end == '"' && (end == name || end[-1] != '\\')); end++) {}
+				/* An escape is a backslash and the character after it
+				 * (\\, \", or the x of \xNN, whose digits are no quote) */
+				for (end = name; *end && *end != '"'; end++)
+					if (*end == '\\' && end[1]) end++;
 				if (!*end) end = NULL;
 			}
-			if (!end || end == name) { p = name; continue; }
+			if (end == name) { p = name; continue; }
+			/* No closing quote (a line cut short): the rest of the line is
+			 * the name, rather than a name let through */
+			if (!end) end = name + strlen(name);
+			while (end > name && (end[-1] == '\n' || end[-1] == '\r') && !*end) end--;
+			if (end == name) break;
 			len = (size_t)(end - name);
 			snprintf(word, sizeof word, "%.*s", (int)(len < sizeof word ? len : sizeof word - 1), name);
 			logpack_mask_word(word, masked, sizeof masked);
