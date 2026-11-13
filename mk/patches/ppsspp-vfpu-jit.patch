@@ -1,0 +1,156 @@
+ZyperOS: three VFPU operations compiled by the ARM64 JIT instead of handed to the interpreter, from
+Deadstation Portable (github.com/tyrannotorus/emulator-deadstation-portable, GPL-2.0-or-later as PPSSPP),
+a PPSSPP v1.20.4 fork for the TrimUI Brick: its commit c0877a2 (vsge, vslt) and its first
+commit fbde7d6 (vf2i, and vsin, vcos and vasin of one value).
+
+The interpreter's way costs a full register flush, its generic vector reads and writes and its
+prefix handling around one instruction. Each case is the interpreter's arithmetic, bit for bit:
+- vsge, vslt: FCMP, CSET, UCVTF a lane; a NaN gives 0.0 (an unordered compare sets neither GE nor
+  MI); a lane whose S or T swizzle reads past the vector is 0.0 (RetainInvalidSwizzleST)
+- vf2i without prefixes: the scale is a power of two (exact), its overflow to infinity saturates as
+  Int_Vf2i's caps do, the conversion rounds as the instruction says (n, z, u, d), NaN 0x7FFFFFFF
+- vsin, vcos, vasin of a single value without prefixes: the interpreter's own function on the same
+  value in the same rounding mode, called directly
+
+diff --git a/Core/MIPS/ARM64/Arm64CompVFPU.cpp b/Core/MIPS/ARM64/Arm64CompVFPU.cpp
+index 9fbd2dc..36caf3b 100644
+--- a/Core/MIPS/ARM64/Arm64CompVFPU.cpp
++++ b/Core/MIPS/ARM64/Arm64CompVFPU.cpp
+@@ -55,6 +55,11 @@
+ #define _IMM16 (signed short)(op & 0xFFFF)
+ #define _IMM26 (op & 0x03FFFFFF)
+ 
++// From Deadstation Portable: vasin's helper, called directly (Comp_VV2Op)
++static float AsinFromVfpu(float x) {
++	return vfpu_asin(x);
++}
++
+ namespace MIPSComp {
+ 	using namespace Arm64Gen;
+ 	using namespace Arm64JitConstants;
+@@ -735,13 +740,24 @@ namespace MIPSComp {
+ 					SetJumpTarget(skip);
+ 					break;
+ 				}
+-				case 6:  // vsge
+-					DISABLE;  // pending testing
+-					break;
+-				case 7:  // vslt
+-					DISABLE;  // pending testing
++				case 6:  // vsge: 1.0 if s >= t, else 0.0
++				case 7:  // vslt: 1.0 if s < t, else 0.0
++				{
++					// From Deadstation Portable, as Int_Vsge and Int_Vslt: a lane whose s or t swizzle reads past the vector
++					// (and isn't a constant) is 0.0 (RetainInvalidSwizzleST), and a NaN gives 0.0: an unordered compare sets
++					// neither GE nor MI.
++					const u32 swizzleS = (js.prefixS >> (i * 2)) & 3, swizzleT = (js.prefixT >> (i * 2)) & 3;
++					const bool constS = ((js.prefixS >> (12 + i)) & 1) != 0, constT = ((js.prefixT >> (12 + i)) & 1) != 0;
++					if (((int)swizzleS >= n && !constS) || ((int)swizzleT >= n && !constT)) {
++						fp.MOVI2F(fpr.V(tempregs[i]), 0.0f, SCRATCH1);
++						break;
++					}
++					fp.FCMP(fpr.V(sregs[i]), fpr.V(tregs[i]));
++					CSET(SCRATCH1, ((op >> 23) & 7) == 6 ? CC_GE : CC_MI);
++					fp.UCVTF(fpr.V(tempregs[i]), SCRATCH1);
+ 					break;
+ 				}
++				}
+ 				break;
+ 
+ 			default:
+@@ -771,6 +787,28 @@ namespace MIPSComp {
+ 			return;
+ 		}
+ 
++		// From Deadstation Portable: vsin, vcos or vasin of one value without prefixes, through its helper alone, without
++		// the interpreter's generic reading and writing of vectors around it: the same function on the same value, in the
++		// rounding mode the interpreter gets (Int_VV2Op: no swizzle, no mask, no saturation without prefixes).
++		{
++			const int func = (op >> 16) & 0x1f;
++			if ((func == 18 || func == 19 || func == 23) && GetVecSize(op) == V_Single && js.HasNoPrefix()) {
++				float (*helper)(float) = func == 18 ? &vfpu_sin : (func == 19 ? &vfpu_cos : &AsinFromVfpu);
++				u8 sreg, dreg;
++				GetVectorRegs(&sreg, V_Single, _VS);
++				GetVectorRegs(&dreg, V_Single, _VD);
++				FlushAll();
++				SaveStaticRegisters();
++				RestoreRoundingMode();
++				fp.LDR(32, INDEX_UNSIGNED, S0, CTXREG, fpr.GetMipsRegOffsetV(sreg));
++				QuickCallFunction(SCRATCH2_64, (void *)helper);
++				fp.STR(32, INDEX_UNSIGNED, S0, CTXREG, fpr.GetMipsRegOffsetV(dreg));
++				ApplyRoundingMode();
++				LoadStaticRegisters();
++				return;
++			}
++		}
++
+ 		// Catch the disabled operations immediately so we don't map registers unnecessarily later.
+ 		// Move these down to the big switch below as they are implemented.
+ 		switch ((op >> 16) & 0x1f) {
+@@ -997,7 +1035,65 @@ namespace MIPSComp {
+ 	}
+ 
+ 	void Arm64Jit::Comp_Vf2i(MIPSOpcode op) {
+-		DISABLE;
++		CONDITIONAL_DISABLE(VFPU_VEC);
++		// From Deadstation Portable: without prefixes, as Int_Vf2i does it, bit for bit. The scale is a power of two, exact
++		// in float, and its overflow to infinity saturates as the interpreter's caps do; the conversion's rounding is the
++		// instruction's own (n to nearest even, z toward zero, u up, d down), saturating; NaN 0x7FFFFFFF.
++		if (!js.HasNoPrefix()) {
++			DISABLE;
++		}
++		RoundingMode mode;
++		switch ((op >> 21) & 0x1f) {
++		case 16: mode = ROUND_N; break;
++		case 17: mode = ROUND_Z; break;
++		case 18: mode = ROUND_P; break;
++		case 19: mode = ROUND_M; break;
++		default: DISABLE;
++		}
++
++		VectorSize sz = GetVecSize(op);
++		int n = GetNumVectorElements(sz);
++		int imm = (op >> 16) & 0x1f;
++
++		u8 sregs[4], dregs[4];
++		GetVectorRegsPrefixS(sregs, sz, _VS);
++		GetVectorRegsPrefixD(dregs, sz, _VD);
++
++		MIPSReg tempregs[4];
++		for (int i = 0; i < n; ++i) {
++			if (!IsOverlapSafe(dregs[i], i, n, sregs)) {
++				tempregs[i] = fpr.GetTempV();
++			} else {
++				tempregs[i] = dregs[i];
++			}
++		}
++
++		if (imm != 0)
++			fp.MOVI2F(S0, (float)(1UL << imm), SCRATCH1);
++
++		for (int i = 0; i < n; i++) {
++			fpr.MapDirtyInV(tempregs[i], sregs[i]);
++			ARM64Reg from = fpr.V(sregs[i]);
++			if (imm != 0) {
++				fp.FMUL(S1, from, S0);
++				from = S1;
++			}
++			fp.FCMP(from, from);  // NaN?
++			fp.FCVTS(fpr.V(tempregs[i]), from, mode);
++			FixupBranch skip = B(CC_VC);
++			MOVI2R(SCRATCH1, 0x7FFFFFFF);
++			fp.FMOV(fpr.V(tempregs[i]), SCRATCH1);
++			SetJumpTarget(skip);
++		}
++
++		for (int i = 0; i < n; ++i) {
++			if (dregs[i] != tempregs[i]) {
++				fpr.MapDirtyInV(dregs[i], tempregs[i]);
++				fp.FMOV(fpr.V(dregs[i]), fpr.V(tempregs[i]));
++			}
++		}
++
++		fpr.ReleaseSpillLocksAndDiscardTemps();
+ 	}
+ 
+ 	void Arm64Jit::Comp_Mftv(MIPSOpcode op) {
