@@ -1,0 +1,294 @@
+#!/bin/sh
+# setuplog: a record of the card's setup, on its boot partition, where a
+# computer reads it: zyperos-setup.txt on PX2BOOT.
+#
+# A first start that never finishes leaves nothing behind to read: a release
+# image has no shell, and ZyperOS's own log is ZyperOS's, which never got to
+# start. One GKD Pixel 2 hung the whole system at random points of the first
+# start's copy, on every card and every version, and rebooted minutes later
+# (2026-11-13). So while ZyperOS's init (/etc/init.d/zyperos) copies ZyperOS
+# onto the card, this runs beside it and writes down: the device once (its
+# DDR, the card and its bus, the supplies, the temperature cut-off), then a
+# line every second (the copy, memory, the CPU, DDR and GPU clocks, the two
+# supplies, both temperatures, the battery, the card's errors), and every
+# kernel line as it comes. All of it is on the card within a second, forced
+# there, so a hang leaves what led up to it. The next start adds its own
+# after it.
+#
+#   setuplog start WHAT    as the copy starts (WHAT: setup, update)
+#   setuplog mark TEXT     a step of it
+#   setuplog stop TEXT     as it ends
+#
+# The file is made once, at its full size, the first time (the first start's
+# first seconds, before the copy), and only ever written in place after that:
+# no cluster is added while the copy runs, so the boot partition's FAT, which
+# boot.scr and the kernels are found through, is never written then, only the
+# file's own clusters and its entry. Kept to its last half when it fills.
+
+CARD=/dev/mmcblk0
+[ -r /etc/default/datapart ] && . /etc/default/datapart
+case $CARD in
+*[0-9]) PART=${CARD}p ;;
+*) PART=$CARD ;;
+esac
+BOOT=${PART}1
+DISK=${CARD#/dev/}
+RUN=/run/setuplog
+MNT=$RUN/boot
+FILE=$MNT/zyperos-setup.txt
+LOG=$RUN/log
+SIZE=262144
+
+# Seconds since the kernel started, as the kernel's own lines count them
+stamp() {
+	local up
+	read -r up _ < /proc/uptime
+	printf '[%8.2f]' "$up"
+}
+
+say() { echo "$(stamp) $*" >> $LOG; }
+
+# Whether a logger is running: its loop's process is there
+running() {
+	local pid
+	[ -r $RUN/pid ] && read -r pid < $RUN/pid && kill -0 "$pid" 2> /dev/null
+}
+
+# Its folder gone, with nothing that was on the boot partition: never rm -r
+# here, the partition may still be mounted under it
+clean() {
+	umount $MNT 2> /dev/null
+	rm -f $LOG $LOG.new $RUN/kmsg $RUN/pid $RUN/kpid
+	rmdir $MNT $RUN 2> /dev/null
+}
+
+# The whole log, then filler to the file's size, over the file
+put_all() {
+	local len
+	len=$(wc -c < $LOG)
+	{ cat $LOG; yes '' | head -c $((SIZE - len)); } |
+		dd of=$FILE bs=4096 conv=notrunc,fsync 2> /dev/null
+	WRITTEN=$len
+}
+
+# What the log gained since the last write, from the 4 KB block it ended in
+put_new() {
+	local len b
+	len=$(wc -c < $LOG)
+	if [ "$len" -gt $((SIZE - 4096)) ]; then
+		tail -c $((SIZE / 2)) $LOG > $LOG.new && mv $LOG.new $LOG
+		put_all
+		return
+	fi
+	[ "$len" -gt "$WRITTEN" ] || return
+	b=$((WRITTEN / 4096))
+	dd if=$LOG of=$FILE bs=4096 skip=$b seek=$b conv=notrunc,fsync 2> /dev/null
+	WRITTEN=$len
+}
+
+# The kernel's lines that came since the last look, as dmesg prints them
+kernel_lines() {
+	local n
+	n=$(wc -l < $RUN/kmsg)
+	[ "$n" -gt "$K" ] || return
+	sed -n "$((K + 1)),${n}p" $RUN/kmsg | awk '
+		/^ / { next }
+		{
+			i = index($0, ";")
+			split(substr($0, 1, i - 1), h, ",")
+			printf "[%8.2f] %s\n", h[3] / 1000000, substr($0, i + 1)
+		}' >> $LOG
+	K=$n
+}
+
+# Each sysfs value read once at start: where it is, or nothing
+find_files() {
+	local r name p
+	GPU= LOGIC= ARM= ERRS=
+	for p in /sys/class/devfreq/*gpu*/cur_freq; do
+		[ -r "$p" ] && GPU=$p
+	done
+	for r in /sys/class/regulator/regulator.*; do
+		[ -r "$r/name" ] && read -r name < "$r/name" || continue
+		case $name in
+		vdd_logic) LOGIC=$r/microvolts ;;
+		vdd_arm) ARM=$r/microvolts ;;
+		esac
+	done
+	[ -r /sys/kernel/debug/mmc0/err_stats ] && ERRS=/sys/kernel/debug/mmc0/err_stats
+	BAT=/sys/class/power_supply/battery
+}
+
+get() {
+	eval "$1=-"
+	[ -n "$2" ] && [ -r "$2" ] && read -r "$1" < "$2"
+}
+
+# One line: the copy so far, memory, the clocks, the supplies, the heat, the
+# battery and the card's errors since the kernel started
+status() {
+	local up wr cpu ddr gpu lg arm t0 t1 cap bv st
+	read -r up _ < /proc/uptime
+	read -r _ _ _ _ _ _ wr _ < /sys/block/$DISK/stat
+	get cpu /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq
+	get ddr /sys/class/devfreq/dmc/cur_freq
+	get gpu "$GPU"
+	get lg "$LOGIC"
+	get arm "$ARM"
+	get t0 /sys/class/thermal/thermal_zone0/temp
+	get t1 /sys/class/thermal/thermal_zone1/temp
+	get cap $BAT/capacity
+	get bv $BAT/voltage_now
+	get st $BAT/status
+	awk -v up="$up" -v wr="$wr" -v wr0="$WR0" -v cpu="$cpu" -v ddr="$ddr" \
+		-v gpu="$gpu" -v lg="$lg" -v arm="$arm" -v t0="$t0" -v t1="$t1" \
+		-v cap="$cap" -v bv="$bv" -v st="$st" '
+		function n(v, d) { return v ~ /^[0-9]+$/ ? int(v / d) : "-" }
+		function t(v) { return v ~ /^-?[0-9]+$/ ? sprintf("%.1f C", v / 1000) : "-" }
+		FILENAME == "/proc/meminfo" {
+			if ($1 == "MemAvailable:") a = $2
+			if ($1 == "Dirty:") d = $2
+			if ($1 == "Writeback:") w = $2
+			next
+		}
+		$NF ~ /^[0-9]+$/ { e += $NF }
+		END {
+			printf "[%8.2f] status: card +%s MB | dirty %d MB, writeback %d MB, free %d MB" \
+				" | cpu %s MHz, ddr %s MHz, gpu %s MHz | logic %s mV, arm %s mV" \
+				" | %s, %s | battery %s%%, %s mV, %s | card errors %d\n",
+				up, wr ~ /^[0-9]+$/ ? int((wr - wr0) / 2048) : "-",
+				d / 1024, w / 1024, a / 1024,
+				n(cpu, 1000), n(ddr, 1000000), n(gpu, 1000000),
+				n(lg, 1000), n(arm, 1000), t(t0), t(t1), cap, n(bv, 1000), st, e
+		}' /proc/meminfo $ERRS >> $LOG
+}
+
+# A device tree number (one big-endian 32-bit cell)
+dt_u32() {
+	set -- $(od -An -tu1 "$1" 2> /dev/null)
+	[ $# -ge 4 ] && echo $((($1 << 24) | ($2 << 16) | ($3 << 8) | $4))
+}
+
+# The device, once: what a hang on one unit and not another could come from
+device() {
+	local v f r2 r3 con type
+	echo "=== ZyperOS $1 log, start $(($(grep -c '^=== ZyperOS ' $LOG) + 1)) ==="
+	stamp
+	echo " $1: started"
+	v=-
+	read -r v < /usr/share/zyperos/card/ZyperOS/VERSION 2> /dev/null
+	echo "ZyperOS on the image: $v"
+	v=none
+	read -r v < /mnt/SDCARD/ZyperOS/VERSION 2> /dev/null
+	echo "ZyperOS on the card: $v"
+	echo "kernel: $(uname -r) $(uname -v)"
+	echo "command line: $(cat /proc/cmdline)"
+	echo "model: $(tr -d '\0' < /proc/device-tree/model 2> /dev/null)"
+	awk '$1 == "MemTotal:" { print "memory: " int($2 / 1024) " MB" }' /proc/meminfo
+	# What the DDR init found (Rockchip's SYS_REG v3 in PMUGRF OS_REG2 and 3),
+	# and whether the chip is the PX30S (DDR_GRF_CON1 bits 15:14)
+	r2=$(devmem 0xff010208 32 2> /dev/null)
+	r3=$(devmem 0xff01020c 32 2> /dev/null)
+	con=$(devmem 0xff630004 32 2> /dev/null)
+	if [ -n "$r2" ] && [ -n "$r3" ]; then
+		case $((((r2 >> 13) & 7) | (((r3 >> 12) & 3) << 3))) in
+		0) type=DDR4 ;; 3) type=DDR3 ;; 5) type=LPDDR2 ;; 6) type=LPDDR3 ;; 7) type=LPDDR4 ;;
+		*) type=unknown ;;
+		esac
+		echo "DDR: $type (OS_REG2 $r2, OS_REG3 $r3), PX30S: $([ -n "$con" ] && [ $(((con >> 14) & 3)) = 3 ] && echo yes || echo no)"
+	fi
+	get v /sys/class/devfreq/dmc/available_frequencies
+	echo "DDR rates: $v; governor $(cat /sys/class/devfreq/dmc/governor 2> /dev/null), now $(cat /sys/class/devfreq/dmc/cur_freq 2> /dev/null)"
+	f=/sys/devices/system/cpu/cpu0/cpufreq
+	echo "CPU rates: $(cat $f/scaling_available_frequencies 2> /dev/null); governor $(cat $f/scaling_governor 2> /dev/null), ceiling $(cat $f/scaling_max_freq 2> /dev/null)"
+	for f in /proc/device-tree/tsadc@*; do
+		[ -d "$f" ] && echo "temperature cut-off: $(dt_u32 $f/rockchip,hw-tshut-temp) mC, mode $(dt_u32 $f/rockchip,hw-tshut-mode)"
+	done
+	f=/sys/block/$DISK/device
+	echo "card: $(cat $f/name 2> /dev/null), maker $(cat $f/manfid 2> /dev/null), oem $(cat $f/oemid 2> /dev/null), made $(cat $f/date 2> /dev/null), $(($(cat /sys/block/$DISK/size) / 2048)) MB"
+	awk -v d="$DISK" '$4 ~ "^" d { print "partition " $4 ": " int($3 / 1024) " MB" }' /proc/partitions
+	if [ -r /sys/kernel/debug/mmc0/ios ]; then
+		echo "card bus:"
+		sed 's/^/  /' /sys/kernel/debug/mmc0/ios
+	fi
+	if [ -r /sys/kernel/debug/regulator/regulator_summary ]; then
+		echo "supplies, and what each user asks:"
+		awk '
+			/vdd_logic|vdd_arm|vccio_sd|vcc_sd/ { p = 1; ind = match($0, /[^ ]/); print; next }
+			p { if (match($0, /[^ ]/) > ind) print; else p = 0 }' \
+			/sys/kernel/debug/regulator/regulator_summary
+	fi
+	echo "battery: $(cat $BAT/capacity 2> /dev/null)%, $(cat $BAT/voltage_now 2> /dev/null) uV, $(cat $BAT/status 2> /dev/null)"
+	for f in /sys/class/power_supply/*/online; do
+		[ -r "$f" ] && echo "power in ${f%/online}: online $(cat $f)"
+	done
+}
+
+# The loop: the status and the kernel's lines every second onto the card;
+# on TERM (stop), one last time, then the boot partition let go
+loop() {
+	WRITTEN=$(wc -c < $LOG)
+	K=0
+	trap 'status; kernel_lines; put_new; kill $(cat $RUN/kpid) 2> /dev/null; clean; exit 0' TERM
+	while :; do
+		status
+		kernel_lines
+		put_new
+		sleep 1 &
+		wait $!
+	done
+}
+
+start() {
+	if running; then
+		say "setup: $1"
+		return 0
+	fi
+	clean
+	[ -b "$BOOT" ] || return 0
+	blkid "$BOOT" | grep -q 'LABEL="PX2BOOT"' || return 0
+	mkdir -p $MNT
+	if ! mount -t vfat -o noatime,nosuid,nodev,noexec "$BOOT" $MNT; then
+		clean
+		return 0
+	fi
+	mountpoint -q /sys/kernel/debug || mount -t debugfs debugfs /sys/kernel/debug 2> /dev/null
+	# What an earlier start left, without the filler after it
+	: > $LOG
+	if [ -f $FILE ]; then
+		awk 'NF { last = NR } { l[NR] = $0 } END { for (i = 1; i <= last; i++) print l[i] }' $FILE |
+			tail -c $((SIZE / 2)) > $LOG
+	fi
+	# Made at its full size, once, so no write after this one adds a cluster
+	if ! [ -f $FILE ] || [ "$(wc -c < $FILE)" != $SIZE ]; then
+		rm -f $FILE
+		yes '' | head -c $SIZE | dd of=$FILE bs=4096 conv=fsync 2> /dev/null
+	fi
+	find_files
+	read -r _ _ _ _ _ _ WR0 _ < /sys/block/$DISK/stat
+	device "$1" >> $LOG 2> /dev/null
+	put_all
+	cat /dev/kmsg > $RUN/kmsg 2> /dev/null &
+	echo $! > $RUN/kpid
+	loop < /dev/null > /dev/null 2>&1 &
+	echo $! > $RUN/pid
+}
+
+stop() {
+	local pid n=0
+	running || return 0
+	say "setup: $1"
+	read -r pid < $RUN/pid
+	kill -TERM "$pid"
+	while [ -d $RUN ] && [ $n -lt 60 ]; do
+		usleep 50000
+		n=$((n + 1))
+	done
+}
+
+case "$1" in
+start) start "${2:-setup}" ;;
+mark) running && shift && say "setup: $*" ;;
+stop) stop "${2:-finished}" ;;
+esac
+exit 0

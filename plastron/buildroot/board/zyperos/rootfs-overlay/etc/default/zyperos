@@ -1,0 +1,16 @@
+# ZyperOS's init (/etc/init.d/zyperos) on the GKD Pixel 2, read only when it
+# copies ZyperOS onto the card (a new card's first start, or the first start
+# of a newer system image).
+#
+# The CPU's ceiling while it copies, in kHz. Rockchip's own firmware for this
+# chip (the stock system's device tree, and twigUI's, under bus-apll) raises
+# vdd_logic, the supply of the DDR controller, the buses and the GPU, to
+# 1.0 V whenever the CPU's PLL runs above 1008 MHz, and lets it down to
+# 0.95 V only at 1008 or below. plastron's kernel has nothing that does
+# that: vdd_logic is what the DDR and the GPU ask for, which with the GPU
+# idle, as it is under the boot animation, can be 0.95 V. The copy runs
+# before rcS, under the kernel's performance governor, so without a ceiling
+# the CPU would spend it all at 1296 MHz, outside what Rockchip runs at that
+# voltage, while the card and the DDR are at their busiest. At 1008 the
+# copy is inside it, and barely slower: it waits on the card, not the CPU.
+SETUP_CPU_MAX=1008000
