@@ -27,6 +27,12 @@ names, and headless Chrome draws it at a computer's width and a phone's, in
 light, over the DevTools protocol. --chrome names the browser; --no-page
 leaves those shots out. The server listens on a port the kernel picks while
 it runs.
+
+NES Player 2's play page (res/web/play) is shot the same way, on a phone held
+upright and on its side: build-native/p2d serves it from res/web as
+mk/payload.sh lays it out, over a share that build-native/p2d-feed fills with
+its own drawn frames (stripes and a box, no game's picture), and the page
+draws them as a friend's phone would. --no-page leaves these out too.
 """
 import argparse
 import base64
@@ -168,6 +174,10 @@ SHOTS={
     'nowplaying':('demo','MUSE',['--nowplaying','0','0','83']),
     'hare':('demo','PS1',['--hare','http://192.168.1.42','1 connected','Tobu Tobu Girl.gb']),
     'hotspot':('demo','PS1',['--hotspot','ZyperOS-7A2B','q7mx-3kpa','1 joined','waiting']),
+    # NES Player 2's page over a paused NES game (src/p2panel.h), on the
+    # handheld's own Wi-Fi: its code, nobody joined yet (the launcher's
+    # made-up frame behind it, not a game's)
+    'player2-hotspot':('demo','NES',['--screen','games','--player2','hotspot']),
     'usb-ask':('demo','PS1',['--usb-ask','0']),
     # USB File Transfer's steps (DESIGN.md 11.35): the cable and the address
     # ticked, the browser awaited
@@ -742,6 +752,109 @@ def page_shots(chrome,dest,only,manifest):
             if browser: browser.terminate();browser.wait()
             server.stdin.close();server.wait(timeout=10)
 
+# NES Player 2's play page on a phone held upright and on its side, as the
+# README shows it, at a phone's 390x844 and 844x390 at 3x. Light: the page
+# wears the handheld's theme, which the launcher hands p2d (src/webtheme.h);
+# with none here, it is play.css's own, which is Beard's.
+PLAY_PAGES={
+    'play-phone':dict(width=390,height=844,scale=3,phone=True),
+    'play-phone-side':dict(width=844,height=390,scale=3,phone=True),
+}
+# The frame the picture holds: p2d-feed's 60th, the box near the middle
+PLAY_FRAMES=60
+
+def play_shots(chrome,dest,only,manifest):
+    with tempfile.TemporaryDirectory(prefix='zyperos-play-') as temporary:
+        base=Path(temporary);web=base/'web';profile=base/'chrome';share=base/'share';log=base/'p2d.log'
+        dest.mkdir(parents=True,exist_ok=True)
+        # res/web as the card has it, the page's faces beside it too
+        web_dir(web)
+        for font in ['menu.ttf','title.ttf']: shutil.copyfile(ROOT/'res/fonts'/font,web/'play'/font)
+        subprocess.run(['make','-s','build-native/p2d','build-native/p2d-feed'],cwd=ROOT,check=True)
+        # The feed stops after PLAY_FRAMES and holds the share as it is until
+        # it is told to go, so every shot shows the same still picture
+        feed=subprocess.Popen([str(ROOT/'build-native/p2d-feed'),'--share',str(share),'--fps','60',
+                               '--frames',str(PLAY_FRAMES)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        server=browser=None
+        try:
+            def published():
+                # p2s_head's frame, the frames written (src/p2share.h)
+                try:
+                    with open(share,'rb') as f: head=f.read(16)
+                except OSError: return 0
+                return struct.unpack('<I',head[12:16])[0] if len(head)==16 else 0
+            for _ in range(300):
+                if published()>=PLAY_FRAMES: break
+                time.sleep(0.05)
+            else: raise RuntimeError('p2d-feed made no share')
+            with open(log,'wb') as out:
+                server=subprocess.Popen([str(ROOT/'build-native/p2d'),'--root',str(web),'--share',str(share),
+                                         '--addr','127.0.0.1','--port','0','--lang','en'],stdout=out,stderr=out)
+            port=None
+            for _ in range(100):
+                for line in log.read_text(errors='replace').splitlines():
+                    if line.startswith('p2d: http on port '): port=line.split()[-1]
+                if port: break
+                time.sleep(0.1)
+            if not port: raise RuntimeError(f'p2d never said its port: {log.read_text(errors="replace")!r}')
+            origin=f'http://127.0.0.1:{port}'
+            browser=subprocess.Popen([chrome,'--headless=new','--remote-debugging-port=0',f'--user-data-dir={profile}',
+                                      '--no-first-run','--no-default-browser-check','--hide-scrollbars',
+                                      '--disable-background-networking','--disable-component-update','--disable-sync',
+                                      '--no-pings','about:blank'],
+                                     stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if (profile/'DevToolsActivePort').is_file() and (profile/'DevToolsActivePort').read_text().strip(): break
+                time.sleep(0.1)
+            debug=(profile/'DevToolsActivePort').read_text().split()[0]
+            for name,page in PLAY_PAGES.items():
+                if only and name not in only: continue
+                # A tab of its own for each shot, closed after it: a page only
+                # navigated away from can stay alive in the browser's back
+                # cache, holding player 2's place (one browser at a time is
+                # player 2 on the NES), and with the picture still nothing
+                # says it has gone
+                tab=json.load(urllib.request.urlopen(urllib.request.Request(
+                    f'http://127.0.0.1:{debug}/json/new?about:blank',method='PUT'),timeout=30))
+                dt=DevTools(tab['webSocketDebuggerUrl'])
+                dt.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-color-scheme','value':'light'},
+                                                               {'name':'prefers-reduced-motion','value':'reduce'}])
+                dt.call('Emulation.setDeviceMetricsOverride',width=page['width'],height=page['height'],
+                        deviceScaleFactor=page['scale'],mobile=page['phone'])
+                dt.call('Emulation.setTouchEmulationEnabled',enabled=page['phone'],maxTouchPoints=5)
+                dt.call('Page.navigate',url=origin+'/play/')
+                # Player 2, the picture drawn, the faces in. A page told the
+                # game is full while the last one's place frees tries again
+                # every 2 s, so this waits past a few of those.
+                for _ in range(300):
+                    ready=dt.call('Runtime.evaluate',returnByValue=True,awaitPromise=True,
+                                  expression="document.fonts.ready.then(()=>document.readyState==='complete'"
+                                             " && typeof window.p2==='object' && window.p2.frame>0"
+                                             " && document.getElementById('game').dataset.state==='playing')")
+                    if ready.get('result',{}).get('value'): break
+                    time.sleep(0.1)
+                else:
+                    seen=dt.call('Runtime.evaluate',returnByValue=True,
+                                 expression="[location.href, (document.getElementById('game')||{dataset:{}}).dataset.state,"
+                                            " window.p2 && window.p2.frame]").get('result',{}).get('value')
+                    raise RuntimeError(f'{name}: the page did not come up as player 2: {seen}, {log.read_text(errors="replace")!r}')
+                time.sleep(0.5)
+                target=dest/(name+'.png')
+                target.write_bytes(base64.b64decode(dt.call('Page.captureScreenshot',format='png')['data']))
+                manifest['screenshots'].append({'file':f'light/{name}.png','card':'play',
+                    'args':dict(page,page='res/web/play/index.html',frames=f'p2d-feed --frames {PLAY_FRAMES}'),
+                    'sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
+                print('light/'+name,flush=True)
+                dt.s.close()
+                urllib.request.urlopen(f'http://127.0.0.1:{debug}/json/close/{tab["id"]}',timeout=30)
+        finally:
+            if browser: browser.terminate();browser.wait()
+            for proc in (server,feed):
+                if not proc: continue
+                proc.terminate()
+                try: proc.wait(timeout=10)
+                except subprocess.TimeoutExpired: proc.kill();proc.wait()
+
 def env_for(card):
     return dict(os.environ, ZYPEROS_HEADLESS='1', SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software',
                 ZYPEROS_ROOT=str(card/'ZyperOS'),ZYPEROS_CARD=str(card),ZYPEROS_ROMS=str(card/'Roms'),
@@ -754,7 +867,7 @@ def main():
     ap.add_argument('--art-cache',type=Path,default=ART_CACHE,help='where --art keeps what it fetched')
     ap.add_argument('--out',type=Path,default=ROOT/'build/readme-shots')
     ap.add_argument('--chrome',default=CHROME,help='the browser for the File Transfer page')
-    ap.add_argument('--no-page',action='store_true',help='leave out the File Transfer page')
+    ap.add_argument('--no-page',action='store_true',help='leave out the File Transfer page and the play page')
     ap.add_argument('only',nargs='*',help='shot names (default: all)')
     args=ap.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     binary=ROOT/'build-native/zyperos'
@@ -810,6 +923,9 @@ def main():
     if not args.no_page and (not args.only or set(args.only)&set(PAGES)):
         if not Path(args.chrome).is_file(): ap.error(f'no browser at {args.chrome}: --chrome, or --no-page')
         page_shots(args.chrome,out/'light',args.only,manifest)
+    if not args.no_page and (not args.only or set(args.only)&set(PLAY_PAGES)):
+        if not Path(args.chrome).is_file(): ap.error(f'no browser at {args.chrome}: --chrome, or --no-page')
+        play_shots(args.chrome,out/'light',args.only,manifest)
     (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 
 if __name__=='__main__': main()

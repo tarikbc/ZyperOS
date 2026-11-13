@@ -165,6 +165,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Auto Off waits for long jobs:** a Scraper run, a System Update download, PortMaster's install, Storage measuring the card and files moving over File Transfer hold it, and a whole countdown starts when they end.
 - **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. Open it by name, `http://zyperos.local`, or by its address, and until a browser opens the page the screen checks the connection step by step and says what to do if a step stalls. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable.
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
+- **Player 2 on a friend's phone:** on the Pixel 2, **Player 2** in an NES game's in-game menu lets a friend play the second controller in a browser, with no app and no account. With a Wi-Fi adapter in, the handheld makes a network just for the game and shows its QR code: the friend scans it, and the game opens on the phone with a touch pad under the picture. A computer on the USB cable opens `zyperos.local/play` and plays with the keyboard. The page speaks the handheld's language and wears its theme. A game controller paired with the phone comes with a later update ([how](#player-2-a-friend-on-a-phone)).
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
 - **Autosave and resume,** plus six save slots for when you want a checkpoint.
 - **Quick save and quick load, without opening a menu:** hold SELECT and press **R1** to save a state, **L1** to load it back. A pop-up names the slot. **Quick Slot** in the in-game menu picks which of the six slots the two use, for each system, and the card remembers it. SELECT is still each game's own button: pressed alone, it reaches the game as you let go of it; only SELECT with a shoulder is a hotkey.
@@ -228,6 +229,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Battery time left** | Time left, or time to full on the cable | — | — | — | — | — |
 | **A DS game's language** | Picked per game, whatever `firmware.bin` says | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
+| **A second player in a browser** | NES games: a friend's phone or computer, over the handheld's own Wi-Fi or the USB cable | — | — | — | — | — |
 | **Boot time** | 1.6 s<sup>4</sup>, about 2 s from power on<sup>5</sup> | 30 to 40 s from power on<sup>5</sup> | — | 2.2 s<sup>4</sup> | — | — |
 
 — means none of the sources below says either way. The Pixel 2 has no Wi-Fi of its own, so on every system a Wi-Fi feature needs a USB Wi-Fi adapter. Knulli, muOS, twigUI (spruceOS) and a MinUI port run on the Pixel 2 too.
@@ -542,6 +544,32 @@ The page that opens in the browser is the same for Wi-Fi File Transfer, the hand
 - **On the handheld's own network** the page opens by itself in the phone's sign-in sheet, with a note on what that small browser can't do.
 
 The page is light or dark as the phone or computer is. When File Transfer closes, the handheld reads the card again, so what arrived is on the shelf.
+
+### Player 2: a friend on a phone
+
+On the Pixel 2, a friend can play an NES game with you as player 2, on their phone or a computer, with nothing to install. Your buttons stay player 1, and the sound stays on the handheld.
+
+1. In an NES game, press **MENU** and choose **Player 2**, under Shader.
+2. **With a USB Wi-Fi adapter in,** press **A**. The handheld makes a Wi-Fi network just for this game and shows its QR code, its name and its password. Your friend scans the code with the phone's camera, and the game opens on the phone. If it doesn't open by itself, `10.42.1.1/play` in the phone's browser does it.
+
+   **With a computer on the USB cable,** press **A** and open `zyperos.local/play` in the computer's browser.
+3. **Continue** goes back to the game. A notice says when your friend joins and when they leave.
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/player2-hotspot.png" width="320" alt="Player 2's page over a paused NES game: Scan with your phone's camera; the game opens. A QR code, the network ZyperOS-7A2B and its password, Or open 10.42.1.1/play, and Player 2 waiting"><br><sub>On the handheld: scan to join</sub></td>
+    <td align="center"><img src="res/readme/play-phone.png" width="150" alt="The play page on a phone held upright: Player 2 and Picture off at the top, the game's picture, then a d-pad, B and A, SELECT and START"><br><sub>On the phone</sub></td>
+    <td align="center"><img src="res/readme/play-phone-side.png" width="330" alt="The play page on a phone on its side: the picture the whole height in the middle, the d-pad and SELECT at the left, B, A and START at the right"><br><sub>On its side</sub></td>
+  </tr>
+</table>
+
+</div>
+
+The phone shows the game's picture as large as its screen allows, and an NES pad under it: the d-pad, **B** and **A**, SELECT and START, several fingers at once. On its side, the picture takes the whole height between the pad's halves. On a computer the keyboard is the pad: the arrow keys, **Z** for B, **X** for A, **Shift** for SELECT and **Enter** for START. **Picture off** hides the picture for a friend who would rather watch the handheld, and the pad takes the whole screen. The page speaks the handheld's language and wears its theme, light or dark, accent and corners. A button is never left held: if the phone locks or goes out of range, the handheld lets go of player 2's buttons about a second later.
+
+**A** on the Player 2 page stops it, and so does the end of the game, however it ends; the network goes, and Wi-Fi is back as it was. It needs a recent browser (Safari 16.4 or Chrome 103 and later); an older one says so. For now it's NES games, two players, with the touch pad or the keyboard: a game controller paired with the phone doesn't work yet. That needs the page over HTTPS, and comes with a later update.
 
 ### System Update
 

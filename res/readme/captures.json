@@ -1847,6 +1847,52 @@
         "Rename"
       ],
       "sha256": "e49030e8f94cac69eb2132b84bc9a66f37b30080dc7050f96691206b8e7bad1a"
+    },
+    {
+      "file": "light/player2-hotspot.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--player2",
+        "hotspot"
+      ],
+      "sha256": "9bced84c5ff87cf7143fd79b775573576604d699eb6dde903031f56ea7e15cb2"
+    },
+    {
+      "file": "light/play-phone.png",
+      "card": "play",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 3,
+        "phone": true,
+        "page": "res/web/play/index.html",
+        "frames": "p2d-feed --frames 60"
+      },
+      "sha256": "73038c3aac04b019fff7709bd6d2041edf9ccee40400bad9abe7ff559769c0b6"
+    },
+    {
+      "file": "light/play-phone-side.png",
+      "card": "play",
+      "args": {
+        "width": 844,
+        "height": 390,
+        "scale": 3,
+        "phone": true,
+        "page": "res/web/play/index.html",
+        "frames": "p2d-feed --frames 60"
+      },
+      "sha256": "49c3a62f7b8e13765c56e441063a5a4fac80d0da378ebe3a3ee27a2f772e7db8"
     }
   ]
 }

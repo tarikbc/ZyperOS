@@ -79,7 +79,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, Pak in a Nintendo 64 game, and Player 2 in an NES game on the Pixel 2 (see **Player 2** below). It opens when you let go, so MENU can be held for brightness |
 | **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -645,6 +645,68 @@ the link on whenever a computer is plugged in, with no question, so
 default, and kept on the card as `.userdata/pixel2/developer`, which the
 system reads at boot. A release image has no Developer Mode: it never turns
 the link on at boot, whatever that file says.
+
+## Player 2
+
+On the Pixel 2, a friend can play an NES game with you as player 2, on
+their phone or on a computer, with nothing to install. The handheld's own
+buttons stay player 1, and the sound stays on the handheld.
+
+In an NES game, MENU, then **Player 2**, just under Shader. Its value says
+`off`, `waiting` (on, with nobody playing yet) or `connected`. A on the row
+opens its page over the paused game:
+
+| | |
+|---|---|
+| **With a Wi-Fi adapter in** | the page says a friend plays on a Wi-Fi network just for this game. **A** makes the handheld its own Wi-Fi network, as File Transfer does with no network around, and shows its QR code, the network's name and its password. The friend points the phone's camera at the code and joins; the game opens on the phone by itself, in its sign-in sheet. If it does not, open `10.42.1.1/play` in the phone's browser, which the page says under the password |
+| **With a computer on the USB cable** | **A** brings up the cable's link, as USB File Transfer does, and the page says to open `zyperos.local/play` on the computer (`10.42.0.1/play` works too). Windows 10 has no driver for the link, as for USB File Transfer |
+| **With neither** | the page says to plug in a Wi-Fi adapter or a computer, and A does nothing until you do. The page sees one plugged in while it is open |
+
+Under that, a line for player 2: `off`, `waiting` or `connected`. **B**
+closes the page and **Continue** goes back to the game with Player 2 on. A
+notice over the game says **Player 2 joined** when the friend's browser
+starts to play, and **Player 2 left** when it stops. **A** on the page
+again stops Player 2. The game's end stops it too, however it ends: quit,
+POWER, a crash. The handheld's network goes, and Wi-Fi comes back as it
+was. If it stops by itself (the handheld's network or the page's server
+went away), a notice says **Player 2 stopped**, the page says Player 2 had
+a problem, and A starts it again.
+
+**What the friend sees** is the game's picture, as large as the screen
+takes it, and an NES pad under it: the d-pad at the left, **B** and **A**
+at the right, SELECT and START under them. Several fingers at once work,
+and a thumb can roll from B to A. On a phone that can, a press gives a
+short vibration. Turned on its side, the picture takes the whole height,
+with the pad's halves either side. The page speaks the handheld's language
+and wears the handheld's theme, light or dark with its accent and corners,
+whatever the phone is set to. At the top it says **Connecting**, **Player
+2**, **The game is full** (someone else is player 2; it keeps trying, and
+takes the place when it is free) or **The game ended**.
+
+On a computer the keyboard is the pad, and the bar names the keys:
+
+| | |
+|---|---|
+| **Arrow keys** | the d-pad |
+| **Z** | B |
+| **X** | A |
+| **Shift** | SELECT |
+| **Enter** | START |
+
+The keys are the letters printed on them, on any keyboard layout.
+
+**Picture off**, at the top right, hides the picture, and the pad takes the
+whole screen: for a friend who watches the handheld and uses the phone only
+as a pad.
+
+The page needs a recent browser (Safari 16.4 or Chrome 103 and later): an
+older one says it is too old to show the game. A button left held never
+stays held: the page lets go of everything when it is hidden or loses the
+focus, and the handheld lets go of player 2's buttons a second after the
+page stops saying them (a phone that locked, or walked out of range).
+
+A game controller paired with the phone or the computer does not work yet.
+It needs the page over HTTPS, which comes with a later update.
 
 ## Audio
 
