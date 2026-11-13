@@ -1014,7 +1014,7 @@ library takes a while: seven albums took a minute on the Brick.
 
 ## The shelf
 
-Systems use animated pixel console art on an open background. Games use a
+Systems use ZyperOS's own animated pixel console art on an open background. Games use a
 straight row of box art. The selected item grows and the others stay quiet,
 with no perspective or reflection on these pages.
 

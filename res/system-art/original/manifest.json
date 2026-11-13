@@ -4,7 +4,7 @@
   "status": "complete-review-set",
   "system_count": 47,
   "preview_cell": 256,
-  "runtime_integrated": false,
+  "runtime_integrated": true,
   "method": "Built-in image generation; fixed hardware layers; reconstructed startup graphics; bounded PNG atlases",
   "selected_sources": {
     "GB": "source/GB.png",

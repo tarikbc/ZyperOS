@@ -9408,13 +9408,14 @@ static unsigned xfer_folder_color(const char *folder)
 }
 
 /* And its pixel art, as hare_set_folder_icon asks: the shelf's own for the
- * tag (home_art_key), or the menu music's for Roms/BGM (src/bgm.h) */
+ * tag (home_art_key), or MP4's, music's, for the menu music's Roms/BGM
+ * (src/bgm.h) */
 static const char *xfer_folder_icon(const char *folder)
 {
 	const system_cfg *s = xfer_sys_of(folder);
 
 	if (s) return home_art_key(s->tag);
-	if (!strcmp(folder, "BGM")) return "BGM";
+	if (!strcmp(folder, "BGM")) return "MUSE";
 	return NULL;
 }
 
@@ -13743,7 +13744,6 @@ static const about_thanks ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = 
 	  { "PortMaster", 0, NULL, S_ABOUT_THANKS_PORTMASTER } },
 	{ { "plorpOS", 0, "DSperate, FAKE-08", 0 },
 	  { "OpenBOR Team", 0, "OpenBOR", 0 },
-	  { "BenJelter", 0, NULL, S_ABOUT_THANKS_BENJELTER },
 	  { NULL, S_ABOUT_THANKS_MENU_MUSIC, "OpenGameArt", 0 },
 	  { "Lexend", 0, NULL, S_ABOUT_THANKS_LEXEND },
 	  { "SDL, Mesa", 0, NULL, S_ABOUT_THANKS_SDL } },
@@ -14983,8 +14983,7 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 	draw_background(a);
 	ui_text(r, fl, heading, ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
 	if (icon) {
-		/* Four of its pixels to one of the art's, drawn at 0.8: two panel
-		 * pixels to one on the Pixel 2, so it stays sharp */
+		/* Its 256 square drawn at 0.8, about Zyper's size */
 		int iw, ih;
 
 		SDL_QueryTexture(icon, NULL, NULL, &iw, &ih);
@@ -15255,7 +15254,6 @@ enum {
 
 typedef struct {
 	char key[24];
-	bool sheet;
 	SDL_Texture *tex;
 } store_icon;
 
@@ -15343,20 +15341,19 @@ static int store_count(store_view *v, int idx)
 	return s < 0 ? 0 : sys_games(&v->a->view[s])->count;
 }
 
-/* A system's sprite or a folder's two frames, loaded once while the page is
- * up; nearest-neighbour, as the home draws them */
-static SDL_Texture *store_tex(store_view *v, const char *key, bool sheet)
+/* A design's still (res/system-icons, src/systemart_data.h), loaded once
+ * while the page is up; nearest-neighbour, as the home draws them */
+static SDL_Texture *store_tex(store_view *v, const char *key)
 {
 	char path[CFG_STR * 2];
 	int i;
 
 	if (!key || !key[0]) return NULL;
 	for (i = 0; i < v->nicons; i++)
-		if (v->icons[i].sheet == sheet && !strcmp(v->icons[i].key, key)) return v->icons[i].tex;
+		if (!strcmp(v->icons[i].key, key)) return v->icons[i].tex;
 	if (v->nicons >= (int)(sizeof v->icons / sizeof v->icons[0])) return NULL;
-	snprintf(path, sizeof path, "%s/system-icons/%s%s.png", P_ROOT, key, sheet ? "" : "-still");
+	snprintf(path, sizeof path, "%s/system-icons/%s-still.png", P_ROOT, key);
 	snprintf(v->icons[v->nicons].key, sizeof v->icons[v->nicons].key, "%s", key);
-	v->icons[v->nicons].sheet = sheet;
 	if ((v->icons[v->nicons].tex = IMG_LoadTexture(v->a->r, path))) {
 		SDL_SetTextureScaleMode(v->icons[v->nicons].tex, SDL_ScaleModeNearest);
 		SDL_SetTextureBlendMode(v->icons[v->nicons].tex, SDL_BLENDMODE_BLEND);
@@ -15653,6 +15650,14 @@ static sp_row *store_add(store_view *v)
 	return &v->rows[v->nrows++];
 }
 
+/* The card's folders that are no system's, by the design they wear
+ * (res/system-art/original): music and video MP4's, which shows both; the
+ * others the small folder */
+#define STORE_ART_MUSIC  "MUSE"
+#define STORE_ART_VIDEOS "MUSE"
+#define STORE_ART_BOOKS  "FOLDER"
+#define STORE_ART_BIOS   "FOLDER"
+
 static void store_row_look(store_view *v, sp_row *r)
 {
 	const st_card *c = &v->c;
@@ -15665,15 +15670,15 @@ static void store_row_look(store_view *v, sp_row *r)
 
 		r->name = s ? s->name : c->sys[r->index].folder;
 		r->icon = SP_ICON_TEX;
-		r->tex = s ? store_tex(v, home_art_key(s->tag), false) : NULL;
+		r->tex = s ? store_tex(v, home_art_key(s->tag)) : NULL;
 		break;
 	}
-	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "VIDEOS", true); break;
-	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "MUSE", true); break;
-	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BOOKS", true); break;
-	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BIOS", true); break;
+	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_VIDEOS); break;
+	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_MUSIC); break;
+	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BOOKS); break;
+	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BIOS); break;
 	case SR_ZYPEROS: r->name = T(S_STORAGE_CAT_ZYPEROS); r->icon = SP_ICON_ZYPER; break;
-	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER", false); break;
+	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER"); break;
 	case SR_SNAPS:   r->name = T(S_STORAGE_DELETE_SNAPS); r->icon = SP_ICON_NONE; break;
 	default: break;
 	}
@@ -16005,7 +16010,7 @@ static void store_page(store_view *v)
 	p->rows = rows;
 	p->nrows = v->nrows;
 	if (v->media >= 0) {
-		static const char *const KEY[STM_KINDS] = { "MUSE", "VIDEOS", "BOOKS" };
+		static const char *const KEY[STM_KINDS] = { STORE_ART_MUSIC, STORE_ART_VIDEOS, STORE_ART_BOOKS };
 		sp_row look;
 		unsigned long long whole = store_media_bytes(c, v->media);
 		char val[24];
@@ -16014,8 +16019,7 @@ static void store_page(store_view *v)
 		look.kind = v->media == STM_MUSIC ? SR_MUSIC : v->media == STM_VIDEOS ? SR_VIDEOS : SR_BOOKS;
 		store_row_look(v, &look);
 		p->heading = look.name;
-		p->head_tex = store_tex(v, KEY[v->media], true);
-		p->head_sheet = true;
+		p->head_tex = store_tex(v, KEY[v->media]);
 		p->used_fmt = "%s";
 		store_bytes(whole, p->used, sizeof p->used);
 		look.caption[0] = '\0';
@@ -16084,7 +16088,7 @@ static void store_page(store_view *v)
 		char g[24], sv[24], ar[24];
 
 		p->heading = cf ? cf->name : s->folder;
-		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag), false) : NULL;
+		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag)) : NULL;
 		p->used_fmt = "%s";
 		store_bytes(store_sys_bytes(s), p->used, sizeof p->used);
 		snprintf(p->right, sizeof p->right, TN(S_SHELF_GAMES, n), n);

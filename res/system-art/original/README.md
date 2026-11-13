@@ -22,7 +22,7 @@ Then open `http://127.0.0.1:8881/gallery.html`.
 ## Artwork and motion
 
 The built-in image tool generated the hardware illustrations.
-The selected source files contain no pixels from the previous public icon pack.
+The selected source files contain no pixels from another artist's work or from a photograph.
 The source images remain unchanged in `source/`.
 `manifest.json` identifies selected sources and superseded drafts.
 
@@ -104,10 +104,13 @@ The small folder uses its own simple drawing.
 The game count stays outside the small icon.
 `utility/manifest.json` records dimensions, hashes, and the large label position.
 
-## Runtime status
+## Runtime
 
-These finished assets remain separate from the installed art catalogue at `../manifest.json`.
-The installed compiler still produces 128-pixel cells.
-Runtime integration must account for the new 256-pixel cells and their decoded atlas sizes.
-The gallery keeps at most three decoded atlases.
-The current payload script does not include this source and review directory.
+This is the launcher's system art. `tools/systemart.py` compiles it into `res/system-icons` and `src/systemart_data.h`.
+Each design keeps its 256-pixel first pose whole, with the moving region of every pose packed under it.
+The launcher writes the region of the pose due into the first pose's texture.
+This keeps each decoded atlas under 4 MiB; the largest is 2.1 MiB.
+The 128-pixel stills serve the home's row, the Storage page and the File Transfer page.
+The small folder is the launcher's `FOLDER`: a folder of no system.
+PortMaster's covers and icon are copied to `res/portmaster`.
+The payload carries only the compiled files, not this source and review directory.

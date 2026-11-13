@@ -9,7 +9,9 @@
 
 /* Every system's still stays resident (2026-11-05: "have the systems
  * pictures pre-loaded on ram so it doesn't have to load while we scroll"):
- * 39 of them are 2.4 MiB. Animated atlases are 23 MiB together, so only the
+ * 48 of them, 128 square, are 3 MiB. An atlas is a design's first pose,
+ * 256 square, and the moving region of each pose (src/systemart_data.h);
+ * they are 35 MiB together decoded, at most 2.1 MiB each, so only the
  * focused system's and its two neighbors' are kept. */
 #define HOME_STILLS 64
 #define HOME_NEAR 2
@@ -18,9 +20,20 @@
 typedef enum { HOME_SPOTLIGHT, HOME_GALLERY } home_layout;
 typedef struct { const char *key, *name; } home_item;
 typedef struct { bool active, paused; char title[128]; } home_song;
-/* `content`: an atlas's opaque texels, every cell's together, in a cell's
- * coordinates (w 0: none, or not an atlas) - a focus frame's ground */
-typedef struct { int asset; SDL_Texture *tex; bool done; SDL_Rect content; } home_texture;
+/* `content`: the opaque texels of every pose of an atlas together, in the
+ * cell's coordinates (w 0: none, the design does not move, or not an
+ * atlas) - a focus frame's ground. An atlas's `tex` is its first pose, the
+ * cell square, and `motion` (decoded, in RAM) the moving region of each pose:
+ * the one due is written into `tex` over the region, and `shown` is the pose
+ * `tex` holds there now. */
+typedef struct {
+    int asset;
+    SDL_Texture *tex;
+    bool done;
+    SDL_Rect content;
+    SDL_Surface *motion;
+    int shown;
+} home_texture;
 typedef struct {
     row_motion motion;
     bool initialized;
