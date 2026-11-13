@@ -1332,6 +1332,59 @@ static bool clip_in(SDL_Renderer *r, const SDL_Rect *c, const SDL_Rect *outer)
 	return true;
 }
 
+void ui_text_faded(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
+                   int lo, int hi, int fade, SDL_Color col)
+{
+	struct text_entry *e;
+	SDL_Rect clip, was, dst;
+	SDL_bool had;
+	int i, lf, rf;
+
+	if (!f || !s || !*s || hi <= lo || col.a == 0) return;
+	e = text_get(r, f, s, col);
+	if (!e) return;
+	dst = (SDL_Rect){ x, y, e->w, e->h };
+	if (x >= hi || x + e->w <= lo) return;              /* all outside */
+	/* Wholly inside and clear of both fades: as ui_text draws it */
+	if (x >= lo + fade && x + e->w <= hi - fade) {
+		ui_text(r, f, s, x, y, -1, col);
+		return;
+	}
+	/* The fades are only as wide as there is room for, between the ends */
+	lf = rf = fade;
+	if (lf + rf > hi - lo) lf = rf = (hi - lo) / 2;
+
+	had = SDL_RenderIsClipEnabled(r);
+	if (had) SDL_RenderGetClipRect(r, &was);
+	clip.y = y;
+	clip.h = e->h;
+	/* Each slice drawn once, at its own alpha, the clip choosing which part
+	 * of the text lands (the marquee's rule, below): the middle whole, then
+	 * the two fades a step at a time toward their ends */
+	clip.x = lo + lf;
+	clip.w = hi - rf - clip.x;
+	if (clip.w > 0 && clip_in(r, &clip, had ? &was : NULL)) {
+		SDL_SetTextureAlphaMod(e->tex, col.a);
+		SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	for (i = 0; i < lf; i += MQ_FADE_STEP) {
+		clip.x = lo + i;
+		clip.w = lf - i < MQ_FADE_STEP ? lf - i : MQ_FADE_STEP;
+		SDL_SetTextureAlphaMod(e->tex, (Uint8)(col.a * i / lf));
+		if (clip_in(r, &clip, had ? &was : NULL)) SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	for (i = 0; i < rf; i += MQ_FADE_STEP) {
+		int sw = rf - i < MQ_FADE_STEP ? rf - i : MQ_FADE_STEP;
+
+		clip.x = hi - i - sw;
+		clip.w = sw;
+		SDL_SetTextureAlphaMod(e->tex, (Uint8)(col.a * i / rf));
+		if (clip_in(r, &clip, had ? &was : NULL)) SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	SDL_SetTextureAlphaMod(e->tex, 255);
+	SDL_RenderSetClipRect(r, had ? &was : NULL);
+}
+
 void ui_text_marquee(SDL_Renderer *r, TTF_Font *f, const char *s,
                      int x, int y, int w, unsigned phase, SDL_Color col)
 {

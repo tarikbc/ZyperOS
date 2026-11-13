@@ -264,6 +264,15 @@ void ui_fit_tight(const char *s, int w, int room, int row_w);
  * Costs nothing this launcher was not already paying. Every screen redraws
  * every frame, and ui_text caches the rendered texture per (font, string,
  * color) - so sliding it is a moving destination rect, not a re-render. */
+/* `s` left-aligned at (x, y), shown only between `lo` and `hi` (screen x),
+ * and faded out over the last `fade` units at each of the two: what passes
+ * either end is gone, and what is near one dissolves into it, as a slid
+ * marquee's ends do. MENU's tab row (DESIGN.md 11.3): the tabs either side
+ * of the one that is on, fading before the L1 and R1 glyphs. Text wholly
+ * inside, clear of the fades, is drawn as ui_text draws it. */
+void ui_text_faded(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
+                   int lo, int hi, int fade, SDL_Color col);
+
 void ui_text_marquee(SDL_Renderer *r, TTF_Font *f, const char *s,
                      int x, int y, int w, unsigned phase, SDL_Color col);
 
