@@ -27,6 +27,31 @@ harmless - the launcher skips every name beginning with a dot, so they never
 show up as games - and `dot_clean /Volumes/ZYPEROS` removes them if they
 bother you.
 
+### The card in a computer
+
+On the Pixel 2 the card has four partitions, in an MBR table:
+
+| | | |
+|---|---|---|
+| PX2BOOT | FAT, 64 MB | the boot partition: each system's kernel and the file that says which one starts. Leave it as it is |
+| (none) | 512 MB | system slot A, read-only (squashfs) |
+| (none) | 512 MB | system slot B, where System Update puts the next version |
+| ZYPEROS | exFAT, the rest of the card | games, music, saves and settings |
+
+PX2BOOT and ZYPEROS have the partition types a Mac, Windows and Linux open
+(0x0C and 0x07). A Mac shows both. Windows shows both too, and can give
+the two system slots a drive letter as well, then ask for each, **You need
+to format the disk in drive X: before you can use it**: choose **Cancel**. Formatting a slot erases
+that system, and the card may no longer start.
+
+If ZYPEROS has no drive letter in Windows, right-click Start, open **Disk
+Management**, find the card (a Removable disk the card's size), right-click
+the large exFAT partition, choose **Change Drive Letter and Paths**, then
+**Add**. If Disk Management shows the card as **No Media**, or not at all,
+the reader does not see the card: try another reader, or leave the card in
+the handheld and use [Flash Drive](#plugging-into-a-computer), which gives
+the computer ZYPEROS alone.
+
 Building it yourself instead is in [building.md](building.md).
 
 BIOS files go **loose in `Bios/`**, not in a folder per system - that directory
@@ -557,7 +582,7 @@ the step it is waiting on dimmed:
 
 | Step | Ticked when | If it waits too long |
 |---|---|---|
-| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in; it can take a few tries. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in, which can take a few tries, or use a USB-A to USB-C cable, which connects every time ([why](#plugging-something-in)). `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
 | **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
 | **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
 | **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
@@ -636,7 +661,7 @@ did you plug in?**, with three tiles:
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
-| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link. Some computers' USB-C ports take the waiting side every time, as a phone's does, and then plugging in again never helps. Under the message, a smaller line names the way that always works: a USB-A to USB-C cable, with USB-A at the computer, whose port always gives power. A computer with only USB-C ports can use a USB-C to USB-A adapter, or a USB-C hub, with that cable |
 | **Phone** | the port powers it, and a message says how a phone connects. A phone's USB-C port takes the side that waits for power every time, so plugging it in again never helps, and the handheld can't ask it to swap. On an **Android** phone, tap its USB notification, then **USB controlled by: This device**: the phone takes the other side, the message goes, and **Computer Connected** asks as for a computer, **Flash Drive** included. An **iPhone** has no such setting: connect it with a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable to the handheld, and Computer Connected asks |
 
 The question goes by itself when the thing is unplugged or the computer

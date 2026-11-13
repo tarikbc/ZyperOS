@@ -9011,7 +9011,7 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
-	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
+	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_HINT_REPLUG));      break;
 	/* LH_NO_BROWSER has none: the way in (xs_way_rows) shows what to type
 	 * at full size, which is what that hint said */
 	default: break;
@@ -10698,26 +10698,36 @@ static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
  * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
  * and 11.36): **surface** with the **panel** lift, the laptop mark at its
  * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
- * in **menu** **text** (up to four balanced lines), until the plug ends.
- * Phone's message the same, with the phone mark, "Phone" and up to five. */
+ * in **menu** **text** (up to four balanced lines), and under them the cable
+ * that always connects in **meta** **text-dim** (up to two), until the plug
+ * ends. Phone's message the same, with the phone mark, "Phone", up to six
+ * lines and no cable line: its message names the cable itself. */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
+#define REPLUG_TIP_GAP 8
 static void replug_draw_at(SDL_Renderer *r)
 {
 	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
-	char lines[LB_MAX_LINES][LB_LINE];
+	char lines[LB_MAX_LINES][LB_LINE], tip[2][LB_LINE];
 	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
 	SDL_Rect slab;
 	bool small;
-	int n, k, y, lb;
+	int n, k, y, lb, m = 0;
 
 	n = replug_lines(REPLUG_W - tx_off - padx, lines, &small);
 	fb = small ? fs : fm;
 	lb = small ? ls : lm;
+	/* A computer whose USB-C port takes the waiting side at every plug, as a
+	 * phone's does, never connects by plugging in again (Discord,
+	 * 2026-11-13): the cable that always does, under the words */
+	if (!phone) {
+		m = ui_balance_lines(fs, T(S_XFER_REPLUG_TIP), REPLUG_W - tx_off - padx, 2, tip);
+		ui_fit_drawn(T(S_XFER_REPLUG_TIP));
+	}
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
-	                   pady + ls + 4 + n * lb + pady };
+	                   pady + ls + 4 + n * lb + (m ? REPLUG_TIP_GAP + m * ls : 0) + pady };
 	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
 	ui_panel(r, &slab, DS_RADIUS_PANEL);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
@@ -10730,6 +10740,9 @@ static void replug_draw_at(SDL_Renderer *r)
 	for (k = 0; k < n; k++)
 		ui_text(r, fb, lines[k], slab.x + tx_off, ui_line_y(small ? UI_F_META : UI_F_MENU, y + k * lb), -1,
 		        UI_TEXT);
+	y += n * lb + REPLUG_TIP_GAP;
+	for (k = 0; k < m; k++)
+		ui_text(r, fs, tip[k], slab.x + tx_off, ui_line_y(UI_F_META, y + k * ls), -1, UI_TEXT_DIM);
 }
 
 static bool replug_shown(void) { return g_replug.on; }

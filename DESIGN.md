@@ -2861,7 +2861,8 @@ under it the hint, one sentence saying what to do about that step, in
 place of the other steps, then the rule and the legend. Three steps and a
 three-line hint do not fit under a two-line heading, and a hint is about
 one step. The hints name the things a person can act on: another cable or
-port, Windows' Device Manager and its Network adapters, a VPN or proxy. A
+port, a USB-A to USB-C cable (for a computer that did not connect, 11.36),
+Windows' Device Manager and its Network adapters, a VPN or proxy. A
 browser that does not come has no hint: the way in already shows what to
 type, at full size. The way in comes back as the step moves on, and the
 steps come back if the cable or the Wi-Fi goes before anyone came in.
@@ -2958,12 +2959,22 @@ ends: the cable out, another plug, or the computer connected. On the launcher it
 the top under the header, 960 wide at y 104: **surface** with the
 **panel** lift, the laptop mark (64) at its left in **text-soft**,
 **Computer** in **meta** **text-dim** over the words in **menu** **text**,
-up to four balanced lines; it is drawn by every screen's frame, under the
+up to four balanced lines, and under them, 8 lower, in **meta**
+**text-dim** up to two lines, the cable that always connects: "A USB-A to
+USB-C cable connects every time." Some computers' USB-C ports take the side
+that waits for power at every plug, as a phone's does, and then the tries
+never end (a Windows 11 laptop with USB-C cables only, on Discord,
+2026-11-13); a USB-A port always gives power, so with USB-A at the
+computer's end the handheld gets power and Computer Connected asks at once.
+Phone's message has no such line: it names the cable itself. The slab is
+drawn by every screen's frame, under the
 volume bar (plat_set_overlay), and last on a frame that skipped the bar
 (plat_overlay_present); the home's focus frames, which redraw the machine
 alone, stop while it is up (it was drawn under the animated machine on the
-device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
-same after 5 seconds (11.35). The user-facing words never say "power".
+device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says
+it shorter after 5 seconds (11.35), under its "waiting" row, in the
+hint's three lines: "Unplug the cable and plug it back in, or use a USB-A
+to USB-C cable: it connects every time." The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
 [0|1|2|said|phone]`, `--replug [phone]`.
 
