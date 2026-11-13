@@ -19,6 +19,7 @@
 #include "db.h"
 #include "device.h"
 #include "fileio.h"
+#include "panelgamma.h"
 #include "platform.h"
 #include "portmenu.h"
 #include "spawn.h"
@@ -147,6 +148,19 @@ static void take_from_splash(void)
 		SDL_Delay(1);
 	fprintf(stderr, "video: took the display from the splash in %u ms\n",
 	        (unsigned)(SDL_GetTicks() - t0));
+	/* Before the first frame: the gamma table a splash from a system image
+	 * up to 1.0.4 filled, which darkens everything shown (panelgamma.h).
+	 * Nothing in ZyperOS fills it again. With no table, a few ioctls; with
+	 * one, a refresh's wait while the controller turns it off, once. */
+	{
+		int n = panelgamma_clear(drm_fd);
+
+		if (n > 0)
+			fprintf(stderr, "video: emptied the display's gamma table, which "
+			        "an older system's splash had filled\n");
+		else if (n < 0)
+			fprintf(stderr, "video: could not read or empty the display's gamma table\n");
+	}
 	/* On the kernel's clock, beside the splash's "panel lit", so the boot
 	 * from power to shelf reads off one log. */
 	{

@@ -49,6 +49,7 @@
 #include "diatom_port.h"
 #include "ladder.h"
 #include "osdbar.h"
+#include "panelgamma.h"
 #include "port_clock.h"
 #include "port_cpufreq.h"
 #include "rumble_evdev.h"
@@ -84,6 +85,7 @@ static int                 g_crtc_pipe;     /* index in the resources, for vblan
 static drmModeModeInfo     g_mode;
 static bool                g_crtc_lit;      /* something already scans out on the CRTC */
 static bool                g_have_master;
+static bool                g_gamma_checked; /* take_display has emptied the gamma table */
 
 static EGLDisplay g_egl_display = EGL_NO_DISPLAY;
 static EGLContext g_egl_context = EGL_NO_CONTEXT;
@@ -623,16 +625,12 @@ static const char *VERTEX_SHADER =
 	"out vec2 v_src;\n"
 	"void main() { v_src = a_src; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
 
-/* The panel's color matrix, applied in linear light: decoded from the
- * screen's gamma, mixed, encoded again. See matrix_load. */
-#define PANEL_COLOR \
-	"uniform mat3 u_matrix;\n" \
-	"uniform bool u_panel;\n" \
-	"vec4 panel(vec4 c) {\n" \
-	"	if (!u_panel) return c;\n" \
-	"	vec3 lin = pow(c.rgb, vec3(2.2));\n" \
-	"	return vec4(pow(clamp(u_matrix * lin, 0.0, 1.0), vec3(1.0 / 2.2)), c.a);\n" \
-	"}\n"
+/* Every program draws the frame's colors as the core made them: no color
+ * matrix, no curve. Up to 1.0.4 they went through the panel's color matrix
+ * from plastron's /etc/panel-color (blue gained a tenth of green, in linear
+ * light), set by eye against a TrimUI Brick, which with the splash's gamma
+ * table made games darker and cooler than the stock firmware shows them
+ * (port/panelgamma.h). */
 
 /* Nearest: the sampler's own, which picks the source pixel under the
  * destination pixel's centre - floor((i + 0.5) / scale), the same pixel
@@ -642,10 +640,9 @@ static const char *PLAIN_SHADER =
 	"precision highp float;\n"
 	"uniform sampler2D u_tex;\n"
 	"uniform vec2 u_size;\n"
-	PANEL_COLOR
 	"in vec2 v_src;\n"
 	"out vec4 o_color;\n"
-	"void main() { o_color = panel(texture(u_tex, v_src / u_size)); }\n";
+	"void main() { o_color = texture(u_tex, v_src / u_size); }\n";
 
 /* Sharp-bilinear, brick.c's build_map in a shader: the bilinear weight,
  * steepened by the scale so the blend spans one destination pixel. Interior
@@ -660,14 +657,13 @@ static const char *SHARP_SHADER =
 	"uniform sampler2D u_tex;\n"
 	"uniform vec2 u_size;\n"
 	"uniform vec2 u_scale;\n"
-	PANEL_COLOR
 	"in vec2 v_src;\n"
 	"out vec4 o_color;\n"
 	"void main() {\n"
 	"	vec2 c = v_src - 0.5;\n"
 	"	vec2 p = floor(c);\n"
 	"	vec2 f = clamp((c - p - 0.5) * u_scale + 0.5, 0.0, 1.0);\n"
-	"	o_color = panel(texture(u_tex, (p + 0.5 + f) / u_size));\n"
+	"	o_color = texture(u_tex, (p + 0.5 + f) / u_size);\n"
 	"}\n";
 
 /* Sharp-Shimmerless, zadpos's box filter (public domain; THIRD-PARTY.md),
@@ -694,7 +690,6 @@ static const char *SHIMMERLESS_SHADER =
 	"uniform vec2 u_scale;\n"
 	"uniform vec2 u_inv;\n"
 	"uniform vec2 u_origin;\n"
-	PANEL_COLOR
 	"in vec2 v_src;\n"
 	"out vec4 o_color;\n"
 	"void main() {\n"
@@ -702,7 +697,7 @@ static const char *SHIMMERLESS_SHADER =
 	"	vec2 tl = floor(px), br = ceil(px);\n"
 	"	vec2 t_tl = floor(u_inv * tl), t_br = floor(u_inv * br);\n"
 	"	vec2 t = t_br + 0.5 - (1.0 - step(t_br, t_tl)) * (u_scale * t_br - tl);\n"
-	"	o_color = panel(texture(u_tex, (t + u_origin) / u_size));\n"
+	"	o_color = texture(u_tex, (t + u_origin) / u_size);\n"
 	"}\n";
 
 /* What the shaders below work from, the same as Sharp-Shimmerless's, and
@@ -730,7 +725,6 @@ static const char *SHIMMERLESS_SHADER =
 	"#version 300 es\n" \
 	"precision highp float;\n" \
 	QUAD_UNIFORMS \
-	PANEL_COLOR \
 	"const vec2 RATIO = 1.0 - " ratio ";\n" \
 	"const vec2 ALPHA = 1.0 - " opacity ";\n" \
 	"void main() {\n" \
@@ -746,7 +740,7 @@ static const char *SHIMMERLESS_SHADER =
 	"	f = mix(f, clamp((RATIO - ftl) * u_scale, 0.0, 1.0), step(t_br, t_tl));\n" \
 	"	f = ALPHA + (1.0 - ALPHA) * f;\n" \
 	"	vec2 t = t_br - 0.5 + w;\n" \
-	"	o_color = panel(vec4(f.x * f.y * texture(u_tex, (t + u_origin) / u_size).rgb, 1.0));\n" \
+	"	o_color = vec4(f.x * f.y * texture(u_tex, (t + u_origin) / u_size).rgb, 1.0);\n" \
 	"}\n"
 
 /* A handheld's LCD: the grid both ways, the original's defaults */
@@ -765,8 +759,7 @@ static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0
  * that grille.
  *
  * Changed for this GPU: gamma 2 (a square in, a square root out) where it
- * has 2.4 and pow() on every read, and the panel's color matrix applied in
- * its linear light, so the pass takes no pow() at all, where Off takes six.
+ * has 2.4 and pow() on every read, so the pass takes no pow() at all.
  * The mask goes by the screen column within the picture, so it stays
  * upright on the turned panel. With WARP, its curvature and corners, the
  * original's defaults: warp 0.02 across and 0.015 down (a 4:3 screen),
@@ -777,8 +770,6 @@ static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0
 	"precision highp float;\n" \
 	warp \
 	QUAD_UNIFORMS \
-	"uniform mat3 u_matrix;\n" \
-	"uniform bool u_panel;\n" \
 	"const float THIN = 0.75;\n" \
 	"const float DARK = 0.5;\n" \
 	"const vec2 TONE = vec2(0.419207, 0.580793);\n" \
@@ -810,7 +801,6 @@ static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0
 	"	c *= m < 1.0 / 3.0 ? vec3(DARK, 1.0, 1.0) : m < 2.0 / 3.0 ? vec3(1.0, DARK, 1.0) : vec3(1.0, 1.0, DARK);\n" \
 	"	float peak = max(1.0 / (256.0 * 65536.0), max(c.r, max(c.g, c.b)));\n" \
 	"	c = c / peak * (peak / (peak * TONE.x + TONE.y));\n" \
-	"	if (u_panel) c = clamp(u_matrix * c, 0.0, 1.0);\n" \
 	"	o_color = vec4(sqrt(c), 1.0);\n" \
 	"}\n"
 
@@ -844,7 +834,7 @@ static GLuint compile(GLenum type, const char *src)
 
 /* A uniform's location, asked of the driver once a program and kept: by name
  * it is a string lookup in the driver, and the frame asked for ten or more
- * on every flip (u_tex, u_size, u_matrix, u_panel, u_scale, the bar's and
+ * on every flip (u_tex, u_size, u_scale, the bar's and
  * the disc's). Emptied when a program is linked and when the context goes,
  * so a new program that gets an old one's id is asked again. The present
  * thread's GL alone calls this. */
@@ -995,8 +985,7 @@ static void upload_frame(const mailbox_frame *f)
  * of the launcher's 1024 on the 640x480 panel - and redrawn only when the
  * level, the fade or the theme moves; the slide is the quad's place. BGRA
  * with straight alpha, the overlay's own layout, so it goes up the overlay's
- * way. Not through the panel's color matrix: the shelf is not, and the bar is
- * the shelf's. */
+ * way. */
 /* The look's colors as last handed to osdbar_colors, for draw_level_bar to
  * paint again when they move (render thread) */
 static unsigned g_osd_colors_seen;
@@ -1026,7 +1015,6 @@ static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
 	glUseProgram(g_prog_plain);
 	glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
 	glUniform2f(uloc(g_prog_plain, "u_size"), (float)w, (float)h);
-	glUniform1i(uloc(g_prog_plain, "u_panel"), 0);
 	draw_quad(roundf(OSDBAR_X * s), roundf((OSDBAR_Y - rise) * s), (float)w, (float)h,
 	          (float)w, (float)h, turned);
 }
@@ -1051,48 +1039,6 @@ static void draw_low_battery(bool turned)
 		solid((float)(cx - dx), (float)(cy + dy), (float)(2 * dx + 1), 1,
 		      224 / 255.f, 72 / 255.f, 72 / 255.f, 1, turned);
 	}
-}
-
-/* The panel's color matrix, from plastron's /etc/panel-color: nine numbers,
- * row by row, lines starting with # skipped. Beside the Brick Hammer the
- * Pixel's panel shows greens yellow - its green has no blue in it where the
- * Brick's has some - and a curve per channel (the splash's gamma table) can't
- * add blue to a pixel that has none; a matrix can. Tuned by eye 2026-10-07:
- * blue gains a tenth of green, in linear light. Read once, at start; no file,
- * no matrix, and the shaders skip the math. Measured that day with the GPU's
- * work in the timing: 8.69 ms a frame with it, 8.86 without, the same within
- * the noise, as the turn to the panel is already a pass of its own. */
-#define MATRIX_PATH "/etc/panel-color"
-static float g_matrix[9];
-static bool  g_matrix_on;
-
-static void matrix_load(void)
-{
-	FILE *f = fopen(MATRIX_PATH, "r");
-	char line[256];
-	float m[9];
-	int n = 0;
-
-	if (!f) return;
-	while (n < 9 && fgets(line, sizeof line, f)) {
-		char *p = line, *end;
-
-		if (line[0] == '#') continue;
-		while (n < 9) {
-			float v = strtof(p, &end);
-			if (end == p) break;
-			m[n++] = v;
-			p = end;
-		}
-	}
-	fclose(f);
-	if (n != 9) {
-		port_logf(DIATOM_LOG_WARN, "pixel2: %s has %d numbers, not 9; no matrix", MATRIX_PATH, n);
-		return;
-	}
-	memcpy(g_matrix, m, sizeof g_matrix);
-	g_matrix_on = true;
-	port_logf(DIATOM_LOG_INFO, "pixel2: color matrix from %s", MATRIX_PATH);
 }
 
 /* Each filter's shader, in diatom_filter's order; nearest is the sampler's
@@ -1172,8 +1118,6 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 	glUniform1i(uloc(prog, "u_tex"), 0);
 	glUniform2f(uloc(prog, "u_size"),
 	            (float)(f->gpu ? f->tex_w : f->w), (float)(f->gpu ? f->tex_h : f->h));
-	glUniformMatrix3fv(uloc(prog, "u_matrix"), 1, GL_TRUE, g_matrix);
-	glUniform1i(uloc(prog, "u_panel"), g_matrix_on);
 	if (f->nplanes) {
 		/* A DS frame's two screens, each its own quad out of the one
 		 * texture (diatom_port_planes). Sharp's steepness is per quad: the
@@ -1227,9 +1171,6 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 		glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
 		glUniform2f(uloc(g_prog_plain, "u_size"),
 		            (float)g_ov_w, (float)g_ov_h);
-		glUniformMatrix3fv(uloc(g_prog_plain, "u_matrix"), 1, GL_TRUE,
-		                   g_matrix);
-		glUniform1i(uloc(g_prog_plain, "u_panel"), g_matrix_on);
 		draw_quad(x0, y0, ow, oh, (float)g_ov_w, (float)g_ov_h, turned);
 	}
 	if (osd_live)
@@ -1310,6 +1251,21 @@ static bool take_display(void)
 	crtc = drmModeGetCrtc(g_drm_fd, g_crtc_id);
 	g_crtc_lit = crtc && crtc->mode_valid && crtc->buffer_id;
 	drmModeFreeCrtc(crtc);
+	/* The gamma table an older system image's splash filled, emptied before
+	 * the first frame goes up, once: with a game resumed at boot this is
+	 * the first program on the display after the splash. A table left
+	 * there darkens the game (port/panelgamma.h). */
+	if (!g_gamma_checked) {
+		int n = panelgamma_clear(g_drm_fd);
+
+		g_gamma_checked = true;
+		if (n > 0)
+			diatom_port_log(DIATOM_LOG_INFO, "pixel2: emptied the display's gamma "
+			                "table, which an older system's splash had filled");
+		else if (n < 0)
+			diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not read or empty the "
+			                "display's gamma table");
+	}
 	return true;
 }
 
@@ -1493,7 +1449,6 @@ static bool gl_start(void)
 	g_prog_plain = link_program(PLAIN_SHADER);
 	g_prog_solid = link_program(SOLID_SHADER);
 	if (!g_prog_plain || !g_prog_solid) return false;
-	matrix_load();
 
 	glGenTextures(1, &g_frame_tex);
 	glGenTextures(1, &g_overlay_tex);

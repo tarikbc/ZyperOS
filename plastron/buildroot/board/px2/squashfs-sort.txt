@@ -37,7 +37,6 @@ usr/lib/gbm/dri_gbm.so 32732
 usr/lib/libGLESv2.so.2.0.0 32731
 usr/lib/libgallium-25.0.7.so 32730
 usr/lib/libstdc++.so.6.0.34 32729
-etc/panel-color 32728
 usr/lib/libavutil.so.58.29.100 32727
 usr/lib/libswresample.so.4.12.100 32726
 usr/lib/libavcodec.so.60.31.102 32725
