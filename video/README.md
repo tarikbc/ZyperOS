@@ -8,6 +8,16 @@ frames in a drawn GKD Pixel 2 beside the site's own words, on the beat of one of
 ZyperOS's menu music tracks (`src/music.ts`; LICENSES.md has every track's
 tempo and sections).
 
+As of 1.0.5 it shows, in order: the shelf, the 2-second start against stock
+firmware, every system in ZyperOS's own pixel art and the four new ones (PSP,
+Doom, ColecoVision, TIC-80), folders and the list, a game started, turned off and
+back, video snaps, box art, quick save, the in-game controls, NES Player 2 on a
+friend's phone, File Transfer over Wi-Fi (its way in, then a browser) and over
+the cable (a phone, a computer, Flash Drive), the hotspot, an empty card filling
+up, File Transfer while a game plays, System Update, battery care, MENU's tabs
+and a theme of your own, achievements earned offline, MP4, PortMaster, Nintendo
+DS and the eight languages.
+
 ## Making it
 
 ```sh
@@ -36,15 +46,16 @@ with no window and no change to the launcher:
   battery level for the corner, and the menu music set up (silent), so MENU
   shows the card's track and Zyper names it on the home.
 - **Shots** are the launcher's `--shot` pictures, for screens the host cannot
-  reach by pressing buttons: the in-game menu over a game, Now Playing, the
-  charging screen, the first start, Storage on a full card. Where a shot takes a
+  reach by pressing buttons: the in-game menu over a game, NES Player 2's
+  panel, the cable's questions, Now Playing, the charging screen, the first
+  start, Storage on a full card. Where a shot takes a
   time (`--tour`, `--charging`, `--nowplaying`), there is a picture every
   sixtieth of a second, so it moves as on the handheld; otherwise each picture
   is held, as a cut from one row to the next.
 
 `footage/card.py` builds the card the takes run on: the README's demonstration
-library (`tools/readme-shots.py`), eight systems of well-known games as empty
-files, each with its cover from the
+library (`tools/readme-shots.py`), well-known games on thirteen systems as empty
+files, folders of them on the Game Boy Advance, each with its cover from the
 [libretro-thumbnails](https://github.com/libretro-thumbnails) sets, the same as
 the Scraper would fetch. The covers are cached in
 `~/Library/Caches/zyperos-readme-art` and never committed: the games and their
@@ -78,8 +89,10 @@ clip itself stays outside the repository.
   or a spring), its label, and the browser windows of File Transfer. Change a
   scene's beats or its takes there and render again.
 - `src/Tour.tsx`, `src/parts.tsx`: the composition, the device and its camera,
-  the screen, the labels, the laptop and phone windows, the light and dark pair
-  and the language grid. `src/sounds.ts` plays the launcher's interface sounds
+  the screen, the labels, the laptop and phone windows (Player 2's phone shows
+  the game, Super Mario Bros. 3's libretro screenshot, in its play page's
+  picture box), the language grid, and a light and dark pair (the "duo" pose)
+  that the 1.0.5 cut leaves out. `src/sounds.ts` plays the launcher's interface sounds
   where a press is seen.
 - `src/beats.tsx`: the boot race against stock firmware (a plain loading panel,
   nothing of its interface) and the power off and on, with their timers.

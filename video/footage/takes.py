@@ -124,7 +124,8 @@ shots('media', [(PS1, ['--screen', 'games', '--media', 'page', str(k), '--media-
 shots('storage', [(PS1, ['--storage', 'main'], 2200), (PS1, ['--storage', 'system'], 2000),
                   (PS1, ['--storage', 'music'], 1800)])
 # Achievements: the list, then an unlock with Zyper
-shots('cheevos', [(PS1, ['--cheevos-screen', str(r), '--cheevos-badge', '{card}/Roms/PlayStation/.cheevos/Hagane.set', 'b#'], 330)
+shots('cheevos', [(PS1, ['--cheevos-screen', str(r), '--cheevos-waiting', '2',
+                         '--cheevos-badge', '{card}/Roms/PlayStation/.cheevos/Hagane.set', 'b#'], 330)
                   for r in range(4)] +
       [(PS1, ['--notice-kind', 'unlock', '--notice', 'Violated Heavens', 'Unlocked · 10 points',
               '--notice-badge', '{card}/Roms/PlayStation/.cheevos/badges/b3.png'], 4700)])
@@ -167,8 +168,17 @@ shots('quicksave', [(GEN, ['--screen', 'games', '--popup', 'saved', '--backdrop'
                     (GEN, ['--screen', 'games', '--popup', 'loaded', '--backdrop', SONIC_SNAP], 1400)])
 # File Transfer: over Wi-Fi, a computer on the cable, and over the cable
 shots('wifi-xfer', [(PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 5200)])
-shots('cable', [(PS1, ['--usb-ask', '0'], 900), (PS1, ['--usb-ask', '1'], 900),
-                (PS1, ['--hare', 'http://10.42.0.1', '1 connected', 'Super Metroid (USA).sfc'], 2200)])
+# 1.0.5's way in: the address, zyperos.local and the PIN at full size until a
+# browser signs in (six beats of the tour's music), then the files moving
+shots('wifi-way', [(PS1, ['--hare-steps', 'wifi', 'browser'], 2310),
+                   (PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 3900)])
+# The cable: "What did you plug in?" on Computer and on Phone, how a phone
+# connects, then a computer's choices as a release has them (plain, with
+# Flash Drive) and Flash Drive's speeds
+shots('cable', [(PS1, ['--usb-power', '1'], 450), (PS1, ['--usb-power', '2'], 500),
+                (PS1, ['--usb-power', 'phone'], 1500),
+                (PS1, ['--usb-ask', '0', 'plain', 'drive'], 450), (PS1, ['--usb-ask', '1', 'plain', 'drive'], 450),
+                (PS1, ['--usb-ask', '2', 'plain', 'drive'], 550), (PS1, ['--usb-drive', '0', 'both'], 2300)])
 shots('hotspot', [(PS1, ['--hotspot', 'ZyperOS-7A2B', 'q7mx-3kpa', '1 joined', 'waiting'], 2800)])
 # Files still moving while a game plays: the ring in the in-game menu's corner, over Sonic 2
 shots('xfer-ring', [(GEN, ['--screen', 'games', '--gamemenu', '0', '--backdrop', SONIC_SNAP,
@@ -211,6 +221,33 @@ shots('snap', [(SNAP_GAME, ['--screen', 'games', '--snap-wait', '0'], 600),
                (SNAP_GAME, ['--screen', 'games', '--snap', '{t}', '--snap-frame', '{i}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
                (SNAP_GAME, ['--screen', 'games', '--snap', '1', '--snap-frame', '{i}'], motion(300, 3000))],
       card='snaps', env=SNAP_ENV)
+
+# ---- 1.0.5: the new systems and features -----------------------------------
+# The four new systems on the home, each console's own start (--phase is the
+# home's clock since it was focused): PSP, Doom, ColecoVision, TIC-80
+shots('newsys', [(sys_game, ['--home', 'spotlight', '--phase', '{t}'], motion(0, 1540))
+                 for sys_game in [('PSP', 'LocoRoco (USA).iso'), ('DOOM', 'Doom.wad'),
+                                  ('COLECO', 'Donkey Kong (USA).col'), ('TIC80', '8 Bit Panda.tic')]])
+# Folders on the Game Boy Advance shelf: in from the home on the first folder,
+# into it and along it, back up; then START for the list, down it, START for
+# the covers again
+live('folders', ('GBA', 'Commercial Owned'),
+     ['a', 700, 'a', 800, 'right', 500, 'b', 900, 'start', 1100, 'down', 350, 'down', 700, 'start', 1100])
+# MENU in its tabs: R1 round them and back to Display, Appearance to Dark, then
+# Display > Theme and its Accent stepped round, the whole screen in it
+live('look', PS1,
+     ['menu', 500, 'r1', 400, 'r1', 400, 'l1', 500, 'right', 800, 'down', 'down', 300, 'a', 700,
+      'right', 450, 'right', 450, 'right', 900], gap=300)
+# NES Player 2 over Super Mario Bros. 3: the in-game menu down to Player 2, the
+# hotspot starting, its code waiting, and the friend's phone in
+NES_SNAP = '{art}/Nintendo_-_Nintendo_Entertainment_System/Named_Snaps/Super Mario Bros. 3 (USA).png'
+NES = ('NES', 'Super Mario Bros. 3 (USA).nes')
+shots('player2', [(NES, ['--screen', 'games', '--gamemenu', str(r), '--player2', 'off', '--backdrop', NES_SNAP], 200)
+                  for r in range(7)] +
+      [(NES, ['--screen', 'games', '--player2', 'starting', '--backdrop', NES_SNAP], 600),
+       (NES, ['--screen', 'games', '--player2', 'hotspot', '--backdrop', NES_SNAP], 1600),
+       (NES, ['--screen', 'games', '--player2', 'connected', '--backdrop', NES_SNAP], 2900)])
+
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
 
@@ -220,10 +257,14 @@ def write_last(card, tag, game):
     (card / 'ZyperOS/.last').write_text(f'{tag}\n{game}\n')
 
 
+# MENU > Display > Theme as it ships: a live take that changes it leaves it on the card
+LOOK = {'look.accent': 'lime', 'look.light': 'warm', 'look.dark': 'black', 'look.corners': 'rounded', 'look.zyper': 'on'}
+
+
 def run_live(name, spec, card):
     write_last(card, *spec['last'])
     cardlib.device_settings(card, BINARY, **{'tour.done': 1, 'clock': '24h', 'home': 'spotlight',
-                                            'appearance': 'light', 'language': 'en', **spec['settings']})
+                                            'appearance': 'light', 'language': 'en', **LOOK, **spec['settings']})
     script = WORK / f'{name}.keys'
     lines = [f'{t} {k} {h}' for t, k, h in spec['script']] + [f"{spec['end']} end"]
     script.write_text('# made by video/footage/takes.py\n' + '\n'.join(lines) + '\n')
@@ -244,7 +285,7 @@ def run_live(name, spec, card):
 def run_shots(name, spec, cards):
     card = cards[spec['card']]
     # A live take before may have left another language or theme on the card
-    cardlib.device_settings(card, BINARY, **{'language': 'en', 'appearance': 'light', 'home': 'spotlight'})
+    cardlib.device_settings(card, BINARY, **{'language': 'en', 'appearance': 'light', 'home': 'spotlight', **LOOK})
     frames = WORK / name
     if frames.exists():
         shutil.rmtree(frames)
