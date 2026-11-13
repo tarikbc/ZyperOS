@@ -197,6 +197,17 @@ de = Von vorn
 ja = 最初から
 it = Dall'inizio
 
+[controls.view]
+note = MENU > Controls, on the shelf: START turns its covers into a list of names and back (MENU > View). Box Art's term for covers.
+en = Covers or list
+zh-Hans = 封面或列表
+es = Carátulas o lista
+pt-BR = Capas ou lista
+fr = Jaquettes ou liste
+de = Cover oder Liste
+ja = パッケージ画像/リスト
+it = Copertine o elenco
+
 [controls.favorite]
 note = What Y does on a shelf: mark the game a favorite.
 en = Favorite

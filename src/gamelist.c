@@ -4,6 +4,7 @@
 #include "design.h"
 #include "folderart.h"
 #include "home.h"
+#include "keyhints_draw.h"
 #include "i18n.h"
 #include "theme.h"
 #include "ui.h"
@@ -333,11 +334,20 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 		page_hint(r, "A", T(games > 0 ? S_GAMES_OPEN : in->install ? S_PORTMASTER_INSTALL
 		                    : in->resumable ? S_GAMES_RESUME : S_GAMES_PLAY),
 		          GL_PANEL_X, GL_A_Y, true, false);
-		if (in->resumable && !in->install && !games)
-			page_hint(r, "Y", T(S_GAMES_FRESH), 432, 720, false, false);
-		if (!games) page_hint(r, "X", T(S_GAMES_DETAILS), 832, 720, false, false);
 	}
-	page_hint(r, "B", T(in->inside ? S_GAMES_BACK : S_GAMES_SYSTEMS), 64, 720, false, false);
+	/* The foot, as the cover row's (DESIGN.md 11.4): B, START back to the
+	 * covers, Y and X for a game */
+	{
+		key_hint foot[4];
+		int nf = 0, games = in->count > 0 && in->folder_of ? in->folder_of(ctx, in->cursor) : 0;
+
+		foot[nf++] = (key_hint){ "B", T(in->inside ? S_GAMES_BACK : S_GAMES_SYSTEMS) };
+		if (in->count > 0) foot[nf++] = (key_hint){ "START", T(S_GAMES_TO_COVERS) };
+		if (in->count > 0 && in->resumable && !in->install && !games)
+			foot[nf++] = (key_hint){ "Y", T(S_GAMES_FRESH) };
+		if (in->count > 0 && !games) foot[nf++] = (key_hint){ "X", T(S_GAMES_DETAILS) };
+		keyhints_draw(r, foot, nf, 64, 960, 720, KEYHINTS_SPREAD, true, 255);
+	}
 	SDL_SetRenderDrawColor(r, red, green, blue, alpha);
 	SDL_SetRenderDrawBlendMode(r, blend);
 	return wait;

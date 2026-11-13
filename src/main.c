@@ -848,6 +848,19 @@ static void view_save(app *a, int sys)
 	db_set_str(db_dev(), key, a->view[sys].listed ? "list" : "covers");
 }
 
+/* View turned over on shelf `sys`: covers to the list or back, saved, the
+ * shelf on the same entry. MENU's View row and START on the shelf both. */
+static void view_turn(app *a, int sys)
+{
+	sysview *v = &a->view[sys];
+
+	v->listed = !v->listed;
+	v->lm.set = false;
+	view_save(a, sys);
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+}
+
 static void sort_save(app *a)
 {
 	char key[CFG_STR + 16];
@@ -17699,13 +17712,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * Right and A turn it over, as a choice of two does; the shelf under
 		 * the menu turns with it, on the game it was on. */
 		if ((d || key == IN_ACCEPT) && sel == SM_VIEW) {
-			sysview *v = &a->view[a->sys_cursor];
-
-			v->listed = !v->listed;
-			v->lm.set = false;
-			view_save(a, a->sys_cursor);
-			cf_reset(&v->cf, v->cursor);
-			games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+			view_turn(a, a->sys_cursor);
 			return MENU_STAY;
 		}
 		if (d && sel == SM_DISPLAY) {
@@ -23021,6 +23028,16 @@ static void update_games(app *a)
 	 * move the cursor without a direction, and cf_set_cursor_dir works out the
 	 * rest itself. It returns immediately when the cursor has not moved. */
 	games_select(&v->row, v->cursor, n, dir, plat_now_ms());
+	/* START turns the shelf's View over, covers to the list and back, as
+	 * MENU's View row does (2026-11-13: "make clicking start in a system
+	 * change view mode to list and vice versa"). Not with MENU or SELECT
+	 * held: MENU + START is the way out (tools/zyhome.c), SELECT + START
+	 * MP4's lock. */
+	if (a->in.pressed[IN_START] && !a->in.down[IN_MENU] && !a->in.down[IN_SELECT]) {
+		uisound_play(DS_SOUND_MOVE);
+		view_turn(a, a->sys_cursor);
+		return;
+	}
 	/* B in a folder goes up one (src/shelfdir.h), onto the folder it left;
 	 * at the top, to the systems */
 	if (a->in.pressed[IN_BACK] && v->dir[0]) {
@@ -23074,7 +23091,7 @@ static int shot_screen = -1;
  * in; --view list|covers: MENU > View for the shot, whatever is saved */
 static const char *shot_folder, *shot_game, *shot_view;
 /* --shelf-press KEYS: the shelf's own presses before the shot, comma
- * separated - a, b, x, y, up, down, left, right, l1, r1 - each one pass of
+ * separated - a, b, x, y, up, down, left, right, l1, r1, start - each one pass of
  * update_games, as the device's loop makes them (never A on a game: that
  * starts it) */
 static const char *shot_shelf_press;
@@ -27128,7 +27145,7 @@ int main(int argc, char *argv[])
 			static const struct { const char *w; in_button b; } KEYS[] = {
 				{ "a", IN_ACCEPT }, { "b", IN_BACK }, { "x", IN_X }, { "y", IN_Y },
 				{ "up", IN_UP }, { "down", IN_DOWN }, { "left", IN_LEFT },
-				{ "right", IN_RIGHT }, { "l1", IN_L1 }, { "r1", IN_R1 },
+				{ "right", IN_RIGHT }, { "l1", IN_L1 }, { "r1", IN_R1 }, { "start", IN_START },
 			};
 			size_t len = strcspn(k, ",");
 			unsigned j;

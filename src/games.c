@@ -3,6 +3,7 @@
 #include "artbadge_draw.h"
 #include "zyperdraw.h"
 #include "home.h"
+#include "keyhints_draw.h"
 #include "ui.h"
 #include "theme.h"
 #include <math.h>
@@ -241,9 +242,14 @@ uint32_t games_draw(games_row *row,SDL_Renderer *r,const games_info *info,
     }
     if(info->count) page_hint(r,"A",T(info->folder>0?S_GAMES_OPEN:info->install?S_PORTMASTER_INSTALL:
                                       info->resumable?S_GAMES_RESUME:S_GAMES_PLAY),800,600,true,false);
-    page_hint(r,"B",T(info->inside?S_GAMES_BACK:S_GAMES_SYSTEMS),64,720,false,false);
-    if(info->count&&info->resumable&&!info->install&&!info->folder) page_hint(r,"Y",T(S_GAMES_FRESH),432,720,false,false);
-    if(!info->folder) page_hint(r,"X",T(S_GAMES_DETAILS),832,720,false,false);
+    /* The foot, spread from B at the left to X at the right (DESIGN.md
+     * 11.4): START turns the shelf into a list (2026-11-13) */
+    key_hint foot[4]; int nf=0;
+    foot[nf++]=(key_hint){"B",T(info->inside?S_GAMES_BACK:S_GAMES_SYSTEMS)};
+    if(info->count) foot[nf++]=(key_hint){"START",T(S_GAMES_TO_LIST)};
+    if(info->count&&info->resumable&&!info->install&&!info->folder) foot[nf++]=(key_hint){"Y",T(S_GAMES_FRESH)};
+    if(!info->folder) foot[nf++]=(key_hint){"X",T(S_GAMES_DETAILS)};
+    keyhints_draw(r,foot,nf,64,960,720,KEYHINTS_SPREAD,true,255);
     SDL_SetRenderDrawColor(r,red,green,blue,alpha);
     SDL_SetRenderDrawBlendMode(r,blend);
     return wait;

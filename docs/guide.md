@@ -75,6 +75,7 @@ it away.
 | **B** | up one folder of games, or back to the systems row from a shelf's top |
 | **X** | game info for the card under the cursor |
 | **Y** | favorite it - Favorites is a shelf of its own. Nothing on MP4's shelf |
+| **START** | on a games shelf, covers or a list: the row of covers turns into a list of names, and back again. It is MENU > View's setting, kept for each shelf. Nothing on MP4's shelf |
 | **Volume rocker** | volume, everywhere, including in game |
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
@@ -348,7 +349,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Core** | which core runs them; left/right/A choose on a shelf that has two (the Dreamcast's) |
 | **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
-| **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it |
+| **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it. START on the shelf turns it too, without the menu |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
 | **Box Art** | fetch what this system is missing, and nothing else |
@@ -376,6 +377,9 @@ reads as broken even when the top of it is right.
 
 View is per-system too: a shelf with good covers reads well as a row, and an
 Arcade shelf or a library of hundreds of games reads better as a list.
+START on a shelf turns it over at a press, the same setting as the menu's
+row, and the foot says which way it goes: `List` under the covers, `Covers`
+under the list.
 
 **Folders of games.** A folder inside a system's folder on the card is a
 folder on its shelf, as deep as you like: the folders come first, A to Z,
