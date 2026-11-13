@@ -210,8 +210,9 @@ Pepper's), rounded, and Zyper on. *(My picks for the first version,
 - **Square** takes every radius under a pill's to 0: panels, the focus fill,
   keys, chips. A pill stays a pill (the bar, a button glyph, the bar under a
   tab), a circle a circle, and covers keep their own corners.
-- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22)
-  and the achievement notice (11.7). He stays where he is the moment itself:
+- **Zyper off** takes him out of the menus' corner, the song pop-up (11.22),
+  the achievement notice (11.7) and the Flash Drive pages (the heading then
+  starts where the tiles do). He stays where he is the moment itself:
   the boot, the loading loop, the tutorial, Getting hot, the battery and the
   charging screens.
 - The bar over a game and over a port follows the look too: the launcher
@@ -284,8 +285,10 @@ Lexend's time the first time it is drawn, then cached like any line.
   where the mock's is 77.
 - Digits that change while on screen are tabular (`ui_text_tabular`).
 - **Title Case** for headings, menu rows and named choices ("Audio Output",
-  "Light"). **lowercase** for status words in the value column
-  ("off", "not connected", "needs Wi-Fi"). **Sentence case** for lines and
+  "Light"), a switch's "On" and "Off" among them (Developer Mode, Wi-Fi
+  and Bluetooth, Swap Screens, 2026-11-12: "Off/On in the dev mode row in
+  settings should be capitalized"). **lowercase** for status words in the
+  value column ("not connected", "needs Wi-Fi", "never"). **Sentence case** for lines and
   messages ("Press A to open the game you are on.").
 - No italics, no letter spacing, no all-caps except button names, which are
   written as printed on the handheld: A, B, X, Y, L1, R1, L2, R2, START,
@@ -681,8 +684,10 @@ keeps its aspect ratio. There is no perspective tilt, reflection or added
 card frame. The full scraped title appears below, followed by play time and
 the achievement count. Missing metadata is omitted rather than invented.
 A is **Resume** only when the existing resume path is available, otherwise
-**Play**. B returns to systems, Y toggles Favorite, and X opens game details,
-whose last row is Delete Game (11.31).
+**Play**. B returns to systems, START turns the shelf into the list and back
+(11.39), Y starts the game from the start, and X opens game details, whose
+last row is Delete Game (11.31). The foot spreads their hints from B at the
+left to X at the right (11.4).
 Long titles wrap or fit within their region, clear of the action and footer.
 Missing box art uses the theme's existing generated text fallback.
 
@@ -834,6 +839,10 @@ Left/Right is the "< >" pill, as seek's. Words are res/strings' keyhint.*
 or a screen's own, a hint's capitals (Title Case in English). Under every
 question in tiles (11.18, 11.23, 11.36) and Now Playing's foot. *(I asked
 for one component to use across the UI.)*
+
+The game shelves' feet are one too since 2026-11-13, spread from x 64 to
+960: B, START (List or Covers), Y when the game resumes, X. They were at
+fixed places (B 64, Y 432, X 832), with no room kept for a fourth.
 
 Since 2026-11-11 every legend is one: a panel's foot (Wi-Fi, Bluetooth,
 Play Time, Date & Time, Developer Mode, Album Art, File Transfer, every "B
@@ -996,8 +1005,8 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
-| Keep a Favorite | Y | a heart pops onto the card | Y |
 | See the Details | X | the card turns into a details panel | X |
+| Keep a Favorite | Y | a heart pops onto the card; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf | MENU, which opens nothing here |
 | Music | SELECT, and L2/R2 lit on the handheld | Muse's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
@@ -1008,6 +1017,12 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Sounds | none | four tiles, Wood, Glass, Bubble and Off, heard as they are focused | A |
 | Menu Music | none, and no step on a card without tracks | On and Off, the music playing while On is focused | A |
 | Finish | A | Zyper hops among falling confetti, "You're all set!" in his bubble, "Every button is in MENU > Controls." | A |
+
+*(2026-11-13: Keep a Favorite comes after See the Details, and its line says
+"In the details, press Y to add a favorite." Since 2026-11-08 Y on the
+shelf starts a game without its resume point and Favorite is a row of the
+details page X opens, and the step still taught Y on the shelf as a
+favorite.)*
 
 The demonstrations are drawn from shapes and tokens on the stage - a little
 shelf of five system-colored cards (Game Boy, NES, SNES, Game Boy Color, Neo
@@ -2131,33 +2146,59 @@ loses no frames. A step of a moving pattern lasts 100 ms ("Even, 100 ms").
   keys on the shelf and in menus, from Diatom's LEVEL lines in a game (a
   move only: the levels Diatom reports as a game starts are not a press), and
   from portkeys over a port.
-- **Files and Covers Done** ("Climb twice"): one light runs up the four,
+- **Files and Covers**, Done ("Climb twice"): one light runs up the four,
   twice, 0.8 s, when a File Transfer batch is in (files arrived, then none
   for 2 s: the page sends a batch one file at a time) and when a Scraper run
   ends without a problem.
+- **Files and Covers**, files moving: my picks in the transfer lights lab
+  (`docs/design/mock/transfer-lights-lab.html`, 2026-11-13), after I asked
+  for an upload and download animation in Flash Drive and on the web page.
+  While files move to or from the card, a wave fills the four lights and
+  empties them ("Fill and empty"): from the top down while they come in to
+  the card (Download), from the bottom up while they go out of it (Upload),
+  as the Flash Drive screen's arrows point ("As the screen's arrows"). Eight
+  steps a run, the last one dark. Its pace follows the speed ("Follows the
+  speed"): under 1 MB/s 200 ms a step, under 10 MB/s 100 ms, faster 60 ms.
+  With both ways moving, the way moving more bytes shows ("The bigger one"),
+  chosen again as each run begins, so a run is never cut. It lasts as long
+  as bytes move, and 1.5 s past the last word of it; then the lights show
+  what they showed before ("Back to the battery": a Flash Drive copy ends
+  with no Done, since a computer writes small files of its own when it
+  opens the drive). Flash Drive (plastron's usbdrive) says so once a second
+  from the gadget's own counters, a way under 64 KB/s taken as still; the
+  web page at most every 500 ms, counting only a file's bytes (an upload or
+  a download on its way), never the page, its covers or its lists. One row
+  with Done in MENU ("With Files and Covers Done"), named Files and Covers.
 - **Achievements** ("A sparkle"): the bottom and third lights, then the
   second and top, three times each, 150 ms a step, 0.9 s, the moment one
   unlocks in a game, while its pop-up waits for the menu.
 - **No game light** ("Not on the lights"): nothing shows that a game runs.
 
 Sharing them ("Newest on top"): a level, a Done or a sparkle takes the lights
-for its time, over the charging bar, and the newest replaces the one before;
-then the bar comes back. The low-battery red is laid over everything, a
+for its time, over the charging bar and over files moving, and the newest
+replaces the one before; then the wave or the bar comes back. Files moving
+is over the charging bar for as long as they move. The low-battery red is laid over everything, a
 pattern included (it is the bottom light's red, which no pattern uses but
 silence), and is hidden only when Low Battery is off. L2+R2 flashes the
 battery level over all of it, four times in 2 s, in every setting.
 
 **Side Lights** in MENU, under Charge Limit, says how many parts are on ("All
 on", "3 on", "Off"); A opens its page ("A page of switches"): Charging Bar,
-Low Battery, Volume and Brightness, Files and Covers Done, Achievements, each
+Low Battery, Volume and Brightness, Files and Covers, Achievements, each
 On or Off, stepped by Left, Right or A and heard as a ring. Every change is
 written to the card at once and the gauge reads it again, so the lights
-follow the row. Everything is on for a new card and for a card that said
+follow the row. The row under the cursor plays its part on the lights in a
+loop, On or Off, for as long as the cursor stays on it (my ask, 2026-11-13):
+the bar filling from none, one red flash then two, the level up its eight
+steps then silence's red, the wave down and up then Done, the sparkle. It
+takes the lights over everything but L2+R2, and they go back to what they
+show on their own as the page closes. Everything is on for a new card and for a card that said
 Auto ("Everything on"); a card set to Charging, Low Battery or Off before
 keeps what it said, the newer parts off. The setting is a line in
 `.userdata/pixel2/side-lights`: the old word first (auto, charging, low,
 off), which an older gauge reads alone, then `level`/`-level`, `done`/`-done`,
-`cheer`/`-cheer`.
+`cheer`/`-cheer`; `done` covers files moving too, so the line needed no new
+word for it.
 
 ### 11.28 Controls in a game
 
@@ -2746,28 +2787,78 @@ no name (multicast DNS did not start, or gave the name up after three taken
 in a session) or no link (the heading then says "Cable unplugged" or "Wi-Fi
 went away"), the heading is the address over the PIN.
 
-Until a browser opens the page, the rows under the rule are the steps of the
-connection as the handheld sees it (src/linksteps.h): over the cable
-**Cable**, **Address** and **Browser**; over Wi-Fi **Wi-Fi** and **Browser**;
-none on the hotspot screen (11.16), which says what it says. A step that is
-done has MENU_TICK as its value; the step waited on is a live row, its value
-"waiting" (or "unplugged" for a cable with no computer, "not connected" for
-no Wi-Fi); the steps after it are dead rows with no value. The rule and the
-key legend (11.4) follow, "B: close".
+**The way in** (2026-11-12: "while nobody inputted the PIN yet ... show the
+URL/IP/PIN full size in the popup; only after someone connected we show the
+stats"). Until someone has come in (a browser gave the right PIN, or, over
+the cable, an SSH session opened), the panel is not the stats but what to
+type, at full size. In a header of 352 under no heading: the screen's name
+in **meta** **text-dim** where a heading would be; the first thing to type
+in **title** **text**, a step down to **label** and then **menu** where it
+does not fit whole (a port on the name, a long address), and sliding past
+that, never cut; the other way to reach it under it in **menu**
+**text-soft**; "PIN" in **meta** **text-dim**; and the PIN as one key a
+digit, 80 by 96, a **raised** fill in an **edge** frame (DS_FRAME) with
+DS_RADIUS_KEY, the digit in **title** **text**, as the page's four boxes
+take it. The order is the heading's: over the cable "http://zyperos.local"
+first and "10.42.0.1" under it; over Wi-Fi the address first and the name
+under it. With no name the address is alone. Under the header one live row
+says where the link is (**Cable** "unplugged" or "waiting", **Wi-Fi** "not
+connected", **Address** "waiting", **Browser** "waiting", or **PIN**
+"waiting" once a browser has the page), then the rule and the key legend
+(11.4), "B: close".
 
-A step that waits too long (the cable 5 seconds with no computer and 10 with
-one, the address 10, the browser 30) gets its hint: one sentence saying what
-to do about that step, in **menu** **text-dim**, centered and balanced onto
-at most three lines, in place of the other steps, under the stalled step's
-row and over the rule. Three steps and a three-line hint do not fit under a
-two-line heading, and a hint is about one step. The hints name the things a
-person can act on: another cable or port, Windows' Device Manager and its
-Network adapters, the name and the address to type, a VPN or proxy.
+**Connecting** (2026-11-12: "usb file transfer takes a while to start, we
+need a loading state"). Over the cable the address and the PIN cannot work
+until the computer has taken the handheld, opened its network on it and
+taken its address: a few seconds, and more the first time Windows sees it.
+Until then, on a device that can see those steps (the Pixel 2), the way in's
+panel says so in the same place and size: the screen's name, "Connecting to
+the computer" in **label** **text** (**menu** where a language's words do not
+fit it whole) with its cap centre 160 down the header, and under it a
+**bar** 420 wide at 232 on **track**, filling with **accent-ink**, a third
+for each of the three. While one is waited on, its third creeps toward three
+quarters of the way, 63% of that in 3 s (never the whole: the computer has
+not done it yet); no computer, or one waiting for power, does not creep.
+The fill eases up in 150 ms and drops at once when a step is lost (the cable
+out). The step row under the rule says which step it is on. Once the address
+is in, the bar runs to its end and the way in takes its place.
 
-Once a browser has asked, the rows are the usual ones (Browsers, SSH, In /
-out, Now); the steps come back if the cable or the Wi-Fi goes. Host shots:
-`--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged, nocomputer,
-noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork.
+The hotspot screen (11.16) keeps its code, network and password and PIN
+until someone comes in; it is its own way in.
+
+Once someone has come in, the rows are the usual ones (Browsers, SSH, In /
+out, Now) under the two-line heading above, and they stay when every
+browser leaves: the way in comes back only when the screen opens again,
+with a new PIN. On the hotspot the code goes and the heading is the
+network and its password over the PIN, for another phone to join; where
+the two do not fit one line (Chinese), the password moves down beside the
+PIN, so neither slides.
+
+**The steps.** A step before the browser that waits too long (the cable 5
+seconds with no computer and 10 with one, the address 10) means the address
+cannot work yet, so its hint takes the way in's place: under the two-line
+heading the steps of the connection as the handheld sees it
+(src/linksteps.h), over the cable **Cable**, **Address** and **Browser**,
+over Wi-Fi **Wi-Fi** and **Browser**. A step that is done has MENU_TICK as
+its value; the step waited on is a live row, its value "waiting" (or
+"unplugged" for a cable with no computer, "not connected" for no Wi-Fi);
+under it the hint, one sentence saying what to do about that step, in
+**menu** **text-dim**, centered and balanced onto at most three lines, in
+place of the other steps, then the rule and the legend. Three steps and a
+three-line hint do not fit under a two-line heading, and a hint is about
+one step. The hints name the things a person can act on: another cable or
+port, Windows' Device Manager and its Network adapters, a VPN or proxy. A
+browser that does not come has no hint: the way in already shows what to
+type, at full size. The way in comes back as the step moves on, and the
+steps come back if the cable or the Wi-Fi goes before anyone came in.
+
+Host shots: `--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged,
+taking, opening, nocomputer, noanswer, nodriver, address, noaddress,
+browser, nobrowser, waits, replug, nonetwork and pin (a stalled step shows
+the steps; over the cable a step before the browser shows Connecting, its
+step waited on for 1.5 s; the rest the way in); `--hare-addr
+ADDR` for the way in's address (a long one, for the fit); `--hotspot SSID
+PASS PHONES NOW --hotspot-in` for the hotspot after someone came in.
 
 ### 11.36 What did you plug in?
 The question the shelf asks when something on the Pixel 2's USB port wants
@@ -3004,8 +3095,19 @@ shelf with good covers reads as a row, an Arcade or a long library as a
 list. A, Left, Right turn it over; the shelf under the menu turns with it,
 on the same entry.
 
-The heading and the foot are the cover row's, so turning View moves only
-the middle:
+**START** on the shelf turns it over too, with no menu *(2026-11-13: "make
+clicking start in a system change view mode to list and vice versa")*: the
+row's own setting, saved the same way, the shelf on the same entry, with
+the move sound. Favorites, folders and Ports alike; MP4's shelf is MP4's
+own screen, where START does nothing alone. Not with MENU or SELECT held:
+MENU + START is the way out (tools/zyhome.c) and SELECT + START MP4's lock.
+Before, START did nothing on a shelf. The foot names it: **START List**
+under the covers, **START Covers** under the list; MENU > Controls has it
+on the shelf's page. The tutorial is as it was: it teaches one button a
+step, its START skips it, and its last page sends you to MENU > Controls.
+
+The heading and the foot are the cover row's (START's word apart), so
+turning View moves only the middle:
 - Rows down the left: the focus plate from x 40, 552 wide, rows 56 tall
   from y 200, eight in sight; names in **meta** at x 120, **text-soft**,
   the focused one on an **accent** plate in **on-accent** (radius.row),

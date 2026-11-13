@@ -335,8 +335,10 @@ void diatom_input_emit_labels(void);
  * the game is paused (the launcher's menu is no time to shake the device) and
  * given back as it was on resume, since a core says a strength when it
  * changes and not again; reset when the game stops, so nothing a game asked
- * for outlives it. */
+ * for outlives it. Forgotten, the hold kept, when the game is reset or a
+ * state is loaded into it. */
 void diatom_rumble_hold(bool held);
+void diatom_rumble_forget(void);
 void diatom_rumble_reset(void);
 
 bool diatom_proto_listen(const char *path);

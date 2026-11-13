@@ -228,6 +228,10 @@ const char *hare_pin(void);
 /* Every wrong PIN since hare_start, the 30-second waits notwithstanding:
  * USB File Transfer's SSH counts them toward its own five (sshlink.h). */
 int         hare_wrong_pins(void);
+/* Whether a browser has entered the PIN since hare_start: the screen shows
+ * the way in, the address and the PIN at full size, until one has, and its
+ * news after (DESIGN.md 11.35) */
+bool        hare_signed_once(void);
 int         hare_port(void);
 
 /* Drive it from the screen's frame loop. Returns non-zero when anything moved,

@@ -71,7 +71,7 @@ static void off_state(void)
 	ck(n == 3, "switch, rule, note");
 	ck(rows[0].live, "the switch is live");
 	ck(!strcmp(rows[0].label, "Wi-Fi"), "row 0 is the switch");
-	ck(!strcmp(rows[0].value, "off"), "the switch reads off");
+	ck(!strcmp(rows[0].value, "Off"), "the switch reads Off");
 	ck(rule_at(rows, n) == 1, "the rule separates the footer");
 	ck(ROW_IS_NOTE(rows[2]), "the footer is a note");
 	ck(!rows[2].live, "the footer is not selectable");
@@ -252,7 +252,7 @@ static void zyperos_menu_offline(void)
 	printf("ZyperOS menu, radio off:\n");
 	ck(n == PM_ROWS, "every row is filled");
 	ck(!strcmp(heading, "ZyperOS"), "heading");
-	ck(!strcmp(val(&rows[PM_WIFI]), "off"), "Wi-Fi reads off");
+	ck(!strcmp(val(&rows[PM_WIFI]), "Off"), "Wi-Fi reads Off, its switch's value");
 	ck(!strcmp(val(&rows[PM_XFER]), "needs Wi-Fi"), "OTH says why it is dead");
 	ck(!rows[PM_XFER].live, "OTH is not selectable offline");
 	ck(!strcmp(rows[PM_SCRAPER].label, "Scraper") && rows[PM_SCRAPER].live,
@@ -629,16 +629,16 @@ static void zyperos_menu_online(void)
 		printf("the Video Snaps page:\n");
 		ck(vid[0] == SN_FETCH && !vr[0].live && !strcmp(val(&vr[0]), "needs ScreenScraper"),
 		   "fetching needs ScreenScraper, and says so");
-		ck(vid[1] == SN_PLAY && !strcmp(val(&vr[1]), "on") && vr[1].live, "playing is on to start");
+		ck(vid[1] == SN_PLAY && !strcmp(val(&vr[1]), "On") && vr[1].live, "playing is On to start");
 		ck(vid[2] == SN_SOUND && !strcmp(val(&vr[2]), "muted"), "and muted to start");
 		ck(vid[4] == SN_CONSOLE && con[4] == 0 && !strcmp(vr[4].label, "SNES") &&
-		   !strcmp(val(&vr[4]), "on \xc2\xb7 212 MB"), "a console with its room and its switch");
-		ck(vid[5] == SN_CONSOLE && !strcmp(val(&vr[5]), "off \xc2\xb7 0 KB"), "one turned off");
+		   !strcmp(val(&vr[4]), "On \xc2\xb7 212 MB"), "a console with its room and its switch");
+		ck(vid[5] == SN_CONSOLE && !strcmp(val(&vr[5]), "Off \xc2\xb7 0 KB"), "one turned off");
 		ck(vid[m - 1] == SN_DELETE && !strcmp(val(&vr[m - 1]), "212 MB") && vr[m - 1].live,
 		   "Delete All last, with what it gives back");
 		vu.ss_in = true;
 		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
-		ck(vr[0].live && !strcmp(val(&vr[0]), "off"), "with ScreenScraper, fetching is a switch, off to start");
+		ck(vr[0].live && !strcmp(val(&vr[0]), "Off"), "with ScreenScraper, fetching is a switch, Off to start");
 		vu.ss_have = false;
 		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
 		ck(!vr[0].live && !strcmp(val(&vr[0]), "not in this build"),
@@ -693,10 +693,10 @@ static void zyperos_menu_online(void)
 	printf("the Developer Mode row:\n");
 	ck(!strcmp(rows[PM_DEVELOPER].label, "Developer Mode"), "it is there");
 	ck(rows[PM_DEVELOPER].live, "and live");
-	ck(!strcmp(val(&rows[PM_DEVELOPER]), "off"), "off says off");
+	ck(!strcmp(val(&rows[PM_DEVELOPER]), "Off"), "off says Off, a switch's value");
 	u.developer = true;
 	n = sys_menu_build(&u, rows, &b, &heading);
-	ck(!strcmp(val(&rows[PM_DEVELOPER]), "on"), "on says on");
+	ck(!strcmp(val(&rows[PM_DEVELOPER]), "On"), "on says On");
 	u.no_developer = true;
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(n == PM_ROWS - 2 && !has_label(rows, n, "Developer Mode"),
@@ -1768,8 +1768,8 @@ static void ingame_rows(void)
 	   "Screens, Swap Screens and Stylus right after Display and Shader, then Controls");
 	ck(!strcmp(rows[6].label, "Screens") && !strcmp(val(&rows[6]), "Top Focus"),
 	   "Screens says the layout");
-	ck(!strcmp(val(&rows[7]), "on") && !strcmp(val(&rows[8]), "off"),
-	   "Swap Screens and Stylus say on or off, lowercase like any status");
+	ck(!strcmp(val(&rows[7]), "On") && !strcmp(val(&rows[8]), "Off"),
+	   "Swap Screens and Stylus say On or Off, as a switch does");
 	ck(!strcmp(rows[10].label, "Achievements") && !strcmp(val(&rows[10]), "12 / 40"),
 	   "Achievements moves down with its value");
 	k = reachable(rows, n, got, GM_MAX_ROWS - 1);
@@ -2128,7 +2128,7 @@ static void lights_row(void)
 	ck(n == 5, "the page has five rows");
 	ck(!strcmp(lbl(&page[0]), "Charging Bar") && !strcmp(lbl(&page[1]), "Low Battery") &&
 	   !strcmp(lbl(&page[2]), "Volume and Brightness") &&
-	   !strcmp(lbl(&page[3]), "Files and Covers Done") && !strcmp(lbl(&page[4]), "Achievements"),
+	   !strcmp(lbl(&page[3]), "Files and Covers") && !strcmp(lbl(&page[4]), "Achievements"),
 	   "named in the lab's order");
 	for (i = 0; i < n; i++)
 		ck(page[i].live && !strcmp(val(&page[i]), "On") && ids[i] == (side_light_part)i,

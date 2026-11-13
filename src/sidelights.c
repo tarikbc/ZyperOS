@@ -133,3 +133,85 @@ bool side_lights_batch_done(side_lights_batch *b, bool arriving, unsigned now_ms
 	}
 	return false;
 }
+
+int side_lights_move_line(char *out, size_t cap, unsigned long long in_bps, unsigned long long out_bps)
+{
+	return snprintf(out, cap, "move %llu %llu", in_bps, out_bps);
+}
+
+bool side_lights_move_step(side_lights_move *m, unsigned long long in, unsigned long long out,
+                           unsigned now_ms, char *line, size_t cap)
+{
+	unsigned dt;
+
+	if (!m->started) {
+		m->started = true;
+		m->at = m->moved = now_ms;
+	}
+	/* The first bytes after a rest open a window of their own, so the
+	 * first speed is theirs, not theirs over the rest before them */
+	if ((in || out) && !m->on && !m->in && !m->out) m->at = now_ms;
+	m->in += in;
+	m->out += out;
+	if (in || out) m->moved = now_ms;
+	dt = now_ms - m->at;
+	if (dt < SIDE_LIGHTS_MOVE_MS) return false;
+	m->at = now_ms;
+	if (m->in || m->out) {
+		side_lights_move_line(line, cap, m->in * 1000 / dt, m->out * 1000 / dt);
+		m->in = m->out = 0;
+		m->on = true;
+		return true;
+	}
+	if (m->on && now_ms - m->moved >= SIDE_LIGHTS_MOVE_IDLE_MS) {
+		side_lights_move_line(line, cap, 0, 0);
+		m->on = false;
+		return true;
+	}
+	return false;
+}
+
+bool side_lights_move_files(side_lights_move *m, int uploads, int sends, unsigned long long in,
+                            unsigned long long out, unsigned now_ms, char *line, size_t cap)
+{
+	bool up = uploads > 0 || m->up_was, send = sends > 0 || m->send_was;
+
+	m->up_was = uploads > 0;
+	m->send_was = sends > 0;
+	return side_lights_move_step(m, up ? in : 0, send ? out : 0, now_ms, line, cap);
+}
+
+bool side_lights_move_end(side_lights_move *m, char *line, size_t cap)
+{
+	bool on = m->on;
+
+	memset(m, 0, sizeof *m);
+	if (on) side_lights_move_line(line, cap, 0, 0);
+	return on;
+}
+
+bool side_lights_preview_step(side_lights_preview *p, side_light_part part, unsigned now_ms,
+                              char *line, size_t cap)
+{
+	if (part < 0 || part >= LP_COUNT) {
+		if (!p->on) return false;
+		p->on = false;
+		snprintf(line, cap, "preview off");
+		return true;
+	}
+	if (p->on && p->part == (int)part && now_ms - p->at < SIDE_LIGHTS_PREVIEW_MS) return false;
+	p->on = true;
+	p->part = (int)part;
+	p->at = now_ms;
+	snprintf(line, cap, "preview %s", WORD[part]);
+	return true;
+}
+
+bool side_lights_preview_end(side_lights_preview *p, char *line, size_t cap)
+{
+	bool on = p->on;
+
+	memset(p, 0, sizeof *p);
+	if (on) snprintf(line, cap, "preview off");
+	return on;
+}

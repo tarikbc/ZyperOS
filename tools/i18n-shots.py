@@ -339,13 +339,17 @@ for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
-for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver", "address",
-                               "noaddress", "browser", "nobrowser", "waits", "replug")),
-                      ("wifi", ("nonetwork", "browser", "nobrowser"))):
+for _way, _states in (("usb", ("unplugged", "taking", "opening", "nocomputer", "noanswer", "nodriver", "address",
+                               "noaddress", "browser", "nobrowser", "waits", "replug", "pin")),
+                      ("wifi", ("nonetwork", "browser", "nobrowser", "pin"))):
     for _state in _states:
         EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
     # and the browser's hint with no name on the network (mDNS did not start)
     EXTRA.setdefault("steps-%s-nobrowser-noname" % _way, ("demo", "PS1", ["--hare-steps", _way, "nobrowser", "noname"]))
+    # the way in with a long address, for the fit (DESIGN.md 11.35)
+    EXTRA.setdefault("steps-%s-longaddr" % _way, ("demo", "PS1", ["--hare-steps", _way, "browser", "--hare-addr", "192.168.100.200"]))
+# the hotspot once someone came in: the news, network and PIN in the heading
+EXTRA.setdefault("hotspot-in", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "1 signed in", "Tobu Tobu Girl.gb", "--hotspot-in"]))
 # USB Device Connected (DESIGN.md 11.36): both tiles focused, and the
 # message after It's a Computer
 for _k in ("0", "1", "said"):
@@ -374,7 +378,8 @@ EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "8", "du
 EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
 
 # The README's shots' own settings, and these shots'
-SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"}}
+SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"},
+                 "menu-saver-off": {"saver": "0"}}
 # The in-game menu's Shader at each old screen, so each name is drawn and fit
 for _s in ("crt", "crt-curved", "scanlines", "lcd"):
     EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
@@ -385,6 +390,9 @@ for _s in ("crt", "crt-curved", "scanlines", "lcd"):
 for _tab in range(6):
     EXTRA.setdefault("menu-tab-%d" % _tab, ("demo", "PS1", ["--menu-tab", str(_tab), "--menu", "0"]))
 EXTRA.setdefault("menu-display-theme", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Theme"]))
+# Display's Screensaver at off: "off", a status's lowercase, now that the
+# switches say On and Off (menu.off, and scraper.off and ssh.off, its words)
+EXTRA.setdefault("menu-saver-off", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Screensaver"]))
 # Display's Theme page (DESIGN.md 11.42) in each of the ten accents, the
 # tones going round in both themes and the corners turning over, so every
 # accent's, tone's and value's name is drawn; its foot, Zyper and Reset to

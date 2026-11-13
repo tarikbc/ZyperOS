@@ -135,6 +135,17 @@ de = Hotspot wird gestartet ...
 ja = ホットスポットを起動中…
 it = Avvio dell'hotspot...
 
+[xfer.connecting]
+note = The line over the bar while USB File Transfer waits for the computer to take the handheld, open its network and take an address, before the address and the PIN can work (DESIGN.md 11.35). One line in label size, about 750 units at most.
+en = Connecting to the computer
+zh-Hans = 正在连接电脑
+es = Conectando con la computadora
+pt-BR = Conectando ao computador
+fr = Connexion à l'ordinateur
+de = Verbindung zum Computer
+ja = パソコンに接続中
+it = Connessione al computer
+
 [xfer.hotspot_failed]
 note = The message when the hotspot did not start.
 en = Could not start the hotspot.
@@ -371,50 +382,6 @@ fr = Pas encore d'adresse. Sous Windows\u00a0: Gestionnaire de périphériques, 
 de = Noch keine Adresse. Unter Windows: Geräte-Manager, Netzwerkadapter.
 ja = アドレスがありません。Windows ではデバイス マネージャーを確認してください。
 it = Il computer non ha un indirizzo. Su Windows: Gestione dispositivi, Schede di rete.
-
-[xfer.hint_type_both]
-note = Under File Transfer's steps when the computer has its address and no browser opened the page after 30 s: the two ways to the page, http://zyperos.local and http://10.42.0.1, then what most often stands in the way. URLs are never translated. Up to three balanced lines.
-en = Type http://%s or http://%s in a browser. Turn off any VPN or proxy.
-zh-Hans = 打开 http://%s 或 http://%s，并关闭 VPN 或代理。
-es = Escribe http://%s o http://%s en un navegador. Desactiva cualquier VPN o proxy.
-pt-BR = Digite http://%s ou http://%s em um navegador. Desligue qualquer VPN ou proxy.
-fr = Ouvrez http://%s ou http://%s dans un navigateur, sans VPN ni proxy.
-de = Gib http://%s oder http://%s im Browser ein. Schalte VPN oder Proxy aus.
-ja = ブラウザで http://%s か http://%s を開き、VPN やプロキシはオフにしてください。
-it = Digita http://%s o http://%s in un browser. Disattiva VPN o proxy.
-
-[xfer.hint_type_one]
-note = As xfer.hint_type_both, when the handheld has no name on the network (only the address).
-en = Type http://%s in a browser. Turn off any VPN or proxy.
-zh-Hans = 打开 http://%s，并关闭 VPN 或代理。
-es = Escribe http://%s en un navegador. Desactiva cualquier VPN o proxy.
-pt-BR = Digite http://%s em um navegador. Desligue qualquer VPN ou proxy.
-fr = Ouvrez http://%s dans un navigateur, sans VPN ni proxy.
-de = Gib http://%s im Browser ein. Schalte VPN oder Proxy aus.
-ja = ブラウザで http://%s を開き、VPN やプロキシはオフにしてください。
-it = Digita http://%s in un browser. Disattiva VPN o proxy.
-
-[xfer.hint_wifi_both]
-note = Under Wi-Fi File Transfer's steps when no browser opened the page after 30 s: the two ways to the page, the handheld's address first (http://192.168.1.42) and its name second (http://zyperos.local), as the heading has them over Wi-Fi. URLs are never translated. Up to three balanced lines.
-en = On this Wi-Fi, open http://%s or http://%s.
-zh-Hans = 在此 Wi-Fi 下打开 http://%s 或 http://%s。
-es = En este Wi-Fi, abre http://%s o http://%s.
-pt-BR = Neste Wi-Fi, abra http://%s ou http://%s.
-fr = Sur ce Wi-Fi, ouvrez http://%s ou http://%s.
-de = Öffne in diesem WLAN http://%s oder http://%s.
-ja = この Wi-Fi で http://%s か http://%s を開いてください。
-it = In questo Wi-Fi, apri http://%s o http://%s.
-
-[xfer.hint_wifi_one]
-note = As xfer.hint_wifi_both, when the handheld has no name on the network (only the address).
-en = On this Wi-Fi, open http://%s.
-zh-Hans = 在此 Wi-Fi 下打开 http://%s。
-es = En este Wi-Fi, abre http://%s.
-pt-BR = Neste Wi-Fi, abra http://%s.
-fr = Sur ce Wi-Fi, ouvrez http://%s.
-de = Öffne in diesem WLAN http://%s.
-ja = この Wi-Fi で http://%s を開いてください。
-it = In questo Wi-Fi, apri http://%s.
 
 [xfer.row_on]
 note = MENU's File Transfer row's value while it runs behind the shelf with nothing moving. A lowercase value.

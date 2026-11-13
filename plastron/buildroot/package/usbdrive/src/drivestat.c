@@ -90,6 +90,7 @@ void dst_tokens_text(const int *tok, int n, char dec, char *out, size_t on)
 static void way_step(dst_way *w, unsigned long long d, unsigned dt, unsigned now)
 {
 	w->total += d;
+	w->now_bps = d && dt ? d * 1000 / dt : 0;
 	if (d) {
 		w->moved_ms = now;
 		w->active = true;
@@ -138,6 +139,19 @@ bool dst_step(dst_state *s, unsigned long long rd, unsigned long long wr, unsign
 	snprintf(shown, sizeof shown, "%s/%s", a, b);
 	if (!strcmp(shown, s->shown)) return false;
 	snprintf(s->shown, sizeof s->shown, "%s", shown);
+	return true;
+}
+
+bool dst_lights_line(dst_state *s, char *out, size_t cap)
+{
+	unsigned long long in = s->in.now_bps >= DST_LIGHTS_MIN ? s->in.now_bps : 0;
+	unsigned long long from = s->out.now_bps >= DST_LIGHTS_MIN ? s->out.now_bps : 0;
+	int n;
+
+	if (!in && !from && !s->lit) return false;
+	n = snprintf(out, cap, "move %llu %llu", in, from);
+	if (n < 0 || (size_t)n >= cap) return false;
+	s->lit = in || from;
 	return true;
 }
 

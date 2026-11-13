@@ -57,7 +57,7 @@ int bt_menu_build(const bt_ui *u, menu_row *out, int max, int visible)
 	 * to press it would have been the screen contradicting itself. */
 	out[nrows++] = (menu_row){ "Bluetooth",
 	                           u->state == BT_NO_ADAPTER ? T(S_BTMENU_NO_ADAPTER)
-	                           : u->state == BT_READY ? T(S_MENU_ON) : T(S_MENU_OFF),
+	                           : u->state == BT_READY ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE),
 	                           true };
 
 	for (i = u->top; i < u->n && nrows < max - 2 && i < u->top + visible; i++)

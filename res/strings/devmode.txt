@@ -1,6 +1,6 @@
 # Developer mode on a release image (src/devmode.h): what is said when the
 # unlock works, and the page MENU > Developer Mode opens. The row's own name is
-# sysmenu.developer, Developer Mode, and its On or Off is menu.on and menu.off.
+# sysmenu.developer, Developer Mode, and its On or Off is menu.on_title and menu.off_title.
 
 [devmode.is_on]
 note = The line of the message that says the unlock worked. One line, which must fit the message panel: it does not wrap

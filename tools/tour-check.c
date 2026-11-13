@@ -519,7 +519,7 @@ static void buttons(void)
 		{ TOUR_MOVE, IN_UP, DS_SOUND_MOVE }, { TOUR_MOVE, IN_DOWN, DS_SOUND_MOVE },
 		{ TOUR_MOVE, IN_LEFT, DS_SOUND_MOVE }, { TOUR_MOVE, IN_RIGHT, DS_SOUND_MOVE },
 		{ TOUR_A, IN_ACCEPT, DS_SOUND_REWARD }, { TOUR_B, IN_BACK, DS_SOUND_REWARD },
-		{ TOUR_Y, IN_Y, DS_SOUND_REWARD }, { TOUR_X, IN_X, DS_SOUND_REWARD },
+		{ TOUR_X, IN_X, DS_SOUND_REWARD }, { TOUR_Y, IN_Y, DS_SOUND_REWARD },
 		{ TOUR_MENU, IN_MENU, DS_SOUND_REWARD }, { TOUR_SELECT, IN_SELECT, DS_SOUND_REWARD },
 		{ TOUR_VOL, IN_VOLUP, DS_SOUND_REWARD }, { TOUR_VOL, IN_VOLDN, DS_SOUND_REWARD },
 		{ TOUR_BRIGHT, IN_BRIGHTUP, DS_SOUND_REWARD },
@@ -561,7 +561,7 @@ static void buttons(void)
 	 * button named, the one to try. The lessons are all of them but the
 	 * welcome's and the choices'. */
 	{
-		static const tour_step lessons[] = { TOUR_MOVE, TOUR_A, TOUR_B, TOUR_Y, TOUR_X,
+		static const tour_step lessons[] = { TOUR_MOVE, TOUR_A, TOUR_B, TOUR_X, TOUR_Y,
 		                                     TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT };
 		static const in_button shoulders[] = { IN_L2, IN_R2 };
 		size_t s2, b2;

@@ -36,14 +36,14 @@ ja = 音量と明るさ
 it = Volume e luminosità
 
 [lights.done]
-note = review: a Side Lights row: the lights flash when a file transfer or a cover fetch ends. es, pt-BR and fr leave done to the context, for the row's room.
-en = Files and Covers Done
-zh-Hans = 文件和封面完成
+note = review: a Side Lights row: the lights move while files go to or from the card, and flash when a file transfer or a cover fetch ends. Files and covers, with no word for done or moving: the row is both.
+en = Files and Covers
+zh-Hans = 文件和封面
 es = Archivos y carátulas
 pt-BR = Arquivos e capas
 fr = Fichiers et jaquettes
-de = Dateien und Cover fertig
-ja = ファイルと画像の完了
+de = Dateien und Cover
+ja = ファイルと画像
 it = File e copertine
 
 [lights.cheer]

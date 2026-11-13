@@ -2,19 +2,8 @@
 # src/game_menu.c, src/bgm_menu.c, src/wifi_menu.c, src/bt_menu.c), and the
 # decimal mark of a size.
 
-[menu.on]
-note = A status value in a menu row's value column: the setting is on. Lowercase, as every status value.
-en = on
-zh-Hans = 开启
-es = activado
-pt-BR = ativado
-fr = activé
-de = an
-ja = オン
-it = attivo
-
 [menu.off]
-note = A status value: the setting is off. Lowercase.
+note = A status value in a menu row's value column: something is off (the screensaver's value). Lowercase, as every status value. A switch's own value is menu.off_title.
 en = off
 zh-Hans = 关闭
 es = desactivado
@@ -25,7 +14,7 @@ ja = オフ
 it = disattivo
 
 [menu.on_title]
-note = On, where English writes it as a named choice with a capital (Menu Music, Side Lights' parts)
+note = On, where English writes it as a named choice with a capital: a switch's value (Developer Mode, Wi-Fi and MENU's Wi-Fi row, Bluetooth, Swap Screens, Stylus, the Scraper's snaps), Menu Music, Side Lights' parts
 en = On
 zh-Hans = 开启
 es = Activado
@@ -36,7 +25,7 @@ ja = オン
 it = Attivo
 
 [menu.off_title]
-note = Off, where English writes it as a named choice with a capital (Menu Music, UI Sounds, Charge Limit, Side Lights)
+note = Off, where English writes it as a named choice with a capital: a switch's value (Developer Mode, Wi-Fi and MENU's Wi-Fi row, Bluetooth, Swap Screens, Stylus, the Scraper's snaps), Menu Music, UI Sounds, Charge Limit, Side Lights
 en = Off
 zh-Hans = 关闭
 es = Desactivado

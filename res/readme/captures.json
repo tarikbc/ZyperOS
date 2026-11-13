@@ -392,7 +392,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "1784c6f1b1d6b8463d507a4370d12121b21e3c3aa2326affc1ed3b93126451c0"
+      "sha256": "abcdc5896ce0910d76ff9555a9f10be0b4f3bbb5ac485ca1c3098d314f57fbe5"
     },
     {
       "file": "light/shelf-n64.png",
@@ -410,7 +410,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "b2e88b660826271d998b3fd6f8423cf41e146b83734a3f1aeb63449e18d4e856"
+      "sha256": "7e193cf00341b27fc40c7161382db5fc6af07ccd3fbdbfec88df11ef165c83c3"
     },
     {
       "file": "light/shelf-snes.png",
@@ -428,7 +428,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "d3c3a6d533b172ad300eea8f2a68ca0d879aed22574ef3fbfdde82b1bde323f2"
+      "sha256": "28336bab77c8a807cca72afbfa99aa8d4141e7624a0db65af0fedb7befb184f5"
     },
     {
       "file": "light/favorites.png",
@@ -446,7 +446,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "9d6b49ccedbe6a970f194db0d0d321a5d4cb994f35887cca7e949b68e07728c7"
+      "sha256": "be81a0b00689fe845cf144926256004610cccf6683e6c4e5a02e7fd96bb5f36f"
     },
     {
       "file": "light/info.png",
@@ -465,7 +465,7 @@
         "games",
         "--info"
       ],
-      "sha256": "2ae6aeceb344638fc5813cc2fd39e31e312c02bb17a12e5da251f18e17442861"
+      "sha256": "bffc081485b6984fa65670fd1a17704196c43884aefdb4b1fc960b3c1a363f53"
     },
     {
       "file": "light/info-delete.png",
@@ -484,7 +484,7 @@
         "games",
         "--info-delete"
       ],
-      "sha256": "136fdcf7b26b12081d885196bb8b83f3cb5e799a77af3ef7c116d0dac8082b19"
+      "sha256": "baf52d9677ccf514dbf29611c1b5e0ab5ae42526cf5589304347e7fa69b61a64"
     },
     {
       "file": "light/delete-ask.png",
@@ -503,7 +503,7 @@
         "games",
         "--delete-ask"
       ],
-      "sha256": "02781fd3d26aa2a3bcf2f8051a6f4bfffdbc54f2020a2a0e6b073e3bf5dfe601"
+      "sha256": "5f8ea07132894f3a869611c628d8dc951f3a8a12de22d0f7e0a0a5064e99d7f4"
     },
     {
       "file": "light/cheevos.png",
@@ -703,7 +703,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "12cc3bf9eed360e62ddffc94850a079867c8bbfcf60eee07f0c38e2138f15013"
+      "sha256": "296853f1a02237aa9f493a07a381927c47863a90a0252a3b727bcd81c1fd632f"
     },
     {
       "file": "light/openbor.png",
@@ -777,7 +777,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "4d013d60b8d8eb6cd84eb52a16c958927c54febc24cb162165956d192fd658ea"
+      "sha256": "d6aabb85149eba78a6b002ee5dc9ab2055d57a3e570092fb17f85fde78dde072"
     },
     {
       "file": "light/ports-menu.png",
@@ -1468,7 +1468,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "0df829b24406f86e5ea940d2b424c66b505bc8794aa9a2d4a5e3f6fbe5ddbdcc"
+      "sha256": "9d2b9ce042ae58e12991fb82c79f767982bc816ca801efcb1f0dabacc1f77696"
     },
     {
       "file": "dark/menu.png",
@@ -1691,7 +1691,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "8bb689f76afb72e8b0ec2ebfc0a3cc0e2329ee41b165ded3526ec4ab6c659762"
+      "sha256": "9889a3bd4c96e35b4c299d90e458079f6f1e5159581d0ecb75b631f204f2ddbe"
     },
     {
       "file": "light/info-rename.png",
@@ -1710,7 +1710,7 @@
         "games",
         "--info-rename"
       ],
-      "sha256": "3f31de337d32cb41bd82af483c9751245f557f27330d5a106abd98b6faf5b154"
+      "sha256": "b8c6683b729b2945b5ee0b91c29470e91d2d7a44f5219c4d2404383ace2eca0e"
     },
     {
       "file": "light/rename.png",
@@ -1732,7 +1732,7 @@
         "Metal Gear Solid (USA)",
         "Rename"
       ],
-      "sha256": "e49030e8f94cac69eb2132b84bc9a66f37b30080dc7050f96691206b8e7bad1a"
+      "sha256": "0785d4d5069ea5a6a00080c87f1cebebb0a23d906251500b9196b1989fe3acf3"
     },
     {
       "file": "light/folders.png",
@@ -1750,7 +1750,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "a5642baeb26535238e831104d211429fb98dea0224a567ab18993af561f5603f"
+      "sha256": "762bcd00d7fcaeb7029a06e39ee89d6335258fe56cda913b44aed4d060bca87e"
     },
     {
       "file": "light/folder-inside.png",
@@ -1768,7 +1768,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "165a6b6ce3ce7609a6c5d14bd0450ccdcd0d1eb93603c071a11854560bba1405"
+      "sha256": "c4920dcb914c1aec2a24e940f03d62b54519771c77fab9cfec7ae003c23fb3bd"
     },
     {
       "file": "light/list.png",
@@ -1788,7 +1788,7 @@
         "--view",
         "list"
       ],
-      "sha256": "49eaba7e8b18724fde01e47868a3d4ebf886d4ea7fcceced903982b136865d64"
+      "sha256": "db1e2d8654f05dc3704a89af1aac116daa877138038eb1c815e53f9361b49334"
     },
     {
       "file": "light/list-inside.png",
@@ -1808,7 +1808,7 @@
         "--view",
         "list"
       ],
-      "sha256": "63decea08c9dbdd77f4e065f0f144158cf588c5e8c28726aff9b25ac8a1d8d29"
+      "sha256": "0b1a5e6e6ede1fe6a69e569f397c1a807f9f117fc99ca76e629a978b7b181d43"
     },
     {
       "file": "dark/folders.png",
@@ -1826,7 +1826,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "28e72789829ad1a16472267b05829bd1afe83202c6422aa11ba99fde6a544cc1"
+      "sha256": "65e9c741a141472cd5c5ef8b02053b8bfbe1eb53b62b999e53da928ecdc376ac"
     },
     {
       "file": "dark/list.png",
@@ -1846,7 +1846,7 @@
         "--view",
         "list"
       ],
-      "sha256": "21e7d462e4dfcd930a9bdcf9a41d92aacba6cd944cd1c72c5c6d73eb2c08bce1"
+      "sha256": "f8962f9ec78532d65d8c062fa4594454d8ca669968f9f5f984cf5a46909f8d2d"
     }
   ]
 }
