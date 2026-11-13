@@ -702,6 +702,10 @@ static bool g_audio_fast;
 #define FOREIGN_POLL_US 2000
 static pthread_t g_host_thread;
 static size_t    g_foreign_high;       /* three quarters of the device's queue; 0 none */
+/* Sound frames the core handed over on the host's thread since the frame
+ * loop last took them: what a turn of a core paced by its sound lasts (see
+ * paced_by_sound). Read and cleared by the loop, on the same thread. */
+static uint64_t  g_turn_sound;
 static volatile bool g_foreign_held = true;   /* false while the core ends its threads */
 /* DIATOM_AUDIO_DEBUG, read on the host's thread as a session configures its
  * sound: getenv on the core's thread could race a setenv here (AUDIODEV, on
@@ -729,7 +733,9 @@ static void foreign_pace(void)
 
 void diatom_on_audio_batch_store(const int16_t *data, size_t frames)
 {
-	if (!pthread_equal(pthread_self(), g_host_thread)) {
+	if (pthread_equal(pthread_self(), g_host_thread))
+		g_turn_sound += frames;
+	else {
 		foreign_pace();
 		if (g_foreign_debug) {
 			static uint64_t since, got;
@@ -968,6 +974,32 @@ bool diatom_fast_forwarding(void)
  * and mode that needs it, and nothing measured for the rest. */
 #define GB_CLOCK  4194304.0   /* cycles a second */
 #define SGB_CLOCK 4295454.0
+
+/* PPSSPP's libretro core, paced by the sound it makes rather than by its fps.
+ *
+ * Its retro_run runs the PSP until the game shows a new picture, and a game
+ * that draws at 30 fps shows one every second vblank: that frame is two of
+ * the PSP's 59.94 Hz periods, with two periods of sound. The core has no
+ * clock of its own to hold that to real time. RetroArch holds it with audio
+ * sync, its sound write blocking while the buffer is full; Diatom paces every
+ * frame by one period of the announced fps, so on the Pixel 2 LittleBigPlanet
+ * ran 1.3 to 2 times too fast, and the sound that did not fit the queue was
+ * dropped, 26 to 50% of it: the PSP's crackle (2026-11-13).
+ *
+ * So the turn waits for as long as its sound lasts: a frame with one period
+ * of sound waits one, as before, a 30 fps frame waits two, and the game runs
+ * at 1x with each picture on the panel for two refreshes, the sound queue
+ * where rate control holds it. A frame that brought no sound (the core
+ * starting, or its emulation thread paused) waits a period, and a burst after
+ * a stall at most four, the schedule's own debt rule. Not in fast forward,
+ * which has its own rule.
+ *
+ * By the core, as sound_rate below knows mGBA's: it is what the core does,
+ * whichever shelf runs it. */
+static bool paced_by_sound(const struct retro_system_info *si)
+{
+	return si->library_name && !strcmp(si->library_name, "PPSSPP");
+}
 
 static double sound_rate(const struct retro_system_info *si,
                          const struct retro_system_av_info *av)
@@ -1921,6 +1953,7 @@ static int run_session_inner(const diatom_session *sn)
 	/* The sound rate the resampler uses: the announced one, or what the core
 	 * really sends where that is known to differ (sound_rate). */
 	double   audio_rate = 0.0;
+	bool     sound_paced = false;   /* paced_by_sound: this core's turns last its sound */
 
 	/* Every game starts from identity and from an unknown level, so a launcher
 	 * that sends no map gets no map, and the first poll reports where the
@@ -2100,6 +2133,10 @@ static int run_session_inner(const diatom_session *sn)
 		g_foreign_debug = getenv("DIATOM_AUDIO_DEBUG") != NULL;
 	}
 	diatom_audio_prime();
+	sound_paced = paced_by_sound(&si) && audio_rate > 0.0;
+	if (sound_paced)
+		printf("diatom: each frame paced by the sound it made, not by %.4f fps\n",
+		       av.timing.fps);
 
 	/* The rect is computed from BASE geometry and does not move again unless
 	 * the user asks.
@@ -2240,6 +2277,7 @@ static int run_session_inner(const diatom_session *sn)
 				                    g_filter);
 		}
 		g_audio_warmup = false;
+		g_turn_sound = 0;      /* the warmup's sound was never played */
 		printf("diatom: warmup 3 frames in %.1f ms\n",
 		       (diatom_port_now_us() - w0) / 1000.0);
 	}
@@ -2685,6 +2723,7 @@ static int run_session_inner(const diatom_session *sn)
 					 * loop believes it is thousands of frames late and spends the
 					 * next second catching up. */
 					next_us = (double)diatom_port_now_us();
+					g_turn_sound = 0;
 
 					/* And the device played the sound buffer out meanwhile, so
 					 * it is filled back to target before the first frame. */
@@ -2749,7 +2788,14 @@ static int run_session_inner(const diatom_session *sn)
 		}
 		diatom_audio_sync();
 
-		next_us += frame_us * periods;
+		if (sound_paced && !fast && g_turn_sound) {
+			double us = (double)g_turn_sound * 1000000.0 / audio_rate;
+
+			next_us += us < frame_us * 4.0 ? us : frame_us * 4.0;
+		} else {
+			next_us += frame_us * periods;
+		}
+		g_turn_sound = 0;
 		now = diatom_port_now_us();
 
 		if (next_us > (double)now) {
