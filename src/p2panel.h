@@ -10,8 +10,10 @@
  *
  * On the handheld's own Wi-Fi, laid out as Wi-Fi File Transfer's screen
  * lays out its code (src/hotpanel.c): the QR code a phone's camera joins
- * by, large, at the left, and beside it the line that says the game opens,
- * the network's name and its password. Otherwise one column: the line that
+ * by, large, at the left, the line over it that says the game opens, and
+ * beside it the network's name, its password and the page's address for a
+ * phone whose sign-in page does not open by itself. Otherwise one column:
+ * the line that
  * says what to do (open zyperos.local/play on the computer, what A will
  * start, what to plug in). Under either, a line for each player a friend can
  * be, and the key legend at the foot. src/main.c builds what it says, opens
@@ -25,6 +27,7 @@ typedef struct {
 	const char *qr;         /* the code's text (captive_wifi_qr); NULL or "": none */
 	const char *ssid;       /* beside the code */
 	const char *pass;
+	const char *addr;       /* under them: "Or open 10.42.1.1/play" */
 	const char *how;        /* the line that says what to do */
 	/* A line per player: "Player 2" and "waiting" */
 	const char *who[P2PANEL_STATUS], *state[P2PANEL_STATUS];

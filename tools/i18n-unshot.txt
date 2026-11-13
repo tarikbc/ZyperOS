@@ -291,7 +291,6 @@ home.system
 home.audio
 home.no_artwork
 
-
 # tour: no shot draws it yet
 tour.lang.hello
 

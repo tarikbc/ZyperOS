@@ -481,6 +481,12 @@ bool plat_tap_held(in_button b);
  * which plastron's gauge drives). What MENU > Controls says. */
 bool plat_battery_lights(void);
 
+/* Whether NES Player 2 (src/p2.h) is offered here: a device whose own
+ * hotspot (a USB Wi-Fi adapter, hostapd) and cable link (the USB network
+ * gadget) it was built and tried on, the Pixel 2. Nothing in a game's menu
+ * says it elsewhere. */
+bool plat_player2(void);
+
 /* MENU > Side Lights (src/sidelights.h), where plat_battery_lights says there
  * are lights: the parts that are on, read from where the device keeps them,
  * and set, which also tells whatever drives the lights to look again. Every

@@ -404,7 +404,8 @@ EXTRA.setdefault("auto-hours", ("demo", "PS1", ["--look-page", "hours", "0"]))
 # a game whose resume the shelf's other core left; and NES Player 2's, a
 # friend's browser joining and leaving
 for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
-              "corestate", "stick_on", "stick_off", "player2_joined", "player2_left"):
+              "corestate", "stick_on", "stick_off", "player2_joined", "player2_left",
+              "player2_stopped"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
@@ -412,12 +413,12 @@ EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"])
 # with a game in it: the card with one in every system)
 EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
-# (--player2), the code on the hotspot with nobody yet, a player connected,
-# the cable, before A on each link, with neither plugged in, after a failure,
-# and the hotspot's start and stop; and the in-game menu on its row, which
-# says connected
+# (--player2), the code on the hotspot with nobody yet and its address under
+# it, a player connected, the cable, before A on each link, with neither
+# plugged in, after a failure, the hotspot's start, and the stop on each
+# link; and the in-game menu on its row, which says connected
 for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "failed", "starting",
-              "closing"):
+              "closing", "closing-cable"):
     EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
 EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "6",
                                                        "--player2", "connected"]))

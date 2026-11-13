@@ -18157,6 +18157,7 @@ typedef struct {
 
 typedef struct {
 	char how[192];
+	char addr[96];
 	char who[P2PANEL_STATUS][32];
 } p2_bufs;
 
@@ -18172,9 +18173,10 @@ static p2_state p2_row_state(void)
 }
 
 /* The page's rows, from the view: the code's text (none while it is not
- * shown), the network and its password beside it, the line that says what
- * to do, a line per player and the key legend. What src/p2panel.c draws and
- * what the panel's copy keeps (snap_record), so a shot of it is the page. */
+ * shown), the network and its password beside it with the address under
+ * them, the line that says what to do, a line per player and the key
+ * legend. What src/p2panel.c draws and what the panel's copy keeps
+ * (snap_record), so a shot of it is the page. */
 static int p2_rows(const p2_view *v, menu_row *rows, p2_bufs *b)
 {
 	const bool on = v->st == P2_WAITING || v->st == P2_CONNECTED;
@@ -18183,7 +18185,9 @@ static int p2_rows(const p2_view *v, menu_row *rows, p2_bufs *b)
 	const char *legend;
 	int n = 0, k;
 
+	/* The stop's moment: the hotspot's says the Wi-Fi is coming back */
 	if (v->closing && v->link == P2_HOTSPOT) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_CLOSING_HOTSPOT));
+	else if (v->closing) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_STOPPING));
 	else if (v->starting) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_STARTING_HOTSPOT));
 	else if (v->st == P2_FAILED) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_FAILED));
 	else if (code) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_SCAN));
@@ -18196,6 +18200,11 @@ static int p2_rows(const p2_view *v, menu_row *rows, p2_bufs *b)
 	rows[n++] = (menu_row){ code ? v->qr : "", NULL, false };
 	rows[n++] = (menu_row){ T(S_HOTPANEL_NETWORK), code ? v->ssid : NULL, false };
 	rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), code ? v->pass : NULL, false };
+	/* The address too, for a phone whose sign-in page does not open by
+	 * itself once it joined: the page's own, which p2d lets in */
+	b->addr[0] = '\0';
+	if (code) snprintf(b->addr, sizeof b->addr, T(S_PLAYER2_OR_OPEN), v->url);
+	rows[n++] = (menu_row){ b->addr, NULL, false };
 	rows[n++] = (menu_row){ b->how, NULL, false };
 	/* A line for each player a friend can be: player 2 on the NES, and on
 	 * a system with more, 3 and 4 the same way */
@@ -18232,15 +18241,16 @@ static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
 	SDL_Rect q;
 	int i;
 
-	if (n < 5) return;
+	if (n < 6) return;
 	memset(&p, 0, sizeof p);
 	p.heading = heading;
 	p.accent = accent;
 	p.qr = rows[0].label;
 	p.ssid = rows[1].value;
 	p.pass = rows[2].value;
-	p.how = rows[3].label;
-	for (i = 4; i < n - 1 && p.nwho < P2PANEL_STATUS; i++, p.nwho++) {
+	p.addr = rows[3].label;
+	p.how = rows[4].label;
+	for (i = 5; i < n - 1 && p.nwho < P2PANEL_STATUS; i++, p.nwho++) {
 		p.who[p.nwho] = rows[i].label;
 		p.state[p.nwho] = rows[i].value;
 	}
@@ -18268,7 +18278,10 @@ static void p2_view_now(p2_view *v, const system_cfg *q, p2_link can, bool start
 
 	memset(v, 0, sizeof *v);
 	v->st = p2_state_now();
-	v->link = v->st == P2_OFF ? can : p2_link_on();
+	/* The link it started on; while off, or after a start that never got
+	 * one, the one A would start */
+	v->link = p2_link_on();
+	if (v->link == P2_NO_LINK) v->link = can;
 	v->starting = starting || p2_starting();
 	v->closing = closing;
 	v->guests = p2_guests();
@@ -18285,7 +18298,7 @@ static void p2_view_now(p2_view *v, const system_cfg *q, p2_link can, bool start
 
 static void p2_show(app *a, const p2_view *v)
 {
-	menu_row rows[4 + P2PANEL_STATUS + 1];
+	menu_row rows[5 + P2PANEL_STATUS + 1];
 	p2_bufs b;
 	int n = p2_rows(v, rows, &b);
 
@@ -18418,26 +18431,34 @@ static void p2op_sleep(unsigned ms)            { SDL_Delay(ms); }
 
 /* The share's guests, read from the file rather than mapped: a hundred
  * bytes ten times a second, and nothing held from one game to the next,
- * whose share is a new file */
-static unsigned p2op_guests(void)
+ * whose share is a new file. No file, or its magic cleared, is no share. */
+static int p2op_guests(void)
 {
 	p2s_head h;
 	int fd = open(P2S_PATH, O_RDONLY | O_CLOEXEC);
 	ssize_t got;
 
-	if (fd < 0) return 0;
+	if (fd < 0) return -1;
 	got = pread(fd, &h, sizeof h, 0);
 	close(fd);
-	return got == (ssize_t)sizeof h && h.magic == P2S_MAGIC ? h.guests : 0;
+	if (got != (ssize_t)sizeof h || h.magic != P2S_MAGIC) return -1;
+	return (int)(h.guests & 0x7FFFFFFFu);
 }
 
+static void p2op_unshare(void) { unlink(P2S_PATH); }
+
 /* "Player 2 joined" over the game, in the queue with the other pop-ups */
-static void p2op_notice(int player, bool joined)
+static void p2op_notice(p2_news what, int player)
 {
 	char body[96];
 
-	snprintf(body, sizeof body, T(joined ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), player);
-	fprintf(stderr, "player 2: player %d %s\n", player, joined ? "joined" : "left");
+	if (what == P2_STOPPED) {
+		snprintf(body, sizeof body, "%s", T(S_PLAYER2_STOPPED));
+		fprintf(stderr, "player 2: said it stopped\n");
+	} else {
+		snprintf(body, sizeof body, T(what == P2_JOINED ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), player);
+		fprintf(stderr, "player 2: player %d %s\n", player, what == P2_JOINED ? "joined" : "left");
+	}
 	notice_queue(NQ_SET, 0, 3000, T(S_PLAYER2_NOTICE), body, NULL, 0, 0);
 }
 
@@ -18451,7 +18472,7 @@ static p2_ops g_p2_ops = {
 	p2op_cable_up, p2op_cable_down,
 	p2op_mdns_start, p2op_mdns_poll, p2op_mdns_stop,
 	p2op_spawn, p2op_signal, p2op_ended,
-	p2op_now, p2op_sleep, p2op_guests, p2op_notice, p2op_lang,
+	p2op_now, p2op_sleep, p2op_guests, p2op_unshare, p2op_notice, p2op_lang,
 	NULL, NULL,
 };
 
@@ -18821,8 +18842,9 @@ static void gm_gather(app *a, gm_ui *out)
 		if (pak_system(q) && a->view[a->sys_cursor].list.count > 0)
 			u.pak = gm_pak_name(pak_get(q, a->view[a->sys_cursor].list
 			                                     .items[a->view[a->sys_cursor].cursor].file));
-		/* NES Player 2, on the cores the system table offers it on */
-		if (p2_offered(q->core)) {
+		/* NES Player 2, on the cores the system table offers it on and on
+		 * a device that has it (a shot draws it on the host) */
+		if (p2_offered(q->core, plat_player2() || g_shot_p2)) {
 			u.player2 = true;
 			u.player2_value = gm_player2_value(p2_row_state());
 		}
@@ -22912,6 +22934,7 @@ static void launch(app *a)
 			 * Player 2 goes with it: p2d, Diatom's share, and the hotspot
 			 * with the Wi-Fi the player had back (a second or two, said as
 			 * File Transfer says it) or the cable's link as it was. */
+			p2_game_over();          /* before the panel's tick: nothing more is said */
 			if (p2_link_on() == P2_HOTSPOT)
 				wait_panel(a, T(S_PLAYER2_ROW), T(S_XFER_CLOSING_HOTSPOT));
 			p2_stop();
@@ -23789,9 +23812,9 @@ static void shot_draw_gamemenu(app *a)
  * in a state made up as the hot panel's shot makes its network (--hotspot):
  * hotspot, its code with nobody yet; connected, player 2 playing; cable, a
  * computer on the cable; off and off-cable, before A on each link; none,
- * neither plugged in; failed; starting, the hotspot's start; closing, its
- * stop. With --gamemenu the in-game menu instead, its Player 2 row saying
- * that state. */
+ * neither plugged in; failed; starting, the hotspot's start; closing and
+ * closing-cable, the stop on each link. With --gamemenu the in-game menu
+ * instead, its Player 2 row saying that state. */
 static void shot_draw_player2(app *a)
 {
 	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
@@ -24677,7 +24700,7 @@ static void shot_compose(app *a)
 		g_row_icon = NULL;
 	}
 	if (shot_popup) {
-		static char pbody[48];
+		static char pbody[96];
 		char slot[32];
 
 		snprintf(slot, sizeof slot, T(S_SLOTS_SLOT), 2);
@@ -24706,6 +24729,10 @@ static void shot_compose(app *a)
 			shot_notice_head = T(S_PLAYER2_NOTICE);
 			snprintf(pbody, sizeof pbody,
 			         T(!strcmp(shot_popup, "player2_joined") ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), 2);
+		} else if (!strcmp(shot_popup, "player2_stopped")) {
+			/* ...and Player 2 stopping by itself during the game */
+			shot_notice_head = T(S_PLAYER2_NOTICE);
+			snprintf(pbody, sizeof pbody, "%s", T(S_PLAYER2_STOPPED));
 		} else if (!strcmp(shot_popup, "stick_on") || !strcmp(shot_popup, "stick_off")) {
 			/* R2 in a PSP game (on_stick) */
 			shot_notice_head = T(S_POPUP_STICK);
@@ -26663,15 +26690,20 @@ int main(int argc, char *argv[])
 			v->pass = "q7mx-3kpa";
 			captive_wifi_qr(qr, sizeof qr, v->ssid, v->pass);
 			v->qr = qr;
-			v->url = "zyperos.local/play";
+			v->url = P2_HOTSPOT_ADDR "/play";
 			if (!strcmp(kind, "connected"))      { v->st = P2_CONNECTED; v->guests = 1; }
-			else if (!strcmp(kind, "cable"))     v->link = P2_CABLE;
+			else if (!strcmp(kind, "cable"))     { v->link = P2_CABLE; v->url = "zyperos.local/play"; }
 			else if (!strcmp(kind, "off"))       v->st = P2_OFF;
 			else if (!strcmp(kind, "off-cable")) { v->st = P2_OFF; v->link = P2_CABLE; }
 			else if (!strcmp(kind, "none"))      { v->st = P2_OFF; v->link = P2_NO_LINK; }
 			else if (!strcmp(kind, "failed"))    v->st = P2_FAILED;
 			else if (!strcmp(kind, "starting"))  v->starting = true;
 			else if (!strcmp(kind, "closing"))   v->closing = true;
+			else if (!strcmp(kind, "closing-cable")) {
+				v->closing = true;
+				v->link = P2_CABLE;
+				v->url = "zyperos.local/play";
+			}
 		}
 		else if (!strcmp(argv[i], "--hotspot")) {
 			shot_hot = 1;

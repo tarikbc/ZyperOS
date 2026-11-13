@@ -26,9 +26,9 @@ const p2_system *p2_system_of(const char *core)
 	return NULL;
 }
 
-bool p2_offered(const char *core)
+bool p2_offered(const char *core, bool device)
 {
-	return p2_system_of(core) != NULL;
+	return device && p2_system_of(core) != NULL;
 }
 
 p2_link p2_link_now(bool adapter_in, bool computer_on_cable)
@@ -85,6 +85,7 @@ static struct {
 	bool     cable;       /* the cable's link was bound for this */
 	bool     mdns;        /* zyperos.local is up */
 	bool     starting;    /* the hotspot is coming up; p2d after it */
+	bool     over;        /* the game is over (p2_game_over) */
 	long     pid;         /* p2d, -1 for none */
 	unsigned term_at;     /* when p2d was sent SIGTERM, 0 for not */
 	unsigned guests;      /* the bits as last read, within the players */
@@ -113,7 +114,7 @@ static void guests_now(unsigned bits)
 		unsigned b = 1u << k;
 
 		if ((bits & b) != (g.guests & b) && g_ops->notice)
-			g_ops->notice((int)k + 2, (bits & b) != 0);
+			g_ops->notice((bits & b) ? P2_JOINED : P2_LEFT, (int)k + 2);
 	}
 	g.guests = bits;
 }
@@ -150,11 +151,14 @@ static bool spawn_p2d(const char *addr, bool dns)
 /* What stops at once, from the tick or a start that failed: the guests are
  * gone, p2d is told to go (not waited for), and Diatom stops sharing the
  * game. The hotspot and the cable stay for p2_stop, whose wait for the Wi-Fi
- * to come back is no tick's to take. */
-static void fail_now(const char *why)
+ * to come back is no tick's to take. From the tick, during the game, one
+ * notice says Player 2 stopped (its guests with it); a start that failed is
+ * said by the page it was started from. */
+static void fail_now(const char *why, bool tell)
 {
 	fprintf(stderr, "player 2: %s\n", why);
-	guests_now(0);
+	g.guests = 0;
+	if (tell && g_ops->notice) g_ops->notice(P2_STOPPED, 0);
 	if (g.pid > 0 && !g.term_at) {
 		g_ops->signal(g.pid, SIGTERM);
 		g.term_at = g_ops->now();
@@ -172,7 +176,7 @@ bool p2_start(const char *core, p2_link l)
 {
 	const p2_system *s = p2_system_of(core);
 	char line[96], ans[128];
-	bool on = false;
+	bool on = false, answered;
 	unsigned buttons;
 	int players;
 
@@ -187,10 +191,26 @@ bool p2_start(const char *core, p2_link l)
 	snprintf(line, sizeof line, "SETPLAYER2\ton=1\tbuttons=0x%04X\tplayers=%d", s->buttons,
 	         s->players);
 	/* Refused outside a game, and said so: Diatom answers PLAYER2 at once */
-	if (!g_ops->resident(line) || !g_ops->answer("PLAYER2\t", ans, sizeof ans, ANSWER_MS) ||
-	    !p2_answer(ans, &on, &buttons, &players) || !on) {
-		fprintf(stderr, "player 2: the game did not take it\n");
+	if (!g_ops->resident(line)) {
+		fprintf(stderr, "player 2: no game to ask\n");
 		g.st = P2_FAILED;
+		g.link = P2_NO_LINK;
+		return false;
+	}
+	answered = g_ops->answer("PLAYER2\t", ans, sizeof ans, ANSWER_MS) &&
+	           p2_answer(ans, &on, &buttons, &players);
+	if (!answered || !on) {
+		/* No answer in time is no answer: a Diatom that takes it late
+		 * would share the game's frames with nobody until the game ended,
+		 * so it is told off as well */
+		if (answered) {
+			fprintf(stderr, "player 2: the game did not take it\n");
+		} else {
+			fprintf(stderr, "player 2: the game did not answer\n");
+			g_ops->resident("SETPLAYER2\ton=0");
+		}
+		g.st = P2_FAILED;
+		g.link = P2_NO_LINK;
 		return false;
 	}
 	g.said_on = true;
@@ -203,7 +223,7 @@ bool p2_start(const char *core, p2_link l)
 	if (l == P2_HOTSPOT) {
 		g.hot = true;
 		if (!g_ops->hotspot_start()) {
-			fail_now("the hotspot did not start");
+			fail_now("the hotspot did not start", false);
 			return false;
 		}
 		g.starting = true;
@@ -214,29 +234,42 @@ bool p2_start(const char *core, p2_link l)
 	g.cable = true;
 	g.mdns = g_ops->mdns_start();
 	if (!spawn_p2d(P2_CABLE_ADDR, false)) {
-		fail_now("p2d did not start on the cable");
+		fail_now("p2d did not start on the cable", false);
 		return false;
 	}
 	g.st = P2_WAITING;
 	return true;
 }
 
+/* The game ended under it: nothing more is said, the guests go quietly,
+ * and the launcher's p2_stop at the game's end does the rest */
+static void game_ended(const char *why)
+{
+	if (why) fprintf(stderr, "player 2: %s\n", why);
+	g.over = true;
+	g.guests = 0;
+	g.starting = false;
+}
+
 void p2_tick(unsigned now_ms)
 {
-	int status = 0;
+	int status = 0, bits;
 
-	if (!g_ops || (g.st != P2_WAITING && g.st != P2_CONNECTED)) return;
+	if (!g_ops || g.over || (g.st != P2_WAITING && g.st != P2_CONNECTED)) return;
 	if (g.link == P2_HOTSPOT) {
 		int hs = g_ops->hotspot_poll();
 
 		if (g.starting) {
 			if (hs == HOTSPOT_STARTING) return;
-			if (hs != HOTSPOT_UP) { fail_now("the hotspot did not come up"); return; }
+			if (hs != HOTSPOT_UP) { fail_now("the hotspot did not come up", true); return; }
 			/* Up: its address is there, which p2d's DNS binds once */
 			g.starting = false;
-			if (!spawn_p2d(P2_HOTSPOT_ADDR, true)) { fail_now("p2d did not start on the hotspot"); return; }
+			if (!spawn_p2d(P2_HOTSPOT_ADDR, true)) {
+				fail_now("p2d did not start on the hotspot", true);
+				return;
+			}
 		} else if (hs != HOTSPOT_UP) {
-			fail_now("the hotspot went away");
+			fail_now("the hotspot went away", true);
 			return;
 		}
 	} else if (g.link == P2_CABLE) {
@@ -246,19 +279,28 @@ void p2_tick(unsigned now_ms)
 			g.mdns = g_ops->mdns_start();
 		}
 	}
-	/* p2d gone mid-game: crashed, or its port taken. Exit 1 is no share in
-	 * five seconds, which a restart would not mend either: it fails, and the
-	 * page says so */
+	/* p2d gone. With 0 it saw the share go, which is the game ending (Diatom
+	 * takes the share away only then): nothing to say. Otherwise it crashed,
+	 * or its port was taken, or (1) no share came in five seconds, which a
+	 * restart would not mend either: it fails, and says so */
 	if (g.pid > 0 && g_ops->ended(g.pid, &status)) {
 		g.pid = -1;
-		fail_now(status ? "p2d ended with an error" : "p2d ended");
+		if (status == 0) { game_ended("p2d ended with the game"); return; }
+		fail_now("p2d ended with an error", true);
 		return;
 	}
 	if (now_ms - g.guests_at >= GUESTS_MS) {
 		g.guests_at = now_ms;
-		guests_now(g_ops->guests());
+		bits = g_ops->guests();
+		if (bits < 0) { game_ended("the game's share went"); return; }
+		guests_now((unsigned)bits);
 		g.st = g.guests ? P2_CONNECTED : P2_WAITING;
 	}
+}
+
+void p2_game_over(void)
+{
+	if (g.st != P2_OFF) game_ended(NULL);
 }
 
 void p2_stop(void)
@@ -291,6 +333,8 @@ void p2_stop(void)
 		g.pid = -1;
 	}
 	if (g.said_on) g_ops->resident("SETPLAYER2\ton=0");
+	/* Diatom removes it as the game ends, unless it was killed first */
+	if (g.over) g_ops->unshare();
 	if (g.hot) g_ops->hotspot_stop();
 	if (g.mdns) g_ops->mdns_stop();
 	if (g.cable) g_ops->cable_down();
@@ -299,18 +343,22 @@ void p2_stop(void)
 	g.link = P2_NO_LINK;
 	g.sys = NULL;
 	g.players = 0;
-	g.said_on = g.hot = g.cable = g.mdns = g.starting = false;
+	g.said_on = g.hot = g.cable = g.mdns = g.starting = g.over = false;
 	g.term_at = 0;
 	g.guests = 0;
 }
 
 void p2_theme_changed(void)
 {
-	if (g_ops && (g.st == P2_WAITING || g.st == P2_CONNECTED)) g_ops->theme();
+	if (g_ops && !g.over && (g.st == P2_WAITING || g.st == P2_CONNECTED)) g_ops->theme();
 }
 
 p2_state p2_state_now(void) { return g.st; }
-p2_link  p2_link_on(void)   { return g.st == P2_OFF ? P2_NO_LINK : g.link; }
+p2_link  p2_link_on(void)
+{
+	if (g.st == P2_OFF) return P2_NO_LINK;
+	return g.hot ? P2_HOTSPOT : g.cable ? P2_CABLE : P2_NO_LINK;
+}
 bool     p2_starting(void)  { return g.starting; }
 unsigned p2_guests(void)    { return g.guests; }
 int      p2_players(void)   { return g.players; }

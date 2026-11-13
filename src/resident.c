@@ -105,6 +105,23 @@ static char *dline(int timeout_ms)
 	}
 }
 
+/* The next whole line, left where it is for dline to take: its start, or
+ * NULL when none came within timeout_ms. Not NUL-ended; a newline ends it. */
+static const char *dpeek(int timeout_ms)
+{
+	for (;;) {
+		struct pollfd p = { dsock, POLLIN, 0 };
+		ssize_t n;
+
+		if (memchr(dbuf, '\n', dused)) return dbuf;
+		if (dsock < 0) return NULL;
+		if (poll(&p, 1, timeout_ms) <= 0) return NULL;
+		n = read(dsock, dbuf + dused, sizeof dbuf - dused);
+		if (n <= 0) { dclose(); return NULL; }
+		dused += (size_t)n;
+	}
+}
+
 /* launch.sh writes the pid when it starts Diatom. Verified against
  * /proc/<pid>/cmdline before any signal is sent: a stale file after a crash
  * and respawn would otherwise aim SIGTERM at whoever inherited the number. */
@@ -702,11 +719,20 @@ bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeou
 {
 	unsigned t0 = SDL_GetTicks();
 	size_t pn = strlen(prefix);
+	const char *next;
 	char *l;
+	int left;
 
 	if (dsock < 0) return false;
 	while ((int)(SDL_GetTicks() - t0) < timeout_ms) {
-		l = dline(timeout_ms);
+		/* The game ended meanwhile (px2-open's quit, a crash): its EXIT is
+		 * the wait loop's to read, so it is left where it is, and there is
+		 * no answer to wait for */
+		left = timeout_ms - (int)(SDL_GetTicks() - t0);
+		next = dpeek(left > 0 ? left : 0);
+		if (!next) break;
+		if (strncmp(next, "EXIT", 4) == 0) break;
+		l = dline(0);
 		if (!l) break;
 		if (strncmp(l, prefix, pn) == 0) {
 			snprintf(out, n, "%s", l);

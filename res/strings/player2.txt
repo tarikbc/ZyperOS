@@ -148,3 +148,36 @@ fr = Joueur 2 a rencontré un problème et s'est arrêté.
 de = Spieler 2 hatte ein Problem und wurde beendet.
 ja = プレイヤー 2 で問題が起きたため、停止しました。
 it = Giocatore 2 ha avuto un problema e si è fermato.
+
+[player2.stopped]
+note = The notice over the game, under player2.notice, when Player 2 stopped by itself during the game (its server ended, or the Wi-Fi it made went away): the friend can no longer play, and MENU's Player 2 row starts it again. Short: a notice's large line.
+en = Player 2 stopped
+zh-Hans = 玩家 2 已停止
+es = Jugador 2 se detuvo
+pt-BR = Jogador 2 parou
+fr = Joueur 2 s'est arrêté
+de = Spieler 2 wurde beendet
+ja = プレイヤー 2 が停止しました
+it = Giocatore 2 si è fermato
+
+[player2.or_open]
+note = On the Player 2 page under the network's password, beside the QR code: for a phone whose sign-in page does not open by itself once it joined the Wi-Fi, the address to open in its browser, %s being 10.42.1.1/play. One short line.
+en = Or open %s
+zh-Hans = 或打开 %s
+es = O abre %s
+pt-BR = Ou abra %s
+fr = Ou ouvrez %s
+de = Oder öffne %s
+ja = または %s を開く
+it = Oppure apri %s
+
+[player2.stopping]
+note = On the Player 2 page with a computer on the USB cable, for the moment A takes to stop Player 2 (on the handheld's own Wi-Fi the page says xfer.closing_hotspot instead).
+en = Stopping Player 2...
+zh-Hans = 正在停止玩家 2…
+es = Deteniendo Jugador 2...
+pt-BR = Parando o Jogador 2...
+fr = Arrêt de Joueur 2...
+de = Spieler 2 wird beendet ...
+ja = プレイヤー 2 を停止しています…
+it = Arresto di Giocatore 2...

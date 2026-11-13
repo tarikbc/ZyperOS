@@ -41,10 +41,16 @@ typedef struct {
 
 /* The row for `core`, NULL when Player 2 is not offered on it */
 const p2_system *p2_system_of(const char *core);
-bool p2_offered(const char *core);
+/* Offered for a game on `core` on a device that has Player 2 (`device`:
+ * plat_player2, the Pixel 2's hotspot and cable link being the ones it was
+ * built and tested on) */
+bool p2_offered(const char *core, bool device);
 
 typedef enum { P2_OFF, P2_WAITING, P2_CONNECTED, P2_FAILED } p2_state;
 typedef enum { P2_HOTSPOT, P2_CABLE, P2_NO_LINK } p2_link;
+/* What a notice over the game says: a player joined or left, or Player 2
+ * stopped by itself (p2d or the hotspot went away) */
+typedef enum { P2_JOINED, P2_LEFT, P2_STOPPED } p2_news;
 
 /* How a friend can reach the handheld now: the cable when a computer is on
  * it, else the hotspot when an adapter is in, else neither. The Pixel 2 has
@@ -96,10 +102,14 @@ typedef struct {
 	unsigned (*now)(void);
 	void (*sleep)(unsigned ms);
 	/* The share's guests (p2share.h): bit k while a browser plays port k+1;
-	 * 0 when there is no share */
-	unsigned (*guests)(void);
-	/* Player `player` (2 is the first guest) joined, or left */
-	void (*notice)(int player, bool joined);
+	 * -1 when there is no share, which Diatom takes away only as the game
+	 * ends; and the share's file removed, for a Diatom killed before it could
+	 * (SIGKILL: the STOP's last step, or the kernel short of memory) */
+	int  (*guests)(void);
+	void (*unshare)(void);
+	/* A notice over the game: `player` (2 is the first guest) joined or
+	 * left, or Player 2 stopped (`player` 0) */
+	void (*notice)(p2_news what, int player);
 	/* The launcher's language now, as p2d's --lang takes it ("pt-BR") */
 	const char *(*lang)(void);
 	const char *p2d;      /* the binary */
@@ -123,14 +133,23 @@ bool p2_start(const char *core, p2_link l);
 /* From every tick while it is on, in a game and in the screens over its
  * pause: the hotspot coming up and p2d after it, the guests coming and going
  * (a notice for each), zyperos.local, and p2d or the hotspot going away,
- * which is P2_FAILED. Bounded: never waits, and a failure stops only what
- * stops at once; p2_stop does the rest. */
+ * which is P2_FAILED and a notice that it stopped. The share gone, or p2d
+ * ending by itself with 0 (which it does when the share goes), is the game
+ * ending, which says nothing. Bounded: never waits, and a failure stops only
+ * what stops at once; p2_stop does the rest. */
 void p2_tick(unsigned now_ms);
 
+/* The game is over, however it ended: from here the tick does nothing and
+ * no notice is said (the share is gone, and a guest's "left" over no game
+ * is noise), and p2_stop removes the share's file too. The launcher says it
+ * the moment its wait for the game ends, before anything that ticks. */
+void p2_game_over(void);
+
 /* Everything off, in the reverse order: p2d (SIGTERM, SIGKILL after a
- * second), SETPLAYER2 on=0, then the hotspot (which brings the Wi-Fi back,
- * a second or two) or zyperos.local and the cable's link. At every end of a
- * game and from the page; nothing at all when nothing is on. */
+ * second), SETPLAYER2 on=0, the share's file once the game is over, then the
+ * hotspot (which brings the Wi-Fi back, a second or two) or zyperos.local
+ * and the cable's link. At every end of a game and from the page; nothing
+ * at all when nothing is on. */
 void p2_stop(void);
 
 /* The theme changed while it is on: the file again, once, for the page's
@@ -140,7 +159,8 @@ void p2_theme_changed(void);
 /* ---- what the row and the page say -------------------------------------- */
 
 p2_state p2_state_now(void);
-/* The link it is on, P2_NO_LINK while off */
+/* The link it started (the hotspot asked for, or the cable bound),
+ * P2_NO_LINK while off and after a start Diatom refused */
 p2_link  p2_link_on(void);
 /* On the hotspot, which is not up yet (p2d not started) */
 bool     p2_starting(void);

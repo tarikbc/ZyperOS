@@ -35,7 +35,7 @@ typedef struct {
 	bool     code;
 	ui_font_role role;                  /* the line's and the players' */
 	int      side, code_y, col_x;
-	int      head_y, rule_y, how_y, net_y, pass_y, who_y, who_step, rule2_y, legend_cy;
+	int      head_y, rule_y, how_y, net_y, pass_y, addr_y, who_y, who_step, rule2_y, legend_cy;
 	char     how[P2P_HOW_LINES][LB_LINE];
 	int      nhow;
 } p2p_geom;
@@ -66,13 +66,16 @@ static void geom(const p2panel *p, p2p_geom *g)
 	if (g->code) {
 		/* The code at the left; beside it the network and its password, as
 		 * the hot panel's entries (what it is in **meta**, the value at menu
-		 * size), and the players at the column's foot */
+		 * size), the address under them in **meta**, and the players at the
+		 * column's foot */
 		g->side = hotpanel_code_side(p->qr, P2P_MODULE);
 		g->code_y = y;
 		g->col_x = P2P_PAD + g->side + P2P_COL_GAP;
 		g->net_y = y;
 		g->pass_y = g->net_y + meta + menu + P2P_GAP;
-		col_h = g->pass_y + meta + menu - y + P2P_GAP * 2 + p->nwho * g->who_step;
+		g->addr_y = g->pass_y + meta + menu + P2P_GAP;
+		col_h = g->addr_y + (p->addr && *p->addr ? meta : 0) - y + P2P_GAP +
+		        p->nwho * g->who_step;
 		body_h = g->side > col_h ? g->side : col_h;
 		g->who_y = y + body_h - p->nwho * g->who_step;
 	} else {
@@ -96,6 +99,7 @@ static void geom(const p2panel *p, p2p_geom *g)
 	g->code_y += g->panel.y;
 	g->net_y += g->panel.y;
 	g->pass_y += g->panel.y;
+	g->addr_y += g->panel.y;
 	g->who_y += g->panel.y;
 	g->rule2_y += g->panel.y;
 	g->legend_cy += g->panel.y;
@@ -152,6 +156,9 @@ void p2panel_draw(SDL_Renderer *r, const p2panel *p, bool lift)
 		hotpanel_code(r, x0, g.code_y, P2P_MODULE, p->qr);
 		entry(r, g.col_x, g.net_y, T(S_HOTPANEL_NETWORK), p->ssid);
 		entry(r, g.col_x, g.pass_y, T(S_PANEL_PASSWORD), p->pass);
+		if (p->addr && *p->addr)
+			ui_text(r, ui_font(UI_F_META), p->addr, g.col_x, ui_line_y(UI_F_META, g.addr_y), -1,
+			        UI_TEXT_DIM);
 	}
 	/* A line per player: the name in **text-soft**, the state at the right
 	 * in **text-dim**, as the hot panel's status lines */

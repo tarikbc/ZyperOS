@@ -31,7 +31,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
@@ -1184,6 +1184,23 @@ build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
+
+# The launcher's reader of Diatom's answers (src/resident.c), the device
+# stubbed, against a made-up Diatom on a socket of its own
+# (tools/resident-check.c): SETPLAYER2's answer read while paused, the
+# picture on the way noted, and a game's EXIT before it left for the wait
+# loop rather than eaten. SDL for SDL_GetTicks alone; skipped without it.
+check-resident:
+	@if command -v sdl2-config > /dev/null 2>&1; then \
+		$(MAKE) --no-print-directory build-native/resident-check && ./build-native/resident-check; \
+	else \
+		echo "check-resident: skipped, no SDL2"; \
+	fi
+
+build-native/resident-check: tools/resident-check.c src/resident.c src/platform.h src/device.h FORCE
+	@mkdir -p build-native
+	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
+	      -o $@ tools/resident-check.c src/resident.c $$(sdl2-config --libs)
 
 # The launcher's resident.c, the device stubbed, against a real Diatom: the
 # zone chosen in Date & Time reaches a game's clock (tools/gamezone-check.c).

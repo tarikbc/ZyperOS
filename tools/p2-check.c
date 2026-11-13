@@ -22,7 +22,7 @@ static char     g_log[LOG_MAX][320];
 static int      g_nlog;
 static unsigned g_clock = 1000;
 static int      g_hs = HOTSPOT_STARTING;     /* what hotspot_poll says */
-static unsigned g_guests;                    /* the share's bits */
+static int      g_guests;                    /* the share's bits, -1 for no share */
 static const char *g_answer = "PLAYER2\ton=1\tbuttons=0x01FD\tplayers=2";
 static bool     g_resident_ok = true;
 static bool     g_hotspot_ok = true;
@@ -30,6 +30,7 @@ static bool     g_mdns_ok = true;
 static bool     g_spawn_fails;
 static bool     g_alive;                     /* p2d is running */
 static bool     g_ignores_term;              /* ...and a TERM does not end it */
+static int      g_exit = 1;                  /* its status when it ends by itself */
 static unsigned g_kill_at, g_term_at;
 
 static void say(const char *fmt, ...)
@@ -84,19 +85,25 @@ static void f_signal(long pid, int sig)
 	if (sig == SIGTERM) g_term_at = g_clock;
 	if (sig == SIGKILL) g_kill_at = g_clock;
 	if (sig == SIGKILL || !g_ignores_term) g_alive = false;
+	g_exit = sig == SIGTERM ? 0 : -1;
 }
 
 static bool f_ended(long pid, int *status)
 {
 	(void)pid;
-	if (status) *status = 0;
+	if (status) *status = g_exit;
 	return !g_alive;
 }
 
 static unsigned f_now(void)          { return g_clock; }
 static void     f_sleep(unsigned ms) { g_clock += ms; }
-static unsigned f_guests(void)       { return g_guests; }
-static void     f_notice(int player, bool joined) { say("notice %d %s", player, joined ? "joined" : "left"); }
+static int      f_guests(void)       { return g_guests; }
+static void     f_unshare(void)      { say("unshare"); }
+static void     f_notice(p2_news what, int player)
+{
+	if (what == P2_STOPPED) say("notice stopped");
+	else say("notice %d %s", player, what == P2_JOINED ? "joined" : "left");
+}
 static const char *f_lang(void)      { return "pt-BR"; }
 
 static const p2_ops FAKE = {
@@ -105,7 +112,7 @@ static const p2_ops FAKE = {
 	f_cable_up, f_cable_down,
 	f_mdns_start, f_mdns_poll, f_mdns_stop,
 	f_spawn, f_signal, f_ended,
-	f_now, f_sleep, f_guests, f_notice, f_lang,
+	f_now, f_sleep, f_guests, f_unshare, f_notice, f_lang,
 	"/card/ZyperOS/p2d", "/card/ZyperOS/res/web",
 };
 
@@ -119,6 +126,7 @@ static void fresh(void)
 	g_answer = "PLAYER2\ton=1\tbuttons=0x01FD\tplayers=2";
 	g_resident_ok = g_hotspot_ok = g_mdns_ok = true;
 	g_spawn_fails = g_alive = g_ignores_term = false;
+	g_exit = 1;
 	g_kill_at = g_term_at = 0;
 }
 
@@ -165,9 +173,12 @@ static void offered_only_on_nes(void)
 {
 	const p2_system *s = p2_system_of("fceumm");
 
-	CHECK(p2_offered("fceumm"));
-	CHECK(!p2_offered("snes9x2010") && !p2_offered("mgba") && !p2_offered("genesis_plus_gx"));
-	CHECK(!p2_offered("") && !p2_offered(NULL) && !p2_offered("fceumm2"));
+	CHECK(p2_offered("fceumm", true));
+	CHECK(!p2_offered("snes9x2010", true) && !p2_offered("mgba", true) &&
+	      !p2_offered("genesis_plus_gx", true));
+	CHECK(!p2_offered("", true) && !p2_offered(NULL, true) && !p2_offered("fceumm2", true));
+	/* ...and on a device that has it: not the Brick, which never ran it */
+	CHECK(!p2_offered("fceumm", false));
 	CHECK(s && s->buttons == 0x01FDu && s->players == 2);
 	CHECK(!p2_system_of("snes9x2010"));
 	/* Nothing starts on a core it is not offered on, or with no link */
@@ -270,36 +281,55 @@ static void start_order_cable(void)
 	CHECK(g_nlog == 7);
 }
 
-/* Refused by Diatom (it is no game, or it did not answer): nothing else
- * starts, it says it failed, and its stop has nothing to undo */
+/* Refused by Diatom (it is no game), or not answered: nothing else starts,
+ * it says it failed, its link is none (nothing to close), and a Diatom that
+ * did not answer in time is told off, in case it takes it late */
 static void refused(void)
 {
 	static const char *const want[] = { SET_ON, "answer PLAYER2\t", NULL };
+	static const char *const late[] = { SET_ON, "answer PLAYER2\t", SET_OFF, NULL };
 
 	fresh();
 	g_answer = "PLAYER2\ton=0";
 	CHECK(!p2_start("fceumm", P2_HOTSPOT));
 	CHECK(log_is(0, want) && p2_state_now() == P2_FAILED);
+	CHECK(p2_link_on() == P2_NO_LINK && !strcmp(p2_join_url(), ""));
 	p2_stop();
 	CHECK(g_nlog == 2 && p2_state_now() == P2_OFF);
+	/* No answer in time */
 	fresh();
 	g_answer = NULL;
 	CHECK(!p2_start("fceumm", P2_CABLE) && p2_state_now() == P2_FAILED);
-	CHECK(log_is(0, want));
-	/* The hotspot that will not start: Diatom turned off again at once */
+	CHECK(log_is(0, late) && p2_link_on() == P2_NO_LINK);
+	p2_stop();
+	CHECK(g_nlog == 3);
+	/* An answer that is no PLAYER2 answer is none either */
+	fresh();
+	g_answer = "PLAYER2\tbuttons=0x01FD";
+	CHECK(!p2_start("fceumm", P2_HOTSPOT));
+	CHECK(log_is(0, late));
+	/* No Diatom to send it to: nothing else is asked */
+	fresh();
+	g_resident_ok = false;
+	CHECK(!p2_start("fceumm", P2_HOTSPOT) && p2_state_now() == P2_FAILED);
+	CHECK(g_nlog == 1 && !strcmp(g_log[0], SET_ON) && p2_link_on() == P2_NO_LINK);
+	/* The hotspot that will not start: Diatom turned off again at once, and
+	 * the hotspot is still the link to close (hotspot_stop cleans up) */
 	fresh();
 	g_hotspot_ok = false;
 	CHECK(!p2_start("fceumm", P2_HOTSPOT) && p2_state_now() == P2_FAILED);
+	CHECK(p2_link_on() == P2_HOTSPOT);
 	p2_stop();
 	{
 		static const char *const w[] = { SET_ON, "answer PLAYER2\t", "theme", "hotspot_start",
 		                                 SET_OFF, "hotspot_stop", NULL };
 		CHECK(log_is(0, w));
 	}
-	/* p2d that will not start on the cable */
+	/* p2d that will not start on the cable: said by the page, no notice */
 	fresh();
 	g_spawn_fails = true;
 	CHECK(!p2_start("fceumm", P2_CABLE) && p2_state_now() == P2_FAILED);
+	CHECK(p2_link_on() == P2_CABLE);
 	p2_stop();
 	{
 		static const char *const w[] = { SET_ON, "answer PLAYER2\t", "theme", "cable_up",
@@ -310,11 +340,34 @@ static void refused(void)
 }
 
 /* However the game ends - Quit, a crash or Diatom gone, the power button,
- * the battery, a new game - the launcher calls p2_stop, and it undoes the
- * start in the reverse order; a second stop does nothing */
+ * the battery, a new game - the launcher says the game is over and calls
+ * p2_stop, which undoes the start in the reverse order and removes the
+ * share's file (a Diatom killed before it could leaves it); a second stop
+ * does nothing. The page's stop, with the game going on, leaves the share
+ * to Diatom. */
 static void p2_stop_after_any_end(void)
 {
 	/* Up on the hotspot with p2d */
+	{
+		static const char *const want[] = { "signal 4242 TERM", SET_OFF, "unshare",
+		                                    "hotspot_stop", NULL };
+		int at;
+
+		fresh();
+		CHECK(p2_start("fceumm", P2_HOTSPOT));
+		g_hs = HOTSPOT_UP;
+		ticks(100);
+		at = g_nlog;
+		p2_game_over();
+		p2_stop();
+		CHECK(log_is(at, want));
+		CHECK(p2_state_now() == P2_OFF && p2_link_on() == P2_NO_LINK && !p2_starting());
+		at = g_nlog;
+		p2_game_over();
+		p2_stop();
+		CHECK(g_nlog == at);
+	}
+	/* Stopped from the page, the game going on */
 	{
 		static const char *const want[] = { "signal 4242 TERM", SET_OFF, "hotspot_stop", NULL };
 		int at;
@@ -326,59 +379,58 @@ static void p2_stop_after_any_end(void)
 		at = g_nlog;
 		p2_stop();
 		CHECK(log_is(at, want));
-		CHECK(p2_state_now() == P2_OFF && p2_link_on() == P2_NO_LINK && !p2_starting());
-		at = g_nlog;
-		p2_stop();
-		CHECK(g_nlog == at);
 	}
 	/* Ended while the hotspot was still coming up: no p2d to stop */
 	{
-		static const char *const want[] = { SET_OFF, "hotspot_stop", NULL };
+		static const char *const want[] = { SET_OFF, "unshare", "hotspot_stop", NULL };
 		int at;
 
 		fresh();
 		CHECK(p2_start("fceumm", P2_HOTSPOT));
 		ticks(300);
 		at = g_nlog;
+		p2_game_over();
 		p2_stop();
 		CHECK(log_is(at, want));
 	}
-	/* p2d ended by itself first (Diatom dropped the share as the game ended):
-	 * the tick turns Diatom's side off at once, and the stop the rest */
+	/* p2d ended by itself with 0 first (Diatom dropped the share as the game
+	 * ended): the game's end, so the tick says nothing and sends nothing */
 	{
-		static const char *const tick[] = { SET_OFF, NULL };
-		static const char *const want[] = { "hotspot_stop", NULL };
+		static const char *const want[] = { SET_OFF, "unshare", "hotspot_stop", NULL };
 		int at;
 
 		fresh();
 		CHECK(p2_start("fceumm", P2_HOTSPOT));
 		g_hs = HOTSPOT_UP;
-		ticks(100);
+		g_guests = 1;
+		ticks(200);
 		at = g_nlog;
 		g_alive = false;
-		ticks(100);
-		CHECK(log_is(at, tick) && p2_state_now() == P2_FAILED);
-		at = g_nlog;
+		g_exit = 0;
+		ticks(1000);
+		CHECK(g_nlog == at);
+		p2_game_over();
 		p2_stop();
 		CHECK(log_is(at, want) && p2_state_now() == P2_OFF);
 	}
 	/* p2d that does not go on SIGTERM gets SIGKILL a second later */
 	{
 		static const char *const want[] = { "signal 4242 TERM", "signal 4242 KILL", SET_OFF,
-		                                    "mdns_stop", "cable_down", NULL };
+		                                    "unshare", "mdns_stop", "cable_down", NULL };
 		int at;
 
 		fresh();
 		CHECK(p2_start("fceumm", P2_CABLE));
 		g_ignores_term = true;
 		at = g_nlog;
+		p2_game_over();
 		p2_stop();
 		CHECK(log_is(at, want));
 		CHECK(g_kill_at - g_term_at >= 1000 && g_kill_at - g_term_at < 1100);
 	}
-	/* On the cable */
+	/* On the cable, a guest in */
 	{
-		static const char *const want[] = { "signal 4242 TERM", SET_OFF, "mdns_stop",
+		static const char *const want[] = { "signal 4242 TERM", SET_OFF, "unshare", "mdns_stop",
 		                                    "cable_down", NULL };
 		int at;
 
@@ -387,16 +439,56 @@ static void p2_stop_after_any_end(void)
 		g_guests = 1;
 		ticks(200);
 		at = g_nlog;
+		p2_game_over();
 		p2_stop();
 		CHECK(log_is(at, want));
 		at = g_nlog;
 		p2_stop();
 		CHECK(g_nlog == at);
 	}
-	/* Nothing on: nothing */
+	/* Nothing on: nothing, the share's file included */
 	fresh();
+	p2_game_over();
 	p2_stop();
 	CHECK(g_nlog == 0);
+}
+
+/* The game's end says nothing: once the launcher says the game is over, the
+ * ticks that still come (a wait panel's on the way to the shelf) neither
+ * tell a guest's leaving nor touch Diatom; and the share gone during the
+ * game (Diatom ending it) is the same */
+static void game_end_is_quiet(void)
+{
+	int at;
+
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	CHECK(p2_state_now() == P2_CONNECTED);
+	at = g_nlog;
+	p2_game_over();
+	g_guests = -1;
+	g_alive = false;
+	ticks(1000);
+	CHECK(g_nlog == at && p2_guests() == 0);
+	p2_theme_changed();
+	CHECK(g_nlog == at);
+	/* The share gone before the launcher heard the game end */
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	at = g_nlog;
+	g_guests = -1;
+	ticks(1000);
+	CHECK(g_nlog == at && p2_guests() == 0);
+	p2_stop();
+	{
+		static const char *const want[] = { "signal 4242 TERM", SET_OFF, "unshare", "mdns_stop",
+		                                    "cable_down", NULL };
+		CHECK(log_is(at, want));
+	}
 }
 
 /* A notice when a guest's bit comes and when it goes, by player; bits past
@@ -424,14 +516,16 @@ static void guest_notices(void)
 	g_guests = 0;
 	ticks(200);
 	CHECK(log_is(at, left) && p2_state_now() == P2_WAITING && p2_guests() == 0);
-	/* p2d gone with a guest in: the guest left, and it failed */
+	/* p2d crashed with a guest in: one notice that Player 2 stopped (its
+	 * guest with it), Diatom off, and it failed */
 	g_guests = 1;
 	ticks(200);
 	at = g_nlog;
 	g_alive = false;
+	g_exit = -1;
 	ticks(100);
 	{
-		static const char *const want[] = { "notice 2 left", SET_OFF, NULL };
+		static const char *const want[] = { "notice stopped", SET_OFF, NULL };
 		CHECK(log_is(at, want) && p2_state_now() == P2_FAILED && p2_guests() == 0);
 	}
 	at = g_nlog;
@@ -440,9 +534,9 @@ static void guest_notices(void)
 	p2_stop();
 }
 
-/* The hotspot that failed to come up, or went: P2_FAILED, Diatom off at once,
- * p2d stopped without waiting, and the hotspot left to p2_stop, which
- * blocks while the Wi-Fi comes back */
+/* The hotspot that failed to come up, or went: P2_FAILED, a notice that it
+ * stopped, Diatom off at once, p2d stopped without waiting, and the hotspot
+ * left to p2_stop, which blocks while the Wi-Fi comes back */
 static void hotspot_failures(void)
 {
 	int at;
@@ -453,8 +547,9 @@ static void hotspot_failures(void)
 	g_hs = HOTSPOT_FAILED;
 	ticks(100);
 	{
-		static const char *const want[] = { SET_OFF, NULL };
+		static const char *const want[] = { "notice stopped", SET_OFF, NULL };
 		CHECK(log_is(at, want) && p2_state_now() == P2_FAILED && !p2_starting());
+		CHECK(p2_link_on() == P2_HOTSPOT);
 	}
 	at = g_nlog;
 	p2_stop();
@@ -471,7 +566,7 @@ static void hotspot_failures(void)
 	g_hs = HOTSPOT_FAILED;
 	ticks(100);
 	{
-		static const char *const want[] = { "signal 4242 TERM", SET_OFF, NULL };
+		static const char *const want[] = { "notice stopped", "signal 4242 TERM", SET_OFF, NULL };
 		CHECK(log_is(at, want) && p2_state_now() == P2_FAILED);
 	}
 	at = g_nlog;
@@ -524,6 +619,7 @@ int main(void)
 	start_order_cable();
 	refused();
 	p2_stop_after_any_end();
+	game_end_is_quiet();
 	guest_notices();
 	hotspot_failures();
 	theme_follows();
