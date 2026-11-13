@@ -62,6 +62,7 @@ typedef struct {
 	long     shut_ms;
 	long     in_ms;                 /* when it last sent a byte, or came */
 	bool     dead;                  /* drop it: the socket failed or it flooded */
+	const char *why;                /* why it went, for p2d's log; NULL while here */
 } guest;
 
 typedef struct {

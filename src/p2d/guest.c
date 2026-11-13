@@ -78,14 +78,28 @@ bool guest_text(guest *g, const char *s)
 	return ctl_put(g, OP_TEXT, s, strlen(s));
 }
 
+/* The first reason it went, which the log says (p2d's "player N left") */
+static bool gone(guest *g, const char *why)
+{
+	if (!g->why) g->why = why;
+	return false;
+}
+
 void guest_close(guest *g, unsigned code)
 {
 	uint8_t c[2] = { (uint8_t)(code >> 8), (uint8_t)code };
 
 	if (g->closing) return;
+	gone(g, code == 1000 ? (g->heard ? "it closed" : "closed") :
+	        code == 1001 ? "p2d is going" :
+	        code == 1002 ? "a broken frame from it" :
+	        code == 1003 ? "a message it may not send" : "closed");
 	/* No room for the close is a guest that sent pings faster than it read
 	 * the pongs: it goes without one */
-	if (!ctl_put(g, OP_CLOSE, c, 2)) g->dead = true;
+	if (!ctl_put(g, OP_CLOSE, c, 2)) {
+		g->dead = true;
+		gone(g, "no room for its close");
+	}
 	g->closing = true;
 	if (g->out_end && g->out_at == g->out_start) g->out_end = g->out_at = g->out_start = 0;
 }
@@ -206,7 +220,10 @@ static bool message(guest *g, const ws_msg *m, guest_news *news)
 		guest_close(g, 1000);
 		return false;
 	case OP_PING:
-		if (!g->closing && !ctl_put(g, OP_PONG, m->data, m->len)) g->dead = true;
+		if (!g->closing && !ctl_put(g, OP_PONG, m->data, m->len)) {
+			g->dead = true;
+			gone(g, "pings faster than it read the pongs");
+		}
 		return !g->dead;
 	case OP_PONG:
 		return true;               /* nothing here pings, so nothing to match */
@@ -240,10 +257,10 @@ static bool take(guest *g, long now_ms, guest_news *news)
 
 		if (want > budget) want = budget;
 		got = recv(g->fd, g->in + g->in_used, want, 0);
-		if (got == 0) return false;
+		if (got == 0) return gone(g, "it hung up");
 		if (got < 0) {
 			if (errno == EINTR) continue;
-			return errno == EAGAIN || errno == EWOULDBLOCK;
+			return errno == EAGAIN || errno == EWOULDBLOCK || gone(g, "its socket failed");
 		}
 		news->moved = true;
 		g->in_ms = now_ms;
@@ -284,19 +301,20 @@ bool guest_poll(guest *g, long now_ms, guest_news *news)
 	news->pad = -1;
 	news->key = false;
 	news->moved = false;
-	if (g->fd < 0 || g->dead) return false;
-	if (!flush(g, &news->moved)) return false;
-	if (!take(g, now_ms, news) || g->dead) return false;
-	if (!flush(g, &news->moved) || g->dead) return false;   /* a pong or a close */
+	if (g->fd < 0 || g->dead) return gone(g, "dead");
+	if (!flush(g, &news->moved)) return gone(g, "a send to it failed");
+	if (!take(g, now_ms, news) || g->dead) return gone(g, "gone");
+	if (!flush(g, &news->moved) || g->dead) return gone(g, "a send to it failed");   /* a pong or a close */
 	/* Gone without a word (guest.h): no close to wait for, nobody to hear it */
-	if (g->nflight > 0 && now_ms - g->in_ms >= GUEST_QUIET_MS) return false;
+	if (g->nflight > 0 && now_ms - g->in_ms >= GUEST_QUIET_MS)
+		return gone(g, "5 s silent with a frame not acked");
 	if (g->closing && !g->out_end && !g->ctl_len) {
-		if (g->heard) return false;
+		if (g->heard) return gone(g, "closed");
 		if (!g->shut) {
 			g->shut = true;
 			g->shut_ms = now_ms;
 		} else if (now_ms - g->shut_ms >= CLOSE_WAIT_MS) {
-			return false;
+			return gone(g, "its close never came");
 		}
 	}
 	return true;

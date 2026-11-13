@@ -3462,7 +3462,14 @@ handheld's language, and the page wears the handheld's theme (below).
 - p2d lets a pad go after a second with no `'P'` while buttons are held (a
   phone that locked mid-press), and when its socket closes. A guest with a
   frame waiting for its ack that has sent nothing for 5 seconds is gone (a
-  phone out of range sends no FIN), so its place is free.
+  phone out of range sends no FIN), so its place is free. p2d's log says
+  when each player came and went and why ("player 2 left at 10953 ms: 5 s
+  silent with a frame not acked"). A page that lost its link while it
+  played tries again after a quarter of a second, not 2 s, and sends the
+  buttons still held the moment it is back: a blip, or a phone so busy it
+  was let go, costs as few presses as can be. GitHub's macOS runner starved
+  Chrome long enough for p2d to let the page go mid-test, which is how
+  this was found.
 - The page lets go of everything when it loses the focus or is hidden, and
   of its held keys when a Mac's Cmd goes down (macOS sends no key-up under
   it).

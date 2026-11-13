@@ -94,6 +94,7 @@ static struct stat g_share_st;     /* the file it was, to tell it from a new one
 /* The system's, from the share once it is open */
 static uint32_t g_buttons;         /* the RetroPad bits a guest may press */
 static int g_places;               /* players - 1: the guests' ports */
+static long g_start_ms;            /* when p2d started, for the log's times */
 
 static guest g_guest[GUESTS];
 static int g_nguests;              /* slots in use: a guest a port, and REFUSING */
@@ -206,11 +207,16 @@ static int place_of(int i)
 
 static void leave(int k)
 {
-	if (g_place[k].guest < 0) return;
+	int i = g_place[k].guest;
+
+	if (i < 0) return;
 	g_place[k].guest = -1;
 	pad_set(k, 0);
 	guests_set();
-	fprintf(stderr, "p2d: player %d left\n", k + 2);
+	/* With why, and when (ms since p2d started), so a log of a guest that
+	 * came and went says what took it */
+	fprintf(stderr, "p2d: player %d left at %ld ms: %s\n", k + 2, now_ms() - g_start_ms,
+	        g_guest[i].why ? g_guest[i].why : "p2d is going");
 }
 
 /* httpd's socket after the 101: the lowest free port if there is one, told
@@ -242,7 +248,7 @@ static void on_taken(int fd, void *ctx)
 		         k + 2, (unsigned)g_buttons);
 		guest_text(g, st);
 		guests_set();
-		fprintf(stderr, "p2d: player %d joined\n", k + 2);
+		fprintf(stderr, "p2d: player %d joined at %ld ms\n", k + 2, now_ms() - g_start_ms);
 	} else {
 		guest_text(g, TAKEN);
 		guest_close(g, 1000);
@@ -675,7 +681,7 @@ int main(int argc, char **argv)
 	/* A guest that hangs up mid-frame is an EPIPE to handle, not a death */
 	signal(SIGPIPE, SIG_IGN);
 
-	t0 = now_ms();
+	g_start_ms = t0 = now_ms();
 	while (!share_open()) {
 		struct timespec ts = { 0, 20000000L };
 
