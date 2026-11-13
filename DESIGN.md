@@ -3282,9 +3282,14 @@ neither plugged in, "Plug in a Wi-Fi adapter or a computer." and only B. A
 notice over the game (11.7), **Multiplayer** over "Player 2 joined" or
 "Player 2 left", says when a browser comes and goes, and "Player 2 stopped"
 when it stopped by itself. A guest is said to have left only once it has
-been gone 5 s (src/p2.c's LEAVE_GRACE_MS): a link that drops and comes
-back by itself, as an iPhone's did right after it joined the hotspot, is
-never said to go. src/p2panel.c draws the page; src/main.c's
+been gone 5 s (src/p2.c's LEAVE_GRACE_MS), the row saying connected until
+then: a link that drops and comes back by itself is never said to go. On
+the first test with an iPhone the handheld said "left" and "joined" one
+after the other over a game nobody had left, most likely such a drop as
+the iPhone set up its sign-in sheet; the launcher's log says "player 2:
+player N back after T ms" for each one, which shows how long they last. A
+page that goes quiet is let go by p2d after its own 5 s, so its "left"
+comes some 10 s after it went. src/p2panel.c draws the page; src/main.c's
 `player2_page` runs it.
 
 **On the friend's screen** (res/web/play), the File Transfer page's clothes
@@ -3296,13 +3301,17 @@ picture right under it, and the pad in the rest: the d-pad left, B and A
 right, SELECT and START under them, each control 48 CSS px or more, a
 thumb's, **raised** on **ground** and filled with **accent** while it is
 held, with a 15 ms tick under the finger as it goes down where the browser
-has the Vibration API (Android's; Safari has none, and its one haptic, a
-switch control's, comes on a finished tap, so on the lift). Nothing zooms
-the page: the viewport's limits, `touch-action: none` on every element,
-Safari's gesture events, a double tap's second tap and two fingers off the
-pad all cancelled, and a zoom that comes anyway undone by putting the
-limits again (play.js's noZoom); a double tap in iOS's sign-in sheet had
-zoomed it with no way back. On its side, and on a computer, the picture takes the whole height
+can: Chrome on Android, not on silent. Android's sign-in sheet is a
+WebView in an app without the right to vibrate, so there the call does
+nothing; Safari has no Vibration API, and its one haptic, a switch
+control's, comes on a finished tap, so on the lift. Nothing zooms the page
+(a double tap in iOS's sign-in sheet had zoomed it with no way back): the
+viewport's limits, which the sign-in sheet keeps and Safari drops;
+`touch-action: none` on every element; and play.js's noZoom, which cancels
+Safari's gesture events, a double tap's second tap (never on Picture off)
+and two fingers moving off the pad, and where the limits hold undoes a
+zoom that came anyway by putting them again. On its side, and on a
+computer, the picture takes the whole height
 between the pad's halves. Picture off drops the picture and the pad grows
 into the room, for a friend who watches the handheld. A computer with a
 mouse shows its keys in the bar: the arrows, Z for B, X for A, Shift for

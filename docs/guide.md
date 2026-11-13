@@ -690,32 +690,37 @@ opens its page over the paused game:
 Under that, a line for player 2: `off`, `waiting` or `connected`. **B**
 closes the page and **Continue** goes back to the game with Player 2 on. A
 notice over the game says **Player 2 joined** when the friend's browser
-starts to play, and **Player 2 left** when it has been gone for five
-seconds: a phone whose link drops for a moment and comes back by itself
-was never gone, and nothing is said. **A** on the page
-again stops Player 2, and A once more starts it again. The game's end stops
-it too, however it ends: quit,
-POWER, a crash. The handheld's network goes, and Wi-Fi comes back as it
-was. If it stops by itself (the handheld's network or the page's server
-went away), a notice says **Player 2 stopped**, the page says Player 2 had
-a problem, and A starts it again.
+starts to play, and **Player 2 left** once it has been gone five seconds,
+the line saying `connected` until then. A phone whose link drops for a
+moment and comes back by itself was never gone, and nothing is said. A
+phone that just goes quiet (it walked out of range) is let go after five
+seconds of silence, so its notice comes about ten seconds after it went.
+**A** on the page again stops Player 2, and A once more starts it again.
+The game's end stops it too, however it ends: quit, POWER, a crash. The
+handheld's network goes, and Wi-Fi comes back as it was. If it stops by
+itself (the handheld's network or the page's server went away), a notice
+says **Player 2 stopped**, the page says Player 2 had a problem, and A
+starts it again.
 
 **What the friend sees** is the game's picture, as large as the screen
 takes it, and an NES pad under it: the d-pad at the left, **B** and **A**
 at the right, SELECT and START under them. Several fingers at once work,
-and a thumb can roll from B to A. On an Android phone a press gives a
-short vibration; an iPhone has no way to do that for a web page. Nothing
-zooms the page: a double tap or a pinch is the pad's, not a zoom. Turned on its side, the picture takes the whole height,
-with the pad's halves either side. The page speaks the handheld's language
-and wears the handheld's theme, light or dark with its accent and corners,
-whatever the phone is set to. At the top it says **Connecting**, **Player
-2**, **The game is full** (someone else is player 2; it keeps trying, and
-takes the place when it is free), **The host turned multiplayer off** (you
-stopped Player 2 and the game goes on) or **The game ended**. After **The
-host turned multiplayer off** the page keeps trying: on the cable it plays
-again by itself when you turn Player 2 on again. On the hotspot the
-network's password is new each time, so the friend scans the new code
-first.
+and a thumb can roll from B to A. In Chrome on an Android phone a press
+gives a short vibration (not with the phone on silent, and not in the
+phone's sign-in sheet, which cannot vibrate: open `10.42.1.1/play` in
+Chrome for it). An iPhone has no way to do that for a web page. Nothing
+zooms the page: a double tap on the pad is two presses, and a double tap
+or a pinch anywhere else does nothing. Turned on its side, the picture
+takes the whole height, with the pad's halves either side. The page speaks
+the handheld's language and wears the handheld's theme, light or dark with
+its accent and corners, whatever the phone is set to. At the top it says
+**Connecting**, **Player 2**, **The game is full** (someone else is player
+2; it keeps trying, and takes the place when it is free), **The host
+turned multiplayer off** (you stopped Player 2 and the game goes on) or
+**The game ended**. After **The host turned multiplayer off** the page
+keeps trying: on the cable it plays again by itself when you turn Player 2
+on again. On the hotspot the network's password is new each time, so the
+friend scans the new code first.
 
 On a computer the keyboard is the pad, and the bar names the keys:
 

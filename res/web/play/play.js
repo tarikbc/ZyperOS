@@ -296,12 +296,14 @@ function under(x, y, place) {
 }
 
 /* A tick under the finger as a button goes down, a direction on the d-pad
- * too: Android's browsers have the Vibration API (from the first lift on,
- * when the page counts as touched). iOS gives a page no way to do it on a
- * press: Safari has no Vibration API, and the one haptic a page can cause,
- * a switch control's (Safari 17.4), comes from a finished tap on the switch
- * itself, so on the lift and never under a pad that holds its fingers. 15 ms
- * is felt on the slow motors of cheaper phones as well as the quick ones. */
+ * too, where the browser can: Chrome on Android, from the first lift on
+ * (when the page counts as touched) and not with the phone on silent.
+ * Android's sign-in sheet, a WebView in an app without the right to
+ * vibrate, takes the call and does nothing. iOS gives a page no way to do
+ * it on a press: Safari has no Vibration API, and the one haptic a page can
+ * cause, a switch control's (Safari 17.4), comes from a finished tap on the
+ * switch itself, so on the lift and never under a pad that holds its
+ * fingers. 15 ms is felt on the slow motors of cheaper phones too. */
 const BUZZ_MS = 15;
 
 function buzz() {
@@ -318,7 +320,7 @@ function move(e) {
 	const pressed = bits & ~f.bits;
 	f.bits = bits;
 	update();
-	if (pressed & has && e.pointerType !== 'mouse') buzz();
+	if ((pressed & has) && e.pointerType !== 'mouse') buzz();
 }
 
 /* The game's buttons: drawn, in the keys line, and the only ones read or
@@ -514,24 +516,26 @@ function play() {
  * half off the screen, and in iOS's sign-in sheet, which has no way out of
  * a zoom, it stayed so (2026-11-13). So nothing zooms it: the viewport's
  * limits (index.html), which iOS's sign-in sheet keeps and Safari drops;
- * touch-action: none on the whole page (play.css), which Safari keeps for a
- * double tap and a pinch both; and here, Safari's own gesture events, a
- * second tap within a double tap's time, and two fingers that move outside
- * the pad, all cancelled. A zoom that comes anyway (an older Safari, a
- * rotation) is undone: the viewport's limits put again bring it back to 1.
- * Before the browser check below, so the too-old message cannot zoom
- * either; nothing in it is newer than Safari 13. */
-const VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+ * touch-action: none on every element (play.css), which Safari keeps for a
+ * double tap and a pinch both; and here, cancelled: Safari's own gesture
+ * events, a second tap within a double tap's time, and two fingers that
+ * move outside the pad. A tap on Picture off is never cancelled, or a quick
+ * second one would not switch it. And a zoom that comes anyway is undone
+ * where the limits hold (the sign-in sheet; Chrome): they are put again,
+ * which brings the page back to 1. Before the browser check below, so the
+ * too-old message cannot zoom either; nothing in it is newer than Safari 13. */
 const DOUBLE_TAP_MS = 350;
 
 function noZoom() {
 	const stop = (e) => { if (e.cancelable) e.preventDefault(); };
 	const opts = { passive: false };
-	for (const kind of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(kind, stop, opts);
+	for (const kind of ['gesturestart', 'gesturechange', 'gestureend'])
+		document.addEventListener(kind, stop, opts);
 	document.addEventListener('dblclick', stop, opts);
 	let tapped = -DOUBLE_TAP_MS;
 	document.addEventListener('touchend', (e) => {
 		if (e.touches.length) return;
+		if (e.target.closest && e.target.closest('label, input')) return;
 		if (e.timeStamp - tapped < DOUBLE_TAP_MS) stop(e);
 		tapped = e.timeStamp;
 	}, opts);
@@ -541,10 +545,15 @@ function noZoom() {
 	const meta = document.querySelector('meta[name="viewport"]');
 	const vv = window.visualViewport;
 	if (!meta || !vv) return;
+	/* The limits as index.html has them, and the same a hair looser: put
+	 * one after the other, the second one takes even where the first was
+	 * already there */
+	const limits = meta.getAttribute('content');
+	const nudged = limits.replace(/maximum-scale=1\b/, 'maximum-scale=1.001');
 	vv.addEventListener('resize', () => {
-		if (vv.scale <= 1.01) return;
-		meta.setAttribute('content', VIEWPORT.replace('maximum-scale=1', 'maximum-scale=1.001'));
-		requestAnimationFrame(() => meta.setAttribute('content', VIEWPORT));
+		if (vv.scale <= 1.01 || nudged === limits) return;
+		meta.setAttribute('content', nudged);
+		requestAnimationFrame(() => meta.setAttribute('content', limits));
 	});
 }
 

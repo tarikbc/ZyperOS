@@ -25,6 +25,9 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
   - touch_to_pad: a finger on A sets bit 8; a second on Left makes 0x0140;
     the first rolled onto B, B and Left; a finger on the d-pad's corner,
     the diagonal; and 0 once they lift
+  - haptics: a press ticks once (navigator.vibrate, 15 ms), a roll onto
+    another button and a d-pad corner once each; a lift, a held finger and
+    a key do not
   - status_and_buttons: the pad is drawn from the game's buttons, the
     NES's 0x01FD until the status names others; Y, X, L and R are drawn
     and their keys pressed only when it does, and the page never sends a
@@ -52,6 +55,12 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
     page's script runs, the page says the browser is too old and opens no
     socket; and so with ResizeObserver and replaceChildren gone too, so the
     check comes before anything else the page sets up
+  - no_zoom: the viewport's limits, touch-action none on every part, and
+    Safari's gesture events, dblclick, a double tap's second tap and two
+    fingers moving off the pad cancelled; taps on Picture off never are,
+    quick ones and one right after a press; a zoom that came anyway (a
+    stand-in visualViewport: headless Chrome never zooms) puts the limits
+    again, and at 1 nothing is touched
   - full_then_player: a second tab is told the game is full, the first
     plays on, and the second keeps trying: the first closed, it is player 2
   - stopped_then_back: p2d's SIGTERM with the share still there (the
@@ -781,18 +790,49 @@ def no_zoom(browser, origin, say):
         check(set(actions) == {'none'}, f'touch-action none on the page, the bar, the picture and the pad: {actions}')
         for kind in ('gesturestart', 'gesturechange', 'gestureend', 'dblclick'):
             check(t.js(f"{CANCELLED}('{kind}', '.bar')"), f"Safari's {kind} is cancelled")
-        # A double tap on the bar: the second tap's end is cancelled, the first not
-        t.js("window.__ends = []; window.addEventListener('touchend', (e) => window.__ends.push(e.defaultPrevented)); true")
+        # A double tap on the bar: the second tap's end is cancelled, the
+        # first not. Judged by the gap the page saw: a pair the machine was
+        # too busy to give inside a double tap's 350 ms is tried again
+        t.js("window.__ends = []; window.addEventListener('touchend', "
+             "(e) => window.__ends.push([e.timeStamp, e.defaultPrevented])); true")
         bar = t.center('.bar')
-        for _ in range(2):
-            t.touch('touchStart', {0: bar[:2]})
-            t.touch('touchEnd', {})
-        ends = t.js('window.__ends')
-        check(ends[-2:] == [False, True], f'a double tap: the second is cancelled, not the first: {ends}')
+        pair = None
+        for _ in range(3):
+            time.sleep(0.5)
+            for _ in range(2):
+                t.touch('touchStart', {0: bar[:2]})
+                t.touch('touchEnd', {})
+            (t1, p1), (t2, p2) = t.js('window.__ends')[-2:]
+            pair = (round(t2 - t1), p1, p2)
+            if t2 - t1 < 300:
+                break
+        check(pair[0] < 300 and not pair[1] and pair[2],
+              f'a double tap: the second is cancelled, not the first (ms apart, first, second): {pair}')
         time.sleep(0.5)
         t.touch('touchStart', {0: bar[:2]})
         t.touch('touchEnd', {})
-        check(t.js('window.__ends')[-1] is False, 'a tap well after is a tap')
+        check(t.js('window.__ends')[-1][1] is False, 'a tap well after is a tap')
+        # Picture off: a tap always switches it, a quick second one and one
+        # right after a press of A too
+        sw, a = t.center('.switch'), t.center('#a')
+        on = lambda: t.js("document.getElementById('picoff').checked")
+        was = on()
+        t.touch('touchStart', {0: sw[:2]})
+        t.touch('touchEnd', {})
+        first = t.until(f"document.getElementById('picoff').checked === {json.dumps(not was)}", 3)
+        t.touch('touchStart', {0: sw[:2]})
+        t.touch('touchEnd', {})
+        second = t.until(f"document.getElementById('picoff').checked === {json.dumps(was)}", 3)
+        check(first and second, f'two quick taps on Picture off switch it twice: {first}, {second}')
+        t.touch('touchStart', {0: a[:2]})
+        t.touch('touchEnd', {})
+        t.touch('touchStart', {0: sw[:2]})
+        t.touch('touchEnd', {})
+        check(t.until(f"document.getElementById('picoff').checked === {json.dumps(not was)}", 3),
+              f'a tap on Picture off right after a press of A switches it: {on()}')
+        t.touch('touchStart', {0: sw[:2]})
+        t.touch('touchEnd', {})
+        t.until(f"document.getElementById('picoff').checked === {json.dumps(was)}", 3)
         # Two fingers that move off the pad: cancelled; on the pad, the pad's
         t.js("window.__moves = []; window.addEventListener('touchmove', (e) => window.__moves.push(e.defaultPrevented)); true")
         t.touch('touchStart', {0: bar[:2], 1: (bar[0] + 60, bar[1])})

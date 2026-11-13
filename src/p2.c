@@ -77,11 +77,13 @@ bool p2_answer(const char *line, bool *on, unsigned *buttons, int *players)
  * are one each, so this is only a bound on a loop that reads the socket */
 #define STALE_MAX 16
 /* A guest's link can drop for a moment and come back by itself: the page
- * tries again every 2 s, and p2d frees a silent page's place after 5 s. An
- * iPhone's did, right after it joined the hotspot (2026-11-13), and the
- * handheld said "Player 2 left" and "Player 2 joined" one after the other,
- * over a game nobody had left. So a guest is said to have left only when
- * it has been gone this long, and one back sooner was never said to go. */
+ * tries again every 2 s, and p2d frees a silent page's place after 5 s. On
+ * the first test with an iPhone (2026-11-13) the handheld said "Player 2
+ * left" and "Player 2 joined" one after the other, over a game nobody had
+ * left; such a drop, most likely as the iPhone set up its sign-in sheet, is
+ * what reads so (the log's "back after" line says how long one lasted). So
+ * a guest is said to have left only when it has been gone this long, and
+ * one back sooner was never said to go. */
 #define LEAVE_GRACE_MS 5000
 
 static const p2_ops *g_ops;
@@ -135,6 +137,10 @@ static void guests_now(unsigned bits, unsigned now_ms)
 		unsigned b = 1u << k;
 
 		if (bits & b) {
+			/* Back: in the log, so a test can see how long a link that
+			 * came back was gone, and whether the grace is long enough */
+			if (g.gone_at[k])
+				fprintf(stderr, "player 2: player %u back after %u ms\n", k + 2, now_ms - g.gone_at[k]);
 			g.gone_at[k] = 0;
 			if (!(g.guests & b)) {
 				g.guests |= b;

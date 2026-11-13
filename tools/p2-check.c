@@ -601,6 +601,40 @@ static void blip_says_nothing(void)
 			if (!strcmp(g_log[i], "notice 2 left")) said_left = true;
 		CHECK(!said_left);
 	}
+	/* On the way out, then stopped and started again: the new start owes
+	 * nobody a "left", and its first guest is said to join */
+	fresh();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	g_guests = 0;
+	ticks(1000);
+	p2_stop();
+	CHECK(p2_start("fceumm", P2_CABLE));
+	at = g_nlog;
+	ticks(6000);
+	CHECK(g_nlog == at && p2_guests() == 0 && p2_state_now() == P2_WAITING);
+	g_guests = 1;
+	ticks(200);
+	CHECK(log_is(at, joined) && p2_guests() == 1);
+	p2_stop();
+	/* Across the clock's wrap (a uint of milliseconds, 49 days): gone just
+	 * before it, said gone 5 s later, just after it */
+	fresh();
+	g_clock = 0xFFFFF000u;                    /* 4 s before the wrap */
+	CHECK(p2_start("fceumm", P2_CABLE));
+	g_guests = 1;
+	ticks(200);
+	at = g_nlog;
+	g_guests = 0;
+	ticks(4500);                              /* past the wrap, 4.5 s gone */
+	CHECK(g_nlog == at && p2_guests() == 1 && g_clock < 0x1000u);
+	ticks(800);
+	{
+		static const char *const left[] = { "notice 2 left", NULL };
+		CHECK(log_is(at, left) && p2_guests() == 0);
+	}
+	p2_stop();
 	/* The game ends while a guest is on the way out: nothing said */
 	fresh();
 	CHECK(p2_start("fceumm", P2_CABLE));
