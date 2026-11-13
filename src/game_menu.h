@@ -13,6 +13,7 @@
 
 #include "menu.h"
 #include "library.h"
+#include "p2.h"
 
 /* Save slots. Six the player picks from, plus the resume slot the exit funnel
  * owns - which is NAMED "auto" and is not one of the numbered ones.
@@ -169,14 +170,23 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
  * Rumble Pak or the Controller Pak (the memory card some games save to),
  * kept for the game. Right before Controls, whose C buttons page says which
- * one is in. Its id comes after the screens' rows, as theirs do. */
+ * one is in. Its id comes after the screens' rows, as theirs do.
+ *
+ * Player 2, an NES game's (2026-11-13, src/p2.h): a friend plays as player
+ * 2 in a browser, and A opens the page that says how to join. After the
+ * whole of Shader's group, before Controls, on a game whose core the system
+ * table offers it on and on no other; its id comes after the Pak's. */
 typedef enum {
 	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
 	GM_RESET, GM_QUIT,
 	GM_ROWS,
-	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK,
+	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2,
 	GM_MAX_ROWS
 } gm_row;
+
+/* The Player 2 row's value for its state: off (a start that failed too),
+ * waiting for a friend, or one connected */
+const char *gm_player2_value(p2_state st);
 
 /* The layouts Diatom's SETSCREENS takes, in the Screens row's order, and how
  * the row says them. */
@@ -211,11 +221,16 @@ typedef struct {
 	int         quick;
 	/* A Nintendo 64 game's Pak, as gm_pak_name says it; NULL for no row */
 	const char *pak;
+	/* Player 2 is offered on this game's core (p2_offered), and its row's
+	 * value (gm_player2_value) */
+	bool        player2;
+	const char *player2_value;
 } gm_ui;
 
-/* The rows this menu has, in the order shown: GM_ROWS of them, or
- * GM_MAX_ROWS with the screens' three, a row fewer with no quick slot, one
- * more with an N64 game's Pak; over a port, Continue, Controls and Quit. */
+/* The rows this menu has, in the order shown: GM_ROWS of them, three more
+ * with the screens' rows, a row fewer with no quick slot, one more with an
+ * N64 game's Pak or an NES game's Player 2; over a port, Continue, Controls
+ * and Quit. */
 int gm_row_ids(const gm_ui *u, gm_row *ids);
 /* Where row `id` is in that list, or -1 when the menu has none */
 int gm_row_at(const gm_ui *u, gm_row id);

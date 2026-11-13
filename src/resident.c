@@ -698,6 +698,31 @@ bool plat_resident_sync_screens(int timeout_ms)
 	return false;
 }
 
+bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeout_ms)
+{
+	unsigned t0 = SDL_GetTicks();
+	size_t pn = strlen(prefix);
+	char *l;
+
+	if (dsock < 0) return false;
+	while ((int)(SDL_GetTicks() - t0) < timeout_ms) {
+		l = dline(timeout_ms);
+		if (!l) break;
+		if (strncmp(l, prefix, pn) == 0) {
+			snprintf(out, n, "%s", l);
+			return true;
+		}
+		if (strncmp(l, "DISPLAY\t", 8) == 0) d_note_display(l);
+		else if (strncmp(l, "PREVIEW\tpath=", 13) == 0)
+			snprintf(d_preview, sizeof d_preview, "%s", l + 13);
+		else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
+		else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
+		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
+		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+	}
+	return false;
+}
+
 static void d_apply_levels(void)
 {
 	/* Through the public setters (defined below, past this point in the

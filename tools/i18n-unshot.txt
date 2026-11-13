@@ -291,8 +291,6 @@ home.system
 home.audio
 home.no_artwork
 
-# hotpanel: no shot draws it yet
-hotpanel.starting
 
 # tour: no shot draws it yet
 tour.lang.hello
@@ -687,7 +685,6 @@ wifimenu.legend
 
 # xfer: no shot draws it yet
 xfer.dev_link_on
-xfer.starting_hotspot
 xfer.hotspot_failed
 xfer.could_not_start
 xfer.nothing_yet
@@ -712,7 +709,6 @@ xfer.finishing_the_file
 xfer.b_back_to_shelf
 xfer.closed_for_game
 xfer.hotspot_stopped
-xfer.closing_hotspot
 xfer.scanning
 xfer.key_removed
 xfer.err_memory
@@ -720,7 +716,6 @@ xfer.err_could_not_say
 controls.home
 # keyhint: the words of button hints that were text legends listed here (Bluetooth, Wi-Fi, Play Time,
 # Date & Time, Album Art, File Transfer while files move); no shot draws those screens yet
-keyhint.turn_on
 keyhint.turn_on_boot
 keyhint.search
 keyhint.disconnect
@@ -734,7 +729,6 @@ keyhint.by_game
 keyhint.window
 keyhint.by_system
 keyhint.change
-keyhint.stop
 keyhint.keep_going_or_stop
 keyhint.hide
 keyhint.back_to_shelf

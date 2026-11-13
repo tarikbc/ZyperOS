@@ -1,0 +1,150 @@
+# NES Player 2 on the handheld (src/p2.c, src/p2panel.c, src/main.c): the
+# in-game menu's row on an NES game, the page it opens over the paused game
+# (how a friend joins, on the handheld's own Wi-Fi or a computer on the USB
+# cable, and who is playing), and the notices over the game as a player
+# joins or leaves. The play page itself, on the friend's phone, is
+# play.txt's. Its words for the network and the password are hotpanel.txt's
+# and panel.txt's, its keys keyhint.txt's.
+
+[player2.row]
+note = The in-game menu's row on an NES game, and the heading of the page it opens: a friend plays the game as player 2 on their phone or computer. As play.state.player with 2.
+en = Player 2
+zh-Hans = 玩家 2
+es = Jugador 2
+pt-BR = Jogador 2
+fr = Joueur 2
+de = Spieler 2
+ja = プレイヤー 2
+it = Giocatore 2
+
+[player2.waiting]
+note = A lowercase value: the Player 2 row's, and the page's beside a player, while Player 2 is on and that player has not joined yet. As xfer.waiting.
+en = waiting
+zh-Hans = 等待中
+es = esperando
+pt-BR = aguardando
+fr = en attente
+de = wartet
+ja = 待機中
+it = in attesa
+
+[player2.connected]
+note = A lowercase value: the Player 2 row's, and the page's beside a player, while that player's browser plays the game.
+en = connected
+zh-Hans = 已连接
+es = conectado
+pt-BR = conectado
+fr = connecté
+de = verbunden
+ja = 接続済み
+it = connesso
+
+[player2.player]
+note = On the Player 2 page, a row's label for each player a friend can be, %d their number (2, and on a system with more players 3 and 4); its value is starting, waiting or connected. As play.state.player.
+en = Player %d
+zh-Hans = 玩家 %d
+es = Jugador %d
+pt-BR = Jogador %d
+fr = Joueur %d
+de = Spieler %d
+ja = プレイヤー %d
+it = Giocatore %d
+
+[player2.notice]
+note = The small line of the notice over the game when a friend's browser joins or leaves (player2.joined, player2.left under it): friends playing a game on the handheld from their phones. As play.name.
+en = Multiplayer
+zh-Hans = 多人游戏
+es = Multijugador
+pt-BR = Multijogador
+fr = Multijoueur
+de = Mehrspieler
+ja = マルチプレイ
+it = Multigiocatore
+
+[player2.joined]
+note = The notice over the game when a friend's browser starts to play: %d is the player's number, 2 to 4.
+en = Player %d joined
+zh-Hans = 玩家 %d 已加入
+es = Jugador %d se unió
+pt-BR = Jogador %d entrou
+fr = Joueur %d a rejoint la partie
+de = Spieler %d ist dabei
+ja = プレイヤー %d が参加しました
+it = Giocatore %d si è unito
+
+[player2.left]
+note = The notice over the game when a friend's browser stops playing (closed, or the phone went out of range): %d is the player's number.
+en = Player %d left
+zh-Hans = 玩家 %d 已离开
+es = Jugador %d salió
+pt-BR = Jogador %d saiu
+fr = Joueur %d a quitté la partie
+de = Spieler %d ist raus
+ja = プレイヤー %d が退出しました
+it = Giocatore %d è uscito
+
+[player2.scan]
+note = On the Player 2 page beside the QR code, over the network's name and password: the friend's phone camera reads the code, joins the handheld's Wi-Fi, and the play page opens on the phone by itself. Wrapped onto two lines at most.
+en = Scan with your phone's camera; the game opens.
+zh-Hans = 用手机相机扫码，游戏就会打开。
+es = Escanea con la cámara de tu celular y se abre el juego.
+pt-BR = Escaneie com a câmera do celular e o jogo abre.
+fr = Scannez avec l'appareil photo du téléphone : le jeu s'ouvre.
+de = Scanne mit der Handykamera, dann öffnet sich das Spiel.
+ja = スマホのカメラでスキャンすると、ゲームが開きます。
+it = Inquadra con la fotocamera del telefono: il gioco si apre.
+
+[player2.cable]
+note = On the Player 2 page with a computer on the USB cable: %s is the address to type in its browser, zyperos.local/play. Wrapped onto two lines at most.
+en = Open %s on the computer.
+zh-Hans = 在电脑上打开 %s。
+es = Abre %s en la computadora.
+pt-BR = Abra %s no computador.
+fr = Ouvrez %s sur l'ordinateur.
+de = Öffne %s am Computer.
+ja = パソコンで %s を開いてください。
+it = Apri %s sul computer.
+
+[player2.no_link]
+note = On the Player 2 page with neither a Wi-Fi adapter in nor a computer on the USB cable: a friend's phone needs the handheld's own Wi-Fi (an adapter makes it), or the friend plays on a computer on the cable.
+en = Plug in a Wi-Fi adapter or a computer.
+zh-Hans = 请连接 Wi-Fi 适配器或电脑。
+es = Conecta un adaptador Wi-Fi o una computadora.
+pt-BR = Conecte um adaptador Wi-Fi ou um computador.
+fr = Branchez un adaptateur Wi-Fi ou un ordinateur.
+de = Schließe einen WLAN-Adapter oder einen Computer an.
+ja = Wi-Fi アダプターかパソコンを接続してください。
+it = Collega un adattatore Wi-Fi o un computer.
+
+[player2.intro_wifi]
+note = On the Player 2 page before A starts it, with a Wi-Fi adapter in: A makes a Wi-Fi network of the handheld's own for the game, which the friend's phone joins.
+en = A friend plays on their phone, on a Wi-Fi network just for this game.
+zh-Hans = 朋友用手机加入本游戏专用的 Wi-Fi 即可一起玩。
+es = Un amigo juega en su celular, en una red Wi-Fi solo para este juego.
+pt-BR = Um amigo joga no celular, numa rede Wi-Fi só para este jogo.
+fr = Un ami joue sur son téléphone, sur un réseau Wi-Fi rien que pour ce jeu.
+de = Ein Freund spielt am Handy, in einem WLAN nur für dieses Spiel.
+ja = 友だちがスマホで参加できます。このゲーム専用の Wi-Fi を使います。
+it = Un amico gioca sul telefono, su una rete Wi-Fi solo per questo gioco.
+
+[player2.intro_cable]
+note = On the Player 2 page before A starts it, with a computer on the USB cable: the friend plays in that computer's browser.
+en = A friend plays on the computer, over the USB cable.
+zh-Hans = 朋友可以在用 USB 线连接的电脑上一起玩。
+es = Un amigo juega en la computadora, por el cable USB.
+pt-BR = Um amigo joga no computador, pelo cabo USB.
+fr = Un ami joue sur l'ordinateur, par le câble USB.
+de = Ein Freund spielt am Computer, über das USB-Kabel.
+ja = 友だちが USB ケーブルでつないだパソコンで参加できます。
+it = Un amico gioca sul computer, tramite il cavo USB.
+
+[player2.failed]
+note = On the Player 2 page when it could not start, or stopped by itself during the game (its server ended, or the Wi-Fi it made went away); A starts it again.
+en = Player 2 had a problem and stopped.
+zh-Hans = 玩家 2 出现问题，已停止。
+es = Jugador 2 tuvo un problema y se detuvo.
+pt-BR = O Jogador 2 teve um problema e parou.
+fr = Joueur 2 a rencontré un problème et s'est arrêté.
+de = Spieler 2 hatte ein Problem und wurde beendet.
+ja = プレイヤー 2 で問題が起きたため、停止しました。
+it = Giocatore 2 ha avuto un problema e si è fermato.

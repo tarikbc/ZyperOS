@@ -49,6 +49,11 @@
 #include "emptyhome.h"
 #include "hotpanel.h"
 #include "captive.h"
+#include "p2.h"
+#include "p2panel.h"
+#include "p2share.h"
+#include "spawn.h"
+#include "webtheme.h"
 #include "devmode.h"
 #include "sshlink.h"
 #include "mdns.h"
@@ -2263,6 +2268,9 @@ static void on_game_tick(void)
 	/* A computer on the cable that has not connected: said over the game
 	 * too, until the cable comes out (DESIGN.md 11.36) */
 	replug_game_tick();
+	/* NES Player 2 (src/p2.h): the hotspot coming up and p2d after it, and
+	 * a friend joining or leaving said over the game. Bounded. */
+	p2_tick(plat_now_ms());
 	/* The chip's temperature, every HEAT_POLL_MS; "Getting hot" over the
 	 * game when it passes the trip, ahead of any pop-up waiting */
 	heat_tick();
@@ -2274,7 +2282,11 @@ static void on_game_tick(void)
 	 * file when the theme changes and draws nothing, and it looks at the
 	 * clock once a minute, so it costs a compare here. The screens are told
 	 * by the next one that asks, through tick_theme: g_theme_late. */
-	if (theme_tick()) g_theme_late = true;
+	if (theme_tick()) {
+		g_theme_late = true;
+		/* and NES Player 2's page, for its next load */
+		p2_theme_changed();
+	}
 	/* The low-battery disc over the game, which Diatom draws as this process
 	 * can draw nothing while a game runs, blinking when critical. Sent only
 	 * on a change; the level is read every five seconds. */
@@ -3338,13 +3350,21 @@ static void xs_tick_behind(app *a);
 
 bool tick_theme(app *a)
 {
+	bool turned;
+
 	xs_tick_behind(a);
 	dev_ssh_tick();
+	/* NES Player 2's, in the screens over a paused game (its page, the
+	 * in-game menu): on with the game, nothing on the shelf */
+	p2_tick(plat_now_ms());
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
 	tick_boot_theme();
 	tick_update_daily(false);
-	if (!theme_tick() && !g_theme_late) return false;
+	turned = theme_tick();
+	if (!turned && !g_theme_late) return false;
+	/* A turn the game's tick saw is on Player 2's page already */
+	if (turned) p2_theme_changed();
 	theme_changed(a);
 	return true;
 }
@@ -6549,7 +6569,7 @@ static void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose)
  * leaving in its own place: a press on it ends that leave and puts its own
  * panel at rest, and from then on its own is the panel on screen
  * (snap_promote), what the next motion takes off. */
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES };   /* which drawer a copy is for */
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2 };   /* which drawer a copy is for */
 
 static menu_snap  g_snaps[2];
 static menu_snap *g_snap = &g_snaps[0], *g_snap_next = &g_snaps[1];
@@ -6568,6 +6588,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
                         int sel, mm_pose pose);
 static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
                       mm_pose pose);
+static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
+                     unsigned accent, mm_pose pose);
 
 /* A panel's arguments into `s`, as the screen on top drew them now: its
  * heading's caption too (menu_draw_caption), or NULL for none */
@@ -6605,6 +6627,10 @@ static void snap_draw(app *a, mm_pose pose)
 	}
 	if (s->kind == PANEL_HOT) {
 		hot_panel(a, s->heading, s->rows, s->n, pose);
+		return;
+	}
+	if (s->kind == PANEL_P2) {
+		p2_panel(a, s->heading, s->rows, s->n, s->accent, pose);
 		return;
 	}
 	static menu_tabs rest;
@@ -6687,6 +6713,7 @@ static void panel_show(app *a, int kind, const char *heading,
 	            visits_all, loop_at, heading_note);
 	if (kind == PANEL_TILES) tiles_panel(a, heading, rows, n, sel, f.panel);
 	else if (kind == PANEL_HOT) hot_panel(a, heading, rows, n, f.panel);
+	else if (kind == PANEL_P2) p2_panel(a, heading, rows, n, accent, f.panel);
 	else menu_panel(a, heading, rows, n, sel, fixed_w, accent, vcolors,
 	                visits_all, loop_at, heading_note, f.panel);
 }
@@ -18106,6 +18133,338 @@ static void paused_backdrop(app *a, SDL_Texture *bg, float k)
 	draw_topbar(a->r, DS_DARK, ui_col(theme_at(DS_DARK)->text, 255), frames_wanted());
 }
 
+/* ---------- NES Player 2 ---------------------------------------------------
+ *
+ * The in-game menu's Player 2 row on an NES game opens this page over the
+ * paused game (src/p2.h, src/p2panel.h): A starts it, on the handheld's own
+ * Wi-Fi when an adapter is in or for a computer on the cable, and stops it;
+ * B closes the page, and Continue goes back to the game with it on. The
+ * page says how a friend joins and who is playing; a notice over the game
+ * says when one joins or leaves. Every end of the game stops it (launch). */
+
+/* What the page shows, gathered: from src/p2.c and the hotspot, or made up
+ * by a shot (--player2). `link` is the one it is on, or while off the one A
+ * would start. */
+typedef struct {
+	p2_state    st;
+	p2_link     link;
+	bool        starting;   /* the hotspot coming up, or about to (A's wait) */
+	bool        closing;    /* the stop's wait */
+	unsigned    guests;
+	int         players;
+	const char *ssid, *pass, *qr, *url;
+} p2_view;
+
+typedef struct {
+	char how[192];
+	char who[P2PANEL_STATUS][32];
+} p2_bufs;
+
+/* --player2 KIND: the page as a shot draws it, and the row's value with
+ * --gamemenu (shot_draw_player2) */
+static bool    g_shot_p2;
+static p2_view g_shot_p2_view;
+
+/* The state the in-game menu's row says */
+static p2_state p2_row_state(void)
+{
+	return g_shot_p2 ? g_shot_p2_view.st : p2_state_now();
+}
+
+/* The page's rows, from the view: the code's text (none while it is not
+ * shown), the network and its password beside it, the line that says what
+ * to do, a line per player and the key legend. What src/p2panel.c draws and
+ * what the panel's copy keeps (snap_record), so a shot of it is the page. */
+static int p2_rows(const p2_view *v, menu_row *rows, p2_bufs *b)
+{
+	const bool on = v->st == P2_WAITING || v->st == P2_CONNECTED;
+	const bool code = on && v->link == P2_HOTSPOT && !v->starting && !v->closing &&
+	                  v->qr && v->qr[0];
+	const char *legend;
+	int n = 0, k;
+
+	if (v->closing && v->link == P2_HOTSPOT) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_CLOSING_HOTSPOT));
+	else if (v->starting) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_STARTING_HOTSPOT));
+	else if (v->st == P2_FAILED) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_FAILED));
+	else if (code) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_SCAN));
+	/* The name, which is what a person types: zyperos.local/play */
+	else if (on && v->link == P2_CABLE) snprintf(b->how, sizeof b->how, T(S_PLAYER2_CABLE), v->url);
+	else if (v->link == P2_HOTSPOT) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_INTRO_WIFI));
+	else if (v->link == P2_CABLE) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_INTRO_CABLE));
+	else snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_NO_LINK));
+
+	rows[n++] = (menu_row){ code ? v->qr : "", NULL, false };
+	rows[n++] = (menu_row){ T(S_HOTPANEL_NETWORK), code ? v->ssid : NULL, false };
+	rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), code ? v->pass : NULL, false };
+	rows[n++] = (menu_row){ b->how, NULL, false };
+	/* A line for each player a friend can be: player 2 on the NES, and on
+	 * a system with more, 3 and 4 the same way */
+	for (k = 0; k + 2 <= v->players && k < P2PANEL_STATUS; k++) {
+		const char *st = v->starting ? T(S_HOTPANEL_STARTING)
+		               : !on ? T(S_MENU_OFF)
+		               : v->guests & (1u << k) ? T(S_PLAYER2_CONNECTED) : T(S_PLAYER2_WAITING);
+
+		snprintf(b->who[k], sizeof b->who[k], T(S_PLAYER2_PLAYER), k + 2);
+		rows[n++] = (menu_row){ b->who[k], st, false };
+	}
+	/* A starts or stops it ("stop", since "turn off" and "close" are one
+	 * word in Chinese); with nothing to start it over, only B */
+	if (on)
+		legend = keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_STOP) },
+		                                       { "B", T(S_KEYHINT_CLOSE) } }, 2);
+	else if (v->link != P2_NO_LINK)
+		legend = keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_TURN_ON) },
+		                                       { "B", T(S_KEYHINT_CLOSE) } }, 2);
+	else
+		legend = b_legend(S_KEYHINT_CLOSE);
+	rows[n++] = MENU_NOTE(legend);
+	return n;
+}
+
+/* The page's panel from its rows, as panel_show and the panel's copy draw
+ * it (PANEL_P2), at `pose`: its lift on the screen at the panel's size, the
+ * panel into the pass, as menu_panel moves its own */
+static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
+                     unsigned accent, mm_pose pose)
+{
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f, lifted = false;
+	p2panel p;
+	SDL_Rect q;
+	int i;
+
+	if (n < 5) return;
+	memset(&p, 0, sizeof p);
+	p.heading = heading;
+	p.accent = accent;
+	p.qr = rows[0].label;
+	p.ssid = rows[1].value;
+	p.pass = rows[2].value;
+	p.how = rows[3].label;
+	for (i = 4; i < n - 1 && p.nwho < P2PANEL_STATUS; i++, p.nwho++) {
+		p.who[p.nwho] = rows[i].label;
+		p.state[p.nwho] = rows[i].value;
+	}
+	p.legend = rows[n - 1].label;
+	q = p2panel_rect(&p);
+	if (posed) {
+		SDL_FRect f = panel_scaled(&q, pose.scale);
+		SDL_Rect fq = { (int)(f.x + 0.5f), (int)(f.y + 0.5f), (int)(f.w + 0.5f), (int)(f.h + 0.5f) };
+
+		ui_lift_k(a->r, &fq, accent, UI_LIFT_PANEL, pose.alpha);
+		lifted = true;
+		posed = panel_pass_begin(a);
+	}
+	p2panel_draw(a->r, &p, !lifted);
+	if (posed) panel_pass_end(a, &q, pose);
+}
+
+/* The page as it is now, the address shown without its http:// and slash */
+static void p2_view_now(p2_view *v, const system_cfg *q, p2_link can, bool starting, bool closing)
+{
+	static char url[64];
+	const p2_system *sys = p2_system_of(q->core);
+	const char *u = p2_join_url();
+	size_t un;
+
+	memset(v, 0, sizeof *v);
+	v->st = p2_state_now();
+	v->link = v->st == P2_OFF ? can : p2_link_on();
+	v->starting = starting || p2_starting();
+	v->closing = closing;
+	v->guests = p2_guests();
+	v->players = p2_players() ? p2_players() : sys ? sys->players : 2;
+	v->ssid = hotspot_ssid();
+	v->pass = hotspot_password();
+	v->qr = hotspot_qr_text();
+	if (!strncmp(u, "http://", 7)) u += 7;
+	snprintf(url, sizeof url, "%s", u);
+	un = strlen(url);
+	if (un && url[un - 1] == '/') url[un - 1] = '\0';
+	v->url = url;
+}
+
+static void p2_show(app *a, const p2_view *v)
+{
+	menu_row rows[4 + P2PANEL_STATUS + 1];
+	p2_bufs b;
+	int n = p2_rows(v, rows, &b);
+
+	panel_show(a, PANEL_P2, T(S_PLAYER2_ROW), rows, n, -1, 0, a->tint, NULL, false, 0, NULL);
+}
+
+/* One frame of the page, shown before something that blocks: the hotspot's
+ * start, which waits for the supplicant to stop, and its stop, which waits
+ * for the Wi-Fi to come back (as File Transfer's say it, wait_panel) */
+static void p2_page_frame(app *a, SDL_Texture *bg, const system_cfg *q, p2_link can,
+                          bool starting, bool closing)
+{
+	p2_view v;
+
+	p2_view_now(&v, q, can, starting, closing);
+	paused_backdrop(a, bg, 1.0f);
+	p2_show(a, &v);
+	plat_present();
+}
+
+/* The page, from the in-game menu's row, over the paused game `bg` */
+static void player2_page(app *a, SDL_Texture *bg)
+{
+	const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor,
+	                                      a->view[a->sys_cursor].cursor)];
+	p2_link can = P2_NO_LINK;
+	unsigned looked = 0;
+	int lv, done = 0;
+	float k;
+
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	lv = panel_open();
+	while (!done && !want_quit) {
+		unsigned now = plat_now_ms();
+		bool on = p2_state_now() == P2_WAITING || p2_state_now() == P2_CONNECTED;
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		if (menu_leaving(a)) done = 1;
+		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
+		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
+		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
+		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		/* Power stops the game from here, as from the in-game menu's
+		 * other pages; the game's end stops Player 2 */
+		if (a->in.pressed[IN_POWER] || idle_due(a)) {
+			plat_note_power_pressed();
+			plat_resident_line("STOP");
+			done = 1;
+		}
+		/* Which link a start would take, looked at five times a second, so
+		 * an adapter or a computer plugged in with the page open shows */
+		if (!looked || now - looked >= 200u) {
+			looked = now ? now : 1;
+			can = p2_link_now(hotspot_available(), plat_usb_peer() == USB_PEER_COMPUTER);
+		}
+		if (!done && a->in.pressed[IN_ACCEPT]) {
+			if (on) {
+				uisound_play(DS_SOUND_BACK);
+				p2_page_frame(a, bg, q, can, false, true);
+				p2_stop();
+			} else if (can == P2_NO_LINK) {
+				uisound_play(DS_SOUND_DENY);
+			} else {
+				uisound_play(DS_SOUND_ACCEPT);
+				p2_page_frame(a, bg, q, can, can == P2_HOTSPOT, false);
+				if (!p2_start(q->core, can)) uisound_play(DS_SOUND_DENY);
+			}
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+		}
+		if (!panel_frame(a, lv, &k)) continue;
+		/* Player 2's tick (p2_tick) is in it, as in every screen's loop */
+		tick_theme(a);
+		paused_backdrop(a, bg, k);
+		{
+			p2_view v;
+
+			p2_view_now(&v, q, can, false, false);
+			p2_show(a, &v);
+		}
+		plat_present();
+		ui_frame_rest(8);
+	}
+	/* Closed after a failure: what it left goes too, so the row says off and
+	 * the Wi-Fi the player had is back */
+	if (p2_state_now() == P2_FAILED) {
+		p2_page_frame(a, bg, q, can, false, true);
+		p2_stop();
+	}
+	panel_close(a, lv, false);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+}
+
+/* ---- what Player 2 is done with (p2_ops) ---------------------------------- */
+
+static bool p2op_resident(const char *line) { return plat_resident_line("%s", line); }
+
+static bool p2op_answer(const char *prefix, char *out, unsigned n, unsigned ms)
+{
+	return plat_resident_sync_line(prefix, out, n, (int)ms);
+}
+
+/* The theme the handheld shows now (src/webtheme.h), its look with it */
+static bool p2op_theme(void)
+{
+	return webtheme_write(WEBTHEME_FILE, theme(), theme_index() == DS_DARK, look_square());
+}
+
+static bool p2op_hotspot_start(void) { return hotspot_start_dns(false); }
+static int  p2op_hotspot_poll(void)  { return (int)hotspot_poll(); }
+static void p2op_hotspot_stop(void)  { hotspot_stop(); }
+static void p2op_cable_up(void)      { usblink_for_transfer(); }
+static void p2op_cable_down(void)    { usblink_after_transfer(db_dev()); }
+
+static bool p2op_mdns_start(void)    { return mdns_start("usb0", P2_CABLE_ADDR, false); }
+static void p2op_mdns_poll(unsigned now) { mdns_poll(now); }
+
+/* Developer Mode's SSH has the name on the cable too (dev_ssh_tick), and
+ * keeps it for as long as the cable is in */
+static void p2op_mdns_stop(void)     { if (!g_dv.run) mdns_stop(); }
+
+static long p2op_spawn(char *const argv[])     { return spawn_child(argv); }
+static void p2op_signal(long pid, int sig)     { kill((pid_t)pid, sig); }
+static bool p2op_ended(long pid, int *status)  { return spawn_ended(pid, status); }
+static unsigned p2op_now(void)                 { return plat_now_ms(); }
+static void p2op_sleep(unsigned ms)            { SDL_Delay(ms); }
+
+/* The share's guests, read from the file rather than mapped: a hundred
+ * bytes ten times a second, and nothing held from one game to the next,
+ * whose share is a new file */
+static unsigned p2op_guests(void)
+{
+	p2s_head h;
+	int fd = open(P2S_PATH, O_RDONLY | O_CLOEXEC);
+	ssize_t got;
+
+	if (fd < 0) return 0;
+	got = pread(fd, &h, sizeof h, 0);
+	close(fd);
+	return got == (ssize_t)sizeof h && h.magic == P2S_MAGIC ? h.guests : 0;
+}
+
+/* "Player 2 joined" over the game, in the queue with the other pop-ups */
+static void p2op_notice(int player, bool joined)
+{
+	char body[96];
+
+	snprintf(body, sizeof body, T(joined ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), player);
+	fprintf(stderr, "player 2: player %d %s\n", player, joined ? "joined" : "left");
+	notice_queue(NQ_SET, 0, 3000, T(S_PLAYER2_NOTICE), body, NULL, 0, 0);
+}
+
+/* The page's words in the language the handheld is in, as hare's /i18n.js */
+static const char *p2op_lang(void) { return lang_code(i18n_lang()); }
+
+static char   g_p2_bin[CFG_STR * 2];
+static p2_ops g_p2_ops = {
+	p2op_resident, p2op_answer, p2op_theme,
+	p2op_hotspot_start, p2op_hotspot_poll, p2op_hotspot_stop,
+	p2op_cable_up, p2op_cable_down,
+	p2op_mdns_start, p2op_mdns_poll, p2op_mdns_stop,
+	p2op_spawn, p2op_signal, p2op_ended,
+	p2op_now, p2op_sleep, p2op_guests, p2op_notice, p2op_lang,
+	NULL, NULL,
+};
+
+/* Once, as the launcher starts: p2d beside it on the card, the page in its
+ * res/web (mk/payload.sh lays both out) */
+static void p2_setup(void)
+{
+	snprintf(g_p2_bin, sizeof g_p2_bin, "%s/p2d", P_ROOT);
+	g_p2_ops.p2d = g_p2_bin;
+	g_p2_ops.root = P_WEB;
+	p2_use(&g_p2_ops);
+}
+
 /* Copy the paused frame's preview beside a manual save, so the slot strip can
  * show what is inside each slot. The pause preview IS the frame the save
  * serializes - Diatom wrote it on the way into the menu - so a straight copy
@@ -18462,6 +18821,11 @@ static void gm_gather(app *a, gm_ui *out)
 		if (pak_system(q) && a->view[a->sys_cursor].list.count > 0)
 			u.pak = gm_pak_name(pak_get(q, a->view[a->sys_cursor].list
 			                                     .items[a->view[a->sys_cursor].cursor].file));
+		/* NES Player 2, on the cores the system table offers it on */
+		if (p2_offered(q->core)) {
+			u.player2 = true;
+			u.player2_value = gm_player2_value(p2_row_state());
+		}
 	}
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
@@ -21226,6 +21590,18 @@ static int gm_width(app *a)
 			if (mw > w) w = mw;
 		}
 	}
+	/* An NES game's Player 2, at each of its values */
+	{
+		static const p2_state st[] = { P2_OFF, P2_WAITING, P2_CONNECTED };
+		int p2 = gm_row_at(&u, GM_PLAYER2);
+
+		for (k = 0; p2 >= 0 && k < (int)(sizeof st / sizeof st[0]); k++) {
+			int mw;
+			rows[p2].value = gm_player2_value(st[k]);
+			mw = menu_measure(rows, n, NULL);
+			if (mw > w) w = mw;
+		}
+	}
 	/* A DS game's Screens row, right under Shader, at each layout. */
 	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
 		int mw;
@@ -21433,6 +21809,9 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		break;
 	case GM_CONTROLS:
 		game_controls_screen(a, c->bg);
+		break;
+	case GM_PLAYER2:
+		player2_page(a, c->bg);
 		break;
 	case GM_CHEEVOS:
 		if (chv_count() > 0) cheevos_screen(a, c->bg, false);
@@ -22527,6 +22906,15 @@ static void launch(app *a)
 			}
 			g_ctl_game.on = false;
 			resident = (r == RES_EXIT);
+			/* The game is over, and however it ended it ended here: Quit,
+			 * a crash (EXIT reason=crash) or Diatom gone (RES_DEAD), POWER,
+			 * the battery, Auto Off, px2-open's next game, a TERM. NES
+			 * Player 2 goes with it: p2d, Diatom's share, and the hotspot
+			 * with the Wi-Fi the player had back (a second or two, said as
+			 * File Transfer says it) or the cable's link as it was. */
+			if (p2_link_on() == P2_HOTSPOT)
+				wait_panel(a, T(S_PLAYER2_ROW), T(S_XFER_CLOSING_HOTSPOT));
+			p2_stop();
 
 			/* The Auto card's picture, written ONLY here - at the same moment
 			 * Diatom wrote the state it belongs to, so the two cannot drift.
@@ -23384,7 +23772,7 @@ static const char *shot_backdrop;
 
 static void shot_draw_gamemenu(app *a)
 {
-	menu_row rows[GM_STYLUS + 1];
+	menu_row rows[GM_MAX_ROWS];
 	gm_bufs b;
 	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
 	                                : fake_frame(a->r, 4.0f / 3);
@@ -23394,6 +23782,23 @@ static void shot_draw_gamemenu(app *a)
 	n = gm_build(a, rows, &b);
 	menu_draw(a, NULL, rows, n, shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
 	          gm_width(a), a->tint);
+	if (bg) SDL_DestroyTexture(bg);
+}
+
+/* --player2 KIND: NES Player 2's page over a paused game (a made-up frame),
+ * in a state made up as the hot panel's shot makes its network (--hotspot):
+ * hotspot, its code with nobody yet; connected, player 2 playing; cable, a
+ * computer on the cable; off and off-cable, before A on each link; none,
+ * neither plugged in; failed; starting, the hotspot's start; closing, its
+ * stop. With --gamemenu the in-game menu instead, its Player 2 row saying
+ * that state. */
+static void shot_draw_player2(app *a)
+{
+	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
+	                                : fake_frame(a->r, 4.0f / 3);
+
+	paused_backdrop(a, bg, 1.0f);
+	p2_show(a, &g_shot_p2_view);
 	if (bg) SDL_DestroyTexture(bg);
 }
 
@@ -23954,6 +24359,7 @@ static void shot_compose(app *a)
 	if (shot_look_page) shot_draw_look(a);
 	if (shot_slots) shot_draw_slots(a);
 	if (shot_gamemenu && a->sys.count > 0) shot_draw_gamemenu(a);
+	else if (g_shot_p2 && a->sys.count > 0) shot_draw_player2(a);
 	if (shot_gamecontrols >= 0 && a->sys.count > 0) shot_draw_gamecontrols(a);
 	if (shot_controls_fit) controls_fit_report(a);
 	/* Over **scrim.menu**, as the screens they picture are: kb_prompt's
@@ -24294,6 +24700,12 @@ static void shot_compose(app *a)
 			 * (core_resume_fresh) */
 			shot_notice_head = T(S_POPUP_CORESTATE_HEAD);
 			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_CORESTATE_BODY));
+		} else if (!strcmp(shot_popup, "player2_joined") || !strcmp(shot_popup, "player2_left")) {
+			/* A friend's browser joining NES Player 2 or leaving it
+			 * (p2op_notice) */
+			shot_notice_head = T(S_PLAYER2_NOTICE);
+			snprintf(pbody, sizeof pbody,
+			         T(!strcmp(shot_popup, "player2_joined") ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), 2);
 		} else if (!strcmp(shot_popup, "stick_on") || !strcmp(shot_popup, "stick_off")) {
 			/* R2 in a PSP game (on_stick) */
 			shot_notice_head = T(S_POPUP_STICK);
@@ -26237,6 +26649,30 @@ int main(int argc, char *argv[])
 				shot_xfer_ask = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "game")) { shot_xfer_game = true; i++; }
 		}
+		else if (!strcmp(argv[i], "--player2") && i + 1 < argc) {
+			static char qr[160];
+			const char *kind = argv[++i];
+			p2_view *v = &g_shot_p2_view;
+
+			g_shot_p2 = true;
+			memset(v, 0, sizeof *v);
+			v->st = P2_WAITING;
+			v->link = P2_HOTSPOT;
+			v->players = 2;
+			v->ssid = "ZyperOS-7A2B";
+			v->pass = "q7mx-3kpa";
+			captive_wifi_qr(qr, sizeof qr, v->ssid, v->pass);
+			v->qr = qr;
+			v->url = "zyperos.local/play";
+			if (!strcmp(kind, "connected"))      { v->st = P2_CONNECTED; v->guests = 1; }
+			else if (!strcmp(kind, "cable"))     v->link = P2_CABLE;
+			else if (!strcmp(kind, "off"))       v->st = P2_OFF;
+			else if (!strcmp(kind, "off-cable")) { v->st = P2_OFF; v->link = P2_CABLE; }
+			else if (!strcmp(kind, "none"))      { v->st = P2_OFF; v->link = P2_NO_LINK; }
+			else if (!strcmp(kind, "failed"))    v->st = P2_FAILED;
+			else if (!strcmp(kind, "starting"))  v->starting = true;
+			else if (!strcmp(kind, "closing"))   v->closing = true;
+		}
 		else if (!strcmp(argv[i], "--hotspot")) {
 			shot_hot = 1;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_ssid   = argv[++i];
@@ -26794,6 +27230,7 @@ int main(int argc, char *argv[])
 		plat_resident_on_quick(on_quick);
 		plat_resident_on_tick(on_game_tick);
 		plat_resident_on_battery_empty(battery_empty);
+		p2_setup();
 		heat_init(&g_heat);
 
 		/* Without this every HTTPS request fails verification, because the

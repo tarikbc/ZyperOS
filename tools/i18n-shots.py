@@ -400,16 +400,27 @@ EXTRA.setdefault("auto-hours", ("demo", "PS1", ["--look-page", "hours", "0"]))
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
 # whose core keeps no states, and the speed at a half step and a whole one;
-# and the ones over a game started fresh: a DS game in a new Game Language,
-# and a game whose resume the shelf's other core left
+# the ones over a game started fresh: a DS game in a new Game Language, and
+# a game whose resume the shelf's other core left; and NES Player 2's, a
+# friend's browser joining and leaving
 for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
-              "corestate", "stick_on", "stick_off"):
+              "corestate", "stick_on", "stick_off", "player2_joined", "player2_left"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
 # A Nintendo 64 game's in-game menu, with its Pak row (the shelf of a system
 # with a game in it: the card with one in every system)
 EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
+# NES Player 2 (src/p2.h): its page over a paused NES game in every state
+# (--player2), the code on the hotspot with nobody yet, a player connected,
+# the cable, before A on each link, with neither plugged in, after a failure,
+# and the hotspot's start and stop; and the in-game menu on its row, which
+# says connected
+for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "failed", "starting",
+              "closing"):
+    EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
+EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "6",
+                                                       "--player2", "connected"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
 # status file the update program writes it (src/sysupdate.c); the second is

@@ -141,6 +141,7 @@ written to match. Change a term here first, then everywhere it is used.
 | folder | 文件夹 | carpeta | pasta | dossier | Ordner | フォルダ | cartella |
 | phone / computer | 手机 / 电脑 | celular / computadora | celular / computador | téléphone / ordinateur | Handy / Computer | スマホ / パソコン | telefono / computer |
 | download / upload | 下载 / 上传 | descargar / subir | baixar / enviar | télécharger / envoyer | herunterladen / hochladen | ダウンロード / アップロード | scaricare / caricare |
+| Player 2 (a friend in a browser; Player %d for 3 and 4) / Multiplayer | 玩家 2 / 多人游戏 | Jugador 2 / Multijugador | Jogador 2 / Multijogador | Joueur 2 / Multijoueur | Spieler 2 / Mehrspieler | プレイヤー 2 / マルチプレイ | Giocatore 2 / Multigiocatore |
 | Play Time | 游戏时间 | Tiempo de juego | Tempo de jogo | Temps de jeu | Spielzeit | プレイ時間 | Tempo di gioco |
 | Search Games | 搜索游戏 | Buscar juegos | Buscar jogos | Rechercher un jeu | Spiele suchen | ゲームを検索 | Cerca giochi |
 | Random Game | 随机游戏 | Juego al azar | Jogo aleatório | Jeu au hasard | Zufallsspiel | ランダムゲーム | Gioco a caso |

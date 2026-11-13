@@ -212,8 +212,16 @@ int gm_row_ids(const gm_ui *u, gm_row *ids)
 			ids[n++] = GM_STYLUS;
 		}
 		if (i == GM_SHADER && u->pak) ids[n++] = GM_PAK;
+		if (i == GM_SHADER && u->player2) ids[n++] = GM_PLAYER2;
 	}
 	return n;
+}
+
+const char *gm_player2_value(p2_state st)
+{
+	if (st == P2_WAITING) return T(S_PLAYER2_WAITING);
+	if (st == P2_CONNECTED) return T(S_PLAYER2_CONNECTED);
+	return T(S_MENU_OFF);
 }
 
 gm_row gm_x_row(void)
@@ -238,7 +246,7 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS,
 		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
-		S_GAMEMENU_PAK
+		S_GAMEMENU_PAK, S_PLAYER2_ROW
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
@@ -270,6 +278,7 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON) : T(S_MENU_OFF);
 	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON) : T(S_MENU_OFF);
 	full[GM_PAK].value     = u->pak;
+	full[GM_PLAYER2].value = u->player2_value;
 	/* X quits from anywhere on the page (gm_x_row), and Quit says so */
 	full[GM_QUIT].value    = MENU_KEY_X;
 
