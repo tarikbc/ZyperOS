@@ -68,6 +68,18 @@ static const sa_frame SA_FRAMES_AW[] = {
     { 17, 94 }, { 18, 93 }, { 19, 94 },
 };
 
+static const sa_frame SA_FRAMES_BGM[] = {
+    { 0, 0 },
+};
+
+static const sa_frame SA_FRAMES_BIOS[] = {
+    { 0, 0 },
+};
+
+static const sa_frame SA_FRAMES_BOOKS[] = {
+    { 0, 0 },
+};
+
 static const sa_frame SA_FRAMES_COLECO[] = {
     { 20, 94 }, { 21, 94 }, { 22, 93 }, { 23, 94 }, { 24, 94 }, { 25, 94 }, { 0, 1218 }, { 0, 844 },
     { 1, 94 }, { 2, 94 }, { 3, 93 }, { 4, 94 }, { 5, 94 }, { 6, 94 }, { 7, 93 }, { 8, 94 },
@@ -256,11 +268,19 @@ static const sa_frame SA_FRAMES_PSP[] = {
     { 23, 93 }, { 24, 94 }, { 25, 94 }, { 26, 94 }, { 27, 93 }, { 28, 94 },
 };
 
+static const sa_frame SA_FRAMES_ROMS[] = {
+    { 0, 0 },
+};
+
 static const sa_frame SA_FRAMES_SATURN[] = {
     { 20, 94 }, { 21, 94 }, { 22, 93 }, { 23, 94 }, { 24, 94 }, { 25, 94 }, { 0, 1218 }, { 0, 844 },
     { 1, 94 }, { 2, 94 }, { 3, 93 }, { 4, 94 }, { 5, 94 }, { 6, 94 }, { 7, 93 }, { 8, 94 },
     { 9, 94 }, { 10, 94 }, { 11, 93 }, { 12, 94 }, { 13, 1688 }, { 14, 93 }, { 15, 94 }, { 16, 94 },
     { 17, 94 }, { 18, 93 }, { 19, 94 },
+};
+
+static const sa_frame SA_FRAMES_SAVES[] = {
+    { 0, 0 },
 };
 
 static const sa_frame SA_FRAMES_SCUMMVM[] = {
@@ -289,6 +309,10 @@ static const sa_frame SA_FRAMES_SNES[] = {
     { 9, 93 }, { 10, 94 }, { 11, 94 }, { 12, 94 },
 };
 
+static const sa_frame SA_FRAMES_STATES[] = {
+    { 0, 0 },
+};
+
 static const sa_frame SA_FRAMES_TIC80[] = {
     { 1, 400 }, { 0, 400 },
 };
@@ -311,6 +335,10 @@ static const sa_frame SA_FRAMES_VECTREX[] = {
     { 2, 160 }, { 3, 160 }, { 4, 160 }, { 5, 160 }, { 6, 160 }, { 7, 160 }, { 0, 160 }, { 1, 160 },
 };
 
+static const sa_frame SA_FRAMES_VIDEOS[] = {
+    { 0, 0 },
+};
+
 static const sa_frame SA_FRAMES_WS[] = {
     { 10, 1875 }, { 11, 94 }, { 12, 93 }, { 13, 94 }, { 14, 94 }, { 0, 187 }, { 0, 375 }, { 1, 94 },
     { 2, 94 }, { 3, 94 }, { 4, 93 }, { 5, 94 }, { 6, 94 }, { 7, 94 }, { 8, 93 }, { 9, 469 },
@@ -331,6 +359,9 @@ static const sa_asset SA_ASSETS[] = {
     { "A7800", "system-icons/A7800.png", "system-icons/A7800-still.png", 256, 4, 7, 27, 112, 6, 57, 71, 6000, SA_FRAMES_A7800 },
     { "ARCADE", "system-icons/ARCADE.png", "system-icons/ARCADE-still.png", 256, 2, 1, 2, 117, 100, 24, 20, 800, SA_FRAMES_ARCADE },
     { "AW", "system-icons/AW.png", "system-icons/AW-still.png", 256, 3, 9, 27, 60, 26, 102, 113, 6000, SA_FRAMES_AW },
+    { "BGM", "system-icons/BGM.png", "system-icons/BGM-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_BGM },
+    { "BIOS", "system-icons/BIOS.png", "system-icons/BIOS-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_BIOS },
+    { "BOOKS", "system-icons/BOOKS.png", "system-icons/BOOKS-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_BOOKS },
     { "COLECO", "system-icons/COLECO.png", "system-icons/COLECO-still.png", 256, 7, 4, 27, 160, 41, 39, 59, 6000, SA_FRAMES_COLECO },
     { "DC", "system-icons/DC.png", "system-icons/DC-still.png", 256, 3, 9, 27, 91, 7, 106, 124, 6000, SA_FRAMES_DC },
     { "DOOM", "system-icons/DOOM.png", "system-icons/DOOM-still.png", 256, 1, 2, 2, 14, 74, 225, 126, 800, SA_FRAMES_DOOM },
@@ -362,14 +393,18 @@ static const sa_asset SA_ASSETS[] = {
     { "PORTS", "system-icons/PORTS.png", "system-icons/PORTS-still.png", 256, 2, 1, 2, 63, 37, 126, 192, 800, SA_FRAMES_PORTS },
     { "PS1", "system-icons/PS1.png", "system-icons/PS1-still.png", 256, 3, 9, 27, 93, 10, 108, 121, 6000, SA_FRAMES_PS1 },
     { "PSP", "system-icons/PSP.png", "system-icons/PSP-still.png", 256, 3, 15, 46, 74, 95, 109, 62, 6000, SA_FRAMES_PSP },
+    { "ROMS", "system-icons/ROMS.png", "system-icons/ROMS-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_ROMS },
     { "SATURN", "system-icons/SATURN.png", "system-icons/SATURN-still.png", 256, 3, 9, 27, 90, 15, 109, 101, 6000, SA_FRAMES_SATURN },
+    { "SAVES", "system-icons/SAVES.png", "system-icons/SAVES-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_SAVES },
     { "SCUMMVM", "system-icons/SCUMMVM.png", "system-icons/SCUMMVM-still.png", 256, 2, 1, 2, 46, 163, 31, 42, 800, SA_FRAMES_SCUMMVM },
     { "SEGACD", "system-icons/SEGACD.png", "system-icons/SEGACD-still.png", 256, 2, 17, 35, 26, 150, 111, 40, 6000, SA_FRAMES_SEGACD },
     { "SMS", "system-icons/SMS.png", "system-icons/SMS-still.png", 256, 4, 7, 27, 141, 24, 62, 74, 6000, SA_FRAMES_SMS },
     { "SNES", "system-icons/SNES.png", "system-icons/SNES-still.png", 256, 3, 9, 28, 112, 23, 82, 94, 6000, SA_FRAMES_SNES },
+    { "STATES", "system-icons/STATES.png", "system-icons/STATES-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_STATES },
     { "TIC80", "system-icons/TIC80.png", "system-icons/TIC80-still.png", 256, 2, 1, 2, 59, 72, 138, 62, 800, SA_FRAMES_TIC80 },
     { "VB", "system-icons/VB.png", "system-icons/VB-still.png", 256, 4, 7, 27, 80, 106, 63, 44, 6000, SA_FRAMES_VB },
     { "VECTREX", "system-icons/VECTREX.png", "system-icons/VECTREX-still.png", 256, 4, 2, 64, 98, 63, 62, 87, 10240, SA_FRAMES_VECTREX },
+    { "VIDEOS", "system-icons/VIDEOS.png", "system-icons/VIDEOS-still.png", 256, 0, 0, 1, 0, 0, 0, 0, 0, SA_FRAMES_VIDEOS },
     { "WS", "system-icons/WS.png", "system-icons/WS-still.png", 256, 8, 2, 17, 118, 111, 34, 33, 6000, SA_FRAMES_WS },
     { "WSC", "system-icons/WSC.png", "system-icons/WSC-still.png", 256, 3, 7, 21, 93, 102, 82, 53, 6000, SA_FRAMES_WSC },
 };

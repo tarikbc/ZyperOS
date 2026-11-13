@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "date": "2026-11-12",
+  "date": "2026-11-13",
   "status": "complete-review-set",
   "system_count": 47,
   "preview_cell": 256,
@@ -78,7 +78,14 @@
     "SMS_CARTRIDGE": "source/SMS-cartridge.png",
     "VB_CARTRIDGE": "source/VB-cartridge.png",
     "COLECO_CARTRIDGE": "source/COLECO-cartridge.png",
-    "MSX2_CARTRIDGE": "source/MSX2-cartridge.png"
+    "MSX2_CARTRIDGE": "source/MSX2-cartridge.png",
+    "ROMS": "source/ROMS.png",
+    "BOOKS": "source/BOOKS.png",
+    "VIDEOS": "source/VIDEOS.png",
+    "BIOS": "source/BIOS.png",
+    "SAVES": "source/SAVES.png",
+    "STATES": "source/STATES.png",
+    "BGM": "source/BGM.png"
   },
   "animation_catalogue": "animations/catalogue.json",
   "prompt_records": [
@@ -88,7 +95,8 @@
     "groups/arcade.json",
     "groups/console-lids.json",
     "groups/console-cartridges.json",
-    "groups/utility.json"
+    "groups/utility.json",
+    "groups/card-folders.json"
   ],
   "sources": [
     {
@@ -180,6 +188,24 @@
       "selected": true,
       "sha256": "689e98cd3cfa5ef3def9093c30abe50cd81a20d5a6f51a179510ed7734e122ac",
       "bytes": 901393
+    },
+    {
+      "file": "source/BGM.png",
+      "selected": true,
+      "sha256": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045",
+      "bytes": 617303
+    },
+    {
+      "file": "source/BIOS.png",
+      "selected": true,
+      "sha256": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3",
+      "bytes": 851180
+    },
+    {
+      "file": "source/BOOKS.png",
+      "selected": true,
+      "sha256": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f",
+      "bytes": 639034
     },
     {
       "file": "source/COLECO-cartridge.png",
@@ -464,6 +490,12 @@
       "bytes": 933076
     },
     {
+      "file": "source/ROMS.png",
+      "selected": true,
+      "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
+      "bytes": 754530
+    },
+    {
       "file": "source/SATURN-bay.png",
       "selected": true,
       "sha256": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
@@ -474,6 +506,12 @@
       "selected": true,
       "sha256": "bd9c64ff789d15833628f7f913c3cd6b20452252f77358aadc03b12b8903a2b3",
       "bytes": 900720
+    },
+    {
+      "file": "source/SAVES.png",
+      "selected": true,
+      "sha256": "31172a965e72e62c81dd17e7d1acc9abfb12d3b937b415d316f04f0c990735bf",
+      "bytes": 671411
     },
     {
       "file": "source/SCUMMVM.png",
@@ -518,6 +556,12 @@
       "bytes": 631619
     },
     {
+      "file": "source/STATES.png",
+      "selected": true,
+      "sha256": "baac7b95d47be5a332c71ce89a38102bb9c405d5c0ce668712bb33994f213692",
+      "bytes": 826488
+    },
+    {
       "file": "source/TIC80.png",
       "selected": true,
       "sha256": "56b92ce73301516ce4d1bb5625bc4b9f1dfbaefcb726df2ac16137ea84966f4d",
@@ -542,6 +586,12 @@
       "bytes": 804126
     },
     {
+      "file": "source/VIDEOS.png",
+      "selected": true,
+      "sha256": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8",
+      "bytes": 533072
+    },
+    {
       "file": "source/WS.png",
       "selected": true,
       "sha256": "0c8b9b34b2b29247b35b590cfed4ef97c709bcca83093d5b6f77c7b2f61a59f2",
@@ -562,10 +612,16 @@
     "loop_return": true,
     "source_and_renderer_hashes": true,
     "independent_perspective_review": "No remaining material findings.",
-    "designs": 50,
+    "designs": 57,
     "two_pose_symbols": 10,
     "utility_files": 9,
-    "mechanical_loading_added": 19
+    "mechanical_loading_added": 19,
+    "static_card_folders": 7,
+    "card_folder_review_sizes": [
+      256,
+      56,
+      40
+    ]
   },
-  "design_count": 50
+  "design_count": 57
 }

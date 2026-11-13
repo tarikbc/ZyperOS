@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card folder artwork</title><link rel="icon" href="data:,">
+<style>
+body{max-width:900px;margin:24px auto;padding:0 20px;font:16px system-ui;color:#272a33;background:#edece7}
+h1{font-size:24px;margin:0 0 16px}button{font:inherit;padding:8px 14px;background:transparent;border:1px solid #858993;border-radius:8px;color:inherit}
+table{width:100%;border-collapse:collapse;margin-top:22px}th,td{text-align:center;padding:12px 8px;border-bottom:1px solid #cfcec7}th:first-child,td:first-child{text-align:left}
+img{display:block;margin:auto;image-rendering:pixelated;max-width:100%;height:auto}.dark{background:#181c25;color:#e3e7ec}.dark td,.dark th{border-color:#414653}
+@media(max-width:560px){body{padding:0 10px}th,td{padding:8px 4px}td:first-child{max-width:80px}td:nth-child(2){max-width:150px}}
+</style>
+<h1>Card folder artwork</h1><button id="theme" type="button">Dark background</button>
+<table><thead><tr><th>Folder</th><th>256 px</th><th>56 px</th><th>40 px</th></tr></thead><tbody id="art"></tbody></table>
+<script>
+for(const [key,name]of [['ROMS','ROMs'],['BOOKS','Audiobooks'],['VIDEOS','Videos'],['BIOS','BIOS'],['SAVES','Saves'],['STATES','Save States'],['BGM','Menu music']]){
+ const row=document.createElement('tr'),label=document.createElement('td');label.textContent=name;row.append(label);
+ for(const size of [256,56,40]){const cell=document.createElement('td'),image=document.createElement('img');image.width=image.height=size;image.alt=name+' at '+size+' pixels';image.src=size===256?'animations/'+key+'-still.png':'review/card-folders/'+key+'-'+size+'.png';cell.append(image);row.append(cell);}
+ document.getElementById('art').append(row);
+}
+document.getElementById('theme').addEventListener('click',()=>{const dark=document.body.classList.toggle('dark');document.getElementById('theme').textContent=dark?'Light background':'Dark background';});
+</script>
+</html>

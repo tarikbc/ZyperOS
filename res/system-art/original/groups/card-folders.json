@@ -1,0 +1,549 @@
+{
+  "id": "card-folders",
+  "generator": "Built-in image_gen",
+  "created": "2026-11-13",
+  "scope": "Seven original static designs for card folders.",
+  "styleReferences": [
+    "source/GB.png",
+    "source/PS1-ports.png",
+    "source/FOLDER_SMALL.png"
+  ],
+  "styleReferenceUse": "Inspected all three approved images before generation. Used them only for visual style and included their style in each full prompt. Did not copy subjects, brands, logos, or source pixels.",
+  "hardwareReferences": [],
+  "hardwareReferenceNote": "The requested subjects are generic objects without real product markings.",
+  "generationPolicy": "One separate initial image_gen call per design. VIDEOS also required one targeted image_gen correction after its first attempt failed review.",
+  "assets": [
+    {
+      "key": "ROMS",
+      "name": "ROMs",
+      "subject": "Generic game cartridge",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic game cartridge, shown almost from the front with a narrow right side. Use a warm light-gray shell, a single large blank muted-teal inset panel, two broad shoulder steps, and a short dark connector recess along the bottom. Give the shell a solid blocky silhouette. Keep the inset panel completely blank. Draw no screws, ribs, tiny contacts, or separate objects. This is a new object design; do not reproduce a real console's cartridge.",
+      "sourceFile": "source/ROMS.png",
+      "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        99,
+        1222,
+        1224
+      ],
+      "visibleAlphaBounds": [
+        149,
+        227,
+        1105,
+        1045
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The stepped shoulder and bottom connector recess identify a game cartridge.",
+          "The blank teal inset is large and has no text or marking.",
+          "The dark outline, warm highlight, and cool right edge match the inspected references.",
+          "The source has no separate object, floor shadow, or background scene."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "BOOKS",
+      "name": "Audiobooks",
+      "subject": "Book with headphones",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic closed audiobook with headphones wrapped around its upper half. Treat the book and headphones as one compact icon. Show the upright book almost from the front, with a narrow cream page block visible at the right edge. Use a deep muted coral cover with a completely blank front. Use dark blue-gray over-ear headphones: one thick arch over the book and two large square padded ear cups at the sides. Keep the headphones separate from the book cover by clear light gaps. Use only these large shapes. No cable, music note, letters, bookmark, small details, or separate objects.",
+      "sourceFile": "source/BOOKS.png",
+      "sha256": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        41,
+        49,
+        1200,
+        1202
+      ],
+      "visibleAlphaBounds": [
+        127,
+        203,
+        1127,
+        1082
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The cream page block and coral cover identify a closed book.",
+          "The thick stepped headphone arch and two ear cups identify audiobook use.",
+          "The book cover is blank, and the headphone gaps remain clear.",
+          "The near-front view and right page block agree with the simple perspective."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "VIDEOS",
+      "name": "Videos",
+      "subject": "Generic video tape",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic video tape cassette, wide and horizontal, shown almost from the front with a narrow right side. Make its proportions clearly those of a video tape: wide rectangular charcoal-blue shell, one broad blank cream label panel across the upper third, two separated square windows with large pale reel hubs across the lower half, and a solid bottom tape-cover edge. Keep the two hubs very simple with dark square centers. Use broad gray-blue highlights and cool shadow planes. No text, tiny teeth, screws, grooves, cables, play symbols, or separate objects. The shell must be clearly wider than it is tall, with a bold simple silhouette.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit.\nEdit the supplied generated video tape icon.\nKeep the tape subject, its two large reel windows, blank cream label, palette, and chunky square pixel shapes.\nChange only the canvas and the unwanted outer glow.\nOutput a square canvas with the complete tape centered and generous transparent margins.\nRemove every pixel of the glow outside the tape outline.\nThe background must have genuinely transparent alpha.\nKeep the tape itself opaque, including its dark outline and reel centers.\nUse crisp hard square pixel edges without haze, blur, shadow, dithering, or antialiasing.\nDo not add text, symbols, details, brands, labels, or other objects.\nThis is a static generic video tape icon for 40 and 56 pixel display."
+      ],
+      "sourceFile": "source/VIDEOS.png",
+      "sha256": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        23,
+        1222,
+        1116
+      ],
+      "visibleAlphaBounds": [
+        125,
+        365,
+        1129,
+        897
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The broad rectangular shell, separate reel windows, and blank upper label identify a video tape.",
+          "Both reels and their square centers use large simple shapes.",
+          "The corrected square source has clear transparent margins and no visible outer glow.",
+          "The first attempt was rejected because its canvas was wide and it had an outer glow."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "BIOS",
+      "name": "BIOS",
+      "subject": "Generic integrated circuit chip",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic square integrated circuit chip, seen straight from above. Use a dark blue-gray square chip body with a large blank dark center and a muted teal raised square top face. Show three broad silver contact pins along each of the four sides, twelve total. The pins have wide gaps and simple rectangular shapes. Use a small cream upper-left edge highlight and cool lower-right side shading. Keep the center blank. Do not draw a circuit board, circuit traces, text, numbers, symbols, holes, screws, or extra objects. The chip and pins form one compact bold square silhouette centered on a square transparent canvas. Absolutely no outer glow or haze.",
+      "sourceFile": "source/BIOS.png",
+      "sha256": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        0,
+        1253,
+        1254
+      ],
+      "visibleAlphaBounds": [
+        137,
+        166,
+        1119,
+        1160
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The blank square chip body and twelve broad pins identify an integrated circuit.",
+          "The three pins on each side remain separated by broad transparent gaps.",
+          "The top view uses horizontal and vertical edges without conflicting perspective.",
+          "The source has no circuit board, label text, logo, or separate object."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "SAVES",
+      "name": "Saves",
+      "subject": "Generic memory card",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic removable memory card, upright and shown straight from the front. Use a dark muted blue plastic body, one clearly cut upper-right corner, and four broad gold contacts along the bottom edge. Put one large blank cream inset panel in the upper half of the card. Use a compact rectangular silhouette that is slightly taller than wide. Keep the card face flat with simple warm upper-left highlights and a cool lower-right border. This is a generic memory card, not a real branded product. Do not draw letters, symbols, capacity numbers, grooves, screws, tiny contacts, separate objects, or a connector device. Keep the complete card centered on a square transparent canvas with at least 15% margin. Absolutely no outer glow or haze.",
+      "sourceFile": "source/SAVES.png",
+      "sha256": "31172a965e72e62c81dd17e7d1acc9abfb12d3b937b415d316f04f0c990735bf",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        81,
+        73,
+        1168,
+        1230
+      ],
+      "visibleAlphaBounds": [
+        257,
+        150,
+        982,
+        1125
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The cut upper-right corner and four broad gold contacts identify a memory card.",
+          "The cream face panel is blank and contains no brand or capacity mark.",
+          "The flat front view keeps the outline and contacts simple.",
+          "The four contacts remain distinct from the dark blue body."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "STATES",
+      "name": "Save States",
+      "subject": "Generic floppy disk",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic floppy disk, upright and shown straight from the front. Use a muted violet plastic square shell with a small cut upper-right corner, one large silver metal shutter across the upper third with one simple dark rectangular opening, and one broad blank warm-cream label in the lower half. Keep a visible strip of violet shell between the shutter and blank label. Use only large shapes so the floppy disk reads at 40 pixels. Draw no text, lines on the label, capacity mark, screw holes, tiny grooves, logo, or extra object. Keep the complete disk centered on a square transparent canvas with generous margins. Absolutely no outer glow or haze.",
+      "sourceFile": "source/STATES.png",
+      "sha256": "baac7b95d47be5a332c71ce89a38102bb9c405d5c0ce668712bb33994f213692",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        34,
+        1242,
+        1236
+      ],
+      "visibleAlphaBounds": [
+        186,
+        227,
+        1062,
+        1046
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The square violet shell, silver shutter, and cream lower label identify a floppy disk.",
+          "The dark shutter opening remains large and separate from the blank label.",
+          "The front view keeps both the shutter and label aligned with the shell.",
+          "The source has no text, capacity mark, logo, or small decorative detail."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    },
+    {
+      "key": "BGM",
+      "name": "Menu music",
+      "subject": "Generic audio cassette",
+      "refs": [
+        "source/GB.png",
+        "source/PS1-ports.png",
+        "source/FOLDER_SMALL.png"
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: one original static pixel-art folder icon for ZyperOS.\nStyle references: the inspected approved GB.png, PS1-ports.png, and FOLDER_SMALL.png images are style references only. Match their chunky square pixel clusters, dark blue-gray outline, warm upper-left highlights, cool lower-right shadows, and limited three-tone color ramps. Do not copy their subjects, brands, logos, or markings.\nStyle/medium: bold clean game pixel art built from a coarse grid of visibly square color clusters. Use flat three-tone shading for each color. Keep hard pixel steps, not smooth curves. Make one large recognizable object with few details, legible at 40 and 56 pixels.\nComposition: square canvas, the complete object centered with generous transparent margins of at least 15% on every side. No crop.\nBackdrop: genuinely transparent alpha background. No background color, scene, floor, shadow outside the object, glow, or checkerboard pattern.\nConstraints: generic original object only. No brands, logos, label text, letters, numbers, product markings, watermark, photographs, tracing, or another icon set. No decorative secondary objects.\nSubject: one generic compact audio cassette, horizontal and shown straight from the front. Use a warm muted coral-red shell with a broad cream inset around two simple dark reel holes and one small dark tape window between them. Put a large dark blue-gray trapezoid along the lower edge, the familiar audio cassette tape opening. This lower trapezoid must distinguish the audio cassette from a video tape. Keep every opening broad and simple. No text, printed lines, screws, tiny teeth, loose tape, music notes, logos, capacity marks, or separate objects. Keep the full cassette centered with generous transparent space on every side of a square canvas. Do not make a wide canvas. Absolutely no outer glow or haze.",
+      "sourceFile": "source/BGM.png",
+      "sha256": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045",
+      "size": [
+        1254,
+        1254
+      ],
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "alphaBounds": [
+        0,
+        54,
+        1166,
+        1123
+      ],
+      "visibleAlphaBounds": [
+        159,
+        360,
+        1095,
+        998
+      ],
+      "static": true,
+      "poseCount": 1,
+      "expected_poses": 1,
+      "duration": 1000,
+      "kind": "card-folder",
+      "motionBounds": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "motionChoice": "Static source only. No moving parts and no screen.",
+      "sourceReview": {
+        "status": "passed",
+        "checks": [
+          "The two reel holes, center window, and broad lower trapezoid identify an audio cassette.",
+          "The coral shell and lower opening distinguish it from the dark video tape.",
+          "The straight front view keeps the reel holes and lower opening aligned.",
+          "The source has no text, printed line, logo, loose tape, or separate object."
+        ]
+      },
+      "actualSizeReview": {
+        "status": "passed",
+        "sizes": [
+          256,
+          56,
+          40
+        ],
+        "backgrounds": [
+          "light",
+          "dark"
+        ],
+        "note": "Reviewed the exported still at 256 pixels and browser-rendered previews at 56 and 40 pixels. The subject, outline, and main details remain clear. No visible glow, cropped shape, label text, or brand mark appears."
+      }
+    }
+  ],
+  "perspectiveChecks": [
+    "ROMS and VIDEOS use a near-front view with a narrow right side.",
+    "BOOKS uses a near-front book view with a right page block; the headphone arch stays around the book.",
+    "BIOS uses a top view with three broad contact pins on each side.",
+    "SAVES, STATES, and BGM use a straight front view.",
+    "All shapes remain fixed; no motion or screen projection is needed."
+  ],
+  "browserReview": {
+    "status": "passed",
+    "sizes": [
+      256,
+      56,
+      40
+    ],
+    "backgrounds": [
+      "light",
+      "dark"
+    ],
+    "checks": [
+      "one static pose",
+      "clear silhouette",
+      "no text or product marks",
+      "no visible outer glow",
+      "transparent margins"
+    ]
+  },
+  "independentReview": {
+    "status": "passed",
+    "sizes": [
+      256,
+      56,
+      40
+    ],
+    "backgrounds": [
+      "light",
+      "dark"
+    ],
+    "result": "No material findings. All seven subjects remain recognizable at 40 and 56 pixels. Perspective stays consistent. No visible glow, text, brand, or logo appears."
+  }
+}

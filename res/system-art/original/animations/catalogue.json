@@ -1072,6 +1072,147 @@
       "still_sha256": "68e58b999e3eb68b67e84c9c2e8ae3a4d3acf8bb6b3c80d552b29087c6477165"
     },
     {
+      "key": "BGM",
+      "name": "Menu music",
+      "description": "Generic audio cassette",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BGM.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BGM.png": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "BGM.png",
+      "still": "BGM-still.png",
+      "atlas_sha256": "7c36df66e2b6a5f0fcb8fcac569cd22c1c74701036b5be9b8296a7f14f37689e",
+      "still_sha256": "967255b7f66accfca590b7fad596ca3e2f5c7ca05acba5bf95526d9c1340656b"
+    },
+    {
+      "key": "BIOS",
+      "name": "BIOS",
+      "description": "Generic integrated circuit chip",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BIOS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BIOS.png": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "BIOS.png",
+      "still": "BIOS-still.png",
+      "atlas_sha256": "a9aab560a72f96120736bd66fc40e28f548bf3fe4477f81405b682f8887aa627",
+      "still_sha256": "0c3b231ad7dc9a8d549b86649f53e47d638e3e4a9c136f5d6cb1e7a0e955d05c"
+    },
+    {
+      "key": "BOOKS",
+      "name": "Audiobooks",
+      "description": "Book with headphones",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BOOKS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BOOKS.png": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "BOOKS.png",
+      "still": "BOOKS-still.png",
+      "atlas_sha256": "3c0faada60920562c52aee21881a3a0e526379cffdcf615232fd6a0922548bdb",
+      "still_sha256": "f968f67753a7714848172f84b344c220b43cf8161991bea3e3386d5981c62625"
+    },
+    {
       "key": "COLECO",
       "name": "ColecoVision",
       "description": "Cartridge lowers into the top slot",
@@ -5189,6 +5330,53 @@
       "still_sha256": "2e663b5f6a7b39fcc0bce5754606590fabf76e10f2cd65ec0177c255fdb530b9"
     },
     {
+      "key": "ROMS",
+      "name": "ROMs",
+      "description": "Generic game cartridge",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/ROMS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/ROMS.png": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "ROMS.png",
+      "still": "ROMS-still.png",
+      "atlas_sha256": "3be0c853c0f569b6ea2b4cc178cf9dcd7000697cd881ac55f9d07f556c888031",
+      "still_sha256": "141774e85ebd8d33d72806e11d4a728f51f1b4d27dcd1f5b808a79bc25ab88fd"
+    },
+    {
       "key": "SATURN",
       "name": "Sega Saturn",
       "description": "Disc lid opens and closes",
@@ -5350,6 +5538,53 @@
       "still": "SATURN-still.png",
       "atlas_sha256": "59c925774864a9d0249005666d66fb058e67d47297dc80bab3190bf1d065724f",
       "still_sha256": "f01844f9fb69bf3a76d1a575168fa822a4bb6e0466e923f381f3ee385a0d4573"
+    },
+    {
+      "key": "SAVES",
+      "name": "Saves",
+      "description": "Generic memory card",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/SAVES.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/SAVES.png": "31172a965e72e62c81dd17e7d1acc9abfb12d3b937b415d316f04f0c990735bf"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "SAVES.png",
+      "still": "SAVES-still.png",
+      "atlas_sha256": "d7cf3a1a0feeec7245f037a2fd6dad24b6cb337920920bfc4eeb38822c3ba022",
+      "still_sha256": "a450f056529f2a65873b58db4dc36b8b3ea41f3d56e135a507617dd415ab23bd"
     },
     {
       "key": "SCUMMVM",
@@ -5934,6 +6169,53 @@
       "still_sha256": "20314751b0bd8b81c1e78fba3e066dd6471e42b27d95a626c1fb8b7c464c34a1"
     },
     {
+      "key": "STATES",
+      "name": "Save States",
+      "description": "Generic floppy disk",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/STATES.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/STATES.png": "baac7b95d47be5a332c71ce89a38102bb9c405d5c0ce668712bb33994f213692"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "STATES.png",
+      "still": "STATES-still.png",
+      "atlas_sha256": "ca93549325da6979a2443132635a78188711f0f6a3a37b7df6e274d4400db3b0",
+      "still_sha256": "327541fcf567385322dc64d1e1934c80c805954825d89c923e63c43dd56f528f"
+    },
+    {
       "key": "TIC80",
       "name": "TIC-80",
       "description": "Code brackets open",
@@ -6469,6 +6751,53 @@
       "still_sha256": "a9d64eea88cc3e4595286ebe230ed1e006fa36fafd0e55ecad12e429832182ed"
     },
     {
+      "key": "VIDEOS",
+      "name": "Videos",
+      "description": "Generic video tape",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/VIDEOS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/VIDEOS.png": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "1037402f64ed51cd9f9b982be587741c2215d72ea23a4c7bd85333ca321a7c1a"
+      },
+      "atlas": "VIDEOS.png",
+      "still": "VIDEOS-still.png",
+      "atlas_sha256": "5c489be1feefbb6e0a7a8adf4ea183f74387790d2c448a084cfe2160822bc9a8",
+      "still_sha256": "62c5ece152a33906ed1df6b99d5900522f373a287c90ac473fce92a3ddc96fb5"
+    },
+    {
       "key": "WS",
       "name": "WonderSwan",
       "description": "Original startup \u00b7 Bandai mark",
@@ -6707,6 +7036,6 @@
       "still_sha256": "720489e430bf46129b472b4c817508a0dfd1ec120f4e623ab9df1e0a8771aa07"
     }
   ],
-  "total_png_bytes": 20036699,
+  "total_png_bytes": 20771325,
   "largest_decoded_atlas_bytes": 12582912
 }
