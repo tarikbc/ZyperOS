@@ -3,10 +3,13 @@
  * p2d's checks (tools/p2d-check.py, and the play page's).
  *
  *     p2d-feed --share PATH [--fps 60] [--rgba FILE] [--frames N]
+ *              [--buttons MASK] [--players N]
  *
  * The file is made as Diatom makes it (diatom/src/player2.c): a new file of
- * P2S_SIZE, the version and then the magic written last, so p2d never sees a
- * half-made one. Then a frame every 1/fps s, with p2s_write.
+ * P2S_SIZE, the system's buttons and players (as SETPLAYER2's buttons= and
+ * players= would set them: MASK in hex 0x... or decimal, the NES's 0x01FD
+ * and 2 by default), the version and then the magic written last, so p2d
+ * never sees a half-made one. Then a frame every 1/fps s, with p2s_write.
  *
  * Without --rgba the frames are drawn: 256x240, a few colors and a box that
  * moves, so each delta is small, as an NES game's is. With --rgba, FILE's
@@ -45,7 +48,8 @@ static void on_term(int sig)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: p2d-feed --share PATH [--fps 60] [--rgba FILE] [--frames N]\n");
+	fprintf(stderr, "usage: p2d-feed --share PATH [--fps 60] [--rgba FILE] [--frames N]"
+	                " [--buttons MASK] [--players N]\n");
 	exit(2);
 }
 
@@ -104,7 +108,7 @@ static uint32_t *load_rgba(const char *path, unsigned long *count)
 }
 
 /* The share, made as Diatom makes it */
-static p2s_head *share_make(const char *path)
+static p2s_head *share_make(const char *path, uint32_t buttons, long players)
 {
 	p2s_head *hd;
 	void *base;
@@ -126,6 +130,8 @@ static p2s_head *share_make(const char *path)
 		return NULL;
 	}
 	hd = base;
+	__atomic_store_n(&hd->buttons, p2s_buttons(buttons), __ATOMIC_RELAXED);
+	__atomic_store_n(&hd->players, p2s_players(players), __ATOMIC_RELAXED);
 	__atomic_store_n(&hd->version, P2S_VERSION, __ATOMIC_RELAXED);
 	__atomic_store_n(&hd->magic, P2S_MAGIC, __ATOMIC_RELEASE);
 	return hd;
@@ -134,7 +140,8 @@ static p2s_head *share_make(const char *path)
 int main(int argc, char **argv)
 {
 	const char *share = NULL, *rgba = NULL;
-	long fps = 60, frames = -1;
+	long fps = 60, frames = -1, players = 0;
+	uint32_t buttons = 0;
 	unsigned long count = 0, k;
 	uint32_t *fixture = NULL, *drawn = NULL;
 	struct sigaction sa;
@@ -146,6 +153,9 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--fps") && i + 1 < argc) fps = strtol(argv[++i], NULL, 10);
 		else if (!strcmp(argv[i], "--rgba") && i + 1 < argc) rgba = argv[++i];
 		else if (!strcmp(argv[i], "--frames") && i + 1 < argc) frames = strtol(argv[++i], NULL, 10);
+		else if (!strcmp(argv[i], "--buttons") && i + 1 < argc)
+			buttons = (uint32_t)strtoul(argv[++i], NULL, 0);
+		else if (!strcmp(argv[i], "--players") && i + 1 < argc) players = strtol(argv[++i], NULL, 10);
 		else usage();
 	}
 	if (!share || fps <= 0 || fps > 1000) usage();
@@ -158,7 +168,7 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	if (!(hd = share_make(share))) return 1;
+	if (!(hd = share_make(share, buttons, players))) return 1;
 	period = 1000000000LL / fps;
 	next = now_ns();
 	for (k = 0; !g_term && (frames < 0 || k < (unsigned long)frames); k++) {

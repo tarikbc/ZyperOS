@@ -1673,8 +1673,9 @@ build-native/p2codec-check: tools/p2codec-check.c src/p2d/codec.c src/p2d/codec.
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/p2codec-check.c src/p2d/codec.c -lz
 
-# Player 2's shared file (src/p2share.h): Diatom's frames out, p2d's pad in,
-# run against each other on one block of memory.
+# Player 2's shared file (src/p2share.h): Diatom's frames out, p2d's pads in,
+# run against each other on one block of memory; and the header's offsets and
+# SETPLAYER2's rule for a system's buttons and players.
 check-p2share: build-native/p2share-check
 	@./build-native/p2share-check
 
@@ -1707,8 +1708,10 @@ build-native/p2d-feed: tools/p2d-feed.c src/p2share.h
 
 # p2d against a feed, over real sockets (tools/p2d-check.py): the page and
 # the captive redirect, frames only as fast as they are acked, the pad into
-# the share and let go when the guest goes quiet or leaves, a second guest
-# turned away, the end of the game however it comes, and the DNS answer.
+# the share and let go when the guest goes quiet or leaves, a guest past the
+# system's players turned away and told so, two players at once with their
+# own pads and frames, the end of the game however it comes, and the DNS
+# answer.
 check-p2d: build-native/p2d build-native/p2d-feed
 	@python3 tools/p2d-check.py
 
@@ -1716,8 +1719,9 @@ check-p2d: build-native/p2d build-native/p2d-feed
 # over build-native/p2d and a feed of the codec check's fixture frames
 # (tools/play-check.py): the canvas the frame it says it drew, every key and
 # touch to the share's pad, the pad drawn from the game's buttons and nothing
-# sent outside them, Picture off, a second browser told player 2 is taken, a
-# browser too old for the page, and the game's end. The fixtures go
+# sent outside them, the picture in whole device pixels, Picture off, a
+# second browser told the game is full and trying again, a browser too old
+# for the page, and the game's end. The fixtures go
 # into the check's own temp folder, never build-native's, which check-p2codec
 # may be writing at the same moment. Chrome is needed.
 check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check

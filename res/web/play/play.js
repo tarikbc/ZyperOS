@@ -10,8 +10,8 @@
  * (src/p2d/codec.h: 'F', the flags, the size, the frame's number, a palette
  * when one changed, then the frame's palette indices, raw-deflated and XORed
  * with the frame before unless it is a KEY), and the status as text, "S" and
- * a line of JSON: {"state":"playing","player":N,"buttons":M}, or the older
- * {"state":"player2",...}, which is player 2; "taken", every player's place
+ * a line of JSON: {"state":"playing","player":N,"buttons":M}, this browser
+ * is player N with the game's buttons M; "taken", every player's place
  * held; "ended". To it, binary only: 'A' and a frame's number once that
  * frame is drawn, 'P' and the buttons held. p2d sends a frame only while
  * fewer than two wait for their ack, and drops a guest that holds one
@@ -320,12 +320,17 @@ function letGo() {
  * p2d closes the socket and the page stays as it is. Any other close is
  * tried again every 2 s, a full game too, saying so meanwhile: the place it
  * waits for may be its own, held by p2d until it finds the old link gone, or
- * another player's who leaves. */
+ * another player's who leaves. "Full" stays only while the tries reach p2d;
+ * one that does not (p2d gone with the game, the link lost) is connecting. */
 function connect() {
 	const sock = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/p2ws');
 	let frames = Promise.resolve();
+	let opened = false;
 	sock.binaryType = 'arraybuffer';
-	sock.onopen = sendPad;
+	sock.onopen = () => {
+		opened = true;
+		sendPad();
+	};
 	sock.onmessage = (e) => {
 		if (typeof e.data !== 'string') {
 			const buf = e.data;
@@ -335,12 +340,12 @@ function connect() {
 		let msg = null;
 		try { msg = e.data[0] === 'S' ? JSON.parse(e.data.slice(1)) : null; } catch (err) { /* not ours */ }
 		const s = msg && msg.state;
-		if (s === 'playing' || s === 'player2') {
+		if (s === 'playing') {
 			/* A new player's first frame is a KEY with its palette */
 			idx = null;
-			/* The game's buttons, where p2d names them; an NES's else */
+			/* The game's buttons, which p2d names; an NES's if it does not */
 			setButtons(typeof msg.buttons === 'number' ? msg.buttons : NES);
-			show('playing', s === 'playing' && Number.isInteger(msg.player) ? msg.player : 2);
+			show('playing', Number.isInteger(msg.player) ? msg.player : 2);
 		} else if (s === 'taken') {
 			show('full');
 		} else if (s === 'ended') {
@@ -350,7 +355,7 @@ function connect() {
 	sock.onclose = () => {
 		if (ws === sock) ws = null;
 		if (state === 'ended') return;
-		if (state !== 'full') show('connecting');
+		if (state !== 'full' || !opened) show('connecting');
 		setTimeout(connect, 2000);
 	};
 }

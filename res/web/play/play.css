@@ -488,9 +488,18 @@ kbd {
 /* The bar and the pad's group step aside (display: contents) and their parts
  * take the columns either side of the picture, which has the whole height */
 @media (orientation: landscape) and (min-width: 560px) {
-	/* The pad a little larger: the halves have the height, and on a phone
-	 * the picture is held by the height, not by them */
-	:root { --k: clamp(48px, 15vmin, 76px); }
+	/* The pad's unit as upright, 13vmin, but no larger than leaves the
+	 * picture the whole height (--fill: the width less the gutters, the
+	 * grid's two 24 px gaps and the picture at the height's 256:240, over
+	 * the halves' 3 and 3.05 units), and 48 at the least. On a laptop the
+	 * pad gives way so the picture fills the height: 1280x800 at 2x is
+	 * 768x720, three CSS pixels a pixel of the NES's, where the pad at its
+	 * largest (76) left it 640x600. 100vh, not dvh, which is newer than the
+	 * page's oldest browser: on a laptop the two are the same. */
+	:root {
+		--fill: calc((100vw - 2 * var(--gut) - 48px - (100vh - 16px) * 256 / 240) / 6.05);
+		--k: clamp(48px, min(13vmin, var(--fill)), 76px);
+	}
 	.game {
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		grid-template-rows: auto auto minmax(0, 1fr) auto;
@@ -509,6 +518,14 @@ kbd {
 	.view { align-items: center; }
 	.keys { order: 0; flex-direction: column; align-items: flex-start; margin: 0; }
 	.dpad, .ab, #select, #start { justify-self: center; }
+}
+/* A phone on its side: even a pad of 48 leaves the picture short of the
+ * height (667x375 would need a unit of 34), so it is held by the width
+ * whatever the pad, and the pad keeps its 13vmin. A smaller one would only
+ * widen the picture by a part of a device pixel a pixel of the NES's:
+ * 731x411 at 2.625x has 3 whole at 13vmin, 3.7 (some 3, some 4) at 48. */
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 480px) {
+	:root { --k: clamp(48px, 13vmin, 76px); }
 }
 
 /* ---- Picture off ------------------------------------------------------ */

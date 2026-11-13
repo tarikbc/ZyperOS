@@ -7,15 +7,22 @@
 #include <stdint.h>
 #include <string.h>
 
-/* NES player 2, between Diatom and the p2d daemon.
+/* Guest players (NES player 2 first), between Diatom and the p2d daemon.
  *
  * A second player joins from a browser. p2d serves the page, so it needs the
- * game's picture, and Diatom needs the second player's buttons. The two cross
+ * game's picture, and Diatom needs the guest's buttons. The two cross
  * between the processes as plain memory: one file in /tmp (RAM on the
- * device), mapped by both. Diatom writes the frames and reads the pad word;
- * p2d reads the frames and writes the pad word. No socket line per frame, and
- * nothing for Diatom to wait for: the Pixel must never drop a frame for a
- * guest.
+ * device), mapped by both. Diatom writes the frames and reads the pad words;
+ * p2d reads the frames and writes the pad words. No socket line per frame,
+ * and nothing for Diatom to wait for: the Pixel must never drop a frame for
+ * a guest.
+ *
+ * What a guest gets is the system's: the launcher's system table says which
+ * RetroPad buttons it has and how many play at once, SETPLAYER2 tells Diatom,
+ * and Diatom writes them here (buttons, players) for p2d, which tells the
+ * page. The NES is 0x01FD and 2. The Pixel's own player is port 0; the
+ * guests are ports 1 to players-1, each with its own pad word (pad[k] is port
+ * k+1's) and its bit in guests. One beat for all: it is p2d's, not a guest's.
  *
  * Three slots, as in src/mp4frame.h: Diatom writes the slot after the newest,
  * so it never writes the one p2d may be reading, and each slot's sequence
@@ -26,12 +33,14 @@
  * the core hands over (libretro's 0RGB1555, XRGB8888 or RGB565) as it copies,
  * so p2d never has to know the core's format.
  *
- * Diatom writes magic and version last, once the rest of the file is set, so
- * a reader that sees them sees a file it can use.
+ * Diatom writes magic and version last, once the rest of the file is set
+ * (players and buttons too), so a reader that sees them sees a file it can
+ * use.
  *
  * Shared by Diatom (diatom/src/p2share.h is a copy of this file, which is
- * where it is changed), by src/p2d.c, and by tools/p2share-check.c. Either
- * license, for the same reason as src/osdbar.c. */
+ * where it is changed), by p2d (src/p2d/main.c) and its feed
+ * (tools/p2d-feed.c), and by tools/p2share-check.c. Either license, for the
+ * same reason as src/osdbar.c. */
 
 #define P2S_PATH       "/tmp/zyperos-p2"
 #define P2S_MAGIC      0x50325348u          /* "P2SH" */
@@ -42,7 +51,13 @@
 #define P2S_HEAD       4096u
 #define P2S_SLOT_BYTES ((uint32_t)P2S_MAX_W * P2S_MAX_H * 4u)   /* XRGB8888 */
 #define P2S_SIZE       (P2S_HEAD + (uint32_t)P2S_SLOTS * P2S_SLOT_BYTES)
-#define P2S_PAD_MASK   0x01FDu              /* B SELECT START UP DOWN LEFT RIGHT A */
+#define P2S_GUESTS      3                   /* ports 1 to 3; port 0 is the Pixel's player */
+#define P2S_PLAYERS_MAX (P2S_GUESTS + 1)
+/* RetroPad bits, libretro's ids. The NES's are the default, and no system
+ * gets more than these twelve: never L2, R2, L3 or R3, which no guest's page
+ * has. */
+#define P2S_PAD_MASK    0x01FDu             /* B SELECT START UP DOWN LEFT RIGHT A */
+#define P2S_PAD_CEILING 0x0FFFu             /* B Y SELECT START UP DOWN LEFT RIGHT A X L R */
 
 typedef struct {
 	uint32_t seq;              /* odd while the slot is being written */
@@ -54,11 +69,29 @@ typedef struct {
 	uint32_t magic, version;
 	uint32_t latest;           /* Diatom: the slot with the newest whole frame */
 	uint32_t frame;            /* Diatom: frames published, 0 = none yet */
-	uint32_t pad;              /* p2d: player 2's RetroPad bits */
+	uint32_t players;          /* Diatom: 2 to P2S_PLAYERS_MAX, before the magic */
+	uint32_t buttons;          /* Diatom: the system's RetroPad bits, before the magic */
+	uint32_t pad[P2S_GUESTS];  /* p2d: port k+1's RetroPad bits, within buttons */
 	uint32_t pad_beat;         /* p2d: bumped at least every 100 ms while it runs */
-	uint32_t guests;           /* p2d: 1 while a browser is player 2 */
+	uint32_t guests;           /* p2d: bit k set while a browser plays port k+1 */
 	p2s_slot slot[P2S_SLOTS];
 } p2s_head;
+
+/* What SETPLAYER2 asked for, as the share holds it: the buttons within the
+ * ceiling, the NES's when none is left (or none was asked); 2 to
+ * P2S_PLAYERS_MAX players, 2 for anything else. Diatom applies them to what
+ * the launcher sends, and p2d again to what it reads, since it sizes its
+ * tables by players. */
+static inline uint32_t p2s_buttons(uint32_t asked)
+{
+	asked &= P2S_PAD_CEILING;
+	return asked ? asked : P2S_PAD_MASK;
+}
+
+static inline uint32_t p2s_players(long asked)
+{
+	return asked >= 2 && asked <= P2S_PLAYERS_MAX ? (uint32_t)asked : 2u;
+}
 
 static inline uint8_t *p2s_slot_data(void *base, int s)
 {

@@ -356,14 +356,14 @@ static void sysram_tick(void)
 static bool late_here(void) { return late_at >= 0 && (long)frame >= late_at; }
 
 /* STUBCORE_INPUT_LOG=path: a line a frame, the frame and the pads as the core
- * read them (1 << each RETRO_DEVICE_ID_JOYPAD_*), port 0's then port 1's, so a
+ * read them (1 << each RETRO_DEVICE_ID_JOYPAD_*), ports 0 to 3 in order, so a
  * test can say what the game saw - SELECT given late, a chord's buttons never
- * (test/hotkeys.py), player 2's buttons on port 1 (test/player2.py). */
+ * (test/hotkeys.py), the guests' buttons on ports 1 to 3 (test/player2.py). */
 static void input_log(void)
 {
 	static FILE *f;
 	static bool tried;
-	unsigned id, bits = 0, bits2 = 0;
+	unsigned id, port, bits[4] = { 0 };
 
 	if (!tried) {
 		const char *e = getenv("STUBCORE_INPUT_LOG");
@@ -372,11 +372,10 @@ static void input_log(void)
 		if (e && *e) f = fopen(e, "w");
 	}
 	if (!f) return;
-	for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++) {
-		if (input_cb(0, RETRO_DEVICE_JOYPAD, 0, id)) bits  |= 1u << id;
-		if (input_cb(1, RETRO_DEVICE_JOYPAD, 0, id)) bits2 |= 1u << id;
-	}
-	fprintf(f, "%u %u %u\n", (unsigned)frame, bits, bits2);
+	for (port = 0; port < 4; port++)
+		for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++)
+			if (input_cb(port, RETRO_DEVICE_JOYPAD, 0, id)) bits[port] |= 1u << id;
+	fprintf(f, "%u %u %u %u %u\n", (unsigned)frame, bits[0], bits[1], bits[2], bits[3]);
 	fflush(f);
 }
 

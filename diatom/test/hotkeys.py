@@ -128,7 +128,7 @@ check("SELECT+R2, R2, L2, L2, L2 step 1.5x, 2x, 1.5x, 1x and answer 1x at the en
 
 frames = []
 for line in open(LOG):
-    f, b, _ = line.split()        # the frame, port 0, port 1
+    f, b = line.split()[:2]       # the frame, port 0 (then ports 1 to 3)
     frames.append(int(b))
 check("the core read the pad", len(frames) > 250, len(frames))
 check("no chord's shoulder ever reached the game",

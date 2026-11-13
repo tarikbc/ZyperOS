@@ -84,6 +84,13 @@ bool guest_text(guest *g, const char *s);
  * guest is over */
 void guest_close(guest *g, unsigned code);
 
+/* A socket after its 101 that no slot can take (every one busy): `text` and
+ * a close with `code` written straight to it, and the socket closed. Fresh
+ * from its 101, its buffer has room for a few bytes; what it sent already is
+ * read and thrown away, and our side shut first, so it ends with a FIN, not
+ * a reset that could reach the browser before the text and lose it. */
+void guest_refuse(int fd, const char *text, unsigned code);
+
 /* Whether a frame may be put now: open, nothing of its own going out, fewer
  * than GUEST_FLIGHT unacked, and the socket able to take more */
 bool guest_ready(guest *g);

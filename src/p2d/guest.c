@@ -90,6 +90,27 @@ void guest_close(guest *g, unsigned code)
 	if (g->out_end && g->out_at == g->out_start) g->out_end = g->out_at = g->out_start = 0;
 }
 
+void guest_refuse(int fd, const char *text, unsigned code)
+{
+	uint8_t out[GUEST_HEAD + 125 + GUEST_HEAD + 2], junk[512];
+	size_t len = strlen(text), n;
+
+	/* Never waits, whatever httpd left the socket as */
+	if (len <= 125) {
+		n = ws_frame_head(out, OP_TEXT, len);
+		memcpy(out + n, text, len);
+		n += len;
+		n += ws_frame_head(out + n, OP_CLOSE, 2);
+		out[n++] = (uint8_t)(code >> 8);
+		out[n++] = (uint8_t)code;
+		/* Whatever it takes: one try, as the socket is not kept */
+		(void)send(fd, out, n, MSG_DONTWAIT);
+	}
+	shutdown(fd, SHUT_WR);
+	for (int i = 0; i < 8 && recv(fd, junk, sizeof junk, MSG_DONTWAIT) > 0; i++) ;
+	close(fd);
+}
+
 bool guest_ready(guest *g)
 {
 	struct pollfd p;

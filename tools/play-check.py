@@ -29,11 +29,14 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
     NES's 0x01FD until the status names others; Y, X, L and R are drawn
     and their keys pressed only when it does, and the page never sends a
     bit the game has not got; "playing" with a player's number says that
-    number, and the old "player2" is player 2
+    number, and the NES's buttons named again draw the NES's pad again
   - picture_size: upright, the picture right under the bar, as wide as the
     screen; on its side and on a laptop, the whole height; whole device
-    pixels unless they would leave it under 85% of the room; the pad's
-    parts on the screen and clear of each other and of the picture
+    pixels unless they would leave it under 85% of the room, and whole on
+    the common phones on their side (667x375 at 2x: 2 a pixel of the NES's,
+    731x411 at 2.625x: 3, 844x390 at 2x and 3x: 3 and 4) and on a laptop
+    (1280x800 at 1x and 2x: 768x720); the pad's parts on the screen and
+    clear of each other and of the picture
   - picture_off: switched on, the picture hides and the pad takes the
     screen, the canvas holds still for a second while the acks go on; off
     again, the picture is the game's again
@@ -48,7 +51,9 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
   - full_then_player: a second tab is told the game is full, the first
     plays on, and the second keeps trying: the first closed, it is player 2
   - ended_message: the share removed, the page says the game ended, and
-    still says so after p2d has gone and a retry would have come
+    still says so after p2d has gone and a retry would have come; a tab
+    told the game is full says it is connecting once its retries no longer
+    reach p2d
 
 No device is touched and nothing is fetched from the internet. Chrome is
 needed; without it the check says so and fails. make check runs three
@@ -87,7 +92,7 @@ LANG = 'fr'
 W, H, FRAMES = 256, 240, 100          # the fixture's (tools/p2codec-check.c)
 FRAME_BYTES = W * H * 4
 SHARE_SIZE = 4096 + 3 * 512 * 480 * 4  # src/p2share.h's P2S_SIZE
-PAD_AT, GUESTS_AT = 16, 24             # p2s_head's pad and guests
+PAD_AT, GUESTS_AT = 24, 40             # p2s_head's pad[0] and guests (tools/p2share-check.c)
 
 # Libretro's RetroPad bits, the mask's
 B, SELECT, START, UP, DOWN, LEFT, RIGHT, A = 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7, 1 << 8
@@ -433,9 +438,9 @@ def status_and_buttons(tab, rig, fixture, say):
     check(tab.until('window.__pads[window.__pads.length - 1] === 2', 5), 'its Y is the A key, bit 1')
     tab.key('a', False)
     check(tab.until('window.__pads[window.__pads.length - 1] === 0', 5), 'let go, 0')
-    status(tab, 'S{"state":"player2"}')
-    check(tab.state() == player(say, 2), f'the old "player2" is player 2: {tab.state()!r}')
-    check(tab.js(DRAWN) == 'b a select start', f'a status with none names the NES\'s again: {tab.js(DRAWN)!r}')
+    status(tab, 'S{"state":"playing","player":2,"buttons":509}')
+    check(tab.state() == player(say, 2), f'player 2 again: {tab.state()!r}')
+    check(tab.js(DRAWN) == 'b a select start', f'the NES\'s buttons named again draw its pad: {tab.js(DRAWN)!r}')
     sent = tab.js('window.__pads.length')
     tab.key('a', True)
     time.sleep(0.5)
@@ -479,16 +484,27 @@ def picture_size(tab, rig, fixture, say):
     check(pic['w'] >= 0.85 * view['w'] - 1, f"and as wide as the screen takes it: {pic['w']:.0f} of {view['w']:.0f}")
     bad = apart(tab)
     check(not bad, f'the picture and the pad clear of each other{": " + str(bad) if bad else ""}')
-    for name, metrics, touch, keys in (
-            ('a phone on its side', dict(width=844, height=390, deviceScaleFactor=2, mobile=True), True, False),
-            ('a laptop', dict(width=1280, height=800, deviceScaleFactor=1, mobile=False), False, True)):
-        got = settled(tab, metrics, touch)
+    # On its side and on a laptop, each with the device pixels an NES pixel
+    # is: whole on the common ones. In an order where each picture's width
+    # differs from the one before, which settled() waits for.
+    for name, (w, h, dpr), touch, keys, px in (
+            ('a phone on its side', (844, 390, 2), True, False, 3),
+            ('a laptop', (1280, 800, 1), False, True, 3),
+            ('a 667x375 phone on its side', (667, 375, 2), True, False, 2),
+            ('a 731x411 phone on its side', (731, 411, 2.625), True, False, 3),
+            ('an 844x390 phone at 3x on its side', (844, 390, 3), True, False, 4),
+            ('a laptop at 2x', (1280, 800, 2), False, True, 6)):
+        got = settled(tab, dict(width=w, height=h, deviceScaleFactor=dpr, mobile=touch), touch)
         pic, view = got['pic'], got['view']
         want = scale_rule(view['w'], view['h'], got['dpr'])
         check(view['h'] >= got['inner'] - 1, f"{name}: the picture's room is the whole height: {view['h']:.0f} of {got['inner']:.0f}")
         check(abs(pic['w'] - W * want) <= 1 and abs(pic['h'] - H * want) <= 1,
               f"{name}: the picture {pic['w']:.1f}x{pic['h']:.1f}, the rule's {W * want:.1f}x{H * want:.1f} "
               f"in {view['w']:.0f}x{view['h']:.0f} at {got['dpr']}x")
+        each = pic['w'] * got['dpr'] / W
+        check(abs(each - px) < 0.01 and abs(pic['h'] * got['dpr'] / H - px) < 0.01,
+              f"{name}: an NES pixel is {px} device pixels each way, whole: {each:.2f} "
+              f"({pic['w']:.1f}x{pic['h']:.1f} at {got['dpr']}x)")
         check(got['keys']['shown'] == keys, f"{name}: the keys {'shown' if keys else 'not shown'}")
         bad = apart(tab)
         check(not bad, f'{name}: the picture and the pad clear of each other{": " + str(bad) if bad else ""}')
@@ -622,18 +638,30 @@ def old_browser_message(browser, origin, say):
             old.close()
 
 
-def ended_message(tab, rig, fixture, say):
-    os.unlink(rig.share)
-    ended = json.dumps(say['play.state.ended'])
-    check(tab.until(f"document.getElementById('state').textContent === {ended}", 10),
-          f'the share removed, the page says the game ended: {tab.state()!r}')
+def ended_message(tab, rig, fixture, say, browser, origin):
+    # A tab turned away, which keeps trying while the game goes on
+    full = browser.tab()
     try:
-        code = rig.p2d.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        code = None
-    check(code == 0, f'p2d exited 0: {code}')
-    time.sleep(3)                         # past the 2 s a lost link waits to try again
-    check(tab.state() == say['play.state.ended'], f'and it still says so: {tab.state()!r}')
+        full.open(origin + '/play/')
+        check(full.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}", 15),
+              f'another tab is told the game is full: {full.state()!r}')
+        os.unlink(rig.share)
+        ended = json.dumps(say['play.state.ended'])
+        check(tab.until(f"document.getElementById('state').textContent === {ended}", 10),
+              f'the share removed, the page says the game ended: {tab.state()!r}')
+        try:
+            code = rig.p2d.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            code = None
+        check(code == 0, f'p2d exited 0: {code}')
+        time.sleep(3)                     # past the 2 s a lost link waits to try again
+        check(tab.state() == say['play.state.ended'], f'and it still says so: {tab.state()!r}')
+        # Its retries reach nothing now: not "full" for ever
+        connecting = json.dumps(say['play.state.connecting'])
+        check(full.until(f"document.getElementById('state').textContent === {connecting}", 10),
+              f'the tab that was told the game is full says it is connecting once p2d has gone: {full.state()!r}')
+    finally:
+        full.close()
 
 
 # ---- the run -----------------------------------------------------------------
@@ -698,7 +726,7 @@ def main():
             run('old_browser_message', old_browser_message, browser, rig.origin, say)
             # From here the second tab is player 2: the first is closed
             tab = run('full_then_player', full_then_player, tab, rig, fixture, say, browser, rig.origin) or tab
-            run('ended_message', ended_message, tab, rig, fixture, say)
+            run('ended_message', ended_message, tab, rig, fixture, say, browser, rig.origin)
     finally:
         if browser:
             browser.close()

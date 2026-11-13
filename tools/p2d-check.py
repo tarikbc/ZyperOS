@@ -19,10 +19,19 @@ test starts its own feed and p2d and kills them when it ends. What it holds:
     and so is one from any Origin but the page's own, or with none
   - frames: the first a KEY with its palette, 30 a second and more while
     each is acked, and never more than 2 waiting for an ack
-  - the pad: what the guest holds reaches the share, the NES's buttons only,
-    and is let go after a second of silence and when the guest leaves; the
-    beat Diatom watches moves with a guest and without
-  - a second browser is told player 2 is taken, and the first plays on
+  - the status: the first guest is told it plays as player 2 with the NES's
+    buttons, 509 (0x01FD), unless the share names others
+  - the pad: what the guest holds reaches the share, the system's buttons
+    only (the NES's, or p2d-feed --buttons'), and is let go after a second
+    of silence and when the guest leaves; the beat Diatom watches moves with
+    a guest and without
+  - a second browser is told every place is taken, and the first plays on;
+    every newcomer turned away is told so, even one that finds no room to
+    be told from
+  - more players (p2d-feed --players 3): two browsers are players 2 and 3,
+    each with its own pad, its own frames from a KEY on and its bit in
+    guests; a third is told it is taken; one that leaves frees its place,
+    the lowest free one the next newcomer's
   - a guest that says nothing for 5 s with a frame unacked is gone (a phone
     out of range sends no FIN), and one that acks every frame stays
   - a ping is answered, and a message the page never sends closes the guest
@@ -51,6 +60,7 @@ import sys
 import tempfile
 import threading
 import time
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 P2D = ROOT / 'build-native' / 'p2d'
@@ -64,6 +74,11 @@ HEAD = 4096
 SLOT_BYTES = 512 * 480 * 4
 SIZE = HEAD + 3 * SLOT_BYTES
 PAD_MASK = 0x01FD
+PAD_AT, BEAT_AT, GUESTS_AT, SLOT_AT = 24, 36, 40, 44   # tools/p2share-check.c holds them
+
+# What the first guest of an NES game is told
+PLAYER2 = 'S{"state":"playing","player":2,"buttons":509}'
+TAKEN = 'S{"state":"taken"}'
 
 
 class Fail(Exception):
@@ -98,12 +113,16 @@ class Share:
 
     magic = property(lambda s: s.word(0))
     frame = property(lambda s: s.word(12))
-    pad = property(lambda s: s.word(16))
-    beat = property(lambda s: s.word(20))
-    guests = property(lambda s: s.word(24))
+    pad = property(lambda s: s.word(PAD_AT))           # pad[0], port 1's: player 2's
+    beat = property(lambda s: s.word(BEAT_AT))
+    guests = property(lambda s: s.word(GUESTS_AT))
+
+    def pad_of(self, k):
+        """pad[k], port k + 1's: player k + 2's"""
+        return self.word(PAD_AT + 4 * k)
 
     def slot(self, s):
-        seq, w, h, frame = struct.unpack_from('<4I', self.m, 28 + 16 * s)
+        seq, w, h, frame = struct.unpack_from('<4I', self.m, SLOT_AT + 16 * s)
         return seq, w, h, frame
 
     def pixel(self, s, x, y, w):
@@ -120,7 +139,7 @@ class Rig:
     """a feed writing the share, and p2d serving it"""
     count = itertools.count(1)        # next() is one step for the slow tests' threads
 
-    def __init__(self, tmp, args=(), feed=True, share=None):
+    def __init__(self, tmp, args=(), feed=True, share=None, feed_args=()):
         n = next(Rig.count)
         self.tmp = tmp
         self.share = share or tmp / f'share-{n}'
@@ -129,12 +148,14 @@ class Rig:
         self.p2d = None
         self.args = list(args)
         self.want_feed = feed
+        self.feed_args = list(feed_args)
         self.port = self.dns_port = None
 
     def __enter__(self):
         try:
             if self.want_feed:
-                self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60'],
+                self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60']
+                                             + self.feed_args,
                                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             with open(self.log, 'wb') as log:
                 self.started = time.monotonic()
@@ -185,17 +206,24 @@ class Rig:
 # ---- a WebSocket client, as small as one can be --------------------------
 
 class WS:
-    def __init__(self, port, upgrade='websocket', origin=''):
-        """origin '' is the page's own, http://127.0.0.1:PORT; None sends none"""
+    def __init__(self, port, upgrade='websocket', origin='', answer=True):
+        """origin '' is the page's own, http://127.0.0.1:PORT; None sends none.
+        answer=False sends the request and leaves the 101 to answered()."""
         self.s = socket.create_connection(('127.0.0.1', port), timeout=3)
-        key = base64.b64encode(os.urandom(16)).decode()
+        self.key = base64.b64encode(os.urandom(16)).decode()
         if origin == '':
             origin = f'http://127.0.0.1:{port}'
         self.s.sendall((f'GET /p2ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n'
                         + (f'Origin: {origin}\r\n' if origin is not None else '') +
                         f'Upgrade: {upgrade}\r\nConnection: Upgrade\r\n'
-                        f'Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n').encode())
+                        f'Sec-WebSocket-Key: {self.key}\r\nSec-WebSocket-Version: 13\r\n\r\n').encode())
         self.buf = b''
+        if answer:
+            self.answered()
+
+    def answered(self):
+        """the 101, checked; what came after it is kept for recv"""
+        key = self.key
         while b'\r\n\r\n' not in self.buf:
             got = self.s.recv(4096)
             check(got, 'the handshake was cut off')
@@ -272,9 +300,11 @@ class WS:
         t = self.until(1, timeout)
         return t.decode() if t is not None else None
 
-    def frame(self, timeout=2.0):
-        """the next frame: (flags, w, h, number)"""
+    def frame(self, timeout=2.0, picture=None):
+        """the next frame: (flags, w, h, number); into `picture` too when given"""
         f = self.until(2, timeout)
+        if f is not None and picture is not None:
+            picture.take(f)
         if f is None:
             return None
         check(len(f) >= 10 and f[0] == ord('F'), f'not a frame: {f[:10]!r}')
@@ -301,6 +331,65 @@ class WS:
 
     def close(self):
         self.s.close()
+
+
+# ---- a guest's picture, as the page unpacks it ---------------------------
+
+def drawn(k):
+    """p2d-feed's k-th drawn frame (tools/p2d-feed.c's draw), the share's frame
+    k + 1, as rows of 0xRRGGBB"""
+    pal = (0x000000, 0x5c94fc, 0x00a800, 0xfcfcfc, 0xd82800, 0xfca044)
+    bx, by = k * 2 % (256 - 24), 60 + (k // ((256 - 24) // 2) % 8) * 16
+    box = pal[4 + (k // 30) % 2]
+    rows = []
+    for y in range(240):
+        row = [pal[(y // 40) % 4]] * 256
+        if by <= y < by + 24:
+            row[bx:bx + 24] = [box] * 24
+        rows.append(row)
+    return rows
+
+
+class Picture:
+    """One guest's frames unpacked in turn (src/p2d/codec.h): a delta is XORed
+    onto the frame before it, so a guest whose chain is not its own unpacks
+    a picture that is not the feed's"""
+
+    def __init__(self):
+        self.pal, self.idx, self.w, self.h, self.n = [0] * 256, None, 0, 0, 0
+
+    def take(self, m):
+        flags, w, h = m[1], struct.unpack_from('<H', m, 2)[0], struct.unpack_from('<H', m, 4)[0]
+        at = 10
+        if flags & 2:
+            count = struct.unpack_from('<H', m, at)[0]
+            at += 2
+            for i in range(count):
+                self.pal[i] = m[at] << 16 | m[at + 1] << 8 | m[at + 2]
+                at += 3
+        d = zlib.decompress(m[at:], -15)
+        check(len(d) == w * h, f'a frame of {len(d)} indices for {w}x{h}')
+        if flags & 1:
+            self.idx = bytearray(d)
+        else:
+            check(self.idx is not None and (w, h) == (self.w, self.h), 'a delta with no frame before it')
+            self.idx = bytearray(a ^ b for a, b in zip(self.idx, d))
+        self.w, self.h, self.n = w, h, struct.unpack_from('<I', m, 6)[0]
+
+    def is_the_feeds(self):
+        """the newest frame unpacked is what the feed drew for its number"""
+        if not self.n or (self.w, self.h) != (256, 240):
+            return False
+        want = drawn(self.n - 1)
+        return all([self.pal[i] for i in self.idx[y * 256:(y + 1) * 256]] == want[y] for y in range(240))
+
+
+def play(ws, picture, frames):
+    """`frames` frames to the guest, each unpacked and acked"""
+    for _ in range(frames):
+        f = ws.frame(picture=picture)
+        check(f is not None, 'frames stopped for a guest that acks every one')
+        ws.ack(f[3])
 
 
 # ---- the tests -----------------------------------------------------------
@@ -367,7 +456,7 @@ def handshake_refused(tmp):
             s, _, _ = r.get('/p2ws', headers=h)
             check(s == 400, f'/p2ws without {drop or swap} was {s}, wanted 400')
         a = WS(r.port, upgrade='WebSocket')
-        check(a.status() == 'S{"state":"player2"}', 'Upgrade: WebSocket (capitals) was not taken')
+        check(a.status() == PLAYER2, 'Upgrade: WebSocket (capitals) was not taken')
         a.close()
 
 
@@ -394,7 +483,7 @@ def origin_checked(tmp):
         check(sh.guests == 0, 'a refused origin became player 2')
         for origin in (f'http://127.0.0.1:{p}', f'http://zyperos.local:{p}', f'HTTP://ZyperOS.Local:{p}'):
             a = WS(p, origin=origin)
-            check(a.status() == 'S{"state":"player2"}', f'Origin {origin} was not player 2')
+            check(a.status() == PLAYER2, f'Origin {origin} was not player 2')
             a.close()
             check(wait_for(lambda: sh.guests == 0, 2), f'the guest from {origin} did not leave')
         sh.close()
@@ -405,7 +494,7 @@ def frames_flow_with_acks(tmp):
     with Rig(tmp) as r:
         ws = WS(r.port)
         st = ws.status()
-        check(st == 'S{"state":"player2"}', f'the first guest was told {st!r}')
+        check(st == PLAYER2, f'the first guest was told {st!r}')
         f = ws.frame()
         check(f is not None, 'no frame came')
         check(f[0] & 3 == 3, f'the first frame has flags {f[0]}, wanted KEY and PAL')
@@ -442,7 +531,7 @@ def pad_reaches_share(tmp):
         check(sh.beat - b0 >= 4, f'pad_beat moved {sh.beat - b0} in 600 ms with no guest')
         check(sh.guests == 0, f'guests is {sh.guests} with nobody there')
         ws = WS(r.port)
-        check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        check(ws.status() == PLAYER2, 'not player 2')
         ws.pad(0x0101)
         check(wait_for(lambda: sh.pad == 0x0101, 2), f'pad is {sh.pad:#06x}, wanted 0x0101')
         check(sh.guests == 1, f'guests is {sh.guests} with player 2 there')
@@ -460,7 +549,7 @@ def pad_clears_on_silence(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
         ws = WS(r.port)
-        check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        check(ws.status() == PLAYER2, 'not player 2')
         pressed = time.monotonic()
         ws.pad(0x0100)
         check(wait_for(lambda: sh.pad == 0x0100, 2), f'pad is {sh.pad:#06x}, wanted 0x0100')
@@ -486,7 +575,7 @@ def pad_clears_on_silence(tmp):
 
         # A hang-up with no close: the same
         b = WS(r.port)
-        check(b.status() == 'S{"state":"player2"}', 'the next guest was not player 2')
+        check(b.status() == PLAYER2, 'the next guest was not player 2')
         f = b.frame()
         check(f and f[0] & 3 == 3, 'the next guest\'s first frame was not KEY and PAL')
         b.pad(0x0040)
@@ -502,10 +591,10 @@ def second_guest_is_taken(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
         a = WS(r.port)
-        check(a.status() == 'S{"state":"player2"}', 'the first guest was not player 2')
+        check(a.status() == PLAYER2, 'the first guest was not player 2')
         b = WS(r.port)
         st = b.status()
-        check(st == 'S{"state":"taken"}', f'the second guest was told {st!r}')
+        check(st == TAKEN, f'the second guest was told {st!r}')
         check(b.closed_by_server(), 'the second guest was not closed')
         got, end = 0, time.monotonic() + 1.0
         while got < 10 and time.monotonic() < end:
@@ -521,11 +610,104 @@ def second_guest_is_taken(tmp):
 
 
 @test
+def every_newcomer_is_told(tmp):
+    """more newcomers at once than p2d keeps room to turn away: each is told
+    it is taken before its socket goes, the ones with no room too"""
+    with Rig(tmp) as r:
+        a = WS(r.port)
+        check(a.status() == PLAYER2, 'the first guest was not player 2')
+        many = [WS(r.port, answer=False) for _ in range(8)]
+        for ws in many:
+            ws.answered()
+        for i, ws in enumerate(many):
+            st = ws.status(3.0)
+            check(st == TAKEN, f'newcomer {i + 1} of {len(many)} was told {st!r}')
+            check(ws.hung_up(3.0), f'newcomer {i + 1} was not closed')
+        check('no room' in r.log.read_text(errors='replace'),
+              f'p2d never ran out of room to turn one away: {r.log.read_text(errors="replace")!r}')
+        a.close()
+
+
+@test
+def buttons_from_the_share(tmp):
+    """a system with other buttons (p2d-feed --buttons as Diatom's
+    SETPLAYER2 buttons=): the status names them, and the pad is them only"""
+    with Rig(tmp, feed_args=['--buttons', '0x0F03']) as r:
+        sh = r.mapped()
+        ws = WS(r.port)
+        st = ws.status()
+        check(st == 'S{"state":"playing","player":2,"buttons":3843}', f'the guest was told {st!r}')
+        ws.pad(0xFFFF)
+        check(wait_for(lambda: sh.pad == 0x0F03, 2), f'pad is {sh.pad:#06x} for 0xffff, wanted 0x0f03')
+        ws.close()
+        sh.close()
+
+
+@test
+def more_players(tmp):
+    """a system for three (p2d-feed --players 3): two browsers play at once,
+    each its own port, pad, bit in guests and chain of frames"""
+    with Rig(tmp, feed_args=['--players', '3']) as r:
+        sh = r.mapped()
+        a, pa = WS(r.port), Picture()
+        check(a.status() == PLAYER2, 'the first guest was not player 2')
+        check(wait_for(lambda: sh.guests == 0b01, 2), f'guests is {sh.guests:#b}, wanted 0b1')
+        play(a, pa, 10)
+        b, pb = WS(r.port), Picture()
+        st = b.status()
+        check(st == 'S{"state":"playing","player":3,"buttons":509}', f'the second guest was told {st!r}')
+        check(wait_for(lambda: sh.guests == 0b11, 2), f'guests is {sh.guests:#b}, wanted 0b11')
+        f = b.frame(picture=pb)
+        check(f is not None and f[0] & 3 == 3, f'player 3\'s first frame has flags {f and f[0]}, wanted KEY and PAL')
+        b.ack(f[3])
+        for _ in range(20):
+            play(a, pa, 1)
+            play(b, pb, 1)
+        check(pa.is_the_feeds(), f'player 2\'s frame {pa.n} unpacks to what the feed drew')
+        check(pb.is_the_feeds(), f'player 3\'s frame {pb.n} unpacks to what the feed drew')
+
+        c = WS(r.port)
+        st = c.status()
+        check(st == TAKEN, f'a third guest was told {st!r}')
+        check(c.closed_by_server(), 'the third guest was not closed')
+        check(sh.guests == 0b11, f'guests is {sh.guests:#b} after the third, wanted 0b11')
+
+        a.pad(0x0101)
+        b.pad(0x0040)
+        check(wait_for(lambda: sh.pad_of(0) == 0x0101 and sh.pad_of(1) == 0x0040, 2),
+              f'pads {sh.pad_of(0):#06x} {sh.pad_of(1):#06x}, wanted 0x0101 and 0x0040')
+        check(sh.pad_of(2) == 0, f'pad[2] is {sh.pad_of(2):#06x} with no player 4')
+
+        # Player 2 goes: its pad and its bit, nothing of player 3's
+        a.close()
+        b.pad(0x0040)
+        check(wait_for(lambda: sh.guests == 0b10 and sh.pad_of(0) == 0, 2),
+              f'after player 2 left guests {sh.guests:#b} pad[0] {sh.pad_of(0):#06x}, wanted 0b10 and 0')
+        check(sh.pad_of(1) == 0x0040, f'player 3\'s pad is {sh.pad_of(1):#06x}, wanted 0x0040')
+        # The lowest free place is the next newcomer's
+        d, pd = WS(r.port), Picture()
+        check(d.status() == PLAYER2, 'the next guest was not player 2')
+        check(wait_for(lambda: sh.guests == 0b11, 2), f'guests is {sh.guests:#b}, wanted 0b11')
+        f = d.frame(picture=pd)
+        check(f is not None and f[0] & 3 == 3, 'the new player 2\'s first frame was not KEY and PAL')
+        d.ack(f[3])
+        for _ in range(10):
+            play(d, pd, 1)
+            play(b, pb, 1)
+        check(pd.is_the_feeds() and pb.is_the_feeds(), 'both unpack to what the feed drew')
+        b.close()
+        d.close()
+        check(wait_for(lambda: sh.guests == 0 and sh.pad_of(1) == 0, 2),
+              f'all gone: guests {sh.guests:#b} pad[1] {sh.pad_of(1):#06x}')
+        sh.close()
+
+
+@test
 def ping_and_bad_messages(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
         ws = WS(r.port)
-        check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        check(ws.status() == PLAYER2, 'not player 2')
         ws.send(9, b'hi')
         check(ws.until(10, 2) == b'hi', 'the ping had no pong')
         for bad in (b'Q12', b'A\x01\x02', b'P\x01', b'P\x01\x00\x00'):
@@ -536,7 +718,7 @@ def ping_and_bad_messages(tmp):
             check(wait_for(lambda: sh.pad == 0 and sh.guests == 0, 2),
                   f'after {bad!r} pad {sh.pad:#06x} guests {sh.guests}')
             ws = WS(r.port)
-            check(ws.status() == 'S{"state":"player2"}', f'no player 2 after {bad!r}')
+            check(ws.status() == PLAYER2, f'no player 2 after {bad!r}')
         ws.send(1, b'P\x01\x00')
         check(ws.closed_by_server(), 'a text message did not close the guest')
         sh.close()
@@ -548,7 +730,7 @@ def ended_when_share_goes(tmp):
         with Rig(tmp) as r:
             sh = r.mapped(write=True)
             ws = WS(r.port)
-            check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+            check(ws.status() == PLAYER2, 'not player 2')
             check(ws.frame() is not None, 'no frame came')
             ws.pad(0x0100)
             check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come')
@@ -591,6 +773,27 @@ def dns_answers(tmp):
         check(len(a) >= 16 and a[:2] == b'\x12\x34', f'no answer to the query: {a!r}')
         check(struct.unpack_from('>H', a, 6)[0] == 1, 'the answer has no A record')
         check(a[-4:] == bytes([127, 0, 0, 1]), f'example.com is {list(a[-4:])}, wanted 127.0.0.1')
+
+
+@test
+def feed_writes_buttons_and_players(tmp):
+    """p2d-feed's --buttons and --players, into the share as Diatom's
+    SETPLAYER2 writes them"""
+    for args, want in (([], (PAD_MASK, 2)), (['--buttons', '0x0F03', '--players', '3'], (0x0F03, 3)),
+                       (['--buttons', '0xF000', '--players', '9'], (PAD_MASK, 2))):
+        share = tmp / 'share-header'
+        feed = subprocess.Popen([str(FEED), '--share', str(share), '--frames', '1'] + args,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            check(wait_for(lambda: share.exists() and share.stat().st_size >= SIZE, 2), 'no share file')
+            sh = Share(share)
+            check(wait_for(lambda: sh.magic == MAGIC, 2), 'the share has no magic')
+            got = (sh.word(20), sh.word(16))
+            check(got == want, f'p2d-feed {args}: buttons and players {got}, wanted {want}')
+            sh.close()
+        finally:
+            feed.send_signal(signal.SIGTERM)
+            feed.wait()
 
 
 @test
@@ -647,7 +850,7 @@ def quiet_guest_is_dropped(tmp):
         sh = r.mapped()
         t0 = time.monotonic()           # before p2d's clock for the guest starts
         ws = WS(r.port)
-        check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        check(ws.status() == PLAYER2, 'not player 2')
         check(ws.frame() is not None, 'no frame came')
         gone = wait_for(lambda: sh.guests == 0, 8, step=0.05)
         took = time.monotonic() - t0
@@ -655,7 +858,7 @@ def quiet_guest_is_dropped(tmp):
         check(4.9 <= took <= 7.0, f'the quiet guest was dropped after {took:.1f} s, wanted 5')
         check(ws.hung_up(), 'the quiet guest\'s socket was not closed')
         b = WS(r.port)
-        check(b.status() == 'S{"state":"player2"}', 'the next guest was not player 2')
+        check(b.status() == PLAYER2, 'the next guest was not player 2')
         b.close()
         sh.close()
 
@@ -665,7 +868,7 @@ def acking_guest_stays(tmp):
     with Rig(tmp) as r:
         sh = r.mapped()
         ws = WS(r.port)
-        check(ws.status() == 'S{"state":"player2"}', 'not player 2')
+        check(ws.status() == PLAYER2, 'not player 2')
         end = time.monotonic() + 6.0
         while time.monotonic() < end:
             f = ws.frame()

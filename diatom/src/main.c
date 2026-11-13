@@ -1586,21 +1586,31 @@ static void screens_switch(void)
 	if (on != was) stylus_emit();
 }
 
-/* NES player 2 (player2.h), which the launcher turns on from the in-game
- * menu. On only while a game is loaded: the share is that game's frames, so
- * between games the answer is on=0 rather than a file nothing will draw
- * into. Every game starts with it off and ends with it off (run_session and
- * the frame loop's end). */
+/* Guest players, NES player 2 first (player2.h), which the launcher turns
+ * on from the in-game menu with the system's buttons and players. On only
+ * while a game is loaded: the share is that game's frames, so between games
+ * the answer is on=0 rather than a file nothing will draw into. Every game
+ * starts with it off and ends with it off (run_session and the frame loop's
+ * end). While on, the answer says what it gives, so the launcher hears what
+ * Diatom made of what it sent. */
 static void player2_emit(void)
 {
-	diatom_proto_send("PLAYER2\ton=%d", p2_on() ? 1 : 0);
+	if (p2_on())
+		diatom_proto_send("PLAYER2\ton=1\tbuttons=0x%04X\tplayers=%u",
+		                  (unsigned)p2_buttons(), p2_players());
+	else
+		diatom_proto_send("PLAYER2\ton=0");
 }
 
-static void player2_set(bool on)
+static void player2_set(bool on, uint32_t buttons, long players)
 {
 	if (g_phase != PHASE_RUNNING) on = false;
-	if (on != p2_on() && p2_set(on)) {
-		printf("diatom: player 2 %s\n", on ? "on" : "off");
+	if (on != p2_on() && p2_set(on, buttons, players)) {
+		if (on)
+			printf("diatom: player 2 on, buttons 0x%04X, %u players\n",
+			       (unsigned)p2_buttons(), p2_players());
+		else
+			printf("diatom: player 2 off\n");
 		fflush(stdout);
 	}
 	player2_emit();
@@ -1680,7 +1690,7 @@ static bool state_plane_msg(const diatom_msg *m)
 	case DIATOM_MSG_STYLUS:     stylus_emit();       return true;
 	case DIATOM_MSG_SETSTYLUS:  stylus_set(m->on);   return true;
 	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
-	case DIATOM_MSG_SETPLAYER2: player2_set(m->on);  return true;
+	case DIATOM_MSG_SETPLAYER2: player2_set(m->on, m->buttons, m->players); return true;
 	case DIATOM_MSG_PREMAP:
 		/* The launcher has drawn: the cores and the sound device, which both
 		 * waited so as not to compete with its start. */
@@ -2819,7 +2829,7 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_port_power(DIATOM_POWER_FULL);
 	/* And player 2's file goes now, before EXIT, so it is gone by the time
 	 * the launcher hears the game end (player2.h) */
-	p2_set(false);
+	p2_set(false, 0, 0);
 
 	/* A quick save still on its thread is finished and said before EXIT; a
 	 * quick load is not handed to a game that is over. */
@@ -2966,7 +2976,7 @@ static int run_session(const diatom_session *sn)
 
 	g_phase = PHASE_LOADING;
 	/* Off for every game until the launcher asks (player2.h) */
-	p2_set(false);
+	p2_set(false, 0, 0);
 	rc = run_session_inner(sn);
 	diatom_now_end();
 	g_phase = PHASE_IDLE;

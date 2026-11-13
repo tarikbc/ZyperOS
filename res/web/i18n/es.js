@@ -5,7 +5,7 @@ window.ZYPEROS_STRINGS = {
   "play.name": "Multijugador",
   "play.state.connecting": "Conectando",
   "play.state.player": "Jugador %d",
-  "play.state.full": "La partida está llena",
+  "play.state.full": "La partida está completa",
   "play.state.ended": "La partida terminó",
   "play.old_browser": "Este navegador es demasiado antiguo para mostrar el juego. Actualízalo o abre esta página en otro navegador.",
   "play.picture_off": "Sin imagen",

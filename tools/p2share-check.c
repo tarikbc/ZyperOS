@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* src/p2share.h: Diatom's frames to p2d, and p2d's pad back. Runs the writer
- * and the reader against each other on one malloc'd block. */
+/* src/p2share.h: Diatom's frames to p2d, and p2d's pads back. Runs the writer
+ * and the reader against each other on one malloc'd block, and holds the
+ * header's layout to the offsets the Python checks map it by. */
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,10 +150,36 @@ static void too_big_refused(void)
 	free(b);
 }
 
+/* diatom/test/player2.py, tools/p2d-check.py and tools/play-check.py map the
+ * file and read it by these offsets */
 static void layout(void)
 {
 	CHECK(sizeof(p2s_head) <= P2S_HEAD);
 	CHECK(P2S_SLOT_BYTES == 512u * 480u * 4u);
+	CHECK(P2S_GUESTS == 3 && P2S_PLAYERS_MAX == 4);
+	CHECK(offsetof(p2s_head, frame) == 12);
+	CHECK(offsetof(p2s_head, players) == 16);
+	CHECK(offsetof(p2s_head, buttons) == 20);
+	CHECK(offsetof(p2s_head, pad) == 24);
+	CHECK(offsetof(p2s_head, pad_beat) == 36);
+	CHECK(offsetof(p2s_head, guests) == 40);
+	CHECK(offsetof(p2s_head, slot) == 44);
+}
+
+/* The rule for what SETPLAYER2 asks, which Diatom applies and p2d and the
+ * feed apply again to what they read */
+static void buttons_and_players(void)
+{
+	CHECK(P2S_PAD_MASK == 0x01FDu && P2S_PAD_CEILING == 0x0FFFu);
+	CHECK((P2S_PAD_MASK & ~P2S_PAD_CEILING) == 0);
+	CHECK(p2s_buttons(0) == P2S_PAD_MASK);
+	CHECK(p2s_buttons(0x0FFFu) == 0x0FFFu);
+	CHECK(p2s_buttons(0xFFFFu) == 0x0FFFu);            /* never L2 R2 L3 R3 */
+	CHECK(p2s_buttons(0x0F03u) == 0x0F03u);
+	CHECK(p2s_buttons(0xF000u) == P2S_PAD_MASK);       /* nothing left: the NES's */
+	CHECK(p2s_players(0) == 2 && p2s_players(1) == 2 && p2s_players(-3) == 2);
+	CHECK(p2s_players(2) == 2 && p2s_players(3) == 3 && p2s_players(4) == 4);
+	CHECK(p2s_players(5) == 2 && p2s_players(1000) == 2);
 }
 
 int main(void)
@@ -164,6 +192,7 @@ int main(void)
 	three_slots_rotate();
 	too_big_refused();
 	layout();
+	buttons_and_players();
 	if (fails) return 1;
 	printf("p2share: ok\n");
 	return 0;

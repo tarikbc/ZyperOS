@@ -291,7 +291,8 @@ check-hotkeys:
 .PHONY: check-hotkeys
 
 # NES player 2 end to end (src/player2.h): the frames in the shared file,
-# port 1 from the pad p2d writes, the pad let go when its beat stops, the
+# ports 1 to 3 from the pads p2d writes, within the system's buttons and
+# players as SETPLAYER2 says them, the pads let go when the beat stops, the
 # file gone at every end. On check-stateplane's terms: a few seconds, the
 # stub core, skipped unbuilt.
 check-player2:

@@ -10,11 +10,18 @@
  *         [--lang CODE]
  *
  * It serves DIR/play/ over plain HTTP, and DIR/i18n/CODE.js as /i18n.js, the
- * page's words in the handheld's language. One WebSocket on /p2ws: the
- * frames out (codec.h), the acks and the pad in (guest.h). The first browser
- * on it is player 2; any other is told player 2 is taken. With --dns it is
- * the hotspot's DNS too, every name the Pixel's (captive.h), so a phone's
- * internet check lands here and is sent to the page.
+ * page's words in the handheld's language. One WebSocket on /p2ws per
+ * browser: the frames out (codec.h), the acks and the pad in (guest.h).
+ *
+ * The share says what the system gives a guest (p2share.h): its buttons and
+ * how many play at once, the NES's 0x01FD and 2. Up to players-1 browsers
+ * play together, each on a port of its own and told so with its player's
+ * number and the buttons: the first is player 2, a newcomer takes the lowest
+ * free port, and one that comes when every port is in use is told it is
+ * taken and closed. Each has its own pad, its own chain of frames (its own
+ * encoder) and every rule here for itself. With --dns it is the hotspot's
+ * DNS too, every name the Pixel's (captive.h), so a phone's internet check
+ * lands here and is sent to the page.
  *
  * Its own process, so the network is on neither the game's thread nor the
  * launcher's frame loop; nice(5), so both come first. One thread, and nothing
@@ -50,7 +57,8 @@
 #include "guest.h"
 #include "ws.h"
 
-#define GUESTS        4      /* player 2, and a few being told it is taken */
+#define REFUSING      3      /* slots for newcomers being told every port is taken */
+#define GUESTS        (P2S_GUESTS + REFUSING)
 #define SHARE_WAIT_MS 5000   /* the launcher sends SETPLAYER2 just before it starts p2d */
 #define SHARE_LOOK_MS 100    /* how often the share is looked at for its end */
 #define BEAT_MS       50     /* Diatom lets the pad go 500 ms after the last beat */
@@ -68,16 +76,28 @@ static p2s_head *g_share;          /* mapped read-write: p2d writes the pad */
 static int g_share_fd = -1;
 static struct stat g_share_st;     /* the file it was, to tell it from a new one */
 
+/* The system's, from the share once it is open */
+static uint32_t g_buttons;         /* the RetroPad bits a guest may press */
+static int g_places;               /* players - 1: the guests' ports */
+
 static guest g_guest[GUESTS];
-static int g_p2 = -1;              /* the guest who is player 2, -1 for none */
-static p2c_enc *g_enc;             /* player 2's: the only guest that has frames */
+static int g_nguests;              /* slots in use: a guest a port, and REFUSING */
+
+/* A guest's place in the game: port k+1, pad[k] in the share, player k+2 to
+ * the page. Each its own encoder, so its chain of deltas is the frames it
+ * was sent and no other guest's. */
+typedef struct {
+	int      guest;                /* the slot playing it, -1 for none */
+	p2c_enc *enc;
+	uint32_t pad;                  /* what it holds, within g_buttons */
+	long     pad_ms;               /* its last 'P' */
+} place;
+
+static place g_place[P2S_GUESTS];
 
 static uint8_t *g_raw;             /* the newest frame read from the share */
 static unsigned g_raw_w, g_raw_h;
 static uint32_t g_raw_frame;       /* its number, 0 for none */
-
-static uint32_t g_pad;
-static long g_pad_ms;              /* the last 'P' */
 
 static int g_dns = -1;
 static uint8_t g_ip[4];
@@ -134,15 +154,20 @@ static bool share_ended(void)
 	return st.st_ino != g_share_st.st_ino || st.st_dev != g_share_st.st_dev;
 }
 
-static void pad_set(uint32_t mask)
+static void pad_set(int k, uint32_t mask)
 {
-	g_pad = mask & P2S_PAD_MASK;
-	__atomic_store_n(&g_share->pad, g_pad, __ATOMIC_RELAXED);
+	g_place[k].pad = mask & g_buttons;
+	__atomic_store_n(&g_share->pad[k], g_place[k].pad, __ATOMIC_RELAXED);
 }
 
-static void guests_set(uint32_t n)
+/* guests: a bit for each port a browser plays */
+static void guests_set(void)
 {
-	__atomic_store_n(&g_share->guests, n, __ATOMIC_RELAXED);
+	uint32_t bits = 0;
+
+	for (int k = 0; k < g_places; k++)
+		if (g_place[k].guest >= 0) bits |= 1u << k;
+	__atomic_store_n(&g_share->guests, bits, __ATOMIC_RELAXED);
 }
 
 /* Diatom reads the pad only while this moves, so a p2d that dies or hangs
@@ -154,97 +179,128 @@ static void beat(void)
 
 /* ---- the guests --------------------------------------------------------- */
 
-static void p2_leave(void)
+#define TAKEN "S{\"state\":\"taken\"}"
+
+/* The port slot `i` plays, -1 for none */
+static int place_of(int i)
 {
-	if (g_p2 < 0) return;
-	g_p2 = -1;
-	pad_set(0);
-	guests_set(0);
-	fprintf(stderr, "p2d: player 2 left\n");
+	for (int k = 0; k < g_places; k++)
+		if (g_place[k].guest == i) return k;
+	return -1;
 }
 
-/* httpd's socket after the 101: player 2 if there is none, else told no */
+static void leave(int k)
+{
+	if (g_place[k].guest < 0) return;
+	g_place[k].guest = -1;
+	pad_set(k, 0);
+	guests_set();
+	fprintf(stderr, "p2d: player %d left\n", k + 2);
+}
+
+/* httpd's socket after the 101: the lowest free port if there is one, told
+ * which player it is and the buttons; else told every port is taken */
 static void on_taken(int fd, void *ctx)
 {
 	guest *g = NULL;
+	int k;
 
 	(void)ctx;
-	for (int i = 0; i < GUESTS && !g; i++)
+	for (int i = 0; i < g_nguests && !g; i++)
 		if (g_guest[i].fd < 0) g = &g_guest[i];
 	if (!g) {
-		close(fd);
+		/* A burst of newcomers, more than REFUSING at once: each is still
+		 * told, so its page says the game is full and tries again */
+		guest_refuse(fd, TAKEN, 1000);
+		fprintf(stderr, "p2d: no room for a newcomer: told it is taken\n");
 		return;
 	}
 	guest_open(g, fd, now_ms());
-	if (g_p2 < 0) {
-		g_p2 = (int)(g - g_guest);
+	for (k = 0; k < g_places && g_place[k].guest >= 0; k++) ;
+	if (k < g_places) {
+		char st[80];
+
+		g_place[k].guest = (int)(g - g_guest);
 		/* A new browser has no palette: only a reset sends one (codec.h) */
-		p2c_reset(g_enc);
-		guest_text(g, "S{\"state\":\"player2\"}");
-		guests_set(1);
-		fprintf(stderr, "p2d: player 2 joined\n");
+		p2c_reset(g_place[k].enc);
+		snprintf(st, sizeof st, "S{\"state\":\"playing\",\"player\":%d,\"buttons\":%u}",
+		         k + 2, (unsigned)g_buttons);
+		guest_text(g, st);
+		guests_set();
+		fprintf(stderr, "p2d: player %d joined\n", k + 2);
 	} else {
-		guest_text(g, "S{\"state\":\"taken\"}");
+		guest_text(g, TAKEN);
 		guest_close(g, 1000);
 	}
 }
 
-/* The share's newest frame to player 2, when it has not had it and can take
- * it now. Read from the share only then, and only when it moved on. */
-static bool send_frame(void)
+/* The share's newest frame to each player, when it has not had it and can
+ * take it now. Read from the share only then, and once for all of them. */
+static bool send_frames(void)
 {
-	guest *g;
-	uint32_t newest;
-	uint8_t *room;
-	size_t cap;
-	long n;
+	uint32_t newest = __atomic_load_n(&g_share->frame, __ATOMIC_ACQUIRE);
+	bool moved = false;
 
-	if (g_p2 < 0) return false;
-	g = &g_guest[g_p2];
-	newest = __atomic_load_n(&g_share->frame, __ATOMIC_ACQUIRE);
-	if (newest == 0 || newest == g->last_frame || !guest_ready(g)) return false;
-	if (newest != g_raw_frame) {
-		/* A torn read leaves g_raw part-written: no frame in it until one
-		 * is read whole */
-		g_raw_frame = 0;
-		if (!p2s_read(g_share, g_raw, RAW_CAP, &g_raw_w, &g_raw_h, &g_raw_frame)) {
+	if (newest == 0) return false;
+	for (int k = 0; k < g_places; k++) {
+		guest *g;
+		uint8_t *room;
+		size_t cap;
+		long n;
+
+		if (g_place[k].guest < 0) continue;
+		g = &g_guest[g_place[k].guest];
+		if (newest == g->last_frame || !guest_ready(g)) continue;
+		/* Read again only when g_raw is behind the newest seen: another
+		 * player's read this round may have landed a newer frame still,
+		 * which this player takes as it is */
+		if (g_raw_frame == 0 || (int32_t)(newest - g_raw_frame) > 0) {
+			/* A torn read leaves g_raw part-written: no frame in it until
+			 * one is read whole */
 			g_raw_frame = 0;
-			return false;
+			if (!p2s_read(g_share, g_raw, RAW_CAP, &g_raw_w, &g_raw_h, &g_raw_frame)) {
+				g_raw_frame = 0;
+				return moved;
+			}
 		}
+		if (g_raw_frame == g->last_frame) continue;
+		room = guest_frame_room(g, &cap);
+		n = p2c_encode(g_place[k].enc, g_raw, g_raw_w, g_raw_h, g_raw_frame, room, cap);
+		if (n < 0) {
+			/* More than 256 colors: not a frame the codec carries, so not
+			 * sent. The encoder reset itself, so the next that is goes as
+			 * KEY and PAL. */
+			g->last_frame = g_raw_frame;
+			continue;
+		}
+		guest_frame_put(g, (size_t)n, g_raw_frame);
+		moved = true;
 	}
-	if (g_raw_frame == g->last_frame) return false;
-	room = guest_frame_room(g, &cap);
-	n = p2c_encode(g_enc, g_raw, g_raw_w, g_raw_h, g_raw_frame, room, cap);
-	if (n < 0) {
-		/* More than 256 colors: not an NES frame, so not sent. The encoder
-		 * reset itself, so the next that is goes as KEY and PAL. */
-		g->last_frame = g_raw_frame;
-		return false;
-	}
-	guest_frame_put(g, (size_t)n, g_raw_frame);
-	return true;
+	return moved;
 }
 
 static bool guests_poll(long now)
 {
 	bool moved = false;
 
-	for (int i = 0; i < GUESTS; i++) {
+	for (int i = 0; i < g_nguests; i++) {
 		guest *g = &g_guest[i];
 		guest_news news;
 		bool live;
+		int k;
 
 		if (g->fd < 0) continue;
 		live = guest_poll(g, now, &news);
 		if (news.moved) moved = true;
-		if (i == g_p2 && news.pad >= 0) {
-			pad_set((uint32_t)news.pad);
-			g_pad_ms = now;
+		k = place_of(i);
+		if (k >= 0 && news.pad >= 0) {
+			pad_set(k, (uint32_t)news.pad);
+			g_place[k].pad_ms = now;
 		}
 		if (!live) guest_drop(g);
-		/* Player 2 the moment its close starts, not when it ends: its
-		 * buttons go now, and the next browser may be player 2 */
-		if (i == g_p2 && (g->fd < 0 || g->closing)) p2_leave();
+		/* A player the moment its close starts, not when it ends: its
+		 * buttons go now, and the next browser may have its port */
+		if (k >= 0 && (g->fd < 0 || g->closing)) leave(k);
 	}
 	return moved;
 }
@@ -465,31 +521,31 @@ static bool dns_answer(void)
 
 /* ---- start and end ------------------------------------------------------ */
 
-/* Every guest told the game ended and closed, player 2's buttons let go:
- * within EXIT_MS, as the launcher sends SIGKILL a second after SIGTERM */
+/* Every guest told the game ended and closed, every player's buttons let
+ * go: within EXIT_MS, as the launcher sends SIGKILL a second after SIGTERM */
 static int finish(int code)
 {
 	long end = now_ms() + EXIT_MS;
 	bool open = true;
 
-	for (int i = 0; i < GUESTS; i++) {
+	for (int i = 0; i < g_nguests; i++) {
 		if (g_guest[i].fd < 0) continue;
 		guest_text(&g_guest[i], "S{\"state\":\"ended\"}");
 		guest_close(&g_guest[i], 1001);
 	}
-	p2_leave();
+	for (int k = 0; k < g_places; k++) leave(k);
 	while (open && now_ms() < end) {
 		struct timespec ts = { 0, 1000000L };
 
 		guests_poll(now_ms());
 		open = false;
-		for (int i = 0; i < GUESTS; i++)
+		for (int i = 0; i < g_nguests; i++)
 			if (g_guest[i].fd >= 0) open = true;
 		if (open) nanosleep(&ts, NULL);
 	}
-	for (int i = 0; i < GUESTS; i++) guest_drop(&g_guest[i]);
-	pad_set(0);
-	guests_set(0);
+	for (int i = 0; i < g_nguests; i++) guest_drop(&g_guest[i]);
+	for (int k = 0; k < P2S_GUESTS; k++) __atomic_store_n(&g_share->pad[k], 0u, __ATOMIC_RELAXED);
+	__atomic_store_n(&g_share->guests, 0u, __ATOMIC_RELAXED);
 	httpd_stop();
 	if (g_dns >= 0) close(g_dns);
 	return code;
@@ -563,25 +619,34 @@ int main(int argc, char **argv)
 		nanosleep(&ts, NULL);
 	}
 
+	/* What the system gives a guest, as Diatom wrote it from SETPLAYER2;
+	 * read again by p2share.h's rule, since the tables are sized by it */
+	g_buttons = p2s_buttons(g_share->buttons);
+	g_places = (int)p2s_players((long)g_share->players) - 1;
+	g_nguests = g_places + REFUSING;
 	{
 		/* The longest message: the head, the whole palette, and deflate's
 		 * worst case for a frame of indices, with room to spare */
 		size_t cap = P2C_HEAD + 2 + 256 * 3 + compressBound((uLong)P2S_MAX_W * P2S_MAX_H) + 1024;
 		bool ok;
 
-		g_enc = p2c_new();
 		g_raw = malloc(RAW_CAP);
-		ok = g_enc && g_raw;
-		for (int i = 0; i < GUESTS; i++)
+		ok = g_raw != NULL;
+		for (int k = 0; k < g_places; k++) {
+			g_place[k].guest = -1;
+			if (!(g_place[k].enc = p2c_new())) ok = false;
+		}
+		for (int i = 0; i < g_nguests; i++)
 			if (!guest_alloc(&g_guest[i], cap)) ok = false;
 		if (!ok) {
 			fprintf(stderr, "p2d: out of memory\n");
 			return 1;
 		}
 	}
-	pad_set(0);
-	guests_set(0);
+	for (int k = 0; k < P2S_GUESTS; k++) __atomic_store_n(&g_share->pad[k], 0u, __ATOMIC_RELAXED);
+	guests_set();
 	beat();
+	fprintf(stderr, "p2d: %d players at most, buttons 0x%04X\n", g_places + 1, (unsigned)g_buttons);
 	if (!httpd_start(&g_port, 1)) {
 		fprintf(stderr, "p2d: cannot listen on port %d: %s\n", g_port, strerror(errno));
 		return finish(1);
@@ -600,9 +665,10 @@ int main(int argc, char **argv)
 		if (httpd_poll(on_request, NULL, NULL) > 0) moved = true;
 		now = now_ms();
 		if (guests_poll(now)) moved = true;
-		if (send_frame()) moved = true;
+		if (send_frames()) moved = true;
 		/* A phone that locked or walked out of range mid-press */
-		if (g_pad && now - g_pad_ms >= PAD_QUIET_MS) pad_set(0);
+		for (int k = 0; k < g_places; k++)
+			if (g_place[k].pad && now - g_place[k].pad_ms >= PAD_QUIET_MS) pad_set(k, 0);
 		if (now - last_beat >= BEAT_MS) {
 			beat();
 			last_beat = now;

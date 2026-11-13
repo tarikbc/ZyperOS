@@ -43,11 +43,11 @@ ja = プレイヤー %d
 it = Giocatore %d
 
 [play.state.full]
-note = The status when every player's place is taken by other browsers: this one gets no picture, its pad does nothing, and it tries again every 2 seconds. review: pt-BR
+note = The status when every player's place is taken by other browsers: this one gets no picture, its pad does nothing, and it tries again every 2 seconds (shown while those tries reach the handheld; "Connecting" once they do not)
 en = The game is full
 zh-Hans = 游戏人数已满
-es = La partida está llena
-pt-BR = A partida está cheia
+es = La partida está completa
+pt-BR = A partida está lotada
 fr = La partie est complète
 de = Das Spiel ist voll
 ja = このゲームは満員です

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-/* NES player 2's share: see player2.h, and p2share.h for the file. */
+/* The guest players' share: see player2.h, and p2share.h for the file. */
 #include "player2.h"
 
 #include <errno.h>
@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 #include "diatom.h"
-#include "p2share.h"
 
 /* Five of p2d's beats missed */
 #define P2_BEAT_MS 500u
@@ -21,6 +20,10 @@ static void    *g_base;        /* the mapping, NULL while off */
 static uint32_t g_beat;        /* pad_beat as last seen */
 static unsigned g_beat_ms;     /* and when it last changed */
 static bool     g_beat_seen;   /* it has changed since the file was made */
+/* The header's, kept here too: p2d writes the same page, and what a guest
+ * may press is Diatom's to say, never a word p2d could have changed */
+static uint32_t g_buttons;
+static unsigned g_players;
 
 static void fail(const char *what)
 {
@@ -30,7 +33,7 @@ static void fail(const char *what)
 	diatom_port_log(DIATOM_LOG_WARN, msg);
 }
 
-bool p2_set(bool on)
+bool p2_set(bool on, uint32_t buttons, long players)
 {
 	p2s_head *hd;
 	void *base;
@@ -76,10 +79,14 @@ bool p2_set(bool on)
 		return false;
 	}
 
-	/* The file is zeros: no frame yet, no pad, no beat. The version, then
-	 * the magic with a release, so a reader that sees the magic sees a file
-	 * it can use (p2share.h). */
+	/* The file is zeros: no frame yet, no pad, no beat. The system's
+	 * buttons and players, the version, then the magic with a release, so a
+	 * reader that sees the magic sees a file it can use (p2share.h). */
 	hd = base;
+	g_buttons = p2s_buttons(buttons);
+	g_players = p2s_players(players);
+	__atomic_store_n(&hd->buttons, g_buttons, __ATOMIC_RELAXED);
+	__atomic_store_n(&hd->players, g_players, __ATOMIC_RELAXED);
 	__atomic_store_n(&hd->version, P2S_VERSION, __ATOMIC_RELAXED);
 	__atomic_store_n(&hd->magic, P2S_MAGIC, __ATOMIC_RELEASE);
 	g_beat = 0;
@@ -89,6 +96,8 @@ bool p2_set(bool on)
 }
 
 bool p2_on(void) { return g_base != NULL; }
+uint32_t p2_buttons(void) { return g_buttons; }
+unsigned p2_players(void) { return g_players; }
 
 void p2_frame(const void *data, unsigned w, unsigned h, size_t pitch, int fmt)
 {
@@ -96,20 +105,25 @@ void p2_frame(const void *data, unsigned w, unsigned h, size_t pitch, int fmt)
 	p2s_write(g_base, data, w, h, pitch, fmt);
 }
 
-uint32_t p2_pad(unsigned now_ms)
+void p2_pads(unsigned now_ms, uint32_t pads[P2S_GUESTS])
 {
 	p2s_head *hd = g_base;
 	uint32_t beat;
+	bool live;
 
-	if (!hd) return 0;
-	beat = __atomic_load_n(&hd->pad_beat, __ATOMIC_ACQUIRE);
-	if (beat != g_beat) {
-		g_beat = beat;
-		g_beat_ms = now_ms;
-		g_beat_seen = true;
+	if (hd) {
+		beat = __atomic_load_n(&hd->pad_beat, __ATOMIC_ACQUIRE);
+		if (beat != g_beat) {
+			g_beat = beat;
+			g_beat_ms = now_ms;
+			g_beat_seen = true;
+		}
 	}
-	if (!g_beat_seen || now_ms - g_beat_ms >= P2_BEAT_MS) return 0;
-	return __atomic_load_n(&hd->pad, __ATOMIC_RELAXED) & P2S_PAD_MASK;
+	/* One beat for every guest: it says p2d is there, not any one of them */
+	live = hd && g_beat_seen && now_ms - g_beat_ms < P2_BEAT_MS;
+	for (unsigned k = 0; k < P2S_GUESTS; k++)
+		pads[k] = live && k + 1 < g_players
+		          ? __atomic_load_n(&hd->pad[k], __ATOMIC_RELAXED) & g_buttons : 0;
 }
 
 void p2_abandon(void)
