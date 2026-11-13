@@ -426,11 +426,13 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		/* proto=14 adds NES player 2: SETPLAYER2 on=1 while a game runs puts
 		 * its frames in a file p2d maps too and reads port 1 from it
 		 * (player2.h), answered PLAYER2. Additive: an old Diatom ignores
-		 * SETPLAYER2, and a launcher that sees proto=13 knows not to offer a
-		 * Player 2 row that would bring a guest to a page with no game. Its
-		 * on=1 takes buttons= (the system's RetroPad bits) and players= (2 to
-		 * 4, the guests ports 1 to players-1), the NES's 0x01FD and 2 when
-		 * not said, and PLAYER2 says both while it is on. */
+		 * SETPLAYER2 and never answers it, so the launcher's start waits
+		 * out its half second for PLAYER2 and fails cleanly, telling it
+		 * off in case it answers late (ZyperOS's src/p2.c); the launcher
+		 * does not read proto= for it. Its on=1 takes buttons= (the
+		 * system's RetroPad bits) and players= (2 to 4, the guests ports 1
+		 * to players-1), the NES's 0x01FD and 2 when not said, and PLAYER2
+		 * says both while it is on. */
 		diatom_proto_send("READY\tproto=14\tstate=%s", running ? "running" : "idle");
 		/* A displaced launcher is a vanished one, and every loop already
 		 * knows what that means - the in-game menu resumes the game. Said

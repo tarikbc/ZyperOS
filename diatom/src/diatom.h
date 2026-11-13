@@ -60,6 +60,9 @@ typedef struct {
 	 * order, and leaves the last three NULL. */
 	struct retro_disk_control_ext_callback disc;
 	bool          disc_set;
+	/* How many controller ports it said it has (SET_CONTROLLER_INFO), 0
+	 * while it has not said: kept per core for the disc tray's reason */
+	int           ports;
 	/* Where this core's game was staged out of its zip, for a core that
 	 * wants a file (need_fullpath), so the game's stop can remove it; empty
 	 * when there is none. See unstage in core.c. */

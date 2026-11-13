@@ -33,6 +33,31 @@ static void fail(const char *what)
 	diatom_port_log(DIATOM_LOG_WARN, msg);
 }
 
+/* The file at the share's size, its pages taken now. ftruncate alone makes
+ * a sparse file: on a /tmp with no page left, the first frame written into
+ * the mapping is a SIGBUS on the game's thread, and the game crashes. Taken
+ * here, a full /tmp is a refusal instead (PLAYER2 on=0). posix_fallocate is
+ * the devices' (Linux); macOS, the desktop build, has none and keeps
+ * ftruncate, as does a file system that cannot take the call at all. */
+static bool size_share(int fd)
+{
+#if defined(__linux__)
+	int r = posix_fallocate(fd, 0, P2S_SIZE);
+
+	if (r == 0) return true;
+	if (r != EOPNOTSUPP && r != EINVAL) {
+		errno = r;
+		fail("posix_fallocate");
+		return false;
+	}
+#endif
+	if (ftruncate(fd, P2S_SIZE) != 0) {
+		fail("ftruncate");
+		return false;
+	}
+	return true;
+}
+
 bool p2_set(bool on, uint32_t buttons, long players)
 {
 	p2s_head *hd;
@@ -41,10 +66,14 @@ bool p2_set(bool on, uint32_t buttons, long players)
 
 	if (on == (g_base != NULL)) return true;
 	if (!on) {
+		hd = g_base;
 		/* Not a game's any more, for a p2d that still has it mapped */
-		__atomic_store_n(&((p2s_head *)g_base)->magic, 0u, __ATOMIC_RELEASE);
-		munmap(g_base, P2S_SIZE);
+		__atomic_store_n(&hd->magic, 0u, __ATOMIC_RELEASE);
+		/* Off before the mapping goes: a crash signal in between runs
+		 * p2_abandon, which writes through g_base */
 		g_base = NULL;
+		__atomic_signal_fence(__ATOMIC_SEQ_CST);
+		munmap(hd, P2S_SIZE);
 		unlink(g_path);
 		return true;
 	}
@@ -65,8 +94,7 @@ bool p2_set(bool on, uint32_t buttons, long players)
 	unlink(g_path);
 	fd = open(g_path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
 	if (fd < 0) { fail("open"); return false; }
-	if (ftruncate(fd, P2S_SIZE) != 0) {
-		fail("ftruncate");
+	if (!size_share(fd)) {
 		close(fd);
 		unlink(g_path);
 		return false;

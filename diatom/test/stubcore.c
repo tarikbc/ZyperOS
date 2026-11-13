@@ -53,6 +53,11 @@
  * STUBCORE_FULLPATH=1 sets need_fullpath, so it is handed a file, not bytes,
  * and reads the file's first bytes from its path while it loads.
  *
+ * And its controller ports: STUBCORE_PORTS=N says it has N (each a joypad,
+ * SET_CONTROLLER_INFO), and STUBCORE_DEVICE_LOG=path writes down each
+ * device the frontend gives a port, a line each, "port device", so
+ * test/player2.py can see the guests' ports given a joypad.
+ *
  * Test fixture. Not part of Diatom's runtime.
  */
 #include <stdint.h>
@@ -98,11 +103,24 @@ static struct retro_core_options_v2 probe_opts = { NULL, probe_defs };
 
 void retro_set_environment(retro_environment_t cb)
 {
+	static const struct retro_controller_description joypad[] = { { "Joypad", RETRO_DEVICE_JOYPAD } };
+	static struct retro_controller_info ports[5];
 	bool no_game = true;
+	const char *np = getenv("STUBCORE_PORTS");
+
 	env = cb;
 	cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_game);
 	/* As real cores declare theirs, from inside this call */
 	cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &probe_opts);
+	if (np && *np) {
+		int n = atoi(np);
+
+		for (int i = 0; i < 4; i++) {
+			ports[i].types = i < n ? joypad : NULL;
+			ports[i].num_types = i < n ? 1 : 0;
+		}
+		cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, ports);
+	}
 }
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { (void)cb; }
@@ -180,7 +198,14 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 }
 
 void retro_set_controller_port_device(unsigned port, unsigned device)
-{ (void)port; (void)device; }
+{
+	const char *path = getenv("STUBCORE_DEVICE_LOG");
+	FILE *f = path && *path ? fopen(path, "a") : NULL;
+
+	if (!f) return;
+	fprintf(f, "%u %u\n", port, device);
+	fclose(f);
+}
 
 /* Deliberate faults. `volatile` throughout and no inlining, because -O2 is
  * entitled to assume undefined behavior never happens: an unguarded null store

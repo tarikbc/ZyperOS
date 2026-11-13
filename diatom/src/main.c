@@ -1602,15 +1602,35 @@ static void player2_emit(void)
 		diatom_proto_send("PLAYER2\ton=0");
 }
 
+/* The guests' ports this game has given a joypad (guest_ports) */
+static bool g_guest_port_set[P2S_GUESTS];
+
+/* Every guest's port a joypad, once a game, as RetroArch gives every port
+ * one: Diatom sets port 0 alone as it loads the game, and a core may want
+ * its port 1 set before it reads it. Not on a port the core says it has
+ * not got. */
+static void guest_ports(void)
+{
+	for (unsigned port = 1; port < p2_players() && port <= P2S_GUESTS; port++) {
+		if (g_guest_port_set[port - 1]) continue;
+		if (g_core->ports > 0 && (int)port >= g_core->ports) continue;
+		g_core->set_controller_port_device(port, RETRO_DEVICE_JOYPAD);
+		g_guest_port_set[port - 1] = true;
+		printf("diatom: player 2: port %u is a joypad\n", port);
+	}
+}
+
 static void player2_set(bool on, uint32_t buttons, long players)
 {
 	if (g_phase != PHASE_RUNNING) on = false;
 	if (on != p2_on() && p2_set(on, buttons, players)) {
-		if (on)
+		if (on) {
 			printf("diatom: player 2 on, buttons 0x%04X, %u players\n",
 			       (unsigned)p2_buttons(), p2_players());
-		else
+			guest_ports();
+		} else {
 			printf("diatom: player 2 off\n");
+		}
 		fflush(stdout);
 	}
 	player2_emit();
@@ -2091,6 +2111,8 @@ static int run_session_inner(const diatom_session *sn)
 	 * controller=. Digital-only input removes axes, not device types: the
 	 * DualShock's sticks read centered. */
 	g_core->set_controller_port_device(0, sn->controller ? sn->controller : RETRO_DEVICE_JOYPAD);
+	/* The guests' ports are set when player 2 first turns on (guest_ports) */
+	memset(g_guest_port_set, 0, sizeof g_guest_port_set);
 
 	/* SRAM first: it is the game's own data and is not optional. A state, if
 	 * the launcher asked for one, is layered on top - and a state that fails

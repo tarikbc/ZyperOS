@@ -24,6 +24,9 @@ down by the stub (STUBCORE_INPUT_LOG: the frame, then ports 0 to 3's bits).
     whatever its pad holds, and the second guest alone keeps the game awake.
     buttons= with no bit of the twelve and players= out of 2..4 are the
     NES's 0x01FD and 2.
+  - Each guest's port is given a joypad (retro_set_controller_port_device)
+    when player 2 first turns on in a game, once, as port 0 is at the load;
+    not a port the core says it has not got (STUBCORE_PORTS).
   - STOP with it on removes the file too, and the next RUN starts with it
     off.
   - A core that calls exit() leaves no file behind, nor one that crashes
@@ -64,13 +67,15 @@ def check(name, ok, got=None):
 
 class Diatom:
     """One Diatom on a socket, read a line at a time"""
-    def __init__(self, tag, crash=None):
+    def __init__(self, tag, crash=None, ports=None):
         self.log = f"{TMP}/{tag}.log"
+        self.devlog = f"{TMP}/{tag}.devices"
         sock = f"{TMP}/{tag}.sock"
         env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
                    SDL_AUDIODRIVER="dummy", STUBCORE_INPUT_LOG=self.log,
-                   DIATOM_P2_SHARE=SHARE)
+                   STUBCORE_DEVICE_LOG=self.devlog, DIATOM_P2_SHARE=SHARE)
         if crash: env["STUBCORE_CRASH"] = crash
+        if ports is not None: env["STUBCORE_PORTS"] = str(ports)
         self.p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
                                   env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         procs.append(self.p)
@@ -113,6 +118,14 @@ class Diatom:
         except OSError:
             return []
         return [tuple(int(v) for v in l.split()[1:]) for l in text.split("\n")[:-1]]
+
+    def devices(self):
+        """Each device the core was given, in order: (port, device)"""
+        try:
+            with open(self.devlog) as f: text = f.read()
+        except OSError:
+            return []
+        return [tuple(int(v) for v in l.split()) for l in text.split("\n") if l.strip()]
 
     def frames_after(self, n, count, limit=5.0):
         """Wait until the core has read the pad count times past line n"""
@@ -181,6 +194,9 @@ try:
     check("and makes no file", not os.path.exists(SHARE), os.listdir(TMP))
     d.send(f"RUN\tcore={STUB}")
     check("the game runs", d.until("RUNNING", 5.0) is not None, d.got)
+    JOYPAD = 1
+    check("at the load port 0 alone is given a device, the joypad", d.devices() == [(0, JOYPAD)],
+          d.devices())
     check("off by default: after RUN, PLAYER2 says on=0",
           d.ask("PLAYER2", "PLAYER2") == "PLAYER2\ton=0", d.got[-3:])
     check("and there is no file", not os.path.exists(SHARE), os.listdir(TMP))
@@ -189,6 +205,8 @@ try:
     check("SETPLAYER2 on=1 is answered PLAYER2 on=1, the NES's buttons and 2 players",
           d.ask("SETPLAYER2\ton=1", "PLAYER2") == "PLAYER2\ton=1\tbuttons=0x01FD\tplayers=2",
           d.got[-3:])
+    check("player 2 on gives the guest's port 1 a joypad", d.devices() == [(0, JOYPAD), (1, JOYPAD)],
+          d.devices())
     m = share()
     check("within 1 s the file is there, at the share's size", m is not None, os.listdir(TMP))
     if m is None:
@@ -280,6 +298,8 @@ try:
     on = d.ask("SETPLAYER2\ton=1\tbuttons=0x0FFF\tplayers=3", "PLAYER2")
     check("SETPLAYER2 on=1 buttons=0x0FFF players=3 is answered with them",
           on == "PLAYER2\ton=1\tbuttons=0x0FFF\tplayers=3", d.got[-3:])
+    check("on again, with 3 players: port 2 given a joypad, port 1 not again",
+          d.devices() == [(0, JOYPAD), (1, JOYPAD), (2, JOYPAD)], d.devices())
     m = share()
     check("a new file", m is not None, os.listdir(TMP))
     if m is None:
@@ -332,6 +352,19 @@ try:
     d.send("STOP")
     d.until("EXIT", 5.0)
     d.quit()
+
+    # A core that says it has one port: its port 1 is never given a device
+    c = Diatom("oneport", ports=1)
+    c.until("READY")
+    c.send(f"RUN\tcore={STUB}")
+    c.until("RUNNING", 5.0)
+    on = c.ask("SETPLAYER2\ton=1", "PLAYER2")
+    check("a core with one port (STUBCORE_PORTS=1): player 2 on, port 1 given no device",
+          on == "PLAYER2\ton=1\tbuttons=0x01FD\tplayers=2" and c.devices() == [(0, JOYPAD)],
+          (on, c.devices()))
+    c.send("STOP")
+    c.until("EXIT", 5.0)
+    c.quit()
 
     # A game that ends by its core calling exit(), or by crashing: the file
     # goes all the same, so nothing reads a dead game's frames
