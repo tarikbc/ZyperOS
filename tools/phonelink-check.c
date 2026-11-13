@@ -57,6 +57,16 @@ int main(void)
 	CHECK(!phonelink_is_iphone("18d1", "QCS_KALAMAP-HDK_CID:0437_SN:9C6287A0"), "the Thor taken for an iPhone");
 	CHECK(!phonelink_is_iphone("05ac", NULL), "Apple with no product taken for an iPhone");
 	CHECK(!phonelink_is_iphone(NULL, "iPhone"), "no vendor taken for an iPhone");
+	/* As sysfs gives them: each file ends in a newline (seen on the device,
+	 * 2026-11-13: the iPhone on the bus and no iPhone message) */
+	CHECK(phonelink_is_iphone("05ac\n", "iPhone\n"), "an iPhone not seen as sysfs reads it");
+	CHECK(phonelink_is_iphone("05ac\n", "iPad\n"), "an iPad not seen as sysfs reads it");
+	CHECK(!phonelink_is_iphone("05ac\n", "Mac\n"), "a Mac taken for an iPhone as sysfs reads it");
+	CHECK(!phonelink_is_iphone("18d1\n", "QCS_KALAMAP-HDK_CID:0437_SN:9C6287A0\n"),
+	      "the Thor taken for an iPhone as sysfs reads it");
+	CHECK(!phonelink_is_iphone("05ac0\n", "iPhone\n"), "another vendor that starts 05ac taken for Apple");
+	CHECK(!phonelink_is_iphone("05ac\n", "\n"), "Apple with an empty product taken for an iPhone");
+	CHECK(!phonelink_is_iphone("05ac\n", "Mac \n"), "a Mac with a trailing space taken for an iPhone");
 
 	/* Once per link: File Transfer opens when the address comes, not again
 	 * while the same link stays (the player closed it), again for a new

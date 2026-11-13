@@ -41,7 +41,8 @@ int phonelink_pick(const char *const *names, const char *const *drivers, int n);
 
 /* The device on the bus, by its idVendor and product strings, is an iPhone
  * or an iPad: Apple's (05ac) and not a Mac (a Mac whose port took the side
- * that waits for power shows up as "Mac", which usbrole stops feeding) */
+ * that waits for power shows up as "Mac", which usbrole stops feeding).
+ * Both as read from sysfs: a trailing newline or space is left out */
 bool phonelink_is_iphone(const char *vendor, const char *product);
 
 /* Opened once per link: true when the link `ifname` at `ip` is new since

@@ -28,9 +28,28 @@ int phonelink_pick(const char *const *names, const char *const *drivers, int n)
 	return first;
 }
 
+/* The length of s with its trailing white space (sysfs ends each file in a
+ * newline) left out */
+static size_t trimmed_len(const char *s)
+{
+	size_t n = strlen(s);
+
+	while (n && (s[n - 1] == '\n' || s[n - 1] == '\r' || s[n - 1] == ' ' || s[n - 1] == '\t')) n--;
+	return n;
+}
+
+/* s, trailing white space left out, is word */
+static bool same_word(const char *s, const char *word)
+{
+	size_t n = trimmed_len(s);
+
+	return n == strlen(word) && !strncmp(s, word, n);
+}
+
 bool phonelink_is_iphone(const char *vendor, const char *product)
 {
-	return vendor && !strcmp(vendor, "05ac") && product && strcmp(product, "Mac") != 0;
+	return vendor && same_word(vendor, "05ac") && product && trimmed_len(product) &&
+	       !same_word(product, "Mac");
 }
 
 bool phonelink_new(char last[64], const char *ifname, const char *ip)
