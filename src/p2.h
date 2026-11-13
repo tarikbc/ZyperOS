@@ -136,7 +136,8 @@ bool p2_start(const char *core, p2_link l);
 
 /* From every tick while it is on, in a game and in the screens over its
  * pause: the hotspot coming up and p2d after it, the guests coming and going
- * (a notice for each), zyperos.local, and p2d or the hotspot going away,
+ * (a notice for each; a guest gone for less than 5 s, a link that dropped
+ * and came back, was never gone), zyperos.local, and p2d or the hotspot going away,
  * which is P2_FAILED and a notice that it stopped. The share gone, or p2d
  * ending by itself with 0 (which it does when the share goes), is the game
  * ending, which says nothing. Bounded: never waits, and a failure stops only

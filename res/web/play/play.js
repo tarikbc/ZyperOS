@@ -295,6 +295,19 @@ function under(x, y, place) {
 	return 0;
 }
 
+/* A tick under the finger as a button goes down, a direction on the d-pad
+ * too: Android's browsers have the Vibration API (from the first lift on,
+ * when the page counts as touched). iOS gives a page no way to do it on a
+ * press: Safari has no Vibration API, and the one haptic a page can cause,
+ * a switch control's (Safari 17.4), comes from a finished tap on the switch
+ * itself, so on the lift and never under a pad that holds its fingers. 15 ms
+ * is felt on the slow motors of cheaper phones as well as the quick ones. */
+const BUZZ_MS = 15;
+
+function buzz() {
+	if (navigator.vibrate) navigator.vibrate(BUZZ_MS);
+}
+
 /* A finger is the d-pad's from where it lands to where it lifts, wherever it
  * slides; one that lands on a button holds whichever button of its group it
  * is on */
@@ -305,7 +318,7 @@ function move(e) {
 	const pressed = bits & ~f.bits;
 	f.bits = bits;
 	update();
-	if (pressed && e.pointerType !== 'mouse' && navigator.vibrate) navigator.vibrate(10);
+	if (pressed & has && e.pointerType !== 'mouse') buzz();
 }
 
 /* The game's buttons: drawn, in the keys line, and the only ones read or
@@ -494,6 +507,48 @@ function play() {
 	show('connecting');
 	connect();
 }
+
+/* ---- no zoom ------------------------------------------------------------
+ *
+ * The page is a pad: a double tap or a pinch that zooms it leaves the game
+ * half off the screen, and in iOS's sign-in sheet, which has no way out of
+ * a zoom, it stayed so (2026-11-13). So nothing zooms it: the viewport's
+ * limits (index.html), which iOS's sign-in sheet keeps and Safari drops;
+ * touch-action: none on the whole page (play.css), which Safari keeps for a
+ * double tap and a pinch both; and here, Safari's own gesture events, a
+ * second tap within a double tap's time, and two fingers that move outside
+ * the pad, all cancelled. A zoom that comes anyway (an older Safari, a
+ * rotation) is undone: the viewport's limits put again bring it back to 1.
+ * Before the browser check below, so the too-old message cannot zoom
+ * either; nothing in it is newer than Safari 13. */
+const VIEWPORT = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+const DOUBLE_TAP_MS = 350;
+
+function noZoom() {
+	const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+	const opts = { passive: false };
+	for (const kind of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(kind, stop, opts);
+	document.addEventListener('dblclick', stop, opts);
+	let tapped = -DOUBLE_TAP_MS;
+	document.addEventListener('touchend', (e) => {
+		if (e.touches.length) return;
+		if (e.timeStamp - tapped < DOUBLE_TAP_MS) stop(e);
+		tapped = e.timeStamp;
+	}, opts);
+	document.addEventListener('touchmove', (e) => {
+		if (e.touches.length > 1 && !(e.target.closest && e.target.closest('.ctl'))) stop(e);
+	}, opts);
+	const meta = document.querySelector('meta[name="viewport"]');
+	const vv = window.visualViewport;
+	if (!meta || !vv) return;
+	vv.addEventListener('resize', () => {
+		if (vv.scale <= 1.01) return;
+		meta.setAttribute('content', VIEWPORT.replace('maximum-scale=1', 'maximum-scale=1.001'));
+		requestAnimationFrame(() => meta.setAttribute('content', VIEWPORT));
+	});
+}
+
+noZoom();
 
 /* Safari before 16.4 has no raw deflate to unpack a frame with: it says so,
  * rather than a black picture, and opens no socket */

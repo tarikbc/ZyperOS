@@ -690,7 +690,9 @@ opens its page over the paused game:
 Under that, a line for player 2: `off`, `waiting` or `connected`. **B**
 closes the page and **Continue** goes back to the game with Player 2 on. A
 notice over the game says **Player 2 joined** when the friend's browser
-starts to play, and **Player 2 left** when it stops. **A** on the page
+starts to play, and **Player 2 left** when it has been gone for five
+seconds: a phone whose link drops for a moment and comes back by itself
+was never gone, and nothing is said. **A** on the page
 again stops Player 2, and A once more starts it again. The game's end stops
 it too, however it ends: quit,
 POWER, a crash. The handheld's network goes, and Wi-Fi comes back as it
@@ -701,8 +703,9 @@ a problem, and A starts it again.
 **What the friend sees** is the game's picture, as large as the screen
 takes it, and an NES pad under it: the d-pad at the left, **B** and **A**
 at the right, SELECT and START under them. Several fingers at once work,
-and a thumb can roll from B to A. On a phone that can, a press gives a
-short vibration. Turned on its side, the picture takes the whole height,
+and a thumb can roll from B to A. On an Android phone a press gives a
+short vibration; an iPhone has no way to do that for a web page. Nothing
+zooms the page: a double tap or a pinch is the pad's, not a zoom. Turned on its side, the picture takes the whole height,
 with the pad's halves either side. The page speaks the handheld's language
 and wears the handheld's theme, light or dark with its accent and corners,
 whatever the phone is set to. At the top it says **Connecting**, **Player

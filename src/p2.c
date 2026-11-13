@@ -62,8 +62,9 @@ bool p2_answer(const char *line, bool *on, unsigned *buttons, int *players)
 
 /* ---- on and off --------------------------------------------------------- */
 
-/* How often the share's guests are read: the notice comes within a tenth of
- * a second, and a game's tick is ten a second anyway */
+/* How often the share's guests are read: a join is said within a tenth of
+ * a second (a leave after LEAVE_GRACE_MS), and a game's tick is ten a
+ * second anyway */
 #define GUESTS_MS 100
 /* zyperos.local asked again while it would not start: the cable's link comes
  * up a moment after it is bound */
@@ -75,6 +76,13 @@ bool p2_answer(const char *line, bool *on, unsigned *buttons, int *players)
 /* Old answers read away before a start, at most: a stop's and a failure's
  * are one each, so this is only a bound on a loop that reads the socket */
 #define STALE_MAX 16
+/* A guest's link can drop for a moment and come back by itself: the page
+ * tries again every 2 s, and p2d frees a silent page's place after 5 s. An
+ * iPhone's did, right after it joined the hotspot (2026-11-13), and the
+ * handheld said "Player 2 left" and "Player 2 joined" one after the other,
+ * over a game nobody had left. So a guest is said to have left only when
+ * it has been gone this long, and one back sooner was never said to go. */
+#define LEAVE_GRACE_MS 5000
 
 static const p2_ops *g_ops;
 
@@ -91,7 +99,8 @@ static struct {
 	bool     over;        /* the game is over (p2_game_over) */
 	long     pid;         /* p2d, -1 for none */
 	unsigned term_at;     /* when p2d was sent SIGTERM, 0 for not */
-	unsigned guests;      /* the bits as last read, within the players */
+	unsigned guests;      /* the guests as said: a bit goes LEAVE_GRACE_MS after p2d's */
+	unsigned gone_at[P2S_GUESTS];   /* when p2d's bit went, 0 while it is there */
 	unsigned guests_at, mdns_at;
 } g = { .link = P2_NO_LINK, .pid = -1 };
 
@@ -107,8 +116,17 @@ static unsigned guest_mask(void)
 	return g.players > 1 ? (1u << (g.players - 1)) - 1u : 0u;
 }
 
-/* A notice for every guest whose bit came or went */
-static void guests_now(unsigned bits)
+/* No guests, and none on their way out: said by nobody */
+static void guests_clear(void)
+{
+	g.guests = 0;
+	memset(g.gone_at, 0, sizeof g.gone_at);
+}
+
+/* A notice for every guest who came, at once, and for every one who went
+ * once they have been gone LEAVE_GRACE_MS; one back before that was never
+ * gone */
+static void guests_now(unsigned bits, unsigned now_ms)
 {
 	unsigned k;
 
@@ -116,10 +134,22 @@ static void guests_now(unsigned bits)
 	for (k = 0; k < P2S_GUESTS; k++) {
 		unsigned b = 1u << k;
 
-		if ((bits & b) != (g.guests & b) && g_ops->notice)
-			g_ops->notice((bits & b) ? P2_JOINED : P2_LEFT, (int)k + 2);
+		if (bits & b) {
+			g.gone_at[k] = 0;
+			if (!(g.guests & b)) {
+				g.guests |= b;
+				if (g_ops->notice) g_ops->notice(P2_JOINED, (int)k + 2);
+			}
+		} else if (g.guests & b) {
+			if (!g.gone_at[k]) {
+				g.gone_at[k] = now_ms ? now_ms : 1;
+			} else if (now_ms - g.gone_at[k] >= LEAVE_GRACE_MS) {
+				g.gone_at[k] = 0;
+				g.guests &= ~b;
+				if (g_ops->notice) g_ops->notice(P2_LEFT, (int)k + 2);
+			}
+		}
 	}
-	g.guests = bits;
 }
 
 /* p2d for the link: the page from the card's res/web, the share Diatom
@@ -160,7 +190,7 @@ static bool spawn_p2d(const char *addr, bool dns)
 static void fail_now(const char *why, bool tell)
 {
 	fprintf(stderr, "player 2: %s\n", why);
-	g.guests = 0;
+	guests_clear();
 	if (tell && g_ops->notice) g_ops->notice(P2_STOPPED, 0);
 	if (g.pid > 0 && !g.term_at) {
 		g_ops->signal(g.pid, SIGTERM);
@@ -230,7 +260,7 @@ bool p2_start(const char *core, p2_link l)
 	g.players = players >= 2 && players <= P2S_PLAYERS_MAX ? players : s->players;
 	/* Before p2d, which serves it; a page with none keeps its own look */
 	if (!g_ops->theme()) fprintf(stderr, "player 2: no theme file; the page keeps its own\n");
-	g.guests = 0;
+	guests_clear();
 	g.guests_at = g.mdns_at = g_ops->now();
 	if (l == P2_HOTSPOT) {
 		g.hot = true;
@@ -259,7 +289,7 @@ static void game_ended(const char *why)
 {
 	if (why) fprintf(stderr, "player 2: %s\n", why);
 	g.over = true;
-	g.guests = 0;
+	guests_clear();
 	g.starting = false;
 }
 
@@ -305,7 +335,7 @@ void p2_tick(unsigned now_ms)
 		g.guests_at = now_ms;
 		bits = g_ops->guests();
 		if (bits < 0) { game_ended("the game's share went"); return; }
-		guests_now((unsigned)bits);
+		guests_now((unsigned)bits, now_ms);
 		g.st = g.guests ? P2_CONNECTED : P2_WAITING;
 	}
 }
@@ -359,7 +389,7 @@ void p2_stop(void)
 	g.players = 0;
 	g.said_on = g.hot = g.cable = g.mdns = g.starting = g.over = false;
 	g.term_at = 0;
-	g.guests = 0;
+	guests_clear();
 }
 
 void p2_theme_changed(void)

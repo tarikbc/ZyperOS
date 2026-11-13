@@ -3281,7 +3281,10 @@ cable the line says "Open zyperos.local/play on the computer."; with
 neither plugged in, "Plug in a Wi-Fi adapter or a computer." and only B. A
 notice over the game (11.7), **Multiplayer** over "Player 2 joined" or
 "Player 2 left", says when a browser comes and goes, and "Player 2 stopped"
-when it stopped by itself. src/p2panel.c draws the page; src/main.c's
+when it stopped by itself. A guest is said to have left only once it has
+been gone 5 s (src/p2.c's LEAVE_GRACE_MS): a link that drops and comes
+back by itself, as an iPhone's did right after it joined the hotspot, is
+never said to go. src/p2panel.c draws the page; src/main.c's
 `player2_page` runs it.
 
 **On the friend's screen** (res/web/play), the File Transfer page's clothes
@@ -3292,7 +3295,14 @@ Held upright, the status and **Picture off** in a bar at the top, the
 picture right under it, and the pad in the rest: the d-pad left, B and A
 right, SELECT and START under them, each control 48 CSS px or more, a
 thumb's, **raised** on **ground** and filled with **accent** while it is
-held. On its side, and on a computer, the picture takes the whole height
+held, with a 15 ms tick under the finger as it goes down where the browser
+has the Vibration API (Android's; Safari has none, and its one haptic, a
+switch control's, comes on a finished tap, so on the lift). Nothing zooms
+the page: the viewport's limits, `touch-action: none` on every element,
+Safari's gesture events, a double tap's second tap and two fingers off the
+pad all cancelled, and a zoom that comes anyway undone by putting the
+limits again (play.js's noZoom); a double tap in iOS's sign-in sheet had
+zoomed it with no way back. On its side, and on a computer, the picture takes the whole height
 between the pad's halves. Picture off drops the picture and the pad grows
 into the room, for a friend who watches the handheld. A computer with a
 mouse shows its keys in the bar: the arrows, Z for B, X for A, Shift for
