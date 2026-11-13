@@ -159,14 +159,23 @@ export const Laptop: React.FC<{ src: string; x: number; y: number; width: number
   );
 };
 
-/** ...and in a phone's */
-export const Phone: React.FC<{ src: string; x: number; y: number; height: number; k: number }> = ({ src, x, y, height, k }) => {
+/** Where NES Player 2's play page (res/readme/play-phone.png, 1170 by 2532)
+ * draws the game: its picture's box, as fractions of the page */
+const PLAY_PICTURE = { x: 72 / 1170, y: 180 / 2532, w: 1026 / 1170, h: 960 / 2532 };
+
+/** ...and in a phone's; `pic` is the game on Player 2's play page, in the
+ * page's own picture box (the README's shot of the page holds a test frame) */
+export const Phone: React.FC<{ src: string; x: number; y: number; height: number; k: number; pic?: string }> = ({ src, x, y, height, k, pic }) => {
   const w = (height * 780) / 1688;
   return (
     <div style={{ position: "absolute", left: x, top: y + (1 - k) * 260, width: w + 24, height: height + 24, padding: 12,
       borderRadius: 52, background: "#151715", opacity: Math.min(1, k * 2),
       transform: `rotate(${(1 - k) * 8 - 3}deg)`, boxShadow: "0 30px 70px rgba(17,19,16,0.35)" }}>
       <Img src={staticFile(src)} style={{ display: "block", width: w, height, borderRadius: 40 }} />
+      {pic && (
+        <Img src={staticFile(pic)} style={{ position: "absolute", left: 12 + PLAY_PICTURE.x * w, top: 12 + PLAY_PICTURE.y * height,
+          width: PLAY_PICTURE.w * w, height: PLAY_PICTURE.h * height, borderRadius: (10 / 1170) * w, imageRendering: "pixelated" }} />
+      )}
     </div>
   );
 };
