@@ -184,17 +184,19 @@ static const db_default library_defaults[] = {
 	 * skipped, no anisotropic filtering (the core's default is 16x, and the
 	 * Mali-G31 has little bandwidth to spare) and no texture scaling. Each
 	 * key and value as libretro/libretro_core_options.h has them at the pin.
-	 * Frames are left undrawn only when the game falls behind: auto
-	 * frameskip with at most 2 in a row, Knulli's default. Auto frameskip
-	 * does nothing while ppsspp_frameskip is "disabled" (Core/HLE/
-	 * sceDisplay.cpp), which is why both are set. Not yet measured on the
-	 * Pixel 2. */
+	 * Every frame is drawn: frameskip and auto frameskip off, the core's own
+	 * defaults. With Knulli's auto frameskip of up to 2 in a row, LocoRoco
+	 * drew one frame in three on the Pixel 2 (20 a second, each Diatom turn
+	 * three PSP frames) while PPSSPP's emulation thread was 29% busy: it
+	 * was not behind, and Diatom paces each turn by its sound (1.0.5's
+	 * paced_by_sound), so a skipped frame only makes the next turn longer
+	 * (2026-11-13). */
 	{ "coreopt.PSP.ppsspp_backend",                       "opengl" },
 	{ "coreopt.PSP.ppsspp_cpu_core",                      "JIT" },
 	{ "coreopt.PSP.ppsspp_fast_memory",                   "enabled" },
 	{ "coreopt.PSP.ppsspp_internal_resolution",           "480x272" },
-	{ "coreopt.PSP.ppsspp_auto_frameskip",                "enabled" },
-	{ "coreopt.PSP.ppsspp_frameskip",                     "2" },
+	{ "coreopt.PSP.ppsspp_auto_frameskip",                "disabled" },
+	{ "coreopt.PSP.ppsspp_frameskip",                     "disabled" },
 	{ "coreopt.PSP.ppsspp_frame_duplication",             "disabled" },
 	{ "coreopt.PSP.ppsspp_gpu_hardware_transform",        "enabled" },
 	{ "coreopt.PSP.ppsspp_software_skinning",             "enabled" },
