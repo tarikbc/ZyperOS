@@ -379,12 +379,15 @@ Arcade shelf or a library of hundreds of games reads better as a list.
 
 **Folders of games.** A folder inside a system's folder on the card is a
 folder on its shelf, as deep as you like: the folders come first, A to Z,
-each a pixel folder with how many games it holds, then the games loose in
+each a pixel-art folder in the system's color with how many games it
+holds, then the games loose in
 it, in the shelf's Sort By order. A opens a folder and B goes back up one,
-onto the folder you left. A folder that is one game's discs (a `.cue` and
-its tracks, a game's `.chd` discs, an `.m3u` with them) stays that game, as
-does a ScummVM game's folder; a folder of several games' discs is a folder
-of games. The Ports shelf never looks into its folders: they are the ports'
+onto the folder you left. A folder is one game when it holds that game's
+set: an `.m3u`, a PSP game's `EBOOT.PBP`, two or more discs of the one game,
+or a `.cue` (or `.gdi`) with its tracks; or when its one disc image is named
+as the folder is. A ScummVM game's folder is one game too. Any other folder
+is a folder of games, also with one game in it. In the list (MENU > View >
+List) the focused game's video snap plays where its cover is. The Ports shelf never looks into its folders: they are the ports'
 own. Favorites, Search Games, Random Game, Storage, Delete Game and Play
 Time all find the games in folders, and after a game the shelf comes back
 in the folder it was in.

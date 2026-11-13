@@ -1558,6 +1558,24 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   one button that matters (Upload, the yes); as a mark it is **accent-ink**:
   a progress bar, a field's focus, the frame while a file is dragged over.
 
+- **Moving** (2026-11-13: "we should be able to drag files around to
+  organize them"): a row dragged onto a folder's row, or onto a crumb of a
+  folder above, moves there on the card (`/api/move`). A mouse lifts it once
+  it has gone 6 px; a finger once held still 450 ms, so a swipe still
+  scrolls. What is lifted fades to 45% and a chip in **accent** with
+  **on-accent** words follows the pointer: its name, or "3 items"; a row or
+  crumb that takes it wears the drop's **raised** fill and **accent-ink**
+  ring, as a file dropped from the computer does. **Select** in a row's ⋯,
+  or Shift, Ctrl or Cmd with a press, picks rows (a **raised** fill and an
+  **accent-ink** bar at the left), and one of them dragged takes the others.
+  A loose `.cue`, `.gdi`, `.toc` or `.m3u` takes the files it names beside
+  it, and the files kept by its stem (src/sheet.h); a folder goes whole. A
+  move stays in its card folder (ROMs, Music...), and a folder moves only
+  where a delete would take it whole (xfer_delete_rule): a console's own
+  folder, or one in BIOS or Saves, stays where the shelf and the cores look.
+  A name already in the folder refuses the whole move, and the toast says
+  which ("Contra.nes is already in Hacks").
+
 ### 11.16 Hotspot screen
 Wi-Fi File Transfer when the handheld is its own network (src/hotspot.h): a
 screen of its own on the **ground**, not a panel over the shelf. It opens and
@@ -2921,9 +2939,15 @@ left out, as an empty system is, and is one line in the log's left-out
 names.
 
 A folder that **is** a game stays one game: on a shelf that takes discs, a
-folder whose disc images are one game's (their names the same game's,
-"Disc 2" and "Track 01" aside, or an `.m3u` with them), launched by its
-best image as before, and a Dreamcast `.gdi` set by its sheet; on
+folder holding the game's set - an `.m3u`, a PSP game's `EBOOT.PBP`, two or
+more discs of the one game (their names the same game's, "Disc 2" and
+"Track 01" aside), or a sheet with its tracks beside it - or one disc image
+named as the folder is ("God of War/God of War (USA).iso", by the same
+cleaned name), launched by its best image as before, and a Dreamcast
+`.gdi` set by its sheet. A folder with one image named otherwise is a
+folder of games with one game in it (2026-11-13: "i created a folder in PSP
+with one game in it, when i clicked to open it it went straight to the
+game"); on
 ScummVM's, a folder with a file in it (a folder of game folders is a
 folder of games); on Ports', every folder is a port's own and is never
 looked into. A folder of several games' discs is a folder of games, each
@@ -2941,17 +2965,28 @@ px2-open, the Scraper, the saved library and the place a start comes back
 to, folder and all. Saves and states go by the game's file name, as they
 always have.
 
-**A folder's card** (ui_make_folder_card): the generated card's slab and
-band in the system's color, and in place of its letter the pixel FOLDER
-still the home and Storage draw, at three units a pixel, its top at -28
-on the 512 x 656 card. On the folder's front a paper label (`#f5f4ee`, its
-edge `#6b6040` and a pixel's shadow down and right) holds the count of
-games in pixel digits 5 x 7, three sprite pixels a digit pixel (two from
-four digits), in **ink**: part of the picture, the same in both themes, as
-the folder's manila is. The folder's name under it in the card's title
-face at y 356, its rule under it. Under the row the name is the title and
-the line under it "12 games" (shelf.games); A's hint is **Open**
-(games.open), and in a folder B's is **Back** (games.back).
+**A folder's card** (ui_make_folder_card, src/folderart.h): the folder
+itself in pixel art in the system's color, on no slab: a folder on the
+shelf is a folder, not a card with a folder on it. Drawn on a grid of 128 x
+112 cells and scaled four times whole (nearest), so a cell is 4 units on
+the 512 x 448 card and about 2 panel pixels on the focused cover: its back
+with a tab at its top left (the color at 74%), two sheets of paper standing
+out of it (`#dcd9cc` and `#f5f4ee`, a line of writing on the front one),
+then its front (the color itself), each in a 1-cell edge of the color at
+42%, the front's top edge lit (the color 35% of the way to white) and its
+foot shaded (86%), its corners a cell in as a pixel artist rounds them. On
+the front's foot at the right a paper label (`#f5f4ee` in the edge color,
+its shadow a cell down and right) holds the count of games in pixel digits
+5 x 7 in **ink**: part of the picture, the same in both themes, as the
+folder's color is. The folder's name on its front in the card's title face
+from x 40, y 144, in **ink** on a light color and paper on a dark one. A
+system with no color has its folders in its marks' **text-dim**. Under the
+row the name is the title and the line under it "12 games" (shelf.games);
+A's hint is **Open** (games.open), and in a folder B's is **Back**
+(games.back). *(2026-11-13: "can the folder actually look like a folder in
+the system? maybe a pixel art folder". I picked the folder with papers of
+three looks drawn: a plain folder, this, and the home's manila folder
+dyed.)*
 
 **The list** (MENU > View > List, src/gamelist.h). A system's menu has
 **View** under Sort By: **Covers**, the row as it always was, or **List**.
@@ -2976,8 +3011,9 @@ the middle:
   the system's mark color (ui_sys_mark) - the generated card, small,
   drawn rather than loaded, so a list of a thousand games costs no art
   reads and no textures, and a 512-unit cover is never squeezed to 40
-  units; a folder's, the pixel folder at half its size, its count at the
-  row's end (x 568) in **chrome**. A favorite has the heart at the row's
+  units; a folder's, the card's folder drawn small (32 x 28 cells, two
+  units a cell, no label), its count at the row's end (x 568) in
+  **chrome**. A favorite has the heart at the row's
   end, not on Favorites.
 - The focused entry on the right: its card or box art whole in a box 320
   x 320 from x 640, y 200; its facts under it from cap y 552, 32 apart, in
@@ -2985,7 +3021,12 @@ the middle:
   or a folder's "12 games"); A's hint at cap y 664.
 - Up and Down step, Left and Right jump a letter, L1 and R1 a page: the
   row turned, as the cover row's d-pad turns with it. It comes round past
-  its ends: a shelf, not a menu (11.3). No video snap plays in the list.
+  its ends: a shelf, not a menu (11.3).
+- The focused game's video snap plays in its cover's place on the panel,
+  as on the cover row (11.19): the same wait, its bar under the cover, the
+  same turn from the cover to the video in a frame that grows from one to
+  the other, and the play mark on a cover that has one. *(2026-11-13: "the
+  list mode should also play the video preview".)*
 
 *(2026-11-12: I wanted my folders in a system kept on the shelf, with
 their own look in the pixel style, and a list to switch to from MENU. Host
