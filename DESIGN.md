@@ -1785,7 +1785,9 @@ package/usbdrive/src/atlas.h and drivestat.h; the atlas is read as
 untrusted). Speeds 1000-based, one decimal in MB/s (999.9 MB/s at most),
 totals with two in GB (999.99 GB); never a time left, as the handheld sees
 blocks, not files. Every slot edge is a multiple of 8 so it lands on a
-pixel of the saved 640 x 480. Without the atlas the page shows as drawn,
+pixel of the saved 640 x 480. File Transfer's news (11.35) is this page too, the
+tiles drawn by the same code, with what File Transfer knows that Flash Drive
+does not: the file's name and the upload's bar. Without the atlas the page shows as drawn,
 both ways idle. Host shots: `--usb-ask N [plain] drive`, `--usb-drive N
 [in|out|both|wide]` (a copy each way, both, the widest numbers), and
 `--usb-drive 3` for the question, `--usb-drive 0 bright` with the bar,
@@ -2844,13 +2846,43 @@ is in, the bar runs to its end and the way in takes its place.
 The hotspot screen (11.16) keeps its code, network and password and PIN
 until someone comes in; it is its own way in.
 
-Once someone has come in, the rows are the usual ones (Browsers, SSH, In /
-out, Now) under the two-line heading above, and they stay when every
-browser leaves: the way in comes back only when the screen opens again,
-with a new PIN. On the hotspot the code goes and the heading is the
-network and its password over the PIN, for another phone to join; where
-the two do not fit one line (Chinese), the password moves down beside the
-PIN, so neither slides.
+Once someone has come in, the news, and it stays when every browser
+leaves: the way in comes back only when the screen opens again, with a new
+PIN. The news is Flash Drive's page (11.18), not a panel *(2026-11-13: "can't
+we use the same upload/download popup design system in wifi file transfer
+as we do for flash drive mode?")*: the panel is at most 648 tall, and over
+the cable its heading and rows already took 487 of it, so Flash Drive's
+tiles did not fit beside them. It opens, closes and is kept for its way out
+as the hotspot's screen is (PANEL_MOVE), the whole screen being the panel.
+Its top is Flash Drive's: Zyper (124) at (123, 168), and beside him at x 208
+the two-line heading above, its first line in **title** **text** and its
+second in **title** **text-soft** (**label** where a line does not fit
+whole, sliding past that, never cut). Then Flash Drive's two tiles where it
+has them, drawn by the same code (ud_tile): **Download**, to the card (a
+browser's upload), and **Upload**, from it (a browser's download), each with
+its mark, its speed once a second and its total since the screen opened, in
+Flash Drive's words, units and rules (1000-based, "0 MB/s" when still). A
+file's bytes only, as the side lights count them (11.27): the page's own
+lists and covers are not a transfer. A way that moved in the last 2 s has
+its mark in **accent-ink** and keeps its speed through a pause between two
+files. What Flash Drive cannot know, File Transfer shows: while an upload of
+a known size is on its way, a **bar** at Download's foot (22 up from the
+tile's bottom, the tile's padding in from each side) on **track**, filled in
+**accent-ink** as far as it has come; and where Flash Drive's eject line is
+(592), **Now** and what happened ("receiving Tobu Tobu Girl.gb", the file's
+name), the label **text-dim** and the value **text-soft** in **meta**; at
+640 **Browsers** and, over the cable, **SSH** on one line, a dot between
+them; and B's hint at the foot (704) as Flash Drive's: "close", "keep going
+or stop" while files move, "hide" while it closes after the file on its
+way. Either line slides where it is too long. The In / out row is gone: the
+tiles say it. Play after this file's wait (11.23) is the same page, its
+heading the screen's name and "Finishing Tobu Tobu Girl.gb..." where the
+news is, B "back to the shelf". On the hotspot the code goes and the heading
+is the network and its password over the PIN, for another phone to join;
+where the two do not fit one line (Chinese), the password moves down beside
+the PIN, so neither slides. Host shots: `--hare ADDR WHO FILE --hare-move
+idle|in|out|both|closing|finish|gone` (10.42.0.1 for the cable, with SSH),
+and `--hotspot ... --hotspot-in`.
 
 **The steps.** A step before the browser that waits too long (the cable 5
 seconds with no computer and 10 with one, the address 10) means the address
@@ -3699,8 +3731,9 @@ File Transfer 2 lab, `docs/design/mock/transfer2-lab.html`)*:
   when the hotspot stops or the cable has been out 10 seconds, and after half
   an hour with no browser asking anything.
 - **A game** while files move asks first, in the same tiles: **Not now**
-  (back to the shelf), **Play after this file** (a wait panel, "Finishing
-  Tobu Tobu Girl.gb...", then the game) or **Cancel and play**. With nothing
+  (back to the shelf), **Play after this file** (a wait on the news's page,
+  11.35, "Finishing Tobu Tobu Girl.gb...", then the game) or **Cancel and
+  play**. With nothing
   moving, File Transfer closes for the game and a one-line message says so
   (11.8): "File Transfer closed for the game." A game takes the loop that
   moves the files, and a port restarts the launcher, so the two never run

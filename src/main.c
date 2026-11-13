@@ -6630,7 +6630,7 @@ static void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose)
  * leaving in its own place: a press on it ends that leave and puts its own
  * panel at rest, and from then on its own is the panel on screen
  * (snap_promote), what the next motion takes off. */
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2 };   /* which drawer a copy is for */
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE };   /* which drawer a copy is for */
 
 static menu_snap  g_snaps[2];
 static menu_snap *g_snap = &g_snaps[0], *g_snap_next = &g_snaps[1];
@@ -6651,6 +6651,7 @@ static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
                       mm_pose pose);
 static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
                      unsigned accent, mm_pose pose);
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose);
 
 /* A panel's arguments into `s`, as the screen on top drew them now: its
  * heading's caption too (menu_draw_caption), or NULL for none */
@@ -6692,6 +6693,10 @@ static void snap_draw(app *a, mm_pose pose)
 	}
 	if (s->kind == PANEL_P2) {
 		p2_panel(a, s->heading, s->rows, s->n, s->accent, pose);
+		return;
+	}
+	if (s->kind == PANEL_MOVE) {
+		move_page(a, s->heading, s->rows, s->n, pose);
 		return;
 	}
 	static menu_tabs rest;
@@ -6775,6 +6780,7 @@ static void panel_show(app *a, int kind, const char *heading,
 	if (kind == PANEL_TILES) tiles_panel(a, heading, rows, n, sel, f.panel);
 	else if (kind == PANEL_HOT) hot_panel(a, heading, rows, n, f.panel);
 	else if (kind == PANEL_P2) p2_panel(a, heading, rows, n, accent, f.panel);
+	else if (kind == PANEL_MOVE) move_page(a, heading, rows, n, f.panel);
 	else menu_panel(a, heading, rows, n, sel, fixed_w, accent, vcolors,
 	                visits_all, loop_at, heading_note, f.panel);
 }
@@ -8757,27 +8763,6 @@ static menu_result sgdb_screen(app *a)
  * The server lives exactly as long as this screen. Closing it stops
  * listening, forgets the PIN and drops every session - which is the honest
  * answer to "how long is my ROM folder on the network for". */
-/* Bytes, in a unit a person reads rather than the one the counter is in.
- *
- * The shot harness was handed "41 MB out" as a literal while this screen could
- * only ever print kilobytes - a picture of a screen that did not exist, which
- * is the exact failure the shared row builder was meant to stop. Sharing the
- * layout is not enough if the fixture claims the content can be something it
- * cannot.
- *
- * Decimal, matching human() in res/web/app.js. These two describe the same
- * bytes to the same person a foot apart, so they have to divide by the same
- * thing, and decimal is what every file manager but Windows Explorer shows -
- * 1024 under a KB/MB label is the one combination that is wrong everywhere. */
-static void human_bytes(char *out, size_t n, unsigned long long b)
-{
-	if (b < 1000ull)              snprintf(out, n, "%llu B", b);
-	else if (b < 1000ull * 1000)  snprintf(out, n, "%llu KB", b / 1000);
-	else if (b < 1000ull * 1000 * 1000)
-		snprintf(out, n, "%.1f MB", (double)b / (1000 * 1000));
-	else snprintf(out, n, "%.1f GB", (double)b / (1000ull * 1000 * 1000));
-}
-
 /* The address and the PIN go in the HEADING, not in rows.
  *
  * They were four rows of equal weight, and rendered it was obvious that the
@@ -9082,47 +9067,6 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	out[n++] = MENU_RULE;
 	out[n++] = MENU_NOTE(legend);
 	return n;
-}
-
-static int hare_rows(menu_row *out, const char *who, const char *ssh,
-                     const char *moved, const char *now, const char *legend)
-{
-	int n = 0;
-
-	out[n++] = (menu_row){ T(S_XFER_BROWSERS), who, false };
-	/* Over the cable, SSH beside the browsers (sshlink.h): who is signed in,
-	 * or why nobody can be. */
-	if (ssh) out[n++] = (menu_row){ "SSH", ssh, false };
-	/* "In / out", not "Transferred": the longest label on the panel beside
-	 * "12 KB in / 41 MB out" scrolled on every real session - just browsing
-	 * moves bytes both ways, so both numbers are never zero - and a still
-	 * caught it mid-word. Rendered 2026-09-30, this fits even at
-	 * "1.2 GB / 413.5 MB". */
-	out[n++] = (menu_row){ T(S_XFER_IN_OUT), moved, false };
-	out[n++] = (menu_row){ T(S_XFER_NOW),    now,   false };
-	/* The key legend (DESIGN.md 11.4): B hides it, Y stops it (xs_*) */
-	if (legend) {
-		out[n++] = MENU_RULE;
-		out[n++] = MENU_NOTE(legend);
-	}
-	return n;
-}
-
-/* One frame of it, for the shot harness. The rows come from the same
- * function the screen uses, so a picture of this cannot quietly stop being a
- * picture of that. */
-static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
-                         const char *who, const char *ssh, const char *moved,
-                         const char *now)
-{
-	menu_row rows[7];
-	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, b_legend(S_KEYHINT_CLOSE));
-
-	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
-	draw_shelf(a);
-	ui_scrim(a->r, 0);
-	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
 }
 
 /* Wi-Fi File Transfer as the handheld's own network (src/hotspot.h): a
@@ -10182,6 +10126,40 @@ static int ud_tokens_width(TTF_Font *f, const int *tok, int n)
 	return w;
 }
 
+/* A number as plastron's usbdrive writes one on its page, by the rule of
+ * its drivestat.c (dst_fmt_total, dst_fmt_rate): File Transfer's tiles
+ * count their own bytes and say them as Flash Drive's do. `v` over `unit`
+ * with `dec` decimals, rounded to the nearest. */
+static int ud_scaled(unsigned long long v, unsigned long long unit, int dec, int u, bool per_s, int *tok,
+                     int max)
+{
+	unsigned long long p10 = dec == 2 ? 100 : dec == 1 ? 10 : 1, x = (v * p10 + unit / 2) / unit;
+	char num[32];
+
+	if (dec) snprintf(num, sizeof num, "%llu.%0*llu", x / p10, dec, x % p10);
+	else snprintf(num, sizeof num, "%llu", x);
+	return ud_tokens(num, u, per_s, tok, max);
+}
+
+/* A total: "0 B", "312 MB", "1.24 GB" */
+static int ud_total(unsigned long long b, int *tok, int max)
+{
+	if (b < 1000) return ud_scaled(b, 1, 0, UT_B, false, tok, max);
+	if (b < 999500ull) return ud_scaled(b, 1000ull, 0, UT_KB, false, tok, max);
+	if (b < 999500000ull) return ud_scaled(b, 1000000ull, 0, UT_MB, false, tok, max);
+	if (b < 999995000000ull) return ud_scaled(b, 1000000000ull, 2, UT_GB, false, tok, max);
+	return ud_scaled(b, 1000000000ull, 0, UT_GB, false, tok, max);
+}
+
+/* A speed: "0 MB/s" when nothing moves, "512 KB/s", "23.4 MB/s" */
+static int ud_rate(unsigned long long b, int *tok, int max)
+{
+	if (b == 0) return ud_scaled(0, 1000000ull, 0, UT_MB, true, tok, max);
+	if (b < 999500ull) return ud_scaled(b, 1000ull, 0, UT_KB, true, tok, max);
+	if (b < 999950000ull) return ud_scaled(b, 1000000ull, 1, UT_MB, true, tok, max);
+	return ud_scaled(b, 1000000000ull, 2, UT_GB, true, tok, max);
+}
+
 /* The tokens drawn from x, as usbdrive composes them from the atlas */
 static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, int x, int cy, SDL_Color c)
 {
@@ -10214,51 +10192,289 @@ static void ud_fit_widest(TTF_Font *f, bool speed, int room)
 		       ud_tokens_width(f, tok, n), room);
 }
 
-/* One way's tile on the page: its mark, moving in **accent-ink** or idle in
- * **text-dim**, and its name in **menu** **text**; its speed big in
- * **title** **text**; its total in **meta** **text-soft**. `speed` and
- * `total` as tokens, NULL for none (the atlas's page). */
+/* One way's tile, on Flash Drive's page and in File Transfer's panel
+ * (xs_move_*): its mark, moving in **accent-ink** or idle in **text-dim**,
+ * and its name in **menu** **text**; its speed big in **title** **text**;
+ * its total in **meta** **text-soft**. `q` is the tile and `at` where its
+ * rows are in it. `speed` and `total` as tokens, NULL for none (the atlas's
+ * page). `bar`, 0..1, the file on its way (File Transfer knows it, Flash
+ * Drive never does): a **bar** of **accent-ink** on **track** at the
+ * tile's foot; below 0, none. */
 typedef struct { int x0, y0, x1, y1; } ud_rect;
 enum { UD_S_SPEED_IN, UD_S_SPEED_OUT, UD_S_TOTAL_IN, UD_S_TOTAL_OUT, UD_S_MARK_IN, UD_S_MARK_OUT, UD_SLOTS };
+/* A tile's padding, and its rows' middles and the bar's top down from its top */
+typedef struct { int pad, mark, speed, total, bar; } ud_rows;
+static const ud_rows UD_PAGE = { UD_PAD, UD_MARK_CY - UD_TILE_Y, UD_SPEED_CY - UD_TILE_Y,
+                                 UD_TOTAL_CY - UD_TILE_Y, UD_TILE_H - 22 };
 
-static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *speed, int ns, const int *total,
-                    int nt, ud_rect slot[UD_SLOTS])
+static void ud_tile(SDL_Renderer *r, const SDL_Rect *q, const ud_rows *at, bool in, bool active,
+                    const int *speed, int ns, const int *total, int nt, float bar, ud_rect slot[UD_SLOTS])
 {
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	SDL_Rect q = { x, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
-	int left = x + UD_PAD, room = UD_TILE_W - 2 * UD_PAD;
+	int left = q->x + at->pad, room = q->w - 2 * at->pad;
+	int mark_cy = q->y + at->mark, speed_cy = q->y + at->speed, total_cy = q->y + at->total;
 	char fit[160];
 
-	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
-	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, UD_MARK_CY, 56,
+	ui_round_rect(r, q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, mark_cy, 56,
 	              active ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
 	ui_fit_text(fm, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
 	            room - UD_MARK - 16);
-	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, UD_MARK_CY), -1, UI_TEXT);
-	if (speed) ud_draw_tokens(r, ft, speed, ns, left, UD_SPEED_CY, UI_TEXT);
-	if (total) ud_draw_tokens(r, fs, total, nt, left, UD_TOTAL_CY, UI_TEXT_SOFT);
+	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, mark_cy), -1, UI_TEXT);
+	if (speed) ud_draw_tokens(r, ft, speed, ns, left, speed_cy, UI_TEXT);
+	if (total) ud_draw_tokens(r, fs, total, nt, left, total_cy, UI_TEXT_SOFT);
+	if (bar >= 0.0f) {
+		SDL_Rect b = { left, q->y + at->bar, room, UI_BAR_H };
+		int fill = (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f);
+
+		ui_round_rect(r, &b, UI_BAR_H / 2, ui_col(t->track, 255));
+		if (fill > 0)
+			ui_round_rect(r, &(SDL_Rect){ b.x, b.y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(t->accent_ink, 255));
+	}
 	ud_fit_widest(ft, true, room);
 	ud_fit_widest(fs, false, room);
 	if (slot) {
 		int k = in ? 0 : 1;
 
-		slot[UD_S_MARK_IN + k] = (ud_rect){ left, UD_MARK_CY - UD_MARK / 2, left + UD_MARK, UD_MARK_CY + UD_MARK / 2 };
-		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, UD_SPEED_CY - UD_SPEED_H / 2, left + room,
-		                                     UD_SPEED_CY + UD_SPEED_H / 2 };
-		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, UD_TOTAL_CY - UD_TOTAL_H / 2, left + room,
-		                                     UD_TOTAL_CY + UD_TOTAL_H / 2 };
+		slot[UD_S_MARK_IN + k] = (ud_rect){ left, mark_cy - UD_MARK / 2, left + UD_MARK, mark_cy + UD_MARK / 2 };
+		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, speed_cy - UD_SPEED_H / 2, left + room,
+		                                     speed_cy + UD_SPEED_H / 2 };
+		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, total_cy - UD_TOTAL_H / 2, left + room,
+		                                     total_cy + UD_TOTAL_H / 2 };
 	}
 }
 
-/* Two button hints at the foot, the shelves' size, centered as a pair */
-static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+/* Flash Drive's page's tile for a way */
+static SDL_Rect ud_page_tile(bool in)
 {
-	int w1 = page_hint_width(k1, l1, false), w2 = page_hint_width(k2, l2, false), gap = 48;
-	int x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+	return (SDL_Rect){ in ? UD_TILE_X0 : UD_TILE_X1, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
+}
+
+/* FILE TRANSFER'S TWO WAYS (DESIGN.md 11.35; 2026-11-13: "can't we use the
+ * same upload/download popup design system in wifi file transfer as we do
+ * for flash drive mode?"). Once someone came in, File Transfer's news is
+ * Flash Drive's page with its two tiles, drawn by ud_tile: Download, to the
+ * card (a browser's upload), and Upload, from it (a browser's download),
+ * each with its speed, once a second, and its total since the screen
+ * opened. A file's bytes only, as for the side lights: the page's own lists
+ * and covers are not a transfer. A way that moved in the last 2 s is lit,
+ * as on Flash Drive's page, and keeps its speed through a pause between
+ * two files. Download's tile has the upload's bar at its foot while one is
+ * on its way and its size is known. g_move is what the page draws. The
+ * panel was the first try: at most 648 tall, its heading and rows over the
+ * cable took 487 of it, and Flash Drive's tiles did not fit beside them. */
+#define XS_FLOW_IDLE_MS 2000u   /* drivestat.h's DST_IDLE_MS */
+typedef struct {
+	unsigned long long total, win, rate;   /* the bytes since the start, this second's, its speed */
+	unsigned moved;                        /* when it last moved */
+	bool active;
+} xs_flow;
+
+/* A second's end for a way: its speed, lit or idle */
+static void xs_flow_step(xs_flow *f, unsigned dt, unsigned now)
+{
+	if (f->win) {
+		f->moved = now ? now : 1;
+		f->active = true;
+		f->rate = dt ? f->win * 1000ull / dt : 0;
+	} else if (f->active && now - f->moved >= XS_FLOW_IDLE_MS) {
+		f->active = false;
+	}
+	if (!f->active) f->rate = 0;
+	f->win = 0;
+}
+
+static struct {
+	bool  active[2];
+	int   speed[2][16], ns[2], total[2][16], nt[2];
+	float bar;                  /* the upload on its way, 0..1; below 0, none */
+} g_move;
+
+/* g_move from the two ways and the upload on its way, `got` of `of` bytes */
+static void xs_move_set(const xs_flow flow[2], long long got, long long of)
+{
+	int w;
+
+	for (w = 0; w < 2; w++) {
+		g_move.active[w] = flow[w].active;
+		g_move.ns[w] = ud_rate(flow[w].rate, g_move.speed[w], 16);
+		g_move.nt[w] = ud_total(flow[w].total, g_move.total[w], 16);
+	}
+	g_move.bar = of > 0 ? (float)((double)(got < 0 ? 0 : got) / (double)of) : -1.0f;
+}
+
+/* The page's rows (xs_page_draw reads them so; panel_show keeps them for
+ * the page's way out): first the news, Now and what happened, or with no
+ * `who` (Play after this file's wait) a line of its own; then Browsers and,
+ * over the cable, SSH, on one line under it; and last the foot's hint, its
+ * word as the label and its key as the value */
+static int xs_page_rows(menu_row *out, const char *who, const char *ssh, const char *now, str_id word)
+{
+	int n = 0;
+
+	out[n++] = who ? (menu_row){ T(S_XFER_NOW), now, false } : MENU_NOTE(now);
+	if (who) out[n++] = (menu_row){ T(S_XFER_BROWSERS), who, false };
+	/* Over the cable, SSH beside the browsers (sshlink.h): who is signed in,
+	 * or why nobody can be. */
+	if (ssh) out[n++] = (menu_row){ "SSH", ssh, false };
+	out[n++] = (menu_row){ T(word), "B", true };
+	return n;
+}
+
+/* A heading's line beside Zyper: **title** where it fits whole, **label**
+ * where not, and sliding past that, never cut */
+static void xs_page_line(app *a, const char *s, int x, int cy, int room, SDL_Color c)
+{
+	TTF_Font *f = ui_font(UI_F_TITLE);
+
+	if (ui_text_width(f, s) > room) f = ui_font(UI_F_LABEL);
+	if (ui_text_width(f, s) <= room) ui_text(a->r, f, s, x, ui_cap_y(f, cy), -1, c);
+	else ui_text_marquee(a->r, f, s, x, ui_cap_y(f, cy), room, plat_now_ms(), c);
+}
+
+/* Rows as one line of **meta** across the page, centered: a note in
+ * **text-soft**, or label and value pairs, the label **text-dim** and the
+ * value **text-soft**, a dot between pairs; sliding where too long */
+#define XS_PAGE_SEP "   ·   "
+static void xs_page_meta(app *a, const menu_row *rows, int n, int cy)
+{
+	TTF_Font *f = ui_font(UI_F_META);
+	const int room = ZYPEROS_SCREEN_W - 2 * DS_INSET, y = ui_cap_y(f, cy);
+	char line[512];
+	size_t at = 0;
+	int k, w = 0, x;
+
+	/* the whole, for its width and for the check that it fits */
+	line[0] = '\0';
+	for (k = 0; k < n && at < sizeof line; k++) {
+		bool note = ROW_IS_NOTE(rows[k]);
+
+		at += (size_t)snprintf(line + at, sizeof line - at, "%s%s%s%s", k ? XS_PAGE_SEP : "", rows[k].label,
+		                       note ? "" : "  ", note ? "" : rows[k].value);
+	}
+	w = ui_text_width(f, line);
+	if (w > room) {
+		ui_text_marquee(a->r, f, line, DS_INSET, y, room, plat_now_ms(), UI_TEXT_SOFT);
+		return;
+	}
+	x = (ZYPEROS_SCREEN_W - w) / 2;
+	for (k = 0; k < n; k++) {
+		if (k) {
+			ui_text(a->r, f, XS_PAGE_SEP, x, y, -1, UI_TEXT_DIM);
+			x += ui_text_width(f, XS_PAGE_SEP);
+		}
+		if (ROW_IS_NOTE(rows[k])) {
+			ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_SOFT);
+			x += ui_text_width(f, rows[k].label);
+			continue;
+		}
+		ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_DIM);
+		x += ui_text_width(f, rows[k].label) + ui_text_width(f, "  ");
+		ui_text(a->r, f, rows[k].value, x, y, -1, UI_TEXT_SOFT);
+		x += ui_text_width(f, rows[k].value);
+	}
+}
+
+static int ud_page_top(app *a, float smile);
+static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2);
+
+/* FILE TRANSFER'S NEWS ON FLASH DRIVE'S PAGE. Its top as Flash Drive's
+ * (ud_page_top): Zyper, and beside him what to type, the heading's first
+ * line in **text** and its second in **text-soft**; the two tiles where
+ * Flash Drive has them, the upload's bar at Download's foot; under them the
+ * news in **meta** **text-soft** where Flash Drive's eject line is, and
+ * under that Browsers (and SSH) in **meta**, the label **text-dim**; the
+ * key's hint at the foot. */
+static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int n)
+{
+	const char *nl = heading ? strchr(heading, '\n') : NULL;
+	char first[192];
+	int hx = ud_page_top(a, 1.0f), room = ZYPEROS_SCREEN_W - DS_INSET - hx, k;
+
+	snprintf(first, sizeof first, "%.*s", nl ? (int)(nl - heading) : (int)strlen(heading ? heading : ""),
+	         heading ? heading : "");
+	xs_page_line(a, first, hx, nl ? 168 - 34 : 168, room, UI_TEXT);
+	if (nl) xs_page_line(a, nl + 1, hx, 168 + 34, room, UI_TEXT_SOFT);
+	for (k = 0; k < 2; k++) {
+		SDL_Rect q = ud_page_tile(k == 0);
+
+		ud_tile(a->r, &q, &UD_PAGE, k == 0, g_move.active[k], g_move.speed[k], g_move.ns[k],
+		        g_move.total[k], g_move.nt[k], k == 0 ? g_move.bar : -1.0f, NULL);
+	}
+	/* where Flash Drive's eject line is, the news, and under it the rest */
+	if (n > 1) xs_page_meta(a, rows, 1, 592);
+	if (n > 2) xs_page_meta(a, rows + 1, n - 2, 640);
+	if (n > 0) ud_page_foot(a->r, rows[n - 1].value, rows[n - 1].label, NULL, NULL);
+}
+
+/* The page as a panel kind (PANEL_MOVE): opened, closed and kept for its
+ * way out as the hotspot's screen is, the whole screen being the panel */
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose)
+{
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
+	SDL_Rect screen = { 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H };
+
+	if (posed) posed = panel_pass_begin(a);
+	xs_page_draw(a, heading, rows, n);
+	if (posed) panel_pass_end(a, &screen, pose);
+}
+
+/* The page, through panel_show */
+static void xs_page_show(app *a, const char *heading, const menu_row *rows, int n)
+{
+	panel_show(a, PANEL_MOVE, heading, rows, n, -1, 0, 0u, NULL, false, 0, NULL);
+}
+
+/* One frame of it, for the shot harness, the tiles as the caller set them
+ * (g_move). The rows come from the same function the screen uses, so a
+ * picture of this cannot quietly stop being a picture of that. */
+static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
+                         const char *who, const char *ssh, const char *now, str_id word)
+{
+	menu_row rows[5];
+	char head[192];
+	int n = xs_page_rows(rows, who, ssh, now, word);
+
+	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
+	draw_shelf(a);
+	ui_scrim(a->r, 0);
+	xs_page_show(a, head, rows, n);
+}
+
+/* What the tiles say, for the screen's pace key: a change draws a frame */
+static unsigned xs_move_key(unsigned key)
+{
+	int w, i;
+
+	for (w = 0; w < 2; w++) {
+		key = pace_int(key, g_move.active[w]);
+		for (i = 0; i < g_move.ns[w]; i++) key = pace_int(key, g_move.speed[w][i]);
+		for (i = 0; i < g_move.nt[w]; i++) key = pace_int(key, g_move.total[w][i]);
+	}
+	return pace_int(key, (int)(g_move.bar * 1000.0f));
+}
+
+/* Two button hints at the foot, the shelves' size, centered as a pair; or
+ * one, centered, with `k2` NULL */
+static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+{
+	int w1 = page_hint_width(k1, l1, false), w2 = k2 ? page_hint_width(k2, l2, false) : 0;
+	int gap = k2 ? 48 : 0, x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
 
 	page_hint(r, k1, l1, x, 704, false, false);
-	page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+	if (k2) page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+}
+#define ud_foot ud_page_foot
+
+/* A page's top: the ground, and Zyper as on the empty home, unless the look
+ * has him off. Where the heading beside him starts: with Zyper off,
+ * where the tiles do. */
+static int ud_page_top(app *a, float smile)
+{
+	draw_background(a);
+	if (!look_zyper_off()) draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, smile, 0.0f, 255);
+	return look_zyper_off() ? UD_TILE_X0 : 208;
 }
 
 /* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
@@ -10282,12 +10498,9 @@ static void usb_drive_draw(app *a, int which)
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
 	/* With Zyper off (Theme), the heading starts where the tiles do */
-	int hx = look_zyper_off() ? UD_TILE_X0 : 208;
+	int hx = ud_page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
 	int n, k;
 
-	draw_background(a);
-	if (!look_zyper_off())
-		draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
 	/* The heading on one line, or two balanced beside him */
 	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
 	if (n > 1) ui_fit_drawn(T(HEAD[which]));
@@ -10325,8 +10538,9 @@ static void usb_drive_draw(app *a, int which)
 			int sp[16], to[16];
 			int ns = ud_tokens(V[v][w].s, V[v][w].su, true, sp, 16);
 			int nt = ud_tokens(V[v][w].t, V[v][w].tu, false, to, 16);
+			SDL_Rect q = ud_page_tile(w == 0);
 
-			ud_tile(a->r, w ? UD_TILE_X1 : UD_TILE_X0, w == 0, ACTIVE[v][w], sp, ns, to, nt, NULL);
+			ud_tile(a->r, &q, &UD_PAGE, w == 0, ACTIVE[v][w], sp, ns, to, nt, -1.0f, NULL);
 		}
 	}
 	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
@@ -10375,8 +10589,11 @@ static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot
 	/* Where the slots are: the connected page's own tiles */
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
-	ud_tile(a->r, UD_TILE_X0, true, false, NULL, 0, NULL, 0, slot);
-	ud_tile(a->r, UD_TILE_X1, false, false, NULL, 0, NULL, 0, slot);
+	for (i = 0; i < 2; i++) {
+		SDL_Rect q = ud_page_tile(i == 0);
+
+		ud_tile(a->r, &q, &UD_PAGE, i == 0, false, NULL, 0, NULL, 0, -1.0f, slot);
+	}
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
 	/* The speeds' tokens: the digits, the mark and the space on a row, the
@@ -11105,6 +11322,12 @@ typedef struct {
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
 	side_lights_move  mv;       /* files moving either way, for their wave */
+	/* The panel's tiles (xs_move_*): a file's bytes each way, Download
+	 * then Upload; the second they count from; the last frame's uploads
+	 * and downloads, whose last bytes land in the poll that ends them */
+	xs_flow     flow[2];
+	unsigned    flow_at;
+	bool        flow_up, flow_send;
 } xfer_sess;
 static xfer_sess g_xs;
 
@@ -11672,6 +11895,25 @@ static void xs_tick(app *a)
 	}
 	g_xs.in  += g_xs.st.in;
 	g_xs.out += g_xs.st.out;
+	/* The tiles' ways: a file's bytes, their speed once a second */
+	{
+		unsigned long long fin = g_xs.st.uploads > 0 || g_xs.flow_up ? g_xs.st.in : 0;
+		unsigned long long fout = g_xs.st.sends > 0 || g_xs.flow_send ? g_xs.st.out : 0;
+
+		g_xs.flow_up = g_xs.st.uploads > 0;
+		g_xs.flow_send = g_xs.st.sends > 0;
+		g_xs.flow[0].total += fin;
+		g_xs.flow[0].win += fin;
+		g_xs.flow[1].total += fout;
+		g_xs.flow[1].win += fout;
+		if (!g_xs.flow_at) {
+			g_xs.flow_at = now ? now : 1;
+		} else if (now - g_xs.flow_at >= 1000u) {
+			xs_flow_step(&g_xs.flow[0], now - g_xs.flow_at, now);
+			xs_flow_step(&g_xs.flow[1], now - g_xs.flow_at, now);
+			g_xs.flow_at = now ? now : 1;
+		}
+	}
 	if (g_xs.st.in || g_xs.st.out || hare_inflight() > 0) g_xs.moved_at = now ? now : 1;
 	/* The hotspot's DNS answers and its start, every frame (bounded) */
 	if (g_xs.hot && (g_xs.hs = hotspot_poll()) == HOTSPOT_FAILED) g_xs.hot_failed = true;
@@ -12045,6 +12287,22 @@ static void xs_end(void)
 	g_xs.shown = false;
 }
 
+/* The tiles (g_move) from the session as it is now */
+static void xs_move_now(void)
+{
+	xs_move_set(g_xs.flow, g_xs.st.uploads > 0 ? g_xs.st.up_got : 0,
+	            g_xs.st.uploads > 0 ? g_xs.st.up_total : 0);
+}
+
+/* Play after this file's wait (xs_before_game), on the page: its line,
+ * saying which file, where the news is, and B's hint */
+static int xs_finish_rows(menu_row *rows, char *line, size_t ln, const char *file)
+{
+	if (file && file[0]) snprintf(line, ln, T(S_XFER_FINISHING), file);
+	else snprintf(line, ln, "%s", T(S_XFER_FINISHING_THE_FILE));
+	return xs_page_rows(rows, NULL, NULL, line, S_KEYHINT_BACK_TO_SHELF);
+}
+
 /* The two questions' words (DESIGN.md 11.14): the tiles, two lines each, and
  * what each does, said under them while it is focused. The shot harness's
  * --xfer-ask draws these same ones. Each is three IDs, read through T() as
@@ -12166,7 +12424,8 @@ static bool xs_before_game(app *a)
 	if (c == 0 || c == -1) return false;
 	if (c == 1) {
 		/* After the file on its way: the page is told nothing new starts,
-		 * and this waits for it, B going back with it still to close */
+		 * and this waits for it, B going back with it still to close; on
+		 * the news's page, the tiles over its line */
 		menu_row rows[3];
 		char line[192];
 		int lv = panel_open();
@@ -12183,14 +12442,8 @@ static bool xs_before_game(app *a)
 			tick_tint(a);
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
-			if (g_xs.st.file[0])
-				snprintf(line, sizeof line, T(S_XFER_FINISHING), g_xs.st.file);
-			else
-				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
-			rows[0] = MENU_NOTE(line);
-			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE(b_legend(S_KEYHINT_BACK_TO_SHELF));
-			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
+			xs_move_now();
+			xs_page_show(a, name, rows, xs_finish_rows(rows, line, sizeof line, g_xs.st.file));
 			plat_draw_osd(a->r);
 			plat_present();
 			ui_frame_rest(4);
@@ -12237,7 +12490,7 @@ static void xfer_screen(app *a)
  * behind the shelf, it is that one, shown again with the same PIN. */
 static void xfer_screen_way(app *a, int way)
 {
-	char       who[64], moved[64], head[192], now_line[160], name[96];
+	char       who[64], head[192], now_line[160], name[96];
 	char       hint[320], lines[3][LB_LINE];
 	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
@@ -12302,15 +12555,6 @@ static void xfer_screen_way(app *a, int way)
 		if (g_xs.st.clients == 0) snprintf(who, sizeof who, "%s", T(S_XFER_WAITING));
 		else snprintf(who, sizeof who, TN(S_XFER_CONNECTED, g_xs.st.clients), g_xs.st.clients);
 
-		if (g_xs.in || g_xs.out) {
-			char hin[24], hout[24];
-
-			human_bytes(hin,  sizeof hin,  g_xs.in);
-			human_bytes(hout, sizeof hout, g_xs.out);
-			snprintf(moved, sizeof moved, "%s / %s", hin, hout);
-		} else {
-			snprintf(moved, sizeof moved, "%s", T(S_XFER_NOTHING_YET));
-		}
 		/* Closing after the file on its way: the Now row says which */
 		if (hare_closing() && g_xs.st.file[0])
 			snprintf(now_line, sizeof now_line, T(S_XFER_CLOSING_AFTER), g_xs.st.file);
@@ -12356,8 +12600,10 @@ static void xfer_screen_way(app *a, int way)
 			if (g_xs.hot)
 				hot_head(head, sizeof head, menu_std_width(a), hotspot_ssid(),
 				         hotspot_password(), g_xs.pin);
-			nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
-			                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
+			nrows = xs_page_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, now_line,
+			                     hare_closing() ? S_KEYHINT_HIDE
+			                     : xs_moving() ? S_KEYHINT_KEEP_GOING_OR_STOP : S_KEYHINT_CLOSE);
+			xs_move_now();
 		}
 
 		plat_input_poll(&a->in);
@@ -12453,7 +12699,7 @@ static void xfer_screen_way(app *a, int way)
 			               g_way.second)
 			    : view == WAY_LOAD
 			    ? pace_int(pace_rows(NULL, rows, nrows, -1, k, a->tint), (int)(g_xs.load_k * 1000.0f))
-			    : pace_rows(head, rows, nrows, -1, k, a->tint);
+			    : xs_move_key(pace_rows(head, rows, nrows, -1, k, a->tint));
 			/* the bar catching up draws every pass; its creep, slow, by its key */
 			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING)
 			              || (view == WAY_LOAD
@@ -12476,7 +12722,7 @@ static void xfer_screen_way(app *a, int way)
 			if (view == WAY_HOT) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
 			else if (view == WAY_IN) xs_way_draw(a, rows, nrows);
 			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
-			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
+			else xs_page_show(a, head, rows, nrows);
 			plat_draw_osd(a->r);
 			plat_present();
 			pace_drawn(&pc, key, nowp);
@@ -24306,7 +24552,8 @@ static const char *shot_hot_phones = "1 joined";
 static const char *shot_hot_now    = "receiving Contra (USA).zip";
 static const char *shot_hare_addr = "192.168.1.42";
 static const char *shot_hare_who  = "1 connected";
-static const char *shot_hare_head = "receiving Contra (USA).zip";
+static const char *shot_hare_head = "Contra (USA).zip";   /* the file the Now row names */
+static const char *shot_hare_move;                         /* --hare-move: the tiles' state */
 /* --hare-steps usb|wifi STATE: File Transfer's steps (linksteps.h) at one
  * state, its hint shown where the state has one: unplugged, nocomputer,
  * noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork */
@@ -25364,23 +25611,68 @@ static void shot_compose(app *a)
 				xs_way_draw(a, rows, n);
 		}
 	}
-	if (shot_hare)
-		hare_preview(a, "zyperos.local", shot_hare_addr, "4071", shot_hare_who,
-		             /* the cable's address is USB File Transfer, with SSH */
-		             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL,
-		             "12 KB / 41 MB", shot_hare_head);
-	if (shot_hot && shot_hot_in) {
-		/* the hotspot once someone came in: the news, its network, password
-		 * and PIN in the heading (hot_head) */
-		menu_row rows[7];
-		char head[192];
-		int n = hare_rows(rows, shot_hot_phones, NULL, "12 KB / 41 MB", shot_hot_now,
-		                  b_legend(S_KEYHINT_CLOSE));
+	if (shot_hare || (shot_hot && shot_hot_in)) {
+		/* The tiles as the screen sets them (xs_move_set), from a
+		 * session's numbers over Wi-Fi (--hare-move): nothing moving after
+		 * a file came in, a file coming in (its bar at 62%), one going
+		 * out, both, closing after the one coming in, Play after this
+		 * file's wait, and Wi-Fi gone with the totals kept. `now` is the
+		 * Now row's words for the file (shot_hare_head). */
+		static const struct {
+			const char *state;
+			bool on[2];
+			unsigned long long rate[2];
+			int bar;                /* per mille of the upload; -1 none */
+			str_id now;
+		} MV[] = {
+			{ "idle",    { false, false }, { 0, 0 },                   -1,  S_HARE_RECEIVED },
+			{ "in",      { true, false },  { 2400000ull, 0 },          620, S_HARE_RECEIVING },
+			{ "out",     { false, true },  { 0, 3100000ull },          -1,  S_HARE_SENDING },
+			{ "both",    { true, true },   { 1800000ull, 1200000ull }, 350, S_HARE_RECEIVING },
+			{ "closing", { true, false },  { 2400000ull, 0 },          840, S_XFER_CLOSING_AFTER },
+			{ "finish",  { true, false },  { 2400000ull, 0 },          840, S_XFER_FINISHING },
+			{ "gone",    { false, false }, { 0, 0 },                   -1,  S_HARE_RECEIVED },
+		};
+		int m = 1, k;
+		xs_flow flow[2] = { { 186000000ull, 0, 0, 0, false }, { 41000000ull, 0, 0, 0, false } };
+		char now[192];
 
-		hot_head(head, sizeof head, menu_std_width(a), shot_hot_ssid, shot_hot_pass, "4071");
-		draw_shelf(a);
-		ui_scrim(a->r, 0);
-		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		for (k = 0; k < (int)(sizeof MV / sizeof MV[0]); k++)
+			if (shot_hare_move && !strcmp(shot_hare_move, MV[k].state)) m = k;
+		for (k = 0; k < 2; k++) {
+			flow[k].active = MV[m].on[k];
+			flow[k].rate = MV[m].rate[k];
+		}
+		xs_move_set(flow, MV[m].bar, MV[m].bar >= 0 ? 1000 : 0);
+		snprintf(now, sizeof now, T(MV[m].now), shot_hare_head);
+		if (shot_hot && shot_hot_in) {
+			/* the hotspot once someone came in: the news, its network,
+			 * password and PIN in the heading (hot_head) */
+			menu_row rows[5];
+			char head[192];
+			int n = xs_page_rows(rows, shot_hot_phones, NULL, shot_hot_now, S_KEYHINT_CLOSE);
+
+			hot_head(head, sizeof head, menu_std_width(a), shot_hot_ssid, shot_hot_pass, "4071");
+			draw_shelf(a);
+			ui_scrim(a->r, 0);
+			xs_page_show(a, head, rows, n);
+		} else if (m == 5) {
+			/* Play after this file's wait, as xs_before_game draws it */
+			menu_row rows[3];
+
+			draw_shelf(a);
+			ui_scrim(a->r, 0);
+			xs_page_show(a, XFER_NAME_WIFI, rows, xs_finish_rows(rows, now, sizeof now, shot_hare_head));
+		} else {
+			const bool gone = m == 6;
+
+			hare_preview(a, gone ? "" : "zyperos.local", gone ? T(S_XFER_WIFI_GONE) : shot_hare_addr,
+			             "4071", shot_hare_who,
+			             /* the cable's address is USB File Transfer, with SSH */
+			             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL, now,
+			             m == 4 ? S_KEYHINT_HIDE
+			             : MV[m].on[0] || MV[m].on[1] ? S_KEYHINT_KEEP_GOING_OR_STOP : S_KEYHINT_CLOSE);
+		}
 	} else if (shot_hot)
 		hot_preview(a, shot_hot_ssid, shot_hot_pass, shot_hot_phones, shot_hot_now);
 	/* The synopsis card, from the card's own games table - so a shot of it is a
@@ -27474,6 +27766,9 @@ int main(int argc, char *argv[])
 			shot_steps_state = argv[++i];
 			if (i + 1 < argc && !strcmp(argv[i + 1], "noname")) { shot_steps_noname = true; i++; }
 		}
+		/* --hare-move idle|in|out|both|closing|finish|gone: File Transfer's
+		 * tiles, with --hare or --hotspot-in (the shot's MV) */
+		else if (!strcmp(argv[i], "--hare-move") && i + 1 < argc) shot_hare_move = argv[++i];
 		else if (!strcmp(argv[i], "--hare")) {
 			shot_hare = 1;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hare_addr = argv[++i];

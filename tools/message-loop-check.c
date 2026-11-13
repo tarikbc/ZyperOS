@@ -33,7 +33,7 @@ static void (*g_menu_header)(app *a, const SDL_Rect *r);
 static int g_menu_header_h;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, VCOL_MESSAGE };
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, VCOL_MESSAGE };
 static unsigned now, step, event_at, polls, frames, services[3];
 static int button, power_calls, game_stops, shelf_frames, game_frames, nudges[2];
 static bool idle, queued_quit, sent, jump, extra_accept, ticking;
@@ -88,6 +88,8 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
                      unsigned accent, mm_pose pose)
 { (void)a; (void)heading; (void)rows; (void)n; (void)accent; (void)pose; assert(0); }
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose)
+{ (void)a; (void)heading; (void)rows; (void)n; (void)pose; assert(0); }
 #include "message-loop.inc"
 
 static void game_backdrop(app *a, void *ctx, float k)

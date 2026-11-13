@@ -463,7 +463,7 @@ A card with no games opens on **No games yet** and the two ways to add them: **A
 3. Open that address (or `http://zyperos.local`) in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
 4. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen.
 
-The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Once someone types the PIN, the screen shows who is connected and what is copying, with the address and the PIN in its heading for the next browser, and it stays that way until you close it.
+The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Once someone types the PIN, the screen looks like Flash Drive's: **Download** and **Upload**, each with its speed and how much has moved, a bar under Download for the file coming in, the file's name, and who is connected, with the address and the PIN at the top for the next browser. It stays that way until you close it.
 
 <br clear="right">
 
@@ -475,7 +475,7 @@ On the Pixel 2 with the adapter in and no network joined, Wi-Fi File Transfer ma
 
 1. Open **MENU > Wi-Fi File Transfer**. It shows a QR code, the network's name and password, and the PIN.
 2. Scan the code with the phone's camera and join the network. A laptop joins with the name and the password.
-3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN. The code then makes way for who is connected, with the network, its password and the PIN in the heading for another phone.
+3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN. The code then makes way for the same Download and Upload screen, with the network, its password and the PIN at the top for another phone.
 
 Close the screen and the network goes, and Wi-Fi is as it was. The phone's sign-in sheet is a small browser: on an iPhone it uploads but can't save a download, and on Android it downloads but can't upload. The page says how to open it in the real browser.
 

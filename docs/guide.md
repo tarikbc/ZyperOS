@@ -567,6 +567,14 @@ to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
+Once someone has typed the PIN, the handheld's screen looks like Flash
+Drive's: **Download** (files coming to the card) and **Upload** (files going
+from it), each with its speed and how much has moved since the screen opened,
+lit while files move that way. While a file comes in, a bar under Download
+shows how far it is. Under them, **Now** says what happened last, with the
+file's name, and **Browsers** (and **SSH** over the cable) who is connected.
+The address and the PIN stay at the top for the next browser.
+
 On the Pixel 2, an Android phone with USB tethering opens it too on the USB
 cable, with no adapter: answer **Phone** when the handheld asks what you
 plugged in, and turn on the phone's **USB tethering**. The phone shares its

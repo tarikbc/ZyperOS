@@ -338,6 +338,13 @@ for _page in (3, 4, 5):
 for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
+# File Transfer's news on Flash Drive's page (DESIGN.md 11.23): the tiles in
+# each state, over Wi-Fi and over the cable (SSH beside the browsers)
+for _move in ("idle", "in", "out", "both", "closing", "finish", "gone"):
+    EXTRA.setdefault("hare-move-" + _move, ("demo", "PS1", ["--hare", "http://192.168.1.42", "1 connected",
+                                                           "Tobu Tobu Girl.gb", "--hare-move", _move]))
+    EXTRA.setdefault("hare-cable-move-" + _move, ("demo", "PS1", ["--hare", "10.42.0.1", "1 connected",
+                                                                 "Tobu Tobu Girl.gb", "--hare-move", _move]))
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
 for _way, _states in (("usb", ("unplugged", "taking", "opening", "nocomputer", "noanswer", "nodriver", "address",
                                "noaddress", "browser", "nobrowser", "waits", "replug", "pin")),

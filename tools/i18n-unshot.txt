@@ -688,8 +688,6 @@ wifimenu.legend
 xfer.dev_link_on
 xfer.hotspot_failed
 xfer.could_not_start
-xfer.nothing_yet
-xfer.closing_after
 xfer.closing_after_this_file
 xfer.legend_moving
 xfer.legend_hide

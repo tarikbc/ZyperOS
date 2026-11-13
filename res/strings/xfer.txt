@@ -306,28 +306,6 @@ ja = %d 台接続済み
 it.one = %d connesso
 it.other = %d connessi
 
-[xfer.in_out]
-note = File Transfer's screen: a row label; its value is the bytes the handheld got and sent, "12 KB / 41 MB". tight: it once scrolled when it was longer; about 330 units beside "1.2 GB / 413.5 MB".
-en = In / out
-zh-Hans = 收 / 发
-es = Entra / sale
-pt-BR = Entra / sai
-fr = Reçu / émis
-de = Rein / raus
-ja = 受信 / 送信
-it = Entra / esce
-
-[xfer.nothing_yet]
-note = The In / out row's value before any byte has moved. A lowercase value.
-en = nothing yet
-zh-Hans = 暂无
-es = nada aún
-pt-BR = nada ainda
-fr = rien pour l'instant
-de = noch nichts
-ja = まだなし
-it = ancora niente
-
 [xfer.now]
 note = File Transfer's screens (and the hotspot's): a row label; its value is the transfer's last news ("receiving Game.zip").
 en = Now
