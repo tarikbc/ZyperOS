@@ -1,0 +1,151 @@
+{
+  "key": "PS1",
+  "name": "PlayStation",
+  "description": "Disc lid \u00b7 open and close",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 26,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    90,
+    4,
+    115,
+    129
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 844
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 93
+    },
+    {
+      "tile": 4,
+      "ms": 94
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 93
+    },
+    {
+      "tile": 8,
+      "ms": 94
+    },
+    {
+      "tile": 9,
+      "ms": 94
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 93
+    },
+    {
+      "tile": 12,
+      "ms": 94
+    },
+    {
+      "tile": 13,
+      "ms": 1688
+    },
+    {
+      "tile": 14,
+      "ms": 93
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 94
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 93
+    },
+    {
+      "tile": 19,
+      "ms": 94
+    },
+    {
+      "tile": 20,
+      "ms": 94
+    },
+    {
+      "tile": 21,
+      "ms": 94
+    },
+    {
+      "tile": 22,
+      "ms": 93
+    },
+    {
+      "tile": 23,
+      "ms": 94
+    },
+    {
+      "tile": 24,
+      "ms": 94
+    },
+    {
+      "tile": 25,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 1218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/PS1-ports.png",
+    "source/PS1-bay.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js"
+  ],
+  "input_sha256": {
+    "source/PS1-ports.png": "b686d16e0141b5e3d023285ecfc72bc16472f558b3e765752289b0d6dce5dde8",
+    "source/PS1-bay.png": "8715d1f3a27680903cb527bb5f6be462bb2979d5ca6acabff04e465065c2cfb6"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108"
+  },
+  "atlas": "PS1.png",
+  "still": "PS1-still.png",
+  "atlas_sha256": "1ee7e2bb718bf6cc4e9910df1bb971540dbeb4b4f2840611114689a3267cc088",
+  "still_sha256": "8d2d0f45918dbb2fdfde851c86d1d6f55c860596bcda8b3e6f2bbddbdc4c55e1"
+}

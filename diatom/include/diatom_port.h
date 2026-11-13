@@ -60,6 +60,15 @@ typedef enum {
 	DIATOM_FILTER_NEAREST,
 	DIATOM_FILTER_SHARP,
 	DIATOM_FILTER_SHIMMERLESS,
+	/* Old screens, drawn by a GPU: a CRT's scanlines and phosphors (flat,
+	 * and curved), scanlines alone, and a handheld LCD's grid. A port with
+	 * no shaders draws them as the closest it has (the Brick:
+	 * Sharp-Shimmerless's map), and a host offers them only where they are
+	 * drawn (ZyperOS: the Pixel 2). */
+	DIATOM_FILTER_CRT,
+	DIATOM_FILTER_CRT_CURVED,
+	DIATOM_FILTER_SCANLINES,
+	DIATOM_FILTER_LCD,
 	DIATOM_FILTER_COUNT
 } diatom_filter;
 

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZyperOS system art</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{font:16px system-ui,sans-serif;color-scheme:light dark;background:#f2f0eb;color:#292931}
+  body{max-width:880px;margin:32px auto;padding:0 20px}
+  h1{font-size:24px;font-weight:600;margin:0 0 20px}
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+  button,select{font:inherit;padding:9px 14px;border:1px solid #85858c;border-radius:7px;background:transparent;color:inherit}
+  label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%}
+  select{max-width:100%;min-width:0}
+  .stage{display:flex;justify-content:center;align-items:center;min-height:400px;margin-top:20px;background:#f2f0eb}
+  .stage canvas{width:min(100%,512px);height:auto;image-rendering:pixelated}
+  .art-dark .stage{background:#17191f}
+  [data-caption]{margin:10px 0 0;text-align:center}
+  .note{margin-top:28px;line-height:1.55;color:#64646d}
+  @media(prefers-color-scheme:dark){:root{background:#23242b;color:#eeeef2}.note{color:#b7b7c0}}
+</style>
+<main id="system-art-review">
+  <h1>ZyperOS system art</h1>
+  <div class="controls">
+    <label>System <select data-system>
+      <option value="PS1">PlayStation</option>
+      <option value="GB">Game Boy</option>
+      <option value="3DO">3DO</option>
+      <option value="SNES">SNES</option>
+      <option value="GBA">Game Boy Advance</option>
+    </select></label>
+    <button data-play type="button">Pause</button>
+    <label><input data-dark type="checkbox">Dark background</label>
+  </div>
+  <div class="stage"><canvas data-stage width="256" height="256" role="img" aria-label="System animation preview"></canvas></div>
+  <p data-caption></p>
+  <p class="note">These are silent art previews. Startup timing and motion remain approximations. Hardware names and startup marks belong to their makers.</p>
+</main>
+<script src="groups/consoles.js"></script>
+<script src="groups/handhelds.js"></script>
+<script src="groups/arcade.js"></script>
+<script src="groups/utility.js"></script>
+<script src="groups/console-lids.js"></script>
+<script src="groups/console-cartridges.js"></script>
+<script src="gba-startup.js"></script>
+<script src="animation.js"></script>
+<script src="export.js"></script>
+<script src="utility-export.js"></script>
+<script>window.artReview=ZyperSystemArt.mount(document.getElementById('system-art-review'),'source/');</script>
+</html>

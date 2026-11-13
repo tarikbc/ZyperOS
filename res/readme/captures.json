@@ -566,7 +566,7 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked · 10 points",
+        "Unlocked \u00b7 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
@@ -1676,120 +1676,6 @@
       "sha256": "692ef7648aca32156df4cf7e0b52df574748fab59ea88eabc19224f3bafd017f"
     },
     {
-      "file": "light/folders.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games"
-      ],
-      "sha256": "0d7703812334a5e3fbcdf3baeb5ccc0556b61675747600fd17dbe8f99f2a4b60"
-    },
-    {
-      "file": "light/folder-inside.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games"
-      ],
-      "sha256": "165a6b6ce3ce7609a6c5d14bd0450ccdcd0d1eb93603c071a11854560bba1405"
-    },
-    {
-      "file": "light/list.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--view",
-        "list"
-      ],
-      "sha256": "1fd70ad0bba7ddc1b4926be6a9d2d44de30c55b7ea875973958b6db81d5e4cf6"
-    },
-    {
-      "file": "light/list-inside.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "light",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--view",
-        "list"
-      ],
-      "sha256": "dd7f09a82ba4374988127436e3a8d41caac5f3b851ec77bbbad8273976d72610"
-    },
-    {
-      "file": "dark/folders.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "dark",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games"
-      ],
-      "sha256": "48304bead3d1c47578f1cb5f8e1465e1d802d389975522ee9123f9202355ae34"
-    },
-    {
-      "file": "dark/list.png",
-      "card": "demo",
-      "args": [
-        "--theme",
-        "dark",
-        "--screen",
-        "systems",
-        "--phase",
-        "3200",
-        "--status",
-        "10:08 24h wifi=off batt=82",
-        "--fn-volume",
-        "--screen",
-        "games",
-        "--view",
-        "list"
-      ],
-      "sha256": "2e7582472a3fa8b35f3caf15eb3bdf2e163aca66963039a08ad6a93f6f148822"
-    },
-    {
       "file": "light/es-shelf.png",
       "card": "es",
       "args": [
@@ -1847,6 +1733,120 @@
         "Rename"
       ],
       "sha256": "e49030e8f94cac69eb2132b84bc9a66f37b30080dc7050f96691206b8e7bad1a"
+    },
+    {
+      "file": "light/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "a5642baeb26535238e831104d211429fb98dea0224a567ab18993af561f5603f"
+    },
+    {
+      "file": "light/folder-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "165a6b6ce3ce7609a6c5d14bd0450ccdcd0d1eb93603c071a11854560bba1405"
+    },
+    {
+      "file": "light/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "49eaba7e8b18724fde01e47868a3d4ebf886d4ea7fcceced903982b136865d64"
+    },
+    {
+      "file": "light/list-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "63decea08c9dbdd77f4e065f0f144158cf588c5e8c28726aff9b25ac8a1d8d29"
+    },
+    {
+      "file": "dark/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "28e72789829ad1a16472267b05829bd1afe83202c6422aa11ba99fde6a544cc1"
+    },
+    {
+      "file": "dark/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "21e7d462e4dfcd930a9bdcf9a41d92aacba6cd944cd1c72c5c6d73eb2c08bce1"
     },
     {
       "file": "light/player2-hotspot.png",

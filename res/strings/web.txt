@@ -2078,3 +2078,53 @@ fr = Touchez %1$s, puis Utiliser ce réseau tel quel. Ouvrez ensuite %2$s dans C
 de = Tippe auf %1$s und dann auf „Netzwerk im Istzustand verwenden“. Öffne dann %2$s in Chrome.
 ja = %1$s をタップし、「このネットワークをそのまま使用」をタップします。次に Chrome で %2$s を開いてください。
 it = Tocca %1$s, poi Usa questa rete così com'è. Quindi apri %2$s in Chrome.
+
+[web.act.select]
+note = A row's menu: picks the file or folder, to drag it onto a folder with the others picked (moving files on the card)
+en = Select
+zh-Hans = 选择
+es = Seleccionar
+pt-BR = Selecionar
+fr = Sélectionner
+de = Auswählen
+ja = 選択
+it = Seleziona
+
+[web.act.deselect]
+note = A row's menu on a picked row: unpicks it
+en = Deselect
+zh-Hans = 取消选择
+es = Deseleccionar
+pt-BR = Desmarcar
+fr = Désélectionner
+de = Abwählen
+ja = 選択を解除
+it = Deseleziona
+
+[web.move.count]
+note = The chip that follows the pointer while several picked files and folders are dragged
+en.one = %d item
+en.other = %d items
+zh-Hans = %d 项
+es.one = %d elemento
+es.other = %d elementos
+pt-BR.one = %d item
+pt-BR.other = %d itens
+fr.one = %d élément
+fr.other = %d éléments
+de.one = %d Element
+de.other = %d Elemente
+ja = %d 項目
+it.one = %d elemento
+it.other = %d elementi
+
+[web.move.done]
+note = A toast after files or folders were dragged onto a folder and moved there; %s is the folder's name
+en = Moved to %s
+zh-Hans = 已移动到 %s
+es = Movido a %s
+pt-BR = Movido para %s
+fr = Déplacé dans %s
+de = Nach %s verschoben
+ja = %s に移動しました
+it = Spostato in %s

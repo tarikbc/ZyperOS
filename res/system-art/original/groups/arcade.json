@@ -1,0 +1,660 @@
+{
+  "schema": 1,
+  "id": "arcade",
+  "created": "2026-11-12",
+  "method": "Built-in image_gen for all original illustrations and new hardware layers. Object transforms animate immutable sources.",
+  "provenance": "All final source images are newly generated raster illustrations. No public icon-pack pixels or reduced hardware photograph pixels are used.",
+  "styleReferences": [
+    "source/GB.png",
+    "source/PS1-ports.png"
+  ],
+  "sourcePolicy": "Final source PNGs remain unchanged. All animation overlays are separate runtime drawing operations.",
+  "boundsFormat": "[x, y, width, height] in actual source pixels",
+  "maxUniquePoses": 64,
+  "startupPolicy": "Vectrex keeps its existing documented startup. MSX2 keeps its existing behavior here. Hardware uses media loading; the ten software and category symbols use two clear object poses.",
+  "validation": {
+    "sourceImages": "All original sources remain unchanged. MP4 and both new hardware layers received visual review.",
+    "script": "node --check groups/arcade.js passed.",
+    "nativeCanvas": "All ten symbols produced exactly two unique poses from 64 samples. AW and NAOMI each produced 26 unique poses. All revised assets stayed within their declared bounds with no edge clipping.",
+    "integratedAnimation": "Pending shared browser review by the integrating agent.",
+    "sharedRendererNativeCanvas": "Passed animation.js render(..., verify=true) for 64 samples per revised asset. Each loop returns exactly to its first frame. Ten symbols have two poses. AW and NAOMI have 26 poses. All 14 source hashes and all JavaScript profiles match this record."
+  },
+  "rejectedGenerations": [
+    {
+      "key": "FAVORITES",
+      "reason": "DESIGN.md specifies a heart. The first star image was replaced.",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create one original pixel-art favorites symbol: one large upright five-point golden star with a small front-facing warm cream highlight and dark amber pixel bevels. Center the whole star, silhouette clear and balanced. Use chunky square pixel edges, near-black outlines, lavender-grey darkest shadows and warm cream edge highlights. Match the approved Game Boy illustration as a style reference only. The star is a category symbol, not hardware. No pedestal, no circle, no text, no surrounding sparkles, no scenery, no external shadow. Transparent background, square canvas, broad margins. No copied icon-pack pixels."
+    },
+    {
+      "key": "AW_CARTRIDGE",
+      "reason": "The first generated cartridge had a false gold JAMMA edge connector at the front. A built-in image edit removed it.",
+      "prompt": "Use case: precise-object-edit. Asset type: transparent animation overlay for ZyperOS Atomiswave icon. Image 1 is the approved empty red Atomiswave motherboard illustration. Image 2 is Sammy's cartridge installation drawing for hardware geometry. Create ONLY the removable red-orange ROM game cartridge that fits the empty central bay in image 1. Remove the whole motherboard, ports, badge, and case from the output, leaving a separate cartridge on a transparent canvas. Keep the exact same viewing angle and chunky pixel style as image 1. The cartridge is a low flat rectangular red-orange plastic cassette, with two small side hook tabs, a plain small cream top label and a downward connector. It is NOT a tall upright game cartridge. Its top is a parallelogram: rear-left (490,350), rear-right (790,430), front-right (580,665), front-left (310,550) on a 1254-square reference canvas. Cartridge side thickness is about 45 reference pixels vertically. Preserve these projected edge directions. Center the isolated cartridge on a square transparent canvas with generous margins. Use dark outlines, red-orange plastic, dark red side shadows and cream highlight pixels. No motherboard, no second cartridge, no hands, no arrows, no text, no scenery, no outside shadow. Draw original pixels; do not copy the manual image.",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-64cd-7261-ae8a-43cfc8490e04/exec-36704227-c5fb-43f8-bb20-969af28aee8a.png"
+    }
+  ],
+  "assets": [
+    {
+      "file": "ARCADE.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "ARCADE",
+      "name": "Arcade",
+      "description": "Red button presses and releases",
+      "motionBounds": [
+        552,
+        478,
+        154,
+        142
+      ],
+      "cue": "button",
+      "source": "source/ARCADE.png",
+      "sha256": "1f70d06f2f8d56cc2748a3efc5d7c0c4c73a2bfa6b385d42b6052fa7e71a456d",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create one original pixel-art arcade category symbol: a classic black arcade control panel with one red ball-top joystick on the left, six buttons in two rows of three on the right, and one gold arcade token leaning against its front edge. It is a generic arcade controls symbol, not a branded cabinet or invented proprietary console. Draw the panel in coherent front-right three-quarter view, its front horizontal and its top receding upwards-right. Use chunky square pixel edges, near-black outlines, lavender-grey shadows, warm cream edge highlights, saturated but restrained colors. Match the approved Game Boy and PlayStation illustrations as style references only. Keep all objects sharp, static, entirely within a centered composition. No letters, no extra controls, no screen, no scenery, no shadow outside the object. Transparent background, square canvas, broad clear margins. No copied icon-pack pixels.",
+      "references": [
+        {
+          "kind": "category",
+          "source": "config/systems.cfg",
+          "note": "Arcade is a game category. The control panel and token are original generic symbols."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The button cap translates vertically into its fixed ring. Its top plane and circular outline keep their shape.",
+      "animationChoice": "The red button cap moves downward by 15 source pixels. The panel, stick, token and all other buttons stay fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-b650135c-9ebb-4964-8688-f835d337eacb.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "AW.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 6000,
+      "key": "AW",
+      "name": "Atomiswave",
+      "description": "ROM cartridge inserts and lifts",
+      "motionBounds": [
+        275,
+        95,
+        560,
+        610
+      ],
+      "cue": "cartridge",
+      "source": "source/AW.png",
+      "sha256": "689e98cd3cfa5ef3def9093c30abe50cd81a20d5a6f51a179510ed7734e122ac",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original pixel-art illustration of the real Sammy Atomiswave arcade motherboard, red-orange rectangular plastic shell, empty recessed cartridge well with its white connector, gold JAMMA edge connector at the front-left, silver video/audio ports at front-right, small metal mounting flanges. Image 1 is the hardware shape reference. Image 2 is only the approved pixel style reference. Redraw as an original illustration; never resize, pixelate or reuse photo pixels. Preserve the actual major ports and proportions. Use a front-right three-quarter view with consistent parallel axes. Include the small white ATOMISWAVE badge on the top front-right with its orange and green mark. No installed cartridge, no screen, no controller, no invented controls. Chunky square pixels, dark outlines, lavender shadows, cream edge lights. Center the whole hardware with generous margins. Transparent background, square canvas. No scenery or outside shadow.",
+      "references": [
+        {
+          "kind": "hardware-photo",
+          "url": "https://commons.wikimedia.org/wiki/File:Atomiswave.jpg",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/2/20/Atomiswave.jpg",
+          "author": "Black Squirrel",
+          "license": "CC BY 4.0",
+          "use": "Shape and connector reference only. No photo pixels copied."
+        },
+        {
+          "kind": "manufacturer-manual",
+          "url": "https://www.betsonparts.com/media/hbi/service-manuals/Sports_Shooting.pdf",
+          "page": 11,
+          "pdfPage": 12,
+          "note": "Sammy Sports Shooting USA operation manual. Align the cartridge with the main PCB connector, insert it, and engage the two hooks. Pinch both hooks and lift to remove."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The cartridge uses one fixed affine projection. Across and depth axes match the bay. Only vertical translation changes during the loop. The near lip occludes the inserted cartridge.",
+      "animationChoice": "A generated flat ROM cartridge lowers vertically into the existing top bay and lifts out. The shell, JAMMA edge, ports and badge stay fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [
+        "The loading cue omits hand operation of the two retaining hooks."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-8b1fd2d0-4448-4764-b8bd-ae97c5a621e8.png"
+    },
+    {
+      "file": "FAVORITES.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "FAVORITES",
+      "name": "Favorites",
+      "description": "Heart beats",
+      "motionBounds": [
+        170,
+        230,
+        920,
+        880
+      ],
+      "cue": "heartbeat",
+      "source": "source/FAVORITES.png",
+      "sha256": "96dc1ce6cfac52541c6b956674bcdfd6451e3d527b9a6d468188961fe1dd5b01",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS Favorites shelf icon. Create one original pixel-art Favorites symbol: a large upright red heart, symmetrical with two rounded top lobes and a pointed lower tip. Use dark burgundy and purple-grey pixel bevels at the lower and right edges, warm cream and coral highlights on the upper-left lobe, and a dark outline. Match the approved Game Boy image's chunky square pixel style. This is the heart specified in ZyperOS DESIGN.md. The heart is a category symbol, not hardware. No star, no wings, no pedestal, no letters, no surrounding particles, no external shadow. One isolated, static, front-facing heart centered with generous margins. Transparent background, square canvas. No copied icon-pack pixels.",
+      "references": [
+        {
+          "kind": "design",
+          "source": "DESIGN.md:127",
+          "note": "Favorites uses a heart."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "Both heart poses share the same center. All moving pixels stay inside the declared bounds.",
+      "animationChoice": "The heart alternates between its full size and 88 percent size. Both poses use a fixed center and preserve its silhouette.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-6e9f9213-0a3e-48ca-9e00-0e7eb2970e64.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "SCUMMVM.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "SCUMMVM",
+      "name": "ScummVM",
+      "description": "Compass needle turns",
+      "motionBounds": [
+        205,
+        795,
+        205,
+        215
+      ],
+      "cue": "compass",
+      "source": "source/SCUMMVM.png",
+      "sha256": "031da16e320fc49af78331d879564ff9cf8e2dff7ebb0cc4eb9ecb9c658933c5",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original pixel illustration of an adventure-game symbol for ScummVM: an open parchment map with a simple dotted route and a red X, a small brass compass on the lower left, and a green curved tentacle peeking from behind the upper right corner. This is an honest software adventure symbol, not fictional hardware. Do not use any proprietary character likeness. Arrange the map in a shallow three-quarter view, with every object sharing the same projected plane. Use chunky square pixel edges, near-black outlines, lavender-grey shadows, warm cream highlights and restrained colors. Match the approved Game Boy and PlayStation style only. Keep the composition static, crisp and centered. No letters, no scenery, no floating particles, no external shadow. Transparent background, square canvas, generous margins. No copied icon-pack pixels.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://www.scummvm.org/",
+          "note": "Adventure-game software. Map, compass and original tentacle symbol."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The needle rotates around its central hub. A cream face patch covers the former needle pixels.",
+      "animationChoice": "The compass needle turns 45 degrees between two directions. The compass rim, map and tentacle stay fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-848dc690-06ae-49e6-9161-dae206785612.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "MAME.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "MAME",
+      "name": "MAME",
+      "description": "Arcade letters bounce",
+      "motionBounds": [
+        45,
+        420,
+        1160,
+        470
+      ],
+      "cue": "letters",
+      "source": "source/MAME.png",
+      "sha256": "fb110afa9f2a198fcf09b985bb73026eada12b73b7f7edc04aa6947db174ced4",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original chunky pixel-art identifying wordmark for MAME software. The exact only text is 'MAME', four large connected angular block letters colored bright blue with darker navy lower bevels, light cyan upper highlights and a near-black outline. It is a software wordmark, not hardware. Face the letters directly forward, upright, with no perspective tilt. Keep all four letters easily readable. Match the chunky pixels, warm highlights and deep purple-grey shadows of the approved Game Boy and PlayStation style, without copying any image pixels. One centered isolated wordmark, no pedestal, no controller, no invented console, no scenery, no surrounding effects, no outside shadow. Transparent background, square canvas, generous margins.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://www.mamedev.org/",
+          "note": "Software emulator framework. Generated name lettering, not an exact official logo."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "Each letter translates without deformation. The letters stay separate and readable.",
+      "animationChoice": "The two M letters rise while A and E descend, then all letters return to the common baseline.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [
+        "Software lettering and symbols are original illustrations, not exact official logo reproductions."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-137cc0cb-9886-43e2-a1a3-3e861d635298.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "MSX2.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 6000,
+      "key": "MSX2",
+      "name": "MSX2",
+      "description": "Panasonic FS-A1 power lamp",
+      "motionBounds": [
+        985,
+        591,
+        14,
+        16
+      ],
+      "cue": "lamp",
+      "source": "source/MSX2.png",
+      "sha256": "c7f3c13675bb00c531cbe02195ca516d1ad7a32d30f648be59da0c9c8085b4ea",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original pixel-art illustration of the real black Panasonic FS-A1 MSX2 computer shown in image 1. Image 2 is only the approved pixel style. Redraw the hardware from scratch; never resize or pixelate photo pixels. Show the keyboard computer alone, no monitor, no disk drive, no accessories. Preserve the low wedge body, dark Japanese QWERTY keys with small orange key marks, four large triangular arrow keys on the right, tiny red status lamp just above those arrow keys, cartridge slot lid at upper right, and orange A1 insignia at upper left. Real FS-A1 proportions: 380 wide, 230 deep, 63 high. Use shallow front-right three-quarter view, front edge horizontal, all keyboard rows and case edges on consistent axes. Chunky square pixels, near-black outline, lavender-grey shadows, cream edge highlights. The only readable text may be A1 and Panasonic. Fully static machine, dark unlit status indicators. Transparent background, centered square composition, broad margins. No scenery.",
+      "references": [
+        {
+          "kind": "hardware-photo",
+          "url": "https://www.msx.org/wiki/Panasonic_FS-A1",
+          "imageUrl": "https://www.msx.org/wiki/images/f/fe/Fsa1a.jpg",
+          "use": "FS-A1 keyboard, arrow keys, lamp, slot and proportions. No photo pixels copied."
+        },
+        {
+          "kind": "startup",
+          "url": "https://www.msx.org/wiki/Panasonic_FS-A1#Firmware",
+          "note": "FS-A1 starts DESKPAC; DEL bypasses it. No monitor is depicted, so this artwork shows only the real lamp."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "Low wedge keyboard, orange key marks, right arrow keys, top-right slot and status lamp match the FS-A1 reference. No monitor or disk drive is invented.",
+      "animationChoice": "The tiny red lamp changes from dark to lit and back. The FS-A1 has a real power indicator and no built-in display. The case and all keys remain fixed.",
+      "animationReview": "Pending integrated canvas frame checks.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-38e87760-a785-4435-807a-f126916fd239.png"
+    },
+    {
+      "file": "MP4.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "MUSE",
+      "name": "MP4",
+      "description": "Video and audio playback",
+      "motionBounds": [
+        805,
+        390,
+        390,
+        560
+      ],
+      "cue": "music-note",
+      "source": "source/MP4.png",
+      "sha256": "dc13cd075b53d9da375419926ee0048ff33873e931000a9f7b78a01ba174156e",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS MP4 shelf icon. Create one original chunky pixel-art media symbol for playing VIDEOS AND AUDIO. Use an upright dark charcoal film frame with three square sprocket holes on each side and a large warm cream right-facing PLAY TRIANGLE centered within its purple screen. A separate coral-red musical eighth note stands at the lower right of the film frame. Keep the note clearly outside the film frame with at least 30 pixels of transparent gap, so it can move as a separate sprite layer. The film frame sits at the left and the note sits at the right; together they form one balanced centered icon. Both symbols face directly forward. Match the approved Game Boy pixel artwork's chunky square steps, thick near-black outlines, lavender-grey shadows and warm cream highlights. This is a symbolic category icon, not a physical computer. No text, no letters, no pedestal, no scenery, no external shadow, no extra small symbols. Make a square transparent canvas with generous clear margins. Keep the complete shapes within the central 75 percent of the canvas. No public icon-pack pixels.",
+      "references": [
+        {
+          "kind": "product-behavior",
+          "source": "src/musec.c, src/mp4video.c and config/systems.cfg",
+          "note": "MP4 plays video and audio. The film frame, play triangle and music note are original symbols."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The film frame and music note face forward. The note has a clear transparent gap from the film frame in both poses.",
+      "animationChoice": "The music note rises by 60 source pixels and returns. The film frame and play triangle stay fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-64cd-7261-ae8a-43cfc8490e04/exec-a9d65df3-1323-48c7-a850-43655d6c8fea.png",
+      "priorSource": {
+        "source": "source/MUSE.png",
+        "sha256": "b8c7cf06d2447cb1b16f8ceb50ec7a2627cd4274e7fdeb074df9238fe9c1aee7",
+        "prompt": "Use case: stylized-concept. Asset type: original ZyperOS Muse music-player shelf icon. Create an original pixel-art music symbol: a pair of dark charcoal over-ear headphones surrounding two connected turquoise eighth notes. Headphones form a simple upright arch with soft grey ear pads. Music notes face directly forward. This represents music-player software, not a particular physical player. Do not draw a cassette player, console or screen. No text, no surrounding effects. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+        "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-10efc4cf-b54c-40c2-9ada-f2f9c979922c.png"
+      },
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "NAOMI.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 6000,
+      "key": "NAOMI",
+      "name": "NAOMI",
+      "description": "ROM-board case inserts and lifts",
+      "motionBounds": [
+        80,
+        100,
+        750,
+        665
+      ],
+      "cue": "rom-board",
+      "source": "source/NAOMI.png",
+      "sha256": "743623d1048c2462ac3fadc6c7162be1cd864d7647482b662c9fddef51e5a7ed",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original pixel-art illustration of the real original SEGA NAOMI arcade motherboard in its ivory-white shell. Image 1 is the hardware reference. Image 2 is only the approved pixel style. Do not reproduce photo pixels or pixelate the photograph; redraw the real object in chunky pixel art. Preserve the rectangular low case, large open top ROM-board bay exposing green PCB with two cream long connectors, ribbed vent area on top-right, a small NAOMI label near the top-right front, and exposed green front connector panel with USB-style square connector, audio red/white sockets, VGA socket and two large ivory power connectors at the right. No ROM board installed. Do not use the grey NAOMI 2 case. Use a consistent shallow front-right three-quarter view with straight parallel axes. Dark outline, lavender-grey shadows, warm cream highlights. One complete centered static motherboard, no controller, no TV, no extra boards or loose wires. Transparent background, square canvas, clear margins. No scenery.",
+      "references": [
+        {
+          "kind": "hardware-photo",
+          "url": "https://www.ebay.com/itm/173947660168",
+          "imageUrl": "https://i.ebayimg.com/images/g/6IgAAOSwj-BdFlW-/s-l1200.jpg",
+          "author": "Legend (HK) Trading Company",
+          "use": "Original ivory NAOMI housing and connector layout. No photo pixels copied. The former NAOMI 2 photo was inspected and rejected as the wrong model."
+        },
+        {
+          "kind": "manufacturer-manual",
+          "url": "https://segaretro.org/images/8/8c/NAOMI_Service_Manual_EN.pdf",
+          "page": 7,
+          "pdfPage": 13,
+          "note": "SEGA NAOMI service manual. Remove four M3 x 30 screws, hold both sides, and lift the ROM-board case upward. Installation reverses this axis."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The ROM case uses one fixed affine projection. Its mounting plane matches the board bay. Only vertical translation changes during the loop. The fixed front rim occludes the inserted case.",
+      "animationChoice": "A generated ROM-board case lowers vertically onto the main board and lifts out. The housing, ports, PCB and badge stay fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [
+        "The loading cue starts after removal of the four retaining screws."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-a3cb0a81-9b45-4e05-8cc6-cee07e68f495.png"
+    },
+    {
+      "file": "PICO8.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "PICO8",
+      "name": "PICO-8",
+      "description": "Pixel flower bounces",
+      "motionBounds": [
+        715,
+        420,
+        280,
+        280
+      ],
+      "cue": "flower",
+      "source": "source/PICO8.png",
+      "sha256": "4fb41a7ff20d41bd3aedc90a8be2f970d0695fb7a26a95f24b803177c3e1a630",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS PICO-8 shelf icon. Create an original pixel-art identifying wordmark for PICO-8 software. Exact text: 'PICO-8'. Make upright block letters in warm cream, with a small orange-red eight-point pixel flower above the hyphen. The flower is a simple abstract mark, not a character. PICO-8 is a fantasy console implemented in software; do not invent physical console hardware. Face letters directly forward, all on one horizontal baseline, clear letter spacing. No controller, cartridge, screen or pedestal. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://www.lexaloffle.com/pico-8.php",
+          "note": "Software fantasy console. Generated identifying name and abstract flower are a shelf illustration, not its original startup screen."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The flower rotates around its center. It does not touch the letters.",
+      "animationChoice": "The isolated flower moves upward by four export pixels. The wordmark stays fixed.",
+      "animationReview": "Integrated frame checks and pixel regression passed. Neighboring lettering stays fixed.",
+      "limitations": [
+        "Software lettering and symbols are original illustrations, not exact official logo reproductions."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-4591715f-1c9d-445c-b6d9-1bf473ae6b5e.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ],
+      "pixelCleanup": "Only the connected opaque flower and its one-pixel edge are copied. Neighboring letter fragments are excluded. No arbitrary-angle rotation remains."
+    },
+    {
+      "file": "OPENBOR.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "OPENBOR",
+      "name": "OpenBOR",
+      "description": "Fist punches",
+      "motionBounds": [
+        260,
+        230,
+        740,
+        860
+      ],
+      "cue": "punch",
+      "source": "source/OPENBOR.png",
+      "sha256": "3a0872ed87c271b69578e9e8fd05350cae5545c07c7e3d32d2e20288c242f4c7",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS OpenBOR shelf icon. Create an original pixel-art software symbol for an open beat-em-up engine: a large bright red boxing glove with a grey cuff, behind a small gold five-point impact flash. Keep the glove compact, upright, facing front three-quarter right with clear thumb and fingers. This is a generic fighting-game symbol; it is not a branded console or hardware. No human, no injured person, no weapon, no text, no controller or screen. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://github.com/DCurrent/openbor",
+          "note": "Beat-em-up game engine. Original glove and impact symbol."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The glove and cuff move as one rigid object. The ready pose excludes the separate impact burst.",
+      "animationChoice": "The fist moves upward and right from its ready pose. The impact burst appears in the punch pose.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-3b8908df-b636-4249-84e0-f9123c1c4612.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "PORTS.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "PORTS",
+      "name": "Ports",
+      "description": "Transfer arrows move",
+      "motionBounds": [
+        265,
+        170,
+        680,
+        980
+      ],
+      "cue": "arrows",
+      "source": "source/PORTS.png",
+      "sha256": "f02227aa0ec46958d92e992530a2b4fb9fbf83c07f05d66b75a1176ca7e30318",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS Ports shelf icon. Create an original pixel-art software ports symbol: a dark charcoal game controller with a black cross-shaped D-pad on the left, four round colored face buttons on the right, and two simple center buttons. Behind it, one turquoise curved arrow points right and one orange curved arrow points left, as a clear symbol for transferring a game between platforms. Generic controller, not a proprietary console. Controller faces directly forward. Arrows form a simple circular pair and do not overlap the controls. No cables, screen, text, or other hardware. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://portmaster.games/",
+          "note": "Native software ports. Original generic controller and transfer arrows."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The arrows keep their original shapes and directions. Their masks exclude the fixed controller.",
+      "animationChoice": "The upper arrow moves right while the lower arrow moves left. The controller stays fixed.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-e3ce1317-fe26-4d6a-a752-e5098a876435.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "VECTREX.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 10240,
+      "key": "VECTREX",
+      "name": "Vectrex",
+      "description": "Original startup characters and border",
+      "motionBounds": [
+        430,
+        280,
+        395,
+        485
+      ],
+      "screen": {
+        "rect": [
+          430,
+          280,
+          395,
+          485
+        ],
+        "native": [
+          240,
+          320
+        ],
+        "bezel": "#08090e"
+      },
+      "cue": "screen",
+      "source": "source/VECTREX.png",
+      "sha256": "5da08c4d9f89e0cfe5600789cbfb2d1ad30bf4defe74668b281db6e6b6584498",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS system shelf icon. Create an original pixel-art illustration of the real GCE Vectrex with its wired controller. Image 1 is the physical hardware reference. Image 2 is the approved chunky pixel style reference. Redraw from scratch, never reduce or pixelate a photograph. Use a directly front-facing view so the portrait CRT glass is a straight upright rectangle with a 3:4 width-to-height ratio. The Vectrex is a tall charcoal black mini arcade case, thick dark bezel around its PORTRAIT monitor, vertical speaker vents below the screen, a small reset button and round power/volume knob on the lower-right front. Put its detached low black controller just in front with a small silver stick on the left and EXACTLY FOUR black round buttons in a row to the right. One fixed cable connects the controller to the lower-right port. Preserve the hardware's proportions. Screen completely blank near-black; no logo or game on the screen. Small Vectrex label above the screen. The case and controller are fixed. Chunky square pixel edges, dark outlines, lavender-grey shadow ramps, cream edge highlights. Transparent background, square canvas, broad clear margins. No scenery.",
+      "references": [
+        {
+          "kind": "hardware-photo",
+          "url": "https://commons.wikimedia.org/wiki/File:Vectrex-Console-Set.png",
+          "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/0/01/Vectrex-Console-Set.png",
+          "author": "Evan-Amos",
+          "license": "CC BY-SA 3.0",
+          "use": "Case, portrait display, speaker, power knob and four-button controller reference only. No photo pixels copied."
+        },
+        {
+          "kind": "startup-source",
+          "url": "https://github.com/technobly/Vectrex-VecForth/blob/master/VecForth/Vectrex/Reference/BIOS.ASM",
+          "note": "Bruce Tomlin and Fred Taft disassembly; compatibility edits by Malban. First power-up loop, Vec_Title, Intro_Boxes, DF0FD and Char_Table. Only the needed glyph bitmap rows are reproduced. No BIOS code or audio is included."
+        },
+        {
+          "kind": "startup-visual",
+          "url": "https://retrosix.wiki/wiki/screen-adjustment-vectrex",
+          "imageUrl": "https://retrosix.wiki/uploads/Screen%20Adjustment%20%28Vectrex%29-6.png",
+          "note": "Checked dotted VECTREX characters and two dashed borders."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "Front view preserves the portrait screen. Speaker and knob sit below it. Controller has one stick and four buttons. Cable stays fixed. Screen compositor keeps 3:4.",
+      "animationChoice": "Original startup characters, extra tall title pass, and two patterned borders. 512 original refresh loops map to an approximate 10240 ms loop. The 240x320 canvas is a 3:4 vector display reference, not a native raster resolution. Timing, line spacing and optical glow are approximations. The 64-pose preview samples border movement more slowly than the hardware. No substitute font, BIOS executable, game screen or sound is included.",
+      "animationReview": "Pending integrated canvas frame checks.",
+      "limitations": [
+        "Startup timing and analog display geometry are approximated. The startup repeats before the cartridge or Mine Storm title."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-15d9d657-605f-468a-a7dd-bae7a1592f93.png"
+    },
+    {
+      "file": "DOOM.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "DOOM",
+      "name": "Doom",
+      "description": "Title recoils",
+      "motionBounds": [
+        45,
+        340,
+        1160,
+        670
+      ],
+      "cue": "recoil",
+      "source": "source/DOOM.png",
+      "sha256": "97ab8752534cc6313d0fc8249c9e44d1fb173ad1685d3c98a92bf76163ccbd32",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS Doom shelf icon. Create an original pixel-art illustration of the identifying DOOM wordmark. Exact text: 'DOOM'. Four large heavy angular uppercase letters, metallic warm gold across the top transitioning to deep blue-grey metal at the bottom, black interior counters, chunky dark extruded lower bevels. Keep the famous broad DOOM silhouette, with the two O letters side by side and all letters fully readable. Face the wordmark directly forward. No scene, no creature, no weapon, no console. This is a software wordmark, not hardware. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+      "references": [
+        {
+          "kind": "platform",
+          "source": "config/systems.cfg:171",
+          "url": "https://doom.bethesda.net/",
+          "note": "Doom is software. Generated identifying wordmark uses the classic gold-to-grey color treatment. No game artwork pixels copied."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The complete wordmark translates as one rigid object. Its letters and bevels keep their relative positions.",
+      "animationChoice": "The title moves upward and left in a recoil pose, then returns.",
+      "animationReview": "Passed local 256-pixel canvas review and the shared animation.js renderer: expected pose count, exact loop return, declared bounds and no edge clipping. Shared browser review remains pending.",
+      "limitations": [
+        "Software lettering and symbols are original illustrations, not exact official logo reproductions."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-831b451d-6115-4007-8a8a-439424f314e8.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ]
+    },
+    {
+      "file": "TIC80.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 800,
+      "key": "TIC80",
+      "name": "TIC-80",
+      "description": "Code brackets open",
+      "motionBounds": [
+        270,
+        320,
+        710,
+        345
+      ],
+      "cue": "code",
+      "source": "source/TIC80.png",
+      "sha256": "56b92ce73301516ce4d1bb5625bc4b9f1dfbaefcb726df2ac16137ea84966f4d",
+      "prompt": "Use case: stylized-concept. Asset type: original ZyperOS TIC-80 shelf icon. Create an original pixel-art identifying mark for TIC-80 software. Exact text: 'TIC-80', in clear large upright block letters, warm cream with violet lower bevels. Above the letters put a small turquoise pair of code brackets surrounding an orange pixel asterisk, as an honest symbol for a programmable fantasy computer. TIC-80 is a software fantasy computer; do not draw a physical computer or invented proprietary console. Face everything directly forward with horizontal baseline. No controller, screen, pedestal or scenery. Use chunky square pixels, near-black outlines, lavender-grey shadows and warm cream highlights. Match the approved Game Boy style only. One centered fixed symbol, generous margins, transparent background, square canvas. No scenery, outside shadow, copied icon-pack pixels, or invented hardware.",
+      "references": [
+        {
+          "kind": "platform",
+          "url": "https://tic80.com/",
+          "note": "Software fantasy computer. Generated identifying name and code brackets; not the official mascot or startup."
+        }
+      ],
+      "imageReview": "passed",
+      "perspectiveCheck": "The two brackets retain their shapes. The asterisk turns around its center above the fixed name.",
+      "animationChoice": "The isolated brackets move outward by six export pixels. The isolated center symbol moves upward by four pixels.",
+      "animationReview": "Integrated frame checks and pixel regression passed. Neighboring lettering stays fixed.",
+      "limitations": [
+        "Software lettering and symbols are original illustrations, not exact official logo reproductions."
+      ],
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d30c-f991-7ad2-82e5-73933a18d70a/exec-f2ead1ea-57e7-433d-8ba3-6cff70f7c97d.png",
+      "poseCount": 2,
+      "frameDurations": [
+        400,
+        400
+      ],
+      "pixelCleanup": "Each object uses its own connected-component mask. All movement stays on the export pixel grid. No arbitrary-angle rotation remains."
+    }
+  ],
+  "browserReview": {
+    "status": "passed",
+    "checks": [
+      "unchanged pixels outside motion",
+      "transparent margins",
+      "loop return",
+      "correct pose count",
+      "perspective review"
+    ]
+  },
+  "extraImages": [
+    {
+      "key": "AW_CARTRIDGE",
+      "file": "AW-cartridge.png",
+      "source": "source/AW-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+      "prompt": "Use case: precise-object-edit. Asset type: transparent animation overlay for ZyperOS Atomiswave icon. Image 1 is the approved empty red Atomiswave motherboard illustration. Image 2 is Sammy's cartridge installation drawing for hardware geometry. Create ONLY the removable red-orange ROM game cartridge that fits the empty central bay in image 1. Remove the whole motherboard, ports, badge, and case from the output, leaving a separate cartridge on a transparent canvas. Keep the exact same viewing angle and chunky pixel style as image 1. The cartridge is a low flat rectangular red-orange plastic cassette, with two small side hook tabs, a plain small cream top label and a downward connector. It is NOT a tall upright game cartridge. Its top is a parallelogram: rear-left (490,350), rear-right (790,430), front-right (580,665), front-left (310,550) on a 1254-square reference canvas. Cartridge side thickness is about 45 reference pixels vertically. Preserve these projected edge directions. Center the isolated cartridge on a square transparent canvas with generous margins. Use dark outlines, red-orange plastic, dark red side shadows and cream highlight pixels. No motherboard, no second cartridge, no hands, no arrows, no text, no scenery, no outside shadow. Draw original pixels; do not copy the manual image.",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-64cd-7261-ae8a-43cfc8490e04/exec-b8185b31-e108-43e3-aab1-aebe06d14a49.png",
+      "method": "Built-in image_gen",
+      "imageReview": "passed",
+      "sourcePolicy": "The generated PNG remains unchanged. Runtime crop and affine projection form the moving overlay.",
+      "correctionPrompt": "Use case: precise-object-edit. Correct only the hardware connector of this isolated Atomiswave ROM cartridge. REMOVE the exposed gold edge-connector strip from the front edge. The actual cartridge uses a female socket underneath its right-hand edge, not a gold JAMMA finger strip at the front. Make the front edge a continuous flat red-orange plastic wall. Keep the two side hooks, top cream label, exact perspective, chunky pixel style, size and position unchanged. The underside socket is hidden from this top view. Keep the transparent background. No extra objects.",
+      "references": [
+        "source/AW.png",
+        "https://www.betsonparts.com/media/hbi/service-manuals/Sports_Shooting.pdf#page=12"
+      ],
+      "perspectiveCheck": "Flat cartridge with two hook tabs. The corrected front has no false JAMMA edge connector. Its underside connector stays hidden in this top view."
+    },
+    {
+      "key": "NAOMI_ROM_CASE",
+      "file": "NAOMI-rom-case.png",
+      "source": "source/NAOMI-rom-case.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5",
+      "prompt": "Use case: precise-object-edit. Asset type: transparent loading-animation overlay for the original SEGA NAOMI arcade motherboard icon. Image 1 is the approved empty original ivory NAOMI motherboard. Image 2 is SEGA's ROM BOARD installation diagram. Create ONLY the removable ivory ROM BOARD CASE from the manual, in the pixel style and exact viewing angle of image 1. Remove the entire motherboard, ports and fixed outer case from the output. The removable ROM-board case is a low flat rectangular ivory plastic enclosure with four mounting holes at its corners, small rectangular top ventilation openings along its two long sides, and a recessed central rectangular label panel. It is NOT the whole NAOMI case, NOT NAOMI 2, NOT a green bare motherboard, NOT a hinged lid. Match the slot's projected axes: across goes almost horizontally right with a slight downward slope; depth goes down-left, steeply. Its top plane should match these reference-space corners: rear-left (390,370), rear-right (770,390), front-right (555,710), front-left (125,690). Low side thickness about 45 pixels. Center the complete isolated ROM case with generous clear margins on a square transparent canvas. Keep its original ivory plastic, thick near-black pixel outline, lavender-grey shadows and cream highlights. No text, no arrows, no hands, no separate screws, no background, no external shadow. Draw original pixels; do not copy manual image pixels.",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-64cd-7261-ae8a-43cfc8490e04/exec-63b29e70-cd9a-47ab-96b0-d35d9f063c82.png",
+      "method": "Built-in image_gen",
+      "imageReview": "passed",
+      "sourcePolicy": "The generated PNG remains unchanged. Runtime crop and affine projection form the moving overlay.",
+      "references": [
+        "source/NAOMI.png",
+        "https://segaretro.org/images/8/8c/NAOMI_Service_Manual_EN.pdf#page=13"
+      ],
+      "perspectiveCheck": "Original ivory ROM case with four mounting holes and a recessed central label panel. It aligns with the open bay through one fixed affine projection."
+    }
+  ],
+  "pixelRegression": "tools/systemart-symbol-pixels-check.py"
+}

@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "images": [
+    {
+      "file": "portmaster-icon.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "fffe3d9bdafabf17f45bb1f9aa8db12f262f887c5b855c728395fae9299afe0b"
+    },
+    {
+      "file": "portmaster-cover-light.png",
+      "width": 512,
+      "height": 656,
+      "sha256": "a69c1b5f18a8855755da2050079e471101d1703925d301e9c9e3b5758a9f5393"
+    },
+    {
+      "file": "portmaster-cover-dark.png",
+      "width": 512,
+      "height": 656,
+      "sha256": "528e9e87d8481b9229c869be86c29fd6dcca5b976ed0c1563a3b2831df3851fe"
+    },
+    {
+      "file": "folder-large.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "0197179a530d029855eb6766cb2c6e61a8963ef6706471db65df04959d29703e"
+    },
+    {
+      "file": "folder-small-24.png",
+      "width": 24,
+      "height": 24,
+      "sha256": "0599170d168fdba79b675c330ecc3cf07bf7950a36dcdd02c45e2f8d0dba2cc0"
+    },
+    {
+      "file": "folder-small-32.png",
+      "width": 32,
+      "height": 32,
+      "sha256": "c06ada5178961c77f1c0f443a6f6f22e5e99f50c772b08c2f93c8e2a8ff62201"
+    },
+    {
+      "file": "folder-small-40.png",
+      "width": 40,
+      "height": 40,
+      "sha256": "0392cddb7e68d73782064310f464885ff9921fccc2f1b20ddfe9ad1df8131b5d"
+    },
+    {
+      "file": "folder-small-48.png",
+      "width": 48,
+      "height": 48,
+      "sha256": "151e2e94f8737edac4fca389d369c1554bad2456c7fd5ce34309589b36151ee7"
+    },
+    {
+      "file": "folder-small-64.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "3746e5f8d6c205cf08f5d564acfe0f5d8881899d66d12ffaa7956624c6a2e1ec"
+    }
+  ],
+  "sourceFiles": {
+    "source/PORTMASTER.png": "71e86c60861a70293e13c78c35818561fb031351785a0686e8eb0d56085cd599",
+    "source/FOLDER.png": "588ac24d893fabed9a94266a7acd32b1dafbac62e487f70a3266f29f13635960",
+    "source/FOLDER_SMALL.png": "1935e343d29ef0d680bb0582d196e86d55a01c2698f05e19064830db2b889082"
+  },
+  "rendererFiles": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "groups/utility.js": "3e9f4302dffce99a22937b88c966df4deea66095873b9c6de0b48194573eaba2",
+    "utility-export.js": "ce68f73245798fff3da7b6a63a5c2cdeacb0ff43b80b959f812bbd8be2502b07"
+  },
+  "folderLabelAt256": {
+    "x": 78,
+    "y": 128,
+    "width": 88,
+    "height": 27
+  }
+}

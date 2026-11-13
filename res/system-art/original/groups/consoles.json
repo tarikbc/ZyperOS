@@ -1,0 +1,906 @@
+{
+  "id": "consoles",
+  "generator": "Built-in image_gen",
+  "created": "2026-11-12",
+  "styleReferences": [
+    "source/PS1.png",
+    "source/SNES.png"
+  ],
+  "assets": [
+    {
+      "key": "32X",
+      "name": "Sega 32X",
+      "hardwareReferences": [
+        {
+          "url": "https://syltefar.com/system/?id=78&mode=list&sortby=year",
+          "purpose": "Genesis Model 1 and 32X shape, position and control layout",
+          "image": "https://syltefar.com/system/32x.jpg"
+        },
+        {
+          "url": "https://gametrog.com/sega-genesis-1-2-3-information-specs/",
+          "purpose": "Correct Genesis Model 1 LED and control positions"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nSubject: Sega Genesis Model 1 with Sega 32X attached. Accurate low wide black Genesis base, circular raised cartridge area, gold 16-BIT marking, left-side top power slider and red indicator lens, lower-left volume slider, two front controller ports. The 32X is the distinctive large black mushroom-shaped riser seated firmly in the Genesis cartridge slot; its upper front has a small silver oval badge marked 32X and its top cartridge slot is empty. Do not include a Sega CD. Controller: original black three-button Genesis pad, D-pad on left, three round gray A B C buttons arranged diagonally on right, small Start near middle. Make the real Genesis power LED an unlit dark red horizontal lens next to the power slider. No light on the 32X itself. Keep the Genesis base recognizably wider than the 32X.",
+      "sourceFile": "source/32X.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-7e110274-0a58-4a1e-95ce-3cc1f3a210fb.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          729,
+          672,
+          17,
+          15
+        ],
+        "color": "#ff3434",
+        "off": "#3d1821"
+      },
+      "perspectiveChecks": [
+        "Top, front and right faces agree.",
+        "32X remains seated in the Genesis slot.",
+        "Controller and cable remain fixed.",
+        "Only the real base-console indicator changes."
+      ],
+      "imageReview": "Accepted after correcting Genesis controls, central LED and the visible left controller plug.",
+      "sha256": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Image 1 is the target 32X pixel illustration. Image 2 is an accurate Genesis Model 1 pixel illustration for its control layout. Correct ONLY the Genesis BASE controls in image 1 to match image 2. Remove the red lamp beside the left power slider. Add the real small ROUND red power LED directly BELOW the central gold 16-BIT marking, at the front center of the circular cartridge area. Put the small lens in a muted dark-red panel, like image 2. Correct the lower-left control to a VERTICAL volume slider, and add the light-gray RESET button below the horizontal POWER slider. There must be exactly one tiny dark red lamp at the center. Keep the 32X mushroom riser, its badge, top slot, console outline, controller, cable, camera, placement and transparent canvas fixed. Match original crisp pixel clusters. Do not add or remove any controller port.",
+        "Use case: precise-object-edit. Edit target: this Genesis 32X pixel illustration. Change ONLY the controller cable endpoint at the console. The cable ends just LEFT of the left controller socket, leaving both sockets empty. Extend the existing cable slightly right into a visible BLACK RIDGED CONTROLLER PLUG fully seated INSIDE the LEFT socket. The plug must cover that socket's pins and sit within its bezel. Leave the RIGHT controller socket empty and unchanged. Restore any false case hole left of the socket. Keep the whole 32X, Genesis body, controller, main cable curve, central red power lamp, all controls, camera angle, placement, size, pixel style, and transparency unchanged. No additional ports."
+      ],
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "SATURN",
+      "name": "Sega Saturn",
+      "hardwareReferences": [
+        {
+          "url": "https://repairdats.com/consoles/sega/saturn_group",
+          "image": "https://repairdats.com/consoles/sega/saturn/saturn_model_2/saturn_model_2.png",
+          "purpose": "Model 2 round controls, power indicator and front port layout"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real hardware shape reference ONLY. Do not copy photo pixels or photo texture. Reconstruct it in the pixel style of images 1 and 2.\nSubject: black Sega Saturn Model 2. Follow image 3's actual hardware geometry accurately. A broad, low, rounded black rectangular case, with a large rounded RECTANGULAR disc lid on the top, not a circular PlayStation lid. The rear top edge has a long cartridge expansion slot. The front edge of the top has THREE controls: small ROUND POWER button on the LEFT, wide RECTANGULAR OPEN button in the CENTER under the lid, small ROUND RESET button on the RIGHT. A tiny circular green power indicator lens sits just to the RIGHT of the left POWER button. Leave the indicator unlit dark green. Front vertical face has SEGA mark and TWO rectangular controller sockets. No reset button on the front vertical face. No large OPEN button on the right. Match all positions in image 3 while using the approved shallow front-right pixel-art view. Controller: original black Saturn Model 2 pad with a circular directional disk on left, small central START, six action buttons in two rows of three on right. Closed lid, empty cartridge slot. Keep the case silhouette Saturn-specific.",
+      "rejectedPrompts": [
+        "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nSubject: black North American Sega Saturn Model 2, not Model 1. Wide low black rounded rectangular console. Central circular top-loading CD lid with small SEGA SATURN lettering, closed. Large round POWER pushbutton at top front-left and large round OPEN pushbutton at top front-right. Small dark green power indicator on top left, immediately above the POWER button. Small RESET button at the front near left controller port. Two rectangular black controller sockets on front. Correct black second-model Saturn controller with round D-pad at left, small center Start button, six circular action buttons arranged in two rows of three on right. Use accurate low rounded Saturn proportions. No extra access indicator on this Model 2. Keep all controls clearly visible."
+      ],
+      "sourceFile": "source/SATURN.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-7915b273-d2c4-46fa-9b88-48e7e11f7c94.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          450,
+          601,
+          17,
+          12
+        ],
+        "color": "#6fe877",
+        "off": "#18351e"
+      },
+      "perspectiveChecks": [
+        "Lid, top controls and rear slot share case depth axes.",
+        "Power, Open and Reset match Model 2 reference.",
+        "Only the small power lens changes."
+      ],
+      "imageReview": "Accepted after correcting Model 2 controls, lid, and visible left controller plug.",
+      "sha256": "bd9c64ff789d15833628f7f913c3cd6b20452252f77358aadc03b12b8903a2b3",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Edit target: this Sega Saturn pixel art. Correct ONLY the controller cable's console connection. The cable currently ends in the case LEFT of both empty sockets. Replace that endpoint with a visible black ridged controller PLUG inserted INSIDE the LEFT rectangular controller socket. The plug must cover the pins of the left socket. Extend the existing short cable rightward into that plug. The RIGHT socket remains empty. Remove any false hole to the left of the sockets and restore case plastic there. Preserve controller, main cable curve, console silhouette, buttons, green power indicator at its exact coordinate, lid, labels, lighting, size, projection, and transparent canvas. Do not add a third port. Do not move either existing socket."
+      ],
+      "status": "complete"
+    },
+    {
+      "key": "A2600",
+      "name": "Atari 2600",
+      "hardwareReferences": [
+        {
+          "url": "https://retroreviverepair.com/products/atari-2600-service",
+          "purpose": "Six-switch case, wood fascia, slot and toggle positions"
+        },
+        {
+          "url": "https://vtda.org/docs/computing/Atari/FD100133_Atari2600FieldServiceManualRev02_Jan83.pdf",
+          "purpose": "Power toggle moves up for On; original unit has no power indicator"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is real hardware for shape and switch layout only. Use no photo pixels or texture.\nSubject: original Atari 2600 six-switch woodgrain console. Follow the photo's layout. Broad black low wedge; horizontal ribbing across front top; warm brown woodgrain front fascia with small Atari mark at right. Top rear control strip has exactly SIX short metal toggle levers, THREE left and THREE right of a central empty cartridge slot. Leftmost lever is POWER, clearly isolated and placed down/OFF in its little vertical dark slot. No power light exists, so draw NO lamps. Avoid small labels. One original CX40 black square joystick in front-left, tall single black stick and ONE red circular fire button at the upper-left corner of its square base. Its short cable routes around the left side to the REAR console port; do not put a socket on the wooden front. Keep the hardware low and wide. Match the approved pixel style and shallow view.",
+      "sourceFile": "source/A2600.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-b789a8bc-8313-4c1d-b898-0ba17644450d.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "toggle",
+        "rect": [
+          329,
+          450,
+          36,
+          70
+        ],
+        "offCenter": [
+          344,
+          501
+        ],
+        "onCenter": [
+          350,
+          465
+        ],
+        "cap": [
+          22,
+          18
+        ]
+      },
+      "perspectiveChecks": [
+        "Front view uses level control-panel and wood-strip edges.",
+        "Six toggles surround one slot.",
+        "Power toggle pivots inside its real slot.",
+        "Rear cable path stays fixed."
+      ],
+      "imageReview": "Accepted. Six-switch wood case and CX40 controller match the reference.",
+      "startupException": "The original six-switch Atari 2600 has no power light or fixed startup screen. Its real power toggle moves.",
+      "sha256": "11a969c487d48bffce6e17b326fb33585a53424151b7f9aa93a9305f96e01bb9",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "status": "complete"
+    },
+    {
+      "key": "A5200",
+      "name": "Atari 5200",
+      "hardwareReferences": [
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:Atari-5200-Console-Set.jpg",
+          "image": "https://retrobug.org/resource/img/systems/sys_l_ata_5200.webp",
+          "purpose": "Four-port 5200 wedge, silver strip, front-right power button and keypad controller"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real Atari 5200 hardware shape and layout reference only. Reconstruct the hardware in the pixel-art style; use no photo pixels.\nSubject: Atari 5200 four-port model, accurate to image 3. Large wide low black wedge console; broad flat rear controller-storage lid, vent rows, top central cartridge slot, wide horizontal silver strip across the top front with small ATARI 5200 marking and thin rainbow stripe. Small rectangular POWER ON/OFF pushbutton at the TOP FRONT-RIGHT, below the silver strip, exactly as photo. Do not add any power light. Four rectangular controller ports in front vertical face, one connected. Empty cartridge slot. One original elongated black 5200 controller in front-left, tall analog joystick in its upper half, small Start Pause Reset buttons above it, lower 3-column by 4-row keypad, red fire buttons on its sides. Controller must be much smaller than console. Keep controller upright with keypad nearest the viewer. Closed rear storage lid. No modern D-pad.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Edit target is the generated Atari 5200 pixel art. Correct ONLY the number of controller sockets in the console front. The real four-port Atari 5200 has FOUR ports total: ONE plugged cable socket and THREE empty sockets. This image mistakenly has five total. Remove the far-right empty socket entirely and fill its area with the same flat dark gray console front plastic. Preserve the other three empty sockets and the plugged socket. Keep the exact same console, controller, cable, power button, labels, style, pixel edges, size, pose, and transparent canvas. Do not alter anything else."
+      ],
+      "sourceFile": "source/A5200.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-1190731c-afde-4f74-8b41-16460d7f1bc6.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "press",
+        "polygon": [
+          [
+            900,
+            574
+          ],
+          [
+            1041,
+            584
+          ],
+          [
+            1024,
+            621
+          ],
+          [
+            888,
+            610
+          ]
+        ],
+        "offset": [
+          0,
+          6
+        ]
+      },
+      "perspectiveChecks": [
+        "Top, slot, silver strip and button share case axes.",
+        "Four controller ports total, one plugged.",
+        "Power button moves inward by six source pixels.",
+        "Controller and cable stay fixed."
+      ],
+      "imageReview": "Accepted after removing one invented fifth port.",
+      "startupException": "Use the real momentary power button. No fixed startup sequence is shown.",
+      "sha256": "cbb7cbf5ea4fa0839f02f82018f1bd207aae2a7c26f90371210df736c912ea9d",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "status": "complete"
+    },
+    {
+      "key": "A7800",
+      "name": "Atari 7800",
+      "hardwareReferences": [
+        {
+          "url": "https://www.atarimuseum.de/7800.htm",
+          "image": "https://www.atarimuseum.de/bilder/7800/cx7800.jpg",
+          "purpose": "PAL 7800 with CX78 controller, switch strip and indicator position"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real PAL Atari 7800 hardware shape reference only. Use no photo pixels.\nSubject: Atari 7800 ProSystem with original PAL CX78 controller, based accurately on image 3. Black low rectangular wedge, rear top cartridge slot empty, broad silver top strip with thin rainbow stripe and small ATARI 7800 marking, black front sloping top below it. Four narrow rectangular buttons on the front top strip: POWER then PAUSE on the left, SELECT then RESET on the right. Small round dark red POWER LED lens between POWER and PAUSE. Controller: exact small black rectangular CX78 pad, light-gray D-pad with short removable thumb stick on left, TWO round red action buttons on right, like photo. Cable runs to front underside port, leaving power controls visible. Do not draw the taller 5200 case or a 2600 joystick. Keep photo's shape and control positions, but use the approved original pixel-art style.",
+      "sourceFile": "source/A7800.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-410db656-55c9-43a7-99c0-19f0a4610fa4.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          314,
+          640,
+          14,
+          12
+        ],
+        "color": "#ff3636",
+        "off": "#441522"
+      },
+      "perspectiveChecks": [
+        "Power lens sits between Power and Pause.",
+        "Case, slot and button row share the same projection.",
+        "PAL CX78 controller stays fixed."
+      ],
+      "imageReview": "Accepted. PAL case and CX78 match the hardware reference.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "a2881c82252fb5619d95a99edc19d505c330da64fa742584954ca86fbff09927",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "DC",
+      "name": "Sega Dreamcast",
+      "hardwareReferences": [
+        {
+          "url": "https://www.xataka.com/videojuegos/dreamcast-las-consolas-de-tu-vida",
+          "image": "https://i.blogs.es/673a1c/dreamcast_02/650_1200.jpg",
+          "purpose": "Round Power and Open controls; triangular center orange power indicator"
+        },
+        {
+          "url": "https://www.sega.jp/history/hard/dreamcast/devices.html",
+          "purpose": "Official HKT-7701 controller colors: green Y, blue B, red A, yellow X"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: close-up photo for real Dreamcast button and lamp locations only. Do not use photo pixels.\nSubject: original white Sega Dreamcast, full console and one matching controller. Compact off-white square console with softly rounded corners; large round closed disc lid with small orange Dreamcast spiral. Small ROUND POWER button at top front-left, small ROUND OPEN button at top front-right. An inverted triangular orange power lens sits centered below the front lip of the lid, pointing toward the four controller ports. This lens is dark amber in the off pose. Four round controller sockets across the front vertical face, exactly FOUR total, one occupied. Original light gray Dreamcast controller below-left: single gray analog stick upper-left, black D-pad below-left, four colorful round action buttons right, small central orange Start button, rectangular VMU socket in middle. Insert a small white VMU with blank gray screen. Controller has two large downward grips. Its cable emerges from the controller's lower edge and loops to the console's first port, as on real hardware. No fifth port, no tray, no moving lid.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Edit target is this Dreamcast pixel illustration. Change ONLY the controller cable routing. The Dreamcast controller cable exits its BOTTOM CENTER between the two grips. Remove the short cable that wrongly enters at the TOP of the controller. Keep the console plug in its existing front-left socket. Route one simple dark cable from that console plug around the LEFT SIDE of the controller, down beside its left grip, then curve right beneath the controller and enter the existing bottom-center cable outlet between the grips. Leave a narrow transparent gap between the loop and the controller silhouette. The loop stays wholly inside the canvas. Preserve every other pixel-art feature, console, controller, VMU, colors, size, view and transparent background. Do not add a second cable.",
+        "Use case: precise-object-edit. Edit target: this Dreamcast pixel-art asset. Change ONLY the colors inside the four small circular face buttons on the controller's RIGHT side. Correct original Sega Dreamcast arrangement: TOP button becomes GREEN (Y), RIGHT button becomes BLUE (B), BOTTOM button becomes RED (A), LEFT button becomes YELLOW (X). Preserve the existing circular black outlines, positions, sizes, pixel style and highlights. Add no letters. Do not move any button. Preserve console, VMU screen, analog stick, D-pad, Start, controller shell, bottom-exit cable loop, power lamp, every edge and transparent background exactly. Only recolor those four button interiors."
+      ],
+      "sourceFile": "source/DC.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-c17ed244-a5d7-4d4b-9ad0-144dbed1114a.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          651,
+          542,
+          39,
+          32
+        ],
+        "polygon": [
+          [
+            652,
+            542
+          ],
+          [
+            688,
+            542
+          ],
+          [
+            670,
+            572
+          ]
+        ],
+        "color": "#ff9824",
+        "off": "#593313"
+      },
+      "perspectiveChecks": [
+        "Power lens is an inverted triangle below the lid.",
+        "Four sockets total, one occupied.",
+        "Controller cable exits its bottom center.",
+        "Closed lid and whole cable stay fixed."
+      ],
+      "imageReview": "Accepted after correcting bottom-exit cable and all four face-button colors against Sega's official controller photo.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "3d85f18d39d73a60211332e164b925c40ca7ae805cc397f3a25313c66e6eb65c",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "GENESIS",
+      "name": "Sega Genesis",
+      "hardwareReferences": [
+        {
+          "url": "https://gametrog.com/sega-genesis-1-2-3-information-specs/",
+          "image": "https://i0.wp.com/gametrog.com/wp-content/uploads/2018/07/sega-genesis-1-rev-top-gametrog.png?resize=1000%2C668&ssl=1",
+          "purpose": "Model 1 layout, power LED below 16-BIT badge, left switch and reset"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real Sega Genesis Model 1 hardware geometry and control layout only, not style. Do not use photo pixels.\nSubject: Sega Genesis Model 1 console accurately following image 3. Low wide black rectangular case, large circular raised cartridge area on right two-thirds of top, empty horizontal slot near rear of that circle, small SEGA GENESIS badge, 16-BIT marking. The tiny ROUND RED POWER LED is at the FRONT CENTER OF THE CIRCULAR AREA, directly BELOW the 16-BIT marking. Put its unlit dark red lens there. It is NOT beside the power switch. Left top panel has horizontal POWER slider on upper right and light-gray RESET button below it; VERTICAL volume slider is farther left. Left rear ribbed vent panel. Exactly TWO front controller sockets, one plugged and one empty; small headphone jack far left front. Original black three-button Genesis controller in front-left, D-pad left, small Start middle, exactly THREE gray A B C buttons slanted upward to right. No Sega CD or 32X. Match source 3's control geometry closely but use source 1 and 2's flat pixel-art finish.",
+      "sourceFile": "source/GENESIS.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-0f100bc8-8252-4ebc-9cf4-c7702225292d.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          759,
+          652,
+          15,
+          13
+        ],
+        "color": "#ff3838",
+        "off": "#3d1821"
+      },
+      "perspectiveChecks": [
+        "Round LED lies directly below 16-BIT.",
+        "Volume slider runs along case depth.",
+        "Two sockets total, one plugged.",
+        "Only the LED changes."
+      ],
+      "imageReview": "Accepted. Model 1 controls and LED follow the hardware reference.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "addc29747fa2e7b8eac9754a0d5dbb55af92b396846b047a3725e4007f858621",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "N64",
+      "name": "Nintendo 64",
+      "hardwareReferences": [
+        {
+          "url": "https://www.ebay.ca/itm/126483597140",
+          "image": "https://i.ebayimg.com/images/g/1fMAAOSwuOhmQ~XZ/s-l1200.png",
+          "purpose": "Four sockets, central red power LED and power/reset placement"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real Nintendo 64 front geometry and LED position only. Do not use photo pixels.\nSubject: standard CHARCOAL BLACK Nintendo 64 with original LIGHT GRAY three-prong N64 controller. Low black rounded console with distinctive wavy front arch, empty cartridge slot at top rear, small rectangular expansion cover on top center-front, POWER slider on top left, RESET round button on top right. Exactly FOUR gray round-front controller sockets on the front, one plugged and three empty, with N64 colored N badge centered above them. Small horizontal red LED lens at front CENTER, beneath the logo between the middle two ports. Lens unlit dark red. Original light gray N64 controller has THREE downward grips, black D-pad left, gray analog stick atop center grip, red round START middle, green A and blue B to right, and exactly FOUR small yellow C buttons at the upper-right in a diamond. Black cable enters controller upper edge and connects to console port 1. Do not make a modern two-grip controller. No cartridge inserted.",
+      "sourceFile": "source/N64.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-c92a1180-7aed-42b3-8591-fb4df886eb74.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          665,
+          646,
+          43,
+          13
+        ],
+        "color": "#ff363c",
+        "off": "#401622"
+      },
+      "perspectiveChecks": [
+        "Four front ports and central red LED match the reference.",
+        "Cartridge slot and expansion cover match the case.",
+        "Three controller grips and four yellow C buttons are present.",
+        "Controller and cable stay fixed."
+      ],
+      "imageReview": "Accepted. N64 controls and case use a coherent front view.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "9bcf6d42a0c7bafb484f205865d32670fa62a18d8714716ffa41d831f6f3d90b",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "NEOCD",
+      "name": "Neo Geo CD",
+      "hardwareReferences": [
+        {
+          "url": "https://www.ebay.com/itm/126164599189",
+          "image": "https://i.ebayimg.com/images/g/HjQAAOSwDbFlEjYW/s-l1200.jpg",
+          "purpose": "Top-loader case, round left Power button, central indicator"
+        },
+        {
+          "url": "https://www.konsolenkost.de/neo-geo-cd-original-controller-schwarz-snk-gebraucht_1010754_11154/",
+          "purpose": "Original CD controller shape and buttons"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is real Neo Geo CD hardware; input 4 is its controller. Use both as shape references only. Do not use photo pixels.\nSubject: black SNK Neo Geo CD top-loader, exactly the model in photo 3. Wide low rounded rectangle with broad rounded-rectangular top CD lid, rear horizontal rib panel, fluted side edges. Closed lid has small ivory NEO GEO CD lettering. One round gray POWER button at top front-left and one tiny round dark red LED at top front CENTER below the lid lip. Do not add an OPEN button: this lid uses the front finger lip. Front has exactly two controller sockets, one occupied. Controller matches photo 4: rounded black dogbone with round thumbstick on left, gray Select and Start buttons center, four colored action buttons arranged with green C upper-left, blue D upper-right, red A lower-left, yellow B lower-right. Keep all case edges and controls in coherent shallow perspective. Animate only its real central power indicator later.",
+      "sourceFile": "source/NEOCD.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-5b79f97e-f9d3-4583-a578-449ae258fdef.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          621,
+          687,
+          11,
+          10
+        ],
+        "color": "#ff3636",
+        "off": "#3d1821"
+      },
+      "perspectiveChecks": [
+        "Top-loader lid, front finger lip and round Power control match the photo.",
+        "Indicator sits in front-center position.",
+        "Two controller sockets and correct CD pad buttons remain fixed."
+      ],
+      "imageReview": "Accepted. Case and CD pad match their references.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "b44d6e3e646b072102e5ed0dc806fc301e6b6618613e5edab26e2a71c917db3a",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "NEOGEO",
+      "name": "Neo Geo AES",
+      "hardwareReferences": [
+        {
+          "url": "https://www.ebay.com/p/110703153",
+          "image": "https://i.ebayimg.com/images/g/BVUAAeSwstpoxevh/s-l1200.jpg",
+          "purpose": "Front-left horizontal power slide switch; original AES has no LED"
+        },
+        {
+          "url": "https://www.ebay.com/itm/388250467499",
+          "image": "https://i.ebayimg.com/00/s/MTA3MVgxNjAw/z/0u4AAOSw-Yln-pBG/%24_57.JPG?set_id=880000500F",
+          "purpose": "Whole console and original rectangular four-button arcade stick"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is a close-up of real AES controls; image 4 is the full real console and controller. Shape references only; no photo pixels.\nSubject: SNK Neo Geo AES home console with ORIGINAL RECTANGULAR arcade stick. Broad low black case with slightly rounded sides, very wide empty cartridge slot across top rear, recessed round RESET button top-left, small gold NEO GEO mark in top middle. On FRONT VERTICAL FACE, far left, place a small HORIZONTAL sliding POWER switch with ridged black rectangular cap, visibly recessed inside a long horizontal opening. It is OFF with cap at LEFT. This original AES has NO POWER LIGHT. Never add any red lamp. Two controller sockets on front, central headphone jack and small volume slider, memory card slot to right. Original big black RECTANGULAR arcade joystick in front-left: black ball-top stick at left, exactly FOUR dark gray circular action buttons in rising curved row on right, two small gray Select and Start buttons at top center. Buttons are dark gray, not colored. Keep power switch visible. Match both references' hardware geometry with approved pixel style.",
+      "sourceFile": "source/NEOGEO.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-b72c3078-bb18-4d5c-a40d-f82446a93daa.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "slide",
+        "rect": [
+          200,
+          628,
+          124,
+          34
+        ],
+        "knob": [
+          209,
+          628,
+          65,
+          34
+        ],
+        "offOffset": [
+          44,
+          0
+        ],
+        "onOffset": [
+          0,
+          0
+        ]
+      },
+      "perspectiveChecks": [
+        "Front power slider follows the front horizontal edge.",
+        "Case slot, Reset recess and controller share the shallow view.",
+        "Original arcade stick has four gray action buttons.",
+        "No invented power light appears."
+      ],
+      "imageReview": "Accepted. Original AES case and rectangular stick match references.",
+      "startupException": "The original AES has no power lamp. Its real front power slide switch moves.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "3060c74b582f73c701fb3cea04e165a763f51549808823005da06497bb8710fc",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "status": "complete"
+    },
+    {
+      "key": "NES",
+      "name": "Nintendo Entertainment System",
+      "hardwareReferences": [
+        {
+          "url": "https://projectb1pylou.weebly.com/pialphaiotachinuiotadeltaomicronmuetachialphanuepsilonsigma.html",
+          "image": "https://projectb1pylou.weebly.com/uploads/3/9/4/6/39468245/7313907_orig.jpg",
+          "purpose": "Original front-loading NES case, door, ports and power lens"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is a real front-loading NES for hardware geometry only. No photo pixels.\nSubject: original North American Nintendo Entertainment System front-loader with its original rectangular controller. Low rectangular two-tone gray box, light gray top and dark gray lower front. Broad front cartridge door on upper-left is CLOSED, with a small central finger tab, small red Nintendo mark. Narrow dark vertical stripe runs over the right side of top and down front, holding exactly TWO vertically oriented controller sockets on front-right. Lower front-left has a small SQUARE dark red power LED lens, then rectangular POWER pushbutton and rectangular RESET pushbutton. Keep the real power lens left of Power. One original rectangular NES controller in front-left: light gray frame, black face, black D-pad left, Select and Start middle, TWO round red buttons at right. Cable runs to front-right socket one without covering the power LED. No analog sticks, no top cartridge slot, no rounded dogbone controller. Keep precise box edges and coherent shallow front-right projection.",
+      "sourceFile": "source/NES.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-3890d21d-90a4-4e74-9053-b079ea98f6ed.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          266,
+          714,
+          19,
+          19
+        ],
+        "color": "#ff3238",
+        "off": "#43151c"
+      },
+      "perspectiveChecks": [
+        "Door, right stripe and depth edges agree.",
+        "Square power lens is left of Power and Reset.",
+        "Controller sockets occupy the right front stripe.",
+        "Cable avoids the moving lamp."
+      ],
+      "imageReview": "Accepted. Original front-loader and rectangular NES pad match reference.",
+      "startupException": "The NES has no fixed console startup screen. The real red power indicator turns on.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "sha256": "226bfe47e27b5efdfcc4c25e5869be160fc646b12c9499bf0b30c32311cc208e",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "status": "complete"
+    },
+    {
+      "key": "PCE",
+      "name": "TurboGrafx-16",
+      "supersededAttempt": {
+        "reason": "The catalogue maps PCE to the US TurboGrafx-16, not the Japanese white PC Engine.",
+        "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: original white PC Engine front hardware reference. Use shape only, no photo pixels.\nSubject: original WHITE NEC PC Engine, the very small square Japanese model, not TurboGrafx-16 or Duo. Compact white square case with shallow rounded corners. Top front center has the recessed rectangular HuCard loading channel, with parallel card guide ridges and a horizontal dark slot at its rear. Small red PC Engine mark near top rear. Short horizontal vents on the two upper sides. On front vertical face, LEFT side has a recessed GREEN/TURQUOISE horizontal POWER slide switch with ribbed cap placed at the left OFF end; the single ROUND black controller socket is on front RIGHT. NO POWER LED on this original console, no invented light. One original white rectangular PC Engine pad in front-left with gray face panel, black D-pad left, small Select and Run middle, TWO round red action buttons labeled II and I on right. Cable joins the one front-right socket. No modern console ports, no CD drive, no cartridge sticking vertically upward.",
+        "sha256": "4241ea6d1680a68c7a91f57deef46c486ddb37b47aa8b5a66f2b539bfb6cd947",
+        "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-b8e831ef-8b0c-4dff-b266-c231fb5712a8.png",
+        "hardwareReferences": [
+          {
+            "url": "https://www.ebay.com/itm/157502857102",
+            "image": "https://i.ebayimg.com/images/g/S8QAAeSw9qppLRvj/s-l960.jpg",
+            "purpose": "Original white PC Engine front layout, green power slider and controller port"
+          }
+        ]
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://en.retrogamesupply.com/products/power-supply-for-nec-turbografx-16-pc-engine",
+          "image": "https://en.retrogamesupply.com/cdn/shop/products/TurboGrafx16-Console-Set.png?v=1533552111",
+          "purpose": "US black shell, front power slider, HuCard channel and original TurboPad"
+        },
+        {
+          "url": "https://r.mprd.se/TurboGrafx-16/TG16-PCE/EXTRAS/Manuals/Dragon%20Spirit%20%28U%29.pdf",
+          "purpose": "Original game manual: move power switch fully right for On"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: original US TurboGrafx-16 console and TurboPad, exact hardware geometry reference only. No photo pixels.\nSubject: BLACK NORTH AMERICAN NEC TURBOGRAFX-16 console with original BLACK TURBOPAD, exactly as image 3. This is not the small white Japanese PC Engine. Broad low black asymmetrical rectangular case with large plain top-left area, long rounded rear expansion cover, orange/yellow TurboGrafx-16 logo near top-left center, horizontal vent ribs across front-left and front-right. Recessed HuCard loading channel occupies the TOP FRONT-RIGHT third, with card guide ridges, horizontal slot at back and a curved finger indentation at front; channel empty. On front vertical face, just LEFT of this card channel, a small black ribbed horizontal POWER slide switch sits inside a horizontal recess. Cap at LEFT/OFF, empty space to its right for On travel. No POWER LED and no Reset button. One round controller socket at far front RIGHT, occupied by a visible black plug. Original rectangular black TurboPad in front-left: gray round directional pad with plus relief at left, small gray Select/Run center, exactly TWO dark gray round II/I action buttons at right, two tiny vertical turbo sliders directly ABOVE those action buttons. Orange/yellow TurboPad marking. Cable exits top of pad and connects to that front-right socket. No red action buttons, no green power switch, no white plastic. Match image 3's exact US silhouette and controls with approved crisp pixel style.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. This TurboGrafx-16 image accidentally has TWO cables. Correct ONLY cable routing. Remove the extra short cable arch above the controller on the LEFT, including its false console hole, and restore the plain console front there. Preserve the true plug in the sole far-right console controller socket. Keep ONE cable from that true plug: curve it left through the transparent gap below the console, run it behind the TOP RIGHT of the controller, and connect it at the controller TOP CENTER. Remove the false cable connection at the controller's right SIDE. The controller must have only ONE cable outlet, at its top edge. Preserve the power slider, all console and controller shapes, their positions, all labels and colors, perspective, size and transparent background exactly. Do not add any sockets."
+      ],
+      "sourceFile": "source/PCE.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-f95c820d-746b-420b-92ea-bda0022cc8f1.png",
+      "width": 1254,
+      "height": 1254,
+      "duration": 6000,
+      "sourceImmutable": true,
+      "motion": {
+        "type": "slide",
+        "rect": [
+          501,
+          737,
+          111,
+          43
+        ],
+        "knob": [
+          503,
+          738,
+          42,
+          40
+        ],
+        "offOffset": [
+          0,
+          0
+        ],
+        "onOffset": [
+          64,
+          0
+        ],
+        "slotColor": "#171a25"
+      },
+      "perspectiveChecks": [
+        "Wide black US case and rear cover match the reference.",
+        "Right HuCard channel follows the case depth axis.",
+        "Power switch moves right for On, as the original manual states.",
+        "TurboPad has two turbo sliders and one cable to the front-right console socket."
+      ],
+      "imageReview": "Accepted after replacing the Japanese model and correcting a duplicate controller cable.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "startupException": "The TurboGrafx-16 has no power light or fixed startup screen. Its real power slide switch moves.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "sha256": "5496e99011cc5f8601ea848b9ca428c467050e551042dc97400a1cb305473c2f",
+      "status": "complete"
+    },
+    {
+      "key": "SEGACD",
+      "name": "Sega CD",
+      "hardwareReferences": [
+        {
+          "url": "https://consolemods.org/wiki/Genesis:Sega_CD_Model_Differences",
+          "purpose": "Model 1 front-loading lower chassis and green Ready indicator"
+        },
+        {
+          "url": "https://www.ebay.com/itm/227178791588",
+          "image": "https://i.ebayimg.com/images/g/4xYAAeSwzEhpbEf0/s-l1600.jpg",
+          "purpose": "Genesis Model 1 mounted on Sega CD Model 1; front control positions"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real complete Sega CD Model 1 and Genesis Model 1 for hardware layout only. Image 4 is the approved new Genesis pixel art for exact base-console details and style. Do not use photo pixels.\nSubject: Sega Genesis Model 1 mounted ON TOP OF a Sega CD Model 1 add-on, as photo 3. The upper console matches image 4: circular top cartridge area with empty slot, 16-BIT badge, tiny dark round RED power lens BELOW 16-BIT, left vertical volume slider, left power slider and gray Reset, two front controller ports. The lower Sega CD is a low wide rectangular BLACK chassis of same width under the Genesis. Its front LEFT has a long CLOSED disc tray marked SEGA CD. To the RIGHT of tray, small green READY rectangular indicator at LEFT and small red ACCESS rectangular indicator at RIGHT, arranged SIDE BY SIDE with compact-disc logo between them, both off and dark. Do not put a lid on the CD. Do not include a 32X. One black original three-button Genesis pad in front-left, short connected cable. Keep the tray closed and everything fixed. Maintain parallel front edges and matching depth directions in both stacked cases. Keep green Ready lens visible.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Correct ONLY the controller cable connection in this Sega CD illustration. The cable currently enters the Sega CD lower chassis beneath the tray, which is wrong. It must plug into the LEFT controller socket on the UPPER GENESIS console. Remove the incorrect lower connection. From the controller, route a short single cable up along the left edge of the lower CD chassis, then across a small section of the gap between consoles and into a visible plug inside the upper Genesis LEFT controller port. Keep the cable away from the center red power LED and the green Ready indicator. Preserve console cases, tray, controller, every control, labels, perspective, colors, scale, positions, and transparent canvas. Do not add a new socket. Keep only one cable."
+      ],
+      "sourceFile": "source/SEGACD.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-de6404f6-93e3-4191-9bfd-35b2aa89f304.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicators",
+        "rect": [
+          715,
+          500,
+          72,
+          286
+        ],
+        "lights": [
+          {
+            "rect": [
+              772,
+              500,
+              13,
+              13
+            ],
+            "color": "#ff3434",
+            "off": "#411a24",
+            "start": 12
+          },
+          {
+            "rect": [
+              716,
+              775,
+              22,
+              11
+            ],
+            "color": "#5de77e",
+            "off": "#203c32",
+            "start": 15
+          }
+        ]
+      },
+      "perspectiveChecks": [
+        "Genesis and CD front edges remain parallel.",
+        "Tray remains closed in the lower front-left chassis.",
+        "Ready and Access sit side by side.",
+        "Controller plugs into the upper Genesis port."
+      ],
+      "imageReview": "Accepted after correcting the controller cable connection.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Genesis power and Sega CD Ready indicators, fixed cases and closed tray.",
+      "sha256": "3cd52c4994dc250d60552a452cc720d3bdb39fcf8f1ab9b682f45f94279e90c5",
+      "status": "complete"
+    },
+    {
+      "key": "SMS",
+      "name": "Sega Master System",
+      "hardwareReferences": [
+        {
+          "url": "https://www.8bitbeyond.com/products/master-system-console",
+          "image": "https://www.8bitbeyond.com/cdn/shop/files/FullSizeRender_f8a7ccc4-5838-4e73-8440-f9339c6f0418.jpg?v=1691930556",
+          "purpose": "Model 1 angular shell, right red diagram panel, triangular green power lens and original pad"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3: real Sega Master System Model 1 and original pad for precise hardware geometry. Do not copy photo pixels.\nSubject: original black and red Sega Master System MODEL 1. Wide low angular black console with trapezoidal bevelled ends. Left top is plain black with small white SEGA MASTER SYSTEM text. RIGHT HALF has the distinctive RED top panel, with empty horizontal cartridge slot at its rear, small RESET and PAUSE buttons directly below slot, then simple white connection-diagram lines on red panel. A black triangle pointing RIGHT in this diagram contains the small green triangular POWER ON indicator. Draw its lens dark green, not glowing. Front left has black rectangular POWER pushbutton; front middle exactly two 9-pin controller sockets, one occupied; front right has horizontal card input slot. Original black rectangular Master System pad in front-left, square directional pad with rounded corners on left, TWO dark gray circular action buttons right, small red label strips. No Start button in the center. Controller cable from top to socket one. Do not use Model 2 shape. Keep right red panel and green power lens visible.",
+      "sourceFile": "source/SMS.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-5c171483-6f66-47a8-a82d-a6347cdef8b4.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "indicator",
+        "rect": [
+          722,
+          618,
+          35,
+          20
+        ],
+        "polygon": [
+          [
+            725,
+            618
+          ],
+          [
+            756,
+            626
+          ],
+          [
+            722,
+            637
+          ]
+        ],
+        "color": "#53e773",
+        "off": "#153c2b"
+      },
+      "perspectiveChecks": [
+        "Right red panel and slot match Model 1.",
+        "Triangular green lens points right within diagram.",
+        "Front card slot and two controller ports remain fixed.",
+        "Original two-button pad stays fixed."
+      ],
+      "imageReview": "Accepted. Model 1 shell, controls and original pad match reference.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power indicator, closed case and fixed controller.",
+      "sha256": "9c52af940cb933e5df17d6d9306c2a3ed079a15617e1c0b63d53b36edb62ced0",
+      "status": "complete"
+    },
+    {
+      "key": "VB",
+      "name": "Virtual Boy",
+      "hardwareReferences": [
+        {
+          "url": "https://www.mariowiki.com/Virtual_Boy",
+          "image": "https://mario.wiki.gallery/images/thumb/4/45/VB_System.png/1200px-VB_System.png",
+          "purpose": "Red shell, black eyepiece, folding stand and complete controller layout"
+        },
+        {
+          "url": "https://retrosix.wiki/wiki/power-up-basics-virtual-boy",
+          "image": "https://retrosix.wiki/uploads/Power%20Up%20Basics%20%28Virtual%20Boy%29-5.jpg",
+          "purpose": "Controller top-center power slider; left Off and right On"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is the complete real Virtual Boy; image 4 shows its real controller power switch. Use only hardware geometry, no photo pixels.\nSubject: original Nintendo Virtual Boy on its genuine black folding two-legged tabletop stand, with its original black controller in front-left. Red binocular housing has a broad red OUTWARD front face marked VIRTUAL BOY, black lower shell, black eyepiece on the REAR side, two gray adjustment controls on top. Follow photo 3's orientation. Do not invent a screen on its outward red face. Keep housing supported by stand as photo. Controller: two long downward grips, TWO black plus-shaped D-pads (left outer and right outer), two light gray Select/Start buttons below left D-pad toward center, TWO red B/A buttons below right D-pad toward center. At controller TOP CENTER, a small horizontal gray ribbed POWER slider in a recessed black slot with red backing. Cap in LEFT/OFF position, right space visible for switch travel. The switch must be visible above VIRTUAL BOY label. One short fixed black cable joins controller to underside of housing. NO power LED anywhere; do not light eyepiece or add a display. Controller case and stand stay fixed; only its real little power slider will move later. Transparent square canvas with margins.",
+      "sourceFile": "source/VB.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-bb77b898-d5b7-448c-823f-fc41b5c438a9.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "slide",
+        "rect": [
+          324,
+          876,
+          95,
+          23
+        ],
+        "knob": [
+          338,
+          876,
+          50,
+          23
+        ],
+        "offOffset": [
+          -12,
+          0
+        ],
+        "onOffset": [
+          28,
+          0
+        ],
+        "slotColor": "#ba1e2b"
+      },
+      "perspectiveChecks": [
+        "Outward red face and rear eyepiece match the hardware orientation.",
+        "Stand supports the fixed housing.",
+        "Two D-pads and two red buttons match original controller.",
+        "Only the top-center power cap moves right for On."
+      ],
+      "imageReview": "Accepted. Housing, folding stand and controller match references.",
+      "startupException": "Virtual Boy has no external power lamp. Its controller power switch moves; eyepiece contents stay hidden.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "sha256": "48cb18f396bdc55f1bde2d62abe9d24f08c6106f7006f53e654d5cf850689f8e",
+      "status": "complete"
+    },
+    {
+      "key": "COLECO",
+      "name": "ColecoVision",
+      "hardwareReferences": [
+        {
+          "url": "https://www.ebay.com/itm/187506341031",
+          "image": "https://i.ebayimg.com/images/g/oZQAAeSwEFlopour/s-l1200.jpg",
+          "purpose": "Original control layout, cartridge opening, storage bays and front expansion door"
+        },
+        {
+          "url": "https://retrofam.com/ja/products/official-colecovision-console-retro-fam",
+          "image": "https://retrofam.com/cdn/shop/files/coleco_product.jpg?v=1750109588&width=720",
+          "purpose": "Original keypad joystick shape and side fire buttons"
+        },
+        {
+          "url": "https://www.ifixit.com/Guide/ColecoVision+Power+Switch+Replacement/114629",
+          "purpose": "Original sliding power switch construction"
+        }
+      ],
+      "prompt": "Use case: stylized-concept.\nAsset type: original ZyperOS system-selection artwork.\nInput images 1 and 2: approved style references only, not target hardware.\nCreate one original hardware icon, never a sheet.\nMatch the references' crisp square pixel clusters, flat colors, dark blue-gray outlines, warm upper-left highlights, and cool lower-right shadows. Use a consistent 128 by 128 logical pixel grid, about 20 colors, with no soft gradients, photographic detail, blurry edges, floating glow, ground shadow, watermarks, decorative objects, or public icon-pack pixels.\nUse a square transparent canvas with generous margins. Hardware fills about 80 percent of the width. Show the console and one original matching controller, joined by one short dark cable. Keep the controller in front and left, without hiding the console's power control. Use a coherent shallow front-right three-quarter view: front edges almost horizontal, depth edges recede up-right, top and right side visible. All controls share the same projected axes. Keep every lid closed and every tray retracted. Power indicators must be dark for the off pose. Use only real hardware controls, ports and indicators; do not invent extra lights.\nInput image 3 is original ColecoVision console; image 4 shows its original keypad controller. Hardware geometry only, never photo pixels.\nSubject: original black ColecoVision console, accurate broad low rectangular shape. Top LEFT has two recessed rectangular controller storage bays, both EMPTY. Top RIGHT has flat black panel and rear vent grille. Cartridge opening is on top FRONT-RIGHT behind a horizontal silver instruction plate. Immediately LEFT of that plate is the small original black POWER slide switch, in a narrow fore-aft recess with ON at rear and OFF at front; ribbed cap in forward OFF position, enough empty slot behind for later motion. Immediately RIGHT of the silver plate is black RESET button. NO power LED anywhere. Front fascia has a long silver band with small rainbow ColecoVision mark at left and a black closed rectangular expansion-module door on right. One original ColecoVision controller lies upright in front-left: narrow tall black rectangle, short thick black cylindrical joystick with flat silver top at its upper end, a 3-column by 4-row light-gray numeric keypad below, two slim gray fire buttons on the SIDES. Short dark cable routes to its rear controller socket, not into the front expansion door. Keep power switch visible. Use shallow coherent three-quarter view and approved crisp pixel style.",
+      "sourceFile": "source/COLECO.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d30c-d50c-7803-b291-2d99a75b1d39/exec-02eb1a12-a916-4078-9115-bf261a378812.png",
+      "width": 1254,
+      "height": 1254,
+      "motion": {
+        "type": "slide",
+        "rect": [
+          671,
+          502,
+          39,
+          51
+        ],
+        "knob": [
+          671,
+          530,
+          37,
+          22
+        ],
+        "offOffset": [
+          0,
+          0
+        ],
+        "onOffset": [
+          2,
+          -25
+        ],
+        "slotColor": "#171c28"
+      },
+      "perspectiveChecks": [
+        "Storage bays, cartridge area and vents follow the case depth axis.",
+        "Power slide moves rearward in its recessed slot.",
+        "Keypad has three columns and four rows.",
+        "Case, joystick and cable remain fixed."
+      ],
+      "imageReview": "Accepted. Original ColecoVision case, keypad joystick and slide control match references.",
+      "startupException": "The original ColecoVision has no power light. Its real power slide switch moves.",
+      "animationReview": "Final root browser check passed: fixed pixels unchanged, motion within bounds, loop closes exactly, no solid edge pixels. Final source review passed.",
+      "duration": 6000,
+      "sourceImmutable": true,
+      "makerNotice": "Hardware names and designs belong to their makers. This illustration is new generated art.",
+      "motionChoice": "Real power control; fixed case and controller.",
+      "sha256": "df7319dfa67753df2a7d8e27d3c9536f0acab30fef35c5b04dfb88f997e86f1b",
+      "status": "complete"
+    }
+  ],
+  "styleReferenceHashes": {
+    "source/PS1.png": "4a482252c0997eeec1c6d5f9a71e5973459cda5f0bcb6d32b8bebdbc96b7ef0a",
+    "source/SNES.png": "d52d322f4474a72c3e9d77903c4ea8070d2d2639194949806f5c4c525448eb64"
+  },
+  "validation": {
+    "status": "passed",
+    "reviewer": "root agent using the shared browser preview",
+    "assetCount": 16,
+    "checks": [
+      "Final source sheet matches hardware orientation and controls",
+      "TurboGrafx-16 matches the US model named by config/systems.cfg",
+      "Static pixels remain unchanged",
+      "All motion stays within declared source-space bounds",
+      "All six-second loops return exactly to their first frame",
+      "No solid pixels reach the canvas edge",
+      "Final PNG atlases exported by the root agent"
+    ],
+    "sourceChangesAfterReview": false
+  },
+  "browserReview": {
+    "status": "passed",
+    "date": "2026-11-12",
+    "checks": [
+      "fixed case pixels",
+      "declared motion bounds",
+      "no clipping",
+      "exact loop return",
+      "controls",
+      "narrow layout",
+      "reduced motion"
+    ]
+  }
+}

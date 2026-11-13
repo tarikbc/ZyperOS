@@ -27,6 +27,10 @@ protocol. What it holds, each a thing I asked for on 2026-11-06:
     and with one, the files dropped, sent, checked and installed
   - the page in the handheld's language (MENU > Language, 2026-11-07): every
     word from its strings, the name the cable's, sizes the language's way
+  - a row dragged onto a folder's row or a crumb above moves there on the
+    card, the rows picked with it too (Shift, Ctrl or Cmd with a press), by
+    mouse or by a finger held still a moment, a disc set's folder whole; a
+    name already there is refused and said (2026-11-13)
   - the page named after its link, as the handheld's screen is: USB File
     Transfer over the cable and Wi-Fi File Transfer over Wi-Fi, in its tab,
     on the PIN screen and over the folders, and never a name the browser
@@ -343,6 +347,75 @@ def main():
                   'the files landed under their own names, a browser\'s "(1)" off, the 256 KiB one to the byte')
             server.stop()
 
+            print('dragging moves files on the card, by mouse and by finger:')
+            nes = card / 'Roms/NES'
+            (nes / 'Hacks').mkdir(exist_ok=True)
+            (nes / 'Set').mkdir(exist_ok=True)
+            (nes / 'Set/Set.m3u').write_text('a.chd\n')
+            for n in ('A Drag Me.nes', 'A Pick 1.nes', 'A Pick 2.nes', 'A Twice.nes'):
+                (nes / n).write_bytes(b'x')
+            (nes / 'Hacks/A Twice.nes').write_bytes(b'other')
+            server = Server(card, web, 'usb', 'update=off')
+            check(signed_in(page, server, 'roms/NES'), 'the page came up on NES')
+            page.js("go('roms/NES', 'none')")
+            page.until("cwd === 'roms/NES' && document.querySelectorAll('#list li').length > 3")
+
+            def at(sel):
+                r = page.js(f"(() => {{ const e = {sel}; if (!e) return null; const b = e.getBoundingClientRect();"
+                            " return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+                return r
+
+            def row(name):
+                return f"[...document.querySelectorAll('#list li')].find((li) => li.querySelector('.name').textContent === {json.dumps(name)})"
+
+            def mouse_drag(src, dst, mods=0):
+                (x0, y0), (x1, y1) = at(row(src)), dst
+                page.dt.call('Input.dispatchMouseEvent', type='mouseMoved', x=x0, y=y0)
+                page.dt.call('Input.dispatchMouseEvent', type='mousePressed', x=x0, y=y0, button='left', clickCount=1, modifiers=mods)
+                for k in range(1, 9):
+                    page.dt.call('Input.dispatchMouseEvent', type='mouseMoved', x=x0 + (x1 - x0) * k / 8,
+                                 y=y0 + (y1 - y0) * k / 8, button='left', buttons=1)
+                page.dt.call('Input.dispatchMouseEvent', type='mouseReleased', x=x1, y=y1, button='left', clickCount=1)
+
+            # The test's rows first among the files, so all are in the window
+            page.js("scrollTo(0, 0)")
+            # A mouse: a row onto a folder's row
+            mouse_drag('A Drag Me.nes', at(row('Hacks')))
+            check(page.until("!document.querySelector('.ghost')") and
+                  page.until(f"!{row('A Drag Me.nes')}") and (nes / 'Hacks/A Drag Me.nes').is_file() and
+                  not (nes / 'A Drag Me.nes').exists(), 'a row dragged onto a folder moved there')
+            check(page.js("cwd") == 'roms/NES', 'and the page stayed where it was')
+            # Two picked with Cmd/Ctrl, the one dragged takes the other with it
+            for n in ('A Pick 1.nes', 'A Pick 2.nes'):
+                x, y = at(row(n))
+                page.dt.call('Input.dispatchMouseEvent', type='mousePressed', x=x, y=y, button='left', clickCount=1, modifiers=8)
+                page.dt.call('Input.dispatchMouseEvent', type='mouseReleased', x=x, y=y, button='left', clickCount=1, modifiers=8)
+            check(page.js("document.querySelectorAll('#list li.sel').length") == 2, 'Shift and a press pick two rows')
+            mouse_drag('A Pick 1.nes', at(row('Hacks')))
+            check(page.until(f"!{row('A Pick 2.nes')}") and (nes / 'Hacks/A Pick 1.nes').is_file() and
+                  (nes / 'Hacks/A Pick 2.nes').is_file(), 'the picked rows went together')
+            # A name already in the folder: refused, said, and both stay
+            mouse_drag('A Twice.nes', at(row('Hacks')))
+            check(page.until("/Twice\\.nes is already in Hacks/.test(document.getElementById('toast').textContent)"),
+                  'a name already in the folder is refused and said: ' +
+                  str(page.js("document.getElementById('toast').textContent")))
+            check((nes / 'A Twice.nes').is_file() and (nes / 'Hacks/A Twice.nes').read_bytes() == b'other',
+                  'and neither file moved')
+            # A finger: held on a disc set's folder, then onto the ROMs crumb
+            page.dt.call('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=1)
+            (x0, y0) = at(row('Set'))
+            (x1, y1) = at("document.querySelector('#crumbs button[data-path=\"roms\"]')")
+            page.dt.call('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': x0, 'y': y0}])
+            time.sleep(0.7)
+            for k in range(1, 9):
+                page.dt.call('Input.dispatchTouchEvent', type='touchMove',
+                             touchPoints=[{'x': x0 + (x1 - x0) * k / 8, 'y': y0 + (y1 - y0) * k / 8}])
+            page.dt.call('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+            check(page.until(f"!{row('Set')}") and (card / 'Roms/Set/Set.m3u').is_file(),
+                  "a finger held on a folder moved it whole onto a crumb above")
+            page.dt.call('Emulation.setTouchEmulationEnabled', enabled=False)
+            server.stop()
+
             print("the page in the handheld's language:")
             server = Server(card, web, 'usb', 'update=off', 'space=88.4/119', 'lang=fr')
             check(signed_in(page, server) and
@@ -384,8 +457,8 @@ def main():
         print(f'\n{failures} check(s) failed')
         return 1
     print('\nok: the page wears its art, hides dot folders, counts the room, says the time, '
-          'follows the handheld\'s stop, updates over the cable, speaks its language '
-          'and is named after its link')
+          'follows the handheld\'s stop, updates over the cable, moves files by dragging, '
+          'speaks its language and is named after its link')
     return 0
 
 

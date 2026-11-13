@@ -200,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "Touchez Annuler, puis Utiliser sans Internet. Ouvrez ensuite %s dans Safari.",
   "captive.android_head": "Les envois nécessitent Chrome.",
   "captive.android_text": "Touchez %1$s, puis Utiliser ce réseau tel quel. Ouvrez ensuite %2$s dans Chrome.",
+  "act.select": "Sélectionner",
+  "act.deselect": "Désélectionner",
+  "move.count": ["%d élément", "%d éléments"],
+  "move.done": "Déplacé dans %s",
 };

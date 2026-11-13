@@ -197,7 +197,7 @@ than any one console:
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
 | **Achievements** | the RetroAchievements account, or `sign in` |
-| **Shader** | `Off` or `Sharp-Shimmerless`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
+| **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
@@ -350,7 +350,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
 | **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
-| **Shader** | `Off` or `Sharp-Shimmerless`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
+| **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
@@ -379,12 +379,15 @@ Arcade shelf or a library of hundreds of games reads better as a list.
 
 **Folders of games.** A folder inside a system's folder on the card is a
 folder on its shelf, as deep as you like: the folders come first, A to Z,
-each a pixel folder with how many games it holds, then the games loose in
+each a pixel-art folder in the system's color with how many games it
+holds, then the games loose in
 it, in the shelf's Sort By order. A opens a folder and B goes back up one,
-onto the folder you left. A folder that is one game's discs (a `.cue` and
-its tracks, a game's `.chd` discs, an `.m3u` with them) stays that game, as
-does a ScummVM game's folder; a folder of several games' discs is a folder
-of games. The Ports shelf never looks into its folders: they are the ports'
+onto the folder you left. A folder is one game when it holds that game's
+set: an `.m3u`, a PSP game's `EBOOT.PBP`, two or more discs of the one game,
+or a `.cue` (or `.gdi`) with its tracks; or when its one disc image is named
+as the folder is. A ScummVM game's folder is one game too. Any other folder
+is a folder of games, also with one game in it. In the list (MENU > View >
+List) the focused game's video snap plays where its cover is. The Ports shelf never looks into its folders: they are the ports'
 own. Favorites, Search Games, Random Game, Storage, Delete Game and Play
 Time all find the games in folders, and after a game the shelf comes back
 in the folder it was in.
@@ -399,10 +402,25 @@ screen pixel inside one of the game's pixels is that pixel exactly, and only
 one that falls across two of them mixes the two, by how much of it each
 covers. The picture stays as sharp as it can at that size and a scroll stays
 steady. At a whole number of times (Integer, Native 1:1) the two are the
-same. The in-game menu's **Shader** row, right under Display, changes it for
+same.
+
+The other four draw an old screen. `CRT` is Timothy Lottes's CRT shader: a
+dark line between the picture's lines, and one of each three columns of the
+screen dimmed in red, green or blue, as the stripes of a TV tube, with the
+light they take given back. `CRT Curved` is the same with the glass curved
+and the corners round, and the picture's edges go into the curve.
+`Scanlines` is Sharp-Shimmerless with a dark band under each of the game's
+lines, and nothing more; `LCD Grid` has the band around each of its pixels,
+as on a Game Boy's screen. The CRT's lines are most even where the
+picture's height is a whole number of times the game's: Integer tall draws
+a 224-line SNES game at twice its height. These four are the Pixel 2's,
+whose last step is its GPU's; the Brick draws them as Sharp-Shimmerless, and
+its rows step over them.
+
+The in-game menu's **Shader** row, right under Display, changes it for
 the game's system, from the next frame after Continue (the paused picture
 behind the menu stays as it was); the system menu's row does the same from
-the shelf, and **MENU > Shader** sets every system at once.
+the shelf, and **MENU > Display > Shader** sets every system at once.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer

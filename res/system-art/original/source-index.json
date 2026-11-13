@@ -1,0 +1,252 @@
+[
+  {
+    "key": "GB",
+    "name": "Game Boy",
+    "file": "source/GB.png"
+  },
+  {
+    "key": "PS1",
+    "name": "PlayStation",
+    "file": "source/PS1-ports.png"
+  },
+  {
+    "key": "3DO",
+    "name": "3DO",
+    "file": "source/3DO.png"
+  },
+  {
+    "key": "SNES",
+    "name": "SNES",
+    "file": "source/SNES.png"
+  },
+  {
+    "key": "GBA",
+    "name": "Game Boy Advance",
+    "file": "source/GBA-screen.png"
+  },
+  {
+    "key": "32X",
+    "name": "Sega 32X",
+    "file": "source/32X.png"
+  },
+  {
+    "key": "SATURN",
+    "name": "Sega Saturn",
+    "file": "source/SATURN.png"
+  },
+  {
+    "key": "A2600",
+    "name": "Atari 2600",
+    "file": "source/A2600.png"
+  },
+  {
+    "key": "A5200",
+    "name": "Atari 5200",
+    "file": "source/A5200.png"
+  },
+  {
+    "key": "A7800",
+    "name": "Atari 7800",
+    "file": "source/A7800.png"
+  },
+  {
+    "key": "DC",
+    "name": "Sega Dreamcast",
+    "file": "source/DC.png"
+  },
+  {
+    "key": "GENESIS",
+    "name": "Sega Genesis",
+    "file": "source/GENESIS.png"
+  },
+  {
+    "key": "N64",
+    "name": "Nintendo 64",
+    "file": "source/N64.png"
+  },
+  {
+    "key": "NEOCD",
+    "name": "Neo Geo CD",
+    "file": "source/NEOCD.png"
+  },
+  {
+    "key": "NEOGEO",
+    "name": "Neo Geo AES",
+    "file": "source/NEOGEO.png"
+  },
+  {
+    "key": "NES",
+    "name": "Nintendo Entertainment System",
+    "file": "source/NES.png"
+  },
+  {
+    "key": "PCE",
+    "name": "TurboGrafx-16",
+    "file": "source/PCE.png"
+  },
+  {
+    "key": "SEGACD",
+    "name": "Sega CD",
+    "file": "source/SEGACD.png"
+  },
+  {
+    "key": "SMS",
+    "name": "Sega Master System",
+    "file": "source/SMS.png"
+  },
+  {
+    "key": "VB",
+    "name": "Virtual Boy",
+    "file": "source/VB.png"
+  },
+  {
+    "key": "COLECO",
+    "name": "ColecoVision",
+    "file": "source/COLECO.png"
+  },
+  {
+    "key": "GBC",
+    "name": "Game Boy Color",
+    "file": "source/GBC.png"
+  },
+  {
+    "key": "GG",
+    "name": "Game Gear",
+    "file": "source/GG.png"
+  },
+  {
+    "key": "GW",
+    "name": "Game & Watch",
+    "file": "source/GW.png"
+  },
+  {
+    "key": "LYNX",
+    "name": "Atari Lynx",
+    "file": "source/LYNX.png"
+  },
+  {
+    "key": "NDS",
+    "name": "Nintendo DS",
+    "file": "source/NDS.png"
+  },
+  {
+    "key": "NGP",
+    "name": "Neo Geo Pocket",
+    "file": "source/NGP.png"
+  },
+  {
+    "key": "NGPC",
+    "name": "Neo Geo Pocket Color",
+    "file": "source/NGPC.png"
+  },
+  {
+    "key": "PKMINI",
+    "name": "Pok\u00e9mon mini",
+    "file": "source/PKMINI.png"
+  },
+  {
+    "key": "WS",
+    "name": "WonderSwan",
+    "file": "source/WS.png"
+  },
+  {
+    "key": "WSC",
+    "name": "WonderSwan Color",
+    "file": "source/WSC.png"
+  },
+  {
+    "key": "J2ME",
+    "name": "Java ME",
+    "file": "source/J2ME.png"
+  },
+  {
+    "key": "PSP",
+    "name": "PlayStation Portable",
+    "file": "source/PSP.png"
+  },
+  {
+    "key": "ARCADE",
+    "name": "Arcade",
+    "file": "source/ARCADE.png"
+  },
+  {
+    "key": "AW",
+    "name": "Atomiswave",
+    "file": "source/AW.png"
+  },
+  {
+    "key": "FAVORITES",
+    "name": "Favorites",
+    "file": "source/FAVORITES.png"
+  },
+  {
+    "key": "SCUMMVM",
+    "name": "ScummVM",
+    "file": "source/SCUMMVM.png"
+  },
+  {
+    "key": "MAME",
+    "name": "MAME",
+    "file": "source/MAME.png"
+  },
+  {
+    "key": "MSX2",
+    "name": "MSX2",
+    "file": "source/MSX2.png"
+  },
+  {
+    "key": "MUSE",
+    "name": "MP4",
+    "file": "source/MP4.png"
+  },
+  {
+    "key": "NAOMI",
+    "name": "NAOMI",
+    "file": "source/NAOMI.png"
+  },
+  {
+    "key": "PICO8",
+    "name": "PICO-8",
+    "file": "source/PICO8.png"
+  },
+  {
+    "key": "OPENBOR",
+    "name": "OpenBOR",
+    "file": "source/OPENBOR.png"
+  },
+  {
+    "key": "PORTS",
+    "name": "Ports",
+    "file": "source/PORTS.png"
+  },
+  {
+    "key": "VECTREX",
+    "name": "Vectrex",
+    "file": "source/VECTREX.png"
+  },
+  {
+    "key": "DOOM",
+    "name": "Doom",
+    "file": "source/DOOM.png"
+  },
+  {
+    "key": "TIC80",
+    "name": "TIC-80",
+    "file": "source/TIC80.png"
+  },
+  {
+    "key": "PORTMASTER",
+    "name": "PortMaster",
+    "file": "source/PORTMASTER.png"
+  },
+  {
+    "key": "FOLDER",
+    "name": "Folder \u00b7 large",
+    "file": "source/FOLDER.png"
+  },
+  {
+    "key": "FOLDER_SMALL",
+    "name": "Folder \u00b7 list",
+    "file": "source/FOLDER_SMALL.png"
+  }
+]

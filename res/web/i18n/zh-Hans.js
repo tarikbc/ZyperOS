@@ -200,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "轻点“取消”，再轻点“不使用互联网”。然后在 Safari 中打开 %s。",
   "captive.android_head": "上传需要 Chrome。",
   "captive.android_text": "轻点 %1$s，再轻点“按原样使用此网络”。然后在 Chrome 中打开 %2$s。",
+  "act.select": "选择",
+  "act.deselect": "取消选择",
+  "move.count": ["%d 项", "%d 项"],
+  "move.done": "已移动到 %s",
 };

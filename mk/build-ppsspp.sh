@@ -25,9 +25,16 @@
 # The source is PPSSPP's git tree at the release's commit with its
 # submodules, at the commits the tree records: git checks every object by its
 # hash, so the commit names all of it. The build itself reads nothing from
-# the network. One patch of ours, mk/patches/ppsspp-serialize-size.patch:
-# the emulation thread runs again after the core measures a save state (the
-# patch says why), and mk/core-stamp.sh holds the core to it.
+# the network. Three patches of ours, and mk/core-stamp.sh holds the core to
+# them (each patch says why):
+#   mk/patches/ppsspp-serialize-size.patch  the emulation thread runs again
+#                                           after the core measures a state
+#   mk/patches/ppsspp-audio-thread.patch    the sound the emulation thread
+#                                           mixes is no longer lost while
+#                                           retro_run hands it over
+#   mk/patches/ppsspp-context-null.patch    no ContextDestroy on the context
+#                                           retro_unload_game deleted (every
+#                                           PSP quit crashed Diatom)
 #
 # In mk/cmake-cores.Dockerfile, Debian bullseye's g++ 10 and CMake.
 # SOURCE_DATE_EPOCH is the release's date: the libpng PPSSPP bundles writes
@@ -48,7 +55,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${1:-/tmp/zyperos-ppsspp}
 PIN=fa50bb1976065c4f8b1b47af227d367fe9771555   # hrydgard/ppsspp v1.20.4
 EPOCH=1778934711                               # v1.20.4's commit time
-SHA=9017899f15a2004a750cf9970a92f6cdb68eca1fa3b9f538ebebb0194526d488
+SHA=be5c016fa24b72784b5f108b014415682d8a27ea39bca777a62af5543907bd20
 DATA_SHA=28710ec72df453e824376c055b49d33197bb91bf4245c7c2fda6b59b287f4b30
 # What the libretro core builds from (OpenXR's SDK and miniupnp for their
 # headers alone: Common/VR and Core/Util/PortManager.h include them on every
@@ -72,6 +79,8 @@ git -C "$SRC" clean -q -dffx
 # shellcheck disable=SC2086
 git -C "$SRC" submodule update -q --init --force --depth 1 --recursive -- $SUBMODULES
 git -C "$SRC" apply "$ROOT/mk/patches/ppsspp-serialize-size.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/ppsspp-audio-thread.patch"
+git -C "$SRC" apply "$ROOT/mk/patches/ppsspp-context-null.patch"
 
 docker run --rm --platform linux/arm64 -v "$SRC:/src" -e SOURCE_DATE_EPOCH="$EPOCH" \
 	zyperos-cmake-cores bash -c '
@@ -120,5 +129,5 @@ mkdir -p "$ROOT/vendor/ppsspp"
 echo "$PIN" > "$ROOT/vendor/ppsspp/.pin"
 echo "  built  ppsspp ($PIN)"
 echo "  sha256 $GOT"
-# Which patch is in it, for mk/payload.sh to hold it to (mk/core-stamp.sh)
+# Which patches are in it, for mk/payload.sh to hold it to (mk/core-stamp.sh)
 sh "$ROOT/mk/core-stamp.sh" write ppsspp

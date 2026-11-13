@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PortMaster and folder art</title><link rel="icon" href="data:,">
+<style>
+  :root{font:16px system-ui;color:#292b33;background:#efede7;color-scheme:light}
+  body{max-width:1100px;margin:28px auto;padding:0 20px}h1{font-size:25px;margin:0 0 12px}h2{font-size:19px;margin:28px 0 16px}
+  button{font:inherit;padding:8px 14px;background:transparent;border:1px solid #95959b;border-radius:8px;color:inherit}
+  .covers{display:grid;grid-template-columns:repeat(2,minmax(0,256px));gap:24px}.covers img{width:100%;height:auto;image-rendering:pixelated}
+  .folders{display:grid;grid-template-columns:256px minmax(260px,440px);gap:36px;align-items:center}
+  .folder-big{width:256px;height:256px;image-rendering:pixelated}
+  .row{height:48px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #cbc9c1}.row img{width:32px;height:32px;image-rendering:pixelated}.row .count{margin-left:auto;color:#62646e}
+  .sizes{display:flex;align-items:end;gap:30px;flex-wrap:wrap}.sizes figure{margin:0;min-width:64px;display:grid;justify-items:center;align-content:end;gap:10px}.sizes img{image-rendering:pixelated}.sizes figcaption{font-size:13px}
+  .dark{background:#191c24;color:#e5e5eb}.dark .row{border-color:#464a56}.dark .count{color:#b4b8c4}
+  @media(max-width:650px){.folders{grid-template-columns:1fr}.covers{gap:12px}.sizes{gap:16px}}
+</style>
+<h1>PortMaster and folders</h1><button id="theme" type="button">Dark background</button>
+<h2>PortMaster covers</h2>
+<div class="covers"><img src="utility/portmaster-cover-light.png" alt="PortMaster cover for the light theme"><img src="utility/portmaster-cover-dark.png" alt="PortMaster cover for the dark theme"></div>
+<h2>Folder designs</h2>
+<div class="folders">
+ <canvas class="folder-big" id="folder-big" width="256" height="256" role="img" aria-label="Large folder with an example count of 12 games"></canvas>
+ <div aria-label="Small folder in list rows">
+  <div class="row"><img src="utility/folder-small-32.png" alt=""><span>Arcade games</span><span class="count">24</span></div>
+  <div class="row"><img src="utility/folder-small-32.png" alt=""><span>Platform games</span><span class="count">12</span></div>
+  <div class="row"><img src="utility/folder-small-32.png" alt=""><span>Puzzle games</span><span class="count">8</span></div>
+ </div>
+</div>
+<h2>Small folder at actual size</h2><div class="sizes" id="sizes"></div>
+<script>
+document.getElementById('theme').addEventListener('click',()=>{const dark=document.body.classList.toggle('dark');document.getElementById('theme').textContent=dark?'Light background':'Dark background';});
+const sizes=document.getElementById('sizes');
+for(const size of [24,32,40,48,64]){const f=document.createElement('figure'),im=document.createElement('img'),label=document.createElement('figcaption');im.src=`utility/folder-small-${size}.png`;im.width=im.height=size;im.alt=`Folder at ${size} pixels`;label.textContent=size+' px';f.append(im,label);sizes.append(f);}
+const image=new Image();image.src='utility/folder-large.png';image.onload=()=>{
+ const c=document.getElementById('folder-big').getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(image,0,0);
+ const digits=['00100','01100','00100','00100','00100','00100','01110','01110','10001','00001','00010','00100','01000','11111'];
+ c.fillStyle='#272933';for(let n=0;n<2;n++)for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(digits[n*7+y][x]==='1')c.fillRect(104+n*18+x*3,132+y*3,3,3);
+};
+</script>
+</html>

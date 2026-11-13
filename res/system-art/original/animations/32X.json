@@ -1,0 +1,177 @@
+{
+  "key": "32X",
+  "name": "Sega 32X",
+  "description": "Cartridge lowers into the top slot",
+  "cell": 256,
+  "cols": 8,
+  "rows": 4,
+  "unique": 26,
+  "duration_ms": 6000,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    115,
+    3,
+    74,
+    58
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 844
+    },
+    {
+      "tile": 1,
+      "ms": 94
+    },
+    {
+      "tile": 2,
+      "ms": 94
+    },
+    {
+      "tile": 3,
+      "ms": 93
+    },
+    {
+      "tile": 4,
+      "ms": 94
+    },
+    {
+      "tile": 5,
+      "ms": 94
+    },
+    {
+      "tile": 6,
+      "ms": 94
+    },
+    {
+      "tile": 7,
+      "ms": 93
+    },
+    {
+      "tile": 8,
+      "ms": 94
+    },
+    {
+      "tile": 9,
+      "ms": 94
+    },
+    {
+      "tile": 10,
+      "ms": 94
+    },
+    {
+      "tile": 11,
+      "ms": 93
+    },
+    {
+      "tile": 12,
+      "ms": 94
+    },
+    {
+      "tile": 13,
+      "ms": 1688
+    },
+    {
+      "tile": 14,
+      "ms": 93
+    },
+    {
+      "tile": 15,
+      "ms": 94
+    },
+    {
+      "tile": 16,
+      "ms": 94
+    },
+    {
+      "tile": 17,
+      "ms": 94
+    },
+    {
+      "tile": 18,
+      "ms": 93
+    },
+    {
+      "tile": 19,
+      "ms": 94
+    },
+    {
+      "tile": 20,
+      "ms": 94
+    },
+    {
+      "tile": 21,
+      "ms": 94
+    },
+    {
+      "tile": 22,
+      "ms": 93
+    },
+    {
+      "tile": 23,
+      "ms": 94
+    },
+    {
+      "tile": 24,
+      "ms": 94
+    },
+    {
+      "tile": 25,
+      "ms": 94
+    },
+    {
+      "tile": 0,
+      "ms": 1218
+    }
+  ],
+  "still_time_ms": 4300,
+  "decoded_atlas_bytes": 8388608,
+  "inputs": [
+    "source/32X.png",
+    "source/32X-cartridge-v2.png",
+    "source/A2600-cartridge.png",
+    "source/A5200-cartridge.png",
+    "source/A7800-cartridge.png",
+    "source/GENESIS-cartridge.png",
+    "source/N64-cartridge.png",
+    "source/NEOGEO-cartridge.png",
+    "source/PCE-cartridge.png",
+    "source/SMS-cartridge.png",
+    "source/VB-cartridge.png",
+    "source/COLECO-cartridge.png",
+    "source/MSX2-cartridge.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/consoles.js",
+    "groups/console-cartridges.js"
+  ],
+  "input_sha256": {
+    "source/32X.png": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+    "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+    "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+    "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+    "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+    "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+    "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+    "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+    "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+    "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+    "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+    "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+    "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+    "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+  },
+  "atlas": "32X.png",
+  "still": "32X-still.png",
+  "atlas_sha256": "4df49b3a533c407e2bdb8a1b7c7c665202f6f682d3c24d11418f3feba721d6fc",
+  "still_sha256": "a8f277978e124d4b64e5bebdd9502a2e490dd68346e780d6b88f05d23a21bb57"
+}

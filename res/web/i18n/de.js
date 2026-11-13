@@ -200,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "Tippe auf „Abbrechen“ und dann auf „Ohne Internet verwenden“. Öffne dann %s in Safari.",
   "captive.android_head": "Uploads brauchen Chrome.",
   "captive.android_text": "Tippe auf %1$s und dann auf „Netzwerk im Istzustand verwenden“. Öffne dann %2$s in Chrome.",
+  "act.select": "Auswählen",
+  "act.deselect": "Abwählen",
+  "move.count": ["%d Element", "%d Elemente"],
+  "move.done": "Nach %s verschoben",
 };

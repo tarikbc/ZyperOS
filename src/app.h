@@ -126,11 +126,17 @@ static inline const char *dmode_label(int k)
  * (SETDISPLAY filter=, its src/scale.c diatom_filters), so Off is its
  * nearest. Kept per system as shader.<TAG> beside display.<TAG>, and for
  * every system as `shader`, what MENU's row sets (shader_load). One more is
- * a row here, a string, and Diatom's filter of that name: an LCD grid or a
- * CRT. */
-static const struct { const char *name; str_id text; } SHADERS[] = {
-	{ "nearest",     S_MENU_OFF_TITLE              },
-	{ "shimmerless", S_GAMEMENU_SHADER_SHIMMERLESS },
+ * a row here, a string, and Diatom's filter of that name.
+ *
+ * `gpu`: an old screen only a GPU draws (Diatom's port/pixel2.c), offered
+ * where plat_gpu_shaders says so and stepped over elsewhere (shader_step). */
+static const struct { const char *name; str_id text; bool gpu; } SHADERS[] = {
+	{ "nearest",     S_MENU_OFF_TITLE,               false },
+	{ "shimmerless", S_GAMEMENU_SHADER_SHIMMERLESS,  false },
+	{ "crt",         S_GAMEMENU_SHADER_CRT,          true  },
+	{ "crt-curved",  S_GAMEMENU_SHADER_CRT_CURVED,   true  },
+	{ "scanlines",   S_GAMEMENU_SHADER_SCANLINES,    true  },
+	{ "lcd",         S_GAMEMENU_SHADER_LCD,          true  },
 };
 #define SHADER_COUNT ((int)(sizeof SHADERS / sizeof SHADERS[0]))
 

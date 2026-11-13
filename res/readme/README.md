@@ -75,3 +75,11 @@ Then rebuild the device poster and the static site:
 blender --background --python tools/build-pixel2-model.py -- --render
 sh mk/site.sh
 ```
+
+`shaders.png` is not a launcher frame: it is Balloon Fight's picture as Diatom
+draws it on the Pixel 2's 640x480 screen with each Shader, a part of it at
+twice its size, side by side. The game's frame is the one Diatom saved when
+the game was paused in ZyperOS's QEMU machine (docs/qemu.md), and each look
+is the shader in `diatom/port/pixel2.c` drawing it there, through Mesa, as
+the Pixel 2 draws it with stretch and the panel's color matrix. The game and
+its picture belong to their owner.

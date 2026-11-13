@@ -1,0 +1,1384 @@
+{
+  "schema": 1,
+  "id": "console-cartridges",
+  "created": "2026-11-12",
+  "generator": "built-in image_gen",
+  "contract": "OVERRIDES.md",
+  "sourcePolicy": "All selected source PNGs are unchanged generated outputs. The renderer crops and transforms layers without rewriting them. Original console sources and modules stay unchanged.",
+  "motionPolicy": "Cubic smoothstep with insertion, seated hold, withdrawal and hold. Width and height remain fixed during each motion. Slot lips occlude cartridges.",
+  "validation": {
+    "javascriptSyntax": "passed",
+    "localCanvasChecks": "passed",
+    "outsideMotionBoundsChanges": 0,
+    "solidCanvasEdgePixels": 0,
+    "exactLoopReturn": true,
+    "maxUniquePoses": 39,
+    "browserReview": "Pending parent integrated browser review."
+  },
+  "assets": [
+    {
+      "key": "32X",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        575,
+        25,
+        340,
+        260
+      ],
+      "source": "source/32X-cartridge-v2.png",
+      "file": "32X-cartridge-v2.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-031674d4-83bd-456d-9562-d03e3060202b.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated Sega 32X cartridge animation layer. Image 1 is the approved console: exact camera, colors, light and chunky pixel style. Image 2 is a real 32X game cartridge: use ONLY its physical shell shape, never its pixels or game label art. Create one original pixel-art cartridge. Match the real shell: black wide rectangular case about 1.55 times wider than tall, gently rounded top corners, broad recessed rectangular label with rounded lower corners, smooth vertical grip panels at both sides, a subtly curved horizontal molded line under the label, and six short vertical indentations along the lower face. There are NO horizontal fins across the top, and NO 32X adaptor oval badge. The front label is an original simple orange field with a narrow gold stripe at its left reading 32X in black. No Doom artwork or game title. Connector edge points downward. Face the cartridge almost straight toward camera, with horizontal across edges, a narrow top edge visible and a thin right face, aligned with image 1's top slot. Draw ONLY the complete cartridge centered on a truly transparent square canvas, filling 70 percent of width. Crisp square pixel clusters, dark blue-grey outlines, lavender-grey shadows, cream upper-left edges. No console, cables, controller, hands, external shadows, floor or decoration. Redraw from scratch; do not reduce or pixelate the photo.",
+      "styleReference": {
+        "file": "source/32X.png",
+        "sha256": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.manualslib.com/guide/4413778/sega-genesis-32x-instruction-manual.html",
+          "kind": "original-manual",
+          "note": "Playing Genesis 32X Cartridge Games: label forward; press straight into the top slot."
+        },
+        {
+          "url": "https://theexchange.com/products/1008684506",
+          "imageUrl": "https://theexchange.com/cdn/shop/products/Doom_Japan_USA.png?v=1614004130",
+          "kind": "hardware-photo",
+          "note": "Physical 32X shell reference supplied as image 2 for the selected replacement. No photo or game-label pixels copied.",
+          "sha256": "6f486e679b28184f62480791092da3badbb2c24c2461a6c14393c10ddb080538"
+        },
+        {
+          "url": "https://syltefar.com/system/?id=78&mode=list&sortby=year",
+          "purpose": "Genesis Model 1 and 32X shape, position and control layout",
+          "image": "https://syltefar.com/system/32x.jpg"
+        },
+        {
+          "url": "https://gametrog.com/sega-genesis-1-2-3-information-specs/",
+          "purpose": "Correct Genesis Model 1 LED and control positions"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          55,
+          300,
+          1138,
+          681
+        ],
+        "width": 310,
+        "at": [
+          589,
+          34
+        ],
+        "travel": [
+          0,
+          150
+        ],
+        "lip": [
+          [
+            551,
+            278
+          ],
+          [
+            930,
+            278
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          379,
+          0
+        ],
+        "travel": [
+          0,
+          150
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Across axis is horizontal. The cartridge meets the upper 32X slot; the adaptor remains seated in the Genesis.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "32X",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "A2600",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        570,
+        210,
+        200,
+        305
+      ],
+      "source": "source/A2600-cartridge.png",
+      "file": "A2600-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-6c440b8d-ddda-4b9e-9460-6aefc0f46962.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console, provided ONLY as the exact pixel style, lighting and camera reference. Create ONLY ONE Atari 2600 original black game cartridge. Compact tall rectangular shell with a softly rounded top, short grooved side grips, broad plain black front face and a small end label wrapping over the TOP edge reading ATARI. Its large picture label is on the far side and cannot be visible. Bottom connector edge downward. Front view from slightly above, no horizontal tilt, across axis horizontal parallel to the reference central slot. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights, matching the console. Draw the complete cartridge alone, floating centered on a truly transparent square canvas. It fills about 70 percent of image width with generous transparent margins. No console, controller, cable, hand, ground, shadow outside the cartridge, scene, arrow, stand or duplicate. Hardware must use the real cartridge shape. This is original generated pixel art; do not reduce a photograph or copy icon-pack pixels. Keep the front face upright for rigid vertical insertion. No fake perspective vanishing point or decorative glow.",
+      "styleReference": {
+        "file": "source/A2600.png",
+        "sha256": "11a969c487d48bffce6e17b326fb33585a53424151b7f9aa93a9305f96e01bb9",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.manualslib.com/manual/3987890/Atari-2600-Video-Computer-System.html?page=9",
+          "kind": "original-manual",
+          "note": "End name faces the player. Cartridge enters the central switch-panel slot. Large game label faces away."
+        },
+        {
+          "url": "https://retroreviverepair.com/products/atari-2600-service",
+          "purpose": "Six-switch case, wood fascia, slot and toggle positions"
+        },
+        {
+          "url": "https://vtda.org/docs/computing/Atari/FD100133_Atari2600FieldServiceManualRev02_Jan83.pdf",
+          "purpose": "Power toggle moves up for On; original unit has no power indicator"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          248,
+          202,
+          759,
+          891
+        ],
+        "width": 178,
+        "at": [
+          579,
+          220
+        ],
+        "travel": [
+          0,
+          132
+        ],
+        "lip": [
+          [
+            568,
+            509
+          ],
+          [
+            770,
+            509
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          202,
+          0
+        ],
+        "travel": [
+          0,
+          132
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Narrow upright cartridge aligns between the six toggle switches. The lower edge disappears behind the slot lip.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "A2600",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "A5200",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        575,
+        135,
+        270,
+        330
+      ],
+      "source": "source/A5200-cartridge.png",
+      "file": "A5200-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-f977f716-4ccc-4389-ae24-2ec31a470f40.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console, provided ONLY as the exact pixel style, lighting and camera reference. Create ONLY ONE Atari 5200 original black game cartridge. Distinctive broad rectangular cartridge with stepped shoulders and diagonal bevels at the upper corners. Flat black front face, restrained silver label strip at its upper edge, no game scene. Connector edge downward. Match reference camera: across edges slope down-right about 5 degrees, right side visible, top face recedes up-right. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights, matching the console. Draw the complete cartridge alone, floating centered on a truly transparent square canvas. It fills about 70 percent of image width with generous transparent margins. No console, controller, cable, hand, ground, shadow outside the cartridge, scene, arrow, stand or duplicate. Hardware must use the real cartridge shape. This is original generated pixel art; do not reduce a photograph or copy icon-pack pixels. Keep the front face upright for rigid vertical insertion. No fake perspective vanishing point or decorative glow.",
+      "styleReference": {
+        "file": "source/A5200.png",
+        "sha256": "cbb7cbf5ea4fa0839f02f82018f1bd207aae2a7c26f90371210df736c912ea9d",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.ataricompendium.com/archives/manuals/5200/atari_5200_82.pdf",
+          "kind": "original-manual",
+          "note": "Inserting a Game Cartridge: label faces the player and reads upright; central top loading."
+        },
+        {
+          "url": "https://commons.wikimedia.org/wiki/File:Atari-5200-Console-Set.jpg",
+          "image": "https://retrobug.org/resource/img/systems/sys_l_ata_5200.webp",
+          "purpose": "Four-port 5200 wedge, silver strip, front-right power button and keypad controller"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          138,
+          250,
+          976,
+          791
+        ],
+        "width": 250,
+        "at": [
+          583,
+          145
+        ],
+        "travel": [
+          0,
+          151
+        ],
+        "shearY": 0.055,
+        "lip": [
+          [
+            553,
+            437
+          ],
+          [
+            846,
+            459
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          293,
+          22
+        ],
+        "travel": [
+          0,
+          151
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Cartridge across axis slopes down-right with the case. The cartridge lowers without rotation or scale change.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "A5200",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "A7800",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        540,
+        20,
+        300,
+        360
+      ],
+      "source": "source/A7800-cartridge.png",
+      "file": "A7800-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-5db74b99-44af-4cf9-a189-2f8945757a3f.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console, provided ONLY as the exact pixel style, lighting and camera reference. Create ONLY ONE Atari 7800 original black game cartridge. Tall compact black rectangular shell with rounded upper corners and fine vertical ribbing on its sides. Show the plain reverse face with one small recessed screw and small molded ATARI text; the large game label faces the rear of the console and must NOT face this camera. Connector edge downward. Match reference camera: across edges almost horizontal with only 1 degree downward-right tilt, small right side visible, top depth recedes up-right. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights, matching the console. Draw the complete cartridge alone, floating centered on a truly transparent square canvas. It fills about 70 percent of image width with generous transparent margins. No console, controller, cable, hand, ground, shadow outside the cartridge, scene, arrow, stand or duplicate. Hardware must use the real cartridge shape. This is original generated pixel art; do not reduce a photograph or copy icon-pack pixels. Keep the front face upright for rigid vertical insertion. No fake perspective vanishing point or decorative glow.",
+      "styleReference": {
+        "file": "source/A7800.png",
+        "sha256": "a2881c82252fb5619d95a99edc19d505c330da64fa742584954ca86fbff09927",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.atarimuseum.de/pics/scans/Manuals/cx7800.pdf",
+          "kind": "original-manual",
+          "note": "Large label faces the rear of the console. Cartridge lowers into the top slot. The near face is plain."
+        },
+        {
+          "url": "https://www.atarimuseum.de/7800.htm",
+          "image": "https://www.atarimuseum.de/bilder/7800/cx7800.jpg",
+          "purpose": "PAL 7800 with CX78 controller, switch strip and indicator position"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          247,
+          260,
+          753,
+          819
+        ],
+        "width": 278,
+        "at": [
+          549,
+          28
+        ],
+        "travel": [
+          0,
+          125
+        ],
+        "shearY": 0.012,
+        "lip": [
+          [
+            521,
+            368
+          ],
+          [
+            846,
+            373
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          325,
+          5
+        ],
+        "travel": [
+          0,
+          125
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Near face is the cartridge reverse. Across axis follows the slight case slope; the top-slot front edge masks the connector.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "A7800",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "GENESIS",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        615,
+        115,
+        315,
+        295
+      ],
+      "source": "source/GENESIS-cartridge.png",
+      "file": "GENESIS-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-885ffe6b-0522-4b3c-838b-6fca23896a4a.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real original Sega Genesis cartridge, black rounded-shoulder rectangular shell, wider than tall, ribbed grip area at both sides, large inset FRONT label panel with a simple blue abstract design and small SEGA text, no game scene, connector edge downward. Its front face is almost directly front-facing, viewed slightly from above, across edges horizontal and a small right side visible, exactly matching the slot on image 1. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the approved console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/GENESIS.png",
+        "sha256": "addc29747fa2e7b8eac9754a0d5dbb55af92b396846b047a3725e4007f858621",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://manuals.plus/m/bbeed483a891ee7f305119e8c4a3a62e00e062684d066b73c19fc74cc81ef5ea.pdf",
+          "kind": "original-manual-scan",
+          "note": "1991 Sega Genesis manual: front label and top-slot insertion."
+        },
+        {
+          "url": "https://gametrog.com/sega-genesis-1-2-3-information-specs/",
+          "image": "https://i0.wp.com/gametrog.com/wp-content/uploads/2018/07/sega-genesis-1-rev-top-gametrog.png?resize=1000%2C668&ssl=1",
+          "purpose": "Model 1 layout, power LED below 16-BIT badge, left switch and reset"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          107,
+          352,
+          1042,
+          625
+        ],
+        "width": 300,
+        "at": [
+          622,
+          122
+        ],
+        "travel": [
+          0,
+          149
+        ],
+        "lip": [
+          [
+            609,
+            404
+          ],
+          [
+            941,
+            404
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          332,
+          0
+        ],
+        "travel": [
+          0,
+          149
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Horizontal cartridge width aligns with the slot above the SEGA GENESIS badge. The near rim masks the bottom.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "GENESIS",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "N64",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        530,
+        70,
+        350,
+        295
+      ],
+      "source": "source/N64-cartridge.png",
+      "file": "N64-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-d5ad2013-9b27-48b0-8e7c-a8a044874bc3.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real Nintendo 64 Game Pak, medium grey broad rectangular shell with the characteristic raised rounded arch across the top center, stepped curved shoulders, indented upper side grip lines, small rectangular front label with a simple red abstract field and small NINTENDO 64 text, connector edge downward. Front-facing camera slightly above, across edges horizontal, shallow top visible, matching image 1. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the approved console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/N64.png",
+        "sha256": "9bcf6d42a0c7bafb484f205865d32670fa62a18d8714716ffa41d831f6f3d90b",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://nintendo64.pl/wp-content/uploads/N64-System-USA.pdf",
+          "kind": "original-manual-scan",
+          "note": "Nintendo 64 Instruction Book, Game Pak loading and removal diagrams. Rounded grey Game Pak uses the rear top slot."
+        },
+        {
+          "url": "https://www.ebay.ca/itm/126483597140",
+          "image": "https://i.ebayimg.com/images/g/1fMAAOSwuOhmQ~XZ/s-l1200.png",
+          "purpose": "Four sockets, central red power LED and power/reset placement"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          154,
+          348,
+          946,
+          570
+        ],
+        "width": 334,
+        "at": [
+          539,
+          78
+        ],
+        "travel": [
+          0,
+          135
+        ],
+        "lip": [
+          [
+            520,
+            358
+          ],
+          [
+            882,
+            358
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          362,
+          0
+        ],
+        "travel": [
+          0,
+          135
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Grey arch-topped Game Pak aligns with the rear top slot. The front expansion cover remains fixed.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "N64",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "NEOGEO",
+      "description": "AES cartridge fully clears and loads into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        465,
+        -115,
+        510,
+        465
+      ],
+      "source": "source/NEOGEO-cartridge.png",
+      "file": "NEOGEO-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-26960316-71e1-46d2-b183-2424ba54e1ee.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real Neo Geo AES home cartridge, a very large thick black upright rectangular shell with broadly rounded upper corners and horizontal grip ribs near the top and sides. Wide nearly square broad face, a narrow white label wrapped across the top edge with small NEO GEO text, a plain front face with fine molded lines. Do not use the MVS arcade cartridge. Connector edge downward. Almost straight front view slightly above, horizontal across edges, thin right side visible, exactly matching image 1. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the approved console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/NEOGEO.png",
+        "sha256": "3060c74b582f73c701fb3cea04e165a763f51549808823005da06497bb8710fc",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://db.hfsplay.fr/files/2019/07/05/Neo_Geo_AES_Manual_1990_SNK_JP_53QKNU3.pdf",
+          "kind": "original-manual-scan",
+          "note": "SNK AES hardware manual. Large home cartridge and broad upper slot."
+        },
+        {
+          "url": "https://www.ebay.com/p/110703153",
+          "image": "https://i.ebayimg.com/images/g/BVUAAeSwstpoxevh/s-l1200.jpg",
+          "purpose": "Front-left horizontal power slide switch; original AES has no LED"
+        },
+        {
+          "url": "https://www.ebay.com/itm/388250467499",
+          "image": "https://i.ebayimg.com/00/s/MTA3MVgxNjAw/z/0u4AAOSw-Yln-pBG/%24_57.JPG?set_id=880000500F",
+          "purpose": "Whole console and original rectangular four-button arcade stick"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          138,
+          208,
+          976,
+          855
+        ],
+        "width": 490,
+        "at": [
+          474,
+          -105
+        ],
+        "travel": [
+          0,
+          235
+        ],
+        "lip": [
+          [
+            438,
+            344
+          ],
+          [
+            1000,
+            344
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          562,
+          0
+        ],
+        "travel": [
+          0,
+          235
+        ],
+        "rigidScale": true,
+        "staticViewBox": [
+          -70,
+          -140,
+          1394,
+          1394
+        ]
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Large AES shell aligns with the horizontal slot. The withdrawn bottom clears the lip by 19.748 source pixels. A static viewBox supplies headroom. Cartridge size and seated source position remain unchanged.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "NEOGEO",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent browser review of complete-removal revision.",
+        "viewBox": [
+          -70,
+          -140,
+          1394,
+          1394
+        ],
+        "withdrawnTop": -105,
+        "withdrawnBottom": 324.25204918032784,
+        "slotLipY": 344,
+        "slotClearance": 19.747950819672155,
+        "seatedTop": 130,
+        "previousSeatedTop": 130,
+        "cartridgeWidth": 490,
+        "cartridgeHeight": 429.25204918032784,
+        "cameraChangesDuringLoop": false
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review",
+      "viewBox": [
+        -70,
+        -140,
+        1394,
+        1394
+      ],
+      "revision": "Full removal replaces the earlier partial lift. The shared renderer uses the same viewBox for every pose."
+    },
+    {
+      "key": "PCE",
+      "description": "TurboChip slides into the front card channel",
+      "duration": 6000,
+      "motionBounds": [
+        650,
+        605,
+        315,
+        245
+      ],
+      "source": "source/PCE-cartridge.png",
+      "file": "PCE-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-e0d0e79b-6833-487e-b21e-ce613765e8ef.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real US TurboGrafx-16 TurboChip / HuCard, an extremely THIN flat white credit-card-shaped game card with rounded corners, black connector/contact region across the far short edge, a simple small orange TURBOCHIP label. It lies FLAT horizontally on the same plane as the recessed card channel on image 1. This is NOT an upright thick cartridge. Across/width edges slope slightly down-right about 4 degrees. Length/depth edges recede steeply up-right; projected depth direction is vector (80,-190) for a width vector (200,12). Show its TOP surface with foreshortening. The far upper connector edge points toward the back upper-right, ready to slide rearward along the channel. Do not add a console.. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the approved console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/PCE.png",
+        "sha256": "5496e99011cc5f8601ea848b9ca428c467050e551042dc97400a1cb305473c2f",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.manualslib.com/manual/4212299/Nec-Turbografx-16.html",
+          "kind": "original-manual",
+          "note": "US TurboGrafx-16 TurboChip card loading, label up, front channel."
+        },
+        {
+          "url": "https://consolemods.org/wiki/images/3/31/TurboGrafx-16-Service-Manual.pdf",
+          "kind": "original-service-manual",
+          "note": "Black US HES-TGX-01 shell and game-card port. PCE here is not the white Japanese PC Engine."
+        },
+        {
+          "url": "https://en.retrogamesupply.com/products/power-supply-for-nec-turbografx-16-pc-engine",
+          "image": "https://en.retrogamesupply.com/cdn/shop/products/TurboGrafx16-Console-Set.png?v=1533552111",
+          "purpose": "US black shell, front power slider, HuCard channel and original TurboPad"
+        },
+        {
+          "url": "https://r.mprd.se/TurboGrafx-16/TG16-PCE/EXTRAS/Manuals/Dragon%20Spirit%20%28U%29.pdf",
+          "purpose": "Original game manual: move power switch fully right for On"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          202,
+          375,
+          862,
+          531
+        ],
+        "width": 235,
+        "at": [
+          658,
+          690
+        ],
+        "travel": [
+          68,
+          -145
+        ],
+        "shearX": 0.23,
+        "mode": "card",
+        "lip": [
+          [
+            745,
+            615
+          ],
+          [
+            925,
+            623
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          180,
+          8
+        ],
+        "travel": [
+          68,
+          -145
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Thin TurboChip lies on the top-plane channel. The positive-x, negative-y travel follows the channel toward the rear.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "PCE",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "SMS",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        685,
+        110,
+        320,
+        375
+      ],
+      "source": "source/SMS-cartridge.png",
+      "file": "SMS-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-249af3ad-225a-46a3-a548-b447e3fa746b.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real Sega Master System game cartridge. Black upright rectangular shell, shallow chamfered top corners, horizontal textured grip bands around the top and sides. Large front label is white with a simple fine grey grid and small red SEGA text, no game scene. Connector edge downward. Camera matches the console: almost straight front with level across edges, top face visible and a slim right side visible. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/SMS.png",
+        "sha256": "9c52af940cb933e5df17d6d9306c2a3ed079a15617e1c0b63d53b36edb62ced0",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.lunil.com/docs/manuel_Sega_Master_System.pdf",
+          "kind": "original-manual-index",
+          "note": "Indexed manual text confirms cartridge label forward. The cartridge enters the top slot, not the front Sega Card input."
+        },
+        {
+          "url": "https://www.8bitbeyond.com/products/master-system-console",
+          "image": "https://www.8bitbeyond.com/cdn/shop/files/FullSizeRender_f8a7ccc4-5838-4e73-8440-f9339c6f0418.jpg?v=1691930556",
+          "purpose": "Model 1 angular shell, right red diagram panel, triangular green power lens and original pad"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          188,
+          322,
+          878,
+          802
+        ],
+        "width": 300,
+        "at": [
+          693,
+          117
+        ],
+        "travel": [
+          0,
+          150
+        ],
+        "lip": [
+          [
+            672,
+            479
+          ],
+          [
+            1015,
+            479
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          343,
+          0
+        ],
+        "travel": [
+          0,
+          150
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Cartridge lowers into the upper slot above Reset and Pause. The front Sega Card input remains fixed.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "SMS",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "VB",
+      "description": "Game Pak slides into the underside slot",
+      "duration": 6000,
+      "motionBounds": [
+        380,
+        485,
+        355,
+        255
+      ],
+      "source": "source/VB-cartridge.png",
+      "file": "VB-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-0e7b032c-a19e-4ea0-8cc1-84745b253508.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real Nintendo Virtual Boy Game Pak. Black compact thin flat rectangular card with rounded corners, a recessed red label panel on the TOP with tiny white VIRTUAL BOY text, no game scene. Its connector is on the far upper edge, no dust cover. The card lies FLAT, label facing UP. This console loads the cartridge horizontally into its underside below the broad red front shell, not vertically into its top. Show the card alone at that exact horizontal plane: width edges horizontal; depth edges recede up-right, projected across direction (270,0) and depth direction (60,-110). View from above. Make one thin black card, not an upright cartridge and not a handheld. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/VB.png",
+        "sha256": "48cb18f396bdc55f1bde2d62abe9d24f08c6106f7006f53e654d5cf850689f8e",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.gamepare.it/files/Virtual%20Boy%20Instruction%20Booklet%20(USA).pdf",
+          "kind": "original-manual-scan",
+          "pages": [
+            9,
+            10
+          ],
+          "note": "Page 10 diagram checked directly. Game Pak lies flat, label up, and slides into the bottom back of the red shell. The camera sees that broad red shell, so the layer enters beneath it.",
+          "sha256": "68f52af4256839698b9ee50a9521ea2902dcbe88a532124b3004f8bd6d1795ed"
+        },
+        {
+          "url": "https://www.mariowiki.com/Virtual_Boy",
+          "image": "https://mario.wiki.gallery/images/thumb/4/45/VB_System.png/1200px-VB_System.png",
+          "purpose": "Red shell, black eyepiece, folding stand and complete controller layout"
+        },
+        {
+          "url": "https://retrosix.wiki/wiki/power-up-basics-virtual-boy",
+          "image": "https://retrosix.wiki/uploads/Power%20Up%20Basics%20%28Virtual%20Boy%29-5.jpg",
+          "purpose": "Controller top-center power slider; left Off and right On"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          155,
+          443,
+          947,
+          382
+        ],
+        "width": 250,
+        "at": [
+          406,
+          631
+        ],
+        "travel": [
+          56,
+          -114
+        ],
+        "shearX": -0.14,
+        "mode": "underside"
+      },
+      "perspectiveAxes": {
+        "across": [
+          250,
+          0
+        ],
+        "travel": [
+          56,
+          -114
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Flat Game Pak slides up-right under the broad red case. The case edge and stand occlude it. No top slot is added.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "VB",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels.",
+        "The underside slot is partly hidden by the unchanged case and stand, as in the reference camera."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "COLECO",
+      "description": "Cartridge lowers into the top slot",
+      "duration": 6000,
+      "motionBounds": [
+        775,
+        190,
+        215,
+        305
+      ],
+      "source": "source/COLECO-cartridge.png",
+      "file": "COLECO-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-37edcbbb-1590-4252-b373-d84f96e547ac.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real original ColecoVision cartridge. Black upright compact rectangular shell with rounded top corners and raised horizontal grip ribs on its back edges. A simple cream front label panel bears small COLECO text and a narrow rainbow stripe, no game scene. Connector edge downward. Front view slightly above, level across edges, top and narrow right side visible, exactly parallel to the reference console's small top-right cartridge slot. Do not confuse the cartridge slot with the large controller storage bays. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/COLECO.png",
+        "sha256": "df7319dfa67753df2a7d8e27d3c9536f0acab30fef35c5b04dfb88f997e86f1b",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.colecovisionzone.com/downloads/colecovision%20manual2.pdf",
+          "kind": "original-manual-scan",
+          "note": "Cartridge enters the small upper-right socket. The two large left openings hold controllers."
+        },
+        {
+          "url": "https://www.ebay.com/itm/187506341031",
+          "image": "https://i.ebayimg.com/images/g/oZQAAeSwEFlopour/s-l1200.jpg",
+          "purpose": "Original control layout, cartridge opening, storage bays and front expansion door"
+        },
+        {
+          "url": "https://retrofam.com/ja/products/official-colecovision-console-retro-fam",
+          "image": "https://retrofam.com/cdn/shop/files/coleco_product.jpg?v=1750109588&width=720",
+          "purpose": "Original keypad joystick shape and side fire buttons"
+        },
+        {
+          "url": "https://www.ifixit.com/Guide/ColecoVision+Power+Switch+Replacement/114629",
+          "purpose": "Original sliding power switch construction"
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          231,
+          229,
+          791,
+          829
+        ],
+        "width": 191,
+        "at": [
+          785,
+          199
+        ],
+        "travel": [
+          0,
+          137
+        ],
+        "lip": [
+          [
+            780,
+            487
+          ],
+          [
+            984,
+            487
+          ]
+        ],
+        "slot": [
+          [
+            785,
+            474
+          ],
+          [
+            978,
+            474
+          ],
+          [
+            978,
+            487
+          ],
+          [
+            785,
+            487
+          ]
+        ]
+      },
+      "perspectiveAxes": {
+        "across": [
+          204,
+          0
+        ],
+        "travel": [
+          0,
+          137
+        ],
+        "rigidScale": true
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Cartridge lowers into the small right socket behind the silver panel. Both left controller bays remain fixed.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "COLECO",
+        "uniquePoses": 26,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    },
+    {
+      "key": "MSX2",
+      "description": "Slot cover opens and cartridge loads",
+      "duration": 6000,
+      "motionBounds": [
+        755,
+        195,
+        320,
+        320
+      ],
+      "source": "source/MSX2-cartridge.png",
+      "file": "MSX2-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb",
+      "sourceImmutable": true,
+      "generator": "built-in image_gen",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-06acefb5-4e3d-40e9-97bb-96155524f83a.png",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console and serves ONLY as the exact camera, lighting and pixel style reference. Draw ONLY a real standard MSX game cartridge, Konami-style black plastic shell, upright compact rectangle with gently rounded top corners, small ribbed side grip bands, broad simple cream front label bearing small MSX text and an orange stripe, no game scene. Connector edge downward. Almost front view, across edges level, narrow top and right faces visible. Match the approved Panasonic FS-A1 keyboard's camera, ready for its real top-right cartridge slot under the rectangular flap. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights to match the console. One complete cartridge alone centered with transparent margins on a truly transparent square canvas. Fill about 70 percent of width. No console, controller, cable, hand, floor, external shadow, scene, arrow, stand or second cartridge. Original pixel art only; no photo reduction or copied icon pixels. Correct real hardware proportions. No glow.",
+      "styleReference": {
+        "file": "source/MSX2.png",
+        "sha256": "c7f3c13675bb00c531cbe02195ca516d1ad7a32d30f648be59da0c9c8085b4ea",
+        "role": "Approved console camera, pixel style, lighting and unchanged case"
+      },
+      "hardwareReferences": [
+        {
+          "url": "https://www.msx.org/wiki/Panasonic_FS-A1",
+          "kind": "hardware-reference",
+          "note": "FS-A1 has a top cartridge slot under the top-right flap and a second rear slot. This animation uses the visible top slot."
+        },
+        {
+          "kind": "hardware-photo",
+          "url": "https://www.msx.org/wiki/Panasonic_FS-A1",
+          "imageUrl": "https://www.msx.org/wiki/images/f/fe/Fsa1a.jpg",
+          "use": "FS-A1 keyboard, arrow keys, lamp, slot and proportions. No photo pixels copied."
+        },
+        {
+          "kind": "startup",
+          "url": "https://www.msx.org/wiki/Panasonic_FS-A1#Firmware",
+          "note": "FS-A1 starts DESKPAC; DEL bypasses it. No monitor is depicted, so this artwork shows only the real lamp."
+        }
+      ],
+      "mechanism": {
+        "crop": [
+          150,
+          401,
+          956,
+          590
+        ],
+        "width": 235,
+        "at": [
+          793,
+          207
+        ],
+        "travel": [
+          0,
+          158
+        ],
+        "lip": [
+          [
+            775,
+            501
+          ],
+          [
+            1060,
+            501
+          ]
+        ],
+        "mode": "flap"
+      },
+      "perspectiveAxes": {
+        "across": [
+          285,
+          0
+        ],
+        "travel": [
+          0,
+          158
+        ],
+        "rigidScale": true,
+        "hinge": [
+          [
+            779,
+            442
+          ],
+          [
+            1055,
+            442
+          ]
+        ],
+        "closedDepth": [
+          -14,
+          57
+        ],
+        "verticalProjection": [
+          0,
+          -71.25
+        ],
+        "maxAngleDegrees": 78
+      },
+      "imageReview": "Selected source checked. Cartridge is separate from the approved console. Source pixels remain unchanged.",
+      "perspectiveCheck": "Original top-right cover rotates about its fixed rear edge. Cartridge waits for the cover, then lowers into that slot.",
+      "motionReview": {
+        "renderer": "@napi-rs/canvas",
+        "size": [
+          256,
+          256
+        ],
+        "sampledPoses": 64,
+        "reviewedTimes": [
+          0,
+          1300,
+          2600,
+          4200
+        ],
+        "key": "MSX2",
+        "uniquePoses": 39,
+        "exactLoop": true,
+        "outsideChanges": 0,
+        "solidEdgePixels": 0,
+        "browserReview": "Pending parent integrated browser review."
+      },
+      "limitations": [
+        "Cartridge labels use simple original identifying designs, not exact game labels."
+      ],
+      "status": "ready-for-integrated-review"
+    }
+  ],
+  "rejectedGenerations": [
+    {
+      "key": "32X",
+      "prompt": "Use case: stylized-concept. Asset type: isolated cartridge animation layer for ZyperOS. Image 1 is the approved console, provided ONLY as the exact pixel style, lighting and camera reference. Create ONLY ONE Sega 32X cartridge. Wide black low rounded-shoulder rectangular shell, wider than tall, shallow ridged upper edge, bottom connector edge downward, small restrained label reading 32X on the broad FRONT face. View slightly from above, with nearly horizontal front edges and a small right side visible. Across axis must be horizontal, parallel to the reference 32X top slot. Not the mushroom-shaped 32X adaptor. Use crisp chunky square pixel clusters, near-black outlines, lavender-grey plastic shading and warm cream upper-left highlights, matching the console. Draw the complete cartridge alone, floating centered on a truly transparent square canvas. It fills about 70 percent of image width with generous transparent margins. No console, controller, cable, hand, ground, shadow outside the cartridge, scene, arrow, stand or duplicate. Hardware must use the real cartridge shape. This is original generated pixel art; do not reduce a photograph or copy icon-pack pixels. Keep the front face upright for rigid vertical insertion. No fake perspective vanishing point or decorative glow.",
+      "generatedOutput": "/Users/tarikbc/.codex/generated_images/01a1d33f-3324-76e0-824d-2c0f11f214a5/exec-d862e982-6bda-4486-b277-cd6a4bb0527a.png",
+      "file": "32X-cartridge.png",
+      "width": 1254,
+      "height": 1254,
+      "source": "source/32X-cartridge.png",
+      "sha256": "dda5525c46bda97a74a38e9c0d4253a962b62a0a4cf35d2e7c26d3b9cd846bca",
+      "bbox": [
+        0,
+        37,
+        1232,
+        1230
+      ],
+      "baseSha256": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+      "crop": [
+        126,
+        419,
+        998,
+        488
+      ],
+      "reason": "The first shell had incorrect top ribs and an adaptor-style badge. The replacement uses a real cartridge photo."
+    }
+  ],
+  "browserReview": {
+    "status": "passed",
+    "checks": [
+      "unchanged pixels outside motion",
+      "transparent margins",
+      "loop return",
+      "correct pose count",
+      "perspective review"
+    ]
+  }
+}

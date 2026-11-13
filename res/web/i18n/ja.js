@@ -200,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "「キャンセル」をタップし、「インターネットなしで使用」をタップします。次に Safari で %s を開いてください。",
   "captive.android_head": "アップロードには Chrome が必要です。",
   "captive.android_text": "%1$s をタップし、「このネットワークをそのまま使用」をタップします。次に Chrome で %2$s を開いてください。",
+  "act.select": "選択",
+  "act.deselect": "選択を解除",
+  "move.count": ["%d 項目", "%d 項目"],
+  "move.done": "%s に移動しました",
 };
