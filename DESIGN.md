@@ -1005,8 +1005,8 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
-| See the Details | X | the card turns into a details panel | X |
-| Keep a Favorite | Y | a heart pops onto the card; the line says Y does it in the details | Y |
+| See the Details | X | the card turns into the details, the info screen in small: the game's name over a rule, Synopsis in focus, Year, and Favorite Off with Y's glyph | X |
+| Keep a Favorite | Y | in those details Favorite turns from Off to On, the row's own Y pressing with the glyph; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf | MENU, which opens nothing here |
 | Music | SELECT, and L2/R2 lit on the handheld | Muse's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
@@ -1024,10 +1024,18 @@ shelf starts a game without its resume point and Favorite is a row of the
 details page X opens, and the step still taught Y on the shelf as a
 favorite.)*
 
+*(2026-11-13, after I tried 1.0.5: the step still drew a heart popping onto
+the little shelf's card, where a favorite has had no heart since 2026-11-09,
+and the details X opened were a panel the info screen stopped being long
+ago, a cover beside the name, system, year and play time. Both are the info
+screen now, in its own words, and Y does there what it does on the
+handheld.)*
+
 The demonstrations are drawn from shapes and tokens on the stage - a little
 shelf of five system-colored cards (Game Boy, NES, SNES, Game Boy Color, Neo
 Geo Pocket Color, by systems.cfg's accents), a stand-in game in shades of the
-SNES's color, a menu and Muse whose words are bars - never the player's
+SNES's color, a menu and Muse whose words are bars, the details in the info
+screen's own words - never the player's
 library, so the tutorial is the same on a card with no games. Each plays as a
 loop half a second after its step comes on, pressing its own glyph; a press
 of the player's own goes on from wherever the loop was.
@@ -1098,14 +1106,20 @@ of the player's own goes on from wherever the loop was.
     theme too), POWER (the diagonal
     capsule) and the four light lenses as **edge** marks (20% toward
     **text-dim** on Beard). Pressed, a key is 92% of its size. No words
-    on it (principle 5): the glyph under the stage names the key. The
+    on it (principle 5): the glyph under the stage names the key. But the
+    volume keys carry a + and a -, 2.4 mm long and 0.65 thick, in the
+    colors MENU's dots have, so which one turns it up shows in both
+    lessons that light them *(my ask after trying 1.0.5, 2026-11-13: the
+    brightness step's keys had no + and -; the model's chevrons are not
+    drawn)*. The
     handheld's own green is not drawn: lime is the lit key's alone (3.3).
   - **Turned to the key**: orthographic, turned about its upright axis, its
     middle at (138, 262). The D-pad, A, B, Y, X and SELECT: 10 degrees to
     show its right side, 3.55 units a millimetre. MENU and POWER: 52 degrees
     to the right, VOL 52 degrees to the left, both at 3.95, a little nearer.
     Brightness needs MENU and VOL, on opposite sides, so it faces front at
-    3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit. A
+    3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit,
+    the volume keys 4.6 so their + and - fit on them pressed too. A
     step turns it from the last lesson's pose in **turn**, as the step comes
     on; the first lesson fades it in with the stage.
   - **The lit key**: **accent**, ringed in **accent-ink** (Beard) or

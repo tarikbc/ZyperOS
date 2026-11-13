@@ -13955,7 +13955,7 @@ static void controls_screen(app *a)
 /* DESIGN.md 11.10: the first thing a new handheld shows, and again from MENU >
  * Show Tutorial. The steps are src/tour.c's and the screens src/tourdraw.c's;
  * this is the loop that reads the buttons, plays the sounds, turns the real
- * volume and brightness, and lends the drawing Zyper and the heart. */
+ * volume and brightness, and lends the drawing Zyper. */
 
 /* Zyper as the tutorial poses him, by the menu's draw_zyper_pose: the high
  * brow following his tilt (zyper_brow_lift) as the menu's does, and on Beard
@@ -13969,11 +13969,6 @@ static void tour_zyper_draw(void *ctx, float cx, float cy, float h, const tour_z
 		zyper_shadow_draw(a->r, cx, cy, h, z->pose.tilt, z->shadow * (1.0f - z->dim));
 	draw_zyper_pose(a->r, cx, cy, h, &z->pose, zyper_brow_lift(z->pose.tilt), z->dim,
 	                z->alpha);
-}
-
-static void tour_heart_draw(void *ctx, float cx, float cy, float rad, SDL_Color c)
-{
-	draw_heart(((app *)ctx)->r, cx, cy, rad, c);
 }
 
 /* The power step's stage plays the power-off's own frames, small. */
@@ -14082,7 +14077,7 @@ static void tour_apply(app *a, int c, int v, bool save)
 
 static void tour_run(app *a, bool first)
 {
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	bool saved = false, shown = false, kept[TOUR_CHOICES] = { false };
 	int snd[IN_COUNT], n, i, at[TOUR_CHOICES], looked[TOUR_CHOICES];
@@ -25510,7 +25505,7 @@ static void shot_portload_take(app *a)
 static void shot_tour_draw(app *a)
 {
 	const uint32_t now = 1000000u;
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	int at[TOUR_CHOICES];
 
