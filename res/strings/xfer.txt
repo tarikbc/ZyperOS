@@ -113,6 +113,28 @@ de = Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel 
 ja = パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。
 it = Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.
 
+[xfer.replug_tip]
+note = Under xfer.replug_computer, smaller and dimmer: the way that always works. Some computers' USB-C ports take the side that waits for power at every plug, as a phone's does (a Windows 11 laptop on Discord, 2026-11-13), and then plugging in again never helps. A cable with USB-A at the computer's end always works: a USB-A port is always the side that gives power. Name the cable as xfer.phone_said does. Never say "power" here. Up to two balanced lines at the smaller size.
+en = A USB-A to USB-C cable connects every time.
+zh-Hans = 用 USB-A 转 USB-C 数据线每次都能连上。
+es = Con un cable USB-A a USB-C se conecta siempre.
+pt-BR = Com um cabo USB-A para USB-C, conecta sempre.
+fr = Avec un câble USB-A vers USB-C, ça marche à chaque fois.
+de = Mit einem Kabel von USB-A auf USB-C klappt es jedes Mal.
+ja = USB-A - USB-C ケーブルなら毎回接続できます。
+it = Con un cavo da USB-A a USB-C si collega sempre.
+
+[xfer.hint_replug]
+note = Under File Transfer's steps when the Cable step has waited 5 s with a computer on the cable that has not connected (xfer.replug_computer says why), its row "Cable: waiting" over it: plug the cable in again, a few tries if need be, or the cable that always works (xfer.replug_tip). Never say "power" here. Up to three balanced lines in the panel's inner width at menu size; say it short.
+en = Unplug the cable and plug it back in, or use a USB-A to USB-C cable: it connects every time.
+zh-Hans = 请重新插入数据线，或改用 USB-A 转 USB-C 数据线：每次都能连上。
+es = Vuelve a conectar el cable, o usa un cable USB-A a USB-C: se conecta siempre.
+pt-BR = Conecte o cabo de novo, ou use um cabo USB-A para USB-C: ele conecta sempre.
+fr = Rebranchez le câble, ou prenez un câble USB-A vers USB-C : il marche à chaque fois.
+de = Steck das Kabel neu ein, oder nimm ein Kabel von USB-A auf USB-C: Das klappt immer.
+ja = ケーブルを挿し直すか、USB-A - USB-C ケーブルを使ってください。毎回接続できます。
+it = Ricollega il cavo, oppure usa un cavo da USB-A a USB-C: si collega sempre.
+
 [xfer.phone_said]
 note = After the player answers Phone: how a phone opens the handheld's files. A phone always takes the side of the USB-C cable that waits for power, and the handheld cannot ask it to swap, so plugging in again never helps. An Android phone swaps from its own USB settings: name them exactly as Android does in this language (Settings' usb_control_title and usb_control_device, read from AOSP 2026-11-13). An iPhone cannot: it needs a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable to the handheld. Over any screen but a game, under the heading xfer.tile_phone, until the phone connects or the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
 en = Android: tap the phone's USB notification, then USB controlled by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A to USB-C cable.
