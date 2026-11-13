@@ -9420,14 +9420,14 @@ static unsigned xfer_folder_color(const char *folder)
 }
 
 /* And its pixel art, as hare_set_folder_icon asks: the shelf's own for the
- * tag (home_art_key), or MP4's, music's, for the menu music's Roms/BGM
+ * tag (home_art_key), or the cassette for the menu music's Roms/BGM
  * (src/bgm.h) */
 static const char *xfer_folder_icon(const char *folder)
 {
 	const system_cfg *s = xfer_sys_of(folder);
 
 	if (s) return home_art_key(s->tag);
-	if (!strcmp(folder, "BGM")) return "MUSE";
+	if (!strcmp(folder, "BGM")) return "BGM";
 	return NULL;
 }
 
@@ -15871,12 +15871,12 @@ static sp_row *store_add(store_view *v)
 }
 
 /* The card's folders that are no system's, by the design they wear
- * (res/system-art/original): music and video MP4's, which shows both; the
- * others the small folder */
+ * (res/system-art/original): music MP4's, the others their own, as on the
+ * File Transfer page */
 #define STORE_ART_MUSIC  "MUSE"
-#define STORE_ART_VIDEOS "MUSE"
-#define STORE_ART_BOOKS  "FOLDER"
-#define STORE_ART_BIOS   "FOLDER"
+#define STORE_ART_VIDEOS "VIDEOS"
+#define STORE_ART_BOOKS  "BOOKS"
+#define STORE_ART_BIOS   "BIOS"
 
 static void store_row_look(store_view *v, sp_row *r)
 {

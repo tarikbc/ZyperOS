@@ -1540,10 +1540,11 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   corners: the system's color at 14% over **surface**, ringed at 30%; a folder
   of no system on the same tile in **text-dim**. A system's folder in ROMs and
   Save States has its own picture - every system the card knows, not only
-  the shelves with games; BGM, the menu music's, MP4's; any other folder the
-  small folder drawn for rows. Of the card's own folders, Music and Videos
-  wear MP4's, which shows both, and ROMs, Audiobooks, BIOS, Saves and Save
-  States, which ZyperOS's art has no picture of, their line marks. A picture
+  the shelves with games; BGM, the menu music's, a cassette; the card's
+  folders theirs (ROMs a cartridge, Music MP4's, Audiobooks a book with
+  headphones, Videos a video tape, BIOS a chip, Saves a memory card, Save
+  States a floppy disk); any other folder the small folder drawn for rows.
+  All are ZyperOS's own system art (`res/system-art/original`). A picture
   that does not come leaves the line mark on the tile.
 - **Hidden folders**: a name that starts with a dot (`.media`, where covers
   go) is not listed, unless Settings' **Show hidden folders** is on.
@@ -2473,8 +2474,9 @@ asks it.
   **recommendations**, a sparkle in **accent-ink** for their mark, the larger
   saving first, shown when one gives back 10 MB or more, a rule under them;
   then everything by size: each system with its home sprite (its games, its
-  saves and states, its art), Videos and Music with MP4's, Audiobooks, BIOS
-  and Other with the small folder, ZyperOS with Zyper's face. The more-rows triangles of 11.3.
+  saves and states, its art), Videos, Music, Audiobooks and BIOS with
+  their folder pictures from the File Transfer page, ZyperOS with Zyper's
+  face, and Other with the small folder. The more-rows triangles of 11.3.
 - **Under the list**, at cap y 702, the focused row's facts in **meta**
   **text-dim**, at most two balanced lines: "116 games · saves and states
   1.3 GB · art 900 MB", "318 songs", what a recommendation is.
@@ -3487,7 +3489,14 @@ handheld's language, and the page wears the handheld's theme (below).
 - p2d lets a pad go after a second with no `'P'` while buttons are held (a
   phone that locked mid-press), and when its socket closes. A guest with a
   frame waiting for its ack that has sent nothing for 5 seconds is gone (a
-  phone out of range sends no FIN), so its place is free.
+  phone out of range sends no FIN), so its place is free. p2d's log says
+  when each player came and went and why ("player 2 left at 10953 ms: 5 s
+  silent with a frame not acked"). A page that lost its link while it
+  played tries again after a quarter of a second, not 2 s, and sends the
+  buttons still held the moment it is back: a blip, or a phone so busy it
+  was let go, costs as few presses as can be. GitHub's macOS runner starved
+  Chrome long enough for p2d to let the page go mid-test, which is how
+  this was found.
 - The page lets go of everything when it loses the focus or is hidden, and
   of its held keys when a Mac's Cmd goes down (macOS sends no key-up under
   it).

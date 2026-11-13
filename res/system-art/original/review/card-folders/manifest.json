@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "images": [
+    {
+      "key": "ROMS",
+      "size": 56,
+      "file": "review/card-folders/ROMS-56.png",
+      "sha256": "b5e9f7ea7119cec77c29a3c918504c21b7bd84b693bc193416fdc2c724e614bb"
+    },
+    {
+      "key": "ROMS",
+      "size": 40,
+      "file": "review/card-folders/ROMS-40.png",
+      "sha256": "bf83fe21ce27cfd4128242a14c1cd938ee6091af384de28092339ee1813f1e2e"
+    },
+    {
+      "key": "BOOKS",
+      "size": 56,
+      "file": "review/card-folders/BOOKS-56.png",
+      "sha256": "7a0cc8ea4faa76b29dbc2175d1fcaf699fc763b0471489bd393fe9b23008772f"
+    },
+    {
+      "key": "BOOKS",
+      "size": 40,
+      "file": "review/card-folders/BOOKS-40.png",
+      "sha256": "c6b831fac6265f696b2c08d217db1a57bb26c71732d4274684bfa219e554676e"
+    },
+    {
+      "key": "VIDEOS",
+      "size": 56,
+      "file": "review/card-folders/VIDEOS-56.png",
+      "sha256": "c9cce37aa067d586ab28ef8e1630843a0490e9c614889b84160310726b7fa58e"
+    },
+    {
+      "key": "VIDEOS",
+      "size": 40,
+      "file": "review/card-folders/VIDEOS-40.png",
+      "sha256": "14098897b9b13b2f41dd7d4130aa99303c8749bb2b9688b61e9550857061c316"
+    },
+    {
+      "key": "BIOS",
+      "size": 56,
+      "file": "review/card-folders/BIOS-56.png",
+      "sha256": "f0f8ec9f085a18112eb4afe2c9007fb7768758a16fb7a9efa8600ea281ddddb6"
+    },
+    {
+      "key": "BIOS",
+      "size": 40,
+      "file": "review/card-folders/BIOS-40.png",
+      "sha256": "8a89f5bb107702fc39525bdd5b7510d7634f2769fc7e41f0bc3d7d258daa6ee9"
+    },
+    {
+      "key": "SAVES",
+      "size": 56,
+      "file": "review/card-folders/SAVES-56.png",
+      "sha256": "a696be7aa21e5916a82364cf1c72fcc95520b776594bd6644f37acbbbe32ea29"
+    },
+    {
+      "key": "SAVES",
+      "size": 40,
+      "file": "review/card-folders/SAVES-40.png",
+      "sha256": "19cedf52ab408875ac09e7641b87b28dd4fdf16ffa57e0795a9a0fc31f055c7e"
+    },
+    {
+      "key": "STATES",
+      "size": 56,
+      "file": "review/card-folders/STATES-56.png",
+      "sha256": "5e71bf870f321091b820bc18a5a7c2da4308164f6c4ffb5c7577569f01a490a9"
+    },
+    {
+      "key": "STATES",
+      "size": 40,
+      "file": "review/card-folders/STATES-40.png",
+      "sha256": "16443c66dd751485b71127269871f314ea8c0a7d339f7e7a412d318c02e9e943"
+    },
+    {
+      "key": "BGM",
+      "size": 56,
+      "file": "review/card-folders/BGM-56.png",
+      "sha256": "29abf972f2c3ba5249fd5df63d8be17cfc67940937b074f6bcc699ac6c62969a"
+    },
+    {
+      "key": "BGM",
+      "size": 40,
+      "file": "review/card-folders/BGM-40.png",
+      "sha256": "3358b99dc88b9c8a08a46fbba045cd2314e224a8248a5b5b592ebf44ad69bc83"
+    }
+  ]
+}

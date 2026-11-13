@@ -168,6 +168,8 @@ class BuildTests(unittest.TestCase):
         export(art, "FAVORITES", moving, [(0, 400), (1, 400)])
         export(art, "MUSE", moving, [(0, 400), (1, 400)])
         export(art, "FOLDER_SMALL", [pose()], [(0, 1000)])
+        for key in ("ROMS", "BOOKS", "VIDEOS", "BIOS", "SAVES", "STATES", "BGM"):
+            export(art, key, [pose()], [(0, 1000)])
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -177,10 +179,10 @@ class BuildTests(unittest.TestCase):
         program = r'''
 #include "systemart_data.h"
 #include <string.h>
-_Static_assert(SA_ASSET_COUNT == 4, "every shelf and the folder, nothing else");
+_Static_assert(SA_ASSET_COUNT == 11, "every shelf, the folder and the card's folders, nothing else");
 _Static_assert(SA_CELL == 256 && SA_STILL == 128, "cell and still sizes");
 int main(void) {
-    const sa_asset *a = &SA_ASSETS[2], *f = &SA_ASSETS[1];
+    const sa_asset *a = &SA_ASSETS[5], *f = &SA_ASSETS[4], *b = &SA_ASSETS[0];
     if (strcmp(a->key, "GB") || strcmp(a->atlas, "system-icons/GB.png") ||
         strcmp(a->still, "system-icons/GB-still.png")) return 1;
     if (a->cell != 256 || a->cols != 2 || a->rows != 1 || a->nframes != 3 ||
@@ -189,6 +191,7 @@ int main(void) {
         a->frames[0].ms != 40 || a->frames[1].ms != 70 || a->frames[2].ms != 110) return 3;
     if (a->rx != 100 || a->ry != 60 || a->rw != 10 || a->rh != 8) return 4;
     if (strcmp(f->key, "FOLDER") || f->rw || f->nframes != 1 || f->duration_ms) return 5;
+    if (strcmp(b->key, "BGM") || strcmp(b->still, "system-icons/BGM-still.png") || b->rw) return 6;
     return 0;
 }
 '''
@@ -219,7 +222,7 @@ int main(void) {
             sa.build(self.root)
         export(self.root / sa.ART, "MUSE", [pose(), pose(mark=(1, 1, 2, 2, (0, 0, 0, 255)))], [(0, 400), (1, 400)])
         sa.build(self.root)
-        (self.root / sa.OUTPUT / "ROMS.png").write_bytes(b"")
+        (self.root / sa.OUTPUT / "STRAY.png").write_bytes(b"")
         with self.assertRaises(sa.ArtError):
             sa.build(self.root, check=True)
 

@@ -9,9 +9,11 @@ from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
 # Every shelf: config/systems.cfg's card stems and the shelves it does not
-# list; then the designs that are not shelves
+# list; then the designs that are not shelves: PortMaster, the two generic
+# folders and the card's own folders
 SYNTHETIC = {'FAVORITES','MUSE'}
-SUPPLEMENTAL = {'PORTMASTER','FOLDER','FOLDER_SMALL'}
+CARD_FOLDERS = {'ROMS','BOOKS','VIDEOS','BIOS','SAVES','STATES','BGM'}
+SUPPLEMENTAL = {'PORTMASTER','FOLDER','FOLDER_SMALL'} | CARD_FOLDERS
 TWO_POSE = {'FAVORITES','MUSE','ARCADE','SCUMMVM','MAME','PICO8','OPENBOR','PORTS','DOOM','TIC80','PORTMASTER'}
 LIDS = {'SATURN','DC','NEOCD','SEGACD','NES'}
 CARTRIDGES = {'32X','A2600','A5200','A7800','GENESIS','N64','NEOGEO','PCE','SMS','VB','COLECO','MSX2'}

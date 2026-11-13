@@ -543,7 +543,7 @@ The page that opens in the browser is the same for Wi-Fi File Transfer, the hand
 
 <table>
   <tr>
-    <td align="center"><img src="res/readme/portal.png" width="440" alt="The File Transfer page on a computer: the card's folders down the left, an NES folder open, and an upload under the folders with the time left"><br><sub>On a computer: the folders at the left, an upload under them</sub></td>
+    <td align="center"><img src="res/readme/portal.png" width="440" alt="The File Transfer page on a computer: the card's folders down the left with their pixel art, an NES folder open, and an upload under the folders with the time left"><br><sub>On a computer: the folders at the left, an upload under them</sub></td>
     <td align="center"><img src="res/readme/portal-pin.png" width="150" alt="The File Transfer page on a phone, asking for the PIN in four boxes, with Zyper above them"><br><sub>The PIN</sub></td>
     <td align="center"><img src="res/readme/portal-phone.png" width="150" alt="The File Transfer page on a phone: the folders as chips, ROMs open with a folder per console, each with its pixel art, and the Upload button"><br><sub>On a phone</sub></td>
   </tr>
@@ -552,7 +552,7 @@ The page that opens in the browser is the same for Wi-Fi File Transfer, the hand
 </div>
 
 - **The PIN** goes in four boxes, and the page opens when the fourth digit lands; a paste fills all four. Zyper shuts his eyes while you type. Five wrong PINs and the page waits 30 seconds.
-- **The card's seven folders:** ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. Every folder wears ZyperOS's pixel art: each console's folder its own picture from the home screen, on a tile in its color, Music and Videos MP4's, and any other folder a plain one; ROMs, Audiobooks, BIOS, Saves and Save States keep their line marks. Hidden folders such as `.media` stay out of the lists.
+- **The card's seven folders:** ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. Every folder wears ZyperOS's pixel art: each console's folder its own picture from the home screen, on a tile in its color, and the others a cartridge, a book with headphones, a video tape, a chip, a memory card, a floppy disk and so on. Hidden folders such as `.media` stay out of the lists.
 - **Upload** by dropping files anywhere on the page, into the folder that is open, or onto a folder's row. A dropped folder keeps the folders inside it, and a console's `.media` folder of covers too. **Upload** and **Upload folder** use the file picker instead. The uploads under the folders say how much is left and about how long it takes, and each file shows its progress.
 - **The card's free space** is under the folders. Files that don't fit are caught before anything is sent, and the page offers to send the ones that fit.
 - **Drag to move:** drag a file or a folder onto a folder's row, or onto a folder above in the path at the top, and it moves there on the card. On a phone, hold a row still for a moment to lift it. **Select** in a row's ⋯ (or Shift, Ctrl or Cmd with a click) picks several, and dragging one moves them all. A disc set's folder moves whole and a `.cue` takes its tracks with it; a game's covers, saves and save states stay where they are, since they go by its name. If the folder already has something of that name, nothing moves and the page says so.

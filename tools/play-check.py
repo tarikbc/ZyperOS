@@ -74,7 +74,13 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
 No device is touched and nothing is fetched from the internet. Chrome is
 needed; without it the check says so and fails. make check runs three
 checks at a time on a Mac whose load average reaches 20 to 30 and more, so
-every wait is for a thing to happen, with seconds to spare.
+every wait is for a thing to happen, with seconds to spare. On GitHub's
+macOS runner, three times slower, Chrome can be starved long enough that
+p2d lets the page go (5 s with nothing from it) and the page comes back:
+the steps that press or put a status to the page run on one link, and
+again once the page plays again if the link changed under them
+(on_one_link). A failing test prints the page's links and p2d's last lines,
+which say when each player came and went and why.
 """
 import argparse
 import base64
@@ -380,28 +386,46 @@ def draws_the_frames(tab, rig, fixture, say):
 
 def keyboard_to_pad(tab, rig, fixture, say):
     tab.dt.call('Page.bringToFront')
-    for name, (_, _, _, bit) in KEYS.items():
-        tab.key(name, True)
-        got = wait_for(lambda: rig.pad == bit, 5)
-        tab.key(name, False)
-        gone = wait_for(lambda: rig.pad == 0, 5)
-        check(got and gone, f'{name} is {bit:#06x} held and 0 let go (the share has {rig.pad:#06x})')
-    tab.key('x', True)
-    tab.key('ArrowRight', True)
-    check(wait_for(lambda: rig.pad == A | RIGHT, 5), f'X and Right are 0x0180: {rig.pad:#06x}')
-    # p2d lets a pad go after 1 s with no 'P'; the page repeats a held one
-    time.sleep(1.6)
-    check(rig.pad == A | RIGHT, f'still 0x0180 after 1.6 s held: {rig.pad:#06x}')
-    tab.key('x', False)
-    tab.key('ArrowRight', False)
-    check(wait_for(lambda: rig.pad == 0, 5), f'let go, 0: {rig.pad:#06x}')
-    # A Mac sends no keyup for a key let go while Cmd is down
-    tab.key('x', True)
-    check(wait_for(lambda: rig.pad == A, 5), f'X held: {rig.pad:#06x}')
-    tab.key('Meta', True)
-    check(wait_for(lambda: rig.pad == 0, 5), f'Cmd down lets it go: {rig.pad:#06x}')
-    tab.key('Meta', False)
-    tab.key('x', False)
+
+    def let_go():
+        for name in list(KEYS) + ['Meta']:
+            tab.key(name, False)
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+
+    def each():
+        out = []
+        for name, (_, _, _, bit) in KEYS.items():
+            tab.key(name, True)
+            got = wait_for(lambda: rig.pad == bit, PAD_WAIT)
+            tab.key(name, False)
+            gone = wait_for(lambda: rig.pad == 0, PAD_WAIT)
+            out.append((got and gone, f'{name} is {bit:#06x} held and 0 let go (the share has {rig.pad:#06x})'))
+        return out
+
+    def two():
+        tab.key('x', True)
+        tab.key('ArrowRight', True)
+        out = [(wait_for(lambda: rig.pad == A | RIGHT, PAD_WAIT), f'X and Right are 0x0180: {rig.pad:#06x}')]
+        # p2d lets a pad go after 1 s with no 'P'; the page repeats a held one
+        time.sleep(1.6)
+        out.append((rig.pad == A | RIGHT, f'still 0x0180 after 1.6 s held: {rig.pad:#06x}'))
+        tab.key('x', False)
+        tab.key('ArrowRight', False)
+        out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'let go, 0: {rig.pad:#06x}'))
+        return out
+
+    def cmd():
+        # A Mac sends no keyup for a key let go while Cmd is down
+        tab.key('x', True)
+        out = [(wait_for(lambda: rig.pad == A, PAD_WAIT), f'X held: {rig.pad:#06x}')]
+        tab.key('Meta', True)
+        out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'Cmd down lets it go: {rig.pad:#06x}'))
+        tab.key('Meta', False)
+        tab.key('x', False)
+        return out
+
+    for block in (each, two, cmd):
+        on_one_link(tab, block, rig, let_go)
     bad = tab.js('window.__pads.filter((m) => (m & ~0x01fd) !== 0)')
     check(not bad, f"every mask the page sent is in the NES's 0x01FD: {bad}")
 
@@ -414,60 +438,86 @@ def touch_to_pad(tab, rig, fixture, say):
     check(min(a[2], a[3], b[2], b[3]) >= 48, f'A and B are 48 px or more: {a[2:]}, {b[2:]}')
     bad = apart(tab)
     check(not bad, f'the picture and the pad are on the screen and clear of each other{": " + str(bad) if bad else ""}')
-    tab.touch('touchStart', {0: a[:2]})
-    check(wait_for(lambda: rig.pad == A, 5), f'a finger on A is bit 8: {rig.pad:#06x}')
-    tab.touch('touchStart', {0: a[:2], 1: left[:2]})
-    check(wait_for(lambda: rig.pad == A | LEFT, 5), f'and one on Left, 0x0140: {rig.pad:#06x}')
-    tab.touch('touchMove', {0: b[:2], 1: left[:2]})
-    check(wait_for(lambda: rig.pad == B | LEFT, 5), f'the first rolled onto B, B and Left: {rig.pad:#06x}')
-    tab.touch('touchEnd', {})
-    check(wait_for(lambda: rig.pad == 0, 5), f'both lifted, 0: {rig.pad:#06x}')
-    # A thumb rolls within its group: from A onto START is A let go
-    start = tab.center('#start')
-    tab.touch('touchStart', {0: a[:2]})
-    check(wait_for(lambda: rig.pad == A, 5), f'A again: {rig.pad:#06x}')
-    tab.touch('touchMove', {0: start[:2]})
-    time.sleep(0.5)
-    check(wait_for(lambda: rig.pad == 0, 5), f'slid from A onto START, nothing held: {rig.pad:#06x}')
-    tab.touch('touchEnd', {})
-    # The d-pad's corner, up and to the left: a diagonal
-    corner = (dpad[0] - dpad[2] * 0.36, dpad[1] - dpad[3] * 0.36)
-    tab.touch('touchStart', {0: corner})
-    check(wait_for(lambda: rig.pad == UP | LEFT, 5), f"the d-pad's corner is up and left: {rig.pad:#06x}")
-    tab.touch('touchEnd', {})
-    check(wait_for(lambda: rig.pad == 0, 5), f'lifted, 0: {rig.pad:#06x}')
+
+    def lift():
+        lifted(tab)
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+
+    def two_fingers():
+        tab.touch('touchStart', {0: a[:2]})
+        out = [(wait_for(lambda: rig.pad == A, PAD_WAIT), f'a finger on A is bit 8: {rig.pad:#06x}')]
+        tab.touch('touchStart', {0: a[:2], 1: left[:2]})
+        out.append((wait_for(lambda: rig.pad == A | LEFT, PAD_WAIT), f'and one on Left, 0x0140: {rig.pad:#06x}'))
+        tab.touch('touchMove', {0: b[:2], 1: left[:2]})
+        out.append((wait_for(lambda: rig.pad == B | LEFT, PAD_WAIT), f'the first rolled onto B, B and Left: {rig.pad:#06x}'))
+        tab.touch('touchEnd', {})
+        out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'both lifted, 0: {rig.pad:#06x}'))
+        return out
+
+    def onto_start():
+        # A thumb rolls within its group: from A onto START is A let go
+        start = tab.center('#start')
+        tab.touch('touchStart', {0: a[:2]})
+        out = [(wait_for(lambda: rig.pad == A, PAD_WAIT), f'A again: {rig.pad:#06x}')]
+        tab.touch('touchMove', {0: start[:2]})
+        time.sleep(0.5)
+        out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'slid from A onto START, nothing held: {rig.pad:#06x}'))
+        tab.touch('touchEnd', {})
+        return out
+
+    def corner():
+        # The d-pad's corner, up and to the left: a diagonal
+        at = (dpad[0] - dpad[2] * 0.36, dpad[1] - dpad[3] * 0.36)
+        tab.touch('touchStart', {0: at})
+        out = [(wait_for(lambda: rig.pad == UP | LEFT, PAD_WAIT), f"the d-pad's corner is up and left: {rig.pad:#06x}")]
+        tab.touch('touchEnd', {})
+        out.append((wait_for(lambda: rig.pad == 0, PAD_WAIT), f'lifted, 0: {rig.pad:#06x}'))
+        return out
+
+    for block in (two_fingers, onto_start, corner):
+        on_one_link(tab, block, rig, lift)
 
 
 def haptics(tab, rig, fixture, say):
     """A tick under the finger as a button goes down: one a press, none for
     a lift, a key or a held finger"""
-    buzz = lambda: tab.js('window.__buzz.length')
+    buzzed = lambda n: tab.js('window.__buzz')[n:]
     a, b = tab.center('#a'), tab.center('#b')
     dpad = tab.center('#dpad')
-    n = buzz()
-    tab.touch('touchStart', {0: a[:2]})
-    wait_for(lambda: rig.pad == A, 5)
-    check(buzz() == n + 1 and tab.js('window.__buzz[window.__buzz.length - 1]') == 15,
-          f'a finger on A ticks once, 15 ms: {tab.js("window.__buzz")[n:]}')
-    time.sleep(0.4)
-    check(buzz() == n + 1, f'held, no more: {tab.js("window.__buzz")[n:]}')
-    tab.touch('touchMove', {0: b[:2]})
-    wait_for(lambda: rig.pad == B, 5)
-    check(buzz() == n + 2, f'rolled onto B, B ticks: {tab.js("window.__buzz")[n:]}')
-    tab.touch('touchEnd', {})
-    wait_for(lambda: rig.pad == 0, 5)
-    check(buzz() == n + 2, f'a lift does not tick: {tab.js("window.__buzz")[n:]}')
-    corner = (dpad[0] - dpad[2] * 0.36, dpad[1] - dpad[3] * 0.36)
-    tab.touch('touchStart', {0: corner})
-    wait_for(lambda: rig.pad == UP | LEFT, 5)
-    tab.touch('touchEnd', {})
-    wait_for(lambda: rig.pad == 0, 5)
-    check(buzz() == n + 3, f"the d-pad's corner, two arms, one tick: {tab.js('window.__buzz')[n:]}")
-    tab.key('x', True)
-    wait_for(lambda: rig.pad == A, 5)
-    tab.key('x', False)
-    wait_for(lambda: rig.pad == 0, 5)
-    check(buzz() == n + 3, f'a key does not tick: {tab.js("window.__buzz")[n:]}')
+
+    def lift():
+        lifted(tab)
+        tab.key('x', False)
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+
+    def block():
+        n = tab.js('window.__buzz.length')
+        out = []
+        tab.touch('touchStart', {0: a[:2]})
+        wait_for(lambda: rig.pad == A, PAD_WAIT)
+        out.append((buzzed(n) == [15], f'a finger on A ticks once, 15 ms: {buzzed(n)}'))
+        time.sleep(0.4)
+        out.append((buzzed(n) == [15], f'held, no more: {buzzed(n)}'))
+        tab.touch('touchMove', {0: b[:2]})
+        wait_for(lambda: rig.pad == B, PAD_WAIT)
+        out.append((buzzed(n) == [15, 15], f'rolled onto B, B ticks: {buzzed(n)}'))
+        tab.touch('touchEnd', {})
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+        out.append((buzzed(n) == [15, 15], f'a lift does not tick: {buzzed(n)}'))
+        corner = (dpad[0] - dpad[2] * 0.36, dpad[1] - dpad[3] * 0.36)
+        tab.touch('touchStart', {0: corner})
+        wait_for(lambda: rig.pad == UP | LEFT, PAD_WAIT)
+        tab.touch('touchEnd', {})
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+        out.append((len(buzzed(n)) == 3, f"the d-pad's corner, two arms, one tick: {buzzed(n)}"))
+        tab.key('x', True)
+        wait_for(lambda: rig.pad == A, PAD_WAIT)
+        tab.key('x', False)
+        wait_for(lambda: rig.pad == 0, PAD_WAIT)
+        out.append((len(buzzed(n)) == 3, f'a key does not tick: {buzzed(n)}'))
+        return out
+
+    on_one_link(tab, block, rig, lift)
 
 
 DRAWN = ("[...document.querySelectorAll('.key')].filter((e) => e.getClientRects().length > 0)"
@@ -483,20 +533,44 @@ LINK = '[window.__opens, window.__closes]'
 YXLR = 0x0E02                   # Y, X, L and R: no NES has them
 
 
-def on_one_link(tab, block, tries=3):
+# A press's way to the share, on a runner three times slower than a Mac
+# with two other checks beside it: a long wait costs nothing when it comes
+PAD_WAIT = 10
+
+
+def lifted(tab):
+    """Every finger up, whether or not one was down (DevTools refuses an end
+    with no start)"""
+    try:
+        tab.touch('touchEnd', {})
+    except RuntimeError:
+        pass
+
+
+PLAYING = ("window.__ws && window.__ws.readyState === WebSocket.OPEN"
+           " && document.getElementById('game').dataset.state === 'playing'")
+
+
+def on_one_link(tab, block, rig=None, reset=None, tries=3):
     """block()'s checks, [(ok, what)], from a run in which the page kept one
     link to p2d. On a busy machine p2d can let the page go (5 s with nothing
-    from it, Chrome starved), and the page comes back as a player with p2d's
-    own status, which then overwrites one the check put to it: GitHub's
-    macOS runner did, 2026-11-13. Such a run is not judged: the block runs
-    again on the new link."""
+    from it, Chrome starved), and the page comes back: a press read in the
+    gap reads nothing, and a status the check put to the page is overwritten
+    by p2d's own for the new link. GitHub's macOS runner did both,
+    2026-11-13. Such a run is not judged: once the page plays again (and p2d
+    has it, with `rig`), reset() lets go of what the block held and the
+    block runs again on the new link."""
     for i in range(tries):
-        tab.until('window.__ws && window.__ws.readyState === WebSocket.OPEN', 10)
+        tab.until(PLAYING, 20)
+        if rig:
+            wait_for(lambda: rig.guests & 1, 20)
         link = tab.js(LINK)
         got = block()
         if tab.js(LINK) == link:
             break
         print(f'  (the page\'s link to p2d came back meanwhile: again, {i + 2} of {tries})', flush=True)
+        if reset:
+            reset()
     for ok, what in got:
         check(ok, what)
 
@@ -537,9 +611,9 @@ def status_and_buttons(tab, rig, fixture, say):
         out.append((not held, f'and Y\'s key holds nothing again: {held}'))
         return out
 
-    on_one_link(tab, nes)
-    on_one_link(tab, more)
-    on_one_link(tab, nes_again)
+    on_one_link(tab, nes, rig)
+    on_one_link(tab, more, rig)
+    on_one_link(tab, nes_again, rig)
     bad = tab.js('window.__pads.filter((m) => (m & ~4095) !== 0)')
     check(not bad, f'no mask sent with a bit outside the buttons named: {bad}')
 

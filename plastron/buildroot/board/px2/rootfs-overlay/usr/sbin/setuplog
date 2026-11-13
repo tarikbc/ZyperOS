@@ -13,7 +13,11 @@
 # supplies, both temperatures, the battery, the card's errors), and every
 # kernel line as it comes. All of it is on the card within a second, forced
 # there, so a hang leaves what led up to it. The next start adds its own
-# after it.
+# after it, and first what the kernel kept in RAM across the reset (pstore):
+# the panic that rebooted it, when one did, with its last lines. That
+# owner's reboots came 30 s after the freeze, panic=30's wait, and some
+# freezes never rebooted at all (2026-11-13): so while this runs, a CPU the
+# kernel finds stuck (an RCU stall) panics too, and leaves its report.
 #
 #   setuplog start WHAT    as the copy starts (WHAT: setup, update)
 #   setuplog mark TEXT     a step of it
@@ -38,6 +42,8 @@ MNT=$RUN/boot
 FILE=$MNT/zyperos-setup.txt
 LOG=$RUN/log
 SIZE=262144
+PSTORE=/sys/fs/pstore
+RCU_PANIC=/proc/sys/kernel/panic_on_rcu_stall
 
 # Seconds since the kernel started, as the kernel's own lines count them
 stamp() {
@@ -58,7 +64,7 @@ running() {
 # here, the partition may still be mounted under it
 clean() {
 	umount $MNT 2> /dev/null
-	rm -f $LOG $LOG.new $RUN/kmsg $RUN/pid $RUN/kpid
+	rm -f $LOG $LOG.new $RUN/kmsg $RUN/pid $RUN/kpid $RUN/rcu
 	rmdir $MNT $RUN 2> /dev/null
 }
 
@@ -224,12 +230,43 @@ device() {
 	done
 }
 
+# What the kernel kept across the reset before this start (pstore's ramoops:
+# the device tree's ramoops@110000 and linux-px2.config), the reason a
+# start after a crash has something to say: each panic's or oops's dump,
+# and the last of the console of the start before, which ran up to the
+# reset. Then the dumps are let go, so the next start shows only its own.
+# Nothing after a power-off, which empties that RAM, or with a kernel
+# without pstore. The console may be another system's, one that keeps its
+# log in the same place (the device's own firmware, twigUI).
+kept() {
+	local f any=
+	mountpoint -q $PSTORE || mount -t pstore pstore $PSTORE 2> /dev/null || return 0
+	for f in $PSTORE/dmesg-ramoops-*; do
+		[ -f "$f" ] || continue
+		echo "--- kept from before this start: ${f##*/} (a panic's or an oops's last lines) ---"
+		tail -c 24576 "$f" | tr -d '\r'
+		echo
+		rm -f "$f"
+		any=1
+	done
+	f=$PSTORE/console-ramoops-0
+	if [ -f $f ]; then
+		echo "--- kept from before this start: the end of its kernel log ---"
+		tail -c 16384 $f | tr -d '\r'
+		echo
+		any=1
+	fi
+	[ -n "$any" ] && echo "--- end of what was kept ---"
+	return 0
+}
+
 # The loop: the status and the kernel's lines every second onto the card;
-# on TERM (stop), one last time, then the boot partition let go
+# on TERM (stop), one last time, then the boot partition let go and the
+# RCU stall panic put back
 loop() {
 	WRITTEN=$(wc -c < $LOG)
 	K=0
-	trap 'status; kernel_lines; put_new; kill $(cat $RUN/kpid) 2> /dev/null; clean; exit 0' TERM
+	trap 'status; kernel_lines; put_new; kill $(cat $RUN/kpid) 2> /dev/null; [ -f $RUN/rcu ] && cat $RUN/rcu > $RCU_PANIC; clean; exit 0' TERM
 	while :; do
 		status
 		kernel_lines
@@ -267,6 +304,15 @@ start() {
 	find_files
 	read -r _ _ _ _ _ _ WR0 _ < /sys/block/$DISK/stat
 	device "$1" >> $LOG 2> /dev/null
+	kept >> $LOG 2> /dev/null
+	# A CPU stuck in the kernel for 21 s (an RCU stall, which the kernel
+	# reports by itself) panics instead while this runs: a hang that would
+	# have stayed on screen until the battery ran out then reboots 30 s
+	# later with its report kept (above). Put back at the end
+	if [ -w $RCU_PANIC ]; then
+		cat $RCU_PANIC > $RUN/rcu
+		echo 1 > $RCU_PANIC
+	fi
 	put_all
 	cat /dev/kmsg > $RUN/kmsg 2> /dev/null &
 	echo $! > $RUN/kpid

@@ -855,7 +855,7 @@
         "--storage",
         "main"
       ],
-      "sha256": "ef617714ab4e2cbd7a2907266f7a9c7f3686efdafc7823a9ea827ab0da7f03de"
+      "sha256": "83c831faa41417184d51e0b69e3ffdf50699840ffb97f04982e8a7823db2255d"
     },
     {
       "file": "light/storage-system.png",
@@ -1609,7 +1609,7 @@
         ],
         "page": "res/web/index.html"
       },
-      "sha256": "d6ce6e83d27e033025807cfaf479b0a51d4511a497bc5c89aa76714bc4da9952"
+      "sha256": "f976dce4167e4859e12a2572db0df51853297f2f43134596e6c35b3fb97bd6d0"
     },
     {
       "file": "light/portal-pin.png",
@@ -1635,7 +1635,7 @@
         "folder": "roms",
         "page": "res/web/index.html"
       },
-      "sha256": "076098d433a61e2ff0ab85a8354e886f1fdf98ed488d370015aa179203971d36"
+      "sha256": "792399c1bbfb4e03b9d12bbcd046219d98731a9459e6d958e70558dfedf621a3"
     },
     {
       "file": "light/usb-steps.png",
