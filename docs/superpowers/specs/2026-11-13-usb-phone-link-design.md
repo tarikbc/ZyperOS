@@ -7,7 +7,10 @@
 - **No Type-C controller, no USB PD.** The device tree (ours, ROCKNIX's and the stock-derived
   `rk3326s-gkd-pixel2-uboot.dtb` in twigUI-next) has no CC or Type-C node; the role is the USB PHY's
   ID input (`phy-rockchip-inno-usb2`, its extcon's USB-HOST cable) and the RK817's `otg_switch` boost
-  gives VBUS. Nothing the kernel can program decides the CC side.
+  gives VBUS. On the device (read only, 2026-11-13): one I2C bus, i2c-0, with the RK817 alone at 0x20;
+  no `/sys/class/typec`, no `usb_power_delivery`. The stock-derived tree enables i2c2 with nothing on
+  it, so the device's own firmware drives no CC chip either. Nothing the kernel can program decides the
+  CC side: a fixed role for computers has no software route.
 - **The side a partner takes is the partner's choice, and it behaves like a dual-role port.** A
   DAC (sink) always reads "wants power". A phone (Try.SNK) reads "wants power" at every plug. A
   Mac (dual-role, no preference) settles either way at random. A Windows laptop with Try.SNK
