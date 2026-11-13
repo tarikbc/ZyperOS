@@ -1002,8 +1002,8 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Move Around | D-pad, and L1/R1 lit on the handheld | the little shelf steps one card right and back; "L1/R1 jump 3 systems." under the line | two moves, any direction, L1/R1 counting as jumps; the little shelf follows them, a jump as far as it has cards |
 | Open a Game | A | the focused card grows into a playing game | A |
 | Go Back | B | the game shrinks back to its card | B |
-| Keep a Favorite | Y | a heart pops onto the card | Y |
 | See the Details | X | the card turns into a details panel | X |
+| Keep a Favorite | Y | a heart pops onto the card; the line says Y does it in the details | Y |
 | Settings | MENU | a menu panel opens over the shelf | MENU, which opens nothing here |
 | Music | SELECT, and L2/R2 lit on the handheld | Muse's Now Playing fades in; "L2/R2 play the previous or next song." under the line | SELECT, which opens nothing here |
 | Volume | the VOL rocker | a stand-in bar slides onto the stage and steps up | VOL+ or VOL-, which change the real volume and show the real bar |
@@ -1014,6 +1014,12 @@ for the reward, and a wrong press tilted, nudged and answered.)*
 | Sounds | none | four tiles, Wood, Glass, Bubble and Off, heard as they are focused | A |
 | Menu Music | none, and no step on a card without tracks | On and Off, the music playing while On is focused | A |
 | Finish | A | Zyper hops among falling confetti, "You're all set!" in his bubble, "Every button is in MENU > Controls." | A |
+
+*(2026-11-13: Keep a Favorite comes after See the Details, and its line says
+"In the details, press Y to add a favorite." Since 2026-11-08 Y on the
+shelf starts a game without its resume point and Favorite is a row of the
+details page X opens, and the step still taught Y on the shelf as a
+favorite.)*
 
 The demonstrations are drawn from shapes and tokens on the stage - a little
 shelf of five system-colored cards (Game Boy, NES, SNES, Game Boy Color, Neo

@@ -465,7 +465,7 @@
         "games",
         "--info"
       ],
-      "sha256": "2ae6aeceb344638fc5813cc2fd39e31e312c02bb17a12e5da251f18e17442861"
+      "sha256": "bffc081485b6984fa65670fd1a17704196c43884aefdb4b1fc960b3c1a363f53"
     },
     {
       "file": "light/info-delete.png",
@@ -484,7 +484,7 @@
         "games",
         "--info-delete"
       ],
-      "sha256": "136fdcf7b26b12081d885196bb8b83f3cb5e799a77af3ef7c116d0dac8082b19"
+      "sha256": "baf52d9677ccf514dbf29611c1b5e0ab5ae42526cf5589304347e7fa69b61a64"
     },
     {
       "file": "light/delete-ask.png",

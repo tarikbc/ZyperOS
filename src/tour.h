@@ -12,8 +12,9 @@
  * START skips the rest at any point.
  *
  * Ten steps, one per thing to learn, in the order a player needs them: move,
- * open (A), back (B), favorite (Y), details (X), settings (MENU), music
- * (SELECT), volume, brightness and power. Each is a press, not a reading, so
+ * open (A), back (B), details (X), favorite (Y, on the details since
+ * 2026-11-08, when Y on the shelf became "from the start"), settings (MENU),
+ * music (SELECT), volume, brightness and power. Each is a press, not a reading, so
  * the minute it takes is spent with a thumb on the button rather than on a
  * page of text; MENU > Controls stays the list to look things up in. The
  * shoulders ride on two of them as a note, with no step of their own: L1/R1
@@ -58,7 +59,7 @@
 typedef enum {
 	TOUR_LANG,
 	TOUR_WELCOME,
-	TOUR_MOVE, TOUR_A, TOUR_B, TOUR_Y, TOUR_X,
+	TOUR_MOVE, TOUR_A, TOUR_B, TOUR_X, TOUR_Y,
 	TOUR_MENU, TOUR_SELECT, TOUR_VOL, TOUR_BRIGHT, TOUR_POWER,
 	TOUR_THEME, TOUR_HOME, TOUR_SOUNDS, TOUR_MUSIC,
 	TOUR_FINISH,
