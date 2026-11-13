@@ -92,7 +92,7 @@ ja = パソコン
 it = Computer
 
 [xfer.tile_phone]
-note = A tile of What did you plug in?: a phone (or a tablet), which the handheld then powers, and says how a phone connects (xfer.phone_said). Also the heading of that message. One line, 272 units wide at the menu's size. tight.
+note = A tile of What did you plug in?: a phone (or a tablet), which the handheld does not power; it says what a phone needs to connect (xfer.phone_said). Also the heading of that message. One line, 272 units wide at the menu's size. tight.
 en = Phone
 zh-Hans = 手机
 es = Celular
@@ -136,15 +136,15 @@ ja = ケーブルを挿し直すか、USB-A - USB-C ケーブルを使って�
 it = Ricollega il cavo, oppure usa un cavo da USB-A a USB-C: si collega sempre.
 
 [xfer.phone_said]
-note = After the player answers Phone: how a phone opens the handheld's files. A phone always takes the side of the USB-C cable that waits for power, and the handheld cannot ask it to swap, so plugging in again never helps. An Android phone swaps from its own USB settings: name them exactly as Android does in this language (Settings' usb_control_title and usb_control_device, read from AOSP 2026-11-13). An iPhone cannot: it needs a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable to the handheld. Over any screen but a game, under the heading xfer.tile_phone, until the phone connects or the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
-en = Android: tap the phone's USB notification, then USB controlled by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A to USB-C cable.
-zh-Hans = Android：点按手机的 USB 通知，再选“USB 受控于：此设备”。iPhone：请用 USB-C 转 USB-A 转接头和 USB-A 转 USB-C 数据线连接。
-es = Android: toca la notificación USB del celular y luego USB controlado por: Este dispositivo. iPhone: conéctalo con un adaptador USB-C a USB-A y un cable USB-A a USB-C.
-pt-BR = Android: toque na notificação USB do celular e depois em USB controlado por: Este dispositivo. iPhone: conecte com um adaptador USB-C para USB-A e um cabo USB-A para USB-C.
-fr = Android : touchez la notification USB du téléphone, puis USB contrôlé par : Cet appareil. iPhone : branchez-le avec un adaptateur USB-C vers USB-A et un câble USB-A vers USB-C.
-de = Android: Tippe auf die USB-Benachrichtigung des Handys, dann auf „Gerät, das die USB-Verbindung steuert“: „Dieses Gerät“. iPhone: Schließ es mit einem Adapter von USB-C auf USB-A und einem Kabel von USB-A auf USB-C an.
-ja = Android：スマートフォンの USB 通知をタップし、「USB のコントロール」で「このデバイス」を選びます。iPhone：USB-C - USB-A アダプタと USB-A - USB-C ケーブルで接続します。
-it = Android: tocca la notifica USB del telefono, poi Connessione USB controllata da: Questo dispositivo. iPhone: collegalo con un adattatore da USB-C a USB-A e un cavo da USB-A a USB-C.
+note = After the player answers Phone: plainly, what does not work and what does. A phone takes the side of a USB-C to USB-C cable that waits for power at every plug, and the handheld cannot make it swap: its own USB settings did not either (2026-11-13). So a phone opens the handheld's files only through a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable to the handheld. Say "the handheld" as the other strings do. Over any screen but a game, under the heading xfer.tile_phone, until the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
+en = A phone can't open the handheld's files on a USB-C to USB-C cable. Connect it with a USB-C to USB-A adapter on the phone and a USB-A to USB-C cable.
+zh-Hans = 用 USB-C 对 USB-C 数据线，手机无法打开掌机的文件。请在手机上接 USB-C 转 USB-A 转接头，再用 USB-A 转 USB-C 数据线连接。
+es = Un celular no puede abrir los archivos de la consola con un cable USB-C a USB-C. Conéctalo con un adaptador USB-C a USB-A en el celular y un cable USB-A a USB-C.
+pt-BR = Um celular não abre os arquivos do console com um cabo USB-C para USB-C. Conecte com um adaptador USB-C para USB-A no celular e um cabo USB-A para USB-C.
+fr = Un téléphone ne peut pas ouvrir les fichiers de la console avec un câble USB-C vers USB-C. Branchez-le avec un adaptateur USB-C vers USB-A sur le téléphone et un câble USB-A vers USB-C.
+de = Ein Handy kann die Dateien der Konsole über ein Kabel von USB-C auf USB-C nicht öffnen. Schließ es mit einem Adapter von USB-C auf USB-A am Handy und einem Kabel von USB-A auf USB-C an.
+ja = USB-C - USB-C ケーブルでは、スマートフォンから本体のファイルを開けません。スマートフォンに USB-C - USB-A アダプタを付けて、USB-A - USB-C ケーブルでつないでください。
+it = Un telefono non può aprire i file della console con un cavo da USB-C a USB-C. Collegalo con un adattatore da USB-C a USB-A sul telefono e un cavo da USB-A a USB-C.
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.

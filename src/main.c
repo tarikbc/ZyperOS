@@ -10428,11 +10428,13 @@ static void usb_ask(app *a)
  * Computer, so a quick A or B never feeds a computer. USB Accessory asks
  * usbrole for host for this plug (it says yes only while no power comes
  * in); Computer, B or MENU leave the port as it is and say to plug the cable
- * in again, so the computer can take the side that gives power. Phone powers
- * it as USB Accessory does and says how a phone connects (a phone takes the
- * side that waits for power at every plug, so a replug never helps). The
- * question goes by itself when the plug stops wanting power (unplugged, or
- * power came). */
+ * in again, so the computer can take the side that gives power. Phone leaves
+ * it as it is too and says what a phone needs: a phone takes the side that
+ * waits for power at every plug, so a replug never helps, and powered it
+ * stays the device whatever its own USB settings say (2026-11-13), so it
+ * connects only through a USB-C to USB-A adapter and a USB-A to USB-C cable
+ * (usbpower.h). The question goes by itself when the plug stops wanting
+ * power (unplugged, or power came). */
 enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
 
 static int usb_power_rows(menu_row rows[UP_TILES + 1])
@@ -10572,11 +10574,9 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_usb_power_grant(plug);
 		return;
 	}
-	/* A phone: powered, so an Android phone shows its USB settings and can
-	 * take the other side from there; and how a phone connects, until the
-	 * phone connects or the cable comes out */
+	/* A phone: what it needs, until the cable comes out. Not powered:
+	 * that only charges the phone (USB Device, then USB Accessory, does it) */
 	if (choice == UP_PHONE) {
-		plat_usb_power_grant(plug);
 		phone_said_on(plug);
 		return;
 	}
@@ -10604,7 +10604,7 @@ static void said_on(unsigned plug, int say)
 	g_replug.plug = plug;
 	g_replug.say = say;
 	if (say == USBPOWER_SAY_PHONE) {
-		fprintf(stderr, "usb: a phone: powered, and how it connects (plug %u)\n", plug);
+		fprintf(stderr, "usb: a phone: what it needs to connect (plug %u)\n", plug);
 		ulog_note("phone message");
 	} else {
 		fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
@@ -10645,8 +10645,8 @@ static void power_follow(void)
 	/* usbrole started after the launcher told it, or again: told again */
 	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
 	/* The message stays until the plug ends: unplugged (the pin idle),
-	 * another plug, the computer or the phone connected (power in), or for
-	 * Computer's the port a host (usbpower_said_ends) */
+	 * another plug, the computer or the phone connected (power in), or the
+	 * port a host (usbpower_said_ends) */
 	if (g_replug.on && usbpower_said_ends(g_replug.say, g_replug.plug, &p))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
@@ -10701,8 +10701,9 @@ static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
  * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
  * in **menu** **text** (up to four balanced lines), and under them the cable
  * that always connects in **meta** **text-dim** (up to two), until the plug
- * ends. Phone's message the same, with the phone mark, "Phone", up to six
- * lines and no cable line: its message names the cable itself. */
+ * ends. Phone's message the same, with the phone mark and "Phone", in **menu**
+ * up to four lines, else in **meta** up to six, and no cable line: its
+ * message names the cable itself. */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
 #define REPLUG_TIP_GAP 8

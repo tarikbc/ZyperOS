@@ -54,21 +54,21 @@ bool usbpower_waits(const usb_power *p);
 
 /* The message an answer leaves up, over every screen but a game, until its
  * plug ends (DESIGN.md 11.36): Computer's, to plug the cable in again, as a
- * computer's port takes either side at random; or Phone's, how a phone
- * connects. A phone takes the side that waits for power at every plug (a
+ * computer's port takes either side at random; or Phone's, what a phone
+ * needs. A phone takes the side that waits for power at every plug (a
  * phone's port prefers it, so a replug never helps: 2026-11-13, an iPhone
  * and an Android phone asked again and again), and the handheld, with no
- * Type-C controller, cannot ask it to swap; so Phone powers the phone, which
- * lets an Android phone take the other side from its own USB setting, and
- * says how an iPhone connects instead. */
+ * Type-C controller and no Power Delivery, cannot ask it to swap. Android's
+ * own "USB controlled by: This device" did not swap either: the phone,
+ * powered, stayed the device, and the port never saw it change sides
+ * (2026-11-13, an AYN Thor, Snapdragon 8 Gen 2). So Phone gives no power and
+ * says a phone connects only through a USB-C to USB-A adapter on the phone
+ * and a USB-A to USB-C cable, which make the phone the side that gives it. */
 enum { USBPOWER_SAY_NONE, USBPOWER_SAY_COMPUTER, USBPOWER_SAY_PHONE };
 
 /* The message `say` for plug `plug` is over: the cable out (the pin idle),
- * another plug, or usbrole unread. Computer's also when power comes in (the
- * computer connected) or the port is a host. Phone's stays while the port
- * powers the phone (a host, whose own power reads as power in) and ends with
- * power in while the port is no host (the phone gave it), or a computer on
- * the bus (a Mac answered Phone: Computer's message comes instead). */
+ * another plug, usbrole unread, power in (the computer, or a phone through
+ * an adapter, connected) or the port a host (USB Accessory after all). */
 bool usbpower_said_ends(int say, unsigned plug, const usb_power *p);
 
 /* How long a plug may be asked about before it is: a DAC settles, a plug

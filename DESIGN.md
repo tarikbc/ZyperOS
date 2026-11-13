@@ -2910,25 +2910,23 @@ second, their room kept.
 port prefers it, where a computer's takes either at random (Tarik, an iPhone
 and an Android phone, 2026-11-13: Computer, then the replug message, again
 and again, for good). The handheld has no Type-C controller and no USB Power
-Delivery, so it cannot ask the phone to swap, and on a USB-C cable a phone
-is always the device. Phone powers it, as USB Accessory does (a phone is
-fed safely, and a powered Android phone shows its USB settings), and puts
-up the phone message, the replug message's slab with the phone mark under
-**Phone**: "Android: tap the phone's USB notification, then USB controlled
-by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A
-to USB-C cable." Android's own words in each language, read from AOSP's
-Settings (usb_control_title, usb_control_device). Android's "This device"
-makes the phone the host with no Power Delivery (its port's mode changes,
-UsbPortManager's MODE_DFP), so the handheld then gets power and Computer
-Connected (11.18) asks, Flash Drive and all. An iPhone has no such setting;
-through the adapter (whose plug says "wants power" to the phone) and an
-A-to-C cable (whose plug says "gives power" to the handheld), it is the host
-too. The message stays while the port powers the phone and goes when the
-plug ends: the cable out, another plug, the phone giving power (Android's
-swap), or a computer seen on the bus (a Mac answered Phone; Computer's
-message comes instead) (usbpower_said_ends). In **menu** up to four
-balanced lines, else in **meta** up to six. Never on Automatic, which powers
-a phone as any plug and asks nothing.
+Delivery, so it cannot ask the phone to swap, and on a USB-C to USB-C cable
+a phone is always the device. Android's own swap did not help either: the
+first Phone powered the phone so that "USB controlled by: This device" could
+be chosen, and on the device (an AYN Thor, 2026-11-13) the phone stayed the
+device, leaving the bus only to change its USB mode, and the port never saw
+it change sides. So Phone gives no power (that only charges the phone; USB
+Device, then USB Accessory, does it) and puts up the phone message, the
+replug message's slab with the phone mark under **Phone**, plainly: "A phone
+can't open the handheld's files on a USB-C to USB-C cable. Connect it with a
+USB-C to USB-A adapter on the phone and a USB-A to USB-C cable." The adapter
+says "wants power" to the phone, which then gives it and is the host, and
+the A-to-C cable says "gives power" to the handheld, which takes it and gets
+Computer Connected (11.18), Flash Drive and all. The message goes as
+Computer's does: the cable out, another plug, power in, or the port a host
+(usbpower_said_ends). In **menu** up to four balanced lines, else in **meta**
+up to six. Never on Automatic, which powers a phone as any plug and asks
+nothing.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
