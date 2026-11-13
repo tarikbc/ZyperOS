@@ -555,8 +555,17 @@ def frames_flow_with_acks(tmp):
         check(f[1:3] == (256, 240), f'the first frame is {f[1]}x{f[2]}')
         last = f[3]
         ws.ack(last)
+        # Acked, the frames keep coming. How many is the machine's: a busy
+        # one (CI runs three checks at once on three slow cores) has the feed
+        # itself make fewer, and p2d sends the newest it has, so the measure
+        # is the feed's own frames over the same 3 s, not a rate. Ten is five
+        # times what may come with no ack at all (below); a quarter of what
+        # the feed made is far below what a working p2d sends anywhere, and
+        # far above a p2d that waits on something it should not.
+        sh = r.mapped()
+        made = sh.frame
         got = 1
-        end = time.monotonic() + 1.0
+        end = time.monotonic() + 3.0
         while time.monotonic() < end:
             f = ws.frame(end - time.monotonic())
             if f is None:
@@ -565,7 +574,10 @@ def frames_flow_with_acks(tmp):
             last = f[3]
             ws.ack(last)
             got += 1
-        check(got >= 30, f'{got} frames in a second with every one acked, wanted 30 or more')
+        made = sh.frame - made
+        sh.close()
+        check(got >= 10 and got * 4 >= made,
+              f'{got} frames in 3 s with every one acked, of {made} the feed made: wanted 10 or more, and a quarter of them')
         # Everything that came was acked: from here no more than 2 may come
         unacked = 0
         end = time.monotonic() + 0.6
@@ -650,14 +662,15 @@ def second_guest_is_taken(tmp):
         st = b.status()
         check(st == TAKEN, f'the second guest was told {st!r}')
         check(b.closed_by_server(), 'the second guest was not closed')
-        got, end = 0, time.monotonic() + 1.0
+        # Ten frames, in 3 s however busy the machine (see frames_flow_with_acks)
+        got, end = 0, time.monotonic() + 3.0
         while got < 10 and time.monotonic() < end:
             f = a.frame(end - time.monotonic())
             if f is None:
                 break
             a.ack(f[3])
             got += 1
-        check(got >= 10, f'the first guest had {got} frames in a second after the second came')
+        check(got >= 10, f'the first guest had {got} frames in 3 s after the second came')
         check(sh.guests == 1, f'guests is {sh.guests}')
         a.close()
         sh.close()

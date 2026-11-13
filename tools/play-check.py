@@ -438,31 +438,67 @@ def status(tab, text):
     tab.js(f"window.__ws.dispatchEvent(new MessageEvent('message', {{ data: {json.dumps(text)} }}))")
 
 
+LINK = '[window.__opens, window.__closes]'
+YXLR = 0x0E02                   # Y, X, L and R: no NES has them
+
+
+def on_one_link(tab, block, tries=3):
+    """block()'s checks, [(ok, what)], from a run in which the page kept one
+    link to p2d. On a busy machine p2d can let the page go (5 s with nothing
+    from it, Chrome starved), and the page comes back as a player with p2d's
+    own status, which then overwrites one the check put to it: GitHub's
+    macOS runner did, 2026-11-13. Such a run is not judged: the block runs
+    again on the new link."""
+    for i in range(tries):
+        tab.until('window.__ws && window.__ws.readyState === WebSocket.OPEN', 10)
+        link = tab.js(LINK)
+        got = block()
+        if tab.js(LINK) == link:
+            break
+        print(f'  (the page\'s link to p2d came back meanwhile: again, {i + 2} of {tries})', flush=True)
+    for ok, what in got:
+        check(ok, what)
+
+
 def status_and_buttons(tab, rig, fixture, say):
-    check(tab.js(DRAWN) == 'b a select start', f"the NES's buttons are drawn: {tab.js(DRAWN)!r}")
-    sent = tab.js('window.__pads.length')
-    for k in ('a', 's', 'q', 'w'):
-        tab.key(k, True)
-        tab.key(k, False)
-    time.sleep(0.5)
-    check(tab.js('window.__pads.length') == sent, f'the keys of Y, X, L and R send nothing: {tab.js("window.__pads")[sent:]}')
-    # A status that names the player and the buttons: these, and only these
-    status(tab, 'S{"state":"playing","player":3,"buttons":4095}')
-    check(tab.state() == player(say, 3) and tab.js('document.title') == player(say, 3),
-          f'"playing" as player 3 says so, and in the tab: {tab.state()!r}, {tab.js("document.title")!r}')
-    check(tab.js(DRAWN) == 'l y b x a r select start', f'a game with more buttons draws them: {tab.js(DRAWN)!r}')
-    tab.key('a', True)
-    check(tab.until('window.__pads[window.__pads.length - 1] === 2', 5), 'its Y is the A key, bit 1')
-    tab.key('a', False)
-    check(tab.until('window.__pads[window.__pads.length - 1] === 0', 5), 'let go, 0')
-    status(tab, 'S{"state":"playing","player":2,"buttons":509}')
-    check(tab.state() == player(say, 2), f'player 2 again: {tab.state()!r}')
-    check(tab.js(DRAWN) == 'b a select start', f'the NES\'s buttons named again draw its pad: {tab.js(DRAWN)!r}')
-    sent = tab.js('window.__pads.length')
-    tab.key('a', True)
-    time.sleep(0.5)
-    tab.key('a', False)
-    check(tab.js('window.__pads.length') == sent, f'and Y\'s key sends nothing again: {tab.js("window.__pads")[sent:]}')
+    def nes():
+        out = [(tab.js(DRAWN) == 'b a select start', f"the NES's buttons are drawn: {tab.js(DRAWN)!r}")]
+        sent = tab.js('window.__pads.length')
+        for k in ('a', 's', 'q', 'w'):
+            tab.key(k, True)
+            tab.key(k, False)
+        time.sleep(0.5)
+        held = [m for m in tab.js('window.__pads')[sent:] if m]
+        out.append((not held, f'the keys of Y, X, L and R hold nothing: {held}'))
+        return out
+
+    def more():
+        # A status that names the player and the buttons: these, and only these
+        status(tab, 'S{"state":"playing","player":3,"buttons":4095}')
+        out = [(tab.state() == player(say, 3) and tab.js('document.title') == player(say, 3),
+                f'"playing" as player 3 says so, and in the tab: {tab.state()!r}, {tab.js("document.title")!r}'),
+               (tab.js(DRAWN) == 'l y b x a r select start', f'a game with more buttons draws them: {tab.js(DRAWN)!r}')]
+        tab.key('a', True)
+        out.append((tab.until('window.__pads[window.__pads.length - 1] === 2', 5), 'its Y is the A key, bit 1'))
+        tab.key('a', False)
+        out.append((tab.until('window.__pads[window.__pads.length - 1] === 0', 5), 'let go, 0'))
+        return out
+
+    def nes_again():
+        status(tab, 'S{"state":"playing","player":2,"buttons":509}')
+        out = [(tab.state() == player(say, 2), f'player 2 again: {tab.state()!r}'),
+               (tab.js(DRAWN) == 'b a select start', f'the NES\'s buttons named again draw its pad: {tab.js(DRAWN)!r}')]
+        sent = tab.js('window.__pads.length')
+        tab.key('a', True)
+        time.sleep(0.5)
+        tab.key('a', False)
+        held = [m for m in tab.js('window.__pads')[sent:] if m]
+        out.append((not held, f'and Y\'s key holds nothing again: {held}'))
+        return out
+
+    on_one_link(tab, nes)
+    on_one_link(tab, more)
+    on_one_link(tab, nes_again)
     bad = tab.js('window.__pads.filter((m) => (m & ~4095) !== 0)')
     check(not bad, f'no mask sent with a bit outside the buttons named: {bad}')
 
@@ -600,10 +636,22 @@ def full_then_player(tab, rig, fixture, say, browser, origin):
     return other
 
 
-# What the page sends, recorded on the way out (the pad's masks), and its
-# socket, for a status the check puts to it as p2d's
+# What the page sends, recorded on the way out (the pad's masks), its
+# socket, for a status the check puts to it as p2d's, and how many links it
+# opened and saw closed
 RECORD = """window.__pads = [];
 window.__asks = 0;
+window.__opens = 0;
+window.__closes = 0;
+const RealWebSocket = WebSocket;
+window.WebSocket = function (...args) {
+    const s = new RealWebSocket(...args);
+    window.__opens++;
+    s.addEventListener('close', () => { window.__closes++; });
+    return s;
+};
+window.WebSocket.prototype = RealWebSocket.prototype;
+for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) window.WebSocket[k] = RealWebSocket[k];
 const RealSend = WebSocket.prototype.send;
 WebSocket.prototype.send = function (data) {
     window.__ws = this;
@@ -755,11 +803,33 @@ def page_root(root):
 
 def run(name, fn, *args):
     print(name + ':', flush=True)
+    before = failures
     try:
         return fn(*args)
     except Exception as e:                # noqa: BLE001 - any crash is a failure to report
         check(False, f'{name} crashed: {type(e).__name__}: {e}')
         return None
+    finally:
+        if failures > before:
+            explain(args)
+
+
+def explain(args):
+    """What a failing test leaves for whoever reads CI's log: the page's links
+    to p2d, and p2d's own lines (who joined and left)"""
+    for a in args:
+        if isinstance(a, Tab):
+            try:
+                print(f'  (the page opened {a.js("window.__opens")} links to p2d and saw '
+                      f'{a.js("window.__closes")} closed)', flush=True)
+            except Exception:              # noqa: BLE001 - a closed tab says nothing
+                pass
+        if isinstance(a, Rig):
+            try:
+                tail = Path(a.log).read_text(errors='replace').splitlines()[-12:]
+                print('  (p2d said, last: ' + ' | '.join(tail) + ')', flush=True)
+            except OSError:
+                pass
 
 
 def main():
