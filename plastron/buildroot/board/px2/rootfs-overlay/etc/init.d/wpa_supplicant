@@ -9,7 +9,15 @@
 #
 # The supplicant is found by its PID file and its socket, never by name: this
 # script is called wpa_supplicant too (see the Brick's).
-CONF=${USERDATA_PATH:-/mnt/SDCARD/.userdata/pixel2}/wifi/wpa_supplicant.conf
+#
+# Its own log goes to the card, logs/wifi.log, with times: each join, each
+# drop with the reason the network or the adapter gave (CTRL-EVENT-
+# DISCONNECTED ... reason=N locally_generated=1), and nothing at debug level.
+# Over a quarter of a megabyte when the radio starts, it becomes wifi.log.1.
+# File Transfer's Download logs packs both, network names masked (logpack.h).
+DATA=${USERDATA_PATH:-/mnt/SDCARD/.userdata/pixel2}
+CONF=$DATA/wifi/wpa_supplicant.conf
+LOG=$DATA/logs/wifi.log
 PID=/var/run/wpa_supplicant.pid
 
 start() {
@@ -22,8 +30,12 @@ start() {
 	mkdir -p "${CONF%/*}"
 	[ -f "$CONF" ] ||
 		printf 'ctrl_interface=/var/run/wpa_supplicant\nupdate_config=1\n' > "$CONF"
-	wpa_cli -i wlan0 ping > /dev/null 2>&1 ||
-		wpa_supplicant -B -i wlan0 -D nl80211 -c "$CONF" -P $PID
+	wpa_cli -i wlan0 ping > /dev/null 2>&1 && return 0
+	mkdir -p "${LOG%/*}"
+	size=0
+	[ -f "$LOG" ] && size=$(wc -c < "$LOG" | tr -d ' ')
+	[ "${size:-0}" -gt 262144 ] && mv -f "$LOG" "$LOG.1"
+	wpa_supplicant -B -i wlan0 -D nl80211 -c "$CONF" -P $PID -t -f "$LOG"
 }
 
 stop() {

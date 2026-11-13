@@ -142,8 +142,11 @@ bool logpack_build(const char *logs_dir, const char *about,
 
 	if ((d = opendir(logs_dir))) {
 		while ((e = readdir(d))) {
-			/* Every boot's zyperos.log, and the USB port's plugs (usblog.h) */
-			if (strncmp(e->d_name, "zyperos.log", 10) != 0 && strcmp(e->d_name, "usb.log") != 0) continue;
+			/* Every boot's zyperos.log, the USB port's plugs (usblog.h),
+			 * and the Wi-Fi supplicant's joins and drops (wifi.log and
+			 * wifi.log.1, /etc/init.d/wpa_supplicant on the Pixel 2) */
+			if (strncmp(e->d_name, "zyperos.log", 10) != 0 && strcmp(e->d_name, "usb.log") != 0 &&
+			    strcmp(e->d_name, "wifi.log") != 0 && strcmp(e->d_name, "wifi.log.1") != 0) continue;
 			snprintf(from, sizeof from, "%s/%s", logs_dir, e->d_name);
 			snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
 			if (copy_masked(from, path, secrets, n)) logs++;

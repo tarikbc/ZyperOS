@@ -81,6 +81,12 @@ static void pack(void)
 	if ((f = fopen(p, "w"))) { fputs("wifi: connected to ReinFi\n", f); fclose(f); }
 	snprintf(p, sizeof p, "%s/logs/zyperos.log.1", dir);
 	if ((f = fopen(p, "w"))) { fputs("bt: headset C0:86:B3:A7:48:7F\n", f); fclose(f); }
+	snprintf(p, sizeof p, "%s/logs/wifi.log", dir);
+	if ((f = fopen(p, "w"))) {
+		fputs("1763071200.123456: wlan0: Trying to associate with SSID 'ReinFi'\n"
+		      "1763071220.654321: wlan0: CTRL-EVENT-DISCONNECTED bssid=C0:86:B3:A7:48:7F reason=4 locally_generated=1\n", f);
+		fclose(f);
+	}
 	snprintf(p, sizeof p, "%s/logs/other.txt", dir);
 	if ((f = fopen(p, "w"))) { fputs("not a log\n", f); fclose(f); }
 
@@ -103,7 +109,7 @@ static void pack(void)
 		}
 		pclose(f);
 	}
-	CHECK(files == 3, "two logs and about.txt, not the other file: %d", files);
+	CHECK(files == 4, "three logs (wifi.log among them) and about.txt, not the other file: %d", files);
 	CHECK(found_net && found_mac && found_about,
 	      "each masked, in the logs and in about.txt: %d %d %d",
 	      found_net, found_mac, found_about);

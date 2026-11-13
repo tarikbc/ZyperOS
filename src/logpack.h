@@ -6,7 +6,8 @@
 #include <stddef.h>
 
 /* The logs, packed to send to whoever is helping: every boot's zyperos.log,
- * usb.log (the USB port's last plugs, src/usblog.h), an
+ * usb.log (the USB port's last plugs, src/usblog.h), wifi.log and
+ * wifi.log.1 (the Wi-Fi supplicant's joins and drops, on the Pixel 2), an
  * about.txt the caller writes, gzipped into one tar by the device's own tar.
  * Over The Hare's Download logs button is the one caller.
  *
