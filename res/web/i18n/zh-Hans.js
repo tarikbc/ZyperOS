@@ -6,6 +6,7 @@ window.ZYPEROS_STRINGS = {
   "play.state.connecting": "正在连接",
   "play.state.player": "玩家 %d",
   "play.state.full": "游戏人数已满",
+  "play.state.stopped": "主机已关闭多人游戏",
   "play.state.ended": "游戏已结束",
   "play.old_browser": "此应用版本过旧，无法显示游戏。请更新后再试，或用其他应用打开此页面。",
   "play.picture_off": "关闭画面",

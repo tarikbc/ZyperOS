@@ -1743,7 +1743,9 @@ build-native/p2d-feed: tools/p2d-feed.c src/p2share.h
 # the captive redirect, frames only as fast as they are acked, the pad into
 # the share and let go when the guest goes quiet or leaves, a guest past the
 # system's players turned away and told so, two players at once with their
-# own pads and frames, the end of the game however it comes, and the DNS
+# own pads and frames, a KEY on the page's 'K', the end of the game however
+# it comes and "stopped" for a SIGTERM with the game going on, the page never
+# framed, --addr alone listened on, few wakeups with no guest, and the DNS
 # answer.
 check-p2d: build-native/p2d build-native/p2d-feed
 	@python3 tools/p2d-check.py
@@ -1752,9 +1754,10 @@ check-p2d: build-native/p2d build-native/p2d-feed
 # over build-native/p2d and a feed of the codec check's fixture frames
 # (tools/play-check.py): the canvas the frame it says it drew, every key and
 # touch to the share's pad, the pad drawn from the game's buttons and nothing
-# sent outside them, the picture in whole device pixels, Picture off, a
-# second browser told the game is full and trying again, a browser too old
-# for the page, and the game's end. The fixtures go
+# sent outside them, the picture in whole device pixels, Picture off and the
+# KEY asked for after it, a page left with Back freeing its place, a second
+# browser told the game is full and trying again, a browser too old for the
+# page, multiplayer turned off and on again, and the game's end. The fixtures go
 # into the check's own temp folder, never build-native's, which check-p2codec
 # may be writing at the same moment. Chrome is needed.
 check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
@@ -1766,8 +1769,9 @@ check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check bu
 # starts in on the hotspot (p2d only once the hotspot is up) and on the
 # cable, a refusal, the stop in the reverse order after any end of a game
 # (SIGKILL a second after a SIGTERM p2d ignores, and a second stop doing
-# nothing), a notice as each guest comes and goes, and a failure the tick
-# meets without waiting.
+# nothing), a notice as each guest comes and goes, a failure the tick meets
+# without waiting, and a start after a stop or a failure that reads Diatom's
+# old answer away and takes its own.
 check-p2: build-native/p2-check
 	@./build-native/p2-check
 

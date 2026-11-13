@@ -72,6 +72,9 @@ bool p2_answer(const char *line, bool *on, unsigned *buttons, int *players)
 #define P2D_GRACE_MS 1000
 /* Diatom answers SETPLAYER2 from its pause in a frame */
 #define ANSWER_MS 500
+/* Old answers read away before a start, at most: a stop's and a failure's
+ * are one each, so this is only a bound on a loop that reads the socket */
+#define STALE_MAX 16
 
 static const p2_ops *g_ops;
 
@@ -178,11 +181,20 @@ bool p2_start(const char *core, p2_link l)
 	char line[96], ans[128];
 	bool on = false, answered;
 	unsigned buttons;
-	int players;
+	int players, i;
 
 	if (!g_ops || !s || l == P2_NO_LINK) return false;
 	if (g.st == P2_WAITING || g.st == P2_CONNECTED) return true;
 	p2_stop();                         /* what a failure left */
+	/* Diatom answers every SETPLAYER2, the on=0 of a stop or a failure too,
+	 * and nothing reads its lines while the game is paused under the page
+	 * or the in-game menu. Such an answer is still waiting, ahead of the one
+	 * to this start's on=1, and read as this one's it said the game did not
+	 * take it, while Diatom went on to share every frame with nobody. So
+	 * whatever is waiting already goes first, as hotspot.c's ctrl_ask drops
+	 * hostapd's late answers. */
+	for (i = 0; i < STALE_MAX && g_ops->answer("PLAYER2\t", ans, sizeof ans, 0); i++)
+		fprintf(stderr, "player 2: an old answer read away: %s\n", ans + 8);
 
 	g.sys = s;
 	g.link = l;
@@ -308,6 +320,10 @@ void p2_stop(void)
 	int status;
 
 	if (!g_ops) return;
+	/* Diatom removes it as the game ends, unless it was killed first. Before
+	 * p2d's SIGTERM: p2d tells its guests the game ended when the share is
+	 * gone, and only that Player 2 was turned off while it is there. */
+	if (g.over) g_ops->unshare();
 	if (g.pid > 0) {
 		unsigned t0, waited;
 		bool killed = false;
@@ -333,8 +349,6 @@ void p2_stop(void)
 		g.pid = -1;
 	}
 	if (g.said_on) g_ops->resident("SETPLAYER2\ton=0");
-	/* Diatom removes it as the game ends, unless it was killed first */
-	if (g.over) g_ops->unshare();
 	if (g.hot) g_ops->hotspot_stop();
 	if (g.mdns) g_ops->mdns_stop();
 	if (g.cable) g_ops->cable_down();

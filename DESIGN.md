@@ -3147,10 +3147,19 @@ between the pad's halves. Picture off drops the picture and the pad grows
 into the room, for a friend who watches the handheld. A computer with a
 mouse shows its keys in the bar: the arrows, Z for B, X for A, Shift for
 SELECT, Enter for START, by the key printed on them on any layout. The
-status says "Connecting", "Player 2", "The game is full" or "The game
-ended". A browser that cannot unpack a frame (Safari before 16.4) says it is
-too old, and opens no connection. The words are the handheld's language,
-and the page wears the handheld's theme (below).
+status says "Connecting", "Player 2", "The game is full", "The host turned
+multiplayer off" or "The game ended". "The host turned multiplayer off" is
+the handheld stopping Player 2 while the game goes on: the page stays on it
+and keeps trying every 2 seconds, so on the cable it plays again by itself
+when Player 2 is turned on again (on the hotspot, once the phone is on the
+new network: its password is new each time). "The game ended" is final.
+Picture off switched off, or the tab shown again, the picture is back at
+once: the page asks for a KEY (`'K'`, below) rather than wait for the next.
+A page left for another (Back, a link) closes its socket as it goes, so its
+place is free at once, and one that Back brings back from the browser's
+cache connects again. A browser that cannot unpack a frame (Safari before
+16.4) says it is too old, and opens no connection. The words are the
+handheld's language, and the page wears the handheld's theme (below).
 
 **The parts.**
 
@@ -3161,7 +3170,14 @@ and the page wears the handheld's theme (below).
   port, which it reads once a frame. A frame copy and a word read, no
   syscall and no lock: nothing on the game's thread waits for a guest. Off
   for every game until asked, and gone, the file removed, however the game
-  ends.
+  ends. Off, nothing of it runs: a game without Player 2 polls and reads
+  its pads as before it. The file's pages are taken as it is made
+  (`posix_fallocate` on the devices), so a full /tmp is a refusal (PLAYER2
+  on=0), not a crash at the first frame written into a sparse file. The
+  first time Player 2 turns on in a game, each guest's port is given the
+  core's joypad (`retro_set_controller_port_device`), as port 0 is at the
+  load and as RetroArch does for every port, unless the core says it has no
+  such port.
 - **p2d** (src/p2d/), a program of its own beside the launcher on the card,
   so the network is on neither the game's thread nor the launcher's loop,
   at `nice(5)`: one thread, never blocking. It serves the page, its words
@@ -3169,15 +3185,25 @@ and the page wears the handheld's theme (below).
   WebSocket a browser on `/p2ws`, and on the hotspot answers DNS as the
   handheld's own network does (every name the handheld's), so a phone's
   internet check is sent to the page and its sign-in sheet opens it. It ends
-  by itself when the share goes.
+  by itself when the share goes, and tells its guests "ended". On SIGTERM
+  with the share still there (the handheld's A stopped Player 2, the game
+  goes on) it tells them "stopped" instead. With no guest and no browser on
+  the way it waits in `poll()` for one, for a DNS question, or for its next
+  beat or look at the share, some 20 wakeups a second for a game nobody
+  joins, not a 2 ms loop: a handheld's battery. With a guest, the 2 ms loop.
 - **The page** (res/web/play): plain JavaScript, no framework and no build
   step, as File Transfer's page.
 - **The launcher** (src/p2.c, no SDL, every process and protocol action
   through `p2_ops` so tools/p2-check.c drives it on fakes): the row and the
-  page, the start in order (SETPLAYER2, the theme file, then the hotspot
-  without its own DNS and p2d once it is up; or the cable's link,
-  zyperos.local and p2d), the notices, and the stop in the reverse order at
-  every end of the game.
+  page, the start in order (any PLAYER2 answer still waiting read away
+  first, then SETPLAYER2, the theme file, then the hotspot without its own
+  DNS and p2d once it is up; or the cable's link, zyperos.local and p2d),
+  the notices, and the stop in the reverse order at every end of the game.
+  Diatom answers a stop's or a failure's `on=0` too, and nothing reads its
+  lines while the game is paused under the page, so that answer waits; a
+  start that took it for its own answer failed once, with Diatom on. At the
+  game's end the stop removes the share's file before p2d's SIGTERM, so a
+  Diatom killed before it could still has its guests told "ended".
 
 **The wire.** One WebSocket, little-endian:
 
@@ -3187,16 +3213,22 @@ and the page wears the handheld's theme (below).
   the frame's palette indices, raw deflate (zlib level 1), XORed with the
   frame before unless KEY. The browser inflates with
   `DecompressionStream('deflate-raw')`, so the page ships no decoder. A
-  KEY comes with a new color, a new size, a new browser, and every 120
-  frames.
+  KEY comes with a new color, a new size, a new browser, a `'K'`, and every
+  120 frames.
 - *Status, to the page*, text: `S` and a line of JSON,
-  `{"state":"playing","player":2,"buttons":509}`, `{"state":"taken"}` or
-  `{"state":"ended"}`.
+  `{"state":"playing","player":2,"buttons":509}`, `{"state":"taken"}`,
+  `{"state":"stopped"}` (Player 2 turned off, the game going on: the page
+  keeps trying) or `{"state":"ended"}` (the game's end: the page stops).
 - *From the page*, binary only: `'A'` and a frame's number once that frame
   is drawn (or skipped, with Picture off or the tab hidden), `'P'` and the
-  RetroPad bits held, on every change and every 100 ms while any is held.
-  Anything else closes the socket. p2d sends a frame only while fewer than
-  two wait for their ack, so a slow link gets fewer frames, never a queue.
+  RetroPad bits held, on every change and every 100 ms while any is held,
+  and `'K'` alone, one byte: a KEY next, from a page that drew nothing for
+  a while and has no frame to add a delta to, sent as it draws again (and
+  at the first delta it cannot use). p2d resets that guest's encoder and
+  sends the newest frame again, as KEY with PAL, at once, even while the
+  game's frames stand still. Anything else closes the socket. p2d sends a
+  frame only while fewer than two wait for their ack, so a slow link gets
+  fewer frames, never a queue.
 
 **No stuck buttons, and no strangers.**
 
@@ -3216,6 +3248,15 @@ and the page wears the handheld's theme (below).
   handheld's address or `zyperos.local`, on p2d's port): on the cable the
   computer has the internet, and a site in another tab could otherwise take
   player 2 or watch the game.
+- The page is never drawn inside another site's page: every reply says
+  `Content-Security-Policy: frame-ancestors 'none'` and
+  `X-Frame-Options: DENY`, so a site in another tab cannot hold it in a
+  hidden frame and take player 2's place.
+- p2d listens on the link's address alone (`--addr`, httpd's
+  `httpd_start_on`), never on every address: on the cable the handheld's
+  Wi-Fi may still be on a home or public network, and a client there,
+  browser or not, cannot reach it at the address the handheld has on that
+  network. Its DNS binds the same address.
 
 **Made to grow.** The NES is the first system, not the only shape:
 

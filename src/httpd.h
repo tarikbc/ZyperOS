@@ -105,6 +105,10 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
  * httpd_reply_file, when it replied with an error. */
 bool httpd_reply_static(httpd_req *r, const char *path, const char *content_type);
 void httpd_reply_status(httpd_req *r, int status, const char *text);
+/* Headers every reply carries from now on, each with its CRLF, kept by
+ * pointer (a string that outlives the server); NULL for none, as at the
+ * start. p2d's: its page is never to be drawn inside another site's. */
+void httpd_always(const char *headers);
 
 /* The connection, after a 101 reply, for whoever takes it from here (p2d's
  * WebSocket). Called once the 101 and its headers are all out, with the
@@ -128,9 +132,17 @@ void httpd_reply_upgrade(httpd_req *r, const char *extra_headers,
  * port 80 can be preferred without a busy one being fatal - the address the
  * user is shown comes from httpd_port(). False if none of them bind. */
 bool httpd_start(const int *ports, int nports);
+/* The same on one address only (dotted IPv4; NULL is every one, as
+ * httpd_start): p2d's, the handheld's address on the link Player 2 is on, so
+ * a client on a network the handheld's Wi-Fi is still on cannot reach it at
+ * the handheld's address there. False for an address that is none. */
+bool httpd_start_on(const char *ip, const int *ports, int nports);
 void httpd_stop(void);
 bool httpd_running(void);
 int  httpd_port(void);
+/* The listening socket, -1 while stopped: for a caller with no connection
+ * open to wait in poll() on, until a browser comes */
+int  httpd_fd(void);
 
 /* A bounded slice of work: accept what is waiting, move every live connection
  * along, drop the timed-out. Returns the number of connections that did

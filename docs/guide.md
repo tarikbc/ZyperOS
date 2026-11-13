@@ -666,7 +666,8 @@ Under that, a line for player 2: `off`, `waiting` or `connected`. **B**
 closes the page and **Continue** goes back to the game with Player 2 on. A
 notice over the game says **Player 2 joined** when the friend's browser
 starts to play, and **Player 2 left** when it stops. **A** on the page
-again stops Player 2. The game's end stops it too, however it ends: quit,
+again stops Player 2, and A once more starts it again. The game's end stops
+it too, however it ends: quit,
 POWER, a crash. The handheld's network goes, and Wi-Fi comes back as it
 was. If it stops by itself (the handheld's network or the page's server
 went away), a notice says **Player 2 stopped**, the page says Player 2 had
@@ -681,7 +682,12 @@ with the pad's halves either side. The page speaks the handheld's language
 and wears the handheld's theme, light or dark with its accent and corners,
 whatever the phone is set to. At the top it says **Connecting**, **Player
 2**, **The game is full** (someone else is player 2; it keeps trying, and
-takes the place when it is free) or **The game ended**.
+takes the place when it is free), **The host turned multiplayer off** (you
+stopped Player 2 and the game goes on) or **The game ended**. After **The
+host turned multiplayer off** the page keeps trying: on the cable it plays
+again by itself when you turn Player 2 on again. On the hotspot the
+network's password is new each time, so the friend scans the new code
+first.
 
 On a computer the keyboard is the pad, and the bar names the keys:
 
@@ -697,13 +703,20 @@ The keys are the letters printed on them, on any keyboard layout.
 
 **Picture off**, at the top right, hides the picture, and the pad takes the
 whole screen: for a friend who watches the handheld and uses the phone only
-as a pad.
+as a pad. Switched off again, the picture is back at once.
 
 The page needs a recent browser (Safari 16.4 or Chrome 103 and later): an
 older one says it is too old to show the game. A button left held never
 stays held: the page lets go of everything when it is hidden or loses the
 focus, and the handheld lets go of player 2's buttons a second after the
-page stops saying them (a phone that locked, or walked out of range).
+page stops saying them (a phone that locked, or walked out of range). A
+friend who leaves the page, with Back or for another site, frees player 2's
+place at once, so coming back is never told the game is full; Back brings
+the game back.
+
+The page's server listens only on the handheld's address on that link,
+not on the address of another network the handheld's Wi-Fi may be on, and
+no other site can show the page inside its own.
 
 A game controller paired with the phone or the computer does not work yet.
 It needs the page over HTTPS, which comes with a later update.

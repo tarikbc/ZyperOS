@@ -648,6 +648,61 @@ int main(void)
 		settle();
 	}
 
+	printf("  one address, or every one:\n");
+	shutdown_server();
+	{
+		struct sockaddr_in a;
+		socklen_t al = sizeof a;
+		int p0 = 0;
+
+		/* p2d's: the handheld's address on the link Player 2 is on, not
+		 * the Wi-Fi network the handheld may still be on */
+		CHECK(httpd_start_on("127.0.0.1", &p0, 1), "could not listen on 127.0.0.1");
+		CHECK(httpd_fd() >= 0 && getsockname(httpd_fd(), (struct sockaddr *)&a, &al) == 0,
+		      "no listening socket to read");
+		CHECK(a.sin_addr.s_addr == htonl(INADDR_LOOPBACK) && ntohs(a.sin_port) == httpd_port(),
+		      "listening on %s port %d, wanted 127.0.0.1 port %d", inet_ntoa(a.sin_addr),
+		      ntohs(a.sin_port), httpd_port());
+		httpd_stop();
+		CHECK(httpd_fd() < 0, "a listening socket after stop");
+		CHECK(!httpd_start_on("not an address", &p0, 1) && !httpd_running(),
+		      "a bad address was listened on");
+		/* File Transfer's, and NULL's: every address */
+		CHECK(httpd_start(&p0, 1), "could not listen");
+		al = sizeof a;
+		CHECK(getsockname(httpd_fd(), (struct sockaddr *)&a, &al) == 0 &&
+		      a.sin_addr.s_addr == htonl(INADDR_ANY), "httpd_start listens on %s, wanted every address",
+		      inet_ntoa(a.sin_addr));
+		httpd_stop();
+		CHECK(httpd_start_on(NULL, &p0, 1), "could not listen with NULL");
+		al = sizeof a;
+		CHECK(getsockname(httpd_fd(), (struct sockaddr *)&a, &al) == 0 &&
+		      a.sin_addr.s_addr == htonl(INADDR_ANY), "NULL listens on %s, wanted every address",
+		      inet_ntoa(a.sin_addr));
+		httpd_stop();
+	}
+
+	printf("  headers on every reply:\n");
+	fresh(tmpf);
+	{
+		const char *req = "GET /echo?v=hi HTTP/1.1\r\nHost: x\r\n\r\n";
+		int fd = cl_connect();
+
+		httpd_always("X-Frame-Options: DENY\r\n");
+		talk(fd, req, strlen(req), resp, sizeof resp);
+		CHECK(status_of(resp) == 200 && strstr(resp, "\r\nX-Frame-Options: DENY\r\n") != NULL,
+		      "httpd_always's header is not on the reply: \"%s\"", resp);
+		close(fd);
+		settle();
+		httpd_always(NULL);
+		fd = cl_connect();
+		talk(fd, req, strlen(req), resp, sizeof resp);
+		CHECK(status_of(resp) == 200 && strstr(resp, "X-Frame-Options") == NULL,
+		      "httpd_always(NULL) left the header on: \"%s\"", resp);
+		close(fd);
+		settle();
+	}
+
 	shutdown_server();
 	CHECK(!httpd_running(), "the server is still listening after stop");
 	remove(tmpf);

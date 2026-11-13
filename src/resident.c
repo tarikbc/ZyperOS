@@ -721,14 +721,19 @@ bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeou
 	size_t pn = strlen(prefix);
 	const char *next;
 	char *l;
-	int left;
+	int left, late = 0;
 
 	if (dsock < 0) return false;
-	while ((int)(SDL_GetTicks() - t0) < timeout_ms) {
+	for (;;) {
+		/* Past the time, and with 0 from the start, only the lines that are
+		 * waiting already: Player 2's start reads an old answer away so
+		 * (p2.c). A paused Diatom says nothing unasked, so they are few; the
+		 * count only bounds the loop. */
+		left = timeout_ms - (int)(SDL_GetTicks() - t0);
+		if (left <= 0 && ++late > 64) break;
 		/* The game ended meanwhile (px2-open's quit, a crash): its EXIT is
 		 * the wait loop's to read, so it is left where it is, and there is
 		 * no answer to wait for */
-		left = timeout_ms - (int)(SDL_GetTicks() - t0);
 		next = dpeek(left > 0 ? left : 0);
 		if (!next) break;
 		if (strncmp(next, "EXIT", 4) == 0) break;

@@ -24,16 +24,27 @@
  * taken and closed. Each has its own pad, its own chain of frames (its own
  * encoder) and every rule here for itself. With --dns it is the hotspot's
  * DNS too, every name the Pixel's (captive.h), so a phone's internet check
- * lands here and is sent to the page.
+ * lands here and is sent to the page. It listens on --addr alone: on the
+ * cable the Pixel's Wi-Fi may still be on a home or public network, and a
+ * client there is not to reach it at the Pixel's address on that network.
+ * Its replies say the page is never to be drawn
+ * inside another site's (frame-ancestors), so a site in another of the
+ * laptop's tabs cannot hold player 2's place in a hidden frame.
  *
  * Its own process, so the network is on neither the game's thread nor the
  * launcher's frame loop; nice(5), so both come first. One thread, and nothing
  * in it blocks: the loop moves the HTTP server, the guests, the share and the
- * DNS socket along, and sleeps 2 ms only when none of them moved.
+ * DNS socket along, and sleeps 2 ms when none of them moved. With no guest
+ * and no browser on the way it waits in poll() instead, for one, for a DNS
+ * question, or for its next beat: a game nobody joins wakes it some 20 times
+ * a second, not 500.
  *
  * It ends by itself with the game: Diatom clears the share's magic and
  * removes the file when player 2 goes off or the game ends, so either one is
- * the game ending, however it ended. */
+ * the game ending, however it ended, and the guests are told "ended". A
+ * SIGTERM with the share still there is the handheld turning Player 2 off
+ * while the game goes on, and they are told "stopped": the page keeps
+ * trying, and comes back if it is turned on again. */
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -46,6 +57,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -300,6 +312,14 @@ static bool guests_poll(long now)
 			pad_set(k, (uint32_t)news.pad);
 			g_place[k].pad_ms = now;
 		}
+		/* It drew nothing for a while and has no frame to add the next
+		 * delta to: a KEY with its palette next, and the newest frame sent
+		 * again for it, so the picture is back at once even while the
+		 * game's frames stand still (the handheld paused) */
+		if (k >= 0 && news.key) {
+			p2c_reset(g_place[k].enc);
+			g->last_frame = 0;
+		}
 		if (!live) guest_drop(g);
 		/* A player the moment its close starts, not when it ends: its
 		 * buttons go now, and the next browser may have its port */
@@ -532,16 +552,52 @@ static bool dns_answer(void)
 
 /* ---- start and end ------------------------------------------------------ */
 
-/* Every guest told the game ended and closed, every player's buttons let
- * go: within EXIT_MS, as the launcher sends SIGKILL a second after SIGTERM */
-static int finish(int code)
+/* No guest and no browser on the way: nothing moves until one comes */
+static bool nobody(void)
+{
+	if (httpd_conn_count() > 0) return false;
+	for (int i = 0; i < g_nguests; i++)
+		if (g_guest[i].fd >= 0) return false;
+	return true;
+}
+
+/* Until a browser knocks, a DNS question comes, or it is time for the next
+ * beat or the next look at the share: a 2 ms nap all game long is 500
+ * wakeups a second for nobody, and a handheld's battery. A SIGTERM ends the
+ * wait too (EINTR). */
+static void wait_for_somebody(long now, long last_beat, long last_look)
+{
+	struct pollfd p[2];
+	long due = last_beat + BEAT_MS, ms;
+	nfds_t n = 0;
+
+	if (last_look + SHARE_LOOK_MS < due) due = last_look + SHARE_LOOK_MS;
+	ms = due - now;
+	if (ms <= 0) return;
+	p[n].fd = httpd_fd();
+	p[n].events = POLLIN;
+	p[n++].revents = 0;
+	if (g_dns >= 0) {
+		p[n].fd = g_dns;
+		p[n].events = POLLIN;
+		p[n++].revents = 0;
+	}
+	(void)poll(p, n, (int)ms);
+}
+
+/* Every guest told `state` and closed, every player's buttons let go: within
+ * EXIT_MS, as the launcher sends SIGKILL a second after SIGTERM. "ended" for
+ * the game's end, "stopped" for Player 2 turned off with the game going on. */
+static int finish(int code, const char *state)
 {
 	long end = now_ms() + EXIT_MS;
 	bool open = true;
+	char st[48];
 
+	snprintf(st, sizeof st, "S{\"state\":\"%s\"}", state);
 	for (int i = 0; i < g_nguests; i++) {
 		if (g_guest[i].fd < 0) continue;
-		guest_text(&g_guest[i], "S{\"state\":\"ended\"}");
+		guest_text(&g_guest[i], st);
 		guest_close(&g_guest[i], 1001);
 	}
 	for (int k = 0; k < g_places; k++) leave(k);
@@ -659,9 +715,14 @@ int main(int argc, char **argv)
 	guests_set();
 	beat();
 	fprintf(stderr, "p2d: %d players at most, buttons 0x%04X\n", g_places + 1, (unsigned)g_buttons);
-	if (!httpd_start(&g_port, 1)) {
-		fprintf(stderr, "p2d: cannot listen on port %d: %s\n", g_port, strerror(errno));
-		return finish(1);
+	/* A site in another of the laptop's tabs must not hold the page in a
+	 * hidden frame: its socket would take player 2's place, and the friend
+	 * would be told the game is full. Modern browsers read the first, older
+	 * ones the second. */
+	httpd_always("Content-Security-Policy: frame-ancestors 'none'\r\nX-Frame-Options: DENY\r\n");
+	if (!httpd_start_on(g_addr, &g_port, 1)) {
+		fprintf(stderr, "p2d: cannot listen on %s port %d: %s\n", g_addr, g_port, strerror(errno));
+		return finish(1, "ended");
 	}
 	fprintf(stderr, "p2d: http on port %d\n", httpd_port());
 	if (g_want_dns) dns_open();
@@ -671,8 +732,12 @@ int main(int argc, char **argv)
 		bool moved = false;
 
 		if (g_term) {
-			fprintf(stderr, "p2d: stopped\n");
-			return finish(0);
+			/* The share there still: Player 2 was turned off, and the game
+			 * goes on */
+			bool ended = share_ended();
+
+			fprintf(stderr, "p2d: stopped%s\n", ended ? ", the game over" : "");
+			return finish(0, ended ? "ended" : "stopped");
 		}
 		if (httpd_poll(on_request, NULL, NULL) > 0) moved = true;
 		now = now_ms();
@@ -689,11 +754,14 @@ int main(int argc, char **argv)
 			last_look = now;
 			if (share_ended()) {
 				fprintf(stderr, "p2d: the game ended\n");
-				return finish(0);
+				return finish(0, "ended");
 			}
 		}
 		if (dns_answer()) moved = true;
-		if (!moved) {
+		if (moved) continue;
+		if (nobody()) {
+			wait_for_somebody(now, last_beat, last_look);
+		} else {
 			struct timespec ts = { 0, IDLE_NS };
 
 			nanosleep(&ts, NULL);

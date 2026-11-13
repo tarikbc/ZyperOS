@@ -12,11 +12,14 @@
  * with the frame before unless it is a KEY), and the status as text, "S" and
  * a line of JSON: {"state":"playing","player":N,"buttons":M}, this browser
  * is player N with the game's buttons M; "taken", every player's place
- * held; "ended". To it, binary only: 'A' and a frame's number once that
- * frame is drawn, 'P' and the buttons held. p2d sends a frame only while
- * fewer than two wait for their ack, and drops a guest that holds one
- * unacked and says nothing for 5 s, so every frame is acked, drawn or not:
- * with Picture off or the tab hidden, at once.
+ * held; "stopped", the handheld turned multiplayer off with the game going
+ * on (the page keeps trying, for when it is turned on again); "ended", the
+ * game's end. To it, binary only: 'A' and a frame's number once that frame
+ * is drawn, 'P' and the buttons held, 'K' for a KEY next when it has no
+ * frame to add a delta to. p2d sends a frame only while fewer than two wait
+ * for their ack, and drops a guest that holds one unacked and says nothing
+ * for 5 s, so every frame is acked, drawn or not: with Picture off or the
+ * tab hidden, at once.
  *
  * The first thing it asks is whether the browser can unpack a frame at all
  * (raw deflate: Safari 16.4, Chrome 103). Above that question only the words
@@ -61,7 +64,7 @@ const dpad = $('dpad');
 
 /* ---- the status ------------------------------------------------------------ */
 
-let state = '';                 /* connecting, playing, full or ended */
+let state = '';                 /* connecting, playing, full, stopped or ended */
 
 /* The status, and the tab: the player's number while it plays, the page's
  * name else */
@@ -70,6 +73,7 @@ function show(s, player) {
 	game.dataset.state = s;
 	const text = s === 'playing' ? t('play.state.player', player)
 		: s === 'full' ? t('play.state.full')
+		: s === 'stopped' ? t('play.state.stopped')
 		: s === 'ended' ? t('play.state.ended')
 		: t('play.state.connecting');
 	$('state').textContent = text;
@@ -137,20 +141,34 @@ function paint() {
 	ctx.putImageData(image, 0, 0);
 }
 
+/* 'K': a KEY next, from p2d at once, rather than the codec's own up to 120
+ * frames on. Once until a KEY comes. */
+function askKey(sock) {
+	if (!sock || sock.keyAsked || sock.readyState !== WebSocket.OPEN) return;
+	sock.keyAsked = true;
+	sock.send(Uint8Array.of(0x4b));
+}
+
+/* Drawing again (Picture off switched off, the tab shown) with no frame to
+ * add a delta to: the KEY asked for now, so the picture is back at once */
+function resume() {
+	if (drawing() && !idx) askKey(ws);
+}
+
 /* One frame message from `sock`, in its turn: a delta needs the frame before
- * it, so connect() chains them one after another. A frame that is
- * not drawn (Picture off, the tab hidden) leaves no frame to add the next
- * delta to, so nothing is drawn again until a KEY; the codec sends one at
- * least every 120 frames. Its palette is kept either way, since a KEY
+ * it, so connect() chains them one after another. A frame that is not drawn
+ * (Picture off, the tab hidden) leaves no frame to add the next delta to, so
+ * the page asks for a KEY (askKey) as it draws again, and at the first delta
+ * it has nothing to add to. Its palette is kept either way, since a KEY
  * carries one only when a color is new. */
 async function frame(sock, buf) {
 	const b = new Uint8Array(buf);
 	if (b.length < 10 || b[0] !== 0x46) return;
 	const n = new DataView(buf).getUint32(6, true);
 	try {
-		await take(b, n);
+		await take(sock, b, n);
 	} catch (e) {
-		idx = null;             /* a frame that did not unpack: wait for a KEY */
+		idx = null;             /* a frame that did not unpack: the next delta asks for a KEY */
 	}
 	if (sock.readyState === WebSocket.OPEN) {
 		sock.send(Uint8Array.of(0x41, n & 255, n >>> 8 & 255, n >>> 16 & 255, n >>> 24));
@@ -158,7 +176,7 @@ async function frame(sock, buf) {
 	}
 }
 
-async function take(b, n) {
+async function take(sock, b, n) {
 	const v = new DataView(b.buffer);
 	const flags = b[1], w = v.getUint16(2, true), h = v.getUint16(4, true);
 	let at = 10;
@@ -170,11 +188,15 @@ async function take(b, n) {
 			pal[i] = (0xff000000 | b[at + 2] << 16 | b[at + 1] << 8 | b[at]) >>> 0;
 	}
 	const key = flags & KEY;
+	if (key) sock.keyAsked = false;
 	if (!drawing()) {
 		idx = null;
 		return;
 	}
-	if (!key && !(idx && w === iw && h === ih)) return;
+	if (!key && !(idx && w === iw && h === ih)) {
+		askKey(sock);
+		return;
+	}
 	const d = await inflate(b.subarray(at));
 	if (d.length !== w * h) throw new Error('a frame of the wrong size');
 	if (key) {
@@ -235,6 +257,7 @@ const keys = new Map();         /* KeyboardEvent.code: bit */
 let has = 0;                    /* the buttons this game has */
 let mask = 0;                   /* the ones held, always within has */
 let ws = null;
+let retry = 0;                  /* the next try's timer */
 
 function sendPad() {
 	if (ws && ws.readyState === WebSocket.OPEN) ws.send(Uint8Array.of(0x50, mask & 255, mask >> 8));
@@ -321,7 +344,9 @@ function letGo() {
  * tried again every 2 s, a full game too, saying so meanwhile: the place it
  * waits for may be its own, held by p2d until it finds the old link gone, or
  * another player's who leaves. "Full" stays only while the tries reach p2d;
- * one that does not (p2d gone with the game, the link lost) is connecting. */
+ * one that does not (p2d gone with the game, the link lost) is connecting.
+ * "Stopped" stays while the tries reach nothing, as they do until the
+ * handheld turns multiplayer on again: then the page plays again. */
 function connect() {
 	const sock = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/p2ws');
 	let frames = Promise.resolve();
@@ -348,16 +373,39 @@ function connect() {
 			show('playing', Number.isInteger(msg.player) ? msg.player : 2);
 		} else if (s === 'taken') {
 			show('full');
+		} else if (s === 'stopped') {
+			show('stopped');
 		} else if (s === 'ended') {
 			show('ended');
 		}
 	};
 	sock.onclose = () => {
-		if (ws === sock) ws = null;
+		/* A socket the page closed itself as it was left (pagehide) */
+		if (ws !== sock) return;
+		ws = null;
 		if (state === 'ended') return;
-		if (state !== 'full' || !opened) show('connecting');
-		setTimeout(connect, 2000);
+		if (state !== 'stopped' && (state !== 'full' || !opened)) show('connecting');
+		retry = setTimeout(connect, 2000);
 	};
+}
+
+/* Left with Back or for another page: its socket goes now, so p2d frees its
+ * place at once, not after 5 s of silence, and the friend who comes back is
+ * not told the game is full by the old link. Back again from the browser's
+ * page cache, it connects again at once. */
+function leave() {
+	letGo();
+	clearTimeout(retry);
+	const sock = ws;
+	ws = null;
+	if (sock) sock.close();
+}
+
+function back(e) {
+	if (!e.persisted || ws || state === 'ended') return;
+	clearTimeout(retry);
+	if (state !== 'stopped') show('connecting');
+	connect();
 }
 
 /* ---- the start ---------------------------------------------------------- */
@@ -427,7 +475,9 @@ function play() {
 		update();
 	});
 	window.addEventListener('blur', letGo);
-	document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
+	document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); else resume(); });
+	window.addEventListener('pagehide', leave);
+	window.addEventListener('pageshow', back);
 
 	/* A held pad again every 100 ms: a lost message heals, and p2d lets a
 	 * pad go after a second without one */
@@ -437,6 +487,7 @@ function play() {
 	$('picoff').addEventListener('change', (e) => {
 		pictureOn = !e.target.checked;
 		game.classList.toggle('padonly', !pictureOn);
+		resume();
 	});
 
 	setButtons(NES);

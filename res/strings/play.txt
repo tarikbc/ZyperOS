@@ -53,8 +53,19 @@ de = Das Spiel ist voll
 ja = このゲームは満員です
 it = La partita è al completo
 
+[play.state.stopped]
+note = The status when the handheld's player turned multiplayer off while the game goes on (the same words for every player's browser): the page keeps trying every 2 seconds and plays again if it is turned on again
+en = The host turned multiplayer off
+zh-Hans = 主机已关闭多人游戏
+es = El anfitrión desactivó el multijugador
+pt-BR = O anfitrião desativou o multijogador
+fr = L'hôte a désactivé le multijoueur
+de = Der Host hat den Mehrspielermodus ausgeschaltet
+ja = ホストがマルチプレイをオフにしました
+it = L'host ha disattivato il multigiocatore
+
 [play.state.ended]
-note = The status when the game on the handheld ended: quit, turned off, or the players switched off there
+note = The status when the game on the handheld ended: quit, turned off, or another game started there
 en = The game ended
 zh-Hans = 游戏已结束
 es = La partida terminó

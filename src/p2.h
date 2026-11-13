@@ -76,7 +76,8 @@ typedef struct {
 	/* One protocol line to Diatom, as plat_resident_line sends it */
 	bool (*resident)(const char *line);
 	/* The next line from Diatom that starts with `prefix`, within `ms`, into
-	 * `out`: false when none came. Only asked while the game is paused. */
+	 * `out`: false when none came. With `ms` 0, only among the lines waiting
+	 * already, never waiting for one. Only asked while the game is paused. */
 	bool (*answer)(const char *prefix, char *out, unsigned n, unsigned ms);
 	/* The handheld's theme now, into WEBTHEME_FILE (src/webtheme.h) */
 	bool (*theme)(void);
@@ -127,7 +128,10 @@ void p2_use(const p2_ops *ops);
  * cable the link, zyperos.local and p2d. False when it did not start, and the
  * state says P2_FAILED (or P2_OFF for a core or link it cannot be on). A
  * start while on does nothing; one after a failure stops what was left
- * first. Takes as long as the hotspot's start takes, up to two seconds. */
+ * first. Diatom's answers that are still waiting (a stop's or a failure's
+ * on=0, which nothing read) are read away before its on=1, so the answer it
+ * takes is its own. Takes as long as the hotspot's start takes, up to two
+ * seconds. */
 bool p2_start(const char *core, p2_link l);
 
 /* From every tick while it is on, in a game and in the screens over its
@@ -145,11 +149,12 @@ void p2_tick(unsigned now_ms);
  * the moment its wait for the game ends, before anything that ticks. */
 void p2_game_over(void);
 
-/* Everything off, in the reverse order: p2d (SIGTERM, SIGKILL after a
- * second), SETPLAYER2 on=0, the share's file once the game is over, then the
- * hotspot (which brings the Wi-Fi back, a second or two) or zyperos.local
- * and the cable's link. At every end of a game and from the page; nothing
- * at all when nothing is on. */
+/* Everything off, in the reverse order: the share's file first once the game
+ * is over (so p2d tells its guests the game ended, not that Player 2 was
+ * turned off), p2d (SIGTERM, SIGKILL after a second), SETPLAYER2 on=0, then
+ * the hotspot (which brings the Wi-Fi back, a second or two) or
+ * zyperos.local and the cable's link. At every end of a game and from the
+ * page; nothing at all when nothing is on. */
 void p2_stop(void);
 
 /* The theme changed while it is on: the file again, once, for the page's

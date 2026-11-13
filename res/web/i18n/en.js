@@ -6,6 +6,7 @@ window.ZYPEROS_STRINGS = {
   "play.state.connecting": "Connecting",
   "play.state.player": "Player %d",
   "play.state.full": "The game is full",
+  "play.state.stopped": "The host turned multiplayer off",
   "play.state.ended": "The game ended",
   "play.old_browser": "This browser is too old to show the game. Update it, or open this page in another browser.",
   "play.picture_off": "Picture off",

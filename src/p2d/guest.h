@@ -6,6 +6,8 @@
  *
  *   'A' + u32   a frame it has drawn (an ack), by the frame's number
  *   'P' + u16   the buttons it holds now, RetroPad bits
+ *   'K'         a KEY next: it drew nothing for a while (Picture off, the
+ *               tab hidden), so it has no frame to add a delta to
  *
  * Anything else, and anything ws_parse refuses, closes it: the play page is
  * the only client and is written beside this file, so a message it would
@@ -64,6 +66,7 @@ typedef struct {
 
 typedef struct {
 	int  pad;                       /* the last 'P' read, -1 when none came */
+	bool key;                       /* a 'K' came */
 	bool moved;                     /* a byte went either way */
 } guest_news;
 

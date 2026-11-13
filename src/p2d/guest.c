@@ -220,6 +220,10 @@ static bool message(guest *g, const ws_msg *m, guest_news *news)
 		news->pad = m->data[1] | m->data[2] << 8;
 		return true;
 	}
+	if (m->opcode == OP_BINARY && m->len == 1 && m->data[0] == 'K') {
+		news->key = true;
+		return true;
+	}
 	guest_close(g, 1003);          /* "cannot accept that kind of data" */
 	return !g->dead;
 }
@@ -278,6 +282,7 @@ static bool take(guest *g, long now_ms, guest_news *news)
 bool guest_poll(guest *g, long now_ms, guest_news *news)
 {
 	news->pad = -1;
+	news->key = false;
 	news->moved = false;
 	if (g->fd < 0 || g->dead) return false;
 	if (!flush(g, &news->moved)) return false;

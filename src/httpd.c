@@ -95,6 +95,7 @@ typedef struct {
 
 static int  g_listen = -1;
 static int  g_port;
+static const char *g_always = "";   /* httpd_always's headers */
 static conn g_conn[MAX_CONN];
 static unsigned long g_in, g_out;
 
@@ -228,11 +229,11 @@ static void build_head(httpd_req *r, int status, const char *type,
 		/* The page and the API are the same origin and nothing else should be
 		 * calling this, so say so rather than leaving it to chance. */
 		"X-Content-Type-Options: nosniff\r\n"
-		"%s"
+		"%s%s"
 		"\r\n",
 		status, status_text(status), len, type,
 		extra && strstr(extra, "Cache-Control:") ? "" : "Cache-Control: no-store\r\n",
-		extra ? extra : "");
+		g_always, extra ? extra : "");
 	if (r->resp_head_len >= sizeof r->resp_head) {
 		/* An oversized header block is a bug in a route, not something a
 		 * client can cause, but truncating it would emit a malformed reply
@@ -888,9 +889,16 @@ static bool pump_write(conn *c, httpd_end end, void *ctx, int *did)
 
 bool httpd_start(const int *ports, int nports)
 {
+	return httpd_start_on(NULL, ports, nports);
+}
+
+bool httpd_start_on(const char *ip, const int *ports, int nports)
+{
+	struct in_addr at = { .s_addr = htonl(INADDR_ANY) };
 	int i;
 
 	if (g_listen >= 0) return true;
+	if (ip && inet_pton(AF_INET, ip, &at) != 1) return false;
 	for (i = 0; i < MAX_CONN; i++) { g_conn[i].fd = -1; g_conn[i].st = C_FREE; }
 
 	for (i = 0; i < nports; i++) {
@@ -902,7 +910,7 @@ bool httpd_start(const int *ports, int nports)
 		setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
 		memset(&a, 0, sizeof a);
 		a.sin_family = AF_INET;
-		a.sin_addr.s_addr = htonl(INADDR_ANY);
+		a.sin_addr = at;
 		a.sin_port = htons((unsigned short)ports[i]);
 		if (bind(fd, (struct sockaddr *)&a, sizeof a) != 0 ||
 		    listen(fd, 8) != 0) {
@@ -938,6 +946,8 @@ void httpd_stop(void)
 
 bool httpd_running(void) { return g_listen >= 0; }
 int  httpd_port(void)    { return g_port; }
+int  httpd_fd(void)      { return g_listen; }
+void httpd_always(const char *headers) { g_always = headers ? headers : ""; }
 
 void httpd_traffic(unsigned long *in, unsigned long *out)
 {

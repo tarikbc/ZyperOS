@@ -39,7 +39,10 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
     clear of each other and of the picture
   - picture_off: switched on, the picture hides and the pad takes the
     screen, the canvas holds still for a second while the acks go on; off
-    again, the picture is the game's again
+    again, the page asks p2d for a KEY ('K'), and the picture is the game's
+    again from the frame it asked at, not the codec's next KEY
+  - left_and_back: a page left for another lets its place go at once, well
+    before p2d's 5 s rule, and Back plays again
   - theme_from_handheld: the theme file p2d is given (--theme; the handheld's
     look, once by hand and once as build-native/webtheme-check's writer makes
     it) wins over the page's tokens and the browser's light or dark: its accent
@@ -51,6 +54,9 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
     check comes before anything else the page sets up
   - full_then_player: a second tab is told the game is full, the first
     plays on, and the second keeps trying: the first closed, it is player 2
+  - stopped_then_back: p2d's SIGTERM with the share still there (the
+    handheld turned multiplayer off, the game goes on): the page says so,
+    still past its tries, and plays again once a p2d is there again
   - ended_message: the share removed, the page says the game ended, and
     still says so after p2d has gone and a retry would have come; a tab
     told the game is full says it is connecting once its retries no longer
@@ -95,6 +101,7 @@ W, H, FRAMES = 256, 240, 100          # the fixture's (tools/p2codec-check.c)
 FRAME_BYTES = W * H * 4
 SHARE_SIZE = 4096 + 3 * 512 * 480 * 4  # src/p2share.h's P2S_SIZE
 PAD_AT, GUESTS_AT = 24, 40             # p2s_head's pad[0] and guests (tools/p2share-check.c)
+FRAME_AT = 12                          # and frame, the newest frame's number
 
 # Libretro's RetroPad bits, the mask's
 B, SELECT, START, UP, DOWN, LEFT, RIGHT, A = 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7, 1 << 8
@@ -155,14 +162,15 @@ class Rig:
     def __init__(self, tmp, root, fixture):
         self.share = tmp / 'share'
         self.log = tmp / 'p2d.log'
+        self.root = root
         self.feed = self.p2d = self.m = None
         try:
-            self.start(root, fixture)
+            self.start(fixture)
         except BaseException:
             self.close()
             raise
 
-    def start(self, root, fixture):
+    def start(self, fixture):
         self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60',
                                       '--rgba', str(fixture)],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -170,21 +178,27 @@ class Rig:
             raise RuntimeError('p2d-feed made no share')
         with open(self.share, 'rb') as f:
             self.m = mmap.mmap(f.fileno(), SHARE_SIZE, access=mmap.ACCESS_READ)
+        self.serve('0')
+
+    def serve(self, port):
+        """p2d on `port` ('0': the kernel's pick), and its origin"""
         with open(self.log, 'wb') as log:
-            self.p2d = subprocess.Popen([str(P2D), '--root', str(root), '--share', str(self.share),
-                                         '--addr', '127.0.0.1', '--port', '0', '--lang', LANG,
-                                         '--theme', str(Path(root).parent / 'theme.css')],
+            self.p2d = subprocess.Popen([str(P2D), '--root', str(self.root), '--share', str(self.share),
+                                         '--addr', '127.0.0.1', '--port', port, '--lang', LANG,
+                                         '--theme', str(Path(self.root).parent / 'theme.css')],
                                         stdout=log, stderr=log)
-        port = wait_for(lambda: re.search(r'p2d: http on port (\d+)', self.log.read_text(errors='replace')), 10)
-        if not port:
+        got = wait_for(lambda: re.search(r'p2d: http on port (\d+)', self.log.read_text(errors='replace')), 10)
+        if not got:
             raise RuntimeError(f'p2d never said its port: {self.log.read_text(errors="replace")!r}')
-        self.origin = f'http://127.0.0.1:{port.group(1)}'
+        self.port = got.group(1)
+        self.origin = f'http://127.0.0.1:{self.port}'
 
     def word(self, at):
         return struct.unpack_from('<I', self.m, at)[0]
 
     pad = property(lambda self: self.word(PAD_AT))
     guests = property(lambda self: self.word(GUESTS_AT))
+    frame = property(lambda self: self.word(FRAME_AT))
 
     def close(self):
         for p in (self.p2d, self.feed):
@@ -534,11 +548,37 @@ def picture_off(tab, rig, fixture, say):
     check(tab.until(f'window.p2.acks >= {acks + 3}', 10) and tab.js('window.p2.frame') == frame,
           f'while the acks went on: {acks}, then {tab.js("window.p2.acks")}')
     check(rig.guests == 1, 'and p2d still has player 2')
+    asks, at = tab.js('window.__asks'), rig.frame
     tab.js("document.getElementById('picoff').click()")
     check(tab.until(shown, 5), 'Picture off switched off shows it again')
     check(tab.until(f'window.p2.frame > {frame}', 20), 'and frames are drawn again')
+    # Its deltas skipped, it had no frame to add the next to: it asked p2d
+    # for a KEY once, and drew from about the frame it asked at, where the
+    # codec's own KEY could have been up to 120 frames on
+    first = tab.js('window.p2.frame')
+    check(tab.js('window.__asks') == asks + 1, f"it asked for a KEY ('K') once: {asks}, then {tab.js('window.__asks')}")
+    check(first - at <= 45, f'and drew again from frame {first}, {first - at} past the one it asked at, wanted 45 or fewer')
     ok, why = matches(fixture, *tab.drawn())
     check(ok, f'the right frames{": " + why if why else ""}')
+
+
+def left_and_back(tab, rig, fixture, say):
+    """Left for another page with Back still there: its socket goes as the
+    page does, so its place is free at once (p2d's 5 s rule would hold it),
+    and Back plays again"""
+    check(rig.guests == 1, 'p2d has the page as player 2')
+    tab.dt.call('Page.navigate', url='about:blank')
+    t0 = time.monotonic()
+    check(wait_for(lambda: rig.guests == 0, 3.5), f'left, its place is free well before 5 s: guests {rig.guests}')
+    took = time.monotonic() - t0
+    check(took < 3.5, f'in {took:.1f} s')
+    tab.js('history.back()')
+    check(tab.until(f"document.getElementById('state') && "
+                    f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 20),
+          f'back, it is player 2 again: {tab.state()!r}')
+    frame = tab.js('window.p2.frame')
+    check(tab.until(f'window.p2.frame > {frame}', 20), 'and draws the game')
+    check(wait_for(lambda: rig.guests == 1, 5), 'p2d has it as player 2')
 
 
 def full_then_player(tab, rig, fixture, say, browser, origin):
@@ -563,10 +603,12 @@ def full_then_player(tab, rig, fixture, say, browser, origin):
 # What the page sends, recorded on the way out (the pad's masks), and its
 # socket, for a status the check puts to it as p2d's
 RECORD = """window.__pads = [];
+window.__asks = 0;
 const RealSend = WebSocket.prototype.send;
 WebSocket.prototype.send = function (data) {
     window.__ws = this;
     if (data instanceof Uint8Array && data[0] === 0x50) window.__pads.push(data[1] | data[2] << 8);
+    if (data instanceof Uint8Array && data[0] === 0x4b && data.length === 1) window.__asks++;
     return RealSend.call(this, data);
 };
 """
@@ -647,6 +689,30 @@ def old_browser_message(browser, origin, say):
             check(old.js('window.__sockets') == 0, f'and opened no socket: {old.js("window.__sockets")}')
         finally:
             old.close()
+
+
+def stopped_then_back(tab, rig, fixture, say, browser, origin):
+    """The handheld's A turns multiplayer off with the game going on: p2d
+    goes on SIGTERM with the share still there. The page says so, and still
+    does past its tries, which reach nothing; turned on again (a new p2d on
+    the same address), the page plays again by itself."""
+    stopped = json.dumps(say['play.state.stopped'])
+    rig.p2d.send_signal(signal.SIGTERM)
+    check(tab.until(f"document.getElementById('state').textContent === {stopped}", 10),
+          f'p2d stopped, the game going on: the page says multiplayer is off: {tab.state()!r}')
+    try:
+        code = rig.p2d.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        code = None
+    check(code == 0, f'p2d exited 0: {code}')
+    time.sleep(3)                         # past a try that reached nothing
+    check(tab.state() == say['play.state.stopped'], f'and still says so past a try: {tab.state()!r}')
+    rig.serve(rig.port)
+    check(rig.origin == origin, f'the new p2d is on the page\'s address: {rig.origin}')
+    check(tab.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 15),
+          f'turned on again, the page is player 2 again by itself: {tab.state()!r}')
+    frame = tab.js('window.p2.frame')
+    check(tab.until(f'window.p2.frame > {frame}', 20), 'and draws the game')
 
 
 def ended_message(tab, rig, fixture, say, browser, origin):
@@ -733,10 +799,12 @@ def main():
             run('status_and_buttons', status_and_buttons, tab, rig, fixture, say)
             run('picture_size', picture_size, tab, rig, fixture, say)
             run('picture_off', picture_off, tab, rig, fixture, say)
+            run('left_and_back', left_and_back, tab, rig, fixture, say)
             run('theme_from_handheld', theme_from_handheld, browser, rig.origin, tmp / 'web', say)
             run('old_browser_message', old_browser_message, browser, rig.origin, say)
             # From here the second tab is player 2: the first is closed
             tab = run('full_then_player', full_then_player, tab, rig, fixture, say, browser, rig.origin) or tab
+            run('stopped_then_back', stopped_then_back, tab, rig, fixture, say, browser, rig.origin)
             run('ended_message', ended_message, tab, rig, fixture, say, browser, rig.origin)
     finally:
         if browser:

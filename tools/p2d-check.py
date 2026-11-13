@@ -35,9 +35,16 @@ test starts its own feed and p2d and kills them when it ends. What it holds:
   - a guest that says nothing for 5 s with a frame unacked is gone (a phone
     out of range sends no FIN), and one that acks every frame stays
   - a ping is answered, and a message the page never sends closes the guest
-  - the end: the share removed, its magic cleared, or a SIGTERM, and the
-    guest hears the game ended and p2d exits 0 within a second; no share at
-    all, and p2d gives up after 5 s with 1
+  - 'K', one byte: the next frame is a KEY with its palette, at once and
+    even while the game's frames stand still (the handheld paused)
+  - the end: the share removed, or its magic cleared, and the guest hears
+    the game ended; a SIGTERM with the share still there (the handheld
+    turned Player 2 off, the game goes on) is "stopped"; p2d exits 0 within
+    a second either way; no share at all, and p2d gives up after 5 s with 1
+  - the page is never drawn inside another site's page (frame-ancestors
+    'none', X-Frame-Options), and p2d listens on --addr alone
+  - with no guest it waits in poll() for a browser, a DNS question or its
+    next beat: some 20 wakeups a second, not 500 (a game nobody joins)
   - DNS: with --dns, every name is p2d's address
   - p2d-feed --rgba: a fixture's frames, in order and round again, are the
     share's, and SIGTERM clears the magic and removes the file
@@ -409,6 +416,10 @@ def serves_the_page(tmp):
         check(s == 200, f'GET /play/ was {s}')
         check(h.get('content-type', '').startswith('text/html'), f'/play/ is {h.get("content-type")}')
         check(b'stub play page' in body, f'/play/ was not the page: {body[:80]!r}')
+        check(h.get('content-security-policy') == "frame-ancestors 'none'" and
+              h.get('x-frame-options') == 'DENY',
+              f'/play/ may be drawn in another page: CSP {h.get("content-security-policy")!r}, '
+              f'X-Frame-Options {h.get("x-frame-options")!r}')
         s, h, _ = r.get('/play/play.js')
         check(s == 200 and h.get('content-type', '').startswith('text/javascript'),
               f'/play/play.js was {s} {h.get("content-type")}')
@@ -417,6 +428,21 @@ def serves_the_page(tmp):
         for path in ('/play/../secret.txt', '/play/.hidden', '/play/nothing.js', '/other'):
             s, _, _ = r.get(path)
             check(s == 404, f'GET {path} was {s}, wanted 404')
+
+
+@test
+def listens_on_its_address(tmp):
+    """--addr only: on the cable the handheld's Wi-Fi may still be on a home
+    or public network, and nobody there is to reach p2d"""
+    lsof = shutil.which('lsof')
+    if not lsof:
+        print('p2d: listens_on_its_address skipped: no lsof')
+        return
+    with Rig(tmp) as r:
+        out = subprocess.run([lsof, '-nP', '-a', '-p', str(r.p2d.pid), '-iTCP', '-sTCP:LISTEN'],
+                             capture_output=True, text=True, timeout=30).stdout
+        check(f'127.0.0.1:{r.port} (LISTEN)' in out and f'*:{r.port}' not in out,
+              f'p2d listens on {out.strip()!r}, wanted 127.0.0.1:{r.port} alone')
 
 
 @test
@@ -738,7 +764,7 @@ def ping_and_bad_messages(tmp):
         check(ws.status() == PLAYER2, 'not player 2')
         ws.send(9, b'hi')
         check(ws.until(10, 2) == b'hi', 'the ping had no pong')
-        for bad in (b'Q12', b'A\x01\x02', b'P\x01', b'P\x01\x00\x00'):
+        for bad in (b'Q12', b'A\x01\x02', b'P\x01', b'P\x01\x00\x00', b'KK', b'K\x00'):
             ws.pad(0x0001)
             check(wait_for(lambda: sh.pad == 1, 2), 'the pad did not come')
             ws.send(2, bad)
@@ -753,8 +779,55 @@ def ping_and_bad_messages(tmp):
 
 
 @test
+def key_on_request(tmp):
+    """'K': the page drew nothing for a while (Picture off, the tab hidden),
+    so it has no frame to add a delta to and asks for a KEY. The next frame
+    is one, with its palette, at once: here with the game's frames standing
+    still (p2d-feed --frames, as a paused game), so it is the newest frame
+    sent again, not the codec's own KEY up to 2 s on"""
+    with Rig(tmp, feed_args=['--frames', '20']) as r:
+        ws, pic = WS(r.port), Picture()
+        check(ws.status() == PLAYER2, 'not player 2')
+        last = 0
+        while True:
+            f = ws.frame(1.5, picture=pic)
+            if f is None:
+                break
+            ws.ack(f[3])
+            last = f[3]
+        check(last == 20, f'the frames stopped at {last}, wanted the feed\'s 20')
+        check(ws.frame(0.3) is None, 'a frame came with the feed stopped')
+        ws.send(2, b'K')
+        f = ws.frame(2.0, picture=pic)
+        check(f is not None, 'no frame came after K')
+        check(f[0] & 3 == 3 and f[3] == 20, f'after K the frame is {f}, wanted frame 20 as KEY and PAL')
+        check(pic.is_the_feeds(), 'and it unpacks to what the feed drew')
+        ws.ack(20)
+        check(ws.frame(0.3) is None, 'K sent more than the one frame')
+        # Asked again with frames flowing: a KEY among the next two (one may
+        # have been on its way before the K was read)
+        ws.close()
+    with Rig(tmp) as r:
+        ws, pic = WS(r.port), Picture()
+        check(ws.status() == PLAYER2, 'not player 2')
+        play(ws, pic, 5)
+        ws.send(2, b'K')
+        keys = []
+        for _ in range(2):
+            f = ws.frame(picture=pic)
+            check(f is not None, 'frames stopped after K')
+            ws.ack(f[3])
+            keys.append(f[0] & 3 == 3)
+        check(any(keys), f'no KEY and PAL among the two frames after K: {keys}')
+        play(ws, pic, 5)
+        check(pic.is_the_feeds(), 'and the frames after it unpack to what the feed drew')
+        ws.close()
+
+
+@test
 def ended_when_share_goes(tmp):
-    for how in ('removed', 'magic cleared', 'SIGTERM'):
+    for how, want in (('removed', 'ended'), ('magic cleared', 'ended'),
+                      ('SIGTERM', 'stopped'), ('removed, then SIGTERM', 'ended')):
         with Rig(tmp) as r:
             sh = r.mapped(write=True)
             ws = WS(r.port)
@@ -763,14 +836,14 @@ def ended_when_share_goes(tmp):
             ws.pad(0x0100)
             check(wait_for(lambda: sh.pad == 0x0100, 2), 'the pad did not come')
             t0 = time.monotonic()
-            if how == 'removed':
+            if how.startswith('removed'):
                 os.unlink(r.share)
             elif how == 'magic cleared':
                 struct.pack_into('<I', sh.m, 0, 0)
-            else:
+            if how.endswith('SIGTERM'):
                 r.p2d.send_signal(signal.SIGTERM)
             st = ws.status(2.0)
-            check(st == 'S{"state":"ended"}', f'share {how}: the guest was told {st!r}')
+            check(st == f'S{{"state":"{want}"}}', f'share {how}: the guest was told {st!r}, wanted {want}')
             check(ws.closed_by_server(), f'share {how}: the guest was not closed')
             try:
                 rc = r.p2d.wait(timeout=1.5)
@@ -904,6 +977,32 @@ def acking_guest_stays(tmp):
             ws.ack(f[3])
         check(sh.guests == 1, 'a guest that acks every frame was dropped')
         ws.close()
+        sh.close()
+
+
+@slow
+def idle_wakes_seldom(tmp):
+    """with no guest p2d waits in poll() for a browser, a DNS question, its
+    next beat (50 ms) or its next look at the share (100 ms), not a 2 ms nap:
+    some 20 wakeups a second for a game nobody joins, not 500. Its context
+    switches count them (macOS counts every one as involuntary)."""
+    with Rig(tmp, ['--dns', '--dns-port', '0']) as r:
+        sh = r.mapped()
+        time.sleep(0.3)
+        b0 = sh.beat
+        time.sleep(2.0)
+        beats = sh.beat - b0
+        # Still at once for a browser and a phone's question
+        s, _, _ = r.get('/play/')
+        r.p2d.send_signal(signal.SIGTERM)
+        _, status, ru = os.wait4(r.p2d.pid, 0)
+        secs = time.monotonic() - r.started
+        woke = ru.ru_nvcsw + ru.ru_nivcsw
+        check(beats >= 20, f'the beat moved {beats} times in 2 s with nobody there, wanted some 40')
+        check(s == 200, f'GET /play/ after the idle wait was {s}')
+        check(os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0, f'p2d ended with {status}')
+        check(woke < 120 * secs, f'p2d woke {woke} times in {secs:.1f} s with nobody there, '
+              f'wanted some 20 a second')
         sh.close()
 
 
