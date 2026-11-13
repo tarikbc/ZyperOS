@@ -1,21 +1,36 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* NES player 2's page, in the File Transfer page's clothes (res/web/app.css,
+/* The play page, in the File Transfer page's clothes (res/web/app.css,
  * DESIGN.md 11.15): the same token block, which tools/designdef.py writes
  * from the same tables, so the colors are DESIGN.md 3's roles, Beard or Salt
  * & Pepper by the browser's prefers-color-scheme, and the radii, the type and
  * the motion are the launcher's. The faces are the card's menu.ttf and
  * title.ttf, Lexend, beside this file: p2d serves nothing outside play/.
  *
+ * The handheld's own look comes after this file, in theme.css (index.html),
+ * when p2d has one: the theme the handheld shows, light or dark whatever the
+ * browser prefers, with the player's accent, tones and corners. Its :root
+ * wins over both of this file's, so it may set exactly these, and nothing
+ * else here reads anything it could set:
+ *
+ *   color-scheme                  light or dark
+ *   --ground --surface --raised --edge --track --text --text-soft
+ *   --text-dim --accent --on-accent --accent-ink --warning --ink
+ *                                 each a color, #rrggbb, and each again as
+ *                                 --ROLE-rgb, "r, g, b", as the block has them
+ *   --panel-lift --small-lift     the theme's lifts, as the block has them
+ *   --corner                      1 for rounded corners, 0 for Square
+ *
  * A game pad, not a document: nothing on it selects, and the game takes
  * every touch (touch-action: none), so a finger on it never scrolls, pinches
- * or double-tap zooms the page. The picture is the frame scaled by whole
- * device pixels (play.js's fit) and drawn as pixels. Every control is 48 CSS
- * px or more each way, a thumb's.
+ * or double-tap zooms the page. The picture is as large as its room takes it
+ * (play.js's fit) and drawn as pixels. Every control is 48 CSS px or more
+ * each way, a thumb's.
  *
- * Two layouts: a phone held upright has the picture over the pad, the d-pad
- * left and B and A right, SELECT and START between them under; on its side,
- * where the picture and the pad's halves fit across, the d-pad and SELECT
- * are left of the picture and B, A and START right of it. Picture off drops
+ * Two layouts: a phone held upright has the picture right under the bar and
+ * the pad in the rest, the d-pad left and B and A right, SELECT and START
+ * under them; on its side, and on a computer, the picture takes the whole
+ * height between the pad's halves: the status, a computer's keys, the d-pad
+ * and SELECT left of it, Picture off, B, A and START right. Picture off drops
  * the picture and the pad grows into the room.
  */
 @font-face {
@@ -172,6 +187,10 @@
 	 * of the grid's gap, so the unit is no more than the width fits. */
 	--fit: calc((100vw - 2 * var(--gut) - 12px) / 6.1);
 	--k: clamp(48px, min(13vmin, var(--fit)), 76px);
+	/* Corners: every radius under a pill's is DESIGN.md 6's times this, so
+	 * theme.css's 0 squares them (Square, DESIGN.md 3.5); a pill stays a
+	 * pill and a circle a circle */
+	--corner: 1;
 }
 /* The narrowest phones (320): a little less round the edges, so the halves
  * still fit at 48 */
@@ -214,21 +233,17 @@ button {
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
-/* ---- the game ---------------------------------------------------------- */
+/* ---- the game, held upright --------------------------------------------- */
 
 .game {
 	height: 100vh;
 	height: 100dvh;
 	display: grid;
-	grid-template-columns: 1fr auto auto 1fr;
-	grid-template-rows: auto minmax(0, 1fr) auto auto;
-	grid-template-areas:
-		"bar  bar  bar   bar"
-		"view view view  view"
-		"dpad dpad ab    ab"
-		".    sel  start .";
-	gap: 16px 12px;
-	padding: 0 var(--gut) max(16px, env(safe-area-inset-bottom));
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: auto auto minmax(0, 1fr);
+	grid-template-areas: "bar" "view" "pad";
+	row-gap: 12px;
+	padding: env(safe-area-inset-top) var(--gut) max(16px, env(safe-area-inset-bottom));
 	touch-action: none;
 }
 
@@ -242,9 +257,9 @@ button {
 	justify-content: space-between;
 	column-gap: 16px;
 	min-height: 48px;
-	padding-top: env(safe-area-inset-top);
 }
 .state {
+	grid-area: st;
 	margin: 0;
 	display: flex;
 	align-items: center;
@@ -259,17 +274,19 @@ button {
 	border-radius: 50%;
 	background: var(--text-dim);
 }
-.game[data-state="player2"] .state { color: var(--text); font-weight: 600; }
-.game[data-state="player2"] .state i { background: var(--accent-ink); }
-.game[data-state="taken"] .state i,
+.game[data-state="playing"] .state { color: var(--text); font-weight: 600; }
+.game[data-state="playing"] .state i { background: var(--accent-ink); }
+.game[data-state="full"] .state i,
 .game[data-state="ended"] .state i { background: var(--warning); }
 /* Waiting breathes, as Zyper does at rest */
-.game[data-state="connecting"] .state i { animation: wait var(--t-zyper-breathe) var(--ease-turn) infinite; }
+.game[data-state="connecting"] .state i,
+.game[data-state="full"] .state i { animation: wait var(--t-zyper-breathe) var(--ease-turn) infinite; }
 @keyframes wait { 50% { opacity: 0.25; } }
 
 /* A switch: a track of **track**, lime when on, its knob **surface**, as
  * File Transfer's Settings has it; a thumb tall */
 .switch {
+	grid-area: sw;
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -307,6 +324,7 @@ button {
 
 /* The keys, only where there is a mouse to say there is a keyboard */
 .keys {
+	grid-area: keys;
 	display: none;
 	order: 3;
 	flex-basis: 100%;
@@ -326,20 +344,19 @@ kbd {
 	color: var(--text);
 	background: var(--surface);
 	border: 1px solid var(--edge);
-	border-radius: var(--radius-chip);
+	border-radius: calc(var(--radius-chip) * var(--corner));
 	padding: 0 7px;
 	margin-right: 3px;
 }
 
-/* ---- the picture ----------------------------------------------------- */
-
-/* Its box is the room the grid leaves; play.js sizes the canvas in it */
+/* The picture, right under the bar: play.js sizes the canvas to its room */
 .view {
 	grid-area: view;
 	min-width: 0;
 	min-height: 0;
 	display: grid;
-	place-items: center;
+	justify-items: center;
+	align-items: start;
 	overflow: hidden;
 }
 #screen {
@@ -347,31 +364,72 @@ kbd {
 	width: 256px;
 	height: 240px;
 	background: var(--ink);
-	border-radius: var(--radius-chip);
+	border-radius: calc(var(--radius-chip) * var(--corner));
 	image-rendering: crisp-edges;
 	image-rendering: pixelated;
 	transition: opacity var(--t-move) var(--ease-out);
 }
-/* Not player 2 (yet, or any more): the last picture, dimmed */
-.game:not([data-state="player2"]) #screen { opacity: 0.4; }
+/* Not a player (yet, or any more): the last picture, dimmed */
+.game:not([data-state="playing"]) #screen { opacity: 0.4; }
 
-/* ---- the pad ------------------------------------------------------- */
+/* The pad in the rest, its rows in the middle of it: the d-pad left, B and
+ * A right, SELECT and START under them */
+.pad {
+	grid-area: pad;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: 1fr auto auto 1fr;
+	grid-template-areas:
+		"dpad dpad ab    ab"
+		".    sel  start .";
+	gap: 16px 12px;
+	align-content: center;
+}
 
-/* The d-pad: one target, its direction from where on it the finger is */
+/* ---- the pad's parts --------------------------------------------------- */
+
+/* The d-pad: one target, its direction from where on it the finger is.
+ * Five squares of a cross, each arm edged on its three outer sides, so the
+ * edges meet in the cross's inner corners. */
 .dpad {
 	grid-area: dpad;
 	justify-self: start;
 	align-self: center;
 	width: calc(var(--k) * 3);
 	height: calc(var(--k) * 3);
+	display: grid;
+	grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+	grid-template-areas:
+		".    up   ."
+		"left hub  right"
+		".    down .";
 	cursor: pointer;
+	--r: calc(var(--radius-key) * var(--corner));
 }
-.dpad svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.dpad .cross { fill: var(--raised); stroke: var(--edge); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.dpad .arm { fill: transparent; transition: fill var(--t-press) var(--ease-out); }
-.dpad .tri { fill: var(--text-soft); transition: fill var(--t-press) var(--ease-out); }
-.dpad .on .arm { fill: var(--accent); }
-.dpad .on .tri { fill: var(--on-accent); }
+.dpad i {
+	display: grid;
+	place-items: center;
+	background: var(--raised);
+	color: var(--text-soft);
+	border: 1px solid var(--edge);
+	transition: background-color var(--t-press) var(--ease-out), border-color var(--t-press) var(--ease-out);
+}
+.dpad .hub { grid-area: hub; border: 0; }
+.dpad [data-dir="up"] { grid-area: up; border-bottom: 0; border-radius: var(--r) var(--r) 0 0; }
+.dpad [data-dir="down"] { grid-area: down; border-top: 0; border-radius: 0 0 var(--r) var(--r); }
+.dpad [data-dir="left"] { grid-area: left; border-right: 0; border-radius: var(--r) 0 0 var(--r); }
+.dpad [data-dir="right"] { grid-area: right; border-left: 0; border-radius: 0 var(--r) var(--r) 0; }
+/* Each arm's arrow, in the arm's text color */
+.dpad [data-dir]::before {
+	content: "";
+	width: 36%;
+	height: 30%;
+	background: currentColor;
+	clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.dpad [data-dir="down"]::before { transform: rotate(180deg); }
+.dpad [data-dir="left"]::before { transform: rotate(-90deg); }
+.dpad [data-dir="right"]::before { transform: rotate(90deg); }
 
 /* B and A, round, B a little lower for the thumb's arc */
 .ab {
@@ -422,26 +480,35 @@ kbd {
 #start { grid-area: start; justify-self: start; }
 
 /* Held: the accent fill, as the focused row is on the handheld */
-.round.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.dpad .on, .round.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .pill.on span { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
-/* ---- on its side --------------------------------------------------- */
+/* ---- on its side, and on a computer -------------------------------------- */
 
+/* The bar and the pad's group step aside (display: contents) and their parts
+ * take the columns either side of the picture, which has the whole height */
 @media (orientation: landscape) and (min-width: 560px) {
+	/* The pad a little larger: the halves have the height, and on a phone
+	 * the picture is held by the height, not by them */
+	:root { --k: clamp(48px, 15vmin, 76px); }
 	.game {
 		grid-template-columns: auto minmax(0, 1fr) auto;
-		grid-template-rows: auto minmax(0, 1fr) auto;
+		grid-template-rows: auto auto minmax(0, 1fr) auto;
 		grid-template-areas:
-			"bar  bar  bar"
+			"st   view sw"
+			"keys view ."
 			"dpad view ab"
 			"sel  view start";
-		column-gap: 24px;
+		gap: 8px 24px;
+		padding-top: max(8px, env(safe-area-inset-top));
+		padding-bottom: max(8px, env(safe-area-inset-bottom));
 	}
-	.dpad, .ab { justify-self: center; }
-	#select, #start { justify-self: center; }
-	/* A computer's keys between the status and the switch, which leaves
-	 * the picture the whole height under the bar */
-	.keys { order: 0; flex-basis: auto; margin: 0; }
+	.bar, .pad { display: contents; }
+	.state, .switch { max-width: calc(var(--k) * 3); }
+	.switch { justify-self: end; }
+	.view { align-items: center; }
+	.keys { order: 0; flex-direction: column; align-items: flex-start; margin: 0; }
+	.dpad, .ab, #select, #start { justify-self: center; }
 }
 
 /* ---- Picture off ------------------------------------------------------ */
@@ -450,17 +517,15 @@ kbd {
 .game.padonly { --k: clamp(48px, min(18vmin, var(--fit)), 132px); }
 .game.padonly .view { display: none; }
 .game.padonly {
-	grid-template-rows: auto minmax(0, 1fr) auto;
-	grid-template-areas:
-		"bar  bar  bar   bar"
-		"dpad dpad ab    ab"
-		".    sel  start .";
+	grid-template-rows: auto minmax(0, 1fr);
+	grid-template-areas: "bar" "pad";
 }
 @media (orientation: landscape) and (min-width: 560px) {
 	.game.padonly {
-		grid-template-rows: auto minmax(0, 1fr) auto;
+		grid-template-rows: auto auto minmax(0, 1fr) auto;
 		grid-template-areas:
-			"bar  bar  bar"
+			"st   .    sw"
+			"keys .    ."
 			"dpad .    ab"
 			"sel  .    start";
 	}
@@ -481,7 +546,7 @@ kbd {
 	max-width: 420px;
 	background: var(--surface);
 	border: 1px solid var(--edge);
-	border-radius: var(--radius-panel);
+	border-radius: calc(var(--radius-panel) * var(--corner));
 	padding: 32px 24px 28px;
 	text-align: center;
 	box-shadow: var(--panel-lift);
@@ -490,5 +555,5 @@ kbd {
 .old p { margin: 0; color: var(--text-soft); }
 
 @media (prefers-reduced-motion: reduce) {
-	*, *::after { transition: none !important; animation: none !important; }
+	*, *::before, *::after { transition: none !important; animation: none !important; }
 }

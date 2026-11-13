@@ -3,21 +3,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- NES player 2, in a friend's browser: the game's picture and player 2's
-     pad, served by p2d off the handheld. The words are the handheld's
-     language: /i18n.js, loaded before play.js, which puts them in where
-     data-t names one (data-t-aria an aria-label). -->
+<!-- A guest player of the game on the handheld, in a friend's browser: the
+     game's picture and the player's pad, served by p2d. The words are the
+     handheld's language: /i18n.js, loaded before play.js, which puts them
+     in where data-t names one (data-t-aria an aria-label). -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Beard, or Salt & Pepper where the browser asks for dark: play.css. -->
 <meta name="color-scheme" content="light dark">
 <title></title>
 <link rel="stylesheet" href="play.css">
+<!-- The handheld's own look, when p2d has it (the launcher writes it): its
+     theme, accent, tones and corners over play.css's, whatever the browser
+     prefers. Without it (a 404), play.css alone. -->
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 
-<!-- The game: the status and Picture off along the top, the picture, and
-     the pad, laid out by play.css for a phone held upright (the picture
-     over the pad) or on its side (the pad's halves either side). -->
+<!-- The game: the status and Picture off, the picture, and the pad, laid
+     out by play.css for a phone held upright (the picture under the bar,
+     the pad in the rest) or on its side (the picture the whole height, the
+     pad's halves either side). -->
 <main id="game" class="game" data-state="connecting">
   <header class="bar">
     <p class="state"><i aria-hidden="true"></i><span id="state" role="status"></span></p>
@@ -29,19 +34,15 @@
   <div id="view" class="view"><canvas id="screen" width="256" height="240"></canvas></div>
   <!-- The pad: the d-pad here, and the game's other buttons, which play.js
        draws from its table of them (B and A in the face group, SELECT and
-       START in the grid). Fingers are followed by Pointer Events, so a
-       thumb can roll from B to A, and the d-pad reads its direction from
-       where on it the finger is, the diagonals too. -->
-  <div id="dpad" class="dpad ctl" role="img" data-t-aria="play.dpad">
-    <svg viewBox="0 0 120 120" aria-hidden="true">
-      <path class="cross" d="M46 2h28q6 0 6 6v32h32q6 0 6 6v28q0 6-6 6H80v32q0 6-6 6H46q-6 0-6-6V80H8q-6 0-6-6V46q0-6 6-6h32V8q0-6 6-6z"/>
-      <g data-dir="up"><path class="arm" d="M40 40V8q0-6 6-6h28q6 0 6 6v32z"/><path class="tri" d="M60 13l9 11H51z"/></g>
-      <g data-dir="down"><path class="arm" d="M40 80v32q0 6 6 6h28q6 0 6-6V80z"/><path class="tri" d="M60 107l9-11H51z"/></g>
-      <g data-dir="left"><path class="arm" d="M40 40H8q-6 0-6 6v28q0 6 6 6h32z"/><path class="tri" d="M13 60l11-9v18z"/></g>
-      <g data-dir="right"><path class="arm" d="M80 40h32q6 0 6 6v28q0 6-6 6H80z"/><path class="tri" d="M107 60l-11-9v18z"/></g>
-    </svg>
+       START after it). Fingers are followed by Pointer Events, so a thumb
+       can roll from B to A, and the d-pad reads its direction from where on
+       it the finger is, the diagonals too. -->
+  <div id="pad" class="pad">
+    <div id="dpad" class="dpad ctl" role="img" data-t-aria="play.dpad">
+      <i data-dir="up"></i><i data-dir="left"></i><i class="hub"></i><i data-dir="right"></i><i data-dir="down"></i>
+    </div>
+    <div id="face" class="ab"></div>
   </div>
-  <div id="face" class="ab"></div>
 </main>
 
 <!-- A browser that cannot unpack the frames (no DecompressionStream for

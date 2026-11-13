@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""The play page, NES player 2's picture and pad, in a browser: make check-play.
+"""The play page, a guest player's picture and pad, in a browser: make check-play.
 
     make build-native/p2d build-native/p2d-feed build-native/p2codec-check
     python3 tools/play-check.py [--chrome PATH]
@@ -18,25 +18,35 @@ own: keydown, and Pointer Events of pointerType "touch". What it holds:
 
   - draws_the_frames: what the canvas shows is the fixture's frame of the
     number the page says it drew (window.p2.frame), a second in, and again
-    once the fixture has gone round and a periodic KEY has come
+    150 frames on, past a periodic KEY and the fixture going round
   - keyboard_to_pad: every key's button reaches the share (the arrows,
     Z = B, X = A, Shift = SELECT, Enter = START); X and Right together are
     0x0180, still so past the 1 s p2d lets a silent pad go, and 0 let go
   - touch_to_pad: a finger on A sets bit 8; a second on Left makes 0x0140;
     the first rolled onto B, B and Left; a finger on the d-pad's corner,
     the diagonal; and 0 once they lift
-  - buttons_from_status: the pad is drawn from the game's buttons, the
-    NES's 0x01FD until player 2's status names others; Y, X, L and R are
-    drawn and their keys pressed only when it does, and the page never
-    sends a bit the game has not got
+  - status_and_buttons: the pad is drawn from the game's buttons, the
+    NES's 0x01FD until the status names others; Y, X, L and R are drawn
+    and their keys pressed only when it does, and the page never sends a
+    bit the game has not got; "playing" with a player's number says that
+    number, and the old "player2" is player 2
+  - picture_size: upright, the picture right under the bar, as wide as the
+    screen; on its side and on a laptop, the whole height; whole device
+    pixels unless they would leave it under 85% of the room; the pad's
+    parts on the screen and clear of each other and of the picture
   - picture_off: switched on, the picture hides and the pad takes the
     screen, the canvas holds still for a second while the acks go on; off
     again, the picture is the game's again
-  - taken_message: a second tab is told player 2 is taken, and the first
-    plays on
+  - theme_from_handheld: a theme.css beside the page (the handheld's look)
+    wins over the page's tokens and the browser's light or dark: its accent
+    on a held button, its ground, its color-scheme, its square corners;
+    without one, the page's own tokens by prefers-color-scheme
   - old_browser_message: with DecompressionStream deleted before the
     page's script runs, the page says the browser is too old and opens no
-    socket
+    socket; and so with ResizeObserver and replaceChildren gone too, so the
+    check comes before anything else the page sets up
+  - full_then_player: a second tab is told the game is full, the first
+    plays on, and the second keeps trying: the first closed, it is player 2
   - ended_message: the share removed, the page says the game ended, and
     still says so after p2d has gone and a retry would have come
 
@@ -99,6 +109,7 @@ MORE_KEYS = {
     's': ('s', 'KeyS', 83, 1 << 9),
     'q': ('q', 'KeyQ', 81, 1 << 10),
     'w': ('w', 'KeyW', 87, 1 << 11),
+    'Meta': ('Meta', 'MetaLeft', 91, 0),
 }
 
 failures = 0
@@ -137,11 +148,17 @@ class Rig:
     def __init__(self, tmp, root, fixture):
         self.share = tmp / 'share'
         self.log = tmp / 'p2d.log'
+        self.feed = self.p2d = self.m = None
+        try:
+            self.start(root, fixture)
+        except BaseException:
+            self.close()
+            raise
+
+    def start(self, root, fixture):
         self.feed = subprocess.Popen([str(FEED), '--share', str(self.share), '--fps', '60',
                                       '--rgba', str(fixture)],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.p2d = None
-        self.m = None
         if not wait_for(lambda: self.share.exists() and self.share.stat().st_size >= SHARE_SIZE, 10):
             raise RuntimeError('p2d-feed made no share')
         with open(self.share, 'rb') as f:
@@ -185,6 +202,7 @@ class Browser:
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         port = profile / 'DevToolsActivePort'
         if not wait_for(lambda: port.is_file() and port.read_text().strip(), 30, 0.1):
+            self.close()
             raise RuntimeError('Chrome never opened its DevTools port')
         self.port = port.read_text().split()[0]
 
@@ -214,6 +232,12 @@ class Tab:
         # Keys go to a page that has the focus, which a tab in a headless
         # browser of several is not sure to have
         self.dt.call('Emulation.setFocusEmulationEnabled', enabled=True)
+
+    def scheme(self, which):
+        """The browser's prefers-color-scheme, with no motion, so a color read
+        is never one in the middle of a transition"""
+        self.dt.call('Emulation.setEmulatedMedia', features=[{'name': 'prefers-color-scheme', 'value': which},
+                                                            {'name': 'prefers-reduced-motion', 'value': 'reduce'}])
 
     def js(self, expr):
         r = self.dt.call('Runtime.evaluate', expression=expr, returnByValue=True, awaitPromise=True)
@@ -283,12 +307,13 @@ def matches(fixture, frame, size, px):
     return False, f'{bad} of {W * H} pixels differ from fixture frame {(frame - 1) % FRAMES}'
 
 
-PARTS = ('#dpad', '#b', '#a', '#select', '#start')
+PARTS = ('#dpad', '#b', '#a', '#select', '#start', '.state', '#keys', '.switch')
 
 
 def apart(tab):
     """The pad's parts on the screen and clear of each other: the d-pad, B,
-    A, SELECT and START, and the picture where it shows; [] or what is wrong"""
+    A, SELECT and START, the status, the keys and Picture off, and the
+    picture where it shows; [] or what is wrong"""
     return tab.js("""(() => {
         const parts = [...%s, '#screen'].map((s) => [s, document.querySelector(s).getBoundingClientRect()])
             .filter(([, r]) => r.width > 0 && r.height > 0);
@@ -303,17 +328,23 @@ def apart(tab):
         return bad; })()""" % json.dumps(list(PARTS)))
 
 
+def player(say, n):
+    return say['play.state.player'].replace('%d', str(n))
+
+
 def draws_the_frames(tab, rig, fixture, say):
     check(tab.until('window.p2.frame > 0', 20), 'the first frame was drawn')
-    check(tab.state() == say['play.state.player2'], f"the page says it is player 2: {tab.state()!r}")
+    first = tab.js('window.p2.frame')
+    check(tab.state() == player(say, 2), f"the page says it is player 2: {tab.state()!r}")
     check(rig.guests == 1, 'p2d has the page as player 2')
     time.sleep(1)
     ok, why = matches(fixture, *tab.drawn())
     check(ok, f'a second in, the canvas is the frame it says it drew{": " + why if why else ""}')
-    # Past the fixture's 100 and the codec's KEY every 120: the deltas chain
-    check(tab.until('window.p2.frame > 130', 30), 'frames kept coming past 130')
+    # 150 frames on: past the codec's KEY every 120 and the fixture's 100,
+    # so the deltas chained right across both
+    check(tab.until(f'window.p2.frame > {first + 150}', 30), f'frames kept coming, 150 past {first}')
     ok, why = matches(fixture, *tab.drawn())
-    check(ok, f'past the fixture going round and a periodic KEY, still the right frame{": " + why if why else ""}')
+    check(ok, f'past a periodic KEY and the fixture going round, still the right frame{": " + why if why else ""}')
 
 
 def keyboard_to_pad(tab, rig, fixture, say):
@@ -333,6 +364,13 @@ def keyboard_to_pad(tab, rig, fixture, say):
     tab.key('x', False)
     tab.key('ArrowRight', False)
     check(wait_for(lambda: rig.pad == 0, 5), f'let go, 0: {rig.pad:#06x}')
+    # A Mac sends no keyup for a key let go while Cmd is down
+    tab.key('x', True)
+    check(wait_for(lambda: rig.pad == A, 5), f'X held: {rig.pad:#06x}')
+    tab.key('Meta', True)
+    check(wait_for(lambda: rig.pad == 0, 5), f'Cmd down lets it go: {rig.pad:#06x}')
+    tab.key('Meta', False)
+    tab.key('x', False)
     bad = tab.js('window.__pads.filter((m) => (m & ~0x01fd) !== 0)')
     check(not bad, f"every mask the page sent is in the NES's 0x01FD: {bad}")
 
@@ -353,6 +391,14 @@ def touch_to_pad(tab, rig, fixture, say):
     check(wait_for(lambda: rig.pad == B | LEFT, 5), f'the first rolled onto B, B and Left: {rig.pad:#06x}')
     tab.touch('touchEnd', {})
     check(wait_for(lambda: rig.pad == 0, 5), f'both lifted, 0: {rig.pad:#06x}')
+    # A thumb rolls within its group: from A onto START is A let go
+    start = tab.center('#start')
+    tab.touch('touchStart', {0: a[:2]})
+    check(wait_for(lambda: rig.pad == A, 5), f'A again: {rig.pad:#06x}')
+    tab.touch('touchMove', {0: start[:2]})
+    time.sleep(0.5)
+    check(wait_for(lambda: rig.pad == 0, 5), f'slid from A onto START, nothing held: {rig.pad:#06x}')
+    tab.touch('touchEnd', {})
     # The d-pad's corner, up and to the left: a diagonal
     corner = (dpad[0] - dpad[2] * 0.36, dpad[1] - dpad[3] * 0.36)
     tab.touch('touchStart', {0: corner})
@@ -370,7 +416,7 @@ def status(tab, text):
     tab.js(f"window.__ws.dispatchEvent(new MessageEvent('message', {{ data: {json.dumps(text)} }}))")
 
 
-def buttons_from_status(tab, rig, fixture, say):
+def status_and_buttons(tab, rig, fixture, say):
     check(tab.js(DRAWN) == 'b a select start', f"the NES's buttons are drawn: {tab.js(DRAWN)!r}")
     sent = tab.js('window.__pads.length')
     for k in ('a', 's', 'q', 'w'):
@@ -378,14 +424,17 @@ def buttons_from_status(tab, rig, fixture, say):
         tab.key(k, False)
     time.sleep(0.5)
     check(tab.js('window.__pads.length') == sent, f'the keys of Y, X, L and R send nothing: {tab.js("window.__pads")[sent:]}')
-    # A status that names the buttons: these, and only these
-    status(tab, 'S{"state":"player2","buttons":4095}')
+    # A status that names the player and the buttons: these, and only these
+    status(tab, 'S{"state":"playing","player":3,"buttons":4095}')
+    check(tab.state() == player(say, 3) and tab.js('document.title') == player(say, 3),
+          f'"playing" as player 3 says so, and in the tab: {tab.state()!r}, {tab.js("document.title")!r}')
     check(tab.js(DRAWN) == 'l y b x a r select start', f'a game with more buttons draws them: {tab.js(DRAWN)!r}')
     tab.key('a', True)
     check(tab.until('window.__pads[window.__pads.length - 1] === 2', 5), 'its Y is the A key, bit 1')
     tab.key('a', False)
     check(tab.until('window.__pads[window.__pads.length - 1] === 0', 5), 'let go, 0')
     status(tab, 'S{"state":"player2"}')
+    check(tab.state() == player(say, 2), f'the old "player2" is player 2: {tab.state()!r}')
     check(tab.js(DRAWN) == 'b a select start', f'a status with none names the NES\'s again: {tab.js(DRAWN)!r}')
     sent = tab.js('window.__pads.length')
     tab.key('a', True)
@@ -394,6 +443,56 @@ def buttons_from_status(tab, rig, fixture, say):
     check(tab.js('window.__pads.length') == sent, f'and Y\'s key sends nothing again: {tab.js("window.__pads")[sent:]}')
     bad = tab.js('window.__pads.filter((m) => (m & ~4095) !== 0)')
     check(not bad, f'no mask sent with a bit outside the buttons named: {bad}')
+
+
+LAYOUT = """(() => {
+    const r = (s) => { const e = document.querySelector(s); const b = e.getBoundingClientRect();
+        return { top: b.top, bottom: b.bottom, w: b.width, h: b.height, shown: e.getClientRects().length > 0 }; };
+    const g = getComputedStyle(document.getElementById('game'));
+    return { pic: r('#screen'), view: r('#view'), bar: r('.bar'), keys: r('#keys'), dpr: devicePixelRatio,
+             inner: innerHeight - parseFloat(g.paddingTop) - parseFloat(g.paddingBottom) }; })()"""
+
+
+def scale_rule(room_w, room_h, dpr):
+    """The picture's scale: whole device pixels, unless those leave it under
+    85% of the exact fit"""
+    exact = min(room_w / W, room_h / H)
+    whole = int(exact * dpr) / dpr
+    return whole if whole >= 0.85 * exact else exact
+
+
+def settled(tab, metrics, touch):
+    """The tab at another size, waited for until the picture has its new size"""
+    before = tab.js(LAYOUT)['pic']
+    tab.dt.call('Emulation.setDeviceMetricsOverride', **metrics)
+    tab.dt.call('Emulation.setTouchEmulationEnabled', enabled=touch, maxTouchPoints=5)
+    tab.until(f"document.getElementById('screen').getBoundingClientRect().width !== {before['w']}", 5)
+    time.sleep(0.3)
+    return tab.js(LAYOUT)
+
+
+def picture_size(tab, rig, fixture, say):
+    upright = tab.js(LAYOUT)
+    pic, view = upright['pic'], upright['view']
+    check(pic['top'] - upright['bar']['bottom'] <= 24,
+          f"upright, the picture is right under the bar: {pic['top'] - upright['bar']['bottom']:.0f} px between")
+    check(pic['w'] >= 0.85 * view['w'] - 1, f"and as wide as the screen takes it: {pic['w']:.0f} of {view['w']:.0f}")
+    bad = apart(tab)
+    check(not bad, f'the picture and the pad clear of each other{": " + str(bad) if bad else ""}')
+    for name, metrics, touch, keys in (
+            ('a phone on its side', dict(width=844, height=390, deviceScaleFactor=2, mobile=True), True, False),
+            ('a laptop', dict(width=1280, height=800, deviceScaleFactor=1, mobile=False), False, True)):
+        got = settled(tab, metrics, touch)
+        pic, view = got['pic'], got['view']
+        want = scale_rule(view['w'], view['h'], got['dpr'])
+        check(view['h'] >= got['inner'] - 1, f"{name}: the picture's room is the whole height: {view['h']:.0f} of {got['inner']:.0f}")
+        check(abs(pic['w'] - W * want) <= 1 and abs(pic['h'] - H * want) <= 1,
+              f"{name}: the picture {pic['w']:.1f}x{pic['h']:.1f}, the rule's {W * want:.1f}x{H * want:.1f} "
+              f"in {view['w']:.0f}x{view['h']:.0f} at {got['dpr']}x")
+        check(got['keys']['shown'] == keys, f"{name}: the keys {'shown' if keys else 'not shown'}")
+        bad = apart(tab)
+        check(not bad, f'{name}: the picture and the pad clear of each other{": " + str(bad) if bad else ""}')
+    settled(tab, dict(width=390, height=844, deviceScaleFactor=2, mobile=True), True)
 
 
 def picture_off(tab, rig, fixture, say):
@@ -423,18 +522,23 @@ def picture_off(tab, rig, fixture, say):
     check(ok, f'the right frames{": " + why if why else ""}')
 
 
-def taken_message(tab, rig, fixture, say, browser, origin):
+def full_then_player(tab, rig, fixture, say, browser, origin):
+    """The second tab, which is player 2 at the end"""
     other = browser.tab()
-    try:
-        other.open(origin + '/play/')
-        check(other.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.taken'])}", 15),
-              f'a second tab is told player 2 is taken: {other.state()!r}')
-        frame = tab.js('window.p2.frame')
-        check(tab.until(f'window.p2.frame > {frame}', 10) and tab.state() == say['play.state.player2'],
-              'and the first plays on')
-        check(rig.guests == 1, 'p2d has one player 2')
-    finally:
-        other.close()
+    other.open(origin + '/play/')
+    check(other.until(f"document.getElementById('state').textContent === {json.dumps(say['play.state.full'])}", 15),
+          f'a second tab is told the game is full: {other.state()!r}')
+    frame = tab.js('window.p2.frame')
+    check(tab.until(f'window.p2.frame > {frame}', 10) and tab.state() == player(say, 2), 'and the first plays on')
+    check(rig.guests == 1, 'p2d has one player 2')
+    # A full game is tried again, as a lost link is: the slot it waits for
+    # may be its own, held by p2d until it finds the old link gone
+    tab.close()
+    check(other.until(f"document.getElementById('state').textContent === {json.dumps(player(say, 2))}", 15),
+          f'the first tab closed, the second is player 2: {other.state()!r}')
+    check(other.until('window.p2.frame > 0', 20), 'and draws the game')
+    check(wait_for(lambda: rig.guests == 1, 5), 'p2d has it as player 2')
+    return other
 
 
 # What the page sends, recorded on the way out (the pad's masks), and its
@@ -448,25 +552,74 @@ WebSocket.prototype.send = function (data) {
 };
 """
 
+# The handheld's look as the launcher will write it: a dark theme with an
+# accent no theme has, and square corners
+THEME = """:root {
+    color-scheme: dark;
+    --ground: #000000;
+    --ground-rgb: 0, 0, 0;
+    --accent: #ff00ff;
+    --accent-rgb: 255, 0, 255;
+    --corner: 0;
+}
+"""
+LOOK = """(() => { const html = getComputedStyle(document.documentElement);
+    return { scheme: html.colorScheme, ground: html.backgroundColor,
+             a: getComputedStyle(document.getElementById('a')).backgroundColor,
+             corner: getComputedStyle(document.getElementById('screen')).borderTopLeftRadius }; })()"""
+
+
+def theme_from_handheld(browser, origin, root, say):
+    css = root / 'play/theme.css'
+    for case, theme, scheme, want in (
+            ('the handheld\'s theme, the browser light', THEME, 'light',
+             {'scheme': 'dark', 'ground': 'rgb(0, 0, 0)', 'a': 'rgb(255, 0, 255)', 'corner': '0px'}),
+            ('no theme, the browser light', None, 'light',
+             {'scheme': 'light dark', 'ground': 'rgb(230, 228, 218)', 'a': 'rgb(190, 242, 60)', 'corner': '5px'}),
+            ('no theme, the browser dark', None, 'dark',
+             {'scheme': 'light dark', 'ground': 'rgb(17, 19, 16)', 'a': 'rgb(190, 242, 60)', 'corner': '5px'})):
+        if theme:
+            css.write_text(theme)
+        elif css.exists():
+            css.unlink()
+        t = browser.tab()
+        try:
+            t.scheme(scheme)
+            t.open(origin + '/play/')
+            t.key('x', True)              # A held: the accent fill
+            t.until("document.getElementById('a').classList.contains('on')", 5)
+            got = t.js(LOOK)
+            t.key('x', False)
+            check(got == want, f'{case}: {got}')
+        finally:
+            t.close()
+
+
 OLD = """delete window.DecompressionStream;
 window.__sockets = 0;
 const RealWebSocket = window.WebSocket;
 window.WebSocket = function (...args) { window.__sockets++; return new RealWebSocket(...args); };
 """
+# And older still: what Safari before 13.1 and Chrome before 86 also lack
+OLDER = OLD + """delete window.ResizeObserver;
+delete Element.prototype.replaceChildren;
+"""
 
 
 def old_browser_message(browser, origin, say):
-    old = browser.tab()
-    try:
-        old.open(origin + '/play/', before=OLD)
-        text = json.dumps(say['play.old_browser'])
-        check(old.until(f"[...document.querySelectorAll('[data-t=\"play.old_browser\"]')]"
-                        f".some((e) => e.textContent === {text} && e.getClientRects().length > 0)", 10),
-              'a browser without DecompressionStream says it is too old')
-        time.sleep(2.5)                   # past a retry, had it tried and failed
-        check(old.js('window.__sockets') == 0, f'and opened no socket: {old.js("window.__sockets")}')
-    finally:
-        old.close()
+    for case, script in (('without DecompressionStream', OLD),
+                         ('without ResizeObserver and replaceChildren too', OLDER)):
+        old = browser.tab()
+        try:
+            old.open(origin + '/play/', before=script)
+            text = json.dumps(say['play.old_browser'])
+            check(old.until(f"[...document.querySelectorAll('[data-t=\"play.old_browser\"]')]"
+                            f".some((e) => e.textContent === {text} && e.getClientRects().length > 0)", 10),
+                  f'a browser {case} says it is too old')
+            time.sleep(2.5)               # past a retry, had it tried and failed
+            check(old.js('window.__sockets') == 0, f'and opened no socket: {old.js("window.__sockets")}')
+        finally:
+            old.close()
 
 
 def ended_message(tab, rig, fixture, say):
@@ -498,9 +651,10 @@ def page_root(root):
 def run(name, fn, *args):
     print(name + ':', flush=True)
     try:
-        fn(*args)
+        return fn(*args)
     except Exception as e:                # noqa: BLE001 - any crash is a failure to report
         check(False, f'{name} crashed: {type(e).__name__}: {e}')
+        return None
 
 
 def main():
@@ -537,10 +691,13 @@ def main():
             run('draws_the_frames', draws_the_frames, tab, rig, fixture, say)
             run('keyboard_to_pad', keyboard_to_pad, tab, rig, fixture, say)
             run('touch_to_pad', touch_to_pad, tab, rig, fixture, say)
-            run('buttons_from_status', buttons_from_status, tab, rig, fixture, say)
+            run('status_and_buttons', status_and_buttons, tab, rig, fixture, say)
+            run('picture_size', picture_size, tab, rig, fixture, say)
             run('picture_off', picture_off, tab, rig, fixture, say)
-            run('taken_message', taken_message, tab, rig, fixture, say, browser, rig.origin)
+            run('theme_from_handheld', theme_from_handheld, browser, rig.origin, tmp / 'web', say)
             run('old_browser_message', old_browser_message, browser, rig.origin, say)
+            # From here the second tab is player 2: the first is closed
+            tab = run('full_then_player', full_then_player, tab, rig, fixture, say, browser, rig.origin) or tab
             run('ended_message', ended_message, tab, rig, fixture, say)
     finally:
         if browser:

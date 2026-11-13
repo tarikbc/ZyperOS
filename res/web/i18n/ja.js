@@ -2,10 +2,10 @@
 window.ZYPEROS_LANG = "ja";
 window.ZYPEROS_PLURAL = n => 1;
 window.ZYPEROS_STRINGS = {
-  "play.name": "プレイヤー 2",
+  "play.name": "マルチプレイ",
   "play.state.connecting": "接続中",
-  "play.state.player2": "プレイヤー 2",
-  "play.state.taken": "プレイヤー 2 はすでに参加中です",
+  "play.state.player": "プレイヤー %d",
+  "play.state.full": "このゲームは満員です",
   "play.state.ended": "ゲームが終了しました",
   "play.old_browser": "このブラウザは古いため、ゲームを表示できません。ブラウザを更新するか、別のブラウザでこのページを開いてください。",
   "play.picture_off": "画面オフ",

@@ -2,10 +2,10 @@
 window.ZYPEROS_LANG = "en";
 window.ZYPEROS_PLURAL = n => n === 1 ? 0 : 1;
 window.ZYPEROS_STRINGS = {
-  "play.name": "Player 2",
+  "play.name": "Multiplayer",
   "play.state.connecting": "Connecting",
-  "play.state.player2": "Player 2",
-  "play.state.taken": "Player 2 is taken",
+  "play.state.player": "Player %d",
+  "play.state.full": "The game is full",
   "play.state.ended": "The game ended",
   "play.old_browser": "This browser is too old to show the game. Update it, or open this page in another browser.",
   "play.picture_off": "Picture off",

@@ -1,21 +1,22 @@
-# NES player 2's page (res/web/play, served by p2d): what a friend's phone
-# or laptop shows while it is player 2 of the game on the handheld, in the
-# handheld's language. tools/i18n.py writes these into res/web/i18n/<code>.js
+# The play page (res/web/play, served by p2d): what a friend's phone or
+# laptop shows while it is a player of the game on the handheld (player 2 on
+# the NES; up to player 4 where a system has more), in the handheld's
+# language. tools/i18n.py writes these into res/web/i18n/<code>.js
 # beside the File Transfer page's, by their whole ID; play.js's t() reads
 # them. The page's style is the File Transfer page's (web.txt): sentence
 # case, messages end with a full stop. The pad's buttons keep the names
 # printed on the handheld (A, B, SELECT, START), never translated.
 
 [play.name]
-note = The page's name, in the browser's tab and over the too-old message: the friend's browser is player 2 of an NES game on the handheld
-en = Player 2
-zh-Hans = 玩家 2
-es = Jugador 2
-pt-BR = Jogador 2
-fr = Joueur 2
-de = Spieler 2
-ja = プレイヤー 2
-it = Giocatore 2
+note = The page's name, in the browser's tab until the handheld says which player this browser is, and over the too-old message: friends play a game on the handheld from their phones or laptops
+en = Multiplayer
+zh-Hans = 多人游戏
+es = Multijugador
+pt-BR = Multijogador
+fr = Multijoueur
+de = Mehrspieler
+ja = マルチプレイ
+it = Multigiocatore
 
 # ---- the status, at the top -----------------------------------------------
 
@@ -30,34 +31,34 @@ de = Verbindung wird hergestellt
 ja = 接続中
 it = Connessione in corso
 
-[play.state.player2]
-note = The status once the handheld has taken this browser as player 2: its pad is player 2's
-en = Player 2
-zh-Hans = 玩家 2
-es = Jugador 2
-pt-BR = Jogador 2
-fr = Joueur 2
-de = Spieler 2
-ja = プレイヤー 2
-it = Giocatore 2
+[play.state.player]
+note = The status, and the browser's tab, once the handheld has taken this browser as a player: %d is its number, 2 to 4 (the handheld is player 1)
+en = Player %d
+zh-Hans = 玩家 %d
+es = Jugador %d
+pt-BR = Jogador %d
+fr = Joueur %d
+de = Spieler %d
+ja = プレイヤー %d
+it = Giocatore %d
 
-[play.state.taken]
-note = The status when another browser is player 2 already; this one gets no picture and its pad does nothing. review: pt-BR
-en = Player 2 is taken
-zh-Hans = 玩家 2 已被占用
-es = Ya hay un jugador 2
-pt-BR = Já existe um jogador 2
-fr = Il y a déjà un joueur 2
-de = Spieler 2 ist schon belegt
-ja = プレイヤー 2 はすでに参加中です
-it = C'è già un giocatore 2
+[play.state.full]
+note = The status when every player's place is taken by other browsers: this one gets no picture, its pad does nothing, and it tries again every 2 seconds. review: pt-BR
+en = The game is full
+zh-Hans = 游戏人数已满
+es = La partida está llena
+pt-BR = A partida está cheia
+fr = La partie est complète
+de = Das Spiel ist voll
+ja = このゲームは満員です
+it = La partita è al completo
 
 [play.state.ended]
-note = The status when the game on the handheld ended: quit, turned off, or Player 2 switched off there
+note = The status when the game on the handheld ended: quit, turned off, or the players switched off there
 en = The game ended
 zh-Hans = 游戏已结束
-es = El juego terminó
-pt-BR = O jogo acabou
+es = La partida terminó
+pt-BR = A partida acabou
 fr = La partie est terminée
 de = Das Spiel ist beendet
 ja = ゲームが終了しました

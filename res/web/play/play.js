@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* NES player 2, the browser half: the game's picture from the handheld, and
- * player 2's pad back to it (p2d, src/p2d/main.c).
+/* A guest player of the game on the handheld, the browser half: the game's
+ * picture from the handheld, and the player's pad back to it (p2d,
+ * src/p2d/main.c). Player 2 on the NES; the handheld says which player.
  *
  * No framework and no build step, as the File Transfer page (res/web/app.js):
  * the handheld serves this file exactly as it is written.
@@ -9,11 +10,19 @@
  * (src/p2d/codec.h: 'F', the flags, the size, the frame's number, a palette
  * when one changed, then the frame's palette indices, raw-deflated and XORed
  * with the frame before unless it is a KEY), and the status as text, "S" and
- * a line of JSON. To it, binary only: 'A' and a frame's number once that
+ * a line of JSON: {"state":"playing","player":N,"buttons":M}, or the older
+ * {"state":"player2",...}, which is player 2; "taken", every player's place
+ * held; "ended". To it, binary only: 'A' and a frame's number once that
  * frame is drawn, 'P' and the buttons held. p2d sends a frame only while
  * fewer than two wait for their ack, and drops a guest that holds one
  * unacked and says nothing for 5 s, so every frame is acked, drawn or not:
  * with Picture off or the tab hidden, at once.
+ *
+ * The first thing it asks is whether the browser can unpack a frame at all
+ * (raw deflate: Safari 16.4, Chrome 103). Above that question only the words
+ * are put in; everything else is set up in play(), after it, so a browser too
+ * old for the game is told so before anything newer than it can stop the
+ * page.
  */
 'use strict';
 
@@ -23,42 +32,54 @@ const $ = (id) => document.getElementById(id);
  *
  * The handheld's language: /i18n.js, loaded before this file, is p2d's
  * res/web/i18n/<code>.js for the language that is on, which tools/i18n.py
- * writes from res/strings/play.txt. t(id) is the string of that ID, written
- * out whole: tools/i18n.py counts a string as used only where its ID is in
- * quotes in a call of t or in a data-t attribute, never built from pieces. */
+ * writes from res/strings/play.txt. t(id, ...) is the string of that ID with
+ * its %d and %s filled, as app.js's t. tools/i18n.py counts a string as used
+ * only where its ID is written out in quotes, in a call of t or in a data-t
+ * attribute: an ID is never built from pieces. */
 const WORDS = window.ZYPEROS_STRINGS || {};
-const t = (id) => (typeof WORDS[id] === 'string' ? WORDS[id] : id);
+
+function t(id, ...args) {
+	const w = WORDS[id];
+	let at = 0;
+	return (typeof w === 'string' ? w : id).replace(/%(?:(\d+)\$)?([sd%])/g, (m, pos, c) =>
+		c === '%' ? '%' : !args.length ? m : String(args[pos ? pos - 1 : at++]));
+}
 
 document.documentElement.lang = window.ZYPEROS_LANG || 'en';
 for (const e of document.querySelectorAll('[data-t]')) e.textContent = t(e.dataset.t);
 for (const e of document.querySelectorAll('[data-t-aria]')) e.setAttribute('aria-label', t(e.dataset.tAria));
 document.title = t('play.name');
 
-const STATES = {
-	connecting: t('play.state.connecting'),
-	player2: t('play.state.player2'),
-	taken: t('play.state.taken'),
-	ended: t('play.state.ended'),
-};
-
 /* What tools/play-check.py reads: the number of the frame last drawn and the
  * acks sent. The page itself never reads them back. */
 const p2 = window.p2 = { frame: 0, acks: 0 };
 
 const game = $('game');
-let state = '';
+const view = $('view');
+const pad = $('pad');
+const dpad = $('dpad');
 
-function show(s) {
+/* ---- the status ------------------------------------------------------------ */
+
+let state = '';                 /* connecting, playing, full or ended */
+
+/* The status, and the tab: the player's number while it plays, the page's
+ * name else */
+function show(s, player) {
 	state = s;
 	game.dataset.state = s;
-	$('state').textContent = STATES[s];
+	const text = s === 'playing' ? t('play.state.player', player)
+		: s === 'full' ? t('play.state.full')
+		: s === 'ended' ? t('play.state.ended')
+		: t('play.state.connecting');
+	$('state').textContent = text;
+	document.title = s === 'playing' ? text : t('play.name');
 }
 
 /* ---- the picture --------------------------------------------------------- */
 
 const KEY = 1, PAL = 2;
 const canvas = $('screen');
-const view = $('view');
 const ctx = canvas.getContext('2d', { alpha: false });
 /* The palette as ImageData's words: R, G, B, 255 in memory */
 const pal = new Uint32Array(256).fill(0xff000000);
@@ -69,19 +90,34 @@ let pictureOn = true;
 
 const drawing = () => pictureOn && !document.hidden;
 
-/* The frame as large as its box takes it in whole device pixels, so every
- * NES pixel is the same square; smaller than one, as large as it fits */
+/* The room the picture may take. On its side (the pad's group then laid out
+ * in the game's own grid: display: contents), the view's box, which the grid
+ * gives the whole height. Upright, the view's width, and the height from its
+ * top down to what the pad's rows need: the picture right under the bar, the
+ * pad in the rest. */
+function room() {
+	const v = view.getBoundingClientRect();
+	if (getComputedStyle(pad).display === 'contents') return [v.width, v.height];
+	const ps = getComputedStyle(pad), gs = getComputedStyle(game);
+	const rows = ps.gridTemplateRows.split(' ').map(parseFloat).filter((n) => n > 0);
+	const need = rows.reduce((a, n) => a + n, 0) + (parseFloat(ps.rowGap) || 0) * Math.max(0, rows.length - 1);
+	const bottom = game.getBoundingClientRect().bottom - (parseFloat(gs.paddingBottom) || 0);
+	return [v.width, bottom - (parseFloat(gs.rowGap) || 0) - need - v.top];
+}
+
+/* The picture as large as its room takes it: whole device pixels, so every
+ * NES pixel is the same square, unless that leaves it under 85% of the room;
+ * then the room itself, still drawn as pixels (play.css) */
 function fit() {
-	const r = view.getBoundingClientRect();
-	if (!r.width || !r.height) return;
+	const [w, h] = room();
+	if (w <= 0 || h <= 0) return;
 	const dpr = window.devicePixelRatio || 1;
-	let s = Math.min(r.width / canvas.width, r.height / canvas.height);
-	const k = Math.floor(s * dpr);
-	if (k >= 1) s = k / dpr;
+	const exact = Math.min(w / canvas.width, h / canvas.height);
+	const whole = Math.floor(exact * dpr) / dpr;
+	const s = whole >= exact * 0.85 ? whole : exact;
 	canvas.style.width = canvas.width * s + 'px';
 	canvas.style.height = canvas.height * s + 'px';
 }
-new ResizeObserver(fit).observe(view);
 
 /* Raw deflate, as the codec writes it */
 async function inflate(bytes) {
@@ -159,11 +195,11 @@ async function take(b, n) {
  * KeyboardEvent.key, so Z is the key printed Z on any layout. `dpad` is an
  * arm of the d-pad; `face` the round buttons right of the picture, left to
  * right in this order, the shoulders among them for now; `mid` the pills
- * between, each in the grid area play.css gives its id. A game draws, reads
- * and sends only the buttons in its mask (`has`): the NES's until p2d's
- * player2 status names others. A new system's buttons are its mask from p2d,
- * and a row here for any button not in the table yet (with a place in
- * play.css when it needs one). */
+ * after them, each in the grid area play.css gives its id. A game draws,
+ * reads and sends only the buttons in its mask (`has`): the NES's until the
+ * status names others. A new system's buttons are its mask from p2d, and a
+ * row here for any button not in the table yet (with a place in play.css
+ * when it needs one). */
 const PAD = [
 	{ bit: 4, dir: 'up', place: 'dpad', keys: ['arrowup'] },
 	{ bit: 5, dir: 'down', place: 'dpad', keys: ['arrowdown'] },
@@ -192,29 +228,9 @@ const DPAD = ARM.up | ARM.down | ARM.left | ARM.right;
 const DIRS = [ARM.right, ARM.right | ARM.down, ARM.down, ARM.down | ARM.left,
 	ARM.left, ARM.left | ARM.up, ARM.up, ARM.up | ARM.right];
 
-const dpad = $('dpad');
-const arms = [...dpad.querySelectorAll('[data-dir]')];
-/* The buttons that are not the d-pad, each made once and shown while the
- * game has it */
-const buttons = PAD.filter((b) => b.place !== 'dpad').map((b) => {
-	const e = document.createElement('button');
-	e.type = 'button';
-	e.tabIndex = -1;
-	e.id = b.id;
-	e.dataset.bit = b.bit;
-	e.className = 'key ctl ' + (b.place === 'face' ? 'round' : 'pill');
-	if (b.place === 'face') {
-		e.textContent = b.label;
-		$('face').append(e);
-	} else {
-		const label = document.createElement('span');
-		label.textContent = b.label;
-		e.append(label);
-		game.append(e);
-	}
-	return e;
-});
-const fingers = new Map();      /* pointerId: { dpad, bits } */
+let arms = [];                  /* the d-pad's arms (play) */
+let buttons = [];               /* the buttons that are not the d-pad (play) */
+const fingers = new Map();      /* pointerId: { place, bits } */
 const keys = new Map();         /* KeyboardEvent.code: bit */
 let has = 0;                    /* the buttons this game has */
 let mask = 0;                   /* the ones held, always within has */
@@ -237,9 +253,6 @@ function update() {
 	for (const g of arms) g.classList.toggle('on', (mask & ARM[g.dataset.dir]) !== 0);
 	sendPad();
 }
-/* A held pad again every 100 ms: a lost message heals, and p2d lets a pad go
- * after a second without one */
-setInterval(() => { if (mask) sendPad(); }, 100);
 
 function direction(x, y) {
 	const r = dpad.getBoundingClientRect();
@@ -248,9 +261,11 @@ function direction(x, y) {
 	return DIRS[Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7];
 }
 
-function under(x, y) {
+/* The button of `place` under a finger: a thumb rolls from B to A, never
+ * from A onto START */
+function under(x, y, place) {
 	for (const k of buttons) {
-		if (k.hidden) continue;
+		if (k.hidden || k.dataset.place !== place) continue;
 		const r = k.getBoundingClientRect();
 		if (x >= r.left && x < r.right && y >= r.top && y < r.bottom) return 1 << k.dataset.bit;
 	}
@@ -258,47 +273,17 @@ function under(x, y) {
 }
 
 /* A finger is the d-pad's from where it lands to where it lifts, wherever it
- * slides; one that lands on a button holds whichever button it is on, so a
- * thumb rolls from B to A */
+ * slides; one that lands on a button holds whichever button of its group it
+ * is on */
 function move(e) {
 	const f = fingers.get(e.pointerId);
-	const bits = f.dpad ? direction(e.clientX, e.clientY) : under(e.clientX, e.clientY);
+	const bits = f.place === 'dpad' ? direction(e.clientX, e.clientY) : under(e.clientX, e.clientY, f.place);
 	if (bits === f.bits) return;
 	const pressed = bits & ~f.bits;
 	f.bits = bits;
 	update();
 	if (pressed && e.pointerType !== 'mouse' && navigator.vibrate) navigator.vibrate(10);
 }
-
-for (const c of document.querySelectorAll('.ctl')) {
-	c.addEventListener('pointerdown', (e) => {
-		e.preventDefault();
-		/* Its moves and its lift come here even off the page */
-		try { c.setPointerCapture(e.pointerId); } catch (err) { /* gone already */ }
-		fingers.set(e.pointerId, { dpad: c === dpad, bits: 0 });
-		move(e);
-	});
-}
-document.addEventListener('pointermove', (e) => { if (fingers.has(e.pointerId)) move(e); });
-const lift = (e) => { if (fingers.delete(e.pointerId)) update(); };
-document.addEventListener('pointerup', lift);
-document.addEventListener('pointercancel', lift);
-game.addEventListener('contextmenu', (e) => e.preventDefault());
-
-document.addEventListener('keydown', (e) => {
-	if (e.ctrlKey || e.metaKey || e.altKey) return;
-	const bit = BY_KEY[(e.key || '').toLowerCase()];
-	if (bit === undefined || !(has & bit)) return;
-	e.preventDefault();
-	if (keys.get(e.code) === bit) return;
-	keys.set(e.code, bit);
-	update();
-});
-document.addEventListener('keyup', (e) => {
-	if (!keys.delete(e.code)) return;
-	e.preventDefault();
-	update();
-});
 
 /* The game's buttons: drawn, in the keys line, and the only ones read or
  * sent. Any held that it has not got go at once. */
@@ -318,8 +303,8 @@ function setButtons(m) {
 		return item;
 	}));
 	update();
+	fit();
 }
-setButtons(NES);
 
 /* A page that is not looked at holds nothing: the keys' lifts go to
  * another window, and a hidden tab's timers slow past p2d's second */
@@ -328,20 +313,14 @@ function letGo() {
 	keys.clear();
 	update();
 }
-window.addEventListener('blur', letGo);
-document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
-
-/* Picture off: the friend watches the handheld, and the phone is the pad */
-$('picoff').addEventListener('change', (e) => {
-	pictureOn = !e.target.checked;
-	game.classList.toggle('padonly', !pictureOn);
-});
 
 /* ---- the link ----------------------------------------------------------- */
 
-/* The status and the frames, the frames in their order. Taken and ended are
- * the end: p2d closes the socket and the page stays as it is. Any other
- * close is a link lost, tried again every 2 s. */
+/* The status and the frames, the frames in their order. Ended is the end:
+ * p2d closes the socket and the page stays as it is. Any other close is
+ * tried again every 2 s, a full game too, saying so meanwhile: the place it
+ * waits for may be its own, held by p2d until it finds the old link gone, or
+ * another player's who leaves. */
 function connect() {
 	const sock = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/p2ws');
 	let frames = Promise.resolve();
@@ -356,22 +335,108 @@ function connect() {
 		let msg = null;
 		try { msg = e.data[0] === 'S' ? JSON.parse(e.data.slice(1)) : null; } catch (err) { /* not ours */ }
 		const s = msg && msg.state;
-		if (s === 'player2' || s === 'taken' || s === 'ended') {
-			if (s === 'player2') {
-				/* A new player 2's first frame is a KEY with its palette */
-				idx = null;
-				/* The game's buttons, where p2d names them; an NES's else */
-				setButtons(typeof msg.buttons === 'number' ? msg.buttons : NES);
-			}
-			show(s);
+		if (s === 'playing' || s === 'player2') {
+			/* A new player's first frame is a KEY with its palette */
+			idx = null;
+			/* The game's buttons, where p2d names them; an NES's else */
+			setButtons(typeof msg.buttons === 'number' ? msg.buttons : NES);
+			show('playing', s === 'playing' && Number.isInteger(msg.player) ? msg.player : 2);
+		} else if (s === 'taken') {
+			show('full');
+		} else if (s === 'ended') {
+			show('ended');
 		}
 	};
 	sock.onclose = () => {
 		if (ws === sock) ws = null;
-		if (state === 'taken' || state === 'ended') return;
-		show('connecting');
+		if (state === 'ended') return;
+		if (state !== 'full') show('connecting');
 		setTimeout(connect, 2000);
 	};
+}
+
+/* ---- the start ---------------------------------------------------------- */
+
+/* Everything the game needs, once the browser can unpack a frame */
+function play() {
+	arms = [...dpad.querySelectorAll('[data-dir]')];
+	/* The buttons that are not the d-pad, each made once and shown while the
+	 * game has it: the face group's in #face, SELECT and START after it */
+	buttons = PAD.filter((b) => b.place !== 'dpad').map((b) => {
+		const e = document.createElement('button');
+		e.type = 'button';
+		e.tabIndex = -1;
+		e.id = b.id;
+		e.dataset.bit = b.bit;
+		e.dataset.place = b.place;
+		e.className = 'key ctl ' + (b.place === 'face' ? 'round' : 'pill');
+		if (b.place === 'face') {
+			e.textContent = b.label;
+			$('face').append(e);
+		} else {
+			const label = document.createElement('span');
+			label.textContent = b.label;
+			e.append(label);
+			pad.append(e);
+		}
+		return e;
+	});
+
+	const ro = new ResizeObserver(fit);
+	for (const e of [game, view, document.querySelector('.bar')]) ro.observe(e);
+
+	for (const c of document.querySelectorAll('.ctl')) {
+		c.addEventListener('pointerdown', (e) => {
+			e.preventDefault();
+			/* Its moves and its lift come here even off the page */
+			try { c.setPointerCapture(e.pointerId); } catch (err) { /* gone already */ }
+			fingers.set(e.pointerId, { place: c === dpad ? 'dpad' : c.dataset.place, bits: 0 });
+			move(e);
+		});
+	}
+	document.addEventListener('pointermove', (e) => { if (fingers.has(e.pointerId)) move(e); });
+	const lift = (e) => { if (fingers.delete(e.pointerId)) update(); };
+	document.addEventListener('pointerup', lift);
+	document.addEventListener('pointercancel', lift);
+	game.addEventListener('contextmenu', (e) => e.preventDefault());
+
+	document.addEventListener('keydown', (e) => {
+		/* A Mac sends no keyup for a key let go while Cmd is down: what is
+		 * held goes when Cmd comes, rather than staying held */
+		if (e.key === 'Meta') {
+			keys.clear();
+			update();
+			return;
+		}
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
+		const bit = BY_KEY[(e.key || '').toLowerCase()];
+		if (bit === undefined || !(has & bit)) return;
+		e.preventDefault();
+		if (keys.get(e.code) === bit) return;
+		keys.set(e.code, bit);
+		update();
+	});
+	document.addEventListener('keyup', (e) => {
+		if (!keys.delete(e.code)) return;
+		e.preventDefault();
+		update();
+	});
+	window.addEventListener('blur', letGo);
+	document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
+
+	/* A held pad again every 100 ms: a lost message heals, and p2d lets a
+	 * pad go after a second without one */
+	setInterval(() => { if (mask) sendPad(); }, 100);
+
+	/* Picture off: the friend watches the handheld, and the phone is the pad */
+	$('picoff').addEventListener('change', (e) => {
+		pictureOn = !e.target.checked;
+		game.classList.toggle('padonly', !pictureOn);
+	});
+
+	setButtons(NES);
+	show('connecting');
+	connect();
 }
 
 /* Safari before 16.4 has no raw deflate to unpack a frame with: it says so,
@@ -386,8 +451,7 @@ function inflates() {
 }
 
 if (inflates()) {
-	show('connecting');
-	connect();
+	play();
 } else {
 	game.hidden = true;
 	$('old').hidden = false;
