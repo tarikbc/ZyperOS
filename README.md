@@ -150,7 +150,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **A first start that asks:** Zyper says hello in each language until you pick yours, teaches each button and shows where it is on the Pixel 2, then asks for the theme, the home screen, the button sounds and the menu music ([below](#the-first-start)).
 - **An empty card that says what to do:** with no games yet, the home shows the two ways to add them, one button each, and Zyper cheers when the first ones arrive.
 - **Your folders, kept:** sort a system's games into folders on the card, "Homebrew", "Rom Hacks", "Translations" inside it, as deep as you like, and the shelf shows them as you made them: the folders first, each a pixel-art folder in the system's color with papers in it and its count of games, then the loose games. A opens a folder, B goes back up. A disc set, a ScummVM game and a port stay one game each, as before. Favorites, Search Games, Random Game, Storage, Delete Game, play time and resume all reach the games inside folders.
-- **Covers or a list:** **MENU > View** on a system's shelf turns its row of covers into a list of names, each with a small card in the system's color, and the focused game's cover and play time beside it. Up and Down step, Left and Right jump a letter, and the focused game's video snap plays in its cover's place, as on the row. Each system keeps its own choice, as it keeps its sort order.
+- **Covers or a list:** **START** on a system's shelf, or **MENU > View**, turns its row of covers into a list of names, each with a small card in the system's color, and the focused game's cover and play time beside it; **START** again brings the covers back. Up and Down step, Left and Right jump a letter, and the focused game's video snap plays in its cover's place, as on the row. Each system keeps its own choice, as it keeps its sort order.
 - **MENU in tabs:** Games, Display, Sound, Connections, System and About, with **L1** and **R1** going round them. MENU opens on the tab you left it on, and every list goes round: Down on the last row goes to the first, and a long list carries on past its end, while a held button stops at the end.
 - **Your look:** **MENU > Display > Theme** picks the accent (ten of them, lime as it ships), a background tone for the light theme (warm, neutral or cool) and one for the dark (black, deep blue or dark grey), rounded or square corners, and Zyper on or off, with both themes shown small as you go. Every color is worked out to stay readable, and the volume bar over a game follows ([below](#light-and-dark)).
 - **Search Games and Random Game:** **MENU > Search Games** finds any game by a few letters of its name, on any system. **Random Game** picks one and starts it, from every system in MENU or from one shelf in that system's menu.
@@ -165,6 +165,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **Auto Off waits for long jobs:** a Scraper run, a System Update download, PortMaster's install, Storage measuring the card and files moving over File Transfer hold it, and a whole countdown starts when they end.
 - **Wi-Fi File Transfer:** move games, music, audiobooks, videos, saves and covers on and off the card from any browser on your Wi-Fi, behind a PIN, on [a page made for it](#the-file-transfer-page), on a computer or a phone. With no Wi-Fi network around, the handheld makes [its own](#no-wi-fi-network-around), for a phone that scans the QR code on the screen. Or use the USB cable, with no Wi-Fi at all, as USB File Transfer. Open it by name, `http://zyperos.local`, or by its address, and until a browser opens the page the screen checks the connection step by step and says what to do if a step stalls. A transfer keeps going while you go back to the shelf, with a mark in the corner; B asks before it stops one halfway; the page shows the time left, checks the room on the card first, and its Settings page updates ZyperOS over the cable. Drag files onto a folder to move them there.
 - **USB that only charges until you say so:** plug in a computer and the Pixel 2 asks whether it should charge, open USB File Transfer, or (on development images) bring up SSH. [Developer mode](#developer-mode) brings SSH up on a release image.
+- **Player 2 on a friend's phone:** on the Pixel 2, **Player 2** in an NES game's in-game menu lets a friend play the second controller in a browser, with no app and no account. With a Wi-Fi adapter in, the handheld makes a network just for the game and shows its QR code: the friend scans it, and the game opens on the phone with a touch pad under the picture. A computer on the USB cable opens `zyperos.local/play` and plays with the keyboard. The page speaks the handheld's language and wears its theme. A game controller paired with the phone comes with a later update ([how](#player-2-a-friend-on-a-phone)).
 - **System Update:** [over Wi-Fi](#system-update), only what changed, signed, with Roll Back. Without Wi-Fi, the File Transfer page brings it over the USB cable.
 - **Autosave and resume,** plus six save slots for when you want a checkpoint.
 - **Quick save and quick load, without opening a menu:** hold SELECT and press **R1** to save a state, **L1** to load it back. A pop-up names the slot. **Quick Slot** in the in-game menu picks which of the six slots the two use, for each system, and the card remembers it. SELECT is still each game's own button: pressed alone, it reaches the game as you let go of it; only SELECT with a shoulder is a hotkey.
@@ -181,7 +182,7 @@ Questions, ideas, or want to help build it? Come say hi on [the ZyperOS Discord]
 - **MP4, a media player for music, audiobooks and videos:** your albums, books and films on one shelf of their own covers, mixed, each with a small mark in its corner for an album, a book or a video, or one kind at a time with **MENU > Show**; every book and every video picks up where you left it, and **Shuffle All** plays every song on the card in a random order. SELECT opens MP4 from anywhere, even the in-game menu, and it keeps playing when you close it. While it plays, the game is silent. **X**, or **SELECT + START** together, locks it: the screen goes dark and every button but volume stops working, POWER included, until you hold **SELECT + START** for two seconds. Any other press shows how to unlock for a moment, a volume press lights the screen just long enough to show the volume bar, and a video stays in sight.
 - **Menu music:** ten free 8-bit tracks play behind the shelf and the menus, never over a game, and **MENU > Menu Music** shuffles them, plays one over and over or turns them off. Put your own MP3 or Ogg files in `Roms/BGM` and those play instead. On the shelf, **L2** and **R2** go to the song before or the next, and Zyper pops up with each new song's name, read from its tags. While MP4 plays behind the shelf, L2 and R2 skip its tracks (or a book's chapters) instead.
 - **The top bar:** the clock, Wi-Fi, headphones in the jack and the battery at the top of the home screen, every MP4 screen and the in-game menu, and the song that plays, with its note. **MENU > Clock** chooses 12-hour or 24-hour, and **MENU > Battery Icon** shows the battery as bars alone, with its percentage, or with the time left. Time Left counts down to where ZyperOS saves and powers off. It starts from the charge and current the battery gauge reports, so a time appears at once, and moves over to how fast the battery has been falling as that proves itself; for the moment before the first number it shows three dots filling in turn. On the cable it shows the time to full, or to the Charge Limit, then "On hold" when the Charge Limit is holding the charge and "Charged" when the battery is full.
-- **The Pixel 2's side lights** show the battery charging and running low, the volume or brightness as you change it, a climb when files or covers finish, and a sparkle for an achievement; **MENU > Side Lights** turns each on or off. On the charger, the shelf's screen goes dark after the Auto Off time, and any button lights it again; USB File Transfer's goes dark too when nothing is moving, and only dims while files are on their way.
+- **The Pixel 2's side lights** show the battery charging and running low, the volume or brightness as you change it, a wave while files move to or from the card (down while they come in, up while they go out, in Flash Drive and on File Transfer's page, faster for a faster transfer), a climb when files or covers finish, and a sparkle for an achievement; **MENU > Side Lights** turns each on or off, and plays each on the lights as you move over it. On the charger, the shelf's screen goes dark after the Auto Off time, and any button lights it again; USB File Transfer's goes dark too when nothing is moving, and only dims while files are on their way.
 - **Battery care:** a battery too low to start says so and charges first; a charger plugged in while the Pixel 2 is off shows the charge and the time to full (hold POWER to start); **Getting hot** warns before the handheld slows down to cool, over a game or a port; and **MENU > Charge Limit** stops charging at 80, 85 or 90% to keep the battery young, and holds it within 2 points of the limit on the cable (78 to 80% at 80%). Need it all for a trip? **Y** on the charging screen charges to 100% this time; the limit is back when the cable comes out.
 - **About,** besides the version and the card, tells [the story of the name](#the-name) beside a photo of Zyper, and thanks the projects ZyperOS is built on.
 - **Play Time:** how long you've played each game or console, today, this week, this month, this year or ever.
@@ -218,7 +219,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **PortMaster** | Yes, installed from the Ports shelf with one press, with the in-game menu over every port | Yes | Yes | — | Yes | Yes |
 | **Rumble** | Yes | — | Yes | No | Yes | — |
 | **Shaders** | Sharp-Shimmerless, CRT (flat or curved), scanlines and an LCD grid, for one system or every system | — | A screen filter in DraStic | — | Built in, per game or per system | — |
-| **Side lights** | Battery, volume and brightness, finished transfers, achievements: each on or off | — | — | Battery | Battery | — |
+| **Side lights** | Battery, volume and brightness, files moving and finished, achievements: each on or off | — | — | Battery | Battery | — |
 | **Folders of games, and a list** | Folders to any depth, each with its count; covers or a list for each system | EmulationStation's | — | — | EmulationStation's | — |
 | **Storage by part and by game** | Yes, with recommendations and media pages | — | — | — | — | — |
 | **Pick a game's cover on the device** | From three sources, a big look first, the old one kept to put back | — | — | — | — | — |
@@ -228,6 +229,7 @@ The GKD Pixel 2 has several operating systems to choose from. This is ZyperOS be
 | **Battery time left** | Time left, or time to full on the cable | — | — | — | — | — |
 | **A DS game's language** | Picked per game, whatever `firmware.bin` says | — | — | — | — | — |
 | **Charging screen when off** | Yes | — | — | — | — | — |
+| **A second player in a browser** | NES games: a friend's phone or computer, over the handheld's own Wi-Fi or the USB cable | — | — | — | — | — |
 | **Boot time** | 1.6 s<sup>4</sup>, about 2 s from power on<sup>5</sup> | 30 to 40 s from power on<sup>5</sup> | — | 2.2 s<sup>4</sup> | — | — |
 
 — means none of the sources below says either way. The Pixel 2 has no Wi-Fi of its own, so on every system a Wi-Fi feature needs a USB Wi-Fi adapter. Knulli, muOS, twigUI (spruceOS) and a MinUI port run on the Pixel 2 too.
@@ -383,7 +385,7 @@ EmulationStation's folder names work too, as they are: `nds`, `gba`, `psx`, `meg
 
 <img align="right" width="320" src="res/readme/controls-psp.png" alt="A PSP game's Controls page in the in-game menu: L1/R1 are L/R, R2 is the d-pad as the stick, START/SELECT are Start/Select">
 
-**PSP games** run on PPSSPP, with no BIOS: copy the `.iso`, `.cso`, `.chd` or `.pbp` into `Roms/PSP`. ZyperOS ships PPSSPP's own files, the PSP's fonts among them, and puts them in `Bios/PPSSPP`. The PSP's buttons are where a PlayStation pad has them, **L1** and **R1** its L and R. The Pixel 2 has no analog stick, and a PSP game moves with its stick or with its d-pad, game by game. A game starts with the d-pad as the d-pad; **R2** turns it into the analog stick, and **R2** again turns it back. ZyperOS remembers this for each game, so a game you play with the stick starts with it the next time. A game's own saves are in `Saves/PSP/SAVEDATA`, as on a PSP's memory stick, so saves from PPSSPP on another system copy straight in. PPSSPP runs at the PSP's own 480x272 and leaves a frame undrawn when a game falls behind, to keep its speed. A heavy 3D game can still run slower than a real PSP on the Pixel 2.
+**PSP games** run on PPSSPP, with no BIOS: copy the `.iso`, `.cso`, `.chd` or `.pbp` into `Roms/PSP`. ZyperOS ships PPSSPP's own files, the PSP's fonts among them, and puts them in `Bios/PPSSPP`. The PSP's buttons are where a PlayStation pad has them, **L1** and **R1** its L and R. The Pixel 2 has no analog stick, and a PSP game moves with its stick or with its d-pad, game by game. A game starts with the d-pad as the d-pad; **R2** turns it into the analog stick, and **R2** again turns it back. ZyperOS remembers this for each game, so a game you play with the stick starts with it the next time. A game's own saves are in `Saves/PSP/SAVEDATA`, as on a PSP's memory stick, so saves from PPSSPP on another system copy straight in. PPSSPP runs at the PSP's own 480x272 and draws every frame. A heavy 3D game can still run slower than a real PSP on the Pixel 2.
 
 <br clear="right">
 
@@ -454,14 +456,14 @@ A card with no games opens on **No games yet** and the two ways to add them: **A
 
 ### Adding games over Wi-Fi
 
-<img align="right" width="360" src="res/readme/hare.png" alt="Wi-Fi File Transfer, with a browser connected">
+<img align="right" width="360" src="res/readme/hare-way.png" alt="Wi-Fi File Transfer before anyone signs in: the address in large type, zyperos.local under it, and the PIN as four large digits">
 
 1. Join a network under **MENU > Wi-Fi**.
-2. Open **MENU > Wi-Fi File Transfer**. It shows an address and a PIN, and beside the PIN its name, `zyperos.local`.
+2. Open **MENU > Wi-Fi File Transfer**. It shows an address in large type, its name `zyperos.local` under it, and a PIN.
 3. Open that address (or `http://zyperos.local`) in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
 4. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen.
 
-The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Until a browser opens the page, the screen shows **Wi-Fi** and **Browser** with a tick each, and after 30 seconds with no browser it says what to type.
+The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Once someone types the PIN, the screen shows who is connected and what is copying, with the address and the PIN in its heading for the next browser, and it stays that way until you close it.
 
 <br clear="right">
 
@@ -473,7 +475,7 @@ On the Pixel 2 with the adapter in and no network joined, Wi-Fi File Transfer ma
 
 1. Open **MENU > Wi-Fi File Transfer**. It shows a QR code, the network's name and password, and the PIN.
 2. Scan the code with the phone's camera and join the network. A laptop joins with the name and the password.
-3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN.
+3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN. The code then makes way for who is connected, with the network, its password and the PIN in the heading for another phone.
 
 Close the screen and the network goes, and Wi-Fi is as it was. The phone's sign-in sheet is a small browser: on an iPhone it uploads but can't save a download, and on Android it downloads but can't upload. The page says how to open it in the real browser.
 
@@ -487,7 +489,7 @@ The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works w
 
 On the Pixel 2 the USB port only charges until you say otherwise, so a computer sees nothing at first. When one is plugged in, the shelf asks once (MENU closes for it; a game is never interrupted), **Computer Connected**: **Charge Only** (where it starts, and what **B** means), **File Transfer**, **Flash Drive** (and on development images **Developer (SSH)**). A wall charger is never asked about. **Flash Drive** makes the card a plain flash drive that any computer opens with no driver, Windows 10 included: ZyperOS steps aside, its screen showing how fast the computer copies to the card and reads from it, and how much, until you eject it on the computer or pull the cable, then the card is checked if needed and ZyperOS comes back where it was. The handheld never uses the card while the computer has it.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows its name, `http://zyperos.local`, its address and a PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. While the computer connects, it shows a bar; then its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
 2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
@@ -495,15 +497,15 @@ On the Pixel 2 the USB port only charges until you say otherwise, so a computer 
 
 #### If the page does not open
 
-<img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer checking the connection: Cable and Address ticked, Browser waiting">
+<img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer when the computer takes no address: Address waiting, and a hint to check Network adapters in Device Manager">
 
-On the Pixel 2, until a browser opens the page, USB File Transfer shows the connection as the handheld sees it, in three steps that tick as the computer gets there:
+On the Pixel 2, USB File Transfer shows **Connecting to the computer** and a bar until the computer has its address, then the address and the PIN. Under them it says where the connection is: **Cable**, **Address**, **Browser** or **PIN**, waiting. When a step before the browser waits too long, the screen shows the connection as the handheld sees it, in three steps that tick as the computer gets there, with what to do about the one that waits:
 
 - **Cable**: the computer took the handheld and opened its network. `unplugged` means no computer is on the cable: some USB cables only charge, so try another. Still waiting after 10 seconds, the screen says why: the computer did not answer (try another port or cable), or it has no driver for the handheld (on Windows, look in Device Manager).
 - **Address**: the computer took the address the handheld gives it, `10.42.0.2`. After 10 seconds without one, the screen points to Network adapters in Windows' Device Manager.
-- **Browser**: a browser asked for the page. After 30 seconds without one, the screen says what to type, and to turn off any VPN or proxy, which can send the address somewhere else.
+- **Browser**: a browser asked for the page. The screen shows what to type at full size, so if no browser gets there, check the address against the screen, and turn off any VPN or proxy, which can send the address somewhere else.
 
-Once a browser opens the page, the screen shows File Transfer as usual. If the cable comes out, the steps come back.
+Once someone types the PIN, the screen shows File Transfer as usual. If the cable comes out before that, the steps come back.
 
 - **Cable** says `waiting` when the computer is on the cable but didn't connect. After 5 seconds the hint says to unplug the cable and plug it back in; it can take a few tries.
 
@@ -555,6 +557,32 @@ The page that opens in the browser is the same for Wi-Fi File Transfer, the hand
 - **On the handheld's own network** the page opens by itself in the phone's sign-in sheet, with a note on what that small browser can't do.
 
 The page is light or dark as the phone or computer is. When File Transfer closes, the handheld reads the card again, so what arrived is on the shelf.
+
+### Player 2: a friend on a phone
+
+On the Pixel 2, a friend can play an NES game with you as player 2, on their phone or a computer, with nothing to install. Your buttons stay player 1, and the sound stays on the handheld.
+
+1. In an NES game, press **MENU** and choose **Player 2**, under Shader.
+2. **With a USB Wi-Fi adapter in,** press **A**. The handheld makes a Wi-Fi network just for this game and shows its QR code, its name and its password. Your friend scans the code with the phone's camera, and the game opens on the phone. If it doesn't open by itself, `10.42.1.1/play` in the phone's browser does it.
+
+   **With a computer on the USB cable,** press **A** and open `zyperos.local/play` in the computer's browser.
+3. **Continue** goes back to the game. A notice says when your friend joins and when they leave.
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="res/readme/player2-hotspot.png" width="320" alt="Player 2's page over a paused NES game: Scan with your phone's camera; the game opens. A QR code, the network ZyperOS-7A2B and its password, Or open 10.42.1.1/play, and Player 2 waiting"><br><sub>On the handheld: scan to join</sub></td>
+    <td align="center"><img src="res/readme/play-phone.png" width="150" alt="The play page on a phone held upright: Player 2 and Picture off at the top, the game's picture, then a d-pad, B and A, SELECT and START"><br><sub>On the phone</sub></td>
+    <td align="center"><img src="res/readme/play-phone-side.png" width="330" alt="The play page on a phone on its side: the picture the whole height in the middle, the d-pad and SELECT at the left, B, A and START at the right"><br><sub>On its side</sub></td>
+  </tr>
+</table>
+
+</div>
+
+The phone shows the game's picture as large as its screen allows, and an NES pad under it: the d-pad, **B** and **A**, SELECT and START, several fingers at once. On its side, the picture takes the whole height between the pad's halves. On a computer the keyboard is the pad: the arrow keys, **Z** for B, **X** for A, **Shift** for SELECT and **Enter** for START. **Picture off** hides the picture for a friend who would rather watch the handheld, and the pad takes the whole screen. The page speaks the handheld's language and wears its theme, light or dark, accent and corners. A button is never left held: if the phone locks or goes out of range, the handheld lets go of player 2's buttons about a second later.
+
+**A** on the Player 2 page stops it, and so does the end of the game, however it ends; the network goes, and Wi-Fi is back as it was. It needs a recent browser (Safari 16.4 or Chrome 103 and later); an older one says so. For now it's NES games, two players, with the touch pad or the keyboard: a game controller paired with the phone doesn't work yet. That needs the page over HTTPS, and comes with a later update.
 
 ### System Update
 
@@ -608,6 +636,7 @@ Everything ZyperOS keeps is on the card, Wi-Fi passwords and Bluetooth pairings 
 | **SELECT + R1 / L1** | In a game, quick save and quick load, to the in-game menu's Quick Slot |
 | **SELECT + R2 / L2** | In a game, faster (1.5x, 2x, 3x) and slower, back to normal speed |
 | **X / Y** | In a game, turbo A and B. On the shelf, X opens a game's details (Favorite, with Y, and Delete Game) and Y starts a game from the start |
+| **START** on a shelf | Covers or a list: turns the row of covers into a list of names and back, as MENU > View does |
 | **POWER** | Save and turn off. Over a port, it ends the port first. The next start continues the game; after a crash or a power cut it starts on the home |
 | **MENU + START**, held a second | The way out: ends whatever runs, a stuck game or port included, and brings back the home |
 | **MENU** over a port | The in-game menu over it: Continue, Controls, Quit (or **X**) |

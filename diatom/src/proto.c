@@ -209,6 +209,8 @@ static void parse_line(char *line, diatom_msg *out)
 	else if (!strcmp(field, "SETSCREENS")) out->kind = DIATOM_MSG_SETSCREENS;
 	else if (!strcmp(field, "STYLUS"))     out->kind = DIATOM_MSG_STYLUS;
 	else if (!strcmp(field, "SETSTYLUS"))  out->kind = DIATOM_MSG_SETSTYLUS;
+	else if (!strcmp(field, "PLAYER2"))    out->kind = DIATOM_MSG_PLAYER2;
+	else if (!strcmp(field, "SETPLAYER2")) out->kind = DIATOM_MSG_SETPLAYER2;
 	else {
 		log_(DIATOM_LOG_WARN, "proto: ignoring unknown verb '%s'", field);
 		out->kind = DIATOM_MSG_NONE;
@@ -232,6 +234,13 @@ static void parse_line(char *line, diatom_msg *out)
 		/* SETLOWBATTERY's second flag: the battery is critical, and the
 		 * disc blinks. "1" or not, as `on`. */
 		else if (!strcmp(field, "blink")) out->blink = (strcmp(v, "1") == 0);
+		/* SETPLAYER2's. A mask reads best in hex and a launcher may well
+		 * send it so; anything else is decimal, never octal, so 0100 is a
+		 * hundred. Nothing readable is 0, the NES's (player2.h). */
+		else if (!strcmp(field, "buttons"))
+			out->buttons = (uint32_t)(v[0] == '0' && (v[1] == 'x' || v[1] == 'X')
+			                          ? strtoul(v + 2, NULL, 16) : strtoul(v, NULL, 10));
+		else if (!strcmp(field, "players")) out->players = strtol(v, NULL, 10);
 		else if (!strcmp(field, "core")) snprintf(out->core, sizeof out->core, "%s", v);
 		else if (!strcmp(field, "rom"))  snprintf(out->rom,  sizeof out->rom,  "%s", v);
 		/* A key the original protocol did not define, which costs nothing to
@@ -414,7 +423,17 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * and a SAVE or LOAD while the game runs is answered when its file
 		 * is done, SAVE taking preview= too. A launcher that sees proto=12
 		 * knows the hotkeys are not there to promise. */
-		diatom_proto_send("READY\tproto=13\tstate=%s", running ? "running" : "idle");
+		/* proto=14 adds NES player 2: SETPLAYER2 on=1 while a game runs puts
+		 * its frames in a file p2d maps too and reads port 1 from it
+		 * (player2.h), answered PLAYER2. Additive: an old Diatom ignores
+		 * SETPLAYER2 and never answers it, so the launcher's start waits
+		 * out its half second for PLAYER2 and fails cleanly, telling it
+		 * off in case it answers late (ZyperOS's src/p2.c); the launcher
+		 * does not read proto= for it. Its on=1 takes buttons= (the
+		 * system's RetroPad bits) and players= (2 to 4, the guests ports 1
+		 * to players-1), the NES's 0x01FD and 2 when not said, and PLAYER2
+		 * says both while it is on. */
+		diatom_proto_send("READY\tproto=14\tstate=%s", running ? "running" : "idle");
 		/* A displaced launcher is a vanished one, and every loop already
 		 * knows what that means - the in-game menu resumes the game. Said
 		 * after READY, so the new launcher hears where things stand first. */

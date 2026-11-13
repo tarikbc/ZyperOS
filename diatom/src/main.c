@@ -25,6 +25,7 @@
 #include "diatom.h"
 #include "levels.h"
 #include "now.h"
+#include "player2.h"
 #include "screens.h"
 
 /* --- the frame the core last handed us ----------------------------------- */
@@ -462,6 +463,10 @@ static void on_crash(int sig, siginfo_t *si, void *uc)
 				break;
 			}
 
+	/* Player 2's file goes with the game, so p2d is not left serving a
+	 * picture that will never move again (player2.h) */
+	p2_abandon();
+
 	/* Then where, for the log: after the launcher has heard, since a stalled
 	 * stderr would block these writes. */
 	crash_where(si, uc);
@@ -488,6 +493,9 @@ static void on_crash(int sig, siginfo_t *si, void *uc)
  * for: after a normal EXIT there is nothing left to say. */
 static void on_exit_hook(void)
 {
+	/* A core's exit() ends player 2's game too. Not p2_set: a core's thread
+	 * may still be drawing into the share, and the process unmaps it anyway. */
+	p2_abandon();
 	if (g_phase == PHASE_IDLE) return;
 	if (g_phase == PHASE_RUNNING)
 		diatom_proto_send("EXIT\treason=crash\tmsg=core called exit");
@@ -1610,6 +1618,56 @@ static void screens_switch(void)
 	if (on != was) stylus_emit();
 }
 
+/* Guest players, NES player 2 first (player2.h), which the launcher turns
+ * on from the in-game menu with the system's buttons and players. On only
+ * while a game is loaded: the share is that game's frames, so between games
+ * the answer is on=0 rather than a file nothing will draw into. Every game
+ * starts with it off and ends with it off (run_session and the frame loop's
+ * end). While on, the answer says what it gives, so the launcher hears what
+ * Diatom made of what it sent. */
+static void player2_emit(void)
+{
+	if (p2_on())
+		diatom_proto_send("PLAYER2\ton=1\tbuttons=0x%04X\tplayers=%u",
+		                  (unsigned)p2_buttons(), p2_players());
+	else
+		diatom_proto_send("PLAYER2\ton=0");
+}
+
+/* The guests' ports this game has given a joypad (guest_ports) */
+static bool g_guest_port_set[P2S_GUESTS];
+
+/* Every guest's port a joypad, once a game, as RetroArch gives every port
+ * one: Diatom sets port 0 alone as it loads the game, and a core may want
+ * its port 1 set before it reads it. Not on a port the core says it has
+ * not got. */
+static void guest_ports(void)
+{
+	for (unsigned port = 1; port < p2_players() && port <= P2S_GUESTS; port++) {
+		if (g_guest_port_set[port - 1]) continue;
+		if (g_core->ports > 0 && (int)port >= g_core->ports) continue;
+		g_core->set_controller_port_device(port, RETRO_DEVICE_JOYPAD);
+		g_guest_port_set[port - 1] = true;
+		printf("diatom: player 2: port %u is a joypad\n", port);
+	}
+}
+
+static void player2_set(bool on, uint32_t buttons, long players)
+{
+	if (g_phase != PHASE_RUNNING) on = false;
+	if (on != p2_on() && p2_set(on, buttons, players)) {
+		if (on) {
+			printf("diatom: player 2 on, buttons 0x%04X, %u players\n",
+			       (unsigned)p2_buttons(), p2_players());
+			guest_ports();
+		} else {
+			printf("diatom: player 2 off\n");
+		}
+		fflush(stdout);
+	}
+	player2_emit();
+}
+
 /* Socket mode's premap, on its own thread. A signal may land on this thread
  * too, which the wake pipe above already allows for.
  *
@@ -1683,6 +1741,8 @@ static bool state_plane_msg(const diatom_msg *m)
 	case DIATOM_MSG_SETSCREENS: screens_set(m);      return true;
 	case DIATOM_MSG_STYLUS:     stylus_emit();       return true;
 	case DIATOM_MSG_SETSTYLUS:  stylus_set(m->on);   return true;
+	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
+	case DIATOM_MSG_SETPLAYER2: player2_set(m->on, m->buttons, m->players); return true;
 	case DIATOM_MSG_PREMAP:
 		/* The launcher has drawn: the cores and the sound device, which both
 		 * waited so as not to compete with its start. */
@@ -1743,6 +1803,7 @@ static void bg_report(bool wait, bool apply)
 		diatom_proto_send(ok ? "SAVED\tpath=%s" : "ERROR\tcode=save_failed\tmsg=%s", path);
 		break;
 	case DIATOM_BG_LOAD:
+		if (apply && ok) diatom_rumble_forget();
 		if (apply)
 			diatom_proto_send(ok ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
 			                  path);
@@ -1783,9 +1844,12 @@ static bool game_msg(const diatom_msg *m)
 				diatom_proto_send("ERROR\tcode=state_rejected\tmsg=%s", m->path);
 			return true;
 		}
-		diatom_proto_send(diatom_state_load(g_core, m->path)
-		                  ? "LOADED\tpath=%s" : "ERROR\tcode=state_rejected\tmsg=%s",
-		                  m->path);
+		if (diatom_state_load(g_core, m->path)) {
+			diatom_rumble_forget();
+			diatom_proto_send("LOADED\tpath=%s", m->path);
+		} else {
+			diatom_proto_send("ERROR\tcode=state_rejected\tmsg=%s", m->path);
+		}
 		return true;
 	case DIATOM_MSG_RESET:
 		/* The menu's Reset row, or a launcher's reset while the game runs.
@@ -1795,6 +1859,7 @@ static bool game_msg(const diatom_msg *m)
 		/* Same reason as a state load, one step further: the game is back at
 		 * the title screen and nothing in progress survived. */
 		diatom_cheevos_runtime_reset();
+		diatom_rumble_forget();
 		diatom_proto_send("RESETDONE");
 		return true;
 	case DIATOM_MSG_OPTIONS:
@@ -2084,6 +2149,8 @@ static int run_session_inner(const diatom_session *sn)
 	 * controller=. Digital-only input removes axes, not device types: the
 	 * DualShock's sticks read centered. */
 	g_core->set_controller_port_device(0, sn->controller ? sn->controller : RETRO_DEVICE_JOYPAD);
+	/* The guests' ports are set when player 2 first turns on (guest_ports) */
+	memset(g_guest_port_set, 0, sizeof g_guest_port_set);
 
 	/* SRAM first: it is the game's own data and is not optional. A state, if
 	 * the launcher asked for one, is layered on top - and a state that fails
@@ -2548,7 +2615,9 @@ static int run_session_inner(const diatom_session *sn)
 		audio_tick();
 
 		buttons = diatom_port_input_state();
-		idle_note_input(buttons != 0);
+		/* Player 2's presses keep the game awake too: in a game played in
+		 * turns, player 1 touches nothing for all of player 2's */
+		idle_note_input(buttons != 0 || diatom_env_p2_pad() != 0);
 
 		/* Latched at whichever entry point began these frames - game start or
 		 * menu resume - and narrowed here: a button the player has genuinely
@@ -2831,6 +2900,9 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_rumble_hold(true);
 	diatom_port_fast_clock(false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
+	/* And player 2's file goes now, before EXIT, so it is gone by the time
+	 * the launcher hears the game end (player2.h) */
+	p2_set(false, 0, 0);
 
 	/* A quick save still on its thread is finished and said before EXIT; a
 	 * quick load is not handed to a game that is over. */
@@ -2976,6 +3048,8 @@ static int run_session(const diatom_session *sn)
 	int rc;
 
 	g_phase = PHASE_LOADING;
+	/* Off for every game until the launcher asks (player2.h) */
+	p2_set(false, 0, 0);
 	rc = run_session_inner(sn);
 	diatom_now_end();
 	g_phase = PHASE_IDLE;

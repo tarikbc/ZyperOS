@@ -10,7 +10,7 @@
         check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-status check-battery check-corner check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
         check-db check-gamedel check-gamern check-esmedia check-corepins check-targets yuvtarget check-storage check-stats check-sort check-bt check-ss check-titles check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-randgame check-shelfdir \
         check-sysmark check-flip check-menushots check-controls-shots check-design check-systemart check-linebreak check-portload \
-        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
+        check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages check-tour check-tour-shots check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
         check-home check-home-shots check-games check-cardpaint check-putpace landbench check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots design sounds strings cjk-font check-strings check-i18n-shots \
         check-tour-previews tour-previews check-prep check-diatom check-simulator check-px2sim check-building-doc check-blog \
         check-installer release
@@ -31,11 +31,11 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog \
          check-strings check-i18n-shots
@@ -50,13 +50,16 @@ check: check-prep
 
 # What more than one check builds, built once before any of them starts: the
 # host launcher, which nine checks draw with, and the ScreenScraper header it
-# shares with check-ss. Without SDL2, the header alone.
+# shares with check-ss (without SDL2, the header alone); and player 2's p2d,
+# its feed, the codec check and the theme writer's check, which check-p2d,
+# check-p2codec, check-webtheme and check-play run.
 check-prep:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native; \
 	else \
 		$(MAKE) --no-print-directory -f mk/native.mk VERSION=$(VERSION) creds; \
 	fi
+	@$(MAKE) --no-print-directory build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
 
 # Diatom's own suite (diatom/Makefile's check) on its desktop port: SDL2's
 # dummy drivers and the stub core, no device and no ROM. It was only ever run
@@ -722,6 +725,15 @@ check-usbdrive:
 		plastron/buildroot/package/usbdrive/src/drive.c plastron/buildroot/package/usbdrive/src/drivestat.c \
 		plastron/buildroot/package/usbdrive/src/atlas.c && build-native/usbdrive-check
 
+# plastron's gauge (the Pixel 2's side lights): every rule of what they
+# show, the battery's parts, the launcher's patterns and the wave while files
+# move (package/gauge/src/lights.c), as plastron's own `make gauge-check`
+# holds them. Host compiler only, no device.
+check-gauge:
+	@mkdir -p build-native && $(CC) -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O1 \
+		-o build-native/gauge-check plastron/buildroot/package/gauge/src/check.c \
+		plastron/buildroot/package/gauge/src/lights.c && build-native/gauge-check
+
 # When the Pixel 2's USB port may be a host (plastron's usbrole, its
 # src/rule.c): the nine plugs of a Mac traced on 2026-11-10 never host, and a
 # DAC only on USB Accessory for its own plug; never with power in, a computer's
@@ -923,7 +935,8 @@ check-portkeys-flow:
 	@CC="$(CC)" python3 tools/portkeys-flow-check.py
 
 # The design tokens: DESIGN.md's tables, src/design.h, the mock kit's
-# tokens.js and Over The Hare's colors in res/web/app.css are all written by
+# tokens.js and Over The Hare's colors in res/web/app.css (and the play page's
+# in res/web/play/play.css) are all written by
 # tools/designdef.py, and every color meets the contrast DESIGN.md owes it.
 # `make design` writes them; this only compares.
 check-design:
@@ -1185,6 +1198,23 @@ build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
+
+# The launcher's reader of Diatom's answers (src/resident.c), the device
+# stubbed, against a made-up Diatom on a socket of its own
+# (tools/resident-check.c): SETPLAYER2's answer read while paused, the
+# picture on the way noted, and a game's EXIT before it left for the wait
+# loop rather than eaten. SDL for SDL_GetTicks alone; skipped without it.
+check-resident:
+	@if command -v sdl2-config > /dev/null 2>&1; then \
+		$(MAKE) --no-print-directory build-native/resident-check && ./build-native/resident-check; \
+	else \
+		echo "check-resident: skipped, no SDL2"; \
+	fi
+
+build-native/resident-check: tools/resident-check.c src/resident.c src/platform.h src/device.h FORCE
+	@mkdir -p build-native
+	@$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g $$(sdl2-config --cflags) \
+	      -o $@ tools/resident-check.c src/resident.c $$(sdl2-config --libs)
 
 # The launcher's resident.c, the device stubbed, against a real Diatom: the
 # zone chosen in Date & Time reaches a game's clock (tools/gamezone-check.c).
@@ -1645,6 +1675,14 @@ build-native/mp4lock-check: tools/mp4lock-check.c src/mp4lock.c src/mp4lock.h sr
 # MP4's video frames between the daemon and the launcher (src/mp4frame.h): a
 # writer and a reader on two threads over the same pages, every picture the
 # reader keeps whole.
+check-p2ws: build-native/p2ws-check
+	@./build-native/p2ws-check
+
+build-native/p2ws-check: tools/p2ws-check.c src/p2d/ws.c src/p2d/ws.h src/p2d/sha1.c src/p2d/sha1.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/p2ws-check.c src/p2d/ws.c src/p2d/sha1.c
+
 check-mp4frame: build-native/mp4frame-check
 	@./build-native/mp4frame-check
 
@@ -1652,6 +1690,110 @@ build-native/mp4frame-check: tools/mp4frame-check.c src/mp4frame.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
 	      -o $@ tools/mp4frame-check.c -lpthread
+
+# Player 2's frame codec (src/p2d/codec.c): a frame of palette indices, XORed
+# with the last one, raw-deflated; and the decoder the page mirrors. The check
+# round-trips 100 frames, writes the fixtures the page's test reads, and prints
+# the encode time, so it builds with -O2 to mean something. check-play runs it
+# too, so it is built by its sources rather than FORCE, and in check-prep.
+check-p2codec: build-native/p2codec-check
+	@./build-native/p2codec-check
+
+build-native/p2codec-check: tools/p2codec-check.c src/p2d/codec.c src/p2d/codec.h
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/p2codec-check.c src/p2d/codec.c -lz
+
+# Player 2's shared file (src/p2share.h): Diatom's frames out, p2d's pads in,
+# run against each other on one block of memory; and the header's offsets and
+# SETPLAYER2's rule for a system's buttons and players.
+check-p2share: build-native/p2share-check
+	@./build-native/p2share-check
+
+build-native/p2share-check: tools/p2share-check.c src/p2share.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/p2share-check.c
+
+# The handheld's theme as the play page's theme.css (src/webtheme.c): with
+# nothing customised the file gives the very values of play.css's own token
+# blocks, for the properties play.css lets it set and no others; a custom
+# look moves the accent, Square makes the corners 0, dark says so, a buffer
+# too small is refused and the write leaves a whole file. check-play serves
+# a file this binary makes (--emit), so it is built by its sources rather
+# than FORCE, and in check-prep.
+check-webtheme: build-native/webtheme-check
+	@./build-native/webtheme-check
+
+build-native/webtheme-check: tools/webtheme-check.c src/webtheme.c src/webtheme.h src/look.c \
+                             src/look.h src/theme.h src/design.h res/web/play/play.css
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/webtheme-check.c src/webtheme.c src/look.c -lm
+
+# p2d, NES player 2's server (src/p2d/main.c), on the host: the play page,
+# the WebSocket of frames and buttons, the hotspot's DNS. The launcher's own
+# httpd and captive.c, linked as mk/cross.mk links them for the device, and
+# -O2 as there: it encodes 60 frames a second. Built by its sources rather
+# than FORCE, as is p2d-feed below: check-p2d and check-play both run them,
+# and two makes writing one binary at once under make check's parallel run
+# was a race. check-prep builds them first, so neither check builds them then.
+P2D_SRC = $(wildcard src/p2d/*.c) src/httpd.c src/captive.c
+build-native/p2d: $(P2D_SRC) $(wildcard src/p2d/*.h) src/httpd.h src/captive.h src/p2share.h \
+                  src/monoclock.h src/xfer.h
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -D_GNU_SOURCE -O2 -g \
+	      -o $@ $(P2D_SRC) -lz
+
+# Frames into a share file as Diatom writes them (tools/p2d-feed.c): a moving
+# picture, or a fixture's frames in order, for p2d's check and the play
+# page's.
+build-native/p2d-feed: tools/p2d-feed.c src/p2share.h
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O2 -g \
+	      -o $@ tools/p2d-feed.c
+
+# p2d against a feed, over real sockets (tools/p2d-check.py): the page and
+# the captive redirect, frames only as fast as they are acked, the pad into
+# the share and let go when the guest goes quiet or leaves, a guest past the
+# system's players turned away and told so, two players at once with their
+# own pads and frames, a KEY on the page's 'K', the end of the game however
+# it comes and "stopped" for a SIGTERM with the game going on, the page never
+# framed, --addr alone listened on, few wakeups with no guest, and the DNS
+# answer.
+check-p2d: build-native/p2d build-native/p2d-feed
+	@python3 tools/p2d-check.py
+
+# The play page (res/web/play), player 2's picture and pad, in headless Chrome
+# over build-native/p2d and a feed of the codec check's fixture frames
+# (tools/play-check.py): the canvas the frame it says it drew, every key and
+# touch to the share's pad, the pad drawn from the game's buttons and nothing
+# sent outside them, the picture in whole device pixels, Picture off and the
+# KEY asked for after it, a page left with Back freeing its place, a second
+# browser told the game is full and trying again, a browser too old for the
+# page, multiplayer turned off and on again, and the game's end. The fixtures go
+# into the check's own temp folder, never build-native's, which check-p2codec
+# may be writing at the same moment. Chrome is needed.
+check-play: build-native/p2d build-native/p2d-feed build-native/p2codec-check build-native/webtheme-check
+	@python3 tools/play-check.py
+
+# The launcher's side of Player 2 (src/p2.c), on fakes for every process and
+# protocol action: the system table (the NES's core alone), the link it
+# picks, the page's address, Diatom's answer read by its pairs, the order it
+# starts in on the hotspot (p2d only once the hotspot is up) and on the
+# cable, a refusal, the stop in the reverse order after any end of a game
+# (SIGKILL a second after a SIGTERM p2d ignores, and a second stop doing
+# nothing), a notice as each guest comes and goes, a failure the tick meets
+# without waiting, and a start after a stop or a failure that reads Diatom's
+# old answer away and takes its own.
+check-p2: build-native/p2-check
+	@./build-native/p2-check
+
+build-native/p2-check: tools/p2-check.c src/p2.c src/p2.h src/hotspot.h src/p2share.h \
+                       src/webtheme.h FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/p2-check.c src/p2.c
 
 check-musequeue: build-native/musequeue-check
 	@./build-native/musequeue-check

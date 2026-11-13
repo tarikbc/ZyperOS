@@ -1408,6 +1408,9 @@ bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_
 /* The side lights, and L2+R2 asking gauge for the level (key_event). */
 bool plat_battery_lights(void) { return true; }
 
+/* Its hotspot by a USB Wi-Fi adapter, and its cable's network link */
+bool plat_player2(void) { return true; }
+
 /* MENU > Side Lights: one line on the card, in the file plastron's gauge reads
  * at boot and again on SIGHUP (package/gauge/src/gauge.c; the line's words,
  * src/sidelights.h). Replaced whole (src/atomic.h), so the gauge never reads

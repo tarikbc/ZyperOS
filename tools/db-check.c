@@ -469,6 +469,34 @@ static void fast_forward_frameskip(void)
 	db_close(d);
 }
 
+/* The PSP draws every frame: PPSSPP's frameskip and auto frameskip off on a
+ * new card, as Diatom paces a PSP turn by its sound and a skipped frame only
+ * made the next turn longer (src/db.c). Written out here, not read from the
+ * table, as above; and a player's choice is still kept. */
+static void psp_frameskip(void)
+{
+	db *d;
+	char buf[64];
+
+	printf("the PSP draws every frame by default:\n");
+	scrub();
+	d = db_open(LIB, DB_LIBRARY);
+	if (!d) { ck(0, "the library opens"); return; }
+	db_get_str(d, "coreopt.PSP.ppsspp_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "disabled"), "PPSSPP's frameskip is off");
+	db_get_str(d, "coreopt.PSP.ppsspp_auto_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "disabled"), "PPSSPP's auto frameskip is off");
+	db_get_str(d, "coreopt.PSP.ppsspp_frame_duplication", buf, sizeof buf, "");
+	ck(!strcmp(buf, "disabled"), "no duplicate frames: Diatom paces the turns");
+	ck(db_set_str(d, "coreopt.PSP.ppsspp_frameskip", "1"), "the player sets frameskip 1");
+	db_close(d);
+	d = db_open(LIB, DB_LIBRARY);
+	if (!d) { ck(0, "the library reopens"); return; }
+	db_get_str(d, "coreopt.PSP.ppsspp_frameskip", buf, sizeof buf, "");
+	ck(!strcmp(buf, "1"), "the PSP's frameskip kept the player's value");
+	db_close(d);
+}
+
 /* --dump must never put a credential on a terminal.
  *
  * It is the repair tool for a device with no sqlite3, so it is run over adb
@@ -581,6 +609,7 @@ int main(void)
 	no_database_is_survivable();
 	every_default_is_readable();
 	fast_forward_frameskip();
+	psp_frameskip();
 	a_dump_hides_credentials();
 	one_connection_two_threads();
 	cleanup();

@@ -10,6 +10,11 @@
 # BTPLAYER_ELF only for a device with Bluetooth: tools/btplayer.c, which
 # plastron's /etc/init.d/bluetooth runs from the card.
 #
+# P2D_ELF for the Pixel 2, and needed there: p2d (src/p2d/), NES Player 2's
+# server, which the launcher starts from beside itself on the card. The
+# Pixel 2 offers Player 2 in an NES game's menu, and without p2d the row
+# would start nothing but an error.
+#
 # TrimUI's own firmware is no longer supported, so there is one Brick payload,
 # plastron's. NATIVE=1, which used to choose it, is accepted and ignored. And
 # no release zip: it was the Brick's install for TrimUI's firmware, and both
@@ -31,6 +36,10 @@ VENDOR_DIR=${VENDOR_DIR:-$ROOT/vendor}
 DIATOM_ELF=${DIATOM_ELF:-$ROOT/diatom/build/$DEVICE/diatom}
 [ -f "$DIATOM_ELF" ] || { echo "no diatom at $DIATOM_ELF (set DIATOM_ELF)"; exit 1; }
 [ -f "$VENDOR_DIR/cores/fceumm_libretro.so" ] || { echo "run mk/fetch-vendor.sh first"; exit 1; }
+if [ "$DEVICE" = pixel2 ] && [ ! -f "${P2D_ELF:-}" ]; then
+	echo "payload: no p2d for the Pixel 2's Player 2 (set P2D_ELF)" >&2
+	exit 1
+fi
 
 rm -rf "$OUT"
 mkdir -p "$P/system-icons" "$P/cores" "$P/res/web" \
@@ -42,6 +51,10 @@ cp "$MUSE_ELF" "$P/muse"                  # the audio player's engine; Muse cann
 [ -n "${PORTKEYS_ELF:-}" ] && cp "$PORTKEYS_ELF" "$P/portkeys" # the volume keys during a port (Pixel 2)
 [ -n "${ZYHOME_ELF:-}" ] && cp "$ZYHOME_ELF" "$P/zyhome"     # MENU+START, back to the home (Pixel 2)
 [ -n "${UPDATE_ELF:-}" ] && cp "$UPDATE_ELF" "$P/zyperos-update"  # System Update (update/, docs/updates.md)
+# NES Player 2's server, where the launcher looks for it: beside itself, at
+# P_ROOT/p2d (src/main.c's p2_setup). It serves the page from res/web/play,
+# below.
+[ -n "${P2D_ELF:-}" ] && cp "$P2D_ELF" "$P/p2d"
 cp "$LAUNCH" "$P/launch.sh"
 # Which ZyperOS this is, for plastron: the Pixel's image copies its ZyperOS/ over
 # the card's only when it is newer than the card's (/etc/init.d/zyperos), so a
@@ -99,6 +112,11 @@ cp "$ROOT/res/tour/"*.png "$P/res/tour/"
 cp -R "$ROOT/res/web/"* "$P/res/web/"
 cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/menu.ttf"
 cp "$ROOT/res/fonts/title.ttf" "$P/res/web/title.ttf"
+# NES Player 2's play page came along in res/web/play, with its words in
+# res/web/i18n (p2d answers /i18n.js from there). p2d serves nothing else
+# outside play/, so the page's faces go in a third time, beside it.
+cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/play/menu.ttf"
+cp "$ROOT/res/fonts/title.ttf" "$P/res/web/play/title.ttf"
 # The device has curl and OpenSSL but nothing to trust - see res/ssl/README.md.
 # Without this, every HTTPS request fails verification and achievements never
 # arrive, with an error that reads like the network being down.
@@ -197,6 +215,7 @@ chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 [ -f "$P/portkeys" ] && chmod +x "$P/portkeys"
 [ -f "$P/zyhome" ] && chmod +x "$P/zyhome"
 [ -f "$P/zyperos-update" ] && chmod +x "$P/zyperos-update"
+[ -f "$P/p2d" ] && chmod +x "$P/p2d"
 
 # The headsets' ALSA config: the Brick's launch.sh sources it at boot, and
 # ZyperOS runs it after a pair or a forget.

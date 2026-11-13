@@ -66,9 +66,9 @@ const char *ctl_page_name(ctl_page p)
  * button off. With a footer it held four, and the five-row pages here
  * scrolled until 2026-11-06.
  *
- * That ceiling is why the shelf is two pages. Its seven buttons split where
+ * That ceiling is why the shelf is two pages. Its eight buttons split where
  * the hand does: the pad and the shoulders get you around, and the four face
- * buttons do something to what you have landed on. */
+ * buttons and START do something to what you have landed on. */
 static int moving(menu_row *out)
 {
 	int n = 0;
@@ -94,6 +94,8 @@ static int shelf(menu_row *out)
 	out[n++] = (menu_row){ "B", T(S_CONTROLS_BACK), false };
 	out[n++] = (menu_row){ "X", T(S_CONTROLS_DETAILS), false };
 	out[n++] = (menu_row){ "Y", T(S_CONTROLS_FRESH), false };
+	/* MENU > View, at a press (2026-11-13) */
+	out[n++] = (menu_row){ "START", T(S_CONTROLS_VIEW), false };
 	/* Here rather than on Anywhere, which is full: it works outside a game,
 	 * and in one L2 and R2 are the game's */
 	if (battery_lights)

@@ -53,6 +53,15 @@
  * STUBCORE_FULLPATH=1 sets need_fullpath, so it is handed a file, not bytes,
  * and reads the file's first bytes from its path while it loads.
  *
+ * And a rumble, STUBCORE_RUMBLE=30:on,60:off: the motor on and off on those
+ * frames, as an N64 Rumble Pak game under ParallelN64 asks for it (see
+ * rumble_configure below; test/rumble.py).
+ *
+ * And its controller ports: STUBCORE_PORTS=N says it has N (each a joypad,
+ * SET_CONTROLLER_INFO), and STUBCORE_DEVICE_LOG=path writes down each
+ * device the frontend gives a port, a line each, "port device", so
+ * test/player2.py can see the guests' ports given a joypad.
+ *
  * Test fixture. Not part of Diatom's runtime.
  */
 #include <stdint.h>
@@ -87,6 +96,7 @@ static long     late_at = -1;          /* STUBCORE_LATE_SRAM, or -1 */
 static int      box_x = 96, box_y = 80;
 static double   phase;
 static double   audio_accum;
+static void     rumble_configure(void);   /* STUBCORE_RUMBLE, below */
 
 static struct retro_core_option_v2_definition probe_defs[] = {
 	{ "stubcore_probe", "Probe", NULL, "Read back as each game loads", NULL, NULL,
@@ -98,11 +108,24 @@ static struct retro_core_options_v2 probe_opts = { NULL, probe_defs };
 
 void retro_set_environment(retro_environment_t cb)
 {
+	static const struct retro_controller_description joypad[] = { { "Joypad", RETRO_DEVICE_JOYPAD } };
+	static struct retro_controller_info ports[5];
 	bool no_game = true;
+	const char *np = getenv("STUBCORE_PORTS");
+
 	env = cb;
 	cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_game);
 	/* As real cores declare theirs, from inside this call */
 	cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &probe_opts);
+	if (np && *np) {
+		int n = atoi(np);
+
+		for (int i = 0; i < 4; i++) {
+			ports[i].types = i < n ? joypad : NULL;
+			ports[i].num_types = i < n ? 1 : 0;
+		}
+		cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, ports);
+	}
 }
 void retro_set_video_refresh(retro_video_refresh_t cb) { video_cb = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb)   { (void)cb; }
@@ -180,7 +203,14 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 }
 
 void retro_set_controller_port_device(unsigned port, unsigned device)
-{ (void)port; (void)device; }
+{
+	const char *path = getenv("STUBCORE_DEVICE_LOG");
+	FILE *f = path && *path ? fopen(path, "a") : NULL;
+
+	if (!f) return;
+	fprintf(f, "%u %u\n", port, device);
+	fclose(f);
+}
 
 /* Deliberate faults. `volatile` throughout and no inlining, because -O2 is
  * entitled to assume undefined behavior never happens: an unguarded null store
@@ -308,6 +338,7 @@ bool retro_load_game(const struct retro_game_info *game)
 		const char *e = getenv("STUBCORE_LATE_SRAM");
 		late_at = e && *e ? strtol(e, NULL, 10) : -1;
 	}
+	rumble_configure();
 	/* Offered by every real core and discarded by Diatom until the state
 	 * plane. The port-1 entry is here so the "port 0 only" filter has
 	 * something to exclude rather than being untested. */
@@ -355,14 +386,15 @@ static void sysram_tick(void)
 
 static bool late_here(void) { return late_at >= 0 && (long)frame >= late_at; }
 
-/* STUBCORE_INPUT_LOG=path: a line a frame, the frame and the pad as the core
- * read it (1 << each RETRO_DEVICE_ID_JOYPAD_*), so a test can say what the
- * game saw - SELECT given late, a chord's buttons never (test/hotkeys.py). */
+/* STUBCORE_INPUT_LOG=path: a line a frame, the frame and the pads as the core
+ * read them (1 << each RETRO_DEVICE_ID_JOYPAD_*), ports 0 to 3 in order, so a
+ * test can say what the game saw - SELECT given late, a chord's buttons never
+ * (test/hotkeys.py), the guests' buttons on ports 1 to 3 (test/player2.py). */
 static void input_log(void)
 {
 	static FILE *f;
 	static bool tried;
-	unsigned id, bits = 0;
+	unsigned id, port, bits[4] = { 0 };
 
 	if (!tried) {
 		const char *e = getenv("STUBCORE_INPUT_LOG");
@@ -371,10 +403,58 @@ static void input_log(void)
 		if (e && *e) f = fopen(e, "w");
 	}
 	if (!f) return;
-	for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++)
-		if (input_cb(0, RETRO_DEVICE_JOYPAD, 0, id)) bits |= 1u << id;
-	fprintf(f, "%u %u\n", (unsigned)frame, bits);
+	for (port = 0; port < 4; port++)
+		for (id = 0; id <= RETRO_DEVICE_ID_JOYPAD_R3; id++)
+			if (input_cb(port, RETRO_DEVICE_JOYPAD, 0, id)) bits[port] |= 1u << id;
+	fprintf(f, "%u %u %u %u %u\n", (unsigned)frame, bits[0], bits[1], bits[2], bits[3]);
 	fflush(f);
+}
+
+/* STUBCORE_RUMBLE=frame:on,frame:off,...: the motor, asked for as
+ * ParallelN64's Rumble Pak asks (mupen64plus-core's libretro input plugin):
+ * on is the weak motor to full and then the strong one, off the weak to 0
+ * and then the strong, two calls back to back each time. The second call of
+ * an off is the one ZyperOS 1.0.4's motor never heard (port/rumble_evdev.c);
+ * test/rumble.py reads what the port was told. Frames count from the game's
+ * start, and again from 0 after a reset, as `frame` does. */
+static struct retro_rumble_interface rumble;
+static struct { unsigned at; bool on; } rumble_steps[16];
+static int rumble_n;
+
+static void rumble_configure(void)
+{
+	const char *e = getenv("STUBCORE_RUMBLE");
+	char buf[256], *step, *save = NULL;
+
+	rumble_n = 0;
+	memset(&rumble, 0, sizeof rumble);
+	if (!e || !*e || !env || !env(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble) ||
+	    !rumble.set_rumble_state)
+		return;
+	snprintf(buf, sizeof buf, "%s", e);
+	for (step = strtok_r(buf, ",", &save); step && rumble_n < 16;
+	     step = strtok_r(NULL, ",", &save)) {
+		char *colon = strchr(step, ':');
+
+		if (!colon) continue;
+		rumble_steps[rumble_n].at = (unsigned)strtoul(step, NULL, 10);
+		rumble_steps[rumble_n].on = !strcmp(colon + 1, "on");
+		rumble_n++;
+	}
+}
+
+static void rumble_tick(void)
+{
+	int i;
+
+	for (i = 0; i < rumble_n; i++) {
+		uint16_t v;
+
+		if (rumble_steps[i].at != frame) continue;
+		v = rumble_steps[i].on ? 0xffff : 0;
+		rumble.set_rumble_state(0, RETRO_RUMBLE_WEAK, v);
+		rumble.set_rumble_state(0, RETRO_RUMBLE_STRONG, v);
+	}
 }
 
 static void late_tick(void)
@@ -435,6 +515,7 @@ void retro_run(void)
 	sysram_tick();
 	late_tick();
 	input_log();
+	rumble_tick();
 
 	/* A box you can drive, so input is verifiable by looking at it. */
 	held = input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);

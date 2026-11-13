@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "ja";
 window.ZYPEROS_PLURAL = n => 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "マルチプレイ",
+  "play.state.connecting": "接続中",
+  "play.state.player": "プレイヤー %d",
+  "play.state.full": "このゲームは満員です",
+  "play.state.stopped": "ホストがマルチプレイをオフにしました",
+  "play.state.ended": "ゲームが終了しました",
+  "play.old_browser": "このブラウザは古いため、ゲームを表示できません。ブラウザを更新するか、別のブラウザでこのページを開いてください。",
+  "play.picture_off": "画面オフ",
+  "play.dpad": "十字キー",
+  "play.key.arrows": "矢印キー",
+  "play.key.shift": "Shift",
+  "play.key.enter": "Enter",
   "name.wifi": "Wi-Fi ファイル転送",
   "name.usb": "USB ファイル転送",
   "gate.sub": "本体の画面に表示された PIN を入力してください。",

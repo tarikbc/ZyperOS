@@ -225,10 +225,10 @@ int sys_menu_snaps_rows(const snaps_ui *u, snaps_bufs *b, menu_row *out,
 	ids[n] = SN_FETCH; console[n] = -1;
 	out[n++] = (menu_row){ T(S_SYSMENU_SN_FETCH),
 	                       !u->ss_have ? T(S_SYSMENU_NOT_IN_BUILD) :
-	                       !u->ss_in ? T(S_SYSMENU_SN_NEEDS_SS) : u->fetch ? T(S_MENU_ON) : T(S_MENU_OFF),
+	                       !u->ss_in ? T(S_SYSMENU_SN_NEEDS_SS) : u->fetch ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE),
 	                       u->ss_have && u->ss_in };
 	ids[n] = SN_PLAY; console[n] = -1;
-	out[n++] = (menu_row){ T(S_SYSMENU_SN_PLAY), u->play ? T(S_MENU_ON) : T(S_MENU_OFF), true };
+	out[n++] = (menu_row){ T(S_SYSMENU_SN_PLAY), u->play ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true };
 	ids[n] = SN_SOUND; console[n] = -1;
 	out[n++] = (menu_row){ T(S_SYSMENU_SN_SOUND),
 	                       T(SNAP_SOUND_TEXT[u->sound >= 0 && u->sound < 3 ? u->sound : 0]), true };
@@ -238,7 +238,7 @@ int sys_menu_snaps_rows(const snaps_ui *u, snaps_bufs *b, menu_row *out,
 		char sz[24];
 
 		sys_menu_bytes(u->c[i].bytes, sz, sizeof sz);
-		snprintf(b->size[i], sizeof b->size[i], "%s · %s", u->c[i].on ? T(S_MENU_ON) : T(S_MENU_OFF), sz);
+		snprintf(b->size[i], sizeof b->size[i], "%s · %s", u->c[i].on ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), sz);
 		ids[n] = SN_CONSOLE; console[n] = i;
 		out[n++] = (menu_row){ u->c[i].name, b->size[i], true };
 	}
@@ -480,7 +480,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	else
 		snprintf(b->b, sizeof b->b, "%s",
 		         u->wifi == WIFI_CONNECTING ? T(S_SYSMENU_WIFI_CONNECTING) :
-		         u->wifi == WIFI_IDLE       ? T(S_MENU_NOT_CONNECTED) : T(S_MENU_OFF));
+		         u->wifi == WIFI_IDLE       ? T(S_MENU_NOT_CONNECTED) : T(S_MENU_OFF_TITLE));
 	full[PM_WIFI]         = (menu_row){ T(S_MENU_WIFI), b->b, true };
 	full[PM_BT]           = (menu_row){ "Bluetooth",
 	                                   u->bt_name ? u->bt_name : T(S_MENU_NOT_CONNECTED),
@@ -593,7 +593,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	 * nothing either: it is drawn from shapes, not from the library. */
 	full[PM_TOUR]         = (menu_row){ T(S_SYSMENU_TUTORIAL), NULL, true  };
 	full[PM_DEVELOPER]    = (menu_row){ T(S_SYSMENU_DEVELOPER),
-	                                   u->developer ? T(S_MENU_ON) : T(S_MENU_OFF), true };
+	                                   u->developer ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true };
 	/* Ask or Automatic, stepped round; Automatic says its one risk once,
 	 * as it is chosen (main.c) */
 	full[PM_USB]          = (menu_row){ T(S_SYSMENU_USB_ACCESSORIES),

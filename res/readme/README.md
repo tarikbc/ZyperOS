@@ -12,7 +12,11 @@ These are 1024x768 frames rendered by the native ZyperOS launcher, not edited
 mockups or photographs of a running device. The three `portal` shots are the
 File Transfer page (res/web) in headless Chrome, at a computer's 1280x800 and
 a phone's 390x844, served by the real routes over a scratch card of freeware
-names (build-native/portal-serve). The source commit, command flags
+names (build-native/portal-serve). The two `play-phone` shots are NES Player
+2's play page (res/web/play) in headless Chrome, on a phone held upright and
+on its side (390x844 and 844x390 at 3x), served by the host's p2d over a
+share that p2d-feed fills with its own drawn frames: stripes and a box, no
+game's picture. The source commit, command flags
 and output hashes are recorded in `captures.json`, with the art each one
 shows.
 
@@ -40,6 +44,7 @@ away, with their libretro covers. The made-up port behind the Ports menu and
 Controls shots (tools/fixtures/ports) has no art. The games pages' hearts
 mark demonstration favorites, set for those shots alone.
 Achievement rows and badges, playback timing, transfer progress, the hotspot,
+the Player 2 page,
 the Scraper's counts, the Storage page and the System Update page use the
 launcher's built-in shot fixtures and stand-in values. No ROMs, audio,
 account credentials or personal save data are included or required. The
@@ -58,8 +63,8 @@ the command take only those shots (`python3 tools/readme-shots.py menu`).
 `--art` fetches what the cache lacks from raw.githubusercontent.com the first
 time (ffmpeg makes the video snaps) and nothing after; `--art-cache` moves
 the cache. Without `--art` every game wears the launcher's generated card. The page shots need Google Chrome (`--chrome` names another
-Chromium, `--no-page` leaves them out), and the page's server listens on port
-8080 or 8081 while they are taken. Apart from that first fetch of the art, the launcher and the page make no
+Chromium, `--no-page` leaves them out), and the pages' servers listen on
+ports the kernel picks while they are taken. Apart from that first fetch of the art, the launcher and the page make no
 requests outside this computer for the captures. A browser's frames are not quite
 repeatable: a shadow can differ by a few pixels from run to run, and the
 upload's percentage by its timing.

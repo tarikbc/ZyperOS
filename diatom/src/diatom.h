@@ -60,6 +60,9 @@ typedef struct {
 	 * order, and leaves the last three NULL. */
 	struct retro_disk_control_ext_callback disc;
 	bool          disc_set;
+	/* How many controller ports it said it has (SET_CONTROLLER_INFO), 0
+	 * while it has not said: kept per core for the disc tray's reason */
+	int           ports;
 	/* Where this core's game was staged out of its zip, for a core that
 	 * wants a file (need_fullpath), so the game's stop can remove it; empty
 	 * when there is none. See unstage in core.c. */
@@ -143,6 +146,12 @@ void diatom_env_poll_hook(diatom_poll_hook fn);
 /* The libretro pointer the core reads this frame: the stylus's, from
  * screens.h, in the whole frame's -0x7fff..0x7fff. See env.c. */
 void diatom_env_pointer(bool down, int16_t x, int16_t y);
+
+/* Every guest's pad as ports 1 to 3 answered it this frame (player2.h),
+ * ORed: the system's bits, 0 while player 2 is off or p2d's beat has
+ * stopped. For the idle timer, since a guest pressing is somebody being
+ * there too. */
+uint32_t diatom_env_p2_pad(void);
 
 /* Silence a core's DEBUG/INFO chatter once a game is running, and log each of
  * its warnings only the first time. See core_log in env.c for the measurements
@@ -244,6 +253,12 @@ typedef enum {
 	DIATOM_MSG_SETSCREENS, /* set it: `layout`, `swap` = 1 | 0 */
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
+	/* Guest players, NES player 2 first (player2.h): the frames out and
+	 * the guests' buttons in, through a file p2d maps too. Only while a
+	 * game is loaded. */
+	DIATOM_MSG_PLAYER2,    /* report whether it is on, and what it gives */
+	DIATOM_MSG_SETPLAYER2, /* turn it on or off: `on` = 1 | 0; for an on,
+	                        * `buttons` and `players` */
 	/* The launcher went away - or was displaced by a newer one, which means
 	 * the same thing. The game keeps running. */
 	DIATOM_MSG_HANGUP
@@ -299,6 +314,12 @@ typedef struct {
 	 * audio.c fades it. */
 	int  on;
 	int  blink;            /* SETLOWBATTERY: the disc blinks */
+	/* SETPLAYER2 on=1: what the system gives a guest, from the launcher's
+	 * system table: its RetroPad bits (`buttons=`, hex 0x... or decimal) and
+	 * how many play at once (`players=`). 0 when not said, which player2.h
+	 * reads as the NES's. */
+	uint32_t buttons;
+	long     players;
 	/* SETAUDIO. An output device named the way the PORT names one, passed
 	 * straight through: the host's business is which, the port's is how,
 	 * and nothing in between reads it. Empty means the default. */
@@ -335,8 +356,10 @@ void diatom_input_emit_labels(void);
  * the game is paused (the launcher's menu is no time to shake the device) and
  * given back as it was on resume, since a core says a strength when it
  * changes and not again; reset when the game stops, so nothing a game asked
- * for outlives it. */
+ * for outlives it. Forgotten, the hold kept, when the game is reset or a
+ * state is loaded into it. */
 void diatom_rumble_hold(bool held);
+void diatom_rumble_forget(void);
 void diatom_rumble_reset(void);
 
 bool diatom_proto_listen(const char *path);

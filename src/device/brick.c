@@ -1109,6 +1109,10 @@ bool plat_tap_held(in_button b) { (void)b; return false; }
 
 /* No lights of its own for the battery. */
 bool plat_battery_lights(void) { return false; }
+
+/* Never tried here: its image may have no hostapd, and its cable no
+ * network link (plat_usb_peer cannot tell it a computer) */
+bool plat_player2(void) { return false; }
 side_lights plat_side_lights(void) { return LIGHTS_ALL; }
 void plat_side_lights_set(side_lights on) { (void)on; }
 void plat_side_lights_say(const char *line) { (void)line; }

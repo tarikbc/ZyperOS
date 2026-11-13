@@ -105,7 +105,7 @@ def pump_until(path, n, limit=90.0):
     pump(0.5)
 
 pump(0.5)
-check("READY says proto=13", any(l.startswith("READY\tproto=13") for l in got), got[:2])
+check("READY says proto=14", any(l.startswith("READY\tproto=14") for l in got), got[:2])
 s.sendall(f"RUN\tcore={STUB}\n".encode())
 pump_until(LOG, 300)
 s.sendall(b"STOP\n")
@@ -128,7 +128,7 @@ check("SELECT+R2, R2, L2, L2, L2 step 1.5x, 2x, 1.5x, 1x and answer 1x at the en
 
 frames = []
 for line in open(LOG):
-    f, b = line.split()
+    f, b = line.split()[:2]       # the frame, port 0 (then ports 1 to 3)
     frames.append(int(b))
 check("the core read the pad", len(frames) > 250, len(frames))
 check("no chord's shoulder ever reached the game",

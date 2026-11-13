@@ -51,11 +51,12 @@ weight: 20
 <p>The Pixel 2 has no Wi-Fi of its own, so this needs a USB Wi-Fi adapter in its USB-C port. <a href="/blog/gkd-pixel-2-wifi-adapter/">The Wi-Fi guide</a> says which ones work.</p>
 <ol>
   <li>Join a network in <strong>MENU &gt; Wi-Fi</strong>.</li>
-  <li>Open <strong>MENU &gt; Wi-Fi File Transfer</strong>. It shows an address and a four-digit PIN, and beside the PIN its name, <code>zyperos.local</code>.</li>
+  <li>Open <strong>MENU &gt; Wi-Fi File Transfer</strong>. It shows an address in large type, its name <code>zyperos.local</code> under it, and a four-digit PIN.</li>
   <li>Open that address (or <code>http://zyperos.local</code>) in a browser on your phone or computer, and type the PIN.</li>
   <li>Drag games into their console's folder. They are on the shelf when you leave the screen.</li>
 </ol>
-<figure class="shot small"><img src="/img/hare.png" alt="Wi-Fi File Transfer on the handheld, showing the address, the PIN and one browser connected"><figcaption>The handheld shows the address, the PIN and who is connected.</figcaption></figure>
+<figure class="shot small"><img src="/img/hare-way.png" alt="Wi-Fi File Transfer before anyone signs in: the address in large type, zyperos.local under it, and the PIN as four large digits"><figcaption>Until someone types the PIN, the handheld shows what to type at full size.</figcaption></figure>
+<figure class="shot small"><img src="/img/hare.png" alt="Wi-Fi File Transfer on the handheld, showing the address, the PIN and one browser connected"><figcaption>After that it shows who is connected and what is copying.</figcaption></figure>
 <p>The PIN is new each time the screen opens, and five wrong PINs make the page wait 30 seconds. No app and no account are needed.</p>
 <h3>No Wi-Fi network around</h3>
 <p>With the adapter in and no network joined, Wi-Fi File Transfer makes the handheld its own Wi-Fi network for as long as the screen is open. It shows a QR code, the network's name and password, and the PIN. Scan the code with your phone's camera, join, and the transfer page opens by itself at <code>10.42.1.1</code>. Close the screen and the network goes away.</p>
@@ -69,8 +70,8 @@ weight: 20
   <li>Drag games into their console's folders.</li>
 </ol>
 <figure class="shot small"><img src="/img/usb-ask.png" alt="Computer Connected: Charge Only, File Transfer or Developer (SSH)"><figcaption>A computer on the cable gets a question first. A wall charger never does.</figcaption></figure>
-<figure class="shot small"><img src="/img/usb-steps.png" alt="USB File Transfer checking the connection: Cable and Address ticked, Browser waiting"><figcaption>Until a browser opens the page, the handheld ticks off each step.</figcaption></figure>
-<p>If the page does not open, look at the handheld. Until a browser opens the page, it shows three steps: <strong>Cable</strong> (the computer took the handheld and opened its network), <strong>Address</strong> (the computer took <code>10.42.0.2</code>) and <strong>Browser</strong>. A step that waits too long gets a hint under it: try another cable or port, check Device Manager on Windows, or turn off a VPN or proxy that sends the address somewhere else.</p>
+<figure class="shot small"><img src="/img/usb-steps.png" alt="USB File Transfer when the computer takes no address: Address waiting, and a hint to check Network adapters in Device Manager"><figcaption>When a step waits too long, the handheld says what to check.</figcaption></figure>
+<p>If the page does not open, look at the handheld. It shows a bar while the computer connects, then the address and the PIN, and under them where the connection is. When a step before the browser waits too long, it shows three steps, <strong>Cable</strong> (the computer took the handheld and opened its network), <strong>Address</strong> (the computer took <code>10.42.0.2</code>) and <strong>Browser</strong>, with a hint under the one that waits: try another cable or port, or check Device Manager on Windows. If the browser still does not get there, turn off a VPN or proxy that sends the address somewhere else.</p>
 <p>While USB File Transfer is open, the computer can also open a shell on the handheld with <code>ssh root@10.42.0.1</code>, the PIN as the password. To copy with <code>scp</code>, add its <code>-O</code> flag, because the handheld has no SFTP server: <code>scp -O game.zip root@10.42.0.1:/roms/SNES/</code>.</p>
 
 <h2>The File Transfer page</h2>
