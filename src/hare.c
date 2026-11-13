@@ -53,6 +53,7 @@ static char     g_token[MAX_SESSIONS][TOKEN_LEN + 1];
 static int      g_ntoken;
 static int      g_tries;
 static int      g_wrong;          /* every wrong PIN since hare_start */
+static bool     g_signed;         /* a browser signed in since hare_start */
 static unsigned g_locked_until;
 static int      g_uploads;
 static bool     g_shelf_changed;  /* something the shelf would show has moved */
@@ -1046,6 +1047,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		         "Set-Cookie: hare=%s; Path=/; HttpOnly; SameSite=Strict\r\n",
 		         g_token[g_ntoken]);
 		g_ntoken++;
+		g_signed = true;
 		note("%s", T(S_HARE_SIGNED_IN));
 		httpd_reply(r, 200, "text/plain", "ok", 2, cookie);
 		return;
@@ -2009,6 +2011,7 @@ bool hare_start(const char *roms_dir, const char *card_dir,
 	g_ntoken = 0;
 	g_tries = 0;
 	g_wrong = 0;
+	g_signed = false;
 	g_locked_until = 0;
 	g_uploads = 0;
 	g_sends = 0;
@@ -2052,6 +2055,7 @@ void hare_stop(void)
 
 const char *hare_pin(void) { return g_pin; }
 int hare_wrong_pins(void) { return g_wrong; }
+bool hare_signed_once(void) { return g_signed; }
 int hare_port(void) { return httpd_port(); }
 
 int hare_poll(void)

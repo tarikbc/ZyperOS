@@ -189,7 +189,7 @@ static void rows_are_shaped_like_the_others(void)
 
 	n = bt_menu_build(&u, r, 16, 7);
 	ck(n == 5, "toggle, two devices, a rule and a note");
-	ck(!strcmp(r[0].label, "Bluetooth") && !strcmp(r[0].value, "on"),
+	ck(!strcmp(r[0].label, "Bluetooth") && !strcmp(r[0].value, "On"),
 	   "the toggle leads, the way Wi-Fi's does");
 	ck(!strcmp(r[1].label, "Shokz"), "then the devices");
 
@@ -233,7 +233,7 @@ static void rows_are_shaped_like_the_others(void)
 	u.state = BT_POWERED_OFF;
 	u.n = 0;
 	n = bt_menu_build(&u, r, 16, 7);
-	ck(!strcmp(r[0].value, "off"), "the toggle says off");
+	ck(!strcmp(r[0].value, "Off"), "the toggle says Off");
 	ck(!strcmp(legend_text(bt_menu_footer(&u)), "A: turn on"),
 	   "and the footer says how to fix it");
 }

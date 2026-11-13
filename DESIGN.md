@@ -284,8 +284,10 @@ Lexend's time the first time it is drawn, then cached like any line.
   where the mock's is 77.
 - Digits that change while on screen are tabular (`ui_text_tabular`).
 - **Title Case** for headings, menu rows and named choices ("Audio Output",
-  "Light"). **lowercase** for status words in the value column
-  ("off", "not connected", "needs Wi-Fi"). **Sentence case** for lines and
+  "Light"), a switch's "On" and "Off" among them (Developer Mode, Wi-Fi
+  and Bluetooth, Swap Screens, 2026-11-12: "Off/On in the dev mode row in
+  settings should be capitalized"). **lowercase** for status words in the
+  value column ("not connected", "needs Wi-Fi", "never"). **Sentence case** for lines and
   messages ("Press A to open the game you are on.").
 - No italics, no letter spacing, no all-caps except button names, which are
   written as printed on the handheld: A, B, X, Y, L1, R1, L2, R2, START,
@@ -2758,28 +2760,78 @@ no name (multicast DNS did not start, or gave the name up after three taken
 in a session) or no link (the heading then says "Cable unplugged" or "Wi-Fi
 went away"), the heading is the address over the PIN.
 
-Until a browser opens the page, the rows under the rule are the steps of the
-connection as the handheld sees it (src/linksteps.h): over the cable
-**Cable**, **Address** and **Browser**; over Wi-Fi **Wi-Fi** and **Browser**;
-none on the hotspot screen (11.16), which says what it says. A step that is
-done has MENU_TICK as its value; the step waited on is a live row, its value
-"waiting" (or "unplugged" for a cable with no computer, "not connected" for
-no Wi-Fi); the steps after it are dead rows with no value. The rule and the
-key legend (11.4) follow, "B: close".
+**The way in** (2026-11-12: "while nobody inputted the PIN yet ... show the
+URL/IP/PIN full size in the popup; only after someone connected we show the
+stats"). Until someone has come in (a browser gave the right PIN, or, over
+the cable, an SSH session opened), the panel is not the stats but what to
+type, at full size. In a header of 352 under no heading: the screen's name
+in **meta** **text-dim** where a heading would be; the first thing to type
+in **title** **text**, a step down to **label** and then **menu** where it
+does not fit whole (a port on the name, a long address), and sliding past
+that, never cut; the other way to reach it under it in **menu**
+**text-soft**; "PIN" in **meta** **text-dim**; and the PIN as one key a
+digit, 80 by 96, a **raised** fill in an **edge** frame (DS_FRAME) with
+DS_RADIUS_KEY, the digit in **title** **text**, as the page's four boxes
+take it. The order is the heading's: over the cable "http://zyperos.local"
+first and "10.42.0.1" under it; over Wi-Fi the address first and the name
+under it. With no name the address is alone. Under the header one live row
+says where the link is (**Cable** "unplugged" or "waiting", **Wi-Fi** "not
+connected", **Address** "waiting", **Browser** "waiting", or **PIN**
+"waiting" once a browser has the page), then the rule and the key legend
+(11.4), "B: close".
 
-A step that waits too long (the cable 5 seconds with no computer and 10 with
-one, the address 10, the browser 30) gets its hint: one sentence saying what
-to do about that step, in **menu** **text-dim**, centered and balanced onto
-at most three lines, in place of the other steps, under the stalled step's
-row and over the rule. Three steps and a three-line hint do not fit under a
-two-line heading, and a hint is about one step. The hints name the things a
-person can act on: another cable or port, Windows' Device Manager and its
-Network adapters, the name and the address to type, a VPN or proxy.
+**Connecting** (2026-11-12: "usb file transfer takes a while to start, we
+need a loading state"). Over the cable the address and the PIN cannot work
+until the computer has taken the handheld, opened its network on it and
+taken its address: a few seconds, and more the first time Windows sees it.
+Until then, on a device that can see those steps (the Pixel 2), the way in's
+panel says so in the same place and size: the screen's name, "Connecting to
+the computer" in **label** **text** (**menu** where a language's words do not
+fit it whole) with its cap centre 160 down the header, and under it a
+**bar** 420 wide at 232 on **track**, filling with **accent-ink**, a third
+for each of the three. While one is waited on, its third creeps toward three
+quarters of the way, 63% of that in 3 s (never the whole: the computer has
+not done it yet); no computer, or one waiting for power, does not creep.
+The fill eases up in 150 ms and drops at once when a step is lost (the cable
+out). The step row under the rule says which step it is on. Once the address
+is in, the bar runs to its end and the way in takes its place.
 
-Once a browser has asked, the rows are the usual ones (Browsers, SSH, In /
-out, Now); the steps come back if the cable or the Wi-Fi goes. Host shots:
-`--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged, nocomputer,
-noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork.
+The hotspot screen (11.16) keeps its code, network and password and PIN
+until someone comes in; it is its own way in.
+
+Once someone has come in, the rows are the usual ones (Browsers, SSH, In /
+out, Now) under the two-line heading above, and they stay when every
+browser leaves: the way in comes back only when the screen opens again,
+with a new PIN. On the hotspot the code goes and the heading is the
+network and its password over the PIN, for another phone to join; where
+the two do not fit one line (Chinese), the password moves down beside the
+PIN, so neither slides.
+
+**The steps.** A step before the browser that waits too long (the cable 5
+seconds with no computer and 10 with one, the address 10) means the address
+cannot work yet, so its hint takes the way in's place: under the two-line
+heading the steps of the connection as the handheld sees it
+(src/linksteps.h), over the cable **Cable**, **Address** and **Browser**,
+over Wi-Fi **Wi-Fi** and **Browser**. A step that is done has MENU_TICK as
+its value; the step waited on is a live row, its value "waiting" (or
+"unplugged" for a cable with no computer, "not connected" for no Wi-Fi);
+under it the hint, one sentence saying what to do about that step, in
+**menu** **text-dim**, centered and balanced onto at most three lines, in
+place of the other steps, then the rule and the legend. Three steps and a
+three-line hint do not fit under a two-line heading, and a hint is about
+one step. The hints name the things a person can act on: another cable or
+port, Windows' Device Manager and its Network adapters, a VPN or proxy. A
+browser that does not come has no hint: the way in already shows what to
+type, at full size. The way in comes back as the step moves on, and the
+steps come back if the cable or the Wi-Fi goes before anyone came in.
+
+Host shots: `--hare-steps usb|wifi STATE [noname]`, STATE one of unplugged,
+taking, opening, nocomputer, noanswer, nodriver, address, noaddress,
+browser, nobrowser, waits, replug, nonetwork and pin (a stalled step shows
+the steps; over the cable a step before the browser shows Connecting, its
+step waited on for 1.5 s; the rest the way in); `--hare-addr
+ADDR` for the way in's address (a long one, for the fit); `--hotspot SSID
+PASS PHONES NOW --hotspot-in` for the hotspot after someone came in.
 
 ### 11.36 What did you plug in?
 The question the shelf asks when something on the Pixel 2's USB port wants

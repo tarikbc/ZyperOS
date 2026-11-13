@@ -5237,7 +5237,7 @@ static int menu_value_w(TTF_Font *fm, const char *v)
 	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
 	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
 	if (v == MENU_KEY_Y_ON || v == MENU_KEY_Y_OFF)
-		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF)) + MENU_KEY_GAP
+		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE)) + MENU_KEY_GAP
 		       + ui_button_width("Y", MENU_KEY_SIZE);
 	return v ? ui_text_width(fm, v) : 0;
 }
@@ -5994,11 +5994,13 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		                                      content_w, DS_RULE });
 		if (g_menu_tabs) menu_tabs_bar(a, cx, panel.y + head_h, tab_bar_w);
 		menu_zyper_draw(a, &panel, pad);
-		/* the screen's picture under the rule, its gap under it */
-		if (g_menu_header)
-			g_menu_header(a, &(SDL_Rect){ content_x, panel.y + head_h + pad / 2,
-			                              content_w, g_menu_header_h - pad / 2 });
 	}
+	/* the screen's picture under the rule, its gap under it, or at the top
+	 * of a panel with no heading (File Transfer's way in) */
+	if (g_menu_header)
+		g_menu_header(a, &(SDL_Rect){ content_x,
+		                              heading ? panel.y + head_h + pad / 2 : panel.y + pad,
+		                              content_w, g_menu_header_h - pad / 2 });
 
 	/* THE HIGHLIGHT SLIDES. It used to be drawn inside the row loop at
 	 * i == sel, which put it wherever the cursor was that frame and made it
@@ -6356,7 +6358,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				ui_button(a->r, "Y", content_x + content_w - bw / 2,
 				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
-				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF),
+				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE),
 				        content_x + content_w - bw - MENU_KEY_GAP, ty, 1, vc);
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
@@ -8726,20 +8728,233 @@ static void hare_head(char *out, size_t n, bool cable, const char *name, const c
 	else snprintf(out, n, "%s\nPIN %s", addr, pin);
 }
 
-/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), until a browser
- * opens the page: Cable, Address and Browser over the cable, Wi-Fi and
- * Browser over the air, each a tick once done, the one waited on saying so
- * and the ones after it quiet, over the rule and the legend. When a step
- * stalls, its hint takes the others' room: the stalled step's row alone
- * and the hint under it, balanced onto at most three lines, over the rule
- * and the legend. Three rows and a three-line hint do not fit the panel under a
- * two-line heading, and a hint is about one step. The screen and its shot
- * (--hare-steps) build them here. `name` is the handheld's name on the
- * network ("" for none) and `addr` its address, for the browser's hint. */
+/* THE WAY IN (DESIGN.md 11.35, 2026-11-12: "while nobody inputted the PIN
+ * yet ... show the URL/IP/PIN full size in the popup; only after someone
+ * connected we show the stats"). Until someone has signed in, the panel is
+ * the screen's name, the first thing to type as large as it fits whole, the
+ * other way to reach it under that, and the PIN as four keys; under them the
+ * step the link is on, the rule and the legend. The steps and their hint
+ * (xs_step_rows) take its place only while a step before the browser stalls,
+ * when the address cannot work yet. g_way holds what the header draws. */
+static struct {
+	const char *title;
+	char        first[128], second[128], pin[16];
+} g_way;
+
+#define XS_WAY_H     352         /* the header's room, its gap under it included */
+#define XS_WAY_KEY_W 80
+#define XS_WAY_KEY_H 96
+
+static void xs_way_header(app *a, const SDL_Rect *q)
+{
+	const ds_theme *t = theme();
+	TTF_Font *fm = ui_font(UI_F_META), *fn = ui_font(UI_F_MENU);
+	TTF_Font *big[3] = { ui_font(UI_F_TITLE), ui_font(UI_F_LABEL), ui_font(UI_F_MENU) };
+	TTF_Font *fb;
+	const int cx = q->x + q->w / 2, y = q->y;
+	int n = (int)strlen(g_way.pin), i, kx, ky = y + 228;
+
+	/* the screen's name, small, where a heading would be */
+	ui_text(a->r, fm, g_way.title, cx, ui_cap_y(fm, y + 18), 0, UI_TEXT_DIM);
+	/* the first thing to type: **title** where it fits whole, a step down
+	 * where not (a port on the name), and sliding past that, never cut */
+	for (i = 0; i < 2 && ui_text_width(big[i], g_way.first) > q->w; i++) ;
+	fb = big[i];
+	if (ui_text_width(fb, g_way.first) <= q->w)
+		ui_text(a->r, fb, g_way.first, cx, ui_cap_y(fb, y + 84), 0, UI_TEXT);
+	else
+		ui_text_marquee(a->r, fb, g_way.first, q->x, ui_cap_y(fb, y + 84), q->w,
+		                plat_now_ms(), UI_TEXT);
+	if (g_way.second[0])
+		ui_text(a->r, fn, g_way.second, cx, ui_cap_y(fn, y + 146), 0, UI_TEXT_SOFT);
+	/* the PIN, a key a digit: **raised** in an **edge** frame, the digit in
+	 * **title** **text**, as the page's four boxes take it */
+	ui_text(a->r, fm, "PIN", cx, ui_cap_y(fm, y + 204), 0, UI_TEXT_DIM);
+	kx = cx - (n * XS_WAY_KEY_W + (n - 1) * DS_GRID * 2) / 2;
+	for (i = 0; i < n; i++, kx += XS_WAY_KEY_W + DS_GRID * 2) {
+		SDL_Rect k = { kx, ky, XS_WAY_KEY_W, XS_WAY_KEY_H };
+		char d[2] = { g_way.pin[i], '\0' };
+
+		ui_round_rect(a->r, &k, DS_RADIUS_KEY, ui_col(t->edge, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ k.x + DS_FRAME, k.y + DS_FRAME, k.w - DS_FRAME * 2,
+		                                 k.h - DS_FRAME * 2 }, DS_RADIUS_KEY - DS_FRAME,
+		              ui_col(t->raised, 255));
+		ui_text(a->r, big[0], d, k.x + k.w / 2, ui_cap_y(big[0], k.y + k.h / 2), 0, UI_TEXT);
+	}
+}
+
+/* What the way in shows: over the cable the name with http:// first and the
+ * address under it; over Wi-Fi the address first and the name under it, as
+ * the heading orders them (hare_head) */
+static void xs_way_set(bool cable, const char *name, const char *addr, const char *pin)
+{
+	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
+	g_way.title = cable ? XFER_NAME_CABLE : XFER_NAME_WIFI;
+	if (name && name[0] && cable) {
+		snprintf(g_way.first, sizeof g_way.first, "http://%s", name);
+		snprintf(g_way.second, sizeof g_way.second, "%s", addr);
+	} else {
+		snprintf(g_way.first, sizeof g_way.first, "%s", addr);
+		snprintf(g_way.second, sizeof g_way.second, "%s", name ? name : "");
+	}
+	snprintf(g_way.pin, sizeof g_way.pin, "%s", pin);
+}
+
+/* The way in's rows: the step the link is on (Cable unplugged, Address or
+ * Browser waiting, Wi-Fi not connected), or PIN waiting once a browser has
+ * the page; the rule; the legend */
+static int xs_way_rows(menu_row *out, const link_steps *s, bool cable, const char *legend)
+{
+	int n = 0;
+
+	if (s->step == LS_LINK && cable)
+		out[n++] = (menu_row){ T(S_XFER_STEP_CABLE),
+		                       s->sub == 0 ? T(S_XFER_STEP_UNPLUGGED) : T(S_XFER_WAITING), true };
+	else if (s->step == LS_LINK)
+		out[n++] = (menu_row){ T(S_XFER_STEP_WIFI), T(S_MENU_NOT_CONNECTED), true };
+	else if (s->step == LS_ADDRESS)
+		out[n++] = (menu_row){ T(S_XFER_STEP_ADDRESS), T(S_XFER_WAITING), true };
+	else if (s->step == LS_BROWSER)
+		out[n++] = (menu_row){ T(S_XFER_STEP_BROWSER), T(S_XFER_WAITING), true };
+	else
+		out[n++] = (menu_row){ "PIN", T(S_XFER_WAITING), true };
+	out[n++] = MENU_RULE;
+	out[n++] = MENU_NOTE(legend);
+	return n;
+}
+
+/* Whether a stalled step's hint takes the way in's place: a hint for a step
+ * before the browser, while the address cannot work yet */
+static bool xs_way_hint(int h)
+{
+	return h != LH_NONE && h != LH_NO_BROWSER;
+}
+
+/* One frame of the way in, over what the caller drew under it */
+static void xs_way_draw(app *a, const menu_row *rows, int n)
+{
+	g_menu_header = xs_way_header;
+	g_menu_header_h = XS_WAY_H;
+	menu_draw(a, NULL, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
+}
+
+/* THE CABLE'S LOADING BAR (DESIGN.md 11.35, 2026-11-12: "usb file transfer
+ * takes a while to start, we need a loading state"). Over the cable the
+ * address and the PIN cannot work until the computer has taken the handheld,
+ * opened its network on it and taken its address, a few seconds and more the
+ * first time Windows sees it. Until then the way in's panel says so, in the
+ * same place: the screen's name, "Connecting to the computer" in **label**,
+ * and a **bar** on **track** filling with **accent-ink**, a third for each
+ * of the three. While one is waited on, its third creeps toward three
+ * quarters of the way (never the whole: the computer has not done it yet);
+ * the step row under the rule says which. Once the address is in, the bar
+ * runs to its end and the way in takes its place. A stalled step's hint
+ * still takes the whole panel (xs_step_rows). g_load_k is what the header
+ * draws. */
+static float g_load_k;
+
+#define XS_LOAD_BAR_W 420
+#define XS_LOAD_CREEP_MS 3000.0f   /* a waited step's creep: 63% of its room in this */
+#define XS_LOAD_EASE_MS  150.0f    /* the fill catching up with where it should be */
+
+/* Where the bar should be: a third for each of the computer taking the
+ * handheld, its network and its address, and the creep of the one waited
+ * on. No computer (sub 0) or one waiting for power (sub 4) does not creep:
+ * nothing is coming. */
+static float xs_load_target(const link_steps *s, unsigned now)
+{
+	float creep = 0.0f;
+	int k;
+
+	if (!s->started) return 0.0f;
+	if (s->step >= LS_BROWSER) return 1.0f;
+	k = s->step == LS_ADDRESS ? 2 : s->sub == 2 ? 1 : 0;
+	if (s->step == LS_ADDRESS || s->sub == 1 || s->sub == 2)
+		creep = 0.75f * (1.0f - expf(-(float)(now - s->since) / XS_LOAD_CREEP_MS));
+	return ((float)k + creep) / 3.0f;
+}
+
+/* One pass of the bar (the session's fill `k` and the moment `ms` it last
+ * moved): the fill eases up toward where it should be, and drops at once
+ * when a step is lost (the cable out). True while it is short of its end,
+ * when the loading view is the one up. */
+static bool xs_load_step(const link_steps *s, float *k, unsigned *ms, unsigned now)
+{
+	float target = xs_load_target(s, now), dt;
+
+	dt = *ms ? (float)(now - *ms) : 0.0f;
+	if (dt > 100.0f) dt = 100.0f;
+	*ms = now ? now : 1;
+	if (target < *k) *k = target;
+	else *k += (target - *k) * (dt >= XS_LOAD_EASE_MS ? 1.0f : dt / XS_LOAD_EASE_MS);
+	if (target >= 1.0f && *k > 0.995f) *k = 1.0f;
+	return *k < 1.0f;
+}
+
+static void xs_load_header(app *a, const SDL_Rect *q)
+{
+	const ds_theme *t = theme();
+	const char *say = T(S_XFER_CONNECTING);
+	TTF_Font *fm = ui_font(UI_F_META), *fl = ui_font(UI_F_LABEL);
+	const int cx = q->x + q->w / 2, y = q->y;
+	SDL_Rect bar = { cx - XS_LOAD_BAR_W / 2, y + 232, XS_LOAD_BAR_W, UI_BAR_H };
+	int fill = (int)(XS_LOAD_BAR_W * (g_load_k < 0 ? 0 : g_load_k > 1 ? 1 : g_load_k) + 0.5f);
+
+	ui_text(a->r, fm, g_way.title, cx, ui_cap_y(fm, y + 18), 0, UI_TEXT_DIM);
+	/* **label**, or **menu** where a language's words do not fit it whole,
+	 * and sliding past that, never cut */
+	if (ui_text_width(fl, say) > q->w) fl = ui_font(UI_F_MENU);
+	if (ui_text_width(fl, say) <= q->w)
+		ui_text(a->r, fl, say, cx, ui_cap_y(fl, y + 160), 0, UI_TEXT);
+	else
+		ui_text_marquee(a->r, fl, say, q->x, ui_cap_y(fl, y + 160), q->w, plat_now_ms(), UI_TEXT);
+	ui_round_rect(a->r, &bar, UI_BAR_H / 2, ui_col(t->track, 255));
+	if (fill > 0)
+		ui_round_rect(a->r, &(SDL_Rect){ bar.x, bar.y, fill, UI_BAR_H }, UI_BAR_H / 2,
+		              ui_col(t->accent_ink, 255));
+}
+
+/* One frame of the loading view: the way in's panel, rows and all, with
+ * the bar in place of what to type */
+static void xs_load_draw(app *a, const menu_row *rows, int n, float k)
+{
+	g_load_k = k;
+	g_menu_header = xs_load_header;
+	g_menu_header_h = XS_WAY_H;
+	menu_draw(a, NULL, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
+}
+
+/* The hotspot's heading once someone came in (the news replaces its code):
+ * its network and password, then the PIN, for another phone. Where the
+ * network and the password do not fit one line of the panel's heading
+ * (**label**, `room` wide; Chinese draws them wider and its panel is
+ * narrower), the password moves down beside the PIN, so neither slides. */
+static void hot_head(char *out, size_t n, int room, const char *ssid, const char *pass,
+                     const char *pin)
+{
+	snprintf(out, n, "%s · %s", ssid, pass);
+	if (ui_text_width(ui_font(UI_F_LABEL), out) <= room)
+		snprintf(out, n, "%s · %s\nPIN %s", ssid, pass, pin);
+	else
+		snprintf(out, n, "%s\n%s · PIN %s", ssid, pass, pin);
+}
+
+/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), while a step before
+ * the browser stalls (xs_way_hint) and no one has come in yet: Cable,
+ * Address and Browser over the cable, Wi-Fi and Browser over the air, each
+ * a tick once done, the one waited on saying so and the ones after it
+ * quiet, over the rule and the legend. The stalled step's hint takes the
+ * others' room: its row alone and the hint under it, balanced onto at most
+ * three lines, over the rule and the legend. Three rows and a three-line
+ * hint do not fit the panel under a two-line heading, and a hint is about
+ * one step. The screen and its shot (--hare-steps) build them here. */
 #define STEP_ROWS 8
 static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hint, size_t hn,
-                        const link_steps *s, int h, bool cable, const char *name,
-                        const char *addr, const char *legend)
+                        const link_steps *s, int h, bool cable, const char *legend)
 {
 	menu_row all[3];
 	int n = 0, m = 0, k, i, at = 0;
@@ -8770,14 +8985,8 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
 	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
-	case LH_NO_BROWSER:
-		if (name && name[0] && cable)
-			snprintf(hint, hn, T(S_XFER_HINT_TYPE_BOTH), name, addr);
-		else if (name && name[0])          /* Wi-Fi: the address first (hare_head) */
-			snprintf(hint, hn, T(S_XFER_HINT_WIFI_BOTH), addr, name);
-		else
-			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_ONE : S_XFER_HINT_WIFI_ONE), addr);
-		break;
+	/* LH_NO_BROWSER has none: the way in (xs_way_rows) shows what to type
+	 * at full size, which is what that hint said */
 	default: break;
 	}
 	if (hint[0]) {
@@ -10500,6 +10709,14 @@ typedef struct {
 	link_sense  sense;          /* the cable's facts, read five times a second */
 	bool        sensed;         /* the device can tell them: steps over the cable */
 	bool        joined;         /* Wi-Fi: on a network */
+	/* Someone came in: a browser entered the PIN (hare_signed_once) or SSH
+	 * signed in. The screen is the way in until then and its news after,
+	 * and stays the news when they leave (DESIGN.md 11.35) */
+	bool        met;
+	/* The cable's loading bar (xs_load_step): its fill as drawn, 0..1, and
+	 * the moment it last moved */
+	float       load_k;
+	unsigned    load_ms;
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
 } xfer_sess;
@@ -11016,6 +11233,7 @@ static void xs_tick(app *a)
 	if (!g_xs.on) return;
 	g_xs.busy = hare_poll();
 	hare_status(&g_xs.st);
+	if (hare_signed_once() || (g_xs.cable && sshlink_sessions() > 0)) g_xs.met = true;
 	/* A batch of files in: the side lights say so (src/sidelights.h) */
 	if (side_lights_batch_done(&g_xs.lit, g_xs.st.uploads > 0, now))
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
@@ -11607,6 +11825,9 @@ static void xfer_screen_way(app *a, int way)
 	char       hint[320], lines[3][LB_LINE];
 	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
+	/* which view is up: the way in, the cable's loading bar, the steps, the
+	 * news, the hotspot's */
+	enum { WAY_IN, WAY_LOAD, WAY_STEPS, WAY_NEWS, WAY_HOT } view;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
 	int        cover_left = -1, cover_albums = -1;
 	unsigned long long cover_moved = 0;
@@ -11691,13 +11912,37 @@ static void xfer_screen_way(app *a, int way)
 			else snprintf(name, sizeof name, "%s:%d", mdns_name(), hare_port());
 		}
 		hare_head(head, sizeof head, g_xs.cable, name, g_xs.addr, g_xs.pin);
-		if (xs_steps_shown())
-			nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps,
-			                     link_steps_hint(&g_xs.steps, now), g_xs.cable, name,
-			                     g_xs.addr, XS_LEGEND);
-		else
+		/* Until someone comes in, the way in, or the steps while one before
+		 * the browser stalls; after, the news, whoever leaves (DESIGN.md
+		 * 11.35). The hotspot's way in is its own screen (hot_show). */
+		view = WAY_NEWS;
+		if (!g_xs.met && !g_xs.hot) {
+			int h = link_steps_hint(&g_xs.steps, now);
+
+			view = xs_steps_shown() && xs_way_hint(h) ? WAY_STEPS : WAY_IN;
+			if (view == WAY_STEPS)
+				nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps, h,
+				                     g_xs.cable, XS_LEGEND);
+			else {
+				xs_way_set(g_xs.cable, name, g_xs.addr, g_xs.pin);
+				nrows = xs_way_rows(rows, &g_xs.steps, g_xs.cable, XS_LEGEND);
+				/* Over a cable the device can read, the loading bar until
+				 * the computer has its address and the bar its end */
+				if (g_xs.cable && g_xs.sensed
+				    && xs_load_step(&g_xs.steps, &g_xs.load_k, &g_xs.load_ms, now))
+					view = WAY_LOAD;
+			}
+		} else if (!g_xs.met) {
+			view = WAY_HOT;
+			nrows = 0;
+		}
+		if (view == WAY_NEWS) {
+			if (g_xs.hot)
+				hot_head(head, sizeof head, menu_std_width(a), hotspot_ssid(),
+				         hotspot_password(), g_xs.pin);
 			nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
 			                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
+		}
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -11784,11 +12029,19 @@ static void xfer_screen_way(app *a, int way)
 
 			power_follow();             /* as in the menus' loop */
 			legend = hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND;
-			unsigned key = g_xs.hot
+			unsigned key = view == WAY_HOT
 			    ? pace_str(pace_str(pace_str(pace_str(pace_int(pace_rows(NULL, NULL, 0, -1, k, a->tint),
 			               g_xs.hs), g_xs.name), g_xs.pin), now_line), legend)
+			    : view == WAY_IN
+			    ? pace_str(pace_str(pace_rows(NULL, rows, nrows, -1, k, a->tint), g_way.first),
+			               g_way.second)
+			    : view == WAY_LOAD
+			    ? pace_int(pace_rows(NULL, rows, nrows, -1, k, a->tint), (int)(g_xs.load_k * 1000.0f))
 			    : pace_rows(head, rows, nrows, -1, k, a->tint);
-			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
+			/* the bar catching up draws every pass; its creep, slow, by its key */
+			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING)
+			              || (view == WAY_LOAD
+			                  && xs_load_target(&g_xs.steps, nowp) - g_xs.load_k > 0.002f);
 			bool busy = moving || pace_busy(a);
 
 			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
@@ -11804,7 +12057,9 @@ static void xfer_screen_way(app *a, int way)
 			g_redraw_at = REDRAW_NEVER;
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
-			if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
+			if (view == WAY_HOT) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
+			else if (view == WAY_IN) xs_way_draw(a, rows, nrows);
+			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
 			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
 			plat_draw_osd(a->r);
 			plat_present();
@@ -13425,7 +13680,7 @@ static void about_refresh(about_view *v, unsigned now)
 	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
 	v->nsystem = 4;
 	if (devmode_unlocked(db_dev())) {
-		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON), false };
+		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON_TITLE), false };
 	} else if (devmode_hold_permille(&v->hold, now) > 0) {
 		/* The row comes with the hold, its bar drawn over its value (about_draw) */
 		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), NULL, false };
@@ -23241,7 +23496,7 @@ static int shot_usbdrive = -1;   /* --usb-drive N */
  * focused; with "game", the one a game asked for gets */
 static int shot_xfer_ask = -1;
 static bool shot_xfer_game;
-static int shot_hot;
+static int shot_hot, shot_hot_in;
 static const char *shot_hot_ssid   = "ZyperOS-7A2B";
 static const char *shot_hot_pass   = "q7mx-3kpa";
 static const char *shot_hot_phones = "1 joined";
@@ -23252,7 +23507,7 @@ static const char *shot_hare_head = "receiving Contra (USA).zip";
 /* --hare-steps usb|wifi STATE: File Transfer's steps (linksteps.h) at one
  * state, its hint shown where the state has one: unplugged, nocomputer,
  * noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork */
-static const char *shot_steps_way, *shot_steps_state;
+static const char *shot_steps_way, *shot_steps_state, *shot_steps_addr;
 static bool shot_steps_noname;      /* ... noname: as when mDNS could not start */
 static const char *shot_wait, *shot_wait_msg;   /* NULL: library.scanning's */
 static int shot_osd_kind, shot_osd_val; /* --osd volume|brightness LEVEL */
@@ -24232,6 +24487,10 @@ static void shot_compose(app *a)
 	if (shot_steps_way) {
 		static const struct { const char *name; int step, sub, hint; } ST[] = {
 			{ "unplugged",  LS_LINK,    0, LH_NONE },
+			/* a computer that has not taken the handheld yet, and one
+			 * that took it and has not opened its network: the loading bar */
+			{ "taking",     LS_LINK,    1, LH_NONE },
+			{ "opening",    LS_LINK,    2, LH_NONE },
 			{ "nocomputer", LS_LINK,    0, LH_NO_COMPUTER },
 			{ "noanswer",   LS_LINK,    1, LH_NO_ANSWER },
 			{ "nodriver",   LS_LINK,    2, LH_NO_DRIVER },
@@ -24242,6 +24501,8 @@ static void shot_compose(app *a)
 			{ "nonetwork",  LS_LINK,    3, LH_NO_NETWORK },
 			{ "waits",      LS_LINK,    4, LH_NONE },
 			{ "replug",     LS_LINK,    4, LH_REPLUG },
+			/* the page open in a browser, its PIN not in yet */
+			{ "pin",        LS_DONE,    0, LH_NONE },
 		};
 		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
 		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
@@ -24262,18 +24523,43 @@ static void shot_compose(app *a)
 
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
-		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
-		                 b_legend(S_KEYHINT_CLOSE));
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
-		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		/* As the screen chooses (xfer_screen_way): the way in, or the steps
+		 * while one before the browser stalls */
+		if (xs_way_hint(h)) {
+			n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable,
+			                 b_legend(S_KEYHINT_CLOSE));
+			menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		} else {
+			xs_way_set(cable, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
+			n = xs_way_rows(rows, &st, cable, b_legend(S_KEYHINT_CLOSE));
+			/* over the cable, before the address: the loading bar, its
+			 * step waited on for a second and a half */
+			if (cable && st.step < LS_BROWSER)
+				xs_load_draw(a, rows, n, xs_load_target(&st, 1500));
+			else
+				xs_way_draw(a, rows, n);
+		}
 	}
 	if (shot_hare)
 		hare_preview(a, "zyperos.local", shot_hare_addr, "4071", shot_hare_who,
 		             /* the cable's address is USB File Transfer, with SSH */
 		             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL,
 		             "12 KB / 41 MB", shot_hare_head);
-	if (shot_hot)
+	if (shot_hot && shot_hot_in) {
+		/* the hotspot once someone came in: the news, its network, password
+		 * and PIN in the heading (hot_head) */
+		menu_row rows[7];
+		char head[192];
+		int n = hare_rows(rows, shot_hot_phones, NULL, "12 KB / 41 MB", shot_hot_now,
+		                  b_legend(S_KEYHINT_CLOSE));
+
+		hot_head(head, sizeof head, menu_std_width(a), shot_hot_ssid, shot_hot_pass, "4071");
+		draw_shelf(a);
+		ui_scrim(a->r, 0);
+		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	} else if (shot_hot)
 		hot_preview(a, shot_hot_ssid, shot_hot_pass, shot_hot_phones, shot_hot_now);
 	/* The synopsis card, from the card's own games table - so a shot of it is a
 	 * picture of real scraped text rather than a fixture. */
@@ -26313,6 +26599,10 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_phones = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_now    = argv[++i];
 		}
+		/* --hotspot-in: the hotspot once someone came in (the news) */
+		else if (!strcmp(argv[i], "--hotspot-in")) shot_hot_in = 1;
+		/* --hare-addr ADDR: the way in's address (a long one, for the fit) */
+		else if (!strcmp(argv[i], "--hare-addr") && i + 1 < argc) shot_steps_addr = argv[++i];
 		else if (!strcmp(argv[i], "--hare-steps") && i + 2 < argc) {
 			shot_steps_way = argv[++i];
 			shot_steps_state = argv[++i];

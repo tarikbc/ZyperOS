@@ -267,8 +267,8 @@ int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b)
 	}
 	full[GM_CHEEVOS].value = b->cheevos;
 	full[GM_SCREENS].value = gm_layout_label(u->layout);
-	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON) : T(S_MENU_OFF);
-	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON) : T(S_MENU_OFF);
+	full[GM_SWAP].value    = u->swap ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE);
+	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE);
 	full[GM_PAK].value     = u->pak;
 	/* X quits from anywhere on the page (gm_x_row), and Quit says so */
 	full[GM_QUIT].value    = MENU_KEY_X;
