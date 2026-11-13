@@ -17,10 +17,10 @@
 # The DDR stays at its top rate, 1056 MHz, from the start: the DMC's
 # simple_ondemand reads the DFI's bus load, which a game waiting on memory
 # latency rather than bandwidth barely moves, and it held Stardew Valley's
-# farm at 194 MHz and 2.4 fps, where 1056 gives 15 (2026-11-04).
+# farm at 194 MHz and 2.4 fps, where 1056 gives 15 (2026-11-04). datapart
+# sets that, earlier than this runs: before the first boot's copy.
 case "$1" in
 start)
-	echo performance > /sys/class/devfreq/dmc/governor 2> /dev/null
 	(
 		i=0
 		while [ $i -lt 400 ] && pidof splash > /dev/null; do

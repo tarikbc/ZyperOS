@@ -70,6 +70,19 @@ repair() {
 }
 
 start() {
+	# The DDR at its top rate and held there, before the card's first work:
+	# the first boot's partition and copy (ZyperOS's, a minute or more), or
+	# the repair after a bad power-off. The DMC driver starts on
+	# simple_ondemand, which moves it between 194, 328 and 1056 MHz as often
+	# as every 50 ms, and on a first boot that went on for the whole copy,
+	# since S01governor, which held it at 1056 from then on, runs only after
+	# it. 194 MHz is a rate the GKD Pixel 2's own firmware uses only asleep
+	# (its auto-min-freq is 328 MHz), and ZyperOS never once the boot is
+	# done (the launcher's idle ceiling is 328). One Pixel 2 hung the whole
+	# system at random points of that copy, every card, every version
+	# (2026-11-13); this way the copy runs on the DDR as every later boot
+	# does. Nothing to do on a device with no DMC (QEMU).
+	echo performance > /sys/class/devfreq/dmc/governor 2> /dev/null
 	# The card read ahead 2 MB at a time rather than 128 KB, before anything
 	# after this reads it, as on the Brick (its /etc/init.d/brick), where it
 	# took 40-90 ms off ZyperOS's start. A built-in, so no process for it
