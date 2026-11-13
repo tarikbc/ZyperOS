@@ -110,8 +110,8 @@ static unsigned lit_of(tour_step s)
 	case TOUR_MOVE:   return 1u << K_DPAD | 1u << K_L1 | 1u << K_R1;
 	case TOUR_A:      return 1u << K_A;
 	case TOUR_B:      return 1u << K_B;
-	case TOUR_Y:      return 1u << K_Y;
 	case TOUR_X:      return 1u << K_X;
+	case TOUR_Y:      return 1u << K_Y;
 	case TOUR_MENU:   return 1u << K_MENU;
 	case TOUR_SELECT: return 1u << K_SELECT | 1u << K_L2 | 1u << K_R2;
 	case TOUR_VOL:    return 1u << K_VOLUP | 1u << K_VOLDN;

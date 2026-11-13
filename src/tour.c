@@ -93,10 +93,13 @@ static const step_def STEPS[TOUR_STEPS] = {
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "A", NO_TEXT, "A", NULL, &LOOP_A },
 	[TOUR_B]       = { S_TOUR_B_TITLE, S_TOUR_B_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "B", NO_TEXT, "B", NULL, &LOOP_B },
-	[TOUR_Y]       = { S_TOUR_Y_TITLE, S_TOUR_Y_LINE,
-	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "Y", NO_TEXT, "Y", NULL, &LOOP_Y },
 	[TOUR_X]       = { S_TOUR_X_TITLE, S_TOUR_X_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "X", NO_TEXT, "X", NULL, &LOOP_X },
+	/* After the details, since Favorite is a row of theirs: Y on the shelf
+	 * starts a game without its resume point (2026-11-08). The heart that
+	 * pops is the one a favorite gets. */
+	[TOUR_Y]       = { S_TOUR_Y_TITLE, S_TOUR_Y_LINE,
+	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_FACE, "Y", NO_TEXT, "Y", NULL, &LOOP_Y },
 	[TOUR_MENU]    = { S_TOUR_MENU_TITLE, S_TOUR_MENU_LINE,
 	                   NO_TEXT, NO_TEXT, NO_TEXT, TG_PILL, "MENU", NO_TEXT, "MENU", NULL,
 	                   &LOOP_MENU },
@@ -659,8 +662,8 @@ static bool answers(const tour *t, tour_key k)
 	                         k == TK_L1 || k == TK_R1;
 	case TOUR_A:      return k == TK_A;
 	case TOUR_B:      return k == TK_B;
-	case TOUR_Y:      return k == TK_Y;
 	case TOUR_X:      return k == TK_X;
+	case TOUR_Y:      return k == TK_Y;
 	case TOUR_MENU:   return k == TK_MENU;
 	case TOUR_SELECT: return k == TK_SELECT;
 	case TOUR_VOL:    return k == TK_VOL;

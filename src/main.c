@@ -23252,9 +23252,13 @@ static int shot_tour_wrong = -1, shot_tour_wrong_ms = 300;
 static int shot_tour_pick = -1, shot_tour_pick_ms = 5000;
 static bool shot_tour_music;
 static int shot_fn_volume;
+/* By the step, so a step moved in src/tour.h keeps its name */
 static const char *const TOUR_STEP_NAMES[TOUR_STEPS] = {
-	"lang", "welcome", "move", "a", "b", "y", "x", "menu", "select", "vol", "bright", "power",
-	"theme", "home", "sounds", "music", "finish" };
+	[TOUR_LANG] = "lang", [TOUR_WELCOME] = "welcome", [TOUR_MOVE] = "move", [TOUR_A] = "a",
+	[TOUR_B] = "b", [TOUR_X] = "x", [TOUR_Y] = "y", [TOUR_MENU] = "menu",
+	[TOUR_SELECT] = "select", [TOUR_VOL] = "vol", [TOUR_BRIGHT] = "bright",
+	[TOUR_POWER] = "power", [TOUR_THEME] = "theme", [TOUR_HOME] = "home",
+	[TOUR_SOUNDS] = "sounds", [TOUR_MUSIC] = "music", [TOUR_FINISH] = "finish" };
 
 /* --theme light|dark: the theme the shot is drawn in, whatever the saved
  * Appearance is; -1 for the saved one. */
