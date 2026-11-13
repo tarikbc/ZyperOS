@@ -730,6 +730,94 @@ int main(void)
 		      "delete failed");
 	}
 
+	/* Drag and drop on the page (2026-11-13): an entry into a folder, a
+	 * sheet with its tracks, a disc set's folder whole; a name already in
+	 * the folder refuses the whole move; a folder never into itself, a root
+	 * never moved, and nothing out of the roots */
+	printf("  a move puts an entry into a folder, a sheet with its tracks:\n");
+	{
+		char p[512], q[512];
+		struct stat st;
+
+		snprintf(p, sizeof p, "%s/NES/Hacks", g_roms); mkdir(p, 0755);
+		snprintf(p, sizeof p, "%s/NES/Move Me.nes", g_roms); mkfile(p, "M");
+		CHECK(post("/api/move?p=roms/NES/Move%20Me.nes&to=roms/NES/Hacks", g_cookie) == 200,
+		      "a move failed");
+		snprintf(q, sizeof q, "%s/NES/Hacks/Move Me.nes", g_roms);
+		CHECK(stat(q, &st) == 0 && stat(p, &st) != 0, "the file did not move");
+		/* Back up to the folder above, as a crumb takes it */
+		CHECK(post("/api/move?p=roms/NES/Hacks/Move%20Me.nes&to=roms/NES", g_cookie) == 200,
+		      "a move up failed");
+		CHECK(stat(p, &st) == 0, "the file did not come back");
+		/* Into the folder it is in: nothing to do, and nothing done */
+		CHECK(post("/api/move?p=roms/NES/Move%20Me.nes&to=roms/NES", g_cookie) == 200 &&
+		      stat(p, &st) == 0, "a move onto its own folder lost it");
+
+		/* A name already there: refused, and both stay */
+		snprintf(q, sizeof q, "%s/NES/Hacks/Move Me.nes", g_roms); mkfile(q, "OTHER");
+		{
+			char body[512];
+
+			CHECK(req("POST", "/api/move?p=roms/NES/Move%20Me.nes&to=roms/NES/Hacks", g_cookie,
+			          NULL, 0, body, sizeof body) == 409, "a move over a name was not refused");
+			CHECK(strstr(body, "Move Me.nes") && strstr(body, "Hacks"),
+			      "the refusal did not name the file and the folder: %s", body);
+		}
+		CHECK(stat(p, &st) == 0 && stat(q, &st) == 0 && st.st_size == 5, "a refused move moved");
+		remove(q);
+		remove(p);
+
+		/* A sheet goes with the tracks it names and its .sbi; another file
+		 * beside it of a like name stays */
+		snprintf(p, sizeof p, "%s/NES/Disc.cue", g_roms);
+		mkfile(p, "FILE \"Disc (Track 1).bin\" BINARY\nFILE \"Disc (Track 2).bin\" BINARY\n");
+		snprintf(p, sizeof p, "%s/NES/Disc (Track 1).bin", g_roms); mkfile(p, "T1");
+		snprintf(p, sizeof p, "%s/NES/Disc (Track 2).bin", g_roms); mkfile(p, "T2");
+		snprintf(p, sizeof p, "%s/NES/Disc.sbi", g_roms); mkfile(p, "S");
+		snprintf(p, sizeof p, "%s/NES/Disc (Track 3).bin", g_roms); mkfile(p, "T3");
+		CHECK(post("/api/move?p=roms/NES/Disc.cue&to=roms/NES/Hacks", g_cookie) == 200,
+		      "a sheet's move failed");
+		snprintf(q, sizeof q, "%s/NES/Hacks/Disc (Track 2).bin", g_roms);
+		CHECK(stat(q, &st) == 0, "a sheet's track stayed behind");
+		snprintf(q, sizeof q, "%s/NES/Hacks/Disc.sbi", g_roms);
+		CHECK(stat(q, &st) == 0, "a .cue's .sbi stayed behind");
+		CHECK(stat(p, &st) == 0, "a file the sheet does not name went with it");
+		remove(p);
+
+		/* A disc set's folder goes whole */
+		snprintf(p, sizeof p, "%s/NES/Set", g_roms); mkdir(p, 0755);
+		snprintf(p, sizeof p, "%s/NES/Set/Set.m3u", g_roms); mkfile(p, "a.chd\n");
+		CHECK(post("/api/move?p=roms/NES/Set&to=roms/NES/Hacks", g_cookie) == 200,
+		      "a folder's move failed");
+		snprintf(q, sizeof q, "%s/NES/Hacks/Set/Set.m3u", g_roms);
+		CHECK(stat(q, &st) == 0, "the folder did not move whole");
+
+		/* Never into itself, never a root, never out of the roots */
+		CHECK(post("/api/move?p=roms/NES/Hacks&to=roms/NES/Hacks/Set", g_cookie) == 400,
+		      "A FOLDER WENT INTO ITSELF");
+		CHECK(post("/api/move?p=roms/NES/Hacks&to=roms/NES/Hacks", g_cookie) == 400,
+		      "a folder went onto itself");
+		CHECK(post("/api/move?p=roms&to=roms/NES", g_cookie) == 400, "A ROOT WAS MOVED");
+		/* A console's own folder stays where the shelf looks for it */
+		snprintf(p, sizeof p, "%s/SNES", g_roms); mkdir(p, 0755);
+		CHECK(post("/api/move?p=roms/SNES&to=roms/NES/Hacks", g_cookie) == 403,
+		      "A CONSOLE'S FOLDER WAS MOVED");
+		/* Nothing crosses roots: not a game into the save states */
+		CHECK(post("/api/move?p=roms/NES/Contra.nes&to=states/NES", g_cookie) == 400,
+		      "A MOVE CROSSED INTO ANOTHER ROOT");
+		/* The page's paths, every part encoded as encodeURIComponent has it */
+		CHECK(post("/api/move?p=roms%2FNES%2FHacks%2FSet&to=roms%2FNES", g_cookie) == 200,
+		      "an encoded move failed");
+		snprintf(q, sizeof q, "%s/NES/Set/Set.m3u", g_roms);
+		CHECK(stat(q, &st) == 0, "the encoded move did not land");
+		CHECK(post("/api/move?p=roms/NES/Contra.nes&to=roms/../..", g_cookie) == 403,
+		      "A MOVE LEFT THE ROOTS");
+		CHECK(post("/api/move?p=roms/NES/Contra.nes&to=roms/NES/Contra.nes", g_cookie) == 400,
+		      "a move into a file was not refused");
+		CHECK(post("/api/move?p=roms/NES/Gone.nes&to=roms/NES/Hacks", g_cookie) == 404,
+		      "a move of nothing was not refused");
+	}
+
 	printf("  and a session does not let a path climb out:\n");
 	{
 		/* xfer_resolve already refuses these; this proves the ROUTES ask it,

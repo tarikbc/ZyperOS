@@ -418,16 +418,15 @@ SDL_Texture *ui_make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 /* The same, square and square-cornered, for an album with no cover. */
 SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h);
-/* A folder's card on a shelf (src/shelfdir.h): the game card's slab and
- * band, the pixel folder (ui_card_folder_art) with how many games it holds
- * on a label, and its name under it. */
+/* A folder's card on a shelf (src/shelfdir.h): the folder itself in pixel
+ * art in the system's color, papers standing out of it (src/folderart.h),
+ * how many games it holds on a label and its name on its front. */
 SDL_Texture *ui_make_folder_card(SDL_Renderer *r, const char *title, unsigned rgb,
                                  int games, int *w, int *h);
-/* The folder a folder's card draws: the system sprites' FOLDER still, a
- * 128-unit picture, handed over (this file frees it) once on the frame
- * thread before any folder card is asked for. Without it a folder's card has
- * its label alone. */
-void ui_card_folder_art(SDL_Surface *still);
+/* A folder's row in the list: the same folder, small, in `rgb`, a texture to
+ * draw at twice its cells, nearest. Owned by the caller. */
+SDL_Texture *ui_make_folder_icon(SDL_Renderer *r, unsigned rgb, int *w, int *h);
+
 
 /* The theme a card's texture was made for, DS_LIGHT or DS_DARK - a card from
  * this file - or -1 for any other texture: art that is no theme's. With cardgen_kept (src/cardgen.h), what

@@ -588,3 +588,47 @@ fr = associez d'abord cette liste des jeux par nom
 de = ordne diese Spieleliste zuerst nach Namen zu
 ja = 先にこのゲーム一覧を名前で照合してください
 it = prima abbina questo elenco giochi per nome
+
+[hare.moved]
+note = On the handheld's File Transfer screen: a file or folder dragged into another folder on the page; %s is its name
+en = moved %s
+zh-Hans = 已移动 %s
+es = movido: %s
+pt-BR = movido: %s
+fr = déplacé : %s
+de = verschoben: %s
+ja = %s を移動しました
+it = spostato: %s
+
+[hare.cannot_move]
+note = The page's message when an entry cannot be moved: a top folder (ROMs, Music...), a folder that is not there, or another card
+en = This cannot be moved there
+zh-Hans = 无法移动到那里
+es = No se puede mover ahí
+pt-BR = Não é possível mover para lá
+fr = Impossible de le déplacer là
+de = Kann nicht dorthin verschoben werden
+ja = そこへは移動できません
+it = Non si può spostare lì
+
+[hare.move_into_itself]
+note = The page's message when a folder is dropped onto itself or onto a folder inside it
+en = A folder cannot go into itself
+zh-Hans = 文件夹不能移到它自己里面
+es = Una carpeta no puede ir dentro de sí misma
+pt-BR = Uma pasta não pode ir para dentro dela mesma
+fr = Un dossier ne peut pas aller dans lui-même
+de = Ein Ordner kann nicht in sich selbst
+ja = フォルダをそれ自身の中には移動できません
+it = Una cartella non può andare dentro sé stessa
+
+[hare.move_exists]
+note = The page's message when a move is refused because the target folder has an entry of that name: first %s the name, second %s the folder
+en = %s is already in %s
+zh-Hans = %2$s 中已有 %1$s
+es = %s ya está en %s
+pt-BR = %s já está em %s
+fr = %s est déjà dans %s
+de = %s ist schon in %s
+ja = %2$s にはすでに %1$s があります
+it = %s è già in %s

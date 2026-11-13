@@ -4100,19 +4100,22 @@ static bool list_fav(void *ctx, int i)
 	       fav_is(a->sys.systems[a->sys_cursor].tag, v->list.items[i].file);
 }
 
-/* The pixel folder the list's rows draw: the system sprites' FOLDER still,
- * read once, nearest so its pixels stay whole; let go with every other
- * texture (free_all_textures) */
-static SDL_Texture *folder_icon(app *a)
-{
-	char path[CFG_STR * 2];
+/* The pixel folder the list's rows draw (src/folderart.h), in the shelf's
+ * color, made again when the color or the theme changes; nearest so
+ * its pixels stay whole; let go with every other texture (free_all_textures) */
+static unsigned g_folder_icon_rgb;
+static int g_folder_icon_theme = -1;
 
-	if (g_folder_icon) return g_folder_icon;
-	snprintf(path, sizeof path, "%s/system-icons/FOLDER-still.png", P_ROOT);
-	if ((g_folder_icon = IMG_LoadTexture(a->r, path))) {
-		SDL_SetTextureScaleMode(g_folder_icon, SDL_ScaleModeNearest);
-		SDL_SetTextureBlendMode(g_folder_icon, SDL_BLENDMODE_BLEND);
-	}
+static SDL_Texture *folder_icon(app *a, unsigned rgb)
+{
+	int w, h;
+
+	if (g_folder_icon && g_folder_icon_rgb == rgb && g_folder_icon_theme == theme_index())
+		return g_folder_icon;
+	if (g_folder_icon) SDL_DestroyTexture(g_folder_icon);
+	g_folder_icon = ui_make_folder_icon(a->r, rgb, &w, &h);
+	g_folder_icon_rgb = rgb;
+	g_folder_icon_theme = theme_index();
 	return g_folder_icon;
 }
 
@@ -4126,22 +4129,25 @@ static void draw_games(app *a)
 
 	shelf_heading(s, v, head, sizeof head);
 	if (v->listed) {
-		/* MENU > View > List (DESIGN.md 11.39): no video snap there; the
-		 * cover on its panel is the picture */
+		/* MENU > View > List (DESIGN.md 11.39): the focused game's video
+		 * snap plays in its cover's place on the panel, as on the cover row
+		 * (2026-11-13: "the list mode should also play the video preview"),
+		 * when the list has stopped on it */
 		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
-		games_info none = { 0 };
+		bool settled = !gl_moving(&v->lm, now);
+		games_info si = { 0 };
 		gl_info li;
 		unsigned wait;
 
-		game_page_facts(a, !gl_moving(&v->lm, now));
-		shelf_snap(a, v, NULL, owner, true, &none);
+		game_page_facts(a, settled);
+		shelf_snap(a, v, g && !g->folder ? g : NULL, owner, settled, &si);
 		li = (gl_info){
 			.heading = head, .count = v->list.count, .cursor = v->cursor,
 			.accent = s->accent, .accent_of = v->owner ? list_accent : NULL,
 			.title_of = list_title, .folder_of = list_folder,
 			.fav_of = v->owner || is_muse(s) ? NULL : list_fav,
-			.folder_icon = v->nfold ? folder_icon(a) : NULL,
+			.folder_icon = v->nfold ? folder_icon(a, s->accent) : NULL,
 			.played = g_game_page.valid ? g_game_page.played : "",
 			.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 			.has_achievements = g_game_page.valid && g_game_page.achievements,
@@ -4149,6 +4155,9 @@ static void draw_games(app *a)
 			.install = pm_is_offer(a, owner, g),
 			.inside = v->dir[0] != '\0',
 			.earned = g_game_page.earned, .total = g_game_page.total,
+			.snap = si.snap, .snap_w = si.snap_w, .snap_h = si.snap_h,
+			.snap_src = si.snap_src, .snap_k = si.snap_k, .snap_wait = si.snap_wait,
+			.has_snap = g && game_has_snap(a, v->cursor),
 		};
 		wait = gl_draw(&v->lm, a->r, &li, game_get_tex, a, now, title_phase(a));
 		if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
@@ -26966,14 +26975,6 @@ int main(int argc, char *argv[])
 	 * what a tool for checking one frame wants: the right picture, not a fast
 	 * one. */
 	IMG_Init(IMG_INIT_PNG);
-	/* The pixel folder a folder's card draws (src/shelfdir.h), before any
-	 * worker can be asked for one */
-	{
-		char fp[CFG_STR * 2];
-
-		snprintf(fp, sizeof fp, "%s/system-icons/FOLDER-still.png", P_ROOT);
-		ui_card_folder_art(IMG_Load(fp));
-	}
 	texload_set_late(es_cover_late);
 	art_es_media(es_art_cover, es_art_video);
 	if (!shot_path) texload_start();

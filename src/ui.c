@@ -9,7 +9,8 @@
 #include "config.h"   /* CFG_NO_COLOR: a system with no color of its own */
 #include "linebreak.h" /* where a name too wide for its box breaks or is cut */
 #include "look.h"      /* Corners: Square */
-#include "padglyph.h"  /* the PlayStation's shapes, drawn in running text */
+#include "padglyph.h"
+#include "folderart.h" /* a folder's card and row, in pixel art */  /* the PlayStation's shapes, drawn in running text */
 
 #include <math.h>
 #include <stdio.h>
@@ -3011,87 +3012,65 @@ static void draw_watermark(SDL_Surface *dst, card_faces *k, const char *title,
 	SDL_FreeSurface(t);
 }
 
-/* ---- a folder's card (src/shelfdir.h) ----
+/* ---- a folder's card (src/shelfdir.h, src/folderart.h) ----
  *
- * The pixel folder the home and Storage already draw (res/system-icons'
- * FOLDER), with how many games it holds on a paper label in pixel digits,
- * stamped into the 128-unit sprite before it is scaled, so the digits are
- * the sprite's own pixels: three units each on the card, about one panel
- * pixel each on the focused cover. Read-only once handed over, so a worker
- * draws from it as the frame does. */
-static SDL_Surface *folder_still;
-
-void ui_card_folder_art(SDL_Surface *still)
+ * The folder itself, as pixel art in its system's color, a cell four units
+ * wide, papers standing out of it, with how many games it holds on a paper
+ * label and its name on its front. No slab: a folder on the shelf is a
+ * folder, not a card with a folder on it (2026-11-13). */
+/* A system with no color of its own is drawn in its marks' **text-dim** */
+static unsigned folder_rgb(const ui_card_order *o)
 {
-	if (folder_still || !still) { if (still) SDL_FreeSurface(still); return; }
-	folder_still = SDL_ConvertSurfaceFormat(still, SDL_PIXELFORMAT_ARGB8888, 0);
-	SDL_FreeSurface(still);
+	return o->rgb == CFG_NO_COLOR ? ui_rgb(theme_at(o->theme_ix)->text_dim) : o->rgb;
 }
 
-/* Digits 5 wide and 7 high, a row a byte, the high bit of five the left */
-static const unsigned char PIX_DIGITS[10][7] = {
-	{ 0x0e, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0e }, { 0x04, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x0e },
-	{ 0x0e, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1f }, { 0x1f, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0e },
-	{ 0x02, 0x06, 0x0a, 0x12, 0x1f, 0x02, 0x02 }, { 0x1f, 0x10, 0x1e, 0x01, 0x01, 0x11, 0x0e },
-	{ 0x06, 0x08, 0x10, 0x1e, 0x11, 0x11, 0x0e }, { 0x1f, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08 },
-	{ 0x0e, 0x11, 0x11, 0x0e, 0x11, 0x11, 0x0e }, { 0x0e, 0x11, 0x11, 0x0f, 0x01, 0x02, 0x0c },
-};
-/* The folder's front, in the sprite's units: where the label is centered */
-#define FOLDER_FRONT_X 63
-#define FOLDER_FRONT_Y 70
-/* The label's paper and ink, the same in both themes: it is part of the
- * picture, as the folder's manila is, and dark ink on paper reads on both
- * slabs. Ink is the theme's **ink**, which is ZyperOS's charcoal. */
-#define LABEL_PAPER 0xf5f4eeu
-#define LABEL_EDGE  0x6b6040u
-#define LABEL_INK   0x111310u
-
-static void pix_rect(SDL_Surface *s, int x, int y, int w, int h, unsigned rgb)
+static SDL_Surface *folder_card_surface(card_faces *k, const ui_card_order *o)
 {
-	SDL_FillRect(s, &(SDL_Rect){ x, y, w, h },
-	             SDL_MapRGBA(s->format, (Uint8)(rgb >> 16), (Uint8)(rgb >> 8), (Uint8)rgb, 255));
-}
+	int gh = FA_CARD_H;
+	SDL_Surface *grid = SDL_CreateRGBSurfaceWithFormat(0, FA_CARD_W, gh, 32, SDL_PIXELFORMAT_ARGB8888);
+	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, FA_CARD_W * FA_CARD_SCALE, gh * FA_CARD_SCALE,
+	                                                32, SDL_PIXELFORMAT_ARGB8888);
+	card_pen pen = { k, o->lang_set, NULL };
+	unsigned rgb = folder_rgb(o), ink;
+	SDL_Rect nb;
 
-/* The sprite with `games` on its label, at three units a pixel into `dst`
- * with its top left at (x, y): a 384-unit square */
-static void draw_folder_art(SDL_Surface *dst, int x, int y, int games)
-{
-	SDL_Surface *still;
-	char num[16];
-	int n, lw, lh, lx, ly, i, scale;
-
-	if (games < 0) games = 0;
-	n = snprintf(num, sizeof num, "%d", games > 9999 ? 9999 : games);
-	/* Three of the sprite's pixels a digit's pixel, two for four digits,
-	 * so the label stays on the folder's front */
-	scale = n > 3 ? 2 : 3;
-	lw = n * 5 * scale + (n - 1) * scale + 4 * scale;
-	lh = 7 * scale + 4 * scale;
-	still = SDL_CreateRGBSurfaceWithFormat(0, 128, 128, 32, SDL_PIXELFORMAT_ARGB8888);
-	if (!still) return;
-	SDL_SetSurfaceBlendMode(still, SDL_BLENDMODE_NONE);
-	if (folder_still) SDL_BlitSurface(folder_still, NULL, still, NULL);
-	else pix_rect(still, 8, 34, 110, 70, 0xc6b484u);    /* no sprite: its body */
-	/* The label: paper with an edge, its shadow a pixel down and right */
-	lx = FOLDER_FRONT_X - lw / 2;
-	ly = FOLDER_FRONT_Y - lh / 2;
-	pix_rect(still, lx + 1, ly + 1, lw, lh, LABEL_EDGE);
-	pix_rect(still, lx - 1, ly - 1, lw + 1, lh + 1, LABEL_EDGE);
-	pix_rect(still, lx, ly, lw - 1, lh - 1, LABEL_PAPER);
-	for (i = 0; i < n; i++) {
-		const unsigned char *g = PIX_DIGITS[num[i] - '0'];
-		int gx = lx + 2 * scale + i * 6 * scale;
-
-		for (int r = 0; r < 7; r++)
-			for (int c = 0; c < 5; c++)
-				if (g[r] & (0x10 >> c))
-					pix_rect(still, gx + c * scale, ly + 2 * scale + r * scale - 1, scale, scale,
-					         LABEL_INK);
+	if (!grid || !s) {
+		if (grid) SDL_FreeSurface(grid);
+		if (s) SDL_FreeSurface(s);
+		return NULL;
 	}
-	SDL_SetSurfaceBlendMode(still, SDL_BLENDMODE_BLEND);
-	/* Nearest, a whole three units a pixel: SDL_BlitScaled is nearest */
-	SDL_BlitScaled(still, NULL, dst, &(SDL_Rect){ x, y, 384, 384 });
-	SDL_FreeSurface(still);
+	SDL_FillRect(s, NULL, 0);
+	fa_paint(grid, rgb, o->folder, true);
+	SDL_SetSurfaceBlendMode(grid, SDL_BLENDMODE_NONE);
+	/* Nearest, whole cells: SDL_BlitScaled is nearest */
+	SDL_BlitScaled(grid, NULL, s, NULL);
+	SDL_FreeSurface(grid);
+	if ((pen.f = card_title_face(k, SET_LATIN))) {
+		fa_name_box(rgb, &nb, &ink);
+		draw_wrapped(s, &pen, o->title, nb.w * FA_CARD_SCALE, nb.y * FA_CARD_SCALE,
+		             nb.x * FA_CARD_SCALE, ui_col((ds_rgb){ (Uint8)(ink >> 16), (Uint8)(ink >> 8),
+		                                                   (Uint8)ink }, 255));
+	}
+	return s;
+}
+
+SDL_Texture *ui_make_folder_icon(SDL_Renderer *r, unsigned rgb, int *w, int *h)
+{
+	SDL_Surface *grid = SDL_CreateRGBSurfaceWithFormat(0, FA_ICON_W, FA_ICON_H, 32,
+	                                                   SDL_PIXELFORMAT_ARGB8888);
+	SDL_Texture *t = NULL;
+
+	if (!grid) return NULL;
+	if (rgb == CFG_NO_COLOR) rgb = ui_rgb(theme()->text_dim);
+	fa_paint(grid, rgb, 0, false);
+	if ((t = SDL_CreateTextureFromSurface(r, grid))) {
+		SDL_SetTextureScaleMode(t, SDL_ScaleModeNearest);
+		SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+		*w = grid->w;
+		*h = grid->h;
+	}
+	SDL_FreeSurface(grid);
+	return t;
 }
 
 /* The card at any size: a game's 512 x 656 and an album's 512 square. One
@@ -3105,7 +3084,7 @@ static void draw_folder_art(SDL_Surface *dst, int x, int y, int games)
  * (src/cardgen.h has both, and the check that the title reads on every row of
  * either). The order names the theme; nothing here reads theme(), so a
  * worker can draw it. In `k`'s faces (card_title_face). */
-static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
+static SDL_Surface *game_card_surface(card_faces *k, const ui_card_order *o)
 {
 	const int cw = CARD_W, ch = o->album ? CARD_W : CARD_H;
 	const int theme_ix = o->theme_ix;
@@ -3137,8 +3116,7 @@ static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
 		             SDL_MapRGBA(s->format, c.r, c.g, c.b, 255));
 	}
 
-	if (o->folder > 0) draw_folder_art(s, (cw - 384) / 2, -28, o->folder);
-	else draw_watermark(s, k, title, rgb);
+	draw_watermark(s, k, title, rgb);
 
 	/* The system's color as a band rather than a wash: a generated card
 	 * should read as "this system, no art" at a glance in the row. */
@@ -3154,9 +3132,8 @@ static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
 		 * card empty for the one-line titles that are most of a shelf, and the
 		 * bleed does not fill it - the face darkens toward the foot and takes
 		 * the letter's tail with it. Four lines still fit below this. */
-		/* A folder's name under its picture */
 		int y = draw_wrapped(s, &pen, title, cw - 96,
-		                     o->folder > 0 ? 356 : (int)(ch * 0.38f), 48,
+		                     (int)(ch * 0.38f), 48,
 		                     ui_col(cardgen_title(theme_ix), 255));
 
 		SDL_FillRect(s, &(SDL_Rect){ 48, y + 12, 90, 3 },
@@ -3166,6 +3143,13 @@ static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
 
 	if (!o->album) round_corners(s, CARD_RADIUS);
 	return s;
+}
+
+/* The card an order describes: a folder's (folder_card_surface) or a game's
+ * or an album's */
+static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
+{
+	return o->folder > 0 ? folder_card_surface(k, o) : game_card_surface(k, o);
 }
 
 void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
