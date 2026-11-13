@@ -40,6 +40,18 @@ bool hotspot_available(void);
  * could not even start. */
 bool hotspot_start(void);
 
+/* The same, for a caller that does not want this file to answer the DNS.
+ * hotspot_start is hotspot_start_dns(true): File Transfer, where the launcher
+ * answers the DNS in its frame loop. A game's hotspot (NES Player 2) is
+ * hotspot_start_dns(false): p2d answers the DNS there (its --dns), and only
+ * one owner at a time may answer on UDP 53, so here no socket is opened and
+ * hotspot_poll does no DNS work. Everything else is the same: hostapd, udhcpd
+ * with the handheld as router and DNS, the supplicant stopped and brought back
+ * by hotspot_stop. hotspot_stop cleans up in either mode, and a start in the
+ * other mode after a stop works. hotspot_poll stays bounded in both modes and
+ * is safe to call from a game's tick (on_game_tick). */
+bool hotspot_start_dns(bool own_dns);
+
 /* Every frame while the screen is open: moves the start along, answers the
  * DNS questions waiting, and notices hostapd going away. Bounded work. */
 hotspot_state hotspot_poll(void);

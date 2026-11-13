@@ -26,7 +26,7 @@ LDFLAGS += -lz
 # Objects live under build/$(PORT)/ so host and cross builds cannot collide:
 # a leftover x86 main.o in a device link fails late and confusingly.
 BUILD := build/$(PORT)
-SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c port/$(PORT).c
+SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c src/player2.c port/$(PORT).c
 # Expanded where it is used, not here: a port's block below adds its own files
 # to SRC (the Pixel 2's bar, port/osdbar.c), and := took the list before they
 # were in it, so they were never built and the link failed.
@@ -71,6 +71,10 @@ ifeq ($(PORT),desktop)
   endif
   CFLAGS  += $(SDL_CFLAGS)
   LDFLAGS += $(SDL_LIBS)
+  # NES player 2's share at the path in DIATOM_P2_SHARE when it is set, so a
+  # test (test/player2.py) never meets a real one. Here only: a device build
+  # writes /tmp/zyperos-p2, where p2d looks, whatever its environment says.
+  CFLAGS  += -DDIATOM_P2_SHARE_ENV
   # dlopen lives in libc on macOS and on modern glibc; -ldl is harmless where
   # it exists and absent where it does not. libm is separate on Linux, and
   # macOS links it anyway: the resampler's cos() failed to link in a Linux
@@ -142,7 +146,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e check-player2
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -315,6 +319,16 @@ check-hotkeys:
 	$(FRESH_IF_BUILT)
 	@python3 test/hotkeys.py
 .PHONY: check-hotkeys
+
+# NES player 2 end to end (src/player2.h): the frames in the shared file,
+# ports 1 to 3 from the pads p2d writes, within the system's buttons and
+# players as SETPLAYER2 says them, the pads let go when the beat stops, the
+# file gone at every end. On check-stateplane's terms: a few seconds, the
+# stub core, skipped unbuilt.
+check-player2:
+	$(FRESH_IF_BUILT)
+	@python3 test/player2.py
+.PHONY: check-player2
 
 # The port's audio contract: falls back, is idempotent, and ALWAYS returns.
 # The last one is the reason this exists - a close that joins a stuck audio

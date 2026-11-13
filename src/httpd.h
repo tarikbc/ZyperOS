@@ -105,14 +105,44 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
  * httpd_reply_file, when it replied with an error. */
 bool httpd_reply_static(httpd_req *r, const char *path, const char *content_type);
 void httpd_reply_status(httpd_req *r, int status, const char *text);
+/* Headers every reply carries from now on, each with its CRLF, kept by
+ * pointer (a string that outlives the server); NULL for none, as at the
+ * start. p2d's: its page is never to be drawn inside another site's. */
+void httpd_always(const char *headers);
+
+/* The connection, after a 101 reply, for whoever takes it from here (p2d's
+ * WebSocket). Called once the 101 and its headers are all out, with the
+ * socket still non-blocking; from then on it is the callee's to read, write
+ * and close. httpd forgets it: no close, no timeout, no more reads, and
+ * httpd_stop leaves it alone. */
+typedef void (*httpd_taken)(int fd, void *ctx);
+
+/* "HTTP/1.1 101 Switching Protocols", `extra_headers` (each with its CRLF),
+ * and the hand-over to `fn`. A reply like the others, on the first call.
+ *
+ * Only for a request with nothing behind it: the bytes httpd has read past
+ * the headers are its own, so they would be lost to `fn`, which reads the
+ * socket from where it is. A WebSocket client sends nothing until it has the
+ * 101 (RFC 6455, 4.1), so a request with a body, or with bytes already after
+ * it, is answered 400 instead. */
+void httpd_reply_upgrade(httpd_req *r, const char *extra_headers,
+                         httpd_taken fn, void *ctx);
 
 /* Bind and start listening. Tries `port`, then the fallbacks in order, so
  * port 80 can be preferred without a busy one being fatal - the address the
  * user is shown comes from httpd_port(). False if none of them bind. */
 bool httpd_start(const int *ports, int nports);
+/* The same on one address only (dotted IPv4; NULL is every one, as
+ * httpd_start): p2d's, the handheld's address on the link Player 2 is on, so
+ * a client on a network the handheld's Wi-Fi is still on cannot reach it at
+ * the handheld's address there. False for an address that is none. */
+bool httpd_start_on(const char *ip, const int *ports, int nports);
 void httpd_stop(void);
 bool httpd_running(void);
 int  httpd_port(void);
+/* The listening socket, -1 while stopped: for a caller with no connection
+ * open to wait in poll() on, until a browser comes */
+int  httpd_fd(void);
 
 /* A bounded slice of work: accept what is waiting, move every live connection
  * along, drop the timed-out. Returns the number of connections that did

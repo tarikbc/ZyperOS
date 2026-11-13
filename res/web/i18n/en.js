@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "en";
 window.ZYPEROS_PLURAL = n => n === 1 ? 0 : 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "Multiplayer",
+  "play.state.connecting": "Connecting",
+  "play.state.player": "Player %d",
+  "play.state.full": "The game is full",
+  "play.state.stopped": "The host turned multiplayer off",
+  "play.state.ended": "The game ended",
+  "play.old_browser": "This browser is too old to show the game. Update it, or open this page in another browser.",
+  "play.picture_off": "Picture off",
+  "play.dpad": "D-pad",
+  "play.key.arrows": "Arrow keys",
+  "play.key.shift": "Shift",
+  "play.key.enter": "Enter",
   "name.wifi": "Wi-Fi File Transfer",
   "name.usb": "USB File Transfer",
   "gate.sub": "Enter the PIN on the handheld's screen.",

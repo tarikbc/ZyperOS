@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "it";
 window.ZYPEROS_PLURAL = n => n === 1 ? 0 : 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "Multigiocatore",
+  "play.state.connecting": "Connessione in corso",
+  "play.state.player": "Giocatore %d",
+  "play.state.full": "La partita è al completo",
+  "play.state.stopped": "L'host ha disattivato il multigiocatore",
+  "play.state.ended": "La partita è finita",
+  "play.old_browser": "Questo browser è troppo vecchio per mostrare il gioco. Aggiornalo o apri questa pagina in un altro browser.",
+  "play.picture_off": "Senza immagine",
+  "play.dpad": "Croce",
+  "play.key.arrows": "Frecce",
+  "play.key.shift": "Maiusc",
+  "play.key.enter": "Invio",
   "name.wifi": "Trasferimento file via Wi-Fi",
   "name.usb": "Trasferimento file via USB",
   "gate.sub": "Inserisci il PIN mostrato sullo schermo della console.",

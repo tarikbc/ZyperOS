@@ -4,8 +4,9 @@
 # diatom/build/pixel2, and the cores at /zyperos-vendor. The same steps as
 # plastron's zyperos and diatom packages (buildroot/package/zyperos,
 # buildroot/package/diatom), with the SDK's compiler and sysroot in place of
-# Buildroot's: mk/cross.mk for the launcher, Muse, portkeys and System
-# Update's program, Diatom's own Makefile, then mk/payload.sh.
+# Buildroot's: mk/cross.mk for the launcher, Muse, portkeys, System
+# Update's program and p2d (NES Player 2's server), Diatom's own Makefile,
+# then mk/payload.sh.
 set -eu
 
 MANIFEST=/sdk/share/plastron/sdk
@@ -30,12 +31,12 @@ SS_DEVID="$(sed -n 's/^SS_DEVID=//p' /zyperos-ss.env 2> /dev/null | head -1)" \
 SS_DEVPASS="$(sed -n 's/^SS_DEVPASS=//p' /zyperos-ss.env 2> /dev/null | head -1)" \
 	make -s -f mk/cross.mk BUILD=$B creds
 make -j"$JOBS" -f mk/cross.mk CC="$CC" SYSROOT="$SYSROOT" DEVICE=pixel2 BUILD=$B \
-	VERSION="$VERSION" $B/zyperos.elf $B/muse $B/portkeys $B/zyperos-update $B/zyhome
+	VERSION="$VERSION" $B/zyperos.elf $B/muse $B/portkeys $B/zyperos-update $B/zyhome $B/p2d
 make -j"$JOBS" -C diatom PORT=pixel2 CC="$CC"
 
 DEVICE=pixel2 OUT=/zyperos/$B/payload VERSION="$VERSION" \
 	ZYPEROS_ELF=$B/zyperos.elf MUSE_ELF=$B/muse PORTKEYS_ELF=$B/portkeys ZYHOME_ELF=$B/zyhome \
-	UPDATE_ELF=$B/zyperos-update DIATOM_ELF=diatom/build/pixel2/diatom \
+	UPDATE_ELF=$B/zyperos-update P2D_ELF=$B/p2d DIATOM_ELF=diatom/build/pixel2/diatom \
 	VENDOR_DIR=/zyperos-vendor sh mk/payload.sh
 # The image's tools for SSH (plastron's zyperos.mk builds them for /usr/bin),
 # beside the payload rather than in it: tools/px2 copies px2-perf to a device
@@ -45,6 +46,6 @@ for t in px2-shot px2-input px2-perf; do
 	"$STRIP" "$B/$t"
 done
 # Stripped, as plastron's image strips every program it carries
-for f in zyperos.elf muse portkeys zyperos-update zyhome diatom; do
+for f in zyperos.elf muse portkeys zyperos-update zyhome p2d diatom; do
 	"$STRIP" "$B/payload/ZyperOS/$f"
 done

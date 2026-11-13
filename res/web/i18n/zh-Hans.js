@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "zh-Hans";
 window.ZYPEROS_PLURAL = n => 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "多人游戏",
+  "play.state.connecting": "正在连接",
+  "play.state.player": "玩家 %d",
+  "play.state.full": "游戏人数已满",
+  "play.state.stopped": "主机已关闭多人游戏",
+  "play.state.ended": "游戏已结束",
+  "play.old_browser": "此应用版本过旧，无法显示游戏。请更新后再试，或用其他应用打开此页面。",
+  "play.picture_off": "关闭画面",
+  "play.dpad": "方向键",
+  "play.key.arrows": "键盘方向键",
+  "play.key.shift": "Shift",
+  "play.key.enter": "回车",
   "name.wifi": "Wi-Fi 文件传输",
   "name.usb": "USB 文件传输",
   "gate.sub": "请输入掌机屏幕上显示的 PIN。",

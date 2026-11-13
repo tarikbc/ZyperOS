@@ -3253,6 +3253,198 @@ day, written as MENU > Clock says; 7:00 AM and 7:00 PM as it ships. Its row
 in Display says "7:00 AM to 7:00 PM". A theme the change turns turns at
 once. *(My pick, 2026-11-12.)*
 
+### 11.43 Player 2
+A friend plays an NES game's second controller in a browser, with nothing
+to install: a phone on the handheld's own Wi-Fi (a USB Wi-Fi adapter makes
+it, as 11.16's), or a computer on the USB cable. The handheld's own buttons
+stay player 1. The Pixel 2 only (`plat_player2`: its hotspot and its cable
+link are the ones Player 2 is built on), and only for a game on a core in the
+system table below: the NES's FCEUmm today. *(The design, approved 2026-11-12:
+docs/superpowers/specs/2026-11-12-nes-multiplayer-design.md. This section is
+what is built: plain HTTP, the touch pad and the keyboard.)*
+
+**On the handheld.** The in-game menu has a **Player 2** row after Shader,
+its value `off`, `waiting` or `connected`. A opens its page over the paused
+game, a panel as the in-game menu's (11.3): **Player 2** in **label**
+**text-soft** over a rule in the system's color, a line that says what to do,
+a line for each player a friend can be ("Player 2" in **text-soft**, its
+state at the right in **text-dim**), a second rule and the key legend
+(11.4): A to turn it on or stop it, B to close the page. Continue goes back
+to the game with Player 2 on. On the hotspot, once it is up, the page is
+laid out as 11.16 lays out its code, 944 wide: "Scan with your phone's
+camera; the game opens." in **meta** **text-dim** under the rule, the
+Wi-Fi's QR code at the left at 9 units a module (333 units with its quiet
+zone, 4.1 cm on the Pixel 2), and beside it the network and its password as
+11.16's entries, with "Or open 10.42.1.1/play" under them in **meta**
+**text-dim** for a phone whose sign-in sheet does not open by itself. On the
+cable the line says "Open zyperos.local/play on the computer."; with
+neither plugged in, "Plug in a Wi-Fi adapter or a computer." and only B. A
+notice over the game (11.7), **Multiplayer** over "Player 2 joined" or
+"Player 2 left", says when a browser comes and goes, and "Player 2 stopped"
+when it stopped by itself. src/p2panel.c draws the page; src/main.c's
+`player2_page` runs it.
+
+**On the friend's screen** (res/web/play), the File Transfer page's clothes
+(11.15): the same token block, Lexend from the card. The picture is the
+game's own, drawn as pixels, as large as its room takes it: whole device
+pixels unless that leaves it under 85% of the room, then the room itself.
+Held upright, the status and **Picture off** in a bar at the top, the
+picture right under it, and the pad in the rest: the d-pad left, B and A
+right, SELECT and START under them, each control 48 CSS px or more, a
+thumb's, **raised** on **ground** and filled with **accent** while it is
+held. On its side, and on a computer, the picture takes the whole height
+between the pad's halves. Picture off drops the picture and the pad grows
+into the room, for a friend who watches the handheld. A computer with a
+mouse shows its keys in the bar: the arrows, Z for B, X for A, Shift for
+SELECT, Enter for START, by the key printed on them on any layout. The
+status says "Connecting", "Player 2", "The game is full", "The host turned
+multiplayer off" or "The game ended". "The host turned multiplayer off" is
+the handheld stopping Player 2 while the game goes on: the page stays on it
+and keeps trying every 2 seconds, so on the cable it plays again by itself
+when Player 2 is turned on again (on the hotspot, once the phone is on the
+new network: its password is new each time). "The game ended" is final.
+Picture off switched off, or the tab shown again, the picture is back at
+once: the page asks for a KEY (`'K'`, below) rather than wait for the next.
+A page left for another (Back, a link) closes its socket as it goes, so its
+place is free at once, and one that Back brings back from the browser's
+cache connects again. A browser that cannot unpack a frame (Safari before
+16.4) says it is too old, and opens no connection. The words are the
+handheld's language, and the page wears the handheld's theme (below).
+
+**The parts.**
+
+- **Diatom** (diatom/src/player2.c), on `SETPLAYER2 on=1` from the launcher
+  while the game runs, makes the share, one file in /tmp mapped by both
+  sides (src/p2share.h): three frame slots, each seqlocked, which it fills
+  after every frame it draws as XRGB8888, and a pad word for each guest's
+  port, which it reads once a frame. A frame copy and a word read, no
+  syscall and no lock: nothing on the game's thread waits for a guest. Off
+  for every game until asked, and gone, the file removed, however the game
+  ends. Off, nothing of it runs: a game without Player 2 polls and reads
+  its pads as before it. The file's pages are taken as it is made
+  (`posix_fallocate` on the devices), so a full /tmp is a refusal (PLAYER2
+  on=0), not a crash at the first frame written into a sparse file. The
+  first time Player 2 turns on in a game, each guest's port is given the
+  core's joypad (`retro_set_controller_port_device`), as port 0 is at the
+  load and as RetroArch does for every port, unless the core says it has no
+  such port.
+- **p2d** (src/p2d/), a program of its own beside the launcher on the card,
+  so the network is on neither the game's thread nor the launcher's loop,
+  at `nice(5)`: one thread, never blocking. It serves the page, its words
+  (`/i18n.js`) and the theme (`/play/theme.css`) over plain HTTP, runs one
+  WebSocket a browser on `/p2ws`, and on the hotspot answers DNS as the
+  handheld's own network does (every name the handheld's), so a phone's
+  internet check is sent to the page and its sign-in sheet opens it. It ends
+  by itself when the share goes, and tells its guests "ended". On SIGTERM
+  with the share still there (the handheld's A stopped Player 2, the game
+  goes on) it tells them "stopped" instead. With no guest and no browser on
+  the way it waits in `poll()` for one, for a DNS question, or for its next
+  beat or look at the share, some 20 wakeups a second for a game nobody
+  joins, not a 2 ms loop: a handheld's battery. With a guest, the 2 ms loop.
+- **The page** (res/web/play): plain JavaScript, no framework and no build
+  step, as File Transfer's page.
+- **The launcher** (src/p2.c, no SDL, every process and protocol action
+  through `p2_ops` so tools/p2-check.c drives it on fakes): the row and the
+  page, the start in order (any PLAYER2 answer still waiting read away
+  first, then SETPLAYER2, the theme file, then the hotspot without its own
+  DNS and p2d once it is up; or the cable's link, zyperos.local and p2d),
+  the notices, and the stop in the reverse order at every end of the game.
+  Diatom answers a stop's or a failure's `on=0` too, and nothing reads its
+  lines while the game is paused under the page, so that answer waits; a
+  start that took it for its own answer failed once, with Diatom on. At the
+  game's end the stop removes the share's file before p2d's SIGTERM, so a
+  Diatom killed before it could still has its guests told "ended".
+
+**The wire.** One WebSocket, little-endian:
+
+- *Frames, to the page*, binary (src/p2d/codec.h): `'F'`, flags (bit 0
+  KEY, bit 1 PAL), width and height (u16), the frame's number (u32), the
+  palette when it changed (a u16 count up to 256, then R, G, B each), then
+  the frame's palette indices, raw deflate (zlib level 1), XORed with the
+  frame before unless KEY. The browser inflates with
+  `DecompressionStream('deflate-raw')`, so the page ships no decoder. A
+  KEY comes with a new color, a new size, a new browser, a `'K'`, and every
+  120 frames.
+- *Status, to the page*, text: `S` and a line of JSON,
+  `{"state":"playing","player":2,"buttons":509}`, `{"state":"taken"}`,
+  `{"state":"stopped"}` (Player 2 turned off, the game going on: the page
+  keeps trying) or `{"state":"ended"}` (the game's end: the page stops).
+- *From the page*, binary only: `'A'` and a frame's number once that frame
+  is drawn (or skipped, with Picture off or the tab hidden), `'P'` and the
+  RetroPad bits held, on every change and every 100 ms while any is held,
+  and `'K'` alone, one byte: a KEY next, from a page that drew nothing for
+  a while and has no frame to add a delta to, sent as it draws again (and
+  at the first delta it cannot use). p2d resets that guest's encoder and
+  sends the newest frame again, as KEY with PAL, at once, even while the
+  game's frames stand still. Anything else closes the socket. p2d sends a
+  frame only while fewer than two wait for their ack, so a slow link gets
+  fewer frames, never a queue.
+
+**No stuck buttons, and no strangers.**
+
+- Diatom reads a guest's pad only while p2d's beat (`pad_beat`, bumped
+  every 50 ms) moved in the last 500 ms, so a p2d that dies or hangs lets go
+  of every button.
+- p2d lets a pad go after a second with no `'P'` while buttons are held (a
+  phone that locked mid-press), and when its socket closes. A guest with a
+  frame waiting for its ack that has sent nothing for 5 seconds is gone (a
+  phone out of range sends no FIN), so its place is free.
+- The page lets go of everything when it loses the focus or is hidden, and
+  of its held keys when a Mac's Cmd goes down (macOS sends no key-up under
+  it).
+- A guest has the system's buttons and nothing else: Diatom and p2d each
+  mask the pad with them, never Diatom's hotkeys or MENU.
+- Only the page's own origin may open the WebSocket (`http://` the
+  handheld's address or `zyperos.local`, on p2d's port): on the cable the
+  computer has the internet, and a site in another tab could otherwise take
+  player 2 or watch the game.
+- The page is never drawn inside another site's page: every reply says
+  `Content-Security-Policy: frame-ancestors 'none'` and
+  `X-Frame-Options: DENY`, so a site in another tab cannot hold it in a
+  hidden frame and take player 2's place.
+- p2d listens on the link's address alone (`--addr`, httpd's
+  `httpd_start_on`), never on every address: on the cable the handheld's
+  Wi-Fi may still be on a home or public network, and a client there,
+  browser or not, cannot reach it at the address the handheld has on that
+  network. Its DNS binds the same address.
+
+**Made to grow.** The NES is the first system, not the only shape:
+
+- *The system table* (src/p2.c's `SYSTEMS`): a core, the RetroPad buttons a
+  guest gets (within `P2S_PAD_CEILING`, the twelve from B to R), and how
+  many play at once, the handheld's player included. The NES is `fceumm`,
+  `0x01FD` (B, SELECT, START, the d-pad, A) and 2. SETPLAYER2 carries both
+  to Diatom, which writes them into the share for p2d, which tells the page.
+- *Up to four players:* the share has a pad word for each of ports 1 to 3
+  and a bit for each in `guests`; p2d gives a newcomer the lowest free port
+  and says "taken" only when every one is in use.
+- *The page's pad* is built from a table (play.js's `PAD`): each button's
+  bit, its place (the d-pad, the round face buttons, the pills), its label
+  and its keys (Y, X, L and R on A, S, Q and W). A game draws, reads and
+  sends only the buttons in its mask. A system with other buttons is a row
+  there, and a place in play.css if it needs one.
+- *The codec's 256 colors:* a frame of more colors than that is not sent
+  (the encoder resets and the next frame that fits goes as a KEY), and a
+  palette that fills with old colors starts fresh. An NES frame fits in
+  it. A 16-bit system such as the SNES can put more than 256 colors in a
+  frame (its color math does), and needs a direct-color mode: a new flag
+  bit and the pixels as they are, behind the same `p2c_*` functions. Not
+  built yet.
+
+**The theme file.** The page wears the handheld's look, not the phone's:
+the launcher writes the theme it shows now (light or dark by the handheld,
+the accent, the background tones and the corners, 3.5) as one `:root` rule
+of play.css's custom properties into /tmp/zyperos-webtheme.css
+(src/webtheme.c), at the start and again on a change, and p2d serves it as
+`/play/theme.css`, read afresh at each request. With no file, the page
+keeps play.css's own tokens, light or dark by the browser.
+
+**Later** (the design's Plans 2 and 3): HTTPS, with a certificate of each
+Pixel's own under `play.zyperos.com`, asked for once and only when the owner
+wants it; the captive portal API (RFC 8908 and 8910), so a phone opens the
+page by itself on joining; and a game controller paired with the phone,
+through the browser's Gamepad API, which needs HTTPS.
+
 ## 12. Copy
 
 - Headings and rows in Title Case; status values lowercase; lines and

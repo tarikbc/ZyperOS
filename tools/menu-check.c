@@ -1760,7 +1760,7 @@ static void ingame_rows(void)
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
 	n = gm_rows(&u, rows, &b);
 	printf("in-game menu, a game with two screens:\n");
-	ck(n == GM_MAX_ROWS - 1, "thirteen rows: every row but the N64's Pak");
+	ck(n == GM_MAX_ROWS - 2, "thirteen rows: every row but the N64's Pak and NES Player 2");
 	ck(gm_row_ids(&u, ids) == n && ids[3] == GM_QUICK && ids[4] == GM_DISPLAY &&
 	   ids[5] == GM_SHADER && ids[6] == GM_SCREENS && ids[7] == GM_SWAP &&
 	   ids[8] == GM_STYLUS && ids[9] == GM_CONTROLS && ids[10] == GM_CHEEVOS &&
@@ -1772,8 +1772,8 @@ static void ingame_rows(void)
 	   "Swap Screens and Stylus say On or Off, as a switch does");
 	ck(!strcmp(rows[10].label, "Achievements") && !strcmp(val(&rows[10]), "12 / 40"),
 	   "Achievements moves down with its value");
-	k = reachable(rows, n, got, GM_MAX_ROWS - 1);
-	ck(k == GM_MAX_ROWS - 1, "every row is a stop");
+	k = reachable(rows, n, got, GM_MAX_ROWS - 2);
+	ck(k == GM_MAX_ROWS - 2, "every row is a stop");
 	ck(gm_layout_index("single") == 2 && gm_layout_index("nonsense") == 0,
 	   "a layout name Diatom did not send reads as Stacked");
 	ck(!strcmp(gm_layout_names[GM_LAYOUT_DEFAULT], "single"),
@@ -1820,6 +1820,61 @@ static void n64_pak(void)
 	ck(!strcmp(gm_pak_option("parallel_n64"), "parallel-n64-pak1"), "ParallelN64's player 1 pak option");
 	ck(!strcmp(gm_pak_option("mupen64plus_next"), "mupen64plus-pak1"), "Mupen64Plus-Next's");
 	ck(!gm_pak_option("flycast2021") && !gm_pak_option(NULL), "no pak on any other core");
+}
+
+/* NES Player 2 (src/p2.h): its row right after Shader's group, on a game
+ * whose core the system table offers it on (gm_gather asks p2_offered), and
+ * on no other game's menu; A opens its page, so it is a stop and plain. Its
+ * value is the state: off, waiting for a player, or one connected. */
+static void player2_row_on_nes_only(void)
+{
+	gm_ui u = { 0 };
+	gm_bufs b;
+	menu_row rows[GM_MAX_ROWS];
+	gm_row ids[GM_MAX_ROWS];
+	int got[GM_MAX_ROWS], n, at, i;
+
+	printf("in-game menu, NES Player 2:\n");
+	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
+	ck(gm_row_at(&u, GM_PLAYER2) == -1 && gm_row_ids(&u, ids) == GM_ROWS,
+	   "no Player 2 row where it is not offered");
+	u.player2 = true;
+	u.player2_value = gm_player2_value(P2_OFF);
+	n = gm_rows(&u, rows, &b);
+	at = gm_row_at(&u, GM_PLAYER2);
+	ck(n == GM_ROWS + 1, "eleven rows with it");
+	ck(at == gm_row_at(&u, GM_SHADER) + 1 && gm_row_at(&u, GM_CONTROLS) == at + 1,
+	   "right after Shader, before Controls");
+	ck(at >= 0 && !strcmp(rows[at].label, "Player 2") && !strcmp(val(&rows[at]), "off"),
+	   "Player 2, off until it is started");
+	ck(at >= 0 && rows[at].live && !b.sound[at], "a stop, and plain: A opens its page");
+	ck(reachable(rows, n, got, GM_MAX_ROWS) == n, "every row is a stop");
+	ck(!strcmp(gm_player2_value(P2_OFF), "off") &&
+	   !strcmp(gm_player2_value(P2_WAITING), "waiting") &&
+	   !strcmp(gm_player2_value(P2_CONNECTED), "connected"),
+	   "its three values: off, waiting, connected");
+	ck(!strcmp(gm_player2_value(P2_FAILED), "off"), "and a start that failed reads off");
+	u.player2_value = gm_player2_value(P2_CONNECTED);
+	n = gm_rows(&u, rows, &b);
+	ck(!strcmp(val(&rows[gm_row_at(&u, GM_PLAYER2)]), "connected"), "the row says the value it is given");
+	/* After the whole of Shader's group, a DS game's three rows and a Pak
+	 * included, wherever they come */
+	u.screens = true; u.pak = gm_pak_name("rumble");
+	n = gm_row_ids(&u, ids);
+	ck(gm_row_at(&u, GM_PLAYER2) == gm_row_at(&u, GM_PAK) + 1 &&
+	   gm_row_at(&u, GM_PAK) == gm_row_at(&u, GM_STYLUS) + 1 &&
+	   gm_row_at(&u, GM_CONTROLS) == gm_row_at(&u, GM_PLAYER2) + 1 && n == GM_MAX_ROWS,
+	   "after the screens' rows and the Pak, still before Controls");
+	u.screens = false; u.pak = NULL;
+	/* Over a port, none */
+	u.port = true;
+	ck(gm_row_at(&u, GM_PLAYER2) == -1, "and none over a port");
+	u.port = false;
+	u.player2 = false;
+	n = gm_rows(&u, rows, &b);
+	for (i = 0; i < n; i++)
+		if (!strcmp(lbl(&rows[i]), "Player 2")) break;
+	ck(i == n && n == GM_ROWS, "without it, every other game keeps its ten");
 }
 
 /* The quick slot as the device's database keeps it: per system, slot 1
@@ -2298,6 +2353,7 @@ int main(void)
 	ingame_rows();
 	quick_slot();
 	n64_pak();
+	player2_row_on_nes_only();
 	audio_row();
 	channels_row();
 	sounds_row();

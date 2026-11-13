@@ -310,6 +310,13 @@ bool plat_resident_swap(void);
  * through its SCREENS or STYLUS line, taking the new rect and the new paused
  * picture on the way, so the menu's backdrop shows the layout just chosen. */
 bool plat_resident_sync_screens(int timeout_ms);
+/* The same for an answer that is a line of its own (SETPLAYER2's PLAYER2):
+ * Diatom's lines read through to the first that starts with `prefix`, copied
+ * into `out`, the rect, the picture and the levels on the way noted as the
+ * others note them. False when none came in `timeout_ms`; 0 reads only the
+ * lines waiting already. Only while paused, as those: a game that is running
+ * can send EXIT, and this would eat it. */
+bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeout_ms);
 
 void plat_request_poweroff(void);
 void plat_request_reboot(void);
@@ -478,6 +485,12 @@ bool plat_tap_held(in_button b);
  * flashing the level there outside a game (the Pixel 2's four side lights,
  * which plastron's gauge drives). What MENU > Controls says. */
 bool plat_battery_lights(void);
+
+/* Whether NES Player 2 (src/p2.h) is offered here: a device whose own
+ * hotspot (a USB Wi-Fi adapter, hostapd) and cable link (the USB network
+ * gadget) it was built and tried on, the Pixel 2. Nothing in a game's menu
+ * says it elsewhere. */
+bool plat_player2(void);
 
 /* MENU > Side Lights (src/sidelights.h), where plat_battery_lights says there
  * are lights: the parts that are on, read from where the device keeps them,

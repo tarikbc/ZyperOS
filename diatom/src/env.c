@@ -19,6 +19,7 @@
 
 #include "cheevos.h"
 #include "diatom.h"
+#include "player2.h"
 #include "stick.h"
 
 /* Experimental commands carry 0x10000, and the same command reads the same
@@ -533,8 +534,20 @@ static bool env_cb(unsigned cmd, void *data)
 
 	/* ---- accepted and ignored ------------------------------------------- */
 	case MASK(RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL):
-	case MASK(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO):
 		return true;
+	/* How many ports the core has, which is all Diatom reads of it: player
+	 * 2's guests get a joypad on a port only where the core has one
+	 * (main.c's player2_set). Kept per core, as the disc tray is: a
+	 * resident core may say it only once. */
+	case MASK(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO): {
+		const struct retro_controller_info *ci = data;
+		unsigned n = 0;
+
+		if (!g_bound || !ci) return true;
+		while (n < 64 && (ci[n].types || ci[n].num_types)) n++;
+		g_bound->ports = (int)n;
+		return true;
+	}
 
 	/* ---- kept for achievements ------------------------------------------- */
 	/* Both were in the ignore list above until 2026-08-29. The map in
@@ -657,6 +670,11 @@ static void turbo_tick(void);
  * after that in the same frame is a repeat and is dropped, so a frame is still
  * one turn of SELECT's chords and of the turbo pulse. */
 static bool g_polled;
+/* The guests' pads (player2.h), read with player 1's: once a frame, and
+ * ports 1 to 3 answer from them, g_p2_pad[port - 1], 0 for every port past
+ * the system's players. Neither read nor answered while player 2 is off, so
+ * a game without it polls and reads its pads exactly as before it. */
+static uint32_t g_p2_pad[P2S_GUESTS];
 
 void diatom_env_frame_begin(void)
 {
@@ -670,6 +688,16 @@ static void cb_input_poll(void)
 	diatom_port_input_poll();
 	if (g_poll_hook) g_hook_hide = g_poll_hook(diatom_port_input_state(), &g_hook_give);
 	turbo_tick();
+	if (p2_on()) p2_pads((unsigned)(diatom_port_now_us() / 1000), g_p2_pad);
+}
+
+uint32_t diatom_env_p2_pad(void)
+{
+	uint32_t any = 0;
+
+	if (!p2_on()) return 0;
+	for (unsigned k = 0; k < P2S_GUESTS; k++) any |= g_p2_pad[k];
+	return any;
 }
 
 /* Canonical button names. The protocol speaks these, never retropad numbers,
@@ -1083,6 +1111,18 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 		stick_axes(state, &x, &y);
 		return id == RETRO_DEVICE_ID_ANALOG_X ? x : id == RETRO_DEVICE_ID_ANALOG_Y ? y : 0;
 	}
+	/* Ports 1 to 3 are the guests' joypads, as p2d wrote them: no map, no
+	 * turbo, no chord, since their buttons are the system's alone and none
+	 * of them is Diatom's. 0 past the system's players. Nothing else on
+	 * those ports. While player 2 is off they are 0, as below, and what
+	 * the pads held when it went off is never read again: the first poll
+	 * once it is on again reads them afresh. */
+	if (port >= 1 && port <= P2S_GUESTS && device == RETRO_DEVICE_JOYPAD && p2_on()) {
+		const uint32_t pad = g_p2_pad[port - 1];
+
+		if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return (int16_t)pad;
+		return id <= 15 && ((pad >> id) & 1u);
+	}
 	if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
 
 	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
@@ -1126,6 +1166,13 @@ extern void diatom_on_audio_batch_store(const int16_t *data, size_t frames);
 static void cb_video(const void *data, unsigned w, unsigned h, size_t pitch)
 {
 	diatom_on_video(data, w, h, pitch);
+	/* Player 2's copy of the frame (player2.h), after Diatom's own, so the
+	 * Pixel's picture never waits on it. Nothing for a dupe, for a frame the
+	 * GPU drew, or while player 2 is off. As the core drew it: a game that
+	 * turns its screen (SET_ROTATION) is not one player 2 is offered for. */
+	p2_frame(data, w, h, pitch,
+	         g_policy->pixfmt == DIATOM_PIX_RGB565 ? RETRO_PIXEL_FORMAT_RGB565
+	                                               : RETRO_PIXEL_FORMAT_XRGB8888);
 }
 static size_t cb_audio_batch(const int16_t *data, size_t frames)
 {
