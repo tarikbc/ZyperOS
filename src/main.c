@@ -6866,6 +6866,44 @@ static wifi_state menu_wifi(char *ssid, int cap)
 	return st;
 }
 
+/* A way out to the internet, for every row and page that fetches from it
+ * (box art, a game's cover and video, System Update, achievements,
+ * PortMaster): Wi-Fi joined, or a default route out on another link, a
+ * phone's USB tethering among them (phonelink_way_out; the Pixel 9 Pro XL's,
+ * 2026-11-13). Never the USB cable's link to a computer, which leads nowhere.
+ * *metered: the way out is the phone's, so its mobile data, likely: nothing
+ * large starts by itself over it. Read again at most twice a second, as the
+ * menus ask every frame (menu_wifi's cache keeps Wi-Fi's cheap). */
+static bool net_internet(bool *metered)
+{
+	static unsigned at;
+	static bool out, meter;
+	unsigned now = plat_now_ms();
+
+	if (!at || now - at >= 500u) {
+		char route[4096];     /* about 30 routes; a line is 128 bytes */
+		FILE *f = fopen("/proc/net/route", "r");
+		size_t n = f ? fread(route, 1, sizeof route - 1, f) : 0;
+
+		if (f) fclose(f);
+		route[n] = '\0';
+		out = phonelink_way_out(menu_wifi(NULL, 0) == WIFI_CONNECTED, route, &meter);
+		at = now ? now : 1;
+	}
+	if (metered) *metered = out && meter;
+	return out;
+}
+
+/* USB File Transfer has a link without Wi-Fi: the cable to a computer, or a
+ * phone's tethering that has its address (only looked at: phone_link_due
+ * set it up). MENU's build and the lists that name its rows ask the same. */
+static bool xfer_link_up(void)
+{
+	char pip[64];
+
+	return plat_cable_link(NULL, 0) || (plat_phone_link(false, NULL, 0, pip, sizeof pip) && pip[0]);
+}
+
 /* Gather what the device currently is, and hand it to sys_menu_build.
  *
  * The split: this half is allowed to fork wpa_cli and read the app, the other
@@ -6926,12 +6964,14 @@ static void up_first_line(const char *path, char *buf, size_t n)
 	buf[strcspn(buf, "\r\n")] = 0;
 }
 
-/* A network to look with: Wi-Fi, or a test release's source set on the card
- * (docs/updates.md), which may be on the cable */
+/* A network to look with: a way out (net_internet: Wi-Fi, or a phone's
+ * tethering), or a test release's source set on the card (docs/updates.md),
+ * which may be on the cable */
 static bool up_network(void)
 {
-	char ss[WIFI_SSID_MAX], p[512];
-	if (menu_wifi(ss, sizeof ss) == WIFI_CONNECTED) return true;
+	char p[512];
+
+	if (net_internet(NULL)) return true;
 	up_path(p, sizeof p, "source");
 	return access(p, R_OK) == 0;
 }
@@ -6954,6 +6994,13 @@ static const su_view *up_view(bool now)
 	su_status_parse(text, &g_up.st);
 	g_up.running = up_running();
 	g_up.wifi = up_network();
+	/* Over a phone's mobile data a download cut short waits for A
+	 * (su_auto_step) */
+	{
+		bool metered = false;
+
+		g_up.metered = net_internet(&metered) && metered;
+	}
 	snprintf(p, sizeof p, "%s/VERSION", P_ROOT);
 	up_first_line(p, g_up.installed, sizeof g_up.installed);
 	/* Roll Back only to a version the image would not copy straight over
@@ -7202,14 +7249,10 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.games = screen == SCREEN_GAMES;
 	u.no_wifi = !plat_has_wifi();
 	u.no_bt   = !plat_has_bluetooth();
-	/* USB File Transfer over the cable, or over a phone's tethering that
-	 * has its address (only looked at: phone_link_due set it up) */
-	{
-		char pip[64];
-
-		u.cable_xfer = plat_cable_link(NULL, 0) ||
-		               (plat_phone_link(false, NULL, 0, pip, sizeof pip) && pip[0]);
-	}
+	/* USB File Transfer over the cable, or over a phone's tethering */
+	u.cable_xfer = xfer_link_up();
+	/* A way out to the internet with no radio: a phone's tethering */
+	u.online = net_internet(NULL);
 	u.no_developer = !dev_offered();
 	u.developer  = dev_row_on();
 	u.hotspot = hotspot_available();     /* two stats, no fork */
@@ -12936,7 +12979,7 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 	(void)max;
 	/* What can change under the screen: a link, a key the page sent */
 	sgdb_try_poll();
-	c->u.net = menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	c->u.net = net_internet(NULL);
 	c->u.ss_have = ss_have_dev();
 	c->u.ss_in = ss_signed_in();
 	snprintf(c->ss_name, sizeof c->ss_name, "%s", ss_user());
@@ -13354,7 +13397,7 @@ static int info_build(void *ctx, menu_row *rows, int max, const char **heading)
 	 * forks wpa_cli out of a 119 MB process; this screen was doing it about
 	 * 125 times a second for a row that says "needs Wi-Fi". The system menu
 	 * was measured at 12 fps for the same mistake. */
-	n = gi_rows(rows, &c->gi, menu_wifi(NULL, 0) == WIFI_CONNECTED);
+	n = gi_rows(rows, &c->gi, net_internet(NULL));
 	return n > max ? max : n;
 }
 
@@ -14568,7 +14611,7 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
  * of it (no Box Art without a radio, Game Language only on the DS). */
 static int sm_pos(const app *a, int sys, sm_row which)
 {
-	sys_ui dev = { .no_wifi = !plat_has_wifi(),
+	sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 	               .dslang = dslang_row_shown(a, sys) ? "" : NULL };
 	sm_row ids[SM_ROWS];
 	int n = sys_menu_system_rows(&dev, ids), k;
@@ -14640,7 +14683,7 @@ static int menu_shelf_width(app *a)
 		if (muse) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int nn = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                            !plat_has_wifi(), ids);
+			                            !plat_has_wifi() && !net_internet(NULL), ids);
 
 			for (k = 0; k < nn; k++) {
 				if (ids[k] == SMM_SORT) srow = k;
@@ -17286,11 +17329,12 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 	if (!v) return;
 	media_open(v, a, owner, g);
-	/* Wi-Fi connected, not merely an interface up: on a Pixel 2 with no
-	 * adapter the USB cable's network is up and leads nowhere, and a page
-	 * that asked anyway said "Nothing found." (2026-11-09, from Tarik's
-	 * Pixel 2). mf_unreachable catches what this misses. */
-	v->net = net_online() && menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	/* A way out (net_internet: Wi-Fi, or a phone's tethering), not merely an
+	 * interface up: on a Pixel 2 with no adapter the USB cable's network is
+	 * up and leads nowhere, and a page that asked anyway said "Nothing
+	 * found." (2026-11-09, from Tarik's Pixel 2). mf_unreachable catches
+	 * what this misses. */
+	v->net = net_online() && net_internet(NULL);
 	/* The one async slot, which an account answer may still hold */
 	if (v->net) sync_abandon();
 	mf_begin(v->folder, v->file, v->stem, v->exts, P_ROMS, v->net);
@@ -18266,7 +18310,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if (is_muse(&a->sys.systems[a->sys_cursor])) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int n = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                           !plat_has_wifi(), ids);
+			                           !plat_has_wifi() && !net_internet(NULL), ids);
 			sm_muse_row id = sel >= 0 && sel < n ? ids[sel] : SMM_COUNT;
 
 			if (id == SMM_SORT) {
@@ -18315,7 +18359,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * moves Rescan Folder up one: which row is which comes from the same
 		 * list the build used. */
 		else if (!is_muse(&a->sys.systems[a->sys_cursor])) {
-			sys_ui dev = { .no_wifi = !plat_has_wifi(),
+			sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL };
 			sm_row ids[SM_ROWS];
 			int n = sys_menu_system_rows(&dev, ids);
@@ -18437,7 +18481,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * fewer of them, and the same list the build used says which is which. */
 	{
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
-		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
@@ -18691,7 +18735,7 @@ static void zyperos_menu_for(app *a, int screen)
 
 	if (st.tabs) {
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
-		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
@@ -22918,26 +22962,12 @@ static bool pm_locked(void)
 }
 
 /* A way out to the internet: Wi-Fi, or a default route on another link
- * (QEMU's network, a wired adapter). A computer on the USB cable gives no
- * route out, so File Transfer's link is not one. */
+ * (a phone's tethering, QEMU's network, a wired adapter): net_internet. A
+ * computer on the USB cable gives no route out, so File Transfer's link is
+ * not one. */
 static bool pm_network(void)
 {
-	char line[256];
-	bool route = false;
-	FILE *f;
-
-	if (menu_wifi(NULL, 0) == WIFI_CONNECTED) return true;
-	if (!(f = fopen("/proc/net/route", "r"))) return false;
-	while (!route && fgets(line, sizeof line, f)) {
-		char ifc[32];
-		unsigned long dest, gw, flags;
-
-		if (sscanf(line, "%31s %lx %lx %lx", ifc, &dest, &gw, &flags) == 4 &&
-		    dest == 0 && (flags & 1ul) && strcmp(ifc, "lo"))
-			route = true;
-	}
-	fclose(f);
-	return route;
+	return net_internet(NULL);
 }
 
 static pm_view g_pm;

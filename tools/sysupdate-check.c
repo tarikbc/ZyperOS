@@ -266,6 +266,21 @@ int main(void)
 		v.wifi = true;
 		CHECK(su_auto_step(&au, &v, 401000, T0) == SU_AUTO_RESUME, "auto: Wi-Fi back after a drop: going on at once");
 		CHECK(su_auto_step(&au, &v, 401000 + 120000, T0) == SU_AUTO_RESUME, "auto: the wait back to 2 min after a join");
+		/* Over a phone's USB tethering (its mobile data, likely): a look
+		 * still goes, but a download cut short waits for A, and goes on by
+		 * itself once Wi-Fi is the way out again */
+		memset(&au, 0, sizeof au);
+		v = base("state uptodate\ntime 1793899000\n");
+		v.wifi = true; v.metered = true;
+		CHECK(su_auto_step(&au, &v, 1000, T0) == SU_AUTO_CHECK, "auto: the phone's link joined, no look");
+		memset(&au, 0, sizeof au);
+		v = base("state stopped\nversion 0.3.0\ndone 60\ntotal 200\n");
+		v.wifi = true; v.metered = true;
+		CHECK(su_auto_step(&au, &v, 1000, T0) == SU_AUTO_NONE, "auto: cut, over the phone's link: went on by itself");
+		CHECK(su_auto_step(&au, &v, 1000 + 120000, T0) == SU_AUTO_NONE, "auto: cut, over the phone's link: went on at 2 min");
+		v.wifi = false; v.metered = false; su_auto_step(&au, &v, 200000, T0);
+		v.wifi = true;
+		CHECK(su_auto_step(&au, &v, 201000, T0) == SU_AUTO_RESUME, "auto: cut, Wi-Fi back after the phone: not going on");
 		/* A battery refusal or an error is not a cut: nothing */
 		memset(&au, 0, sizeof au);
 		v = base("state battery\nversion 0.3.0\n");

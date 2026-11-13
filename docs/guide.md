@@ -251,7 +251,9 @@ USB Wi-Fi adapter is plugged in: Wi-Fi, Achievements and Wi-Fi
 File Transfer here (USB File Transfer stays, with a computer on the cable), Box
 Art in a console's menu, and Album Art in MP4's. Scraper stays: its fetch says
 it needs Wi-Fi, and its video snaps and sources need none. Bluetooth is never
-there.
+there. A phone's USB tethering is internet too (see **File transfer**):
+while it is on, Achievements, Box Art and Album Art are back, and Scraper's
+fetch works.
 
 ### Scraper
 
@@ -570,13 +572,18 @@ names up. Close the screen and the phone stays connected and charging;
 **MENU > USB File Transfer** opens it again. Unplug the phone or turn USB
 tethering off, and the screen says the cable is unplugged (behind the shelf,
 it closes 10 seconds later). While USB tethering is on, the handheld also
-has the phone's internet (its clock sets itself from it). An iPhone shares
-its network over USB only with a computer it trusts, which the handheld
-cannot be, so use Wi-Fi File Transfer with an iPhone. Some Android devices
-have no USB tethering at all (the AYN Thor, an Android gaming handheld,
-offers it neither in Settings nor in its USB notification): with one of
-those, use Wi-Fi File Transfer too, or **Flash Drive** with a USB-C to USB-A
-adapter on the phone and a USB-A to USB-C cable.
+has the phone's internet: its clock sets itself from it, and **MENU >
+Scraper**, Cover and Video, Box Art, **MENU > Achievements**, System Update
+and PortMaster's install work over it as over Wi-Fi. Close File Transfer
+with **B** and the phone stays connected for them. Over the phone, which may
+be on mobile data, nothing large starts by itself: a System Update download
+cut short waits for **A**. An iPhone shares its network over USB only with a
+computer it trusts, which the handheld cannot be, so use Wi-Fi File Transfer
+with an iPhone. Some Android devices have no USB tethering at all (the AYN
+Thor, an Android gaming handheld, offers it neither in Settings nor in its
+USB notification): with one of those, use Wi-Fi File Transfer too, or
+**Flash Drive** with a USB-C to USB-A adapter on the phone and a USB-A to
+USB-C cable.
 
 The name is answered by the handheld itself (multicast DNS, which macOS,
 Windows 10 and later, iOS, Android and most Linux desktops ask by

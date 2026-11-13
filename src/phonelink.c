@@ -65,3 +65,34 @@ bool phonelink_new(char last[64], const char *ifname, const char *ip)
 	snprintf(last, 64, "%s", now);
 	return true;
 }
+
+bool phonelink_way_out(bool wifi, const char *route, bool *metered)
+{
+	const char *line = route;
+	char best[32] = "";
+	long best_metric = -1;
+
+	if (metered) *metered = false;
+	while (line && *line) {
+		const char *end = strchr(line, '\n');
+		char row[256], ifc[32];
+		unsigned long dest, gw, flags;
+		long metric;
+		int refs, use;
+		size_t len = end ? (size_t)(end - line) : strlen(line);
+
+		snprintf(row, sizeof row, "%.*s", (int)(len < sizeof row ? len : sizeof row - 1), line);
+		line = end ? end + 1 : NULL;
+		/* Iface Destination Gateway Flags RefCnt Use Metric ...; the header's
+		 * words are not hex, so it never reads as a route */
+		if (sscanf(row, "%31s %lx %lx %lx %d %d %ld", ifc, &dest, &gw, &flags, &refs, &use, &metric) != 7)
+			continue;
+		if (dest != 0 || !(flags & 1ul) || !strcmp(ifc, "lo")) continue;   /* RTF_UP */
+		if (best_metric < 0 || metric < best_metric) {
+			best_metric = metric;
+			snprintf(best, sizeof best, "%s", ifc);
+		}
+	}
+	if (best[0] && metered) *metered = !strcmp(best, PHONELINK_IF);
+	return wifi || best[0];
+}

@@ -1,6 +1,6 @@
 # USB that just works: the phone link (1.0.5)
 
-2026-11-13. Branch `usb-phone-link`. Status: Tarik approved the screens (real launcher shots, 2026-11-13); built; host mode proven on the device (2026-11-13); the tethering link still waits for an Android phone that has USB tethering.
+2026-11-13. Branch `usb-phone-link`. Status: Tarik approved the screens (real launcher shots, 2026-11-13); built; proven on the device with a Pixel 9 Pro XL (2026-11-13); the phone's internet (Scraper and the rest over it) added after, its device test next.
 
 ## What the hardware does (evidence)
 
@@ -28,6 +28,17 @@
   smaller line says what a phone with none does: Wi-Fi File Transfer, or the adapter for Flash
   Drive. The same test found the iPhone message missing: sysfs's `idVendor` and `product` end in a
   newline, which `phonelink_is_iphone` now leaves out.
+- **The link works on the device** (device test 2, kit 1d3af90c, 2026-11-13, read from the Pixel's
+  logs): a Google Pixel 9 Pro XL came on the bus as 18d1:4ee7, then 4ee1, then 4eeb once USB
+  tethering was on; `cdc_ncm` bound ("CDC NCM (NO ZLP)"), the kernel's `usb1` was renamed
+  `phone0`, udhcpc got 10.44.47.242/24 with "default via 10.44.47.248 dev phone0", the launcher
+  logged "usb: the phone shared its network: 10.44.47.242 on phone0", and USB File Transfer opened
+  in the phone's browser. A Huawei VRD-W09 (plug 15) came on the bus but shared no network.
+- **So the phone's internet comes with it:** the lease's default route is a way out, as Wi-Fi is.
+  For 1.0.5 every fetch asks one rule (`net_internet`, `phonelink_way_out`): Wi-Fi joined, or a
+  default route on a link other than lo, never the cable to a computer (no route there). Over the
+  phone (its mobile data, likely) nothing large starts by itself: a System Update download cut
+  short waits for A.
 - **iPhone:** `ipheth` answers only after the iPhone is paired (lockdown, usbmuxd and
   libimobiledevice), which the image does not have. Not for 1.0.5.
 - **Windows 10:** `UsbNcm.sys` exists from version 2004 and binds by the WINNCM OS descriptor the

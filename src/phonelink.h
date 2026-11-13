@@ -52,4 +52,15 @@ bool phonelink_is_iphone(const char *vendor, const char *product);
  * caller's own, "" at first. */
 bool phonelink_new(char last[64], const char *ifname, const char *ip);
 
+/* A way out to the internet, for what fetches from it (box art, System
+ * Update, achievements, PortMaster): Wi-Fi joined, or a default route out
+ * on a link other than lo in `route`, /proc/net/route's table as read (NULL
+ * or empty for none): a phone's USB tethering (its lease gives the route,
+ * 2026-11-13), QEMU's network, a wired adapter. A computer on the USB cable
+ * gives the handheld no route out, so File Transfer's cable link never
+ * counts (it leads nowhere, 2026-11-09). *metered (may be NULL): the route
+ * out with the lowest metric is the phone's, so its mobile data, likely,
+ * and nothing large starts by itself over it. */
+bool phonelink_way_out(bool wifi, const char *route, bool *metered);
+
 #endif

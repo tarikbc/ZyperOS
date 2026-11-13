@@ -347,6 +347,8 @@ su_auto_do su_auto_step(su_auto *a, const su_view *v, unsigned now_ms, long long
 	/* Cut short: stopped, or killed at work (the power went) */
 	cut = v->st.state == SU_STOPPED || v->st.state == SU_DOWNLOADING || v->st.state == SU_COPYING ||
 	      v->st.state == SU_VERIFYING || v->st.state == SU_INSTALLING;
+	/* Over a phone's mobile data nothing large starts by itself */
+	if (cut && v->metered) return SU_AUTO_NONE;
 	if (cut) {
 		if (joined) a->backoff = 120000;
 		if (!joined && a->resumed_at && now_ms - a->resumed_at < a->backoff) return SU_AUTO_NONE;

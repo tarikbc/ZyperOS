@@ -47,8 +47,9 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 		/* Everything that needs the network, including both sign-ins: an
 		 * account nobody can reach is a row that can only fail. Audio Output
 		 * stays, since a cable and the speaker are still two places. */
-		if (u->no_wifi && (r == PM_WIFI || r == PM_ACHIEVEMENTS))
-			continue;
+		if (u->no_wifi && r == PM_WIFI) continue;
+		/* A phone's USB tethering is a way out with no radio */
+		if (u->no_wifi && !u->online && r == PM_ACHIEVEMENTS) continue;
 		/* Unless the files go over a cable, which needs no radio. */
 		if (u->no_wifi && !u->cable_xfer && r == PM_XFER) continue;
 		if (u->no_bt && r == PM_BT) continue;
@@ -118,7 +119,7 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out)
 	int n = 0, r;
 
 	for (r = 0; r < SM_ROWS; r++) {
-		if (u->no_wifi && r == SM_BOXART) continue;
+		if (u->no_wifi && !u->online && r == SM_BOXART) continue;
 		if (!u->dslang && r == SM_DSLANG) continue;
 		out[n++] = (sm_row)r;
 	}
@@ -341,7 +342,9 @@ static unsigned char smm_sound(sm_muse_row r)
 int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
                    const char **heading)
 {
-	bool net = u->wifi == WIFI_CONNECTED;
+	/* Wi-Fi joined (its own rows), and a way out to fetch over: Wi-Fi or a
+	 * phone's USB tethering */
+	bool net = u->wifi == WIFI_CONNECTED, fetch = net || u->online;
 
 	memset(b->sound, 0, sizeof b->sound);
 
@@ -367,7 +370,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int k, n = sys_menu_muse_rows(u->muse_books ? 1 : u->muse_videos ? 2
 			                              : u->muse_all ? (u->muse_songs ? 3 : 2) : 0,
-			                              u->muse_both, u->no_wifi, ids);
+			                              u->muse_both, u->no_wifi && !u->online, ids);
 
 			for (k = 0; k < n; k++) b->sound[k] = smm_sound(ids[k]);
 			for (k = 0; k < n; k++)
@@ -400,7 +403,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 					                     u->muse_playing };
 					break;
 				case SMM_ART:
-					out[k] = (menu_row){ T(S_SYSMENU_MUSE_ART), NEEDS_WIFI(net), net };
+					out[k] = (menu_row){ T(S_SYSMENU_MUSE_ART), NEEDS_WIFI(fetch), fetch };
 					break;
 				case SMM_RESCAN:
 					out[k] = (menu_row){ T(S_SYSMENU_RESCAN), NULL, true };
@@ -443,7 +446,7 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		/* Just this system. Needs the network like its counterpart in the
 		 * ZyperOS menu, and says so rather than opening a screen that can only
 		 * report the same thing. */
-		full[SM_BOXART]  = (menu_row){ T(S_SYSMENU_BOX_ART), NEEDS_WIFI(net), net };
+		full[SM_BOXART]  = (menu_row){ T(S_SYSMENU_BOX_ART), NEEDS_WIFI(fetch), fetch };
 		/* Live now that there is something behind it. It rescans the whole
 		 * card rather than this one folder - the work is three directory reads
 		 * and the shared parts (hiding a system that emptied, rebuilding

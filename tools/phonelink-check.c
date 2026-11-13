@@ -82,10 +82,48 @@ int main(void)
 		CHECK(phonelink_new(last, PHONELINK_IF, "192.168.42.99"), "not opened for the phone back");
 	}
 
+	/* A way out: Wi-Fi, or a default route on a link that is not lo; the
+	 * cable's link to a computer is never one. The tables as the kernel
+	 * writes them: a header, tabs, a newline after each line (the Pixel 9
+	 * Pro XL's lease, 2026-11-13: 10.44.47.242/24 via 10.44.47.248) */
+	{
+		static const char HDR[] = "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n";
+		static const char CABLE[] = "usb0\t00002A0A\t00000000\t0001\t0\t0\t0\tFCFFFFFF\t0\t0\t0\n";
+		static const char PHONE[] = "phone0\t00000000\tF82F2C0A\t0003\t0\t0\t0\t00000000\t0\t0\t0\n"
+		                            "phone0\t002F2C0A\t00000000\t0001\t0\t0\t0\t00FFFFFF\t0\t0\t0\n";
+		char t[1024];
+		bool metered = true;
+
+		CHECK(!phonelink_way_out(false, NULL, NULL), "a way out with no Wi-Fi and no table");
+		CHECK(!phonelink_way_out(false, "", &metered) && !metered, "a way out from an empty table");
+		CHECK(phonelink_way_out(true, NULL, &metered) && !metered, "Wi-Fi not a way out, or taken for the phone's");
+		CHECK(!phonelink_way_out(false, HDR, NULL), "the header taken for a route");
+		snprintf(t, sizeof t, "%s%s", HDR, CABLE);
+		CHECK(!phonelink_way_out(false, t, NULL), "the cable to a computer taken for a way out");
+		snprintf(t, sizeof t, "%s%s%s", HDR, CABLE, PHONE);
+		CHECK(phonelink_way_out(false, t, &metered), "the phone's lease not a way out");
+		CHECK(metered, "the phone's way out not taken for its mobile data");
+		CHECK(phonelink_way_out(true, t, &metered) && metered, "Wi-Fi said while the route goes by the phone");
+		snprintf(t, sizeof t, "%seth0\t00000000\t0202000A\t0003\t0\t0\t100\t00000000\t0\t0\t0\n", HDR);
+		CHECK(phonelink_way_out(false, t, &metered) && !metered, "QEMU's network not a way out, or taken for a phone");
+		snprintf(t, sizeof t, "%swlan0\t00000000\t0101A8C0\t0003\t0\t0\t0\t00000000\t0\t0\t0\n"
+		         "phone0\t00000000\tF82F2C0A\t0003\t0\t0\t10\t00000000\t0\t0\t0\n", HDR);
+		CHECK(phonelink_way_out(true, t, &metered) && !metered, "the phone taken over Wi-Fi's lower metric");
+		snprintf(t, sizeof t, "%swlan0\t00000000\t0101A8C0\t0003\t0\t0\t20\t00000000\t0\t0\t0\n"
+		         "phone0\t00000000\tF82F2C0A\t0003\t0\t0\t10\t00000000\t0\t0\t0\n", HDR);
+		CHECK(phonelink_way_out(true, t, &metered) && metered, "the phone's lower metric not taken");
+		snprintf(t, sizeof t, "%slo\t00000000\t00000000\t0001\t0\t0\t0\t00000000\t0\t0\t0\n", HDR);
+		CHECK(!phonelink_way_out(false, t, NULL), "lo taken for a way out");
+		snprintf(t, sizeof t, "%sphone0\t00000000\tF82F2C0A\t0002\t0\t0\t0\t00000000\t0\t0\t0\n", HDR);
+		CHECK(!phonelink_way_out(false, t, NULL), "a route that is not up taken for a way out");
+		CHECK(phonelink_way_out(false, "phone0\t00000000\tF82F2C0A\t0003\t0\t0\t0\t00000000\t0\t0\t0",
+		                        &metered) && metered, "a last line with no newline not read");
+	}
+
 	if (failed) {
 		printf("phonelink-check: %d failed\n", failed);
 		return 1;
 	}
-	printf("phonelink-check: a phone's link told from the gadget's, iPhones seen, File Transfer once a link\n");
+	printf("phonelink-check: a phone's link told from the gadget's, iPhones seen, File Transfer once a link, a way out and whose\n");
 	return 0;
 }

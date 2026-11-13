@@ -2960,6 +2960,24 @@ up to four balanced lines, else in **meta** up to six. Never on Automatic,
 which powers a phone as any plug and asks nothing. Host shots: `--replug
 phone|iphone`, `--hare-steps phone browser`.
 
+**The phone's internet.** The phone's lease gives the handheld a default
+route through the phone (udhcpc's default script; the Pixel 9 Pro XL's,
+2026-11-13: 10.44.47.242/24, default via 10.44.47.248 dev phone0), so a
+phone's tethering is a way out to the internet as Wi-Fi is. One rule says so
+for every fetch, net_internet (phonelink_way_out): Wi-Fi joined, or a
+default route on a link other than lo; never the USB cable to a computer,
+which gives the handheld no route (it leads nowhere, 2026-11-09). It gates
+MENU > Scraper, a game's Cover and Video, Box Art, Album Art, Achievements,
+System Update and PortMaster's install, and with no radio Achievements, Box
+Art and Album Art come back while it holds (sys_ui.online). The phone may be
+on mobile data: when the route out with the lowest metric is phone0's
+(metered), nothing large starts by itself. System Update still looks, as
+that is small, but a download cut short waits for A (su_auto_step). Closing
+USB File Transfer (B) leaves the link, its lease and its route (xfer_stop
+never touches phone0), and File Transfer does not open again for the same
+link (phonelink_new). The rows keep "needs Wi-Fi": with no radio and no
+tethering they are not there at all.
+
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
 MENU's first row is **USB Device**, value "choose": A asks the question
