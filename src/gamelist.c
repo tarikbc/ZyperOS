@@ -2,6 +2,7 @@
 #include "gamelist.h"
 
 #include "design.h"
+#include "folderart.h"
 #include "home.h"
 #include "i18n.h"
 #include "theme.h"
@@ -152,9 +153,11 @@ static void gl_row(SDL_Renderer *r, const gl_info *in, void *ctx, int i, int y,
 	if (games > 0) {
 		char num[16];
 
+		/* The folder in the system's color (src/folderart.h), two units a
+		 * cell, as the card's is four */
 		if (in->folder_icon)
 			SDL_RenderCopy(r, in->folder_icon, NULL,
-			               &(SDL_Rect){ GL_MARK_X - 32, cy - 34, 64, 64 });
+			               &(SDL_Rect){ GL_MARK_X - FA_ICON_W, cy - FA_ICON_H, FA_ICON_W * 2, FA_ICON_H * 2 });
 		snprintf(num, sizeof num, "%d", games);
 		end -= ui_text_tabular_width(small, num) + 24;
 		ui_text_tabular(r, small, num, GL_END_X, ui_cap_y(small, cy), 1, dim);
@@ -261,10 +264,56 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 		char line[96];
 
 		if (t && w > 0 && h > 0) {
-			float k = fminf((float)GL_PANEL_W / w, (float)GL_COVER_H / h);
-			SDL_FRect dst = { GL_PANEL_X + (GL_PANEL_W - w * k) / 2, GL_TOP, w * k, h * k };
+			float f = fminf((float)GL_PANEL_W / w, (float)GL_COVER_H / h);
+			SDL_FRect dst = { GL_PANEL_X + (GL_PANEL_W - w * f) / 2, GL_TOP, w * f, h * f };
+			float k = in->snap && in->snap_k > 0 && in->snap_w > 0 && in->snap_h > 0
+			        ? fminf(in->snap_k, 1) : 0;
+			Uint8 was;
 
-			SDL_RenderCopyF(r, t, NULL, &dst);
+			SDL_GetTextureAlphaMod(t, &was);
+			SDL_SetTextureAlphaMod(t, (Uint8)lroundf(was * (1 - k)));
+			if (k < 1) SDL_RenderCopyF(r, t, NULL, &dst);
+			SDL_SetTextureAlphaMod(t, was);
+			if (k > 0) {
+				/* The cover turns into its video, as on the cover row: the
+				 * snap, whole at its own shape in the panel's box, through a
+				 * frame that grows from the cover's rect to its own */
+				float sf = fminf((float)GL_PANEL_W / in->snap_w, (float)GL_COVER_H / in->snap_h);
+				SDL_FRect vr = { GL_PANEL_X + (GL_PANEL_W - in->snap_w * sf) / 2, GL_TOP,
+				                 in->snap_w * sf, in->snap_h * sf };
+				SDL_Rect clip = { (int)floorf(dst.x + (vr.x - dst.x) * k),
+				                  (int)floorf(dst.y + (vr.y - dst.y) * k),
+				                  (int)ceilf(dst.w + (vr.w - dst.w) * k) + 1,
+				                  (int)ceilf(dst.h + (vr.h - dst.h) * k) + 1 };
+
+				SDL_RenderSetClipRect(r, &clip);
+				SDL_SetTextureAlphaMod(in->snap, (Uint8)lroundf(255 * k));
+				SDL_RenderCopyF(r, in->snap, in->snap_src.w > 0 ? &in->snap_src : NULL, &vr);
+				SDL_SetTextureAlphaMod(in->snap, 255);
+				SDL_RenderSetClipRect(r, NULL);
+			}
+			/* Its snap's mark, the cover row's, fading as the snap comes */
+			if (in->has_snap && k < 1) {
+				int d = 40, inset = 12;
+				Uint8 ba = (Uint8)lroundf(255 * (1 - k));
+				SDL_Rect disc = { (int)lroundf(dst.x + dst.w) - inset - d,
+				                  (int)lroundf(dst.y + dst.h) - inset - d, d, d };
+
+				ui_round_rect(r, &disc, d / 2, ui_col(theme()->accent, ba));
+				ui_glyph_draw(r, UI_GLYPH_PLAY, disc.x + d / 2 + d / 16, disc.y + d / 2, d / 2,
+				              ui_col(theme()->on_accent, ba));
+			}
+			/* And the wait before it, a bar under the cover filling */
+			if (in->snap_wait > 0 && k < 1) {
+				int bw = (int)lroundf(dst.w), bx = (int)lroundf(dst.x);
+				int by = (int)lroundf(dst.y + dst.h) + 12, fw = (int)lroundf(bw * fminf(in->snap_wait, 1));
+				Uint8 fa = (Uint8)lroundf(255 * (1 - k));
+
+				ui_round_rect(r, &(SDL_Rect){ bx, by, bw, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, fa));
+				if (fw > 0)
+					ui_round_rect(r, &(SDL_Rect){ bx, by, fw, UI_BAR_H }, UI_BAR_H / 2,
+					              ui_col(theme()->accent_ink, fa));
+			}
 		}
 		if (games > 0) {
 			snprintf(line, sizeof line, TN(S_SHELF_GAMES, games), games);

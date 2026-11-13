@@ -220,7 +220,7 @@ static void library(void)
 	game_list list = {0}; game_meta m = {0}; char text[LIB_NAME]; int i;
 	directory("NES"); directory("NES/Set"); directory("NES/Shadow");
 	touch("NES/Zeta (USA).zip"); touch("NES/abbrev.zip"); touch("NES/Shadow.zip");
-	touch("NES/Shadow/Disc 1.chd"); touch("NES/Set/Disc 1.chd"); touch("NES/Set/Disc 2.chd"); touch("NES/Set/Set.m3u");
+	touch("NES/Shadow/Shadow.chd"); touch("NES/Set/Disc 1.chd"); touch("NES/Set/Disc 2.chd"); touch("NES/Set/Set.m3u");
 	strcpy(m.title, "Alpha (Official Edition)");
 	CHECK(db_game_set(db_lib(), "NES", "abbrev.zip", &m));
 	strcpy(m.title, "Set Display");
@@ -247,7 +247,7 @@ static void library(void)
 	CHECK(!strcmp(list.items[0].title, "Alpha (Official Edition)"));
 	i = lib_find_entry(&list, NULL, 0, "Set/Set.m3u");
 	CHECK(i >= 0 && !strcmp(list.items[i].title, "Set Display") && !strcmp(list.items[i].name, "Set"));
-	CHECK(lib_find_entry(&list, NULL, 0, "Shadow/Disc 1.chd") == -1);
+	CHECK(lib_find_entry(&list, NULL, 0, "Shadow/Shadow.chd") == -1);
 	i = lib_find_entry(&list, NULL, 0, "Zeta (USA).zip");
 	CHECK(i >= 0 && !strcmp(list.items[i].title, "Zeta"));
 	strcpy(m.title, "New Name"); CHECK(db_game_set(db_lib(), "NES", "Zeta (USA).zip", &m));
@@ -310,12 +310,13 @@ static void library(void)
 	CHECK(list.skipped == 1 && !strcmp(list.skipped_eg[0], "Hacks/"));
 	lib_free(&list);
 	/* A folder whose name looks like a game file is a folder all the same:
-	 * a disc set when it holds one, never a file to launch */
+	 * a disc set when it holds one (its image named as it is), never a file
+	 * to launch */
 	directory("NES/Odd.zip");
-	touch("NES/Odd.zip/Disc 1.chd");
+	touch("NES/Odd.zip/Odd.chd");
 	touch("NES/readme.txt");
 	CHECK(lib_scan(root, "NES", "zip,chd,m3u,nes", &list) && list.count == 7);
-	i = lib_find_entry(&list, NULL, 0, "Odd.zip/Disc 1.chd");
+	i = lib_find_entry(&list, NULL, 0, "Odd.zip/Odd.chd");
 	CHECK(i >= 0 && !strcmp(list.items[i].name, "Odd.zip"));
 	CHECK(lib_find_entry(&list, NULL, 0, "Odd.zip") == -1);
 	CHECK(list.skipped == 1 && !strcmp(list.skipped_eg[0], "readme.txt"));
@@ -363,6 +364,36 @@ static void disc_folders(void)
 	i = lib_find_entry(&list, NULL, 0, "RPGs/Xeno/Xenogears (USA) (Disc 1).cue");
 	CHECK(i >= 0 && list.items[i].dir == 4 && !strcmp(list.items[i].name, "Xeno"));
 	CHECK(list.skipped == 0);
+	lib_free(&list);
+
+	/* PSP (2026-11-13: a folder of one game opened straight into it): one
+	 * image is the folder's own game only when it is named as the folder
+	 * is; an EBOOT.PBP's folder is its game, as the PSP keeps one; a folder
+	 * of one game's image named otherwise is a folder of games */
+	directory("PSP"); directory("PSP/Favorites"); directory("PSP/God of War");
+	directory("PSP/Cave Story"); directory("PSP/Homebrew"); directory("PSP/Homebrew/Tyrian");
+	directory("PSP/Mixed");
+	touch("PSP/Favorites/Ridge Racer (USA).iso");
+	touch("PSP/God of War/God of War - Chains of Olympus (USA).iso");
+	touch("PSP/Cave Story/EBOOT.PBP"); touch("PSP/Homebrew/Tyrian/EBOOT.PBP");
+	touch("PSP/Mixed/Lumines (USA).cso");
+	CHECK(lib_scan(root, "PSP", "iso,cso,chd,pbp", &list) && list.count == 5);
+	i = lib_find_entry(&list, NULL, 0, "Favorites/Ridge Racer (USA).iso");
+	CHECK(i >= 0 && list.items[i].dir == 9 && !strcmp(list.items[i].name, "Ridge Racer (USA)"));
+	i = lib_find_entry(&list, NULL, 0, "God of War/God of War - Chains of Olympus (USA).iso");
+	CHECK(i >= 0 && list.items[i].dir == 10);
+	i = lib_find_entry(&list, NULL, 0, "Cave Story/EBOOT.PBP");
+	CHECK(i >= 0 && list.items[i].dir == 0 && !strcmp(list.items[i].name, "Cave Story"));
+	i = lib_find_entry(&list, NULL, 0, "Homebrew/Tyrian/EBOOT.PBP");
+	CHECK(i >= 0 && list.items[i].dir == 8 && !strcmp(list.items[i].name, "Tyrian"));
+	CHECK(lib_find_entry(&list, NULL, 0, "Mixed/Lumines (USA).cso") >= 0);
+	lib_free(&list);
+	/* ...and named as the folder is, it is the folder's game */
+	directory("PSP/Ridge Racer");
+	touch("PSP/Ridge Racer/Ridge Racer (USA).iso");
+	CHECK(lib_scan(root, "PSP", "iso,cso,chd,pbp", &list) && list.count == 6);
+	i = lib_find_entry(&list, NULL, 0, "Ridge Racer/Ridge Racer (USA).iso");
+	CHECK(i >= 0 && list.items[i].dir == 0 && !strcmp(list.items[i].name, "Ridge Racer"));
 	lib_free(&list);
 
 	/* A Dreamcast .gdi set starts by its sheet, never its track01.bin */

@@ -46,8 +46,19 @@ typedef struct {
 	int (*folder_of)(void *ctx, int i);
 	/* Whether row i is a favorite: a heart at its end. NULL on Favorites. */
 	bool (*fav_of)(void *ctx, int i);
-	/* The pixel folder, 128 units square; NULL draws none */
+	/* The pixel folder (ui_make_folder_icon), FA_ICON_W x FA_ICON_H; NULL
+	 * draws none */
 	SDL_Texture *folder_icon;
+	/* The focused game's video snap (src/snapshelf.h), as the cover row has
+	 * it (games_info): its picture, its shape and the part of its texture
+	 * the picture is in, how far the cover has turned into it (0 to 1), the
+	 * wait before it as a bar under the cover, and whether it has one at all,
+	 * for the play mark on its cover */
+	SDL_Texture *snap;
+	int snap_w, snap_h;
+	SDL_Rect snap_src;
+	float snap_k, snap_wait;
+	bool has_snap;
 	/* The focused entry's facts, as the cover row has them */
 	const char *played, *origin;
 	bool has_achievements, resumable, install, inside;
