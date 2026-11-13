@@ -25,6 +25,7 @@
 #include "diatom.h"
 #include "levels.h"
 #include "now.h"
+#include "player2.h"
 #include "screens.h"
 
 /* --- the frame the core last handed us ----------------------------------- */
@@ -462,6 +463,10 @@ static void on_crash(int sig, siginfo_t *si, void *uc)
 				break;
 			}
 
+	/* Player 2's file goes with the game, so p2d is not left serving a
+	 * picture that will never move again (player2.h) */
+	p2_abandon();
+
 	/* Then where, for the log: after the launcher has heard, since a stalled
 	 * stderr would block these writes. */
 	crash_where(si, uc);
@@ -488,6 +493,9 @@ static void on_crash(int sig, siginfo_t *si, void *uc)
  * for: after a normal EXIT there is nothing left to say. */
 static void on_exit_hook(void)
 {
+	/* A core's exit() ends player 2's game too. Not p2_set: a core's thread
+	 * may still be drawing into the share, and the process unmaps it anyway. */
+	p2_abandon();
 	if (g_phase == PHASE_IDLE) return;
 	if (g_phase == PHASE_RUNNING)
 		diatom_proto_send("EXIT\treason=crash\tmsg=core called exit");
@@ -1578,6 +1586,26 @@ static void screens_switch(void)
 	if (on != was) stylus_emit();
 }
 
+/* NES player 2 (player2.h), which the launcher turns on from the in-game
+ * menu. On only while a game is loaded: the share is that game's frames, so
+ * between games the answer is on=0 rather than a file nothing will draw
+ * into. Every game starts with it off and ends with it off (run_session and
+ * the frame loop's end). */
+static void player2_emit(void)
+{
+	diatom_proto_send("PLAYER2\ton=%d", p2_on() ? 1 : 0);
+}
+
+static void player2_set(bool on)
+{
+	if (g_phase != PHASE_RUNNING) on = false;
+	if (on != p2_on() && p2_set(on)) {
+		printf("diatom: player 2 %s\n", on ? "on" : "off");
+		fflush(stdout);
+	}
+	player2_emit();
+}
+
 /* Socket mode's premap, on its own thread. A signal may land on this thread
  * too, which the wake pipe above already allows for.
  *
@@ -1651,6 +1679,8 @@ static bool state_plane_msg(const diatom_msg *m)
 	case DIATOM_MSG_SETSCREENS: screens_set(m);      return true;
 	case DIATOM_MSG_STYLUS:     stylus_emit();       return true;
 	case DIATOM_MSG_SETSTYLUS:  stylus_set(m->on);   return true;
+	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
+	case DIATOM_MSG_SETPLAYER2: player2_set(m->on);  return true;
 	case DIATOM_MSG_PREMAP:
 		/* The launcher has drawn: the cores and the sound device, which both
 		 * waited so as not to compete with its start. */
@@ -2785,6 +2815,9 @@ static int run_session_inner(const diatom_session *sn)
 	diatom_rumble_hold(true);
 	diatom_port_fast_clock(false, false);
 	diatom_port_power(DIATOM_POWER_FULL);
+	/* And player 2's file goes now, before EXIT, so it is gone by the time
+	 * the launcher hears the game end (player2.h) */
+	p2_set(false);
 
 	/* A quick save still on its thread is finished and said before EXIT; a
 	 * quick load is not handed to a game that is over. */
@@ -2930,6 +2963,8 @@ static int run_session(const diatom_session *sn)
 	int rc;
 
 	g_phase = PHASE_LOADING;
+	/* Off for every game until the launcher asks (player2.h) */
+	p2_set(false);
 	rc = run_session_inner(sn);
 	diatom_now_end();
 	g_phase = PHASE_IDLE;

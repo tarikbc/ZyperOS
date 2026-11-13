@@ -19,6 +19,7 @@
 
 #include "cheevos.h"
 #include "diatom.h"
+#include "player2.h"
 #include "stick.h"
 
 /* Experimental commands carry 0x10000, and the same command reads the same
@@ -643,6 +644,9 @@ static void turbo_tick(void);
  * after that in the same frame is a repeat and is dropped, so a frame is still
  * one turn of SELECT's chords and of the turbo pulse. */
 static bool g_polled;
+/* Player 2's pad (player2.h), read with player 1's: once a frame, and port 1
+ * answers from it. 0 while player 2 is off. */
+static uint32_t g_p2_pad;
 
 void diatom_env_frame_begin(void)
 {
@@ -656,6 +660,7 @@ static void cb_input_poll(void)
 	diatom_port_input_poll();
 	if (g_poll_hook) g_hook_hide = g_poll_hook(diatom_port_input_state(), &g_hook_give);
 	turbo_tick();
+	g_p2_pad = p2_on() ? p2_pad((unsigned)(diatom_port_now_us() / 1000)) : 0;
 }
 
 /* Canonical button names. The protocol speaks these, never retropad numbers,
@@ -1069,6 +1074,13 @@ static int16_t cb_input_state(unsigned port, unsigned device,
 		stick_axes(state, &x, &y);
 		return id == RETRO_DEVICE_ID_ANALOG_X ? x : id == RETRO_DEVICE_ID_ANALOG_Y ? y : 0;
 	}
+	/* Port 1 is player 2's joypad, as p2d wrote it: no map, no turbo, no
+	 * chord, since its buttons are the NES pad's alone and none of them is
+	 * Diatom's. Nothing else on port 1. */
+	if (port == 1 && device == RETRO_DEVICE_JOYPAD) {
+		if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return (int16_t)g_p2_pad;
+		return id <= 15 && ((g_p2_pad >> id) & 1u);
+	}
 	if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
 
 	state = (diatom_port_input_state() & ~(g_suppress | g_hook_hide)) | g_hook_give;
@@ -1112,6 +1124,13 @@ extern void diatom_on_audio_batch_store(const int16_t *data, size_t frames);
 static void cb_video(const void *data, unsigned w, unsigned h, size_t pitch)
 {
 	diatom_on_video(data, w, h, pitch);
+	/* Player 2's copy of the frame (player2.h), after Diatom's own, so the
+	 * Pixel's picture never waits on it. Nothing for a dupe, for a frame the
+	 * GPU drew, or while player 2 is off. As the core drew it: a game that
+	 * turns its screen (SET_ROTATION) is not one player 2 is offered for. */
+	p2_frame(data, w, h, pitch,
+	         g_policy->pixfmt == DIATOM_PIX_RGB565 ? RETRO_PIXEL_FORMAT_RGB565
+	                                               : RETRO_PIXEL_FORMAT_XRGB8888);
 }
 static size_t cb_audio_batch(const int16_t *data, size_t frames)
 {

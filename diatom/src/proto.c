@@ -209,6 +209,8 @@ static void parse_line(char *line, diatom_msg *out)
 	else if (!strcmp(field, "SETSCREENS")) out->kind = DIATOM_MSG_SETSCREENS;
 	else if (!strcmp(field, "STYLUS"))     out->kind = DIATOM_MSG_STYLUS;
 	else if (!strcmp(field, "SETSTYLUS"))  out->kind = DIATOM_MSG_SETSTYLUS;
+	else if (!strcmp(field, "PLAYER2"))    out->kind = DIATOM_MSG_PLAYER2;
+	else if (!strcmp(field, "SETPLAYER2")) out->kind = DIATOM_MSG_SETPLAYER2;
 	else {
 		log_(DIATOM_LOG_WARN, "proto: ignoring unknown verb '%s'", field);
 		out->kind = DIATOM_MSG_NONE;
@@ -414,7 +416,12 @@ diatom_msg_kind diatom_proto_poll(diatom_msg *out, int timeout_ms, bool running)
 		 * and a SAVE or LOAD while the game runs is answered when its file
 		 * is done, SAVE taking preview= too. A launcher that sees proto=12
 		 * knows the hotkeys are not there to promise. */
-		diatom_proto_send("READY\tproto=13\tstate=%s", running ? "running" : "idle");
+		/* proto=14 adds NES player 2: SETPLAYER2 on=1 while a game runs puts
+		 * its frames in a file p2d maps too and reads port 1 from it
+		 * (player2.h), answered PLAYER2. Additive: an old Diatom ignores
+		 * SETPLAYER2, and a launcher that sees proto=13 knows not to offer a
+		 * Player 2 row that would bring a guest to a page with no game. */
+		diatom_proto_send("READY\tproto=14\tstate=%s", running ? "running" : "idle");
 		/* A displaced launcher is a vanished one, and every loop already
 		 * knows what that means - the in-game menu resumes the game. Said
 		 * after READY, so the new launcher hears where things stand first. */

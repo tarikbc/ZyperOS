@@ -244,6 +244,10 @@ typedef enum {
 	DIATOM_MSG_SETSCREENS, /* set it: `layout`, `swap` = 1 | 0 */
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
+	/* NES player 2 (player2.h): the frames out and port 1's buttons in,
+	 * through a file p2d maps too. Only while a game is loaded. */
+	DIATOM_MSG_PLAYER2,    /* report whether it is on */
+	DIATOM_MSG_SETPLAYER2, /* turn it on or off: `on` = 1 | 0 */
 	/* The launcher went away - or was displaced by a newer one, which means
 	 * the same thing. The game keeps running. */
 	DIATOM_MSG_HANGUP
