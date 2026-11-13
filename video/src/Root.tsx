@@ -2,7 +2,9 @@ import React from "react";
 import { CalculateMetadataFunction, Composition, staticFile, Still } from "remotion";
 import { Tour, TourProps } from "./Tour";
 import { Poster, PosterProps } from "./Poster";
-import { CLIPS, FPS, TOTAL } from "./timeline";
+import { Clip, CLIPS, FPS, TOTAL } from "./timeline";
+import { H as REDDIT_H, Reddit, RedditProps, W as REDDIT_W } from "./reddit/Reddit";
+import { REDDIT } from "./reddit/timeline";
 
 /** The footage index (video/footage/takes.py) and the device's screen rect (video/device) */
 const load = async () => {
@@ -14,8 +16,8 @@ const load = async () => {
 };
 
 /** Every clip inside its take: a scene longer than its footage would show black */
-const check = (footage: Record<string, { ms: number }>) => {
-  for (const c of CLIPS) {
+const check = (footage: Record<string, { ms: number }>, clips: Clip[] = CLIPS) => {
+  for (const c of clips) {
     if (c.kind !== "take") continue;
     const need = c.fromMs + (c.len / FPS) * 1000 * c.rate;
     const have = footage[c.take]?.ms ?? 0;
@@ -26,6 +28,11 @@ const check = (footage: Record<string, { ms: number }>) => {
 const tourMeta: CalculateMetadataFunction<TourProps> = async () => {
   const props = await load();
   check(props.footage);
+  return { props };
+};
+const redditMeta: CalculateMetadataFunction<RedditProps> = async () => {
+  const props = await load();
+  check(props.footage, REDDIT.clips);
   return { props };
 };
 const posterMeta: CalculateMetadataFunction<PosterProps> = async ({ props }) => ({ props: { ...props, ...(await load()) } });
@@ -41,5 +48,8 @@ export const Root: React.FC = () => (
       defaultProps={{ ...empty, play: false } as PosterProps} calculateMetadata={posterMeta} />
     <Still id="PosterPlay" component={Poster} width={1920} height={1080}
       defaultProps={{ ...empty, play: true } as PosterProps} calculateMetadata={posterMeta} />
+    {/* 1.0.5's new features alone, 4:5 for a phone's feed (src/reddit) */}
+    <Composition id="Reddit105" component={Reddit} durationInFrames={REDDIT.total} fps={FPS} width={REDDIT_W} height={REDDIT_H}
+      defaultProps={empty as RedditProps} calculateMetadata={redditMeta} />
   </>
 );

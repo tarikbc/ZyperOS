@@ -4,7 +4,7 @@
  * take of shots the moments one picture gives way to the next, both at the
  * speed the clip plays its take.
  */
-import { CLIPS, FPS, POWER_MS, SCENES, STARTS } from "./timeline";
+import { FPS, Layout, POWER_MS, TOUR } from "./timeline";
 import type { Footage } from "./parts";
 
 export type Cue = { frame: number; sound: string; volume?: number };
@@ -31,6 +31,10 @@ const SHOT_PRESSES: Record<string, [number, string][]> = {
   ds: [[500, "move"], [1000, "move"], [1500, "accept"]],
   cheer: [[300, "reward"]],
   controls_ps1: [],
+  rename: [[500, "accept"], [1200, "accept"], [4304 - 500, "accept"]],
+  flashdrive: [[400, "move"], [800, "move"], [1400, "accept"]],
+  "update-bg": [[900, "accept"]],
+  "charge-full": [[1400, "accept"]],
 };
 
 /** Scenes' own moments, in seconds into the scene: POWER pressed, and Zyper's
@@ -40,12 +44,12 @@ const SCENE_PRESSES: Record<string, [number, string][]> = {
   power: [[POWER_MS.off / 1000, "back"], [POWER_MS.on / 1000, "accept"], [POWER_MS.back / 1000, "reward"]],
 };
 
-export const SOUND_CUES = (footage: Footage): Cue[] => {
+export const SOUND_CUES = (footage: Footage, lay: Layout = TOUR): Cue[] => {
   const out: Cue[] = [];
-  SCENES.forEach((sc, i) => {
-    for (const [s, sound] of SCENE_PRESSES[sc.id] ?? []) out.push({ frame: STARTS[i] + Math.round(s * FPS), sound, volume: sound === "reward" ? 0.7 : 1 });
+  lay.scenes.forEach((sc, i) => {
+    for (const [s, sound] of SCENE_PRESSES[sc.id] ?? []) out.push({ frame: lay.starts[i] + Math.round(s * FPS), sound, volume: sound === "reward" ? 0.7 : 1 });
   });
-  for (const c of CLIPS) {
+  for (const c of lay.clips) {
     if (c.kind !== "take" || c.scene === "end") continue;
     const presses: [number, string][] =
       footage[c.take]?.presses?.map(([ms, key]) => [ms, SOUND[key] ?? "move"] as [number, string]) ?? SHOT_PRESSES[c.take] ?? [];

@@ -248,6 +248,72 @@ shots('player2', [(NES, ['--screen', 'games', '--gamemenu', str(r), '--player2',
        (NES, ['--screen', 'games', '--player2', 'hotspot', '--backdrop', NES_SNAP], 1600),
        (NES, ['--screen', 'games', '--player2', 'connected', '--backdrop', NES_SNAP], 2900)])
 
+
+# ---- the 1.0.5 Reddit cut (src/reddit) ---------------------------------------
+# The screensaver: the snap's game on its shelf, then its video snap fading up
+# over the whole screen with its name. --saver draws one picture, so it is
+# given the snap a frame at a time (SAVER_FRAMES of them, made from
+# SNAP_SOURCE at its own rate in main()), each held a thirtieth of a second.
+SAVER_FRAMES = 100
+shots('saver', [(SNAP_GAME, ['--screen', 'games'], 700)] +
+      [(SNAP_GAME, ['--saver', '--saver-alpha', f'{min(1, i / 15):.3f}', '--saver-pic', f'{{work}}/saver-pics/{i:04d}.png'],
+        1000 / SNAP_FPS) for i in range(SAVER_FRAMES)], card='snaps')
+
+# Rename: Freedoom's WAD on the Doom shelf, named as its file, X > Rename, the
+# old name deleted (B) and the new one typed, the focus on each key it types
+# and X for the capitals (src/keyboard.c's layers; the action row is row 4)
+KB_ROWS = ['1234567890', 'qwertyuiop', 'asdfghjkl-', 'zxcvbnm_.@']
+
+
+def typing(old, new, ms=80):
+    """The keyboard's pictures from `old` to `new`: (text, layer, row, col, ms)"""
+    steps, row, col, layer = [(old, 0, 1, 0, 500)], 1, 0, 0
+    for n in range(len(old) - 1, -1, -1):
+        steps.append((old[:n], 0, row, col, ms * 0.7))
+    text = ''
+    for c in new:
+        want = 1 if c.isupper() else 0
+        if want != layer:
+            layer = want
+            steps.append((text, layer, row, col, ms))
+        if c == ' ':
+            row, col = 4, 2
+        else:
+            row = next(r for r, keys in enumerate(KB_ROWS) if c.lower() in keys)
+            col = KB_ROWS[row].index(c.lower())
+        text += c
+        steps.append((text, layer, row, col, ms))
+    steps.append((text, layer, 4, 4, 500))
+    return steps
+
+
+DOOM_FREE = ('DOOM', 'freedoom1.wad')
+RENAMED = 'Freedoom Phase 1'
+shots('rename', [(DOOM_FREE, ['--screen', 'games'], 500), (DOOM_FREE, ['--screen', 'games', '--info-rename'], 700)] +
+      [(DOOM_FREE, ['--screen', 'games', '--keyboard', str(layer), text, 'Rename', '--kbsel', str(r), str(c)], ms)
+       for text, layer, r, c, ms in typing('freedoom1', RENAMED)])
+# ...and the shelf after, on a card where the file has the new name
+shots('renamed', [(('DOOM', RENAMED + '.wad'), ['--screen', 'games'], 1500)], card='renamed')
+
+# 1.0.4 and 1.0.3, for the same cut. A computer on the cable as a release has
+# it (plain): Charge Only, File Transfer, Flash Drive in focus, then Flash
+# Drive's screen as a copy starts, runs one way and both ways
+shots('flashdrive', [(PS1, ['--usb-ask', str(k), 'plain', 'drive'], ms) for k, ms in ((0, 400), (1, 400), (2, 600))] +
+      [(PS1, ['--usb-drive', '0', v], ms) for v, ms in (('idle', 500), ('in', 800), ('both', 1300))])
+# USB File Transfer at zyperos.local, step by step: the computer taking the
+# handheld, the loading bar, the address, the browser, then the page open
+shots('usbsteps', [(PS1, ['--hare-steps', 'usb', st], ms) for st, ms in
+                   (('taking', 600), ('opening', 600), ('address', 700), ('browser', 800))] +
+      [(PS1, ['--hare', 'http://10.42.0.1', '1 connected', 'Super Metroid (USA).sfc'], 1300)])
+# System Update in the background: Download on the update's page, then the
+# shelf with the download's mark filling at the top
+shots('update-bg', [(PS1, ['--update'], 900)] +
+      [(PS1, ['--screen', 'games', '--status', f'10:08 24h batt=82 update={p}'], 60) for p in range(3, 100, 3)])
+# Charge to 100% this once: the charging screen held at the limit, Y's hint,
+# then charging to full this one time
+shots('charge-full', [(PS1, ['--charging', '{t}', 'kept'], motion(0, 1400)),
+                      (PS1, ['--charging', '{t}', 'tofull'], motion(0, 1800))])
+
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
 
@@ -301,7 +367,7 @@ def run_shots(name, spec, cards):
         times = when if isinstance(when, list) else [None]
         for t in times:
             a = [x.replace('{t}', str(t)).replace('{card}', str(card)).replace('{art}', str(cardlib.ART_CACHE))
-                 for x in args]
+                 .replace('{work}', str(WORK)) for x in args]
             # --snap-frame {i}: the snap's frame for this shot (snapsub.dylib),
             # counted from the turn's start at the snap's own rate
             if '--snap-frame' in a:
@@ -372,6 +438,19 @@ def main():
         media.touch()
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS},scale=320:240',
                     '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'snap.yuv')], check=True)
+    # The screensaver's pictures: the same snap, from the same moment, a file a frame
+    saver = WORK / 'saver-pics'
+    if saver.exists():
+        shutil.rmtree(saver)
+    saver.mkdir()
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS}',
+                    '-frames:v', str(SAVER_FRAMES), '-start_number', '0', str(saver / '%04d.png')], check=True)
+    # The demonstration card with Freedoom renamed, for the shelf after Rename
+    if not only or 'renamed' in only:
+        cards['renamed'] = cardlib.build(WORK / 'card-renamed')
+        doom = cards['renamed'] / 'Roms/Doom'
+        (doom / DOOM_FREE[1]).rename(doom / (RENAMED + '.wad'))
+        cardlib.device_settings(cards['renamed'], BINARY, **{'tour.done': 1, 'clock': '24h'})
     cards['portdocs'] = WORK / 'card-portdocs'
     cards['empty'] = WORK / 'card-empty'
     for extra, make in (('portdocs', cardlib.rs.portdocs_card), ('empty', cardlib.rs.card_dirs)):
