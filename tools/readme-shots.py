@@ -167,11 +167,14 @@ SHOTS={
     'mp4':('media','MUSE',['--screen','games']),
     'nowplaying':('demo','MUSE',['--nowplaying','0','0','83']),
     'hare':('demo','PS1',['--hare','http://192.168.1.42','1 connected','Tobu Tobu Girl.gb']),
+    # Wi-Fi File Transfer's way in (DESIGN.md 11.35): the address, the name
+    # and the PIN at full size until someone signs in
+    'hare-way':('demo','PS1',['--hare-steps','wifi','browser']),
     'hotspot':('demo','PS1',['--hotspot','ZyperOS-7A2B','q7mx-3kpa','1 joined','waiting']),
     'usb-ask':('demo','PS1',['--usb-ask','0']),
-    # USB File Transfer's steps (DESIGN.md 11.35): the cable and the address
-    # ticked, the browser awaited
-    'usb-steps':('demo','PS1',['--hare-steps','usb','browser']),
+    # USB File Transfer's steps (DESIGN.md 11.35): the cable ticked, the
+    # address waited on too long, and its hint
+    'usb-steps':('demo','PS1',['--hare-steps','usb','noaddress']),
     'scummvm':('scummvm','SCUMMVM',['--screen','games']),
     # Folders of games on a shelf, and the list (DESIGN.md 11.39): the Game
     # Boy Advance shelf's top, its folders first with their games counted;

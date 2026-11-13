@@ -340,12 +340,16 @@ for _scroll in ("0.5", "1"):
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
 for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver", "address",
-                               "noaddress", "browser", "nobrowser", "waits", "replug")),
-                      ("wifi", ("nonetwork", "browser", "nobrowser"))):
+                               "noaddress", "browser", "nobrowser", "waits", "replug", "pin")),
+                      ("wifi", ("nonetwork", "browser", "nobrowser", "pin"))):
     for _state in _states:
         EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
     # and the browser's hint with no name on the network (mDNS did not start)
     EXTRA.setdefault("steps-%s-nobrowser-noname" % _way, ("demo", "PS1", ["--hare-steps", _way, "nobrowser", "noname"]))
+    # the way in with a long address, for the fit (DESIGN.md 11.35)
+    EXTRA.setdefault("steps-%s-longaddr" % _way, ("demo", "PS1", ["--hare-steps", _way, "browser", "--hare-addr", "192.168.100.200"]))
+# the hotspot once someone came in: the news, network and PIN in the heading
+EXTRA.setdefault("hotspot-in", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "1 signed in", "Tobu Tobu Girl.gb", "--hotspot-in"]))
 # USB Device Connected (DESIGN.md 11.36): both tiles focused, and the
 # message after It's a Computer
 for _k in ("0", "1", "said"):

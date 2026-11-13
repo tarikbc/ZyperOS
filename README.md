@@ -454,14 +454,14 @@ A card with no games opens on **No games yet** and the two ways to add them: **A
 
 ### Adding games over Wi-Fi
 
-<img align="right" width="360" src="res/readme/hare.png" alt="Wi-Fi File Transfer, with a browser connected">
+<img align="right" width="360" src="res/readme/hare-way.png" alt="Wi-Fi File Transfer before anyone signs in: the address in large type, zyperos.local under it, and the PIN as four large digits">
 
 1. Join a network under **MENU > Wi-Fi**.
-2. Open **MENU > Wi-Fi File Transfer**. It shows an address and a PIN, and beside the PIN its name, `zyperos.local`.
+2. Open **MENU > Wi-Fi File Transfer**. It shows an address in large type, its name `zyperos.local` under it, and a PIN.
 3. Open that address (or `http://zyperos.local`) in a browser on your phone or computer, and type the PIN. [The page](#the-file-transfer-page) opens on ROMs.
 4. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen.
 
-The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Until a browser opens the page, the screen shows **Wi-Fi** and **Browser** with a tick each, and after 30 seconds with no browser it says what to type.
+The PIN is new every time you open Wi-Fi File Transfer. With two ZyperOS handhelds on one network, the second is `zyperos-2.local`, and each screen shows its own name. Over Wi-Fi the address comes first: anyone on the network could answer for a name, and the address on the handheld's own screen is the one to trust. A handheld that finds every name it tries taken stops using a name for that session and shows the address alone. Once someone types the PIN, the screen shows who is connected and what is copying, with the address and the PIN in its heading for the next browser, and it stays that way until you close it.
 
 <br clear="right">
 
@@ -473,7 +473,7 @@ On the Pixel 2 with the adapter in and no network joined, Wi-Fi File Transfer ma
 
 1. Open **MENU > Wi-Fi File Transfer**. It shows a QR code, the network's name and password, and the PIN.
 2. Scan the code with the phone's camera and join the network. A laptop joins with the name and the password.
-3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN.
+3. The phone opens the transfer page by itself, at `10.42.1.1`. Type the PIN. The code then makes way for who is connected, with the network, its password and the PIN in the heading for another phone.
 
 Close the screen and the network goes, and Wi-Fi is as it was. The phone's sign-in sheet is a small browser: on an iPhone it uploads but can't save a download, and on Android it downloads but can't upload. The page says how to open it in the real browser.
 
@@ -487,7 +487,7 @@ The same thing over a cable, with no Wi-Fi, called USB File Transfer. It works w
 
 On the Pixel 2 the USB port only charges until you say otherwise, so a computer sees nothing at first. When one is plugged in, the shelf asks once (MENU closes for it; a game is never interrupted), **Computer Connected**: **Charge Only** (where it starts, and what **B** means), **File Transfer**, **Flash Drive** (and on development images **Developer (SSH)**). A wall charger is never asked about. **Flash Drive** makes the card a plain flash drive that any computer opens with no driver, Windows 10 included: ZyperOS steps aside, its screen showing how fast the computer copies to the card and reads from it, and how much, until you eject it on the computer or pull the cable, then the card is checked if needed and ZyperOS comes back where it was. The handheld never uses the card while the computer has it.
 
-1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows its name, `http://zyperos.local`, its address and a PIN.
+1. Plug the device into the computer with a USB cable, and choose **File Transfer**. Or open **MENU > USB File Transfer**, which takes Wi-Fi File Transfer's place while a computer is on the cable. It shows its name, `http://zyperos.local`, in large type, its address under it, and a PIN.
 2. Open `http://zyperos.local` in a browser on that computer, or the address, `http://10.42.0.1` on the Pixel 2 or `http://10.55.0.2` on the Brick, and type the PIN.
 3. Drag games into their console's folder, albums into `Music`, books into `Audiobooks` or films into `Videos`. They're on the shelf when you leave the screen, or, with the transfer behind the shelf, a moment after they arrive.
 
@@ -495,15 +495,15 @@ On the Pixel 2 the USB port only charges until you say otherwise, so a computer 
 
 #### If the page does not open
 
-<img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer checking the connection: Cable and Address ticked, Browser waiting">
+<img align="right" width="360" src="res/readme/usb-steps.png" alt="USB File Transfer when the computer takes no address: Address waiting, and a hint to check Network adapters in Device Manager">
 
-On the Pixel 2, until a browser opens the page, USB File Transfer shows the connection as the handheld sees it, in three steps that tick as the computer gets there:
+On the Pixel 2, until someone types the PIN, USB File Transfer shows under the PIN where the connection is: **Cable**, **Address**, **Browser** or **PIN**, waiting. When a step before the browser waits too long, the screen shows the connection as the handheld sees it, in three steps that tick as the computer gets there, with what to do about the one that waits:
 
 - **Cable**: the computer took the handheld and opened its network. `unplugged` means no computer is on the cable: some USB cables only charge, so try another. Still waiting after 10 seconds, the screen says why: the computer did not answer (try another port or cable), or it has no driver for the handheld (on Windows, look in Device Manager).
 - **Address**: the computer took the address the handheld gives it, `10.42.0.2`. After 10 seconds without one, the screen points to Network adapters in Windows' Device Manager.
-- **Browser**: a browser asked for the page. After 30 seconds without one, the screen says what to type, and to turn off any VPN or proxy, which can send the address somewhere else.
+- **Browser**: a browser asked for the page. The screen shows what to type at full size, so if no browser gets there, check the address against the screen, and turn off any VPN or proxy, which can send the address somewhere else.
 
-Once a browser opens the page, the screen shows File Transfer as usual. If the cable comes out, the steps come back.
+Once someone types the PIN, the screen shows File Transfer as usual. If the cable comes out before that, the steps come back.
 
 - **Cable** says `waiting` when the computer is on the cable but didn't connect. After 5 seconds the hint says to unplug the cable and plug it back in; it can take a few tries.
 
