@@ -86,7 +86,7 @@ static const char *folder_icon(const char *folder)
 {
 	for (int i = 0; i < g_nsys; i++)
 		if (!strcmp(g_sys[i].folder, folder)) return g_sys[i].key;
-	return !strcmp(folder, "BGM") ? "BGM" : NULL;
+	return !strcmp(folder, "BGM") ? "MUSE" : NULL;
 }
 
 /* space=FREE/TOTAL, in GB: the card's room as a card has it, for pictures */

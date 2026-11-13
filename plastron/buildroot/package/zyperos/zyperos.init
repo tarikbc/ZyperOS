@@ -47,6 +47,38 @@ splash_copy() {
 	echo "$1 $CARD $SEED $lang" > /tmp/splash-copy.new && mv /tmp/splash-copy.new /tmp/splash-copy
 }
 
+# Around a copy of ZyperOS onto the card (seed, seed_staged): the device as
+# the board wants it for a copy, and a record of it on the boot partition.
+#
+# The CPU's ceiling first, SETUP_CPU_MAX in kHz from /etc/default/zyperos
+# (the Pixel 2's image sets it), read only here, so a boot with nothing to
+# copy never reads the file. The copy runs before rcS, under the kernel's
+# performance governor, so without one the CPU sits at its top clock the
+# whole time, though the copy waits on the card and not on it. Put back
+# after.
+#
+# Then the record: plastron's setuplog (the Pixel 2's), which writes the
+# copy's progress and the kernel's lines to zyperos-setup.txt on the boot
+# partition every second, so a copy that hangs leaves what led up to it where
+# a computer reads it. A device without it does without.
+CPU_MAX=/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+SETUPLOG=/usr/sbin/setuplog
+cpu_was=
+setup_begin() {
+	SETUP_CPU_MAX=
+	[ -r /etc/default/zyperos ] && . /etc/default/zyperos
+	if [ -n "$SETUP_CPU_MAX" ] && [ -w $CPU_MAX ] && read -r cpu_was < $CPU_MAX; then
+		echo "$SETUP_CPU_MAX" > $CPU_MAX
+	fi
+	[ -x $SETUPLOG ] && $SETUPLOG start "$1"
+}
+setup_mark() { [ -x $SETUPLOG ] && $SETUPLOG mark "$@"; }
+setup_end() {
+	[ -x $SETUPLOG ] && $SETUPLOG stop "$1"
+	[ -n "$cpu_was" ] && echo "$cpu_was" > $CPU_MAX
+	cpu_was=
+}
+
 # Only ever adds: ZyperOS keeps its own state in ZyperOS/ (where it was, what
 # was playing), and the Roms, Bios and Saves folders may already hold the
 # player's files, so nothing on the card is removed but the one retired file
@@ -55,15 +87,18 @@ splash_copy() {
 seed() {
 	splash_copy "${1:-setup}"
 	mkdir -p "$CARD/ZyperOS" || return 1
+	setup_mark "copying ZyperOS/"
 	for f in "$SEED/ZyperOS/"* "$SEED/ZyperOS/".[!.]*; do
 		[ -e "$f" ] || continue
 		[ "${f##*/}" = launch.sh ] && continue
 		cp -R "$f" "$CARD/ZyperOS/" || return 1
 	done
+	setup_mark "copying the card's other folders"
 	for d in "$SEED/"*; do
 		[ "${d##*/}" = ZyperOS ] && continue
 		cp -R "$d" "$CARD/" || return 1
 	done
+	setup_mark "copied; writing it all to the card (sync)"
 	# The files an older version left that this one doesn't: its notice, which
 	# moved to Licenses/ in 2.0.0, and the names cards had before ZyperOS had
 	# its own (Licenses/ZyperOS.md was another name), which a card updated
@@ -154,7 +189,13 @@ start() {
 	fi
 	if [ ! -f "$LAUNCH" ] && [ -f "$SEED/ZyperOS/launch.sh" ]; then
 		echo "zyperos: no ZyperOS on the card; copying it from the image" > /dev/kmsg
-		seed || echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+		setup_begin setup
+		if seed; then
+			setup_end "done, ZyperOS is on the card"
+		else
+			echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+			setup_end "the copy failed"
+		fi
 	elif [ -f "$LAUNCH" ] && newer_seed; then
 		echo "zyperos: the image carries a newer ZyperOS than the card; copying it" > /dev/kmsg
 		# As an update (ZyperOS's update/apply.sh): staged beside the card's,
@@ -163,9 +204,18 @@ start() {
 		# (U-Boot's boot count, docs/updates.md), gets the folder that went
 		# with it back too. A card with no room for a second folder, or a
 		# copy that fails, gets it in place as before.
-		if ! seed_staged; then
+		setup_begin update
+		if seed_staged; then
+			setup_end "done, the image's ZyperOS is on the card"
+		else
 			rm -f "$LAUNCH"
-			seed update || echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+			setup_mark "staged update not possible; copying in place"
+			if seed update; then
+				setup_end "done, the image's ZyperOS is on the card"
+			else
+				echo "zyperos: couldn't copy ZyperOS onto the card" > /dev/kmsg
+				setup_end "the copy failed"
+			fi
 		fi
 	fi
 	if [ -f "$LAUNCH" ]; then

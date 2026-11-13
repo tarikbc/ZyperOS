@@ -548,7 +548,7 @@ def ports_card(card):
 
 def pm_art(card):
     """PortMaster's covers and icon in the card's ZyperOS, as the payload
-    puts them there (tools/genportmaster.py)"""
+    puts them there (res/portmaster)"""
     (card/'ZyperOS/portmaster').mkdir(parents=True,exist_ok=True)
     for name in ('cover-light.png','cover-dark.png','icon.png'):
         shutil.copyfile(ROOT/'res/portmaster'/name,card/'ZyperOS/portmaster'/name)

@@ -177,34 +177,22 @@ GitHub releases onto the card when the player asks, and PortMaster updates
 itself from then on. ZyperOS carries no part of PortMaster: the other files
 in `res/portmaster/` are ZyperOS's own settings for it, which launch.sh puts
 in PortMaster's folder before each port, and the Ports shelf's art for its
-entry (`cover-light.png`, `cover-dark.png` and `icon.png`), drawn for ZyperOS
-by `tools/genportmaster.py` with no part of PortMaster's logo or any brand's
-art, under ZyperOS's own license.
+entry (`cover-light.png`, `cover-dark.png` and `icon.png`), ZyperOS's own
+system art (`res/system-art/original/utility`) with no part of PortMaster's
+logo or any brand's art, under ZyperOS's own license.
 
 ---
 
 ## Files ZyperOS carries
 
-- Pixel console icons - original artwork by **BenJelter**, from the
-  [Console Icon Pack](https://benjelter.itch.io/console-icon-pack).
-  **YOjeremyRaps** added consoles, icons and animations for
-  **Pixel UI - Smart Folders v1.4**, the user-supplied pack used here.
-  The pack's metadata credits both artists. See
-  [res/system-art/README.md](res/system-art/README.md) for asset provenance.
-  Imported artwork retains its authorship and is not relicensed by this
-  repository's license. The supplied archive contains no separate license
-  text; this attribution does not assert additional redistribution rights.
-- Ten system drawings in `res/system-art/source` (3DO, Game & Watch, MSX2,
-  Vectrex, Neo Geo CD, NAOMI, Atomiswave, Muse, J2ME, ColecoVision) are drawn
-  from photos on Wikimedia Commons by Evan-Amos, Xxm, Black Squirrel, Jpl752
-  and Mahcann. Each keeps its photos' terms (public domain, CC BY 4.0,
-  CC BY-SA 3.0 or 4.0); every photo, author and license is listed in
-  [res/system-art/README.md](res/system-art/README.md) and the manifest.
-- Two systems with no hardware show their logos, as the icon pack shows
-  PICO-8's: Doom's, from its classic box art, published by Bethesda under
-  CC BY 3.0 (DOOM is a trademark of its owner, and no endorsement is
-  implied), and TIC-80's own icon, MIT, Copyright (c) 2017 Vadim Grigoruk.
-  Both come from Wikimedia Commons and are listed in the same places.
+- The system art (`res/system-art/original`, compiled into
+  `res/system-icons`) is ZyperOS's own, under ZyperOS's license: every
+  console, handheld, shelf symbol, folder and PortMaster's art was drawn for
+  ZyperOS, and none of it is taken from another artist's work or from a
+  photograph ([its README](res/system-art/original/README.md) records how
+  each was made). The consoles' and programs' names, wordmarks (DOOM,
+  PICO-8, TIC-80 and the rest) and hardware designs belong to their owners,
+  and no endorsement is implied.
 - `res/fonts/menu.ttf` and `res/fonts/title.ttf` - **Lexend** Regular and
   SemiBold, by The Lexend Project Authors (https://github.com/googlefonts/lexend),
   from Google Fonts, SIL Open Font License 1.1, with the Reserved Font Name

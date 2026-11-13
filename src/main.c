@@ -9011,7 +9011,7 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
-	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
+	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_HINT_REPLUG));      break;
 	/* LH_NO_BROWSER has none: the way in (xs_way_rows) shows what to type
 	 * at full size, which is what that hint said */
 	default: break;
@@ -9408,13 +9408,14 @@ static unsigned xfer_folder_color(const char *folder)
 }
 
 /* And its pixel art, as hare_set_folder_icon asks: the shelf's own for the
- * tag (home_art_key), or the menu music's for Roms/BGM (src/bgm.h) */
+ * tag (home_art_key), or MP4's, music's, for the menu music's Roms/BGM
+ * (src/bgm.h) */
 static const char *xfer_folder_icon(const char *folder)
 {
 	const system_cfg *s = xfer_sys_of(folder);
 
 	if (s) return home_art_key(s->tag);
-	if (!strcmp(folder, "BGM")) return "BGM";
+	if (!strcmp(folder, "BGM")) return "MUSE";
 	return NULL;
 }
 
@@ -10427,11 +10428,13 @@ static void usb_ask(app *a)
  * Computer, so a quick A or B never feeds a computer. USB Accessory asks
  * usbrole for host for this plug (it says yes only while no power comes
  * in); Computer, B or MENU leave the port as it is and say to plug the cable
- * in again, so the computer can take the side that gives power. Phone powers
- * it as USB Accessory does and says how a phone connects (a phone takes the
- * side that waits for power at every plug, so a replug never helps). The
- * question goes by itself when the plug stops wanting power (unplugged, or
- * power came). */
+ * in again, so the computer can take the side that gives power. Phone leaves
+ * it as it is too and says what a phone needs: a phone takes the side that
+ * waits for power at every plug, so a replug never helps, and powered it
+ * stays the device whatever its own USB settings say (2026-11-13), so it
+ * connects only through a USB-C to USB-A adapter and a USB-A to USB-C cable
+ * (usbpower.h). The question goes by itself when the plug stops wanting
+ * power (unplugged, or power came). */
 enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
 
 static int usb_power_rows(menu_row rows[UP_TILES + 1])
@@ -10571,11 +10574,9 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_usb_power_grant(plug);
 		return;
 	}
-	/* A phone: powered, so an Android phone shows its USB settings and can
-	 * take the other side from there; and how a phone connects, until the
-	 * phone connects or the cable comes out */
+	/* A phone: what it needs, until the cable comes out. Not powered:
+	 * that only charges the phone (USB Device, then USB Accessory, does it) */
 	if (choice == UP_PHONE) {
-		plat_usb_power_grant(plug);
 		phone_said_on(plug);
 		return;
 	}
@@ -10603,7 +10604,7 @@ static void said_on(unsigned plug, int say)
 	g_replug.plug = plug;
 	g_replug.say = say;
 	if (say == USBPOWER_SAY_PHONE) {
-		fprintf(stderr, "usb: a phone: powered, and how it connects (plug %u)\n", plug);
+		fprintf(stderr, "usb: a phone: what it needs to connect (plug %u)\n", plug);
 		ulog_note("phone message");
 	} else {
 		fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
@@ -10644,8 +10645,8 @@ static void power_follow(void)
 	/* usbrole started after the launcher told it, or again: told again */
 	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
 	/* The message stays until the plug ends: unplugged (the pin idle),
-	 * another plug, the computer or the phone connected (power in), or for
-	 * Computer's the port a host (usbpower_said_ends) */
+	 * another plug, the computer or the phone connected (power in), or the
+	 * port a host (usbpower_said_ends) */
 	if (g_replug.on && usbpower_said_ends(g_replug.say, g_replug.plug, &p))
 		replug_off();
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
@@ -10698,26 +10699,37 @@ static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
  * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
  * and 11.36): **surface** with the **panel** lift, the laptop mark at its
  * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
- * in **menu** **text** (up to four balanced lines), until the plug ends.
- * Phone's message the same, with the phone mark, "Phone" and up to five. */
+ * in **menu** **text** (up to four balanced lines), and under them the cable
+ * that always connects in **meta** **text-dim** (up to two), until the plug
+ * ends. Phone's message the same, with the phone mark and "Phone", in **menu**
+ * up to four lines, else in **meta** up to six, and no cable line: its
+ * message names the cable itself. */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
+#define REPLUG_TIP_GAP 8
 static void replug_draw_at(SDL_Renderer *r)
 {
 	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
-	char lines[LB_MAX_LINES][LB_LINE];
+	char lines[LB_MAX_LINES][LB_LINE], tip[2][LB_LINE];
 	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
 	SDL_Rect slab;
 	bool small;
-	int n, k, y, lb;
+	int n, k, y, lb, m = 0;
 
 	n = replug_lines(REPLUG_W - tx_off - padx, lines, &small);
 	fb = small ? fs : fm;
 	lb = small ? ls : lm;
+	/* A computer whose USB-C port takes the waiting side at every plug, as a
+	 * phone's does, never connects by plugging in again (Discord,
+	 * 2026-11-13): the cable that always does, under the words */
+	if (!phone) {
+		m = ui_balance_lines(fs, T(S_XFER_REPLUG_TIP), REPLUG_W - tx_off - padx, 2, tip);
+		ui_fit_drawn(T(S_XFER_REPLUG_TIP));
+	}
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
-	                   pady + ls + 4 + n * lb + pady };
+	                   pady + ls + 4 + n * lb + (m ? REPLUG_TIP_GAP + m * ls : 0) + pady };
 	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
 	ui_panel(r, &slab, DS_RADIUS_PANEL);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
@@ -10730,6 +10742,9 @@ static void replug_draw_at(SDL_Renderer *r)
 	for (k = 0; k < n; k++)
 		ui_text(r, fb, lines[k], slab.x + tx_off, ui_line_y(small ? UI_F_META : UI_F_MENU, y + k * lb), -1,
 		        UI_TEXT);
+	y += n * lb + REPLUG_TIP_GAP;
+	for (k = 0; k < m; k++)
+		ui_text(r, fs, tip[k], slab.x + tx_off, ui_line_y(UI_F_META, y + k * ls), -1, UI_TEXT_DIM);
 }
 
 static bool replug_shown(void) { return g_replug.on; }
@@ -13743,7 +13758,6 @@ static const about_thanks ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = 
 	  { "PortMaster", 0, NULL, S_ABOUT_THANKS_PORTMASTER } },
 	{ { "plorpOS", 0, "DSperate, FAKE-08", 0 },
 	  { "OpenBOR Team", 0, "OpenBOR", 0 },
-	  { "BenJelter", 0, NULL, S_ABOUT_THANKS_BENJELTER },
 	  { NULL, S_ABOUT_THANKS_MENU_MUSIC, "OpenGameArt", 0 },
 	  { "Lexend", 0, NULL, S_ABOUT_THANKS_LEXEND },
 	  { "SDL, Mesa", 0, NULL, S_ABOUT_THANKS_SDL } },
@@ -14983,8 +14997,7 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 	draw_background(a);
 	ui_text(r, fl, heading, ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
 	if (icon) {
-		/* Four of its pixels to one of the art's, drawn at 0.8: two panel
-		 * pixels to one on the Pixel 2, so it stays sharp */
+		/* Its 256 square drawn at 0.8, about Zyper's size */
 		int iw, ih;
 
 		SDL_QueryTexture(icon, NULL, NULL, &iw, &ih);
@@ -15255,7 +15268,6 @@ enum {
 
 typedef struct {
 	char key[24];
-	bool sheet;
 	SDL_Texture *tex;
 } store_icon;
 
@@ -15343,20 +15355,19 @@ static int store_count(store_view *v, int idx)
 	return s < 0 ? 0 : sys_games(&v->a->view[s])->count;
 }
 
-/* A system's sprite or a folder's two frames, loaded once while the page is
- * up; nearest-neighbour, as the home draws them */
-static SDL_Texture *store_tex(store_view *v, const char *key, bool sheet)
+/* A design's still (res/system-icons, src/systemart_data.h), loaded once
+ * while the page is up; nearest-neighbour, as the home draws them */
+static SDL_Texture *store_tex(store_view *v, const char *key)
 {
 	char path[CFG_STR * 2];
 	int i;
 
 	if (!key || !key[0]) return NULL;
 	for (i = 0; i < v->nicons; i++)
-		if (v->icons[i].sheet == sheet && !strcmp(v->icons[i].key, key)) return v->icons[i].tex;
+		if (!strcmp(v->icons[i].key, key)) return v->icons[i].tex;
 	if (v->nicons >= (int)(sizeof v->icons / sizeof v->icons[0])) return NULL;
-	snprintf(path, sizeof path, "%s/system-icons/%s%s.png", P_ROOT, key, sheet ? "" : "-still");
+	snprintf(path, sizeof path, "%s/system-icons/%s-still.png", P_ROOT, key);
 	snprintf(v->icons[v->nicons].key, sizeof v->icons[v->nicons].key, "%s", key);
-	v->icons[v->nicons].sheet = sheet;
 	if ((v->icons[v->nicons].tex = IMG_LoadTexture(v->a->r, path))) {
 		SDL_SetTextureScaleMode(v->icons[v->nicons].tex, SDL_ScaleModeNearest);
 		SDL_SetTextureBlendMode(v->icons[v->nicons].tex, SDL_BLENDMODE_BLEND);
@@ -15653,6 +15664,14 @@ static sp_row *store_add(store_view *v)
 	return &v->rows[v->nrows++];
 }
 
+/* The card's folders that are no system's, by the design they wear
+ * (res/system-art/original): music and video MP4's, which shows both; the
+ * others the small folder */
+#define STORE_ART_MUSIC  "MUSE"
+#define STORE_ART_VIDEOS "MUSE"
+#define STORE_ART_BOOKS  "FOLDER"
+#define STORE_ART_BIOS   "FOLDER"
+
 static void store_row_look(store_view *v, sp_row *r)
 {
 	const st_card *c = &v->c;
@@ -15665,15 +15684,15 @@ static void store_row_look(store_view *v, sp_row *r)
 
 		r->name = s ? s->name : c->sys[r->index].folder;
 		r->icon = SP_ICON_TEX;
-		r->tex = s ? store_tex(v, home_art_key(s->tag), false) : NULL;
+		r->tex = s ? store_tex(v, home_art_key(s->tag)) : NULL;
 		break;
 	}
-	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "VIDEOS", true); break;
-	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "MUSE", true); break;
-	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BOOKS", true); break;
-	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BIOS", true); break;
+	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_VIDEOS); break;
+	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_MUSIC); break;
+	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BOOKS); break;
+	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BIOS); break;
 	case SR_ZYPEROS: r->name = T(S_STORAGE_CAT_ZYPEROS); r->icon = SP_ICON_ZYPER; break;
-	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER", false); break;
+	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER"); break;
 	case SR_SNAPS:   r->name = T(S_STORAGE_DELETE_SNAPS); r->icon = SP_ICON_NONE; break;
 	default: break;
 	}
@@ -16005,7 +16024,7 @@ static void store_page(store_view *v)
 	p->rows = rows;
 	p->nrows = v->nrows;
 	if (v->media >= 0) {
-		static const char *const KEY[STM_KINDS] = { "MUSE", "VIDEOS", "BOOKS" };
+		static const char *const KEY[STM_KINDS] = { STORE_ART_MUSIC, STORE_ART_VIDEOS, STORE_ART_BOOKS };
 		sp_row look;
 		unsigned long long whole = store_media_bytes(c, v->media);
 		char val[24];
@@ -16014,8 +16033,7 @@ static void store_page(store_view *v)
 		look.kind = v->media == STM_MUSIC ? SR_MUSIC : v->media == STM_VIDEOS ? SR_VIDEOS : SR_BOOKS;
 		store_row_look(v, &look);
 		p->heading = look.name;
-		p->head_tex = store_tex(v, KEY[v->media], true);
-		p->head_sheet = true;
+		p->head_tex = store_tex(v, KEY[v->media]);
 		p->used_fmt = "%s";
 		store_bytes(whole, p->used, sizeof p->used);
 		look.caption[0] = '\0';
@@ -16084,7 +16102,7 @@ static void store_page(store_view *v)
 		char g[24], sv[24], ar[24];
 
 		p->heading = cf ? cf->name : s->folder;
-		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag), false) : NULL;
+		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag)) : NULL;
 		p->used_fmt = "%s";
 		store_bytes(store_sys_bytes(s), p->used, sizeof p->used);
 		snprintf(p->right, sizeof p->right, TN(S_SHELF_GAMES, n), n);

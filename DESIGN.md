@@ -631,24 +631,24 @@ Each component lists its tokens. Sizes are units.
 
 ### 11.1 Home and game shelves
 
-The home uses free pixel console sprites on **ground**, without slabs,
-perspective cards, reflections, decorative frames, or overlays. The user
-selected Pixel UI - Smart Folders and requested this redesign on 2026-11-04.
-The original art is credited to BenJelter, with YOjeremyRaps's additions and
-animations. New ZyperOS artwork has separate provenance.
+The home uses pixel console sprites on **ground**, without slabs,
+perspective cards, reflections, decorative frames, or overlays. The sprites
+are ZyperOS's own system art (`res/system-art/original`, 2026-11-12): every
+console and handheld drawn for ZyperOS, 256 units square, with a motion of
+its own. *(2026-11-13: "We should leave no trace of the old art behind".)*
 
 MENU > Home Screen offers **Spotlight** (default) and **Gallery**. Both remain
 horizontal. Old `cards` and `cards_dir` settings have no effect. Fancy Pants,
 the old system posters and their generators are removed, not hidden.
 
-**Spotlight:** system name and count on the left, free console art on the
+**Spotlight:** system name and count on the left, the console art on the
 right, five nearby sprites in an unframed dock below. The selected sprite
 has an **accent-ink** underline. Names use concise display labels such as
 GBA and N64 and remain on one line. These labels never change file identity.
 
 **Gallery:** large focused sprite with smaller neighbors, the full system
 name and count below. The full name stays on one line at a readable size.
-The focused sprite is three times its 128-unit cell (384, at y 120 to 504);
+The focused sprite is one and a half times its 256-unit cell (384, at y 120 to 504);
 its underline sits a grid step under the whole cell, never on the art, and
 the name a little lower again, so tall art such as the Game Boy keeps its
 lower body clear.
@@ -672,11 +672,17 @@ music's song before and the next on both, with the song pop-up (11.22);
 while MP4 plays behind the shelf, MP4's track before and the next instead
 (11.14). *(2026-11-06.)*
 
-Only the focused sprite animates. Imported frames retain their original
-timing, colors and transparency. The asset compiler writes bounded transparent
-PNG atlases and separate first-frame stills; the renderer keeps only the active
-atlas and a small neighbor window. No GIF palette index is used as a new color
-key. Movement uses **ms.move** and **out**, including interrupted reversals.
+Only the focused sprite animates, in the motion drawn for it: a handheld its
+startup, a console its cartridge going in or its lid or tray, a symbol its two
+poses of 400 ms each (Favorites' heart beats, MP4's note moves beside its
+video). Each frame keeps its timing, colors and transparency. The asset
+compiler (tools/systemart.py) writes, for each design, its first pose whole
+and the moving region of every pose packed under it, and a still 128 units
+square; the renderer keeps the focused design's first pose as a texture and
+writes the region of the pose due into it, and only the focus's atlas and its
+two neighbors' are decoded, at most 2.1 MiB each. The row and every other
+place draw the stills. Movement uses **ms.move** and **out**, including
+interrupted reversals.
 
 **Games:** the selected **Cover row** design has a straight horizontal row of
 real box art, with a large focused cover and smaller neighbors. Every cover
@@ -1534,12 +1540,11 @@ block. *(My picks in the File Transfer lab, 2026-11-05:
   corners: the system's color at 14% over **surface**, ringed at 30%; a folder
   of no system on the same tile in **text-dim**. A system's folder in ROMs and
   Save States has its own picture - every system the card knows, not only
-  the shelves with games; BGM, the menu music's, a cassette; the card's
-  folders theirs (ROMs a cartridge, Music MP4's walkman, Audiobooks a book,
-  Videos a tape, BIOS a chip, Saves a memory card, Save States a floppy); any
-  other folder a plain one. The new pictures are drawn from real photos as
-  the missing systems were (`res/system-art/README.md`). A picture that does
-  not come leaves the line mark on the tile.
+  the shelves with games; BGM, the menu music's, MP4's; any other folder the
+  small folder drawn for rows. Of the card's own folders, Music and Videos
+  wear MP4's, which shows both, and ROMs, Audiobooks, BIOS, Saves and Save
+  States, which ZyperOS's art has no picture of, their line marks. A picture
+  that does not come leaves the line mark on the tile.
 - **Hidden folders**: a name that starts with a dot (`.media`, where covers
   go) is not listed, unless Settings' **Show hidden folders** is on.
 - **The uploads** *(pick: "One line and one bar")*: the heading, "Sending 3
@@ -2468,9 +2473,8 @@ asks it.
   **recommendations**, a sparkle in **accent-ink** for their mark, the larger
   saving first, shown when one gives back 10 MB or more, a rule under them;
   then everything by size: each system with its home sprite (its games, its
-  saves and states, its art), Videos, Music and Audiobooks with their folder
-  pictures from the File Transfer page, BIOS, ZyperOS with Zyper's face, and
-  Other. The more-rows triangles of 11.3.
+  saves and states, its art), Videos and Music with MP4's, Audiobooks, BIOS
+  and Other with the small folder, ZyperOS with Zyper's face. The more-rows triangles of 11.3.
 - **Under the list**, at cap y 702, the focused row's facts in **meta**
   **text-dim**, at most two balanced lines: "116 games · saves and states
   1.3 GB · art 900 MB", "318 songs", what a recommendation is.
@@ -2587,25 +2591,23 @@ The Ports shelf installs the official PortMaster (portmaster.games) when it
 is not on the card (src/pminstall.h). It is the shelf's own entry and System
 Update's page (11.17) with its own words, and its own art.
 
-- **The art** (tools/genportmaster.py, `res/portmaster/`), drawn for ZyperOS,
-  with no part of PortMaster's logo or any brand's art: a dock crane lowering
-  a game cartridge (ZyperOS's lime label with a gear, gold contacts at its
-  foot) onto a stack of shipping containers in Ports' pink, blue and teal,
-  on a quay over the water. Pixel art as the home's sprites are, 64 by 82
-  pixels with three-step ramps and a one-pixel **ink** outline, drawn 8 times
-  over into the generated card's 512 by 656, with its corners and the band of
-  Ports' color across the top, so it stands in a row of generated cards as
-  one of them. **The cover** is one file a theme, as a generated card is: its
-  sky is the card's slab (cardgen_slab), with the sun in Beard and the moon
-  and stars in Salt & Pepper; the crane, the cartridge and the water are the
-  same in both. It is the entry's cover on the card or not, on the Ports
+- **The art** (`res/portmaster/`, copies of the system art's
+  `res/system-art/original/utility`), drawn for ZyperOS, with no part of
+  PortMaster's logo or any brand's art: a dock crane lowering a game
+  cartridge (ZyperOS's lime label with a gear, gold contacts at its foot)
+  onto a stack of shipping containers in Ports' pink, blue and teal, on a
+  quay over the water, in the home's pixel art. **The cover** is 512 by 656,
+  a generated card's size, with its corners and the band of Ports' color
+  across the top, so it stands in a row of generated cards as one of them;
+  one file a theme, as a generated card is: its sky is the card's slab, with
+  the sun in Beard and the moon in Salt & Pepper; the crane, the cartridge
+  and the water are the same in both. It is the entry's cover on the card or not, on the Ports
   shelf, Favorites, any order of either and the port's loading screen, in
   place of box art: a scrape skips PortMaster, and its details have no Box
   Art row. MENU > Storage's Ports page lists games as words (11.32), so it
   has no picture there. **The icon** is the crane, cartridge and containers
   on a piece of quay with nothing behind them, on the Install PortMaster page
-  where System Update's has Zyper, at 0.8 of its 4-to-1 file: two panel
-  pixels to one of the art's on the Pixel 2. *(2026-11-08: I wanted
+  where System Update's has Zyper, at 0.8 of its 256 square. *(2026-11-08: I wanted
   PortMaster to have art of its own in ZyperOS's style.)*
 
 - **The entry** is PortMaster's, `Roms/Ports/PortMaster.sh`, on the Ports
@@ -2861,7 +2863,8 @@ under it the hint, one sentence saying what to do about that step, in
 place of the other steps, then the rule and the legend. Three steps and a
 three-line hint do not fit under a two-line heading, and a hint is about
 one step. The hints name the things a person can act on: another cable or
-port, Windows' Device Manager and its Network adapters, a VPN or proxy. A
+port, a USB-A to USB-C cable (for a computer that did not connect, 11.36),
+Windows' Device Manager and its Network adapters, a VPN or proxy. A
 browser that does not come has no hint: the way in already shows what to
 type, at full size. The way in comes back as the step moves on, and the
 steps come back if the cable or the Wi-Fi goes before anyone came in.
@@ -2907,25 +2910,23 @@ second, their room kept.
 port prefers it, where a computer's takes either at random (Tarik, an iPhone
 and an Android phone, 2026-11-13: Computer, then the replug message, again
 and again, for good). The handheld has no Type-C controller and no USB Power
-Delivery, so it cannot ask the phone to swap, and on a USB-C cable a phone
-is always the device. Phone powers it, as USB Accessory does (a phone is
-fed safely, and a powered Android phone shows its USB settings), and puts
-up the phone message, the replug message's slab with the phone mark under
-**Phone**: "Android: tap the phone's USB notification, then USB controlled
-by: This device. iPhone: connect it with a USB-C to USB-A adapter and a USB-A
-to USB-C cable." Android's own words in each language, read from AOSP's
-Settings (usb_control_title, usb_control_device). Android's "This device"
-makes the phone the host with no Power Delivery (its port's mode changes,
-UsbPortManager's MODE_DFP), so the handheld then gets power and Computer
-Connected (11.18) asks, Flash Drive and all. An iPhone has no such setting;
-through the adapter (whose plug says "wants power" to the phone) and an
-A-to-C cable (whose plug says "gives power" to the handheld), it is the host
-too. The message stays while the port powers the phone and goes when the
-plug ends: the cable out, another plug, the phone giving power (Android's
-swap), or a computer seen on the bus (a Mac answered Phone; Computer's
-message comes instead) (usbpower_said_ends). In **menu** up to four
-balanced lines, else in **meta** up to six. Never on Automatic, which powers
-a phone as any plug and asks nothing.
+Delivery, so it cannot ask the phone to swap, and on a USB-C to USB-C cable
+a phone is always the device. Android's own swap did not help either: the
+first Phone powered the phone so that "USB controlled by: This device" could
+be chosen, and on the device (an AYN Thor, 2026-11-13) the phone stayed the
+device, leaving the bus only to change its USB mode, and the port never saw
+it change sides. So Phone gives no power (that only charges the phone; USB
+Device, then USB Accessory, does it) and puts up the phone message, the
+replug message's slab with the phone mark under **Phone**, plainly: "A phone
+can't open the handheld's files on a USB-C to USB-C cable. Connect it with a
+USB-C to USB-A adapter on the phone and a USB-A to USB-C cable." The adapter
+says "wants power" to the phone, which then gives it and is the host, and
+the A-to-C cable says "gives power" to the handheld, which takes it and gets
+Computer Connected (11.18), Flash Drive and all. The message goes as
+Computer's does: the cable out, another plug, power in, or the port a host
+(usbpower_said_ends). In **menu** up to four balanced lines, else in **meta**
+up to six. Never on Automatic, which powers a phone as any plug and asks
+nothing.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2958,12 +2959,22 @@ ends: the cable out, another plug, or the computer connected. On the launcher it
 the top under the header, 960 wide at y 104: **surface** with the
 **panel** lift, the laptop mark (64) at its left in **text-soft**,
 **Computer** in **meta** **text-dim** over the words in **menu** **text**,
-up to four balanced lines; it is drawn by every screen's frame, under the
+up to four balanced lines, and under them, 8 lower, in **meta**
+**text-dim** up to two lines, the cable that always connects: "A USB-A to
+USB-C cable connects every time." Some computers' USB-C ports take the side
+that waits for power at every plug, as a phone's does, and then the tries
+never end (a Windows 11 laptop with USB-C cables only, on Discord,
+2026-11-13); a USB-A port always gives power, so with USB-A at the
+computer's end the handheld gets power and Computer Connected asks at once.
+Phone's message has no such line: it names the cable itself. The slab is
+drawn by every screen's frame, under the
 volume bar (plat_set_overlay), and last on a frame that skipped the bar
 (plat_overlay_present); the home's focus frames, which redraw the machine
 alone, stop while it is up (it was drawn under the animated machine on the
-device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says the
-same after 5 seconds (11.35). The user-facing words never say "power".
+device, 2026-11-10; tools/home-shot-check.py holds it, `--replug`). USB File Transfer's Cable step says
+it shorter after 5 seconds (11.35), under its "waiting" row, in the
+hint's three lines: "Unplug the cable and plug it back in, or use a USB-A
+to USB-C cable: it connects every time." The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
 [0|1|2|said|phone]`, `--replug [phone]`.
 
@@ -3123,8 +3134,10 @@ row the name is the title and the line under it "12 games" (shelf.games);
 A's hint is **Open** (games.open), and in a folder B's is **Back**
 (games.back). *(2026-11-13: "can the folder actually look like a folder in
 the system? maybe a pixel art folder". I picked the folder with papers of
-three looks drawn: a plain folder, this, and the home's manila folder
-dyed.)*
+three looks drawn: a plain folder, this, and a manila folder dyed. When the
+system art came with a gold folder of its own, a large one with the count on
+its label and a small one for rows, I kept this one: it carries the folder's
+name and its system's color.)*
 
 **The list** (MENU > View > List, src/gamelist.h). A system's menu has
 **View** under Sort By: **Covers**, the row as it always was, or **List**.

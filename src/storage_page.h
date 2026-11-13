@@ -18,8 +18,7 @@
 
 typedef enum {
 	SP_ICON_NONE,     /* a game: its name at the row's start */
-	SP_ICON_TEX,      /* a system's sprite, 128 square */
-	SP_ICON_SHEET,    /* a folder's two frames side by side; the first */
+	SP_ICON_TEX,      /* a design's still (res/system-icons), 128 square */
 	SP_ICON_ZYPER,    /* Zyper's face: ZyperOS */
 	SP_ICON_SPARK     /* a recommendation */
 } sp_icon;
@@ -49,8 +48,7 @@ typedef struct {
 	const char *used_fmt;           /* "%s used": the number drawn as a title */
 	char used[SP_VALUE];
 	char right[48];                 /* "7.4 GB free", "116 games" */
-	SDL_Texture *head_tex;          /* a system's sprite, left of the numbers */
-	bool head_sheet;                /* ...a folder's two frames: the first */
+	SDL_Texture *head_tex;          /* a design's still, left of the numbers */
 	const char *sort_label;         /* the list's order, beside X under it */
 	sp_part part[SP_PARTS];
 	int nparts;

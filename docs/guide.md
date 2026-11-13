@@ -18,6 +18,16 @@ Bluetooth pairings. At the first boot, in about a minute, the rest of the
 card becomes ZYPEROS, an exFAT partition, with ZyperOS on it. Games, music,
 saves and settings live there, and it is the partition a computer sees.
 
+The first start writes down what it does as it goes, in `zyperos-setup.txt`
+on the card's small PX2BOOT partition, which a computer shows as a drive of
+its own: the handheld's memory, the card and how fast it runs, then a line
+every second with how far the copy has got, the clocks, the temperature and
+the battery, and every message from the system. If the first start ever
+stops, or the handheld restarts in the middle of it, put the card in a
+computer and send me that file ([a GitHub issue](https://github.com/tarikbc/ZyperOS/issues)
+or the Discord): it says what happened up to that moment. Each start adds to
+it, so a card that tried twice has both.
+
 The device itself is never written to. The Brick boots from the card before
 its own system, so **removing the card brings the stock system back**;
 [Undoing it](#undoing-it) covers the rest.
@@ -26,6 +36,31 @@ Copying from macOS leaves `._name` metadata files beside everything. They are
 harmless - the launcher skips every name beginning with a dot, so they never
 show up as games - and `dot_clean /Volumes/ZYPEROS` removes them if they
 bother you.
+
+### The card in a computer
+
+On the Pixel 2 the card has four partitions, in an MBR table:
+
+| | | |
+|---|---|---|
+| PX2BOOT | FAT, 64 MB | the boot partition: each system's kernel and the file that says which one starts. Leave it as it is |
+| (none) | 512 MB | system slot A, read-only (squashfs) |
+| (none) | 512 MB | system slot B, where System Update puts the next version |
+| ZYPEROS | exFAT, the rest of the card | games, music, saves and settings |
+
+PX2BOOT and ZYPEROS have the partition types a Mac, Windows and Linux open
+(0x0C and 0x07). A Mac shows both. Windows shows both too, and can give
+the two system slots a drive letter as well, then ask for each, **You need
+to format the disk in drive X: before you can use it**: choose **Cancel**. Formatting a slot erases
+that system, and the card may no longer start.
+
+If ZYPEROS has no drive letter in Windows, right-click Start, open **Disk
+Management**, find the card (a Removable disk the card's size), right-click
+the large exFAT partition, choose **Change Drive Letter and Paths**, then
+**Add**. If Disk Management shows the card as **No Media**, or not at all,
+the reader does not see the card: try another reader, or leave the card in
+the handheld and use [Flash Drive](#plugging-into-a-computer), which gives
+the computer ZYPEROS alone.
 
 Building it yourself instead is in [building.md](building.md).
 
@@ -557,7 +592,7 @@ the step it is waiting on dimmed:
 
 | Step | Ticked when | If it waits too long |
 |---|---|---|
-| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in; it can take a few tries. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in, which can take a few tries, or use a USB-A to USB-C cable, which connects every time ([why](#plugging-something-in)). `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
 | **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
 | **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
 | **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
@@ -636,8 +671,8 @@ did you plug in?**, with three tiles:
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
-| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link |
-| **Phone** | the port powers it, and a message says how a phone connects. A phone's USB-C port takes the side that waits for power every time, so plugging it in again never helps, and the handheld can't ask it to swap. On an **Android** phone, tap its USB notification, then **USB controlled by: This device**: the phone takes the other side, the message goes, and **Computer Connected** asks as for a computer, **Flash Drive** included. An **iPhone** has no such setting: connect it with a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable to the handheld, and Computer Connected asks |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link. Some computers' USB-C ports take the waiting side every time, as a phone's does, and then plugging in again never helps. Under the message, a smaller line names the way that always works: a USB-A to USB-C cable, with USB-A at the computer, whose port always gives power. A computer with only USB-C ports can use a USB-C to USB-A adapter, or a USB-C hub, with that cable |
+| **Phone** | no power, and a message says plainly that a phone can't open the handheld's files on a USB-C to USB-C cable. A phone's USB-C port takes the side that waits for power every time, so plugging it in again never helps, and the handheld can't make it swap (Android's own **USB controlled by** setting didn't either, in my test). Connect the phone with a USB-C to USB-A adapter (an "OTG" adapter) on the phone and a USB-A to USB-C cable to the handheld: the phone then gives power, and **Computer Connected** asks, as for a computer. To only charge the phone, choose **MENU > USB Device**, then **USB Accessory** |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. Every plug is asked about on its own, however soon after the last
@@ -1014,7 +1049,7 @@ library takes a while: seven albums took a minute on the Brick.
 
 ## The shelf
 
-Systems use animated pixel console art on an open background. Games use a
+Systems use ZyperOS's own animated pixel console art on an open background. Games use a
 straight row of box art. The selected item grows and the others stay quiet,
 with no perspective or reflection on these pages.
 

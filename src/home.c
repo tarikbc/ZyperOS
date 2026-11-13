@@ -196,7 +196,11 @@ const char *home_art_key(const char *tag)
 }
 
 static void release(home_texture *t)
-{ if(t->tex) SDL_DestroyTexture(t->tex); *t = (home_texture){ .asset = -1 }; }
+{
+    if(t->tex) SDL_DestroyTexture(t->tex);
+    if(t->motion) SDL_FreeSurface(t->motion);
+    *t = (home_texture){ .asset = -1 };
+}
 void home_free(home *h)
 {
     release(&h->atlas);
@@ -206,43 +210,83 @@ void home_free(home *h)
 }
 static bool valid(int i)
 { return i>=0 && i<(int)SA_ASSET_COUNT; }
-/* An atlas's opaque texels, all its cells together, in a cell's coordinates */
-static SDL_Rect cells_content(SDL_Surface *s, int cell)
+/* Every pose's opaque texels together, in the cell's coordinates: the first
+ * pose's (the top cell of `c`, ARGB8888) and the region where the others
+ * differ from it */
+static SDL_Rect poses_content(SDL_Surface *c, const sa_asset *a)
 {
-    SDL_Surface *c = s->format->format==SDL_PIXELFORMAT_ARGB8888 ? s
-                   : SDL_ConvertSurfaceFormat(s,SDL_PIXELFORMAT_ARGB8888,0);
-    int x0=cell, y0=cell, x1=-1, y1=-1;
-    if (!c) return (SDL_Rect){0};
-    if (SDL_LockSurface(c)==0) {
-        for (int y=0, cy=0; y<c->h; y++, cy = cy+1==cell ? 0 : cy+1) {
-            const Uint32 *row=(const Uint32 *)((const Uint8 *)c->pixels + (size_t)y*c->pitch);
-            for (int x=0, cx=0; x<c->w; x++, cx = cx+1==cell ? 0 : cx+1) {
-                if (!(row[x]>>24)) continue;
-                if (cx<x0) x0=cx;
-                if (cx>x1) x1=cx;
-                if (cy<y0) y0=cy;
-                if (cy>y1) y1=cy;
-            }
+    int cell=a->cell, x0=cell, y0=cell, x1=-1, y1=-1;
+    for (int y=0; y<cell; y++) {
+        const Uint32 *row=(const Uint32 *)((const Uint8 *)c->pixels + (size_t)y*c->pitch);
+        for (int x=0; x<cell; x++) {
+            if (!(row[x]>>24)) continue;
+            if (x<x0) x0=x;
+            if (x>x1) x1=x;
+            if (y<y0) y0=y;
+            if (y>y1) y1=y;
         }
-        SDL_UnlockSurface(c);
     }
-    if (c!=s) SDL_FreeSurface(c);
-    return x1<0 ? (SDL_Rect){0} : (SDL_Rect){x0,y0,x1-x0+1,y1-y0+1};
+    SDL_Rect base = x1<0 ? (SDL_Rect){0} : (SDL_Rect){x0,y0,x1-x0+1,y1-y0+1};
+    SDL_Rect moving = { a->rx, a->ry, a->rw, a->rh }, both;
+    if (base.w<=0) return moving;
+    SDL_UnionRect(&base,&moving,&both);
+    return both;
+}
+/* An atlas is the first pose, the cell square, with each pose's moving
+ * region packed under it (src/systemart_data.h); a design that does not
+ * move is the first pose alone */
+static bool atlas_size(const sa_asset *a, int *w, int *h)
+{
+    *w = *h = a->cell;
+    if (!a->rw) return a->nframes==1;
+    if (!a->rh || !a->cols || !a->rows) return false;
+    if (a->cols*a->rw > *w) *w = a->cols*a->rw;
+    *h += a->rows*a->rh;
+    return true;
 }
 static bool install(home_texture *t, SDL_Renderer *r, SDL_Surface *s, bool atlas)
 {
     const sa_asset *a = valid(t->asset) ? &SA_ASSETS[t->asset] : NULL;
+    int w, ht;
     t->done = true;
-    if (!s || !a || !a->cell || !a->cols || !a->rows) return false;
-    int w = atlas ? a->cols*a->cell : a->cell;
-    int ht = atlas ? a->rows*a->cell : a->cell;
-    if (s->w != w || s->h != ht) return false;
-    if (atlas) t->content = cells_content(s,a->cell);
-    t->tex = SDL_CreateTextureFromSurface(r,s);
+    if (!s || !a || !a->cell) return false;
+    if (!atlas) {
+        if (s->w != (int)SA_STILL || s->h != (int)SA_STILL) return false;
+        t->tex = SDL_CreateTextureFromSurface(r,s);
+    } else {
+        if (!atlas_size(a,&w,&ht) || s->w != w || s->h != ht) return false;
+        /* The loader frees `s`: the regions are kept in a copy of their own,
+         * in the texture's format, so a pose is one SDL_UpdateTexture */
+        SDL_Surface *c = SDL_ConvertSurfaceFormat(s,SDL_PIXELFORMAT_ARGB8888,0);
+        if (!c) return false;
+        t->tex = SDL_CreateTexture(r,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STATIC,a->cell,a->cell);
+        if (!t->tex || SDL_UpdateTexture(t->tex,&(SDL_Rect){0,0,a->cell,a->cell},c->pixels,c->pitch)) {
+            if (t->tex) SDL_DestroyTexture(t->tex);
+            t->tex = NULL;
+            SDL_FreeSurface(c);
+            return false;
+        }
+        t->shown = 0;
+        if (a->rw) {
+            t->content = poses_content(c,a);
+            t->motion = c;
+        } else SDL_FreeSurface(c);
+    }
     if (!t->tex) return false;
     SDL_SetTextureBlendMode(t->tex,SDL_BLENDMODE_BLEND);
     SDL_SetTextureScaleMode(t->tex,SDL_ScaleModeNearest);
     return true;
+}
+/* Pose `tile` into an atlas's texture: its region over the first pose's,
+ * which is the texture outside the region whichever pose is shown */
+static void show_pose(home_texture *t, const sa_asset *a, unsigned tile)
+{
+    if (!t->motion || !a->rw || !a->cols || (int)tile == t->shown || tile >= (unsigned)a->cols*a->rows) return;
+    const Uint8 *p = (const Uint8 *)t->motion->pixels
+                   + (size_t)(a->cell + tile/a->cols*a->rh)*t->motion->pitch
+                   + (size_t)(tile%a->cols*a->rw)*4;
+    if (SDL_UpdateTexture(t->tex,&(SDL_Rect){a->rx,a->ry,a->rw,a->rh},p,t->motion->pitch)==0)
+        t->shown = (int)tile;
 }
 bool home_accept(home *h, SDL_Renderer *r, int shelf, int asset, SDL_Surface *s)
 {
@@ -352,21 +396,21 @@ static void sprite(home *h, SDL_Renderer *r, const home_item *item,
 {
     int id=asset_for(item->key);
     SDL_Texture *t=still(h,id);
-    SDL_Rect src={0};
     if(valid(id)) {
-        const sa_asset *a=&SA_ASSETS[id]; src.w=src.h=a->cell;
+        const sa_asset *a=&SA_ASSETS[id];
+        /* The focus draws its atlas, the pose due written into it; any
+         * other sprite its still, smaller (SA_STILL), the whole texture */
         if(active && h->atlas.asset==id && h->atlas.tex) {
             uint32_t w; unsigned tile=frame_at(a,phase,&w);
-            if(tile<(unsigned)a->cols*a->rows) {
-                t=h->atlas.tex; src.x=(tile%a->cols)*a->cell; src.y=(tile/a->cols)*a->cell;
-                if(w<*wait) *wait=w;
-            }
+            show_pose(&h->atlas,a,tile);
+            t=h->atlas.tex;
+            if(w<*wait) *wait=w;
         }
     }
     if(t) {
         Uint8 alpha; SDL_GetTextureAlphaMod(t,&alpha);
         SDL_SetTextureAlphaMod(t,(Uint8)lroundf(alpha*opacity));
-        SDL_RenderCopyF(r,t,&src,&dst);
+        SDL_RenderCopyF(r,t,NULL,&dst);
         SDL_SetTextureAlphaMod(t,alpha);
     }
     else {
@@ -425,7 +469,7 @@ static int row_draws(const home *h,bool gallery,int count,int cursor,uint32_t no
         float focus=fmaxf(0,1-fabsf(d));
         float size=gallery ? 208+176*focus : 112+16*focus;
         float x=512+d*(gallery?328:152);
-        /* Gallery's focused sprite is 384 (3x its 128 cell) at 120..504: its
+        /* Gallery's focused sprite is 384 (1.5x its 256 cell) at 120..504: its
          * underline sits 8 under it and the title 22 under that (review P2). */
         float y=gallery?312:600-8*focus;
         if(x+size/2<0 || x-size/2>1024) continue;

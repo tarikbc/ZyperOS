@@ -102,7 +102,8 @@ Some parts of this repository are under other licenses:
   of the project it changes.
 - src/third_party/ (minimp3, stb_vorbis) and the scripts in res/portmaster/
   keep their own licenses, given in those files. The pictures in
-  res/portmaster/ (tools/genportmaster.py) are ZyperOS's own.
+  res/portmaster/ and the system art (res/system-art/original,
+  res/system-icons) are ZyperOS's own.
 - Art, music, fonts and every program a card carries keep their own licenses.
   THIRD-PARTY-LICENSES.md lists them.
 

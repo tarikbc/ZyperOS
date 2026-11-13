@@ -1,182 +1,159 @@
 #!/usr/bin/env python3
-"""Focused system-art checks. Requires Pillow; no SDL or launcher build."""
-import hashlib
+"""Focused checks of tools/systemart.py, the launcher's system art. Requires
+Pillow; no SDL or launcher build (the C contract needs a C compiler)."""
 import importlib.util
+import io
 import json
 from pathlib import Path
-import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-from PIL import Image, ImageChops
+from PIL import Image
 
 sys.dont_write_bytecode = True
 SPEC = importlib.util.spec_from_file_location("systemart", Path(__file__).with_name("systemart.py"))
 sa = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = sa
 SPEC.loader.exec_module(sa)
+CELL = sa.CELL
 
 
-def gif(path, frames, size=(3, 1), loop=0):
-    """Tiny independent GIF fixture: one pixel per image descriptor.
+def export(directory, key, poses, frames, bounds=None, still=None):
+    """A design as tools/systemart-original-pack.py writes it: `poses` are
+    256-pixel RGBA images, `frames` (tile, ms) pairs"""
+    directory.mkdir(parents=True, exist_ok=True)
+    cols = min(8, len(poses))
+    rows = -(-len(poses) // cols)
+    atlas = Image.new("RGBA", (cols * CELL, rows * CELL))
+    for t, pose in enumerate(poses):
+        atlas.paste(pose, (t % cols * CELL, t // cols * CELL))
+    atlas.save(directory / f"{key}.png")
+    (still or poses[0]).save(directory / f"{key}-still.png")
+    meta = {"key": key, "cell": CELL, "cols": cols, "rows": rows, "unique": len(poses),
+            "duration_ms": sum(ms for _, ms in frames),
+            "frames": [{"tile": t, "ms": ms} for t, ms in frames]}
+    if bounds:
+        meta["motion_bounds"] = list(bounds)
+    (directory / f"{key}.json").write_text(json.dumps(meta))
 
-    Each item is (x, palette index, disposal, milliseconds). Clear/index/end
-    LZW codes fit in two bytes. Palette 0 is transparent; 1/2/3 are RGB.
-    Partial rectangles exercise disposal without relying on Pillow's encoder.
-    """
-    data = bytearray(b"GIF89a" + struct.pack("<HHBBB", *size, 0x81, 0, 0))
-    data += bytes((0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255))
-    data += b"\x21\xff\x0bNETSCAPE2.0\x03\x01" + struct.pack("<H", loop) + b"\x00"
-    for x, color, disposal, ms in frames:
-        data += b"\x21\xf9\x04" + struct.pack("<BHB", disposal * 4 + 1, ms // 10, 0) + b"\x00"
-        data += b"\x2c" + struct.pack("<HHHHB", x, 0, 1, 1, 0)
-        data += b"\x02\x02" + struct.pack("<H", 4 | color << 3 | 5 << 6) + b"\x00"
-    path.write_bytes(data + b"\x3b")
+
+def pose(box=(40, 40, 200, 200), color=(200, 60, 60, 255), mark=None):
+    """A square on a clear canvas, with a small `mark` (x, y, w, h, color)"""
+    image = Image.new("RGBA", (CELL, CELL))
+    image.paste(color, box)
+    if mark:
+        x, y, w, h, c = mark
+        image.paste(c, (x, y, x + w, y + h))
+    return image
 
 
-def tile(asset, index):
-    import io
+def compose(asset, tile):
+    """Pose `tile` as the launcher draws it: the base, its region rewritten"""
     with Image.open(io.BytesIO(asset.atlas)) as atlas:
-        x, y = index % asset.cols * 128, index // asset.cols * 128
-        return atlas.crop((x, y, x + 128, y + 128))
+        atlas = atlas.convert("RGBA")
+        image = atlas.crop((0, 0, CELL, CELL))
+        rx, ry, rw, rh = asset.region
+        if rw:
+            x, y = tile % asset.cols * rw, CELL + tile // asset.cols * rh
+            image.paste(atlas.crop((x, y, x + rw, y + rh)), (rx, ry))
+        return image
 
 
 class CompilerTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="systemart-check-")
-        self.root = Path(self.tmp.name)
-        self.source = self.root / "sprite.gif"
+        self.dir = Path(self.tmp.name)
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_repeated_images_keep_source_order_and_delays(self):
-        gif(self.source, [(0, 1, 2, 40), (1, 2, 2, 70), (0, 1, 2, 110)])
-        result = sa.compile_asset(self.source)
-        self.assertIsNotNone(result, "the compiler must produce an atlas")
-        self.assertEqual(result.frames, ((0, 40), (1, 70), (0, 110)))
-        self.assertEqual((result.unique, result.cols, result.rows, result.duration_ms), (2, 2, 1, 220))
-        self.assertEqual(tile(result, 0).getpixel((20, 64)), (255, 0, 0, 255))
-        self.assertEqual(tile(result, 1).getpixel((64, 64)), (0, 255, 0, 255))
-        import io
-        with Image.open(io.BytesIO(result.still)) as still:
-            self.assertEqual(still.tobytes(), tile(result, 0).tobytes())
+    def test_region_is_where_poses_differ_and_poses_rebuild_exactly(self):
+        poses = [pose(mark=(100, 60, 10, 8, (0, 0, 0, 255))),
+                 pose(mark=(104, 64, 10, 8, (0, 0, 0, 255))),
+                 pose(mark=(100, 60, 14, 12, (20, 200, 20, 128)))]
+        export(self.dir, "GB", poses, [(0, 40), (1, 70), (0, 110), (2, 30)], bounds=(90, 50, 40, 40))
+        asset = sa.compile_asset(self.dir, "GB")
+        self.assertEqual(asset.region, (100, 60, 14, 12))
+        self.assertEqual(asset.frames, ((0, 40), (1, 70), (0, 110), (2, 30)))
+        self.assertEqual(asset.duration_ms, 250)
+        for t, expected in enumerate(poses):
+            self.assertEqual(compose(asset, t).tobytes(), sa.canonical(expected).tobytes(), f"pose {t}")
 
-    def test_disposal_background_and_restore_previous(self):
-        for disposal, expected in [(2, (0, 0, 0, 0)), (3, (255, 0, 0, 255))]:
-            with self.subTest(disposal=disposal):
-                gif(self.source, [(0, 1, 1, 20), (0, 2, disposal, 30), (2, 3, 1, 40)])
-                result = sa.compile_asset(self.source)
-                last = tile(result, result.frames[2][0])
-                self.assertEqual(last.getpixel((20, 64)), expected)
-                self.assertEqual(last.getpixel((108, 64)), (0, 0, 255, 255))
+    def test_the_loop_starts_on_the_still_s_frame(self):
+        poses = [pose(), pose(mark=(100, 60, 4, 4, (0, 0, 0, 255))), pose(mark=(100, 64, 4, 4, (0, 0, 0, 255)))]
+        export(self.dir, "GB", poses, [(0, 100), (1, 200), (2, 300)])
+        meta = json.loads((self.dir / "GB.json").read_text())
+        for still_at, frames in ((0, ((0, 100), (1, 200), (2, 300))), (150, ((1, 200), (2, 300), (0, 100))),
+                                 (300, ((2, 300), (0, 100), (1, 200)))):
+            with self.subTest(still_at=still_at):
+                meta["still_time_ms"] = still_at
+                (self.dir / "GB.json").write_text(json.dumps(meta))
+                self.assertEqual(sa.compile_asset(self.dir, "GB").frames, frames)
+        meta["still_time_ms"] = 600
+        (self.dir / "GB.json").write_text(json.dumps(meta))
+        with self.assertRaises(sa.ArtError):
+            sa.compile_asset(self.dir, "GB")
 
-    def test_static_png_is_centered_nearest_and_unchanged(self):
-        source = self.root / "still.png"
-        image = Image.new("RGBA", (2, 4))
-        image.putpixel((0, 1), (13, 37, 91, 128))
-        image.save(source)
-        before = source.read_bytes()
-        result = sa.compile_asset(source)
-        self.assertEqual(result.frames, ((0, 0),))
-        self.assertEqual(result.duration_ms, 0)
-        self.assertEqual(tile(result, 0).getpixel((40, 40)), (13, 37, 91, 128))
-        self.assertEqual(tile(result, 0).getpixel((0, 40)), (0, 0, 0, 0))
-        self.assertEqual(source.read_bytes(), before)
+    def test_hidden_color_does_not_widen_the_region(self):
+        first = pose(mark=(100, 60, 4, 4, (0, 0, 0, 255)))
+        second = pose(mark=(100, 64, 4, 4, (0, 0, 0, 255)))
+        second.paste((255, 0, 255, 0), (0, 0, 20, 20))     # invisible, another color
+        export(self.dir, "GB", [first, second], [(0, 400), (1, 400)])
+        self.assertEqual(sa.compile_asset(self.dir, "GB").region, (100, 60, 4, 8))
 
-    def test_float_keeps_first_pose_and_translates_rgba_without_loss(self):
-        source = self.root / "generated.png"
-        image = Image.new("RGBA", (128, 128))
-        # Black outline, partial alpha, and edge pixels must all survive.
-        for x in range(20, 24):
-            for y in range(4, 8):
-                image.putpixel((x, y), (0, 0, 0, 255))
-        image.putpixel((19, 4), (7, 11, 19, 96))
-        image.putpixel((0, 2), (0, 0, 0, 255))
-        image.putpixel((127, 2), (0, 0, 0, 255))
-        image.putpixel((40, 127), (255, 0, 0, 255))
-        image.save(source)
-        before = source.read_bytes()
-        still = sa.compile_asset(source)
-        moving = sa.compile_asset(source, motion="float", generated=True)
-        self.assertEqual(moving.frames, ((0, 400), (1, 400)))
-        self.assertEqual((moving.cols, moving.rows, moving.duration_ms), (2, 1, 800))
-        self.assertEqual(moving.still, still.still)
-        self.assertEqual(tile(moving, 0).tobytes(), image.tobytes())
-        expected = image.tobytes()[128 * 2 * 4:] + bytes(128 * 2 * 4)
-        self.assertEqual(tile(moving, 1).tobytes(), expected)
-        self.assertEqual(source.read_bytes(), before)
+    def test_a_change_outside_the_motion_bounds_fails(self):
+        export(self.dir, "GB", [pose(), pose(mark=(150, 150, 4, 4, (0, 0, 0, 255)))],
+               [(0, 400), (1, 400)], bounds=(0, 0, 100, 100))
+        with self.assertRaises(sa.ArtError):
+            sa.compile_asset(self.dir, "GB")
 
-    def test_float_rejects_cropping_even_partial_alpha(self):
-        source = self.root / "edge.png"
-        for y, alpha in [(0, 255), (1, 255), (1, 1)]:
-            with self.subTest(y=y, alpha=alpha):
-                image = Image.new("RGBA", (128, 128))
-                image.putpixel((64, y), (0, 0, 0, alpha))
-                image.save(source)
+    def test_a_design_that_does_not_move_is_one_pose(self):
+        export(self.dir, "FOLDER_SMALL", [pose()], [(0, 1000)])
+        asset = sa.compile_asset(self.dir, "FOLDER_SMALL")
+        self.assertEqual((asset.region, asset.frames, asset.duration_ms, asset.cols), ((0, 0, 0, 0), ((0, 0),), 0, 0))
+        with Image.open(io.BytesIO(asset.atlas)) as atlas:
+            self.assertEqual(atlas.size, (CELL, CELL))
+
+    def test_still_is_128_and_keeps_its_colors(self):
+        export(self.dir, "GB", [pose(), pose(mark=(100, 60, 4, 4, (0, 0, 0, 255)))], [(0, 400), (1, 400)])
+        asset = sa.compile_asset(self.dir, "GB")
+        with Image.open(io.BytesIO(asset.still)) as still:
+            self.assertEqual(still.size, (sa.STILL, sa.STILL))
+            self.assertEqual(still.convert("RGBA").getpixel((64, 64)), (200, 60, 60, 255))
+            self.assertEqual(still.convert("RGBA").getpixel((2, 2))[3], 0)
+
+    def test_invalid_exports_fail(self):
+        good = [pose(), pose(mark=(100, 60, 4, 4, (0, 0, 0, 255)))]
+        cases = {
+            "unknown tile": ([(0, 400), (2, 400)], good),
+            "too short": ([(0, 5), (1, 400)], good),
+            "pose never shown": ([(0, 400), (0, 400)], good),
+            "all poses alike": ([(0, 400), (1, 400)], [pose(), pose()]),
+            "no clear ground": ([(0, 400), (1, 400)], [Image.new("RGBA", (CELL, CELL), (1, 2, 3, 255)), pose()]),
+            "empty first pose": ([(0, 400), (1, 400)], [Image.new("RGBA", (CELL, CELL)), pose()]),
+        }
+        for name, (frames, poses) in cases.items():
+            with self.subTest(name):
+                export(self.dir, "GB", poses, frames)
                 with self.assertRaises(sa.ArtError):
-                    sa.compile_asset(source, motion="float", generated=True)
+                    sa.compile_asset(self.dir, "GB")
+        export(self.dir, "GB", good, [(0, 400), (1, 400)])
+        meta = json.loads((self.dir / "GB.json").read_text())
+        meta["duration_ms"] = 900
+        (self.dir / "GB.json").write_text(json.dumps(meta))
+        with self.assertRaises(sa.ArtError):
+            sa.compile_asset(self.dir, "GB")
 
-    def test_float_is_generated_png_only(self):
-        source = self.root / "still.png"
-        image = Image.new("RGBA", (128, 128))
-        image.putpixel((64, 64), (0, 0, 0, 255))
-        image.save(source)
-        for options in [{"motion": "float"}, {"motion": "spin", "generated": True}]:
-            with self.subTest(options=options):
-                with self.assertRaises(sa.ArtError):
-                    sa.compile_asset(source, **options)
-        gif(source, [(0, 1, 2, 40), (1, 2, 2, 70)])  # GIF bytes with a PNG suffix
+    def test_atlas_budget(self):
+        poses = [pose(mark=(0, 0, 256, 256, (i * 3, 0, 0, 255))) for i in range(1, 40)]
+        for image in poses:
+            image.putpixel((0, 0), (0, 0, 0, 0))
+        export(self.dir, "GB", poses, [(i, 100) for i in range(len(poses))])
         with self.assertRaises(sa.ArtError):
-            sa.compile_asset(source, motion="float", generated=True)
-
-    def test_invalid_or_unbounded_sources_fail(self):
-        for count, ms, loop in [(73, 100, 0), (2, 0, 0), (2, 2010, 0), (2, 100, 1), (31, 2000, 0)]:
-            with self.subTest(count=count, ms=ms, loop=loop):
-                gif(self.source, [(i % 3, 1, 2, ms) for i in range(count)], loop=loop)
-                with self.assertRaises(sa.ArtError):
-                    sa.compile_asset(self.source)
-        gif(self.source, [(0, 1, 2, 100)], size=(2049, 1))
-        with self.assertRaises(sa.ArtError):
-            sa.compile_asset(self.source)
-        self.source.write_bytes(b"not an image")
-        with self.assertRaises(sa.ArtError):
-            sa.compile_asset(self.source)
-        source = self.root / "opaque.png"
-        Image.new("RGB", (8, 8), "red").save(source)
-        with self.assertRaises(sa.ArtError):
-            sa.compile_asset(source)
-
-    def test_source_byte_and_decoded_pixel_budgets(self):
-        gif(self.source, [(0, 1, 2, 100), (1, 2, 2, 100)])
-        with patch.object(sa, "MAX_SOURCE_BYTES", 10):
-            with self.assertRaises(sa.ArtError):
-                sa.compile_asset(self.source)
-        with patch.object(sa, "MAX_SOURCE_PIXELS", 5):
-            with self.assertRaises(sa.ArtError):
-                sa.compile_asset(self.source)
-
-    def test_first_frame_must_remain_visible_after_resize(self):
-        source = self.root / "subpixel.png"
-        image = Image.new("RGBA", (256, 256))
-        image.putpixel((0, 0), (255, 0, 0, 255))
-        image.save(source)
-        with self.assertRaises(sa.ArtError):
-            sa.compile_asset(source)
-
-    def test_unique_frame_cap_and_partial_atlas_row(self):
-        source = self.root / "many.gif"
-        # One moving opaque pixel, rather than a color quantizer's guesses.
-        gif(source, [(i, 1, 2, 100) for i in range(9)], size=(128, 1))
-        result = sa.compile_asset(source)
-        self.assertEqual((result.unique, result.cols, result.rows), (9, 8, 2))
-        self.assertEqual(tile(result, 15).getbbox(), None)
-        gif(source, [(i, 1, 2, 100) for i in range(65)], size=(128, 1))
-        with self.assertRaises(sa.ArtError):
-            sa.compile_asset(source)
+            sa.compile_asset(self.dir, "GB")
 
 
 class BuildTests(unittest.TestCase):
@@ -185,40 +162,33 @@ class BuildTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         (self.root / "config").mkdir()
         (self.root / "config/systems.cfg").write_text("sys|Game Boy|Game Boy|mgba|GB|GB.png|7E9B47|gb\n")
-        source = self.root / "res/system-art/source/GB.gif"
-        source.parent.mkdir(parents=True)
-        gif(source, [(0, 1, 2, 40), (1, 2, 2, 70), (0, 1, 2, 110)])
-        self.data = {
-            "schema": 1, "origins": {"fixture": {"credit": "Test fixture"}},
-            "assets": [
-                {"key": "GB", "tag": "GB", "name": "Game Boy", "status": "ready",
-                 "source": "source/GB.gif", "origin": "fixture", "sha256": sa.digest(source)},
-                {"key": "FAVORITES", "tag": "FAV", "name": "Favorites", "status": "missing", "reason": "No art"},
-                {"key": "MUSE", "tag": "MUSE", "name": "Muse", "status": "missing", "reason": "No art"},
-            ],
-        }
-        self.save_manifest()
+        art = self.root / sa.ART
+        moving = [pose(), pose(mark=(100, 60, 10, 8, (0, 0, 0, 255)))]
+        export(art, "GB", moving, [(0, 40), (1, 70), (0, 110)])
+        export(art, "FAVORITES", moving, [(0, 400), (1, 400)])
+        export(art, "MUSE", moving, [(0, 400), (1, 400)])
+        export(art, "FOLDER_SMALL", [pose()], [(0, 1000)])
 
     def tearDown(self):
         self.tmp.cleanup()
-
-    def save_manifest(self):
-        (self.root / sa.MANIFEST).write_text(json.dumps(self.data))
 
     def test_c_contract_and_exact_paths(self):
         sa.build(self.root)
         program = r'''
 #include "systemart_data.h"
 #include <string.h>
-_Static_assert(SA_ASSET_COUNT == 1, "missing art must have no fake entry");
+_Static_assert(SA_ASSET_COUNT == 4, "every shelf and the folder, nothing else");
+_Static_assert(SA_CELL == 256 && SA_STILL == 128, "cell and still sizes");
 int main(void) {
-    const sa_asset *a = &SA_ASSETS[0];
+    const sa_asset *a = &SA_ASSETS[2], *f = &SA_ASSETS[1];
     if (strcmp(a->key, "GB") || strcmp(a->atlas, "system-icons/GB.png") ||
         strcmp(a->still, "system-icons/GB-still.png")) return 1;
-    if (a->cell != 128 || a->cols != 2 || a->rows != 1 || a->nframes != 3 ||
+    if (a->cell != 256 || a->cols != 2 || a->rows != 1 || a->nframes != 3 ||
         a->duration_ms != 220) return 2;
     if (a->frames[0].tile != 0 || a->frames[1].tile != 1 || a->frames[2].tile != 0 ||
         a->frames[0].ms != 40 || a->frames[1].ms != 70 || a->frames[2].ms != 110) return 3;
+    if (a->rx != 100 || a->ry != 60 || a->rw != 10 || a->rh != 8) return 4;
+    if (strcmp(f->key, "FOLDER") || f->rw || f->nframes != 1 || f->duration_ms) return 5;
     return 0;
 }
 '''
@@ -236,134 +206,47 @@ int main(void) {
         self.assertFalse((self.root / sa.HEADER).exists())
 
     def test_rebuild_is_deterministic_and_stale_output_fails(self):
-        _, _, first = sa.build(self.root)
-        _, _, second = sa.build(self.root, check=True)
+        _, first = sa.build(self.root)
+        _, second = sa.build(self.root, check=True)
         self.assertEqual(first, second)
         (self.root / sa.OUTPUT / "GB.png").write_bytes(b"broken")
         with self.assertRaises(sa.ArtError):
             sa.build(self.root, check=True)
 
-    def test_catalogue_coverage_and_source_identity(self):
-        original = json.dumps(self.data)
-        for mistake in ("duplicate", "missing", "wrong tag", "unknown origin", "wrong hash", "outside source"):
-            with self.subTest(mistake=mistake):
-                self.data = json.loads(original)
-                row = self.data["assets"][0]
-                if mistake == "duplicate": self.data["assets"][1] = row.copy()
-                if mistake == "missing": self.data["assets"].pop()
-                if mistake == "wrong tag": row["tag"] = "OTHER"
-                if mistake == "unknown origin": row["origin"] = "unknown"
-                if mistake == "wrong hash": row["sha256"] = "0" * 64
-                if mistake == "outside source": row["source"] = "../../config/systems.cfg"
-                self.save_manifest()
-                with self.assertRaises(sa.ArtError):
-                    sa.build(self.root)
-
-    def test_manifest_motion_requires_generated_png_and_credit(self):
-        source = self.root / "res/system-art/source/GB.png"
-        image = Image.new("RGBA", (128, 128))
-        image.putpixel((64, 4), (0, 0, 0, 255))
-        image.save(source)
-        row = self.data["assets"][0]
-        row.update(source="source/GB.png", sha256=sa.digest(source), motion="float",
-                   motion_credit="Controller-selected two-pose motion")
-        self.data["origins"]["fixture"]["kind"] = "generated"
-        valid = json.dumps(self.data)
-        for mistake in ("imported origin", "no credit", "unknown motion", "null motion", "gif source", "missing art"):
-            with self.subTest(mistake=mistake):
-                self.data = json.loads(valid)
-                row = self.data["assets"][0]
-                if mistake == "imported origin": self.data["origins"]["fixture"]["kind"] = "imported"
-                if mistake == "no credit": row.pop("motion_credit")
-                if mistake == "unknown motion": row["motion"] = "spin"
-                if mistake == "null motion": row["motion"] = None
-                if mistake == "gif source":
-                    row.update(source="source/GB.gif", sha256=sa.digest(source.with_suffix(".gif")))
-                if mistake == "missing art": self.data["assets"][1]["motion"] = "float"
-                self.save_manifest()
-                with self.assertRaises(sa.ArtError):
-                    sa.build(self.root)
-        self.data = json.loads(valid)
-        self.save_manifest()
-        _, assets, _ = sa.build(self.root)
-        self.assertEqual(assets[0][1].frames, ((0, 400), (1, 400)))
-        self.assertEqual(assets[0][1].duration_ms, 800)
+    def test_a_shelf_without_a_design_and_a_stray_output_fail(self):
+        (self.root / sa.ART / "MUSE.json").unlink()
+        with self.assertRaises(sa.ArtError):
+            sa.build(self.root)
+        export(self.root / sa.ART, "MUSE", [pose(), pose(mark=(1, 1, 2, 2, (0, 0, 0, 255)))], [(0, 400), (1, 400)])
+        sa.build(self.root)
+        (self.root / sa.OUTPUT / "ROMS.png").write_bytes(b"")
+        with self.assertRaises(sa.ArtError):
+            sa.build(self.root, check=True)
 
 
-class SuppliedTests(unittest.TestCase):
+class CheckedInTests(unittest.TestCase):
     ROOT = Path(__file__).resolve().parents[1]
 
-    def test_generated_home_art_animates_without_pixel_loss(self):
-        # Home-art policy requires motion for generated additions. The
-        # compiler's standalone PNG API still defaults to static (tested above).
-        manifest = json.loads((self.ROOT / sa.MANIFEST).read_text())
-        checked = 0
-        for row in manifest["assets"]:
-            if row["status"] != "ready" or manifest["origins"][row["origin"]].get("kind") != "generated":
-                continue
-            source = self.ROOT / sa.MANIFEST.parent / row["source"]
-            if source.suffix.lower() == ".gif":
-                # Drawn in the pack's own motion (tools/systemart-draw.py):
-                # two frames of 400 ms, the second a different picture.
-                with self.subTest(key=row["key"]):
-                    self.assertNotIn("motion", row)
-                    moving = sa.compile_asset(source)
-                    self.assertEqual(moving.frames, ((0, 400), (1, 400)))
-                    self.assertNotEqual(tile(moving, 0).tobytes(), tile(moving, 1).tobytes())
-                    checked += 1
-                continue
-            with self.subTest(key=row["key"]):
-                self.assertEqual(row.get("motion"), "float")
-                self.assertTrue(row.get("motion_credit"))
-                still = sa.compile_asset(source)
-                moving = sa.compile_asset(source, motion=row["motion"], generated=True)
-                first = tile(still, 0).tobytes()
-                self.assertEqual(moving.frames, ((0, 400), (1, 400)))
-                self.assertEqual(moving.duration_ms, 800)
-                self.assertEqual(moving.still, still.still)
-                self.assertEqual(tile(moving, 0).tobytes(), first)
-                self.assertEqual(tile(moving, 1).tobytes(), first[128 * 2 * 4:] + bytes(128 * 2 * 4))
-                self.assertGreaterEqual(tile(still, 0).getchannel("A").getbbox()[1], 2)
-                checked += 1
-        self.assertGreater(checked, 0)
-
-    def test_gb_gba_all_resized_alpha_and_visible_rgb(self):
-        # The expected images come directly from each supplied GIF, never
-        # from a compiler helper, its atlas or its transparency decisions.
-        # This catches forced palette-index transparency and alpha-squared
-        # pastes, including palette changes and later disposal operations.
-        for key, expected_count in [("GB", 48), ("GBA", 69)]:
-            source = self.ROOT / "res/system-art/source" / f"{key}.gif"
-            result = sa.compile_asset(source)
-            self.assertEqual(len(result.frames), expected_count)
-            opaque_black_later = 0
-            with Image.open(source) as original:
-                for index in range(expected_count):
-                    original.seek(index)
-                    expected = original.convert("RGBA").resize((128, 128), Image.Resampling.NEAREST)
-                    actual = tile(result, result.frames[index][0])
-                    with self.subTest(key=key, frame=index):
-                        self.assertEqual(result.frames[index][1], original.info["duration"])
-                        self.assertIsNone(ImageChops.difference(expected.getchannel("A"), actual.getchannel("A")).getbbox())
-                        visible = expected.getchannel("A").point(lambda a: 255 if a else 0).convert("RGB")
-                        difference = ImageChops.difference(expected.convert("RGB"), actual.convert("RGB"))
-                        self.assertIsNone(ImageChops.multiply(difference, visible).getbbox())
-                    if index:
-                        raw = expected.tobytes()
-                        opaque_black_later += sum(raw[i:i + 4] == b"\x00\x00\x00\xff" for i in range(0, len(raw), 4))
-            self.assertGreater(opaque_black_later, 0, f"{key}: test must cover opaque black in later frames")
-
-    def test_checked_in_outputs_and_source_hashes(self):
-        rows, assets, outputs = sa.build(self.ROOT, check=True)
-        self.assertEqual({row["key"] for row in rows}, set(sa.catalogue(self.ROOT)))
-        self.assertEqual(len(assets), len([row for row in rows if row["status"] == "ready"]))
+    def test_checked_in_outputs_cover_every_shelf(self):
+        assets, outputs = sa.build(self.ROOT, check=True)
+        keys = {key for key, _ in assets}
+        self.assertEqual(keys, set(sa.catalogue(self.ROOT)))
         self.assertEqual(len(outputs), len(assets) * 2 + 1)
-        manifest = json.loads((self.ROOT / sa.MANIFEST).read_text())
-        favorite = next(row for row in manifest["assets"] if row["key"] == "FAVORITES")
-        self.assertEqual(favorite["archive_path"], "favorites/icon.gif")
-        wsc = self.ROOT / "res/system-art/source/WSC.png"
-        self.assertEqual(hashlib.sha256(wsc.read_bytes()).hexdigest(),
-                         "cbb02ce84683c0c1b2e040535311e6e679e87f31d4db5a302f1415a1c62fe456")
+        self.assertEqual(set(p.name for p in (self.ROOT / sa.OUTPUT).glob("*.png")),
+                         {f"{k}{s}.png" for k in keys for s in ("", "-still")})
+
+    def test_every_pose_rebuilds_exactly_from_its_export(self):
+        directory = self.ROOT / sa.ART
+        for key, source in sa.catalogue(self.ROOT).items():
+            with self.subTest(key):
+                asset = sa.compile_asset(directory, source)
+                meta = json.loads((directory / f"{source}.json").read_text())
+                with Image.open(directory / f"{source}.png") as atlas:
+                    for t in range(asset.unique):
+                        x, y = t % meta["cols"] * CELL, t // meta["cols"] * CELL
+                        expected = sa.canonical(atlas.crop((x, y, x + CELL, y + CELL)))
+                        self.assertEqual(compose(asset, t).tobytes(), expected.tobytes(), f"{key} pose {t}")
+
 
 if __name__ == "__main__":
     unittest.main()

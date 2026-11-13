@@ -277,17 +277,6 @@ de = die Ports
 ja = 移植ゲーム
 it = i port
 
-[about.thanks_benjelter]
-note = Thanks: beside "BenJelter", who drew the consoles' icons.
-en = the console icons
-zh-Hans = 主机图标
-es = los iconos de las consolas
-pt-BR = os ícones dos consoles
-fr = les icônes des consoles
-de = die Konsolensymbole
-ja = ゲーム機のアイコン
-it = le icone delle console
-
 [about.thanks_menu_music]
 note = Thanks: a row label, the music the menus play; its value is "OpenGameArt".
 en = Menu music
