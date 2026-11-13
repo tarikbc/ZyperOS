@@ -12,6 +12,8 @@ by the stub (STUBCORE_INPUT_LOG: the frame, port 0's bits, port 1's bits).
     untouched.
   - Only the NES pad's buttons: a pad of 0xFFFF reads 0x01FD.
   - A beat that stops (p2d died) lets the buttons go within 0.7 s.
+  - Player 2 holding a button keeps the game awake for the idle timer
+    (SETIDLE), as player 1 does; with player 2's pad at 0, IDLE comes.
   - SETPLAYER2 on=0 removes the file, and a reader still holding it sees
     its magic gone; STOP with it on removes it too, and the next RUN starts
     with it off.
@@ -217,6 +219,17 @@ try:
     seen = d.frames_after(n, 10)
     check("and the pad again once the beat moves", seen and seen[-1][1] == P2S_PAD_MASK,
           [p1 for _, p1 in seen])
+
+    # idle_counts_player2: player 1 touches nothing while player 2 plays a
+    # turn, and the launcher powers off at IDLE at once
+    d.send("SETIDLE\tms=300")
+    check("player 2 holding a button keeps the game awake: no IDLE in 1 s",
+          d.until("IDLE", 1.0) is None, d.got[-3:])
+    struct.pack_into("<I", m, OFF_PAD, 0)
+    check("and with player 2's pad at 0, IDLE comes", d.until("IDLE", 2.0) == "IDLE",
+          d.got[-3:])
+    d.send("SETIDLE\tms=0")
+    struct.pack_into("<I", m, OFF_PAD, 0xFFFF)
 
     # off_cleans_up
     check("SETPLAYER2 on=0 is answered PLAYER2 on=0",

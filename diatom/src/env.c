@@ -663,6 +663,11 @@ static void cb_input_poll(void)
 	g_p2_pad = p2_on() ? p2_pad((unsigned)(diatom_port_now_us() / 1000)) : 0;
 }
 
+uint32_t diatom_env_p2_pad(void)
+{
+	return p2_on() ? g_p2_pad : 0;
+}
+
 /* Canonical button names. The protocol speaks these, never retropad numbers,
  * so libretro's numbering stops at this file exactly as it stops at the port.
  * Order matches the enum. */

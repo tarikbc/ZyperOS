@@ -2540,7 +2540,9 @@ static int run_session_inner(const diatom_session *sn)
 		audio_tick();
 
 		buttons = diatom_port_input_state();
-		idle_note_input(buttons != 0);
+		/* Player 2's presses keep the game awake too: in a game played in
+		 * turns, player 1 touches nothing for all of player 2's */
+		idle_note_input(buttons != 0 || diatom_env_p2_pad() != 0);
 
 		/* Latched at whichever entry point began these frames - game start or
 		 * menu resume - and narrowed here: a button the player has genuinely

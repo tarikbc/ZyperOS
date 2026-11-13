@@ -144,6 +144,11 @@ void diatom_env_poll_hook(diatom_poll_hook fn);
  * screens.h, in the whole frame's -0x7fff..0x7fff. See env.c. */
 void diatom_env_pointer(bool down, int16_t x, int16_t y);
 
+/* Player 2's pad as port 1 answered it this frame (player2.h): the NES pad's
+ * bits, 0 while player 2 is off or p2d's beat has stopped. For the idle
+ * timer, since player 2 pressing is somebody being there too. */
+uint32_t diatom_env_p2_pad(void);
+
 /* Silence a core's DEBUG/INFO chatter once a game is running, and log each of
  * its warnings only the first time. See core_log in env.c for the measurements
  * that made this necessary. */
