@@ -169,15 +169,15 @@ ja = スマートフォンで「USB テザリング」をオンにしてくだ�
 it = Sul telefono, attiva il tethering USB (Impostazioni, Hotspot e tethering). Poi qui si apre Trasferisci USB.
 
 [xfer.phone_tip]
-note = Under xfer.phone_said, smaller and dimmer: Flash Drive does not work this way, as the phone is the USB device here, not the computer that opens a drive. A USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable make the phone the side that gives power and opens the drive. Name the adapter as xfer.iphone_said does. Never say "power" here. Up to two balanced lines at the smaller size.
-en = Flash Drive needs a USB-C to USB-A adapter on the phone.
-zh-Hans = 用作 U 盘需要在手机上接 USB-C 转 USB-A 转接头。
-es = Memoria USB necesita un adaptador USB-C a USB-A en el celular.
-pt-BR = Pen drive precisa de um adaptador USB-C para USB-A no celular.
-fr = Clé USB demande un adaptateur USB-C vers USB-A sur le téléphone.
-de = Für USB-Stick brauchst du am Handy einen Adapter von USB-C auf USB-A.
-ja = USBメモリにするには、スマートフォンに USB-C - USB-A アダプタが必要です。
-it = Chiavetta USB richiede un adattatore da USB-C a USB-A sul telefono.
+note = Under xfer.phone_said, smaller and dimmer: what a phone with no USB tethering does, and Flash Drive. Some Android devices have no USB tethering at all (the AYN Thor, an Android gaming handheld, has it neither in Settings nor in its USB notification, 2026-11-13): for them, Wi-Fi File Transfer, or the adapter. Flash Drive does not work on this cable, as the phone is the USB device here, not the computer that opens a drive: a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable make the phone the side that gives power and opens the drive. Name Wi-Fi File Transfer and the adapter as xfer.iphone_said does. Never say "power" here. Up to three balanced lines at the smaller size.
+en = No USB tethering? Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for Flash Drive.
+zh-Hans = 没有 USB 网络共享？请使用 Wi-Fi 文件传输，或在手机上接 USB-C 转 USB-A 转接头用作 U 盘。
+es = ¿Sin conexión USB compartida? Usa Transferir Wi-Fi, o un adaptador USB-C a USB-A en el celular para Memoria USB.
+pt-BR = Sem tethering USB? Use o Transferir Wi-Fi, ou um adaptador USB-C para USB-A no celular para o Pen drive.
+fr = Pas de partage de connexion USB\u00a0? Utilisez le Transfert Wi-Fi, ou un adaptateur USB-C vers USB-A sur le téléphone pour Clé USB.
+de = Kein USB-Tethering? Nimm den WLAN-Transfer, oder für USB-Stick einen Adapter von USB-C auf USB-A am Handy.
+ja = USB テザリングがない場合は、Wi-Fi ファイル転送を使うか、スマートフォンに USB-C - USB-A アダプタを付けて USBメモリにします。
+it = Niente tethering USB? Usa Trasferisci Wi-Fi, oppure un adattatore da USB-C a USB-A sul telefono per Chiavetta USB.
 
 [xfer.iphone_said]
 note = After the player answers Phone, when the phone on the cable is an iPhone (Apple's, on the handheld's USB bus): an iPhone shares its network over USB only with a computer it trusts (paired), which the handheld cannot be, so its files do not open this way. What works: Wi-Fi File Transfer, or a USB-C to USB-A adapter (an OTG adapter) on the iPhone and a USB-A to USB-C cable to the handheld, which makes the iPhone the side that gives power, and then Flash Drive. Say "the handheld" as the other strings do. Over any screen but a game, under the heading xfer.tile_phone, until the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.

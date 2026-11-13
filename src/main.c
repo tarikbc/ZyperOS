@@ -10883,8 +10883,8 @@ static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
  * in **menu** **text** (up to four balanced lines), and under them the cable
  * that always connects in **meta** **text-dim** (up to two), until the plug
  * ends. Phone's message the same, with the phone mark and "Phone", in **menu**
- * up to four lines, else in **meta** up to six, and no cable line: its
- * message names the cable itself. */
+ * up to four lines, else in **meta** up to six, and under it, in place of the
+ * cable line, what a phone with no USB tethering does (up to three). */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
 #define REPLUG_TIP_GAP 8
@@ -10892,12 +10892,13 @@ static void replug_draw_at(SDL_Renderer *r)
 {
 	bool phone = g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE;
 	/* the smaller line under the words: the cable that always connects a
-	 * computer; for a phone asked to share its network, that Flash Drive
-	 * needs an adapter (the phone is the device here); none for an iPhone,
-	 * whose message names the adapter itself */
+	 * computer (up to two lines); for a phone asked to share its network,
+	 * what one with no USB tethering does and that Flash Drive needs an
+	 * adapter, the phone being the device here (up to three); none for an
+	 * iPhone, whose message names the adapter itself */
 	int tip_id = g_replug.say == USBPOWER_SAY_COMPUTER ? S_XFER_REPLUG_TIP
 	           : g_replug.say == USBPOWER_SAY_PHONE ? S_XFER_PHONE_TIP : -1;
-	char lines[LB_MAX_LINES][LB_LINE], tip[2][LB_LINE];
+	char lines[LB_MAX_LINES][LB_LINE], tip[3][LB_LINE];
 	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
@@ -10912,7 +10913,7 @@ static void replug_draw_at(SDL_Renderer *r)
 	 * phone's does, never connects by plugging in again (Discord,
 	 * 2026-11-13): the cable that always does, under the words */
 	if (tip_id >= 0) {
-		m = ui_balance_lines(fs, T(tip_id), REPLUG_W - tx_off - padx, 2, tip);
+		m = ui_balance_lines(fs, T(tip_id), REPLUG_W - tx_off - padx, phone ? 3 : 2, tip);
 		ui_fit_drawn(T(tip_id));
 	}
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,

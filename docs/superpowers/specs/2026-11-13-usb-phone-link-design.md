@@ -1,6 +1,6 @@
 # USB that just works: the phone link (1.0.5)
 
-2026-11-13. Branch `usb-phone-link`. Status: Tarik approved the screens (real launcher shots, 2026-11-13); built; the device proof waits for Tarik.
+2026-11-13. Branch `usb-phone-link`. Status: Tarik approved the screens (real launcher shots, 2026-11-13); built; host mode proven on the device (2026-11-13); the tethering link still waits for an Android phone that has USB tethering.
 
 ## What the hardware does (evidence)
 
@@ -22,6 +22,12 @@
 - **The kernel has no USB network host drivers** (`CONFIG_USB_NET_DRIVERS` off). The release
   kernel exports every symbol (`TRIM_UNUSED_KSYMS` is off because of rtl8188eu), so modules
   built from the same tree load on it: the device test uses that, with no system write.
+- **Not every Android device has USB tethering** (device test, 2026-11-13): the AYN Thor, powered
+  by the Pixel and on its bus (18d1:4e11), offers it neither in Settings > Hotspot & tethering (the
+  Wi-Fi hotspot alone) nor in its USB notification's "Use USB for" list. So the phone message's
+  smaller line says what a phone with none does: Wi-Fi File Transfer, or the adapter for Flash
+  Drive. The same test found the iPhone message missing: sysfs's `idVendor` and `product` end in a
+  newline, which `phonelink_is_iphone` now leaves out.
 - **iPhone:** `ipheth` answers only after the iPhone is paired (lockdown, usbmuxd and
   libimobiledevice), which the image does not have. Not for 1.0.5.
 - **Windows 10:** `UsbNcm.sys` exists from version 2004 and binds by the WINNCM OS descriptor the
@@ -42,8 +48,9 @@
 5. USB File Transfer opens by itself on that link, with the address and the PIN. The phone's
    browser opens the address. (The phone also shares its internet with the Pixel: the clock
    syncs; nothing else uses it.)
-6. Flash Drive cannot work this way (the phone is the device, not the host): the screen says so,
-   and names the adapter route for it.
+6. Flash Drive cannot work this way (the phone is the device, not the host), and a phone with no
+   USB tethering cannot either: the line under the message names Wi-Fi File Transfer, and the
+   adapter route for Flash Drive.
 
 An iPhone: when the device on the bus is Apple's, the message says an iPhone opens the files over
 Wi-Fi File Transfer, or with a USB-C to USB-A adapter and a USB-A to USB-C cable.

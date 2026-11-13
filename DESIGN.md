@@ -2927,11 +2927,14 @@ makes it a USB network device that shares its network over the cable
 (src/phonelink.h). So Phone powers it as USB Accessory does and puts up the
 phone message, the replug message's slab with the phone mark under
 **Phone**: "On the phone, turn on USB tethering (Settings, Hotspot and
-tethering). USB File Transfer then opens here.", and under it, as
-Computer's cable line, "Flash Drive needs a USB-C to USB-A adapter on the
-phone." (the phone is the device here, never the computer that opens a
-drive). Its driver (rndis_host for Android's RNDIS, cdc_ncm or cdc_ether for
-NCM and ECM; plastron's modules) is loaded by usbrole by the phone's alias;
+tethering). USB File Transfer then opens here.", and under it, where
+Computer's cable line goes and up to three lines, "No USB tethering? Use
+Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for Flash
+Drive." Some Android devices have no USB tethering at all (the Thor offers
+it neither in Settings nor in its USB notification, 2026-11-13), and Flash
+Drive needs the adapter on any phone (the phone is the device here, never
+the computer that opens a drive). Its driver (rndis_host for Android's
+RNDIS, cdc_ncm or cdc_ether for NCM and ECM; plastron's modules) is loaded by usbrole by the phone's alias;
 the launcher renames its interface `phone0` while it is down (the kernel
 named it `usb0` when that was free, and USB File Transfer's gadget needs
 that name), brings it up and asks the phone for a lease with udhcpc, as
