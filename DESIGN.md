@@ -768,15 +768,22 @@ always more.
 **MENU's tabs.** MENU is in six tabs, **Games**, **Display**, **Sound**,
 **Connections**, **System** and **About**, and **L1** and **R1** go round
 them (src/sys_menu.h, `sys_menu_tab_of`). The heading band is the tab row:
-the tab that is on in **label** **text**, centered where the heading was;
-the tabs either side in **meta** **text-dim**, each beside the L1 or R1 glyph
-(11.9's pill at 40, as the keyboard's action keys) that goes there; and the
-home's underline, an **accent-ink** bar 6 high, on the heading's rule under
-the tab's name. A neighbour that does not fit whole on its side, between the
-content's inset and Zyper, is left out and its glyph stands beside the name,
-since a name is never cut. A press slides the rows out the way it went and
-the next tab's in from the other side, 64 units and faded up, and the tab row
-the same, 96, in **move** on **out**; the bar takes the new name's width. The
+the tab that is on in **label** **text**, centered where the heading was,
+and the home's underline, an **accent-ink** bar 6 high, on the heading's rule
+under its name. The row has the whole band: the L1 glyph (11.9's pill at 40,
+as the keyboard's action keys) at the content's left inset and R1 at its
+right end, which is a grid step and a half before Zyper, or the content's
+edge with Zyper off (3.5). Between them, the tabs either side in **meta**
+**text-dim**, two each way, going on round from the tab that is on as far
+as they reach; whatever reaches an end fades into it over 64 units, so a
+long name shows as much of itself as fits and is never cut hard
+(`ui_text_faded`). *(2026-11-12, from my test of 1.0.5: "use the full width
+up to the zyper icon (if present) and kinda fade away on the extremes
+before the shoulder buttons". Until then a neighbour that did not fit whole
+was left out.)* A press slides the rows out the way it went and the next
+tab's in from the other side, 64 units and faded up, and the tab row the
+same, 96, in **move** on **out**, the glyphs holding still; the bar takes
+the new name's width. The
 panel is as tall as the screen allows on every tab and as wide as the widest
 tab's rows, so it holds still as the tabs go round. MENU opens on Games after
 a start, and after that on the tab and row it was closed on, until the

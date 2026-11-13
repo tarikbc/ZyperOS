@@ -5432,65 +5432,80 @@ static float menu_tabs_p(const menu_tabs *t)
 	return ds_out((float)el / DS_MS_MOVE);
 }
 
-/* One tab's row: the tab in **label** **text**, centered as the heading was;
- * its neighbours in **meta** **text-dim**, each beside the shoulder button
- * that goes there (DESIGN.md 11.9's pill, at 40 as the keyboard's action
- * keys); a neighbour that does not fit whole on its side, between the
- * content's inset and Zyper, is left out and its button stands beside the
- * name, since a name is never cut. Returns the tab's name's width, for the
- * bar under it. `dx` and `op` draw it moved and faded, for a move. */
-static int menu_tab_row(app *a, int at, int cx, int cy, int zone_l, int zone_r,
-                        int dx, float op)
+/* How many tabs MENU's tab row shows either side of the one that is on, as
+ * far as they reach: the next and the one after, and the same back */
+#define MENU_TAB_SIDE 2
+
+/* One tab's row (DESIGN.md 11.3): the tab in **label** **text**, centered as
+ * the heading was, and the tabs either side of it in **meta** **text-dim**,
+ * going on round, laid out from it outward across the whole band between
+ * the L1 and R1 glyphs (`lo` to `hi`); what reaches an end fades into it
+ * over MENU_TAB_FADE, so a long name is shown as far as it fits and never
+ * cut hard (2026-11-12: "use the full width up to the zyper icon (if
+ * present) and kinda fade away on the extremes before the shoulder
+ * buttons"). Returns the tab's name's width, for the bar under it. `dx` and
+ * `op` draw it moved and faded, for a move. */
+#define MENU_TAB_FADE 64
+static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, float op)
 {
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
 	const char *cur = sys_menu_tab_name((pm_tab)at);
-	const char *prev = sys_menu_tab_name((pm_tab)((at + PT_TABS - 1) % PT_TABS));
-	const char *next = sys_menu_tab_name((pm_tab)((at + 1) % PT_TABS));
-	const int gap = 28, gpad = 10, size = 40;
-	int aw = ui_text_width(fh, cur), pw = ui_text_width(fm, prev), nw = ui_text_width(fm, next);
-	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
-	int cur_x = cx - aw / 2, prev_x = cur_x - gap - pw, next_x = cx + aw / 2 + gap;
-	bool show_prev = prev_x - gpad - lw >= zone_l;
-	bool show_next = next_x + nw + gpad + rw <= zone_r;
-	int l1 = show_prev ? prev_x - gpad - lw / 2 : cur_x - 28 - lw / 2;
-	int r1 = show_next ? next_x + nw + gpad + rw / 2 : cx + aw / 2 + 28 + rw / 2;
-	Uint8 al = (Uint8)(op * 255.0f + 0.5f);
+	const int gap = 32, apart = 40;
+	int aw = ui_text_width(fh, cur), cur_x = cx - aw / 2, k, x;
 	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
 
 	dim.a = (Uint8)(dim.a * op);
-	txt.a = al;
-	if (show_prev) ui_text(a->r, fm, prev, prev_x + dx, ui_cap_y(fm, cy), -1, dim);
-	if (show_next) ui_text(a->r, fm, next, next_x + dx, ui_cap_y(fm, cy), -1, dim);
-	ui_text(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), -1, txt);
-	ui_button_pressed(a->r, "L1", l1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
-	ui_button_pressed(a->r, "R1", r1 + dx, cy, size, UI_BUTTON_PLAIN, 0.0f, 1.0f, op);
+	txt.a = (Uint8)(op * 255.0f + 0.5f);
+	/* back: the tab before, ending a gap left of the name, then the one
+	 * before that, while any of it is still inside */
+	for (k = 1, x = cur_x - gap; k <= MENU_TAB_SIDE && x + dx > lo; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at - k + 2 * PT_TABS) % PT_TABS));
+
+		x -= ui_text_width(fm, t);
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x -= apart;
+	}
+	/* on: the tab after, then the one after that */
+	for (k = 1, x = cx + aw / 2 + gap; k <= MENU_TAB_SIDE && x + dx < hi; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at + k) % PT_TABS));
+
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x += ui_text_width(fm, t) + apart;
+	}
+	ui_text_faded(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), lo, hi, MENU_TAB_FADE, txt);
 	return aw;
 }
 
-/* MENU's tab row in the heading band, centered on the capitals at `cy`.
- * Moving, the tab it came from slides out the way the press went and the new
- * one in from the other side, in **move** on **out**. Returns the width of
- * the bar under the name (menu_tabs_bar), which takes the new name's width
- * as it goes. */
+/* MENU's tab row in the heading band, centered on the capitals at `cy`, the
+ * L1 glyph at the band's left end (`zone_l`) and R1 at its right end
+ * (`zone_r`, before Zyper, or the content's edge with him off), and the tabs
+ * between them. Moving, the tab it came from slides out the way the press
+ * went and the new one in from the other side, in **move** on **out**, and
+ * the glyphs hold still. Returns the width of the bar under the name
+ * (menu_tabs_bar), which takes the new name's width as it goes. */
 static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
                           int zone_l, int zone_r)
 {
+	const int size = 40, gpad = 12;
+	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
+	int lo = zone_l + lw + gpad, hi = zone_r - rw - gpad;
 	float p = menu_tabs_p(t);
 	int aw, w;
 
+	ui_button(a->r, "L1", zone_l + lw / 2, cy, size, UI_BUTTON_PLAIN);
+	ui_button(a->r, "R1", zone_r - rw / 2, cy, size, UI_BUTTON_PLAIN);
 	if (p < 1.0f && t->from != t->at) {
 		/* the old one gone in the first two fifths, as its rows are */
 		float op = 1.0f - p * 2.5f;
-		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, zone_l, zone_r,
+		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, lo, hi,
 		                                  (int)(-t->dir * 96 * p), op)
 		                   : ui_text_width(ui_font(UI_F_LABEL),
 		                                   sys_menu_tab_name((pm_tab)t->from));
 
-		aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r,
-		                  (int)(t->dir * 96 * (1.0f - p)), p);
+		aw = menu_tab_row(a, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
 		w = (int)(ow + (aw - ow) * p + 0.5f);
 	} else {
-		w = aw = menu_tab_row(a, t->at, cx, cy, zone_l, zone_r, 0, 1.0f);
+		w = aw = menu_tab_row(a, t->at, cx, cy, lo, hi, 0, 1.0f);
 	}
 	(void)aw;
 	return w;
@@ -5904,13 +5919,14 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				        ui_cap_y(meta, hy + asc - cap / 2), 1, UI_TEXT_DIM);
 
 			if (g_menu_tabs) {
-				/* MENU's tab row, between the content's inset and Zyper
-				 * (his width and a grid step clear of him, as the mock) */
+				/* MENU's tab row, the whole band from the content's inset
+				 * to Zyper, a grid step and a half clear of him, or to the
+				 * content's edge with him off */
 				int zr = content_x + content_w;
 
 				if (g_menu_zyper && !look_zyper_off())
 					zr = panel.x + panel.w - pad
-					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - 4;
+					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - DS_GRID * 3 / 2;
 				tab_bar_w = menu_tabs_draw(a, g_menu_tabs, cx, hy + asc - cap / 2,
 				                           content_x, zr);
 			} else if (hw <= title_room) {
