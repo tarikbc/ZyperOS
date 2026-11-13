@@ -43,6 +43,9 @@ typedef struct {
 	unsigned long long rate;    /* bytes a second; 0 when idle */
 	bool active;                /* moved in the last DST_IDLE_MS */
 	unsigned moved_ms;          /* when it last moved */
+	unsigned long long now_bps; /* bytes a second over the last look alone:
+	                             * 0 for a look that moved nothing, with no
+	                             * DST_IDLE_MS wait (the side lights') */
 } dst_way;
 
 typedef struct {
@@ -51,12 +54,23 @@ typedef struct {
 	unsigned last_ms;                /* the last look */
 	dst_way in, out;                 /* to the card (written), from it (read) */
 	char shown[168];                 /* what the page shows, to see a change */
+	bool lit;                        /* the side lights were told files move */
 } dst_state;
 
 /* One look: the bytes read from the card and written to it so far, at
  * now_ms. True when what the page shows changed (a way's state, speed or
  * total, as tokens). */
 bool dst_step(dst_state *s, unsigned long long rd_bytes, unsigned long long wr_bytes, unsigned now_ms);
+
+/* What the side lights hear after a look (plastron's gauge, package/gauge/
+ * src/lights.h: "move IN OUT", bytes a second to the card and from it): each
+ * way's now_bps, a way under DST_LIGHTS_MIN taken as still (a computer's own
+ * small writes when it opens the drive, a folder's list); "move 0 0" once
+ * when both go still. False when there is nothing to say: both still, and
+ * the lights already told so, or a line that does not fit `cap`. Once after
+ * each dst_step. */
+#define DST_LIGHTS_MIN 65536ull
+bool dst_lights_line(dst_state *s, char *out, size_t cap);
 
 /* A task's /proc/<pid>/io read: its rchar and wchar. False when either is
  * missing. */
