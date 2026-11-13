@@ -46,6 +46,8 @@ export type Scene = {
   /** beats into the scene the label waits */
   labelAt?: number;
   punch?: Punch[];
+  /** a short tag beside the label (the Reddit cut's release a feature came in) */
+  tag?: string;
   /** the computer and the phone of File Transfer */
   browser?: { laptop?: string; phone?: string; phoneAt?: number; laptopAt?: number; phonePic?: string };
   dark?: boolean;
@@ -145,50 +147,65 @@ export const SCENES: Scene[] = [
 
 /** A scene's length in beats of the music */
 export const beatsOf = (sc: Scene) => Math.round(sc.bars * 4);
-const CUM = SCENES.reduce<number[]>((acc, sc) => [...acc, acc[acc.length - 1] + beatsOf(sc)], [0]);
-/** Scene starts, in frames, each on a beat */
-export const STARTS: number[] = CUM.slice(0, -1).map((b) => Math.round(b * BEAT));
-export const TOTAL = Math.round(CUM[CUM.length - 1] * BEAT);
-export const sceneEnd = (i: number) => (i + 1 < STARTS.length ? STARTS[i + 1] : TOTAL);
 
 export type Clip =
   | { kind: "take"; take: string; at: number; len: number; fromMs: number; rate: number; scene: string }
   | { kind: "video"; src: string; at: number; len: number; fromMs: number; rate: number; scene: string }
   | { kind: "image"; src: string; at: number; len: number; scene: string };
 
-/** The scenes' steps laid end to end: a clip each, the last one running to its scene's end */
-export const CLIPS: Clip[] = SCENES.flatMap((sc, i) => {
-  const start = STARTS[i];
-  const end = sceneEnd(i);
-  let at = start;
-  return sc.screen.flatMap((st, k): Clip[] => {
-    const last = k === sc.screen.length - 1;
-    if ("gap" in st) {
-      at += Math.round((st.gap / 1000) * FPS);
-      return [];
-    }
-    if ("video" in st) {
-      const len = last ? end - at : Math.round(((st.to - st.from) / 1000) * FPS);
-      const c: Clip = { kind: "video", src: st.video, at, len, fromMs: st.from, rate: 1, scene: sc.id };
-      at += len;
-      return [c];
-    }
-    if ("image" in st) {
-      const len = last ? end - at : st.ms !== undefined ? Math.round((st.ms / 1000) * FPS) : Math.round((st.beats ?? 1) * BEAT);
-      const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
-      at += len;
-      return [c];
-    }
-    const rate = st.rate ?? 1;
-    const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
-    const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
-    at += len;
-    return [c];
-  });
-});
-
-export const sceneAt = (frame: number) => {
-  let i = 0;
-  while (i + 1 < STARTS.length && STARTS[i + 1] <= frame) i++;
-  return i;
+/** Scenes laid on the music: where each starts (in frames, each on a beat),
+ * the whole length, and their steps laid end to end as clips, the last one
+ * running to its scene's end. The tour is one; src/reddit has another. */
+export type Layout = {
+  scenes: Scene[]; starts: number[]; total: number; clips: Clip[];
+  sceneEnd: (i: number) => number; sceneAt: (frame: number) => number;
 };
+
+export const layout = (scenes: Scene[]): Layout => {
+  const cum = scenes.reduce<number[]>((acc, sc) => [...acc, acc[acc.length - 1] + beatsOf(sc)], [0]);
+  const starts = cum.slice(0, -1).map((b) => Math.round(b * BEAT));
+  const total = Math.round(cum[cum.length - 1] * BEAT);
+  const sceneEnd = (i: number) => (i + 1 < starts.length ? starts[i + 1] : total);
+  const clips = scenes.flatMap((sc, i) => {
+    const end = sceneEnd(i);
+    let at = starts[i];
+    return sc.screen.flatMap((st, k): Clip[] => {
+      const last = k === sc.screen.length - 1;
+      if ("gap" in st) {
+        at += Math.round((st.gap / 1000) * FPS);
+        return [];
+      }
+      if ("video" in st) {
+        const len = last ? end - at : Math.round(((st.to - st.from) / 1000) * FPS);
+        const c: Clip = { kind: "video", src: st.video, at, len, fromMs: st.from, rate: 1, scene: sc.id };
+        at += len;
+        return [c];
+      }
+      if ("image" in st) {
+        const len = last ? end - at : st.ms !== undefined ? Math.round((st.ms / 1000) * FPS) : Math.round((st.beats ?? 1) * BEAT);
+        const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
+        at += len;
+        return [c];
+      }
+      const rate = st.rate ?? 1;
+      const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
+      const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
+      at += len;
+      return [c];
+    });
+  });
+  const sceneAt = (frame: number) => {
+    let i = 0;
+    while (i + 1 < starts.length && starts[i + 1] <= frame) i++;
+    return i;
+  };
+  return { scenes, starts, total, clips, sceneEnd, sceneAt };
+};
+
+/** The tour's own */
+export const TOUR = layout(SCENES);
+export const STARTS = TOUR.starts;
+export const TOTAL = TOUR.total;
+export const CLIPS = TOUR.clips;
+export const sceneEnd = TOUR.sceneEnd;
+export const sceneAt = TOUR.sceneAt;

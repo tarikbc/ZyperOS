@@ -57,7 +57,9 @@ export const mixCam = (a: Cam, b: Cam, t: number): Cam => ({ k: mix(a.k, b.k, t)
 export const punchAt = (frame: number, start: number, end: number, punches: Punch[] | undefined) => {
   let z = 1, px = 0.5, py = 0.5;
   for (const p of punches ?? []) {
-    const a = pop(frame, start + p.at * BEAT, 120, 18) * (1 - ease(frame, end - 10, end));
+    // ...back out at its own `until` (beats into the scene), or at the scene's end
+    const back = p.until !== undefined ? start + p.until * BEAT : end;
+    const a = pop(frame, start + p.at * BEAT, 120, 18) * (1 - ease(frame, back - 10, back));
     z = mix(z, p.zoom, a);
     px = mix(px, p.x, a);
     py = mix(py, p.y, a);
@@ -108,8 +110,8 @@ export const Device: React.FC<{ d: DeviceInfo; cam: Cam; children: React.ReactNo
 /** A label that lands: each word rises out of a mask, a lime bar wipes in, a line follows */
 export const Label: React.FC<{
   frame: number; at: number; end: number; text: string; sub?: string; dark: number;
-  x: number; y: number; width: number; size?: number; align?: "left" | "center"; anchor?: "middle" | "top";
-}> = ({ frame, at, end, text, sub, dark, x, y, width, size: wanted = 76, align = "left", anchor = "middle" }) => {
+  x: number; y: number; width: number; size?: number; align?: "left" | "center"; anchor?: "middle" | "top"; subSize?: number;
+}> = ({ frame, at, end, text, sub, dark, x, y, width, size: wanted = 76, align = "left", anchor = "middle", subSize = 30 }) => {
   let size = wanted;
   const t = theme(dark);
   if (frame < at || frame >= end) return null;
@@ -134,7 +136,7 @@ export const Label: React.FC<{
         })}
       </div>
       {sub && (
-        <div style={{ fontSize: 30, lineHeight: 1.35, color: t.soft, marginTop: 18,
+        <div style={{ fontSize: subSize, lineHeight: 1.35, color: t.soft, marginTop: 18,
           opacity: Math.min(ease(frame, at + 6, at + 14), 1 - out(0)),
           transform: `translateY(${(1 - ease(frame, at + 6, at + 16)) * 16}px)` }}>{sub}</div>
       )}
