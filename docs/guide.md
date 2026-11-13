@@ -373,6 +373,12 @@ The adapter needs a driver that can be an access point. The TL-WN725N v2/v3
 (RTL8188EUS) can, with Realtek's own driver, which plastron gives it. An
 adapter that cannot shows **Could not start the hotspot.**
 
+On a network, that driver's power saving is off: with it on, this chip is
+known to drop off some routers over and over. Each join and each drop, with
+the reason the network or the adapter gave, goes in
+`.userdata/pixel2/logs/wifi.log`, which File Transfer's **Download logs**
+packs with the other logs.
+
 On the Play Time screen, **left and right** change the window - all time, this
 year, this month, this week, today - and **Y** switches between one row per
 game and one per system. The row under the cursor gets its own line at the
