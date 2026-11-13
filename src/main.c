@@ -61,6 +61,7 @@
 #include "keyhints_draw.h"
 #include "usblink.h"
 #include "usblog.h"
+#include "phonelink.h"
 #include "chargedark.h"
 #include "pace.h"
 #include "idle.h"
@@ -6865,6 +6866,44 @@ static wifi_state menu_wifi(char *ssid, int cap)
 	return st;
 }
 
+/* A way out to the internet, for every row and page that fetches from it
+ * (box art, a game's cover and video, System Update, achievements,
+ * PortMaster): Wi-Fi joined, or a default route out on another link, a
+ * phone's USB tethering among them (phonelink_way_out; the Pixel 9 Pro XL's,
+ * 2026-11-13). Never the USB cable's link to a computer, which leads nowhere.
+ * *metered: the way out is the phone's, so its mobile data, likely: nothing
+ * large starts by itself over it. Read again at most twice a second, as the
+ * menus ask every frame (menu_wifi's cache keeps Wi-Fi's cheap). */
+static bool net_internet(bool *metered)
+{
+	static unsigned at;
+	static bool out, meter;
+	unsigned now = plat_now_ms();
+
+	if (!at || now - at >= 500u) {
+		char route[4096];     /* about 30 routes; a line is 128 bytes */
+		FILE *f = fopen("/proc/net/route", "r");
+		size_t n = f ? fread(route, 1, sizeof route - 1, f) : 0;
+
+		if (f) fclose(f);
+		route[n] = '\0';
+		out = phonelink_way_out(menu_wifi(NULL, 0) == WIFI_CONNECTED, route, &meter);
+		at = now ? now : 1;
+	}
+	if (metered) *metered = out && meter;
+	return out;
+}
+
+/* USB File Transfer has a link without Wi-Fi: the cable to a computer, or a
+ * phone's tethering that has its address (only looked at: phone_link_due
+ * set it up). MENU's build and the lists that name its rows ask the same. */
+static bool xfer_link_up(void)
+{
+	char pip[64];
+
+	return plat_cable_link(NULL, 0) || (plat_phone_link(false, NULL, 0, pip, sizeof pip) && pip[0]);
+}
+
 /* Gather what the device currently is, and hand it to sys_menu_build.
  *
  * The split: this half is allowed to fork wpa_cli and read the app, the other
@@ -6925,12 +6964,14 @@ static void up_first_line(const char *path, char *buf, size_t n)
 	buf[strcspn(buf, "\r\n")] = 0;
 }
 
-/* A network to look with: Wi-Fi, or a test release's source set on the card
- * (docs/updates.md), which may be on the cable */
+/* A network to look with: a way out (net_internet: Wi-Fi, or a phone's
+ * tethering), or a test release's source set on the card (docs/updates.md),
+ * which may be on the cable */
 static bool up_network(void)
 {
-	char ss[WIFI_SSID_MAX], p[512];
-	if (menu_wifi(ss, sizeof ss) == WIFI_CONNECTED) return true;
+	char p[512];
+
+	if (net_internet(NULL)) return true;
 	up_path(p, sizeof p, "source");
 	return access(p, R_OK) == 0;
 }
@@ -6953,6 +6994,13 @@ static const su_view *up_view(bool now)
 	su_status_parse(text, &g_up.st);
 	g_up.running = up_running();
 	g_up.wifi = up_network();
+	/* Over a phone's mobile data a download cut short waits for A
+	 * (su_auto_step) */
+	{
+		bool metered = false;
+
+		g_up.metered = net_internet(&metered) && metered;
+	}
 	snprintf(p, sizeof p, "%s/VERSION", P_ROOT);
 	up_first_line(p, g_up.installed, sizeof g_up.installed);
 	/* Roll Back only to a version the image would not copy straight over
@@ -7201,7 +7249,10 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.games = screen == SCREEN_GAMES;
 	u.no_wifi = !plat_has_wifi();
 	u.no_bt   = !plat_has_bluetooth();
-	u.cable_xfer = plat_cable_link(NULL, 0);
+	/* USB File Transfer over the cable, or over a phone's tethering */
+	u.cable_xfer = xfer_link_up();
+	/* A way out to the internet with no radio: a phone's tethering */
+	u.online = net_internet(NULL);
 	u.no_developer = !dev_offered();
 	u.developer  = dev_row_on();
 	u.hotspot = hotspot_available();     /* two stats, no fork */
@@ -8813,16 +8864,20 @@ static void xs_way_header(app *a, const SDL_Rect *q)
 /* What the way in shows: over the cable the name with http:// first and the
  * address under it; over Wi-Fi the address first and the name under it, as
  * the heading orders them (hare_head) */
-static void xs_way_set(bool cable, const char *name, const char *addr, const char *pin)
+static void xs_way_set(bool cable, bool phone, const char *name, const char *addr, const char *pin)
 {
 	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
-	g_way.title = cable ? XFER_NAME_CABLE : XFER_NAME_WIFI;
+	/* a phone's tethering is the USB cable too, its address the phone's to
+	 * give, so it is shown as Wi-Fi's is: first, the name (if any) under it */
+	g_way.title = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
 	if (name && name[0] && cable) {
 		snprintf(g_way.first, sizeof g_way.first, "http://%s", name);
 		snprintf(g_way.second, sizeof g_way.second, "%s", addr);
 	} else {
 		snprintf(g_way.first, sizeof g_way.first, "%s", addr);
-		snprintf(g_way.second, sizeof g_way.second, "%s", name ? name : "");
+		/* a phone's: where to type it, as no name is shown there */
+		snprintf(g_way.second, sizeof g_way.second, "%s",
+		         name && name[0] ? name : phone ? T(S_XFER_PHONE_WHERE) : "");
 	}
 	snprintf(g_way.pin, sizeof g_way.pin, "%s", pin);
 }
@@ -9574,6 +9629,17 @@ static const char *tiles_hints(const char *b_word)
 
 static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
 
+/* A list's (choice_list_panel): A chooses and B's own answer; Up and Down
+ * move, as in every list, so no hint says so */
+static const char *list_hints(const char *b_word)
+{
+	static char packed[256];
+	key_hint h[2] = { { "A", T(S_KEYHINT_CHOOSE) }, { "B", b_word } };
+
+	keyhints_pack(h, 2, packed, sizeof packed);
+	return packed;
+}
+
 /* The tiles' button hints shown: off while a question that came by itself
  * takes no button yet */
 static bool g_tiles_hints = true;
@@ -9646,6 +9712,99 @@ static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *
 	o->h = o->nn * (o->small ? ls : lm) + 4 + o->ns * ls;
 }
 
+/* What did you plug in? as a list (DESIGN.md 11.36, 2026-11-13: "improve
+ * the what did you plug in screen design"): three rows the panel's width,
+ * as a phone's "Use USB for" is, each its mark at the left (64, in a 96
+ * square), its name in the menu's size and under it, in **meta**, what it
+ * does, on one line (two where a language needs them). The focused row in
+ * **accent**, its words **on-accent**; the others **raised**, the line under
+ * the name **text-dim**. Up and Down move (Left and Right too), so the hints
+ * are A and B alone, as a menu's. Known by its first row, USB Accessory, so
+ * the panel drawn again leaving (its snapshot) is the same list. */
+#define CHOICE_ROW_GAP 12
+#define CHOICE_PAD_Y   14
+#define CHOICE_MARK    64
+static bool tiles_are_list(const menu_row *tiles, int n)
+{
+	return n == 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_HEADPHONES &&
+	       tiles[0].value && tiles[1].value && tiles[2].value;
+}
+
+static void choice_list_panel(app *a, const char *heading, const menu_row *rows, int n, int sel,
+                              const char *legend, mm_pose pose)
+{
+	const ds_theme *thm = theme();
+	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	const int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+	const int pad = TILE_PAD, text_x = 24 + 96 + 16;
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
+	key_hint hints[KEYHINTS_MAX];
+	char hbuf[512], head[2][LB_LINE], sub[3][2][LB_LINE];
+	int nh, nhead, nsub[3], rh[3], i, k, y, inner, total = 0;
+	SDL_Rect panel, rule;
+
+	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
+	panel.w = ZYPEROS_SCREEN_W - 2 * 40;
+	inner = panel.w - 2 * pad;
+	nhead = ui_balance_lines(fh, heading, inner, 2, head);
+	if (nhead < 1) nhead = 1;
+	for (i = 0; i < n; i++) {
+		nsub[i] = ui_balance_lines(fs, rows[i].value, inner - text_x - 24, 2, sub[i]);
+		if (nsub[i] < 0) nsub[i] = 0;
+		rh[i] = CHOICE_PAD_Y + lm + nsub[i] * ls + CHOICE_PAD_Y;
+		if (rh[i] < 100) rh[i] = 100;
+		total += rh[i] + (i ? CHOICE_ROW_GAP : 0);
+	}
+	panel.h = 32 + nhead * lh + 24 + DS_RULE + 32 + total + 24 +
+	          (nh ? keyhints_height(hints, nh, inner) : ls) + 32;
+	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
+	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
+	if (posed) {
+		SDL_FRect fr = panel_scaled(&panel, pose.scale);
+		SDL_Rect q = { (int)(fr.x + 0.5f), (int)(fr.y + 0.5f), (int)(fr.w + 0.5f), (int)(fr.h + 0.5f) };
+
+		ui_lift_k(a->r, &q, CFG_NO_COLOR, UI_LIFT_PANEL, pose.alpha);
+		posed = panel_pass_begin(a);
+	} else {
+		ui_lift(a->r, &panel, CFG_NO_COLOR, UI_LIFT_PANEL);
+	}
+	ui_panel(a->r, &panel, DS_RADIUS_PANEL);
+	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
+	y = panel.y + 32;
+	for (k = 0; k < nhead; k++)
+		ui_text(a->r, fh, head[k], panel.x + panel.w / 2, ui_line_y(UI_F_LABEL, y + k * lh), 0, UI_TEXT_SOFT);
+	rule = (SDL_Rect){ panel.x + pad, y + nhead * lh + 24, inner, DS_RULE };
+	SDL_SetRenderDrawColor(a->r, thm->edge.r, thm->edge.g, thm->edge.b, 255);
+	SDL_RenderFillRect(a->r, &rule);
+	y = rule.y + DS_RULE + 32;
+	for (i = 0; i < n; i++) {
+		SDL_Rect t = { panel.x + pad, y, inner, rh[i] };
+		bool on = i == sel;
+		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
+		SDL_Color dim = on ? ink : UI_TEXT_DIM;
+		const char *label = rows[i].label ? rows[i].label : "";
+		int words = lm + nsub[i] * ls, ty = t.y + (t.h - words) / 2;
+		TTF_Font *fn = ui_text_width(fm, label) <= inner - text_x - 24 ? fm : fs;
+
+		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
+		ui_glyph_draw(a->r, tile_glyph(label), t.x + 24 + 48, t.y + t.h / 2, CHOICE_MARK, ink);
+		ui_text(a->r, fn, label, t.x + text_x, ui_line_y(fn == fm ? UI_F_MENU : UI_F_META, ty), -1,
+		        on ? ink : UI_TEXT);
+		ui_fit_drawn(label);
+		for (k = 0; k < nsub[i]; k++)
+			ui_text(a->r, fs, sub[i][k], t.x + text_x, ui_line_y(UI_F_META, ty + lm + k * ls), -1, dim);
+		ui_fit_drawn(rows[i].value);
+		y += rh[i] + CHOICE_ROW_GAP;
+	}
+	y += 24 - CHOICE_ROW_GAP;
+	if (nh && g_tiles_hints)
+		keyhints_draw(a->r, hints, nh, panel.x + pad, panel.x + panel.w - pad, y + KEYHINTS_ROW / 2,
+		              KEYHINTS_CENTER, false, 255);
+	else if (!nh)
+		ui_text(a->r, fs, legend, panel.x + panel.w / 2, ui_line_y(UI_F_META, y), 0, UI_TEXT_DIM);
+	if (posed) panel_pass_end(a, &panel, pose);
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -9675,6 +9834,10 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		legend = tiles[n].label;
 	}
 	if (n < 1) return;
+	if (tiles_are_list(tiles, n)) {
+		choice_list_panel(a, heading, tiles, n, sel, legend, pose);
+		return;
+	}
 	/* The legend: button hints (keyhints.h), or a line of text as before */
 	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
 	/* The tiles' width, or the title's if that is wider, and where the lines
@@ -10428,28 +10591,32 @@ static void usb_ask(app *a)
  * Computer, so a quick A or B never feeds a computer. USB Accessory asks
  * usbrole for host for this plug (it says yes only while no power comes
  * in); Computer, B or MENU leave the port as it is and say to plug the cable
- * in again, so the computer can take the side that gives power. Phone leaves
- * it as it is too and says what a phone needs: a phone takes the side that
- * waits for power at every plug, so a replug never helps, and powered it
- * stays the device whatever its own USB settings say (2026-11-13), so it
- * connects only through a USB-C to USB-A adapter and a USB-A to USB-C cable
- * (usbpower.h). The question goes by itself when the plug stops wanting
- * power (unplugged, or power came). */
+ * in again, so the computer can take the side that gives power. Phone powers
+ * it as USB Accessory does: a phone takes the side that waits for power at
+ * every plug, so a replug never helps, and powered it is the device on the
+ * handheld's bus whatever its own USB settings say (2026-11-13); its USB
+ * tethering then gives the handheld a network to the phone, and File
+ * Transfer opens there (phonelink.h, usbpower.h). The question goes by itself
+ * when the plug stops wanting power (unplugged, or power came). A list since
+ * 2026-11-13 (choice_list_panel). */
 enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
 
 static int usb_power_rows(menu_row rows[UP_TILES + 1])
 {
 	/* A tile's value is the small line under its name (tiles_panel) */
 	rows[UP_ACCESSORY] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
-	rows[UP_COMPUTER] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
-	rows[UP_PHONE] = (menu_row){ T(S_XFER_TILE_PHONE), NULL, true };
-	rows[UP_TILES] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
+	rows[UP_COMPUTER] = (menu_row){ T(S_XFER_TILE_COMPUTER), T(S_XFER_TILE_COMPUTER_SUB), true };
+	rows[UP_PHONE] = (menu_row){ T(S_XFER_TILE_PHONE), T(S_XFER_TILE_PHONE_SUB), true };
+	rows[UP_TILES] = MENU_NOTE(list_hints(T(S_XFER_TILE_COMPUTER)));
 	return UP_TILES + 1;
 }
 
 static void replug_on(unsigned plug);
 
 static void phone_said_on(unsigned plug);
+/* The plug answered Phone, 0 none: only its tethering is acted on by itself
+ * (phone_link_due) */
+static unsigned g_phone_plug;
 
 static void replug_off(void);
 
@@ -10541,11 +10708,14 @@ static void usb_power_ask(app *a, unsigned plug)
 			looked = now ? now : 1;
 			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = UP_GONE;
 		}
-		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
-			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
+		/* A list: Up and Down, and Left and Right as the tiles were */
+		if (in_repeat(&a->in, IN_UP) || in_repeat(&a->in, IN_DOWN) ||
+		    in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
+			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN
+			            : in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
 
 			moved_sound(a, b);
-			sel = (sel + (b == IN_LEFT ? -1 : 1) + UP_TILES) % UP_TILES;
+			sel = (sel + (b == IN_UP || b == IN_LEFT ? -1 : 1) + UP_TILES) % UP_TILES;
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
@@ -10574,9 +10744,13 @@ static void usb_power_ask(app *a, unsigned plug)
 		plat_usb_power_grant(plug);
 		return;
 	}
-	/* A phone: what it needs, until the cable comes out. Not powered:
-	 * that only charges the phone (USB Device, then USB Accessory, does it) */
+	/* A phone: powered, so it is on the handheld's bus as a device, and
+	 * asked for its USB tethering, until the cable comes out or File
+	 * Transfer opens on its network (phone_link_follow); an iPhone's own
+	 * message once it is seen (power_follow) */
 	if (choice == UP_PHONE) {
+		plat_usb_power_grant(plug);
+		g_phone_plug = plug;
 		phone_said_on(plug);
 		return;
 	}
@@ -10626,6 +10800,47 @@ static void replug_off(void)
 	redraw_now();
 }
 
+/* A phone's USB tethering (phonelink.h), looked at twice a second while
+ * the port powers the plug the player answered Phone for: true once a link,
+ * when it has its address and File Transfer is not on (`xfer_on`), so the
+ * shelf opens it there. The phone message goes then: its words are done.
+ * Only for that plug: a network device on a plug answered USB Accessory, or
+ * powered by Automatic, is never given a lease or a File Transfer by itself
+ * (anything can say it is a USB network). MENU's USB File Transfer opens
+ * on the phone's link again once it has its address. */
+static bool phone_link_due(bool xfer_on)
+{
+	static unsigned looked;
+	static char last[64];
+	static bool acted;                  /* plat_phone_link set it up */
+	unsigned now = plat_now_ms();
+	char ifname[32], ip[64];
+	usb_power p = { 0 };
+
+	if (looked && now - looked < 500u) return false;
+	looked = now ? now : 1;
+	if (!g_phone_plug || !plat_usb_power(&p) || !p.host || p.plug != g_phone_plug) {
+		/* not the phone's plug, or the port no host: none is looked for
+		 * (the scan is for the host's devices); the phone just gone, its
+		 * lease's client goes too (plat_phone_link finds no interface) */
+		if (acted && !p.host) {
+			plat_phone_link(true, NULL, 0, NULL, 0);
+			acted = false;
+		}
+		if (last[0]) phonelink_new(last, NULL, NULL);
+		if (g_phone_plug && p.known && p.plug != g_phone_plug) g_phone_plug = 0;
+		return false;
+	}
+	acted = true;
+	if (!plat_phone_link(true, ifname, sizeof ifname, ip, sizeof ip)) ifname[0] = ip[0] = '\0';
+	if (!phonelink_new(last, ifname, ip) || xfer_on) return false;
+	fprintf(stderr, "usb: the phone shared its network: %s on %s\n", ip, ifname);
+	ulog_note("phone network");
+	if (g_replug.on && (g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE))
+		replug_off();
+	return true;
+}
+
 static void power_follow(void)
 {
 	static unsigned looked;
@@ -10649,6 +10864,14 @@ static void power_follow(void)
 	 * port a host (usbpower_said_ends) */
 	if (g_replug.on && usbpower_said_ends(g_replug.say, g_replug.plug, &p))
 		replug_off();
+	/* Phone's message, the phone powered and on the bus: an iPhone, which
+	 * shares its network only with a computer it trusts, gets its own */
+	if (g_replug.on && g_replug.say == USBPOWER_SAY_PHONE && p.host && plat_usb_iphone()) {
+		fprintf(stderr, "usb: the phone is an iPhone: its message\n");
+		ulog_note("an iPhone");
+		g_replug.say = USBPOWER_SAY_IPHONE;
+		redraw_now();
+	}
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
 	/* The accessory powered when the handheld turned off, there again from
 	 * the start: powered, and never asked about (usbpower_resume) */
@@ -10675,8 +10898,9 @@ static void power_follow(void)
 #define REPLUG_LINES 6
 static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
 {
-	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
-	const char *text = T(phone ? S_XFER_PHONE_SAID : S_XFER_REPLUG_COMPUTER);
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE;
+	const char *text = T(g_replug.say == USBPOWER_SAY_IPHONE ? S_XFER_IPHONE_SAID
+	                     : phone ? S_XFER_PHONE_SAID : S_XFER_REPLUG_COMPUTER);
 	int n;
 
 	*small = false;
@@ -10702,15 +10926,22 @@ static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
  * in **menu** **text** (up to four balanced lines), and under them the cable
  * that always connects in **meta** **text-dim** (up to two), until the plug
  * ends. Phone's message the same, with the phone mark and "Phone", in **menu**
- * up to four lines, else in **meta** up to six, and no cable line: its
- * message names the cable itself. */
+ * up to four lines, else in **meta** up to six, and under it, in place of the
+ * cable line, what a phone with no USB tethering does (up to three). */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
 #define REPLUG_TIP_GAP 8
 static void replug_draw_at(SDL_Renderer *r)
 {
-	bool phone = g_replug.say == USBPOWER_SAY_PHONE;
-	char lines[LB_MAX_LINES][LB_LINE], tip[2][LB_LINE];
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE;
+	/* the smaller line under the words: the cable that always connects a
+	 * computer (up to two lines); for a phone asked to share its network,
+	 * what one with no USB tethering does and that Flash Drive needs an
+	 * adapter, the phone being the device here (up to three); none for an
+	 * iPhone, whose message names the adapter itself */
+	int tip_id = g_replug.say == USBPOWER_SAY_COMPUTER ? S_XFER_REPLUG_TIP
+	           : g_replug.say == USBPOWER_SAY_PHONE ? S_XFER_PHONE_TIP : -1;
+	char lines[LB_MAX_LINES][LB_LINE], tip[3][LB_LINE];
 	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
@@ -10724,9 +10955,9 @@ static void replug_draw_at(SDL_Renderer *r)
 	/* A computer whose USB-C port takes the waiting side at every plug, as a
 	 * phone's does, never connects by plugging in again (Discord,
 	 * 2026-11-13): the cable that always does, under the words */
-	if (!phone) {
-		m = ui_balance_lines(fs, T(S_XFER_REPLUG_TIP), REPLUG_W - tx_off - padx, 2, tip);
-		ui_fit_drawn(T(S_XFER_REPLUG_TIP));
+	if (tip_id >= 0) {
+		m = ui_balance_lines(fs, T(tip_id), REPLUG_W - tx_off - padx, phone ? 3 : 2, tip);
+		ui_fit_drawn(T(tip_id));
 	}
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
 	                   pady + ls + 4 + n * lb + (m ? REPLUG_TIP_GAP + m * ls : 0) + pady };
@@ -10846,6 +11077,10 @@ typedef struct {
 	bool        on;             /* the server is up */
 	bool        shown;          /* its screen is open */
 	bool        cable, hot;
+	/* On a phone's USB tethering (plat_phone_link): the cable's name, the
+	 * address the phone gave, the phone's browser; no SSH, no steps of the
+	 * cable's (the link is the phone's network, as Wi-Fi's is) */
+	bool        phone;
 	bool        hot_failed, ssh_shown;
 	bool        rescan_due;     /* ended behind the shelf with the shelf changed */
 	const char *name;
@@ -11270,15 +11505,20 @@ static void after_start_step(app *a, bool drawn)
  * SSH over the cable. False when it could not, having said why. */
 static bool xs_open(app *a, int way)
 {
-	const bool  cable = way < 0 ? plat_cable_link(NULL, 0) : way == 1;
-	const char *name  = cable ? XFER_NAME_CABLE : XFER_NAME_WIFI;
-	const bool  hot   = !cable && xfer_wants_hotspot();
-	bool        due   = g_xs.rescan_due;
 	char        ip[64], path[512];
+	/* A phone's tethering (way 2, or whichever: the port a host with a
+	 * phone's network on it, which the cable cannot be then) */
+	const bool  phone = way == 2 || (way < 0 && !plat_cable_link(NULL, 0) &&
+	                                 plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]);
+	const bool  cable = !phone && (way < 0 ? plat_cable_link(NULL, 0) : way == 1);
+	const char *name  = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
+	const bool  hot   = !cable && !phone && xfer_wants_hotspot();
+	bool        due   = g_xs.rescan_due;
 
 	memset(&g_xs, 0, sizeof g_xs);
 	g_xs.rescan_due = due;
 	g_xs.cable = cable;
+	g_xs.phone = phone;
 	g_xs.hot = hot;
 	g_xs.name = name;
 	g_xs.hs = HOTSPOT_OFF;
@@ -11297,7 +11537,8 @@ static bool xs_open(app *a, int way)
 	 * a cover uploaded into a shelf's .media is shrunk on every device. */
 	hareart_init(&a->sys, P_ROMS);
 	singles_cover();                /* back, if it was taken off the card */
-	if (cable) {
+	/* the phone's browser has the phone's internet, as a computer's has */
+	if (cable || phone) {
 		hare_set_art(hareart_wanted, hareart_match, hareart_crc, hareart_nointro);
 		hare_set_albums(albums_wanted, album_pick);
 	} else {
@@ -11310,10 +11551,11 @@ static bool xs_open(app *a, int way)
 	hare_set_sgdb(xfer_sgdb);
 	/* Updates through the computer, where the handheld has no internet of
 	 * its own: over the cable (docs/updates.md) */
-	hare_set_update(cable ? xfer_update : NULL);
+	hare_set_update(cable || phone ? xfer_update : NULL);
 	/* The page's name, the one this screen shows: USB File Transfer over
-	 * the cable, Wi-Fi File Transfer over Wi-Fi and the hotspot */
-	hare_set_cable(cable);
+	 * the cable and a phone's tethering, Wi-Fi File Transfer over Wi-Fi and
+	 * the hotspot */
+	hare_set_cable(cable || phone);
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	g_xfer_sys_ok = cfg_load_systems(path, &g_xfer_sys);
 	/* The folders the shelves read, EmulationStation's where they chose one */
@@ -11444,12 +11686,17 @@ static void xs_tick(app *a)
 		else snprintf(g_xs.addr, sizeof g_xs.addr, "%s:%d", hotspot_addr(), hare_port());
 	} else if (!g_xs.addr[0] || now - g_xs.addr_at > 2000u) {
 		bool up = g_xs.cable ? plat_cable_link(ip, sizeof ip)
+		        : g_xs.phone ? plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]
 		        : wifi_status(ssid, sizeof ssid, ip, sizeof ip) == WIFI_CONNECTED && ip[0];
 
 		g_xs.addr_at = now;
+		/* On a phone's tethering, joined while the phone gives an address;
+		 * no name there (a phone's browser does not look names up by mDNS),
+		 * the address shown alone (xs_way_set) */
+		if (g_xs.phone) g_xs.joined = up;
 		/* Over Wi-Fi the name follows the network: on it (a new address
 		 * starts it again there), or off with it */
-		if (!g_xs.cable) {
+		else if (!g_xs.cable) {
 			g_xs.joined = up;
 			if (up) mdns_start("wlan0", ip, true);
 			else mdns_stop();
@@ -11463,7 +11710,7 @@ static void xs_tick(app *a)
 			g_xs.link_lost_at = 0;
 		} else {
 			snprintf(g_xs.addr, sizeof g_xs.addr, "%s",
-			         g_xs.cable ? T(S_XFER_CABLE_UNPLUGGED) : T(S_XFER_WIFI_GONE));
+			         g_xs.cable || g_xs.phone ? T(S_XFER_CABLE_UNPLUGGED) : T(S_XFER_WIFI_GONE));
 			if (!g_xs.link_lost_at) g_xs.link_lost_at = now ? now : 1;
 		}
 	}
@@ -11720,7 +11967,7 @@ static bool xs_shelf_due(void)
 	return false;
 }
 
-static bool xs_row_cable(void) { return g_xs.cable; }
+static bool xs_row_cable(void) { return g_xs.cable || g_xs.phone; }
 
 /* The corner's mark: on behind the shelf, and the ring as far as the
  * upload on its way (status.h). Not while its own screen is up. */
@@ -11972,6 +12219,9 @@ static bool xs_before_game(app *a)
 static bool xs_steps_shown(void)
 {
 	if (g_xs.hot || !g_xs.steps.started || g_xs.steps.step == LS_DONE || xs_moving()) return false;
+	/* A phone's tethering opens File Transfer only once it has an address,
+	 * so no step before the browser is the player's to fix: none shown */
+	if (g_xs.phone) return false;
 	return g_xs.cable ? g_xs.sensed : true;
 }
 
@@ -12090,8 +12340,8 @@ static void xfer_screen_way(app *a, int way)
 				nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps, h,
 				                     g_xs.cable, XS_LEGEND);
 			else {
-				xs_way_set(g_xs.cable, name, g_xs.addr, g_xs.pin);
-				nrows = xs_way_rows(rows, &g_xs.steps, g_xs.cable, XS_LEGEND);
+				xs_way_set(g_xs.cable, g_xs.phone, name, g_xs.addr, g_xs.pin);
+				nrows = xs_way_rows(rows, &g_xs.steps, g_xs.cable || g_xs.phone, XS_LEGEND);
 				/* Over a cable the device can read, the loading bar until
 				 * the computer has its address and the bar its end */
 				if (g_xs.cable && g_xs.sensed
@@ -12729,7 +12979,7 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 	(void)max;
 	/* What can change under the screen: a link, a key the page sent */
 	sgdb_try_poll();
-	c->u.net = menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	c->u.net = net_internet(NULL);
 	c->u.ss_have = ss_have_dev();
 	c->u.ss_in = ss_signed_in();
 	snprintf(c->ss_name, sizeof c->ss_name, "%s", ss_user());
@@ -13147,7 +13397,7 @@ static int info_build(void *ctx, menu_row *rows, int max, const char **heading)
 	 * forks wpa_cli out of a 119 MB process; this screen was doing it about
 	 * 125 times a second for a row that says "needs Wi-Fi". The system menu
 	 * was measured at 12 fps for the same mistake. */
-	n = gi_rows(rows, &c->gi, menu_wifi(NULL, 0) == WIFI_CONNECTED);
+	n = gi_rows(rows, &c->gi, net_internet(NULL));
 	return n > max ? max : n;
 }
 
@@ -14361,7 +14611,7 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
  * of it (no Box Art without a radio, Game Language only on the DS). */
 static int sm_pos(const app *a, int sys, sm_row which)
 {
-	sys_ui dev = { .no_wifi = !plat_has_wifi(),
+	sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 	               .dslang = dslang_row_shown(a, sys) ? "" : NULL };
 	sm_row ids[SM_ROWS];
 	int n = sys_menu_system_rows(&dev, ids), k;
@@ -14433,7 +14683,7 @@ static int menu_shelf_width(app *a)
 		if (muse) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int nn = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                            !plat_has_wifi(), ids);
+			                            !plat_has_wifi() && !net_internet(NULL), ids);
 
 			for (k = 0; k < nn; k++) {
 				if (ids[k] == SMM_SORT) srow = k;
@@ -17079,11 +17329,12 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 	if (!v) return;
 	media_open(v, a, owner, g);
-	/* Wi-Fi connected, not merely an interface up: on a Pixel 2 with no
-	 * adapter the USB cable's network is up and leads nowhere, and a page
-	 * that asked anyway said "Nothing found." (2026-11-09, from Tarik's
-	 * Pixel 2). mf_unreachable catches what this misses. */
-	v->net = net_online() && menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	/* A way out (net_internet: Wi-Fi, or a phone's tethering), not merely an
+	 * interface up: on a Pixel 2 with no adapter the USB cable's network is
+	 * up and leads nowhere, and a page that asked anyway said "Nothing
+	 * found." (2026-11-09, from Tarik's Pixel 2). mf_unreachable catches
+	 * what this misses. */
+	v->net = net_online() && net_internet(NULL);
 	/* The one async slot, which an account answer may still hold */
 	if (v->net) sync_abandon();
 	mf_begin(v->folder, v->file, v->stem, v->exts, P_ROMS, v->net);
@@ -18059,7 +18310,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if (is_muse(&a->sys.systems[a->sys_cursor])) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int n = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                           !plat_has_wifi(), ids);
+			                           !plat_has_wifi() && !net_internet(NULL), ids);
 			sm_muse_row id = sel >= 0 && sel < n ? ids[sel] : SMM_COUNT;
 
 			if (id == SMM_SORT) {
@@ -18108,7 +18359,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * moves Rescan Folder up one: which row is which comes from the same
 		 * list the build used. */
 		else if (!is_muse(&a->sys.systems[a->sys_cursor])) {
-			sys_ui dev = { .no_wifi = !plat_has_wifi(),
+			sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL };
 			sm_row ids[SM_ROWS];
 			int n = sys_menu_system_rows(&dev, ids);
@@ -18230,7 +18481,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * fewer of them, and the same list the build used says which is which. */
 	{
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
-		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
@@ -18484,7 +18735,7 @@ static void zyperos_menu_for(app *a, int screen)
 
 	if (st.tabs) {
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
-		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
@@ -22711,26 +22962,12 @@ static bool pm_locked(void)
 }
 
 /* A way out to the internet: Wi-Fi, or a default route on another link
- * (QEMU's network, a wired adapter). A computer on the USB cable gives no
- * route out, so File Transfer's link is not one. */
+ * (a phone's tethering, QEMU's network, a wired adapter): net_internet. A
+ * computer on the USB cable gives no route out, so File Transfer's link is
+ * not one. */
 static bool pm_network(void)
 {
-	char line[256];
-	bool route = false;
-	FILE *f;
-
-	if (menu_wifi(NULL, 0) == WIFI_CONNECTED) return true;
-	if (!(f = fopen("/proc/net/route", "r"))) return false;
-	while (!route && fgets(line, sizeof line, f)) {
-		char ifc[32];
-		unsigned long dest, gw, flags;
-
-		if (sscanf(line, "%31s %lx %lx %lx", ifc, &dest, &gw, &flags) == 4 &&
-		    dest == 0 && (flags & 1ul) && strcmp(ifc, "lo"))
-			route = true;
-	}
-	fclose(f);
-	return route;
+	return net_internet(NULL);
 }
 
 static pm_view g_pm;
@@ -24052,9 +24289,10 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
-/* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
+/* --usb-power [N]: What did you plug in?, row N focused (1, Computer,
  * where it starts; 2, Phone); --usb-power said: the message after
- * Computer; --usb-power phone: the message after Phone */
+ * Computer; --usb-power phone: the message after Phone; --usb-power
+ * iphone: an iPhone's */
 static int shot_power = -1;
 static int shot_usbdrive = -1;   /* --usb-drive N */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
@@ -25017,7 +25255,8 @@ static void shot_compose(app *a)
 			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
 		} else {
 			/* The answer's message over the shelf, as the overlay draws it */
-			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER : USBPOWER_SAY_PHONE;
+			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER
+			             : shot_power == UP_TILES + 1 ? USBPOWER_SAY_PHONE : USBPOWER_SAY_IPHONE;
 			replug_draw_at(a->r);
 		}
 	}
@@ -25086,8 +25325,9 @@ static void shot_compose(app *a)
 			/* the page open in a browser, its PIN not in yet */
 			{ "pin",        LS_DONE,    0, LH_NONE },
 		};
-		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
-		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
+		const bool phone = !strcmp(shot_steps_way, "phone");
+		const bool cable = strcmp(shot_steps_way, "wifi") != 0 && !phone;
+		const char *addr = cable ? "10.42.0.1" : phone ? "192.168.42.37" : "192.168.1.42";
 		link_steps st = { 0 };
 		menu_row rows[STEP_ROWS];
 		char head[192], hint[320], lines[3][LB_LINE];
@@ -25101,7 +25341,7 @@ static void shot_compose(app *a)
 				h = ST[k].hint;
 			}
 		/* Off Wi-Fi the heading says so, with no name, as the screen does */
-		const char *name = shot_steps_noname ? "" : "zyperos.local";
+		const char *name = shot_steps_noname || phone ? "" : "zyperos.local";
 
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
@@ -25114,8 +25354,8 @@ static void shot_compose(app *a)
 			                 b_legend(S_KEYHINT_CLOSE));
 			menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
 		} else {
-			xs_way_set(cable, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
-			n = xs_way_rows(rows, &st, cable, b_legend(S_KEYHINT_CLOSE));
+			xs_way_set(cable, phone, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
+			n = xs_way_rows(rows, &st, cable || phone, b_legend(S_KEYHINT_CLOSE));
 			/* over the cable, before the address: the loading bar, its
 			 * step waited on for a second and a half */
 			if (cable && st.step < LS_BROWSER)
@@ -27163,6 +27403,7 @@ int main(int argc, char *argv[])
 			g_replug.plug = 1;
 			g_replug.say = USBPOWER_SAY_COMPUTER;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { g_replug.say = USBPOWER_SAY_PHONE; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "iphone")) { g_replug.say = USBPOWER_SAY_IPHONE; i++; }
 		}
 		else if (!strcmp(argv[i], "--usb-menu")) {
 			shot_usb_menu = true;
@@ -27173,6 +27414,7 @@ int main(int argc, char *argv[])
 			shot_power = UP_COMPUTER;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = UP_TILES; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { shot_power = UP_TILES + 1; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "iphone")) { shot_power = UP_TILES + 2; i++; }
 			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '2')
 				shot_power = atoi(argv[++i]);
 		}
@@ -28393,6 +28635,12 @@ int main(int argc, char *argv[])
 			g_power_ask = 0;
 			saver_stop(&a, "something was plugged in");
 			usb_power_ask(&a, plug);
+		}
+		/* A phone's USB tethering with an address: File Transfer opens on
+		 * it, once a link (phonelink.h) */
+		if (phone_link_due(g_xs.on)) {
+			saver_stop(&a, "a phone shared its network");
+			xfer_screen_way(&a, 2);
 		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }

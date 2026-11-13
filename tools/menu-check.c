@@ -1227,6 +1227,35 @@ static void radio_less(void)
 	ck(i < k && rows[i].live && !rows[i].value, "live, and not asking for Wi-Fi");
 	ck(!has_label(rows, n, "Wi-Fi File Transfer"), "never under its Wi-Fi name");
 
+	/* The Pixel 2 with a phone's USB tethering on its port: no radio, but a
+	 * way out to the internet (2026-11-13), so what fetches comes back */
+	u.online = true;
+	n = sys_menu_build(&u, rows, &b, &heading);
+	k = sys_menu_zyperos_rows(&u, pm);
+	printf("ZyperOS menu, no radio, a phone's tethering:\n");
+	ck(n == k && n == PM_ROWS - 2, "two rows fewer: Wi-Fi and Bluetooth");
+	ck(has_label(rows, n, "Achievements") && has_label(rows, n, "USB File Transfer"),
+	   "Achievements is back, beside USB File Transfer");
+	ck(!has_label(rows, n, "Wi-Fi") && !has_label(rows, n, "Wi-Fi File Transfer"),
+	   "and the Wi-Fi rows stay away");
+	for (i = 0; i < k && pm[i] != PM_ACHIEVEMENTS; i++) { }
+	ck(i < k && !strcmp(rows[i].label, "Achievements") && rows[i].live,
+	   "Achievements live, where the list says it is");
+	u.online = false;
+
+	memset(&u, 0, sizeof u);
+	u.games = true;
+	u.no_wifi = true;
+	u.online = true;
+	u.sys_name = "NES"; u.sys_core = "nestopia";
+	u.game_count = 3; u.dmode = "Native";
+	n = sys_menu_build(&u, rows, &b, &heading);
+	k = sys_menu_system_rows(&u, sm);
+	printf("system menu, no radio, a phone's tethering:\n");
+	for (i = 0; i < k && sm[i] != SM_BOXART; i++) { }
+	ck(n == k && i < k && !strcmp(rows[i].label, "Box Art") && rows[i].live && !rows[i].value,
+	   "Box Art stays, live and not asking for Wi-Fi");
+
 	memset(&u, 0, sizeof u);
 	u.games = true;
 	u.no_wifi = true;

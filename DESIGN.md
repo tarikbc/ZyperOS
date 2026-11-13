@@ -2884,15 +2884,21 @@ The question the shelf asks when something on the Pixel 2's USB port wants
 power and gives none (plastron's usbrole, src/usbpower.h), 2026-11-10: a
 USB accessory (headphones, a Wi-Fi adapter, a keyboard), a computer
 whose port took the sink side, or a phone, which the handheld cannot tell
-apart without powering it. The tiles of Computer Connected (11.18), three
-of them (272 each, 232 tall, all taller together when a name or its small
-line needs it): heading **What did you plug in?**; **USB Accessory**, its mark
-headphones, its name on one line (the smaller size, then two lines, where
-it does not fit) and under it in **meta** (**text-dim**, **on-accent** when
-focused) "headphones, Wi-Fi, keyboard", up to three lines; **Computer**,
-its mark a laptop; and **Phone**, its mark a phone (2026-11-13). It starts
-on Computer, so a quick A or B never powers a computer; the button hints
-(11.4) "< > Move   A Choose   B Computer". Asked once per plug, two seconds after usbrole says it may be,
+apart without powering it. A list since 2026-11-13 (Tarik: "improve the
+what did you plug in screen design"; three tiles 272 wide left USB
+Accessory's examples three lines and the other two none): heading **What
+did you plug in?** over its rule, then three rows the panel's width (the
+screen's insets), as a phone's "Use USB for" is, each **raised**
+(**accent** when focused) with **radius.card**, 100 tall at least: its mark
+(64) centered in a 96 square at the left in **text-soft** (**on-accent**
+focused), and beside it its name in **menu** **text** over what it does in
+**meta** **text-dim** (both **on-accent** focused), one line, two where a
+language needs them: **USB Accessory**, headphones, "headphones, Wi-Fi,
+keyboard"; **Computer**, a laptop, "files, or the card as a flash drive";
+**Phone**, a phone, "files in the phone's browser". Up and Down move (Left
+and Right too, as the tiles did), so the button hints (11.4) are "A Choose
+B Computer", as a menu's. It starts on Computer, so a quick A or B never
+powers a computer. Host shot: `--usb-power [0|1|2]`. Asked once per plug, two seconds after usbrole says it may be,
 over the lit shelf, never over a game (a plug made in a game is asked about
 back on the shelf); it goes by itself when the plug stops wanting power.
 Every plug is its own: nothing carries over from the plug before, however
@@ -2913,22 +2919,64 @@ port prefers it, where a computer's takes either at random (Tarik, an iPhone
 and an Android phone, 2026-11-13: Computer, then the replug message, again
 and again, for good). The handheld has no Type-C controller and no USB Power
 Delivery, so it cannot ask the phone to swap, and on a USB-C to USB-C cable
-a phone is always the device. Android's own swap did not help either: the
-first Phone powered the phone so that "USB controlled by: This device" could
-be chosen, and on the device (an AYN Thor, 2026-11-13) the phone stayed the
-device, leaving the bus only to change its USB mode, and the port never saw
-it change sides. So Phone gives no power (that only charges the phone; USB
-Device, then USB Accessory, does it) and puts up the phone message, the
-replug message's slab with the phone mark under **Phone**, plainly: "A phone
-can't open the handheld's files on a USB-C to USB-C cable. Connect it with a
-USB-C to USB-A adapter on the phone and a USB-A to USB-C cable." The adapter
-says "wants power" to the phone, which then gives it and is the host, and
-the A-to-C cable says "gives power" to the handheld, which takes it and gets
-Computer Connected (11.18), Flash Drive and all. The message goes as
-Computer's does: the cable out, another plug, power in, or the port a host
-(usbpower_said_ends). In **menu** up to four balanced lines, else in **meta**
-up to six. Never on Automatic, which powers a phone as any plug and asks
-nothing.
+a phone is always the device; Android's "USB controlled by: This device" did
+not swap either (an AYN Thor, 2026-11-13). But powered, a phone is on the
+handheld's bus as a USB device (the iPhone, 05ac:12a8 "iPhone"; the Thor,
+18d1:4e11), so the handheld is its host, and a phone's **USB tethering**
+makes it a USB network device that shares its network over the cable
+(src/phonelink.h). So Phone powers it as USB Accessory does and puts up the
+phone message, the replug message's slab with the phone mark under
+**Phone**: "On the phone, turn on USB tethering (Settings, Hotspot and
+tethering). USB File Transfer then opens here.", and under it, where
+Computer's cable line goes and up to three lines, "No USB tethering? Use
+Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for Flash
+Drive." Some Android devices have no USB tethering at all (the Thor offers
+it neither in Settings nor in its USB notification, 2026-11-13), and Flash
+Drive needs the adapter on any phone (the phone is the device here, never
+the computer that opens a drive). Its driver (rndis_host for Android's
+RNDIS, cdc_ncm or cdc_ether for NCM and ECM; plastron's modules) is loaded by usbrole by the phone's alias;
+the launcher renames its interface `phone0` while it is down (the kernel
+named it `usb0` when that was free, and USB File Transfer's gadget needs
+that name), brings it up and asks the phone for a lease with udhcpc, as
+Wi-Fi does (its default route through the phone too: the clock syncs). With
+an address, **USB File Transfer** opens by itself on the shelf, once a link
+(phonelink_new), its way in the address the phone gave in **title**, "in the
+phone's browser" under it where the cable's shows the name (no mDNS there),
+and the PIN; no steps (the link is there before it opens), no SSH; the
+phone message goes. Only for the plug answered Phone: a USB network on a
+plug powered as USB Accessory or by Automatic gets no lease and no File
+Transfer by itself (anything can say it is one); MENU's row is **USB File
+Transfer** while the phone's link has its address, and opens it again. An **iPhone** shares its network over USB only with
+a computer it trusts (paired, through Apple's usbmuxd; Linux's ipheth answers
+nothing until then), which the handheld cannot be: once the bus shows one
+(Apple's and not "Mac", phonelink_is_iphone), its own message takes Phone's
+place: "An iPhone can't open the handheld's files on a USB-C to USB-C cable.
+Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the iPhone and a
+USB-A to USB-C cable." (no smaller line: it names the adapter). The phone's
+messages stay while the port powers the phone, whose power reading is then
+the port's own, and go with the cable out, another plug, power in while the
+port is no host, or File Transfer opening (usbpower_said_ends). In **menu**
+up to four balanced lines, else in **meta** up to six. Never on Automatic,
+which powers a phone as any plug and asks nothing. Host shots: `--replug
+phone|iphone`, `--hare-steps phone browser`.
+
+**The phone's internet.** The phone's lease gives the handheld a default
+route through the phone (udhcpc's default script; the Pixel 9 Pro XL's,
+2026-11-13: 10.44.47.242/24, default via 10.44.47.248 dev phone0), so a
+phone's tethering is a way out to the internet as Wi-Fi is. One rule says so
+for every fetch, net_internet (phonelink_way_out): Wi-Fi joined, or a
+default route on a link other than lo; never the USB cable to a computer,
+which gives the handheld no route (it leads nowhere, 2026-11-09). It gates
+MENU > Scraper, a game's Cover and Video, Box Art, Album Art, Achievements,
+System Update and PortMaster's install, and with no radio Achievements, Box
+Art and Album Art come back while it holds (sys_ui.online). The phone may be
+on mobile data: when the route out with the lowest metric is phone0's
+(metered), nothing large starts by itself. System Update still looks, as
+that is small, but a download cut short waits for A (su_auto_step). Closing
+USB File Transfer (B) leaves the link, its lease and its route (xfer_stop
+never touches phone0), and File Transfer does not open again for the same
+link (phonelink_new). The rows keep "needs Wi-Fi": with no radio and no
+tethering they are not there at all.
 
 **Asking again.** While a plug waits for an answer (put off, made in a
 game, Computer by mistake), the corner shows the USB plug mark (11.12) and
@@ -2978,7 +3026,7 @@ it shorter after 5 seconds (11.35), under its "waiting" row, in the
 hint's three lines: "Unplug the cable and plug it back in, or use a USB-A
 to USB-C cable: it connects every time." The user-facing words never say "power".
 *(My wording after the plug test, 2026-11-10.)* Host shots: `--usb-power
-[0|1|2|said|phone]`, `--replug [phone]`.
+[0|1|2|said|phone|iphone]`, `--replug [phone|iphone]`.
 
 ### 11.37 Screensaver
 After a while with nothing pressed on the shelf, the video snaps of random

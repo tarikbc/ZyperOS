@@ -7,8 +7,8 @@
  * the loader nothing and a language's pages are only read in once used. */
 #include "i18n_ids.h"
 
-/* en: 21871 bytes */
-static const char blob_en[21871] =
+/* en: 22181 bytes */
+static const char blob_en[22181] =
 	"About ZyperOS\0"
 	"Version\0"
 	"Address\0"
@@ -1242,12 +1242,17 @@ static const char blob_en[21871] =
 	"What did you plug in?\0"
 	"USB Accessory\0"
 	"headphones, Wi-Fi, keyboard\0"
+	"files, or the card as a flash drive\0"
+	"files in the phone's browser\0"
 	"Computer\0"
 	"Phone\0"
 	"Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.\0"
 	"A USB-A to USB-C cable connects every time.\0"
 	"Unplug the cable and plug it back in, or use a USB-A to USB-C cable: it connects every time.\0"
-	"A phone can't open the handheld's files on a USB-C to USB-C cable. Connect it with a USB-C to USB-A adapter on the phone and a USB-A to USB-C cable.\0"
+	"On the phone, turn on USB tethering (Settings, Hotspot and tethering). USB File Transfer then opens here.\0"
+	"No USB tethering? Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for Flash Drive.\0"
+	"An iPhone can't open the handheld's files on a USB-C to USB-C cable. Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable.\0"
+	"in the phone's browser\0"
 	"Developer (SSH)\0"
 	"Developer link on. Unplug to end it.\0"
 	"Starting the hotspot...\0"
@@ -1429,17 +1434,18 @@ static const uint32_t off_en[S_COUNT] = {
 	19769, 19778, 19785, 19791, 19796, 19810, 19857, 19919, 19930, 19937,
 	19947, 19967, 19987, 20009, 20023, 20039, 20063, 20070, 20075, 20080,
 	20095, 20106, 20116, 20122, 20144, 20162, 20174, 20193, 20205, 20219,
-	20235, 20257, 20271, 20299, 20308, 20314, 20407, 20451, 20544, 20693,
-	20709, 20746, 20770, 20797, 20826, 20842, 20851, 20859, 20872, 20885,
-	20894, 20906, 20910, 20927, 20951, 20967, 20983, 20989, 20997, 21005,
-	21011, 21021, 21078, 21139, 21210, 21294, 21297, 21307, 21315, 21323,
-	21346, 21359, 21376, 21387, 21402, 21413, 21449, 21470, 21506, 21517,
-	21551, 21560, 21568, 21610, 21631, 21673, 21689, 21705, 21727, 21762,
-	21783, 21806, 21818, 21831, 21845, 21859,
+	20235, 20257, 20271, 20299, 20335, 20364, 20373, 20379, 20472, 20516,
+	20609, 20715, 20816, 20980, 21003, 21019, 21056, 21080, 21107, 21136,
+	21152, 21161, 21169, 21182, 21195, 21204, 21216, 21220, 21237, 21261,
+	21277, 21293, 21299, 21307, 21315, 21321, 21331, 21388, 21449, 21520,
+	21604, 21607, 21617, 21625, 21633, 21656, 21669, 21686, 21697, 21712,
+	21723, 21759, 21780, 21816, 21827, 21861, 21870, 21878, 21920, 21941,
+	21983, 21999, 22015, 22037, 22072, 22093, 22116, 22128, 22141, 22155,
+	22169,
 };
 
-/* zh-Hans: 23644 bytes */
-static const char blob_zh_hans[23644] =
+/* zh-Hans: 24015 bytes */
+static const char blob_zh_hans[24015] =
 	"关于 ZyperOS\0"
 	"版本\0"
 	"地址\0"
@@ -2673,12 +2679,17 @@ static const char blob_zh_hans[23644] =
 	"你插入了什么？\0"
 	"USB 配件\0"
 	"耳机、Wi-Fi、键盘\0"
+	"传文件，或把存储卡当 U 盘\0"
+	"在手机网页中传文件\0"
 	"电脑\0"
 	"手机\0"
 	"电脑没有连接。可能要试几次：请拔出数据线，再重新插入。\0"
 	"用 USB-A 转 USB-C 数据线每次都能连上。\0"
 	"请重新插入数据线，或改用 USB-A 转 USB-C 数据线：每次都能连上。\0"
-	"用 USB-C 对 USB-C 数据线，手机无法打开掌机的文件。请在手机上接 USB-C 转 USB-A 转接头，再用 USB-A 转 USB-C 数据线连接。\0"
+	"请在手机上打开“USB 网络共享”（设置 > 热点和网络共享）。之后 USB 文件传输会在这里打开。\0"
+	"没有 USB 网络共享？请使用 Wi-Fi 文件传输，或在手机上接 USB-C 转 USB-A 转接头用作 U 盘。\0"
+	"用 USB-C 对 USB-C 数据线，iPhone 无法打开掌机的文件。请使用 Wi-Fi 文件传输，或在 iPhone 上接 USB-C 转 USB-A 转接头，再用 USB-A 转 USB-C 数据线连接。\0"
+	"在手机上用网页打开\0"
 	"开发者（SSH）\0"
 	"开发者连接已开启。拔出数据线即可结束。\0"
 	"正在开启热点…\0"
@@ -2860,17 +2871,18 @@ static const uint32_t off_zh_hans[S_COUNT] = {
 	21462, 21469, 21476, 21483, 21490, 21509, 21549, 21608, 21628, 21635,
 	21648, 21664, 21686, 21705, 21721, 21737, 21756, 21760, 21767, 21771,
 	21786, 21801, 21813, 21823, 21846, 21862, 21878, 21894, 21905, 21919,
-	21939, 21961, 21972, 21996, 22003, 22010, 22092, 22143, 22230, 22387,
-	22406, 22464, 22486, 22505, 22527, 22540, 22550, 22560, 22577, 22594,
-	22604, 22611, 22618, 22638, 22663, 22682, 22698, 22708, 22715, 22725,
-	22731, 22741, 22808, 22868, 22941, 23035, 23042, 23055, 23068, 23081,
-	23100, 23116, 23135, 23151, 23170, 23184, 23215, 23241, 23269, 23283,
-	23317, 23327, 23341, 23384, 23410, 23444, 23461, 23480, 23502, 23536,
-	23555, 23577, 23593, 23612, 23625, 23638,
+	21939, 21961, 21972, 21996, 22033, 22061, 22068, 22075, 22157, 22208,
+	22295, 22422, 22539, 22730, 22758, 22777, 22835, 22857, 22876, 22898,
+	22911, 22921, 22931, 22948, 22965, 22975, 22982, 22989, 23009, 23034,
+	23053, 23069, 23079, 23086, 23096, 23102, 23112, 23179, 23239, 23312,
+	23406, 23413, 23426, 23439, 23452, 23471, 23487, 23506, 23522, 23541,
+	23555, 23586, 23612, 23640, 23654, 23688, 23698, 23712, 23755, 23781,
+	23815, 23832, 23851, 23873, 23907, 23926, 23948, 23964, 23983, 23996,
+	24009,
 };
 
-/* es: 25829 bytes */
-static const char blob_es[25829] =
+/* es: 26188 bytes */
+static const char blob_es[26188] =
 	"Acerca de ZyperOS\0"
 	"Versión\0"
 	"Dirección\0"
@@ -4104,12 +4116,17 @@ static const char blob_es[25829] =
 	"¿Qué conectaste?\0"
 	"Accesorio USB\0"
 	"audífonos, Wi-Fi, teclado\0"
+	"archivos, o la tarjeta como memoria USB\0"
+	"archivos en el navegador del celular\0"
 	"Computadora\0"
 	"Celular\0"
 	"La computadora no se conectó. Puede tomar unos intentos: desconecta el cable y reconéctalo.\0"
 	"Con un cable USB-A a USB-C se conecta siempre.\0"
 	"Vuelve a conectar el cable, o usa un cable USB-A a USB-C: se conecta siempre.\0"
-	"Un celular no puede abrir los archivos de la consola con un cable USB-C a USB-C. Conéctalo con un adaptador USB-C a USB-A en el celular y un cable USB-A a USB-C.\0"
+	"En el celular, activa la conexión USB compartida (Ajustes, Hotspot y conexión compartida). Después se abre aquí Transferir USB.\0"
+	"¿Sin conexión USB compartida? Usa Transferir Wi-Fi, o un adaptador USB-C a USB-A en el celular para Memoria USB.\0"
+	"Un iPhone no puede abrir los archivos de la consola con un cable USB-C a USB-C. Usa Transferir Wi-Fi, o un adaptador USB-C a USB-A en el iPhone y un cable USB-A a USB-C.\0"
+	"en el navegador del celular\0"
 	"Desarrollador (SSH)\0"
 	"Enlace de desarrollador activo. Desconecta el cable para terminarlo.\0"
 	"Iniciando el hotspot...\0"
@@ -4291,17 +4308,18 @@ static const uint32_t off_es[S_COUNT] = {
 	23379, 23388, 23395, 23404, 23413, 23440, 23495, 23553, 23567, 23575,
 	23596, 23618, 23640, 23668, 23682, 23697, 23722, 23729, 23735, 23742,
 	23757, 23771, 23784, 23793, 23827, 23851, 23863, 23885, 23897, 23917,
-	23937, 23956, 23970, 23997, 24009, 24017, 24111, 24158, 24236, 24399,
-	24419, 24488, 24512, 24542, 24573, 24592, 24604, 24614, 24627, 24641,
-	24654, 24664, 24670, 24695, 24730, 24749, 24769, 24775, 24786, 24796,
-	24802, 24815, 24889, 24954, 25047, 25137, 25146, 25157, 25166, 25175,
-	25213, 25227, 25249, 25261, 25281, 25302, 25340, 25364, 25404, 25419,
-	25457, 25468, 25477, 25518, 25542, 25589, 25606, 25623, 25648, 25699,
-	25721, 25744, 25758, 25775, 25796, 25817,
+	23937, 23956, 23970, 23997, 24037, 24074, 24086, 24094, 24188, 24235,
+	24313, 24445, 24560, 24730, 24758, 24778, 24847, 24871, 24901, 24932,
+	24951, 24963, 24973, 24986, 25000, 25013, 25023, 25029, 25054, 25089,
+	25108, 25128, 25134, 25145, 25155, 25161, 25174, 25248, 25313, 25406,
+	25496, 25505, 25516, 25525, 25534, 25572, 25586, 25608, 25620, 25640,
+	25661, 25699, 25723, 25763, 25778, 25816, 25827, 25836, 25877, 25901,
+	25948, 25965, 25982, 26007, 26058, 26080, 26103, 26117, 26134, 26155,
+	26176,
 };
 
-/* pt-BR: 25004 bytes */
-static const char blob_pt_br[25004] =
+/* pt-BR: 25339 bytes */
+static const char blob_pt_br[25339] =
 	"Sobre o ZyperOS\0"
 	"Versão\0"
 	"Endereço\0"
@@ -5535,12 +5553,17 @@ static const char blob_pt_br[25004] =
 	"O que você conectou?\0"
 	"Acessório USB\0"
 	"fone, Wi-Fi, teclado\0"
+	"arquivos, ou o cartão como pen drive\0"
+	"arquivos no navegador do celular\0"
 	"Computador\0"
 	"Celular\0"
 	"O computador não conectou. Pode levar umas tentativas: tire o cabo e conecte de novo.\0"
 	"Com um cabo USB-A para USB-C, conecta sempre.\0"
 	"Conecte o cabo de novo, ou use um cabo USB-A para USB-C: ele conecta sempre.\0"
-	"Um celular não abre os arquivos do console com um cabo USB-C para USB-C. Conecte com um adaptador USB-C para USB-A no celular e um cabo USB-A para USB-C.\0"
+	"No celular, ative o tethering USB (Configurações, Ponto de acesso e tethering). Em seguida, o Transferir USB abre aqui.\0"
+	"Sem tethering USB? Use o Transferir Wi-Fi, ou um adaptador USB-C para USB-A no celular para o Pen drive.\0"
+	"Um iPhone não abre os arquivos do console com um cabo USB-C para USB-C. Use o Transferir Wi-Fi, ou um adaptador USB-C para USB-A no iPhone e um cabo USB-A para USB-C.\0"
+	"no navegador do celular\0"
 	"Desenvolvedor (SSH)\0"
 	"Conexão de desenvolvedor ligada. Desconecte o cabo para encerrar.\0"
 	"Ligando o hotspot...\0"
@@ -5722,17 +5745,18 @@ static const uint32_t off_pt_br[S_COUNT] = {
 	22615, 22624, 22631, 22638, 22645, 22665, 22720, 22782, 22795, 22804,
 	22828, 22859, 22878, 22897, 22911, 22926, 22959, 22965, 22969, 22975,
 	22990, 23001, 23013, 23019, 23051, 23075, 23087, 23108, 23121, 23141,
-	23161, 23183, 23198, 23219, 23230, 23238, 23325, 23371, 23448, 23603,
-	23623, 23690, 23711, 23736, 23772, 23799, 23811, 23822, 23835, 23849,
-	23861, 23872, 23878, 23897, 23924, 23942, 23955, 23960, 23970, 23980,
-	23986, 23999, 24069, 24134, 24221, 24311, 24319, 24329, 24338, 24347,
-	24384, 24397, 24418, 24430, 24450, 24473, 24513, 24538, 24575, 24590,
-	24623, 24633, 24644, 24689, 24714, 24760, 24777, 24794, 24818, 24872,
-	24889, 24913, 24927, 24943, 24965, 24994,
+	23161, 23183, 23198, 23219, 23257, 23290, 23301, 23309, 23396, 23442,
+	23519, 23641, 23746, 23914, 23938, 23958, 24025, 24046, 24071, 24107,
+	24134, 24146, 24157, 24170, 24184, 24196, 24207, 24213, 24232, 24259,
+	24277, 24290, 24295, 24305, 24315, 24321, 24334, 24404, 24469, 24556,
+	24646, 24654, 24664, 24673, 24682, 24719, 24732, 24753, 24765, 24785,
+	24808, 24848, 24873, 24910, 24925, 24958, 24968, 24979, 25024, 25049,
+	25095, 25112, 25129, 25153, 25207, 25224, 25248, 25262, 25278, 25300,
+	25329,
 };
 
-/* fr: 26627 bytes */
-static const char blob_fr[26627] =
+/* fr: 27026 bytes */
+static const char blob_fr[27026] =
 	"À propos de ZyperOS\0"
 	"Version\0"
 	"Adresse\0"
@@ -6966,12 +6990,17 @@ static const char blob_fr[26627] =
 	"Qu'avez-vous branché ?\0"
 	"Accessoire USB\0"
 	"casque, Wi-Fi, clavier\0"
+	"fichiers, ou la carte comme clé USB\0"
+	"fichiers dans le navigateur du téléphone\0"
 	"Ordinateur\0"
 	"Téléphone\0"
 	"L'ordinateur ne s'est pas connecté. Il faut parfois plusieurs essais : rebranchez le câble.\0"
 	"Avec un câble USB-A vers USB-C, ça marche à chaque fois.\0"
 	"Rebranchez le câble, ou prenez un câble USB-A vers USB-C : il marche à chaque fois.\0"
-	"Un téléphone ne peut pas ouvrir les fichiers de la console avec un câble USB-C vers USB-C. Branchez-le avec un adaptateur USB-C vers USB-A sur le téléphone et un câble USB-A vers USB-C.\0"
+	"Sur le téléphone, activez le partage de connexion USB (Paramètres, Point d'accès et partage de connexion). Le Transfert USB s'ouvre ensuite ici.\0"
+	"Pas de partage de connexion USB ? Utilisez le Transfert Wi-Fi, ou un adaptateur USB-C vers USB-A sur le téléphone pour Clé USB.\0"
+	"Un iPhone ne peut pas ouvrir les fichiers de la console avec un câble USB-C vers USB-C. Utilisez le Transfert Wi-Fi, ou un adaptateur USB-C vers USB-A sur l'iPhone et un câble USB-A vers USB-C.\0"
+	"dans le navigateur du téléphone\0"
 	"Développeur (SSH)\0"
 	"Liaison développeur active. Débranchez le câble pour l'arrêter.\0"
 	"Démarrage du point d'accès...\0"
@@ -7153,17 +7182,18 @@ static const uint32_t off_fr[S_COUNT] = {
 	24049, 24060, 24066, 24075, 24082, 24105, 24157, 24217, 24231, 24239,
 	24258, 24282, 24305, 24332, 24345, 24361, 24394, 24399, 24403, 24410,
 	24425, 24442, 24454, 24466, 24499, 24521, 24534, 24555, 24570, 24592,
-	24611, 24636, 24651, 24674, 24685, 24697, 24791, 24851, 24939, 25131,
-	25150, 25218, 25250, 25276, 25319, 25343, 25355, 25366, 25379, 25393,
-	25407, 25427, 25436, 25456, 25484, 25503, 25515, 25522, 25530, 25541,
-	25547, 25559, 25646, 25721, 25821, 25908, 25916, 25927, 25933, 25943,
-	25983, 26000, 26024, 26036, 26055, 26078, 26120, 26147, 26198, 26217,
-	26253, 26264, 26279, 26324, 26348, 26393, 26410, 26423, 26441, 26483,
-	26517, 26548, 26559, 26576, 26598, 26618,
+	24611, 24636, 24651, 24674, 24711, 24754, 24765, 24777, 24871, 24931,
+	25019, 25168, 25300, 25496, 25530, 25549, 25617, 25649, 25675, 25718,
+	25742, 25754, 25765, 25778, 25792, 25806, 25826, 25835, 25855, 25883,
+	25902, 25914, 25921, 25929, 25940, 25946, 25958, 26045, 26120, 26220,
+	26307, 26315, 26326, 26332, 26342, 26382, 26399, 26423, 26435, 26454,
+	26477, 26519, 26546, 26597, 26616, 26652, 26663, 26678, 26723, 26747,
+	26792, 26809, 26822, 26840, 26882, 26916, 26947, 26958, 26975, 26997,
+	27017,
 };
 
-/* de: 25522 bytes */
-static const char blob_de[25522] =
+/* de: 25848 bytes */
+static const char blob_de[25848] =
 	"Über ZyperOS\0"
 	"Version\0"
 	"Adresse\0"
@@ -8397,12 +8427,17 @@ static const char blob_de[25522] =
 	"Was hast du angeschlossen?\0"
 	"USB-Zubehör\0"
 	"Kopfhörer, WLAN, Tastatur\0"
+	"Dateien, oder die Karte als USB-Stick\0"
+	"Dateien im Browser des Handys\0"
 	"Computer\0"
 	"Handy\0"
 	"Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel ab und steck es wieder ein.\0"
 	"Mit einem Kabel von USB-A auf USB-C klappt es jedes Mal.\0"
 	"Steck das Kabel neu ein, oder nimm ein Kabel von USB-A auf USB-C: Das klappt immer.\0"
-	"Ein Handy kann die Dateien der Konsole über ein Kabel von USB-C auf USB-C nicht öffnen. Schließ es mit einem Adapter von USB-C auf USB-A am Handy und einem Kabel von USB-A auf USB-C an.\0"
+	"Schalte am Handy USB-Tethering ein (Einstellungen, Hotspot und Tethering). Danach öffnet sich hier der USB-Transfer.\0"
+	"Kein USB-Tethering? Nimm den WLAN-Transfer, oder für USB-Stick einen Adapter von USB-C auf USB-A am Handy.\0"
+	"Ein iPhone kann die Dateien der Konsole über ein Kabel von USB-C auf USB-C nicht öffnen. Nimm den WLAN-Transfer, oder einen Adapter von USB-C auf USB-A am iPhone und ein Kabel von USB-A auf USB-C.\0"
+	"im Browser des Handys\0"
 	"Entwickler (SSH)\0"
 	"Entwicklerverbindung an. Zum Beenden Kabel abziehen.\0"
 	"Hotspot wird gestartet ...\0"
@@ -8584,17 +8619,18 @@ static const uint32_t off_de[S_COUNT] = {
 	23029, 23038, 23045, 23055, 23064, 23084, 23136, 23202, 23216, 23226,
 	23238, 23270, 23298, 23323, 23337, 23354, 23387, 23393, 23397, 23405,
 	23420, 23437, 23448, 23460, 23491, 23516, 23526, 23545, 23555, 23575,
-	23592, 23619, 23632, 23659, 23668, 23674, 23777, 23834, 23918, 24107,
-	24124, 24177, 24204, 24228, 24266, 24287, 24295, 24302, 24315, 24328,
-	24340, 24352, 24358, 24376, 24404, 24419, 24433, 24439, 24447, 24455,
-	24460, 24469, 24539, 24625, 24709, 24778, 24781, 24791, 24798, 24808,
-	24840, 24852, 24872, 24881, 24898, 24917, 24964, 24988, 25046, 25062,
-	25106, 25116, 25128, 25192, 25218, 25267, 25289, 25309, 25336, 25378,
-	25405, 25430, 25450, 25471, 25489, 25512,
+	23592, 23619, 23632, 23659, 23697, 23727, 23736, 23742, 23845, 23902,
+	23986, 24104, 24212, 24411, 24433, 24450, 24503, 24530, 24554, 24592,
+	24613, 24621, 24628, 24641, 24654, 24666, 24678, 24684, 24702, 24730,
+	24745, 24759, 24765, 24773, 24781, 24786, 24795, 24865, 24951, 25035,
+	25104, 25107, 25117, 25124, 25134, 25166, 25178, 25198, 25207, 25224,
+	25243, 25290, 25314, 25372, 25388, 25432, 25442, 25454, 25518, 25544,
+	25593, 25615, 25635, 25662, 25704, 25731, 25756, 25776, 25797, 25815,
+	25838,
 };
 
-/* ja: 34077 bytes */
-static const char blob_ja[34077] =
+/* ja: 34631 bytes */
+static const char blob_ja[34631] =
 	"ZyperOS について\0"
 	"バージョン\0"
 	"アドレス\0"
@@ -9828,12 +9864,17 @@ static const char blob_ja[34077] =
 	"何を接続しましたか？\0"
 	"USB アクセサリー\0"
 	"イヤホン、Wi-Fi、キーボード\0"
+	"ファイル、またはカードを USBメモリとして\0"
+	"スマートフォンのブラウザでファイルを転送\0"
 	"パソコン\0"
 	"スマートフォン\0"
 	"パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。\0"
 	"USB-A - USB-C ケーブルなら毎回接続できます。\0"
 	"ケーブルを挿し直すか、USB-A - USB-C ケーブルを使ってください。毎回接続できます。\0"
-	"USB-C - USB-C ケーブルでは、スマートフォンから本体のファイルを開けません。スマートフォンに USB-C - USB-A アダプタを付けて、USB-A - USB-C ケーブルでつないでください。\0"
+	"スマートフォンで「USB テザリング」をオンにしてください（設定 > アクセス ポイントとテザリング）。そのあと、ここで USB ファイル転送が開きます。\0"
+	"USB テザリングがない場合は、Wi-Fi ファイル転送を使うか、スマートフォンに USB-C - USB-A アダプタを付けて USBメモリにします。\0"
+	"USB-C - USB-C ケーブルでは、iPhone から本体のファイルを開けません。Wi-Fi ファイル転送を使うか、iPhone に USB-C - USB-A アダプタを付けて、USB-A - USB-C ケーブルでつないでください。\0"
+	"スマートフォンのブラウザで開く\0"
 	"開発者（SSH）\0"
 	"開発者リンクがオンです。ケーブルを抜くと終了します。\0"
 	"ホットスポットを起動中…\0"
@@ -10015,17 +10056,18 @@ static const uint32_t off_ja[S_COUNT] = {
 	30662, 30681, 30700, 30713, 30726, 30763, 30833, 30930, 30967, 30974,
 	31008, 31054, 31091, 31131, 31144, 31169, 31206, 31213, 31220, 31227,
 	31245, 31263, 31281, 31294, 31331, 31374, 31393, 31427, 31441, 31461,
-	31481, 31512, 31535, 31574, 31587, 31609, 31748, 31810, 31926, 32153,
-	32172, 32251, 32288, 32313, 32371, 32402, 32415, 32425, 32444, 32463,
-	32479, 32492, 32499, 32518, 32552, 32586, 32617, 32630, 32643, 32656,
-	32662, 32672, 32802, 32901, 33028, 33137, 33144, 33154, 33164, 33174,
-	33205, 33221, 33246, 33262, 33287, 33310, 33374, 33403, 33458, 33475,
-	33527, 33546, 33563, 33636, 33668, 33732, 33755, 33783, 33820, 33884,
-	33930, 33967, 33986, 34017, 34033, 34064,
+	31481, 31512, 31535, 31574, 31633, 31694, 31707, 31729, 31868, 31930,
+	32046, 32252, 32423, 32661, 32707, 32726, 32805, 32842, 32867, 32925,
+	32956, 32969, 32979, 32998, 33017, 33033, 33046, 33053, 33072, 33106,
+	33140, 33171, 33184, 33197, 33210, 33216, 33226, 33356, 33455, 33582,
+	33691, 33698, 33708, 33718, 33728, 33759, 33775, 33800, 33816, 33841,
+	33864, 33928, 33957, 34012, 34029, 34081, 34100, 34117, 34190, 34222,
+	34286, 34309, 34337, 34374, 34438, 34484, 34521, 34540, 34571, 34587,
+	34618,
 };
 
-/* it: 25230 bytes */
-static const char blob_it[25230] =
+/* it: 25558 bytes */
+static const char blob_it[25558] =
 	"Informazioni su ZyperOS\0"
 	"Versione\0"
 	"Indirizzo\0"
@@ -11259,12 +11301,17 @@ static const char blob_it[25230] =
 	"Cosa hai collegato?\0"
 	"Accessorio USB\0"
 	"cuffie, Wi-Fi, tastiera\0"
+	"file, o la scheda come chiavetta USB\0"
+	"file nel browser del telefono\0"
 	"Computer\0"
 	"Telefono\0"
 	"Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.\0"
 	"Con un cavo da USB-A a USB-C si collega sempre.\0"
 	"Ricollega il cavo, oppure usa un cavo da USB-A a USB-C: si collega sempre.\0"
-	"Un telefono non può aprire i file della console con un cavo da USB-C a USB-C. Collegalo con un adattatore da USB-C a USB-A sul telefono e un cavo da USB-A a USB-C.\0"
+	"Sul telefono, attiva il tethering USB (Impostazioni, Hotspot e tethering). Poi qui si apre Trasferisci USB.\0"
+	"Niente tethering USB? Usa Trasferisci Wi-Fi, oppure un adattatore da USB-C a USB-A sul telefono per Chiavetta USB.\0"
+	"Un iPhone non può aprire i file della console con un cavo da USB-C a USB-C. Usa Trasferisci Wi-Fi, oppure un adattatore da USB-C a USB-A sull'iPhone e un cavo da USB-A a USB-C.\0"
+	"nel browser del telefono\0"
 	"Sviluppatore (SSH)\0"
 	"Collegamento sviluppatore attivo. Scollega il cavo per terminarlo.\0"
 	"Avvio dell'hotspot...\0"
@@ -11446,18 +11493,19 @@ static const uint32_t off_it[S_COUNT] = {
 	22855, 22864, 22871, 22879, 22888, 22908, 22958, 23016, 23032, 23042,
 	23062, 23089, 23114, 23142, 23157, 23171, 23200, 23206, 23212, 23219,
 	23233, 23246, 23258, 23266, 23299, 23320, 23331, 23349, 23363, 23380,
-	23399, 23419, 23434, 23458, 23467, 23476, 23575, 23623, 23698, 23863,
-	23882, 23949, 23971, 23995, 24026, 24046, 24054, 24064, 24076, 24088,
-	24101, 24115, 24122, 24139, 24165, 24181, 24193, 24198, 24208, 24216,
-	24222, 24233, 24315, 24383, 24472, 24555, 24562, 24572, 24578, 24587,
-	24617, 24633, 24654, 24666, 24683, 24706, 24747, 24770, 24806, 24818,
-	24859, 24867, 24875, 24920, 24943, 24984, 25000, 25023, 25049, 25097,
-	25122, 25147, 25160, 25176, 25193, 25216,
+	23399, 23419, 23434, 23458, 23495, 23525, 23534, 23543, 23642, 23690,
+	23765, 23873, 23988, 24166, 24191, 24210, 24277, 24299, 24323, 24354,
+	24374, 24382, 24392, 24404, 24416, 24429, 24443, 24450, 24467, 24493,
+	24509, 24521, 24526, 24536, 24544, 24550, 24561, 24643, 24711, 24800,
+	24883, 24890, 24900, 24906, 24915, 24945, 24961, 24982, 24994, 25011,
+	25034, 25075, 25098, 25134, 25146, 25187, 25195, 25203, 25248, 25271,
+	25312, 25328, 25351, 25377, 25425, 25450, 25475, 25488, 25504, 25521,
+	25544,
 };
 
 #ifdef I18N_PSEUDO
-/* xx: 56630 bytes */
-static const char blob_xx[56630] =
+/* xx: 57407 bytes */
+static const char blob_xx[57407] =
 	"[Àböûţ ŽýpéŕÖŠ······]\0"
 	"[Véŕšîöñ···]\0"
 	"[Àđđŕéšš···]\0"
@@ -12691,12 +12739,17 @@ static const char blob_xx[56630] =
 	"[Wĥàţ đîđ ýöû pĺûĝ îñ?·········]\0"
 	"[ÛŠß Àççéššöŕý······]\0"
 	"[ĥéàđpĥöñéš, Wî-Fî, ķéýböàŕđ···········]\0"
+	"[fîĺéš, öŕ ţĥé çàŕđ àš à fĺàšĥ đŕîvé··············]\0"
+	"[fîĺéš îñ ţĥé pĥöñé'š bŕöwšéŕ············]\0"
 	"[Çömpûţéŕ····]\0"
 	"[Pĥöñé···]\0"
 	"[Ýöûŕ çömpûţéŕ đîđñ'ţ çöññéçţ. Îţ çàñ ţàķé à féw ţŕîéš: ûñpĺûĝ ţĥé çàbĺé àñđ pĺûĝ îţ bàçķ îñ.·····································]\0"
 	"[À ÛŠß-À ţö ÛŠß-Ç çàbĺé çöññéçţš évéŕý ţîmé.··················]\0"
 	"[Ûñpĺûĝ ţĥé çàbĺé àñđ pĺûĝ îţ bàçķ îñ, öŕ ûšé à ÛŠß-À ţö ÛŠß-Ç çàbĺé: îţ çöññéçţš évéŕý ţîmé.·····································]\0"
-	"[À pĥöñé çàñ'ţ öpéñ ţĥé ĥàñđĥéĺđ'š fîĺéš öñ à ÛŠß-Ç ţö ÛŠß-Ç çàbĺé. Çöññéçţ îţ wîţĥ à ÛŠß-Ç ţö ÛŠß-À àđàpţéŕ öñ ţĥé pĥöñé àñđ à ÛŠß-À ţö ÛŠß-Ç çàbĺé.····························································]\0"
+	"[Öñ ţĥé pĥöñé, ţûŕñ öñ ÛŠß ţéţĥéŕîñĝ (Šéţţîñĝš, Ĥöţšpöţ àñđ ţéţĥéŕîñĝ). ÛŠß Fîĺé Ţŕàñšféŕ ţĥéñ öpéñš ĥéŕé.··········································]\0"
+	"[Ñö ÛŠß ţéţĥéŕîñĝ? Ûšé Wî-Fî Fîĺé Ţŕàñšféŕ, öŕ à ÛŠß-Ç ţö ÛŠß-À àđàpţéŕ öñ ţĥé pĥöñé föŕ Fĺàšĥ Đŕîvé.········································]\0"
+	"[Àñ îPĥöñé çàñ'ţ öpéñ ţĥé ĥàñđĥéĺđ'š fîĺéš öñ à ÛŠß-Ç ţö ÛŠß-Ç çàbĺé. Ûšé Wî-Fî Fîĺé Ţŕàñšféŕ, öŕ à ÛŠß-Ç ţö ÛŠß-À àđàpţéŕ öñ ţĥé îPĥöñé àñđ à ÛŠß-À ţö ÛŠß-Ç çàbĺé.··································································]\0"
+	"[îñ ţĥé pĥöñé'š bŕöwšéŕ·········]\0"
 	"[Đévéĺöpéŕ (ŠŠĤ)······]\0"
 	"[Đévéĺöpéŕ ĺîñķ öñ. Ûñpĺûĝ ţö éñđ îţ.···············]\0"
 	"[Šţàŕţîñĝ ţĥé ĥöţšpöţ...··········]\0"
@@ -12878,13 +12931,14 @@ static const uint32_t off_xx[S_COUNT] = {
 	51223, 51249, 51269, 51287, 51303, 51340, 51459, 51614, 51640, 51660,
 	51683, 51732, 51781, 51835, 51873, 51914, 51975, 51996, 52013, 52029,
 	52065, 52090, 52111, 52129, 52185, 52232, 52264, 52316, 52350, 52388,
-	52428, 52484, 52524, 52594, 52619, 52637, 52869, 52981, 53212, 53584,
-	53624, 53718, 53781, 53853, 53930, 53973, 53999, 54021, 54053, 54085,
-	54109, 54143, 54157, 54199, 54263, 54305, 54343, 54361, 54384, 54406,
-	54422, 54450, 54595, 54749, 54925, 55139, 55152, 55180, 55203, 55226,
-	55285, 55316, 55361, 55389, 55429, 55458, 55547, 55600, 55692, 55721,
-	55809, 55834, 55855, 55960, 56013, 56121, 56163, 56201, 56257, 56346,
-	56399, 56458, 56490, 56523, 56559, 56598,
+	52428, 52484, 52524, 52594, 52684, 52758, 52783, 52801, 53033, 53145,
+	53376, 53646, 53896, 54303, 54361, 54401, 54495, 54558, 54630, 54707,
+	54750, 54776, 54798, 54830, 54862, 54886, 54920, 54934, 54976, 55040,
+	55082, 55120, 55138, 55161, 55183, 55199, 55227, 55372, 55526, 55702,
+	55916, 55929, 55957, 55980, 56003, 56062, 56093, 56138, 56166, 56206,
+	56235, 56324, 56377, 56469, 56498, 56586, 56611, 56632, 56737, 56790,
+	56898, 56940, 56978, 57034, 57123, 57176, 57235, 57267, 57300, 57336,
+	57375,
 };
 #endif
 

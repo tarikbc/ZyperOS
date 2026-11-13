@@ -341,7 +341,8 @@ EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
 for _way, _states in (("usb", ("unplugged", "taking", "opening", "nocomputer", "noanswer", "nodriver", "address",
                                "noaddress", "browser", "nobrowser", "waits", "replug", "pin")),
-                      ("wifi", ("nonetwork", "browser", "nobrowser", "pin"))):
+                      ("wifi", ("nonetwork", "browser", "nobrowser", "pin")),
+                      ("phone", ("browser", "pin"))):
     for _state in _states:
         EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
     # and the browser's hint with no name on the network (mDNS did not start)
@@ -350,9 +351,9 @@ for _way, _states in (("usb", ("unplugged", "taking", "opening", "nocomputer", "
     EXTRA.setdefault("steps-%s-longaddr" % _way, ("demo", "PS1", ["--hare-steps", _way, "browser", "--hare-addr", "192.168.100.200"]))
 # the hotspot once someone came in: the news, network and PIN in the heading
 EXTRA.setdefault("hotspot-in", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "1 signed in", "Tobu Tobu Girl.gb", "--hotspot-in"]))
-# USB Device Connected (DESIGN.md 11.36): each tile focused, and the
-# messages after Computer and after Phone
-for _k in ("0", "1", "2", "said", "phone"):
+# What did you plug in? (DESIGN.md 11.36): each row focused, and the
+# messages after Computer, after Phone and for an iPhone
+for _k in ("0", "1", "2", "said", "phone", "iphone"):
     EXTRA.setdefault("usb-power-" + _k, ("demo", "PS1", ["--usb-power", _k]))
 # MENU's USB rows (DESIGN.md 11.36): USB Device while a plug waits, with
 # the corner's USB mark; USB Accessories on Ask and on Automatic, and the

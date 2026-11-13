@@ -185,7 +185,8 @@ typedef enum { SMM_COUNT, SMM_SHOW, SMM_SORT, SMM_SHUFFLE, SMM_LOCK, SMM_ART,
  * (all of them with no music has the videos' rows) - and
  * whether the card has more than one kind. Returns how many. The build and
  * the key handler both ask this, so the two cannot disagree about what row 2
- * is. */
+ * is. no_wifi: no radio and no other way out (a phone's tethering), so no
+ * Album Art row. */
 int sys_menu_muse_rows(int kind, bool both, bool no_wifi, sm_muse_row *out);
 
 /* 40: the ZyperOS menu reached 24 with Developer Mode, Random Game made 25,
@@ -259,6 +260,10 @@ typedef struct {
 	/* Files move over the USB cable rather than Wi-Fi (plat_cable_link), so
 	 * the transfer row stays without a radio, under its cable name. */
 	bool        cable_xfer;
+	/* A way out to the internet (Wi-Fi, or a phone's USB tethering: the
+	 * launcher's net_internet), so what fetches from it stays without a
+	 * radio: Achievements, Box Art, Album Art. The Wi-Fi rows do not. */
+	bool        online;
 	/* A release image, which has no Developer Mode (src/usblink.h); false,
 	 * as for the radios, is the row present: a development image. And
 	 * whether Developer Mode is on there. */
