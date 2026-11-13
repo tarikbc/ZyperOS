@@ -32,7 +32,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-task
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
          check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-controls check-controls-shots check-logpack \
-         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
+         check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
          check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-usbpower check-usblog check-clients check-keyhints check-pace check-qr \
@@ -326,6 +326,11 @@ build-native/dsresume-check: tools/dsresume-check.c src/dsresume.c src/dsresume.
 # payload's to hold, and release.sh's.
 check-core-stamp:
 	@sh tools/core-stamp-check.sh
+
+# Diatom's resident registry against the cores systems.cfg ships
+# (tools/core-room-check.sh: 1.0.5 had 34 for 32 slots)
+check-core-room:
+	@sh tools/core-room-check.sh
 
 # The debugging tools (docs/building.md, "Debugging on the device"). px2-perf's
 # percentiles, frame times, CPU ticks and speed against the clock
