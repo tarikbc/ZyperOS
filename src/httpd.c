@@ -23,6 +23,12 @@
 #include "monoclock.h"
 #include "xfer.h"
 
+#ifdef MSG_NOSIGNAL
+#define HTTPD_NOSIGPIPE MSG_NOSIGNAL
+#else
+#define HTTPD_NOSIGPIPE 0    /* the Mac's host checks: SO_NOSIGPIPE at accept */
+#endif
+
 #define MAX_CONN        8
 #define HEAD_MAX     8192      /* request line and headers together */
 #define RESP_HEAD_MAX 1024
@@ -845,7 +851,11 @@ static bool pump_write(conn *c, httpd_end end, void *ctx, int *did)
 		}
 
 		if (len > budget) len = budget;
-		put = send(c->fd, src, len, 0);
+		/* No SIGPIPE when the browser has gone: the launcher does not
+		 * ignore it, and it would end the launcher, not this reply. A
+		 * cancelled download or a page left mid-listing does that, and a
+		 * folder of 1,800 games is a long enough reply to leave (2026-11-13). */
+		put = send(c->fd, src, len, HTTPD_NOSIGPIPE);
 		if (put < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				if (src == filebuf) {
@@ -1020,6 +1030,11 @@ int httpd_poll(httpd_handler fn, httpd_end end, void *ctx)
 		/* Nagle off. These replies are small and followed by silence, which
 		 * is the exact case where waiting to coalesce adds a visible pause. */
 		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof on);
+#ifdef SO_NOSIGPIPE
+		/* A browser gone mid-reply is an error from send, never a signal:
+		 * the Mac's host checks (on Linux, HTTPD_NOSIGPIPE on each send) */
+		setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof on);
+#endif
 		memset(&g_conn[slot], 0, sizeof g_conn[slot]);
 		g_conn[slot].fd = fd;
 		g_conn[slot].st = C_HEAD;
