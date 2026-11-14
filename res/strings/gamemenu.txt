@@ -314,6 +314,28 @@ de = Pak
 ja = パック
 it = Pak
 
+[gamemenu.disc]
+note = The in-game menu of a game on more than one disc (a PlayStation game's .m3u): the disc in the tray; Left, Right and A change it. Short: its value sits beside it.
+en = Disc
+zh-Hans = 光盘
+es = Disco
+pt-BR = Disco
+fr = Disque
+de = Disc
+ja = ディスク
+it = Disco
+
+[gamemenu.disc_value]
+note = The Disc row's value when the core's own name for the disc is too long for the row: %d is the disc in the tray, from 1, and %d how many the game has. Keep the order.
+en = Disc %d of %d
+zh-Hans = 第 %d 张，共 %d 张
+es = Disco %d de %d
+pt-BR = Disco %d de %d
+fr = Disque %d sur %d
+de = Disc %d von %d
+ja = ディスク %d / %d
+it = Disco %d di %d
+
 [gamemenu.display]
 note = The in-game menu: the display mode; its value is one of the modes below
 en = Display

@@ -222,6 +222,7 @@ int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids)
 		ids[n++] = GM_SAVE;
 		ids[n++] = GM_LOAD;
 		if (u->quick) ids[n++] = GM_QUICK;
+		if (u->discs > 1) ids[n++] = GM_DISC;
 		if (u->player2) ids[n++] = GM_PLAYER2;
 		ids[n++] = GM_CHEEVOS;
 		ids[n++] = GM_RESET;
@@ -246,6 +247,21 @@ const char *gm_player2_value(p2_state st)
 	return T(S_MENU_OFF);
 }
 
+const char *gm_disc_value(const gm_ui *u, char *out, size_t n, bool (*fits)(const char *))
+{
+	if (u->disc_label && *u->disc_label && (!fits || fits(u->disc_label)))
+		snprintf(out, n, "%s", u->disc_label);
+	else
+		snprintf(out, n, T(S_GAMEMENU_DISC_VALUE), u->disc + 1, u->discs);
+	return out;
+}
+
+int gm_disc_step(int disc, int discs, int d)
+{
+	if (discs < 1) return 0;
+	return ((disc + d) % discs + discs) % discs;
+}
+
 gm_row gm_x_row(void)
 {
 	return GM_QUIT;
@@ -268,7 +284,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		S_GAMEMENU_DISPLAY, S_GAMEMENU_SHADER, S_SYSMENU_CONTROLS, S_SYSMENU_CHEEVOS,
 		S_GAMEMENU_RESET,
 		S_GAMEMENU_QUIT, S_GAMEMENU_SCREENS, S_GAMEMENU_SWAP, S_GAMEMENU_STYLUS,
-		S_GAMEMENU_PAK, S_PLAYER2_ROW
+		S_GAMEMENU_PAK, S_PLAYER2_ROW, S_GAMEMENU_DISC
 	};
 	menu_row full[GM_MAX_ROWS];
 	gm_row ids[GM_MAX_ROWS];
@@ -301,6 +317,8 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 	full[GM_STYLUS].value  = u->stylus ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE);
 	full[GM_PAK].value     = u->pak;
 	full[GM_PLAYER2].value = u->player2_value;
+	if (u->discs > 1)
+		full[GM_DISC].value = gm_disc_value(u, b->disc, sizeof b->disc, u->disc_fits);
 	/* X quits from anywhere on the page (gm_x_row), and Quit says so */
 	full[GM_QUIT].value    = MENU_KEY_X;
 
@@ -311,7 +329,7 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 		 * the quick slot and the three for two screens. Every other row is
 		 * plain. */
 		b->sound[i] = ids[i] == GM_DISPLAY || ids[i] == GM_SHADER || ids[i] == GM_QUICK ||
-		              ids[i] == GM_SCREENS ||
+		              ids[i] == GM_SCREENS || ids[i] == GM_DISC ||
 		              ids[i] == GM_SWAP || ids[i] == GM_STYLUS || ids[i] == GM_PAK
 		              ? MENU_SND_RING : 0;
 	}

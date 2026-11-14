@@ -19950,6 +19950,88 @@ static void gm_cycle_shader(app *a, int d)
 	plat_resident_sync_rect(150);
 }
 
+/* The discs of the game running (issue #102), as Diatom's DISC answers say:
+ * asked when the in-game menu opens and after each SETDISC, and kept, because
+ * gm_gather runs on every key and a paused Diatom is not asked that often.
+ * count under 2 is no row: a game on one disc, one whose core has no tray,
+ * and a Diatom too old to answer (it says nothing to DISC, so the wait below
+ * runs out and the menu is what it was). A shot's (--gm-discs) stands in. */
+#define GM_PANEL_W 860
+static struct {
+	int  count;
+	int  index;
+	char label[128];
+} g_gm_disc;
+static int g_shot_discs;
+static const char *g_shot_disc_label;
+
+/* "DISC\tindex=1\tcount=3\tejected=0\tlabel=..." into g_gm_disc. The label is
+ * the last field and may hold spaces; Diatom made its tabs spaces. */
+static void gm_disc_note(const char *l)
+{
+	const char *p;
+
+	g_gm_disc.count = 0;
+	g_gm_disc.index = 0;
+	g_gm_disc.label[0] = '\0';
+	if ((p = strstr(l, "\tcount="))) g_gm_disc.count = atoi(p + 7);
+	if ((p = strstr(l, "\tindex="))) g_gm_disc.index = atoi(p + 7);
+	if ((p = strstr(l, "\tlabel="))) snprintf(g_gm_disc.label, sizeof g_gm_disc.label, "%s", p + 7);
+}
+
+/* Ask for the tray as the menu opens: the same short wait as the other
+ * answers it reads while paused (plat_resident_sync_screens, 300 ms) */
+static void gm_disc_ask(void)
+{
+	char l[256];
+
+	memset(&g_gm_disc, 0, sizeof g_gm_disc);
+	if (g_shot_discs || g_port_menu) return;
+	if (!plat_resident_line("DISC")) return;
+	if (plat_resident_sync_line("DISC\t", l, sizeof l, 300)) gm_disc_note(l);
+}
+
+/* Disc `d` steps from the one in the tray, sent as one SETDISC (Diatom opens
+ * the tray, changes the disc and closes it, as a console's lid did); its DISC
+ * answer says which disc is in, so the row follows the answer, not the press.
+ * A refused index answers ERROR and then DISC with the disc as it was. */
+static void gm_disc_step_to(int d)
+{
+	char l[256];
+	int to = gm_disc_step(g_gm_disc.index, g_gm_disc.count, d);
+
+	if (g_shot_discs) {
+		g_gm_disc.index = to;
+		return;
+	}
+	if (!plat_resident_line("SETDISC\tindex=%d", to)) return;
+	if (plat_resident_sync_line("DISC\t", l, sizeof l, 300)) gm_disc_note(l);
+}
+
+/* Whether the core's name for a disc fits the Disc row's value: the panel's
+ * width less its two pads, the widest label of the Game tab and the gap
+ * between the columns, in the menu's own font. A device's fonts may measure
+ * a little wider than the host's, so the same half-row of air as the menu's
+ * own fit (fit_gap) is kept back. */
+static bool gm_disc_fits(const char *label)
+{
+	TTF_Font *fm = ui_font(UI_F_MENU);
+	gm_ui u;
+	menu_row rows[GM_MAX_ROWS];
+	gm_bufs b;
+	int n, i, wl = 0, room;
+
+	memset(&u, 0, sizeof u);
+	u.discs = 2;
+	u.quick = 1;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	for (i = 0; i < n; i++)
+		if (rows[i].label && ui_text_width(fm, rows[i].label) > wl)
+			wl = ui_text_width(fm, rows[i].label);
+	room = GM_PANEL_W - 2 * menu_pad() - wl - menu_row_h() - menu_row_h() / 2;
+	return ui_text_width(fm, label) <= room;
+}
+
 /* What the in-game menu needs from the app, handed to gm_rows to become rows.
  * Same split as everywhere else. */
 /* What the in-game menu shows, gathered: for its rows, and for where each
@@ -19988,6 +20070,18 @@ static void gm_gather(app *a, gm_ui *out)
 			u.player2 = true;
 			u.player2_value = gm_player2_value(p2_row_state());
 		}
+	}
+	if (!u.port) {
+		if (g_shot_discs) {
+			u.discs = g_shot_discs;
+			u.disc  = g_gm_disc.index;
+			u.disc_label = g_shot_disc_label;
+		} else {
+			u.discs = g_gm_disc.count;
+			u.disc  = g_gm_disc.index;
+			u.disc_label = g_gm_disc.label;
+		}
+		u.disc_fits = gm_disc_fits;
 	}
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
@@ -20028,7 +20122,6 @@ static const char *gm_tab_name_i(int i) { return gm_tab_name(i); }
 
 /* The panel's one width on every tab and every value, so it holds still as
  * the tabs go round; a port's menu has no tabs and sizes itself */
-#define GM_PANEL_W 860
 
 /* The list itself, over the paused frame. menu_draw already windows a list
  * longer than the screen, which a set of 166 certainly is.
@@ -23029,6 +23122,12 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		}
 		return MENU_STAY;
 	}
+	/* The disc steps round on left, right and A, at once: the game sees the
+	 * tray open, a new disc and the tray close (gm_disc_step_to) */
+	if (sel == GM_DISC && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		gm_disc_step_to(key == IN_LEFT ? -1 : 1);
+		return MENU_STAY;
+	}
 	if (sel == GM_QUICK && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
 		const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor,
 		                                      a->view[a->sys_cursor].cursor)];
@@ -23137,6 +23236,7 @@ static void game_menu(app *a)
 	c.st.follow_tint = true;
 	c.st.backdrop    = gm_backdrop;
 	c.st.on_power    = gm_power;
+	gm_disc_ask();
 	/* MENU's tab row, opened where this game's menu was last closed */
 	c.tabs = (menu_tabs){ .count = GT_TABS, .name = gm_tab_name_i };
 	c.tabs.at = c.tabs.from = g_gm_mem.tab;
@@ -27998,6 +28098,13 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--gm-pick")) shot_gm_pick = true;
 		else if (!strcmp(argv[i], "--gm-ask")) shot_gm_ask = true;
 		else if (!strcmp(argv[i], "--gm-keys") && i + 1 < argc) shot_gm_keys = atoi(argv[++i]);
+		/* --gm-discs N [LABEL]: a game on N discs, disc 2 in the tray, the
+		 * core calling it LABEL (none: the row says Disc 2 of N) */
+		else if (!strcmp(argv[i], "--gm-discs") && i + 1 < argc) {
+			g_shot_discs = atoi(argv[++i]);
+			g_gm_disc.index = g_shot_discs > 1 ? 1 : 0;
+			if (i + 1 < argc && strncmp(argv[i + 1], "--", 2) != 0) g_shot_disc_label = argv[++i];
+		}
 		else if (!strcmp(argv[i], "--gm-tab-from") && i + 1 < argc) shot_gm_from = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "--gm-press") && i + 1 < argc) shot_gm_press = argv[++i];
 		else if (!strcmp(argv[i], "--backdrop") && i + 1 < argc) shot_backdrop = argv[++i];

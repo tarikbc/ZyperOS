@@ -119,7 +119,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu, in three tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Quick Slot, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, and a DS game's Screens, Swap Screens and Stylus) and **Controls** (what each button does, Pak in a Nintendo 64 game). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
+| **MENU** (in game) | the in-game menu, in three tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, and a DS game's Screens, Swap Screens and Stylus) and **Controls** (what each button does, Pak in a Nintendo 64 game). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
 | **X** (in the in-game menu) | Quit, from any row of any tab: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -802,6 +802,18 @@ the link on whenever a computer is plugged in, with no question, so
 default, and kept on the card as `.userdata/pixel2/developer`, which the
 system reads at boot. A release image has no Developer Mode: it never turns
 the link on at boot, whatever that file says.
+
+## Changing discs
+
+A game on more than one disc, a PlayStation game with an `.m3u` in a folder of
+its own, has a **Disc** row in the in-game menu: MENU, the Game tab, just under
+Quick Slot. Its value is the disc in the tray, by the name the emulator gives
+it, or "Disc 2 of 3" when that name is too long for the row. **Left** and
+**Right** (or **A**) pick the next or the last disc, going round: Left on disc 1
+is the last disc. The game sees the lid open, a new disc go in and the lid
+close, as it would on a console, so when it asks for disc 2, change the disc,
+choose **Continue** and the game goes on. A game on one disc has no Disc row,
+and neither has a system whose emulator has no disc tray.
 
 ## Player 2
 

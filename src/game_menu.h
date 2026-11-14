@@ -167,12 +167,13 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * the Rumble Pak or the Controller Pak, kept for the game), which is a row
  * of the Controls tab (src/ctltab.c) and in no tab here; and Player 2
  * (2026-11-13, src/p2.h), an NES game's whose core the system table offers
- * it on, on the Game tab after Quick Slot. */
+ * it on, on the Game tab after Quick Slot; and Disc (2026-11-13, issue #102),
+ * a game on more than one disc's, on the Game tab after Quick Slot too. */
 typedef enum {
 	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
 	GM_RESET, GM_QUIT,
 	GM_ROWS,
-	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2,
+	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2, GM_DISC,
 	GM_MAX_ROWS
 } gm_row;
 
@@ -217,7 +218,22 @@ typedef struct {
 	 * value (gm_player2_value) */
 	bool        player2;
 	const char *player2_value;
+	/* The discs of a game on more than one (Diatom's DISC answer): how many
+	 * (under 2: no Disc row), the one in the tray, 0 based, and the core's
+	 * name for it, NULL or empty for none. disc_fits says whether a label
+	 * fits the row's value column, measured by the caller with the font;
+	 * NULL says it does. */
+	int         discs;
+	int         disc;
+	const char *disc_label;
+	bool      (*disc_fits)(const char *label);
 } gm_ui;
+
+/* The Disc row's value: the core's label when `fits` says it fits (NULL: it
+ * does), else "Disc N of M", N from 1. Into `out`, which it returns. */
+const char *gm_disc_value(const gm_ui *u, char *out, size_t n, bool (*fits)(const char *));
+/* The disc `d` (+1 or -1) steps to from `disc` of `discs`, round */
+int gm_disc_step(int disc, int discs, int d);
 
 /* The in-game menu is in tabs, MENU's tab row (docs/superpowers/specs/
  * 2026-11-13-button-remap-design.md, section 1): Game, Display and Controls,
@@ -226,7 +242,8 @@ typedef struct {
  *
  * gm_tab_rows says which rows a tab has, in the order shown:
  *   Game      Continue, Save, Load, Quick Slot (a system that keeps states),
- *             Player 2 (an NES game), Achievements, Reset, Quit
+ *             Disc (a game on more than one disc), Player 2 (an NES game),
+ *             Achievements, Reset, Quit
  *   Display   Display, Shader, and a DS game's Screens, Swap Screens, Stylus
  *   Controls  none from here: its rows are src/ctltab.c's
  * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
@@ -251,6 +268,7 @@ gm_row gm_x_row(void);
 typedef struct {
 	char cheevos[48];
 	char quick[8];
+	char disc[160];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;
 

@@ -209,6 +209,11 @@ EXTRA = {
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
     "gamemenu": ("demo", "PS1", ["--gamemenu", "0"]),
+    # A game on more than one disc: the Disc row with the core's name for
+    # the disc (it fits), and with one too long, which reads "Disc 2 of 3"
+    "gamemenu-disc": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3", "FFIX (Disc 2)"]),
+    "gamemenu-disc-long": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3",
+                                           "Final Fantasy IX (USA) (Rev 1) (Disc 2)"]),
     # Achievements offline: the list with unlocks waiting, Zyper saying they
     # went, and the rows of a game never played with a network
     "cheevos-waiting": ("demo", "PS1", ["--cheevos-screen", "0", "--cheevos-waiting", "2"]),

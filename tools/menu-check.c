@@ -315,6 +315,62 @@ static void channels_row(void)
 
 /* The row has to say a PLACE. "Auto" alone makes the player guess which of
  * three they are about to hear. */
+/* The Disc row (issue #102): on the Game tab right after Quick Slot, only
+ * for a game on more than one disc. Its value is the core's label when it
+ * fits the row, else "Disc N of M". */
+static bool disc_fits_short(const char *s) { return strlen(s) <= 12; }
+
+static void gm_disc_row_only_with_discs(void)
+{
+	gm_ui u = { 0 };
+	gm_bufs b;
+	menu_row rows[GM_MAX_ROWS];
+	int n, at, d;
+
+	printf("in-game menu, Disc:\n");
+	u.dmode = "Native"; u.earned = 12; u.total = 40; u.quick = 2;
+	for (d = 0; d <= 1; d++) {
+		u.discs = d;
+		n = gm_rows(&u, GT_GAME, rows, &b);
+		ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1 && n == 7, "no Disc row with 0 or 1 disc, the menu as before");
+	}
+	u.discs = 3; u.disc = 1;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	at = gm_row_at(&u, GT_GAME, GM_DISC);
+	ck(n == 8 && at == gm_row_at(&u, GT_GAME, GM_QUICK) + 1 &&
+	   at + 1 == gm_row_at(&u, GT_GAME, GM_CHEEVOS), "with 3 discs: right after Quick Slot");
+	ck(at >= 0 && !strcmp(rows[at].label, "Disc") && !strcmp(val(&rows[at]), "Disc 2 of 3") &&
+	   rows[at].live && b.sound[at], "Disc says Disc 2 of 3, and steps round");
+	u.player2 = true; u.player2_value = "off";
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	ck(n == 9 && gm_row_at(&u, GT_GAME, GM_PLAYER2) == gm_row_at(&u, GT_GAME, GM_DISC) + 1,
+	   "Player 2 follows Disc");
+	u.player2 = false;
+	u.port = true;
+	ck(gm_row_at(&u, GT_GAME, GM_DISC) == -1, "none over a port");
+	u.port = false;
+	ck(gm_row_at(&u, GT_DISPLAY, GM_DISC) == -1, "and not on the Display tab");
+}
+
+static void disc_value_check(void)
+{
+	char out[64];
+
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 3, .disc = 1, .disc_label = "FFIX Disc 2" },
+	                         out, sizeof out, disc_fits_short), "FFIX Disc 2"),
+	   "the core's label when it fits");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 3, .disc = 1,
+	                                   .disc_label = "Final Fantasy IX (USA) (Disc 2)" },
+	                         out, sizeof out, disc_fits_short), "Disc 2 of 3"),
+	   "else Disc 2 of 3");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 2, .disc = 0 }, out, sizeof out, disc_fits_short),
+	           "Disc 1 of 2"), "no label: Disc 1 of 2");
+	ck(!strcmp(gm_disc_value(&(gm_ui){ .discs = 2, .disc = 0, .disc_label = "" }, out, sizeof out, NULL),
+	           "Disc 1 of 2"), "an empty label is no label");
+	ck(gm_disc_step(0, 3, -1) == 2 && gm_disc_step(2, 3, 1) == 0 && gm_disc_step(1, 3, 1) == 2,
+	   "the row steps round: Left on disc 1 is the last");
+}
+
 static void audio_row(void)
 {
 	sys_ui u;
@@ -2816,6 +2872,8 @@ int main(void)
 	n64_pak();
 	ctl_tab();
 	player2_row_on_nes_only();
+	gm_disc_row_only_with_discs();
+	disc_value_check();
 	audio_row();
 	channels_row();
 	sounds_row();
