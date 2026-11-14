@@ -15195,7 +15195,9 @@ typedef struct {
 
 /* ---- Auto (src/autozone.h) ------------------------------------------------
  *
- * Off on every card until chosen (src/db.c's default). Each time the
+ * On for every card from 1.0.5 (src/db.c's default, and autozone_migrate
+ * once at the start for a card from before), off once a zone is picked on
+ * the row. Each time the
  * handheld gets internet, Wi-Fi or a phone's tethering (net_internet), the
  * zone of where it is is asked of AUTOZONE_SERVICE on a thread of its own,
  * and set as the row sets one: the library database, TZ for this process and
@@ -28561,10 +28563,14 @@ int main(int argc, char *argv[])
 	}
 	/* Local time is the card's chosen zone, in this process, from here on,
 	 * and Diatom's with each game (resident.c's RUN). The system itself stays
-	 * on UTC. */
+	 * on UTC. Before it, 1.0.5's default: Auto on, once for a card from
+	 * before (src/autozone.h), never in a shot, whose cards are scratch. */
 	{
 		char tz[64];
 
+		if (!shot_path && autozone_migrate(db_lib()))
+			fprintf(stderr, "clock: auto zone %s, 1.0.5's default, once\n",
+			        db_get_int(db_lib(), AUTOZONE_KEY, 0) == 1 ? "on" : "not on");
 		db_get_str(db_lib(), "timezone", tz, sizeof tz, "America/New_York");
 		plat_clock_zone(tz);
 	}

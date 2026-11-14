@@ -1263,16 +1263,20 @@ build-native/clock-check: tools/clock-check.c src/clock.c src/clock.h src/menu.h
 
 # Date & Time's Auto: ipwho.is's reply read (and refusals, pages that are not
 # JSON, replies cut short and names that are paths not), the zone it comes to
-# (the name the system has, else the offset's), the row's words, and when it
-# asks - see tools/autozone-check.c.
+# (the name the system has, else the offset's), the row's words, when it
+# asks, and 1.0.5's default on scratch databases (on for a new card, switched
+# on once for a card from before, a zone picked after it kept) - see
+# tools/autozone-check.c.
 check-autozone: build-native/autozone-check
 	@./build-native/autozone-check
 
 build-native/autozone-check: tools/autozone-check.c src/autozone.c src/autozone.h src/clock.c src/clock.h \
-                             src/rajson.c src/rajson.h src/menu.h $(I18N_SRC) FORCE
+                             src/rajson.c src/rajson.h src/menu.h src/db.c src/db.h src/atomic.c \
+                             $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/autozone-check.c src/autozone.c src/clock.c src/rajson.c $(I18N_SRC)
+	      -o $@ tools/autozone-check.c src/autozone.c src/clock.c src/rajson.c src/db.c src/atomic.c \
+	      $(I18N_SRC) -lsqlite3 -lpthread
 
 # The device's title matcher against the host tool's. A drift here does not
 # fail, it just finds fewer games - see tools/artscrape-check.c.

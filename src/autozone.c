@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "clock.h"
+#include "db.h"
 #include "rajson.h"
 
 /* A whole number and nothing else, as JSON writes one: an optional minus and
@@ -120,6 +121,20 @@ void autozone_offset_words(int offset_s, char *out, size_t n)
 	int a = offset_s < 0 ? -offset_s : offset_s;
 
 	snprintf(out, n, "%c%02d:%02d", offset_s < 0 ? '-' : '+', a / 3600, a % 3600 / 60);
+}
+
+/* ---- 1.0.5's default ------------------------------------------------------ */
+
+bool autozone_migrate(db *lib)
+{
+	if (!lib || db_get_int(lib, AUTOZONE_MIGRATED_KEY, 0) == 1) return false;
+	if (db_get_int(lib, AUTOZONE_KEY, 0) != 1) {
+		db_set_str(lib, AUTOZONE_KEY, "1");
+		/* nothing found yet: the row says Auto alone until it answers */
+		db_set_str(lib, AUTOZONE_FOUND_KEY, "");
+	}
+	db_set_str(lib, AUTOZONE_MIGRATED_KEY, "1");
+	return true;
 }
 
 /* ---- when to ask --------------------------------------------------------- */

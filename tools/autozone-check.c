@@ -13,18 +13,24 @@
  * the hour), and none for neither. The row's words for each. And when to ask:
  * once a connection, after the network settles, again on a failure and not
  * past four tries, not again within a few hours, never while the clock is
- * unset, and again when Auto is chosen again.
+ * unset, and again when Auto is chosen again. And 1.0.5's default, on scratch
+ * library databases: a new card on Auto, a card from before switched on once
+ * with its zone kept until the first answer, and a zone picked by hand after
+ * that kept at every start.
  *
- * No SDL, no device, no network: the replies are written here, and the zone
- * files are a list this file chooses.
+ * No SDL, no device, no network: the replies are written here, the zone
+ * files are a list this file chooses, and the databases are in a scratch
+ * folder of their own.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "../src/autozone.h"
 #include "../src/clock.h"
+#include "../src/db.h"
 
 static int failures;
 
@@ -302,6 +308,78 @@ int main(void)
 		      "the settle wait holds across the clock's wrap");
 	}
 
+	printf("1.0.5's default:\n");
+	{
+		char dir[] = "/tmp/zyperos-autozone-check-XXXXXX", path[128], v[64];
+		const char *side[] = { "", "-wal", "-shm" };
+		db *d;
+		int k;
+
+		if (!mkdtemp(dir)) { CHECK(0, "a scratch folder"); goto done; }
+
+		/* A new card: seeded on, and its first start notes it */
+		snprintf(path, sizeof path, "%s/new.db", dir);
+		d = db_open(path, DB_LIBRARY);
+		CHECK(d && db_get_int(d, AUTOZONE_KEY, 0) == 1, "a new card starts on Auto");
+		CHECK(autozone_migrate(d), "its first start is the one");
+		CHECK(db_get_int(d, AUTOZONE_KEY, 0) == 1 && db_get_int(d, AUTOZONE_MIGRATED_KEY, 0) == 1,
+		      "Auto on, and noted");
+		CHECK(!autozone_migrate(d), "and only the once");
+		db_close(d);
+
+		/* A 1.0.4 card: a zone of its own and no Auto key */
+		snprintf(path, sizeof path, "%s/old.db", dir);
+		d = db_open(path, DB_LIBRARY);
+		db_del(d, AUTOZONE_KEY);
+		db_set_str(d, "timezone", "Europe/Berlin");
+		db_close(d);
+		d = db_open(path, DB_LIBRARY);
+		CHECK(autozone_migrate(d), "a card from 1.0.4's first start of 1.0.5");
+		CHECK(db_get_int(d, AUTOZONE_KEY, 0) == 1, "is on Auto");
+		db_get_str(d, "timezone", v, sizeof v, "");
+		CHECK(!strcmp(v, "Europe/Berlin"), "with its zone kept until Auto answers");
+		db_get_str(d, AUTOZONE_FOUND_KEY, v, sizeof v, "");
+		CHECK(!v[0], "and nothing found yet, so the row says Auto alone");
+		db_close(d);
+
+		/* A card that had Auto off (a test build's default) */
+		snprintf(path, sizeof path, "%s/off.db", dir);
+		d = db_open(path, DB_LIBRARY);
+		db_set_str(d, AUTOZONE_KEY, "0");
+		db_set_str(d, AUTOZONE_FOUND_KEY, "Asia/Tokyo");
+		CHECK(autozone_migrate(d) && db_get_int(d, AUTOZONE_KEY, 0) == 1,
+		      "a card with Auto off is switched on at its first 1.0.5 start");
+		db_get_str(d, AUTOZONE_FOUND_KEY, v, sizeof v, "x");
+		CHECK(!v[0], "what Auto found before is forgotten");
+		/* the player then picks a zone on the row */
+		db_set_str(d, AUTOZONE_KEY, "0");
+		db_set_str(d, "timezone", "Asia/Tokyo");
+		db_close(d);
+		for (k = 0; k < 3; k++) {
+			d = db_open(path, DB_LIBRARY);
+			CHECK(!autozone_migrate(d) && db_get_int(d, AUTOZONE_KEY, 1) == 0,
+			      "a zone picked by hand after it is kept, start %d", k + 1);
+			db_close(d);
+		}
+		d = db_open(path, DB_LIBRARY);
+		db_get_str(d, "timezone", v, sizeof v, "");
+		CHECK(!strcmp(v, "Asia/Tokyo"), "and so is the zone");
+		db_close(d);
+		CHECK(!autozone_migrate(NULL), "no library, nothing");
+
+		for (k = 0; k < 3; k++) {
+			char f[160];
+			int s;
+
+			for (s = 0; s < 3; s++) {
+				snprintf(f, sizeof f, "%s/%s.db%s", dir,
+				         k == 0 ? "new" : k == 1 ? "old" : "off", side[s]);
+				unlink(f);
+			}
+		}
+		rmdir(dir);
+	}
+done:
 	if (failures) { printf("\n%d check(s) failed\n", failures); return 1; }
 	printf("\nok: every check passed\n");
 	return 0;

@@ -323,18 +323,19 @@ west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
 screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
-The time zone's first choice, left of Honolulu, is **Auto**: each time the
-handheld gets internet, over Wi-Fi or a phone's USB tethering, it asks
-[ipwho.is](https://ipwho.is), a free service, for the time zone of its
-internet address, and sets it, so a trip to another zone needs nothing from
-you. The row says what it found, `Auto (Sao Paulo)`, and just `Auto` until
-its first answer, while the zone you had stays. It asks once a connection and
-at most every three hours, and when it gets no answer it keeps the zone it
-has. The service sees the handheld's internet address, which is how it knows
-where you are: choosing Auto says so, and Auto is off until you choose it. It
-sets the zone's own name, so daylight saving and half-hour zones follow on
-their own. The clock is still set as above, by the network, each time Wi-Fi
-or the phone's tethering connects.
+The time zone sets itself. Its row starts on **Auto**, the first choice,
+left of Honolulu: each time the handheld gets internet, over Wi-Fi or a
+phone's USB tethering, it asks [ipwho.is](https://ipwho.is), a free service,
+where you are, by the handheld's internet address, and sets that time zone,
+so a trip to another zone needs nothing from you. Picking a zone on the row
+turns Auto off, and your zone stays; left back to Auto turns it on again. The
+row says what Auto found, `Auto (Sao Paulo)`, and just `Auto` until its first
+answer, while the zone you had stays. It asks once a connection and at most
+every three hours, and with no answer it keeps the zone it has. It sets the
+zone's own name, so daylight saving and half-hour zones follow on their own.
+The clock is still set as above, by the network, each time Wi-Fi or the
+phone's tethering connects. A card from before 1.0.5 is switched to Auto
+once, at its first start of 1.0.5.
 
 Games read the same zone: a game with a clock of its own, such as Pokemon's
 day and night, keeps the time of the zone chosen here, and a new zone

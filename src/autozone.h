@@ -35,18 +35,31 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "db.h"
+
 /* Who is asked, for the log, and the request: only the fields read */
 #define AUTOZONE_SERVICE   "ipwho.is"
 #define AUTOZONE_URL       "https://ipwho.is/?fields=success,message,timezone"
 #define AUTOZONE_TIMEOUT_S 10
 
-/* The library database's keys, beside "timezone": Auto on ("1") or off
- * ("0", every card's default, src/db.c), and the zone Auto set last, so the
- * row can say it found the zone in use. The zone in use stays "timezone",
- * which Auto writes as the row does: the launcher's start, a game's clock
- * and the bar over a port read it as before. */
+/* The library database's keys, beside "timezone": Auto on ("1", every new
+ * card's default, src/db.c) or off ("0", a zone picked on the row), and the
+ * zone Auto set last, so the row can say it found the zone in use. The zone
+ * in use stays "timezone", which Auto writes as the row does: the
+ * launcher's start, a game's clock and the bar over a port read it as
+ * before. */
 #define AUTOZONE_KEY       "timezone.auto"
 #define AUTOZONE_FOUND_KEY "timezone.auto_zone"
+
+/* Auto is every card's from 1.0.5 (2026-11-14: "Make auto timezone the
+ * default for everyone now in 1.0.5"). A new card is seeded on. A card from
+ * before is switched on once, at its first start of 1.0.5, and
+ * AUTOZONE_MIGRATED_KEY says it was, so a zone the player picks by hand
+ * afterwards stays picked. The zone there is stays until Auto's first
+ * answer. True when this was that first start (Auto is on after it, either
+ * way); false after it, and with no library. */
+#define AUTOZONE_MIGRATED_KEY "timezone.auto_105"
+bool autozone_migrate(db *lib);
 
 typedef struct {
 	char id[64];        /* the zone database's name, "" when none came */
