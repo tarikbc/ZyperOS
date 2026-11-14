@@ -666,7 +666,7 @@ def all_systems_card(card):
 
 
 # Each language's own run of every shot, on its own cards
-def run_language(code, shots, binary, keep):
+def run_language(code, shots, binary, keep, theme="light"):
     notes, failures, data, drawn = [], [], {}, set()
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
@@ -714,7 +714,7 @@ def run_language(code, shots, binary, keep):
             # The tutorial and the battery's screens draw no status corner
             status = [] if name.startswith(("tour-", "lowbatt", "charging-")) else \
                 ["--status", "10:08 24h wifi=off batt=82"]
-            command = [str(binary), "--shot", str(target), "--theme", "light", "--lang", code,
+            command = [str(binary), "--shot", str(target), "--theme", theme, "--lang", code,
                        "--screen", "systems", "--phase", "3200", *status, "--fn-volume",
                        *[f.replace("{card}", str(card)) for f in flags]]
             # errors=replace: a log line may end mid-character (a cut name)
@@ -765,13 +765,17 @@ def main():
     ap.add_argument("--coverage", action="store_true", help="list the strings no shot draws")
     ap.add_argument("--write-unshot", action="store_true",
                     help="write tools/i18n-unshot.txt: every string no shot draws, as it is now")
+    ap.add_argument("--theme", choices=["light", "dark"], default="light",
+                    help="the theme the shots are drawn in (light; tools/pixel-gate.py takes both)")
+    ap.add_argument("--binary", type=Path, help="this launcher, not build-native/zyperos (tools/pixel-gate.py's base)")
+    ap.add_argument("--jobs", type=int, help="languages shot at once (all of them)")
     ap.add_argument("only", nargs="*", help="shot names (default: all)")
     args = ap.parse_args()
     if subprocess.call(["pkg-config", "--exists", "sdl2", "SDL2_image", "SDL2_ttf"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
         print("skipped: no SDL2 here to build the launcher with")
         return 0
-    binary = ROOT / "build-native" / "zyperos"
+    binary = args.binary.resolve() if args.binary else ROOT / "build-native" / "zyperos"
     if not binary.is_file():
         print("FAIL no build-native/zyperos: make native first", file=sys.stderr)
         return 1
@@ -783,8 +787,9 @@ def main():
     langs = args.lang or (i18n.CODES + [i18n.PSEUDO])
     keep = args.keep.resolve() if args.keep else None
     results = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(langs)) as pool:
-        for code, notes, failures, data, drawn in pool.map(lambda c: run_language(c, shots, binary, keep), langs):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(args.jobs or len(langs), len(langs)))) as pool:
+        for code, notes, failures, data, drawn in pool.map(lambda c: run_language(c, shots, binary, keep, args.theme),
+                                                           langs):
             # Data (a game's name, a formatted line) may be cut or slide in
             # English too; a screen where a language cuts more of it than
             # English does has a translation that made the cut ("vinculado
