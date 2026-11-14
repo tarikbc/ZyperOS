@@ -602,8 +602,8 @@ uint32_t home_draw(home *h,SDL_Renderer *r,home_layout layout,
     SDL_Rect underline={492,gallery?512:672,40,DS_BAR}; SDL_RenderFillRect(r,&underline);
     char index[32]; snprintf(index,sizeof index,"%d / %d",cursor+1,count);
     ui_text(r,page_font(PAGE_CHROME),index,512,ui_cap_y(page_font(PAGE_CHROME),704),0,UI_TEXT_DIM);
-    page_hint(r,"MENU",T(S_HOME_SETTINGS),64,704,false,false);
-    if(!gallery) page_hint(r,"SELECT","MP4",784,704,false,false);
+    page_hint(r,"MENU",T(S_HOME_SETTINGS),64,DS_PAGE_FOOT_Y,false,false);
+    if(!gallery) page_hint(r,"SELECT","MP4",784,DS_PAGE_FOOT_Y,false,false);
     /* The gallery's A hint starts at 768 and keeps there while it ends by 1000;
      * a longer label (the pseudo-locale's) slides left to end there instead of
      * running off the screen */
@@ -613,7 +613,7 @@ uint32_t home_draw(home *h,SDL_Renderer *r,home_layout layout,
         int total=ui_button_width("A",40)+12+ui_text_width(page_font(PAGE_ACTION),open);
         if(open_x+total>1000) open_x=1000-total;
     }
-    page_hint(r,"A",open,open_x,gallery?704:416,true,false);
+    page_hint(r,"A",open,open_x,gallery?DS_PAGE_FOOT_Y:416,true,false);
     if(animate && row_moving(&h->motion,now)) wait=0;
     if(!animate) wait=UINT32_MAX;
     restore_state(r,saved);

@@ -4163,7 +4163,10 @@ xfer=on'` or `xfer=62` for the corner's mark.
 
 A new screen is built from these parts by name and copies none of their
 numbers. A part it needs that is not here goes into `src/ds/` first, with
-its line in this table.
+its line in this table. `check-ds` (`tools/ds-check.py`) holds what the compiler
+cannot: `src/ds/` includes nothing of `src/main.c`, and outside it no page's
+foot is typed as 704, no Zyper at a page's (123, 168), and no tile's mark or
+the tiles' style is read off a name.
 
 | Part | Where | What it holds |
 |---|---|---|
