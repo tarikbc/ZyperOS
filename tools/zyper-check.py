@@ -61,8 +61,10 @@ MENU_DOWN = 96 - 64
 BAND = (800, 69 + MENU_DOWN, 952, 173 + MENU_DOWN)
 # Under his chin, in the menu and on the power-off screen
 MENU_CHIN = [(875, 160 + MENU_DOWN), (875, 162 + MENU_DOWN)]
-# The panel's plain surface, level with his chin and clear of the heading
-MENU_SURFACE = (700, 130 + MENU_DOWN)
+# The panel's plain surface, level with his chin and clear of the heading:
+# the panel's margin left of the content, since MENU's tab row (DESIGN.md
+# 11.3) has the tabs' names and the L1 and R1 glyphs across the band
+MENU_SURFACE = (100, 130 + MENU_DOWN)
 OFF_CHIN = [(512, 500), (512, 506), (512, 512)]
 
 fails = 0

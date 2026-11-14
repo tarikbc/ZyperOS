@@ -92,6 +92,37 @@ int main(void)
 	ck(theme_resolve(APPEAR_AUTO, 0) == DS_DARK, "midnight is night");
 	ck(theme_resolve(APPEAR_AUTO, 12) == DS_LIGHT, "noon is day");
 	ck(theme_resolve(APPEAR_AUTO, 23) == DS_DARK, "23:00 is night");
+
+	/* Auto Hours (MENU > Display, my pick 2026-11-12): light from and dark
+	 * from by the half hour, round midnight too, the same two never dark,
+	 * and anything off the day the default */
+	theme_set_hours(8 * 60 + 30, 20 * 60);
+	ck(theme_resolve_min(APPEAR_AUTO, 8 * 60 + 29) == DS_DARK &&
+	   theme_resolve_min(APPEAR_AUTO, 8 * 60 + 30) == DS_LIGHT, "light from 8:30");
+	ck(theme_resolve_min(APPEAR_AUTO, 19 * 60 + 59) == DS_LIGHT &&
+	   theme_resolve_min(APPEAR_AUTO, 20 * 60) == DS_DARK, "dark from 20:00");
+	theme_set_hours(20 * 60, 6 * 60);
+	ck(theme_resolve_min(APPEAR_AUTO, 23 * 60) == DS_LIGHT &&
+	   theme_resolve_min(APPEAR_AUTO, 3 * 60) == DS_LIGHT &&
+	   theme_resolve_min(APPEAR_AUTO, 12 * 60) == DS_DARK, "hours round midnight");
+	theme_set_hours(9 * 60, 9 * 60);
+	ck(theme_resolve_min(APPEAR_AUTO, 9 * 60) == DS_LIGHT &&
+	   theme_resolve_min(APPEAR_AUTO, 21 * 60) == DS_LIGHT, "the same two hours are never dark");
+	theme_set_hours(-5, 99999);
+	{
+		int l, d;
+
+		theme_hours(&l, &d);
+		ck(l == THEME_LIGHT_FROM && d == THEME_DARK_FROM, "hours off the day are 7:00 and 19:00");
+	}
+	theme_set_hours(7 * 60 + 15, 19 * 60);
+	{
+		int l;
+
+		theme_hours(&l, NULL);
+		ck(l == 7 * 60, "an hour off the half hour is the half hour before it");
+	}
+	theme_set_hours(THEME_LIGHT_FROM, THEME_DARK_FROM);
 	{
 		int day = 0, ok = 1;
 

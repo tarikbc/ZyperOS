@@ -1,0 +1,24 @@
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:231 - HM_DEFAULT_TOOLS_DIR:   /roms/ports
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:232 - HM_DEFAULT_PORTS_DIR:   /roms/ports
+2026-11-12 18:33:01.982 | DEBUG    | harbourmaster.config:<module>:233 - HM_DEFAULT_SCRIPTS_DIR: /roms/ports
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+Attempting to delete file at path: /roms/ports/PortMaster/utils/pmsplash/stopsplash
+File 'stopsplash' deleted successfully.
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+ERROR: Could not restore CRTC
+0: 1
+{'name': 'zyperos', 'version': '1.0.3', 'kernel_version': '7.1.2', 'device': 'gkd pixel 2', 'model': 'GKD Pixel 2', 'resolution': (640, 480), 'refresh_rate': 120, 'orientation': 0, 'analogsticks': 0, 'analogtriggers': 'N', 'touch': 'N', 'rumble': 'Y', 'gpu_driver': 'Unknown', 'gpu_driver_version': 'Unknown', 'has_swap': 'N', 'has_zram': 'N', 'cpu': 'RK3326', 'capabilities': ['1gb', '4:3', '640x480', 'aarch64', 'analog_0', 'power', 'restore', 'rumble', 'en_US'], 'primary_arch': 'aarch64', 'ram': 1024, 'glibc': '2.42'}

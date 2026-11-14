@@ -128,15 +128,15 @@ ja = お気に入りに追加
 it = Aggiungi un preferito
 
 [tour.y.line]
-note = Favorites is the home's list of favorite games.
-en = Press Y to add a game to Favorites.
-zh-Hans = 按 Y 把游戏加入收藏。
-es = Presiona Y para agregarlo a Favoritos.
-pt-BR = Aperte Y para pôr um jogo nos Favoritos.
-fr = Appuyez sur Y pour l'ajouter aux Favoris.
-de = Mit Y kommt ein Spiel zu den Favoriten.
-ja = Y でゲームをお気に入りに追加します。
-it = Premi Y per aggiungere un gioco ai Preferiti.
+note = Comes right after "Press X for a game's details.": the details are the page X opens, where Y favorites the game (Favorite is one of its rows). On the shelf itself Y starts a game from the start, so the line says "in the details". Favorites is the home's list of favorite games. One line, centered: keep it short.
+en = In the details, press Y to add a favorite.
+zh-Hans = 在详情中按 Y 加入收藏。
+es = Presiona Y en los detalles para marcarlo.
+pt-BR = Aperte Y nos detalhes para favoritar.
+fr = Dans les détails, Y l'ajoute aux Favoris.
+de = In den Details merkst du es mit Y.
+ja = 詳細の Y でお気に入りに追加します。
+it = Nei dettagli, premi Y per i Preferiti.
 
 [tour.x.title]
 en = See the Details
@@ -745,17 +745,6 @@ fr = GAUCHE/DROITE
 de = LINKS/RECHTS
 ja = 左、右か A
 it = SINISTRA/DESTRA
-
-[tour.demo.played]
-note = The stand-in details panel of a game (Chrono Trigger): its play time, 12 hours.
-en = Played 12 h
-zh-Hans = 已玩 12 小时
-es = Jugado 12 h
-pt-BR = Jogado 12 h
-fr = Joué 12 h
-de = 12 h gespielt
-ja = プレイ時間 12 時間
-it = Giocato 12 h
 
 [tour.demo.now_playing]
 note = The stand-in MP4 screen's heading.

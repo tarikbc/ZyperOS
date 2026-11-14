@@ -68,6 +68,8 @@ struct httpd_req {
 	FILE  *resp_f;              /* streaming a file out */
 	long   resp_f_left;
 	bool   replied;
+	httpd_taken taken;          /* a 101: who gets the socket once it is out */
+	void  *taken_ctx;
 
 	/* --- bookkeeping --------------------------------------------------- */
 	int    tag;                 /* the handler's own, see httpd_set_tag */
@@ -93,6 +95,7 @@ typedef struct {
 
 static int  g_listen = -1;
 static int  g_port;
+static const char *g_always = "";   /* httpd_always's headers */
 static conn g_conn[MAX_CONN];
 static unsigned long g_in, g_out;
 
@@ -226,11 +229,11 @@ static void build_head(httpd_req *r, int status, const char *type,
 		/* The page and the API are the same origin and nothing else should be
 		 * calling this, so say so rather than leaving it to chance. */
 		"X-Content-Type-Options: nosniff\r\n"
-		"%s"
+		"%s%s"
 		"\r\n",
 		status, status_text(status), len, type,
 		extra && strstr(extra, "Cache-Control:") ? "" : "Cache-Control: no-store\r\n",
-		extra ? extra : "");
+		g_always, extra ? extra : "");
 	if (r->resp_head_len >= sizeof r->resp_head) {
 		/* An oversized header block is a bug in a route, not something a
 		 * client can cause, but truncating it would emit a malformed reply
@@ -295,6 +298,47 @@ bool httpd_reply_file(httpd_req *r, const char *path, const char *content_type,
 	build_head(r, 200, content_type ? content_type : "application/octet-stream",
 	           (long)st.st_size, extra_headers);
 	return true;
+}
+
+/* ---- a 101, and the socket handed over ---------------------------------- */
+
+static const conn *conn_of(const httpd_req *r)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++)
+		if (g_conn[i].fd >= 0 && &g_conn[i].r == r) return &g_conn[i];
+	return NULL;
+}
+
+void httpd_reply_upgrade(httpd_req *r, const char *extra_headers,
+                         httpd_taken fn, void *ctx)
+{
+	const conn *c = conn_of(r);
+	int n;
+
+	if (r->replied) return;
+	/* Bytes read past the headers are in c->buf, which the taker never
+	 * sees, so there must be none (httpd.h); a body would be such bytes */
+	if (!c || !fn || c->used > 0 || r->content_len > 0) {
+		httpd_reply_status(r, 400, "nothing may follow an upgrade request");
+		return;
+	}
+	/* No Content-Length, unlike build_head: a 1xx reply has no body and
+	 * must not say it has one (RFC 9110, 8.6) */
+	n = snprintf(r->resp_head, sizeof r->resp_head,
+	             "HTTP/1.1 101 Switching Protocols\r\n%s\r\n",
+	             extra_headers ? extra_headers : "");
+	if (n < 0 || (size_t)n >= sizeof r->resp_head) {
+		httpd_reply_status(r, 500, "the upgrade's headers are too long");
+		return;
+	}
+	r->status = 101;
+	r->resp_head_len = (size_t)n;
+	r->resp_head_sent = 0;
+	r->replied = true;
+	r->taken = fn;
+	r->taken_ctx = ctx;
 }
 
 /* ---- the page's own files --------------------------------------------- */
@@ -482,6 +526,20 @@ static void conn_close(conn *c)
 	req_reset(&c->r);
 	c->fd = -1;
 	c->st = C_FREE;
+}
+
+/* A 101 is out (httpd_reply_upgrade): the socket to its taker and the slot
+ * free, as conn_close but for the close */
+static void hand_over(conn *c)
+{
+	httpd_taken fn = c->r.taken;
+	void *ctx = c->r.taken_ctx;
+	int fd = c->fd;
+
+	req_reset(&c->r);
+	c->fd = -1;
+	c->st = C_FREE;
+	fn(fd, ctx);
 }
 
 /* Split the header block in place into NUL-separated lines, and pull out what
@@ -773,6 +831,10 @@ static bool pump_write(conn *c, httpd_end end, void *ctx, int *did)
 			/* Everything is out. Said before the close below, which would
 			 * otherwise report this as cut off. */
 			end_request(c, true, end, ctx);
+			if (r->taken) {
+				hand_over(c);
+				return true;
+			}
 			if (c->close_after) return false;
 			/* The request is finished; the connection's buffer is not
 			 * necessarily empty. Anything still in it is the next request,
@@ -827,9 +889,16 @@ static bool pump_write(conn *c, httpd_end end, void *ctx, int *did)
 
 bool httpd_start(const int *ports, int nports)
 {
+	return httpd_start_on(NULL, ports, nports);
+}
+
+bool httpd_start_on(const char *ip, const int *ports, int nports)
+{
+	struct in_addr at = { .s_addr = htonl(INADDR_ANY) };
 	int i;
 
 	if (g_listen >= 0) return true;
+	if (ip && inet_pton(AF_INET, ip, &at) != 1) return false;
 	for (i = 0; i < MAX_CONN; i++) { g_conn[i].fd = -1; g_conn[i].st = C_FREE; }
 
 	for (i = 0; i < nports; i++) {
@@ -841,7 +910,7 @@ bool httpd_start(const int *ports, int nports)
 		setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
 		memset(&a, 0, sizeof a);
 		a.sin_family = AF_INET;
-		a.sin_addr.s_addr = htonl(INADDR_ANY);
+		a.sin_addr = at;
 		a.sin_port = htons((unsigned short)ports[i]);
 		if (bind(fd, (struct sockaddr *)&a, sizeof a) != 0 ||
 		    listen(fd, 8) != 0) {
@@ -877,6 +946,8 @@ void httpd_stop(void)
 
 bool httpd_running(void) { return g_listen >= 0; }
 int  httpd_port(void)    { return g_port; }
+int  httpd_fd(void)      { return g_listen; }
+void httpd_always(const char *headers) { g_always = headers ? headers : ""; }
 
 void httpd_traffic(unsigned long *in, unsigned long *out)
 {
@@ -984,6 +1055,7 @@ int httpd_poll(httpd_handler fn, httpd_end end, void *ctx)
 			conn_close(c);
 			continue;
 		}
+		if (c->fd < 0) continue;          /* handed over after a 101 */
 
 		/* A FRESH reading, not the `now` taken before this connection did its
 		 * work. pump_read and pump_write stamp last_ms from their own call to

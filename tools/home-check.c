@@ -19,7 +19,8 @@ int main(void)
     menu_row rows[MENU_MAX_ROWS];
     menu_bufs b;
     const char *heading;
-    sys_ui menu = {0};
+    /* every row of MENU, in the enum's order: no tab (sys_menu.h) */
+    sys_ui menu = { .tab = PT_TABS };
     /* These assertions fail if the default changes or the setting row disappears. */
     assert(home_parse(NULL) == HOME_SPOTLIGHT);
     assert(home_parse("gallery") == HOME_GALLERY);
@@ -189,6 +190,8 @@ int main(void)
     uint32_t elapsed=0;
     for(unsigned i=0;i<gb->nframes;i++) {
         assert(home_draw(&h,r,HOME_GALLERY,items,5,0,"1 game","Open games",elapsed,true)==gb->frames[i].ms);
+        /* The pose due is the one written into the atlas's texture */
+        assert(h.atlas.motion && h.atlas.shown==(int)gb->frames[i].tile);
         assert(home_draw(&h,r,HOME_GALLERY,items,5,0,"1 game","Open games",elapsed+gb->frames[i].ms-1,true)==1);
         elapsed+=gb->frames[i].ms;
     }
@@ -201,16 +204,22 @@ int main(void)
         home_prepare(&h,r,"res",all,cfg.count,i,1000+i*DS_MS_MOVE);
         size_t bytes=0; int width,height,stills=0;
         home_texture *atlases[]={&h.atlas,&h.near[0],&h.near[1]};
+        /* An atlas: its texture, the first pose, and in RAM its regions */
         for(int j=0;j<3;j++) if(atlases[j]->tex) {
+            size_t one;
             SDL_QueryTexture(atlases[j]->tex,NULL,NULL,&width,&height);
-            bytes+=(size_t)width*height*4;
+            assert(width==(int)SA_CELL && height==(int)SA_CELL);
+            one=(size_t)width*height*4;
+            if(atlases[j]->motion) one=(size_t)atlases[j]->motion->w*atlases[j]->motion->h*4;
+            assert(one<=SA_MAX_ATLAS_RGBA_BYTES);
+            bytes+=one;
         }
         for(int j=0;j<HOME_STILLS;j++) if(h.still[j].tex) {
             SDL_QueryTexture(h.still[j].tex,NULL,NULL,&width,&height);
             bytes+=(size_t)width*height*4; stills++;
         }
         assert(stills<=HOME_STILLS);
-        assert(bytes<=(1+HOME_NEAR)*SA_MAX_ATLAS_RGBA_BYTES+HOME_STILLS*128u*128u*4u);
+        assert(bytes<=(1+HOME_NEAR)*SA_MAX_ATLAS_RGBA_BYTES+HOME_STILLS*SA_STILL*SA_STILL*4u);
     }
     /* Every configured system's still is resident after a few passes, so a
      * scroll never meets a sprite still loading (2026-11-05). */

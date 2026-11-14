@@ -36,6 +36,19 @@ Diatom and for plastron, the Linux system under ZyperOS, and ZyperOS's own
   BSD 2-Clause License, its notice in Diatom's own (`Licenses/Diatom.md`).
 - ZyperOS starts it as a process of its own and talks to it through a Unix
   socket. The launcher does not link to it.
+- **The Shader rows' shaders**, ported to OpenGL ES 3.0 in
+  `diatom/port/pixel2.c`; `diatom/THIRD-PARTY.md` says more. None is GPL, so
+  Diatom's own files stay under its license:
+  - **Sharp-Shimmerless**, and its grid and scanlines variants (Scanlines,
+    LCD Grid), are zadpos's
+    (https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader at 2a74e7a),
+    under **CC0 1.0 Universal**: public domain, as their source says.
+    Sharp-Shimmerless is the Brick's resampling map in
+    `diatom/port/brick.c` too.
+  - **CRT** and **CRT Curved** are Timothy Lottes's CRTS,
+    *"PUBLIC DOMAIN CRT-STYLED SCALAR - 20180120b"*, from libretro's
+    glsl-shaders (https://github.com/libretro/glsl-shaders at a350698,
+    `crt/shaders/crt-lottes-fast.glsl`): **public domain**.
 
 ---
 
@@ -77,6 +90,10 @@ that rebuilds it to the same bytes.
 | `vecx_libretro.so` | Vectrex | GPL-3.0 | https://github.com/libretro/libretro-vecx at dccff54, built with its software renderer by `mk/build-small-cores.sh`, not the buildbot |
 | `parallel_n64_libretro.so` | Nintendo 64 (the default) | GPL-2.0 (Mupen64Plus; Glide64, Rice and gles2n64, GPL-2.0-or-later; angrylion-rdp-plus, MIT) | https://github.com/libretro/parallel-n64 at 334998e (the commit ROGUE OS's core names), for OpenGL ES 2; built by `mk/build-parallel-n64.sh`, not the buildbot |
 | `mupen64plus_next_libretro.so` | Nintendo 64 | GPL-2.0 (Mupen64Plus, GLideN64) | https://github.com/libretro/mupen64plus-libretro-nx at f275caf (ROCKNIX's mupen64plus-nx-lr pin), for OpenGL ES 3; built by `mk/build-mupen64plus-next.sh`, not the buildbot, with ZyperOS's `mk/patches/mupen64plus-next-new-frame-swap.patch` (GPL-2.0, as the code it changes) |
+| `ppsspp_libretro.so` | PSP | GPL-2.0-or-later | https://github.com/hrydgard/ppsspp at fa50bb1 (v1.20.4, ROCKNIX's ppsspp-lr pin), its libretro core for OpenGL ES, with the submodules it builds from at the commits the tree records, plus ZyperOS's `mk/patches/ppsspp-serialize-size.patch`, `mk/patches/ppsspp-audio-thread.patch` and `mk/patches/ppsspp-context-null.patch`, and four patches of ARM64 speedups from Deadstation Portable (https://github.com/tyrannotorus/emulator-deadstation-portable, GPL-2.0-or-later, a PPSSPP v1.20.4 fork): `mk/patches/ppsspp-vertex-pairs.patch`, `mk/patches/ppsspp-vfpu-jit.patch`, `mk/patches/ppsspp-vfpu-dot.patch` and `mk/patches/ppsspp-jit-blocks.patch`; built by `mk/build-ppsspp.sh`, not the buildbot. Its assets (`ZyperOS/ppsspp`, copied to `Bios/PPSSPP`: the PSP's fonts, the VFPU tables, the game fixes, the system dialogs' languages) are PPSSPP's, from the same tree |
+| `gearcoleco_libretro.so` | ColecoVision | GPL-3.0 | https://github.com/drhelius/Gearcoleco at 063fa52 (1.7.6), its libretro core; built by `mk/build-small-cores.sh`, not the buildbot |
+| `prboom_libretro.so` | Doom | GPL-2.0-or-later | https://github.com/libretro/libretro-prboom at 4849268 (ROCKNIX's prboom-lr pin), with the engine's prboom.wad compiled in; built by `mk/build-small-cores.sh`, not the buildbot |
+| `tic80_libretro.so` | TIC-80 | MIT | https://github.com/nesbox/TIC-80 at b3dbd59 (v1.4.1), its libretro core with its language runtimes, plus ZyperOS's `mk/patches/tic80-no-state.patch`; built by `mk/build-tic80.sh` |
 | `scummvm_libretro.so` | ScummVM | GPL-3.0-or-later | https://github.com/scummvm/scummvm at 7d2709d (v2026.4.0), its own libretro backend, without OpenGL; with https://github.com/libretro/libretro-deps at bab7d25 and https://github.com/libretro/libretro-common at 879c8d5, the backend's pins; built by `mk/build-scummvm.sh`, not the buildbot. Its engine data files and GUI themes (`ZyperOS/scummvm`, copied to `Bios/scummvm`) are ScummVM's, from the same tree |
 | `yabasanshiro_libretro.so` | Saturn | GPL-2.0-or-later | https://github.com/libretro/yabause at 39535a6 (its yabasanshiro branch; ROCKNIX's yabasanshiro-lr pin), for OpenGL ES 3 with its ARM64 dynarec; built by `mk/build-yabasanshiro.sh`, not the buildbot |
 | `freej2me_plus_libretro.so` | J2ME | GPL-3.0 | https://github.com/TASEmulators/freej2me-plus at bdd5edc, the core and its Java app (`freej2me_plus-lr.jar`, which bundles ObjectWeb ASM, BSD-3-Clause), plus ZyperOS's `mk/patches/freej2me-plus-rumble.patch`, `mk/patches/freej2me-plus-busybox-tar.patch` and `mk/patches/freej2me-plus-close-pipes.patch`; built by `mk/build-freej2me.sh` |
@@ -122,6 +139,21 @@ each under its own terms (GPL, LGPL, BSD, MIT, zlib and the FreeType
 License), which ScummVM's `LICENSES/` folder and libretro-deps list in full.
 The games themselves are not part of it.
 
+The PSP core carries, linked in, FFmpeg's static aarch64 build from PPSSPP's
+ffmpeg submodule (https://github.com/hrydgard/ppsspp-ffmpeg, LGPL-2.1-or-later,
+built without its GPL parts), and from PPSSPP's `ext/` glslang and
+SPIRV-Cross (Apache-2.0 and BSD-3-Clause), rcheevos (MIT), Zstandard and
+libchdr (BSD-3-Clause), armips (MIT), Lua (MIT), FreeType (the FreeType
+License), nanosvg (zlib) and PPSSPP's other bundled code, each under its own
+terms, which PPSSPP's tree lists in full. It is not Sony's software. The games
+themselves are not part of it.
+
+The TIC-80 core carries, linked in, the runtimes of the languages its carts
+are written in: Lua, MoonScript and LPeg, YueScript, Fennel, Wren, Squirrel,
+QuickJS-ng, pocketpy, Janet and wasm3 (MIT), s7 Scheme (0BSD), and zlib,
+libpng, giflib, kuba--/zip (zlib, libpng and MIT terms), with blip_buf
+(LGPL-2.1-or-later), each under its own terms in TIC-80's `vendor/` folder.
+
 fake08 bundles z8lua and Lua, tac08, utf8-util, simpleini and miniz (MIT),
 parts of zepto8 (WTFPL-2), LodePNG (its own permissive terms) and an oval
 routine from Stack Overflow (CC BY-SA 3.0), each under its own terms, which
@@ -146,29 +178,22 @@ GitHub releases onto the card when the player asks, and PortMaster updates
 itself from then on. ZyperOS carries no part of PortMaster: the other files
 in `res/portmaster/` are ZyperOS's own settings for it, which launch.sh puts
 in PortMaster's folder before each port, and the Ports shelf's art for its
-entry (`cover-light.png`, `cover-dark.png` and `icon.png`), drawn for ZyperOS
-by `tools/genportmaster.py` with no part of PortMaster's logo or any brand's
-art, under ZyperOS's own license.
+entry (`cover-light.png`, `cover-dark.png` and `icon.png`), ZyperOS's own
+system art (`res/system-art/original/utility`) with no part of PortMaster's
+logo or any brand's art, under ZyperOS's own license.
 
 ---
 
 ## Files ZyperOS carries
 
-- Pixel console icons - original artwork by **BenJelter**, from the
-  [Console Icon Pack](https://benjelter.itch.io/console-icon-pack).
-  **YOjeremyRaps** added consoles, icons and animations for
-  **Pixel UI - Smart Folders v1.4**, the user-supplied pack used here.
-  The pack's metadata credits both artists. See
-  [res/system-art/README.md](res/system-art/README.md) for asset provenance.
-  Imported artwork retains its authorship and is not relicensed by this
-  repository's license. The supplied archive contains no separate license
-  text; this attribution does not assert additional redistribution rights.
-- Nine system drawings in `res/system-art/source` (3DO, Game & Watch, MSX2,
-  Vectrex, Neo Geo CD, NAOMI, Atomiswave, Muse, J2ME) are drawn from photos on
-  Wikimedia Commons by Evan-Amos, Xxm, Black Squirrel, Jpl752 and Mahcann.
-  Each keeps its photos' terms (public domain, CC BY 4.0, CC BY-SA 3.0 or
-  4.0); every photo, author and license is listed in
-  [res/system-art/README.md](res/system-art/README.md) and the manifest.
+- The system art (`res/system-art/original`, compiled into
+  `res/system-icons`) is ZyperOS's own, under ZyperOS's license: every
+  console, handheld, shelf symbol, folder and PortMaster's art was drawn for
+  ZyperOS, and none of it is taken from another artist's work or from a
+  photograph ([its README](res/system-art/original/README.md) records how
+  each was made). The consoles' and programs' names, wordmarks (DOOM,
+  PICO-8, TIC-80 and the rest) and hardware designs belong to their owners,
+  and no endorsement is implied.
 - `res/fonts/menu.ttf` and `res/fonts/title.ttf` - **Lexend** Regular and
   SemiBold, by The Lexend Project Authors (https://github.com/googlefonts/lexend),
   from Google Fonts, SIL Open Font License 1.1, with the Reserved Font Name

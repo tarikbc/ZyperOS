@@ -1,0 +1,55 @@
+{
+  "key": "ARCADE",
+  "name": "Arcade",
+  "description": "Red button presses and releases",
+  "cell": 256,
+  "cols": 2,
+  "rows": 1,
+  "unique": 2,
+  "duration_ms": 800,
+  "kind": "system",
+  "static": false,
+  "expected_poses": 2,
+  "motion_bounds": [
+    110,
+    95,
+    37,
+    34
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 400
+    },
+    {
+      "tile": 1,
+      "ms": 400
+    }
+  ],
+  "still_time_ms": 700,
+  "decoded_atlas_bytes": 524288,
+  "inputs": [
+    "source/ARCADE.png",
+    "source/AW-cartridge.png",
+    "source/NAOMI-rom-case.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/arcade.js"
+  ],
+  "input_sha256": {
+    "source/ARCADE.png": "1f70d06f2f8d56cc2748a3efc5d7c0c4c73a2bfa6b385d42b6052fa7e71a456d",
+    "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+    "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+  },
+  "atlas": "ARCADE.png",
+  "still": "ARCADE-still.png",
+  "atlas_sha256": "0c4e620d1c32caa5bd8301f7e0870862b2be28dbf5b3077676d05a31c347fdff",
+  "still_sha256": "daf0368b41a299391e1771015ebc86a8b63d2227999dff86ce017aaf93e959ad"
+}

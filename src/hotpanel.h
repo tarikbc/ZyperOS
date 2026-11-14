@@ -27,4 +27,12 @@ typedef struct {
  * long for its line. */
 void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms);
 
+/* The code for `qr` on its tile with its top-left at (x, y), `module` units
+ * a module and four modules of light around it, as this screen draws it:
+ * ink on Beard's surface in both themes, framed in **edge**. Returns the
+ * tile's side; hotpanel_code_side says it without drawing. The Player 2
+ * page (src/p2panel.c) draws its code with it too. */
+int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr);
+int hotpanel_code_side(const char *qr, int module);
+
 #endif

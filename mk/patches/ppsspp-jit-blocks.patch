@@ -1,0 +1,386 @@
+ZyperOS: the ARM64 JIT's block layout, from
+Deadstation Portable (github.com/tyrannotorus/emulator-deadstation-portable, GPL-2.0-or-later as PPSSPP),
+a PPSSPP v1.20.4 fork for the TrimUI Brick: its first commit fbde7d6 and commit a205147.
+
+- What a block rarely or never runs lives in a cold area at the top of the code space (4 MB of the
+  16): an exit's stub until the exit is linked, out of time, a jump to a block not compiled yet, the
+  bail at a block's checked entry. The hot code keeps one branch for each (a conditional one through
+  a trampoline after the block, as a conditional branch only reaches 1 MB). The hot code reaches
+  the instruction side only after those branches are written (a205147).
+- A jump to a register (jr, jalr) runs the dispatcher's fast path in place, so each jump gets a
+  branch prediction of its own instead of all sharing one indirect branch.
+- A forward link goes past the target's downcount check (its normal entry): only a backward jump
+  can make a loop. A block that goes away sends such links back through its checked entry first.
+- A forward conditional branch, mostly not taken, puts its not-taken exit first, to fall through.
+- The checked entry is one not-taken branch (useForwardJump) instead of three instructions.
+
+Left out of the fork's JIT: its 10 more statically allocated registers, its per-block VFPU prefix
+mode, its sine table replacement (not bit-exact) and its test switches.
+
+diff --git a/Core/MIPS/ARM64/Arm64CompBranch.cpp b/Core/MIPS/ARM64/Arm64CompBranch.cpp
+index 7cd137a..cd338da 100644
+--- a/Core/MIPS/ARM64/Arm64CompBranch.cpp
++++ b/Core/MIPS/ARM64/Arm64CompBranch.cpp
+@@ -119,6 +119,9 @@ void Arm64Jit::BranchRSRTComp(MIPSOpcode op, CCFlags cc, bool likely)
+ 		const bool rsIsZero = gpr.IsImm(rs) && gpr.GetImm(rs) == 0;
+ 		const bool rtIsZero = gpr.IsImm(rt) && gpr.GetImm(rt) == 0;
+ 
++		// From Deadstation Portable: a forward branch is mostly not taken, so that exit comes first, and falls through.
++		const bool notTakenFirst = offset > 0 && !likely && !branchInfo.delaySlotIsBranch;
++
+ 		Arm64Gen::FixupBranch ptr;
+ 		if ((likely || branchInfo.delaySlotIsNice) && (rsIsZero || rtIsZero) && canFlip) {
+ 			// Special case, we can just use CBZ/CBNZ directly.
+@@ -127,7 +130,7 @@ void Arm64Jit::BranchRSRTComp(MIPSOpcode op, CCFlags cc, bool likely)
+ 			// Flush should keep r in the same armreg.
+ 			ARM64Reg ar = gpr.R(r);
+ 			FlushAll();
+-			if (cc == CC_EQ) {
++			if ((cc == CC_EQ) != notTakenFirst) {
+ 				ptr = CBZ(ar);
+ 			} else {
+ 				ptr = CBNZ(ar);
+@@ -157,7 +160,7 @@ void Arm64Jit::BranchRSRTComp(MIPSOpcode op, CCFlags cc, bool likely)
+ 					CompileDelaySlot(DELAYSLOT_SAFE_FLUSH);
+ 				else
+ 					FlushAll();
+-				ptr = B(cc);
++				ptr = B(notTakenFirst ? (CCFlags)((int)cc ^ 1) : cc);
+ 			} else {
+ 				FlushAll();
+ 				ptr = B(cc);
+@@ -179,12 +182,18 @@ void Arm64Jit::BranchRSRTComp(MIPSOpcode op, CCFlags cc, bool likely)
+ 			FlushAll();
+ 		}
+ 
+-		// Take the branch
+-		WriteExit(targetAddr, js.nextExit++);
++		if (notTakenFirst) {
++			WriteExit(notTakenTarget, js.nextExit++);
++			SetJumpTarget(ptr);
++			WriteExit(targetAddr, js.nextExit++);
++		} else {
++			// Take the branch
++			WriteExit(targetAddr, js.nextExit++);
+ 
+-		SetJumpTarget(ptr);
+-		// Not taken
+-		WriteExit(notTakenTarget, js.nextExit++);
++			SetJumpTarget(ptr);
++			// Not taken
++			WriteExit(notTakenTarget, js.nextExit++);
++		}
+ 	}
+ 
+ 	js.compiling = false;
+@@ -248,6 +257,9 @@ void Arm64Jit::BranchRSZeroComp(MIPSOpcode op, CCFlags cc, bool andLink, bool li
+ 		if (andLink)
+ 			gpr.SetImm(MIPS_REG_RA, GetCompilerPC() + 8);
+ 
++		// From Deadstation Portable: a forward branch is mostly not taken, so that exit comes first, and falls through.
++		const bool notTakenFirst = offset > 0 && !likely && !branchInfo.delaySlotIsBranch;
++
+ 		Arm64Gen::FixupBranch ptr;
+ 		if (!likely)
+ 		{
+@@ -255,7 +267,7 @@ void Arm64Jit::BranchRSZeroComp(MIPSOpcode op, CCFlags cc, bool andLink, bool li
+ 				CompileDelaySlot(DELAYSLOT_SAFE_FLUSH);
+ 			else
+ 				FlushAll();
+-			ptr = B(cc);
++			ptr = B(notTakenFirst ? (CCFlags)((int)cc ^ 1) : cc);
+ 		}
+ 		else
+ 		{
+@@ -275,12 +287,18 @@ void Arm64Jit::BranchRSZeroComp(MIPSOpcode op, CCFlags cc, bool andLink, bool li
+ 			FlushAll();
+ 		}
+ 
+-		// Take the branch
+-		WriteExit(targetAddr, js.nextExit++);
++		if (notTakenFirst) {
++			WriteExit(notTakenTarget, js.nextExit++);
++			SetJumpTarget(ptr);
++			WriteExit(targetAddr, js.nextExit++);
++		} else {
++			// Take the branch
++			WriteExit(targetAddr, js.nextExit++);
+ 
+-		SetJumpTarget(ptr);
+-		// Not taken
+-		WriteExit(notTakenTarget, js.nextExit++);
++			SetJumpTarget(ptr);
++			// Not taken
++			WriteExit(notTakenTarget, js.nextExit++);
++		}
+ 	}
+ 	js.compiling = false;
+ }
+diff --git a/Core/MIPS/ARM64/Arm64Jit.cpp b/Core/MIPS/ARM64/Arm64Jit.cpp
+index 4b152d2..288b78a 100644
+--- a/Core/MIPS/ARM64/Arm64Jit.cpp
++++ b/Core/MIPS/ARM64/Arm64Jit.cpp
+@@ -112,6 +112,7 @@ Arm64Jit::Arm64Jit(MIPSState *mipsState) : blocks(mipsState, this), gpr(mipsStat
+ 	gpr.SetEmitter(this);
+ 	fpr.SetEmitter(this, &fp);
+ 	AllocCodeSpace(1024 * 1024 * 16);  // 32MB is the absolute max because that's what an ARM branch instruction can reach, backwards and forwards.
++	coldCode_ = ColdCodeStart();
+ 	GenerateFixedCode(jo);
+ 	js.startDefaultPrefix = mips_->HasDefaultPrefix();
+ 	js.currentRoundingFunc = convertS0ToSCRATCH1[mips_->fcr31 & 3];
+@@ -195,6 +196,7 @@ void Arm64Jit::ClearCache() {
+ 	INFO_LOG(Log::JIT, "ARM64Jit: Clearing the cache!");
+ 	blocks.Clear();
+ 	ClearCodeSpace(jitStartOffset);
++	coldCode_ = ColdCodeStart();
+ 	FlushIcacheSection(region + jitStartOffset, region + region_size - jitStartOffset);
+ }
+ 
+@@ -248,7 +250,7 @@ void Arm64Jit::Compile(u32 em_address) {
+ 		return;
+ 	}
+ 
+-	if (GetSpaceLeft() < 0x10000 || blocks.IsFull()) {
++	if (HotSpaceLeft() < 0x10000 || (size_t)(region + region_size - coldCode_) < 0x10000 || blocks.IsFull()) {
+ 		INFO_LOG(Log::JIT, "Space left: %d", (int)GetSpaceLeft());
+ 		ClearCache();
+ 	}
+@@ -314,6 +316,7 @@ MIPSOpcode Arm64Jit::GetOffsetInstruction(int offset) {
+ 
+ void Arm64Jit::DoJit(u32 em_address, JitBlock *b) {
+ 	js.Begin(b);
++	const u8 *hotStart = GetCodePtr();
+ 
+ 	// We add a downcount flag check before the block, used when entering from a linked block.
+ 	// The last block decremented downcounter, and the flag should still be available.
+@@ -347,6 +350,7 @@ void Arm64Jit::DoJit(u32 em_address, JitBlock *b) {
+ 
+ 	gpr.Start();
+ 	fpr.Start();
++	coldExits_.clear();
+ 
+ 	js.numInstructions = 0;
+ 	while (js.compiling) {
+@@ -371,18 +375,58 @@ void Arm64Jit::DoJit(u32 em_address, JitBlock *b) {
+ 		}
+ 
+ 		// Safety check, in case we get a bunch of really large jit ops without a lot of branching.
+-		if (GetSpaceLeft() < 0x800 || js.numInstructions >= JitBlockCache::MAX_BLOCK_INSTRUCTIONS) {
++		if (HotSpaceLeft() < 0x800 || js.numInstructions >= JitBlockCache::MAX_BLOCK_INSTRUCTIONS) {
+ 			FlushAll();
+ 			WriteExit(GetCompilerPC(), js.nextExit++);
+ 			js.compiling = false;
+ 		}
+ 	}
+ 
++	// From Deadstation Portable: the block's stubs in the cold area (ColdExit). Conditional branches only reach a megabyte, so
++	// they get one instruction here, an unconditional branch on; an unconditional one reaches anywhere in the code space.
++	FixupBranch bailFar;
+ 	if (jo.useForwardJump) {
+ 		SetJumpTarget(bail);
++		bailFar = B();
++	}
++	for (ColdExit &cold : coldExits_) {
++		if (cold.kind != ColdExit::Unlinked) {
++			SetJumpTarget(cold.branch);
++			cold.branch = B();
++		}
++	}
++
++	const u8 *hotCode = GetCodePtr();
++	u8 *hotWritable = GetWritableCodePtr();
++	SetCodePointer(coldCode_, GetWritablePtrFromCodePtr(coldCode_));
++	if (jo.useForwardJump) {
++		SetJumpTarget(bailFar);
+ 		MOVI2R(SCRATCH1, js.blockStart);
+ 		B((const void *)outerLoopPCInSCRATCH1);
+ 	}
++	for (const ColdExit &cold : coldExits_) {
++		SetJumpTarget(cold.branch);
++		switch (cold.kind) {
++		case ColdExit::Unlinked:
++			MOVI2R(SCRATCH1, cold.destination);
++			B((const void *)dispatcherPCInSCRATCH1);
++			break;
++		case ColdExit::OutOfTime:
++			MovToPC(SCRATCH1);
++			B((const void *)dispatcher);
++			break;
++		case ColdExit::NotCompiled:
++			MovToPC(SCRATCH1);
++			B((const void *)dispatcherNoCheck);
++			break;
++		}
++	}
++	coldCode_ = GetCodePtr();
++	FlushIcache();
++	SetCodePointer(hotCode, hotWritable);
++	// Only now: the hot code's branches to its stubs were written just above, into what had been placeholders. Fetched
++	// stale, an exit would be a NOP and the block would run on past its end.
++	FlushIcacheSection(hotStart, hotCode);
+ 
+ 	char temp[256];
+ 	if (logBlocks > 0 && dontLogBlocks == 0) {
+@@ -685,21 +729,36 @@ void Arm64Jit::WriteExit(u32 destination, int exit_num) {
+ 	// Link opportunity!
+ 	int block = blocks.GetBlockNumberFromStartAddress(destination);
+ 	if (block >= 0 && jo.enableBlocklink) {
+-		// The target block exists! Directly link to its checked entrypoint.
+-		B(blocks.GetBlock(block)->checkedEntry);
++		// The target block exists! Directly link to it. From Deadstation Portable: only a jump backwards can make a loop, so
++		// only there is the time left looked at (its checked entry); forward, past the check (its normal entry).
++		const JitBlock *target = blocks.GetBlock(block);
++		B(destination > js.blockStart ? target->normalEntry : target->checkedEntry);
+ 		b->linkStatus[exit_num] = true;
+ 	} else {
+-		MOVI2R(SCRATCH1, destination);
+-		B((const void *)dispatcherPCInSCRATCH1);	
++		// From Deadstation Portable: one branch to its stub in the cold area. Linking overwrites this one instruction, and
++		// the stub is never run again.
++		coldExits_.push_back({ B(), ColdExit::Unlinked, destination });
+ 	}
+ }
+ 
+ void Arm64Jit::WriteExitDestInR(ARM64Reg Reg) {
+ 	// TODO: If not fast memory, check for invalid address in reg and trigger exception.
+-	MovToPC(Reg);
+ 	WriteDownCount();
+-	// TODO: shouldn't need an indirect branch here...
+-	B((const void *)dispatcher);
++	if (Reg != SCRATCH1)
++		MOV(SCRATCH1, Reg);
++	// From Deadstation Portable: the dispatcher's fast path, here: each jump gets a branch prediction of its own, where one
++	// shared indirect branch was mispredicted nearly every time. Out of time, or to a block not compiled yet, the PC is
++	// stored and the dispatcher takes it from there (cold stubs).
++	coldExits_.push_back({ B(CC_MI), ColdExit::OutOfTime, 0 });
++	LDR(SCRATCH2, MEMBASEREG, SCRATCH1_64);
++	// (Nothing's in FLAGTEMPREG at the end of a block.)
++	const ARM64Reg top = DecodeReg(FLAGTEMPREG);
++	LSR(top, SCRATCH2, 24);
++	ANDI2R(SCRATCH2, SCRATCH2, 0x00FFFFFF);
++	CMP(top, MIPS_EMUHACK_OPCODE >> 24);
++	coldExits_.push_back({ B(CC_NEQ), ColdExit::NotCompiled, 0 });
++	ADD(SCRATCH2_64, JITBASEREG, SCRATCH2_64);
++	BR(SCRATCH2_64);
+ }
+ 
+ void Arm64Jit::WriteSyscallExit() {
+diff --git a/Core/MIPS/ARM64/Arm64Jit.h b/Core/MIPS/ARM64/Arm64Jit.h
+index f0d99ac..49babcb 100644
+--- a/Core/MIPS/ARM64/Arm64Jit.h
++++ b/Core/MIPS/ARM64/Arm64Jit.h
+@@ -17,6 +17,8 @@
+ 
+ #pragma once
+ 
++#include <vector>
++
+ #include "Common/CPUDetect.h"
+ #include "Common/ArmCommon.h"
+ #include "Common/Arm64Emitter.h"
+@@ -276,6 +278,21 @@ class Arm64Jit : public Arm64Gen::ARM64CodeBlock, public JitInterface, public MI
+ 
+ 	const u8 *outerLoop;
+ 	const u8 *outerLoopPCInSCRATCH1;
++
++	// From Deadstation Portable: what a block rarely or never runs (an exit not linked yet, out of time, a jump to a block not
++	// compiled yet, the bail at its checked entry) is a stub in a cold area at the top of the code space, not between the
++	// blocks: once linked, an exit's stub is never fetched again, and the hot code stays dense in the instruction cache.
++	struct ColdExit {
++		enum Kind { Unlinked, OutOfTime, NotCompiled };
++		Arm64Gen::FixupBranch branch;
++		Kind kind;
++		u32 destination;
++	};
++	std::vector<ColdExit> coldExits_;
++	static constexpr size_t COLD_CODE_SIZE = 4 * 1024 * 1024;
++	const u8 *ColdCodeStart() const { return region + region_size - COLD_CODE_SIZE; }
++	size_t HotSpaceLeft() const { const u8 *at = GetCodePtr(); return at < ColdCodeStart() ? (size_t)(ColdCodeStart() - at) : 0; }
++	const u8 *coldCode_ = nullptr;
+ 	const u8 *dispatcherCheckCoreState;
+ 	const u8 *dispatcherPCInSCRATCH1;
+ 	const u8 *dispatcher;
+diff --git a/Core/MIPS/JitCommon/JitBlockCache.cpp b/Core/MIPS/JitCommon/JitBlockCache.cpp
+index e8b751b..2680170 100644
+--- a/Core/MIPS/JitCommon/JitBlockCache.cpp
++++ b/Core/MIPS/JitCommon/JitBlockCache.cpp
+@@ -323,7 +323,13 @@ void JitBlockCache::LinkBlockExits(int i) {
+ 			JitBlock &eb = blocks_[destinationBlock];
+ 			// Make sure the destination is not invalid.
+ 			if (!eb.invalid) {
++#if PPSSPP_ARCH(ARM64)
++				// From Deadstation Portable: only a jump backwards can make a loop, so forward the time left needn't be
++				// looked at (UnlinkBlock sends such a link back through the checked entry when the target goes).
++				MIPSComp::jit->LinkBlock(b.exitPtrs[e], b.exitAddress[e] > b.originalAddress ? eb.normalEntry : eb.checkedEntry);
++#else
+ 				MIPSComp::jit->LinkBlock(b.exitPtrs[e], eb.checkedEntry);
++#endif
+ 				b.linkStatus[e] = true;
+ 			}
+ 		}
+@@ -344,7 +350,7 @@ void JitBlockCache::LinkBlock(int i) {
+ 	}
+ }
+ 
+-void JitBlockCache::UnlinkBlock(int i) {
++void JitBlockCache::UnlinkBlock(int i, bool clearing) {
+ 	JitBlock &b = blocks_[i];
+ 	auto ppp = links_to_.equal_range(b.originalAddress);
+ 	if (ppp.first == ppp.second)
+@@ -357,8 +363,15 @@ void JitBlockCache::UnlinkBlock(int i) {
+ 		}
+ 		JitBlock &sourceBlock = blocks_[iter->second];
+ 		for (int e = 0; e < MAX_JIT_BLOCK_EXITS; e++) {
+-			if (sourceBlock.exitAddress[e] == b.originalAddress)
++			if (sourceBlock.exitAddress[e] == b.originalAddress) {
++#if PPSSPP_ARCH(ARM64)
++				// From Deadstation Portable: a link may go straight past the checked entry that's about to send it to the
++				// dispatcher (LinkBlockExits): it's sent through that entry now.
++				if (sourceBlock.linkStatus[e] && !sourceBlock.invalid && !clearing)
++					MIPSComp::jit->LinkBlock(sourceBlock.exitPtrs[e], b.checkedEntry);
++#endif
+ 				sourceBlock.linkStatus[e] = false;
++			}
+ 		}
+ 	}
+ }
+@@ -434,7 +447,7 @@ void JitBlockCache::DestroyBlock(int block_num, DestroyType type) {
+ 	// It's not safe to set normalEntry to 0 here, since we use a binary search
+ 	// that looks at that later to find blocks. Marking it invalid is enough.
+ 
+-	UnlinkBlock(block_num);
++	UnlinkBlock(block_num, type == DestroyType::CLEAR);
+ 
+ 	if (b->checkedEntry) {
+ 		// We can skip this if we're clearing anyway, which cuts down on protect back and forth on WX exclusive.
+diff --git a/Core/MIPS/JitCommon/JitBlockCache.h b/Core/MIPS/JitCommon/JitBlockCache.h
+index a3ceeec..a554bdd 100644
+--- a/Core/MIPS/JitCommon/JitBlockCache.h
++++ b/Core/MIPS/JitCommon/JitBlockCache.h
+@@ -184,7 +184,7 @@ class JitBlockCache : public JitBlockCacheDebugInterface {
+ private:
+ 	void LinkBlockExits(int i);
+ 	void LinkBlock(int i);
+-	void UnlinkBlock(int i);
++	void UnlinkBlock(int i, bool clearing);
+ 
+ 	void AddBlockMap(int block_num);
+ 	void RemoveBlockMap(int block_num);
+diff --git a/Core/MIPS/JitCommon/JitState.cpp b/Core/MIPS/JitCommon/JitState.cpp
+index 4db4f07..6cbe919 100644
+--- a/Core/MIPS/JitCommon/JitState.cpp
++++ b/Core/MIPS/JitCommon/JitState.cpp
+@@ -49,7 +49,13 @@ void JitState::Begin(JitBlock *block) {
+ 
+ 		// ARM/ARM64
+ 		useBackJump = false;
++#if PPSSPP_ARCH(ARM64)
++		// From Deadstation Portable: the check at a block's entry falls through, the way out is behind the block (in the
++		// ARM64 JIT's cold area), not in the way of every entry.
++		useForwardJump = true;
++#else
+ 		useForwardJump = false;
++#endif
+ 		cachePointers = !Disabled(JitDisable::CACHE_POINTERS);
+ 
+ 		// ARM only

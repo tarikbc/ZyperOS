@@ -48,7 +48,7 @@ ja = 開発者\n（SSH）
 it = Sviluppatore\n(SSH)
 
 [xfer.usb_device_connected]
-note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard) or a computer that has not connected yet. Two tiles: USB Accessory, Computer.
+note = The heading of the question the shelf asks when something on the Pixel 2's USB port wants power and gives none (DESIGN.md 11.36): a USB accessory (headphones, a Wi-Fi adapter, a keyboard), a computer that has not connected yet, or a phone. Three tiles: USB Accessory, Computer, Phone.
 en = What did you plug in?
 zh-Hans = 你插入了什么？
 es = ¿Qué conectaste?
@@ -59,7 +59,7 @@ ja = 何を接続しましたか？
 it = Cosa hai collegato?
 
 [xfer.tile_accessory]
-note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (408 units wide), with xfer.tile_accessory_sub under it. tight.
+note = A tile of What did you plug in?: a USB accessory, which the handheld then powers. One line in the tile (272 units wide; the smaller size where it does not fit), with xfer.tile_accessory_sub under it. tight.
 en = USB Accessory
 zh-Hans = USB 配件
 es = Accesorio USB
@@ -80,6 +80,28 @@ de = Kopfhörer, WLAN, Tastatur
 ja = イヤホン、Wi-Fi、キーボード
 it = cuffie, Wi-Fi, tastiera
 
+[xfer.tile_computer_sub]
+note = What did you plug in?, a list (DESIGN.md 11.36): the small line under Computer, what it opens, lowercase as xfer.tile_accessory_sub: USB File Transfer, or Flash Drive (the card as a flash drive). One line in the row at meta size (about 640 units), two at most.
+en = files, or the card as a flash drive
+zh-Hans = 传文件，或把存储卡当 U 盘
+es = archivos, o la tarjeta como memoria USB
+pt-BR = arquivos, ou o cartão como pen drive
+fr = fichiers, ou la carte comme clé USB
+de = Dateien, oder die Karte als USB-Stick
+ja = ファイル、またはカードを USBメモリとして
+it = file, o la scheda come chiavetta USB
+
+[xfer.tile_phone_sub]
+note = The small line under Phone in the same list: USB File Transfer in the phone's own browser, over its USB tethering (xfer.phone_said). Lowercase. One line at meta size, two at most.
+en = files in the phone's browser
+zh-Hans = 在手机网页中传文件
+es = archivos en el navegador del celular
+pt-BR = arquivos no navegador do celular
+fr = fichiers dans le navigateur du téléphone
+de = Dateien im Browser des Handys
+ja = スマートフォンのブラウザでファイルを転送
+it = file nel browser del telefono
+
 [xfer.tile_computer]
 note = A tile of What did you plug in?: a computer, which the handheld does not power; it says to plug the cable in again. Also the heading of that message. One line. tight.
 en = Computer
@@ -91,6 +113,17 @@ de = Computer
 ja = パソコン
 it = Computer
 
+[xfer.tile_phone]
+note = A tile of What did you plug in?: a phone (or a tablet), which the handheld does not power; it says what a phone needs to connect (xfer.phone_said). Also the heading of that message. One line, 272 units wide at the menu's size. tight.
+en = Phone
+zh-Hans = 手机
+es = Celular
+pt-BR = Celular
+fr = Téléphone
+de = Handy
+ja = スマートフォン
+it = Telefono
+
 [xfer.replug_computer]
 note = A computer on the USB cable has not connected (its port took the side that waits for power, which the handheld never gives a computer). Which side a port takes is a coin toss at each plug, so it can take a few tries: say so, without blaming the player or the cable. Over any screen but a game, after the player answers Computer, or when a computer showed up on the port during the plug, until the cable comes out; and under USB File Transfer's Cable step. A replug at once is a new plug, so no wait is asked. Never say "power" here. Up to three balanced lines.
 en = Your computer didn't connect. It can take a few tries: unplug the cable and plug it back in.
@@ -101,6 +134,72 @@ fr = L'ordinateur ne s'est pas connecté. Il faut parfois plusieurs essais : reb
 de = Computer nicht verbunden. Es kann ein paar Versuche dauern: Zieh das Kabel ab und steck es wieder ein.
 ja = パソコンが接続されませんでした。ケーブルを抜き差ししてください。何度かかかる場合があります。
 it = Il computer non si è collegato. Possono servire alcuni tentativi: scollega il cavo e ricollegalo.
+
+[xfer.replug_tip]
+note = Under xfer.replug_computer, smaller and dimmer: the way that always works. Some computers' USB-C ports take the side that waits for power at every plug, as a phone's does (a Windows 11 laptop on Discord, 2026-11-13), and then plugging in again never helps. A cable with USB-A at the computer's end always works: a USB-A port is always the side that gives power. Name the cable as xfer.phone_said does. Never say "power" here. Up to two balanced lines at the smaller size.
+en = A USB-A to USB-C cable connects every time.
+zh-Hans = 用 USB-A 转 USB-C 数据线每次都能连上。
+es = Con un cable USB-A a USB-C se conecta siempre.
+pt-BR = Com um cabo USB-A para USB-C, conecta sempre.
+fr = Avec un câble USB-A vers USB-C, ça marche à chaque fois.
+de = Mit einem Kabel von USB-A auf USB-C klappt es jedes Mal.
+ja = USB-A - USB-C ケーブルなら毎回接続できます。
+it = Con un cavo da USB-A a USB-C si collega sempre.
+
+[xfer.hint_replug]
+note = Under File Transfer's steps when the Cable step has waited 5 s with a computer on the cable that has not connected (xfer.replug_computer says why), its row "Cable: waiting" over it: plug the cable in again, a few tries if need be, or the cable that always works (xfer.replug_tip). Never say "power" here. Up to three balanced lines in the panel's inner width at menu size; say it short.
+en = Unplug the cable and plug it back in, or use a USB-A to USB-C cable: it connects every time.
+zh-Hans = 请重新插入数据线，或改用 USB-A 转 USB-C 数据线：每次都能连上。
+es = Vuelve a conectar el cable, o usa un cable USB-A a USB-C: se conecta siempre.
+pt-BR = Conecte o cabo de novo, ou use um cabo USB-A para USB-C: ele conecta sempre.
+fr = Rebranchez le câble, ou prenez un câble USB-A vers USB-C : il marche à chaque fois.
+de = Steck das Kabel neu ein, oder nimm ein Kabel von USB-A auf USB-C: Das klappt immer.
+ja = ケーブルを挿し直すか、USB-A - USB-C ケーブルを使ってください。毎回接続できます。
+it = Ricollega il cavo, oppure usa un cavo da USB-A a USB-C: si collega sempre.
+
+[xfer.phone_said]
+note = After the player answers Phone: the handheld now powers the phone and is its USB host (a phone takes the side of a USB-C to USB-C cable that waits for power, so the handheld gives it, 2026-11-13), and what the phone must do: turn on its USB tethering, which shares the phone's network over the cable. Then USB File Transfer opens on the handheld by itself, its address for the phone's browser. Android's own names: Settings > Network & internet > Hotspot & tethering > USB tethering (Samsung: Connections > Mobile Hotspot and Tethering); use each language's Android word for tethering. Over any screen but a game, under the heading xfer.tile_phone, until the cable comes out or File Transfer opens. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
+en = On the phone, turn on USB tethering (Settings, Hotspot and tethering). USB File Transfer then opens here.
+zh-Hans = 请在手机上打开“USB 网络共享”（设置 > 热点和网络共享）。之后 USB 文件传输会在这里打开。
+es = En el celular, activa la conexión USB compartida (Ajustes, Hotspot y conexión compartida). Después se abre aquí Transferir USB.
+pt-BR = No celular, ative o tethering USB (Configurações, Ponto de acesso e tethering). Em seguida, o Transferir USB abre aqui.
+fr = Sur le téléphone, activez le partage de connexion USB (Paramètres, Point d'accès et partage de connexion). Le Transfert USB s'ouvre ensuite ici.
+de = Schalte am Handy USB-Tethering ein (Einstellungen, Hotspot und Tethering). Danach öffnet sich hier der USB-Transfer.
+ja = スマートフォンで「USB テザリング」をオンにしてください（設定 > アクセス ポイントとテザリング）。そのあと、ここで USB ファイル転送が開きます。
+it = Sul telefono, attiva il tethering USB (Impostazioni, Hotspot e tethering). Poi qui si apre Trasferisci USB.
+
+[xfer.phone_tip]
+note = Under xfer.phone_said, smaller and dimmer: what a phone with no USB tethering does, and Flash Drive. Some Android devices have no USB tethering at all (the AYN Thor, an Android gaming handheld, has it neither in Settings nor in its USB notification, 2026-11-13): for them, Wi-Fi File Transfer, or the adapter. Flash Drive does not work on this cable, as the phone is the USB device here, not the computer that opens a drive: a USB-C to USB-A adapter (an OTG adapter) on the phone and a USB-A to USB-C cable make the phone the side that gives power and opens the drive. Name Wi-Fi File Transfer and the adapter as xfer.iphone_said does. Never say "power" here. Up to three balanced lines at the smaller size.
+en = No USB tethering? Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for Flash Drive.
+zh-Hans = 没有 USB 网络共享？请使用 Wi-Fi 文件传输，或在手机上接 USB-C 转 USB-A 转接头用作 U 盘。
+es = ¿Sin conexión USB compartida? Usa Transferir Wi-Fi, o un adaptador USB-C a USB-A en el celular para Memoria USB.
+pt-BR = Sem tethering USB? Use o Transferir Wi-Fi, ou um adaptador USB-C para USB-A no celular para o Pen drive.
+fr = Pas de partage de connexion USB\u00a0? Utilisez le Transfert Wi-Fi, ou un adaptateur USB-C vers USB-A sur le téléphone pour Clé USB.
+de = Kein USB-Tethering? Nimm den WLAN-Transfer, oder für USB-Stick einen Adapter von USB-C auf USB-A am Handy.
+ja = USB テザリングがない場合は、Wi-Fi ファイル転送を使うか、スマートフォンに USB-C - USB-A アダプタを付けて USBメモリにします。
+it = Niente tethering USB? Usa Trasferisci Wi-Fi, oppure un adattatore da USB-C a USB-A sul telefono per Chiavetta USB.
+
+[xfer.iphone_said]
+note = After the player answers Phone, when the phone on the cable is an iPhone (Apple's, on the handheld's USB bus): an iPhone shares its network over USB only with a computer it trusts (paired), which the handheld cannot be, so its files do not open this way. What works: Wi-Fi File Transfer, or a USB-C to USB-A adapter (an OTG adapter) on the iPhone and a USB-A to USB-C cable to the handheld, which makes the iPhone the side that gives power, and then Flash Drive. Say "the handheld" as the other strings do. Over any screen but a game, under the heading xfer.tile_phone, until the cable comes out. Never say "power" here. Up to four balanced lines at the menu's size, else six at the smaller.
+en = An iPhone can't open the handheld's files on a USB-C to USB-C cable. Use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable.
+zh-Hans = 用 USB-C 对 USB-C 数据线，iPhone 无法打开掌机的文件。请使用 Wi-Fi 文件传输，或在 iPhone 上接 USB-C 转 USB-A 转接头，再用 USB-A 转 USB-C 数据线连接。
+es = Un iPhone no puede abrir los archivos de la consola con un cable USB-C a USB-C. Usa Transferir Wi-Fi, o un adaptador USB-C a USB-A en el iPhone y un cable USB-A a USB-C.
+pt-BR = Um iPhone não abre os arquivos do console com um cabo USB-C para USB-C. Use o Transferir Wi-Fi, ou um adaptador USB-C para USB-A no iPhone e um cabo USB-A para USB-C.
+fr = Un iPhone ne peut pas ouvrir les fichiers de la console avec un câble USB-C vers USB-C. Utilisez le Transfert Wi-Fi, ou un adaptateur USB-C vers USB-A sur l'iPhone et un câble USB-A vers USB-C.
+de = Ein iPhone kann die Dateien der Konsole über ein Kabel von USB-C auf USB-C nicht öffnen. Nimm den WLAN-Transfer, oder einen Adapter von USB-C auf USB-A am iPhone und ein Kabel von USB-A auf USB-C.
+ja = USB-C - USB-C ケーブルでは、iPhone から本体のファイルを開けません。Wi-Fi ファイル転送を使うか、iPhone に USB-C - USB-A アダプタを付けて、USB-A - USB-C ケーブルでつないでください。
+it = Un iPhone non può aprire i file della console con un cavo da USB-C a USB-C. Usa Trasferisci Wi-Fi, oppure un adattatore da USB-C a USB-A sull'iPhone e un cavo da USB-A a USB-C.
+
+[xfer.phone_where]
+note = USB File Transfer on a phone's USB tethering: under the address the phone gave the handheld (shown large, where the cable shows http://zyperos.local), where to type it. Lower case, no full stop: it reads on from the address. One line at the menu's size in the panel's inner width (784 units).
+en = in the phone's browser
+zh-Hans = 在手机上用网页打开
+es = en el navegador del celular
+pt-BR = no navegador do celular
+fr = dans le navigateur du téléphone
+de = im Browser des Handys
+ja = スマートフォンのブラウザで開く
+it = nel browser del telefono
 
 [xfer.dev_heading]
 note = The heading of the message after the Developer (SSH) tile.
@@ -134,6 +233,17 @@ fr = Démarrage du point d'accès...
 de = Hotspot wird gestartet ...
 ja = ホットスポットを起動中…
 it = Avvio dell'hotspot...
+
+[xfer.connecting]
+note = The line over the bar while USB File Transfer waits for the computer to take the handheld, open its network and take an address, before the address and the PIN can work (DESIGN.md 11.35). One line in label size, about 750 units at most.
+en = Connecting to the computer
+zh-Hans = 正在连接电脑
+es = Conectando con la computadora
+pt-BR = Conectando ao computador
+fr = Connexion à l'ordinateur
+de = Verbindung zum Computer
+ja = パソコンに接続中
+it = Connessione al computer
 
 [xfer.hotspot_failed]
 note = The message when the hotspot did not start.
@@ -195,28 +305,6 @@ de.other = %d verbunden
 ja = %d 台接続済み
 it.one = %d connesso
 it.other = %d connessi
-
-[xfer.in_out]
-note = File Transfer's screen: a row label; its value is the bytes the handheld got and sent, "12 KB / 41 MB". tight: it once scrolled when it was longer; about 330 units beside "1.2 GB / 413.5 MB".
-en = In / out
-zh-Hans = 收 / 发
-es = Entra / sale
-pt-BR = Entra / sai
-fr = Reçu / émis
-de = Rein / raus
-ja = 受信 / 送信
-it = Entra / esce
-
-[xfer.nothing_yet]
-note = The In / out row's value before any byte has moved. A lowercase value.
-en = nothing yet
-zh-Hans = 暂无
-es = nada aún
-pt-BR = nada ainda
-fr = rien pour l'instant
-de = noch nichts
-ja = まだなし
-it = ancora niente
 
 [xfer.now]
 note = File Transfer's screens (and the hotspot's): a row label; its value is the transfer's last news ("receiving Game.zip").
@@ -371,50 +459,6 @@ fr = Pas encore d'adresse. Sous Windows\u00a0: Gestionnaire de périphériques, 
 de = Noch keine Adresse. Unter Windows: Geräte-Manager, Netzwerkadapter.
 ja = アドレスがありません。Windows ではデバイス マネージャーを確認してください。
 it = Il computer non ha un indirizzo. Su Windows: Gestione dispositivi, Schede di rete.
-
-[xfer.hint_type_both]
-note = Under File Transfer's steps when the computer has its address and no browser opened the page after 30 s: the two ways to the page, http://zyperos.local and http://10.42.0.1, then what most often stands in the way. URLs are never translated. Up to three balanced lines.
-en = Type http://%s or http://%s in a browser. Turn off any VPN or proxy.
-zh-Hans = 打开 http://%s 或 http://%s，并关闭 VPN 或代理。
-es = Escribe http://%s o http://%s en un navegador. Desactiva cualquier VPN o proxy.
-pt-BR = Digite http://%s ou http://%s em um navegador. Desligue qualquer VPN ou proxy.
-fr = Ouvrez http://%s ou http://%s dans un navigateur, sans VPN ni proxy.
-de = Gib http://%s oder http://%s im Browser ein. Schalte VPN oder Proxy aus.
-ja = ブラウザで http://%s か http://%s を開き、VPN やプロキシはオフにしてください。
-it = Digita http://%s o http://%s in un browser. Disattiva VPN o proxy.
-
-[xfer.hint_type_one]
-note = As xfer.hint_type_both, when the handheld has no name on the network (only the address).
-en = Type http://%s in a browser. Turn off any VPN or proxy.
-zh-Hans = 打开 http://%s，并关闭 VPN 或代理。
-es = Escribe http://%s en un navegador. Desactiva cualquier VPN o proxy.
-pt-BR = Digite http://%s em um navegador. Desligue qualquer VPN ou proxy.
-fr = Ouvrez http://%s dans un navigateur, sans VPN ni proxy.
-de = Gib http://%s im Browser ein. Schalte VPN oder Proxy aus.
-ja = ブラウザで http://%s を開き、VPN やプロキシはオフにしてください。
-it = Digita http://%s in un browser. Disattiva VPN o proxy.
-
-[xfer.hint_wifi_both]
-note = Under Wi-Fi File Transfer's steps when no browser opened the page after 30 s: the two ways to the page, the handheld's address first (http://192.168.1.42) and its name second (http://zyperos.local), as the heading has them over Wi-Fi. URLs are never translated. Up to three balanced lines.
-en = On this Wi-Fi, open http://%s or http://%s.
-zh-Hans = 在此 Wi-Fi 下打开 http://%s 或 http://%s。
-es = En este Wi-Fi, abre http://%s o http://%s.
-pt-BR = Neste Wi-Fi, abra http://%s ou http://%s.
-fr = Sur ce Wi-Fi, ouvrez http://%s ou http://%s.
-de = Öffne in diesem WLAN http://%s oder http://%s.
-ja = この Wi-Fi で http://%s か http://%s を開いてください。
-it = In questo Wi-Fi, apri http://%s o http://%s.
-
-[xfer.hint_wifi_one]
-note = As xfer.hint_wifi_both, when the handheld has no name on the network (only the address).
-en = On this Wi-Fi, open http://%s.
-zh-Hans = 在此 Wi-Fi 下打开 http://%s。
-es = En este Wi-Fi, abre http://%s.
-pt-BR = Neste Wi-Fi, abra http://%s.
-fr = Sur ce Wi-Fi, ouvrez http://%s.
-de = Öffne in diesem WLAN http://%s.
-ja = この Wi-Fi で http://%s を開いてください。
-it = In questo Wi-Fi, apri http://%s.
 
 [xfer.row_on]
 note = MENU's File Transfer row's value while it runs behind the shelf with nothing moving. A lowercase value.

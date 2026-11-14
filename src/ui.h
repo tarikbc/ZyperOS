@@ -264,6 +264,15 @@ void ui_fit_tight(const char *s, int w, int room, int row_w);
  * Costs nothing this launcher was not already paying. Every screen redraws
  * every frame, and ui_text caches the rendered texture per (font, string,
  * color) - so sliding it is a moving destination rect, not a re-render. */
+/* `s` left-aligned at (x, y), shown only between `lo` and `hi` (screen x),
+ * and faded out over the last `fade` units at each of the two: what passes
+ * either end is gone, and what is near one dissolves into it, as a slid
+ * marquee's ends do. MENU's tab row (DESIGN.md 11.3): the tabs either side
+ * of the one that is on, fading before the L1 and R1 glyphs. Text wholly
+ * inside, clear of the fades, is drawn as ui_text draws it. */
+void ui_text_faded(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
+                   int lo, int hi, int fade, SDL_Color col);
+
 void ui_text_marquee(SDL_Renderer *r, TTF_Font *f, const char *s,
                      int x, int y, int w, unsigned phase, SDL_Color col);
 
@@ -409,6 +418,15 @@ SDL_Texture *ui_make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 /* The same, square and square-cornered, for an album with no cover. */
 SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h);
+/* A folder's card on a shelf (src/shelfdir.h): the folder itself in pixel
+ * art in the system's color, papers standing out of it (src/folderart.h),
+ * how many games it holds on a label and its name on its front. */
+SDL_Texture *ui_make_folder_card(SDL_Renderer *r, const char *title, unsigned rgb,
+                                 int games, int *w, int *h);
+/* A folder's row in the list: the same folder, small, in `rgb`, a texture to
+ * draw at twice its cells, nearest. Owned by the caller. */
+SDL_Texture *ui_make_folder_icon(SDL_Renderer *r, unsigned rgb, int *w, int *h);
+
 
 /* The theme a card's texture was made for, DS_LIGHT or DS_DARK - a card from
  * this file - or -1 for any other texture: art that is no theme's. With cardgen_kept (src/cardgen.h), what
@@ -433,11 +451,15 @@ typedef struct {
 	bool     album;      /* an album's square cover, not a game's card */
 	int      theme_ix;   /* DS_LIGHT or DS_DARK: the theme it is drawn in */
 	int      lang_set;   /* whose faces a Chinese or Japanese title is in */
+	int      folder;     /* a folder's card, holding this many games; 0 a game's */
 } ui_card_order;
 
 /* An order for a card in the theme and language that are on: on the frame. */
 void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
                        bool album);
+/* The same for a folder holding `games` games (ui_make_folder_card) */
+void ui_card_order_folder(ui_card_order *o, const char *title, unsigned rgb,
+                          int games);
 
 /* The card the order describes, as an ARGB8888 surface the caller frees: a
  * game's 512 x 656 with round corners, an album's 512 x 512 with square ones.
@@ -477,7 +499,7 @@ typedef enum {
 	UI_GLYPH_USB, UI_GLYPH_WIFI,
 	UI_GLYPH_ARROWS, UI_GLYPH_FINISH, UI_GLYPH_CANCEL, UI_GLYPH_PLAY,
 	UI_GLYPH_CHECK,
-	UI_GLYPH_HEADPHONES, UI_GLYPH_LAPTOP,
+	UI_GLYPH_HEADPHONES, UI_GLYPH_LAPTOP, UI_GLYPH_PHONE,
 	UI_GLYPH_TO_CARD, UI_GLYPH_FROM_CARD,
 	UI_GLYPH_COUNT
 } ui_glyph;

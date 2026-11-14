@@ -15,6 +15,7 @@
  * the same shape as check-rahash, and for the same reason.
  */
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -249,6 +250,27 @@ static void check_exts(void)
 	GAMES(dir, "NES SFC", 3);
 	GAMES(dir, "nes", 1);
 	GAMES(dir, "", 5);
+	/* A folder of games (src/shelfdir.h, 1.0.5): its games are the shelf's
+	 * too, at every depth, and want art as theirs do; one with a cover in
+	 * .media, by its name, does not */
+	{
+		FILE *f;
+
+		snprintf(p, sizeof p, "%s/Hacks", dir); mkdir(p, 0700);
+		snprintf(p, sizeof p, "%s/Hacks/Deep", dir); mkdir(p, 0700);
+		snprintf(p, sizeof p, "%s/.media", dir); mkdir(p, 0700);
+		snprintf(p, sizeof p, "%s/Hacks/Hack.nes", dir); if ((f = fopen(p, "w"))) fclose(f);
+		snprintf(p, sizeof p, "%s/Hacks/Deep/Deeper.nes", dir); if ((f = fopen(p, "w"))) fclose(f);
+		GAMES(dir, "nes", 3);
+		snprintf(p, sizeof p, "%s/.media/Deeper.png", dir); if ((f = fopen(p, "w"))) { fputs("\x89PNG", f); fclose(f); }
+		GAMES(dir, "nes", 2);
+		snprintf(p, sizeof p, "%s/.media/Deeper.png", dir); unlink(p);
+		snprintf(p, sizeof p, "%s/.media", dir); rmdir(p);
+		snprintf(p, sizeof p, "%s/Hacks/Deep/Deeper.nes", dir); unlink(p);
+		snprintf(p, sizeof p, "%s/Hacks/Hack.nes", dir); unlink(p);
+		snprintf(p, sizeof p, "%s/Hacks/Deep", dir); rmdir(p);
+		snprintf(p, sizeof p, "%s/Hacks", dir); rmdir(p);
+	}
 	for (i = 0; i < sizeof files / sizeof files[0]; i++) {
 		snprintf(p, sizeof p, "%s/%s", dir, files[i]);
 		unlink(p);

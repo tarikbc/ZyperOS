@@ -10,6 +10,11 @@
 # BTPLAYER_ELF only for a device with Bluetooth: tools/btplayer.c, which
 # plastron's /etc/init.d/bluetooth runs from the card.
 #
+# P2D_ELF for the Pixel 2, and needed there: p2d (src/p2d/), NES Player 2's
+# server, which the launcher starts from beside itself on the card. The
+# Pixel 2 offers Player 2 in an NES game's menu, and without p2d the row
+# would start nothing but an error.
+#
 # TrimUI's own firmware is no longer supported, so there is one Brick payload,
 # plastron's. NATIVE=1, which used to choose it, is accepted and ignored. And
 # no release zip: it was the Brick's install for TrimUI's firmware, and both
@@ -31,6 +36,10 @@ VENDOR_DIR=${VENDOR_DIR:-$ROOT/vendor}
 DIATOM_ELF=${DIATOM_ELF:-$ROOT/diatom/build/$DEVICE/diatom}
 [ -f "$DIATOM_ELF" ] || { echo "no diatom at $DIATOM_ELF (set DIATOM_ELF)"; exit 1; }
 [ -f "$VENDOR_DIR/cores/fceumm_libretro.so" ] || { echo "run mk/fetch-vendor.sh first"; exit 1; }
+if [ "$DEVICE" = pixel2 ] && [ ! -f "${P2D_ELF:-}" ]; then
+	echo "payload: no p2d for the Pixel 2's Player 2 (set P2D_ELF)" >&2
+	exit 1
+fi
 
 rm -rf "$OUT"
 mkdir -p "$P/system-icons" "$P/cores" "$P/res/web" \
@@ -42,6 +51,10 @@ cp "$MUSE_ELF" "$P/muse"                  # the audio player's engine; Muse cann
 [ -n "${PORTKEYS_ELF:-}" ] && cp "$PORTKEYS_ELF" "$P/portkeys" # the volume keys during a port (Pixel 2)
 [ -n "${ZYHOME_ELF:-}" ] && cp "$ZYHOME_ELF" "$P/zyhome"     # MENU+START, back to the home (Pixel 2)
 [ -n "${UPDATE_ELF:-}" ] && cp "$UPDATE_ELF" "$P/zyperos-update"  # System Update (update/, docs/updates.md)
+# NES Player 2's server, where the launcher looks for it: beside itself, at
+# P_ROOT/p2d (src/main.c's p2_setup). It serves the page from res/web/play,
+# below.
+[ -n "${P2D_ELF:-}" ] && cp "$P2D_ELF" "$P/p2d"
 cp "$LAUNCH" "$P/launch.sh"
 # Which ZyperOS this is, for plastron: the Pixel's image copies its ZyperOS/ over
 # the card's only when it is newer than the card's (/etc/init.d/zyperos), so a
@@ -99,6 +112,11 @@ cp "$ROOT/res/tour/"*.png "$P/res/tour/"
 cp -R "$ROOT/res/web/"* "$P/res/web/"
 cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/menu.ttf"
 cp "$ROOT/res/fonts/title.ttf" "$P/res/web/title.ttf"
+# NES Player 2's play page came along in res/web/play, with its words in
+# res/web/i18n (p2d answers /i18n.js from there). p2d serves nothing else
+# outside play/, so the page's faces go in a third time, beside it.
+cp "$ROOT/res/fonts/menu.ttf" "$P/res/web/play/menu.ttf"
+cp "$ROOT/res/fonts/title.ttf" "$P/res/web/play/title.ttf"
 # The device has curl and OpenSSL but nothing to trust - see res/ssl/README.md.
 # Without this, every HTTPS request fails verification and achievements never
 # arrive, with an error that reads like the network being down.
@@ -131,6 +149,16 @@ if [ -f "$P/cores/scummvm_libretro.so" ]; then
 	[ -f "$VENDOR_DIR/scummvm/.pin" ] ||
 		{ echo "payload: scummvm's data is missing; run mk/build-scummvm.sh" >&2; exit 1; }
 	cp -R "$VENDOR_DIR/scummvm" "$P/scummvm"
+fi
+
+# PPSSPP's assets, from mk/build-ppsspp.sh with its core: the PSP's fonts,
+# its VFPU tables, the game fixes and the system dialogs' languages. The core
+# reads them from Bios/PPSSPP, which launch.sh fills from here, as it fills
+# Bios/scummvm.
+if [ -f "$P/cores/ppsspp_libretro.so" ]; then
+	[ -f "$VENDOR_DIR/ppsspp/.pin" ] ||
+		{ echo "payload: PPSSPP's assets are missing; run mk/build-ppsspp.sh" >&2; exit 1; }
+	cp -R "$VENDOR_DIR/ppsspp" "$P/ppsspp"
 fi
 
 # FreeJ2ME-Plus's Java app and the Java runtime it starts that app with,
@@ -166,7 +194,19 @@ done
 if [ -n "$missing" ]; then
 	echo "payload: systems.cfg needs cores that vendor/ does not have:$missing" >&2
 	echo "payload: run mk/fetch-vendor.sh, mk/build-mgba-bridge.sh, mk/build-dsperate.sh," >&2
-	echo "payload: mk/build-fake08.sh, mk/build-flycast2021.sh, mk/build-scummvm.sh and mk/build-freej2me.sh" >&2
+	echo "payload: mk/build-fake08.sh, mk/build-flycast2021.sh, mk/build-scummvm.sh, mk/build-freej2me.sh," >&2
+	echo "payload: mk/build-small-cores.sh, mk/build-ppsspp.sh and mk/build-tic80.sh" >&2
+	exit 1
+fi
+
+# And no more than the resident Diatom keeps open. It premaps every core in
+# the folder, in folder order, and refuses the ones past DIATOM_MAX_RESIDENT:
+# 1.0.5's card had 34 for 32, and Vectrex and Saturn ran every game in the
+# launcher's one-off Diatom (tools/core-room-check.sh checks systems.cfg).
+room=$(awk '$1 == "#define" && $2 == "DIATOM_MAX_RESIDENT" { print $3 }' "$ROOT/diatom/src/diatom.h")
+ncores=$(ls "$P/cores" | grep -c '_libretro\.so$')
+if [ -z "$room" ] || [ "$ncores" -gt "$room" ]; then
+	echo "payload: $ncores cores, and Diatom keeps ${room:-?} open (DIATOM_MAX_RESIDENT in diatom/src/diatom.h)" >&2
 	exit 1
 fi
 
@@ -175,6 +215,7 @@ chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 [ -f "$P/portkeys" ] && chmod +x "$P/portkeys"
 [ -f "$P/zyhome" ] && chmod +x "$P/zyhome"
 [ -f "$P/zyperos-update" ] && chmod +x "$P/zyperos-update"
+[ -f "$P/p2d" ] && chmod +x "$P/p2d"
 
 # The headsets' ALSA config: the Brick's launch.sh sources it at boot, and
 # ZyperOS runs it after a pair or a forget.
@@ -183,7 +224,8 @@ chmod +x "$P/launch.sh" "$P/zyperos.elf" "$P/diatom" "$P/muse"
 # PortMaster's control.txt for the Ports shelf, which launch.sh puts in place
 # before each port, and the installer the shelf runs when PortMaster is not on
 # the card (src/pminstall.h), with its entry's covers and its page's icon
-# (tools/genportmaster.py). Only the Pixel 2's launch.sh runs ports.
+# (the system art's, res/system-art/original/utility). Only the Pixel 2's
+# launch.sh runs ports.
 if [ "$DEVICE" = pixel2 ]; then
 	mkdir -p "$P/portmaster"
 	cp "$ROOT/res/portmaster/control.txt" "$ROOT/res/portmaster/libgl_ZyperOS.txt" \
@@ -204,7 +246,8 @@ fi
 # One ROM folder per system. Read from systems.cfg (awk, not sed: folder names
 # contain spaces). No .media in them: that is where a system's covers go, and
 # whatever puts the first cover there makes it. Made here, it was an empty
-# folder in all 41 systems on every new card, and every update brought them
+# folder in all 41 systems (45 since the PSP, Doom, ColecoVision and TIC-80)
+# on every new card, and every update brought them
 # back through the pack's .card list (2026-11-06: ".media folders
 # basically everywhere").
 awk -F'|' '$1=="sys"{gsub(/^[ \t]+|[ \t]+$/,"",$3); print $3}' "$ROOT/config/systems.cfg" |

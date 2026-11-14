@@ -508,12 +508,11 @@ typedef struct {
 	float dim;          /* the cards around the focus, at this of their light */
 	bool  hide_focus;
 	float focus_sx;     /* the focus squashed across, the details' turn */
-	float heart;        /* the favorite's heart, popped this far */
 } shelf_opt;
 
 static void shelf(SDL_Renderer *r, float fpos, const shelf_opt *o, const tour_hooks *hk)
 {
-	const shelf_opt plain = { 1.0f, false, 1.0f, 0.0f };
+	const shelf_opt plain = { 1.0f, false, 1.0f };
 	const int f = TOUR_LITTLE_FOCUS + (int)floorf(fpos + 0.5f);
 	int pass, i;
 
@@ -529,14 +528,6 @@ static void shelf(SDL_Renderer *r, float fpos, const shelf_opt *o, const tour_ho
 			lcard(r, TOUR_LITTLE[i].rgb, 340.0f + off_x(d), 150.0f, scl(d), op, fmaxf(0.0f, 1.0f - a),
 			      focus ? o->focus_sx : 1.0f);
 		}
-	/* draw_heart's, 41 across, at the focused card's top left corner, popped
-	 * in **quick** about its middle. */
-	if (o->heart > 0.0f && hk && hk->heart && g_op > 0.004f) {
-		const float k = o->heart, rad = 20.7f * k;
-
-		hk->heart(hk->ctx, 272.0f + g_ox, 58.0f - 2.5f * rad / 16.0f + g_oy, rad,
-		          col(rgb(theme()->favorite), 1.0f));
-	}
 }
 
 /* The focused card's face filling whatever window holds it, the launch
@@ -610,7 +601,7 @@ static void game(SDL_Renderer *r, unsigned sys, uint32_t now)
  * corners go square as it grows. */
 static void zoom(SDL_Renderer *r, float z, uint32_t now, const tour_hooks *hk)
 {
-	const shelf_opt o = { 1.0f - z, true, 1.0f, 0.0f };
+	const shelf_opt o = { 1.0f - z, true, 1.0f };
 	const float x = lerpf(CARD_X, 0, z), y = lerpf(CARD_Y, 0, z);
 	const float w = lerpf(CARD_W, STAGE_W, z), h = lerpf(CARD_H, STAGE_H, z);
 	const float card_op = clampf(1.0f - z * 1.8f, 0.0f, 1.0f);
@@ -628,67 +619,137 @@ static void zoom(SDL_Renderer *r, float z, uint32_t now, const tour_hooks *hk)
 	if (card_op > 0.0f) card_fill(r, x, y, w, h, lerpf(10.0f, 0.0f, z), card_op);
 }
 
-/* The details panel the card turns into (X), drawn once into a texture of
- * its own and drawn from there squashed across: SDL can scale a picture in
- * x, and the words on the panel turn with it. */
-#define DETAILS_W 488
-#define DETAILS_H 228
+/* The details the card turns into (X): the game info screen's sheet in
+ * small, as it is now (DESIGN.md 11.10), drawn once into a texture of its
+ * own and drawn from there squashed across: SDL can scale a picture in x,
+ * and the words on it turn with it. Its name over a rule in the system's
+ * color, and three of its rows - Synopsis in focus, as the screen opens,
+ * Year, and Favorite, Off or On with Y's glyph after it. Two textures, one
+ * a word apart from the other: Favorite Off, and On, which Y crossfades to.
+ * Its words are the info screen's own strings, so they say what it says in
+ * every language. */
+#define DETAILS_W 504
+#define DETAILS_H 236
+/* Its rows: their pitch from the first's top, the plate inset, the words'
+ * inset, and Y's glyph at a hint's size */
+#define DET_ROW0  68.0f
+#define DET_ROW_H 52.0f
+#define DET_PLATE 12.0f
+#define DET_PAD   28.0f
+#define DET_KEY   32
+#define DET_KEY_GAP 10.0f
 
-static SDL_Texture *details_tex;
+static SDL_Texture *details_tex[2];
 static int details_theme = -1;
 static lang details_lang;   /* its words' language, with the theme its key */
 /* A render target that would not be made or set is not asked for again on
- * every frame, and is said once: the panel is then not drawn. */
+ * every frame, and is said once: the details are then not drawn. */
 static bool details_failed;
+
+/* Y's glyph on the Favorite row: its middle, in the sheet's units */
+static float det_key_x(void)
+{
+	return DETAILS_W - DET_PAD - ui_button_width("Y", DET_KEY) / 2.0f;
+}
+
+static float det_row_y(int i)
+{
+	return DET_ROW0 + DET_ROW_H * ((float)i + 0.5f);
+}
+
+static void details_paint(SDL_Renderer *r, bool fav)
+{
+	const ds_theme *t = theme();
+	const float right = DETAILS_W - DET_PAD;
+	const float bw = (float)ui_button_width("Y", DET_KEY);
+
+	rr(r, 0, 0, DETAILS_W, DETAILS_H, DS_RADIUS_ROW, col(rgb(t->surface), 1.0f));
+	ring(r, 0, 0, DETAILS_W, DETAILS_H, DS_RADIUS_ROW, DS_FRAME, col(rgb(t->edge), 1.0f));
+	words(r, UI_F_META, "Chrono Trigger", DETAILS_W / 2.0f, 32, 0, t->text_soft, 1.0f);
+	rr(r, DET_PAD, 56, DETAILS_W - 2.0f * DET_PAD, DS_RULE, 0, col(ui_sys_mark(SNES), 1.0f));
+	/* Synopsis in focus: the accent plate, its word on-accent */
+	rr(r, DET_PLATE, DET_ROW0 + 2.0f, DETAILS_W - 2.0f * DET_PLATE, DET_ROW_H - 4.0f, 10.0f,
+	   col(rgb(t->accent), 1.0f));
+	words(r, UI_F_META, T(S_GAMEMENU_SYNOPSIS), DET_PAD, det_row_y(0), -1, t->on_accent, 1.0f);
+	/* Year, a fact and no row to open: text-dim both sides */
+	words(r, UI_F_META, T(S_GAMEMENU_YEAR), DET_PAD, det_row_y(1), -1, t->text_dim, 1.0f);
+	words(r, UI_F_META, "1995", right, det_row_y(1), 1, t->text_dim, 1.0f);
+	/* Favorite, its state and Y's glyph after it */
+	words(r, UI_F_META, T(S_CONTROLS_FAVORITE), DET_PAD, det_row_y(2), -1, t->text_soft, 1.0f);
+	words(r, UI_F_META, T(fav ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE), right - bw - DET_KEY_GAP,
+	      det_row_y(2), 1, t->text_dim, 1.0f);
+	ui_button(r, "Y", (int)lroundf(det_key_x()), (int)lroundf(det_row_y(2)), DET_KEY,
+	          UI_BUTTON_PLAIN);
+}
 
 static void details_make(SDL_Renderer *r)
 {
-	const ds_theme *t = theme();
 	const float was_op = g_op, was_x = g_ox, was_y = g_oy;
+	int i;
 
-	if (details_failed || (details_tex && details_theme == theme_index() &&
+	if (details_failed || (details_tex[0] && details_tex[1] && details_theme == theme_index() &&
 	                       details_lang == i18n_lang()))
 		return;
-	if (!details_tex)
-		details_tex = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
-		                                DETAILS_W, DETAILS_H);
-	if (!details_tex || SDL_SetRenderTarget(r, details_tex) != 0) {
-		fprintf(stderr, "tour: no details panel, drawn without: %s\n", SDL_GetError());
-		details_failed = true;
-		plat_draw_to_screen();
-		return;
-	}
-	SDL_SetTextureBlendMode(details_tex, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
-	SDL_RenderClear(r);
 	g_op = 1.0f;
 	g_ox = g_oy = 0.0f;
-	rr(r, 0, 0, DETAILS_W, DETAILS_H, DS_RADIUS_ROW, col(rgb(t->surface), 1.0f));
-	ring(r, 0, 0, DETAILS_W, DETAILS_H, DS_RADIUS_ROW, DS_FRAME, col(rgb(t->edge), 1.0f));
-	lcard(r, SNES, 84, DETAILS_H / 2.0f, 0.8f, 1.0f, 0.0f, 1.0f);
-	words(r, UI_F_META, "Chrono Trigger", 150, 64, -1, t->text, 1.0f);
-	rr(r, 150, 92, 48, DS_BAR, 0, col(ui_sys_mark(SNES), 1.0f));
-	words(r, UI_F_META, "SNES \xc2\xb7 1995", 150, 132, -1, t->text_dim, 1.0f);
-	words(r, UI_F_META, T(S_TOUR_DEMO_PLAYED), 150, 180, -1, t->text_dim, 1.0f);
+	for (i = 0; i < 2; i++) {
+		if (!details_tex[i])
+			details_tex[i] = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
+			                                   DETAILS_W, DETAILS_H);
+		if (!details_tex[i] || SDL_SetRenderTarget(r, details_tex[i]) != 0) {
+			fprintf(stderr, "tour: no details, drawn without: %s\n", SDL_GetError());
+			details_failed = true;
+			break;
+		}
+		SDL_SetTextureBlendMode(details_tex[i], SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+		SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
+		SDL_RenderClear(r);
+		details_paint(r, i == 1);
+	}
 	g_op = was_op;
 	g_ox = was_x;
 	g_oy = was_y;
 	plat_draw_to_screen();
+	if (details_failed) return;
 	details_theme = theme_index();
 	details_lang = i18n_lang();
 }
 
-static void details(SDL_Renderer *r, float sx)
+/* The sheet `sx` of its width, centered on the stage; `fav` its Favorite
+ * On, at `op` of g_op over the Off one, and only that one lifted */
+static void details_at(SDL_Renderer *r, float sx, int fav, float op)
 {
 	const float w = DETAILS_W * sx, x = 340.0f - w / 2.0f, y = 158.0f - DETAILS_H / 2.0f;
+	SDL_Texture *tex = details_tex[fav];
 
-	if (!details_tex || w <= 0.5f) return;
-	ui_lift_k(r, &(SDL_Rect){ (int)lroundf(x + g_ox), (int)lroundf(y + g_oy), (int)lroundf(w),
-	                          DETAILS_H }, SNES, UI_LIFT_FOCUS_SMALL, g_op);
-	SDL_SetTextureAlphaMod(details_tex, (Uint8)(255.0f * clampf(g_op, 0.0f, 1.0f) + 0.5f));
-	SDL_RenderCopyF(r, details_tex, NULL,
-	                &(SDL_FRect){ x + g_ox, y + g_oy, w, (float)DETAILS_H });
+	if (details_failed || !tex || w <= 0.5f || op * g_op <= 0.004f) return;
+	if (!fav)
+		ui_lift_k(r, &(SDL_Rect){ (int)lroundf(x + g_ox), (int)lroundf(y + g_oy), (int)lroundf(w),
+		                          DETAILS_H }, SNES, UI_LIFT_FOCUS_SMALL, g_op);
+	SDL_SetTextureAlphaMod(tex, (Uint8)(255.0f * clampf(op * g_op, 0.0f, 1.0f) + 0.5f));
+	SDL_RenderCopyF(r, tex, NULL, &(SDL_FRect){ x + g_ox, y + g_oy, w, (float)DETAILS_H });
+}
+
+static void details(SDL_Renderer *r, float sx)
+{
+	details_at(r, sx, 0, 1.0f);
+}
+
+/* Y in the details: Favorite's Off crossfades to On `a` of the way, and the
+ * row's own Y presses with the big one, a selected key's (11.9) */
+static void details_fav(SDL_Renderer *r, float a, float press)
+{
+	const ds_theme *t = theme();
+	const float x0 = 340.0f - DETAILS_W / 2.0f, y0 = 158.0f - DETAILS_H / 2.0f;
+	const float kx = x0 + det_key_x(), ky = y0 + det_row_y(2);
+
+	details_at(r, 1.0f, 0, 1.0f);
+	details_at(r, 1.0f, 1, a);
+	if (press <= 0.004f || details_failed || !details_tex[0]) return;
+	ellipse(r, kx, ky, DET_KEY / 2.0f + 2.0f, DET_KEY / 2.0f + 2.0f, col(rgb(t->surface), 1.0f));
+	ui_button_pressed(r, "Y", (int)lroundf(kx + g_ox), (int)lroundf(ky + g_oy), DET_KEY,
+	                  UI_BUTTON_PLAIN, press, 1.0f, g_op);
 }
 
 /* A menu over the little shelf (MENU), open `z` of the way: 8.2's open, from
@@ -817,14 +878,17 @@ static void power_demo(SDL_Renderer *r, float t, bool zyper_on, const tour_hooks
 /* What the step's press does, `a` of the way. */
 static void stage_at(SDL_Renderer *r, const tour *t, float a, uint32_t now, const tour_hooks *hk)
 {
-	shelf_opt o = { 1.0f, false, 1.0f, 0.0f };
+	shelf_opt o = { 1.0f, false, 1.0f };
 
 	switch (t->step) {
 	case TOUR_A: zoom(r, a, now, hk); break;
 	case TOUR_B: zoom(r, 1.0f - a, now, hk); break;
 	case TOUR_Y:
-		o.heart = a;
+		/* In the details X opened: Favorite turns On, as Y does there */
+		o.dim = 0.25f;
+		o.hide_focus = true;
 		shelf(r, 0.0f, &o, hk);
+		details_fav(r, a, tour_part_press(t, TP_Y, now));
 		break;
 	case TOUR_X:
 		/* The card squashes across to nothing in the first half of turn,
@@ -1649,7 +1713,7 @@ void tour_draw(SDL_Renderer *r, const tour *t, uint32_t now, const tour_hooks *h
 	if (!t || t->over) return;
 	/* Before anything is drawn to the screen: a texture drawn into is a
 	 * render target, and the screen is given back after it. */
-	if (t->step == TOUR_X) details_make(r);
+	if (t->step == TOUR_X || t->step == TOUR_Y) details_make(r);
 	if (t->step == TOUR_SOUNDS || t->step == TOUR_MUSIC) tiles_make(r);
 	tourdev_make(r, t, now, device_op(t, now));
 	nclips = 0;
@@ -1683,9 +1747,12 @@ void tour_message(SDL_Renderer *r, const char *s, float op)
 
 void tour_draw_free(void)
 {
-	if (details_tex) SDL_DestroyTexture(details_tex);
+	for (int k = 0; k < 2; k++) {
+		if (details_tex[k]) SDL_DestroyTexture(details_tex[k]);
+		details_tex[k] = NULL;
+	}
 	if (bar_tex) SDL_DestroyTexture(bar_tex);
-	details_tex = bar_tex = NULL;
+	bar_tex = NULL;
 	details_theme = bar_key = -1;
 	tourdev_free();
 	for (int k = 0; k < TILES; k++) {

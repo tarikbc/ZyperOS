@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 
 static int fails;
@@ -37,6 +38,81 @@ static const system_cfg *find(const systems_cfg *c, const char *name)
 	for (i = 0; i < c->count; i++)
 		if (!strcmp(c->systems[i].name, name)) return &c->systems[i];
 	return NULL;
+}
+
+/* The shipped es lines: each name once in the file, none that the card's
+ * file system would take as a shelf's own folder (exFAT ignores case), and
+ * every line's tag a system's */
+static void es_names_check(void)
+{
+	static systems_cfg c;
+	char names[512][CFG_STR], one[CFG_STR];
+	int n = 0, i, k, j, lines = 0, tags = 0, dup = 0, own = 0;
+	FILE *f;
+	char line[1024];
+
+	ck(cfg_load_systems("config/systems.cfg", &c), "config/systems.cfg loads");
+	for (i = 0; i < c.count; i++) {
+		if (c.systems[i].es[0]) tags++;
+		for (k = 0; cfg_es_at(&c.systems[i], k, one, sizeof one) && n < 512; k++) {
+			for (j = 0; j < n; j++)
+				if (!strcasecmp(names[j], one)) { printf("    %s twice\n", one); dup++; }
+			for (j = 0; j < c.count; j++)
+				if (!strcasecmp(c.systems[j].folder, one)) {
+					printf("    %s is %s's own folder\n", one, c.systems[j].folder);
+					own++;
+				}
+			snprintf(names[n++], sizeof names[0], "%s", one);
+		}
+	}
+	ck(n > 60, "the shipped shelves have their ES names");
+	ck(!dup, "an ES name belongs to one shelf");
+	ck(!own, "no ES name is a shelf's own folder in other capitals");
+	if (!(f = fopen("config/systems.cfg", "r"))) { ck(0, "systems.cfg opens"); return; }
+	while (fgets(line, sizeof line, f))
+		if (!strncmp(line, "es|", 3)) lines++;
+	fclose(f);
+	ck(lines == tags, "every es line's tag is a system's");
+}
+
+/* tools/from-rogue.sh's table, which copies ROGUE OS's folders into
+ * ZyperOS's: each of its game, sets and keep rows names a ROGUE folder
+ * that is the shelf's own (in other capitals) or one of its es names, so
+ * the card ROGUE OS left reads here as the tool would have copied it */
+static void from_rogue_check(void)
+{
+	static systems_cfg c;
+	FILE *f = fopen("tools/from-rogue.sh", "r");
+	char line[1024], one[CFG_STR];
+	int rows = 0, bad = 0, i, k;
+
+	ck(f != NULL, "tools/from-rogue.sh opens");
+	if (!f || !cfg_load_systems("config/systems.cfg", &c)) { if (f) fclose(f); return; }
+	while (fgets(line, sizeof line, f)) {
+		char *kind = line, *rogue, *place, *bar;
+		bool ok = false;
+
+		if (strncmp(line, "game|", 5) && strncmp(line, "sets|", 5) && strncmp(line, "keep|", 5))
+			continue;
+		rogue = strchr(kind, '|') + 1;
+		if (!(bar = strchr(rogue, '|'))) continue;
+		*bar = '\0';
+		place = bar + 1;
+		if (strncmp(place, "Roms/", 5) || !(bar = strchr(place, '|'))) continue;
+		*bar = '\0';
+		place += 5;
+		rows++;
+		for (i = 0; i < c.count && !ok; i++) {
+			if (strcmp(c.systems[i].folder, place)) continue;
+			if (!strcasecmp(c.systems[i].folder, rogue)) ok = true;
+			for (k = 0; !ok && cfg_es_at(&c.systems[i], k, one, sizeof one); k++)
+				if (!strcmp(one, rogue)) ok = true;
+		}
+		if (!ok) { printf("    ROGUE's %s (to Roms/%s) is no es name of that shelf\n", rogue, place); bad++; }
+	}
+	fclose(f);
+	ck(rows > 40, "from-rogue.sh's table read");
+	ck(!bad, "every ROGUE folder from-rogue.sh copies is its shelf's ES name");
 }
 
 int main(void)
@@ -68,7 +144,8 @@ int main(void)
 	      "map|NOPE|a:b\n"
 	      "sys|Late|late|core|LAT|L.png|C4443A|gb\n"
 	      "power|LAT|light\n"
-	      "controller|LAT|517\n", f);
+	      "controller|LAT|517\n"
+	      "es|NAM|famicom, fds\n", f);
 	fclose(f);
 
 	printf("reading:\n");
@@ -132,6 +209,20 @@ int main(void)
 		ck(!strcmp(keys, "screens=2\tframeskip=late"), "two screens alone");
 	}
 
+	printf("EmulationStation's folder names:\n");
+	ck(cfg_load_systems(path, &c), "the file loads again");
+	s = find(&c, "Named");
+	{
+		char one[CFG_STR];
+
+		ck(s && !strcmp(s->es, "famicom, fds"), "an es line is its tag's list");
+		ck(s && cfg_es_at(s, 0, one, sizeof one) && !strcmp(one, "famicom"), "its first name");
+		ck(s && cfg_es_at(s, 1, one, sizeof one) && !strcmp(one, "fds"), "its second, spaces dropped");
+		ck(s && !cfg_es_at(s, 2, one, sizeof one), "and no third");
+		ck(s && !strcmp(s->home, "named"), "home is the folder the line names");
+		s = find(&c, "Lower");
+		ck(s && !s->es[0] && !cfg_es_at(s, 0, one, sizeof one), "a system with no es line has none");
+	}
 	unlink(path);
 	rmdir(dir);
 
@@ -153,12 +244,13 @@ int main(void)
 	{
 		static const char *const AZ[] = {
 			"3DO", "32X", "Arcade", "Atari 2600", "Atari 5200", "Atari 7800", "Atari Lynx",
-			"Atomiswave", "Dreamcast", "Game & Watch", "Game Boy", "Game Boy Advance",
+			"Atomiswave", "ColecoVision", "Doom", "Dreamcast", "Game & Watch", "Game Boy",
+			"Game Boy Advance",
 			"Game Boy Color", "Game Gear", "Genesis", "J2ME", "MAME", "Master System",
 			"MSX2", "NAOMI", "Neo Geo", "Neo Geo CD", "Neo Geo Pocket",
 			"Neo Geo Pocket Color", "NES", "Nintendo 64", "Nintendo DS", "OpenBOR",
-			"PICO-8", "PlayStation", "Pokémon Mini", "Saturn", "ScummVM", "Sega CD",
-			"SNES", "TurboGrafx-16", "Vectrex", "Virtual Boy", "WonderSwan",
+			"PICO-8", "PlayStation", "Pokémon Mini", "PSP", "Saturn", "ScummVM", "Sega CD",
+			"SNES", "TIC-80", "TurboGrafx-16", "Vectrex", "Virtual Boy", "WonderSwan",
 			"WonderSwan Color", "Ports",
 		};
 		int i, n = (int)(sizeof AZ / sizeof AZ[0]), same = 1;
@@ -176,6 +268,9 @@ int main(void)
 		ck(!strcmp(c.systems[0].tag, "3DO") && !strcmp(c.systems[n - 1].tag, "PRT"),
 		   "each line moves whole");
 	}
+
+	es_names_check();
+	from_rogue_check();
 
 	if (fails) { printf("config: %d FAILED\n", fails); return 1; }
 	printf("config: ok\n");

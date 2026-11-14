@@ -46,8 +46,10 @@ export type Scene = {
   /** beats into the scene the label waits */
   labelAt?: number;
   punch?: Punch[];
+  /** a short tag beside the label (the Reddit cut's release a feature came in) */
+  tag?: string;
   /** the computer and the phone of File Transfer */
-  browser?: { laptop?: string; phone?: string; phoneAt?: number; laptopAt?: number };
+  browser?: { laptop?: string; phone?: string; phoneAt?: number; laptopAt?: number; phonePic?: string };
   dark?: boolean;
 };
 
@@ -58,11 +60,12 @@ const B = 60000 / BPM;
 export const POWER_MS = { off: B, on: 12 * B - 2000, back: 12 * B };
 
 /* The order follows Leap's sections (LICENSES.md): the full band for bars 0 to
- * 15, the break at 16 to 19 for the power off and on, back on the downbeat
- * of bar 19 and the band at 20, the video snap turning on bar 21, the calm of
- * 24 to 27 for the in-game menu, File Transfer from 28, light and dark whipping in
- * on bar 52 where the theme returns, and the end on bar 68, the phrase end
- * before the next break. */
+ * 15, from the start to the new systems and the folders, the break at 16 to 19
+ * for the power off and on, back on the downbeat of bar 19 and the band at 20,
+ * the video snap turning on bar 21, the calm of 24 to 27 for the in-game menu,
+ * Player 2 on the band from 28, File Transfer from 32, MENU's tabs and the
+ * theme whipping in on bar 52 where the theme returns, and the end on bar 68,
+ * the phrase end before the next break. */
 export const SCENES: Scene[] = [
   { id: "open", bars: 3, pose: "main", enter: "whip", screen: [{ take: "fast-shelf", from: 3400, to: "fill", rate: 1.2 }],
     label: "Your whole retro library.", sub: "Fast, light firmware for the GKD Pixel 2", labelAt: 1 },
@@ -71,11 +74,15 @@ export const SCENES: Scene[] = [
     screen: [{ gap: 300 }, { video: "boot/zyperos-fly.mp4", from: 0, to: 2000 }, { take: "home", from: 150, to: "fill" }],
     label: "On in 2 seconds", sub: "Stock firmware: 30 to 40" },
   { id: "home", bars: 2, pose: "main", screen: [{ take: "home", from: 2100, to: "fill", rate: 1.28 }],
-    label: "Every system in pixel art" },
-  { id: "art", bars: 3, pose: "main", screen: [{ take: "n64", from: 0, to: 1000 }, { take: "scraper", from: 0, to: "fill", rate: 1.35 }],
-    label: "Box art it finds itself", sub: "libretro, ScreenScraper, SteamGridDB" },
-  { id: "search", bars: 3, pose: "main", screen: [{ take: "search", from: 3200, to: 6400, rate: 1.6 }, { take: "search", from: 9600, to: "fill", rate: 1.6 }],
-    label: "Search any game", sub: "A few letters, every system" },
+    label: "Every system in pixel art", sub: "Each console drawn for ZyperOS" },
+  // The four new systems, two beats each, each console's own start
+  { id: "newsys", bars: 2, pose: "main", enter: "cut", screen: [{ take: "newsys", from: 0, to: "fill", rate: 2 }],
+    label: "Four new systems", sub: "PSP, Doom, ColecoVision and TIC-80" },
+  // One take: into a folder and back, then START for the list and back
+  { id: "folders", bars: 2, pose: "main", enter: "whip", screen: [{ take: "folders", from: 2400, to: "fill", rate: 1.5 }],
+    label: "Your folders, kept", sub: "As deep as you like" },
+  { id: "list", bars: 2, pose: "main", enter: "cut", screen: [{ take: "folders", from: 7050, to: "fill", rate: 1.6 }],
+    label: "Covers or a list", sub: "START turns any shelf" },
   { id: "launch", bars: 1, pose: "main", enter: "cut", screen: [{ image: "img/sonic2.png" }],
     label: "Starts the moment you press A" },
   // POWER in a game, the power-off, dark; POWER, and the same frame 2 s later
@@ -88,23 +95,29 @@ export const SCENES: Scene[] = [
   // video snap on the next downbeat (the take holds 600 ms before the bar)
   { id: "snap", bars: 2, pose: "main", enter: "whip", screen: [{ take: "snap", from: Math.max(0, 600 - (4 * B - 1000)), to: "fill" }],
     label: "Video snaps", sub: "Rest on a game, and its cover turns into the game", punch: [{ at: 0, x: 0.5, y: 0.42, zoom: 1.45 }] },
+  { id: "art", bars: 2, pose: "main", screen: [{ take: "n64", from: 0, to: 1000 }, { take: "scraper", from: 0, to: "fill", rate: 1.35 }],
+    label: "Box art it finds itself", sub: "libretro, ScreenScraper, SteamGridDB" },
   { id: "quicksave", bars: 2, pose: "main", screen: [{ take: "quicksave", from: 0, to: "fill", rate: 0.9 }],
     label: "Quick save, quick load", sub: "SELECT + R1, SELECT + L1", punch: [{ at: 0, x: 0.5, y: 0.86, zoom: 1.9 }] },
   { id: "controls", bars: 2, pose: "main", screen: [{ take: "ingame", from: 0, to: 2000, rate: 1.6 }, { take: "controls-ps1", from: 0, to: "fill", rate: 0.75 }],
     label: "Every control, in the game" },
-  { id: "cover", bars: 2, pose: "main", screen: [{ take: "details", from: 4700, to: 7100, rate: 1.6 }, { take: "media", from: 300, to: "fill", rate: 1.2 }],
-    label: "Pick a game's cover" },
-  { id: "wifi", bars: 5, pose: "split", enter: "whip", screen: [{ take: "wifi-xfer", from: 0, to: "fill", rate: 0.66 }],
-    label: "Wi-Fi File Transfer", sub: "Any browser, behind a PIN", browser: { laptop: "img/portal.png", phone: "img/portal-phone.png", laptopAt: 2, phoneAt: 8 } },
-  { id: "cable", bars: 3, pose: "split", enter: "cut", screen: [{ take: "cable", from: 0, to: "fill", rate: 0.6 }],
-    label: "Or over the USB cable", sub: "Charge only, or File Transfer", browser: { laptop: "img/portal.png", laptopAt: -1 } },
-  { id: "hotspot", bars: 2, pose: "split", enter: "cut", screen: [{ take: "hotspot", from: 0, to: "fill", rate: 0.9 }],
+  // NES: MENU down to Player 2, its code; the friend's phone comes in with the
+  // game over its touch pad as the panel says connected (beat 9)
+  { id: "player2", bars: 4, pose: "split", enter: "whip",
+    screen: [{ image: "img/smb3.png", beats: 1 }, { take: "player2", from: 0, to: "fill", rate: 1.13 }],
+    label: "Player 2 on a friend's phone", sub: "NES in a browser. No app, no account.",
+    browser: { phone: "img/play-phone.png", phonePic: "img/smb3.png", phoneAt: 9 } },
+  // The way in (the address, zyperos.local, the PIN) for six beats, then a
+  // browser signed in and the files moving
+  { id: "wifi", bars: 4, pose: "split", enter: "whip", screen: [{ take: "wifi-way", from: 0, to: "fill" }],
+    label: "Wi-Fi File Transfer", sub: "Any browser, behind a PIN", browser: { laptop: "img/portal.png", phone: "img/portal-phone.png", laptopAt: 6, phoneAt: 10 } },
+  { id: "cable", bars: 4, pose: "main", screen: [{ take: "cable", from: 0, to: "fill" }],
+    label: "Or over the USB cable", sub: "File Transfer, a flash drive, or your phone" },
+  { id: "hotspot", bars: 2, pose: "split", screen: [{ take: "hotspot", from: 0, to: "fill", rate: 0.9 }],
     label: "No Wi-Fi around?", sub: "It makes its own network for your phone", browser: { phone: "img/portal-pin.png", phoneAt: 1 } },
   // An empty card, the way in, the games arriving: a little story after File Transfer
   { id: "empty", bars: 2, pose: "main", enter: "whip", screen: [{ take: "empty", from: 0, to: "fill" }],
     label: "An empty card shows you how", punch: [{ at: 2, x: 0.5, y: 0.6, zoom: 1.08 }] },
-  { id: "dropin", bars: 2, pose: "split", screen: [{ take: "wifi-xfer", from: 0, to: "fill", rate: 0.66 }],
-    label: "Drop your games in", browser: { laptop: "img/portal.png", laptopAt: 1 } },
   { id: "cheer", bars: 2, pose: "main", screen: [{ take: "cheer", from: 0, to: "fill" }],
     label: "And they're on the shelf", punch: [{ at: 1, x: 0.48, y: 0.3, zoom: 1.22 }] },
   { id: "ring", bars: 2, pose: "main", enter: "whip", screen: [{ take: "xfer-ring", from: 0, to: "fill", rate: 0.8 }],
@@ -113,11 +126,14 @@ export const SCENES: Scene[] = [
     label: "System Update", sub: "Over Wi-Fi or the cable" },
   { id: "battery", bars: 2, pose: "main", screen: [{ take: "charge", from: 0, to: 1600 }, { take: "battery", from: 3200, to: "fill" }],
     label: "Battery care", sub: "A charge limit, and the time left" },
-  { id: "storage", bars: 2, pose: "main", screen: [{ take: "storage", from: 0, to: "fill", rate: 1.6 }],
-    label: "Storage, as a phone shows it" },
-  { id: "themes", bars: 2, pose: "duo", enter: "whip", screen: [], label: "Light and dark", sub: "Beard and Salt & Pepper" },
+  // One take: MENU's tabs round and back, Appearance to Dark, then Display >
+  // Theme's accent stepped round
+  { id: "tabs", bars: 2, pose: "main", enter: "whip", screen: [{ take: "look", from: 2450, to: "fill", rate: 1.4 }],
+    label: "A menu in six tabs", sub: "L1 and R1 go round them" },
+  { id: "look", bars: 2, pose: "main", enter: "cut", screen: [{ take: "look", from: 6760, to: "fill", rate: 1.5 }],
+    label: "A theme of your own", sub: "Light or dark, in the accent you pick" },
   { id: "cheevos", bars: 2, pose: "main", screen: [{ take: "cheevos", from: 700, to: "fill", rate: 0.96 }],
-    label: "RetroAchievements", punch: [{ at: 2, x: 0.5, y: 0.86, zoom: 1.7 }] },
+    label: "RetroAchievements", sub: "Earned offline, sent later", punch: [{ at: 2, x: 0.5, y: 0.86, zoom: 1.7 }] },
   { id: "mp4", bars: 2, pose: "main", screen: [{ take: "mp4", from: 1500, to: 3900, rate: 1.2 }, { take: "lock", from: 0, to: "fill", rate: 0.85 }],
     label: "MP4", sub: "Music, books and videos. X locks the screen." },
   { id: "ports", bars: 2, pose: "main", enter: "whip", screen: [{ take: "ports", from: 0, to: 3200, rate: 1.6 }, { take: "portmenu", from: 0, to: "fill" }],
@@ -125,58 +141,71 @@ export const SCENES: Scene[] = [
   { id: "ds", bars: 2, pose: "main", screen: [{ take: "ds", from: 0, to: "fill", rate: 0.72 }],
     label: "Nintendo DS your way", sub: "Screen layouts, and a Game Language" },
   { id: "languages", bars: 2, pose: "away", screen: [], label: "Eight languages" },
-  { id: "firststart", bars: 2, pose: "main", screen: [{ take: "firststart", from: 400, to: "fill", rate: 1.6 }],
-    label: "A first start that asks" },
   // Two bars and two beats: the downbeat of bar 68 rings while the music fades
   { id: "end", bars: 2.5, pose: "hero", screen: [{ take: "fast-shelf", from: 3600, to: "fill", rate: 1 }] },
 ];
 
 /** A scene's length in beats of the music */
 export const beatsOf = (sc: Scene) => Math.round(sc.bars * 4);
-const CUM = SCENES.reduce<number[]>((acc, sc) => [...acc, acc[acc.length - 1] + beatsOf(sc)], [0]);
-/** Scene starts, in frames, each on a beat */
-export const STARTS: number[] = CUM.slice(0, -1).map((b) => Math.round(b * BEAT));
-export const TOTAL = Math.round(CUM[CUM.length - 1] * BEAT);
-export const sceneEnd = (i: number) => (i + 1 < STARTS.length ? STARTS[i + 1] : TOTAL);
 
 export type Clip =
   | { kind: "take"; take: string; at: number; len: number; fromMs: number; rate: number; scene: string }
   | { kind: "video"; src: string; at: number; len: number; fromMs: number; rate: number; scene: string }
   | { kind: "image"; src: string; at: number; len: number; scene: string };
 
-/** The scenes' steps laid end to end: a clip each, the last one running to its scene's end */
-export const CLIPS: Clip[] = SCENES.flatMap((sc, i) => {
-  const start = STARTS[i];
-  const end = sceneEnd(i);
-  let at = start;
-  return sc.screen.flatMap((st, k): Clip[] => {
-    const last = k === sc.screen.length - 1;
-    if ("gap" in st) {
-      at += Math.round((st.gap / 1000) * FPS);
-      return [];
-    }
-    if ("video" in st) {
-      const len = last ? end - at : Math.round(((st.to - st.from) / 1000) * FPS);
-      const c: Clip = { kind: "video", src: st.video, at, len, fromMs: st.from, rate: 1, scene: sc.id };
-      at += len;
-      return [c];
-    }
-    if ("image" in st) {
-      const len = last ? end - at : st.ms !== undefined ? Math.round((st.ms / 1000) * FPS) : Math.round((st.beats ?? 1) * BEAT);
-      const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
-      at += len;
-      return [c];
-    }
-    const rate = st.rate ?? 1;
-    const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
-    const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
-    at += len;
-    return [c];
-  });
-});
-
-export const sceneAt = (frame: number) => {
-  let i = 0;
-  while (i + 1 < STARTS.length && STARTS[i + 1] <= frame) i++;
-  return i;
+/** Scenes laid on the music: where each starts (in frames, each on a beat),
+ * the whole length, and their steps laid end to end as clips, the last one
+ * running to its scene's end. The tour is one; src/reddit has another. */
+export type Layout = {
+  scenes: Scene[]; starts: number[]; total: number; clips: Clip[];
+  sceneEnd: (i: number) => number; sceneAt: (frame: number) => number;
 };
+
+export const layout = (scenes: Scene[]): Layout => {
+  const cum = scenes.reduce<number[]>((acc, sc) => [...acc, acc[acc.length - 1] + beatsOf(sc)], [0]);
+  const starts = cum.slice(0, -1).map((b) => Math.round(b * BEAT));
+  const total = Math.round(cum[cum.length - 1] * BEAT);
+  const sceneEnd = (i: number) => (i + 1 < starts.length ? starts[i + 1] : total);
+  const clips = scenes.flatMap((sc, i) => {
+    const end = sceneEnd(i);
+    let at = starts[i];
+    return sc.screen.flatMap((st, k): Clip[] => {
+      const last = k === sc.screen.length - 1;
+      if ("gap" in st) {
+        at += Math.round((st.gap / 1000) * FPS);
+        return [];
+      }
+      if ("video" in st) {
+        const len = last ? end - at : Math.round(((st.to - st.from) / 1000) * FPS);
+        const c: Clip = { kind: "video", src: st.video, at, len, fromMs: st.from, rate: 1, scene: sc.id };
+        at += len;
+        return [c];
+      }
+      if ("image" in st) {
+        const len = last ? end - at : st.ms !== undefined ? Math.round((st.ms / 1000) * FPS) : Math.round((st.beats ?? 1) * BEAT);
+        const c: Clip = { kind: "image", src: st.image, at, len, scene: sc.id };
+        at += len;
+        return [c];
+      }
+      const rate = st.rate ?? 1;
+      const len = st.to === "fill" || st.to === undefined || last ? end - at : Math.round(((st.to - st.from) / 1000 / rate) * FPS);
+      const c: Clip = { kind: "take", take: st.take, at, len, fromMs: st.from, rate, scene: sc.id };
+      at += len;
+      return [c];
+    });
+  });
+  const sceneAt = (frame: number) => {
+    let i = 0;
+    while (i + 1 < starts.length && starts[i + 1] <= frame) i++;
+    return i;
+  };
+  return { scenes, starts, total, clips, sceneEnd, sceneAt };
+};
+
+/** The tour's own */
+export const TOUR = layout(SCENES);
+export const STARTS = TOUR.starts;
+export const TOTAL = TOUR.total;
+export const CLIPS = TOUR.clips;
+export const sceneEnd = TOUR.sceneEnd;
+export const sceneAt = TOUR.sceneAt;

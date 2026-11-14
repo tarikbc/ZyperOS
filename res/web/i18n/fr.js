@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "fr";
 window.ZYPEROS_PLURAL = n => n > 1 ? 1 : 0;
 window.ZYPEROS_STRINGS = {
+  "play.name": "Multijoueur",
+  "play.state.connecting": "Connexion en cours",
+  "play.state.player": "Joueur %d",
+  "play.state.full": "La partie est complète",
+  "play.state.stopped": "L'hôte a désactivé le multijoueur",
+  "play.state.ended": "La partie est terminée",
+  "play.old_browser": "Ce navigateur est trop ancien pour afficher le jeu. Mettez-le à jour ou ouvrez cette page dans un autre navigateur.",
+  "play.picture_off": "Sans image",
+  "play.dpad": "Croix",
+  "play.key.arrows": "Flèches",
+  "play.key.shift": "Maj",
+  "play.key.enter": "Entrée",
   "name.wifi": "Transfert de fichiers Wi-Fi",
   "name.usb": "Transfert de fichiers USB",
   "gate.sub": "Saisissez le PIN affiché sur l'écran de la console.",
@@ -188,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "Touchez Annuler, puis Utiliser sans Internet. Ouvrez ensuite %s dans Safari.",
   "captive.android_head": "Les envois nécessitent Chrome.",
   "captive.android_text": "Touchez %1$s, puis Utiliser ce réseau tel quel. Ouvrez ensuite %2$s dans Chrome.",
+  "act.select": "Sélectionner",
+  "act.deselect": "Désélectionner",
+  "move.count": ["%d élément", "%d éléments"],
+  "move.done": "Déplacé dans %s",
 };

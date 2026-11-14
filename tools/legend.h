@@ -18,6 +18,8 @@ static const char *const BUTTONS[] = {
 	"Up/Down", "Left/Right", "A", "B", "X", "Y", "L1/R1", "L2/R2", "X/Y/L2/R2",
 	"MENU", "SELECT", "POWER", "Volume rocker", "F1/F2",
 	"MENU+VOL", "L2+R2",
+	/* On a shelf, MENU > View at a press: covers or a list (2026-11-13) */
+	"START",
 	/* Held a second, the way back to the home (tools/zyhome.c, 2026-11-09) */
 	"MENU+START",
 	/* One after the other: X in the in-game menu, its Quit (2026-11-08) */

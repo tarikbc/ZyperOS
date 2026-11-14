@@ -121,7 +121,16 @@ static bool run_begin(const char *folder, const char *file, const char *stem,
 	snprintf(g_run.dir, sizeof g_run.dir, "%s", rom_dir ? rom_dir : ".");
 	/* A loose file has no central directory to read, so it is asked about by
 	 * name alone - the same path a disc image takes. */
-	if (!art_rom_crc(rom_dir, stem, exts, &g_run.crc)) g_run.crc = 0;
+	/* The zip by its launch path, which for a game kept in a folder of
+	 * games (src/shelfdir.h) is in that folder; a disc set's has none */
+	{
+		char path_stem[LIB_PATH];
+		const char *dot = strrchr(file, '.'), *slash = strrchr(file, '/');
+
+		snprintf(path_stem, sizeof path_stem, "%.*s",
+		         dot && (!slash || dot > slash + 1) ? (int)(dot - file) : (int)strlen(file), file);
+		if (!art_rom_crc(rom_dir, path_stem, exts, &g_run.crc)) g_run.crc = 0;
+	}
 
 	snprintf(g_run.where, sizeof g_run.where, "%s", T(S_SS_WHERE_LOOKING));
 	if (!start_ask(g_run.crc)) return false;

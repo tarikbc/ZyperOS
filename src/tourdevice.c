@@ -85,6 +85,11 @@ static const pose FRONT = { 10.0f, 3.55f }, RIGHT = { 52.0f, 3.95f },
  * shoulder stands as far out of the top edge */
 #define TAB_OUT     0.9f
 #define TAB_OUT_LIT 2.8f
+/* ...but a lit volume key further, so its + or - fits on it pressed too */
+#define TAB_OUT_VOL 4.6f
+/* The + and the - on the volume keys: this long and this thick, mm */
+#define SIGN_L  2.4f
+#define SIGN_TH 0.65f
 /* The lit key's ring: this far out of the key, this wide, in units */
 #define RING_GAP 9.0f
 #define RING_W   3.0f
@@ -110,8 +115,8 @@ static unsigned lit_of(tour_step s)
 	case TOUR_MOVE:   return 1u << K_DPAD | 1u << K_L1 | 1u << K_R1;
 	case TOUR_A:      return 1u << K_A;
 	case TOUR_B:      return 1u << K_B;
-	case TOUR_Y:      return 1u << K_Y;
 	case TOUR_X:      return 1u << K_X;
+	case TOUR_Y:      return 1u << K_Y;
 	case TOUR_MENU:   return 1u << K_MENU;
 	case TOUR_SELECT: return 1u << K_SELECT | 1u << K_L2 | 1u << K_R2;
 	case TOUR_VOL:    return 1u << K_VOLUP | 1u << K_VOLDN;
@@ -483,6 +488,27 @@ static void tab(const view *v, int k, int side, float z0, float z1, float out, s
 	}
 }
 
+/* The + on VOL+ and the - on VOL-, `l` mm long and `th` thick, centered on
+ * (a, z): on the left side face, `a` its y, or (`face` false) on the plane
+ * the tabs stand in, `a` its x. In **on-accent** on the lit key, as MENU's
+ * dots are, and in their color at rest. */
+static void vol_sign(const view *v, int k, bool face, float a, float z, float l, float th)
+{
+	const SDL_Color c = col(v, ui_mix(v->dot, v->on_accent, v->on[k]), 1.0f);
+	SDL_FPoint p[MAXP];
+	float ab[MAXP * 2];
+	int bar, n, i;
+
+	if (l < 0.6f) return;
+	for (bar = 0; bar < (k == K_VOLUP ? 2 : 1); bar++) {
+		n = rrect(bar ? th : l, bar ? l : th, th / 2.0f, 0.0f, 2, ab);
+		for (i = 0; i < n; i++)
+			p[i] = face ? at(v, -SIDE_X, a + ab[i * 2], z + ab[i * 2 + 1])
+			            : at(v, a + ab[i * 2], -2.0f, z + ab[i * 2 + 1]);
+		fill(v->r, p, n, c);
+	}
+}
+
 /* A shoulder, `k`, from under the top edge up to `top`: at rest the square
  * top the model's shows over the edge; lit, standing up out of it as a tab
  * does, its top corners rounded as a tab's */
@@ -617,17 +643,26 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	/* MENU and VOL as tabs out of the edges, behind the body, as it faces
 	 * front for Brightness */
 	if (tabs && facing > 0.0f) {
-		const float up = (TAB_OUT + (TAB_OUT_LIT - 1.2f * v.press[K_VOLUP] - TAB_OUT) * v.on[K_VOLUP]) * facing;
-		const float dn = (TAB_OUT + (TAB_OUT_LIT - 1.2f * v.press[K_VOLDN] - TAB_OUT) * v.on[K_VOLDN]) * facing;
+		const float up = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[K_VOLUP] - TAB_OUT) * v.on[K_VOLUP]) * facing;
+		const float dn = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[K_VOLDN] - TAB_OUT) * v.on[K_VOLDN]) * facing;
 		const float mn = (TAB_OUT + (TAB_OUT_LIT - 1.2f * v.press[K_MENU] - TAB_OUT) * v.on[K_MENU]) * facing;
+		const float qu = 1.0f - 0.08f * v.press[K_VOLUP], qd = 1.0f - 0.08f * v.press[K_VOLDN];
+		/* The volume tabs' ring is a shoulder's, as much longer as they are */
+		const float more = (TAB_OUT_VOL - TAB_OUT_LIT) / 2.0f;
 		spot s = { 0 };
 
 		tab(&v, K_VOLUP, -1, 12.2f, 19.6f, up, NULL);
 		tab(&v, K_VOLDN, -1, 3.8f, 11.2f, dn, NULL);
+		/* Each sign in the middle of what shows of its tab, as long as
+		 * leaves room inside the tab's edge and the body's */
+		vol_sign(&v, K_VOLUP, false, -(BODY_W / 2.0f + up / 2.0f), 15.9f,
+		         fminf(SIGN_L * qu, up - 1.4f), SIGN_TH * qu);
+		vol_sign(&v, K_VOLDN, false, -(BODY_W / 2.0f + dn / 2.0f), 7.5f,
+		         fminf(SIGN_L * qd, dn - 1.4f), SIGN_TH * qd);
 		if (v.on[K_VOLUP] > 0.0f && facing > 0.0f) {
-			const SDL_FPoint c = at(&v, -(BODY_W / 2.0f + 1.4f), -2.0f, ROCKER_Z);
+			const SDL_FPoint c = at(&v, -(BODY_W / 2.0f + 1.4f + more), -2.0f, ROCKER_Z);
 
-			spots[nspots++] = (spot){ v.on[K_VOLUP] * tab_ring, 0.0f, c.x, c.y, 7.0f,
+			spots[nspots++] = (spot){ v.on[K_VOLUP] * tab_ring, 0.0f, c.x, c.y, 7.0f + more * v.s,
 			                          v.s * 7.9f, true, false };
 		}
 		tab(&v, K_MENU, 1, MENU_Z - MENU_R, MENU_Z + MENU_R, mn, &s);
@@ -737,6 +772,8 @@ static void draw_view(SDL_Renderer *r, view *vp)
 			shape(&v, pt, n, key_fill(&v, K_VOLUP), key_edge(&v, K_VOLUP), DS_FRAME);
 			n = side_rr(&v, -1, 3.6f * qd, 5.9f * qd, 1.75f, 0.0f, VOL_Y, VOLDN_Z, pt);
 			shape(&v, pt, n, key_fill(&v, K_VOLDN), key_edge(&v, K_VOLDN), DS_FRAME);
+			vol_sign(&v, K_VOLUP, true, VOL_Y, VOLUP_Z, SIGN_L * qu, SIGN_TH * qu);
+			vol_sign(&v, K_VOLDN, true, VOL_Y, VOLDN_Z, SIGN_L * qd, SIGN_TH * qd);
 			n = side_rr(&v, -1, 1.2f, 11.7f, 0.3f, 0.0f, -1.89f, -23.4f, pt);
 			shape(&v, pt, n, col(&v, v.glass, 1.0f), col(&v, 0, 0.0f), 0.0f);
 		} else {

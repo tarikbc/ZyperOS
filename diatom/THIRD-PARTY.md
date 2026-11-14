@@ -70,6 +70,52 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## Sharp-Shimmerless, in `port/pixel2.c` and `port/brick.c`
+
+zadpos's box filter for pixel art at fractional scales: the `shimmerless`
+filter (`src/scale.c`), which ZyperOS's Shader rows call Sharp-Shimmerless.
+
+- **By zadpos**, from https://github.com/Woohyun-Kang/Sharp-Shimmerless-Shader
+  at `2a74e7a` (2024-11-25), its `shaders_glsl/shaders/sharp-shimmerless.glsl`.
+- **CC0 1.0 Universal** (the repository's `LICENSE.txt`): dedicated to the
+  public domain, and the shader's own header says *"License: Public domain"*.
+  Nothing is owed, and it is named here because the idea is the author's.
+- `port/pixel2.c` (`SHIMMERLESS_SHADER`) is its fragment shader rewritten for
+  OpenGL ES 3.0 and this port's one pass; `port/brick.c` (`build_map`) is the
+  same arithmetic as the Brick's CPU resampling map. Both are Diatom's files,
+  under its Mozilla Public License 2.0.
+
+## Sharp-Shimmerless's grid and scanlines, in `port/pixel2.c`
+
+The `lcd` and `scanlines` filters (`src/scale.c`), which ZyperOS's Shader
+rows call LCD Grid and Scanlines.
+
+- **By zadpos**, from the same repository at `2a74e7a`, its
+  `shaders_glsl/shaders/sharp-shimmerless-grid.glsl` and
+  `sharp-shimmerless-scanlines.glsl`, with their default band (0.3 of a pixel
+  at 0.3 opacity).
+- **CC0 1.0 Universal**, as Sharp-Shimmerless.
+- `port/pixel2.c` (`GRID_SHADER`) is their fragment shader rewritten for
+  OpenGL ES 3.0 and this port's one pass, under Diatom's license.
+
+## CRTS, in `port/pixel2.c`
+
+The `crt` and `crt-curved` filters (`src/scale.c`), which ZyperOS's Shader
+rows call CRT and CRT Curved.
+
+- **By Timothy Lottes**: CRTS, *"[CRTS] PUBLIC DOMAIN CRT-STYLED SCALAR -
+  20180120b"*, as libretro's glsl-shaders carries it
+  (https://github.com/libretro/glsl-shaders at `a350698`,
+  `crt/shaders/crt-lottes-fast.glsl`).
+- **Public domain**, as its header says. Nothing is owed.
+- `port/pixel2.c` (`CRT_SHADER_SRC`) is its 2-tap filter, its scanlines, its
+  brighter aperture grille and its tone curve, rewritten for OpenGL ES 3.0
+  and this port's one pass with gamma 2 in place of its `pow()`, under
+  Diatom's license.
+
+Other CRT shaders made for small GPUs, crt-pi and zfast-crt among them, are
+GPL-2.0-or-later, and Diatom's files take no GPL code: they are not here.
+
 ## Cores
 
 **Diatom ships no cores and has no core list.** It loads whatever shared library

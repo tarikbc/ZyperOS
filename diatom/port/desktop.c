@@ -149,6 +149,23 @@ void diatom_port_audio_get(char *out, size_t cap)
 	if (out && cap) snprintf(out, cap, "%s", g_audio_dev);
 }
 
+/* No motor here. DIATOM_RUMBLE_LOG=path is a pretend one for a test: each
+ * level the host asks of it, a line "strong weak" in that file, in the order
+ * asked (test/rumble.py). From any thread, as the port contract says, so
+ * under a lock. */
+static pthread_mutex_t g_rumble_mx = PTHREAD_MUTEX_INITIALIZER;
+static FILE           *g_rumble_log;
+
+static bool rumble_log_open(void)
+{
+	const char *e = getenv("DIATOM_RUMBLE_LOG");
+
+	pthread_mutex_lock(&g_rumble_mx);
+	if (!g_rumble_log && e && *e) g_rumble_log = fopen(e, "w");
+	pthread_mutex_unlock(&g_rumble_mx);
+	return g_rumble_log != NULL;
+}
+
 bool diatom_port_init(diatom_port_caps *out)
 {
 
@@ -221,7 +238,8 @@ bool diatom_port_init(diatom_port_caps *out)
 	out->audio_buffer_frames = AUDIO_BUFFER_FRAMES;   /* open or not yet */
 	out->present_blocks     = false;
 	out->gpu                = false;
-	out->rumble             = false;
+	/* No motor, unless a test asks for one to read (DIATOM_RUMBLE_LOG). */
+	out->rumble             = rumble_log_open();
 	return true;
 }
 
@@ -242,9 +260,10 @@ static bool ensure_texture(int w, int h, diatom_pixfmt fmt, diatom_filter filter
 	/* SDL has no sharp-bilinear, so this is an APPROXIMATION: linear blends
 	 * across the whole source pixel where sharp-bilinear blends across one
 	 * destination pixel, which reads as blurrier than the device will look.
-	 * Good enough to check the geometry is right on desktop; judgment about
-	 * how a filter actually looks belongs on the panel. */
-	SDL_ScaleMode mode = (filter == DIATOM_FILTER_SHARP)
+	 * Sharp-Shimmerless is drawn the same way, for the same reason. Good
+	 * enough to check the geometry is right on desktop; judgment about how a
+	 * filter actually looks belongs on the panel. */
+	SDL_ScaleMode mode = (filter != DIATOM_FILTER_NEAREST)
 	                   ? SDL_ScaleModeLinear
 	                   : SDL_ScaleModeNearest;
 
@@ -500,12 +519,18 @@ void diatom_port_input_poll(void)
 
 uint32_t diatom_port_input_state(void) { return g_buttons; }
 
-/* No motor. */
 bool diatom_port_rumble(uint16_t strong, uint16_t weak)
 {
-	(void)strong;
-	(void)weak;
-	return false;
+	bool ok;
+
+	pthread_mutex_lock(&g_rumble_mx);
+	ok = g_rumble_log != NULL;
+	if (ok) {
+		fprintf(g_rumble_log, "%u %u\n", (unsigned)strong, (unsigned)weak);
+		fflush(g_rumble_log);
+	}
+	pthread_mutex_unlock(&g_rumble_mx);
+	return ok;
 }
 
 /* Nothing queues here: the poll reads the keyboard as it is now. */

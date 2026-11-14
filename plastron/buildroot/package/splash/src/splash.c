@@ -42,7 +42,6 @@
 #define _GNU_SOURCE             /* nftw */
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -360,49 +359,15 @@ static int buffer_create(int fd, const drmModeModeInfo *mode, struct buffer *b,
 }
 
 /*
- * The panel's color correction, in the display controller's gamma table.
- *
- * The Pixel 2's panel shows red and green too strong in the low and middle
- * range: beside the Brick, red came out orange, grass yellow and blue water
- * cyan. The panel's own init sequence is GKD's, byte for byte, so this is the
- * panel itself, and others had noticed it on the stock system too. Set by eye
- * against the Brick on 2026-10-02, curves A/B'd on the device: out = in ^ e
- * per channel, with red and green at 1.5 and blue left alone. Harder cuts
- * dulled the greens; more saturation (the controller's BCSH block) made it
- * worse.
- *
- * Loaded just after the first frame is lit. Loading the table means turning it
- * off and waiting for the hardware to say so at the next refresh, a frame's
- * wait: before the first mode-set it lit the panel 17 ms later on every boot
- * measured. After it, the wait falls inside the gap before the animation's
- * second frame, and only the first frame, mostly background, goes uncorrected.
- * Later mode-sets keep the table, so ZyperOS and Diatom never touch it. A
- * kernel without the table (no gamma size) leaves the colors as the panel has
- * them.
+ * No color correction: the display controller's gamma table stays empty, so
+ * the panel shows each frame's colors as they are, as the stock firmware
+ * does. Up to ZyperOS 1.0.4 this filled it (red and green as in^1.5, blue as
+ * it was, set by eye against a TrimUI Brick), which darkened everything and
+ * took the warmth out of it: a mid grey reached the panel as (91,91,134). A
+ * player compared a SNES game with the stock firmware and saw it (2026-11-12).
+ * ZyperOS's launcher and Diatom empty a table an older splash filled
+ * (ZyperOS's src/panelgamma.h).
  */
-#define GAMMA_RED   1.5
-#define GAMMA_GREEN 1.5
-#define GAMMA_BLUE  1.0
-
-static void gamma_set(int fd, uint32_t crtc)
-{
-	drmModeCrtc *c = drmModeGetCrtc(fd, crtc);
-	int size = c ? c->gamma_size : 0;
-
-	drmModeFreeCrtc(c);
-	if (size < 2 || size > 4096) return;
-
-	uint16_t red[size], green[size], blue[size];
-	for (int i = 0; i < size; i++) {
-		double x = (double)i / (size - 1);
-
-		red[i]   = 65535 * pow(x, GAMMA_RED) + 0.5;
-		green[i] = 65535 * pow(x, GAMMA_GREEN) + 0.5;
-		blue[i]  = 65535 * pow(x, GAMMA_BLUE) + 0.5;
-	}
-	if (drmModeCrtcSetGamma(fd, crtc, size, red, green, blue))
-		perror("splash: gamma");
-}
 
 static void flip_done(int fd, unsigned seq, unsigned sec, unsigned usec, void *data)
 {
@@ -444,8 +409,8 @@ int main(int argc, char **argv)
 	/* A start a charger made (zycharge=1 on the kernel's line, from
 	 * boot.scr when U-Boot saw the PMIC woken by the plug): the handheld is
 	 * not starting, so no boot animation, only the theme's plain ground, lit
-	 * so the panel's color table goes in (gamma_set) and kept until ZyperOS
-	 * draws its charging screen on the same ground (its DESIGN.md 11.25) */
+	 * and kept until ZyperOS draws its charging screen on the same ground
+	 * (its DESIGN.md 11.25) */
 	const char *zc = getenv("zycharge");
 	int charging = zc && !strcmp(zc, "1");
 
@@ -529,8 +494,6 @@ int main(int argc, char **argv)
 		 lit, (lit - started) * 1000);
 	log_to_kernel(line);
 
-	/* After the first frame, not before: see gamma_set */
-	gamma_set(fd, crtc);
 
 	/* The rest of the frames at the animation's rate, each on its own
 	 * deadline from the first, so a late frame does not push every later
@@ -661,7 +624,6 @@ static int still(const char *path)
 	}
 	fclose(f);
 	if (drmModeSetCrtc(fd, crtc, b.fb, 0, 0, &conn->connector_id, 1, &mode)) return 1;
-	gamma_set(fd, crtc);
 	drmDropMaster(fd);
 	log_to_kernel("splash: holding a port's loading screen\n");
 	/* The picture lasts as long as the buffer: stay until launch.sh says */

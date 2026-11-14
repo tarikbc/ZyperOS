@@ -43,11 +43,33 @@ typedef enum {
  * that straddles a source-pixel boundary, leaving every interior pixel exact.
  * At an integer factor it is identical to NEAREST by construction.
  *
+ * SHIMMERLESS is zadpos's Sharp-Shimmerless (public domain): a box filter.
+ * Source and destination pixels are rectangles, and a destination pixel is
+ * the mix of the source pixels it covers, by area. A destination pixel inside
+ * one source pixel is that pixel exactly; only one straddling a boundary
+ * mixes, so a scroll at a fractional factor keeps every column the same
+ * width - nearest's columns of 2 and 3 are what shimmer. At an integer factor
+ * it is NEAREST too.
+ *
+ * A port without a way to draw one draws the closest it has (the desktop:
+ * SDL's linear); the host never asks which.
+ *
  * Passed per frame rather than set once, so the port holds no policy state and
  * cannot be asked to present before it has been told how. */
 typedef enum {
 	DIATOM_FILTER_NEAREST,
-	DIATOM_FILTER_SHARP
+	DIATOM_FILTER_SHARP,
+	DIATOM_FILTER_SHIMMERLESS,
+	/* Old screens, drawn by a GPU: a CRT's scanlines and phosphors (flat,
+	 * and curved), scanlines alone, and a handheld LCD's grid. A port with
+	 * no shaders draws them as the closest it has (the Brick:
+	 * Sharp-Shimmerless's map), and a host offers them only where they are
+	 * drawn (ZyperOS: the Pixel 2). */
+	DIATOM_FILTER_CRT,
+	DIATOM_FILTER_CRT_CURVED,
+	DIATOM_FILTER_SCANLINES,
+	DIATOM_FILTER_LCD,
+	DIATOM_FILTER_COUNT
 } diatom_filter;
 
 typedef struct { int x, y, w, h; } diatom_rect;
@@ -209,8 +231,9 @@ bool  diatom_port_gpu_begin(const diatom_gpu_spec *spec);
 void  diatom_port_gpu_end(void);
 /* The framebuffer to draw into, as a GL name: always the same one, with the
  * frame's own texture put under it here. The host calls it before every
- * frame, since a core may read the name once and keep it; a core may also
- * ask as often as it likes. */
+ * frame, on its thread, since a core may read the name once and keep it; a
+ * core that asks itself is given the name the host's last call returned
+ * (src/hw.c), as it may ask from a thread with no context. */
 uintptr_t diatom_port_gpu_target(void);
 void *diatom_port_gpu_proc(const char *name);
 /* The frame just drawn: w x h at the framebuffer's bottom-left corner, GL's

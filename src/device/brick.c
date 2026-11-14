@@ -823,6 +823,12 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
+{
+	(void)act; (void)ifname; (void)in; (void)ip; (void)n;
+	return false;
+}
+bool plat_usb_iphone(void) { return false; }
 
 /* The controller lets go of the cable and takes it again, so the computer
  * sees the Brick plugged in afresh: the Pixel 2's computer once dropped it
@@ -1030,6 +1036,12 @@ bool plat_cable_sense(link_sense *out) { (void)out; return false; }
 bool plat_usb_power(usb_power *out) { (void)out; return false; }
 bool plat_usb_power_grant(unsigned plug) { (void)plug; return false; }
 bool plat_usb_power_mode(bool automatic) { (void)automatic; return false; }
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
+{
+	(void)act; (void)ifname; (void)in; (void)ip; (void)n;
+	return false;
+}
+bool plat_usb_iphone(void) { return false; }
 static void jack_forget(void) { }
 static void mute_forget(void) { }
 void plat_backlight(bool on) { (void)on; }
@@ -1093,6 +1105,10 @@ void plat_brightness_set(int level)
  * Bluetooth. */
 bool plat_has_wifi(void)      { return true; }
 bool plat_has_bluetooth(void) { return true; }
+/* Diatom scales on the CPU here (port/brick.c): Off and Sharp-Shimmerless.
+ * A host build shot or checked (ZYPEROS_HEADLESS) stands for the Pixel 2's
+ * menus, so it offers them all, and the fit check measures them. */
+bool plat_gpu_shaders(void)   { return getenv("ZYPEROS_HEADLESS") != NULL; }
 /* Two speakers, a few centimeters apart: Auto keeps them stereo */
 bool plat_speaker_mono(void) { return false; }
 
@@ -1105,6 +1121,10 @@ bool plat_tap_held(in_button b) { (void)b; return false; }
 
 /* No lights of its own for the battery. */
 bool plat_battery_lights(void) { return false; }
+
+/* Never tried here: its image may have no hostapd, and its cable no
+ * network link (plat_usb_peer cannot tell it a computer) */
+bool plat_player2(void) { return false; }
 side_lights plat_side_lights(void) { return LIGHTS_ALL; }
 void plat_side_lights_set(side_lights on) { (void)on; }
 void plat_side_lights_say(const char *line) { (void)line; }

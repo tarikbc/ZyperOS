@@ -21,8 +21,11 @@
 #include "monoclock.h"
 #include "muselib.h"
 #include "xfer.h"
+#include "sheet.h"
 
 #define PIN_LEN        4
+/* A move's files: the entry, and a sheet's names and side files with it */
+#define MOVE_MAX       (1 + SHEET_NAMES)
 #define TOKEN_LEN     32           /* hex characters */
 #define MAX_SESSIONS   4           /* a phone and a laptop, with room spare */
 #define MAX_TRIES      5
@@ -50,6 +53,7 @@ static char     g_token[MAX_SESSIONS][TOKEN_LEN + 1];
 static int      g_ntoken;
 static int      g_tries;
 static int      g_wrong;          /* every wrong PIN since hare_start */
+static bool     g_signed;         /* a browser signed in since hare_start */
 static unsigned g_locked_until;
 static int      g_uploads;
 static bool     g_shelf_changed;  /* something the shelf would show has moved */
@@ -344,6 +348,18 @@ typedef struct {
 } tidy_item;
 
 /* The music or audiobooks root a folder is inside, and not the root itself */
+/* The root `abs`, resolved, is in or is: NULL for none */
+static const xfer_root *move_root(const char *abs)
+{
+	for (int i = 0; i < xfer_root_count(); i++) {
+		const xfer_root *rt = xfer_root_at(i);
+		size_t n = strlen(rt->path);
+
+		if (!strncmp(abs, rt->path, n) && (abs[n] == '/' || !abs[n])) return rt;
+	}
+	return NULL;
+}
+
 static const xfer_root *tidy_root(const char *abs)
 {
 	int i;
@@ -1031,6 +1047,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		         "Set-Cookie: hare=%s; Path=/; HttpOnly; SameSite=Strict\r\n",
 		         g_token[g_ntoken]);
 		g_ntoken++;
+		g_signed = true;
 		note("%s", T(S_HARE_SIGNED_IN));
 		httpd_reply(r, 200, "text/plain", "ok", 2, cookie);
 		return;
@@ -1788,6 +1805,139 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 		return;
 	}
 
+	/* Drag and drop on the page (2026-11-13): entry `p` - a file, or a
+	 * folder, a disc set whole - into folder `to`, on the card. A loose
+	 * sheet takes the files it names beside it and the files kept by its
+	 * stem (src/sheet.h), so a .cue never leaves its .bin behind. All or
+	 * nothing: a name already in `to` refuses the whole move, and says
+	 * which. A game's art, saves and states go by its name, which a move
+	 * does not change, so they stay where they are. */
+	if (!strcmp(path, "/api/move") && !strcmp(m, "POST")) {
+		static char from[MOVE_MAX][XFER_PATH_MAX], into[MOVE_MAX][XFER_PATH_MAX];
+		static sheet_names sn;
+		char req[XFER_PATH_MAX], toq[XFER_PATH_MAX], abs[XFER_PATH_MAX], dir[XFER_PATH_MAX];
+		char parent[XFER_PATH_MAX], msg[512];
+		const char *base, *with[2];
+		const xfer_root *rt;
+		struct stat st, ds;
+		int n = 0, i, moved;
+		bool music;
+
+		if (!done) { httpd_want_body(r, HTTPD_BODY_NONE, NULL); return; }
+		httpd_query(r, "p", req, sizeof req);
+		httpd_query(r, "to", toq, sizeof toq);
+		if (!xfer_resolve(req, abs, sizeof abs) || !xfer_resolve(toq, dir, sizeof dir)) {
+			httpd_reply_status(r, 403, T(S_HARE_CANNOT_WRITE));
+			return;
+		}
+		/* Within one root, and never a root itself (the query is still
+		 * encoded: the resolved paths are what say it). A game moves among
+		 * its console's folders; nothing crosses into Saves or the states. */
+		rt = move_root(abs);
+		if (!rt || rt != move_root(dir) || !strcmp(abs, rt->path)) {
+			httpd_reply_status(r, 400, T(S_HARE_CANNOT_MOVE));
+			return;
+		}
+		if (lstat(abs, &st) != 0) { httpd_reply_status(r, 404, strerror(errno)); return; }
+		/* A folder only when a delete would take it whole: a console's own
+		 * folder under ROMs, or one in BIOS or Saves, stays where the shelf
+		 * and the cores look for it (xfer_delete_rule) */
+		if (S_ISDIR(st.st_mode)) {
+			const char *why = NULL;
+
+			if (xfer_delete_rule(abs, &why) != XFER_DEL_ALL) {
+				httpd_reply_status(r, 403, why ? why : T(S_HARE_CANNOT_MOVE));
+				return;
+			}
+		}
+		if (stat(dir, &ds) != 0 || !S_ISDIR(ds.st_mode)) {
+			httpd_reply_status(r, 400, T(S_HARE_CANNOT_MOVE));
+			return;
+		}
+		base = base_of(abs);
+		snprintf(parent, sizeof parent, "%.*s", (int)(base - 1 - abs), abs);
+		/* Into the folder it is in already: nothing to do */
+		if (!strcmp(parent, dir)) { httpd_reply(r, 200, "text/plain", "ok", 2, NULL); return; }
+		/* A folder into itself, or a folder in it */
+		if (!strcmp(dir, abs) || (!strncmp(dir, abs, strlen(abs)) && dir[strlen(abs)] == '/')) {
+			httpd_reply_status(r, 400, T(S_HARE_MOVE_INTO_ITSELF));
+			return;
+		}
+		snprintf(from[n], XFER_PATH_MAX, "%s", abs);
+		if (snprintf(into[n], XFER_PATH_MAX, "%s/%s", dir, base) >= XFER_PATH_MAX) {
+			httpd_reply_status(r, 400, T(S_HARE_LONG_NAME));
+			return;
+		}
+		n++;
+		if (S_ISREG(st.st_mode)) {
+			char stem[XFER_NAME_MAX + 1];
+			const char *dot = strrchr(base, '.');
+			int k, nw;
+
+			sn.n = 0;
+			sn.outside = false;
+			if (sheet_is(base)) sheet_read(parent, base, &sn, 0);
+			nw = sheet_sides(base, with);
+			snprintf(stem, sizeof stem, "%.*s", dot && dot != base ? (int)(dot - base) : (int)strlen(base), base);
+			for (k = 0; k < nw && sn.n < SHEET_NAMES; k++)
+				snprintf(sn.name[sn.n++], SHEET_PATH, "%s.%s", stem, with[k]);
+			/* Only what is there, beside it in its own folder: a sheet's
+			 * name in another folder, or one that leaves it, stays put */
+			for (k = 0; k < sn.n && n < MOVE_MAX; k++) {
+				struct stat ts;
+				bool dup = false;
+
+				size_t nl = strlen(sn.name[k]);
+
+				if (strchr(sn.name[k], '/') || !strcasecmp(sn.name[k], base)) continue;
+				/* Nothing a root keeps from the page, by a sheet's naming it */
+				if (rt->no_cfg && nl > 4 && !strcasecmp(sn.name[k] + nl - 4, ".cfg")) continue;
+				snprintf(from[n], XFER_PATH_MAX, "%s/%s", parent, sn.name[k]);
+				for (i = 0; i < n; i++)
+					if (!strcmp(from[i], from[n])) dup = true;
+				if (dup || lstat(from[n], &ts) != 0 || !S_ISREG(ts.st_mode)) continue;
+				if (snprintf(into[n], XFER_PATH_MAX, "%s/%s", dir, sn.name[k]) >= XFER_PATH_MAX) {
+					httpd_reply_status(r, 400, T(S_HARE_LONG_NAME));
+					return;
+				}
+				n++;
+			}
+		}
+		/* A name already in the folder: the whole move refused, by name */
+		for (i = 0; i < n; i++) {
+			struct stat ts;
+
+			if (lstat(into[i], &ts) == 0) {
+				snprintf(msg, sizeof msg, T(S_HARE_MOVE_EXISTS), base_of(into[i]), base_of(dir));
+				httpd_reply_status(r, 409, msg);
+				return;
+			}
+		}
+		/* In Music or Audiobooks, Muse stopped first if it plays this, and
+		 * the launcher told after, as for a rename */
+		music = tidy_root(abs) != NULL;
+		if (music && g_before_delete) g_before_delete(abs);
+		for (moved = 0; moved < n; moved++)
+			if (rename(from[moved], into[moved]) != 0) break;
+		if (moved < n) {
+			int err = errno;
+
+			/* Back where they were, what went, so a game is never split */
+			while (moved-- > 0) rename(into[moved], from[moved]);
+			httpd_reply_status(r, err == EXDEV ? 400 : 500,
+			                   err == EXDEV ? T(S_HARE_CANNOT_MOVE) : strerror(err));
+			return;
+		}
+		if (music && g_after_rename) g_after_rename(abs, into[0], false);
+		for (i = 0; i < n; i++) {
+			note_write(into[i]);
+			note_write(from[i]);   /* it left one folder and arrived in another */
+		}
+		note(T(S_HARE_MOVED), base);
+		httpd_reply(r, 200, "text/plain", "ok", 2, NULL);
+		return;
+	}
+
 	if (!strcmp(path, "/api/mkdir") && !strcmp(m, "POST")) {
 		char req[XFER_PATH_MAX], abs[XFER_PATH_MAX];
 
@@ -1861,6 +2011,7 @@ bool hare_start(const char *roms_dir, const char *card_dir,
 	g_ntoken = 0;
 	g_tries = 0;
 	g_wrong = 0;
+	g_signed = false;
 	g_locked_until = 0;
 	g_uploads = 0;
 	g_sends = 0;
@@ -1904,6 +2055,7 @@ void hare_stop(void)
 
 const char *hare_pin(void) { return g_pin; }
 int hare_wrong_pins(void) { return g_wrong; }
+bool hare_signed_once(void) { return g_signed; }
 int hare_port(void) { return httpd_port(); }
 
 int hare_poll(void)

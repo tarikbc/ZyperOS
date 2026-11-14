@@ -1,0 +1,61 @@
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- A guest player of the game on the handheld, in a friend's browser: the
+     game's picture and the player's pad, served by p2d. The words are the
+     handheld's language: /i18n.js, loaded before play.js, which puts them
+     in where data-t names one (data-t-aria an aria-label). -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- Beard, or Salt & Pepper where the browser asks for dark: play.css. -->
+<meta name="color-scheme" content="light dark">
+<title></title>
+<link rel="stylesheet" href="play.css">
+<!-- The handheld's own look, when p2d has it (the launcher writes it): its
+     theme, accent, tones and corners over play.css's, whatever the browser
+     prefers. Without it (a 404), play.css alone. -->
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+
+<!-- The game: the status and Picture off, the picture, and the pad, laid
+     out by play.css for a phone held upright (the picture under the bar,
+     the pad in the rest) or on its side (the picture the whole height, the
+     pad's halves either side). -->
+<main id="game" class="game" data-state="connecting">
+  <header class="bar">
+    <p class="state"><i aria-hidden="true"></i><span id="state" role="status"></span></p>
+    <!-- A computer's keys for the game's buttons (play.js), where there is
+         a mouse to say there is a keyboard -->
+    <p id="keys" class="keys"></p>
+    <label class="switch"><input id="picoff" type="checkbox"><i aria-hidden="true"></i><span data-t="play.picture_off"></span></label>
+  </header>
+  <div id="view" class="view"><canvas id="screen" width="256" height="240"></canvas></div>
+  <!-- The pad: the d-pad here, and the game's other buttons, which play.js
+       draws from its table of them (B and A in the face group, SELECT and
+       START after it). Fingers are followed by Pointer Events, so a thumb
+       can roll from B to A, and the d-pad reads its direction from where on
+       it the finger is, the diagonals too. -->
+  <div id="pad" class="pad">
+    <div id="dpad" class="dpad ctl" role="img" data-t-aria="play.dpad">
+      <i data-dir="up"></i><i data-dir="left"></i><i class="hub"></i><i data-dir="right"></i><i data-dir="down"></i>
+    </div>
+    <div id="face" class="ab"></div>
+  </div>
+</main>
+
+<!-- A browser that cannot unpack the frames (no DecompressionStream for
+     raw deflate: Safari before 16.4) says so rather than showing a black
+     picture, and opens no socket. -->
+<section id="old" class="old" hidden>
+  <div class="panel">
+    <h1 data-t="play.name"></h1>
+    <p data-t="play.old_browser"></p>
+  </div>
+</section>
+
+<script src="/i18n.js"></script>
+<script src="play.js"></script>
+</body>
+</html>

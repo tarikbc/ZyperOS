@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "zh-Hans";
 window.ZYPEROS_PLURAL = n => 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "多人游戏",
+  "play.state.connecting": "正在连接",
+  "play.state.player": "玩家 %d",
+  "play.state.full": "游戏人数已满",
+  "play.state.stopped": "主机已关闭多人游戏",
+  "play.state.ended": "游戏已结束",
+  "play.old_browser": "此应用版本过旧，无法显示游戏。请更新后再试，或用其他应用打开此页面。",
+  "play.picture_off": "关闭画面",
+  "play.dpad": "方向键",
+  "play.key.arrows": "键盘方向键",
+  "play.key.shift": "Shift",
+  "play.key.enter": "回车",
   "name.wifi": "Wi-Fi 文件传输",
   "name.usb": "USB 文件传输",
   "gate.sub": "请输入掌机屏幕上显示的 PIN。",
@@ -188,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "轻点“取消”，再轻点“不使用互联网”。然后在 Safari 中打开 %s。",
   "captive.android_head": "上传需要 Chrome。",
   "captive.android_text": "轻点 %1$s，再轻点“按原样使用此网络”。然后在 Chrome 中打开 %2$s。",
+  "act.select": "选择",
+  "act.deselect": "取消选择",
+  "move.count": ["%d 项", "%d 项"],
+  "move.done": "已移动到 %s",
 };

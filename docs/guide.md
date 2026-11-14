@@ -18,6 +18,20 @@ Bluetooth pairings. At the first boot, in about a minute, the rest of the
 card becomes ZYPEROS, an exFAT partition, with ZyperOS on it. Games, music,
 saves and settings live there, and it is the partition a computer sees.
 
+The first start writes down what it does as it goes, in `zyperos-setup.txt`
+on the card's small PX2BOOT partition, which a computer shows as a drive of
+its own: the handheld's memory, the card and how fast it runs, then a line
+every second with how far the copy has got, the clocks, the temperature and
+the battery, and every message from the system. If the first start ever
+stops, or the handheld restarts in the middle of it, put the card in a
+computer and send me that file ([a GitHub issue](https://github.com/tarikbc/ZyperOS/issues)
+or the Discord): it says what happened up to that moment. Each start adds to
+it, so a card that tried twice has both. When the handheld restarted by
+itself, the next start also puts in the system's own report of what went
+wrong, which it keeps in memory across the restart. Turning the handheld off
+with the power button loses that report, so if it freezes, wait a minute
+before you do.
+
 The device itself is never written to. The Brick boots from the card before
 its own system, so **removing the card brings the stock system back**;
 [Undoing it](#undoing-it) covers the rest.
@@ -26,6 +40,31 @@ Copying from macOS leaves `._name` metadata files beside everything. They are
 harmless - the launcher skips every name beginning with a dot, so they never
 show up as games - and `dot_clean /Volumes/ZYPEROS` removes them if they
 bother you.
+
+### The card in a computer
+
+On the Pixel 2 the card has four partitions, in an MBR table:
+
+| | | |
+|---|---|---|
+| PX2BOOT | FAT, 64 MB | the boot partition: each system's kernel and the file that says which one starts. Leave it as it is |
+| (none) | 512 MB | system slot A, read-only (squashfs) |
+| (none) | 512 MB | system slot B, where System Update puts the next version |
+| ZYPEROS | exFAT, the rest of the card | games, music, saves and settings |
+
+PX2BOOT and ZYPEROS have the partition types a Mac, Windows and Linux open
+(0x0C and 0x07). A Mac shows both. Windows shows both too, and can give
+the two system slots a drive letter as well, then ask for each, **You need
+to format the disk in drive X: before you can use it**: choose **Cancel**. Formatting a slot erases
+that system, and the card may no longer start.
+
+If ZYPEROS has no drive letter in Windows, right-click Start, open **Disk
+Management**, find the card (a Removable disk the card's size), right-click
+the large exFAT partition, choose **Change Drive Letter and Paths**, then
+**Add**. If Disk Management shows the card as **No Media**, or not at all,
+the reader does not see the card: try another reader, or leave the card in
+the handheld and use [Flash Drive](#plugging-into-a-computer), which gives
+the computer ZYPEROS alone.
 
 Building it yourself instead is in [building.md](building.md).
 
@@ -68,18 +107,19 @@ it away.
 | | |
 |---|---|
 | **Left/Right** | move left or right along the shelf |
-| **Up/Down** | jump to the previous or next initial on the games shelf |
+| **Up/Down** | jump to the previous or next initial on the games shelf. On a shelf shown as a list (MENU > View), Up and Down step along it and Left and Right jump an initial |
 | **L1/R1** | jump three systems on the systems row, a screenful on a games shelf, coming round at the ends |
 | **L2/R2** | the previous / next song on the systems row and a games shelf: MP4's while it plays (a book's chapter, as L1/R1 in MP4), else the menu music's. Zyper pops up with its name |
-| **A** | open a system or start a game |
-| **B** | back to the systems row |
+| **A** | open a system, a folder of games, or start a game |
+| **B** | up one folder of games, or back to the systems row from a shelf's top |
 | **X** | game info for the card under the cursor |
-| **Y** | favorite it - Favorites is a shelf of its own. Nothing on MP4's shelf |
+| **Y** | start the game from the start, without its resume point, when it has one. In a game's details (X), Y favorites it - Favorites is a shelf of its own. Nothing on MP4's shelf |
+| **START** | on a games shelf, covers or a list: the row of covers turns into a list of names, and back again. It is MENU > View's setting, kept for each shelf. Nothing on MP4's shelf |
 | **Volume rocker** | volume, everywhere, including in game |
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Controls, Achievements, Reset, Quit, and Pak in a Nintendo 64 game. It opens when you let go, so MENU can be held for brightness |
+| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, Pak in a Nintendo 64 game, and Player 2 in an NES game on the Pixel 2 (see **Player 2** below). It opens when you let go, so MENU can be held for brightness |
 | **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -106,12 +146,14 @@ glance:
 | **charging** | a bar fills up from the bottom, starting from a light for each full quarter it already has: at 50% the bottom two stay lit and the other two fill in. A full battery holds all four, still, and so does a battery held at the **Charge Limit**, at its level |
 | **below 10%**, on the battery | the bottom light flashes red every five seconds; below 5%, twice every two seconds |
 | **volume or brightness** changing | the level, in eight steps: each light is two, and a blinking light is a half. Volume at 0 is the bottom light red |
+| **files moving**, in Flash Drive and on File Transfer's page | a wave fills the four lights and empties them: from the top down while files come in to the card, from the bottom up while they go out. It moves faster for a faster transfer; with both ways moving, it shows the way that moves more |
 | **files or covers done** | a light climbs the four twice when a File Transfer batch is in, or the Scraper finishes |
 | **an achievement** | a sparkle: two pairs of lights take turns |
 | **L2+R2** (outside a game) | the level, flashed four times: all four lights at 75% and up, three at 50, two at 25, one at 10, the bottom light red below that |
 | **the rest of the time** | dark |
 
-MENU > Side Lights turns each of the first five on or off. The red flash shows
+MENU > Side Lights turns the first six on or off: one switch each, and one,
+Files and Covers, for files moving and files or covers done. The red flash shows
 through everything else; L2+R2 flashes the level whatever is chosen. The
 lights are on or off, with nothing between, so there is no brightness to set.
 
@@ -134,7 +176,8 @@ A Nintendo 64 game has a page for its C buttons (hold SELECT and press X, A, B
 or Y) and, under them, which Pak its controller holds and where to change it:
 "MENU > Pak: Rumble Pak". A PICO-8 game lists its
 arrows, O and X and its pause menu. A DS game has a page for its two screens
-and the stylus. Then Hotkeys, SELECT with a shoulder: quick save and load, and
+and the stylus. A PSP game's R2 row turns the d-pad into the PSP's analog
+stick and back, kept for that game; a pop-up says which it is. Then Hotkeys, SELECT with a shoulder: quick save and load, and
 faster and slower. The last page, In a game, is MENU, MENU then X (Quit),
 volume, brightness and POWER. Left and right change the page, B goes back to the menu, and MENU goes
 back to the game.
@@ -163,8 +206,9 @@ refreshes its storage and capacity readings every two seconds; the charge state
 uses the status corner's shared fast cache.
 
 **The first time ZyperOS starts on a handheld it teaches the buttons**: Zyper
-says hello, and then each button is a step of its own - the D-pad, A, B, Y, X,
-MENU, SELECT, the volume, the brightness and POWER - where a small picture
+says hello, and then each button is a step of its own - the D-pad, A, B, X, Y
+(a favorite, in the details), MENU, SELECT, the volume, the brightness and
+POWER - where a small picture
 shows what it does and the step waits for you to press it. The shoulder keys
 come with two of them, lit on the picture of the handheld: L1/R1 jump with
 the D-pad, and L2/R2 change the song with SELECT. A press of another
@@ -189,12 +233,14 @@ than any one console:
 | **Wi-Fi File Transfer** | the file server; needs Wi-Fi and says so when there is none. On the Pixel 2 with no network it says `hotspot`, and makes the handheld its own network for a phone to join - see below. While a computer is on the USB cable it is **USB File Transfer** instead, at `http://zyperos.local`, or always at `10.55.0.2` on the Brick and `10.42.0.1` on the Pixel 2 |
 | **Date & Time** | the clock and the time zone, set with left and right - see below |
 | **Clock** | `12-hour` or `24-hour`, for the clock on the shelf and here. `12-hour` on a new device |
-| **Auto Off** | how long without a button before the device powers itself down. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
-| **Side Lights** | the Pixel 2 only: a page of switches for what the side lights show on their own, `Charging Bar`, `Low Battery`, `Volume and Brightness`, `Files and Covers Done` and `Achievements`, each `On` or `Off`; the row says how many are on. L2+R2 shows the level in all four. `All on` on a new device |
+| **Auto Off** | how long without a button before the device powers itself down. It waits while a long job runs (a scraper run, a System Update download, PortMaster's install, Storage measuring the card, files moving over File Transfer) and counts again from the start when the job ends. On the charger it does not power down; on the shelf the screen goes off instead, and any button (power too) lights it again. On USB File Transfer the screen goes off when nothing is moving, and only dims while files are on their way; a button, a browser coming to the page or files starting to move light it fully, and files keep moving while it is dark |
+| **Screensaver** | `off`, `30s`, `1m`, `2m`, `5m` or `10m` with nothing pressed on the shelf before the video snaps of random games play over the whole screen, each with its game's name and system. START boots the game on screen; any other button goes back. `1m` on a new device. It never starts in a game, a menu, MP4 or File Transfer, while music plays or a long job runs, or under 20% on battery; on battery it ends by itself after 10 minutes, and Auto Off still powers the device off at its own time. With no video snaps on the card it shows covers instead, and with neither, nothing - see **Screensaver** below |
+| **Side Lights** | the Pixel 2 only: a page of switches for what the side lights show on their own, `Charging Bar`, `Low Battery`, `Volume and Brightness`, `Files and Covers` and `Achievements`, each `On` or `Off`, and the row under the cursor plays its pattern on the lights; the row says how many are on. L2+R2 shows the level in all four. `All on` on a new device |
 | **System Order** | the home's systems `A to Z` by name, on a new device and after an upgrade, or by `Release Date`. Favorites stays first, and Ports and MP4 stay last |
 | **Appearance** | `Light`, `Dark` or `Auto`, which is light from 7:00 to 19:00 by the clock. `Light` on a new device and after an upgrade |
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
 | **Achievements** | the RetroAchievements account, or `sign in` |
+| **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
@@ -205,7 +251,9 @@ USB Wi-Fi adapter is plugged in: Wi-Fi, Achievements and Wi-Fi
 File Transfer here (USB File Transfer stays, with a computer on the cable), Box
 Art in a console's menu, and Album Art in MP4's. Scraper stays: its fetch says
 it needs Wi-Fi, and its video snaps and sources need none. Bluetooth is never
-there.
+there. A phone's USB tethering is internet too (see **File transfer**):
+while it is on, Achievements, Box Art and Album Art are back, and Scraper's
+fetch works.
 
 ### Scraper
 
@@ -234,6 +282,37 @@ it goes back to the cover when the focus moves or a menu opens. Its page:
 
 A snap is `Roms/<console>/.media/<name>.mp4`, beside its cover, so one put
 there by hand plays too.
+
+**Auto Off waits for a fetch.** While Fetch Missing Art, a Box Art run or its
+video snaps are fetching, Auto Off does not count, so a library left to
+scrape overnight is not cut short; the count starts again, whole, when the run
+ends. The power button still powers the device off, and so does the battery
+running flat. System Update's download, PortMaster's install, Storage
+measuring the card and files moving over File Transfer wait the same way.
+
+### Screensaver
+
+MENU > **Screensaver** plays the video snaps of random games over the whole
+screen after the delay you pick, `off` or 30 seconds to 10 minutes, `1m` to
+start with, when nothing has been pressed on the shelf. Each clip shows for
+15 seconds with its game's name and system, then the next fades in.
+
+- **START** boots the game on screen, as A on its card would.
+- **Any other button** goes back to the shelf as it was, and does nothing else.
+  The volume and brightness buttons change their own setting and leave it be.
+- It never starts in a game or over a menu, MP4 or File Transfer, while music
+  plays, File Transfer is on or a long job (a fetch, an update, PortMaster's
+  install) runs, or under 20% on battery.
+- **It never keeps the device on past Auto Off.** Auto Off powers the device
+  off at its own time with the screensaver up; on the cable, its time turns the
+  screen off as it does for the shelf. A delay as long as Auto Off's is never
+  seen on battery.
+- **It is cheap:** muted, drawn only when the picture changes, and on battery
+  it ends by itself after 10 minutes, or when the chip gets hot or the battery
+  falls under 20%, and waits for a button.
+- It plays the snaps on the card (`Roms/<console>/.media/<name>.mp4`) of the
+  consoles whose Video Snaps are on. **With no snaps on the card it shows the
+  games' covers**, each for 8 seconds; with no covers either, it does nothing.
 
 Date & Time has a row for each part of the clock and one for the time zone,
 each changed with left and right and set the moment it changes, so the time
@@ -294,6 +373,12 @@ The adapter needs a driver that can be an access point. The TL-WN725N v2/v3
 (RTL8188EUS) can, with Realtek's own driver, which plastron gives it. An
 adapter that cannot shows **Could not start the hotspot.**
 
+On a network, that driver's power saving is off: with it on, this chip is
+known to drop off some routers over and over. Each join and each drop, with
+the reason the network or the adapter gave, goes in
+`.userdata/pixel2/logs/wifi.log`, which File Transfer's **Download logs**
+packs with the other logs.
+
 On the Play Time screen, **left and right** change the window - all time, this
 year, this month, this week, today - and **Y** switches between one row per
 game and one per system. The row under the cursor gets its own line at the
@@ -314,11 +399,13 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **Core** | which core runs them; left/right/A choose on a shelf that has two (the Dreamcast's) |
 | **Game Language** | the Nintendo DS shelf's: left/right/A go round `Auto`, English, Español, Français, Deutsch, Italiano, 日本語 and 简体中文, saved the moment it changes. `Auto` is the language of MENU > Language where the DS has it and English where it does not, and the row says which. The next game started speaks it, whatever the language of the `firmware.bin` in `Bios/`. A game whose resume point was left in another language starts fresh in this one, with a note that says so, its battery save kept; a save state you load keeps its own language until Reset |
 | **Sort By** | left/right; `Name`, `Play Time`, `Last Played` or `Recently Added` |
+| **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it. START on the shelf turns it too, without the menu |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
+| **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
-On Favorites the menu is only Games and Sort By. The rest is about one
+On Favorites the menu is only Games, Random Game, Sort By and View. The rest is about one
 console, and a game there takes its console's Display Mode wherever it was
 started from.
 
@@ -337,6 +424,57 @@ on the card. Whichever order you pick, games it knows nothing about sort to
 the bottom rather than into the middle, and two games it cannot tell apart
 fall back to name - a shelf that reshuffles itself when nothing has changed
 reads as broken even when the top of it is right.
+
+View is per-system too: a shelf with good covers reads well as a row, and an
+Arcade shelf or a library of hundreds of games reads better as a list.
+START on a shelf turns it over at a press, the same setting as the menu's
+row, and the foot says which way it goes: `List` under the covers, `Covers`
+under the list.
+
+**Folders of games.** A folder inside a system's folder on the card is a
+folder on its shelf, as deep as you like: the folders come first, A to Z,
+each a pixel-art folder in the system's color with how many games it
+holds, then the games loose in
+it, in the shelf's Sort By order. A opens a folder and B goes back up one,
+onto the folder you left. A folder is one game when it holds that game's
+set: an `.m3u`, a PSP game's `EBOOT.PBP`, two or more discs of the one game,
+or a `.cue` (or `.gdi`) with its tracks; or when its one disc image is named
+as the folder is. A ScummVM game's folder is one game too. Any other folder
+is a folder of games, also with one game in it. In the list (MENU > View >
+List) the focused game's video snap plays where its cover is. The Ports shelf never looks into its folders: they are the ports'
+own. Favorites, Search Games, Random Game, Storage, Delete Game and Play
+Time all find the games in folders, and after a game the shelf comes back
+in the folder it was in.
+
+**Shaders.** How a game's picture is drawn onto the screen at its last step.
+`Off` draws each of the game's pixels as the nearest screen pixels, so at a
+size that is not a whole number of times the game's (a 256-wide NES picture
+stretched to 640 is 2.5 times) some of its pixels are two screen pixels wide
+and some three, and a scrolling picture shimmers as they swap.
+`Sharp-Shimmerless`, zadpos's shader, keeps every pixel the same size: a
+screen pixel inside one of the game's pixels is that pixel exactly, and only
+one that falls across two of them mixes the two, by how much of it each
+covers. The picture stays as sharp as it can at that size and a scroll stays
+steady. At a whole number of times (Integer, Native 1:1) the two are the
+same.
+
+The other four draw an old screen. `CRT` is Timothy Lottes's CRT shader: a
+dark line between the picture's lines, and one of each three columns of the
+screen dimmed in red, green or blue, as the stripes of a TV tube, with the
+light they take given back. `CRT Curved` is the same with the glass curved
+and the corners round, and the picture's edges go into the curve.
+`Scanlines` is Sharp-Shimmerless with a dark band under each of the game's
+lines, and nothing more; `LCD Grid` has the band around each of its pixels,
+as on a Game Boy's screen. The CRT's lines are most even where the
+picture's height is a whole number of times the game's: Integer tall draws
+a 224-line SNES game at twice its height. These four are the Pixel 2's,
+whose last step is its GPU's; the Brick draws them as Sharp-Shimmerless, and
+its rows step over them.
+
+The in-game menu's **Shader** row, right under Display, changes it for
+the game's system, from the next frame after Continue (the paused picture
+behind the menu stays as it was); the system menu's row does the same from
+the shelf, and **MENU > Display > Shader** sets every system at once.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer
@@ -429,6 +567,38 @@ to trust.
 The page asks for the PIN and opens as the fourth digit goes in. Five wrong
 PINs and the page waits 30 seconds.
 
+Once someone has typed the PIN, the handheld's screen looks like Flash
+Drive's: **Download** (files coming to the card) and **Upload** (files going
+from it), each with its speed and how much has moved since the screen opened,
+lit while files move that way. While a file comes in, a bar under Download
+shows how far it is. Under them, **Now** says what happened last, with the
+file's name, and **Browsers** (and **SSH** over the cable) who is connected.
+The address and the PIN stay at the top for the next browser.
+
+On the Pixel 2, an Android phone with USB tethering opens it too on the USB
+cable, with no adapter: answer **Phone** when the handheld asks what you
+plugged in, and turn on the phone's **USB tethering**. The phone shares its
+network over the cable and gives the handheld an address there, and **USB
+File Transfer** opens by itself with that address first (`192.168.x.y`) and
+"in the phone's browser" under it: type it in the phone's browser, then the
+PIN. No name is shown there, since a phone's browser does not look `.local`
+names up. Close the screen and the phone stays connected and charging;
+**MENU > USB File Transfer** opens it again. Unplug the phone or turn USB
+tethering off, and the screen says the cable is unplugged (behind the shelf,
+it closes 10 seconds later). While USB tethering is on, the handheld also
+has the phone's internet: its clock sets itself from it, and **MENU >
+Scraper**, Cover and Video, Box Art, **MENU > Achievements**, System Update
+and PortMaster's install work over it as over Wi-Fi. Close File Transfer
+with **B** and the phone stays connected for them. Over the phone, which may
+be on mobile data, nothing large starts by itself: a System Update download
+cut short waits for **A**. An iPhone shares its network over USB only with a
+computer it trusts, which the handheld cannot be, so use Wi-Fi File Transfer
+with an iPhone. Some Android devices have no USB tethering at all (the AYN
+Thor, an Android gaming handheld, offers it neither in Settings nor in its
+USB notification): with one of those, use Wi-Fi File Transfer too, or
+**Flash Drive** with a USB-C to USB-A adapter on the phone and a USB-A to
+USB-C cable.
+
 The name is answered by the handheld itself (multicast DNS, which macOS,
 Windows 10 and later, iOS, Android and most Linux desktops ask by
 themselves), on the cable while USB File Transfer is open and on the Wi-Fi
@@ -466,7 +636,7 @@ the step it is waiting on dimmed:
 
 | Step | Ticked when | If it waits too long |
 |---|---|---|
-| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in; it can take a few tries. `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
+| **Cable** (USB) | the computer took the handheld and opened its network | `waiting` with a computer that didn't connect: after 5 seconds, unplug the cable and plug it back in, which can take a few tries, or use a USB-A to USB-C cable, which connects every time ([why](#plugging-something-in)). `unplugged`: no computer is on the cable; after 5 seconds, the hint says some cables only charge. After 10 seconds with a computer that does not answer: try another USB port or cable. After 10 seconds with the computer answering and no network: it has no driver for the handheld; on Windows, look in Device Manager |
 | **Address** (USB) | the computer answers at the address the handheld gave it, `10.42.0.2` | after 10 seconds: check Network adapters in Windows' Device Manager |
 | **Wi-Fi** (Wi-Fi) | the handheld is on a network | after 5 seconds: connect to Wi-Fi first |
 | **Browser** | a browser asked for the page | after 30 seconds: type `http://zyperos.local` or the address, and turn off any VPN or proxy |
@@ -526,7 +696,7 @@ Only):
 |---|---|
 | **Charge Only** | nothing more; B, or no answer, means the same |
 | **File Transfer** | opens USB File Transfer, with the link to the computer for as long as that screen is open |
-| **Flash Drive** | the card becomes a USB drive the computer opens like any other, with no driver (Windows 10 too). ZyperOS steps aside: the screen says "Connected as a flash drive", with two tiles under it, Download (to the card) and Upload (from the card): each says, once a second, how fast it moves that way (its mark lit while it moves) and how much moved since the start (the handheld sees blocks, not files, so there is no time left). "Eject it on the computer to finish." When you eject it on the computer, or pull the cable, the card comes back (checked first if the computer left it unfinished) and ZyperOS starts again where it was. POWER meanwhile stops it and turns the handheld off safely, and B ejects it from the handheld (both hints at the foot); if the computer wrote to the card in the last few seconds, B asks first, since it may still be copying. Ejecting on the computer is still the best way. MENU and a volume key change the brightness there too. If something still uses the card, nothing is shared and ZyperOS comes back |
+| **Flash Drive** | the card becomes a USB drive the computer opens like any other, with no driver (Windows 10 too). ZyperOS steps aside: the screen says "Connected as a flash drive", with two tiles under it, Download (to the card) and Upload (from the card): each says, once a second, how fast it moves that way (its mark lit while it moves) and how much moved since the start (the handheld sees blocks, not files, so there is no time left). "Eject it on the computer to finish." When you eject it on the computer, or pull the cable, the card comes back (checked first if the computer left it unfinished) and ZyperOS starts again where it was. POWER meanwhile stops it and turns the handheld off safely, and B ejects it from the handheld (both hints at the foot); if the computer wrote to the card in the last few seconds, B asks first, since it may still be copying. Ejecting on the computer is still the best way. MENU and a volume key change the brightness there too, with the level on the side lights as on the shelf. If something still uses the card, nothing is shared and ZyperOS comes back |
 | **Developer (SSH)** | development images only, beside Flash Drive: the link stays on until the cable comes out, for the image's own SSH |
 
 A wall charger is never asked about, and unplugging always goes back to
@@ -540,12 +710,14 @@ keyboard from a computer that has not connected yet (its port is waiting
 to be powered), and a computer must never be powered by the handheld (a
 Mac waited 10, 16 and over 30 seconds in my tests). So when something like
 that is plugged in, the shelf asks, two seconds after it goes in, **What
-did you plug in?**, with two tiles:
+did you plug in?**, a list of three, each with a line that says what it is
+for (Up and Down move, **A** chooses):
 
 | | |
 |---|---|
 | **USB Accessory** (headphones, Wi-Fi, keyboard) | the port powers it, and it works as before (the adapter brings Wi-Fi, the headphones the sound) |
-| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link |
+| **Computer** | where it starts, and what B and MENU mean: no power, and a message says your computer didn't connect: unplug the cable and plug it back in. It can take a few tries: at each plug, the computer's USB-C port and the handheld's settle which side gives power, and only one way round makes the link. Some computers' USB-C ports take the waiting side every time, as a phone's does, and then plugging in again never helps. Under the message, a smaller line names the way that always works: a USB-A to USB-C cable, with USB-A at the computer, whose port always gives power. A computer with only USB-C ports can use a USB-C to USB-A adapter, or a USB-C hub, with that cable |
+| **Phone** (files in the phone's browser) | the port powers the phone, and a message asks you to turn on **USB tethering** on it (on Android: **Settings > Network & internet > Hotspot & tethering > USB tethering**; Samsung: **Connections > Mobile Hotspot and Tethering**). A phone's USB-C port takes the side that waits for power every time, so the handheld is its USB host, and USB tethering shares the phone's network over the cable. A few seconds later **USB File Transfer** opens by itself with the address the phone gave the handheld (192.168.x.y): open it in the phone's browser and type the PIN, as below. The line under the message is for a phone with no USB tethering (some Android devices have none, the AYN Thor among them): use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the phone for **Flash Drive**. An iPhone shares its network over USB only with a computer it trusts, so when the handheld sees an iPhone the message says so instead: use Wi-Fi File Transfer, or a USB-C to USB-A adapter on the iPhone and a USB-A to USB-C cable. **Flash Drive** on a phone needs that adapter too: with it, the phone gives power and **Computer Connected** asks, as for a computer. The phone charges from the handheld while it is connected |
 
 The question goes by itself when the thing is unplugged or the computer
 connects. Every plug is asked about on its own, however soon after the last
@@ -579,6 +751,89 @@ the link on whenever a computer is plugged in, with no question, so
 default, and kept on the card as `.userdata/pixel2/developer`, which the
 system reads at boot. A release image has no Developer Mode: it never turns
 the link on at boot, whatever that file says.
+
+## Player 2
+
+On the Pixel 2, a friend can play an NES game with you as player 2, on
+their phone or on a computer, with nothing to install. The handheld's own
+buttons stay player 1, and the sound stays on the handheld.
+
+In an NES game, MENU, then **Player 2**, just under Shader. Its value says
+`off`, `waiting` (on, with nobody playing yet) or `connected`. A on the row
+opens its page over the paused game:
+
+| | |
+|---|---|
+| **With a Wi-Fi adapter in** | the page says a friend plays on a Wi-Fi network just for this game. **A** makes the handheld its own Wi-Fi network, as File Transfer does with no network around, and shows its QR code, the network's name and its password. The friend points the phone's camera at the code and joins; the game opens on the phone by itself, in its sign-in sheet. If it does not, open `10.42.1.1/play` in the phone's browser, which the page says under the password |
+| **With a computer on the USB cable** | **A** brings up the cable's link, as USB File Transfer does, and the page says to open `zyperos.local/play` on the computer (`10.42.0.1/play` works too). Windows 10 has no driver for the link, as for USB File Transfer |
+| **With neither** | the page says to plug in a Wi-Fi adapter or a computer, and A does nothing until you do. The page sees one plugged in while it is open |
+
+Under that, a line for player 2: `off`, `waiting` or `connected`. **B**
+closes the page and **Continue** goes back to the game with Player 2 on. A
+notice over the game says **Player 2 joined** when the friend's browser
+starts to play, and **Player 2 left** once it has been gone five seconds,
+the line saying `connected` until then. A phone whose link drops for a
+moment and comes back by itself was never gone, and nothing is said. A
+phone that just goes quiet (it walked out of range) is let go after five
+seconds of silence, so its notice comes about ten seconds after it went.
+**A** on the page again stops Player 2, and A once more starts it again.
+The game's end stops it too, however it ends: quit, POWER, a crash. The
+handheld's network goes, and Wi-Fi comes back as it was. If it stops by
+itself (the handheld's network or the page's server went away), a notice
+says **Player 2 stopped**, the page says Player 2 had a problem, and A
+starts it again.
+
+**What the friend sees** is the game's picture, as large as the screen
+takes it, and an NES pad under it: the d-pad at the left, **B** and **A**
+at the right, SELECT and START under them. Several fingers at once work,
+and a thumb can roll from B to A. In Chrome on an Android phone a press
+gives a short vibration (not with the phone on silent, and not in the
+phone's sign-in sheet, which cannot vibrate: open `10.42.1.1/play` in
+Chrome for it). An iPhone has no way to do that for a web page. Nothing
+zooms the page: a double tap on the pad is two presses, and a double tap
+or a pinch anywhere else does nothing. Turned on its side, the picture
+takes the whole height, with the pad's halves either side. The page speaks
+the handheld's language and wears the handheld's theme, light or dark with
+its accent and corners, whatever the phone is set to. At the top it says
+**Connecting**, **Player 2**, **The game is full** (someone else is player
+2; it keeps trying, and takes the place when it is free), **The host
+turned multiplayer off** (you stopped Player 2 and the game goes on) or
+**The game ended**. After **The host turned multiplayer off** the page
+keeps trying: on the cable it plays again by itself when you turn Player 2
+on again. On the hotspot the network's password is new each time, so the
+friend scans the new code first.
+
+On a computer the keyboard is the pad, and the bar names the keys:
+
+| | |
+|---|---|
+| **Arrow keys** | the d-pad |
+| **Z** | B |
+| **X** | A |
+| **Shift** | SELECT |
+| **Enter** | START |
+
+The keys are the letters printed on them, on any keyboard layout.
+
+**Picture off**, at the top right, hides the picture, and the pad takes the
+whole screen: for a friend who watches the handheld and uses the phone only
+as a pad. Switched off again, the picture is back at once.
+
+The page needs a recent browser (Safari 16.4 or Chrome 103 and later): an
+older one says it is too old to show the game. A button left held never
+stays held: the page lets go of everything when it is hidden or loses the
+focus, and the handheld lets go of player 2's buttons a second after the
+page stops saying them (a phone that locked, or walked out of range). A
+friend who leaves the page, with Back or for another site, frees player 2's
+place at once, so coming back is never told the game is full; Back brings
+the game back.
+
+The page's server listens only on the handheld's address on that link,
+not on the address of another network the handheld's Wi-Fi may be on, and
+no other site can show the page inside its own.
+
+A game controller paired with the phone or the computer does not work yet.
+It needs the page over HTTPS, which comes with a later update.
 
 ## Audio
 
@@ -839,7 +1094,7 @@ library takes a while: seven albums took a minute on the Brick.
 
 ## The shelf
 
-Systems use animated pixel console art on an open background. Games use a
+Systems use ZyperOS's own animated pixel console art on an open background. Games use a
 straight row of box art. The selected item grows and the others stay quiet,
 with no perspective or reflection on these pages.
 
@@ -897,6 +1152,82 @@ ScreenScraper counts each of its pictures as a request on your account, so
 only the small copies of the pictures on screen are fetched, and the whole one
 only when you look closer. The row's value says what is missing: `no cover` or
 `no video`.
+
+**Rename**, above Delete Game, gives the game a new name. A opens the
+keyboard with the game's name as its file has it. START renames. The game's
+file takes the new name, with its extension. A disc set or ScummVM game in a
+folder of its own renames the folder. Its saves, its save states and Auto,
+its cover and video snap, its achievement set, the EmulationStation pictures
+and video named after it and its `gamelist.xml` entry follow, and so do its
+favorite, play time and details. The shelf shows the new name, and the next
+scrape can find the game by it. A file another game uses too, such as the
+save a `.gb` and a `.gbc` of one name share, is copied, so the other game
+keeps it. A name cannot be empty, start or end with a dot, or have
+`/ \ : * ? " < > |`, and it cannot be another game's name on the shelf: the
+message says why, and the keyboard opens again. Arcade sets, BIOS sets and
+ports have no Rename, because the core or PortMaster finds them by their
+names.
+
+## Coming from EmulationStation
+
+Knulli, ROCKNIX, ArkOS, AmberELEC, ROGUE OS, RetroPie, Recalbox and the other
+systems built on EmulationStation (ES) keep each console's games in a short
+folder, such as `roms/nds`, with the pictures, videos and details they
+scraped beside the games. Copy those folders into `Roms/` on the ZyperOS card
+as they are. ZyperOS reads them, and they still work in the other system:
+ZyperOS writes nothing in them but its own covers in `.media/`.
+
+**Folders.** Each system reads its ZyperOS folder or its ES folder:
+
+| ZyperOS folder | ES folders it also reads |
+|---|---|
+| `Nintendo DS` | `nds` |
+| `Game Boy Advance`, `Game Boy Color`, `Game Boy` | `gba`, `gbc`, `gb` |
+| `SNES` | `snes`, `sfc`, `superfamicom` |
+| `NES` | `nes`, `famicom`, `fds` |
+| `Genesis` | `genesis`, `megadrive`, `md` |
+| `PlayStation` | `psx`, `ps1` |
+| `Nintendo 64` | `n64` |
+| `TurboGrafx-16` | `pcengine`, `tg16`, `pcenginecd`, `tg16cd`, `tg-cd`, `supergrafx` |
+| `Sega CD`, `32X`, `Master System`, `Game Gear` | `segacd`, `megacd`, `sega32x`, `mastersystem`, `sms`, `gamegear`, `gg` |
+| `Neo Geo`, `Neo Geo CD`, `Neo Geo Pocket (Color)` | `neogeo`, `neocd`, `neogeocd`, `ngp`, `ngpc` |
+| `Arcade`, `MAME` | `fbneo`, `fba`, `cps1`, `cps2`, `cps3`; `mame2003`, `mame2003plus` |
+
+The rest are in `ZyperOS/systems.cfg` on the card, on its `es|` lines (Atari
+2600 is `atari2600`, WonderSwan is `wswan`, and so on). Capitals do not
+count. A shelf reads one folder: its ZyperOS folder while that has a game,
+and otherwise the ES folder with the most games. A new ZyperOS card has
+every ZyperOS folder, empty, so a copied ES folder is read. When both have
+games, the ZyperOS folder is read: move the games into one of them.
+
+**What ZyperOS reads, in order.** ZyperOS's own cover and video snap come
+first: `.media/<game>.png` and `.media/<game>.mp4`, from Box Art, the
+Scraper or Cover and Video. A game with none uses ES's:
+
+- the cover: `gamelist.xml`'s `<thumbnail>`, then `<image>`, then
+  `images/<game>-thumb`, `images/<game>-image`, `images/<game>`,
+  `media/box2dfront/<game>`, `media/images/<game>`, `boxart/<game>` and
+  `downloaded_images/<game>` (`.png`, then `.jpg`), and last the game's
+  logo, `<marquee>` or `images/<game>-marquee.png`;
+- the video snap: `gamelist.xml`'s `<video>`, then `videos/<game>-video.mp4`,
+  `videos/<game>.mp4`, `media/videos/<game>.mp4` and
+  `downloaded_videos/<game>.mp4`.
+
+A cover with an ES video has the play mark, and the video plays when you rest
+on the game, as a ZyperOS snap does. **Box Art** counts an ES cover as a
+cover, so it fetches covers only for games with none. **Cover and Video**
+shows an ES cover as Now, from EmulationStation; a cover you choose there is
+ZyperOS's own, and shows from then on.
+
+**Names, details and favorites.** A moment after each start, ZyperOS reads
+each folder's `gamelist.xml` and keeps, for each game that has no details
+yet, its `<name>`, `<desc>`, `<releasedate>`, `<genre>`, `<players>`,
+`<developer>`, `<publisher>` and `<rating>`, and makes a game with
+`<favorite>true</favorite>` a favorite. The shelf shows the names at once.
+A game that has details from the Scraper or a rename keeps them, and a
+ScreenScraper scrape later replaces what came from `gamelist.xml`. ES's
+`<name>` is not used when it is only the file's name: ZyperOS's own tidy
+name is shorter.
 
 The details' last row is **Delete Game**. It asks first, naming the game and
 saying that its saves, states, cover and video go with it and that this cannot

@@ -96,7 +96,7 @@ export const Tour: React.FC<TourProps> = ({ footage, device }) => {
               (SCENES[i + 1]?.browser?.laptop ? 1 : 1 - ease(frame, end - 5, end))} />
         )}
         {sc.browser?.phone && (
-          <Phone src={sc.browser.phone} x={sc.browser.laptop ? 1560 : 1240} y={sc.browser.laptop ? 400 : 200} height={sc.browser.laptop ? 600 : 760}
+          <Phone src={sc.browser.phone} pic={sc.browser.phonePic} x={sc.browser.laptop ? 1560 : 1240} y={sc.browser.laptop ? 400 : 200} height={sc.browser.laptop ? 600 : 760}
             k={pop(frame, start + (sc.browser.phoneAt ?? 0) * BEAT, 160, 14) * (1 - ease(frame, end - 5, end))} />
         )}
 

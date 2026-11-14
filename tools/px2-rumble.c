@@ -7,6 +7,11 @@
  *   px2-rumble stress [MS]       change the strength every 2 ms for MS
  *                                (default 20000), as a game easing its
  *                                rumble every frame does, only faster
+ *   px2-rumble gap               the stop ZyperOS 1.0.4's Diatom gave an N64
+ *                                Rumble Pak (full on; the effect uploaded
+ *                                again, weak 0, and stopped at once), the
+ *                                PWM's state after it, then the stop the fix
+ *                                makes (upload, play, stop) and the state
  *   px2-rumble pwm               print the motor PWM's state, once
  *   px2-rumble watch [MS]        print it every 20 ms for MS (default 3000)
  *
@@ -114,6 +119,43 @@ int main(int argc, char **argv)
 		}
 		return 0;
 	}
+	if (argc > 1 && !strcmp(argv[1], "gap")) {
+		/* ff-memless takes an upload over a playing effect off PLAYING
+		 * until its timer's next jiffy; a stop in that gap never tells the
+		 * driver 0 (diatom/port/rumble_evdev.c says more). Expect the PWM
+		 * still running after the first stop, and off after the second. */
+		if ((fd = open_rumble(name, sizeof name)) < 0) return 1;
+		memset(&e, 0, sizeof e);
+		e.type = FF_RUMBLE;
+		e.id = -1;
+		e.u.rumble.strong_magnitude = e.u.rumble.weak_magnitude = 0xffff;
+		memset(&play, 0, sizeof play);
+		play.type = EV_FF;
+		if (ioctl(fd, EVIOCSFF, &e) < 0) { perror("EVIOCSFF"); return 1; }
+		play.code = (uint16_t)e.id;
+		play.value = 1;
+		if (write(fd, &play, sizeof play) != (ssize_t)sizeof play) { perror("play"); return 1; }
+		nap_ms(300);
+		printf("on:                       ");
+		pwm_print();
+		e.u.rumble.weak_magnitude = 0;          /* the Rumble Pak's off, first call */
+		if (ioctl(fd, EVIOCSFF, &e) < 0) { perror("EVIOCSFF"); return 1; }
+		play.value = 0;                         /* and its second */
+		(void)!write(fd, &play, sizeof play);
+		nap_ms(200);
+		printf("stopped as 1.0.4 stopped: ");
+		pwm_print();
+		if (ioctl(fd, EVIOCSFF, &e) < 0) { perror("EVIOCSFF"); return 1; }
+		play.value = 1;                         /* the fix: a play after the upload */
+		(void)!write(fd, &play, sizeof play);
+		play.value = 0;
+		(void)!write(fd, &play, sizeof play);
+		nap_ms(50);
+		printf("stopped as the fix stops: ");
+		pwm_print();
+		close(fd);
+		return 0;
+	}
 	if (argc > 1 && !strcmp(argv[1], "stress")) {
 		long t, total = argc > 2 ? atol(argv[2]) : 20000;
 
@@ -140,7 +182,7 @@ int main(int argc, char **argv)
 	if (argc > 1) strength = atol(argv[1]);
 	if (argc > 2) ms = atol(argv[2]);
 	if (strength < 0 || strength > 65535 || ms < 0) {
-		fprintf(stderr, "usage: px2-rumble [0..65535 [ms]] | pwm | watch [ms]\n");
+		fprintf(stderr, "usage: px2-rumble [0..65535 [ms]] | gap | stress [ms] | pwm | watch [ms]\n");
 		return 2;
 	}
 	if ((fd = open_rumble(name, sizeof name)) < 0) {

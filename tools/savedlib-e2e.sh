@@ -69,7 +69,7 @@ start 1
 has 1 "saved library: none to use" && ok "none to use at first" || bad "no 'none to use' line"
 has 1 "saved library: the card is as the shelves show it" && ok "the check agrees" || bad "no check line"
 [ -s "$D/userdata/saved-library" ] && ok "the file is written" || bad "no saved-library file"
-grep -q "^game	Zelda.nes	Zelda$" "$D/userdata/saved-library" && ok "with its games" || bad "Zelda.nes not in the file"
+grep -q "^game	Zelda.nes	Zelda	0$" "$D/userdata/saved-library" && ok "with its games" || bad "Zelda.nes not in the file"
 
 echo "a start from the saved library, the card unchanged"
 start 2

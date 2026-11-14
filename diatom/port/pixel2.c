@@ -49,6 +49,7 @@
 #include "diatom_port.h"
 #include "ladder.h"
 #include "osdbar.h"
+#include "panelgamma.h"
 #include "port_clock.h"
 #include "port_cpufreq.h"
 #include "rumble_evdev.h"
@@ -84,6 +85,7 @@ static int                 g_crtc_pipe;     /* index in the resources, for vblan
 static drmModeModeInfo     g_mode;
 static bool                g_crtc_lit;      /* something already scans out on the CRTC */
 static bool                g_have_master;
+static bool                g_gamma_checked; /* take_display has emptied the gamma table */
 
 static EGLDisplay g_egl_display = EGL_NO_DISPLAY;
 static EGLContext g_egl_context = EGL_NO_CONTEXT;
@@ -146,7 +148,13 @@ static int              g_thread_ready;     /* 0 waiting, 1 ok, -1 failed */
 static bool g_present_debug;
 
 /* GL objects, all owned by the thread. */
-static GLuint g_prog_plain, g_prog_sharp, g_prog_solid;
+static GLuint g_prog_plain, g_prog_solid;
+/* The final pass's program for each filter but nearest (g_prog_plain),
+ * linked the first time a frame asks for it (filter_prog); 0 until then, and
+ * after a link that failed, which g_prog_failed keeps from being tried every
+ * frame. */
+static GLuint g_prog_filter[DIATOM_FILTER_COUNT];
+static bool   g_prog_failed[DIATOM_FILTER_COUNT];
 static GLuint g_frame_tex, g_overlay_tex, g_osdbar_tex;
 static int    g_tex_w = -1, g_tex_h = -1;
 static diatom_pixfmt g_tex_fmt;
@@ -274,6 +282,11 @@ static uint64_t g_osd_shown, g_osd_changed;
 static bool     g_osd_on;
 static int      g_osd_level, g_osd_max, g_osd_kind;   /* kind 0 volume, 1 brightness */
 static int      g_osd_theme;                          /* DS_LIGHT or DS_DARK */
+/* The bar's colors in that theme, as the player's look has them (the theme
+ * file's second line, themefile_read_bar), and a count that moves when they
+ * do, for the render thread to hand them to osdbar_colors */
+static ds_theme g_osd_colors;
+static unsigned g_osd_colors_gen;
 static bool     g_lowbat, g_lowbat_blink;   /* the low-battery disc; under g_mx */
 
 /* ---------- levels ---------------------------------------------------------- */
@@ -551,9 +564,15 @@ static void osd_show(int kind, int level, int max)
 	/* The theme is the launcher's, in a file: read before g_mx is taken, so
 	 * the render thread is never kept waiting on the filesystem, and again
 	 * on every press, so a change while the bar is up shows on the next one. */
-	int theme = themefile_read(THEME_FILE);
+	ds_theme colors;
+	int theme = themefile_read_bar(THEME_FILE, &colors);
 
 	pthread_mutex_lock(&g_mx);
+	if (theme != g_osd_theme || memcmp(&colors.ground, &g_osd_colors.ground,
+	                                   sizeof colors.ground * 18)) {
+		g_osd_colors = colors;
+		g_osd_colors_gen++;
+	}
 	uint64_t now = diatom_port_now_us();
 	float a, rise;
 
@@ -606,16 +625,12 @@ static const char *VERTEX_SHADER =
 	"out vec2 v_src;\n"
 	"void main() { v_src = a_src; gl_Position = vec4(a_pos, 0.0, 1.0); }\n";
 
-/* The panel's color matrix, applied in linear light: decoded from the
- * screen's gamma, mixed, encoded again. See matrix_load. */
-#define PANEL_COLOR \
-	"uniform mat3 u_matrix;\n" \
-	"uniform bool u_panel;\n" \
-	"vec4 panel(vec4 c) {\n" \
-	"	if (!u_panel) return c;\n" \
-	"	vec3 lin = pow(c.rgb, vec3(2.2));\n" \
-	"	return vec4(pow(clamp(u_matrix * lin, 0.0, 1.0), vec3(1.0 / 2.2)), c.a);\n" \
-	"}\n"
+/* Every program draws the frame's colors as the core made them: no color
+ * matrix, no curve. Up to 1.0.4 they went through the panel's color matrix
+ * from plastron's /etc/panel-color (blue gained a tenth of green, in linear
+ * light), set by eye against a TrimUI Brick, which with the splash's gamma
+ * table made games darker and cooler than the stock firmware shows them
+ * (port/panelgamma.h). */
 
 /* Nearest: the sampler's own, which picks the source pixel under the
  * destination pixel's centre - floor((i + 0.5) / scale), the same pixel
@@ -625,10 +640,9 @@ static const char *PLAIN_SHADER =
 	"precision highp float;\n"
 	"uniform sampler2D u_tex;\n"
 	"uniform vec2 u_size;\n"
-	PANEL_COLOR
 	"in vec2 v_src;\n"
 	"out vec4 o_color;\n"
-	"void main() { o_color = panel(texture(u_tex, v_src / u_size)); }\n";
+	"void main() { o_color = texture(u_tex, v_src / u_size); }\n";
 
 /* Sharp-bilinear, brick.c's build_map in a shader: the bilinear weight,
  * steepened by the scale so the blend spans one destination pixel. Interior
@@ -643,15 +657,155 @@ static const char *SHARP_SHADER =
 	"uniform sampler2D u_tex;\n"
 	"uniform vec2 u_size;\n"
 	"uniform vec2 u_scale;\n"
-	PANEL_COLOR
 	"in vec2 v_src;\n"
 	"out vec4 o_color;\n"
 	"void main() {\n"
 	"	vec2 c = v_src - 0.5;\n"
 	"	vec2 p = floor(c);\n"
 	"	vec2 f = clamp((c - p - 0.5) * u_scale + 0.5, 0.0, 1.0);\n"
-	"	o_color = panel(texture(u_tex, (p + 0.5 + f) / u_size));\n"
+	"	o_color = texture(u_tex, (p + 0.5 + f) / u_size);\n"
 	"}\n";
+
+/* Sharp-Shimmerless, zadpos's box filter (public domain; THIRD-PARTY.md),
+ * from its shaders_glsl/shaders/sharp-shimmerless.glsl at 2a74e7a, in GLES
+ * 3.0 and in this pass's terms: v_src is in texels already, so the
+ * destination pixel is (v_src - u_origin) * u_scale, measured from the
+ * quad's first texel, and the original's per-vertex `pixel`, `scale` and
+ * `invscale` are that, u_scale and u_inv. The rest is its main(): the
+ * texels under the pixel's two edges, and where they differ, the point
+ * between them whose bilinear weights are the areas each covers - one
+ * texture read, the sampler doing the mix. Measured from v_src rather than
+ * gl_FragCoord so that neither the panel's turn nor a GPU frame read
+ * bottom-up changes the arithmetic: the box filter is the same both ways
+ * along an axis.
+ *
+ * A pixel inside one texel lands on that texel's centre, so with LINEAR the
+ * neighbour's weight is 0 and nothing bleeds past a DS screen's edge or a
+ * GPU frame's last row, which sharp's comment below warns of. */
+static const char *SHIMMERLESS_SHADER =
+	"#version 300 es\n"
+	"precision highp float;\n"
+	"uniform sampler2D u_tex;\n"
+	"uniform vec2 u_size;\n"
+	"uniform vec2 u_scale;\n"
+	"uniform vec2 u_inv;\n"
+	"uniform vec2 u_origin;\n"
+	"in vec2 v_src;\n"
+	"out vec4 o_color;\n"
+	"void main() {\n"
+	"	vec2 px = (v_src - u_origin) * u_scale;\n"
+	"	vec2 tl = floor(px), br = ceil(px);\n"
+	"	vec2 t_tl = floor(u_inv * tl), t_br = floor(u_inv * br);\n"
+	"	vec2 t = t_br + 0.5 - (1.0 - step(t_br, t_tl)) * (u_scale * t_br - tl);\n"
+	"	o_color = texture(u_tex, (t + u_origin) / u_size);\n"
+	"}\n";
+
+/* What the shaders below work from, the same as Sharp-Shimmerless's, and
+ * u_quad: the quad's source size in texels, which the CRT clamps its reads
+ * to and warps over (quad_scale). */
+#define QUAD_UNIFORMS \
+	"uniform sampler2D u_tex;\n" \
+	"uniform vec2 u_size;\n" \
+	"uniform vec2 u_scale;\n" \
+	"uniform vec2 u_inv;\n" \
+	"uniform vec2 u_origin;\n" \
+	"uniform vec2 u_quad;\n" \
+	"in vec2 v_src;\n" \
+	"out vec4 o_color;\n"
+
+/* Sharp-Shimmerless with gaps: zadpos's sharp-shimmerless-grid and
+ * -scanlines (CC0, the same repository at 2a74e7a), whose main() this is in
+ * this pass's terms. Each game pixel is a rectangle with a dark band along
+ * its right and bottom edges, RATIO of it wide and OPACITY dark, and a
+ * screen pixel is what it covers, by area: the band stays the same width
+ * however the picture is scaled, and nothing shimmers. One texture read.
+ * `ratio` and `opacity` are vec2s, across and down: with nothing across it is
+ * scanlines; with both, an LCD's grid. */
+#define GRID_SHADER(ratio, opacity) \
+	"#version 300 es\n" \
+	"precision highp float;\n" \
+	QUAD_UNIFORMS \
+	"const vec2 RATIO = 1.0 - " ratio ";\n" \
+	"const vec2 ALPHA = 1.0 - " opacity ";\n" \
+	"void main() {\n" \
+	"	vec2 px = (v_src - u_origin) * u_scale;\n" \
+	"	vec2 tl = u_inv * floor(px), br = u_inv * ceil(px);\n" \
+	"	vec2 t_tl = floor(tl), t_br = floor(br);\n" \
+	"	vec2 ftl = fract(tl), fbr = fract(br);\n" \
+	"	vec2 a_tl = mix(RATIO - ftl + ALPHA * (1.0 - RATIO), ALPHA * (1.0 - RATIO), step(RATIO, ftl));\n" \
+	"	vec2 a_br = mix(fbr, RATIO + ALPHA * (fbr - RATIO), step(RATIO, fbr));\n" \
+	"	vec2 w = mix(a_br / (a_tl + a_br), vec2(1.0), step(t_br, t_tl));\n" \
+	"	vec2 f = (fbr + clamp(RATIO - ftl, 0.0, 1.0)) * u_scale;\n" \
+	"	f = mix(f, RATIO * u_scale, step(RATIO, fbr));\n" \
+	"	f = mix(f, clamp((RATIO - ftl) * u_scale, 0.0, 1.0), step(t_br, t_tl));\n" \
+	"	f = ALPHA + (1.0 - ALPHA) * f;\n" \
+	"	vec2 t = t_br - 0.5 + w;\n" \
+	"	o_color = vec4(f.x * f.y * texture(u_tex, (t + u_origin) / u_size).rgb, 1.0);\n" \
+	"}\n"
+
+/* A handheld's LCD: the grid both ways, the original's defaults */
+static const char *LCD_SHADER = GRID_SHADER("vec2(0.3, 0.3)", "vec2(0.3, 0.3)");
+/* Scanlines: the band only down, the -scanlines variant's defaults */
+static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0.3)");
+
+/* A CRT: Timothy Lottes's CRTS (public domain; libretro glsl-shaders'
+ * crt/shaders/crt-lottes-fast.glsl, its 20180120b), its 2-tap filter: two
+ * reads a pixel, one on each of the two scanlines nearest, each bilinear at
+ * a point Inigo Quilez's quintic moves so the pixel stays sharp across. The
+ * scanlines are its windowed cosines, the phosphors its brighter aperture
+ * grille (one channel of every three screen columns down to DARK), and its
+ * tone curve gives back the light the two take. Its parameters' defaults,
+ * fixed: thin 0.75, mask 0.5, and TONE is CrtsTone(1, 0, 0.75, 0.5) for
+ * that grille.
+ *
+ * Changed for this GPU: gamma 2 (a square in, a square root out) where it
+ * has 2.4 and pow() on every read, so the pass takes no pow() at all.
+ * The mask goes by the screen column within the picture, so it stays
+ * upright on the turned panel. With WARP, its curvature and corners, the
+ * original's defaults: warp 0.02 across and 0.015 down (a 4:3 screen),
+ * corner 3. Reads stay inside the quad, so nothing comes from the
+ * other DS screen or past a GPU frame's last row. */
+#define CRT_SHADER_SRC(warp) \
+	"#version 300 es\n" \
+	"precision highp float;\n" \
+	warp \
+	QUAD_UNIFORMS \
+	"const float THIN = 0.75;\n" \
+	"const float DARK = 0.5;\n" \
+	"const vec2 TONE = vec2(0.419207, 0.580793);\n" \
+	"vec3 fetch(vec2 p) {\n" \
+	"	vec3 c = texture(u_tex, (clamp(p, vec2(0.5), u_quad - 0.5) + u_origin) / u_size).rgb;\n" \
+	"	return c * c;\n" \
+	"}\n" \
+	"void main() {\n" \
+	"	vec2 px = (v_src - u_origin) * u_scale;\n" \
+	"	vec2 pos = px * u_inv;\n" \
+	"	float vin = 1.0;\n" \
+	"#ifdef WARP\n" \
+	"	vec2 q = px / (u_quad * u_scale) * 2.0 - 1.0;\n" \
+	"	q *= vec2(1.0 + q.y * q.y * 0.02, 1.0 + q.x * q.x * 0.015);\n" \
+	"	vin = (1.0 - (1.0 - clamp(q.x * q.x, 0.0, 1.0)) * (1.0 - clamp(q.y * q.y, 0.0, 1.0))) * 1.001;\n" \
+	"	vin = clamp(u_quad.y - vin * u_quad.y, 0.0, 1.0);\n" \
+	"	pos = (q + 1.0) * 0.5 * u_quad;\n" \
+	"#endif\n" \
+	"	float y0 = floor(pos.y - 0.5) + 0.5;\n" \
+	"	float x = pos.x + 0.5, xi = floor(x), xf = x - xi;\n" \
+	"	xf = xf * xf * xf * (xf * (xf * 6.0 - 15.0) + 10.0);\n" \
+	"	vec2 p = vec2(xi + xf - 0.5, y0);\n" \
+	"	vec3 a = fetch(p), b = fetch(p + vec2(0.0, 1.0));\n" \
+	"	float off = pos.y - y0;\n" \
+	"	float sa = cos(min(0.5, off * THIN) * 6.2831853) * 0.5 + 0.5;\n" \
+	"	float sb = cos(min(0.5, (1.0 - off) * THIN) * 6.2831853) * 0.5 + 0.5;\n" \
+	"	vec3 c = (a * sa + b * sb) * vin;\n" \
+	"	float m = fract(px.x * (1.0 / 3.0));\n" \
+	"	c *= m < 1.0 / 3.0 ? vec3(DARK, 1.0, 1.0) : m < 2.0 / 3.0 ? vec3(1.0, DARK, 1.0) : vec3(1.0, 1.0, DARK);\n" \
+	"	float peak = max(1.0 / (256.0 * 65536.0), max(c.r, max(c.g, c.b)));\n" \
+	"	c = c / peak * (peak / (peak * TONE.x + TONE.y));\n" \
+	"	o_color = vec4(sqrt(c), 1.0);\n" \
+	"}\n"
+
+static const char *CRT_SHADER = CRT_SHADER_SRC("");
+static const char *CRT_CURVED_SHADER = CRT_SHADER_SRC("#define WARP 1\n");
 
 static const char *SOLID_SHADER =
 	"#version 300 es\n"
@@ -680,11 +834,11 @@ static GLuint compile(GLenum type, const char *src)
 
 /* A uniform's location, asked of the driver once a program and kept: by name
  * it is a string lookup in the driver, and the frame asked for ten or more
- * on every flip (u_tex, u_size, u_matrix, u_panel, u_scale, the bar's and
+ * on every flip (u_tex, u_size, u_scale, the bar's and
  * the disc's). Emptied when a program is linked and when the context goes,
  * so a new program that gets an old one's id is asked again. The present
  * thread's GL alone calls this. */
-#define ULOCS 24
+#define ULOCS 64
 static struct {
 	GLuint prog;
 	char   name[16];
@@ -831,19 +985,23 @@ static void upload_frame(const mailbox_frame *f)
  * of the launcher's 1024 on the 640x480 panel - and redrawn only when the
  * level, the fade or the theme moves; the slide is the quad's place. BGRA
  * with straight alpha, the overlay's own layout, so it goes up the overlay's
- * way. Not through the panel's color matrix: the shelf is not, and the bar is
- * the shelf's. */
+ * way. */
+/* The look's colors as last handed to osdbar_colors, for draw_level_bar to
+ * paint again when they move (render thread) */
+static unsigned g_osd_colors_seen;
+
 static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
                            float rise, bool turned)
 {
 	static uint32_t px[OSDBAR_W * OSDBAR_H];
 	static int drawn_kind = -1, drawn_level, drawn_max, drawn_theme, drawn_a, w, h;
+	static unsigned drawn_gen;
 	const float s = (float)g_surface_w / 1024.0f;
 	int a = (int)(alpha * 255 + 0.5f);
 
 	if (s <= 0 || s > 1) return;
 	if (kind != drawn_kind || level != drawn_level || max != drawn_max ||
-	    theme != drawn_theme || a != drawn_a) {
+	    theme != drawn_theme || a != drawn_a || drawn_gen != g_osd_colors_seen) {
 		osdbar_size(s, &w, &h);
 		osdbar_render(px, w, h, w, s, theme, kind ? OSDBAR_BRIGHT : OSDBAR_VOLUME,
 		              level, max, alpha, false);
@@ -851,13 +1009,12 @@ static void draw_level_bar(int kind, int level, int max, int theme, float alpha,
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
 		drawn_kind = kind; drawn_level = level; drawn_max = max;
-		drawn_theme = theme; drawn_a = a;
+		drawn_theme = theme; drawn_a = a; drawn_gen = g_osd_colors_seen;
 	}
 	glBindTexture(GL_TEXTURE_2D, g_osdbar_tex);
 	glUseProgram(g_prog_plain);
 	glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
 	glUniform2f(uloc(g_prog_plain, "u_size"), (float)w, (float)h);
-	glUniform1i(uloc(g_prog_plain, "u_panel"), 0);
 	draw_quad(roundf(OSDBAR_X * s), roundf((OSDBAR_Y - rise) * s), (float)w, (float)h,
 	          (float)w, (float)h, turned);
 }
@@ -884,46 +1041,54 @@ static void draw_low_battery(bool turned)
 	}
 }
 
-/* The panel's color matrix, from plastron's /etc/panel-color: nine numbers,
- * row by row, lines starting with # skipped. Beside the Brick Hammer the
- * Pixel's panel shows greens yellow - its green has no blue in it where the
- * Brick's has some - and a curve per channel (the splash's gamma table) can't
- * add blue to a pixel that has none; a matrix can. Tuned by eye 2026-10-07:
- * blue gains a tenth of green, in linear light. Read once, at start; no file,
- * no matrix, and the shaders skip the math. Measured that day with the GPU's
- * work in the timing: 8.69 ms a frame with it, 8.86 without, the same within
- * the noise, as the turn to the panel is already a pass of its own. */
-#define MATRIX_PATH "/etc/panel-color"
-static float g_matrix[9];
-static bool  g_matrix_on;
+/* Each filter's shader, in diatom_filter's order; nearest is the sampler's
+ * own (PLAIN_SHADER), the rest are shaders over a LINEAR sampler. A shader
+ * to come is a row here and in diatom_filters. */
+static const char *const *const FILTER_SHADER[DIATOM_FILTER_COUNT] = {
+	[DIATOM_FILTER_NEAREST]     = &PLAIN_SHADER,
+	[DIATOM_FILTER_SHARP]       = &SHARP_SHADER,
+	[DIATOM_FILTER_SHIMMERLESS] = &SHIMMERLESS_SHADER,
+	[DIATOM_FILTER_CRT]         = &CRT_SHADER,
+	[DIATOM_FILTER_CRT_CURVED]  = &CRT_CURVED_SHADER,
+	[DIATOM_FILTER_SCANLINES]   = &SCANLINES_SHADER,
+	[DIATOM_FILTER_LCD]         = &LCD_SHADER,
+};
 
-static void matrix_load(void)
+/* The final pass's program for a filter, linked the first time it is asked
+ * for rather than at start: Diatom starts with the device, and six programs
+ * nobody may choose are time spent then, where one link as the game the
+ * player chose it for continues is a frame. Nearest's, the one the overlay
+ * and the level bar use too, at start (gl_start). A link that fails draws
+ * nearest, and says so once. */
+static GLuint filter_prog(diatom_filter f)
 {
-	FILE *f = fopen(MATRIX_PATH, "r");
-	char line[256];
-	float m[9];
-	int n = 0;
-
-	if (!f) return;
-	while (n < 9 && fgets(line, sizeof line, f)) {
-		char *p = line, *end;
-
-		if (line[0] == '#') continue;
-		while (n < 9) {
-			float v = strtof(p, &end);
-			if (end == p) break;
-			m[n++] = v;
-			p = end;
-		}
+	if (f <= DIATOM_FILTER_NEAREST || f >= DIATOM_FILTER_COUNT) return g_prog_plain;
+	if (!g_prog_filter[f] && !g_prog_failed[f]) {
+		g_prog_filter[f] = link_program(*FILTER_SHADER[f]);
+		g_prog_failed[f] = !g_prog_filter[f];
+		if (g_prog_failed[f])
+			port_logf(DIATOM_LOG_ERROR, "pixel2: filter %d did not link; nearest", (int)f);
 	}
-	fclose(f);
-	if (n != 9) {
-		port_logf(DIATOM_LOG_WARN, "pixel2: %s has %d numbers, not 9; no matrix", MATRIX_PATH, n);
-		return;
-	}
-	memcpy(g_matrix, m, sizeof g_matrix);
-	g_matrix_on = true;
-	port_logf(DIATOM_LOG_INFO, "pixel2: color matrix from %s", MATRIX_PATH);
+	return g_prog_filter[f] ? g_prog_filter[f] : g_prog_plain;
+}
+
+/* A quad's scale, for the programs that read one: destination pixels per
+ * source texel on each axis; and for the shaders that work in destination
+ * pixels (Sharp-Shimmerless, the grid, the scanlines, the CRT) its inverse,
+ * the quad's first texel, the low corner of its source whichever way the
+ * rows are read (sh < 0: a GPU frame, bottom-up), and its size in texels.
+ * Nearest reads none of it and is not asked; a uniform a program does not
+ * have is location -1, which GL ignores. */
+static void quad_scale(diatom_filter filter, GLuint prog, float dw, float dh,
+                       float sx, float sy, float sw, float sh)
+{
+	sh = fabsf(sh);
+	if (prog == g_prog_plain || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
+	glUniform2f(uloc(prog, "u_scale"), dw / sw, dh / sh);
+	if (filter == DIATOM_FILTER_SHARP) return;
+	glUniform2f(uloc(prog, "u_inv"), sw / dw, sh / dh);
+	glUniform2f(uloc(prog, "u_origin"), sx, sy);
+	glUniform2f(uloc(prog, "u_quad"), sw, sh);
 }
 
 /* Draw one frame and whatever is over it, onto the current target. */
@@ -932,8 +1097,8 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
                        float osd_alpha, float osd_rise, bool lowbat,
                        bool turned)
 {
-	GLuint prog = f->filter == DIATOM_FILTER_SHARP ? g_prog_sharp : g_prog_plain;
-	GLint  filter = f->filter == DIATOM_FILTER_SHARP ? GL_LINEAR : GL_NEAREST;
+	GLuint prog = filter_prog(f->filter);
+	GLint  filter = prog == g_prog_plain ? GL_NEAREST : GL_LINEAR;
 	/* A GPU frame is GL's way up, its first row at the bottom of a texture
 	 * larger than it: sampled from row h down to row 0, so the same quads
 	 * draw it upright. Unless its core draws the first row at the top. */
@@ -953,34 +1118,32 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 	glUniform1i(uloc(prog, "u_tex"), 0);
 	glUniform2f(uloc(prog, "u_size"),
 	            (float)(f->gpu ? f->tex_w : f->w), (float)(f->gpu ? f->tex_h : f->h));
-	glUniformMatrix3fv(uloc(prog, "u_matrix"), 1, GL_TRUE, g_matrix);
-	glUniform1i(uloc(prog, "u_panel"), g_matrix_on);
 	if (f->nplanes) {
 		/* A DS frame's two screens, each its own quad out of the one
 		 * texture (diatom_port_planes). Sharp's steepness is per quad: the
 		 * two screens of a focus layout are at 2x and 0.5x. The sampler
-		 * clamps only at the texture's edge, so with a linear filter a
-		 * screen's last row can take a little of the other screen's first,
-		 * where the two meet in the middle of the texture; nearest never
-		 * reaches past its own texel. */
+		 * clamps only at the texture's edge, so with sharp a screen's last
+		 * row can take a little of the other screen's first, where the two
+		 * meet in the middle of the texture; nearest never reaches past its
+		 * own texel, and Sharp-Shimmerless reads a screen's last texel at
+		 * its centre (SHIMMERLESS_SHADER). */
 		int i;
 
 		for (i = 0; i < f->nplanes; i++) {
 			const diatom_plane *p = &f->planes[i];
+			const float sy = top + down * (float)p->src.y;
 
-			if (prog == g_prog_sharp)
-				glUniform2f(uloc(prog, "u_scale"),
-				            (float)p->dst.w / (float)p->src.w,
-				            (float)p->dst.h / (float)p->src.h);
+			quad_scale(f->filter, prog, (float)p->dst.w, (float)p->dst.h, (float)p->src.x,
+			           flip ? sy - (float)p->src.h : sy,
+			           (float)p->src.w, (float)p->src.h);
 			draw_quad_from((float)p->dst.x, (float)p->dst.y,
 			               (float)p->dst.w, (float)p->dst.h,
 			               (float)p->src.x, top + down * (float)p->src.y,
 			               (float)p->src.w, down * (float)p->src.h, turned);
 		}
 	} else {
-		if (prog == g_prog_sharp)
-			glUniform2f(uloc(prog, "u_scale"),
-			            (float)f->dst.w / (float)f->w, (float)f->dst.h / (float)f->h);
+		quad_scale(f->filter, prog, (float)f->dst.w, (float)f->dst.h,
+		           0.0f, 0.0f, (float)f->w, (float)f->h);
 		/* dst may reach past the surface (fill, overscale): GL clips it. */
 		draw_quad_from((float)f->dst.x, (float)f->dst.y, (float)f->dst.w, (float)f->dst.h,
 		               0.0f, top, (float)f->w, down * (float)f->h, turned);
@@ -1008,9 +1171,6 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 		glUniform1i(uloc(g_prog_plain, "u_tex"), 0);
 		glUniform2f(uloc(g_prog_plain, "u_size"),
 		            (float)g_ov_w, (float)g_ov_h);
-		glUniformMatrix3fv(uloc(g_prog_plain, "u_matrix"), 1, GL_TRUE,
-		                   g_matrix);
-		glUniform1i(uloc(g_prog_plain, "u_panel"), g_matrix_on);
 		draw_quad(x0, y0, ow, oh, (float)g_ov_w, (float)g_ov_h, turned);
 	}
 	if (osd_live)
@@ -1091,6 +1251,21 @@ static bool take_display(void)
 	crtc = drmModeGetCrtc(g_drm_fd, g_crtc_id);
 	g_crtc_lit = crtc && crtc->mode_valid && crtc->buffer_id;
 	drmModeFreeCrtc(crtc);
+	/* The gamma table an older system image's splash filled, emptied before
+	 * the first frame goes up, once: with a game resumed at boot this is
+	 * the first program on the display after the splash. A table left
+	 * there darkens the game (port/panelgamma.h). */
+	if (!g_gamma_checked) {
+		int n = panelgamma_clear(g_drm_fd);
+
+		g_gamma_checked = true;
+		if (n > 0)
+			diatom_port_log(DIATOM_LOG_INFO, "pixel2: emptied the display's gamma "
+			                "table, which an older system's splash had filled");
+		else if (n < 0)
+			diatom_port_log(DIATOM_LOG_WARN, "pixel2: could not read or empty the "
+			                "display's gamma table");
+	}
 	return true;
 }
 
@@ -1272,10 +1447,8 @@ static bool gl_start(void)
 	}
 
 	g_prog_plain = link_program(PLAIN_SHADER);
-	g_prog_sharp = link_program(SHARP_SHADER);
 	g_prog_solid = link_program(SOLID_SHADER);
-	if (!g_prog_plain || !g_prog_sharp || !g_prog_solid) return false;
-	matrix_load();
+	if (!g_prog_plain || !g_prog_solid) return false;
 
 	glGenTextures(1, &g_frame_tex);
 	glGenTextures(1, &g_overlay_tex);
@@ -1311,6 +1484,9 @@ static void gl_stop(void)
 	eglMakeCurrent(g_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	if (g_egl_surface != EGL_NO_SURFACE) eglDestroySurface(g_egl_display, g_egl_surface);
 	g_nuloc = 0;
+	/* The programs go with the context; a new one links them again */
+	memset(g_prog_filter, 0, sizeof g_prog_filter);
+	memset(g_prog_failed, 0, sizeof g_prog_failed);
 	if (g_egl_context != EGL_NO_CONTEXT) eglDestroyContext(g_egl_display, g_egl_context);
 	eglTerminate(g_egl_display);
 	g_egl_display = EGL_NO_DISPLAY;
@@ -1441,6 +1617,12 @@ static void *present_thread(void *arg)
 		osd_level = g_osd_level;
 		osd_max   = g_osd_max;
 		osd_theme = g_osd_theme;
+		/* The look's colors for the bar, handed over once each time they
+		 * move, on this thread, which is the one that paints the bar */
+		if (g_osd_colors_gen != g_osd_colors_seen) {
+			osdbar_colors(osd_theme, &g_osd_colors);
+			g_osd_colors_seen = g_osd_colors_gen;
+		}
 		/* Blinking: the even seconds, the launcher's rhythm. */
 		lowbat    = g_lowbat && (!g_lowbat_blink || (now / 1000000u) % 2 == 0);
 		pthread_mutex_unlock(&g_mx);

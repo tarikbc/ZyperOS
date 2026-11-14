@@ -1,0 +1,22 @@
+[
+  {
+    "key": "PS1-bay",
+    "ref": "PS1.png",
+    "prompt": "Use case: precise-object-edit.\nInput image: edit target.\nCreate one animation component for this exact PlayStation illustration.\nRemove only the circular disc lid.\nShow the dark circular optical drive bay in the same opening.\nShow a small central spindle and a tiny optical lens.\nThe bay is empty, with no disc.\nRemove the lid completely. Do not draw a raised lid, detached lid, or extra object.\nPreserve the case, its outline, controller, cable, camera angle, lighting, scale, placement, and transparent canvas.\nKeep the opening inside the existing circular lid border.\nDo not move or resize any part.\nMatch the current pixel art.\nUse flat color groups and crisp edges.\nKeep the original transparent background."
+  },
+  {
+    "key": "GBA",
+    "ref": "GB.png",
+    "prompt": "Use case: stylized-concept.\nInput image: style reference only.\nCreate a new original icon of an indigo Nintendo Game Boy Advance.\nMatch the clear hardware shapes and color choices in the reference.\nShow the wide horizontal handheld from the front, with a narrow visible right edge.\nKeep the front upright.\nUse the accurate curved indigo shell, wide central screen, dark screen surround, black left D-pad, and two dark right action buttons.\nPlace the two small Select and Start buttons below the screen on the left.\nPlace the speaker holes below the screen on the right.\nShow subtle light-gray shoulder controls at the top edge.\nThe screen stays empty and pale gray.\nUse a transparent square background with generous empty margins.\nUse a consistent 128 by 128 logical pixel grid.\nMake each pixel a crisp square.\nUse flat color clusters, about 20 colors, dark blue-gray outlines, warm highlights, and cool shadows.\nShow only the handheld.\nAvoid photo textures, gradients, soft edges, reflections, shadow blobs, small text, labels, and watermarks.\nDo not copy any public icon pack."
+  },
+  {
+    "key": "SNES",
+    "ref": "PS1.png",
+    "prompt": "Use case: stylized-concept.\nInput image: style reference only.\nCreate an original icon of the North American Super Nintendo Entertainment System with its controller.\nUse the accurate light-gray angular console, broad rectangular purple Power and Reset controls, and rear top cartridge slot.\nShow a shallow front three-quarter view, with the top and front visible.\nKeep the cartridge slot empty.\nShow two dark controller sockets at the front.\nPlace one accurate rounded light-gray SNES controller in front and left.\nThe controller has a black D-pad, two small black center buttons, and four face buttons in two purple tones.\nUse a short, simple dark cable.\nKeep the hardware broad and low.\nUse a transparent square background with empty margins above for a cartridge animation.\nMatch the reference's deliberate pixel shapes, dark blue-gray outline, warm highlights, and cool shadows.\nUse a consistent 128 by 128 logical pixel grid.\nUse flat color clusters and about 20 colors.\nAvoid photo textures, gradients, soft edges, small text, labels, and watermarks.\nDo not copy any public icon pack."
+  },
+  {
+    "key": "3DO-tray",
+    "ref": "3DO.png",
+    "prompt": "Use case: precise-object-edit.\nInput image: edit target.\nCreate one animation component for this exact Panasonic FZ-1 3DO illustration.\nOpen its front disc tray fully.\nThe empty dark tray extends straight toward the viewer from the existing drive opening.\nShow the circular disc recess inside the tray.\nKeep the console body, controller, cable, controls, camera angle, scale, lighting, and placement unchanged.\nDo not move the console or controller.\nDo not add a disc.\nPreserve the transparent canvas and the existing pixel art.\nUse flat colors and crisp edges.\nChange only the tray and the opening behind it."
+  }
+]

@@ -32,6 +32,16 @@ typedef struct {
 	 * is the whole reason the keys are precomputed. */
 	long play_secs;
 	long last_played;
+	/* The folder the game is in on its shelf: the length of `file`'s
+	 * leading folders that are only a place to keep it ("Rom Hacks" of
+	 * "Rom Hacks/Gaia.gba", "RPGs" of "RPGs/Xenogears/Disc 1.cue"), 0 for
+	 * a game at the top of Roms/<folder>. A disc set's own folder is the
+	 * game's, never counted here (src/shelfdir.h). */
+	unsigned short dir;
+	/* A folder on a shelf (src/shelfdir.h), not a game: how many games are
+	 * in it at every depth; 0 for a game. The scan makes none: a shelf
+	 * shows them, built from the games' `dir`s. */
+	int folder;
 } game_entry;
 
 /* How many of the left-out names a scan keeps for the log. */
@@ -62,6 +72,16 @@ bool lib_is_disc(const char *name);
 /* Whether a shelf's games are folders launched by a hook file (ScummVM's),
  * from its extension list. */
 bool lib_shelf_hooked(const char *exts);
+/* Whether a shelf's games are scripts (Ports'): its folders are the scripts'
+ * data, never folders to look into, from its extension list. */
+bool lib_shelf_scripts(const char *exts);
+/* Whether a folder in a system's folder is one EmulationStation keeps its art
+ * in (images, videos, media, boxart, snaps, wheel, box3d...), in any case:
+ * never a folder of games on the shelf, and never counted as left out */
+bool lib_es_media_dir(const char *name);
+/* How deep folders in folders are read on a shelf: deeper than anyone sorts
+ * games, and an end to a host's link that leads back up (the card has none) */
+#define LIB_DEPTH 8
 
 bool lib_scan(const char *roms_root, const char *folder, const char *exts,
               game_list *out);
@@ -79,12 +99,14 @@ uint64_t lib_listing_digest(const game_list *l);
 
 /* An entry's added time before Recently Added has asked for it */
 #define LIB_ADDED_UNKNOWN (-1L)
-/* The added time of the entry whose launch path is `file` in Roms/<folder>:
- * the mtime of its first path part, which is the file itself for a game at
- * the top of the folder and the game's own folder for a disc set (copying a
- * disc into it touches the folder). 0 when it cannot be read, which sorts to
- * the bottom of that order, where "not known when this arrived" belongs. */
-long lib_added(const char *roms_root, const char *folder, const char *file);
+/* The added time of the entry whose launch path is `file` in Roms/<folder>,
+ * in the folder `dir` bytes of it name (game_entry.dir): the mtime of its
+ * first path part past that, which is the file itself for a loose game and
+ * the game's own folder for a disc set (copying a disc into it touches the
+ * folder). 0 when it cannot be read, which sorts to the bottom of that
+ * order, where "not known when this arrived" belongs. */
+long lib_added(const char *roms_root, const char *folder, const char *file,
+               unsigned dir);
 void lib_free(game_list *l);
 
 /* The display title for a ROM's name: everything up to the first bracketed
@@ -111,6 +133,24 @@ static inline int lib_name_cmp(const game_entry *a, const game_entry *b)
 	if (!c) c = strcasecmp(a->name, b->name);
 	return c ? c : strcmp(a->file, b->file);
 }
+
+/* The folder a system's shelf reads when it is not the one systems.cfg names
+ * (`home`): an EmulationStation name of the system's (its es line), chosen
+ * by the shelf's scan (src/shelfbuild.c, shelf_folder_choose). Keyed on the
+ * home folder, which is one system's alone. lib_folder_set with `folder`
+ * the home itself, or NULL, forgets it; lib_folder_get answers the folder
+ * in use for `home`, `home` itself when none; lib_folder_home the home of a
+ * folder in use, the folder itself when it is no other system's. Safe from
+ * any thread: Box Art and ScreenScraper ask on theirs. */
+void lib_folder_set(const char *home, const char *folder);
+const char *lib_folder_get(const char *home, char *out, size_t n);
+const char *lib_folder_home(const char *folder, char *out, size_t n);
+void lib_folder_reset(void);
+/* Which folder a shelf with EmulationStation names reads, by the games each
+ * holds: -1 for its own (`home_games` of them) while that has any, else the
+ * index into `games` of the folder with the most, the first on a tie; -1 too
+ * when none has any. Pure, for tools/esmedia-check.c. */
+int lib_folder_pick(int home_games, const int *games, int n);
 
 /* Restore selection after a title sort. The owner is part of the identity on
  * Favorites, where two systems can have the same file name. */

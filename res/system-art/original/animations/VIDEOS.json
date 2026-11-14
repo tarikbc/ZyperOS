@@ -1,0 +1,47 @@
+{
+  "key": "VIDEOS",
+  "name": "Videos",
+  "description": "Generic video tape",
+  "cell": 256,
+  "cols": 1,
+  "rows": 1,
+  "unique": 1,
+  "duration_ms": 1000,
+  "kind": "card-folder",
+  "static": true,
+  "expected_poses": 1,
+  "motion_bounds": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 1000
+    }
+  ],
+  "still_time_ms": 900,
+  "decoded_atlas_bytes": 262144,
+  "inputs": [
+    "source/VIDEOS.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/card-folders.js"
+  ],
+  "input_sha256": {
+    "source/VIDEOS.png": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+  },
+  "atlas": "VIDEOS.png",
+  "still": "VIDEOS-still.png",
+  "atlas_sha256": "5c489be1feefbb6e0a7a8adf4ea183f74387790d2c448a084cfe2160822bc9a8",
+  "still_sha256": "62c5ece152a33906ed1df6b99d5900522f373a287c90ac473fce92a3ddc96fb5"
+}

@@ -8,6 +8,7 @@
 
 #include "ssfetch.h"
 
+#include "library.h"
 #include "net.h"
 #include "rajson.h"
 #include "ss.h"
@@ -77,15 +78,25 @@ static const struct { const char *folder; int id; } SYS[] = {
 	/* ScreenScraper's ScummVM, which looks a game up by its folder's name */
 	{ "ScummVM",             123 },
 	{ "Saturn",               22 },
+	/* ROGUE's scraper's ids again, read 2026-11-12, for the four that came
+	 * that day, the first it asks for each; not measured here */
+	{ "PSP",                  61 },
+	{ "ColecoVision",        183 },
+	{ "Doom",                290 },
+	{ "TIC-80",              222 },
 };
 
 int ss_system_id(const char *folder)
 {
+	char home[LIB_NAME];
 	size_t i;
 
 	if (!folder) return 0;
+	/* A shelf reading an EmulationStation folder ("nds") is still its
+	 * system ("Nintendo DS", src/library.h) */
+	lib_folder_home(folder, home, sizeof home);
 	for (i = 0; i < sizeof SYS / sizeof SYS[0]; i++)
-		if (strcmp(SYS[i].folder, folder) == 0) return SYS[i].id;
+		if (strcmp(SYS[i].folder, home) == 0) return SYS[i].id;
 	return 0;
 }
 

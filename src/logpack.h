@@ -6,7 +6,8 @@
 #include <stddef.h>
 
 /* The logs, packed to send to whoever is helping: every boot's zyperos.log,
- * usb.log (the USB port's last plugs, src/usblog.h), an
+ * usb.log (the USB port's last plugs, src/usblog.h), wifi.log and
+ * wifi.log.1 (the Wi-Fi supplicant's joins and drops, on the Pixel 2), an
  * about.txt the caller writes, gzipped into one tar by the device's own tar.
  * Over The Hare's Download logs button is the one caller.
  *
@@ -29,8 +30,14 @@ void logpack_mask_word(const char *word, char *out, size_t n);
  * every Bluetooth address, AA:BB:CC:DD:EE:FF or AA_BB_CC_DD_EE_FF as BlueZ's
  * object paths write them. A secret shorter than three characters is left
  * alone - masking every "TV" in a log would hide more than it protects.
+ * And the name in a Wi-Fi supplicant line (`SSID 'name'`, `SSID='name'`,
+ * `ssid="name"`), whatever it is, by where it stands: a forgotten network is
+ * no longer a saved one, and the supplicant escapes some characters.
  * `cap` is the buffer's size; a line that would outgrow it is cut. */
 void logpack_mask_line(char *line, size_t cap, const char *const *secrets, int n);
+
+/* The most of each wifi.log a pack takes: its last 256 KB, from a whole line */
+#define LOGPACK_WIFI_TAIL (256L * 1024)
 
 /* Pack `logs_dir`'s zyperos.log files and `about` into `out` (a .tar.gz), with
  * everything inside one folder named `folder`. The staging happens under

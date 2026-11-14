@@ -1,0 +1,7088 @@
+{
+  "schema": 1,
+  "cell": 256,
+  "assets": [
+    {
+      "key": "32X",
+      "name": "Sega 32X",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        115,
+        3,
+        74,
+        58
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/32X.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/32X.png": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "32X.png",
+      "still": "32X-still.png",
+      "atlas_sha256": "4df49b3a533c407e2bdb8a1b7c7c665202f6f682d3c24d11418f3feba721d6fc",
+      "still_sha256": "a8f277978e124d4b64e5bebdd9502a2e490dd68346e780d6b88f05d23a21bb57"
+    },
+    {
+      "key": "3DO",
+      "name": "3DO",
+      "description": "Disc tray \u00b7 open and close",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        62,
+        115,
+        102,
+        35
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/3DO.png",
+        "source/3DO-tray-angle.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js"
+      ],
+      "input_sha256": {
+        "source/3DO.png": "85aca379aaefe72846f225185a1ed67d8fe7161ce001088cd59aea5c19384205",
+        "source/3DO-tray-angle.png": "735376474b757bfa5c5c80032e55d8462607530678404623cffd3a92ea44b449"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108"
+      },
+      "atlas": "3DO.png",
+      "still": "3DO-still.png",
+      "atlas_sha256": "a970c8923670b1ba56b9629448ac1613ffcb69a66e808d7f85a6950ee5f6c187",
+      "still_sha256": "bc301b40b9ac9a7062c6f9c5a6724a4f77b07c8843725468f84c9e5dbb0be66d"
+    },
+    {
+      "key": "A2600",
+      "name": "Atari 2600",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        114,
+        40,
+        46,
+        68
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/A2600.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/A2600.png": "11a969c487d48bffce6e17b326fb33585a53424151b7f9aa93a9305f96e01bb9",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "A2600.png",
+      "still": "A2600-still.png",
+      "atlas_sha256": "0c6e2608840f7ab8bc25545310cc9ab8d93b6421e4b3a6c702308275e4b7571d",
+      "still_sha256": "6ac0ad1cd2dc0e84afde6457711d5c0fc1f0d9b22f2b1b0d5bb4e55c04eecce3"
+    },
+    {
+      "key": "A5200",
+      "name": "Atari 5200",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        115,
+        25,
+        60,
+        72
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/A5200.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/A5200.png": "cbb7cbf5ea4fa0839f02f82018f1bd207aae2a7c26f90371210df736c912ea9d",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "A5200.png",
+      "still": "A5200-still.png",
+      "atlas_sha256": "977ca24cf58346fd4c5c306d811a7e329c756fa2868cc560494d53f0bfc6d22f",
+      "still_sha256": "efbceff871cf2475d8ae48cb239d97a16f1e8df4de3b6fc3a3f1cd63712495e6"
+    },
+    {
+      "key": "A7800",
+      "name": "Atari 7800",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        108,
+        2,
+        66,
+        78
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/A7800.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/A7800.png": "a2881c82252fb5619d95a99edc19d505c330da64fa742584954ca86fbff09927",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "A7800.png",
+      "still": "A7800-still.png",
+      "atlas_sha256": "f0cf761388f9a88e1a9fc7f7b234bab5b829ba7b1979036254cb20f343120695",
+      "still_sha256": "717ae4994256f757ddc9c241c7cddd8d06166694f1c249179b8bea2f6855e05f"
+    },
+    {
+      "key": "ARCADE",
+      "name": "Arcade",
+      "description": "Red button presses and releases",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        110,
+        95,
+        37,
+        34
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/ARCADE.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/ARCADE.png": "1f70d06f2f8d56cc2748a3efc5d7c0c4c73a2bfa6b385d42b6052fa7e71a456d",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "ARCADE.png",
+      "still": "ARCADE-still.png",
+      "atlas_sha256": "0c4e620d1c32caa5bd8301f7e0870862b2be28dbf5b3077676d05a31c347fdff",
+      "still_sha256": "daf0368b41a299391e1771015ebc86a8b63d2227999dff86ce017aaf93e959ad"
+    },
+    {
+      "key": "AW",
+      "name": "Atomiswave",
+      "description": "ROM cartridge inserts and lifts",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        54,
+        17,
+        119,
+        129
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/AW.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/AW.png": "689e98cd3cfa5ef3def9093c30abe50cd81a20d5a6f51a179510ed7734e122ac",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "AW.png",
+      "still": "AW-still.png",
+      "atlas_sha256": "1c12c6466d8f8ff2250c236e90406750f6a23cdb2884b34f0d72e8e57e150f29",
+      "still_sha256": "68e58b999e3eb68b67e84c9c2e8ae3a4d3acf8bb6b3c80d552b29087c6477165"
+    },
+    {
+      "key": "BGM",
+      "name": "Menu music",
+      "description": "Generic audio cassette",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BGM.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BGM.png": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "BGM.png",
+      "still": "BGM-still.png",
+      "atlas_sha256": "7c36df66e2b6a5f0fcb8fcac569cd22c1c74701036b5be9b8296a7f14f37689e",
+      "still_sha256": "967255b7f66accfca590b7fad596ca3e2f5c7ca05acba5bf95526d9c1340656b"
+    },
+    {
+      "key": "BIOS",
+      "name": "BIOS",
+      "description": "Generic integrated circuit chip",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BIOS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BIOS.png": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "BIOS.png",
+      "still": "BIOS-still.png",
+      "atlas_sha256": "a9aab560a72f96120736bd66fc40e28f548bf3fe4477f81405b682f8887aa627",
+      "still_sha256": "0c3b231ad7dc9a8d549b86649f53e47d638e3e4a9c136f5d6cb1e7a0e955d05c"
+    },
+    {
+      "key": "BOOKS",
+      "name": "Audiobooks",
+      "description": "Book with headphones",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/BOOKS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/BOOKS.png": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "BOOKS.png",
+      "still": "BOOKS-still.png",
+      "atlas_sha256": "3c0faada60920562c52aee21881a3a0e526379cffdcf615232fd6a0922548bdb",
+      "still_sha256": "f968f67753a7714848172f84b344c220b43cf8161991bea3e3386d5981c62625"
+    },
+    {
+      "key": "COLECO",
+      "name": "ColecoVision",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        156,
+        36,
+        49,
+        68
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/COLECO.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/COLECO.png": "df7319dfa67753df2a7d8e27d3c9536f0acab30fef35c5b04dfb88f997e86f1b",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "COLECO.png",
+      "still": "COLECO-still.png",
+      "atlas_sha256": "9f604f955e8bc3f73e9e4c26dc312cce4a657358f13cc6ea72b2716763edc74a",
+      "still_sha256": "48460f84a7e1af9eefcb656c9c946795a9cc6b0cf7e3513d4e0eba4209b529af"
+    },
+    {
+      "key": "DC",
+      "name": "Sega Dreamcast",
+      "description": "Disc lid opens and closes",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        87,
+        4,
+        123,
+        130
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/DC.png",
+        "source/SATURN-bay.png",
+        "source/DC-bay.png",
+        "source/NEOCD-bay.png",
+        "source/SEGACD-tray.png",
+        "source/NES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-lids.js"
+      ],
+      "input_sha256": {
+        "source/DC.png": "3d85f18d39d73a60211332e164b925c40ca7ae805cc397f3a25313c66e6eb65c",
+        "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+        "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+        "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+        "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+        "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+      },
+      "atlas": "DC.png",
+      "still": "DC-still.png",
+      "atlas_sha256": "878b39022f4f9216f2ff029d42332833898fded268e200ae77564a56957229d2",
+      "still_sha256": "c6496fca9c62d7c9defe79f1d207317b9c6b62ce63a95e8d2c39b06bfe1db4db"
+    },
+    {
+      "key": "DOOM",
+      "name": "Doom",
+      "description": "Title recoils",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        7,
+        67,
+        241,
+        142
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/DOOM.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/DOOM.png": "97ab8752534cc6313d0fc8249c9e44d1fb173ad1685d3c98a92bf76163ccbd32",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "DOOM.png",
+      "still": "DOOM-still.png",
+      "atlas_sha256": "e5b87249fa7d22c4a6a7e4ea7a3b2d3f3ae3ff902f3197dfc578a81ceea7ac19",
+      "still_sha256": "8cd4181ffe5569ca38b1dbd0c494ab8d5b034c1af92ff91501857339e714eed2"
+    },
+    {
+      "key": "FAVORITES",
+      "name": "Favorites",
+      "description": "Heart beats",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        32,
+        44,
+        193,
+        185
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/FAVORITES.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/FAVORITES.png": "96dc1ce6cfac52541c6b956674bcdfd6451e3d527b9a6d468188961fe1dd5b01",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "FAVORITES.png",
+      "still": "FAVORITES-still.png",
+      "atlas_sha256": "755590179b60211e716b2d0d2507a05ae641f169cca0709fcb2dc07e36b57708",
+      "still_sha256": "8e2c47449349dc027a19c9307ce2a7e05fb7b0b1869a8a94763a46c4cf77372f"
+    },
+    {
+      "key": "FOLDER",
+      "name": "Folder \u00b7 large",
+      "description": "Large folder with space for the game count",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "utility",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/FOLDER.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/utility.js"
+      ],
+      "input_sha256": {
+        "source/FOLDER.png": "588ac24d893fabed9a94266a7acd32b1dafbac62e487f70a3266f29f13635960"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/utility.js": "3e9f4302dffce99a22937b88c966df4deea66095873b9c6de0b48194573eaba2"
+      },
+      "atlas": "FOLDER.png",
+      "still": "FOLDER-still.png",
+      "atlas_sha256": "0197179a530d029855eb6766cb2c6e61a8963ef6706471db65df04959d29703e",
+      "still_sha256": "bb91a00548fe4616a566b8c4bc526969d0aac14167229e2ba1fc69ff7dd7a8e1"
+    },
+    {
+      "key": "FOLDER_SMALL",
+      "name": "Folder \u00b7 list",
+      "description": "Simple folder for list rows",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "utility",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/FOLDER_SMALL.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/utility.js"
+      ],
+      "input_sha256": {
+        "source/FOLDER_SMALL.png": "1935e343d29ef0d680bb0582d196e86d55a01c2698f05e19064830db2b889082"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/utility.js": "3e9f4302dffce99a22937b88c966df4deea66095873b9c6de0b48194573eaba2"
+      },
+      "atlas": "FOLDER_SMALL.png",
+      "still": "FOLDER_SMALL-still.png",
+      "atlas_sha256": "2c4b3056e15cfd2e7c14b78a974969aa7b08dfa954a586d0f1f59ed231636398",
+      "still_sha256": "84360364a76fb66a48c810c80d6861863d0b51fc2b4ed62e0ac8b41979b17149"
+    },
+    {
+      "key": "GB",
+      "name": "Game Boy",
+      "description": "Original startup \u00b7 256 \u00d7 256",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 30,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        94,
+        78,
+        59,
+        49
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1407
+        },
+        {
+          "tile": 1,
+          "ms": 93
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 93
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 93
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 93
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 93
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 93
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 93
+        },
+        {
+          "tile": 26,
+          "ms": 94
+        },
+        {
+          "tile": 27,
+          "ms": 94
+        },
+        {
+          "tile": 28,
+          "ms": 94
+        },
+        {
+          "tile": 29,
+          "ms": 1968
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/GB.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js"
+      ],
+      "input_sha256": {
+        "source/GB.png": "3ad422f51984d6870ab9e419fc17475af7a51b47718eebb00803f3dbff831162"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108"
+      },
+      "atlas": "GB.png",
+      "still": "GB-still.png",
+      "atlas_sha256": "7b42289801f1765f50a9278fe419832c2dc72d16082c64fb30711d0a23e08da4",
+      "still_sha256": "0fa4fd921e64e05aa9c89d5f409d2c23c22639d39b17631a2d3a3fd6b6d82388"
+    },
+    {
+      "key": "GBA",
+      "name": "Game Boy Advance",
+      "description": "Original Game Boy Advance startup",
+      "cell": 256,
+      "cols": 8,
+      "rows": 6,
+      "unique": 45,
+      "duration_ms": 3900,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        83,
+        100,
+        90,
+        53
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 244
+        },
+        {
+          "tile": 1,
+          "ms": 122
+        },
+        {
+          "tile": 2,
+          "ms": 61
+        },
+        {
+          "tile": 3,
+          "ms": 61
+        },
+        {
+          "tile": 4,
+          "ms": 61
+        },
+        {
+          "tile": 5,
+          "ms": 61
+        },
+        {
+          "tile": 6,
+          "ms": 61
+        },
+        {
+          "tile": 7,
+          "ms": 61
+        },
+        {
+          "tile": 8,
+          "ms": 61
+        },
+        {
+          "tile": 9,
+          "ms": 61
+        },
+        {
+          "tile": 10,
+          "ms": 61
+        },
+        {
+          "tile": 11,
+          "ms": 60
+        },
+        {
+          "tile": 12,
+          "ms": 61
+        },
+        {
+          "tile": 13,
+          "ms": 61
+        },
+        {
+          "tile": 14,
+          "ms": 61
+        },
+        {
+          "tile": 15,
+          "ms": 61
+        },
+        {
+          "tile": 16,
+          "ms": 61
+        },
+        {
+          "tile": 17,
+          "ms": 61
+        },
+        {
+          "tile": 18,
+          "ms": 61
+        },
+        {
+          "tile": 19,
+          "ms": 61
+        },
+        {
+          "tile": 20,
+          "ms": 61
+        },
+        {
+          "tile": 21,
+          "ms": 366
+        },
+        {
+          "tile": 22,
+          "ms": 60
+        },
+        {
+          "tile": 23,
+          "ms": 61
+        },
+        {
+          "tile": 24,
+          "ms": 61
+        },
+        {
+          "tile": 25,
+          "ms": 61
+        },
+        {
+          "tile": 26,
+          "ms": 61
+        },
+        {
+          "tile": 27,
+          "ms": 61
+        },
+        {
+          "tile": 28,
+          "ms": 61
+        },
+        {
+          "tile": 29,
+          "ms": 61
+        },
+        {
+          "tile": 30,
+          "ms": 61
+        },
+        {
+          "tile": 31,
+          "ms": 61
+        },
+        {
+          "tile": 32,
+          "ms": 61
+        },
+        {
+          "tile": 33,
+          "ms": 61
+        },
+        {
+          "tile": 34,
+          "ms": 61
+        },
+        {
+          "tile": 35,
+          "ms": 61
+        },
+        {
+          "tile": 36,
+          "ms": 61
+        },
+        {
+          "tile": 37,
+          "ms": 61
+        },
+        {
+          "tile": 38,
+          "ms": 60
+        },
+        {
+          "tile": 21,
+          "ms": 366
+        },
+        {
+          "tile": 39,
+          "ms": 61
+        },
+        {
+          "tile": 40,
+          "ms": 61
+        },
+        {
+          "tile": 41,
+          "ms": 61
+        },
+        {
+          "tile": 42,
+          "ms": 61
+        },
+        {
+          "tile": 43,
+          "ms": 61
+        },
+        {
+          "tile": 44,
+          "ms": 61
+        },
+        {
+          "tile": 0,
+          "ms": 243
+        }
+      ],
+      "still_time_ms": 1500,
+      "decoded_atlas_bytes": 12582912,
+      "inputs": [
+        "source/GBA-screen.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "gba-startup.js"
+      ],
+      "input_sha256": {
+        "source/GBA-screen.png": "78ffdcad198649683c589e102c49c51bbf97cc1d0c4a13849392b3be7c15905c"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "gba-startup.js": "b3eed72f25c71c3da3b4c88495a49bf1018ae43d88ce83d6ff68c2a38ef12df9"
+      },
+      "atlas": "GBA.png",
+      "still": "GBA-still.png",
+      "atlas_sha256": "1392870f3e9f09c9a937ffaf0a2889dda23dd3c0e6254fb252a466237a3cb832",
+      "still_sha256": "fa5545b368e9a15dd03e47ba085ea8fd411fae31a31c708a45cf719d66cc11d5"
+    },
+    {
+      "key": "GBC",
+      "name": "Game Boy Color",
+      "description": "Original startup \u00b7 color sweep",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 30,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        90,
+        60,
+        75,
+        62
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 375
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 93
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 93
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 93
+        },
+        {
+          "tile": 13,
+          "ms": 94
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 93
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 93
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 93
+        },
+        {
+          "tile": 25,
+          "ms": 1969
+        },
+        {
+          "tile": 25,
+          "ms": 750
+        },
+        {
+          "tile": 26,
+          "ms": 94
+        },
+        {
+          "tile": 27,
+          "ms": 94
+        },
+        {
+          "tile": 28,
+          "ms": 93
+        },
+        {
+          "tile": 29,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 281
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/GBC.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/GBC.png": "f26cecc23be1ab88d817f35b077b7d2609755aa315df690409c4a36984b6fa3d"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "GBC.png",
+      "still": "GBC-still.png",
+      "atlas_sha256": "5f7d0c9c56699cee667b0d74f027eac2987f8ce35ff98aed1d87ad0610dbf119",
+      "still_sha256": "df69da9a4b98a1bb60a4d7ef2063a007d804f9e2837baae0aa33ff9e48aa1122"
+    },
+    {
+      "key": "GENESIS",
+      "name": "Sega Genesis",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        123,
+        21,
+        69,
+        65
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/GENESIS.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/GENESIS.png": "addc29747fa2e7b8eac9754a0d5dbb55af92b396846b047a3725e4007f858621",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "GENESIS.png",
+      "still": "GENESIS-still.png",
+      "atlas_sha256": "90ff8e890a58b8c75dcee3e245fec9e5aa4203d3608b2909939e38883fc8e7a3",
+      "still_sha256": "7fd292e5fcec8db3922455c1103a3af0f18f59dd2e61ebcce22df3b7f8561e54"
+    },
+    {
+      "key": "GG",
+      "name": "Game Gear",
+      "description": "Launch-model display \u00b7 backlight power",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        93,
+        100,
+        70,
+        54
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 1969
+        },
+        {
+          "tile": 1,
+          "ms": 1968
+        },
+        {
+          "tile": 1,
+          "ms": 657
+        },
+        {
+          "tile": 0,
+          "ms": 843
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/GG.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/GG.png": "66e52c5f0ec6a782ea3fbc20115ebc0654967e035549394815488657689ccf2c"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "GG.png",
+      "still": "GG-still.png",
+      "atlas_sha256": "6b045fc359c0e0adad36d34336b4fd40eda9c656fa0660ddae874f01885fda2e",
+      "still_sha256": "467a43bab3b87e5607df6e2fc43a449c2d8f646db1b9c88d8a8db07556d40b6a"
+    },
+    {
+      "key": "GW",
+      "name": "Game & Watch",
+      "description": "Ball clock \u00b7 segmented LCD",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        82,
+        106,
+        92,
+        59
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 469
+        },
+        {
+          "tile": 0,
+          "ms": 468
+        },
+        {
+          "tile": 1,
+          "ms": 563
+        },
+        {
+          "tile": 0,
+          "ms": 469
+        },
+        {
+          "tile": 1,
+          "ms": 468
+        },
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 469
+        },
+        {
+          "tile": 0,
+          "ms": 468
+        },
+        {
+          "tile": 1,
+          "ms": 563
+        },
+        {
+          "tile": 0,
+          "ms": 469
+        },
+        {
+          "tile": 1,
+          "ms": 468
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/GW.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/GW.png": "afe7d4b02e5f185e8981041b905f7060fbf133a5db6356a4b78881b383c48e5c"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "GW.png",
+      "still": "GW-still.png",
+      "atlas_sha256": "74e9eec0f7f735d5346ae8e57162279ddc5847b2dc4e8f386dab54ff178c0afc",
+      "still_sha256": "83cc33fcca4e1b6313ea59e8d33029f0278cfc5446ce9e82a19e302c11cd12eb"
+    },
+    {
+      "key": "J2ME",
+      "name": "Java ME",
+      "description": "Nokia 6600 \u00b7 display backlight",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        93,
+        52,
+        70,
+        82
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 1969
+        },
+        {
+          "tile": 1,
+          "ms": 1968
+        },
+        {
+          "tile": 1,
+          "ms": 282
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/J2ME.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/J2ME.png": "ccced6ffa1befc6793c6f90d129afc65fc32d7355a6c93ac4db01b605bd7db22"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "J2ME.png",
+      "still": "J2ME-still.png",
+      "atlas_sha256": "d27df5f27623c7455930baea58d8307dbe40a4d05d03a084e39ca309de0a2aac",
+      "still_sha256": "4c7fc9a4131fbf2120194106b2065d6388808a2dae7cddee5c4ea3f520914999"
+    },
+    {
+      "key": "LYNX",
+      "name": "Atari Lynx",
+      "description": "Lynx II \u00b7 backlight control",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        85,
+        105,
+        84,
+        59
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 1969
+        },
+        {
+          "tile": 1,
+          "ms": 1968
+        },
+        {
+          "tile": 1,
+          "ms": 657
+        },
+        {
+          "tile": 0,
+          "ms": 843
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/LYNX.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/LYNX.png": "1eb38176262ee2a7300b7cf25b666ff6ccc3873f59e0efc4af8d823f77b07d67"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "LYNX.png",
+      "still": "LYNX-still.png",
+      "atlas_sha256": "8e0b378213a1e668e715082248ad9033daf5f4f77efd2084c9283545bc2e04aa",
+      "still_sha256": "330f36c86d73300eca9a78ab8bdc0b9e67a10ac16f7b5f5bd724532248ed0c65"
+    },
+    {
+      "key": "MAME",
+      "name": "MAME",
+      "description": "Arcade letters bounce",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        7,
+        83,
+        241,
+        101
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/MAME.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/MAME.png": "fb110afa9f2a198fcf09b985bb73026eada12b73b7f7edc04aa6947db174ced4",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "MAME.png",
+      "still": "MAME-still.png",
+      "atlas_sha256": "5021442d519552e2e92093e2d58cf3954b35d5d26dd0e2cc184cc444ec532069",
+      "still_sha256": "6f25c0275ec781341dfda12d28079c00af5af0a12d412204c5d15a99b38828cf"
+    },
+    {
+      "key": "MSX2",
+      "name": "MSX2",
+      "description": "Slot cover opens and cartridge loads",
+      "cell": 256,
+      "cols": 8,
+      "rows": 5,
+      "unique": 39,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        152,
+        37,
+        70,
+        71
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 188
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 93
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 93
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 93
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 94
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 1688
+        },
+        {
+          "tile": 21,
+          "ms": 93
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 93
+        },
+        {
+          "tile": 26,
+          "ms": 94
+        },
+        {
+          "tile": 27,
+          "ms": 94
+        },
+        {
+          "tile": 28,
+          "ms": 94
+        },
+        {
+          "tile": 29,
+          "ms": 93
+        },
+        {
+          "tile": 30,
+          "ms": 94
+        },
+        {
+          "tile": 31,
+          "ms": 94
+        },
+        {
+          "tile": 32,
+          "ms": 94
+        },
+        {
+          "tile": 33,
+          "ms": 93
+        },
+        {
+          "tile": 34,
+          "ms": 94
+        },
+        {
+          "tile": 35,
+          "ms": 94
+        },
+        {
+          "tile": 36,
+          "ms": 94
+        },
+        {
+          "tile": 37,
+          "ms": 93
+        },
+        {
+          "tile": 38,
+          "ms": 94
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 562
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 10485760,
+      "inputs": [
+        "source/MSX2.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/MSX2.png": "c7f3c13675bb00c531cbe02195ca516d1ad7a32d30f648be59da0c9c8085b4ea",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "MSX2.png",
+      "still": "MSX2-still.png",
+      "atlas_sha256": "4995c40d5aa50c75530721df669bfea5b921ab17a56816e5dcc532e54799c40c",
+      "still_sha256": "7707c4d6d9ae950bd883468441bf313523a56cc037bd2efdb1b18ca04eaf34f3"
+    },
+    {
+      "key": "MUSE",
+      "name": "MP4",
+      "description": "Video and audio playback",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        162,
+        77,
+        84,
+        119
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/MP4.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/MP4.png": "dc13cd075b53d9da375419926ee0048ff33873e931000a9f7b78a01ba174156e",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "MUSE.png",
+      "still": "MUSE-still.png",
+      "atlas_sha256": "c9024eb9b48f7829c98d7fe45d0430b5129ca3aeb45e92d221c6a31bd29f8df5",
+      "still_sha256": "b48c764c44b08ead136bb4a4880fbc292224ba7d5f28afb298137df5c65124bf"
+    },
+    {
+      "key": "MUSIC",
+      "name": "Music",
+      "description": "Vinyl record with album sleeve",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/MUSIC.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/MUSIC.png": "e3fc6b6284c04f5b21acc945ca0d86060ffac0d54e91fff3845e56b358be8fc6"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "MUSIC.png",
+      "still": "MUSIC-still.png",
+      "atlas_sha256": "51165f9e788f7945b416d05b93d85d3ac8c2043d62bb0a7e99192a35d1e925e3",
+      "still_sha256": "c91598385fbd22ed1f3294db73d468d0390a9883d6e500be86bf9250e063c1c0"
+    },
+    {
+      "key": "N64",
+      "name": "Nintendo 64",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        106,
+        12,
+        76,
+        65
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/N64.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/N64.png": "9bcf6d42a0c7bafb484f205865d32670fa62a18d8714716ffa41d831f6f3d90b",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "N64.png",
+      "still": "N64-still.png",
+      "atlas_sha256": "6629e7195be4fe220abb17d28e5a7e1d3ff165723ff04d9a8778a8e8f6623725",
+      "still_sha256": "f93e9c9d47cdf64ce0fc6747d765e06e666b9554894fc879e2cc55f5267e3c09"
+    },
+    {
+      "key": "NAOMI",
+      "name": "NAOMI",
+      "description": "ROM-board case inserts and lifts",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        14,
+        18,
+        158,
+        141
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/NAOMI.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/NAOMI.png": "743623d1048c2462ac3fadc6c7162be1cd864d7647482b662c9fddef51e5a7ed",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "NAOMI.png",
+      "still": "NAOMI-still.png",
+      "atlas_sha256": "0fbb84e203fa294e7ca5df5368dc857f05bb3e7d041f5de3c46af299dc1e61f0",
+      "still_sha256": "0c61c8f983da4ec55e09f3bb7f0355e0ce71b651df4bb854c2af981fd85040d1"
+    },
+    {
+      "key": "NDS",
+      "name": "Nintendo DS",
+      "description": "Original startup \u00b7 both LCD screens",
+      "cell": 256,
+      "cols": 8,
+      "rows": 2,
+      "unique": 11,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        83,
+        44,
+        90,
+        173
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 375
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 93
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 469
+        },
+        {
+          "tile": 7,
+          "ms": 656
+        },
+        {
+          "tile": 6,
+          "ms": 656
+        },
+        {
+          "tile": 7,
+          "ms": 657
+        },
+        {
+          "tile": 6,
+          "ms": 656
+        },
+        {
+          "tile": 7,
+          "ms": 656
+        },
+        {
+          "tile": 6,
+          "ms": 656
+        },
+        {
+          "tile": 7,
+          "ms": 282
+        },
+        {
+          "tile": 8,
+          "ms": 93
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 187
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 4194304,
+      "inputs": [
+        "source/NDS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/NDS.png": "6dc879aa78783267c664da73a9b051467e7c887bc3391a3af4cab69ab6d13de4"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "NDS.png",
+      "still": "NDS-still.png",
+      "atlas_sha256": "58183d3f626d29baf0c21d24aa7119a166311dd346008b01d13d84ab756b9bb2",
+      "still_sha256": "8fd8e8cf46992a3e619a04894f7517e9c3c216c3df0b136344590a7c77cd7ae3"
+    },
+    {
+      "key": "NEOCD",
+      "name": "Neo Geo CD",
+      "description": "Disc lid opens and closes",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        77,
+        3,
+        119,
+        128
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/NEOCD.png",
+        "source/SATURN-bay.png",
+        "source/DC-bay.png",
+        "source/NEOCD-bay.png",
+        "source/SEGACD-tray.png",
+        "source/NES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-lids.js"
+      ],
+      "input_sha256": {
+        "source/NEOCD.png": "b44d6e3e646b072102e5ed0dc806fc301e6b6618613e5edab26e2a71c917db3a",
+        "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+        "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+        "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+        "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+        "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+      },
+      "atlas": "NEOCD.png",
+      "still": "NEOCD-still.png",
+      "atlas_sha256": "633ffbbda66aadda624574e8f1c431d0b0f88ae8af353f3b34495c07876bfa92",
+      "still_sha256": "18ee51d2fd04615b232dbafbd9c5165156d2956a6f4652fee9b34f7eb2de36ba"
+    },
+    {
+      "key": "NEOGEO",
+      "name": "Neo Geo AES",
+      "description": "AES cartridge fully clears and loads into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        96,
+        2,
+        98,
+        90
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/NEOGEO.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/NEOGEO.png": "3060c74b582f73c701fb3cea04e165a763f51549808823005da06497bb8710fc",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "NEOGEO.png",
+      "still": "NEOGEO-still.png",
+      "atlas_sha256": "f7cffbfe11e159bcd56dea5f309d2c89b7b79046818087abcc8b867cb45e182c",
+      "still_sha256": "226e0e5546c4bc36c96498a23c5a91f3e5f5e000bc071c912463a5be8b45520e"
+    },
+    {
+      "key": "NES",
+      "name": "Nintendo Entertainment System",
+      "description": "Front door opens and Game Pak loads",
+      "cell": 256,
+      "cols": 8,
+      "rows": 6,
+      "unique": 47,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        32,
+        72,
+        135,
+        90
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 469
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 94
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 93
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 93
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 843
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 26,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 93
+        },
+        {
+          "tile": 27,
+          "ms": 94
+        },
+        {
+          "tile": 28,
+          "ms": 94
+        },
+        {
+          "tile": 29,
+          "ms": 94
+        },
+        {
+          "tile": 30,
+          "ms": 93
+        },
+        {
+          "tile": 31,
+          "ms": 94
+        },
+        {
+          "tile": 32,
+          "ms": 94
+        },
+        {
+          "tile": 33,
+          "ms": 94
+        },
+        {
+          "tile": 34,
+          "ms": 93
+        },
+        {
+          "tile": 35,
+          "ms": 94
+        },
+        {
+          "tile": 36,
+          "ms": 94
+        },
+        {
+          "tile": 37,
+          "ms": 94
+        },
+        {
+          "tile": 38,
+          "ms": 93
+        },
+        {
+          "tile": 39,
+          "ms": 94
+        },
+        {
+          "tile": 40,
+          "ms": 94
+        },
+        {
+          "tile": 41,
+          "ms": 94
+        },
+        {
+          "tile": 42,
+          "ms": 93
+        },
+        {
+          "tile": 43,
+          "ms": 94
+        },
+        {
+          "tile": 44,
+          "ms": 94
+        },
+        {
+          "tile": 45,
+          "ms": 94
+        },
+        {
+          "tile": 46,
+          "ms": 93
+        },
+        {
+          "tile": 0,
+          "ms": 375
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 12582912,
+      "inputs": [
+        "source/NES.png",
+        "source/SATURN-bay.png",
+        "source/DC-bay.png",
+        "source/NEOCD-bay.png",
+        "source/SEGACD-tray.png",
+        "source/NES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-lids.js"
+      ],
+      "input_sha256": {
+        "source/NES.png": "226bfe47e27b5efdfcc4c25e5869be160fc646b12c9499bf0b30c32311cc208e",
+        "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+        "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+        "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+        "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+        "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+      },
+      "atlas": "NES.png",
+      "still": "NES-still.png",
+      "atlas_sha256": "90049b6ee1e9a3b1a8314e69afeaaba4a26c5ae1924b50572ea3300233f29f5a",
+      "still_sha256": "6d8610b1b0abb7ed9d7d3d40fdfa06f0bb3d9a7c59d07e1da757aae79f1e7fae"
+    },
+    {
+      "key": "NGP",
+      "name": "Neo Geo Pocket",
+      "description": "Original startup \u00b7 monochrome",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 7000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        87,
+        97,
+        81,
+        73
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 438
+        },
+        {
+          "tile": 1,
+          "ms": 109
+        },
+        {
+          "tile": 2,
+          "ms": 110
+        },
+        {
+          "tile": 3,
+          "ms": 109
+        },
+        {
+          "tile": 4,
+          "ms": 109
+        },
+        {
+          "tile": 5,
+          "ms": 110
+        },
+        {
+          "tile": 6,
+          "ms": 109
+        },
+        {
+          "tile": 7,
+          "ms": 110
+        },
+        {
+          "tile": 8,
+          "ms": 109
+        },
+        {
+          "tile": 9,
+          "ms": 109
+        },
+        {
+          "tile": 10,
+          "ms": 110
+        },
+        {
+          "tile": 11,
+          "ms": 109
+        },
+        {
+          "tile": 12,
+          "ms": 109
+        },
+        {
+          "tile": 13,
+          "ms": 110
+        },
+        {
+          "tile": 14,
+          "ms": 109
+        },
+        {
+          "tile": 15,
+          "ms": 110
+        },
+        {
+          "tile": 16,
+          "ms": 109
+        },
+        {
+          "tile": 17,
+          "ms": 109
+        },
+        {
+          "tile": 18,
+          "ms": 438
+        },
+        {
+          "tile": 19,
+          "ms": 109
+        },
+        {
+          "tile": 20,
+          "ms": 110
+        },
+        {
+          "tile": 21,
+          "ms": 1968
+        },
+        {
+          "tile": 21,
+          "ms": 1532
+        },
+        {
+          "tile": 22,
+          "ms": 109
+        },
+        {
+          "tile": 23,
+          "ms": 109
+        },
+        {
+          "tile": 24,
+          "ms": 110
+        },
+        {
+          "tile": 25,
+          "ms": 218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/NGP.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/NGP.png": "5d8814003fddc83956cff619c596853bc3a4ef8221a67e31d98ffa6673b19adf"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "NGP.png",
+      "still": "NGP-still.png",
+      "atlas_sha256": "a72174b15c1e355175992a2c2b48353d87f53f1f29cb3ac9dadc49be4d769f1b",
+      "still_sha256": "c528d4b3f6c20afee6646871cdecb7154e4eed5a0df10b0adf8c0f09114b4dc1"
+    },
+    {
+      "key": "NGPC",
+      "name": "Neo Geo Pocket Color",
+      "description": "Original startup \u00b7 color",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 7000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        84,
+        93,
+        87,
+        78
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 438
+        },
+        {
+          "tile": 1,
+          "ms": 109
+        },
+        {
+          "tile": 2,
+          "ms": 110
+        },
+        {
+          "tile": 3,
+          "ms": 109
+        },
+        {
+          "tile": 4,
+          "ms": 109
+        },
+        {
+          "tile": 5,
+          "ms": 110
+        },
+        {
+          "tile": 6,
+          "ms": 109
+        },
+        {
+          "tile": 7,
+          "ms": 110
+        },
+        {
+          "tile": 8,
+          "ms": 109
+        },
+        {
+          "tile": 9,
+          "ms": 109
+        },
+        {
+          "tile": 10,
+          "ms": 110
+        },
+        {
+          "tile": 11,
+          "ms": 109
+        },
+        {
+          "tile": 12,
+          "ms": 109
+        },
+        {
+          "tile": 13,
+          "ms": 110
+        },
+        {
+          "tile": 14,
+          "ms": 109
+        },
+        {
+          "tile": 15,
+          "ms": 110
+        },
+        {
+          "tile": 16,
+          "ms": 109
+        },
+        {
+          "tile": 17,
+          "ms": 109
+        },
+        {
+          "tile": 18,
+          "ms": 438
+        },
+        {
+          "tile": 19,
+          "ms": 109
+        },
+        {
+          "tile": 20,
+          "ms": 110
+        },
+        {
+          "tile": 21,
+          "ms": 1968
+        },
+        {
+          "tile": 21,
+          "ms": 1532
+        },
+        {
+          "tile": 22,
+          "ms": 109
+        },
+        {
+          "tile": 23,
+          "ms": 109
+        },
+        {
+          "tile": 24,
+          "ms": 110
+        },
+        {
+          "tile": 25,
+          "ms": 218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/NGPC.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/NGPC.png": "e7a9b87d642b119e8c1e1f627219f7e60c91986f5084e8911f7b9e21bb88fab2"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "NGPC.png",
+      "still": "NGPC-still.png",
+      "atlas_sha256": "37d0cf9deb876f6eed872472eee4473360ec223a7a7ae88e07dbc9fa36d9cef1",
+      "still_sha256": "853c5b186dd81cae515c14373b127890a7ecaf2ef7dc662f7c71ee24884c96d1"
+    },
+    {
+      "key": "OPENBOR",
+      "name": "OpenBOR",
+      "description": "Fist punches",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        51,
+        44,
+        156,
+        181
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/OPENBOR.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/OPENBOR.png": "3a0872ed87c271b69578e9e8fd05350cae5545c07c7e3d32d2e20288c242f4c7",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "OPENBOR.png",
+      "still": "OPENBOR-still.png",
+      "atlas_sha256": "ae50b7fdea9a94d01d2eb24e6f7485d0d45a6e07ae096ec17e73870a119dae66",
+      "still_sha256": "1a87fd49c022146f79257ba80893b8f1792b34cf6b22b1ef1e0529b47c7bbb6b"
+    },
+    {
+      "key": "PCE",
+      "name": "TurboGrafx-16",
+      "description": "TurboChip slides into the front card channel",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        130,
+        121,
+        70,
+        55
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/PCE.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/PCE.png": "5496e99011cc5f8601ea848b9ca428c467050e551042dc97400a1cb305473c2f",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "PCE.png",
+      "still": "PCE-still.png",
+      "atlas_sha256": "50ba047852523eacd35f9c3ba5e902baf919de648d08ef542f7c1533fca5eb75",
+      "still_sha256": "ea5e2224430266c641fc87fee81b230cce4625d09bda5f707acd1edbb981d48f"
+    },
+    {
+      "key": "PICO8",
+      "name": "PICO-8",
+      "description": "Pixel flower bounces",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        143,
+        83,
+        63,
+        62
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/PICO8.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/PICO8.png": "4fb41a7ff20d41bd3aedc90a8be2f970d0695fb7a26a95f24b803177c3e1a630",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "PICO8.png",
+      "still": "PICO8-still.png",
+      "atlas_sha256": "8cf4c5abc7c02ea3efd1deeba1cd8efde4b3e943371e9c127e140519961914b2",
+      "still_sha256": "9471524f4763e47b3fab2cced9a63777fcab5d162c1b3025f068d59e432a671a"
+    },
+    {
+      "key": "PKMINI",
+      "name": "Pok\u00e9mon mini",
+      "description": "Original startup \u00b7 monochrome LCD",
+      "cell": 256,
+      "cols": 8,
+      "rows": 2,
+      "unique": 11,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        85,
+        82,
+        85,
+        54
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 563
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 93
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 1969
+        },
+        {
+          "tile": 5,
+          "ms": 1968
+        },
+        {
+          "tile": 5,
+          "ms": 375
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 93
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 281
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 4194304,
+      "inputs": [
+        "source/PKMINI.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/PKMINI.png": "422f5430cc6a416fc8ea712fefe7678bf41c60eeefc4c7189a2b6ba95e4d46c5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "PKMINI.png",
+      "still": "PKMINI-still.png",
+      "atlas_sha256": "c1e97ede56b302d8b42a717287383906ef4adb5591bff18659efad91a97e7dd5",
+      "still_sha256": "91d54fcece2d03ca7669109a1bc170569af5a91b3e094cdf62b8dca73c1d662e"
+    },
+    {
+      "key": "PORTMASTER",
+      "name": "PortMaster",
+      "description": "Crane lowers a game cartridge",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "utility",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        120,
+        69,
+        64,
+        85
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/PORTMASTER.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/utility.js"
+      ],
+      "input_sha256": {
+        "source/PORTMASTER.png": "71e86c60861a70293e13c78c35818561fb031351785a0686e8eb0d56085cd599"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/utility.js": "3e9f4302dffce99a22937b88c966df4deea66095873b9c6de0b48194573eaba2"
+      },
+      "atlas": "PORTMASTER.png",
+      "still": "PORTMASTER-still.png",
+      "atlas_sha256": "492065d7585ee700e0a1689997791f6358e012d03e9701c5c0c4ca419227183d",
+      "still_sha256": "8eb9bb4c9e2d6f809590a232a335d224980cfedd32eb9367420752b6d667fb95"
+    },
+    {
+      "key": "PORTS",
+      "name": "Ports",
+      "description": "Transfer arrows move",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        52,
+        32,
+        143,
+        205
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/PORTS.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/PORTS.png": "f02227aa0ec46958d92e992530a2b4fb9fbf83c07f05d66b75a1176ca7e30318",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "PORTS.png",
+      "still": "PORTS-still.png",
+      "atlas_sha256": "8bffc4f2e7797eed926313d5a70979e9799ca86034fdb6d1222a29b5882a7360",
+      "still_sha256": "5143931c2a213717000f607776c04622e469a92af0256c09a0940123599a35e9"
+    },
+    {
+      "key": "PS1",
+      "name": "PlayStation",
+      "description": "Disc lid \u00b7 open and close",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        90,
+        4,
+        115,
+        129
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/PS1-ports.png",
+        "source/PS1-bay.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js"
+      ],
+      "input_sha256": {
+        "source/PS1-ports.png": "b686d16e0141b5e3d023285ecfc72bc16472f558b3e765752289b0d6dce5dde8",
+        "source/PS1-bay.png": "8715d1f3a27680903cb527bb5f6be462bb2979d5ca6acabff04e465065c2cfb6"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108"
+      },
+      "atlas": "PS1.png",
+      "still": "PS1-still.png",
+      "atlas_sha256": "1ee7e2bb718bf6cc4e9910df1bb971540dbeb4b4f2840611114689a3267cc088",
+      "still_sha256": "8d2d0f45918dbb2fdfde851c86d1d6f55c860596bcda8b3e6f2bbddbdc4c55e1"
+    },
+    {
+      "key": "PSP",
+      "name": "PlayStation Portable",
+      "description": "Original startup \u00b7 Sony wave",
+      "cell": 256,
+      "cols": 8,
+      "rows": 6,
+      "unique": 45,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        65,
+        92,
+        126,
+        68
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 282
+        },
+        {
+          "tile": 1,
+          "ms": 93
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 1406
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 94
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 93
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 93
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 93
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 26,
+          "ms": 94
+        },
+        {
+          "tile": 27,
+          "ms": 93
+        },
+        {
+          "tile": 28,
+          "ms": 94
+        },
+        {
+          "tile": 29,
+          "ms": 94
+        },
+        {
+          "tile": 30,
+          "ms": 94
+        },
+        {
+          "tile": 31,
+          "ms": 93
+        },
+        {
+          "tile": 32,
+          "ms": 94
+        },
+        {
+          "tile": 33,
+          "ms": 94
+        },
+        {
+          "tile": 34,
+          "ms": 94
+        },
+        {
+          "tile": 35,
+          "ms": 93
+        },
+        {
+          "tile": 36,
+          "ms": 94
+        },
+        {
+          "tile": 37,
+          "ms": 94
+        },
+        {
+          "tile": 38,
+          "ms": 94
+        },
+        {
+          "tile": 39,
+          "ms": 93
+        },
+        {
+          "tile": 40,
+          "ms": 94
+        },
+        {
+          "tile": 41,
+          "ms": 94
+        },
+        {
+          "tile": 42,
+          "ms": 94
+        },
+        {
+          "tile": 43,
+          "ms": 93
+        },
+        {
+          "tile": 44,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 281
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 12582912,
+      "inputs": [
+        "source/PSP.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/PSP.png": "1fddee8343dd7bff767e2c4e2437abf4d99e734f0921e7437d887ca7328a563e"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "PSP.png",
+      "still": "PSP-still.png",
+      "atlas_sha256": "c47ba8ba88ec5190ee91076c4bab9bef3bb0d3faa82a13c4e500776a773880f9",
+      "still_sha256": "2e663b5f6a7b39fcc0bce5754606590fabf76e10f2cd65ec0177c255fdb530b9"
+    },
+    {
+      "key": "ROMS",
+      "name": "ROMs",
+      "description": "Purple game cartridge with illustrated paper label and gold contacts",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/ROMS-game.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/ROMS-game.png": "2b68ef853740c1db8b19d21ba00d9abb30fc320479072e1944520ea22634e7d2"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "ROMS.png",
+      "still": "ROMS-still.png",
+      "atlas_sha256": "ef77a7e2637f14de1c7c0226f50803cdb928e6cf1c05f6402edea22f4340e1e8",
+      "still_sha256": "7003063f17663a7880ab21e8f0afbbc44254304714ee83c8b81fbae4e9ece29f"
+    },
+    {
+      "key": "SATURN",
+      "name": "Sega Saturn",
+      "description": "Disc lid opens and closes",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        86,
+        3,
+        132,
+        117
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/SATURN.png",
+        "source/SATURN-bay.png",
+        "source/DC-bay.png",
+        "source/NEOCD-bay.png",
+        "source/SEGACD-tray.png",
+        "source/NES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-lids.js"
+      ],
+      "input_sha256": {
+        "source/SATURN.png": "bd9c64ff789d15833628f7f913c3cd6b20452252f77358aadc03b12b8903a2b3",
+        "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+        "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+        "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+        "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+        "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+      },
+      "atlas": "SATURN.png",
+      "still": "SATURN-still.png",
+      "atlas_sha256": "59c925774864a9d0249005666d66fb058e67d47297dc80bab3190bf1d065724f",
+      "still_sha256": "f01844f9fb69bf3a76d1a575168fa822a4bb6e0466e923f381f3ee385a0d4573"
+    },
+    {
+      "key": "SAVES",
+      "name": "Saves",
+      "description": "Generic memory card",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/SAVES.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/SAVES.png": "31172a965e72e62c81dd17e7d1acc9abfb12d3b937b415d316f04f0c990735bf"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "SAVES.png",
+      "still": "SAVES-still.png",
+      "atlas_sha256": "d7cf3a1a0feeec7245f037a2fd6dad24b6cb337920920bfc4eeb38822c3ba022",
+      "still_sha256": "a450f056529f2a65873b58db4dc36b8b3ea41f3d56e135a507617dd415ab23bd"
+    },
+    {
+      "key": "SCUMMVM",
+      "name": "ScummVM",
+      "description": "Compass needle turns",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        39,
+        160,
+        47,
+        49
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/SCUMMVM.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/SCUMMVM.png": "031da16e320fc49af78331d879564ff9cf8e2dff7ebb0cc4eb9ecb9c658933c5",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "SCUMMVM.png",
+      "still": "SCUMMVM-still.png",
+      "atlas_sha256": "b9c76c9a7ca3543cc1c67fc6f9fd0434f51a07d88cf2a401490be84b6be64b91",
+      "still_sha256": "ac85031d9539d94f6957f5071e5f06fe2f36342dc14337c328fb4f8a7ebc5e23"
+    },
+    {
+      "key": "SEGACD",
+      "name": "Sega CD",
+      "description": "Front flap opens and disc tray extends",
+      "cell": 256,
+      "cols": 8,
+      "rows": 5,
+      "unique": 34,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        23,
+        146,
+        118,
+        46
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 657
+        },
+        {
+          "tile": 1,
+          "ms": 93
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 93
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 93
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 93
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 1500
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 26,
+          "ms": 93
+        },
+        {
+          "tile": 27,
+          "ms": 94
+        },
+        {
+          "tile": 28,
+          "ms": 94
+        },
+        {
+          "tile": 29,
+          "ms": 94
+        },
+        {
+          "tile": 30,
+          "ms": 93
+        },
+        {
+          "tile": 31,
+          "ms": 94
+        },
+        {
+          "tile": 32,
+          "ms": 94
+        },
+        {
+          "tile": 33,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 843
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 10485760,
+      "inputs": [
+        "source/SEGACD.png",
+        "source/SATURN-bay.png",
+        "source/DC-bay.png",
+        "source/NEOCD-bay.png",
+        "source/SEGACD-tray.png",
+        "source/NES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-lids.js"
+      ],
+      "input_sha256": {
+        "source/SEGACD.png": "3cd52c4994dc250d60552a452cc720d3bdb39fcf8f1ab9b682f45f94279e90c5",
+        "source/SATURN-bay.png": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+        "source/DC-bay.png": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+        "source/NEOCD-bay.png": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+        "source/SEGACD-tray.png": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+        "source/NES-cartridge.png": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-lids.js": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9"
+      },
+      "atlas": "SEGACD.png",
+      "still": "SEGACD-still.png",
+      "atlas_sha256": "b9d6778d204a8eb04bdcf39c22b80220240f02f0fffdc68dfdea198f5edeb634",
+      "still_sha256": "7feb386ceee3233d8967698cfc99331c308739c97cf03c5dacf71a5bdfcefb97"
+    },
+    {
+      "key": "SMS",
+      "name": "Sega Master System",
+      "description": "Cartridge lowers into the top slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        137,
+        20,
+        71,
+        82
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/SMS.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/SMS.png": "9c52af940cb933e5df17d6d9306c2a3ed079a15617e1c0b63d53b36edb62ced0",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "SMS.png",
+      "still": "SMS-still.png",
+      "atlas_sha256": "1c8b458caebfaddfd1ae1de4b9fd9726e331fa889087b4355952332df884c0ac",
+      "still_sha256": "801089dec456d64aa8015047400e05216b411cea43a9e9786f4464b2f3ca9ebd"
+    },
+    {
+      "key": "SNES",
+      "name": "SNES",
+      "description": "Cartridge \u00b7 insert and remove",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        110,
+        22,
+        85,
+        101
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 657
+        },
+        {
+          "tile": 1,
+          "ms": 93
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 93
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 93
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1968
+        },
+        {
+          "tile": 13,
+          "ms": 188
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 15,
+          "ms": 93
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 93
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 94
+        },
+        {
+          "tile": 23,
+          "ms": 93
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 937
+        }
+      ],
+      "still_time_ms": 2700,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/SNES.png",
+        "source/SNES-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js"
+      ],
+      "input_sha256": {
+        "source/SNES.png": "d52d322f4474a72c3e9d77903c4ea8070d2d2639194949806f5c4c525448eb64",
+        "source/SNES-cartridge.png": "168d1f1f2794ca44e840228e85bc86070681da7f3f0a6184948822d8fc5085d3"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108"
+      },
+      "atlas": "SNES.png",
+      "still": "SNES-still.png",
+      "atlas_sha256": "dd66f82141ab9f7529b07577d95b4933285e206ee940a1853b1f4bc7a04ce3b2",
+      "still_sha256": "20314751b0bd8b81c1e78fba3e066dd6471e42b27d95a626c1fb8b7c464c34a1"
+    },
+    {
+      "key": "STATES",
+      "name": "Save States",
+      "description": "Generic floppy disk",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/STATES.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/STATES.png": "baac7b95d47be5a332c71ce89a38102bb9c405d5c0ce668712bb33994f213692"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "STATES.png",
+      "still": "STATES-still.png",
+      "atlas_sha256": "ca93549325da6979a2443132635a78188711f0f6a3a37b7df6e274d4400db3b0",
+      "still_sha256": "327541fcf567385322dc64d1e1934c80c805954825d89c923e63c43dd56f528f"
+    },
+    {
+      "key": "TIC80",
+      "name": "TIC-80",
+      "description": "Code brackets open",
+      "cell": 256,
+      "cols": 2,
+      "rows": 1,
+      "unique": 2,
+      "duration_ms": 800,
+      "kind": "system",
+      "static": false,
+      "expected_poses": 2,
+      "motion_bounds": [
+        53,
+        63,
+        150,
+        75
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 400
+        },
+        {
+          "tile": 1,
+          "ms": 400
+        }
+      ],
+      "still_time_ms": 700,
+      "decoded_atlas_bytes": 524288,
+      "inputs": [
+        "source/TIC80.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/TIC80.png": "56b92ce73301516ce4d1bb5625bc4b9f1dfbaefcb726df2ac16137ea84966f4d",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "TIC80.png",
+      "still": "TIC80-still.png",
+      "atlas_sha256": "60ad384aefb550200aacd4d2e87ee8d28cb06c889051636180408ccc4b982bee",
+      "still_sha256": "63f46fb1fc720b9d2b8ee4680e1c58e280ca0eb859803676f4d1a7f0249e72cf"
+    },
+    {
+      "key": "VB",
+      "name": "Virtual Boy",
+      "description": "Game Pak slides into the underside slot",
+      "cell": 256,
+      "cols": 8,
+      "rows": 4,
+      "unique": 26,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        75,
+        97,
+        78,
+        57
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 844
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 93
+        },
+        {
+          "tile": 4,
+          "ms": 94
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 93
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 94
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 93
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 1688
+        },
+        {
+          "tile": 14,
+          "ms": 93
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 94
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 93
+        },
+        {
+          "tile": 19,
+          "ms": 94
+        },
+        {
+          "tile": 20,
+          "ms": 94
+        },
+        {
+          "tile": 21,
+          "ms": 94
+        },
+        {
+          "tile": 22,
+          "ms": 93
+        },
+        {
+          "tile": 23,
+          "ms": 94
+        },
+        {
+          "tile": 24,
+          "ms": 94
+        },
+        {
+          "tile": 25,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 1218
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 8388608,
+      "inputs": [
+        "source/VB.png",
+        "source/32X-cartridge-v2.png",
+        "source/A2600-cartridge.png",
+        "source/A5200-cartridge.png",
+        "source/A7800-cartridge.png",
+        "source/GENESIS-cartridge.png",
+        "source/N64-cartridge.png",
+        "source/NEOGEO-cartridge.png",
+        "source/PCE-cartridge.png",
+        "source/SMS-cartridge.png",
+        "source/VB-cartridge.png",
+        "source/COLECO-cartridge.png",
+        "source/MSX2-cartridge.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/consoles.js",
+        "groups/console-cartridges.js"
+      ],
+      "input_sha256": {
+        "source/VB.png": "48cb18f396bdc55f1bde2d62abe9d24f08c6106f7006f53e654d5cf850689f8e",
+        "source/32X-cartridge-v2.png": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+        "source/A2600-cartridge.png": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+        "source/A5200-cartridge.png": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+        "source/A7800-cartridge.png": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+        "source/GENESIS-cartridge.png": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+        "source/N64-cartridge.png": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+        "source/NEOGEO-cartridge.png": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+        "source/PCE-cartridge.png": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+        "source/SMS-cartridge.png": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+        "source/VB-cartridge.png": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+        "source/COLECO-cartridge.png": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+        "source/MSX2-cartridge.png": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/consoles.js": "a103191b346682f962f9fb7031856ce9ba78f60ae750ad6e13d517fd813c4a4c",
+        "groups/console-cartridges.js": "54ac3803340cc8bd98ff46363d8c3334560c7570387725ad9fc998946a875976"
+      },
+      "atlas": "VB.png",
+      "still": "VB-still.png",
+      "atlas_sha256": "1599ff5e59bf4914372295266328bf2cdb6d049f3b575e5041cb26af84209c14",
+      "still_sha256": "667d2aeef64b8e59725e0e0b3e57899cd44aff99729a2481f8501678e327e666"
+    },
+    {
+      "key": "VECTREX",
+      "name": "Vectrex",
+      "description": "Original startup characters and border",
+      "cell": 256,
+      "cols": 8,
+      "rows": 1,
+      "unique": 8,
+      "duration_ms": 10240,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        85,
+        55,
+        86,
+        104
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        },
+        {
+          "tile": 0,
+          "ms": 160
+        },
+        {
+          "tile": 1,
+          "ms": 160
+        },
+        {
+          "tile": 2,
+          "ms": 160
+        },
+        {
+          "tile": 3,
+          "ms": 160
+        },
+        {
+          "tile": 4,
+          "ms": 160
+        },
+        {
+          "tile": 5,
+          "ms": 160
+        },
+        {
+          "tile": 6,
+          "ms": 160
+        },
+        {
+          "tile": 7,
+          "ms": 160
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 2097152,
+      "inputs": [
+        "source/VECTREX.png",
+        "source/AW-cartridge.png",
+        "source/NAOMI-rom-case.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/arcade.js"
+      ],
+      "input_sha256": {
+        "source/VECTREX.png": "5da08c4d9f89e0cfe5600789cbfb2d1ad30bf4defe74668b281db6e6b6584498",
+        "source/AW-cartridge.png": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+        "source/NAOMI-rom-case.png": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/arcade.js": "68cc43e1e44614b97bda2e20ab4c63664d55b3e453826b41769a87d4c5180988"
+      },
+      "atlas": "VECTREX.png",
+      "still": "VECTREX-still.png",
+      "atlas_sha256": "ebc587f3f5a21131f336ffbac86f59a0c119bef05b819e390177d040bb037a51",
+      "still_sha256": "a9d64eea88cc3e4595286ebe230ed1e006fa36fafd0e55ecad12e429832182ed"
+    },
+    {
+      "key": "VIDEOS",
+      "name": "Videos",
+      "description": "Generic video tape",
+      "cell": 256,
+      "cols": 1,
+      "rows": 1,
+      "unique": 1,
+      "duration_ms": 1000,
+      "kind": "card-folder",
+      "static": true,
+      "expected_poses": 1,
+      "motion_bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 1000
+        }
+      ],
+      "still_time_ms": 900,
+      "decoded_atlas_bytes": 262144,
+      "inputs": [
+        "source/VIDEOS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/card-folders.js"
+      ],
+      "input_sha256": {
+        "source/VIDEOS.png": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+      },
+      "atlas": "VIDEOS.png",
+      "still": "VIDEOS-still.png",
+      "atlas_sha256": "5c489be1feefbb6e0a7a8adf4ea183f74387790d2c448a084cfe2160822bc9a8",
+      "still_sha256": "62c5ece152a33906ed1df6b99d5900522f373a287c90ac473fce92a3ddc96fb5"
+    },
+    {
+      "key": "WS",
+      "name": "WonderSwan",
+      "description": "Original startup \u00b7 Bandai mark",
+      "cell": 256,
+      "cols": 8,
+      "rows": 2,
+      "unique": 15,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        81,
+        97,
+        107,
+        62
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 375
+        },
+        {
+          "tile": 1,
+          "ms": 94
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 94
+        },
+        {
+          "tile": 4,
+          "ms": 93
+        },
+        {
+          "tile": 5,
+          "ms": 94
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 93
+        },
+        {
+          "tile": 9,
+          "ms": 469
+        },
+        {
+          "tile": 10,
+          "ms": 1969
+        },
+        {
+          "tile": 10,
+          "ms": 1875
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 93
+        },
+        {
+          "tile": 13,
+          "ms": 94
+        },
+        {
+          "tile": 14,
+          "ms": 94
+        },
+        {
+          "tile": 0,
+          "ms": 187
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 4194304,
+      "inputs": [
+        "source/WS.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/WS.png": "0c8b9b34b2b29247b35b590cfed4ef97c709bcca83093d5b6f77c7b2f61a59f2"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "WS.png",
+      "still": "WS-still.png",
+      "atlas_sha256": "05d2a73b587f43730102dc009720d3dcc7e7bf96d5a99062da8077067755bbe6",
+      "still_sha256": "6bfcc223d221b0cd086096422951076bb9b7162e20b141dfb29a78fd7e6e0573"
+    },
+    {
+      "key": "WSC",
+      "name": "WonderSwan Color",
+      "description": "Original startup \u00b7 Bandai mark",
+      "cell": 256,
+      "cols": 8,
+      "rows": 3,
+      "unique": 20,
+      "duration_ms": 6000,
+      "kind": "system",
+      "static": false,
+      "expected_poses": null,
+      "motion_bounds": [
+        85,
+        99,
+        99,
+        59
+      ],
+      "frames": [
+        {
+          "tile": 0,
+          "ms": 375
+        },
+        {
+          "tile": 1,
+          "ms": 188
+        },
+        {
+          "tile": 2,
+          "ms": 94
+        },
+        {
+          "tile": 3,
+          "ms": 187
+        },
+        {
+          "tile": 4,
+          "ms": 188
+        },
+        {
+          "tile": 5,
+          "ms": 93
+        },
+        {
+          "tile": 6,
+          "ms": 94
+        },
+        {
+          "tile": 7,
+          "ms": 94
+        },
+        {
+          "tile": 8,
+          "ms": 94
+        },
+        {
+          "tile": 9,
+          "ms": 93
+        },
+        {
+          "tile": 10,
+          "ms": 94
+        },
+        {
+          "tile": 11,
+          "ms": 94
+        },
+        {
+          "tile": 12,
+          "ms": 94
+        },
+        {
+          "tile": 13,
+          "ms": 93
+        },
+        {
+          "tile": 14,
+          "ms": 1969
+        },
+        {
+          "tile": 14,
+          "ms": 1594
+        },
+        {
+          "tile": 15,
+          "ms": 94
+        },
+        {
+          "tile": 16,
+          "ms": 93
+        },
+        {
+          "tile": 17,
+          "ms": 94
+        },
+        {
+          "tile": 18,
+          "ms": 94
+        },
+        {
+          "tile": 19,
+          "ms": 187
+        }
+      ],
+      "still_time_ms": 4300,
+      "decoded_atlas_bytes": 6291456,
+      "inputs": [
+        "source/WSC.png"
+      ],
+      "renderers": [
+        "animation.js",
+        "export.js",
+        "groups/handhelds.js"
+      ],
+      "input_sha256": {
+        "source/WSC.png": "2adaf7eea0f39ee57c41ab367be5f9cd5ae98791b2cddb8de1faaed28b7a83c2"
+      },
+      "renderer_sha256": {
+        "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+        "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+        "groups/handhelds.js": "722a144f4b739ce9a1b150640c84dea288f0bf44adc16ff4e852af45d04541ab"
+      },
+      "atlas": "WSC.png",
+      "still": "WSC-still.png",
+      "atlas_sha256": "f1e5838b2a02448f229b18c07874af3b8300b2aadc873203afc8b3d0a6433fc9",
+      "still_sha256": "720489e430bf46129b472b4c817508a0dfd1ec120f4e623ab9df1e0a8771aa07"
+    }
+  ],
+  "total_png_bytes": 20864767,
+  "largest_decoded_atlas_bytes": 12582912
+}

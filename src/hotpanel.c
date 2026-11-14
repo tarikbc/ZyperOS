@@ -50,14 +50,21 @@ static int code(const char *text, const unsigned char **mods)
 	return size;
 }
 
+int hotpanel_code_side(const char *qr, int module)
+{
+	const unsigned char *m;
+
+	return (code(qr, &m) + 2 * HOT_QUIET) * module;
+}
+
 /* The code on its tile: ink on Beard's surface in both themes, since a
  * phone's camera reads dark on light, framed in the theme's **edge** as every
  * surface is. Returns the tile's side. */
-static int draw_code(SDL_Renderer *r, int x, int y, const char *qr)
+int hotpanel_code(SDL_Renderer *r, int x, int y, int module, const char *qr)
 {
 	const ds_rgb paper = DS_THEME[DS_LIGHT].surface, ink = theme()->ink;
 	const unsigned char *m;
-	int n = code(qr, &m), side = (n + 2 * HOT_QUIET) * HOT_MODULE;
+	int n = code(qr, &m), side = (n + 2 * HOT_QUIET) * module;
 	SDL_Rect t = { x, y, side, side }, in = { x + DS_FRAME, y + DS_FRAME,
 	                                         side - 2 * DS_FRAME, side - 2 * DS_FRAME };
 	int i, j, k;
@@ -72,9 +79,9 @@ static int draw_code(SDL_Renderer *r, int x, int y, const char *qr)
 		for (i = 0; i < n; i = k) {
 			if (!m[j * n + i]) { k = i + 1; continue; }
 			for (k = i; k < n && m[j * n + k]; k++) { }
-			SDL_RenderFillRect(r, &(SDL_Rect){ x + (HOT_QUIET + i) * HOT_MODULE,
-			                                   y + (HOT_QUIET + j) * HOT_MODULE,
-			                                   (k - i) * HOT_MODULE, HOT_MODULE });
+			SDL_RenderFillRect(r, &(SDL_Rect){ x + (HOT_QUIET + i) * module,
+			                                   y + (HOT_QUIET + j) * module,
+			                                   (k - i) * module, module });
 		}
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	return side;
@@ -132,7 +139,7 @@ void hotpanel_draw(SDL_Renderer *r, const hotpanel *p, unsigned now_ms)
 	ui_text(r, ui_font(UI_F_META), T(S_HOTPANEL_SCAN),
 	        HOT_LEFT, ui_line_y(UI_F_META, HOT_SUB_Y), -1, UI_TEXT_DIM);
 
-	side = draw_code(r, HOT_LEFT, HOT_CODE_Y, p->qr);
+	side = hotpanel_code(r, HOT_LEFT, HOT_CODE_Y, HOT_MODULE, p->qr);
 	kx = HOT_LEFT + side + HOT_GAP;
 	room = ZYPEROS_SCREEN_W - HOT_LEFT - kx;
 	entry(r, kx, HOT_COL_Y, room, T(S_HOTPANEL_NETWORK), p->ssid, UI_F_MENU, now_ms);

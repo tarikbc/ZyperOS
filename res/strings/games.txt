@@ -88,3 +88,47 @@ fr = Détails
 de = Details
 ja = 詳細
 it = Dettagli
+
+[games.open]
+note = The hint by A on a folder of games on a shelf: it opens the folder and shows its games
+en = Open
+zh-Hans = 打开
+es = Abrir
+pt-BR = Abrir
+fr = Ouvrir
+de = Öffnen
+ja = 開く
+it = Apri
+
+[games.back]
+note = The hint by B in a folder of games on a shelf: back to the folder it is in, or the shelf's top
+en = Back
+zh-Hans = 返回
+es = Volver
+pt-BR = Voltar
+fr = Retour
+de = Zurück
+ja = 戻る
+it = Indietro
+
+[games.to_list]
+note = The hint by START at a shelf's foot when it shows covers: START shows the shelf as a list of names (MENU > View's List)
+en = List
+zh-Hans = 列表
+es = Lista
+pt-BR = Lista
+fr = Liste
+de = Liste
+ja = リスト
+it = Elenco
+
+[games.to_covers]
+note = The hint by START at a shelf's foot when it shows a list: START shows its covers again (MENU > View's Covers; the Box Art term)
+en = Covers
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = パッケージ画像
+it = Copertine

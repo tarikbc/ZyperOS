@@ -3,6 +3,7 @@
 #include "titletext.h"
 
 #include <dirent.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +16,11 @@
  * multi-disc set is a single entry with disc switching. .mdf and .cbn are
  * PlayStation images pcsx_rearmed loads directly, so they are discs too, and
  * need the shelf's disc BIOS like any other. .mds is the Saturn's, last so a
- * PlayStation folder that holds an .mds beside its .mdf still opens the .mdf. */
+ * PlayStation folder that holds an .mds beside its .mdf still opens the .mdf.
+ * .cso is the PSP's compressed .iso, so a PSP game in a folder of its own is
+ * one entry whichever of the two it is. */
 static const char *DISC_EXTS[] = {
-	"m3u", "chd", "cue", "ccd", "toc", "iso", "img", "pbp", "mdf", "cbn", "bin", "mds", NULL
+	"m3u", "chd", "cue", "ccd", "toc", "iso", "cso", "img", "pbp", "mdf", "cbn", "bin", "mds", NULL
 };
 
 static const char *ext_of(const char *name)
@@ -60,39 +63,227 @@ bool lib_is_disc(const char *name)
 	return false;
 }
 
-static int disc_rank(const char *name)
+/* A folder's disc images, in launch preference: DISC_EXTS's order, with the
+ * Dreamcast's .gdi and .cdi after .cue. A .gdi set is a sheet and tracks, and
+ * launching its track01.bin, as DISC_EXTS alone picked, was never the game.
+ * Only for which file of a set folder starts it: whether a file is a disc
+ * (lib_is_disc, the disc BIOS) is DISC_EXTS's alone, as before. */
+static const char *SET_EXTS[] = {
+	"m3u", "chd", "cue", "gdi", "cdi", "ccd", "toc", "iso", "img", "pbp", "mdf", "cbn", "bin", "mds", NULL
+};
+/* The sheets: files naming the others of their set. Beside one, a .bin or an
+ * .img is its track, not a disc of its own. */
+static const char *SHEET_EXTS[] = { "m3u", "cue", "gdi", "ccd", "toc", "mds", NULL };
+
+static int ext_index(const char *name, const char *const *list)
 {
 	const char *ext = ext_of(name);
 	if (!ext) return -1;
-	for (int i = 0; DISC_EXTS[i]; i++)
-		if (strcasecmp(ext, DISC_EXTS[i]) == 0) return i;
+	for (int i = 0; list[i]; i++)
+		if (strcasecmp(ext, list[i]) == 0) return i;
 	return -1;
 }
 
-/* Pick the file to launch inside a game folder: the best-ranked disc image,
- * ties broken alphabetically so a discs-only folder lands on Disc 1. */
-static bool folder_launch_file(const char *dirpath, char *out, size_t outsz)
+/* What disc image `name` says it is a disc of, to tell one game's discs from
+ * several games' (set_read): the name up to its first bracket after a space,
+ * as lib_title cuts it, in lower case and letters and digits alone, less a
+ * disc or track number at its end. "Final Fantasy VII (USA) (Disc 2).chd",
+ * "Final Fantasy VII (USA) (Disc 1).cue" and "ff7 cd1.bin" give
+ * "finalfantasyvii", "finalfantasyvii" and "ff7"; "Disc 1.chd" gives "". A
+ * game's own number stays: "megaman2" is not "megaman3". */
+static void set_key(const char *name, char *out, size_t n)
 {
-	DIR *d = opendir(dirpath);
-	struct dirent *e;
-	int best = 9999;
-	char pick[LIB_NAME] = "";
+	static const char *const MARKS[] = { "disc", "disk", "cd", "track", "side", NULL };
+	const char *dot = strrchr(name, '.'), *end = dot && dot != name ? dot : name + strlen(name);
+	size_t o = 0, digits;
 
-	if (!d) return false;
-	while ((e = readdir(d))) {
-		int r;
-		if (e->d_name[0] == '.') continue;
-		r = disc_rank(e->d_name);
-		if (r < 0) continue;
-		if (r < best || (r == best && strcasecmp(e->d_name, pick) < 0)) {
-			best = r;
-			snprintf(pick, sizeof pick, "%s", e->d_name);
+	for (const char *p = name; p < end && o + 1 < n; p++) {
+		unsigned char c = (unsigned char)*p;
+
+		if (p != name && (c == '(' || c == '[')) break;
+		if (c >= 'A' && c <= 'Z') c = (unsigned char)(c + 32);
+		if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c >= 0x80) out[o++] = (char)c;
+	}
+	out[o] = '\0';
+	for (digits = o; digits > 0 && out[digits - 1] >= '0' && out[digits - 1] <= '9'; digits--)
+		;
+	if (digits == o) return;
+	for (int i = 0; MARKS[i]; i++) {
+		size_t ml = strlen(MARKS[i]);
+
+		if (digits >= ml && !strncmp(out + digits - ml, MARKS[i], ml)) {
+			out[digits - ml] = '\0';
+			return;
 		}
 	}
+}
+
+/* A folder's names and kinds, read once (dir_read): the scan decides what a
+ * folder is from them and, when it is a folder of games, goes on with them,
+ * so no folder is read twice. On the Pixel 2's exFAT card a directory entry
+ * costs about 40 us (2026-11-07), and a second read of a folder of folders
+ * was its whole cost again. */
+typedef struct {
+	char  *pool;       /* the names, each ended */
+	size_t used, cap;
+	int   *at;         /* each entry's name in the pool */
+	unsigned char *type;   /* DT_REG, DT_DIR, or 0 for anything else */
+	int    n, ncap;
+} dir_list;
+
+static void dir_free(dir_list *l)
+{
+	free(l->pool); free(l->at); free(l->type);
+	memset(l, 0, sizeof *l);
+}
+
+static const char *dir_name(const dir_list *l, int i)
+{
+	return l->pool + l->at[i];
+}
+
+/* What an entry is: DT_REG, DT_DIR or anything else (a link is not followed,
+ * as before). readdir says so on ext4 and on the Pixel 2's exFAT card; a
+ * filesystem that answers DT_UNKNOWN costs one stat per entry instead. */
+static int entry_type(const char *full, const struct dirent *e)
+{
+	if (e->d_type != DT_UNKNOWN) return e->d_type;
+	{
+		struct stat st;
+
+		if (stat(full, &st) != 0) return -1;
+		return S_ISDIR(st.st_mode) ? DT_DIR : S_ISREG(st.st_mode) ? DT_REG : -1;
+	}
+}
+
+/* Every entry of `path` but the dot ones, which nobody put there as a game:
+ * false when it cannot be opened, or memory runs out partway */
+static bool dir_read(const char *path, dir_list *l)
+{
+	DIR *d = opendir(path);
+	struct dirent *e;
+	bool ok = true;
+
+	memset(l, 0, sizeof *l);
+	if (!d) return false;
+	while ((e = readdir(d))) {
+		char full[LIB_PATH * 3];
+		size_t len = strlen(e->d_name) + 1;
+		int type;
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(full, sizeof full, "%s/%s", path, e->d_name);
+		type = entry_type(full, e);
+		if (l->n == l->ncap) {
+			int more = l->ncap ? l->ncap * 2 : 64;
+			int *at = realloc(l->at, (size_t)more * sizeof *at);
+			unsigned char *ty;
+
+			if (!at) { ok = false; break; }
+			l->at = at;
+			if (!(ty = realloc(l->type, (size_t)more))) { ok = false; break; }
+			l->type = ty;
+			l->ncap = more;
+		}
+		if (l->used + len > l->cap) {
+			size_t more = l->cap ? l->cap * 2 : 4096;
+			char *p;
+
+			while (more < l->used + len) more *= 2;
+			if (!(p = realloc(l->pool, more))) { ok = false; break; }
+			l->pool = p;
+			l->cap = more;
+		}
+		memcpy(l->pool + l->used, e->d_name, len);
+		l->at[l->n] = (int)l->used;
+		l->type[l->n] = type == DT_REG || type == DT_DIR ? (unsigned char)type : 0;
+		l->used += len;
+		l->n++;
+	}
 	closedir(d);
-	if (!pick[0]) return false;
-	snprintf(out, outsz, "%s", pick);
-	return true;
+	return ok;
+}
+
+/* A folder's disc images, as set_read finds them */
+typedef struct {
+	char pick[LIB_NAME];   /* the one to launch: the best by SET_EXTS, then by name */
+	int  games;            /* how many games they are discs of: 0, 1, or 2 for more */
+	bool m3u;              /* a playlist, which makes them one game whatever */
+	bool eboot;            /* an EBOOT.PBP: a PSP game's own folder, as the PSP keeps it */
+	bool tracks;           /* a sheet with a track of its beside it (.cue and .bin) */
+	int  images;           /* its discs: images, a track beside a sheet not counted */
+	char key[LIB_NAME];    /* the game they are discs of, when games is 1 (set_key) */
+} set_info;
+
+/* Add `key` to up to two distinct ones; past two, *n is 3 and nothing more
+ * is kept or read (keys has two places) */
+static void key_add(char keys[2][LIB_NAME], int *n, const char *key)
+{
+	if (*n > 2) return;
+	for (int i = 0; i < *n; i++)
+		if (!strcmp(keys[i], key)) return;
+	if (*n < 2) snprintf(keys[(*n)++], LIB_NAME, "%s", key);
+	else *n = 3;
+}
+
+/* What a folder's disc images are: the one to launch it by, ties broken by
+ * name so a folder of discs lands on Disc 1, and whether they are one game's
+ * discs or several games'. A .bin or .img beside a sheet is the sheet's track
+ * and says nothing; without one it is a disc. */
+static void set_read(const dir_list *l, set_info *s)
+{
+	char strong[2][LIB_NAME], weak[2][LIB_NAME], key[LIB_NAME];
+	int ns = 0, nw = 0, best = 9999, nstrong = 0, nweak = 0;
+	bool sheet = false;
+
+	memset(s, 0, sizeof *s);
+	for (int i = 0; i < l->n; i++) {
+		const char *name = dir_name(l, i);
+		int r = ext_index(name, SET_EXTS);
+
+		if (r < 0 || l->type[i] != DT_REG) continue;
+		if (r < best || (r == best && strcasecmp(name, s->pick) < 0)) {
+			best = r;
+			snprintf(s->pick, sizeof s->pick, "%s", name);
+		}
+		if (ext_index(name, SHEET_EXTS) >= 0) sheet = true;
+		if (!strcasecmp(SET_EXTS[r], "m3u")) s->m3u = true;
+		if (!strcasecmp(name, "EBOOT.PBP")) s->eboot = true;
+		set_key(name, key, sizeof key);
+		if (!strcasecmp(SET_EXTS[r], "bin") || !strcasecmp(SET_EXTS[r], "img")) {
+			key_add(weak, &nw, key);
+			nweak++;
+		} else {
+			key_add(strong, &ns, key);
+			nstrong++;
+		}
+	}
+	if (!sheet)
+		for (int i = 0; i < nw && i < 2; i++) key_add(strong, &ns, weak[i]);
+	if (!sheet && nw > 2) ns = 3;
+	s->games = ns > 2 ? 2 : ns;
+	s->tracks = sheet && nweak > 0;
+	s->images = nstrong + (sheet ? 0 : nweak);
+	if (s->games == 1) snprintf(s->key, sizeof s->key, "%s", strong[0]);
+}
+
+/* Whether a folder holding disc images is that game's own folder, not a
+ * folder of games that happens to hold one (2026-11-13: a PSP folder of one
+ * game opened straight into it). It is the game's when its images are a set:
+ * a playlist, a PSP game's EBOOT.PBP, two or more discs of the one game, or a
+ * sheet with its tracks beside it; or when its one image is named as the
+ * folder is ("God of War/God of War (USA).iso"). Discs of several games are
+ * never one game's. */
+static bool set_is_game(const set_info *s, const char *folder)
+{
+	char fkey[LIB_NAME];
+
+	if (!s->pick[0]) return false;
+	if (s->m3u || s->eboot) return true;
+	if (s->games != 1) return false;
+	if (s->images >= 2 || s->tracks) return true;
+	set_key(folder, fkey, sizeof fkey);
+	return !strcmp(fkey, s->key);
 }
 
 static int game_cmp(const void *pa, const void *pb)
@@ -187,14 +378,16 @@ int lib_find_entry(const game_list *list, const int *owners, int owner, const ch
 	return -1;
 }
 
-long lib_added(const char *roms_root, const char *folder, const char *file)
+long lib_added(const char *roms_root, const char *folder, const char *file,
+               unsigned dir)
 {
 	char path[LIB_PATH * 3];
-	const char *slash = strchr(file, '/');
+	const char *part = file + (dir && dir < strlen(file) ? dir + 1 : 0);
+	const char *slash = strchr(part, '/');
 	struct stat st;
 
 	snprintf(path, sizeof path, "%s/%s/%.*s", roms_root, folder,
-	         slash ? (int)(slash - file) : (int)strlen(file), file);
+	         (int)(slash ? (size_t)(slash - file) : strlen(file)), file);
 	return stat(path, &st) == 0 ? (long)st.st_mtime : 0;
 }
 
@@ -204,34 +397,6 @@ void lib_free(game_list *l)
 	l->items = NULL;
 	l->count = 0;
 	l->scanned = false;
-}
-
-/* What an entry is: DT_REG, DT_DIR or anything else (a link is not followed,
- * as before). readdir says so on ext4 and on the Pixel 2's exFAT card; a
- * filesystem that answers DT_UNKNOWN costs one stat per entry instead. */
-static int entry_type(const char *full, const struct dirent *e)
-{
-	if (e->d_type != DT_UNKNOWN) return e->d_type;
-	{
-		struct stat st;
-
-		if (stat(full, &st) != 0) return -1;
-		return S_ISDIR(st.st_mode) ? DT_DIR : S_ISREG(st.st_mode) ? DT_REG : -1;
-	}
-}
-
-static bool is_file(const char *full, const struct dirent *e)
-{
-#ifdef DT_REG
-	if (e->d_type == DT_REG) return true;
-	if (e->d_type != DT_UNKNOWN) return false;
-#else
-	(void)e;
-#endif
-	{
-		struct stat st;
-		return stat(full, &st) == 0 && S_ISREG(st.st_mode);
-	}
 }
 
 /* lib_refresh_title's answer for a fresh entry, from the folder's titles
@@ -266,36 +431,116 @@ bool lib_shelf_hooked(const char *exts)
 	return false;
 }
 
-/* The file to launch in a game folder on such a shelf: its hook, else its
- * first file by name, from which the core detects the game. Only on a hooked
- * shelf: anywhere else a folder of loose files is not one game, and staying
- * skipped is what keeps a folder of NES hacks from becoming a single entry. */
-static bool folder_hook_file(const char *dirpath, const char *exts, char *out, size_t outsz)
+/* A shelf of scripts: Ports', whose folders are what its scripts run from
+ * (PortMaster's layout: Roms/PORTS/Game.sh beside Roms/PORTS/game/). A port's
+ * folder holds scripts of its own, which would read as ports. */
+bool lib_shelf_scripts(const char *exts)
 {
-	DIR *d;
-	struct dirent *e;
+	return exts && *exts && lib_ext_allowed("sh", exts);
+}
+
+/* The file to launch in a game folder on a hooked shelf, from its names: its
+ * hook, else its first file by name, from which the core detects the game.
+ * None when it holds no file at all: a folder of game folders, then. */
+static bool hook_pick(const dir_list *l, char *out, size_t outsz)
+{
 	char hook[LIB_NAME] = "", first[LIB_NAME] = "";
 
-	if (!lib_shelf_hooked(exts) || !(d = opendir(dirpath))) return false;
-	while ((e = readdir(d))) {
-		char full[LIB_PATH * 3];
-		const char *ext = ext_of(e->d_name);
-		char *pick = NULL;
-		int i;
+	for (int i = 0; i < l->n; i++) {
+		const char *name = dir_name(l, i);
+		char *pick;
 
-		if (e->d_name[0] == '.') continue;
-		snprintf(full, sizeof full, "%s/%s", dirpath, e->d_name);
-		if (!is_file(full, e)) continue;
-		for (i = 0; ext && HOOK_EXTS[i]; i++)
-			if (strcasecmp(ext, HOOK_EXTS[i]) == 0) pick = hook;
-		if (!pick) pick = first;
-		if (!pick[0] || strcasecmp(e->d_name, pick) < 0)
-			snprintf(pick, LIB_NAME, "%s", e->d_name);
+		if (l->type[i] != DT_REG) continue;
+		pick = ext_index(name, HOOK_EXTS) >= 0 ? hook : first;
+		if (!pick[0] || strcasecmp(name, pick) < 0)
+			snprintf(pick, LIB_NAME, "%s", name);
 	}
-	closedir(d);
 	if (!hook[0] && !first[0]) return false;
 	snprintf(out, outsz, "%s", hook[0] ? hook : first);
 	return true;
+}
+
+/* What EmulationStation's scrapers and its systems put in a console's folder
+ * (Skraper's media/ layout, Batocera's images/ and videos/, ArkOS's and
+ * ROGUE OS's downloaded_images/, RetroPie's and Recalbox's media/ folders,
+ * ES-DE's downloaded_media) */
+bool lib_es_media_dir(const char *name)
+{
+	static const char *const DIRS[] = {
+		"images", "videos", "media", "manuals", "downloaded_images", "downloaded_videos",
+		"downloaded_media", "boxart", "box2dfront", "box3d", "covers", "marquees", "wheel", "snap", "snaps",
+		"screenshots", "titles", "titleshots", "fanart", "thumbnails", "mixart", NULL
+	};
+	int i;
+
+	for (i = 0; name && DIRS[i]; i++)
+		if (!strcasecmp(name, DIRS[i])) return true;
+	return false;
+}
+
+/* The folders in use that systems.cfg does not name, by home folder */
+#define LIB_FOLDERS 64
+static struct { char home[LIB_NAME], folder[LIB_NAME]; } g_folders[LIB_FOLDERS];
+static int g_nfolders;
+static pthread_mutex_t g_folders_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void lib_folder_set(const char *home, const char *folder)
+{
+	int i;
+
+	if (!home || !home[0]) return;
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].home, home)) break;
+	if (!folder || !folder[0] || !strcmp(folder, home)) {
+		if (i < g_nfolders) g_folders[i] = g_folders[--g_nfolders];
+	} else if (i < g_nfolders || g_nfolders < LIB_FOLDERS) {
+		if (i == g_nfolders) g_nfolders++;
+		snprintf(g_folders[i].home, sizeof g_folders[i].home, "%s", home);
+		snprintf(g_folders[i].folder, sizeof g_folders[i].folder, "%s", folder);
+	}
+	pthread_mutex_unlock(&g_folders_lock);
+}
+
+const char *lib_folder_get(const char *home, char *out, size_t n)
+{
+	int i;
+
+	snprintf(out, n, "%s", home ? home : "");
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; home && i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].home, home)) { snprintf(out, n, "%s", g_folders[i].folder); break; }
+	pthread_mutex_unlock(&g_folders_lock);
+	return out;
+}
+
+const char *lib_folder_home(const char *folder, char *out, size_t n)
+{
+	int i;
+
+	snprintf(out, n, "%s", folder ? folder : "");
+	pthread_mutex_lock(&g_folders_lock);
+	for (i = 0; folder && i < g_nfolders; i++)
+		if (!strcmp(g_folders[i].folder, folder)) { snprintf(out, n, "%s", g_folders[i].home); break; }
+	pthread_mutex_unlock(&g_folders_lock);
+	return out;
+}
+
+void lib_folder_reset(void)
+{
+	pthread_mutex_lock(&g_folders_lock);
+	g_nfolders = 0;
+	pthread_mutex_unlock(&g_folders_lock);
+}
+
+int lib_folder_pick(int home_games, const int *games, int n)
+{
+	int best = -1, i;
+
+	if (home_games > 0) return -1;
+	for (i = 0; i < n; i++)
+		if (games[i] > 0 && (best < 0 || games[i] > games[best])) best = i;
+	return best;
 }
 
 static void note_skip(game_list *out, const char *name)
@@ -327,117 +572,199 @@ void lib_scan_finish(const char *folder, game_list *l)
 	qsort(l->items, (size_t)l->count, sizeof *l->items, game_cmp);
 }
 
+/* Folders that hold a shelf's pictures by another frontend's habit, never its
+ * games: EmulationStation's (lib_es_media_dir) and MinUI's Imgs. Never a
+ * folder of games, and never left out either: nobody put games there. Most
+ * shelves would find no game in them anyway, but PICO-8's, whose games are
+ * .png files, would take every picture in them. */
+static bool art_folder(const char *name)
+{
+	return lib_es_media_dir(name) || !strcasecmp(name, "Imgs");
+}
+
+/* A walk over a shelf's folder and the folders in it */
+typedef struct {
+	const char *exts;
+	bool        hooked;    /* its games are folders with a hook (ScummVM's) */
+	bool        scripts;   /* its games are scripts and its folders their data */
+	bool        discs;     /* it takes disc images: a folder of one game's is a game */
+	game_list  *out;
+	int         cap;
+	bool        full;      /* no memory for more */
+} scan_walk;
+
+/* The next entry, cleared, or NULL. Grows the list only once the memory is
+ * there, so a failed grow never leaves the count beyond the buffer. */
+static game_entry *walk_add(scan_walk *w)
+{
+	game_list *l = w->out;
+
+	if (w->full) return NULL;
+	if (l->count == w->cap) {
+		int more = w->cap ? w->cap * 2 : 64;
+		game_entry *bigger = realloc(l->items, (size_t)more * sizeof *bigger);
+
+		if (!bigger) { w->full = true; return NULL; }
+		l->items = bigger;
+		w->cap = more;
+	}
+	memset(&l->items[l->count], 0, sizeof l->items[0]);
+	l->items[l->count].added = LIB_ADDED_UNKNOWN;   /* lib_added, when it is asked for */
+	return &l->items[l->count];
+}
+
+/* A game: `rel`'s folder (the top when empty), the launch path in it, and the
+ * name. False when the path is too long to keep, which skips it whole rather
+ * than keep a launch path cut short. */
+static bool walk_game(scan_walk *w, const char *rel, const char *path, const char *name)
+{
+	game_entry *g = walk_add(w);
+	size_t rl = strlen(rel);
+	int k;
+
+	if (!g) return false;
+	k = snprintf(g->file, sizeof g->file, "%s%s%s", rel, rl ? "/" : "", path);
+	if (k < 0 || k >= (int)sizeof g->file || rl > 0xffff) return false;
+	snprintf(g->name, sizeof g->name, "%s", name);
+	g->dir = (unsigned short)rl;
+	w->out->count++;
+	return true;
+}
+
+/* One folder of a shelf, read already (`l`): `abs` on the card, `rel` its
+ * path in the shelf's folder ("" for the shelf's own). A file is a game,
+ * launched directly; a folder is a game of its own when it is one (a disc
+ * set, a ScummVM game), else a folder of games, read the same way. How many
+ * games it has at every depth. */
+static int walk_folder(scan_walk *w, const char *abs, const char *rel,
+                       const dir_list *l, int depth)
+{
+	int first = w->out->count, files_n, added = 0;
+
+	for (int i = 0; i < l->n; i++) {
+		const char *nm = dir_name(l, i);
+		char stem[LIB_NAME], *dot;
+
+		if (l->type[i] == DT_DIR) continue;
+		if (!lib_ext_allowed(ext_of(nm), w->exts)) {
+			/* EmulationStation's list of the folder's games is no game
+			 * the shelf left out (src/esmedia.h reads it) */
+			if (l->type[i] == DT_REG && strcasecmp(nm, "gamelist.xml")) {
+				char shown[LIB_PATH];
+
+				snprintf(shown, sizeof shown, "%s%s%s", rel, *rel ? "/" : "", nm);
+				note_skip(w->out, shown);
+			}
+			continue;
+		}
+		if (l->type[i] != DT_REG) continue;
+		snprintf(stem, sizeof stem, "%s", nm);
+		dot = strrchr(stem, '.');
+		if (dot && dot != stem) *dot = '\0';
+		added += walk_game(w, rel, nm, stem);
+	}
+	files_n = w->out->count;
+
+	/* The folders, in the read's order. A folder shadowed by a game file of
+	 * its own name beside it is left alone, so the two layouts of one game
+	 * cannot double up. */
+	for (int i = 0; i < l->n && !w->full; i++) {
+		const char *nm = dir_name(l, i);
+		char full[LIB_PATH * 3], sub[LIB_PATH], inside[LIB_NAME], shown[LIB_PATH + 2];
+		dir_list in;
+		bool game = false, shadowed = false;
+		int got = 0;
+
+		if (l->type[i] != DT_DIR) continue;
+		if (art_folder(nm)) continue;
+		snprintf(full, sizeof full, "%s/%s", abs, nm);
+		snprintf(sub, sizeof sub, "%s%s%s", rel, *rel ? "/" : "", nm);
+		snprintf(shown, sizeof shown, "%s/", sub);
+		if (!dir_read(full, &in)) { dir_free(&in); note_skip(w->out, shown); continue; }
+		for (int k = first; k < files_n; k++)
+			if (!strcasecmp(w->out->items[k].name, nm)) { shadowed = true; break; }
+
+		if (w->hooked) {
+			/* A ScummVM game by its hook, else its first file: its own
+			 * .bin or .img is game data, not a disc to launch. A folder
+			 * with no file in it is a folder of games. */
+			game = hook_pick(&in, inside, sizeof inside);
+		} else {
+			set_info s;
+
+			set_read(&in, &s);
+			/* A disc set (set_is_game). On Ports' shelf any disc image, as
+			 * it always was: a port's folder is never looked into. A
+			 * folder of one game's image named otherwise, or of several
+			 * games' discs, is a folder of games, on a shelf that takes
+			 * discs. */
+			game = s.pick[0] && (w->scripts || !w->discs ? w->scripts
+			                                             : set_is_game(&s, nm));
+			if (game) snprintf(inside, sizeof inside, "%s", s.pick);
+		}
+		if (game) {
+			char launch[LIB_PATH];
+
+			snprintf(launch, sizeof launch, "%s/%s", nm, inside);
+			if (!shadowed) added += walk_game(w, rel, launch, nm);
+		} else if (!w->scripts && depth < LIB_DEPTH) {
+			int skipped = w->out->skipped;
+
+			got = walk_folder(w, full, sub, &in, depth + 1);
+			added += got;
+			/* A folder with no game in it is one thing left out, as it
+			 * always was, not each file in it */
+			if (!got) {
+				w->out->skipped = skipped;
+				note_skip(w->out, shown);
+			}
+		} else {
+			note_skip(w->out, shown);
+		}
+		dir_free(&in);
+	}
+	return added;
+}
+
+/* A shelf that takes disc images: one of the formats only a disc is (a .bin
+ * or an .img can be a cartridge's dump: the Atari 2600's, the Genesis's) */
+static bool shelf_discs(const char *exts)
+{
+	static const char *const ONLY[] = {
+		"m3u", "chd", "cue", "gdi", "cdi", "ccd", "toc", "iso", "pbp", "mdf", "cbn", "mds", NULL
+	};
+
+	if (!exts || !*exts) return true;
+	for (int i = 0; ONLY[i]; i++)
+		if (lib_ext_allowed(ONLY[i], exts)) return true;
+	return false;
+}
+
 bool lib_scan_listing(const char *roms_root, const char *folder, const char *exts,
                       game_list *out)
 {
 	char dirpath[LIB_PATH * 2];
-	DIR *d;
-	struct dirent *e;
-	int cap = 64, n = 0, files_n, ndirs = 0, dcap = 0, i;
-	char (*dirs)[LIB_NAME] = NULL;
-	game_entry *list;
+	dir_list top;
+	scan_walk w;
 
 	lib_free(out);
 	out->scanned = true;
 	out->skipped = 0;
 	snprintf(dirpath, sizeof dirpath, "%s/%s", roms_root, folder);
-	d = opendir(dirpath);
-	if (!d) return false;
-	list = malloc((size_t)cap * sizeof *list);
-	if (!list) { closedir(d); return false; }
-
-	/* One read of the folder. A file at the top level is a game, launched
-	 * directly; a subfolder is kept for the second pass below. It was read
-	 * twice, the second time (rewinddir) for its few subfolders alone, and
-	 * on the Pixel 2's exFAT card a directory entry costs about 40 us to
-	 * read: on my card, 8,844 games, that second read was about 380 ms
-	 * of every start (2026-11-07). */
-	while ((e = readdir(d))) {
-		char full[LIB_PATH * 3];
-		char *dot;
-		int type;
-
-		if (e->d_name[0] == '.') continue;
-		snprintf(full, sizeof full, "%s/%s", dirpath, e->d_name);
-		type = entry_type(full, e);
-		if (type == DT_DIR) {
-			if (ndirs == dcap) {
-				int more = dcap ? dcap * 2 : 16;
-				char (*bigger)[LIB_NAME] = realloc(dirs, (size_t)more * sizeof *dirs);
-
-				if (!bigger) continue;
-				dirs = bigger;
-				dcap = more;
-			}
-			snprintf(dirs[ndirs++], sizeof dirs[0], "%s", e->d_name);
-			continue;
-		}
-		if (!lib_ext_allowed(ext_of(e->d_name), exts)) {
-			if (type == DT_REG) note_skip(out, e->d_name);
-			continue;
-		}
-		if (type != DT_REG) continue;
-		if (n == cap) {
-			/* Grow cap only once the memory is actually there. Doubling it
-			 * first and then bailing would leave the second pass believing
-			 * there is room in a buffer that never grew. */
-			game_entry *bigger = realloc(list, (size_t)cap * 2 * sizeof *list);
-			if (!bigger) break;
-			list = bigger;
-			cap *= 2;
-		}
-		memset(&list[n], 0, sizeof list[n]);
-		snprintf(list[n].file, sizeof list[n].file, "%s", e->d_name);
-		snprintf(list[n].name, sizeof list[n].name, "%s", e->d_name);
-		list[n].added = LIB_ADDED_UNKNOWN;   /* lib_added, when it is asked for */
-		dot = strrchr(list[n].name, '.');
-		if (dot && dot != list[n].name) *dot = '\0';
-		n++;
+	if (!dir_read(dirpath, &top)) {
+		dir_free(&top);
+		/* What was read before memory ran out is no listing: none */
+		return false;
 	}
-
-	/* Pass 2, over the subfolders the read found, in its order: a subfolder
-	 * holding a disc image is a game too -- one entry named after the
-	 * folder, launching the image inside it -- and so is any subfolder on a
-	 * hooked shelf (ScummVM's, folder_hook_file). Skip a folder shadowed by
-	 * a same-named top-level file so the two layouts cannot double up. */
-	files_n = n;
-	for (i = 0; i < ndirs; i++) {
-		char full[LIB_PATH * 3], inside[LIB_NAME];
-		const char *name = dirs[i];
-		bool shadowed = false;
-
-		snprintf(full, sizeof full, "%s/%s", dirpath, name);
-		for (int k = 0; k < files_n; k++)
-			if (strcasecmp(list[k].name, name) == 0) { shadowed = true; break; }
-		if (shadowed) continue;
-		/* A hooked shelf's folder by its hook alone: a ScummVM game's own
-		 * .bin or .img is game data, not a disc to launch. */
-		if (lib_shelf_hooked(exts) ? !folder_hook_file(full, exts, inside, sizeof inside)
-		                       : !folder_launch_file(full, inside, sizeof inside)) {
-			char shown[LIB_NAME];
-
-			snprintf(shown, sizeof shown, "%.*s/", LIB_NAME - 2, name);
-			note_skip(out, shown);
-			continue;
-		}
-		if (n == cap) {
-			game_entry *bigger = realloc(list, (size_t)cap * 2 * sizeof *list);
-			if (!bigger) break;
-			list = bigger;
-			cap *= 2;
-		}
-		memset(&list[n], 0, sizeof list[n]);
-		snprintf(list[n].file, sizeof list[n].file, "%s/%s", name, inside);
-		snprintf(list[n].name, sizeof list[n].name, "%s", name);
-		list[n].added = LIB_ADDED_UNKNOWN;   /* the folder's, by lib_added */
-		n++;
-	}
-	free(dirs);
-	closedir(d);
-
-	if (n == 0) { free(list); return false; }
-	out->items = list;
-	out->count = n;
+	memset(&w, 0, sizeof w);
+	w.exts = exts;
+	w.hooked = lib_shelf_hooked(exts);
+	w.scripts = lib_shelf_scripts(exts);
+	w.discs = shelf_discs(exts);
+	w.out = out;
+	walk_folder(&w, dirpath, "", &top, 0);
+	dir_free(&top);
+	if (out->count == 0) { free(out->items); out->items = NULL; return false; }
 	return true;
 }
 
@@ -454,9 +781,12 @@ uint64_t lib_listing_digest(const game_list *l)
 	int i;
 
 	/* A sum of the entries' hashes, so the order they came in does not count;
-	 * then the counts beside it */
+	 * then the counts beside it. The folder a game is in counts: a disc set
+	 * at the top and a disc loose in a folder of the same name are two
+	 * listings. */
 	for (i = 0; i < l->count; i++)
-		sum += fnv(fnv(14695981039346656037ULL, l->items[i].file), l->items[i].name);
+		sum += fnv(fnv(14695981039346656037ULL ^ l->items[i].dir, l->items[i].file),
+		           l->items[i].name);
 	return sum * 1099511628211ULL ^
 	       ((uint64_t)(unsigned)l->count << 32 | (uint64_t)(unsigned)l->skipped);
 }

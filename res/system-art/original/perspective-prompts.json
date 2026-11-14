@@ -1,0 +1,17 @@
+[
+  {
+    "key": "PS1-ports",
+    "ref": "PS1.png",
+    "prompt": "Use case: precise-object-edit.\nInput image: edit target.\nCorrect only the front controller connection on this original PlayStation.\nRemove the extra false round socket at the far left of the front panel.\nRestore plain gray case plastic at that false socket.\nRoute the controller cable into the left of the two real rectangular controller sockets.\nKeep two controller sockets across the front.\nShow one thin memory-card slot directly above each controller socket.\nKeep the original console size, camera, perspective, circular lid, body outline, controller placement, lighting, and transparent canvas.\nDo not change the lid or its position.\nDo not move the console or controller.\nMatch the same pixel art."
+  },
+  {
+    "key": "GBA-screen",
+    "ref": "GBA.png",
+    "prompt": "Use case: precise-object-edit.\nInput image: edit target.\nCorrect only the shape of the visible LCD opening.\nThe Game Boy Advance LCD has an exact width-to-height ratio of 3:2.\nKeep its current width and center.\nIncrease its height to reach that ratio.\nIn this image, the target inner screen is approximately x=414 to 839 and y=480 to 764.\nKeep the screen blank and pale gray.\nAdjust the dark inner screen border to fit the taller opening.\nKeep the purple shell, outer bezel, controls, shoulder buttons, camera, scale, pixel style, and transparent canvas unchanged.\nDo not rotate, move, or resize the handheld."
+  },
+  {
+    "key": "3DO-tray-angle",
+    "ref": "3DO.png",
+    "prompt": "Use case: precise-object-edit.\nInput image: edit target.\nOpen this exact 3DO console's disc tray.\nThe tray must travel forward along the console's depth axis.\nIn this camera view, forward points diagonally down and left.\nThe front of the open tray moves approximately 90 pixels left and 70 pixels down from its closed position.\nKeep the tray's front edge parallel to the console's front edge.\nShow the tray's upper surface in the same perspective as the console top.\nThe empty circular disc recess must appear as an ellipse in that plane.\nDo not point the tray straight down or toward the right.\nPreserve the case, controller, cable, camera, object size, pixel style, and transparent canvas.\nChange only the tray and the drive opening."
+  }
+]

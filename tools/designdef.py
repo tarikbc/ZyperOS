@@ -16,6 +16,8 @@ Writes, from the tables in this file alone:
                                its generated:tokens marks, Beard and Salt &
                                Pepper by the browser's prefers-color-scheme;
                                --check also holds the page's text pairs
+  res/web/play/play.css        the same block, for NES player 2's play page,
+                               held to the same pairs
 
 DESIGN.md says what each token is for and why; this file only says what it
 is. Standard library only, so `make check` runs it anywhere, as
@@ -131,6 +133,32 @@ PAGE_CURVES = {"out": "cubic-bezier(0.22, 1, 0.36, 1)",
 SAME_IN_BOTH = {
     "accent": "src/main.c keeps it as Favorites' and Muse's color "
               "(ZYPEROS_ACCENT) and src/ui.c's ui_sys_mark knows it by value",
+}
+
+# The player's look (DESIGN.md 3.5): MENU > Display > Theme, my picks of
+# 2026-11-12. Ten accents round the hue circle, each a fill with dark text and
+# the same in both themes, lime first because it is the accent above; and
+# three background tones for each theme, the first each theme's ground above.
+# Everything else in a theme is worked out from the two by src/look.c, and
+# tools/look-check.c holds every pair of them to TEXT_ON and MARK_ON.
+ACCENTS = [
+    # id        name       fill
+    ("lime",    "Lime",    "bef23c"),
+    ("green",   "Green",   "5ee08a"),
+    ("teal",    "Teal",    "3fd4c0"),
+    ("blue",    "Blue",    "74b0ff"),
+    ("purple",  "Purple",  "b59bff"),
+    ("pink",    "Pink",    "ff94c8"),
+    ("red",     "Red",     "ff7a70"),
+    ("orange",  "Orange",  "ffa04d"),
+    ("yellow",  "Yellow",  "ffd84d"),
+    ("silver",  "Silver",  "d3d5cf"),
+]
+TONES = {
+    "light": [("warm", "Warm", "e6e4da"), ("neutral", "Neutral", "e3e3e1"),
+              ("cool", "Cool", "dde2e7")],
+    "dark":  [("black", "Black", "111310"), ("deepblue", "Deep Blue", "0e1526"),
+              ("darkgrey", "Dark Grey", "1e2120")],
 }
 
 # Scrims: ink at this opacity (0-1).
@@ -336,28 +364,43 @@ def contrast_failures():
     return bad
 
 
-def page_role_failures(css):
-    """The roles res/web/app.css sets as a text color or a background,
-    outside its generated block, that PAGE_TEXT_ON and PAGE_FILLS do not name."""
+# The pages that wear the tokens: Wi-Fi File Transfer's, and NES player 2's
+# play page in its clothes. The panel lift is for the File Transfer page's
+# panel (fill_css), the play page's too-old panel being as wide.
+PAGE_CSS = ("res/web/app.css", "res/web/play/play.css")
+
+
+def page_role_failures(css, name):
+    """The roles a page's CSS sets as a text color or a background, outside
+    its generated block, that PAGE_TEXT_ON and PAGE_FILLS do not name."""
     css = re.sub(r"/\* generated:tokens \*/.*?/\* /generated:tokens \*/", "", css, flags=re.S)
     css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     texts = set(re.findall(r"(?<![-\w])color:\s*var\(--([a-z-]+)\)", css))
     grounds = set(re.findall(r"background(?:-color)?:\s*var\(--([a-z-]+)\)", css))
     grounds |= set(re.findall(r"background(?:-color)?:\s*rgba\(var\(--([a-z-]+)-rgb\)", css))
     named = {g for gs in PAGE_TEXT_ON.values() for g in gs} | set(PAGE_FILLS)
-    bad = ["res/web/app.css sets text in %s, which PAGE_TEXT_ON does not hold to its grounds" % r
+    bad = ["%s sets text in %s, which PAGE_TEXT_ON does not hold to its grounds" % (name, r)
            for r in sorted(texts - set(PAGE_TEXT_ON))]
-    bad += ["res/web/app.css fills a background with %s, which PAGE_TEXT_ON and PAGE_FILLS do not name" % r
+    bad += ["%s fills a background with %s, which PAGE_TEXT_ON and PAGE_FILLS do not name" % (name, r)
             for r in sorted(grounds - named)]
     return bad
 
 
 def same_failures():
     col = {r: dict(zip(THEMES, v)) for r, *v in COLORS}
-    return ["%s is %s in Beard and %s in Salt & Pepper; it must be one value: %s"
-            % (role, col[role]["light"], col[role]["dark"], why)
-            for role, why in SAME_IN_BOTH.items()
-            if col[role]["light"] != col[role]["dark"]]
+    bad = ["%s is %s in Beard and %s in Salt & Pepper; it must be one value: %s"
+           % (role, col[role]["light"], col[role]["dark"], why)
+           for role, why in SAME_IN_BOTH.items()
+           if col[role]["light"] != col[role]["dark"]]
+    # The look's first accent and first tones are the themes as they ship
+    if ACCENTS[0][2] != col["accent"]["light"]:
+        bad.append("the first accent, %s, is not the accent, %s" % (ACCENTS[0][2], col["accent"]["light"]))
+    for t in THEMES:
+        if TONES[t][0][2] != col["ground"][t]:
+            bad.append("%s's first tone, %s, is not its ground, %s" % (THEME_NAMES[t], TONES[t][0][2], col["ground"][t]))
+        if len(TONES[t]) != len(TONES[THEMES[0]]):
+            bad.append("%s has %d tones and %s %d" % (t, len(TONES[t]), THEMES[0], len(TONES[THEMES[0]])))
+    return bad
 
 
 # ---- outputs ---------------------------------------------------------------------
@@ -403,6 +446,25 @@ def design_h():
         scr = ", ".join(str(int(round(s[1 + ti] * 255))) for s in SCRIMS)
         bar = int(round((BAR_SHADOW_DARK if t == "dark" else dict((s[0], s[3]) for s in SHADOWS)["bar"]) * 255))
         L.append("\t  %s, %d }," % (scr, bar))
+    L.append("};")
+    L.append("")
+    L.append("/* The player's look (DESIGN.md 3.5, src/look.h): the accents and each")
+    L.append(" * theme's background tones, the first of each as the themes ship. */")
+    L.append("enum { DS_ACCENTS = %d, DS_TONES = %d };" % (len(ACCENTS), len(TONES["light"])))
+    L.append("static const ds_rgb DS_ACCENT[DS_ACCENTS] = {")
+    for aid, _, hx in ACCENTS:
+        r, g, b = rgb(hx)
+        L.append("\t{ %3d, %3d, %3d },   /* %s */" % (r, g, b, aid))
+    L.append("};")
+    L.append("static const char *const DS_ACCENT_ID[DS_ACCENTS] = { %s };"
+             % ", ".join('"%s"' % a for a, _, _ in ACCENTS))
+    L.append("static const ds_rgb DS_TONE[DS_THEMES][DS_TONES] = {")
+    for t in THEMES:
+        L.append("\t{ %s }," % ", ".join("{ %d, %d, %d }" % rgb(hx) for _, _, hx in TONES[t]))
+    L.append("};")
+    L.append("static const char *const DS_TONE_ID[DS_THEMES][DS_TONES] = {")
+    for t in THEMES:
+        L.append("\t{ %s }," % ", ".join('"%s"' % i for i, _, _ in TONES[t]))
     L.append("};")
     L.append("")
     L.append("/* Type: pixels in the 1024x768 design space. */")
@@ -504,6 +566,9 @@ def tokens_js():
                            "ms": ms, "peak": pk, "at": at} for w, hz, ms, pk, at in tones[n]]
                       for n, _ in SOUNDS}} for vid, vn, tones in VOICES},
                   "default": VOICE_DEFAULT, "held": SOUND_HELD},
+        "look": {"accents": [{"id": i, "name": n, "fill": "#" + h} for i, n, h in ACCENTS],
+                 "tones": {t: [{"id": i, "name": n, "ground": "#" + h} for i, n, h in TONES[t]]
+                           for t in THEMES}},
     }
     return ("/* ZyperOS's design tokens for the mock kit. GENERATED by\n"
             " * tools/designdef.py: edit there, run `make design`. */\n"
@@ -580,13 +645,14 @@ def css_tokens(panel_w):
     return "\n".join(L)
 
 
-def fill_css(text):
-    """The page's token block, for a panel as wide as the page's own
-    .gate .panel says (its max-width), so the two cannot drift."""
+def fill_css(text, app_css, name):
+    """A page's token block, for a panel as wide as the File Transfer page's
+    own .gate .panel says (its max-width, in app_css), so the two cannot
+    drift."""
     pat = re.compile(r"(/\* generated:tokens \*/\n).*?(/\* /generated:tokens \*/)", re.S)
     if not pat.search(text):
-        raise SystemExit("res/web/app.css has no generated:tokens block")
-    w = re.search(r"\.gate \.panel \{[^}]*?max-width:\s*(\d+)px", text, re.S)
+        raise SystemExit("%s has no generated:tokens block" % name)
+    w = re.search(r"\.gate \.panel \{[^}]*?max-width:\s*(\d+)px", app_css, re.S)
     if not w:
         raise SystemExit("res/web/app.css's .gate .panel has no max-width in px")
     return pat.sub(lambda m: m.group(1) + css_tokens(int(w.group(1))) + "\n" + m.group(2), text)
@@ -598,6 +664,13 @@ def md_tables():
     for role, l, d in COLORS:
         rows.append("| **%s** | `#%s` | `#%s` |" % (role, l, d))
     T["colors"] = rows
+    rows = ["| Accent | Fill | Tone | Beard (light) | Salt & Pepper (dark) |", "|---|---|---|---|---|"]
+    for i, (aid, name, hx) in enumerate(ACCENTS):
+        tone = ("| **%d** | %s `#%s` | %s `#%s` |" % (i + 1, TONES["light"][i][1], TONES["light"][i][2],
+                                                       TONES["dark"][i][1], TONES["dark"][i][2])
+                if i < len(TONES["light"]) else "| | | |")
+        rows.append("| **%s**%s | `#%s` %s" % (name, " (as it ships)" if i == 0 else "", hx, tone))
+    T["look"] = rows
     rows = ["| Role | Size | Weight | For |", "|---|---|---|---|"]
     for r, px, w, f in TYPE:
         rows.append("| **%s** | %d (%.0f px on the Pixel 2) | %s | %s |" % (r, px, px * 0.625, w, f))
@@ -648,24 +721,29 @@ def fill_md(text):
 
 def outputs():
     md_path = os.path.join(ROOT, "DESIGN.md")
-    css_path = os.path.join(ROOT, "res", "web", "app.css")
     with open(md_path) as f:
         md = f.read()
-    with open(css_path) as f:
-        css = f.read()
-    return {
+    css = {}
+    for name in PAGE_CSS:
+        with open(os.path.join(ROOT, name)) as f:
+            css[name] = f.read()
+    out = {
         md_path: fill_md(md),
         os.path.join(ROOT, "src", "design.h"): design_h(),
         os.path.join(ROOT, "docs", "design", "mock", "tokens.js"): tokens_js(),
-        css_path: fill_css(css),
     }
+    for name, text in css.items():
+        out[os.path.join(ROOT, name)] = fill_css(text, css[PAGE_CSS[0]], name)
+    return out
 
 
 def main():
     check = "--check" in sys.argv[1:]
     bad = contrast_failures()
-    with open(os.path.join(ROOT, "res", "web", "app.css")) as f:
-        unlisted = page_role_failures(f.read())
+    unlisted = []
+    for name in PAGE_CSS:
+        with open(os.path.join(ROOT, name)) as f:
+            unlisted += page_role_failures(f.read(), name)
     same = same_failures()
     stale = []
     for path, want in outputs().items():
@@ -692,7 +770,7 @@ def main():
         print("  FAIL %s is not what tools/designdef.py writes: run `make design`" % s)
     if bad or unlisted or same or stale:
         sys.exit(1)
-    print("design: tokens, DESIGN.md, src/design.h, the mock kit and Wi-Fi File Transfer's page agree;"
+    print("design: tokens, DESIGN.md, src/design.h, the mock kit, Wi-Fi File Transfer's page and the play page agree;"
           " every color meets its contrast, the page's text pairs too; the accent is one value in both themes")
 
 

@@ -341,7 +341,7 @@
         wait: { name: "Just wait", blurb: "A message and back to the shelf. To play, stop File Transfer first.", draw: () => hh((th, i) => i ? msg(th, "File Transfer closed for the game.") : msg(th, "Files are still moving. Play when they are done.", .62), { light: "files moving", dark: "nothing moving" }) },
       } },
     { key: "icons", title: "Folders on the page",
-      why: "Every system folder gets the shelf's pixel art. Folders that are not systems get new pixel art, drawn the same way from real photos: BGM a cassette, Saves a memory card, Save States a floppy disk, BIOS a chip, Music MP4's walkman, a plain folder for the rest. In every option, dot folders such as .media are hidden: covers stay in each system's art and in Settings.",
+      why: "Every system folder gets the shelf's pixel art. Folders that are not systems get pixel art of their own: BGM a cassette, Saves a memory card, Save States a floppy disk, BIOS a chip, Music MP4's, a plain folder for the rest. In every option, dot folders such as .media are hidden: covers stay in each system's art and in Settings.",
       options: {
         tile: { name: "Pixel art on a tile", tag: "suggested", blurb: "Each icon sits on a small tile tinted with the system's color, so the color that was the bar stays. The card's folders in the sidebar get their pixel art too.", draw: () => pp(th => app(th, { icons: "tile", main: romsMain("tile") })) },
         bare: { name: "Pixel art alone", blurb: "The icon with nothing behind it, a little bigger. The sidebar keeps its line marks.", draw: () => pp(th => app(th, { icons: "line", main: romsMain("bare") })) },

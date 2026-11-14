@@ -92,7 +92,7 @@ ja = セーブがありません
 it = Niente salvato in
 
 [popup.no_states]
-note = The pop-up when SELECT+R1 or SELECT+L1 is pressed on a system with no save states (ScummVM, J2ME), first line; under it the system's name.
+note = The pop-up when SELECT+R1 or SELECT+L1 is pressed on a system with no save states (ScummVM, J2ME, TIC-80), first line; under it the system's name.
 en = No save states on
 zh-Hans = 不支持即时存档
 es = Sin estados guardados en
@@ -145,3 +145,36 @@ fr = Démarré depuis le début
 de = Von vorn gestartet
 ja = 最初から始めました
 it = Ripartito dall'inizio
+
+[popup.stick]
+note = The pop-up as R2 turns a PSP game's d-pad into its analog stick or back, first line: the PSP's analog stick. Under it popup.stick_on or popup.stick_off.
+en = Analog stick
+zh-Hans = 摇杆
+es = Palanca analógica
+pt-BR = Analógico
+fr = Stick analogique
+de = Analogstick
+ja = アナログスティック
+it = Levetta analogica
+
+[popup.stick_on]
+note = Under popup.stick: the d-pad now moves the analog stick.
+en = On the d-pad
+zh-Hans = 由方向键控制
+es = En la cruceta
+pt-BR = No direcional
+fr = Sur la croix
+de = Auf dem Steuerkreuz
+ja = 十字キーで操作
+it = Sulla croce
+
+[popup.stick_off]
+note = Under popup.stick: the d-pad is the d-pad again, and the analog stick is not used.
+en = Off, d-pad is d-pad
+zh-Hans = 关，方向键恢复
+es = No, cruceta normal
+pt-BR = Não, direcional normal
+fr = Non, croix normale
+de = Aus, Kreuz normal
+ja = オフ、十字キーに戻る
+it = No, croce normale

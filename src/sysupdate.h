@@ -39,6 +39,7 @@ typedef struct {
 	su_status st;
 	bool running;             /* the program is at work now */
 	bool wifi;                /* a network to look with */
+	bool metered;             /* and it is a phone's mobile data, likely */
 	char installed[32];       /* ZyperOS/VERSION */
 	char prev[32];            /* the version Roll Back goes to; "" for none */
 	char result[80];          /* update/result: "updated A B", "failed V", "rolled-back V" */
@@ -93,7 +94,9 @@ void su_page_build(const su_view *v, su_page *p);
  *   byte it stopped at: as Wi-Fi connects, and then after 2, 4, 8 ... up to
  *   32 minutes while it keeps stopping.
  * Nothing while the program is at work, with no network, or on an image
- * without updates. */
+ * without updates. Over a phone's USB tethering (metered: its mobile data,
+ * likely) a look still goes, as it is small, but a download cut short waits
+ * for the player's A (2026-11-13). */
 typedef enum { SU_AUTO_NONE, SU_AUTO_CHECK, SU_AUTO_RESUME } su_auto_do;
 
 typedef struct {

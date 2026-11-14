@@ -2,8 +2,8 @@
 
 ## Approved direction and boundaries
 
-I want a modern, clean home screen with quick motion, using my Pixel UI
-Smart Folders archive. Do not put its sprites inside the old system cards.
+I want a modern, clean home screen with quick motion, using pixel console
+sprites. Do not put the sprites inside the old system cards.
 The selected preview is Spotlight. Settings must allow a home-screen choice;
 the implementation offers Spotlight and Gallery, both horizontal, beside the
 existing Appearance choice (Light, Dark, Auto). No Fancy Pants, vertical, or
@@ -14,7 +14,7 @@ A background song must appear in the top bar with Wi-Fi, clock, and battery.
 
 The interactive reference is
 `/Users/tarikbc/.codex/visualizations/2026/11/04/01a1a84d-08b7-7dd0-b287-7accace90676/zyperos-home.html`.
-It uses the supplied GIFs. Prototype counts and game lists are illustrative;
+Prototype counts and game lists are illustrative;
 production uses the library. My actual track, Posters, is sample content,
 not a value to hard-code. The preview's settings panel is only the relevant
 rows; production keeps the rest of the existing Settings menu.
@@ -46,28 +46,17 @@ interrupted movement begins at its current rendered position. Do not block an
 input, decoder, or music update while motion runs. Rendering restores SDL
 target, viewport, scale, clip and blend state wherever it changes them.
 
-## Art sources and credits
+## Art sources
 
-The user supplied `pixel-ui-smart-folders.zip`, version 1.4. Its `logo.gif`
-files depict the consoles, often with controllers; they are not wordmarks.
-Use those, with the animated heart icon for Favorites. No overlays.
-Credit BenJelter with https://benjelter.itch.io/console-icon-pack in README,
-third-party notices, and the asset folder. Retain YOjeremyRaps's additions and
-animation credit from the archive metadata. Keep generated additions separate.
-
-The pack covers 28 of 37 configured systems, plus Favorites. Missing:
-Game & Watch, Vectrex, MSX2, 3DO, Neo Geo CD, WonderSwan Color, NAOMI,
-Atomiswave, Ports, and the synthetic Muse shelf. Generated drafts require
-hardware-reference review before import. WSC's corrected source follows the
-user photograph and lives at `res/system-art/source/WSC.png`. Do not import the
-inaccurate silver draft. The other generated images remain drafts outside the
-repo. Do not substitute a different machine as if it were the missing system.
+The sprites are ZyperOS's own system art, in `res/system-art/original`
+(docs/superpowers/plans/2026-11-12-original-system-art.md): the consoles,
+often with controllers, not wordmarks, and an animated heart for Favorites.
+No overlays. Do not substitute a different machine for a missing system.
 
 ## Implementation tasks
 
-1. Asset compiler and metadata. Import only sources actually used by configured
-   systems plus Favorites and Muse. Keep exact source attribution in a manifest.
-   Compile bounded PNG atlases, first-frame posters, and frame-duration tables.
+1. Asset compiler and metadata. Compile only the designs of configured
+   systems plus Favorites and Muse into bounded PNG atlases, first-frame posters, and frame-duration tables.
    Source colors remain unchanged between themes; use nearest sampling. An atlas
    contains only sprite pixels, never whole-screen or whole-card frames.
    Validate dimensions, alpha, durations, unique coverage, and total output size.

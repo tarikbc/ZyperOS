@@ -20,8 +20,8 @@ It started as Eric Reinsmidt's
 ZyperOS runs on both. The shelf is up about 2.2 s from power on on the
 Pixel 2, and about 1.9 s on the Brick.
 
-The Pixel 2's hardware all works: the display (Panfrost, with the panel's
-colors corrected in the display controller's gamma table), sound with
+The Pixel 2's hardware all works: the display (Panfrost, showing each
+frame's colors as they are, as the stock firmware does), sound with
 headphone switching and USB-C headphone adapters, every button, the
 rumble motor (force feedback on the joypad's own input device), power,
 brightness and battery. It has no radio of its own; a USB Wi-Fi adapter on
@@ -74,6 +74,15 @@ with any program that writes disk images. It erases the whole card.
 
 The first boot adds an exFAT partition over the rest of the card, for games,
 saves and music, which a Mac or PC can read and write (labeled ZYPEROS).
+While ZyperOS's first start copies it onto the card, `setuplog`
+(`buildroot/board/px2/rootfs-overlay/usr/sbin/setuplog`) writes the device's
+details, a status line a second and every kernel message to
+`zyperos-setup.txt` on the boot partition, so a first start that hangs can
+be read on a computer. After a panic, the next first start also copies in
+what pstore kept across the reboot (`ramoops@110000` in `rk3326.dtsi`,
+where the device's own firmware keeps it): the panic's dump and the end of
+the kernel log before it. While it runs, an RCU stall panics, so a CPU stuck
+in the kernel reboots with a report instead of hanging.
 
 ## Building
 

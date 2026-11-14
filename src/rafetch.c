@@ -150,6 +150,37 @@ static void badge_safe(char *s)
 bool ra_set_from_json(const char *json, size_t len, long gameid,
                       const char *out_path)
 {
+	return ra_set_from_json_hash(json, len, gameid, NULL, out_path);
+}
+
+/* An answer with achievements in it, none of which a player can earn: all
+ * unofficial, or only RetroAchievements' own notices (see below). Read the
+ * same way the conversion reads it. */
+bool ra_set_json_empty(const char *json, size_t len)
+{
+	jsv root, patch, ach, it = {0}, e, v;
+
+	root = js_root(json, len);
+	if (!js_member(root, "PatchData", &patch) ||
+	    !js_member(patch, "Achievements", &ach))
+		return false;
+	while (js_next(ach, &it, &e)) {
+		char atitle[128] = "";
+		long flags = 3;
+
+		if (js_member(e, "Flags", &v)) flags = js_int(v);
+		if (flags != 3) continue;
+		if (js_member(e, "Title", &v)) js_str(v, atitle, sizeof atitle);
+		if (!strncmp(atitle, "Warning: Unknown Emulator", 25) ||
+		    !strncmp(atitle, "Unsupported Game Version", 24)) continue;
+		return false;
+	}
+	return true;
+}
+
+bool ra_set_from_json_hash(const char *json, size_t len, long gameid,
+                           const char *rom_hash, const char *out_path)
+{
 	char tmp[1024];
 	jsv root, patch, ach, it = {0}, e, v;
 	FILE *out;
@@ -169,8 +200,13 @@ bool ra_set_from_json(const char *json, size_t len, long gameid,
 	out = fopen(tmp, "w");
 	if (!out) return false;
 
-	fprintf(out, "#! zyperos-cheevos 2\tgame=%ld\tconsole=%ld\ttitle=%s\n",
+	/* The hash last, and only when there is one, so the line is what it was
+	 * for a caller with none: tools/raset-check.py holds the two converters
+	 * byte for byte. */
+	fprintf(out, "#! zyperos-cheevos 2\tgame=%ld\tconsole=%ld\ttitle=%s",
 	        gameid, console, title);
+	if (rom_hash && strlen(rom_hash) == 32) fprintf(out, "\thash=%s", rom_hash);
+	fputc('\n', out);
 
 	while (js_next(ach, &it, &e)) {
 		char mem[65536], atitle[128] = "", adesc[256] = "", badge[32] = "";
@@ -234,7 +270,7 @@ bool ra_set_from_json(const char *json, size_t len, long gameid,
 
 /* ---- finding a set while the game is already running -------------------- */
 
-enum { FQ_IDLE, FQ_GAMEID, FQ_PATCH, FQ_DONE, FQ_FAILED };
+enum { FQ_IDLE, FQ_GAMEID, FQ_PATCH, FQ_DONE, FQ_FAILED, FQ_NOTHING };
 
 static int  g_fq_state = FQ_IDLE;
 static long g_fq_game;
@@ -276,6 +312,7 @@ int ra_fetch_step(void)
 	int rc;
 
 	if (g_fq_state == FQ_DONE)   { g_fq_state = FQ_IDLE; return 1; }
+	if (g_fq_state == FQ_NOTHING) { g_fq_state = FQ_IDLE; return RA_FETCH_NOTHING; }
 	if (g_fq_state == FQ_IDLE || g_fq_state == FQ_FAILED) return -1;
 
 	rc = net_async_poll();
@@ -294,8 +331,9 @@ int ra_fetch_step(void)
 		g_fq_game = js_int(v);
 		free(body);
 		/* 0 is RetroAchievements saying it has never seen this ROM, which for
-		 * a fan translation is the permanent and correct answer. */
-		if (g_fq_game <= 0) { fq_stop(FQ_FAILED); return -1; }
+		 * a fan translation is the permanent and correct answer. An answer,
+		 * so the caller can say "none" rather than "not checked yet". */
+		if (g_fq_game <= 0) { fq_stop(FQ_IDLE); return RA_FETCH_NOTHING; }
 
 		snprintf(g, sizeof g, "%ld", g_fq_game);
 		f[0].k = "r"; f[0].v = "patch";
@@ -317,7 +355,12 @@ int ra_fetch_step(void)
 		slash = strrchr(dir, '/');
 		if (slash) { *slash = '\0'; mkdir(dir, 0755); }
 
-		ok = ra_set_from_json(body, len, g_fq_game, g_fq_set);
+		ok = ra_set_from_json_hash(body, len, g_fq_game, g_fq_hash, g_fq_set);
+		if (!ok && ra_set_json_empty(body, len)) {
+			free(body);
+			fq_stop(FQ_IDLE);
+			return RA_FETCH_NOTHING;
+		}
 		free(body);
 		fq_stop(ok ? FQ_DONE : FQ_FAILED);
 		return ok ? 1 : -1;
@@ -397,29 +440,59 @@ int ra_submit_unlock(int achievement_id, const char *rom_hash)
 int ra_submit_unlock_as(const char *user, const char *token,
                         int achievement_id, const char *rom_hash)
 {
-	char body[1024], a[24], v[33], sig[128];
-	net_field f[7];
+	return ra_submit_unlock_at(user, token, achievement_id, rom_hash, false, 0);
+}
+
+unsigned ra_unlock_offset(long earned, long now)
+{
+	if (earned < RA_CLOCK_FLOOR || now < earned) return 0;
+	if (now - earned > RA_OFFSET_MAX) return (unsigned)RA_OFFSET_MAX;
+	return (unsigned)(now - earned);
+}
+
+void ra_award_signature(int achievement_id, const char *user, bool hardcore,
+                        unsigned seconds_ago, char *out)
+{
+	char sig[160];
+
+	/* rcheevos builds exactly this in rc_api_init_award_achievement_request,
+	 * and the server checks it. Written from that source rather than guessed:
+	 * a wrong signature is refused, and a refusal reads like a permissions
+	 * problem. With an offset, the id a second time and then the offset -
+	 * "the achievement ID appears before the offset", in RAWeb's words. */
+	if (seconds_ago)
+		snprintf(sig, sizeof sig, "%d%s%d%d%u", achievement_id, user ? user : "",
+		         hardcore ? 1 : 0, achievement_id, seconds_ago);
+	else
+		snprintf(sig, sizeof sig, "%d%s%d", achievement_id, user ? user : "",
+		         hardcore ? 1 : 0);
+	ra_md5_hex(sig, strlen(sig), out);
+}
+
+int ra_submit_unlock_at(const char *user, const char *token, int achievement_id,
+                        const char *rom_hash, bool hardcore, unsigned seconds_ago)
+{
+	char body[1024], a[24], v[33], o[16];
+	net_field f[8];
 	jsv root, m;
 	int n = 0;
 
 	if (achievement_id <= 0 || !user || !*user || !token || !*token ||
 	    !net_online())
 		return -1;
+	if (seconds_ago > (unsigned)RA_OFFSET_MAX) seconds_ago = (unsigned)RA_OFFSET_MAX;
 
 	snprintf(a, sizeof a, "%d", achievement_id);
-	/* rcheevos builds exactly this in rc_api_init_award_achievement_request,
-	 * and the server checks it. Written from that source rather than guessed:
-	 * a wrong signature is refused, and a refusal reads like a permissions
-	 * problem. */
-	snprintf(sig, sizeof sig, "%d%s0", achievement_id, user);
-	ra_md5_hex(sig, strlen(sig), v);
+	snprintf(o, sizeof o, "%u", seconds_ago);
+	ra_award_signature(achievement_id, user, hardcore, seconds_ago, v);
 
 	f[n].k = "r"; f[n++].v = "awardachievement";
 	f[n].k = "u"; f[n++].v = user;
 	f[n].k = "t"; f[n++].v = token;
 	f[n].k = "a"; f[n++].v = a;
-	f[n].k = "h"; f[n++].v = "0";
+	f[n].k = "h"; f[n++].v = hardcore ? "1" : "0";
 	if (rom_hash && *rom_hash) { f[n].k = "m"; f[n++].v = rom_hash; }
+	if (seconds_ago) { f[n].k = "o"; f[n++].v = o; }
 	f[n].k = "v"; f[n++].v = v;
 
 	if (net_post_buf(f, n, body, sizeof body, 20) < 0) return -1;
@@ -472,7 +545,8 @@ int ra_refusal(const char *error, const char *code)
 	if (has_word(e, "already has")) return RA_SUBMIT_SETTLED;
 	/* Refused for good, for this achievement: demoted to unofficial, or not
 	 * there any more. Kept as earned here, owed to nobody. */
-	if (has_word(e, "unofficial") || has_word(e, "not found") ||
+	if (has_word(e, "unofficial") || has_word(e, "unpromoted") ||
+	    has_word(e, "not found") || has_word(e, "unknown achievement") ||
 	    has_word(e, "does not exist") || has_word(c, "not_found"))
 		return RA_SUBMIT_SETTLED;
 	return RA_SUBMIT_REFUSED;

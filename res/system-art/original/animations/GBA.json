@@ -1,0 +1,231 @@
+{
+  "key": "GBA",
+  "name": "Game Boy Advance",
+  "description": "Original Game Boy Advance startup",
+  "cell": 256,
+  "cols": 8,
+  "rows": 6,
+  "unique": 45,
+  "duration_ms": 3900,
+  "kind": "system",
+  "static": false,
+  "expected_poses": null,
+  "motion_bounds": [
+    83,
+    100,
+    90,
+    53
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 244
+    },
+    {
+      "tile": 1,
+      "ms": 122
+    },
+    {
+      "tile": 2,
+      "ms": 61
+    },
+    {
+      "tile": 3,
+      "ms": 61
+    },
+    {
+      "tile": 4,
+      "ms": 61
+    },
+    {
+      "tile": 5,
+      "ms": 61
+    },
+    {
+      "tile": 6,
+      "ms": 61
+    },
+    {
+      "tile": 7,
+      "ms": 61
+    },
+    {
+      "tile": 8,
+      "ms": 61
+    },
+    {
+      "tile": 9,
+      "ms": 61
+    },
+    {
+      "tile": 10,
+      "ms": 61
+    },
+    {
+      "tile": 11,
+      "ms": 60
+    },
+    {
+      "tile": 12,
+      "ms": 61
+    },
+    {
+      "tile": 13,
+      "ms": 61
+    },
+    {
+      "tile": 14,
+      "ms": 61
+    },
+    {
+      "tile": 15,
+      "ms": 61
+    },
+    {
+      "tile": 16,
+      "ms": 61
+    },
+    {
+      "tile": 17,
+      "ms": 61
+    },
+    {
+      "tile": 18,
+      "ms": 61
+    },
+    {
+      "tile": 19,
+      "ms": 61
+    },
+    {
+      "tile": 20,
+      "ms": 61
+    },
+    {
+      "tile": 21,
+      "ms": 366
+    },
+    {
+      "tile": 22,
+      "ms": 60
+    },
+    {
+      "tile": 23,
+      "ms": 61
+    },
+    {
+      "tile": 24,
+      "ms": 61
+    },
+    {
+      "tile": 25,
+      "ms": 61
+    },
+    {
+      "tile": 26,
+      "ms": 61
+    },
+    {
+      "tile": 27,
+      "ms": 61
+    },
+    {
+      "tile": 28,
+      "ms": 61
+    },
+    {
+      "tile": 29,
+      "ms": 61
+    },
+    {
+      "tile": 30,
+      "ms": 61
+    },
+    {
+      "tile": 31,
+      "ms": 61
+    },
+    {
+      "tile": 32,
+      "ms": 61
+    },
+    {
+      "tile": 33,
+      "ms": 61
+    },
+    {
+      "tile": 34,
+      "ms": 61
+    },
+    {
+      "tile": 35,
+      "ms": 61
+    },
+    {
+      "tile": 36,
+      "ms": 61
+    },
+    {
+      "tile": 37,
+      "ms": 61
+    },
+    {
+      "tile": 38,
+      "ms": 60
+    },
+    {
+      "tile": 21,
+      "ms": 366
+    },
+    {
+      "tile": 39,
+      "ms": 61
+    },
+    {
+      "tile": 40,
+      "ms": 61
+    },
+    {
+      "tile": 41,
+      "ms": 61
+    },
+    {
+      "tile": 42,
+      "ms": 61
+    },
+    {
+      "tile": 43,
+      "ms": 61
+    },
+    {
+      "tile": 44,
+      "ms": 61
+    },
+    {
+      "tile": 0,
+      "ms": 243
+    }
+  ],
+  "still_time_ms": 1500,
+  "decoded_atlas_bytes": 12582912,
+  "inputs": [
+    "source/GBA-screen.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "gba-startup.js"
+  ],
+  "input_sha256": {
+    "source/GBA-screen.png": "78ffdcad198649683c589e102c49c51bbf97cc1d0c4a13849392b3be7c15905c"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "gba-startup.js": "b3eed72f25c71c3da3b4c88495a49bf1018ae43d88ce83d6ff68c2a38ef12df9"
+  },
+  "atlas": "GBA.png",
+  "still": "GBA-still.png",
+  "atlas_sha256": "1392870f3e9f09c9a937ffaf0a2889dda23dd3c0e6254fb252a466237a3cb832",
+  "still_sha256": "fa5545b368e9a15dd03e47ba085ea8fd411fae31a31c708a45cf719d66cc11d5"
+}

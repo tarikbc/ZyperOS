@@ -172,6 +172,11 @@ EXTRA = {
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),
     "system-menu": ("demo", "PS1", ["--screen", "games", "--menu"]),
+    # View's other value, List, over the list it shows (DESIGN.md 11.39)
+    "system-menu-list": ("demo", "GBA", ["--screen", "games", "--view", "list", "--menu", "View"]),
+    # ...and at its end: with View and Shader (1.0.5), Box Art is below the
+    # first shot's rows
+    "system-menu-end": ("demo", "PS1", ["--screen", "games", "--menu", "Box Art"]),
     "storage-art": ("demo", "PS1", ["--storage", "art"]),
     "storage-states": ("demo", "PS1", ["--storage", "states"]),
     "storage-delete": ("demo", "PS1", ["--storage", "delete"]),
@@ -204,6 +209,13 @@ EXTRA = {
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
     "gamemenu": ("demo", "PS1", ["--gamemenu", "0"]),
+    # Achievements offline: the list with unlocks waiting, Zyper saying they
+    # went, and the rows of a game never played with a network
+    "cheevos-waiting": ("demo", "PS1", ["--cheevos-screen", "0", "--cheevos-waiting", "2"]),
+    "ranews": ("demo", "PS1", ["--ranews", "3"]),
+    "ranews-one": ("demo", "PS1", ["--ranews", "1"]),
+    "gamemenu-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-unchecked"]),
+    "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
     "gamemenu-display": ("demo", "PS1", ["--gamemenu", "3"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),
@@ -326,17 +338,29 @@ for _page in (3, 4, 5):
 for _scroll in ("0.5", "1"):
     EXTRA.setdefault("about-2-scroll-" + _scroll, ("demo", "PS1", ["--about", "2", "--about-scroll", _scroll]))
 EXTRA.setdefault("hare-cable", ("demo", "PS1", ["--hare", "10.42.0.1", "1 signed in", "Tobu Tobu Girl.gb"]))
+# File Transfer's news on Flash Drive's page (DESIGN.md 11.23): the tiles in
+# each state, over Wi-Fi and over the cable (SSH beside the browsers)
+for _move in ("idle", "in", "out", "both", "closing", "finish", "gone"):
+    EXTRA.setdefault("hare-move-" + _move, ("demo", "PS1", ["--hare", "http://192.168.1.42", "1 connected",
+                                                           "Tobu Tobu Girl.gb", "--hare-move", _move]))
+    EXTRA.setdefault("hare-cable-move-" + _move, ("demo", "PS1", ["--hare", "10.42.0.1", "1 connected",
+                                                                 "Tobu Tobu Girl.gb", "--hare-move", _move]))
 # File Transfer's steps (src/linksteps.h) in every state, with each hint
-for _way, _states in (("usb", ("unplugged", "nocomputer", "noanswer", "nodriver", "address",
-                               "noaddress", "browser", "nobrowser", "waits", "replug")),
-                      ("wifi", ("nonetwork", "browser", "nobrowser"))):
+for _way, _states in (("usb", ("unplugged", "taking", "opening", "nocomputer", "noanswer", "nodriver", "address",
+                               "noaddress", "browser", "nobrowser", "waits", "replug", "pin")),
+                      ("wifi", ("nonetwork", "browser", "nobrowser", "pin")),
+                      ("phone", ("browser", "pin"))):
     for _state in _states:
         EXTRA.setdefault("steps-%s-%s" % (_way, _state), ("demo", "PS1", ["--hare-steps", _way, _state]))
     # and the browser's hint with no name on the network (mDNS did not start)
     EXTRA.setdefault("steps-%s-nobrowser-noname" % _way, ("demo", "PS1", ["--hare-steps", _way, "nobrowser", "noname"]))
-# USB Device Connected (DESIGN.md 11.36): both tiles focused, and the
-# message after It's a Computer
-for _k in ("0", "1", "said"):
+    # the way in with a long address, for the fit (DESIGN.md 11.35)
+    EXTRA.setdefault("steps-%s-longaddr" % _way, ("demo", "PS1", ["--hare-steps", _way, "browser", "--hare-addr", "192.168.100.200"]))
+# the hotspot once someone came in: the news, network and PIN in the heading
+EXTRA.setdefault("hotspot-in", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "1 signed in", "Tobu Tobu Girl.gb", "--hotspot-in"]))
+# What did you plug in? (DESIGN.md 11.36): each row focused, and the
+# messages after Computer, after Phone and for an iPhone
+for _k in ("0", "1", "2", "said", "phone", "iphone"):
     EXTRA.setdefault("usb-power-" + _k, ("demo", "PS1", ["--usb-power", _k]))
 # MENU's USB rows (DESIGN.md 11.36): USB Device while a plug waits, with
 # the corner's USB mark; USB Accessories on Ask and on Automatic, and the
@@ -355,20 +379,69 @@ for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
+# ...on its Stylus row, which the Shader row (2026-11-12) put below the first
+# window of rows
+EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "8", "dual"]))
+# MENU's Shader when a system has its own (SHOT_SETTINGS below): "per system"
+EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
+
+# The README's shots' own settings, and these shots'
+SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"},
+                 "menu-saver-off": {"saver": "0"}}
+# The in-game menu's Shader at each old screen, so each name is drawn and fit
+for _s in ("crt", "crt-curved", "scanlines", "lcd"):
+    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
+    SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
+
+# MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
+# and its neighbours' beside it; Display on its Theme row, with its chips
+for _tab in range(6):
+    EXTRA.setdefault("menu-tab-%d" % _tab, ("demo", "PS1", ["--menu-tab", str(_tab), "--menu", "0"]))
+EXTRA.setdefault("menu-display-theme", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Theme"]))
+# Display's Screensaver at off: "off", a status's lowercase, now that the
+# switches say On and Off (menu.off, and scraper.off and ssh.off, its words)
+EXTRA.setdefault("menu-saver-off", ("demo", "PS1", ["--menu-tab", "1", "--menu", "Screensaver"]))
+# Display's Theme page (DESIGN.md 11.42) in each of the ten accents, the
+# tones going round in both themes and the corners turning over, so every
+# accent's, tone's and value's name is drawn; its foot, Zyper and Reset to
+# Default, both ways; and Auto Hours
+_TONES = (("warm", "black"), ("neutral", "deepblue"), ("cool", "darkgrey"))
+for _i, _acc in enumerate(("lime", "green", "teal", "blue", "purple", "pink", "red", "orange",
+                           "yellow", "silver")):
+    _lt, _dk = _TONES[_i % 3]
+    EXTRA.setdefault("theme-" + _acc, ("demo", "PS1", [
+        "--look", "%s,%s,%s,%s,on" % (_acc, _lt, _dk, "square" if _i % 2 else "rounded"),
+        "--look-page", "theme", "0"]))
+EXTRA.setdefault("theme-foot-on", ("demo", "PS1", ["--look-page", "theme", "5"]))
+EXTRA.setdefault("theme-foot-off", ("demo", "PS1", ["--look", "lime,warm,black,square,off",
+                                                    "--look-page", "theme", "5"]))
+EXTRA.setdefault("auto-hours", ("demo", "PS1", ["--look-page", "hours", "0"]))
 
 # The pop-ups the SELECT hotkeys put over a game (src/main.c, on_quick and
 # on_speed), each as it says: the slot saved, loaded, empty or failed, a game
 # whose core keeps no states, and the speed at a half step and a whole one;
-# and the ones over a game started fresh: a DS game in a new Game Language,
-# and a game whose resume the shelf's other core left
+# the ones over a game started fresh: a DS game in a new Game Language, and
+# a game whose resume the shelf's other core left; and NES Player 2's, a
+# friend's browser joining and leaving
 for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no_states", "dslang",
-              "corestate"):
+              "corestate", "stick_on", "stick_off", "player2_joined", "player2_left",
+              "player2_stopped"):
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
 # A Nintendo 64 game's in-game menu, with its Pak row (the shelf of a system
 # with a game in it: the card with one in every system)
 EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
+# NES Player 2 (src/p2.h): its page over a paused NES game in every state
+# (--player2), the code on the hotspot with nobody yet and its address under
+# it, a player connected, the cable, before A on each link, with neither
+# plugged in, after a failure, the hotspot's start, and the stop on each
+# link; and the in-game menu on its row, which says connected
+for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "failed", "starting",
+              "closing", "closing-cable"):
+    EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
+EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "6",
+                                                       "--player2", "connected"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
 # status file the update program writes it (src/sysupdate.c); the second is
@@ -411,8 +484,20 @@ PM_STATES = {
     "portmaster-space": ("state error\nversion 2026.06.23-0015\nerror space\nneed 108000000\n", "none"),
     "portmaster-unpack": ("state error\nversion 2026.06.23-0015\nerror unpack\n", "nonet"),
     "portmaster-release": ("state error\nerror release\n", "none"),
+    # Reinstall PortMaster: the offer from its details page, the page that
+    # says it closed with an error, at work, done, failed
+    "portmaster-reinstall": ("", "installed,repair"),
+    "portmaster-reinstall-failed": ("", "installed,failed"),
+    "portmaster-reinstalling": ("state downloading\nkind reinstall\nversion 2026.06.23-0015\n"
+                                "total 24121702\ndone 6100000\n", "installed,repair,running"),
+    "portmaster-reinstalled": ("state done\nkind reinstall\nversion 2026.06.23-0015\n", "installed,repair"),
+    "portmaster-reinstall-error": ("state error\nkind reinstall\nversion 2026.06.23-0015\nerror checksum\n",
+                                   "installed,repair"),
 }
 EXTRA.update({name: ("demo", "PS1", ["--portmaster", view]) for name, (_, view) in PM_STATES.items()})
+# PortMaster's details page (X on its entry) with PortMaster on the card:
+# its Reinstall PortMaster row, on a card of its own that has PortMaster
+EXTRA["portmaster-details"] = ("pmcard", "PRT", ["--screen", "games", "--info"])
 # (The Ports shelf with PortMaster's Install, and the page downloading, are
 # the README's, tools/readme-shots.py's ports and portmaster.)
 
@@ -455,15 +540,22 @@ def run_language(code, shots, binary, keep):
     with tempfile.TemporaryDirectory(prefix="zyperos-i18n-%s-" % code) as tmp:
         cards = {"demo": Path(tmp) / "demo", "empty": Path(tmp) / "empty", "scummvm": Path(tmp) / "scummvm",
                  "openbor": Path(tmp) / "openbor", "ports": Path(tmp) / "ports", "all": Path(tmp) / "all",
-                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media"}
+                 "portdocs": Path(tmp) / "portdocs", "media": Path(tmp) / "media",
+                 "pmcard": Path(tmp) / "pmcard", "psp": Path(tmp) / "psp", "es": Path(tmp) / "es"}
         R.demo_card(cards["demo"], None, {"artwork": {}})
         R.media_card(cards["media"])
+        R.es_card(cards["es"])
         R.ports_card(cards["ports"])
         R.portdocs_card(cards["portdocs"])
+        R.portdocs_card(cards["pmcard"])
+        (cards["pmcard"] / "Roms/Ports/PortMaster").mkdir()
+        (cards["pmcard"] / "Roms/Ports/PortMaster/pugwash").touch()
+        (cards["pmcard"] / "Roms/Ports/PortMaster/version").write_text("2026.11.12-1059\n")
         R.demo_card(cards["all"], None, {"artwork": {}})
         all_systems_card(cards["all"])
         R.scummvm_card(cards["scummvm"])
         R.openbor_card(cards["openbor"])
+        R.psp_card(cards["psp"])
         R.card_dirs(cards["empty"])
         out = (keep / code) if keep else Path(tmp) / "out"
         out.mkdir(parents=True, exist_ok=True)
@@ -501,8 +593,12 @@ def run_language(code, shots, binary, keep):
                 pm.mkdir(exist_ok=True)
                 (pm / "status").write_text(PM_STATES[name][0])
                 env["ZYPEROS_PM_STATUS"] = str(pm / "status")
+            # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
+            # is taken: the Shader row at its widest value
+            R.set_settings(card, SHOT_SETTINGS.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            R.set_settings(card, SHOT_SETTINGS.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])

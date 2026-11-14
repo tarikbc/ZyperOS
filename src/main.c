@@ -36,7 +36,9 @@
 #include "tween.h"
 #include "artshrink.h"
 #include "artbadge.h"
+#include "look.h"
 #include "artscrape.h"
+#include "taskhold.h"
 #include "favorites.h"
 #include "hare.h"
 #include "xfer.h"
@@ -47,6 +49,11 @@
 #include "emptyhome.h"
 #include "hotpanel.h"
 #include "captive.h"
+#include "p2.h"
+#include "p2panel.h"
+#include "p2share.h"
+#include "spawn.h"
+#include "webtheme.h"
 #include "devmode.h"
 #include "sshlink.h"
 #include "mdns.h"
@@ -54,11 +61,13 @@
 #include "keyhints_draw.h"
 #include "usblink.h"
 #include "usblog.h"
+#include "phonelink.h"
 #include "chargedark.h"
 #include "pace.h"
 #include "idle.h"
 #include "notice.h"
 #include "randgame.h"
+#include "saver.h"
 #include "osdbar.h"
 #include "rafetch.h"
 #include "noticeq.h"
@@ -127,6 +136,9 @@
 #include "powerscreens.h"
 #include "raqueue.h"
 #include "shelfbuild.h"
+#include "shelfdir.h"
+#include "esmedia.h"
+#include "gamern.h"
 #include "stats_screen.h"
 #include "zyperdraw.h"
 #include "zypermark.h"
@@ -291,15 +303,57 @@ static const ds_rgb DIATOM_PAGE = { 0, 0, 0 };
 
 /* ---------- per-system display mode --------------------------------------- */
 
+/* MENU's shader, every system's that has not chosen its own (SHADERS) */
+static int g_shader_all;
+
+/* A shader by Diatom's name for it (SHADERS), or -1 */
+static int shader_index(const char *name)
+{
+	int k;
+
+	for (k = 0; k < SHADER_COUNT; k++)
+		if (!strcmp(SHADERS[k].name, name)) return k;
+	return -1;
+}
+
+/* Whether this device offers shader k: the old screens only where Diatom
+ * draws them with a GPU (plat_gpu_shaders) */
+static bool shader_offered(int k)
+{
+	return k >= 0 && k < SHADER_COUNT && (!SHADERS[k].gpu || plat_gpu_shaders());
+}
+
+/* The shader a step `d` comes to from k, round the ones this device offers:
+ * each Shader row steps with it */
+static int shader_step(int k, int d)
+{
+	int i;
+
+	for (i = 0; i < SHADER_COUNT; i++) {
+		k = (k + d + SHADER_COUNT) % SHADER_COUNT;
+		if (shader_offered(k)) break;
+	}
+	return k;
+}
+
 /* Keyed on the system's tag rather than its folder or its place in the list,
  * for the same reason saves are: renaming a ROM folder or reordering
- * systems.cfg then cannot quietly hand a system somebody else's setting. */
+ * systems.cfg then cannot quietly hand a system somebody else's setting.
+ * The shaders too, each system's: its own shader.<TAG>, else MENU's
+ * `shader`, else Off. */
 void display_load(app *a)
 {
 	char key[CFG_STR + 16], name[CFG_STR];
 	int i, k;
 
+	g_shader_all = 0;
+	if (db_get_str(db_dev(), "shader", name, sizeof name, NULL) && (k = shader_index(name)) >= 0)
+		g_shader_all = k;
 	for (i = 0; i < a->sys.count; i++) {
+		snprintf(key, sizeof key, "shader.%s", a->sys.systems[i].tag);
+		a->view[i].shader = g_shader_all;
+		if (db_get_str(db_dev(), key, name, sizeof name, NULL) && (k = shader_index(name)) >= 0)
+			a->view[i].shader = k;
 		snprintf(key, sizeof key, "display.%s", a->sys.systems[i].tag);
 		if (!db_get_str(db_dev(), key, name, sizeof name, NULL)) continue;
 		for (k = 0; k < DMODE_COUNT; k++)
@@ -328,6 +382,59 @@ static void display_save(app *a)
 		snprintf(key, sizeof key, "display.%s", a->sys.systems[i].tag);
 		db_set_str(db_dev(), key, DMODES[a->view[i].dmode].name);
 	}
+}
+
+/* ---------- the shader ------------------------------------------------------ */
+
+/* System `sys`'s own shader, kept the moment it changes, as its display mode
+ * is: the system menu's row and the in-game menu's. */
+static void shader_save(app *a, int sys)
+{
+	char key[CFG_STR + 16];
+
+	snprintf(key, sizeof key, "shader.%s", a->sys.systems[sys].tag);
+	db_set_str(db_dev(), key, SHADERS[a->view[sys].shader].name);
+}
+
+/* Every key a system's own shader is kept under, gathered before any goes:
+ * a walk is not the place to delete what it walks */
+typedef struct { char key[CFG_MAX_SYSTEMS * 2][CFG_STR + 16]; int n; } shader_keys;
+
+static bool shader_key_note(const char *key, const char *value, void *ctx)
+{
+	shader_keys *k = ctx;
+
+	(void)value;
+	if (k->n >= (int)(sizeof k->key / sizeof k->key[0])) return false;
+	snprintf(k->key[k->n++], sizeof k->key[0], "%s", key);
+	return true;
+}
+
+/* MENU's row: shader `k` for every system, those whose games are off the card
+ * now too, so each system's own choice goes and the next game of any of them
+ * plays with it. */
+static void shader_set_all(app *a, int k)
+{
+	static shader_keys keys;
+	int i;
+
+	g_shader_all = k;
+	db_set_str(db_dev(), "shader", SHADERS[k].name);
+	keys.n = 0;
+	db_each_prefix(db_dev(), "shader.", shader_key_note, &keys);
+	for (i = 0; i < keys.n; i++) db_del(db_dev(), keys.key[i]);
+	for (i = 0; i < a->sys.count; i++) a->view[i].shader = k;
+}
+
+/* What MENU's row says: the shader every system has, or "per system" when one
+ * of them chose another in its own menu or in a game */
+static const char *shader_all_label(const app *a)
+{
+	int i;
+
+	for (i = 0; i < a->sys.count; i++)
+		if (a->view[i].shader != g_shader_all) return T(S_GAMEMENU_SHADER_MIXED);
+	return shader_label(g_shader_all);
 }
 
 /* ---------- per-system core ----------------------------------------------- */
@@ -606,6 +713,7 @@ static void quick_slot_put(const char *tag, int slot)
 static struct {
 	char tag[CFG_STR];
 	char name[CFG_STR];
+	char file[LIB_PATH];  /* the game's, for what is kept per game (stick_put) */
 	char stem[LIB_PATH * 2];
 	bool states;
 	int  asked;
@@ -664,6 +772,41 @@ static void pak_put(const char *tag, const char *file, const char *value)
 	db_set_str(db_lib(), key, gm_pak_value(value));
 }
 
+/* ---------- the PSP's d-pad: the d-pad, or the analog stick ----------------
+ *
+ * The handheld has no stick, and a PSP game moves with its analog stick or
+ * with its d-pad, game by game. A system with stick|tag|toggle
+ * (config/systems.cfg, the PSP's) starts a game with the d-pad as the d-pad,
+ * and R2 turns it into the left stick and back (Diatom's RUN stick=toggle),
+ * as the Pixel 2's own firmware and Deadstation Portable do it. The side a
+ * game was left on is kept for that game, so a game that moves with the
+ * stick starts with it the next time. */
+static bool stick_toggles(const system_cfg *s)
+{
+	return s && !strcmp(s->stick, "toggle");
+}
+
+static void stick_key(const char *tag, const char *file, char *out, size_t n)
+{
+	snprintf(out, n, "stick.%s.%s", tag ? tag : "", file ? file : "");
+}
+
+static bool stick_get(const char *tag, const char *file)
+{
+	char key[CFG_STR + LIB_PATH + 8], v[4];
+
+	stick_key(tag, file, key, sizeof key);
+	return db_get_str(db_lib(), key, v, sizeof v, NULL) && v[0] == '1';
+}
+
+static void stick_put(const char *tag, const char *file, bool on)
+{
+	char key[CFG_STR + LIB_PATH + 8];
+
+	stick_key(tag, file, key, sizeof key);
+	db_set_str(db_lib(), key, on ? "1" : "0");
+}
+
 /* ---------- per-system sort order ----------------------------------------- */
 
 /* Keyed on the tag for the same reason display.<TAG> is, and stored beside it.
@@ -683,6 +826,45 @@ void sort_load(app *a)
 		a->view[i].sort = is_muse(&a->sys.systems[i]) ? (int)ml_order_index(name)
 		                                              : sort_index(name);
 	}
+}
+
+/* MENU > View, per shelf like Sort By: "list" or none (the covers), kept
+ * in the device's database by the system's tag (DESIGN.md 11.39) */
+bool view_listed(const char *tag)
+{
+	char key[CFG_STR + 16], v[16];
+
+	snprintf(key, sizeof key, "view.%s", tag);
+	return db_get_str(db_dev(), key, v, sizeof v, NULL) && !strcmp(v, "list");
+}
+
+void view_load(app *a)
+{
+	for (int i = 0; i < a->sys.count; i++) {
+		a->view[i].listed = view_listed(a->sys.systems[i].tag);
+		a->view[i].lm.set = false;
+	}
+}
+
+static void view_save(app *a, int sys)
+{
+	char key[CFG_STR + 16];
+
+	snprintf(key, sizeof key, "view.%s", a->sys.systems[sys].tag);
+	db_set_str(db_dev(), key, a->view[sys].listed ? "list" : "covers");
+}
+
+/* View turned over on shelf `sys`: covers to the list or back, saved, the
+ * shelf on the same entry. MENU's View row and START on the shelf both. */
+static void view_turn(app *a, int sys)
+{
+	sysview *v = &a->view[sys];
+
+	v->listed = !v->listed;
+	v->lm.set = false;
+	view_save(a, sys);
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
 }
 
 static void sort_save(app *a)
@@ -724,11 +906,11 @@ void sort_shelf(app *a, int sys)
 	/* The added times this order reads, each game's from its own system's
 	 * folder (Favorites' from its owner's), where the scan left them unknown */
 	if (sort_needs_added(v->sort))
-		for (int i = 0; i < v->list.count; i++)
+		for (int i = v->nfold; i < v->list.count; i++)
 			if (v->list.items[i].added == LIB_ADDED_UNKNOWN)
 				v->list.items[i].added = lib_added(P_ROMS,
 					a->sys.systems[v->owner ? v->owner[i] : sys].folder,
-					v->list.items[i].file);
+					v->list.items[i].file, v->list.items[i].dir);
 	if (v->owner) {
 		const char *tags[CFG_MAX_SYSTEMS];
 		int i;
@@ -738,7 +920,10 @@ void sort_shelf(app *a, int sys)
 		sort_apply_owned(v->list.items, v->owner, v->list.count, v->sort, tags);
 		return;
 	}
-	sort_apply(v->list.items, v->list.count, v->sort, a->sys.systems[sys].tag);
+	/* A shelf's folders stay first, A to Z (src/shelfdir.h): the order is
+	 * its games' */
+	sort_apply(v->list.items + v->nfold, v->list.count - v->nfold, v->sort,
+	           a->sys.systems[sys].tag);
 }
 
 void sort_all(app *a)
@@ -1213,12 +1398,15 @@ static const char *slot_name(int slot)
 /* The name a game's states and previews go by: its file's, which for a disc
  * game in a folder is the disc's ("Game (Disc 1).chd"). On a hooked shelf the
  * folder is the game and the file is whatever it held first - readme.txt for
- * two different ScummVM games - so the folder's name. */
+ * two different ScummVM games - so the folder's name. And so for a PSN game:
+ * a folder holding EBOOT.PBP, the same name in every such game's folder (a
+ * PSP game's, a PlayStation classic's), whose states would all be one. */
 static const char *persist_base(app *a, int s, const game_entry *g)
 {
 	const char *base = strrchr(g->file, '/');
 
-	if (base && lib_shelf_hooked(a->sys.systems[s].exts)) return g->name;
+	if (base && (lib_shelf_hooked(a->sys.systems[s].exts) || !strcasecmp(base + 1, "EBOOT.PBP")))
+		return g->name;
 	return base ? base + 1 : g->file;
 }
 
@@ -1287,6 +1475,7 @@ static void quick_bind(app *a, int s, const game_entry *g)
 	memset(&g_quick, 0, sizeof g_quick);
 	snprintf(g_quick.tag, sizeof g_quick.tag, "%s", sc->tag);
 	snprintf(g_quick.name, sizeof g_quick.name, "%s", sc->name);
+	snprintf(g_quick.file, sizeof g_quick.file, "%s", g->file);
 	snprintf(g_quick.stem, sizeof g_quick.stem, "%s/.zyperos/%s/%s",
 	         P_SHARED, sc->folder, persist_base(a, s, g));
 	g_quick.states = ctl_has_states(sc->tag);
@@ -1383,6 +1572,72 @@ static bool has_box_art(const char *folder, const char *name)
 	return stat(p, &st) == 0 && st.st_size > 0;
 }
 
+/* EmulationStation's picture for a game with no box art of its own
+ * (src/esmedia.h), as the cover worker's second file: the key is the game's
+ * folder, file and name, a tab between, found on the worker (TEXLOAD_LATE),
+ * where the folder's gamelist.xml may be read the first time */
+static void es_cover_key(const char *folder, const game_entry *g, char *out, size_t n)
+{
+	snprintf(out, n, "%s%s\t%s\t%s", TEXLOAD_LATE, folder, g->file, g->name);
+}
+
+/* The folder a computer's file names (--meta, --titles: systems.cfg's, as
+ * tools/scrape-art.py writes them) as the card's shelf reads it: an
+ * EmulationStation folder where that shelf reads one (DESIGN.md 11.40).
+ * The card is read for it once. */
+static const char *card_folder(const char *folder)
+{
+	static systems_cfg cfg;
+	static bool read;
+	static char out[CFG_STR];
+
+	if (!read) {
+		char path[CFG_STR * 2];
+
+		read = true;
+		snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
+		if (cfg_load_systems(path, &cfg)) shelf_folders_from_card(&cfg);
+	}
+	for (int i = 0; i < cfg.count; i++)
+		if (!strcmp(cfg.systems[i].home, folder)) {
+			snprintf(out, sizeof out, "%s", cfg.systems[i].folder);
+			return out;
+		}
+	return folder;
+}
+
+/* Box Art's question (art_es_media): `dir` is Roms/<folder> */
+static bool es_art_has(const char *dir, const char *file, const char *stem, es_kind kind)
+{
+	char roms[LIB_PATH * 2], p[ES_PATH];
+	const char *slash = strrchr(dir, '/');
+
+	if (!slash) return false;
+	snprintf(roms, sizeof roms, "%.*s", (int)(slash - dir), dir);
+	return es_media(roms, slash + 1, file, stem, kind, true, p, sizeof p);
+}
+
+static bool es_art_cover(const char *dir, const char *file, const char *stem)
+{
+	return es_art_has(dir, file, stem, ES_COVER);
+}
+
+static bool es_art_video(const char *dir, const char *file, const char *stem)
+{
+	return es_art_has(dir, file, stem, ES_VIDEO);
+}
+
+static bool es_cover_late(const char *key, char *path, size_t n)
+{
+	char k[LIB_PATH * 3], *file, *name;
+
+	snprintf(k, sizeof k, "%s", key);
+	if (!(file = strchr(k, '\t')) || !(name = strchr(file + 1, '\t'))) return false;
+	*file++ = '\0';
+	*name++ = '\0';
+	return es_media(P_ROMS, k, file, name, ES_COVER, true, path, n);
+}
+
 /* Whether game `i`'s slot on a shelf wants a card: it has none, or it holds a
  * generated card made for the theme that was, which stays on the shelf until
  * its replacement comes (theme_changed). Box art is no theme's and never is
@@ -1410,6 +1665,19 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 
 	if (is_muse(&a->sys.systems[s]) && game_card_wanted(v, i)) {
 		muse_card_want(a, s, i);
+	} else if (game_card_wanted(v, i) && v->list.items[i].folder) {
+		/* A folder on the shelf (src/shelfdir.h): its own card, no art */
+		ui_card_order card;
+
+		ui_card_order_folder(&card, v->list.items[i].title, a->sys.systems[o].accent,
+		                     v->list.items[i].folder);
+		if (!texload_want_or_draw(s, i, NULL, NULL, &card) && !g_loads_held) {
+			if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
+			v->tex[i] = ui_make_folder_card(a->r, v->list.items[i].title,
+			                                a->sys.systems[o].accent,
+			                                v->list.items[i].folder, &v->tw[i], &v->th[i]);
+			v->cb[i] = 1.0f;
+		}
 	} else if (game_card_wanted(v, i) &&
 	           pm_cover_path(a, o, &v->list.items[i], theme_index(), pm, sizeof pm)) {
 		/* PortMaster's own cover, in the theme that is on, made a card of
@@ -1431,8 +1699,12 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 		char art[LIB_PATH * 3];
 		ui_card_order card;
 
+		char es[LIB_PATH * 3];
+
 		box_art_path(a->sys.systems[o].folder, v->list.items[i].name,
 		             art, sizeof art);
+		/* and EmulationStation's, for a game with none of its own */
+		es_cover_key(a->sys.systems[o].folder, &v->list.items[i], es, sizeof es);
 		/* Hand it to the worker and draw what the slot holds this frame:
 		 * nothing, or the card of the theme that was until its replacement
 		 * lands (theme_changed). Asking is cheap and ignores a card already
@@ -1440,13 +1712,15 @@ SDL_Texture *game_get_tex(void *ctx, int i, int *w, int *h, float *cb)
 		 * there is no box art, so that is the worker's to draw as well. */
 		ui_card_order_set(&card, v->list.items[i].title,
 		                  a->sys.systems[o].accent, false);
-		bool asked = texload_want_or_draw(s, i, art, NULL, &card);
+		bool asked = texload_want_or_draw(s, i, art, es, &card);
 
 		if (!asked && !g_loads_held) {
 			/* No worker. Exactly what this did before, on the frame, over
 			 * the card of the theme that was if there is one. */
 			if (v->tex[i]) SDL_DestroyTexture(v->tex[i]);
 			v->tex[i] = load_image(a->r, art, &v->tw[i], &v->th[i], &v->cb[i]);
+			if (!v->tex[i] && es_cover_late(es + 1, es, sizeof es))
+				v->tex[i] = load_image(a->r, es, &v->tw[i], &v->th[i], &v->cb[i]);
 			if (!v->tex[i])
 				v->tex[i] = ui_make_card(a->r, v->list.items[i].title,
 				                         a->sys.systems[o].accent,
@@ -1523,6 +1797,10 @@ static void shelf_put(void *ctx, texload_got *g)
 		v->tex[i] = is_muse(&a->sys.systems[s])
 		          ? ui_make_cover(a->r, v->list.items[i].title,
 		                          a->sys.systems[o].accent, &v->tw[i], &v->th[i])
+		          : v->list.items[i].folder
+		          ? ui_make_folder_card(a->r, v->list.items[i].title,
+		                                a->sys.systems[o].accent, v->list.items[i].folder,
+		                                &v->tw[i], &v->th[i])
 		          : ui_make_card(a->r, v->list.items[i].title,
 		                         a->sys.systems[o].accent,
 		                         &v->tw[i], &v->th[i]);
@@ -1638,6 +1916,61 @@ static void free_view_textures(sysview *v)
 	}
 }
 
+/* ---- folders on a shelf (src/shelfdir.h) ---- */
+
+/* The list view's pixel folder (folder_icon, with draw_games) */
+static SDL_Texture *g_folder_icon;
+
+void shelf_open_dir(app *a, int s, const char *dir, const char *select)
+{
+	sysview *v = &a->view[s];
+	int i;
+
+	if (!v->all) return;
+	texload_bump();
+	shelf_show_dir(v, dir);
+	sort_shelf(a, s);
+	v->cursor = 0;
+	for (i = 0; select && i < v->list.count; i++)
+		if (!strcmp(v->list.items[i].file, select)) { v->cursor = i; break; }
+	v->lm.set = false;                   /* the list finds its window again */
+	cf_reset(&v->cf, v->cursor);
+	games_reset(&v->row, v->cursor, v->list.count, plat_now_ms());
+}
+
+void shelf_reveal(app *a, int s, const char *file)
+{
+	sysview *v = &a->view[s];
+	char dir[LIB_PATH];
+	int k;
+
+	if (v->all && (k = lib_find_entry(v->all, NULL, 0, file)) >= 0) {
+		sd_dir_of(&v->all->items[k], dir, sizeof dir);
+		if (strcmp(dir, v->dir)) { shelf_open_dir(a, s, dir, file); return; }
+	}
+	if ((k = lib_find_entry(&v->list, NULL, 0, file)) >= 0) v->cursor = k;
+}
+
+/* The folder on the shelf under the cursor, opened (A), or the shelf's own
+ * folder left for the one it is in (B), its cursor on the folder it left */
+static void shelf_into(app *a, sysview *v)
+{
+	char dir[LIB_PATH];
+
+	snprintf(dir, sizeof dir, "%s", v->list.items[v->cursor].file);
+	fprintf(stderr, "shelf: into %s/%s\n", a->sys.systems[a->sys_cursor].folder, dir);
+	shelf_open_dir(a, a->sys_cursor, dir, NULL);
+}
+
+static void shelf_up(app *a, sysview *v)
+{
+	char was[LIB_PATH], up[LIB_PATH];
+
+	snprintf(was, sizeof was, "%s", v->dir);
+	sd_parent(was, up, sizeof up);
+	shelf_open_dir(a, a->sys_cursor, up, was);
+}
+
 /* Muse's shelf onto another kind: all of them, music, books or videos, from
  * the first card. The textures go first, while the count is still the old
  * kind's, since every card is about to be a different album. */
@@ -1665,6 +1998,7 @@ void free_all_textures(app *a)
 	 * g_np.tex would dangle, and np_cover, which sees it made, would draw it.
 	 * Forgotten, np_cover makes it again on the frame that next draws it. */
 	np_forget();
+	if (g_folder_icon) { SDL_DestroyTexture(g_folder_icon); g_folder_icon = NULL; }
 	for (int i = 0; i < a->sys.count; i++) {
 		for (int k = 0; k < a->view[i].list.count; k++)
 			if (a->view[i].tex[k]) {
@@ -1720,6 +2054,23 @@ static int auto_off_load(void)
 static void auto_off_save(int seconds)
 {
 	db_set_int(db_dev(), "autooff", seconds);
+}
+
+/* MENU > Screensaver (src/saver.h): the seconds with nothing pressed on the
+ * shelf before the video snaps play, 0 for never. Stepped round on Auto Off's
+ * ladder (saver_step); a minute to start with. */
+static int g_saver_s = SAVER_DEFAULT_S;
+
+static int saver_load(void)
+{
+	int v = db_get_int(db_dev(), "saver", -1);
+
+	return v >= 0 ? v : SAVER_DEFAULT_S;
+}
+
+static void saver_save(int seconds)
+{
+	db_set_int(db_dev(), "saver", seconds);
 }
 
 /* MENU > Charge Limit (DESIGN.md 11.26; my picks in the charge limit
@@ -1951,6 +2302,9 @@ static void on_game_tick(void)
 	/* A computer on the cable that has not connected: said over the game
 	 * too, until the cable comes out (DESIGN.md 11.36) */
 	replug_game_tick();
+	/* NES Player 2 (src/p2.h): the hotspot coming up and p2d after it, and
+	 * a friend joining or leaving said over the game. Bounded. */
+	p2_tick(plat_now_ms());
 	/* The chip's temperature, every HEAT_POLL_MS; "Getting hot" over the
 	 * game when it passes the trip, ahead of any pop-up waiting */
 	heat_tick();
@@ -1962,7 +2316,11 @@ static void on_game_tick(void)
 	 * file when the theme changes and draws nothing, and it looks at the
 	 * clock once a minute, so it costs a compare here. The screens are told
 	 * by the next one that asks, through tick_theme: g_theme_late. */
-	if (theme_tick()) g_theme_late = true;
+	if (theme_tick()) {
+		g_theme_late = true;
+		/* and NES Player 2's page, for its next load */
+		p2_theme_changed();
+	}
 	/* The low-battery disc over the game, which Diatom draws as this process
 	 * can draw nothing while a game runs, blinking when critical. Sent only
 	 * on a change; the level is read every five seconds. */
@@ -1989,11 +2347,11 @@ static void on_game_tick(void)
 	g_game_ticking = false;
 	aout_retry_in_game();
 
-	/* Held on the charger, and while an update downloads or installs
-	 * behind the game (2026-11-11: Auto Off powered the Pixel down in the
-	 * middle of one) */
+	/* Held on the charger, and while a long task runs behind the game: the
+	 * same answer every screen gets (idle_held; 2026-11-11: Auto Off
+	 * powered the Pixel down in the middle of an update) */
 	if (g_idle_secs > 0) {
-		bool ch = on_charger() || up_working();
+		bool ch = idle_held();
 
 		if (ch != g_idle_charging) {
 			g_idle_charging = ch;
@@ -2033,7 +2391,12 @@ static void on_game_tick(void)
 	 * lookup answered and then thrown away. */
 	rc = ra_fetch_step();
 	if (rc == 0) return;                        /* still working */
-	if (rc < 0) { g_pending_set[0] = '\0'; return; }  /* RA has never seen it */
+	/* RA has nothing for this ROM: said so on its Achievements rows, "none"
+	 * rather than "not checked yet" (chv_state_of). A fetch that failed
+	 * says nothing, and the next launch with a network asks again. */
+	if (rc == RA_FETCH_NOTHING) chv_none_mark(g_pending_set, true);
+	if (rc < 0) { g_pending_set[0] = '\0'; return; }
+	chv_none_mark(g_pending_set, false);        /* a set now: it has one */
 
 	/* A FETCH CAN OUTLIVE THE GAME IT WAS FOR, and handing over the wrong set
 	 * is not a cosmetic mistake. This runs on the game tick, so the game that
@@ -2100,7 +2463,8 @@ static noticeq g_nq;
 static unsigned notice_look(nq_kind kind)
 {
 	switch (kind) {
-	case NQ_UNLOCK:   return NOTICE_ICON | NOTICE_ZYPER;
+	/* Zyper at its end unless the look has him off (DESIGN.md 3.5) */
+	case NQ_UNLOCK:   return NOTICE_ICON | (look_zyper_off() ? 0 : NOTICE_ZYPER);
 	case NQ_PROGRESS: return NOTICE_ICON;
 	default:          return 0;
 	}
@@ -2166,7 +2530,11 @@ static void on_cheevo_unlocked(int id)
 	const cheevo *c = NULL;
 	int i;
 
-	if (!chv_note_unlock(id)) return;
+	/* Recorded with when it was earned, in which mode (softcore, the only
+	 * one), with the ROM's hash from the set (chv_note_unlock_at), and
+	 * whether there was a network: an unlock earned offline is shown here
+	 * the same as any other, and sent when one is back (ra_flush_watch). */
+	if (!chv_note_unlock_at(id, (long)time(NULL), false, !net_online())) return;
 
 	/* Written through immediately rather than at exit. A game ends by power
 	 * button as often as by menu, and an achievement lost to a flat battery is
@@ -2254,6 +2622,15 @@ static void on_speed(int half)
 	if (half % 2) snprintf(body, sizeof body, T(S_POPUP_SPEED_HALF), half / 2);
 	else          snprintf(body, sizeof body, T(S_POPUP_SPEED_WHOLE), half / 2);
 	popup_now(T(S_POPUP_SPEED), body);
+}
+
+/* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
+ * into the analog stick (on) or back: said over the game, and kept for the
+ * game (stick_put) */
+static void on_stick(bool on)
+{
+	popup_now(T(S_POPUP_STICK), T(on ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
+	if (g_quick.tag[0] && g_quick.file[0]) stick_put(g_quick.tag, g_quick.file, on);
 }
 
 /* Called from inside plat_resident_wait for the quick slot (platform.h's
@@ -3007,13 +3384,21 @@ static void xs_tick_behind(app *a);
 
 bool tick_theme(app *a)
 {
+	bool turned;
+
 	xs_tick_behind(a);
 	dev_ssh_tick();
+	/* NES Player 2's, in the screens over a paused game (its page, the
+	 * in-game menu): on with the game, nothing on the shelf */
+	p2_tick(plat_now_ms());
 	if (!g_ctl_shelf_pass) ctl_poll(a, CTL_AT_SCREEN);
 	tick_update_trial();
 	tick_boot_theme();
 	tick_update_daily(false);
-	if (!theme_tick() && !g_theme_late) return false;
+	turned = theme_tick();
+	if (!turned && !g_theme_late) return false;
+	/* A turn the game's tick saw is on Player 2's page already */
+	if (turned) p2_theme_changed();
 	theme_changed(a);
 	return true;
 }
@@ -3075,7 +3460,7 @@ static void draw_systems(app *a)
 		snprintf(line, sizeof line, "%s%s%s%s%s", al, al[0] && bk[0] ? sep : "", bk,
 		         (al[0] || bk[0]) && vd[0] ? sep : "", vd);
 	} else {
-		int gc = a->view[a->sys_cursor].list.count;
+		int gc = sys_games(&a->view[a->sys_cursor])->count;
 
 		/* A shelf of one read "1 games". Favorites hits it first because it
 		 * starts empty and grows one at a time, but any system with a single
@@ -3425,6 +3810,8 @@ static void game_page_facts(app *a, bool settled)
 	if (v->list.count <= 0) { g_game_page.valid = false; return; }
 	game_entry *g = &v->list.items[v->cursor];
 	unsigned now = plat_now_ms();
+	/* A folder (src/shelfdir.h) has no play time, state or achievements */
+	if (g->folder) { g_game_page.valid = false; return; }
 	bool same = g_game_page.sys == a->sys_cursor && g_game_page.cursor == v->cursor &&
 	            !strcmp(g_game_page.file, g->file);
 	if (!same || now - g_game_page.seen > 250) g_game_page.valid = false;
@@ -3466,7 +3853,10 @@ static int       g_snap_vol;              /* and the sound it was asked with */
 /* A sound the next ask takes in place of the setting's, -1 for the setting:
  * the Cover and Video page's picture plays muted, Watch at full */
 static int       g_snap_force_vol = -1;
-static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; } g_snap_focus;
+/* `es_wait`: the game's folder had no EmulationStation index yet when its
+ * file was worked out (src/esmedia.h), so it is worked out again once there
+ * is one - the covers' worker builds it, a moment after the shelf asks */
+static struct { int sys, cursor; char file[LIB_PATH], path[LIB_PATH * 2]; bool es_wait; } g_snap_focus;
 
 /* Its sound as set, and none while Muse plays somebody's music. Read when a
  * snap is asked for: on every frame it was two settings reads from the
@@ -3533,18 +3923,28 @@ static void shelf_snap(app *a, sysview *v, const game_entry *g, int owner, bool 
 		g_snap_focus.sys = -1;
 		g_snap_focus.path[0] = '\0';
 	} else if (g_snap_focus.sys != a->sys_cursor || g_snap_focus.cursor != v->cursor ||
-	           strcmp(g_snap_focus.file, g->file)) {
+	           strcmp(g_snap_focus.file, g->file) ||
+	           (g_snap_focus.es_wait && es_ready(a->sys.systems[owner].folder))) {
 		const char *folder = a->sys.systems[owner].folder;
 		struct stat st;
+		bool on = snaps_play() && folder[0] && snaps_console_on(folder);
 
 		g_snap_focus.sys = a->sys_cursor;
 		g_snap_focus.cursor = v->cursor;
 		snprintf(g_snap_focus.file, sizeof g_snap_focus.file, "%s", g->file);
 		g_snap_focus.path[0] = '\0';
-		if (snaps_play() && folder[0] && snaps_console_on(folder) &&
+		g_snap_focus.es_wait = false;
+		if (on &&
 		    snaps_path(P_ROMS, folder, g->name, g_snap_focus.path, sizeof g_snap_focus.path) &&
 		    (stat(g_snap_focus.path, &st) != 0 || st.st_size <= 0))
 			g_snap_focus.path[0] = '\0';
+		/* No snap of its own: EmulationStation's video, if its folder has
+		 * one (src/esmedia.h). Not built on the frame: asked again once
+		 * the covers' worker has built the folder's index. */
+		if (on && !g_snap_focus.path[0] &&
+		    !es_media(P_ROMS, folder, g->file, g->name, ES_VIDEO, false,
+		              g_snap_focus.path, sizeof g_snap_focus.path))
+			g_snap_focus.es_wait = !es_ready(folder);
 	}
 	req = snapshelf_step(&g_snap_shelf, g ? g_snap_focus.path : "", front,
 	                     snapv_texture(NULL, NULL, NULL) != NULL, now, &hold, &k);
@@ -3672,14 +4072,85 @@ static bool game_has_snap(void *ctx, int i)
 	const char *folder, *name;
 	int owner;
 
-	if (i < 0 || i >= v->list.count) return false;
+	if (i < 0 || i >= v->list.count || v->list.items[i].folder) return false;
 	owner = shelf_owner(a, a->sys_cursor, i);
 	folder = a->sys.systems[owner].folder;
 	if (!folder[0] || is_muse(&a->sys.systems[owner])) return false;
 	s = snap_names_for(folder);
 	name = v->list.items[i].name;
-	return s->on && s->n &&
-	       bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp);
+	if (!s->on) return false;
+	return (s->n && bsearch(&name, s->stems, (size_t)s->n, sizeof *s->stems, snap_name_cmp)) ||
+	       es_has_video(folder, v->list.items[i].file, name);
+}
+
+/* The heading of a shelf: its system, and on a folder of its games the
+ * folders down to it, "Game Boy Advance / Rom Hacks / Pokemon" */
+static void shelf_heading(const system_cfg *s, const sysview *v, char *out, size_t n)
+{
+	const char *p = v->dir;
+	size_t at = (size_t)snprintf(out, n, "%s", s->name);
+
+	while (*p && at < n) {
+		const char *slash = strchr(p, '/');
+		int len = slash ? (int)(slash - p) : (int)strlen(p);
+		int k = snprintf(out + at, n - at, " / %.*s", len, p);
+
+		if (k < 0) break;
+		at += (size_t)k;
+		p += len + (slash ? 1 : 0);
+	}
+}
+
+/* The list view's rows (src/gamelist.h), from the shelf on screen */
+static const char *list_title(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count ? v->list.items[i].title : "";
+}
+
+static int list_folder(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count ? v->list.items[i].folder : 0;
+}
+
+static unsigned list_accent(void *ctx, int i)
+{
+	app *a = ctx;
+
+	return a->sys.systems[shelf_owner(a, a->sys_cursor, i)].accent;
+}
+
+static bool list_fav(void *ctx, int i)
+{
+	app *a = ctx;
+	sysview *v = &a->view[a->sys_cursor];
+
+	return i >= 0 && i < v->list.count && !v->list.items[i].folder &&
+	       fav_is(a->sys.systems[a->sys_cursor].tag, v->list.items[i].file);
+}
+
+/* The pixel folder the list's rows draw (src/folderart.h), in the shelf's
+ * color, made again when the color or the theme changes; nearest so
+ * its pixels stay whole; let go with every other texture (free_all_textures) */
+static unsigned g_folder_icon_rgb;
+static int g_folder_icon_theme = -1;
+
+static SDL_Texture *folder_icon(app *a, unsigned rgb)
+{
+	int w, h;
+
+	if (g_folder_icon && g_folder_icon_rgb == rgb && g_folder_icon_theme == theme_index())
+		return g_folder_icon;
+	if (g_folder_icon) SDL_DestroyTexture(g_folder_icon);
+	g_folder_icon = ui_make_folder_icon(a->r, rgb, &w, &h);
+	g_folder_icon_rgb = rgb;
+	g_folder_icon_theme = theme_index();
+	return g_folder_icon;
 }
 
 static void draw_games(app *a)
@@ -3688,12 +4159,53 @@ static void draw_games(app *a)
 	const system_cfg *s = &a->sys.systems[a->sys_cursor];
 	if (is_muse(s)) { snap_off(); draw_albums(a); return; }
 	unsigned now = g_games_phase >= 0 ? v->row.moved + g_games_phase : plat_now_ms();
+	char head[LIB_PATH + CFG_STR + 64];
+
+	shelf_heading(s, v, head, sizeof head);
+	if (v->listed) {
+		/* MENU > View > List (DESIGN.md 11.39): the focused game's video
+		 * snap plays in its cover's place on the panel, as on the cover row
+		 * (2026-11-13: "the list mode should also play the video preview"),
+		 * when the list has stopped on it */
+		const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
+		int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
+		bool settled = !gl_moving(&v->lm, now);
+		games_info si = { 0 };
+		gl_info li;
+		unsigned wait;
+
+		game_page_facts(a, settled);
+		shelf_snap(a, v, g && !g->folder ? g : NULL, owner, settled, &si);
+		li = (gl_info){
+			.heading = head, .count = v->list.count, .cursor = v->cursor,
+			.accent = s->accent, .accent_of = v->owner ? list_accent : NULL,
+			.title_of = list_title, .folder_of = list_folder,
+			.fav_of = v->owner || is_muse(s) ? NULL : list_fav,
+			.folder_icon = v->nfold ? folder_icon(a, s->accent) : NULL,
+			.played = g_game_page.valid ? g_game_page.played : "",
+			.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
+			.has_achievements = g_game_page.valid && g_game_page.achievements,
+			.resumable = g_game_page.valid && g_game_page.resume,
+			.install = pm_is_offer(a, owner, g),
+			.inside = v->dir[0] != '\0',
+			.earned = g_game_page.earned, .total = g_game_page.total,
+			.snap = si.snap, .snap_w = si.snap_w, .snap_h = si.snap_h,
+			.snap_src = si.snap_src, .snap_k = si.snap_k, .snap_wait = si.snap_wait,
+			.has_snap = g && game_has_snap(a, v->cursor),
+		};
+		wait = gl_draw(&v->lm, a->r, &li, game_get_tex, a, now, title_phase(a));
+		if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
+		evict_far(v, TEX_KEEP_NEAR);
+		g_title_caps = (SDL_Rect){ 0, 0, 0, 0 };
+		return;
+	}
 	games_select(&v->row, v->cursor, v->list.count, 0, now);
 	game_page_facts(a, !games_moving(&v->row, now));
 	const game_entry *g = v->list.count ? &v->list.items[v->cursor] : NULL;
 	int owner = g ? shelf_owner(a, a->sys_cursor, v->cursor) : a->sys_cursor;
+	bool folder = g && g->folder;
 	games_info info = {
-		.system = s->name, .title = g ? g->title : T(S_SHELF_NO_GAMES),
+		.system = head, .title = g ? g->title : T(S_SHELF_NO_GAMES),
 		.count = v->list.count, .cursor = v->cursor,
 		.played = g_game_page.valid ? g_game_page.played : "",
 		.has_achievements = g_game_page.valid && g_game_page.achievements,
@@ -3704,10 +4216,13 @@ static void draw_games(app *a)
 		.origin = g && owner != a->sys_cursor ? a->sys.systems[owner].name : NULL,
 		.snap_of = game_has_snap,
 		/* The heart before the name, not on Favorites (2026-11-09) */
-		.favorite = g && owner == a->sys_cursor && !is_muse(s) &&
-		            fav_is(a->sys.systems[owner].tag, g->file)
+		.favorite = g && !folder && owner == a->sys_cursor && !is_muse(s) &&
+		            fav_is(a->sys.systems[owner].tag, g->file),
+		/* A folder of games (src/shelfdir.h): A opens it */
+		.folder = folder ? g->folder : 0,
+		.inside = v->dir[0] != '\0'
 	};
-	shelf_snap(a, v, g, owner, !games_moving(&v->row, now), &info);
+	shelf_snap(a, v, folder ? NULL : g, owner, !games_moving(&v->row, now), &info);
 	unsigned wait = games_draw(&v->row, a->r, &info, game_get_tex, a, now, title_phase(a));
 	if (wait != UINT32_MAX) redraw_at(plat_now_ms() + wait);
 	evict_far(v, TEX_KEEP_NEAR);
@@ -3806,7 +4321,7 @@ static int games_on_card(const app *a)
 		const system_cfg *sc = &a->sys.systems[i];
 
 		if (is_muse(sc) || (!sc->core[0] && !sc->folder[0])) continue;
-		n += a->view[i].list.count - pm_shelf_offers(a, i);
+		n += sys_games_c(&a->view[i])->count - pm_shelf_offers(a, i);
 	}
 	return n;
 }
@@ -4138,7 +4653,10 @@ static void song_popup_draw(app *a, unsigned now)
 {
 	const ds_theme *t = theme();
 	TTF_Font *fh = ui_font(UI_F_META), *fb = ui_font(UI_F_LABEL);
-	const int padx = song_pad_x(), pady = song_pad_y(), zw = song_zyper_w();
+	/* With Zyper off (DESIGN.md 3.5) the slab is the two lines alone: his
+	 * width and the pad after him come off */
+	const int padx = song_pad_x(), pady = song_pad_y(),
+	          zw = look_zyper_off() ? -padx : song_zyper_w();
 	const int l1 = ui_font_line(UI_F_META), l2 = ui_font_line(UI_F_LABEL);
 	int tw, bw, hw, h, w, x, y, tx;
 	float k, rise, zcx, zcy;
@@ -4176,10 +4694,12 @@ static void song_popup_draw(app *a, unsigned now)
 	zcy = y + h / 2.0f;
 	zr_tick(&g_songpop_zyper, now);
 	p = zr_pose_at(&g_songpop_zyper, now);
-	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
-	zyper_shadow_draw(a->r, zcx, zcy, SONG_ZYPER_H, p.tilt, k);
-	draw_zyper_pose(a->r, zcx, zcy, SONG_ZYPER_H, &p, zyper_brow_lift(p.tilt), 0.0f,
-	                (Uint8)(255 * k + 0.5f));
+	if (!look_zyper_off()) {
+		SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
+		zyper_shadow_draw(a->r, zcx, zcy, SONG_ZYPER_H, p.tilt, k);
+		draw_zyper_pose(a->r, zcx, zcy, SONG_ZYPER_H, &p, zyper_brow_lift(p.tilt), 0.0f,
+		                (Uint8)(255 * k + 0.5f));
+	}
 	g_songpop_drawn = now;
 	redraw_now();
 }
@@ -4738,7 +5258,7 @@ static int menu_value_w(TTF_Font *fm, const char *v)
 	if (v == MENU_TICK) return ui_cap_height(fm) * 6 / 5;
 	if (v == MENU_KEY_X) return ui_button_width("X", MENU_KEY_SIZE);
 	if (v == MENU_KEY_Y_ON || v == MENU_KEY_Y_OFF)
-		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF)) + MENU_KEY_GAP
+		return ui_text_width(fm, T(v == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE)) + MENU_KEY_GAP
 		       + ui_button_width("Y", MENU_KEY_SIZE);
 	return v ? ui_text_width(fm, v) : 0;
 }
@@ -4811,6 +5331,28 @@ static int menu_notes_fit(void)
 static const zr_rig *g_menu_zyper;
 static unsigned      g_menu_zyper_at;
 
+/* MENU's tabs (src/sys_menu.h, DESIGN.md 11.3): the tab on, the one it came
+ * from and which way (+1 for R1, -1 for L1), and when on the animation clock,
+ * for the move between them; t0 0 is at rest. One for the launcher, as MENU
+ * is one, kept while the handheld is on: MENU opens where it was closed.
+ * `g_menu_tabs` is set around MENU's own draw, as g_menu_zyper is, and NULL
+ * everywhere else, so the screens it opens draw their own headings. */
+struct menu_tabs { int at, from, dir; unsigned t0; };
+typedef struct menu_tabs menu_tabs;
+static menu_tabs        g_tabs;
+static const menu_tabs *g_menu_tabs;
+/* The row each tab was left on, by identity (PM_ROWS: its first) */
+static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
+                                               PM_ROWS, PM_ROWS, PM_ROWS };
+/* Set by a key handler to move the runner's cursor, which it owns: MENU's
+ * tabs, whose rows change under it. -1, none. */
+static int g_menu_sel_to = -1;
+/* menu_style's row marks and header picture, set around the draw of the
+ * menu that has them as g_menu_zyper is */
+static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
+static void (*g_menu_header)(app *a, const SDL_Rect *r);
+static int    g_menu_header_h;
+
 #define MENU_ZYPER_H 64.0f
 
 /* DESIGN.md 10: 64 units tall at the right end of the heading band, his
@@ -4830,7 +5372,8 @@ static void menu_zyper_draw(app *a, const SDL_Rect *panel, int pad)
 	const float cy = panel->y + UI_PANEL_BORDER + ZR_REACH + MENU_ZYPER_H / 2.0f;
 	zr_pose p;
 
-	if (!g_menu_zyper) return;
+	/* and none when the look has him off (DESIGN.md 3.5) */
+	if (!g_menu_zyper || look_zyper_off()) return;
 	p = zr_pose_at(g_menu_zyper, g_menu_zyper_at);
 	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
 	zyper_shadow_draw(a->r, cx, cy, MENU_ZYPER_H, p.tilt, 1.0f);
@@ -4924,6 +5467,121 @@ static int panel_row_h(menu_row r, int rule_h, int note_h, int row_h)
 	return !r.label ? rule_h : (ROW_IS_NOTE(r) ? note_h : row_h);
 }
 
+/* A slot's (SLOT_H): in a list that goes round (menu_loop_*), slot `v`'s row
+ * or the seam, which is a row high; otherwise row `v`'s */
+static int panel_slot_h(const menu_row *rows, int n, bool loop, int v,
+                        int rule_h, int note_h, int row_h)
+{
+	int r = loop ? menu_loop_row(n, v) : v;
+
+	return r < 0 ? row_h : panel_row_h(rows[r], rule_h, note_h, row_h);
+}
+
+/* A new list in the same panel, which the window, the give and the plate
+ * take as another menu even when it has as many rows as the last: MENU's
+ * tabs (sys_menu.h). Their state is keyed on the row count otherwise. */
+static unsigned g_menu_epoch;
+
+/* How far a tab move is, 0 to 1 on **out** in **move**, and whether it
+ * still moves (asking for the next frame if it does) */
+static float menu_tabs_p(const menu_tabs *t)
+{
+	unsigned now = anim_now(), el;
+
+	if (!t || !t->t0) return 1.0f;
+	el = now - t->t0;
+	if (el >= DS_MS_MOVE) return 1.0f;
+	redraw_now();
+	return ds_out((float)el / DS_MS_MOVE);
+}
+
+/* How many tabs MENU's tab row shows either side of the one that is on, as
+ * far as they reach: the next and the one after, and the same back */
+#define MENU_TAB_SIDE 2
+
+/* One tab's row (DESIGN.md 11.3): the tab in **label** **text**, centered as
+ * the heading was, and the tabs either side of it in **meta** **text-dim**,
+ * going on round, laid out from it outward across the whole band between
+ * the L1 and R1 glyphs (`lo` to `hi`); what reaches an end fades into it
+ * over MENU_TAB_FADE, so a long name is shown as far as it fits and never
+ * cut hard (2026-11-12: "use the full width up to the zyper icon (if
+ * present) and kinda fade away on the extremes before the shoulder
+ * buttons"). Returns the tab's name's width, for the bar under it. `dx` and
+ * `op` draw it moved and faded, for a move. */
+#define MENU_TAB_FADE 64
+static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, float op)
+{
+	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
+	const char *cur = sys_menu_tab_name((pm_tab)at);
+	const int gap = 32, apart = 40;
+	int aw = ui_text_width(fh, cur), cur_x = cx - aw / 2, k, x;
+	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
+
+	dim.a = (Uint8)(dim.a * op);
+	txt.a = (Uint8)(op * 255.0f + 0.5f);
+	/* back: the tab before, ending a gap left of the name, then the one
+	 * before that, while any of it is still inside */
+	for (k = 1, x = cur_x - gap; k <= MENU_TAB_SIDE && x + dx > lo; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at - k + 2 * PT_TABS) % PT_TABS));
+
+		x -= ui_text_width(fm, t);
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x -= apart;
+	}
+	/* on: the tab after, then the one after that */
+	for (k = 1, x = cx + aw / 2 + gap; k <= MENU_TAB_SIDE && x + dx < hi; k++) {
+		const char *t = sys_menu_tab_name((pm_tab)((at + k) % PT_TABS));
+
+		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
+		x += ui_text_width(fm, t) + apart;
+	}
+	ui_text_faded(a->r, fh, cur, cur_x + dx, ui_cap_y(fh, cy), lo, hi, MENU_TAB_FADE, txt);
+	return aw;
+}
+
+/* MENU's tab row in the heading band, centered on the capitals at `cy`, the
+ * L1 glyph at the band's left end (`zone_l`) and R1 at its right end
+ * (`zone_r`, before Zyper, or the content's edge with him off), and the tabs
+ * between them. Moving, the tab it came from slides out the way the press
+ * went and the new one in from the other side, in **move** on **out**, and
+ * the glyphs hold still. Returns the width of the bar under the name
+ * (menu_tabs_bar), which takes the new name's width as it goes. */
+static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
+                          int zone_l, int zone_r)
+{
+	const int size = 40, gpad = 12;
+	int lw = ui_button_width("L1", size), rw = ui_button_width("R1", size);
+	int lo = zone_l + lw + gpad, hi = zone_r - rw - gpad;
+	float p = menu_tabs_p(t);
+	int aw, w;
+
+	ui_button(a->r, "L1", zone_l + lw / 2, cy, size, UI_BUTTON_PLAIN);
+	ui_button(a->r, "R1", zone_r - rw / 2, cy, size, UI_BUTTON_PLAIN);
+	if (p < 1.0f && t->from != t->at) {
+		/* the old one gone in the first two fifths, as its rows are */
+		float op = 1.0f - p * 2.5f;
+		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, lo, hi,
+		                                  (int)(-t->dir * 96 * p), op)
+		                   : ui_text_width(ui_font(UI_F_LABEL),
+		                                   sys_menu_tab_name((pm_tab)t->from));
+
+		aw = menu_tab_row(a, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
+		w = (int)(ow + (aw - ow) * p + 0.5f);
+	} else {
+		w = aw = menu_tab_row(a, t->at, cx, cy, lo, hi, 0, 1.0f);
+	}
+	(void)aw;
+	return w;
+}
+
+/* The bar on the heading's rule at `rule_y` under the tab's name: the home's
+ * underline, **accent-ink**, the bar's 6 high (DESIGN.md 11.3) */
+static void menu_tabs_bar(app *a, int cx, int rule_y, int w)
+{
+	ui_round_rect(a->r, &(SDL_Rect){ cx - w / 2, rule_y + DS_RULE / 2 - DS_BAR / 2, w, DS_BAR },
+	              DS_BAR / 2, ui_col(theme()->accent_ink, 255));
+}
+
 static void menu_panel(app *a, const char *heading, const menu_row *rows,
                        int n, int sel, int fixed_w, unsigned accent,
                        const unsigned *vcolors, bool visits_all, int loop_at,
@@ -4970,6 +5628,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * which crashed the launcher whenever DOWN was held in MENU while the
 	 * list still eased (2026-11-05). tools/rowmacro-check.py holds it. */
 #define ROW_H(r) panel_row_h((r), rule_h, note_h, row_h)
+#define SLOT_H(v) panel_slot_h(rows, n, loop, (v), rule_h, note_h, row_h)
 	/* A row's text is centered on its capitals (ui_cap_y), not on its box.
 	 * The box reserves a descender's depth below the baseline that labels
 	 * like "Wi-Fi" and "Bluetooth" never use, so centering the box leaves
@@ -5008,7 +5667,8 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	char head1[192];
 	int head_lines = head2 ? 2 : 1;
 	int head_h      = heading ? line_head * head_lines + pad : 0;
-	int content_off = heading ? head_h + pad / 2 : pad;
+	int content_off = (heading ? head_h + pad / 2 : pad)
+	                  + (g_menu_header ? g_menu_header_h : 0);
 	bool two_col = false;
 	int content_w = 0, i, k, rows_h = 0;
 	SDL_Rect panel;
@@ -5019,11 +5679,25 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * top is worse than one that scrolls. */
 	const int margin = MENU_MARGIN;
 	int vis = n, first = 0;
+	/* A list too long for its window goes round without end (menu_loop_*,
+	 * DESIGN.md 11.3): `first` and `vsel` are then slots, not rows */
+	bool loop = false;
+	int vsel = sel, v;
+	/* MENU's tabs: the bar's width under the name, and the rows of a tab
+	 * just come sliding in the way the press went and fading up, in
+	 * **move** on **out** as the tab row (menu_tabs_draw) */
+	int tab_bar_w = 0;
+	float tab_p = g_menu_tabs ? menu_tabs_p(g_menu_tabs) : 1.0f;
+	bool tab_moving = tab_p < 1.0f;
+	int tab_dx = tab_moving ? (int)(g_menu_tabs->dir * 64 * (1.0f - tab_p)) : 0;
 
 	/* A rule's sentinel is no value: a list with a rule in it and no values,
 	 * Delete Game's question over its answers, stays a centered list */
 	for (i = 0; i < n; i++)
 		if (rows[i].value && !ROW_IS_NOTE(rows[i]) && !ROW_IS_HR(rows[i])) two_col = true;
+	/* MENU's tabs are one list in pieces: a tab whose rows have no values
+	 * (About) is laid out as the others are, not centered */
+	if (g_menu_tabs) two_col = true;
 	for (i = 0; i < n; i++) {
 		int w;
 
@@ -5084,15 +5758,26 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			 * menu_draw keeps nothing between frames and every screen shares
 			 * it. A different row count is a different menu and starts at the
 			 * top rather than inheriting someone else's scroll. */
-			static int win_n = -1, win_first;
+			static int win_n = -1, win_first, win_slot;
+			static unsigned win_epoch;
 
 			vis = avail / row_h;
 			if (vis < 1) vis = 1;
 			if (vis > n) vis = n;
 
-			if (win_n != n) win_first = 0;
+			if (win_n != n || win_epoch != g_menu_epoch) { win_first = 0; win_slot = sel; }
 			win_n = n;
-			win_first = menu_window_first(rows, n, sel, vis, win_first);
+			win_epoch = g_menu_epoch;
+			/* AND IT GOES ROUND. Past the last row the list goes on: a seam,
+			 * then its first row, and on (menu_loop_*). The cursor's slot is
+			 * the copy of its row nearest the last one, so a step past the
+			 * end is a step, two slots over the seam, and the window follows
+			 * it as it follows any step. (2026-11-12: lists go round, and
+			 * the list I see moves on rather than jumping back to its top.) */
+			loop = true;
+			vsel = menu_loop_slot(n, sel, win_slot);
+			win_slot = vsel;
+			win_first = menu_loop_first(rows, n, vsel, vis, win_first);
 			first = win_first;
 		} else {
 			/* NO CURSOR MEANS NOTHING CAN SCROLL IT, so it scrolls itself.
@@ -5161,7 +5846,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	{   /* the heights actually on screen, not vis * row_h */
 		int sum = 0, j, last = first + vis - 1;
 
-		for (j = first; j < first + vis && j < n; j++) sum += ROW_H(rows[j]);
+		for (j = first; j < first + vis && (loop || j < n); j++) sum += SLOT_H(j);
 		/* A scrolling card is as tall as its viewport plus its pinned footer.
 		 * Summing the rows would size the panel to text that is deliberately
 		 * not all on it. */
@@ -5178,9 +5863,17 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * A body row is not a footer. A synopsis short enough to fit without
 		 * scrolling ends in prose, which is the panel's content and wants the
 		 * same pad under it that a list does. */
-		if (!scroll_h && last >= 0 && last < n && rows[last].label &&
+		if (!scroll_h && !loop && last >= 0 && last < n && rows[last].label &&
 		    ROW_IS_NOTE(rows[last]) && !ROW_IS_BODY(rows[last]))
 			panel.h -= pad * 5 / 12;
+	}
+	/* MENU's tabs: as tall as the screen allows whichever tab is on, so the
+	 * panel holds still as L1 and R1 go round (DESIGN.md 11.3) */
+	if (g_menu_tabs) {
+		int most = (MENU_AVAIL_H - content_off - pad) / row_h;
+		int tall = content_off + most * row_h + pad;
+
+		if (panel.h < tall) panel.h = tall;
 	}
 	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
 	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
@@ -5288,7 +5981,18 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				ui_text(a->r, meta, heading_note, content_x + content_w,
 				        ui_cap_y(meta, hy + asc - cap / 2), 1, UI_TEXT_DIM);
 
-			if (hw <= title_room) {
+			if (g_menu_tabs) {
+				/* MENU's tab row, the whole band from the content's inset
+				 * to Zyper, a grid step and a half clear of him, or to the
+				 * content's edge with him off */
+				int zr = content_x + content_w;
+
+				if (g_menu_zyper && !look_zyper_off())
+					zr = panel.x + panel.w - pad
+					     - (int)(MENU_ZYPER_H * ZYPER_W / ZYPER_H) - DS_GRID * 3 / 2;
+				tab_bar_w = menu_tabs_draw(a, g_menu_tabs, cx, hy + asc - cap / 2,
+				                           content_x, zr);
+			} else if (hw <= title_room) {
 				ui_fit_text(fh, head1, h1, sizeof h1, title_room);
 				ui_text(a->r, fh, h1, title_cx, hy, 0, UI_TEXT_SOFT);
 			} else {
@@ -5309,8 +6013,15 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		SDL_SetRenderDrawColor(a->r, rule.r, rule.g, rule.b, 255);
 		SDL_RenderFillRect(a->r, &(SDL_Rect){ content_x, panel.y + head_h,
 		                                      content_w, DS_RULE });
+		if (g_menu_tabs) menu_tabs_bar(a, cx, panel.y + head_h, tab_bar_w);
 		menu_zyper_draw(a, &panel, pad);
 	}
+	/* the screen's picture under the rule, its gap under it, or at the top
+	 * of a panel with no heading (File Transfer's way in) */
+	if (g_menu_header)
+		g_menu_header(a, &(SDL_Rect){ content_x,
+		                              heading ? panel.y + head_h + pad / 2 : panel.y + pad,
+		                              content_w, g_menu_header_h - pad / 2 });
 
 	/* THE HIGHLIGHT SLIDES. It used to be drawn inside the row loop at
 	 * i == sel, which put it wherever the cursor was that frame and made it
@@ -5342,10 +6053,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * (below), and the give stays within a row and a half even then: at
 		 * the d-pad's repeat it is a row and a thousandth. */
 		static int   wn = -1, wfirst = -1;
+		static unsigned wep;
 		static tween give;
 		unsigned nw = anim_now();
 
-		if (wn != n) tween_snap(&give, 0.0f);
+		if (wn != n || wep != g_menu_epoch) tween_snap(&give, 0.0f);
 		else if (wfirst != first) {
 			int a0 = first < wfirst ? first : wfirst;
 			int b0 = first < wfirst ? wfirst : first;
@@ -5357,20 +6069,22 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			 * shoulder button pages it by eight; easing across either drags
 			 * rows in from the far end and reads as the list skipping. Only
 			 * a single row's move is softened. */
-			if (b0 - a0 > 1) {
+			/* Going round is two slots, the seam and the row: a step */
+			if (b0 - a0 > (loop ? 2 : 1)) {
 				tween_snap(&give, 0.0f);
 			} else {
-				for (j2 = a0; j2 < b0 && j2 < n; j2++) d += ROW_H(rows[j2]);
+				for (j2 = a0; j2 < b0 && (loop || j2 < n); j2++) d += SLOT_H(j2);
 				tween_kick(&give, (first > wfirst) ? d : -d, DS_MS_QUICK, nw);
 			}
 		}
-		wn = n; wfirst = first;
+		wn = n; wfirst = first; wep = g_menu_epoch;
 		win_off = tween_at(&give, nw);
 		if (tween_moving(&give, nw)) redraw_now();    /* the list still easing: moving */
 	}
 
 	if (sel >= 0 && sel < n && rows[sel].label) {
-		static int   pl_n = -1, pl_sel = -1;
+		static int   pl_n = -1;
+		static unsigned pl_ep;
 		static tween pl_y, pl_h;
 		/* A MOVE IN **QUICK** THAT TAKES OVER FROM WHERE THE PLATE IS,
 		 * DESIGN.md 8.2's focus fill (src/tween.h). REPEAT_RATE_MS is 90 and
@@ -5396,30 +6110,19 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		float tgt_h = (float)ROW_H(rows[sel]);
 		SDL_Rect plate;
 
-		for (jj = first; jj < sel && jj < n; jj++) ty_sel += ROW_H(rows[jj]);
+		for (jj = first; jj < vsel && (loop || jj < n); jj++) ty_sel += SLOT_H(jj);
 
-		if (pl_n != n) {                       /* another menu: no journey */
+		/* Another menu, or another tab of MENU: no journey. Anything else
+		 * glides, a wrap too: in a list that fits, the fill goes back up
+		 * (or down) to the other end in **quick** as any step does, and in
+		 * a list that goes round it is the next slot anyway (DESIGN.md
+		 * 11.3, 2026-11-12; until then a wrap snapped, and from 1.0.1 there
+		 * was none). */
+		if (pl_n != n || pl_ep != g_menu_epoch) {
 			tween_snap(&pl_y, (float)ty_sel);
 			tween_snap(&pl_h, tgt_h);
-		} else if (pl_sel != sel) {
-			/* A step is a move to the next SELECTABLE row, whatever its
-			 * index. Distance cannot tell a wrap from a step in a menu whose
-			 * top rows are placeholders - the cursor goes 6 to 3 there, and
-			 * a step past one placeholder goes 3 to 5. What separates them is
-			 * whether anything selectable lies between. */
-			int lo2 = sel < pl_sel ? sel : pl_sel;
-			int hi2 = sel < pl_sel ? pl_sel : sel;
-			bool jump = false;
-			int q;
-
-			for (q = lo2 + 1; q < hi2; q++)
-				if (rows[q].label && rows[q].live) { jump = true; break; }
-			if (jump) {
-				tween_snap(&pl_y, (float)ty_sel);
-				tween_snap(&pl_h, tgt_h);
-			}
 		}
-		pl_n = n; pl_sel = sel;
+		pl_n = n; pl_ep = g_menu_epoch;
 		tween_to(&pl_y, (float)ty_sel, DS_MS_QUICK, nowp);
 		tween_to(&pl_h, tgt_h, DS_MS_QUICK, nowp);
 		/* the plate still on its way: moving */
@@ -5439,11 +6142,15 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * rather than as a selection. */
 		plate_y = tween_at(&pl_y, nowp);
 		plate_h = tween_at(&pl_h, nowp);
-		plate.x = panel.x + pad / 2;
+		plate.x = panel.x + pad / 2 + tab_dx;
 		plate.y = (int)(plate_y + 0.5f);
 		plate.w = panel.w - pad;
 		plate.h = (int)(plate_h + 0.5f);
-		ui_round_rect(a->r, &plate, DS_RADIUS_ROW, ui_col(thm->accent, 255));
+		if (tab_moving)
+			SDL_RenderSetClipRect(a->r, &(SDL_Rect){ panel.x + UI_PANEL_BORDER, panel.y,
+			                                         panel.w - UI_PANEL_BORDER * 2, panel.h });
+		ui_round_rect(a->r, &plate, DS_RADIUS_ROW,
+		              ui_col(thm->accent, (Uint8)(255.0f * tab_p + 0.5f)));
 	}
 
 	notes_drawn = 0;
@@ -5456,7 +6163,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	 * the gap is empty, and without the clip the overflow draws outside the
 	 * panel. Leaving either out is what made the first attempt at this look
 	 * like the list was wrapping. */
-	int lo = first > 0 ? first - 1 : first, hi = first + vis;
+	int lo = first > 0 || loop ? first - 1 : first, hi = first + vis;
 
 	if (vis < n) {
 		SDL_Rect rc = { panel.x + UI_PANEL_BORDER, content_y,
@@ -5465,22 +6172,31 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		float cover;
 
 		SDL_RenderSetClipRect(a->r, &rc);
-		cover = lo < first ? ROW_H(rows[lo]) : 0;
-		while (lo > 0 && cover < win_off) {
+		cover = lo < first ? SLOT_H(lo) : 0;
+		while ((loop || lo > 0) && cover < win_off) {
 			lo--;
-			cover += ROW_H(rows[lo]);
+			cover += SLOT_H(lo);
 		}
-		cover = hi < n ? ROW_H(rows[hi]) : 0;
-		while (hi + 1 < n && cover < -win_off) {
+		cover = loop || hi < n ? SLOT_H(hi) : 0;
+		while ((loop || hi + 1 < n) && cover < -win_off) {
 			hi++;
-			cover += ROW_H(rows[hi]);
+			cover += SLOT_H(hi);
 		}
 	}
-	for (k = 0, i = lo; i < n && i <= hi; k++, i++) {
+	if (tab_moving) {
+		if (vis >= n)
+			SDL_RenderSetClipRect(a->r, &(SDL_Rect){ panel.x + UI_PANEL_BORDER, panel.y,
+			                                         panel.w - UI_PANEL_BORDER * 2, panel.h });
+		content_x += tab_dx;
+	}
+	/* `v` walks the slots on screen and `i` is the row each holds: one and
+	 * the same unless the list goes round */
+	for (k = 0, v = lo; (loop || v < n) && v <= hi; k++, v++) {
 		int y, ty, j;
 		float sel_w;
 		SDL_Color lc, vc;
 
+		i = loop ? menu_loop_row(n, v) : v;
 		if (scroll_h && i >= scroll_split) {
 			/* Pinned. Measured from the bottom of the viewport rather than
 			 * from the top of the rows, so the footer does not move when the
@@ -5490,8 +6206,17 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			for (j = scroll_split; j < i; j++) y += ROW_H(rows[j]);
 		} else {
 			y = content_y - scroll + (int)win_off;
-			if (i >= first) for (j = first; j < i; j++) y += ROW_H(rows[j]);
-			else            for (j = i; j < first; j++) y -= ROW_H(rows[j]);
+			if (v >= first) for (j = first; j < v; j++) y += SLOT_H(j);
+			else            for (j = v; j < first; j++) y -= SLOT_H(j);
+		}
+		/* The seam, where a list that goes round starts again: the
+		 * heading's rule, across the middle of a row's height */
+		if (i < 0) {
+			SDL_SetRenderDrawColor(a->r, rule.r, rule.g, rule.b, 255);
+			SDL_RenderFillRect(a->r, &(SDL_Rect){ content_x,
+			                                      y + (row_h - DS_RULE) / 2,
+			                                      content_w, DS_RULE });
+			continue;
 		}
 		/* Centered in ITS OWN row, not in row_h: a note is shorter. */
 		ty = ui_cap_y(fm, y + ROW_H(rows[i]) / 2);
@@ -5541,6 +6266,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		vc = col_mix(vcolors && vcolors[i] == VCOL_EARNED
 		             ? ui_col(thm->accent_ink, 255) : UI_TEXT_DIM,
 		             on_quiet, sel_w);
+		/* a tab's rows fade up as they slide in */
+		if (tab_moving) {
+			lc.a = (Uint8)(lc.a * tab_p);
+			vc.a = (Uint8)(vc.a * tab_p);
+		}
 
 		/* Trimmed to the panel, HERE, rather than by every caller.
 		 *
@@ -5649,7 +6379,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				ui_button(a->r, "Y", content_x + content_w - bw / 2,
 				          y + ROW_H(rows[i]) / 2, MENU_KEY_SIZE,
 				          sel_w >= 0.5f ? UI_BUTTON_ON_ACCENT : UI_BUTTON_PLAIN);
-				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON : S_MENU_OFF),
+				ui_text(a->r, fm, T(rows[i].value == MENU_KEY_Y_ON ? S_MENU_ON_TITLE : S_MENU_OFF_TITLE),
 				        content_x + content_w - bw - MENU_KEY_GAP, ty, 1, vc);
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w - vw - gap);
 				ui_text(a->r, fm, lbl, content_x, ty, -1, lc);
@@ -5665,6 +6395,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				if (rows[i].value)
 					ui_text(a->r, fm, rows[i].value,
 					        content_x + content_w, ty, 1, vc);
+				/* The screen's mark before the value (menu_style's
+				 * row_mark): Theme's dot and chips */
+				if (g_row_mark && rows[i].value && rows[i].value != MENU_TICK)
+					g_row_mark(a, &rows[i], content_x + content_w - vw - DS_GRID * 2,
+					           y + ROW_H(rows[i]) / 2, sel_w);
 				/* Both fit, but by how much against the most the row can
 				 * have: the device measures a little wider */
 				if (rows[i].value && rows[i].value != MENU_TICK)
@@ -5746,7 +6481,8 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			}
 		}
 	}
-	if (vis < n) SDL_RenderSetClipRect(a->r, NULL);
+	if (vis < n || tab_moving) SDL_RenderSetClipRect(a->r, NULL);
+	content_x -= tab_dx;
 
 	if (scroll_h) {
 		/* Faded where the text runs out of viewport, and faded by laying the
@@ -5799,10 +6535,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			int up_w   = tw * (k + 1) / th;      /* apex at the top */
 			int down_w = tw * (th - k) / th;     /* apex at the bottom */
 
-			if (first > 0)
+			/* a list that goes round carries on both ways, always */
+			if (first > 0 || loop)
 				SDL_RenderFillRect(a->r, &(SDL_Rect){ cx - up_w / 2,
 				                   content_y - off - th + k, up_w, 1 });
-			if (first + vis < n)
+			if (first + vis < n || loop)
 				SDL_RenderFillRect(a->r, &(SDL_Rect){ cx - down_w / 2,
 				                   content_y + vis * row_h + off + k, down_w, 1 });
 		}
@@ -5893,7 +6630,7 @@ static void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose)
  * leaving in its own place: a press on it ends that leave and puts its own
  * panel at rest, and from then on its own is the panel on screen
  * (snap_promote), what the next motion takes off. */
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES };   /* which drawer a copy is for */
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE };   /* which drawer a copy is for */
 
 static menu_snap  g_snaps[2];
 static menu_snap *g_snap = &g_snaps[0], *g_snap_next = &g_snaps[1];
@@ -5912,6 +6649,9 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
                         int sel, mm_pose pose);
 static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
                       mm_pose pose);
+static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
+                     unsigned accent, mm_pose pose);
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose);
 
 /* A panel's arguments into `s`, as the screen on top drew them now: its
  * heading's caption too (menu_draw_caption), or NULL for none */
@@ -5927,6 +6667,10 @@ static void snap_record(menu_snap *s, int kind, const char *heading,
 	s->level = mm_depth();
 	s->frame = g_frame_no;
 	s->kind  = kind;
+	s->tab   = g_menu_tabs ? g_menu_tabs->at : -1;
+	s->row_mark = (void *)g_row_mark;
+	s->header = (void *)g_menu_header;
+	s->header_h = g_menu_header_h;
 }
 
 /* The panel on screen again, at `pose`, Zyper going on from where he was:
@@ -5947,11 +6691,38 @@ static void snap_draw(app *a, mm_pose pose)
 		hot_panel(a, s->heading, s->rows, s->n, pose);
 		return;
 	}
+	if (s->kind == PANEL_P2) {
+		p2_panel(a, s->heading, s->rows, s->n, s->accent, pose);
+		return;
+	}
+	if (s->kind == PANEL_MOVE) {
+		move_page(a, s->heading, s->rows, s->n, pose);
+		return;
+	}
+	static menu_tabs rest;
+	const menu_tabs *tabs = g_menu_tabs;
+
 	g_menu_zyper = s->zyper ? &s->zy : NULL;
 	g_menu_zyper_at = anim_now() + s->zy_ahead;
-	menu_panel(a, s->heading, s->rows, s->n, s->sel, s->fixed_w, s->accent,
-	           s->has_vcolors ? s->vcolors : NULL, s->visits_all, s->loop_at,
-	           s->note, pose);
+	/* the tab row as it was, at rest */
+	rest = (menu_tabs){ s->tab, s->tab, 0, 0 };
+	g_menu_tabs = s->tab >= 0 ? &rest : NULL;
+	{
+		void (*mark)(app *, const menu_row *, int, int, float) = g_row_mark;
+		void (*head)(app *, const SDL_Rect *) = g_menu_header;
+		int head_h = g_menu_header_h;
+
+		g_row_mark = (void (*)(app *, const menu_row *, int, int, float))s->row_mark;
+		g_menu_header = (void (*)(app *, const SDL_Rect *))s->header;
+		g_menu_header_h = s->header_h;
+		menu_panel(a, s->heading, s->rows, s->n, s->sel, s->fixed_w, s->accent,
+		           s->has_vcolors ? s->vcolors : NULL, s->visits_all, s->loop_at,
+		           s->note, pose);
+		g_row_mark = mark;
+		g_menu_header = head;
+		g_menu_header_h = head_h;
+	}
+	g_menu_tabs = tabs;
 	g_menu_zyper = z;
 	g_menu_zyper_at = at;
 }
@@ -6008,6 +6779,8 @@ static void panel_show(app *a, int kind, const char *heading,
 	            visits_all, loop_at, heading_note);
 	if (kind == PANEL_TILES) tiles_panel(a, heading, rows, n, sel, f.panel);
 	else if (kind == PANEL_HOT) hot_panel(a, heading, rows, n, f.panel);
+	else if (kind == PANEL_P2) p2_panel(a, heading, rows, n, accent, f.panel);
+	else if (kind == PANEL_MOVE) move_page(a, heading, rows, n, f.panel);
 	else menu_panel(a, heading, rows, n, sel, fixed_w, accent, vcolors,
 	                visits_all, loop_at, heading_note, f.panel);
 }
@@ -6099,6 +6872,44 @@ static wifi_state menu_wifi(char *ssid, int cap)
 	return st;
 }
 
+/* A way out to the internet, for every row and page that fetches from it
+ * (box art, a game's cover and video, System Update, achievements,
+ * PortMaster): Wi-Fi joined, or a default route out on another link, a
+ * phone's USB tethering among them (phonelink_way_out; the Pixel 9 Pro XL's,
+ * 2026-11-13). Never the USB cable's link to a computer, which leads nowhere.
+ * *metered: the way out is the phone's, so its mobile data, likely: nothing
+ * large starts by itself over it. Read again at most twice a second, as the
+ * menus ask every frame (menu_wifi's cache keeps Wi-Fi's cheap). */
+static bool net_internet(bool *metered)
+{
+	static unsigned at;
+	static bool out, meter;
+	unsigned now = plat_now_ms();
+
+	if (!at || now - at >= 500u) {
+		char route[4096];     /* about 30 routes; a line is 128 bytes */
+		FILE *f = fopen("/proc/net/route", "r");
+		size_t n = f ? fread(route, 1, sizeof route - 1, f) : 0;
+
+		if (f) fclose(f);
+		route[n] = '\0';
+		out = phonelink_way_out(menu_wifi(NULL, 0) == WIFI_CONNECTED, route, &meter);
+		at = now ? now : 1;
+	}
+	if (metered) *metered = out && meter;
+	return out;
+}
+
+/* USB File Transfer has a link without Wi-Fi: the cable to a computer, or a
+ * phone's tethering that has its address (only looked at: phone_link_due
+ * set it up). MENU's build and the lists that name its rows ask the same. */
+static bool xfer_link_up(void)
+{
+	char pip[64];
+
+	return plat_cable_link(NULL, 0) || (plat_phone_link(false, NULL, 0, pip, sizeof pip) && pip[0]);
+}
+
 /* Gather what the device currently is, and hand it to sys_menu_build.
  *
  * The split: this half is allowed to fork wpa_cli and read the app, the other
@@ -6159,12 +6970,14 @@ static void up_first_line(const char *path, char *buf, size_t n)
 	buf[strcspn(buf, "\r\n")] = 0;
 }
 
-/* A network to look with: Wi-Fi, or a test release's source set on the card
- * (docs/updates.md), which may be on the cable */
+/* A network to look with: a way out (net_internet: Wi-Fi, or a phone's
+ * tethering), or a test release's source set on the card (docs/updates.md),
+ * which may be on the cable */
 static bool up_network(void)
 {
-	char ss[WIFI_SSID_MAX], p[512];
-	if (menu_wifi(ss, sizeof ss) == WIFI_CONNECTED) return true;
+	char p[512];
+
+	if (net_internet(NULL)) return true;
 	up_path(p, sizeof p, "source");
 	return access(p, R_OK) == 0;
 }
@@ -6187,6 +7000,13 @@ static const su_view *up_view(bool now)
 	su_status_parse(text, &g_up.st);
 	g_up.running = up_running();
 	g_up.wifi = up_network();
+	/* Over a phone's mobile data a download cut short waits for A
+	 * (su_auto_step) */
+	{
+		bool metered = false;
+
+		g_up.metered = net_internet(&metered) && metered;
+	}
 	snprintf(p, sizeof p, "%s/VERSION", P_ROOT);
 	up_first_line(p, g_up.installed, sizeof g_up.installed);
 	/* Roll Back only to a version the image would not copy straight over
@@ -6288,6 +7108,29 @@ static void up_news_watch(void)
 	g_up_news[0][0] = '\0';
 }
 
+/* Unlocks that had waited - earned offline - on the account now: said once,
+ * in Zyper's bubble on the shelf, as the update's news is. Counted up until
+ * it is said, so two passes close together make one notice. */
+static int g_ra_news;
+
+static void ra_sent_news(int n)
+{
+	if (n <= 0) return;
+	g_ra_news += n;
+	fprintf(stderr, "ra: %d waiting unlock%s on the account now\n", n, n == 1 ? "" : "s");
+}
+
+static void ra_news_watch(void)
+{
+	unsigned now = plat_now_ms();
+
+	if (g_ra_news <= 0 || g_heatpop.on || g_songpop.on || g_up_news[0][0]) return;
+	heatpop_show(now);
+	snprintf(g_heatpop.line1, sizeof g_heatpop.line1, TN(S_CHEEVOS_SENT, g_ra_news), g_ra_news);
+	snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_CHEEVOS_SENT_WHERE));
+	g_ra_news = 0;
+}
+
 /* The update's own clock, every 2 s, from every screen's loop through
  * tick_theme and from a game's tick: su_auto_step's looks and resumes
  * (src/sysupdate.h), and the news, once per release */
@@ -6369,6 +7212,24 @@ static int usb_auto_lines(app *a, char lines[4][LB_LINE], menu_row rows[4])
 static bool timed_message(app *a, const char *heading, const menu_row *rows,
                           int n, int fixed_w, unsigned accent);
 
+/* --cheevos-unchecked, for a shot: the Achievements rows as a game never
+ * played with a network has them, whatever the card holds */
+static bool g_shot_unchecked;
+
+/* A on an Achievements row that says "not checked yet": how a game gets its
+ * set - one play with a network - and that it then works offline */
+static void cheevos_unchecked_message(app *a)
+{
+	char lines[4][LB_LINE];
+	menu_row rows[4];
+	int w = menu_std_width(a), i;
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_CHEEVOS_UNCHECKED_SAID), w, 4, lines);
+
+	ui_fit_drawn(T(S_CHEEVOS_UNCHECKED_SAID));
+	for (i = 0; i < n; i++) rows[i] = (menu_row){ lines[i], NULL, false };
+	timed_message(a, T(S_SYSMENU_CHEEVOS), rows, n, w, MENU_ZYPEROS);
+}
+
 static void usb_auto_message(app *a)
 {
 	char lines[4][LB_LINE];
@@ -6377,6 +7238,9 @@ static void usb_auto_message(app *a)
 
 	timed_message(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, menu_std_width(a), MENU_ZYPEROS);
 }
+
+static const char *look_accent_name(void);   /* with the Theme page */
+static const char *auto_hours_value(void);
 
 static int menu_build(app *a, screen_id screen, int sys,
                       menu_row *out, menu_bufs *b, const char **heading)
@@ -6391,7 +7255,10 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.games = screen == SCREEN_GAMES;
 	u.no_wifi = !plat_has_wifi();
 	u.no_bt   = !plat_has_bluetooth();
-	u.cable_xfer = plat_cable_link(NULL, 0);
+	/* USB File Transfer over the cable, or over a phone's tethering */
+	u.cable_xfer = xfer_link_up();
+	/* A way out to the internet with no radio: a phone's tethering */
+	u.online = net_internet(NULL);
 	u.no_developer = !dev_offered();
 	u.developer  = dev_row_on();
 	u.hotspot = hotspot_available();     /* two stats, no fork */
@@ -6404,6 +7271,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 	u.no_usb_power = !usb_power_offered();
 	u.usb_auto = g_usb_auto;
 	u.no_usb_wait = !usb_wait_row();
+	u.tab = g_tabs.at;
 
 	if (u.games) {
 		const system_cfg *sc = &a->sys.systems[sys];
@@ -6423,8 +7291,12 @@ static int menu_build(app *a, screen_id screen, int sys,
 		 * over without inventing a flag day. */
 		u.muse       = is_muse(sc);
 		u.fav        = !u.muse && sc->core[0] == '\0' && sc->folder[0] == '\0';
-		u.game_count = a->view[sys].list.count;
+		/* Every game of the system, in its folders too: the shelf's own
+		 * entries would count a folder as one */
+		u.game_count = sys_games(&a->view[sys])->count;
 		u.dmode      = dmode_label(a->view[sys].dmode);
+		u.shader     = shader_label(a->view[sys].shader);
+		u.listed     = a->view[sys].listed;
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
 		u.muse_all   = u.muse && muse_kind_shown() == ML_ALL;
@@ -6447,6 +7319,9 @@ static int menu_build(app *a, screen_id screen, int sys,
 		}
 		u.storage = storage_menu_value();
 		u.appearance = appearance_name(theme_appearance());
+		u.shader_all = shader_all_label(a);
+		u.auto_hours = auto_hours_value();
+		u.theme = look_accent_name();
 		u.home = home_name(a->home_layout);
 		u.order = g_order_release ? T(S_PANEL_ORDER_RELEASE) : T(S_PANEL_ORDER_AZ);
 		u.battery = g_batt_mode == BATT_TIME ? T(S_PANEL_BATTERY_TIME)
@@ -6454,6 +7329,7 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.ui_sounds  = uisound_setting_name(uisound_setting());
 		u.menu_music = bgm_menu_value(bgm_on(), bgm_count());
 		u.auto_off  = a->auto_off;
+		u.saver     = g_saver_s;
 		{
 			static char lv[16];
 			u.lights = u.no_lights ? NULL : side_lights_value(plat_side_lights(), lv, sizeof lv);
@@ -6524,7 +7400,9 @@ static bool random_pick(app *a, bool all, int *shelf, int *game)
 	for (i = 0; i < a->sys.count; i++) {
 		const system_cfg *s = &a->sys.systems[i];
 
-		count[i] = a->view[i].list.count;
+		/* Every game of the system, in its folders too: the pick is an
+		 * index of sys_games, which pick_launch opens the folder of */
+		count[i] = sys_games(&a->view[i])->count;
 		/* Not Muse, whose cards are albums, nor - from every system -
 		 * Favorites, whose games are on their own shelves too */
 		use[i] = all ? !is_muse(s) && !a->view[i].owner && !pm_only_offer(a, i)
@@ -6602,6 +7480,16 @@ void step_sound(app *a, in_button b, int from, int to)
 	                         !a->in.pressed[b]));
 }
 
+/* A list kept as a plain index (0 to n - 1) by a screen with its own loop,
+ * stepped by the rule every menu has (menu_step_index) and heard */
+int list_step_heard(app *a, in_button b, int n, int sel)
+{
+	int to = menu_step_index(n, sel, b == IN_UP ? -1 : +1, a->in.pressed[b]);
+
+	step_sound(a, b, sel, to);
+	return to;
+}
+
 /* A step that always lands somewhere new, and never goes round: a track
  * skipped, a seek. */
 static void moved_sound(app *a, in_button b)
@@ -6609,11 +7497,14 @@ static void moved_sound(app *a, in_button b)
 	step_sound(a, b, 0, 1);
 }
 
-/* menu_step_sel, heard. */
+/* A step along a menu, heard: a fresh press goes round past either end, a
+ * held direction stops at the end (DESIGN.md 11.3, my pick 2026-11-12), so
+ * a thumb left on the d-pad never runs the list past where it wanted. */
 static int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
                            int dir, in_button b)
 {
-	int to = menu_step_sel(rows, n, sel, dir);
+	int to = a->in.pressed[b] ? menu_step_round(rows, n, sel, dir)
+	                          : menu_step_sel(rows, n, sel, dir);
 
 	step_sound(a, b, sel, to);
 	return to;
@@ -6825,13 +7716,11 @@ static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
 		{
 			in_button b = in_repeat(&a->in, IN_UP)   ? IN_UP
 			            : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
-			int to = b == IN_UP ? nq : nq + 1;
-
-			/* Up is the answer row, Down is Cancel, and neither goes round */
-			if (b != IN_NONE) {
-				step_sound(a, b, sel, to);
-				sel = to;
-			}
+			/* The two answers are a list of two, which goes round as every
+			 * list does: a fresh press from either end lands on the other,
+			 * a held one stops (menu_step_index) */
+			if (b != IN_NONE)
+				sel = nq + list_step_heard(a, b, 2, sel - nq);
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
@@ -7090,6 +7979,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			sel = menu_step_sel(rows, n, sel, +1);
 			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
 		}
+		if (st->sel_out) *st->sel_out = sel;
 
 		plat_input_poll(&a->in);
 		/* Where the sound goes, followed in the menus too: a headset connected
@@ -7191,6 +8081,11 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 				             ? DS_SOUND_ACCEPT : DS_SOUND_DENY);
 			if (on_key && menu_send(a, z, on_key, ctx, (in_button)b, sel) == MENU_DONE)
 				return MENU_LEFT_SCREEN;
+			/* The handler moved the cursor: MENU's tab changed under it */
+			if (g_menu_sel_to >= 0) {
+				sel = g_menu_sel_to;
+				g_menu_sel_to = -1;
+			}
 			if (!a->running || want_quit || g_message_stopped) return MENU_LEFT_GONE;
 			/* The screen it opened was left with MENU: out of this one too,
 			 * without drawing it again first. */
@@ -7241,8 +8136,15 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		}
 		g_menu_zyper = z;
 		g_menu_zyper_at = plat_now_ms();
+		g_menu_tabs = st->tabs;
+		g_row_mark = st->row_mark;
+		g_menu_header = st->header;
+		g_menu_header_h = st->header_h;
 		menu_draw(a, heading, rows, n, sel, st->fixed_w,
 		          st->follow_tint ? a->tint : st->accent);
+		g_menu_header = NULL;
+		g_row_mark = NULL;
+		g_menu_tabs = NULL;
 		g_menu_zyper = NULL;
 		plat_draw_osd(a->r);
 		plat_present();
@@ -7861,27 +8763,6 @@ static menu_result sgdb_screen(app *a)
  * The server lives exactly as long as this screen. Closing it stops
  * listening, forgets the PIN and drops every session - which is the honest
  * answer to "how long is my ROM folder on the network for". */
-/* Bytes, in a unit a person reads rather than the one the counter is in.
- *
- * The shot harness was handed "41 MB out" as a literal while this screen could
- * only ever print kilobytes - a picture of a screen that did not exist, which
- * is the exact failure the shared row builder was meant to stop. Sharing the
- * layout is not enough if the fixture claims the content can be something it
- * cannot.
- *
- * Decimal, matching human() in res/web/app.js. These two describe the same
- * bytes to the same person a foot apart, so they have to divide by the same
- * thing, and decimal is what every file manager but Windows Explorer shows -
- * 1024 under a KB/MB label is the one combination that is wrong everywhere. */
-static void human_bytes(char *out, size_t n, unsigned long long b)
-{
-	if (b < 1000ull)              snprintf(out, n, "%llu B", b);
-	else if (b < 1000ull * 1000)  snprintf(out, n, "%llu KB", b / 1000);
-	else if (b < 1000ull * 1000 * 1000)
-		snprintf(out, n, "%.1f MB", (double)b / (1000 * 1000));
-	else snprintf(out, n, "%.1f GB", (double)b / (1000ull * 1000 * 1000));
-}
-
 /* The address and the PIN go in the HEADING, not in rows.
  *
  * They were four rows of equal weight, and rendered it was obvious that the
@@ -7910,20 +8791,237 @@ static void hare_head(char *out, size_t n, bool cable, const char *name, const c
 	else snprintf(out, n, "%s\nPIN %s", addr, pin);
 }
 
-/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), until a browser
- * opens the page: Cable, Address and Browser over the cable, Wi-Fi and
- * Browser over the air, each a tick once done, the one waited on saying so
- * and the ones after it quiet, over the rule and the legend. When a step
- * stalls, its hint takes the others' room: the stalled step's row alone
- * and the hint under it, balanced onto at most three lines, over the rule
- * and the legend. Three rows and a three-line hint do not fit the panel under a
- * two-line heading, and a hint is about one step. The screen and its shot
- * (--hare-steps) build them here. `name` is the handheld's name on the
- * network ("" for none) and `addr` its address, for the browser's hint. */
+/* THE WAY IN (DESIGN.md 11.35, 2026-11-12: "while nobody inputted the PIN
+ * yet ... show the URL/IP/PIN full size in the popup; only after someone
+ * connected we show the stats"). Until someone has signed in, the panel is
+ * the screen's name, the first thing to type as large as it fits whole, the
+ * other way to reach it under that, and the PIN as four keys; under them the
+ * step the link is on, the rule and the legend. The steps and their hint
+ * (xs_step_rows) take its place only while a step before the browser stalls,
+ * when the address cannot work yet. g_way holds what the header draws. */
+static struct {
+	const char *title;
+	char        first[128], second[128], pin[16];
+} g_way;
+
+#define XS_WAY_H     352         /* the header's room, its gap under it included */
+#define XS_WAY_KEY_W 80
+#define XS_WAY_KEY_H 96
+
+static void xs_way_header(app *a, const SDL_Rect *q)
+{
+	const ds_theme *t = theme();
+	TTF_Font *fm = ui_font(UI_F_META), *fn = ui_font(UI_F_MENU);
+	TTF_Font *big[3] = { ui_font(UI_F_TITLE), ui_font(UI_F_LABEL), ui_font(UI_F_MENU) };
+	TTF_Font *fb;
+	const int cx = q->x + q->w / 2, y = q->y;
+	int n = (int)strlen(g_way.pin), i, kx, ky = y + 228;
+
+	/* the screen's name, small, where a heading would be */
+	ui_text(a->r, fm, g_way.title, cx, ui_cap_y(fm, y + 18), 0, UI_TEXT_DIM);
+	/* the first thing to type: **title** where it fits whole, a step down
+	 * where not (a port on the name), and sliding past that, never cut */
+	for (i = 0; i < 2 && ui_text_width(big[i], g_way.first) > q->w; i++) ;
+	fb = big[i];
+	if (ui_text_width(fb, g_way.first) <= q->w)
+		ui_text(a->r, fb, g_way.first, cx, ui_cap_y(fb, y + 84), 0, UI_TEXT);
+	else
+		ui_text_marquee(a->r, fb, g_way.first, q->x, ui_cap_y(fb, y + 84), q->w,
+		                plat_now_ms(), UI_TEXT);
+	if (g_way.second[0])
+		ui_text(a->r, fn, g_way.second, cx, ui_cap_y(fn, y + 146), 0, UI_TEXT_SOFT);
+	/* the PIN, a key a digit: **raised** in an **edge** frame, the digit in
+	 * **title** **text**, as the page's four boxes take it */
+	ui_text(a->r, fm, "PIN", cx, ui_cap_y(fm, y + 204), 0, UI_TEXT_DIM);
+	kx = cx - (n * XS_WAY_KEY_W + (n - 1) * DS_GRID * 2) / 2;
+	for (i = 0; i < n; i++, kx += XS_WAY_KEY_W + DS_GRID * 2) {
+		SDL_Rect k = { kx, ky, XS_WAY_KEY_W, XS_WAY_KEY_H };
+		char d[2] = { g_way.pin[i], '\0' };
+
+		ui_round_rect(a->r, &k, DS_RADIUS_KEY, ui_col(t->edge, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ k.x + DS_FRAME, k.y + DS_FRAME, k.w - DS_FRAME * 2,
+		                                 k.h - DS_FRAME * 2 }, DS_RADIUS_KEY - DS_FRAME,
+		              ui_col(t->raised, 255));
+		ui_text(a->r, big[0], d, k.x + k.w / 2, ui_cap_y(big[0], k.y + k.h / 2), 0, UI_TEXT);
+	}
+}
+
+/* What the way in shows: over the cable the name with http:// first and the
+ * address under it; over Wi-Fi the address first and the name under it, as
+ * the heading orders them (hare_head) */
+static void xs_way_set(bool cable, bool phone, const char *name, const char *addr, const char *pin)
+{
+	if (name && name[0] && !strncmp(addr, "http://", 7)) addr += 7;
+	/* a phone's tethering is the USB cable too, its address the phone's to
+	 * give, so it is shown as Wi-Fi's is: first, the name (if any) under it */
+	g_way.title = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
+	if (name && name[0] && cable) {
+		snprintf(g_way.first, sizeof g_way.first, "http://%s", name);
+		snprintf(g_way.second, sizeof g_way.second, "%s", addr);
+	} else {
+		snprintf(g_way.first, sizeof g_way.first, "%s", addr);
+		/* a phone's: where to type it, as no name is shown there */
+		snprintf(g_way.second, sizeof g_way.second, "%s",
+		         name && name[0] ? name : phone ? T(S_XFER_PHONE_WHERE) : "");
+	}
+	snprintf(g_way.pin, sizeof g_way.pin, "%s", pin);
+}
+
+/* The way in's rows: the step the link is on (Cable unplugged, Address or
+ * Browser waiting, Wi-Fi not connected), or PIN waiting once a browser has
+ * the page; the rule; the legend */
+static int xs_way_rows(menu_row *out, const link_steps *s, bool cable, const char *legend)
+{
+	int n = 0;
+
+	if (s->step == LS_LINK && cable)
+		out[n++] = (menu_row){ T(S_XFER_STEP_CABLE),
+		                       s->sub == 0 ? T(S_XFER_STEP_UNPLUGGED) : T(S_XFER_WAITING), true };
+	else if (s->step == LS_LINK)
+		out[n++] = (menu_row){ T(S_XFER_STEP_WIFI), T(S_MENU_NOT_CONNECTED), true };
+	else if (s->step == LS_ADDRESS)
+		out[n++] = (menu_row){ T(S_XFER_STEP_ADDRESS), T(S_XFER_WAITING), true };
+	else if (s->step == LS_BROWSER)
+		out[n++] = (menu_row){ T(S_XFER_STEP_BROWSER), T(S_XFER_WAITING), true };
+	else
+		out[n++] = (menu_row){ "PIN", T(S_XFER_WAITING), true };
+	out[n++] = MENU_RULE;
+	out[n++] = MENU_NOTE(legend);
+	return n;
+}
+
+/* Whether a stalled step's hint takes the way in's place: a hint for a step
+ * before the browser, while the address cannot work yet */
+static bool xs_way_hint(int h)
+{
+	return h != LH_NONE && h != LH_NO_BROWSER;
+}
+
+/* One frame of the way in, over what the caller drew under it */
+static void xs_way_draw(app *a, const menu_row *rows, int n)
+{
+	g_menu_header = xs_way_header;
+	g_menu_header_h = XS_WAY_H;
+	menu_draw(a, NULL, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
+}
+
+/* THE CABLE'S LOADING BAR (DESIGN.md 11.35, 2026-11-12: "usb file transfer
+ * takes a while to start, we need a loading state"). Over the cable the
+ * address and the PIN cannot work until the computer has taken the handheld,
+ * opened its network on it and taken its address, a few seconds and more the
+ * first time Windows sees it. Until then the way in's panel says so, in the
+ * same place: the screen's name, "Connecting to the computer" in **label**,
+ * and a **bar** on **track** filling with **accent-ink**, a third for each
+ * of the three. While one is waited on, its third creeps toward three
+ * quarters of the way (never the whole: the computer has not done it yet);
+ * the step row under the rule says which. Once the address is in, the bar
+ * runs to its end and the way in takes its place. A stalled step's hint
+ * still takes the whole panel (xs_step_rows). g_load_k is what the header
+ * draws. */
+static float g_load_k;
+
+#define XS_LOAD_BAR_W 420
+#define XS_LOAD_CREEP_MS 3000.0f   /* a waited step's creep: 63% of its room in this */
+#define XS_LOAD_EASE_MS  150.0f    /* the fill catching up with where it should be */
+
+/* Where the bar should be: a third for each of the computer taking the
+ * handheld, its network and its address, and the creep of the one waited
+ * on. No computer (sub 0) or one waiting for power (sub 4) does not creep:
+ * nothing is coming. */
+static float xs_load_target(const link_steps *s, unsigned now)
+{
+	float creep = 0.0f;
+	int k;
+
+	if (!s->started) return 0.0f;
+	if (s->step >= LS_BROWSER) return 1.0f;
+	k = s->step == LS_ADDRESS ? 2 : s->sub == 2 ? 1 : 0;
+	if (s->step == LS_ADDRESS || s->sub == 1 || s->sub == 2)
+		creep = 0.75f * (1.0f - expf(-(float)(now - s->since) / XS_LOAD_CREEP_MS));
+	return ((float)k + creep) / 3.0f;
+}
+
+/* One pass of the bar (the session's fill `k` and the moment `ms` it last
+ * moved): the fill eases up toward where it should be, and drops at once
+ * when a step is lost (the cable out). True while it is short of its end,
+ * when the loading view is the one up. */
+static bool xs_load_step(const link_steps *s, float *k, unsigned *ms, unsigned now)
+{
+	float target = xs_load_target(s, now), dt;
+
+	dt = *ms ? (float)(now - *ms) : 0.0f;
+	if (dt > 100.0f) dt = 100.0f;
+	*ms = now ? now : 1;
+	if (target < *k) *k = target;
+	else *k += (target - *k) * (dt >= XS_LOAD_EASE_MS ? 1.0f : dt / XS_LOAD_EASE_MS);
+	if (target >= 1.0f && *k > 0.995f) *k = 1.0f;
+	return *k < 1.0f;
+}
+
+static void xs_load_header(app *a, const SDL_Rect *q)
+{
+	const ds_theme *t = theme();
+	const char *say = T(S_XFER_CONNECTING);
+	TTF_Font *fm = ui_font(UI_F_META), *fl = ui_font(UI_F_LABEL);
+	const int cx = q->x + q->w / 2, y = q->y;
+	SDL_Rect bar = { cx - XS_LOAD_BAR_W / 2, y + 232, XS_LOAD_BAR_W, UI_BAR_H };
+	int fill = (int)(XS_LOAD_BAR_W * (g_load_k < 0 ? 0 : g_load_k > 1 ? 1 : g_load_k) + 0.5f);
+
+	ui_text(a->r, fm, g_way.title, cx, ui_cap_y(fm, y + 18), 0, UI_TEXT_DIM);
+	/* **label**, or **menu** where a language's words do not fit it whole,
+	 * and sliding past that, never cut */
+	if (ui_text_width(fl, say) > q->w) fl = ui_font(UI_F_MENU);
+	if (ui_text_width(fl, say) <= q->w)
+		ui_text(a->r, fl, say, cx, ui_cap_y(fl, y + 160), 0, UI_TEXT);
+	else
+		ui_text_marquee(a->r, fl, say, q->x, ui_cap_y(fl, y + 160), q->w, plat_now_ms(), UI_TEXT);
+	ui_round_rect(a->r, &bar, UI_BAR_H / 2, ui_col(t->track, 255));
+	if (fill > 0)
+		ui_round_rect(a->r, &(SDL_Rect){ bar.x, bar.y, fill, UI_BAR_H }, UI_BAR_H / 2,
+		              ui_col(t->accent_ink, 255));
+}
+
+/* One frame of the loading view: the way in's panel, rows and all, with
+ * the bar in place of what to type */
+static void xs_load_draw(app *a, const menu_row *rows, int n, float k)
+{
+	g_load_k = k;
+	g_menu_header = xs_load_header;
+	g_menu_header_h = XS_WAY_H;
+	menu_draw(a, NULL, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+	g_menu_header = NULL;
+	g_menu_header_h = 0;
+}
+
+/* The hotspot's heading once someone came in (the news replaces its code):
+ * its network and password, then the PIN, for another phone. Where the
+ * network and the password do not fit one line of the panel's heading
+ * (**label**, `room` wide; Chinese draws them wider and its panel is
+ * narrower), the password moves down beside the PIN, so neither slides. */
+static void hot_head(char *out, size_t n, int room, const char *ssid, const char *pass,
+                     const char *pin)
+{
+	snprintf(out, n, "%s · %s", ssid, pass);
+	if (ui_text_width(ui_font(UI_F_LABEL), out) <= room)
+		snprintf(out, n, "%s · %s\nPIN %s", ssid, pass, pin);
+	else
+		snprintf(out, n, "%s\n%s · PIN %s", ssid, pass, pin);
+}
+
+/* File Transfer's steps (linksteps.h, DESIGN.md 11.35), while a step before
+ * the browser stalls (xs_way_hint) and no one has come in yet: Cable,
+ * Address and Browser over the cable, Wi-Fi and Browser over the air, each
+ * a tick once done, the one waited on saying so and the ones after it
+ * quiet, over the rule and the legend. The stalled step's hint takes the
+ * others' room: its row alone and the hint under it, balanced onto at most
+ * three lines, over the rule and the legend. Three rows and a three-line
+ * hint do not fit the panel under a two-line heading, and a hint is about
+ * one step. The screen and its shot (--hare-steps) build them here. */
 #define STEP_ROWS 8
 static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hint, size_t hn,
-                        const link_steps *s, int h, bool cable, const char *name,
-                        const char *addr, const char *legend)
+                        const link_steps *s, int h, bool cable, const char *legend)
 {
 	menu_row all[3];
 	int n = 0, m = 0, k, i, at = 0;
@@ -7953,15 +9051,9 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	case LH_NO_DRIVER:   snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_DRIVER));   break;
 	case LH_NO_ADDRESS:  snprintf(hint, hn, "%s", T(S_XFER_HINT_NO_ADDRESS));  break;
 	case LH_NO_NETWORK:  snprintf(hint, hn, "%s", T(S_PANEL_NEEDS_WIFI));      break;
-	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_REPLUG_COMPUTER));  break;
-	case LH_NO_BROWSER:
-		if (name && name[0] && cable)
-			snprintf(hint, hn, T(S_XFER_HINT_TYPE_BOTH), name, addr);
-		else if (name && name[0])          /* Wi-Fi: the address first (hare_head) */
-			snprintf(hint, hn, T(S_XFER_HINT_WIFI_BOTH), addr, name);
-		else
-			snprintf(hint, hn, T(cable ? S_XFER_HINT_TYPE_ONE : S_XFER_HINT_WIFI_ONE), addr);
-		break;
+	case LH_REPLUG:      snprintf(hint, hn, "%s", T(S_XFER_HINT_REPLUG));      break;
+	/* LH_NO_BROWSER has none: the way in (xs_way_rows) shows what to type
+	 * at full size, which is what that hint said */
 	default: break;
 	}
 	if (hint[0]) {
@@ -7975,47 +9067,6 @@ static int xs_step_rows(app *a, menu_row *out, char lines[3][LB_LINE], char *hin
 	out[n++] = MENU_RULE;
 	out[n++] = MENU_NOTE(legend);
 	return n;
-}
-
-static int hare_rows(menu_row *out, const char *who, const char *ssh,
-                     const char *moved, const char *now, const char *legend)
-{
-	int n = 0;
-
-	out[n++] = (menu_row){ T(S_XFER_BROWSERS), who, false };
-	/* Over the cable, SSH beside the browsers (sshlink.h): who is signed in,
-	 * or why nobody can be. */
-	if (ssh) out[n++] = (menu_row){ "SSH", ssh, false };
-	/* "In / out", not "Transferred": the longest label on the panel beside
-	 * "12 KB in / 41 MB out" scrolled on every real session - just browsing
-	 * moves bytes both ways, so both numbers are never zero - and a still
-	 * caught it mid-word. Rendered 2026-09-30, this fits even at
-	 * "1.2 GB / 413.5 MB". */
-	out[n++] = (menu_row){ T(S_XFER_IN_OUT), moved, false };
-	out[n++] = (menu_row){ T(S_XFER_NOW),    now,   false };
-	/* The key legend (DESIGN.md 11.4): B hides it, Y stops it (xs_*) */
-	if (legend) {
-		out[n++] = MENU_RULE;
-		out[n++] = MENU_NOTE(legend);
-	}
-	return n;
-}
-
-/* One frame of it, for the shot harness. The rows come from the same
- * function the screen uses, so a picture of this cannot quietly stop being a
- * picture of that. */
-static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
-                         const char *who, const char *ssh, const char *moved,
-                         const char *now)
-{
-	menu_row rows[7];
-	char head[192];
-	int n = hare_rows(rows, who, ssh, moved, now, b_legend(S_KEYHINT_CLOSE));
-
-	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
-	draw_shelf(a);
-	ui_scrim(a->r, 0);
-	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
 }
 
 /* Wi-Fi File Transfer as the handheld's own network (src/hotspot.h): a
@@ -8145,7 +9196,7 @@ static bool pack_logs(char *path, size_t pn, char *name, size_t nn)
 			ABOUT("  %-22s %d albums, %d books, %d tracks\n", sc->name,
 			      ml_count(&g_muse, false), ml_count(&g_muse, true), g_muse.ntracks);
 		else
-			ABOUT("  %-22s %d\n", sc->name, g_logs_app->view[i].list.count);
+			ABOUT("  %-22s %d\n", sc->name, sys_games(&g_logs_app->view[i])->count);
 	}
 #undef ABOUT
 
@@ -8356,7 +9407,8 @@ static unsigned xfer_folder_color(const char *folder)
 }
 
 /* And its pixel art, as hare_set_folder_icon asks: the shelf's own for the
- * tag (home_art_key), or the menu music's for Roms/BGM (src/bgm.h) */
+ * tag (home_art_key), or the cassette for the menu music's Roms/BGM
+ * (src/bgm.h) */
 static const char *xfer_folder_icon(const char *folder)
 {
 	const system_cfg *s = xfer_sys_of(folder);
@@ -8417,6 +9469,7 @@ static ui_glyph tile_glyph(const char *label)
 		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
 		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
 		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
+		{ S_XFER_TILE_PHONE,         UI_GLYPH_PHONE },
 		{ S_XFER_TILE_USB_DRIVE,     UI_GLYPH_USB },
 	};
 	size_t i;
@@ -8520,6 +9573,17 @@ static const char *tiles_hints(const char *b_word)
 
 static const char *tiles_hints_charge_only(void) { return tiles_hints(T(S_KEYHINT_CHARGE_ONLY)); }
 
+/* A list's (choice_list_panel): A chooses and B's own answer; Up and Down
+ * move, as in every list, so no hint says so */
+static const char *list_hints(const char *b_word)
+{
+	static char packed[256];
+	key_hint h[2] = { { "A", T(S_KEYHINT_CHOOSE) }, { "B", b_word } };
+
+	keyhints_pack(h, 2, packed, sizeof packed);
+	return packed;
+}
+
 /* The tiles' button hints shown: off while a question that came by itself
  * takes no button yet */
 static bool g_tiles_hints = true;
@@ -8556,6 +9620,135 @@ static void ask_guard_start(app *a, usbpower_guard *g)
 	usbpower_guard_start(g, plat_now_ms(), down);
 }
 
+/* A tile with a small line under its name (What did you plug in?'s USB
+ * Accessory): the name in the menu's size on one line, the smaller where it
+ * does not fit, and on two lines at the smaller past that; the small line in
+ * **meta**, up to three balanced lines (three tiles leave it 272 wide, where
+ * "headphones, Wi-Fi, keyboard" takes three, 2026-11-13). `h` is the words'
+ * height from the name's top. */
+#define TILE_SUB_TOP 92   /* the name's top in the tile, under the mark */
+typedef struct {
+	char name[2][LB_LINE];
+	int  nn;
+	bool small;
+	char sub[3][LB_LINE];
+	int  ns;
+	int  h;
+} tile_sub;
+
+static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *o)
+{
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+
+	o->small = ui_text_width(fm, label) > w - 24;
+	o->nn = 1;
+	snprintf(o->name[0], sizeof o->name[0], "%s", label);
+	if (o->small && ui_text_width(fs, label) > w - 24) {
+		o->nn = ui_balance_lines(fs, label, w - 24, 2, o->name);
+		if (o->nn < 1) {
+			snprintf(o->name[0], sizeof o->name[0], "%s", label);
+			o->nn = 1;
+		}
+	}
+	o->ns = ui_balance_lines(fs, value, w - 32, 3, o->sub);
+	if (o->ns < 0) o->ns = 0;
+	o->h = o->nn * (o->small ? ls : lm) + 4 + o->ns * ls;
+}
+
+/* What did you plug in? as a list (DESIGN.md 11.36, 2026-11-13: "improve
+ * the what did you plug in screen design"): three rows the panel's width,
+ * as a phone's "Use USB for" is, each its mark at the left (64, in a 96
+ * square), its name in the menu's size and under it, in **meta**, what it
+ * does, on one line (two where a language needs them). The focused row in
+ * **accent**, its words **on-accent**; the others **raised**, the line under
+ * the name **text-dim**. Up and Down move (Left and Right too), so the hints
+ * are A and B alone, as a menu's. Known by its first row, USB Accessory, so
+ * the panel drawn again leaving (its snapshot) is the same list. */
+#define CHOICE_ROW_GAP 12
+#define CHOICE_PAD_Y   14
+#define CHOICE_MARK    64
+static bool tiles_are_list(const menu_row *tiles, int n)
+{
+	return n == 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_HEADPHONES &&
+	       tiles[0].value && tiles[1].value && tiles[2].value;
+}
+
+static void choice_list_panel(app *a, const char *heading, const menu_row *rows, int n, int sel,
+                              const char *legend, mm_pose pose)
+{
+	const ds_theme *thm = theme();
+	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	const int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+	const int pad = TILE_PAD, text_x = 24 + 96 + 16;
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
+	key_hint hints[KEYHINTS_MAX];
+	char hbuf[512], head[2][LB_LINE], sub[3][2][LB_LINE];
+	int nh, nhead, nsub[3], rh[3], i, k, y, inner, total = 0;
+	SDL_Rect panel, rule;
+
+	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
+	panel.w = ZYPEROS_SCREEN_W - 2 * 40;
+	inner = panel.w - 2 * pad;
+	nhead = ui_balance_lines(fh, heading, inner, 2, head);
+	if (nhead < 1) nhead = 1;
+	for (i = 0; i < n; i++) {
+		nsub[i] = ui_balance_lines(fs, rows[i].value, inner - text_x - 24, 2, sub[i]);
+		if (nsub[i] < 0) nsub[i] = 0;
+		rh[i] = CHOICE_PAD_Y + lm + nsub[i] * ls + CHOICE_PAD_Y;
+		if (rh[i] < 100) rh[i] = 100;
+		total += rh[i] + (i ? CHOICE_ROW_GAP : 0);
+	}
+	panel.h = 32 + nhead * lh + 24 + DS_RULE + 32 + total + 24 +
+	          (nh ? keyhints_height(hints, nh, inner) : ls) + 32;
+	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
+	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
+	if (posed) {
+		SDL_FRect fr = panel_scaled(&panel, pose.scale);
+		SDL_Rect q = { (int)(fr.x + 0.5f), (int)(fr.y + 0.5f), (int)(fr.w + 0.5f), (int)(fr.h + 0.5f) };
+
+		ui_lift_k(a->r, &q, CFG_NO_COLOR, UI_LIFT_PANEL, pose.alpha);
+		posed = panel_pass_begin(a);
+	} else {
+		ui_lift(a->r, &panel, CFG_NO_COLOR, UI_LIFT_PANEL);
+	}
+	ui_panel(a->r, &panel, DS_RADIUS_PANEL);
+	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
+	y = panel.y + 32;
+	for (k = 0; k < nhead; k++)
+		ui_text(a->r, fh, head[k], panel.x + panel.w / 2, ui_line_y(UI_F_LABEL, y + k * lh), 0, UI_TEXT_SOFT);
+	rule = (SDL_Rect){ panel.x + pad, y + nhead * lh + 24, inner, DS_RULE };
+	SDL_SetRenderDrawColor(a->r, thm->edge.r, thm->edge.g, thm->edge.b, 255);
+	SDL_RenderFillRect(a->r, &rule);
+	y = rule.y + DS_RULE + 32;
+	for (i = 0; i < n; i++) {
+		SDL_Rect t = { panel.x + pad, y, inner, rh[i] };
+		bool on = i == sel;
+		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
+		SDL_Color dim = on ? ink : UI_TEXT_DIM;
+		const char *label = rows[i].label ? rows[i].label : "";
+		int words = lm + nsub[i] * ls, ty = t.y + (t.h - words) / 2;
+		TTF_Font *fn = ui_text_width(fm, label) <= inner - text_x - 24 ? fm : fs;
+
+		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
+		ui_glyph_draw(a->r, tile_glyph(label), t.x + 24 + 48, t.y + t.h / 2, CHOICE_MARK, ink);
+		ui_text(a->r, fn, label, t.x + text_x, ui_line_y(fn == fm ? UI_F_MENU : UI_F_META, ty), -1,
+		        on ? ink : UI_TEXT);
+		ui_fit_drawn(label);
+		for (k = 0; k < nsub[i]; k++)
+			ui_text(a->r, fs, sub[i][k], t.x + text_x, ui_line_y(UI_F_META, ty + lm + k * ls), -1, dim);
+		ui_fit_drawn(rows[i].value);
+		y += rh[i] + CHOICE_ROW_GAP;
+	}
+	y += 24 - CHOICE_ROW_GAP;
+	if (nh && g_tiles_hints)
+		keyhints_draw(a->r, hints, nh, panel.x + pad, panel.x + panel.w - pad, y + KEYHINTS_ROW / 2,
+		              KEYHINTS_CENTER, false, 255);
+	else if (!nh)
+		ui_text(a->r, fs, legend, panel.x + panel.w / 2, ui_line_y(UI_F_META, y), 0, UI_TEXT_DIM);
+	if (posed) panel_pass_end(a, &panel, pose);
+}
+
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 {
@@ -8585,6 +9778,10 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		legend = tiles[n].label;
 	}
 	if (n < 1) return;
+	if (tiles_are_list(tiles, n)) {
+		choice_list_panel(a, heading, tiles, n, sel, legend, pose);
+		return;
+	}
 	/* The legend: button hints (keyhints.h), or a line of text as before */
 	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
 	/* The tiles' width, or the title's if that is wider, and where the lines
@@ -8601,6 +9798,17 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 	cols = g_tiles_grid && n > 2 ? 2 : n;
 	trows = (n + cols - 1) / cols;
 	th = g_tiles_grid && n > 2 ? TILE_HG : TILE_H;
+	/* A small line that takes a third line, or a name two, makes every
+	 * tile of the row as much taller, the room under them kept */
+	if (th == TILE_H)
+		for (i = 0; i < n; i++)
+			if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
+				tile_sub ts;
+				int room = TILE_H - TILE_SUB_TOP - (lm + 4 + 2 * ls);
+
+				tile_sub_lay(tiles[i].label ? tiles[i].label : "", tiles[i].value, tw, &ts);
+				if (TILE_SUB_TOP + ts.h + room > th) th = TILE_SUB_TOP + ts.h + room;
+			}
 	tiles_w = cols * tw + (cols - 1) * tile_gap;
 	tiles_h = trows * th + (trows - 1) * tile_gap;
 	widest = ZYPEROS_SCREEN_W - 2 * 40;
@@ -8684,19 +9892,21 @@ static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int 
 		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
 		if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
 			/* A name and the small line under it: the mark higher, the
-			 * name in the menu's size on one line (the smaller where it
-			 * does not fit), the line in **meta**, up to two balanced */
-			char sl[2][LB_LINE];
-			int ns = ui_balance_lines(fs, tiles[i].value, t.w - 32, 2, sl), y;
+			 * words as tile_sub_lay lays them */
+			tile_sub ts;
+			int y;
 			SDL_Color soft = on ? ink : UI_TEXT_DIM;
 
+			tile_sub_lay(label, tiles[i].value, t.w, &ts);
+			if (ts.small) { f = fs; lf = ls; }
 			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 48, 64, ink);
-			if (ui_text_width(f, label) > t.w - 24) { f = fs; lf = ls; }
-			y = t.y + 92;
-			ui_text(a->r, f, label, t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
-			y += lf + 4;
-			for (k = 0; k < ns; k++)
-				ui_text(a->r, fs, sl[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
+			y = t.y + TILE_SUB_TOP;
+			for (k = 0; k < ts.nn; k++, y += lf)
+				ui_text(a->r, f, ts.name[k], t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
+			if (ts.nn > 1) ui_fit_drawn(label);
+			y += 4;
+			for (k = 0; k < ts.ns; k++)
+				ui_text(a->r, fs, ts.sub[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
 			ui_fit_drawn(tiles[i].value);
 			continue;
 		}
@@ -8916,6 +10126,40 @@ static int ud_tokens_width(TTF_Font *f, const int *tok, int n)
 	return w;
 }
 
+/* A number as plastron's usbdrive writes one on its page, by the rule of
+ * its drivestat.c (dst_fmt_total, dst_fmt_rate): File Transfer's tiles
+ * count their own bytes and say them as Flash Drive's do. `v` over `unit`
+ * with `dec` decimals, rounded to the nearest. */
+static int ud_scaled(unsigned long long v, unsigned long long unit, int dec, int u, bool per_s, int *tok,
+                     int max)
+{
+	unsigned long long p10 = dec == 2 ? 100 : dec == 1 ? 10 : 1, x = (v * p10 + unit / 2) / unit;
+	char num[32];
+
+	if (dec) snprintf(num, sizeof num, "%llu.%0*llu", x / p10, dec, x % p10);
+	else snprintf(num, sizeof num, "%llu", x);
+	return ud_tokens(num, u, per_s, tok, max);
+}
+
+/* A total: "0 B", "312 MB", "1.24 GB" */
+static int ud_total(unsigned long long b, int *tok, int max)
+{
+	if (b < 1000) return ud_scaled(b, 1, 0, UT_B, false, tok, max);
+	if (b < 999500ull) return ud_scaled(b, 1000ull, 0, UT_KB, false, tok, max);
+	if (b < 999500000ull) return ud_scaled(b, 1000000ull, 0, UT_MB, false, tok, max);
+	if (b < 999995000000ull) return ud_scaled(b, 1000000000ull, 2, UT_GB, false, tok, max);
+	return ud_scaled(b, 1000000000ull, 0, UT_GB, false, tok, max);
+}
+
+/* A speed: "0 MB/s" when nothing moves, "512 KB/s", "23.4 MB/s" */
+static int ud_rate(unsigned long long b, int *tok, int max)
+{
+	if (b == 0) return ud_scaled(0, 1000000ull, 0, UT_MB, true, tok, max);
+	if (b < 999500ull) return ud_scaled(b, 1000ull, 0, UT_KB, true, tok, max);
+	if (b < 999950000ull) return ud_scaled(b, 1000000ull, 1, UT_MB, true, tok, max);
+	return ud_scaled(b, 1000000000ull, 2, UT_GB, true, tok, max);
+}
+
 /* The tokens drawn from x, as usbdrive composes them from the atlas */
 static void ud_draw_tokens(SDL_Renderer *r, TTF_Font *f, const int *tok, int n, int x, int cy, SDL_Color c)
 {
@@ -8948,51 +10192,289 @@ static void ud_fit_widest(TTF_Font *f, bool speed, int room)
 		       ud_tokens_width(f, tok, n), room);
 }
 
-/* One way's tile on the page: its mark, moving in **accent-ink** or idle in
- * **text-dim**, and its name in **menu** **text**; its speed big in
- * **title** **text**; its total in **meta** **text-soft**. `speed` and
- * `total` as tokens, NULL for none (the atlas's page). */
+/* One way's tile, on Flash Drive's page and in File Transfer's panel
+ * (xs_move_*): its mark, moving in **accent-ink** or idle in **text-dim**,
+ * and its name in **menu** **text**; its speed big in **title** **text**;
+ * its total in **meta** **text-soft**. `q` is the tile and `at` where its
+ * rows are in it. `speed` and `total` as tokens, NULL for none (the atlas's
+ * page). `bar`, 0..1, the file on its way (File Transfer knows it, Flash
+ * Drive never does): a **bar** of **accent-ink** on **track** at the
+ * tile's foot; below 0, none. */
 typedef struct { int x0, y0, x1, y1; } ud_rect;
 enum { UD_S_SPEED_IN, UD_S_SPEED_OUT, UD_S_TOTAL_IN, UD_S_TOTAL_OUT, UD_S_MARK_IN, UD_S_MARK_OUT, UD_SLOTS };
+/* A tile's padding, and its rows' middles and the bar's top down from its top */
+typedef struct { int pad, mark, speed, total, bar; } ud_rows;
+static const ud_rows UD_PAGE = { UD_PAD, UD_MARK_CY - UD_TILE_Y, UD_SPEED_CY - UD_TILE_Y,
+                                 UD_TOTAL_CY - UD_TILE_Y, UD_TILE_H - 22 };
 
-static void ud_tile(SDL_Renderer *r, int x, bool in, bool active, const int *speed, int ns, const int *total,
-                    int nt, ud_rect slot[UD_SLOTS])
+static void ud_tile(SDL_Renderer *r, const SDL_Rect *q, const ud_rows *at, bool in, bool active,
+                    const int *speed, int ns, const int *total, int nt, float bar, ud_rect slot[UD_SLOTS])
 {
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	SDL_Rect q = { x, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
-	int left = x + UD_PAD, room = UD_TILE_W - 2 * UD_PAD;
+	int left = q->x + at->pad, room = q->w - 2 * at->pad;
+	int mark_cy = q->y + at->mark, speed_cy = q->y + at->speed, total_cy = q->y + at->total;
 	char fit[160];
 
-	ui_round_rect(r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
-	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, UD_MARK_CY, 56,
+	ui_round_rect(r, q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+	ui_glyph_draw(r, in ? UI_GLYPH_TO_CARD : UI_GLYPH_FROM_CARD, left + UD_MARK / 2, mark_cy, 56,
 	              active ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
 	ui_fit_text(fm, T(in ? S_USBDRIVE_TO_CARD : S_USBDRIVE_FROM_CARD), fit, sizeof fit,
 	            room - UD_MARK - 16);
-	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, UD_MARK_CY), -1, UI_TEXT);
-	if (speed) ud_draw_tokens(r, ft, speed, ns, left, UD_SPEED_CY, UI_TEXT);
-	if (total) ud_draw_tokens(r, fs, total, nt, left, UD_TOTAL_CY, UI_TEXT_SOFT);
+	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, mark_cy), -1, UI_TEXT);
+	if (speed) ud_draw_tokens(r, ft, speed, ns, left, speed_cy, UI_TEXT);
+	if (total) ud_draw_tokens(r, fs, total, nt, left, total_cy, UI_TEXT_SOFT);
+	if (bar >= 0.0f) {
+		SDL_Rect b = { left, q->y + at->bar, room, UI_BAR_H };
+		int fill = (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f);
+
+		ui_round_rect(r, &b, UI_BAR_H / 2, ui_col(t->track, 255));
+		if (fill > 0)
+			ui_round_rect(r, &(SDL_Rect){ b.x, b.y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(t->accent_ink, 255));
+	}
 	ud_fit_widest(ft, true, room);
 	ud_fit_widest(fs, false, room);
 	if (slot) {
 		int k = in ? 0 : 1;
 
-		slot[UD_S_MARK_IN + k] = (ud_rect){ left, UD_MARK_CY - UD_MARK / 2, left + UD_MARK, UD_MARK_CY + UD_MARK / 2 };
-		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, UD_SPEED_CY - UD_SPEED_H / 2, left + room,
-		                                     UD_SPEED_CY + UD_SPEED_H / 2 };
-		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, UD_TOTAL_CY - UD_TOTAL_H / 2, left + room,
-		                                     UD_TOTAL_CY + UD_TOTAL_H / 2 };
+		slot[UD_S_MARK_IN + k] = (ud_rect){ left, mark_cy - UD_MARK / 2, left + UD_MARK, mark_cy + UD_MARK / 2 };
+		slot[UD_S_SPEED_IN + k] = (ud_rect){ left, speed_cy - UD_SPEED_H / 2, left + room,
+		                                     speed_cy + UD_SPEED_H / 2 };
+		slot[UD_S_TOTAL_IN + k] = (ud_rect){ left, total_cy - UD_TOTAL_H / 2, left + room,
+		                                     total_cy + UD_TOTAL_H / 2 };
 	}
 }
 
-/* Two button hints at the foot, the shelves' size, centered as a pair */
-static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+/* Flash Drive's page's tile for a way */
+static SDL_Rect ud_page_tile(bool in)
 {
-	int w1 = page_hint_width(k1, l1, false), w2 = page_hint_width(k2, l2, false), gap = 48;
-	int x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+	return (SDL_Rect){ in ? UD_TILE_X0 : UD_TILE_X1, UD_TILE_Y, UD_TILE_W, UD_TILE_H };
+}
+
+/* FILE TRANSFER'S TWO WAYS (DESIGN.md 11.35; 2026-11-13: "can't we use the
+ * same upload/download popup design system in wifi file transfer as we do
+ * for flash drive mode?"). Once someone came in, File Transfer's news is
+ * Flash Drive's page with its two tiles, drawn by ud_tile: Download, to the
+ * card (a browser's upload), and Upload, from it (a browser's download),
+ * each with its speed, once a second, and its total since the screen
+ * opened. A file's bytes only, as for the side lights: the page's own lists
+ * and covers are not a transfer. A way that moved in the last 2 s is lit,
+ * as on Flash Drive's page, and keeps its speed through a pause between
+ * two files. Download's tile has the upload's bar at its foot while one is
+ * on its way and its size is known. g_move is what the page draws. The
+ * panel was the first try: at most 648 tall, its heading and rows over the
+ * cable took 487 of it, and Flash Drive's tiles did not fit beside them. */
+#define XS_FLOW_IDLE_MS 2000u   /* drivestat.h's DST_IDLE_MS */
+typedef struct {
+	unsigned long long total, win, rate;   /* the bytes since the start, this second's, its speed */
+	unsigned moved;                        /* when it last moved */
+	bool active;
+} xs_flow;
+
+/* A second's end for a way: its speed, lit or idle */
+static void xs_flow_step(xs_flow *f, unsigned dt, unsigned now)
+{
+	if (f->win) {
+		f->moved = now ? now : 1;
+		f->active = true;
+		f->rate = dt ? f->win * 1000ull / dt : 0;
+	} else if (f->active && now - f->moved >= XS_FLOW_IDLE_MS) {
+		f->active = false;
+	}
+	if (!f->active) f->rate = 0;
+	f->win = 0;
+}
+
+static struct {
+	bool  active[2];
+	int   speed[2][16], ns[2], total[2][16], nt[2];
+	float bar;                  /* the upload on its way, 0..1; below 0, none */
+} g_move;
+
+/* g_move from the two ways and the upload on its way, `got` of `of` bytes */
+static void xs_move_set(const xs_flow flow[2], long long got, long long of)
+{
+	int w;
+
+	for (w = 0; w < 2; w++) {
+		g_move.active[w] = flow[w].active;
+		g_move.ns[w] = ud_rate(flow[w].rate, g_move.speed[w], 16);
+		g_move.nt[w] = ud_total(flow[w].total, g_move.total[w], 16);
+	}
+	g_move.bar = of > 0 ? (float)((double)(got < 0 ? 0 : got) / (double)of) : -1.0f;
+}
+
+/* The page's rows (xs_page_draw reads them so; panel_show keeps them for
+ * the page's way out): first the news, Now and what happened, or with no
+ * `who` (Play after this file's wait) a line of its own; then Browsers and,
+ * over the cable, SSH, on one line under it; and last the foot's hint, its
+ * word as the label and its key as the value */
+static int xs_page_rows(menu_row *out, const char *who, const char *ssh, const char *now, str_id word)
+{
+	int n = 0;
+
+	out[n++] = who ? (menu_row){ T(S_XFER_NOW), now, false } : MENU_NOTE(now);
+	if (who) out[n++] = (menu_row){ T(S_XFER_BROWSERS), who, false };
+	/* Over the cable, SSH beside the browsers (sshlink.h): who is signed in,
+	 * or why nobody can be. */
+	if (ssh) out[n++] = (menu_row){ "SSH", ssh, false };
+	out[n++] = (menu_row){ T(word), "B", true };
+	return n;
+}
+
+/* A heading's line beside Zyper: **title** where it fits whole, **label**
+ * where not, and sliding past that, never cut */
+static void xs_page_line(app *a, const char *s, int x, int cy, int room, SDL_Color c)
+{
+	TTF_Font *f = ui_font(UI_F_TITLE);
+
+	if (ui_text_width(f, s) > room) f = ui_font(UI_F_LABEL);
+	if (ui_text_width(f, s) <= room) ui_text(a->r, f, s, x, ui_cap_y(f, cy), -1, c);
+	else ui_text_marquee(a->r, f, s, x, ui_cap_y(f, cy), room, plat_now_ms(), c);
+}
+
+/* Rows as one line of **meta** across the page, centered: a note in
+ * **text-soft**, or label and value pairs, the label **text-dim** and the
+ * value **text-soft**, a dot between pairs; sliding where too long */
+#define XS_PAGE_SEP "   ·   "
+static void xs_page_meta(app *a, const menu_row *rows, int n, int cy)
+{
+	TTF_Font *f = ui_font(UI_F_META);
+	const int room = ZYPEROS_SCREEN_W - 2 * DS_INSET, y = ui_cap_y(f, cy);
+	char line[512];
+	size_t at = 0;
+	int k, w = 0, x;
+
+	/* the whole, for its width and for the check that it fits */
+	line[0] = '\0';
+	for (k = 0; k < n && at < sizeof line; k++) {
+		bool note = ROW_IS_NOTE(rows[k]);
+
+		at += (size_t)snprintf(line + at, sizeof line - at, "%s%s%s%s", k ? XS_PAGE_SEP : "", rows[k].label,
+		                       note ? "" : "  ", note ? "" : rows[k].value);
+	}
+	w = ui_text_width(f, line);
+	if (w > room) {
+		ui_text_marquee(a->r, f, line, DS_INSET, y, room, plat_now_ms(), UI_TEXT_SOFT);
+		return;
+	}
+	x = (ZYPEROS_SCREEN_W - w) / 2;
+	for (k = 0; k < n; k++) {
+		if (k) {
+			ui_text(a->r, f, XS_PAGE_SEP, x, y, -1, UI_TEXT_DIM);
+			x += ui_text_width(f, XS_PAGE_SEP);
+		}
+		if (ROW_IS_NOTE(rows[k])) {
+			ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_SOFT);
+			x += ui_text_width(f, rows[k].label);
+			continue;
+		}
+		ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_DIM);
+		x += ui_text_width(f, rows[k].label) + ui_text_width(f, "  ");
+		ui_text(a->r, f, rows[k].value, x, y, -1, UI_TEXT_SOFT);
+		x += ui_text_width(f, rows[k].value);
+	}
+}
+
+static int ud_page_top(app *a, float smile);
+static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2);
+
+/* FILE TRANSFER'S NEWS ON FLASH DRIVE'S PAGE. Its top as Flash Drive's
+ * (ud_page_top): Zyper, and beside him what to type, the heading's first
+ * line in **text** and its second in **text-soft**; the two tiles where
+ * Flash Drive has them, the upload's bar at Download's foot; under them the
+ * news in **meta** **text-soft** where Flash Drive's eject line is, and
+ * under that Browsers (and SSH) in **meta**, the label **text-dim**; the
+ * key's hint at the foot. */
+static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int n)
+{
+	const char *nl = heading ? strchr(heading, '\n') : NULL;
+	char first[192];
+	int hx = ud_page_top(a, 1.0f), room = ZYPEROS_SCREEN_W - DS_INSET - hx, k;
+
+	snprintf(first, sizeof first, "%.*s", nl ? (int)(nl - heading) : (int)strlen(heading ? heading : ""),
+	         heading ? heading : "");
+	xs_page_line(a, first, hx, nl ? 168 - 34 : 168, room, UI_TEXT);
+	if (nl) xs_page_line(a, nl + 1, hx, 168 + 34, room, UI_TEXT_SOFT);
+	for (k = 0; k < 2; k++) {
+		SDL_Rect q = ud_page_tile(k == 0);
+
+		ud_tile(a->r, &q, &UD_PAGE, k == 0, g_move.active[k], g_move.speed[k], g_move.ns[k],
+		        g_move.total[k], g_move.nt[k], k == 0 ? g_move.bar : -1.0f, NULL);
+	}
+	/* where Flash Drive's eject line is, the news, and under it the rest */
+	if (n > 1) xs_page_meta(a, rows, 1, 592);
+	if (n > 2) xs_page_meta(a, rows + 1, n - 2, 640);
+	if (n > 0) ud_page_foot(a->r, rows[n - 1].value, rows[n - 1].label, NULL, NULL);
+}
+
+/* The page as a panel kind (PANEL_MOVE): opened, closed and kept for its
+ * way out as the hotspot's screen is, the whole screen being the panel */
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose)
+{
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
+	SDL_Rect screen = { 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H };
+
+	if (posed) posed = panel_pass_begin(a);
+	xs_page_draw(a, heading, rows, n);
+	if (posed) panel_pass_end(a, &screen, pose);
+}
+
+/* The page, through panel_show */
+static void xs_page_show(app *a, const char *heading, const menu_row *rows, int n)
+{
+	panel_show(a, PANEL_MOVE, heading, rows, n, -1, 0, 0u, NULL, false, 0, NULL);
+}
+
+/* One frame of it, for the shot harness, the tiles as the caller set them
+ * (g_move). The rows come from the same function the screen uses, so a
+ * picture of this cannot quietly stop being a picture of that. */
+static void hare_preview(app *a, const char *name, const char *addr, const char *pin,
+                         const char *who, const char *ssh, const char *now, str_id word)
+{
+	menu_row rows[5];
+	char head[192];
+	int n = xs_page_rows(rows, who, ssh, now, word);
+
+	hare_head(head, sizeof head, !strcmp(addr, "10.42.0.1"), name, addr, pin);
+	draw_shelf(a);
+	ui_scrim(a->r, 0);
+	xs_page_show(a, head, rows, n);
+}
+
+/* What the tiles say, for the screen's pace key: a change draws a frame */
+static unsigned xs_move_key(unsigned key)
+{
+	int w, i;
+
+	for (w = 0; w < 2; w++) {
+		key = pace_int(key, g_move.active[w]);
+		for (i = 0; i < g_move.ns[w]; i++) key = pace_int(key, g_move.speed[w][i]);
+		for (i = 0; i < g_move.nt[w]; i++) key = pace_int(key, g_move.total[w][i]);
+	}
+	return pace_int(key, (int)(g_move.bar * 1000.0f));
+}
+
+/* Two button hints at the foot, the shelves' size, centered as a pair; or
+ * one, centered, with `k2` NULL */
+static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
+{
+	int w1 = page_hint_width(k1, l1, false), w2 = k2 ? page_hint_width(k2, l2, false) : 0;
+	int gap = k2 ? 48 : 0, x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
 
 	page_hint(r, k1, l1, x, 704, false, false);
-	page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+	if (k2) page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+}
+#define ud_foot ud_page_foot
+
+/* A page's top: the ground, and Zyper as on the empty home, unless the look
+ * has him off. Where the heading beside him starts: with Zyper off,
+ * where the tiles do. */
+static int ud_page_top(app *a, float smile)
+{
+	draw_background(a);
+	if (!look_zyper_off()) draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, smile, 0.0f, 255);
+	return look_zyper_off() ? UD_TILE_X0 : 208;
 }
 
 /* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
@@ -9000,7 +10482,8 @@ static void ud_foot(SDL_Renderer *r, const char *k1, const char *l1, const char 
  * it; 3 both ways; 4 the widest numbers */
 static int shot_usbdrive_vals;
 
-/* One of the pages: Zyper beside the heading, as on the empty home.
+/* One of the pages: Zyper beside the heading, as on the empty home, unless
+ * the look has him off.
  * Connected: two **raised** tiles (**radius-card**) side by side, to the
  * card and from it, the eject line under them in **meta** **text-soft**, and
  * POWER's hint at the foot as the shelves' are. One moment and The card is
@@ -9014,15 +10497,15 @@ static void usb_drive_draw(app *a, int which)
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
+	/* With Zyper off (Theme), the heading starts where the tiles do */
+	int hx = ud_page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
 	int n, k;
 
-	draw_background(a);
-	draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, which == UD_FAILED ? 0.0f : 1.0f, 0.0f, 255);
 	/* The heading on one line, or two balanced beside him */
-	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - 208, 2, lines);
+	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
 	if (n > 1) ui_fit_drawn(T(HEAD[which]));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], 208, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+		ui_text(a->r, ft, lines[k], hx, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
 	if (which != UD_CONNECTED) {
 		/* The words in one tile, balanced, in the middle of it */
 		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
@@ -9055,8 +10538,9 @@ static void usb_drive_draw(app *a, int which)
 			int sp[16], to[16];
 			int ns = ud_tokens(V[v][w].s, V[v][w].su, true, sp, 16);
 			int nt = ud_tokens(V[v][w].t, V[v][w].tu, false, to, 16);
+			SDL_Rect q = ud_page_tile(w == 0);
 
-			ud_tile(a->r, w ? UD_TILE_X1 : UD_TILE_X0, w == 0, ACTIVE[v][w], sp, ns, to, nt, NULL);
+			ud_tile(a->r, &q, &UD_PAGE, w == 0, ACTIVE[v][w], sp, ns, to, nt, -1.0f, NULL);
 		}
 	}
 	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
@@ -9105,8 +10589,11 @@ static bool usb_drive_atlas(app *a, const char *raw, const char *txt, FILE *shot
 	/* Where the slots are: the connected page's own tiles */
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
-	ud_tile(a->r, UD_TILE_X0, true, false, NULL, 0, NULL, 0, slot);
-	ud_tile(a->r, UD_TILE_X1, false, false, NULL, 0, NULL, 0, slot);
+	for (i = 0; i < 2; i++) {
+		SDL_Rect q = ud_page_tile(i == 0);
+
+		ud_tile(a->r, &q, &UD_PAGE, i == 0, false, NULL, 0, NULL, 0, -1.0f, slot);
+	}
 	SDL_SetRenderDrawColor(a->r, th->raised.r, th->raised.g, th->raised.b, 255);
 	SDL_RenderClear(a->r);
 	/* The speeds' tokens: the digits, the mark and the space on a row, the
@@ -9314,25 +10801,39 @@ static void usb_ask(app *a)
 }
 
 /* Something on the USB port wants power and gives none (usbpower.h): a
- * DAC, a Wi-Fi adapter, a keyboard, or a computer whose port took the sink
- * side, which the handheld cannot tell apart without feeding it. Asked once
- * per plug over the shelf, as Computer Connected is (DESIGN.md 11.36): two
- * tiles, USB Accessory and Computer, starting on Computer, so a
- * quick A or B never feeds a computer. USB Accessory asks usbrole for host for
- * this plug (it says yes only while no power comes in); Computer, B
- * or MENU leave the port as it is and say to plug the cable in again, so
- * the computer can take the side that gives power. The question goes by
- * itself when the plug stops wanting power (unplugged, or power came). */
-static int usb_power_rows(menu_row rows[3])
+ * DAC, a Wi-Fi adapter, a keyboard, a computer whose port took the sink
+ * side, or a phone, which the handheld cannot tell apart without feeding it.
+ * Asked once per plug over the shelf, as Computer Connected is (DESIGN.md
+ * 11.36): three tiles, USB Accessory, Computer and Phone, starting on
+ * Computer, so a quick A or B never feeds a computer. USB Accessory asks
+ * usbrole for host for this plug (it says yes only while no power comes
+ * in); Computer, B or MENU leave the port as it is and say to plug the cable
+ * in again, so the computer can take the side that gives power. Phone powers
+ * it as USB Accessory does: a phone takes the side that waits for power at
+ * every plug, so a replug never helps, and powered it is the device on the
+ * handheld's bus whatever its own USB settings say (2026-11-13); its USB
+ * tethering then gives the handheld a network to the phone, and File
+ * Transfer opens there (phonelink.h, usbpower.h). The question goes by itself
+ * when the plug stops wanting power (unplugged, or power came). A list since
+ * 2026-11-13 (choice_list_panel). */
+enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
+
+static int usb_power_rows(menu_row rows[UP_TILES + 1])
 {
 	/* A tile's value is the small line under its name (tiles_panel) */
-	rows[0] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
-	rows[1] = (menu_row){ T(S_XFER_TILE_COMPUTER), NULL, true };
-	rows[2] = MENU_NOTE(tiles_hints(T(S_XFER_TILE_COMPUTER)));
-	return 3;
+	rows[UP_ACCESSORY] = (menu_row){ T(S_XFER_TILE_ACCESSORY), T(S_XFER_TILE_ACCESSORY_SUB), true };
+	rows[UP_COMPUTER] = (menu_row){ T(S_XFER_TILE_COMPUTER), T(S_XFER_TILE_COMPUTER_SUB), true };
+	rows[UP_PHONE] = (menu_row){ T(S_XFER_TILE_PHONE), T(S_XFER_TILE_PHONE_SUB), true };
+	rows[UP_TILES] = MENU_NOTE(list_hints(T(S_XFER_TILE_COMPUTER)));
+	return UP_TILES + 1;
 }
 
 static void replug_on(unsigned plug);
+
+static void phone_said_on(unsigned plug);
+/* The plug answered Phone, 0 none: only its tethering is acted on by itself
+ * (phone_link_due) */
+static unsigned g_phone_plug;
 
 static void replug_off(void);
 
@@ -9397,8 +10898,8 @@ static void ulog_note(const char *what)
 
 static void usb_power_ask(app *a, unsigned plug)
 {
-	menu_row rows[3];
-	int n = usb_power_rows(rows), sel = 1, choice = -1, lv;
+	menu_row rows[UP_TILES + 1];
+	int n = usb_power_rows(rows), sel = UP_COMPUTER, choice = -1, lv;
 	unsigned looked = 0;
 	usbpower_guard guard;
 	float f;
@@ -9416,19 +10917,22 @@ static void usb_power_ask(app *a, unsigned plug)
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { panel_close(a, lv, true); power_off(a); return; }
-		if (menu_leaving(a)) choice = 1;
+		if (menu_leaving(a)) choice = UP_COMPUTER;
 		/* Unplugged, or power came in: nothing to ask any more */
 		if (!looked || now - looked >= 200u) {
 			usb_power p;
 
 			looked = now ? now : 1;
-			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = 2;
+			if (!plat_usb_power(&p) || p.plug != plug || !p.ask) choice = UP_GONE;
 		}
-		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
-			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
+		/* A list: Up and Down, and Left and Right as the tiles were */
+		if (in_repeat(&a->in, IN_UP) || in_repeat(&a->in, IN_DOWN) ||
+		    in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
+			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN
+			            : in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
 
 			moved_sound(a, b);
-			sel = (sel + (b == IN_LEFT ? -1 : 1) + 2) % 2;
+			sel = (sel + (b == IN_UP || b == IN_LEFT ? -1 : 1) + UP_TILES) % UP_TILES;
 		}
 		if (a->in.pressed[IN_ACCEPT]) {
 			uisound_play(DS_SOUND_ACCEPT);
@@ -9449,11 +10953,22 @@ static void usb_power_ask(app *a, unsigned plug)
 	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
-	if (a->running) ulog_note(choice == 0 ? "asked: USB Accessory" : choice == 1 ? "asked: Computer"
-	                                                               : "asked: gone before an answer");
-	if (!a->running || choice == 2) return;
-	if (choice == 0) {
+	if (a->running) ulog_note(choice == UP_ACCESSORY ? "asked: USB Accessory"
+	                          : choice == UP_COMPUTER ? "asked: Computer"
+	                          : choice == UP_PHONE ? "asked: Phone" : "asked: gone before an answer");
+	if (!a->running || choice == UP_GONE) return;
+	if (choice == UP_ACCESSORY) {
 		plat_usb_power_grant(plug);
+		return;
+	}
+	/* A phone: powered, so it is on the handheld's bus as a device, and
+	 * asked for its USB tethering, until the cable comes out or File
+	 * Transfer opens on its network (phone_link_follow); an iPhone's own
+	 * message once it is seen (power_follow) */
+	if (choice == UP_PHONE) {
+		plat_usb_power_grant(plug);
+		g_phone_plug = plug;
+		phone_said_on(plug);
 		return;
 	}
 	/* A computer: the message, until the cable comes out */
@@ -9468,19 +10983,30 @@ static void usb_power_ask(app *a, unsigned plug)
 static usbpower_follow_state g_power_f;
 static unsigned g_power_ask;            /* a plug to ask about, 0 none */
 static struct {
-	bool     on;                        /* the replug message is up */
+	bool     on;                        /* the message is up */
 	unsigned plug;                      /* for this plug */
+	int      say;                       /* USBPOWER_SAY_COMPUTER or _PHONE */
 } g_replug;
 
-static void replug_on(unsigned plug)
+static void said_on(unsigned plug, int say)
 {
-	if (g_replug.on && g_replug.plug == plug) return;
+	if (g_replug.on && g_replug.plug == plug && g_replug.say == say) return;
 	g_replug.on = true;
 	g_replug.plug = plug;
-	fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
-	ulog_note("replug message");
+	g_replug.say = say;
+	if (say == USBPOWER_SAY_PHONE) {
+		fprintf(stderr, "usb: a phone: what it needs to connect (plug %u)\n", plug);
+		ulog_note("phone message");
+	} else {
+		fprintf(stderr, "usb: the computer has not connected: replug message up (plug %u)\n", plug);
+		ulog_note("replug message");
+	}
 	redraw_now();
 }
+
+static void replug_on(unsigned plug) { said_on(plug, USBPOWER_SAY_COMPUTER); }
+
+static void phone_said_on(unsigned plug) { said_on(plug, USBPOWER_SAY_PHONE); }
 
 static void replug_off(void)
 {
@@ -9489,6 +11015,47 @@ static void replug_off(void)
 
 	fprintf(stderr, "usb: replug message down\n");
 	redraw_now();
+}
+
+/* A phone's USB tethering (phonelink.h), looked at twice a second while
+ * the port powers the plug the player answered Phone for: true once a link,
+ * when it has its address and File Transfer is not on (`xfer_on`), so the
+ * shelf opens it there. The phone message goes then: its words are done.
+ * Only for that plug: a network device on a plug answered USB Accessory, or
+ * powered by Automatic, is never given a lease or a File Transfer by itself
+ * (anything can say it is a USB network). MENU's USB File Transfer opens
+ * on the phone's link again once it has its address. */
+static bool phone_link_due(bool xfer_on)
+{
+	static unsigned looked;
+	static char last[64];
+	static bool acted;                  /* plat_phone_link set it up */
+	unsigned now = plat_now_ms();
+	char ifname[32], ip[64];
+	usb_power p = { 0 };
+
+	if (looked && now - looked < 500u) return false;
+	looked = now ? now : 1;
+	if (!g_phone_plug || !plat_usb_power(&p) || !p.host || p.plug != g_phone_plug) {
+		/* not the phone's plug, or the port no host: none is looked for
+		 * (the scan is for the host's devices); the phone just gone, its
+		 * lease's client goes too (plat_phone_link finds no interface) */
+		if (acted && !p.host) {
+			plat_phone_link(true, NULL, 0, NULL, 0);
+			acted = false;
+		}
+		if (last[0]) phonelink_new(last, NULL, NULL);
+		if (g_phone_plug && p.known && p.plug != g_phone_plug) g_phone_plug = 0;
+		return false;
+	}
+	acted = true;
+	if (!plat_phone_link(true, ifname, sizeof ifname, ip, sizeof ip)) ifname[0] = ip[0] = '\0';
+	if (!phonelink_new(last, ifname, ip) || xfer_on) return false;
+	fprintf(stderr, "usb: the phone shared its network: %s on %s\n", ip, ifname);
+	ulog_note("phone network");
+	if (g_replug.on && (g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE))
+		replug_off();
+	return true;
 }
 
 static void power_follow(void)
@@ -9510,9 +11077,18 @@ static void power_follow(void)
 	/* usbrole started after the launcher told it, or again: told again */
 	if (p.known && p.automatic != g_usb_auto) plat_usb_power_mode(g_usb_auto);
 	/* The message stays until the plug ends: unplugged (the pin idle),
-	 * another plug, the computer connected (power in), or the port a host */
-	if (g_replug.on && (p.plug != g_replug.plug || p.pin != 1 || p.vbus == 1 || p.host))
+	 * another plug, the computer or the phone connected (power in), or the
+	 * port a host (usbpower_said_ends) */
+	if (g_replug.on && usbpower_said_ends(g_replug.say, g_replug.plug, &p))
 		replug_off();
+	/* Phone's message, the phone powered and on the bus: an iPhone, which
+	 * shares its network only with a computer it trusts, gets its own */
+	if (g_replug.on && g_replug.say == USBPOWER_SAY_PHONE && p.host && plat_usb_iphone()) {
+		fprintf(stderr, "usb: the phone is an iPhone: its message\n");
+		ulog_note("an iPhone");
+		g_replug.say = USBPOWER_SAY_IPHONE;
+		redraw_now();
+	}
 	if (g_power_ask && (p.plug != g_power_ask || !p.ask)) g_power_ask = 0;
 	/* The accessory powered when the handheld turned off, there again from
 	 * the start: powered, and never asked about (usbpower_resume) */
@@ -9533,12 +11109,30 @@ static void power_follow(void)
 	}
 }
 
-/* The message's rows: its words balanced onto up to three lines in `w` */
-static int replug_lines(int w, char lines[4][LB_LINE])
+/* The message's rows: its words balanced onto up to four lines in `w`;
+ * Phone's, longer, at the smaller size (**meta**) when the menu's takes
+ * more, onto up to six. *small says which. */
+#define REPLUG_LINES 6
+static int replug_lines(int w, char lines[LB_MAX_LINES][LB_LINE], bool *small)
 {
-	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_REPLUG_COMPUTER), w, 4, lines);
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE;
+	const char *text = T(g_replug.say == USBPOWER_SAY_IPHONE ? S_XFER_IPHONE_SAID
+	                     : phone ? S_XFER_PHONE_SAID : S_XFER_REPLUG_COMPUTER);
+	int n;
 
-	ui_fit_drawn(T(S_XFER_REPLUG_COMPUTER));
+	*small = false;
+	if (!phone) {
+		n = ui_balance_lines(ui_font(UI_F_MENU), text, w, 4, lines);
+	} else {
+		/* Room for all of it first, so the fewest lines it takes are
+		 * known without a cut: four or under stay at the menu's size */
+		n = ui_balance_lines(ui_font(UI_F_MENU), text, w, LB_MAX_LINES, lines);
+		if (n > 4) {
+			*small = true;
+			n = ui_balance_lines(ui_font(UI_F_META), text, w, REPLUG_LINES, lines);
+		}
+	}
+	ui_fit_drawn(text);
 	return n;
 }
 
@@ -9546,30 +11140,59 @@ static int replug_lines(int w, char lines[4][LB_LINE])
  * at the top, under the header, as the song pop-up stands (DESIGN.md 11.22
  * and 11.36): **surface** with the **panel** lift, the laptop mark at its
  * left in **text-soft**, "Computer" in **meta** **text-dim** over the words
- * in **menu** **text** (up to four balanced lines), until the plug ends */
+ * in **menu** **text** (up to four balanced lines), and under them the cable
+ * that always connects in **meta** **text-dim** (up to two), until the plug
+ * ends. Phone's message the same, with the phone mark and "Phone", in **menu**
+ * up to four lines, else in **meta** up to six, and under it, in place of the
+ * cable line, what a phone with no USB tethering does (up to three). */
 #define REPLUG_W    960
 #define REPLUG_TOP  104
+#define REPLUG_TIP_GAP 8
 static void replug_draw_at(SDL_Renderer *r)
 {
-	char lines[4][LB_LINE];
-	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	bool phone = g_replug.say == USBPOWER_SAY_PHONE || g_replug.say == USBPOWER_SAY_IPHONE;
+	/* the smaller line under the words: the cable that always connects a
+	 * computer (up to two lines); for a phone asked to share its network,
+	 * what one with no USB tethering does and that Flash Drive needs an
+	 * adapter, the phone being the device here (up to three); none for an
+	 * iPhone, whose message names the adapter itself */
+	int tip_id = g_replug.say == USBPOWER_SAY_COMPUTER ? S_XFER_REPLUG_TIP
+	           : g_replug.say == USBPOWER_SAY_PHONE ? S_XFER_PHONE_TIP : -1;
+	char lines[LB_MAX_LINES][LB_LINE], tip[3][LB_LINE];
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META), *fb;
 	const int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
 	const int mark = 64, padx = 32, pady = 24, tx_off = padx + mark + 28;
 	SDL_Rect slab;
-	int n, k, y;
+	bool small;
+	int n, k, y, lb, m = 0;
 
-	n = replug_lines(REPLUG_W - tx_off - padx, lines);
+	n = replug_lines(REPLUG_W - tx_off - padx, lines, &small);
+	fb = small ? fs : fm;
+	lb = small ? ls : lm;
+	/* A computer whose USB-C port takes the waiting side at every plug, as a
+	 * phone's does, never connects by plugging in again (Discord,
+	 * 2026-11-13): the cable that always does, under the words */
+	if (tip_id >= 0) {
+		m = ui_balance_lines(fs, T(tip_id), REPLUG_W - tx_off - padx, phone ? 3 : 2, tip);
+		ui_fit_drawn(T(tip_id));
+	}
 	slab = (SDL_Rect){ (ZYPEROS_SCREEN_W - REPLUG_W) / 2, REPLUG_TOP, REPLUG_W,
-	                   pady + ls + 4 + n * lm + pady };
+	                   pady + ls + 4 + n * lb + (m ? REPLUG_TIP_GAP + m * ls : 0) + pady };
 	ui_lift(r, &slab, CFG_NO_COLOR, UI_LIFT_PANEL);
 	ui_panel(r, &slab, DS_RADIUS_PANEL);
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-	ui_glyph_draw(r, UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2, mark, UI_TEXT_SOFT);
+	ui_glyph_draw(r, phone ? UI_GLYPH_PHONE : UI_GLYPH_LAPTOP, slab.x + padx + mark / 2, slab.y + slab.h / 2,
+	              mark, UI_TEXT_SOFT);
 	y = slab.y + pady;
-	ui_text(r, fs, T(S_XFER_TILE_COMPUTER), slab.x + tx_off, ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
+	ui_text(r, fs, T(phone ? S_XFER_TILE_PHONE : S_XFER_TILE_COMPUTER), slab.x + tx_off,
+	        ui_line_y(UI_F_META, y), -1, UI_TEXT_DIM);
 	y += ls + 4;
 	for (k = 0; k < n; k++)
-		ui_text(r, fm, lines[k], slab.x + tx_off, ui_line_y(UI_F_MENU, y + k * lm), -1, UI_TEXT);
+		ui_text(r, fb, lines[k], slab.x + tx_off, ui_line_y(small ? UI_F_META : UI_F_MENU, y + k * lb), -1,
+		        UI_TEXT);
+	y += n * lb + REPLUG_TIP_GAP;
+	for (k = 0; k < m; k++)
+		ui_text(r, fs, tip[k], slab.x + tx_off, ui_line_y(UI_F_META, y + k * ls), -1, UI_TEXT_DIM);
 }
 
 static bool replug_shown(void) { return g_replug.on; }
@@ -9671,6 +11294,10 @@ typedef struct {
 	bool        on;             /* the server is up */
 	bool        shown;          /* its screen is open */
 	bool        cable, hot;
+	/* On a phone's USB tethering (plat_phone_link): the cable's name, the
+	 * address the phone gave, the phone's browser; no SSH, no steps of the
+	 * cable's (the link is the phone's network, as Wi-Fi's is) */
+	bool        phone;
 	bool        hot_failed, ssh_shown;
 	bool        rescan_due;     /* ended behind the shelf with the shelf changed */
 	const char *name;
@@ -9684,8 +11311,23 @@ typedef struct {
 	link_sense  sense;          /* the cable's facts, read five times a second */
 	bool        sensed;         /* the device can tell them: steps over the cable */
 	bool        joined;         /* Wi-Fi: on a network */
+	/* Someone came in: a browser entered the PIN (hare_signed_once) or SSH
+	 * signed in. The screen is the way in until then and its news after,
+	 * and stays the news when they leave (DESIGN.md 11.35) */
+	bool        met;
+	/* The cable's loading bar (xs_load_step): its fill as drawn, 0..1, and
+	 * the moment it last moved */
+	float       load_k;
+	unsigned    load_ms;
 	unsigned    sense_at;
 	side_lights_batch lit;      /* files arriving, for the side lights */
+	side_lights_move  mv;       /* files moving either way, for their wave */
+	/* The panel's tiles (xs_move_*): a file's bytes each way, Download
+	 * then Upload; the second they count from; the last frame's uploads
+	 * and downloads, whose last bytes land in the poll that ends them */
+	xs_flow     flow[2];
+	unsigned    flow_at;
+	bool        flow_up, flow_send;
 } xfer_sess;
 static xfer_sess g_xs;
 
@@ -9992,9 +11634,55 @@ static int after_start_thread(void *unused)
 {
 	(void)unused;
 	if (g_after.check) lib_check_run(g_after.check);
+	if (g_after.check) lib_check_import(g_after.check);
 	media_tidy();
 	SDL_AtomicSet(&g_after.done, 1);
 	return 0;
+}
+
+/* gamelist.xml's names and favorites, which lib_check_import just wrote to
+ * the card's library, on the shelves at once: each game's title, its
+ * favorite, and its shelf put in order again on the game it was on. `ctx`
+ * says whether a favorite was added. */
+typedef struct { app *a; bool fav, titles; } es_apply;
+
+static void es_imported(const char *folder, const es_import_list *l, void *ctx)
+{
+	app *a = ((es_apply *)ctx)->a;
+	bool *fav = &((es_apply *)ctx)->fav;
+
+	for (int si = 0; si < a->sys.count; si++) {
+		sysview *v = &a->view[si];
+		const system_cfg *sc = &a->sys.systems[si];
+		char file[LIB_PATH] = "";
+		bool changed = false;
+		int at;
+
+		if (v->owner || is_muse(sc) || strcmp(sc->folder, folder) || v->list.count <= 0) continue;
+		snprintf(file, sizeof file, "%s", v->list.items[v->cursor].file);
+		for (int i = 0; i < l->n; i++) {
+			int k = lib_find_entry(&v->list, NULL, 0, l->got[i].file);
+			game_entry *e;
+
+			if (k < 0) continue;
+			e = &v->list.items[k];
+			if (l->got[i].title[0] && strcmp(e->title, l->got[i].title)) {
+				snprintf(e->title, sizeof e->title, "%s", l->got[i].title);
+				changed = true;
+			}
+			if (l->got[i].favorite && !fav_is(sc->tag, e->file)) {
+				fav_toggle(sc->tag, e->file);
+				*fav = true;
+			}
+		}
+		if (!changed) continue;
+		((es_apply *)ctx)->titles = true;
+		free_view_textures(v);
+		sort_shelf(a, si);
+		if ((at = lib_find_entry(&v->list, NULL, 0, file)) >= 0) v->cursor = at;
+		cf_reset(&v->cf, v->cursor);
+		redraw_now();
+	}
 }
 
 /* A shelf pass's share of it: begun at the first pass after the first frame,
@@ -10024,7 +11712,13 @@ static void after_start_step(app *a, bool drawn)
 		return;
 	}
 	if (g_after.check && SDL_AtomicGet(&g_after.done)) {
+		es_apply ea = { a, false, false };
+
 		if (lib_check_apply(a, g_after.check)) redraw_now();
+		lib_check_imported(g_after.check, es_imported, &ea);
+		if (ea.fav) fav_save();
+		/* its copies of the games, with their names and the new ones */
+		if (ea.fav || ea.titles) refresh_favorites_shelf(a);
 		lib_check_free(g_after.check);
 		g_after.check = NULL;
 	}
@@ -10034,15 +11728,20 @@ static void after_start_step(app *a, bool drawn)
  * SSH over the cable. False when it could not, having said why. */
 static bool xs_open(app *a, int way)
 {
-	const bool  cable = way < 0 ? plat_cable_link(NULL, 0) : way == 1;
-	const char *name  = cable ? XFER_NAME_CABLE : XFER_NAME_WIFI;
-	const bool  hot   = !cable && xfer_wants_hotspot();
-	bool        due   = g_xs.rescan_due;
 	char        ip[64], path[512];
+	/* A phone's tethering (way 2, or whichever: the port a host with a
+	 * phone's network on it, which the cable cannot be then) */
+	const bool  phone = way == 2 || (way < 0 && !plat_cable_link(NULL, 0) &&
+	                                 plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]);
+	const bool  cable = !phone && (way < 0 ? plat_cable_link(NULL, 0) : way == 1);
+	const char *name  = cable || phone ? XFER_NAME_CABLE : XFER_NAME_WIFI;
+	const bool  hot   = !cable && !phone && xfer_wants_hotspot();
+	bool        due   = g_xs.rescan_due;
 
 	memset(&g_xs, 0, sizeof g_xs);
 	g_xs.rescan_due = due;
 	g_xs.cable = cable;
+	g_xs.phone = phone;
 	g_xs.hot = hot;
 	g_xs.name = name;
 	g_xs.hs = HOTSPOT_OFF;
@@ -10061,7 +11760,8 @@ static bool xs_open(app *a, int way)
 	 * a cover uploaded into a shelf's .media is shrunk on every device. */
 	hareart_init(&a->sys, P_ROMS);
 	singles_cover();                /* back, if it was taken off the card */
-	if (cable) {
+	/* the phone's browser has the phone's internet, as a computer's has */
+	if (cable || phone) {
 		hare_set_art(hareart_wanted, hareart_match, hareart_crc, hareart_nointro);
 		hare_set_albums(albums_wanted, album_pick);
 	} else {
@@ -10074,12 +11774,15 @@ static bool xs_open(app *a, int way)
 	hare_set_sgdb(xfer_sgdb);
 	/* Updates through the computer, where the handheld has no internet of
 	 * its own: over the cable (docs/updates.md) */
-	hare_set_update(cable ? xfer_update : NULL);
+	hare_set_update(cable || phone ? xfer_update : NULL);
 	/* The page's name, the one this screen shows: USB File Transfer over
-	 * the cable, Wi-Fi File Transfer over Wi-Fi and the hotspot */
-	hare_set_cable(cable);
+	 * the cable and a phone's tethering, Wi-Fi File Transfer over Wi-Fi and
+	 * the hotspot */
+	hare_set_cable(cable || phone);
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	g_xfer_sys_ok = cfg_load_systems(path, &g_xfer_sys);
+	/* The folders the shelves read, EmulationStation's where they chose one */
+	if (g_xfer_sys_ok) shelf_folders_apply(&g_xfer_sys);
 	hare_set_folder_color(xfer_folder_color);
 	hare_set_folder_icon(xfer_folder_icon);
 	snprintf(path, sizeof path, "%s/system-icons", P_ROOT);
@@ -10146,9 +11849,19 @@ static void xs_tick(app *a)
 	if (!g_xs.on) return;
 	g_xs.busy = hare_poll();
 	hare_status(&g_xs.st);
+	if (hare_signed_once() || (g_xs.cable && sshlink_sessions() > 0)) g_xs.met = true;
 	/* A batch of files in: the side lights say so (src/sidelights.h) */
 	if (side_lights_batch_done(&g_xs.lit, g_xs.st.uploads > 0, now))
 		plat_side_lights_say(SIDE_LIGHTS_DONE);
+	/* Files moving: the side lights' wave, down while a file comes in and
+	 * up while one goes out; a file's bytes only (side_lights_move_files) */
+	{
+		char line[64];
+
+		if (side_lights_move_files(&g_xs.mv, g_xs.st.uploads, g_xs.st.sends, g_xs.st.in, g_xs.st.out,
+		                           now, line, sizeof line))
+			plat_side_lights_say(line);
+	}
 	/* A key the page sent, settled the frame its check ends */
 	sgdb_try_poll();
 	mdns_poll(now);
@@ -10182,6 +11895,25 @@ static void xs_tick(app *a)
 	}
 	g_xs.in  += g_xs.st.in;
 	g_xs.out += g_xs.st.out;
+	/* The tiles' ways: a file's bytes, their speed once a second */
+	{
+		unsigned long long fin = g_xs.st.uploads > 0 || g_xs.flow_up ? g_xs.st.in : 0;
+		unsigned long long fout = g_xs.st.sends > 0 || g_xs.flow_send ? g_xs.st.out : 0;
+
+		g_xs.flow_up = g_xs.st.uploads > 0;
+		g_xs.flow_send = g_xs.st.sends > 0;
+		g_xs.flow[0].total += fin;
+		g_xs.flow[0].win += fin;
+		g_xs.flow[1].total += fout;
+		g_xs.flow[1].win += fout;
+		if (!g_xs.flow_at) {
+			g_xs.flow_at = now ? now : 1;
+		} else if (now - g_xs.flow_at >= 1000u) {
+			xs_flow_step(&g_xs.flow[0], now - g_xs.flow_at, now);
+			xs_flow_step(&g_xs.flow[1], now - g_xs.flow_at, now);
+			g_xs.flow_at = now ? now : 1;
+		}
+	}
 	if (g_xs.st.in || g_xs.st.out || hare_inflight() > 0) g_xs.moved_at = now ? now : 1;
 	/* The hotspot's DNS answers and its start, every frame (bounded) */
 	if (g_xs.hot && (g_xs.hs = hotspot_poll()) == HOTSPOT_FAILED) g_xs.hot_failed = true;
@@ -10196,12 +11928,17 @@ static void xs_tick(app *a)
 		else snprintf(g_xs.addr, sizeof g_xs.addr, "%s:%d", hotspot_addr(), hare_port());
 	} else if (!g_xs.addr[0] || now - g_xs.addr_at > 2000u) {
 		bool up = g_xs.cable ? plat_cable_link(ip, sizeof ip)
+		        : g_xs.phone ? plat_phone_link(false, NULL, 0, ip, sizeof ip) && ip[0]
 		        : wifi_status(ssid, sizeof ssid, ip, sizeof ip) == WIFI_CONNECTED && ip[0];
 
 		g_xs.addr_at = now;
+		/* On a phone's tethering, joined while the phone gives an address;
+		 * no name there (a phone's browser does not look names up by mDNS),
+		 * the address shown alone (xs_way_set) */
+		if (g_xs.phone) g_xs.joined = up;
 		/* Over Wi-Fi the name follows the network: on it (a new address
 		 * starts it again there), or off with it */
-		if (!g_xs.cable) {
+		else if (!g_xs.cable) {
 			g_xs.joined = up;
 			if (up) mdns_start("wlan0", ip, true);
 			else mdns_stop();
@@ -10215,7 +11952,7 @@ static void xs_tick(app *a)
 			g_xs.link_lost_at = 0;
 		} else {
 			snprintf(g_xs.addr, sizeof g_xs.addr, "%s",
-			         g_xs.cable ? T(S_XFER_CABLE_UNPLUGGED) : T(S_XFER_WIFI_GONE));
+			         g_xs.cable || g_xs.phone ? T(S_XFER_CABLE_UNPLUGGED) : T(S_XFER_WIFI_GONE));
 			if (!g_xs.link_lost_at) g_xs.link_lost_at = now ? now : 1;
 		}
 	}
@@ -10226,10 +11963,11 @@ static void xs_tick(app *a)
 	 * activity; a connected browser is a person at the other end of it,
 	 * which is the same claim a button press makes and no weaker for
 	 * arriving over a network. Neither suspends Auto Off - close the tab
-	 * and the countdown resumes. */
+	 * and the countdown resumes. Said as every long task says it
+	 * (src/taskhold.h), where idle_due reads it. */
 	if (g_xs.busy || g_xs.st.clients > 0 || sshlink_sessions() > 0 ||
 	    (g_xs.hot && hotspot_phones() > 0))
-		a->idle.since_ms = now;
+		task_note(TASK_TRANSFER, now);
 
 	/* The page asked for a restart to install an update (xfer_update): a
 	 * moment for its answer to go out, then as System Update's Restart */
@@ -10471,7 +12209,7 @@ static bool xs_shelf_due(void)
 	return false;
 }
 
-static bool xs_row_cable(void) { return g_xs.cable; }
+static bool xs_row_cable(void) { return g_xs.cable || g_xs.phone; }
 
 /* The corner's mark: on behind the shelf, and the ring as far as the
  * upload on its way (status.h). Not while its own screen is up. */
@@ -10518,6 +12256,12 @@ static void xs_stop(app *a, bool panels)
 	xfer_stop(g_xs.cable);
 	g_xs.on = false;
 	g_xs.shown = false;
+	{
+		char line[64];
+
+		/* A file cut off on its way: the side lights rest at once */
+		if (side_lights_move_end(&g_xs.mv, line, sizeof line)) plat_side_lights_say(line);
+	}
 	media_tidy();
 	up_cable_tidy();
 	/* The point of the whole feature is getting ROMs onto the card, and the
@@ -10541,6 +12285,22 @@ static void xs_end(void)
 	xfer_stop(g_xs.cable);
 	g_xs.on = false;
 	g_xs.shown = false;
+}
+
+/* The tiles (g_move) from the session as it is now */
+static void xs_move_now(void)
+{
+	xs_move_set(g_xs.flow, g_xs.st.uploads > 0 ? g_xs.st.up_got : 0,
+	            g_xs.st.uploads > 0 ? g_xs.st.up_total : 0);
+}
+
+/* Play after this file's wait (xs_before_game), on the page: its line,
+ * saying which file, where the news is, and B's hint */
+static int xs_finish_rows(menu_row *rows, char *line, size_t ln, const char *file)
+{
+	if (file && file[0]) snprintf(line, ln, T(S_XFER_FINISHING), file);
+	else snprintf(line, ln, "%s", T(S_XFER_FINISHING_THE_FILE));
+	return xs_page_rows(rows, NULL, NULL, line, S_KEYHINT_BACK_TO_SHELF);
 }
 
 /* The two questions' words (DESIGN.md 11.14): the tiles, two lines each, and
@@ -10664,7 +12424,8 @@ static bool xs_before_game(app *a)
 	if (c == 0 || c == -1) return false;
 	if (c == 1) {
 		/* After the file on its way: the page is told nothing new starts,
-		 * and this waits for it, B going back with it still to close */
+		 * and this waits for it, B going back with it still to close; on
+		 * the news's page, the tiles over its line */
 		menu_row rows[3];
 		char line[192];
 		int lv = panel_open();
@@ -10681,14 +12442,8 @@ static bool xs_before_game(app *a)
 			tick_tint(a);
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
-			if (g_xs.st.file[0])
-				snprintf(line, sizeof line, T(S_XFER_FINISHING), g_xs.st.file);
-			else
-				snprintf(line, sizeof line, "%s", T(S_XFER_FINISHING_THE_FILE));
-			rows[0] = MENU_NOTE(line);
-			rows[1] = MENU_RULE;
-			rows[2] = MENU_NOTE(b_legend(S_KEYHINT_BACK_TO_SHELF));
-			menu_draw(a, name, rows, 3, -1, menu_std_width(a), MENU_ZYPEROS);
+			xs_move_now();
+			xs_page_show(a, name, rows, xs_finish_rows(rows, line, sizeof line, g_xs.st.file));
 			plat_draw_osd(a->r);
 			plat_present();
 			ui_frame_rest(4);
@@ -10717,6 +12472,9 @@ static bool xs_before_game(app *a)
 static bool xs_steps_shown(void)
 {
 	if (g_xs.hot || !g_xs.steps.started || g_xs.steps.step == LS_DONE || xs_moving()) return false;
+	/* A phone's tethering opens File Transfer only once it has an address,
+	 * so no step before the browser is the player's to fix: none shown */
+	if (g_xs.phone) return false;
 	return g_xs.cable ? g_xs.sensed : true;
 }
 
@@ -10732,10 +12490,13 @@ static void xfer_screen(app *a)
  * behind the shelf, it is that one, shown again with the same PIN. */
 static void xfer_screen_way(app *a, int way)
 {
-	char       who[64], moved[64], head[192], now_line[160], name[96];
+	char       who[64], head[192], now_line[160], name[96];
 	char       hint[320], lines[3][LB_LINE];
 	menu_row   rows[STEP_ROWS > 7 ? STEP_ROWS : 7];
 	int        nrows, lv;
+	/* which view is up: the way in, the cable's loading bar, the steps, the
+	 * news, the hotspot's */
+	enum { WAY_IN, WAY_LOAD, WAY_STEPS, WAY_NEWS, WAY_HOT } view;
 	unsigned   cover_at = 0, cover_next = 0;   /* the embedded covers, below */
 	int        cover_left = -1, cover_albums = -1;
 	unsigned long long cover_moved = 0;
@@ -10794,15 +12555,6 @@ static void xfer_screen_way(app *a, int way)
 		if (g_xs.st.clients == 0) snprintf(who, sizeof who, "%s", T(S_XFER_WAITING));
 		else snprintf(who, sizeof who, TN(S_XFER_CONNECTED, g_xs.st.clients), g_xs.st.clients);
 
-		if (g_xs.in || g_xs.out) {
-			char hin[24], hout[24];
-
-			human_bytes(hin,  sizeof hin,  g_xs.in);
-			human_bytes(hout, sizeof hout, g_xs.out);
-			snprintf(moved, sizeof moved, "%s / %s", hin, hout);
-		} else {
-			snprintf(moved, sizeof moved, "%s", T(S_XFER_NOTHING_YET));
-		}
 		/* Closing after the file on its way: the Now row says which */
 		if (hare_closing() && g_xs.st.file[0])
 			snprintf(now_line, sizeof now_line, T(S_XFER_CLOSING_AFTER), g_xs.st.file);
@@ -10820,13 +12572,39 @@ static void xfer_screen_way(app *a, int way)
 			else snprintf(name, sizeof name, "%s:%d", mdns_name(), hare_port());
 		}
 		hare_head(head, sizeof head, g_xs.cable, name, g_xs.addr, g_xs.pin);
-		if (xs_steps_shown())
-			nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps,
-			                     link_steps_hint(&g_xs.steps, now), g_xs.cable, name,
-			                     g_xs.addr, XS_LEGEND);
-		else
-			nrows = hare_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, moved, now_line,
-			                  hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND);
+		/* Until someone comes in, the way in, or the steps while one before
+		 * the browser stalls; after, the news, whoever leaves (DESIGN.md
+		 * 11.35). The hotspot's way in is its own screen (hot_show). */
+		view = WAY_NEWS;
+		if (!g_xs.met && !g_xs.hot) {
+			int h = link_steps_hint(&g_xs.steps, now);
+
+			view = xs_steps_shown() && xs_way_hint(h) ? WAY_STEPS : WAY_IN;
+			if (view == WAY_STEPS)
+				nrows = xs_step_rows(a, rows, lines, hint, sizeof hint, &g_xs.steps, h,
+				                     g_xs.cable, XS_LEGEND);
+			else {
+				xs_way_set(g_xs.cable, g_xs.phone, name, g_xs.addr, g_xs.pin);
+				nrows = xs_way_rows(rows, &g_xs.steps, g_xs.cable || g_xs.phone, XS_LEGEND);
+				/* Over a cable the device can read, the loading bar until
+				 * the computer has its address and the bar its end */
+				if (g_xs.cable && g_xs.sensed
+				    && xs_load_step(&g_xs.steps, &g_xs.load_k, &g_xs.load_ms, now))
+					view = WAY_LOAD;
+			}
+		} else if (!g_xs.met) {
+			view = WAY_HOT;
+			nrows = 0;
+		}
+		if (view == WAY_NEWS) {
+			if (g_xs.hot)
+				hot_head(head, sizeof head, menu_std_width(a), hotspot_ssid(),
+				         hotspot_password(), g_xs.pin);
+			nrows = xs_page_rows(rows, who, g_xs.cable ? sshlink_status() : NULL, now_line,
+			                     hare_closing() ? S_KEYHINT_HIDE
+			                     : xs_moving() ? S_KEYHINT_KEEP_GOING_OR_STOP : S_KEYHINT_CLOSE);
+			xs_move_now();
+		}
 
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
@@ -10913,11 +12691,19 @@ static void xfer_screen_way(app *a, int way)
 
 			power_follow();             /* as in the menus' loop */
 			legend = hare_closing() ? XS_LEGEND_END : xs_moving() ? XS_LEGEND_MOV : XS_LEGEND;
-			unsigned key = g_xs.hot
+			unsigned key = view == WAY_HOT
 			    ? pace_str(pace_str(pace_str(pace_str(pace_int(pace_rows(NULL, NULL, 0, -1, k, a->tint),
 			               g_xs.hs), g_xs.name), g_xs.pin), now_line), legend)
-			    : pace_rows(head, rows, nrows, -1, k, a->tint);
-			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING);
+			    : view == WAY_IN
+			    ? pace_str(pace_str(pace_rows(NULL, rows, nrows, -1, k, a->tint), g_way.first),
+			               g_way.second)
+			    : view == WAY_LOAD
+			    ? pace_int(pace_rows(NULL, rows, nrows, -1, k, a->tint), (int)(g_xs.load_k * 1000.0f))
+			    : xs_move_key(pace_rows(head, rows, nrows, -1, k, a->tint));
+			/* the bar catching up draws every pass; its creep, slow, by its key */
+			bool moving = xs_moving() || (g_xs.hot && g_xs.hs == HOTSPOT_STARTING)
+			              || (view == WAY_LOAD
+			                  && xs_load_target(&g_xs.steps, nowp) - g_xs.load_k > 0.002f);
 			bool busy = moving || pace_busy(a);
 
 			if (!pace_due(&pc, key, nowp, g_redraw_at, busy)) {
@@ -10933,8 +12719,10 @@ static void xfer_screen_way(app *a, int way)
 			g_redraw_at = REDRAW_NEVER;
 			draw_shelf(a);
 			ui_scrim_k(a->r, 0, k);
-			if (g_xs.hot) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
-			else menu_draw(a, head, rows, nrows, -1, menu_std_width(a), MENU_ZYPEROS);
+			if (view == WAY_HOT) hot_show(a, g_xs.name, g_xs.pin, g_xs.hs == HOTSPOT_STARTING, now_line, legend);
+			else if (view == WAY_IN) xs_way_draw(a, rows, nrows);
+			else if (view == WAY_LOAD) xs_load_draw(a, rows, nrows, g_xs.load_k);
+			else xs_page_show(a, head, rows, nrows);
 			plat_draw_osd(a->r);
 			plat_present();
 			pace_drawn(&pc, key, nowp);
@@ -11016,6 +12804,7 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 
 	memset(gi, 0, sizeof *gi);
 	gi->can_delete = gd_shelf_deletes(s->core);
+	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file, g->dir);
 	gi->can_favorite = !is_muse(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
 
@@ -11024,10 +12813,14 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * rather than a count - and with it went a stat of every slot plus the
 	 * autosave each time this screen opened. */
 	box_art_path(s->folder, g->name, p, sizeof p);
-	gi->has_art = (stat(p, &st) == 0 && st.st_size > 0);
-	gi->has_snap = snaps_path(P_ROMS, s->folder, g->name, p, sizeof p) &&
-	               stat(p, &st) == 0 && st.st_size > 0;
+	gi->has_art = (stat(p, &st) == 0 && st.st_size > 0) ||
+	              es_media(P_ROMS, s->folder, g->file, g->name, ES_COVER, true, p, sizeof p);
+	gi->has_snap = (snaps_path(P_ROMS, s->folder, g->name, p, sizeof p) &&
+	                stat(p, &st) == 0 && st.st_size > 0) ||
+	               es_media(P_ROMS, s->folder, g->file, g->name, ES_VIDEO, true, p, sizeof p);
 	gi->own_art = pm_cover_path(a, owner, g, theme_index(), p, sizeof p);
+	/* PortMaster's entry with PortMaster on the card: Reinstall PortMaster */
+	gi->can_reinstall = pm_is_entry(a, owner, g) && pm_on_card(s->folder);
 
 	/* Loading the set clobbers whatever set is loaded, which is nobody's
 	 * during shelf browsing - no game is running. It stays loaded after this
@@ -11035,6 +12828,9 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * this count was taken from is the one that screen reads. */
 	chv_path(P_ROMS, s->folder, g->name, p, sizeof p);
 	gi->has_cheevos = chv_load(p) && chv_count() > 0;
+	gi->cheevos_unchecked = !gi->has_cheevos &&
+	                        (g_shot_unchecked ||
+	                         chv_state_of(p, ra_signed_in()) == CHV_UNCHECKED);
 	/* Its badges, behind the screen, if the card lacks them */
 	if (gi->has_cheevos) rb_fetch_loaded();
 	/* The count alone, as DESIGN.md 12 writes one and as the in-game menu's
@@ -11045,6 +12841,8 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	if (gi->has_cheevos)
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%d / %d",
 		         chv_earned(), chv_count());
+	else if (gi->cheevos_unchecked)
+		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
 	else
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_NONE));
 
@@ -11055,7 +12853,11 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	{
 		game_meta m;
 
-		if (db_game_get(db_lib(), s->folder, g->file, &m)) {
+		/* A game the card's library has nothing on yet may have
+		 * EmulationStation's details, which the next start writes there
+		 * (es_import): read from its gamelist.xml until then */
+		if (db_game_get(db_lib(), s->folder, g->file, &m) ||
+		    es_details(P_ROMS, s->folder, g->file, g->name, &m, NULL)) {
 			gi->scraped = true;
 			gi->has_synopsis = m.synopsis[0] != '\0';
 			snprintf(gi->year, sizeof gi->year, "%.4s", m.year);
@@ -11093,8 +12895,13 @@ static void refresh_game_titles(app *a)
 		if (is_muse(&a->sys.systems[si]) || v->list.count <= 0) continue;
 		owner = shelf_owner(a, si, v->cursor);
 		snprintf(file, sizeof file, "%s", v->list.items[v->cursor].file);
+		/* A folder's name is its own (src/shelfdir.h); every game of a
+		 * shelf with folders, and the shelf's copies of its folder's */
+		for (i = 0; v->all && i < v->all->count; i++)
+			lib_refresh_title(db_lib(), a->sys.systems[si].folder, &v->all->items[i]);
 		for (i = 0; i < v->list.count; i++) {
 			int o = shelf_owner(a, si, i);
+			if (v->list.items[i].folder) continue;
 			if (lib_refresh_title(db_lib(), a->sys.systems[o].folder, &v->list.items[i]))
 				changed = true;
 		}
@@ -11294,11 +13101,13 @@ static menu_result art_run(app *a, const char *only, const char *one,
 		ui_sounds_follow();
 		if (a->in.quit_requested) { art_cancel(); a->running = false; return MENU_STAY; }
 
-		/* A fetch in flight is not somebody in the room, so it does not hold
-		 * the idle clock the way a connected browser does in Wi-Fi File Transfer -
-		 * there, a person was at the other end. Here the device is talking to
-		 * itself, and a library left scraping unattended on battery is
-		 * exactly what Auto Off is for. */
+		/* A run in flight holds Auto Off (art_running, in long_task_busy):
+		 * the device is doing what it was asked, and powering off halfway
+		 * loses the rest. It used to be the other way round ("a library
+		 * left scraping unattended on battery is what Auto Off is for"),
+		 * and a run that Auto Off cut short had to be started again. The
+		 * battery running flat still ends it (battery_empty), and the
+		 * power button always does. */
 		if (a->in.pressed[IN_POWER] || idle_due(a)) {
 			art_cancel();
 			power_off(a);
@@ -11416,7 +13225,7 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 	(void)max;
 	/* What can change under the screen: a link, a key the page sent */
 	sgdb_try_poll();
-	c->u.net = menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	c->u.net = net_internet(NULL);
 	c->u.ss_have = ss_have_dev();
 	c->u.ss_in = ss_signed_in();
 	snprintf(c->ss_name, sizeof c->ss_name, "%s", ss_user());
@@ -11688,17 +13497,29 @@ static menu_result snaps_screen(app *a)
 
 /* MENU > Side Lights: a switch for each part of what the lights show
  * (src/sidelights.h, sys_menu_lights_rows). Each change goes to the card at
- * once and the gauge reads it again, so the lights follow the row. */
+ * once and the gauge reads it again, so the lights follow the row. The row
+ * under the cursor plays its part on the lights, On or Off, while the
+ * cursor stays on it (side_lights_preview_step, each pass of the menu). */
+typedef struct {
+	unsigned char sound[LP_COUNT];
+	int sel;                      /* the menu's cursor (menu_style.sel_out) */
+	side_lights_preview pv;
+} lights_page;
+
 static int lights_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
-	unsigned char *sound = ctx;
+	lights_page *pg = ctx;
 	side_light_part ids[LP_COUNT];
+	char line[48];
 	int n, i;
 
 	(void)max;
 	*heading = T(S_PANEL_SIDE_LIGHTS);
 	n = sys_menu_lights_rows(plat_side_lights(), rows, ids);
-	for (i = 0; i < n; i++) sound[i] = MENU_SND_RING;
+	for (i = 0; i < n; i++) pg->sound[i] = MENU_SND_RING;
+	if (n > 0 && side_lights_preview_step(&pg->pv, ids[pg->sel < 0 ? 0 : pg->sel >= n ? n - 1 : pg->sel],
+	                                      plat_now_ms(), line, sizeof line))
+		plat_side_lights_say(line);
 	return n;
 }
 
@@ -11774,10 +13595,14 @@ static void language_screen(app *a)
 
 static void lights_screen(app *a)
 {
-	static unsigned char sound[LP_COUNT];
+	lights_page pg = { .sel = 0 };
+	char line[48];
 
-	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = sound },
-	         lights_build, lights_key, sound);
+	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a), .sound = pg.sound,
+	                           .sel_out = &pg.sel },
+	         lights_build, lights_key, &pg);
+	/* The lights back to what they show on their own */
+	if (side_lights_preview_end(&pg.pv, line, sizeof line)) plat_side_lights_say(line);
 }
 
 /* One game, and the two things you can do to it from here.
@@ -11818,7 +13643,7 @@ static int info_build(void *ctx, menu_row *rows, int max, const char **heading)
 	 * forks wpa_cli out of a 119 MB process; this screen was doing it about
 	 * 125 times a second for a row that says "needs Wi-Fi". The system menu
 	 * was measured at 12 fps for the same mistake. */
-	n = gi_rows(rows, &c->gi, menu_wifi(NULL, 0) == WIFI_CONNECTED);
+	n = gi_rows(rows, &c->gi, net_internet(NULL));
 	return n > max ? max : n;
 }
 
@@ -11829,6 +13654,9 @@ static void synopsis_screen(app *a, const char *title, const char *text,
 
 /* Delete Game, below with the wrap it needs (DESIGN.md 11.31) */
 static bool game_delete(app *a, int owner, const game_entry *g, char *said, size_t n);
+
+/* Rename, below it (DESIGN.md 11.41) */
+static bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n);
 
 /* The achievement list, which the in-game menu opens over a paused frame and
  * this screen opens over the shelf. `over_shelf` says which, rather than the
@@ -11841,6 +13669,10 @@ static void fav_toggle_heard(const char *tag, const char *file);
 
 /* A game's Cover and Video page, with the storage page's question below */
 static void media_screen(app *a, int owner, const game_entry *g);
+
+/* PortMaster's page, below with the Ports shelf (src/pminstall.h) */
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed);
 
 static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 {
@@ -11870,8 +13702,10 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		/* Read again here rather than carried in game_info: it is up to 4 KB
 		 * of prose for a row that is usually not opened, and the gatherer runs
 		 * on every action this screen takes. */
-		if (db_game_get(db_lib(), a->sys.systems[c->owner].folder, c->g->file, &m)
-		    && m.synopsis[0])
+		const char *folder = a->sys.systems[c->owner].folder;
+
+		if ((db_game_get(db_lib(), folder, c->g->file, &m) ||
+		     es_details(P_ROMS, folder, c->g->file, c->g->name, &m, NULL)) && m.synopsis[0])
 			synopsis_screen(a, c->g->title, m.synopsis, c->st.accent);
 		return MENU_STAY;
 	}
@@ -11880,7 +13714,25 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		/* The set the gatherer loaded to count this row is still the loaded
 		 * one, so the list has what it needs without reloading it. Over the
 		 * shelf rather than a paused frame: no game is running here. */
-		cheevos_screen(a, NULL, true);
+		if (c->gi.has_cheevos) cheevos_screen(a, NULL, true);
+		else if (c->gi.cheevos_unchecked) cheevos_unchecked_message(a);
+		return MENU_STAY;
+	}
+
+	if (!strcmp(rows[sel].label, T(S_GAMEMENU_RENAME))) {
+		/* Renamed: the page stays, on the game under its new name, which
+		 * its shelf may have put somewhere else */
+		c->said[0] = '\0';
+		if (game_rename(a, c->owner, c->g, c->said, sizeof c->said)) {
+			c->v = &a->view[a->sys_cursor];
+			c->g = &c->v->list.items[c->v->cursor];
+			c->owner = shelf_owner(a, a->sys_cursor, c->v->cursor);
+			c->st.accent = a->sys.systems[c->owner].accent;
+		}
+		if (c->said[0]) result_message(a, T(S_GAMEMENU_RENAME), c->said);
+		gi_gather(a, c->owner, c->g, &c->gi);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
 		return MENU_STAY;
 	}
 
@@ -11894,6 +13746,18 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 			return MENU_DONE;
 		}
 		if (c->said[0]) result_message(a, T(S_GAMEMENU_DELETE), c->said);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
+		return MENU_STAY;
+	}
+
+	if (!strcmp(rows[sel].label, T(S_PORTMASTER_REINSTALL_TITLE))) {
+		/* PortMaster's page, to reinstall it (DESIGN.md 11.33). It can end
+		 * in PortMaster itself (Open PortMaster), which closes this page
+		 * with the launcher */
+		pm_install_screen(a, &a->sys.systems[c->owner], true, NULL, false);
+		if (!a->running) return MENU_DONE;
+		gi_gather(a, c->owner, c->g, &c->gi);
 		plat_input_flush();
 		memset(&a->in, 0, sizeof a->in);
 		return MENU_STAY;
@@ -11946,7 +13810,7 @@ static void game_info_screen(app *a)
  * rather than of numbers somebody typed. */
 static bool shot_info_art;
 
-static void info_preview(app *a, bool net, bool on_delete)
+static void info_preview(app *a, bool net, const char *on_row)
 {
 	sysview   *v = &a->view[a->sys_cursor];
 	menu_row   rows[GI_MAX];
@@ -11965,10 +13829,10 @@ static void info_preview(app *a, bool net, bool on_delete)
 	 * until the rows were reordered and then was Saves - so the shot showed a
 	 * highlight on a dead row, which the real screen cannot do. */
 	sel = rows[0].live ? 0 : menu_step_sel(rows, n, 0, +1);
-	/* --info-delete: the cursor on Delete Game, by its label as info_key
-	 * finds it */
-	for (int i = 0; on_delete && i < n; i++)
-		if (!strcmp(rows[i].label, T(S_GAMEMENU_DELETE))) sel = i;
+	/* --info-delete and --info-rename: the cursor on Delete Game or Rename,
+	 * by its label as info_key finds it */
+	for (int i = 0; on_row && i < n; i++)
+		if (!strcmp(rows[i].label, on_row)) sel = i;
 
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
@@ -12114,23 +13978,25 @@ static bool game_delete_now(app *a, int owner, const game_entry *g, bool wait,
 	/* Every other game on the card's own shelves - not Favorites', whose
 	 * games are on them too, and not MP4's albums */
 	for (i = 0; i < a->sys.count; i++)
-		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += a->view[i].list.count;
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += sys_games(&a->view[i])->count;
 	if (cap > 0 && !(others = malloc((size_t)cap * sizeof *others))) cap = 0;
 	for (i = 0; i < a->sys.count && others; i++) {
 		const system_cfg *o = &a->sys.systems[i];
 		bool hooked = lib_shelf_hooked(o->exts);
 
 		if (a->view[i].owner || is_muse(o) || !o->folder[0]) continue;
-		for (k = 0; k < a->view[i].list.count && no < cap; k++) {
-			const game_entry *e = &a->view[i].list.items[k];
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && no < cap; k++) {
+			const game_entry *e = &gl->items[k];
 
 			if (!strcmp(o->folder, folder) && !strcmp(e->file, file)) continue;
-			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked };
+			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked, e->dir };
 		}
 	}
 
 	card = (gd_card){ P_ROMS, card_saves, card_states };
-	gg = (gd_game){ folder, tag, core, exts, file, name };
+	gg = (gd_game){ folder, tag, core, exts, file, name, g->dir };
 	if (!(plan = malloc(sizeof *plan)) || (cap > 0 && !others)) {
 		free(others);
 		free(plan);
@@ -12230,6 +14096,128 @@ static bool game_delete(app *a, int owner, const game_entry *g, char *said, size
 	return game_delete_now(a, owner, g, true, said, n);
 }
 
+/* ---- Rename (DESIGN.md 11.41, src/gamern.h) --------------------------------
+ *
+ * The details page's row above Delete Game. A opens the keyboard on the
+ * game's name, its file's stem, as the card has it; START takes the new
+ * one. A name no card takes, or one another game or file has, says why
+ * and opens the keyboard again on what was typed. Then the plan, held
+ * against every other game on the shelves as Delete Game's is, is run, the
+ * library's rows follow, and the shelf puts the game in its place under its
+ * new name, its title emptied so the new name is what shows. True when it
+ * was renamed; `said` the message either way, empty for none. */
+static bool game_rename(app *a, int owner, const game_entry *g, char *said, size_t n)
+{
+	const system_cfg *s = &a->sys.systems[owner];
+	char tag[sizeof s->tag], folder[CFG_STR], core[CFG_STR], exts[CFG_STR];
+	char file[LIB_PATH], name[LIB_NAME], typed[LIB_NAME], clean[LIB_NAME];
+	char card_saves[CFG_STR * 2], card_states[CFG_STR * 2];
+	gd_card card;
+	gd_game gg;
+	gd_other *others = NULL;
+	gr_plan *plan;
+	gr_done done;
+	int no = 0, cap = 0, i, k;
+
+	/* Copies: the shelf's entries move once the game takes its name */
+	snprintf(tag, sizeof tag, "%s", s->tag);
+	snprintf(folder, sizeof folder, "%s", s->folder);
+	snprintf(core, sizeof core, "%s", s->core);
+	snprintf(exts, sizeof exts, "%s", s->exts);
+	snprintf(file, sizeof file, "%s", g->file);
+	snprintf(name, sizeof name, "%s", g->name);
+	snprintf(typed, sizeof typed, "%s", g->name);
+	snprintf(card_saves, sizeof card_saves, "%s/Saves", P_CARD);
+	snprintf(card_states, sizeof card_states, "%s/.zyperos", P_SHARED);
+	said[0] = '\0';
+
+	/* Every other game of every system, at every depth of its folders
+	 * (sys_games): what one folder of a shelf shows is not all that shares
+	 * a name */
+	for (i = 0; i < a->sys.count; i++)
+		if (!a->view[i].owner && !is_muse(&a->sys.systems[i])) cap += sys_games(&a->view[i])->count;
+	if (cap > 0 && !(others = malloc((size_t)cap * sizeof *others))) cap = 0;
+	for (i = 0; i < a->sys.count && others; i++) {
+		const system_cfg *o = &a->sys.systems[i];
+		bool hooked = lib_shelf_hooked(o->exts);
+
+		if (a->view[i].owner || is_muse(o) || !o->folder[0]) continue;
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && no < cap; k++) {
+			const game_entry *e = &gl->items[k];
+
+			if (!strcmp(o->folder, folder) && !strcmp(e->file, file)) continue;
+			others[no++] = (gd_other){ o->folder, e->file, e->name, hooked, e->dir };
+		}
+	}
+	if (!(plan = malloc(sizeof *plan)) || (cap > 0 && !others)) {
+		free(others);
+		free(plan);
+		snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+		return false;
+	}
+	card = (gd_card){ P_ROMS, card_saves, card_states };
+	gg = (gd_game){ folder, tag, core, exts, file, name, g->dir };
+	for (;;) {
+		if (keyboard_prompt(a, T(S_GAMEMENU_RENAME), typed, (int)sizeof typed) != KB_ACCEPT ||
+		    !a->running) {
+			free(others);
+			free(plan);
+			return false;
+		}
+		if (gr_plan_make(&card, &gg, others, no, typed, plan)) break;
+		fprintf(stderr, "rename: %s %s to \"%s\" refused (%d): %s\n", tag, file, typed,
+		        (int)plan->why, plan->bad);
+		if (plan->why == GR_SAME) { free(others); free(plan); return false; }
+		if (plan->why != GR_BAD_NAME && plan->why != GR_TAKEN) {
+			snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+			free(others);
+			free(plan);
+			return false;
+		}
+		/* Said, and the keyboard again on what was typed, tidied */
+		result_message(a, T(S_GAMEMENU_RENAME),
+		               T(plan->why == GR_TAKEN ? S_GAMEMENU_RENAME_TAKEN : S_GAMEMENU_RENAME_INVALID));
+		if (!a->running) { free(others); free(plan); return false; }
+		if (gr_name_ok(typed, clean, sizeof clean)) snprintf(typed, sizeof typed, "%s", clean);
+	}
+	free(others);
+
+	/* Its video may be the one playing on the shelf behind the panel */
+	snap_off();
+	gr_plan_run(plan, &done);
+	for (i = 0; i < plan->n; i++)
+		fprintf(stderr, "rename: %s %s -> %s\n", plan->copy[i] ? "copy" : "move", plan->from[i], plan->to[i]);
+	fprintf(stderr, "rename: %s %s is %s: %d moved, %d copied, %d stayed, gamelist.xml %s\n", tag, file,
+	        plan->new_file, done.moved + done.game_moved, done.copied, done.failed,
+	        done.es_list ? "followed" : "untouched");
+	if (!done.game_moved) {
+		free(plan);
+		snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_FAILED));
+		return false;
+	}
+	fprintf(stderr, "rename: %d library rows\n",
+	        gr_follow(folder, tag, file, name, plan->new_file, plan->new_name));
+	shelf_rename_game(a, tag, file, plan->new_file, plan->new_name);
+	/* On Favorites, the game where its copy went */
+	{
+		sysview *v = &a->view[a->sys_cursor];
+
+		if (v->owner)
+			for (k = 0; k < v->list.count; k++)
+				if (!strcmp(v->list.items[k].file, plan->new_file) &&
+				    !strcmp(a->sys.systems[v->owner[k]].tag, tag)) {
+					v->cursor = k;
+					cf_reset(&v->cf, k);
+					break;
+				}
+	}
+	if (done.failed) snprintf(said, n, "%s", T(S_GAMEMENU_RENAME_PARTLY));
+	free(plan);
+	return true;
+}
+
 /* Six pages: the system, its details, the name, and three of thanks (
  * 2026-11-06: "another page ... telling the story of the name that it's a
  * tribute to my dog that passed away, and a thank you page to the Open
@@ -12266,7 +14254,6 @@ static const about_thanks ABOUT_THANKS[ABOUT_THANKS_PAGES][ABOUT_THANKS_ROWS] = 
 	  { "PortMaster", 0, NULL, S_ABOUT_THANKS_PORTMASTER } },
 	{ { "plorpOS", 0, "DSperate, FAKE-08", 0 },
 	  { "OpenBOR Team", 0, "OpenBOR", 0 },
-	  { "BenJelter", 0, NULL, S_ABOUT_THANKS_BENJELTER },
 	  { NULL, S_ABOUT_THANKS_MENU_MUSIC, "OpenGameArt", 0 },
 	  { "Lexend", 0, NULL, S_ABOUT_THANKS_LEXEND },
 	  { "SDL, Mesa", 0, NULL, S_ABOUT_THANKS_SDL } },
@@ -12370,7 +14357,7 @@ static void about_refresh(about_view *v, unsigned now)
 	v->system[3] = (menu_row){ T(S_ABOUT_AWAKE_FOR), v->up, false };
 	v->nsystem = 4;
 	if (devmode_unlocked(db_dev())) {
-		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON), false };
+		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), T(S_MENU_ON_TITLE), false };
 	} else if (devmode_hold_permille(&v->hold, now) > 0) {
 		/* The row comes with the hold, its bar drawn over its value (about_draw) */
 		v->system[v->nsystem++] = (menu_row){ T(S_SYSMENU_DEVELOPER), NULL, false };
@@ -12582,7 +14569,7 @@ static void controls_screen(app *a)
 /* DESIGN.md 11.10: the first thing a new handheld shows, and again from MENU >
  * Show Tutorial. The steps are src/tour.c's and the screens src/tourdraw.c's;
  * this is the loop that reads the buttons, plays the sounds, turns the real
- * volume and brightness, and lends the drawing Zyper and the heart. */
+ * volume and brightness, and lends the drawing Zyper. */
 
 /* Zyper as the tutorial poses him, by the menu's draw_zyper_pose: the high
  * brow following his tilt (zyper_brow_lift) as the menu's does, and on Beard
@@ -12596,11 +14583,6 @@ static void tour_zyper_draw(void *ctx, float cx, float cy, float h, const tour_z
 		zyper_shadow_draw(a->r, cx, cy, h, z->pose.tilt, z->shadow * (1.0f - z->dim));
 	draw_zyper_pose(a->r, cx, cy, h, &z->pose, zyper_brow_lift(z->pose.tilt), z->dim,
 	                z->alpha);
-}
-
-static void tour_heart_draw(void *ctx, float cx, float cy, float rad, SDL_Color c)
-{
-	draw_heart(((app *)ctx)->r, cx, cy, rad, c);
 }
 
 /* The power step's stage plays the power-off's own frames, small. */
@@ -12709,7 +14691,7 @@ static void tour_apply(app *a, int c, int v, bool save)
 
 static void tour_run(app *a, bool first)
 {
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	bool saved = false, shown = false, kept[TOUR_CHOICES] = { false };
 	int snd[IN_COUNT], n, i, at[TOUR_CHOICES], looked[TOUR_CHOICES];
@@ -12875,7 +14857,7 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
  * of it (no Box Art without a radio, Game Language only on the DS). */
 static int sm_pos(const app *a, int sys, sm_row which)
 {
-	sys_ui dev = { .no_wifi = !plat_has_wifi(),
+	sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 	               .dslang = dslang_row_shown(a, sys) ? "" : NULL };
 	sm_row ids[SM_ROWS];
 	int n = sys_menu_system_rows(&dev, ids), k;
@@ -12894,8 +14876,35 @@ static int menu_shelf_width(app *a)
 
 	if (a->menu_w) return a->menu_w;
 
-	n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
-	w = menu_measure(rows, n, heading);
+	/* MENU's every tab, so the panel is one width on all of them, and on
+	 * the tab with Shader every value of it, "per system" too, so stepping
+	 * it does not resize the panel under it */
+	{
+		int t, at = g_tabs.at, mw;
+
+		w = 0;
+		for (t = 0; t < PT_TABS; t++) {
+			g_tabs.at = t;
+			n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
+			mw = menu_measure(rows, n, heading);
+			if (mw > w) w = mw;
+			for (k = 0; k < n; k++)
+				if (rows[k].label == T(S_GAMEMENU_SHADER)) break;
+			if (k < n) {
+				const char *keep = rows[k].value;
+				int j;
+
+				for (j = 0; j <= SHADER_COUNT; j++) {
+					if (j < SHADER_COUNT && !shader_offered(j)) continue;
+					rows[k].value = j < SHADER_COUNT ? shader_label(j) : T(S_GAMEMENU_SHADER_MIXED);
+					mw = menu_measure(rows, n, heading);
+					if (mw > w) w = mw;
+				}
+				rows[k].value = keep;
+			}
+		}
+		g_tabs.at = at;
+	}
 
 	/* Every value that can be cycled on this menu, at its widest, so the
 	 * panel does not resize under the row being cycled. Sort By joined
@@ -12911,14 +14920,16 @@ static int menu_shelf_width(app *a)
 		bool own  = muse || a->view[i].owner;
 		int  srow = own ? 1 : sm_pos(a, i, SM_SORT), show = -1;
 		int  drow = own ? -1 : sm_pos(a, i, SM_DISPLAY);
+		int  hrow = own ? -1 : sm_pos(a, i, SM_SHADER);
 		int  crow = own ? -1 : sm_pos(a, i, SM_CORE);
 		int  lrow = own ? -1 : sm_pos(a, i, SM_DSLANG);
+		int  vrow = muse ? -1 : a->view[i].owner ? 3 : sm_pos(a, i, SM_VIEW);
 
 		n = menu_build(a, SCREEN_GAMES, i, rows, &bufs, &heading);
 		if (muse) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int nn = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                            !plat_has_wifi(), ids);
+			                            !plat_has_wifi() && !net_internet(NULL), ids);
 
 			for (k = 0; k < nn; k++) {
 				if (ids[k] == SMM_SORT) srow = k;
@@ -12941,6 +14952,15 @@ static int menu_shelf_width(app *a)
 			if (mw > w) w = mw;
 		}
 		if (drow >= 0) rows[drow].value = dmode_label(0);
+		/* And each shader, for the same reason */
+		for (k = 0; hrow >= 0 && k < SHADER_COUNT; k++) {
+			int mw;
+			if (!shader_offered(k)) continue;
+			rows[hrow].value = shader_label(k);
+			mw = menu_measure(rows, n, heading);
+			if (mw > w) w = mw;
+		}
+		if (hrow >= 0) rows[hrow].value = shader_label(0);
 		/* And each core a shelf can choose, for the same reason. */
 		if (crow >= 0 && cfg_core_count(&a->sys.systems[i]) > 1) {
 			char alt[CFG_STR], lb[CFG_STR];
@@ -12966,6 +14986,17 @@ static int menu_shelf_width(app *a)
 				if (mw > w) w = mw;
 			}
 			rows[lrow].value = keep;
+		}
+		/* View's two values, the longer kept */
+		if (vrow >= 0 && vrow < n) {
+			const char *keep = rows[vrow].value;
+			int mw;
+
+			rows[vrow].value = T(S_SYSMENU_VIEW_COVERS);
+			if ((mw = menu_measure(rows, n, heading)) > w) w = mw;
+			rows[vrow].value = T(S_SYSMENU_VIEW_LIST);
+			if ((mw = menu_measure(rows, n, heading)) > w) w = mw;
+			rows[vrow].value = keep;
 		}
 		for (k = 0; k < (muse ? ML_ORDERS : SORT_COUNT); k++) {
 			int mw;
@@ -13093,7 +15124,7 @@ static bool search_screen(app *a, int *shelf, int *game)
 	int i, k, n = 0, total = 0;
 	bool picked = false;
 
-	for (i = 0; i < a->sys.count; i++) total += a->view[i].list.count;
+	for (i = 0; i < a->sys.count; i++) total += sys_games(&a->view[i])->count;
 	if (total <= 0 || !(items = malloc((size_t)total * sizeof *items))) {
 		uisound_play(DS_SOUND_DENY);
 		return false;
@@ -13102,8 +15133,12 @@ static bool search_screen(app *a, int *shelf, int *game)
 		const sysview *sv = &a->view[i];
 
 		if (is_muse(&a->sys.systems[i]) || sv->owner) continue;
-		for (k = 0; k < sv->list.count; k++)
-			items[n++] = (sr_item){ sv->list.items[k].title, sv->list.items[k].name, i, k };
+		const game_list *gl = sys_games_c(sv);
+
+		/* Every game, in its folders too: the hit is an index of
+		 * sys_games, which pick_launch opens the folder of */
+		for (k = 0; k < gl->count; k++)
+			items[n++] = (sr_item){ gl->items[k].title, gl->items[k].name, i, k };
 	}
 	memset(&v, 0, sizeof v);
 	v.a = a;
@@ -13458,8 +15493,7 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 	draw_background(a);
 	ui_text(r, fl, heading, ZYPEROS_SCREEN_W / 2, ui_cap_y(fl, 66), 0, UI_TEXT_SOFT);
 	if (icon) {
-		/* Four of its pixels to one of the art's, drawn at 0.8: two panel
-		 * pixels to one on the Pixel 2, so it stays sharp */
+		/* Its 256 square drawn at 0.8, about Zyper's size */
 		int iw, ih;
 
 		SDL_QueryTexture(icon, NULL, NULL, &iw, &ih);
@@ -13500,6 +15534,7 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		SDL_Rect mark = { UP_X, 348 - 30, 8, (n - 1) * 52 + 60 };
 
 		ui_round_rect(r, &mark, 4, warn);
+		if (n > 1) ui_fit_drawn(p->warn);       /* drawn whole, in pieces */
 		for (k = 0; k < n; k++)
 			ui_text(r, fm, lines[k], UP_X + 34, ui_cap_y(fm, 348 + k * 52), -1, UI_TEXT);
 	}
@@ -13514,6 +15549,9 @@ static void update_page_draw(app *a, const char *heading, const su_page *p,
 		/* Under a two-line sub, a little lower, so the two read apart */
 		int top = sub_lines > 1 ? 362 : 348;
 		int n = up_note_lines(fs, notes, nnotes, buf, ln, UP_NOTES * UP_NOTE_LINES), fits, k;
+
+		/* Each point drawn whole, in pieces when it wraps */
+		for (k = 0; k < nnotes; k++) ui_fit_drawn(notes[k]);
 
 		/* Each line's place from the first point's top, the air before
 		 * each point after the first counted; the scroll held to what
@@ -13726,7 +15764,6 @@ enum {
 
 typedef struct {
 	char key[24];
-	bool sheet;
 	SDL_Texture *tex;
 } store_icon;
 
@@ -13811,23 +15848,22 @@ static int store_count(store_view *v, int idx)
 
 	if (v->fixture) return v->fix_count[idx];
 	s = store_shelf(v->a, v->c.sys[idx].folder);
-	return s < 0 ? 0 : v->a->view[s].list.count;
+	return s < 0 ? 0 : sys_games(&v->a->view[s])->count;
 }
 
-/* A system's sprite or a folder's two frames, loaded once while the page is
- * up; nearest-neighbour, as the home draws them */
-static SDL_Texture *store_tex(store_view *v, const char *key, bool sheet)
+/* A design's still (res/system-icons, src/systemart_data.h), loaded once
+ * while the page is up; nearest-neighbour, as the home draws them */
+static SDL_Texture *store_tex(store_view *v, const char *key)
 {
 	char path[CFG_STR * 2];
 	int i;
 
 	if (!key || !key[0]) return NULL;
 	for (i = 0; i < v->nicons; i++)
-		if (v->icons[i].sheet == sheet && !strcmp(v->icons[i].key, key)) return v->icons[i].tex;
+		if (!strcmp(v->icons[i].key, key)) return v->icons[i].tex;
 	if (v->nicons >= (int)(sizeof v->icons / sizeof v->icons[0])) return NULL;
-	snprintf(path, sizeof path, "%s/system-icons/%s%s.png", P_ROOT, key, sheet ? "" : "-still");
+	snprintf(path, sizeof path, "%s/system-icons/%s-still.png", P_ROOT, key);
 	snprintf(v->icons[v->nicons].key, sizeof v->icons[v->nicons].key, "%s", key);
-	v->icons[v->nicons].sheet = sheet;
 	if ((v->icons[v->nicons].tex = IMG_LoadTexture(v->a->r, path))) {
 		SDL_SetTextureScaleMode(v->icons[v->nicons].tex, SDL_ScaleModeNearest);
 		SDL_SetTextureBlendMode(v->icons[v->nicons].tex, SDL_BLENDMODE_BLEND);
@@ -13869,7 +15905,7 @@ static void store_request(store_view *v)
 	v->ngames = 0;
 	for (i = 0; i < a->sys.count; i++)
 		if (!a->view[i].owner && !is_muse(&a->sys.systems[i]) && a->sys.systems[i].folder[0])
-			n += a->view[i].list.count;
+			n += sys_games(&a->view[i])->count;
 	if (n > 0 && !(v->games = malloc((size_t)n * sizeof *v->games))) n = 0;
 	stats_summarize(STATS_ALL, false, now);
 	for (i = 0; i < a->sys.count && v->games; i++) {
@@ -13877,13 +15913,15 @@ static void store_request(store_view *v)
 		bool hooked = lib_shelf_hooked(s->exts);
 
 		if (a->view[i].owner || is_muse(s) || !s->folder[0]) continue;
-		for (k = 0; k < a->view[i].list.count && v->ngames < n; k++) {
-			const game_entry *g = &a->view[i].list.items[k];
+		const game_list *gl = sys_games(&a->view[i]);
+
+		for (k = 0; k < gl->count && v->ngames < n; k++) {
+			const game_entry *g = &gl->items[k];
 			long secs = 0, last = 0;
 
 			stats_lookup(s->tag, g->file, &secs, &last);
 			v->games[v->ngames++] = (st_game_in){ s->folder, s->tag, s->core, s->exts,
-			                                      g->file, g->name, hooked, last };
+			                                      g->file, g->name, hooked, last, g->dir };
 		}
 	}
 	v->sys.n = 0;
@@ -14122,6 +16160,14 @@ static sp_row *store_add(store_view *v)
 	return &v->rows[v->nrows++];
 }
 
+/* The card's folders that are no system's, by the design they wear
+ * (res/system-art/original): Music's vinyl album and the others' own art,
+ * as on the File Transfer page */
+#define STORE_ART_MUSIC  "MUSIC"
+#define STORE_ART_VIDEOS "VIDEOS"
+#define STORE_ART_BOOKS  "BOOKS"
+#define STORE_ART_BIOS   "BIOS"
+
 static void store_row_look(store_view *v, sp_row *r)
 {
 	const st_card *c = &v->c;
@@ -14134,15 +16180,15 @@ static void store_row_look(store_view *v, sp_row *r)
 
 		r->name = s ? s->name : c->sys[r->index].folder;
 		r->icon = SP_ICON_TEX;
-		r->tex = s ? store_tex(v, home_art_key(s->tag), false) : NULL;
+		r->tex = s ? store_tex(v, home_art_key(s->tag)) : NULL;
 		break;
 	}
-	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "VIDEOS", true); break;
-	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "MUSE", true); break;
-	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BOOKS", true); break;
-	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_SHEET; r->tex = store_tex(v, "BIOS", true); break;
+	case SR_VIDEOS:  r->name = T(S_STORAGE_VIDEOS); r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_VIDEOS); break;
+	case SR_MUSIC:   r->name = T(S_STORAGE_MUSIC);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_MUSIC); break;
+	case SR_BOOKS:   r->name = T(S_STORAGE_BOOKS);  r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BOOKS); break;
+	case SR_BIOS:    r->name = T(S_STORAGE_BIOS);   r->icon = SP_ICON_TEX; r->tex = store_tex(v, STORE_ART_BIOS); break;
 	case SR_ZYPEROS: r->name = T(S_STORAGE_CAT_ZYPEROS); r->icon = SP_ICON_ZYPER; break;
-	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER", false); break;
+	case SR_OTHER:   r->name = T(S_STORAGE_CAT_OTHER); r->icon = SP_ICON_TEX; r->tex = store_tex(v, "FOLDER"); break;
 	case SR_SNAPS:   r->name = T(S_STORAGE_DELETE_SNAPS); r->icon = SP_ICON_NONE; break;
 	default: break;
 	}
@@ -14227,8 +16273,8 @@ static void store_caption(store_view *v, sp_row *r)
 		break;
 	case SR_GAME: {
 		int sh = store_shelf(v->a, c->sys[v->page].folder);
-		const game_entry *g = sh >= 0 && r->index < v->a->view[sh].list.count
-		                    ? &v->a->view[sh].list.items[r->index] : NULL;
+		const game_entry *g = sh >= 0 && r->index < sys_games(&v->a->view[sh])->count
+		                    ? &sys_games(&v->a->view[sh])->items[r->index] : NULL;
 		const char *tag = sh >= 0 ? v->a->sys.systems[sh].tag : "";
 		long secs = 0, last = 0;
 		st_game_size sz;
@@ -14373,7 +16419,7 @@ static void store_rows(store_view *v)
 		free(it);
 	} else {
 		const st_sys *s = &c->sys[v->page];
-		int sh = store_shelf(v->a, s->folder), cnt = sh >= 0 ? v->a->view[sh].list.count : 0;
+		int sh = store_shelf(v->a, s->folder), cnt = sh >= 0 ? sys_games(&v->a->view[sh])->count : 0;
 
 		if (s->snaps) {
 			sp_row *r = store_add(v);
@@ -14394,7 +16440,7 @@ static void store_rows(store_view *v)
 		v->norph = ports && !v->fixture ? st_orphans(v->orph, ST_ORPHANS) : 0;
 		if ((cnt > 0 || v->norph > 0) && (it = malloc((size_t)(cnt + v->norph) * sizeof *it))) {
 			for (i = 0; i < cnt; i++) {
-				const game_entry *g = &v->a->view[sh].list.items[i];
+				const game_entry *g = &sys_games(&v->a->view[sh])->items[i];
 				st_game_size sz;
 				bool ok = store_game_size(v, s->folder, g, &sz);
 				long secs = 0, last = 0;
@@ -14421,7 +16467,7 @@ static void store_rows(store_view *v)
 				if (!r) break;
 				r->kind = it[i].kind;
 				r->index = it[i].index;
-				r->name = it[i].kind == SR_GAME ? v->a->view[sh].list.items[it[i].index].title : it[i].title;
+				r->name = it[i].kind == SR_GAME ? sys_games(&v->a->view[sh])->items[it[i].index].title : it[i].title;
 				if (it[i].sized) store_bytes(it[i].bytes, r->value, sizeof r->value);
 				r->icon = SP_ICON_NONE;
 			}
@@ -14474,7 +16520,7 @@ static void store_page(store_view *v)
 	p->rows = rows;
 	p->nrows = v->nrows;
 	if (v->media >= 0) {
-		static const char *const KEY[STM_KINDS] = { "MUSE", "VIDEOS", "BOOKS" };
+		static const char *const KEY[STM_KINDS] = { STORE_ART_MUSIC, STORE_ART_VIDEOS, STORE_ART_BOOKS };
 		sp_row look;
 		unsigned long long whole = store_media_bytes(c, v->media);
 		char val[24];
@@ -14483,8 +16529,7 @@ static void store_page(store_view *v)
 		look.kind = v->media == STM_MUSIC ? SR_MUSIC : v->media == STM_VIDEOS ? SR_VIDEOS : SR_BOOKS;
 		store_row_look(v, &look);
 		p->heading = look.name;
-		p->head_tex = store_tex(v, KEY[v->media], true);
-		p->head_sheet = true;
+		p->head_tex = store_tex(v, KEY[v->media]);
 		p->used_fmt = "%s";
 		store_bytes(whole, p->used, sizeof p->used);
 		look.caption[0] = '\0';
@@ -14553,7 +16598,7 @@ static void store_page(store_view *v)
 		char g[24], sv[24], ar[24];
 
 		p->heading = cf ? cf->name : s->folder;
-		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag), false) : NULL;
+		p->head_tex = cf ? store_tex(v, home_art_key(cf->tag)) : NULL;
 		p->used_fmt = "%s";
 		store_bytes(store_sys_bytes(s), p->used, sizeof p->used);
 		snprintf(p->right, sizeof p->right, TN(S_SHELF_GAMES, n), n);
@@ -14769,12 +16814,12 @@ static void store_act(store_view *v)
 		int sh = store_shelf(a, v->c.sys[v->page].folder);
 		char said[256];
 
-		if (sh < 0 || r->index >= a->view[sh].list.count) { uisound_play(DS_SOUND_DENY); break; }
+		if (sh < 0 || r->index >= sys_games(&a->view[sh])->count) { uisound_play(DS_SOUND_DENY); break; }
 		uisound_play(DS_SOUND_ACCEPT);
 		/* Nothing may make a plan while the walk makes its own (gamedel.c's
 		 * buffers are its own) */
 		st_stop();
-		game_delete(a, sh, &a->view[sh].list.items[r->index], said, sizeof said);
+		game_delete(a, sh, &sys_games(&a->view[sh])->items[r->index], said, sizeof said);
 		if (said[0] && a->running) result_message(a, T(S_GAMEMENU_DELETE), said);
 		store_after(v);
 		break;
@@ -14797,6 +16842,7 @@ static void store_open(store_view *v, app *a)
 	v->cap_for = -1;
 	snprintf(path, sizeof path, "%s/systems.cfg", P_ROOT);
 	v->cfg_ok = cfg_load_systems(path, &v->cfg);
+	if (v->cfg_ok) shelf_folders_apply(&v->cfg);
 }
 
 static void store_close(store_view *v)
@@ -14851,6 +16897,9 @@ static void storage_screen(app *a)
 
 		/* The walk's latest numbers, and the rows from them when they moved */
 		st_snapshot(&c);
+		/* The walk of the card is a long task: Auto Off waits for it
+		 * (src/taskhold.h) */
+		if (c.walking) task_note(TASK_STORAGE, plat_now_ms());
 		if (c.gen != v->gen || v->nrows == 0) {
 			v->c = c;
 			v->gen = c.gen;
@@ -14876,12 +16925,7 @@ static void storage_screen(app *a)
 			in_button b = in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
 
 			if (b != IN_NONE) {
-				int to = v->pg.sel + (b == IN_UP ? -1 : 1);
-
-				if (to < 0) to = 0;
-				if (to >= v->nrows) to = v->nrows - 1;
-				step_sound(a, b, v->pg.sel, to);
-				v->pg.sel = to;
+				v->pg.sel = list_step_heard(a, b, v->nrows, v->pg.sel);
 			}
 			if (a->in.pressed[IN_ACCEPT]) store_act(v);
 			/* X: the list's next order, the cursor kept on its row; a value
@@ -14948,6 +16992,11 @@ typedef struct {
 	int          now_w, now_h, before_w, before_h, tw[MF_MAX], th[MF_MAX], big_w, big_h;
 	int          big_key;           /* the picture big_tex is, MK_BIG + tile */
 	bool         asked[MF_MAX], now_gen, have_now, have_before;
+	/* No cover of its own, and EmulationStation's in its place on the shelf
+	 * (src/esmedia.h): shown as Now, credited to EmulationStation. Not
+	 * have_now: nothing here moves or deletes it, and a cover picked
+	 * here is ZyperOS's own, which comes first. */
+	bool         now_es;
 	art_source   now_as, before_as;
 	/* The cursor: a tile of the strip, or a video row */
 	int          focus, row;
@@ -15031,7 +17080,9 @@ static void media_read_card(media_view *v)
 	media_tex_free(&v->before_tex);
 	v->now_gen = false;
 	v->have_now = mf_media_path(P_ROMS, v->folder, v->stem, ".png", p, sizeof p) && art_is_cover(p);
-	if (v->have_now) {
+	v->now_es = !v->have_now && !v->shot &&
+	            es_media(P_ROMS, v->folder, v->file, v->stem, ES_COVER, true, p, sizeof p);
+	if (v->have_now || v->now_es) {
 		mt_ask(MK_NOW, p, MF_FULL_PX);
 	} else {
 		v->now_tex = ui_make_card(v->a->r, v->title, v->sys_rgb, &v->now_w, &v->now_h);
@@ -15133,7 +17184,8 @@ static void media_build(media_view *v, unsigned now)
 	p->now_tex = v->now_tex;
 	p->now_w = v->now_w;
 	p->now_h = v->now_h;
-	if (!v->have_now) p->now_credit = T(S_MEDIA_NO_COVER);
+	if (v->now_es) p->now_credit = "EmulationStation";
+	else if (!v->have_now) p->now_credit = T(S_MEDIA_NO_COVER);
 	else if (v->now_as.src != AS_NONE) p->now_credit = artsrc_name(v->now_as.src);
 
 	/* Found */
@@ -15523,11 +17575,12 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 	if (!v) return;
 	media_open(v, a, owner, g);
-	/* Wi-Fi connected, not merely an interface up: on a Pixel 2 with no
-	 * adapter the USB cable's network is up and leads nowhere, and a page
-	 * that asked anyway said "Nothing found." (2026-11-09, from Tarik's
-	 * Pixel 2). mf_unreachable catches what this misses. */
-	v->net = net_online() && menu_wifi(NULL, 0) == WIFI_CONNECTED;
+	/* A way out (net_internet: Wi-Fi, or a phone's tethering), not merely an
+	 * interface up: on a Pixel 2 with no adapter the USB cable's network is
+	 * up and leads nowhere, and a page that asked anyway said "Nothing
+	 * found." (2026-11-09, from Tarik's Pixel 2). mf_unreachable catches
+	 * what this misses. */
+	v->net = net_online() && net_internet(NULL);
 	/* The one async slot, which an account answer may still hold */
 	if (v->net) sync_abandon();
 	mf_begin(v->folder, v->file, v->stem, v->exts, P_ROMS, v->net);
@@ -15590,12 +17643,8 @@ static void media_screen(app *a, int owner, const game_entry *g)
 
 			if (b == IN_UP || b == IN_DOWN) {
 				/* The strip is one stop above the rows */
-				int from = v->row, to = v->row + (b == IN_UP ? -1 : 1);
-
-				if (to < -1) to = -1;
-				if (to >= v->pg.nrows) to = v->pg.nrows - 1;
-				step_sound(a, b, from, to);
-				v->row = to;
+				/* the strip is stop 0 of the list, the rows after it */
+				v->row = list_step_heard(a, b, v->pg.nrows + 1, v->row + 1) - 1;
 			} else if ((b == IN_LEFT || b == IN_RIGHT) && v->row < 0 && nt > 0) {
 				int to = v->focus + (b == IN_LEFT ? -1 : 1);
 
@@ -15954,12 +18003,12 @@ static void storage_shot(app *a)
 				int sh = store_shelf(a, "PlayStation");
 				st_sys *s = &v.c.sys[v.page];
 
-				v.fix_count[v.page] = sh >= 0 ? a->view[sh].list.count : 0;
+				v.fix_count[v.page] = sh >= 0 ? sys_games(&a->view[sh])->count : 0;
 				s->games = s->states = 0;
-				for (i = 0; sh >= 0 && i < a->view[sh].list.count; i++) {
+				for (i = 0; sh >= 0 && i < sys_games(&a->view[sh])->count; i++) {
 					st_game_size gz;
 
-					store_game_size(&v, "PlayStation", &a->view[sh].list.items[i], &gz);
+					store_game_size(&v, "PlayStation", &sys_games(&a->view[sh])->items[i], &gz);
 					s->games += gz.games;
 					s->states += gz.states;
 				}
@@ -16021,7 +18070,7 @@ static void storage_shot(app *a)
 		if (sh >= 0) {
 			float k = 1.0f;
 
-			nq = delete_ask_rows(a, a->view[sh].list.items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
+			nq = delete_ask_rows(a, sys_games(&a->view[sh])->items[v.rows[v.pg.sel].index].title, lines, rows, &heading);
 			rows[nq] = (menu_row){ T(S_GAMEMENU_DELETE_YES), NULL, true };
 			rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
 			/* delete-open: where the question is in its open (shot_motion) */
@@ -16084,6 +18133,8 @@ static unsigned shot_zyper_ms(void)
  * row, the top one, which is the one Zyper is in, and a system's on a game
  * list, which is where it gains rows that belong to that system. The menu
  * and its --menu shot both take it from here. */
+static void look_row_mark(app *a, const menu_row *row, int right, int cy, float on_fill);
+
 static menu_style zyperos_menu_style(app *a, int screen)
 {
 	return (menu_style){
@@ -16095,6 +18146,10 @@ static menu_style zyperos_menu_style(app *a, int screen)
 		 * shelf's color - which tick_tint is still moving while it is open. */
 		.follow_tint = screen != SCREEN_SYSTEMS,
 		.zyper       = screen == SCREEN_SYSTEMS,
+		/* The ZyperOS menu's tabs; a system's menu is one list */
+		.tabs        = screen != SCREEN_GAMES ? &g_tabs : NULL,
+		/* and the themes' chips on Display's Theme row */
+		.row_mark    = screen != SCREEN_GAMES ? look_row_mark : NULL,
 	};
 }
 
@@ -16125,7 +18180,11 @@ static void zyperos_menu_draw(app *a, int sel)
 		g_menu_zyper = &zy;
 		g_menu_zyper_at = zms;
 	}
+	g_menu_tabs = st.tabs;
+	g_row_mark = st.row_mark;
 	menu_draw(a, heading, rows, n, sel, st.fixed_w, st.follow_tint ? a->tint : st.accent);
+	g_row_mark = NULL;
+	g_menu_tabs = NULL;
 	g_menu_zyper = NULL;
 }
 
@@ -16140,6 +18199,8 @@ typedef struct {
 	 * Both has no screens to be on: there MENU means the firmware and B
 	 * means this system, and neither can be inferred from where you are. */
 	int       screen;
+	/* MENU's cursor as the runner last had it (menu_style's sel_out) */
+	int       seen;
 } sysmenu_ctx;
 
 static int sysmenu_build(void *ctx, menu_row *rows, int max,
@@ -16170,17 +18231,22 @@ static void pick_launch(app *a)
 	int shelf = g_pick.shelf, game = g_pick.game, was = a->sys_cursor;
 	Uint32 until = plat_now_ms() + g_pick.hold_ms;
 
+	char file[LIB_PATH];
+
 	g_pick.shelf = -1;
 	if (shelf < 0 || shelf >= a->sys.count || game < 0 ||
-	    game >= a->view[shelf].list.count)
+	    game >= sys_games(&a->view[shelf])->count)
 		return;
-	fprintf(stderr, "pick: %s/%s\n", a->sys.systems[shelf].folder,
-	        a->view[shelf].list.items[game].file);
+	/* The game by its file: the index is of every game of the system, and
+	 * the shelf may show one folder of them (src/shelfdir.h) */
+	snprintf(file, sizeof file, "%s", sys_games(&a->view[shelf])->items[game].file);
+	fprintf(stderr, "pick: %s/%s\n", a->sys.systems[shelf].folder, file);
 	if (a->screen == SCREEN_GAMES && shelf != was)
 		evict_far(&a->view[was], TEX_KEEP_FAR);
 	a->sys_cursor = shelf;
 	home_reset(&a->home, shelf, a->sys.count, plat_now_ms());
-	a->view[shelf].cursor = game;
+	if (a->view[shelf].all) shelf_reveal(a, shelf, file);
+	else a->view[shelf].cursor = game;
 	enter_system(a);
 	do {
 		plat_input_poll(&a->in);
@@ -16199,6 +18265,282 @@ static void pick_launch(app *a)
 	launch(a);
 }
 
+/* ---------- MENU > Display: Auto Hours and Theme (DESIGN.md 3.5, 11.42) ---- */
+
+/* The volume and brightness bar the launcher draws (src/osdbar.c) in the
+ * look's colors, or the tokens' for the look as it ships */
+static void look_bar_colors(void)
+{
+	int t;
+
+	for (t = 0; t < DS_THEMES; t++)
+		osdbar_colors(t, look_is_default(look_now()) ? NULL : theme_at(t));
+}
+
+/* The look and Auto's hours as the database keeps them (src/look.h,
+ * src/theme.h): read at start before theme_init, and written as a row
+ * changes. Words for the look, minutes for the hours. */
+static void look_load(void)
+{
+	char ac[16], li[16], dk[16], co[16], zy[8];
+	look l;
+
+	db_get_str(db_dev(), "look.accent", ac, sizeof ac, DS_ACCENT_ID[0]);
+	db_get_str(db_dev(), "look.light", li, sizeof li, DS_TONE_ID[DS_LIGHT][0]);
+	db_get_str(db_dev(), "look.dark", dk, sizeof dk, DS_TONE_ID[DS_DARK][0]);
+	db_get_str(db_dev(), "look.corners", co, sizeof co, "rounded");
+	db_get_str(db_dev(), "look.zyper", zy, sizeof zy, "on");
+	l = look_parse(ac, li, dk, co, zy);
+	look_set(&l);
+	look_bar_colors();
+	theme_set_hours(db_get_int(db_dev(), "auto.light", THEME_LIGHT_FROM),
+	                db_get_int(db_dev(), "auto.dark", THEME_DARK_FROM));
+}
+
+/* A new look: on, kept, and every screen told. The bar's other programs read
+ * it from the theme file theme_init writes (themefile.h), so that is written
+ * again too; cards and marks drawn in the old colors are drawn again. */
+static void look_change(app *a, const look *l)
+{
+	look_set(l);
+	look_bar_colors();
+	db_set_str(db_dev(), "look.accent", DS_ACCENT_ID[l->accent]);
+	db_set_str(db_dev(), "look.light", DS_TONE_ID[DS_LIGHT][l->tone[DS_LIGHT]]);
+	db_set_str(db_dev(), "look.dark", DS_TONE_ID[DS_DARK][l->tone[DS_DARK]]);
+	db_set_str(db_dev(), "look.corners", l->square ? "square" : "rounded");
+	db_set_str(db_dev(), "look.zyper", l->zyper_off ? "off" : "on");
+	theme_init(theme_appearance());
+	theme_changed(a);
+}
+
+/* A time of day, `m` minutes in, as MENU > Clock writes one: "7:00 AM",
+ * or "07:00" in 24-hour */
+static void time_of_day(int m, char *out, size_t n)
+{
+	int h = m / 60, mi = m % 60;
+
+	if (g_clock24) snprintf(out, n, "%02d:%02d", h, mi);
+	else snprintf(out, n, T(S_LOOK_TIME_12H), h % 12 ? h % 12 : 12, mi,
+	              T(h < 12 ? S_CLOCK_AM : S_CLOCK_PM));
+}
+
+/* Auto Hours' value in MENU: "7:00 AM to 7:00 PM" */
+static const char *auto_hours_value(void)
+{
+	static char v[64];
+	char l[24], d[24];
+	int lm, dm;
+
+	theme_hours(&lm, &dm);
+	time_of_day(lm, l, sizeof l);
+	time_of_day(dm, d, sizeof d);
+	snprintf(v, sizeof v, T(S_LOOK_HOURS), l, d);
+	return v;
+}
+
+/* MENU > Display > Auto Hours: Light From and Dark From, by the half hour,
+ * Left and Right round the day, A forward; applied at once, so a theme that
+ * turns on the change turns on screen */
+typedef struct { app *a; char l[24], d[24]; } hours_view;
+static const unsigned char HOURS_SOUND[2] = { MENU_SND_RING, MENU_SND_RING };
+
+static int hours_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	hours_view *v = ctx;
+	int lm, dm;
+
+	(void)max;
+	theme_hours(&lm, &dm);
+	time_of_day(lm, v->l, sizeof v->l);
+	time_of_day(dm, v->d, sizeof v->d);
+	*heading = T(S_SYSMENU_AUTO_HOURS);
+	rows[0] = (menu_row){ T(S_LOOK_LIGHT_FROM), v->l, true };
+	rows[1] = (menu_row){ T(S_LOOK_DARK_FROM), v->d, true };
+	return 2;
+}
+
+static menu_result hours_key(app *a, void *ctx, in_button key, int sel)
+{
+	int d = key == IN_RIGHT || key == IN_ACCEPT ? 1 : key == IN_LEFT ? -1 : 0;
+	int lm, dm, *m, was = theme_index();
+	const int day = 24 * 60;
+
+	(void)ctx;
+	if (!d || sel < 0 || sel > 1) return MENU_STAY;
+	theme_hours(&lm, &dm);
+	m = sel == 0 ? &lm : &dm;
+	*m = ((*m + d * THEME_HOURS_STEP) % day + day) % day;
+	theme_set_hours(lm, dm);
+	db_set_int(db_dev(), "auto.light", lm);
+	db_set_int(db_dev(), "auto.dark", dm);
+	theme_init(theme_appearance());
+	if (theme_index() != was) theme_changed(a);
+	return MENU_CHANGED;
+}
+
+static void auto_hours_screen(app *a)
+{
+	hours_view v = { .a = a };
+	menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS,
+	                  .sound = HOURS_SOUND };
+
+	menu_run(a, &st, hours_build, hours_key, &v);
+}
+
+/* A theme's chip, 64 by 36: its ground in its edge, its accent on it, so
+ * the row says what the theme is now (DESIGN.md 11.42) */
+static void look_chip(app *a, const ds_theme *t, int x, int cy)
+{
+	SDL_Rect c = { x, cy - 18, 64, 36 };
+
+	ui_round_rect(a->r, &c, DS_RADIUS_CHIP + 1, ui_col(t->edge, 255));
+	ui_round_rect(a->r, &(SDL_Rect){ c.x + 3, c.y + 3, c.w - 6, c.h - 6 }, DS_RADIUS_CHIP - 2,
+	              ui_col(t->ground, 255));
+	ui_round_rect(a->r, &(SDL_Rect){ c.x + 12, cy - 6, 40, 12 }, 6, ui_col(t->accent, 255));
+}
+
+/* The marks before Theme's values: the accent's dot on Accent, each theme's
+ * chip on its background's row, and both on MENU's Theme row */
+static void look_row_mark(app *a, const menu_row *row, int right, int cy, float on_fill)
+{
+	const char *l = row->label;
+
+	(void)on_fill;
+	if (l == T(S_LOOK_BG_LIGHT)) look_chip(a, theme_at(DS_LIGHT), right - 64, cy);
+	else if (l == T(S_LOOK_BG_DARK)) look_chip(a, theme_at(DS_DARK), right - 64, cy);
+	else if (l == T(S_SYSMENU_THEME)) {
+		look_chip(a, theme_at(DS_DARK), right - 64, cy);
+		look_chip(a, theme_at(DS_LIGHT), right - 64 - DS_GRID - 64, cy);
+	} else if (l == T(S_LOOK_ACCENT)) {
+		const ds_rgb ac = DS_ACCENT[look_now()->accent];
+
+		ui_round_rect(a->r, &(SDL_Rect){ right - 34, cy - 17, 34, 34 }, 17,
+		              ui_col(theme()->edge, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ right - 32, cy - 15, 30, 30 }, 15,
+		              ui_col(theme()->surface, 255));
+		ui_round_rect(a->r, &(SDL_Rect){ right - 28, cy - 11, 22, 22 }, 11,
+		              (SDL_Color){ ac.r, ac.g, ac.b, 255 });
+	}
+}
+
+/* One theme, small: the home with a menu over it, drawn from shapes (text is
+ * never under 37 units), in that theme as the look has it now. */
+static void look_thumb(app *a, const ds_theme *t, const SDL_Rect *q)
+{
+	SDL_Renderer *r = a->r;
+	const int rad = 16;
+	int mx = q->x + q->w * 48 / 100, my = q->y + 12, mw = q->w * 48 / 100, mh = q->h - 24;
+	int bx = q->x + 16, i;
+#define BAR(x, y, w, h, c) ui_round_rect(r, &(SDL_Rect){ (x), (y), (w), (h) }, (h) / 2, ui_col((c), 255))
+
+	ui_round_rect(r, q, rad, ui_col(t->edge, 255));
+	ui_round_rect(r, &(SDL_Rect){ q->x + 2, q->y + 2, q->w - 4, q->h - 4 }, rad - 2,
+	              ui_col(t->ground, 255));
+	/* the home: the system's name and count, A, the art, the dock and its
+	 * mark under the one in focus */
+	BAR(bx, q->y + 22, q->w * 22 / 100, 13, t->text);
+	BAR(bx, q->y + 44, q->w * 13 / 100, 8, t->text_dim);
+	ui_round_rect(r, &(SDL_Rect){ bx, q->y + 60, 16, 16 }, 8, ui_col(t->accent, 255));
+	BAR(bx + 22, q->y + 64, q->w * 11 / 100, 8, t->text_soft);
+	ui_round_rect(r, &(SDL_Rect){ q->x + q->w * 27 / 100, q->y + 14, q->w * 16 / 100, q->w * 12 / 100 },
+	              6, ui_col(t->raised, 255));
+	for (i = 0; i < 4; i++)
+		ui_round_rect(r, &(SDL_Rect){ bx + i * (q->w / 10), q->y + q->h - 46, q->w / 14, q->w / 14 },
+		              4, ui_col(i == 2 ? t->text_soft : t->text_dim, 255));
+	BAR(bx + 2 * (q->w / 10), q->y + q->h - 14, q->w / 14, 4, t->accent_ink);
+	/* a menu over it: its heading, rule and bar, three rows, one in focus */
+	ui_round_rect(r, &(SDL_Rect){ mx, my, mw, mh }, 12, ui_col(t->edge, 255));
+	ui_round_rect(r, &(SDL_Rect){ mx + 2, my + 2, mw - 4, mh - 4 }, 10, ui_col(t->surface, 255));
+	BAR(mx + mw / 2 - mw / 6, my + 12, mw / 3, 8, t->text_soft);
+	ui_round_rect(r, &(SDL_Rect){ mx + 10, my + 28, mw - 20, 2 }, 0, ui_col(t->edge, 255));
+	BAR(mx + mw / 2 - mw / 6, my + 27, mw / 3, 4, t->accent_ink);
+	BAR(mx + 14, my + 40, mw * 35 / 100, 8, t->text_soft);
+	BAR(mx + mw - 14 - mw / 5, my + 40, mw / 5, 8, t->text_dim);
+	ui_round_rect(r, &(SDL_Rect){ mx + 6, my + 56, mw - 12, 22 }, 6, ui_col(t->accent, 255));
+	BAR(mx + 14, my + 63, mw * 40 / 100, 8, t->on_accent);
+	BAR(mx + 14, my + mh - 18, mw * 30 / 100, 8, t->text_soft);
+	BAR(mx + mw - 14 - mw / 4, my + mh - 18, mw / 4, 8, t->text_dim);
+	/* Zyper in its corner, a dot at this size, while he is on */
+	if (!look_zyper_off())
+		ui_round_rect(r, &(SDL_Rect){ mx + mw - 22, my + 7, 12, 12 }, 6, ui_col(t->text_dim, 255));
+#undef BAR
+}
+
+/* Theme's picture: Beard and Salt & Pepper as the look has them, side by
+ * side, Light at the left whatever is on */
+static void look_header(app *a, const SDL_Rect *q)
+{
+	int gap = DS_GRID * 3, w = (q->w - gap) / 2;
+
+	look_thumb(a, theme_at(DS_LIGHT), &(SDL_Rect){ q->x, q->y, w, q->h });
+	look_thumb(a, theme_at(DS_DARK), &(SDL_Rect){ q->x + w + gap, q->y, w, q->h });
+}
+
+/* MENU > Display > Theme: Accent, Light Background, Dark Background,
+ * Corners, Zyper and Reset to Default. Left and Right step a row round and
+ * apply it at once; A steps forward, and on Reset puts all four back. */
+enum { LK_ACCENT, LK_LIGHT, LK_DARK, LK_CORNERS, LK_ZYPER, LK_RESET, LK_ROWS };
+static const unsigned char LOOK_SOUND[LK_ROWS] = {
+	MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, MENU_SND_RING, 0 };
+static const int ACCENT_NAME[DS_ACCENTS] = {
+	S_LOOK_ACCENT_LIME, S_LOOK_ACCENT_GREEN, S_LOOK_ACCENT_TEAL, S_LOOK_ACCENT_BLUE,
+	S_LOOK_ACCENT_PURPLE, S_LOOK_ACCENT_PINK, S_LOOK_ACCENT_RED, S_LOOK_ACCENT_ORANGE,
+	S_LOOK_ACCENT_YELLOW, S_LOOK_ACCENT_SILVER };
+static const int TONE_NAME[DS_THEMES][DS_TONES] = {
+	{ S_LOOK_TONE_WARM, S_LOOK_TONE_NEUTRAL, S_LOOK_TONE_COOL },
+	{ S_LOOK_TONE_BLACK, S_LOOK_TONE_DEEPBLUE, S_LOOK_TONE_DARKGREY } };
+
+static const char *look_accent_name(void)
+{
+	return T(ACCENT_NAME[look_now()->accent]);
+}
+
+static int look_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	const look *l = look_now();
+
+	(void)ctx; (void)max;
+	*heading = T(S_SYSMENU_THEME);
+	rows[LK_ACCENT]  = (menu_row){ T(S_LOOK_ACCENT), T(ACCENT_NAME[l->accent]), true };
+	rows[LK_LIGHT]   = (menu_row){ T(S_LOOK_BG_LIGHT), T(TONE_NAME[DS_LIGHT][l->tone[DS_LIGHT]]), true };
+	rows[LK_DARK]    = (menu_row){ T(S_LOOK_BG_DARK), T(TONE_NAME[DS_DARK][l->tone[DS_DARK]]), true };
+	rows[LK_CORNERS] = (menu_row){ T(S_LOOK_CORNERS), T(l->square ? S_LOOK_SQUARE : S_LOOK_ROUNDED), true };
+	rows[LK_ZYPER]   = (menu_row){ T(S_LOOK_ZYPER), T(l->zyper_off ? S_MENU_OFF_TITLE : S_MENU_ON_TITLE), true };
+	rows[LK_RESET]   = (menu_row){ T(S_LOOK_RESET), NULL, true };
+	return LK_ROWS;
+}
+
+static menu_result look_key(app *a, void *ctx, in_button key, int sel)
+{
+	int d = key == IN_RIGHT || key == IN_ACCEPT ? 1 : key == IN_LEFT ? -1 : 0;
+	look l = *look_now();
+
+	(void)ctx;
+	if (!d || sel < 0 || sel >= LK_ROWS) return MENU_STAY;
+	switch (sel) {
+	case LK_ACCENT:  l.accent = (l.accent + d + DS_ACCENTS) % DS_ACCENTS; break;
+	case LK_LIGHT:   l.tone[DS_LIGHT] = (l.tone[DS_LIGHT] + d + DS_TONES) % DS_TONES; break;
+	case LK_DARK:    l.tone[DS_DARK] = (l.tone[DS_DARK] + d + DS_TONES) % DS_TONES; break;
+	case LK_CORNERS: l.square = !l.square; break;
+	case LK_ZYPER:   l.zyper_off = !l.zyper_off; break;
+	case LK_RESET:
+		if (key != IN_ACCEPT) return MENU_STAY;
+		l = LOOK_DEFAULT;
+		break;
+	}
+	look_change(a, &l);
+	return MENU_CHANGED;
+}
+
+static void look_screen(app *a)
+{
+	menu_style st = { .fixed_w = menu_std_width(a), .accent = MENU_ZYPEROS,
+	                  .sound = LOOK_SOUND, .row_mark = look_row_mark,
+	                  .header = look_header, .header_h = 150 };
+
+	menu_run(a, &st, look_build, look_key, NULL);
+}
+
 static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 {
 	int d = key == IN_RIGHT ? 1 : key == IN_LEFT ? -1 : 0;
@@ -16214,7 +18556,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		if (is_muse(&a->sys.systems[a->sys_cursor])) {
 			sm_muse_row ids[SM_MUSE_ROWS];
 			int n = sys_menu_muse_rows(muse_rows_kind(), muse_kinds() > 1,
-			                           !plat_has_wifi(), ids);
+			                           !plat_has_wifi() && !net_internet(NULL), ids);
 			sm_muse_row id = sel >= 0 && sel < n ? ids[sel] : SMM_COUNT;
 
 			if (id == SMM_SORT) {
@@ -16258,12 +18600,12 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * knew that from the day the menu was cut to two rows, and left and
 		 * right on Favorites' Sort By did nothing at all. */
 		if (a->view[a->sys_cursor].owner)
-			sel = sel == 1 ? SM_RANDOM : sel == 2 ? SM_SORT : SM_GAMES;
+			sel = sel == 1 ? SM_RANDOM : sel == 2 ? SM_SORT : sel == 3 ? SM_VIEW : SM_GAMES;
 		/* And a console's rows lose Box Art on a device with no radio, which
 		 * moves Rescan Folder up one: which row is which comes from the same
 		 * list the build used. */
 		else if (!is_muse(&a->sys.systems[a->sys_cursor])) {
-			sys_ui dev = { .no_wifi = !plat_has_wifi(),
+			sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
 			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL };
 			sm_row ids[SM_ROWS];
 			int n = sys_menu_system_rows(&dev, ids);
@@ -16286,8 +18628,25 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			db_set_str(db_dev(), DSLANG_SETTING, dslang_id(c));
 			return MENU_STAY;
 		}
+		/* The shader, stepped round on left, right and A and kept at once,
+		 * for this system alone: its next game plays with it. MENU's row
+		 * sets every system's. */
+		if ((d || key == IN_ACCEPT) && sel == SM_SHADER) {
+			sysview *v = &a->view[a->sys_cursor];
+
+			v->shader = shader_step(v->shader, d ? d : 1);
+			shader_save(a, a->sys_cursor);
+			return MENU_STAY;
+		}
 		/* Display mode, saved the moment it changes because there is no
 		 * confirm step to hang the write off. */
+		/* View: the covers or a list, this shelf's (DESIGN.md 11.39). Left,
+		 * Right and A turn it over, as a choice of two does; the shelf under
+		 * the menu turns with it, on the game it was on. */
+		if ((d || key == IN_ACCEPT) && sel == SM_VIEW) {
+			view_turn(a, a->sys_cursor);
+			return MENU_STAY;
+		}
 		if (d && sel == SM_DISPLAY) {
 			sysview *v = &a->view[a->sys_cursor];
 
@@ -16368,7 +18727,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * fewer of them, and the same list the build used says which is which. */
 	{
 		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
-		               .cable_xfer = plat_cable_link(NULL, 0),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
 		               .no_developer = !dev_offered(),
 		               .no_lights = !plat_battery_lights(),
 		               .no_charge_limit = !plat_charge_limit_supported(),
@@ -16378,8 +18737,27 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		                * the update program has the row */
 		               .update = up_have() ? "" : NULL };
 		pm_row ids[PM_ROWS];
-		int n = sys_menu_zyperos_rows(&dev, ids);
+		int n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 
+		/* L1 and R1 go round the tabs (DESIGN.md 11.3): the row each tab
+		 * is on is kept, and the cursor lands on the next tab's own */
+		if (key == IN_L1 || key == IN_R1) {
+			int dir = key == IN_R1 ? +1 : -1, k;
+
+			if (sel >= 0 && sel < n) g_tab_row[g_tabs.at] = ids[sel];
+			g_tabs.from = g_tabs.at;
+			g_tabs.at = (g_tabs.at + dir + PT_TABS) % PT_TABS;
+			g_tabs.dir = dir;
+			g_tabs.t0 = anim_now();
+			if (!g_tabs.t0) g_tabs.t0 = 1;
+			g_menu_epoch++;
+			n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+			for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
+			g_menu_sel_to = k < n ? k : 0;
+			moved_sound(a, key);
+			redraw_now();
+			return MENU_STAY;
+		}
 		sel = sel >= 0 && sel < n ? (int)ids[sel] : PM_ROWS;
 	}
 
@@ -16399,6 +18777,15 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * should not inherit two minutes of an old one already spent. */
 		a->idle.since_ms = plat_now_ms();
 		return a->auto_off != was ? MENU_CHANGED : MENU_STAY;
+	}
+	/* Screensaver, on Auto Off's idiom: left and right step the delay, off
+	 * at one end; a step past either end changes nothing. */
+	if (d && sel == PM_SAVER) {
+		int was = g_saver_s;
+
+		g_saver_s = saver_step(g_saver_s, d);
+		saver_save(g_saver_s);
+		return g_saver_s != was ? MENU_CHANGED : MENU_STAY;
 	}
 	/* System Order: the shelves read again in the other order, the cursor
 	 * kept on its system by tag (rescan_all), as File Transfer reads them
@@ -16449,6 +18836,14 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		db_set_str(db_dev(), "appearance", appearance_id(k));
 		boot_theme_changed();
 		if (theme_index() != was) theme_changed(a);
+		return MENU_CHANGED;
+	}
+
+	/* The shader for every system, stepped round with A going forward:
+	 * kept as MENU's, and each system's own choice goes with it
+	 * (shader_set_all). From "per system" a step goes on from MENU's last. */
+	if (sel == PM_SHADER && (d || key == IN_ACCEPT)) {
+		shader_set_all(a, shader_step(g_shader_all, d ? d : 1));
 		return MENU_CHANGED;
 	}
 
@@ -16558,6 +18953,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	 * says to start playing. */
 	case PM_TOUR:         tour_run(a, false); return MENU_DONE;
 	case PM_STORAGE:      storage_screen(a); break;
+	case PM_AUTOHOURS:    auto_hours_screen(a); return MENU_CHANGED;
+	case PM_THEME:        look_screen(a); return MENU_CHANGED;
 	case PM_UPDATE:       update_screen(a); break;
 	case PM_ABOUT:        about_screen(a); break;
 	/* A game by its name: the menu closes once one is picked, and it starts */
@@ -16582,8 +18979,40 @@ static void zyperos_menu_for(app *a, int screen)
 	/* Each row's sound class, which the build sets beside the rows */
 	st.sound = c.bufs.sound;
 
-	g_pick.shelf = -1;
-	menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+	if (st.tabs) {
+		sys_ui dev = { .no_wifi = !plat_has_wifi(), .no_bt = !plat_has_bluetooth(),
+		               .cable_xfer = xfer_link_up(), .online = net_internet(NULL),
+		               .no_developer = !dev_offered(),
+		               .no_lights = !plat_battery_lights(),
+		               .no_charge_limit = !plat_charge_limit_supported(),
+		               .no_usb_power = !usb_power_offered(),
+		               .no_usb_wait = !usb_wait_row(),
+		               .update = up_have() ? "" : NULL };
+		pm_row ids[PM_ROWS];
+		int n, k;
+
+		/* A plug waiting for its answer: Connections, on USB Device */
+		if (!dev.no_usb_wait && !dev.no_usb_power) {
+			g_tabs.at = PT_CONNECTIONS;
+			g_tab_row[PT_CONNECTIONS] = PM_USB_WAIT;
+		}
+		g_tabs.from = g_tabs.at;
+		g_tabs.t0 = 0;
+		g_menu_epoch++;
+		n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+		for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
+		st.start_sel = k < n ? k : 0;
+		c.seen = st.start_sel;
+		st.sel_out = &c.seen;
+		g_pick.shelf = -1;
+		menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+		/* where it was closed, for the next time it opens */
+		n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
+		if (c.seen >= 0 && c.seen < n) g_tab_row[g_tabs.at] = ids[c.seen];
+	} else {
+		g_pick.shelf = -1;
+		menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
+	}
 	/* A game Random Game or Search Games picked, once the menu has gone */
 	if (g_pick.shelf >= 0 && a->running && !want_quit) pick_launch(a);
 	g_pick.shelf = -1;
@@ -16660,7 +19089,360 @@ static void paused_backdrop(app *a, SDL_Texture *bg, float k)
 	/* The top bar (src/topbar.h): the clock at the top left and the marks
 	 * with the battery's text at the top right, as on the home, so they match
 	 * and a long Time Left text never meets the clock. */
-	draw_topbar(a->r, DS_DARK, ui_col(DS_THEME[DS_DARK].text, 255), frames_wanted());
+	draw_topbar(a->r, DS_DARK, ui_col(theme_at(DS_DARK)->text, 255), frames_wanted());
+}
+
+/* ---------- NES Player 2 ---------------------------------------------------
+ *
+ * The in-game menu's Player 2 row on an NES game opens this page over the
+ * paused game (src/p2.h, src/p2panel.h): A starts it, on the handheld's own
+ * Wi-Fi when an adapter is in or for a computer on the cable, and stops it;
+ * B closes the page, and Continue goes back to the game with it on. The
+ * page says how a friend joins and who is playing; a notice over the game
+ * says when one joins or leaves. Every end of the game stops it (launch). */
+
+/* What the page shows, gathered: from src/p2.c and the hotspot, or made up
+ * by a shot (--player2). `link` is the one it is on, or while off the one A
+ * would start. */
+typedef struct {
+	p2_state    st;
+	p2_link     link;
+	bool        starting;   /* the hotspot coming up, or about to (A's wait) */
+	bool        closing;    /* the stop's wait */
+	unsigned    guests;
+	int         players;
+	const char *ssid, *pass, *qr, *url;
+} p2_view;
+
+typedef struct {
+	char how[192];
+	char addr[96];
+	char who[P2PANEL_STATUS][32];
+} p2_bufs;
+
+/* --player2 KIND: the page as a shot draws it, and the row's value with
+ * --gamemenu (shot_draw_player2) */
+static bool    g_shot_p2;
+static p2_view g_shot_p2_view;
+
+/* The state the in-game menu's row says */
+static p2_state p2_row_state(void)
+{
+	return g_shot_p2 ? g_shot_p2_view.st : p2_state_now();
+}
+
+/* The page's rows, from the view: the code's text (none while it is not
+ * shown), the network and its password beside it with the address under
+ * them, the line that says what to do, a line per player and the key
+ * legend. What src/p2panel.c draws and what the panel's copy keeps
+ * (snap_record), so a shot of it is the page. */
+static int p2_rows(const p2_view *v, menu_row *rows, p2_bufs *b)
+{
+	const bool on = v->st == P2_WAITING || v->st == P2_CONNECTED;
+	const bool code = on && v->link == P2_HOTSPOT && !v->starting && !v->closing &&
+	                  v->qr && v->qr[0];
+	const char *legend;
+	int n = 0, k;
+
+	/* The stop's moment: the hotspot's says the Wi-Fi is coming back */
+	if (v->closing && v->link == P2_HOTSPOT) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_CLOSING_HOTSPOT));
+	else if (v->closing) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_STOPPING));
+	else if (v->starting) snprintf(b->how, sizeof b->how, "%s", T(S_XFER_STARTING_HOTSPOT));
+	else if (v->st == P2_FAILED) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_FAILED));
+	else if (code) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_SCAN));
+	/* The name, which is what a person types: zyperos.local/play */
+	else if (on && v->link == P2_CABLE) snprintf(b->how, sizeof b->how, T(S_PLAYER2_CABLE), v->url);
+	else if (v->link == P2_HOTSPOT) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_INTRO_WIFI));
+	else if (v->link == P2_CABLE) snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_INTRO_CABLE));
+	else snprintf(b->how, sizeof b->how, "%s", T(S_PLAYER2_NO_LINK));
+
+	rows[n++] = (menu_row){ code ? v->qr : "", NULL, false };
+	rows[n++] = (menu_row){ T(S_HOTPANEL_NETWORK), code ? v->ssid : NULL, false };
+	rows[n++] = (menu_row){ T(S_PANEL_PASSWORD), code ? v->pass : NULL, false };
+	/* The address too, for a phone whose sign-in page does not open by
+	 * itself once it joined: the page's own, which p2d lets in */
+	b->addr[0] = '\0';
+	if (code) snprintf(b->addr, sizeof b->addr, T(S_PLAYER2_OR_OPEN), v->url);
+	rows[n++] = (menu_row){ b->addr, NULL, false };
+	rows[n++] = (menu_row){ b->how, NULL, false };
+	/* A line for each player a friend can be: player 2 on the NES, and on
+	 * a system with more, 3 and 4 the same way */
+	for (k = 0; k + 2 <= v->players && k < P2PANEL_STATUS; k++) {
+		const char *st = v->starting ? T(S_HOTPANEL_STARTING)
+		               : !on ? T(S_MENU_OFF)
+		               : v->guests & (1u << k) ? T(S_PLAYER2_CONNECTED) : T(S_PLAYER2_WAITING);
+
+		snprintf(b->who[k], sizeof b->who[k], T(S_PLAYER2_PLAYER), k + 2);
+		rows[n++] = (menu_row){ b->who[k], st, false };
+	}
+	/* A starts or stops it ("stop", since "turn off" and "close" are one
+	 * word in Chinese); with nothing to start it over, only B */
+	if (on)
+		legend = keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_STOP) },
+		                                       { "B", T(S_KEYHINT_CLOSE) } }, 2);
+	else if (v->link != P2_NO_LINK)
+		legend = keyhints_legend((key_hint[]){ { "A", T(S_KEYHINT_TURN_ON) },
+		                                       { "B", T(S_KEYHINT_CLOSE) } }, 2);
+	else
+		legend = b_legend(S_KEYHINT_CLOSE);
+	rows[n++] = MENU_NOTE(legend);
+	return n;
+}
+
+/* The page's panel from its rows, as panel_show and the panel's copy draw
+ * it (PANEL_P2), at `pose`: its lift on the screen at the panel's size, the
+ * panel into the pass, as menu_panel moves its own */
+static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
+                     unsigned accent, mm_pose pose)
+{
+	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f, lifted = false;
+	p2panel p;
+	SDL_Rect q;
+	int i;
+
+	if (n < 6) return;
+	memset(&p, 0, sizeof p);
+	p.heading = heading;
+	p.accent = accent;
+	p.qr = rows[0].label;
+	p.ssid = rows[1].value;
+	p.pass = rows[2].value;
+	p.addr = rows[3].label;
+	p.how = rows[4].label;
+	for (i = 5; i < n - 1 && p.nwho < P2PANEL_STATUS; i++, p.nwho++) {
+		p.who[p.nwho] = rows[i].label;
+		p.state[p.nwho] = rows[i].value;
+	}
+	p.legend = rows[n - 1].label;
+	q = p2panel_rect(&p);
+	if (posed) {
+		SDL_FRect f = panel_scaled(&q, pose.scale);
+		SDL_Rect fq = { (int)(f.x + 0.5f), (int)(f.y + 0.5f), (int)(f.w + 0.5f), (int)(f.h + 0.5f) };
+
+		ui_lift_k(a->r, &fq, accent, UI_LIFT_PANEL, pose.alpha);
+		lifted = true;
+		posed = panel_pass_begin(a);
+	}
+	p2panel_draw(a->r, &p, !lifted);
+	if (posed) panel_pass_end(a, &q, pose);
+}
+
+/* The page as it is now, the address shown without its http:// and slash */
+static void p2_view_now(p2_view *v, const system_cfg *q, p2_link can, bool starting, bool closing)
+{
+	static char url[64];
+	const p2_system *sys = p2_system_of(q->core);
+	const char *u = p2_join_url();
+	size_t un;
+
+	memset(v, 0, sizeof *v);
+	v->st = p2_state_now();
+	/* The link it started on; while off, or after a start that never got
+	 * one, the one A would start */
+	v->link = p2_link_on();
+	if (v->link == P2_NO_LINK) v->link = can;
+	v->starting = starting || p2_starting();
+	v->closing = closing;
+	v->guests = p2_guests();
+	v->players = p2_players() ? p2_players() : sys ? sys->players : 2;
+	v->ssid = hotspot_ssid();
+	v->pass = hotspot_password();
+	v->qr = hotspot_qr_text();
+	if (!strncmp(u, "http://", 7)) u += 7;
+	snprintf(url, sizeof url, "%s", u);
+	un = strlen(url);
+	if (un && url[un - 1] == '/') url[un - 1] = '\0';
+	v->url = url;
+}
+
+static void p2_show(app *a, const p2_view *v)
+{
+	menu_row rows[5 + P2PANEL_STATUS + 1];
+	p2_bufs b;
+	int n = p2_rows(v, rows, &b);
+
+	panel_show(a, PANEL_P2, T(S_PLAYER2_ROW), rows, n, -1, 0, a->tint, NULL, false, 0, NULL);
+}
+
+/* One frame of the page, shown before something that blocks: the hotspot's
+ * start, which waits for the supplicant to stop, and its stop, which waits
+ * for the Wi-Fi to come back (as File Transfer's say it, wait_panel) */
+static void p2_page_frame(app *a, SDL_Texture *bg, const system_cfg *q, p2_link can,
+                          bool starting, bool closing)
+{
+	p2_view v;
+
+	p2_view_now(&v, q, can, starting, closing);
+	paused_backdrop(a, bg, 1.0f);
+	p2_show(a, &v);
+	plat_present();
+}
+
+/* The page, from the in-game menu's row, over the paused game `bg` */
+static void player2_page(app *a, SDL_Texture *bg)
+{
+	const system_cfg *q = &a->sys.systems[shelf_owner(a, a->sys_cursor,
+	                                      a->view[a->sys_cursor].cursor)];
+	p2_link can = P2_NO_LINK;
+	unsigned looked = 0;
+	int lv, done = 0;
+	float k;
+
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	lv = panel_open();
+	while (!done && !want_quit) {
+		unsigned now = plat_now_ms();
+		bool on = p2_state_now() == P2_WAITING || p2_state_now() == P2_CONNECTED;
+
+		plat_input_poll(&a->in);
+		ui_sounds_follow();
+		if (menu_leaving(a)) done = 1;
+		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
+		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
+		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
+		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		/* Power stops the game from here, as from the in-game menu's
+		 * other pages; the game's end stops Player 2 */
+		if (a->in.pressed[IN_POWER] || idle_due(a)) {
+			plat_note_power_pressed();
+			plat_resident_line("STOP");
+			done = 1;
+		}
+		/* Which link a start would take, looked at five times a second, so
+		 * an adapter or a computer plugged in with the page open shows */
+		if (!looked || now - looked >= 200u) {
+			looked = now ? now : 1;
+			can = p2_link_now(hotspot_available(), plat_usb_peer() == USB_PEER_COMPUTER);
+		}
+		if (!done && a->in.pressed[IN_ACCEPT]) {
+			if (on) {
+				uisound_play(DS_SOUND_BACK);
+				p2_page_frame(a, bg, q, can, false, true);
+				p2_stop();
+			} else if (can == P2_NO_LINK) {
+				uisound_play(DS_SOUND_DENY);
+			} else {
+				uisound_play(DS_SOUND_ACCEPT);
+				p2_page_frame(a, bg, q, can, can == P2_HOTSPOT, false);
+				if (!p2_start(q->core, can)) uisound_play(DS_SOUND_DENY);
+			}
+			plat_input_flush();
+			memset(&a->in, 0, sizeof a->in);
+		}
+		if (!panel_frame(a, lv, &k)) continue;
+		/* Player 2's tick (p2_tick) is in it, as in every screen's loop */
+		tick_theme(a);
+		paused_backdrop(a, bg, k);
+		{
+			p2_view v;
+
+			p2_view_now(&v, q, can, false, false);
+			p2_show(a, &v);
+		}
+		plat_present();
+		ui_frame_rest(8);
+	}
+	/* Closed after a failure: what it left goes too, so the row says off and
+	 * the Wi-Fi the player had is back */
+	if (p2_state_now() == P2_FAILED) {
+		p2_page_frame(a, bg, q, can, false, true);
+		p2_stop();
+	}
+	panel_close(a, lv, false);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+}
+
+/* ---- what Player 2 is done with (p2_ops) ---------------------------------- */
+
+static bool p2op_resident(const char *line) { return plat_resident_line("%s", line); }
+
+static bool p2op_answer(const char *prefix, char *out, unsigned n, unsigned ms)
+{
+	return plat_resident_sync_line(prefix, out, n, (int)ms);
+}
+
+/* The theme the handheld shows now (src/webtheme.h), its look with it */
+static bool p2op_theme(void)
+{
+	return webtheme_write(WEBTHEME_FILE, theme(), theme_index() == DS_DARK, look_square());
+}
+
+static bool p2op_hotspot_start(void) { return hotspot_start_dns(false); }
+static int  p2op_hotspot_poll(void)  { return (int)hotspot_poll(); }
+static void p2op_hotspot_stop(void)  { hotspot_stop(); }
+static void p2op_cable_up(void)      { usblink_for_transfer(); }
+static void p2op_cable_down(void)    { usblink_after_transfer(db_dev()); }
+
+static bool p2op_mdns_start(void)    { return mdns_start("usb0", P2_CABLE_ADDR, false); }
+static void p2op_mdns_poll(unsigned now) { mdns_poll(now); }
+
+/* Developer Mode's SSH has the name on the cable too (dev_ssh_tick), and
+ * keeps it for as long as the cable is in */
+static void p2op_mdns_stop(void)     { if (!g_dv.run) mdns_stop(); }
+
+static long p2op_spawn(char *const argv[])     { return spawn_child(argv); }
+static void p2op_signal(long pid, int sig)     { kill((pid_t)pid, sig); }
+static bool p2op_ended(long pid, int *status)  { return spawn_ended(pid, status); }
+static unsigned p2op_now(void)                 { return plat_now_ms(); }
+static void p2op_sleep(unsigned ms)            { SDL_Delay(ms); }
+
+/* The share's guests, read from the file rather than mapped: a hundred
+ * bytes ten times a second, and nothing held from one game to the next,
+ * whose share is a new file. No file, or its magic cleared, is no share. */
+static int p2op_guests(void)
+{
+	p2s_head h;
+	int fd = open(P2S_PATH, O_RDONLY | O_CLOEXEC);
+	ssize_t got;
+
+	if (fd < 0) return -1;
+	got = pread(fd, &h, sizeof h, 0);
+	close(fd);
+	if (got != (ssize_t)sizeof h || h.magic != P2S_MAGIC) return -1;
+	return (int)(h.guests & 0x7FFFFFFFu);
+}
+
+static void p2op_unshare(void) { unlink(P2S_PATH); }
+
+/* "Player 2 joined" over the game, in the queue with the other pop-ups */
+static void p2op_notice(p2_news what, int player)
+{
+	char body[96];
+
+	if (what == P2_STOPPED) {
+		snprintf(body, sizeof body, "%s", T(S_PLAYER2_STOPPED));
+		fprintf(stderr, "player 2: said it stopped\n");
+	} else {
+		snprintf(body, sizeof body, T(what == P2_JOINED ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), player);
+		fprintf(stderr, "player 2: player %d %s\n", player, what == P2_JOINED ? "joined" : "left");
+	}
+	notice_queue(NQ_SET, 0, 3000, T(S_PLAYER2_NOTICE), body, NULL, 0, 0);
+}
+
+/* The page's words in the language the handheld is in, as hare's /i18n.js */
+static const char *p2op_lang(void) { return lang_code(i18n_lang()); }
+
+static char   g_p2_bin[CFG_STR * 2];
+static p2_ops g_p2_ops = {
+	p2op_resident, p2op_answer, p2op_theme,
+	p2op_hotspot_start, p2op_hotspot_poll, p2op_hotspot_stop,
+	p2op_cable_up, p2op_cable_down,
+	p2op_mdns_start, p2op_mdns_poll, p2op_mdns_stop,
+	p2op_spawn, p2op_signal, p2op_ended,
+	p2op_now, p2op_sleep, p2op_guests, p2op_unshare, p2op_notice, p2op_lang,
+	NULL, NULL,
+};
+
+/* Once, as the launcher starts: p2d beside it on the card, the page in its
+ * res/web (mk/payload.sh lays both out) */
+static void p2_setup(void)
+{
+	snprintf(g_p2_bin, sizeof g_p2_bin, "%s/p2d", P_ROOT);
+	g_p2_ops.p2d = g_p2_bin;
+	g_p2_ops.root = P_WEB;
+	p2_use(&g_p2_ops);
 }
 
 /* Copy the paused frame's preview beside a manual save, so the slot strip can
@@ -16739,7 +19521,7 @@ static void slot_when(char *out, size_t n, const struct tm *tm)
  * which brings its own surface and needs none of this. */
 static void slot_draw(app *a, const slot_view *sv, int sel)
 {
-	const ds_theme *dk = &DS_THEME[DS_DARK];
+	const ds_theme *dk = theme_at(DS_DARK);
 	/* `area` is the layout slot the picture is fitted into; nothing is ever
 	 * drawn to it. The border is the picture's own edge - a 240x160 GBA frame
 	 * and a 256x224 NES frame are different shapes, and neither should be
@@ -16973,6 +19755,20 @@ static void gm_cycle_display(app *a, int d)
 	plat_resident_sync_rect(150);
 }
 
+/* The shader the same way, the owner's too: kept for the system and sent to
+ * the game, which draws with it from the frame after Continue. The paused
+ * picture under the menu is the core's frame, drawn by this process, so it
+ * does not change; Diatom's DISPLAY answer is read off as Display's is. */
+static void gm_cycle_shader(app *a, int d)
+{
+	sysview *v = owner_view(a);
+
+	v->shader = shader_step(v->shader, d);
+	shader_save(a, (int)(v - a->view));
+	plat_resident_line("SETDISPLAY\tfilter=%s", SHADERS[v->shader].name);
+	plat_resident_sync_rect(150);
+}
+
 /* What the in-game menu needs from the app, handed to gm_rows to become rows.
  * Same split as everywhere else. */
 /* What the in-game menu shows, gathered: for its rows, and for where each
@@ -16983,8 +19779,14 @@ static void gm_gather(app *a, gm_ui *out)
 
 	memset(&u, 0, sizeof u);
 	u.dmode  = dmode_label(a->view[a->sys_cursor].dmode);
+	/* The owner's, which is the one its row sets (gm_cycle_shader) */
+	u.shader = shader_label(owner_view(a)->shader);
 	u.earned = chv_earned();
 	u.total  = chv_count();
+	/* g_game_set is the game running's, written at every launch */
+	u.unchecked = u.total == 0 && !g_port_menu &&
+	              (g_shot_unchecked ||
+	               chv_state_of(g_game_set, ra_signed_in()) == CHV_UNCHECKED);
 	u.screens = g_game_dual;
 	u.port   = g_port_menu;
 	/* The game's own system, on Favorites too (shelf_owner); none where its
@@ -16999,6 +19801,12 @@ static void gm_gather(app *a, gm_ui *out)
 		if (pak_system(q) && a->view[a->sys_cursor].list.count > 0)
 			u.pak = gm_pak_name(pak_get(q, a->view[a->sys_cursor].list
 			                                     .items[a->view[a->sys_cursor].cursor].file));
+		/* NES Player 2, on the cores the system table offers it on and on
+		 * a device that has it (a shot draws it on the host) */
+		if (p2_offered(q->core, plat_player2() || g_shot_p2)) {
+			u.player2 = true;
+			u.player2_value = gm_player2_value(p2_row_state());
+		}
 	}
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
@@ -17197,8 +20005,11 @@ static bool cheevo_detail_screen(app *a, SDL_Texture *bg, bool over_shelf,
 	rows[n++] = MENU_RULE;
 	snprintf(pts, sizeof pts, "%d", c->points);
 	rows[n++] = (menu_row){ T(S_CHEEVOLIST_POINTS), pts, true };
+	/* Earned and not on the account yet - earned offline - says so */
 	rows[n]   = (menu_row){ T(S_CHEEVOLIST_STATUS),
-	                        got ? T(S_CHEEVOLIST_EARNED) : T(S_CHEEVOLIST_NOT_EARNED), true };
+	                        !got ? T(S_CHEEVOLIST_NOT_EARNED)
+	                        : chv_is_pending(c->id) ? T(S_CHEEVOLIST_EARNED_WAITING)
+	                        : T(S_CHEEVOLIST_EARNED), true };
 	vcols[n]  = got ? VCOL_EARNED : 0u;
 	n++;
 
@@ -18724,14 +21535,8 @@ static muse_exit muse_tracks(app *a, int album, bool now)
 		}
 
 		if (items > 0) {
-			if (in_repeat(&a->in, IN_UP)) {
-				step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
-				if (sel > 0) sel--;
-			}
-			if (in_repeat(&a->in, IN_DOWN)) {
-				step_sound(a, IN_DOWN, sel, sel < items - 1 ? sel + 1 : sel);
-				if (sel < items - 1) sel++;
-			}
+			if (in_repeat(&a->in, IN_UP))   sel = list_step_heard(a, IN_UP, items, sel);
+			if (in_repeat(&a->in, IN_DOWN)) sel = list_step_heard(a, IN_DOWN, items, sel);
 		}
 		if (in_repeat(&a->in, IN_LEFT))     { moved_sound(a, IN_LEFT); musec_seek_by(-seek_step(&a->in, IN_LEFT)); }
 		if (in_repeat(&a->in, IN_RIGHT))    { moved_sound(a, IN_RIGHT); musec_seek_by(+seek_step(&a->in, IN_RIGHT)); }
@@ -19331,8 +22136,9 @@ static void album_art_screen(app *a)
 		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
 
 		/* Idle does not count while covers are arriving: it is the device
-		 * doing what it was asked, and powering off halfway loses the rest. */
-		if (working) a->idle.since_ms = plat_now_ms();
+		 * doing what it was asked, and powering off halfway loses the rest.
+		 * Said as every long task says it (src/taskhold.h). */
+		if (working) task_note(TASK_COVERS, plat_now_ms());
 
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
@@ -19464,9 +22270,17 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 	 * With "cheevos" after the first it was 818 wide in Lexend, more than
 	 * the panel's content, and the line scrolled; at 585 it fits with room
 	 * for a set of hundreds, and the list under it says what it counts. */
-	snprintf(heading, sizeof heading, T(S_CHEEVOLIST_HEADING),
-	         chv_game_title(), chv_earned(), n,
-	         chv_points_earned(), chv_points_total());
+	/* And how many of this game's wait to be sent, earned offline, when any
+	 * do: in the points' place, since the line with both was wider than the
+	 * panel and scrolled its count off the left. Each row has its points. */
+	if (chv_pending_for(chv_game()) > 0)
+		snprintf(heading, sizeof heading,
+		         TN(S_CHEEVOLIST_HEADING_WAITING, chv_pending_for(chv_game())),
+		         chv_game_title(), chv_earned(), n, chv_pending_for(chv_game()));
+	else
+		snprintf(heading, sizeof heading, T(S_CHEEVOLIST_HEADING),
+		         chv_game_title(), chv_earned(), n,
+		         chv_points_earned(), chv_points_total());
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
@@ -19476,14 +22290,8 @@ static void cheevos_screen(app *a, SDL_Texture *bg, bool over_shelf)
 		plat_input_poll(&a->in);
 		ui_sounds_follow();
 
-		if (in_repeat(&a->in, IN_UP)) {
-			step_sound(a, IN_UP, sel, sel > 0 ? sel - 1 : sel);
-			if (sel > 0) sel--;
-		}
-		if (in_repeat(&a->in, IN_DOWN)) {
-			step_sound(a, IN_DOWN, sel, sel < n - 1 ? sel + 1 : sel);
-			if (sel < n - 1) sel++;
-		}
+		if (in_repeat(&a->in, IN_UP))   sel = list_step_heard(a, IN_UP, n, sel);
+		if (in_repeat(&a->in, IN_DOWN)) sel = list_step_heard(a, IN_DOWN, n, sel);
 		/* A set runs to well over a hundred entries, so the shoulder buttons
 		 * page it the same way they page a shelf. */
 		if (in_repeat(&a->in, IN_L1)) {
@@ -19741,6 +22549,18 @@ static int gm_width(app *a)
 		if (mw > w) w = mw;
 	}
 	if (disp >= 0) rows[disp].value = dmode_label(0);
+	/* Shader, at each, for the same reason */
+	{
+		int sh = gm_row_at(&u, GM_SHADER);
+
+		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
+			int mw;
+			if (!shader_offered(k)) continue;
+			rows[sh].value = shader_label(k);
+			mw = menu_measure(rows, n, NULL);
+			if (mw > w) w = mw;
+		}
+	}
 	/* An N64 game's Pak, at each */
 	{
 		int pk = gm_row_at(&u, GM_PAK);
@@ -19752,7 +22572,19 @@ static int gm_width(app *a)
 			if (mw > w) w = mw;
 		}
 	}
-	/* A DS game's Screens row, right under Display, at each layout. */
+	/* An NES game's Player 2, at each of its values */
+	{
+		static const p2_state st[] = { P2_OFF, P2_WAITING, P2_CONNECTED };
+		int p2 = gm_row_at(&u, GM_PLAYER2);
+
+		for (k = 0; p2 >= 0 && k < (int)(sizeof st / sizeof st[0]); k++) {
+			int mw;
+			rows[p2].value = gm_player2_value(st[k]);
+			mw = menu_measure(rows, n, NULL);
+			if (mw > w) w = mw;
+		}
+	}
+	/* A DS game's Screens row, right under Shader, at each layout. */
 	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
 		int mw;
 		rows[scr].value = gm_layout_label(k);
@@ -19882,6 +22714,11 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		gm_cycle_display(a, key == IN_RIGHT ? 1 : -1);
 		return MENU_STAY;
 	}
+	/* The shader, on left, right and A, sent to the game the same way */
+	if (sel == GM_SHADER && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		gm_cycle_shader(a, key == IN_LEFT ? -1 : 1);
+		return MENU_STAY;
+	}
 	/* The quick slot steps round 1 to 6 on left, right and A, kept for the
 	 * game's system at once: SELECT+R1 and SELECT+L1 use it from the next
 	 * press, in this game and every other on the system */
@@ -19955,8 +22792,12 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 	case GM_CONTROLS:
 		game_controls_screen(a, c->bg);
 		break;
+	case GM_PLAYER2:
+		player2_page(a, c->bg);
+		break;
 	case GM_CHEEVOS:
-		cheevos_screen(a, c->bg, false);
+		if (chv_count() > 0) cheevos_screen(a, c->bg, false);
+		else cheevos_unchecked_message(a);
 		break;
 	case GM_RESET:
 		plat_resident_line("RESET");
@@ -20212,7 +23053,60 @@ static bool is_port(const system_cfg *s)
 	       !strncmp(s->core, RUN_PREFIX, strlen(RUN_PREFIX));
 }
 
-static void pm_install_screen(app *a, const system_cfg *s);
+static bool pm_locked(void);
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed);
+
+/* PortMaster's config/ before it starts: a file of it cut off is removed,
+ * for PortMaster to make again, and the settings with a cut-off source list
+ * (src/pminstall.h, pm_json_whole). Its first and last bytes read of each,
+ * the whole of the small ones: a few reads, where PortMaster's own start
+ * takes seconds. */
+static void pm_heal_config(const char *folder)
+{
+	static char buf[PM_JSON_SCAN];
+	char dir[LIB_PATH], path[LIB_PATH * 2];
+	bool reset = false;
+	struct dirent *e;
+	DIR *d;
+
+	snprintf(dir, sizeof dir, "%s/%s/%s/%s", P_ROMS, folder, PM_FOLDER, PM_CONFIG);
+	if (!(d = opendir(dir))) return;
+	while ((e = readdir(d))) {
+		size_t len = strlen(e->d_name);
+		char head[64], tail[64];
+		size_t hn = 0, tn = 0;
+		bool whole;
+		long size;
+		FILE *f;
+
+		if (len < 6 || strcasecmp(e->d_name + len - 5, ".json") || e->d_name[0] == '.') continue;
+		snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+		if (!(f = fopen(path, "rb"))) continue;
+		if (fseek(f, 0, SEEK_END) != 0 || (size = ftell(f)) < 0) { fclose(f); continue; }
+		rewind(f);
+		if (size <= (long)sizeof buf) {
+			size_t got = fread(buf, 1, sizeof buf, f);
+			whole = got == (size_t)size && pm_json_balanced(buf, got);
+		} else {
+			hn = fread(head, 1, sizeof head, f);
+			if (fseek(f, -(long)sizeof tail, SEEK_END) == 0) tn = fread(tail, 1, sizeof tail, f);
+			whole = pm_json_whole(head, hn, tail, tn);
+		}
+		fclose(f);
+		if (whole) continue;
+		fprintf(stderr, "portmaster: %s/%s was cut off (%ld bytes): removed, PortMaster makes it again\n",
+		        PM_CONFIG, e->d_name, size);
+		unlink(path);
+		if (pm_json_resets_settings(e->d_name)) reset = true;
+	}
+	closedir(d);
+	if (reset) {
+		snprintf(path, sizeof path, "%s/%s", dir, PM_SETTINGS);
+		if (!unlink(path))
+			fprintf(stderr, "portmaster: its settings removed with it, for its first start's sources\n");
+	}
+}
 
 static void launch_port(app *a, const system_cfg *s, const char *file)
 {
@@ -20221,14 +23115,19 @@ static void launch_port(app *a, const system_cfg *s, const char *file)
 	bool ok;
 
 	/* PortMaster's entry while PortMaster is not on the card, asked of the
-	 * card now: its page, which installs it (src/pminstall.h) */
-	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT) && pm_offer_refresh(a)) {
+	 * card now: its page, which installs it (src/pminstall.h). And while
+	 * its installer runs, a reinstall left going on its page: its page
+	 * again, not a PortMaster whose folder is about to be swapped */
+	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT) &&
+	    (pm_offer_refresh(a) || pm_locked())) {
 		if (a->in.pressed[IN_ACCEPT]) uisound_play(DS_SOUND_ACCEPT);
-		pm_install_screen(a, s);
+		pm_install_screen(a, s, pm_on_card(s->folder), NULL, false);
 		return;
 	}
 
 	snprintf(path, sizeof path, "%s/%s/%s", P_ROMS, s->folder, file);
+	/* PortMaster itself: its cached lists and settings as it can start on */
+	if (!strcmp(s->core, PORT_CORE) && !strcasecmp(file, PM_SCRIPT)) pm_heal_config(s->folder);
 	/* Written whole, then renamed into place: launch.sh reads it the moment
 	 * this process is gone, and half a path would run nothing. */
 	f = fopen(PORT_REQUEST ".tmp", "w");
@@ -20309,37 +23208,57 @@ static bool pm_locked(void)
 }
 
 /* A way out to the internet: Wi-Fi, or a default route on another link
- * (QEMU's network, a wired adapter). A computer on the USB cable gives no
- * route out, so File Transfer's link is not one. */
+ * (a phone's tethering, QEMU's network, a wired adapter): net_internet. A
+ * computer on the USB cable gives no route out, so File Transfer's link is
+ * not one. */
 static bool pm_network(void)
 {
-	char line[256];
-	bool route = false;
-	FILE *f;
-
-	if (menu_wifi(NULL, 0) == WIFI_CONNECTED) return true;
-	if (!(f = fopen("/proc/net/route", "r"))) return false;
-	while (!route && fgets(line, sizeof line, f)) {
-		char ifc[32];
-		unsigned long dest, gw, flags;
-
-		if (sscanf(line, "%31s %lx %lx %lx", ifc, &dest, &gw, &flags) == 4 &&
-		    dest == 0 && (flags & 1ul) && strcmp(ifc, "lo"))
-			route = true;
-	}
-	fclose(f);
-	return route;
+	return net_internet(NULL);
 }
 
 static pm_view g_pm;
 static unsigned g_pm_read_at, g_pm_started;
+/* The page's errand, kept beside the view it reads again: a reinstall
+ * (pm_install_screen's `repair`), A pressed on it this visit, and the error
+ * PortMaster closed with when that is why it opened */
+static bool g_pm_repair, g_pm_asked, g_pm_crashed;
+static char g_pm_failed[PM_WHY];
 /* --portmaster [running,nonet,nopython,installed]: a host shot's view, the
  * status from ZYPEROS_PM_STATUS; -1 none */
 static int g_pm_shot = -1;
-enum { PM_SHOT_RUNNING = 1, PM_SHOT_NONET = 2, PM_SHOT_NOPYTHON = 4, PM_SHOT_INSTALLED = 8 };
+enum { PM_SHOT_RUNNING = 1, PM_SHOT_NONET = 2, PM_SHOT_NOPYTHON = 4, PM_SHOT_INSTALLED = 8,
+       PM_SHOT_REPAIR = 16, PM_SHOT_FAILED = 32 };
+
+/* The version of the PortMaster in a Ports folder, "" when it has none */
+static void pm_have(const char *folder, char *out, size_t n)
+{
+	char p[LIB_PATH];
+
+	snprintf(p, sizeof p, "%s/%s/%s/version", P_ROMS, folder, PM_FOLDER);
+	up_first_line(p, out, n);
+	if (strlen(out) > 31 || strchr(out, ' ')) out[0] = 0;
+}
 
 /* Everything the page shows, read again at most four times a second: the
  * page asks every frame */
+/* The installer at work, for Auto Off (long_task_busy, from every screen and
+ * from a game): its lock, looked at twice a second at most, since the
+ * question comes with every frame of every loop and the lock is a file */
+bool pm_installing(void)
+{
+	static unsigned at;
+	static bool busy;
+	unsigned t = plat_now_ms();
+
+	if (!at || t - at >= 500) {
+		at = t ? t : 1;
+		/* Python takes a moment to start and take its lock: a run just
+		 * begun counts, as the page counts it (pm_view_read) */
+		busy = pm_locked() || (g_pm_started && t - g_pm_started < 5000);
+	}
+	return busy;
+}
+
 static const pm_view *pm_view_read(const system_cfg *s, bool now)
 {
 	unsigned t = plat_now_ms();
@@ -20351,13 +23270,27 @@ static const pm_view *pm_view_read(const system_cfg *s, bool now)
 	pm_status_path(p, sizeof p);
 	up_read(p, text, sizeof text);
 	pm_status_parse(text, &g_pm.st);
+	g_pm.repair = g_pm_repair;
+	g_pm.asked = g_pm_asked;
+	g_pm.crashed = g_pm_crashed;
+	snprintf(g_pm.failed, sizeof g_pm.failed, "%s", g_pm_failed);
 	if (g_pm_shot >= 0) {
+		const char *why = getenv("ZYPEROS_PM_WHY");
+
 		g_pm.running = g_pm_shot & PM_SHOT_RUNNING;
 		g_pm.network = !(g_pm_shot & PM_SHOT_NONET);
 		g_pm.python = !(g_pm_shot & PM_SHOT_NOPYTHON);
 		g_pm.installed = g_pm_shot & PM_SHOT_INSTALLED;
+		g_pm.repair = g_pm_shot & (PM_SHOT_REPAIR | PM_SHOT_FAILED);
+		g_pm.asked = g_pm.repair && (g_pm.running || g_pm.st.reinstall);
+		g_pm.crashed = g_pm_shot & PM_SHOT_FAILED;
+		if (g_pm.crashed)
+			snprintf(g_pm.failed, sizeof g_pm.failed, "%s",
+			         why ? why : "ModuleNotFoundError: No module named 'sdl2'");
+		snprintf(g_pm.have, sizeof g_pm.have, "%s", "2026.11.12-1059");
 		return &g_pm;
 	}
+	pm_have(s->folder, g_pm.have, sizeof g_pm.have);
 	/* Python takes a moment to start and take its lock: a run just begun
 	 * is running until it says it is done or failed */
 	g_pm.running = pm_locked() ||
@@ -20369,11 +23302,11 @@ static const pm_view *pm_view_read(const system_cfg *s, bool now)
 	return &g_pm;
 }
 
-static void pm_spawn(const system_cfg *s)
+static void pm_spawn(const system_cfg *s, bool reinstall)
 {
 	char script[LIB_PATH], ports[LIB_PATH], status[LIB_PATH];
 	char *argv[] = { (char *)PM_PYTHON, (char *)"-I", script, (char *)"--ports", ports,
-	                 (char *)"--status", status, NULL };
+	                 (char *)"--status", status, reinstall ? (char *)"--reinstall" : NULL, NULL };
 	FILE *f;
 
 	snprintf(script, sizeof script, "%s/%s", P_ROOT, PM_INSTALLER);
@@ -20383,10 +23316,10 @@ static void pm_spawn(const system_cfg *s)
 	 * from the press on, until the installer writes its own */
 	mkdir(PM_STATUS_DIR, 0755);
 	if ((f = fopen(status, "w"))) {
-		fputs("state checking\n", f);
+		fputs(reinstall ? "state checking\nkind reinstall\n" : "state checking\n", f);
 		fclose(f);
 	}
-	fprintf(stderr, "portmaster: installing into %s\n", ports);
+	fprintf(stderr, "portmaster: %s into %s\n", reinstall ? "reinstalling" : "installing", ports);
 	plat_spawn_detached(argv, NULL, P_ROOT);
 	g_pm_started = plat_now_ms();
 	if (!g_pm_started) g_pm_started = 1;
@@ -20412,6 +23345,9 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 		su_page p;
 		int nnotes;
 
+		/* A reinstall seen at work is this page's to follow to its end,
+		 * started here or before the page opened */
+		if (g_pm_repair && v->running) g_pm_asked = true;
 		pm_page_build(v, &p, notes, &nnotes);
 		/* Installed while the page is up: the shelf's A says Play now */
 		if (v->installed && !had) {
@@ -20437,7 +23373,8 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 		switch (act) {
 		case SUA_DOWNLOAD:
 			uisound_play(DS_SOUND_ACCEPT);
-			pm_spawn(s);
+			pm_spawn(s, g_pm_repair);
+			g_pm_asked = true;
 			break;
 		case SUA_OPEN:
 			/* PortMaster, run as any port is: the launcher exits for it */
@@ -20459,7 +23396,8 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 			int i;
 
 			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
-			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nnotes, icon);
+			update_page_draw(a, T(g_pm_repair ? S_PORTMASTER_REINSTALL_TITLE : S_PORTMASTER_TITLE),
+			                 &p, np, nnotes, icon);
 		}
 		plat_draw_osd(a->r);
 		plat_present();
@@ -20468,12 +23406,85 @@ static void pm_install_loop(app *a, const system_cfg *s, SDL_Texture *icon)
 	pm_offer_refresh(a);
 }
 
-static void pm_install_screen(app *a, const system_cfg *s)
+/* The page: Install PortMaster, or with `repair` Reinstall PortMaster, the
+ * error it closed with in `failed` when `crashed` (pm_after_run) */
+static void pm_install_screen(app *a, const system_cfg *s, bool repair, const char *failed,
+                              bool crashed)
 {
 	SDL_Texture *icon = pm_icon_tex(a);
 
+	g_pm_repair = repair;
+	g_pm_asked = false;
+	g_pm_crashed = repair && crashed;
+	snprintf(g_pm_failed, sizeof g_pm_failed, "%s", failed ? failed : "");
+	g_pm_read_at = 0;
 	pm_install_loop(a, s, icon);
+	g_pm_repair = g_pm_asked = g_pm_crashed = false;
+	g_pm_failed[0] = 0;
+	g_pm_read_at = 0;
 	if (icon) SDL_DestroyTexture(icon);
+}
+
+/* The last `n` bytes of a file at most, from a line's start, into a buffer
+ * of n + 1; false when it cannot be read */
+static bool pm_read_tail(const char *path, char *buf, size_t n)
+{
+	FILE *f = fopen(path, "r");
+	long size;
+	size_t got;
+	char *nl;
+
+	buf[0] = 0;
+	if (!f) return false;
+	if (fseek(f, 0, SEEK_END) == 0 && (size = ftell(f)) > (long)n)
+		fseek(f, size - (long)n, SEEK_SET);
+	else
+		fseek(f, 0, SEEK_SET);
+	got = fread(buf, 1, n, f);
+	fclose(f);
+	buf[got] = 0;
+	/* Cut into the middle of a line: from the next one */
+	if (got == n && (nl = strchr(buf, '\n'))) memmove(buf, nl + 1, strlen(nl + 1) + 1);
+	return true;
+}
+
+/* How long a PortMaster that left no word in its log may have run for it
+ * still to be one that never started: its launcher script truncates the log
+ * as one of its first steps */
+#define PM_QUIET_START_S 20
+
+/* Back from PortMaster (launch.sh's PM_RAN): when it closed with an error,
+ * its page says so, with the line of its log that says how, and offers
+ * Reinstall PortMaster, before the shelf (DESIGN.md 11.33). Before this a
+ * PortMaster that could not start fell back to the shelf with nothing said,
+ * every time it was opened. */
+static void pm_after_run(app *a)
+{
+	static char tail[32 * 1024 + 1];
+	char ran[96], log[LIB_PATH * 2], why[PM_WHY] = "";
+	long long start = 0, end = 0;
+	const system_cfg *s = NULL;
+	struct stat st;
+	bool crashed;
+	int rc = 0, i;
+
+	if (!up_read(PM_RAN, ran, sizeof ran)) return;
+	unlink(PM_RAN);
+	if (sscanf(ran, "%lld %lld %d", &start, &end, &rc) < 2) return;
+	for (i = 0; i < a->sys.count && !s; i++)
+		if (!strcmp(a->sys.systems[i].core, PORT_CORE) && pm_on_card(a->sys.systems[i].folder))
+			s = &a->sys.systems[i];
+	if (!s) return;
+	snprintf(log, sizeof log, "%s/%s/%s/%s", P_ROMS, s->folder, PM_FOLDER, PM_LOG);
+	if (stat(log, &st) != 0 || (long long)st.st_mtime + 2 < start)
+		/* Its log not written this run: the script stopped before it */
+		crashed = end - start < PM_QUIET_START_S;
+	else
+		crashed = pm_read_tail(log, tail, sizeof tail - 1) && pm_failure(tail, why, sizeof why);
+	if (!crashed) return;
+	fprintf(stderr, "portmaster: closed with an error after %llds (status %d): %s\n",
+	        end - start, rc, why[0] ? why : "nothing in its log");
+	pm_install_screen(a, s, true, why, true);
 }
 
 /* A shelf's disc bios in Bios/: any one of its names, which config/systems.cfg
@@ -20512,12 +23523,12 @@ static void launch(app *a)
 	char set[LIB_PATH * 2];
 	int  console = 0;
 	bool first_play = false;
-	/* 18 fixed entries plus NULL, seven more for a DS game's two screens,
-	 * then two per core option. Sized off the loader's own cap so the two
-	 * cannot drift apart: the previous 20 was already 18 full, and a silent
-	 * bound check would have dropped every option rather than failing
-	 * loudly. */
-	char *argv[27 + 2 * 32];
+	/* 20 fixed entries (the shader's two since 1.0.5) plus NULL, seven more
+	 * for a DS game's two screens, then two per core option. Sized off the
+	 * loader's own cap so the two cannot drift apart: the previous 20 was
+	 * already 18 full, and a silent bound check would have dropped every
+	 * option rather than failing loudly. */
+	char *argv[29 + 2 * 32];
 	bool resident = false, want_menu;
 	/* A DS game's resume by its language (ds_resume_fresh): what it will
 	 * run in, whether it starts fresh, and its auto state as it was */
@@ -20565,6 +23576,12 @@ static void launch(app *a)
 		char keys[96];
 
 		cfg_run_keys(s, g_game_dual, keys, (int)sizeof keys);
+		/* A PSP game left with its d-pad as the stick starts with it
+		 * (stick_get): stick=toggle, the last key, becomes toggle-stick */
+		if (stick_toggles(s) && stick_get(s->tag, romfile) &&
+		    strlen(keys) >= 12 && !strcmp(keys + strlen(keys) - 12, "stick=toggle") &&
+		    strlen(keys) + 6 < sizeof keys)
+			strcat(keys, "-stick");
 		if (keys[0]) plat_resident_run_keys(keys);
 		plat_resident_map(s->map);
 		/* And an N64 game's Pak, its own over the system's; none else */
@@ -20584,8 +23601,10 @@ static void launch(app *a)
 	 *
 	 * Disc images only. A HuCard needs no System Card, and refusing every
 	 * cartridge on the shelf because a CD would have needed one is a worse
-	 * failure than the one being fixed. */
-	if (s->disc_bios[0] && lib_is_disc(v->list.items[v->cursor].file)) {
+	 * failure than the one being fixed. Every game where the shelf's whole
+	 * library needs it (bios_every, a `bios|tag|names` line: the
+	 * ColecoVision's). */
+	if (s->disc_bios[0] && (s->bios_every || lib_is_disc(v->list.items[v->cursor].file))) {
 		if (!disc_bios_found(bios, s->disc_bios)) {
 			char msg[CFG_STR + 96];
 
@@ -20775,9 +23794,11 @@ static void launch(app *a)
 			 * mode is Diatom's own global and survives from the last game, so
 			 * a system that has never been set would otherwise inherit
 			 * whatever the previous one chose. Ordered on the same socket, so
-			 * it lands before the first frame. */
-			plat_resident_line("SETDISPLAY\tmode=%s",
-			                   DMODES[a->view[o].dmode].name);
+			 * it lands before the first frame. The shader with it, Diatom's
+			 * global as well. */
+			plat_resident_line("SETDISPLAY\tmode=%s\tfilter=%s",
+			                   DMODES[a->view[o].dmode].name,
+			                   SHADERS[a->view[o].shader].name);
 			/* The DS layout, for the same reason and in the same place: the
 			 * layout is Diatom's own global too. */
 			if (g_game_dual) {
@@ -20800,7 +23821,7 @@ static void launch(app *a)
 			 * battery reason and no cost to leaving it. on_game_tick keeps
 			 * this true if the cable changes mid-game. */
 			g_idle_secs = a->auto_off;
-			g_idle_charging = on_charger() || up_working();
+			g_idle_charging = idle_held();
 			plat_resident_line("SETIDLE\tms=%d",
 			                   (g_idle_secs > 0 && !g_idle_charging)
 			                       ? g_idle_secs * 1000 : 0);
@@ -20821,6 +23842,10 @@ static void launch(app *a)
 					chv_active_path(g_pending_active, sizeof g_pending_active);
 					snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
 					ra_fetch_begin(h, set);
+				} else {
+					/* A file the launcher cannot hash (a disc image it has
+					 * no reader for): nothing will ever be asked about it */
+					chv_none_mark(set, true);
 				}
 			}
 			/* Coming back from a shutdown: the game loads and the menu is
@@ -20849,6 +23874,16 @@ static void launch(app *a)
 			}
 			g_ctl_game.on = false;
 			resident = (r == RES_EXIT);
+			/* The game is over, and however it ended it ended here: Quit,
+			 * a crash (EXIT reason=crash) or Diatom gone (RES_DEAD), POWER,
+			 * the battery, Auto Off, px2-open's next game, a TERM. NES
+			 * Player 2 goes with it: p2d, Diatom's share, and the hotspot
+			 * with the Wi-Fi the player had back (a second or two, said as
+			 * File Transfer says it) or the cable's link as it was. */
+			p2_game_over();          /* before the panel's tick: nothing more is said */
+			if (p2_link_on() == P2_HOTSPOT)
+				wait_panel(a, T(S_PLAYER2_ROW), T(S_XFER_CLOSING_HOTSPOT));
+			p2_stop();
 
 			/* The Auto card's picture, written ONLY here - at the same moment
 			 * Diatom wrote the state it belongs to, so the two cannot drift.
@@ -20935,6 +23970,8 @@ static void launch(app *a)
 		argv[n++] = (char *)"--system";          argv[n++] = bios;
 		argv[n++] = (char *)"--display";
 		argv[n++] = (char *)DMODES[a->view[o].dmode].name;
+		argv[n++] = (char *)"--filter";
+		argv[n++] = (char *)SHADERS[a->view[o].shader].name;
 		/* The channels too: this path is rare, but a player who hears with
 		 * one ear should not lose half a game to it. It plays on the codec,
 		 * so the cable decides between headphones and the speaker. */
@@ -21253,6 +24290,12 @@ static void update_games(app *a)
 	in_button jup = IN_UP, jdn = IN_DOWN;
 	in_button sb = IN_NONE;              /* the step's button, for its sound */
 	int dir = 0, was = v->cursor;
+	/* L1/R1's jump: a screenful of covers, or of the list's rows */
+	int page = v->listed ? GL_ROWS : CF_WINDOW;
+
+	/* The list (MENU > View) is the row turned: Up and Down step along it,
+	 * Left and Right jump a letter (DESIGN.md 11.39) */
+	if (v->listed) { back = IN_UP; fwd = IN_DOWN; jup = IN_LEFT; jdn = IN_RIGHT; }
 
 	if (in_repeat(&a->in, back)) { v->cursor = (v->cursor - 1 + n) % n; dir = -1; sb = back; }
 	if (in_repeat(&a->in, fwd))  { v->cursor = (v->cursor + 1) % n; dir = +1; sb = fwd; }
@@ -21262,8 +24305,8 @@ static void update_games(app *a)
 	 * way round on purpose: C's % truncates toward zero, so on a shelf of
 	 * three games the obvious `(cursor - CF_WINDOW + n*2) % n` lands on -1 and
 	 * the draw walks off the front of the list. */
-	if (in_repeat(&a->in, IN_L1))    { v->cursor = ((v->cursor - CF_WINDOW) % n + n) % n; sb = IN_L1; }
-	if (in_repeat(&a->in, IN_R1))    { v->cursor = (v->cursor + CF_WINDOW) % n; sb = IN_R1; }
+	if (in_repeat(&a->in, IN_L1))    { v->cursor = ((v->cursor - page) % n + n) % n; sb = IN_L1; }
+	if (in_repeat(&a->in, IN_R1))    { v->cursor = (v->cursor + page) % n; sb = IN_R1; }
 	if (sb != IN_NONE)
 		step_sound(a, sb, was, v->cursor);
 	/* HERE, AND NOT AT THE END OF THE PASS, because four of the handlers below
@@ -21287,10 +24330,39 @@ static void update_games(app *a)
 	 * move the cursor without a direction, and cf_set_cursor_dir works out the
 	 * rest itself. It returns immediately when the cursor has not moved. */
 	games_select(&v->row, v->cursor, n, dir, plat_now_ms());
+	/* START turns the shelf's View over, covers to the list and back, as
+	 * MENU's View row does (2026-11-13: "make clicking start in a system
+	 * change view mode to list and vice versa"). Not with MENU or SELECT
+	 * held: MENU + START is the way out (tools/zyhome.c), SELECT + START
+	 * MP4's lock. */
+	if (a->in.pressed[IN_START] && !a->in.down[IN_MENU] && !a->in.down[IN_SELECT]) {
+		uisound_play(DS_SOUND_MOVE);
+		view_turn(a, a->sys_cursor);
+		return;
+	}
+	/* B in a folder goes up one (src/shelfdir.h), onto the folder it left;
+	 * at the top, to the systems */
+	if (a->in.pressed[IN_BACK] && v->dir[0]) {
+		uisound_play(DS_SOUND_BACK);
+		shelf_up(a, v);
+		return;
+	}
 	if (a->in.pressed[IN_BACK]) {
 		uisound_play(DS_SOUND_BACK);
 		a->screen = SCREEN_SYSTEMS;
 		evict_far(v, TEX_KEEP_FAR);
+		return;
+	}
+	/* A folder has no details and nothing to start over: a press nobody can
+	 * act on still gets its sound (DESIGN.md 1) */
+	if ((a->in.pressed[IN_X] || a->in.pressed[IN_Y]) && v->list.items[v->cursor].folder) {
+		uisound_play(DS_SOUND_DENY);
+		return;
+	}
+	/* A on a folder opens it */
+	if (a->in.pressed[IN_ACCEPT] && v->list.items[v->cursor].folder) {
+		uisound_play(DS_SOUND_ACCEPT);
+		shelf_into(a, v);
 		return;
 	}
 	/* X opens the game's details, where Y marks it a favorite. */
@@ -21316,7 +24388,27 @@ static void update_games(app *a)
  * the host build renders exactly what the handheld renders. */
 static const char *shot_path;
 static int shot_screen = -1;
+/* --folder DIR: the shelf on that folder of its games (src/shelfdir.h);
+ * --game FILE: its cursor on that game or folder, opening the folder it is
+ * in; --view list|covers: MENU > View for the shot, whatever is saved */
+static const char *shot_folder, *shot_game, *shot_view;
+/* --shelf-press KEYS: the shelf's own presses before the shot, comma
+ * separated - a, b, x, y, up, down, left, right, l1, r1, start - each one pass of
+ * update_games, as the device's loop makes them (never A on a game: that
+ * starts it) */
+static const char *shot_shelf_press;
 static int shot_menu, shot_menu_sel;
+/* --menu-steps N: N presses of Down (Up when N is negative) on --menu's
+ * list before the shot, a second apart on a held clock, so a list that
+ * goes round can be looked at past its end (DESIGN.md 11.3) */
+static int shot_menu_steps;
+/* --menu-tab-from M: the tab MENU's move comes from, or -1 */
+static int shot_tab_from = -1, shot_tab_ms;
+/* --look ACCENT,LIGHT,DARK,CORNERS,ZYPER: the look for the shot; and
+ * --look-page theme|hours [row]: Theme's page or Auto Hours' (DESIGN.md
+ * 11.42), the cursor on `row` */
+static const char *shot_look, *shot_look_page;
+static int shot_look_row;
 static int shot_kb, shot_kb_layer;
 static keyboard_transition shot_keyboard;
 static bool shot_keyboard_panel;
@@ -21337,7 +24429,7 @@ static nq_kind shot_notice_kind = NQ_SET;
 /* --notice-heat: the notice with the thermometer where a badge goes, as
  * "Getting hot" is over a game (DESIGN.md 11.23) */
 static int shot_notice_mark;
-/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|dslang|corestate|speed N:
+/* --popup saved|loaded|save_failed|load_failed|slot_empty|no_states|dslang|corestate|stick_on|stick_off|speed N:
  * the pop-up of the SELECT hotkeys, as on_quick and on_speed put it over a
  * game (notice_render, no badge, no Zyper); N is the step for speed, in
  * halves (3 is 1.5x) */
@@ -21349,6 +24441,10 @@ static int shot_popup_half = 2;
 static int shot_lowbatt = -1, shot_lowbatt_kind;
 /* --heatpop MS: Zyper's "Getting hot" on the home, MS ms in (DESIGN.md 11.23) */
 static int shot_heatpop = -1;
+/* --ranews N: Zyper's bubble saying N achievements earned offline went */
+static int shot_ranews;
+/* --cheevos-waiting N: the list's heading with N of its unlocks waiting */
+static int shot_cheevos_waiting;
 /* --upnews available|ready: his bubble with System Update's news instead */
 static const char *shot_upnews;
 /* --charging MS [hold|unplugged|off|pending|kept|limit|keptfull|soon]: the
@@ -21439,26 +24535,29 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
-/* --usb-power [N]: What did you plug in?, tile N focused (1, Computer,
- * where it starts); --usb-power said: the message after Computer */
+/* --usb-power [N]: What did you plug in?, row N focused (1, Computer,
+ * where it starts; 2, Phone); --usb-power said: the message after
+ * Computer; --usb-power phone: the message after Phone; --usb-power
+ * iphone: an iPhone's */
 static int shot_power = -1;
 static int shot_usbdrive = -1;   /* --usb-drive N */
 /* --xfer-ask [N] [game]: File Transfer's question while files move, tile N
  * focused; with "game", the one a game asked for gets */
 static int shot_xfer_ask = -1;
 static bool shot_xfer_game;
-static int shot_hot;
+static int shot_hot, shot_hot_in;
 static const char *shot_hot_ssid   = "ZyperOS-7A2B";
 static const char *shot_hot_pass   = "q7mx-3kpa";
 static const char *shot_hot_phones = "1 joined";
 static const char *shot_hot_now    = "receiving Contra (USA).zip";
 static const char *shot_hare_addr = "192.168.1.42";
 static const char *shot_hare_who  = "1 connected";
-static const char *shot_hare_head = "receiving Contra (USA).zip";
+static const char *shot_hare_head = "Contra (USA).zip";   /* the file the Now row names */
+static const char *shot_hare_move;                         /* --hare-move: the tiles' state */
 /* --hare-steps usb|wifi STATE: File Transfer's steps (linksteps.h) at one
  * state, its hint shown where the state has one: unplugged, nocomputer,
  * noanswer, nodriver, address, noaddress, browser, nobrowser, nonetwork */
-static const char *shot_steps_way, *shot_steps_state;
+static const char *shot_steps_way, *shot_steps_state, *shot_steps_addr;
 static bool shot_steps_noname;      /* ... noname: as when mDNS could not start */
 static const char *shot_wait, *shot_wait_msg;   /* NULL: library.scanning's */
 static int shot_osd_kind, shot_osd_val; /* --osd volume|brightness LEVEL */
@@ -21475,9 +24574,13 @@ static int shot_tour_wrong = -1, shot_tour_wrong_ms = 300;
 static int shot_tour_pick = -1, shot_tour_pick_ms = 5000;
 static bool shot_tour_music;
 static int shot_fn_volume;
+/* By the step, so a step moved in src/tour.h keeps its name */
 static const char *const TOUR_STEP_NAMES[TOUR_STEPS] = {
-	"lang", "welcome", "move", "a", "b", "y", "x", "menu", "select", "vol", "bright", "power",
-	"theme", "home", "sounds", "music", "finish" };
+	[TOUR_LANG] = "lang", [TOUR_WELCOME] = "welcome", [TOUR_MOVE] = "move", [TOUR_A] = "a",
+	[TOUR_B] = "b", [TOUR_X] = "x", [TOUR_Y] = "y", [TOUR_MENU] = "menu",
+	[TOUR_SELECT] = "select", [TOUR_VOL] = "vol", [TOUR_BRIGHT] = "bright",
+	[TOUR_POWER] = "power", [TOUR_THEME] = "theme", [TOUR_HOME] = "home",
+	[TOUR_SOUNDS] = "sounds", [TOUR_MUSIC] = "music", [TOUR_FINISH] = "finish" };
 
 /* --theme light|dark: the theme the shot is drawn in, whatever the saved
  * Appearance is; -1 for the saved one. */
@@ -21655,7 +24758,7 @@ static const char *shot_backdrop;
 
 static void shot_draw_gamemenu(app *a)
 {
-	menu_row rows[GM_STYLUS + 1];
+	menu_row rows[GM_MAX_ROWS];
 	gm_bufs b;
 	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
 	                                : fake_frame(a->r, 4.0f / 3);
@@ -21665,6 +24768,23 @@ static void shot_draw_gamemenu(app *a)
 	n = gm_build(a, rows, &b);
 	menu_draw(a, NULL, rows, n, shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
 	          gm_width(a), a->tint);
+	if (bg) SDL_DestroyTexture(bg);
+}
+
+/* --player2 KIND: NES Player 2's page over a paused game (a made-up frame),
+ * in a state made up as the hot panel's shot makes its network (--hotspot):
+ * hotspot, its code with nobody yet; connected, player 2 playing; cable, a
+ * computer on the cable; off and off-cable, before A on each link; none,
+ * neither plugged in; failed; starting, the hotspot's start; closing and
+ * closing-cable, the stop on each link. With --gamemenu the in-game menu
+ * instead, its Player 2 row saying that state. */
+static void shot_draw_player2(app *a)
+{
+	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
+	                                : fake_frame(a->r, 4.0f / 3);
+
+	paused_backdrop(a, bg, 1.0f);
+	p2_show(a, &g_shot_p2_view);
 	if (bg) SDL_DestroyTexture(bg);
 }
 
@@ -22009,11 +25129,42 @@ static void muse_covers_settle(void)
 	}
 }
 
+/* --look-page: Theme's page or Auto Hours', over the shelf, as menu_run
+ * draws them, the cursor on --look-page's row */
+static void shot_draw_look(app *a)
+{
+	menu_row rows[LK_ROWS];
+	const char *heading;
+	hours_view hv = { .a = a };
+	bool hours = !strcmp(shot_look_page, "hours");
+	int n = hours ? hours_build(&hv, rows, 2, &heading) : look_build(NULL, rows, LK_ROWS, &heading);
+
+	ui_scrim(a->r, 0);
+	if (!hours) {
+		g_row_mark = look_row_mark;
+		g_menu_header = look_header;
+		g_menu_header_h = 150;
+	}
+	menu_draw(a, heading, rows, n, shot_look_row < n ? shot_look_row : 0,
+	          menu_std_width(a), MENU_ZYPEROS);
+	g_row_mark = NULL;
+	g_menu_header = NULL;
+}
+
 /* Everything a shot draws, in the theme that is on. */
+static int   g_shot_saver = -1;          /* --saver [cover]: 0 video, 1 cover */
+static float g_shot_saver_alpha = 1;     /* --saver-alpha F: how far it has faded up */
+static const char *g_shot_saver_pic;     /* --saver-pic FILE: its picture, a screenshot */
+static void saver_shot(app *a);
+
 static void shot_compose(app *a)
 {
 	drawn_forget();
 	ui_fit_frame();
+	if (g_shot_saver >= 0) {
+		saver_shot(a);
+		return;
+	}
 	if (shot_keyboard_panel) {
 		kb_pose pose = keyboard_panel(&shot_keyboard, KB_PANEL_FRAME, false);
 
@@ -22043,6 +25194,21 @@ static void shot_compose(app *a)
 		i18n_set(LANG_EN);
 		n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
 		for (k = 0; k < n && !(rows[k].label && !strcmp(rows[k].label, shot_menu_label)); k++) ;
+		/* In MENU, on whichever tab has it (sys_menu.h) */
+		if (k == n && a->screen != SCREEN_GAMES) {
+			int t, at = g_tabs.at;
+
+			for (t = 0; t < PT_TABS && k == n; t++) {
+				g_tabs.at = t;
+				n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
+				for (k = 0; k < n && !(rows[k].label && !strcmp(rows[k].label, shot_menu_label)); k++) ;
+			}
+			if (k == n) {
+				g_tabs.at = at;
+				n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &heading);
+				k = n;
+			}
+		}
 		i18n_set(was);
 		if (k == n) {
 			fprintf(stderr, "--menu: no row called %s\n", shot_menu_label);
@@ -22059,6 +25225,13 @@ static void shot_compose(app *a)
 		c.screen = a->screen;
 		sysmenu_key(a, &c, (in_button)shot_key, shot_menu_sel);
 		shot_key = -1;   /* once: --flip composes the shot more than once */
+		/* L1 or R1 moved MENU's tab and its cursor, as the runner would;
+		 * the shot is the tab at rest */
+		if (g_menu_sel_to >= 0) {
+			shot_menu_sel = g_menu_sel_to;
+			g_menu_sel_to = -1;
+			g_tabs.t0 = 0;
+		}
 	}
 	draw_shelf(a);
 	if (shot_language > -2) {
@@ -22099,14 +25272,16 @@ static void shot_compose(app *a)
 		int nn;
 
 		SDL_Texture *icon = pm_icon_tex(a);
+		const pm_view *v = pm_view_read(&ports, true);
 
-		pm_page_build(pm_view_read(&ports, true), &p, notes, &nn);
+		pm_page_build(v, &p, notes, &nn);
 		{
 			const char *np[PM_NOTES];
 			int i;
 
 			for (i = 0; i < PM_NOTES; i++) np[i] = notes[i];
-			update_page_draw(a, T(S_PORTMASTER_TITLE), &p, np, nn, icon);
+			update_page_draw(a, T(v->repair ? S_PORTMASTER_REINSTALL_TITLE : S_PORTMASTER_TITLE),
+			                 &p, np, nn, icon);
 		}
 		if (icon) SDL_DestroyTexture(icon);
 		return;
@@ -22131,6 +25306,35 @@ static void shot_compose(app *a)
 		about_draw(a, &v, shot_about);
 		return;
 	}
+	if (shot_menu && shot_tab_from >= 0) {
+		if (!g_clock_held) { g_clock_held = true; g_clock_at = plat_now_ms(); }
+		g_tabs.from = shot_tab_from;
+		g_tabs.dir = (g_tabs.at - shot_tab_from + PT_TABS) % PT_TABS == 1 ? +1 : -1;
+		g_tabs.t0 = g_clock_at - (unsigned)shot_tab_ms;
+		if (!g_tabs.t0) g_tabs.t0 = 1;
+		g_menu_epoch++;
+		shot_tab_from = -1;
+	}
+	if (shot_menu && shot_menu_steps) {
+		menu_row rows[MENU_MAX_ROWS];
+		menu_bufs b;
+		const char *h;
+		int n = menu_build(a, a->screen, a->sys_cursor, rows, &b, &h);
+		int k, d = shot_menu_steps > 0 ? 1 : -1;
+
+		if (!g_clock_held) { g_clock_held = true; g_clock_at = plat_now_ms(); }
+		for (k = 0; k < (shot_menu_steps > 0 ? shot_menu_steps : -shot_menu_steps); k++) {
+			zyperos_menu_draw(a, shot_menu_sel);
+			g_clock_at += 1000;
+			shot_menu_sel = menu_step_round(rows, n, shot_menu_sel, d);
+		}
+		/* and the last press drawn, then let settle: the shot is the list
+		 * at rest after it */
+		zyperos_menu_draw(a, shot_menu_sel);
+		g_clock_at += 1000;
+		shot_menu_steps = 0;    /* once: --flip composes the shot twice */
+		draw_shelf(a);
+	}
 	/* After --close's press the menu is the shelf's to draw leaving, and
 	 * after --swap's it has given way to the page below */
 	if (shot_menu) {
@@ -22138,8 +25342,10 @@ static void shot_compose(app *a)
 		else if (!shot_pressed || shot_press != SHOT_SWAP)
 			zyperos_menu_draw(a, shot_menu_sel);
 	}
+	if (shot_look_page) shot_draw_look(a);
 	if (shot_slots) shot_draw_slots(a);
 	if (shot_gamemenu && a->sys.count > 0) shot_draw_gamemenu(a);
+	else if (g_shot_p2 && a->sys.count > 0) shot_draw_player2(a);
 	if (shot_gamecontrols >= 0 && a->sys.count > 0) shot_draw_gamecontrols(a);
 	if (shot_controls_fit) controls_fit_report(a);
 	/* Over **scrim.menu**, as the screens they picture are: kb_prompt's
@@ -22184,7 +25390,8 @@ static void shot_compose(app *a)
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
-	if (shot_info) info_preview(a, true, shot_info == 2);
+	if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
+	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
 	if (shot_controls >= 0 && (shot_press != SHOT_SWAP || shot_pressed)) {
 		menu_row rows[CTL_MAX_ROWS];
@@ -22286,17 +25493,17 @@ static void shot_compose(app *a)
 		return;
 	}
 	if (shot_power >= 0) {
-		menu_row rows[3], said[3];
-		char lines[3][LB_LINE];
+		menu_row rows[UP_TILES + 1];
 
 		ui_scrim(a->r, 0);
-		if (shot_power < 2) {
+		if (shot_power < UP_TILES) {
 			int nt = usb_power_rows(rows);
 
 			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
 		} else {
-			/* The replug message over the shelf, as the overlay draws it */
-			(void)said; (void)lines;
+			/* The answer's message over the shelf, as the overlay draws it */
+			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER
+			             : shot_power == UP_TILES + 1 ? USBPOWER_SAY_PHONE : USBPOWER_SAY_IPHONE;
 			replug_draw_at(a->r);
 		}
 	}
@@ -22348,6 +25555,10 @@ static void shot_compose(app *a)
 	if (shot_steps_way) {
 		static const struct { const char *name; int step, sub, hint; } ST[] = {
 			{ "unplugged",  LS_LINK,    0, LH_NONE },
+			/* a computer that has not taken the handheld yet, and one
+			 * that took it and has not opened its network: the loading bar */
+			{ "taking",     LS_LINK,    1, LH_NONE },
+			{ "opening",    LS_LINK,    2, LH_NONE },
 			{ "nocomputer", LS_LINK,    0, LH_NO_COMPUTER },
 			{ "noanswer",   LS_LINK,    1, LH_NO_ANSWER },
 			{ "nodriver",   LS_LINK,    2, LH_NO_DRIVER },
@@ -22358,9 +25569,12 @@ static void shot_compose(app *a)
 			{ "nonetwork",  LS_LINK,    3, LH_NO_NETWORK },
 			{ "waits",      LS_LINK,    4, LH_NONE },
 			{ "replug",     LS_LINK,    4, LH_REPLUG },
+			/* the page open in a browser, its PIN not in yet */
+			{ "pin",        LS_DONE,    0, LH_NONE },
 		};
-		const bool cable = strcmp(shot_steps_way, "wifi") != 0;
-		const char *addr = cable ? "10.42.0.1" : "192.168.1.42";
+		const bool phone = !strcmp(shot_steps_way, "phone");
+		const bool cable = strcmp(shot_steps_way, "wifi") != 0 && !phone;
+		const char *addr = cable ? "10.42.0.1" : phone ? "192.168.42.37" : "192.168.1.42";
 		link_steps st = { 0 };
 		menu_row rows[STEP_ROWS];
 		char head[192], hint[320], lines[3][LB_LINE];
@@ -22374,22 +25588,92 @@ static void shot_compose(app *a)
 				h = ST[k].hint;
 			}
 		/* Off Wi-Fi the heading says so, with no name, as the screen does */
-		const char *name = shot_steps_noname ? "" : "zyperos.local";
+		const char *name = shot_steps_noname || phone ? "" : "zyperos.local";
 
 		if (!cable && st.step == LS_LINK) hare_head(head, sizeof head, false, NULL, T(S_XFER_WIFI_GONE), "4071");
 		else hare_head(head, sizeof head, cable, name, addr, "4071");
-		n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable, name, addr,
-		                 b_legend(S_KEYHINT_CLOSE));
 		draw_shelf(a);
 		ui_scrim(a->r, 0);
-		menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		/* As the screen chooses (xfer_screen_way): the way in, or the steps
+		 * while one before the browser stalls */
+		if (xs_way_hint(h)) {
+			n = xs_step_rows(a, rows, lines, hint, sizeof hint, &st, h, cable,
+			                 b_legend(S_KEYHINT_CLOSE));
+			menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
+		} else {
+			xs_way_set(cable, phone, name, shot_steps_addr ? shot_steps_addr : addr, "4071");
+			n = xs_way_rows(rows, &st, cable || phone, b_legend(S_KEYHINT_CLOSE));
+			/* over the cable, before the address: the loading bar, its
+			 * step waited on for a second and a half */
+			if (cable && st.step < LS_BROWSER)
+				xs_load_draw(a, rows, n, xs_load_target(&st, 1500));
+			else
+				xs_way_draw(a, rows, n);
+		}
 	}
-	if (shot_hare)
-		hare_preview(a, "zyperos.local", shot_hare_addr, "4071", shot_hare_who,
-		             /* the cable's address is USB File Transfer, with SSH */
-		             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL,
-		             "12 KB / 41 MB", shot_hare_head);
-	if (shot_hot)
+	if (shot_hare || (shot_hot && shot_hot_in)) {
+		/* The tiles as the screen sets them (xs_move_set), from a
+		 * session's numbers over Wi-Fi (--hare-move): nothing moving after
+		 * a file came in, a file coming in (its bar at 62%), one going
+		 * out, both, closing after the one coming in, Play after this
+		 * file's wait, and Wi-Fi gone with the totals kept. `now` is the
+		 * Now row's words for the file (shot_hare_head). */
+		static const struct {
+			const char *state;
+			bool on[2];
+			unsigned long long rate[2];
+			int bar;                /* per mille of the upload; -1 none */
+			str_id now;
+		} MV[] = {
+			{ "idle",    { false, false }, { 0, 0 },                   -1,  S_HARE_RECEIVED },
+			{ "in",      { true, false },  { 2400000ull, 0 },          620, S_HARE_RECEIVING },
+			{ "out",     { false, true },  { 0, 3100000ull },          -1,  S_HARE_SENDING },
+			{ "both",    { true, true },   { 1800000ull, 1200000ull }, 350, S_HARE_RECEIVING },
+			{ "closing", { true, false },  { 2400000ull, 0 },          840, S_XFER_CLOSING_AFTER },
+			{ "finish",  { true, false },  { 2400000ull, 0 },          840, S_XFER_FINISHING },
+			{ "gone",    { false, false }, { 0, 0 },                   -1,  S_HARE_RECEIVED },
+		};
+		int m = 1, k;
+		xs_flow flow[2] = { { 186000000ull, 0, 0, 0, false }, { 41000000ull, 0, 0, 0, false } };
+		char now[192];
+
+		for (k = 0; k < (int)(sizeof MV / sizeof MV[0]); k++)
+			if (shot_hare_move && !strcmp(shot_hare_move, MV[k].state)) m = k;
+		for (k = 0; k < 2; k++) {
+			flow[k].active = MV[m].on[k];
+			flow[k].rate = MV[m].rate[k];
+		}
+		xs_move_set(flow, MV[m].bar, MV[m].bar >= 0 ? 1000 : 0);
+		snprintf(now, sizeof now, T(MV[m].now), shot_hare_head);
+		if (shot_hot && shot_hot_in) {
+			/* the hotspot once someone came in: the news, its network,
+			 * password and PIN in the heading (hot_head) */
+			menu_row rows[5];
+			char head[192];
+			int n = xs_page_rows(rows, shot_hot_phones, NULL, shot_hot_now, S_KEYHINT_CLOSE);
+
+			hot_head(head, sizeof head, menu_std_width(a), shot_hot_ssid, shot_hot_pass, "4071");
+			draw_shelf(a);
+			ui_scrim(a->r, 0);
+			xs_page_show(a, head, rows, n);
+		} else if (m == 5) {
+			/* Play after this file's wait, as xs_before_game draws it */
+			menu_row rows[3];
+
+			draw_shelf(a);
+			ui_scrim(a->r, 0);
+			xs_page_show(a, XFER_NAME_WIFI, rows, xs_finish_rows(rows, now, sizeof now, shot_hare_head));
+		} else {
+			const bool gone = m == 6;
+
+			hare_preview(a, gone ? "" : "zyperos.local", gone ? T(S_XFER_WIFI_GONE) : shot_hare_addr,
+			             "4071", shot_hare_who,
+			             /* the cable's address is USB File Transfer, with SSH */
+			             !strcmp(shot_hare_addr, "10.42.0.1") ? "1 signed in" : NULL, now,
+			             m == 4 ? S_KEYHINT_HIDE
+			             : MV[m].on[0] || MV[m].on[1] ? S_KEYHINT_KEEP_GOING_OR_STOP : S_KEYHINT_CLOSE);
+		}
+	} else if (shot_hot)
 		hot_preview(a, shot_hot_ssid, shot_hot_pass, shot_hot_phones, shot_hot_now);
 	/* The synopsis card, from the card's own games table - so a shot of it is a
 	 * picture of real scraped text rather than a fixture. */
@@ -22438,8 +25722,12 @@ static void shot_compose(app *a)
 			rows[ci] = (menu_row){ sample[ci].t, vals[ci], sample[ci].got };
 			vcols[ci] = sample[ci].got ? VCOL_EARNED : 0u;
 		}
-		snprintf(head, sizeof head, T(S_CHEEVOLIST_HEADING),
-		         shot_cheevos_game, 3, 36, 25, 415);
+		if (shot_cheevos_waiting > 0)
+			snprintf(head, sizeof head, TN(S_CHEEVOLIST_HEADING_WAITING, shot_cheevos_waiting),
+			         shot_cheevos_game, 3, 36, shot_cheevos_waiting);
+		else
+			snprintf(head, sizeof head, T(S_CHEEVOLIST_HEADING),
+			         shot_cheevos_game, 3, 36, 25, 415);
 		/* Drawn the way cheevos_screen draws it - menu_draw_ex, the earned
 		 * colors, the shared width - because a shot that composes the panel
 		 * differently from the screen is a picture of something that does not
@@ -22452,7 +25740,7 @@ static void shot_compose(app *a)
 		g_row_icon = NULL;
 	}
 	if (shot_popup) {
-		static char pbody[48];
+		static char pbody[96];
 		char slot[32];
 
 		snprintf(slot, sizeof slot, T(S_SLOTS_SLOT), 2);
@@ -22475,6 +25763,21 @@ static void shot_compose(app *a)
 			 * (core_resume_fresh) */
 			shot_notice_head = T(S_POPUP_CORESTATE_HEAD);
 			snprintf(pbody, sizeof pbody, "%s", T(S_POPUP_CORESTATE_BODY));
+		} else if (!strcmp(shot_popup, "player2_joined") || !strcmp(shot_popup, "player2_left")) {
+			/* A friend's browser joining NES Player 2 or leaving it
+			 * (p2op_notice) */
+			shot_notice_head = T(S_PLAYER2_NOTICE);
+			snprintf(pbody, sizeof pbody,
+			         T(!strcmp(shot_popup, "player2_joined") ? S_PLAYER2_JOINED : S_PLAYER2_LEFT), 2);
+		} else if (!strcmp(shot_popup, "player2_stopped")) {
+			/* ...and Player 2 stopping by itself during the game */
+			shot_notice_head = T(S_PLAYER2_NOTICE);
+			snprintf(pbody, sizeof pbody, "%s", T(S_PLAYER2_STOPPED));
+		} else if (!strcmp(shot_popup, "stick_on") || !strcmp(shot_popup, "stick_off")) {
+			/* R2 in a PSP game (on_stick) */
+			shot_notice_head = T(S_POPUP_STICK);
+			snprintf(pbody, sizeof pbody, "%s",
+			         T(!strcmp(shot_popup, "stick_on") ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
 		} else {
 			shot_notice_head = T(S_POPUP_SPEED);
 			snprintf(pbody, sizeof pbody,
@@ -22537,6 +25840,10 @@ static void shot_compose(app *a)
 		const unsigned T0 = 100000;
 
 		heatpop_show(T0);
+		if (shot_ranews > 0) {
+			snprintf(g_heatpop.line1, sizeof g_heatpop.line1, TN(S_CHEEVOS_SENT, shot_ranews), shot_ranews);
+			snprintf(g_heatpop.line2, sizeof g_heatpop.line2, "%s", T(S_CHEEVOS_SENT_WHERE));
+		}
 		if (shot_upnews) {
 			snprintf(g_heatpop.line1, sizeof g_heatpop.line1,
 			         T(strcmp(shot_upnews, "ready") ? S_UPDATE_NEWS_AVAILABLE : S_UPDATE_NEWS_READY), "1.0.4");
@@ -22589,6 +25896,18 @@ static int shot_menu_row(app *a, const char *label)
 	n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading);
 	for (i = 0; i < n; i++)
 		if (rows[i].label && !strcmp(rows[i].label, label)) break;
+	/* In MENU, on whichever tab has it, and that tab is then on */
+	if (i == n && a->screen != SCREEN_GAMES) {
+		int t, at = g_tabs.at;
+
+		for (t = 0; t < PT_TABS && i == n; t++) {
+			g_tabs.at = t;
+			n = menu_build(a, a->screen, a->sys_cursor, rows, &bufs, &heading);
+			for (i = 0; i < n; i++)
+				if (rows[i].label && !strcmp(rows[i].label, label)) break;
+		}
+		if (i == n) g_tabs.at = at;
+	}
 	i18n_set(was);
 	return i < n ? i : -1;
 }
@@ -22840,7 +26159,7 @@ static void shot_portload_take(app *a)
 static void shot_tour_draw(app *a)
 {
 	const uint32_t now = 1000000u;
-	const tour_hooks hk = { tour_zyper_draw, tour_heart_draw, tour_poweroff_draw, a, P_ROOT };
+	const tour_hooks hk = { tour_zyper_draw, tour_poweroff_draw, a, P_ROOT };
 	tour t;
 	int at[TOUR_CHOICES];
 
@@ -23030,7 +26349,8 @@ static void take_shot(app *a)
 				shot_failed = 1;
 			}
 			{
-				const char *crowded = shot_corner_clear(a);
+				/* The screensaver draws no corner: it is the whole screen */
+				const char *crowded = g_shot_saver >= 0 ? NULL : shot_corner_clear(a);
 
 				if (crowded) {
 					fprintf(stderr, "  CORNER: %s\n", crowded);
@@ -23124,6 +26444,7 @@ static int port_menu_main(int argc, char **argv)
 		db_get_str(db_dev(), "language", lc, sizeof lc, "en");
 		i18n_set(lang_parse(lc));
 		db_get_str(db_dev(), "appearance", ap, sizeof ap, appearance_id(APPEAR_LIGHT));
+		look_load();
 		theme_init(appearance_parse(ap));
 		IMG_Init(IMG_INIT_PNG);
 		db_get_str(db_dev(), "uisounds", v, sizeof v, uisound_setting_id(DS_VOICE_DEFAULT));
@@ -23214,7 +26535,7 @@ static void ctl_find(app *a, const char *folder, const char *file, int *si, int 
 		folders[i] = a->view[i].owner || is_muse(&a->sys.systems[i]) ? NULL
 		                                                             : a->sys.systems[i].folder;
 	if ((*si = ctl_find_system(folder, folders, n)) < 0) return;
-	l = &a->view[*si].list;
+	l = sys_games(&a->view[*si]);
 	if (l->count <= 0 || !(files = malloc(sizeof *files * (size_t)l->count))) return;
 	for (i = 0; i < l->count; i++) files[i] = l->items[i].file;
 	*gi = ctl_find_game(file, files, l->count);
@@ -23282,7 +26603,7 @@ static bool ctl_resolve(app *a, const ctl_cmd *c, bool rescan, ctl_target *t,
 	/* A disc that needs firmware, as launch refuses it, said here instead of
 	 * in a message on the handheld that nobody over SSH would see */
 	if (strcmp(t->core, PORT_CORE) && strncmp(t->core, RUN_PREFIX, strlen(RUN_PREFIX)) &&
-	    s->disc_bios[0] && lib_is_disc(a->view[si].list.items[gi].file)) {
+	    s->disc_bios[0] && (s->bios_every || lib_is_disc(sys_games(&a->view[si])->items[gi].file))) {
 		char bios[CFG_STR * 2];
 
 		snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
@@ -23430,6 +26751,491 @@ static bool ctl_shelf_turn(app *a)
 	return ctl_poll(a, CTL_AT_SHELF);
 }
 
+/* ---------- the screensaver (src/saver.h; DESIGN.md 11.37) ---------------- *
+ *
+ * A MODE OF THE SHELF'S LOOP, not a screen of its own: the loop goes on
+ * doing everything it does (the power button and Auto Off, the dark screen on
+ * the cable, a computer plugged in, px2-open's commands), and where it would
+ * draw the shelf it draws this. So the screensaver never has to remember to
+ * be a good citizen, and cannot outlive what ends the shelf: idle_due is
+ * asked before saver_pass on every pass.
+ *
+ * What it plays is the video snaps the scraper keeps (src/snaps.c), one at a
+ * time through the same daemon thread the shelf's focused cover uses
+ * (snap_ask), muted always; with no snap on the card, the covers, one drawn
+ * frame each; with neither, nothing, and it does not try again until a button
+ * is pressed. */
+
+static struct {
+	bool         on;
+	bool         video;              /* the pool is of snaps; else of covers */
+	unsigned     started, last_pass, last_draw;
+	saver_start  st;                 /* when it starts: lives while it is off too */
+	saver_show   show;
+	saver_recent recent;
+	int         *shelf, *game;       /* the pool: a game on a shelf with a snap */
+	int          n, cap;
+	int          at;                 /* the pool entry on screen */
+	char         title[LIB_NAME], sysname[CFG_STR];
+	unsigned     accent;
+	SDL_Texture *cover;
+	int          cw, ch;
+} g_sv;
+
+static void saver_pool_free(void)
+{
+	free(g_sv.shelf);
+	free(g_sv.game);
+	g_sv.shelf = g_sv.game = NULL;
+	g_sv.n = g_sv.cap = 0;
+}
+
+static bool saver_pool_add(int shelf, int game)
+{
+	if (g_sv.n == g_sv.cap) {
+		int cap = g_sv.cap ? g_sv.cap * 2 : 256;
+		int *s = realloc(g_sv.shelf, (size_t)cap * sizeof *s);
+		int *g;
+
+		if (!s) return false;
+		g_sv.shelf = s;
+		if (!(g = realloc(g_sv.game, (size_t)cap * sizeof *g))) return false;
+		g_sv.game = g;
+		g_sv.cap = cap;
+	}
+	g_sv.shelf[g_sv.n] = shelf;
+	g_sv.game[g_sv.n++] = game;
+	return true;
+}
+
+/* A console's covers by stem, sorted, as snap_names_for lists its snaps: one
+ * listing of its .media. NULL, and 0, when there are none. The caller frees. */
+static char **saver_cover_stems(const char *folder, int *count)
+{
+	char dir[CFG_STR * 4], **v = NULL;
+	struct dirent *e;
+	int n = 0, cap = 0;
+	DIR *d;
+
+	*count = 0;
+	snprintf(dir, sizeof dir, "%s/%s/.media", P_ROMS, folder);
+	if (!(d = opendir(dir))) return NULL;
+	while ((e = readdir(d))) {
+		size_t len = strlen(e->d_name);
+		char *stem;
+
+		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ".png")) continue;
+		if (n == cap) {
+			char **w = realloc(v, (size_t)(cap = cap ? cap * 2 : 64) * sizeof *w);
+
+			if (!w) break;
+			v = w;
+		}
+		if (!(stem = strndup(e->d_name, len - 4))) break;
+		v[n++] = stem;
+	}
+	closedir(d);
+	if (n) qsort(v, (size_t)n, sizeof *v, snap_name_cmp);
+	*count = n;
+	return v;
+}
+
+/* The games it may show: those Random Game picks from every system (not Muse's
+ * albums, not Favorites' copies, not a Ports shelf with only PortMaster's
+ * offer) that have a snap on the card and on for their console with `video`
+ * (snap_names_for), else a cover. One listing of each console's .media, here
+ * and once, as the screensaver begins. */
+static void saver_pool_build(app *a, bool video)
+{
+	int i, j;
+
+	saver_pool_free();
+	for (i = 0; i < a->sys.count; i++) {
+		const system_cfg *s = &a->sys.systems[i];
+		/* Every game of the system, in every folder (sys_games): the index
+		 * is pick_launch's, which opens the game's folder */
+		const game_list *gl = sys_games(&a->view[i]);
+		char **stems = NULL;
+		int n = 0;
+
+		if (is_muse(s) || a->view[i].owner || pm_only_offer(a, i) || !s->folder[0]) continue;
+		if (video) {
+			const snap_names *sn = snap_names_for(s->folder);
+
+			if (!sn->on || !sn->n) continue;
+			stems = sn->stems;
+			n = sn->n;
+		} else {
+			stems = saver_cover_stems(s->folder, &n);
+			if (!n) continue;
+		}
+		for (j = 0; j < gl->count; j++) {
+			const char *name = gl->items[j].name;
+
+			if (bsearch(&name, stems, (size_t)n, sizeof *stems, snap_name_cmp) &&
+			    !saver_pool_add(i, j))
+				break;
+		}
+		/* snap_names_for's lists are its own, kept; the covers' are ours */
+		if (!video) {
+			while (n > 0) free(stems[--n]);
+			free(stems);
+		}
+	}
+}
+
+/* A cover as a texture, through the surface texload makes one from: ARGB8888,
+ * the one format every GPU path of the launcher takes (a texture straight
+ * from IMG_LoadTexture of an RGB file drew nothing on the Pixel 2's GL). */
+static SDL_Texture *saver_cover_load(SDL_Renderer *r, const char *path, int *w, int *h)
+{
+	SDL_Surface *raw = IMG_Load(path), *conv;
+	SDL_Texture *t;
+
+	if (!raw) return NULL;
+	conv = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_ARGB8888, 0);
+	SDL_FreeSurface(raw);
+	if (!conv) return NULL;
+	t = SDL_CreateTextureFromSurface(r, conv);
+	*w = conv->w;
+	*h = conv->h;
+	SDL_FreeSurface(conv);
+	if (t) SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+	return t;
+}
+
+/* The next one: picked, checked to be on the card, and asked for. False when
+ * none could be found. */
+static bool saver_next(app *a, unsigned now)
+{
+	int tries = 6, k;
+
+	if (g_sv.cover) { SDL_DestroyTexture(g_sv.cover); g_sv.cover = NULL; }
+	for (k = 0; k < tries; k++) {
+		int i = saver_pick(g_sv.n, rg_random(), &g_sv.recent);
+		const system_cfg *s;
+		const game_entry *g;
+		char path[LIB_PATH * 2];
+		struct stat st;
+
+		if (i < 0) return false;
+		saver_recent_add(&g_sv.recent, i);
+		if (g_sv.shelf[i] >= a->sys.count || g_sv.game[i] >= sys_games(&a->view[g_sv.shelf[i]])->count)
+			continue;
+		s = &a->sys.systems[g_sv.shelf[i]];
+		g = &sys_games(&a->view[g_sv.shelf[i]])->items[g_sv.game[i]];
+		if (g_sv.video) {
+			if (!snaps_path(P_ROMS, s->folder, g->name, path, sizeof path) ||
+			    stat(path, &st) != 0 || st.st_size <= 0)
+				continue;
+		} else {
+			box_art_path(s->folder, g->name, path, sizeof path);
+			if (stat(path, &st) != 0 || st.st_size <= 0) continue;
+			if (!(g_sv.cover = saver_cover_load(a->r, path, &g_sv.cw, &g_sv.ch))) continue;
+		}
+		g_sv.at = i;
+		snprintf(g_sv.title, sizeof g_sv.title, "%s", g->title[0] ? g->title : g->name);
+		snprintf(g_sv.sysname, sizeof g_sv.sysname, "%s", s->name);
+		g_sv.accent = s->accent;
+		saver_show_begin(&g_sv.show, now, !g_sv.video);
+		if (g_sv.video) {
+			/* Muted, whatever the setting says for the shelf: a screensaver
+			 * is never a sound that nobody asked for */
+			g_snap_force_vol = 0;
+			snap_ask(path, false);
+			g_snap_force_vol = -1;
+		}
+		fprintf(stderr, "saver: %s/%s (%s)\n", s->folder, g->file, g_sv.video ? "video" : "cover");
+		return true;
+	}
+	return false;
+}
+
+static void saver_stop(app *a, const char *why)
+{
+	(void)a;
+	if (!g_sv.on) return;
+	g_sv.on = false;
+	/* The daemon stops that same frame, and the picture is let go */
+	snap_off();
+	if (g_sv.cover) { SDL_DestroyTexture(g_sv.cover); g_sv.cover = NULL; }
+	saver_pool_free();
+	fprintf(stderr, "saver: ended, %s (%u s)\n", why, (plat_now_ms() - g_sv.started) / 1000);
+	redraw_now();
+}
+
+static bool saver_begin(app *a, unsigned now)
+{
+	/* The shelf's own snap gives way, and the first listing is of snaps */
+	snap_off();
+	g_sv.video = true;
+	saver_pool_build(a, true);
+	if (g_sv.n == 0) {
+		g_sv.video = false;
+		saver_pool_build(a, false);
+	}
+	saver_recent_clear(&g_sv.recent);
+	g_sv.started = g_sv.last_draw = now;
+	if (g_sv.n == 0 || !saver_next(a, now)) {
+		fprintf(stderr, "saver: nothing to show (no snaps, no covers); waits for a button\n");
+		saver_pool_free();
+		saver_spend(&g_sv.st);
+		return false;
+	}
+	fprintf(stderr, "saver: starts, %d %s\n", g_sv.n, g_sv.video ? "games with a video" : "games (no snaps on the card: covers)");
+	g_sv.on = true;
+	return true;
+}
+
+/* The picture's rectangle: `w` by `h` as large as `box` takes, centered */
+static SDL_FRect saver_fit(const SDL_Rect *box, int w, int h, float most)
+{
+	float k = fminf((float)box->w / w, (float)box->h / h);
+
+	if (k > most) k = most;
+	return (SDL_FRect){ box->x + (box->w - w * k) / 2, box->y + (box->h - h * k) / 2, w * k, h * k };
+}
+
+/* One frame, `alpha` of the clip faded up. The picture on the ink both
+ * themes keep for content (MP4's full view does too), and the game's name and
+ * system and the two keys on slabs of the theme's surface at 85%, the notice's
+ * (DESIGN.md 11.7), so they read on any picture. */
+static void saver_draw(app *a, float alpha)
+{
+	SDL_Renderer *r = a->r;
+	const ds_rgb ink = DS_THEME[DS_DARK].ink;
+	const int margin = 48, padx = 28, pady = 14, gap = 12;
+	TTF_Font *fl = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META), *fc = page_font(PAGE_CHROME);
+	SDL_Texture *t = NULL;
+	SDL_Rect src = { 0, 0, 0, 0 }, box = { 0, 24, ZYPEROS_SCREEN_W, 552 };
+	int w = 0, h = 0;
+	Uint8 al = (Uint8)(255 * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha) + 0.5f);
+
+	SDL_SetRenderDrawColor(r, ink.r, ink.g, ink.b, 255);
+	SDL_RenderClear(r);
+	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+	if (g_sv.video) {
+		t = snapv_texture(&w, &h, &src);
+		/* A host shot has no daemon: a screenshot it is given, or the test
+		 * picture MP4's shots use */
+		if (g_shot_saver >= 0) {
+			static SDL_Texture *pic;
+
+			if (g_shot_saver_pic && !pic) pic = IMG_LoadTexture(r, g_shot_saver_pic);
+			if (pic) {
+				t = pic;
+				SDL_QueryTexture(pic, NULL, NULL, &w, &h);
+			} else {
+				if (!mp4v_texture()) mp4v_test_picture(r, 640, 480);
+				t = mp4v_texture();
+				w = 640; h = 480;
+			}
+			src = (SDL_Rect){ 0, 0, 0, 0 };
+		}
+		if (t && w > 0 && h > 0) {
+			/* The whole screen, in its own shape, never stretched */
+			SDL_FRect d = saver_fit(&(SDL_Rect){ 0, 0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H }, w, h, 8.0f);
+
+			SDL_RenderCopyF(r, t, src.w > 0 ? &src : NULL, &d);
+		}
+	} else if (g_sv.cover && g_sv.cw > 0 && g_sv.ch > 0) {
+		/* A cover is small: not blown up past a third more, on a ground of
+		 * its own, with the foot's room left under it */
+		SDL_FRect d = saver_fit(&box, g_sv.cw, g_sv.ch, 1.34f);
+
+		SDL_RenderCopyF(r, g_sv.cover, NULL, &d);
+	}
+	(void)t;
+	/* Fading up from black, and to it */
+	if (al < 255) {
+		SDL_SetRenderDrawColor(r, ink.r, ink.g, ink.b, (Uint8)(255 - al));
+		SDL_RenderFillRect(r, NULL);
+	}
+	if (al > 0) {
+		const SDL_Color text = ui_fade(UI_TEXT, alpha), dim = ui_fade(UI_TEXT_DIM, alpha);
+		const SDL_Color slab = ui_col(theme()->surface, (Uint8)(al * 0.85f + 0.5f));
+		const char *back = T(S_SAVER_BACK), *play = T(S_GAMES_PLAY);
+		int hint_w = page_hint_width("START", play, false);
+		int back_w = ui_text_width(fc, back);
+		int rw = (hint_w > back_w ? hint_w : back_w) + 2 * padx;
+		int line_m = ui_font_line(UI_F_META), line_l = ui_font_line(UI_F_LABEL);
+		int sh = pady * 2 + line_m + gap + line_l;           /* the game slab's height */
+		int top = ZYPEROS_SCREEN_H - margin - sh;
+		int maxw = ZYPEROS_SCREEN_W - 2 * margin;
+		int kh = pady * 2 + 40 + 44;                          /* the keys slab's height */
+		int dot = 14, dgap = 14, tw, sw, lw, x;
+		unsigned mark = ui_sys_mark(g_sv.accent);
+		char fit_t[LIB_NAME], fit_s[CFG_STR];
+		SDL_Rect q;
+
+		ui_fit_text(fl, g_sv.title, fit_t, sizeof fit_t, maxw - 2 * padx);
+		ui_fit_text(fm, g_sv.sysname, fit_s, sizeof fit_s, maxw - 2 * padx - dot - dgap);
+		tw = ui_text_width(fl, fit_t);
+		sw = dot + dgap + ui_text_width(fm, fit_s);
+		lw = (tw > sw ? tw : sw) + 2 * padx;
+		/* The game, at the foot: its system in the quiet line over its name,
+		 * as a notice says its heading over its body */
+		q = (SDL_Rect){ margin, top, lw, sh };
+		ui_round_rect(r, &q, DS_RADIUS_PANEL < sh / 2 ? DS_RADIUS_PANEL : sh / 2, slab);
+		x = q.x + padx;
+		ui_round_rect(r, &(SDL_Rect){ x, top + pady + line_m / 2 - dot / 2, dot, dot }, dot / 2,
+		              (SDL_Color){ (Uint8)(mark >> 16), (Uint8)(mark >> 8), (Uint8)mark, al });
+		ui_text(r, fm, fit_s, x + dot + dgap, ui_line_y(UI_F_META, top + pady), -1, dim);
+		ui_text(r, fl, fit_t, x, ui_line_y(UI_F_LABEL, top + pady + line_m + gap), -1, text);
+		/* The keys, at the top's right where they cover little: START plays
+		 * it, anything else goes back */
+		q = (SDL_Rect){ ZYPEROS_SCREEN_W - margin - rw, margin, rw, kh };
+		ui_round_rect(r, &q, DS_RADIUS_PANEL < kh / 2 ? DS_RADIUS_PANEL : kh / 2, slab);
+		page_hint_fade(r, "START", play, q.x + padx, q.y + pady + 20, false, false, al);
+		ui_text(r, fc, back, q.x + padx, ui_cap_y(fc, q.y + pady + 20 + 44), -1, dim);
+		(void)line_l;
+	}
+	plat_draw_osd(r);
+	plat_present();
+}
+
+/* --saver [cover]: one frame of it for a host shot, the first game on the
+ * first shelf that has one, a test picture for its video or its cover when
+ * the card has none (there is no daemon to play a snap) */
+static void saver_shot(app *a)
+{
+	int i, j = 0;
+
+	/* The game the shelf is on, else the first game on the first shelf */
+	i = a->sys_cursor;
+	if (i >= 0 && i < a->sys.count && !is_muse(&a->sys.systems[i]) && a->view[i].list.count > 0)
+		j = a->view[i].cursor;
+	else
+		for (i = 0; i < a->sys.count; i++)
+			if (!is_muse(&a->sys.systems[i]) && !a->view[i].owner && a->view[i].list.count > 0) break;
+	if (i < a->sys.count) {
+		const game_entry *g = &a->view[i].list.items[j < a->view[i].list.count ? j : 0];
+
+		snprintf(g_sv.title, sizeof g_sv.title, "%s", g->title[0] ? g->title : g->name);
+		snprintf(g_sv.sysname, sizeof g_sv.sysname, "%s", a->sys.systems[i].name);
+		g_sv.accent = a->sys.systems[i].accent;
+	}
+	g_sv.video = g_shot_saver == 0;
+	if (!g_sv.video && !g_sv.cover) {
+		/* A file given is loaded as saver_next loads a cover */
+		if (g_shot_saver_pic &&
+		    (g_sv.cover = saver_cover_load(a->r, g_shot_saver_pic, &g_sv.cw, &g_sv.ch))) {
+			/* loaded as saver_next loads one */
+		} else {
+			if (!mp4v_texture()) mp4v_test_picture(a->r, 640, 480);
+			g_sv.cover = mp4v_texture();
+			g_sv.cw = 640;
+			g_sv.ch = 480;
+		}
+	}
+	saver_draw(a, g_shot_saver_alpha);
+	g_sv.cover = NULL;
+}
+
+/* One pass of the shelf's loop, after the power button and Auto Off have had
+ * theirs. True when the screensaver took the pass (the loop goes round
+ * again). */
+static bool saver_pass(app *a)
+{
+	unsigned now = plat_now_ms();
+	bool any = false, press = false, busy, newpic = false, ready, draw;
+	saver_end why;
+	float alpha = 0;
+	int pct = -1, b;
+	bool charging = false;
+
+	/* A gap: a menu, a game or a message had the screen in between, and
+	 * whatever this drew is not on it any more */
+	if (g_sv.on && now - g_sv.last_pass >= 500) saver_stop(a, "something else had the screen");
+	for (b = 0; b < IN_COUNT && !any; b++)
+		any = a->in.pressed[b] || a->in.down[b];
+	if (!battery_now(&pct, &charging)) pct = -1;
+	/* Not idle: music playing, File Transfer on, a long task at work */
+	busy = musec_playing() || g_xs.on || long_task_busy();
+
+	if (!g_sv.on) {
+		if (!saver_due(&g_sv.st, now, g_saver_s, any, busy || saver_low_battery(pct, charging)))
+			return false;
+		if (!saver_begin(a, now)) return false;
+	}
+	g_sv.last_pass = now;
+
+	/* Decoding video warms the chip: "Getting hot" (src/heat.h) is due, so
+	 * the screensaver goes, and the shelf says it as it does on any pass
+	 * (heat_watch takes it). It stays gone until a button. */
+	if (g_heat.due) {
+		saver_spend(&g_sv.st);
+		saver_stop(a, "the chip is getting hot");
+		return true;
+	}
+	why = saver_must_end(now, g_sv.started, busy, pct, charging);
+	if (why != SAVER_GO_ON) {
+		/* Ended on its own: on battery's cap or a low battery it waits for a
+		 * button; a task starting only waits for the task */
+		if (why != SAVER_END_HELD) saver_spend(&g_sv.st);
+		saver_stop(a, why == SAVER_END_HELD ? "a long task began"
+		              : why == SAVER_END_BATTERY ? "the battery is low" : "on battery for long enough");
+		return true;
+	}
+
+	/* A button: START boots the game on screen, as A on its card would; the
+	 * volume and brightness keys do their own work and leave it be; any
+	 * other goes back to the shelf as it was, and is spent doing that */
+	for (b = 0; b < IN_COUNT; b++)
+		if (a->in.pressed[b] && b != IN_VOLUP && b != IN_VOLDN && b != IN_BRIGHTUP &&
+		    b != IN_BRIGHTDN)
+			press = true;
+	if (press) {
+		bool boot = a->in.pressed[IN_START] && g_sv.at >= 0 && g_sv.at < g_sv.n;
+		int shelf = boot ? g_sv.shelf[g_sv.at] : -1, game = boot ? g_sv.game[g_sv.at] : -1;
+
+		saver_stop(a, boot ? "START" : "a button");
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
+		if (boot) {
+			uisound_play(DS_SOUND_ACCEPT);
+			g_pick.shelf = shelf;
+			g_pick.game = game;
+			g_pick.hold_ms = 0;
+			pick_launch(a);
+		}
+		return true;
+	}
+
+	if (g_sv.video) {
+		newpic = snapv_update(a->r);
+		ready = snapv_texture(NULL, NULL, NULL) != NULL;
+	} else {
+		ready = g_sv.cover != NULL;
+	}
+	if (saver_show_step(&g_sv.show, now, ready, &alpha)) {
+		if (!saver_next(a, now)) {
+			saver_spend(&g_sv.st);
+			saver_stop(a, "nothing more to show");
+			return true;
+		}
+		alpha = 0;
+	}
+	/* A frame when the daemon put out a new picture, while a fade moves, a
+	 * moment after the volume bar, and once a second regardless (the
+	 * heartbeat the shelf has): a cover or a held picture is one drawn frame */
+	draw = newpic || saver_show_moving(&g_sv.show) || now - g_sv.last_draw >= 1000 ||
+	       plat_osd_until() != UINT32_MAX;
+	/* The housekeeping every pass of the shelf's loop does through
+	 * tick_theme - a File Transfer behind the shelf, the update's daily look,
+	 * the theme's hour - and a theme that turned is a frame */
+	g_ctl_shelf_pass = true;
+	if (tick_theme(a)) draw = true;
+	g_ctl_shelf_pass = false;
+	if (draw) {
+		saver_draw(a, alpha);
+		g_sv.last_draw = now;
+	} else {
+		plat_input_wait(16);
+	}
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	app a = { 0 };
@@ -23464,6 +27270,24 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && argv[i + 1][0] != '-')
 				shot_menu_label = argv[++i];
 		}
+		else if (!strcmp(argv[i], "--menu-steps") && i + 1 < argc)
+			shot_menu_steps = atoi(argv[++i]);
+		/* --menu-tab N: MENU on tab N (pm_tab, 0 Games to 5 About), and
+		 * --menu-tab-from M MS on its way there from tab M, MS into the
+		 * move (DESIGN.md 11.3) */
+		else if (!strcmp(argv[i], "--look") && i + 1 < argc)
+			shot_look = argv[++i];
+		else if (!strcmp(argv[i], "--look-page") && i + 1 < argc) {
+			shot_look_page = argv[++i];
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_look_row = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--menu-tab") && i + 1 < argc)
+			g_tabs.at = g_tabs.from = atoi(argv[++i]) % PT_TABS;
+		else if (!strcmp(argv[i], "--menu-tab-from") && i + 2 < argc) {
+			shot_tab_from = atoi(argv[++i]) % PT_TABS;
+			shot_tab_ms = atoi(argv[++i]);
+		}
 		/* --slots <sel> [aspect] draws one frame of the save/load carousel
 		 * over synthetic frames, which is the only way to look at it without
 		 * a game running on a device. */
@@ -23472,6 +27296,16 @@ int main(int argc, char *argv[])
 		 * device or a hand on it. */
 		else if (!strcmp(argv[i], "--jump") && i + 1 < argc) {
 			shot_jump = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--folder") && i + 1 < argc) shot_folder = argv[++i];
+		else if (!strcmp(argv[i], "--shelf-press") && i + 1 < argc) shot_shelf_press = argv[++i];
+		else if (!strcmp(argv[i], "--game") && i + 1 < argc) shot_game = argv[++i];
+		else if (!strcmp(argv[i], "--view") && i + 1 < argc) {
+			shot_view = argv[++i];
+			if (strcmp(shot_view, "list") && strcmp(shot_view, "covers")) {
+				fprintf(stderr, "--view needs list or covers\n");
+				return 2;
+			}
 		}
 		/* --keyboard [layer] [text] draws one frame of the text-entry panel,
 		 * for the same reason --menu and --slots exist: it is dense, and
@@ -23521,6 +27355,7 @@ int main(int argc, char *argv[])
 		/* The details page with the cursor on Delete Game, and its question
 		 * over the shelf (DESIGN.md 11.31) */
 		else if (!strcmp(argv[i], "--info-delete")) shot_info = 2;
+		else if (!strcmp(argv[i], "--info-rename")) shot_info = 3;
 		else if (!strcmp(argv[i], "--info-art")) shot_info_art = true;
 		else if (!strcmp(argv[i], "--delete-ask")) shot_delete_ask = 1;
 		/* The game under the cursor deleted as Delete Game's yes deletes it,
@@ -23623,9 +27458,11 @@ int main(int argc, char *argv[])
 			i++;
 			shot_key = !strcmp(argv[i], "left")  ? IN_LEFT
 			           : !strcmp(argv[i], "right") ? IN_RIGHT
+			           : !strcmp(argv[i], "l1")    ? IN_L1
+			           : !strcmp(argv[i], "r1")    ? IN_R1
 			           : !strcmp(argv[i], "a")     ? IN_ACCEPT : -1;
 			if (shot_key < 0) {
-				fprintf(stderr, "--press: %s is not left, right or a\n", argv[i]);
+				fprintf(stderr, "--press: %s is not left, right, l1, r1 or a\n", argv[i]);
 				return 2;
 			}
 		}
@@ -23670,7 +27507,9 @@ int main(int argc, char *argv[])
 			shot_portload = argv[++i];
 		else if (!strcmp(argv[i], "--portmaster")) {
 			/* The Install PortMaster page, as ZYPEROS_PM_STATUS's file
-			 * says, with any of running, nonet, nopython, installed */
+			 * says, with any of running, nonet, nopython, installed; and
+			 * Reinstall PortMaster's with repair, or failed (the error
+			 * ZYPEROS_PM_WHY says, a missing module when it says none) */
 			g_pm_shot = 0;
 			if (i + 1 < argc && argv[i + 1][0] != '-') {
 				const char *w = argv[++i];
@@ -23678,6 +27517,8 @@ int main(int argc, char *argv[])
 				if (strstr(w, "nonet"))     g_pm_shot |= PM_SHOT_NONET;
 				if (strstr(w, "nopython"))  g_pm_shot |= PM_SHOT_NOPYTHON;
 				if (strstr(w, "installed")) g_pm_shot |= PM_SHOT_INSTALLED;
+				if (strstr(w, "repair"))    g_pm_shot |= PM_SHOT_REPAIR;
+				if (strstr(w, "failed"))    g_pm_shot |= PM_SHOT_FAILED;
 			}
 		}
 		else if (!strcmp(argv[i], "--storage-sort") && i + 1 < argc) {
@@ -23700,6 +27541,15 @@ int main(int argc, char *argv[])
 				else shot_storage_row = argv[i];
 			}
 		}
+		else if (!strcmp(argv[i], "--ranews") && i + 1 < argc) {
+			shot_ranews = atoi(argv[++i]);
+			if (shot_heatpop < 0) shot_heatpop = 3000;
+		}
+		else if (!strcmp(argv[i], "--cheevos-waiting") && i + 1 < argc)
+			shot_cheevos_waiting = atoi(argv[++i]);
+		/* The Achievements rows of a game never played with a network, in
+		 * the in-game menu (--gamemenu) and the game's details (--info) */
+		else if (!strcmp(argv[i], "--cheevos-unchecked")) g_shot_unchecked = true;
 		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
 			shot_upnews = argv[++i];
 			if (shot_heatpop < 0) shot_heatpop = 3000;
@@ -23735,6 +27585,17 @@ int main(int argc, char *argv[])
 			g_shot_snap_k = (float)atof(argv[++i]);
 			if (g_shot_snap_k < 0) g_shot_snap_k = 0;
 			if (g_shot_snap_k > 1) g_shot_snap_k = 1;
+		}
+		/* --saver [cover]: the screensaver, over a test picture; --saver-alpha F
+		 * how far the clip has faded up, 0 to 1 */
+		else if (!strcmp(argv[i], "--saver")) {
+			g_shot_saver = i + 1 < argc && !strcmp(argv[i + 1], "cover") ? (i++, 1) : 0;
+		}
+		else if (!strcmp(argv[i], "--saver-pic") && i + 1 < argc) {
+			g_shot_saver_pic = argv[++i];
+		}
+		else if (!strcmp(argv[i], "--saver-alpha") && i + 1 < argc) {
+			g_shot_saver_alpha = (float)atof(argv[++i]);
 		}
 		/* --snap-wait F: the games shelf with the bar under its focused
 		 * cover F of the way through the wait for its snap, 0 to 1 */
@@ -23832,6 +27693,9 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--replug")) {
 			g_replug.on = true;
 			g_replug.plug = 1;
+			g_replug.say = USBPOWER_SAY_COMPUTER;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { g_replug.say = USBPOWER_SAY_PHONE; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "iphone")) { g_replug.say = USBPOWER_SAY_IPHONE; i++; }
 		}
 		else if (!strcmp(argv[i], "--usb-menu")) {
 			shot_usb_menu = true;
@@ -23839,9 +27703,11 @@ int main(int argc, char *argv[])
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { g_usb_auto = true; shot_usb_said = true; i++; }
 		}
 		else if (!strcmp(argv[i], "--usb-power")) {
-			shot_power = 1;
-			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = 2; i++; }
-			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '1')
+			shot_power = UP_COMPUTER;
+			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = UP_TILES; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "phone")) { shot_power = UP_TILES + 1; i++; }
+			else if (i + 1 < argc && !strcmp(argv[i + 1], "iphone")) { shot_power = UP_TILES + 2; i++; }
+			else if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '2')
 				shot_power = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--dev-page")) {
@@ -23855,6 +27721,35 @@ int main(int argc, char *argv[])
 				shot_xfer_ask = atoi(argv[++i]);
 			if (i + 1 < argc && !strcmp(argv[i + 1], "game")) { shot_xfer_game = true; i++; }
 		}
+		else if (!strcmp(argv[i], "--player2") && i + 1 < argc) {
+			static char qr[160];
+			const char *kind = argv[++i];
+			p2_view *v = &g_shot_p2_view;
+
+			g_shot_p2 = true;
+			memset(v, 0, sizeof *v);
+			v->st = P2_WAITING;
+			v->link = P2_HOTSPOT;
+			v->players = 2;
+			v->ssid = "ZyperOS-7A2B";
+			v->pass = "q7mx-3kpa";
+			captive_wifi_qr(qr, sizeof qr, v->ssid, v->pass);
+			v->qr = qr;
+			v->url = P2_HOTSPOT_ADDR "/play";
+			if (!strcmp(kind, "connected"))      { v->st = P2_CONNECTED; v->guests = 1; }
+			else if (!strcmp(kind, "cable"))     { v->link = P2_CABLE; v->url = "zyperos.local/play"; }
+			else if (!strcmp(kind, "off"))       v->st = P2_OFF;
+			else if (!strcmp(kind, "off-cable")) { v->st = P2_OFF; v->link = P2_CABLE; }
+			else if (!strcmp(kind, "none"))      { v->st = P2_OFF; v->link = P2_NO_LINK; }
+			else if (!strcmp(kind, "failed"))    v->st = P2_FAILED;
+			else if (!strcmp(kind, "starting"))  v->starting = true;
+			else if (!strcmp(kind, "closing"))   v->closing = true;
+			else if (!strcmp(kind, "closing-cable")) {
+				v->closing = true;
+				v->link = P2_CABLE;
+				v->url = "zyperos.local/play";
+			}
+		}
 		else if (!strcmp(argv[i], "--hotspot")) {
 			shot_hot = 1;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_ssid   = argv[++i];
@@ -23862,11 +27757,18 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_phones = argv[++i];
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hot_now    = argv[++i];
 		}
+		/* --hotspot-in: the hotspot once someone came in (the news) */
+		else if (!strcmp(argv[i], "--hotspot-in")) shot_hot_in = 1;
+		/* --hare-addr ADDR: the way in's address (a long one, for the fit) */
+		else if (!strcmp(argv[i], "--hare-addr") && i + 1 < argc) shot_steps_addr = argv[++i];
 		else if (!strcmp(argv[i], "--hare-steps") && i + 2 < argc) {
 			shot_steps_way = argv[++i];
 			shot_steps_state = argv[++i];
 			if (i + 1 < argc && !strcmp(argv[i + 1], "noname")) { shot_steps_noname = true; i++; }
 		}
+		/* --hare-move idle|in|out|both|closing|finish|gone: File Transfer's
+		 * tiles, with --hare or --hotspot-in (the shot's MV) */
+		else if (!strcmp(argv[i], "--hare-move") && i + 1 < argc) shot_hare_move = argv[++i];
 		else if (!strcmp(argv[i], "--hare")) {
 			shot_hare = 1;
 			if (i + 1 < argc && argv[i + 1][0] != '-') shot_hare_addr = argv[++i];
@@ -24116,7 +28018,7 @@ int main(int argc, char *argv[])
 			snprintf(m.genres,    sizeof m.genres,    "%s", fld[6]);
 			snprintf(m.esrb,      sizeof m.esrb,      "%s", fld[7]);
 			snprintf(m.note,      sizeof m.note,      "%s", fld[8]);
-			if (db_game_set(db_lib(), fld[0], fld[1], &m)) wrote++;
+			if (db_game_set(db_lib(), card_folder(fld[0]), fld[1], &m)) wrote++;
 			else bad++;
 		}
 		fclose(f);
@@ -24168,6 +28070,7 @@ int main(int argc, char *argv[])
 			*title++ = '\0';
 			if ((end = strchr(title, '\t'))) *end = '\0';
 			if (!folder[0] || !file[0] || !title[0]) { bad++; continue; }
+			folder = (char *)card_folder(folder);
 			db_game_get(db_lib(), folder, file, &m);
 			snprintf(m.title, sizeof m.title, "%s", title);
 			if (db_game_set(db_lib(), folder, file, &m)) wrote++;
@@ -24208,6 +28111,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "no usable %s\n", path);
 			return 1;
 		}
+		/* The folders the shelves read, EmulationStation's where they read
+		 * one, and its covers and videos counted as covers and videos */
+		shelf_folders_from_card(&all);
+		art_es_media(es_art_cover, es_art_video);
 		db_paths_ready(dev, sizeof dev, lib, sizeof lib, NULL, 0);
 		if (!db_init(dev, lib, NULL)) {
 			fprintf(stderr, "cannot open the databases\n");
@@ -24225,7 +28132,7 @@ int main(int argc, char *argv[])
 
 			memset(&one, 0, sizeof one);
 			for (i = 0; i < all.count; i++)
-				if (!strcmp(all.systems[i].folder, only_sys)) {
+				if (!strcmp(all.systems[i].folder, only_sys) || !strcmp(all.systems[i].home, only_sys)) {
 					one.systems[0] = all.systems[i];
 					one.count = 1;
 					break;
@@ -24403,14 +28310,17 @@ int main(int argc, char *argv[])
 		plat_resident_on_unlock(on_cheevo_unlocked);
 		plat_resident_on_progress(on_cheevo_progress);
 		plat_resident_on_speed(on_speed);
+		plat_resident_on_stick(on_stick);
 		plat_resident_on_quick(on_quick);
 		plat_resident_on_tick(on_game_tick);
 		plat_resident_on_battery_empty(battery_empty);
+		p2_setup();
 		heat_init(&g_heat);
 
 		/* Without this every HTTPS request fails verification, because the
 		 * device has no trust store of its own - res/ssl/README.md. */
 		a.auto_off = auto_off_load();
+		g_saver_s = saver_load();
 		g_charge_limit = charge_limit_load();
 		/* A full charge asked for ends with the cable out, here too */
 		if (!on_charger()) remove(CHG_FULL_ONCE);
@@ -24501,6 +28411,19 @@ int main(int argc, char *argv[])
 			db_get_str(db_dev(), "language", lc, sizeof lc, "en");
 			i18n_set(lang_parse(shot_path && shot_lang ? shot_lang : lc));
 		}
+		look_load();
+		/* --look's, for a shot: ACCENT,LIGHT,DARK,CORNERS,ZYPER as the
+		 * database keeps them ("blue,cool,deepblue,square,off") */
+		if (shot_path && shot_look) {
+			char w[5][16] = { "", "", "", "", "" };
+			look l;
+
+			sscanf(shot_look, "%15[^,],%15[^,],%15[^,],%15[^,],%15s",
+			       w[0], w[1], w[2], w[3], w[4]);
+			l = look_parse(w[0], w[1], w[2], w[3], w[4]);
+			look_set(&l);
+			look_bar_colors();
+		}
 		theme_init(shot_path && shot_theme >= 0 ? (appearance)shot_theme
 		                                        : appearance_parse(ap));
 	}
@@ -24525,6 +28448,8 @@ int main(int argc, char *argv[])
 	 * what a tool for checking one frame wants: the right picture, not a fast
 	 * one. */
 	IMG_Init(IMG_INIT_PNG);
+	texload_set_late(es_cover_late);
+	art_es_media(es_art_cover, es_art_video);
 	if (!shot_path) texload_start();
 
 	/* The interface sounds, which read their files on a thread of their own,
@@ -24613,6 +28538,7 @@ int main(int argc, char *argv[])
 	display_load(&a);
 	core_load(&a);
 	sort_load(&a);
+	view_load(&a);
 	sort_all(&a);
 	t_mark("scan");
 
@@ -24668,6 +28594,35 @@ int main(int argc, char *argv[])
 
 	if (shot_path) {
 		if (shot_screen >= 0) a.screen = (screen_id)shot_screen;
+		if (shot_view) a.view[a.sys_cursor].listed = !strcmp(shot_view, "list");
+		if (shot_folder) shelf_open_dir(&a, a.sys_cursor, shot_folder, NULL);
+		if (shot_game) shelf_reveal(&a, a.sys_cursor, shot_game);
+		for (const char *k = shot_shelf_press; k && *k; ) {
+			static const struct { const char *w; in_button b; } KEYS[] = {
+				{ "a", IN_ACCEPT }, { "b", IN_BACK }, { "x", IN_X }, { "y", IN_Y },
+				{ "up", IN_UP }, { "down", IN_DOWN }, { "left", IN_LEFT },
+				{ "right", IN_RIGHT }, { "l1", IN_L1 }, { "r1", IN_R1 }, { "start", IN_START },
+			};
+			size_t len = strcspn(k, ",");
+			unsigned j;
+
+			for (j = 0; j < sizeof KEYS / sizeof KEYS[0]; j++)
+				if (strlen(KEYS[j].w) == len && !strncmp(KEYS[j].w, k, len)) break;
+			if (j == sizeof KEYS / sizeof KEYS[0]) {
+				fprintf(stderr, "--shelf-press: %.*s is no key\n", (int)len, k);
+				return 2;
+			}
+			memset(&a.in, 0, sizeof a.in);
+			a.in.pressed[KEYS[j].b] = true;
+			a.screen = SCREEN_GAMES;
+			update_games(&a);
+			memset(&a.in, 0, sizeof a.in);
+			fprintf(stderr, "shelf-press: %s -> %s [%s] %d/%d\n", KEYS[j].w,
+			        a.view[a.sys_cursor].dir[0] ? a.view[a.sys_cursor].dir : "top",
+			        a.view[a.sys_cursor].list.count ? a.view[a.sys_cursor].list.items[a.view[a.sys_cursor].cursor].file : "",
+			        a.view[a.sys_cursor].cursor + 1, a.view[a.sys_cursor].list.count);
+			k += len + (k[len] == ',');
+		}
 		if (shot_jump) {
 			sysview *v = &a.view[a.sys_cursor];
 			int k, dir = shot_jump > 0 ? 1 : -1;
@@ -24796,6 +28751,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "tour: %s is not set, so the tutorial comes first\n", TOUR_DONE_KEY);
 		tour_run(&a, true);
 	}
+	/* Or, back from a PortMaster that closed with an error, its page with
+	 * what happened and Reinstall PortMaster */
+	else if (a.running && !shot_path) {
+		pm_after_run(&a);
+	}
+	/* Its record read or not, it is this start's alone */
+	if (!shot_path) unlink(PM_RAN);
 
 	/* Drawing only when something changed. See g_redraw_at.
 	 *
@@ -24873,8 +28835,12 @@ int main(int argc, char *argv[])
 		 * then whatever was waiting on it sent. */
 		sync_poll();
 
-		/* Unlocks sent in the background: apply what the account answered. */
+		/* Unlocks sent in the background: apply what the account answered.
+		 * And a network that came back with unlocks waiting sends them, from
+		 * here only - never during a game (ra_flush_watch). */
 		ra_flush_poll();
+		ra_flush_watch(plat_now_ms());
+		ra_sent_news(ra_flush_take_sent());
 
 		/* What Muse said since the last pass - including END, which is how
 		 * the next track of an album starts while nobody is on its screen -
@@ -24920,7 +28886,9 @@ int main(int argc, char *argv[])
 				any = a.in.pressed[b] || a.in.down[b];
 			switch (charge_dark_poll(&dark, a.auto_off, plat_now_ms(), any,
 			                         on_charger(), musec_playing())) {
-			case CHARGE_GO_DARK: snap_off(); plat_backlight(false); continue;
+			case CHARGE_GO_DARK:
+				saver_stop(&a, "the screen went dark on the cable");
+				snap_off(); plat_backlight(false); continue;
 			case CHARGE_DARK:
 				/* Dark on the cable, and still moving files behind it */
 				/* Developer Mode on a release image holds its link and its
@@ -24949,7 +28917,10 @@ int main(int argc, char *argv[])
 		 * question here, once per plug (usblink.h). After the dark screen's
 		 * turn, so it waits for the screen to be lit rather than opening
 		 * in the dark. */
-		if (usblink_follow(db_dev(), plat_now_ms())) usb_ask(&a);
+		if (usblink_follow(db_dev(), plat_now_ms())) {
+			saver_stop(&a, "a computer was plugged in");
+			usb_ask(&a);
+		}
 		/* Something on the port wants power: asked too, once per plug;
 		 * the replug message is the overlay's, over any screen */
 		power_follow();
@@ -24957,7 +28928,14 @@ int main(int argc, char *argv[])
 			unsigned plug = g_power_ask;
 
 			g_power_ask = 0;
+			saver_stop(&a, "something was plugged in");
 			usb_power_ask(&a, plug);
+		}
+		/* A phone's USB tethering with an address: File Transfer opens on
+		 * it, once a link (phonelink.h) */
+		if (phone_link_due(g_xs.on)) {
+			saver_stop(&a, "a phone shared its network");
+			xfer_screen_way(&a, 2);
 		}
 
 		if (a.in.pressed[IN_POWER] || idle_due(&a)) { power_off(&a); break; }
@@ -24983,6 +28961,12 @@ int main(int argc, char *argv[])
 			if (!a.running) break;
 			continue;
 		}
+		/* The screensaver (src/saver.h): after the delay with nothing
+		 * pressed it takes the shelf's place, and goes on taking it until a
+		 * button. After idle_due above, which is why it can never keep the
+		 * device on past Auto Off; after px2-open's commands, which a
+		 * screensaver must not hold up. */
+		if (saver_pass(&a)) continue;
 		g_ctl_shelf_pass = true;
 		tick_theme(&a);
 		g_ctl_shelf_pass = false;
@@ -25001,6 +28985,7 @@ int main(int argc, char *argv[])
 		/* ...and "Getting hot", when the chip has passed the trip */
 		heat_watch();
 		up_news_watch();
+		ra_news_watch();
 
 		/* SELECT is Muse, on the shelf and on every screen but a running
 		 * game - see muse_open. Before the shelf's own keys, which do not use

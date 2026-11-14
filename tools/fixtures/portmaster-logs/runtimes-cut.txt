@@ -1,0 +1,44 @@
+2026-11-12 18:35:07.549 | DEBUG    | harbourmaster.config:<module>:194 - HM_DEFAULT_TOOLS_DIR:   /roms/ports
+2026-11-12 18:35:07.549 | DEBUG    | harbourmaster.config:<module>:195 - HM_DEFAULT_PORTS_DIR:   /roms/ports
+2026-11-12 18:35:07.549 | DEBUG    | harbourmaster.config:<module>:196 - HM_DEFAULT_SCRIPTS_DIR: /roms/ports
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+ERROR: Could not restore CRTC
+[ALSOFT] (EE) Wait timeout... buffer size too low?
+Attempting to delete file at path: /roms/ports/PortMaster/utils/pmsplash/stopsplash
+File 'stopsplash' deleted successfully.
+virtio_gpu: driver missing
+ERROR: Could not restore CRTC
+2026-11-12 18:35:13.366 | ERROR    | harbourmaster.util:json_safe_load:51 - Unable to load json_data :0:1:1
+2026-11-12 18:35:13.367 | ERROR    | __main__:<module>:2116 - An error has been caught in function '<module>', process 'MainProcess' (12804), thread 'MainThread' (281472995840032):
+Traceback (most recent call last):
+
+> File "/mnt/SDCARD/Roms/Ports/PortMaster/./pugwash", line 2116, in <module>
+    exit(main(sys.argv))
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/./pugwash", line 2086, in main
+    pm.hm = HarbourMaster(config, temp_dir=temp_dir, callback=pm)
+
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/harbourmaster/harbour.py", line 162, in __init__
+    self.load_info()
+
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/harbourmaster/harbour.py", line 301, in load_info
+    self.list_runtimes()
+
+  File "/mnt/SDCARD/Roms/Ports/PortMaster/pylibs/harbourmaster/harbour.py", line 1624, in list_runtimes
+    for runtime_name, runtime_data in self.runtimes_info.items():
+
+AttributeError: 'NoneType' object has no attribute 'items'
+0: 1
+{'device': 'gkd-pixel2', 'name': 'Unknown', 'version': '0.0.0', 'resolution': (640, 480), 'analogsticks': 0, 'cpu': 'rk3326', 'capabilities': ['aarch64', 'restore', '4:3', '640x480', 'Unknown', 'gkd-pixel2', 'analog_0', '1gb', 'en_US'], 'ram': 1024, 'primary_arch': 'aarch64', 'glibc': '2.42'}
+ERROR: Could not restore CRTC
+/mnt/SDCARD/Roms/Ports/PortMaster.sh: line 186: systemctl: command not found

@@ -27,6 +27,12 @@ names, and headless Chrome draws it at a computer's width and a phone's, in
 light, over the DevTools protocol. --chrome names the browser; --no-page
 leaves those shots out. The server listens on a port the kernel picks while
 it runs.
+
+NES Player 2's play page (res/web/play) is shot the same way, on a phone held
+upright and on its side: build-native/p2d serves it from res/web as
+mk/payload.sh lays it out, over a share that build-native/p2d-feed fills with
+its own drawn frames (stripes and a box, no game's picture), and the page
+draws them as a friend's phone would. --no-page leaves these out too.
 """
 import argparse
 import base64
@@ -80,7 +86,18 @@ LIBRARY={
         ('Mario Kart - Super Circuit (USA).gba','Mario Kart - Super Circuit (USA)'),
         ('Metroid Fusion (USA).gba','Metroid Fusion (USA)'),
         ('Pokemon - Emerald Version (USA, Europe).gba','Pokemon - Emerald Version (USA, Europe)'),
-        ('The Legend of Zelda - The Minish Cap (USA).gba','Legend of Zelda, The - The Minish Cap (USA)')],
+        ('The Legend of Zelda - The Minish Cap (USA).gba','Legend of Zelda, The - The Minish Cap (USA)'),
+        # Folders of games (src/shelfdir.h), as someone sorts a shelf: the
+        # folders shot and the list. A hack and a homebrew game with no art
+        # of their own show the generated card.
+        ('Commercial Owned/Castlevania - Aria of Sorrow (USA).gba','Castlevania - Aria of Sorrow (USA)'),
+        ('Commercial Owned/Final Fantasy Tactics Advance (USA).gba','Final Fantasy Tactics Advance (USA)'),
+        ('Commercial Owned/Golden Sun (USA).gba','Golden Sun (USA, Europe)'),
+        ('Commercial Owned/Kirby & The Amazing Mirror (USA).gba','Kirby & The Amazing Mirror (USA)'),
+        ('Friends Games/Fire Emblem (USA).gba','Fire Emblem (USA, Australia)'),
+        ('Homebrew and Aftermarket/Goodboy Galaxy.gba',None),
+        ('Rom Hacks/Metroid Zero Mission Redux.gba',None),
+        ('Rom Hacks/Translations/Mother 3 (English).gba','Mother 3 (Japan)')],
     'Genesis':[
         ('Gunstar Heroes (USA).md','Gunstar Heroes (USA)'),
         ('Sonic The Hedgehog (USA).md','Sonic The Hedgehog (USA)'),
@@ -104,7 +121,7 @@ LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertain
          'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
 # With --art, the in-game menu and its Controls pages stand over a screenshot
 # of a PlayStation game (--backdrop) rather than a made-up frame
-BACKDROP=['gamemenu','controls-ps1','controls-hotkeys']
+BACKDROP=['gamemenu','gamemenu-shader','controls-ps1','controls-hotkeys','controls-psp']
 BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
 ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
 GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
@@ -136,26 +153,54 @@ SHOTS={
     'favorites':('demo','FAV',['--screen','games']),
     'info':('demo','PS1',['--screen','games','--info']),
     'info-delete':('demo','PS1',['--screen','games','--info-delete']),
+    # A card copied from Knulli (DESIGN.md 11.40): the PlayStation's games in
+    # psx/, their covers and video ES's, and Rename's keyboard (11.41)
+    'es-shelf':('es','PS1',['--screen','games']),
+    'info-rename':('demo','PS1',['--screen','games','--info-rename']),
+    'rename':('demo','PS1',['--screen','games','--keyboard','0','Metal Gear Solid (USA)','Rename']),
     'delete-ask':('demo','PS1',['--screen','games','--delete-ask']),
     'cheevos':('demo','PS1',['--cheevos-screen','0','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
+    # ...with two of its unlocks earned offline and waiting to be sent
+    'cheevos-waiting':('demo','PS1',['--cheevos-screen','0','--cheevos-waiting','2','--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
     # An unlock over a game (DESIGN.md 11.7): its badge, and Zyper at the right
     'cheevo-notice':('demo','PS1',['--notice-kind','unlock','--notice',"Violated Heavens",'Unlocked \u00b7 10 points',
                                    '--notice-badge','{card}/Roms/PlayStation/.cheevos/badges/b3.png']),
     'menu':('demo','PS1',['--menu','Search Games']),
+    # MENU's Display tab on Theme, its chips, and the Theme page with both
+    # themes small (DESIGN.md 11.3, 11.42)
+    'display':('demo','PS1',['--menu-tab','1','--menu','Theme']),
+    'theme':('demo','PS1',['--look-page','theme','0']),
     'mp4':('media','MUSE',['--screen','games']),
     'nowplaying':('demo','MUSE',['--nowplaying','0','0','83']),
     'hare':('demo','PS1',['--hare','http://192.168.1.42','1 connected','Tobu Tobu Girl.gb']),
+    # Wi-Fi File Transfer's way in (DESIGN.md 11.35): the address, the name
+    # and the PIN at full size until someone signs in
+    'hare-way':('demo','PS1',['--hare-steps','wifi','browser']),
     'hotspot':('demo','PS1',['--hotspot','ZyperOS-7A2B','q7mx-3kpa','1 joined','waiting']),
+    # NES Player 2's page over a paused NES game (src/p2panel.h), on the
+    # handheld's own Wi-Fi: its code, nobody joined yet (the launcher's
+    # made-up frame behind it, not a game's)
+    'player2-hotspot':('demo','NES',['--screen','games','--player2','hotspot']),
     'usb-ask':('demo','PS1',['--usb-ask','0']),
-    # USB File Transfer's steps (DESIGN.md 11.35): the cable and the address
-    # ticked, the browser awaited
-    'usb-steps':('demo','PS1',['--hare-steps','usb','browser']),
+    # USB File Transfer's steps (DESIGN.md 11.35): the cable ticked, the
+    # address waited on too long, and its hint
+    'usb-steps':('demo','PS1',['--hare-steps','usb','noaddress']),
     'scummvm':('scummvm','SCUMMVM',['--screen','games']),
+    # Folders of games on a shelf, and the list (DESIGN.md 11.39): the Game
+    # Boy Advance shelf's top, its folders first with their games counted;
+    # inside one; and MENU > View > List, its covers' panel beside the rows
+    'folders':('demo','GBA',['--screen','games']),
+    'folder-inside':('demo','GBA',['--screen','games']),
+    'list':('demo','GBA',['--screen','games','--view','list']),
+    'list-inside':('demo','GBA',['--screen','games','--view','list']),
     # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
     # made-up frame rather than a game's
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
     'scraper':('demo','PS1',['--scraper','2']),
     'update':('demo','PS1',['--update']),
+    # The screensaver (DESIGN.md 11.37) over the focused game's screenshot,
+    # which is the picture its video snap would be
+    'screensaver':('demo','PS1',['--saver','--saver-pic','{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png']),
     'ports':('ports','PRT',['--screen','games']),
     # The in-game menu over a port, and the first of its Controls pages: what
     # its README says the buttons do (the made-up Star Farm, SHOT_FOCUS)
@@ -209,8 +254,12 @@ SHOTS={
     # Quick Slot row, a PlayStation game's buttons drawn as their shapes, and
     # its Hotkeys page, SELECT with a shoulder
     'gamemenu':('demo','PS1',['--screen','games','--gamemenu','3']),
+    # ...on its Shader row, Sharp-Shimmerless (SHOT_SETTINGS)
+    'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','5']),
     'controls-ps1':('demo','PS1',['--screen','games','--gamecontrols','0','PS1']),
     'controls-hotkeys':('demo','PS1',['--screen','games','--gamecontrols','2','PS1']),
+    # The PSP's buttons, with R2, which turns the d-pad into its stick
+    'controls-psp':('psp','PSP',['--screen','games','--gamecontrols','1','PSP']),
 }
 # Favorites for a shot alone, set before it is taken and cleared after: the
 # games page with the focused game and the one before it kept, so the heart
@@ -224,6 +273,9 @@ SHOT_FAVS={'shelf':[('PS1',FOCUS+'.chd'),('PS1',GAMES[1]+'.chd')],
 # The game a shot's shelf opens on, where it is not its system's own (below)
 # MP4's on the film, between an album and the book, so its three kinds show
 SHOT_FOCUS={'ports-menu':'Star Farm.sh','ports-controls':'Star Farm.sh','mp4':'Videos',
+            'folders':'Commercial Owned','list':'Commercial Owned',
+            'folder-inside':'Commercial Owned/Golden Sun (USA).gba',
+            'list-inside':'Commercial Owned/Golden Sun (USA).gba',
             'shelf-n64':'Super Mario 64 (USA).z64','shelf-snes':'Super Mario World (USA).sfc',
             'favorites':'Sonic The Hedgehog 2 (USA).md'}
 # A shot's own --status where the README's default (no Wi-Fi, 82%) would hide
@@ -232,7 +284,8 @@ STATUS={'battery':'10:08 24h wifi=3 batt=62 eta=205 icon=time',
         'topbar':'10:08 24h wifi=3 phones=on batt=62','topbar-paused':'10:08 24h wifi=3 phones=on batt=62',
         'topbar-still':'10:08 24h wifi=3 phones=on batt=62','topbar-long':'10:08 24h wifi=3 phones=on batt=62','topbar-long-moving':'10:08 24h wifi=3 phones=on batt=62'}
 # The README's light-and-dark section: these, in both themes
-DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media','shelf-n64']
+DARK=['systems','menu','topbar','nowplaying','video-controls','video-full','media','shelf-n64',
+      'folders','list']
 # A shot whose screen draws its own clock, outside the status corner, so the
 # launcher's corner check (shot_corner_clear in src/main.c) reports this after
 # writing a right picture: the charging screen's clock is its own (DESIGN.md
@@ -382,8 +435,9 @@ def demo_card(card,art,manifest):
     for folder,games in LIBRARY.items():
         d=card/'Roms'/folder;(d/'.media').mkdir(parents=True)
         for file,lr in games:
+            (d/file).parent.mkdir(parents=True,exist_ok=True)
             (d/file).touch()
-            if art:
+            if art and lr:
                 got=art_file(art,LR_REPO[folder],'Named_Boxarts',lr)
                 shutil.copyfile(got,d/'.media'/(Path(file).stem+'.png'))
                 note_art(manifest,f'{folder}/{file}',folder,'Named_Boxarts',lr,got)
@@ -428,6 +482,48 @@ def media_card(card,art=None,manifest=None):
     book=card/'Audiobooks/Treasure Island';book.mkdir(parents=True)
     (book/'01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
 
+# A shot's settings in the handheld's own database (userdata/zyperos.db, as
+# the launcher's db_dev keeps them), there only while it is taken
+SHOT_SETTINGS={'gamemenu-shader':{'shader.PS1':'shimmerless'}}
+
+def set_settings(card,settings,on):
+    """A shot's settings (SHOT_SETTINGS) into the handheld's database, or out"""
+    if not settings: return
+    (card/'userdata').mkdir(parents=True,exist_ok=True)
+    with sqlite3.connect(card/'userdata/zyperos.db') as db:
+        db.execute('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)')
+        for key,value in settings.items():
+            if on: db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)',(key,value))
+            else: db.execute('DELETE FROM settings WHERE key=?',(key,))
+
+def es_card(card,art=None,manifest=None):
+    """A card copied from a system built on EmulationStation (DESIGN.md
+    11.40): every ZyperOS folder empty, as a new card has them, and the
+    PlayStation's games in Knulli's psx/, with what its scraper left beside
+    them - images/<game>-thumb.png, videos/<game>-video.mp4 and gamelist.xml
+    with their names and details. Nothing in .media: the shelf shows ES's."""
+    card_dirs(card)
+    for line in (ROOT/'config/systems.cfg').read_text(encoding='utf-8').splitlines():
+        if line.startswith('sys|'): (card/'Roms'/line.split('|')[2].strip()).mkdir(parents=True,exist_ok=True)
+    d=card/'Roms/psx';(d/'images').mkdir(parents=True);(d/'videos').mkdir()
+    entries=[]
+    for file,lr in LIBRARY['PlayStation']:
+        stem=Path(file).stem;(d/file).touch()
+        if art:
+            got=art_file(art,LR_REPO['PlayStation'],'Named_Boxarts',lr)
+            shutil.copyfile(got,d/'images'/(stem+'-thumb.png'))
+            if manifest is not None: note_art(manifest,f'psx/images/{stem}-thumb.png','PlayStation','Named_Boxarts',lr,got)
+            video=snap_video(art,'PlayStation',lr)
+            if video: shutil.copyfile(video,d/'videos'/(stem+'-video.mp4'))
+        name=stem.split(' (')[0].replace(' - ',': ')
+        desc=SYNOPSIS if stem==FOCUS else ''
+        entries.append('\t<game>\n\t\t<path>./%s</path>\n\t\t<name>%s</name>\n\t\t<desc>%s</desc>\n'
+                       '\t\t<thumbnail>./images/%s-thumb.png</thumbnail>\n\t\t<video>./videos/%s-video.mp4</video>\n'
+                       '\t\t<releasedate>19981021T000000</releasedate>\n\t\t<genre>Action</genre>\n\t</game>\n'
+                       %(file.replace('&','&amp;'),name.replace('&','&amp;'),desc.replace('&','&amp;'),
+                         stem.replace('&','&amp;'),stem.replace('&','&amp;')))
+    (d/'gamelist.xml').write_text('<?xml version="1.0"?>\n<gameList>\n'+''.join(entries)+'</gameList>\n',encoding='utf-8')
+
 def set_favs(card,favs,on):
     """A shot's favorites (SHOT_FAVS) into the card's library, or out of it"""
     if not favs: return   # a card with no library yet (ScummVM's) keeps none
@@ -452,7 +548,7 @@ def ports_card(card):
 
 def pm_art(card):
     """PortMaster's covers and icon in the card's ZyperOS, as the payload
-    puts them there (tools/genportmaster.py)"""
+    puts them there (res/portmaster)"""
     (card/'ZyperOS/portmaster').mkdir(parents=True,exist_ok=True)
     for name in ('cover-light.png','cover-dark.png','icon.png'):
         shutil.copyfile(ROOT/'res/portmaster'/name,card/'ZyperOS/portmaster'/name)
@@ -489,6 +585,14 @@ def openbor_card(card):
     card_dirs(card)
     d=card/'Roms/OpenBOR';d.mkdir(parents=True)
     for name in OPENBOR: (d/name).touch()
+
+# The PSP's shelf, for its Controls page with R2 on it: a file stands in for a
+# game, as OpenBOR's does
+PSP=['Game.iso']
+def psp_card(card):
+    card_dirs(card)
+    d=card/'Roms/PSP';d.mkdir(parents=True)
+    for name in PSP: (d/name).touch()
 
 # The File Transfer page: a computer's window on a console's folder with an
 # upload going (throttled to 64 KB/s, shot 4.5 s in, once its time left shows), and a phone's on the PIN
@@ -651,6 +755,109 @@ def page_shots(chrome,dest,only,manifest):
             if browser: browser.terminate();browser.wait()
             server.stdin.close();server.wait(timeout=10)
 
+# NES Player 2's play page on a phone held upright and on its side, as the
+# README shows it, at a phone's 390x844 and 844x390 at 3x. Light: the page
+# wears the handheld's theme, which the launcher hands p2d (src/webtheme.h);
+# with none here, it is play.css's own, which is Beard's.
+PLAY_PAGES={
+    'play-phone':dict(width=390,height=844,scale=3,phone=True),
+    'play-phone-side':dict(width=844,height=390,scale=3,phone=True),
+}
+# The frame the picture holds: p2d-feed's 60th, the box near the middle
+PLAY_FRAMES=60
+
+def play_shots(chrome,dest,only,manifest):
+    with tempfile.TemporaryDirectory(prefix='zyperos-play-') as temporary:
+        base=Path(temporary);web=base/'web';profile=base/'chrome';share=base/'share';log=base/'p2d.log'
+        dest.mkdir(parents=True,exist_ok=True)
+        # res/web as the card has it, the page's faces beside it too
+        web_dir(web)
+        for font in ['menu.ttf','title.ttf']: shutil.copyfile(ROOT/'res/fonts'/font,web/'play'/font)
+        subprocess.run(['make','-s','build-native/p2d','build-native/p2d-feed'],cwd=ROOT,check=True)
+        # The feed stops after PLAY_FRAMES and holds the share as it is until
+        # it is told to go, so every shot shows the same still picture
+        feed=subprocess.Popen([str(ROOT/'build-native/p2d-feed'),'--share',str(share),'--fps','60',
+                               '--frames',str(PLAY_FRAMES)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        server=browser=None
+        try:
+            def published():
+                # p2s_head's frame, the frames written (src/p2share.h)
+                try:
+                    with open(share,'rb') as f: head=f.read(16)
+                except OSError: return 0
+                return struct.unpack('<I',head[12:16])[0] if len(head)==16 else 0
+            for _ in range(300):
+                if published()>=PLAY_FRAMES: break
+                time.sleep(0.05)
+            else: raise RuntimeError('p2d-feed made no share')
+            with open(log,'wb') as out:
+                server=subprocess.Popen([str(ROOT/'build-native/p2d'),'--root',str(web),'--share',str(share),
+                                         '--addr','127.0.0.1','--port','0','--lang','en'],stdout=out,stderr=out)
+            port=None
+            for _ in range(100):
+                for line in log.read_text(errors='replace').splitlines():
+                    if line.startswith('p2d: http on port '): port=line.split()[-1]
+                if port: break
+                time.sleep(0.1)
+            if not port: raise RuntimeError(f'p2d never said its port: {log.read_text(errors="replace")!r}')
+            origin=f'http://127.0.0.1:{port}'
+            browser=subprocess.Popen([chrome,'--headless=new','--remote-debugging-port=0',f'--user-data-dir={profile}',
+                                      '--no-first-run','--no-default-browser-check','--hide-scrollbars',
+                                      '--disable-background-networking','--disable-component-update','--disable-sync',
+                                      '--no-pings','about:blank'],
+                                     stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if (profile/'DevToolsActivePort').is_file() and (profile/'DevToolsActivePort').read_text().strip(): break
+                time.sleep(0.1)
+            debug=(profile/'DevToolsActivePort').read_text().split()[0]
+            for name,page in PLAY_PAGES.items():
+                if only and name not in only: continue
+                # A tab of its own for each shot, closed after it: a page only
+                # navigated away from can stay alive in the browser's back
+                # cache, holding player 2's place (one browser at a time is
+                # player 2 on the NES), and with the picture still nothing
+                # says it has gone
+                tab=json.load(urllib.request.urlopen(urllib.request.Request(
+                    f'http://127.0.0.1:{debug}/json/new?about:blank',method='PUT'),timeout=30))
+                dt=DevTools(tab['webSocketDebuggerUrl'])
+                dt.call('Emulation.setEmulatedMedia',features=[{'name':'prefers-color-scheme','value':'light'},
+                                                               {'name':'prefers-reduced-motion','value':'reduce'}])
+                dt.call('Emulation.setDeviceMetricsOverride',width=page['width'],height=page['height'],
+                        deviceScaleFactor=page['scale'],mobile=page['phone'])
+                dt.call('Emulation.setTouchEmulationEnabled',enabled=page['phone'],maxTouchPoints=5)
+                dt.call('Page.navigate',url=origin+'/play/')
+                # Player 2, the picture drawn, the faces in. A page told the
+                # game is full while the last one's place frees tries again
+                # every 2 s, so this waits past a few of those.
+                for _ in range(300):
+                    ready=dt.call('Runtime.evaluate',returnByValue=True,awaitPromise=True,
+                                  expression="document.fonts.ready.then(()=>document.readyState==='complete'"
+                                             " && typeof window.p2==='object' && window.p2.frame>0"
+                                             " && document.getElementById('game').dataset.state==='playing')")
+                    if ready.get('result',{}).get('value'): break
+                    time.sleep(0.1)
+                else:
+                    seen=dt.call('Runtime.evaluate',returnByValue=True,
+                                 expression="[location.href, (document.getElementById('game')||{dataset:{}}).dataset.state,"
+                                            " window.p2 && window.p2.frame]").get('result',{}).get('value')
+                    raise RuntimeError(f'{name}: the page did not come up as player 2: {seen}, {log.read_text(errors="replace")!r}')
+                time.sleep(0.5)
+                target=dest/(name+'.png')
+                target.write_bytes(base64.b64decode(dt.call('Page.captureScreenshot',format='png')['data']))
+                manifest['screenshots'].append({'file':f'light/{name}.png','card':'play',
+                    'args':dict(page,page='res/web/play/index.html',frames=f'p2d-feed --frames {PLAY_FRAMES}'),
+                    'sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
+                print('light/'+name,flush=True)
+                dt.s.close()
+                urllib.request.urlopen(f'http://127.0.0.1:{debug}/json/close/{tab["id"]}',timeout=30)
+        finally:
+            if browser: browser.terminate();browser.wait()
+            for proc in (server,feed):
+                if not proc: continue
+                proc.terminate()
+                try: proc.wait(timeout=10)
+                except subprocess.TimeoutExpired: proc.kill();proc.wait()
+
 def env_for(card):
     return dict(os.environ, ZYPEROS_HEADLESS='1', SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software',
                 ZYPEROS_ROOT=str(card/'ZyperOS'),ZYPEROS_CARD=str(card),ZYPEROS_ROMS=str(card/'Roms'),
@@ -663,7 +870,7 @@ def main():
     ap.add_argument('--art-cache',type=Path,default=ART_CACHE,help='where --art keeps what it fetched')
     ap.add_argument('--out',type=Path,default=ROOT/'build/readme-shots')
     ap.add_argument('--chrome',default=CHROME,help='the browser for the File Transfer page')
-    ap.add_argument('--no-page',action='store_true',help='leave out the File Transfer page')
+    ap.add_argument('--no-page',action='store_true',help='leave out the File Transfer page and the play page')
     ap.add_argument('only',nargs='*',help='shot names (default: all)')
     args=ap.parse_args();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)
     binary=ROOT/'build-native/zyperos'
@@ -675,13 +882,16 @@ def main():
     with tempfile.TemporaryDirectory(prefix='zyperos-readme-') as temporary:
         cards={'demo':Path(temporary)/'demo','empty':Path(temporary)/'empty','scummvm':Path(temporary)/'scummvm',
                'openbor':Path(temporary)/'openbor','ports':Path(temporary)/'ports',
-               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media'}
+               'portdocs':Path(temporary)/'portdocs','media':Path(temporary)/'media',
+               'psp':Path(temporary)/'psp','es':Path(temporary)/'es'}
         art=args.art_cache if args.art else None
         demo_card(cards['demo'],art,manifest)
         media_card(cards['media'],art)
+        es_card(cards['es'],art,manifest)
         scummvm_card(cards['scummvm'],art,manifest)
         backdrop=art_file(art,LR_REPO['PlayStation'],'Named_Snaps',BACKDROP_GAME) if art else None
         openbor_card(cards['openbor'])
+        psp_card(cards['psp'])
         ports_card(cards['ports'])
         portdocs_card(cards['portdocs'])
         card_dirs(cards['empty'])
@@ -698,12 +908,14 @@ def main():
                 status=[] if name.startswith('tour-') else ['--status',STATUS.get(name,'10:08 24h wifi=off batt=82')]
                 # {card} is where this run's temporary card is; the manifest keeps the word
                 command=[str(binary),'--shot',str(target),'--theme',theme,
-                         '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)) for f in flags]]
+                         '--screen','systems','--phase','3200',*status,'--fn-volume',*[f.replace('{card}',str(card)).replace('{art}',str(args.art_cache)) for f in flags]]
                 if backdrop and name in BACKDROP: command+=['--backdrop',str(backdrop)]
                 set_favs(card,SHOT_FAVS.get(name,[]),True)
+                set_settings(card,SHOT_SETTINGS.get(name),True)
                 result=subprocess.run(command,cwd=ROOT,env=pm_env(env_for(card),name,temporary),text=True,
                                       stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 set_favs(card,SHOT_FAVS.get(name,[]),False)
+                set_settings(card,SHOT_SETTINGS.get(name),False)
                 (dest/(name+'.log')).write_text(result.stdout)
                 if result.returncode and not (name in CORNER_OWN and CORNER_OWN[name] in result.stdout):
                     raise RuntimeError(f'{theme}/{name}: {result.stdout}')
@@ -714,6 +926,9 @@ def main():
     if not args.no_page and (not args.only or set(args.only)&set(PAGES)):
         if not Path(args.chrome).is_file(): ap.error(f'no browser at {args.chrome}: --chrome, or --no-page')
         page_shots(args.chrome,out/'light',args.only,manifest)
+    if not args.no_page and (not args.only or set(args.only)&set(PLAY_PAGES)):
+        if not Path(args.chrome).is_file(): ap.error(f'no browser at {args.chrome}: --chrome, or --no-page')
+        play_shots(args.chrome,out/'light',args.only,manifest)
     (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 
 if __name__=='__main__': main()

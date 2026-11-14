@@ -1,14 +1,21 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* See spawn.h. The Wi-Fi's wpa_cli and Bluetooth's bluetoothctl. */
+/* See spawn.h. The Wi-Fi's wpa_cli and Bluetooth's bluetoothctl, and NES
+ * Player 2's p2d. */
 #include "spawn.h"
 
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <string.h>
 #include <unistd.h>
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
 
 /* The deadline is not defensive programming, it is a bug fix. On a fresh card
  * Bluetooth is off, so launch.sh never runs hciattach and there is no adapter;
@@ -74,4 +81,53 @@ int spawn_capture(char *const argv[], char *out, size_t cap, int timeout_s)
 	if (waitpid(pid, &status, 0) < 0) return -1;
 	if (killed) return -2;
 	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+/* Between fork and exec only system calls: the launcher has threads, and
+ * nothing else is safe in the child of one (sshlink.c's dropbear the same). */
+long spawn_child(char *const argv[])
+{
+	struct sigaction dfl;
+	struct rlimit lim;
+	sigset_t none;
+	pid_t pid;
+	int null, fd, maxfd, sig;
+
+	sigemptyset(&none);
+	memset(&dfl, 0, sizeof dfl);
+	dfl.sa_handler = SIG_DFL;
+	maxfd = getrlimit(RLIMIT_NOFILE, &lim) == 0 && lim.rlim_cur != RLIM_INFINITY &&
+	        lim.rlim_cur < 65536 ? (int)lim.rlim_cur : 65536;
+	pid = fork();
+	if (pid < 0) return -1;
+	if (pid > 0) return (long)pid;
+
+#ifdef __linux__
+	/* It ends with the launcher, whatever ends that */
+	prctl(PR_SET_PDEATHSIG, SIGTERM);
+	if (getppid() == 1) _exit(1);
+#endif
+	null = open("/dev/null", O_RDONLY);
+	if (null >= 0) { dup2(null, 0); if (null > 2) close(null); }
+	/* Nothing of the launcher's past stderr: its display, its sockets, a
+	 * port it listens on */
+	for (fd = 3; fd < maxfd; fd++) close(fd);
+	/* An ignored signal stays ignored across exec, and a blocked one blocked */
+	sigprocmask(SIG_SETMASK, &none, NULL);
+	for (sig = 1; sig < NSIG; sig++)
+		if (sig != SIGKILL && sig != SIGSTOP) sigaction(sig, &dfl, NULL);
+	execv(argv[0], argv);
+	_exit(127);
+}
+
+bool spawn_ended(long pid, int *status)
+{
+	int st = 0;
+	pid_t r;
+
+	if (pid <= 0) return true;
+	r = waitpid((pid_t)pid, &st, WNOHANG);
+	if (r == 0) return false;
+	if (status) *status = r < 0 ? -1 : WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+	return true;
 }

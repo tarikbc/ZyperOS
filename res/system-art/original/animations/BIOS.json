@@ -1,0 +1,47 @@
+{
+  "key": "BIOS",
+  "name": "BIOS",
+  "description": "Generic integrated circuit chip",
+  "cell": 256,
+  "cols": 1,
+  "rows": 1,
+  "unique": 1,
+  "duration_ms": 1000,
+  "kind": "card-folder",
+  "static": true,
+  "expected_poses": 1,
+  "motion_bounds": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 1000
+    }
+  ],
+  "still_time_ms": 900,
+  "decoded_atlas_bytes": 262144,
+  "inputs": [
+    "source/BIOS.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/card-folders.js"
+  ],
+  "input_sha256": {
+    "source/BIOS.png": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+  },
+  "atlas": "BIOS.png",
+  "still": "BIOS-still.png",
+  "atlas_sha256": "a9aab560a72f96120736bd66fc40e28f548bf3fe4477f81405b682f8887aa627",
+  "still_sha256": "0c3b231ad7dc9a8d549b86649f53e47d638e3e4a9c136f5d6cb1e7a0e955d05c"
+}

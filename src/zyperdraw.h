@@ -42,6 +42,13 @@ bool idle_due(app *a);
 /* The update program at work on an update (downloading, checking its files,
  * installing): Auto Off waits for it, as it waits for the charger (main.c) */
 bool up_working(void);
+/* The PortMaster installer at work, whichever screen is up (main.c) */
+bool pm_installing(void);
+/* Any long task at all - those two, the scraper's run and what the loops say
+ * (src/taskhold.h) - and that or the charger: what holds Auto Off's clock.
+ * The one rule for every job; see src/zyperdraw.c. */
+bool long_task_busy(void);
+bool idle_held(void);
 
 /* 0 when the battery is fine or charging, 1 when it is low, 2 when it is
  * critical: status_batt_level's, for Diatom's disc over a game. */

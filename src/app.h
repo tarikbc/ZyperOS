@@ -8,6 +8,7 @@
 #include "config.h"
 #include "coverflow.h"
 #include "games.h"
+#include "gamelist.h"
 #include "home.h"
 #include "i18n.h"
 #include "idle.h"
@@ -34,6 +35,9 @@ typedef struct {
 	 * whatever sits at index 0 is what an untouched card plays at - see the
 	 * note on DMODES itself. */
 	int dmode;
+	/* Index into SHADERS, this system's: its own choice, or the one MENU set
+	 * for every system (shader_load). Zero is Off. */
+	int shader;
 	/* Index into SORTS. Zero is by name, which is what every shelf was
 	 * before this existed and what an untouched one still is. On Muse's
 	 * shelf an ml_order instead, whose zero is by artist. */
@@ -56,7 +60,34 @@ typedef struct {
 	 * the title is the order, and the jump goes by it as a games shelf's
 	 * does. */
 	bool jump_by_name;
+	/* Folders on the shelf (src/shelfdir.h). `all`: every game of the
+	 * system at every depth, when some are in folders, and `list` is then
+	 * what the shelf shows of folder `dir` ("" the top) - its folders, the
+	 * first `nfold` entries, then its games. NULL when no game is in a
+	 * folder, and `list` is all of them, as it always was: sys_games says
+	 * which, for whatever is about the system's games and not its shelf. */
+	game_list *all;
+	char dir[LIB_PATH];
+	int nfold;
+	/* The list view's place and motion (src/gamelist.h); unset places it
+	 * again on the cursor */
+	gl_motion lm;
+	/* MENU's View for this shelf: its covers in a row (false), as it always
+	 * was, or a list of names (DESIGN.md 11.39) */
+	bool listed;
 } sysview;
+
+/* Every game of a system, at every depth of its folders: Favorites, search,
+ * Random Game, Storage, the scraper and the saved library go by this, never
+ * by what one folder of its shelf shows */
+static inline game_list *sys_games(sysview *v)
+{
+	return v->all ? v->all : &v->list;
+}
+static inline const game_list *sys_games_c(const sysview *v)
+{
+	return v->all ? v->all : &v->list;
+}
 
 /* Diatom's display modes, in the order ZyperOS offers them: the sensible
  * default first, then whole-pixel scaling, then the ones that trade shape or
@@ -88,6 +119,31 @@ static const struct { const char *name, *label; str_id text; } DMODES[] = {
 static inline const char *dmode_label(int k)
 {
 	return T(DMODES[k >= 0 && k < DMODE_COUNT ? k : 0].text);
+}
+
+/* The shaders the Shader rows offer, in their order: Off first, and Off is
+ * the default, today's picture at today's cost. `name` is Diatom's filter
+ * (SETDISPLAY filter=, its src/scale.c diatom_filters), so Off is its
+ * nearest. Kept per system as shader.<TAG> beside display.<TAG>, and for
+ * every system as `shader`, what MENU's row sets (shader_load). One more is
+ * a row here, a string, and Diatom's filter of that name.
+ *
+ * `gpu`: an old screen only a GPU draws (Diatom's port/pixel2.c), offered
+ * where plat_gpu_shaders says so and stepped over elsewhere (shader_step). */
+static const struct { const char *name; str_id text; bool gpu; } SHADERS[] = {
+	{ "nearest",     S_MENU_OFF_TITLE,               false },
+	{ "shimmerless", S_GAMEMENU_SHADER_SHIMMERLESS,  false },
+	{ "crt",         S_GAMEMENU_SHADER_CRT,          true  },
+	{ "crt-curved",  S_GAMEMENU_SHADER_CRT_CURVED,   true  },
+	{ "scanlines",   S_GAMEMENU_SHADER_SCANLINES,    true  },
+	{ "lcd",         S_GAMEMENU_SHADER_LCD,          true  },
+};
+#define SHADER_COUNT ((int)(sizeof SHADERS / sizeof SHADERS[0]))
+
+/* Shader k's label in the language that is on; past the ends, Off's */
+static inline const char *shader_label(int k)
+{
+	return T(SHADERS[k >= 0 && k < SHADER_COUNT ? k : 0].text);
 }
 
 typedef struct {
@@ -188,6 +244,14 @@ extern volatile sig_atomic_t want_quit;
 
 /* ---- main.c's, for the files split from it; each is described there ---- */
 
+/* Folders on a shelf (src/shelfdir.h): shelf `s` on folder `dir` of its
+ * games, or the nearest one up that still holds a game, sorted, its cursor
+ * on the entry whose file is `select` (none: the first) and its row still -
+ * nothing on a shelf with no folders; and shelf `s` on game `file` of its
+ * system, into the folder it is kept in first */
+void shelf_open_dir(app *a, int s, const char *dir, const char *select);
+void shelf_reveal(app *a, int s, const char *file);
+
 /* The cards' textures and the paths they come from */
 SDL_Texture *load_image(SDL_Renderer *r, const char *path, int *w, int *h,
                         float *cb);
@@ -225,6 +289,9 @@ void snap_off(void);
 void display_load(app *a);
 void core_load(app *a);
 void sort_load(app *a);
+/* MENU > View, each shelf's: its covers or a list (DESIGN.md 11.39) */
+void view_load(app *a);
+bool view_listed(const char *tag);
 void sort_shelf(app *a, int sys);
 void sort_all(app *a);
 /* Every texture of the renderer the launcher holds, let go */

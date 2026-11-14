@@ -86,7 +86,7 @@ def check_that(name, cond, got):
     if not cond: fails.append(name)
 
 print("READY:", (r := drain(2.0)))
-check("proto version", [x for x in r if x.startswith("READY")][0].split("\t")[1], "proto=13")
+check("proto version", [x for x in r if x.startswith("READY")][0].split("\t")[1], "proto=14")
 
 # Before any RUN: identity must already be identity, not "everything unbound".
 send("MAP"); check("map is identity while idle", drain(), ["MAP\tmap=identity"])
@@ -181,6 +181,23 @@ check("bad filter refuses the whole message", got,
 send("DISPLAY"); got = drain()
 check_that("mode did not move either",
            len(got) == 1 and got[0].startswith("DISPLAY\tmode=integer"), got)
+
+# Sharp-Shimmerless, the Shader row's: a filter alone, the mode kept, and
+# said back by its name; then Off, which is nearest
+send("SETDISPLAY\tfilter=shimmerless"); got = drain()
+check_that("shimmerless is a filter, the mode kept",
+           len(got) == 1 and got[0].startswith("DISPLAY\tmode=integer\tfilter=shimmerless\trect="),
+           got)
+# The old screens, each by its name (src/scale.c diatom_filters)
+for name in ("crt", "crt-curved", "scanlines", "lcd"):
+    send("SETDISPLAY\tfilter=" + name); got = drain()
+    check_that("filter " + name + " is taken and said back",
+               len(got) == 1 and ("\tfilter=" + name + "\t") in got[0], got)
+send("SETDISPLAY\tmode=stretch\tfilter=nearest"); got = drain()
+check_that("and nearest again with a mode",
+           len(got) == 1 and got[0].startswith("DISPLAY\tmode=stretch\tfilter=nearest\trect="),
+           got)
+send("SETDISPLAY\tmode=integer"); drain()
 
 send("LEVELS"); check("desktop has no levels", drain(), ["LEVELS\tcount=0"])
 send("SETLEVEL\tkind=brightness\tindex=3\tcount=12")

@@ -57,7 +57,9 @@ export const mixCam = (a: Cam, b: Cam, t: number): Cam => ({ k: mix(a.k, b.k, t)
 export const punchAt = (frame: number, start: number, end: number, punches: Punch[] | undefined) => {
   let z = 1, px = 0.5, py = 0.5;
   for (const p of punches ?? []) {
-    const a = pop(frame, start + p.at * BEAT, 120, 18) * (1 - ease(frame, end - 10, end));
+    // ...back out at its own `until` (beats into the scene), or at the scene's end
+    const back = p.until !== undefined ? start + p.until * BEAT : end;
+    const a = pop(frame, start + p.at * BEAT, 120, 18) * (1 - ease(frame, back - 10, back));
     z = mix(z, p.zoom, a);
     px = mix(px, p.x, a);
     py = mix(py, p.y, a);
@@ -108,8 +110,8 @@ export const Device: React.FC<{ d: DeviceInfo; cam: Cam; children: React.ReactNo
 /** A label that lands: each word rises out of a mask, a lime bar wipes in, a line follows */
 export const Label: React.FC<{
   frame: number; at: number; end: number; text: string; sub?: string; dark: number;
-  x: number; y: number; width: number; size?: number; align?: "left" | "center"; anchor?: "middle" | "top";
-}> = ({ frame, at, end, text, sub, dark, x, y, width, size: wanted = 76, align = "left", anchor = "middle" }) => {
+  x: number; y: number; width: number; size?: number; align?: "left" | "center"; anchor?: "middle" | "top"; subSize?: number;
+}> = ({ frame, at, end, text, sub, dark, x, y, width, size: wanted = 76, align = "left", anchor = "middle", subSize = 30 }) => {
   let size = wanted;
   const t = theme(dark);
   if (frame < at || frame >= end) return null;
@@ -134,7 +136,7 @@ export const Label: React.FC<{
         })}
       </div>
       {sub && (
-        <div style={{ fontSize: 30, lineHeight: 1.35, color: t.soft, marginTop: 18,
+        <div style={{ fontSize: subSize, lineHeight: 1.35, color: t.soft, marginTop: 18,
           opacity: Math.min(ease(frame, at + 6, at + 14), 1 - out(0)),
           transform: `translateY(${(1 - ease(frame, at + 6, at + 16)) * 16}px)` }}>{sub}</div>
       )}
@@ -159,14 +161,23 @@ export const Laptop: React.FC<{ src: string; x: number; y: number; width: number
   );
 };
 
-/** ...and in a phone's */
-export const Phone: React.FC<{ src: string; x: number; y: number; height: number; k: number }> = ({ src, x, y, height, k }) => {
+/** Where NES Player 2's play page (res/readme/play-phone.png, 1170 by 2532)
+ * draws the game: its picture's box, as fractions of the page */
+const PLAY_PICTURE = { x: 72 / 1170, y: 180 / 2532, w: 1026 / 1170, h: 960 / 2532 };
+
+/** ...and in a phone's; `pic` is the game on Player 2's play page, in the
+ * page's own picture box (the README's shot of the page holds a test frame) */
+export const Phone: React.FC<{ src: string; x: number; y: number; height: number; k: number; pic?: string }> = ({ src, x, y, height, k, pic }) => {
   const w = (height * 780) / 1688;
   return (
     <div style={{ position: "absolute", left: x, top: y + (1 - k) * 260, width: w + 24, height: height + 24, padding: 12,
       borderRadius: 52, background: "#151715", opacity: Math.min(1, k * 2),
       transform: `rotate(${(1 - k) * 8 - 3}deg)`, boxShadow: "0 30px 70px rgba(17,19,16,0.35)" }}>
       <Img src={staticFile(src)} style={{ display: "block", width: w, height, borderRadius: 40 }} />
+      {pic && (
+        <Img src={staticFile(pic)} style={{ position: "absolute", left: 12 + PLAY_PICTURE.x * w, top: 12 + PLAY_PICTURE.y * height,
+          width: PLAY_PICTURE.w * w, height: PLAY_PICTURE.h * height, borderRadius: (10 / 1170) * w, imageRendering: "pixelated" }} />
+      )}
     </div>
   );
 };

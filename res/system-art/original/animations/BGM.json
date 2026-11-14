@@ -1,0 +1,47 @@
+{
+  "key": "BGM",
+  "name": "Menu music",
+  "description": "Generic audio cassette",
+  "cell": 256,
+  "cols": 1,
+  "rows": 1,
+  "unique": 1,
+  "duration_ms": 1000,
+  "kind": "card-folder",
+  "static": true,
+  "expected_poses": 1,
+  "motion_bounds": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "frames": [
+    {
+      "tile": 0,
+      "ms": 1000
+    }
+  ],
+  "still_time_ms": 900,
+  "decoded_atlas_bytes": 262144,
+  "inputs": [
+    "source/BGM.png"
+  ],
+  "renderers": [
+    "animation.js",
+    "export.js",
+    "groups/card-folders.js"
+  ],
+  "input_sha256": {
+    "source/BGM.png": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045"
+  },
+  "renderer_sha256": {
+    "animation.js": "3e06f551570dc462d43df7b78e488f306594cd061e6511928a570c9ff21d9fab",
+    "export.js": "1c5236b99ca505905848187617130a5afbf75a0d3c6894fdda890954b6f38108",
+    "groups/card-folders.js": "2d88a4acd99659a1889af79b4080a40a3615792bd23c1ab43d67198152aab498"
+  },
+  "atlas": "BGM.png",
+  "still": "BGM-still.png",
+  "atlas_sha256": "7c36df66e2b6a5f0fcb8fcac569cd22c1c74701036b5be9b8296a7f14f37689e",
+  "still_sha256": "967255b7f66accfca590b7fad596ca3e2f5c7ca05acba5bf95526d9c1340656b"
+}

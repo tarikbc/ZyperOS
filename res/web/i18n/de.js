@@ -2,6 +2,18 @@
 window.ZYPEROS_LANG = "de";
 window.ZYPEROS_PLURAL = n => n === 1 ? 0 : 1;
 window.ZYPEROS_STRINGS = {
+  "play.name": "Mehrspieler",
+  "play.state.connecting": "Verbindung wird hergestellt",
+  "play.state.player": "Spieler %d",
+  "play.state.full": "Das Spiel ist voll",
+  "play.state.stopped": "Der Host hat den Mehrspielermodus ausgeschaltet",
+  "play.state.ended": "Das Spiel ist beendet",
+  "play.old_browser": "Dieser Browser ist zu alt, um das Spiel anzuzeigen. Aktualisiere ihn oder öffne diese Seite in einem anderen Browser.",
+  "play.picture_off": "Ohne Bild",
+  "play.dpad": "Steuerkreuz",
+  "play.key.arrows": "Pfeiltasten",
+  "play.key.shift": "Umschalt",
+  "play.key.enter": "Eingabe",
   "name.wifi": "WLAN-Dateiübertragung",
   "name.usb": "USB-Dateiübertragung",
   "gate.sub": "Gib die PIN vom Bildschirm der Konsole ein.",
@@ -188,4 +200,8 @@ window.ZYPEROS_STRINGS = {
   "captive.ios_text": "Tippe auf „Abbrechen“ und dann auf „Ohne Internet verwenden“. Öffne dann %s in Safari.",
   "captive.android_head": "Uploads brauchen Chrome.",
   "captive.android_text": "Tippe auf %1$s und dann auf „Netzwerk im Istzustand verwenden“. Öffne dann %2$s in Chrome.",
+  "act.select": "Auswählen",
+  "act.deselect": "Abwählen",
+  "move.count": ["%d Element", "%d Elemente"],
+  "move.done": "Nach %s verschoben",
 };

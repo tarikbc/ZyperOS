@@ -41,6 +41,12 @@ typedef struct {
 	bool        zyper;
 	zr_rig      zy;
 	unsigned    zy_ahead;
+	/* MENU's tab row, when it was drawn in place of the heading: the tab
+	 * that was on, or -1; and a screen's row marks and header picture, as
+	 * menu_style's, by pointer (set by the caller, as `level` is) */
+	int         tab;
+	void       *row_mark, *header;
+	int         header_h;
 	size_t      used;         /* of `text` */
 	char        text[MENUSNAP_TEXT];
 } menu_snap;

@@ -183,6 +183,54 @@ int main(void)
 		CHECK(!d.in.active, "idle across the wrap");
 	}
 
+	/* The side lights (the gauge's "move IN OUT"): each way's bytes a second
+	 * over the last look alone, a way under DST_LIGHTS_MIN still, and
+	 * "move 0 0" once when both go still */
+	{
+		dst_state d;
+		char line[64] = "";
+
+		memset(&d, 0, sizeof d);
+		dst_step(&d, 0, 0, 1000);
+		CHECK(!dst_lights_line(&d, line, sizeof line), "the first look said %s", line);
+		dst_step(&d, 0, 0, 2000);
+		CHECK(!dst_lights_line(&d, line, sizeof line), "nothing moved, and it said %s", line);
+		dst_step(&d, 0, 18000000, 3000);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 18000000 0"), "a copy to the card: %s", line);
+		dst_step(&d, 5000000, 36000000, 4000);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 18000000 5000000"), "both ways: %s", line);
+		dst_step(&d, 5004000, 54000000, 5000);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 18000000 0"),
+		      "4 KB of reads beside a copy: still (%s)", line);
+		/* A look with nothing: the page keeps the speed for 2 s, the
+		 * lights rest at once */
+		dst_step(&d, 5004000, 54000000, 6000);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 0 0"), "a still look: %s", line);
+		CHECK(d.in.active, "the page lost its pause");
+		dst_step(&d, 5004000, 54000000, 7000);
+		CHECK(!dst_lights_line(&d, line, sizeof line), "move 0 0 said twice");
+		/* Under 64 KB a second, a computer's own small writes: still */
+		dst_step(&d, 5004000, 54000000 + 65535, 8000);
+		CHECK(!dst_lights_line(&d, line, sizeof line), "bookkeeping lit the lights: %s", line);
+		dst_step(&d, 5004000, 54065535 + 65536, 9000);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 65536 0"), "64 KB a second: %s", line);
+		/* A short look counts its own length */
+		dst_step(&d, 5004000, 54131071 + 1000000, 9500);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 2000000 0"), "half a second: %s", line);
+		/* Two looks in the same ms, and a counter that went back: nothing
+		 * moved, nothing divided by zero */
+		dst_step(&d, 5004000, 54131071 + 2000000, 9500);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 0 0"), "the same ms: %s", line);
+		dst_step(&d, 10, 20, 10500);
+		CHECK(!dst_lights_line(&d, line, sizeof line), "a counter going back said %s", line);
+		/* Reads alone */
+		dst_step(&d, 10 + 21000000, 20, 11500);
+		CHECK(dst_lights_line(&d, line, sizeof line) && !strcmp(line, "move 0 21000000"), "a copy from the card: %s", line);
+		/* A line too long for its room is not said */
+		dst_step(&d, 10 + 42000000, 20, 12500);
+		CHECK(!dst_lights_line(&d, line, 8), "a cut line said");
+	}
+
 	/* The atlas (atlas.h): read, and a row drawn into its slot */
 	{
 		static const char *const TOK[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "dec", "sp",
@@ -308,6 +356,13 @@ int main(void)
 		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE && k.level == 0, "past the bottom");
 		key(&k, DRV_K_FN, false, 1000, false, 0);
 		CHECK(key(&k, DRV_K_VOLDN, true, 1000, false, 0) == DRV_A_NONE, "FN let go, still brightness");
+		/* The rung on the side lights, as ZyperOS says its own */
+		{
+			char l[48] = "";
+
+			CHECK(drv_bright_line(l, sizeof l, 6, 11) > 0 && !strcmp(l, "level brightness 6 11"), "the line: %s", l);
+			CHECK(drv_bright_line(l, sizeof l, 0, 11) > 0 && !strcmp(l, "level brightness 0 11"), "the bottom: %s", l);
+		}
 		/* B: nothing written, or long ago: eject at once */
 		CHECK(key(&k, DRV_K_B, true, 10000, false, 0) == DRV_A_EJECT, "B with nothing written did not eject");
 		CHECK(key(&k, DRV_K_B, true, 10000, true, 10000 - DRV_ASK_MS) == DRV_A_EJECT, "B 5 s after a write asked");
@@ -386,6 +441,6 @@ int main(void)
 		return 1;
 	}
 	printf("usbdrive drive-check: never exported mounted or held; ejected, unplugged (1.5 s), POWER, "
-	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the atlas and bright.txt, read as untrusted; B's eject and its question, failing safe; the gadget's counters; FN + volume\n");
+	       "no computer in a minute; the page's numbers each way, idle in 2 s, a counter going back; the side lights' line, still under 64 KB/s; the atlas and bright.txt, read as untrusted; B's eject and its question, failing safe; the gadget's counters; FN + volume, its rung on the side lights\n");
 	return 0;
 }

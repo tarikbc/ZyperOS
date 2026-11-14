@@ -1,0 +1,15 @@
+# The screensaver (src/main.c's saver_*, src/saver.h; DESIGN.md 11.37): the
+# video snaps of random games over the whole screen after a while with nothing
+# pressed on the shelf. What it says is a game's name and system, which are the
+# card's own, and the two keys; MENU's row for it is sysmenu.txt's.
+
+[saver.back]
+note = The quiet line under START's hint on the screensaver: any button but START goes back to the shelf. Meta size, in a small slab at the foot's right; keep it short. tight: about 30 characters
+en = Any other button goes back
+zh-Hans = 按其他任意键返回
+es = Otro botón para volver
+pt-BR = Outro botão volta
+fr = Autre bouton : retour
+de = Andere Taste: zurück
+ja = 他のボタンで戻る
+it = Altro tasto: indietro

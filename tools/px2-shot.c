@@ -3,6 +3,7 @@
  *
  *   px2-shot [FILE.ppm]          (default /tmp/px2-shot.ppm)
  *   px2-shot --fps [SECONDS]     (frames a second, default 10 s)
+ *   px2-shot --lut               (the display controller's gamma table)
  *
  * Reads the framebuffer the display controller is scanning out, so it works
  * for the launcher, a libretro core and a port alike, with nothing in them
@@ -18,6 +19,12 @@
  * --fps counts, at every vertical blank, whether the panel is showing a new
  * framebuffer: the frame rate of whatever runs, up to the panel's 60, without
  * an FPS counter in the program itself.
+ *
+ * --lut says whether the CRTC scanning out has a gamma table (GAMMA_LUT),
+ * which sits between the framebuffer and the panel, so a screenshot does not
+ * show it: "off", or what the table makes of nine levels per channel. Up to
+ * 1.0.4 plastron's splash filled it (red and green as in^1.5) and the panel
+ * showed every frame darker than the framebuffer holds (src/panelgamma.h).
  *
  * Build: the plastron toolchain, no libraries (the kernel's DRM headers).
  * Run as root on the device. */
@@ -112,6 +119,55 @@ static int count_frames(int fd, int seconds)
 	return 0;
 }
 
+/* The lit CRTC's GAMMA_LUT: "off", or the table at nine levels a channel,
+ * 8-bit in and out */
+static int show_lut(int fd)
+{
+	struct drm_mode_obj_get_properties op = { .obj_id = crtc_on, .obj_type = DRM_MODE_OBJECT_CRTC };
+	uint32_t ids[64];
+	uint64_t values[64];
+
+	if (ioctl(fd, DRM_IOCTL_MODE_OBJ_GETPROPERTIES, &op) < 0)
+		return perror("px2-shot: properties"), 1;
+	if (op.count_props > 64) op.count_props = 64;
+	op.props_ptr = (uint64_t)(uintptr_t)ids;
+	op.prop_values_ptr = (uint64_t)(uintptr_t)values;
+	if (ioctl(fd, DRM_IOCTL_MODE_OBJ_GETPROPERTIES, &op) < 0)
+		return perror("px2-shot: properties"), 1;
+	for (uint32_t i = 0; i < op.count_props && i < 64; i++) {
+		struct drm_mode_get_property p = { .prop_id = ids[i] };
+		struct drm_mode_get_blob b = { .blob_id = (uint32_t)values[i] };
+		struct drm_color_lut *lut;
+		uint32_t n;
+
+		if (ioctl(fd, DRM_IOCTL_MODE_GETPROPERTY, &p) < 0 || strcmp(p.name, "GAMMA_LUT"))
+			continue;
+		if (!values[i]) {
+			printf("gamma table: off on CRTC %u (the panel gets the framebuffer's colors)\n", crtc_on);
+			return 0;
+		}
+		if (ioctl(fd, DRM_IOCTL_MODE_GETPROPBLOB, &b) < 0 || !b.length ||
+		    !(lut = malloc(b.length)))
+			return perror("px2-shot: gamma table"), 1;
+		b.data = (uint64_t)(uintptr_t)lut;
+		if (ioctl(fd, DRM_IOCTL_MODE_GETPROPBLOB, &b) < 0)
+			return perror("px2-shot: gamma table"), 1;
+		n = b.length / sizeof *lut;
+		printf("gamma table: on CRTC %u, %u entries (blob %u); in -> red green blue\n",
+		       crtc_on, n, (uint32_t)values[i]);
+		for (int k = 0; k <= 8 && n > 1; k++) {
+			int in = k == 8 ? 255 : k * 32;
+			const struct drm_color_lut *e = &lut[(uint32_t)in * (n - 1) / 255];
+
+			printf("  %3d -> %3d %3d %3d\n", in, e->red >> 8, e->green >> 8, e->blue >> 8);
+		}
+		free(lut);
+		return 0;
+	}
+	printf("gamma table: none on CRTC %u (this kernel has no GAMMA_LUT)\n", crtc_on);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	const char *out = argc > 1 ? argv[1] : "/tmp/px2-shot.ppm";
@@ -146,6 +202,8 @@ int main(int argc, char **argv)
 	}
 	if (fps)
 		return count_frames(fd, argc > 2 ? atoi(argv[2]) : 10);
+	if (argc > 1 && !strcmp(argv[1], "--lut"))
+		return show_lut(fd);
 	w = fb.width;
 	h = fb.height;
 	pitch = fb.pitches[0];

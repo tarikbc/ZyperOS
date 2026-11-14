@@ -94,11 +94,46 @@ unsigned menu_sound_at(const unsigned char *sound, int n, int sel);
 /* Move to the next live row in `dir` (+1 or -1), or stay put if none is.
  *
  * It does not wrap: Down on the last live row and Up on the first stay where
- * they are, held or not, so a held direction stops at the end. Bounded too -
- * a menu can legitimately be all dead rows ("No networks found" under a rule
- * is exactly that), and the walk stops at the ends of the list. Pure, so
- * tools/menu-check.c holds it to both. */
+ * they are. That is what a HELD direction does at an end (DESIGN.md 11.3): it
+ * stops there, so a list is never run past by a thumb left on the d-pad.
+ * Bounded too - a menu can legitimately be all dead rows ("No networks
+ * found" under a rule is exactly that), and the walk stops at the ends of the
+ * list. Pure, so tools/menu-check.c holds it to both. */
 int menu_step_sel(const menu_row *rows, int n, int sel, int dir);
+
+/* The same step, going round: Down on the last live row goes to the first,
+ * Up on the first to the last. What a fresh PRESS does (DESIGN.md 11.3, my
+ * pick 2026-11-12: lists go round, a held direction stops at the end and the
+ * next press goes on). A list with no live row but `sel` stays put. Pure. */
+int menu_step_round(const menu_row *rows, int n, int sel, int dir);
+
+/* Which way a list goes on a press: round for a fresh press, stopping at the
+ * end for a held one. The one rule, for the loops that keep a plain index
+ * (0 to n - 1) rather than rows: `fresh` is the press, not its repeat. */
+int menu_step_index(int n, int sel, int dir, bool fresh);
+
+/* ---- a list that goes round, drawn (DESIGN.md 11.3) ------------------------
+ *
+ * A list longer than its window does not jump back to its top when it goes
+ * round: it goes on. After its last row comes a SEAM, a row's height with the
+ * heading's rule across it, and then its first row again, and so on either
+ * way without end. A place on that endless list is a SLOT: slot s holds row
+ * s mod (n + 1), and the one that comes to n is the seam. The window and the
+ * cursor are slots, so a step across the seam is two slots, as small a move
+ * as any, and the list scrolls through it as it scrolls through rows. */
+
+/* The row slot `slot` holds, or -1 for the seam. */
+int menu_loop_row(int n, int slot);
+
+/* The slot of row `sel` nearest to slot `near`: where the cursor is now,
+ * given where it was. A step lands one slot on, and a wrap two (over the
+ * seam) rather than the length of the list back. */
+int menu_loop_slot(int n, int sel, int near);
+
+/* The window's first slot, as menu_window_first keeps it: it moves only when
+ * the cursor's slot would leave it, and the dead rows directly above the
+ * cursor come with it. No ends to clamp to. */
+int menu_loop_first(const menu_row *rows, int n, int slot, int vis, int first);
 
 /* Which row a scrolling list should draw first, given where it drew first last
  * time. `vis` is how many rows fit; `first` is the previous answer, which is

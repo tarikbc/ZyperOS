@@ -277,6 +277,66 @@
       "set": "libretro-thumbnails/ScummVM/Named_Boxarts",
       "name": "Soltys",
       "sha256": "1b32cbfbe0f9da2748ff8b3615542861cf1a4675018c651e6d471cdaba6d5fd5"
+    },
+    "Game Boy Advance/Commercial Owned/Castlevania - Aria of Sorrow (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Castlevania - Aria of Sorrow (USA)",
+      "sha256": "801302e90259bf53c714bbb50c53a92ed8b9023f1accf7676a988841255cddc3"
+    },
+    "Game Boy Advance/Commercial Owned/Final Fantasy Tactics Advance (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Final Fantasy Tactics Advance (USA)",
+      "sha256": "3078970248e49c557409980579c96d53063a0a60b50b224ed5ce67613df08ea9"
+    },
+    "Game Boy Advance/Commercial Owned/Golden Sun (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Golden Sun (USA, Europe)",
+      "sha256": "e1e96c261bea930a23c966ae2a5fc80a318e9f509af5480b450a6e6309bc2574"
+    },
+    "Game Boy Advance/Commercial Owned/Kirby & The Amazing Mirror (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Kirby & The Amazing Mirror (USA)",
+      "sha256": "d7052e92dbe6a8da7f3b7b5fb623b131958f21bf04d2c29ad90666a5faaf3a85"
+    },
+    "Game Boy Advance/Friends Games/Fire Emblem (USA).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Fire Emblem (USA, Australia)",
+      "sha256": "8d7967af431410a81c9871f47db15d5b52b221bd2f58c5b887df0cd1a49f1703"
+    },
+    "Game Boy Advance/Rom Hacks/Translations/Mother 3 (English).gba": {
+      "set": "libretro-thumbnails/Nintendo_-_Game_Boy_Advance/Named_Boxarts",
+      "name": "Mother 3 (Japan)",
+      "sha256": "22c66f14c081190febb8ede167f9553ce425a2fa277b6bda3c2dd490cb0ab141"
+    },
+    "psx/images/Castlevania - Symphony of the Night (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Castlevania - Symphony of the Night (USA)",
+      "sha256": "0a3064fc4eaa9c9fab4885dc5b65dac044b4079ab731a036f06411bb20048b57"
+    },
+    "psx/images/Crash Bandicoot (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Crash Bandicoot (USA)",
+      "sha256": "53da89f702471310d68dda076f42490e7f6bfcc22dd7402917c6a8077bf85a77"
+    },
+    "psx/images/Metal Gear Solid (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Metal Gear Solid (USA)",
+      "sha256": "213bc7c6de0ee52bb7981cd66f3294f51057b0d96ce2f6f3ad440aa452ec8120"
+    },
+    "psx/images/Spyro the Dragon (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Spyro the Dragon (USA)",
+      "sha256": "14d9a52c23559fbce8e337363c674d9a9abac3d81d2ba17fc9775d98728f303b"
+    },
+    "psx/images/Tekken 3 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tekken 3 (USA)",
+      "sha256": "080ad8cba468ea08f0d3c25b4396e586043852814a5e6d3690d86c41d8c6b1e1"
+    },
+    "psx/images/Tony Hawk's Pro Skater 2 (USA)-thumb.png": {
+      "set": "libretro-thumbnails/Sony_-_PlayStation/Named_Boxarts",
+      "name": "Tony Hawk's Pro Skater 2 (USA)",
+      "sha256": "a901005870f4f3be71be4b95a2066b18e7d2b935b5d086bc308624eb2cab482a"
     }
   },
   "screenshots": [
@@ -296,7 +356,7 @@
         "--home",
         "spotlight"
       ],
-      "sha256": "62aec47a8de381677bf931efcde6ccdcd826559c8a857bd575284a3690df90c5"
+      "sha256": "4fdfc1d8916bec8d526d156dc1c4fe0bc7958933feb6f2a720f97214dbcee4fc"
     },
     {
       "file": "light/gallery.png",
@@ -314,7 +374,7 @@
         "--home",
         "gallery"
       ],
-      "sha256": "fc9f7a224e3c8c6803cc212cf60bf4b609143b6466ba7ac5de47e0e8f61bfb8c"
+      "sha256": "3aa04caf23388aeb835ac3c40353992280e68dedab569373cc76a6dc34065db4"
     },
     {
       "file": "light/shelf.png",
@@ -332,7 +392,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "1784c6f1b1d6b8463d507a4370d12121b21e3c3aa2326affc1ed3b93126451c0"
+      "sha256": "abcdc5896ce0910d76ff9555a9f10be0b4f3bbb5ac485ca1c3098d314f57fbe5"
     },
     {
       "file": "light/shelf-n64.png",
@@ -350,7 +410,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "b2e88b660826271d998b3fd6f8423cf41e146b83734a3f1aeb63449e18d4e856"
+      "sha256": "7e193cf00341b27fc40c7161382db5fc6af07ccd3fbdbfec88df11ef165c83c3"
     },
     {
       "file": "light/shelf-snes.png",
@@ -368,7 +428,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "d3c3a6d533b172ad300eea8f2a68ca0d879aed22574ef3fbfdde82b1bde323f2"
+      "sha256": "28336bab77c8a807cca72afbfa99aa8d4141e7624a0db65af0fedb7befb184f5"
     },
     {
       "file": "light/favorites.png",
@@ -386,7 +446,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "9d6b49ccedbe6a970f194db0d0d321a5d4cb994f35887cca7e949b68e07728c7"
+      "sha256": "be81a0b00689fe845cf144926256004610cccf6683e6c4e5a02e7fd96bb5f36f"
     },
     {
       "file": "light/info.png",
@@ -405,7 +465,7 @@
         "games",
         "--info"
       ],
-      "sha256": "2ae6aeceb344638fc5813cc2fd39e31e312c02bb17a12e5da251f18e17442861"
+      "sha256": "bffc081485b6984fa65670fd1a17704196c43884aefdb4b1fc960b3c1a363f53"
     },
     {
       "file": "light/info-delete.png",
@@ -424,7 +484,7 @@
         "games",
         "--info-delete"
       ],
-      "sha256": "136fdcf7b26b12081d885196bb8b83f3cb5e799a77af3ef7c116d0dac8082b19"
+      "sha256": "baf52d9677ccf514dbf29611c1b5e0ab5ae42526cf5589304347e7fa69b61a64"
     },
     {
       "file": "light/delete-ask.png",
@@ -443,7 +503,7 @@
         "games",
         "--delete-ask"
       ],
-      "sha256": "02781fd3d26aa2a3bcf2f8051a6f4bfffdbc54f2020a2a0e6b073e3bf5dfe601"
+      "sha256": "5f8ea07132894f3a869611c628d8dc951f3a8a12de22d0f7e0a0a5064e99d7f4"
     },
     {
       "file": "light/cheevos.png",
@@ -464,7 +524,30 @@
         "{card}/Roms/PlayStation/.cheevos/Hagane.set",
         "b#"
       ],
-      "sha256": "7a3896f4168f272a718e270b49753a4ed59a0d58b7d96db7d0d0d64fd7753590"
+      "sha256": "9f4463ad3a0c173db830cb062b500312e2def0a2c47624465b55f442abdb10e6"
+    },
+    {
+      "file": "light/cheevos-waiting.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--cheevos-screen",
+        "0",
+        "--cheevos-waiting",
+        "2",
+        "--cheevos-badge",
+        "{card}/Roms/PlayStation/.cheevos/Hagane.set",
+        "b#"
+      ],
+      "sha256": "d2027ef5279b48250fbb3be3736ba14e7dcd533d8ce627b92e7e273d6efdc384"
     },
     {
       "file": "light/cheevo-notice.png",
@@ -483,11 +566,11 @@
         "unlock",
         "--notice",
         "Violated Heavens",
-        "Unlocked · 10 points",
+        "Unlocked \u00b7 10 points",
         "--notice-badge",
         "{card}/Roms/PlayStation/.cheevos/badges/b3.png"
       ],
-      "sha256": "da99740ac9abe477ff6cb2b7b99651884a4652d125fde31b16018eb4d9df858c"
+      "sha256": "5e9d5852c2856059dde4a22cf737b4bfc347c079e130a9322d11cc7e14c7df17"
     },
     {
       "file": "light/menu.png",
@@ -505,7 +588,7 @@
         "--menu",
         "Search Games"
       ],
-      "sha256": "36333338b8b1971bab4d48b6f604748f7116197d1030bff7679f709878b55b06"
+      "sha256": "0c64e4f4f7d142d4d0332faa0598d40c681273b8592282cc2572c81a8ccfc133"
     },
     {
       "file": "light/mp4.png",
@@ -563,7 +646,7 @@
         "1 connected",
         "Tobu Tobu Girl.gb"
       ],
-      "sha256": "f9808f0d1d9af739e71d0c79281b3da41b8e1f9ec43205f42a04c30eae4f677f"
+      "sha256": "d3160f75520bf4facd0006d4e0ad26ad030de1773db8d71439af875864c41754"
     },
     {
       "file": "light/hotspot.png",
@@ -602,7 +685,7 @@
         "--usb-ask",
         "0"
       ],
-      "sha256": "b610aecedf41b7933d0db9af9f88d37ff594c20a54c810638a69418639e0cb31"
+      "sha256": "2d9437374b6a0a1844dbc4b409f43aa350e023f1d09ac4ba01b4b4108a9361dd"
     },
     {
       "file": "light/scummvm.png",
@@ -620,7 +703,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "12cc3bf9eed360e62ddffc94850a079867c8bbfcf60eee07f0c38e2138f15013"
+      "sha256": "296853f1a02237aa9f493a07a381927c47863a90a0252a3b727bcd81c1fd632f"
     },
     {
       "file": "light/openbor.png",
@@ -659,7 +742,7 @@
         "--scraper",
         "2"
       ],
-      "sha256": "bc90bfb99115b36797727b1250a8a911ea41e8b38f150cf8b4322d204d4c93b5"
+      "sha256": "45edb86e7c805ca4d0364d8c2e427bfcf9870314d16775f0a3b36177bc1163a3"
     },
     {
       "file": "light/update.png",
@@ -694,7 +777,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "4d013d60b8d8eb6cd84eb52a16c958927c54febc24cb162165956d192fd658ea"
+      "sha256": "10ad0a5584094d2512a9d89eebfc5ccd5367f39c1cdd5afab916d1bed3f01b06"
     },
     {
       "file": "light/ports-menu.png",
@@ -754,7 +837,7 @@
         "--portmaster",
         "running"
       ],
-      "sha256": "b92537c0839e774d3c51c0339b08193651409776957088fd2d9732e88496200e"
+      "sha256": "80b882463384229578b1ff9cd451433c0125f67ae7fc8bf51bb389ee885a9e5c"
     },
     {
       "file": "light/storage.png",
@@ -772,7 +855,7 @@
         "--storage",
         "main"
       ],
-      "sha256": "00f598069ccd7b17ebccf14beaadce97749356d5f401bc5fdb9269b48f7feab3"
+      "sha256": "83c831faa41417184d51e0b69e3ffdf50699840ffb97f04982e8a7823db2255d"
     },
     {
       "file": "light/storage-system.png",
@@ -790,7 +873,7 @@
         "--storage",
         "system"
       ],
-      "sha256": "b07a60955cbdfc837b8cc81560e06b92c782f2d47c88e89742f8630583419530"
+      "sha256": "bc2d1352a618ce425677f9dae0f59baca4fbd438ada16bdbb5add0704811509e"
     },
     {
       "file": "light/storage-music.png",
@@ -808,7 +891,7 @@
         "--storage",
         "music"
       ],
-      "sha256": "966ae702e9f276186cbebe21228c3451a5c1d459b1abcb926bac53f870245858"
+      "sha256": "a673d828a176513c3ed98bcea1bb3f47aab8048e7af28066fcaca58abf95dc55"
     },
     {
       "file": "light/media.png",
@@ -912,7 +995,7 @@
         "--tour-pick",
         "0"
       ],
-      "sha256": "34ca861ce43af47b74dca1d667c414b8a25d80cf82fe3d58345e6ceac45601ba"
+      "sha256": "7052fd868d7ffd607a0c31b16e5e11e9c1ed5fe633056a9a958f541410be61d0"
     },
     {
       "file": "light/tour-home.png",
@@ -932,7 +1015,7 @@
         "--tour-pick",
         "1"
       ],
-      "sha256": "bfd8ca62e7dd589ba8ff7c704f13855bba1ad2bc54b2fd4b30e42faf4423787f"
+      "sha256": "fab7110c0fabe2e5c27932fae2c6fd3fe9ce1058cd346da5bc98c00bb63b5c59"
     },
     {
       "file": "light/tour-sounds.png",
@@ -1008,7 +1091,7 @@
         "--heatpop",
         "1600"
       ],
-      "sha256": "b8061dd03cd7d374b2f963ff687a81baf27e52774e6b982d639223945ff311f6"
+      "sha256": "f2b3df3a00d6d3d79e150be335757107da707125c4226e866122ab86cab2e356"
     },
     {
       "file": "light/tour-language.png",
@@ -1047,7 +1130,7 @@
         "--menu",
         "Language"
       ],
-      "sha256": "cb225454f2556bb148d4ba8616e8fd7f102f9d8eb899b2b7e4ff19c293a095fb"
+      "sha256": "3d8289e31ec83f454fd095685ee6eed6e16bd72b062cc435c62a0833af64c69c"
     },
     {
       "file": "light/menu-ja.png",
@@ -1067,7 +1150,7 @@
         "--menu",
         "Search Games"
       ],
-      "sha256": "c4940f8d0b4fb58f21b142d29b9b78101fff8045a736861bc3255221c8e25c67"
+      "sha256": "550934f91edc2e189a7a6fcc843002ffbf405635596cc8bd8bac4756fc909682"
     },
     {
       "file": "light/battery.png",
@@ -1085,7 +1168,7 @@
         "--menu",
         "Battery Icon"
       ],
-      "sha256": "360092be17cb4fef8f26947733e2471606af3798eb1767b8a4b632386c85b9e8"
+      "sha256": "67dd96b4430277ee8e15187a94e6c3b6ad0a5c4bcf29c89931327a1ece890bb1"
     },
     {
       "file": "light/topbar.png",
@@ -1105,7 +1188,7 @@
         "--song",
         "Night Drive"
       ],
-      "sha256": "1aa6a418a7a6225dbd56e56e82a0d3cd39bbec5f4a54f686e81fc53d10a3a6d1"
+      "sha256": "a7964f19749d9e0d9d6bfd8831ec3cd1a7a51bb98283eed70059c01e8ff12afc"
     },
     {
       "file": "light/topbar-paused.png",
@@ -1126,7 +1209,7 @@
         "Night Drive",
         "--song-paused"
       ],
-      "sha256": "4d1e5a4664b8b4023e83e758c515b47e64f3c343ae5345fd6429c7cfe5dbc1ee"
+      "sha256": "4c591db9629a9527dade993c08426dcb9e584266d5b13f14b1aaa1bca0c740f7"
     },
     {
       "file": "light/topbar-long.png",
@@ -1258,7 +1341,29 @@
         "--backdrop",
         "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
       ],
-      "sha256": "92b20bcdb0d26e4bc3c4909274a3792b879478cfa789044ef0701e4f111895dd"
+      "sha256": "aa0dbfbd8b3c35d6d77fe7b9cd1e36d9f39d7b03105d58af0fea3e8d1d4ddbea"
+    },
+    {
+      "file": "light/gamemenu-shader.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamemenu",
+        "5",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "6ac7d81bc37b680da825d301ed611798743a6f6d63a165ffb3a3f46f5d6cb0d5"
     },
     {
       "file": "light/controls-ps1.png",
@@ -1307,6 +1412,29 @@
       "sha256": "8cc8c20eeacec80fd5a78ae480830094eaec2638b4a44def2eaee8bd7e7d1f2f"
     },
     {
+      "file": "light/controls-psp.png",
+      "card": "psp",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--gamecontrols",
+        "1",
+        "PSP",
+        "--backdrop",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Spyro the Dragon (USA).png"
+      ],
+      "sha256": "7c7701841de73d7c54a230ed9537453d9c03f0f227283ed91d66dde1a8cefb23"
+    },
+    {
       "file": "dark/systems.png",
       "card": "demo",
       "args": [
@@ -1322,7 +1450,7 @@
         "--home",
         "spotlight"
       ],
-      "sha256": "d6763415289bb523d44db78fa03ba4354397e66831605779b81c1db694cf505a"
+      "sha256": "a3593af610e8132ca93cf30244282a1c11e960bd6cda7afe943d19b7e0b3acbc"
     },
     {
       "file": "dark/shelf-n64.png",
@@ -1340,7 +1468,7 @@
         "--screen",
         "games"
       ],
-      "sha256": "0df829b24406f86e5ea940d2b424c66b505bc8794aa9a2d4a5e3f6fbe5ddbdcc"
+      "sha256": "9d2b9ce042ae58e12991fb82c79f767982bc816ca801efcb1f0dabacc1f77696"
     },
     {
       "file": "dark/menu.png",
@@ -1358,7 +1486,7 @@
         "--menu",
         "Search Games"
       ],
-      "sha256": "9a0396364886b44ba80d70e1d797f90fbd6d8523ab74bcef4e343e73289d5ea8"
+      "sha256": "a11aa0e66d8500f2a031ff464ac4df2ce08ca350f172a27696d716b9a31ce38b"
     },
     {
       "file": "dark/nowplaying.png",
@@ -1420,7 +1548,7 @@
         "--song",
         "Night Drive"
       ],
-      "sha256": "d46565e076575649609611528a777939711f273b5c25eb432001d0f740084d1a"
+      "sha256": "a2dcafb410658f24bad7b5704572ec72f25b12baa4bbcaf5136951e7138786d5"
     },
     {
       "file": "dark/video-controls.png",
@@ -1481,7 +1609,7 @@
         ],
         "page": "res/web/index.html"
       },
-      "sha256": "eb375b07f588e5264afffd37b20e96b29e112c918c1e465911c0d223d59e85d1"
+      "sha256": "f976dce4167e4859e12a2572db0df51853297f2f43134596e6c35b3fb97bd6d0"
     },
     {
       "file": "light/portal-pin.png",
@@ -1507,7 +1635,7 @@
         "folder": "roms",
         "page": "res/web/index.html"
       },
-      "sha256": "63fc70bd9264595d9b7d0f219358d2bdaaff11e8c41c294f633cd2fc61951649"
+      "sha256": "792399c1bbfb4e03b9d12bbcd046219d98731a9459e6d958e70558dfedf621a3"
     },
     {
       "file": "light/usb-steps.png",
@@ -1524,9 +1652,305 @@
         "--fn-volume",
         "--hare-steps",
         "usb",
+        "noaddress"
+      ],
+      "sha256": "cb78ce18f2eafc20af44fbcc99a026be78a7d7914cba3514abd66587ab5c2d79"
+    },
+    {
+      "file": "light/screensaver.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--saver",
+        "--saver-pic",
+        "{art}/Sony_-_PlayStation/Named_Snaps/Metal Gear Solid (USA).png"
+      ],
+      "sha256": "692ef7648aca32156df4cf7e0b52df574748fab59ea88eabc19224f3bafd017f"
+    },
+    {
+      "file": "light/es-shelf.png",
+      "card": "es",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "9889a3bd4c96e35b4c299d90e458079f6f1e5159581d0ecb75b631f204f2ddbe"
+    },
+    {
+      "file": "light/info-rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--info-rename"
+      ],
+      "sha256": "b8c6683b729b2945b5ee0b91c29470e91d2d7a44f5219c4d2404383ace2eca0e"
+    },
+    {
+      "file": "light/rename.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--keyboard",
+        "0",
+        "Metal Gear Solid (USA)",
+        "Rename"
+      ],
+      "sha256": "0785d4d5069ea5a6a00080c87f1cebebb0a23d906251500b9196b1989fe3acf3"
+    },
+    {
+      "file": "light/player2-hotspot.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--player2",
+        "hotspot"
+      ],
+      "sha256": "9bced84c5ff87cf7143fd79b775573576604d699eb6dde903031f56ea7e15cb2"
+    },
+    {
+      "file": "light/play-phone.png",
+      "card": "play",
+      "args": {
+        "width": 390,
+        "height": 844,
+        "scale": 3,
+        "phone": true,
+        "page": "res/web/play/index.html",
+        "frames": "p2d-feed --frames 60"
+      },
+      "sha256": "73038c3aac04b019fff7709bd6d2041edf9ccee40400bad9abe7ff559769c0b6"
+    },
+    {
+      "file": "light/play-phone-side.png",
+      "card": "play",
+      "args": {
+        "width": 844,
+        "height": 390,
+        "scale": 3,
+        "phone": true,
+        "page": "res/web/play/index.html",
+        "frames": "p2d-feed --frames 60"
+      },
+      "sha256": "49c3a62f7b8e13765c56e441063a5a4fac80d0da378ebe3a3ee27a2f772e7db8"
+    },
+    {
+      "file": "light/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "762bcd00d7fcaeb7029a06e39ee89d6335258fe56cda913b44aed4d060bca87e"
+    },
+    {
+      "file": "light/folder-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "c4920dcb914c1aec2a24e940f03d62b54519771c77fab9cfec7ae003c23fb3bd"
+    },
+    {
+      "file": "light/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "db1e2d8654f05dc3704a89af1aac116daa877138038eb1c815e53f9361b49334"
+    },
+    {
+      "file": "light/list-inside.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "0b1a5e6e6ede1fe6a69e569f397c1a807f9f117fc99ca76e629a978b7b181d43"
+    },
+    {
+      "file": "dark/folders.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games"
+      ],
+      "sha256": "65e9c741a141472cd5c5ef8b02053b8bfbe1eb53b62b999e53da928ecdc376ac"
+    },
+    {
+      "file": "dark/list.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "dark",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--screen",
+        "games",
+        "--view",
+        "list"
+      ],
+      "sha256": "f8962f9ec78532d65d8c062fa4594454d8ca669968f9f5f984cf5a46909f8d2d"
+    },
+    {
+      "file": "light/display.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--menu-tab",
+        "1",
+        "--menu",
+        "Theme"
+      ],
+      "sha256": "dc56b1f7223c9cf9dcc43508b61c33754c335a0a9ee959d3b7951a57a628ed21"
+    },
+    {
+      "file": "light/hare-way.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--hare-steps",
+        "wifi",
         "browser"
       ],
-      "sha256": "2bba407d6c44ccf201e5f2f25d112b776388a0746b993e7214eff6cca31ddf91"
+      "sha256": "52d7f68c69968eab3f6b8cb19d2def20e9a9bba64b55a4ea94eca8df199d5186"
+    },
+    {
+      "file": "light/theme.png",
+      "card": "demo",
+      "args": [
+        "--theme",
+        "light",
+        "--screen",
+        "systems",
+        "--phase",
+        "3200",
+        "--status",
+        "10:08 24h wifi=off batt=82",
+        "--fn-volume",
+        "--look-page",
+        "theme",
+        "0"
+      ],
+      "sha256": "2a33f111d9e5ca840ab04ded37cc3f155039800d2ed713ee828c0ea038efd99d"
     }
   ]
 }

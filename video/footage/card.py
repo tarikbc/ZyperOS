@@ -4,8 +4,9 @@
 python3 video/footage/card.py CARD
 
 Builds a card at CARD the host launcher (build-native/zyperos) can run on:
-the README's demonstration library (tools/readme-shots.py), eight systems of
-well-known games as empty files, each with its cover from the
+the README's demonstration library (tools/readme-shots.py), well-known games
+as empty files, folders of them on the Game Boy Advance, and 1.0.5's new
+systems, each with its cover from the
 libretro-thumbnails sets (github.com/libretro-thumbnails), as the launcher's
 own Scraper would put it in the folder's .media. The covers are fetched once
 into ~/Library/Caches/zyperos-readme-art, the same cache tools/readme-shots.py
@@ -17,6 +18,7 @@ facts; each synopsis is in my words.
 """
 import importlib.util
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -62,7 +64,17 @@ LIBRARY = {
         ('Mario Kart - Super Circuit (USA).gba', 'Mario Kart - Super Circuit (USA)'),
         ('Metroid Fusion (USA).gba', 'Metroid Fusion (USA)'),
         ('Pokemon - Emerald Version (USA, Europe).gba', 'Pokemon - Emerald Version (USA, Europe)'),
-        ('The Legend of Zelda - The Minish Cap (USA).gba', 'Legend of Zelda, The - The Minish Cap (USA)')],
+        ('The Legend of Zelda - The Minish Cap (USA).gba', 'Legend of Zelda, The - The Minish Cap (USA)'),
+        # Folders of games, as someone sorts a shelf (the README's, src/shelfdir.h):
+        # a hack and a homebrew game with no art of their own show the generated card
+        ('Commercial Owned/Castlevania - Aria of Sorrow (USA).gba', 'Castlevania - Aria of Sorrow (USA)'),
+        ('Commercial Owned/Final Fantasy Tactics Advance (USA).gba', 'Final Fantasy Tactics Advance (USA)'),
+        ('Commercial Owned/Golden Sun (USA).gba', 'Golden Sun (USA, Europe)'),
+        ('Commercial Owned/Kirby & The Amazing Mirror (USA).gba', 'Kirby & The Amazing Mirror (USA)'),
+        ('Friends Games/Fire Emblem (USA).gba', 'Fire Emblem (USA, Australia)'),
+        ('Homebrew and Aftermarket/Goodboy Galaxy.gba', None),
+        ('Rom Hacks/Metroid Zero Mission Redux.gba', None),
+        ('Rom Hacks/Translations/Mother 3 (English).gba', 'Mother 3 (Japan)')],
     'Genesis': [
         ('Gunstar Heroes (USA).md', 'Gunstar Heroes (USA)'),
         ('Sonic The Hedgehog (USA).md', 'Sonic The Hedgehog (USA)'),
@@ -80,12 +92,34 @@ LIBRARY = {
         ('Jet Grind Radio (USA).chd', 'Jet Grind Radio (USA)'),
         ('Sonic Adventure (USA).chd', 'Sonic Adventure (USA)'),
         ('Soulcalibur (USA).chd', 'Soulcalibur (USA)')],
+    # 1.0.5's four new systems
+    'PSP': [
+        ('Daxter (USA).iso', 'Daxter (USA)'),
+        ('God of War - Chains of Olympus (USA).iso', 'God of War - Chains of Olympus (USA)'),
+        ('LocoRoco (USA).iso', 'LocoRoco (USA) (En,Ja,Fr,De,Es,It,Nl,Pt,Sv,No,Da,Fi,Zh,Ko,Ru)'),
+        ('Lumines (USA).iso', 'Lumines (USA) (v1.01)'),
+        ('Patapon (USA).iso', 'Patapon (USA)')],
+    'Doom': [
+        ('Doom.wad', 'Doom (v1.9)'),
+        ('Doom II - Hell on Earth.wad', 'Doom II - Hell on Earth (v1.7)'),
+        ('freedoom1.wad', None)],
+    'ColecoVision': [
+        ('Donkey Kong (USA).col', 'Donkey Kong (USA)'),
+        ('Frogger (USA).col', 'Frogger (USA)'),
+        ('Lady Bug (USA, Europe).col', 'Lady Bug (USA, Europe)'),
+        ('Pitfall! (USA).col', 'Pitfall! (USA)')],
+    'TIC-80': [
+        ('8 Bit Panda.tic', '8 Bit Panda'),
+        ('Balmung.tic', 'Balmung'),
+        ('Cauliflower Power.tic', 'Cauliflower Power'),
+        ('Dungeon Descent.tic', 'Dungeon Descent')],
 }
 LR_REPO = {'PlayStation': 'Sony_-_PlayStation', 'NES': 'Nintendo_-_Nintendo_Entertainment_System',
            'SNES': 'Nintendo_-_Super_Nintendo_Entertainment_System', 'Game Boy': 'Nintendo_-_Game_Boy',
            'Game Boy Advance': 'Nintendo_-_Game_Boy_Advance', 'Genesis': 'Sega_-_Mega_Drive_-_Genesis',
            'Nintendo 64': 'Nintendo_-_Nintendo_64', 'Dreamcast': 'Sega_-_Dreamcast',
-           'Nintendo DS': 'Nintendo_-_Nintendo_DS'}
+           'Nintendo DS': 'Nintendo_-_Nintendo_DS', 'PSP': 'Sony_-_PlayStation_Portable', 'Doom': 'DOOM',
+           'ColecoVision': 'Coleco_-_ColecoVision', 'TIC-80': 'TIC-80'}
 
 # The Cover and Video page's pictures (src/main.c's media_shot names them):
 # Metal Gear Solid's box from several regions, its title screen and screenshots
@@ -157,16 +191,20 @@ def build(card, cache=ART_CACHE):
         shutil.rmtree(card)
     rs.card_dirs(card)
     # The version System Update starts from (the one before this release)
-    (card / 'ZyperOS/VERSION').write_text('1.0.1\n')
+    (card / 'ZyperOS/VERSION').write_text('1.0.4\n')
     for folder, games in LIBRARY.items():
         d = card / 'Roms' / folder
         (d / '.media').mkdir(parents=True)
         for file, lr in games:
+            (d / file).parent.mkdir(parents=True, exist_ok=True)
             (d / file).touch()
-            got = art_file(cache, LR_REPO[folder], 'Named_Boxarts', lr)
-            shutil.copyfile(got, d / '.media' / (Path(file).stem + '.png'))
-    # The DS game's screenshot, behind its in-game menu
+            if lr:
+                got = art_file(cache, LR_REPO[folder], 'Named_Boxarts', lr)
+                shutil.copyfile(got, d / '.media' / (Path(file).stem + '.png'))
+    # The DS game's screenshot, behind its in-game menu, and Super Mario Bros.
+    # 3's, behind NES Player 2's (footage/takes.py)
     art_file(cache, LR_REPO['Nintendo DS'], 'Named_Snaps', LIBRARY['Nintendo DS'][0][1])
+    art_file(cache, LR_REPO['NES'], 'Named_Snaps', 'Super Mario Bros. 3 (USA)')
     rs.pm_art(card)
     media = card / 'media-art'
     media.mkdir()
@@ -198,15 +236,16 @@ def build(card, cache=ART_CACHE):
     book = card / 'Audiobooks/Treasure Island'
     book.mkdir(parents=True)
     (book / '01 The Old Sea-dog at the Admiral Benbow.mp3').touch()
-    # ZyperOS's own menu music, the one track the video plays too, so the
-    # song Zyper names on the home is the one heard
+    # ZyperOS's own menu music, the one track the video plays too (src/music.ts
+    # names it), so the song Zyper names on the home is the one heard
+    track = re.search(r'file: "([^"]+)"', (ROOT / 'video/src/music.ts').read_text()).group(1)
     (card / 'ZyperOS/res/bgm').mkdir(parents=True)
-    shutil.copyfile(ROOT / 'res/bgm/The Arplands.mp3', card / 'ZyperOS/res/bgm/The Arplands.mp3')
+    shutil.copyfile(ROOT / 'res/bgm' / track, card / 'ZyperOS/res/bgm' / track)
     shutil.copytree(ROOT / 'res/tour', card / 'ZyperOS/res/tour')
     up = card / 'userdata/update'
     up.mkdir(parents=True)
-    # 1.0.1 offered 1.0.2, as it was (83 MB, the two-slot download's size)
-    (up / 'status').write_text('state available\ninstalled 1.0.1\nversion 1.0.2\ndownload 83000000\nkind system\n')
+    # 1.0.4 offered 1.0.5 (83 MB, the two-slot download's size)
+    (up / 'status').write_text('state available\ninstalled 1.0.4\nversion 1.0.5\ndownload 83000000\nkind system\n')
     (up / 'source').write_text('file:///nonexistent\n')
     # Ports: PortMaster's installer, for the Ports shelf's offer
     (card / 'Roms/Ports').mkdir(exist_ok=True)

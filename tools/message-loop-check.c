@@ -22,9 +22,18 @@ static bool g_message_stopped, g_menu_closing, want_quit;
 static menu_snap snaps[2], *g_snap = &snaps[0], *g_snap_next = &snaps[1];
 static unsigned g_frame_no, g_menu_zyper_at;
 static const zr_rig *g_menu_zyper;
+/* MENU's tabs, a screen's row marks and header picture, which snap_record
+ * keeps with a panel and snap_draw puts back (src/main.c): none here */
+typedef struct { int x, y, w, h; } SDL_Rect;
+struct menu_tabs { int at, from, dir; unsigned t0; };
+typedef struct menu_tabs menu_tabs;
+static const menu_tabs *g_menu_tabs;
+static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
+static void (*g_menu_header)(app *a, const SDL_Rect *r);
+static int g_menu_header_h;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, VCOL_MESSAGE };
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, VCOL_MESSAGE };
 static unsigned now, step, event_at, polls, frames, services[3];
 static int button, power_calls, game_stops, shelf_frames, game_frames, nudges[2];
 static bool idle, queued_quit, sent, jump, extra_accept, ticking;
@@ -76,6 +85,11 @@ static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
 static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
                         int sel, mm_pose pose)
 { (void)a; (void)heading; (void)tiles; (void)n; (void)sel; (void)pose; assert(0); }
+static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
+                     unsigned accent, mm_pose pose)
+{ (void)a; (void)heading; (void)rows; (void)n; (void)accent; (void)pose; assert(0); }
+static void move_page(app *a, const char *heading, const menu_row *rows, int n, mm_pose pose)
+{ (void)a; (void)heading; (void)rows; (void)n; (void)pose; assert(0); }
 #include "message-loop.inc"
 
 static void game_backdrop(app *a, void *ctx, float k)

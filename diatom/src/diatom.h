@@ -22,12 +22,12 @@
 #include "libretro.h"
 
 /* How many cores one Diatom process keeps open (the resident registry in
- * core.c, whose comment says why 32), and so how many need a table of their
+ * core.c, whose comment says why 64), and so how many need a table of their
  * own wherever Diatom keeps something per core (options.c). One number, here,
  * because two once drifted apart: the registry went from 8 to 32 and the
  * option tables stayed at 8, so from the ninth core a run opened, a core got
  * no options at all - pcsx_rearmed then has no memory card. */
-#define DIATOM_MAX_RESIDENT 32
+#define DIATOM_MAX_RESIDENT 64
 
 /* ---- resolved once at game load; the frame loop only reads ---------------- */
 typedef struct {
@@ -60,6 +60,9 @@ typedef struct {
 	 * order, and leaves the last three NULL. */
 	struct retro_disk_control_ext_callback disc;
 	bool          disc_set;
+	/* How many controller ports it said it has (SET_CONTROLLER_INFO), 0
+	 * while it has not said: kept per core for the disc tray's reason */
+	int           ports;
 	/* Where this core's game was staged out of its zip, for a core that
 	 * wants a file (need_fullpath), so the game's stop can remove it; empty
 	 * when there is none. See unstage in core.c. */
@@ -143,6 +146,12 @@ void diatom_env_poll_hook(diatom_poll_hook fn);
 /* The libretro pointer the core reads this frame: the stylus's, from
  * screens.h, in the whole frame's -0x7fff..0x7fff. See env.c. */
 void diatom_env_pointer(bool down, int16_t x, int16_t y);
+
+/* Every guest's pad as ports 1 to 3 answered it this frame (player2.h),
+ * ORed: the system's bits, 0 while player 2 is off or p2d's beat has
+ * stopped. For the idle timer, since a guest pressing is somebody being
+ * there too. */
+uint32_t diatom_env_p2_pad(void);
 
 /* Silence a core's DEBUG/INFO chatter once a game is running, and log each of
  * its warnings only the first time. See core_log in env.c for the measurements
@@ -244,6 +253,12 @@ typedef enum {
 	DIATOM_MSG_SETSCREENS, /* set it: `layout`, `swap` = 1 | 0 */
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
+	/* Guest players, NES player 2 first (player2.h): the frames out and
+	 * the guests' buttons in, through a file p2d maps too. Only while a
+	 * game is loaded. */
+	DIATOM_MSG_PLAYER2,    /* report whether it is on, and what it gives */
+	DIATOM_MSG_SETPLAYER2, /* turn it on or off: `on` = 1 | 0; for an on,
+	                        * `buttons` and `players` */
 	/* The launcher went away - or was displaced by a newer one, which means
 	 * the same thing. The game keeps running. */
 	DIATOM_MSG_HANGUP
@@ -281,8 +296,10 @@ typedef struct {
 	 * is 517); 0 or absent is the plain joypad. */
 	unsigned controller;
 	/* RUN: "dpad" makes the d-pad the left analog stick (stick.h), for a
-	 * system its games play with a stick; empty or anything else, the
-	 * joypad's d-pad as ever. */
+	 * system its games play with a stick; "toggle" and "toggle-stick" let
+	 * R2 turn the d-pad into the stick and back, starting as the d-pad or
+	 * as the stick (the PSP's, whose games play with one or the other);
+	 * empty or anything else, the joypad's d-pad as ever. */
 	char stick[16];
 	char layout[16];       /* SETSCREENS: a name from scr_layout_names */
 	char swap[4];          /* SETSCREENS: "1" | "0"; empty leaves it */
@@ -297,6 +314,12 @@ typedef struct {
 	 * audio.c fades it. */
 	int  on;
 	int  blink;            /* SETLOWBATTERY: the disc blinks */
+	/* SETPLAYER2 on=1: what the system gives a guest, from the launcher's
+	 * system table: its RetroPad bits (`buttons=`, hex 0x... or decimal) and
+	 * how many play at once (`players=`). 0 when not said, which player2.h
+	 * reads as the NES's. */
+	uint32_t buttons;
+	long     players;
 	/* SETAUDIO. An output device named the way the PORT names one, passed
 	 * straight through: the host's business is which, the port's is how,
 	 * and nothing in between reads it. Empty means the default. */
@@ -304,7 +327,7 @@ typedef struct {
 	char dmode[32];        /* SETDISPLAY: a name from diatom_modes[].
 	                        * SETCHANNELS: one from diatom_channels_names[].
 	                        * Both arrive as `mode=`, so one slot. */
-	char dfilter[16];      /* SETDISPLAY: nearest | sharp */
+	char dfilter[16];      /* SETDISPLAY: a name from diatom_filters[] */
 	int  index, count;     /* SETLEVEL: `count` is POSITIONS, not a max index.
 	                        * OVERLAY: `count` is the duration in ms, sent as
 	                        * `ms=`. One slot, two verbs, no second name.
@@ -317,6 +340,12 @@ bool diatom_input_set_map(const char *spec);
 /* RUN stick=dpad: the d-pad as the left analog stick (stick.h); off at every
  * RUN that does not say so */
 void diatom_input_set_stick(bool dpad);
+/* RUN stick=toggle: the d-pad is the d-pad, or the stick when `as_stick`,
+ * until diatom_input_stick_flip turns it; SELECT's rule is not used */
+void diatom_input_set_stick_toggle(bool as_stick);
+/* R2 under stick=toggle: the d-pad goes to the other side. True when it is
+ * the stick now. Nothing turns outside stick=toggle. */
+bool diatom_input_stick_flip(void);
 /* Before each retro_run: the pad is read once a frame, at the core's poll or
  * its first question, whichever comes first (env.c, cb_input_poll) */
 void diatom_env_frame_begin(void);
@@ -327,8 +356,10 @@ void diatom_input_emit_labels(void);
  * the game is paused (the launcher's menu is no time to shake the device) and
  * given back as it was on resume, since a core says a strength when it
  * changes and not again; reset when the game stops, so nothing a game asked
- * for outlives it. */
+ * for outlives it. Forgotten, the hold kept, when the game is reset or a
+ * state is loaded into it. */
 void diatom_rumble_hold(bool held);
+void diatom_rumble_forget(void);
 void diatom_rumble_reset(void);
 
 bool diatom_proto_listen(const char *path);
@@ -419,6 +450,21 @@ typedef struct {
 
 extern const diatom_display_mode_info diatom_modes[];
 extern const int                      diatom_mode_count;
+
+/* The filters by name, as SETDISPLAY's `filter=` and --filter take them and
+ * DISPLAY reports them, in diatom_filter's order: diatom_filters[f] is f's.
+ * A shader for the final scale is one more row here and one more program in
+ * the ports that draw with one (port/pixel2.c), so an LCD grid or a CRT goes
+ * in as a name, not as a second axis. */
+typedef struct {
+	const char   *name;
+	diatom_filter filter;
+	const char   *note;
+} diatom_filter_info;
+
+extern const diatom_filter_info diatom_filters[DIATOM_FILTER_COUNT];
+/* The filter called `name`, or -1 */
+int diatom_filter_index(const char *name);
 
 /* audio.c - cores emit 32040..131072 Hz; the device runs at whatever it runs at.
  * A polyphase windowed sinc, with dynamic rate control holding the port's buffer

@@ -1,0 +1,332 @@
+{
+  "id": "console-lids",
+  "created": "2026-11-12",
+  "generator": "Built-in image_gen",
+  "registration": "window.ZyperArtOverrides",
+  "sourceImmutable": true,
+  "scope": "Mechanical motion overlays on the approved console images. The original consoles group remains unchanged.",
+  "assets": [
+    {
+      "key": "SATURN",
+      "baseSourceFile": "source/SATURN.png",
+      "sourceFile": "source/SATURN-bay.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d33f-08ae-7280-9aae-68e8bad1ba61/exec-61566f3f-8a2a-4a95-99da-f0b4c8668830.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Use case: precise-object-edit. Asset type: optical drive interior layer for a hardware animation. Image 1 is the approved Sega Saturn pixel-art case. Keep its full 1254 by 1254 square composition, camera, case silhouette, buttons, cartridge slot, controller, cable and transparency unchanged. Remove ONLY the large rounded rectangular top disc lid with the Saturn markings, inside its dark seam. Reveal the realistic EMPTY Saturn optical bay underneath: deep dark gray shallow rounded rectangular well, central black disc spindle, small optical lens carriage and guide track. Keep the cavity in the exact footprint of the original closed lid, with matching projected front and depth axes. No disc. No lid anywhere, no raised flap, no new hardware. Do not move any surrounding pixel. Match the original crisp pixel clusters, dark blue-gray outlines, warm upper-left highlights, cool shadows and limited palette. No photo textures, blur, gradients, added glow, ground shadow, extra text or decoration. The image will be clipped to the original lid outline.",
+      "hardwareReferences": [
+        {
+          "url": "https://www.manualslib.com/guide/4248222/sega-saturn-video-game-console-operating-manual.html",
+          "purpose": "Sega operating manual: OPEN control releases the top CD door."
+        },
+        {
+          "url": "https://repairdats.com/consoles/sega/saturn_group",
+          "image": "https://repairdats.com/consoles/sega/saturn/saturn_model_2/saturn_model_2.png",
+          "purpose": "Approved Model 2 case, rounded lid and rear hinge layout."
+        }
+      ],
+      "duration": 6000,
+      "motion": {
+        "type": "rear-hinged-disc-lid",
+        "hinge": [
+          552,
+          311
+        ],
+        "across": [
+          350,
+          12
+        ],
+        "forward": [
+          -80,
+          250
+        ],
+        "vertical": [
+          0,
+          -325
+        ],
+        "maxAngleDegrees": 74,
+        "uniquePoses": 26
+      },
+      "perspectiveChecks": [
+        "The source lid outline follows the approved closed-case pixels.",
+        "The across axis and rear hinge remain fixed during rotation.",
+        "The depth axis rotates toward the vertical axis. The reverse face uses molded underside ribs.",
+        "The generated bay is clipped to the original lid outline. All surrounding case pixels stay fixed.",
+        "The opening angle keeps the lid inside the 256-pixel canvas."
+      ],
+      "imageReview": "Accepted after direct inspection of the generated layer.",
+      "animationReview": "Local 64-frame canvas check passed. Six poses per system received a visual review. Parent browser review remains pending.",
+      "status": "ready-for-browser-review",
+      "sha256": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+      "baseSha256": "bd9c64ff789d15833628f7f913c3cd6b20452252f77358aadc03b12b8903a2b3"
+    },
+    {
+      "key": "DC",
+      "baseSourceFile": "source/DC.png",
+      "sourceFile": "source/DC-bay.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d33f-08ae-7280-9aae-68e8bad1ba61/exec-3269b782-d1eb-4971-a4db-40ed7cb5921f.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Use case: precise-object-edit. Asset type: optical drive interior layer for a hardware animation. Image 1 is the approved Sega Dreamcast pixel-art case. Keep its full 1254 by 1254 square composition, camera, case silhouette, buttons, four ports, controller, cable and transparency unchanged. Remove ONLY the large circular top disc lid including its orange spiral and its pale gray triangular front latch. Leave the separate orange triangular power indicator fixed at the front. Reveal the realistic EMPTY Dreamcast optical drive underneath: deep dark gray circular well, black central spindle, small lens carriage and radial guide track. Keep the cavity in the exact footprint of the original closed lid, with matching projected front and depth axes. No disc. No lid anywhere, no raised flap, no new hardware. Do not move any surrounding pixel. Match the original crisp pixel clusters, dark blue-gray outlines, warm upper-left highlights, cool shadows and limited palette. No photo textures, blur, gradients, added glow, ground shadow, extra text or decoration. The image will be clipped to the original lid outline.",
+      "correctionPrompts": [
+        "Use case: precise-object-edit. Correct only the optical lens guide in this pixel-art Dreamcast interior. The curved semicircular rails are mechanically wrong. Remove both curved rails and replace them with a short STRAIGHT pair of parallel metal guide rods running horizontally from the center spindle toward the right side of the circular well. Put the small rectangular optical lens carriage on these straight rods, just to the right of the spindle. The rods must stay straight and terminate inside the circular bay. Keep every other pixel, including the bay rim, spindle, outer case, controller, cable, ports, transparency, placement and dimensions unchanged. No disc, no lid, no other changes."
+      ],
+      "rejectedSource": "exec-57bf74df-d3d0-4e68-bd4b-9ff8c4e03131.png",
+      "rejectionReason": "The first image had curved optical lens rails. The correction uses straight radial rails.",
+      "hardwareReferences": [
+        {
+          "url": "https://www.ifixit.com/Document/2wmybnwNCTPu5CF5/Sega-Dreamcast-NTSC-Instruction-Manual.pdf",
+          "purpose": "Sega instruction manual: top disc door, right OPEN button, circular optical bay."
+        },
+        {
+          "url": "https://www.sega-dreamcast.com/jpdc.htm",
+          "image": "https://www.sega-dreamcast.com/hardware/NTSC_US_SEGA_Dreamcast_HKT-3020_NTSC_U_c.jpg",
+          "purpose": "Open hardware photograph: rear hinge and underside of round disc door."
+        }
+      ],
+      "duration": 6000,
+      "motion": {
+        "type": "rear-hinged-disc-lid",
+        "hinge": [
+          673,
+          172
+        ],
+        "across": [
+          260,
+          0
+        ],
+        "forward": [
+          -75,
+          355
+        ],
+        "vertical": [
+          0,
+          -460
+        ],
+        "maxAngleDegrees": 74,
+        "uniquePoses": 26
+      },
+      "perspectiveChecks": [
+        "The source lid outline follows the approved closed-case pixels.",
+        "The across axis and rear hinge remain fixed during rotation.",
+        "The depth axis rotates toward the vertical axis. The reverse face uses molded underside ribs.",
+        "The generated bay is clipped to the original lid outline. All surrounding case pixels stay fixed.",
+        "The vertical projection is [0,-460] and the opening angle is 74 degrees. Static viewBox [0,-220,1254,1474] keeps every pose inside the canvas without changing the lid geometry."
+      ],
+      "imageReview": "Accepted after direct inspection of the generated layer.",
+      "animationReview": "Revised local 64-frame check passed with static framing. No drawing exceeded motion bounds. No solid pixels touched the canvas edge. The fully open lid received a visual review and now retains its projected height. The revised root browser check remains pending.",
+      "status": "ready-for-browser-review",
+      "sha256": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+      "baseSha256": "3d85f18d39d73a60211332e164b925c40ca7ae805cc397f3a25313c66e6eb65c",
+      "viewBox": [
+        0,
+        -220,
+        1254,
+        1474
+      ],
+      "motionBounds": [
+        405,
+        -185,
+        680,
+        722
+      ]
+    },
+    {
+      "key": "NEOCD",
+      "baseSourceFile": "source/NEOCD.png",
+      "sourceFile": "source/NEOCD-bay.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d33f-08ae-7280-9aae-68e8bad1ba61/exec-23792733-7cd1-488e-afd8-8c35309013ae.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Use case: precise-object-edit. Asset type: optical drive interior layer for a hardware animation. Image 1 is the approved Neo Geo CD top-loader pixel-art case. Keep its full 1254 by 1254 square composition, camera, case silhouette, power button, indicator, ports, controller, cable and transparency unchanged. Remove ONLY the broad rectangular top disc lid carrying SNK NEO GEO CD markings, from the horizontal rear hinge below the vent to the rounded front lip. Keep the vent and rear hinge fixed. Reveal the realistic EMPTY Neo Geo CD optical bay underneath: deep black molded cavity with a circular recessed disc well, central black spindle, small lens carriage and radial guide track. Keep the cavity in the exact footprint of the original closed lid, with matching projected front and depth axes. No disc. No lid anywhere, no raised flap, no new hardware. Do not move any surrounding pixel. Match the original crisp pixel clusters, dark blue-gray outlines, warm upper-left highlights, cool shadows and limited palette. No photo textures, blur, gradients, added glow, ground shadow, extra text or decoration. The image will be clipped to the original lid outline.",
+      "hardwareReferences": [
+        {
+          "url": "https://manualzz.com/doc/10971757/snk-top-loading-neo-geo-cd-instruction-manual",
+          "purpose": "SNK top-loading instruction manual: lift the front lip of the disc door."
+        },
+        {
+          "url": "https://www.ebay.com/itm/126164599189",
+          "image": "https://i.ebayimg.com/images/g/HjQAAOSwDbFlEjYW/s-l1200.jpg",
+          "purpose": "Approved top-loader case, rectangular top lid and rear vent."
+        }
+      ],
+      "duration": 6000,
+      "motion": {
+        "type": "rear-hinged-disc-lid",
+        "hinge": [
+          470,
+          340
+        ],
+        "across": [
+          451,
+          0
+        ],
+        "forward": [
+          -70,
+          270
+        ],
+        "vertical": [
+          0,
+          -325
+        ],
+        "maxAngleDegrees": 74,
+        "uniquePoses": 26
+      },
+      "perspectiveChecks": [
+        "The source lid outline follows the approved closed-case pixels.",
+        "The across axis and rear hinge remain fixed during rotation.",
+        "The depth axis rotates toward the vertical axis. The reverse face uses molded underside ribs.",
+        "The generated bay is clipped to the original lid outline. All surrounding case pixels stay fixed.",
+        "The opening angle keeps the lid inside the 256-pixel canvas."
+      ],
+      "imageReview": "Accepted after direct inspection of the generated layer.",
+      "animationReview": "Local 64-frame canvas check passed. Six poses per system received a visual review. Parent browser review remains pending.",
+      "status": "ready-for-browser-review",
+      "sha256": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+      "baseSha256": "b44d6e3e646b072102e5ed0dc806fc301e6b6618613e5edab26e2a71c917db3a"
+    },
+    {
+      "key": "SEGACD",
+      "baseSourceFile": "source/SEGACD.png",
+      "sourceFile": "source/SEGACD-tray.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d33f-08ae-7280-9aae-68e8bad1ba61/exec-16953889-3730-4f2b-99f6-d5acf6877521.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Use case: stylized-concept. Asset type: separate empty Sega CD Model 1 disc tray sprite for the attached approved case. Image 1 is a style and perspective reference. Generate ONLY the empty black plastic sliding tray, isolated on transparent background. No console, no front logo flap, no controller, no cable, no disc, no text. The original Sega CD Model 1 has a thin rectangular tray with a large circular recess for a 12 cm CD and a concentric small center recess. View the tray from exactly the reference camera: front edge horizontal, depth recedes up-right, top and right side visible. Make it a rigid flat rectangular plane whose across vector is horizontal and whose rear-to-front depth vector goes down-left at about 1 horizontal unit to 2.5 vertical units. Draw the thin front rim and side rails, dark blue-black plastic, cool shadow and a few subtle gray highlights. Use the same crisp square pixel clusters and limited palette as the attached reference. The tray is approximately 500 pixels wide and 280 pixels deep in projection, centered with generous transparent margins on a 1254 square canvas. No photo texture, no glow, no ground shadow, no stretched oval tray. The CD recess should be a natural ellipse in this camera view.",
+      "hardwareReferences": [
+        {
+          "url": "https://www.videogameconsolelibrary.com/images/Manuals/91_Sega_CD_Model_1_Manual.pdf",
+          "purpose": "Sega Model 1 manual, indexed excerpt: tray opens and closes horizontally from the front."
+        },
+        {
+          "url": "https://gametrog.com/sega-cd-model-1-2-information-specs/",
+          "purpose": "Hardware photograph and description: the SEGA CD logo is a flap that drops before tray ejection."
+        }
+      ],
+      "duration": 6000,
+      "motion": {
+        "type": "bottom-hinged-flap-and-linear-tray",
+        "flapHinge": [
+          [
+            210,
+            815
+          ],
+          [
+            667,
+            815
+          ]
+        ],
+        "flapMaxAngleDegrees": 90,
+        "trayAcross": [
+          392,
+          0
+        ],
+        "trayExtension": [
+          -70,
+          151
+        ],
+        "uniquePoses": 34
+      },
+      "perspectiveChecks": [
+        "The front logo flap rotates about its fixed lower hinge before the tray extends.",
+        "A fixed projection aligns the generated tray with the case depth. Only its translation changes during extension.",
+        "The aperture clips the hidden rear portion and side rails. The original cable remains in front.",
+        "The tray stays clear of the controller and the 256-pixel canvas edge."
+      ],
+      "imageReview": "Accepted after direct inspection of the generated layer.",
+      "animationReview": "Local 64-frame canvas check passed. Six poses per system received a visual review. Parent browser review remains pending.",
+      "status": "ready-for-browser-review",
+      "sha256": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+      "baseSha256": "3cd52c4994dc250d60552a452cc720d3bdb39fcf8f1ab9b682f45f94279e90c5"
+    },
+    {
+      "key": "NES",
+      "baseSourceFile": "source/NES.png",
+      "sourceFile": "source/NES-cartridge.png",
+      "generatedSource": "/Users/tarikbc/.codex/generated_images/01a1d33f-08ae-7280-9aae-68e8bad1ba61/exec-b59507df-0685-43c3-a655-eba6d80f26a2.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Use case: stylized-concept. Asset type: separate NES Game Pak sprite for the attached approved console animation. Image 1 is a style and camera reference. Generate ONLY one original North American gray Nintendo Entertainment System cartridge, isolated on transparent background. Show it lying flat with label UP and connector edge at the FAR BACK, ready to slide away from the viewer into the front-loading console. The near gripping edge faces the viewer. Match the reference camera exactly: across edges horizontal and depth edges recede up-right. Use a rigid rectangular cartridge whose near-to-far projected depth vector is about 1 horizontal unit to 1.1 vertical units, up-right. Recognizable gray NES shell with stepped shoulder profile, molded edge ridges and a modest small muted red and black generic label on the top face. No copyrighted game artwork, no invented text, no hands, no console, no controller, no cable, no shadow. Match the reference's crisp pixel clusters, limited gray palette, dark blue-gray outlines and warm upper-left highlight. The cartridge is wide and flat, not upright, not a Game Boy cartridge. Show its thin near edge. Center it with generous margins on a transparent 1254 square canvas.",
+      "hardwareReferences": [
+        {
+          "url": "https://www.videogameconsolelibrary.com/images/Manuals/90_Nintendo_NES-Manual.pdf",
+          "purpose": "Nintendo manual: open chamber lid, insert Game Pak label up, then press it down; reverse for removal."
+        },
+        {
+          "url": "https://collection.sciencemuseumgroup.org.uk/objects/co8864314",
+          "image": "https://coimages.sciencemuseumgroup.org.uk/526/304/large_2021_1610_0001__0004_.jpg",
+          "purpose": "Inspected open-door photograph: rear hinge, narrow return and front panel form one rigid L-shaped door."
+        }
+      ],
+      "duration": 6000,
+      "motion": {
+        "type": "two-face-door-and-front-loading-cartridge",
+        "hinge": [
+          [
+            304,
+            479
+          ],
+          [
+            796,
+            479
+          ]
+        ],
+        "doorMaxAngleDegrees": 80,
+        "doorTopForward": [
+          -32,
+          31
+        ],
+        "doorFrontDown": [
+          0,
+          105
+        ],
+        "cartridgeInsertion": [
+          135,
+          -170
+        ],
+        "cartridgePressDown": [
+          0,
+          18
+        ],
+        "uniquePoses": 47
+      },
+      "perspectiveChecks": [
+        "The rear hinge remains fixed. The narrow top return and front panel rotate as two rigid faces.",
+        "The cartridge stays label-up. A fixed transform reverses its source plane so the connector enters first.",
+        "The cartridge translates up-right along the case depth axis, then moves down inside the chamber.",
+        "The chamber and near fascia hide the inserted part. The controller, cable and ports stay fixed.",
+        "A short opacity ramp introduces and removes the detached cartridge during the open-door hold. The loading path itself uses rigid translation."
+      ],
+      "imageReview": "Accepted after direct inspection of the generated layer.",
+      "animationReview": "Local 64-frame canvas check passed. Six poses per system received a visual review. Parent browser review remains pending.",
+      "status": "ready-for-browser-review",
+      "sha256": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5",
+      "baseSha256": "226bfe47e27b5efdfcc4c25e5869be160fc646b12c9499bf0b30c32311cc208e"
+    }
+  ],
+  "validation": {
+    "renderer": "Node @napi-rs/canvas; separate local check, not a browser check",
+    "framesPerAsset": 64,
+    "exportPoseLimit": 64,
+    "bounds": "No changed pixel outside the declared region plus the shared two-pixel margin.",
+    "edgePixels": "No alpha above 16 on the canvas edge.",
+    "sourceChangesAfterSelection": false,
+    "browserStatus": "pending parent review",
+    "dreamcastFraming": "The corrected DC geometry passed 64 local frames with viewBox [0,-220,1254,1474]. Every frame uses the same scale and offset."
+  },
+  "limitations": [
+    "Underside ribs are a simple visual reconstruction. They do not reproduce every molded screw post.",
+    "The Nintendo cartridge has a generic label with no game artwork."
+  ],
+  "rendererSha256": "9e61b415cb76dd0086560189e4f777c6115165d1a62a34331277cf211e8727d9",
+  "browserReview": {
+    "status": "passed",
+    "checks": [
+      "unchanged pixels outside motion",
+      "transparent margins",
+      "loop return",
+      "correct pose count",
+      "perspective review"
+    ]
+  }
+}

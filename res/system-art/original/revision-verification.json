@@ -1,0 +1,379 @@
+{
+  "date": "2026-11-12",
+  "browser": {
+    "frames": [
+      {
+        "key": "GB",
+        "changedPixels": 320,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PS1",
+        "changedPixels": 22704,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "3DO",
+        "changedPixels": 6763,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SNES",
+        "changedPixels": 25174,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GBA",
+        "changedPixels": 2417,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "32X",
+        "changedPixels": 9183,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SATURN",
+        "changedPixels": 22771,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A2600",
+        "changedPixels": 6095,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A5200",
+        "changedPixels": 8483,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "A7800",
+        "changedPixels": 11603,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "DC",
+        "changedPixels": 25005,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GENESIS",
+        "changedPixels": 9751,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "N64",
+        "changedPixels": 10219,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NEOCD",
+        "changedPixels": 25104,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NEOGEO",
+        "changedPixels": 22093,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NES",
+        "changedPixels": 29261,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PCE",
+        "changedPixels": 4272,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SEGACD",
+        "changedPixels": 13118,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SMS",
+        "changedPixels": 12897,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "VB",
+        "changedPixels": 4897,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "COLECO",
+        "changedPixels": 6353,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GBC",
+        "changedPixels": 1472,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GG",
+        "changedPixels": 15360,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "GW",
+        "changedPixels": 16,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "LYNX",
+        "changedPixels": 19750,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NDS",
+        "changedPixels": 3260,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NGP",
+        "changedPixels": 14866,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NGPC",
+        "changedPixels": 17053,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PKMINI",
+        "changedPixels": 2814,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "WS",
+        "changedPixels": 1954,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "WSC",
+        "changedPixels": 17404,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "J2ME",
+        "changedPixels": 14068,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PSP",
+        "changedPixels": 20811,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "ARCADE",
+        "changedPixels": 828,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "AW",
+        "changedPixels": 22259,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "FAVORITES",
+        "changedPixels": 37602,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "SCUMMVM",
+        "changedPixels": 1126,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MAME",
+        "changedPixels": 33814,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MSX2",
+        "changedPixels": 12737,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "MUSE",
+        "changedPixels": 8614,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "NAOMI",
+        "changedPixels": 34228,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PICO8",
+        "changedPixels": 3198,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "OPENBOR",
+        "changedPixels": 30668,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PORTS",
+        "changedPixels": 14112,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "VECTREX",
+        "changedPixels": 1800,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "DOOM",
+        "changedPixels": 44782,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "TIC80",
+        "changedPixels": 12412,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "PORTMASTER",
+        "changedPixels": 5850,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "FOLDER",
+        "changedPixels": 0,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      },
+      {
+        "key": "FOLDER_SMALL",
+        "changedPixels": 0,
+        "changedOutsideMotion": 0,
+        "clippedPixels": 0,
+        "closedLoop": true
+      }
+    ],
+    "controls": "passed",
+    "narrowLayout": "passed",
+    "reducedMotion": "passed"
+  },
+  "poseChecks": {
+    "twoFrameSymbols": 10,
+    "portmasterTwoFrame": true,
+    "staticFolderDesigns": 2
+  },
+  "mechanicalLoadingAdded": 19,
+  "utilityImages": 9,
+  "independentReview": "No remaining material motion, perspective, or readability findings.",
+  "pixelFix": "PICO-8 and TIC-80 use isolated, grid-aligned moving layers. Neighboring lettering and symbol colors are checked.",
+  "repositorySuite": {
+    "command": "make check",
+    "checks": 149,
+    "result": "passed"
+  },
+  "symbolPixelRegression": {
+    "command": "/usr/bin/python3 tools/systemart-symbol-pixels-check.py",
+    "result": "passed",
+    "oldExportResult": "failed, as expected"
+  }
+}

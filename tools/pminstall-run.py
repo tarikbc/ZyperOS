@@ -15,6 +15,10 @@ Each case starts from an empty Ports folder of its own:
 - a zip with a member outside PortMaster/: refused before anything is written
 - a version.json that makes no sense, and one that is not there
 - a PortMaster/ already there without its program keeps its runtimes
+- a reinstall over a whole PortMaster/: a fresh copy, its runtimes, themes
+  and waiting zips kept, its settings started over, the ports beside it
+  untouched; one that fails leaves the old PortMaster/ as it was
+- a run cut off mid-swap: the old PortMaster/ put back from the staging folder
 - a run while another holds the lock: turned away
 """
 import fcntl
@@ -84,12 +88,13 @@ class Release:
         self.api = "file://" + os.path.join(self.dir, "api") + "/"
 
 
-def run(root, rel, ports=None, source=None):
+def run(root, rel, ports=None, source=None, reinstall=False):
     ports = ports or os.path.join(root, "Ports")
     os.makedirs(ports, exist_ok=True)
     status = os.path.join(root, "pm", "status")
     p = subprocess.run([sys.executable, "-I", HELPER, "--ports", ports, "--status", status,
-                        "--source", source or rel.source, "--api", rel.api],
+                        "--source", source or rel.source, "--api", rel.api] +
+                       (["--reinstall"] if reinstall else []),
                        capture_output=True, text=True, timeout=60)
     st = {}
     if os.path.exists(status):
@@ -205,6 +210,84 @@ def main():
           "its runtime kept")
     check(not os.path.exists(os.path.join(ports, "PortMaster", "stale.txt")),
           "and the rest of the old folder gone")
+    shutil.rmtree(root)
+
+    # A reinstall over a whole PortMaster/, as a self-update left it: a newer
+    # program, its own launcher script, settings, a runtime and its .md5, a
+    # downloaded theme, a zip waiting in autoinstall/; and a port beside it
+    root = case("reinstall")
+    rel = Release(root)
+    ports = os.path.join(root, "Ports")
+    pm = os.path.join(ports, "PortMaster")
+
+    def put(rel_path, text):
+        path = os.path.join(ports, rel_path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(text)
+
+    put("PortMaster/pugwash", "#!/usr/bin/env python3\nraise SystemExit('broken update')\n")
+    put("PortMaster/PortMaster.sh", "#!/bin/bash\necho the update's own\n")
+    put("PortMaster/version", "2026.11.12-1059\n")
+    put("PortMaster/config/config.json", '{"theme": "Broken", "release_channel": "beta"}')
+    put("PortMaster/libs/mono-6.12.squashfs", "a runtime")
+    put("PortMaster/libs/mono-6.12.squashfs.md5", "0123 mono-6.12.squashfs")
+    put("PortMaster/libs/stray.txt", "not a runtime")
+    put("PortMaster/themes/Stardew/theme.json", "{}")
+    put("PortMaster/autoinstall/waiting.zip", "a port to install")
+    put("PortMaster.sh", "#!/bin/bash\necho the old launcher script\n")
+    put("Doukutsu-rs.sh", "#!/bin/bash\necho port\n")
+    put("doukutsu-rs/data/save.dat", "a save")
+    rc, st, err = run(root, rel, reinstall=True)
+    check(rc == 0 and st.get("state") == "done" and st.get("kind") == "reinstall" and
+          st.get("version") == VERSION, "a reinstall ends done, said as one: %s %s %s" % (rc, st, err[-300:]))
+    check(open(os.path.join(pm, "pugwash")).read() == GOOD["PortMaster/pugwash"],
+          "the reinstall puts the release's program in place")
+    check(open(os.path.join(ports, "PortMaster.sh")).read() == GOOD["PortMaster/PortMaster.sh"],
+          "and the release's launcher script at the top of Ports")
+    check(not os.path.exists(os.path.join(pm, "config")), "its settings start over")
+    check(open(os.path.join(pm, "libs", "mono-6.12.squashfs")).read() == "a runtime" and
+          os.path.isfile(os.path.join(pm, "libs", "mono-6.12.squashfs.md5")),
+          "a runtime and its .md5 kept")
+    check(not os.path.exists(os.path.join(pm, "libs", "stray.txt")), "what is not a runtime is not")
+    check(os.path.isfile(os.path.join(pm, "themes", "Stardew", "theme.json")), "a downloaded theme kept")
+    check(os.path.isfile(os.path.join(pm, "autoinstall", "waiting.zip")), "a waiting zip kept")
+    check(open(os.path.join(ports, "doukutsu-rs", "data", "save.dat")).read() == "a save" and
+          os.path.isfile(os.path.join(ports, "Doukutsu-rs.sh")), "the port and its save untouched")
+    check(not os.path.exists(os.path.join(ports, ".zyperos-portmaster")), "no staging folder left")
+
+    # A reinstall that fails leaves the PortMaster on the card as it was
+    shutil.rmtree(rel.dir)
+    bad = Release(root, md5="0" * 32)
+    before = open(os.path.join(pm, "pugwash")).read()
+    rc, st, err = run(root, bad, reinstall=True)
+    check(rc == 2 and st.get("error") == "checksum" and st.get("kind") == "reinstall",
+          "a reinstall that does not match is a checksum error: %s %s" % (rc, st))
+    check(open(os.path.join(pm, "pugwash")).read() == before and
+          os.path.isfile(os.path.join(pm, "libs", "mono-6.12.squashfs")),
+          "and the PortMaster on the card is as it was")
+    shutil.rmtree(root)
+
+    # A run cut off mid-swap: the old PortMaster/ is in the staging folder and
+    # none in place. The next run puts it back before anything else
+    root = case("midswap")
+    rel = Release(root)
+    ports = os.path.join(root, "Ports")
+    old = os.path.join(ports, ".zyperos-portmaster", "old")
+    os.makedirs(os.path.join(old, "libs"))
+    with open(os.path.join(old, "pugwash"), "w") as f:
+        f.write("the old program")
+    with open(os.path.join(old, "PortMaster.sh"), "w") as f:
+        f.write("#!/bin/bash\n")
+    with open(os.path.join(old, "libs", "love_11.5.squashfs"), "w") as f:
+        f.write("a runtime")
+    shutil.rmtree(rel.dir)
+    rc, st, err = run(root, rel)
+    check(rc == 0 and st.get("state") == "done" and
+          open(os.path.join(ports, "PortMaster", "pugwash")).read() == "the old program" and
+          os.path.isfile(os.path.join(ports, "PortMaster", "libs", "love_11.5.squashfs")) and
+          not os.path.exists(os.path.join(ports, ".zyperos-portmaster")),
+          "a run cut off mid-swap: the old PortMaster put back: %s %s" % (rc, st))
     shutil.rmtree(root)
 
     # Another run holds the lock

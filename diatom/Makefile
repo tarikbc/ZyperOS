@@ -26,7 +26,7 @@ LDFLAGS += -lz
 # Objects live under build/$(PORT)/ so host and cross builds cannot collide:
 # a leftover x86 main.o in a device link fails late and confusingly.
 BUILD := build/$(PORT)
-SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c src/statefile.c port/$(PORT).c
+SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c src/player2.c src/statefile.c port/$(PORT).c
 # Expanded where it is used, not here: a port's block below adds its own files
 # to SRC (the Pixel 2's bar, port/osdbar.c), and := took the list before they
 # were in it, so they were never built and the link failed.
@@ -78,6 +78,10 @@ ifeq ($(PORT),desktop)
   endif
   CFLAGS  += $(SDL_CFLAGS)
   LDFLAGS += $(SDL_LIBS)
+  # NES player 2's share at the path in DIATOM_P2_SHARE when it is set, so a
+  # test (test/player2.py) never meets a real one. Here only: a device build
+  # writes /tmp/zyperos-p2, where p2d looks, whatever its environment says.
+  CFLAGS  += -DDIATOM_P2_SHARE_ENV
   # dlopen lives in libc on macOS and on modern glibc; -ldl is harmless where
   # it exists and absent where it does not. libm is separate on Linux, and
   # macOS links it anyway: the resampler's cos() failed to link in a Linux
@@ -109,16 +113,16 @@ ifeq ($(PORT),pixel2)
   PIXEL2_PKGS := sdl2 egl glesv2 gbm libdrm
   # The level bar, ZyperOS's own drawing of it (port/osdbar.c), and the theme
   # file the launcher writes for it to read (port/themefile.c); the rumble
-  # motor, through the joypad's force feedback (port/rumble_evdev.c)
-  SRC += port/osdbar.c port/themefile.c port/rumble_evdev.c
+  # motor, through the joypad's force feedback (port/rumble_evdev.c); the
+  # display's gamma table, emptied (port/panelgamma.c)
+  SRC += port/osdbar.c port/themefile.c port/rumble_evdev.c port/panelgamma.c
   CFLAGS  += $(shell $(PKG_CONFIG) --cflags $(PIXEL2_PKGS))
   LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PIXEL2_PKGS)) -lm -ldl -lpthread
 endif
 
 .PHONY: all clean check check-seam check-proto check-port \
         check-corefacts check-cheevos check-screens check-chord check-stick check-bounds check-copies \
-        check-statefile \
-        stub run-stub
+        check-rumble check-rumble-e2e check-statefile stub run-stub
 
 all: $(BIN)
 
@@ -150,7 +154,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-statefile check-proto check-port check-stateplane check-resident check-hotkeys check-now check-states
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-statefile check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e check-player2 check-states
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -209,6 +213,27 @@ $(STICK_TEST): test/stick_test.c src/stick.c src/stick.h include/diatom_port.h
 	@mkdir -p $(BUILD)
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 \
 	      -Iinclude -Isrc -o $@ test/stick_test.c src/stick.c -lm
+
+# The GKD Pixel 2's rumble motor (port/rumble_evdev.c), built unchanged on a
+# model of the kernel's ff-memless under it: every stop a game asks for
+# reaches the motor (an N64 Rumble Pak's never did on 1.0.4), a close stops
+# it, and a game's call never waits on the device. Offline: the device's
+# calls go to the model (test/rumble_fake.h) and <linux/input.h> is
+# test/fakeinc's, so it runs on macOS too.
+RUMBLE_TEST := $(BUILD)/rumble-test
+
+check-rumble: $(RUMBLE_TEST)
+	@./$(RUMBLE_TEST)
+
+$(RUMBLE_TEST): test/rumble_test.c test/rumble_fake.h test/fakeinc/linux/input.h \
+                port/rumble_evdev.c port/rumble_evdev.h include/diatom_port.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g \
+	      -Itest/fakeinc -Iinclude -Iport -include test/rumble_fake.h \
+	      -c -o $(BUILD)/rumble_evdev_model.o port/rumble_evdev.c
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g \
+	      -Itest/fakeinc -Iinclude -Iport -o $@ test/rumble_test.c \
+	      $(BUILD)/rumble_evdev_model.o -lpthread
 
 # Input that does not fit what reads it: zips too short or too sure of
 # themselves (src/zip.c), and a protocol line longer than its buffer
@@ -303,6 +328,15 @@ check-now:
 	@python3 test/now.py
 .PHONY: check-now
 
+# The motor end to end, against the stub core asking as an N64 Rumble Pak
+# game does (STUBCORE_RUMBLE) and a pretend motor in the desktop port
+# (DIATOM_RUMBLE_LOG): it stops when the game stops it, under MENU, at a
+# reset, a state load, a STOP and a QUIT. On check-stateplane's terms: a
+# few seconds, skipped unbuilt.
+check-rumble-e2e:
+	$(FRESH_IF_BUILT)
+	@python3 test/rumble.py
+
 # Save states packed, end to end (src/statefile.h): the stub core with a
 # state big enough to pack, resumed and quick-loaded whole, a version 1 state
 # still resumed, a broken one refused. On check-stateplane's terms: a few
@@ -319,6 +353,16 @@ check-hotkeys:
 	$(FRESH_IF_BUILT)
 	@python3 test/hotkeys.py
 .PHONY: check-hotkeys
+
+# NES player 2 end to end (src/player2.h): the frames in the shared file,
+# ports 1 to 3 from the pads p2d writes, within the system's buttons and
+# players as SETPLAYER2 says them, the pads let go when the beat stops, the
+# file gone at every end. On check-stateplane's terms: a few seconds, the
+# stub core, skipped unbuilt.
+check-player2:
+	$(FRESH_IF_BUILT)
+	@python3 test/player2.py
+.PHONY: check-player2
 
 # The port's audio contract: falls back, is idempotent, and ALWAYS returns.
 # The last one is the reason this exists - a close that joins a stuck audio

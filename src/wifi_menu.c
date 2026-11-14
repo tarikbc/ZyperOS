@@ -107,7 +107,7 @@ int wifi_build(void *ctx, menu_row *rows, int max, const char **heading)
 
 	/* The switch is row 0, so the state of the radio is the first thing read
 	 * and the first thing reachable. */
-	rows[nrows++] = (menu_row){ T(S_MENU_WIFI), w->on ? T(S_MENU_ON) : T(S_MENU_OFF), true };
+	rows[nrows++] = (menu_row){ T(S_MENU_WIFI), w->on ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true };
 	for (i = 0; i < w->n && nrows < max - 2; i++)
 		rows[nrows++] = (menu_row){ w->nets[i].ssid, w->vals[i], true };
 

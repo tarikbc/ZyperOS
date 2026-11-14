@@ -105,6 +105,23 @@ static char *dline(int timeout_ms)
 	}
 }
 
+/* The next whole line, left where it is for dline to take: its start, or
+ * NULL when none came within timeout_ms. Not NUL-ended; a newline ends it. */
+static const char *dpeek(int timeout_ms)
+{
+	for (;;) {
+		struct pollfd p = { dsock, POLLIN, 0 };
+		ssize_t n;
+
+		if (memchr(dbuf, '\n', dused)) return dbuf;
+		if (dsock < 0) return NULL;
+		if (poll(&p, 1, timeout_ms) <= 0) return NULL;
+		n = read(dsock, dbuf + dused, sizeof dbuf - dused);
+		if (n <= 0) { dclose(); return NULL; }
+		dused += (size_t)n;
+	}
+}
+
 /* launch.sh writes the pid when it starts Diatom. Verified against
  * /proc/<pid>/cmdline before any signal is sent: a stale file after a crash
  * and respawn would otherwise aim SIGTERM at whoever inherited the number. */
@@ -244,6 +261,10 @@ void plat_resident_on_unlock(void (*fn)(int id)) { d_on_unlock = fn; }
 static void (*d_on_speed)(int half);
 
 void plat_resident_on_speed(void (*fn)(int half)) { d_on_speed = fn; }
+
+static void (*d_on_stick)(bool on);
+
+void plat_resident_on_stick(void (*fn)(bool on)) { d_on_stick = fn; }
 
 static void (*d_on_quick)(int what, const char *path);
 
@@ -694,6 +715,45 @@ bool plat_resident_sync_screens(int timeout_ms)
 	return false;
 }
 
+bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeout_ms)
+{
+	unsigned t0 = SDL_GetTicks();
+	size_t pn = strlen(prefix);
+	const char *next;
+	char *l;
+	int left, late = 0;
+
+	if (dsock < 0) return false;
+	for (;;) {
+		/* Past the time, and with 0 from the start, only the lines that are
+		 * waiting already: Player 2's start reads an old answer away so
+		 * (p2.c). A paused Diatom says nothing unasked, so they are few; the
+		 * count only bounds the loop. */
+		left = timeout_ms - (int)(SDL_GetTicks() - t0);
+		if (left <= 0 && ++late > 64) break;
+		/* The game ended meanwhile (px2-open's quit, a crash): its EXIT is
+		 * the wait loop's to read, so it is left where it is, and there is
+		 * no answer to wait for */
+		next = dpeek(left > 0 ? left : 0);
+		if (!next) break;
+		if (strncmp(next, "EXIT", 4) == 0) break;
+		l = dline(0);
+		if (!l) break;
+		if (strncmp(l, prefix, pn) == 0) {
+			snprintf(out, n, "%s", l);
+			return true;
+		}
+		if (strncmp(l, "DISPLAY\t", 8) == 0) d_note_display(l);
+		else if (strncmp(l, "PREVIEW\tpath=", 13) == 0)
+			snprintf(d_preview, sizeof d_preview, "%s", l + 13);
+		else if (strncmp(l, "STYLUS\t", 7) == 0) d_note_stylus(l);
+		else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
+		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
+		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+	}
+	return false;
+}
+
 static void d_apply_levels(void)
 {
 	/* Through the public setters (defined below, past this point in the
@@ -760,6 +820,10 @@ static int diatom_wait(void)
 			/* The step, "1" to "3" in halves: "1.5" is 3 */
 			else if (strncmp(l, "SPEED\tx=", 8) == 0) {
 				if (d_on_speed) d_on_speed((int)(strtod(l + 8, NULL) * 2.0 + 0.5));
+			}
+			/* R2 in a PSP game: "STICK\ton=1" while the d-pad is the stick */
+			else if (strncmp(l, "STICK\ton=", 9) == 0) {
+				if (d_on_stick) d_on_stick(l[9] == '1');
 			}
 			/* SELECT's quick slot: the hotkey, and what came of the SAVE or
 			 * LOAD the launcher sent for it (and of the menu's, which are

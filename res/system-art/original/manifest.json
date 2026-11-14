@@ -1,0 +1,646 @@
+{
+  "schema": 1,
+  "date": "2026-11-13",
+  "status": "complete-review-set",
+  "system_count": 47,
+  "preview_cell": 256,
+  "runtime_integrated": true,
+  "method": "Built-in image generation; fixed hardware layers; reconstructed startup graphics; bounded PNG atlases",
+  "selected_sources": {
+    "GB": "source/GB.png",
+    "PS1": "source/PS1-ports.png",
+    "3DO": "source/3DO.png",
+    "SNES": "source/SNES.png",
+    "GBA": "source/GBA-screen.png",
+    "PS1-bay": "source/PS1-bay.png",
+    "3DO-tray": "source/3DO-tray-angle.png",
+    "SNES-cartridge": "source/SNES-cartridge.png",
+    "32X": "source/32X.png",
+    "SATURN": "source/SATURN.png",
+    "A2600": "source/A2600.png",
+    "A5200": "source/A5200.png",
+    "A7800": "source/A7800.png",
+    "DC": "source/DC.png",
+    "GENESIS": "source/GENESIS.png",
+    "N64": "source/N64.png",
+    "NEOCD": "source/NEOCD.png",
+    "NEOGEO": "source/NEOGEO.png",
+    "NES": "source/NES.png",
+    "PCE": "source/PCE.png",
+    "SEGACD": "source/SEGACD.png",
+    "SMS": "source/SMS.png",
+    "VB": "source/VB.png",
+    "COLECO": "source/COLECO.png",
+    "GBC": "source/GBC.png",
+    "GG": "source/GG.png",
+    "GW": "source/GW.png",
+    "LYNX": "source/LYNX.png",
+    "NDS": "source/NDS.png",
+    "NGP": "source/NGP.png",
+    "NGPC": "source/NGPC.png",
+    "PKMINI": "source/PKMINI.png",
+    "WS": "source/WS.png",
+    "WSC": "source/WSC.png",
+    "J2ME": "source/J2ME.png",
+    "PSP": "source/PSP.png",
+    "ARCADE": "source/ARCADE.png",
+    "AW": "source/AW.png",
+    "FAVORITES": "source/FAVORITES.png",
+    "SCUMMVM": "source/SCUMMVM.png",
+    "MAME": "source/MAME.png",
+    "MSX2": "source/MSX2.png",
+    "MUSE": "source/MP4.png",
+    "NAOMI": "source/NAOMI.png",
+    "PICO8": "source/PICO8.png",
+    "OPENBOR": "source/OPENBOR.png",
+    "PORTS": "source/PORTS.png",
+    "VECTREX": "source/VECTREX.png",
+    "DOOM": "source/DOOM.png",
+    "TIC80": "source/TIC80.png",
+    "AW_CARTRIDGE": "source/AW-cartridge.png",
+    "NAOMI_ROM_CASE": "source/NAOMI-rom-case.png",
+    "PORTMASTER": "source/PORTMASTER.png",
+    "FOLDER": "source/FOLDER.png",
+    "FOLDER_SMALL": "source/FOLDER_SMALL.png",
+    "SATURN_BAY": "source/SATURN-bay.png",
+    "DC_BAY": "source/DC-bay.png",
+    "NEOCD_BAY": "source/NEOCD-bay.png",
+    "SEGACD_TRAY": "source/SEGACD-tray.png",
+    "NES_CART": "source/NES-cartridge.png",
+    "32X_CARTRIDGE": "source/32X-cartridge-v2.png",
+    "A2600_CARTRIDGE": "source/A2600-cartridge.png",
+    "A5200_CARTRIDGE": "source/A5200-cartridge.png",
+    "A7800_CARTRIDGE": "source/A7800-cartridge.png",
+    "GENESIS_CARTRIDGE": "source/GENESIS-cartridge.png",
+    "N64_CARTRIDGE": "source/N64-cartridge.png",
+    "NEOGEO_CARTRIDGE": "source/NEOGEO-cartridge.png",
+    "PCE_CARTRIDGE": "source/PCE-cartridge.png",
+    "SMS_CARTRIDGE": "source/SMS-cartridge.png",
+    "VB_CARTRIDGE": "source/VB-cartridge.png",
+    "COLECO_CARTRIDGE": "source/COLECO-cartridge.png",
+    "MSX2_CARTRIDGE": "source/MSX2-cartridge.png",
+    "ROMS": "source/ROMS-game.png",
+    "BOOKS": "source/BOOKS.png",
+    "VIDEOS": "source/VIDEOS.png",
+    "BIOS": "source/BIOS.png",
+    "SAVES": "source/SAVES.png",
+    "STATES": "source/STATES.png",
+    "BGM": "source/BGM.png",
+    "MUSIC": "source/MUSIC.png"
+  },
+  "animation_catalogue": "animations/catalogue.json",
+  "prompt_records": [
+    "prompts.json",
+    "groups/consoles.json",
+    "groups/handhelds.json",
+    "groups/arcade.json",
+    "groups/console-lids.json",
+    "groups/console-cartridges.json",
+    "groups/utility.json",
+    "groups/card-folders.json"
+  ],
+  "sources": [
+    {
+      "file": "source/32X-cartridge-v2.png",
+      "selected": true,
+      "sha256": "026839d6b7cb7919324d7cf2395ab775fb432a487eaef5d5433f50fd85589cc7",
+      "bytes": 878803
+    },
+    {
+      "file": "source/32X-cartridge.png",
+      "selected": false,
+      "sha256": "dda5525c46bda97a74a38e9c0d4253a962b62a0a4cf35d2e7c26d3b9cd846bca",
+      "bytes": 567649
+    },
+    {
+      "file": "source/32X.png",
+      "selected": true,
+      "sha256": "9d72d17ee64bf39afcecde0293e4c14813b15d99bfa95a784e79b94dc7bbe745",
+      "bytes": 901512
+    },
+    {
+      "file": "source/3DO-tray-angle.png",
+      "selected": true,
+      "sha256": "735376474b757bfa5c5c80032e55d8462607530678404623cffd3a92ea44b449",
+      "bytes": 688294
+    },
+    {
+      "file": "source/3DO-tray.png",
+      "selected": false,
+      "sha256": "52df133cf776b47e2242cd9fc8fadb056fc183cff7da423d8c1af49e7943d748",
+      "bytes": 651305
+    },
+    {
+      "file": "source/3DO.png",
+      "selected": true,
+      "sha256": "85aca379aaefe72846f225185a1ed67d8fe7161ce001088cd59aea5c19384205",
+      "bytes": 614061
+    },
+    {
+      "file": "source/A2600-cartridge.png",
+      "selected": true,
+      "sha256": "ee583f605ea139d888cecd4018531d8e2e950ee68e68b8a7f784f9771628cd12",
+      "bytes": 852638
+    },
+    {
+      "file": "source/A2600.png",
+      "selected": true,
+      "sha256": "11a969c487d48bffce6e17b326fb33585a53424151b7f9aa93a9305f96e01bb9",
+      "bytes": 653261
+    },
+    {
+      "file": "source/A5200-cartridge.png",
+      "selected": true,
+      "sha256": "73358c522814d74da6ea41e6c33793fbe64a6ec5cfb7ef40bd652c9fab5f9f08",
+      "bytes": 932560
+    },
+    {
+      "file": "source/A5200.png",
+      "selected": true,
+      "sha256": "cbb7cbf5ea4fa0839f02f82018f1bd207aae2a7c26f90371210df736c912ea9d",
+      "bytes": 910502
+    },
+    {
+      "file": "source/A7800-cartridge.png",
+      "selected": true,
+      "sha256": "536203323500f6056e67657bc70a56197b6fe2b9c3095b4ae7439443a1f1e278",
+      "bytes": 812460
+    },
+    {
+      "file": "source/A7800.png",
+      "selected": true,
+      "sha256": "a2881c82252fb5619d95a99edc19d505c330da64fa742584954ca86fbff09927",
+      "bytes": 857876
+    },
+    {
+      "file": "source/ARCADE.png",
+      "selected": true,
+      "sha256": "1f70d06f2f8d56cc2748a3efc5d7c0c4c73a2bfa6b385d42b6052fa7e71a456d",
+      "bytes": 590888
+    },
+    {
+      "file": "source/AW-cartridge.png",
+      "selected": true,
+      "sha256": "7b9771b3ecd44ee673c2e0e3927ea1b47a729d3d659684278d31adb142fa1cfb",
+      "bytes": 337832
+    },
+    {
+      "file": "source/AW.png",
+      "selected": true,
+      "sha256": "689e98cd3cfa5ef3def9093c30abe50cd81a20d5a6f51a179510ed7734e122ac",
+      "bytes": 901393
+    },
+    {
+      "file": "source/BGM.png",
+      "selected": true,
+      "sha256": "b04186f4357a8765f661b551c03a7a73e6808ea2a804e552f5bd85eef94d2045",
+      "bytes": 617303
+    },
+    {
+      "file": "source/BIOS.png",
+      "selected": true,
+      "sha256": "fb59a83febf505de4630f03a1ffd8e67a4c83854de46e542ac374c1fed2f82e3",
+      "bytes": 851180
+    },
+    {
+      "file": "source/BOOKS.png",
+      "selected": true,
+      "sha256": "1e75f4caf5203ba9a272c91c6e8fbcaf8d88fdbcfd4e286db590b5b8c1bd492f",
+      "bytes": 639034
+    },
+    {
+      "file": "source/COLECO-cartridge.png",
+      "selected": true,
+      "sha256": "b2531b7565029682ceeafc974b53aa8aa3dd0d37d8a1c8f858fde8007833963f",
+      "bytes": 763609
+    },
+    {
+      "file": "source/COLECO.png",
+      "selected": true,
+      "sha256": "df7319dfa67753df2a7d8e27d3c9536f0acab30fef35c5b04dfb88f997e86f1b",
+      "bytes": 707848
+    },
+    {
+      "file": "source/DC-bay.png",
+      "selected": true,
+      "sha256": "a9562b6ffff2652fd9fda44da80ce6fd69b8b6ef546ab6f9b457beb5483526e1",
+      "bytes": 881663
+    },
+    {
+      "file": "source/DC.png",
+      "selected": true,
+      "sha256": "3d85f18d39d73a60211332e164b925c40ca7ae805cc397f3a25313c66e6eb65c",
+      "bytes": 871552
+    },
+    {
+      "file": "source/DOOM.png",
+      "selected": true,
+      "sha256": "97ab8752534cc6313d0fc8249c9e44d1fb173ad1685d3c98a92bf76163ccbd32",
+      "bytes": 583104
+    },
+    {
+      "file": "source/FAVORITES.png",
+      "selected": true,
+      "sha256": "96dc1ce6cfac52541c6b956674bcdfd6451e3d527b9a6d468188961fe1dd5b01",
+      "bytes": 492948
+    },
+    {
+      "file": "source/FOLDER.png",
+      "selected": true,
+      "sha256": "588ac24d893fabed9a94266a7acd32b1dafbac62e487f70a3266f29f13635960",
+      "bytes": 474304
+    },
+    {
+      "file": "source/FOLDER_SMALL.png",
+      "selected": true,
+      "sha256": "1935e343d29ef0d680bb0582d196e86d55a01c2698f05e19064830db2b889082",
+      "bytes": 491278
+    },
+    {
+      "file": "source/GB.png",
+      "selected": true,
+      "sha256": "3ad422f51984d6870ab9e419fc17475af7a51b47718eebb00803f3dbff831162",
+      "bytes": 519865
+    },
+    {
+      "file": "source/GBA-screen.png",
+      "selected": true,
+      "sha256": "78ffdcad198649683c589e102c49c51bbf97cc1d0c4a13849392b3be7c15905c",
+      "bytes": 695486
+    },
+    {
+      "file": "source/GBA.png",
+      "selected": false,
+      "sha256": "afd205d53e0f9f01df695d39d47919e754d0cbcc2bee196bb424481b6bca32fa",
+      "bytes": 614597
+    },
+    {
+      "file": "source/GBC.png",
+      "selected": true,
+      "sha256": "f26cecc23be1ab88d817f35b077b7d2609755aa315df690409c4a36984b6fa3d",
+      "bytes": 826183
+    },
+    {
+      "file": "source/GENESIS-cartridge.png",
+      "selected": true,
+      "sha256": "396f65dcf37b94e99c45feeca12b99bfb14be6e48de7d1f1a1c9627bbc9c6d8b",
+      "bytes": 815629
+    },
+    {
+      "file": "source/GENESIS.png",
+      "selected": true,
+      "sha256": "addc29747fa2e7b8eac9754a0d5dbb55af92b396846b047a3725e4007f858621",
+      "bytes": 792750
+    },
+    {
+      "file": "source/GG.png",
+      "selected": true,
+      "sha256": "66e52c5f0ec6a782ea3fbc20115ebc0654967e035549394815488657689ccf2c",
+      "bytes": 742735
+    },
+    {
+      "file": "source/GW.png",
+      "selected": true,
+      "sha256": "afe7d4b02e5f185e8981041b905f7060fbf133a5db6356a4b78881b383c48e5c",
+      "bytes": 853337
+    },
+    {
+      "file": "source/J2ME.png",
+      "selected": true,
+      "sha256": "ccced6ffa1befc6793c6f90d129afc65fc32d7355a6c93ac4db01b605bd7db22",
+      "bytes": 875519
+    },
+    {
+      "file": "source/LYNX.png",
+      "selected": true,
+      "sha256": "1eb38176262ee2a7300b7cf25b666ff6ccc3873f59e0efc4af8d823f77b07d67",
+      "bytes": 860806
+    },
+    {
+      "file": "source/MAME.png",
+      "selected": true,
+      "sha256": "fb110afa9f2a198fcf09b985bb73026eada12b73b7f7edc04aa6947db174ced4",
+      "bytes": 455527
+    },
+    {
+      "file": "source/MP4.png",
+      "selected": true,
+      "sha256": "dc13cd075b53d9da375419926ee0048ff33873e931000a9f7b78a01ba174156e",
+      "bytes": 504553
+    },
+    {
+      "file": "source/MSX2-cartridge.png",
+      "selected": true,
+      "sha256": "21a03826de9347f1e2c9401dcb1f63662c3257355d72304abc08e1e5869d39cb",
+      "bytes": 675977
+    },
+    {
+      "file": "source/MSX2.png",
+      "selected": true,
+      "sha256": "c7f3c13675bb00c531cbe02195ca516d1ad7a32d30f648be59da0c9c8085b4ea",
+      "bytes": 693397
+    },
+    {
+      "file": "source/MUSE.png",
+      "selected": false,
+      "sha256": "b8c7cf06d2447cb1b16f8ceb50ec7a2627cd4274e7fdeb074df9238fe9c1aee7",
+      "bytes": 479508
+    },
+    {
+      "file": "source/MUSIC.png",
+      "selected": true,
+      "sha256": "e3fc6b6284c04f5b21acc945ca0d86060ffac0d54e91fff3845e56b358be8fc6",
+      "bytes": 576540
+    },
+    {
+      "file": "source/N64-cartridge.png",
+      "selected": true,
+      "sha256": "015f9fd24ecc0060373e9aad49c561b7258411d959052a958c53f3c2122654e7",
+      "bytes": 584109
+    },
+    {
+      "file": "source/N64.png",
+      "selected": true,
+      "sha256": "9bcf6d42a0c7bafb484f205865d32670fa62a18d8714716ffa41d831f6f3d90b",
+      "bytes": 726072
+    },
+    {
+      "file": "source/NAOMI-rom-case.png",
+      "selected": true,
+      "sha256": "fb0dfab1ada21cbec907062a51265fc0e84fc2db68935d309cd3be26602c5df5",
+      "bytes": 370850
+    },
+    {
+      "file": "source/NAOMI.png",
+      "selected": true,
+      "sha256": "743623d1048c2462ac3fadc6c7162be1cd864d7647482b662c9fddef51e5a7ed",
+      "bytes": 1065799
+    },
+    {
+      "file": "source/NDS.png",
+      "selected": true,
+      "sha256": "6dc879aa78783267c664da73a9b051467e7c887bc3391a3af4cab69ab6d13de4",
+      "bytes": 1285305
+    },
+    {
+      "file": "source/NEOCD-bay.png",
+      "selected": true,
+      "sha256": "b2942cdb6b006a4dad87a167537c8cd9b2d06dc9eb979ed25acd75886ca84411",
+      "bytes": 855289
+    },
+    {
+      "file": "source/NEOCD.png",
+      "selected": true,
+      "sha256": "b44d6e3e646b072102e5ed0dc806fc301e6b6618613e5edab26e2a71c917db3a",
+      "bytes": 888762
+    },
+    {
+      "file": "source/NEOGEO-cartridge.png",
+      "selected": true,
+      "sha256": "05b029fdeca0b9734becf4510e0bcca1536cc99e3f3179130a1a3622e69ee22b",
+      "bytes": 1078384
+    },
+    {
+      "file": "source/NEOGEO.png",
+      "selected": true,
+      "sha256": "3060c74b582f73c701fb3cea04e165a763f51549808823005da06497bb8710fc",
+      "bytes": 843261
+    },
+    {
+      "file": "source/NES-cartridge.png",
+      "selected": true,
+      "sha256": "e33bd3fccf2c111fc4ed121f7e689dbb3f5b476d82bbd92977bef3abeb7bf6a5",
+      "bytes": 534143
+    },
+    {
+      "file": "source/NES.png",
+      "selected": true,
+      "sha256": "226bfe47e27b5efdfcc4c25e5869be160fc646b12c9499bf0b30c32311cc208e",
+      "bytes": 716439
+    },
+    {
+      "file": "source/NGP.png",
+      "selected": true,
+      "sha256": "5d8814003fddc83956cff619c596853bc3a4ef8221a67e31d98ffa6673b19adf",
+      "bytes": 817194
+    },
+    {
+      "file": "source/NGPC.png",
+      "selected": true,
+      "sha256": "e7a9b87d642b119e8c1e1f627219f7e60c91986f5084e8911f7b9e21bb88fab2",
+      "bytes": 913029
+    },
+    {
+      "file": "source/OPENBOR.png",
+      "selected": true,
+      "sha256": "3a0872ed87c271b69578e9e8fd05350cae5545c07c7e3d32d2e20288c242f4c7",
+      "bytes": 419773
+    },
+    {
+      "file": "source/PCE-cartridge.png",
+      "selected": true,
+      "sha256": "43c6a972fed4cdb7c973042dc10f3890b7a571380cfee8ec918b5d43d1814758",
+      "bytes": 481708
+    },
+    {
+      "file": "source/PCE.png",
+      "selected": true,
+      "sha256": "5496e99011cc5f8601ea848b9ca428c467050e551042dc97400a1cb305473c2f",
+      "bytes": 882646
+    },
+    {
+      "file": "source/PICO8.png",
+      "selected": true,
+      "sha256": "4fb41a7ff20d41bd3aedc90a8be2f970d0695fb7a26a95f24b803177c3e1a630",
+      "bytes": 349981
+    },
+    {
+      "file": "source/PKMINI.png",
+      "selected": true,
+      "sha256": "422f5430cc6a416fc8ea712fefe7678bf41c60eeefc4c7189a2b6ba95e4d46c5",
+      "bytes": 895528
+    },
+    {
+      "file": "source/PORTMASTER.png",
+      "selected": true,
+      "sha256": "71e86c60861a70293e13c78c35818561fb031351785a0686e8eb0d56085cd599",
+      "bytes": 587635
+    },
+    {
+      "file": "source/PORTS.png",
+      "selected": true,
+      "sha256": "f02227aa0ec46958d92e992530a2b4fb9fbf83c07f05d66b75a1176ca7e30318",
+      "bytes": 533132
+    },
+    {
+      "file": "source/PS1-bay.png",
+      "selected": true,
+      "sha256": "8715d1f3a27680903cb527bb5f6be462bb2979d5ca6acabff04e465065c2cfb6",
+      "bytes": 638975
+    },
+    {
+      "file": "source/PS1-ports.png",
+      "selected": true,
+      "sha256": "b686d16e0141b5e3d023285ecfc72bc16472f558b3e765752289b0d6dce5dde8",
+      "bytes": 697803
+    },
+    {
+      "file": "source/PS1.png",
+      "selected": false,
+      "sha256": "4a482252c0997eeec1c6d5f9a71e5973459cda5f0bcb6d32b8bebdbc96b7ef0a",
+      "bytes": 634189
+    },
+    {
+      "file": "source/PSP.png",
+      "selected": true,
+      "sha256": "1fddee8343dd7bff767e2c4e2437abf4d99e734f0921e7437d887ca7328a563e",
+      "bytes": 933076
+    },
+    {
+      "file": "source/ROMS-game.png",
+      "selected": true,
+      "sha256": "2b68ef853740c1db8b19d21ba00d9abb30fc320479072e1944520ea22634e7d2",
+      "bytes": 819890
+    },
+    {
+      "file": "source/ROMS-pins.png",
+      "selected": false,
+      "sha256": "f25f43c16a61b21c8dc3b3e2ffe83237770f03f7e94f4d99ccbaa533c45b1f2d",
+      "bytes": 670932
+    },
+    {
+      "file": "source/ROMS.png",
+      "selected": false,
+      "sha256": "f69e01edad4f078e47588f5013dc5190516f40905afbdb4d2823eab250ed5a7c",
+      "bytes": 754530
+    },
+    {
+      "file": "source/SATURN-bay.png",
+      "selected": true,
+      "sha256": "2a6465b81ae1730012707cca1dc3b4e3e308a9120908f5f050021396442de94a",
+      "bytes": 895367
+    },
+    {
+      "file": "source/SATURN.png",
+      "selected": true,
+      "sha256": "bd9c64ff789d15833628f7f913c3cd6b20452252f77358aadc03b12b8903a2b3",
+      "bytes": 900720
+    },
+    {
+      "file": "source/SAVES.png",
+      "selected": true,
+      "sha256": "31172a965e72e62c81dd17e7d1acc9abfb12d3b937b415d316f04f0c990735bf",
+      "bytes": 671411
+    },
+    {
+      "file": "source/SCUMMVM.png",
+      "selected": true,
+      "sha256": "031da16e320fc49af78331d879564ff9cf8e2dff7ebb0cc4eb9ecb9c658933c5",
+      "bytes": 770684
+    },
+    {
+      "file": "source/SEGACD-tray.png",
+      "selected": true,
+      "sha256": "7fba4659a2c7388d8928e42564eaeeafe2ef7418b0760578f2b204b0472dee11",
+      "bytes": 570903
+    },
+    {
+      "file": "source/SEGACD.png",
+      "selected": true,
+      "sha256": "3cd52c4994dc250d60552a452cc720d3bdb39fcf8f1ab9b682f45f94279e90c5",
+      "bytes": 996398
+    },
+    {
+      "file": "source/SMS-cartridge.png",
+      "selected": true,
+      "sha256": "63f0c2de91c37a4c2c87cdbf79a62a151ce58181dbef23ee1884169f12a65c2d",
+      "bytes": 799485
+    },
+    {
+      "file": "source/SMS.png",
+      "selected": true,
+      "sha256": "9c52af940cb933e5df17d6d9306c2a3ed079a15617e1c0b63d53b36edb62ced0",
+      "bytes": 820417
+    },
+    {
+      "file": "source/SNES-cartridge.png",
+      "selected": true,
+      "sha256": "168d1f1f2794ca44e840228e85bc86070681da7f3f0a6184948822d8fc5085d3",
+      "bytes": 1126728
+    },
+    {
+      "file": "source/SNES.png",
+      "selected": true,
+      "sha256": "d52d322f4474a72c3e9d77903c4ea8070d2d2639194949806f5c4c525448eb64",
+      "bytes": 631619
+    },
+    {
+      "file": "source/STATES.png",
+      "selected": true,
+      "sha256": "baac7b95d47be5a332c71ce89a38102bb9c405d5c0ce668712bb33994f213692",
+      "bytes": 826488
+    },
+    {
+      "file": "source/TIC80.png",
+      "selected": true,
+      "sha256": "56b92ce73301516ce4d1bb5625bc4b9f1dfbaefcb726df2ac16137ea84966f4d",
+      "bytes": 459595
+    },
+    {
+      "file": "source/VB-cartridge.png",
+      "selected": true,
+      "sha256": "eef72ac9b6797bf8e49b326c1176b34f5cc4e0bce1e2a29935d0b0c0eaed0fe5",
+      "bytes": 419797
+    },
+    {
+      "file": "source/VB.png",
+      "selected": true,
+      "sha256": "48cb18f396bdc55f1bde2d62abe9d24f08c6106f7006f53e654d5cf850689f8e",
+      "bytes": 740784
+    },
+    {
+      "file": "source/VECTREX.png",
+      "selected": true,
+      "sha256": "5da08c4d9f89e0cfe5600789cbfb2d1ad30bf4defe74668b281db6e6b6584498",
+      "bytes": 804126
+    },
+    {
+      "file": "source/VIDEOS.png",
+      "selected": true,
+      "sha256": "a6976ad5b3227c711a0a2a1c9876d12534521f4306116d27a543e2f1464d67b8",
+      "bytes": 533072
+    },
+    {
+      "file": "source/WS.png",
+      "selected": true,
+      "sha256": "0c8b9b34b2b29247b35b590cfed4ef97c709bcca83093d5b6f77c7b2f61a59f2",
+      "bytes": 829059
+    },
+    {
+      "file": "source/WSC.png",
+      "selected": true,
+      "sha256": "2adaf7eea0f39ee57c41ab367be5f9cd5ae98791b2cddb8de1faaed28b7a83c2",
+      "bytes": 831068
+    }
+  ],
+  "verification": {
+    "systems": 47,
+    "fixed_pixels": true,
+    "motion_bounds": true,
+    "alpha_and_clipping": true,
+    "loop_return": true,
+    "source_and_renderer_hashes": true,
+    "independent_perspective_review": "No remaining material findings.",
+    "designs": 58,
+    "two_pose_symbols": 10,
+    "utility_files": 9,
+    "mechanical_loading_added": 19,
+    "static_card_folders": 8,
+    "card_folder_review_sizes": [
+      256,
+      56,
+      40
+    ]
+  },
+  "design_count": 58
+}

@@ -15,6 +15,8 @@
  */
 #include "diatom.h"
 
+#include <string.h>
+
 /* The comparison set, in cycle order on device. Ordered by how much of the
  * panel gets used, so stepping through is a single monotonic story rather than
  * a shuffle: boxed, boxed-but-shape-correct, shape-correct, that cropped to
@@ -42,6 +44,35 @@ const diatom_display_mode_info diatom_modes[] = {
 };
 const int diatom_mode_count =
 	(int)(sizeof diatom_modes / sizeof diatom_modes[0]);
+
+/* How the rect is filled, by name. `shimmerless` is the first shader a
+ * launcher offers by that word (ZyperOS's Shader row); `nearest` is what it
+ * calls Off. */
+const diatom_filter_info diatom_filters[DIATOM_FILTER_COUNT] = {
+	{ "nearest",     DIATOM_FILTER_NEAREST,
+	  "the source pixel under each pixel's centre" },
+	{ "sharp",       DIATOM_FILTER_SHARP,
+	  "sharp-bilinear: one blended pixel at each boundary" },
+	{ "shimmerless", DIATOM_FILTER_SHIMMERLESS,
+	  "Sharp-Shimmerless: pixels mixed by the area they cover" },
+	{ "crt",         DIATOM_FILTER_CRT,
+	  "a CRT: scanlines and an aperture grille (Lottes's CRTS)" },
+	{ "crt-curved",  DIATOM_FILTER_CRT_CURVED,
+	  "the CRT, its glass curved and its corners round" },
+	{ "scanlines",   DIATOM_FILTER_SCANLINES,
+	  "Sharp-Shimmerless with dark bands between the lines" },
+	{ "lcd",         DIATOM_FILTER_LCD,
+	  "a handheld LCD's grid, Sharp-Shimmerless underneath" },
+};
+
+int diatom_filter_index(const char *name)
+{
+	int i;
+
+	for (i = 0; name && i < DIATOM_FILTER_COUNT; i++)
+		if (!strcmp(diatom_filters[i].name, name)) return i;
+	return -1;
+}
 
 /* Intended display aspect. Cores report one; libretro's own rule is that a
  * value <= 0 means "assume square pixels", so base geometry decides. NES

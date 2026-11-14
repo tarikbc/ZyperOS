@@ -8,7 +8,9 @@
 #include "sysmark.h"  /* a system's color as a mark */
 #include "config.h"   /* CFG_NO_COLOR: a system with no color of its own */
 #include "linebreak.h" /* where a name too wide for its box breaks or is cut */
-#include "padglyph.h"  /* the PlayStation's shapes, drawn in running text */
+#include "look.h"      /* Corners: Square */
+#include "padglyph.h"
+#include "folderart.h" /* a folder's card and row, in pixel art */  /* the PlayStation's shapes, drawn in running text */
 
 #include <math.h>
 #include <stdio.h>
@@ -1331,6 +1333,59 @@ static bool clip_in(SDL_Renderer *r, const SDL_Rect *c, const SDL_Rect *outer)
 	return true;
 }
 
+void ui_text_faded(SDL_Renderer *r, TTF_Font *f, const char *s, int x, int y,
+                   int lo, int hi, int fade, SDL_Color col)
+{
+	struct text_entry *e;
+	SDL_Rect clip, was, dst;
+	SDL_bool had;
+	int i, lf, rf;
+
+	if (!f || !s || !*s || hi <= lo || col.a == 0) return;
+	e = text_get(r, f, s, col);
+	if (!e) return;
+	dst = (SDL_Rect){ x, y, e->w, e->h };
+	if (x >= hi || x + e->w <= lo) return;              /* all outside */
+	/* Wholly inside and clear of both fades: as ui_text draws it */
+	if (x >= lo + fade && x + e->w <= hi - fade) {
+		ui_text(r, f, s, x, y, -1, col);
+		return;
+	}
+	/* The fades are only as wide as there is room for, between the ends */
+	lf = rf = fade;
+	if (lf + rf > hi - lo) lf = rf = (hi - lo) / 2;
+
+	had = SDL_RenderIsClipEnabled(r);
+	if (had) SDL_RenderGetClipRect(r, &was);
+	clip.y = y;
+	clip.h = e->h;
+	/* Each slice drawn once, at its own alpha, the clip choosing which part
+	 * of the text lands (the marquee's rule, below): the middle whole, then
+	 * the two fades a step at a time toward their ends */
+	clip.x = lo + lf;
+	clip.w = hi - rf - clip.x;
+	if (clip.w > 0 && clip_in(r, &clip, had ? &was : NULL)) {
+		SDL_SetTextureAlphaMod(e->tex, col.a);
+		SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	for (i = 0; i < lf; i += MQ_FADE_STEP) {
+		clip.x = lo + i;
+		clip.w = lf - i < MQ_FADE_STEP ? lf - i : MQ_FADE_STEP;
+		SDL_SetTextureAlphaMod(e->tex, (Uint8)(col.a * i / lf));
+		if (clip_in(r, &clip, had ? &was : NULL)) SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	for (i = 0; i < rf; i += MQ_FADE_STEP) {
+		int sw = rf - i < MQ_FADE_STEP ? rf - i : MQ_FADE_STEP;
+
+		clip.x = hi - i - sw;
+		clip.w = sw;
+		SDL_SetTextureAlphaMod(e->tex, (Uint8)(col.a * i / rf));
+		if (clip_in(r, &clip, had ? &was : NULL)) SDL_RenderCopy(r, e->tex, NULL, &dst);
+	}
+	SDL_SetTextureAlphaMod(e->tex, 255);
+	SDL_RenderSetClipRect(r, had ? &was : NULL);
+}
+
 void ui_text_marquee(SDL_Renderer *r, TTF_Font *f, const char *s,
                      int x, int y, int w, unsigned phase, SDL_Color col)
 {
@@ -2044,6 +2099,10 @@ void ui_round_rect(SDL_Renderer *r, const SDL_Rect *q, int radius, SDL_Color col
 	fit_box(q);
 #endif
 	radius = round_rect_radius(q->w, q->h, radius);
+	/* Corners: Square (DESIGN.md 3.5): every corner under a pill's goes
+	 * square - a panel, the focus fill, a key, a chip - and a pill, whose
+	 * radius is half its height, stays a pill, as a circle stays a circle */
+	if (look_square() && radius * 2 < (q->w < q->h ? q->w : q->h)) radius = 0;
 
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColor(r, col.r, col.g, col.b, col.a);
@@ -2953,6 +3012,67 @@ static void draw_watermark(SDL_Surface *dst, card_faces *k, const char *title,
 	SDL_FreeSurface(t);
 }
 
+/* ---- a folder's card (src/shelfdir.h, src/folderart.h) ----
+ *
+ * The folder itself, as pixel art in its system's color, a cell four units
+ * wide, papers standing out of it, with how many games it holds on a paper
+ * label and its name on its front. No slab: a folder on the shelf is a
+ * folder, not a card with a folder on it (2026-11-13). */
+/* A system with no color of its own is drawn in its marks' **text-dim** */
+static unsigned folder_rgb(const ui_card_order *o)
+{
+	return o->rgb == CFG_NO_COLOR ? ui_rgb(theme_at(o->theme_ix)->text_dim) : o->rgb;
+}
+
+static SDL_Surface *folder_card_surface(card_faces *k, const ui_card_order *o)
+{
+	int gh = FA_CARD_H;
+	SDL_Surface *grid = SDL_CreateRGBSurfaceWithFormat(0, FA_CARD_W, gh, 32, SDL_PIXELFORMAT_ARGB8888);
+	SDL_Surface *s = SDL_CreateRGBSurfaceWithFormat(0, FA_CARD_W * FA_CARD_SCALE, gh * FA_CARD_SCALE,
+	                                                32, SDL_PIXELFORMAT_ARGB8888);
+	card_pen pen = { k, o->lang_set, NULL };
+	unsigned rgb = folder_rgb(o), ink;
+	SDL_Rect nb;
+
+	if (!grid || !s) {
+		if (grid) SDL_FreeSurface(grid);
+		if (s) SDL_FreeSurface(s);
+		return NULL;
+	}
+	SDL_FillRect(s, NULL, 0);
+	fa_paint(grid, rgb, o->folder, true);
+	SDL_SetSurfaceBlendMode(grid, SDL_BLENDMODE_NONE);
+	/* Nearest, whole cells: SDL_BlitScaled is nearest */
+	SDL_BlitScaled(grid, NULL, s, NULL);
+	SDL_FreeSurface(grid);
+	if ((pen.f = card_title_face(k, SET_LATIN))) {
+		fa_name_box(rgb, &nb, &ink);
+		draw_wrapped(s, &pen, o->title, nb.w * FA_CARD_SCALE, nb.y * FA_CARD_SCALE,
+		             nb.x * FA_CARD_SCALE, ui_col((ds_rgb){ (Uint8)(ink >> 16), (Uint8)(ink >> 8),
+		                                                   (Uint8)ink }, 255));
+	}
+	return s;
+}
+
+SDL_Texture *ui_make_folder_icon(SDL_Renderer *r, unsigned rgb, int *w, int *h)
+{
+	SDL_Surface *grid = SDL_CreateRGBSurfaceWithFormat(0, FA_ICON_W, FA_ICON_H, 32,
+	                                                   SDL_PIXELFORMAT_ARGB8888);
+	SDL_Texture *t = NULL;
+
+	if (!grid) return NULL;
+	if (rgb == CFG_NO_COLOR) rgb = ui_rgb(theme()->text_dim);
+	fa_paint(grid, rgb, 0, false);
+	if ((t = SDL_CreateTextureFromSurface(r, grid))) {
+		SDL_SetTextureScaleMode(t, SDL_ScaleModeNearest);
+		SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+		*w = grid->w;
+		*h = grid->h;
+	}
+	SDL_FreeSurface(grid);
+	return t;
+}
+
 /* The card at any size: a game's 512 x 656 and an album's 512 square. One
  * recipe, so an album with no art reads as the same kind of thing as a game
  * with none - except the corners, which an album's does not round: it stands
@@ -2964,7 +3084,7 @@ static void draw_watermark(SDL_Surface *dst, card_faces *k, const char *title,
  * (src/cardgen.h has both, and the check that the title reads on every row of
  * either). The order names the theme; nothing here reads theme(), so a
  * worker can draw it. In `k`'s faces (card_title_face). */
-static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
+static SDL_Surface *game_card_surface(card_faces *k, const ui_card_order *o)
 {
 	const int cw = CARD_W, ch = o->album ? CARD_W : CARD_H;
 	const int theme_ix = o->theme_ix;
@@ -3025,6 +3145,13 @@ static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
 	return s;
 }
 
+/* The card an order describes: a folder's (folder_card_surface) or a game's
+ * or an album's */
+static SDL_Surface *card_surface(card_faces *k, const ui_card_order *o)
+{
+	return o->folder > 0 ? folder_card_surface(k, o) : game_card_surface(k, o);
+}
+
 void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
                        bool album)
 {
@@ -3033,6 +3160,14 @@ void ui_card_order_set(ui_card_order *o, const char *title, unsigned rgb,
 	o->album = album;
 	o->theme_ix = theme_index();
 	o->lang_set = set_on;
+	o->folder = 0;
+}
+
+void ui_card_order_folder(ui_card_order *o, const char *title, unsigned rgb,
+                          int games)
+{
+	ui_card_order_set(o, title, rgb, false);
+	o->folder = games > 0 ? games : 1;
 }
 
 SDL_Surface *ui_card_paint(const ui_card_order *o, bool away)
@@ -3060,7 +3195,11 @@ SDL_Surface *ui_card_paint(const ui_card_order *o, bool away)
  * into slots that are allocated, reordered, moved and freed in a dozen places
  * in src/main.c, and a mark that lives with the texture cannot be left behind
  * by any of them. */
-static char card_made_for[DS_THEMES];
+/* And by the look it was made in (src/look.h): a card made before the
+ * player's look changed is made again, in its new colors, as one of the
+ * other theme is. Four looks round is enough to tell the last from this. */
+#define CARD_LOOKS 4
+static char card_made_for[DS_THEMES][CARD_LOOKS];
 
 SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 {
@@ -3068,7 +3207,7 @@ SDL_Texture *ui_card_upload(SDL_Renderer *r, SDL_Surface *s, int theme_ix)
 
 	if (!t) return NULL;
 	SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
-	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)]);
+	SDL_SetTextureUserData(t, &card_made_for[theme_clamp(theme_ix)][look_gen() % CARD_LOOKS]);
 	return t;
 }
 
@@ -3096,10 +3235,14 @@ static SDL_Texture *make_card(SDL_Renderer *r, const char *title, unsigned rgb,
 int ui_card_theme(SDL_Texture *t)
 {
 	void *p = t ? SDL_GetTextureUserData(t) : NULL;
-	int i;
+	int i, g;
 
+	/* A card of an older look reads as made for the other theme, which is
+	 * what makes it stale (tex_stale) and made again */
 	for (i = 0; i < DS_THEMES; i++)
-		if (p == &card_made_for[i]) return i;
+		for (g = 0; g < CARD_LOOKS; g++)
+			if (p == &card_made_for[i][g])
+				return g == (int)(look_gen() % CARD_LOOKS) ? i : (i == DS_DARK ? DS_LIGHT : DS_DARK);
 	return -1;
 }
 
@@ -3113,6 +3256,22 @@ SDL_Texture *ui_make_cover(SDL_Renderer *r, const char *title, unsigned rgb,
                            int *w, int *h)
 {
 	return make_card(r, title, rgb, true, w, h);
+}
+
+SDL_Texture *ui_make_folder_card(SDL_Renderer *r, const char *title, unsigned rgb,
+                                 int games, int *w, int *h)
+{
+	ui_card_order o;
+	SDL_Surface *s;
+	SDL_Texture *t;
+
+	ui_card_order_folder(&o, title, rgb, games);
+	if (!(s = ui_card_paint(&o, true)) && !(s = card_surface(NULL, &o)))
+		return NULL;
+	t = ui_card_upload(r, s, o.theme_ix);
+	if (t) { *w = s->w; *h = s->h; }
+	SDL_FreeSurface(s);
+	return t;
 }
 
 
@@ -3268,6 +3427,20 @@ static void g_build(ui_glyph g, g_shape *s)
 		g_line(s, 0.20f, 0.64f, 0.08f, 0.80f, G_W);
 		g_line(s, 0.08f, 0.80f, 0.92f, 0.80f, G_W);
 		g_line(s, 0.92f, 0.80f, 0.80f, 0.64f, G_W);
+		return;
+	}
+	if (g == UI_GLYPH_PHONE) {
+		/* A phone, upright: its body, a little rounded at the corners, and
+		 * the short bar at its foot, the laptop's family */
+		g_line(s, 0.36f, 0.08f, 0.64f, 0.08f, G_W);
+		g_line(s, 0.72f, 0.16f, 0.72f, 0.84f, G_W);
+		g_line(s, 0.64f, 0.92f, 0.36f, 0.92f, G_W);
+		g_line(s, 0.28f, 0.84f, 0.28f, 0.16f, G_W);
+		g_arc(s, 0.36f, 0.16f, 0.08f, pi, 1.5f * pi);
+		g_arc(s, 0.64f, 0.16f, 0.08f, 1.5f * pi, 2.0f * pi);
+		g_arc(s, 0.64f, 0.84f, 0.08f, 0.0f, 0.5f * pi);
+		g_arc(s, 0.36f, 0.84f, 0.08f, 0.5f * pi, pi);
+		g_line(s, 0.44f, 0.80f, 0.56f, 0.80f, G_W);
 		return;
 	}
 	if (g == UI_GLYPH_TO_CARD || g == UI_GLYPH_FROM_CARD) {

@@ -19,6 +19,8 @@
 #include "db.h"
 #include "device.h"
 #include "fileio.h"
+#include "panelgamma.h"
+#include "phonelink.h"
 #include "platform.h"
 #include "portmenu.h"
 #include "spawn.h"
@@ -40,6 +42,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -147,6 +150,19 @@ static void take_from_splash(void)
 		SDL_Delay(1);
 	fprintf(stderr, "video: took the display from the splash in %u ms\n",
 	        (unsigned)(SDL_GetTicks() - t0));
+	/* Before the first frame: the gamma table a splash from a system image
+	 * up to 1.0.4 filled, which darkens everything shown (panelgamma.h).
+	 * Nothing in ZyperOS fills it again. With no table, a few ioctls; with
+	 * one, a refresh's wait while the controller turns it off, once. */
+	{
+		int n = panelgamma_clear(drm_fd);
+
+		if (n > 0)
+			fprintf(stderr, "video: emptied the display's gamma table, which "
+			        "an older system's splash had filled\n");
+		else if (n < 0)
+			fprintf(stderr, "video: could not read or empty the display's gamma table\n");
+	}
 	/* On the kernel's clock, beside the splash's "panel lit", so the boot
 	 * from power to shelf reads off one log. */
 	{
@@ -1305,6 +1321,134 @@ bool plat_usb_power_mode(bool automatic)
 	return ok;
 }
 
+/* A phone's USB tethering (phonelink.h). The phone's network interface, by
+ * its driver, renamed PHONELINK_IF while still down (the kernel gave it
+ * "usb0" when that was free, and USB File Transfer's gadget needs that
+ * name), brought up, and a lease asked of the phone's DHCP server once, as
+ * Wi-Fi's is (wifi.c): udhcpc stays and renews, its script sets the address
+ * and a default route through the phone (whose internet the handheld then
+ * has: the clock syncs, as on Wi-Fi). When the interface goes (the cable
+ * out, tethering off), the client goes too. All that only with `act` (the
+ * plug answered Phone); otherwise it is only looked at. A few small reads;
+ * asked twice a second at most. */
+#define PHONE_DHCP_PID "/var/run/udhcpc." PHONELINK_IF ".pid"
+
+static pid_t phone_dhcp_running(void)
+{
+	char buf[16] = "";
+	pid_t pid;
+
+	if (!read_small(PHONE_DHCP_PID, buf, sizeof buf)) return 0;
+	pid = (pid_t)atoi(buf);
+	return pid > 0 && kill(pid, 0) == 0 ? pid : 0;
+}
+
+static void phone_dhcp_start(const char *ifname)
+{
+	pid_t pid = fork();
+
+	if (pid < 0) return;
+	if (pid == 0) {
+		if (fork() == 0) {
+			char *argv[] = { "/sbin/udhcpc", "-i", (char *)ifname, "-S", "-t", "10", "-T", "3",
+			                 "-b", "-p", PHONE_DHCP_PID, NULL };
+			int null = open("/dev/null", O_RDWR);
+
+			if (null >= 0) { dup2(null, 1); dup2(null, 2); }
+			execv(argv[0], argv);
+			_exit(127);
+		}
+		_exit(0);
+	}
+	waitpid(pid, NULL, 0);
+	fprintf(stderr, "usb: the phone's network %s: asking it for an address\n", ifname);
+}
+
+static bool netdev_up(const char *ifname)
+{
+	char path[96], buf[32];
+
+	snprintf(path, sizeof path, "/sys/class/net/%s/flags", ifname);
+	return read_small(path, buf, sizeof buf) && (strtoul(buf, NULL, 16) & 1);   /* IFF_UP */
+}
+
+bool plat_phone_link(bool act, char *ifname, size_t in, char *ip, size_t n)
+{
+	char names[16][IFNAMSIZ], drivers[16][32], name[IFNAMSIZ];
+	const char *np[16], *dp[16];
+	DIR *d = opendir("/sys/class/net");
+	struct dirent *e;
+	int count = 0, k, fd;
+
+	if (ifname && in) ifname[0] = '\0';
+	if (ip && n) ip[0] = '\0';
+	while (d && count < 16 && (e = readdir(d))) {
+		char path[300], link[256];
+		ssize_t got;
+		const char *base;
+
+		if (e->d_name[0] == '.') continue;
+		snprintf(names[count], sizeof names[count], "%.*s", IFNAMSIZ - 1, e->d_name);
+		snprintf(path, sizeof path, "/sys/class/net/%s/device/driver", e->d_name);
+		got = readlink(path, link, sizeof link - 1);
+		link[got > 0 ? got : 0] = '\0';
+		base = strrchr(link, '/');
+		snprintf(drivers[count], sizeof drivers[count], "%.31s", base ? base + 1 : link);
+		np[count] = names[count];
+		dp[count] = drivers[count];
+		count++;
+	}
+	if (d) closedir(d);
+	if ((k = phonelink_pick(np, dp, count)) < 0) {
+		pid_t pid = act ? phone_dhcp_running() : 0;
+
+		if (pid) {
+			kill(pid, SIGTERM);
+			unlink(PHONE_DHCP_PID);
+			fprintf(stderr, "usb: the phone's network went\n");
+		}
+		return false;
+	}
+	snprintf(name, sizeof name, "%s", names[k]);
+	if (act && strcmp(name, PHONELINK_IF) && !netdev_up(name)) {
+		char *argv[] = { "/sbin/ip", "link", "set", "dev", name, "name", PHONELINK_IF, NULL };
+		int r = spawn_capture(argv, NULL, 0, 3);
+
+		fprintf(stderr, "usb: the phone's network (%s, %s) renamed %s (%d)\n", name, drivers[k],
+		        PHONELINK_IF, r);
+		if (r == 0) snprintf(name, sizeof name, "%s", PHONELINK_IF);
+	}
+	if (act && !netdev_up(name)) {
+		char *argv[] = { "/sbin/ip", "link", "set", name, "up", NULL };
+
+		fprintf(stderr, "usb: the phone's network up (%d)\n", spawn_capture(argv, NULL, 0, 3));
+	}
+	if (act && !phone_dhcp_running()) phone_dhcp_start(name);
+	if (ifname && in) snprintf(ifname, in, "%s", name);
+	if (ip && n && (fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0)) >= 0) {
+		struct ifreq ifr;
+
+		memset(&ifr, 0, sizeof ifr);
+		snprintf(ifr.ifr_name, sizeof ifr.ifr_name, "%s", name);
+		ifr.ifr_addr.sa_family = AF_INET;
+		if (ioctl(fd, SIOCGIFADDR, &ifr) == 0)
+			inet_ntop(AF_INET, &((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr, ip, (socklen_t)n);
+		close(fd);
+	}
+	return true;
+}
+
+/* The device on the port's bus is an iPhone (or an iPad): the bus's first
+ * device, while the port is a host */
+bool plat_usb_iphone(void)
+{
+	char v[16], prod[64];
+
+	return read_small("/sys/bus/usb/devices/1-1/idVendor", v, sizeof v) &&
+	       read_small("/sys/bus/usb/devices/1-1/product", prod, sizeof prod) &&
+	       phonelink_is_iphone(v, prod);
+}
+
 /* The USB controller lets go of the cable and takes it again, so the computer
  * sees a new device plugged in. Seen 2026-10-08: the Mac dropped the Pixel as
  * if unplugged while the controller here went on saying "configured" and never
@@ -1395,6 +1539,8 @@ void plat_brightness_set(int level)
  * as menus are built, and one access() is all it costs. No Bluetooth. */
 bool plat_has_wifi(void)      { return access("/sys/class/net/wlan0", F_OK) == 0; }
 bool plat_has_bluetooth(void) { return false; }
+/* Diatom's last pass is the GPU's here (port/pixel2.c): every shader */
+bool plat_gpu_shaders(void)   { return true; }
 /* One speaker: Audio Channels' Auto plays it mono (src/audioout.h) */
 bool plat_speaker_mono(void) { return true; }
 
@@ -1405,6 +1551,9 @@ bool plat_tap_held(in_button b) { return b == IN_L2 ? l2_down : b == IN_R2 ? r2_
 
 /* The side lights, and L2+R2 asking gauge for the level (key_event). */
 bool plat_battery_lights(void) { return true; }
+
+/* Its hotspot by a USB Wi-Fi adapter, and its cable's network link */
+bool plat_player2(void) { return true; }
 
 /* MENU > Side Lights: one line on the card, in the file plastron's gauge reads
  * at boot and again on SIGHUP (package/gauge/src/gauge.c; the line's words,

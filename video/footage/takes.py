@@ -124,7 +124,8 @@ shots('media', [(PS1, ['--screen', 'games', '--media', 'page', str(k), '--media-
 shots('storage', [(PS1, ['--storage', 'main'], 2200), (PS1, ['--storage', 'system'], 2000),
                   (PS1, ['--storage', 'music'], 1800)])
 # Achievements: the list, then an unlock with Zyper
-shots('cheevos', [(PS1, ['--cheevos-screen', str(r), '--cheevos-badge', '{card}/Roms/PlayStation/.cheevos/Hagane.set', 'b#'], 330)
+shots('cheevos', [(PS1, ['--cheevos-screen', str(r), '--cheevos-waiting', '2',
+                         '--cheevos-badge', '{card}/Roms/PlayStation/.cheevos/Hagane.set', 'b#'], 330)
                   for r in range(4)] +
       [(PS1, ['--notice-kind', 'unlock', '--notice', 'Violated Heavens', 'Unlocked · 10 points',
               '--notice-badge', '{card}/Roms/PlayStation/.cheevos/badges/b3.png'], 4700)])
@@ -167,8 +168,17 @@ shots('quicksave', [(GEN, ['--screen', 'games', '--popup', 'saved', '--backdrop'
                     (GEN, ['--screen', 'games', '--popup', 'loaded', '--backdrop', SONIC_SNAP], 1400)])
 # File Transfer: over Wi-Fi, a computer on the cable, and over the cable
 shots('wifi-xfer', [(PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 5200)])
-shots('cable', [(PS1, ['--usb-ask', '0'], 900), (PS1, ['--usb-ask', '1'], 900),
-                (PS1, ['--hare', 'http://10.42.0.1', '1 connected', 'Super Metroid (USA).sfc'], 2200)])
+# 1.0.5's way in: the address, zyperos.local and the PIN at full size until a
+# browser signs in (six beats of the tour's music), then the files moving
+shots('wifi-way', [(PS1, ['--hare-steps', 'wifi', 'browser'], 2310),
+                   (PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 3900)])
+# The cable: "What did you plug in?" on Computer and on Phone, how a phone
+# connects, then a computer's choices as a release has them (plain, with
+# Flash Drive) and Flash Drive's speeds
+shots('cable', [(PS1, ['--usb-power', '1'], 450), (PS1, ['--usb-power', '2'], 500),
+                (PS1, ['--usb-power', 'phone'], 1500),
+                (PS1, ['--usb-ask', '0', 'plain', 'drive'], 450), (PS1, ['--usb-ask', '1', 'plain', 'drive'], 450),
+                (PS1, ['--usb-ask', '2', 'plain', 'drive'], 550), (PS1, ['--usb-drive', '0', 'both'], 2300)])
 shots('hotspot', [(PS1, ['--hotspot', 'ZyperOS-7A2B', 'q7mx-3kpa', '1 joined', 'waiting'], 2800)])
 # Files still moving while a game plays: the ring in the in-game menu's corner, over Sonic 2
 shots('xfer-ring', [(GEN, ['--screen', 'games', '--gamemenu', '0', '--backdrop', SONIC_SNAP,
@@ -211,6 +221,99 @@ shots('snap', [(SNAP_GAME, ['--screen', 'games', '--snap-wait', '0'], 600),
                (SNAP_GAME, ['--screen', 'games', '--snap', '{t}', '--snap-frame', '{i}'], [f'{t / 300:.4f}' for t in motion(0, 300)]),
                (SNAP_GAME, ['--screen', 'games', '--snap', '1', '--snap-frame', '{i}'], motion(300, 3000))],
       card='snaps', env=SNAP_ENV)
+
+# ---- 1.0.5: the new systems and features -----------------------------------
+# The four new systems on the home, each console's own start (--phase is the
+# home's clock since it was focused): PSP, Doom, ColecoVision, TIC-80
+shots('newsys', [(sys_game, ['--home', 'spotlight', '--phase', '{t}'], motion(0, 1540))
+                 for sys_game in [('PSP', 'LocoRoco (USA).iso'), ('DOOM', 'Doom.wad'),
+                                  ('COLECO', 'Donkey Kong (USA).col'), ('TIC80', '8 Bit Panda.tic')]])
+# Folders on the Game Boy Advance shelf: in from the home on the first folder,
+# into it and along it, back up; then START for the list, down it, START for
+# the covers again
+live('folders', ('GBA', 'Commercial Owned'),
+     ['a', 700, 'a', 800, 'right', 500, 'b', 900, 'start', 1100, 'down', 350, 'down', 700, 'start', 1100])
+# MENU in its tabs: R1 round them and back to Display, Appearance to Dark, then
+# Display > Theme and its Accent stepped round, the whole screen in it
+live('look', PS1,
+     ['menu', 500, 'r1', 400, 'r1', 400, 'l1', 500, 'right', 800, 'down', 'down', 300, 'a', 700,
+      'right', 450, 'right', 450, 'right', 900], gap=300)
+# NES Player 2 over Super Mario Bros. 3: the in-game menu down to Player 2, the
+# hotspot starting, its code waiting, and the friend's phone in
+NES_SNAP = '{art}/Nintendo_-_Nintendo_Entertainment_System/Named_Snaps/Super Mario Bros. 3 (USA).png'
+NES = ('NES', 'Super Mario Bros. 3 (USA).nes')
+shots('player2', [(NES, ['--screen', 'games', '--gamemenu', str(r), '--player2', 'off', '--backdrop', NES_SNAP], 200)
+                  for r in range(7)] +
+      [(NES, ['--screen', 'games', '--player2', 'starting', '--backdrop', NES_SNAP], 600),
+       (NES, ['--screen', 'games', '--player2', 'hotspot', '--backdrop', NES_SNAP], 1600),
+       (NES, ['--screen', 'games', '--player2', 'connected', '--backdrop', NES_SNAP], 2900)])
+
+
+# ---- the 1.0.5 Reddit cut (src/reddit) ---------------------------------------
+# The screensaver: the snap's game on its shelf, then its video snap fading up
+# over the whole screen with its name. --saver draws one picture, so it is
+# given the snap a frame at a time (SAVER_FRAMES of them, made from
+# SNAP_SOURCE at its own rate in main()), each held a thirtieth of a second.
+SAVER_FRAMES = 100
+shots('saver', [(SNAP_GAME, ['--screen', 'games'], 700)] +
+      [(SNAP_GAME, ['--saver', '--saver-alpha', f'{min(1, i / 15):.3f}', '--saver-pic', f'{{work}}/saver-pics/{i:04d}.png'],
+        1000 / SNAP_FPS) for i in range(SAVER_FRAMES)], card='snaps')
+
+# Rename: Freedoom's WAD on the Doom shelf, named as its file, X > Rename, the
+# old name deleted (B) and the new one typed, the focus on each key it types
+# and X for the capitals (src/keyboard.c's layers; the action row is row 4)
+KB_ROWS = ['1234567890', 'qwertyuiop', 'asdfghjkl-', 'zxcvbnm_.@']
+
+
+def typing(old, new, ms=80):
+    """The keyboard's pictures from `old` to `new`: (text, layer, row, col, ms)"""
+    steps, row, col, layer = [(old, 0, 1, 0, 500)], 1, 0, 0
+    for n in range(len(old) - 1, -1, -1):
+        steps.append((old[:n], 0, row, col, ms * 0.7))
+    text = ''
+    for c in new:
+        want = 1 if c.isupper() else 0
+        if want != layer:
+            layer = want
+            steps.append((text, layer, row, col, ms))
+        if c == ' ':
+            row, col = 4, 2
+        else:
+            row = next(r for r, keys in enumerate(KB_ROWS) if c.lower() in keys)
+            col = KB_ROWS[row].index(c.lower())
+        text += c
+        steps.append((text, layer, row, col, ms))
+    steps.append((text, layer, 4, 4, 500))
+    return steps
+
+
+DOOM_FREE = ('DOOM', 'freedoom1.wad')
+RENAMED = 'Freedoom Phase 1'
+shots('rename', [(DOOM_FREE, ['--screen', 'games'], 500), (DOOM_FREE, ['--screen', 'games', '--info-rename'], 700)] +
+      [(DOOM_FREE, ['--screen', 'games', '--keyboard', str(layer), text, 'Rename', '--kbsel', str(r), str(c)], ms)
+       for text, layer, r, c, ms in typing('freedoom1', RENAMED)])
+# ...and the shelf after, on a card where the file has the new name
+shots('renamed', [(('DOOM', RENAMED + '.wad'), ['--screen', 'games'], 1500)], card='renamed')
+
+# 1.0.4 and 1.0.3, for the same cut. A computer on the cable as a release has
+# it (plain): Charge Only, File Transfer, Flash Drive in focus, then Flash
+# Drive's screen as a copy starts, runs one way and both ways
+shots('flashdrive', [(PS1, ['--usb-ask', str(k), 'plain', 'drive'], ms) for k, ms in ((0, 400), (1, 400), (2, 600))] +
+      [(PS1, ['--usb-drive', '0', v], ms) for v, ms in (('idle', 500), ('in', 800), ('both', 1300))])
+# USB File Transfer at zyperos.local, step by step: the computer taking the
+# handheld, the loading bar, the address, the browser, then the page open
+shots('usbsteps', [(PS1, ['--hare-steps', 'usb', st], ms) for st, ms in
+                   (('taking', 600), ('opening', 600), ('address', 700), ('browser', 800))] +
+      [(PS1, ['--hare', 'http://10.42.0.1', '1 connected', 'Super Metroid (USA).sfc'], 1300)])
+# System Update in the background: Download on the update's page, then the
+# shelf with the download's mark filling at the top
+shots('update-bg', [(PS1, ['--update'], 900)] +
+      [(PS1, ['--screen', 'games', '--status', f'10:08 24h batt=82 update={p}'], 60) for p in range(3, 100, 3)])
+# Charge to 100% this once: the charging screen held at the limit, Y's hint,
+# then charging to full this one time
+shots('charge-full', [(PS1, ['--charging', '{t}', 'kept'], motion(0, 1400)),
+                      (PS1, ['--charging', '{t}', 'tofull'], motion(0, 1800))])
+
 for code in ['en', 'zh-Hans', 'es', 'pt-BR', 'fr', 'de', 'ja', 'it']:
     shots(f'lang-{code}', [(PS1, ['--lang', code, '--menu', 'Language'], 100)])
 
@@ -220,10 +323,14 @@ def write_last(card, tag, game):
     (card / 'ZyperOS/.last').write_text(f'{tag}\n{game}\n')
 
 
+# MENU > Display > Theme as it ships: a live take that changes it leaves it on the card
+LOOK = {'look.accent': 'lime', 'look.light': 'warm', 'look.dark': 'black', 'look.corners': 'rounded', 'look.zyper': 'on'}
+
+
 def run_live(name, spec, card):
     write_last(card, *spec['last'])
     cardlib.device_settings(card, BINARY, **{'tour.done': 1, 'clock': '24h', 'home': 'spotlight',
-                                            'appearance': 'light', 'language': 'en', **spec['settings']})
+                                            'appearance': 'light', 'language': 'en', **LOOK, **spec['settings']})
     script = WORK / f'{name}.keys'
     lines = [f'{t} {k} {h}' for t, k, h in spec['script']] + [f"{spec['end']} end"]
     script.write_text('# made by video/footage/takes.py\n' + '\n'.join(lines) + '\n')
@@ -244,7 +351,7 @@ def run_live(name, spec, card):
 def run_shots(name, spec, cards):
     card = cards[spec['card']]
     # A live take before may have left another language or theme on the card
-    cardlib.device_settings(card, BINARY, **{'language': 'en', 'appearance': 'light', 'home': 'spotlight'})
+    cardlib.device_settings(card, BINARY, **{'language': 'en', 'appearance': 'light', 'home': 'spotlight', **LOOK})
     frames = WORK / name
     if frames.exists():
         shutil.rmtree(frames)
@@ -260,7 +367,7 @@ def run_shots(name, spec, cards):
         times = when if isinstance(when, list) else [None]
         for t in times:
             a = [x.replace('{t}', str(t)).replace('{card}', str(card)).replace('{art}', str(cardlib.ART_CACHE))
-                 for x in args]
+                 .replace('{work}', str(WORK)) for x in args]
             # --snap-frame {i}: the snap's frame for this shot (snapsub.dylib),
             # counted from the turn's start at the snap's own rate
             if '--snap-frame' in a:
@@ -331,6 +438,19 @@ def main():
         media.touch()
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS},scale=320:240',
                     '-pix_fmt', 'yuv420p', '-f', 'rawvideo', str(WORK / 'snap.yuv')], check=True)
+    # The screensaver's pictures: the same snap, from the same moment, a file a frame
+    saver = WORK / 'saver-pics'
+    if saver.exists():
+        shutil.rmtree(saver)
+    saver.mkdir()
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', SNAP_START, '-i', SNAP_SOURCE, '-vf', f'fps={SNAP_FPS}',
+                    '-frames:v', str(SAVER_FRAMES), '-start_number', '0', str(saver / '%04d.png')], check=True)
+    # The demonstration card with Freedoom renamed, for the shelf after Rename
+    if not only or 'renamed' in only:
+        cards['renamed'] = cardlib.build(WORK / 'card-renamed')
+        doom = cards['renamed'] / 'Roms/Doom'
+        (doom / DOOM_FREE[1]).rename(doom / (RENAMED + '.wad'))
+        cardlib.device_settings(cards['renamed'], BINARY, **{'tour.done': 1, 'clock': '24h'})
     cards['portdocs'] = WORK / 'card-portdocs'
     cards['empty'] = WORK / 'card-empty'
     for extra, make in (('portdocs', cardlib.rs.portdocs_card), ('empty', cardlib.rs.card_dirs)):

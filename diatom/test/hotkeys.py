@@ -13,6 +13,8 @@ slot's round trip as the launcher drives it.
   - A SAVE sent while the game runs (the launcher's answer to the hotkey) is
     written on Diatom's thread, answered SAVED, with its picture beside it,
     and a LOAD of it is answered LOADED.
+  - RUN stick=toggle (the PSP's): R2 turns the d-pad into the left stick and
+    back, says STICK each time, and never reaches the game.
 
 Needs build/desktop (diatom and stubcore.so) and SKIPS without it, as
 check-proto does. SDL's dummy drivers: no window, no sound.
@@ -103,7 +105,7 @@ def pump_until(path, n, limit=90.0):
     pump(0.5)
 
 pump(0.5)
-check("READY says proto=13", any(l.startswith("READY\tproto=13") for l in got), got[:2])
+check("READY says proto=14", any(l.startswith("READY\tproto=14") for l in got), got[:2])
 s.sendall(f"RUN\tcore={STUB}\n".encode())
 pump_until(LOG, 300)
 s.sendall(b"STOP\n")
@@ -126,7 +128,7 @@ check("SELECT+R2, R2, L2, L2, L2 step 1.5x, 2x, 1.5x, 1x and answer 1x at the en
 
 frames = []
 for line in open(LOG):
-    f, b = line.split()
+    f, b = line.split()[:2]       # the frame, port 0 (then ports 1 to 3)
     frames.append(int(b))
 check("the core read the pad", len(frames) > 250, len(frames))
 check("no chord's shoulder ever reached the game",
@@ -198,7 +200,44 @@ check("N64: SELECT+A is C right (the RetroPad's A under R2), not the N64's A",
       bool(c_right) and all(frames[i] & R2 for i in c_right) and
       not any(frames[i] & RB for i in range(168, 182) if i < len(frames)), c_right)
 
+# The PSP's d-pad (RUN stick=toggle): it starts as the d-pad, R2 turns it
+# into the left stick and says STICK on=1, R2 again turns it back and says
+# on=0, and the game never reads R2. UP is the game's d-pad before the first
+# R2 and after the second, and never between them.
+PSP_SCRIPT = ";".join(["40:up", "46:", "60:r2", "64:", "80:up", "86:",
+                       "100:r2", "104:", "120:up", "126:"])
+UP = 1 << 4
+SOCK3, LOG3 = f"{TMP}/psp.sock", f"{TMP}/psp.log"
+p = subprocess.Popen([BIN, "--socket", SOCK3, "--save", TMP, "--system", TMP],
+                     env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
+                              SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=PSP_SCRIPT,
+                              STUBCORE_INPUT_LOG=LOG3),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+for _ in range(100):
+    if os.path.exists(SOCK3): break
+    time.sleep(0.05)
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect(SOCK3)
+s.settimeout(0.05)
+buf, got = b"", []
+pump(0.3)
+s.sendall(f"RUN\tcore={STUB}\tstick=toggle\n".encode())
+pump_until(LOG3, 150)
+s.sendall(b"STOP\n")
+pump(1.0)
+s.sendall(b"QUIT\n")
+try: p.wait(5)
+except subprocess.TimeoutExpired: p.kill()
+frames = [int(line.split()[1]) for line in open(LOG3)]
+up = [i for i, b in enumerate(frames) if b & UP]
+sticks = [l for l in got if l.startswith("STICK\t")]
+check("PSP: R2 says STICK on=1, then on=0", sticks == ["STICK\ton=1", "STICK\ton=0"], sticks)
+check("PSP: the game never reads R2", not any(b & R2 for b in frames), [i for i, b in enumerate(frames) if b & R2][:5])
+check("PSP: UP is the d-pad's before the first R2", any(38 <= i <= 50 for i in up), up)
+check("PSP: and not while the d-pad is the stick", not any(66 <= i <= 98 for i in up), up)
+check("PSP: and the d-pad's again after the second R2", any(118 <= i <= 130 for i in up), up)
+
 if fails:
     print(f"FAIL: {len(fails)} hotkey check(s)")
     sys.exit(1)
-print("ok: SELECT's chords and the quick slot, end to end")
+print("ok: SELECT's chords, the quick slot and the PSP's d-pad, end to end")
