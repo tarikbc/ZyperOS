@@ -243,8 +243,9 @@ def psx_hash_input(path):
 
 
 # Disc containers with no walk here, refused unread as src/rahash.c refuses
-# them. Not .bin: a Genesis or 2600 cartridge is one too.
-DISC_EXTS = ("chd", "cue", "ccd", "toc", "iso", "img", "m3u", "pbp", "mdf", "cbn")
+# them (is_disc_image). Not .bin: a Genesis or 2600 cartridge is one too.
+DISC_EXTS = ("chd", "cue", "ccd", "toc", "iso", "cso", "img", "m3u", "pbp", "mdf",
+             "cbn", "mds", "cdi", "gdi")
 
 
 def ra_md5(tag, path):

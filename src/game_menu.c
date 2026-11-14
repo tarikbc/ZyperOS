@@ -307,7 +307,14 @@ int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b)
 	 * said, and A on it says how it gets them (cheevos_unchecked_message) */
 	else if (u->unchecked)
 		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
-	else {
+	/* A file or a system the launcher has no hash for: said, quiet like
+	 * "none", since no network will change it (ra_hash_support) */
+	else if (u->no_hash != RA_HASH_OK) {
+		snprintf(b->cheevos, sizeof b->cheevos, "%s",
+		         T(u->no_hash == RA_HASH_NO_SYSTEM ? S_CHEEVOS_NOT_SYSTEM
+		                                           : S_CHEEVOS_NOT_FILE));
+		full[GM_CHEEVOS].live = false;
+	} else {
 		snprintf(b->cheevos, sizeof b->cheevos, "%s", T(S_GAMEMENU_CHEEVOS_NONE));
 		full[GM_CHEEVOS].live = false;
 	}

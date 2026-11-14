@@ -2217,6 +2217,9 @@ static char     g_watch_active[LIB_PATH * 2];
 /* The set path of the game actually running, so a fetch that lands during a
  * DIFFERENT game can be recognized and dropped. Written at every launch. */
 static char g_game_set[LIB_PATH * 2];
+/* And whether the launcher has a hash for it at all (ra_hash_support), for
+ * the in-game menu's Achievements row. Written beside it. */
+static ra_hash_kind g_game_no_hash;
 
 /* Auto Off while a game runs. Diatom holds the clock, because it owns the pad
  * and this process is blocked in plat_resident_wait; the launcher's part is
@@ -7370,6 +7373,9 @@ static bool timed_message(app *a, const char *heading, const menu_row *rows,
 /* --cheevos-unchecked, for a shot: the Achievements rows as a game never
  * played with a network has them, whatever the card holds */
 static bool g_shot_unchecked;
+/* --cheevos-no-hash file|system, the same for a game the launcher has no
+ * hash for: its file's kind, or every kind its system takes (a PSP game) */
+static ra_hash_kind g_shot_no_hash;
 
 /* A on an Achievements row that says "not checked yet": how a game gets its
  * set - one play with a network - and that it then works offline */
@@ -13047,7 +13053,13 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	 * this count was taken from is the one that screen reads. */
 	chv_path(P_ROMS, s->folder, g->name, p, sizeof p);
 	gi->has_cheevos = chv_load(p) && chv_count() > 0;
-	gi->cheevos_unchecked = !gi->has_cheevos &&
+	/* A file or a system the launcher has no hash for never gets a set, so
+	 * the row says which rather than "not checked yet": a play with Wi-Fi
+	 * would ask nothing (2026-11-14, a PSP .chd). From the name alone. */
+	gi->cheevos_no_hash = gi->has_cheevos || g_shot_unchecked ? RA_HASH_OK
+	                      : g_shot_no_hash != RA_HASH_OK ? g_shot_no_hash
+	                      : ra_hash_support(s->tag, g->file, s->exts);
+	gi->cheevos_unchecked = !gi->has_cheevos && gi->cheevos_no_hash == RA_HASH_OK &&
 	                        (g_shot_unchecked ||
 	                         chv_state_of(p, ra_signed_in()) == CHV_UNCHECKED);
 	/* Its badges, behind the screen, if the card lacks them */
@@ -13062,6 +13074,10 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 		         chv_earned(), chv_count());
 	else if (gi->cheevos_unchecked)
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_UNCHECKED));
+	else if (gi->cheevos_no_hash != RA_HASH_OK)
+		snprintf(gi->cheevos, sizeof gi->cheevos, "%s",
+		         T(gi->cheevos_no_hash == RA_HASH_NO_SYSTEM ? S_CHEEVOS_NOT_SYSTEM
+		                                                    : S_CHEEVOS_NOT_FILE));
 	else
 		snprintf(gi->cheevos, sizeof gi->cheevos, "%s", T(S_CHEEVOS_NONE));
 
@@ -21483,8 +21499,11 @@ static void gm_gather(app *a, gm_ui *out)
 	u.shader = shader_label(owner_view(a)->shader);
 	u.earned = chv_earned();
 	u.total  = chv_count();
-	/* g_game_set is the game running's, written at every launch */
-	u.unchecked = u.total == 0 && !g_port_menu &&
+	/* g_game_set is the game running's, written at every launch, and
+	 * g_game_no_hash beside it: a game with no hash here says so instead */
+	u.no_hash = u.total > 0 || g_port_menu || g_shot_unchecked ? RA_HASH_OK
+	            : g_shot_no_hash != RA_HASH_OK ? g_shot_no_hash : g_game_no_hash;
+	u.unchecked = u.total == 0 && !g_port_menu && u.no_hash == RA_HASH_OK &&
 	              (g_shot_unchecked ||
 	               chv_state_of(g_game_set, ra_signed_in()) == CHV_UNCHECKED);
 	u.screens = g_game_dual;
@@ -25517,6 +25536,7 @@ static void launch(app *a)
 		 * checked against, and it has to name the game on screen now rather
 		 * than the last one that went looking for a set. */
 		snprintf(g_game_set, sizeof g_game_set, "%s", set);
+		g_game_no_hash = ra_hash_support(s->tag, romfile, s->exts);
 
 		/* The async slot, cleared of an account answer from the last game that
 		 * never landed, before this launch asks anything of its own. And no
@@ -25532,7 +25552,10 @@ static void launch(app *a)
 		/* Never played here, so there is no set to hand over. The game starts
 		 * anyway and the set is found behind it - see ra_fetch_begin. Nothing
 		 * in front of the launch. */
-		first_play = ra_signed_in() && access(set, R_OK) != 0 && net_online();
+		/* Not for a game the launcher has no hash for: nothing would be
+		 * asked, and its rows already say so (ra_hash_support) */
+		first_play = ra_signed_in() && access(set, R_OK) != 0 && net_online() &&
+		             g_game_no_hash == RA_HASH_OK;
 
 		if (chv_load(set)) {
 			/* Reconcile with the account BEFORE deciding what to watch.
@@ -25712,8 +25735,11 @@ static void launch(app *a)
 					snprintf(g_pending_set, sizeof g_pending_set, "%s", set);
 					ra_fetch_begin(h, set);
 				} else {
-					/* A file the launcher cannot hash (a disc image it has
-					 * no reader for): nothing will ever be asked about it */
+					/* A file the launcher could not read, or an .m3u whose
+					 * first disc it has no reader for: nothing will be asked
+					 * about it. A kind it has no hash for at all never gets
+					 * here (first_play) and needs no marker: its rows say
+					 * so by its name. */
 					chv_none_mark(set, true);
 				}
 			}
@@ -29693,6 +29719,12 @@ int main(int argc, char *argv[])
 		/* The Achievements rows of a game never played with a network, in
 		 * the in-game menu (--gamemenu) and the game's details (--info) */
 		else if (!strcmp(argv[i], "--cheevos-unchecked")) g_shot_unchecked = true;
+		/* ...and of one with no hash here: "file" or "system" */
+		else if (!strcmp(argv[i], "--cheevos-no-hash") && i + 1 < argc) {
+			i++;
+			g_shot_no_hash = !strcmp(argv[i], "system") ? RA_HASH_NO_SYSTEM
+			                                            : RA_HASH_NO_FILE;
+		}
 		else if (!strcmp(argv[i], "--upnews") && i + 1 < argc) {
 			shot_upnews = argv[++i];
 			if (shot_heatpop < 0) shot_heatpop = 3000;

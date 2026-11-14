@@ -117,6 +117,28 @@ de = Die Erfolge dieses Spiels kommen beim ersten Spielen mit WLAN. Danach bleib
 ja = このゲームの実績は、Wi-Fi に接続して初めて遊んだときに取得されます。その後はカードに保存され、オフラインでも使えます。
 it = Gli obiettivi di questo gioco arrivano la prima volta che ci giochi con il Wi-Fi. Poi restano sulla scheda e funzionano anche offline.
 
+[cheevos.not_system]
+note = The game info screen and the in-game menu: the Achievements row's value for a game of a system whose games ZyperOS cannot identify for RetroAchievements (the PSP, discs of systems with no reader here). It stays so whatever the network, and A on it does nothing. A lowercase value; it stands for the achievements (plural).
+en = not for this system
+zh-Hans = 此系统不支持
+es = no para este sistema
+pt-BR = não neste sistema
+fr = pas pour ce système
+de = nicht für dieses System
+ja = このシステムは非対応
+it = non per questo sistema
+
+[cheevos.not_file]
+note = The same row for a game in a kind of file ZyperOS cannot identify, on a system where another kind works (a PlayStation .chd, which a .cue and .bin would not be). Lowercase, as the one above.
+en = not for this file
+zh-Hans = 此文件不支持
+es = no para este archivo
+pt-BR = não neste arquivo
+fr = pas pour ce fichier
+de = nicht für diese Datei
+ja = このファイルは非対応
+it = non per questo file
+
 [cheevos.sent]
 note = Zyper's bubble on the shelf, first line: achievements earned offline were sent to RetroAchievements once a network was back. %d is how many.
 en.one = %d achievement sent

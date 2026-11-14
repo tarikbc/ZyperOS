@@ -478,6 +478,9 @@ static void make_card(void)
 	/* Two systems' games of one stem, which write one .srm */
 	put("Roms/Game Boy/Pokemon (USA).gb", "red");
 	put("Roms/Game Boy/.media/Pokemon (USA).png", "png");
+	/* RetroAchievements' answer that it has nothing for it (chv_none_mark):
+	 * left behind, it kept .cheevos from going with the shelf's last game */
+	put("Roms/Game Boy/.cheevos/Pokemon (USA).none", "");
 	put("Roms/Game Boy Color/Pokemon (USA).gbc", "gold");
 	put("Saves/Pokemon (USA).srm", "srm");
 
@@ -698,10 +701,11 @@ int main(void)
 		static const char *const gone[] = {
 			"Roms/Game Boy/Pokemon (USA).gb",
 			"Roms/Game Boy/.media/Pokemon (USA).png",
+			"Roms/Game Boy/.cheevos/Pokemon (USA).none",
 			NULL
 		};
 		deleted("a cartridge whose .srm a Game Boy Color game of its name writes too:",
-		        GB, "Pokemon (USA).gb", "Pokemon (USA)", gone, 2);
+		        GB, "Pokemon (USA).gb", "Pokemon (USA)", gone, 3);
 		CHECK(there("Saves/Pokemon (USA).srm"));
 	}
 	{

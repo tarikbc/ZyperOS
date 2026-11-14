@@ -237,6 +237,11 @@ EXTRA = {
     "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
     "gamemenu-display": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "1"]),
     "gamemenu-controls": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "2"]),
+    # ...and of a game the launcher has no hash for: a PSP game ("system"),
+    # a PlayStation .chd ("file"), one in each screen; the Achievements row
+    # is on the in-game menu's Game tab
+    "gamemenu-nohash": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-no-hash", "system"]),
+    "info-nohash": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-no-hash", "file"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),
     "synopsis": ("demo", "PS1", ["--screen", "games", "--info", "--synopsis"]),

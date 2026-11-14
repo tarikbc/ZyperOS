@@ -541,6 +541,8 @@ bool gd_plan_make(const gd_card *card, const gd_game *g,
 		plan_add(p, GD_FILE, "%s/.media/.before/%s.png", romdir, g->name);
 		plan_add(p, GD_FILE, "%s/.cheevos/%s.set", romdir, g->name);
 		plan_add(p, GD_FILE, "%s/.cheevos/%s.set.part", romdir, g->name);
+		/* RetroAchievements' "nothing for it" (chv_none_mark) */
+		plan_add(p, GD_FILE, "%s/.cheevos/%s.none", romdir, g->name);
 	}
 	plan_add(p, GD_EMPTY_DIR, "%s/.media/.before", romdir);
 	plan_add(p, GD_EMPTY_DIR, "%s/.media", romdir);

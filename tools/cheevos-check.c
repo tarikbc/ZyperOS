@@ -356,6 +356,26 @@ int main(void)
 		CHECK(chv_state_of(absent, true) == CHV_UNCHECKED, "a set arriving takes the marker away");
 		remove(none);
 	}
+	/* The marker on a shelf no set ever came to: Roms/<System>/.cheevos is
+	 * not there yet, and only a fetched set made it. The marker went nowhere,
+	 * and the game said "not checked yet" for good (2026-11-14). */
+	{
+		char shelf[160], dir[200], set[260], none[280];
+
+		snprintf(shelf, sizeof shelf, "/tmp/zyperos-chv-%ld-shelf", (long)getpid());
+		snprintf(dir, sizeof dir, "%s/.cheevos", shelf);
+		snprintf(set, sizeof set, "%s/Game.set", dir);
+		chv_none_path(set, none, sizeof none);
+		mkdir(shelf, 0755);
+		CHECK(access(dir, F_OK) != 0, "the shelf starts with no .cheevos folder");
+		CHECK(chv_state_of(set, true) == CHV_UNCHECKED, "not checked yet, before any answer");
+		chv_none_mark(set, true);
+		CHECK(chv_state_of(set, true) == CHV_NONE,
+		      "RetroAchievements said none, on a shelf with no .cheevos folder");
+		remove(none);
+		rmdir(dir);
+		rmdir(shelf);
+	}
 
 	remove(g_set); remove(g_active);
 	store_reset();

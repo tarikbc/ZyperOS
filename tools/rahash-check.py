@@ -123,7 +123,8 @@ def disc_fixtures(rac):
 
 def named_and_refused(rac):
     """An arcade or Neo Geo set hashes as its name, md5("mslug") for
-    mslug.zip, whatever is in it; a Sega CD or Neo Geo CD disc is refused
+    mslug.zip, whatever is in it; a Sega CD or Neo Geo CD disc, a PSP .cso
+    or .pbp, a Dreamcast .cdi and a Saturn .mds are refused
     by both hashers without being read. Files made here, so this runs with
     no library."""
     import tempfile
@@ -133,7 +134,11 @@ def named_and_refused(rac):
     for tag, name, want in (("NEOGEO", "mslug.zip", hashlib.md5(b"mslug").hexdigest()),
                             ("ARCADE", "ssf2.7z", hashlib.md5(b"ssf2").hexdigest()),
                             ("SEGACD", "Sonic CD (USA).chd", None),
-                            ("NEOCD", "Metal Slug.cue", None)):
+                            ("NEOCD", "Metal Slug.cue", None),
+                            ("PSP", "LittleBigPlanet.cso", None),
+                            ("PSP", "Patapon.pbp", None),
+                            ("DC", "Shenmue.cdi", None),
+                            ("SATURN", "Nights.mds", None)):
         p = os.path.join(tmp, name)
         with open(p, "wb") as f:
             f.write(b"not a set, not a disc")
@@ -196,6 +201,77 @@ def headers_and_orders(rac):
     return bad
 
 
+# The shelves whose every kind of file is a disc with no walk here: a game of
+# one has no hash, so its Achievements rows say "not for this system" rather
+# than "not checked yet" (src/rahash.h, ra_hash_support). A systems.cfg line
+# that changes the list has to change it here, on purpose.
+NO_SYSTEM = {"PSP", "SEGACD", "3DO", "SATURN", "NEOCD", "DC"}
+
+
+def support(rac):
+    """ra_hash_support, which reads no file, against systems.cfg: which
+    shelves have no hash at all, what a refused file on a shelf that has one
+    is, and that each kind it refuses both hashers refuse as a real file, so
+    a row never says no hash for a game one of them would hash."""
+    import tempfile
+    bad = 0
+    systems = rac.systems_from_cfg(os.path.join(ROOT, "config", "systems.cfg"))
+    tmp = tempfile.mkdtemp(prefix="rahash-")
+    found = set()
+    for folder, tag, exts in systems:
+        names = [f"Game.{e}" for e in sorted(exts)]
+        if not names:
+            continue
+        out = subprocess.run([BIN, "--support", tag, ",".join(sorted(exts))] + names,
+                             capture_output=True, text=True)
+        said = dict(reversed(l.split("\t", 1)) for l in out.stdout.splitlines())
+        if set(said.values()) == {"system"}:
+            found.add(tag)
+        # Each name it said has no hash, as a real file: both must refuse it
+        refused = [n for n in names if said.get(n) in ("file", "system")]
+        files = []
+        for n in refused:
+            p = os.path.join(tmp, tag, n)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "wb") as f:
+                f.write(b"neither a disc nor a cartridge")
+            files.append(p)
+        if not files:
+            continue
+        hashed = subprocess.run([BIN, tag] + files, capture_output=True, text=True)
+        c = {pp: h for h, _, pp in (l.partition("\t") for l in hashed.stdout.splitlines())}
+        for n, p in zip(refused, files):
+            py = rac.ra_md5(tag, p)
+            if c.get(p) != "FAILED" or py is not None:
+                bad += 1
+                print(f"    {tag} {n}: said {said[n]}, yet C {c.get(p)}, python {py}")
+    if found != NO_SYSTEM:
+        bad += 1
+        print(f"    no hash for the shelf: {sorted(found)}, want {sorted(NO_SYSTEM)}")
+    else:
+        print(f"  ok  not for this system: {' '.join(sorted(found))}")
+    cases = (("PSP", "iso,cso,chd,pbp", "LittleBigPlanet.chd", "system"),
+             ("PSP", "iso,cso,chd,pbp", "Patapon.cso", "system"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.chd", "file"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.pbp", "file"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.cue", "ok"),
+             ("PCE", "pce,sgx,cue,ccd,chd,toc,m3u,zip", "Ys I & II.cue", "file"),
+             ("PCE", "pce,sgx,cue,ccd,chd,toc,m3u,zip", "Bonk.pce", "ok"),
+             ("NES", "nes,fds,unf,unif,zip", "Contra.nes", "ok"),
+             ("NEOGEO", "zip,7z", "mslug.zip", "ok"),
+             ("SEGACD", "", "Sonic CD.chd", "file"))
+    for tag, exts, name, want in cases:
+        out = subprocess.run([BIN, "--support", tag, exts, name],
+                             capture_output=True, text=True)
+        got = out.stdout.partition("\t")[0]
+        if got != want:
+            bad += 1
+            print(f"    {tag} {name} ({exts or 'any file'}): want {want}, got {got}")
+        else:
+            print(f"  ok  {tag:<7} {name:<20} {want}")
+    return bad
+
+
 def main():
     rac = load("ra_check", os.path.join(ROOT, "tools", "ra-check.py"))
     if headers_and_orders(rac):
@@ -206,6 +282,9 @@ def main():
         return 1
     if named_and_refused(rac):
         print("\nFAIL: arcade names and refused discs")
+        return 1
+    if support(rac):
+        print("\nFAIL: which games have no hash, by name (ra_hash_support)")
         return 1
     roms = sys.argv[1] if len(sys.argv) > 1 else \
         os.path.join(ROOT, "ZyperOS-Test-Set", "Roms")
