@@ -5337,9 +5337,17 @@ static unsigned      g_menu_zyper_at;
  * is one, kept while the handheld is on: MENU opens where it was closed.
  * `g_menu_tabs` is set around MENU's own draw, as g_menu_zyper is, and NULL
  * everywhere else, so the screens it opens draw their own headings. */
-struct menu_tabs { int at, from, dir; unsigned t0; };
+struct menu_tabs {
+	int at, from, dir;
+	unsigned t0;
+	/* how many tabs there are, and the name of each, so the row and the
+	 * turn serve any set of tabs, not MENU's alone */
+	int count;
+	const char *(*name)(int i);
+};
 typedef struct menu_tabs menu_tabs;
-static menu_tabs        g_tabs;
+static const char *mpt_name(int i) { return sys_menu_tab_name((pm_tab)i); }
+static menu_tabs        g_tabs = { .count = PT_TABS, .name = mpt_name };
 static const menu_tabs *g_menu_tabs;
 /* The row each tab was left on, by identity (PM_ROWS: its first) */
 static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
@@ -5495,8 +5503,9 @@ static float menu_tabs_p(const menu_tabs *t)
 	return ds_out((float)el / DS_MS_MOVE);
 }
 
-/* How many tabs MENU's tab row shows either side of the one that is on, as
- * far as they reach: the next and the one after, and the same back */
+/* How many tabs a tab row shows either side of the one that is on, as far as
+ * they reach: the next and the one after, and the same back; with only a few
+ * tabs, as many as fit without a name shown twice */
 #define MENU_TAB_SIDE 2
 
 /* One tab's row (DESIGN.md 11.3): the tab in **label** **text**, centered as
@@ -5509,11 +5518,14 @@ static float menu_tabs_p(const menu_tabs *t)
  * buttons"). Returns the tab's name's width, for the bar under it. `dx` and
  * `op` draw it moved and faded, for a move. */
 #define MENU_TAB_FADE 64
-static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, float op)
+static int menu_tab_row(app *a, const menu_tabs *tabs, int at, int cx, int cy,
+                        int lo, int hi, int dx, float op)
 {
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
-	const char *cur = sys_menu_tab_name((pm_tab)at);
+	const char *cur = tabs->name(at);
 	const int gap = 32, apart = 40;
+	const int count = tabs->count;
+	const int side = MENU_TAB_SIDE < (count - 1) / 2 ? MENU_TAB_SIDE : (count - 1) / 2;
 	int aw = ui_text_width(fh, cur), cur_x = cx - aw / 2, k, x;
 	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
 
@@ -5521,16 +5533,16 @@ static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, 
 	txt.a = (Uint8)(op * 255.0f + 0.5f);
 	/* back: the tab before, ending a gap left of the name, then the one
 	 * before that, while any of it is still inside */
-	for (k = 1, x = cur_x - gap; k <= MENU_TAB_SIDE && x + dx > lo; k++) {
-		const char *t = sys_menu_tab_name((pm_tab)((at - k + 2 * PT_TABS) % PT_TABS));
+	for (k = 1, x = cur_x - gap; k <= side && x + dx > lo; k++) {
+		const char *t = tabs->name((at - k + 2 * count) % count);
 
 		x -= ui_text_width(fm, t);
 		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
 		x -= apart;
 	}
 	/* on: the tab after, then the one after that */
-	for (k = 1, x = cx + aw / 2 + gap; k <= MENU_TAB_SIDE && x + dx < hi; k++) {
-		const char *t = sys_menu_tab_name((pm_tab)((at + k) % PT_TABS));
+	for (k = 1, x = cx + aw / 2 + gap; k <= side && x + dx < hi; k++) {
+		const char *t = tabs->name((at + k) % count);
 
 		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
 		x += ui_text_width(fm, t) + apart;
@@ -5560,18 +5572,30 @@ static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
 	if (p < 1.0f && t->from != t->at) {
 		/* the old one gone in the first two fifths, as its rows are */
 		float op = 1.0f - p * 2.5f;
-		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, lo, hi,
+		int ow = op > 0.0f ? menu_tab_row(a, t, t->from, cx, cy, lo, hi,
 		                                  (int)(-t->dir * 96 * p), op)
 		                   : ui_text_width(ui_font(UI_F_LABEL),
-		                                   sys_menu_tab_name((pm_tab)t->from));
+		                                   t->name(t->from));
 
-		aw = menu_tab_row(a, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
+		aw = menu_tab_row(a, t, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
 		w = (int)(ow + (aw - ow) * p + 0.5f);
 	} else {
-		w = aw = menu_tab_row(a, t->at, cx, cy, lo, hi, 0, 1.0f);
+		w = aw = menu_tab_row(a, t, t->at, cx, cy, lo, hi, 0, 1.0f);
 	}
 	(void)aw;
 	return w;
+}
+
+/* Turn the tabs one way, +1 for R1 and -1 for L1, round the end: the one it
+ * came from and which way are kept, for the move between them */
+static void tabs_turn(menu_tabs *t, int dir)
+{
+	t->from = t->at;
+	t->at = (t->at + dir + t->count) % t->count;
+	t->dir = dir;
+	t->t0 = anim_now();
+	if (!t->t0) t->t0 = 1;
+	g_menu_epoch++;
 }
 
 /* The bar on the heading's rule at `rule_y` under the tab's name: the home's
@@ -6705,7 +6729,7 @@ static void snap_draw(app *a, mm_pose pose)
 	g_menu_zyper = s->zyper ? &s->zy : NULL;
 	g_menu_zyper_at = anim_now() + s->zy_ahead;
 	/* the tab row as it was, at rest */
-	rest = (menu_tabs){ s->tab, s->tab, 0, 0 };
+	rest = (menu_tabs){ s->tab, s->tab, 0, 0, g_tabs.count, g_tabs.name };
 	g_menu_tabs = s->tab >= 0 ? &rest : NULL;
 	{
 		void (*mark)(app *, const menu_row *, int, int, float) = g_row_mark;
@@ -14883,7 +14907,7 @@ static int menu_shelf_width(app *a)
 		int t, at = g_tabs.at, mw;
 
 		w = 0;
-		for (t = 0; t < PT_TABS; t++) {
+		for (t = 0; t < g_tabs.count; t++) {
 			g_tabs.at = t;
 			n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
 			mw = menu_measure(rows, n, heading);
@@ -18745,12 +18769,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			int dir = key == IN_R1 ? +1 : -1, k;
 
 			if (sel >= 0 && sel < n) g_tab_row[g_tabs.at] = ids[sel];
-			g_tabs.from = g_tabs.at;
-			g_tabs.at = (g_tabs.at + dir + PT_TABS) % PT_TABS;
-			g_tabs.dir = dir;
-			g_tabs.t0 = anim_now();
-			if (!g_tabs.t0) g_tabs.t0 = 1;
-			g_menu_epoch++;
+			tabs_turn(&g_tabs, dir);
 			n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 			for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
 			g_menu_sel_to = k < n ? k : 0;

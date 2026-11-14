@@ -69,6 +69,7 @@ typedef struct {
 	/* MENU's tabs (src/sys_menu.h, DESIGN.md 11.3): the tab row in place of
 	 * the heading, L1 and R1 going round it, and a panel as tall as the
 	 * screen allows on every tab, so it does not change size as they go.
+	 * Its own count and names, so the in-game menu has a row of its own.
 	 * NULL for every other menu. */
 	const struct menu_tabs *tabs;
 	/* Where the cursor is, written on every pass, for a screen that keeps

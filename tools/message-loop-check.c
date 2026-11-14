@@ -25,8 +25,9 @@ static const zr_rig *g_menu_zyper;
 /* MENU's tabs, a screen's row marks and header picture, which snap_record
  * keeps with a panel and snap_draw puts back (src/main.c): none here */
 typedef struct { int x, y, w, h; } SDL_Rect;
-struct menu_tabs { int at, from, dir; unsigned t0; };
+struct menu_tabs { int at, from, dir; unsigned t0; int count; const char *(*name)(int i); };
 typedef struct menu_tabs menu_tabs;
+static menu_tabs g_tabs;
 static const menu_tabs *g_menu_tabs;
 static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
 static void (*g_menu_header)(app *a, const SDL_Rect *r);
