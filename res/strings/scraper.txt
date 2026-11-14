@@ -42,7 +42,7 @@ it.one = %d mancante
 it.other = %d mancanti
 
 [scraper.on]
-note = Scraper's Video Snaps row: on, then the room the snaps take ("on · 1.2 GB"). A lowercase value.
+note = The Videos row of the Scraper page's Settings: on (they play on the shelf), then the room the snaps take ("on · 1.2 GB"). A lowercase value.
 en = on
 zh-Hans = 开启
 es = activado

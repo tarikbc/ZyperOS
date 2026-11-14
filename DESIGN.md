@@ -1865,8 +1865,11 @@ run will get, for which systems, which games get videos, and their room.
   that was getting videos still does.
 - **Videos for**: tiles over the page, as Computer Connected's (11.18):
   **All Games**, **Favorites**, **Played** (a game with play time).
-- **Settings**: tiles for **ScreenScraper**, **SteamGridDB** and **Videos**.
-  A source opens its page: what it is linked as and a dead Status row,
+- **Settings**: a list, as What did you plug in?'s (11.36), of
+  **ScreenScraper**, **SteamGridDB** and **Videos**, each with its value
+  under it: tiles left "ScreenScraper" no room, 264 wide in **meta** where a
+  tile has 248 inside, with "linked as" and the account under it. Up and
+  Down move. A source opens its page: what it is linked as and a dead Status row,
   **Unlink** (which asks first, 11.8's question), and two notes under a
   rule on where an account or a key comes from; SteamGridDB's tile says
   "key refused" when it is. libretro needs nothing and has no tile.

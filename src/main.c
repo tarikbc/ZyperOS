@@ -9690,9 +9690,16 @@ static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *
 #define CHOICE_ROW_GAP 12
 #define CHOICE_PAD_Y   14
 #define CHOICE_MARK    64
+/* MENU > Scraper's Settings is one too, known by its first row,
+ * ScreenScraper: a tile is 248 wide inside, and the name alone takes 264 in
+ * meta, with "linked as" and the account under it (2026-11-13). */
 static bool tiles_are_list(const menu_row *tiles, int n)
 {
-	return n == 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_HEADPHONES &&
+	ui_glyph g;
+
+	if (n != 3 || !tiles[0].label) return false;
+	g = tile_glyph(tiles[0].label);
+	return (g == UI_GLYPH_HEADPHONES || g == UI_GLYPH_CLOUD) &&
 	       tiles[0].value && tiles[1].value && tiles[2].value;
 }
 
@@ -13468,7 +13475,8 @@ static void scp_test(scp_view *v, app *a);
 
 /* ---- the questions -------------------------------------------------------- */
 
-/* Tiles over the page, as Computer Connected's: the one picked, or -1 */
+/* Tiles over the page, as Computer Connected's, or a list (tiles_are_list):
+ * the one picked, or -1 */
 static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int sel)
 {
 	app *a = v->a;
@@ -13478,7 +13486,8 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 	int lv, choice = -2;
 	float k;
 
-	keyhints_pack(hh, 3, legend, sizeof legend);
+	if (tiles_are_list(tiles, n)) snprintf(legend, sizeof legend, "%s", list_hints(T(S_KEYHINT_CLOSE)));
+	else keyhints_pack(hh, 3, legend, sizeof legend);
 	tiles[n] = MENU_NOTE(legend);
 	lv = panel_open();
 	while (choice == -2) {
@@ -13488,11 +13497,15 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 		if (a->in.quit_requested) { a->running = false; choice = -1; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { choice = -1; break; }
 		if (menu_leaving(a) || a->in.pressed[IN_BACK]) choice = -1;
-		if (in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_RIGHT)) {
-			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : IN_RIGHT;
+		{
+			/* Left and Right along tiles; Up and Down too, for a list */
+			bool back = in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_UP);
+			bool on = in_repeat(&a->in, IN_RIGHT) || in_repeat(&a->in, IN_DOWN);
 
-			moved_sound(a, b);
-			sel = (sel + (b == IN_LEFT ? -1 : 1) + n) % n;
+			if (back || on) {
+				moved_sound(a, back ? IN_LEFT : IN_RIGHT);
+				sel = (sel + (back ? -1 : 1) + n) % n;
+			}
 		}
 		if (a->in.pressed[IN_ACCEPT]) { uisound_play(DS_SOUND_ACCEPT); choice = sel; }
 		if (!panel_frame(a, lv, &k)) continue;
@@ -14010,17 +14023,19 @@ static void scraper_page_shot(app *a)
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT + 1, 1, PANEL_REST.panel);
 	} else if (st == 6) {
+		/* As scp_settings words them: a linked account, a key, videos on */
+		static char ss[64], vs[48];
 		menu_row tiles[4] = {
-			{ "ScreenScraper", "linked as tarik", true },
+			{ "ScreenScraper", ss, true },
 			{ "SteamGridDB", "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b", true },
-			{ T(S_SCRAPER_PAGE_VIDEOS), "on \xc2\xb7 1.4 GB", true },
+			{ T(S_SCRAPER_PAGE_VIDEOS), vs, true },
 		};
-		key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
-		                   { "B", T(S_KEYHINT_CLOSE) } };
-		static char legend[256];
+		char sz[24];
 
-		keyhints_pack(hh, 3, legend, sizeof legend);
-		tiles[3] = MENU_NOTE(legend);
+		snprintf(ss, sizeof ss, T(S_SYSMENU_SC_LINKED_AS), "tarik");
+		sys_menu_bytes(1400000000ull, sz, sizeof sz);
+		snprintf(vs, sizeof vs, "%s \xc2\xb7 %s", T(S_SCRAPER_ON), sz);
+		tiles[3] = MENU_NOTE(list_hints(T(S_KEYHINT_CLOSE)));
 		scp_draw(&v, v.shot_now);
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_HOME_SETTINGS), tiles, 4, 0, PANEL_REST.panel);
