@@ -707,6 +707,30 @@ int main(void)
 			remove(p);
 		}
 
+		/* A big shelf with its covers: 1,800 games, each with a cover in
+		 * .media, as a player's SNES folder with 1,772 games and their art
+		 * was (2026-11-13). Each entry carries its name, path and cover's
+		 * path, and the reply outgrew the old 256 KB cap: the folder would
+		 * not open. */
+		{
+			char dir[512], p[768];
+			int k, st;
+
+			snprintf(dir, sizeof dir, "%s/SNES", g_roms);
+			mkdir(dir, 0777);
+			snprintf(p, sizeof p, "%s/.media", dir);
+			mkdir(p, 0777);
+			for (k = 0; k < 1800; k++) {
+				snprintf(p, sizeof p, "%s/A Rather Long Game Name Number %04d (USA) (Rev 1).sfc", dir, k);
+				mkfile(p, "R");
+				snprintf(p, sizeof p, "%s/.media/A Rather Long Game Name Number %04d (USA) (Rev 1).png", dir, k);
+				mkfile(p, "P");
+			}
+			st = req("GET", "/api/list?p=roms/SNES", g_cookie, NULL, 0, body, sizeof body);
+			CHECK(st == 200, "a folder of 1,800 games with covers did not list: %d", st);
+			CHECK(strstr(body, "\"cover\"") != NULL, "the big listing has no covers: %.80s", body);
+		}
+
 		CHECK(req("GET", "/api/file?p=roms/NES/Contra.nes", g_cookie, NULL, 0,
 		          body, sizeof body) == 200, "download failed");
 		CHECK(!strcmp(body, "ROMDATA"), "downloaded \"%s\"", body);
