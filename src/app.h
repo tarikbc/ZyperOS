@@ -14,7 +14,10 @@
 #include "idle.h"
 #include "library.h"
 #include "muselib.h"
+#include "musequeue.h"
 #include "platform.h"
+#include "status.h"
+#include "sysupdate.h"
 
 #include <SDL.h>
 #include <signal.h>
@@ -315,6 +318,72 @@ void free_all_textures(app *a);
 void copy_file(const char *from, const char *to);
 bool file_nonempty(const char *p);
 
+/* For px2-open's commands (src/ctl_channel.c): a core on the card, a disc
+ * system's BIOS there, whether a shelf is Muse's, and the in-game menu's
+ * Quit */
+bool core_present(const char *core);
+bool disc_bios_found(const char *bios, const char *names);
+bool is_muse(const system_cfg *s);
+void gm_quit(void);
+/* A Ports shelf's core, and a standalone emulator's: "run:<script>"
+ * (main.c's launch_port hands both to launch.sh) */
+#define PORT_CORE    "port"
+#define RUN_PREFIX   "run:"
+/* A game Random Game, Search Games or px2-open picked, started once the
+ * menu has gone (main.c's pick_launch) */
+typedef struct { int shelf, game; unsigned hold_ms; } game_pick;
+extern game_pick g_pick;
+void pick_launch(app *a);
+
+/* System Update (src/update_screen.c reads it): its files, its program
+ * started, what it says (read at most four times a second, g_up_read_at
+ * the last time), and its page up, which keeps the corner's mark off */
+void up_path(char *buf, size_t n, const char *name);
+void up_spawn(const char *cmd);
+const su_view *up_view(bool now);
+extern unsigned g_up_read_at;
+extern bool g_up_shown;
+
+/* For MENU's Search Games, Date & Time and Menu Music (src/search_screen.c,
+ * src/clock_screen.c, src/bgm_screen.c): the theme and the boot screen told
+ * a setting changed, the internet asked about, the clock's 24 hours, and
+ * Menu Music's Song Pop-up */
+void theme_changed(app *a);
+void boot_theme_changed(void);
+bool net_internet(bool *metered);
+extern bool g_clock24;
+extern bool g_song_popup;
+/* --status, for a shot: what the corner shows in place of the device's
+ * clock, radio and battery (main.c's shot_st says how) */
+typedef struct {
+	bool         shot;
+	bool         set;
+	int          minutes;
+	int          h24;          /* -1 for the saved setting */
+	int          eta;          /* minutes left for Time Left, -1 for none */
+	int          calc;         /* the calculating dots, this many filled, -1 for none */
+	bool         full;         /* on the cable and charged */
+	int          icon;         /* BATT_BARS.., -1 for the saved setting */
+	status_marks m;
+} shot_status;
+extern shot_status shot_st;
+
+/* For MENU > Storage (src/storage_screen.c): Muse's place in a book or film
+ * let go of the file about to be deleted */
+void muse_before_delete(const char *abs);
+
+/* For a game's Cover and Video page (src/media_screen.c): the status bar
+ * and its half, the focused title's marquee phase, the shelf's video snap
+ * asked for or stopped (at g_snap_force_vol's sound, -1 for the setting's),
+ * the account's one async slot let go, and the titles read again */
+unsigned draw_topbar(SDL_Renderer *r, int theme, SDL_Color soft, bool moving);
+int  header_half(void);
+unsigned title_phase(app *a);
+void snap_ask(const char *req, bool hold);
+extern int g_snap_force_vol;
+void sync_abandon(void);
+void refresh_game_titles(app *a);
+
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)
 
@@ -337,5 +406,35 @@ int  muse_artist_of(int al);
 void muse_album_dir(int al, char *out, size_t n);
 /* Now Playing's cover let go, the library about to change */
 void np_forget(void);
+
+/* How a Muse screen was left: back one level, Muse closed altogether, or the
+ * library rebuilt under it by Rescan Folder, so every album index it held is
+ * stale and the shelf has to find itself again. */
+typedef enum { MUSE_BACK, MUSE_CLOSE, MUSE_REBUILT } muse_exit;
+
+/* For MP4's Now Playing (src/nowplaying_screen.c): a book's next speed, a
+ * new queue played, the play mode moved on (its marks, MUSE_MODES), the
+ * power button inside Muse and what Muse is open over (g_muse_over, its
+ * ctx, and g_muse_gone when that rule ended it), the Now Playing cover
+ * brought up to date (g_np), and a menu for a screen of the launcher's */
+void book_cycle_speed(void);
+void muse_play(const char *const *paths, int n, int start, double at,
+               bool book, double speed, const char *artist, const char *album);
+void muse_cycle_mode(void);
+typedef struct { const char *key; int glyph; } muse_mode_name;
+extern const muse_mode_name MUSE_MODES[MUQ_MODES];
+void muse_power(app *a);
+typedef struct {
+	int          album;
+	bool         done;
+	SDL_Texture *tex;
+} np_cover_state;
+extern np_cover_state g_np;
+void np_cover(app *a, int al);
+void zyperos_menu_for(app *a, int screen);
+/* Muse's covers: whether the card has answered every album's ask */
+bool cover_answers(void);
+/* A count of the frames drawn: each shelf frame and each clear (main.c) */
+extern unsigned g_frame_no;
 
 #endif

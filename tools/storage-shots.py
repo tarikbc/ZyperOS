@@ -5,7 +5,7 @@
     python3 tools/storage-shots.py [--out DIR] [--lang en,fr|all] [--theme light,dark] [NAME ...]
 
 Writes DIR/<theme>/<lang>/<name>.png (default build/storage-shots) from the
-launcher's own --storage shots (src/main.c, storage_shot) on the README's
+launcher's own --storage shots (src/storage_screen.c, storage_shot) on the README's
 demonstration card (tools/readme-shots.py): the page on its stand-in card of
 128 GB nearly full, a system's page, the two recommendations' questions,
 Delete Game's question from a system's page, the page after Unused Art, the

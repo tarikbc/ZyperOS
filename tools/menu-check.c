@@ -1471,27 +1471,41 @@ static void menu_tabs(void)
 /* The shared engine is the only place a menu list goes round by arithmetic:
  * every panel with rows goes through menu_step_round and menu_step_sel, and
  * the loops of their own through menu_step_index (list_step_heard). A `% n`
- * on the cursor in main.c on the up or down press would be a second rule, so
- * the source is read for it. */
+ * on the cursor in main.c, or a screen split from it (MAIN_SRC in
+ * mk/native.mk), on the up or down press would be a second rule, so the
+ * source is read for it. */
 static void source_does_not_wrap(void)
 {
 	static const char *const bad[] = {
 		"(sel + 1) % n", "(sel + n - 1) % n", "(sel + 1) % items",
 		"(sel + items - 1) % items", "(sel == 1) ? 2 : 1",
 	};
-	FILE *f = fopen("src/main.c", "r");
+	static const char *const files[] = {
+		"src/main.c", "src/aout_route.c", "src/bgm_screen.c",
+		"src/bt_screen.c", "src/clock_screen.c", "src/ctl_channel.c",
+		"src/ctltab_screen.c", "src/gamedel_screen.c", "src/gamern_screen.c",
+		"src/media_screen.c", "src/menu_panel.c", "src/nowplaying_screen.c",
+		"src/place.c", "src/portload.c", "src/powerscreens.c", "src/raqueue.c",
+		"src/search_screen.c", "src/shelfbuild.c", "src/stats_screen.c",
+		"src/storage_screen.c", "src/update_screen.c", "src/zyperdraw.c",
+	};
 	char line[512];
-	int ln = 0, hits = 0;
-	size_t i;
+	int hits = 0;
+	size_t i, k;
 
 	printf("no menu loop goes round by hand:\n");
-	ck(f != NULL, "src/main.c is there to read");
-	while (f && fgets(line, sizeof line, f)) {
-		ln++;
-		for (i = 0; i < sizeof bad / sizeof bad[0]; i++)
-			if (strstr(line, bad[i])) { printf("  src/main.c:%d: %s", ln, line); hits++; }
+	for (k = 0; k < sizeof files / sizeof files[0]; k++) {
+		FILE *f = fopen(files[k], "r");
+		int ln = 0;
+
+		ck(f != NULL, files[k]);
+		while (f && fgets(line, sizeof line, f)) {
+			ln++;
+			for (i = 0; i < sizeof bad / sizeof bad[0]; i++)
+				if (strstr(line, bad[i])) { printf("  %s:%d: %s", files[k], ln, line); hits++; }
+		}
+		if (f) fclose(f);
 	}
-	if (f) fclose(f);
 	ck(hits == 0, "no up or down press steps a menu cursor round the end but the engine");
 }
 

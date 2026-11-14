@@ -7,7 +7,9 @@
  * what a screen with a panel calls every frame. Each is described in
  * main.c. */
 #include "app.h"
+#include "keyboard.h"
 #include "menu.h"
+#include "menumotion.h"
 #include "platform.h"
 
 #include <stdbool.h>
@@ -213,6 +215,125 @@ int  menu_std_width(app *a);
 int  menu_list_fit(int fixed, int rules, int notes);
 /* One line on a panel over the shelf, before something that blocks */
 void wait_panel(app *a, const char *heading, const char *msg);
+/* A question on a panel over the shelf, Yes on `yes_label`: true on Yes */
+bool confirm_panel(app *a, const char *heading, const char *msg,
+                   const char *yes_label);
+/* What a screen with its own page draws first: the theme's ground */
+void draw_background(app *a);
+/* A move on a page heard: `b`'s step sound */
+void moved_sound(app *a, in_button b);
+/* The runner's messages: rows held for a while, or until a press; one
+ * result's words; and the on-screen keyboard's prompt */
+bool timed_message(app *a, const char *heading, const menu_row *rows,
+                   int n, int fixed_w, unsigned accent);
+bool result_message(app *a, const char *heading, const char *text);
+kb_result keyboard_prompt(app *a, const char *title, char *buf, int cap);
+/* MENU pressed in a screen over the one asking: every screen closing */
+extern bool g_menu_closing;
+/* The menus' measures: a row's height, the air inside a panel, the margin
+ * around it and its top */
+int menu_row_h(void);
+int menu_pad(void);
+/* The air between the panel and the screen edge, on every side. */
+#define MENU_MARGIN 24
+/* ...but the top, where the status corner stands (DESIGN.md 11.12) on every
+ * screen a panel opens over - the shelf, Now Playing, a paused game: a panel
+ * starts a grid step under the corner's row, and a list that would reach
+ * higher scrolls in its window instead. Centered as before when it is short
+ * enough; only a tall one moves down. */
+#define MENU_TOP    96
+/* The height a panel can have between the two. */
+#define MENU_AVAIL_H (ZYPEROS_SCREEN_H - MENU_TOP - MENU_MARGIN)
+/* A question on a panel already open at `lv`, its rows `rows`, Yes on
+ * `yes_label`: true on Yes */
+bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
+                  const char *yes_label, int fixed_w, int lv);
+/* `src` wrapped to `w` in `f`, a line a row of `out`; how many lines */
+#define CHV_WRAP_COLS  96
+int wrap_text(TTF_Font *f, const char *src, int w,
+              char out[][CHV_WRAP_COLS], int max);
+/* The roles a row of menu_draw_ex's `vcolors` names. VCOL_EARNED is
+ * the value in **accent-ink**, lime as a mark: an earned achievement. On the
+ * focus fill it is **on-accent**, like every other value. */
+#define VCOL_EARNED  1u
+/* The row is a one-line message (menu_message): its label in **text-soft**,
+ * as the mock draws one, whatever `live` says. `live` stays the caller's,
+ * since menu_row_moves reads it to decide whether a long message scrolls. */
+#define VCOL_MESSAGE 2u
+/* A menu's panel with each row's value role (`vcolors`, NULL for none),
+ * `visits_all` when the cursor reaches every row, and the row a synopsis
+ * loops at (0 none) */
+void menu_draw_ex(app *a, const char *heading, const menu_row *rows,
+                  int n, int sel, int fixed_w, unsigned accent,
+                  const unsigned *vcolors, bool visits_all, int loop_at);
+/* confirm_rows over a screen's own backdrop (`over`, `ctx`) */
+bool confirm_rows_over(app *a, const char *heading, menu_row *rows, int nq,
+                       const char *yes_label, int fixed_w, int lv,
+                       const menu_style *over, void *ctx);
+/* A screen that is a base for panels (Muse's shelf, Storage): its level,
+ * and its own context while it is up */
+int  panel_base(void);
+extern void (*g_base_page)(app *, void *);
+extern void *g_base_ctx;
+/* A panel leaving over the shelf, or over a game (`game`) */
+bool panel_leave_draw(app *a, int game);
+/* --shot-at's panel level (with shot_motion's, main.c) */
+extern int shot_lv;
+/* What a message says when the network a screen needs is not there, one
+ * sentence in every screen (DESIGN.md 12). A row that is dead for the same
+ * reason says "needs Wi-Fi" in its value instead. */
+#define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
+/* The panel pass (main.c): a panel in its open or close drawn through a
+ * texture, scaled about its middle */
+bool panel_pass_begin(app *a);
+void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose);
+SDL_FRect panel_scaled(const SDL_Rect *q, float s);
+/* The marquees' clocks (main.c's mq_phase): one a slot, each keyed on what
+ * it scrolls */
+/* Two note slots because a panel can carry two footer notes and both may be
+ * long enough to move. Sharing one would be the bug this enum exists to
+ * prevent, a step smaller: each would see the other's key every frame and
+ * neither would ever get past the opening hold. */
+#define MQ_NOTES 2
+/* MQ_FIXED is for rows that move because nothing can ever select them, as
+ * distinct from the ones that move because something just did.
+ *
+ * The other slots are keyed on the cursor, which is right when the row that
+ * scrolls is the row you landed on: a new selection is a new subject and its
+ * text should start from the beginning. It is wrong for a fact. The game
+ * screen's Genre row is unselectable and scrolls whenever it is long, and
+ * stepping between Synopsis and Cheevos was restarting it - a cursor move that
+ * has nothing to do with the row it interrupted. Reported 2026-09-17, the day
+ * Genre became the first long permanently-unselectable row on a screen that
+ * also has a cursor.
+ *
+ * Keyed on the SCREEN instead - its heading and how many rows it has - which
+ * is the same value for every such row in a frame, so they still share one
+ * clock and still move together rather than resetting each other.
+ *
+ * It replaced a slot of its own for VALUES, which was the wrong axis to split
+ * on: a label and a value never move in the same row - the wider of the two
+ * takes the room and the other is laid out around it - so what needed separate
+ * clocks was never the two columns. It was the selected row against the rest,
+ * and only one row is ever selected. */
+enum { MQ_SHELF, MQ_MENU, MQ_FIXED, MQ_NOTE0, MQ_NOTE1, MQ_VSCROLL,
+       MQ_HEAD, MQ_NP, MQ_SONG, MQ_SLOTS };
+unsigned mq_phase(int who, int key_a, int key_b);
+unsigned mq_row_phase(bool selected, const char *heading, int n, int sel);
+/* The last menu panel and its body (main.c) */
+extern SDL_Rect g_menu_panel, g_menu_body;
+/* A marquee's clock started again (a screen that has just opened); and the
+ * screens over the one on top closed by MENU, which stops there (main.c) */
+void mq_reset(int who);
+void panel_return(void);
+/* A result over Muse over a paused game stopped by that menu's power
+ * rule: every screen above unwinds (main.c, beside the runner) */
+extern bool g_message_stopped;
+/* What Muse is open over: NULL the shelf, else that menu's style and its
+ * ctx; g_muse_gone when its power rule ended what was underneath */
+extern const menu_style *g_muse_over;
+extern void             *g_muse_over_ctx;
+extern bool              g_muse_gone;
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);
