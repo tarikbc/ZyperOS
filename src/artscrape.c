@@ -17,6 +17,7 @@
 #include "artshrink.h"
 #include "artsrc.h"
 #include "config.h"
+#include "db.h"
 #include "fileio.h"
 #include "i18n.h"
 #include "library.h"
@@ -481,8 +482,9 @@ static char    g_romdir[LIB_PATH];
  * run over an empty library costs the same as before plus a handful of 404s.
  * Adding a few games - the ordinary case, and the one Over The Hare makes
  * ordinary - usually costs no index at all. */
-enum { P_SYSTEM, P_META, P_META_WAIT, P_ART_SYSTEM, P_SS, P_SS_WAIT, P_TRY, P_TRY_WAIT, P_INDEX, P_INDEX_WAIT,
-       P_FUZZY, P_FUZZY_WAIT, P_DAT, P_DAT_WAIT, P_CRC, P_CRC_WAIT, P_SGDB, P_SGDB_WAIT };
+enum { P_SYSTEM, P_META, P_META_WAIT, P_ART_SYSTEM, P_SS, P_SS_WAIT, P_SS_LR_WAIT, P_TRY, P_TRY_WAIT,
+       P_INDEX, P_INDEX_WAIT, P_FUZZY, P_FUZZY_WAIT, P_DAT, P_DAT_WAIT, P_CRC, P_CRC_WAIT, P_SGDB,
+       P_SGDB_WAIT, P_DCOUNT, P_DSYSTEM };
 
 /* ---- pass zero: ScreenScraper ------------------------------------------
  *
@@ -555,6 +557,41 @@ static int  g_rem;              /* which collection, 0 or 1 */
 static int  g_si;               /* which system */
 static int  g_ri;               /* which ROM inside it */
 static bool g_running;
+
+/* THE RUN'S TWO PARTS. Covers for every console first, then details -
+ * names, years, synopses - for games that have a cover (P_META, asked of
+ * ScreenScraper). The details went first on each console once, and on a
+ * card of 8,800 games with covers from elsewhere that was "Fetching 0 /
+ * 523" while names went by for minutes (Tarik, 2026-11-13): the covers are
+ * what the player asked for. Each console's details are counted before the
+ * part begins (P_DCOUNT), so it has a total of its own. */
+static bool g_details;
+static int  g_dcount[CFG_MAX_SYSTEMS];   /* each console's details to ask */
+static int  g_dlooked0;                  /* dlooked as this console's began */
+
+/* Progress by game (art_progress.looked): which of this console's games have
+ * been looked at, how many it wanted, and the count as it began - so a
+ * console passed over, or left early, still adds every game it wanted */
+static unsigned char g_lk[ENTRIES_MAX];
+static int  g_sys_want, g_looked0;
+
+/* libretro's direct try made for a game right after ScreenScraper's miss
+ * (P_SS_LR_WAIT), which the direct pass then does not make again */
+static unsigned char g_lr_tried[ENTRIES_MAX];
+
+/* A console's run of games ScreenScraper does not know (SS_UNKNOWN) and
+ * whether the rest of it is libretro's: SS_SHELF_MISSES in a row and no
+ * hit between them, and the console is one its catalog does not name
+ * (loose files with their own names, homebrew, hacks). For this console in
+ * this part of the run only; the next console asks again. */
+#define SS_SHELF_MISSES 10
+static int  g_ss_streak;
+static bool g_ss_shelf_off;
+
+/* ScreenScraper's recent "we do not know this game" for this console
+ * (db_ss_misses_load), left alone for SS_MISS_DAYS: their catalog grows */
+#define SS_MISS_DAYS 30
+static db_titles g_miss;
 
 static char g_roms[ENTRIES_MAX][NAME_MAX_];
 /* The extension each stem came with, dot included, because ScreenScraper is
@@ -1460,6 +1497,7 @@ void art_cancel(void)
 	if (g_running) tidy_media();
 	g_running = false;
 	lib_free(&g_meta_games);
+	db_titles_free(&g_miss);
 	free(g_html);  g_html = NULL;
 	free(g_dat);   g_dat = NULL;
 	g_nnames = 0;
@@ -1478,6 +1516,11 @@ void art_begin(const systems_cfg *sys, const char *roms_dir, const char *only)
 	g_ss_quiet = 0;
 	g_ss_until = 0;
 	g_ss_note = NO_WHY;
+	g_details = false;
+	memset(g_dcount, 0, sizeof g_dcount);
+	g_dlooked0 = g_sys_want = g_looked0 = 0;
+	g_ss_streak = 0;
+	g_ss_shelf_off = false;
 	g_nsg = g_sgi = g_sg_quiet = 0;
 	g_sg_stop = g_sg_retried = false;
 	g_sg_until = 0;
@@ -1591,6 +1634,10 @@ static int next_system(int why)
 		    g_st.found - g_sys_found0, g_st.missing - g_sys_missing0,
 		    (now_ms() - g_sys_t0 + 500) / 1000);
 	g_sys_on = false;
+	/* Every game it wanted counts as looked at, the ones a reason passed
+	 * over too, so the count ends at its total */
+	if (g_st.looked < g_looked0 + g_sys_want) g_st.looked = g_looked0 + g_sys_want;
+	g_sys_want = 0;
 	tidy_media();
 	g_si++;
 	g_st.systems_done++;
@@ -1640,6 +1687,132 @@ static bool ss_finished(int result)
 	return true;
 }
 
+/* Game `i` of this console looked at, once */
+static void look(int i)
+{
+	if (i >= 0 && i < g_nroms && !g_lk[i]) {
+		g_lk[i] = 1;
+		g_st.looked++;
+	}
+}
+
+/* This console's recent misses, for missed() */
+static void misses_load(const char *folder)
+{
+	long long now = (long long)time(NULL);
+
+	db_titles_free(&g_miss);
+	/* A day ahead too: a clock that was set back is not a reason to ask
+	 * about every game again, nor one far ahead a reason never to */
+	if (db_lib()) db_ss_misses_load(db_lib(), folder, now - SS_MISS_DAYS * 86400LL,
+	                                now + 86400, &g_miss);
+}
+
+static bool missed(const char *file)
+{
+	return db_titles_find(&g_miss, file) != NULL;
+}
+
+/* What ScreenScraper said about `file`, once the game is done with: kept,
+ * so a later run leaves a game it does not know alone (db_ss_miss_set) and
+ * asks again about one it found, and counted toward this console's run of
+ * misses. An answer that knew the game, cover or not, ends the run. */
+static void ss_answer(const char *file, int r)
+{
+	ss_refusal no = r < 0 ? ss_run_refusal() : SS_GO_ON;
+	const char *folder = g_sys[g_si].folder;
+
+	if (r == 0) {
+		if (db_lib()) db_ss_miss_clear(db_lib(), folder, file);
+		g_ss_streak = 0;
+	} else if (no == SS_UNKNOWN) {
+		if (db_lib()) db_ss_miss_set(db_lib(), folder, file, (long long)time(NULL));
+		if (++g_ss_streak >= SS_SHELF_MISSES && !g_ss_shelf_off) {
+			g_ss_shelf_off = true;
+			say("art: %s: ScreenScraper knew none of %d in a row; libretro for the rest of it\n",
+			    folder, g_ss_streak);
+		}
+	} else if (no == SS_GO_ON) {
+		g_ss_streak = 0;
+	}
+}
+
+/* libretro's direct try for game g_ri, right after ScreenScraper's miss or
+ * with its miss remembered: the request the direct pass would make for it
+ * after the whole console, made while the game is on the screen. Same
+ * request, same answer, and ScreenScraper still asked first - only sooner,
+ * so a console it does not know shows libretro's covers from its first
+ * game rather than after two seconds a game (2026-11-13). */
+static int lr_now(const char *dest)
+{
+	const char *remote = remote_nth(g_sys[g_si].folder, 0);
+
+	if (remote && start_image(remote, g_roms[g_ri], dest)) {
+		g_lr_tried[g_ri] = 1;
+		g_st.src = ART_SRC_LR;
+		g_phase = P_SS_LR_WAIT;
+		return 1;
+	}
+	g_ri++;              /* not tried: the direct pass asks it */
+	g_phase = P_SS;
+	return 1;
+}
+
+/* The details part's work on a console, counted before it begins: P_META's
+ * choice - a cover, and no title or no snap it wants, and no recent miss -
+ * from one listing of the folder and one of its .media and one query each
+ * for titles and misses, where P_META opens a cover and asks for a title a
+ * game. */
+static int details_count(const char *dir, const char *folder, const char *exts)
+{
+	game_list l = { 0 };
+	db_titles titles, miss;
+	char **have;
+	int nhave = 0, i, n = 0;
+	long long now = (long long)time(NULL);
+
+	if (!ss_system_id(folder) || !lib_scan(g_romdir, folder, exts, &l)) {
+		lib_free(&l);
+		return 0;
+	}
+	have = cover_stems(dir, &nhave);
+	db_titles_load(db_lib(), folder, &titles);
+	db_ss_misses_load(db_lib(), folder, now - SS_MISS_DAYS * 86400LL, now + 86400, &miss);
+	for (i = 0; i < l.count; i++) {
+		const game_entry *g = &l.items[i];
+		const char *stem = g->name, *t;
+		bool cover = (nhave && bsearch(&stem, have, (size_t)nhave, sizeof *have, cmp_name)) ||
+		             (g_es_cover && g_es_cover(dir, g->file, g->name));
+
+		if (!cover || db_titles_find(&miss, g->file)) continue;
+		t = db_titles_find(&titles, g->file);
+		if (!t || !*t || snap_missing(dir, folder, g->name)) n++;
+	}
+	for (i = 0; i < nhave; i++) free(have[i]);
+	free(have);
+	db_titles_free(&titles);
+	db_titles_free(&miss);
+	lib_free(&l);
+	return n;
+}
+
+/* This console's details done, or left: on to the next */
+static int d_next(void)
+{
+	lib_free(&g_meta_games);
+	db_titles_free(&g_miss);
+	if (g_si < g_nsys && g_st.dlooked < g_dlooked0 + g_dcount[g_si])
+		g_st.dlooked = g_dlooked0 + g_dcount[g_si];
+	g_si++;
+	g_phase = P_DSYSTEM;
+	return 1;
+}
+
+static bool details_wanted(void)
+{
+	return !g_only[0] && !g_ss_stop && ss_signed_in() && db_lib();
+}
+
 static bool sg_on(void)
 {
 	return !g_sg_stop && sgdb_have_key();
@@ -1666,6 +1839,7 @@ static int leftover(const int *list, int n, int why)
 		g_sg_retried = false;
 		g_sg_why = why;
 		g_phase = P_SGDB;
+		g_st.src = ART_SRC_SG;
 		return 1;
 	}
 	g_st.missing += n;
@@ -1690,10 +1864,29 @@ int art_step(void)
 	struct stat st;
 
 	if (!g_running) return -1;
+	/* Every console's details counted: the part itself, from the first */
+	if (g_si >= g_nsys && g_phase == P_DCOUNT) {
+		g_si = 0;
+		g_phase = P_DSYSTEM;
+	}
+	/* Covers done for every console: the details, if there is an account
+	 * to ask, counted first so the part has its own total */
+	if (g_si >= g_nsys && !g_details && details_wanted()) {
+		say("art: covers done in %ld s: %d found, %d missing; now details\n",
+		    (now_ms() - g_run_t0 + 500) / 1000, g_st.found, g_st.missing);
+		g_details = true;
+		g_st.details = true;
+		g_st.src = ART_SRC_SS;
+		g_st.now[0] = '\0';
+		g_si = 0;
+		g_phase = P_DCOUNT;
+		return 1;
+	}
 	if (g_si >= g_nsys) {
 		say("art: finished in %ld s: %d found, %d missing, %d had one, %d names saved\n",
 		    (now_ms() - g_run_t0 + 500) / 1000, g_st.found, g_st.missing,
 		    g_st.skipped, g_st.named);
+		g_st.src = ART_SRC_NONE;
 		art_cancel();
 		return 0;
 	}
@@ -1702,19 +1895,37 @@ int art_step(void)
 
 	switch (g_phase) {
 	case P_SYSTEM:
+		g_looked0 = g_st.looked;
+		g_sys_want = 0;
 		if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode))
 			return next_system(S_ART_WHY_NO_FOLDER);
-		/* Before the all-covers-present skip, fetch missing names without
-		 * touching those covers. A known title keeps the cheap skip policy. */
+		g_phase = P_ART_SYSTEM;
+		return 1;
+
+	/* ---- the second part: details, for games with a cover ------------- */
+	case P_DCOUNT:
+		snprintf(g_st.now, sizeof g_st.now, "%s", g_sys[g_si].folder);
+		g_dcount[g_si] = details_count(dir, g_sys[g_si].folder, g_sys[g_si].exts);
+		g_st.dtotal += g_dcount[g_si];
+		g_si++;
+		return 1;
+
+	case P_DSYSTEM:
+		g_dlooked0 = g_st.dlooked;
 		g_meta_i = 0;
 		g_ss_retried = false;
-		if (!g_only[0] && !g_ss_stop && ss_signed_in() && db_lib() &&
-		    ss_system_id(g_sys[g_si].folder) &&
+		g_ss_streak = 0;
+		g_ss_shelf_off = false;
+		/* Stopped for the run: the details are over too */
+		if (g_ss_stop) { g_si = g_nsys; return 1; }
+		if (g_dcount[g_si] > 0 &&
 		    lib_scan(g_romdir, g_sys[g_si].folder, g_sys[g_si].exts, &g_meta_games)) {
+			misses_load(g_sys[g_si].folder);
 			g_phase = P_META;
 			return 1;
 		}
-		g_phase = P_ART_SYSTEM;
+		lib_free(&g_meta_games);
+		g_si++;
 		return 1;
 
 	case P_META: {
@@ -1730,22 +1941,23 @@ int art_step(void)
 			    (art_is_cover(dest) || (g_es_cover && g_es_cover(dir, game->file, game->name)))) {
 				g_meta_untitled = !db_game_title(db_lib(), g_sys[g_si].folder, game->file,
 				                                 title, sizeof title);
-				if (g_meta_untitled ||
-				    snap_missing(dir, g_sys[g_si].folder, game->name)) break;
+				/* ScreenScraper said lately it does not know it */
+				if ((g_meta_untitled ||
+				     snap_missing(dir, g_sys[g_si].folder, game->name)) &&
+				    !missed(game->file)) break;
 			}
 			g_meta_i++;
 		}
-		if (g_meta_i >= g_meta_games.count || !ss_budget_available()) {
-			lib_free(&g_meta_games);
-			g_phase = P_ART_SYSTEM;
-			return 1;
-		}
+		if (g_meta_i >= g_meta_games.count || g_ss_shelf_off || !ss_budget_available())
+			return d_next();
 		if (g_ss_until && time(NULL) < g_ss_until) return 1;
 		g_ss_until = 0;
 		snprintf(g_st.now, sizeof g_st.now, "%s", game->name);
+		g_st.src = ART_SRC_SS;
 		if (!ss_run_begin_metadata(g_sys[g_si].folder, game->file, game->name,
 		                           dir, g_sys[g_si].exts)) {
 			g_meta_i++;
+			g_st.dlooked++;
 			return 1;
 		}
 		g_phase = P_META_WAIT;
@@ -1758,7 +1970,11 @@ int art_step(void)
 		if (r == 1) return 1;
 		if (r == 0 && g_meta_untitled) g_st.named++;
 		if (ss_run_got_video()) g_st.snaps++;
-		if (ss_finished(r)) g_meta_i++;
+		if (ss_finished(r)) {
+			ss_answer(g_meta_games.items[g_meta_i].file, r);
+			g_meta_i++;
+			g_st.dlooked++;
+		}
 		ss_run_cancel();
 		g_phase = P_META;
 		return 1;
@@ -1769,6 +1985,10 @@ int art_step(void)
 		g_rem = 0;
 		g_nleft = 0;
 		g_crc_tried = false;
+		memset(g_lk, 0, sizeof g_lk);
+		memset(g_lr_tried, 0, sizeof g_lr_tried);
+		g_ss_streak = 0;
+		g_ss_shelf_off = false;
 		/* A replace is the one game, taken as named rather than found in the
 		 * folder: a disc game is a folder of its own, which read_roms does not
 		 * list, and its cover lives at the same .media path all the same. */
@@ -1799,6 +2019,7 @@ int art_step(void)
 				if (art_is_cover(have) || es_cover_at(dir, g_roms[i], g_rext[i])) g_st.skipped++;
 				else want++;
 			}
+			g_sys_want = want;
 			if (want == 0) return next_system(NO_WHY);
 		}
 		if (!remote && !sg_on()) return next_system(S_ART_WHY_NOT_IN_TABLE);
@@ -1830,13 +2051,16 @@ int art_step(void)
 		/* A replace keeps its own driver in the screen for now, which asks
 		 * ScreenScraper before it ever gets here. */
 		g_phase = (!g_only[0] && !g_ss_stop && ss_signed_in()) ? P_SS : P_TRY;
+		g_st.src = g_phase == P_SS ? ART_SRC_SS : ART_SRC_LR;
+		if (g_phase == P_SS) misses_load(g_sys[g_si].folder);
 		return 1;
 
 	/* ---- pass zero: ScreenScraper, for an account that has one --------- */
 	case P_SS:
-		if (g_ss_stop || g_ri >= g_nroms) {
+		if (g_ss_stop || g_ss_shelf_off || g_ri >= g_nroms) {
 			g_ri = 0;
 			g_phase = P_TRY;
+			g_st.src = ART_SRC_LR;
 			return 1;
 		}
 		if (!ss_budget_available()) return 1;
@@ -1854,6 +2078,10 @@ int art_step(void)
 			char file[LIB_PATH];
 
 			rom_file(g_ri, file, sizeof file);
+			/* ScreenScraper said lately it does not know it: libretro's
+			 * turn at once */
+			if (missed(file)) return lr_now(dest);
+			g_st.src = ART_SRC_SS;
 			if (!ss_run_begin(g_sys[g_si].folder, file, g_roms[g_ri], dir,
 			                  g_sys[g_si].exts)) {
 				/* No account, or a system they have no id for. Either way
@@ -1869,12 +2097,37 @@ int art_step(void)
 
 	case P_SS_WAIT: {
 		int r = ss_run_step();
+		char file[LIB_PATH];
+		bool next;
 
 		if (r == 1) return 1;
 		if (r == 0) { g_st.found++; g_st.ss_found++; }
 		if (ss_run_got_video()) g_st.snaps++;
-		if (ss_finished(r)) g_ri++;
+		next = ss_finished(r);
 		ss_run_cancel();
+		g_phase = P_SS;
+		if (!next) return 1;          /* its one retry, after the wait */
+		rom_file(g_ri, file, sizeof file);
+		ss_answer(file, r);
+		/* A miss is libretro's at once, while the game is on the screen */
+		if (r != 0 && art_paths(dir, g_roms[g_ri], media, sizeof media, dest, sizeof dest) &&
+		    !art_is_cover(dest))
+			return lr_now(dest);
+		look(g_ri);
+		g_ri++;
+		return 1;
+	}
+
+	/* libretro's direct try for the game ScreenScraper just missed */
+	case P_SS_LR_WAIT: {
+		int r = net_async_poll();
+
+		if (r == 0) return 1;
+		say("art: %s from libretro by its own name: %s, %s\n", g_roms[g_ri],
+		    r > 0 ? "found" : "not there", art_answer());
+		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_ri]); g_st.found++; g_st.lr_found++; }
+		look(g_ri);
+		g_ri++;
 		g_phase = P_SS;
 		return 1;
 	}
@@ -1890,6 +2143,7 @@ int art_step(void)
 		if (!art_paths(dir, g_roms[g_ri], media, sizeof media,
 		               dest, sizeof dest)) {
 			g_st.missing++;
+			look(g_ri);
 			g_ri++;
 			return 1;
 		}
@@ -1897,11 +2151,19 @@ int art_step(void)
 			g_ri++;
 			return 1;
 		}
+		/* Asked already, right after ScreenScraper's miss: on to the catalog */
+		if (g_lr_tried[g_ri]) {
+			g_retry[g_nretry++] = g_ri;
+			g_ri++;
+			return 1;
+		}
 
 		snprintf(g_st.now, sizeof g_st.now, "%s", g_roms[g_ri]);
+		g_st.src = ART_SRC_LR;
 		mkdir(media, 0777);
 		if (!start_image(remote_nth(g_sys[g_si].folder, 0), g_roms[g_ri], dest)) {
 			g_retry[g_nretry++] = g_ri;
+			look(g_ri);
 			g_ri++;
 			return 1;
 		}
@@ -1919,6 +2181,7 @@ int art_step(void)
 		 * counted as missing until the fuzzy pass has also failed. */
 		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_ri]); g_st.found++; g_st.lr_found++; }
 		else       g_retry[g_nretry++] = g_ri;
+		look(g_ri);
 		g_ri++;
 		g_phase = P_TRY;
 		return 1;
@@ -1928,6 +2191,7 @@ int art_step(void)
 	case P_INDEX:
 		snprintf(g_st.now, sizeof g_st.now, T(S_ART_NOW_CATALOG),
 		         g_sys[g_si].folder);
+		g_st.src = ART_SRC_LR;
 		if (!start_index(remote_nth(g_sys[g_si].folder, g_rem)))
 			return next_system(S_ART_WHY_NO_CURL);
 		g_phase = P_INDEX_WAIT;
@@ -2107,6 +2371,7 @@ int art_step(void)
 		ri = g_sg[g_sgi];
 		if (!art_paths(dir, g_roms[ri], media, sizeof media, dest, sizeof dest)) {
 			g_st.missing++;
+			look(ri);
 			g_sgi++;
 			return 1;
 		}
@@ -2115,6 +2380,7 @@ int art_step(void)
 		/* No title to search by: a stem that is all tags */
 		if (!sgdb_run_begin(g_roms[ri], dest)) {
 			g_st.missing++;
+			look(ri);
 			g_sgi++;
 			return 1;
 		}
@@ -2134,6 +2400,7 @@ int art_step(void)
 			g_st.sg_found++;
 			g_sg_quiet = 0;
 			g_sg_retried = false;
+			look(g_sg[g_sgi]);
 			g_sgi++;
 		} else if (sgdb_run_too_many() && !g_sg_retried) {
 			/* Not now: the same game once more, after a wait */
@@ -2149,6 +2416,7 @@ int art_step(void)
 			if (!sgdb_run_no_answer()) g_sg_quiet = 0;
 			g_sg_retried = false;
 			g_st.missing++;
+			look(g_sg[g_sgi]);
 			g_sgi++;
 		}
 		sgdb_run_cancel();
@@ -2163,6 +2431,8 @@ void art_status(art_progress *out)
 {
 	if (!out) return;
 	*out = g_st;
+	out->ss_stopped = g_ss_stop;
+	out->sg_stopped = g_sg_stop;
 	/* Why the second source stopped, when nothing worse has been said. It is
 	 * a run-level fact rather than a system-level one - the pass stops for
 	 * the whole run - so it cannot be written when it happens: the next

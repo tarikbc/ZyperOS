@@ -1847,9 +1847,13 @@ then the sources in the order a fetch asks them - **ScreenScraper**
 account"), **SteamGridDB** (the key as 11.3 shows a key, "key refused",
 "link"). Six rows and a rule, which is what the panel holds at 640x480:
 nothing else goes on it. Fetch Missing Art runs in the same panel: its row
-becomes "Fetching", "31 / 142", each source's value counts the covers it
+becomes "Fetching", "31 / 142" - games LOOKED AT of those with no cover,
+which moves with every game - each source's value counts the covers it
 found, the sources are dead until it ends, and B stops it and closes, as
-Box Art's always has. While it runs, the heading's second line is what it
+Box Art's always has. It gets covers for every console first, then the
+details (names, years, synopses) of games that already have a cover, which
+went first on each console once and held the count at 0 for minutes on a
+card of covers from elsewhere (2026-11-13). While it runs, the heading's second line is what it
 is doing now - the game it is asking about, or "NES catalog" - cut to three
 quarters of the screen, as Box Art's was: the count moves only when a cover
 lands or a game is given up, and a ScreenScraper pass over a shelf it does

@@ -98,7 +98,20 @@ typedef struct {
 	 * order they are asked. `found` is their sum. */
 	int  ss_found, lr_found, sg_found;
 	int  snaps;          /* video snaps fetched (src/snaps.h) */
+	/* Progress that moves with every game, for MENU > Scraper's first row.
+	 * `looked`: games with no cover the run has asked about, each once,
+	 * whichever source answered, and every one of a console it passed
+	 * over; found + missing moved only when a console's last source was
+	 * done with it. Then the run's second part, `details`: names, years
+	 * and synopses for games that have a cover, `dlooked` of `dtotal`. */
+	int  looked;
+	bool details;
+	int  dlooked, dtotal;
+	/* The source being asked now, and the ones that said no for the run */
+	int  src;            /* ART_SRC_* */
+	bool ss_stopped, sg_stopped;
 } art_progress;
+enum { ART_SRC_NONE, ART_SRC_SS, ART_SRC_LR, ART_SRC_SG };
 
 void art_status(art_progress *out);
 

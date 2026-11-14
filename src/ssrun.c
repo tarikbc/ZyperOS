@@ -297,7 +297,8 @@ static int run_step(void)
 			g_toomany = (http == 429);
 			g_refusal = http == 430 || http == 431 ? SS_SPENT
 			          : http == 401 || http == 423 ? SS_CLOSED
-			          : http == 0 || http >= 500   ? SS_NO_ANSWER : SS_GO_ON;
+			          : http == 0 || http >= 500   ? SS_NO_ANSWER
+			          : http == 404                ? SS_UNKNOWN : SS_GO_ON;
 			say_reply(how, 0, 0, http == 429 ? "too many requests"
 			                   : http == 404 ? "not a game they know"
 			                   : http == 430 ? "today's quota is spent"
@@ -312,6 +313,7 @@ static int run_step(void)
 			say_reply(how, bytes, parse_ms,
 			          bytes >= SS_REPLY_MAX ? "too big, not read"
 			          : bytes == 0 ? "empty" : "no game in it");
+			if (bytes > 0 && bytes < SS_REPLY_MAX) g_refusal = SS_UNKNOWN;
 			g_run.phase = R_FAIL;
 			return -1;
 		}
@@ -327,6 +329,7 @@ static int run_step(void)
 				if (start_ask(0)) { g_run.phase = R_RETRY; return 1; }
 			}
 			/* The wrong game. Never persist its title or prose. */
+			g_refusal = SS_UNKNOWN;
 			g_run.phase = R_FAIL;
 			return -1;
 		}

@@ -91,13 +91,18 @@ bool ss_run_too_many(void);
  *   SS_NO_ANSWER  no status at all (no network, the wait ran out, TLS) or a
  *                 server error, 5xx: one is a blip, two in a row are the
  *                 run's, as SteamGridDB's are (src/sgdbrun.h)
- *   SS_GO_ON      anything else: a 404 is this game alone
+ *   SS_UNKNOWN    they do not know this game: a 404, a reply with no game in
+ *                 it, or one whose name fails the check after its retry.
+ *                 About this game alone; a run remembers it for a while
+ *                 (db_ss_miss_set) and counts it toward a console's run of
+ *                 misses (src/artscrape.c)
+ *   SS_GO_ON      anything else, also about this game alone
  *
  * Before this, each of these was "a game they do not have", so a run asked
  * every game on a shelf, a second or two each and sixty with no answer, all
  * refused, before libretro had its turn: minutes with no art on the screen.
  * 429 stays ss_run_too_many's. Survives ss_run_cancel, as that does. */
-typedef enum { SS_GO_ON, SS_SPENT, SS_CLOSED, SS_NO_ANSWER } ss_refusal;
+typedef enum { SS_GO_ON, SS_SPENT, SS_CLOSED, SS_NO_ANSWER, SS_UNKNOWN } ss_refusal;
 ss_refusal ss_run_refusal(void);
 
 #endif

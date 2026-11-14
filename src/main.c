@@ -13253,7 +13253,10 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 		int r = art_step();
 
 		art_status(&p);
-		c->u.done = p.found + p.missing;
+		/* Games looked at, which moves with every game: found plus given
+		 * up moved only when a console's last source was done with it,
+		 * and read as stuck (Tarik, 2026-11-13) */
+		c->u.done = p.looked;
 		if (c->u.done > c->u.total) c->u.total = c->u.done;
 		c->u.ss_found = p.ss_found;
 		c->u.lr_found = p.lr_found;

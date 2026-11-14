@@ -126,11 +126,11 @@ ja = ScreenScraper：リクエスト過多で停止
 it = ScreenScraper: troppe richieste, fermato
 
 [art.ss_busy]
-note = tight. ScreenScraper is closed to the account for now (full, or closed); it is not asked again this run. The words are art.sg_busy's
+note = tight. ScreenScraper is closed to the account for now (full, or closed); it is not asked again this run. The words are art.sg_busy's, shorter in zh-Hans and pt-BR: the heading's line holds about 28 characters and ScreenScraper is the longer name (check-i18n-shots, scraper-refused)
 en = ScreenScraper: too busy
-zh-Hans = ScreenScraper：服务器繁忙
+zh-Hans = ScreenScraper：繁忙
 es = ScreenScraper: saturado
-pt-BR = ScreenScraper: sobrecarregado
+pt-BR = ScreenScraper: ocupado
 fr = ScreenScraper : surchargé
 de = ScreenScraper: überlastet
 ja = ScreenScraper：混雑中
