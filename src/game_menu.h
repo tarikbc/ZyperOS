@@ -174,12 +174,15 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
  * of the Controls tab (src/ctltab.c) and in no tab here; and Player 2
  * (2026-11-13, src/p2.h), an NES game's whose core the system table offers
  * it on, on the Game tab after Quick Slot; and Disc (2026-11-13, issue #102),
- * a game on more than one disc's, on the Game tab after Quick Slot too. */
+ * a game on more than one disc's, on the Game tab after Quick Slot too; and
+ * Strength (2026-11-14, src/strength.h), how strongly an old screen's shader
+ * is drawn, on the Display tab right under Shader while the shader is one. */
 typedef enum {
 	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
 	GM_RESET, GM_QUIT,
 	GM_ROWS,
 	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2, GM_DISC,
+	GM_STRENGTH,
 	GM_MAX_ROWS
 } gm_row;
 
@@ -203,6 +206,8 @@ int gm_layout_index(const char *name);                   /* 0 for one it does no
 typedef struct {
 	const char *dmode;    /* the display mode's label */
 	const char *shader;   /* the shader's label; NULL reads Off */
+	/* Its strength, "50%", when it is an old screen; NULL: no Strength row */
+	const char *strength;
 	int         earned;
 	int         total;    /* 0: this game has no achievement set */
 	/* ...because it was never played with a network: not asked yet */
@@ -252,7 +257,8 @@ int gm_disc_step(int disc, int discs, int d);
  *   Game      Continue, Save, Load, Quick Slot (a system that keeps states),
  *             Disc (a game on more than one disc), Player 2 (an NES game),
  *             Achievements, Reset, Quit
- *   Display   Display, Shader, and a DS game's Screens, Swap Screens, Stylus
+ *   Display   Display, Shader, Strength (an old screen's shader), and a DS
+ *             game's Screens, Swap Screens, Stylus
  *   Controls  none from here: its rows are src/ctltab.c's
  * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
  * of its rows. A port's menu (u->port) has no tabs and is Continue, Controls

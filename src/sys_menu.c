@@ -59,6 +59,8 @@ int sys_menu_zyperos_rows(const sys_ui *u, pm_row *out)
 		if (u->no_charge_limit && r == PM_CHARGE) continue;
 		if (u->no_usb_power && r == PM_USB) continue;
 		if ((u->no_usb_power || u->no_usb_wait) && r == PM_USB_WAIT) continue;
+		/* Strength only while a system draws an old screen */
+		if (u->no_strength && r == PM_STRENGTH) continue;
 		out[n++] = (pm_row)r;
 	}
 	return n;
@@ -73,6 +75,7 @@ pm_tab sys_menu_tab_of(pm_row r)
 		return PT_GAMES;
 	case PM_APPEARANCE: case PM_AUTOHOURS: case PM_THEME: case PM_HOME:
 	case PM_ORDER: case PM_BATTERY: case PM_SAVER: case PM_SHADER:
+	case PM_STRENGTH:
 		return PT_DISPLAY;
 	case PM_AUDIO: case PM_CHANNELS: case PM_SOUNDS: case PM_MUSIC:
 		return PT_SOUND;
@@ -121,6 +124,7 @@ int sys_menu_system_rows(const sys_ui *u, sm_row *out)
 	for (r = 0; r < SM_ROWS; r++) {
 		if (u->no_wifi && !u->online && r == SM_BOXART) continue;
 		if (!u->dslang && r == SM_DSLANG) continue;
+		if (u->no_strength && r == SM_STRENGTH) continue;
 		out[n++] = (sm_row)r;
 	}
 	return n;
@@ -259,6 +263,8 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	[PM_SAVER]      = MENU_SND_NO_A,
 	[PM_APPEARANCE] = MENU_SND_RING,
 	[PM_SHADER]     = MENU_SND_RING,
+	/* Stops at 10% and 100%, heard after by whether it moved, as Auto Off */
+	[PM_STRENGTH]   = MENU_SND_NO_A,
 	[PM_HOME]       = MENU_SND_RING,
 	[PM_ORDER]      = MENU_SND_RING,
 	[PM_BATTERY]    = MENU_SND_RING,
@@ -268,8 +274,8 @@ static const unsigned char PM_SOUND[PM_ROWS] = {
 	/* A pick is heard as reward, or deny with nothing to pick */
 	[PM_RANDOM]     = MENU_SND_OWN,
 };
-/* Core, Game Language, View and Shader step on A as well; Sort By and
- * Display Mode do nothing with it. */
+/* Core, Game Language, View and Shader step on A as well; Sort By,
+ * Display Mode and Strength do nothing with it. */
 static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_CORE]    = MENU_SND_RING,
 	[SM_DSLANG]  = MENU_SND_RING,
@@ -277,6 +283,7 @@ static const unsigned char SM_SOUND[SM_ROWS] = {
 	[SM_VIEW]    = MENU_SND_RING,
 	[SM_DISPLAY] = MENU_SND_RING | MENU_SND_NO_A,
 	[SM_SHADER]  = MENU_SND_RING,
+	[SM_STRENGTH] = MENU_SND_NO_A,
 	[SM_RANDOM]  = MENU_SND_OWN,
 };
 static unsigned char smm_sound(sm_muse_row r)
@@ -375,6 +382,9 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 		 * system's, as Display Mode is (src/app.h SHADERS) */
 		full[SM_SHADER]  = (menu_row){ T(S_GAMEMENU_SHADER),
 		                              u->shader ? u->shader : T(S_MENU_OFF_TITLE), true };
+		/* How strongly, when it is an old screen (src/strength.h) */
+		full[SM_STRENGTH] = (menu_row){ T(S_GAMEMENU_STRENGTH),
+		                               u->strength ? u->strength : "100%", true };
 		/* Button Mapping is out until there is something behind it. Diatom
 		 * supplies core button labels, so the hook is real - but a dead row
 		 * in a menu of live ones is a promise the launcher is not keeping,
@@ -534,6 +544,10 @@ int sys_menu_build(const sys_ui *u, menu_row *out, menu_bufs *b,
 	 * in-game menu choose one for that system alone (src/app.h SHADERS) */
 	full[PM_SHADER]       = (menu_row){ T(S_GAMEMENU_SHADER),
 	                                   u->shader_all ? u->shader_all : T(S_MENU_OFF_TITLE), true };
+	/* And how strongly, for every system at once, while one draws an old
+	 * screen (src/strength.h) */
+	full[PM_STRENGTH]     = (menu_row){ T(S_GAMEMENU_STRENGTH),
+	                                   u->strength_all ? u->strength_all : "100%", true };
 	/* What every button does, per screen. Needs nothing of the device, which
 	 * is the point: it is the page you reach when the thing you have forgotten
 	 * is which button opens Muse. See src/controls.h. */

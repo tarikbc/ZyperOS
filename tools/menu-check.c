@@ -456,6 +456,31 @@ static void look_rows(void)
 	ck(!strcmp(val(&rows[PM_SHADER]), "per system"), "and says what it is given");
 	u.shader_all = NULL;
 
+	/* Strength, every system's (2026-11-14, src/strength.h): right under
+	 * Shader, 100% with none said, stepped on left and right and stopping at
+	 * the ends, so A is deny; gone while no system draws an old screen */
+	printf("MENU's Strength row:\n");
+	ck(sys_menu_tab_of(PM_STRENGTH) == PT_DISPLAY && PM_STRENGTH == PM_SHADER + 1,
+	   "Strength is on Display, right under Shader");
+	ck(!strcmp(rows[PM_STRENGTH].label, "Strength") && !strcmp(val(&rows[PM_STRENGTH]), "100%") &&
+	   rows[PM_STRENGTH].live, "Strength, 100% when nothing is said, a stop");
+	ck(b.sound[PM_STRENGTH] == MENU_SND_NO_A, "left and right step it, A does nothing");
+	u.strength_all = "per system";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[PM_STRENGTH]), "per system"), "and says what it is given");
+	u.strength_all = NULL;
+	{
+		pm_row all[PM_ROWS];
+		int before = sys_menu_zyperos_rows(&u, all), na, j, has = 0;
+
+		u.no_strength = true;
+		na = sys_menu_zyperos_rows(&u, all);
+		for (j = 0; j < na; j++) has |= all[j] == PM_STRENGTH;
+		ck(!has && na == before - 1, "no_strength takes the row and nothing else");
+	}
+	u.no_strength = false;
+	sys_menu_build(&u, rows, &b, &heading);
+
 	/* The system menu is about a system, not about the look of the shelf */
 	memset(&u, 0, sizeof u);
 	u.games = true;
@@ -762,6 +787,22 @@ static void system_menu(void)
 	sys_menu_build(&u, rows, &b, &heading);
 	ck(!strcmp(val(&rows[sm_at(&u, SM_SHADER)]), "Sharp-Shimmerless"), "the shader is passed through");
 	u.shader = NULL;
+	/* Strength under it, for this system alone (src/strength.h) */
+	n = sys_menu_build(&u, rows, &b, &heading);
+	ck(sm_at(&u, SM_STRENGTH) == sm_at(&u, SM_SHADER) + 1 &&
+	   !strcmp(rows[sm_at(&u, SM_STRENGTH)].label, "Strength") &&
+	   !strcmp(val(&rows[sm_at(&u, SM_STRENGTH)]), "100%") && rows[sm_at(&u, SM_STRENGTH)].live,
+	   "Strength right under Shader, 100% when nothing is said");
+	ck(b.sound[sm_at(&u, SM_STRENGTH)] == MENU_SND_NO_A, "left and right step it, A does nothing");
+	u.strength = "40%";
+	sys_menu_build(&u, rows, &b, &heading);
+	ck(!strcmp(val(&rows[sm_at(&u, SM_STRENGTH)]), "40%"), "the strength is passed through");
+	u.strength = NULL;
+	u.no_strength = true;
+	ck(sys_menu_build(&u, rows, &b, &heading) == n - 1 && sm_at(&u, SM_STRENGTH) < 0 &&
+	   !strcmp(rows[sm_at(&u, SM_SHADER) + 1].label, T(S_SYSMENU_BOX_ART)),
+	   "and gone while the shader is not an old screen, Box Art moving up");
+	u.no_strength = false;
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(rows[sm_at(&u, SM_DISPLAY)].live && rows[sm_at(&u, SM_RESCAN)].live, "the two live rows are live");
 	ck(!rows[sm_at(&u, SM_GAMES)].live && !rows[sm_at(&u, SM_CORE)].live, "reported facts are not rows to press");
@@ -1069,7 +1110,7 @@ static void cursor_reaches(void)
 	k = reachable(rows, n, got, MENU_MAX_ROWS);
 
 	printf("system menu, what the cursor can reach:\n");
-	ck(k == 7, "seven rows, not the facts");
+	ck(k == 8, "eight rows, not the facts (Strength among them, as a zeroed sys_ui shows it)");
 	ck(holds(got, k, sm_at(&u, SM_RANDOM)), "Random Game, with games on the shelf");
 	/* 1.0.5: the shelf's covers or a list, under Sort By */
 	ck(holds(got, k, sm_at(&u, SM_VIEW)), "View");
@@ -1397,10 +1438,14 @@ static void menu_tabs(void)
 	}
 	ck(ok && at == n_all, "the tabs, one after another, are every row the device has");
 	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
-	ck(m == 8 && tab[0] == PM_APPEARANCE && tab[1] == PM_AUTOHOURS && tab[2] == PM_THEME &&
+	ck(m == 9 && tab[0] == PM_APPEARANCE && tab[1] == PM_AUTOHOURS && tab[2] == PM_THEME &&
 	   tab[3] == PM_HOME && tab[4] == PM_ORDER && tab[5] == PM_BATTERY &&
-	   tab[6] == PM_SAVER && tab[7] == PM_SHADER,
-	   "Display: Appearance, Auto Hours, Theme, Home Screen, System Order, Battery Icon, Screensaver, Shader");
+	   tab[6] == PM_SAVER && tab[7] == PM_SHADER && tab[8] == PM_STRENGTH,
+	   "Display: Appearance, Auto Hours, Theme, Home Screen, System Order, Battery Icon, Screensaver, Shader, Strength");
+	u.no_strength = true;
+	m = sys_menu_tab_rows(&u, PT_DISPLAY, tab);
+	ck(m == 8 && tab[7] == PM_SHADER, "and no Strength while no system draws an old screen");
+	u.no_strength = false;
 	m = sys_menu_tab_rows(&u, PT_GAMES, tab);
 	ck(m == 5 && tab[0] == PM_SEARCH, "Games opens on Search Games");
 	m = sys_menu_tab_rows(&u, PT_CONNECTIONS, tab);
@@ -1416,7 +1461,7 @@ static void menu_tabs(void)
 	u.auto_hours = "7:00 AM to 7:00 PM";
 	u.theme = "Lime";
 	n = (sys_menu_build)(&u, rows, &b, &heading);
-	ck(n == 8 && !strcmp(rows[1].label, "Auto Hours") && !strcmp(val(&rows[1]), "7:00 AM to 7:00 PM") &&
+	ck(n == 9 && !strcmp(rows[1].label, "Auto Hours") && !strcmp(val(&rows[1]), "7:00 AM to 7:00 PM") &&
 	   !strcmp(rows[2].label, "Theme") && !strcmp(val(&rows[2]), "Lime"),
 	   "Auto Hours says its hours, Theme its accent");
 	ck(!strcmp(sys_menu_tab_name(PT_CONNECTIONS), "Connections") &&
@@ -1821,6 +1866,20 @@ static void ingame_rows(void)
 	u.shader = NULL;
 	n = gm_rows(&u, GT_DISPLAY, rows, &b);
 	ck(!strcmp(val(&rows[1]), "Off") && rows[1].live, "and Off when none is, a stop");
+	/* Strength right under Shader while the shader is an old screen */
+	u.shader = "LCD Grid"; u.strength = "50%";
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(n == 3 && !strcmp(rows[2].label, "Strength") && !strcmp(val(&rows[2]), "50%") &&
+	   rows[2].live && gm_row_at(&u, GT_DISPLAY, GM_STRENGTH) == 2,
+	   "an old screen: Strength under Shader, saying its percent");
+	ck(b.sound[2] == MENU_SND_NO_A, "left and right step it, A does nothing");
+	ck(gm_row_at(&u, GT_GAME, GM_STRENGTH) < 0, "and it is on no other tab");
+	u.screens = true;
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
+	ck(n == 6 && !strcmp(rows[2].label, "Strength") && !strcmp(rows[3].label, "Screens"),
+	   "a DS game's three come after it");
+	u.screens = false; u.shader = NULL; u.strength = NULL;
+	n = gm_rows(&u, GT_DISPLAY, rows, &b);
 	u.screens = true; u.layout = 1; u.swap = true; u.stylus = false;
 	n = gm_rows(&u, GT_DISPLAY, rows, &b);
 	ck(labels_are(rows, n, dsp, 5), "gm_tabs_display_ds: Display Shader Screens Swap Screens Stylus");
