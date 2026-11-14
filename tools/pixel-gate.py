@@ -30,6 +30,7 @@ Not in `make check`: it builds the launcher twice and takes about 9,200 frames
 a side. CPU: --jobs (3) launchers at once.
 """
 import argparse
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -158,9 +159,9 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     # The base's frames are kept by commit and by what was asked: a run of
     # some shots or languages keeps its own
-    key = "%s-%s-%s%s" % (sha[:12], "+".join(themes), "+".join(langs),
-                          ("-" + "+".join(sorted(args.only))) if args.only else "")
-    base_out = OUT / ("base-" + key)
+    asked = "themes %s; languages %s; shots %s" % (" ".join(themes), " ".join(langs),
+                                                    " ".join(sorted(args.only)) or "all")
+    base_out = OUT / ("base-%s-%s" % (sha[:12], hashlib.sha1(asked.encode()).hexdigest()[:10]))
     here_out = OUT / "here"
 
     if args.fresh or not any(base_out.glob("*/*/*.png")):
@@ -173,6 +174,7 @@ def main():
                 binary = build(tree, args.jobs)
                 print("pixel gate: the base's shots", flush=True)
                 shoot(binary, base_out, langs, themes, args.only, args.jobs)
+                (base_out / "asked.txt").write_text("base %s\n%s\n" % (sha, asked))
             finally:
                 run(["git", "worktree", "remove", "--force", str(tree)], ROOT)
     else:
