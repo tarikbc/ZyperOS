@@ -278,6 +278,10 @@ extern void *g_base_ctx;
 bool panel_leave_draw(app *a, int game);
 /* --shot-at's panel level (with shot_motion's, main.c) */
 extern int shot_lv;
+/* What a message says when the network a screen needs is not there, one
+ * sentence in every screen (DESIGN.md 12). A row that is dead for the same
+ * reason says "needs Wi-Fi" in its value instead. */
+#define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);

@@ -356,6 +356,18 @@ extern shot_status shot_st;
  * let go of the file about to be deleted */
 void muse_before_delete(const char *abs);
 
+/* For a game's Cover and Video page (src/media_screen.c): the status bar
+ * and its half, the focused title's marquee phase, the shelf's video snap
+ * asked for or stopped (at g_snap_force_vol's sound, -1 for the setting's),
+ * the account's one async slot let go, and the titles read again */
+unsigned draw_topbar(SDL_Renderer *r, int theme, SDL_Color soft, bool moving);
+int  header_half(void);
+unsigned title_phase(app *a);
+void snap_ask(const char *req, bool hold);
+extern int g_snap_force_vol;
+void sync_abandon(void);
+void refresh_game_titles(app *a);
+
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)
 

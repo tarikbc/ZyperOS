@@ -340,7 +340,7 @@ def stand_in_badge(path,color):
 # the shapes a source offers - a portrait box, a landscape box, a box in 3D,
 # a title screen, a screenshot, a fan's tall cover - each a blend of one color
 # with bands and a diamond, so a shot shows their shapes and none of any
-# game's art. The names are the ones src/main.c's media_shot asks for.
+# game's art. The names are the ones src/media_screen.c's media_shot asks for.
 MEDIA_ART=[  # file, width, height, color, kind
     ('now.png',512,364,(70,120,190),'box'),('c0.png',364,512,(200,90,70),'box'),
     ('c1.png',512,364,(70,120,190),'box'),('c2.png',360,512,(120,170,90),'box'),
