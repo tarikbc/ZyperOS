@@ -13513,7 +13513,11 @@ static void scp_cover_draw(app *a, const scp_cover *c, SDL_FRect box, Uint8 al, 
 		SDL_SetTextureAlphaMod(c->tex, 255);
 	} else {
 		ui_round_rect(a->r, &q, 4, ui_col(t->raised, al));
-		ui_glyph_draw(a->r, UI_GLYPH_FILM, q.x + q.w / 2, q.y + q.h / 2, q.w / 2, ui_col(t->accent_ink, al));
+		/* Two sizes, never the frame's own: a cover landing or moving
+		 * changes its width every frame, and a glyph a size is a texture
+		 * in ui.c's cache of 32 */
+		ui_glyph_draw(a->r, UI_GLYPH_FILM, q.x + q.w / 2, q.y + q.h / 2, q.w >= 200 ? 96 : 64,
+		              ui_col(t->accent_ink, al));
 	}
 	d = q.w > 120 ? 40 : 30;
 	scp_badge(a, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
