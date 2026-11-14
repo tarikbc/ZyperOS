@@ -55,13 +55,40 @@ bool ct_select_held_c(const rm_table *t)
 void ct_sent(const ct_model *m, rm_table *out)
 {
 	*out = m->cur;
-	if (m->select_held_dpad) out->b[RM_SELECT] = (rm_choice){ (signed char)rm_own(RM_SELECT), 0 };
+	/* The default's own SELECT, not a plain one, as rms_sent puts back */
+	if (m->select_held_dpad && rm_changed(&m->zdef, out, RM_SELECT))
+		out->b[RM_SELECT] = m->zdef.b[RM_SELECT];
+}
+
+unsigned ct_held_of(const char *tag, const char *stick_mode)
+{
+	unsigned k = 0;
+
+	if (stick_mode && !strcmp(stick_mode, "toggle")) k |= 1u << RM_R2;
+	if (tag && !strcmp(tag, "NDS")) k |= 1u << RM_L2 | 1u << RM_R2;
+	return k;
 }
 
 /* A dead SELECT row: the stick's rule or the N64's C buttons hold it */
 static bool select_dead(const ct_model *m)
 {
 	return m->select_held_c || m->select_held_dpad;
+}
+
+bool ct_dead(const ct_model *m, int button)
+{
+	if (button < 0 || button >= RM_BUTTONS) return false;
+	return (button == RM_SELECT && select_dead(m)) || (m->held >> button & 1u);
+}
+
+/* What a button Diatom keeps does, as the pages say it (controls.c): a DS
+ * game's L2 the other screen and R2 the stylus; the PSP's R2 the d-pad as
+ * the stick */
+static str_id held_says(const ct_model *m, int button)
+{
+	if (m->tag && !strcmp(m->tag, "NDS"))
+		return button == RM_L2 ? S_CONTROLS_OTHER_SCREEN : S_CONTROLS_STYLUS;
+	return S_CONTROLS_DPAD_STICK;
 }
 
 /* ---- the faces ------------------------------------------------------------- */
@@ -195,14 +222,19 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
 	}
 
 	/* The game buttons left with none by what is sent, each under the
-	 * button whose change caused it */
+	 * button whose change caused it. What a button Diatom keeps gives never
+	 * reaches the game, whatever its pair says. */
 	ct_sent(m, &sent);
+	for (i = 0; i < RM_BUTTONS; i++)
+		if (m->held >> i & 1u) sent.b[i] = (rm_choice){ RM_NONE, 0 };
 	nlost = rm_unreached(&m->def, &sent, lost, RT_COUNT);
 	causes(m, &sent, lost, nlost, under);
 	for (i = 0; i < RM_BUTTONS; i++) {
 		const rm_choice c = m->cur.b[i];
 
-		if (i == RM_SELECT && (m->select_held_c || m->select_held_dpad)) {
+		if (m->held >> i & 1u) {
+			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(held_says(m, i)), false }), 0u);
+		} else if (i == RM_SELECT && (m->select_held_c || m->select_held_dpad)) {
 			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(m->select_held_c ? S_CONTROLS_SELECT_C_BUTTONS
 			                                                       : S_CONTROLS_HELD_DPAD), false }), 0u);
 		} else {
@@ -294,13 +326,15 @@ rm_choice ct_taken(const ct_model *m, int button, rm_choice c)
 void ct_pick(ct_model *m, int button, rm_choice c)
 {
 	rm_table from = m->base;
-	const bool dead = select_dead(m) && button != RM_SELECT;
+	int i;
 
-	/* A held SELECT is no button to swap with: it gives nothing a swap
-	 * could find, and keeps what it gave */
-	if (dead) from.b[RM_SELECT] = (rm_choice){ RM_NONE, 0 };
+	/* A dead row (a held SELECT, a button Diatom keeps) is no button to
+	 * swap with: it gives nothing a swap could find, and keeps what it gave */
+	for (i = 0; i < RM_BUTTONS; i++)
+		if (i != button && ct_dead(m, i)) from.b[i] = (rm_choice){ RM_NONE, 0 };
 	rm_set(&m->cur, &from, button, ct_taken(m, button, c));
-	if (dead) m->cur.b[RM_SELECT] = m->base.b[RM_SELECT];
+	for (i = 0; i < RM_BUTTONS; i++)
+		if (i != button && ct_dead(m, i)) m->cur.b[i] = m->base.b[i];
 }
 
 bool ct_step(ct_model *m, ct_row id, int dir)
@@ -309,7 +343,7 @@ bool ct_step(ct_model *m, ct_row id, int dir)
 	rm_choice ch[32];
 	int n;
 
-	if (bt < 0 || (bt == RM_SELECT && select_dead(m))) return false;
+	if (bt < 0 || ct_dead(m, bt)) return false;
 	n = ctl_remap_choices(m->tag, m->ext, m->map, ch, 32);
 	if (n <= 0) return false;
 	ct_pick(m, bt, ct_next(m, ch, n, bt, dir));

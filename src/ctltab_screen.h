@@ -74,7 +74,8 @@ void ctlscr_side(app *a, const menu_side *at);
 void ctlscr_question(const ctlscr_game *g, char *q, size_t n);
 
 /* A shot's (--gm-pick): the choices of the button on row `id` (ct_row) as A
- * there opens them, over what is drawn already */
+ * there opens them, over the backdrop their runner draws (g->over's; none
+ * in a shot of the tab, over what is drawn already) */
 void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id);
 
 /* The Controls list as a page of its own over the shelf, for a game with
@@ -89,5 +90,11 @@ void ctlscr_page(app *a, const system_cfg *owner, const char *file,
 /* One frame of that page over the shelf, the cursor on row `sel`, for a shot */
 void ctlscr_page_shot(app *a, const system_cfg *owner, const char *file,
                       const char *title, unsigned accent, int sel);
+
+/* One frame of the choices of the button on row `id` (ct_row) as A opens
+ * them from that page, over the backdrop the page gives its own screens
+ * (the shelf under the scrim), for a shot (--info-buttons --gm-pick) */
+void ctlscr_page_shot_pick(app *a, const system_cfg *owner, const char *file,
+                           const char *title, unsigned accent, int id);
 
 #endif

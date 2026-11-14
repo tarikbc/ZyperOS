@@ -65,6 +65,19 @@ shot() {
 
 same()  { cmp -s "$D/$2.png" "$D/$3.png" || fail "$1 ($D/$2.png against $D/$3.png)"; }
 other() { cmp -s "$D/$2.png" "$D/$3.png" && fail "$1 ($D/$2.png is $D/$3.png)"; }
+# The same pixels in the screen's left edge, outside every panel (x 0 to 7,
+# y 100 to 699): the same backdrop under two panels. With Pillow, which make
+# passes as PYIMG; without it, said and not judged.
+edge() {
+	if [ -z "${PYIMG:-}" ]; then
+		echo "  (no Python with Pillow: $1 not judged)"
+		return
+	fi
+	"$PYIMG" -c 'import sys
+from PIL import Image
+a, b = (Image.open(p).convert("RGB").crop((0, 100, 8, 700)).tobytes() for p in sys.argv[1:3])
+sys.exit(a != b)' "$D/$2.png" "$D/$3.png" || fail "$1 ($D/$2.png against $D/$3.png, the left edge)"
+}
 
 echo "the in-game Controls pages, still, each its own"
 # tag:pages - Genesis's buttons, then Hotkeys and In a game; the Nintendo 64
@@ -192,6 +205,35 @@ for th in light dark; do
 	same "$th: the swap's shot left the card's table as it was" "ctltab-y-after-$th" "ctltab-y-$th"
 done
 other "the Controls tab's themes are the same picture" "ctltab-light" "ctltab-dark"
+
+echo "the Controls tab keeps its cursor on the row a change moved"
+# A and B on Nothing (one Left on A, two on B) put two warnings above X;
+# then seven Lefts take X from triangle to Turbo circle, and each one adds or
+# takes away a warning above it. The cursor stays on X all the way (it went
+# to the warning row under X and stepped on to Y, losing the Lefts after the
+# first), on a library of its own, as the swap's
+rm -rf "$D/shared-keep" && mkdir -p "$D/shared-keep" || exit 1
+SHARED="$D/shared-keep"
+run --shot "$D/ctltab-keep.png" --theme light --screen games --gamemenu 2 --gm-tab 2 \
+    --gm-press left,down,left,left,down,left,left,left,left,left,left,left --shot-at 400 \
+    --status "20:41 24h wifi=3 batt=80" >"$D/one.log" 2>&1
+SHARED=""
+cat "$D/one.log" >>"$D/log"
+grep -q "^gm-press: the cursor on X, Turbo $(printf '\356\200\201')\$" "$D/one.log" ||
+	fail "the cursor stays on X, now Turbo circle (got: $(grep '^gm-press:' "$D/one.log"))"
+
+echo "the details page's Buttons page: its own screens over the shelf"
+# A on Y in the page the Buttons row opens: its choices over the shelf under
+# the scrim, as the page itself stands, not over whatever the frame before
+# left (they had no backdrop, and POWER there only closed them)
+for th in light dark; do
+	shot "info-page-$th" --theme "$th" --screen games --info-buttons
+	shot "info-pick-$th" --theme "$th" --screen games --info-buttons --gm-pick
+	other "$th: A on Y opens its choices over the page" "info-pick-$th" "info-page-$th"
+	edge "$th: the choices stand over the shelf and its scrim, as the page does" \
+	     "info-pick-$th" "info-page-$th"
+done
+other "the choices' themes are the same picture" "info-pick-light" "info-pick-dark"
 printf 'N64\nMario Kart 64.z64\n' >"$D/root/.last"
 for th in light dark; do
 	shot "ctltab-n64-$th" --theme "$th" --screen games --gamemenu 2 --gm-tab 2
@@ -229,5 +271,6 @@ if [ "$fails" -ne 0 ]; then
 	exit 1
 fi
 echo "ok: every page sits still and is its own, Controls follows Display, the"
-echo "Controls tab sits still beside its handheld, and the"
+echo "Controls tab sits still beside its handheld and keeps its cursor, the"
+echo "Buttons page's choices stand over the shelf, and the"
 echo "home goes A to Z, to release dates and back"

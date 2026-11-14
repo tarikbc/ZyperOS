@@ -390,7 +390,7 @@ en = Applies To
 zh-Hans = 适用于
 es = Aplicar a
 pt-BR = Vale para
-fr = Concerne
+fr = Pour
 de = Gilt für
 ja = 適用先
 it = Vale per
@@ -426,7 +426,7 @@ pt-BR = Este jogo tem botões próprios.
 fr = Ce jeu garde ses propres boutons.
 de = Dieses Spiel hat eigene Tasten.
 ja = このゲームは独自のボタン設定を使います。
-it = Questo gioco ha i suoi pulsanti.
+it = Questo gioco ha pulsanti propri.
 
 [gamemenu.reset_buttons]
 note = The Controls tab's row near its end: puts the buttons back as they were before any change, for this game or for every game of the system (Applies To). A row's label in the 580-unit column, and the heading of its question's panel (the confirm panel Delete Game uses).

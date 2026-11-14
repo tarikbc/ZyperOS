@@ -266,6 +266,32 @@ static void (*d_on_stick)(bool on);
 
 void plat_resident_on_stick(void (*fn)(bool on)) { d_on_stick = fn; }
 
+/* The SETSTICKs sent (the Controls tab's D-pad as Stick, its Reset) whose
+ * STICK answers are still to come: an answer says what the row already
+ * said, so it reaches no callback and shows no pop-up; R2's turn in a PSP
+ * game, which nothing asked for, does. Paused, Diatom says no STICK of its
+ * own, so an answer is the next STICK to arrive, whichever reader takes it.
+ * A RUN starts the count again, so an old Diatom that never answers costs
+ * one turn's pop-up at most, in that game. */
+static int d_stick_asked;
+
+bool plat_resident_set_stick(const char *mode)
+{
+	if (!plat_resident_line("SETSTICK\tmode=%s", mode)) return false;
+	d_stick_asked++;
+	return true;
+}
+
+/* A STICK line, from whichever reader takes it */
+static void d_note_stick(const char *l)
+{
+	if (d_stick_asked > 0) {
+		d_stick_asked--;
+		return;
+	}
+	if (d_on_stick) d_on_stick(l[9] == '1');
+}
+
 static void (*d_on_quick)(int what, const char *path);
 
 void plat_resident_on_quick(void (*fn)(int what, const char *path)) { d_on_quick = fn; }
@@ -322,6 +348,7 @@ bool plat_resident_send(const char *tag, const char *core, const char *rom,
 		d_preview[0] = '\0';
 		d_rect_known = false;
 		d_pend_vol = d_pend_bri = -1;
+		d_stick_asked = 0;
 
 		/* Before RUN, not after. mgba_sgb_borders and mgba_use_bios are both
 		 * marked (Restart) by the core, meaning they are read during
@@ -684,6 +711,7 @@ bool plat_resident_sync_rect(int timeout_ms)
 		else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
 		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
 		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+		else if (strncmp(l, "STICK\ton=", 9) == 0) d_note_stick(l);
 	}
 	return false;
 }
@@ -708,6 +736,7 @@ bool plat_resident_sync_screens(int timeout_ms)
 			snprintf(d_preview, sizeof d_preview, "%s", l + 13);
 		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
 		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+		else if (strncmp(l, "STICK\ton=", 9) == 0) d_note_stick(l);
 	}
 	return false;
 }
@@ -747,6 +776,7 @@ bool plat_resident_sync_line(const char *prefix, char *out, size_t n, int timeou
 		else if (strncmp(l, "SCREENS\t", 8) == 0) d_note_screens(l);
 		else if (strncmp(l, "LEVEL\t", 6) == 0) d_note_level(l);
 		else if (strncmp(l, "AUDIO\t", 6) == 0) d_note_audio(l);
+		else if (strncmp(l, "STICK\ton=", 9) == 0) d_note_stick(l);
 	}
 	return false;
 }
@@ -818,10 +848,9 @@ static int diatom_wait(void)
 			else if (strncmp(l, "SPEED\tx=", 8) == 0) {
 				if (d_on_speed) d_on_speed((int)(strtod(l + 8, NULL) * 2.0 + 0.5));
 			}
-			/* R2 in a PSP game: "STICK\ton=1" while the d-pad is the stick */
-			else if (strncmp(l, "STICK\ton=", 9) == 0) {
-				if (d_on_stick) d_on_stick(l[9] == '1');
-			}
+			/* R2 in a PSP game: "STICK\ton=1" while the d-pad is the stick;
+			 * or the answer to the menu's own SETSTICK (d_note_stick) */
+			else if (strncmp(l, "STICK\ton=", 9) == 0) d_note_stick(l);
 			/* SELECT's quick slot: the hotkey, and what came of the SAVE or
 			 * LOAD the launcher sent for it (and of the menu's, which are
 			 * answered the same way and are no business of the callback's

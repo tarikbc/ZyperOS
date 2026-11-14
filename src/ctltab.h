@@ -28,7 +28,9 @@
  *   A ... SELECT      the handheld's button, and what it gives the game;
  *                     a changed one in accent-ink. SELECT is a dead row on
  *                     the N64 ("C buttons") and on the Dreamcast with the
- *                     stick on ("Held: D-pad")
+ *                     stick on ("Held: D-pad"); a button Diatom keeps for
+ *                     itself is a dead row that says what Diatom does with
+ *                     it (the PSP's R2, a DS game's L2 and R2: ct_held_of)
  *   [warnings]        "× has no button now", dead, right under the button
  *                     whose change left a game button with none, by what
  *                     the game is sent
@@ -78,7 +80,25 @@ typedef struct {
 	const char *map;
 	bool        stick_default;
 	rm_table    base;
+	/* ZyperOS's own table (rms_default), whose SELECT the stick's rule
+	 * sends (ct_sent, as rms_sent does) */
+	rm_table    zdef;
+	/* The buttons Diatom keeps for itself on this system (ct_held_of),
+	 * 1u << RM_*: dead rows, never a swap's partner */
+	unsigned    held;
 } ct_model;
+
+/* The buttons Diatom keeps for itself, which no map reaches, since it hides
+ * them from the core before the map (diatom/src/env.c, g_suppress): the
+ * PSP's R2 under stick=toggle (stick mode "toggle"), which turns the d-pad
+ * into the stick (diatom/src/main.c), and a DS game's L2 and R2, the other
+ * screen and the stylus (diatom/src/screens.c). 1u << RM_*. */
+unsigned ct_held_of(const char *tag, const char *stick_mode);
+
+/* Whether button `button`'s row is dead: SELECT where the N64's C buttons
+ * or the stick's rule hold it, or a button Diatom keeps (held). A dead row
+ * has no step and no choices, and a swap never lands on it. */
+bool ct_dead(const ct_model *m, int button);
 
 /* What the rows point into: the caller's, as menu_row holds pointers */
 typedef struct {
@@ -115,7 +135,7 @@ bool ct_select_held_c(const rm_table *t);
 
 /* What the game is sent of the shown table: `cur`, but where the stick's
  * rule takes SELECT (select_held_dpad) a SELECT the player changed is
- * plain SELECT, as rms_sent sends it */
+ * ZyperOS's own SELECT (zdef's), as rms_sent sends it */
 void ct_sent(const ct_model *m, rm_table *out);
 
 /* ---- the steps -------------------------------------------------------------- */
@@ -147,8 +167,8 @@ bool ct_step(ct_model *m, ct_row id, int dir);
 
 /* A choice taken from a button's list (A on it): `cur` becomes `base` with
  * `button` given `c`, one swap at most. Either way the swap's partner is
- * never a dead row: a held SELECT keeps what it gives, and the two give the
- * same. */
+ * never a dead row (ct_dead): a held SELECT, or a button Diatom keeps,
+ * keeps what it gives, and the two give the same. */
 void ct_pick(ct_model *m, int button, rm_choice c);
 
 /* Face Buttons' value: 0 By Letter, 1 By Place, 2 Mixed, over the faces

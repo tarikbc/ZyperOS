@@ -1110,7 +1110,7 @@ check-controls-shots:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
 		$(MAKE) --no-print-directory native || exit 1; \
 	fi
-	@sh tools/controls-shots-check.sh
+	@PYIMG='$(PYIMG)' sh tools/controls-shots-check.sh
 
 build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.c \
                             src/controls.h src/remap.c src/remap.h src/padglyph.h src/menu.h src/config.c src/config.h \

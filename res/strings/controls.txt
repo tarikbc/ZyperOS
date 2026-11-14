@@ -1366,6 +1366,17 @@ de = Analogstick
 ja = 3D スティック
 it = Levetta
 
+[controls.analog_stick]
+note = The Dreamcast and the PlayStation: what the d-pad is in a game whose D-pad as Stick is on, the controller's analog stick (popup.stick's words). The value column beside "D-pad".
+en = Analog stick
+zh-Hans = 摇杆
+es = Palanca analógica
+pt-BR = Analógico
+fr = Stick analogique
+de = Analogstick
+ja = アナログスティック
+it = Levetta analogica
+
 [controls.select_dpad]
 note = The button column: SELECT held, then the d-pad. SELECT is printed on the handheld and never translated; the d-pad is the word of controls.key.dpad.
 en = SELECT+D-pad
@@ -1525,7 +1536,7 @@ it = Croce come levetta
 # and its value share that, so keep each short.
 
 [controls.dpad_stick_title]
-note = The Controls tab's row: the d-pad turned into the game's left stick, On or Off (menu.on_title, menu.off_title), for this game (the N64, the Dreamcast, the PlayStation, the PSP); the handheld beside it lights the d-pad. controls.dpad_stick as a row's name, in Title Case where English writes one. A row's label in the 580-unit column: with its value and the 36-unit gap it has 575, so beside a long Off the phrase does not fit (es "Cruceta como palanca" 537 units beside "Desactivado" 298; pt-BR, fr and it the same) and the row says the stick as popup.stick's short form does (es Palanca, pt-BR Analógico, it Levetta, fr Mode stick; ja 十字 for 十字キー). review: es, pt-BR and it name the stick alone; the whole phrase needs a shorter Off for this row, or the label on two lines.
+note = The Controls tab's row: the d-pad turned into the game's left stick, On or Off (menu.on_title, menu.off_title), for this game (the N64, the Dreamcast, the PlayStation, the PSP); the handheld beside it lights the d-pad. controls.dpad_stick as a row's name, in Title Case where English writes one. A row's label in the 580-unit column: with its value and the 36-unit gap it has 575, so beside a long Off the phrase does not fit (es "Cruceta como palanca" 537 units beside "Desactivado" 298; pt-BR, fr and it the same) and the row says the stick as popup.stick's short form does (es Palanca, pt-BR Analógico, it Levetta; ja 十字 for 十字キー). fr has no short form there (popup.stick's Stick analogique is 401 units), so its row says Mode stick (256 beside Désactivé's 236). review: es, pt-BR and it name the stick alone; the whole phrase needs a shorter Off for this row, or the label on two lines.
 en = D-pad as Stick
 zh-Hans = 方向键当摇杆
 es = Palanca

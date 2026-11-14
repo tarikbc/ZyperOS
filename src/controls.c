@@ -818,6 +818,22 @@ static void keymap_pad(const port_doc *d, ctl_pad *pd, char *dpad, size_t dn)
 	pd->pad[P_DPAD] = (ctl_label)BTN(dpad);
 }
 
+/* The d-pad's label as the game's stick has it (ctl_game.stick): the
+ * table's, but none for a stick that is off (the d-pad is the d-pad, which
+ * goes without saying), and the analog stick where one that is on has no
+ * name in the table (the Dreamcast's, the PlayStation's) */
+static const ctl_label *dpad_label(const ctl_game *g, const ctl_pad *pd)
+{
+	static const ctl_label none = { NULL, (str_id)0, false };
+	static const ctl_label analog = SAYS(S_CONTROLS_ANALOG_STICK);
+	const ctl_label *own = &pd->pad[P_DPAD];
+	const bool stick = own->has_words && !own->name && own->words == S_CONTROLS_STICK;
+
+	if (g->stick == CTL_STICK_OFF && stick) return &none;
+	if (g->stick == CTL_STICK_ON && !label_set(own)) return &analog;
+	return own;
+}
+
 /* The system's buttons as rows, before they are put on pages */
 static int pad_rows(const ctl_game *g, crow *r)
 {
@@ -842,7 +858,7 @@ static int pad_rows(const ctl_game *g, crow *r)
 	apply_map(g->turbo, to, turbo);
 	for (k = 0; k < P_COUNT; k++) {
 		const int i = ORDER[k];
-		const ctl_label *lab = &pd->pad[to[i]];
+		const ctl_label *lab = i == P_DPAD && !g->doc ? dpad_label(g, pd) : &pd->pad[to[i]];
 		char said[sizeof r[n].val];
 
 		if (!label_set(lab)) continue;
@@ -1143,10 +1159,17 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), T(x->head));
 		for (i = 0; i < (int)(sizeof x->rows / sizeof x->rows[0]) && label_set(&x->rows[i].key);
-		     i++, n++) {
+		     i++) {
+			/* SELECT, then the d-pad, is the N64's own D-pad only while the
+			 * d-pad alone is its stick: with the stick off, the d-pad is
+			 * the D-pad without SELECT */
+			if (g->stick == CTL_STICK_OFF && x->rows[i].key.has_words &&
+			    x->rows[i].key.words == S_CONTROLS_SELECT_DPAD)
+				continue;
 			label_say(&x->rows[i].key, b->key[n], sizeof b->key[n]);
 			snprintf(b->val[n], sizeof b->val[n], "%s", T(x->rows[i].does));
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
+			n++;
 		}
 		if (x->has_note && x->note == S_CONTROLS_PAK_IN) {
 			/* which Pak is in, as the Controls tab's Pak row says it (it
@@ -1204,6 +1227,15 @@ static int target_of_pad(int p)
 	return p == P_START ? RT_START : p == P_SELECT ? RT_SELECT : -1;
 }
 
+/* A button the core names, which a choice can give: not a slot that says
+ * what Diatom does with the handheld's button (the PSP's R2, "D-pad as
+ * stick"), which the core has nothing on and no map reaches (Diatom hides
+ * that button from the core before the map) */
+static bool remap_label(const ctl_label *l)
+{
+	return label_set(l) && !(l->has_words && !l->name && l->words == S_CONTROLS_DPAD_STICK);
+}
+
 int ctl_remap_choices(const char *tag, const char *ext, const char *map,
                       rm_choice *out, int max)
 {
@@ -1218,16 +1250,16 @@ int ctl_remap_choices(const char *tag, const char *ext, const char *map,
 	for (k = P_A; k <= P_Y; k++) {
 		const int f = to[k];
 
-		if (f > P_Y || seen[f] || !label_set(&pd->pad[f])) continue;
+		if (f > P_Y || seen[f] || !remap_label(&pd->pad[f])) continue;
 		seen[f] = true;
 		face[nface++] = f;
 	}
 	for (k = P_A; k <= P_Y; k++)
-		if (!seen[k] && label_set(&pd->pad[k])) face[nface++] = k;
+		if (!seen[k] && remap_label(&pd->pad[k])) face[nface++] = k;
 	for (j = 0; j < nface && n < max; j++)
 		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), 0 };
 	for (k = P_L1; k <= P_SELECT && n < max; k++)
-		if (label_set(&pd->pad[k]))
+		if (remap_label(&pd->pad[k]))
 			out[n++] = (rm_choice){ (signed char)target_of_pad(k), 0 };
 	for (j = 0; j < nface && n < max; j++)
 		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), RM_TURBO };
@@ -1245,7 +1277,7 @@ void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, siz
 		snprintf(out, n, "%s", T(S_CONTROLS_NOTHING));
 		return;
 	}
-	if (!pd || p < 0 || !label_set(&pd->pad[p])) {
+	if (!pd || p < 0 || !remap_label(&pd->pad[p])) {
 		snprintf(out, n, "%s", "");
 		return;
 	}

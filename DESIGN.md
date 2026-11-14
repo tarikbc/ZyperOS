@@ -2293,7 +2293,10 @@ screen), in this order, the rows in brackets only where they apply:
 9. **Hotkeys**: A opens the read-only pages below, as a panel of pages (11.3).
 
 A row that cannot change here is a quiet row with its value: the N64's SELECT
-("C buttons") and the Dreamcast's while D-pad as Stick is on ("Held: D-pad").
+("C buttons"), the Dreamcast's while D-pad as Stick is on ("Held: D-pad"), and
+a button Diatom keeps for itself, the PSP's R2 ("D-pad as stick") and a DS
+game's L2 and R2 ("Other screen", "Stylus on/off"). A swap never lands on one,
+and what Diatom does with a button is no choice.
 The list goes round and scrolls as every list does (11.3), six rows in view
 beside the handheld. The handheld stands in a 280-unit column at the left of
 the rows, under the tab row, and is drawn only here and on a button's choices
@@ -3753,8 +3756,9 @@ logged by both sides and the game plays with ZyperOS's default.
 stick the core reads: the Nintendo 64 (on to start with; SELECT, then the
 d-pad, is the N64's own D-pad), the Dreamcast (off; the same SELECT rule, and
 the SELECT row says "Held: D-pad"), the PlayStation (off; the plain stick, no
-SELECT rule) and the PSP (off; R2 in the game still turns it and the row
-agrees). It takes effect at once through SETSTICK. The Saturn has none: its
+SELECT rule, and the d-pad stays the d-pad too, so a game that keeps its pad
+digital still moves) and the PSP (off; R2 in the game still turns it and the
+row agrees). It takes effect at once through SETSTICK. The Saturn has none: its
 stick is a controller type of its own.
 
 **Face Buttons**, where the caps' letters and the system's buttons can

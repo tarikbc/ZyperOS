@@ -131,6 +131,11 @@ static void refresh(const ctlscr_game *g)
 	m->map = g->s->map;
 	m->scope_all = scope_all(g);
 	m->fixed_game = g->fixed_game;
+	/* A key of the game's that the system's table has come to equal is no
+	 * buttons of its own any more: it goes, as a change that left it so
+	 * would have taken it (rms_put) */
+	if (file[0] && rms_game_tidy(g->s, file))
+		fprintf(stderr, "controls: map.%s.%s equals the system's, deleted\n", g->s->tag, file);
 	m->game_has_own = rms_game(g->s, file, &own);
 	/* This Game's default is the system's table; All <System>'s ZyperOS's */
 	if (m->scope_all) {
@@ -140,6 +145,8 @@ static void refresh(const ctlscr_game *g)
 		m->cur = own;
 		rms_system(g->s, &m->def);
 	}
+	rms_default(g->s, &m->zdef);
+	m->held = ct_held_of(g->s->tag, g->s->stick);
 	m->stick_offered = rms_stick_offered(g->s);
 	m->stick_on = rms_stick_get(g->s, file);
 	m->stick_default = rms_stick_default(g->s);
@@ -179,7 +186,8 @@ static void send_map(const ctlscr_game *g)
 }
 
 /* The stick as RUN would start it (rms_run_stick), at once; Diatom's STICK
- * answer is not waited for */
+ * answer is not waited for, and shows no pop-up (the row says it already:
+ * plat_resident_set_stick) */
 static void send_stick(const ctlscr_game *g, bool on)
 {
 	char run[24];
@@ -187,7 +195,7 @@ static void send_stick(const ctlscr_game *g, bool on)
 	if (!g->running) return;
 	rms_run_stick(g->s, on, run, sizeof run);
 	fprintf(stderr, "controls: stick %s %s\n", g->s->tag, run[0] ? run : "off");
-	plat_resident_line("SETSTICK\tmode=%s", !strncmp(run, "stick=", 6) ? run + 6 : "off");
+	plat_resident_set_stick(!strncmp(run, "stick=", 6) ? run + 6 : "off");
 }
 
 /* A table for the scope shown, kept and sent */
@@ -582,6 +590,22 @@ static void reset(app *a, const ctlscr_game *g)
 	g_cs.base_row = -1;
 }
 
+/* After a key on row `id`: the cursor stays on that row, found again by its
+ * id in the rows as they are now. A change can put a warning row above it
+ * or take one away, and the runner keeps its cursor by place. Not when the
+ * screen is going (POWER, MENU in a screen it opened). */
+static void keep_cursor(app *a, const ctlscr_game *g, int id)
+{
+	menu_row rows[CT_MAX_ROWS];
+	unsigned vcol[CT_MAX_ROWS];
+	int n, k;
+
+	if (!a->running || menu_closing()) return;
+	n = ctlscr_rows(a, g, rows, vcol, NULL, NULL);
+	for (k = 0; k < n && (int)g_cs.ids[k] != id; k++) ;
+	if (k < n) menu_cursor_to(k);
+}
+
 menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id)
 {
 	const bool side = key == IN_LEFT || key == IN_RIGHT;
@@ -625,7 +649,7 @@ menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id)
 		break;
 	default:
 		bt = ct_button_of((ct_row)id);
-		if (bt < 0 || (bt == RM_SELECT && (m->select_held_c || m->select_held_dpad))) break;
+		if (bt < 0 || ct_dead(m, bt)) break;
 		if (side) {
 			rm_table t;
 
@@ -639,6 +663,7 @@ menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id)
 		}
 		break;
 	}
+	keep_cursor(a, g, id);
 	redraw_now();
 	return MENU_STAY;
 }
@@ -658,6 +683,9 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	n = ct_pick_rows(&g_cs.m, bt, g_cs.ch, g_cs.nch, rows, &c.b, &sel);
 	g_cs.mode = CS_PICK;
 	g_cs.pick_button = bt;
+	/* Over the backdrop the choices' runner draws them over (the screen's
+	 * own; a shot of the tab has drawn its paused game already) */
+	st.backdrop(a, &c, 1.0f);
 	menu_draw_styled(a, &st, c.b.head, rows, n, sel);
 	g_cs.mode = CS_TAB;
 }
@@ -676,6 +704,25 @@ typedef struct {
 	unsigned char sound[CT_MAX_ROWS];
 } cs_page;
 
+/* What the page's own screens (a button's choices, Reset Buttons' question,
+ * the Hotkeys pages) are drawn over and keep: the shelf under the scrim, as
+ * the runner draws it under the page itself, which has no backdrop of its
+ * own; and POWER powering off, as everywhere on the shelf, not only closing
+ * the screen it was pressed on */
+static void page_backdrop(app *a, void *ctx, float k)
+{
+	(void)ctx;
+	draw_shelf(a);
+	ui_scrim_k(a->r, 0, k);
+}
+
+static menu_result page_power(app *a, void *ctx)
+{
+	(void)ctx;
+	power_off(a);
+	return MENU_DONE;
+}
+
 static void page_game(cs_page *p, const system_cfg *owner, const char *file,
                       const char *title, unsigned accent)
 {
@@ -683,6 +730,8 @@ static void page_game(cs_page *p, const system_cfg *owner, const char *file,
 	p->title = title;
 	p->over.fixed_w = CTLSCR_PAGE_W;
 	p->over.accent = accent;
+	p->over.backdrop = page_backdrop;
+	p->over.on_power = page_power;
 	p->g.s = owner;
 	p->g.file = file;
 	p->g.title = title;
@@ -730,6 +779,17 @@ void ctlscr_page(app *a, const system_cfg *owner, const char *file,
 	ctlscr_open();
 	menu_run(a, &st, page_build, page_key, &p);
 	ctlscr_close();
+}
+
+void ctlscr_page_shot_pick(app *a, const system_cfg *owner, const char *file,
+                           const char *title, unsigned accent, int id)
+{
+	cs_page p;
+
+	page_game(&p, owner, file, title, accent);
+	p.a = a;
+	ctlscr_open();
+	ctlscr_shot_pick(a, &p.g, id);
 }
 
 void ctlscr_page_shot(app *a, const system_cfg *owner, const char *file,

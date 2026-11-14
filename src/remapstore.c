@@ -5,11 +5,14 @@
 #include <string.h>
 
 #include "db.h"
+#include "library.h"
 
 /* platform.c's, declared here so this file links without SDL */
 const char *plat_turbo_map(const char *tag);
 
-#define KEY_MAX (CFG_STR + 160)
+/* As long as a game's whole key, so a long name is never cut: Rename and
+ * Delete Game build the same key whole (src/gamern.c, src/gamedel.c) */
+#define KEY_MAX (CFG_STR + LIB_PATH + 8)
 
 static void key_of(const system_cfg *s, const char *file, char *out, size_t n)
 {
@@ -29,6 +32,22 @@ void rms_default(const system_cfg *s, rm_table *out)
 	if (!rm_parse(spec, out)) rm_identity(out);
 }
 
+/* A stored value this release cannot read (a bad pair, or a newer version)
+ * is said once per key: the menu reads the card on its frames, and one line
+ * a frame would bury the log. The last few keys said are kept. */
+static void said_once(const char *key)
+{
+	static char said[8][KEY_MAX];
+	static int next;
+	int i;
+
+	for (i = 0; i < 8; i++)
+		if (!strcmp(said[i], key)) return;
+	fprintf(stderr, "remap: %s: not read, ZyperOS's default\n", key);
+	snprintf(said[next], sizeof said[next], "%s", key);
+	next = (next + 1) % 8;
+}
+
 /* The table stored under key over def; false when there is no such key */
 static bool stored(const char *key, const rm_table *def, rm_table *out)
 {
@@ -38,7 +57,7 @@ static bool stored(const char *key, const rm_table *def, rm_table *out)
 		*out = *def;
 		return false;
 	}
-	rm_load(def, v, out);
+	if (!rm_load(def, v, out)) said_once(key);
 	return true;
 }
 
@@ -93,6 +112,24 @@ void rms_reset(const system_cfg *s, const char *file)
 
 	key_of(s, file, key, sizeof key);
 	db_del(db_lib(), key);
+}
+
+bool rms_game_tidy(const system_cfg *s, const char *file)
+{
+	char key[KEY_MAX], v[256];
+	rm_table def, own, sys;
+
+	if (!file) return false;
+	key_of(s, file, key, sizeof key);
+	if (!db_get_str(db_lib(), key, v, sizeof v, NULL)) return false;
+	rms_default(s, &def);
+	/* A value this release cannot read (a newer release's) is left as it
+	 * is: it reads as the default here, which is no reason to delete it */
+	if (!rm_load(&def, v, &own)) return false;
+	rms_system(s, &sys);
+	if (!rm_equal(&own, &sys)) return false;
+	db_del(db_lib(), key);
+	return true;
 }
 
 static bool mode_is(const system_cfg *s, const char *m)
@@ -156,6 +193,7 @@ void rms_sent(const system_cfg *s, const char *file, bool stick_on, rm_table *ou
 	rms_game(s, file, out);
 	if (!stick_on || !mode_is(s, "dpad")) return;
 	rms_default(s, &def);
-	if (rm_changed(&def, out, RM_SELECT))
-		out->b[RM_SELECT] = (rm_choice){ (signed char)rm_own(RM_SELECT), 0 };
+	/* The default's own SELECT, not a plain one: the N64's is select:r2,
+	 * which its C buttons need */
+	if (rm_changed(&def, out, RM_SELECT)) out->b[RM_SELECT] = def.b[RM_SELECT];
 }

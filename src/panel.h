@@ -155,6 +155,11 @@ typedef menu_result (*menu_key_fn)(app *a, void *ctx, in_button key, int sel);
 menu_exit menu_run(app *a, const menu_style *st,
                    menu_build_fn build, menu_key_fn on_key, void *ctx);
 
+/* From a key handler: the runner's cursor goes to row `sel` of the rows it
+ * builds next, because they changed under it (MENU's tabs; a Controls row
+ * whose change put a warning above it). Forgotten when the runner ends. */
+void menu_cursor_to(int sel);
+
 /* A panel as menu_run draws one with `st` (its tabs, the picture beside
  * its rows, its value colors), for a loop of its own or a shot */
 void menu_draw_styled(app *a, const menu_style *st, const char *heading,

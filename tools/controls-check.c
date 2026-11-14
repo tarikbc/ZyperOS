@@ -501,14 +501,14 @@ static void in_a_game(void)
 			{ "NES",  "", "fds", "L1/R1", "Disk side/Eject disk" },
 			/* SELECT held makes the face buttons the C buttons, as map|N64
 			 * puts the core's R2 on it */
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "SELECT+X", "C up" },
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "SELECT+Y", "C left" },
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "L2", "Z" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x", "z64", "SELECT+X", "C up" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x", "z64", "SELECT+Y", "C left" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x", "z64", "L2", "Z" },
 			/* each cap the N64 button it names (map|N64's a:b,b:y) */
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "A/B", "A/B" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x", "z64", "A/B", "A/B" },
 			/* Under the C buttons, which Pak is in and where it is chosen:
 			 * the Rumble Pak until a game takes the Controller Pak */
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "(note)", "Pak: Rumble Pak" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x", "z64", "(note)", "Pak: Rumble Pak" },
 			/* Every button the PICO-8 reads: its arrows, O and X, its
 			 * pause menu */
 			{ "PICO8", "", "p8", "D-pad", "Arrows" },
@@ -629,6 +629,45 @@ static void in_a_game(void)
 		   "N64: a game with the Controller Pak says it is in");
 		ck(!says(all, n, "(note)", "Rumble Pak, not Controller Pak"),
 		   "and the riddle it replaced is gone");
+	}
+
+	/* The pages follow the game's D-pad as Stick (ctl_game.stick): the
+	 * N64's SELECT then the d-pad is its own D-pad only while the d-pad is
+	 * its stick, and its buttons' d-pad row goes with the stick; the
+	 * Dreamcast's and the PlayStation's say the d-pad is the analog stick
+	 * while it is on, and nothing while it is off, as before */
+	{
+		static const struct { const char *tag, *map, *ext, *on; } S[] = {
+			{ "N64", "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x",
+			  "z64", "Control Stick" },
+			{ "DC", "a:b,b:a,x:y,y:x,l1:l2,l2:l1,r1:r2,r2:r1", "chd", "Analog stick" },
+			{ "PS1", "", "chd", "Analog stick" },
+		};
+		size_t k;
+
+		for (k = 0; k < sizeof S / sizeof S[0]; k++) {
+			ctl_game g = { S[k].tag, S[k].tag, S[k].tag, S[k].map, turbo_of(S[k].tag), S[k].ext,
+			               NULL, NULL };
+			const bool n64 = !strcmp(S[k].tag, "N64");
+			seen_row all[64];
+			int n, p;
+
+			g.stick = CTL_STICK_ON;
+			n = game_rows(&g, all, 64, NULL);
+			for (p = 0; p < ctl_game_pages(&g); p++) game_page_fits(&g, p);
+			snprintf(msg, sizeof msg, "%s, the stick on: the d-pad is %s%s", S[k].tag, S[k].on,
+			         n64 ? ", SELECT then the d-pad its D-pad" : "");
+			ck(says(all, n, "D-pad", S[k].on) &&
+			   (!n64 || says(all, n, "SELECT+D-pad", "N64 D-pad")), msg);
+			g.stick = CTL_STICK_OFF;
+			n = game_rows(&g, all, 64, NULL);
+			for (p = 0; p < ctl_game_pages(&g); p++) game_page_fits(&g, p);
+			snprintf(msg, sizeof msg, "%s, the stick off: the d-pad goes without saying%s", S[k].tag,
+			         n64 ? ", and no SELECT then the d-pad, the C buttons as ever" : "");
+			ck(!says(all, n, "D-pad", NULL) && !says(all, n, "SELECT+D-pad", NULL) &&
+			   (!n64 || (says(all, n, "SELECT+X", "C up") && says(all, n, "(note)", "Pak: Rumble Pak"))),
+			   msg);
+		}
 	}
 
 	/* A system it does not know is In a game alone */

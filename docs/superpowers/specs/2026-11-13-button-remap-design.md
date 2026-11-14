@@ -196,9 +196,12 @@ Rows, in order (those in brackets only where they apply):
    is in ("Pak: Rumble Pak"), not where: the Pak row is this tab's.
 
 A row that cannot change on this system is a dead row with its value: the
-N64's SELECT ("C buttons"), and the Dreamcast's SELECT while D-pad as
-Stick is on ("Held: D-pad"). A swap never lands on a dead row: it keeps
-what it gives.
+N64's SELECT ("C buttons"), the Dreamcast's SELECT while D-pad as Stick is
+on ("Held: D-pad"), and a button Diatom keeps for itself, which no map
+reaches: the PSP's R2 ("D-pad as stick", its turn) and a DS game's L2 and
+R2 ("Other screen", "Stylus on/off") *(final review, 2026-11-13)*. A swap
+never lands on a dead row: it keeps what it gives. What Diatom does with a
+button is no choice.
 
 The list goes round and scrolls as every list does (11.3), six rows in
 view beside the handheld.
@@ -283,7 +286,7 @@ core reads it:
 |---|---|---|
 | Nintendo 64 | On | as today: SELECT, then the d-pad, is the N64's own D-pad |
 | Dreamcast | Off | the same SELECT rule: the Dreamcast has no SELECT, so nothing is lost |
-| PlayStation | Off | the plain stick, no SELECT rule (SELECT is the PlayStation's own) |
+| PlayStation | Off | the plain stick, no SELECT rule (SELECT is the PlayStation's own); the d-pad stays the d-pad too, so a game that keeps its pad digital still moves |
 | PSP | Off | as today, and R2 still turns it in the game; the row and R2 agree |
 
 - `stick.<TAG>.<file>` is deleted when it equals the system's default, R2's

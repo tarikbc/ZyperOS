@@ -29,8 +29,9 @@ void rms_default(const system_cfg *s, rm_table *out);
 /* The default with the system's key over it. True when the key exists. */
 bool rms_system(const system_cfg *s, rm_table *out);
 
-/* The game's table: its own key over the system's table (true), else the
- * system's table (false) */
+/* The game's table: its own key over ZyperOS's default (true), the same
+ * base as the system's, since its first change copied the whole table in;
+ * else the system's table (false) */
 bool rms_game(const system_cfg *s, const char *file, rm_table *out);
 
 /* Keeps t for the game, or for the system when file is NULL, as pairs over
@@ -41,6 +42,12 @@ void rms_put(const system_cfg *s, const char *file, const rm_table *t);
 /* Deletes the scope's key: the game goes back to the system's table, the
  * system to ZyperOS's */
 void rms_reset(const system_cfg *s, const char *file);
+
+/* A game's key that has come to equal the system's table (the system's was
+ * changed to match it later) is deleted, as a change that left it so would
+ * have: the game has no buttons of its own then. A value this release cannot
+ * read is left alone. True when it was deleted. */
+bool rms_game_tidy(const system_cfg *s, const char *file);
 
 /* D-pad as Stick. Offered where the system has a `stick|` line. */
 bool rms_stick_offered(const system_cfg *s);
@@ -55,8 +62,8 @@ void rms_run_stick(const system_cfg *s, bool on, char *key, size_t n);
 
 /* The table a game is sent: rms_game, with one rule. Where the stick's own
  * rule takes SELECT (mode dpad: the N64 and the Dreamcast), a SELECT pair
- * the player changed is sent as plain SELECT, the stick's rule winning. The
- * default's own pair (the N64's select:r2) is kept. */
+ * the player changed is sent as the default's own (the N64's select:r2, the
+ * Dreamcast's plain SELECT), the stick's rule winning. */
 void rms_sent(const system_cfg *s, const char *file, bool stick_on, rm_table *out);
 
 #endif

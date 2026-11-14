@@ -14,6 +14,7 @@
 #include "../src/controls.h"
 #include "../src/db.h"
 #include "../src/i18n.h"
+#include "../src/library.h"
 #include "../src/padglyph.h"
 #include "../src/remap.h"
 #include "../src/remapstore.h"
@@ -27,7 +28,7 @@ static void report(int ok, const char *name)
 }
 
 #define DC_MAP "a:b,b:a,x:y,y:x,l1:l2,l2:l1,r1:r2,r2:r1"
-#define N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y"
+#define N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x"
 
 static rm_table parsed(const char *spec)
 {
@@ -166,15 +167,80 @@ static void stored_bad_pair_falls_back(void)
 	report(ok, "stored_bad_pair_falls_back");
 }
 
+/* What a cap gives while SELECT is held, as Diatom's env.c reads a table:
+ * the layer's pair for it, else its plain binding. A target (RT_*), or
+ * RM_NONE. */
+static int under_select(const rm_table *t, int cap)
+{
+	static const char *const SPEC[RM_BUTTONS] = {
+		"a", "b", "x", "y", "l1", "r1", "l2", "r2", "start", "select"
+	};
+	static const char *const TO[RT_COUNT] = {
+		"up", "down", "left", "right", "a", "b", "x", "y",
+		"l1", "r1", "l2", "r2", "select", "start"
+	};
+	char want[24];
+	const char *p, *v;
+	int k;
+
+	snprintf(want, sizeof want, "select+%s:", SPEC[cap]);
+	for (p = t->layer; (p = strstr(p, want)); p++) {
+		if (p != t->layer && p[-1] != ',') continue;
+		v = p + strlen(want);
+		for (k = 0; k < RT_COUNT; k++)
+			if (!strncmp(v, TO[k], strlen(TO[k])) && (v[strlen(TO[k])] == ',' || !v[strlen(TO[k])]))
+				return k;
+		return RM_NONE;
+	}
+	return t->b[cap].to;
+}
+
+/* The N64's C buttons are the core's own A, B, X and Y under SELECT (which
+ * holds its R2): C right on the A cap, C down on B, C up on X, C left on Y */
+static bool c_buttons(const rm_table *t)
+{
+	return t->b[RM_SELECT].to == RT_R2 && under_select(t, RM_A) == RT_A &&
+	       under_select(t, RM_B) == RT_B && under_select(t, RM_X) == RT_X &&
+	       under_select(t, RM_Y) == RT_Y;
+}
+
+/* The N64's map| line as config/systems.cfg has it, not a copy of it, so a
+ * change there is what this holds */
+static bool n64_map_of_cfg(char *out, size_t n)
+{
+	static systems_cfg all;
+	int i;
+
+	if (!cfg_load_systems("config/systems.cfg", &all)) return false;
+	for (i = 0; i < all.count; i++)
+		if (!strcmp(all.systems[i].tag, "N64")) {
+			snprintf(out, n, "%s", all.systems[i].map);
+			return true;
+		}
+	return false;
+}
+
 static void n64_layer_survives_change(void)
 {
-	rm_table def = parsed(N64_MAP), t;
-	char out[200];
+	char map[160];
+	rm_table def, t;
+	bool ok = n64_map_of_cfg(map, sizeof map);
 
-	rm_set(&t, &def, RM_A, (rm_choice){ RT_X, 0 });
-	rm_format(&t, out, sizeof out);
-	report(strstr(out, "select+a:a,select+b:b,select+y:y") != NULL && t.b[RM_A].to == RT_X,
-	       "n64_layer_survives_change");
+	ok = ok && !strcmp(map, N64_MAP);
+	if (!ok) printf("    systems.cfg's map|N64 is \"%s\", this check's copy \"%s\"\n", map, N64_MAP);
+	def = parsed(map);
+	ok = ok && c_buttons(&def);
+	/* A given the N64's B (the core's Y): its C right stays under SELECT */
+	rm_set(&t, &def, RM_A, (rm_choice){ RT_Y, 0 });
+	ok = ok && t.b[RM_A].to == RT_Y && c_buttons(&t);
+	/* X, which reads Nothing, given the N64's A (the core's B): A takes
+	 * what X gave, and SELECT+X is still C up, not a second C down */
+	rm_set(&t, &def, RM_X, (rm_choice){ RT_B, 0 });
+	ok = ok && t.b[RM_X].to == RT_B && t.b[RM_A].to == RT_X && c_buttons(&t);
+	/* X given Z (the core's L2): L2 takes x, and C up is still on X */
+	rm_set(&t, &def, RM_X, (rm_choice){ RT_L2, 0 });
+	ok = ok && t.b[RM_X].to == RT_L2 && t.b[RM_L2].to == RT_X && c_buttons(&t);
+	report(ok, "n64_layer_survives_change");
 }
 
 static void letters_dc_place_identity(void)
@@ -443,6 +509,107 @@ static void select_rule_keeps_default(void)
 	report(ok && sent.b[RM_A].to == RT_B, "select_rule_keeps_default");
 }
 
+/* The stick's rule puts back the default's SELECT, not a plain one: an N64
+ * key with SELECT changed (a hand-edited one; its row is dead) still holds
+ * the C buttons' R2 */
+static void select_rule_puts_default_back(void)
+{
+	system_cfg n64 = sys_of("N64", N64_MAP, "dpad", false);
+	rm_table sent;
+
+	db_set_str(db_lib(), "map.N64.c.z64", "1;select:start");
+	rms_sent(&n64, "c.z64", true, &sent);
+	report(sent.b[RM_SELECT].to == RT_R2 && sent.b[RM_SELECT].turbo == 0 && c_buttons(&sent),
+	       "select_rule_puts_default_back");
+	db_del(db_lib(), "map.N64.c.z64");
+}
+
+/* A game's key that came to equal the system's table, because the system's
+ * changed later, is deleted when tidied; one that differs stays */
+static void game_tidy_deletes_equal(void)
+{
+	system_cfg s = sys_of("PS1", "", "plain", true);
+	rm_table g, sys;
+	bool ok;
+
+	rm_identity(&g);
+	rm_set(&g, &g, RM_B, (rm_choice){ RT_Y, 0 });
+	rms_put(&s, "Ape.chd", &g);
+	ok = db_has(db_lib(), "map.PS1.Ape.chd") && !rms_game_tidy(&s, "Ape.chd") &&
+	     db_has(db_lib(), "map.PS1.Ape.chd");
+	sys = g;
+	rms_put(&s, NULL, &sys);
+	ok = ok && db_has(db_lib(), "map.PS1.Ape.chd") && rms_game_tidy(&s, "Ape.chd") &&
+	     !db_has(db_lib(), "map.PS1.Ape.chd") && !rms_game(&s, "Ape.chd", &g) &&
+	     g.b[RM_B].to == RT_Y;
+	ok = ok && !rms_game_tidy(&s, "Ape.chd") && !rms_game_tidy(&s, NULL);
+	/* a newer release's value reads as the default here, and is kept */
+	rms_reset(&s, NULL);
+	db_set_str(db_lib(), "map.PS1.New.chd", "2;b:y");
+	ok = ok && !rms_game_tidy(&s, "New.chd") && db_has(db_lib(), "map.PS1.New.chd");
+	db_del(db_lib(), "map.PS1.New.chd");
+	report(ok, "game_tidy_deletes_equal");
+}
+
+/* A long name's key is whole, as Rename and Delete Game build it, so they
+ * find it: cut at 416 bytes it was missed by both */
+static void long_key_whole(void)
+{
+	system_cfg s = sys_of("PS1", "", "plain", true);
+	char file[LIB_PATH], key[LIB_PATH + 64];
+	rm_table t;
+	bool ok;
+
+	memset(file, 'n', 500);
+	snprintf(file + 500, sizeof file - 500, ".chd");
+	snprintf(key, sizeof key, "map.PS1.%s", file);
+	rm_identity(&t);
+	rm_set(&t, &t, RM_B, (rm_choice){ RT_Y, 0 });
+	rms_put(&s, file, &t);
+	ok = db_has(db_lib(), key) && rms_game(&s, file, &t) && t.b[RM_B].to == RT_Y;
+	rms_stick_put(&s, file, true);
+	snprintf(key, sizeof key, "stick.PS1.%s", file);
+	ok = ok && db_has(db_lib(), key) && rms_stick_get(&s, file);
+	rms_stick_put(&s, file, false);
+	rms_reset(&s, file);
+	report(ok && !db_has(db_lib(), key), "long_key_whole");
+}
+
+/* A stored value this release cannot read is said once for its key, not on
+ * every read (the menu reads the card on its frames) */
+static void bad_value_said_once(void)
+{
+	system_cfg s = sys_of("PS1", "", "plain", true);
+	char path[] = "/tmp/remap-check-err-XXXXXX", line[256];
+	int fd = mkstemp(path), keep = dup(2), said = 0, other = 0, i;
+	rm_table t;
+	FILE *f;
+
+	if (fd < 0 || keep < 0) { report(0, "bad_value_said_once"); return; }
+	fflush(stderr);
+	dup2(fd, 2);
+	db_set_str(db_lib(), "map.PS1.Bad.chd", "2;b:y");
+	db_set_str(db_lib(), "map.PS1.Odd.chd", "1;b:zz");
+	for (i = 0; i < 5; i++) {
+		rms_game(&s, "Bad.chd", &t);
+		rms_game(&s, "Odd.chd", &t);
+	}
+	fflush(stderr);
+	dup2(keep, 2);
+	close(keep);
+	f = fopen(path, "r");
+	while (f && fgets(line, sizeof line, f)) {
+		if (strstr(line, "remap: map.PS1.Bad.chd: not read, ZyperOS's default")) said++;
+		else if (strstr(line, "remap: map.PS1.Odd.chd: not read")) other++;
+	}
+	if (f) fclose(f);
+	close(fd);
+	unlink(path);
+	db_del(db_lib(), "map.PS1.Bad.chd");
+	db_del(db_lib(), "map.PS1.Odd.chd");
+	report(said == 1 && other == 1, "bad_value_said_once");
+}
+
 static void turbo_joins_default(void)
 {
 	system_cfg nes = sys_of("NES", "", "", false);
@@ -493,6 +660,10 @@ static int store_checks(void)
 	stick_put_default_deletes();
 	run_stick_keys();
 	select_rule_keeps_default();
+	select_rule_puts_default_back();
+	game_tidy_deletes_equal();
+	long_key_whole();
+	bad_value_said_once();
 	turbo_joins_default();
 	systems_stick_lines();
 	db_shutdown();

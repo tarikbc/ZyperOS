@@ -59,6 +59,16 @@ unsigned plat_now_ms(void)
 	return (unsigned)(t.tv_sec * 1000 + t.tv_nsec / 1000000);
 }
 
+/* What the on_stick callback heard: R2's turns, not the answers */
+static int stick_calls;
+static bool stick_last;
+
+static void heard_stick(bool on)
+{
+	stick_calls++;
+	stick_last = on;
+}
+
 /* ---- a Diatom of its own ------------------------------------------------- */
 
 /* What it says to the Nth command line it reads, after READY */
@@ -69,6 +79,14 @@ static const char *const ANSWERS[] = {
 	"EXIT\treason=user\n",
 	/* the third: nothing at all */
 	"",
+	/* SETSTICK from the Controls tab: its answer; then RESUME, and R2 turns
+	 * the d-pad back in the game before MENU pauses it again */
+	"STICK\ton=1\n",
+	"STICK\ton=0\nPAUSED\n",
+	/* SETSTICK again, its answer taken by a paused reader; then RESUME and
+	 * R2's turn */
+	"STICK\ton=0\n",
+	"STICK\ton=1\nPAUSED\n",
 };
 
 static void fake_diatom(int listener)
@@ -140,6 +158,21 @@ int main(void)
 	t0 = plat_now_ms();
 	CHECK(!plat_resident_sync_line("PLAYER2\t", out, sizeof out, 150), "no answer");
 	CHECK(plat_now_ms() - t0 >= 140, "after the time it was given");
+
+	printf("the Controls tab's SETSTICK, and R2's turn in the game:\n");
+	plat_resident_on_stick(heard_stick);
+	CHECK(plat_resident_set_stick("toggle-stick"), "the line goes");
+	CHECK(plat_resident_line("RESUME"), "and RESUME");
+	CHECK(plat_resident_wait() == RES_PAUSED, "the game is paused again");
+	CHECK(stick_calls == 1 && !stick_last,
+	      "the answer reached no callback (no pop-up); R2's turn back did");
+	CHECK(plat_resident_set_stick("toggle"), "SETSTICK again");
+	CHECK(!plat_resident_sync_line("NOPE\t", out, sizeof out, 200),
+	      "a paused reader takes its answer on the way");
+	CHECK(plat_resident_line("RESUME"), "RESUME");
+	CHECK(plat_resident_wait() == RES_PAUSED, "paused again");
+	CHECK(stick_calls == 2 && stick_last, "and still R2's turn alone is heard");
+	plat_resident_on_stick(NULL);
 
 	kill(pid, SIGTERM);
 	waitpid(pid, NULL, 0);

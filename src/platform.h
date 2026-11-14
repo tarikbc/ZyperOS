@@ -195,8 +195,12 @@ void plat_resident_on_speed(void (*fn)(int half));
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
  * into the left stick (true) or back (false): RUN stick=toggle, Diatom's
- * STICK line. NULL to stop. */
+ * STICK line. Not for the answer to a SETSTICK sent by
+ * plat_resident_set_stick. NULL to stop. */
 void plat_resident_on_stick(void (*fn)(bool on));
+/* SETSTICK mode=..., the d-pad as the stick at once (the Controls tab's
+ * row), counted so that its STICK answer reaches no on_stick callback */
+bool plat_resident_set_stick(const char *mode);
 
 /* Called from inside plat_resident_wait for the quick slot: Diatom's SELECT+R1
  * and SELECT+L1 (PLAT_QUICK_ASK_*, no path), and the answers to a SAVE or

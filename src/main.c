@@ -2606,7 +2606,8 @@ static void on_speed(int half)
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
  * into the analog stick (on) or back: said over the game, and kept for the
- * game (rms_stick_put) */
+ * game (rms_stick_put). The answers to the Controls tab's own SETSTICKs
+ * never come here (plat_resident_set_stick): its row said it already. */
 static void on_stick(bool on)
 {
 	popup_now(T(S_POPUP_STICK), T(on ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
@@ -5335,6 +5336,11 @@ static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
 /* Set by a key handler to move the runner's cursor, which it owns: MENU's
  * tabs, whose rows change under it. -1, none. */
 static int g_menu_sel_to = -1;
+
+void menu_cursor_to(int sel)
+{
+	g_menu_sel_to = sel;
+}
 /* menu_style's row marks and header picture, set around the draw of the
  * menu that has them as g_menu_zyper is */
 static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
@@ -8172,6 +8178,12 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			                  menu_sound_at(st->sound, n, sel), IN_RIGHT) == MENU_DONE)
 				return MENU_LEFT_SCREEN;
 		if (!a->running || want_quit || g_message_stopped) return MENU_LEFT_GONE;
+		/* A step can move the cursor too: a Controls row whose change put a
+		 * warning above it stays the row under it (menu_cursor_to) */
+		if (g_menu_sel_to >= 0) {
+			sel = g_menu_sel_to < n ? g_menu_sel_to : n - 1;
+			g_menu_sel_to = -1;
+		}
 
 		/* Everything the runner did not consume goes to the screen, so a
 		 * screen-specific key needs no runner change to exist. */
@@ -8280,11 +8292,16 @@ menu_exit menu_run(app *a, const menu_style *st,
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	/* A cursor move is for the runner it was asked of: none left over from
+	 * a screen that ended on the handler's press reaches this one, or the
+	 * one under it */
+	g_menu_sel_to = -1;
 
 	/* And it opens and closes (panel_open): quit and power, and nothing left
 	 * to show, leave nothing to see go. */
 	lv = panel_open();
 	how = menu_run_body(a, st, build, on_key, ctx, lv);
+	g_menu_sel_to = -1;
 	panel_close(a, lv, how == MENU_LEFT_GONE);
 
 	plat_input_flush();
@@ -13961,14 +13978,21 @@ static void info_preview(app *a, bool net, const char *on_row)
 }
 
 /* --info-buttons: the page the Buttons row opens, over the shelf, for the
- * game under the cursor */
-static void info_buttons_preview(app *a)
+ * game under the cursor; with --gm-pick (`pick`), Y's choices as A opens
+ * them there, over the backdrop the page gives its own screens */
+static void info_buttons_preview(app *a, bool pick)
 {
 	sysview *v = &a->view[a->sys_cursor];
 	int owner;
 
 	if (v->list.count == 0) return;
 	owner = shelf_owner(a, a->sys_cursor, v->cursor);
+	if (pick) {
+		ctlscr_page_shot_pick(a, &a->sys.systems[owner], v->list.items[v->cursor].file,
+		                      v->list.items[v->cursor].title, a->sys.systems[owner].accent,
+		                      CT_BUTTON + RM_Y);
+		return;
+	}
 	draw_shelf(a);
 	ui_scrim(a->r, 0);
 	ctlscr_page_shot(a, &a->sys.systems[owner], v->list.items[v->cursor].file,
@@ -22568,10 +22592,15 @@ static ctl_game game_controls_of(app *a)
 	else rms_system(s, &mt);
 	rm_format(&mt, map, sizeof map);
 	g = (ctl_game){ s->tag, s->name, home_label(s->tag, s->name), map,
-	                NULL, dot ? dot + 1 : "", ctl_head_fits, a, is_port(s), NULL, NULL, false };
+	                NULL, dot ? dot + 1 : "", ctl_head_fits, a, is_port(s), NULL, NULL, false,
+	                CTL_STICK_TABLE };
 
 	/* What the N64's C buttons page says is in the controller */
 	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s, file));
+	/* ...and what the d-pad is, as this game's D-pad as Stick has it; the
+	 * PSP's R2 turns it in the game, and its page says so */
+	if (rms_stick_offered(s) && strcmp(s->stick, "toggle") && sv->list.count > 0)
+		g.stick = rms_stick_get(s, file) ? CTL_STICK_ON : CTL_STICK_OFF;
 	/* A port's pages are what its own files say (src/portdoc.h), read for
 	 * the script on the cursor as port_menu_main reads them over it: for a
 	 * --gamecontrols shot, as a port never runs under this menu */
@@ -25303,7 +25332,8 @@ static int controls_fit_ports(app *a, const char *dev, int *pages)
 		pm = false;
 		snprintf(path, sizeof path, "%s/%s", dir, name);
 		port_doc_read(path, &doc);
-		g = (ctl_game){ "", "Ports", NULL, "", NULL, "sh", ctl_head_fits, a, true, NULL, &doc, false };
+		g = (ctl_game){ "", "Ports", NULL, "", NULL, "sh", ctl_head_fits, a, true, NULL, &doc, false,
+		                CTL_STICK_TABLE };
 		np = ctl_game_pages(&g);
 		for (p = 0; p < np; p++) {
 			menu_row rows[CTL_MAX_ROWS];
@@ -25348,19 +25378,26 @@ static void controls_fit_report(app *a)
 		for (i = 0; game && i < all.count; i++) {
 			const system_cfg *s = &all.systems[i];
 
-			for (e = 0; e < 2; e++) {
+			/* e: an .fds game too; st: each D-pad as Stick a game can have
+			 * (CTL_STICK_*), on a system whose stick is one switch a game */
+			for (e = 0; e < 2; e++) for (int st = CTL_STICK_TABLE; st <= CTL_STICK_ON; st++) {
 				ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
 				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a,
-				               is_port(s), NULL, NULL, false };
-				int np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
+				               is_port(s), NULL, NULL, false, CTL_STICK_TABLE };
+				int np;
 
 				if (e && strcmp(s->tag, "NES")) continue;
+				if (st && (!rms_stick_offered(s) || !strcmp(s->stick, "toggle"))) continue;
+				g.stick = st;
+				np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
 				for (p = 0; p < np; p++) {
 					ctl_buf b;
 					int n = ctl_game_rows(&g, p, rows, &b);
 
-					snprintf(where, sizeof where, "%s, %s%s page %d",
-					         dev ? "Pixel 2" : "Brick", s->tag, e ? " (fds)" : "", p);
+					snprintf(where, sizeof where, "%s, %s%s%s page %d",
+					         dev ? "Pixel 2" : "Brick", s->tag, e ? " (fds)" : "",
+					         st == CTL_STICK_ON ? " (stick on)" : st == CTL_STICK_OFF ? " (stick off)" : "",
+					         p);
 					snprintf(count, sizeof count, "%d / %d", p + 1, np);
 					bad += controls_fit_one(a, where, b.head, np > 1 ? count : NULL, rows, n);
 					pages++;
@@ -25820,7 +25857,7 @@ static void shot_compose(app *a)
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
-	if (shot_info == 4) info_buttons_preview(a);
+	if (shot_info == 4) info_buttons_preview(a, shot_gm_pick);
 	else if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
 	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
@@ -26381,7 +26418,30 @@ static void shot_gm_motion(app *a, unsigned t0)
 			ctlscr_key(a, &g, IN_RIGHT, ids[shot_gamemenu_sel]);
 		else
 			fprintf(stderr, "--gm-press: %.*s is no key here\n", (int)len, k);
+		/* ...and the cursor where the key put it, as the runner takes it */
+		if (g_menu_sel_to >= 0) {
+			shot_gamemenu_sel = g_menu_sel_to;
+			g_menu_sel_to = -1;
+		}
 		k += len + (k[len] == ',');
+	}
+	/* Where the cursor ended, off a quiet row as the runner steps off one,
+	 * for the shot checks to read */
+	if (shot_gm_press) {
+		ctlscr_game g;
+		menu_row rows[CT_MAX_ROWS];
+		unsigned vcol[CT_MAX_ROWS];
+		int ids[CT_MAX_ROWS], n, sel;
+
+		gm_ctl_game(a, NULL, &g);
+		n = ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+		sel = shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1;
+		if (!rows[sel].live) {
+			sel = menu_step_sel(rows, n, sel, +1);
+			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
+		}
+		fprintf(stderr, "gm-press: the cursor on %s, %s\n", rows[sel].label,
+		        rows[sel].value && !ROW_IS_NOTE(rows[sel]) ? rows[sel].value : "");
 	}
 }
 
@@ -26900,7 +26960,8 @@ static int port_menu_main(int argc, char **argv)
 	 * Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
-	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL, false };
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL, false,
+	                         CTL_STICK_TABLE };
 	/* A port's pages: what its README, its keymap and its port.json say,
 	 * or PortMaster's own buttons over PortMaster (src/portdoc.h) */
 	if (!strcmp(s->core, "port")) {

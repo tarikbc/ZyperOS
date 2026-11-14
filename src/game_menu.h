@@ -148,37 +148,26 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
 
 /* ---------- the in-game menu ---------------------------------------------- */
 
-/* GM_ROWS is every game's menu. A game with two screens - a Nintendo DS
- * game on DSperate, whose one frame Diatom cuts into its top and bottom
- * screens - has three rows more, after Display and Shader, where the
- * picture is already the subject: Screens (the layout), Swap Screens and
- * Stylus. Their
- * ids come after GM_ROWS so that every other game's rows are still their own
- * ids, in order; gm_tab_rows says which rows a tab has, in the order shown. */
-/* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
- * every control this game has, on its system (src/controls.h). After a DS
- * game's three rows, which belong with Display. Eight rows is one more than
- * the panel shows, so Quit is under the arrow, one Up from Continue.
+/* The in-game menu's rows by id. The ids say what a row is, not where it is:
+ * which tab has it, and in what order, is gm_tab_rows's (below).
  *
- * Quick Slot, after Load (2026-11-07): the slot SELECT+R1 saves to and
- * SELECT+L1 loads from, 1 to GM_SLOTS, kept per system; left, right and A
- * step it. With Save and Load, where states are. A system whose core keeps
- * no state (controls.h, ctl_has_states) has no quick slot and no row, so
- * its menu has a row fewer: gm_tab_rows says which rows a tab has. */
-/* Shader, right after Display (2026-11-12): how the picture is drawn at its
- * last step, Off or a shader by its name (src/app.h SHADERS), kept for the
- * game's system and sent to the game at once. Every game's, so it is one of
- * GM_ROWS, and Controls is a row further down.
+ * Up to GM_ROWS, the rows every game's menu has, or had: Continue, Save,
+ * Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit.
+ * Quick Slot (2026-11-07) is the slot SELECT+R1 saves to and SELECT+L1 loads
+ * from, 1 to GM_SLOTS, kept per system; a system whose core keeps no state
+ * (controls.h, ctl_has_states) has no such row. Shader (2026-11-12) is how
+ * the picture is drawn at its last step, kept for the game's system.
+ * GM_CONTROLS is in no tab now: Controls is a tab of its own, whose rows are
+ * src/ctltab.c's, and the read-only pages the row opened are behind that
+ * tab's Hotkeys row. A port's menu (OpenBOR) still has the Controls row.
  *
- * Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
- * Rumble Pak or the Controller Pak (the memory card some games save to),
- * kept for the game. Right before Controls, whose C buttons page says which
- * one is in. Its id comes after the screens' rows, as theirs do.
- *
- * Player 2, an NES game's (2026-11-13, src/p2.h): a friend plays as player
- * 2 in a browser, and A opens the page that says how to join. After the
- * whole of Shader's group, before Controls, on a game whose core the system
- * table offers it on and on no other; its id comes after the Pak's. */
+ * After GM_ROWS, the rows only some games have, so that every other game's
+ * rows keep their ids: a DS game's Screens (the layout), Swap Screens and
+ * Stylus, on the Display tab after Shader; an N64 game's Pak (2026-11-07,
+ * the Rumble Pak or the Controller Pak, kept for the game), which is a row
+ * of the Controls tab (src/ctltab.c) and in no tab here; and Player 2
+ * (2026-11-13, src/p2.h), an NES game's whose core the system table offers
+ * it on, on the Game tab after Quick Slot. */
 typedef enum {
 	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
 	GM_RESET, GM_QUIT,

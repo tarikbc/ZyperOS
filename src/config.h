@@ -79,10 +79,10 @@ typedef struct {
 	 * games play with a stick and the device has none (Diatom's stick.h);
 	 * "toggle": R2 turns the d-pad into the stick and back, for a system
 	 * whose games move with one or the other (the PSP's; src/main.c,
-	 * rms_stick_get); "plain": the stick without the SELECT rule (the
-	 * PlayStation's). Sent with RUN as stick= (rms_run_stick). Empty is the
-	 * d-pad as the d-pad. From a `stick|tag|mode` or `stick|tag|mode|off`
-	 * line. */
+	 * rms_stick_get); "plain": the stick without the SELECT rule, the d-pad
+	 * still the d-pad as well (the PlayStation's). Sent with RUN as stick=
+	 * (rms_run_stick). Empty is the d-pad as the d-pad. From a
+	 * `stick|tag|mode` or `stick|tag|mode|off` line. */
 	char stick[8];
 	/* The `stick|` line's last field was "off": the stick starts off for
 	 * a game (src/remapstore.c, rms_stick_default). The default is on. */

@@ -1900,7 +1900,7 @@ static void n64_pak(void)
  * Models as src/ctltab_screen.c gathers them, the tables written by hand from
  * config/systems.cfg's map| lines: the PlayStation has none, so its table is
  * the identity; the N64's and the Dreamcast's are theirs. */
-#define CT_N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y"
+#define CT_N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y,select+x:x"
 #define CT_DC_MAP  "a:b,b:a,x:y,y:x,l1:l2,l2:l1,r1:r2,r2:r1"
 
 static void ct_ps1(ct_model *m)
@@ -1995,7 +1995,7 @@ static void ctl_tab(void)
 	memset(&m, 0, sizeof m);
 	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
 	ct_table(&m.def, CT_DC_MAP);
-	m.cur = m.base = m.def;
+	m.cur = m.base = m.zdef = m.def;
 	m.stick_offered = m.stick_on = true;
 	m.face_offered = ctl_letter_layout("DC", &m.letters);
 	m.select_held_dpad = true;
@@ -2081,7 +2081,7 @@ static void ctl_tab(void)
 	memset(&m, 0, sizeof m);
 	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
 	ct_table(&m.def, CT_DC_MAP);
-	m.cur = m.base = m.def;
+	m.cur = m.base = m.zdef = m.def;
 	m.cur.b[RM_SELECT] = (rm_choice){ RT_START, 0 };
 	m.cur.b[RM_START] = (rm_choice){ RT_SELECT, 0 };
 	m.stick_offered = true;
@@ -2095,6 +2095,26 @@ static void ctl_tab(void)
 	ct_pick(&m, RM_A, (rm_choice){ RT_SELECT, 0 });
 	ck(m.cur.b[RM_SELECT].to == RT_SELECT && m.cur.b[RM_A].to == RT_SELECT,
 	   "a choice SELECT gives is no swap with the dead SELECT: it keeps it");
+	/* ct_sent_select_default: the stick's rule sends ZyperOS's own SELECT,
+	 * not a plain one and not the scope's default. This Game under a
+	 * Dreamcast whose SELECT and START were swapped for every game: the
+	 * game is sent a plain SELECT, so its Start is lost, and said */
+	m.def.b[RM_SELECT] = (rm_choice){ RT_START, 0 };
+	m.def.b[RM_START] = (rm_choice){ RT_SELECT, 0 };
+	m.cur = m.base = m.def;
+	{
+		rm_table sent;
+
+		ct_sent(&m, &sent);
+		ck(sent.b[RM_SELECT].to == RT_SELECT, "ct_sent_select_default: ZyperOS's SELECT, as rms_sent sends it");
+		n = ct_rows(&m, ids, rows, vcol, &b);
+		k = ct_at(ids, n, CT_WARN + RT_START);
+		ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_SELECT, "and Start has no button now, under SELECT");
+		m.zdef.b[RM_SELECT] = (rm_choice){ RT_R2, 0 };
+		ct_sent(&m, &sent);
+		ck(sent.b[RM_SELECT].to == RT_R2 && sent.b[RM_SELECT].turbo == 0,
+		   "a default whose SELECT is a pair of its own (the N64's select:r2) has it put back");
+	}
 	memset(&m, 0, sizeof m);
 	m.tag = "N64"; m.ext = "z64"; m.map = CT_N64_MAP;
 	ct_table(&m.def, CT_N64_MAP);
@@ -2104,6 +2124,64 @@ static void ctl_tab(void)
 	ck(m.cur.b[RM_SELECT].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
 	   "the N64's SELECT keeps R2, the C buttons' own, when another button is given it");
 	ck(!ct_step(&m, CT_BUTTON + RM_SELECT, +1), "and its dead row has no step");
+
+	/* ct_held_psp: the PSP's R2 is Diatom's under stick=toggle (it turns
+	 * the d-pad into the stick, and no map reaches it): a dead row that
+	 * says so, no choice, and never a swap's partner */
+	memset(&m, 0, sizeof m);
+	m.tag = "PSP"; m.ext = "iso"; m.sys_label = "PSP"; m.sys_name = "PSP"; m.map = "";
+	rm_identity(&m.def);
+	m.cur = m.base = m.zdef = m.def;
+	m.stick_offered = true;
+	m.held = ct_held_of("PSP", "toggle");
+	ck(m.held == 1u << RM_R2 && ct_held_of("PSP", "") == 0 && ct_held_of("PS1", "plain") == 0 &&
+	   ct_held_of("DC", "dpad") == 0, "ct_held_of: the PSP's R2 under toggle, on no other system");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_R2);
+	ck(k > 0 && !rows[k].live && !strcmp(val(&rows[k]), "D-pad as stick") && !vcol[k],
+	   "ct_held_psp: R2 is a dead row: D-pad as stick");
+	nch = ctl_remap_choices("PSP", "iso", "", ch, 32);
+	for (i = 0; i < nch && ch[i].to != RT_R2; i++) ;
+	ck(i == nch && nch == 13, "and no choice: four faces, L, R, Start, Select, four turbos, Nothing");
+	ck(ct_dead(&m, RM_R2) && !ct_dead(&m, RM_Y) && !ct_step(&m, CT_BUTTON + RM_R2, +1) &&
+	   rm_equal(&m.cur, &m.base), "R2 has no step");
+	ct_pick(&m, RM_Y, (rm_choice){ RT_R2, 0 });
+	ck(m.cur.b[RM_R2].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
+	   "a swap never lands on R2: Y given the core's R2 leaves R2 as it was");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_Y && !strcmp(val(&rows[k - 1]), "Nothing"),
+	   "the core has no R2: Y reads Nothing, and square has no button now, under Y");
+	/* a key from before the fix: y:r2,r2:y gave square to the R2 Diatom
+	 * hides, and says so now */
+	ct_table(&m.cur, "y:r2,r2:y");
+	m.base = m.cur;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_R2 && !strcmp(lbl(&rows[k]), PAD_SQUARE " has no button now"),
+	   "a stored y:r2,r2:y: square has no button now, under the R2 that has it");
+
+	/* ct_held_nds: a DS game's L2 and R2 are Diatom's, the other screen and
+	 * the stylus */
+	memset(&m, 0, sizeof m);
+	m.tag = "NDS"; m.ext = "nds"; m.sys_label = "NDS"; m.sys_name = "Nintendo DS"; m.map = "";
+	rm_identity(&m.def);
+	m.cur = m.base = m.zdef = m.def;
+	m.held = ct_held_of("NDS", "");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_L2);
+	ck(m.held == (1u << RM_L2 | 1u << RM_R2) && k > 0 && !rows[k].live &&
+	   !strcmp(val(&rows[k]), "Other screen") && ids[k + 1] == CT_BUTTON + RM_R2 && !rows[k + 1].live &&
+	   !strcmp(val(&rows[k + 1]), "Stylus on/off"),
+	   "ct_held_nds: L2 and R2 are dead rows: Other screen, Stylus on/off");
+	ck(!ct_step(&m, CT_BUTTON + RM_L2, -1) && !ct_step(&m, CT_BUTTON + RM_R2, +1) &&
+	   rm_equal(&m.cur, &m.base), "no step on either");
+	ct_pick(&m, RM_A, (rm_choice){ RT_L2, 0 });
+	ck(m.cur.b[RM_L2].to == RT_L2 && m.cur.b[RM_R2].to == RT_R2,
+	   "a swap never lands on them: A given L2 leaves L2 giving its own");
+	nch = ctl_remap_choices("NDS", "nds", "", ch, 32);
+	for (i = 0; i < nch && ch[i].to != RT_L2 && ch[i].to != RT_R2; i++) ;
+	ck(i == nch, "and neither is a choice");
 
 	/* ct_lit_swap */
 	ct_ps1(&m);
@@ -2199,6 +2277,17 @@ static void ctl_tab(void)
 		ck(!strcmp(cb.head, "Controls: C buttons") && np > 0 && ROW_IS_NOTE(pr[np - 1]) &&
 		   !strcmp(lbl(&pr[np - 1]), "Pak: Rumble Pak"),
 		   "the N64's C buttons first, and which Pak is in, not where (the tab's Pak row is)");
+		/* ...and SELECT then the d-pad only while the d-pad is the stick */
+		g.stick = CTL_STICK_ON;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		for (k = 0; k < np && strcmp(lbl(&pr[k]), "SELECT+D-pad"); k++) ;
+		ck(np == 6 && k < np && !strcmp(val(&pr[k]), "N64 D-pad"),
+		   "the stick on: SELECT then the d-pad is the N64's D-pad");
+		g.stick = CTL_STICK_OFF;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		for (k = 0; k < np && strcmp(lbl(&pr[k]), "SELECT+D-pad"); k++) ;
+		ck(np == 5 && k == np && ROW_IS_NOTE(pr[np - 1]),
+		   "the stick off: no such row, the d-pad being the N64's D-pad already");
 	}
 }
 

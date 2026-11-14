@@ -107,7 +107,18 @@ typedef struct {
 	/* The pages the in-game menu's Controls tab opens from its Hotkeys row:
 	 * none of the system's buttons, which the tab shows; the rest as ever */
 	bool        no_buttons;
+	/* What the d-pad is in this game, on a system whose D-pad as Stick is
+	 * one switch per game (src/remapstore.h: the N64, the Dreamcast, the
+	 * PlayStation; not the PSP, whose R2 turns it in the game, and its
+	 * page says so). CTL_STICK_TABLE (0) says what the table says;
+	 * CTL_STICK_OFF the d-pad is the d-pad, which goes without saying, and
+	 * the N64's C buttons page has no SELECT then the d-pad; CTL_STICK_ON
+	 * the d-pad row says the stick (the N64's Control Stick, the others'
+	 * analog stick). */
+	int         stick;
 } ctl_game;
+
+enum { CTL_STICK_TABLE, CTL_STICK_OFF, CTL_STICK_ON };
 
 /* What a page's rows point into: its heading and the values a pair of rows
  * became ("Turbo A/B"), in the language that is on. The caller's, as
@@ -170,13 +181,16 @@ bool ctl_pair_value(const char *a, const char *b, char *out, int cap);
  * "" for none, so the Dreamcast reads A, B, X, Y and the PlayStation circle,
  * cross, triangle, square), then the shoulders, Start and Select in the
  * order of the table, then Turbo of each face in the same order, then
- * Nothing. Into out, at most max; the count. 0 for a system this does not
+ * Nothing. A slot that says what Diatom does with the handheld's button
+ * (the PSP's R2, the d-pad as the stick) is no button of the core's and no
+ * choice. Into out, at most max; the count. 0 for a system this does not
  * know. */
 int ctl_remap_choices(const char *tag, const char *ext, const char *map,
                       rm_choice *out, int max);
 
 /* A choice as the core names it, in the language that is on: its name (shapes
- * for the PlayStation and the PSP), "Turbo %s", or the Nothing string. */
+ * for the PlayStation and the PSP), "Turbo %s", or the Nothing string; ""
+ * for a target the core names nothing (an NES game's L1, the PSP's R2). */
 void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, size_t n);
 
 /* The layout where each face cap gives the button it names, in letters, for
