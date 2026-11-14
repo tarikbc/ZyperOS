@@ -182,6 +182,10 @@
   .stage { position: relative; --sw: min(620px, 54vw); height: calc(var(--sw) * .75 + 36px); }
   .shot { margin: 0; border-radius: 22px; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
   .shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* A picture that is not 4:3 (the shaders side by side, the phone on its
+   * side) is shown whole, on its own light ground */
+  .shot.fit { background: var(--fill, #e6e4da); }
+  .shot.fit img { object-fit: contain; }
   .stage .shot { position: absolute; left: 50%; top: 12px; width: var(--sw); transition: transform 160ms var(--ease), opacity 160ms var(--ease); }
   .stage .shot.on { box-shadow: var(--lift); }
   .js .stage { cursor: grab; touch-action: pan-y pinch-zoom; user-select: none; -webkit-user-select: none; }
@@ -349,20 +353,24 @@
     <figure class="shot" data-i="10" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:1"><img src="img/portmaster.png" width="1024" height="768" alt="Install PortMaster: its icon, its version and the download&#x27;s bar" decoding="async"></figure>
     <figure class="shot" data-i="11" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/storage.png" width="1024" height="768" alt="MENU &gt; Storage: the card in one bar by part, two recommendations, then every system by size" decoding="async"></figure>
     <figure class="shot" data-i="12" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/gamemenu-shader.png" width="1024" height="768" alt="The in-game menu over a paused Spyro the Dragon, on its Shader row: Sharp-Shimmerless, with Quick Slot 1 above it" decoding="async"></figure>
-    <figure class="shot" data-i="13" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/controls-hotkeys.png" width="1024" height="768" alt="Controls: Hotkeys. SELECT with R1 and L1 quick save and load, with R2 and L2 faster and slower" decoding="async"></figure>
-    <figure class="shot" data-i="14" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/mp4.png" width="1024" height="768" alt="MP4&#x27;s shelf of an album, a film and a book, each marked with what it is" decoding="async"></figure>
-    <figure class="shot" data-i="15" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/battery.png" width="1024" height="768" alt="MENU &gt; Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery" decoding="async"></figure>
-    <figure class="shot" data-i="16" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/scraper.png" width="1024" height="768" alt="MENU &gt; Scraper and the covers each source found" decoding="async"></figure>
-    <figure class="shot" data-i="17" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/menu.png" width="1024" height="768" alt="The ZyperOS menu" decoding="async"></figure>
-    <figure class="shot" data-i="18" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/folders.png" width="1024" height="768" alt="The Game Boy Advance shelf: the folder Commercial Owned as a pixel folder with 4 on its label, 4 games under its name" decoding="async"></figure>
-    <figure class="shot" data-i="19" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/list.png" width="1024" height="768" alt="The Game Boy Advance shelf as a list: its folders with their counts, then its games, the focused folder's card beside them" decoding="async"></figure>
-    <figure class="shot" data-i="20" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/es-shelf.png" width="1024" height="768" alt="The PlayStation shelf read from Knulli&#x27;s psx folder, its covers and video marks EmulationStation&#x27;s" decoding="async"></figure>
-    <figure class="shot" data-i="21" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/info-rename.png" width="1024" height="768" alt="Metal Gear Solid&#x27;s details, Rename chosen above Delete Game" decoding="async"></figure>
+    <figure class="shot fit" data-i="13" style="--fill:#f3f2ec;transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/shaders.png" width="1344" height="744" alt="Balloon Fight&#x27;s balloon fighters six ways: Off, Sharp-Shimmerless, CRT, CRT Curved, Scanlines and LCD Grid" decoding="async"></figure>
+    <figure class="shot" data-i="14" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/controls-hotkeys.png" width="1024" height="768" alt="Controls: Hotkeys. SELECT with R1 and L1 quick save and load, with R2 and L2 faster and slower" decoding="async"></figure>
+    <figure class="shot" data-i="15" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/mp4.png" width="1024" height="768" alt="MP4&#x27;s shelf of an album, a film and a book, each marked with what it is" decoding="async"></figure>
+    <figure class="shot" data-i="16" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/battery.png" width="1024" height="768" alt="MENU &gt; Battery Icon set to Time Left: the corner reads 3 h 25 min beside the battery" decoding="async"></figure>
+    <figure class="shot" data-i="17" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/scraper.png" width="1024" height="768" alt="MENU &gt; Scraper and the covers each source found" decoding="async"></figure>
+    <figure class="shot" data-i="18" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/menu.png" width="1024" height="768" alt="The ZyperOS menu" decoding="async"></figure>
+    <figure class="shot" data-i="19" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/folders.png" width="1024" height="768" alt="The Game Boy Advance shelf: the folder Commercial Owned as a pixel folder with 4 on its label, 4 games under its name" decoding="async"></figure>
+    <figure class="shot" data-i="20" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/list.png" width="1024" height="768" alt="The Game Boy Advance shelf as a list: its folders with their counts, then its games, the focused folder's card beside them" decoding="async"></figure>
+    <figure class="shot" data-i="21" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/es-shelf.png" width="1024" height="768" alt="The PlayStation shelf read from Knulli&#x27;s psx folder, its covers and video marks EmulationStation&#x27;s" decoding="async"></figure>
+    <figure class="shot" data-i="22" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/info-rename.png" width="1024" height="768" alt="Metal Gear Solid&#x27;s details, Rename chosen above Delete Game" decoding="async"></figure>
+    <figure class="shot" data-i="23" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/screensaver.png" width="1024" height="768" alt="The screensaver: Metal Gear Solid&#x27;s video snap over the whole screen, its system and name at the foot, and START&#x27;s hint, Play, at the top right" decoding="async"></figure>
+    <figure class="shot fit" data-i="24" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/play-phone-side.png" width="2532" height="1170" alt="Player 2&#x27;s page on a phone on its side: the game&#x27;s picture the whole height in the middle, the d-pad and SELECT at the left, B, A and START at the right" decoding="async"></figure>
+    <figure class="shot" data-i="25" style="transform:translateX(-50%) translateX(250%) scale(0.4);opacity:0;z-index:0"><img src="img/hare.png" width="1024" height="768" alt="File Transfer once a browser signs in: the address and the PIN at the top, Download and Upload with their speeds and totals, a bar for the file coming in, and its name" decoding="async"></figure>
   </div>
   <div class="shelf-foot">
     <b data-cap aria-live="polite">Your games, cover by cover</b>
-    <span class="meta" data-count>2 / 22</span>
-    <div class="rail" style="--n:22"><i style="transform:translateX(100%)"></i></div>
+    <span class="meta" data-count>2 / 26</span>
+    <div class="rail" style="--n:26"><i style="transform:translateX(100%)"></i></div>
   </div>
   <div class="shelf-ctl">
     <button type="button" class="step" data-step="-1" aria-label="Previous screen">&larr;</button>
@@ -720,7 +728,7 @@
 (() => {
   const shelf = document.querySelector(".shelf"), stage = shelf.querySelector(".stage");
   const shots = [...stage.querySelectorAll(".shot")];
-  const caps = ["Favorites from every system", "Your games, cover by cover", "Box art the handheld finds itself", "A heart for each favorite", "Every system, in pixel art", "Or the Gallery home", "Pick a game's cover, and see it first", "A game's details, one button away", "RetroAchievements, and Zyper cheers", "Every achievement, with its badge", "PortMaster with one press", "What fills the card, by part and by size", "Sharp-Shimmerless and a quick slot, per system", "SELECT with a shoulder: the hotkeys", "Your albums, books and films, in MP4", "The battery, as time left", "Box art from three sources", "The device's settings in one menu", "Your folders, as you made them", "Or a list, per system", "Your EmulationStation art, as it is", "Rename a game on the handheld"];
+  const caps = ["Favorites from every system", "Your games, cover by cover", "Box art the handheld finds itself", "A heart for each favorite", "Every system, in pixel art", "Or the Gallery home", "Pick a game's cover, and see it first", "A game's details, one button away", "RetroAchievements, and Zyper cheers", "Every achievement, with its badge", "PortMaster with one press", "What fills the card, by part and by size", "Sharp-Shimmerless and a quick slot, per system", "Sharp pixels, or an old TV", "SELECT with a shoulder: the hotkeys", "Your albums, books and films, in MP4", "The battery, as time left", "Box art from three sources", "The device's settings in one menu", "Your folders, as you made them", "Or a list, per system", "Your EmulationStation art, as it is", "Rename a game on the handheld", "A screensaver of your games", "Player 2 on a friend's phone", "File Transfer: what moves, and how much"];
   const STEP = [0, .86, 1.52, 2.06, 2.5], SCALE = [1, .78, .62, .5, .4], DIM = [1, .75, .55, .35, 0];
   const cap = shelf.querySelector("[data-cap]"), count = shelf.querySelector("[data-count]");
   const rail = shelf.querySelector(".rail i"), steps = [...shelf.querySelectorAll("[data-step]")];
