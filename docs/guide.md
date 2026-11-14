@@ -119,7 +119,7 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu, in three tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, and a DS game's Screens, Swap Screens and Stylus) and **Controls** (what each button does, Pak in a Nintendo 64 game). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
+| **MENU** (in game) | the in-game menu, in three tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, Strength while the shader is an old screen, and a DS game's Screens, Swap Screens and Stylus) and **Controls** (what each button does, Pak in a Nintendo 64 game). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
 | **X** (in the in-game menu) | Quit, from any row of any tab: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
@@ -284,6 +284,7 @@ than any one console:
 | **Scraper** | box art, its sources and video snaps - see below. Its value is how many games have no cover, or `complete` |
 | **Achievements** | the RetroAchievements account, or `sign in` |
 | **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for every system at once: each system's own choice goes. It says `per system` when a system has chosen another in its own menu or in a game. `Off` on a new device and after an upgrade - see **Shaders** below |
+| **Strength** | right under Shader while a system draws an old screen: `10%` to `100%`, how dark its lines and grid are, for every system at once, each system's own going. Left and right step it 10% at a time and stop at the ends. It says `per system` when a system has its own. `100%` on a new device and after an upgrade |
 | **Controls** | every button and what it does, a page per place |
 | **Show Tutorial** | the tutorial a new handheld starts with, again - see below |
 | **Developer Mode** | development images on the Pixel 2 only: `on` keeps the USB link to a computer always up, `off` asks when one is plugged in - see **Plugging into a computer** |
@@ -481,6 +482,7 @@ The system menu opens on a shelf of games and applies to that system alone:
 | **View** | left/right/A; `Covers`, the row of covers, or `List`, the games as a list of names with the focused one's cover beside it. START on the shelf turns it too, without the menu |
 | **Display Mode** | left/right cycles it; saved the moment it changes |
 | **Shader** | `Off`, `Sharp-Shimmerless`, `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`, for this system alone: left, right or A steps it, saved the moment it changes. The next game started plays with it |
+| **Strength** | right under Shader while it is `CRT`, `CRT Curved`, `Scanlines` or `LCD Grid`: `10%` to `100%`, for this system alone. Left and right step it 10% at a time and stop at the ends |
 | **Box Art** | fetch what this system is missing, and nothing else |
 | **Rescan Folder** | read the card again, for ROMs that arrived since boot |
 
@@ -554,6 +556,14 @@ The in-game menu's **Shader** row, in its Display tab right under Display, chang
 the game's system, from the next frame after Continue (the paused picture
 behind the menu stays as it was); the system menu's row does the same from
 the shelf, and **MENU > Display > Shader** sets every system at once.
+
+Under each Shader row, while the shader is one of the four old screens, a
+**Strength** row says how strongly it is drawn: `100%` is the shader as it
+is, and each step of 10% down makes the dark lines and grid lighter, down to
+`10%`, a faint hint of them. On the CRT it softens the scanlines and the
+stripes together; a curved CRT keeps its curve. Like Shader, it is kept per
+system, and **MENU > Display > Strength** sets every system at once. It is
+`100%` to start with, the shaders as they were before the row.
 
 Rescan Folder is what makes a ROM that arrived after boot appear without a
 restart. Wi-Fi File Transfer already does it for you on the way out of the transfer
