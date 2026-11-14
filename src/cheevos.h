@@ -60,8 +60,10 @@ void chv_path(const char *roms_root, const char *folder, const char *name,
  * omission: the game may well have achievements, nobody has asked. The
  * marker beside where the set would be, `<name>.none`, is RetroAchievements'
  * answer that there is nothing for this ROM (it does not know the ROM, or
- * the set is empty, or the launcher cannot hash this kind of file); a
- * later fetch that finds a set takes the marker away. */
+ * the set is empty, or the file could not be read); a later fetch that
+ * finds a set takes the marker away. A game the launcher has no hash for at
+ * all, by its name (src/rahash.h, ra_hash_support), is none of these: its
+ * rows say so before any of this is asked. */
 typedef enum {
 	CHV_SET,        /* a set on the card */
 	CHV_NONE,       /* asked, and there is none - or nobody signed in to ask */
@@ -72,7 +74,8 @@ chv_state chv_state_of(const char *set_path, bool signed_in);
 /* `<name>.none` for `<name>.set` */
 void chv_none_path(const char *set_path, char *out, size_t n);
 /* Write the marker (RetroAchievements has nothing) or take it away (a set
- * arrived). Quiet on failure: it only words a row. */
+ * arrived), making the shelf's .cheevos folder when it has none yet. Quiet on
+ * failure: it only words a row. */
 void chv_none_mark(const char *set_path, bool none);
 
 /* Load the set for a game. False means there is no set, which is the ordinary

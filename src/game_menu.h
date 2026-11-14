@@ -14,6 +14,7 @@
 #include "menu.h"
 #include "library.h"
 #include "p2.h"
+#include "rahash.h"
 
 /* Save slots. Six the player picks from, plus the resume slot the exit funnel
  * owns - which is NAMED "auto" and is not one of the numbered ones.
@@ -111,6 +112,11 @@ typedef struct {
 	/* No set because the game was never played with a network: the row says
 	 * "not checked yet", and A on it says how it gets one (chv_state_of) */
 	bool  cheevos_unchecked;
+	/* No set, and none will come: the launcher has no hash for this file
+	 * (RA_HASH_NO_FILE) or for any of its system's (RA_HASH_NO_SYSTEM), so
+	 * the row says which, quiet, rather than "not checked yet" and a play
+	 * with Wi-Fi that would ask nothing (ra_hash_support). RA_HASH_OK else. */
+	ra_hash_kind cheevos_no_hash;
 	bool  has_art;         /* Cover and Video's value: "no cover" */
 	bool  has_snap;        /* ...and "no video" */
 	/* Art of its own that no fetch replaces: PortMaster's entry on the
@@ -208,6 +214,8 @@ typedef struct {
 	int         total;    /* 0: this game has no achievement set */
 	/* ...because it was never played with a network: not asked yet */
 	bool        unchecked;
+	/* ...or because it never will have one, here: as game_info's */
+	ra_hash_kind no_hash;
 	/* Two screens in this game's frame, and how they are shown now. */
 	bool        screens;
 	int         layout;   /* into gm_layout_names */
@@ -246,7 +254,7 @@ gm_row gm_x_row(void);
  * a pointer rather than a copy. And each row's sound class (MENU_SND_*,
  * menu.h), set by gm_rows by the row's id, for the menu runner. */
 typedef struct {
-	char cheevos[48];
+	char cheevos[64];   /* as game_info's: a value in any language, whole */
 	char quick[8];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;

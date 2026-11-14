@@ -216,6 +216,10 @@ EXTRA = {
     "ranews-one": ("demo", "PS1", ["--ranews", "1"]),
     "gamemenu-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-unchecked"]),
     "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
+    # ...and of a game the launcher has no hash for: a PSP game ("system"),
+    # a PlayStation .chd ("file"), one in each screen
+    "gamemenu-nohash": ("demo", "PS1", ["--gamemenu", "8", "--cheevos-no-hash", "system"]),
+    "info-nohash": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-no-hash", "file"]),
     "gamemenu-display": ("demo", "PS1", ["--gamemenu", "3"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),

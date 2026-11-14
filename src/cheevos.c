@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -62,6 +63,21 @@ void chv_none_mark(const char *set_path, bool none)
 	if (!none) { unlink(p); return; }
 	if (access(p, F_OK) == 0) return;          /* one write, the first time */
 	f = fopen(p, "w");
+	/* The shelf's first: nothing has made its .cheevos folder yet, which only
+	 * a fetched set did (src/rafetch.c). Until 2026-11-14 the marker was
+	 * dropped there, quietly, so a game RetroAchievements had answered for
+	 * said "not checked yet" for good and was asked again at every launch:
+	 * every game of a shelf with no set on the card. */
+	if (!f) {
+		char *slash = strrchr(p, '/');
+
+		if (slash && slash != p) {
+			*slash = '\0';
+			mkdir(p, 0755);
+			*slash = '/';
+			f = fopen(p, "w");
+		}
+	}
 	if (f) fclose(f);
 }
 
