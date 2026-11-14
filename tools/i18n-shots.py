@@ -395,9 +395,10 @@ for _s in ("shimmerless", "crt", "crt-curved", "scanlines", "lcd"):
     SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
 
 # The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
-# end (Reset Buttons, Hotkeys), a button's choices, All <System> over a game
+# end (Reset Buttons, Hotkeys), a button's choices, the system over a game
 # with buttons of its own and the note under it, a game button left with
-# none, Reset Buttons' two questions; the Nintendo 64's
+# none, Reset Buttons' two questions, the Hotkeys row's pages (at their own
+# width, as the Controls pages are); the Nintendo 64's
 # (Pak, SELECT held for the C buttons) and the Dreamcast's (Face Buttons in
 # each of its three values, the stick on and SELECT held for its d-pad).
 # Their buttons and sticks are the card's library's (SHOT_LIB), the shelf on
@@ -409,6 +410,8 @@ for _name, _tag, _flags in (
         ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
         ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
         ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
+        ("keys", "PS1", ["--gamemenu", "13", "--gm-keys", "0"]),
+        ("keys-ingame", "PS1", ["--gamemenu", "13", "--gm-keys", "1"]),
         ("n64-end", "N64", ["--gamemenu", "13"]),
         ("dc", "DC", ["--gamemenu", "2"]), ("dc-end", "DC", ["--gamemenu", "13"]),
         ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"])):

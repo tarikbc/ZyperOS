@@ -1088,16 +1088,16 @@ de = C links
 ja = C 左
 it = C sinistra
 
-[controls.pak_where]
-note = Under a Nintendo 64 game's C buttons: where its controller's Pak is chosen and which one is in, as a menu path and its value. %1$s is gamemenu.pak (the row's name), %2$s the Pak, a product name never translated: "Rumble Pak" or "Controller Pak" (the N64's memory card). MENU is drawn as the key. The width of the panel: about 30 characters with "Controller Pak".
-en = MENU > %s: %s
-zh-Hans = MENU > %s：%s
-es = MENU > %s: %s
-pt-BR = MENU > %s: %s
-fr = MENU > %s : %s
-de = MENU > %s: %s
-ja = MENU > %s：%s
-it = MENU > %s: %s
+[controls.pak_in]
+note = Under a Nintendo 64 game's C buttons: which Pak its controller holds, the row's name and its value, as the Controls tab's Pak row says them (the row is chosen there). %1$s is gamemenu.pak, %2$s the Pak, a product name never translated: "Rumble Pak" or "Controller Pak" (the N64's memory card). The width of the panel: about 30 characters with "Controller Pak".
+en = %s: %s
+zh-Hans = %s：%s
+es = %s: %s
+pt-BR = %s: %s
+fr = %s : %s
+de = %s: %s
+ja = %s：%s
+it = %s: %s
 
 [controls.two_screens]
 note = Nintendo DS: the page of its screens and stylus, in "Controls: Two screens". tight
@@ -1601,16 +1601,16 @@ de = %s hat keine Taste mehr
 ja = %s のボタンがありません
 it = %s non ha più un tasto
 
-[controls.held_c]
-note = The Controls tab's SELECT row on a Nintendo 64 game, which cannot change: SELECT is held for the C buttons (with A, B, X, Y), C as the C buttons' own page names them in French. The value column beside SELECT, in the 580-unit column: "Held: C buttons" did not fit there with SELECT, so C alone.
-en = Held: C
-zh-Hans = 按住：C 键
-es = Mantén: C
-pt-BR = Segure: C
-fr = Tenir : C
-de = Halten: C
-ja = 長押し：C
-it = Tieni: C
+[controls.select_c_buttons]
+note = The Controls tab's SELECT row on a Nintendo 64 game, which cannot change: SELECT is the N64's C buttons (held, with A, B, X, Y). The N64's own name for them, as the C buttons page says it, written whole. The value column beside SELECT, in the 580-unit column.
+en = C buttons
+zh-Hans = C 键
+es = Botones C
+pt-BR = Botões C
+fr = Boutons C
+de = C-Tasten
+ja = C ボタン
+it = Pulsanti C
 
 [controls.held_dpad]
 note = The Controls tab's SELECT row on a Dreamcast game with D-pad as Stick on: SELECT is held for the Dreamcast's own d-pad. The value column beside SELECT.
@@ -1622,17 +1622,6 @@ fr = Tenir : croix
 de = Halten: Kreuz
 ja = 長押し：十字
 it = Tieni: croce
-
-[controls.select_games]
-note = The Hotkeys page opened from the Controls tab, beside the handheld: the row SELECT, and its value, what a press of SELECT alone does in a game: it stays the game's own button (controls.note_select, as a row). The value column.
-en = The game's
-zh-Hans = 归游戏
-es = Del juego
-pt-BR = Do jogo
-fr = Au jeu
-de = Fürs Spiel
-ja = ゲームの操作
-it = Del gioco
 
 [controls.pick_heading]
 note = The heading of a button's list of choices, opened with A on its row of the Controls tab: the button as printed (Y), then the system's name (PlayStation). Title size, over a 860-unit panel.

@@ -4,8 +4,8 @@
 
 /* The in-game menu's Controls tab on screen (src/ctltab.h is its rows): its
  * keys, a button's choices, Reset Buttons' question, the Hotkeys pages, and
- * the tutorial's handheld beside the rows, lit for the row under the cursor
- * and moving as the design says. main.c hooks it into the in-game menu's
+ * the tutorial's handheld beside the rows (and a button's choices), lit for
+ * the row under the cursor and moving as the design says. main.c hooks it into the in-game menu's
  * build, keys and panel (gm_menu_build, gm_key, menu_style's side).
  * Design: docs/superpowers/specs/2026-11-13-button-remap-design.md,
  * sections 2 to 8. */
@@ -29,8 +29,8 @@ typedef struct {
 	const char *file;        /* the game's file, as the shelf names it */
 	const char *title;       /* its name, for Reset Buttons' question */
 	const char *pak;         /* the Pak row's value (gm_pak_name), NULL for no row */
-	/* Applies To says All <System>: kept with the in-game menu's memory,
-	 * so it stays with the tab and the row until the game ends */
+	/* Applies To says the system (every game of it): kept with the in-game
+	 * menu's memory, so it stays with the tab and the row until the game ends */
 	bool       *scope_all;
 	bool        fixed_game;  /* Applies To fixed on This Game */
 	bool        running;     /* a game is paused under it: changes are sent */
@@ -64,8 +64,8 @@ menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id);
 /* The tab's card changed from outside (the Pak row): read it again */
 void ctlscr_changed(void);
 
-/* The handheld, menu_style's `side` for the in-game menu's tabs and the
- * pages the Controls tab opens */
+/* The handheld, menu_style's `side` for the in-game menu's tabs and a
+ * button's choices */
 void ctlscr_side(app *a, const menu_side *at);
 
 /* Reset Buttons' question for the scope shown, into `q` */
@@ -74,8 +74,5 @@ void ctlscr_question(const ctlscr_game *g, char *q, size_t n);
 /* A shot's (--gm-pick): the choices of the button on row `id` (ct_row) as A
  * there opens them, over what is drawn already */
 void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id);
-
-/* A shot's (--gm-keys): the handheld lit for the Hotkeys pages while `on` */
-void ctlscr_pages_shot(bool on);
 
 #endif

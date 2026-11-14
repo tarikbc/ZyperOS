@@ -508,7 +508,7 @@ static void in_a_game(void)
 			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "A/B", "A/B" },
 			/* Under the C buttons, which Pak is in and where it is chosen:
 			 * the Rumble Pak until a game takes the Controller Pak */
-			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "(note)", "MENU > Pak: Rumble Pak" },
+			{ "N64",  "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y", "z64", "(note)", "Pak: Rumble Pak" },
 			/* Every button the PICO-8 reads: its arrows, O and X, its
 			 * pause menu */
 			{ "PICO8", "", "p8", "D-pad", "Arrows" },
@@ -618,15 +618,15 @@ static void in_a_game(void)
 		   says(all, n, "POWER", "Quit and turn off") && !says(all, n, "A", NULL),
 		   "over Flycast 2.7: In a game alone, MENU the menu, POWER quits");
 	}
-	/* A game that took the Controller Pak says so, with where to change it */
+	/* A game that took the Controller Pak says so, as its Pak row does */
 	{
 		ctl_game g = { "N64", "Nintendo 64", "N64", "select:r2,r2:none", "", "z64", NULL, NULL,
 		               false, "Controller Pak" };
 		seen_row all[64];
 		int n = game_rows(&g, all, 64, NULL);
 
-		ck(says(all, n, "(note)", "MENU > Pak: Controller Pak"),
-		   "N64: a game with the Controller Pak says it is in, and where");
+		ck(says(all, n, "(note)", "Pak: Controller Pak"),
+		   "N64: a game with the Controller Pak says it is in");
 		ck(!says(all, n, "(note)", "Rumble Pak, not Controller Pak"),
 		   "and the riddle it replaced is gone");
 	}

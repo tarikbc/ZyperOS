@@ -104,10 +104,8 @@ typedef struct {
 	 * system's (below); NULL for anything else. The caller's, held for as
 	 * long as the pages are. */
 	const port_doc *doc;
-	/* The pages the in-game menu's Controls tab opens from its Hotkeys row,
-	 * beside the handheld: none of the system's buttons (the tab is where
-	 * they are), and SELECT alone a row of Hotkeys ("SELECT | The game's")
-	 * rather than its note, so the page fits beside the handheld */
+	/* The pages the in-game menu's Controls tab opens from its Hotkeys row:
+	 * none of the system's buttons, which the tab shows; the rest as ever */
 	bool        no_buttons;
 } ctl_game;
 

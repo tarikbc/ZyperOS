@@ -176,9 +176,9 @@ bool ask_panel(app *a, const menu_style *over, void *ctx, const char *heading,
                const char *q, const char *yes_label);
 
 /* The in-game menu's read-only Controls pages over `over`'s backdrop with
- * its power rule, its width and its side picture: the Controls tab's
- * Hotkeys row, which opens them less the system's buttons (the tab shows
- * those; ctl_game.no_buttons). Left and Right turn them, B goes back. */
+ * its power rule, at their own width: the Controls tab's Hotkeys row, which
+ * opens them less the system's buttons (the tab shows those;
+ * ctl_game.no_buttons). Left and Right turn them, B goes back. */
 void game_controls_pages(app *a, const menu_style *over, void *ctx);
 
 /* What a screen with a panel draws under it, and asks every frame */

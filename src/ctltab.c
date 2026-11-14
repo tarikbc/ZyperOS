@@ -47,6 +47,23 @@ bool ct_says_nothing(const ct_model *m, rm_choice c)
 	return !said[0];
 }
 
+bool ct_select_held_c(const rm_table *t)
+{
+	return t && strstr(t->layer, "select+") != NULL;
+}
+
+void ct_sent(const ct_model *m, rm_table *out)
+{
+	*out = m->cur;
+	if (m->select_held_dpad) out->b[RM_SELECT] = (rm_choice){ (signed char)rm_own(RM_SELECT), 0 };
+}
+
+/* A dead SELECT row: the stick's rule or the N64's C buttons hold it */
+static bool select_dead(const ct_model *m)
+{
+	return m->select_held_c || m->select_held_dpad;
+}
+
 /* ---- the faces ------------------------------------------------------------- */
 
 /* The faces By Letter moves: a Dreamcast's four, a Pocket's two (its X and
@@ -101,30 +118,66 @@ bool ct_reset_live(const ct_model *m)
 	return !m->scope_all && m->stick_offered && m->stick_on != m->stick_default;
 }
 
-/* The button that gave target `t` in the default, plainly if one did, else
- * by a turbo: the row its warning goes under. -1 for none. */
-static int giver(const ct_model *m, int t)
+/* Whether button `i` can be what lost a game button: a changed one that
+ * gives no game button plainly in what is sent - Nothing, a turbo, one its
+ * core names nothing - or a SELECT the stick's rule sends as SELECT. A
+ * plain choice swaps, so it loses nothing, and a button as its default has
+ * it lost nothing. */
+static bool lossy(const ct_model *m, const rm_table *sent, int i)
 {
-	int i;
+	const rm_choice c = sent->b[i];
 
-	for (i = 0; i < RM_BUTTONS; i++)
-		if (m->def.b[i].to == t && !m->def.b[i].turbo) return i;
-	for (i = 0; i < RM_BUTTONS; i++)
-		if (m->def.b[i].to == t) return i;
-	return -1;
+	if (!rm_changed(&m->def, &m->cur, i)) return false;
+	return c.turbo || ct_says_nothing(m, c) || !same(c, m->cur.b[i]);
+}
+
+/* The row each lost game button's warning goes under: the button whose
+ * change caused it. One the stick's rule sends otherwise, if it is what
+ * gave it; else one that gives no game button now - the one that gave it
+ * by default if that is one of them, else the first of them not taken yet;
+ * failing those its default's giver, else A. */
+static void causes(const ct_model *m, const rm_table *sent, const int *lost, int nlost, int *under)
+{
+	bool taken[RM_BUTTONS] = { false };
+	int j, i;
+
+	for (j = 0; j < nlost; j++) {
+		under[j] = -1;
+		for (i = 0; i < RM_BUTTONS && under[j] < 0; i++)
+			if (!same(sent->b[i], m->cur.b[i]) && m->cur.b[i].to == lost[j]) {
+				under[j] = i;
+				taken[i] = true;
+			}
+	}
+	for (j = 0; j < nlost; j++) {
+		for (i = 0; i < RM_BUTTONS && under[j] < 0; i++)
+			if (!taken[i] && lossy(m, sent, i) && m->def.b[i].to == lost[j]) {
+				under[j] = i;
+				taken[i] = true;
+			}
+	}
+	for (j = 0; j < nlost; j++) {
+		for (i = 0; i < RM_BUTTONS && under[j] < 0; i++)
+			if (!taken[i] && lossy(m, sent, i)) {
+				under[j] = i;
+				taken[i] = true;
+			}
+		for (i = 0; i < RM_BUTTONS && under[j] < 0; i++)
+			if (m->def.b[i].to == lost[j]) under[j] = i;
+		if (under[j] < 0) under[j] = RM_A;
+	}
 }
 
 int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bufs *b)
 {
-	int lost[RT_COUNT], nlost, n = 0, i, j;
-	bool warned[RT_COUNT] = { false };
+	int lost[RT_COUNT], under[RT_COUNT], nlost, n = 0, i, j;
+	rm_table sent;
 
 #define ROW(id_, r_, c_) do { ids[n] = (id_); out[n] = (r_); vcol[n] = (c_); n++; } while (0)
-	/* Applies To: All <System> by the home's label; a game with its own
+	/* Applies To: This Game, or the system by its name; a game with its own
 	 * table says so in accent-ink, whichever it shows */
-	if (m->scope_all) snprintf(b->scope, sizeof b->scope, T(S_GAMEMENU_ALL_SYSTEM),
-	                           m->sys_label ? m->sys_label : m->tag);
-	else snprintf(b->scope, sizeof b->scope, "%s", T(S_GAMEMENU_THIS_GAME));
+	snprintf(b->scope, sizeof b->scope, "%s",
+	         !m->scope_all ? T(S_GAMEMENU_THIS_GAME) : m->sys_label ? m->sys_label : m->tag);
 	ROW(CT_SCOPE, ((menu_row){ T(S_GAMEMENU_APPLIES_TO), b->scope, !m->fixed_game }),
 	    m->game_has_own ? 1u : 0u);
 	if (m->scope_all && m->game_has_own)
@@ -141,13 +194,16 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
 		    f != ct_faces(m, &m->def) ? 1u : 0u);
 	}
 
-	/* The game buttons left with none, each under the button that gave it */
-	nlost = rm_unreached(&m->def, &m->cur, lost, RT_COUNT);
+	/* The game buttons left with none by what is sent, each under the
+	 * button whose change caused it */
+	ct_sent(m, &sent);
+	nlost = rm_unreached(&m->def, &sent, lost, RT_COUNT);
+	causes(m, &sent, lost, nlost, under);
 	for (i = 0; i < RM_BUTTONS; i++) {
 		const rm_choice c = m->cur.b[i];
 
 		if (i == RM_SELECT && (m->select_held_c || m->select_held_dpad)) {
-			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(m->select_held_c ? S_CONTROLS_HELD_C
+			ROW(CT_BUTTON + i, ((menu_row){ NAME[i], T(m->select_held_c ? S_CONTROLS_SELECT_C_BUTTONS
 			                                                       : S_CONTROLS_HELD_DPAD), false }), 0u);
 		} else {
 			if (ct_says_nothing(m, c)) snprintf(b->val[i], sizeof b->val[i], "%s", T(S_CONTROLS_NOTHING));
@@ -159,10 +215,9 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
 			const int t = lost[j];
 			char said[64];
 
-			if (warned[t] || (giver(m, t) != i && giver(m, t) >= 0)) continue;
+			if (under[j] != i) continue;
 			/* A target the core names nothing is no game button to lose */
 			ctl_remap_say(m->tag, m->ext, (rm_choice){ (signed char)t, 0 }, said, sizeof said);
-			warned[t] = true;
 			if (!said[0]) continue;
 			snprintf(b->warn[t], sizeof b->warn[t], T(S_CONTROLS_NO_BUTTON_NOW), said);
 			ROW((ct_row)(CT_WARN + t), ((menu_row){ b->warn[t], NULL, false }), 0u);
@@ -220,7 +275,7 @@ int ct_choice_at(const ct_model *m, const rm_choice *ch, int n, rm_choice c)
 	return -1;
 }
 
-rm_choice ct_step(const ct_model *m, const rm_choice *ch, int n, int button, int dir)
+rm_choice ct_next(const ct_model *m, const rm_choice *ch, int n, int button, int dir)
 {
 	int at;
 
@@ -234,6 +289,31 @@ rm_choice ct_taken(const ct_model *m, int button, rm_choice c)
 {
 	if (c.to == RM_NONE && ct_says_nothing(m, m->def.b[button])) return m->def.b[button];
 	return c;
+}
+
+void ct_pick(ct_model *m, int button, rm_choice c)
+{
+	rm_table from = m->base;
+	const bool dead = select_dead(m) && button != RM_SELECT;
+
+	/* A held SELECT is no button to swap with: it gives nothing a swap
+	 * could find, and keeps what it gave */
+	if (dead) from.b[RM_SELECT] = (rm_choice){ RM_NONE, 0 };
+	rm_set(&m->cur, &from, button, ct_taken(m, button, c));
+	if (dead) m->cur.b[RM_SELECT] = m->base.b[RM_SELECT];
+}
+
+bool ct_step(ct_model *m, ct_row id, int dir)
+{
+	const int bt = ct_button_of(id);
+	rm_choice ch[32];
+	int n;
+
+	if (bt < 0 || (bt == RM_SELECT && select_dead(m))) return false;
+	n = ctl_remap_choices(m->tag, m->ext, m->map, ch, 32);
+	if (n <= 0) return false;
+	ct_pick(m, bt, ct_next(m, ch, n, bt, dir));
+	return true;
 }
 
 /* ---- a button's choices ---------------------------------------------------------- */
@@ -256,40 +336,4 @@ int ct_pick_rows(const ct_model *m, int button, const rm_choice *ch, int n,
 	}
 	*sel = now >= 0 ? now : 0;
 	return n;
-}
-
-/* ---- the read-only pages ------------------------------------------------------- */
-
-unsigned ct_keys_named(const char *label)
-{
-	static const struct { const char *name; unsigned keys; } WORD[] = {
-		{ "A", 1u << TD_A }, { "B", 1u << TD_B }, { "X", 1u << TD_X }, { "Y", 1u << TD_Y },
-		{ "L1", 1u << TD_L1 }, { "R1", 1u << TD_R1 }, { "L2", 1u << TD_L2 }, { "R2", 1u << TD_R2 },
-		{ "START", 1u << TD_START }, { "SELECT", 1u << TD_SELECT }, { "MENU", 1u << TD_MENU },
-		{ "POWER", 1u << TD_POWER }, { "VOL", 1u << TD_VOLUP | 1u << TD_VOLDN },
-		{ "VOL+", 1u << TD_VOLUP }, { "VOL-", 1u << TD_VOLDN },
-	};
-	unsigned k = 0;
-	const char *p = label;
-
-	if (!label) return 0;
-	/* The words a language writes for what has no printed name */
-	if (strstr(label, T(S_CONTROLS_KEY_DPAD))) k |= 1u << TD_DPAD;
-	if (!strcmp(label, T(S_CONTROLS_KEY_VOLUME))) k |= 1u << TD_VOLUP | 1u << TD_VOLDN;
-	/* The printed names, between the "+" of a chord, the ", " of one after
-	 * another and the "/" of a pair */
-	while (*p) {
-		size_t len = strcspn(p, "/,+ ");
-		unsigned w;
-
-		/* VOL+ and VOL-: the sign is the name's own */
-		if (len == 3 && !strncmp(p, "VOL", 3) && (p[3] == '+' || p[3] == '-') &&
-		    (p[4] == '\0' || strchr("/, ", p[4])))
-			len = 4;
-		for (w = 0; w < sizeof WORD / sizeof WORD[0]; w++)
-			if (strlen(WORD[w].name) == len && !strncmp(WORD[w].name, p, len)) k |= WORD[w].keys;
-		p += len;
-		while (*p && strchr("/,+ ", *p)) p++;
-	}
-	return k;
 }

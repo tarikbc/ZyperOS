@@ -22595,8 +22595,8 @@ static int game_controls_width(app *a, const ctl_game *g)
  *
  * Over `bg`, the port's menu's Controls row; or opened by the Controls tab's
  * Hotkeys row (game_controls_pages), over `over`'s backdrop with its power
- * rule, its panel's width and the handheld beside the rows, less the
- * system's buttons, which the tab beside it shows (ctl_game.no_buttons). */
+ * rule, less the system's buttons, which the tab shows (ctl_game.no_buttons).
+ * At their own width either way, with no handheld beside them. */
 static void controls_pages(app *a, SDL_Texture *bg, const menu_style *over, void *ctx)
 {
 	ctl_game g = game_controls_of(a);
@@ -22609,7 +22609,7 @@ static void controls_pages(app *a, SDL_Texture *bg, const menu_style *over, void
 	g.no_buttons = over != NULL;
 	ctl_set_fn_volume(plat_brightness_on_volume());
 	pages = ctl_game_pages(&g);
-	width = over ? over->fixed_w : game_controls_width(a, &g);
+	width = game_controls_width(a, &g);
 	n = controls_page_rows(&g, page, width, &b, &rows, &loop_at);
 	mq_reset(MQ_VSCROLL);
 
@@ -22658,12 +22658,8 @@ static void controls_pages(app *a, SDL_Texture *bg, const menu_style *over, void
 		tick_theme(a);
 		if (over && over->backdrop) over->backdrop(a, ctx, k);
 		else paused_backdrop(a, bg, k);
-		g_menu_side = over ? over->side : NULL;
-		g_menu_side_w = over ? over->side_w : 0;
 		menu_draw_caption(a, b.head, rows, n, -1, width, a->tint, NULL,
 		                  false, loop_at, count[0] ? count : NULL);
-		g_menu_side = NULL;
-		g_menu_side_w = 0;
 		plat_present();
 		ui_frame_rest(8);
 	}
@@ -25069,21 +25065,16 @@ static void shot_draw_ctltab(app *a, menu_tabs *tabs)
 		const menu_row *pr;
 		ctl_buf cb;
 		char count[16];
-		int pages, np, loop_at;
+		int pages, np, loop_at, width;
 
 		cg.no_buttons = true;
 		ctl_set_fn_volume(shot_fn_volume || plat_brightness_on_volume());
 		pages = ctl_game_pages(&cg);
-		np = controls_page_rows(&cg, shot_gm_keys, over.fixed_w, &cb, &pr, &loop_at);
+		width = game_controls_width(a, &cg);
+		np = controls_page_rows(&cg, shot_gm_keys, width, &cb, &pr, &loop_at);
 		snprintf(count, sizeof count, "%d / %d", shot_gm_keys < pages ? shot_gm_keys + 1 : 1, pages);
-		ctlscr_pages_shot(true);
-		g_menu_side = ctlscr_side;
-		g_menu_side_w = CTLSCR_SIDE_W;
-		menu_draw_caption(a, cb.head, pr, np, -1, over.fixed_w, a->tint, NULL, false, loop_at,
+		menu_draw_caption(a, cb.head, pr, np, -1, width, a->tint, NULL, false, loop_at,
 		                  pages > 1 ? count : NULL);
-		g_menu_side = NULL;
-		g_menu_side_w = 0;
-		ctlscr_pages_shot(false);
 		return;
 	}
 	st.tabs = tabs;

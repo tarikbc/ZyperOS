@@ -1932,8 +1932,8 @@ static void ctl_tab(void)
 	/* All PlayStation, and a stick off its default */
 	m.scope_all = true;
 	n = ct_rows(&m, ids, rows, vcol, &b);
-	ck(!strcmp(val(&rows[0]), "All PlayStation") && ct_at(ids, n, CT_OWN_NOTE) < 0,
-	   "All PlayStation, and no note with no own buttons");
+	ck(!strcmp(val(&rows[0]), "PlayStation") && ct_at(ids, n, CT_OWN_NOTE) < 0,
+	   "every game of the system: PlayStation, by its name, and no note with no own buttons");
 	m.scope_all = false;
 	m.stick_on = true;
 	n = ct_rows(&m, ids, rows, vcol, &b);
@@ -1952,7 +1952,8 @@ static void ctl_tab(void)
 	ck(labels_are(rows, n, n64, 15), "ct_rows_n64: the Pak after D-pad as Stick, SELECT held for the C buttons");
 	ck(ids[2] == CT_PAK && !strcmp(val(&rows[2]), "Rumble Pak") && rows[2].live, "Pak says what is in");
 	ck(!strcmp(val(&rows[1]), "On") && !vcol[1], "the stick On, its default");
-	ck(!rows[12].live && !strcmp(val(&rows[12]), "Held: C"), "SELECT is dead: Held: C (its buttons)");
+	ck(!rows[12].live && !strcmp(val(&rows[12]), "C buttons"), "SELECT is dead: C buttons");
+	ck(ct_select_held_c(&m.def), "the N64's SELECT layer (select+a:a) holds SELECT for the C buttons");
 	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT), "the stick lights SELECT, the way to the D-pad");
 	ck(ct_lit(&m, CT_PAK) == 0, "Pak lights nothing");
 
@@ -2023,6 +2024,53 @@ static void ctl_tab(void)
 	ck(ct_at(ids, n, CT_WARN + RT_B) < 0 && ct_at(ids, n, CT_WARN + RT_X) == ct_at(ids, n, CT_BUTTON + RM_X) + 1,
 	   "a turbo of it is a button; triangle is the one with none now, under X");
 
+	/* ct_warn_cause: Y given cross, so B gives square; then B on Nothing:
+	 * square has no button now, under B, whose change did it, not under Y,
+	 * which gave it by default */
+	ct_ps1(&m);
+	rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+	m.base = m.cur;
+	m.cur.b[RM_B] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_Y);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_B && !strcmp(lbl(&rows[k]), PAD_SQUARE " has no button now"),
+	   "ct_warn_cause: \"□ has no button now\" under B, the row that did it");
+	m.cur.b[RM_A] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_A) == ct_at(ids, n, CT_BUTTON + RM_A) + 1 &&
+	   ct_at(ids, n, CT_WARN + RT_Y) == ct_at(ids, n, CT_BUTTON + RM_B) + 1,
+	   "and with A on Nothing too, circle's under A and square's still under B");
+
+	/* ct_dead_select: the Dreamcast with the stick on sends SELECT as SELECT,
+	 * so what a SELECT changed before gave is lost, and said, under SELECT;
+	 * and a swap never lands on the dead row */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.def;
+	m.cur.b[RM_SELECT] = (rm_choice){ RT_START, 0 };
+	m.cur.b[RM_START] = (rm_choice){ RT_SELECT, 0 };
+	m.stick_offered = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_START) < 0, "the stick off: SELECT gives Start, nothing lost");
+	m.stick_on = m.select_held_dpad = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_WARN + RT_START);
+	ck(k > 0 && ids[k - 1] == CT_BUTTON + RM_SELECT, "the stick on: Start has no button now, under SELECT");
+	m.cur = m.base = m.def;
+	ct_pick(&m, RM_A, (rm_choice){ RT_SELECT, 0 });
+	ck(m.cur.b[RM_SELECT].to == RT_SELECT && m.cur.b[RM_A].to == RT_SELECT,
+	   "a choice SELECT gives is no swap with the dead SELECT: it keeps it");
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.select_held_c = true;
+	ct_pick(&m, RM_Y, (rm_choice){ RT_R2, 0 });
+	ck(m.cur.b[RM_SELECT].to == RT_R2 && m.cur.b[RM_Y].to == RT_R2,
+	   "the N64's SELECT keeps R2, the C buttons' own, when another button is given it");
+	ck(!ct_step(&m, CT_BUTTON + RM_SELECT, +1), "and its dead row has no step");
+
 	/* ct_lit_swap */
 	ct_ps1(&m);
 	rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
@@ -2036,8 +2084,18 @@ static void ctl_tab(void)
 	ct_ps1(&m);
 	nch = ctl_remap_choices("PS1", "chd", "", ch, 32);
 	ck(nch == 15, "the PlayStation's choices: four faces, six more, four turbos, Nothing");
-	ck(ct_step(&m, ch, nch, RM_A, +1).to == RT_B && ct_step(&m, ch, nch, RM_A, -1).to == RM_NONE,
+	ck(ct_next(&m, ch, nch, RM_A, +1).to == RT_B && ct_next(&m, ch, nch, RM_A, -1).to == RM_NONE,
 	   "Right on A is cross, Left goes round to Nothing");
+	ck(!ct_select_held_c(&m.def), "the PlayStation's SELECT is its own");
+	/* A step works from the table as it was when the cursor came onto the
+	 * row: a second step undoes the first one's swap */
+	ck(ct_step(&m, CT_BUTTON + RM_Y, -1) && m.cur.b[RM_Y].to == RT_X && m.cur.b[RM_X].to == RT_Y,
+	   "Left on Y: triangle, and X takes square");
+	ck(ct_step(&m, CT_BUTTON + RM_Y, -1) && m.cur.b[RM_Y].to == RT_B && m.cur.b[RM_B].to == RT_Y &&
+	   m.cur.b[RM_X].to == RT_X, "Left again: cross, B takes square, and X has triangle back");
+	ck(ct_step(&m, CT_BUTTON + RM_Y, +1) && ct_step(&m, CT_BUTTON + RM_Y, +1) && rm_equal(&m.cur, &m.base),
+	   "and two Rights put the table back as it was");
+	ck(!ct_step(&m, CT_SCOPE, +1) && rm_equal(&m.cur, &m.base), "no step on a row that is no button");
 	i = ct_choice_at(&m, ch, nch, m.cur.b[RM_START]);
 	ck(i >= 0 && ch[i].to == RT_START, "START is among them");
 	m.cur.b[RM_A] = (rm_choice){ RT_L1, 0 };
@@ -2098,26 +2156,16 @@ static void ctl_tab(void)
 		g.no_buttons = true;
 		ck(ctl_game_pages(&g) == 2 && pages > 2, "the PlayStation's pages less its buttons: Hotkeys, In a game");
 		np = ctl_game_rows(&g, 0, pr, &cb);
-		ck(!strcmp(cb.head, "Controls: Hotkeys") && np == 5 && !strcmp(lbl(&pr[4]), "SELECT") &&
-		   !strcmp(val(&pr[4]), "The game's") && !ROW_IS_NOTE(pr[4]),
-		   "Hotkeys first, SELECT alone a row: \"SELECT | The game's\"");
+		ck(!strcmp(cb.head, "Controls: Hotkeys") && np == 5 && ROW_IS_NOTE(pr[4]),
+		   "Hotkeys first, as ever, SELECT alone its note");
 		memset(&g, 0, sizeof g);
 		g.tag = "N64"; g.name = "Nintendo 64"; g.short_name = "N64"; g.ext = "z64";
 		g.map = CT_N64_MAP; g.accessory = "Rumble Pak"; g.no_buttons = true;
 		np = ctl_game_rows(&g, 0, pr, &cb);
-		ck(!strcmp(cb.head, "Controls: C buttons") && np > 0 && !ROW_IS_NOTE(pr[np - 1]),
-		   "the N64's C buttons first, with no note of where the Pak is: the tab beside it has the row");
+		ck(!strcmp(cb.head, "Controls: C buttons") && np > 0 && ROW_IS_NOTE(pr[np - 1]) &&
+		   !strcmp(lbl(&pr[np - 1]), "Pak: Rumble Pak"),
+		   "the N64's C buttons first, and which Pak is in, not where (the tab's Pak row is)");
 	}
-
-	/* The read-only pages light what they name */
-	ck(ct_keys_named("SELECT+R1") == (1u << TD_SELECT | 1u << TD_R1), "SELECT+R1: SELECT and R1");
-	ck(ct_keys_named("MENU, X") == (1u << TD_MENU | 1u << TD_X), "MENU, X: MENU and X");
-	ck(ct_keys_named("X/Y/L2/R2") == (1u << TD_X | 1u << TD_Y | 1u << TD_L2 | 1u << TD_R2), "X/Y/L2/R2");
-	ck(ct_keys_named("MENU+VOL") == (1u << TD_MENU | 1u << TD_VOLUP | 1u << TD_VOLDN), "MENU+VOL");
-	ck(ct_keys_named("SELECT+D-pad") == (1u << TD_SELECT | 1u << TD_DPAD), "SELECT and the d-pad's word");
-	ck(ct_keys_named("Volume rocker") == (1u << TD_VOLUP | 1u << TD_VOLDN), "the volume's word");
-	ck(ct_keys_named("START/SELECT") == (1u << TD_START | 1u << TD_SELECT) && ct_keys_named("F1/F2") == 0,
-	   "START/SELECT, and nothing for the Brick's F1/F2");
 }
 
 /* NES Player 2 (src/p2.h): its row right after Shader's group, on a game

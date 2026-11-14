@@ -157,7 +157,6 @@ clock.label_12h
 
 # controls: no shot draws it yet
 controls.battery
-controls.select_games  # the Hotkeys page beside the handheld (--gm-keys): its shared rows (Quick save, In a game's) do not all fit the 580-unit column yet in every language, so no shot of it is checked
 controls.show_keypad
 controls.disk_side
 controls.eject_disk

@@ -135,7 +135,7 @@ static int game(menu_row *out)
  * one a system. The note is the rule that keeps SELECT a game button: a
  * press with no shoulder after it is the game's. Shared with a game's own
  * Hotkeys page (hotkeys_for). */
-static int hotkey_rows(menu_row *out, bool states, bool select_note, bool select_row)
+static int hotkey_rows(menu_row *out, bool states, bool select_note)
 {
 	int n = 0;
 
@@ -145,16 +145,13 @@ static int hotkey_rows(menu_row *out, bool states, bool select_note, bool select
 	}
 	out[n++] = (menu_row){ "SELECT+R2", T(S_CONTROLS_FASTER), false };
 	out[n++] = (menu_row){ "SELECT+L2", T(S_CONTROLS_SLOWER), false };
-	/* The rule, as a note under them, or beside the handheld (the Controls
-	 * tab's pages, whose column has no room for the note) a row of its own */
-	if (select_note && select_row) out[n++] = (menu_row){ "SELECT", T(S_CONTROLS_SELECT_GAMES), false };
-	else if (select_note) out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SELECT));
+	if (select_note) out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SELECT));
 	return n;
 }
 
 static int hotkeys(menu_row *out)
 {
-	return hotkey_rows(out, true, true, false);
+	return hotkey_rows(out, true, true);
 }
 
 static int muse(menu_row *out)
@@ -557,16 +554,18 @@ static const ctl_extra EXTRAS[] = {
 	 * up, and ParallelN64's the same: A, Y, B and X): the core's own R2 held
 	 * does it, and map|N64 puts that on SELECT,
 	 * which the N64 has none of (R2 until 2026-11-07, SELECT's shoulders
-	 * being the hotkeys'). Under them, the Pak the controller holds and where
-	 * it is changed, "MENU > Pak: Rumble Pak" (ctl_game.accessory): it said
-	 * "Rumble Pak, not Controller Pak" until 2026-11-07, when the Pak became
-	 * the player's to choose, per game, and that read as a riddle. */
+	 * being the hotkeys'). Under them, the Pak the controller holds, "Pak:
+	 * Rumble Pak" (ctl_game.accessory), as the in-game menu's Controls tab
+	 * says it where it is chosen: it said "Rumble Pak, not Controller Pak"
+	 * until 2026-11-07, when the Pak became the player's to choose, per game,
+	 * and that read as a riddle, and "MENU > Pak: ..." until the Pak row
+	 * moved into the Controls tab (2026-11-13). */
 	{ "N64", S_CONTROLS_C_BUTTONS, { { BTN("SELECT+X"), S_CONTROLS_C_UP },
 	                                 { BTN("SELECT+A"), S_CONTROLS_C_RIGHT },
 	                                 { BTN("SELECT+B"), S_CONTROLS_C_DOWN },
 	                                 { BTN("SELECT+Y"), S_CONTROLS_C_LEFT },
 	                                 { SAYS(S_CONTROLS_SELECT_DPAD), S_CONTROLS_N64_DPAD } },
-	  true, S_CONTROLS_PAK_WHERE },
+	  true, S_CONTROLS_PAK_IN },
 	/* Diatom's (screens.h): L2 the other screen, R2 the stylus, and while
 	 * it is on the d-pad moves it and A touches. MENU+L1 switched the
 	 * screens too until 2026-11-06 (My note: L2 does it). The d-pad is not
@@ -1149,12 +1148,10 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 			snprintf(b->val[n], sizeof b->val[n], "%s", T(x->rows[i].does));
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
 		}
-		/* Beside the Controls tab, whose Pak row is the one it names, no
-		 * word of where it is */
-		if (x->has_note && x->note == S_CONTROLS_PAK_WHERE && g->no_buttons) {
-		} else if (x->has_note && x->note == S_CONTROLS_PAK_WHERE) {
-			/* the menu path to the Pak row, and what it says now */
-			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_WHERE), T(S_GAMEMENU_PAK),
+		if (x->has_note && x->note == S_CONTROLS_PAK_IN) {
+			/* which Pak is in, as the Controls tab's Pak row says it (it
+			 * is chosen there) */
+			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_IN), T(S_GAMEMENU_PAK),
 			         g->accessory ? g->accessory : "Rumble Pak");
 			out[n++] = MENU_NOTE(b->note);
 		} else if (x->has_note) {
@@ -1166,7 +1163,7 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 		/* No quick save or load where the core keeps no state: SELECT+R1
 		 * and SELECT+L1 are the game's there */
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_HOTKEYS));
-		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g), g->no_buttons);
+		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g));
 		break;
 	case PG_PM:
 		heading(g, title, b);

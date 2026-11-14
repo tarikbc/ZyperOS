@@ -44,9 +44,8 @@
 #define KEEP_W 256
 #define KEEP_H 300
 
-/* Which screen sets the handheld's lights: the tab, a button's choices, or
- * the Hotkeys pages */
-typedef enum { CS_TAB, CS_PICK, CS_PAGES } cs_mode;
+/* Which screen sets the handheld's lights: the tab, or a button's choices */
+typedef enum { CS_TAB, CS_PICK } cs_mode;
 
 static struct {
 	/* The card as the tab shows it, read again when it changed */
@@ -74,8 +73,9 @@ static struct {
 	unsigned    press_t0[TD_KEYS];
 	cs_mode     mode;
 	int         pick_button;
-	/* A page over the tab opens or closes: the handheld holds still over
-	 * the panels' motion (MENU_SIDE_OVER) until a panel with it is at rest */
+	/* A button's choices open or close over the tab: the handheld holds
+	 * still over the panels' motion (MENU_SIDE_OVER) until a panel with it
+	 * is at rest */
 	bool        steady;
 	td_keep     keep;
 } g_cs = { .stale = true, .base_row = -1, .snap = true };
@@ -88,16 +88,16 @@ static int column_w(const ctlscr_game *g)
 	return (g->over && g->over->fixed_w > 0 ? g->over->fixed_w : 860) - CTLSCR_SIDE_W;
 }
 
-/* All <System> by the system's name, or by its home label where the name
- * does not fit beside Applies To in the rows' column ("All GBA") */
+/* Applies To's value for every game of the system: its name, or its home
+ * label where the name does not fit beside Applies To in the rows' column
+ * (measured with a gap wider than the panel's own, so it is never tight) */
 static void label_of(const ctlscr_game *g, char *out, size_t n)
 {
 	TTF_Font *f = ui_font(UI_F_MENU);
 	const int width = column_w(g);
-	char v[128];
 
-	snprintf(v, sizeof v, T(S_GAMEMENU_ALL_SYSTEM), g->s->name);
-	if (ui_text_width(f, T(S_GAMEMENU_APPLIES_TO)) + ui_font_line(UI_F_MENU) + ui_text_width(f, v) <= width)
+	if (ui_text_width(f, T(S_GAMEMENU_APPLIES_TO)) + ui_font_line(UI_F_MENU) +
+	    ui_text_width(f, g->s->name) <= width)
 		snprintf(out, n, "%s", g->s->name);
 	else
 		snprintf(out, n, "%s", home_label(g->s->tag, g->s->name));
@@ -147,7 +147,7 @@ static void refresh(const ctlscr_game *g)
 	m->face_offered = ctl_letter_layout(g->s->tag, &m->letters);
 	/* The N64's SELECT layer is its C buttons; the Dreamcast's stick rule
 	 * (mode dpad) takes SELECT for its own d-pad while it is on */
-	m->select_held_c = strstr(m->cur.layer, "select+") != NULL;
+	m->select_held_c = ct_select_held_c(&m->cur);
 	m->select_held_dpad = !m->select_held_c && m->stick_on && !strcmp(g->s->stick, "dpad");
 	g_cs.nch = ctl_remap_choices(g->s->tag, g_cs.ext, g->s->map, g_cs.ch, 32);
 	if (g_cs.base_row < 0) g_cs.base = m->cur;
@@ -241,18 +241,9 @@ static void lights_to(unsigned target, unsigned now)
  * now (another tab, or the tab before its rows were built) */
 static bool lights_of(const menu_side *at, unsigned *target)
 {
-	int i;
-
 	switch (g_cs.mode) {
 	case CS_PICK:
 		*target = ct_lit(&g_cs.m, (ct_row)(CT_BUTTON + g_cs.pick_button));
-		return true;
-	case CS_PAGES:
-		/* Every key the page names: it has no cursor */
-		*target = 0;
-		for (i = 0; i < at->n; i++)
-			if (at->rows[i].label && !ROW_IS_NOTE(at->rows[i]))
-				*target |= ct_keys_named(at->rows[i].label);
 		return true;
 	default:
 		if (at->tab_at >= 0 && at->tab_at != GT_CONTROLS) return false;
@@ -272,7 +263,6 @@ static bool lights_of(const menu_side *at, unsigned *target)
 static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 {
 	float dx = 0.0f, op = 1.0f, deg = DEV_DEG;
-	bool lit_side = false;
 	int k;
 
 	*moving = false;
@@ -311,12 +301,7 @@ static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 		if (tween_moving(&g_cs.on[k], at->now) || p->press[k] > 0.0f ||
 		    (g_cs.press_t0[k] && at->now - g_cs.press_t0[k] < 2 * DS_MS_PRESS))
 			*moving = true;
-		if ((k == TD_MENU || k == TD_VOLUP || k == TD_VOLDN) && p->on[k] > 0.0f) lit_side = true;
 	}
-	/* MENU and the volume keys, on a page that names them, stand out of
-	 * their edges as tabs, as the tutorial shows them facing front */
-	p->tabs = lit_side;
-	p->tab_ring = lit_side ? 1.0f : 0.0f;
 	return true;
 }
 
@@ -503,7 +488,7 @@ static menu_style cs_style(const ctlscr_game *g, bool side)
 	return st;
 }
 
-/* After a page over the tab: the handheld holds still while it leaves,
+/* After a button's choices: the handheld holds still while they leave,
  * unless MENU is closing every screen */
 static void back_to_tab(void)
 {
@@ -532,7 +517,8 @@ static menu_result pick_key(app *a, void *ctx, in_button key, int sel)
 
 	(void)a;
 	if (key != IN_ACCEPT || sel < 0 || sel >= g_cs.nch) return MENU_STAY;
-	rm_set(&t, &g_cs.base, c->button, ct_taken(&g_cs.m, c->button, g_cs.ch[sel]));
+	ct_pick(&g_cs.m, c->button, g_cs.ch[sel]);
+	t = g_cs.m.cur;
 	put(c->g, &t);
 	return MENU_DONE;
 }
@@ -554,17 +540,17 @@ static void pick(app *a, const ctlscr_game *g, int button)
 	back_to_tab();
 }
 
+/* The Hotkeys row's pages: the read-only Controls pages, at their own
+ * width and with no handheld, less the system's buttons the tab shows */
 static void pages(app *a, const ctlscr_game *g)
 {
 	cs_ctx c;
-	menu_style st = cs_style(g, true);
+	menu_style st = cs_style(g, false);
 
 	memset(&c, 0, sizeof c);
 	c.g = g;
-	g_cs.mode = CS_PAGES;
-	g_cs.steady = true;
 	game_controls_pages(a, &st, &c);
-	back_to_tab();
+	g_cs.stale = true;
 }
 
 void ctlscr_question(const ctlscr_game *g, char *q, size_t n)
@@ -643,10 +629,11 @@ menu_result ctlscr_key(app *a, const ctlscr_game *g, in_button key, int id)
 		if (side) {
 			rm_table t;
 
-			rm_set(&t, &g_cs.base, bt, ct_taken(m, bt, ct_step(m, g_cs.ch, g_cs.nch, bt,
-			                                                   key == IN_LEFT ? -1 : 1)));
-			put(g, &t);
-			press(ct_key_of(bt));
+			if (ct_step(m, (ct_row)id, key == IN_LEFT ? -1 : 1)) {
+				t = m->cur;
+				put(g, &t);
+				press(ct_key_of(bt));
+			}
 		} else {
 			pick(a, g, bt);
 		}
@@ -673,9 +660,4 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	g_cs.pick_button = bt;
 	menu_draw_styled(a, &st, c.b.head, rows, n, sel);
 	g_cs.mode = CS_TAB;
-}
-
-void ctlscr_pages_shot(bool on)
-{
-	g_cs.mode = on ? CS_PAGES : CS_TAB;
 }

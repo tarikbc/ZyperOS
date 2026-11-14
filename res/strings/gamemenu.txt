@@ -385,7 +385,7 @@ it = Comandi
 # and its value share that, so keep each short.
 
 [gamemenu.applies_to]
-note = The Controls tab's first row: whose buttons the rows under it change, this game's or every game of its system's. A row's label in the 580-unit column beside the handheld.
+note = The Controls tab's first row: whose buttons the rows under it change, this game's (gamemenu.this_game) or every game of its system's (the system's name as its value, PlayStation). A row's label in the 580-unit column beside the handheld.
 en = Applies To
 zh-Hans = 适用于
 es = Se aplica a
@@ -406,19 +406,8 @@ de = Dieses Spiel
 ja = このゲーム
 it = Questo gioco
 
-[gamemenu.all_system]
-note = Applies To's other value: every game of the system, %s its home label ("All PlayStation", "All GBA"). Its value column, beside the label in the 580-unit column: short.
-en = All %s
-zh-Hans = 所有 %s
-es = Todo %s
-pt-BR = Todo %s
-fr = Tout %s
-de = Alle %s
-ja = %s すべて
-it = Tutto %s
-
 [gamemenu.own_buttons]
-note = A quiet row under Applies To while it says All <System> and this game has buttons of its own, which the system's do not reach. A sentence, a whole row of the 580-unit column.
+note = A quiet row under Applies To while it says the system (every game of it) and this game has buttons of its own, which the system's do not reach. A sentence, a whole row of the 580-unit column.
 en = This game keeps its own buttons.
 zh-Hans = 本游戏使用自己的按键。
 es = Este juego tiene sus botones.
@@ -451,7 +440,7 @@ ja = %2$s のボタンを %1$s の設定に戻しますか？
 it = Ripristinare i tasti di %s in %s?
 
 [gamemenu.reset_buttons_all]
-note = Reset Buttons' question in All <System>, wrapped to the confirm panel as Delete Game's is, over Reset and Cancel: %s is the system's name (PlayStation). Every game of it without buttons of its own goes back to ZyperOS's.
+note = Reset Buttons' question while Applies To says the system, wrapped to the confirm panel as Delete Game's is, over Reset and Cancel: %s is the system's name (PlayStation). Every game of it without buttons of its own goes back to ZyperOS's.
 en = Put back ZyperOS's buttons for every %s game?
 zh-Hans = 将所有 %s 游戏恢复为 ZyperOS 的按键？
 es = ¿Volver a los botones de ZyperOS en todos los juegos de %s?

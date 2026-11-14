@@ -49,7 +49,7 @@ run() {
 	ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 	SDL_AUDIODRIVER=dummy \
 	ZYPEROS_ROOT="$D/root" ZYPEROS_CARD="$D" ZYPEROS_ROMS="$D/Roms" \
-	ZYPEROS_USERDATA="$D/userdata" ZYPEROS_SHARED="$D/shared" ZYPEROS_WEB="$D" \
+	ZYPEROS_USERDATA="$D/userdata" ZYPEROS_SHARED="${SHARED:-$D/shared}" ZYPEROS_WEB="$D" \
 	ZYPEROS_FONT=res/fonts/menu.ttf "$BIN" "$@"
 }
 
@@ -175,13 +175,21 @@ for th in light dark; do
 	shot "ctltab-stick-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 2
 	other "$th: D-pad as Stick is its own row, its key lit" "ctltab-stick-$th" "ctltab-$th"
 	shot "ctltab-y-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	# The swap is kept in the library, so on a library of its own: the
+	# shots after it show the card's own table
+	rm -rf "$D/shared-swap" && mkdir -p "$D/shared-swap" || exit 1
+	SHARED="$D/shared-swap"
 	shot "ctltab-swap-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 \
 	     --gm-press left,left --shot-at 400
+	SHARED=""
 	other "$th: a swap changes the rows and the handheld" "ctltab-swap-$th" "ctltab-y-$th"
 	shot "ctltab-pick-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 --gm-pick
 	other "$th: A on Y opens its choices" "ctltab-pick-$th" "ctltab-y-$th"
 	shot "ctltab-keys-$th" --theme "$th" --screen games --gamemenu 13 --gm-tab 2 --gm-keys 0
 	other "$th: the Hotkeys row opens its page" "ctltab-keys-$th" "ctltab-$th"
+	# ...and the swap left nothing behind: the tab on Y is as it was
+	shot "ctltab-y-after-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	same "$th: the swap's shot left the card's table as it was" "ctltab-y-after-$th" "ctltab-y-$th"
 done
 other "the Controls tab's themes are the same picture" "ctltab-light" "ctltab-dark"
 printf 'N64\nMario Kart 64.z64\n' >"$D/root/.last"

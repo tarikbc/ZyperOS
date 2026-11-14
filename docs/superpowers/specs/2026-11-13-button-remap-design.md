@@ -159,15 +159,16 @@ L1 and R1 glyphs, the tab in **label** **text**, its neighbours in
 
 Rows, in order (those in brackets only where they apply):
 
-1. **Applies To**: This Game, or All `<System>` (the system's home label,
-   short name if long: "All PlayStation", "All GBA"). Left/Right and A
-   switch it. It opens on This Game the first time in a game; after that
-   it keeps its value with the tab and the row (section 1) until the game
-   ends, so a player tuning All PlayStation comes back to All PlayStation
-   *(set while writing this)*. Its value is in the **accent-ink** when
-   this game has its own buttons.
+1. **Applies To**: This Game, or `<System>`, every game of the system, by
+   its name ("PlayStation", "Dreamcast"), or by its short label where the
+   name does not fit the row beside Applies To (measured with the font:
+   "PS1" in French). Left/Right and A switch it. It opens on This Game the
+   first time in a game; after that it keeps its value with the tab and
+   the row (section 1) until the game ends, so a player tuning PlayStation
+   comes back to PlayStation *(set while writing this)*. Its value is in
+   the **accent-ink** when this game has its own buttons.
 2. [A dead row, "This game keeps its own buttons.", under Applies To,
-   while it says All `<System>` and this game has its own.]
+   while it says `<System>` and this game has its own.]
 3. [**D-pad as Stick**: On or Off. Always this game's, whatever Applies
    To says. Section 5.]
 4. [**Pak**: an N64 game's, as today.]
@@ -176,21 +177,28 @@ Rows, in order (those in brackets only where they apply):
    handheld's button at the left, what it does at the right, the core's own
    name for it (the names src/controls.c measured; PlayStation and PSP faces
    drawn as their shapes). Section 3.
-7. [A dead row per game button left with no button, "× has no button
-   now", right under the row whose change caused it.]
+7. [A dead row per game button left with no button by what the game is
+   sent (a SELECT the stick's rule takes counts as SELECT), "× has no
+   button now", right under the row whose change caused it: the button
+   that gives no game button now (Nothing, a turbo), not the one that gave
+   it by default.]
 8. **Reset Buttons**: live only when the shown scope differs from its
    default. A asks first, on Cancel, in the confirm panel Delete Game uses:
    "Put back the PlayStation's buttons in Spyro the Dragon?" for This Game,
-   "Put back ZyperOS's buttons for every PlayStation game?" for All.
+   "Put back ZyperOS's buttons for every PlayStation game?" for
+   `<System>`.
 9. **Hotkeys**: A opens the read-only pages that the Controls row opened
    before, less the system's buttons (this tab shows them): what a system
-   adds (the N64's C buttons, the DS's screens), Hotkeys, In a game. On the
-   Hotkeys page, "SELECT alone stays the game's" becomes a row, "SELECT |
-   The game's", so it fits beside the handheld.
+   adds (the N64's C buttons, the DS's screens), Hotkeys, In a game. They
+   are the pages as they were, at their own width, with no handheld beside
+   them (their rows do not fit beside it in every language), SELECT's note
+   under the Hotkeys page's rule. The N64's C buttons page says which Pak
+   is in ("Pak: Rumble Pak"), not where: the Pak row is this tab's.
 
 A row that cannot change on this system is a dead row with its value: the
-N64's SELECT ("Held: C buttons"), and the Dreamcast's SELECT while D-pad
-as Stick is on ("Held: D-pad").
+N64's SELECT ("C buttons"), and the Dreamcast's SELECT while D-pad as
+Stick is on ("Held: D-pad"). A swap never lands on a dead row: it keeps
+what it gives.
 
 The list goes round and scrolls as every list does (11.3), six rows in
 view beside the handheld.
@@ -241,7 +249,7 @@ view beside the handheld.
   change copies it into the game's own map; from then on the game's map is
   edited, and later changes to the system's map do not reach this game.
   Its default (for "changed" and "default") is the system's map in force.
-- **Applies To: All `<System>`** shows the system's map. Changes write
+- **Applies To: `<System>`** shows the system's map. Changes write
   `map.<TAG>` and reach every game of the system without its own map at
   its next start (and this one at once, if it has none). Its default is
   ZyperOS's.
@@ -320,9 +328,9 @@ gives the button in its place on the original pad).
 
 ### 7. The handheld
 
-The tutorial's Pixel 2, on the **Controls tab only** and on the two pages
-opened from it (a button's choices, the Hotkeys pages). Not on Game or
-Display.
+The tutorial's Pixel 2, on the **Controls tab only** and on a button's
+choices opened from it. Not on Game or Display, and not on the Hotkeys
+row's pages, which are at their own width (section 2).
 
 - **Where:** inside the panel, in a column at the left of the rows, under
   the tab row. The rows and the focus fill start 280 units in from the
@@ -334,8 +342,8 @@ Display.
   Stick the d-pad (and SELECT on the N64 and the Dreamcast, the way to
   their own d-pad); Face Buttons the four faces; Reset Buttons every
   changed button; a swap both buttons, while the cursor stays on the row.
-  Applies To, Pak and Hotkeys light nothing. On a page with no cursor (the
-  Hotkeys page) every key the page names lights.
+  Applies To, Pak and Hotkeys light nothing. On a button's choices, the
+  button.
 - **Turn:** it faces front (the tutorial's front pose, 10 degrees). A lit
   shoulder stands up out of the top edge, as in the tutorial.
 
@@ -350,7 +358,8 @@ DESIGN.md 8's tokens and curves only; nothing overshoots.
 | Up or Down | the fill glides in **quick** (as today); the old key's light goes out and the new key's comes in, in **quick** (as the tutorial does) |
 | Left or Right on a button | the key presses in **press** (80 ms in, 80 out); a swapped partner lights in **quick** |
 | A shoulder row | the shoulder stands up in **quick** |
-| A to a button's choices, Hotkeys, back | the handheld holds still while the list beside it changes |
+| A to a button's choices, and back | the handheld holds still while the list beside it changes |
+| A on Hotkeys, and back | the handheld goes and comes with the panel, as a page with none opens over it |
 | The menu opening on Controls | the handheld opens with the panel (96% to full, in **move**) |
 
 Every motion is interruptible and tells the redraw clock when it ends
@@ -411,12 +420,13 @@ All in the library database, beside `pak.` and `stick.`:
 ### 11. Copy
 
 New strings in res/strings, in every language there: the tab names Game,
-Display, Controls; Applies To, This Game, All %s; D-pad as Stick (the
+Display, Controls; Applies To, This Game; D-pad as Stick (the
 Title Case of controls.dpad_stick); Face Buttons, By Letter, By Place,
 Mixed; Nothing; Turbo %s (controls.turbo exists); default; "%s has no
 button now"; "This game keeps its own buttons."; Reset Buttons and its two
-questions; Buttons (the details row); "Held: C buttons", "Held: D-pad";
-"The game's".
+questions; Buttons (the details row); "C buttons" (the N64's SELECT row),
+"Held: D-pad"; "%s: %s" for a button's choices' heading; and the C buttons
+page's Pak note says "Pak: Rumble Pak".
 
 ### 12. Docs and the site
 
