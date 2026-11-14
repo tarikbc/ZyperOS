@@ -213,6 +213,13 @@ int  menu_std_width(app *a);
 int  menu_list_fit(int fixed, int rules, int notes);
 /* One line on a panel over the shelf, before something that blocks */
 void wait_panel(app *a, const char *heading, const char *msg);
+/* A question on a panel over the shelf, Yes on `yes_label`: true on Yes */
+bool confirm_panel(app *a, const char *heading, const char *msg,
+                   const char *yes_label);
+/* What a screen with its own page draws first: the theme's ground */
+void draw_background(app *a);
+/* A move on a page heard: `b`'s step sound */
+void moved_sound(app *a, in_button b);
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);

@@ -15,6 +15,7 @@
 #include "library.h"
 #include "muselib.h"
 #include "platform.h"
+#include "sysupdate.h"
 
 #include <SDL.h>
 #include <signal.h>
@@ -316,6 +317,15 @@ void gm_quit(void);
 typedef struct { int shelf, game; unsigned hold_ms; } game_pick;
 extern game_pick g_pick;
 void pick_launch(app *a);
+
+/* System Update (src/update_screen.c reads it): its files, its program
+ * started, what it says (read at most four times a second, g_up_read_at
+ * the last time), and its page up, which keeps the corner's mark off */
+void up_path(char *buf, size_t n, const char *name);
+void up_spawn(const char *cmd);
+const su_view *up_view(bool now);
+extern unsigned g_up_read_at;
+extern bool g_up_shown;
 
 /* The launcher's own accent, Muse's and Favorites': ui.h and theme.h's */
 #define ZYPEROS_ACCENT ui_rgb(theme()->accent)

@@ -68,7 +68,7 @@ def release_notes(path, most=12, longest=500):
     release notes' "## What's new" heading (every point of the file when it
     has none), each whole, as plain text: links to their words, the
     Markdown marks gone, one line each. The page wraps them and scrolls
-    (src/main.c, update_page_draw); a point longer than `longest` is cut at a
+    (src/update_screen.c, update_page_draw); a point longer than `longest` is cut at a
     word with an ellipsis, which no release has needed. Until 2026-11-11 each
     was cut at 110 characters, and the "Good to know" points came too."""
     if not path or not os.path.isfile(path):
