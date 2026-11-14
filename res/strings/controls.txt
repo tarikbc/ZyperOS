@@ -474,7 +474,7 @@ ja = %s 連射
 it = Turbo %s
 
 [controls.nothing]
-note = What a button does when it is set to nothing, in the Controls tab's list of choices: the game gets no button from it. Short, a value.
+note = What a button does when it is set to nothing: the game gets no button from it. A button's value on the Controls tab (the value column beside the button), and the last of its list of choices. Short, a value.
 en = Nothing
 zh-Hans = 无
 es = Nada
@@ -1525,7 +1525,7 @@ it = Croce come levetta
 # and its value share that, so keep each short.
 
 [controls.dpad_stick_title]
-note = The Controls tab's row: the d-pad turned into the game's left stick, On or Off, for this game (the N64, the Dreamcast, the PlayStation, the PSP). controls.dpad_stick as a row's name, in Title Case where English writes one. A row's label in the 580-unit column beside its value (menu.on_title, menu.off_title): where those are long, as short as the stick's own word (es Palanca, pt-BR Analógico).
+note = The Controls tab's row: the d-pad turned into the game's left stick, On or Off (menu.on_title, menu.off_title), for this game (the N64, the Dreamcast, the PlayStation, the PSP); the handheld beside it lights the d-pad. controls.dpad_stick as a row's name, in Title Case where English writes one. A row's label in the 580-unit column: with its value and the 36-unit gap it has 575, so beside a long Off the phrase does not fit (es "Cruceta como palanca" 537 units beside "Desactivado" 298; pt-BR, fr and it the same) and the row says the stick as popup.stick's short form does (es Palanca, pt-BR Analógico, it Levetta, fr Mode stick; ja 十字 for 十字キー). review: es, pt-BR and it name the stick alone; the whole phrase needs a shorter Off for this row, or the label on two lines.
 en = D-pad as Stick
 zh-Hans = 方向键当摇杆
 es = Palanca
@@ -1536,15 +1536,15 @@ ja = 十字でスティック
 it = Levetta
 
 [controls.face_buttons]
-note = The Controls tab's row on a system whose face buttons carry letters (the Dreamcast, the Saturn, the Neo Geo Pocket): sets the four faces at once, By Letter or By Place. A row's label in the 580-unit column beside its value: where "face buttons" is long, the word for buttons alone (the handheld beside it lights the four).
+note = The Controls tab's row on a system whose face buttons carry letters (the Dreamcast, the Saturn, the Neo Geo Pocket): sets the handheld's four face buttons, A, B, X and Y, at once, By Letter or By Place; the handheld beside it lights the four. A row's label in the 580-unit column beside its value: where the language's words for face buttons do not fit beside By Place (es "Botones frontales" 416 units beside "Por posición" 291, of 539), the four as printed on the handheld, never translated, joined by the slash pairs are (L1/R1): A/B/X/Y.
 en = Face Buttons
 zh-Hans = 正面按键
-es = Botones
-pt-BR = Botões
-fr = Boutons
-de = Tasten
-ja = ボタン配置
-it = Pulsanti
+es = A/B/X/Y
+pt-BR = A/B/X/Y
+fr = A/B/X/Y
+de = A/B/X/Y
+ja = ABXY ボタン
+it = A/B/X/Y
 
 [controls.by_letter]
 note = Face Buttons' value: each button of the handheld gives the game's button with its letter (A gives A). The value column beside Face Buttons.
@@ -1580,10 +1580,10 @@ ja = 混在
 it = Misto
 
 [controls.default]
-note = In a button's list of choices, at the right of the choice it gives when nothing is changed (the system's, or ZyperOS's for every game). Lowercase where the language writes a status so. The value column, beside a choice.
+note = In a button's list of choices, at the right of the choice it gives when nothing is changed (the system's, or ZyperOS's for every game), while another choice is on. Lowercase where the language writes a status so. The value column beside a choice, whose name can be long (an NES's "Turbo A", an Atari 2600's "Interruptor der. A"): the shortest natural word.
 en = default
 zh-Hans = 默认
-es = predeterminado
+es = por defecto
 pt-BR = padrão
 fr = par défaut
 de = Standard
@@ -1591,7 +1591,7 @@ ja = 既定
 it = predefinito
 
 [controls.no_button_now]
-note = A quiet row under a button of the Controls tab whose change left one of the game's buttons on no button of the handheld: %s is that game button as its core names it (×, Start, C). A row of the 580-unit column, beside the handheld.
+note = A quiet row under a button of the Controls tab whose change left one of the game's buttons on no button of the handheld: %s is that game button as its core names it (×, Start, C, Interruptor der. A). Wrapped to the 580-unit column a line a row, as gamemenu.own_buttons is: keep it to two lines.
 en = %s has no button now
 zh-Hans = %s 现在没有按键
 es = %s ya no tiene botón
@@ -1599,7 +1599,7 @@ pt-BR = %s ficou sem botão
 fr = %s n'a plus de bouton
 de = %s hat keine Taste mehr
 ja = %s のボタンがありません
-it = %s non ha più un tasto
+it = %s resta senza pulsante
 
 [controls.select_c_buttons]
 note = The Controls tab's SELECT row on a Nintendo 64 game, which cannot change: SELECT is the N64's C buttons (held, with A, B, X, Y). The N64's own name for them, as the C buttons page says it, written whole. The value column beside SELECT, in the 580-unit column.
@@ -1613,7 +1613,7 @@ ja = C ボタン
 it = Pulsanti C
 
 [controls.held_dpad]
-note = The Controls tab's SELECT row on a Dreamcast game with D-pad as Stick on: SELECT is held for the Dreamcast's own d-pad. The value column beside SELECT.
+note = The Controls tab's SELECT row on a Dreamcast game with D-pad as Stick on: SELECT is held for the Dreamcast's own d-pad. The value column beside SELECT (181 units of the 575), so 358 at most: the d-pad by its short word where controls.key.dpad's does not fit after the verb (es cruz for Cruceta, pt-BR D-pad for Direcional).
 en = Held: D-pad
 zh-Hans = 按住：方向键
 es = Mantén: cruz

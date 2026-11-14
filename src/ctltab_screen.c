@@ -571,7 +571,7 @@ static void reset(app *a, const ctlscr_game *g)
 	memset(&c, 0, sizeof c);
 	c.g = g;
 	ctlscr_question(g, q, sizeof q);
-	if (!ask_panel(a, &st, &c, T(S_GAMEMENU_RESET_BUTTONS), q, T(S_GAMEMENU_RESET))) return;
+	if (!ask_panel(a, &st, &c, T(S_GAMEMENU_RESET_BUTTONS), q, T(S_GAMEMENU_RESET_BUTTONS_YES))) return;
 	rms_reset(g->s, scope_all(g) ? NULL : g->file);
 	if (!scope_all(g) && rms_stick_offered(g->s) && rms_stick_get(g->s, g->file) != rms_stick_default(g->s)) {
 		rms_stick_put(g->s, g->file, rms_stick_default(g->s));

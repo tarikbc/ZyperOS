@@ -25087,7 +25087,7 @@ static void shot_draw_ctltab(app *a, menu_tabs *tabs)
 
 		ctlscr_question(&g, q, sizeof q);
 		nq = store_ask_rows(a, q, lines, ask);
-		ask[nq] = (menu_row){ T(S_GAMEMENU_RESET), NULL, true };
+		ask[nq] = (menu_row){ T(S_GAMEMENU_RESET_BUTTONS_YES), NULL, true };
 		ask[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
 		menu_draw(a, T(S_GAMEMENU_RESET_BUTTONS), ask, nq + 2, nq + 1, menu_std_width(a),
 		          MENU_ZYPEROS);
