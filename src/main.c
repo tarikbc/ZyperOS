@@ -13436,8 +13436,12 @@ static void scp_done_draw(scp_view *v)
 	scp_stats(a, ZYPEROS_SCREEN_W / 2, 618, v->done_found, v->done_videos, v->done_missing);
 	for (i = 0; i < v->n; i++) if (v->s[i].vid) { nv++; room += v->s[i].vroom; }
 	if (nv) {
-		scp_mb(room / 1e6, sz, sizeof sz);
-		snprintf(line, sizeof line, TN(S_SCRAPER_VIDEOS_ON_CARD, nv), nv, sz);
+		/* no account: no video came, so say why instead of "0 KB" */
+		if (!v->ss_in) snprintf(line, sizeof line, "%s: %s", T(S_SCRAPER_PAGE_VIDEOS), T(S_SYSMENU_SN_NEEDS_SS));
+		else {
+			scp_mb(room / 1e6, sz, sizeof sz);
+			snprintf(line, sizeof line, TN(S_SCRAPER_VIDEOS_ON_CARD, nv), nv, sz);
+		}
 		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 662), 0, UI_TEXT_SOFT);
 	}
 	scp_foot(a, K, L, 2);
@@ -13460,6 +13464,8 @@ static void scp_base(app *a, void *ctx)
 	scp_draw(ctx, anim_now());
 }
 
+static void scp_test(scp_view *v, app *a);
+
 /* ---- the questions -------------------------------------------------------- */
 
 /* Tiles over the page, as Computer Connected's: the one picked, or -1 */
@@ -13477,6 +13483,7 @@ static int scp_ask(scp_view *v, const char *heading, menu_row *tiles, int n, int
 	lv = panel_open();
 	while (choice == -2) {
 		plat_input_poll(&a->in);
+		scp_test(v, a);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; choice = -1; break; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { choice = -1; break; }
@@ -13657,6 +13664,54 @@ static void scp_finish(scp_view *v, bool ended)
 	v->where = SCP_DONE;
 }
 
+/* ---- a test of the page on a host -------------------------------------------
+ * ZYPEROS_SCRAPER_TEST: the launcher opens the page at once and plays a
+ * script, commas between its steps: a button (A B X Y START UP DOWN LEFT
+ * RIGHT), wait=MS, run=MS (until the run is over, or MS), shot=PATH (the
+ * page as drawn now). Each step said on stderr with the page's state; the
+ * launcher quits at the script's end. The real loop, network and all: what
+ * a shot's fixture cannot show. */
+static const char *g_scp_test;
+static unsigned g_scp_until, g_scp_run_until;
+
+static void scp_test(scp_view *v, app *a)
+{
+	static const struct { const char *name; in_button b; } BTN[] = {
+		{ "A", IN_ACCEPT }, { "B", IN_BACK }, { "X", IN_X }, { "Y", IN_Y }, { "START", IN_START },
+		{ "UP", IN_UP }, { "DOWN", IN_DOWN }, { "LEFT", IN_LEFT }, { "RIGHT", IN_RIGHT },
+	};
+	char tok[512];
+	unsigned now = plat_now_ms();
+	size_t n, i;
+
+	if (!g_scp_test) return;
+	if (now < g_scp_until) return;
+	if (g_scp_run_until && v->where == SCP_RUN && now < g_scp_run_until) return;
+	g_scp_run_until = 0;
+	if (!*g_scp_test) { want_quit = 1; return; }
+	n = strcspn(g_scp_test, ",");
+	snprintf(tok, sizeof tok, "%.*s", (int)n, g_scp_test);
+	g_scp_test += n + (g_scp_test[n] == ',');
+	g_scp_until = now + 400;
+	for (i = 0; i < sizeof BTN / sizeof BTN[0]; i++)
+		if (!strcmp(tok, BTN[i].name)) a->in.pressed[BTN[i].b] = true;
+	if (!strncmp(tok, "wait=", 5)) g_scp_until = now + (unsigned)atoi(tok + 5);
+	if (!strncmp(tok, "run=", 4)) g_scp_run_until = now + (unsigned)atoi(tok + 4);
+	if (!strncmp(tok, "shot=", 5)) {
+		SDL_Surface *out = SDL_CreateRGBSurfaceWithFormat(0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, 32,
+		                                                  SDL_PIXELFORMAT_RGBA32);
+
+		scp_draw(v, anim_now());
+		if (out) {
+			SDL_RenderReadPixels(a->r, NULL, SDL_PIXELFORMAT_RGBA32, out->pixels, out->pitch);
+			IMG_SavePNG(out, tok + 5);
+			SDL_FreeSurface(out);
+		}
+	}
+	fprintf(stderr, "scraper-test: %s where=%d systems=%d focus=%d arrived=%d found=%d looked=%d details=%d\n",
+	        tok, v->where, v->n, v->focus, v->nring, v->p.found, v->p.looked, v->p.details);
+}
+
 /* ---- the page -------------------------------------------------------------- */
 
 static void scraper_page(app *a, const char *only)
@@ -13676,11 +13731,13 @@ static void scraper_page(app *a, const char *only)
 	g_base_page = scp_base;
 	g_base_ctx = v;
 	memset(&last, 0, sizeof last);
+	g_scp_test = getenv("ZYPEROS_SCRAPER_TEST");
 	while (!want_quit && a->running) {
 		unsigned now = anim_now();
 		bool anim;
 
 		plat_input_poll(&a->in);
+		scp_test(v, a);
 		muse_poll();
 		aout_apply(false);
 		if (a->in.quit_requested) { a->running = false; break; }
@@ -13845,7 +13902,7 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 	v->a = a;
 	v->fixture = true;
 	v->net = state != 10;
-	v->ss_in = true;
+	v->ss_in = state != 9;      /* done-one: videos on, no account */
 	v->mb_video = SCP_MB_PER_VIDEO;
 	for (i = 0; i < 9; i++) {
 		scp_sys *s = &v->s[v->n++];
@@ -29487,6 +29544,11 @@ int main(int argc, char *argv[])
 	 * card's empty .media folders go once the shelf is up (after_start_step). */
 	up_cable_tidy();
 
+	/* A test of MENU > Scraper's page (scp_test): the page at once */
+	if (getenv("ZYPEROS_SCRAPER_TEST")) {
+		scraper_page(&a, NULL);
+		a.running = false;
+	}
 	while (a.running) {
 		plat_input_poll(&a.in);
 		if (a.in.quit_requested || want_quit) break;
