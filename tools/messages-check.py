@@ -12,9 +12,10 @@ import tempfile
 LAUNCHER = ("src/main.c", "src/aout_route.c", "src/bgm_screen.c", "src/bt_screen.c",
             "src/clock_screen.c", "src/ctl_channel.c", "src/ctltab_screen.c",
             "src/gamedel_screen.c", "src/gamern_screen.c", "src/media_screen.c",
-            "src/place.c", "src/portload.c", "src/powerscreens.c", "src/raqueue.c",
-            "src/search_screen.c", "src/shelfbuild.c", "src/stats_screen.c",
-            "src/storage_screen.c", "src/update_screen.c", "src/zyperdraw.c")
+            "src/menu_panel.c", "src/place.c", "src/portload.c", "src/powerscreens.c",
+            "src/raqueue.c", "src/search_screen.c", "src/shelfbuild.c",
+            "src/stats_screen.c", "src/storage_screen.c", "src/update_screen.c",
+            "src/zyperdraw.c")
 source = "\n".join(Path(p).read_text() for p in LAUNCHER)
 source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)
 stale = list(re.finditer(r'\bSDL_Delay\s*\(\s*(900|1400|1600|1800|2200)\s*\)', source))

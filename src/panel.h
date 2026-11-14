@@ -9,6 +9,7 @@
 #include "app.h"
 #include "keyboard.h"
 #include "menu.h"
+#include "menumotion.h"
 #include "platform.h"
 
 #include <stdbool.h>
@@ -282,6 +283,45 @@ extern int shot_lv;
  * sentence in every screen (DESIGN.md 12). A row that is dead for the same
  * reason says "needs Wi-Fi" in its value instead. */
 #define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
+/* The panel pass (main.c): a panel in its open or close drawn through a
+ * texture, scaled about its middle */
+bool panel_pass_begin(app *a);
+void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose);
+SDL_FRect panel_scaled(const SDL_Rect *q, float s);
+/* The marquees' clocks (main.c's mq_phase): one a slot, each keyed on what
+ * it scrolls */
+/* Two note slots because a panel can carry two footer notes and both may be
+ * long enough to move. Sharing one would be the bug this enum exists to
+ * prevent, a step smaller: each would see the other's key every frame and
+ * neither would ever get past the opening hold. */
+#define MQ_NOTES 2
+/* MQ_FIXED is for rows that move because nothing can ever select them, as
+ * distinct from the ones that move because something just did.
+ *
+ * The other slots are keyed on the cursor, which is right when the row that
+ * scrolls is the row you landed on: a new selection is a new subject and its
+ * text should start from the beginning. It is wrong for a fact. The game
+ * screen's Genre row is unselectable and scrolls whenever it is long, and
+ * stepping between Synopsis and Cheevos was restarting it - a cursor move that
+ * has nothing to do with the row it interrupted. Reported 2026-09-17, the day
+ * Genre became the first long permanently-unselectable row on a screen that
+ * also has a cursor.
+ *
+ * Keyed on the SCREEN instead - its heading and how many rows it has - which
+ * is the same value for every such row in a frame, so they still share one
+ * clock and still move together rather than resetting each other.
+ *
+ * It replaced a slot of its own for VALUES, which was the wrong axis to split
+ * on: a label and a value never move in the same row - the wider of the two
+ * takes the room and the other is laid out around it - so what needed separate
+ * clocks was never the two columns. It was the selected row against the rest,
+ * and only one row is ever selected. */
+enum { MQ_SHELF, MQ_MENU, MQ_FIXED, MQ_NOTE0, MQ_NOTE1, MQ_VSCROLL,
+       MQ_HEAD, MQ_NP, MQ_SONG, MQ_SLOTS };
+unsigned mq_phase(int who, int key_a, int key_b);
+unsigned mq_row_phase(bool selected, const char *heading, int n, int sel);
+/* The last menu panel and its body (main.c) */
+extern SDL_Rect g_menu_panel, g_menu_body;
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);
