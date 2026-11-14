@@ -1579,10 +1579,10 @@ build-native/savedlib-check: tools/savedlib-check.c src/savedlib.c src/savedlib.
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/savedlib-check.c src/savedlib.c src/library.c src/db.c src/atomic.c -lsqlite3 -lpthread
 
-build-native/db-check: tools/db-check.c src/db.c src/db.h src/atomic.c FORCE
+build-native/db-check: tools/db-check.c src/db.c src/db.h src/atomic.c src/strength.c src/strength.h FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/db-check.c src/db.c src/atomic.c -lsqlite3 -lpthread
+	      -o $@ tools/db-check.c src/db.c src/atomic.c src/strength.c -lsqlite3 -lpthread
 
 # Delete Game (src/gamedel.h) on a card made of small files: a cartridge, a
 # multi-disc set in its folder, a .cue with its tracks and an arcade set

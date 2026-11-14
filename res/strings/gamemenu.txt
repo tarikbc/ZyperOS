@@ -731,3 +731,14 @@ fr = par système
 de = je System
 ja = システムごと
 it = per sistema
+
+[gamemenu.strength]
+note = A row right under Shader in the in-game menu, the system menu and MENU, shown while the shader is CRT, CRT Curved, Scanlines or LCD Grid: how strongly its lines and grid are drawn over the picture, 10% to 100%. Its value is a percentage, or "per system" in MENU.
+en = Strength
+zh-Hans = 强度
+es = Intensidad
+pt-BR = Intensidade
+fr = Intensité
+de = Stärke
+ja = 強さ
+it = Intensità

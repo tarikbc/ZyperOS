@@ -104,6 +104,7 @@
 #include "sysupdate.h"
 #include "storage.h"
 #include "storage_page.h"
+#include "strength.h"
 #include "artsrc.h"
 #include "mediafetch.h"
 #include "mediapage.h"
@@ -344,7 +345,7 @@ static int shader_step(int k, int d)
  * for the same reason saves are: renaming a ROM folder or reordering
  * systems.cfg then cannot quietly hand a system somebody else's setting.
  * The shaders too, each system's: its own shader.<TAG>, else MENU's
- * `shader`, else Off. */
+ * `shader`, else Off; and their strength the same way (src/strength.h). */
 void display_load(app *a)
 {
 	char key[CFG_STR + 16], name[CFG_STR];
@@ -358,6 +359,7 @@ void display_load(app *a)
 		a->view[i].shader = g_shader_all;
 		if (db_get_str(db_dev(), key, name, sizeof name, NULL) && (k = shader_index(name)) >= 0)
 			a->view[i].shader = k;
+		a->view[i].strength = strength_read(db_dev(), a->sys.systems[i].tag);
 		snprintf(key, sizeof key, "display.%s", a->sys.systems[i].tag);
 		if (!db_get_str(db_dev(), key, name, sizeof name, NULL)) continue;
 		for (k = 0; k < DMODE_COUNT; k++)
@@ -439,6 +441,40 @@ static const char *shader_all_label(const app *a)
 	for (i = 0; i < a->sys.count; i++)
 		if (a->view[i].shader != g_shader_all) return T(S_GAMEMENU_SHADER_MIXED);
 	return shader_label(g_shader_all);
+}
+
+/* The Strength rows (src/strength.h). MENU has one while any system draws an
+ * old screen; a system's menu and the in-game menu while that system does. */
+static bool strength_all_shown(const app *a)
+{
+	int i;
+
+	for (i = 0; i < a->sys.count; i++)
+		if (shader_has_strength(a->view[i].shader)) return true;
+	return false;
+}
+
+/* MENU's row's value: every system's strength, or "per system" when one
+ * chose another */
+static const char *strength_all_label(const app *a)
+{
+	static char buf[16];
+	int i, all = strength_read_all(db_dev());
+
+	for (i = 0; i < a->sys.count; i++)
+		if (strength_clamp(a->view[i].strength) != all) return T(S_GAMEMENU_SHADER_MIXED);
+	strength_label(all, buf, sizeof buf);
+	return buf;
+}
+
+/* System `sys`'s row's value, NULL when it has no row */
+static const char *strength_row_label(const app *a, int sys)
+{
+	static char buf[16];
+
+	if (!shader_has_strength(a->view[sys].shader)) return NULL;
+	strength_label(a->view[sys].strength, buf, sizeof buf);
+	return buf;
 }
 
 /* ---------- per-system core ----------------------------------------------- */
@@ -7457,6 +7493,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.game_count = sys_games(&a->view[sys])->count;
 		u.dmode      = dmode_label(a->view[sys].dmode);
 		u.shader     = shader_label(a->view[sys].shader);
+		u.strength   = strength_row_label(a, sys);
+		u.no_strength = !u.strength;
 		u.listed     = a->view[sys].listed;
 		u.muse_books = u.muse && muse_books_shown();
 		u.muse_videos = u.muse && muse_kind_shown() == ML_VIDEOS;
@@ -7481,6 +7519,8 @@ static int menu_build(app *a, screen_id screen, int sys,
 		u.storage = storage_menu_value();
 		u.appearance = appearance_name(theme_appearance());
 		u.shader_all = shader_all_label(a);
+		u.strength_all = strength_all_label(a);
+		u.no_strength = !strength_all_shown(a);
 		u.auto_hours = auto_hours_value();
 		u.theme = look_accent_name();
 		u.home = home_name(a->home_layout);
@@ -16217,7 +16257,8 @@ static int menu_measure(const menu_row *rows, int n, const char *heading)
 static int sm_pos(const app *a, int sys, sm_row which)
 {
 	sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
-	               .dslang = dslang_row_shown(a, sys) ? "" : NULL };
+	               .dslang = dslang_row_shown(a, sys) ? "" : NULL,
+	               .no_strength = !shader_has_strength(a->view[sys].shader) };
 	sm_row ids[SM_ROWS];
 	int n = sys_menu_system_rows(&dev, ids), k;
 
@@ -16260,6 +16301,13 @@ static int menu_shelf_width(app *a)
 					if (mw > w) w = mw;
 				}
 				rows[k].value = keep;
+				/* And Strength under it, there or not, at its widest */
+				for (j = 0; j < 2 && n < MENU_MAX_ROWS; j++) {
+					rows[n] = (menu_row){ T(S_GAMEMENU_STRENGTH),
+					                      j ? "100%" : T(S_GAMEMENU_SHADER_MIXED), true };
+					mw = menu_measure(rows, n + 1, heading);
+					if (mw > w) w = mw;
+				}
 			}
 		}
 		g_tabs.at = at;
@@ -16320,6 +16368,13 @@ static int menu_shelf_width(app *a)
 			if (mw > w) w = mw;
 		}
 		if (hrow >= 0) rows[hrow].value = shader_label(0);
+		/* And Strength under it, there or not */
+		if (hrow >= 0 && n < MENU_MAX_ROWS) {
+			int mw;
+			rows[n] = (menu_row){ T(S_GAMEMENU_STRENGTH), "100%", true };
+			mw = menu_measure(rows, n + 1, heading);
+			if (mw > w) w = mw;
+		}
 		/* And each core a shelf can choose, for the same reason. */
 		if (crow >= 0 && cfg_core_count(&a->sys.systems[i]) > 1) {
 			char alt[CFG_STR], lb[CFG_STR];
@@ -20246,7 +20301,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * list the build used. */
 		else if (!is_muse(&a->sys.systems[a->sys_cursor])) {
 			sys_ui dev = { .no_wifi = !plat_has_wifi(), .online = net_internet(NULL),
-			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL };
+			               .dslang = dslang_row_shown(a, a->sys_cursor) ? "" : NULL,
+			               .no_strength = !shader_has_strength(a->view[a->sys_cursor].shader) };
 			sm_row ids[SM_ROWS];
 			int n = sys_menu_system_rows(&dev, ids);
 
@@ -20276,6 +20332,15 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 
 			v->shader = shader_step(v->shader, d ? d : 1);
 			shader_save(a, a->sys_cursor);
+			return MENU_STAY;
+		}
+		/* Its strength, on left and right, stopping at the ends, kept at
+		 * once for this system alone (src/strength.h) */
+		if (d && sel == SM_STRENGTH) {
+			sysview *v = &a->view[a->sys_cursor];
+
+			v->strength = strength_step(v->strength, d);
+			strength_write(db_dev(), a->sys.systems[a->sys_cursor].tag, v->strength);
 			return MENU_STAY;
 		}
 		/* Display mode, saved the moment it changes because there is no
@@ -20374,7 +20439,8 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		               .no_usb_wait = !usb_wait_row(),
 		               /* the same rule as the build's (menu_build): a card with
 		                * the update program has the row */
-		               .update = up_have() ? "" : NULL };
+		               .update = up_have() ? "" : NULL,
+		               .no_strength = !strength_all_shown(a) };
 		pm_row ids[PM_ROWS];
 		int n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 
@@ -20479,6 +20545,21 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 	if (sel == PM_SHADER && (d || key == IN_ACCEPT)) {
 		shader_set_all(a, shader_step(g_shader_all, d ? d : 1));
 		return MENU_CHANGED;
+	}
+	/* Strength for every system, on Auto Off's idiom: left and right, a
+	 * step past either end changing nothing; kept as MENU's, and each
+	 * system's own goes with it. From "per system" a step goes on from
+	 * MENU's last (src/strength.h). */
+	if (d && sel == PM_STRENGTH) {
+		int was = strength_read_all(db_dev()), k = strength_step(was, d), i;
+		bool moved = k != was;
+
+		for (i = 0; i < a->sys.count; i++) {
+			if (strength_clamp(a->view[i].strength) != k) moved = true;
+			a->view[i].strength = k;
+		}
+		strength_write_all(db_dev(), k);
+		return moved ? MENU_CHANGED : MENU_STAY;
 	}
 
 	/* On or off, so left, right and A all turn it over. Off lets the link
@@ -20621,7 +20702,8 @@ static void zyperos_menu_for(app *a, int screen)
 		               .no_charge_limit = !plat_charge_limit_supported(),
 		               .no_usb_power = !usb_power_offered(),
 		               .no_usb_wait = !usb_wait_row(),
-		               .update = up_have() ? "" : NULL };
+		               .update = up_have() ? "" : NULL,
+		               .no_strength = !strength_all_shown(a) };
 		pm_row ids[PM_ROWS];
 		int n, k;
 
@@ -20640,7 +20722,9 @@ static void zyperos_menu_for(app *a, int screen)
 		st.sel_out = &c.seen;
 		g_pick.shelf = -1;
 		menu_run(a, &st, sysmenu_build, sysmenu_key, &c);
-		/* where it was closed, for the next time it opens */
+		/* where it was closed, for the next time it opens; Strength may
+		 * have come or gone with a Shader step */
+		dev.no_strength = !strength_all_shown(a);
 		n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 		if (c.seen >= 0 && c.seen < n) g_tab_row[g_tabs.at] = ids[c.seen];
 	} else {
@@ -21403,6 +21487,19 @@ static void gm_cycle_shader(app *a, int d)
 	plat_resident_sync_rect(150);
 }
 
+/* Its strength the same way (src/strength.h), stopping at the ends */
+static void gm_step_strength(app *a, int d)
+{
+	sysview *v = owner_view(a);
+	int k = strength_step(v->strength, d);
+
+	if (k == strength_clamp(v->strength)) return;
+	v->strength = k;
+	strength_write(db_dev(), a->sys.systems[v - a->view].tag, k);
+	plat_resident_line("SETDISPLAY\tstrength=%d", k);
+	plat_resident_sync_rect(150);
+}
+
 /* The discs of the game running (issue #102), as Diatom's DISC answers say:
  * asked when the in-game menu opens and after each SETDISC, and kept, because
  * gm_gather runs on every key and a paused Diatom is not asked that often.
@@ -21497,6 +21594,7 @@ static void gm_gather(app *a, gm_ui *out)
 	u.dmode  = dmode_label(a->view[a->sys_cursor].dmode);
 	/* The owner's, which is the one its row sets (gm_cycle_shader) */
 	u.shader = shader_label(owner_view(a)->shader);
+	u.strength = strength_row_label(a, (int)(owner_view(a) - a->view));
 	u.earned = chv_earned();
 	u.total  = chv_count();
 	/* g_game_set is the game running's, written at every launch, and
@@ -24557,6 +24655,11 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 		gm_cycle_shader(a, key == IN_LEFT ? -1 : 1);
 		return MENU_STAY;
 	}
+	/* Its strength, on left and right alone */
+	if (sel == GM_STRENGTH && (key == IN_LEFT || key == IN_RIGHT)) {
+		gm_step_strength(a, key == IN_LEFT ? -1 : 1);
+		return MENU_STAY;
+	}
 	/* The quick slot steps round 1 to 6 on left, right and A, kept for the
 	 * game's system at once: SELECT+R1 and SELECT+L1 use it from the next
 	 * press, in this game and every other on the system */
@@ -25402,12 +25505,12 @@ static void launch(app *a)
 	char set[LIB_PATH * 2];
 	int  console = 0;
 	bool first_play = false;
-	/* 20 fixed entries (the shader's two since 1.0.5) plus NULL, seven more
-	 * for a DS game's two screens, then two per core option. Sized off the
-	 * loader's own cap so the two cannot drift apart: the previous 20 was
-	 * already 18 full, and a silent bound check would have dropped every
-	 * option rather than failing loudly. */
-	char *argv[29 + 2 * 32];
+	/* 22 fixed entries (the shader's two and its strength's since 1.0.5)
+	 * plus NULL, seven more for a DS game's two screens, then two per core
+	 * option. Sized off the loader's own cap so the two cannot drift apart:
+	 * the previous 20 was already 18 full, and a silent bound check would
+	 * have dropped every option rather than failing loudly. */
+	char *argv[31 + 2 * 32];
 	bool resident = false, want_menu;
 	/* A DS game's resume by its language (ds_resume_fresh): what it will
 	 * run in, whether it starts fresh, and its auto state as it was */
@@ -25688,9 +25791,10 @@ static void launch(app *a)
 			 * whatever the previous one chose. Ordered on the same socket, so
 			 * it lands before the first frame. The shader with it, Diatom's
 			 * global as well. */
-			plat_resident_line("SETDISPLAY\tmode=%s\tfilter=%s",
+			plat_resident_line("SETDISPLAY\tmode=%s\tfilter=%s\tstrength=%d",
 			                   DMODES[a->view[o].dmode].name,
-			                   SHADERS[a->view[o].shader].name);
+			                   SHADERS[a->view[o].shader].name,
+			                   strength_clamp(a->view[o].strength));
 			/* The DS layout, for the same reason and in the same place: the
 			 * layout is Diatom's own global too. */
 			if (g_game_dual) {
@@ -25867,6 +25971,14 @@ static void launch(app *a)
 		argv[n++] = (char *)DMODES[a->view[o].dmode].name;
 		argv[n++] = (char *)"--filter";
 		argv[n++] = (char *)SHADERS[a->view[o].shader].name;
+		/* Only under 100%, which is Diatom's own default */
+		if (shader_has_strength(a->view[o].shader) && strength_clamp(a->view[o].strength) < 100) {
+			static char pct[8];
+
+			snprintf(pct, sizeof pct, "%d", strength_clamp(a->view[o].strength));
+			argv[n++] = (char *)"--strength";
+			argv[n++] = pct;
+		}
 		/* The channels too: this path is rare, but a player who hears with
 		 * one ear should not lose half a game to it. It plays on the codec,
 		 * so the cable decides between headphones and the speaker. */

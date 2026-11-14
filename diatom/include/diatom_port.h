@@ -143,6 +143,18 @@ typedef struct { diatom_rect src, dst; } diatom_plane;
 #define DIATOM_PLANES_MAX 2
 void diatom_port_planes(const diatom_plane *planes, int n);
 
+/* How strongly an old screen's filter (CRT, CRT_CURVED, SCANLINES, LCD) is
+ * drawn, in percent: 100 is the filter as it is, and less mixes its lines and
+ * grille toward the plain picture under them, 0 being that picture alone.
+ * The other filters have no effect to weaken and ignore it.
+ *
+ * Held until the next call, as the planes are, and for their reason: present's
+ * list is at its limit, and this changes with a menu row, not with a frame.
+ * The value in force when a frame is presented is the one it is drawn with.
+ * Clamped to 0..100; 100 until told otherwise. A port that draws no old
+ * screens (the Brick, the desktop) ignores it. */
+void diatom_port_strength(int percent);
+
 /* An image composited over the presented frame for a while, in SCREEN space -
  * the same job the port already does for its own level bar, which is why it
  * lives here rather than in the host: the OSD is drawn after scaling, and a
