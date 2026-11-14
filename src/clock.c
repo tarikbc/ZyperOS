@@ -264,6 +264,59 @@ void clock_zone_value(const char *id, bool autoz, const char *found, char *out,
 	snprintf(out, n, T(S_CLOCK_ZONE_AUTO_FOUND), city);
 }
 
+clock_zone_change clock_zone_choose(const char *id, bool autoz, int choice)
+{
+	clock_zone_change c = { false, false, NULL };
+
+	if (choice == CLOCK_ZONE_AUTO) {
+		c.auto_on = true;
+		c.auto_chosen = !autoz;
+		return c;
+	}
+	if (choice < 0 || choice >= CLOCK_ZONE_COUNT) {   /* no choice: as it is */
+		c.auto_on = autoz;
+		return c;
+	}
+	if (autoz || !id || strcmp(id, CLOCK_ZONES[choice].id)) c.zone = CLOCK_ZONES[choice].id;
+	return c;
+}
+
+int clock_zone_list(const char *id, bool autoz, const char *found, menu_row *rows,
+                    int max, char *auto_buf, size_t n)
+{
+	int i, k = 0;
+
+	if (k < max) {
+		clock_zone_value(id, true, autoz ? found : "", auto_buf, n);
+		rows[k++] = (menu_row){ auto_buf, NULL, true };
+	}
+	for (i = 0; i < CLOCK_ZONE_COUNT && k < max; i++)
+		rows[k++] = (menu_row){ CLOCK_ZONES[i].city, NULL, true };
+	return k;
+}
+
+int clock_zone_list_on(const char *id, bool autoz)
+{
+	int z;
+
+	if (autoz) return 0;
+	z = clock_zone_find(id);
+	return z >= 0 ? z + 1 : -1;
+}
+
+int clock_zone_list_row(const char *id, bool autoz)
+{
+	int on = clock_zone_list_on(id, autoz);
+
+	return on >= 0 ? on : 1 + clock_zone_find("America/New_York");
+}
+
+int clock_zone_list_choice(int row)
+{
+	if (row == 0) return CLOCK_ZONE_AUTO;
+	return row >= 1 && row <= CLOCK_ZONE_COUNT ? row - 1 : -2;
+}
+
 /* ---- the screen's rows --------------------------------------------------------- */
 
 static const str_id ROW_NAMES[CLK_FIELDS] = {

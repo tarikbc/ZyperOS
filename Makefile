@@ -1226,7 +1226,8 @@ build-native/saver-check: tools/saver-check.c src/saver.c src/saver.h src/idle.c
 	      -o $@ tools/saver-check.c src/saver.c src/idle.c
 
 # Date & Time: each row moving only itself, the 12-hour and 24-hour words, the
-# shelf's short clock, and the zone list running west to east - see
+# shelf's short clock, the zone list running west to east, and Time Zone's
+# list with its rule (a zone picked by hand turns Auto off) - see
 # tools/clock-check.c.
 check-clock: build-native/clock-check
 	@./build-native/clock-check
