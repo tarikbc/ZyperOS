@@ -33,6 +33,7 @@
 
 #include "../src/artscrape.h"
 #include "../src/net.h"
+#include "../src/ssrun.h"
 
 static int failures;
 
@@ -157,6 +158,11 @@ static int  g_ss_asked;       /* lookups started */
 static char g_ss_stem[256];
 static char g_ss_dest[512];
 static bool g_ss_toomany;
+/* Lookups refused for a reason true of every game after them (ss_run_refusal):
+ * that reason, for the next g_ss_no_n lookups, or for all of them at -1 */
+static ss_refusal g_ss_no = SS_GO_ON;
+static int  g_ss_no_n = -1;
+static ss_refusal g_ss_refusal;
 
 bool ss_signed_in(void) { return g_ss_on; }
 
@@ -181,7 +187,13 @@ bool ss_run_begin_metadata(const char *a, const char *b, const char *c,
 int ss_run_step(void)
 {
 	g_ss_toomany = false;
+	g_ss_refusal = SS_GO_ON;
 	if (g_ss_busy > 0) { g_ss_busy--; g_ss_toomany = true; return -1; }
+	if (g_ss_no != SS_GO_ON && g_ss_no_n != 0) {
+		if (g_ss_no_n > 0) g_ss_no_n--;
+		g_ss_refusal = g_ss_no;
+		return -1;
+	}
 	if (!g_ss_has || strcmp(g_ss_has, g_ss_stem)) return -1;
 	return write_cover(g_ss_dest, "SS") ? 0 : -1;
 }
@@ -189,6 +201,7 @@ int ss_run_step(void)
 void ss_run_cancel(void) { g_ss_stem[0] = '\0'; }
 int  ss_run_left(void) { return g_ss_left; }
 bool ss_run_too_many(void) { return g_ss_toomany; }
+ss_refusal ss_run_refusal(void) { return g_ss_refusal; }
 bool ss_run_video_wanted(const char *folder) { (void)folder; return false; }
 bool ss_run_got_video(void) { return false; }
 
@@ -579,6 +592,67 @@ int main(void)
 		CHECK(strstr(st.problem, "quota") != NULL,
 		      "the run did not say the quota was spent: \"%s\"", st.problem);
 
+		/* The server's own "not today" and "closed", and no answer: each
+		 * true of every game after it. They were "a game they do not
+		 * have" once, and a run asked every game of the shelf, refused,
+		 * before libretro had its turn (Discord, 1.0.4). */
+		printf("  a day the server says is spent (430, 431) stops it at once:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		g_ss_left = -1;
+		g_ss_no = SS_SPENT;
+		g_ss_no_n = -1;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 1, "asked %d times, wanted one and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "quota") != NULL,
+		      "the run did not say the quota was spent: \"%s\"", st.problem);
+
+		printf("  a server closed to the account (401, 423) stops it at once:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no = SS_CLOSED;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 1, "asked %d times, wanted one and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "busy") != NULL,
+		      "the run did not say the server is busy: \"%s\"", st.problem);
+
+		/* A third game, so that "stopped after two" and "asked them all"
+		 * are different counts whatever came before. With the checksum
+		 * pass's Old Name (USA), the shelf now has four with no cover. */
+		snprintf(p, sizeof p, "%s/Third Game.gb", g_shelf); write_file(p, "rom");
+
+		printf("  no answer twice in a row stops it:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no = SS_NO_ANSWER;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 2, "asked %d times, wanted two and then a stop",
+		      g_ss_asked);
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"),
+		      "libretro did not finish the job after the pass stopped");
+		CHECK(strstr(st.problem, "no answer") != NULL,
+		      "the run did not say there was no answer: \"%s\"", st.problem);
+
+		printf("  one with no answer is a blip, and the rest are asked:\n");
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);  remove(p);
+		g_ss_no_n = 1;
+		g_ss_asked = 0;
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 4, "asked %d times, wanted all four", g_ss_asked);
+		CHECK(!st.problem[0], "a single blip stopped the run: \"%s\"", st.problem);
+
+		snprintf(p, sizeof p, "%s/Third Game.gb", g_shelf); remove(p);
+		snprintf(p, sizeof p, "%s/Third Game.png", g_media); remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		g_ss_no = SS_GO_ON;
+		g_ss_no_n = -1;
 		g_ss_on = false;
 		g_ss_left = -1;
 	}

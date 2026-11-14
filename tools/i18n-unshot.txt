@@ -36,6 +36,8 @@ art.why_index_failed
 art.why_index_bad
 art.ss_quota
 art.ss_too_many
+art.ss_busy
+art.ss_no_answer
 art.sg_refused
 art.sg_busy
 art.sg_no_answer

@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 
 #include "../src/artscrape.h"
+#include "../src/ssrun.h"
 #include "../src/db.h"
 #include "../src/i18n.h"
 #include "../src/net.h"
@@ -75,6 +76,7 @@ int  ss_run_step(void) { return -1; }
 void ss_run_cancel(void) { }
 int  ss_run_left(void) { return -1; }
 bool ss_run_too_many(void) { return false; }
+ss_refusal ss_run_refusal(void) { return SS_GO_ON; }
 bool ss_run_video_wanted(const char *folder) { (void)folder; return false; }
 bool ss_run_got_video(void) { return false; }
 

@@ -513,13 +513,25 @@ enum { P_SYSTEM, P_META, P_META_WAIT, P_ART_SYSTEM, P_SS, P_SS_WAIT, P_TRY, P_TR
  *   "too many at once"    a 429, which is the server saying not now rather
  *                         than not this game. Waits SS_BUSY_WAIT and asks the
  *                         same game once more; refused twice, it stops.
+ *   "not today", "closed" the server's own word that the day is spent (430,
+ *                         431) or that it is closed to the account (401,
+ *                         423): true of every game after this one, so it
+ *                         stops at once (ss_run_refusal).
+ *   no answer             twice in a row, as SteamGridDB's pass stops: each
+ *                         one is a wait of up to SS_WAIT_S.
  *   anything else         that game is one they do not have. Ordinary, and the
  *                         run carries straight on to the next.
  *
  * The first two are different sentences to the same 429 status, which is why
  * the budget is read rather than inferred: a quota that is spent does not come
  * back in two seconds, and a client that retries it is hammering a server that
- * has already said no. */
+ * has already said no.
+ *
+ * "Not today", "closed" and no answer were "anything else" until 2026-11-13:
+ * a run over a shelf the server refused asked every game on it, a refusal a
+ * second or two each and a minute with no answer, before libretro was asked
+ * about the first one - minutes with no art and a count that did not move
+ * (Discord, 1.0.4, a TL-WN725N). */
 #define SS_DAY_FLOOR 50    /* stop with this many of the day's requests left */
 /* Seconds before a refused game is asked about again. Overridable only so the
  * check can pin the RULE - retry once, then stop - without spending the wait:
@@ -561,6 +573,7 @@ static char g_only[NAME_MAX_];
  * system goes straight to libretro rather than asking again per shelf. */
 static bool   g_ss_stop;
 static bool   g_ss_retried;       /* this game already had its one retry */
+static int    g_ss_quiet;         /* lookups in a row with no answer */
 static time_t g_ss_until;         /* not before this, after a 429 */
 /* A reason the run gives, as a string's ID (src/i18n.h), or NO_WHY: the
  * screen says it in the language that is on, and the log in English. */
@@ -1462,6 +1475,7 @@ void art_begin(const systems_cfg *sys, const char *roms_dir, const char *only)
 	g_nretry = g_qi = 0;
 	g_nleft = g_rem = 0;
 	g_ss_stop = g_ss_retried = false;
+	g_ss_quiet = 0;
 	g_ss_until = 0;
 	g_ss_note = NO_WHY;
 	g_nsg = g_sgi = g_sg_quiet = 0;
@@ -1598,19 +1612,30 @@ static bool ss_budget_available(void)
 	return true;
 }
 
+/* The pass is over for this run, and why: every system after this one goes
+ * straight to libretro */
+static void ss_stop(str_id why)
+{
+	g_ss_stop = true;
+	g_ss_note = why;
+	say("art: %s\n", T_en(why));
+}
+
 /* True when this game should be advanced; false while its one retry waits. */
 static bool ss_finished(int result)
 {
+	ss_refusal no = result < 0 ? ss_run_refusal() : SS_GO_ON;
+
 	if (result < 0 && ss_run_too_many() && !g_ss_retried) {
 		g_ss_retried = true;
 		g_ss_until = time(NULL) + SS_BUSY_WAIT;
 		return false;
 	}
-	if (result < 0 && ss_run_too_many()) {
-		g_ss_stop = true;
-		g_ss_note = S_ART_SS_TOO_MANY;
-		say("art: %s\n", T_en(S_ART_SS_TOO_MANY));
-	}
+	if (result < 0 && ss_run_too_many()) ss_stop(S_ART_SS_TOO_MANY);
+	else if (no == SS_SPENT)            ss_stop(S_ART_SS_QUOTA);
+	else if (no == SS_CLOSED)           ss_stop(S_ART_SS_BUSY);
+	else if (no == SS_NO_ANSWER && ++g_ss_quiet >= 2) ss_stop(S_ART_SS_NO_ANSWER);
+	if (no != SS_NO_ANSWER) g_ss_quiet = 0;
 	g_ss_retried = false;
 	return true;
 }

@@ -51,6 +51,7 @@ static struct {
  * business and must survive a cancel. */
 static int  g_left = -1;
 static bool g_toomany;
+static ss_refusal g_refusal;
 static bool (*g_want_video)(const char *folder);
 static bool g_got_video;
 
@@ -64,6 +65,7 @@ bool ss_run_got_video(void) { return g_got_video; }
 const char      *ss_run_where(void)  { return g_run.where; }
 int              ss_run_left(void)   { return g_left; }
 bool             ss_run_too_many(void) { return g_toomany; }
+ss_refusal       ss_run_refusal(void) { return g_refusal; }
 
 void ss_run_cancel(void)
 {
@@ -95,6 +97,7 @@ static bool run_begin(const char *folder, const char *file, const char *stem,
 {
 	memset(&g_run, 0, sizeof g_run);
 	g_toomany = false;
+	g_refusal = SS_GO_ON;
 	g_got_video = false;
 	g_run.metadata_only = metadata_only;
 	g_run.lookup_only = lookup_only;
@@ -292,8 +295,15 @@ static int run_step(void)
 		if (poll < 0) {
 			http = net_async_http();
 			g_toomany = (http == 429);
+			g_refusal = http == 430 || http == 431 ? SS_SPENT
+			          : http == 401 || http == 423 ? SS_CLOSED
+			          : http == 0 || http >= 500   ? SS_NO_ANSWER : SS_GO_ON;
 			say_reply(how, 0, 0, http == 429 ? "too many requests"
 			                   : http == 404 ? "not a game they know"
+			                   : http == 430 ? "today's quota is spent"
+			                   : http == 431 ? "today's unknown games are spent"
+			                   : http == 401 ? "closed to non-members for now"
+			                   : http == 423 ? "closed"
 			                   : http == 0   ? "no answer" : "refused");
 			g_run.phase = R_FAIL;
 			return -1;

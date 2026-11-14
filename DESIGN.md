@@ -1849,8 +1849,13 @@ account"), **SteamGridDB** (the key as 11.3 shows a key, "key refused",
 nothing else goes on it. Fetch Missing Art runs in the same panel: its row
 becomes "Fetching", "31 / 142", each source's value counts the covers it
 found, the sources are dead until it ends, and B stops it and closes, as
-Box Art's always has. A problem that ends a fetch is the heading's second
-line, in at most 25 characters.
+Box Art's always has. While it runs, the heading's second line is what it
+is doing now - the game it is asking about, or "NES catalog" - cut to three
+quarters of the screen, as Box Art's was: the count moves only when a cover
+lands or a game is given up, and a ScreenScraper pass over a shelf it does
+not know is minutes of neither (a player's "hangs", 1.0.4). A problem that
+ends a fetch is the heading's second line after it, in at most 25
+characters; the game it was on never is.
 
 A source opens a page of its own: what it is linked as and a dead Status
 row, **Unlink** (which asks first, 11.8's question), and two notes under a

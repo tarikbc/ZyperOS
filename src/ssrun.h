@@ -79,4 +79,25 @@ int ss_run_left(void);
  * this game and asking again would be rude and useless. */
 bool ss_run_too_many(void);
 
+/* Whether the last lookup's refusal is true of every game after it, so a run
+ * stops asking (src/artscrape.c) and libretro does the rest. From the status,
+ * as ScreenScraper's api page lists them (read 2026-11-13):
+ *
+ *   SS_SPENT      430 "your scrape quota is spent for today", or 431 "sort
+ *                 your ROM files and come back tomorrow" (the day's unknown
+ *                 games are spent): nothing more until tomorrow
+ *   SS_CLOSED     401 "closed to non-members and inactive members", the
+ *                 server full, or 423 "fully closed"
+ *   SS_NO_ANSWER  no status at all (no network, the wait ran out, TLS) or a
+ *                 server error, 5xx: one is a blip, two in a row are the
+ *                 run's, as SteamGridDB's are (src/sgdbrun.h)
+ *   SS_GO_ON      anything else: a 404 is this game alone
+ *
+ * Before this, each of these was "a game they do not have", so a run asked
+ * every game on a shelf, a second or two each and sixty with no answer, all
+ * refused, before libretro had its turn: minutes with no art on the screen.
+ * 429 stays ss_run_too_many's. Survives ss_run_cancel, as that does. */
+typedef enum { SS_GO_ON, SS_SPENT, SS_CLOSED, SS_NO_ANSWER } ss_refusal;
+ss_refusal ss_run_refusal(void);
+
 #endif

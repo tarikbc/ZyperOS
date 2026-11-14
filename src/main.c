@@ -13181,8 +13181,22 @@ typedef struct {
 	app        *a;
 	scraper_ui  u;
 	char        ss_name[SS_USER_MAX], sgdb[32], snaps[48], head[192];
+	/* The heading while a run goes, and the line it was made from */
+	char        now_head[192], now_was[128];
 	menu_result said;
 } scraper_ctx;
+
+/* "Scraper" and a line under it: what a run is doing now (a game, a
+ * console's catalog) or, once over, what went wrong. Cut to fit, as Box
+ * Art's line is (art_head): a ROM name is as long as its dump's. */
+static void scraper_head(char *out, size_t n, const char *line)
+{
+	char fit[128];
+
+	ui_fit_text(ui_font(UI_F_LABEL), line, fit, sizeof fit,
+	            ZYPEROS_SCREEN_W * 3 / 4);
+	snprintf(out, n, "%s\n%s", T(S_SCRAPER_HEADING), fit);
+}
 
 /* Video Snaps' value: on or off and the room they take */
 static unsigned long long snaps_total(app *a)
@@ -13220,7 +13234,6 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 	static scraper_bufs b;
 	scraper_ctx *c = ctx;
 	sc_row ids[SC_ROWS];
-	char fit[128];
 
 	(void)max;
 	/* What can change under the screen: a link, a key the page sent */
@@ -13258,11 +13271,25 @@ static int scraper_build(void *ctx, menu_row *rows, int max, const char **headin
 			scraper_count(c);
 			scraper_snaps_value(c);
 			if (p.problem[0]) {
-				ui_fit_text(ui_font(UI_F_LABEL), p.problem, fit, sizeof fit,
-				            ZYPEROS_SCREEN_W * 3 / 4);
-				snprintf(c->head, sizeof c->head, "%s\n%s", T(S_SCRAPER_HEADING), fit);
+				scraper_head(c->head, sizeof c->head, p.problem);
 				*heading = c->head;
 			}
+		} else {
+			/* What it is doing now, under the heading, as Box Art says it.
+			 * The count moves only when a game is found or given up on,
+			 * and ScreenScraper asks about every game of a shelf before
+			 * libretro does: on a shelf it does not know, a second or two
+			 * a game with nothing to count. "Fetching 0 / 340" for
+			 * minutes read as a hang (Discord, 1.0.4). Never kept for
+			 * after the run, where the last game named would read as
+			 * still being worked on. */
+			const char *line = p.now[0] ? p.now : T(S_SCRAPER_STARTING);
+
+			if (strcmp(line, c->now_was)) {
+				snprintf(c->now_was, sizeof c->now_was, "%s", line);
+				scraper_head(c->now_head, sizeof c->now_head, line);
+			}
+			*heading = c->now_head;
 		}
 	} else if (c->u.ran && c->head[0]) {
 		*heading = c->head;
@@ -25429,12 +25456,17 @@ static void shot_compose(app *a)
 		                 .sgdb = "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b" };
 		menu_row rows[SC_ROWS];
 		sc_row ids[SC_ROWS];
+		static char now_head[192];
 		const char *head = T(S_SCRAPER_HEADING);
 		int n;
 
 		if (shot_scraper == 1) {
 			u.running = true; u.done = 31; u.total = 142;
 			u.ss_found = 12; u.lr_found = 17; u.sg_found = 2;
+			/* And what it is asking about now, a long dump name cut */
+			scraper_head(now_head, sizeof now_head,
+			             "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2)");
+			head = now_head;
 		} else if (shot_scraper == 5) {
 			/* Offline: the first row's value is "needs Wi-Fi", the longest
 			 * it has in most languages (check-i18n-shots) */
