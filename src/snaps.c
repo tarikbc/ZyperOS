@@ -19,6 +19,7 @@
 /* A system's own videos switch, by its folder (snaps_get), and which games */
 #define K_GET   "snaps.get."
 #define K_FOR   "snaps.for"
+#define K_COV   "scraper.covers."
 /* One key a console turned off, by its folder: on is the default, so a card
  * with new consoles has their snaps on without a key for each. */
 #define K_OFF   "snaps.off."
@@ -131,6 +132,25 @@ void snaps_set_get(const char *folder, bool on)
 	if (!folder || !*folder || snprintf(k, sizeof k, K_GET "%s", folder) >= (int)sizeof k)
 		return;
 	db_set_int(db_dev(), k, on ? 1 : 0);
+}
+
+bool snaps_covers(const char *folder)
+{
+	char k[160];
+
+	if (!folder || !*folder || snprintf(k, sizeof k, K_COV "%s", folder) >= (int)sizeof k)
+		return false;
+	return db_get_int(db_dev(), k, 1) != 0;
+}
+
+void snaps_set_covers(const char *folder, bool on)
+{
+	char k[160];
+
+	if (!folder || !*folder || snprintf(k, sizeof k, K_COV "%s", folder) >= (int)sizeof k)
+		return;
+	if (on) db_del(db_dev(), k);
+	else    db_set_int(db_dev(), k, 0);
 }
 
 static const char *const FOR_ID[SNAPS_FOR_COUNT] = { "all", "favorites", "played" };

@@ -74,17 +74,6 @@ de = Schlüssel abgelehnt
 ja = キー拒否
 it = chiave rifiutata
 
-[scraper.box_art]
-note = The heading of a Box Art run (a game's name or the news under it), and its row label for one game. The glossary's Box Art.
-en = Box Art
-zh-Hans = 封面
-es = Carátulas
-pt-BR = Capas
-fr = Jaquettes
-de = Cover
-ja = パッケージ画像
-it = Copertine
-
 [scraper.systems]
 note = A Box Art run for the whole card: a row label; its value is how many systems are done, "4 / 10".
 en = Systems
@@ -96,79 +85,6 @@ de = Systeme
 ja = システム
 it = Sistemi
 
-[scraper.art]
-note = The same run: a row label; its value is the count, "37 found · 2 missing · 61 already".
-en = Art
-zh-Hans = 封面
-es = Carátulas
-pt-BR = Capas
-fr = Jaquettes
-de = Cover
-ja = 画像
-it = Copertine
-
-[scraper.found_n]
-note = One fact of the run's count: covers found this run. A cover: carátula, capa, jaquette.
-en.one = %d found
-en.other = %d found
-zh-Hans = 找到 %d
-es.one = %d encontrada
-es.other = %d encontradas
-pt-BR.one = %d encontrada
-pt-BR.other = %d encontradas
-fr.one = %d trouvée
-fr.other = %d trouvées
-de.one = %d gefunden
-de.other = %d gefunden
-ja = %d 件取得
-it.one = %d trovata
-it.other = %d trovate
-
-[scraper.already_n]
-note = One fact of the run's count: games that had a cover already.
-en.one = %d already
-en.other = %d already
-zh-Hans = 已有 %d
-es.one = %d ya estaba
-es.other = %d ya estaban
-pt-BR.one = %d já tinha
-pt-BR.other = %d já tinham
-fr.one = %d déjà là
-fr.other = %d déjà là
-de.one = %d vorhanden
-de.other = %d vorhanden
-ja = %d 件既存
-it.one = %d già presente
-it.other = %d già presenti
-
-[scraper.names_n]
-note = One fact of the run's count, after the others: games given their proper names. English says "names" for one too; write each language's own forms.
-en.one = %d names
-en.other = %d names
-zh-Hans = %d 个名称
-es.one = %d nombre
-es.other = %d nombres
-pt-BR.one = %d nome
-pt-BR.other = %d nomes
-fr.one = %d nom
-fr.other = %d noms
-de.one = %d Name
-de.other = %d Namen
-ja = 名前 %d 件
-it.one = %d nome
-it.other = %d nomi
-
-[scraper.starting]
-note = Under the Box Art heading as a run begins. A lowercase value.
-en = starting
-zh-Hans = 正在开始
-es = iniciando
-pt-BR = iniciando
-fr = démarrage
-de = startet
-ja = 開始中
-it = avvio
-
 [scraper.done]
 note = Under the Box Art heading when the run ended with nothing wrong.
 en = Done
@@ -179,61 +95,6 @@ fr = Terminé
 de = Fertig
 ja = 完了
 it = Fatto
-
-[scraper.fetching]
-note = Box Art for one game: the row's value while it asks. A lowercase value.
-en = fetching
-zh-Hans = 正在获取
-es = buscando
-pt-BR = buscando
-fr = recherche
-de = wird gesucht
-ja = 取得中
-it = ricerca in corso
-
-[scraper.found]
-note = Box Art for one game: a cover came, where it had none. A lowercase value; the cover is feminine in es/pt-BR/fr.
-en = found
-zh-Hans = 已找到
-es = encontrada
-pt-BR = encontrada
-fr = trouvée
-de = gefunden
-ja = 取得しました
-it = trovata
-
-[scraper.replaced]
-note = Box Art for one game: a new cover replaced its old one. A lowercase value.
-en = replaced
-zh-Hans = 已替换
-es = reemplazada
-pt-BR = substituída
-fr = remplacée
-de = ersetzt
-ja = 差し替えました
-it = sostituita
-
-[scraper.not_found]
-note = Box Art for one game: no cover anywhere. A lowercase value.
-en = not found
-zh-Hans = 未找到
-es = no encontrada
-pt-BR = não encontrada
-fr = introuvable
-de = nicht gefunden
-ja = 見つかりません
-it = non trovata
-
-[scraper.not_found_kept]
-note = Box Art for one game: no new cover, and the one it had stays. A lowercase value.
-en = not found, kept the old one
-zh-Hans = 未找到，保留原封面
-es = no encontrada, se conserva la anterior
-pt-BR = não encontrada, a antiga foi mantida
-fr = introuvable, l'ancienne est conservée
-de = nicht gefunden, altes behalten
-ja = 見つからず、元の画像を保持
-it = non trovata, tenuta la precedente
 
 [scraper.ss_user]
 note = The keyboard's title when linking a ScreenScraper account: type the user name.

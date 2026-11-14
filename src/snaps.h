@@ -70,6 +70,12 @@ void snaps_set_for(int which);
 /* The rule, pure: whether a game gets a video under `which` */
 bool snaps_for_game(int which, bool favorite, bool played);
 
+/* And whether a run gets a system's covers (MENU > Scraper's Systems, the
+ * grid's other mark; artscrape.c's art_covers_rule): on to start. Kept here
+ * beside the videos' switch, the same kind of setting for the same page. */
+bool snaps_covers(const char *folder);
+void snaps_set_covers(const char *folder, bool on);
+
 /* The stems of a system's videos, sorted (strcmp), for a count without a
  * stat a game: *n of them, freed with snaps_stems_free. NULL with *n 0 for
  * none. */

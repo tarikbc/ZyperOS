@@ -60,6 +60,13 @@ int main(void)
 	CHECK(snaps_get("SNES") && !snaps_get("Genesis"), "the switch followed the old setting");
 	CHECK(!snaps_get("") && !snaps_get(NULL), "a system with no folder gets videos");
 
+	printf("  covers on to start, and a system's switch kept:\n");
+	CHECK(snaps_covers("NES") && snaps_covers("Arcade"), "covers are not on to start");
+	snaps_set_covers("Arcade", false);
+	CHECK(!snaps_covers("Arcade") && snaps_covers("NES"), "the covers switch was not kept, or not its own");
+	snaps_set_covers("Arcade", true);
+	CHECK(snaps_covers("Arcade"), "covers did not come back on");
+
 	printf("  Videos for: all to start, kept, and its rule:\n");
 	CHECK(snaps_for() == SNAPS_FOR_ALL, "Videos for is not all to start");
 	snaps_set_for(SNAPS_FOR_PLAYED);

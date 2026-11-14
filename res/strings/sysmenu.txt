@@ -793,39 +793,6 @@ it = Copertine album
 
 # ---- MENU > Scraper ---------------------------------------------------------
 
-[sysmenu.sc_fetching]
-note = Scraper's first row while a run fetches covers; its value is a count, 12 / 140
-en = Fetching
-zh-Hans = 正在获取
-es = Descargando
-pt-BR = Baixando
-fr = Récupération
-de = Wird geladen
-ja = 取得中
-it = Scaricamento
-
-[sysmenu.sc_fetch]
-note = Scraper's first row: fetch every missing cover; its value says how many are missing, or "needs Wi-Fi". tight: the label and either value share about 15 em of the menu face
-en = Fetch Missing Art
-zh-Hans = 获取缺失封面
-es = Bajar carátulas
-pt-BR = Baixar capas
-fr = Jaquettes
-de = Cover laden
-ja = 画像を取得
-it = Scarica copertine
-
-[sysmenu.sc_complete]
-note = Fetch Missing Art's value when no cover is missing. Lowercase.
-en = complete
-zh-Hans = 已齐全
-es = completo
-pt-BR = completo
-fr = complètes
-de = vollständig
-ja = 取得済み
-it = completo
-
 [sysmenu.sc_missing]
 note = Fetch Missing Art's value: how many covers are missing. English has one form for both.
 en.one = %d missing
@@ -842,34 +809,6 @@ de.other = %d fehlen
 ja = %d 件不足
 it.one = %d mancante
 it.other = %d mancanti
-
-[sysmenu.sc_video_snaps]
-note = A Scraper row: short videos of each game that play on the shelf
-en = Video Snaps
-zh-Hans = 视频预览
-es = Avances en video
-pt-BR = Prévias em vídeo
-fr = Aperçus vidéo
-de = Videovorschau
-ja = 動画プレビュー
-it = Anteprime video
-
-[sysmenu.sc_covers]
-note = A source's value after a run: how many covers it found. English says covers for 1 too; keep it.
-en.one = %d covers
-en.other = %d covers
-zh-Hans = %d 张封面
-es.one = %d carátula
-es.other = %d carátulas
-pt-BR.one = %d capa
-pt-BR.other = %d capas
-fr.one = %d jaquette
-fr.other = %d jaquettes
-de.one = %d Cover
-de.other = %d Cover
-ja = 画像 %d 枚
-it.one = %d copertina
-it.other = %d copertine
 
 [sysmenu.not_in_build]
 note = review: a value: this copy of ZyperOS was built without ScreenScraper's key, so the source cannot be used. Lowercase.
@@ -903,17 +842,6 @@ fr = lier
 de = verknüpfen
 ja = 連携する
 it = collega
-
-[sysmenu.sc_no_account]
-note = libretro's value: it needs no account. Lowercase.
-en = no account
-zh-Hans = 无需账号
-es = sin cuenta
-pt-BR = sem conta
-fr = sans compte
-de = kein Konto
-ja = アカウント不要
-it = nessun account
 
 # ---- Scraper > ScreenScraper ------------------------------------------------
 
@@ -1006,17 +934,6 @@ ja = キーを含むビルドが必要です。
 it = Serve una versione con la sua chiave.
 
 # ---- Scraper > Video Snaps --------------------------------------------------
-
-[sysmenu.sn_fetch]
-note = Video Snaps' row: fetch a game's snap when its cover is fetched
-en = Fetch with Box Art
-zh-Hans = 随封面一起获取
-es = Descargar con carátulas
-pt-BR = Baixar com as capas
-fr = Récupérer avec les jaquettes
-de = Mit Cover laden
-ja = パッケージ画像と一緒に取得
-it = Con le copertine
 
 [sysmenu.sn_needs_ss]
 note = Fetch with Box Art's value with no ScreenScraper account. Lowercase.
