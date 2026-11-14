@@ -135,7 +135,7 @@ static int game(menu_row *out)
  * one a system. The note is the rule that keeps SELECT a game button: a
  * press with no shoulder after it is the game's. Shared with a game's own
  * Hotkeys page (hotkeys_for). */
-static int hotkey_rows(menu_row *out, bool states, bool select_note)
+static int hotkey_rows(menu_row *out, bool states, bool select_note, bool select_row)
 {
 	int n = 0;
 
@@ -145,13 +145,16 @@ static int hotkey_rows(menu_row *out, bool states, bool select_note)
 	}
 	out[n++] = (menu_row){ "SELECT+R2", T(S_CONTROLS_FASTER), false };
 	out[n++] = (menu_row){ "SELECT+L2", T(S_CONTROLS_SLOWER), false };
-	if (select_note) out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SELECT));
+	/* The rule, as a note under them, or beside the handheld (the Controls
+	 * tab's pages, whose column has no room for the note) a row of its own */
+	if (select_note && select_row) out[n++] = (menu_row){ "SELECT", T(S_CONTROLS_SELECT_GAMES), false };
+	else if (select_note) out[n++] = MENU_NOTE(T(S_CONTROLS_NOTE_SELECT));
 	return n;
 }
 
 static int hotkeys(menu_row *out)
 {
-	return hotkey_rows(out, true, true);
+	return hotkey_rows(out, true, true, false);
 }
 
 static int muse(menu_row *out)
@@ -941,7 +944,8 @@ static int page_list(const ctl_game *g, const plan *pl, page_ref *out)
 		return n;
 	}
 	for (i = 0; g->doc && i < said_pages(g->doc); i++) out[n++] = (page_ref){ PG_SAID, i };
-	for (i = 0; i < pl->sys; i++) out[n++] = (page_ref){ PG_SYS, i };
+	/* The system's buttons, but beside the Controls tab, which shows them */
+	for (i = 0; !g->no_buttons && i < pl->sys; i++) out[n++] = (page_ref){ PG_SYS, i };
 	if (pl->extra) out[n++] = (page_ref){ PG_EXTRA, 0 };
 	if (!g->port) out[n++] = (page_ref){ PG_HOTKEYS, 0 };
 	out[n++] = (page_ref){ PG_INGAME, 0 };
@@ -1145,7 +1149,10 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 			snprintf(b->val[n], sizeof b->val[n], "%s", T(x->rows[i].does));
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
 		}
-		if (x->has_note && x->note == S_CONTROLS_PAK_WHERE) {
+		/* Beside the Controls tab, whose Pak row is the one it names, no
+		 * word of where it is */
+		if (x->has_note && x->note == S_CONTROLS_PAK_WHERE && g->no_buttons) {
+		} else if (x->has_note && x->note == S_CONTROLS_PAK_WHERE) {
 			/* the menu path to the Pak row, and what it says now */
 			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_WHERE), T(S_GAMEMENU_PAK),
 			         g->accessory ? g->accessory : "Rumble Pak");
@@ -1159,7 +1166,7 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 		/* No quick save or load where the core keeps no state: SELECT+R1
 		 * and SELECT+L1 are the game's there */
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), ctl_page_name(CTL_HOTKEYS));
-		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g));
+		n = hotkey_rows(out, ctl_has_states(g->tag), select_is_games(g), g->no_buttons);
 		break;
 	case PG_PM:
 		heading(g, title, b);

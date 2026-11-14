@@ -17,11 +17,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "tdkey.h"   /* td_key: the keys of the handheld a pose can light */
 #include "tour.h"
-
-/* The keys of the handheld a pose can light */
-typedef enum { TD_DPAD, TD_A, TD_B, TD_X, TD_Y, TD_SELECT, TD_START, TD_MENU, TD_VOLUP,
-               TD_VOLDN, TD_POWER, TD_L1, TD_R1, TD_L2, TD_R2, TD_KEYS } td_key;
 
 /* The handheld as anyone can draw it: where (the middle, in screen units),
  * how big (screen units a millimetre), how far turned (degrees, 0 front, 52
@@ -55,6 +52,12 @@ typedef struct {
  * color and blend come back after) and copies that, or, where the renderer
  * cannot keep, draws it straight to the screen. */
 void td_draw(SDL_Renderer *r, td_keep *k, const td_pose *p);
+
+/* Draws `p` into `k`'s texture if it holds something else, and nothing on
+ * the screen: the render target's switch, without the copy. A caller about
+ * to clip calls it first, so the td_draw after it only copies and the clip
+ * holds (a switch of the render target drops the clip). */
+void td_make(SDL_Renderer *r, td_keep *k, const td_pose *p);
 
 /* Lets `k`'s texture go; `k` can be used again after */
 void td_keep_free(td_keep *k);

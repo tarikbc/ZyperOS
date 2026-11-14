@@ -380,6 +380,87 @@ de = Steuerung
 ja = 操作方法
 it = Comandi
 
+# ---- the in-game menu's Controls tab (src/ctltab.c, src/ctltab_screen.c) ------
+# Its rows sit beside the handheld, in a column 580 units wide: a row's label
+# and its value share that, so keep each short.
+
+[gamemenu.applies_to]
+note = The Controls tab's first row: whose buttons the rows under it change, this game's or every game of its system's. A row's label in the 580-unit column beside the handheld.
+en = Applies To
+zh-Hans = 适用于
+es = Se aplica a
+pt-BR = Aplica-se a
+fr = S'applique à
+de = Gilt für
+ja = 適用先
+it = Vale per
+
+[gamemenu.this_game]
+note = Applies To's value: the game being played alone. Its value column, beside the label in the 580-unit column; also the shelf's Buttons row on a game's details.
+en = This Game
+zh-Hans = 本游戏
+es = Este juego
+pt-BR = Este jogo
+fr = Ce jeu
+de = Dieses Spiel
+ja = このゲーム
+it = Questo gioco
+
+[gamemenu.all_system]
+note = Applies To's other value: every game of the system, %s its home label ("All PlayStation", "All GBA"). Its value column, beside the label in the 580-unit column: short.
+en = All %s
+zh-Hans = 所有 %s
+es = Todo %s
+pt-BR = Todo %s
+fr = Tout %s
+de = Alle %s
+ja = %s すべて
+it = Tutto %s
+
+[gamemenu.own_buttons]
+note = A quiet row under Applies To while it says All <System> and this game has buttons of its own, which the system's do not reach. A sentence, a whole row of the 580-unit column.
+en = This game keeps its own buttons.
+zh-Hans = 本游戏使用自己的按键。
+es = Este juego tiene sus botones.
+pt-BR = Este jogo tem seus botões.
+fr = Ce jeu garde ses boutons.
+de = Dieses Spiel hat eigene Tasten.
+ja = このゲームは独自のボタンです。
+it = Questo gioco ha i suoi tasti.
+
+[gamemenu.reset_buttons]
+note = The Controls tab's row near its end: puts the buttons back as they were before any change, for this game or for every game of the system (Applies To). A row's label in the 580-unit column.
+en = Reset Buttons
+zh-Hans = 重置按键
+es = Restablecer botones
+pt-BR = Restaurar botões
+fr = Rétablir les boutons
+de = Tasten zurücksetzen
+ja = ボタンをリセット
+it = Ripristina tasti
+
+[gamemenu.reset_buttons_game]
+note = Reset Buttons' question in This Game, wrapped to the confirm panel as Delete Game's is, over Reset and Cancel: the first %s is the system's name (PlayStation), the second the game's (Spyro the Dragon). The game goes back to the system's buttons.
+en = Put back the %s's buttons in %s?
+zh-Hans = 将 %2$s 恢复为 %1$s 的按键？
+es = ¿Volver a los botones de %s en %s?
+pt-BR = Voltar aos botões de %s em %s?
+fr = Remettre les boutons de %s dans %s ?
+de = Tasten von %s in %s wiederherstellen?
+ja = %2$s のボタンを %1$s の設定に戻しますか？
+it = Ripristinare i tasti di %s in %s?
+
+[gamemenu.reset_buttons_all]
+note = Reset Buttons' question in All <System>, wrapped to the confirm panel as Delete Game's is, over Reset and Cancel: %s is the system's name (PlayStation). Every game of it without buttons of its own goes back to ZyperOS's.
+en = Put back ZyperOS's buttons for every %s game?
+zh-Hans = 将所有 %s 游戏恢复为 ZyperOS 的按键？
+es = ¿Volver a los botones de ZyperOS en todos los juegos de %s?
+pt-BR = Voltar aos botões do ZyperOS em todos os jogos de %s?
+fr = Remettre les boutons de ZyperOS pour tous les jeux %s ?
+de = ZyperOS-Tasten für alle %s-Spiele wiederherstellen?
+ja = すべての %s ゲームのボタンを ZyperOS の設定に戻しますか？
+it = Ripristinare i tasti di ZyperOS in tutti i giochi %s?
+
 [gamemenu.screens]
 note = The in-game menu of a two-screen game (Nintendo DS): how the two are laid out
 en = Screens

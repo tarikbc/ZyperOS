@@ -1123,14 +1123,15 @@ build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.
 
 build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/wifi.c \
                         src/sys_menu.c src/menu.c src/game_menu.c src/controls.c src/remap.c \
+                        src/ctltab.c src/ctltab.h src/tdkey.h src/padglyph.h \
                         src/audioout.c src/sidelights.c src/wifi_menu.h src/sys_menu.h \
                         src/game_menu.h src/menu.h src/audioout.h src/sidelights.h \
                         src/controls.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
-	      src/menu.c src/game_menu.c src/controls.c src/remap.c src/audioout.c src/sidelights.c \
-	      src/keyhints.c src/spawn.c $(I18N_SRC)
+	      src/menu.c src/game_menu.c src/controls.c src/remap.c src/ctltab.c src/audioout.c \
+	      src/sidelights.c src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
 # as plastron's gauge reads them, the FIFO writer that never waits and never

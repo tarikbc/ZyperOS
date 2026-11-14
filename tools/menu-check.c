@@ -13,6 +13,8 @@
 #include "../src/sys_menu.h"
 #include "../src/game_menu.h"
 #include "../src/controls.h"
+#include "../src/ctltab.h"
+#include "../src/padglyph.h"
 #include "../src/sidelights.h"
 #include "legend.h"   /* legend_form: DESIGN.md 11.4's one form */
 
@@ -1859,6 +1861,265 @@ static void n64_pak(void)
 	ck(!gm_pak_option("flycast2021") && !gm_pak_option(NULL), "no pak on any other core");
 }
 
+/* ---- the Controls tab (src/ctltab.h) ------------------------------------------
+ *
+ * Models as src/ctltab_screen.c gathers them, the tables written by hand from
+ * config/systems.cfg's map| lines: the PlayStation has none, so its table is
+ * the identity; the N64's and the Dreamcast's are theirs. */
+#define CT_N64_MAP "select:r2,r2:none,a:b,b:y,y:none,select+a:a,select+b:b,select+y:y"
+#define CT_DC_MAP  "a:b,b:a,x:y,y:x,l1:l2,l2:l1,r1:r2,r2:r1"
+
+static void ct_ps1(ct_model *m)
+{
+	memset(m, 0, sizeof *m);
+	m->tag = "PS1"; m->ext = "chd"; m->sys_label = "PlayStation"; m->sys_name = "PlayStation";
+	m->map = "";
+	rm_identity(&m->def);
+	m->cur = m->base = m->def;
+	m->stick_offered = true;
+}
+
+static void ct_table(rm_table *t, const char *spec)
+{
+	rm_identity(t);
+	rm_parse(spec, t);
+}
+
+/* Where row `id` is, -1 for nowhere */
+static int ct_at(const ct_row *ids, int n, ct_row id)
+{
+	int i;
+
+	for (i = 0; i < n; i++) if (ids[i] == id) return i;
+	return -1;
+}
+
+static void ctl_tab(void)
+{
+	static const char *const ps1[] = { "Applies To", "D-pad as Stick", "A", "B", "X", "Y", "L1",
+	                                   "R1", "L2", "R2", "START", "SELECT", "Reset Buttons", "Hotkeys" };
+	static const char *const n64[] = { "Applies To", "D-pad as Stick", "Pak", "A", "B", "X", "Y", "L1",
+	                                   "R1", "L2", "R2", "START", "SELECT", "Reset Buttons", "Hotkeys" };
+	ct_model m;
+	ct_bufs b;
+	menu_row rows[CT_MAX_ROWS];
+	ct_row ids[CT_MAX_ROWS];
+	unsigned vcol[CT_MAX_ROWS];
+	rm_choice ch[32];
+	int n, k, i, nch;
+
+	printf("the Controls tab:\n");
+	/* ct_rows_ps1_default */
+	ct_ps1(&m);
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(labels_are(rows, n, ps1, 14), "ct_rows_ps1_default: Applies To, D-pad as Stick, A to SELECT, Reset Buttons, Hotkeys");
+	ck(ids[0] == CT_SCOPE && ids[1] == CT_STICK && ids[2] == CT_BUTTON + RM_A &&
+	   ids[11] == CT_BUTTON + RM_SELECT && ids[12] == CT_RESET && ids[13] == CT_HOTKEYS,
+	   "and the ids say the same");
+	ck(!strcmp(val(&rows[0]), "This Game") && rows[0].live && !vcol[0], "Applies To: This Game, plain");
+	ck(!strcmp(val(&rows[1]), "Off") && rows[1].live, "D-pad as Stick: Off");
+	ck(!strcmp(val(&rows[2]), PAD_CIRCLE) && !strcmp(val(&rows[3]), PAD_CROSS) &&
+	   !strcmp(val(&rows[4]), PAD_TRIANGLE) && !strcmp(val(&rows[5]), PAD_SQUARE),
+	   "the faces by the core's own names, the PlayStation's shapes");
+	for (k = 2; k <= 11 && rows[k].live && !vcol[k]; k++) ;
+	ck(k == 12, "every button live and plain");
+	ck(!rows[12].live && !rows[12].value, "Reset Buttons is dead: nothing to put back");
+	ck(rows[13].live && !rows[13].value, "Hotkeys opens the pages");
+	ck(ct_lit(&m, CT_SCOPE) == 0 && ct_lit(&m, CT_HOTKEYS) == 0, "Applies To and Hotkeys light nothing");
+	ck(ct_lit(&m, CT_BUTTON + RM_R1) == 1u << TD_R1 && ct_lit(&m, CT_BUTTON + RM_SELECT) == 1u << TD_SELECT,
+	   "a button row lights its button");
+	ck(ct_lit(&m, CT_STICK) == 1u << TD_DPAD, "D-pad as Stick lights the d-pad, no SELECT on the PlayStation");
+	/* All PlayStation, and a stick off its default */
+	m.scope_all = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!strcmp(val(&rows[0]), "All PlayStation") && ct_at(ids, n, CT_OWN_NOTE) < 0,
+	   "All PlayStation, and no note with no own buttons");
+	m.scope_all = false;
+	m.stick_on = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!strcmp(val(&rows[1]), "On") && vcol[1] && rows[n - 2].live,
+	   "the stick off its default: accent-ink, and This Game's Reset puts it back");
+
+	/* ct_rows_n64 */
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.sys_label = "N64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.stick_offered = m.stick_on = m.stick_default = true;
+	m.pak = "Rumble Pak";
+	m.select_held_c = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(labels_are(rows, n, n64, 15), "ct_rows_n64: the Pak after D-pad as Stick, SELECT held for the C buttons");
+	ck(ids[2] == CT_PAK && !strcmp(val(&rows[2]), "Rumble Pak") && rows[2].live, "Pak says what is in");
+	ck(!strcmp(val(&rows[1]), "On") && !vcol[1], "the stick On, its default");
+	ck(!rows[12].live && !strcmp(val(&rows[12]), "Held: C"), "SELECT is dead: Held: C (its buttons)");
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT), "the stick lights SELECT, the way to the D-pad");
+	ck(ct_lit(&m, CT_PAK) == 0, "Pak lights nothing");
+
+	/* ct_rows_dc_face_stick_on */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.def;
+	m.stick_offered = m.stick_on = true;
+	m.face_offered = ctl_letter_layout("DC", &m.letters);
+	m.select_held_dpad = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_FACE);
+	ck(m.face_offered && k == 2 && !strcmp(val(&rows[k]), "By Letter") && rows[k].live,
+	   "ct_rows_dc_face_stick_on: Face Buttons after the stick, By Letter as ZyperOS has it");
+	k = ct_at(ids, n, CT_BUTTON + RM_SELECT);
+	ck(k > 0 && !rows[k].live && !strcmp(val(&rows[k]), "Held: D-pad"), "SELECT is dead: Held: D-pad");
+	ck(vcol[1], "the stick On off its default (Off): accent-ink");
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT), "the stick lights SELECT too");
+	ck(ct_lit(&m, CT_FACE) == (1u << TD_A | 1u << TD_B | 1u << TD_X | 1u << TD_Y), "Face Buttons the four faces");
+	ck(ct_faces(&m, &m.cur) == 0, "the default reads By Letter");
+	ct_faces_set(&m, &m.cur, 1);
+	ck(ct_faces(&m, &m.cur) == 1 && m.cur.b[RM_A].to == RT_A && m.cur.b[RM_L1].to == RT_L2,
+	   "By Place writes the faces alone: the shoulders stay the Dreamcast's");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_FACE);
+	ck(!strcmp(val(&rows[k]), "By Place") && vcol[k], "By Place, off the default: accent-ink");
+	m.cur.b[RM_A] = (rm_choice){ RT_X, 0 };
+	ck(ct_faces(&m, &m.cur) == 2 && ct_faces_next(2) == 0, "one face changed is Mixed, and a step from it By Letter");
+	m.stick_on = false; m.select_held_dpad = false;
+	ck(ct_lit(&m, CT_STICK) == 1u << TD_DPAD, "the stick off: the d-pad alone");
+
+	/* ct_scope_accent_when_own */
+	ct_ps1(&m);
+	m.game_has_own = true;
+	ct_table(&m.cur, "b:y,y:b");
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(vcol[0] && !strcmp(val(&rows[0]), "This Game"), "ct_scope_accent_when_own: Applies To in accent-ink");
+	k = ct_at(ids, n, CT_BUTTON + RM_B);
+	ck(vcol[k] && !strcmp(val(&rows[k]), PAD_SQUARE) && vcol[k + 2] && !vcol[k - 1],
+	   "the changed buttons in accent-ink, the rest plain");
+	ck(rows[ct_at(ids, n, CT_RESET)].live, "and Reset Buttons is live");
+	m.game_has_own = false;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(!vcol[0], "no own buttons: Applies To plain");
+
+	/* ct_own_note_when_all */
+	ct_ps1(&m);
+	m.scope_all = m.game_has_own = true;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ids[1] == CT_OWN_NOTE && !rows[1].live && !strcmp(lbl(&rows[1]), "This game keeps its own buttons."),
+	   "ct_own_note_when_all: the note right under Applies To");
+	m.scope_all = false;
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_OWN_NOTE) < 0, "not in This Game");
+
+	/* ct_warn_under_cause */
+	ct_ps1(&m);
+	m.cur.b[RM_B] = (rm_choice){ RM_NONE, 0 };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	k = ct_at(ids, n, CT_BUTTON + RM_B);
+	ck(k > 0 && ids[k + 1] == CT_WARN + RT_B && !rows[k + 1].live &&
+	   !strcmp(lbl(&rows[k + 1]), PAD_CROSS " has no button now"),
+	   "ct_warn_under_cause: \"× has no button now\" right under B");
+	ck(!strcmp(val(&rows[k]), "Nothing") && vcol[k], "B says Nothing, in accent-ink");
+	m.cur.b[RM_X] = (rm_choice){ RT_B, RM_TURBO };
+	n = ct_rows(&m, ids, rows, vcol, &b);
+	ck(ct_at(ids, n, CT_WARN + RT_B) < 0 && ct_at(ids, n, CT_WARN + RT_X) == ct_at(ids, n, CT_BUTTON + RM_X) + 1,
+	   "a turbo of it is a button; triangle is the one with none now, under X");
+
+	/* ct_lit_swap */
+	ct_ps1(&m);
+	rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+	ck(m.cur.b[RM_B].to == RT_Y, "Y given cross: B gives square");
+	ck(ct_lit(&m, CT_BUTTON + RM_Y) == (1u << TD_Y | 1u << TD_B), "ct_lit_swap: the Y row lights Y and B");
+	m.base = m.cur;
+	ck(ct_lit(&m, CT_BUTTON + RM_Y) == 1u << TD_Y, "once the cursor comes back, Y alone");
+	ck(ct_lit(&m, CT_RESET) == (1u << TD_Y | 1u << TD_B), "Reset Buttons lights every changed button");
+
+	/* The steps, round the choices, and Nothing */
+	ct_ps1(&m);
+	nch = ctl_remap_choices("PS1", "chd", "", ch, 32);
+	ck(nch == 15, "the PlayStation's choices: four faces, six more, four turbos, Nothing");
+	ck(ct_step(&m, ch, nch, RM_A, +1).to == RT_B && ct_step(&m, ch, nch, RM_A, -1).to == RM_NONE,
+	   "Right on A is cross, Left goes round to Nothing");
+	i = ct_choice_at(&m, ch, nch, m.cur.b[RM_START]);
+	ck(i >= 0 && ch[i].to == RT_START, "START is among them");
+	m.cur.b[RM_A] = (rm_choice){ RT_L1, 0 };
+	ck(ct_choice_at(&m, ch, nch, m.cur.b[RM_A]) == 4, "L1 is the first after the faces");
+	{
+		ct_model nes;
+		rm_choice nc[32];
+		int nn;
+
+		memset(&nes, 0, sizeof nes);
+		nes.tag = "NES"; nes.ext = "nes"; nes.map = "";
+		ct_table(&nes.def, "x:a~3,y:b~3");
+		nes.cur = nes.base = nes.def;
+		nn = ctl_remap_choices("NES", "nes", "", nc, 32);
+		ck(ct_says_nothing(&nes, nes.cur.b[RM_L1]) && ct_choice_at(&nes, nc, nn, nes.cur.b[RM_L1]) == nn - 1,
+		   "an NES game's L1 gives nothing: it reads Nothing");
+		ck(ct_taken(&nes, RM_L1, (rm_choice){ RM_NONE, 0 }).to == RT_L1,
+		   "and Nothing taken there is its own, so nothing is kept");
+		n = ct_rows(&nes, ids, rows, vcol, &b);
+		k = ct_at(ids, n, CT_BUTTON + RM_L1);
+		ck(!strcmp(val(&rows[k]), "Nothing") && !vcol[k], "its row says Nothing, plain");
+		nes.cur.b[RM_L1] = (rm_choice){ RT_A, RM_TURBO };
+		n = ct_rows(&nes, ids, rows, vcol, &b);
+		for (k = 0; k < n && !(ids[k] >= CT_WARN && ids[k] < CT_RESET); k++) ;
+		ck(k == n, "no warning for a button the core names nothing");
+	}
+
+	/* A button's choices */
+	{
+		ct_pick_bufs pb;
+		int sel = -1;
+
+		ct_ps1(&m);
+		rm_set(&m.cur, &m.base, RM_Y, (rm_choice){ RT_B, 0 });
+		nch = ctl_remap_choices("PS1", "chd", "", ch, 32);
+		n = ct_pick_rows(&m, RM_Y, ch, nch, rows, &pb, &sel);
+		ck(n == nch && !strcmp(pb.head, "Y: PlayStation"), "the choices of Y, under \"Y: PlayStation\"");
+		ck(sel == 1 && rows[1].value == MENU_TICK && !strcmp(lbl(&rows[1]), PAD_CROSS),
+		   "a tick on cross, what it gives now, the cursor on it");
+		ck(!strcmp(val(&rows[3]), "default") && !strcmp(lbl(&rows[3]), PAD_SQUARE), "default on square");
+		for (k = 0, i = 0; k < n; k++) i += rows[k].live;
+		ck(i == n, "every choice can be taken");
+		n = ct_pick_rows(&m, RM_A, ch, nch, rows, &pb, &sel);
+		ck(sel == 0 && rows[0].value == MENU_TICK, "A at its default: the tick alone");
+	}
+
+	/* The Hotkeys row's pages, beside the handheld: none of the system's
+	 * buttons (the tab shows them), SELECT alone a row */
+	{
+		ctl_game g;
+		ctl_buf cb;
+		menu_row pr[CTL_MAX_ROWS];
+		int np, pages;
+
+		memset(&g, 0, sizeof g);
+		g.tag = "PS1"; g.name = "PlayStation"; g.short_name = "PS1"; g.map = ""; g.ext = "chd";
+		pages = ctl_game_pages(&g);
+		g.no_buttons = true;
+		ck(ctl_game_pages(&g) == 2 && pages > 2, "the PlayStation's pages less its buttons: Hotkeys, In a game");
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		ck(!strcmp(cb.head, "Controls: Hotkeys") && np == 5 && !strcmp(lbl(&pr[4]), "SELECT") &&
+		   !strcmp(val(&pr[4]), "The game's") && !ROW_IS_NOTE(pr[4]),
+		   "Hotkeys first, SELECT alone a row: \"SELECT | The game's\"");
+		memset(&g, 0, sizeof g);
+		g.tag = "N64"; g.name = "Nintendo 64"; g.short_name = "N64"; g.ext = "z64";
+		g.map = CT_N64_MAP; g.accessory = "Rumble Pak"; g.no_buttons = true;
+		np = ctl_game_rows(&g, 0, pr, &cb);
+		ck(!strcmp(cb.head, "Controls: C buttons") && np > 0 && !ROW_IS_NOTE(pr[np - 1]),
+		   "the N64's C buttons first, with no note of where the Pak is: the tab beside it has the row");
+	}
+
+	/* The read-only pages light what they name */
+	ck(ct_keys_named("SELECT+R1") == (1u << TD_SELECT | 1u << TD_R1), "SELECT+R1: SELECT and R1");
+	ck(ct_keys_named("MENU, X") == (1u << TD_MENU | 1u << TD_X), "MENU, X: MENU and X");
+	ck(ct_keys_named("X/Y/L2/R2") == (1u << TD_X | 1u << TD_Y | 1u << TD_L2 | 1u << TD_R2), "X/Y/L2/R2");
+	ck(ct_keys_named("MENU+VOL") == (1u << TD_MENU | 1u << TD_VOLUP | 1u << TD_VOLDN), "MENU+VOL");
+	ck(ct_keys_named("SELECT+D-pad") == (1u << TD_SELECT | 1u << TD_DPAD), "SELECT and the d-pad's word");
+	ck(ct_keys_named("Volume rocker") == (1u << TD_VOLUP | 1u << TD_VOLDN), "the volume's word");
+	ck(ct_keys_named("START/SELECT") == (1u << TD_START | 1u << TD_SELECT) && ct_keys_named("F1/F2") == 0,
+	   "START/SELECT, and nothing for the Brick's F1/F2");
+}
+
 /* NES Player 2 (src/p2.h): its row right after Shader's group, on a game
  * whose core the system table offers it on (gm_gather asks p2_offered), and
  * on no other game's menu; A opens its page, so it is a stop and plain. Its
@@ -2381,6 +2642,7 @@ int main(void)
 	ingame_rows();
 	quick_slot();
 	n64_pak();
+	ctl_tab();
 	player2_row_on_nes_only();
 	audio_row();
 	channels_row();

@@ -31,6 +31,38 @@ typedef enum {
 	MENU_FAILED
 } menu_result;
 
+/* Where a panel is drawing the picture in the column at its rows' left
+ * (menu_style's `side`), and in what pass:
+ *   MENU_SIDE_REST  the panel at rest, straight on the screen
+ *   MENU_SIDE_PASS  the panel moving (DESIGN.md 8.2), into the pass that
+ *                   scales and fades it: a picture drawn here goes with it
+ *   MENU_SIDE_OVER  the same panel's frame, after the pass, on the screen at
+ *                   the panel's place at rest: a picture that holds still
+ *                   while the panel under it changes (the Controls tab's
+ *                   handheld, as its pages open and close) is drawn here and
+ *                   not in the pass
+ * A drawer is called once a frame at REST, or twice, PASS then OVER, and
+ * draws in one of them. */
+typedef enum { MENU_SIDE_REST, MENU_SIDE_PASS, MENU_SIDE_OVER } menu_side_stage;
+
+typedef struct {
+	SDL_Rect panel;         /* the panel at rest */
+	int      content_x;     /* the content's left edge: the heading rule's left end */
+	int      content_y;     /* the rows' top */
+	const menu_row *rows;   /* the rows drawn beside it, and the cursor's (-1 none) */
+	int      n, sel;
+	/* The panel is the screen's own, drawn by its loop now, and not a copy
+	 * of one drawn leaving (src/menusnap.h) */
+	bool     live;
+	/* The tab row's move, when the panel has one: the tab on, the one it
+	 * came from and which way (+1 R1, -1 L1), and when it began (0 at rest);
+	 * -1, -1, 0, 0 for a panel with no tabs */
+	int      tab_at, tab_from, tab_dir;
+	unsigned tab_t0;
+	unsigned now;           /* the motion's clock (anim_now) */
+	menu_side_stage stage;
+} menu_side;
+
 /* How the panel is drawn, as opposed to what is in it. Everything here needs
  * the renderer or the app, which is exactly why it is not in the build
  * function. */
@@ -84,7 +116,70 @@ typedef struct {
 	 * with the gap under it: Theme's two small themes. NULL: none. */
 	void   (*header)(app *a, const SDL_Rect *r);
 	int      header_h;
+	/* Each row's value color by place, parallel to the rows the build made:
+	 * 0 the ordinary rule, 1 (VCOL_EARNED) accent-ink, the Controls tab's
+	 * changed values. Read every frame through the pointer, so the build
+	 * may write it. NULL: every value plain. */
+	const unsigned *vcolors;
+	/* A picture in a column at the rows' left (the Controls tab's handheld,
+	 * DESIGN.md 11.28): the rows and the focus fill are set in by `side_w`
+	 * from the content's left edge, and `side` is called with where and in
+	 * which pass (menu_side), whatever side_w is, so it can draw a picture
+	 * leaving with a tab that has none. A panel with one is as tall as the
+	 * screen allows, as MENU's tabs are, so it holds still as the pages
+	 * beside it change. NULL: none. */
+	void   (*side)(app *a, const menu_side *at);
+	int      side_w;
 } menu_style;
+
+/* ---- the menu runner (main.c's menu_run) ------------------------------------
+ *
+ * How a screen ended, for the callers that act differently on each. */
+typedef enum {
+	MENU_LEFT_BACK,     /* B or MENU, the ordinary way out */
+	MENU_LEFT_SCREEN,   /* the screen's own handler said so */
+	MENU_LEFT_GONE      /* quit, power, or nothing left to show */
+} menu_exit;
+
+/* Fill `rows`, name the screen, and return how many rows; called every
+ * frame. Its rules are main.c's, beside menu_run. */
+typedef int (*menu_build_fn)(void *ctx, menu_row *rows, int max,
+                             const char **heading);
+
+/* A key the runner did not consume, and the row it happened on (its place
+ * in the rows the last build made) */
+typedef menu_result (*menu_key_fn)(app *a, void *ctx, in_button key, int sel);
+
+/* One screen, one loop: polling, power, idle, quit, back, volume,
+ * brightness, the cursor and the whole frame */
+menu_exit menu_run(app *a, const menu_style *st,
+                   menu_build_fn build, menu_key_fn on_key, void *ctx);
+
+/* A panel as menu_run draws one with `st` (its tabs, the picture beside
+ * its rows, its value colors), for a loop of its own or a shot */
+void menu_draw_styled(app *a, const menu_style *st, const char *heading,
+                      const menu_row *rows, int n, int sel);
+
+/* MENU was pressed in a screen over the one asking, and every screen is
+ * closing (menu_leaving) */
+bool menu_closing(void);
+
+/* The launcher's motion clock (DESIGN.md 8): plat_now_ms, or a shot's held
+ * time (--shot-at) */
+unsigned anim_now(void);
+
+/* A question asked as Delete Game asks it: wrapped to the panel a line a
+ * row, a rule, then `yes_label` and Cancel, the cursor on Cancel. Over
+ * `over`'s backdrop with its power rule (NULL: over the shelf, POWER the
+ * device's). True for the yes. */
+bool ask_panel(app *a, const menu_style *over, void *ctx, const char *heading,
+               const char *q, const char *yes_label);
+
+/* The in-game menu's read-only Controls pages over `over`'s backdrop with
+ * its power rule, its width and its side picture: the Controls tab's
+ * Hotkeys row, which opens them less the system's buttons (the tab shows
+ * those; ctl_game.no_buttons). Left and Right turn them, B goes back. */
+void game_controls_pages(app *a, const menu_style *over, void *ctx);
 
 /* What a screen with a panel draws under it, and asks every frame */
 void draw_shelf(app *a);

@@ -157,7 +157,7 @@ clock.label_12h
 
 # controls: no shot draws it yet
 controls.battery
-controls.nothing  # the Controls tab draws it (task 7); no screen says it yet
+controls.select_games  # the Hotkeys page beside the handheld (--gm-keys): its shared rows (Quick save, In a game's) do not all fit the 580-unit column yet in every language, so no shot of it is checked
 controls.show_keypad
 controls.disk_side
 controls.eject_disk
@@ -194,9 +194,10 @@ emptyhome.unplug_adapter
 emptyhome.cheer.one
 emptyhome.cheer.other
 
-# gamemenu: no shot draws it yet (gamemenu.pak: the Pak row left the in-game menu for
-# the Controls tab, whose rows come with the remap work, and its shot returns then)
-gamemenu.pak
+# gamemenu: no shot draws it yet
+gamemenu.own_buttons  # wrapped to the Controls tab's column a line a row, as a paragraph is, so no drawn line is the string; gamemenu-controls-all draws it
+gamemenu.reset_buttons_game  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask draws it
+gamemenu.reset_buttons_all  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask-all draws it
 gamemenu.delete_ask
 gamemenu.delete_ask_this
 gamemenu.delete_ask_port

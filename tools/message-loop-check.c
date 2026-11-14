@@ -32,6 +32,12 @@ static const menu_tabs *g_menu_tabs;
 static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
 static void (*g_menu_header)(app *a, const SDL_Rect *r);
 static int g_menu_header_h;
+/* ...and the picture at a panel's rows' left (menu_style's side), which
+ * snap_draw tells it is drawing a copy: none here either */
+typedef struct menu_side menu_side;
+static void (*g_menu_side)(app *a, const menu_side *at);
+static int g_menu_side_w;
+static bool g_snap_drawing;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
 enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, VCOL_MESSAGE };

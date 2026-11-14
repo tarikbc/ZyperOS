@@ -160,6 +160,38 @@ for th in light dark; do
 	other "$th: the Controls tab is not the Display tab" "gamemenu-controls-$th" "gamemenu-display-$th"
 done
 
+echo "the Controls tab: its rows beside the handheld, in both themes, still"
+# The PlayStation's game (the shelf on it, ZyperOS/.last): the tab at rest
+# and later the same picture; the cursor on D-pad as Stick lights the
+# d-pad; a swap of Y and B (two Lefts on Y) colors both values and lights
+# both keys; A on Y opens its choices; the Hotkeys row's page; and a
+# Nintendo 64 game's tab, with its Pak and SELECT held for the C buttons
+printf 'PS1\nRidge Racer.chd\n' >"$D/root/.last"
+for th in light dark; do
+	shot "ctltab-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2
+	shot "ctltab-later-$th" --theme "$th" --screen games --gamemenu 0 --gm-tab 2 --shot-at 4000
+	same "$th: the Controls tab sits still" "ctltab-$th" "ctltab-later-$th"
+	other "$th: a PlayStation game's Controls tab is its own" "ctltab-$th" "gamemenu-controls-$th"
+	shot "ctltab-stick-$th" --theme "$th" --screen games --gamemenu 1 --gm-tab 2
+	other "$th: D-pad as Stick is its own row, its key lit" "ctltab-stick-$th" "ctltab-$th"
+	shot "ctltab-y-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2
+	shot "ctltab-swap-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 \
+	     --gm-press left,left --shot-at 400
+	other "$th: a swap changes the rows and the handheld" "ctltab-swap-$th" "ctltab-y-$th"
+	shot "ctltab-pick-$th" --theme "$th" --screen games --gamemenu 5 --gm-tab 2 --gm-pick
+	other "$th: A on Y opens its choices" "ctltab-pick-$th" "ctltab-y-$th"
+	shot "ctltab-keys-$th" --theme "$th" --screen games --gamemenu 13 --gm-tab 2 --gm-keys 0
+	other "$th: the Hotkeys row opens its page" "ctltab-keys-$th" "ctltab-$th"
+done
+other "the Controls tab's themes are the same picture" "ctltab-light" "ctltab-dark"
+printf 'N64\nMario Kart 64.z64\n' >"$D/root/.last"
+for th in light dark; do
+	shot "ctltab-n64-$th" --theme "$th" --screen games --gamemenu 2 --gm-tab 2
+	other "$th: the N64's tab is the PlayStation's" "ctltab-n64-$th" "ctltab-$th"
+done
+grep -q 'drawn: Pak' "$D/log" || fail "the N64's tab draws its Pak row"
+rm -f "$D/root/.last"
+
 echo "the home: A to Z on a new card, release dates as a choice"
 order() {
 	# the systems the launcher scanned, in its order (scan: NAME N games)
@@ -188,5 +220,6 @@ if [ "$fails" -ne 0 ]; then
 	echo "controls-shots: $fails FAILED"
 	exit 1
 fi
-echo "ok: every page sits still and is its own, Controls follows Display, and the"
+echo "ok: every page sits still and is its own, Controls follows Display, the"
+echo "Controls tab sits still beside its handheld, and the"
 echo "home goes A to Z, to release dates and back"

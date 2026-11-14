@@ -52,6 +52,10 @@ typedef struct {
 	const char *(*tab_name)(int i);
 	void       *row_mark, *header;
 	int         header_h;
+	/* ...and its picture at the rows' left (menu_style's `side`) and how
+	 * far the rows are set in for it */
+	void       *side;
+	int         side_w;
 	size_t      used;         /* of `text` */
 	char        text[MENUSNAP_TEXT];
 } menu_snap;

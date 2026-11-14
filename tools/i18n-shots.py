@@ -394,6 +394,55 @@ for _s in ("shimmerless", "crt", "crt-curved", "scanlines", "lcd"):
     EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "1", "--gm-tab", "1"]))
     SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
 
+# The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
+# end (Reset Buttons, Hotkeys), a button's choices, All <System> over a game
+# with buttons of its own and the note under it, a game button left with
+# none, Reset Buttons' two questions; the Nintendo 64's
+# (Pak, SELECT held for the C buttons) and the Dreamcast's (Face Buttons in
+# each of its three values, the stick on and SELECT held for its d-pad).
+# Their buttons and sticks are the card's library's (SHOT_LIB), the shelf on
+# CTL_FOCUS's game.
+_MGS = "map.PS1." + R.FOCUS + ".chd"
+_SONIC = "Sonic Adventure (USA).chd"
+for _name, _tag, _flags in (
+        ("end", "PS1", ["--gamemenu", "13"]), ("pick", "PS1", ["--gamemenu", "5", "--gm-pick"]),
+        ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
+        ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
+        ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
+        ("n64-end", "N64", ["--gamemenu", "13"]),
+        ("dc", "DC", ["--gamemenu", "2"]), ("dc-end", "DC", ["--gamemenu", "13"]),
+        ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"])):
+    EXTRA.setdefault("gamemenu-controls-" + _name,
+                     ("demo", _tag, ["--screen", "games", "--gm-tab", "2"] + _flags))
+# A Nintendo 64 game's Pak row, back in the Controls tab
+EXTRA.setdefault("gamemenu-pak", ("demo", "N64", ["--screen", "games", "--gm-tab", "2", "--gamemenu", "2"]))
+CTL_FOCUS = {"gamemenu-pak": "Mario Kart 64 (USA).z64",
+             "gamemenu-controls-n64-end": "Mario Kart 64 (USA).z64",
+             **{"gamemenu-controls-" + _n: _SONIC for _n in ("dc", "dc-end", "dc-place", "dc-mixed")}}
+SHOT_LIB = {"gamemenu-controls-all": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-pick": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-warn": {_MGS: "1;b:none"},
+            "gamemenu-controls-ask": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-ask-all": {"map.PS1": "1;b:y,y:b"},
+            "gamemenu-controls-dc-end": {"stick.DC." + _SONIC: "1"},
+            "gamemenu-controls-dc-place": {"map.DC." + _SONIC: "1;a:a,b:b,x:x,y:y"},
+            "gamemenu-controls-dc-mixed": {"map.DC." + _SONIC: "1;a:a"}}
+
+
+def set_lib(card, settings, on):
+    """A shot's keys (SHOT_LIB) into the card's library, or out of it"""
+    if not settings:
+        return
+    import sqlite3
+    with sqlite3.connect(card / "shared/.zyperos/library.db") as db:
+        db.execute("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)")
+        for key, value in settings.items():
+            if on:
+                db.execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (key, value))
+            else:
+                db.execute("DELETE FROM settings WHERE key=?", (key,))
+
+
 # MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
 # and its neighbours' beside it; Display on its Theme row, with its chips
 for _tab in range(6):
@@ -559,7 +608,7 @@ def run_language(code, shots, binary, keep):
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = PORT_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
+            focus = PORT_FOCUS.get(name) or CTL_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
                 {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
                  "PRT": "PortMaster.sh"}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
@@ -594,9 +643,11 @@ def run_language(code, shots, binary, keep):
             # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
             # is taken: the Shader row at its widest value
             R.set_settings(card, SHOT_SETTINGS.get(name), True)
+            set_lib(card, SHOT_LIB.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             R.set_settings(card, SHOT_SETTINGS.get(name), False)
+            set_lib(card, SHOT_LIB.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])

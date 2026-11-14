@@ -951,6 +951,14 @@ void td_draw(SDL_Renderer *r, td_keep *k, const td_pose *p)
 		draw_view(r, &v);
 }
 
+void td_make(SDL_Renderer *r, td_keep *k, const td_pose *p)
+{
+	view v;
+
+	view_of(&v, p);
+	keep_make(r, k, p, &v);
+}
+
 void td_keep_free(td_keep *k)
 {
 	if (k->tex) SDL_DestroyTexture(k->tex);
