@@ -769,7 +769,11 @@ stays unpowered until it comes out. Once a computer has shown up, Automatic
 pauses: until the port has been empty for 3 seconds, anything plugged in
 gets the question instead (a computer whose port drops and comes back when
 the power goes is never fed again, and an adapter swapped in is one press
-away), and the message says to plug the computer in again.
+away), and the message says to plug the computer in again. The second
+time you answer **USB Accessory**, once the accessory has its power, the
+shelf asks once, **Power without asking?**: **Automatic** turns this
+setting to Automatic, **Keep Asking** leaves it on Ask, and either answer
+is kept, so the offer never comes back.
 
 **Developer Mode** (MENU, under Show Tutorial, development images only) keeps
 the link on whenever a computer is plugged in, with no question, so
