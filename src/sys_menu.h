@@ -49,7 +49,8 @@
  * the third thing about what you hear. my place for it, 2026-11-04, in
  * the sound lab, over beside Appearance with the look. */
 /* Menu Music directly under UI Sounds: the other sound the launcher makes on
- * its own, ROGUE OS's frontend music from Roms/BGM (src/bgm.h). */
+ * its own, from the card's Menu Music folder and ZyperOS's tracks
+ * (src/bgm.h). */
 /* System Update just above About (the update lab, 2026-11-05): its value is
  * the installed version, or the news when there is some. Only on a device
  * whose card has the update program (docs/updates.md). */

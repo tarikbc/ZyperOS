@@ -1127,7 +1127,11 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 
 	/* The shelf's pixel art for a folder (hare_set_icons): /icons/NES.png is
 	 * <dir>/NES-still.png. The key is checked letter by letter, so nothing
-	 * but a picture of that folder can be named. */
+	 * but a picture of that folder can be named. Tagged and asked again each
+	 * time, as the page's own files are (httpd_reply_static): with a day's
+	 * max-age a browser kept the old art for a day after an update changed
+	 * it (1.0.5's new folder art, 2026-11-13). An unchanged picture costs a
+	 * 304. */
 	if (!strncmp(path, "/icons/", 7) && !strcmp(m, "GET")) {
 		const char *k = path + 7, *dot = strrchr(k, '.');
 		char file[XFER_PATH_MAX];
@@ -1138,7 +1142,7 @@ static void on_request(httpd_req *r, bool done, void *ctx)
 			httpd_reply_status(r, 404, "no such picture");
 			return;
 		}
-		httpd_reply_file(r, file, "image/png", "Cache-Control: max-age=86400\r\n");
+		httpd_reply_static(r, file, "image/png");
 		return;
 	}
 

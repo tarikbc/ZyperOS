@@ -6,8 +6,9 @@
 
 #include "corestate.h"
 
-/* diatom/src/save.c's struct state_header: 8 + 4 + 4 + 64 + 32 bytes, no
- * padding on any target */
+/* diatom/src/statefile.c's header: 8 + 4 + 4 + 64 + 32 bytes, no padding on
+ * any target, and in version 2 (packed states, 2026-11-12) two fields after
+ * those: the core's name is at 16 in both */
 #define HDR_MAGIC   "DIATOMST"
 #define HDR_NAME_AT 16
 #define HDR_NAME_N  64
@@ -28,7 +29,7 @@ bool cst_writer(const char *state_path, char *buf, size_t n)
 	/* Little-endian, as every device Diatom runs on writes it */
 	version = (uint32_t)h[8] | (uint32_t)h[9] << 8 | (uint32_t)h[10] << 16 |
 	          (uint32_t)h[11] << 24;
-	if (version != 1) return false;
+	if (version != 1 && version != 2) return false;
 	snprintf(buf, n, "%.*s", HDR_NAME_N, (const char *)h + HDR_NAME_AT);
 	return true;
 }

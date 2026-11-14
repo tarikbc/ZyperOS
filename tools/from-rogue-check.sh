@@ -10,7 +10,7 @@
 # The set rows' three shelves (Neo Geo, Arcade, MAME) are shelves. A skip
 # row's system is not a shelf either (there is none now). A pending
 # row's folder is NOT a shelf yet: the day it is, the check fails, and the row
-# becomes a game row. BGM and Music are the folders src/bgm.h and
+# becomes a game row. Menu Music and Music are the folders src/bgm.h and
 # src/muselib.c read, in types they play. Every disc BIOS systems.cfg names
 # comes over by a bios row, and every bios row serves folders the table has.
 # Every folder that holds files on my ROGUE card (tools/fixtures/
@@ -39,7 +39,7 @@ fail() { echo "FAIL $*" >&2; fails=$((fails + 1)); }
 TABLE=$(sh "$T" --table) || { echo "FAIL $T --table" >&2; exit 1; }
 SHELVES=$(awk -F'|' '$1 == "sys" { print $3 "|" $8 "|" $9 }' "$CFG")
 shelf_exts() { printf '%s\n' "$SHELVES" | awk -F'|' -v f="$1" '$1 == f { gsub(/,/, " ", $2); print " " $2 " " }'; }
-bgm_dir=$(sed -n 's/^#define BGM_DIR "\(.*\)"/\1/p' src/bgm.h)
+bgm_dir=$(sed -n 's/^#define BGM_CARD_DIR "\(.*\)"/\1/p' src/bgm.h)
 music_types=$(awk '/static const char \*AUDIO\[\]/,/NULL/' src/muselib.c | tr -c 'a-z0-9\n' ' ')
 
 mkdir -p build-native
@@ -72,7 +72,7 @@ while IFS='|' read -r kind rogue place types also; do
 		[ -z "$(shelf_exts "$folder")" ] ||
 			fail "$rogue: $place is a shelf now; make its row a game row (types: $(shelf_exts "$folder"))" ;;
 	bgm)
-		[ "$place" = "Roms/$bgm_dir" ] || fail "$rogue: $place is not src/bgm.h's Roms/$bgm_dir"
+		[ "$place" = "$bgm_dir" ] || fail "$rogue: $place is not src/bgm.h's $bgm_dir"
 		for t in $types; do case $t in mp3|ogg) ;; *) fail "$rogue: the menu music plays no .$t" ;; esac; done ;;
 	music)
 		grep -q '"%s/Music"' src/muselib.c || fail "$rogue: src/muselib.c reads no Music folder"
@@ -249,7 +249,7 @@ same bios/scd_U.brm                       "Saves/Sonic CD (USA).srm"
 same ports/Game.sh                        Roms/Ports/Game.sh
 same ports/game/data.bin                  Roms/Ports/game/data.bin
 same ports/game/.astc_done                Roms/Ports/game/.astc_done
-same BGM/song.mp3                         Roms/BGM/song.mp3
+same BGM/song.mp3                         "Menu Music/song.mp3"
 same music/Loose.mp3                      Music/Singles/Loose.mp3
 same music/Artist/Album/01.flac           Music/Artist/Album/01.flac
 same pico-8/cart.p8                       Roms/PICO-8/cart.p8

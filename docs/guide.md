@@ -517,6 +517,13 @@ pick another, and each system remembers its own. A system whose emulator keeps
 no states (ScummVM, J2ME) has no Quick Slot, and there R1 and L1 under SELECT
 are the game's.
 
+**Save states are packed** as they are written, the six slots and the resume
+point alike, so they take little of the card: a Nintendo 64 game's is about
+1.5 MB where it was 16, and a PSP game's is no longer 40 MB on every quit.
+States made before 1.0.5 load as they did. ZyperOS 1.0.4 and older cannot
+read the new ones: there a game starts from its beginning instead, its
+battery save kept.
+
 **The Nintendo 64's Pak.** An N64 game's controller holds the Rumble Pak, so
 the Pixel 2 shakes. A game that saves to the Controller Pak, the N64's memory
 card (Mario Kart 64's ghosts, and games that save nowhere else), takes it in
@@ -555,7 +562,8 @@ across the top, warm for brightness and cyan for volume.
 
 **Wi-Fi File Transfer** (MENU, with Wi-Fi) and **USB File Transfer** (the same
 row while a computer is on the USB cable) put the card's folders in a web
-browser: ROMs, Music, Audiobooks, Videos, BIOS, Saves and Save States. The screen
+browser: ROMs, Music, Audiobooks, Videos, Menu Music, BIOS, Saves and Save
+States. The screen
 shows the handheld's address, its name (`zyperos.local`) and a four-digit
 PIN, new each time it opens. Either opens the page; the name is the easier
 one to type, and the address works where the name does not. Over the USB
@@ -882,21 +890,27 @@ plugging in mid-game does not arrive at nine decibels louder than you left it.
 ### Menu music
 
 Music plays behind the shelf and the menus, never over a game, a port or MP4:
-your own MP3 and Ogg files in `Roms/BGM`, or ZyperOS's ten 8-bit tracks while
-that folder has none. **MENU > Menu Music**:
+ZyperOS's ten 8-bit tracks, and your own. Yours go in `Menu Music`, a folder of
+their own at the top of the card, beside `Music` and `Videos`: copy MP3 and Ogg
+files there with the card in a computer, in Flash Drive, or on File Transfer's
+page. Folders inside it play too, two deep (`Menu Music/Album/Disc 1/01
+Song.mp3`), and a song you copy on plays once File Transfer closes. `Roms/BGM`,
+where ROGUE OS and ZyperOS before 1.0.5 kept menu music, no longer plays: move
+its songs into `Menu Music`. **MENU > Menu Music**:
 
 | Row | What it is |
 |---|---|
 | **Music** | `On` or `Off`. `On` on a new device |
 | **Volume** | 10% to 100%, under the system volume. `50%` to start |
-| **Track** | `Shuffle`, which plays every track once before any plays again, or one track over and over |
+| **ZyperOS Tracks** | `On`: ZyperOS's ten tracks play in the shuffle with yours. `Off`: yours alone. `On` to start. The row is there once you have music of your own; until then ZyperOS's tracks play |
+| **Track** | `Shuffle`, which plays every track once before any plays again, or one track over and over, yours first, then ZyperOS's |
 | **Song Pop-up** | `On` or `Off`: whether Zyper says each new song's name on the shelf, and MP4's track when L2 or R2 moves it. `On` to start |
 | **Playing** | the song playing; A goes to the next |
 
 On the systems row and a games shelf, **R2** is the next song and **L2** the one
 before, back through the last 32 heard; after going back, R2 goes forward through
 them again before anything new. With **Track** on one song, L2 and R2 move the
-setting to the song before or after it in the folder, which then plays over and
+setting to the song before or after it in the list, which then plays over and
 over. A press while the music is off, or quiet under a video snap's sound, is
 refused with a sound. While MP4 plays behind the shelf the menu music is quiet,
 and L2 and R2 move MP4 instead (below); with MP4 paused they are the menu

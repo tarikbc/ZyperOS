@@ -16,12 +16,12 @@ const char *bgm_menu_value(bool on, int ntracks)
 int bgm_menu_build(const bgm_ui *u, menu_row *rows, int max, bgm_bufs *b,
                    const char **heading)
 {
-	bool have = u->ntracks > 0;
-	int n = 0;
+	bool have = u->ntracks > 0, mine = u->own > 0;
+	int n = 0, theirs = u->ntracks - u->own;
 
 	*heading = T(S_SYSMENU_MENU_MUSIC);
 	memset(b->sound, 0, sizeof b->sound);
-	if (max < BGM_ROWS + 2) return 0;
+	if (max < BGM_ROWS + 3) return 0;
 
 	bgm_volume_label(u->volume, b->vol, sizeof b->vol);
 	if (u->track && u->track[0]) bgm_title(u->track, b->track, sizeof b->track);
@@ -33,34 +33,32 @@ int bgm_menu_build(const bgm_ui *u, menu_row *rows, int max, bgm_bufs *b,
 
 	/* On and Off, and the track list, come round; Volume stops at its ends
 	 * and is heard by whether it moved; A on Playing is the next track.
-	 * Song Pop-up is On and Off, and A turns it like Music's */
-	b->sound[n] = MENU_SND_RING;
-	rows[n++] = (menu_row){ T(S_MUSIC_MUSIC), u->on ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true };
-	b->sound[n] = MENU_SND_NO_A;
-	rows[n++] = (menu_row){ T(S_MUSIC_VOLUME), b->vol, u->on };
-	b->sound[n] = MENU_SND_RING | MENU_SND_NO_A;
-	rows[n++] = (menu_row){ T(S_MUSIC_TRACK), b->track, u->on && have };
-	b->sound[n] = MENU_SND_RING;
-	rows[n++] = (menu_row){ T(S_MUSIC_POPUP), u->popup ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE),
-	                        u->on && have };
-	rows[n++] = (menu_row){ T(S_MUSIC_PLAYING), b->now, u->on && have };
+	 * ZyperOS Tracks and Song Pop-up are On and Off, and A turns them like
+	 * Music's */
+#define ROW(id_, snd, ...) do { b->id[n] = (id_); b->sound[n] = (snd); \
+                                rows[n++] = (menu_row){ __VA_ARGS__ }; } while (0)
+	memset(b->id, BGM_ROWS, sizeof b->id);
+	ROW(BGM_ROW_ON, MENU_SND_RING, T(S_MUSIC_MUSIC), u->on ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), true);
+	ROW(BGM_ROW_VOLUME, MENU_SND_NO_A, T(S_MUSIC_VOLUME), b->vol, u->on);
+	if (mine)
+		ROW(BGM_ROW_BUILTIN, MENU_SND_RING, T(S_MUSIC_BUILTIN),
+		    u->with_builtin ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), u->on);
+	ROW(BGM_ROW_TRACK, MENU_SND_RING | MENU_SND_NO_A, T(S_MUSIC_TRACK), b->track, u->on && have);
+	ROW(BGM_ROW_POPUP, MENU_SND_RING, T(S_MUSIC_POPUP),
+	    u->popup ? T(S_MENU_ON_TITLE) : T(S_MENU_OFF_TITLE), u->on && have);
+	ROW(BGM_ROW_NOW, 0, T(S_MUSIC_PLAYING), b->now, u->on && have);
+#undef ROW
 
 	rows[n++] = MENU_RULE;
-	if (have && u->builtin) {
-		/* ZyperOS's own, so the note says whose, and where a card's own
-		 * go - which then play in their place. Short enough to sit still
-		 * in the panel: "Yours in Roms/BGM play instead" scrolled. */
-		snprintf(b->count, sizeof b->count, TN(S_MUSIC_BUILTIN_COUNT, u->ntracks), u->ntracks);
-		snprintf(b->put, sizeof b->put, T(S_MUSIC_PUT_YOURS), BGM_DIR);
-		if (n < max) rows[n++] = MENU_NOTE(b->count);
-		if (n < max) rows[n++] = MENU_NOTE(b->put);
-	} else {
-		if (have)
-			snprintf(b->count, sizeof b->count, TN(S_MUSIC_COUNT_IN, u->ntracks),
-			         u->ntracks, BGM_DIR);
-		else
-			snprintf(b->count, sizeof b->count, T(S_MUSIC_PUT_FILES), BGM_DIR);
-		if (n < max) rows[n++] = MENU_NOTE(b->count);
-	}
+	/* How many, and whose: "12 of yours, 10 ZyperOS", "12 tracks of
+	 * yours"; or with none of the card's own, where they go. Short enough
+	 * to sit still in the panel in every language. */
+	if (mine && theirs > 0)
+		snprintf(b->count, sizeof b->count, TN(S_MUSIC_MINE_AND_BUILTIN, u->own), u->own, theirs);
+	else if (mine)
+		snprintf(b->count, sizeof b->count, TN(S_MUSIC_MINE_COUNT, u->own), u->own);
+	else
+		snprintf(b->count, sizeof b->count, T(S_MUSIC_PUT_FILES), BGM_CARD_DIR);
+	if (n < max) rows[n++] = MENU_NOTE(b->count);
 	return n;
 }

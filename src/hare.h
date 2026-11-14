@@ -154,7 +154,7 @@ void hare_set_ssh(const char *who);
 void hare_set_folder_color(unsigned (*color)(const char *folder));
 
 /* And its icon: the key of the shelf's pixel art for a folder in ROMs or
- * Save States ("NES", "SNES", "BGM"), or NULL for none, which the listing
+ * Save States ("NES", "SNES"), or NULL for none, which the listing
  * names as "icon". The pictures themselves come from hare_set_icons. Unset,
  * no folder has one, and the page draws its plain folder. */
 void hare_set_folder_icon(const char *(*icon)(const char *folder));
