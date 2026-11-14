@@ -27,10 +27,10 @@ for path in sorted(Path("src").glob("*.c")):
             line = text.count('\n', 0, m.start()) + 1
             failures.append(f"{path}:{line}: {m.group(0)}{arg}): a side effect in a row macro")
 
-main = Path("src/main.c").read_text()
-row_h = re.search(r'#define ROW_H\(r\)\s*(.*)', main)
+panel = Path("src/menu_panel.c").read_text()
+row_h = re.search(r'#define ROW_H\(r\)\s*(.*)', panel)
 if not row_h or not re.match(r'\w+\(\(r\),', row_h.group(1).strip()):
-    failures.append("src/main.c: ROW_H must be one function call on (r), so its row is read once")
+    failures.append("src/menu_panel.c: ROW_H must be one function call on (r), so its row is read once")
 
 for f in failures:
     print("FAIL", f)

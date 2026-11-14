@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 """The song's name in the top bar slides when it does not fit, and Now Playing's
-foot is a row of button hints (src/home.c's home_header, src/main.c's np_hints).
+foot is a row of button hints (src/home.c's home_header, src/nowplaying_screen.c's np_hints).
 
     make check-np-footer
 

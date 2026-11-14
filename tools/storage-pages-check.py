@@ -5,7 +5,7 @@ real launcher.
     make check-storage
 
 Each list of the page - the card's, a system's, Music's, Videos' and
-Audiobooks' - is shot on the stand-in card (src/main.c, storage_shot) in each
+Audiobooks' - is shot on the stand-in card (src/storage_screen.c, storage_shot) in each
 order X steps through (--storage-sort), in both themes, and the launcher says
 the whole list it made ("storage: order Size: Unused Art|..."), not only the
 five rows the window shows. Held to:
