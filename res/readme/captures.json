@@ -975,7 +975,7 @@
         "--ways",
         "usb"
       ],
-      "sha256": "09cfa5b1124c18422ce5e9dfec6424e85a60a826e49b20286522df48d3e95225"
+      "sha256": "ea23f6e7418383b152624e81ac199ade28fa90ea7ca5c10affdf308e1681acaa"
     },
     {
       "file": "light/tour-theme.png",

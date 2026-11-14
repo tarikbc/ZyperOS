@@ -4,7 +4,7 @@ summary: Sign in on the handheld, play offline after the first start, and see ba
 crumb: RetroAchievements
 topic: guide
 published: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-13
 image: cheevos
 image_alt: A game's achievements list in ZyperOS, with badges, points and a progress count
 related: gkd-pixel-2-wifi-adapter, box-art-gkd-pixel-2, best-custom-firmware-gkd-pixel-2
@@ -15,21 +15,23 @@ weight: 40
 <h2>What you need</h2>
 <ul>
   <li><strong>A free RetroAchievements account</strong>, made at <a href="https://retroachievements.org">retroachievements.org</a>.</li>
-  <li><strong>A USB Wi-Fi adapter</strong> for the sign-in and for each game's first start. The Pixel 2 has no Wi-Fi of its own; <a href="/blog/gkd-pixel-2-wifi-adapter/">the Wi-Fi guide</a> says which adapters work.</li>
+  <li><strong>A way online</strong> for the sign-in and for each game's first start: a USB Wi-Fi adapter, or an Android phone's USB tethering on the cable. The Pixel 2 has no Wi-Fi of its own; <a href="/blog/gkd-pixel-2-wifi-adapter/">the Wi-Fi guide</a> says which adapters work, and how to use a phone instead.</li>
   <li><strong>A game RetroAchievements knows.</strong> It identifies a game by a checksum of the ROM, so a clean dump of a common release is what it has sets for. A hack or a fan translation often has no set.</li>
 </ul>
 
 <h2>Sign in</h2>
 <ol>
-  <li>Plug in the Wi-Fi adapter and join a network in <strong>MENU &gt; Wi-Fi</strong>.</li>
+  <li>Plug in the Wi-Fi adapter and join a network in <strong>MENU &gt; Wi-Fi</strong>. Or plug in an Android phone, choose <strong>Phone</strong> and turn on its USB tethering.</li>
   <li>Open <strong>MENU &gt; Achievements</strong>. The row says <code>sign in</code>.</li>
   <li>Type your user name and password with the on-screen keyboard.</li>
 </ol>
-<p>The row then shows your account. The Achievements row only appears while the Wi-Fi adapter is in, since signing in needs the network.</p>
+<p>The row then shows your account. The Achievements row only appears while the Wi-Fi adapter is in or a phone's USB tethering is on, since signing in needs the network.</p>
 
 <h2>Play</h2>
 <p>Start a game as usual. The first time a game starts, the handheld needs Wi-Fi to identify it and download its achievements. ZyperOS keeps them on the card, beside the box art, so from then on the game has its achievements with or without Wi-Fi.</p>
-<p>What you unlock without Wi-Fi waits on the card, and reaches your account the next time the handheld connects. If the account already has an achievement, that is no error: ZyperOS counts it as settled.</p>
+<p>What you unlock without Wi-Fi pops up at once, as usual, and waits on the card. The next time the handheld is online, on the shelf, the waiting unlocks go to your account by themselves, and Zyper says how many went. Each one is dated when you earned it, not when it was sent, up to 14 days back, the most RetroAchievements takes. If the account already has an achievement, that is no error: ZyperOS counts it as settled.</p>
+<p>While some wait, the game's list says how many under its name, and an achievement opened with <kbd>A</kbd> says it is earned and not sent yet.</p>
+<figure class="shot"><img src="/img/cheevos-waiting.png" alt="A game's achievements list, its heading saying 3 / 36 and 2 waiting to send: two achievements earned offline, not sent yet"><figcaption>Earned offline: the list says how many wait to be sent.</figcaption></figure>
 <p>ZyperOS sends unlocks as softcore achievements. It has no hardcore mode.</p>
 
 <h2>Badges, pop-ups and the list</h2>
@@ -46,7 +48,7 @@ weight: 40
 <h2>If an achievement does not unlock</h2>
 <ul>
   <li><strong>Check the sign-in</strong> in MENU &gt; Achievements.</li>
-  <li><strong>Check the first start had Wi-Fi.</strong> Without it, ZyperOS cannot identify the game. Start it once with the adapter in.</li>
+  <li><strong>Check the first start was online.</strong> Without it, ZyperOS cannot identify the game, and its Achievements row says <code>not checked yet</code>. Start it once with the adapter in, or with a phone's USB tethering on.</li>
   <li><strong>Check the dump.</strong> A ROM with a different checksum is a game RetroAchievements has never seen. A zip is checked on its largest file, which is the one ZyperOS runs.</li>
 </ul>
 
