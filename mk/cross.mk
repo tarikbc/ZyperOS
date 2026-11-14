@@ -4,7 +4,7 @@
 BUILD := build
 # Every device shares src/*.c; DEVICE picks the one device file built with it.
 DEVICE ?= brick
-SRC := $(wildcard src/*.c) src/device/$(DEVICE).c
+SRC := $(wildcard src/*.c) $(wildcard src/ds/*.c) src/device/$(DEVICE).c
 CC ?= aarch64-linux-gnu-gcc
 
 VERSION ?= 0.0
@@ -50,7 +50,7 @@ creds:
 
 # The device file's own headers too: src/device/pixel2_levels.h is the volume
 # and backlight ladders, which portkeys shares.
-$(BUILD)/zyperos.elf: $(SRC) $(CREDS) $(wildcard src/*.h) $(wildcard src/device/*.h)
+$(BUILD)/zyperos.elf: $(SRC) $(CREDS) $(wildcard src/*.h) $(wildcard src/ds/*.h) $(wildcard src/device/*.h)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SRC) $(LDLIBS)
 

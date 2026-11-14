@@ -136,6 +136,9 @@
 #include "corestate.h"
 #include "dsresume.h"
 #include "ui.h"
+#include "ds/mark.h"    /* badges, switch marks, the progress bar */
+#include "ds/page.h"    /* a page: its frame, heading, line over the keys, foot */
+#include "ds/tiles.h"   /* a question in tiles, or a list */
 #include "wifi_menu.h"
 #include "zyperrig.h"
 #include "songpop.h"
@@ -5289,23 +5292,28 @@ void panel_pass_end(app *a, const SDL_Rect *panel, mm_pose pose)
  * leaving in its own place: a press on it ends that leave and puts its own
  * panel at rest, and from then on its own is the panel on screen
  * (snap_promote), what the next motion takes off. */
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE };   /* which drawer a copy is for */
+/* Which drawer a copy is for. A question in tiles says its style by its kind
+ * (tiles_show): PANEL_TILES a row of tiles, PANEL_TILES_GRID two to a row
+ * (Computer Connected), PANEL_LIST rows the panel's width with a line under
+ * each name (What did you plug in?, the Scraper's Settings). They were read
+ * off the first tile's name before (tile_glyph), which cut "ScreenScraper". */
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST };
+
+static bool panel_is_tiles(int kind)
+{
+	return kind == PANEL_TILES || kind == PANEL_TILES_GRID || kind == PANEL_LIST;
+}
+
+/* The marks of the tiles tiles_show is showing, a ui_glyph a tile in the
+ * rows' order, which snap_record keeps with the panel's copy */
+static const int *g_tile_marks;
+static int g_tile_marks_n;
 
 static menu_snap  g_snaps[2];
 static menu_snap *g_snap = &g_snaps[0], *g_snap_next = &g_snaps[1];
 
-/* Does the line after a hyphen go on with the same word: a lowercase
- * letter, ASCII or Latin-1's in UTF-8 (ß to ÿ, the accented lowercase
- * letters every language here uses)? Then the hyphen only broke the word */
-static bool tile_break_hyphen(const char *next)
-{
-	const unsigned char *n = (const unsigned char *)next;
-
-	return (n[0] >= 'a' && n[0] <= 'z') || (n[0] == 0xC3 && n[1] >= 0x9F && n[1] <= 0xBF);
-}
-
-static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
-                        int sel, mm_pose pose);
+static void tiles_panel(app *a, int kind, const char *heading, const menu_row *tiles,
+                        const int *marks, int n, int sel, mm_pose pose);
 static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
                       mm_pose pose);
 static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
@@ -5334,6 +5342,12 @@ static void snap_record(menu_snap *s, int kind, const char *heading,
 	s->header_h = g_menu_header_h;
 	s->side = (void *)g_menu_side;
 	s->side_w = g_menu_side_w;
+	if (panel_is_tiles(kind)) {
+		int i;
+
+		for (i = 0; i < n && i < MENUSNAP_ROWS; i++)
+			s->marks[i] = g_tile_marks && i < g_tile_marks_n ? g_tile_marks[i] : UI_GLYPH_COUNT;
+	}
 }
 
 /* The panel on screen again, at `pose`, Zyper going on from where he was:
@@ -5346,8 +5360,8 @@ static void snap_draw(app *a, mm_pose pose)
 
 	if (!s->ok || !(pose.alpha > 0.0f)) return;
 	g_snap->frame = g_frame_no;
-	if (s->kind == PANEL_TILES) {
-		tiles_panel(a, s->heading, s->rows, s->n, s->sel, pose);
+	if (panel_is_tiles(s->kind)) {
+		tiles_panel(a, s->kind, s->heading, s->rows, s->marks, s->n, s->sel, pose);
 		return;
 	}
 	if (s->kind == PANEL_HOT) {
@@ -5447,12 +5461,26 @@ static void panel_show(app *a, int kind, const char *heading,
 	}
 	snap_record(g_snap, kind, heading, rows, n, sel, fixed_w, accent, vcolors,
 	            visits_all, loop_at, heading_note);
-	if (kind == PANEL_TILES) tiles_panel(a, heading, rows, n, sel, f.panel);
+	if (panel_is_tiles(kind)) tiles_panel(a, kind, heading, rows, g_snap->marks, n, sel, f.panel);
 	else if (kind == PANEL_HOT) hot_panel(a, heading, rows, n, f.panel);
 	else if (kind == PANEL_P2) p2_panel(a, heading, rows, n, accent, f.panel);
 	else if (kind == PANEL_MOVE) move_page(a, heading, rows, n, f.panel);
 	else menu_panel(a, heading, rows, n, sel, fixed_w, accent, vcolors,
 	                visits_all, loop_at, heading_note, f.panel);
+}
+
+/* A question in tiles through panel_show: its style as the kind
+ * (PANEL_TILES, PANEL_TILES_GRID or PANEL_LIST) and each tile's mark, a
+ * ui_glyph in the rows' order (`nmarks` of them; UI_GLYPH_COUNT for none).
+ * The rows are the tiles and then tiles_panel's notes. */
+static void tiles_show(app *a, int kind, const char *heading, const menu_row *rows, int n,
+                       const int *marks, int nmarks, int sel)
+{
+	g_tile_marks = marks;
+	g_tile_marks_n = nmarks;
+	panel_show(a, kind, heading, rows, n, sel, 0, MENU_ZYPEROS, NULL, false, 0, NULL);
+	g_tile_marks = NULL;
+	g_tile_marks_n = 0;
 }
 
 /* Existing panels have no heading caption and keep their exact layout. */
@@ -8178,134 +8206,6 @@ static void xfer_stop(bool cable)
 static void xfer_screen(app *a);
 static void xfer_screen_way(app *a, int way);
 
-/* Three choices side by side, DESIGN.md 11.18: a panel (11.3) holding the
- * heading, its rule, a tile per choice - **raised**, **radius.card**, its mark
- * and its name in two lines, the focused one the **accent** fill in
- * **on-accent** - and the key legend (11.4) under them. Tiles' names are
- * their labels, a newline between the two lines, and their mark is read
- * off the name (tile_glyph). Drawn at `pose` as every panel is.
- *
- * The tiles are the rows up to the first note (MENU_NOTE). Three notes after
- * them are File Transfer's question while files move (DESIGN.md 11.14,
- * My pick 2026-11-06): a line under the rule saying what moves, a line
- * under the tiles saying what the focused one does, and the legend. */
-/* 272 holds "Developer" at the menu's size (242) with 12 either side, and
- * three of them with the gaps and pads are 944, inside the screen's insets */
-#define TILE_W   272
-#define TILE_W2  408      /* two tiles: a name on one line, a line under it */
-#define TILE_HG  164      /* a grid's tile (Computer Connected): the mark, a name on one line */
-#define TILE_H   232
-#define TILE_GAP 24
-#define TILE_PAD 40
-
-/* A tile's mark, by its name: usb_ask's tiles and the two questions'
- * (xs_words), compared in the language that is on, or in English, which
- * the shot harness's --usb-ask names them in */
-static ui_glyph tile_glyph(const char *label)
-{
-	static const struct { str_id name; ui_glyph g; } MARKS[] = {
-		{ S_XFER_TILE_CHARGE_ONLY,   UI_GLYPH_CHARGE },
-		{ S_XFER_TILE_FILE_TRANSFER, UI_GLYPH_TRANSFER },
-		{ S_XFER_TILE_KEEP_GOING,    UI_GLYPH_ARROWS },
-		{ S_XFER_TILE_NOT_NOW,       UI_GLYPH_ARROWS },
-		{ S_XFER_TILE_STOP_AFTER,    UI_GLYPH_FINISH },
-		{ S_XFER_TILE_CANCEL_NOW,    UI_GLYPH_CANCEL },
-		{ S_XFER_TILE_CANCEL_PLAY,   UI_GLYPH_CANCEL },
-		{ S_XFER_TILE_PLAY_AFTER,    UI_GLYPH_PLAY },
-		{ S_XFER_TILE_ACCESSORY,     UI_GLYPH_HEADPHONES },
-		{ S_XFER_TILE_COMPUTER,      UI_GLYPH_LAPTOP },
-		{ S_XFER_TILE_PHONE,         UI_GLYPH_PHONE },
-		{ S_XFER_TILE_USB_DRIVE,     UI_GLYPH_USB },
-	};
-	size_t i;
-
-	/* MENU > Scraper's questions (11.19): Settings - the two sources by
-	 * their own marks, never their logos, and the videos - and Videos for */
-	if (!strcmp(label, "ScreenScraper")) return UI_GLYPH_CLOUD;
-	if (!strcmp(label, "SteamGridDB")) return UI_GLYPH_GRID;
-	if (!strcmp(label, T(S_SCRAPER_PAGE_VIDEOS)) || !strcmp(label, T(S_SCRAPER_ALL_GAMES)))
-		return UI_GLYPH_FILM;
-	if (!strcmp(label, T(S_LIBRARY_FAVORITES))) return UI_GLYPH_HEART;
-	if (!strcmp(label, T(S_SCRAPER_PLAYED))) return UI_GLYPH_PLAY;
-	for (i = 0; i < sizeof MARKS / sizeof MARKS[0]; i++)
-		if (!strcmp(label, T(MARKS[i].name)) || !strcmp(label, T_en(MARKS[i].name)))
-			return MARKS[i].g;
-	return UI_GLYPH_TERMINAL;
-}
-
-/* One of the question's lines of words, whole in the panel's inner width:
- * on one line, or balanced onto two when it is wider (DESIGN.md 1: nothing
- * is cut off; the hint of Computer Connected ran 125 units past its panel
- * in Portuguese, 2026-11-07). Whether it was whole is what fits says. */
-typedef struct {
-	char l[2][LB_LINE];
-	int n;
-	bool fits;
-} tile_note;
-
-/* A key legend ("Left/Right: move   A: choose   B: charge only") breaks
- * between its keys, where its three spaces are, and keeps them inside a line:
- * the break that leaves the narrowest widest line, or its words broken as
- * any text is when a key's own words are wider than the box */
-static bool tile_note_keys(TTF_Font *f, const char *text, int maxw, tile_note *o)
-{
-	const char *at[8];
-	int len[8], np = 0, k, best = -1, bestw = 0;
-	char head[LB_LINE], tail[LB_LINE];
-	const char *p = text, *gap;
-
-	while (np < 8) {
-		at[np] = p;
-		gap = strstr(p, "   ");
-		len[np++] = gap ? (int)(gap - p) : (int)strlen(p);
-		if (!gap) break;
-		p = gap + 3;
-	}
-	if (np < 2) return false;
-	for (k = 1; k < np; k++) {
-		int wh, wt;
-
-		snprintf(head, sizeof head, "%.*s", (int)(at[k] - 3 - text), text);
-		snprintf(tail, sizeof tail, "%s", at[k]);
-		wh = ui_text_width(f, head);
-		wt = ui_text_width(f, tail);
-		if (best < 0 || (wh > wt ? wh : wt) < bestw) {
-			best = k;
-			bestw = wh > wt ? wh : wt;
-		}
-	}
-	if (ui_text_width(f, text) <= maxw) {
-		snprintf(o->l[0], sizeof o->l[0], "%s", text);
-		o->n = 1;
-		o->fits = true;
-		return true;
-	}
-	if (bestw > maxw) return false;
-	snprintf(o->l[0], sizeof o->l[0], "%.*s", (int)(at[best] - 3 - text), text);
-	snprintf(o->l[1], sizeof o->l[1], "%s", at[best]);
-	o->n = 2;
-	o->fits = true;
-	return true;
-}
-
-static void tile_note_set(TTF_Font *f, const char *text, int maxw, tile_note *o)
-{
-	size_t want = 0, got = 0;
-	const char *p;
-	int k;
-
-	if (tile_note_keys(f, text, maxw, o)) return;
-	o->n = ui_balance_lines(f, text, maxw, 2, o->l);
-	o->fits = o->n > 0;
-	for (p = text; *p; p++) want += *p != ' ';
-	for (k = 0; k < o->n; k++) {
-		for (p = o->l[k]; *p; p++) got += *p != ' ';
-		if (ui_text_width(f, o->l[k]) > maxw) o->fits = false;
-	}
-	/* A cut line says so with its dots, and is short of the words */
-	if (got != want) o->fits = false;
-}
-
 /* The button hints under a question's tiles (keyhints.h), packed into one
  * string so they travel as the legend row and in the panel's snapshot:
  * Left/Right move, A chooses, and B's own answer */
@@ -8373,382 +8273,22 @@ static void ask_guard_start(app *a, usbpower_guard *g)
 	usbpower_guard_start(g, plat_now_ms(), down);
 }
 
-/* A tile with a small line under its name (What did you plug in?'s USB
- * Accessory): the name in the menu's size on one line, the smaller where it
- * does not fit, and on two lines at the smaller past that; the small line in
- * **meta**, up to three balanced lines (three tiles leave it 272 wide, where
- * "headphones, Wi-Fi, keyboard" takes three, 2026-11-13). `h` is the words'
- * height from the name's top. */
-#define TILE_SUB_TOP 92   /* the name's top in the tile, under the mark */
-typedef struct {
-	char name[2][LB_LINE];
-	int  nn;
-	bool small;
-	char sub[3][LB_LINE];
-	int  ns;
-	int  h;
-} tile_sub;
+/* A question in tiles at `pose` (src/ds/tiles.c), through the menus' panel
+ * pass: its style from its kind (tiles_show), its legend the Charge Only
+ * hints where no note gives one (Computer Connected's), its hints off while a
+ * question that came by itself takes no button yet (ask_settle) */
+static bool tiles_pass_begin(void *ctx) { return panel_pass_begin(ctx); }
+static void tiles_pass_end(void *ctx, const SDL_Rect *panel, mm_pose pose) { panel_pass_end(ctx, panel, pose); }
 
-static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *o)
+static void tiles_panel(app *a, int kind, const char *heading, const menu_row *tiles,
+                        const int *marks, int n, int sel, mm_pose pose)
 {
-	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	int lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
+	const ds_pass pass = { panel_scaled, tiles_pass_begin, tiles_pass_end, a };
 
-	o->small = ui_text_width(fm, label) > w - 24;
-	o->nn = 1;
-	snprintf(o->name[0], sizeof o->name[0], "%s", label);
-	if (o->small && ui_text_width(fs, label) > w - 24) {
-		o->nn = ui_balance_lines(fs, label, w - 24, 2, o->name);
-		if (o->nn < 1) {
-			snprintf(o->name[0], sizeof o->name[0], "%s", label);
-			o->nn = 1;
-		}
-	}
-	o->ns = ui_balance_lines(fs, value, w - 32, 3, o->sub);
-	if (o->ns < 0) o->ns = 0;
-	o->h = o->nn * (o->small ? ls : lm) + 4 + o->ns * ls;
-}
-
-/* What did you plug in? as a list (DESIGN.md 11.36, 2026-11-13: "improve
- * the what did you plug in screen design"): three rows the panel's width,
- * as a phone's "Use USB for" is, each its mark at the left (64, in a 96
- * square), its name in the menu's size and under it, in **meta**, what it
- * does, on one line (two where a language needs them). The focused row in
- * **accent**, its words **on-accent**; the others **raised**, the line under
- * the name **text-dim**. Up and Down move (Left and Right too), so the hints
- * are A and B alone, as a menu's. Known by its first row, USB Accessory, so
- * the panel drawn again leaving (its snapshot) is the same list. */
-#define CHOICE_ROW_GAP 12
-#define CHOICE_PAD_Y   14
-#define CHOICE_MARK    64
-/* MENU > Scraper's Settings is one too, known by its first row,
- * ScreenScraper: a tile is 248 wide inside, and the name alone takes 264 in
- * meta, with "linked as" and the account under it (2026-11-13). */
-static bool tiles_are_list(const menu_row *tiles, int n)
-{
-	ui_glyph g;
-
-	if (n != 3 || !tiles[0].label) return false;
-	g = tile_glyph(tiles[0].label);
-	return (g == UI_GLYPH_HEADPHONES || g == UI_GLYPH_CLOUD) &&
-	       tiles[0].value && tiles[1].value && tiles[2].value;
-}
-
-static void choice_list_panel(app *a, const char *heading, const menu_row *rows, int n, int sel,
-                              const char *legend, mm_pose pose)
-{
-	const ds_theme *thm = theme();
-	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	const int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
-	const int pad = TILE_PAD, text_x = 24 + 96 + 16;
-	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
-	key_hint hints[KEYHINTS_MAX];
-	char hbuf[512], head[2][LB_LINE], sub[3][2][LB_LINE];
-	int nh, nhead, nsub[3], rh[3], i, k, y, inner, total = 0;
-	SDL_Rect panel, rule;
-
-	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
-	panel.w = ZYPEROS_SCREEN_W - 2 * 40;
-	inner = panel.w - 2 * pad;
-	nhead = ui_balance_lines(fh, heading, inner, 2, head);
-	if (nhead < 1) nhead = 1;
-	for (i = 0; i < n; i++) {
-		nsub[i] = ui_balance_lines(fs, rows[i].value, inner - text_x - 24, 2, sub[i]);
-		if (nsub[i] < 0) nsub[i] = 0;
-		rh[i] = CHOICE_PAD_Y + lm + nsub[i] * ls + CHOICE_PAD_Y;
-		if (rh[i] < 100) rh[i] = 100;
-		total += rh[i] + (i ? CHOICE_ROW_GAP : 0);
-	}
-	panel.h = 32 + nhead * lh + 24 + DS_RULE + 32 + total + 24 +
-	          (nh ? keyhints_height(hints, nh, inner) : ls) + 32;
-	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
-	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
-	if (posed) {
-		SDL_FRect fr = panel_scaled(&panel, pose.scale);
-		SDL_Rect q = { (int)(fr.x + 0.5f), (int)(fr.y + 0.5f), (int)(fr.w + 0.5f), (int)(fr.h + 0.5f) };
-
-		ui_lift_k(a->r, &q, CFG_NO_COLOR, UI_LIFT_PANEL, pose.alpha);
-		posed = panel_pass_begin(a);
-	} else {
-		ui_lift(a->r, &panel, CFG_NO_COLOR, UI_LIFT_PANEL);
-	}
-	ui_panel(a->r, &panel, DS_RADIUS_PANEL);
-	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
-	y = panel.y + 32;
-	for (k = 0; k < nhead; k++)
-		ui_text(a->r, fh, head[k], panel.x + panel.w / 2, ui_line_y(UI_F_LABEL, y + k * lh), 0, UI_TEXT_SOFT);
-	rule = (SDL_Rect){ panel.x + pad, y + nhead * lh + 24, inner, DS_RULE };
-	SDL_SetRenderDrawColor(a->r, thm->edge.r, thm->edge.g, thm->edge.b, 255);
-	SDL_RenderFillRect(a->r, &rule);
-	y = rule.y + DS_RULE + 32;
-	for (i = 0; i < n; i++) {
-		SDL_Rect t = { panel.x + pad, y, inner, rh[i] };
-		bool on = i == sel;
-		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
-		SDL_Color dim = on ? ink : UI_TEXT_DIM;
-		const char *label = rows[i].label ? rows[i].label : "";
-		int words = lm + nsub[i] * ls, ty = t.y + (t.h - words) / 2;
-		TTF_Font *fn = ui_text_width(fm, label) <= inner - text_x - 24 ? fm : fs;
-
-		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
-		ui_glyph_draw(a->r, tile_glyph(label), t.x + 24 + 48, t.y + t.h / 2, CHOICE_MARK, ink);
-		ui_text(a->r, fn, label, t.x + text_x, ui_line_y(fn == fm ? UI_F_MENU : UI_F_META, ty), -1,
-		        on ? ink : UI_TEXT);
-		ui_fit_drawn(label);
-		for (k = 0; k < nsub[i]; k++)
-			ui_text(a->r, fs, sub[i][k], t.x + text_x, ui_line_y(UI_F_META, ty + lm + k * ls), -1, dim);
-		ui_fit_drawn(rows[i].value);
-		y += rh[i] + CHOICE_ROW_GAP;
-	}
-	y += 24 - CHOICE_ROW_GAP;
-	if (nh && g_tiles_hints)
-		keyhints_draw(a->r, hints, nh, panel.x + pad, panel.x + panel.w - pad, y + KEYHINTS_ROW / 2,
-		              KEYHINTS_CENTER, false, 255);
-	else if (!nh)
-		ui_text(a->r, fs, legend, panel.x + panel.w / 2, ui_line_y(UI_F_META, y), 0, UI_TEXT_DIM);
-	if (posed) panel_pass_end(a, &panel, pose);
-}
-
-static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
-                        int sel, mm_pose pose)
-{
-	const char *legend = tiles_hints_charge_only();
-	const char *sub = NULL, *what = NULL;
-	key_hint hints[KEYHINTS_MAX];
-	char hbuf[512];
-	int nh;
-	const ds_theme *thm = theme();
-	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	int lh = ui_font_line(UI_F_LABEL), lm = ui_font_line(UI_F_MENU), ls = ui_font_line(UI_F_META);
-	bool posed = pose.scale != 1.0f || pose.alpha != 1.0f;
-	SDL_Rect panel, rule;
-	tile_note nsub = { .n = 0 }, nwhat = { .n = 0 }, nleg;
-	int i, k, top, tiles_y, all = n, tiles_w, inner, widest, tw;
-	int tile_gap = TILE_GAP, tile_pad = TILE_PAD, cols, trows, th, tiles_h;
-	bool g_tiles_grid;
-	char head[2][LB_LINE];
-	int nhead;
-
-	for (n = 0; n < all && !ROW_IS_NOTE(tiles[n]); n++) {}
-	if (all - n == 3) {
-		sub = tiles[n].label;
-		what = tiles[n + 1].label;
-		legend = tiles[n + 2].label;
-	} else if (all - n == 1) {
-		legend = tiles[n].label;
-	}
-	if (n < 1) return;
-	if (tiles_are_list(tiles, n)) {
-		choice_list_panel(a, heading, tiles, n, sel, legend, pose);
-		return;
-	}
-	/* The legend: button hints (keyhints.h), or a line of text as before */
-	nh = keyhints_unpack(legend, hbuf, sizeof hbuf, hints, KEYHINTS_MAX);
-	/* The tiles' width, or the title's if that is wider, and where the lines
-	 * under them do not fit in two lines of it, the screen's inset width: the
-	 * panel is as wide as its words need within the screen, never more */
-	/* Two tiles are wider, room for a name on one line and the small line
-	 * under it (What did you plug in?, DESIGN.md 11.36) */
-	/* Computer Connected's tiles two to a row, TILE_W2 by TILE_HG
-	 * (2026-11-11, with Flash Drive: four in a row left the longer names
-	 * no room); known by its first tile, Charge Only, so the panel drawn
-	 * again leaving (its snapshot) is the same grid */
-	g_tiles_grid = n >= 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_CHARGE;
-	tw = n == 2 || g_tiles_grid ? TILE_W2 : TILE_W;
-	cols = g_tiles_grid && n > 2 ? 2 : n;
-	trows = (n + cols - 1) / cols;
-	th = g_tiles_grid && n > 2 ? TILE_HG : TILE_H;
-	/* A small line that takes a third line, or a name two, makes every
-	 * tile of the row as much taller, the room under them kept */
-	if (th == TILE_H)
-		for (i = 0; i < n; i++)
-			if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
-				tile_sub ts;
-				int room = TILE_H - TILE_SUB_TOP - (lm + 4 + 2 * ls);
-
-				tile_sub_lay(tiles[i].label ? tiles[i].label : "", tiles[i].value, tw, &ts);
-				if (TILE_SUB_TOP + ts.h + room > th) th = TILE_SUB_TOP + ts.h + room;
-			}
-	tiles_w = cols * tw + (cols - 1) * tile_gap;
-	tiles_h = trows * th + (trows - 1) * tile_gap;
-	widest = ZYPEROS_SCREEN_W - 2 * 40;
-	panel.w = tiles_w + 2 * tile_pad;
-	if (ui_text_width(fh, heading) + 2 * tile_pad > panel.w)
-		panel.w = ui_text_width(fh, heading) + 2 * tile_pad;
-	if (panel.w > widest) panel.w = widest;
-	for (;;) {
-		inner = panel.w - 2 * tile_pad;
-		if (sub) tile_note_set(fs, sub, inner, &nsub);
-		if (what) tile_note_set(fs, what, inner, &nwhat);
-		if (nh) nleg = (tile_note){ .n = 0, .fits = true };
-		else tile_note_set(fs, legend, inner, &nleg);
-		if (panel.w >= widest || ((!sub || nsub.fits) && (!what || nwhat.fits) && nleg.fits)) break;
-		panel.w = widest;
-	}
-	/* A title wider than the panel is broken onto a second line, never cut */
-	nhead = ui_balance_lines(fh, heading, inner, 2, head);
-	if (nhead < 1) nhead = 0;
-	panel.h = 32 + (nhead > 1 ? nhead : 1) * lh + 24 + DS_RULE + (sub ? 20 + nsub.n * ls : 0) + 32 + tiles_h +
-	          (what ? 24 + nwhat.n * ls : 0) + 24 +
-	          (nh ? keyhints_height(hints, nh, inner) : nleg.n * ls) + 32;
-	panel.x = (ZYPEROS_SCREEN_W - panel.w) / 2;
-	panel.y = (ZYPEROS_SCREEN_H - panel.h) / 2;
-	if (posed) {
-		SDL_FRect fr = panel_scaled(&panel, pose.scale);
-		SDL_Rect q = { (int)(fr.x + 0.5f), (int)(fr.y + 0.5f),
-		               (int)(fr.w + 0.5f), (int)(fr.h + 0.5f) };
-
-		ui_lift_k(a->r, &q, CFG_NO_COLOR, UI_LIFT_PANEL, pose.alpha);
-		posed = panel_pass_begin(a);
-	} else {
-		ui_lift(a->r, &panel, CFG_NO_COLOR, UI_LIFT_PANEL);
-	}
-	ui_panel(a->r, &panel, DS_RADIUS_PANEL);
-	SDL_SetRenderDrawBlendMode(a->r, SDL_BLENDMODE_BLEND);
-
-	top = panel.y + 32;
-	for (k = 0; k < nhead; k++)
-		ui_text(a->r, fh, head[k], panel.x + panel.w / 2, ui_line_y(UI_F_LABEL, top + k * lh), 0,
-		        UI_TEXT_SOFT);
-	rule = (SDL_Rect){ panel.x + tile_pad, top + (nhead > 1 ? nhead : 1) * lh + 24,
-	                   panel.w - 2 * tile_pad, DS_RULE };
-	SDL_SetRenderDrawColor(a->r, thm->edge.r, thm->edge.g, thm->edge.b, 255);
-	SDL_RenderFillRect(a->r, &rule);
-	tiles_y = rule.y + DS_RULE;
-	/* What moves, in **meta** **text-dim** under the rule */
-	if (sub) {
-		tiles_y += 20;
-		for (k = 0; k < nsub.n; k++)
-			ui_text(a->r, fs, nsub.l[k], panel.x + panel.w / 2,
-			        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
-		tiles_y += nsub.n * ls;
-	}
-	tiles_y += 32;
-
-	for (i = 0; i < n; i++) {
-		/* By its row and column; a last row short of a whole one centered */
-		int row = i / cols, col = i % cols;
-		int in_row = row == trows - 1 ? n - row * cols : cols;
-		int row_w = in_row * tw + (in_row - 1) * tile_gap;
-		SDL_Rect t = { panel.x + (panel.w - row_w) / 2 + col * (tw + tile_gap),
-		               tiles_y + row * (th + tile_gap), tw, th };
-
-		/* A grid's last tile alone on its row (a release image's Flash
-		 * Drive) spans the grid's width rather than sitting small in the
-		 * middle of empty room */
-		if (cols == 2 && trows > 1 && in_row == 1) {
-			t.x = panel.x + (panel.w - tiles_w) / 2;
-			t.w = tiles_w;
-		}
-		bool on = i == sel;
-		SDL_Color ink = on ? ui_col(thm->on_accent, 255) : UI_TEXT_SOFT;
-		const char *label = tiles[i].label ? tiles[i].label : "";
-		const char *nl = strchr(label, '\n');
-		ui_glyph g = tile_glyph(label);
-		char one[64], two[64];
-		TTF_Font *f = fm;
-		int lf = lm;
-
-		ui_round_rect(a->r, &t, DS_RADIUS_CARD, ui_col(on ? thm->accent : thm->raised, 255));
-		if (tiles[i].value && !ROW_IS_NOTE(tiles[i])) {
-			/* A name and the small line under it: the mark higher, the
-			 * words as tile_sub_lay lays them */
-			tile_sub ts;
-			int y;
-			SDL_Color soft = on ? ink : UI_TEXT_DIM;
-
-			tile_sub_lay(label, tiles[i].value, t.w, &ts);
-			if (ts.small) { f = fs; lf = ls; }
-			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 48, 64, ink);
-			y = t.y + TILE_SUB_TOP;
-			for (k = 0; k < ts.nn; k++, y += lf)
-				ui_text(a->r, f, ts.name[k], t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y), 0, ink);
-			if (ts.nn > 1) ui_fit_drawn(label);
-			y += 4;
-			for (k = 0; k < ts.ns; k++)
-				ui_text(a->r, fs, ts.sub[k], t.x + t.w / 2, ui_line_y(UI_F_META, y + k * ls), 0, soft);
-			ui_fit_drawn(tiles[i].value);
-			continue;
-		}
-		if (th == TILE_HG) {
-			/* A grid's tile: the mark, and the name on one line under it
-			 * (its two lines joined), the smaller size where it does not
-			 * fit, on two lines only past that */
-			char joined[128];
-			char *c;
-
-			/* A line broken at a hyphen joins with none between; a
-			 * hyphen that only broke a word ("Datei-\nübertragung", a
-			 * lowercase letter after it) goes too, "Dateiübertragung",
-			 * where one that is part of a name stays ("USB-\nStick").
-			 * Any other break joins with a space. */
-			snprintf(joined, sizeof joined, "%s", label);
-			for (c = joined; *c; c++)
-				if (*c == '\n') {
-					if (c > joined && c[-1] == '-') {
-						bool word = tile_break_hyphen(c + 1);
-
-						memmove(c, c + 1, strlen(c));
-						if (word) {
-							memmove(c - 1, c, strlen(c) + 1);
-							c--;
-						}
-						c--;
-					} else {
-						*c = ' ';
-					}
-				}
-			ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 54, 72, ink);
-			if (ui_text_width(fm, joined) <= t.w - 24 || ui_text_width(fs, joined) <= t.w - 24) {
-				f = ui_text_width(fm, joined) <= t.w - 24 ? fm : fs;
-				ui_text(a->r, f, joined, t.x + t.w / 2,
-				        ui_line_y(f == fs ? UI_F_META : UI_F_MENU, t.y + 110 + (f == fs ? (lm - ls) / 2 : 0)),
-				        0, ink);
-				ui_fit_drawn(label);
-				continue;
-			}
-		}
-		ui_glyph_draw(a->r, g, t.x + t.w / 2, t.y + 56, 72, ink);
-		snprintf(one, sizeof one, "%.*s", nl ? (int)(nl - label) : (int)strlen(label), label);
-		snprintf(two, sizeof two, "%s", nl ? nl + 1 : "");
-		/* The menu's size where both lines fit the tile, else the least
-		 * there is: nothing is cut off (DESIGN.md 1) */
-		if (ui_text_width(f, one) > t.w - 24 || ui_text_width(f, two) > t.w - 24) {
-			f = fs;
-			lf = ls;
-		}
-		{
-			/* Two lines under the mark, the smaller size centered where
-			 * the menu's two would be */
-			int y = t.y + 104 + (lm - lf);
-
-			ui_text(a->r, f, one, t.x + t.w / 2, ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y),
-			        0, ink);
-			if (two[0])
-				ui_text(a->r, f, two, t.x + t.w / 2,
-				        ui_line_y(f == fs ? UI_F_META : UI_F_MENU, y + lf), 0, ink);
-		}
-	}
-	tiles_y += tiles_h;
-	/* What the focused one does, in **meta** **text-soft** under the tiles */
-	if (what) {
-		tiles_y += 24;
-		for (k = 0; k < nwhat.n; k++)
-			ui_text(a->r, fs, nwhat.l[k], panel.x + panel.w / 2,
-			        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_SOFT);
-		tiles_y += nwhat.n * ls;
-	}
-	tiles_y += 24;
-	/* Not while the question takes no button yet (usbpower_takes_input):
-	 * its room kept, so nothing moves when they come */
-	if (nh && g_tiles_hints)
-		keyhints_draw(a->r, hints, nh, panel.x + tile_pad, panel.x + panel.w - tile_pad,
-		              tiles_y + KEYHINTS_ROW / 2, KEYHINTS_CENTER, false, 255);
-	else
-		for (k = 0; k < nleg.n; k++)
-			ui_text(a->r, fs, nleg.l[k], panel.x + panel.w / 2,
-			        ui_line_y(UI_F_META, tiles_y + k * ls), 0, UI_TEXT_DIM);
-	if (posed) panel_pass_end(a, &panel, pose);
+	ds_tiles_draw(a->r, &(ds_tiles){
+		.style = kind == PANEL_TILES_GRID ? DS_TILES_GRID : kind == PANEL_LIST ? DS_TILES_LIST : DS_TILES_ROW,
+		.heading = heading, .rows = tiles, .n = n, .marks = marks, .sel = sel,
+		.legend = tiles_hints_charge_only(), .hints = g_tiles_hints }, pose, &pass);
 }
 
 static void dev_screen(app *a);
@@ -8773,18 +8313,24 @@ static bool usb_drive_offered(void)
 	return shot_usb_drive || access("/usr/sbin/usbdrive", X_OK) == 0;
 }
 
-static int usb_ask_tiles(menu_row tiles[4], int what[4], bool dev)
+static int usb_ask_tiles(menu_row tiles[4], int what[4], int marks[4], bool dev)
 {
 	int n = 0;
 
-	what[n] = UA_CHARGE; tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
-	what[n] = UA_XFER;   tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
+	what[n] = UA_CHARGE; marks[n] = UI_GLYPH_CHARGE;
+	tiles[n++] = (menu_row){ T(S_XFER_TILE_CHARGE_ONLY), NULL, true };
+	what[n] = UA_XFER; marks[n] = UI_GLYPH_TRANSFER;
+	tiles[n++] = (menu_row){ T(S_XFER_TILE_FILE_TRANSFER), NULL, true };
 	/* Two to a row (tiles_panel's grid): Charge Only and File Transfer,
 	 * then Flash Drive and, on a development image, Developer (SSH) */
 	if (usb_drive_offered()) {
-		what[n] = UA_DRIVE; tiles[n++] = (menu_row){ T(S_XFER_TILE_USB_DRIVE), NULL, true };
+		what[n] = UA_DRIVE; marks[n] = UI_GLYPH_USB;
+		tiles[n++] = (menu_row){ T(S_XFER_TILE_USB_DRIVE), NULL, true };
 	}
-	if (dev) { what[n] = UA_DEV; tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true }; }
+	if (dev) {
+		what[n] = UA_DEV; marks[n] = UI_GLYPH_TERMINAL;
+		tiles[n++] = (menu_row){ T(S_XFER_TILE_DEVELOPER), NULL, true };
+	}
 	return n;
 }
 
@@ -8807,12 +8353,12 @@ enum { UD_CONNECTED, UD_FINISHING, UD_FAILED, UD_CONFIRM, UD_FRAMES };
 /* The pages' geometry, in the launcher's 1024 x 768. The saved pictures are
  * 640 x 480 (5/8 of it), so every edge a slot or a glyph's cell starts on is
  * a multiple of 8 and lands on a whole pixel there. */
-#define UD_TILE_Y    256
-#define UD_TILE_H    280
-#define UD_TILE_W    472
+#define UD_TILE_Y    DS_PAGE_BODY_Y                             /* 256: the page's body (src/ds/page.h) */
+#define UD_TILE_H    DS_PAGE_TILE_H                             /* 280 */
+#define UD_TILE_W    DS_PAGE_TILE_W                             /* 472 */
 #define UD_TILE_X0   DS_INSET                                   /* 24 */
 #define UD_TILE_X1   (ZYPEROS_SCREEN_W - DS_INSET - UD_TILE_W)  /* 528 */
-#define UD_PAD       32
+#define UD_PAD       DS_PAGE_TILE_PAD                           /* 32 */
 #define UD_MARK      64          /* the mark's slot, square */
 #define UD_MARK_CY   312
 #define UD_SPEED_CY  416
@@ -8984,14 +8530,8 @@ static void ud_tile(SDL_Renderer *r, const SDL_Rect *q, const ud_rows *at, bool 
 	ui_text(r, fm, fit, left + UD_MARK + 16, ui_cap_y(fm, mark_cy), -1, UI_TEXT);
 	if (speed) ud_draw_tokens(r, ft, speed, ns, left, speed_cy, UI_TEXT);
 	if (total) ud_draw_tokens(r, fs, total, nt, left, total_cy, UI_TEXT_SOFT);
-	if (bar >= 0.0f) {
-		SDL_Rect b = { left, q->y + at->bar, room, UI_BAR_H };
-		int fill = (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f);
-
-		ui_round_rect(r, &b, UI_BAR_H / 2, ui_col(t->track, 255));
-		if (fill > 0)
-			ui_round_rect(r, &(SDL_Rect){ b.x, b.y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(t->accent_ink, 255));
-	}
+	if (bar >= 0.0f)
+		ds_bar(r, left, q->y + at->bar, room, (int)(room * (bar > 1.0f ? 1.0f : bar) + 0.5f), 255);
 	ud_fit_widest(ft, true, room);
 	ud_fit_widest(fs, false, room);
 	if (slot) {
@@ -9082,65 +8622,11 @@ static int xs_page_rows(menu_row *out, const char *who, const char *ssh, const c
 	return n;
 }
 
-/* A heading's line beside Zyper: **title** where it fits whole, **label**
- * where not, and sliding past that, never cut */
-static void xs_page_line(app *a, const char *s, int x, int cy, int room, SDL_Color c)
-{
-	TTF_Font *f = ui_font(UI_F_TITLE);
-
-	if (ui_text_width(f, s) > room) f = ui_font(UI_F_LABEL);
-	if (ui_text_width(f, s) <= room) ui_text(a->r, f, s, x, ui_cap_y(f, cy), -1, c);
-	else ui_text_marquee(a->r, f, s, x, ui_cap_y(f, cy), room, plat_now_ms(), c);
-}
-
-/* Rows as one line of **meta** across the page, centered: a note in
- * **text-soft**, or label and value pairs, the label **text-dim** and the
- * value **text-soft**, a dot between pairs; sliding where too long */
-#define XS_PAGE_SEP "   ·   "
-static void xs_page_meta(app *a, const menu_row *rows, int n, int cy)
-{
-	TTF_Font *f = ui_font(UI_F_META);
-	const int room = ZYPEROS_SCREEN_W - 2 * DS_INSET, y = ui_cap_y(f, cy);
-	char line[512];
-	size_t at = 0;
-	int k, w = 0, x;
-
-	/* the whole, for its width and for the check that it fits */
-	line[0] = '\0';
-	for (k = 0; k < n && at < sizeof line; k++) {
-		bool note = ROW_IS_NOTE(rows[k]);
-
-		at += (size_t)snprintf(line + at, sizeof line - at, "%s%s%s%s", k ? XS_PAGE_SEP : "", rows[k].label,
-		                       note ? "" : "  ", note ? "" : rows[k].value);
-	}
-	w = ui_text_width(f, line);
-	if (w > room) {
-		ui_text_marquee(a->r, f, line, DS_INSET, y, room, plat_now_ms(), UI_TEXT_SOFT);
-		return;
-	}
-	x = (ZYPEROS_SCREEN_W - w) / 2;
-	for (k = 0; k < n; k++) {
-		if (k) {
-			ui_text(a->r, f, XS_PAGE_SEP, x, y, -1, UI_TEXT_DIM);
-			x += ui_text_width(f, XS_PAGE_SEP);
-		}
-		if (ROW_IS_NOTE(rows[k])) {
-			ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_SOFT);
-			x += ui_text_width(f, rows[k].label);
-			continue;
-		}
-		ui_text(a->r, f, rows[k].label, x, y, -1, UI_TEXT_DIM);
-		x += ui_text_width(f, rows[k].label) + ui_text_width(f, "  ");
-		ui_text(a->r, f, rows[k].value, x, y, -1, UI_TEXT_SOFT);
-		x += ui_text_width(f, rows[k].value);
-	}
-}
-
-static int ud_page_top(app *a, float smile);
+static ds_page_frame page_top(app *a, float smile);
 static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2);
 
 /* FILE TRANSFER'S NEWS ON FLASH DRIVE'S PAGE. Its top as Flash Drive's
- * (ud_page_top): Zyper, and beside him what to type, the heading's first
+ * (page_top): Zyper, and beside him what to type, the heading's first
  * line in **text** and its second in **text-soft**; the two tiles where
  * Flash Drive has them, the upload's bar at Download's foot; under them the
  * news in **meta** **text-soft** where Flash Drive's eject line is, and
@@ -9148,14 +8634,10 @@ static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const 
  * key's hint at the foot. */
 static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int n)
 {
-	const char *nl = heading ? strchr(heading, '\n') : NULL;
-	char first[192];
-	int hx = ud_page_top(a, 1.0f), room = ZYPEROS_SCREEN_W - DS_INSET - hx, k;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int k;
 
-	snprintf(first, sizeof first, "%.*s", nl ? (int)(nl - heading) : (int)strlen(heading ? heading : ""),
-	         heading ? heading : "");
-	xs_page_line(a, first, hx, nl ? 168 - 34 : 168, room, UI_TEXT);
-	if (nl) xs_page_line(a, nl + 1, hx, 168 + 34, room, UI_TEXT_SOFT);
+	ds_page_head(a->r, &pf, DS_HEAD_TWO, heading, NULL, UI_GLYPH_COUNT, plat_now_ms());
 	for (k = 0; k < 2; k++) {
 		SDL_Rect q = ud_page_tile(k == 0);
 
@@ -9163,8 +8645,8 @@ static void xs_page_draw(app *a, const char *heading, const menu_row *rows, int 
 		        g_move.total[k], g_move.nt[k], k == 0 ? g_move.bar : -1.0f, NULL);
 	}
 	/* where Flash Drive's eject line is, the news, and under it the rest */
-	if (n > 1) xs_page_meta(a, rows, 1, 592);
-	if (n > 2) xs_page_meta(a, rows + 1, n - 2, 640);
+	if (n > 1) ds_page_meta(a->r, &pf, rows, 1, DS_PAGE_NEWS_Y, plat_now_ms());
+	if (n > 2) ds_page_meta(a->r, &pf, rows + 1, n - 2, DS_PAGE_NEWS2_Y, plat_now_ms());
 	if (n > 0) ud_page_foot(a->r, rows[n - 1].value, rows[n - 1].label, NULL, NULL);
 }
 
@@ -9215,26 +8697,26 @@ static unsigned xs_move_key(unsigned key)
 	return pace_int(key, (int)(g_move.bar * 1000.0f));
 }
 
-/* Two button hints at the foot, the shelves' size, centered as a pair; or
- * one, centered, with `k2` NULL */
+/* Two button hints at the foot (ds_page_foot), the shelves' size, centered as
+ * a pair; or one, centered, with `k2` NULL */
 static void ud_page_foot(SDL_Renderer *r, const char *k1, const char *l1, const char *k2, const char *l2)
 {
-	int w1 = page_hint_width(k1, l1, false), w2 = k2 ? page_hint_width(k2, l2, false) : 0;
-	int gap = k2 ? 48 : 0, x = (ZYPEROS_SCREEN_W - w1 - gap - w2) / 2;
+	const char *keys[2] = { k1, k2 }, *words[2] = { l1, l2 };
+	const ds_page_frame f = ds_page_frame_of(true);
 
-	page_hint(r, k1, l1, x, 704, false, false);
-	if (k2) page_hint(r, k2, l2, x + w1 + gap, 704, false, false);
+	ds_page_foot(r, &f, keys, words, k2 ? 2 : 1, DS_PAGE_FOOT_GAP_PAIR, DS_PAGE_FOOT_GAP_PAIR);
 }
 #define ud_foot ud_page_foot
 
-/* A page's top: the ground, and Zyper as on the empty home, unless the look
- * has him off. Where the heading beside him starts: with Zyper off,
- * where the tiles do. */
-static int ud_page_top(app *a, float smile)
+/* A page's top (src/ds/page.h): the ground, and Zyper beside the heading,
+ * unless the look has him off; and the page's frame, its heading beside him,
+ * or with him off where the tiles start */
+static ds_page_frame page_top(app *a, float smile)
 {
 	draw_background(a);
-	if (!look_zyper_off()) draw_zyper(a->r, 123.0f, 168.0f, 124.0f, ZYPER_TILT_DEG, smile, 0.0f, 255);
-	return look_zyper_off() ? UD_TILE_X0 : 208;
+	if (!look_zyper_off())
+		draw_zyper(a->r, DS_PAGE_ZYPER_X, DS_PAGE_ZYPER_Y, DS_PAGE_ZYPER_H, ZYPER_TILT_DEG, smile, 0.0f, 255);
+	return ds_page_frame_of(!look_zyper_off());
 }
 
 /* What a shot shows in the tiles (--usb-drive 0 [in|out|both|wide]): 0 the
@@ -9255,17 +8737,14 @@ static void usb_drive_draw(app *a, int which)
 	static const str_id BODY[UD_FRAMES] = { S_USBDRIVE_EJECT, S_USBDRIVE_FINISHING_BODY, S_USBDRIVE_FAILED_BODY,
 	                                        S_USBDRIVE_CONFIRM_BODY };
 	const ds_theme *t = theme();
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	TTF_Font *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
 	char lines[3][LB_LINE];
 	/* With Zyper off (Theme), the heading starts where the tiles do */
-	int hx = ud_page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
+	ds_page_frame pf = page_top(a, which == UD_FAILED ? 0.0f : 1.0f);
 	int n, k;
 
 	/* The heading on one line, or two balanced beside him */
-	n = ui_balance_lines(ft, T(HEAD[which]), ZYPEROS_SCREEN_W - DS_INSET - hx, 2, lines);
-	if (n > 1) ui_fit_drawn(T(HEAD[which]));
-	for (k = 0; k < n; k++)
-		ui_text(a->r, ft, lines[k], hx, ui_cap_y(ft, 168 + (2 * k - (n - 1)) * 34), -1, UI_TEXT);
+	ds_page_head(a->r, &pf, DS_HEAD_BALANCED, T(HEAD[which]), NULL, UI_GLYPH_COUNT, 0);
 	if (which != UD_CONNECTED) {
 		/* The words in one tile, balanced, in the middle of it */
 		SDL_Rect q = { UD_TILE_X0, UD_TILE_Y, UD_TILE_X1 + UD_TILE_W - UD_TILE_X0, UD_TILE_H };
@@ -9306,7 +8785,7 @@ static void usb_drive_draw(app *a, int which)
 	n = ui_balance_lines(fs, T(S_USBDRIVE_EJECT), ZYPEROS_SCREEN_W - 2 * DS_INSET, 2, lines);
 	if (n > 1) ui_fit_drawn(T(S_USBDRIVE_EJECT));
 	for (k = 0; k < n; k++)
-		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, 592 + k * 40), 0, UI_TEXT_SOFT);
+		ui_text(a->r, fs, lines[k], ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, DS_PAGE_NEWS_Y + k * 40), 0, UI_TEXT_SOFT);
 	ud_foot(a->r, "B", T(S_USBDRIVE_EJECT_KEY), "POWER", T(S_USBDRIVE_STOP));
 	/* A shot of FUNCTION and volume on the page (--usb-drive 0 bright): the
 	 * bar usbdrive shows, at a rung, where it shows it */
@@ -9493,12 +8972,12 @@ static void ulog_note(const char *what);
 static void usb_ask(app *a)
 {
 	menu_row tiles[4];
-	int what[4];
+	int what[4], marks[4];
 	int n, sel = 0, choice = -1, lv;
 	usbpower_guard guard;
 	float k;
 
-	n = usb_ask_tiles(tiles, what, usblink_dev_image());
+	n = usb_ask_tiles(tiles, what, marks, usblink_dev_image());
 	lv = panel_open();
 	ask_guard_start(a, &guard);
 	while (choice < 0) {
@@ -9532,8 +9011,7 @@ static void usb_ask(app *a)
 		tick_theme(a);
 		draw_shelf(a);
 		ui_scrim_k(a->r, 0, k);
-		panel_show(a, PANEL_TILES, T(S_XFER_COMPUTER_CONNECTED), tiles, n, sel, 0, MENU_ZYPEROS,
-		           NULL, false, 0, NULL);
+		tiles_show(a, PANEL_TILES_GRID, T(S_XFER_COMPUTER_CONNECTED), tiles, n, marks, n, sel);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
@@ -9577,6 +9055,7 @@ static void usb_ask(app *a)
  * when the plug stops wanting power (unplugged, or power came). A list since
  * 2026-11-13 (choice_list_panel). */
 enum { UP_ACCESSORY, UP_COMPUTER, UP_PHONE, UP_TILES, UP_GONE = UP_TILES };
+static const int UP_MARK[UP_TILES] = { UI_GLYPH_HEADPHONES, UI_GLYPH_LAPTOP, UI_GLYPH_PHONE };
 
 static int usb_power_rows(menu_row rows[UP_TILES + 1])
 {
@@ -9703,8 +9182,7 @@ static void usb_power_ask(app *a, unsigned plug)
 		tick_theme(a);
 		draw_shelf(a);
 		ui_scrim_k(a->r, 0, f);
-		panel_show(a, PANEL_TILES, T(S_XFER_USB_DEVICE_CONNECTED), rows, n, sel, 0, MENU_ZYPEROS,
-		           NULL, false, 0, NULL);
+		tiles_show(a, PANEL_LIST, T(S_XFER_USB_DEVICE_CONNECTED), rows, n, UP_MARK, UP_TILES, sel);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
@@ -11125,6 +10603,14 @@ static const str_id XS_WORDS[4][3] = {
 	{ S_XFER_NOT_NOW_SAYS, S_XFER_PLAY_AFTER_SAYS, S_XFER_HALF_DELETED },
 };
 
+/* Their marks, a tile each: two arrows for going on, a page with a tick for
+ * after this file, a play triangle for play after it, a ring crossed for
+ * cancel */
+static const int XS_MARKS[2][3] = {
+	{ UI_GLYPH_ARROWS, UI_GLYPH_FINISH, UI_GLYPH_CANCEL },
+	{ UI_GLYPH_ARROWS, UI_GLYPH_PLAY, UI_GLYPH_CANCEL },
+};
+
 static const char *const *xs_words(int which)
 {
 	static const char *w[4][3];
@@ -11136,9 +10622,11 @@ static const char *const *xs_words(int which)
 #define XS_STOP_L xs_words(0)
 #define XS_STOP_W xs_words(1)
 #define XS_STOP_LEGEND tiles_hints(T(S_KEYHINT_KEEP_GOING))
+#define XS_STOP_M XS_MARKS[0]
 #define XS_GAME_L xs_words(2)
 #define XS_GAME_W xs_words(3)
 #define XS_GAME_LEGEND tiles_hints(T(S_KEYHINT_NOT_NOW))
+#define XS_GAME_M XS_MARKS[1]
 
 /* A question while files move (DESIGN.md 11.14): three tiles over the shelf,
  * as Computer Connected's (My pick in the lab, 2026-11-06), a line under
@@ -11146,7 +10634,7 @@ static const char *const *xs_words(int which)
  * The server keeps moving the files all the while. Returns the choice, -1
  * for B, or -2 when the files finished while it was up and it no longer has
  * anything to ask about. `what` may hold one %s, the file on its way. */
-static int xs_ask(app *a, const char *heading, const char *const *labels,
+static int xs_ask(app *a, const char *heading, const char *const *labels, const int *marks,
                   const char *const *what, int n, const char *legend)
 {
 	menu_row rows[7];
@@ -11198,8 +10686,7 @@ static int xs_ask(app *a, const char *heading, const char *const *labels,
 		rows[n]     = MENU_NOTE(sub);
 		rows[n + 1] = MENU_NOTE(line);
 		rows[n + 2] = MENU_NOTE(legend);
-		panel_show(a, PANEL_TILES, heading, rows, n + 3, sel, 0, MENU_ZYPEROS,
-		           NULL, false, 0, NULL);
+		tiles_show(a, PANEL_TILES, heading, rows, n + 3, marks, n, sel);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(4);
@@ -11214,7 +10701,7 @@ static int xs_ask(app *a, const char *heading, const char *const *labels,
  * its way, or cancel now. 0, 1, 2; -1 for B again, which keeps going too. */
 static int xs_stop_ask(app *a)
 {
-	return xs_ask(a, T(S_XFER_STILL_MOVING), XS_STOP_L, XS_STOP_W, 3, XS_STOP_LEGEND);
+	return xs_ask(a, T(S_XFER_STILL_MOVING), XS_STOP_L, XS_STOP_M, XS_STOP_W, 3, XS_STOP_LEGEND);
 }
 
 /* A game asked for while File Transfer is on (My note: "if gaming affects it,
@@ -11229,7 +10716,7 @@ static bool xs_before_game(app *a)
 	int c;
 
 	if (!g_xs.on) return true;
-	c = xs_moving() ? xs_ask(a, T(S_XFER_STILL_MOVING), XS_GAME_L, XS_GAME_W, 3, XS_GAME_LEGEND)
+	c = xs_moving() ? xs_ask(a, T(S_XFER_STILL_MOVING), XS_GAME_L, XS_GAME_M, XS_GAME_W, 3, XS_GAME_LEGEND)
 	                 : -2;
 	if (!a->running) return false;
 	if (c == 0 || c == -1) return false;
@@ -11734,8 +11221,8 @@ static menu_result snaps_screen(app *a);
  * over the keys, and the keys at 704 */
 #define SCP_X0    DS_INSET                        /* 24 */
 #define SCP_X1    (ZYPEROS_SCREEN_W - DS_INSET)   /* 1000 */
-#define SCP_TOP   UD_TILE_Y                       /* 256 */
-#define SCP_LINE  648
+#define SCP_TOP   DS_PAGE_BODY_Y                  /* 256 */
+#define SCP_LINE  DS_PAGE_LINE_Y                  /* 648 */
 /* What a run leaves free on the card, and when one stops for room */
 #define SCP_RESERVE (200ULL * 1000 * 1000)
 #define SCP_FLOOR   (100ULL * 1000 * 1000)
@@ -12029,40 +11516,9 @@ static void scp_time(double secs, bool round, char *out, size_t n)
 
 static float scp_ease(float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); }
 
-/* A disc with a mark in it: lime with ink on it (on, a video), or the
- * panel's own (a source) */
-static void scp_badge(app *a, int cx, int cy, int d, ui_glyph g, bool lime, Uint8 al)
-{
-	const ds_theme *t = theme();
-
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 - 2, cy - d / 2 - 2, d + 4, d + 4 }, d / 2 + 2, ui_col(t->edge, al));
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(lime ? t->accent : t->surface, al));
-	ui_glyph_draw(a->r, g, cx, cy, d * 64 / 100, ui_col(lime ? t->on_accent : t->accent_ink, al));
-}
-
-/* A switch as a mark: on, the lime disc; off, a quiet ring */
-static void scp_mark(app *a, int cx, int cy, int d, ui_glyph g, bool on)
-{
-	const ds_theme *t = theme();
-
-	if (on) { scp_badge(a, cx, cy, d, g, true, 255); return; }
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(t->edge, 255));
-	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 + 2, cy - d / 2 + 2, d - 4, d - 4 }, d / 2 - 2, ui_col(t->raised, 255));
-	ui_glyph_draw(a->r, g, cx, cy, d * 60 / 100, UI_TEXT_DIM);
-}
-
 static ui_glyph scp_src_glyph(int src)
 {
 	return src == ART_SRC_SG ? UI_GLYPH_GRID : src == ART_SRC_LR ? UI_GLYPH_BOOK : UI_GLYPH_CLOUD;
-}
-
-static void scp_bar(app *a, int x, int y, int w, int num, int den)
-{
-	int fill = den > 0 ? (int)((long long)w * (num > den ? den : num) / den) : 0;
-
-	ui_round_rect(a->r, &(SDL_Rect){ x, y, w, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, 255));
-	if (fill > 0)
-		ui_round_rect(a->r, &(SDL_Rect){ x, y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->accent_ink, 255));
 }
 
 /* A cover arrived, whole in `box` (never cut, never stretched), in its
@@ -12103,8 +11559,8 @@ static void scp_cover_draw(app *a, const scp_cover *c, SDL_FRect box, Uint8 al, 
 		              ui_col(t->accent_ink, al));
 	}
 	d = q.w > 120 ? 40 : 30;
-	scp_badge(a, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
-	if (c->video) scp_badge(a, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
+	ds_badge(a->r, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
+	if (c->video) ds_badge(a->r, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
 }
 
 /* The counts as marks, centered on `cx`: covers, videos, games not found
@@ -12138,80 +11594,6 @@ static void scp_stats(app *a, int cx, int cy, int covers, int videos, int miss, 
 	}
 }
 
-/* The heading beside Zyper, as Flash Drive's pages: one line at 168, or a
- * second in **meta** **text-soft** under it (the system in focus, a
- * problem, "needs Wi-Fi", the plan's time beside a clock `g`) with the
- * first at 150 and it at 208; each cut to the page's right side. `g`
- * UI_GLYPH_COUNT: no mark. */
-static void scp_head(app *a, int hx, const char *title, const char *sub, ui_glyph g)
-{
-	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
-	bool two = sub && *sub;
-	int sx = hx;
-	char fit[192];
-
-	ui_fit_text(ft, title, fit, sizeof fit, SCP_X1 - hx);
-	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, two ? 150 : 168), -1, UI_TEXT);
-	if (two) {
-		if (g != UI_GLYPH_COUNT) {
-			ui_glyph_draw(a->r, g, hx + 16, 208, 32, ui_col(theme()->accent_ink, 255));
-			sx = hx + 44;
-		}
-		ui_fit_text(fs, sub, fit, sizeof fit, SCP_X1 - sx);
-		ui_text(a->r, fs, fit, sx, ui_cap_y(fs, 208), -1, UI_TEXT_SOFT);
-	}
-}
-
-/* The line over the keys (SCP_LINE): marks and their words, centered. A
- * switch's mark (scp_mark) on or off, a plain mark in **accent-ink** beside
- * words in **text-soft**, or both in **warning** */
-enum { SCP_ON, SCP_OFF, SCP_INFO, SCP_WARN };
-typedef struct {
-	ui_glyph g;
-	const char *text;
-	int tone;
-} scp_item;
-
-static void scp_line(app *a, const scp_item *it, int n)
-{
-	const ds_theme *t = theme();
-	TTF_Font *fs = ui_font(UI_F_META);
-	const int d = 36, pad = 14;
-	int w[4], i, sum = 0, gap = 48, x;
-
-	for (i = 0; i < n && i < 4; i++) sum += (w[i] = d + pad + ui_text_width(fs, it[i].text));
-	if (sum + gap * (n - 1) > SCP_X1 - SCP_X0) gap = 24;
-	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
-	for (i = 0; i < n && i < 4; i++) {
-		SDL_Color c = it[i].tone == SCP_WARN ? ui_col(t->warning, 255)
-		            : it[i].tone == SCP_OFF ? UI_TEXT_DIM : it[i].tone == SCP_INFO ? UI_TEXT_SOFT : UI_TEXT;
-
-		if (it[i].tone == SCP_ON || it[i].tone == SCP_OFF)
-			scp_mark(a, x + d / 2, SCP_LINE, d, it[i].g, it[i].tone == SCP_ON);
-		else
-			ui_glyph_draw(a->r, it[i].g, x + d / 2, SCP_LINE, d,
-			              it[i].tone == SCP_WARN ? c : ui_col(t->accent_ink, 255));
-		ui_text(a->r, fs, it[i].text, x + d + pad, ui_cap_y(fs, SCP_LINE), -1, c);
-		ui_fit_drawn(it[i].text);
-		x += w[i] + gap;
-	}
-}
-
-/* Up to four hints at the foot, centered as a row, the gap narrower when
- * they are wide */
-static void scp_foot(app *a, const char *const *k, const char *const *l, int n)
-{
-	int w[4], i, sum = 0, x, gap = 40;
-
-	for (i = 0; i < n; i++) sum += (w[i] = page_hint_width(k[i], l[i], false));
-	if (sum + gap * (n - 1) > ZYPEROS_SCREEN_W - 2 * DS_INSET) gap = 20;
-	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
-	for (i = 0; i < n; i++) {
-		page_hint(a->r, k[i], l[i], x, 704, false, false);
-		x += w[i] + gap;
-	}
-}
-
 /* The heading beside Zyper: the page's, or a system's for its Box Art */
 static const char *scp_title(const scp_view *v)
 {
@@ -12227,7 +11609,8 @@ static void scp_plan_draw(scp_view *v)
 	app *a = v->a;
 	const ds_theme *t = theme();
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), i, ncov, covers, nvid, videos, shown, more;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int i, ncov, covers, nvid, videos, shown, more;
 	/* nine across, the first's marks at the page's left side (31: half
 	 * the two marks' width) and the ninth's at its right */
 	const int cell = (SCP_X1 - SCP_X0 - 62) / 8, x1 = SCP_X0 + 31;
@@ -12240,13 +11623,13 @@ static void scp_plan_draw(scp_view *v)
 	scp_totals(v, &ncov, &covers, &nvid, &videos);
 	scp_needs(v, &need);
 	/* The heading's second line: "needs Wi-Fi", else about how long */
-	if (!v->net) scp_head(a, hx, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT);
+	if (!v->net) ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT, 0);
 	else if (need.covers + need.videos + need.looks > 0) {
 		scp_time(need.secs, true, sz, sizeof sz);
 		snprintf(eta, sizeof eta, T(S_SCRAPER_ABOUT_TIME), sz);
-		scp_head(a, hx, scp_title(v), eta, UI_GLYPH_CLOCK);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), eta, UI_GLYPH_CLOCK, 0);
 	} else {
-		scp_head(a, hx, scp_title(v), NULL, UI_GLYPH_COUNT);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, scp_title(v), NULL, UI_GLYPH_COUNT, 0);
 	}
 	/* The systems, as icons with their two marks: nine at most, and how
 	 * many more, from the page's left side */
@@ -12256,8 +11639,8 @@ static void scp_plan_draw(scp_view *v)
 		int cx = x1 + i * cell;
 
 		scp_icon_draw(v, i, cx, iy, 60, v->s[i].cov || v->s[i].vid ? 255 : 110);
-		scp_mark(a, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
+		ds_switch(a->r, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
+		ds_switch(a->r, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
 	}
 	if (more > 0) {
 		char m[16];
@@ -12308,7 +11691,7 @@ static void scp_plan_draw(scp_view *v)
 	}
 	/* The room: the two tiles' figures added up, and the card's */
 	if (need.covers + need.videos + need.looks > 0) {
-		scp_item it[1];
+		ds_line_item it[1];
 		char tf[64];
 
 		sys_menu_bytes((unsigned long long)need.bytes, sz, sizeof sz);
@@ -12322,16 +11705,16 @@ static void scp_plan_draw(scp_view *v)
 		} else {
 			snprintf(room, sizeof room, "%s", tf);
 		}
-		it[0] = (scp_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? SCP_INFO : SCP_WARN };
-		scp_line(a, it, 1);
+		it[0] = (ds_line_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? DS_TONE_INFO : DS_TONE_WARN };
+		ds_page_line(a->r, &pf, it, 1);
 	}
 	if (v->only[0]) {
 		const char *K1[3] = { "A", "START", "B" };
 		const char *L1[3] = { T(S_SCRAPER_KEY_FETCH), T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
 
-		scp_foot(a, K1, L1, 3);
+		ds_page_foot(a->r, &pf, K1, L1, 3, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 	} else {
-		scp_foot(a, K, L, 4);
+		ds_page_foot(a->r, &pf, K, L, 4, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 	}
 }
 
@@ -12348,22 +11731,23 @@ static void scp_systems_draw(scp_view *v)
 {
 	app *a = v->a;
 	const ds_theme *t = theme();
-	int hx = ud_page_top(a, 1.0f), i, top;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int i, top;
 	const int w = SCP_GRID_W, h = SCP_GRID_H, x0 = SCP_X0 + SCP_GRID_RING, y0 = SCP_TOP + SCP_GRID_RING;
 	char cov[64], vid[64], sz[32];
 	const char *K[4] = { "A", "X", "Y", "B" };
 	const char *L[4] = { T(S_SCRAPER_PAGE_COVERS), T(S_SCRAPER_PAGE_VIDEOS), T(S_SCRAPER_VIDEOS_FOR), T(S_SCRAPER_DONE) };
 	const scp_sys *f;
-	scp_item it[2];
+	ds_line_item it[2];
 	int need;
 
 	if (!v->n) {
-		scp_head(a, hx, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT);
-		scp_foot(a, K + 3, L + 3, 1);
+		ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT, 0);
+		ds_page_foot(a->r, &pf, K + 3, L + 3, 1, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 		return;
 	}
 	f = &v->s[v->focus];
-	scp_head(a, hx, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT);
+	ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT, 0);
 	/* Three rows on the screen, the focus's among them */
 	top = v->focus / SCP_COLS - (SCP_ROWS - 1);
 	if (top < 0) top = 0;
@@ -12379,8 +11763,8 @@ static void scp_systems_draw(scp_view *v)
 			              ui_col(t->accent, 255));
 		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
 		scp_icon_draw(v, i, q.x + 20 + 44, q.y + h / 2, 88, any ? 255 : 110);
-		scp_mark(a, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
-		scp_mark(a, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
+		ds_switch(a->r, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
+		ds_switch(a->r, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
 	}
 	/* The system in focus: the covers it misses, and its videos still to
 	 * fetch - the same figures the plan adds up */
@@ -12394,10 +11778,10 @@ static void scp_systems_draw(scp_view *v)
 		scp_mb(need * v->mb_video, sz, sizeof sz);
 		snprintf(vid, sizeof vid, T(S_SCRAPER_TO_FETCH), sz);
 	}
-	it[0] = (scp_item){ UI_GLYPH_COVER, cov, f->cov ? SCP_ON : SCP_OFF };
-	it[1] = (scp_item){ UI_GLYPH_FILM, vid, f->vid ? SCP_ON : SCP_OFF };
-	scp_line(a, it, 2);
-	scp_foot(a, K, L, 4);
+	it[0] = (ds_line_item){ UI_GLYPH_COVER, cov, f->cov ? DS_TONE_ON : DS_TONE_OFF };
+	it[1] = (ds_line_item){ UI_GLYPH_FILM, vid, f->vid ? DS_TONE_ON : DS_TONE_OFF };
+	ds_page_line(a->r, &pf, it, 2);
+	ds_page_foot(a->r, &pf, K, L, 4, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 static SDL_FRect scp_lerp(SDL_FRect p, SDL_FRect q, float e)
@@ -12436,7 +11820,8 @@ static void scp_run_draw(scp_view *v, unsigned now)
 {
 	app *a = v->a;
 	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), m, looked, total, si;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int hx = pf.head_x, m, looked, total, si;
 	float e = v->nring && v->ring[0].tex ? scp_ease((float)(now - v->land_at) / SCP_LAND) : 1.0f;
 	char fit[160], cnt[48], eta[48];
 	/* the newest inside its square by its lit frame's width */
@@ -12457,13 +11842,18 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	}
 	if (total < looked) total = looked;
 	ui_fit_text(ft, v->p.now, fit, sizeof fit, SCP_X1 - hx);
-	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, 150), -1, UI_TEXT);
+	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, DS_PAGE_TITLE_Y), -1, UI_TEXT);
 	si = scp_find(v, v->p.folder_now);
-	scp_icon_draw(v, si, hx + 26, 208, 52, 255);
-	if (v->p.src != ART_SRC_NONE) scp_badge(a, hx + 80, 208, 40, scp_src_glyph(v->p.src), false, 255);
+	scp_icon_draw(v, si, hx + 26, DS_PAGE_SUB_Y, 52, 255);
+	if (v->p.src != ART_SRC_NONE) ds_badge(a->r, hx + 80, DS_PAGE_SUB_Y, DS_BADGE, scp_src_glyph(v->p.src), false, 255);
 	snprintf(cnt, sizeof cnt, "%d / %d", looked, total);
-	scp_bar(a, hx + 120, 205, SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24, looked, total);
-	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, 208), 1, UI_TEXT_DIM);
+	{
+		int w = SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24;
+
+		ds_bar(a->r, hx + 120, DS_PAGE_SUB_Y - UI_BAR_H / 2, w,
+		       total > 0 ? (int)((long long)w * (looked > total ? total : looked) / total) : 0, 255);
+	}
+	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, DS_PAGE_SUB_Y), 1, UI_TEXT_DIM);
 	/* The six before the newest, three by two; the one that was big comes
 	 * in first */
 	for (m = 6; m >= 0; m--) {
@@ -12484,7 +11874,7 @@ static void scp_run_draw(scp_view *v, unsigned now)
 	}
 	scp_time(scp_eta(v, now, looked, total), false, eta, sizeof eta);
 	scp_stats(a, ZYPEROS_SCREEN_W / 2, SCP_LINE, v->p.found, v->p.snaps, -1, eta);
-	scp_foot(a, K, L, 1);
+	ds_page_foot(a->r, &pf, K, L, 1, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 /* Done: what came, as a wall across the page; the counts as marks; the room
@@ -12493,13 +11883,14 @@ static void scp_done_draw(scp_view *v)
 {
 	app *a = v->a;
 	TTF_Font *fs = ui_font(UI_F_META);
-	int hx = ud_page_top(a, 1.0f), m, i, nv = 0, n;
+	ds_page_frame pf = page_top(a, 1.0f);
+	int m, i, nv = 0, n;
 	unsigned long long room = 0;
 	char line[160], sz[32];
 	const float gap = 20, cw = (SCP_X1 - SCP_X0 - 6 * gap) / 7, ch = 140;
 	const char *K[2] = { "A", "B" }, *L[2] = { T(S_SCRAPER_KEY_AGAIN), T(S_SCRAPER_KEY_CLOSE) };
 
-	scp_head(a, hx, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT);
+	ds_page_head(a->r, &pf, DS_HEAD_SUB, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT, 0);
 	n = v->nring > 14 ? 14 : v->nring;
 	for (m = 0; m < n; m++) {
 		int k = n - 1 - m;     /* oldest first */
@@ -12518,7 +11909,7 @@ static void scp_done_draw(scp_view *v)
 		}
 		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, SCP_LINE), 0, UI_TEXT_SOFT);
 	}
-	scp_foot(a, K, L, 2);
+	ds_page_foot(a->r, &pf, K, L, 2, DS_PAGE_FOOT_GAP, DS_PAGE_FOOT_GAP_TIGHT);
 }
 
 static void scp_draw(scp_view *v, unsigned now)
@@ -12542,9 +11933,10 @@ static void scp_test(scp_view *v, app *a);
 
 /* ---- the questions -------------------------------------------------------- */
 
-/* Tiles over the page, as Computer Connected's, or a list (tiles_are_list):
- * the one picked, or -1 */
-static int scp_ask(scp_view *v, const char *heading, const char *sub, menu_row *tiles, int n, int sel)
+/* Tiles over the page, as Computer Connected's (PANEL_TILES), or a list
+ * (PANEL_LIST), each tile with its mark: the one picked, or -1 */
+static int scp_ask(scp_view *v, int kind, const char *heading, const char *sub, menu_row *tiles,
+                   const int *marks, int n, int sel)
 {
 	app *a = v->a;
 	key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
@@ -12553,7 +11945,7 @@ static int scp_ask(scp_view *v, const char *heading, const char *sub, menu_row *
 	int lv, choice = -2;
 	float k;
 
-	if (tiles_are_list(tiles, n)) snprintf(legend, sizeof legend, "%s", list_hints(T(S_KEYHINT_CLOSE)));
+	if (kind == PANEL_LIST) snprintf(legend, sizeof legend, "%s", list_hints(T(S_KEYHINT_CLOSE)));
 	else keyhints_pack(hh, 3, legend, sizeof legend);
 	/* A line under the heading takes the panel's three notes: it, none
 	 * under the tiles, and the keys */
@@ -12588,7 +11980,7 @@ static int scp_ask(scp_view *v, const char *heading, const char *sub, menu_row *
 		tick_theme(a);
 		scp_draw(v, anim_now());
 		ui_scrim_k(a->r, 0, k);
-		panel_show(a, PANEL_TILES, heading, tiles, n + (sub ? 3 : 1), sel, 0, MENU_ZYPEROS, NULL, false, 0, NULL);
+		tiles_show(a, kind, heading, tiles, n + (sub ? 3 : 1), marks, n, sel);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
@@ -12628,6 +12020,13 @@ static void scp_for_rows(const scp_view *v, menu_row *tiles, char *sub, size_t s
 	else snprintf(sub, subn, "%s", T(S_SCRAPER_VIDEOS_OFF_ALL));
 }
 
+/* Videos for's marks: a screen with a play triangle for all games, a heart
+ * for the favorites, a play triangle for the ones played; and Settings':
+ * the two sources by their own marks, never their logos - a cloud for
+ * ScreenScraper, a grid for SteamGridDB - and the videos' screen */
+static const int SCP_FOR_MARKS[SNAPS_FOR_COUNT] = { UI_GLYPH_FILM, UI_GLYPH_HEART, UI_GLYPH_PLAY };
+static const int SCP_SETTINGS_MARKS[3] = { UI_GLYPH_CLOUD, UI_GLYPH_GRID, UI_GLYPH_FILM };
+
 /* Which games get videos */
 static void scp_videos_for(scp_view *v)
 {
@@ -12636,7 +12035,7 @@ static void scp_videos_for(scp_view *v)
 	int c;
 
 	scp_for_rows(v, tiles, sub, sizeof sub);
-	c = scp_ask(v, T(S_SCRAPER_VIDEOS_FOR), sub, tiles, SNAPS_FOR_COUNT, snaps_for());
+	c = scp_ask(v, PANEL_TILES, T(S_SCRAPER_VIDEOS_FOR), sub, tiles, SCP_FOR_MARKS, SNAPS_FOR_COUNT, snaps_for());
 	if (c >= 0) snaps_set_for(c);
 }
 
@@ -12662,7 +12061,7 @@ static void scp_settings(scp_view *v)
 	for (i = 0; i < v->n; i++) room += v->s[i].vroom;
 	sys_menu_bytes(room, sz, sizeof sz);
 	snprintf(vs, sizeof vs, "%s \xc2\xb7 %s", snaps_play() ? T(S_SCRAPER_ON) : T(S_SCRAPER_OFF), sz);
-	c = scp_ask(v, T(S_HOME_SETTINGS), NULL, tiles, 3, 0);
+	c = scp_ask(v, PANEL_LIST, T(S_HOME_SETTINGS), NULL, tiles, SCP_SETTINGS_MARKS, 3, 0);
 	if (c == 0) ss_page(v->a);
 	else if (c == 1) sgdb_screen(v->a);
 	else if (c == 2) snaps_screen(v->a);
@@ -13174,7 +12573,8 @@ static void scraper_page_shot(app *a)
 		tiles[SNAPS_FOR_COUNT + 2] = MENU_NOTE(legend);
 		scp_draw(&v, v.shot_now);
 		ui_scrim(a->r, 0);
-		tiles_panel(a, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT + 3, 1, PANEL_REST.panel);
+		tiles_panel(a, PANEL_TILES, T(S_SCRAPER_VIDEOS_FOR), tiles, SCP_FOR_MARKS, SNAPS_FOR_COUNT + 3, 1,
+		            PANEL_REST.panel);
 	} else if (st == 6) {
 		/* As scp_settings words them: a linked account, a key, videos on */
 		static char ss[64], vs[48];
@@ -13191,7 +12591,7 @@ static void scraper_page_shot(app *a)
 		tiles[3] = MENU_NOTE(list_hints(T(S_KEYHINT_CLOSE)));
 		scp_draw(&v, v.shot_now);
 		ui_scrim(a->r, 0);
-		tiles_panel(a, T(S_HOME_SETTINGS), tiles, 4, 0, PANEL_REST.panel);
+		tiles_panel(a, PANEL_LIST, T(S_HOME_SETTINGS), tiles, SCP_SETTINGS_MARKS, 4, 0, PANEL_REST.panel);
 	} else {
 		scp_draw(&v, v.shot_now);
 	}
@@ -21414,11 +20814,12 @@ static void shot_compose(app *a)
 		 * or with --usb-ask N plain the two a card without the development image has. In the language that is on, since the
 		 * overflow is in the translation */
 		menu_row tiles[4];
-		int what[4];
-		int nt = usb_ask_tiles(tiles, what, shot_usb_dev);
+		int what[4], marks[4];
+		int nt = usb_ask_tiles(tiles, what, marks, shot_usb_dev);
 
 		ui_scrim(a->r, 0);
-		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
+		tiles_panel(a, PANEL_TILES_GRID, T(S_XFER_COMPUTER_CONNECTED), tiles, marks, nt, shot_usb % nt,
+		            PANEL_REST.panel);
 	}
 	if (shot_scraper_page >= 0) {
 		scraper_page_shot(a);
@@ -21440,7 +20841,8 @@ static void shot_compose(app *a)
 		if (shot_power < UP_TILES) {
 			int nt = usb_power_rows(rows);
 
-			tiles_panel(a, T(S_XFER_USB_DEVICE_CONNECTED), rows, nt, shot_power, PANEL_REST.panel);
+			tiles_panel(a, PANEL_LIST, T(S_XFER_USB_DEVICE_CONNECTED), rows, UP_MARK, nt, shot_power,
+			            PANEL_REST.panel);
 		} else {
 			/* The answer's message over the shelf, as the overlay draws it */
 			g_replug.say = shot_power == UP_TILES ? USBPOWER_SAY_COMPUTER
@@ -21539,7 +20941,8 @@ static void shot_compose(app *a)
 
 		snprintf(said, sizeof said, T(S_XFER_RECEIVING), "Tobu Tobu Girl.gb");
 		ui_scrim(a->r, 0);
-		tiles_panel(a, T(S_XFER_STILL_MOVING), rows, 6, k, PANEL_REST.panel);
+		tiles_panel(a, PANEL_TILES, T(S_XFER_STILL_MOVING), rows, shot_xfer_game ? XS_GAME_M : XS_STOP_M, 6, k,
+		            PANEL_REST.panel);
 	}
 	if (shot_steps_way) {
 		static const struct { const char *name; int step, sub, hint; } ST[] = {

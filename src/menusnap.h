@@ -56,6 +56,10 @@ typedef struct {
 	 * far the rows are set in for it */
 	void       *side;
 	int         side_w;
+	/* A panel of tiles' marks, a tile each in the rows' order: ui_glyph values
+	 * (src/ds/glyph.h; UI_GLYPH_COUNT for none), set by the caller as `kind`
+	 * is. Plain ints, so this file needs no SDL. */
+	int         marks[MENUSNAP_ROWS];
 	size_t      used;         /* of `text` */
 	char        text[MENUSNAP_TEXT];
 } menu_snap;

@@ -8,7 +8,8 @@ BUILD := build-native
 # The Brick's device file, whose hardware is behind __linux__ with a host stub
 # beside it: that is what this build has always run.
 DEVICE ?= brick
-SRC := $(wildcard src/*.c) src/device/$(DEVICE).c
+# src/ds/: the design system's components and marks (DESIGN.md, "Where each part lives")
+SRC := $(wildcard src/*.c) $(wildcard src/ds/*.c) src/device/$(DEVICE).c
 # src/main.c and the files split from it, which call into one another: the
 # checks that link the rest of src/ leave them all out.
 MAIN_SRC := src/main.c src/aout_route.c src/bgm_screen.c src/bt_screen.c \
@@ -69,7 +70,7 @@ FORCE:
 # header is a prerequisite of every object: the coarse rule, and the safe one.
 OBJ := $(BUILD)/obj
 OBJS := $(patsubst src/%.c,$(OBJ)/%.o,$(SRC))
-HDRS := $(wildcard src/*.h) $(wildcard src/device/*.h) $(wildcard src/third_party/*.h)
+HDRS := $(wildcard src/*.h) $(wildcard src/ds/*.h) $(wildcard src/device/*.h) $(wildcard src/third_party/*.h)
 
 $(OBJ)/%.o: src/%.c $(HDRS) $(CREDS)
 	@mkdir -p $(dir $@)

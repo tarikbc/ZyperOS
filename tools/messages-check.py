@@ -71,7 +71,7 @@ with tempfile.TemporaryDirectory(prefix="zyperos-messages-check-") as scratch:
     # follows that include there.
     inputs = platform[platform.index('#include "inbutton.h"'):platform.index("bool plat_video_init")]
     (out / "message-input.inc").write_text("typedef unsigned Uint32;\n" + inputs)
-    names = ("snap_record", "snap_draw", "snap_shown", "snap_promote", "panel_show",
+    names = ("panel_is_tiles", "snap_record", "snap_draw", "snap_shown", "snap_promote", "panel_show",
              "menu_draw_ex", "menu_leaving", "panel_settle", "panel_open", "panel_frame",
              "panel_close_at", "panel_close", "timed_message")
     (out / "message-loop.inc").write_text("\n\n".join(function(n) for n in names))

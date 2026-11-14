@@ -8,6 +8,8 @@
 #include "i18n.h"
 #include "theme.h"
 #include "ui.h"
+#include "ds/layout.h"
+#include "ds/mark.h"
 #include "zyperdraw.h"
 
 #include <math.h>
@@ -294,26 +296,16 @@ uint32_t gl_draw(gl_motion *m, SDL_Renderer *r, const gl_info *in,
 				SDL_RenderSetClipRect(r, NULL);
 			}
 			/* Its snap's mark, the cover row's, fading as the snap comes */
-			if (in->has_snap && k < 1) {
-				int d = 40, inset = 12;
-				Uint8 ba = (Uint8)lroundf(255 * (1 - k));
-				SDL_Rect disc = { (int)lroundf(dst.x + dst.w) - inset - d,
-				                  (int)lroundf(dst.y + dst.h) - inset - d, d, d };
-
-				ui_round_rect(r, &disc, d / 2, ui_col(theme()->accent, ba));
-				ui_glyph_draw(r, UI_GLYPH_PLAY, disc.x + d / 2 + d / 16, disc.y + d / 2, d / 2,
-				              ui_col(theme()->on_accent, ba));
-			}
+			if (in->has_snap && k < 1)
+				ds_play_disc(r, (int)lroundf(dst.x + dst.w) - DS_BADGE_INSET - DS_BADGE,
+				             (int)lroundf(dst.y + dst.h) - DS_BADGE_INSET - DS_BADGE, DS_BADGE,
+				             (Uint8)lroundf(255 * (1 - k)));
 			/* And the wait before it, a bar under the cover filling */
 			if (in->snap_wait > 0 && k < 1) {
 				int bw = (int)lroundf(dst.w), bx = (int)lroundf(dst.x);
-				int by = (int)lroundf(dst.y + dst.h) + 12, fw = (int)lroundf(bw * fminf(in->snap_wait, 1));
-				Uint8 fa = (Uint8)lroundf(255 * (1 - k));
+				int by = (int)lroundf(dst.y + dst.h) + 12;
 
-				ui_round_rect(r, &(SDL_Rect){ bx, by, bw, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, fa));
-				if (fw > 0)
-					ui_round_rect(r, &(SDL_Rect){ bx, by, fw, UI_BAR_H }, UI_BAR_H / 2,
-					              ui_col(theme()->accent_ink, fa));
+				ds_bar(r, bx, by, bw, (int)lroundf(bw * fminf(in->snap_wait, 1)), (Uint8)lroundf(255 * (1 - k)));
 			}
 		}
 		if (games > 0) {

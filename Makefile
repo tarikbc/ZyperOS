@@ -35,7 +35,7 @@ CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-task
          check-clock check-autozone check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
-         check-tour check-tour-shots check-tour-previews check-textfade check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-panelgamma check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
+         check-tour check-tour-shots check-tour-previews check-textfade check-glyphs check-ds check-tour-colors check-about check-about-shots check-update check-sysupdate check-pminstall check-pmhelper check-pmart check-portdoc check-boottheme check-panelgamma check-px2-push check-captive check-mdns check-linksteps check-usbrole check-usbdrive check-gauge check-usbpower check-phonelink check-usblog check-clients check-keyhints check-pace check-qr \
          check-home check-home-shots check-games check-cardpaint check-putpace check-favorites-shots check-np-footer check-layout-shots check-artbadge check-artbadge-shots checkmark \
          check-installer check-from-rogue check-importers check-diatom check-simulator check-px2sim check-building-doc check-blog check-discord-release \
          check-strings check-i18n-shots
@@ -992,6 +992,15 @@ check-strings:
 check-i18n-shots:
 	@python3 tools/i18n-shots.py
 
+# The same pixels, proved (tools/pixel-gate.py): every shot of check-i18n-shots
+# in every language and both themes, at BASE (origin/main) and here, compared
+# as decoded pixels, with sheets of what changed. Not in CHECKS: it builds the
+# launcher twice. One language or theme: make pixel-gate GATE='--lang en'.
+BASE ?= origin/main
+.PHONY: pixel-gate
+pixel-gate:
+	@'$(PYIMG)' tools/pixel-gate.py --base '$(BASE)' $(GATE)
+
 # The Chinese UI's cut of Noto Sans SC (tools/cjkfont.py), from the two OTFs
 # in CJK_SRC; needs fontTools. Only when check-strings says a character is
 # missing from it.
@@ -1908,12 +1917,30 @@ check-textfade:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/folderart.c src/roundrect.c src/theme.c src/look.c \
+		  -o build-native/textfade-check tools/textfade-check.c src/ui.c src/ds/glyph.c src/folderart.c src/roundrect.c src/theme.c src/look.c \
 		  src/themefile.c src/linebreak.c src/blur.c src/cardgen.c src/sysmark.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lm && \
 		ZYPEROS_HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software \
 		  ./build-native/textfade-check; \
 	else echo "skipped: no SDL2 for the text fade check"; fi
+
+# The design system's rules the compiler cannot hold (DESIGN.md section 15):
+# src/ds/ stands alone, and no page foot, page Zyper or tile mark is typed
+# again or read off a name outside it.
+.PHONY: check-ds
+check-ds:
+	@python3 tools/ds-check.py
+
+# The marks drawn from strokes (src/ds/glyph.c): every one within its strokes
+# and arrowheads, none dropped, and the cache giving the same pixels when full.
+.PHONY: check-glyphs
+check-glyphs:
+	@if pkg-config --exists sdl2; then \
+		mkdir -p build-native; \
+		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra $$(pkg-config --cflags sdl2) -Isrc \
+		  -o build-native/glyph-check tools/glyph-check.c src/ds/glyph.c $$(pkg-config --libs sdl2) -lm && \
+		SDL_VIDEODRIVER=dummy ./build-native/glyph-check; \
+	else echo "skipped: no SDL2 for the glyph check"; fi
 
 # Tutorial drawing across frames: low-alpha first frames and a theme round-trip
 # must not poison cached text, details or bars. No window or device required.
@@ -1922,7 +1949,7 @@ check-tour-colors:
 		mkdir -p build-native; \
 		$(CC) -std=gnu11 -D_GNU_SOURCE -O1 -g -Wall -Wextra \
 		  $$(pkg-config --cflags sdl2 SDL2_ttf SDL2_image) -Isrc \
-		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/folderart.c src/roundrect.c \
+		  -o build-native/tour-colors-check tools/tour-colors-check.c src/ui.c src/ds/glyph.c src/folderart.c src/roundrect.c \
 		  src/theme.c src/themefile.c src/look.c src/linebreak.c src/blur.c src/cardgen.c \
 		  src/sysmark.c src/tour.c src/tourdraw.c src/tourdevice.c src/zyperrig.c src/osdbar.c src/db.c $(I18N_SRC) \
 		  $$(pkg-config --libs sdl2 SDL2_ttf SDL2_image) -lsqlite3 -lm && \
