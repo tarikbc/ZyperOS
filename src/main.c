@@ -14232,7 +14232,8 @@ static menu_result scraper_screen(app *a)
  * name in focus, 5 Videos for, 6 Settings, 7 the run at T ms, 8 done, 9
  * done with one system's videos, 10 offline, 11 a system's Box Art, 12
  * done with videos asked for and no ScreenScraper account, 13 the plan
- * with too little room on the card. Covers
+ * with too little room on the card, 14 Videos for with one system's
+ * videos on, 15 done after the card filled. Covers
  * from ZYPEROS_LOOK_COVERS (paths split by ':') and their systems'
  * indices from ZYPEROS_LOOK_SYS, when a shot has them. */
 static int shot_scraper_page = -1, shot_scraper_page_t = 7180;
@@ -14250,7 +14251,8 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 		{ "Neo Geo Pocket Color", "Neo Geo Pocket Color", "NGPC", false, 12, 10, 0 },
 		{ "Arcade", "Arcade", "ARCADE", false, 28, 25, 0 },
 	};
-	unsigned vid = state == 0 || state == 10 ? 0u : state == 2 || state == 9 ? 1u : (1u << 0) | (1u << 1) | (1u << 4);
+	unsigned vid = state == 0 || state == 10 ? 0u : state == 2 || state == 9 || state == 14 ? 1u
+	             : (1u << 0) | (1u << 1) | (1u << 4);
 	int i;
 
 	memset(v, 0, sizeof *v);
@@ -14283,9 +14285,10 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 		v->s[0].vid = true;
 	}
 	v->focus = state == 4 ? 7 : 4;
-	v->where = state == 3 || state == 4 || state == 5 ? SCP_SYSTEMS : state == 7 ? SCP_RUN
-	         : state == 8 || state == 9 || state == 12 ? SCP_DONE : SCP_PLAN;
-	if (state == 7 || state == 8 || state == 9 || state == 12) {
+	v->where = state == 3 || state == 4 || state == 5 || state == 14 ? SCP_SYSTEMS : state == 7 ? SCP_RUN
+	         : state == 8 || state == 9 || state == 12 || state == 15 ? SCP_DONE : SCP_PLAN;
+	if (state == 15) snprintf(v->problem, sizeof v->problem, "%s", T(S_SCRAPER_NO_ROOM));
+	if (state == 7 || state == 8 || state == 9 || state == 12 || state == 15) {
 		const char *env = getenv("ZYPEROS_LOOK_COVERS"), *sy = getenv("ZYPEROS_LOOK_SYS");
 		char buf[8192], *p, *save = NULL, names[SCP_RING][96];
 		int sys[SCP_RING], nc = 0, L, k;
@@ -14354,7 +14357,7 @@ static void scraper_page_shot(app *a)
 	int st = shot_scraper_page;
 
 	scp_fixture(&v, a, st, shot_scraper_page_t);
-	if (st == 5) {
+	if (st == 5 || st == 14) {
 		/* As scp_videos_for asks it */
 		menu_row tiles[SNAPS_FOR_COUNT + 3];
 		key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
