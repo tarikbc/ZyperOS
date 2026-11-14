@@ -56,8 +56,10 @@ const char *ss_run_where(void);
  * already) fetches it too: that is how snaps reach a library that has its
  * covers. The step's answer stays the cover's or the text's; the snap is
  * extra, and ss_run_got_video says whether it came. */
-void ss_run_videos(bool (*want)(const char *folder));
-bool ss_run_video_wanted(const char *folder);
+/* Asked per game, by its system's folder and its launch path: a system's
+ * switch and which of its games (src/snaps.h, snaps_get and snaps_for) */
+void ss_run_videos(bool (*want)(const char *folder, const char *file));
+bool ss_run_video_wanted(const char *folder, const char *file);
 bool ss_run_got_video(void);
 
 /* ---- what a long run needs to know when to stop -------------------------

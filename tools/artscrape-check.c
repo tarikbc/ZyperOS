@@ -298,7 +298,7 @@ void ss_run_cancel(void) { }
 int  ss_run_left(void) { return -1; }
 bool ss_run_too_many(void) { return false; }
 ss_refusal ss_run_refusal(void) { return SS_GO_ON; }
-bool ss_run_video_wanted(const char *folder) { (void)folder; return false; }
+bool ss_run_video_wanted(const char *folder, const char *file) { (void)folder; (void)file; return false; }
 bool ss_run_got_video(void) { return false; }
 
 /* SteamGridDB is the last source and needs a key (src/sgdb.h); with none, as

@@ -221,7 +221,7 @@ void ss_run_cancel(void) { g_ss_stem[0] = '\0'; }
 int  ss_run_left(void) { return g_ss_left; }
 bool ss_run_too_many(void) { return g_ss_toomany; }
 ss_refusal ss_run_refusal(void) { return g_ss_refusal; }
-bool ss_run_video_wanted(const char *folder) { (void)folder; return false; }
+bool ss_run_video_wanted(const char *folder, const char *file) { (void)folder; (void)file; return false; }
 bool ss_run_got_video(void) { return false; }
 
 /* ---- SteamGridDB, stubbed the same way -----------------------------------
@@ -414,6 +414,9 @@ static bool part_left(void)
 
 /* A whole run, to the end. Bounded, so a step machine that never finishes is a
  * failing check rather than a hung one. */
+/* MENU > Scraper's covers switch, off for Game Boy alone */
+static bool covers_not_game_boy(const char *folder) { return strcmp(folder, "Game Boy") != 0; }
+
 static int run_on(const char *folder, const char *only, art_progress *out)
 {
 	systems_cfg sys;
@@ -784,6 +787,30 @@ int main(void)
 		rmdir(shelf);
 		db_shutdown();
 		g_ss_unknown = false;
+		g_ss_on = false;
+		g_serve_image = NULL;
+	}
+
+	/* ---- a system with covers off (MENU > Scraper's Systems, 2026-11-13) - */
+	{
+		char p[512];
+
+		snprintf(p, sizeof p, "%s/Hit Game.png", g_media);   remove(p);
+		snprintf(p, sizeof p, "%s/Other Game.png", g_media); remove(p);
+		printf("  a system with covers off is not asked about:\n");
+		art_covers_rule(covers_not_game_boy);
+		g_ss_on = true;
+		g_ss_has = NULL;
+		g_ss_asked = 0;
+		g_serve_image = "Hit%20Game";
+		CHECK(run(NULL, &st) == 0, "the run did not finish");
+		CHECK(g_ss_asked == 0 && !strstr(g_urls, "Named_Boxarts"),
+		      "asked about a system with covers off: %d lookups, urls:\n%s", g_ss_asked, g_urls);
+		CHECK(!strcmp(cover_of("Hit Game"), "(none)"), "a cover came for a system with covers off");
+		printf("  and a replace of one of its games still is:\n");
+		CHECK(run("Hit Game", &st) == 0, "the replace did not finish");
+		CHECK(!strcmp(cover_of("Hit Game"), "NEW"), "the replace got no cover: \"%s\"", cover_of("Hit Game"));
+		art_covers_rule(NULL);
 		g_ss_on = false;
 		g_serve_image = NULL;
 	}

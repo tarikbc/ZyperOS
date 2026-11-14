@@ -372,3 +372,163 @@ fr = Dissocier la clé\u00a0?
 de = Schlüssel entfernen?
 ja = キーの連携を解除しますか？
 it = Scollegare la chiave?
+
+# ---- MENU > Scraper's page (exploration, 2026-11-13): the plan before a
+# run, the Systems grid with a cover mark and a video mark a system, and
+# which games get videos. Short: a tile's name sits beside its mark, a line
+# under a big number, a hint at the foot.
+
+[scraper.page_covers]
+note = The page's tile for covers, beside its mark, over the number of games with no cover; and the Systems grid's A hint (switches a system's covers)
+en = Covers
+zh-Hans = 封面
+es = Carátulas
+pt-BR = Capas
+fr = Jaquettes
+de = Cover
+ja = 画像
+it = Copertine
+
+[scraper.page_videos]
+note = The page's tile for video snaps, beside its mark, over the number of games to get one for; and the Systems grid's X hint (switches a system's videos)
+en = Videos
+zh-Hans = 视频
+es = Vídeos
+pt-BR = Vídeos
+fr = Vidéos
+de = Videos
+ja = 動画
+it = Video
+
+[scraper.on_n_systems]
+note = Under the big number of a page tile: on how many systems the run will look. Short: it shares a line with "+525 MB"
+en.one = on %d system
+en.other = on %d systems
+zh-Hans = %d 个系统
+es.one = en %d sistema
+es.other = en %d sistemas
+pt-BR.one = em %d sistema
+pt-BR.other = em %d sistemas
+fr.one = sur %d système
+fr.other = sur %d systèmes
+de.one = auf %d System
+de.other = auf %d Systemen
+ja = %d システム
+it.one = su %d sistema
+it.other = su %d sistemi
+
+[scraper.videos_off_all]
+note = Under "Off" on the videos tile: no system has videos on. Short, lowercase
+en = all off
+zh-Hans = 全部关闭
+es = todos apagados
+pt-BR = todos desligados
+fr = tous désactivés
+de = alle aus
+ja = すべてオフ
+it = tutti spenti
+
+[scraper.all_done]
+note = The page's heading beside Zyper when a run is over
+en = All done
+zh-Hans = 全部完成
+es = Todo listo
+pt-BR = Tudo pronto
+fr = Terminé
+de = Alles erledigt
+ja = 完了
+it = Tutto fatto
+
+[scraper.videos_on_card]
+note = Under the covers a run found: the room its videos take, said plainly. %d the systems with videos on, %s a size ("525 MB")
+en.one = Videos: %d system, %s on the card
+en.other = Videos: %d systems, %s on the card
+zh-Hans = 视频：%d 个系统，卡上 %s
+es.one = Vídeos: %d sistema, %s en la tarjeta
+es.other = Vídeos: %d sistemas, %s en la tarjeta
+pt-BR.one = Vídeos: %d sistema, %s no cartão
+pt-BR.other = Vídeos: %d sistemas, %s no cartão
+fr.one = Vidéos : %d système, %s sur la carte
+fr.other = Vidéos : %d systèmes, %s sur la carte
+de.one = Videos: %d System, %s auf der Karte
+de.other = Videos: %d Systeme, %s auf der Karte
+ja = 動画：%d システム、カードに %s
+it.one = Video: %d sistema, %s sulla scheda
+it.other = Video: %d sistemi, %s sulla scheda
+
+[scraper.key_fetch]
+note = A hint at the page's foot: A starts the run. One word
+en = Fetch
+zh-Hans = 获取
+es = Buscar
+pt-BR = Buscar
+fr = Chercher
+de = Holen
+ja = 取得
+it = Cerca
+
+[scraper.videos_for]
+note = A hint at the page's foot (X) and the heading of the question it opens: which games get videos
+en = Videos for
+zh-Hans = 视频范围
+es = Vídeos de
+pt-BR = Vídeos de
+fr = Vidéos pour
+de = Videos für
+ja = 動画の対象
+it = Video per
+
+[scraper.key_close]
+note = A hint at the page's foot: B closes the page. One word, capital, as the page's hints are
+en = Close
+zh-Hans = 关闭
+es = Cerrar
+pt-BR = Fechar
+fr = Fermer
+de = Schließen
+ja = 閉じる
+it = Chiudi
+
+[scraper.key_stop]
+note = A hint at the page's foot while a run goes: B stops it. One word, capital
+en = Stop
+zh-Hans = 停止
+es = Detener
+pt-BR = Parar
+fr = Arrêter
+de = Stoppen
+ja = 停止
+it = Ferma
+
+[scraper.key_again]
+note = A hint at the page's foot when a run is over: A runs it again
+en = Again
+zh-Hans = 再来
+es = Otra vez
+pt-BR = De novo
+fr = Relancer
+de = Nochmal
+ja = もう一度
+it = Di nuovo
+
+[scraper.all_games]
+note = A tile of Videos for: every game of the systems with videos on gets one
+en = All games
+zh-Hans = 所有游戏
+es = Todos los juegos
+pt-BR = Todos os jogos
+fr = Tous les jeux
+de = Alle Spiele
+ja = すべてのゲーム
+it = Tutti i giochi
+
+[scraper.played]
+note = A tile of Videos for: only games played at least once get one
+en = Played
+zh-Hans = 玩过的
+es = Jugados
+pt-BR = Jogados
+fr = Joués
+de = Gespielte
+ja = プレイ済み
+it = Giocati

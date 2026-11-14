@@ -2,6 +2,7 @@
 /* See snaps.h. */
 #include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
@@ -15,6 +16,9 @@
 #define K_FETCH "snaps.fetch"
 #define K_PLAY  "snaps.play"
 #define K_SOUND "snaps.sound"
+/* A system's own videos switch, by its folder (snaps_get), and which games */
+#define K_GET   "snaps.get."
+#define K_FOR   "snaps.for"
 /* One key a console turned off, by its folder: on is the default, so a card
  * with new consoles has their snaps on without a key for each. */
 #define K_OFF   "snaps.off."
@@ -108,4 +112,89 @@ unsigned long long snaps_bytes(const char *roms, const char *folder)
 unsigned long long snaps_delete(const char *roms, const char *folder)
 {
 	return each(roms, folder, true);
+}
+
+bool snaps_get(const char *folder)
+{
+	char k[160];
+
+	if (!folder || !*folder || snprintf(k, sizeof k, K_GET "%s", folder) >= (int)sizeof k)
+		return false;
+	if (db_has(db_dev(), k)) return db_get_int(db_dev(), k, 0) != 0;
+	return snaps_fetch() && snaps_console_on(folder);
+}
+
+void snaps_set_get(const char *folder, bool on)
+{
+	char k[160];
+
+	if (!folder || !*folder || snprintf(k, sizeof k, K_GET "%s", folder) >= (int)sizeof k)
+		return;
+	db_set_int(db_dev(), k, on ? 1 : 0);
+}
+
+static const char *const FOR_ID[SNAPS_FOR_COUNT] = { "all", "favorites", "played" };
+
+int snaps_for(void)
+{
+	char v[16];
+	int i;
+
+	db_get_str(db_dev(), K_FOR, v, sizeof v, FOR_ID[SNAPS_FOR_ALL]);
+	for (i = 0; i < SNAPS_FOR_COUNT; i++)
+		if (!strcmp(v, FOR_ID[i])) return i;
+	return SNAPS_FOR_ALL;
+}
+
+void snaps_set_for(int which)
+{
+	if (which < 0 || which >= SNAPS_FOR_COUNT) which = SNAPS_FOR_ALL;
+	db_set_str(db_dev(), K_FOR, FOR_ID[which]);
+}
+
+bool snaps_for_game(int which, bool favorite, bool played)
+{
+	return which == SNAPS_FOR_FAVORITES ? favorite : which == SNAPS_FOR_PLAYED ? played : true;
+}
+
+static int stem_cmp(const void *a, const void *b)
+{
+	return strcmp(*(char *const *)a, *(char *const *)b);
+}
+
+char **snaps_stems(const char *roms, const char *folder, int *n)
+{
+	char dir[1024], **v = NULL;
+	struct dirent *e;
+	int cap = 0;
+	DIR *d;
+
+	*n = 0;
+	if (!roms || !folder || snprintf(dir, sizeof dir, "%s/%s/.media", roms, folder) >= (int)sizeof dir ||
+	    !(d = opendir(dir))) return NULL;
+	while ((e = readdir(d))) {
+		size_t len = strlen(e->d_name);
+		char *stem;
+
+		if (e->d_name[0] == '.' || len < 5 || strcasecmp(e->d_name + len - 4, ".mp4")) continue;
+		if (*n == cap) {
+			char **w = realloc(v, (size_t)(cap = cap ? cap * 2 : 64) * sizeof *v);
+
+			if (!w) break;
+			v = w;
+		}
+		if (!(stem = strndup(e->d_name, len - 4))) break;
+		v[(*n)++] = stem;
+	}
+	closedir(d);
+	if (*n > 1) qsort(v, (size_t)*n, sizeof *v, stem_cmp);
+	return v;
+}
+
+void snaps_stems_free(char **v, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) free(v[i]);
+	free(v);
 }

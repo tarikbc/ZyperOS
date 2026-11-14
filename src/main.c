@@ -6829,11 +6829,28 @@ static void menu_message(app *a, const char *heading, menu_row row,
  * reason says "needs Wi-Fi" in its value instead. */
 #define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
 
-/* Video snaps come with a lookup when MENU > Scraper > Video Snaps says to,
- * for the consoles left on (ss_run_videos asks this per console). */
-static bool snap_wanted(const char *folder)
+/* Video snaps come with a lookup for a game whose system has its videos on
+ * (MENU > Scraper's Systems, snaps_get), and which Videos for takes: every
+ * game, the favorites, or the games played (src/snaps.h). A favorite and a
+ * game's play time are kept by its system's tag, so the systems a run
+ * covers are handed here as it starts (g_snap_sys); without them only "all"
+ * gets videos. The play times are folded once a run (stats_summarize). */
+static const systems_cfg *g_snap_sys;
+
+static bool snap_wanted(const char *folder, const char *file)
 {
-	return snaps_fetch() && snaps_console_on(folder);
+	const char *tag = NULL;
+	int which, i;
+	long secs = 0, last = 0;
+
+	if (!snaps_get(folder)) return false;
+	if ((which = snaps_for()) == SNAPS_FOR_ALL) return true;
+	for (i = 0; g_snap_sys && i < g_snap_sys->count; i++)
+		if (!strcmp(g_snap_sys->systems[i].folder, folder)) { tag = g_snap_sys->systems[i].tag; break; }
+	if (!tag) return false;
+	if (which == SNAPS_FOR_PLAYED && !(stats_lookup(tag, file, &secs, &last) && (secs > 0 || last > 0)))
+		return false;
+	return snaps_for_game(which, fav_is(tag, file), which == SNAPS_FOR_PLAYED);
 }
 
 /* MENU > Scraper's value, from the last count of missing covers: taken when

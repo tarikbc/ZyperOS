@@ -52,13 +52,13 @@ static struct {
 static int  g_left = -1;
 static bool g_toomany;
 static ss_refusal g_refusal;
-static bool (*g_want_video)(const char *folder);
+static bool (*g_want_video)(const char *folder, const char *file);
 static bool g_got_video;
 
-void ss_run_videos(bool (*want)(const char *folder)) { g_want_video = want; }
-bool ss_run_video_wanted(const char *folder)
+void ss_run_videos(bool (*want)(const char *folder, const char *file)) { g_want_video = want; }
+bool ss_run_video_wanted(const char *folder, const char *file)
 {
-	return g_want_video && folder && g_want_video(folder);
+	return g_want_video && folder && file && g_want_video(folder, file);
 }
 bool ss_run_got_video(void) { return g_got_video; }
 
@@ -234,7 +234,7 @@ static bool start_video(int answer)
 	char want[SS_DEST_MAX];
 	struct stat st;
 
-	if (!g_run.got.video[0] || !ss_run_video_wanted(g_run.folder)) return false;
+	if (!g_run.got.video[0] || !ss_run_video_wanted(g_run.folder, g_run.file)) return false;
 	if (snprintf(want, sizeof want, "%s/.media/%s.mp4", g_run.dir, g_run.stem)
 	    >= (int)sizeof want) return false;
 	if (stat(want, &st) == 0 && st.st_size > 0) return false;

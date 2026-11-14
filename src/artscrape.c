@@ -644,13 +644,13 @@ static bool es_cover_at(const char *dir, const char *stem, const char *ext);
 /* A game whose console wants video snaps and has none for it yet: worth a
  * metadata lookup even when its cover and its title are both there, since
  * that lookup is what brings the snap (ss_run_videos). */
-static bool snap_missing(const char *dir, const char *folder, const char *stem)
+static bool snap_missing(const char *dir, const char *folder, const char *file, const char *stem)
 {
 	char p[ARTPATH_MAX];
 	struct stat st;
 
-	if (!ss_run_video_wanted(folder)) return false;
-	if (g_es_video && g_es_video(dir, stem, stem)) return false;
+	if (!ss_run_video_wanted(folder, file)) return false;
+	if (g_es_video && g_es_video(dir, file, stem)) return false;
 	if (snprintf(p, sizeof p, "%s/.media/%s.mp4", dir, stem) >= (int)sizeof p) return false;
 	return stat(p, &st) != 0 || st.st_size == 0;
 }
@@ -1687,6 +1687,27 @@ static bool ss_finished(int result)
 	return true;
 }
 
+/* Which systems get covers (art_covers_rule); a replace always does */
+static bool (*g_covers_on)(const char *folder);
+
+void art_covers_rule(bool (*on)(const char *folder)) { g_covers_on = on; }
+
+static bool covers_on(const char *folder)
+{
+	return g_only[0] || !g_covers_on || g_covers_on(folder);
+}
+
+/* Something arrived: a cover, or a video with the cover it goes with */
+static void arrived(const char *path, const char *game, int src, bool video)
+{
+	snprintf(g_st.found_path, sizeof g_st.found_path, "%s", path ? path : "");
+	snprintf(g_st.found_game, sizeof g_st.found_game, "%s", game ? game : "");
+	snprintf(g_st.found_folder, sizeof g_st.found_folder, "%s", g_si < g_nsys ? g_sys[g_si].folder : "");
+	g_st.found_src = src;
+	g_st.found_video = video;
+	g_st.found_seq++;
+}
+
 /* Game `i` of this console looked at, once */
 static void look(int i)
 {
@@ -1770,6 +1791,7 @@ static int details_count(const char *dir, const char *folder, const char *exts)
 	char **have;
 	int nhave = 0, i, n = 0;
 	long long now = (long long)time(NULL);
+	bool cov = covers_on(folder);
 
 	if (!ss_system_id(folder) || !lib_scan(g_romdir, folder, exts, &l)) {
 		lib_free(&l);
@@ -1784,9 +1806,9 @@ static int details_count(const char *dir, const char *folder, const char *exts)
 		bool cover = (nhave && bsearch(&stem, have, (size_t)nhave, sizeof *have, cmp_name)) ||
 		             (g_es_cover && g_es_cover(dir, g->file, g->name));
 
-		if (!cover || db_titles_find(&miss, g->file)) continue;
+		if ((cov && !cover) || db_titles_find(&miss, g->file)) continue;
 		t = db_titles_find(&titles, g->file);
-		if (!t || !*t || snap_missing(dir, folder, g->name)) n++;
+		if ((cov && (!t || !*t)) || snap_missing(dir, folder, g->file, g->name)) n++;
 	}
 	for (i = 0; i < nhave; i++) free(have[i]);
 	free(have);
@@ -1911,6 +1933,8 @@ int art_step(void)
 		return 1;
 
 	case P_DSYSTEM:
+		if (g_si < g_nsys)
+			snprintf(g_st.folder_now, sizeof g_st.folder_now, "%s", g_sys[g_si].folder);
 		g_dlooked0 = g_st.dlooked;
 		g_meta_i = 0;
 		g_ss_retried = false;
@@ -1935,15 +1959,18 @@ int art_step(void)
 		/* Skip local-only entries in this step, as the existing cover scan
 		 * does. A complete library must not cost one idle frame per title or
 		 * report a spent quota when there is no request to make. */
+		bool cov = covers_on(g_sys[g_si].folder);
+
 		while (g_meta_i < g_meta_games.count) {
 			game = &g_meta_games.items[g_meta_i];
+			/* A system with covers off: its videos only, cover or not */
 			if (art_paths(dir, game->name, media, sizeof media, dest, sizeof dest) &&
-			    (art_is_cover(dest) || (g_es_cover && g_es_cover(dir, game->file, game->name)))) {
-				g_meta_untitled = !db_game_title(db_lib(), g_sys[g_si].folder, game->file,
-				                                 title, sizeof title);
+			    (!cov || art_is_cover(dest) || (g_es_cover && g_es_cover(dir, game->file, game->name)))) {
+				g_meta_untitled = cov && !db_game_title(db_lib(), g_sys[g_si].folder, game->file,
+				                                        title, sizeof title);
 				/* ScreenScraper said lately it does not know it */
 				if ((g_meta_untitled ||
-				     snap_missing(dir, g_sys[g_si].folder, game->name)) &&
+				     snap_missing(dir, g_sys[g_si].folder, game->file, game->name)) &&
 				    !missed(game->file)) break;
 			}
 			g_meta_i++;
@@ -1969,7 +1996,13 @@ int art_step(void)
 
 		if (r == 1) return 1;
 		if (r == 0 && g_meta_untitled) g_st.named++;
-		if (ss_run_got_video()) g_st.snaps++;
+		if (ss_run_got_video()) {
+			game_entry *gm = &g_meta_games.items[g_meta_i];
+
+			g_st.snaps++;
+			if (art_paths(dir, gm->name, media, sizeof media, dest, sizeof dest))
+				arrived(art_is_cover(dest) ? dest : "", gm->name, ART_SRC_SS, true);
+		}
 		if (ss_finished(r)) {
 			ss_answer(g_meta_games.items[g_meta_i].file, r);
 			g_meta_i++;
@@ -1981,6 +2014,10 @@ int art_step(void)
 	}
 
 	case P_ART_SYSTEM:
+		/* Covers off for it (art_covers_rule): its videos come in the
+		 * details part */
+		if (!covers_on(g_sys[g_si].folder)) return next_system(NO_WHY);
+		snprintf(g_st.folder_now, sizeof g_st.folder_now, "%s", g_sys[g_si].folder);
 		remote = remote_for(g_sys[g_si].folder);
 		g_rem = 0;
 		g_nleft = 0;
@@ -2101,7 +2138,12 @@ int art_step(void)
 		bool next;
 
 		if (r == 1) return 1;
-		if (r == 0) { g_st.found++; g_st.ss_found++; }
+		if (r == 0) {
+			g_st.found++;
+			g_st.ss_found++;
+			if (art_paths(dir, g_roms[g_ri], media, sizeof media, dest, sizeof dest))
+				arrived(dest, g_roms[g_ri], ART_SRC_SS, ss_run_got_video());
+		}
 		if (ss_run_got_video()) g_st.snaps++;
 		next = ss_finished(r);
 		ss_run_cancel();
@@ -2125,7 +2167,13 @@ int art_step(void)
 		if (r == 0) return 1;
 		say("art: %s from libretro by its own name: %s, %s\n", g_roms[g_ri],
 		    r > 0 ? "found" : "not there", art_answer());
-		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_ri]); g_st.found++; g_st.lr_found++; }
+		if (r > 0) {
+			art_shrink(g_pending);
+			lr_record(g_roms[g_ri]);
+			g_st.found++;
+			g_st.lr_found++;
+			arrived(g_pending, g_roms[g_ri], ART_SRC_LR, false);
+		}
 		look(g_ri);
 		g_ri++;
 		g_phase = P_SS;
@@ -2179,8 +2227,15 @@ int art_step(void)
 		/* A miss here is ordinary - it means libretro spells this game
 		 * differently, which is exactly what the catalog is for. It is not
 		 * counted as missing until the fuzzy pass has also failed. */
-		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_ri]); g_st.found++; g_st.lr_found++; }
-		else       g_retry[g_nretry++] = g_ri;
+		if (r > 0) {
+			art_shrink(g_pending);
+			lr_record(g_roms[g_ri]);
+			g_st.found++;
+			g_st.lr_found++;
+			arrived(g_pending, g_roms[g_ri], ART_SRC_LR, false);
+		} else {
+			g_retry[g_nretry++] = g_ri;
+		}
 		look(g_ri);
 		g_ri++;
 		g_phase = P_TRY;
@@ -2276,8 +2331,15 @@ int art_step(void)
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],
 		    g_asked, r > 0 ? "found" : "not there", art_answer());
-		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_retry[g_qi]]); g_st.found++; g_st.lr_found++; }
-		else       g_left[g_nleft++] = g_retry[g_qi];
+		if (r > 0) {
+			art_shrink(g_pending);
+			lr_record(g_roms[g_retry[g_qi]]);
+			g_st.found++;
+			g_st.lr_found++;
+			arrived(g_pending, g_roms[g_retry[g_qi]], ART_SRC_LR, false);
+		} else {
+			g_left[g_nleft++] = g_retry[g_qi];
+		}
 		g_qi++;
 		g_phase = P_FUZZY;
 		return 1;
@@ -2350,8 +2412,15 @@ int art_step(void)
 		if (r == 0) return 1;
 		say("art: %s from libretro as \"%s\": %s, %s\n", g_roms[g_retry[g_qi]],
 		    g_asked, r > 0 ? "found" : "not there", art_answer());
-		if (r > 0) { art_shrink(g_pending); lr_record(g_roms[g_retry[g_qi]]); g_st.found++; g_st.lr_found++; }
-		else       g_left[g_nleft++] = g_retry[g_qi];
+		if (r > 0) {
+			art_shrink(g_pending);
+			lr_record(g_roms[g_retry[g_qi]]);
+			g_st.found++;
+			g_st.lr_found++;
+			arrived(g_pending, g_roms[g_retry[g_qi]], ART_SRC_LR, false);
+		} else {
+			g_left[g_nleft++] = g_retry[g_qi];
+		}
 		g_qi++;
 		g_phase = P_CRC;
 		return 1;
@@ -2398,6 +2467,8 @@ int art_step(void)
 			artsrc_set(g_sys[g_si].folder, g_roms[g_sg[g_sgi]], &as);
 			g_st.found++;
 			g_st.sg_found++;
+			if (art_paths(dir, g_roms[g_sg[g_sgi]], media, sizeof media, dest, sizeof dest))
+				arrived(dest, g_roms[g_sg[g_sgi]], ART_SRC_SG, false);
 			g_sg_quiet = 0;
 			g_sg_retried = false;
 			look(g_sg[g_sgi]);

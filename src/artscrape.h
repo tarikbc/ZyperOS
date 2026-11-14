@@ -110,10 +110,27 @@ typedef struct {
 	/* The source being asked now, and the ones that said no for the run */
 	int  src;            /* ART_SRC_* */
 	bool ss_stopped, sg_stopped;
+	/* What arrived last, for a screen that shows them coming in (MENU >
+	 * Scraper's page): `found_seq` counts arrivals; the newest's picture,
+	 * game and system, its source (ART_SRC_*), and whether a video came
+	 * with it. A video for a game that had its cover arrives the same way,
+	 * with that cover. */
+	unsigned found_seq;
+	char found_path[512], found_game[128], found_folder[64];
+	int  found_src;
+	bool found_video;
+	/* The system the run is on (its folder), for the screen's icon */
+	char folder_now[64];
 } art_progress;
 enum { ART_SRC_NONE, ART_SRC_SS, ART_SRC_LR, ART_SRC_SG };
 
 void art_status(art_progress *out);
+
+/* Which systems get covers (MENU > Scraper's Systems): NULL, the default,
+ * is every one. A system with covers off gets no cover pass and no names;
+ * its videos, if it wants them, still come (ss_run_videos). A replace (one
+ * game, art_begin's `only`) wants its cover whatever the rule says. */
+void art_covers_rule(bool (*on)(const char *folder));
 
 /* How many games on these shelves have no cover yet: what MENU > Scraper
  * says it would fetch. One directory read and a stat per game, so for when a

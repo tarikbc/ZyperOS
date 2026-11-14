@@ -29,7 +29,7 @@
  * performance". Not at once: a shelf being scrolled asks for nothing. */
 #define SNAPS_ASK_MS (SNAPS_WAIT_MS / 2)
 
-bool snaps_fetch(void);           /* a Box Art run fetches them: off to start */
+bool snaps_fetch(void);           /* 1.0.4's Fetch with Box Art: read by snaps_get */
 void snaps_set_fetch(bool on);
 bool snaps_play(void);            /* the shelf plays them: on to start */
 void snaps_set_play(bool on);
@@ -46,5 +46,34 @@ bool snaps_path(const char *roms, const char *folder, const char *stem,
  * .media folder. Delete answers the bytes it gave back. */
 unsigned long long snaps_bytes(const char *roms, const char *folder);
 unsigned long long snaps_delete(const char *roms, const char *folder);
+
+/* ---- which systems get videos, and for which games (2026-11-13) ----------
+ *
+ * MENU > Scraper's Systems grid switches a system's videos: whether a run
+ * gets them for it. Off to start, because each video is about 2.5 MB of
+ * the card and one ScreenScraper lookup (Tarik: "Is it getting video for
+ * all my roms? What is 1.4gb?"). Getting only: whether the shelf plays
+ * the videos a system has is snaps_play and snaps_console_on, as before,
+ * so videos already on the card play as they did.
+ *
+ * A system with no switch of its own follows what 1.0.4 did: Fetch with
+ * Box Art on, and the console not turned off. So a card that was getting
+ * videos still gets them, and one that never did gets none. */
+bool snaps_get(const char *folder);
+void snaps_set_get(const char *folder, bool on);
+
+/* Which games of a system with videos on get one: all, the favorites, or
+ * the games played at least once. All to start. */
+enum { SNAPS_FOR_ALL, SNAPS_FOR_FAVORITES, SNAPS_FOR_PLAYED, SNAPS_FOR_COUNT };
+int  snaps_for(void);
+void snaps_set_for(int which);
+/* The rule, pure: whether a game gets a video under `which` */
+bool snaps_for_game(int which, bool favorite, bool played);
+
+/* The stems of a system's videos, sorted (strcmp), for a count without a
+ * stat a game: *n of them, freed with snaps_stems_free. NULL with *n 0 for
+ * none. */
+char **snaps_stems(const char *roms, const char *folder, int *n);
+void snaps_stems_free(char **v, int n);
 
 #endif
