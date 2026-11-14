@@ -40,8 +40,9 @@
 /* The kept texture's box about the handheld's middle: what a lit shoulder's
  * halo, the d-pad's ring and the faces' halos reach in every pose here and
  * every frame between, the tilted ones too (their far top corner and a lit
- * shoulder's halo higher, their near bottom corner lower: measured x -122 to
- * 124, y -174 to 154, the tab coming in on R2 at 52 degrees the lowest) */
+ * shoulder's halo higher, their near bottom corner lower): x -124 to 124, y
+ * -174 to 154, the tab coming in on R2 at 52 degrees the lowest.
+ * --handheld-box measures it (ctlscr_box_check). */
 #define KEEP_L 128
 #define KEEP_T 176
 #define KEEP_W 256
@@ -359,6 +360,12 @@ static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 	return true;
 }
 
+/* The kept texture's box for pose `p` */
+static SDL_Rect keep_box(const td_pose *p)
+{
+	return (SDL_Rect){ (int)floorf(p->cx) - KEEP_L, (int)p->cy - KEEP_T, KEEP_W, KEEP_H };
+}
+
 void ctlscr_side(app *a, const menu_side *at)
 {
 	const bool draw = at->stage == MENU_SIDE_REST ||
@@ -374,7 +381,7 @@ void ctlscr_side(app *a, const menu_side *at)
 	if (at->live && at->stage == MENU_SIDE_REST) g_cs.steady = false;
 	if (!draw || !pose_of(at, &p, &moving)) return;
 	if (moving) redraw_now();
-	g_cs.keep.box = (SDL_Rect){ (int)floorf(p.cx) - KEEP_L, (int)p.cy - KEEP_T, KEEP_W, KEEP_H };
+	g_cs.keep.box = keep_box(&p);
 	/* Into its texture first, where the renderer keeps one, so the copy is
 	 * clipped to the panel: a slide in from the left would show past it */
 	td_make(a->r, &g_cs.keep, &p);
@@ -382,6 +389,68 @@ void ctlscr_side(app *a, const menu_side *at)
 	                                         at->panel.w - 2 * UI_PANEL_BORDER, at->panel.h });
 	td_draw(a->r, &g_cs.keep, &p);
 	SDL_RenderSetClipRect(a->r, NULL);
+}
+
+int ctlscr_box_check(int *measured)
+{
+	/* What a row can light: each key alone, a side's shoulders together, the
+	 * four faces, a face with a right shoulder, the d-pad with SELECT, a
+	 * shoulder with a centre key, keys on both sides, nothing */
+#define K(k) (1u << (k))
+	static const unsigned LIT[] = {
+		K(TD_DPAD), K(TD_A), K(TD_B), K(TD_X), K(TD_Y), K(TD_SELECT), K(TD_START),
+		K(TD_L1), K(TD_R1), K(TD_L2), K(TD_R2), K(TD_L1) | K(TD_L2), K(TD_R1) | K(TD_R2),
+		K(TD_A) | K(TD_B) | K(TD_X) | K(TD_Y), K(TD_A) | K(TD_R2), K(TD_B) | K(TD_R1),
+		K(TD_DPAD) | K(TD_SELECT), K(TD_L1) | K(TD_SELECT), K(TD_R2) | K(TD_START),
+		K(TD_L1) | K(TD_R1), K(TD_A) | K(TD_L1), 0 };
+#undef K
+	const int n = (int)(sizeof LIT / sizeof LIT[0]);
+	SDL_FRect reach = { 0.0f, 0.0f, -1.0f, -1.0f };
+	menu_side at;
+	td_pose p;
+	bool moving;
+	char what[96];
+	int a, b, ms, dir, bad = 0;
+
+	*measured = 0;
+	memset(&at, 0, sizeof at);
+	at.tab_at = GT_CONTROLS;
+	at.content_x = 80;
+	/* From each row's pose to each other's, every frame of the turn, the
+	 * old keys going out and the new coming in as they do */
+	for (a = 0; a < n; a++)
+		for (b = 0; b < n; b++) {
+			ctlscr_open();
+			lights_to(LIT[a], 1000);
+			lights_to(LIT[b], 2000);
+			for (ms = 0; ms <= DS_MS_TURN; ms += 10) {
+				at.now = 2000u + (unsigned)ms;
+				if (!pose_of(&at, &p, &moving)) continue;
+				snprintf(what, sizeof what, "the Controls tab, keys %#x to %#x at %d ms", LIT[a], LIT[b], ms);
+				bad += !td_box_holds(what, &p, keep_box(&p), &reach);
+				(*measured)++;
+			}
+		}
+	/* Coming in with the rows, either way, on each */
+	for (a = 0; a < n; a++)
+		for (dir = -1; dir <= 1; dir += 2) {
+			ctlscr_open();
+			lights_to(LIT[a], 1000);
+			at.tab_t0 = 1000;
+			at.tab_from = GT_DISPLAY;
+			at.tab_dir = dir;
+			for (ms = 0; ms <= DS_MS_TURN; ms += 10) {
+				at.now = 1000u + (unsigned)ms;
+				if (!pose_of(&at, &p, &moving)) continue;
+				snprintf(what, sizeof what, "the Controls tab coming in on keys %#x at %d ms", LIT[a], ms);
+				bad += !td_box_holds(what, &p, keep_box(&p), &reach);
+				(*measured)++;
+			}
+		}
+	ctlscr_open();
+	fprintf(stderr, "handheld-box: the Controls tab's reaches x %.1f to %.1f, y %.1f to %.1f of its %d x %d box\n",
+	        reach.x, reach.x + reach.w, reach.y, reach.y + reach.h, KEEP_W, KEEP_H);
+	return bad;
 }
 
 /* ---- the tab's rows and keys ------------------------------------------------------ */

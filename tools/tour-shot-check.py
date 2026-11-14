@@ -21,8 +21,9 @@ first start forgets the tutorial. So this shoots the host build headless
     then draws only the large hello;
   - on the Pixel 2 (--fn-volume) each lesson's handheld has its key lit on
     the side of it the key is on, the shoulders its note names (L1/R1 in
-    Move Around, L2/R2 in Music) lit over its top edge and no others, the
-    lesson block is the Brick's moved
+    Move Around, L2/R2 in Music) lit on its top, tilted back to show it, and
+    no others, it stays in its kept texture's box in every frame of every
+    turn (--handheld-box tour), the lesson block is the Brick's moved
     TOURDEV_SHIFT right, its words keep the screen's inset from the right
     edge, Zyper's corner and bubble keep their place, and the welcome and
     the finish are the Brick's, pixel for pixel;
@@ -167,6 +168,11 @@ LIT_SIDE = {"move": "lr", "a": "r", "b": "r", "y": "r", "x": "r", "menu": "r",
 SHOULDERS = {"l1": (30, 104, 70, 118), "r1": (206, 104, 246, 118),
              "l2": (95, 104, 107, 118), "r2": (172, 104, 186, 118)}
 LIT_SHOULDERS = {"move": ("l1", "r1"), "select": ("l2", "r2")}
+# ...and where the lessons that light shoulders have them: tilted back 25
+# degrees (TD_PITCH_DEG), the top showing with the caps standing on it, each
+# box inside a cap's face and top, clear of its neighbours' rings
+TILTED_SHOULDERS = {"l1": (38, 110, 64, 122), "r1": (214, 124, 240, 136),
+                    "l2": (99, 118, 106, 127), "r2": (168, 124, 176, 133)}
 
 
 def shifted_same(p2, brick, box):
@@ -176,9 +182,29 @@ def shifted_same(p2, brick, box):
                if zc.px(p2, x + SHIFT, y) != zc.px(brick, x, y))
 
 
+def handheld_box():
+    """--handheld-box tour: the handheld measured in every lesson and every
+    frame of the turn into it against its kept texture's box"""
+    path = os.path.join(D, "box.png")
+    p = subprocess.run([BIN, "--shot", path, "--theme", "light", "--handheld-box", "tour"],
+                       env=env(), cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    err = p.stderr.decode("utf-8", "replace")
+    with open(os.path.join(D, "log"), "a") as log:
+        log.write(err)
+    out = [l for l in err.splitlines() if l.startswith("HANDHELD-BOX:")]
+    for l in out[:5]:
+        print("  " + l)
+    measured = [l for l in err.splitlines() if l.startswith("handheld-box:") and "measured" in l]
+    n = int(measured[-1].split(" and ")[1].split()[0]) if measured else 0
+    ck(p.returncode == 0 and not out and n >= 400,
+       "the tutorial's handheld stays in its kept box: %d poses out of %d measured"
+       % (len(out), n))
+
+
 def pixel2():
     print("on the Pixel 2: the handheld beside each lesson, its key lit on the side it is "
           "on, the lesson block moved right and the rest where it was")
+    handheld_box()
     for th in ("light", "dark"):
         for step, side in LIT_SIDE.items():
             img = shot("p2-%s-%s" % (step, th), "--theme", th, "--fn-volume", "--tour", step, "2000")
@@ -190,7 +216,8 @@ def pixel2():
                % (th, step, {"l": "left", "r": "right", "lr": "both sides"}[side], left, right))
             # The shoulders its note names stand up lit over the top edge,
             # and no others (Move Around's L1/R1, Music's L2/R2)
-            lit = {k: count(img, ACCENT, box) for k, box in SHOULDERS.items()}
+            boxes = TILTED_SHOULDERS if step in LIT_SHOULDERS else SHOULDERS
+            lit = {k: count(img, ACCENT, box) for k, box in boxes.items()}
             want = LIT_SHOULDERS.get(step, ())
             ck(all((lit[k] > 20) == (k in want) for k in SHOULDERS),
                "%s %s: lit shoulders %s (accent pixels %s)"

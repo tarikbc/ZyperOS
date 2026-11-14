@@ -150,6 +150,19 @@ fi
 measured=$(sed -n 's/^controls-fit: \([0-9]*\) pages measured.*/\1/p' "$D/one.log")
 [ "${measured:-0}" -gt 150 ] || fail "the fit test measured ${measured:-no} pages"
 
+echo "the Controls tab's handheld stays in its kept box, every pose and turn"
+# ctlscr_box_check: each row's pose, every frame of the turn from one row's
+# to another's and of coming in with the rows, measured against the box the
+# texture it is kept in covers (a box too small cuts the figure off)
+run --shot "$D/box.png" --theme light --handheld-box tab >"$D/one.log" 2>&1
+cat "$D/one.log" >>"$D/log"
+if grep -q '^HANDHELD-BOX:' "$D/one.log"; then
+	grep '^HANDHELD-BOX:' "$D/one.log" | head -5 | sed 's/^/  FAIL /'
+	fails=$((fails + 1))
+fi
+measured=$(sed -n 's/^handheld-box: \([0-9]*\) poses of the Controls tab.*/\1/p' "$D/one.log")
+[ "${measured:-0}" -gt 10000 ] || fail "the box check measured ${measured:-no} poses of the Controls tab"
+
 echo "the home's Controls pages, each its own"
 for th in light dark; do
 	p=0

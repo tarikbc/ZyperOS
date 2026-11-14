@@ -1095,21 +1095,24 @@ of the player's own goes on from wherever the loop was.
   "START: skip" ends (Music's line, wider than the stage, sits a little
   left of the stage's middle). On the Brick nothing moves and there is no
   handheld. src/tourdevice.c draws it in code, no image files, into a
-  304 x 368 texture kept while it does not change (it changes only as it
+  304 x 382 texture kept while it does not change (it changes only as it
   turns, a key lights or presses, and in the first lesson's fade-in): drawn
   every frame it cost the Pixel 2 a third of the lesson's frame rate, kept
   it costs nothing measurable. `check-tour-shots` holds each lesson's lit key on its side of the
-  handheld, the shoulders lit in Move Around and Music and no others, its
-  words clear of the inset, and the block moved and otherwise the Brick's,
-  in both themes.
+  handheld, the shoulders lit in Move Around and Music and no others, the
+  figure inside its texture in every frame of every turn
+  (`--handheld-box tour`), its words clear of the inset, and the block
+  moved and otherwise the Brick's, in both themes.
   - **Shared with the Controls tab** (11.28, 11.45): the tutorial's handheld
     and the in-game menu's Controls tab draw the same Pixel 2 through
     `td_draw`, from a pose (centre, scale, turn, tilt, each key's light and
     press) and the theme's colors, into the one kept texture, sized for its
     caller. The tutorial's look is the Controls tab's: a change to the model
-    changes both. Only the Controls tab tilts it (its shoulder rows, the top
-    face showing with the shoulders standing on it); the tutorial stays
-    level, and a level pose draws as it did before the tilt, pixel for pixel.
+    changes both. Both tilt it back the same 25 degrees for the shoulders
+    (the Controls tab's shoulder rows, the tutorial's Move Around and
+    Music), the top face showing with the shoulders standing on it; every
+    other pose is level, and a level pose draws as it did before the tilt,
+    pixel for pixel.
   - **Drawn** in code from `tools/build-pixel2-model.py`'s millimetres, the
     landing page's model, in the theme's roles and nothing else: the body
     **surface** with a 3-unit **edge**, its turned side **raised** (Beard)
@@ -1141,9 +1144,14 @@ of the player's own goes on from wherever the loop was.
     to the right, VOL 52 degrees to the left, both at 3.95, a little nearer.
     Brightness needs MENU and VOL, on opposite sides, so it faces front at
     3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit,
-    the volume keys 4.6 so their + and - fit on them pressed too. A
-    step turns it from the last lesson's pose in **turn**, as the step comes
-    on; the first lesson fades it in with the stage.
+    the volume keys 4.6 so their + and - fit on them pressed too. Move
+    Around (L1, R1) and Music (L2, R2) light shoulders on both sides, so
+    they keep the front pose's 10 degrees and tilt it back 25, as seen from a
+    little above, so the top shows with the lit shoulders standing up on it
+    *(my ask, 2026-11-14: "can we use that same pixel 3d component on the
+    tutorial page?")*. A step turns it, and tilts it, from the last lesson's
+    pose in **turn**, as the step comes on; the first lesson fades it in
+    with the stage.
   - **The lit key**: **accent**, ringed in **accent-ink** (Beard) or
     **accent**, a soft **accent** halo under it (0.35, 0.75 while pressed),
     and a 3-unit ring 9 units out in the same ink so a 5 mm key is found

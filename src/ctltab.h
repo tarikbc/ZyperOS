@@ -121,7 +121,7 @@ unsigned ct_lit(const ct_model *m, ct_row id);
 /* The handheld's lean, degrees off the front pose (DESIGN.md 11.45) */
 #define CT_LEAN_DEG      12.0f   /* the faces' turn, and the shoulders' toward their side */
 #define CT_LEAN_DPAD_DEG 22.0f   /* the d-pad's, further */
-#define CT_PITCH_DEG     25.0f   /* the shoulders' tilt back, so the top shows */
+#define CT_PITCH_DEG     TD_PITCH_DEG   /* the shoulders' tilt back, so the top shows */
 
 /* The pose the handheld takes for the keys a row lights (a ct_lit mask), as
  * offsets from the front pose: the yaw in *yaw_deg (more than 0 shows its

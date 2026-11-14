@@ -16,6 +16,7 @@
  * so the first lesson's fade-in shows no seam. */
 #include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "clamp.h"
@@ -81,13 +82,20 @@ static const struct { int k; float x, w; } SHOULDER[4] = {
 #define SH_FRONT    -0.95f
 #define SH_BACK     (BODY_BACK - 0.8f)
 #define SH_DEEP_DEG 12.0f
+/* How far down the body's round top corner an outside cap's base follows
+ * it, tilted (shoulder_face) */
+#define SH_HUG      1.2f
 
 /* ---- the poses ------------------------------------------------------------- */
 
-typedef struct { float deg, s; } pose;
+/* How far turned, how big, how far tilted back */
+typedef struct { float deg, s, pitch; } pose;
 
-static const pose FRONT = { 10.0f, 3.55f }, RIGHT = { 52.0f, 3.95f },
-                  LEFT = { -52.0f, 3.95f }, BOTH = { 0.0f, 3.45f };
+static const pose FRONT = { 10.0f, 3.55f, 0.0f }, RIGHT = { 52.0f, 3.95f, 0.0f },
+                  LEFT = { -52.0f, 3.95f, 0.0f }, BOTH = { 0.0f, 3.45f, 0.0f };
+/* The front pose tilted back so the top shows: for the lessons that light
+ * shoulders, both sides' in each, so it stays turned the front's way */
+static const pose TOP = { 10.0f, 3.55f, TD_PITCH_DEG };
 /* How far a side key stands out of its edge as a tab in BOTH, mm; a lit
  * shoulder stands as far out of the top edge */
 #define TAB_OUT     0.9f
@@ -109,10 +117,11 @@ static const pose FRONT = { 10.0f, 3.55f }, RIGHT = { 52.0f, 3.95f },
 static pose pose_of(tour_step s)
 {
 	switch (s) {
-	case TOUR_MENU: case TOUR_POWER: return RIGHT;
-	case TOUR_VOL:                   return LEFT;
-	case TOUR_BRIGHT:                return BOTH;
-	default:                         return FRONT;
+	case TOUR_MOVE: case TOUR_SELECT: return TOP;
+	case TOUR_MENU: case TOUR_POWER:  return RIGHT;
+	case TOUR_VOL:                    return LEFT;
+	case TOUR_BRIGHT:                 return BOTH;
+	default:                          return FRONT;
 	}
 }
 
@@ -196,9 +205,12 @@ static int g_nv, g_ni;
  * corner, while it is drawn there */
 static float g_dx, g_dy;
 
+/* While td_bounds measures: what the vertices reach, and nothing drawn */
+static SDL_FRect *g_measure;
+
 static void flush(SDL_Renderer *r)
 {
-	if (g_ni > 0) {
+	if (g_ni > 0 && !g_measure) {
 		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 		SDL_RenderGeometry(r, NULL, g_bv, g_nv, g_bi, g_ni);
 	}
@@ -209,6 +221,22 @@ static void geometry(SDL_Renderer *r, const SDL_Vertex *v, int nv, const int *id
 {
 	int i;
 
+	if (g_measure) {
+		for (i = 0; i < nv; i++) {
+			const float x = v[i].position.x, y = v[i].position.y;
+			SDL_FRect *m = g_measure;
+
+			if (m->w < 0.0f) {
+				*m = (SDL_FRect){ x, y, 0.0f, 0.0f };
+				continue;
+			}
+			if (x < m->x) { m->w += m->x - x; m->x = x; }
+			if (y < m->y) { m->h += m->y - y; m->y = y; }
+			m->w = fmaxf(m->w, x - m->x);
+			m->h = fmaxf(m->h, y - m->y);
+		}
+		return;
+	}
 	if (nv > BATCH_V || ni > BATCH_I) return;
 	if (g_nv + nv > BATCH_V || g_ni + ni > BATCH_I) flush(r);
 	for (i = 0; i < nv; i++) {
@@ -542,17 +570,58 @@ static void vol_sign(const view *v, int k, bool face, float a, float z, float l,
 	}
 }
 
-/* A shoulder's face toward the front, `k`, on the plane at depth `y`, from
- * `base` up to `top`: square at rest; lit, its top corners rounded as a
- * tab's. Its points, 12. */
-static int shoulder_face(const view *v, int k, float x, float w, float y, float base, float top,
-                         SDL_FPoint *p)
+/* The body's outline at `x`, its top: flat, then down its round corner */
+static float body_top_at(float x)
 {
-	const float rad = 1.2f * v->on[k];
+	const float d = fabsf(x) - (BODY_W / 2.0f - BODY_R);
+
+	return d <= 0.0f ? BODY_TOP : BODY_TOP - BODY_R + sqrtf(fmaxf(0.0f, BODY_R * BODY_R - d * d));
+}
+
+/* The x where the body's outline has come SH_HUG down its round corner */
+#define SH_HUG_X (BODY_W / 2.0f - BODY_R + sqrtf(BODY_R * BODY_R - (BODY_R - SH_HUG) * (BODY_R - SH_HUG)))
+
+/* A shoulder's face toward the front, `k`, on the plane at depth `y`, from
+ * `base` up to `top`; or (`base` below 0) from the body's outline up, down
+ * its round corner as far as SH_HUG under the top, so an outside cap sits on
+ * the corner with nothing under it, and square from there to its end rather
+ * than in a thin point down the side. Square at rest; lit, its top corners
+ * rounded as a tab's. Its points, 17 at most; how many of them are its base,
+ * left to right, in *nbase. */
+static int shoulder_face(const view *v, int k, float x, float w, float y, float base, float top,
+                         SDL_FPoint *p, int *nbase)
+{
+	enum { ARC = 4 };
+	const float rad = 1.2f * v->on[k], x0 = x - w / 2.0f, x1 = x + w / 2.0f;
+	const float flat = BODY_W / 2.0f - BODY_R, low = BODY_TOP - SH_HUG;
 	int n = 0, i;
 
-	p[n++] = at(v, x - w / 2.0f, y, base);
-	p[n++] = at(v, x + w / 2.0f, y, base);
+	if (base >= 0.0f) {
+		p[n++] = at(v, x0, y, base);
+		p[n++] = at(v, x1, y, base);
+	} else {
+		/* Left to right along the outline: flat, the corner's arc where
+		 * the face is over it, and level at SH_HUG down past it */
+		if (x0 < -SH_HUG_X) p[n++] = at(v, x0, y, low);
+		if (x0 < -flat)
+			for (i = 0; i <= ARC; i++) {
+				const float xa = fmaxf(x0, -SH_HUG_X) + (fminf(-flat, x1) - fmaxf(x0, -SH_HUG_X)) * i / ARC;
+
+				p[n++] = at(v, xa, y, body_top_at(xa));
+			}
+		else
+			p[n++] = at(v, x0, y, BODY_TOP);
+		if (x1 > flat)
+			for (i = 0; i <= ARC; i++) {
+				const float xa = fmaxf(flat, x0) + (fminf(x1, SH_HUG_X) - fmaxf(flat, x0)) * i / ARC;
+
+				p[n++] = at(v, xa, y, body_top_at(xa));
+			}
+		else
+			p[n++] = at(v, x1, y, BODY_TOP);
+		if (x1 > SH_HUG_X) p[n++] = at(v, x1, y, low);
+	}
+	if (nbase) *nbase = n;
 	for (i = 0; i <= 4; i++) {
 		const float a = (float)M_PI / 2.0f * i / 4.0f;
 
@@ -572,7 +641,7 @@ static int shoulder_face(const view *v, int k, float x, float w, float y, float 
 static void shoulder(const view *v, int k, float x, float w, float top)
 {
 	SDL_FPoint p[MAXP];
-	const int n = shoulder_face(v, k, x, w, SH_Y, SH_BASE, top, p);
+	const int n = shoulder_face(v, k, x, w, SH_Y, SH_BASE, top, p, NULL);
 
 	shape(v, p, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
 }
@@ -603,6 +672,105 @@ static int hull(SDL_FPoint *p, int n, SDL_FPoint *out)
 	return a - 1;
 }
 
+/* Twice the signed area of `p` */
+static float area2(const SDL_FPoint *p, int n)
+{
+	float a = 0.0f;
+	int i;
+
+	for (i = 0; i < n; i++) a += p[i].x * p[(i + 1) % n].y - p[(i + 1) % n].x * p[i].y;
+	return a;
+}
+
+/* A simple polygon filled, concave or not: cut into triangles ear by ear
+ * (fill's fan from the middle is for convex shapes and the cross) */
+static void fill_any(SDL_Renderer *r, const SDL_FPoint *p, int n, SDL_Color c)
+{
+	SDL_Vertex vx[MAXP];
+	int idx[MAXP * 3], rest[MAXP], m = n, ni = 0, i, j;
+	float sign;
+
+	if (n < 3 || n > MAXP || c.a == 0) return;
+	sign = area2(p, n) > 0.0f ? 1.0f : -1.0f;
+	for (i = 0; i < n; i++) {
+		vx[i] = (SDL_Vertex){ p[i], c, { 0, 0 } };
+		rest[i] = i;
+	}
+#define TURN(a_, b_, c_) (((b_).x - (a_).x) * ((c_).y - (b_).y) - ((b_).y - (a_).y) * ((c_).x - (b_).x))
+	while (m > 3) {
+		bool cut = false;
+
+		for (i = 0; i < m && !cut; i++) {
+			const int a = rest[(i + m - 1) % m], b = rest[i], d = rest[(i + 1) % m];
+
+			if (sign * TURN(p[a], p[b], p[d]) < 0.0f) continue;
+			for (j = 0; j < m; j++) {
+				const int q = rest[j];
+
+				if (q == a || q == b || q == d) continue;
+				if (sign * TURN(p[a], p[b], p[q]) > 0.0f && sign * TURN(p[b], p[d], p[q]) > 0.0f &&
+				    sign * TURN(p[d], p[a], p[q]) > 0.0f)
+					break;
+			}
+			if (j < m) continue;
+			idx[ni++] = a; idx[ni++] = b; idx[ni++] = d;
+			for (j = i; j < m - 1; j++) rest[j] = rest[j + 1];
+			m--;
+			cut = true;
+		}
+		if (!cut) break;   /* no ear (not a simple polygon): the rest as a fan */
+	}
+#undef TURN
+	for (i = 1; i + 1 < m; i++) {
+		idx[ni++] = rest[0]; idx[ni++] = rest[i]; idx[ni++] = rest[i + 1];
+	}
+	geometry(r, vx, n, idx, ni);
+}
+
+/* shape for a simple polygon that may be concave: the edge `w` wide astride
+ * its outline, the fill inside it cut ear by ear */
+static void shape_any(const view *v, SDL_FPoint *p, int n, SDL_Color f, SDL_Color e, float w)
+{
+	SDL_FPoint in[MAXP], out[MAXP];
+
+	n = dedup(p, n);
+	if (n < 3) return;
+	offset(p, n, -w / 2.0f, in);
+	offset(p, n, w / 2.0f, out);
+	fill_any(v->r, in, n, f);
+	band(v->r, out, in, n, e, e);
+}
+
+/* What face `f` covers swept back to face `b` (each point of it moved the
+ * same way), less its base's sweep, which is on the body: `f`'s base, then
+ * round its upper side, taking each edge from the face it shows on (`b`'s
+ * where it faces the way of the sweep), with a step between the two where
+ * that changes. The upper side is convex, so there are two such steps at
+ * most. Into `u`; its count. */
+static int swept(const SDL_FPoint *f, const SDL_FPoint *b, int n, int nbase, SDL_FPoint *u)
+{
+	const float sign = area2(f, n) > 0.0f ? 1.0f : -1.0f;
+	const float dx = b[0].x - f[0].x, dy = b[0].y - f[0].y;
+	bool back = false;
+	int m = 0, j;
+
+	for (j = 0; j < nbase; j++) u[m++] = f[j];
+	/* The upper side: from the base's last point round to its first */
+	for (j = nbase - 1; j < n; j++) {
+		const int a = j, c = (j + 1) % n;
+		const float ex = f[c].x - f[a].x, ey = f[c].y - f[a].y;
+		const bool use_b = sign * (ey * dx - ex * dy) > 0.0f;
+
+		if (use_b != back) {
+			u[m++] = use_b ? b[a] : f[a];
+			back = use_b;
+		}
+		u[m++] = back ? b[c] : f[c];
+	}
+	if (back) u[m++] = f[0];
+	return m;
+}
+
 /* The shoulders with the top showing (a pitch above 0), up to `top`: each a
  * block standing on the top face, `deep` of its depth, its face toward the
  * front over it so the edge between the two shows. The nearer side's last,
@@ -612,18 +780,19 @@ static void shoulders_tilted(const view *v, const float top[4], spot *spots, int
 {
 	static const int RIGHTWARD[4] = { 0, 2, 3, 1 };   /* L1, L2, R2, R1 */
 	const float y0 = SH_Y + (SH_FRONT - SH_Y) * v->deep, y1 = SH_Y + (SH_BACK - SH_Y) * v->deep;
-	SDL_FPoint face[4][16], both[32], out[MAXP];
-	int nface[4], i, j, n;
+	SDL_FPoint face[4][20], back[20], both[40], out[MAXP];
+	int nface[4], nbase[4], i, j, n;
 
 	for (i = 0; i < 4; i++) {
 		const int k = SHOULDER[i].k;
 		float x0 = 1e9f, x1 = -1e9f, ya = 1e9f, yb = -1e9f;
 
-		nface[i] = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y0, BODY_TOP, top[i], face[i]);
+		nface[i] = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y0, -1.0f, top[i], face[i], &nbase[i]);
 		if (v->on[k] <= 0.0f) continue;
-		n = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y1, BODY_TOP, top[i], both);
-		for (j = 0; j < n; j++) both[n + j] = face[i][j];
-		for (j = 0; j < 2 * n; j++) {
+		/* Its ring and halo about what stands over the top, as level */
+		n = shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y1, BODY_TOP, top[i], both, NULL);
+		n += shoulder_face(v, k, SHOULDER[i].x, SHOULDER[i].w, y0, BODY_TOP, top[i], both + n, NULL);
+		for (j = 0; j < n; j++) {
 			x0 = fminf(x0, both[j].x); x1 = fmaxf(x1, both[j].x);
 			ya = fminf(ya, both[j].y); yb = fmaxf(yb, both[j].y);
 		}
@@ -636,11 +805,10 @@ static void shoulders_tilted(const view *v, const float top[4], spot *spots, int
 	for (j = 0; j < 4; j++) {
 		const int s = RIGHTWARD[v->sp < 0.0f ? 3 - j : j], k = SHOULDER[s].k;
 
-		n = shoulder_face(v, k, SHOULDER[s].x, SHOULDER[s].w, y1, BODY_TOP, top[s], both);
-		for (i = 0; i < nface[s]; i++) both[n + i] = face[s][i];
-		n = hull(both, n + nface[s], out);
-		shape(v, out, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
-		shape(v, face[s], nface[s], key_fill(v, k), key_edge(v, k), DS_FRAME);
+		shoulder_face(v, k, SHOULDER[s].x, SHOULDER[s].w, y1, -1.0f, top[s], back, NULL);
+		n = swept(face[s], back, nface[s], nbase[s], out);
+		shape_any(v, out, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
+		shape_any(v, face[s], nface[s], key_fill(v, k), key_edge(v, k), DS_FRAME);
 	}
 }
 
@@ -749,6 +917,9 @@ static void tourdev_pose(const tour *t, uint32_t now, float op, td_pose *out)
 	out->cy = TOURDEV_Y;
 	out->scale = p0.s + (p1.s - p0.s) * k;
 	out->deg = deg;
+	/* ...and tilts back to show its top, or level again, in the same turn
+	 * (0 exactly between two level lessons) */
+	out->pitch = p0.pitch + (p1.pitch - p0.pitch) * k;
 	out->op = op;
 	for (i = 0; i < TD_KEYS; i++) {
 		const bool now_lit = lit1 >> i & 1u, was_lit = lit0 >> i & 1u;
@@ -961,12 +1132,15 @@ static void draw_view(SDL_Renderer *r, view *vp)
  * points cost the Pixel 2 ~15 ms a frame (a third of the lesson's frame
  * rate, though they cover ~200,000 pixels), so it is drawn into a texture
  * when its pose changes and copied the rest of the time. The tutorial's is
- * 304 x 368, the column's box (what shows of the figure is x 5 to 272, y 86
- * to 424 in every pose and every frame of every turn, the top a lit
- * shoulder's halo), 447 KB. What a texture holds is premultiplied - drawn
- * with the blend into a clear texture - so it is copied with the
- * premultiplied blend. A renderer without that blend (the host's software
- * one, which --shot uses) draws the handheld every frame, as before.
+ * 304 x 382, the column's box: every vertex of the figure, a halo's faint
+ * outer edge too, is in x 0 to 284 (on the screen), y 68 to 430 in every
+ * pose and every frame of every turn, the top a lit shoulder's halo as the
+ * handheld turns from Settings to Music and tilts back; 464 KB.
+ * --handheld-box measures it (td_box_holds), and the Controls tab's. What a
+ * texture holds is premultiplied - drawn with the blend into a clear texture
+ * - so it is copied with the premultiplied blend. A renderer without that
+ * blend draws the handheld every frame, as before; --shot's software
+ * renderer has it, so a box too small shows in the shots too.
  *
  * Each caller keeps its own (td_keep): the box it covers on the screen is
  * the texture's size, and the texture's corner is the box's. */
@@ -1061,6 +1235,54 @@ void td_make(SDL_Renderer *r, td_keep *k, const td_pose *p)
 	keep_make(r, k, p, &v);
 }
 
+void td_bounds(const td_pose *p, SDL_FRect *out)
+{
+	view v;
+
+	view_of(&v, p);
+	*out = (SDL_FRect){ 0.0f, 0.0f, -1.0f, -1.0f };
+	g_measure = out;
+	draw_view(NULL, &v);
+	g_measure = NULL;
+}
+
+bool td_box_holds(const char *what, const td_pose *p, SDL_Rect box, SDL_FRect *reach)
+{
+	SDL_FRect b;
+	float x0, y0, x1, y1;
+
+	td_bounds(p, &b);
+	if (b.w < 0.0f) return true;
+	/* Off the screen nothing shows, kept or not: the tutorial's box starts
+	 * at its left edge, where Brightness's tabs reach past it */
+	x0 = fmaxf(b.x, 0.0f);
+	y0 = fmaxf(b.y, 0.0f);
+	x1 = fminf(b.x + b.w, (float)ZYPEROS_SCREEN_W);
+	y1 = fminf(b.y + b.h, (float)ZYPEROS_SCREEN_H);
+	if (reach) {
+		const float rx0 = x0 - (float)box.x, ry0 = y0 - (float)box.y;
+		const float rx1 = x1 - (float)box.x, ry1 = y1 - (float)box.y;
+
+		if (reach->w < 0.0f) {
+			*reach = (SDL_FRect){ rx0, ry0, rx1 - rx0, ry1 - ry0 };
+		} else {
+			const float ex = fmaxf(reach->x + reach->w, rx1), ey = fmaxf(reach->y + reach->h, ry1);
+
+			reach->x = fminf(reach->x, rx0);
+			reach->y = fminf(reach->y, ry0);
+			reach->w = ex - reach->x;
+			reach->h = ey - reach->y;
+		}
+	}
+	if (x0 >= (float)box.x && y0 >= (float)box.y &&
+	    x1 <= (float)(box.x + box.w) && y1 <= (float)(box.y + box.h))
+		return true;
+	fprintf(stderr, "HANDHELD-BOX: %s, turned %.1f tilted %.1f: x %.1f to %.1f, y %.1f to %.1f, "
+	        "out of the box x %d to %d, y %d to %d\n", what, p->deg, p->pitch, x0, x1, y0, y1,
+	        box.x, box.x + box.w, box.y, box.y + box.h);
+	return false;
+}
+
 void td_keep_free(td_keep *k)
 {
 	if (k->tex) SDL_DestroyTexture(k->tex);
@@ -1071,7 +1293,7 @@ void td_keep_free(td_keep *k)
 
 /* ---- the tutorial's ------------------------------------------------------------- */
 
-static td_keep g_tour_keep = { .box = { 0, 80, 304, 368 } };
+static td_keep g_tour_keep = { .box = { 0, 66, 304, 382 } };
 
 void tourdev_make(SDL_Renderer *r, const tour *t, uint32_t now, float op)
 {
@@ -1096,4 +1318,32 @@ void tourdev_draw(SDL_Renderer *r, const tour *t, uint32_t now, float op)
 void tourdev_free(void)
 {
 	td_keep_free(&g_tour_keep);
+}
+
+int tourdev_box_check(int *measured)
+{
+	SDL_FRect reach = { 0.0f, 0.0f, -1.0f, -1.0f };
+	const SDL_Rect box = g_tour_keep.box;
+	tour t;
+	td_pose p;
+	char what[64];
+	int s, ms, bad = 0;
+
+	*measured = 0;
+	for (s = TOUR_FIRST_LESSON; s < TOUR_FIRST_LESSON + TOUR_LESSONS; s++) {
+		memset(&t, 0, sizeof t);
+		t.fn_volume = true;
+		t.step = (tour_step)s;
+		t.step_at = 1000;
+		/* Every frame of the turn into it from the last lesson, and at rest */
+		for (ms = 0; ms <= DS_MS_TURN + 100; ms += 10) {
+			tourdev_pose(&t, 1000u + (uint32_t)ms, 1.0f, &p);
+			snprintf(what, sizeof what, "the tutorial's lesson %d at %d ms", s - TOUR_FIRST_LESSON + 1, ms);
+			bad += !td_box_holds(what, &p, box, &reach);
+			(*measured)++;
+		}
+	}
+	fprintf(stderr, "handheld-box: the tutorial's reaches x %.1f to %.1f, y %.1f to %.1f of its %d x %d box\n",
+	        reach.x, reach.x + reach.w, reach.y, reach.y + reach.h, box.w, box.h);
+	return bad;
 }

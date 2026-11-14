@@ -64,6 +64,17 @@ void td_make(SDL_Renderer *r, td_keep *k, const td_pose *p);
 /* Lets `k`'s texture go; `k` can be used again after */
 void td_keep_free(td_keep *k);
 
+/* The screen rectangle `p` reaches, measured without drawing: every vertex
+ * of every shape, a halo's faint outer edge too. w and h are -1 when it
+ * draws nothing (fully faded). */
+void td_bounds(const td_pose *p, SDL_FRect *out);
+
+/* Whether `p` stays inside `box`, a kept texture's, on the screen (off it
+ * nothing shows); if not, says so on stderr ("HANDHELD-BOX: `what` ...")
+ * for the shot checks. Grows `reach` (w -1 empty), when given, to what it
+ * reaches, from the box's corner. */
+bool td_box_holds(const char *what, const td_pose *p, SDL_Rect box, SDL_FRect *reach);
+
 /* How far right the lesson block - progress, stage, check, glyph, title and
  * lines - moves to make room for the handheld, in units. */
 #define TOURDEV_SHIFT 104
@@ -89,5 +100,10 @@ void tourdev_draw(SDL_Renderer *r, const tour *t, uint32_t now, float op);
 
 /* Lets the kept texture go, with the tutorial's (tour_draw_free) */
 void tourdev_free(void);
+
+/* Measures the tutorial's handheld in every lesson and every frame of the
+ * turn into it against its kept texture's box (td_box_holds): the count
+ * out of it, and in *measured how many were measured. For --handheld-box. */
+int tourdev_box_check(int *measured);
 
 #endif
