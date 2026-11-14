@@ -742,7 +742,7 @@
         "--scraper-page",
         "1"
       ],
-      "sha256": "eb5e5f5dcadff3f72054c2a1ee29d0f30b1b4338baee9efc224f5ad4945e9c31"
+      "sha256": "0bfda685145fc42f6134c7d12ddac888b3cad8618f7fb628692d1ad08ab3b8cd"
     },
     {
       "file": "light/update.png",

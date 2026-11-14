@@ -3518,8 +3518,11 @@ static void g_build(ui_glyph g, g_shape *s)
 		return;
 	}
 	if (g == UI_GLYPH_CLOCK) {
-		/* A clock face and its two hands - how long a run takes */
-		g_arc(s, 0.50f, 0.50f, 0.38f, 0.0f, 2.0f * pi);
+		/* A clock face and its two hands - how long a run takes. The face
+		 * in four quarters: g_arc's six steps make a whole one a hexagon */
+		int q;
+
+		for (q = 0; q < 4; q++) g_arc(s, 0.50f, 0.50f, 0.38f, q * 0.5f * pi, (q + 1) * 0.5f * pi);
 		g_line(s, 0.50f, 0.50f, 0.50f, 0.26f, G_W);
 		g_line(s, 0.50f, 0.50f, 0.68f, 0.60f, G_W);
 		return;
