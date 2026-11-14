@@ -176,6 +176,12 @@ EXTRA = {
     "datetime-long": ("demo", "PS1", ["--datetime", "2"]),
     "datetime": ("demo", "PS1", ["--datetime", "3"]),
     "datetime-auto-said": ("demo", "PS1", ["--datetime", "4"]),
+    # Time Zone's list, A on its row: open on its first zone, on its longest
+    # city in the middle, and on Auto with the zone it found, short and long
+    "timezone-list": ("demo", "PS1", ["--datetime", "5"]),
+    "timezone-list-middle": ("demo", "PS1", ["--datetime", "6"]),
+    "timezone-list-auto": ("demo", "PS1", ["--datetime", "7"]),
+    "timezone-list-auto-long": ("demo", "PS1", ["--datetime", "8"]),
     "menu-look": ("demo", "PS1", ["--menu", "Appearance"]),
     "menu-end": ("demo", "PS1", ["--menu", "About ZyperOS"]),
     "language": ("demo", "PS1", ["--language"]),

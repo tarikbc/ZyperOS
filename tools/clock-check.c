@@ -218,6 +218,66 @@ int main(void)
 		}
 	}
 
+	/* The list A on Time Zone opens, and what a choice does */
+	printf("the zone's list:\n");
+	{
+		menu_row rows[CLOCK_ZONE_LIST_MAX];
+		char words[80];
+		clock_zone_change c;
+		int n, i, ok;
+
+		CHECK(CLOCK_ZONE_COUNT + 1 <= CLOCK_ZONE_LIST_MAX, "the list's room holds every choice");
+		n = clock_zone_list("America/Sao_Paulo", true, "America/Sao_Paulo", rows,
+		                    CLOCK_ZONE_LIST_MAX, words, sizeof words);
+		CHECK(n == CLOCK_ZONE_COUNT + 1, "Auto and every zone, %d rows", n);
+		CHECK(!strcmp(rows[0].label, "Auto (Sao Paulo)"), "Auto first, with what it found: \"%s\"",
+		      rows[0].label);
+		for (i = 0, ok = 1; i < CLOCK_ZONE_COUNT && i + 1 < n; i++)
+			ok &= !strcmp(rows[i + 1].label, CLOCK_ZONES[i].city) && rows[i + 1].live;
+		CHECK(ok, "then the zones west to east, as the row steps them");
+		CHECK(clock_zone_list_on("America/Sao_Paulo", true) == 0 &&
+		      clock_zone_list_row("America/Sao_Paulo", true) == 0,
+		      "Auto on: its row has the tick and the cursor");
+		clock_zone_list("America/New_York", true, "", rows, CLOCK_ZONE_LIST_MAX, words, sizeof words);
+		CHECK(!strcmp(rows[0].label, "Auto"), "Auto with nothing found yet says Auto alone");
+		clock_zone_list("America/Sao_Paulo", false, "America/Sao_Paulo", rows, CLOCK_ZONE_LIST_MAX,
+		                words, sizeof words);
+		CHECK(!strcmp(rows[0].label, "Auto"), "and so does Auto off, whatever it found once");
+		CHECK(clock_zone_list_on("Asia/Tokyo", false) == 1 + clock_zone_find("Asia/Tokyo") &&
+		      clock_zone_list_row("Asia/Tokyo", false) == 1 + clock_zone_find("Asia/Tokyo"),
+		      "a zone picked by hand: its row has the tick and the cursor");
+		CHECK(clock_zone_list_on("Asia/Ho_Chi_Minh", false) < 0 &&
+		      clock_zone_list_row("Asia/Ho_Chi_Minh", false) == 1 + clock_zone_find("America/New_York"),
+		      "an id off the list: no tick, and the cursor on New York");
+		n = clock_zone_list("Pacific/Honolulu", false, "", rows, 3, words, sizeof words);
+		CHECK(n == 3, "a shorter array gets the first rows");
+		CHECK(clock_zone_list_choice(0) == CLOCK_ZONE_AUTO &&
+		      clock_zone_list_choice(1) == 0 &&
+		      clock_zone_list_choice(CLOCK_ZONE_COUNT) == CLOCK_ZONE_COUNT - 1 &&
+		      clock_zone_list_choice(CLOCK_ZONE_COUNT + 1) < -1 && clock_zone_list_choice(-1) < -1,
+		      "each row is its choice, and past the rows none");
+
+		c = clock_zone_choose("America/Sao_Paulo", true, clock_zone_find("Asia/Tokyo"));
+		CHECK(!c.auto_on && c.zone && !strcmp(c.zone, "Asia/Tokyo") && !c.auto_chosen,
+		      "a zone picked by hand turns Auto off and is set");
+		c = clock_zone_choose("America/Sao_Paulo", true, clock_zone_find("America/Sao_Paulo"));
+		CHECK(!c.auto_on && c.zone && !strcmp(c.zone, "America/Sao_Paulo"),
+		      "the zone Auto found, picked by hand, turns Auto off too");
+		c = clock_zone_choose("Asia/Tokyo", false, clock_zone_find("Asia/Tokyo"));
+		CHECK(!c.auto_on && !c.zone, "the zone in use picked again changes nothing");
+		c = clock_zone_choose("Asia/Tokyo", false, CLOCK_ZONE_AUTO);
+		CHECK(c.auto_on && c.auto_chosen && !c.zone,
+		      "Auto picked turns Auto on, keeps the zone, and says what it tells");
+		c = clock_zone_choose("America/Sao_Paulo", true, CLOCK_ZONE_AUTO);
+		CHECK(c.auto_on && !c.auto_chosen && !c.zone, "Auto picked again with Auto on, nothing");
+		c = clock_zone_choose("Asia/Tokyo", false, -2);
+		CHECK(!c.auto_on && !c.zone && !c.auto_chosen, "no choice, nothing");
+		c = clock_zone_choose("America/New_York", true,
+		                      clock_zone_step_auto("America/New_York", true, +1));
+		CHECK(!c.auto_on && c.zone && !strcmp(c.zone, CLOCK_ZONES[0].id),
+		      "and the row's right from Auto is the same rule: Auto off, Honolulu set");
+	}
+
 	printf("the screen's rows:\n");
 	{
 		static const char *const names[CLOCK_ROWS] = {

@@ -113,6 +113,36 @@ bool clock_zone_have(const char *id);
  * the other way round. */
 void clock_zone_city(const char *id, char *out, size_t n);
 
+/* What a choice of the zone (CLOCK_ZONE_AUTO or an entry of the list) does,
+ * from zone `id` with Auto `autoz`, by the row's left and right or by the
+ * list A opens: the one rule for both. A zone picked by hand turns Auto off
+ * and is set (`zone`, NULL when it is the zone in use with Auto off already).
+ * Auto turns Auto on and keeps the zone until its first answer;
+ * `auto_chosen` when it was off, so what Auto tells is said. */
+typedef struct {
+	bool        auto_on;
+	bool        auto_chosen;
+	const char *zone;
+} clock_zone_change;
+clock_zone_change clock_zone_choose(const char *id, bool autoz, int choice);
+
+/* The list A on the Time Zone row opens (2026-11-14: "when clicking on the
+ * time zone row, i should see a list of all the options"): Auto first, as
+ * clock_zone_value says it ("Auto (Sao Paulo)" once it has found a zone),
+ * then every zone of the list, west to east. Into `rows`, with no values,
+ * Auto's words in `auto_buf`; how many, at most `max` (CLOCK_ZONE_LIST_MAX
+ * holds them all). clock_zone_list_on is the row of the choice that is on,
+ * which takes the tick, or -1 for an id not on the list with Auto off;
+ * clock_zone_list_row is where the cursor starts, that row or New York's (as
+ * the row steps from such an id); clock_zone_list_choice is the choice a
+ * row is, -2 for none. */
+#define CLOCK_ZONE_LIST_MAX 48
+int clock_zone_list(const char *id, bool autoz, const char *found, menu_row *rows,
+                    int max, char *auto_buf, size_t n);
+int clock_zone_list_on(const char *id, bool autoz);
+int clock_zone_list_row(const char *id, bool autoz);
+int clock_zone_list_choice(int row);
+
 /* The Time Zone row's value. Auto off: the zone's city, or an id not on the
  * list as it is. Auto on: "Auto" until it has found a zone, then "Auto
  * (Sao Paulo)", the city of the zone it found, while that is the zone in use

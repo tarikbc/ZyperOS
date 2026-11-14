@@ -380,8 +380,10 @@ start with, when nothing has been pressed on the shelf. Each clip shows for
 Date & Time has a row for each part of the clock and one for the time zone,
 each changed with left and right and set the moment it changes, so the time
 holds through a power-off. The zones are one or two cities per hour of offset,
-west to east. Each time Wi-Fi connects it sets the clock, so with Wi-Fi this
-screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
+west to east. **A** on the time zone row opens a list of every choice, Auto
+first, with a tick on the one that is on: **A** picks one and **B** goes back
+with nothing changed. Each time Wi-Fi connects it sets the clock, so with
+Wi-Fi this screen is mainly for the zone. A Pixel 2 with no adapter cannot get the time
 from a network: set it here once.
 
 The time zone sets itself. Its row starts on **Auto**, the first choice,

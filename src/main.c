@@ -16705,6 +16705,86 @@ static int clock_page_rows(clock_ui *c, time_t t, const char *id, bool autoz,
 	return n;
 }
 
+/* A choice of the zone made (clock_zone_choose's rule): by the row's left
+ * and right, or picked in its list */
+static void zone_choose(app *a, int choice)
+{
+	char id[64];
+	clock_zone_change c;
+
+	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
+	c = clock_zone_choose(id, zone_auto_on(), choice);
+	if (c.auto_on != zone_auto_on()) zone_auto_set(c.auto_on);
+	if (c.zone) {
+		db_set_str(db_lib(), "timezone", c.zone);
+		plat_clock_zone(c.zone);
+		boot_theme_changed();
+	}
+	/* The zone stays as it is until Auto's first answer, which it asks for
+	 * as soon as there is internet (tick_auto_zone); what that tells the
+	 * service is said now */
+	if (c.auto_chosen) zone_auto_message(a);
+}
+
+/* The list A on Time Zone opens (clock_zone_list): every choice, a tick on
+ * the one that is on and the cursor on it, as MENU > Language has it. A
+ * picks and closes; B closes with nothing changed. */
+typedef struct {
+	char          auto_words[80];
+	int           pick;                         /* the row A picked, -1 */
+	unsigned char sound[CLOCK_ZONE_LIST_MAX];   /* every row plain */
+} zone_list_ui;
+
+/* The list's rows for zone `id`, Auto `autoz` and what it found: the
+ * screen's, and a shot's (--datetime) */
+static int zone_list_rows(zone_list_ui *z, const char *id, bool autoz, const char *found,
+                          menu_row *rows, int max)
+{
+	int n = clock_zone_list(id, autoz, found, rows, max, z->auto_words, sizeof z->auto_words);
+	int on = clock_zone_list_on(id, autoz);
+
+	if (on >= 0 && on < n) rows[on].value = MENU_TICK;
+	return n;
+}
+
+static int zone_list_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	zone_list_ui *z = ctx;
+	char id[64], found[64];
+
+	*heading = T(S_CLOCK_TIME_ZONE);
+	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
+	db_get_str(db_lib(), AUTOZONE_FOUND_KEY, found, sizeof found, "");
+	return zone_list_rows(z, id, zone_auto_on(), found, rows,
+	                      max < CLOCK_ZONE_LIST_MAX ? max : CLOCK_ZONE_LIST_MAX);
+}
+
+static menu_result zone_list_key(app *a, void *ctx, in_button key, int sel)
+{
+	zone_list_ui *z = ctx;
+
+	(void)a;
+	if (key != IN_ACCEPT || clock_zone_list_choice(sel) < -1) return MENU_STAY;
+	z->pick = sel;
+	return MENU_DONE;
+}
+
+static void zone_list_screen(app *a)
+{
+	zone_list_ui z;
+	char id[64];
+
+	memset(&z, 0, sizeof z);
+	z.pick = -1;
+	db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
+	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a),
+	                           .sound = z.sound,
+	                           .start_sel = clock_zone_list_row(id, zone_auto_on()) },
+	         zone_list_build, zone_list_key, &z);
+	/* Set once the list has gone, so Auto's message comes over the page */
+	if (z.pick >= 0) zone_choose(a, clock_zone_list_choice(z.pick));
+}
+
 static int clock_build(void *ctx, menu_row *rows, int max, const char **heading)
 {
 	clock_ui *c = ctx;
@@ -16722,29 +16802,17 @@ static menu_result clock_key(app *a, void *ctx, in_button key, int sel)
 	int d = key == IN_RIGHT ? 1 : key == IN_LEFT ? -1 : 0;
 
 	(void)ctx;
-	if (!d) return MENU_STAY;
-	if (clock_row_field(sel) >= 0) {
+	if (key == IN_ACCEPT && sel == CLOCK_ROW_ZONE) {
+		zone_list_screen(a);
+	} else if (!d) {
+		return MENU_STAY;
+	} else if (clock_row_field(sel) >= 0) {
 		plat_clock_set(clock_step(time(NULL), (clock_field)clock_row_field(sel), d));
 	} else if (sel == CLOCK_ROW_ZONE) {
 		char id[64];
-		int z;
 
 		db_get_str(db_lib(), "timezone", id, sizeof id, "America/New_York");
-		z = clock_zone_step_auto(id, zone_auto_on(), d);
-		if (z == CLOCK_ZONE_AUTO) {
-			/* The zone stays as it is until Auto's first answer, which it
-			 * asks for as soon as there is internet (tick_auto_zone); what
-			 * that tells the service is said now */
-			if (!zone_auto_on()) {
-				zone_auto_set(true);
-				zone_auto_message(a);
-			}
-		} else {
-			if (zone_auto_on()) zone_auto_set(false);
-			db_set_str(db_lib(), "timezone", CLOCK_ZONES[z].id);
-			plat_clock_zone(CLOCK_ZONES[z].id);
-			boot_theme_changed();
-		}
+		zone_choose(a, clock_zone_step_auto(id, zone_auto_on(), d));
 	}
 	/* Either way the same instant is another hour of the day, and Auto is
 	 * to follow it now and not at its next look a minute on: a player who
@@ -26339,7 +26407,9 @@ static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 /* --datetime [N]: Date & Time's page, Time Zone on Auto with nothing found
  * yet (0), on Auto with the zone it found (1), with a long city (2), on a
- * zone of the list (3), or Auto's message as it is chosen (4) */
+ * zone of the list (3), or Auto's message as it is chosen (4); Time Zone's
+ * list open on its first zone (5), on its longest city in the middle (6), on
+ * Auto with the zone it found (7), and with a long city (8) */
 static int shot_datetime = -1;
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
 static bool shot_usb_dev = true;   /* --usb-ask N plain: without the development image's tile */
@@ -27472,13 +27542,23 @@ static void shot_compose(app *a)
 		                                     "America/Bahia_Banderas", "America/New_York" };
 		struct tm tm = { .tm_year = 2026 - 1900, .tm_mon = 9, .tm_mday = 3,
 		                 .tm_hour = 18, .tm_min = 5, .tm_isdst = -1 };
-		menu_row rows[CLOCK_ROWS + 4];
+		menu_row rows[CLOCK_ZONE_LIST_MAX];
 		clock_ui c;
-		int k = shot_datetime % 5, n;
+		int k = shot_datetime % 9, n;
 
 		memset(&c, 0, sizeof c);
 		ui_scrim(a->r, 0);
-		if (k == 4) {
+		if (k >= 5) {
+			static const char *const list_ids[4] = { "Pacific/Honolulu", "Africa/Johannesburg",
+			                                         "America/Sao_Paulo", "America/Bahia_Banderas" };
+			static zone_list_ui z;
+			const char *zid = list_ids[k - 5];
+			bool autoz = k >= 7;
+
+			n = zone_list_rows(&z, zid, autoz, autoz ? zid : "", rows, CLOCK_ZONE_LIST_MAX);
+			menu_draw(a, T(S_CLOCK_TIME_ZONE), rows, n, clock_zone_list_row(zid, autoz),
+			          menu_std_width(a), MENU_ZYPEROS);
+		} else if (k == 4) {
 			char lines[2][LB_LINE];
 
 			n = zone_auto_lines(a, lines, rows);
