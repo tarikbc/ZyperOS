@@ -229,7 +229,7 @@ typedef enum {
 	DIATOM_MSG_LEVELS,     /* report volume and brightness */
 	DIATOM_MSG_SETLEVEL,   /* set `lkind` to `index` of `count` positions */
 	DIATOM_MSG_DISPLAY,    /* report the display mode and filter */
-	DIATOM_MSG_SETDISPLAY, /* set them: `dmode`, `dfilter` */
+	DIATOM_MSG_SETDISPLAY, /* set them: `dmode`, `dfilter`, `dstrength` */
 	DIATOM_MSG_OVERLAY,    /* composite `path` over the game for `count` ms */
 	DIATOM_MSG_CHEEVOS,    /* report the achievement set and what has fired */
 	DIATOM_MSG_SETCHEEVOS, /* load a set from `path`; empty unloads */
@@ -330,6 +330,8 @@ typedef struct {
 	                        * SETCHANNELS: one from diatom_channels_names[].
 	                        * Both arrive as `mode=`, so one slot. */
 	char dfilter[16];      /* SETDISPLAY: a name from diatom_filters[] */
+	char dstrength[8];     /* SETDISPLAY: an old screen's strength, 0 to 100
+	                        * percent (diatom_port_strength); empty leaves it */
 	int  index, count;     /* SETLEVEL: `count` is POSITIONS, not a max index.
 	                        * OVERLAY: `count` is the duration in ms, sent as
 	                        * `ms=`. One slot, two verbs, no second name.

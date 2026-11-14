@@ -49,6 +49,7 @@ typedef struct diatom_session {
 	long          limit;
 	int           mode;
 	diatom_filter filter;
+	int           strength;   /* the old screens', percent (diatom_port_strength) */
 	bool          list_only;
 	/* 2: the frame is two screens, top over bottom (RUN screens=2, a DS
 	 * game). Layouts and the stylus apply only then; see screens.h. */
@@ -565,6 +566,11 @@ static int           g_base_w, g_base_h;
 static double        g_base_aspect;
 static int           g_mode;
 static diatom_filter g_filter;
+/* How strongly an old screen's filter is drawn, percent: 100 is the filter as
+ * it is (diatom_port_strength). Held across games as the filter is, and set
+ * back to the command line's at every RUN, the launcher's SETDISPLAY after it
+ * saying the game's. */
+static int           g_strength = 100;
 
 /* The DS layout, and whether the bottom screen goes first. Held across games,
  * as the display mode is, and set by the launcher after each RUN
@@ -774,6 +780,7 @@ static void usage(void)
 	fprintf(stderr,
 		"usage: diatom --core <core.so> --rom <file> [--system <dir>] [--save <dir>]\n"
 		"              [--display <mode>] [--filter nearest|sharp|shimmerless]\n"
+		"              [--strength 0-100]  an old screen's filter, percent (crt, scanlines, lcd)\n"
 		"              [--channels stereo|mono|left|right]\n"
 		"              [--load-state <file>] [--state-on-exit <file>]\n"
 		"              [--firmware <name>]  required in --system, checked first\n"
@@ -809,6 +816,13 @@ static void usage(void)
 static const char *filter_name(diatom_filter f)
 {
 	return diatom_filters[f >= 0 && f < DIATOM_FILTER_COUNT ? f : 0].name;
+}
+
+/* The old screens' strength, 0 to 100, to the port; DISPLAY says it */
+static void set_strength(int percent)
+{
+	g_strength = percent < 0 ? 0 : percent > 100 ? 100 : percent;
+	diatom_port_strength(g_strength);
 }
 
 static void apply_display(int mode, diatom_filter filter)
@@ -853,10 +867,11 @@ static void apply_display(int mode, diatom_filter filter)
 	 * is 640x480 under ZyperOS's 1024x768, and the in-game menu drew the paused
 	 * frame in the top-left 640x480 of the screen until it was said. */
 	if (diatom_proto_connected())
-		diatom_proto_send("DISPLAY\tmode=%s\tfilter=%s\trect=%dx%d+%d+%d\tsurface=%dx%d",
+		diatom_proto_send("DISPLAY\tmode=%s\tfilter=%s\trect=%dx%d+%d+%d\tsurface=%dx%d"
+		                  "\tstrength=%d",
 		                  diatom_modes[mode].name, filter_name(filter),
 		                  shown.w, shown.h, shown.x, shown.y,
-		                  g_caps.surface_w, g_caps.surface_h);
+		                  g_caps.surface_w, g_caps.surface_h, g_strength);
 }
 
 /* The in-game menu handover.
@@ -1492,7 +1507,7 @@ static void level_set(const diatom_msg *m)
 
 static void display_set(const diatom_msg *m)
 {
-	int mode = g_mode, i;
+	int mode = g_mode, i, strength = g_strength;
 	diatom_filter filter = g_filter;
 
 	if (m->dmode[0]) {
@@ -1513,9 +1528,21 @@ static void display_set(const diatom_msg *m)
 			return;
 		}
 	}
-	/* Both fields validated before either is applied, for the same reason
+	/* A whole number of percent, 0 to 100, and nothing after it */
+	if (m->dstrength[0]) {
+		char *end;
+		long v = strtol(m->dstrength, &end, 10);
+
+		if (*end || end == m->dstrength || v < 0 || v > 100) {
+			diatom_proto_send("ERROR\tcode=bad_display\tmsg=%s", m->dstrength);
+			return;
+		}
+		strength = (int)v;
+	}
+	/* Every field validated before any is applied, for the same reason
 	 * SETMAP is all-or-nothing: a half-applied setting is one nobody asked
 	 * for and neither side believes in. */
+	set_strength(strength);
 	apply_display(mode, filter);
 }
 
@@ -2273,6 +2300,7 @@ static int run_session_inner(const diatom_session *sn)
 		printf("diatom: screens=2, but %dx%d does not cut in two; one picture\n",
 		       g_base_w, g_base_h);
 	}
+	set_strength(sn->strength);
 	apply_display(sn->mode, sn->filter);
 	if (g_dual) { screens_emit(); stylus_emit(); }
 	locked_at = 0;
@@ -3115,6 +3143,7 @@ int main(int argc, char **argv)
 	bool stick_plain = false;
 	int screens = 1;
 	diatom_filter start_filter;
+	int  start_strength = 100;
 	long limit = 0;
 	int i, start_mode = -1, console = 0;
 
@@ -3127,6 +3156,17 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--shot") && i + 1 < argc) shot_path = argv[++i];
 		else if (!strcmp(argv[i], "--display") && i + 1 < argc) display = argv[++i];
 		else if (!strcmp(argv[i], "--filter") && i + 1 < argc) filter = argv[++i];
+		else if (!strcmp(argv[i], "--strength") && i + 1 < argc) {
+			char *end;
+			long v = strtol(argv[++i], &end, 10);
+
+			if (*end || v < 0 || v > 100) {
+				fprintf(stderr, "diatom: --strength wants 0 to 100\n");
+				usage();
+				return 1;
+			}
+			start_strength = (int)v;
+		}
 		else if (!strcmp(argv[i], "--load-state") && i + 1 < argc) state_load = argv[++i];
 		else if (!strcmp(argv[i], "--state-on-exit") && i + 1 < argc) state_exit = argv[++i];
 		else if (!strcmp(argv[i], "--preview-on-exit") && i + 1 < argc) preview_path = argv[++i];
@@ -3214,6 +3254,7 @@ int main(int argc, char **argv)
 	 * hardware 2026-08-26 by asking with no game loaded. */
 	g_mode   = start_mode;
 	g_filter = start_filter;
+	set_strength(start_strength);
 
 	if (!g_policy.system_dir) g_policy.system_dir = ".";
 	if (!g_policy.save_dir)   g_policy.save_dir   = ".";
@@ -3332,6 +3373,7 @@ int main(int argc, char **argv)
 			sn.stick_plain = !strcmp(m.stick, "plain");
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
+			sn.strength = start_strength;
 			run_session(&sn);   /* its own ERROR/EXIT is the report */
 
 			/* The options the launcher sent were for THAT game. Cores are
@@ -3350,6 +3392,7 @@ int main(int argc, char **argv)
 			.preview = preview_path, .firmware = firmware,
 			.cheevos = cheevos_path, .console = console,
 			.limit = limit, .mode = start_mode, .filter = start_filter,
+			.strength = start_strength,
 			.list_only = list_options, .screens = screens,
 			.late_skip = !strcmp(frameskip, "late"), .stylus = stylus,
 			.power = !strcmp(power, "light")  ? DIATOM_POWER_LIGHT

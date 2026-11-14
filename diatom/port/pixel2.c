@@ -112,6 +112,7 @@ typedef struct {
 	diatom_pixfmt fmt;
 	diatom_rect   dst;
 	diatom_filter filter;
+	int           strength;     /* diatom_port_strength's when presented, percent */
 	/* The planes in force when this frame was presented, so a layout change
 	 * and the frame it was made for reach the panel together. */
 	diatom_plane  planes[DIATOM_PLANES_MAX];
@@ -155,6 +156,11 @@ static GLuint g_prog_plain, g_prog_solid;
  * frame. */
 static GLuint g_prog_filter[DIATOM_FILTER_COUNT];
 static bool   g_prog_failed[DIATOM_FILTER_COUNT];
+/* The same for an old screen drawn under 100% strength (diatom_port_strength):
+ * its program with a u_strength, linked the first time a frame asks for it,
+ * so a frame at 100% draws with the program above and nothing more. */
+static GLuint g_prog_soft[DIATOM_FILTER_COUNT];
+static bool   g_soft_failed[DIATOM_FILTER_COUNT];
 static GLuint g_frame_tex, g_overlay_tex, g_osdbar_tex;
 static int    g_tex_w = -1, g_tex_h = -1;
 static diatom_pixfmt g_tex_fmt;
@@ -721,12 +727,12 @@ static const char *SHIMMERLESS_SHADER =
  * however the picture is scaled, and nothing shimmers. One texture read.
  * `ratio` and `opacity` are vec2s, across and down: with nothing across it is
  * scanlines; with both, an LCD's grid. */
-#define GRID_SHADER(ratio, opacity) \
+#define GRID_SHADER_SRC(ratio, alpha) \
 	"#version 300 es\n" \
 	"precision highp float;\n" \
 	QUAD_UNIFORMS \
 	"const vec2 RATIO = 1.0 - " ratio ";\n" \
-	"const vec2 ALPHA = 1.0 - " opacity ";\n" \
+	alpha \
 	"void main() {\n" \
 	"	vec2 px = (v_src - u_origin) * u_scale;\n" \
 	"	vec2 tl = u_inv * floor(px), br = u_inv * ceil(px);\n" \
@@ -742,11 +748,23 @@ static const char *SHIMMERLESS_SHADER =
 	"	vec2 t = t_br - 0.5 + w;\n" \
 	"	o_color = vec4(f.x * f.y * texture(u_tex, (t + u_origin) / u_size).rgb, 1.0);\n" \
 	"}\n"
+#define GRID_SHADER(ratio, opacity) \
+	GRID_SHADER_SRC(ratio, "const vec2 ALPHA = 1.0 - " opacity ";\n")
+/* Under 100% strength the band is that much as dark: OPACITY times
+ * u_strength, 0 to 1. The band's width stays, so nothing shimmers at any
+ * strength, and at 0 nothing is dark and the weights are the box filter's -
+ * Sharp-Shimmerless, but for a pixel that starts inside a band, where the
+ * original counts the band's whole width. Still one texture read. */
+#define GRID_SHADER_SOFT(ratio, opacity) \
+	GRID_SHADER_SRC(ratio, "uniform float u_strength;\n" \
+	                "#define ALPHA (1.0 - " opacity " * u_strength)\n")
 
 /* A handheld's LCD: the grid both ways, the original's defaults */
 static const char *LCD_SHADER = GRID_SHADER("vec2(0.3, 0.3)", "vec2(0.3, 0.3)");
 /* Scanlines: the band only down, the -scanlines variant's defaults */
 static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0.3)");
+static const char *LCD_SOFT_SHADER = GRID_SHADER_SOFT("vec2(0.3, 0.3)", "vec2(0.3, 0.3)");
+static const char *SCANLINES_SOFT_SHADER = GRID_SHADER_SOFT("vec2(0.0, 0.3)", "vec2(0.0, 0.3)");
 
 /* A CRT: Timothy Lottes's CRTS (public domain; libretro glsl-shaders'
  * crt/shaders/crt-lottes-fast.glsl, its 20180120b), its 2-tap filter: two
@@ -765,11 +783,12 @@ static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0
  * original's defaults: warp 0.02 across and 0.015 down (a 4:3 screen),
  * corner 3. Reads stay inside the quad, so nothing comes from the
  * other DS screen or past a GPU frame's last row. */
-#define CRT_SHADER_SRC(warp) \
+#define CRT_SHADER_SRC(warp, soft, mix) \
 	"#version 300 es\n" \
 	"precision highp float;\n" \
 	warp \
 	QUAD_UNIFORMS \
+	soft \
 	"const float THIN = 0.75;\n" \
 	"const float DARK = 0.5;\n" \
 	"const vec2 TONE = vec2(0.419207, 0.580793);\n" \
@@ -801,11 +820,24 @@ static const char *SCANLINES_SHADER = GRID_SHADER("vec2(0.0, 0.3)", "vec2(0.0, 0
 	"	c *= m < 1.0 / 3.0 ? vec3(DARK, 1.0, 1.0) : m < 2.0 / 3.0 ? vec3(1.0, DARK, 1.0) : vec3(1.0, 1.0, DARK);\n" \
 	"	float peak = max(1.0 / (256.0 * 65536.0), max(c.r, max(c.g, c.b)));\n" \
 	"	c = c / peak * (peak / (peak * TONE.x + TONE.y));\n" \
+	mix \
 	"	o_color = vec4(sqrt(c), 1.0);\n" \
 	"}\n"
 
-static const char *CRT_SHADER = CRT_SHADER_SRC("");
-static const char *CRT_CURVED_SHADER = CRT_SHADER_SRC("#define WARP 1\n");
+/* Under 100% strength: the CRT mixed, in its linear light, toward its own
+ * plain picture, the same two reads with the quintic down as well as across
+ * and no scanlines, grille or tone; u_strength 0 to 1. The curve and the
+ * round corners are the glass's shape, not its lines, and stay. */
+#define CRT_SOFT \
+	"uniform float u_strength;\n"
+#define CRT_SOFT_MIX \
+	"	float qy = off * off * off * (off * (off * 6.0 - 15.0) + 10.0);\n" \
+	"	c = mix(mix(a, b, qy) * vin, c, u_strength);\n"
+
+static const char *CRT_SHADER = CRT_SHADER_SRC("", "", "");
+static const char *CRT_CURVED_SHADER = CRT_SHADER_SRC("#define WARP 1\n", "", "");
+static const char *CRT_SOFT_SHADER = CRT_SHADER_SRC("", CRT_SOFT, CRT_SOFT_MIX);
+static const char *CRT_CURVED_SOFT_SHADER = CRT_SHADER_SRC("#define WARP 1\n", CRT_SOFT, CRT_SOFT_MIX);
 
 static const char *SOLID_SHADER =
 	"#version 300 es\n"
@@ -1053,6 +1085,13 @@ static const char *const *const FILTER_SHADER[DIATOM_FILTER_COUNT] = {
 	[DIATOM_FILTER_SCANLINES]   = &SCANLINES_SHADER,
 	[DIATOM_FILTER_LCD]         = &LCD_SHADER,
 };
+/* And under 100% strength, for the filters that have an effect to weaken */
+static const char *const *const SOFT_SHADER[DIATOM_FILTER_COUNT] = {
+	[DIATOM_FILTER_CRT]         = &CRT_SOFT_SHADER,
+	[DIATOM_FILTER_CRT_CURVED]  = &CRT_CURVED_SOFT_SHADER,
+	[DIATOM_FILTER_SCANLINES]   = &SCANLINES_SOFT_SHADER,
+	[DIATOM_FILTER_LCD]         = &LCD_SOFT_SHADER,
+};
 
 /* The final pass's program for a filter, linked the first time it is asked
  * for rather than at start: Diatom starts with the device, and six programs
@@ -1060,9 +1099,24 @@ static const char *const *const FILTER_SHADER[DIATOM_FILTER_COUNT] = {
  * player chose it for continues is a frame. Nearest's, the one the overlay
  * and the level bar use too, at start (gl_start). A link that fails draws
  * nearest, and says so once. */
-static GLuint filter_prog(diatom_filter f)
+static GLuint filter_prog(diatom_filter f, int strength, bool *soft)
 {
+	*soft = false;
 	if (f <= DIATOM_FILTER_NEAREST || f >= DIATOM_FILTER_COUNT) return g_prog_plain;
+	/* Under 100%: the soft program, linked the same way. One that fails
+	 * draws the filter at full, which is closer than nearest. */
+	if (strength < 100 && SOFT_SHADER[f]) {
+		if (!g_prog_soft[f] && !g_soft_failed[f]) {
+			g_prog_soft[f] = link_program(*SOFT_SHADER[f]);
+			g_soft_failed[f] = !g_prog_soft[f];
+			if (g_soft_failed[f])
+				port_logf(DIATOM_LOG_ERROR, "pixel2: filter %d's strength did not link; full", (int)f);
+		}
+		if (g_prog_soft[f]) {
+			*soft = true;
+			return g_prog_soft[f];
+		}
+	}
 	if (!g_prog_filter[f] && !g_prog_failed[f]) {
 		g_prog_filter[f] = link_program(*FILTER_SHADER[f]);
 		g_prog_failed[f] = !g_prog_filter[f];
@@ -1097,7 +1151,8 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
                        float osd_alpha, float osd_rise, bool lowbat,
                        bool turned)
 {
-	GLuint prog = filter_prog(f->filter);
+	bool   soft;
+	GLuint prog = filter_prog(f->filter, f->strength, &soft);
 	GLint  filter = prog == g_prog_plain ? GL_NEAREST : GL_LINEAR;
 	/* A GPU frame is GL's way up, its first row at the bottom of a texture
 	 * larger than it: sampled from row h down to row 0, so the same quads
@@ -1118,6 +1173,7 @@ static void draw_scene(const mailbox_frame *f, bool overlay_live, bool osd_live,
 	glUniform1i(uloc(prog, "u_tex"), 0);
 	glUniform2f(uloc(prog, "u_size"),
 	            (float)(f->gpu ? f->tex_w : f->w), (float)(f->gpu ? f->tex_h : f->h));
+	if (soft) glUniform1f(uloc(prog, "u_strength"), (float)f->strength / 100.0f);
 	if (f->nplanes) {
 		/* A DS frame's two screens, each its own quad out of the one
 		 * texture (diatom_port_planes). Sharp's steepness is per quad: the
@@ -1487,6 +1543,8 @@ static void gl_stop(void)
 	/* The programs go with the context; a new one links them again */
 	memset(g_prog_filter, 0, sizeof g_prog_filter);
 	memset(g_prog_failed, 0, sizeof g_prog_failed);
+	memset(g_prog_soft, 0, sizeof g_prog_soft);
+	memset(g_soft_failed, 0, sizeof g_soft_failed);
 	if (g_egl_context != EGL_NO_CONTEXT) eglDestroyContext(g_egl_display, g_egl_context);
 	eglTerminate(g_egl_display);
 	g_egl_display = EGL_NO_DISPLAY;
@@ -1715,6 +1773,19 @@ void diatom_port_planes(const diatom_plane *planes, int n)
 	port_logf(DIATOM_LOG_INFO, "present: %d plane(s)%s", n, n ? "" : ", the whole frame");
 }
 
+/* The old screens' strength, held like the planes and copied into each frame
+ * present fills: host's thread only */
+static int g_strength = 100;
+
+void diatom_port_strength(int percent)
+{
+	if (percent < 0) percent = 0;
+	if (percent > 100) percent = 100;
+	if (percent != g_strength)
+		port_logf(DIATOM_LOG_INFO, "present: strength %d%%", percent);
+	g_strength = percent;
+}
+
 void diatom_port_present(const void *src, int w, int h, size_t pitch,
                          diatom_pixfmt fmt, diatom_rect dst, diatom_filter filter)
 {
@@ -1778,6 +1849,7 @@ void diatom_port_present(const void *src, int w, int h, size_t pitch,
 	f->fmt = fmt;
 	f->dst = dst;
 	f->filter = filter;
+	f->strength = g_strength;
 	f->nplanes = g_nplanes;
 	if (g_nplanes) memcpy(f->planes, g_planes, sizeof g_planes[0] * (size_t)g_nplanes);
 
@@ -2045,6 +2117,7 @@ void diatom_port_present_gpu(int w, int h, diatom_rect dst, diatom_filter filter
 	f->fmt = DIATOM_PIX_XRGB8888;
 	f->dst = dst;
 	f->filter = filter;
+	f->strength = g_strength;
 	f->fence = fence;
 	f->seq = g_gpu_seq + 1;         /* g_gpu_seq is this thread's alone to change */
 	f->nplanes = g_nplanes;
