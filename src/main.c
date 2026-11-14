@@ -13890,7 +13890,8 @@ static menu_result scraper_screen(app *a)
  * The real drawing on stand-in systems, without a card or a run: 0 the plan
  * with videos off, 1 with three systems' on, 2 with one, 3 Systems, 4 a long
  * name in focus, 5 Videos for, 6 Settings, 7 the run at T ms, 8 done, 9
- * done with one system's videos, 10 offline, 11 a system's Box Art. Covers
+ * done with one system's videos, 10 offline, 11 a system's Box Art, 12
+ * done with videos asked for and no ScreenScraper account. Covers
  * from ZYPEROS_LOOK_COVERS (paths split by ':') and their systems'
  * indices from ZYPEROS_LOOK_SYS, when a shot has them. */
 static int shot_scraper_page = -1, shot_scraper_page_t = 7180;
@@ -13915,7 +13916,7 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 	v->a = a;
 	v->fixture = true;
 	v->net = state != 10;
-	v->ss_in = state != 9;      /* done-one: videos on, no account */
+	v->ss_in = state != 12;     /* videos asked for, no account */
 	v->mb_video = SCP_MB_PER_VIDEO;
 	for (i = 0; i < 9; i++) {
 		scp_sys *s = &v->s[v->n++];
@@ -13938,8 +13939,8 @@ static void scp_fixture(scp_view *v, app *a, int state, int t)
 	}
 	v->focus = state == 4 ? 7 : 4;
 	v->where = state == 3 || state == 4 || state == 5 ? SCP_SYSTEMS : state == 7 ? SCP_RUN
-	         : state == 8 || state == 9 ? SCP_DONE : SCP_PLAN;
-	if (state == 7 || state == 8 || state == 9) {
+	         : state == 8 || state == 9 || state == 12 ? SCP_DONE : SCP_PLAN;
+	if (state == 7 || state == 8 || state == 9 || state == 12) {
 		const char *env = getenv("ZYPEROS_LOOK_COVERS"), *sy = getenv("ZYPEROS_LOOK_SYS");
 		char buf[8192], *p, *save = NULL, names[SCP_RING][96];
 		int sys[SCP_RING], nc = 0, L, k;

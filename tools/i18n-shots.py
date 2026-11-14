@@ -290,6 +290,7 @@ EXTRA = {
     "scraper-page-done-one": ("demo", "PS1", ["--scraper-page", "9"]),
     "scraper-page-offline": ("demo", "PS1", ["--scraper-page", "10"]),
     "scraper-page-boxart": ("demo", "PS1", ["--scraper-page", "11"]),
+    "scraper-page-done-no-account": ("demo", "PS1", ["--scraper-page", "12"]),
     # and the Video Snaps page it opens: how the shelf plays them, the room
     "scraper-video-snaps": ("demo", "PS1", ["--scraper", "3"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
