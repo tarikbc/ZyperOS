@@ -102,6 +102,7 @@ something once broke in a way nothing noticed:
 | `check-tour` | the tutorial's steps: what each button is to it and which glyph part the hand lights on each device, every step in order and what each waits for, the deaf start of a step for every key, START, every wrong press and its words, every button's name, POWER only in its own step, the reward's hold, the demonstration loops, Zyper's moves (the rig's, the corner's rise from where he is, the hello's pop-in), the little shelf's colors against `config/systems.cfg`, and `tour.done` saved only for a tour that is seen (no SDL) |
 | `check-tour-shots` | the tutorial as the launcher draws it, in both themes: Zyper only for the reward and a wrong press and one at a time in the power step and through the finish transition, the check disc, his bubble clear of "START: skip"; and the launcher's first start showing it on a fresh database and not after `--set tour.done=1` (builds the host launcher; skips without SDL2) |
 | `check-textfade` | cached text first drawn at partial opacity reaches the same pixels as text first drawn fully opaque, in both themes, through an SDL software renderer with no window |
+| `check-glyphs` | the marks drawn from strokes (src/ds/glyph.c): every one within 32 strokes and 4 arrowheads, counted as it asks for them, kept or not; and the cache, full, giving the same pixels for a mark drawn again (needs SDL2) |
 | `check-zyper` | Zyper as the launcher draws him: in the top ZyperOS menu and no other, his tongue in after a failure, his eyes shut in a blink, and his shadow on Beard, in the menu and on the power-off screen where it goes out with him, never on Salt & Pepper; the host build's shots read back with Python's standard library (builds the host launcher; skips without SDL2) |
 | `check-portload` | the port loading screen over a white cover, a black one and a Nintendo DS game with a black one, in both themes: its words at 4.5:1 and its band at 3:1 as the screen reads them back, and neither words nor cover in Zyper's frame (builds the host launcher; skips without SDL2) |
 | `check-flip` | both home layouts, generated game covers and Now Playing match a cold start after a theme change; source sprites remain present, and removed settings never restore old layouts |
@@ -269,7 +270,19 @@ Menu Music's page, the cursor on ROW and then STEPS presses of Down, a frame
 each, so the list goes round (`foot`: no cursor, the note pinned under the
 rows).
 `python3 tools/i18n-shots.py --keep DIR` writes the main screens in every
-language (`make check-i18n-shots`).
+language (`make check-i18n-shots`); `--theme dark` draws them in Salt &
+Pepper, and `--binary PATH` with another launcher.
+
+`make pixel-gate` (`tools/pixel-gate.py`) holds a change that means to
+change nothing on the screen to the same pixels: it builds the launcher at
+`BASE` (origin/main) in a worktree of its own and here, takes every shot of
+`check-i18n-shots` in every language and both themes with each, and
+compares them as decoded pixels, printing "pixel gate: K of N frames
+changed" and each one, with before and after sheets of what changed in
+`build-native/pixel-gate/`. Some shots or one language:
+`make pixel-gate GATE='--lang en usb-ask hare'`; `--allow-changes` for a
+change that means to change them. Not in `make check`: it builds twice and
+takes about 9,200 frames a side.
 
 `--tour STEP [MS [DONE]]` draws a frame of the tutorial in place of the shelf:
 STEP is `lang` (the language step: its cursor steps a language a second,
