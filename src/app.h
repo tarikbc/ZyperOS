@@ -41,6 +41,10 @@ typedef struct {
 	/* Index into SHADERS, this system's: its own choice, or the one MENU set
 	 * for every system (shader_load). Zero is Off. */
 	int shader;
+	/* How strongly that shader is drawn, when it is an old screen
+	 * (shader_has_strength): percent, 10 to 100, this system's own or
+	 * MENU's (src/strength.h). Zero, never loaded, reads 100. */
+	int strength;
 	/* Index into SORTS. Zero is by name, which is what every shelf was
 	 * before this existed and what an untouched one still is. On Muse's
 	 * shelf an ml_order instead, whose zero is by artist. */
@@ -147,6 +151,17 @@ static const struct { const char *name; str_id text; bool gpu; } SHADERS[] = {
 static inline const char *shader_label(int k)
 {
 	return T(SHADERS[k >= 0 && k < SHADER_COUNT ? k : 0].text);
+}
+
+/* Whether shader k has a Strength row under it (src/strength.h): the old
+ * screens, whose lines and grid are an effect over the picture. Off and
+ * Sharp-Shimmerless only scale it, with nothing to weaken. The old screens
+ * are the `gpu` ones today, so only where they are drawn (a card moved to a
+ * Brick draws them as Sharp-Shimmerless); a GPU scaler added later is not
+ * an effect and would want a flag of its own here. */
+static inline bool shader_has_strength(int k)
+{
+	return k >= 0 && k < SHADER_COUNT && SHADERS[k].gpu && plat_gpu_shaders();
 }
 
 typedef struct {

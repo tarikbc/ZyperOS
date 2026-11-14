@@ -289,6 +289,8 @@ static void parse_line(char *line, diatom_msg *out)
 		else if (!strcmp(field, "ms"))    out->count = (int)strtol(v, NULL, 10);
 		else if (!strcmp(field, "mode"))  snprintf(out->dmode,  sizeof out->dmode,  "%s", v);
 		else if (!strcmp(field, "filter"))snprintf(out->dfilter,sizeof out->dfilter,"%s", v);
+		else if (!strcmp(field, "strength"))
+			snprintf(out->dstrength, sizeof out->dstrength, "%s", v);
 		/* anything else: forward compatibility, ignore */
 	}
 }

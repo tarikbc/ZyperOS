@@ -350,6 +350,10 @@ void diatom_port_planes(const diatom_plane *planes, int n)
 	g_nplanes = n;
 }
 
+/* SDL's renderer draws no old screens (CRT, Scanlines, LCD), so there is no
+ * effect here to weaken */
+void diatom_port_strength(int percent) { (void)percent; }
+
 void diatom_port_present(const void *src, int w, int h, size_t pitch,
                          diatom_pixfmt fmt, diatom_rect dst,
                          diatom_filter filter)
