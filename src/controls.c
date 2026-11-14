@@ -1181,3 +1181,101 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 	}
 	return n;
 }
+
+/* ---------- remapping: what a system offers --------------------------------
+ *
+ * Targets (src/remap.h) and this table's buttons are the same eight in a
+ * row, then Start and Select in the other order. */
+static int pad_of_target(int t)
+{
+	if (t >= RT_A && t <= RT_R2) return P_A + (t - RT_A);
+	if (t == RT_START) return P_START;
+	if (t == RT_SELECT) return P_SELECT;
+	return -1;
+}
+
+static int target_of_pad(int p)
+{
+	if (p >= P_A && p <= P_R2) return RT_A + (p - P_A);
+	return p == P_START ? RT_START : p == P_SELECT ? RT_SELECT : -1;
+}
+
+int ctl_remap_choices(const char *tag, const char *ext, const char *map,
+                      rm_choice *out, int max)
+{
+	const ctl_pad *pd = pad_for(tag, ext);
+	int to[P_COUNT], face[4], nface = 0, n = 0, k, j;
+	bool turbo[P_COUNT] = { false }, seen[P_COUNT] = { false };
+
+	if (!pd) return 0;
+	for (k = 0; k < P_COUNT; k++) to[k] = k;
+	apply_map(map, to, turbo);
+	/* the faces by the cap that gives each, then any no cap gives */
+	for (k = P_A; k <= P_Y; k++) {
+		const int f = to[k];
+
+		if (f > P_Y || seen[f] || !label_set(&pd->pad[f])) continue;
+		seen[f] = true;
+		face[nface++] = f;
+	}
+	for (k = P_A; k <= P_Y; k++)
+		if (!seen[k] && label_set(&pd->pad[k])) face[nface++] = k;
+	for (j = 0; j < nface && n < max; j++)
+		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), 0 };
+	for (k = P_L1; k <= P_SELECT && n < max; k++)
+		if (label_set(&pd->pad[k]))
+			out[n++] = (rm_choice){ (signed char)target_of_pad(k), 0 };
+	for (j = 0; j < nface && n < max; j++)
+		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), RM_TURBO };
+	if (n < max) out[n++] = (rm_choice){ RM_NONE, 0 };
+	return n;
+}
+
+void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, size_t n)
+{
+	const ctl_pad *pd = pad_for(tag, ext);
+	const int p = c.to == RM_NONE ? -1 : pad_of_target(c.to);
+	char said[64];
+
+	if (c.to == RM_NONE) {
+		snprintf(out, n, "%s", T(S_CONTROLS_NOTHING));
+		return;
+	}
+	if (!pd || p < 0 || !label_set(&pd->pad[p])) {
+		snprintf(out, n, "%s", "");
+		return;
+	}
+	label_say(&pd->pad[p], said, sizeof said);
+	if (c.turbo) snprintf(out, n, T(S_CONTROLS_TURBO), said);
+	else snprintf(out, n, "%s", said);
+}
+
+bool ctl_letter_layout(const char *tag, rm_table *letters)
+{
+	const ctl_pad *pd = pad_for(tag, NULL);
+	int k, lettered = 0;
+	bool differs = false;
+	rm_table l;
+
+	if (!pd) return false;
+	rm_identity(&l);
+	for (k = P_A; k <= P_Y; k++) {
+		const ctl_label *lab = &pd->pad[k];
+		const char *s = lab->name;
+		int cap;
+
+		/* the faces a pad has are the first ones, as a Pocket's two */
+		if (!label_set(lab)) continue;
+		if (k != lettered) return false;
+		/* a letter of the pad's own, not words about one ("Button X") */
+		if (lab->has_words || !s || !s[0] || s[1] || !strchr("ABXY", s[0])) return false;
+		lettered++;
+		cap = s[0] == 'A' ? P_A : s[0] == 'B' ? P_B : s[0] == 'X' ? P_X : P_Y;
+		l.b[cap] = (rm_choice){ (signed char)target_of_pad(k), 0 };
+	}
+	for (k = P_A; k <= P_Y; k++)
+		if (l.b[k].to != rm_own(k)) differs = true;
+	if (lettered < 2 || !differs) return false;
+	if (letters) *letters = l;
+	return true;
+}

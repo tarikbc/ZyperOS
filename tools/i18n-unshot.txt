@@ -157,6 +157,7 @@ clock.label_12h
 
 # controls: no shot draws it yet
 controls.battery
+controls.nothing  # the Controls tab draws it (task 7); no screen says it yet
 controls.show_keypad
 controls.disk_side
 controls.eject_disk

@@ -4,6 +4,7 @@
 
 #include "menu.h"
 #include "portdoc.h"
+#include "remap.h"
 
 /* Every button, and what it does where: the one place ON THE DEVICE that says
  * so. Eric's, 2026-09-18.
@@ -156,5 +157,30 @@ bool ctl_has_states(const char *tag);
  * same twice is itself, and anything else "C/B". Into out (cap bytes);
  * false when it does not fit. Pure, for the check. */
 bool ctl_pair_value(const char *a, const char *b, char *out, int cap);
+
+
+/* ---------- remapping: what a system offers (src/remap.h) --------------------
+ *
+ * The choices a button can be given on a system, from the same table the
+ * pages are: the system's labelled targets, faces first (ordered by the
+ * handheld cap that gives each under `map`, the system's map| spec, NULL or
+ * "" for none, so the Dreamcast reads A, B, X, Y and the PlayStation circle,
+ * cross, triangle, square), then the shoulders, Start and Select in the
+ * order of the table, then Turbo of each face in the same order, then
+ * Nothing. Into out, at most max; the count. 0 for a system this does not
+ * know. */
+int ctl_remap_choices(const char *tag, const char *ext, const char *map,
+                      rm_choice *out, int max);
+
+/* A choice as the core names it, in the language that is on: its name (shapes
+ * for the PlayStation and the PSP), "Turbo %s", or the Nothing string. */
+void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, size_t n);
+
+/* The layout where each face cap gives the button it names, in letters, for
+ * a system whose faces are lettered A, B, X, Y in the table and carry at
+ * least two of them out of place: the Dreamcast, the Saturn, the Neo Geo
+ * Pocket and its Color. letters is the identity with the faces written.
+ * False for the rest (shapes, numbers, letters already in place). */
+bool ctl_letter_layout(const char *tag, rm_table *letters);
 
 #endif

@@ -473,6 +473,17 @@ de = Turbo %s
 ja = %s 連射
 it = Turbo %s
 
+[controls.nothing]
+note = What a button does when it is set to nothing, in the Controls tab's list of choices: the game gets no button from it. Short, a value.
+en = Nothing
+zh-Hans = 无
+es = Nada
+pt-BR = Nada
+fr = Rien
+de = Nichts
+ja = なし
+it = Niente
+
 [controls.fire]
 note = A joystick's button (Atari 2600), and a phone's OK/Fire key (J2ME).
 en = Fire

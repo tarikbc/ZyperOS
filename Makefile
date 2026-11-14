@@ -31,7 +31,7 @@ NATIVE_J = $(if $(filter -j%,$(MAKEFLAGS))$(findstring j,$(filter-out -%,$(first
 CHECKS = check-cheevos check-hare check-portal check-httpd check-idle check-taskhold check-saver check-rahash check-rasubmit check-raoffline check-signin check-noticeq check-badges check-badge-shots \
          check-raset check-xfer check-sshlink check-usblink check-devmode check-ctl check-menus check-artscrape check-artrun check-sgdb check-snapshelf check-audioout \
          check-db check-gamedel check-gamern check-esmedia check-media check-snapsize check-corepins check-targets check-storage check-stats check-sort check-bt check-ss check-titles check-savedlib check-search \
-         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-controls-shots check-logpack \
+         check-muselib check-musequeue check-museart check-mp4lock check-mp4frame check-p2share check-webtheme check-p2ws check-p2codec check-p2d check-play check-p2 check-resident check-controls check-remap check-controls-shots check-logpack \
          check-clock check-status check-battery check-battery-eta check-dslang check-dsresume check-corestate check-core-stamp check-core-room check-px2-perf check-px2-snap check-px2 check-lowbatt check-heat check-charging check-corner check-dsv check-sidelights check-osdbar check-themefile check-pkkeys check-portkeys-flow check-portkeys check-zyhome check-theme check-config check-kbnav check-randgame check-shelfdir check-look \
          check-tween check-menumotion check-menusnap check-cardgen check-blur check-roundrect check-rowmacro check-emptyhome check-zyperrig check-sysmark check-flip check-menushots check-design \
          check-systemart check-linebreak check-portload check-zyper check-uisound check-bgm check-bgm-tracks check-sounds check-messages \
@@ -494,10 +494,10 @@ check-portdoc: build-native/portdoc-check
 	@./build-native/portdoc-check
 
 build-native/portdoc-check: tools/portdoc-check.c src/portdoc.c src/portdoc.h src/rajson.c src/rajson.h \
-                           src/controls.c src/controls.h src/portmenu.h src/menu.h $(I18N_SRC) FORCE
+                           src/controls.c src/controls.h src/remap.c src/remap.h src/portmenu.h src/menu.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ tools/portdoc-check.c src/portdoc.c \
-	      src/rajson.c src/controls.c $(I18N_SRC)
+	      src/rajson.c src/controls.c src/remap.c $(I18N_SRC)
 
 # plastron's make push writes the system slot the Pixel 2 is not running,
 # never the one it runs from (scripts/px2-slot.sh): the slot choice, the
@@ -1090,6 +1090,21 @@ check-systemart:
 check-controls: build-native/controls-check
 	@./build-native/controls-check
 
+# The remap rules, pure: Diatom's map language read and written, the swap rule
+# of a button's change, what is stored for a scope, and the choices a system
+# offers (docs/superpowers/specs/2026-11-13-button-remap-design.md).
+check-remap: build-native/remap-check
+	@./build-native/remap-check
+
+build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/controls.c \
+                          src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
+                          src/db.c src/db.h src/atomic.c config/systems.cfg \
+                          $(I18N_SRC) FORCE
+	@mkdir -p build-native
+	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
+	      -o $@ tools/remap-check.c src/remap.c src/controls.c src/config.c src/db.c src/atomic.c \
+	      $(I18N_SRC) -lsqlite3
+
 # The in-game Controls pages and the home's A to Z order, drawn
 check-controls-shots:
 	@if pkg-config --exists sdl2 SDL2_image SDL2_ttf 2>/dev/null; then \
@@ -1098,23 +1113,23 @@ check-controls-shots:
 	@sh tools/controls-shots-check.sh
 
 build-native/controls-check: tools/controls-check.c tools/legend.h src/controls.c \
-                            src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
+                            src/controls.h src/remap.c src/remap.h src/padglyph.h src/menu.h src/config.c src/config.h \
                             src/db.c src/db.h src/atomic.c config/systems.cfg \
                             $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/controls-check.c src/controls.c src/config.c src/db.c src/atomic.c \
+	      -o $@ tools/controls-check.c src/controls.c src/remap.c src/config.c src/db.c src/atomic.c \
 	      $(I18N_SRC) -lsqlite3
 
 build-native/menu-check: tools/menu-check.c tools/legend.h src/wifi_menu.c src/wifi.c \
-                        src/sys_menu.c src/menu.c src/game_menu.c src/controls.c \
+                        src/sys_menu.c src/menu.c src/game_menu.c src/controls.c src/remap.c \
                         src/audioout.c src/sidelights.c src/wifi_menu.h src/sys_menu.h \
                         src/game_menu.h src/menu.h src/audioout.h src/sidelights.h \
                         src/controls.h src/spawn.c src/spawn.h $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g -o $@ \
 	      tools/menu-check.c src/wifi_menu.c src/wifi.c src/sys_menu.c \
-	      src/menu.c src/game_menu.c src/controls.c src/audioout.c src/sidelights.c \
+	      src/menu.c src/game_menu.c src/controls.c src/remap.c src/audioout.c src/sidelights.c \
 	      src/keyhints.c src/spawn.c $(I18N_SRC)
 
 # What the launcher tells the side lights' gauge (src/sidelights.h): the lines
