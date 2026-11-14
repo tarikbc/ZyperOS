@@ -55,24 +55,36 @@ bool rms_system(const system_cfg *s, rm_table *out)
 bool rms_game(const system_cfg *s, const char *file, rm_table *out)
 {
 	char key[KEY_MAX];
-	rm_table sys;
+	rm_table sys, def;
 
 	rms_system(s, &sys);
+	rms_default(s, &def);
 	key_of(s, file, key, sizeof key);
-	return stored(key, &sys, out);
+	/* The game's pairs are over ZyperOS's default, the same base as the
+	 * system's: the first change copied the whole table into the game, and a
+	 * later change to the system's does not reach it */
+	return stored(key, &def, out) ? true : (*out = sys, false);
 }
 
 void rms_put(const system_cfg *s, const char *file, const rm_table *t)
 {
 	char key[KEY_MAX], v[256];
-	rm_table def;
+	rm_table def, same_as;
 
-	if (file) rms_system(s, &def);
-	else      rms_default(s, &def);
+	rms_default(s, &def);
+	/* The key goes when t equals what the scope falls back to: the system's
+	 * table for a game, ZyperOS's for the system */
+	if (file) rms_system(s, &same_as);
+	else      same_as = def;
 	key_of(s, file, key, sizeof key);
 	rm_store(&def, t, v, sizeof v);
-	if (v[0]) db_set_str(db_lib(), key, v);
-	else      db_del(db_lib(), key);
+	if (rm_equal(&same_as, t)) {
+		db_del(db_lib(), key);
+		return;
+	}
+	/* A game set back to ZyperOS's default under a system that differs holds
+	 * no pairs, and still holds its own table */
+	db_set_str(db_lib(), key, v[0] ? v : "1;");
 }
 
 void rms_reset(const system_cfg *s, const char *file)

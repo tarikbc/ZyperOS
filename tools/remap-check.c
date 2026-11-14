@@ -334,15 +334,39 @@ static void game_copies_system(void)
 	rms_game(&s, "Nights.chd", &g);
 	rm_set(&g, &g, RM_R1, (rm_choice){ RT_L1, 0 });
 	rms_put(&s, "Nights.chd", &g);
-	/* the game's key holds R1 over the system's table, and reads back whole */
+	/* the game's key holds the system's swap and R1, over ZyperOS's default */
 	ok = db_get_str(db_lib(), "map.SAT.Nights.chd", v, sizeof v, NULL) && !strncmp(v, "1;", 2);
+	ok = ok && strstr(v, "b:y") && strstr(v, "y:b") && strstr(v, "r1:l1");
 	ok = ok && rms_game(&s, "Nights.chd", &back) && rm_equal(&back, &g);
-	ok = ok && back.b[RM_B].to == RT_Y && back.b[RM_R1].to == RT_L1;
-	/* the swap B/Y of the system reaches a game of its own: it holds B too */
+	report(ok && back.b[RM_B].to == RT_Y && back.b[RM_R1].to == RT_L1, "game_copies_system");
+}
+
+static void game_ignores_later_system_change(void)
+{
+	system_cfg s = sys_of("SAT", "", "", false);
+	rm_table sys, g, back;
+	bool ok;
+
+	rm_identity(&sys);
+	rm_set(&sys, &sys, RM_B, (rm_choice){ RT_Y, 0 });
+	rms_put(&s, NULL, &sys);
+	rms_game(&s, "Panzer.chd", &g);
+	rm_set(&g, &g, RM_R1, (rm_choice){ RT_L1, 0 });
+	rms_put(&s, "Panzer.chd", &g);
+	/* the system's swap is taken away: the game keeps it, and R1 */
 	rm_identity(&sys);
 	rms_put(&s, NULL, &sys);
-	rms_game(&s, "Nights.chd", &back);
-	report(ok && back.b[RM_R1].to == RT_L1, "game_copies_system");
+	ok = rms_game(&s, "Panzer.chd", &back);
+	ok = ok && back.b[RM_B].to == RT_Y && back.b[RM_Y].to == RT_B && back.b[RM_R1].to == RT_L1;
+	/* a game set to the default under a system that differs keeps it */
+	rm_set(&sys, &sys, RM_B, (rm_choice){ RT_Y, 0 });
+	rms_put(&s, NULL, &sys);
+	rm_identity(&g);
+	rms_put(&s, "Panzer.chd", &g);
+	ok = ok && rms_game(&s, "Panzer.chd", &back) && back.b[RM_B].to == RT_B;
+	/* a game without a key of its own follows the system */
+	rms_game(&s, "Other.chd", &back);
+	report(ok && back.b[RM_B].to == RT_Y, "game_ignores_later_system_change");
 }
 
 static void stick_default_n64_on_dc_off(void)
@@ -464,6 +488,7 @@ static int store_checks(void)
 	game_key_deleted_when_equal_system();
 	system_key_deleted_when_equal_default();
 	game_copies_system();
+	game_ignores_later_system_change();
 	stick_default_n64_on_dc_off();
 	stick_put_default_deletes();
 	run_stick_keys();

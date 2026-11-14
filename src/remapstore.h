@@ -14,7 +14,8 @@
  * sections 4, 5 and 9.
  *
  *     map.<TAG>          the system's pairs that differ from ZyperOS's default
- *     map.<TAG>.<file>   a game's pairs that differ from the system's table
+ *     map.<TAG>.<file>   a game's pairs that differ from ZyperOS's default, the whole
+ *                        table copied at its first change
  *     stick.<TAG>.<file> "1" or "0"; absent is the system's default
  *
  * A key never holds a table equal to its default, so undoing a change
@@ -32,9 +33,9 @@ bool rms_system(const system_cfg *s, rm_table *out);
  * system's table (false) */
 bool rms_game(const system_cfg *s, const char *file, rm_table *out);
 
-/* Keeps t for the game, or for the system when file is NULL. Stored against
- * the scope's default (the game's is the system's table, the system's is
- * rms_default); the key is deleted when t equals it. */
+/* Keeps t for the game, or for the system when file is NULL, as pairs over
+ * rms_default; the key is deleted when t equals what the scope falls back to
+ * (the system's table for a game, rms_default for the system). */
 void rms_put(const system_cfg *s, const char *file, const rm_table *t);
 
 /* Deletes the scope's key: the game goes back to the system's table, the
