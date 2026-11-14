@@ -29,7 +29,8 @@ cp "$ROOT/site/models/pixel2.glb" "$ROOT/site/models/pixel2-poster.png" "$OUT/mo
 cp "$ROOT/res/web/icon.svg" "$ROOT/res/web/zyper.svg" "$OUT/img/"
 # Every screenshot in the light theme; dark/ only for the light-and-dark section
 for f in lockup lockup-light systems gallery shelf shelf-n64 shelf-snes favorites info cheevos cheevo-notice menu scraper \
-         mp4 storage nowplaying portal portmaster battery gamemenu-shader controls-hotkeys media folders list es-shelf info-rename display theme; do
+         mp4 storage nowplaying portal portmaster battery gamemenu-shader controls-hotkeys media folders list es-shelf info-rename display theme \
+         shaders screensaver play-phone-side hare; do
 	cp "$ROOT/res/readme/$f.png" "$OUT/img/"
 done
 for f in shelf-n64 systems; do

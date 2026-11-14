@@ -4,7 +4,7 @@ summary: What Knulli's own pages and releases say about the Pixel 2, beside Zype
 crumb: ZyperOS vs Knulli
 topic: compare
 published: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-13
 image: scraper
 image_alt: MENU > Scraper in ZyperOS, with the covers each source found
 related: best-custom-firmware-gkd-pixel-2, zyperos-vs-muos, zyperos-vs-rocknix
@@ -25,7 +25,7 @@ weight: 60
   <tbody>
     <tr><th scope="row">License</th><td class="us">GPL-3.0, free</td><td>Buildroot's GPL-2.0-or-later; no license file of Knulli's own</td></tr>
     <tr><th scope="row">Latest for the Pixel 2</th><td class="us">v1.0.5 (November 2026)</td><td>20260511 "Scarab" (May 2026), a stable build</td></tr>
-    <tr><th scope="row">Systems</th><td class="us">40, and Ports</td><td>[unk]</td></tr>
+    <tr><th scope="row">Systems</th><td class="us">44, and Ports</td><td>[unk]</td></tr>
     <tr><th scope="row">Wi-Fi on the Pixel 2</th><td class="us">[yes: Tested with the TP-Link TL-WN725N] Tested</td><td>[unk]</td></tr>
     <tr><th scope="row">Games over the network</th><td class="us">[yes: A web page over Wi-Fi or the handheld's own network] Web page</td><td>[yes: Samba, which you turn on, and SCP or SFTP with SSH; no web page] Samba, SFTP</td></tr>
     <tr><th scope="row">Games over the USB cable</th><td class="us">[yes: The same web page, and SSH] Web page</td><td>[yes: ADB, for the Pixel 2] ADB</td></tr>
@@ -53,6 +53,7 @@ weight: 60
 
 <h2>Adding games</h2>
 <p>Knulli's docs offer Samba, which you turn on, and SCP or SFTP with its SSH service. They say a web page for file transfer is not supported and not planned. Over the USB cable, Knulli uses ADB, and its build gives the Pixel 2 that capability. ZyperOS opens one web page in any browser, behind a PIN, over Wi-Fi, its own network, or the USB cable. <a href="/blog/add-games-gkd-pixel-2/">The adding games guide</a> shows it.</p>
+<p>Moving over from Knulli? Copy its <code>roms</code> folders onto the ZyperOS card as they are. Its folder names, such as <code>nds</code>, <code>psx</code> and <code>megadrive</code>, are read as ZyperOS's own systems, and the covers, video snaps, names and details its scraper left show on the shelf with no new scrape. The folders still work in Knulli.</p>
 
 <h2>Box art, previews and achievements</h2>
 <p>Knulli's scraper asks ScreenScraper, TheGamesDB and ArcadeDB over the network, and its default theme, Art Book Next, plays a scraped video in the game list. ZyperOS fetches covers from libretro with no account, ScreenScraper and SteamGridDB, and turns a cover into its video snap after a few seconds. Both have RetroAchievements built in; ZyperOS keeps a game's achievements on the card after its first start, so it plays offline.</p>
