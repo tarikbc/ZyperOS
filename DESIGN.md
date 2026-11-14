@@ -1721,8 +1721,9 @@ its value in **menu** **text** (the PIN in **title**), digits tabular. Under
 the column at 584 and 632, two **meta** lines, the name **text-soft** and the
 value right-aligned **text-dim** at 976: Phones (`waiting`, `1 joined`) and
 Now, the transfer's news, which scrolls when it is too wide (principle 8).
-The key legend "B: close" is centered at the foot (11.4), "B: keep going or
-stop" while files move (11.23). No status corner, no Zyper. src/hotpanel.c draws it; tools/qr-check.c reads its code back.
+The key legend "B: close" is centered at the foot (11.4), at a page's foot
+height (704, DS_PAGE_FOOT_Y, as File Transfer's page that follows it; 718
+until 2026-11-14), "B: keep going or stop" while files move (11.23). No status corner, no Zyper. src/hotpanel.c draws it; tools/qr-check.c reads its code back.
 
 - **The code.** One module is 12 units, half again the grid step, so the
   code is 444 units with its quiet zone of four modules: 5.5 cm on the Pixel
@@ -4071,8 +4072,8 @@ when its change lands.
   Wi-Fi, a bolt, headphones and arrows that are `ui_glyph`'s in another
   hand; six scroll triangles; three hearts.
 - A page's two-line heading is laid out three ways (`DS_HEAD_BALANCED`,
-  `DS_HEAD_TWO`, `DS_HEAD_SUB`). The keys at a screen's foot stand at seven
-  heights (680, 702, 704, 714, 718, 720, 724), and a page's foot puts its
+  `DS_HEAD_TWO`, `DS_HEAD_SUB`). The keys at a screen's foot stand at six
+  heights (680, 702, 704, 714, 720, 724), and a page's foot puts its
   hints 40 apart, Flash Drive's pair 48.
 - A progress bar is drawn in 19 places with six rules for its smallest
   fill; `ds_bar` is the one the pages, the shelf and the list share.
