@@ -21,6 +21,8 @@
 /* The column the handheld stands in: the rows and the focus fill start this
  * far in from the content's left edge (the mock's, 2026-11-13) */
 #define CTLSCR_SIDE_W 280
+/* The page's panel, as wide as the in-game menu's */
+#define CTLSCR_PAGE_W 860
 
 /* What the tab is about: the game the menu is over, and where its choices
  * are kept and sent */
@@ -74,5 +76,18 @@ void ctlscr_question(const ctlscr_game *g, char *q, size_t n);
 /* A shot's (--gm-pick): the choices of the button on row `id` (ct_row) as A
  * there opens them, over what is drawn already */
 void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id);
+
+/* The Controls list as a page of its own over the shelf, for a game with
+ * buttons of its own (the details page's Buttons row): the game's name for
+ * the heading, no tab row, the handheld beside it as in the tab, Applies To
+ * fixed on This Game, and no game running, so a change is kept on the card
+ * and sent to nobody. `owner` is the game's own system (shelf_owner), `file`
+ * and `title` the game's as the shelf names them. Returns when B goes back. */
+void ctlscr_page(app *a, const system_cfg *owner, const char *file,
+                 const char *title, unsigned accent);
+
+/* One frame of that page over the shelf, the cursor on row `sel`, for a shot */
+void ctlscr_page_shot(app *a, const system_cfg *owner, const char *file,
+                      const char *title, unsigned accent, int sel);
 
 #endif

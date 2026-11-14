@@ -661,3 +661,99 @@ void ctlscr_shot_pick(app *a, const ctlscr_game *g, int id)
 	menu_draw_styled(a, &st, c.b.head, rows, n, sel);
 	g_cs.mode = CS_TAB;
 }
+
+/* ---- the page of its own ------------------------------------------------------ */
+
+/* What the page's runner carries: the game it is about, its rows' value
+ * colors and sounds (read every frame through the style), and the style the
+ * pages it opens take their width and accent from */
+typedef struct {
+	app          *a;
+	ctlscr_game   g;
+	menu_style    over;
+	const char   *title;
+	unsigned      vcol[CT_MAX_ROWS];
+	unsigned char sound[CT_MAX_ROWS];
+} cs_page;
+
+static void page_game(cs_page *p, const system_cfg *owner, const char *file,
+                      const char *title, unsigned accent)
+{
+	memset(p, 0, sizeof *p);
+	p->title = title;
+	p->over.fixed_w = CTLSCR_PAGE_W;
+	p->over.accent = accent;
+	p->g.s = owner;
+	p->g.file = file;
+	p->g.title = title;
+	/* Applies To is fixed on This Game, and nothing is paused under it */
+	p->g.fixed_game = true;
+	p->g.running = false;
+	p->g.over = &p->over;
+}
+
+static int page_build(void *ctx, menu_row *rows, int max, const char **heading)
+{
+	cs_page *p = ctx;
+	int n = ctlscr_rows(p->a, &p->g, rows, p->vcol, p->sound, NULL);
+
+	*heading = p->title;
+	return n < max ? n : max;
+}
+
+static menu_result page_key(app *a, void *ctx, in_button key, int sel)
+{
+	cs_page *p = ctx;
+
+	/* X does nothing here: it quits from the in-game menu, and there is no
+	 * game to quit */
+	if (key == IN_X) return MENU_STAY;
+	ctlscr_key(a, &p->g, key, sel >= 0 && sel < g_cs.n ? (int)g_cs.ids[sel] : -1);
+	return MENU_STAY;
+}
+
+void ctlscr_page(app *a, const system_cfg *owner, const char *file,
+                 const char *title, unsigned accent)
+{
+	cs_page p;
+	menu_style st;
+
+	page_game(&p, owner, file, title, accent);
+	p.a = a;
+	memset(&st, 0, sizeof st);
+	st.fixed_w = CTLSCR_PAGE_W;
+	st.accent = accent;
+	st.sound = p.sound;
+	st.vcolors = p.vcol;
+	st.side = ctlscr_side;
+	st.side_w = CTLSCR_SIDE_W;
+	ctlscr_open();
+	menu_run(a, &st, page_build, page_key, &p);
+	ctlscr_close();
+}
+
+void ctlscr_page_shot(app *a, const system_cfg *owner, const char *file,
+                      const char *title, unsigned accent, int sel)
+{
+	static menu_row rows[CT_MAX_ROWS];
+	cs_page p;
+	menu_style st;
+	int n;
+
+	page_game(&p, owner, file, title, accent);
+	p.a = a;
+	memset(&st, 0, sizeof st);
+	st.fixed_w = CTLSCR_PAGE_W;
+	st.accent = accent;
+	st.side = ctlscr_side;
+	st.side_w = CTLSCR_SIDE_W;
+	st.vcolors = p.vcol;
+	ctlscr_open();
+	n = ctlscr_rows(a, &p.g, rows, p.vcol, p.sound, NULL);
+	if (sel >= n) sel = n - 1;
+	if (sel < 0 || !rows[sel].live) {
+		sel = menu_step_sel(rows, n, sel < 0 ? 0 : sel, +1);
+		if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
+	}
+	menu_draw_styled(a, &st, title, rows, n, sel);
+}

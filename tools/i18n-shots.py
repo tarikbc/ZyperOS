@@ -422,7 +422,13 @@ EXTRA.setdefault("gamemenu-pak", ("demo", "N64", ["--screen", "games", "--gm-tab
 CTL_FOCUS = {"gamemenu-pak": "Mario Kart 64 (USA).z64",
              "gamemenu-controls-n64-end": "Mario Kart 64 (USA).z64",
              **{"gamemenu-controls-" + _n: _SONIC for _n in ("dc", "dc-end", "dc-place", "dc-mixed")}}
-SHOT_LIB = {"gamemenu-controls-all": {_MGS: "1;b:y,y:b"},
+# A game's details with its own buttons (Buttons, This Game), and the page that
+# row opens
+EXTRA.setdefault("info-buttons", ("demo", "PS1", ["--screen", "games", "--info"]))
+EXTRA.setdefault("info-buttons-page", ("demo", "PS1", ["--screen", "games", "--info-buttons"]))
+SHOT_LIB = {"info-buttons": {_MGS: "1;b:y,y:b"},
+            "info-buttons-page": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-all": {_MGS: "1;b:y,y:b"},
             "gamemenu-controls-pick": {_MGS: "1;b:y,y:b"},
             "gamemenu-controls-warn": {_MGS: "1;b:none"},
             "gamemenu-controls-ask": {_MGS: "1;b:y,y:b"},

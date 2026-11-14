@@ -1544,8 +1544,8 @@ static void what_scrolls(void)
  * byte count, no Favorite, which Y does from the shelf, and no Saves, which
  * the carousel shows with the frames themselves. A row is easy to put back by
  * habit. */
-/* Every row of a scraped game but Rename: GI_MAX less that one */
-#define INFO_FULL (GI_MAX - 1)
+/* Every row of a scraped game but Rename and Buttons: GI_MAX less those two */
+#define INFO_FULL (GI_MAX - 2)
 
 static void info_rows(void)
 {
@@ -1683,6 +1683,7 @@ static void info_rows(void)
 
 		rg.can_rename = true;
 		rg.can_favorite = true;
+		rg.own_buttons = true;
 		rg.scraped = true;
 		rg.has_synopsis = true;
 		snprintf(rg.year, sizeof rg.year, "1995");
@@ -1694,6 +1695,39 @@ static void info_rows(void)
 		ck(j == rn - 2 && rr[j].live && !rr[j].value, "Rename, live, just above Delete Game");
 		ck(!strcmp(rr[rn - 1].label, "Delete Game"), "and Delete Game still last");
 	}
+}
+
+/* A game with a key of its own (rms_game) shows its buttons on its details:
+ * Buttons after Favorite, valued This Game, and no other game has the row. */
+static void gi_buttons_row_only_when_own(void)
+{
+	game_info gi;
+	menu_row rows[GI_MAX];
+	int n, i, at = -1, fav = -1, base;
+
+	memset(&gi, 0, sizeof gi);
+	snprintf(gi.cheevos, sizeof gi.cheevos, "none");
+	gi.can_favorite = true;
+	gi.can_delete = true;
+	gi.has_art = true;
+	n = gi_rows(rows, &gi, true);
+	base = n;
+	printf("game info, a game on the system's buttons:\n");
+	for (i = 0; i < n; i++)
+		ck(strcmp(lbl(&rows[i]), "Buttons") != 0, "no Buttons row");
+
+	gi.own_buttons = true;
+	n = gi_rows(rows, &gi, true);
+	printf("game info, a game with its own buttons:\n");
+	ck(n == base + 1, "one row more");
+	for (i = 0; i < n; i++) {
+		if (!strcmp(lbl(&rows[i]), "Buttons")) at = i;
+		if (!strcmp(lbl(&rows[i]), "Favorite")) fav = i;
+	}
+	ck(at >= 0 && fav >= 0 && at == fav + 1, "Buttons right after Favorite");
+	ck(at >= 0 && !strcmp(val(&rows[at]), "This Game"), "valued This Game");
+	ck(at >= 0 && rows[at].live, "and live: A opens it");
+	ck(!strcmp(rows[n - 1].label, "Delete Game"), "Delete Game still last");
 }
 
 
@@ -2687,6 +2721,7 @@ int main(void)
 	window_returns();
 	what_scrolls();
 	info_rows();
+	gi_buttons_row_only_when_own();
 	ingame_rows();
 	quick_slot();
 	n64_pak();

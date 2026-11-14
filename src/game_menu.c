@@ -52,6 +52,12 @@ int gi_rows(menu_row *out, const game_info *gi, bool net)
 	 * fresh, so marking one moved to this page, Y on it or A on the row */
 	if (gi->can_favorite)
 		out[n++] = (menu_row){ T(S_CONTROLS_FAVORITE), gi->favorite ? MENU_KEY_Y_ON : MENU_KEY_Y_OFF, true };
+	/* A game with a key of its own on the card (rms_game) shows its buttons
+	 * here, after Favorite: A opens the Controls list for it alone, so a
+	 * game kept apart from its system can be found and put right from the
+	 * shelf, with no game running. Absent for every other game. */
+	if (gi->own_buttons)
+		out[n++] = (menu_row){ T(S_GAMEMENU_BUTTONS), T(S_GAMEMENU_THIS_GAME), true };
 	/* WHAT THIS SCREEN NO LONGER SAYS, and why, because each was removed on a
 	 * reason rather than to make the list shorter:
 	 *

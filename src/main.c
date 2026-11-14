@@ -12909,6 +12909,13 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file, g->dir);
 	gi->can_favorite = !is_muse(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
+	/* A key of its own on the card (map.<tag>.<file>): read here, so a reset
+	 * on the Buttons page takes the row away when the page comes back */
+	{
+		rm_table own;
+
+		gi->own_buttons = !is_muse(s) && rms_game(s, g->file, &own);
+	}
 
 	/* The save slots are not read here any more. The row that showed them went
 	 * on 2026-09-17 - the carousel shows them when you load, with the frames
@@ -13812,6 +13819,17 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		return MENU_STAY;
 	}
 
+	if (!strcmp(rows[sel].label, T(S_GAMEMENU_BUTTONS))) {
+		/* The Controls list for this game alone, a page over the shelf
+		 * (src/ctltab_screen.h). B comes back here, and the gatherer reads
+		 * the key again: a Reset Buttons there took the row away. */
+		ctlscr_page(a, &a->sys.systems[c->owner], c->g->file, c->g->title, c->st.accent);
+		gi_gather(a, c->owner, c->g, &c->gi);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
+		return MENU_STAY;
+	}
+
 	if (!strcmp(rows[sel].label, T(S_SYSMENU_CHEEVOS))) {
 		/* The set the gatherer loaded to count this row is still the loaded
 		 * one, so the list has what it needs without reloading it. Over the
@@ -13940,6 +13958,21 @@ static void info_preview(app *a, bool net, const char *on_row)
 	ui_scrim(a->r, 0);
 	menu_draw(a, v->list.items[v->cursor].title, rows, n, sel, menu_std_width(a),
 	          a->sys.systems[owner].accent);
+}
+
+/* --info-buttons: the page the Buttons row opens, over the shelf, for the
+ * game under the cursor */
+static void info_buttons_preview(app *a)
+{
+	sysview *v = &a->view[a->sys_cursor];
+	int owner;
+
+	if (v->list.count == 0) return;
+	owner = shelf_owner(a, a->sys_cursor, v->cursor);
+	draw_shelf(a);
+	ui_scrim(a->r, 0);
+	ctlscr_page_shot(a, &a->sys.systems[owner], v->list.items[v->cursor].file,
+	                 v->list.items[v->cursor].title, a->sys.systems[owner].accent, 0);
 }
 
 /* The approved Details layout: system information, then storage and the
@@ -25740,7 +25773,8 @@ static void shot_compose(app *a)
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
-	if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
+	if (shot_info == 4) info_buttons_preview(a);
+	else if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
 	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
 	if (shot_controls >= 0 && (shot_press != SHOT_SWAP || shot_pressed)) {
@@ -27751,6 +27785,8 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--info-delete")) shot_info = 2;
 		else if (!strcmp(argv[i], "--info-rename")) shot_info = 3;
 		else if (!strcmp(argv[i], "--info-art")) shot_info_art = true;
+		/* The Buttons page a game with its own buttons opens from its details */
+		else if (!strcmp(argv[i], "--info-buttons")) shot_info = 4;
 		else if (!strcmp(argv[i], "--delete-ask")) shot_delete_ask = 1;
 		/* The game under the cursor deleted as Delete Game's yes deletes it,
 		 * then the shot: the shelf after, and what went on stderr */

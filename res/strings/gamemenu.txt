@@ -406,6 +406,17 @@ de = Dieses Spiel
 ja = このゲーム
 it = Questo gioco
 
+[gamemenu.buttons]
+note = The game details page's row for a game with its own buttons: a row label beside its value, This Game (gamemenu.this_game). Tight, one word. A opens the Controls list for the game.
+en = Buttons
+zh-Hans = 按键
+es = Botones
+pt-BR = Botões
+fr = Boutons
+de = Tasten
+ja = ボタン
+it = Pulsanti
+
 [gamemenu.own_buttons]
 note = A quiet row under Applies To while it says the system (every game of it) and this game has buttons of its own, which the system's do not reach. A sentence, a whole row of the 580-unit column.
 en = This game keeps its own buttons.
