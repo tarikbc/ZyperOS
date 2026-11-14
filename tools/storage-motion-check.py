@@ -4,7 +4,7 @@
     make check-storage
 
 A on a game on a system's page asks Delete Game's question over the page.
-The page is a base, as Muse's shelf is (src/main.c, store_base_open): MENU's
+The page is a base, as Muse's shelf is (src/storage_screen.c, store_base_open): MENU's
 panel leaves over it when it opens, and a panel opened on it comes from
 nothing. Without that, the question opened as a swap from the last panel
 drawn - MENU's, or the question before - which left over the page first:
