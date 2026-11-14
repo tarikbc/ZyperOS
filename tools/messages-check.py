@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard the 16 result sites against the old blocking holds."""
+"""Guard the 15 result sites against the old blocking holds."""
 from pathlib import Path
 import os
 import re
@@ -39,7 +39,7 @@ def function(name):
                 return raw[match.start():token.end()]
     raise AssertionError(f"unclosed function: {name}")
 
-# The planned source guard holds coverage of all 16 sites. The C harness below
+# The planned source guard holds coverage of all 15 sites. The C harness below
 # then executes the actual loop, with the real timer, motion and snapshots.
 sites = {
     "wifi_key": (0, 3), "ra_signin_screen": (2, 0), "ss_signin_screen": (2, 0),
@@ -47,7 +47,8 @@ sites = {
     # not start (xs_open), the hotspot stopped (xs_stop), and closed for a game
     # (xs_before_game)
     "xs_open": (2, 0), "xs_stop": (1, 0), "xs_before_game": (1, 0),
-    "art_run": (2, 0), "album_art_screen": (1, 0),
+    # MENU > Scraper's page: needs Wi-Fi when A asks for a run with none
+    "scp_page": (0, 1), "album_art_screen": (1, 0),
     "launch_port": (0, 1), "launch": (0, 1),
 }
 for name, counts in sites.items():

@@ -13727,7 +13727,7 @@ static void scp_test(scp_view *v, app *a)
 
 /* ---- the page -------------------------------------------------------------- */
 
-static void scraper_page(app *a, const char *only)
+static void scp_page(app *a, const char *only)
 {
 	scp_view *v = calloc(1, sizeof *v);
 	int base;
@@ -13874,10 +13874,19 @@ static void scraper_page(app *a, const char *only)
 	g_base_page = NULL;
 	g_base_ctx = NULL;
 	g_scp = NULL;
-	refresh_game_titles(a);
 	scp_ring_free(v);
 	for (int i = 0; i < v->n; i++) if (v->s[i].icon) SDL_DestroyTexture(v->s[i].icon);
 	free(v);
+}
+
+/* The page, from MENU or a system's Box Art, and every scrape's exit: the
+ * shelves' names from the library at once, with no restart (the run may
+ * have named games). tools/title-refresh-check.c runs this as it is, with
+ * the page stubbed. */
+static void scraper_page(app *a, const char *only)
+{
+	scp_page(a, only);
+	refresh_game_titles(a);
 }
 
 static menu_result scraper_screen(app *a)
