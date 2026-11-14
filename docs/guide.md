@@ -119,8 +119,8 @@ it away.
 | **F1/F2** | brightness, everywhere, including in game |
 | **MENU** (on the systems row) | the ZyperOS menu - settings that are about the firmware |
 | **MENU** (inside a system) | that system's menu, below |
-| **MENU** (in game) | the in-game menu: Continue, Save, Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit, Pak in a Nintendo 64 game, and Player 2 in an NES game on the Pixel 2 (see **Player 2** below). It opens when you let go, so MENU can be held for brightness |
-| **X** (in the in-game menu) | Quit, from any row: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
+| **MENU** (in game) | the in-game menu, in three tabs that L1 and R1 go round: **Game** (Continue, Save, Load, Quick Slot, Disc in a game on more than one disc, Player 2 in an NES game on the Pixel 2, Achievements, Reset, Quit), **Display** (Display, Shader, and a DS game's Screens, Swap Screens and Stylus) and **Controls** (what each button does, Pak in a Nintendo 64 game). See **Changing a button** below and **Player 2**. It opens when you let go, so MENU can be held for brightness, and it opens on the tab and row you left while you play the same game |
+| **X** (in the in-game menu) | Quit, from any row of any tab: the game ends and the shelf comes back, as A on Quit does. The Quit row shows the X button to remind you |
 | **SELECT+R1** (in game) | quick save: a state into the Quick Slot |
 | **SELECT+L1** (in game) | quick load: the state in the Quick Slot |
 | **SELECT+R2** (in game) | faster: 1.5x, 2x, 3x |
@@ -167,20 +167,63 @@ were, or back into the game - and B goes back one screen at a time.
 Left and right change the page, and the top right of each says which it is, "2 / 5". The pages cover movement, the shelf, games, MP4, and common controls.
 The shelf always runs horizontally.
 
-**Controls in the in-game menu** lists what each button does in the game you
-are playing, on its system. The first pages are the system's own buttons, as
-its emulator reads them: on a Genesis the A button is C, and on a Neo Geo
-Pocket X is a turbo B. The turbo buttons are there too, and a PlayStation
-game's face buttons are drawn as the pad's cross, circle, triangle and square.
-A Nintendo 64 game has a page for its C buttons (hold SELECT and press X, A, B
-or Y) and, under them, which Pak its controller holds and where to change it:
-"MENU > Pak: Rumble Pak". A PICO-8 game lists its
-arrows, O and X and its pause menu. A DS game has a page for its two screens
-and the stylus. A PSP game's R2 row turns the d-pad into the PSP's analog
-stick and back, kept for that game; a pop-up says which it is. Then Hotkeys, SELECT with a shoulder: quick save and load, and
-faster and slower. The last page, In a game, is MENU, MENU then X (Quit),
-volume, brightness and POWER. Left and right change the page, B goes back to the menu, and MENU goes
-back to the game.
+**Changing a button.** The in-game menu's **Controls** tab (MENU in a game, then
+R1 twice from Game, or L1 once) lists the Pixel 2's buttons one by one: A, B,
+X, Y, L1, R1, L2, R2, START and SELECT. The Pixel 2 is drawn beside the rows,
+and it lights the button the row is about, so you do not have to guess which
+cap "R2" is. Each row says what that button does in this game, in the game
+system's own words: on a PlayStation game the faces are the cross, circle,
+triangle and square.
+
+- **Left and Right** step through what the button can do: any button the
+  system has, then a turbo of each face button, then Nothing. **A** opens the
+  same choices as a list, with a tick on what it does now and "default" beside
+  what ZyperOS gives it. A on a choice takes it, and B goes back with no change.
+- **Giving a button what another already does swaps them.** Make Y the
+  PlayStation's cross and B becomes the square, so nothing is lost by accident.
+  A turbo and Nothing never swap: Y can be a turbo cross while B stays a cross.
+- **A game button left with no button** gets a quiet row under the button that
+  caused it, "Cross has no button now". A turbo of it counts as a button.
+- **A value that differs from its default** is drawn in the accent color.
+- **It works at once.** Press Continue and the game plays with the new buttons.
+  MENU, SELECT with a shoulder, the volume keys and POWER cannot be changed, and
+  the hotkeys stay where they are whatever you set.
+
+**One game or a whole system.** **Applies To**, the tab's first row, is **This
+Game** or the system by name ("PlayStation"). Changes under **This Game** are
+kept for that game alone, and then it keeps its own buttons: a change to the
+system's later does not reach it. Changes under the system's name reach every
+game of it that has no buttons of its own, from its next start, and this one
+at once. Both are kept on the card. A game with buttons of its own shows
+**Applies To** in the accent color, and **Buttons: This Game** on its details
+page on the shelf (X on the game); A on that row opens the same list, to change
+buttons for the next start. Undoing a change, so the buttons are back to the
+default, takes its mark away too. **Reset Buttons**, near the end of the tab, is
+live when what shows differs from its default; it asks first, and puts back the
+game's buttons, or ZyperOS's for every game of the system. Rename and Delete
+Game take a game's buttons with them.
+
+**The d-pad as the stick.** The Pixel 2 has no analog stick, and some games
+need one. **D-pad as Stick**, On or Off for each game, makes the d-pad the
+left stick in Nintendo 64 games (On to start with), Dreamcast, PlayStation and
+PSP games. In a Nintendo 64 or Dreamcast game, SELECT then the d-pad is the
+system's own d-pad (the tab's SELECT row says "C buttons" or "Held: D-pad"). On
+the PSP, R2 in the game still turns it on and off, and the row agrees. A
+PlayStation game moves with the stick only in the pad's analog mode, which many
+games turn on themselves.
+
+**Face Buttons** (Dreamcast, Saturn and Neo Geo Pocket games) swaps all four
+faces at once: **By Letter**, each cap gives the button it names, or **By
+Place**, each cap gives the button in its place on the original pad. It reads
+Mixed after a change to one face.
+
+**Hotkeys**, the tab's last row, opens what you could always read here: what a
+system adds (the Nintendo 64's C buttons, hold SELECT and press X, A, B or Y,
+and which Pak is in; a DS game's two screens and the stylus), then SELECT
+with a shoulder, quick save and load, faster and slower, and under them
+"SELECT alone stays the game's", then the last page, In a game: MENU, MENU then X
+(Quit), volume, brightness and POWER. Left and right change the page, B goes
+back to the tab, and MENU goes back to the game.
 
 **OpenBOR has the in-game menu too**, though it runs as a program of its
 own rather than a libretro core. MENU stops the game where it is and opens
@@ -489,7 +532,7 @@ a 224-line SNES game at twice its height. These four are the Pixel 2's,
 whose last step is its GPU's; the Brick draws them as Sharp-Shimmerless, and
 its rows step over them.
 
-The in-game menu's **Shader** row, right under Display, changes it for
+The in-game menu's **Shader** row, in its Display tab right under Display, changes it for
 the game's system, from the next frame after Continue (the paused picture
 behind the menu stays as it was); the system menu's row does the same from
 the shelf, and **MENU > Display > Shader** sets every system at once.
@@ -545,7 +588,7 @@ battery save kept.
 **The Nintendo 64's Pak.** An N64 game's controller holds the Rumble Pak, so
 the Pixel 2 shakes. A game that saves to the Controller Pak, the N64's memory
 card (Mario Kart 64's ghosts, and games that save nowhere else), takes it in
-the in-game menu's **Pak** row: left, right or A turns it, at once, and the
+the **Pak** row of the in-game menu's Controls tab: left, right or A turns it, at once, and the
 game keeps it. The Controller Pak's saves are kept in the game's own save
 file in `Saves/`, whichever Pak is in.
 
@@ -782,13 +825,25 @@ default, and kept on the card as `.userdata/pixel2/developer`, which the
 system reads at boot. A release image has no Developer Mode: it never turns
 the link on at boot, whatever that file says.
 
+## Changing discs
+
+A game on more than one disc, a PlayStation game with an `.m3u` in a folder of
+its own, has a **Disc** row in the in-game menu: MENU, the Game tab, just under
+Quick Slot. Its value is the disc in the tray, by the name the emulator gives
+it, or "Disc 2 of 3" when that name is too long for the row. **Left** and
+**Right** (or **A**) pick the next or the last disc, going round: Left on disc 1
+is the last disc. The game sees the lid open, a new disc go in and the lid
+close, as it would on a console, so when it asks for disc 2, change the disc,
+choose **Continue** and the game goes on. A game on one disc has no Disc row,
+and neither has a system whose emulator has no disc tray.
+
 ## Player 2
 
 On the Pixel 2, a friend can play an NES game with you as player 2, on
 their phone or on a computer, with nothing to install. The handheld's own
 buttons stay player 1, and the sound stays on the handheld.
 
-In an NES game, MENU, then **Player 2**, just under Shader. Its value says
+In an NES game, MENU, then **Player 2**, on the Game tab just under Quick Slot. Its value says
 `off`, `waiting` (on, with nobody playing yet) or `connected`. A on the row
 opens its page over the paused game:
 

@@ -209,6 +209,11 @@ EXTRA = {
     "controls-1": ("demo", "PS1", ["--controls", "1"]),
     "controls-2": ("demo", "PS1", ["--controls", "2"]),
     "gamemenu": ("demo", "PS1", ["--gamemenu", "0"]),
+    # A game on more than one disc: the Disc row with the core's name for
+    # the disc (it fits), and with one too long, which reads "Disc 2 of 3"
+    "gamemenu-disc": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3", "FFIX (Disc 2)"]),
+    "gamemenu-disc-long": ("demo", "PS1", ["--gamemenu", "4", "--gm-discs", "3",
+                                           "Final Fantasy IX (USA) (Rev 1) (Disc 2)"]),
     # Achievements offline: the list with unlocks waiting, Zyper saying they
     # went, and the rows of a game never played with a network
     "cheevos-waiting": ("demo", "PS1", ["--cheevos-screen", "0", "--cheevos-waiting", "2"]),
@@ -216,7 +221,8 @@ EXTRA = {
     "ranews-one": ("demo", "PS1", ["--ranews", "1"]),
     "gamemenu-unchecked": ("demo", "PS1", ["--gamemenu", "0", "--cheevos-unchecked"]),
     "info-unchecked": ("demo", "PS1", ["--screen", "games", "--info", "--cheevos-unchecked"]),
-    "gamemenu-display": ("demo", "PS1", ["--gamemenu", "3"]),
+    "gamemenu-display": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "1"]),
+    "gamemenu-controls": ("demo", "PS1", ["--gamemenu", "0", "--gm-tab", "2"]),
     "gamecontrols": ("demo", "PS1", ["--gamecontrols", "1", "MD"]),
     "slots": ("demo", "PS1", ["--slots", "0"]),
     "synopsis": ("demo", "PS1", ["--screen", "games", "--info", "--synopsis"]),
@@ -401,9 +407,9 @@ for _k in ("available", "ready"):
     EXTRA.setdefault("update-news-" + _k, ("demo", "PS1", ["--upnews", _k]))
 EXTRA.setdefault("hotspot-waiting", ("demo", "PS1", ["--hotspot", "ZyperOS-7A2B", "q7mx-3kpa", "0 joined", "waiting"]))
 EXTRA.setdefault("gamemenu-dual", ("demo", "PS1", ["--gamemenu", "0", "dual"]))
-# ...on its Stylus row, which the Shader row (2026-11-12) put below the first
-# window of rows
-EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "8", "dual"]))
+# ...and its Display tab, where the screens' three rows are, on the Stylus row
+EXTRA.setdefault("gamemenu-dual-display", ("demo", "PS1", ["--gamemenu", "0", "dual", "--gm-tab", "1"]))
+EXTRA.setdefault("gamemenu-dual-stylus", ("demo", "PS1", ["--gamemenu", "4", "dual", "--gm-tab", "1"]))
 # MENU's Shader when a system has its own (SHOT_SETTINGS below): "per system"
 EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
 
@@ -437,10 +443,70 @@ def set_files(card, files, on):
             path.touch()
         elif path.exists():
             path.unlink()
+
+
 # The in-game menu's Shader at each old screen, so each name is drawn and fit
-for _s in ("crt", "crt-curved", "scanlines", "lcd"):
-    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
+for _s in ("shimmerless", "crt", "crt-curved", "scanlines", "lcd"):
+    EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "1", "--gm-tab", "1"]))
     SHOT_SETTINGS["gamemenu-shader-" + _s] = {"shader.PS1": _s}
+
+# The in-game menu's Controls tab (src/ctltab.c), beside the handheld: its
+# end (Reset Buttons, Hotkeys), a button's choices, the system over a game
+# with buttons of its own and the note under it, a game button left with
+# none, Reset Buttons' two questions, the Hotkeys row's pages (at their own
+# width, as the Controls pages are); the Nintendo 64's
+# (Pak, SELECT held for the C buttons) and the Dreamcast's (Face Buttons in
+# each of its three values, the stick on and SELECT held for its d-pad).
+# Their buttons and sticks are the card's library's (SHOT_LIB), the shelf on
+# CTL_FOCUS's game.
+_MGS = "map.PS1." + R.FOCUS + ".chd"
+_SONIC = "Sonic Adventure (USA).chd"
+for _name, _tag, _flags in (
+        ("end", "PS1", ["--gamemenu", "13"]), ("pick", "PS1", ["--gamemenu", "5", "--gm-pick"]),
+        ("all", "PS1", ["--gamemenu", "0", "--gm-all"]), ("warn", "PS1", ["--gamemenu", "3"]),
+        ("ask", "PS1", ["--gamemenu", "12", "--gm-ask"]),
+        ("ask-all", "PS1", ["--gamemenu", "12", "--gm-ask", "--gm-all"]),
+        ("keys", "PS1", ["--gamemenu", "13", "--gm-keys", "0"]),
+        ("keys-ingame", "PS1", ["--gamemenu", "13", "--gm-keys", "1"]),
+        ("n64-end", "N64", ["--gamemenu", "13"]),
+        ("dc", "DC", ["--gamemenu", "2"]), ("dc-end", "DC", ["--gamemenu", "13"]),
+        ("dc-place", "DC", ["--gamemenu", "2"]), ("dc-mixed", "DC", ["--gamemenu", "2"])):
+    EXTRA.setdefault("gamemenu-controls-" + _name,
+                     ("demo", _tag, ["--screen", "games", "--gm-tab", "2"] + _flags))
+# A Nintendo 64 game's Pak row, back in the Controls tab
+EXTRA.setdefault("gamemenu-pak", ("demo", "N64", ["--screen", "games", "--gm-tab", "2", "--gamemenu", "2"]))
+CTL_FOCUS = {"gamemenu-pak": "Mario Kart 64 (USA).z64",
+             "gamemenu-controls-n64-end": "Mario Kart 64 (USA).z64",
+             **{"gamemenu-controls-" + _n: _SONIC for _n in ("dc", "dc-end", "dc-place", "dc-mixed")}}
+# A game's details with its own buttons (Buttons, This Game), and the page that
+# row opens
+EXTRA.setdefault("info-buttons", ("demo", "PS1", ["--screen", "games", "--info"]))
+EXTRA.setdefault("info-buttons-page", ("demo", "PS1", ["--screen", "games", "--info-buttons"]))
+SHOT_LIB = {"info-buttons": {_MGS: "1;b:y,y:b"},
+            "info-buttons-page": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-all": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-pick": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-warn": {_MGS: "1;b:none"},
+            "gamemenu-controls-ask": {_MGS: "1;b:y,y:b"},
+            "gamemenu-controls-ask-all": {"map.PS1": "1;b:y,y:b"},
+            "gamemenu-controls-dc-end": {"stick.DC." + _SONIC: "1"},
+            "gamemenu-controls-dc-place": {"map.DC." + _SONIC: "1;a:a,b:b,x:x,y:y"},
+            "gamemenu-controls-dc-mixed": {"map.DC." + _SONIC: "1;a:a"}}
+
+
+def set_lib(card, settings, on):
+    """A shot's keys (SHOT_LIB) into the card's library, or out of it"""
+    if not settings:
+        return
+    import sqlite3
+    with sqlite3.connect(card / "shared/.zyperos/library.db") as db:
+        db.execute("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL)")
+        for key, value in settings.items():
+            if on:
+                db.execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)", (key, value))
+            else:
+                db.execute("DELETE FROM settings WHERE key=?", (key,))
+
 
 # MENU's tabs (DESIGN.md 11.3), each the one that is on, its name centered
 # and its neighbours' beside it; Display on its Theme row, with its chips
@@ -478,9 +544,6 @@ for _kind in ("saved", "loaded", "save_failed", "load_failed", "slot_empty", "no
     EXTRA.setdefault("popup-" + _kind, ("demo", "PS1", ["--popup", _kind]))
 EXTRA.setdefault("popup-speed-half", ("demo", "PS1", ["--popup", "speed", "3"]))
 EXTRA.setdefault("popup-speed-whole", ("demo", "PS1", ["--popup", "speed", "4"]))
-# A Nintendo 64 game's in-game menu, with its Pak row (the shelf of a system
-# with a game in it: the card with one in every system)
-EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemenu", "12"]))
 # NES Player 2 (src/p2.h): its page over a paused NES game in every state
 # (--player2), the code on the hotspot with nobody yet and its address under
 # it, a player connected, the cable, before A on each link, with neither
@@ -489,7 +552,7 @@ EXTRA.setdefault("gamemenu-pak", ("all", "N64", ["--screen", "games", "--gamemen
 for _kind in ("hotspot", "connected", "cable", "off", "off-cable", "none", "failed", "starting",
               "closing", "closing-cable"):
     EXTRA.setdefault("player2-" + _kind, ("demo", "NES", ["--screen", "games", "--player2", _kind]))
-EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "6",
+EXTRA.setdefault("gamemenu-player2", ("demo", "NES", ["--screen", "games", "--gamemenu", "4",
                                                        "--player2", "connected"]))
 
 # MENU > System Update in the states whose lines are longest, each as the
@@ -610,7 +673,7 @@ def run_language(code, shots, binary, keep):
         out.mkdir(parents=True, exist_ok=True)
         for name, (card_name, tag, flags) in shots.items():
             card = cards[card_name]
-            focus = PORT_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
+            focus = PORT_FOCUS.get(name) or CTL_FOCUS.get(name) or R.SHOT_FOCUS.get(name) or \
                 {"PS1": R.FOCUS + ".chd", "SCUMMVM": R.SCUMMVM_FOCUS, "OPENBOR": R.OPENBOR[0],
                  "PRT": "PortMaster.sh"}.get(tag, "")
             (card / "ZyperOS/.last").write_text(tag + "\n" + focus + "\n")
@@ -645,10 +708,12 @@ def run_language(code, shots, binary, keep):
             # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
             # is taken: the Shader row at its widest value
             R.set_settings(card, SHOT_SETTINGS.get(name), True)
+            set_lib(card, SHOT_LIB.get(name), True)
             set_files(card, SHOT_FILES.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             R.set_settings(card, SHOT_SETTINGS.get(name), False)
+            set_lib(card, SHOT_LIB.get(name), False)
             set_files(card, SHOT_FILES.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):

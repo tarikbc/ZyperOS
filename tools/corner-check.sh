@@ -86,6 +86,7 @@ for theme in light dark; do
 	shot "menu-last-$theme" --theme "$theme" --menu "About ZyperOS"
 	shot "gamemenu-first-$theme" --theme "$theme" --screen games --gamemenu 0 dual
 	shot "gamemenu-last-$theme" --theme "$theme" --screen games --gamemenu 10 dual
+	shot "gamemenu-display-$theme" --theme "$theme" --screen games --gamemenu 0 dual --gm-tab 1
 	shot "cheevos-$theme" --theme "$theme" --cheevos-screen 0
 	shot "cheevos-ingame-$theme" --theme "$theme" --screen games --cheevos-screen 0 --ingame
 done

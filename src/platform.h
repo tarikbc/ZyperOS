@@ -195,8 +195,12 @@ void plat_resident_on_speed(void (*fn)(int half));
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
  * into the left stick (true) or back (false): RUN stick=toggle, Diatom's
- * STICK line. NULL to stop. */
+ * STICK line. Not for the answer to a SETSTICK sent by
+ * plat_resident_set_stick. NULL to stop. */
 void plat_resident_on_stick(void (*fn)(bool on));
+/* SETSTICK mode=..., the d-pad as the stick at once (the Controls tab's
+ * row), counted so that its STICK answer reaches no on_stick callback */
+bool plat_resident_set_stick(const char *mode);
 
 /* Called from inside plat_resident_wait for the quick slot: Diatom's SELECT+R1
  * and SELECT+L1 (PLAT_QUICK_ASK_*, no path), and the answers to a SAVE or
@@ -289,9 +293,9 @@ bool plat_resident_sync_rect(int timeout_ms);
 /* Keys for the next RUN only, tab separated - "screens=2\tframeskip=late"
  * for a DS game. Cleared by the RUN that carries them. */
 void plat_resident_run_keys(const char *keys);
-/* The next game's button map, the SETMAP form, sent after its RUN joined
- * with the system's turbo (plat_turbo_map); NULL or "" for none. Like the
- * RUN keys, it is for the next plat_resident_send only. */
+/* The next game's whole button map, the SETMAP form, sent after its RUN as
+ * given: the launcher builds it (src/remapstore.c). NULL or "" for none.
+ * Like the RUN keys, it is for the next plat_resident_send only. */
 void plat_resident_map(const char *map);
 /* One core option for the next RUN only, sent after the system's own (and
  * so over them): a choice the player made for one game, as the N64's Pak

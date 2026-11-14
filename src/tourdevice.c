@@ -13,6 +13,7 @@
  * Every shape is filled and edged as a band that does not overlap its fill,
  * so the first lesson's fade-in shows no seam. */
 #include <math.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "clamp.h"
@@ -32,15 +33,11 @@
 /* The side face's plane, a hair proud of the body so its keys sit on it */
 #define SIDE_X     (BODY_W / 2.0f + 0.1f)
 
-/* The keys a lesson can light */
-enum { K_DPAD, K_A, K_B, K_X, K_Y, K_SELECT, K_START, K_MENU, K_VOLUP, K_VOLDN, K_POWER,
-       K_L1, K_R1, K_L2, K_R2, K_N };
-
 /* Where the front's round keys are, (x, z), and how big */
 static const struct { float x, z, r; } FACE[] = {
-	[K_A] = { 23.6f, -21.5f, 3.05f }, [K_B] = { 16.9f, -28.2f, 3.05f },
-	[K_X] = { 16.9f, -14.8f, 3.05f }, [K_Y] = { 10.2f, -21.5f, 3.05f },
-	[K_SELECT] = { -3.8f, -29.6f, 2.85f }, [K_START] = { 4.0f, -29.6f, 2.85f },
+	[TD_A] = { 23.6f, -21.5f, 3.05f }, [TD_B] = { 16.9f, -28.2f, 3.05f },
+	[TD_X] = { 16.9f, -14.8f, 3.05f }, [TD_Y] = { 10.2f, -21.5f, 3.05f },
+	[TD_SELECT] = { -3.8f, -29.6f, 2.85f }, [TD_START] = { 4.0f, -29.6f, 2.85f },
 };
 #define DPAD_X -16.9f
 #define DPAD_Z -21.0f
@@ -68,8 +65,8 @@ static const float LED_Z[4] = { 1.41f, -4.03f, -9.67f, -15.31f };
  * on a plane behind the body's middle, from under the edge to SH_TOP, so
  * that only their tops show over it */
 static const struct { int k; float x, w; } SHOULDER[4] = {
-	{ K_L1, -23.9f, 15.1f }, { K_R1, 23.9f, 15.1f },
-	{ K_L2, -12.6f, 7.4f }, { K_R2, 12.6f, 7.4f } };
+	{ TD_L1, -23.9f, 15.1f }, { TD_R1, 23.9f, 15.1f },
+	{ TD_L2, -12.6f, 7.4f }, { TD_R2, 12.6f, 7.4f } };
 #define BODY_TOP   (BODY_H / 2.0f)
 #define SH_Y       2.5f
 #define SH_BASE    36.0f
@@ -112,16 +109,16 @@ static pose pose_of(tour_step s)
 static unsigned lit_of(tour_step s)
 {
 	switch (s) {
-	case TOUR_MOVE:   return 1u << K_DPAD | 1u << K_L1 | 1u << K_R1;
-	case TOUR_A:      return 1u << K_A;
-	case TOUR_B:      return 1u << K_B;
-	case TOUR_X:      return 1u << K_X;
-	case TOUR_Y:      return 1u << K_Y;
-	case TOUR_MENU:   return 1u << K_MENU;
-	case TOUR_SELECT: return 1u << K_SELECT | 1u << K_L2 | 1u << K_R2;
-	case TOUR_VOL:    return 1u << K_VOLUP | 1u << K_VOLDN;
-	case TOUR_BRIGHT: return 1u << K_MENU | 1u << K_VOLUP | 1u << K_VOLDN;
-	case TOUR_POWER:  return 1u << K_POWER;
+	case TOUR_MOVE:   return 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_R1;
+	case TOUR_A:      return 1u << TD_A;
+	case TOUR_B:      return 1u << TD_B;
+	case TOUR_X:      return 1u << TD_X;
+	case TOUR_Y:      return 1u << TD_Y;
+	case TOUR_MENU:   return 1u << TD_MENU;
+	case TOUR_SELECT: return 1u << TD_SELECT | 1u << TD_L2 | 1u << TD_R2;
+	case TOUR_VOL:    return 1u << TD_VOLUP | 1u << TD_VOLDN;
+	case TOUR_BRIGHT: return 1u << TD_MENU | 1u << TD_VOLUP | 1u << TD_VOLDN;
+	case TOUR_POWER:  return 1u << TD_POWER;
 	default:          return 0;
 	}
 }
@@ -134,20 +131,23 @@ bool tourdev_shown(const tour *t)
 
 /* ---- the frame's colors and view ------------------------------------------------ */
 
-/* Everything one frame of the handheld is drawn from, and nothing else:
- * the same view draws the same picture, so it is also the key the frame
- * kept in a texture is found by (tourdev_make). `r` is set only while it is
- * drawn. */
+/* Everything one frame of the handheld is drawn from, and nothing else: the
+ * pose (td_pose) and the theme's colors. `r` is set only while it is drawn. */
 typedef struct {
 	SDL_Renderer *r;
 	float cx, cy, s, cp, sp, op;
 	unsigned body, line, side, glass, screen, key, key_line, pocket, mark;
 	unsigned lit, lit_line, dot, ink, on_accent;
-	float on[K_N], press[K_N];
+	float on[TD_KEYS], press[TD_KEYS];
 	float arm[4];                 /* the d-pad's arms pressed: up, down, left, right */
 	float facing, tab_ring;
 	bool dark, tabs;
 } view;
+
+/* The words of a look: the theme's colors and whether it is dark. A pose
+ * drawn under another look is another picture, so a kept texture is found
+ * by them too (look_of). */
+#define LOOK_N 15
 
 static SDL_Color col(const view *v, unsigned c, float a)
 {
@@ -444,11 +444,11 @@ static void dpad(const view *v)
 	int i, j;
 
 	for (i = 0; i < 12; i++) p[i] = at(v, DPAD_X + X[i][0], BODY_FRONT, DPAD_Z + X[i][1]);
-	shape(v, p, 12, key_fill(v, K_DPAD), key_edge(v, K_DPAD), DS_FRAME);
+	shape(v, p, 12, key_fill(v, TD_DPAD), key_edge(v, TD_DPAD), DS_FRAME);
 	/* A pressed arm of the lit d-pad goes a step darker, so which way shows */
-	if (v->on[K_DPAD] <= 0.0f) return;
+	if (v->on[TD_DPAD] <= 0.0f) return;
 	for (i = 0; i < 4; i++) {
-		const float a = v->arm[i] * v->on[K_DPAD];
+		const float a = v->arm[i] * v->on[TD_DPAD];
 		SDL_FPoint q[4], in[4];
 
 		if (a <= 0.004f) continue;
@@ -500,7 +500,7 @@ static void vol_sign(const view *v, int k, bool face, float a, float z, float l,
 	int bar, n, i;
 
 	if (l < 0.6f) return;
-	for (bar = 0; bar < (k == K_VOLUP ? 2 : 1); bar++) {
+	for (bar = 0; bar < (k == TD_VOLUP ? 2 : 1); bar++) {
 		n = rrect(bar ? th : l, bar ? l : th, th / 2.0f, 0.0f, 2, ab);
 		for (i = 0; i < n; i++)
 			p[i] = face ? at(v, -SIDE_X, a + ab[i * 2], z + ab[i * 2 + 1])
@@ -533,45 +533,12 @@ static void shoulder(const view *v, int k, float x, float w, float top)
 	shape(v, p, n, key_fill(v, k), key_edge(v, k), DS_FRAME);
 }
 
-/* The view of `t` at `now`, at `op`; false if there is no handheld to draw */
-static bool frame_of(view *v, const tour *t, uint32_t now, float op)
+/* The colors of the theme in force, into `v` */
+static void td_colors(view *v)
 {
 	const ds_theme *th = theme();
 	const bool dark = theme_index() == DS_DARK;
-	const tour_step prev = t->step > TOUR_FIRST_LESSON ? (tour_step)(t->step - 1) : t->step;
-	const pose p0 = pose_of(prev), p1 = pose_of(t->step);
-	/* It turns from the last lesson's pose as the step comes on */
-	const float k = prev == t->step ? 1.0f : ds_turn(clampf((float)(int32_t)(now - t->step_at)
-	                                                       / DS_MS_TURN, 0.0f, 1.0f));
-	const float deg = p0.deg + (p1.deg - p0.deg) * k, phi = deg * (float)M_PI / 180.0f;
-	/* The new key lights in quick, the last one's goes out in quick */
-	const float in = prev == t->step ? 1.0f : ds_out(clampf((float)(int32_t)(now - t->step_at)
-	                                                       / DS_MS_QUICK, 0.0f, 1.0f));
-	const unsigned lit0 = prev == t->step ? 0 : lit_of(prev), lit1 = lit_of(t->step);
-	/* The tabs stand out only as it faces front: none at 52 degrees */
-	const float facing = clampf(1.0f - fabsf(sinf(phi)) / sinf(RIGHT.deg * (float)M_PI / 180.0f),
-	                            0.0f, 1.0f);
-	const bool tabs = t->step == TOUR_BRIGHT || prev == TOUR_BRIGHT;
-	/* A tab's ring comes in late in the turn, once the tab stands out of the
-	 * edge; a side key's ring goes as it does, so there is one at a time */
-	const float tab_ring = tabs ? ds_turn(clampf((facing - 0.4f) / 0.6f, 0.0f, 1.0f)) : 0.0f;
-	static const tour_part PART[K_N] = {
-		[K_DPAD] = TP_PARTS, [K_A] = TP_A, [K_B] = TP_B, [K_X] = TP_X, [K_Y] = TP_Y,
-		[K_SELECT] = TP_SELECT, [K_START] = TP_START, [K_MENU] = TP_MENU,
-		[K_VOLUP] = TP_VOLUP, [K_VOLDN] = TP_VOLDN, [K_POWER] = TP_POWER,
-		[K_L1] = TP_L1, [K_R1] = TP_R1, [K_L2] = TP_L2, [K_R2] = TP_R2 };
-	static const tour_part ARM_PART[4] = { TP_UP, TP_DOWN, TP_LEFT, TP_RIGHT };
-	int i;
 
-	if (!tourdev_shown(t) || op <= 0.004f) return false;
-	/* Cleared whole, padding too, so two views compare as bytes */
-	memset(v, 0, sizeof *v);
-	v->cx = TOURDEV_X;
-	v->cy = TOURDEV_Y;
-	v->s = p0.s + (p1.s - p0.s) * k;
-	v->cp = cosf(phi);
-	v->sp = sinf(phi);
-	v->op = op;
 	/* DESIGN.md 11.10's roles: Beard's keys a step darker so the shape of
 	 * the face reads on its light body */
 	v->body = ui_rgb(th->surface);
@@ -587,21 +554,99 @@ static bool frame_of(view *v, const tour *t, uint32_t now, float op)
 	v->lit = ui_rgb(th->accent);
 	v->lit_line = dark ? ui_rgb(th->accent) : ui_rgb(th->accent_ink);
 	v->dot = dark ? ui_rgb(th->text_dim) : ui_rgb(th->text_soft);
-	for (i = 0; i < K_N; i++) {
-		const bool now_lit = lit1 >> i & 1u, was_lit = lit0 >> i & 1u;
-
-		v->on[i] = now_lit && was_lit ? 1.0f : now_lit ? in : was_lit ? 1.0f - in : 0.0f;
-		v->press[i] = PART[i] < TP_PARTS ? tour_part_press(t, PART[i], now) : 0.0f;
-	}
-	/* An arm's press shows only on the lit d-pad (dpad) */
-	for (i = 0; i < 4 && v->on[K_DPAD] > 0.0f; i++) v->arm[i] = tour_part_press(t, ARM_PART[i], now);
 	v->ink = ui_rgb(th->ink);
 	v->on_accent = ui_rgb(th->on_accent);
-	v->facing = facing;
-	v->tab_ring = tab_ring;
 	v->dark = dark;
-	v->tabs = tabs;
-	return true;
+}
+
+/* The tabs stand out only as it faces front: none at 52 degrees */
+static float facing_of(float phi)
+{
+	return clampf(1.0f - fabsf(sinf(phi)) / sinf(RIGHT.deg * (float)M_PI / 180.0f), 0.0f, 1.0f);
+}
+
+/* The view of `p` in the theme in force */
+static void view_of(view *v, const td_pose *p)
+{
+	const float phi = p->deg * (float)M_PI / 180.0f;
+
+	/* Cleared whole, padding too */
+	memset(v, 0, sizeof *v);
+	v->cx = p->cx;
+	v->cy = p->cy;
+	v->s = p->scale;
+	v->cp = cosf(phi);
+	v->sp = sinf(phi);
+	v->op = p->op;
+	td_colors(v);
+	memcpy(v->on, p->on, sizeof v->on);
+	memcpy(v->press, p->press, sizeof v->press);
+	memcpy(v->arm, p->arm, sizeof v->arm);
+	v->facing = facing_of(phi);
+	v->tab_ring = p->tab_ring;
+	v->tabs = p->tabs;
+}
+
+/* The colors of `v` as words, to tell one look from another */
+static void look_of(const view *v, unsigned look[LOOK_N])
+{
+	_Static_assert(offsetof(view, on_accent) == offsetof(view, body) + 13 * sizeof(unsigned),
+	               "the colors lie together");
+	memcpy(look, &v->body, 14 * sizeof(unsigned));
+	look[14] = v->dark;
+}
+
+/* Whether there is a handheld to draw for `t` at `op`: tourdev_shown, and
+ * `op` above nothing */
+static bool tour_has(const tour *t, float op)
+{
+	return tourdev_shown(t) && op > 0.004f;
+}
+
+/* The tutorial's pose for `t` at `now`, at `op` */
+static void tourdev_pose(const tour *t, uint32_t now, float op, td_pose *out)
+{
+	const tour_step prev = t->step > TOUR_FIRST_LESSON ? (tour_step)(t->step - 1) : t->step;
+	const pose p0 = pose_of(prev), p1 = pose_of(t->step);
+	/* It turns from the last lesson's pose as the step comes on */
+	const float k = prev == t->step ? 1.0f : ds_turn(clampf((float)(int32_t)(now - t->step_at)
+	                                                       / DS_MS_TURN, 0.0f, 1.0f));
+	const float deg = p0.deg + (p1.deg - p0.deg) * k, phi = deg * (float)M_PI / 180.0f;
+	/* The new key lights in quick, the last one's goes out in quick */
+	const float in = prev == t->step ? 1.0f : ds_out(clampf((float)(int32_t)(now - t->step_at)
+	                                                       / DS_MS_QUICK, 0.0f, 1.0f));
+	const unsigned lit0 = prev == t->step ? 0 : lit_of(prev), lit1 = lit_of(t->step);
+	const float facing = facing_of(phi);
+	const bool tabs = t->step == TOUR_BRIGHT || prev == TOUR_BRIGHT;
+	/* A tab's ring comes in late in the turn, once the tab stands out of the
+	 * edge; a side key's ring goes as it does, so there is one at a time */
+	const float tab_ring = tabs ? ds_turn(clampf((facing - 0.4f) / 0.6f, 0.0f, 1.0f)) : 0.0f;
+	static const tour_part PART[TD_KEYS] = {
+		[TD_DPAD] = TP_PARTS, [TD_A] = TP_A, [TD_B] = TP_B, [TD_X] = TP_X, [TD_Y] = TP_Y,
+		[TD_SELECT] = TP_SELECT, [TD_START] = TP_START, [TD_MENU] = TP_MENU,
+		[TD_VOLUP] = TP_VOLUP, [TD_VOLDN] = TP_VOLDN, [TD_POWER] = TP_POWER,
+		[TD_L1] = TP_L1, [TD_R1] = TP_R1, [TD_L2] = TP_L2, [TD_R2] = TP_R2 };
+	static const tour_part ARM_PART[4] = { TP_UP, TP_DOWN, TP_LEFT, TP_RIGHT };
+	int i;
+
+	/* Cleared whole, padding too, so two poses compare as bytes */
+	memset(out, 0, sizeof *out);
+	out->cx = TOURDEV_X;
+	out->cy = TOURDEV_Y;
+	out->scale = p0.s + (p1.s - p0.s) * k;
+	out->deg = deg;
+	out->op = op;
+	for (i = 0; i < TD_KEYS; i++) {
+		const bool now_lit = lit1 >> i & 1u, was_lit = lit0 >> i & 1u;
+
+		out->on[i] = now_lit && was_lit ? 1.0f : now_lit ? in : was_lit ? 1.0f - in : 0.0f;
+		out->press[i] = PART[i] < TP_PARTS ? tour_part_press(t, PART[i], now) : 0.0f;
+	}
+	/* An arm's press shows only on the lit d-pad (dpad) */
+	for (i = 0; i < 4 && out->on[TD_DPAD] > 0.0f; i++)
+		out->arm[i] = tour_part_press(t, ARM_PART[i], now);
+	out->tab_ring = tab_ring;
+	out->tabs = tabs;
 }
 
 /* The handheld as `v` has it, into what `r` draws to */
@@ -610,7 +655,7 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	view v = *vp;
 	const float facing = v.facing, tab_ring = v.tab_ring;
 	const bool tabs = v.tabs;
-	spot spots[K_N + 2];
+	spot spots[TD_KEYS + 2];
 	int nspots = 0, i, n;
 	SDL_FPoint pt[MAXP], p2[2 * MAXP];
 
@@ -643,29 +688,29 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	/* MENU and VOL as tabs out of the edges, behind the body, as it faces
 	 * front for Brightness */
 	if (tabs && facing > 0.0f) {
-		const float up = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[K_VOLUP] - TAB_OUT) * v.on[K_VOLUP]) * facing;
-		const float dn = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[K_VOLDN] - TAB_OUT) * v.on[K_VOLDN]) * facing;
-		const float mn = (TAB_OUT + (TAB_OUT_LIT - 1.2f * v.press[K_MENU] - TAB_OUT) * v.on[K_MENU]) * facing;
-		const float qu = 1.0f - 0.08f * v.press[K_VOLUP], qd = 1.0f - 0.08f * v.press[K_VOLDN];
+		const float up = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[TD_VOLUP] - TAB_OUT) * v.on[TD_VOLUP]) * facing;
+		const float dn = (TAB_OUT + (TAB_OUT_VOL - 1.2f * v.press[TD_VOLDN] - TAB_OUT) * v.on[TD_VOLDN]) * facing;
+		const float mn = (TAB_OUT + (TAB_OUT_LIT - 1.2f * v.press[TD_MENU] - TAB_OUT) * v.on[TD_MENU]) * facing;
+		const float qu = 1.0f - 0.08f * v.press[TD_VOLUP], qd = 1.0f - 0.08f * v.press[TD_VOLDN];
 		/* The volume tabs' ring is a shoulder's, as much longer as they are */
 		const float more = (TAB_OUT_VOL - TAB_OUT_LIT) / 2.0f;
 		spot s = { 0 };
 
-		tab(&v, K_VOLUP, -1, 12.2f, 19.6f, up, NULL);
-		tab(&v, K_VOLDN, -1, 3.8f, 11.2f, dn, NULL);
+		tab(&v, TD_VOLUP, -1, 12.2f, 19.6f, up, NULL);
+		tab(&v, TD_VOLDN, -1, 3.8f, 11.2f, dn, NULL);
 		/* Each sign in the middle of what shows of its tab, as long as
 		 * leaves room inside the tab's edge and the body's */
-		vol_sign(&v, K_VOLUP, false, -(BODY_W / 2.0f + up / 2.0f), 15.9f,
+		vol_sign(&v, TD_VOLUP, false, -(BODY_W / 2.0f + up / 2.0f), 15.9f,
 		         fminf(SIGN_L * qu, up - 1.4f), SIGN_TH * qu);
-		vol_sign(&v, K_VOLDN, false, -(BODY_W / 2.0f + dn / 2.0f), 7.5f,
+		vol_sign(&v, TD_VOLDN, false, -(BODY_W / 2.0f + dn / 2.0f), 7.5f,
 		         fminf(SIGN_L * qd, dn - 1.4f), SIGN_TH * qd);
-		if (v.on[K_VOLUP] > 0.0f && facing > 0.0f) {
+		if (v.on[TD_VOLUP] > 0.0f && facing > 0.0f) {
 			const SDL_FPoint c = at(&v, -(BODY_W / 2.0f + 1.4f + more), -2.0f, ROCKER_Z);
 
-			spots[nspots++] = (spot){ v.on[K_VOLUP] * tab_ring, 0.0f, c.x, c.y, 7.0f + more * v.s,
+			spots[nspots++] = (spot){ v.on[TD_VOLUP] * tab_ring, 0.0f, c.x, c.y, 7.0f + more * v.s,
 			                          v.s * 7.9f, true, false };
 		}
-		tab(&v, K_MENU, 1, MENU_Z - MENU_R, MENU_Z + MENU_R, mn, &s);
+		tab(&v, TD_MENU, 1, MENU_Z - MENU_R, MENU_Z + MENU_R, mn, &s);
 		if (mn > 0.05f && s.on > 0.0f) { s.on *= tab_ring; spots[nspots++] = s; }
 	}
 
@@ -713,12 +758,12 @@ static void draw_view(SDL_Renderer *r, view *vp)
 	shape(&v, pt, n, col(&v, v.pocket, 1.0f), col(&v, 0, 0.0f), 0.0f);
 
 	/* Where the lit keys' halos and rings go */
-	if (v.on[K_DPAD] > 0.0f) {
+	if (v.on[TD_DPAD] > 0.0f) {
 		const SDL_FPoint c = at(&v, DPAD_X, BODY_FRONT, DPAD_Z);
 
-		spots[nspots++] = (spot){ v.on[K_DPAD], 0.0f, c.x, c.y, 9.0f * v.s * v.cp, 9.0f * v.s, true, false };
+		spots[nspots++] = (spot){ v.on[TD_DPAD], 0.0f, c.x, c.y, 9.0f * v.s * v.cp, 9.0f * v.s, true, false };
 	}
-	for (i = K_A; i <= K_START; i++)
+	for (i = TD_A; i <= TD_START; i++)
 		if (v.on[i] > 0.0f) {
 			const SDL_FPoint c = at(&v, FACE[i].x, BODY_FRONT, FACE[i].z);
 
@@ -734,17 +779,17 @@ static void draw_view(SDL_Renderer *r, view *vp)
 			/* The capsule at 45 degrees, its bounds on the face */
 			const float pr = (9.8f / 2.0f) * 0.7071f + 1.15f * 0.7071f;
 
-			if (v.on[K_MENU] > 0.0f)
-				spots[nspots++] = (spot){ v.on[K_MENU] * (1.0f - tab_ring), v.press[K_MENU], m.x, m.y,
+			if (v.on[TD_MENU] > 0.0f)
+				spots[nspots++] = (spot){ v.on[TD_MENU] * (1.0f - tab_ring), v.press[TD_MENU], m.x, m.y,
 				                          MENU_R * v.s * ss, MENU_R * v.s, true, false };
-			if (v.on[K_POWER] > 0.0f)
-				spots[nspots++] = (spot){ v.on[K_POWER], v.press[K_POWER], pw.x, pw.y,
+			if (v.on[TD_POWER] > 0.0f)
+				spots[nspots++] = (spot){ v.on[TD_POWER], v.press[TD_POWER], pw.x, pw.y,
 				                          pr * v.s * ss, pr * v.s, true, false };
-		} else if (ss > 0.05f && (v.on[K_VOLUP] > 0.0f || v.on[K_VOLDN] > 0.0f)) {
+		} else if (ss > 0.05f && (v.on[TD_VOLUP] > 0.0f || v.on[TD_VOLDN] > 0.0f)) {
 			const SDL_FPoint c = at(&v, -SIDE_X, VOL_Y, ROCKER_Z);
-			const float on = fmaxf(v.on[K_VOLUP], v.on[K_VOLDN]);
+			const float on = fmaxf(v.on[TD_VOLUP], v.on[TD_VOLDN]);
 
-			spots[nspots++] = (spot){ on * (1.0f - tab_ring), fmaxf(v.press[K_VOLUP], v.press[K_VOLDN]), c.x, c.y,
+			spots[nspots++] = (spot){ on * (1.0f - tab_ring), fmaxf(v.press[TD_VOLUP], v.press[TD_VOLDN]), c.x, c.y,
 			                          2.2f * v.s * ss, 8.1f * v.s, true, false };
 		}
 	}
@@ -754,34 +799,34 @@ static void draw_view(SDL_Renderer *r, view *vp)
 
 	/* The front's keys */
 	dpad(&v);
-	for (i = K_A; i <= K_START; i++) face_key(&v, i, BODY_FRONT);
+	for (i = TD_A; i <= TD_START; i++) face_key(&v, i, BODY_FRONT);
 
 	/* The side that shows, its keys on its own plane */
 	if (fabsf(v.sp) > 0.05f) {
 		const float ss = fabsf(v.sp);
 
 		if (v.sp < 0.0f) {
-			const float qu = 1.0f - 0.08f * v.press[K_VOLUP], qd = 1.0f - 0.08f * v.press[K_VOLDN];
+			const float qu = 1.0f - 0.08f * v.press[TD_VOLUP], qd = 1.0f - 0.08f * v.press[TD_VOLDN];
 
 			/* The recess, the bridge joining the two keys, the keys on it */
 			n = side_rr(&v, -1, 4.4f, 16.2f, 2.1f, 0.0f, VOL_Y, ROCKER_Z, pt);
 			shape(&v, pt, n, col(&v, v.glass, 1.0f), col(&v, 0, 0.0f), 0.0f);
 			n = side_rr(&v, -1, 3.5f, 15.7f, 1.7f, 0.0f, VOL_Y, ROCKER_Z, pt);
-			shape(&v, pt, n, key_fill(&v, K_VOLUP), key_edge(&v, K_VOLUP), DS_FRAME);
+			shape(&v, pt, n, key_fill(&v, TD_VOLUP), key_edge(&v, TD_VOLUP), DS_FRAME);
 			n = side_rr(&v, -1, 3.6f * qu, 5.9f * qu, 1.75f, 0.0f, VOL_Y, VOLUP_Z, pt);
-			shape(&v, pt, n, key_fill(&v, K_VOLUP), key_edge(&v, K_VOLUP), DS_FRAME);
+			shape(&v, pt, n, key_fill(&v, TD_VOLUP), key_edge(&v, TD_VOLUP), DS_FRAME);
 			n = side_rr(&v, -1, 3.6f * qd, 5.9f * qd, 1.75f, 0.0f, VOL_Y, VOLDN_Z, pt);
-			shape(&v, pt, n, key_fill(&v, K_VOLDN), key_edge(&v, K_VOLDN), DS_FRAME);
-			vol_sign(&v, K_VOLUP, true, VOL_Y, VOLUP_Z, SIGN_L * qu, SIGN_TH * qu);
-			vol_sign(&v, K_VOLDN, true, VOL_Y, VOLDN_Z, SIGN_L * qd, SIGN_TH * qd);
+			shape(&v, pt, n, key_fill(&v, TD_VOLDN), key_edge(&v, TD_VOLDN), DS_FRAME);
+			vol_sign(&v, TD_VOLUP, true, VOL_Y, VOLUP_Z, SIGN_L * qu, SIGN_TH * qu);
+			vol_sign(&v, TD_VOLDN, true, VOL_Y, VOLDN_Z, SIGN_L * qd, SIGN_TH * qd);
 			n = side_rr(&v, -1, 1.2f, 11.7f, 0.3f, 0.0f, -1.89f, -23.4f, pt);
 			shape(&v, pt, n, col(&v, v.glass, 1.0f), col(&v, 0, 0.0f), 0.0f);
 		} else {
-			const float q = 1.0f - 0.08f * v.press[K_MENU], qp = 1.0f - 0.08f * v.press[K_POWER];
+			const float q = 1.0f - 0.08f * v.press[TD_MENU], qp = 1.0f - 0.08f * v.press[TD_POWER];
 			const SDL_FPoint m = at(&v, SIDE_X, MENU_Y, MENU_Z);
 			/* The dots in on-accent on the lit key, as text on accent is, in
 			 * both themes; at rest a soft text on the key (4:1 and more) */
-			const SDL_Color dot = col(&v, ui_mix(v.dot, v.on_accent, v.on[K_MENU]), 1.0f);
+			const SDL_Color dot = col(&v, ui_mix(v.dot, v.on_accent, v.on[TD_MENU]), 1.0f);
 			int d;
 
 			for (i = 0; i < 4; i++) {
@@ -789,9 +834,9 @@ static void draw_view(SDL_Renderer *r, view *vp)
 				shape(&v, pt, n, col(&v, v.mark, 1.0f), col(&v, 0, 0.0f), 0.0f);
 			}
 			n = side_rr(&v, 1, 9.8f * qp, 2.3f * qp, 1.1f, -(float)M_PI / 4.0f, POWER_Y, POWER_Z, pt);
-			shape(&v, pt, n, key_fill(&v, K_POWER), key_edge(&v, K_POWER), DS_FRAME);
+			shape(&v, pt, n, key_fill(&v, TD_POWER), key_edge(&v, TD_POWER), DS_FRAME);
 			n = oval(m.x, m.y, MENU_R * q * v.s * ss, MENU_R * q * v.s, pt);
-			shape(&v, pt, n, key_fill(&v, K_MENU), key_edge(&v, K_MENU), DS_FRAME);
+			shape(&v, pt, n, key_fill(&v, TD_MENU), key_edge(&v, TD_MENU), DS_FRAME);
 			for (d = -1; d <= 1; d++) {
 				const SDL_FPoint c = at(&v, SIDE_X, MENU_Y, MENU_Z + d * MENU_DOT_GAP * q);
 
@@ -812,89 +857,141 @@ static void draw_view(SDL_Renderer *r, view *vp)
 /* The handheld changes only while it turns, a key lights or goes out, a key
  * presses, and in the first lesson's fade-in. Drawn every frame, its ~1,500
  * points cost the Pixel 2 ~15 ms a frame (a third of the lesson's frame
- * rate, though they cover ~200,000 pixels), so it is drawn into this texture
- * when its view changes and copied the rest of the time: 304 x 368, the
- * column's box (what shows of the figure is x 5 to 272, y 86 to 424 in
- * every pose and every frame of every turn, the top a lit shoulder's halo),
- * 447 KB. What it holds is
- * premultiplied - drawn with the blend into a clear texture - so it is
- * copied with the premultiplied blend. A renderer without that blend (the
- * host's software one, which --shot uses) draws the handheld every frame,
- * as before. */
-#define KEEP_X 0
-#define KEEP_Y 80
-#define KEEP_W 304
-#define KEEP_H 368
+ * rate, though they cover ~200,000 pixels), so it is drawn into a texture
+ * when its pose changes and copied the rest of the time. The tutorial's is
+ * 304 x 368, the column's box (what shows of the figure is x 5 to 272, y 86
+ * to 424 in every pose and every frame of every turn, the top a lit
+ * shoulder's halo), 447 KB. What a texture holds is premultiplied - drawn
+ * with the blend into a clear texture - so it is copied with the
+ * premultiplied blend. A renderer without that blend (the host's software
+ * one, which --shot uses) draws the handheld every frame, as before.
+ *
+ * Each caller keeps its own (td_keep): the box it covers on the screen is
+ * the texture's size, and the texture's corner is the box's. */
 
-static SDL_Texture *g_keep;
-static int g_keep_can = -1;        /* -1 not tried yet, 0 the renderer cannot, 1 can */
-static view g_kept;                /* the view g_keep holds */
-static bool g_kept_ok;
-
-static bool keep_ready(SDL_Renderer *r)
+static bool keep_ready(SDL_Renderer *r, td_keep *k)
 {
-	if (g_keep_can < 0) {
+	if (k->can > 0 && k->tex) {
+		int w, h;
+
+		SDL_QueryTexture(k->tex, NULL, NULL, &w, &h);
+		if (w == k->box.w && h == k->box.h) return true;
+		td_keep_free(k);
+	}
+	if (k->can == 0) {
 		const SDL_BlendMode pm = SDL_ComposeCustomBlendMode(
 			SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD,
 			SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
 
-		g_keep = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
-		                           KEEP_W, KEEP_H);
-		g_keep_can = g_keep && SDL_SetTextureBlendMode(g_keep, pm) == 0;
-		if (g_keep_can) {
-			SDL_SetTextureScaleMode(g_keep, SDL_ScaleModeNearest);
-		} else if (g_keep) {
-			SDL_DestroyTexture(g_keep);
-			g_keep = NULL;
+		k->tex = SDL_CreateTexture(r, PLAT_TARGET_FORMAT, SDL_TEXTUREACCESS_TARGET,
+		                           k->box.w, k->box.h);
+		k->can = k->tex && SDL_SetTextureBlendMode(k->tex, pm) == 0 ? 1 : -1;
+		if (k->can > 0) {
+			SDL_SetTextureScaleMode(k->tex, SDL_ScaleModeNearest);
+		} else if (k->tex) {
+			SDL_DestroyTexture(k->tex);
+			k->tex = NULL;
 		}
-		g_kept_ok = false;
+		k->ok = false;
 	}
-	return g_keep_can == 1;
+	return k->can > 0;
 }
 
-void tourdev_make(SDL_Renderer *r, const tour *t, uint32_t now, float op)
+/* Whether `k` holds `p` as `v` has it */
+static bool keep_has(const td_keep *k, const td_pose *p, const view *v)
+{
+	unsigned look[LOOK_N];
+
+	look_of(v, look);
+	return k->ok && memcmp(p, &k->kept, sizeof *p) == 0 && memcmp(look, k->look, sizeof look) == 0;
+}
+
+/* Draws `p` as `v` has it into `k`'s texture, if that holds something
+ * else, and gives the screen's target, color and blend back after. False
+ * if the renderer cannot keep, or the texture could not be drawn into. */
+static bool keep_make(SDL_Renderer *r, td_keep *k, const td_pose *p, const view *v)
 {
 	SDL_Texture *was;
 	SDL_BlendMode bm;
 	Uint8 cr, cg, cb, ca;
-	view v;
 
-	if (!frame_of(&v, t, now, op) || !keep_ready(r)) return;
-	if (g_kept_ok && memcmp(&v, &g_kept, sizeof v) == 0) return;
+	if (!keep_ready(r, k)) return false;
+	if (keep_has(k, p, v)) return true;
 	was = SDL_GetRenderTarget(r);
 	SDL_GetRenderDrawColor(r, &cr, &cg, &cb, &ca);
 	SDL_GetRenderDrawBlendMode(r, &bm);
-	g_kept_ok = false;
-	if (SDL_SetRenderTarget(r, g_keep) == 0) {
+	k->ok = false;
+	if (SDL_SetRenderTarget(r, k->tex) == 0) {
+		view vv = *v;
+
 		SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
 		SDL_RenderClear(r);
-		g_dx = -KEEP_X;
-		g_dy = -KEEP_Y;
-		draw_view(r, &v);
+		g_dx = (float)-k->box.x;
+		g_dy = (float)-k->box.y;
+		draw_view(r, &vv);
 		g_dx = g_dy = 0.0f;
-		g_kept = v;
-		g_kept_ok = true;
+		k->kept = *p;
+		look_of(v, k->look);
+		k->ok = true;
 	}
 	SDL_SetRenderTarget(r, was);
 	SDL_SetRenderDrawColor(r, cr, cg, cb, ca);
 	SDL_SetRenderDrawBlendMode(r, bm);
+	return k->ok;
 }
 
-void tourdev_draw(SDL_Renderer *r, const tour *t, uint32_t now, float op)
+void td_draw(SDL_Renderer *r, td_keep *k, const td_pose *p)
 {
 	view v;
 
-	if (!frame_of(&v, t, now, op)) return;
-	if (g_kept_ok && memcmp(&v, &g_kept, sizeof v) == 0)
-		SDL_RenderCopy(r, g_keep, NULL, &(SDL_Rect){ KEEP_X, KEEP_Y, KEEP_W, KEEP_H });
+	view_of(&v, p);
+	if (keep_make(r, k, p, &v))
+		SDL_RenderCopy(r, k->tex, NULL, &k->box);
 	else
 		draw_view(r, &v);
 }
 
+void td_make(SDL_Renderer *r, td_keep *k, const td_pose *p)
+{
+	view v;
+
+	view_of(&v, p);
+	keep_make(r, k, p, &v);
+}
+
+void td_keep_free(td_keep *k)
+{
+	if (k->tex) SDL_DestroyTexture(k->tex);
+	k->tex = NULL;
+	k->can = 0;
+	k->ok = false;
+}
+
+/* ---- the tutorial's ------------------------------------------------------------- */
+
+static td_keep g_tour_keep = { .box = { 0, 80, 304, 368 } };
+
+void tourdev_make(SDL_Renderer *r, const tour *t, uint32_t now, float op)
+{
+	td_pose p;
+	view v;
+
+	if (!tour_has(t, op)) return;
+	tourdev_pose(t, now, op, &p);
+	view_of(&v, &p);
+	keep_make(r, &g_tour_keep, &p, &v);
+}
+
+void tourdev_draw(SDL_Renderer *r, const tour *t, uint32_t now, float op)
+{
+	td_pose p;
+
+	if (!tour_has(t, op)) return;
+	tourdev_pose(t, now, op, &p);
+	td_draw(r, &g_tour_keep, &p);
+}
+
 void tourdev_free(void)
 {
-	if (g_keep) SDL_DestroyTexture(g_keep);
-	g_keep = NULL;
-	g_keep_can = -1;
-	g_kept_ok = false;
+	td_keep_free(&g_tour_keep);
 }

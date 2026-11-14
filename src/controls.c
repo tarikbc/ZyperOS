@@ -554,16 +554,18 @@ static const ctl_extra EXTRAS[] = {
 	 * up, and ParallelN64's the same: A, Y, B and X): the core's own R2 held
 	 * does it, and map|N64 puts that on SELECT,
 	 * which the N64 has none of (R2 until 2026-11-07, SELECT's shoulders
-	 * being the hotkeys'). Under them, the Pak the controller holds and where
-	 * it is changed, "MENU > Pak: Rumble Pak" (ctl_game.accessory): it said
-	 * "Rumble Pak, not Controller Pak" until 2026-11-07, when the Pak became
-	 * the player's to choose, per game, and that read as a riddle. */
+	 * being the hotkeys'). Under them, the Pak the controller holds, "Pak:
+	 * Rumble Pak" (ctl_game.accessory), as the in-game menu's Controls tab
+	 * says it where it is chosen: it said "Rumble Pak, not Controller Pak"
+	 * until 2026-11-07, when the Pak became the player's to choose, per game,
+	 * and that read as a riddle, and "MENU > Pak: ..." until the Pak row
+	 * moved into the Controls tab (2026-11-13). */
 	{ "N64", S_CONTROLS_C_BUTTONS, { { BTN("SELECT+X"), S_CONTROLS_C_UP },
 	                                 { BTN("SELECT+A"), S_CONTROLS_C_RIGHT },
 	                                 { BTN("SELECT+B"), S_CONTROLS_C_DOWN },
 	                                 { BTN("SELECT+Y"), S_CONTROLS_C_LEFT },
 	                                 { SAYS(S_CONTROLS_SELECT_DPAD), S_CONTROLS_N64_DPAD } },
-	  true, S_CONTROLS_PAK_WHERE },
+	  true, S_CONTROLS_PAK_IN },
 	/* Diatom's (screens.h): L2 the other screen, R2 the stylus, and while
 	 * it is on the d-pad moves it and A touches. MENU+L1 switched the
 	 * screens too until 2026-11-06 (My note: L2 does it). The d-pad is not
@@ -816,6 +818,22 @@ static void keymap_pad(const port_doc *d, ctl_pad *pd, char *dpad, size_t dn)
 	pd->pad[P_DPAD] = (ctl_label)BTN(dpad);
 }
 
+/* The d-pad's label as the game's stick has it (ctl_game.stick): the
+ * table's, but none for a stick that is off (the d-pad is the d-pad, which
+ * goes without saying), and the analog stick where one that is on has no
+ * name in the table (the Dreamcast's, the PlayStation's) */
+static const ctl_label *dpad_label(const ctl_game *g, const ctl_pad *pd)
+{
+	static const ctl_label none = { NULL, (str_id)0, false };
+	static const ctl_label analog = SAYS(S_CONTROLS_ANALOG_STICK);
+	const ctl_label *own = &pd->pad[P_DPAD];
+	const bool stick = own->has_words && !own->name && own->words == S_CONTROLS_STICK;
+
+	if (g->stick == CTL_STICK_OFF && stick) return &none;
+	if (g->stick == CTL_STICK_ON && !label_set(own)) return &analog;
+	return own;
+}
+
 /* The system's buttons as rows, before they are put on pages */
 static int pad_rows(const ctl_game *g, crow *r)
 {
@@ -840,7 +858,7 @@ static int pad_rows(const ctl_game *g, crow *r)
 	apply_map(g->turbo, to, turbo);
 	for (k = 0; k < P_COUNT; k++) {
 		const int i = ORDER[k];
-		const ctl_label *lab = &pd->pad[to[i]];
+		const ctl_label *lab = i == P_DPAD && !g->doc ? dpad_label(g, pd) : &pd->pad[to[i]];
 		char said[sizeof r[n].val];
 
 		if (!label_set(lab)) continue;
@@ -941,7 +959,8 @@ static int page_list(const ctl_game *g, const plan *pl, page_ref *out)
 		return n;
 	}
 	for (i = 0; g->doc && i < said_pages(g->doc); i++) out[n++] = (page_ref){ PG_SAID, i };
-	for (i = 0; i < pl->sys; i++) out[n++] = (page_ref){ PG_SYS, i };
+	/* The system's buttons, but beside the Controls tab, which shows them */
+	for (i = 0; !g->no_buttons && i < pl->sys; i++) out[n++] = (page_ref){ PG_SYS, i };
 	if (pl->extra) out[n++] = (page_ref){ PG_EXTRA, 0 };
 	if (!g->port) out[n++] = (page_ref){ PG_HOTKEYS, 0 };
 	out[n++] = (page_ref){ PG_INGAME, 0 };
@@ -1140,14 +1159,22 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 
 		snprintf(b->head, sizeof b->head, T(S_CONTROLS_HEADING), T(x->head));
 		for (i = 0; i < (int)(sizeof x->rows / sizeof x->rows[0]) && label_set(&x->rows[i].key);
-		     i++, n++) {
+		     i++) {
+			/* SELECT, then the d-pad, is the N64's own D-pad only while the
+			 * d-pad alone is its stick: with the stick off, the d-pad is
+			 * the D-pad without SELECT */
+			if (g->stick == CTL_STICK_OFF && x->rows[i].key.has_words &&
+			    x->rows[i].key.words == S_CONTROLS_SELECT_DPAD)
+				continue;
 			label_say(&x->rows[i].key, b->key[n], sizeof b->key[n]);
 			snprintf(b->val[n], sizeof b->val[n], "%s", T(x->rows[i].does));
 			out[n] = (menu_row){ b->key[n], b->val[n], false };
+			n++;
 		}
-		if (x->has_note && x->note == S_CONTROLS_PAK_WHERE) {
-			/* the menu path to the Pak row, and what it says now */
-			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_WHERE), T(S_GAMEMENU_PAK),
+		if (x->has_note && x->note == S_CONTROLS_PAK_IN) {
+			/* which Pak is in, as the Controls tab's Pak row says it (it
+			 * is chosen there) */
+			snprintf(b->note, sizeof b->note, T(S_CONTROLS_PAK_IN), T(S_GAMEMENU_PAK),
 			         g->accessory ? g->accessory : "Rumble Pak");
 			out[n++] = MENU_NOTE(b->note);
 		} else if (x->has_note) {
@@ -1180,4 +1207,111 @@ int ctl_game_rows(const ctl_game *g, int page, menu_row *out, ctl_buf *b)
 		break;
 	}
 	return n;
+}
+
+/* ---------- remapping: what a system offers --------------------------------
+ *
+ * Targets (src/remap.h) and this table's buttons are the same eight in a
+ * row, then Start and Select in the other order. */
+static int pad_of_target(int t)
+{
+	if (t >= RT_A && t <= RT_R2) return P_A + (t - RT_A);
+	if (t == RT_START) return P_START;
+	if (t == RT_SELECT) return P_SELECT;
+	return -1;
+}
+
+static int target_of_pad(int p)
+{
+	if (p >= P_A && p <= P_R2) return RT_A + (p - P_A);
+	return p == P_START ? RT_START : p == P_SELECT ? RT_SELECT : -1;
+}
+
+/* A button the core names, which a choice can give: not a slot that says
+ * what Diatom does with the handheld's button (the PSP's R2, "D-pad as
+ * stick"), which the core has nothing on and no map reaches (Diatom hides
+ * that button from the core before the map) */
+static bool remap_label(const ctl_label *l)
+{
+	return label_set(l) && !(l->has_words && !l->name && l->words == S_CONTROLS_DPAD_STICK);
+}
+
+int ctl_remap_choices(const char *tag, const char *ext, const char *map,
+                      rm_choice *out, int max)
+{
+	const ctl_pad *pd = pad_for(tag, ext);
+	int to[P_COUNT], face[4], nface = 0, n = 0, k, j;
+	bool turbo[P_COUNT] = { false }, seen[P_COUNT] = { false };
+
+	if (!pd) return 0;
+	for (k = 0; k < P_COUNT; k++) to[k] = k;
+	apply_map(map, to, turbo);
+	/* the faces by the cap that gives each, then any no cap gives */
+	for (k = P_A; k <= P_Y; k++) {
+		const int f = to[k];
+
+		if (f > P_Y || seen[f] || !remap_label(&pd->pad[f])) continue;
+		seen[f] = true;
+		face[nface++] = f;
+	}
+	for (k = P_A; k <= P_Y; k++)
+		if (!seen[k] && remap_label(&pd->pad[k])) face[nface++] = k;
+	for (j = 0; j < nface && n < max; j++)
+		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), 0 };
+	for (k = P_L1; k <= P_SELECT && n < max; k++)
+		if (remap_label(&pd->pad[k]))
+			out[n++] = (rm_choice){ (signed char)target_of_pad(k), 0 };
+	for (j = 0; j < nface && n < max; j++)
+		out[n++] = (rm_choice){ (signed char)target_of_pad(face[j]), RM_TURBO };
+	if (n < max) out[n++] = (rm_choice){ RM_NONE, 0 };
+	return n;
+}
+
+void ctl_remap_say(const char *tag, const char *ext, rm_choice c, char *out, size_t n)
+{
+	const ctl_pad *pd = pad_for(tag, ext);
+	const int p = c.to == RM_NONE ? -1 : pad_of_target(c.to);
+	char said[64];
+
+	if (c.to == RM_NONE) {
+		snprintf(out, n, "%s", T(S_CONTROLS_NOTHING));
+		return;
+	}
+	if (!pd || p < 0 || !remap_label(&pd->pad[p])) {
+		snprintf(out, n, "%s", "");
+		return;
+	}
+	label_say(&pd->pad[p], said, sizeof said);
+	if (c.turbo) snprintf(out, n, T(S_CONTROLS_TURBO), said);
+	else snprintf(out, n, "%s", said);
+}
+
+bool ctl_letter_layout(const char *tag, rm_table *letters)
+{
+	const ctl_pad *pd = pad_for(tag, NULL);
+	int k, lettered = 0;
+	bool differs = false;
+	rm_table l;
+
+	if (!pd) return false;
+	rm_identity(&l);
+	for (k = P_A; k <= P_Y; k++) {
+		const ctl_label *lab = &pd->pad[k];
+		const char *s = lab->name;
+		int cap;
+
+		/* the faces a pad has are the first ones, as a Pocket's two */
+		if (!label_set(lab)) continue;
+		if (k != lettered) return false;
+		/* a letter of the pad's own, not words about one ("Button X") */
+		if (lab->has_words || !s || !s[0] || s[1] || !strchr("ABXY", s[0])) return false;
+		lettered++;
+		cap = s[0] == 'A' ? P_A : s[0] == 'B' ? P_B : s[0] == 'X' ? P_X : P_Y;
+		l.b[cap] = (rm_choice){ (signed char)target_of_pad(k), 0 };
+	}
+	for (k = P_A; k <= P_Y; k++)
+		if (l.b[k].to != rm_own(k)) differs = true;
+	if (lettered < 2 || !differs) return false;
+	if (letters) *letters = l;
+	return true;
 }

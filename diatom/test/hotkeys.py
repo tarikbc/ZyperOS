@@ -13,6 +13,12 @@ slot's round trip as the launcher drives it.
   - A SAVE sent while the game runs (the launcher's answer to the hotkey) is
     written on Diatom's thread, answered SAVED, with its picture beside it,
     and a LOAD of it is answered LOADED.
+  - SETSTICK mode=plain|off|dpad|toggle|toggle-stick turns the d-pad into
+    the left stick or back while a game runs, and an unknown mode is an ERROR
+    that leaves the stick as it was. Plain has no SELECT rule and no R2 turn,
+    and keeps the d-pad on the joypad too: the d-pad is both.
+  - SETMAP select:start does not touch SELECT's chords: SELECT+R1 still says
+    HOTKEY key=save, and the core never reads START.
   - RUN stick=toggle (the PSP's): R2 turns the d-pad into the left stick and
     back, says STICK each time, and never reaches the game.
 
@@ -236,6 +242,96 @@ check("PSP: the game never reads R2", not any(b & R2 for b in frames), [i for i,
 check("PSP: UP is the d-pad's before the first R2", any(38 <= i <= 50 for i in up), up)
 check("PSP: and not while the d-pad is the stick", not any(66 <= i <= 98 for i in up), up)
 check("PSP: and the d-pad's again after the second R2", any(118 <= i <= 130 for i in up), up)
+
+# SETSTICK, live. Each case is its own run: RUN with no stick, SETSTICK in
+# the same send (before the script's first poll at 40), then a script. The
+# core reads the left stick's x as the 6th column (STUBCORE_INPUT_ANALOG).
+RIGHT, START = 1 << 7, 1 << 3
+FULL = 0x7fff
+
+def live_run(tag, script, lines_out, nframes, run_extra=""):
+    sock, log = f"{TMP}/{tag}.sock", f"{TMP}/{tag}.log"
+    global s, buf, got, p
+    p = subprocess.Popen([BIN, "--socket", sock, "--save", TMP, "--system", TMP],
+                         env=dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_RENDER_DRIVER="software",
+                                  SDL_AUDIODRIVER="dummy", DIATOM_INPUT_SCRIPT=script,
+                                  STUBCORE_INPUT_LOG=log, STUBCORE_INPUT_ANALOG="1"),
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(100):
+        if os.path.exists(sock): break
+        time.sleep(0.05)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.connect(sock)
+    s.settimeout(0.05)
+    buf, got = b"", []
+    pump(0.3)
+    s.sendall(f"RUN\tcore={STUB}{run_extra}\n{lines_out}".encode())
+    pump_until(log, nframes)
+    s.sendall(b"STOP\n")
+    pump(1.0)
+    s.sendall(b"QUIT\n")
+    try: p.wait(5)
+    except subprocess.TimeoutExpired: p.kill()
+    rows = [list(map(int, l.split())) for l in open(log)]
+    return [r[1] for r in rows], [r[5] for r in rows]
+
+HOLD_RIGHT = "40:right;46:"
+bits, ax = live_run("plain", HOLD_RIGHT + ";60:select+right;66:;80:r2;86:", "SETSTICK\tmode=plain\n", 100)
+check("SETSTICK plain answers STICK on=1", "STICK\ton=1" in got, got)
+check("plain: a held RIGHT is the stick at full, x = 0x7fff", any(ax[i] == FULL for i in range(41, 46)), ax[38:48])
+check("plain: and the joypad's RIGHT still, so a game that keeps its pad digital moves",
+      any(bits[i] & RIGHT for i in range(41, 46)), bits[38:48])
+check("plain: SELECT then RIGHT is still the stick (no SELECT rule), and the joypad's RIGHT",
+      any(ax[i] == FULL for i in range(61, 66)) and any(bits[i] & RIGHT for i in range(61, 66)),
+      (ax[58:68], bits[58:68]))
+check("plain: R2 reaches the game, and turns nothing",
+      any(bits[i] & R2 for i in range(80, 86)) and not any(l.startswith("STICK") and l != "STICK\ton=1" for l in got), got)
+
+bits, ax = live_run("runplain", HOLD_RIGHT, "", 60, "\tstick=plain")
+check("RUN stick=plain: a held RIGHT is the stick, and the joypad's RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and any(bits[i] & RIGHT for i in range(41, 46)),
+      (ax[38:48], bits[38:48]))
+
+bits, ax = live_run("off", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=off\n", 60)
+check("SETSTICK off answers STICK on=0 last", [l for l in got if l.startswith("STICK")][-1:] == ["STICK\ton=0"], got)
+check("off: RIGHT is the joypad's again", any(bits[i] & RIGHT for i in range(41, 46)), bits[38:48])
+check("off: and the stick is centered", not any(ax[i] for i in range(38, 48)), ax[38:48])
+
+# ...and the modes after it have the d-pad the stick alone, as before
+bits, ax = live_run("plainthendpad", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=dpad\n", 60)
+check("plain then dpad: RIGHT is the stick alone again, no joypad RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and not any(bits[i] & RIGHT for i in range(38, 48)),
+      (ax[38:48], bits[38:48]))
+bits, ax = live_run("plainthentoggle", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=toggle-stick\n", 60)
+check("plain then toggle-stick: RIGHT is the stick alone, no joypad RIGHT",
+      any(ax[i] == FULL for i in range(41, 46)) and not any(bits[i] & RIGHT for i in range(38, 48)),
+      (ax[38:48], bits[38:48]))
+
+bits, ax = live_run("dpad", HOLD_RIGHT + ";60:select;64:select+right;70:select;72:", "SETSTICK\tmode=dpad\n", 90)
+check("SETSTICK dpad answers STICK on=1", "STICK\ton=1" in got, got)
+check("dpad: RIGHT is the stick", any(ax[i] == FULL for i in range(41, 46)) and
+      not any(bits[i] & RIGHT for i in range(38, 48)), (ax[38:48], bits[38:48]))
+check("dpad: SELECT then RIGHT is the joypad's RIGHT (the SELECT rule)",
+      any(bits[i] & RIGHT for i in range(64, 70)), bits[60:72])
+
+bits, ax = live_run("toggle", "40:up;46:", "SETSTICK\tmode=toggle\n", 60)
+check("SETSTICK toggle answers STICK on=0", "STICK\ton=0" in got, got)
+check("toggle: the d-pad is the joypad's until R2", any(bits[i] & UP for i in range(41, 46)), bits[38:48])
+bits, ax = live_run("togglestick", "40:right;46:", "SETSTICK\tmode=toggle-stick\n", 60)
+check("SETSTICK toggle-stick answers STICK on=1", "STICK\ton=1" in got, got)
+check("toggle-stick: RIGHT is the stick", any(ax[i] == FULL for i in range(41, 46)), ax[38:48])
+
+bits, ax = live_run("badmode", HOLD_RIGHT, "SETSTICK\tmode=plain\nSETSTICK\tmode=sideways\n", 60)
+check("an unknown mode is an ERROR", any(l.startswith("ERROR\tcode=bad_stick") for l in got), got)
+check("and leaves the stick as it was (plain: the stick and the joypad's RIGHT)",
+      any(ax[i] == FULL for i in range(41, 46)) and any(bits[i] & RIGHT for i in range(41, 46)),
+      (ax[38:48], bits[38:48]))
+
+# A remapped SELECT (select:start): the chords go by the SELECT key, not by
+# what it is mapped to, so SELECT+R1 still saves and the core never reads START.
+bits, ax = live_run("selmap", "40:select;44:select+r1;50:select;54:", "SETMAP\tmap=select:start\n", 70)
+check("select:start: SELECT+R1 still says HOTKEY key=save", got.count("HOTKEY\tkey=save") == 1, got)
+check("select:start: the core never reads START", not any(b & START for b in bits), [i for i, b in enumerate(bits) if b & START][:5])
 
 if fails:
     print(f"FAIL: {len(fails)} hotkey check(s)")

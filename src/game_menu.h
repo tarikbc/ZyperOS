@@ -88,7 +88,7 @@ const char *gm_pak_other(const char *value);           /* the one it steps to */
 const char *gm_pak_name(const char *value);            /* "Rumble Pak" ... */
 void gm_pak_key(const char *tag, const char *file, char *out, size_t n);
 
-#define GI_MAX 8          /* four facts at most, Favorite and three actions */
+#define GI_MAX 9          /* four facts at most, Favorite, Buttons and three actions */
 
 /* The genre line, from the scrape. Sized from the card rather than guessed:
  * measured 2026-09-17 over 1,704 rows, the whole comma-separated value has a
@@ -137,6 +137,9 @@ typedef struct {
 	 * Y on the shelf starts a game fresh (2026-11-08) */
 	bool  can_favorite;
 	bool  favorite;
+	/* The game has a key of its own on the card (rms_game): its buttons
+	 * differ from the system's, so the Buttons row shows them */
+	bool  own_buttons;
 } game_info;
 
 /* `net` is whether there is a network, asked by the caller and passed in: the
@@ -145,42 +148,32 @@ int gi_rows(menu_row *out, const game_info *gi, bool net);
 
 /* ---------- the in-game menu ---------------------------------------------- */
 
-/* GM_ROWS is every game's menu. A game with two screens - a Nintendo DS
- * game on DSperate, whose one frame Diatom cuts into its top and bottom
- * screens - has three rows more, after Display and Shader, where the
- * picture is already the subject: Screens (the layout), Swap Screens and
- * Stylus. Their
- * ids come after GM_ROWS so that every other game's rows are still their own
- * ids, in order; gm_row_ids says which rows a menu has, in the order shown. */
-/* Controls, after Display (2026-11-06, docs/design/mock/controls-lab.html):
- * every control this game has, on its system (src/controls.h). After a DS
- * game's three rows, which belong with Display. Eight rows is one more than
- * the panel shows, so Quit is under the arrow, one Up from Continue.
+/* The in-game menu's rows by id. The ids say what a row is, not where it is:
+ * which tab has it, and in what order, is gm_tab_rows's (below).
  *
- * Quick Slot, after Load (2026-11-07): the slot SELECT+R1 saves to and
- * SELECT+L1 loads from, 1 to GM_SLOTS, kept per system; left, right and A
- * step it. With Save and Load, where states are. A system whose core keeps
- * no state (controls.h, ctl_has_states) has no quick slot and no row, so
- * its menu has a row fewer: gm_row_ids says which rows a menu has. */
-/* Shader, right after Display (2026-11-12): how the picture is drawn at its
- * last step, Off or a shader by its name (src/app.h SHADERS), kept for the
- * game's system and sent to the game at once. Every game's, so it is one of
- * GM_ROWS, and Controls is a row further down.
+ * Up to GM_ROWS, the rows every game's menu has, or had: Continue, Save,
+ * Load, Quick Slot, Display, Shader, Controls, Achievements, Reset, Quit.
+ * Quick Slot (2026-11-07) is the slot SELECT+R1 saves to and SELECT+L1 loads
+ * from, 1 to GM_SLOTS, kept per system; a system whose core keeps no state
+ * (controls.h, ctl_has_states) has no such row. Shader (2026-11-12) is how
+ * the picture is drawn at its last step, kept for the game's system.
+ * GM_CONTROLS is in no tab now: Controls is a tab of its own, whose rows are
+ * src/ctltab.c's, and the read-only pages the row opened are behind that
+ * tab's Hotkeys row. A port's menu (OpenBOR) still has the Controls row.
  *
- * Pak, a Nintendo 64 game's (2026-11-07): what its controller holds, the
- * Rumble Pak or the Controller Pak (the memory card some games save to),
- * kept for the game. Right before Controls, whose C buttons page says which
- * one is in. Its id comes after the screens' rows, as theirs do.
- *
- * Player 2, an NES game's (2026-11-13, src/p2.h): a friend plays as player
- * 2 in a browser, and A opens the page that says how to join. After the
- * whole of Shader's group, before Controls, on a game whose core the system
- * table offers it on and on no other; its id comes after the Pak's. */
+ * After GM_ROWS, the rows only some games have, so that every other game's
+ * rows keep their ids: a DS game's Screens (the layout), Swap Screens and
+ * Stylus, on the Display tab after Shader; an N64 game's Pak (2026-11-07,
+ * the Rumble Pak or the Controller Pak, kept for the game), which is a row
+ * of the Controls tab (src/ctltab.c) and in no tab here; and Player 2
+ * (2026-11-13, src/p2.h), an NES game's whose core the system table offers
+ * it on, on the Game tab after Quick Slot; and Disc (2026-11-13, issue #102),
+ * a game on more than one disc's, on the Game tab after Quick Slot too. */
 typedef enum {
 	GM_CONTINUE, GM_SAVE, GM_LOAD, GM_QUICK, GM_DISPLAY, GM_SHADER, GM_CONTROLS, GM_CHEEVOS,
 	GM_RESET, GM_QUIT,
 	GM_ROWS,
-	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2,
+	GM_SCREENS = GM_ROWS, GM_SWAP, GM_STYLUS, GM_PAK, GM_PLAYER2, GM_DISC,
 	GM_MAX_ROWS
 } gm_row;
 
@@ -225,15 +218,42 @@ typedef struct {
 	 * value (gm_player2_value) */
 	bool        player2;
 	const char *player2_value;
+	/* The discs of a game on more than one (Diatom's DISC answer): how many
+	 * (under 2: no Disc row), the one in the tray, 0 based, and the core's
+	 * name for it, NULL or empty for none. disc_fits says whether a label
+	 * fits the row's value column, measured by the caller with the font;
+	 * NULL says it does. */
+	int         discs;
+	int         disc;
+	const char *disc_label;
+	bool      (*disc_fits)(const char *label);
 } gm_ui;
 
-/* The rows this menu has, in the order shown: GM_ROWS of them, three more
- * with the screens' rows, a row fewer with no quick slot, one more with an
- * N64 game's Pak or an NES game's Player 2; over a port, Continue, Controls
- * and Quit. */
-int gm_row_ids(const gm_ui *u, gm_row *ids);
-/* Where row `id` is in that list, or -1 when the menu has none */
-int gm_row_at(const gm_ui *u, gm_row id);
+/* The Disc row's value: the core's label when `fits` says it fits (NULL: it
+ * does), else "Disc N of M", N from 1. Into `out`, which it returns. */
+const char *gm_disc_value(const gm_ui *u, char *out, size_t n, bool (*fits)(const char *));
+/* The disc `d` (+1 or -1) steps to from `disc` of `discs`, round */
+int gm_disc_step(int disc, int discs, int d);
+
+/* The in-game menu is in tabs, MENU's tab row (docs/superpowers/specs/
+ * 2026-11-13-button-remap-design.md, section 1): Game, Display and Controls,
+ * L1 and R1 going round them. gm_tab_name is a tab's name in the language
+ * that is on, the first for a tab past the ends.
+ *
+ * gm_tab_rows says which rows a tab has, in the order shown:
+ *   Game      Continue, Save, Load, Quick Slot (a system that keeps states),
+ *             Disc (a game on more than one disc), Player 2 (an NES game),
+ *             Achievements, Reset, Quit
+ *   Display   Display, Shader, and a DS game's Screens, Swap Screens, Stylus
+ *   Controls  none from here: its rows are src/ctltab.c's
+ * GM_CONTROLS and GM_PAK are in no tab: Controls is a tab now and Pak is one
+ * of its rows. A port's menu (u->port) has no tabs and is Continue, Controls
+ * and Quit whichever tab is asked for. */
+typedef enum { GT_GAME, GT_DISPLAY, GT_CONTROLS, GT_TABS } gm_tab;
+const char *gm_tab_name(int t);
+int gm_tab_rows(const gm_ui *u, gm_tab t, gm_row *ids);
+/* Where row `id` is in tab `t`'s list, or -1 when that tab has none */
+int gm_row_at(const gm_ui *u, gm_tab t, gm_row id);
 /* The row X does from anywhere on the menu's page, as A on it does: Quit,
  * in every in-game menu (a game's, a port's, PortMaster's), so leaving a
  * game is one press and not a walk to the last row. Its row carries X's
@@ -248,9 +268,11 @@ gm_row gm_x_row(void);
 typedef struct {
 	char cheevos[48];
 	char quick[8];
+	char disc[160];
 	unsigned char sound[GM_MAX_ROWS];
 } gm_bufs;
 
-int gm_rows(const gm_ui *u, menu_row *out, gm_bufs *b);
+/* Tab `t`'s rows, built from gm_tab_rows's list */
+int gm_rows(const gm_ui *u, gm_tab t, menu_row *out, gm_bufs *b);
 
 #endif

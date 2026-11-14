@@ -68,6 +68,9 @@ typedef struct diatom_session {
 	/* RUN stick=toggle (1) or toggle-stick (2): R2 turns the d-pad into the
 	 * left stick and back, from the d-pad (1) or the stick (2). 0: no R2 */
 	int           stick_toggle;
+	/* RUN stick=plain: the d-pad is the left stick always, and the joypad's
+	 * d-pad too. No SELECT rule (SELECT is the system's own) and no R2 turn */
+	bool          stick_plain;
 } diatom_session;
 
 static bool game_msg(const diatom_msg *m);
@@ -786,6 +789,8 @@ static void usage(void)
 		"              [--controller <n>]  libretro controller type for port 0\n"
 		"              [--stick dpad]      the d-pad as the left analog stick (N64)\n"
 		"              [--stick toggle]    R2 turns the d-pad into the left stick and back (PSP)\n"
+		"              [--stick toggle-stick]  the same, starting as the stick\n"
+		"              [--stick plain]     the d-pad is always the left stick and the d-pad; no SELECT rule, no R2 (PlayStation)\n"
 		"\n--firmware names a file the content needs, e.g. syscard3.pce for a PC\n"
 		"Engine CD. Diatom does not know which content needs what and will not\n"
 		"learn - it has no core list - so whoever launches it says.\n"
@@ -1574,6 +1579,29 @@ static void stick_emit(bool on)
 		diatom_proto_send("STICK\ton=%d", on ? 1 : 0);
 }
 
+/* Sets how the d-pad is the stick, from a RUN's stick= or a SETSTICK's mode=
+ * (plain, dpad, toggle, toggle-stick, off). False, and nothing touched, for
+ * a name it does not know. `say` sends STICK on=1 when the d-pad is now the
+ * stick and on=0 when it is the d-pad (the SELECT rule's dpad counts as the
+ * stick, as it is until SELECT says otherwise). Plain is the toggle's
+ * machinery with main.c's R2 turn left off: env.c's toggle mode has no SELECT
+ * rule, and nothing here flips it; and the d-pad stays the joypad's d-pad as
+ * well, so a PlayStation game whose DualShock stays digital still moves. */
+static bool stick_set(const char *mode, bool say)
+{
+	bool on;
+
+	if (!strcmp(mode, "dpad"))              { diatom_input_set_stick(true); g_stick_toggle = false; on = true; }
+	else if (!strcmp(mode, "plain"))        { diatom_input_set_stick_plain(); g_stick_toggle = false; on = true; }
+	else if (!strcmp(mode, "toggle"))       { diatom_input_set_stick_toggle(false); g_stick_toggle = true; on = false; }
+	else if (!strcmp(mode, "toggle-stick")) { diatom_input_set_stick_toggle(true); g_stick_toggle = true; on = true; }
+	else if (!strcmp(mode, "off"))          { diatom_input_set_stick(false); g_stick_toggle = false; on = false; }
+	else return false;
+	if (say && diatom_proto_connected())
+		diatom_proto_send("STICK\ton=%d", on ? 1 : 0);
+	return true;
+}
+
 static void stylus_emit(void)
 {
 	if (diatom_proto_connected())
@@ -1741,6 +1769,10 @@ static bool state_plane_msg(const diatom_msg *m)
 	case DIATOM_MSG_SETSCREENS: screens_set(m);      return true;
 	case DIATOM_MSG_STYLUS:     stylus_emit();       return true;
 	case DIATOM_MSG_SETSTYLUS:  stylus_set(m->on);   return true;
+	case DIATOM_MSG_SETSTICK:
+		if (!stick_set(m->dmode, true))
+			diatom_proto_send("ERROR\tcode=bad_stick\tmsg=%s", m->dmode);
+		return true;
 	case DIATOM_MSG_PLAYER2:    player2_emit();      return true;
 	case DIATOM_MSG_SETPLAYER2: player2_set(m->on, m->buttons, m->players); return true;
 	case DIATOM_MSG_PREMAP:
@@ -2033,6 +2065,9 @@ static int run_session_inner(const diatom_session *sn)
 		printf("diatom: the d-pad is the %s; R2 turns it into the %s\n",
 		       sn->stick_toggle == 2 ? "left stick" : "d-pad",
 		       sn->stick_toggle == 2 ? "d-pad" : "left stick");
+	} else if (!sn->dpad_stick && sn->stick_plain) {
+		stick_set("plain", false);
+		printf("diatom: the d-pad is the left stick and the d-pad, always\n");
 	}
 	levels_forget();
 	audio_forget();
@@ -3077,6 +3112,7 @@ int main(int argc, char **argv)
 	unsigned controller = 0;
 	bool dpad_stick = false;
 	int  stick_toggle = 0;
+	bool stick_plain = false;
 	int screens = 1;
 	diatom_filter start_filter;
 	long limit = 0;
@@ -3121,6 +3157,7 @@ int main(int argc, char **argv)
 			const char *v = argv[++i];
 
 			dpad_stick = !strcmp(v, "dpad");
+			stick_plain = !strcmp(v, "plain");
 			stick_toggle = !strcmp(v, "toggle") ? 1 : !strcmp(v, "toggle-stick") ? 2 : 0;
 		}
 		else if (!strcmp(argv[i], "--layout") && i + 1 < argc) {
@@ -3292,6 +3329,7 @@ int main(int argc, char **argv)
 			sn.dpad_stick = !strcmp(m.stick, "dpad");
 			sn.stick_toggle = !strcmp(m.stick, "toggle") ? 1
 			                : !strcmp(m.stick, "toggle-stick") ? 2 : 0;
+			sn.stick_plain = !strcmp(m.stick, "plain");
 			sn.mode   = start_mode;
 			sn.filter = start_filter;
 			run_session(&sn);   /* its own ERROR/EXIT is the report */
@@ -3320,6 +3358,7 @@ int main(int argc, char **argv)
 			.controller = controller,
 			.dpad_stick = dpad_stick,
 			.stick_toggle = stick_toggle,
+			.stick_plain = stick_plain,
 		};
 		int rc = run_session(&sn);
 		if (rc) return rc;

@@ -203,6 +203,14 @@ send("LEVELS"); check("desktop has no levels", drain(), ["LEVELS\tcount=0"])
 send("SETLEVEL\tkind=brightness\tindex=3\tcount=12")
 check("setlevel refused with no control", drain(), ["ERROR\tcode=bad_level\tmsg=brightness"])
 
+# The stick, live, with a game running: each mode answers whether the d-pad is
+# now the stick, an unknown one is refused (check-hotkeys reads the pad).
+for mode, on in (("plain", 1), ("off", 0), ("dpad", 1), ("toggle", 0), ("toggle-stick", 1), ("off", 0)):
+    send(f"SETSTICK\tmode={mode}"); check(f"SETSTICK {mode} while running", drain(), [f"STICK\ton={on}"])
+send("SETSTICK\tmode=sideways"); got = drain()
+check_that("an unknown stick mode is an ERROR while running",
+           len(got) == 1 and got[0].startswith("ERROR\tcode=bad_stick"), got)
+
 send("RESET"); check("reset while running", drain(), ["RESETDONE"])
 
 # Discs. The stub hands over a two-disc tray from retro_init, as pcsx_rearmed

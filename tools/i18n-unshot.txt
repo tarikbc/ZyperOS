@@ -196,6 +196,9 @@ emptyhome.cheer.one
 emptyhome.cheer.other
 
 # gamemenu: no shot draws it yet
+gamemenu.own_buttons  # wrapped to the Controls tab's column a line a row, as a paragraph is, so no drawn line is the string; gamemenu-controls-all draws it
+gamemenu.reset_buttons_game  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask draws it
+gamemenu.reset_buttons_all  # wrapped to its question's lines as Delete Game's is; gamemenu-controls-ask-all draws it
 gamemenu.delete_ask
 gamemenu.delete_ask_this
 gamemenu.delete_ask_port

@@ -139,6 +139,7 @@ something once broke in a way nothing noticed:
 | `check-mp4lock` | the play modes, and MP4's lock screen: every button blocked, power and volume too, and L1 + R1 held two seconds the one way out |
 | `check-mp4frame` | MP4's video frames between the daemon and the launcher: a writer and a reader on two threads over the same pages, every picture the reader keeps whole |
 | `check-controls` | what MENU > Controls says: every button on exactly one page, and rows short enough to sit still; and a game's Controls, for every system in systems.cfg: the core's names through its map and turbo, pages that fit |
+| `check-remap` | the remap rules: Diatom's map language read and written, a button's change and its swap worked from the base, what is stored and loaded, the N64's layer kept, the choices a system offers and its letter layout |
 | `check-controls-shots` | the in-game Controls pages drawn in both themes, each still and its own; every Controls page measured with the font against the panel (`--controls-fit`); the in-game menu's Controls row; MENU > System Order turned both ways (builds the host launcher; skips without SDL2) |
 | `check-logpack` | the logs pack: names and Bluetooth addresses masked, and a whole pack unpacked with the same tar and read back |
 | `check-clock` | Date & Time: each row moving only itself, the 12-hour and 24-hour words, the shelf's short clock, and the zone list west to east |

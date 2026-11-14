@@ -108,6 +108,8 @@
 #include "mediapage.h"
 #include "mediatex.h"
 #include "controls.h"
+#include "ctltab_screen.h"
+#include "remapstore.h"
 #include "tour.h"
 #include "tourdraw.h"
 #include "game_menu.h"
@@ -713,7 +715,8 @@ static void quick_slot_put(const char *tag, int slot)
 static struct {
 	char tag[CFG_STR];
 	char name[CFG_STR];
-	char file[LIB_PATH];  /* the game's, for what is kept per game (stick_put) */
+	char file[LIB_PATH];  /* the game's, for what is kept per game (rms_stick_put) */
+	system_cfg sys;       /* its system, whose stick default the key is kept against */
 	char stem[LIB_PATH * 2];
 	bool states;
 	int  asked;
@@ -772,40 +775,16 @@ static void pak_put(const char *tag, const char *file, const char *value)
 	db_set_str(db_lib(), key, gm_pak_value(value));
 }
 
-/* ---------- the PSP's d-pad: the d-pad, or the analog stick ----------------
+/* ---------- D-pad as Stick: kept per game (src/remapstore.c) ---------------
  *
- * The handheld has no stick, and a PSP game moves with its analog stick or
- * with its d-pad, game by game. A system with stick|tag|toggle
- * (config/systems.cfg, the PSP's) starts a game with the d-pad as the d-pad,
- * and R2 turns it into the left stick and back (Diatom's RUN stick=toggle),
- * as the Pixel 2's own firmware and Deadstation Portable do it. The side a
- * game was left on is kept for that game, so a game that moves with the
- * stick starts with it the next time. */
-static bool stick_toggles(const system_cfg *s)
-{
-	return s && !strcmp(s->stick, "toggle");
-}
-
-static void stick_key(const char *tag, const char *file, char *out, size_t n)
-{
-	snprintf(out, n, "stick.%s.%s", tag ? tag : "", file ? file : "");
-}
-
-static bool stick_get(const char *tag, const char *file)
-{
-	char key[CFG_STR + LIB_PATH + 8], v[4];
-
-	stick_key(tag, file, key, sizeof key);
-	return db_get_str(db_lib(), key, v, sizeof v, NULL) && v[0] == '1';
-}
-
-static void stick_put(const char *tag, const char *file, bool on)
-{
-	char key[CFG_STR + LIB_PATH + 8];
-
-	stick_key(tag, file, key, sizeof key);
-	db_set_str(db_lib(), key, on ? "1" : "0");
-}
+ * The handheld has no stick. A system with a stick|tag|mode line
+ * (config/systems.cfg) can turn the d-pad into the core's left stick, game by
+ * game: the N64 starts with it on, the Dreamcast and the PlayStation off.
+ * The PSP's (stick|PSP|toggle) starts with the d-pad as the d-pad, and R2
+ * turns it into the left stick and back (Diatom's RUN stick=toggle), as the
+ * Pixel 2's own firmware and Deadstation Portable do it. The side a game was
+ * left on is kept for that game, so a game that moves with the stick starts
+ * with it the next time. */
 
 /* ---------- per-system sort order ----------------------------------------- */
 
@@ -1473,6 +1452,7 @@ static void quick_bind(app *a, int s, const game_entry *g)
 	const system_cfg *sc = &a->sys.systems[s];
 
 	memset(&g_quick, 0, sizeof g_quick);
+	g_quick.sys = *sc;
 	snprintf(g_quick.tag, sizeof g_quick.tag, "%s", sc->tag);
 	snprintf(g_quick.name, sizeof g_quick.name, "%s", sc->name);
 	snprintf(g_quick.file, sizeof g_quick.file, "%s", g->file);
@@ -2626,11 +2606,12 @@ static void on_speed(int half)
 
 /* Called from inside plat_resident_wait when R2 turned a PSP game's d-pad
  * into the analog stick (on) or back: said over the game, and kept for the
- * game (stick_put) */
+ * game (rms_stick_put). The answers to the Controls tab's own SETSTICKs
+ * never come here (plat_resident_set_stick): its row said it already. */
 static void on_stick(bool on)
 {
 	popup_now(T(S_POPUP_STICK), T(on ? S_POPUP_STICK_ON : S_POPUP_STICK_OFF));
-	if (g_quick.tag[0] && g_quick.file[0]) stick_put(g_quick.tag, g_quick.file, on);
+	if (g_quick.tag[0] && g_quick.file[0]) rms_stick_put(&g_quick.sys, g_quick.file, on);
 }
 
 /* Called from inside plat_resident_wait for the quick slot (platform.h's
@@ -3227,7 +3208,7 @@ static Uint32 g_focus_at = REDRAW_NEVER;
 static bool     g_clock_held;
 static unsigned g_clock_at;
 
-static unsigned anim_now(void) { return g_clock_held ? g_clock_at : plat_now_ms(); }
+unsigned anim_now(void) { return g_clock_held ? g_clock_at : plat_now_ms(); }
 static Uint32 anim_ticks(void) { return anim_now(); }
 
 /* A card made for a theme that is no longer on destroyed and its slot
@@ -5353,9 +5334,17 @@ static unsigned      g_menu_zyper_at;
  * is one, kept while the handheld is on: MENU opens where it was closed.
  * `g_menu_tabs` is set around MENU's own draw, as g_menu_zyper is, and NULL
  * everywhere else, so the screens it opens draw their own headings. */
-struct menu_tabs { int at, from, dir; unsigned t0; };
+struct menu_tabs {
+	int at, from, dir;
+	unsigned t0;
+	/* how many tabs there are, and the name of each, so the row and the
+	 * turn serve any set of tabs, not MENU's alone */
+	int count;
+	const char *(*name)(int i);
+};
 typedef struct menu_tabs menu_tabs;
-static menu_tabs        g_tabs;
+static const char *mpt_name(int i) { return sys_menu_tab_name((pm_tab)i); }
+static menu_tabs        g_tabs = { .count = PT_TABS, .name = mpt_name };
 static const menu_tabs *g_menu_tabs;
 /* The row each tab was left on, by identity (PM_ROWS: its first) */
 static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
@@ -5363,11 +5352,22 @@ static pm_row           g_tab_row[PT_TABS] = { PM_ROWS, PM_ROWS, PM_ROWS,
 /* Set by a key handler to move the runner's cursor, which it owns: MENU's
  * tabs, whose rows change under it. -1, none. */
 static int g_menu_sel_to = -1;
+
+void menu_cursor_to(int sel)
+{
+	g_menu_sel_to = sel;
+}
 /* menu_style's row marks and header picture, set around the draw of the
  * menu that has them as g_menu_zyper is */
 static void (*g_row_mark)(app *a, const menu_row *row, int right, int cy, float on_fill);
 static void (*g_menu_header)(app *a, const SDL_Rect *r);
 static int    g_menu_header_h;
+/* menu_style's picture in a column at the rows' left and its width, set
+ * around the draw of the menu that has one as g_menu_header is; and whether
+ * the panel being drawn is a copy (snap_draw), which the picture is told */
+static void (*g_menu_side)(app *a, const menu_side *at);
+static int    g_menu_side_w;
+static bool   g_snap_drawing;
 
 #define MENU_ZYPER_H 64.0f
 
@@ -5511,8 +5511,9 @@ static float menu_tabs_p(const menu_tabs *t)
 	return ds_out((float)el / DS_MS_MOVE);
 }
 
-/* How many tabs MENU's tab row shows either side of the one that is on, as
- * far as they reach: the next and the one after, and the same back */
+/* How many tabs a tab row shows either side of the one that is on, as far as
+ * they reach: the next and the one after, and the same back; with only a few
+ * tabs, as many as fit without a name shown twice */
 #define MENU_TAB_SIDE 2
 
 /* One tab's row (DESIGN.md 11.3): the tab in **label** **text**, centered as
@@ -5525,11 +5526,14 @@ static float menu_tabs_p(const menu_tabs *t)
  * buttons"). Returns the tab's name's width, for the bar under it. `dx` and
  * `op` draw it moved and faded, for a move. */
 #define MENU_TAB_FADE 64
-static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, float op)
+static int menu_tab_row(app *a, const menu_tabs *tabs, int at, int cx, int cy,
+                        int lo, int hi, int dx, float op)
 {
 	TTF_Font *fh = ui_font(UI_F_LABEL), *fm = ui_font(UI_F_META);
-	const char *cur = sys_menu_tab_name((pm_tab)at);
+	const char *cur = tabs->name(at);
 	const int gap = 32, apart = 40;
+	const int count = tabs->count;
+	const int side = MENU_TAB_SIDE < (count - 1) / 2 ? MENU_TAB_SIDE : (count - 1) / 2;
 	int aw = ui_text_width(fh, cur), cur_x = cx - aw / 2, k, x;
 	SDL_Color dim = UI_TEXT_DIM, txt = UI_TEXT;
 
@@ -5537,16 +5541,16 @@ static int menu_tab_row(app *a, int at, int cx, int cy, int lo, int hi, int dx, 
 	txt.a = (Uint8)(op * 255.0f + 0.5f);
 	/* back: the tab before, ending a gap left of the name, then the one
 	 * before that, while any of it is still inside */
-	for (k = 1, x = cur_x - gap; k <= MENU_TAB_SIDE && x + dx > lo; k++) {
-		const char *t = sys_menu_tab_name((pm_tab)((at - k + 2 * PT_TABS) % PT_TABS));
+	for (k = 1, x = cur_x - gap; k <= side && x + dx > lo; k++) {
+		const char *t = tabs->name((at - k + 2 * count) % count);
 
 		x -= ui_text_width(fm, t);
 		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
 		x -= apart;
 	}
 	/* on: the tab after, then the one after that */
-	for (k = 1, x = cx + aw / 2 + gap; k <= MENU_TAB_SIDE && x + dx < hi; k++) {
-		const char *t = sys_menu_tab_name((pm_tab)((at + k) % PT_TABS));
+	for (k = 1, x = cx + aw / 2 + gap; k <= side && x + dx < hi; k++) {
+		const char *t = tabs->name((at + k) % count);
 
 		ui_text_faded(a->r, fm, t, x + dx, ui_cap_y(fm, cy), lo, hi, MENU_TAB_FADE, dim);
 		x += ui_text_width(fm, t) + apart;
@@ -5576,18 +5580,30 @@ static int menu_tabs_draw(app *a, const menu_tabs *t, int cx, int cy,
 	if (p < 1.0f && t->from != t->at) {
 		/* the old one gone in the first two fifths, as its rows are */
 		float op = 1.0f - p * 2.5f;
-		int ow = op > 0.0f ? menu_tab_row(a, t->from, cx, cy, lo, hi,
+		int ow = op > 0.0f ? menu_tab_row(a, t, t->from, cx, cy, lo, hi,
 		                                  (int)(-t->dir * 96 * p), op)
 		                   : ui_text_width(ui_font(UI_F_LABEL),
-		                                   sys_menu_tab_name((pm_tab)t->from));
+		                                   t->name(t->from));
 
-		aw = menu_tab_row(a, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
+		aw = menu_tab_row(a, t, t->at, cx, cy, lo, hi, (int)(t->dir * 96 * (1.0f - p)), p);
 		w = (int)(ow + (aw - ow) * p + 0.5f);
 	} else {
-		w = aw = menu_tab_row(a, t->at, cx, cy, lo, hi, 0, 1.0f);
+		w = aw = menu_tab_row(a, t, t->at, cx, cy, lo, hi, 0, 1.0f);
 	}
 	(void)aw;
 	return w;
+}
+
+/* Turn the tabs one way, +1 for R1 and -1 for L1, round the end: the one it
+ * came from and which way are kept, for the move between them */
+static void tabs_turn(menu_tabs *t, int dir)
+{
+	t->from = t->at;
+	t->at = (t->at + dir + t->count) % t->count;
+	t->dir = dir;
+	t->t0 = anim_now();
+	if (!t->t0) t->t0 = 1;
+	g_menu_epoch++;
 }
 
 /* The bar on the heading's rule at `rule_y` under the tab's name: the home's
@@ -5596,6 +5612,31 @@ static void menu_tabs_bar(app *a, int cx, int rule_y, int w)
 {
 	ui_round_rect(a->r, &(SDL_Rect){ cx - w / 2, rule_y + DS_RULE / 2 - DS_BAR / 2, w, DS_BAR },
 	              DS_BAR / 2, ui_col(theme()->accent_ink, 255));
+}
+
+/* menu_style's picture at the rows' left (g_menu_side), told where it is
+ * and in which pass (menu_side) */
+static void menu_side_call(app *a, const SDL_Rect *panel, int content_x, int content_y,
+                           const menu_row *rows, int n, int sel, menu_side_stage stage)
+{
+	menu_side at;
+
+	if (!g_menu_side) return;
+	memset(&at, 0, sizeof at);
+	at.panel = *panel;
+	at.content_x = content_x;
+	at.content_y = content_y;
+	at.rows = rows;
+	at.n = n;
+	at.sel = sel;
+	at.live = !g_snap_drawing;
+	at.tab_at = g_menu_tabs ? g_menu_tabs->at : -1;
+	at.tab_from = g_menu_tabs ? g_menu_tabs->from : -1;
+	at.tab_dir = g_menu_tabs ? g_menu_tabs->dir : 0;
+	at.tab_t0 = g_menu_tabs ? g_menu_tabs->t0 : 0;
+	at.now = anim_now();
+	at.stage = stage;
+	g_menu_side(a, &at);
 }
 
 static void menu_panel(app *a, const char *heading, const menu_row *rows,
@@ -5706,6 +5747,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 	float tab_p = g_menu_tabs ? menu_tabs_p(g_menu_tabs) : 1.0f;
 	bool tab_moving = tab_p < 1.0f;
 	int tab_dx = tab_moving ? (int)(g_menu_tabs->dir * 64 * (1.0f - tab_p)) : 0;
+	/* menu_style's picture at the rows' left: the rows and the focus fill
+	 * start `side_w` in from the content's left edge, the heading and its
+	 * rule do not */
+	const int side_w = g_menu_side ? g_menu_side_w : 0;
+	int row_cx;
 
 	/* A rule's sentinel is no value: a list with a rule in it and no values,
 	 * Delete Game's question over its answers, stays a centered list */
@@ -5744,6 +5790,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (w > content_w) content_w = w;
 	}
 	if (fixed_w > 0) content_w = fixed_w;
+	else content_w += side_w;
 	if (content_w > ZYPEROS_SCREEN_W - margin * 2 - pad * 2)
 		content_w = ZYPEROS_SCREEN_W - margin * 2 - pad * 2;
 	/* The most a row can have: the fixed width, or the screen's. A row
@@ -5884,8 +5931,10 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			panel.h -= pad * 5 / 12;
 	}
 	/* MENU's tabs: as tall as the screen allows whichever tab is on, so the
-	 * panel holds still as L1 and R1 go round (DESIGN.md 11.3) */
-	if (g_menu_tabs) {
+	 * panel holds still as L1 and R1 go round (DESIGN.md 11.3); and a panel
+	 * with a picture beside its rows, so the picture holds still as the
+	 * pages beside it change (the Controls tab's handheld) */
+	if (g_menu_tabs || g_menu_side) {
 		int most = (MENU_AVAIL_H - content_off - pad) / row_h;
 		int tall = content_off + most * row_h + pad;
 
@@ -6038,6 +6087,10 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		g_menu_header(a, &(SDL_Rect){ content_x,
 		                              heading ? panel.y + head_h + pad / 2 : panel.y + pad,
 		                              content_w, g_menu_header_h - pad / 2 });
+	/* the picture at the rows' left, before the rows and with nothing
+	 * clipped: in the pass that moves the panel, or at rest */
+	menu_side_call(a, &panel, content_x, content_y, rows, n, sel,
+	               posed ? MENU_SIDE_PASS : MENU_SIDE_REST);
 
 	/* THE HIGHLIGHT SLIDES. It used to be drawn inside the row loop at
 	 * i == sel, which put it wherever the cursor was that frame and made it
@@ -6098,7 +6151,10 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		if (tween_moving(&give, nw)) redraw_now();    /* the list still easing: moving */
 	}
 
-	if (sel >= 0 && sel < n && rows[sel].label) {
+	/* No plate on a note nothing can land on: a list that is only that (the
+	 * in-game menu's Controls tab before it has rows) has no cursor to show */
+	if (sel >= 0 && sel < n && rows[sel].label &&
+	    !(ROW_IS_NOTE(rows[sel]) && !rows[sel].live)) {
 		static int   pl_n = -1;
 		static unsigned pl_ep;
 		static tween pl_y, pl_h;
@@ -6158,9 +6214,9 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 		 * rather than as a selection. */
 		plate_y = tween_at(&pl_y, nowp);
 		plate_h = tween_at(&pl_h, nowp);
-		plate.x = panel.x + pad / 2 + tab_dx;
+		plate.x = panel.x + pad / 2 + tab_dx + side_w;
 		plate.y = (int)(plate_y + 0.5f);
-		plate.w = panel.w - pad;
+		plate.w = panel.w - pad - side_w;
 		plate.h = (int)(plate_h + 0.5f);
 		if (tab_moving)
 			SDL_RenderSetClipRect(a->r, &(SDL_Rect){ panel.x + UI_PANEL_BORDER, panel.y,
@@ -6205,6 +6261,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 			                                         panel.w - UI_PANEL_BORDER * 2, panel.h });
 		content_x += tab_dx;
 	}
+	/* Set in by the picture beside them, and centered in what is left */
+	content_x += side_w;
+	content_w -= side_w;
+	cap_w -= side_w;
+	row_cx = side_w ? content_x + content_w / 2 : cx;
 	/* `v` walks the slots on screen and `i` is the row each holds: one and
 	 * the same unless the list goes round */
 	for (k = 0, v = lo; (loop || v < n) && v <= hi; k++, v++) {
@@ -6326,7 +6387,7 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				bool body = ROW_IS_BODY(rows[i]);
 
 				ui_fit_text(fm, rows[i].label, note, sizeof note, content_w);
-				ui_text(a->r, fm, note, body ? content_x : cx, ty,
+				ui_text(a->r, fm, note, body ? content_x : row_cx, ty,
 				        body ? -1 : 0, lc);
 			} else {
 				int slot = MQ_NOTE0 + (notes_drawn < MQ_NOTES - 1
@@ -6493,12 +6554,15 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				                mq_row_phase(i == sel, heading, n, sel), lc);
 			} else {
 				ui_fit_text(fm, rows[i].label, lbl, sizeof lbl, content_w);
-				ui_text(a->r, fm, lbl, cx, ty, 0, lc);
+				ui_text(a->r, fm, lbl, row_cx, ty, 0, lc);
 			}
 		}
 	}
 	if (vis < n || tab_moving) SDL_RenderSetClipRect(a->r, NULL);
 	content_x -= tab_dx;
+	content_x -= side_w;
+	content_w += side_w;
+	cap_w += side_w;
 
 	if (scroll_h) {
 		/* Faded where the text runs out of viewport, and faded by laying the
@@ -6560,7 +6624,11 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 				                   content_y + vis * row_h + off + k, down_w, 1 });
 		}
 	}
-	if (posed) panel_pass_end(a, &panel, pose);
+	if (posed) {
+		panel_pass_end(a, &panel, pose);
+		/* and a picture that holds still, over it at its place at rest */
+		menu_side_call(a, &panel, content_x, content_y, rows, n, sel, MENU_SIDE_OVER);
+	}
 }
 
 /* ---- the panel pass, and the panel on screen ---------------------------
@@ -6684,9 +6752,13 @@ static void snap_record(menu_snap *s, int kind, const char *heading,
 	s->frame = g_frame_no;
 	s->kind  = kind;
 	s->tab   = g_menu_tabs ? g_menu_tabs->at : -1;
+	s->tab_count = g_menu_tabs ? g_menu_tabs->count : 0;
+	s->tab_name  = g_menu_tabs ? g_menu_tabs->name : NULL;
 	s->row_mark = (void *)g_row_mark;
 	s->header = (void *)g_menu_header;
 	s->header_h = g_menu_header_h;
+	s->side = (void *)g_menu_side;
+	s->side_w = g_menu_side_w;
 }
 
 /* The panel on screen again, at `pose`, Zyper going on from where he was:
@@ -6720,23 +6792,30 @@ static void snap_draw(app *a, mm_pose pose)
 
 	g_menu_zyper = s->zyper ? &s->zy : NULL;
 	g_menu_zyper_at = anim_now() + s->zy_ahead;
-	/* the tab row as it was, at rest */
-	rest = (menu_tabs){ s->tab, s->tab, 0, 0 };
-	g_menu_tabs = s->tab >= 0 ? &rest : NULL;
+	/* the tab row as it was, at rest, with the names of its own set */
+	rest = (menu_tabs){ s->tab, s->tab, 0, 0, s->tab_count, s->tab_name };
+	g_menu_tabs = s->tab >= 0 && s->tab_name ? &rest : NULL;
 	{
 		void (*mark)(app *, const menu_row *, int, int, float) = g_row_mark;
 		void (*head)(app *, const SDL_Rect *) = g_menu_header;
-		int head_h = g_menu_header_h;
+		void (*side)(app *, const menu_side *) = g_menu_side;
+		int head_h = g_menu_header_h, side_w = g_menu_side_w;
 
 		g_row_mark = (void (*)(app *, const menu_row *, int, int, float))s->row_mark;
 		g_menu_header = (void (*)(app *, const SDL_Rect *))s->header;
 		g_menu_header_h = s->header_h;
+		g_menu_side = (void (*)(app *, const menu_side *))s->side;
+		g_menu_side_w = s->side_w;
+		g_snap_drawing = true;
 		menu_panel(a, s->heading, s->rows, s->n, s->sel, s->fixed_w, s->accent,
 		           s->has_vcolors ? s->vcolors : NULL, s->visits_all, s->loop_at,
 		           s->note, pose);
+		g_snap_drawing = false;
 		g_row_mark = mark;
 		g_menu_header = head;
 		g_menu_header_h = head_h;
+		g_menu_side = side;
+		g_menu_side_w = side_w;
 	}
 	g_menu_tabs = tabs;
 	g_menu_zyper = z;
@@ -6826,6 +6905,24 @@ void menu_draw(app *a, const char *heading, const menu_row *rows, int n,
                int sel, int fixed_w, unsigned accent)
 {
 	menu_draw_ex(a, heading, rows, n, sel, fixed_w, accent, NULL, false, 0);
+}
+
+void menu_draw_styled(app *a, const menu_style *st, const char *heading,
+                      const menu_row *rows, int n, int sel)
+{
+	g_menu_tabs = st->tabs;
+	g_row_mark = st->row_mark;
+	g_menu_header = st->header;
+	g_menu_header_h = st->header_h;
+	g_menu_side = st->side;
+	g_menu_side_w = st->side_w;
+	menu_draw_ex(a, heading, rows, n, sel, st->fixed_w,
+	             st->follow_tint ? a->tint : st->accent, st->vcolors, false, 0);
+	g_menu_side = NULL;
+	g_menu_side_w = 0;
+	g_menu_header = NULL;
+	g_row_mark = NULL;
+	g_menu_tabs = NULL;
 }
 
 /* A one-line message, DESIGN.md 11.8: a panel holding one row, its text
@@ -7543,6 +7640,12 @@ static int menu_step_heard(app *a, const menu_row *rows, int n, int sel,
 	return to;
 }
 
+/* MENU was pressed in a screen over this one: every screen is closing */
+bool menu_closing(void)
+{
+	return g_menu_closing;
+}
+
 /* True when a menu screen should leave: B, MENU, or a MENU pressed deeper in.
  * The press that leaves is answered with back; the screens under it, which
  * leave on the flag with the press already flushed, are silent. */
@@ -7727,15 +7830,17 @@ static leave_end panel_leave_run(app *a, void (*backdrop)(app *, void *, float),
 /* The question is `nq` rows - one dead row, or a paragraph's lines (Delete
  * Game's, DESIGN.md 11.31) - and the two answers go after it in `rows`,
  * which holds nq + 2. `fixed_w` is the panel's content width, 0 to size it
- * to the rows. confirm_rows_as names the safe answer `no_label` where
- * Cancel goes, and with a `guard` it is a question that came by itself
- * (ask_settle): a button down as it opened, or pressed in its first half
- * second, counts only once let go. */
+ * to the rows. `no_label` names the safe answer where Cancel goes, and with
+ * a `guard` it is a question that came by itself (ask_settle): a button down
+ * as it opened, or pressed in its first half second, counts only once let
+ * go. Over the shelf, or over `over`'s backdrop with its power rule: the
+ * in-game menu's paused game, where POWER stops the game. confirm_rows_as
+ * and confirm_rows_over below are this with the parts they need. */
 static void ask_settle(app *a, usbpower_guard *g);
 
-static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
-                            const char *yes_label, const char *no_label, int fixed_w, int lv,
-                            usbpower_guard *guard)
+static bool confirm_rows_full(app *a, const char *heading, menu_row *rows, int nq,
+                              const char *yes_label, const char *no_label, int fixed_w, int lv,
+                              usbpower_guard *guard, const menu_style *over, void *ctx)
 {
 	int sel = nq + 1;
 	float k;
@@ -7748,7 +7853,11 @@ static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
 		if (guard) ask_settle(a, guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; return false; }
-		if (a->in.pressed[IN_POWER] || idle_due(a)) { power_off(a); return false; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) {
+			if (over && over->on_power) over->on_power(a, ctx);
+			else power_off(a);
+			return false;
+		}
 		if (menu_leaving(a)) return false;
 
 		/* Only the two answerable rows are reachable; the rows above are the
@@ -7770,8 +7879,12 @@ static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
 		tick_theme(a);
-		draw_shelf(a);
-		ui_scrim_k(a->r, 0, k);
+		if (over && over->backdrop) {
+			over->backdrop(a, ctx, k);
+		} else {
+			draw_shelf(a);
+			ui_scrim_k(a->r, 0, k);
+		}
 		menu_draw(a, heading, rows, nq + 2, sel, fixed_w, MENU_ZYPEROS);
 		plat_draw_osd(a->r);
 		plat_present();
@@ -7779,10 +7892,26 @@ static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
 	}
 }
 
+static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
+                            const char *yes_label, const char *no_label, int fixed_w, int lv,
+                            usbpower_guard *guard)
+{
+	return confirm_rows_full(a, heading, rows, nq, yes_label, no_label, fixed_w, lv, guard, NULL, NULL);
+}
+
+static bool confirm_rows_over(app *a, const char *heading, menu_row *rows, int nq,
+                              const char *yes_label, int fixed_w, int lv,
+                              const menu_style *over, void *ctx)
+{
+	return confirm_rows_full(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv,
+	                         NULL, over, ctx);
+}
+
 static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
                          const char *yes_label, int fixed_w, int lv)
 {
-	return confirm_rows_as(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv, NULL);
+	return confirm_rows_full(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv,
+	                         NULL, NULL, NULL);
 }
 
 static bool confirm_body(app *a, const char *heading, const char *msg,
@@ -7814,16 +7943,14 @@ static bool confirm_panel(app *a, const char *heading, const char *msg,
 /* Every ZyperOS menu row has to fit through the runner too, or the bottom of
  * the menu is cut off with no sign of it. */
 _Static_assert(MENU_RUN_ROWS >= MENU_MAX_ROWS, "MENU_RUN_ROWS < MENU_MAX_ROWS");
+/* ...and the in-game menu's Controls tab's (src/ctltab.h) */
+_Static_assert(MENU_RUN_ROWS >= CT_MAX_ROWS, "MENU_RUN_ROWS < CT_MAX_ROWS");
 
 /* How a screen ended, for the callers that have to act differently. The
  * in-game menu is the one that does: B and MENU mean Continue there, and it
  * has to send RESUME - but the runner owns those two buttons and flushes the
  * input on the way out, so asking a->in afterwards would always say no. */
-typedef enum {
-	MENU_LEFT_BACK,     /* B or MENU, the ordinary way out */
-	MENU_LEFT_SCREEN,   /* the screen's own handler said so */
-	MENU_LEFT_GONE      /* quit, power, or nothing left to show */
-} menu_exit;
+/* menu_exit, in src/panel.h */
 
 /* Fill `rows`, name the screen, and return how many rows. MUST NOT touch the
  * renderer or the event loop, and the part that actually decides what the rows
@@ -7843,8 +7970,7 @@ typedef enum {
  * rows are: the system menu is titled with the system whose rows it is showing.
  * Passing it to the runner separately meant keeping two things in step that are
  * really one thing. */
-typedef int (*menu_build_fn)(void *ctx, menu_row *rows, int max,
-                             const char **heading);
+/* menu_build_fn, in src/panel.h */
 
 /* A result can be reached through Muse over a paused game. Keep that
  * menu's backdrop and power rule through nested menus, until it returns.
@@ -7862,7 +7988,7 @@ static bool g_message_stopped;
 /* A key the runner did not consume, and the row it happened on. Free to open a
  * confirm, a keyboard or a wait panel: each runs its own loop and returns.
  * `sel` indexes the rows the last build produced. */
-typedef menu_result (*menu_key_fn)(app *a, void *ctx, in_button key, int sel);
+/* menu_key_fn, in src/panel.h */
 
 /* Zyper's answer to how a press went, in the menu he is in (`z`, NULL
  * elsewhere): a hop and a pant for something changed, the cocked head for a
@@ -8108,6 +8234,12 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 			                  menu_sound_at(st->sound, n, sel), IN_RIGHT) == MENU_DONE)
 				return MENU_LEFT_SCREEN;
 		if (!a->running || want_quit || g_message_stopped) return MENU_LEFT_GONE;
+		/* A step can move the cursor too: a Controls row whose change put a
+		 * warning above it stays the row under it (menu_cursor_to) */
+		if (g_menu_sel_to >= 0) {
+			sel = g_menu_sel_to < n ? g_menu_sel_to : n - 1;
+			g_menu_sel_to = -1;
+		}
 
 		/* Everything the runner did not consume goes to the screen, so a
 		 * screen-specific key needs no runner change to exist. */
@@ -8182,15 +8314,7 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
 		}
 		g_menu_zyper = z;
 		g_menu_zyper_at = plat_now_ms();
-		g_menu_tabs = st->tabs;
-		g_row_mark = st->row_mark;
-		g_menu_header = st->header;
-		g_menu_header_h = st->header_h;
-		menu_draw(a, heading, rows, n, sel, st->fixed_w,
-		          st->follow_tint ? a->tint : st->accent);
-		g_menu_header = NULL;
-		g_row_mark = NULL;
-		g_menu_tabs = NULL;
+		menu_draw_styled(a, st, heading, rows, n, sel);
 		g_menu_zyper = NULL;
 		plat_draw_osd(a->r);
 		plat_present();
@@ -8208,8 +8332,8 @@ static menu_exit menu_run_body(app *a, const menu_style *st,
  * whatever is underneath. This file does that by hand about twenty times, and
  * the body has nine ways out, so putting it at each of them would eventually
  * mean missing one. */
-static menu_exit menu_run(app *a, const menu_style *st,
-                          menu_build_fn build, menu_key_fn on_key, void *ctx)
+menu_exit menu_run(app *a, const menu_style *st,
+                   menu_build_fn build, menu_key_fn on_key, void *ctx)
 {
 	menu_exit how;
 	int lv;
@@ -8224,11 +8348,16 @@ static menu_exit menu_run(app *a, const menu_style *st,
 
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
+	/* A cursor move is for the runner it was asked of: none left over from
+	 * a screen that ended on the handler's press reaches this one, or the
+	 * one under it */
+	g_menu_sel_to = -1;
 
 	/* And it opens and closes (panel_open): quit and power, and nothing left
 	 * to show, leave nothing to see go. */
 	lv = panel_open();
 	how = menu_run_body(a, st, build, on_key, ctx, lv);
+	g_menu_sel_to = -1;
 	panel_close(a, lv, how == MENU_LEFT_GONE);
 
 	plat_input_flush();
@@ -12865,6 +12994,13 @@ static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
 	gi->can_rename = !is_muse(s) && gr_renames(s->core, g->file, g->dir);
 	gi->can_favorite = !is_muse(s);
 	gi->favorite = gi->can_favorite && fav_is(s->tag, g->file);
+	/* A key of its own on the card (map.<tag>.<file>): read here, so a reset
+	 * on the Buttons page takes the row away when the page comes back */
+	{
+		rm_table own;
+
+		gi->own_buttons = !is_muse(s) && rms_game(s, g->file, &own);
+	}
 
 	/* The save slots are not read here any more. The row that showed them went
 	 * on 2026-09-17 - the carousel shows them when you load, with the frames
@@ -14852,6 +14988,17 @@ static menu_result info_key(app *a, void *ctx, in_button key, int sel)
 		return MENU_STAY;
 	}
 
+	if (!strcmp(rows[sel].label, T(S_GAMEMENU_BUTTONS))) {
+		/* The Controls list for this game alone, a page over the shelf
+		 * (src/ctltab_screen.h). B comes back here, and the gatherer reads
+		 * the key again: a Reset Buttons there took the row away. */
+		ctlscr_page(a, &a->sys.systems[c->owner], c->g->file, c->g->title, c->st.accent);
+		gi_gather(a, c->owner, c->g, &c->gi);
+		plat_input_flush();
+		memset(&a->in, 0, sizeof a->in);
+		return MENU_STAY;
+	}
+
 	if (!strcmp(rows[sel].label, T(S_SYSMENU_CHEEVOS))) {
 		/* The set the gatherer loaded to count this row is still the loaded
 		 * one, so the list has what it needs without reloading it. Over the
@@ -14980,6 +15127,28 @@ static void info_preview(app *a, bool net, const char *on_row)
 	ui_scrim(a->r, 0);
 	menu_draw(a, v->list.items[v->cursor].title, rows, n, sel, menu_std_width(a),
 	          a->sys.systems[owner].accent);
+}
+
+/* --info-buttons: the page the Buttons row opens, over the shelf, for the
+ * game under the cursor; with --gm-pick (`pick`), Y's choices as A opens
+ * them there, over the backdrop the page gives its own screens */
+static void info_buttons_preview(app *a, bool pick)
+{
+	sysview *v = &a->view[a->sys_cursor];
+	int owner;
+
+	if (v->list.count == 0) return;
+	owner = shelf_owner(a, a->sys_cursor, v->cursor);
+	if (pick) {
+		ctlscr_page_shot_pick(a, &a->sys.systems[owner], v->list.items[v->cursor].file,
+		                      v->list.items[v->cursor].title, a->sys.systems[owner].accent,
+		                      CT_BUTTON + RM_Y);
+		return;
+	}
+	draw_shelf(a);
+	ui_scrim(a->r, 0);
+	ctlscr_page_shot(a, &a->sys.systems[owner], v->list.items[v->cursor].file,
+	                 v->list.items[v->cursor].title, a->sys.systems[owner].accent, 0);
 }
 
 /* The approved Details layout: system information, then storage and the
@@ -16025,7 +16194,7 @@ static int menu_shelf_width(app *a)
 		int t, at = g_tabs.at, mw;
 
 		w = 0;
-		for (t = 0; t < PT_TABS; t++) {
+		for (t = 0; t < g_tabs.count; t++) {
 			g_tabs.at = t;
 			n = menu_build(a, SCREEN_SYSTEMS, a->sys_cursor, rows, &bufs, &heading);
 			mw = menu_measure(rows, n, heading);
@@ -17817,12 +17986,19 @@ static int store_ask_rows(app *a, const char *q, char (*lines)[CHV_WRAP_COLS], m
 
 static bool store_ask(app *a, const char *heading, const char *q, const char *yes_label)
 {
+	return ask_panel(a, NULL, NULL, heading, q, yes_label);
+}
+
+bool ask_panel(app *a, const menu_style *over, void *ctx, const char *heading,
+               const char *q, const char *yes_label)
+{
 	char lines[DEL_ASK_LINES][CHV_WRAP_COLS];
 	menu_row rows[DEL_ASK_LINES + 2];
 	int nq = store_ask_rows(a, q, lines, rows), lv = panel_open();
-	bool yes = confirm_rows(a, heading, rows, nq, yes_label, menu_std_width(a), lv);
+	bool yes = confirm_rows_over(a, heading, rows, nq, yes_label, menu_std_width(a), lv,
+	                             over, ctx);
 
-	panel_close(a, lv, !a->running);
+	panel_close(a, lv, !a->running || (over && plat_run_power_pressed()));
 	return yes && a->running;
 }
 
@@ -19906,12 +20082,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 			int dir = key == IN_R1 ? +1 : -1, k;
 
 			if (sel >= 0 && sel < n) g_tab_row[g_tabs.at] = ids[sel];
-			g_tabs.from = g_tabs.at;
-			g_tabs.at = (g_tabs.at + dir + PT_TABS) % PT_TABS;
-			g_tabs.dir = dir;
-			g_tabs.t0 = anim_now();
-			if (!g_tabs.t0) g_tabs.t0 = 1;
-			g_menu_epoch++;
+			tabs_turn(&g_tabs, dir);
 			n = sys_menu_tab_rows(&dev, (pm_tab)g_tabs.at, ids);
 			for (k = 0; k < n && ids[k] != g_tab_row[g_tabs.at]; k++) ;
 			g_menu_sel_to = k < n ? k : 0;
@@ -20930,6 +21101,88 @@ static void gm_cycle_shader(app *a, int d)
 	plat_resident_sync_rect(150);
 }
 
+/* The discs of the game running (issue #102), as Diatom's DISC answers say:
+ * asked when the in-game menu opens and after each SETDISC, and kept, because
+ * gm_gather runs on every key and a paused Diatom is not asked that often.
+ * count under 2 is no row: a game on one disc, one whose core has no tray,
+ * and a Diatom too old to answer (it says nothing to DISC, so the wait below
+ * runs out and the menu is what it was). A shot's (--gm-discs) stands in. */
+#define GM_PANEL_W 860
+static struct {
+	int  count;
+	int  index;
+	char label[128];
+} g_gm_disc;
+static int g_shot_discs;
+static const char *g_shot_disc_label;
+
+/* "DISC\tindex=1\tcount=3\tejected=0\tlabel=..." into g_gm_disc. The label is
+ * the last field and may hold spaces; Diatom made its tabs spaces. */
+static void gm_disc_note(const char *l)
+{
+	const char *p;
+
+	g_gm_disc.count = 0;
+	g_gm_disc.index = 0;
+	g_gm_disc.label[0] = '\0';
+	if ((p = strstr(l, "\tcount="))) g_gm_disc.count = atoi(p + 7);
+	if ((p = strstr(l, "\tindex="))) g_gm_disc.index = atoi(p + 7);
+	if ((p = strstr(l, "\tlabel="))) snprintf(g_gm_disc.label, sizeof g_gm_disc.label, "%s", p + 7);
+}
+
+/* Ask for the tray as the menu opens: the same short wait as the other
+ * answers it reads while paused (plat_resident_sync_screens, 300 ms) */
+static void gm_disc_ask(void)
+{
+	char l[256];
+
+	memset(&g_gm_disc, 0, sizeof g_gm_disc);
+	if (g_shot_discs || g_port_menu) return;
+	if (!plat_resident_line("DISC")) return;
+	if (plat_resident_sync_line("DISC\t", l, sizeof l, 300)) gm_disc_note(l);
+}
+
+/* Disc `d` steps from the one in the tray, sent as one SETDISC (Diatom opens
+ * the tray, changes the disc and closes it, as a console's lid did); its DISC
+ * answer says which disc is in, so the row follows the answer, not the press.
+ * A refused index answers ERROR and then DISC with the disc as it was. */
+static void gm_disc_step_to(int d)
+{
+	char l[256];
+	int to = gm_disc_step(g_gm_disc.index, g_gm_disc.count, d);
+
+	if (g_shot_discs) {
+		g_gm_disc.index = to;
+		return;
+	}
+	if (!plat_resident_line("SETDISC\tindex=%d", to)) return;
+	if (plat_resident_sync_line("DISC\t", l, sizeof l, 300)) gm_disc_note(l);
+}
+
+/* Whether the core's name for a disc fits the Disc row's value: the panel's
+ * width less its two pads, the widest label of the Game tab and the gap
+ * between the columns, in the menu's own font. A device's fonts may measure
+ * a little wider than the host's, so the same half-row of air as the menu's
+ * own fit (fit_gap) is kept back. */
+static bool gm_disc_fits(const char *label)
+{
+	TTF_Font *fm = ui_font(UI_F_MENU);
+	gm_ui u;
+	menu_row rows[GM_MAX_ROWS];
+	gm_bufs b;
+	int n, i, wl = 0, room;
+
+	memset(&u, 0, sizeof u);
+	u.discs = 2;
+	u.quick = 1;
+	n = gm_rows(&u, GT_GAME, rows, &b);
+	for (i = 0; i < n; i++)
+		if (rows[i].label && ui_text_width(fm, rows[i].label) > wl)
+			wl = ui_text_width(fm, rows[i].label);
+	room = GM_PANEL_W - 2 * menu_pad() - wl - menu_row_h() - menu_row_h() / 2;
+	return ui_text_width(fm, label) <= room;
+}
+
 /* What the in-game menu needs from the app, handed to gm_rows to become rows.
  * Same split as everywhere else. */
 /* What the in-game menu shows, gathered: for its rows, and for where each
@@ -20969,6 +21222,18 @@ static void gm_gather(app *a, gm_ui *out)
 			u.player2_value = gm_player2_value(p2_row_state());
 		}
 	}
+	if (!u.port) {
+		if (g_shot_discs) {
+			u.discs = g_shot_discs;
+			u.disc  = g_gm_disc.index;
+			u.disc_label = g_shot_disc_label;
+		} else {
+			u.discs = g_gm_disc.count;
+			u.disc  = g_gm_disc.index;
+			u.disc_label = g_gm_disc.label;
+		}
+		u.disc_fits = gm_disc_fits;
+	}
 	if (u.screens) {
 		const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor,
 		                                      a->view[a->sys_cursor].cursor)];
@@ -20983,13 +21248,31 @@ static void gm_gather(app *a, gm_ui *out)
 	*out = u;
 }
 
-static int gm_build(app *a, menu_row *out, gm_bufs *b)
-{
-	gm_ui u;
+/* What the in-game menu remembers of the game running: the tab it was on,
+ * the row each tab was left on (by identity; GM_MAX_ROWS is none, the tab's
+ * first) and, for the Controls tab's Applies To, whether a change is for
+ * every game of the system (Task 7 reads and writes it). Reset when a game
+ * starts (launch) and kept across MENU presses until it ends, so MENU opens
+ * where it was closed. */
+static struct {
+	int  tab;
+	int  row[GT_TABS];
+	bool scope_all;
+} g_gm_mem;
 
-	gm_gather(a, &u);
-	return gm_rows(&u, out, b);
+static void gm_mem_reset(void)
+{
+	int t;
+
+	g_gm_mem.tab = GT_GAME;
+	for (t = 0; t < GT_TABS; t++) g_gm_mem.row[t] = GM_MAX_ROWS;
+	g_gm_mem.scope_all = false;
 }
+
+static const char *gm_tab_name_i(int i) { return gm_tab_name(i); }
+
+/* The panel's one width on every tab and every value, so it holds still as
+ * the tabs go round; a port's menu has no tabs and sizes itself */
 
 /* The list itself, over the paused frame. menu_draw already windows a list
  * longer than the screen, which a set of 166 certainly is.
@@ -23543,12 +23826,25 @@ static ctl_game game_controls_of(app *a)
 	const char *file = sv->list.count > 0 ? sv->list.items[sv->cursor].file : "";
 	const char *dot = strrchr(file, '.');
 
-	ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
-	               plat_turbo_map(s->tag), dot ? dot + 1 : "", ctl_head_fits, a, is_port(s),
-	               NULL, NULL };
+	/* The map in force for this game, whole: ZyperOS's, the system's and the
+	 * game's pairs over it (rms_game) */
+	static char map[CFG_STR + 200];
+	rm_table mt;
+	ctl_game g;
+
+	if (sv->list.count > 0) rms_game(s, file, &mt);
+	else rms_system(s, &mt);
+	rm_format(&mt, map, sizeof map);
+	g = (ctl_game){ s->tag, s->name, home_label(s->tag, s->name), map,
+	                NULL, dot ? dot + 1 : "", ctl_head_fits, a, is_port(s), NULL, NULL, false,
+	                CTL_STICK_TABLE };
 
 	/* What the N64's C buttons page says is in the controller */
 	if (pak_system(s) && sv->list.count > 0) g.accessory = gm_pak_name(pak_get(s, file));
+	/* ...and what the d-pad is, as this game's D-pad as Stick has it; the
+	 * PSP's R2 turns it in the game, and its page says so */
+	if (rms_stick_offered(s) && strcmp(s->stick, "toggle") && sv->list.count > 0)
+		g.stick = rms_stick_get(s, file) ? CTL_STICK_ON : CTL_STICK_OFF;
 	/* A port's pages are what its own files say (src/portdoc.h), read for
 	 * the script on the cursor as port_menu_main reads them over it: for a
 	 * --gamecontrols shot, as a port never runs under this menu */
@@ -23621,8 +23917,13 @@ static int game_controls_width(app *a, const ctl_game *g)
 /* The in-game menu's Controls (DESIGN.md 11.28): every control this game
  * has, a page at a time over the paused game, Left/Right to turn them, as
  * MENU > Controls is on the home. Read-only. The rows are made when a page
- * turns, never per frame and never while the game runs. */
-static void game_controls_screen(app *a, SDL_Texture *bg)
+ * turns, never per frame and never while the game runs.
+ *
+ * Over `bg`, the port's menu's Controls row; or opened by the Controls tab's
+ * Hotkeys row (game_controls_pages), over `over`'s backdrop with its power
+ * rule, less the system's buttons, which the tab shows (ctl_game.no_buttons).
+ * At their own width either way, with no handheld beside them. */
+static void controls_pages(app *a, SDL_Texture *bg, const menu_style *over, void *ctx)
 {
 	ctl_game g = game_controls_of(a);
 	const menu_row *rows;
@@ -23631,6 +23932,7 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 	int page = 0, pages, n, lv, done = 0, width, loop_at;
 	float k;
 
+	g.no_buttons = over != NULL;
 	ctl_set_fn_volume(plat_brightness_on_volume());
 	pages = ctl_game_pages(&g);
 	width = game_controls_width(a, &g);
@@ -23669,14 +23971,19 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
 		/* Power stops the game from here, as from the achievements */
 		if (a->in.pressed[IN_POWER] || idle_due(a)) {
-			plat_note_power_pressed();
-			plat_resident_line("STOP");
+			if (over && over->on_power) {
+				over->on_power(a, ctx);
+			} else {
+				plat_note_power_pressed();
+				plat_resident_line("STOP");
+			}
 			done = 1;
 		}
 
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_theme(a);
-		paused_backdrop(a, bg, k);
+		if (over && over->backdrop) over->backdrop(a, ctx, k);
+		else paused_backdrop(a, bg, k);
 		menu_draw_caption(a, b.head, rows, n, -1, width, a->tint, NULL,
 		                  false, loop_at, count[0] ? count : NULL);
 		plat_present();
@@ -23688,71 +23995,23 @@ static void game_controls_screen(app *a, SDL_Texture *bg)
 	memset(&a->in, 0, sizeof a->in);
 }
 
-/* Measured across every mode label, so cycling the row does not resize the
- * panel under the cursor - the same reason the shelf menus have a fixed width. */
+static void game_controls_screen(app *a, SDL_Texture *bg)
+{
+	controls_pages(a, bg, NULL, NULL);
+}
+
+void game_controls_pages(app *a, const menu_style *over, void *ctx)
+{
+	controls_pages(a, NULL, over, ctx);
+}
+
+/* One width on every tab (GM_PANEL_W), so cycling a value or turning a tab
+ * does not resize the panel under the cursor. A port's menu, which has no
+ * tabs and no values to cycle, is as wide as its rows. */
 static int gm_width(app *a)
 {
-	menu_row rows[GM_MAX_ROWS];
-	gm_bufs b;
-	gm_ui u;
-	int w = 0, k, n, disp, scr;
-
-	n = gm_build(a, rows, &b);
-	gm_gather(a, &u);
-	/* Where the rows are, which the quick slot's row moves: none where the
-	 * system keeps no states */
-	disp = gm_row_at(&u, GM_DISPLAY);
-	scr  = gm_row_at(&u, GM_SCREENS);
-	for (k = 0; disp >= 0 && k < DMODE_COUNT; k++) {
-		int mw;
-		rows[disp].value = dmode_label(k);
-		mw = menu_measure(rows, n, NULL);
-		if (mw > w) w = mw;
-	}
-	if (disp >= 0) rows[disp].value = dmode_label(0);
-	/* Shader, at each, for the same reason */
-	{
-		int sh = gm_row_at(&u, GM_SHADER);
-
-		for (k = 0; sh >= 0 && k < SHADER_COUNT; k++) {
-			int mw;
-			if (!shader_offered(k)) continue;
-			rows[sh].value = shader_label(k);
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* An N64 game's Pak, at each */
-	{
-		int pk = gm_row_at(&u, GM_PAK);
-
-		for (k = 0; pk >= 0 && k < 2; k++) {
-			int mw;
-			rows[pk].value = gm_pak_name(k ? "memory" : "rumble");
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* An NES game's Player 2, at each of its values */
-	{
-		static const p2_state st[] = { P2_OFF, P2_WAITING, P2_CONNECTED };
-		int p2 = gm_row_at(&u, GM_PLAYER2);
-
-		for (k = 0; p2 >= 0 && k < (int)(sizeof st / sizeof st[0]); k++) {
-			int mw;
-			rows[p2].value = gm_player2_value(st[k]);
-			mw = menu_measure(rows, n, NULL);
-			if (mw > w) w = mw;
-		}
-	}
-	/* A DS game's Screens row, right under Shader, at each layout. */
-	for (k = 0; scr >= 0 && k < GM_LAYOUTS; k++) {
-		int mw;
-		rows[scr].value = gm_layout_label(k);
-		mw = menu_measure(rows, n, NULL);
-		if (mw > w) w = mw;
-	}
-	return w;
+	(void)a;
+	return g_port_menu ? 0 : GM_PANEL_W;
 }
 
 /* The DS rows: the layout steps through the three, the swap and the stylus
@@ -23789,16 +24048,96 @@ typedef struct {
 	gm_bufs      bufs;
 	menu_style   st;
 	bool         resume;
+	menu_tabs    tabs;     /* Game, Display, Controls; none over a port */
+	int          seen;     /* the runner's cursor (menu_style.sel_out) */
+	/* The Controls tab's rows' value colors and sound classes, which are
+	 * more than gm_bufs holds (src/ctltab_screen.h) */
+	unsigned      ct_vcol[CT_MAX_ROWS];
+	unsigned char ct_sound[CT_MAX_ROWS];
 } gm_ctx;
+
+static const char *shot_path;   /* --shot, with main's other shot flags */
+
+/* The game the Controls tab is about (src/ctltab_screen.h): the one on the
+ * shelf's cursor, which is the one running, its own system (Favorites too),
+ * its Pak, and Applies To kept with the menu's memory. `c` may be NULL (a
+ * shot), with nothing to draw its pages over. */
+static void gm_ctl_game(app *a, gm_ctx *c, ctlscr_game *g)
+{
+	sysview *sv = &a->view[a->sys_cursor];
+	const system_cfg *s = &a->sys.systems[shelf_owner(a, a->sys_cursor, sv->cursor)];
+	const game_entry *e = sv->list.count > 0 ? &sv->list.items[sv->cursor] : NULL;
+
+	memset(g, 0, sizeof *g);
+	g->s = s;
+	g->file = e ? e->file : "";
+	g->title = e ? e->title : "";
+	g->pak = pak_system(s) && e ? gm_pak_name(pak_get(s, e->file)) : NULL;
+	g->scope_all = &g_gm_mem.scope_all;
+	/* A shot sends nothing: there is no game */
+	g->running = !shot_path;
+	g->over = c ? &c->st : NULL;
+	g->ctx = c;
+}
+
+/* A tab's rows by identity, each tab's own kind: gm_row for Game and
+ * Display, ct_row for Controls; at most CT_MAX_ROWS. The count. */
+static int gm_ids(app *a, gm_ctx *c, const gm_ui *u, int tab, int *ids)
+{
+	gm_row r[GM_MAX_ROWS];
+	int n, i;
+
+	if (!u->port && tab == GT_CONTROLS) {
+		ctlscr_game g;
+		menu_row rows[CT_MAX_ROWS];
+		unsigned vcol[CT_MAX_ROWS];
+
+		gm_ctl_game(a, c, &g);
+		return ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+	}
+	n = gm_tab_rows(u, (gm_tab)tab, r);
+	for (i = 0; i < n; i++) ids[i] = (int)r[i];
+	return n;
+}
 
 static int gm_menu_build(void *ctx, menu_row *rows, int max,
                          const char **heading)
 {
 	gm_ctx *c = ctx;
+	gm_ui u;
+	int n;
 
 	(void)max;
-	*heading = NULL;       /* no title: the game behind it is the title */
-	return gm_build(c->a, rows, &c->bufs);
+	gm_gather(c->a, &u);
+	/* A game's menu names its tab in the heading's place (menu_draw draws the
+	 * tab row there, which MENU's does the same); a port's has no title: the
+	 * game behind it is the title */
+	*heading = u.port ? NULL : gm_tab_name(c->tabs.at);
+	/* The Controls tab's rows are src/ctltab.c's, beside the handheld, a
+	 * changed value in accent-ink; the other tabs' gm_rows', in the whole
+	 * width */
+	if (!u.port && c->tabs.at == GT_CONTROLS) {
+		ctlscr_game g;
+
+		gm_ctl_game(c->a, c, &g);
+		n = ctlscr_rows(c->a, &g, rows, c->ct_vcol, c->ct_sound, NULL);
+		c->st.sound = c->ct_sound;
+		c->st.vcolors = c->ct_vcol;
+		c->st.side_w = CTLSCR_SIDE_W;
+		return n;
+	}
+	c->st.sound = c->bufs.sound;
+	c->st.vcolors = NULL;
+	c->st.side_w = 0;
+	n = gm_rows(&u, (gm_tab)c->tabs.at, rows, &c->bufs);
+	/* A tab with no rows: one empty note, with no cursor on it, because the
+	 * runner leaves a menu that has none */
+	if (n == 0) {
+		rows[0] = MENU_NOTE("");
+		c->bufs.sound[0] = 0;
+		n = 1;
+	}
+	return n;
 }
 
 /* The paused game, not the shelf. Diatom reports its rect with every DISPLAY
@@ -23833,16 +24172,49 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 {
 	gm_ctx *c = ctx;
 
-	/* A row's place to its id: a DS game has three rows more after Display,
-	 * and the same list the build used says which row is which. */
+	/* A row's place to its id: the tab on says which rows there are, and the
+	 * same list the build used says which is which. */
 	{
 		gm_ui u;
-		gm_row ids[GM_MAX_ROWS];
+		int ids[CT_MAX_ROWS];
 		int n;
 
 		gm_gather(a, &u);
-		n = gm_row_ids(&u, ids);
-		sel = sel >= 0 && sel < n ? (int)ids[sel] : GM_MAX_ROWS;
+		n = gm_ids(a, c, &u, c->tabs.at, ids);
+		/* The row this tab is on is kept, for MENU's next press */
+		if (!u.port && sel >= 0 && sel < n) g_gm_mem.row[c->tabs.at] = ids[sel];
+		/* L1 and R1 go round the tabs, as MENU's do: the row each tab was
+		 * on is kept and the cursor lands on the next tab's own */
+		if (!u.port && (key == IN_L1 || key == IN_R1)) {
+			int k;
+
+			tabs_turn(&c->tabs, key == IN_R1 ? +1 : -1);
+			g_gm_mem.tab = c->tabs.at;
+			if (c->tabs.at == GT_CONTROLS) ctlscr_enter();
+			n = gm_ids(a, c, &u, c->tabs.at, ids);
+			for (k = 0; k < n && ids[k] != g_gm_mem.row[c->tabs.at]; k++) ;
+			g_menu_sel_to = k < n ? k : 0;
+			moved_sound(a, key);
+			redraw_now();
+			return MENU_STAY;
+		}
+		/* The Controls tab's rows, but X, which quits from any tab, and the
+		 * Pak, below as before */
+		if (!u.port && c->tabs.at == GT_CONTROLS && key != IN_X) {
+			ctlscr_game g;
+			int id = sel >= 0 && sel < n ? ids[sel] : -1;
+
+			if (id == CT_PAK) {
+				sel = GM_PAK;
+			} else {
+				gm_ctl_game(a, c, &g);
+				ctlscr_key(a, &g, key, id);
+				/* A page it opened took the power press: the game stops */
+				return plat_run_power_pressed() ? MENU_DONE : MENU_STAY;
+			}
+		} else {
+			sel = sel >= 0 && sel < n ? ids[sel] : GM_MAX_ROWS;
+		}
 	}
 	/* X, wherever the cursor is: what A on its row does (gm_x_row), heard
 	 * as A there is, since the runner plays accept for A alone */
@@ -23897,7 +24269,14 @@ static menu_result gm_key(app *a, void *ctx, in_button key, int sel)
 			pak_put(q->tag, file, to);
 			if (gm_pak_option(q->core))
 				plat_resident_line("SETOPT\tkey=%s\tvalue=%s", gm_pak_option(q->core), to);
+			ctlscr_changed();
 		}
+		return MENU_STAY;
+	}
+	/* The disc steps round on left, right and A, at once: the game sees the
+	 * tray open, a new disc and the tray close (gm_disc_step_to) */
+	if (sel == GM_DISC && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
+		gm_disc_step_to(key == IN_LEFT ? -1 : 1);
 		return MENU_STAY;
 	}
 	if (sel == GM_QUICK && (key == IN_LEFT || key == IN_RIGHT || key == IN_ACCEPT)) {
@@ -24008,6 +24387,26 @@ static void game_menu(app *a)
 	c.st.follow_tint = true;
 	c.st.backdrop    = gm_backdrop;
 	c.st.on_power    = gm_power;
+	gm_disc_ask();
+	/* MENU's tab row, opened where this game's menu was last closed */
+	c.tabs = (menu_tabs){ .count = GT_TABS, .name = gm_tab_name_i };
+	c.tabs.at = c.tabs.from = g_gm_mem.tab;
+	if (!g_port_menu) {
+		gm_ui u;
+		int ids[CT_MAX_ROWS];
+		int n, k;
+
+		c.st.tabs = &c.tabs;
+		c.st.sel_out = &c.seen;
+		/* The handheld beside the Controls tab's rows, and as it leaves */
+		c.st.side = ctlscr_side;
+		ctlscr_open();
+		gm_gather(a, &u);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		for (k = 0; k < n && ids[k] != g_gm_mem.row[c.tabs.at]; k++) ;
+		c.st.start_sel = k < n ? k : 0;
+		g_menu_epoch++;
+	}
 
 	/* B and MENU are the runner's, and both mean Continue here. The runner has
 	 * to be the one to say so: it flushes the input on its way out, so asking
@@ -24020,6 +24419,18 @@ static void game_menu(app *a)
 		c.resume = true;
 	g_in_game_menu = false;
 	g_menu_closing = false;
+	/* Where it was closed, for the next MENU press in this game: the cursor
+	 * moves without asking gm_key, so it is read from the runner here */
+	if (c.st.tabs) {
+		gm_ui u;
+		int ids[CT_MAX_ROWS];
+		int n;
+
+		gm_gather(a, &u);
+		n = gm_ids(a, &c, &u, c.tabs.at, ids);
+		g_gm_mem.tab = c.tabs.at;
+		if (c.seen >= 0 && c.seen < n) g_gm_mem.row[c.tabs.at] = ids[c.seen];
+	}
 	/* Closed by px2-open's quit, which said STOP as Quit does: no Continue */
 	if (g_ctl_close_menu) c.resume = false;
 	g_ctl_close_menu = false;
@@ -24036,6 +24447,8 @@ static void game_menu(app *a)
 		if (how != LEAVE_GONE) c.resume = false;
 	}
 	mm_leaving_cut();
+	/* The handheld's kept texture, which the game has no use for */
+	ctlscr_close();
 
 	if (c.bg) SDL_DestroyTexture(c.bg);
 
@@ -24098,7 +24511,7 @@ static void game_menu(app *a)
 /* The in-game menu over a port (src/portmenu.h): this process started by
  * portkeys for it alone, with the port stopped and its last frame saved. The
  * same menu as over a Diatom game, over that frame, with the rows a stopped
- * program can answer to (gm_row_ids): Continue, Controls - the port's system's
+ * program can answer to (gm_tab_rows): Continue, Controls - the port's system's
  * page and In a game's - and Quit. Its exit status says which: Continue, and
  * B or MENU, go back to the game; Quit ends it and the shelf comes back;
  * POWER, here or on the Controls page, or the battery run flat, end it and
@@ -24718,6 +25131,8 @@ static void launch(app *a)
 		return;
 	}
 
+	/* A new game: its in-game menu starts on the Game tab again */
+	gm_mem_reset();
 	snprintf(rom, sizeof rom, "%s/%s/%s", P_ROMS, s->folder, romfile);
 	snprintf(save, sizeof save, "%s/Saves", P_CARD);
 	snprintf(bios, sizeof bios, "%s/Bios", P_CARD);
@@ -24734,17 +25149,24 @@ static void launch(app *a)
 		 * screens, the system's clock ceiling, controller type and d-pad
 		 * stick, and its button map (config.h: power, controller, stick,
 		 * map) */
-		char keys[96];
+		char keys[128], stick[24];
+		rm_table sent;
+		char map[320];
+		bool stick_on = rms_stick_get(s, romfile);
 
 		cfg_run_keys(s, g_game_dual, keys, (int)sizeof keys);
-		/* A PSP game left with its d-pad as the stick starts with it
-		 * (stick_get): stick=toggle, the last key, becomes toggle-stick */
-		if (stick_toggles(s) && stick_get(s->tag, romfile) &&
-		    strlen(keys) >= 12 && !strcmp(keys + strlen(keys) - 12, "stick=toggle") &&
-		    strlen(keys) + 6 < sizeof keys)
-			strcat(keys, "-stick");
+		/* The d-pad as the stick, a game's own (rms_stick_get): the PSP's
+		 * stick=toggle-stick when it was left on the stick */
+		rms_run_stick(s, stick_on, stick, sizeof stick);
+		if (stick[0] && strlen(keys) + strlen(stick) + 2 <= sizeof keys)
+			snprintf(keys + strlen(keys), sizeof keys - strlen(keys), "%s%s",
+			         keys[0] ? "\t" : "", stick);
 		if (keys[0]) plat_resident_run_keys(keys);
-		plat_resident_map(s->map);
+		/* The whole table, whatever the card holds for the game or its
+		 * system (rms_sent): Diatom is sent no turbo of its own */
+		rms_sent(s, romfile, stick_on, &sent);
+		rm_format(&sent, map, sizeof map);
+		plat_resident_map(strcmp(map, "identity") ? map : "");
 		/* And an N64 game's Pak, its own over the system's; none else */
 		if (pak_system(s))
 			plat_resident_opt(gm_pak_option(s->core), pak_get(s, romfile));
@@ -25917,8 +26339,86 @@ static void shot_draw_slots(app *a)
 /* --gamemenu [row] port: the menu over a port instead (src/portmenu.h), as
  * port_menu shows it over OpenBOR; --backdrop PNG puts a picture of a real
  * game under it in place of the made-up frame, at the screen's size. */
-static int shot_gamemenu, shot_gamemenu_sel;
+static int shot_gamemenu, shot_gamemenu_sel, shot_gamemenu_tab;
 static const char *shot_backdrop;
+/* The Controls tab's (src/ctltab_screen.h), with --gm-tab 2: --gm-all,
+ * Applies To on All <System>; --gm-pick, the choices of the button under
+ * the cursor; --gm-ask, Reset Buttons' question; --gm-keys N, page N of the
+ * Hotkeys row's pages. */
+static bool shot_gm_all, shot_gm_pick, shot_gm_ask;
+static int  shot_gm_keys = -1;
+/* With --shot-at, its motion: --gm-tab-from N, L1 or R1 from tab N to
+ * --gm-tab's; --gm-press KEYS, the Controls tab's presses (up, down, left,
+ * right, comma separated) from the row --gamemenu names. The tab's move,
+ * when one was pressed (shot_motion); and whether the handheld was lit
+ * yet, so the frames of a motion go on from the one before. */
+static int  shot_gm_from = -1;
+static const char *shot_gm_press;
+static unsigned shot_gm_t0;
+static bool shot_gm_open;
+
+/* --gamemenu's Controls tab, beside the handheld, or a page it opens */
+static void shot_draw_ctltab(app *a, menu_tabs *tabs)
+{
+	static menu_row rows[CT_MAX_ROWS];
+	unsigned vcol[CT_MAX_ROWS];
+	int ids[CT_MAX_ROWS], n, sel;
+	menu_style over = { .fixed_w = gm_width(a), .follow_tint = true };
+	menu_style st = over;
+	ctlscr_game g;
+
+	gm_ctl_game(a, NULL, &g);
+	g.over = &over;
+	g_gm_mem.scope_all = shot_gm_all;
+	if (!shot_gm_open) ctlscr_open();
+	shot_gm_open = true;
+	n = ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+	sel = shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1;
+	/* Off a quiet row, as the runner steps off one */
+	if (!rows[sel].live) {
+		sel = menu_step_sel(rows, n, sel, +1);
+		if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
+	}
+	if (shot_gm_pick) {
+		ctlscr_shot_pick(a, &g, ids[sel]);
+		return;
+	}
+	if (shot_gm_ask) {
+		char q[LIB_NAME + 256], lines[DEL_ASK_LINES][CHV_WRAP_COLS];
+		menu_row ask[DEL_ASK_LINES + 2];
+		int nq;
+
+		ctlscr_question(&g, q, sizeof q);
+		nq = store_ask_rows(a, q, lines, ask);
+		ask[nq] = (menu_row){ T(S_GAMEMENU_RESET_BUTTONS_YES), NULL, true };
+		ask[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+		menu_draw(a, T(S_GAMEMENU_RESET_BUTTONS), ask, nq + 2, nq + 1, menu_std_width(a),
+		          MENU_ZYPEROS);
+		return;
+	}
+	if (shot_gm_keys >= 0) {
+		ctl_game cg = game_controls_of(a);
+		const menu_row *pr;
+		ctl_buf cb;
+		char count[16];
+		int pages, np, loop_at, width;
+
+		cg.no_buttons = true;
+		ctl_set_fn_volume(shot_fn_volume || plat_brightness_on_volume());
+		pages = ctl_game_pages(&cg);
+		width = game_controls_width(a, &cg);
+		np = controls_page_rows(&cg, shot_gm_keys, width, &cb, &pr, &loop_at);
+		snprintf(count, sizeof count, "%d / %d", shot_gm_keys < pages ? shot_gm_keys + 1 : 1, pages);
+		menu_draw_caption(a, cb.head, pr, np, -1, width, a->tint, NULL, false, loop_at,
+		                  pages > 1 ? count : NULL);
+		return;
+	}
+	st.tabs = tabs;
+	st.side = ctlscr_side;
+	st.side_w = CTLSCR_SIDE_W;
+	st.vcolors = vcol;
+	menu_draw_styled(a, &st, gm_tab_name(tabs->at), rows, n, sel);
+}
 
 static void shot_draw_gamemenu(app *a)
 {
@@ -25926,12 +26426,34 @@ static void shot_draw_gamemenu(app *a)
 	gm_bufs b;
 	SDL_Texture *bg = shot_backdrop ? IMG_LoadTexture(a->r, shot_backdrop)
 	                                : fake_frame(a->r, 4.0f / 3);
+	gm_ui u;
+	menu_tabs tabs = { .count = GT_TABS, .name = gm_tab_name_i };
 	int n;
 
+	gm_gather(a, &u);
+	tabs.at = tabs.from = shot_gamemenu_tab % GT_TABS;
+	/* The tab move a shot pressed (shot_motion), from where it was */
+	if (shot_gm_t0 && shot_gm_from >= 0) {
+		tabs.from = shot_gm_from % GT_TABS;
+		tabs.dir = (tabs.at - tabs.from + GT_TABS) % GT_TABS == 1 ? +1 : -1;
+		tabs.t0 = shot_gm_t0;
+	}
 	gm_backdrop(a, &(gm_ctx){ .a = a, .bg = bg }, 1.0f);
-	n = gm_build(a, rows, &b);
-	menu_draw(a, NULL, rows, n, shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
+	if (!u.port && tabs.at == GT_CONTROLS) {
+		shot_draw_ctltab(a, &tabs);
+		if (bg) SDL_DestroyTexture(bg);
+		return;
+	}
+	n = gm_rows(&u, (gm_tab)tabs.at, rows, &b);
+	if (n == 0) rows[n++] = MENU_NOTE("");
+	g_menu_tabs = u.port ? NULL : &tabs;
+	/* The handheld leaving with the Controls tab's name */
+	g_menu_side = u.port ? NULL : ctlscr_side;
+	menu_draw(a, u.port ? NULL : gm_tab_name(tabs.at), rows, n,
+	          shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1,
 	          gm_width(a), a->tint);
+	g_menu_side = NULL;
+	g_menu_tabs = NULL;
 	if (bg) SDL_DestroyTexture(bg);
 }
 
@@ -26058,7 +26580,8 @@ static int controls_fit_ports(app *a, const char *dev, int *pages)
 		pm = false;
 		snprintf(path, sizeof path, "%s/%s", dir, name);
 		port_doc_read(path, &doc);
-		g = (ctl_game){ "", "Ports", NULL, "", NULL, "sh", ctl_head_fits, a, true, NULL, &doc };
+		g = (ctl_game){ "", "Ports", NULL, "", NULL, "sh", ctl_head_fits, a, true, NULL, &doc, false,
+		                CTL_STICK_TABLE };
 		np = ctl_game_pages(&g);
 		for (p = 0; p < np; p++) {
 			menu_row rows[CTL_MAX_ROWS];
@@ -26103,19 +26626,26 @@ static void controls_fit_report(app *a)
 		for (i = 0; game && i < all.count; i++) {
 			const system_cfg *s = &all.systems[i];
 
-			for (e = 0; e < 2; e++) {
+			/* e: an .fds game too; st: each D-pad as Stick a game can have
+			 * (CTL_STICK_*), on a system whose stick is one switch a game */
+			for (e = 0; e < 2; e++) for (int st = CTL_STICK_TABLE; st <= CTL_STICK_ON; st++) {
 				ctl_game g = { s->tag, s->name, home_label(s->tag, s->name), s->map,
 				               plat_turbo_map(s->tag), e ? "fds" : "", ctl_head_fits, a,
-				               is_port(s), NULL, NULL };
-				int np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
+				               is_port(s), NULL, NULL, false, CTL_STICK_TABLE };
+				int np;
 
 				if (e && strcmp(s->tag, "NES")) continue;
+				if (st && (!rms_stick_offered(s) || !strcmp(s->stick, "toggle"))) continue;
+				g.stick = st;
+				np = ctl_game_known(s->tag) ? ctl_game_pages(&g) : 0;
 				for (p = 0; p < np; p++) {
 					ctl_buf b;
 					int n = ctl_game_rows(&g, p, rows, &b);
 
-					snprintf(where, sizeof where, "%s, %s%s page %d",
-					         dev ? "Pixel 2" : "Brick", s->tag, e ? " (fds)" : "", p);
+					snprintf(where, sizeof where, "%s, %s%s%s page %d",
+					         dev ? "Pixel 2" : "Brick", s->tag, e ? " (fds)" : "",
+					         st == CTL_STICK_ON ? " (stick on)" : st == CTL_STICK_OFF ? " (stick off)" : "",
+					         p);
 					snprintf(count, sizeof count, "%d / %d", p + 1, np);
 					bad += controls_fit_one(a, where, b.head, np > 1 ? count : NULL, rows, n);
 					pages++;
@@ -26575,7 +27105,8 @@ static void shot_compose(app *a)
 
 		menu_message(a, shot_wait, row, MENU_ZYPEROS);
 	}
-	if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
+	if (shot_info == 4) info_buttons_preview(a, shot_gm_pick);
+	else if (shot_info) info_preview(a, true, shot_info == 2 ? T(S_GAMEMENU_DELETE)
 	                                     : shot_info == 3 ? T(S_GAMEMENU_RENAME) : NULL);
 	if (shot_delete_ask) delete_ask_preview(a);
 	if (shot_controls >= 0 && (shot_press != SHOT_SWAP || shot_pressed)) {
@@ -27087,6 +27618,71 @@ static int shot_menu_row(app *a, const char *label)
 	return i < n ? i : -1;
 }
 
+/* --gamemenu's motion: at rest as it was, then the press at `t0` - L1 or
+ * R1 from --gm-tab-from's tab, or the Controls tab's keys - for
+ * shot_motion's frames to go on from */
+static void shot_gm_motion(app *a, unsigned t0)
+{
+	int to = shot_gamemenu_tab;
+	const char *k;
+
+	if (shot_gm_from >= 0) {
+		shot_gamemenu_tab = shot_gm_from;
+		shot_compose(a);                         /* at rest on the tab before */
+		shot_gamemenu_tab = to;
+		shot_gm_t0 = t0 ? t0 : 1;
+		if (to % GT_TABS == GT_CONTROLS) ctlscr_enter();
+		g_menu_epoch++;
+		return;
+	}
+	shot_compose(a);                             /* at rest on its row */
+	for (k = shot_gm_press; k && *k; ) {
+		size_t len = strcspn(k, ",");
+		ctlscr_game g;
+		menu_row rows[CT_MAX_ROWS];
+		unsigned vcol[CT_MAX_ROWS];
+		int ids[CT_MAX_ROWS], n;
+
+		gm_ctl_game(a, NULL, &g);
+		n = ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+		if (shot_gamemenu_sel >= n) shot_gamemenu_sel = n - 1;
+		if (len == 2 && !strncmp(k, "up", 2))
+			shot_gamemenu_sel = menu_step_round(rows, n, shot_gamemenu_sel, -1);
+		else if (len == 4 && !strncmp(k, "down", 4))
+			shot_gamemenu_sel = menu_step_round(rows, n, shot_gamemenu_sel, +1);
+		else if (len == 4 && !strncmp(k, "left", 4))
+			ctlscr_key(a, &g, IN_LEFT, ids[shot_gamemenu_sel]);
+		else if (len == 5 && !strncmp(k, "right", 5))
+			ctlscr_key(a, &g, IN_RIGHT, ids[shot_gamemenu_sel]);
+		else
+			fprintf(stderr, "--gm-press: %.*s is no key here\n", (int)len, k);
+		/* ...and the cursor where the key put it, as the runner takes it */
+		if (g_menu_sel_to >= 0) {
+			shot_gamemenu_sel = g_menu_sel_to;
+			g_menu_sel_to = -1;
+		}
+		k += len + (k[len] == ',');
+	}
+	/* Where the cursor ended, off a quiet row as the runner steps off one,
+	 * for the shot checks to read */
+	if (shot_gm_press) {
+		ctlscr_game g;
+		menu_row rows[CT_MAX_ROWS];
+		unsigned vcol[CT_MAX_ROWS];
+		int ids[CT_MAX_ROWS], n, sel;
+
+		gm_ctl_game(a, NULL, &g);
+		n = ctlscr_rows(a, &g, rows, vcol, NULL, ids);
+		sel = shot_gamemenu_sel < n ? shot_gamemenu_sel : n - 1;
+		if (!rows[sel].live) {
+			sel = menu_step_sel(rows, n, sel, +1);
+			if (!rows[sel].live) sel = menu_step_sel(rows, n, sel, -1);
+		}
+		fprintf(stderr, "gm-press: the cursor on %s, %s\n", rows[sel].label,
+		        rows[sel].value && !ROW_IS_NOTE(rows[sel]) ? rows[sel].value : "");
+	}
+}
+
 /* --shot-at: the press, and the frames after it up to the shot's time.
  *
  * The clock is held at the press and moved on a frame at a time, 60 a second
@@ -27164,6 +27760,8 @@ static void shot_motion(app *a)
 		shot_menu_sel = shot_menu_from(a, to);
 		shot_compose(a);                    /* at rest on the row above */
 		shot_menu_sel = to;                 /* the press, at the next draw */
+	} else if (shot_gamemenu && (shot_gm_from >= 0 || shot_gm_press)) {
+		shot_gm_motion(a, t0);
 	} else if (a->screen == SCREEN_GAMES) {
 		sysview *v = &a->view[a->sys_cursor];
 
@@ -27600,7 +28198,8 @@ static int port_menu_main(int argc, char **argv)
 	 * Flycast, In a game alone (port_menu_pads) */
 	g_port_ctl = (ctl_game){ port_menu_pads(s->tag) ? s->tag : "", s->name,
 	                         home_label(s->tag, s->name), s->map, plat_turbo_map(s->tag),
-	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL };
+	                         dot ? dot + 1 : "", ctl_head_fits, &a, true, NULL, NULL, false,
+	                         CTL_STICK_TABLE };
 	/* A port's pages: what its README, its keymap and its port.json say,
 	 * or PortMaster's own buttons over PortMaster (src/portdoc.h) */
 	if (!strcmp(s->core, "port")) {
@@ -28532,6 +29131,8 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[i], "--info-delete")) shot_info = 2;
 		else if (!strcmp(argv[i], "--info-rename")) shot_info = 3;
 		else if (!strcmp(argv[i], "--info-art")) shot_info_art = true;
+		/* The Buttons page a game with its own buttons opens from its details */
+		else if (!strcmp(argv[i], "--info-buttons")) shot_info = 4;
 		else if (!strcmp(argv[i], "--delete-ask")) shot_delete_ask = 1;
 		/* The game under the cursor deleted as Delete Game's yes deletes it,
 		 * then the shot: the shelf after, and what went on stderr */
@@ -28628,6 +29229,22 @@ int main(int argc, char *argv[])
 				i++;
 			}
 		}
+		/* --gm-tab N: the in-game menu's tab, 0 Game, 1 Display, 2 Controls */
+		else if (!strcmp(argv[i], "--gm-tab") && i + 1 < argc) shot_gamemenu_tab = atoi(argv[++i]);
+		/* The Controls tab's (shot_draw_ctltab) */
+		else if (!strcmp(argv[i], "--gm-all")) shot_gm_all = true;
+		else if (!strcmp(argv[i], "--gm-pick")) shot_gm_pick = true;
+		else if (!strcmp(argv[i], "--gm-ask")) shot_gm_ask = true;
+		else if (!strcmp(argv[i], "--gm-keys") && i + 1 < argc) shot_gm_keys = atoi(argv[++i]);
+		/* --gm-discs N [LABEL]: a game on N discs, disc 2 in the tray, the
+		 * core calling it LABEL (none: the row says Disc 2 of N) */
+		else if (!strcmp(argv[i], "--gm-discs") && i + 1 < argc) {
+			g_shot_discs = atoi(argv[++i]);
+			g_gm_disc.index = g_shot_discs > 1 ? 1 : 0;
+			if (i + 1 < argc && strncmp(argv[i + 1], "--", 2) != 0) g_shot_disc_label = argv[++i];
+		}
+		else if (!strcmp(argv[i], "--gm-tab-from") && i + 1 < argc) shot_gm_from = atoi(argv[++i]);
+		else if (!strcmp(argv[i], "--gm-press") && i + 1 < argc) shot_gm_press = argv[++i];
 		else if (!strcmp(argv[i], "--backdrop") && i + 1 < argc) shot_backdrop = argv[++i];
 		else if (!strcmp(argv[i], "--press") && i + 1 < argc) {
 			i++;

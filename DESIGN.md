@@ -799,7 +799,15 @@ panel is as tall as the screen allows on every tab and as wide as the widest
 tab's rows, so it holds still as the tabs go round. MENU opens on Games after
 a start, and after that on the tab and row it was closed on, until the
 handheld powers off; on Connections' USB Device while a plug waits for its
-answer (11.36). A system's menu and the in-game menu are one list each.
+answer (11.36). A system's menu is one list.
+
+**The in-game menu has tabs too**, three of them, **Game**, **Display** and
+**Controls**, in the same tab row from the same code: the tab set (names,
+count, the tab on, the move) is passed to `menu_tabs_draw`, `menu_tab_row` and
+`menu_tabs_bar` in `menu_style.tabs`, so MENU's six and the in-game menu's
+three are one component, and the neighbours shown either side are at most
+(count - 1) / 2, one each way for three tabs (11.28). *(2026-11-13: I wanted
+the in-game menu to look like MENU, and the Controls tab needed the room.)*
 *(My picks in the menu tabs mockups, 2026-11-12: the tab row as drawn, the
 groups, "Connections" and "Display" for the tabs' names, and MENU opening
 where it was.)*
@@ -1094,6 +1102,12 @@ of the player's own goes on from wherever the loop was.
   handheld, the shoulders lit in Move Around and Music and no others, its
   words clear of the inset, and the block moved and otherwise the Brick's,
   in both themes.
+  - **Shared with the Controls tab** (11.28, 11.45): the tutorial's handheld
+    and the in-game menu's Controls tab draw the same Pixel 2 through
+    `td_draw`, from a pose (centre, scale, turn, each key's light and press)
+    and the theme's colors, into the one kept texture, sized for its caller.
+    The tutorial's look is the Controls tab's: a change to the model changes
+    both.
   - **Drawn** in code from `tools/build-pixel2-model.py`'s millimetres, the
     landing page's model, in the theme's roles and nothing else: the body
     **surface** with a 3-unit **edge**, its turned side **raised** (Beard)
@@ -2311,56 +2325,94 @@ word for it.
 ### 11.28 Controls in a game
 
 My picks in the controls lab (docs/design/mock/controls-lab.html,
-2026-11-06). The in-game menu has a **Controls** row, right after Display
-(after a DS game's Screens, Swap Screens and Stylus, which go with Display):
-Continue, Save, Load, Display, Controls, Achievements, Reset, Quit. Eight rows is
-one more than the panel shows, so Quit is under the arrow, one Up from
-Continue, as a DS game's last rows are.
+2026-11-06), made over on 2026-11-13 for the in-game menu's tabs and button
+remapping (docs/superpowers/specs/2026-11-13-button-remap-design.md, 11.45).
+The in-game menu is MENU's tab row (11.3) over three tabs, in the order L1
+and R1 go round them, and the panel is the same size on every tab:
 
-**X is Quit** from any row of the in-game menu's page (gm_x_row,
-src/game_menu.h), in every in-game menu ZyperOS draws: over a Diatom game,
-over a "run:" program or a port, and over PortMaster. It does what A on Quit
-does and is heard as A is; Quit asks nothing first, so neither does X. The
-Quit row carries X's glyph at its right where a value goes (`MENU_KEY_X`,
-11.9), so the menu teaches the button, and the In a game page says it as
-"MENU, X  Quit". No row of the page answered X before. *(2026-11-08: I
-wanted to leave a game without scrolling down to Quit.)*
+| Tab | Rows |
+|---|---|
+| **Game** | Continue, Save, Load, Quick Slot, Disc (a game on more than one disc), Player 2 (an NES game, 11.43), Achievements, Reset, Quit |
+| **Display** | Display, Shader; a DS game's Screens, Swap Screens, Stylus |
+| **Controls** | Applies To, D-pad as Stick, Pak, Face Buttons, one row a button, Reset Buttons, Hotkeys (11.45) |
 
-A opens a read-only page over the paused game, in the standard panel with
-the system's rule color, as MENU > Controls is on the home: Left/Right turns
-the pages and comes round, B goes back to the menu, MENU to the game, and
-POWER stops the game as it does from the achievements. **By button**, as the
-home's pages are: the handheld's button at the left, what it does here at the
-right. **This game only**: what works in this game, on this system and core,
-and nothing else. Which page of how many is at the heading's right, "1 / 3"
-(11.3).
+**Where it opens.** The first MENU of a game opens on Game, on Continue.
+After that it opens on the tab and the row it was left on, until the game
+ends (Quit, POWER, or another game), so tuning a button is change, MENU, try,
+MENU, with the cursor where it was. Applies To keeps its value with them. The
+panel stands 24 units from the screen's sides, the most 11.3 allows, to make
+room for the handheld on the Controls tab: its content is 860 units wide.
+Over a port (OpenBOR, PortMaster) the menu is as it was, Continue, Controls
+and Quit with no tabs, and there Controls is the read-only pages below.
 
-- **The system's buttons** first, headed with its name ("Controls: Genesis";
-  a name that does not fit beside the page count, "Game Boy Advance", gives
-  way to the home's short one, "GBA"). The names are the core's own for each RetroPad button,
-  measured from the pinned cores (src/controls.c), put through the system's
-  `map|` line and its turbo exactly as Diatom is: the Genesis's A cap is C,
-  a Neo Geo Pocket's X is a turbo B (its core reads the A cap as its B), the
-  Dreamcast's L1/R1 are its triggers. No row for a button that does nothing
-  there; an FDS game adds L1/R1, the disk's side and eject.
+**X is Quit** from any row of any tab (gm_x_row, src/game_menu.h), in every
+in-game menu ZyperOS draws: over a Diatom game, over a "run:" program or a
+port, and over PortMaster. It does what A on Quit does and is heard as A is;
+Quit asks nothing first, so neither does X. The Quit row carries X's glyph at
+its right where a value goes (`MENU_KEY_X`, 11.9), so the menu teaches the
+button, and the In a game page says it as "MENU, X  Quit". B and MENU
+continue the game. *(2026-11-08: I wanted to leave a game without scrolling
+down to Quit.)*
+
+**The Controls tab** (src/ctltab.c is its rows, src/ctltab_screen.c its
+screen), in this order, the rows in brackets only where they apply:
+
+1. **Applies To**: **This Game**, or the system by name ("PlayStation"), or by
+   its short label where the name does not fit beside the row.
+2. [A quiet row, "This game keeps its own buttons.", under it, while it says
+   the system and this game has buttons of its own.]
+3. [**D-pad as Stick**, On or Off, this game's whatever Applies To says (11.45).]
+4. [**Pak**, an N64 game's, as it was in the Game list.]
+5. [**Face Buttons**, **By Letter** or **By Place** (11.45).]
+6. **A, B, X, Y, L1, R1, L2, R2, START, SELECT**, the handheld's button at the
+   left and what it does in this game at the right, in the core's own name
+   for it (src/controls.c, measured from the pinned cores), the PlayStation's
+   and the PSP's faces drawn as their shapes (src/padglyph.h, drawn by ui.c
+   as it draws MENU's key). Left and Right step it, A opens its choices, and a
+   changed value is in the **accent-ink** (11.45).
+7. [A quiet row, "Cross has no button now", under a button whose change left
+   a game button with none.]
+8. **Reset Buttons**, live only when what shows differs from its default; A
+   asks first in the yes/cancel panel Delete Game uses, "Put back the
+   PlayStation's buttons in Spyro the Dragon?" or "Put back ZyperOS's buttons
+   for every PlayStation game?".
+9. **Hotkeys**: A opens the read-only pages below, as a panel of pages (11.3).
+
+A row that cannot change here is a quiet row with its value: the N64's SELECT
+("C buttons"), the Dreamcast's while D-pad as Stick is on ("Held: D-pad"), and
+a button Diatom keeps for itself, the PSP's R2 ("D-pad as stick") and a DS
+game's L2 and R2 ("Other screen", "Stylus on/off"). A swap never lands on one,
+and what Diatom does with a button is no choice.
+The list goes round and scrolls as every list does (11.3), six rows in view
+beside the handheld. The handheld stands in a 280-unit column at the left of
+the rows, under the tab row, and is drawn only here and on a button's choices
+(11.45).
+
+**The read-only pages** are what the Controls row opened before the tab,
+behind the Hotkeys row now and at their own width, with no handheld (their
+rows do not fit beside it in every language). Over the paused game, in the
+standard panel with the system's rule color: Left/Right turns the pages and
+comes round, B goes back to the tab, MENU to the game, and POWER stops the
+game as it does from the achievements. **By button**, as the home's pages
+are: the handheld's button at the left, what it does here at the right. **This
+game only**: what works in this game, on this system and core, and nothing
+else. Which page of how many is at the heading's right, "1 / 3" (11.3). The
+system's own buttons are the tab's rows, so they are not a page here.
+
 - **What a system adds**, a page of its own: the Nintendo 64's C buttons
   (SELECT held with X, A, B, Y), and its own D-pad (SELECT, then the d-pad:
-  the d-pad alone is its stick), the same on both its cores, with
-  "MENU > Pak: Rumble Pak" under them,
-  which Pak the controller holds and where it is chosen (the in-game menu's
-  Pak row, per game); the DS's two screens (L2 the other screen, R2 the
-  stylus, then the d-pad moves it and A touches).
+  the d-pad alone is its stick), the same on both its cores, with "Pak:
+  Rumble Pak" under them, which Pak the controller holds (the Controls tab's
+  Pak row chooses it); the DS's two screens (L2 the other screen, R2 the
+  stylus, then the d-pad moves it and A touches). An FDS game adds L1/R1, the
+  disk's side and eject.
 - **Hotkeys**, SELECT held with a shoulder (2026-11-07): SELECT+R1 quick
   save and SELECT+L1 quick load (where the core keeps states), SELECT+R2
   faster and SELECT+L2 slower, and under them "SELECT alone stays the
-  game's" where SELECT is one of the system's buttons. The same rows as the
-  home's Hotkeys page.
+  game's" where SELECT is one of the system's buttons.
 - **In a game** last: MENU (the menu), MENU then X (Quit), the volume
   rocker, brightness (MENU+VOL on the Pixel 2, F1/F2 on the Brick), POWER.
   The same rows as the home's pages, from one place in src/controls.c.
-- **Buttons that are shapes** are drawn, not named: the PlayStation's cross,
-  circle, triangle and square, in the text's color at a capital's height
-  (src/padglyph.h, drawn by ui.c as it draws MENU's key).
 
 **Six rows a page**, or five and a note (the count in the heading, no
 footer, 11.3). A row more sends a list with no cursor past the panel, where
@@ -3503,7 +3555,7 @@ system table below: the NES's FCEUmm today. *(The design, approved 2026-11-12:
 docs/superpowers/specs/2026-11-12-nes-multiplayer-design.md. This section is
 what is built: plain HTTP, the touch pad and the keyboard.)*
 
-**On the handheld.** The in-game menu has a **Player 2** row after Shader,
+**On the handheld.** The in-game menu has a **Player 2** row on its Game tab, after Quick Slot,
 its value `off`, `waiting` or `connected`. A opens its page over the paused
 game, a panel as the in-game menu's (11.3): **Player 2** in **label**
 **text-soft** over a rule in the system's color, a line that says what to do,
@@ -3740,6 +3792,115 @@ first, then ZyperOS's. The note under the rows counts them ("330 of yours,
 10 ZyperOS", "330 tracks of yours"), or with none of the owner's says where
 they go ("Add MP3 or OGG to Menu Music"); the panel's rows leave it in the
 window once the list goes round.
+
+### 11.45 Button remapping
+
+What each button does in a game, changed from the in-game menu's Controls
+tab (11.28), for one game or every game of a system, kept on the card
+*(2026-11-13: from the ZyperOS Discord, "change what each button does for one
+system, or for one game, right from the in-game menu, and keep it on the
+card", and the d-pad as the left stick Nindzusek asked for)*. The design is
+docs/superpowers/specs/2026-11-13-button-remap-design.md; the rules are pure
+(src/remap.c, src/remapstore.c, `make check-remap`), Diatom's SETMAP and
+SETSTICK are the way they reach a game, at once while it is paused.
+
+**Steps.** Left and Right step a button's value through the row's own
+table, in this order: the buttons the system's core names (in src/controls.c's
+order for that system: faces, shoulders, Start, Select), then Turbo of each
+face button, then Nothing. A Dreamcast's list is A, B, X, Y, L trigger, R
+trigger, Start, Turbo A to Turbo Y, Nothing, and no more. A opens the same
+choices as a list of their own, headed "Y: PlayStation", the handheld still
+beside it, a tick on what the button does now and "default" in **text-dim**
+on the scope's default; A on a choice takes it and goes back, B goes back with
+no change. Each Left or Right works from the table as it was when the cursor
+came onto the row, so stepping through the list leaves the other buttons as
+they were except for the one swap at the value it stops on.
+
+**Swap, not copy.** When button P is given game button G, and another button
+Q already gives G, Q takes what P gave before: Y given Cross makes B give
+Square, and both rows show it. Turbo and Nothing never swap (Y can be Turbo
+Cross while B stays Cross), and a swap never lands on a quiet row: it keeps
+what it gives. SELECT keeps the hotkeys' rule whatever it gives: Diatom's
+chord gives a lone SELECT to the game as it is let go, or once held 400 ms,
+and never under a shoulder.
+
+**The warning row.** A game button that no button gives now (Nothing on the
+only button that gave it, and no turbo of it either) gets a quiet row,
+"Cross has no button now", right under the row of the button whose change
+caused it. A turbo of it counts as a button. The row is not selectable, so
+the cursor steps over it.
+
+**Scope and storage.** Two tables can exist for a system, the system's
+(`map.<TAG>`) and a game's (`map.<TAG>.<file>`, the file as the shelf names it,
+as `pak.` does). A game uses its own if it has one, else the system's, else
+ZyperOS's default (systems.cfg's `map|` line joined with `turbo.<TAG>`).
+**This Game** shows the map in force for the game and its first change copies
+it into the game's own table, so later changes to the system's do not reach
+it; its default, for "changed" and "default", is the system's. **The
+system's name** edits `map.<TAG>`, which reaches every game with no table of
+its own at its next start (and this one at once), its default ZyperOS's. A
+table is stored as the pairs in which it differs from its default, in SETMAP's
+form (`b:y,y:b,r1:b~3`) after a version, `1;`, so a later release's default
+still reaches the buttons a player never set. **No key equals its default**:
+when a change leaves a table equal to its default (Left and then Right again),
+its key is deleted, so undoing a change undoes "own buttons" too. "Own
+buttons" is the map alone: `stick.<TAG>.<file>` ("1" or "0"; absent is the
+system's default) is per game on every game and does not count, and is
+deleted when it equals the default. **Reset Buttons** deletes the shown
+scope's key (and in This Game puts D-pad as Stick back to the system's). A
+game with buttons of its own shows Applies To in the **accent-ink**, and on
+the shelf its details page gets a **Buttons | This Game** row after Favorite,
+only for such a game; A on it opens the same list as a page of its own (the
+game's name as heading, no tab row, the handheld beside it), Applies To fixed on
+This Game, changes kept for the next start. Rename moves both keys with the
+game and Delete Game deletes them (src/gamern.c). A table Diatom refuses is
+logged by both sides and the game plays with ZyperOS's default.
+
+**D-pad as Stick**, one switch per game on the systems whose pad has a left
+stick the core reads: the Nintendo 64 (on to start with; SELECT, then the
+d-pad, is the N64's own D-pad), the Dreamcast (off; the same SELECT rule, and
+the SELECT row says "Held: D-pad"), the PlayStation (off; the plain stick, no
+SELECT rule, and the d-pad stays the d-pad too, so a game that keeps its pad
+digital still moves) and the PSP (off; R2 in the game still turns it and the
+row agrees). It takes effect at once through SETSTICK. The Saturn has none: its
+stick is a controller type of its own.
+
+**Face Buttons**, where the caps' letters and the system's buttons can
+disagree (Dreamcast, Saturn, Neo Geo Pocket and Pocket Color): **By Letter**,
+each cap gives the button it names, ZyperOS's choice, or **By Place**, each
+cap gives the button in its place on the original pad. It sets all four faces
+as one swap and reads **Mixed** when they match neither.
+
+**Changed values** are drawn in the **accent-ink** (VCOL_EARNED, as an earned
+achievement's value is) and **on-accent** on the focus fill, as every value.
+
+**The handheld**, on the Controls tab and on a button's choices only, in the
+tutorial's front pose (10 degrees), lights the keys of the row under the
+cursor in the tutorial's lit look (accent fill, ring, halo): a button row its
+button; D-pad as Stick the d-pad (and SELECT on the N64 and the Dreamcast);
+Face Buttons the four faces; Reset Buttons every changed button; a swap
+both buttons while the cursor stays on the row; Applies To, Pak and Hotkeys
+nothing. A lit shoulder stands up out of the top edge.
+
+| What | Token and how |
+|---|---|
+| R1 or L1 into Controls | the handheld comes with the rows, 64 units the press's way and faded up in **move**, and turns from 40 to 10 degrees in **turn** |
+| Out of Controls | it leaves with the old tab's name, 96 units the press's way, gone in the first two fifths of **move** |
+| Up or Down | the fill glides in **quick**; the old key's light goes out and the new key's comes in, in **quick** |
+| Left or Right on a button | the key presses in **press** (in, then out); a swapped partner lights in **quick** |
+| A shoulder row | the shoulder stands up in **quick** |
+| A to a button's choices, and back | the handheld holds still while the list beside it changes |
+| A on Hotkeys, and back | the handheld goes and comes with the panel |
+
+Nothing overshoots, every motion is interruptible and tells the redraw clock
+when it ends (8.2). The handheld is drawn into its kept texture when its view
+changes and copied otherwise; it is drawn only in the menu, never in a frame
+of the game.
+
+**What the Hotkeys row opens** is the read-only pages of 11.28: what a system
+adds, Hotkeys and In a game, at their own width and with no handheld.
+Hotkeys, SELECT with a shoulder, stay on the physical buttons whatever the map
+says; MENU, the volume keys and POWER cannot be remapped.
 
 ## 12. Copy
 

@@ -253,6 +253,8 @@ typedef enum {
 	DIATOM_MSG_SETSCREENS, /* set it: `layout`, `swap` = 1 | 0 */
 	DIATOM_MSG_STYLUS,     /* report whether stylus mode is on */
 	DIATOM_MSG_SETSTYLUS,  /* turn it on or off: `on` = 1 | 0 */
+	DIATOM_MSG_SETSTICK,   /* the d-pad as the stick: `dmode` (sent as `mode=`)
+	 * = dpad | plain | toggle | toggle-stick | off; answered STICK on=1|0 */
 	/* Guest players, NES player 2 first (player2.h): the frames out and
 	 * the guests' buttons in, through a file p2d maps too. Only while a
 	 * game is loaded. */
@@ -343,6 +345,9 @@ void diatom_input_set_stick(bool dpad);
 /* RUN stick=toggle: the d-pad is the d-pad, or the stick when `as_stick`,
  * until diatom_input_stick_flip turns it; SELECT's rule is not used */
 void diatom_input_set_stick_toggle(bool as_stick);
+/* RUN stick=plain: the d-pad is the left stick and the joypad's d-pad both,
+ * always: no SELECT rule, and nothing turns it (main.c gives R2 no turn) */
+void diatom_input_set_stick_plain(void);
 /* R2 under stick=toggle: the d-pad goes to the other side. True when it is
  * the stick now. Nothing turns outside stick=toggle. */
 bool diatom_input_stick_flip(void);
