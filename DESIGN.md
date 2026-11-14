@@ -1895,7 +1895,9 @@ The home when the card has no games (MP4 alone included), under the home's
 own header (11.12) and with its MENU and SELECT hints in the foot
 (src/emptyhome.h). Zyper, 124 tall, at the left of **No games yet** in
 **title**, and under it "Add them from a computer or a phone." in **support**
-**text-soft**. Then the two ways as cards side by side, **raised**,
+**text-soft**: where a page has them (the page frame, section 15; Zyper at
+168, the heading at 150 and its line at 208, the cards from 256, since
+2026-11-14). Then the two ways as cards side by side, **raised**,
 **radius.card**, 476 x 368, from the screen's **inset** (24) with 24 between:
 each has its mark (the USB trident, or three arcs and a dot for Wi-Fi), 56
 across in **accent-ink**, and its button at the right (A for **USB File
@@ -4069,8 +4071,7 @@ when its change lands.
   Wi-Fi, a bolt, headphones and arrows that are `ui_glyph`'s in another
   hand; six scroll triangles; three hearts.
 - A page's two-line heading is laid out three ways (`DS_HEAD_BALANCED`,
-  `DS_HEAD_TWO`, `DS_HEAD_SUB`), and the empty home's a fourth (Zyper at
-  160, the lines at 146 and 209). The keys at a screen's foot stand at seven
+  `DS_HEAD_TWO`, `DS_HEAD_SUB`). The keys at a screen's foot stand at seven
   heights (680, 702, 704, 714, 718, 720, 724), and a page's foot puts its
   hints 40 apart, Flash Drive's pair 48.
 - A progress bar is drawn in 19 places with six rules for its smallest
