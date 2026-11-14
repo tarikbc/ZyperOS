@@ -11,12 +11,14 @@ tempo and sections).
 As of 1.0.5 it shows, in order: the shelf, the 2-second start against stock
 firmware, every system in ZyperOS's own pixel art and the four new ones (PSP,
 Doom, ColecoVision, TIC-80), folders and the list, a game started, turned off and
-back, video snaps, box art, quick save, the in-game controls, NES Player 2 on a
-friend's phone, File Transfer over Wi-Fi (its way in, then a browser) and over
-the cable (a phone, a computer, Flash Drive), the hotspot, an empty card filling
-up, File Transfer while a game plays, System Update, battery care, MENU's tabs
-and a theme of your own, achievements earned offline, MP4, PortMaster, Nintendo
-DS and the eight languages.
+back, video snaps, MENU > Scraper's run with the covers landing, the in-game
+menu in its tabs (a disc swapped, a shader and its Strength, buttons remapped
+beside the handheld leaning toward each one), NES Player 2 on a friend's phone,
+File Transfer over Wi-Fi (its way in, then a browser) and over the cable (a
+computer, a phone and its internet, Flash Drive), an empty card filling up,
+File Transfer while a game plays, System Update, battery care, MENU's tabs and
+a theme of your own, the Achievements tab, MP4, PortMaster, Nintendo DS and the
+eight languages.
 
 ## Making it
 
@@ -47,11 +49,14 @@ with no window and no change to the launcher:
   shows the card's track and Zyper names it on the home.
 - **Shots** are the launcher's `--shot` pictures, for screens the host cannot
   reach by pressing buttons: the in-game menu over a game, NES Player 2's
-  panel, the cable's questions, Now Playing, the charging screen, the first
-  start, Storage on a full card. Where a shot takes a
-  time (`--tour`, `--charging`, `--nowplaying`), there is a picture every
-  sixtieth of a second, so it moves as on the handheld; otherwise each picture
-  is held, as a cut from one row to the next.
+  panel, the cable's questions, the Scraper page's run, Now Playing, the
+  charging screen, the first start, Storage on a full card. Where a shot takes a
+  time (`--tour`, `--charging`, `--nowplaying`, `--scraper-page 7`, and
+  `--shot-at` after an in-game menu's tab or Controls press), there is a
+  picture every sixtieth of a second, so it moves as on the handheld; otherwise
+  each picture is held, as a cut from one row to the next. A segment of shots
+  can set what it needs on the card first (a shader, its Strength), and clears
+  the button remaps, since a shot's presses are kept as the handheld keeps them.
 
 `footage/card.py` builds the card the takes run on: the README's demonstration
 library (`tools/readme-shots.py`), well-known games on thirteen systems as empty
@@ -113,15 +118,17 @@ seconds.
 
 ## The 1.0.5 cut for Reddit
 
-`src/reddit/` is a second composition, `Reddit105`: what 1.0.5, 1.0.4 and
-1.0.3 added, in 56 seconds at 4:5 (1080x1350), the tallest a phone's feed
-shows at full width. It plays muted there, so every feature is named in large
-words over the screen, with the release it came in; "ZyperOS 1.0.5" is on
-screen from the first frame. It uses the tour's takes and music, and a few of
-its own (`saver`, `rename`, `renamed`, `flashdrive`, `usbsteps`, `update-bg`,
-`charge-full` in `footage/takes.py`). The shaders scene shows the README's
+`src/reddit/` is a second composition, `Reddit105`: what 1.0.5 added, in the
+order the Reddit post lists it (button remapping the longest scene), then
+1.0.3's and 1.0.4's USB File Transfer and Flash Drive, in 55 seconds at 4:5
+(1080x1350), the tallest a phone's feed shows at full width. It plays muted
+there, so every feature is named in large words over the screen, with the
+release it came in; "ZyperOS 1.0.5" is on screen from the first frame. It uses
+the tour's takes and music, and a few of its own (`phone`, `flashdrive`,
+`usbsteps` in `footage/takes.py`; `saver`, `rename`, `renamed`, `update-bg`
+and `charge-full` are its first cut's). The shaders scene shows the README's
 picture of the six looks on Balloon Fight, made in the QEMU machine with
-Diatom's own shaders, one look at a time.
+Diatom's own shaders, one look at a time, then the Display tab's Strength row.
 
 ```sh
 python3 video/footage/takes.py      # with the tour's SNAP_* settings, for the screensaver's snap

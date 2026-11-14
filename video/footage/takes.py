@@ -23,6 +23,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -71,7 +72,8 @@ def live(name, last, steps, tail=900, settings=None, start=LEAD, gap=420):
 
 
 def shots(name, segments, card='demo', env=None):
-    """segments: (last, args, hold ms) a still, or (last, args with {t}, [ms, ...]) a motion"""
+    """segments: (last, args, hold ms) a still, or (last, args with {t}, [ms, ...]) a motion,
+    and a fourth item for what to set on the card before each shot (run_shots)"""
     TAKES[name] = dict(kind='shots', card=card, segments=segments, env=env or {})
 
 
@@ -173,12 +175,12 @@ shots('wifi-xfer', [(PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu
 shots('wifi-way', [(PS1, ['--hare-steps', 'wifi', 'browser'], 2310),
                    (PS1, ['--hare', 'http://192.168.1.42', '1 connected', 'Tobu Tobu Girl.gb'], 3900)])
 # The cable: "What did you plug in?" on Computer and on Phone, how a phone
-# connects, then a computer's choices as a release has them (plain, with
+# connects (USB tethering, 1.0.5) and its File Transfer, then a computer's choices as a release has them (plain, with
 # Flash Drive) and Flash Drive's speeds
-shots('cable', [(PS1, ['--usb-power', '1'], 450), (PS1, ['--usb-power', '2'], 500),
-                (PS1, ['--usb-power', 'phone'], 1500),
-                (PS1, ['--usb-ask', '0', 'plain', 'drive'], 450), (PS1, ['--usb-ask', '1', 'plain', 'drive'], 450),
-                (PS1, ['--usb-ask', '2', 'plain', 'drive'], 550), (PS1, ['--usb-drive', '0', 'both'], 2300)])
+shots('cable', [(PS1, ['--usb-power', '1'], 450), (PS1, ['--usb-power', '2'], 450),
+                (PS1, ['--usb-power', 'phone'], 1200), (PS1, ['--hare-steps', 'phone', 'browser'], 900),
+                (PS1, ['--usb-ask', '0', 'plain', 'drive'], 400), (PS1, ['--usb-ask', '1', 'plain', 'drive'], 400),
+                (PS1, ['--usb-ask', '2', 'plain', 'drive'], 500), (PS1, ['--usb-drive', '0', 'both'], 1900)])
 shots('hotspot', [(PS1, ['--hotspot', 'ZyperOS-7A2B', 'q7mx-3kpa', '1 joined', 'waiting'], 2800)])
 # Files still moving while a game plays: the ring in the in-game menu's corner, over Sonic 2
 shots('xfer-ring', [(GEN, ['--screen', 'games', '--gamemenu', '0', '--backdrop', SONIC_SNAP,
@@ -190,10 +192,10 @@ shots('charge', [(PS1, ['--charging', '{t}', 'kept'], motion(0, 1600)),
                  (PS1, ['--charging', '{t}', 'limit'], motion(0, 1200))])
 # MP4's lock screen
 shots('lock', [(PS1, ['--nowplaying', '0', '0', '83', '--locked'], 1800)])
-# Nintendo DS: the in-game menu's screen rows, and N64's shelf
-shots('ds', [(('NDS', 'Mario Kart DS (USA).nds'), ['--screen', 'games', '--gamemenu', str(r), 'dual',
+# Nintendo DS: the in-game menu's screen rows (its Display tab), and N64's shelf
+shots('ds', [(('NDS', 'Mario Kart DS (USA).nds'), ['--screen', 'games', '--gamemenu', str(r), 'dual', '--gm-tab', '1',
                                                    '--backdrop', '{art}/Nintendo_-_Nintendo_DS/Named_Snaps/Mario Kart DS (USA) (En,Fr,De,Es,It).png'], 500)
-             for r in (8, 9, 10)] +
+             for r in (2, 3, 4)] +
      [(('NDS', 'Mario Kart DS (USA).nds'), ['--screen', 'games', '--popup', 'dslang',
                                            '--backdrop', '{art}/Nintendo_-_Nintendo_DS/Named_Snaps/Mario Kart DS (USA) (En,Fr,De,Es,It).png'], 1400)])
 shots('n64', [(('N64', 'Super Mario 64 (USA).z64'), ['--screen', 'games'], 1500)])
@@ -243,10 +245,76 @@ live('look', PS1,
 NES_SNAP = '{art}/Nintendo_-_Nintendo_Entertainment_System/Named_Snaps/Super Mario Bros. 3 (USA).png'
 NES = ('NES', 'Super Mario Bros. 3 (USA).nes')
 shots('player2', [(NES, ['--screen', 'games', '--gamemenu', str(r), '--player2', 'off', '--backdrop', NES_SNAP], 200)
-                  for r in range(7)] +
+                  for r in range(5)] +
       [(NES, ['--screen', 'games', '--player2', 'starting', '--backdrop', NES_SNAP], 600),
        (NES, ['--screen', 'games', '--player2', 'hotspot', '--backdrop', NES_SNAP], 1600),
-       (NES, ['--screen', 'games', '--player2', 'connected', '--backdrop', NES_SNAP], 2900)])
+       (NES, ['--screen', 'games', '--player2', 'connected', '--backdrop', NES_SNAP], 3300)])
+
+
+# ---- 1.0.5's last features: the in-game menu's tabs, the Scraper page -------
+# The in-game menu over Metal Gear Solid, a game on two discs, in its tabs
+# (Game, Display, Controls, Achievements), a tab's motion and the Controls
+# tab's presses drawn by the launcher a sixtieth of a second at a time
+# (--gm-tab-from, --gm-press with --shot-at). A segment's fourth item is set
+# on the card before each of its shots: settings, and the button remaps
+# cleared, since every press a shot makes is kept, as the handheld keeps it.
+MGS_GM = ['--screen', 'games', '--backdrop', '{card}/media-art/c6.png']
+REMAP = {'remap': True}
+
+
+def scanlines(pct):
+    return {'settings': {'shader.PS1': 'scanlines', 'shader_strength.PS1': pct}}
+
+
+def shader(name):
+    return {'settings': {'shader.PS1': name}}
+
+
+# Disc swapping: the Game tab down to its Disc row, the first disc in the
+# tray, then the second. The shot puts disc 2 in the tray, so the first's
+# value is given in the row's own words.
+shots('gm-disc', [(PS1, MGS_GM + ['--gamemenu', str(r), '--gm-tab', '0', '--gm-discs', '2', 'Disc 1 of 2'], ms)
+                  for r, ms in ((0, 450), (1, 200), (2, 200), (3, 200), (4, 1000))] +
+      [(PS1, MGS_GM + ['--gamemenu', '4', '--gm-tab', '0', '--gm-discs', '2'], 1500)])
+# R1 to Display, the Shader row stepped to Scanlines (the Strength row comes
+# with the first old screen), then Strength down from 100% to 40%
+shots('gm-strength', [(PS1, MGS_GM + ['--gamemenu', '1', '--gm-tab', '1', '--gm-tab-from', '0', '--shot-at', '{t}'],
+                       motion(0, 500), shader('nearest'))] +
+      [(PS1, MGS_GM + ['--gamemenu', '1', '--gm-tab', '1'], ms, shader(name))
+       for name, ms in (('shimmerless', 240), ('crt', 240), ('crt-curved', 240), ('scanlines', 500))] +
+      [(PS1, MGS_GM + ['--gamemenu', '2', '--gm-tab', '1'], 1100 if pct == 40 else 200 if pct < 100 else 450, scanlines(pct))
+       for pct in range(100, 30, -10)])
+# Button remapping: R1 to Controls, the handheld coming in beside its rows;
+# down them, the handheld leaning toward each button; Left twice on Y, which
+# swaps its button with the one that had it; down to L1, and it tilts back
+shots('gm-remap', [(PS1, MGS_GM + ['--gamemenu', '0', '--gm-tab', '2', '--gm-tab-from', '1', '--shot-at', '{t}'],
+                    motion(0, 700), REMAP)] +
+      [(PS1, MGS_GM + ['--gamemenu', str(r), '--gm-tab', '2', '--gm-press', 'down', '--shot-at', '{t}'], motion(0, 340), REMAP)
+       for r in range(5)] +
+      [(PS1, MGS_GM + ['--gamemenu', '5', '--gm-tab', '2', '--gm-press', press, '--shot-at', '{t}'], motion(0, ms), REMAP)
+       for press, ms in (('left', 650), ('left,left', 750), ('left,left,down', 1000))] +
+      [(PS1, MGS_GM + ['--gamemenu', '5', '--gm-tab', '2', '--gm-press', 'left,left,down', '--shot-at', '2000'], 900, REMAP)])
+# The Achievements tab: R1 from Controls, the game's list with two unlocks
+# waiting to be sent, and down it to one counting its progress
+ACH = ['--achtab', 'list', '--cheevos-waiting', '2', '--cheevos-badge', '{card}/Roms/PlayStation/.cheevos/Hagane.set', 'b#']
+shots('gm-cheevos', [(PS1, MGS_GM + ['--gamemenu', '0', '--gm-tab', '3', '--gm-tab-from', '2', '--shot-at', '{t}'] + ACH,
+                      motion(0, 600), REMAP)] +
+      [(PS1, MGS_GM + ['--gamemenu', str(r), '--gm-tab', '3'] + ACH, ms) for r, ms in ((1, 300), (2, 300), (3, 300), (4, 1800))])
+# MENU > Scraper as one page: the plan, the Systems grid, a run with the
+# covers landing (one each 1.1 s, the shot's run clock) and done. The page's
+# own stand-in systems, with covers of the card's games.
+SCRAPED = [('NES', 'Super Mario Bros. 3 (USA)', 0), ('SNES', 'Super Metroid (USA)', 1),
+           ('Game Boy', "The Legend of Zelda - Link's Awakening (USA, Europe)", 2),
+           ('Game Boy Advance', 'Metroid Fusion (USA)', 3), ('Genesis', 'Sonic The Hedgehog 2 (USA)', 4),
+           ('PlayStation', 'Castlevania - Symphony of the Night (USA)', 5), ('Nintendo 64', 'Super Mario 64 (USA)', 6)]
+shots('scraper-page', [(PS1, ['--scraper-page', '1'], 1000), (PS1, ['--scraper-page', '3'], 900),
+                       (PS1, ['--scraper-page', '7', '{t}'], motion(0, 7600)), (PS1, ['--scraper-page', '8'], 1600)],
+      env={'ZYPEROS_LOOK_COVERS': ':'.join(f'{{card}}/Roms/{f}/.media/{n}.png' for f, n, _ in SCRAPED),
+           'ZYPEROS_LOOK_SYS': ','.join(str(k) for *_, k in SCRAPED)})
+# Internet from an Android phone (USB tethering): Phone in "What did you plug
+# in?", the phone's step, and USB File Transfer in the phone's browser
+shots('phone', [(PS1, ['--usb-power', str(k)], ms) for k, ms in ((0, 350), (1, 350), (2, 700))] +
+      [(PS1, ['--usb-power', 'phone'], 1900), (PS1, ['--hare-steps', 'phone', 'browser'], 1600)])
 
 
 # ---- the 1.0.5 Reddit cut (src/reddit) ---------------------------------------
@@ -348,6 +416,25 @@ def run_live(name, spec, card):
                                                   'presses': spec['script']}) + '\n')
 
 
+def clear_kept(card):
+    """No shader, Strength or button remap a take before left on the card"""
+    with sqlite3.connect(card / 'userdata/zyperos.db') as db:
+        db.execute("DELETE FROM settings WHERE key LIKE 'shader%'")
+    with sqlite3.connect(card / 'shared/.zyperos/library.db') as db:
+        db.execute("DELETE FROM settings WHERE key LIKE 'map.%' OR key LIKE 'stick.%'")
+
+
+def set_kept(card, pre):
+    """A segment's settings, and its button remaps cleared, before a shot"""
+    if pre.get('remap'):
+        with sqlite3.connect(card / 'shared/.zyperos/library.db') as db:
+            db.execute("DELETE FROM settings WHERE key LIKE 'map.%' OR key LIKE 'stick.%'")
+    if pre.get('settings'):
+        with sqlite3.connect(card / 'userdata/zyperos.db') as db:
+            for k, v in pre['settings'].items():
+                db.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (k, str(v)))
+
+
 def run_shots(name, spec, cards):
     card = cards[spec['card']]
     # A live take before may have left another language or theme on the card
@@ -358,14 +445,18 @@ def run_shots(name, spec, cards):
     frames.mkdir(parents=True)
     listing, total, n = [], 0, 0
     # The first shot that shows the snap, for its frames' clock
-    first_turn = sum(len(w) if isinstance(w, list) else 1 for _, ar, w in spec['segments']
-                     if '--snap-frame' not in ar) if any('--snap-frame' in ar for _, ar, _ in spec['segments']) else 0
+    first_turn = sum(len(w) if isinstance(w, list) else 1 for _, ar, w, *_ in spec['segments']
+                     if '--snap-frame' not in ar) if any('--snap-frame' in ar for _, ar, *_ in spec['segments']) else 0
     env = cardlib.env_for(card)
-    env.update({k: v.replace('{work}', str(WORK)) for k, v in spec['env'].items()})
-    for last, args, when in spec['segments']:
+    env.update({k: v.replace('{work}', str(WORK)).replace('{card}', str(card)) for k, v in spec['env'].items()})
+    # No shader, Strength or button remap left by a take before
+    clear_kept(card)
+    for last, args, when, *pre in spec['segments']:
         write_last(card, *last)
         times = when if isinstance(when, list) else [None]
         for t in times:
+            if pre:
+                set_kept(card, pre[0])
             a = [x.replace('{t}', str(t)).replace('{card}', str(card)).replace('{art}', str(cardlib.ART_CACHE))
                  .replace('{work}', str(WORK)) for x in args]
             # --snap-frame {i}: the snap's frame for this shot (snapsub.dylib),

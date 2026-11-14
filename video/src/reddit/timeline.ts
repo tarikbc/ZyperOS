@@ -1,16 +1,19 @@
 /**
- * The 1.0.5 cut for Reddit: what 1.0.5, 1.0.4 and 1.0.3 added, in 56 seconds,
- * 4:5 for a phone's feed, where it plays muted. Every feature is named in large words
- * over the screen, so nothing depends on the sound; the music is the tour's
- * (src/music.ts) from its first downbeat, and every scene is whole bars of it.
+ * The 1.0.5 cut for Reddit: what 1.0.5 added, and 1.0.3's and 1.0.4's USB
+ * fixes, in under a minute, 4:5 for a phone's feed, where it plays muted.
+ * Every feature is named in large words over the screen, so nothing depends
+ * on the sound; the music is the tour's (src/music.ts) from its first
+ * downbeat, and every scene is whole bars of it.
  *
- * The scenes follow Leap's sections (LICENSES.md): the full band for bars 0 to
- * 15, from "ZyperOS 1.0.5" over the four new systems to the theme; the break
- * at 16 to 19 for the screensaver and Rename; the band at 20 to 23 for the
- * shaders and achievements; the break at 24 to 27 for File Transfer's way in
- * and USB File Transfer's steps; the band at 28 for Flash Drive and System
- * Update; the bridge for the charge; and the end, two beats past bar 36, the
- * phrase end, while the music fades. Each scene's tag is the release it came in. The takes are the tour's
+ * The scenes go in the order the Reddit post lists them, the most asked for
+ * first: the new systems, button remapping (the longest scene), shaders and
+ * their strength, a theme, folders and the list, the Scraper, a phone's
+ * internet, the Achievements tab, a disc swapped, NES Player 2 and the pixel
+ * art; then 1.0.3's and 1.0.4's USB File Transfer and Flash Drive, and the
+ * end, two beats past bar 35, while the music fades. On Leap's sections
+ * (LICENSES.md): the full band to bar 15 for the systems to the folders, the
+ * break at 16 to 19 for the Scraper's run and the phone, the band at 20, and so
+ * on. Each scene's tag is the release it came in. The takes are the tour's
  * (video/footage/takes.py), and the screens are the launcher's own.
  */
 import { BPM, layout, Scene, Step } from "../timeline";
@@ -34,43 +37,47 @@ const shaderSteps: Step[] = SHADERS.map((s) => ({ image: `img/shader-${s.file}.p
 export const REDDIT_SCENES: Scene[] = [
   // "ZyperOS 1.0.5" for the first four beats, over the new systems' own starts
   { id: "hook", tag: "1.0.5", bars: 3, pose: "main", screen: [{ take: "newsys", from: 0, to: "fill", rate: 1.34 }],
-    label: "Four new systems", sub: "PSP, Doom, ColecoVision and TIC-80", labelAt: 4 },
-  { id: "art", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "home", from: 2100, to: "fill", rate: 1.28 }],
-    label: "New pixel art for every system", sub: "Drawn for ZyperOS, and it moves" },
-  // The phone comes in as the panel says connected (beat 6.6)
-  { id: "player2", tag: "1.0.5", bars: 3, pose: "split", screen: [{ image: "img/smb3.png", beats: 1 }, { take: "player2", from: 600, to: "fill", rate: 1.39 }],
-    label: "Player 2 on a friend's phone", sub: "NES in a browser. No app, no account.",
-    browser: { phone: "img/play-phone.png", phonePic: "img/smb3.png", phoneAt: 6.5 } },
-  { id: "folders", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "folders", from: 2400, to: "fill", rate: 1.5 }],
-    label: "Your folders, kept", sub: "As deep as you like" },
-  { id: "list", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "folders", from: 7050, to: "fill", rate: 1.6 }],
-    label: "Covers or a list", sub: "START turns any shelf" },
-  { id: "tabs", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "look", from: 2450, to: "fill", rate: 1.4 }],
-    label: "MENU in six tabs", sub: "L1 and R1 go round them" },
+    label: "PSP, and three more systems", sub: "Doom, ColecoVision and TIC-80", labelAt: 4 },
+  // The headline: R1 to Controls, the handheld leaning toward each button, Y
+  // given another button, then in on the handheld as L1 tilts it back
+  { id: "remap", tag: "1.0.5", bars: 4, pose: "main", screen: [{ take: "gm-remap", from: 0, to: "fill", rate: 0.94 }],
+    label: "Remap any button", sub: "Per game or per system, in the game's menu",
+    punch: [{ at: 10, x: 0.22, y: 0.62, zoom: 1.55 }] },
+  // Diatom's six looks on Balloon Fight, then the Display tab: Scanlines, and
+  // its Strength stepped down
+  { id: "shaders", tag: "1.0.5", bars: 3, pose: "main",
+    screen: [...shaderSteps, { take: "gm-strength", from: 1500, to: "fill", rate: 1.8 }],
+    label: "Sharp pixels, or an old TV", sub: "Shaders, with a Strength from 10% to 100%" },
   { id: "theme", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "look", from: 6760, to: "fill", rate: 1.5 }],
     label: "A theme of your own", sub: "Light or dark, in the accent you pick" },
-  { id: "saver", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "saver", from: 300, to: "fill" }],
-    label: "A screensaver of your games", sub: "Their video snaps, after a minute" },
-  // X > Rename, the name typed, and the shelf after
-  { id: "rename", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "rename", from: 500, to: 4304, rate: 1.6 }, { take: "renamed", from: 0, to: "fill" }],
-    label: "Rename a game", sub: "Its saves and art follow it" },
-  { id: "shaders", tag: "1.0.5", bars: 2, pose: "main", screen: shaderSteps,
-    label: "Sharp pixels, or an old TV", sub: "Shaders in the in-game menu" },
-  // The list with two unlocks waiting, a beat closer on its heading, then an unlock
-  { id: "cheevos", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "cheevos", from: 0, to: 1320, rate: 0.6 }, { take: "cheevos", from: 1400, to: "fill" }],
-    label: "Achievements offline", sub: "They wait, then go to your account", punch: [{ at: 1, x: 0.5, y: 0.17, zoom: 1.45, until: 5.5 }] },
-  { id: "xfer", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "wifi-way", from: 0, to: "fill", rate: 1.2 }],
-    label: "File Transfer, easier to join", sub: "The address and PIN at full size" },
+  // Into a folder and back up, then START for the list and back
+  { id: "folders", tag: "1.0.5", bars: 3, pose: "main", screen: [{ take: "folders", from: 2400, to: "fill", rate: 1.55 }],
+    label: "Folders, and a list", sub: "START turns any shelf into a list" },
+  // MENU > Scraper: the plan, a run with the covers landing, done
+  { id: "scraper", tag: "1.0.5", bars: 3, pose: "main",
+    screen: [{ take: "scraper-page", from: 0, to: 1000, rate: 1.25 }, { take: "scraper-page", from: 1900, to: 8500, rate: 2.2 },
+             { take: "scraper-page", from: 9520, to: "fill" }],
+    label: "A new scraper", sub: "Box art for your whole library, as it finds it" },
+  // Phone on the cable, its tethering, and File Transfer in its browser
+  { id: "phone", tag: "1.0.5", bars: 2, pose: "split", screen: [{ take: "phone", from: 0, to: "fill", rate: 1.55 }],
+    label: "Internet from your phone", sub: "Android USB tethering. No Wi-Fi adapter.",
+    browser: { phone: "img/portal-phone.png", phoneAt: 4.5 } },
+  { id: "cheevos", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "gm-cheevos", from: 0, to: "fill", rate: 1.08 }],
+    label: "An Achievements tab", sub: "In the game's menu. PSP and PS1 .chd too." },
+  { id: "disc", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "gm-disc", from: 0, to: "fill", rate: 1.15 }],
+    label: "Swap discs in the game", sub: "For multi-disc PS1 games" },
+  // The phone comes in as the panel says connected (beat 5.8)
+  { id: "player2", tag: "1.0.5", bars: 3, pose: "split", screen: [{ image: "img/smb3.png", beats: 1 }, { take: "player2", from: 600, to: "fill", rate: 1.39 }],
+    label: "Player 2 on a friend's phone", sub: "NES in a browser. No app, no account.",
+    browser: { phone: "img/play-phone.png", phonePic: "img/smb3.png", phoneAt: 5.8 } },
+  { id: "art", tag: "1.0.5", bars: 2, pose: "main", screen: [{ take: "home", from: 2100, to: "fill", rate: 1.28 }],
+    label: "New pixel art for every system", sub: "Drawn for ZyperOS, and it moves" },
   // 1.0.3: USB File Transfer at zyperos.local, each step ticked as it connects
   { id: "usbsteps", tag: "1.0.3", bars: 2, pose: "main", screen: [{ take: "usbsteps", from: 0, to: "fill", rate: 1.28 }],
     label: "USB File Transfer at zyperos.local", sub: "Each step ticks off as it connects" },
-  // 1.0.4: Flash Drive, System Update in the background, a full charge once
+  // 1.0.4: Flash Drive
   { id: "flashdrive", tag: "1.0.4", bars: 2, pose: "main", screen: [{ take: "flashdrive", from: 0, to: "fill", rate: 1.28 }],
     label: "A plain flash drive", sub: "Any computer, no driver" },
-  { id: "update", tag: "1.0.4", bars: 2, pose: "main", screen: [{ take: "update-bg", from: 0, to: 900 }, { take: "update-bg", from: 900, to: "fill", rate: 0.89 }],
-    label: "System Update in the background", sub: "Keep playing while it downloads", punch: [{ at: 3, x: 0.87, y: 0.083, zoom: 3.2 }] },
-  { id: "charge", tag: "1.0.4", bars: 2, pose: "main", screen: [{ take: "charge-full", from: 0, to: "fill", rate: 1.03 }],
-    label: "Charge to 100% this once", sub: "Y on the charging screen" },
   { id: "end", bars: 2.5, pose: "hero", screen: [{ take: "home", from: 4000, to: "fill" }] },
 ];
 
