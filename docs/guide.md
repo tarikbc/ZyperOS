@@ -257,16 +257,33 @@ fetch works.
 
 ### Scraper
 
-MENU > **Scraper** is box art in one place: one list, Fetch Missing Art and
-Video Snaps, then the three sources in the order a fetch asks them.
+MENU > **Scraper** is box art and video snaps in one page. It says first
+what a run will get, then gets it, with each cover on the screen as it
+lands. A console's own menu keeps its **Box Art** row, which opens the same
+page for that console alone.
 
-| Row | What it is |
+| On the page | What it is |
 |---|---|
-| **Fetch Missing Art** | fetches every missing cover over Wi-Fi, in this same panel: the row becomes its progress (`31 / 142`) and each source counts the covers it found. B stops it. A console's own menu keeps its Box Art row, the same fetch for that console alone |
-| **Video Snaps** | `on` or `off` and the room they take; opens their page, below |
+| **Covers** | the covers a run will look for, and on how many systems |
+| **Videos** | the video snaps it will get, the room they will add (`+525 MB`) and on how many systems; `all off` to start, `needs ScreenScraper` with no account |
+| **A** Fetch | runs it over Wi-Fi: the game it is asking about, its system, the source it asks and how many games it has looked at (`31 / 142`). Each cover found lands big, beside the six before it. **B** stops. Then **All done**: the covers found, how many came, how many are still missing, and the room the videos take |
+| **Y** Systems | a tile for each system with two marks, covers and videos. **A** turns the system's covers on or off (on to start), **X** its videos (off to start: a snap is a megabyte or three), and **Y** picks **Videos for**: **All Games**, **Favorites** or **Played** |
+| **START** Settings | **ScreenScraper**, **SteamGridDB** and **Videos**, below |
+
+A run gets every system's covers first, then the names, years and synopses
+of games that already have a cover. It asks ScreenScraper first when it is
+linked, libretro right after each game ScreenScraper does not have, and
+SteamGridDB last. A game ScreenScraper does not know is not asked about
+again for 30 days.
+
+| In Settings | What it is |
+|---|---|
 | **ScreenScraper** | `linked as` its account, `link`, or `not in this build`. Its page links the account (user, then password, checked once), says how many requests are left today, and unlinks it. It brings covers with each game's year, genre and synopsis, and the video snaps. A build needs ScreenScraper's developer pair for any of it |
-| **libretro** | needs no account: covers by file name, and for zipped games by checksum |
 | **SteamGridDB** | the API key as its last four characters (`••••1a2b`), `key refused`, or `link`. Its page types a key in, checks it once, and unlinks it; the File Transfer page takes one pasted. Covers the other two do not have |
+| **Videos** | the Video Snaps page, below |
+
+libretro needs no account: covers by file name, and for zipped games by
+checksum.
 
 **Video Snaps** are a few seconds of a game's own screen, from ScreenScraper.
 After three seconds on a game, its cover turns wide into its snap, which loops;
@@ -274,17 +291,16 @@ it goes back to the cover when the focus moves or a menu opens. Its page:
 
 | Row | What it is |
 |---|---|
-| **Fetch with Box Art** | `on` fetches each game's snap with its cover, and for games that already have a cover. `off` to start; needs ScreenScraper |
 | **Play on the Shelf** | `on` to start |
 | **Sound** | `muted` (to start), `quiet` or `full`. Never over music playing in MP4; Menu Music dips under it |
-| each console | `on` or `off` for that console, and the room its snaps take |
+| each console | `on` or `off`: whether that console's snaps play on the shelf, and the room they take |
 | **Delete All** | deletes every snap, after a question |
 
 A snap is `Roms/<console>/.media/<name>.mp4`, beside its cover, so one put
 there by hand plays too.
 
-**Auto Off waits for a fetch.** While Fetch Missing Art, a Box Art run or its
-video snaps are fetching, Auto Off does not count, so a library left to
+**Auto Off waits for a fetch.** While a Scraper run, from MENU or a
+console's Box Art, is fetching covers or video snaps, Auto Off does not count, so a library left to
 scrape overnight is not cut short; the count starts again, whole, when the run
 ends. The power button still powers the device off, and so does the battery
 running flat. System Update's download, PortMaster's install, Storage

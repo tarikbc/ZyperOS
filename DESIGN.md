@@ -211,7 +211,7 @@ Pepper's), rounded, and Zyper on. *(My picks for the first version,
   keys, chips. A pill stays a pill (the bar, a button glyph, the bar under a
   tab), a circle a circle, and covers keep their own corners.
 - **Zyper off** takes him out of the menus' corner, the song pop-up (11.22),
-  the achievement notice (11.7) and the Flash Drive pages (the heading then
+  the achievement notice (11.7), the Flash Drive pages and the Scraper page (the heading then
   starts where the tiles do). He stays where he is the moment itself:
   the boot, the loading loop, the tutorial, Getting hot, the battery and the
   charging screens.
@@ -1839,34 +1839,68 @@ trident; Follow the port; Zyper cheers first.)*
 ---
 
 ### 11.19 Scraper and video snaps
-MENU > **Scraper**, where Box Art was, is one menu panel (11.3) in one list:
-**Fetch Missing Art** (its value the count missing, or "complete", or
-"needs Wi-Fi"), **Video Snaps** ("on · 1.4 GB"), a rule inside the body,
-then the sources in the order a fetch asks them - **ScreenScraper**
-("linked as tarik", "link", "not in this build"), **libretro** (dead, "no
-account"), **SteamGridDB** (the key as 11.3 shows a key, "key refused",
-"link"). Six rows and a rule, which is what the panel holds at 640x480:
-nothing else goes on it. Fetch Missing Art runs in the same panel: its row
-becomes "Fetching", "31 / 142" - games LOOKED AT of those with no cover,
-which moves with every game - each source's value counts the covers it
-found, the sources are dead until it ends, and B stops it and closes, as
-Box Art's always has. It gets covers for every console first, then the
-details (names, years, synopses) of games that already have a cover, which
-went first on each console once and held the count at 0 for minutes on a
-card of covers from elsewhere (2026-11-13). While it runs, the heading's second line is what it
-is doing now - the game it is asking about, or "NES catalog" - cut to three
-quarters of the screen, as Box Art's was: the count moves only when a cover
-lands or a game is given up, and a ScreenScraper pass over a shelf it does
-not know is minutes of neither (a player's "hangs", 1.0.4). A problem that
-ends a fetch is the heading's second line after it, in at most 25
-characters; the game it was on never is.
+MENU > **Scraper** opens a page in the Flash Drive pages' look (11.18):
+Zyper and the heading at the top, the keys at the foot. A console's own
+**Box Art** opens the same page for that console alone. MENU's Scraper row
+still says what is missing (the count, "complete", "needs Wi-Fi"), counted
+as the page closes. The page says four things before anything runs: what a
+run will get, for which systems, which games get videos, and their room.
 
-A source opens a page of its own: what it is linked as and a dead Status
-row, **Unlink** (which asks first, 11.8's question), and two notes under a
-rule on where an account or a key comes from. Video Snaps opens a page:
-**Fetch with Box Art**, **Play on the Shelf**, **Sound** (muted, quiet,
-full), a rule, every console with "on · 212 MB", and **Delete All**; every
-switch steps round with Left and Right (9's ring).
+- **The plan**, the page as it opens: each system's icon (nine at most, or
+  eight and "+N") over two marks, a cover and a video, lit when the system
+  gets them; then two **raised** tiles, **Covers** (the covers a run will
+  look for, "on 7 systems") and **Videos** (the videos it will get, "+525
+  MB" on the number's row, "on 3 systems", "all off" or "needs
+  ScreenScraper"). A fetches, Y opens Systems, START Settings, B closes;
+  with no network the heading's second line is "needs Wi-Fi". From a
+  console's Box Art there is no Y.
+- **Systems**: a tile a system, three by three, the rows following the
+  focus, each with the system's icon and its two marks. A switches the
+  focus's covers, X its videos, Y asks Videos for, B is back on the plan.
+  The focus is named under the heading and again at the foot, as marks:
+  the covers it misses ("41 missing") and its videos' room, or "off".
+  Covers start on and videos off, as a video is ~2.5 MB and one
+  ScreenScraper lookup (snaps_covers, snaps_get); a system with no switch of
+  its own follows 1.0.4's Fetch with Box Art and console switch, so a card
+  that was getting videos still does.
+- **Videos for**: tiles over the page, as Computer Connected's (11.18):
+  **All Games**, **Favorites**, **Played** (a game with play time).
+- **Settings**: tiles for **ScreenScraper**, **SteamGridDB** and **Videos**.
+  A source opens its page: what it is linked as and a dead Status row,
+  **Unlink** (which asks first, 11.8's question), and two notes under a
+  rule on where an account or a key comes from; SteamGridDB's tile says
+  "key refused" when it is. libretro needs nothing and has no tile.
+- **The run**: the game it is asking about is the heading, cut to the
+  screen; under it its system's icon, the mark of the source being asked
+  (a cloud for ScreenScraper, a book for libretro, a grid for SteamGridDB),
+  a bar and "31 / 142": games LOOKED AT, which moves with every game. Each
+  cover found lands big at the left over 520 ms while the six before it
+  move one place along, three by two, each with its source's mark and a
+  play mark when a video came with it; the pictures are decoded off the
+  frame (mediatex). The covers and videos found at the foot, as marks; B
+  stops.
+- **Done**: "All done", the covers found as a wall (fourteen at most), the
+  counts as marks (covers, videos, missing) and the room said plainly
+  ("Videos: 3 systems, 525 MB on the card", or "Videos: needs
+  ScreenScraper"); A runs again, B closes. A problem that ended the run is
+  the heading's second line, in at most 25 characters.
+
+A run gets covers for every system first, then the details (names, years,
+synopses) of games that already have a cover, with a count of their own.
+The details went first on each console once and held the count at 0 for
+minutes on a card of covers from elsewhere (a player's "hangs" on 1.0.4,
+and its logs, 2026-11-13). libretro is asked right after each ScreenScraper
+miss, ten misses in a row on a console leave the rest of it to libretro,
+and a game ScreenScraper says it does not know is left alone for 30 days
+(the ss_miss table). A system with covers off gets no cover pass and no
+names, only its videos.
+
+Video Snaps opens a page from Settings: **Play on the Shelf**, **Sound**
+(muted, quiet, full), a rule, every console with "on · 212 MB", and
+**Delete All**; every switch steps round with Left and Right (9's ring).
+Its console switches are the shelf's, which play; the Systems grid's get.
+Host shots: `--scraper-page STATE`; tools/scraper-live.py plays the real
+loop on the Mac, network and all (ZYPEROS_SCRAPER_TEST).
 
 On the games shelf, after **hold-snap** on a game - the shelf still, lit,
 nothing over it - the focused cover turns into its video snap: over
@@ -1902,6 +1936,12 @@ drawn and again when the folder changes (looked at every 2 s at most).
 2026-11-06: one list, a page per source, a Video Snaps page, the cover
 turns wide, sound a setting muted to start, 3 seconds. Later that day, on
 the Pixel 2: the bar under the cover, and 1 second.)*
+*(2026-11-13, on the panel that came before the page: "the scraper is
+stuck on 0/523 while the game on the header is changing ... it's very
+confusing", then "too verbose, and the video part looks like an
+afterthought". My picks over five rounds of shots: the images coming in,
+more icons, and "careful not to be too crowded or text overflowing
+depending on the language and themes and zyper on/off".)*
 
 ### 11.20 First start
 The first start of a freshly written card copies the ZyperOS folder the
@@ -3146,7 +3186,7 @@ a clip, START and then anything.)*
 **One rule.** A job the device was asked to do holds Auto Off the way the
 charger does: the countdown does not run while it works, and a whole fresh
 one starts when it ends. The jobs: the scraper's art and video downloads
-(MENU > Scraper > Fetch Missing Art, and a Box Art run from a game),
+(a run of MENU > Scraper's page, from MENU or a console's Box Art),
 System Update's download, check of its files and install, PortMaster's install (whichever
 screen is up, or a game), Storage's walk of the card, File Transfer's copies
 and connected browsers, and Muse's album covers. The rule is one function,

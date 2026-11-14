@@ -794,7 +794,7 @@ it = Copertine album
 # ---- MENU > Scraper ---------------------------------------------------------
 
 [sysmenu.sc_missing]
-note = Fetch Missing Art's value: how many covers are missing. English has one form for both.
+note = How many covers are missing: MENU's Scraper row, and the Scraper page's Systems foot for the system in focus. English has one form for both.
 en.one = %d missing
 en.other = %d missing
 zh-Hans = 缺少 %d 个
@@ -936,7 +936,7 @@ it = Serve una versione con la sua chiave.
 # ---- Scraper > Video Snaps --------------------------------------------------
 
 [sysmenu.sn_needs_ss]
-note = Fetch with Box Art's value with no ScreenScraper account. Lowercase.
+note = The Scraper page's Videos tile with no ScreenScraper account, and after "Videos: " on its done screen. Lowercase.
 en = needs ScreenScraper
 zh-Hans = 需要 ScreenScraper
 es = requiere ScreenScraper

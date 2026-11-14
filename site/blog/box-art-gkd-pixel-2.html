@@ -4,9 +4,9 @@ summary: Covers from libretro, ScreenScraper and SteamGridDB, fetched on the han
 crumb: Box art and video previews
 topic: guide
 published: 2026-11-07
-updated: 2026-11-07
+updated: 2026-11-13
 image: scraper
-image_alt: MENU > Scraper in ZyperOS, with Fetch Missing Art, Video Snaps and the covers each source found
+image_alt: MENU > Scraper in ZyperOS: each system's icon, and what a run will get, covers and videos
 related: retroachievements-gkd-pixel-2, add-games-gkd-pixel-2, gkd-pixel-2-wifi-adapter
 weight: 30
 ---
@@ -15,40 +15,40 @@ weight: 30
 <h2>The short answer</h2>
 <ol>
   <li>Plug in a USB Wi-Fi adapter and join a network.</li>
-  <li>Open <strong>MENU &gt; Scraper</strong> and choose <strong>Fetch Missing Art</strong>.</li>
-  <li>Wait for the count to finish. <kbd>B</kbd> stops it at any time. The shelf has the covers when you leave the screen.</li>
+  <li>Open <strong>MENU &gt; Scraper</strong>. The page says how many covers a run will look for.</li>
+  <li>Press <kbd>A</kbd> and watch the covers come in. <kbd>B</kbd> stops it at any time. The shelf has the covers when you leave the page.</li>
 </ol>
 <p>That uses libretro's free collection, with no account. The rest of this guide adds better matches, game details and video snaps.</p>
 
 <h2>The three sources</h2>
-<p>MENU &gt; Scraper lists the sources in the order a fetch asks them.</p>
-<figure class="shot"><img src="/img/scraper.png" alt="MENU > Scraper: Fetch Missing Art, Video Snaps, then ScreenScraper, libretro and SteamGridDB with the covers each found"><figcaption>MENU &gt; Scraper: one place for covers, snaps and sources.</figcaption></figure>
+<p>MENU &gt; Scraper says first what a run will get: the covers, the video snaps, on which systems, and the room they take. <kbd>Y</kbd> opens Systems, to turn a console's covers or videos on or off. A run asks the sources in this order.</p>
+<figure class="shot"><img src="/img/scraper.png" alt="MENU > Scraper: each system's icon with a cover mark and a video mark, then Covers, 523 on 7 systems, and Videos, 210 on 3 systems, +525 MB"><figcaption>MENU &gt; Scraper: what a run will get, before it starts.</figcaption></figure>
 <div class="table-wrap wide">
 <table>
   <thead><tr><th scope="col">Source</th><th scope="col">Account</th><th scope="col">What it brings</th></tr></thead>
   <tbody>
-    <tr><th scope="row">ScreenScraper</th><td>A free ScreenScraper account, linked on its page in Scraper</td><td>Covers, plus each game's name, year, genre and synopsis, and the video snaps. Asked first when linked.</td></tr>
+    <tr><th scope="row">ScreenScraper</th><td>A free ScreenScraper account, linked in Scraper's Settings</td><td>Covers, plus each game's name, year, genre and synopsis, and the video snaps. Asked first when linked.</td></tr>
     <tr><th scope="row">libretro</th><td>None</td><td>Covers from libretro's thumbnail collection, by file name, and for zipped games by checksum.</td></tr>
     <tr><th scope="row">SteamGridDB</th><td>Your own free API key</td><td>Portrait covers for what the other two lack, such as homebrew, hacks and ports. Asked last.</td></tr>
   </tbody>
 </table>
 </div>
-<p class="note">ScreenScraper also needs a developer pair that each ZyperOS build is made with. A build without it says <code>not in this build</code> on ScreenScraper's page, and the fetch uses libretro and SteamGridDB.</p>
+<p class="note">ScreenScraper also needs a developer pair that each ZyperOS build is made with. A build without it says <code>not in this build</code> on ScreenScraper's tile, and the fetch uses libretro and SteamGridDB.</p>
 
 <h3>libretro: matching by checksum</h3>
 <p>libretro files its covers under the game's name in No-Intro's catalog. A zip records its ROM's checksum, so when the file name does not match, ZyperOS looks the game up by that checksum instead, and a file with an old or odd name still finds its box.</p>
 
 <h3>SteamGridDB: adding your key</h3>
-<p>Get a free API key at <a href="https://www.steamgriddb.com">steamgriddb.com</a>, under Preferences, API. Type it on SteamGridDB's page in MENU &gt; Scraper, or paste it on the File Transfer page in a browser, which is easier than typing 32 characters on the handheld. The key stays on the card, and ZyperOS shows only its last four characters.</p>
+<p>Get a free API key at <a href="https://www.steamgriddb.com">steamgriddb.com</a>, under Preferences, API. Type it on SteamGridDB's page in MENU &gt; Scraper's Settings (<kbd>START</kbd>), or paste it on the File Transfer page in a browser, which is easier than typing 32 characters on the handheld. The key stays on the card, and ZyperOS shows only its last four characters.</p>
 
 <h2>Video previews on the shelf</h2>
 <p>With ScreenScraper linked, ZyperOS can fetch each game's video snap: a few seconds of the game's own screen. Rest on a game for three seconds and its cover turns wide and plays the snap in a loop. Move on, or open a menu, and the cover comes back.</p>
-<p><strong>MENU &gt; Scraper &gt; Video Snaps</strong> has the settings:</p>
+<p>Videos are off to start, as a snap is a megabyte or three. In <strong>MENU &gt; Scraper</strong>, <kbd>Y</kbd> opens Systems: <kbd>X</kbd> on a console turns its videos on, and <kbd>Y</kbd> there picks which games get one: all of them, your favorites, or the games you have played. The page says the room they will take before a run, and what they take after it.</p>
+<p>The <strong>Video Snaps</strong> page, in the Scraper's Settings, has the rest:</p>
 <ul>
-  <li><strong>Fetch with Box Art</strong>: fetch each game's snap with its cover. Off to start.</li>
   <li><strong>Play on the Shelf</strong>: on to start.</li>
   <li><strong>Sound</strong>: muted to start, quiet or full. Never over music playing in MP4.</li>
-  <li><strong>Each console</strong>: on or off, with the room its snaps take. A snap is a megabyte or three.</li>
+  <li><strong>Each console</strong>: whether its snaps play on the shelf, with the room they take.</li>
   <li><strong>Delete All</strong>, after a question.</li>
 </ul>
 <p>A snap is a file, <code>Roms/&lt;console&gt;/.media/&lt;game&gt;.mp4</code>, beside the cover. One you put there yourself plays too.</p>
