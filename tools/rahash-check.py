@@ -59,6 +59,32 @@ def _iso(path, root):
     return b"SLUS_000.01" + bytes(exe)
 
 
+def lzma_flags():
+    """liblzma's flags from pkg-config (Homebrew's xz on a Mac), as the
+    Makefile asks for them"""
+    out = subprocess.run(["pkg-config", "--cflags", "--libs", "liblzma"],
+                         capture_output=True, text=True)
+    return out.stdout.split() if out.returncode == 0 else ["-llzma"]
+
+
+HASH_SRC = ("rahash.c", "discimg.c", "chd.c", "flacdec.c")
+
+
+def asan_build(out):
+    """The C hasher under AddressSanitizer, once: the crafted images run
+    there, so a read past a buffer fails here rather than on a card"""
+    if os.path.exists(out) and os.path.getmtime(out) >= max(
+            os.path.getmtime(os.path.join(ROOT, "src", f)) for f in HASH_SRC):
+        return True
+    cc = os.environ.get("CC", "cc")
+    return subprocess.run([cc, "-std=gnu11", "-D_GNU_SOURCE", "-O1", "-g",
+                           "-fsanitize=address", "-fno-omit-frame-pointer", "-o", out,
+                           os.path.join(ROOT, "tools", "rahash-check.c")]
+                          + [os.path.join(ROOT, "src", f) for f in HASH_SRC]
+                          + ["-lz"] + lzma_flags(),
+                          capture_output=True).returncode == 0
+
+
 def disc_fixtures(rac):
     """The PlayStation walk on two images made here, so it is checked with no
     library present: one well formed, whose hash is known independently of
@@ -93,12 +119,7 @@ def disc_fixtures(rac):
                                           # it, the image would hash
 
     asan = os.path.join(ROOT, "build-native", "rahash-check-asan")
-    cc = os.environ.get("CC", "cc")
-    built = subprocess.run([cc, "-std=gnu11", "-D_GNU_SOURCE", "-O1", "-g",
-                            "-fsanitize=address", "-fno-omit-frame-pointer",
-                            "-o", asan, os.path.join(ROOT, "tools", "rahash-check.c"),
-                            os.path.join(ROOT, "src", "rahash.c"), "-lz"],
-                           capture_output=True).returncode == 0
+    built = asan_build(asan)
     binary = asan if built else BIN
     if not built:
         print("  note: no AddressSanitizer here; the crafted images run unsanitized")
@@ -123,10 +144,11 @@ def disc_fixtures(rac):
 
 def named_and_refused(rac):
     """An arcade or Neo Geo set hashes as its name, md5("mslug") for
-    mslug.zip, whatever is in it; a Sega CD or Neo Geo CD disc, a PSP .cso
-    or .pbp, a Dreamcast .cdi and a Saturn .mds are refused
-    by both hashers without being read. Files made here, so this runs with
-    no library."""
+    mslug.zip, whatever is in it; a Sega CD or Neo Geo CD disc, a Dreamcast
+    .cdi and a Saturn .mds are refused by both hashers without being read. A
+    PSP .cso that is not one is refused once read; a PSP .pbp is hashed
+    whole, whatever is in it (rc_hash_psp). Files made here, so this runs
+    with no library."""
     import tempfile
     bad = 0
     tmp = tempfile.mkdtemp(prefix="rahash-")
@@ -136,7 +158,7 @@ def named_and_refused(rac):
                             ("SEGACD", "Sonic CD (USA).chd", None),
                             ("NEOCD", "Metal Slug.cue", None),
                             ("PSP", "LittleBigPlanet.cso", None),
-                            ("PSP", "Patapon.pbp", None),
+                            ("PSP", "Patapon.pbp", hashlib.md5(b"not a set, not a disc").hexdigest()),
                             ("DC", "Shenmue.cdi", None),
                             ("SATURN", "Nights.mds", None)):
         p = os.path.join(tmp, name)
@@ -201,11 +223,110 @@ def headers_and_orders(rac):
     return bad
 
 
+def containers(rac):
+    """PlayStation and PSP discs in every container ZyperOS reads, held to
+    upstream rcheevos's hash of the plain image (tools/fixtures/rahash,
+    tools/rahash-fixtures.py). The images are built again here
+    (tools/discfix.py) and must be the bytes the fixtures were made from;
+    the .chd files are chdman's, committed; the .cso and .pbp files are made
+    here from the images. Python has no CHD reader: it must give None for a
+    .chd, and the C side the hash. Then broken containers - a CSO of
+    version 2, a CHD cut short, a CHD with a byte of its map changed, a PBP
+    whose index points past its end - which both must refuse, under
+    AddressSanitizer where there is one."""
+    import json
+    import shutil
+    import tempfile
+    bad = 0
+    fixdir = os.path.join(ROOT, "tools", "fixtures", "rahash")
+    man = json.load(open(os.path.join(fixdir, "manifest.json")))
+    fx = load("rahash_fixtures", os.path.join(ROOT, "tools", "rahash-fixtures.py"))
+    dfx = sys.modules["discfix"]
+    tmp = tempfile.mkdtemp(prefix="rahash-disc-")
+    md5s = fx.sources(tmp)
+    if md5s != man["sources"]:
+        print(f"    tools/discfix.py builds other bytes than the fixtures were made from:\n"
+              f"      now {md5s}\n      then {man['sources']}\n"
+              f"    make them again: python3 tools/rahash-fixtures.py --ref ...")
+        return 1
+    H = man["hashes"]
+    raw = open(os.path.join(tmp, "ps1.bin"), "rb").read()
+    rawsub = open(os.path.join(tmp, "ps1sub.bin"), "rb").read()
+    iso = open(os.path.join(tmp, "psp.iso"), "rb").read()
+
+    def put(name, data):
+        p = os.path.join(tmp, name)
+        with open(p, "wb") as f:
+            f.write(data if isinstance(data, bytes) else data.encode())
+        return p
+
+    cases = [  # (tag, path, want, python's want)
+        ("PS1", os.path.join(tmp, "ps1.cue"), H["ps1"], H["ps1"]),
+        ("PS1", os.path.join(tmp, "ps1sub.cue"), H["ps1sub"], H["ps1sub"]),
+        ("PS1", put("ps1.pbp", dfx.pbp_psx(raw)), H["ps1"], H["ps1"]),
+        ("PS1", put("ps1-stored.pbp", dfx.pbp_psx(raw, stored={0, 2})), H["ps1"], H["ps1"]),
+        ("PS1", put("ps1-2discs.pbp", dfx.pbp_psx_multi([raw, rawsub])), H["ps1"], H["ps1"]),
+        ("PS1", put("ps1-pbp.m3u", "#EXTM3U\nps1.pbp\nps1sub.cue\n"), H["ps1"], H["ps1"]),
+        ("PSP", os.path.join(tmp, "psp.iso"), H["psp"], H["psp"]),
+        ("PSP", put("psp.cso", dfx.cso(iso)), H["psp"], H["psp"]),
+        ("PSP", put("psp-v0.cso", dfx.cso(iso, ver=0)), H["psp"], H["psp"]),
+        ("PSP", put("psp-16k.cso", dfx.cso(iso, block=0x4000, align=2, plain_every=3)),
+         H["psp"], H["psp"]),
+        ("PSP", os.path.join(tmp, "psn.pbp"), H["psn"], H["psn"]),
+    ]
+    for name, info in sorted(man["chd"].items()):
+        p = os.path.join(tmp, name)
+        shutil.copy(os.path.join(fixdir, name), p)
+        cases.append((info["system"], p, info["hash"], None))
+    cases.append(("PS1", put("ps1-chd.m3u", "ps1-cd.chd\n"), H["ps1"], None))
+    # Broken: each must be refused, and must not read out of bounds
+    v2 = bytearray(dfx.cso(iso))
+    v2[20] = 2
+    chd = open(os.path.join(fixdir, "psp-dvd.chd"), "rb").read()
+    mapat = int.from_bytes(chd[40:48], "big")
+    badmap = bytearray(chd)
+    badmap[mapat + 20] ^= 0x5a
+    pbp = bytearray(dfx.pbp_psx(raw))
+    psar = int.from_bytes(pbp[36:40], "little")
+    # Block 1: sectors 16 to 31, the volume descriptor's (block 0 is never read)
+    pbp[psar + 0x4020:psar + 0x4024] = (0x7ffffff0).to_bytes(4, "little")
+    ps1chd = open(os.path.join(fixdir, "ps1-cd.chd"), "rb").read()
+    cases += [
+        ("PSP", put("v2.cso", bytes(v2)), None, None),
+        ("PSP", put("cut.chd", chd[:len(chd) // 2]), None, None),
+        ("PSP", put("badmap.chd", bytes(badmap)), None, None),
+        ("PS1", put("cut-ps1.chd", ps1chd[:len(ps1chd) * 2 // 3]), None, None),
+        ("PS1", put("badindex.pbp", bytes(pbp)), None, None),
+        ("PS1", put("notachd.chd", b"MComprHD" + bytes(200)), None, None),
+    ]
+    asan = os.path.join(ROOT, "build-native", "rahash-check-asan")
+    binary = asan if asan_build(asan) else BIN
+    for tag in ("PS1", "PSP"):
+        mine = [c for c in cases if c[0] == tag]
+        out = subprocess.run([binary, tag] + [c[1] for c in mine], capture_output=True, text=True)
+        if "AddressSanitizer" in out.stderr or out.returncode not in (0, 1):
+            bad += 1
+            print("    C hasher crashed or read out of bounds:\n" + out.stderr[-3000:])
+        got = {p: h for h, _, p in (l.partition("\t") for l in out.stdout.splitlines())}
+        for _, path, want, pywant in mine:
+            c = got.get(path)
+            c = None if c in (None, "FAILED") else c
+            py = rac.ra_md5(tag, path)
+            name = os.path.basename(path)
+            if c != want or py != pywant:
+                bad += 1
+                print(f"    {tag} {name}: want {want} (python {pywant}), C {c}, python {py}")
+            else:
+                print(f"  ok  {tag:<4} {name:<16} {want or 'refused by both'}")
+    shutil.rmtree(tmp, ignore_errors=True)
+    return bad
+
+
 # The shelves whose every kind of file is a disc with no walk here: a game of
 # one has no hash, so its Achievements rows say "not for this system" rather
 # than "not checked yet" (src/rahash.h, ra_hash_support). A systems.cfg line
 # that changes the list has to change it here, on purpose.
-NO_SYSTEM = {"PSP", "SEGACD", "3DO", "SATURN", "NEOCD", "DC"}
+NO_SYSTEM = {"SEGACD", "3DO", "SATURN", "NEOCD", "DC"}
 
 
 def support(rac):
@@ -250,10 +371,13 @@ def support(rac):
         print(f"    no hash for the shelf: {sorted(found)}, want {sorted(NO_SYSTEM)}")
     else:
         print(f"  ok  not for this system: {' '.join(sorted(found))}")
-    cases = (("PSP", "iso,cso,chd,pbp", "LittleBigPlanet.chd", "system"),
-             ("PSP", "iso,cso,chd,pbp", "Patapon.cso", "system"),
-             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.chd", "file"),
-             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.pbp", "file"),
+    cases = (("PSP", "iso,cso,chd,pbp", "LittleBigPlanet.chd", "ok"),
+             ("PSP", "iso,cso,chd,pbp", "Patapon.cso", "ok"),
+             ("PSP", "iso,cso,chd,pbp", "Patapon.pbp", "ok"),
+             ("PSP", "iso,cso,chd,pbp", "Lumines.iso", "ok"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.chd", "ok"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.pbp", "ok"),
+             ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.ccd", "file"),
              ("PS1", "cue,chd,pbp,m3u,ccd,toc,iso,mdf,cbn,exe", "Spyro.cue", "ok"),
              ("PCE", "pce,sgx,cue,ccd,chd,toc,m3u,zip", "Ys I & II.cue", "file"),
              ("PCE", "pce,sgx,cue,ccd,chd,toc,m3u,zip", "Bonk.pce", "ok"),
@@ -286,6 +410,9 @@ def main():
     if support(rac):
         print("\nFAIL: which games have no hash, by name (ra_hash_support)")
         return 1
+    if containers(rac):
+        print("\nFAIL: PlayStation and PSP discs in .chd, .cso and .pbp")
+        return 1
     roms = sys.argv[1] if len(sys.argv) > 1 else \
         os.path.join(ROOT, "ZyperOS-Test-Set", "Roms")
     if not os.path.isdir(roms):
@@ -315,9 +442,13 @@ def main():
         for p in files:
             want = rac.ra_md5(tag, p)
             have = got.get(p)
+            if want is None and p.lower().endswith(".chd") and tag in ("PS1", "PSP"):
+                # Python has no CHD reader; containers() holds the C one to
+                # rcheevos instead
+                continue
             if want is None:
-                # Nothing to hash - a .chd or .pbp disc. The C side has to
-                # agree there is nothing, rather than hash something else.
+                # Nothing to hash. The C side has to agree there is
+                # nothing, rather than hash something else.
                 if have not in (None, "FAILED"):
                     mismatched += 1
                     print(f"    C hashed what Python cannot: {os.path.basename(p)}")

@@ -24,8 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: SDL2 for the host launcher and Diatom's desktop port
-        run: brew install sdl2 sdl2_image sdl2_ttf
+      - name: SDL2 for the host launcher and Diatom's desktop port, xz for CHD
+        run: brew install sdl2 sdl2_image sdl2_ttf xz
 
       - uses: actions/setup-python@v5
         with:

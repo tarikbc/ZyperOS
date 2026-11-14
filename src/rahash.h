@@ -32,11 +32,14 @@ bool ra_hash_rom(const char *path, const char *tag, char *out);
  *   RA_HASH_OK         it may: the hash it makes may still be one
  *                      RetroAchievements does not know, which only asking
  *                      tells
- *   RA_HASH_NO_FILE    this kind of file is refused unread (a .chd on the
+ *   RA_HASH_NO_FILE    this kind of file is refused unread (a .ccd on the
  *                      PlayStation), though another the shelf takes is not
  *   RA_HASH_NO_SYSTEM  every kind of file the shelf takes is (`exts`,
- *                      systems.cfg's list): the PSP, whose discs have no walk
- *                      here, nor any other disc-only system's
+ *                      systems.cfg's list): a disc-only system with no walk
+ *                      here, the Sega CD, Saturn, 3DO, Neo Geo CD and
+ *                      Dreamcast. The PlayStation's .chd and .pbp and every
+ *                      PSP file (.iso, .cso, .chd, .pbp) have one since
+ *                      1.0.5 (src/discimg.h).
  *
  * Not OK is final, so a row says so rather than "not checked yet", which
  * promises a play with Wi-Fi that would ask nothing. ra_hash_rom refuses by

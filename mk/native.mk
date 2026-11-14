@@ -24,7 +24,10 @@ $(shell mkdir -p $(BUILD) && rm -rf $(BUILD)/zyperos $(BUILD)/obj && echo '$(VER
 endif
 CFLAGS := -DZYPEROS_VERSION='"$(VERSION)"' -O1 -g -Wall -Wextra -Wno-unused-parameter -std=gnu11 -D_GNU_SOURCE \
           $(shell pkg-config --cflags $(PKGS))
-LDLIBS := $(shell pkg-config --libs $(PKGS)) -lsqlite3 -lz -lpthread -lm
+# liblzma for a CHD's LZMA hunks (src/chd.c); Homebrew's xz on a Mac
+CFLAGS += $(shell pkg-config --cflags liblzma 2>/dev/null)
+LDLIBS := $(shell pkg-config --libs $(PKGS)) -lsqlite3 -lz \
+          $(shell pkg-config --libs liblzma 2>/dev/null || echo -llzma) -lpthread -lm
 # ALSA only on Linux: src/btvol.c is a no-op without it, on the Mac
 ifeq ($(shell uname -s),Linux)
   LDLIBS += -lasound

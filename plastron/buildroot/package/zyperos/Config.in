@@ -6,6 +6,7 @@ config BR2_PACKAGE_ZYPEROS
 	select BR2_PACKAGE_SQLITE
 	select BR2_PACKAGE_ALSA_LIB
 	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_XZ # liblzma, for CHD discs (src/chd.c)
 	select BR2_PACKAGE_LIBCURL
 	select BR2_PACKAGE_OPENSSL
 	help
