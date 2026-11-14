@@ -6,12 +6,17 @@
  *
  * No SDL, no device. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "../src/config.h"
 #include "../src/controls.h"
+#include "../src/db.h"
 #include "../src/i18n.h"
 #include "../src/padglyph.h"
 #include "../src/remap.h"
+#include "../src/remapstore.h"
 
 static int fails;
 
@@ -265,6 +270,212 @@ static void choices_others(void)
 	report(ok, "choices_others");
 }
 
+
+/* ---- what is kept on the card (src/remapstore.c), in a temporary library ---- */
+
+/* platform.c's, which this check does not link: the nine two-button systems'
+ * turbo, as src/db.c seeds it */
+const char *plat_turbo_map(const char *tag)
+{
+	return tag && !strcmp(tag, "NES") ? "x:a~3,y:b~3" : NULL;
+}
+
+static system_cfg sys_of(const char *tag, const char *map, const char *stick, bool off)
+{
+	system_cfg s;
+
+	memset(&s, 0, sizeof s);
+	snprintf(s.tag, sizeof s.tag, "%s", tag);
+	snprintf(s.map, sizeof s.map, "%s", map);
+	snprintf(s.stick, sizeof s.stick, "%s", stick);
+	s.stick_off = off;
+	return s;
+}
+
+static void game_key_deleted_when_equal_system(void)
+{
+	system_cfg s = sys_of("PS1", "", "plain", true);
+	rm_table sys, t;
+	bool ok;
+
+	rms_game(&s, "Spyro.chd", &t);
+	rm_set(&t, &t, RM_R1, (rm_choice){ RT_L1, 0 });
+	rms_put(&s, "Spyro.chd", &t);
+	ok = db_has(db_lib(), "map.PS1.Spyro.chd");
+	rms_system(&s, &sys);
+	rms_put(&s, "Spyro.chd", &sys);
+	report(ok && !db_has(db_lib(), "map.PS1.Spyro.chd"), "game_key_deleted_when_equal_system");
+}
+
+static void system_key_deleted_when_equal_default(void)
+{
+	system_cfg s = sys_of("DC", "a:b,b:a", "dpad", true);
+	rm_table def, t;
+	bool ok;
+
+	rms_default(&s, &def);
+	rm_set(&t, &def, RM_START, (rm_choice){ RT_SELECT, 0 });
+	rms_put(&s, NULL, &t);
+	ok = db_has(db_lib(), "map.DC") && rms_system(&s, &t) && !rm_equal(&t, &def);
+	rms_put(&s, NULL, &def);
+	report(ok && !db_has(db_lib(), "map.DC") && !rms_system(&s, &t), "system_key_deleted_when_equal_default");
+}
+
+static void game_copies_system(void)
+{
+	system_cfg s = sys_of("SAT", "", "", false);
+	rm_table sys, g, back;
+	char v[200];
+	bool ok;
+
+	rm_identity(&sys);
+	rm_set(&sys, &sys, RM_B, (rm_choice){ RT_Y, 0 });
+	rms_put(&s, NULL, &sys);
+	rms_game(&s, "Nights.chd", &g);
+	rm_set(&g, &g, RM_R1, (rm_choice){ RT_L1, 0 });
+	rms_put(&s, "Nights.chd", &g);
+	/* the game's key holds R1 over the system's table, and reads back whole */
+	ok = db_get_str(db_lib(), "map.SAT.Nights.chd", v, sizeof v, NULL) && !strncmp(v, "1;", 2);
+	ok = ok && rms_game(&s, "Nights.chd", &back) && rm_equal(&back, &g);
+	ok = ok && back.b[RM_B].to == RT_Y && back.b[RM_R1].to == RT_L1;
+	/* the swap B/Y of the system reaches a game of its own: it holds B too */
+	rm_identity(&sys);
+	rms_put(&s, NULL, &sys);
+	rms_game(&s, "Nights.chd", &back);
+	report(ok && back.b[RM_R1].to == RT_L1, "game_copies_system");
+}
+
+static void stick_default_n64_on_dc_off(void)
+{
+	system_cfg n64 = sys_of("N64", "", "dpad", false), dc = sys_of("DC", "", "dpad", true);
+	system_cfg psp = sys_of("PSP", "", "toggle", false), none = sys_of("NES", "", "", false);
+
+	report(rms_stick_default(&n64) && rms_stick_get(&n64, "mario.z64") &&
+	       !rms_stick_default(&dc) && !rms_stick_get(&dc, "soul.chd") &&
+	       !rms_stick_default(&psp) && !rms_stick_get(&psp, "gow.iso") &&
+	       !rms_stick_offered(&none) && !rms_stick_get(&none, "x.nes"),
+	       "stick_default_n64_on_dc_off");
+}
+
+static void stick_put_default_deletes(void)
+{
+	system_cfg n64 = sys_of("N64", "", "dpad", false), psp = sys_of("PSP", "", "toggle", false);
+	bool ok;
+
+	rms_stick_put(&n64, "z.z64", false);
+	ok = db_has(db_lib(), "stick.N64.z.z64") && !rms_stick_get(&n64, "z.z64");
+	rms_stick_put(&n64, "z.z64", true);
+	ok = ok && !db_has(db_lib(), "stick.N64.z.z64") && rms_stick_get(&n64, "z.z64");
+	/* the PSP: R2's turn on, then back, leaves nothing (it wrote "0" before) */
+	rms_stick_put(&psp, "a.iso", true);
+	ok = ok && db_has(db_lib(), "stick.PSP.a.iso") && rms_stick_get(&psp, "a.iso");
+	rms_stick_put(&psp, "a.iso", false);
+	report(ok && !db_has(db_lib(), "stick.PSP.a.iso") && !rms_stick_get(&psp, "a.iso"),
+	       "stick_put_default_deletes");
+}
+
+static void run_stick_keys(void)
+{
+	system_cfg dc = sys_of("DC", "", "dpad", true), ps1 = sys_of("PS1", "", "plain", true);
+	system_cfg psp = sys_of("PSP", "", "toggle", false), n64 = sys_of("N64", "", "dpad", false);
+	char k[32];
+	bool ok;
+
+	rms_run_stick(&dc, true, k, sizeof k);
+	ok = !strcmp(k, "stick=dpad");
+	rms_run_stick(&ps1, true, k, sizeof k);
+	ok = ok && !strcmp(k, "stick=plain");
+	rms_run_stick(&psp, true, k, sizeof k);
+	ok = ok && !strcmp(k, "stick=toggle-stick");
+	/* the PSP with the d-pad as the d-pad still has R2's turn */
+	rms_run_stick(&psp, false, k, sizeof k);
+	ok = ok && !strcmp(k, "stick=toggle");
+	rms_run_stick(&n64, false, k, sizeof k);
+	ok = ok && k[0] == '\0';
+	rms_run_stick(&dc, false, k, sizeof k);
+	report(ok && k[0] == '\0', "run_stick_keys");
+}
+
+static void select_rule_keeps_default(void)
+{
+	system_cfg n64 = sys_of("N64", N64_MAP, "dpad", false);
+	system_cfg dc = sys_of("DC", DC_MAP, "dpad", true);
+	rm_table t, sent;
+	bool ok;
+
+	/* the N64's own select:r2 is its default, and its C buttons need it */
+	rms_sent(&n64, "z.z64", true, &sent);
+	ok = sent.b[RM_SELECT].to == RT_R2;
+	/* a SELECT pair the player set loses to the stick's rule on the Dreamcast */
+	rms_game(&dc, "s.chd", &t);
+	rm_set(&t, &t, RM_SELECT, (rm_choice){ RT_START, 0 });
+	rms_put(&dc, "s.chd", &t);
+	rms_sent(&dc, "s.chd", true, &sent);
+	ok = ok && sent.b[RM_SELECT].to == RT_SELECT && sent.b[RM_SELECT].turbo == 0;
+	/* with the stick off the pair is sent as stored; the rest is untouched */
+	rms_sent(&dc, "s.chd", false, &sent);
+	ok = ok && sent.b[RM_SELECT].to == RT_START;
+	rms_sent(&dc, "s.chd", true, &sent);
+	report(ok && sent.b[RM_A].to == RT_B, "select_rule_keeps_default");
+}
+
+static void turbo_joins_default(void)
+{
+	system_cfg nes = sys_of("NES", "", "", false);
+	rm_table t;
+
+	rms_default(&nes, &t);
+	report(t.b[RM_X].to == RT_A && t.b[RM_X].turbo == RM_TURBO &&
+	       t.b[RM_Y].to == RT_B && t.b[RM_Y].turbo == RM_TURBO, "turbo_joins_default");
+}
+
+static void systems_stick_lines(void)
+{
+	static systems_cfg all;
+	const system_cfg *n64 = NULL, *dc = NULL, *ps1 = NULL, *psp = NULL;
+	int i;
+
+	if (!cfg_load_systems("config/systems.cfg", &all)) { report(0, "systems_stick_lines"); return; }
+	for (i = 0; i < all.count; i++) {
+		const system_cfg *s = &all.systems[i];
+
+		if (!strcmp(s->tag, "N64")) n64 = s;
+		if (!strcmp(s->tag, "DC")) dc = s;
+		if (!strcmp(s->tag, "PS1")) ps1 = s;
+		if (!strcmp(s->tag, "PSP")) psp = s;
+	}
+	report(n64 && dc && ps1 && psp &&
+	       rms_stick_default(n64) && !rms_stick_default(dc) && !rms_stick_default(ps1) &&
+	       !rms_stick_default(psp) && rms_stick_offered(psp) &&
+	       !strcmp(dc->stick, "dpad") && !strcmp(ps1->stick, "plain"), "systems_stick_lines");
+}
+
+static int store_checks(void)
+{
+	char dev[] = "/tmp/remap-check-dev-XXXXXX", lib[] = "/tmp/remap-check-lib-XXXXXX";
+	int fd = mkstemp(dev), fl = mkstemp(lib);
+
+	if (fd >= 0) close(fd);
+	if (fl >= 0) close(fl);
+	if (fd < 0 || fl < 0 || !db_init(dev, lib, "/dev/null")) {
+		printf("  (no temporary database)\n");
+		return 1;
+	}
+	game_key_deleted_when_equal_system();
+	system_key_deleted_when_equal_default();
+	game_copies_system();
+	stick_default_n64_on_dc_off();
+	stick_put_default_deletes();
+	run_stick_keys();
+	select_rule_keeps_default();
+	turbo_joins_default();
+	systems_stick_lines();
+	db_shutdown();
+	unlink(dev);
+	unlink(lib);
+	return 0;
+}
+
 int main(void)
 {
 	printf("remap: the rules\n");
@@ -283,6 +494,8 @@ int main(void)
 	letters_per_system();
 	choices_dc();
 	choices_others();
+	printf("remap: kept on the card\n");
+	fails += store_checks();
 	if (fails) {
 		printf("\n%d failure%s\n", fails, fails == 1 ? "" : "s");
 		return 1;

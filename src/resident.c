@@ -52,7 +52,7 @@ static void dclose(void)
 /* The next RUN's own keys, and the stylus and the swap Diatom reports. See
  * platform.h. */
 static char d_run_keys[128];
-static char d_map[96];          /* plat_resident_map, for the next RUN */
+static char d_map[256];          /* plat_resident_map, for the next RUN */
 static char d_opt[128];         /* plat_resident_opt, "key\tvalue=..." */
 static bool d_stylus, d_swap;
 
@@ -399,16 +399,13 @@ bool plat_resident_send(const char *tag, const char *core, const char *rom,
 		 * that was never sent, one that was refused, and a test rig that could
 		 * not press the button - which cost an hour on 2026-08-31. Diatom logs
 		 * the receiving half for the same reason. */
-		/* The system's own map (plat_resident_map) first, then its turbo:
-		 * SETMAP is the whole table, so two sent one after the other would
-		 * leave only the second. Joined, a button both name ends on the
-		 * turbo's, Diatom taking pairs in order. */
+		/* The launcher sends the whole table, ZyperOS's default with the
+		 * system's and the game's pairs over it (src/remapstore.c), so
+		 * nothing is joined here. */
 		{
-			const char *tm = plat_turbo_map(tag);
-			char map[sizeof d_map + 100];
+			char map[sizeof d_map];
 
-			snprintf(map, sizeof map, "%s%s%s", d_map,
-			         d_map[0] && tm && *tm ? "," : "", tm ? tm : "");
+			snprintf(map, sizeof map, "%s", d_map);
 			d_map[0] = '\0';
 			fprintf(stderr, "map: %s %s\n", tag ? tag : "?",
 			        map[0] ? map : "(none)");

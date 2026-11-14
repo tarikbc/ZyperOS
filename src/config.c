@@ -62,6 +62,18 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 		if (!line[0] || line[0] == '#') continue;
 		char *fld[9] = { 0 };
 		int n = split(line, fld, 9);
+		/* stick|tag|mode|off: the stick starts off for a game */
+		if (n == 4 && !strcmp(fld[0], "stick") && !strcmp(fld[3], "off") &&
+		    nextra + 1 < (int)(sizeof extra / sizeof extra[0])) {
+			snprintf(extra[nextra].kind, sizeof extra[0].kind, "stick");
+			snprintf(extra[nextra].tag, sizeof extra[0].tag, "%s", fld[1]);
+			snprintf(extra[nextra].value, sizeof extra[0].value, "%s", fld[2]);
+			nextra++;
+			snprintf(extra[nextra].kind, sizeof extra[0].kind, "stickoff");
+			snprintf(extra[nextra].tag, sizeof extra[0].tag, "%s", fld[1]);
+			nextra++;
+			continue;
+		}
 		if (n == 3 && (!strcmp(fld[0], "power") || !strcmp(fld[0], "map") ||
 		               !strcmp(fld[0], "controller") || !strcmp(fld[0], "stick") ||
 	               !strcmp(fld[0], "bios") || !strcmp(fld[0], "es"))) {
@@ -100,6 +112,8 @@ bool cfg_load_systems(const char *path, systems_cfg *out)
 				snprintf(s->map, sizeof s->map, "%s", extra[i].value);
 			else if (!strcmp(extra[i].kind, "stick"))
 				snprintf(s->stick, sizeof s->stick, "%s", extra[i].value);
+			else if (!strcmp(extra[i].kind, "stickoff"))
+				s->stick_off = true;
 			else if (!strcmp(extra[i].kind, "bios")) {
 				snprintf(s->disc_bios, sizeof s->disc_bios, "%s", extra[i].value);
 				s->bios_every = true;
@@ -123,8 +137,8 @@ void cfg_run_keys(const system_cfg *s, bool dual, char *out, int cap)
 		n += snprintf(out + n, (size_t)(cap - n), "%spower=%s", n ? "\t" : "", s->power);
 	if (s->controller && n < cap)
 		n += snprintf(out + n, (size_t)(cap - n), "%scontroller=%u", n ? "\t" : "", s->controller);
-	if (s->stick[0] && n < cap)
-		snprintf(out + n, (size_t)(cap - n), "%sstick=%s", n ? "\t" : "", s->stick);
+	/* The stick is not here: whether a game has it on is its own
+	 * (rms_run_stick), added by the launch */
 }
 
 int cfg_core_count(const system_cfg *s)

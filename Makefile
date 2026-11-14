@@ -1096,13 +1096,13 @@ check-controls: build-native/controls-check
 check-remap: build-native/remap-check
 	@./build-native/remap-check
 
-build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/controls.c \
+build-native/remap-check: tools/remap-check.c src/remap.c src/remap.h src/remapstore.c src/remapstore.h src/controls.c \
                           src/controls.h src/padglyph.h src/menu.h src/config.c src/config.h \
                           src/db.c src/db.h src/atomic.c config/systems.cfg \
                           $(I18N_SRC) FORCE
 	@mkdir -p build-native
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
-	      -o $@ tools/remap-check.c src/remap.c src/controls.c src/config.c src/db.c src/atomic.c \
+	      -o $@ tools/remap-check.c src/remap.c src/remapstore.c src/controls.c src/config.c src/db.c src/atomic.c \
 	      $(I18N_SRC) -lsqlite3
 
 # The in-game Controls pages and the home's A to Z order, drawn

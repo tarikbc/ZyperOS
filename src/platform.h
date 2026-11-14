@@ -289,9 +289,9 @@ bool plat_resident_sync_rect(int timeout_ms);
 /* Keys for the next RUN only, tab separated - "screens=2\tframeskip=late"
  * for a DS game. Cleared by the RUN that carries them. */
 void plat_resident_run_keys(const char *keys);
-/* The next game's button map, the SETMAP form, sent after its RUN joined
- * with the system's turbo (plat_turbo_map); NULL or "" for none. Like the
- * RUN keys, it is for the next plat_resident_send only. */
+/* The next game's whole button map, the SETMAP form, sent after its RUN as
+ * given: the launcher builds it (src/remapstore.c). NULL or "" for none.
+ * Like the RUN keys, it is for the next plat_resident_send only. */
 void plat_resident_map(const char *map);
 /* One core option for the next RUN only, sent after the system's own (and
  * so over them): a choice the player made for one game, as the N64's Pak
