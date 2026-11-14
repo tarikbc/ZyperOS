@@ -517,6 +517,13 @@ pick another, and each system remembers its own. A system whose emulator keeps
 no states (ScummVM, J2ME) has no Quick Slot, and there R1 and L1 under SELECT
 are the game's.
 
+**Save states are packed** as they are written, the six slots and the resume
+point alike, so they take little of the card: a Nintendo 64 game's is about
+1.5 MB where it was 16, and a PSP game's is no longer 40 MB on every quit.
+States made before 1.0.5 load as they did. ZyperOS 1.0.4 and older cannot
+read the new ones: there a game starts from its beginning instead, its
+battery save kept.
+
 **The Nintendo 64's Pak.** An N64 game's controller holds the Rumble Pak, so
 the Pixel 2 shakes. A game that saves to the Controller Pak, the N64's memory
 card (Mario Kart 64's ghosts, and games that save nowhere else), takes it in

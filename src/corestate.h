@@ -26,9 +26,9 @@
 
 /* The core a Diatom state says wrote it, as the core names itself
  * ("ParaLLEl N64", "Mupen64Plus-Next"): Diatom's header, "DIATOMST", a
- * version 1 as four bytes, the payload's length as four, then that name in
- * 64. Into `buf`; false for a file that is not there, is shorter, or is not a
- * Diatom state of version 1. */
+ * version 1 or 2 as four bytes, the payload's length as four, then that name
+ * in 64. Into `buf`; false for a file that is not there, is shorter, or is
+ * not a Diatom state of version 1 or 2. */
 bool cst_writer(const char *state_path, char *buf, size_t n);
 
 /* How a core of a shelf with more than one names itself, by its file name

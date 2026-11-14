@@ -14,7 +14,7 @@ PORT ?= desktop
 
 CC      ?= cc
 CFLAGS  += -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2
-CFLAGS  += -Iinclude -Isrc -Ivendor/rcheevos/include
+CFLAGS  += -Iinclude -Isrc -Ivendor/rcheevos/include -Ivendor/lz4
 # Header dependency tracking. Without it, changing a struct in diatom.h leaves
 # stale objects calling through old member offsets - which on 2026-08-26 turned
 # serialize_size() into a call to a different function entirely and made state
@@ -26,7 +26,7 @@ LDFLAGS += -lz
 # Objects live under build/$(PORT)/ so host and cross builds cannot collide:
 # a leftover x86 main.o in a device link fails late and confusingly.
 BUILD := build/$(PORT)
-SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c src/player2.c port/$(PORT).c
+SRC   := src/main.c src/cheevos.c src/core.c src/env.c src/scale.c src/audio.c src/save.c src/proto.c src/options.c src/zip.c src/levels.c src/screens.c src/chord.c src/stick.c src/hw.c src/now.c src/player2.c src/statefile.c port/$(PORT).c
 # Expanded where it is used, not here: a port's block below adds its own files
 # to SRC (the Pixel 2's bar, port/osdbar.c), and := took the list before they
 # were in it, so they were never built and the link failed.
@@ -60,6 +60,13 @@ RC_OBJ := $(RC_SRC:%.c=$(BUILD)/%.o)
 RC_CFLAGS := -std=gnu11 -O2 -MMD -MP -DRC_DISABLE_LUA \
              -I$(RC_DIR)/include -I$(RC_DIR)/src
 $(RC_OBJ): CFLAGS := $(RC_CFLAGS)
+
+# LZ4, vendored to pack save states (src/statefile.h says why LZ4). Its two
+# files, built as its own Makefile builds them, at -O3: the block compressor
+# is the whole of a state's packing time. See vendor/lz4/README.md.
+LZ4_DIR := vendor/lz4
+LZ4_OBJ := $(BUILD)/$(LZ4_DIR)/lz4.o
+$(LZ4_OBJ): CFLAGS := -std=gnu11 -O3 -MMD -MP
 
 ifeq ($(PORT),desktop)
   # sdl2-config ships with SDL2 itself; pkg-config is a separate install and is
@@ -115,7 +122,7 @@ endif
 
 .PHONY: all clean check check-seam check-proto check-port \
         check-corefacts check-cheevos check-screens check-chord check-stick check-bounds check-copies \
-        check-rumble check-rumble-e2e stub run-stub
+        check-rumble check-rumble-e2e check-statefile stub run-stub
 
 all: $(BIN)
 
@@ -134,9 +141,9 @@ $(STUB): test/stubcore.c
 run-stub: $(BIN) $(STUB)
 	./$(BIN) --core $(STUB)
 
-$(BIN): $(OBJ) $(RC_OBJ)
+$(BIN): $(OBJ) $(RC_OBJ) $(LZ4_OBJ)
 	@mkdir -p $(BUILD)
-	$(CC) -o $@ $(OBJ) $(RC_OBJ) $(LDFLAGS)
+	$(CC) -o $@ $(OBJ) $(RC_OBJ) $(LZ4_OBJ) $(LDFLAGS)
 
 $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -147,7 +154,7 @@ $(BUILD)/%.o: %.c
 # backend exists. Cheap to check, so check it.
 # Mechanical checks, each guarding a rule that decays the moment nothing fails
 # when it is broken: check-seam has held since day one for exactly that reason.
-check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e check-player2
+check: check-seam check-copies check-corefacts check-rates check-cheevos check-screens check-chord check-stick check-bounds check-rumble check-statefile check-proto check-port check-stateplane check-resident check-hotkeys check-now check-rumble-e2e check-player2 check-states
 
 # Does a RetroAchievements address reach the byte it names? Offline, needs no
 # core and no ROM, and links only cheevos.c plus the vendored runtime - so it
@@ -247,6 +254,23 @@ $(BOUNDS_TEST): test/bounds_test.c src/zip.c src/proto.c src/diatom.h
 	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O1 -g $(BOUNDS_SAN) \
 	      -Iinclude -Isrc -o $@ test/bounds_test.c src/zip.c src/proto.c -lz
 
+# A save state's file (src/statefile.h): packed and read back byte for byte,
+# with its achievement trailer; a version 1 state, unpacked, as every Diatom
+# before 2026-11-12 wrote it, still read; and files cut short, damaged or
+# foreign refused rather than handed to a core - under AddressSanitizer where
+# the compiler has it, as check-bounds is, since a packed block is input that
+# says how long it is. Real states when there are any: STATEFILE_SAMPLES, a
+# folder of .state files, packed and unpacked with their sizes and times.
+STATEFILE_TEST := $(BUILD)/statefile-test
+
+check-statefile: $(STATEFILE_TEST)
+	@ASAN_OPTIONS=detect_leaks=0 ./$(STATEFILE_TEST) $(STATEFILE_SAMPLES)
+
+$(STATEFILE_TEST): test/statefile_test.c src/statefile.c src/statefile.h $(LZ4_DIR)/lz4.c $(LZ4_DIR)/lz4.h
+	@mkdir -p $(BUILD)
+	$(CC) -std=gnu11 -Wall -Wextra -Wno-unused-parameter -O2 -g $(BOUNDS_SAN) \
+	      -Isrc -I$(LZ4_DIR) -o $@ test/statefile_test.c src/statefile.c $(LZ4_DIR)/lz4.c
+
 # Deliberately NOT part of `check`. It needs a build and it runs in real time -
 # Diatom paces to the core's frame rate, so 300 frames costs five seconds of
 # wall clock and the suite costs about twenty. `check` is what runs before every
@@ -312,6 +336,15 @@ check-now:
 check-rumble-e2e:
 	$(FRESH_IF_BUILT)
 	@python3 test/rumble.py
+
+# Save states packed, end to end (src/statefile.h): the stub core with a
+# state big enough to pack, resumed and quick-loaded whole, a version 1 state
+# still resumed, a broken one refused. On check-stateplane's terms: a few
+# seconds, skipped unbuilt.
+check-states:
+	$(FRESH_IF_BUILT)
+	@python3 test/states.py
+.PHONY: check-states
 
 # SELECT's hotkeys end to end (src/chord.h): the pad by script, what the stub
 # core read written down, the quick slot's SAVE and LOAD answered while the
@@ -402,7 +435,7 @@ $(TOOLS_DIR)/allocwatch.o: tools/allocwatch.c
 	@mkdir -p $(TOOLS_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(CONFORM): $(OBJ) $(RC_OBJ) $(TOOLS_DIR)/allocwatch.o
+$(CONFORM): $(OBJ) $(RC_OBJ) $(LZ4_OBJ) $(TOOLS_DIR)/allocwatch.o
 	$(CC) -o $@ $^ $(LDFLAGS) \
 	  -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -Wl,--wrap=free
 
@@ -413,4 +446,4 @@ conform: $(CONFORM)
 # would otherwise become the default goal, and `make` would silently build one
 # object and stop - which it did, on 2026-08-26, and looked exactly like the
 # docker mtime staleness it was added to prevent.
--include $(OBJ:.o=.d) $(RC_OBJ:.o=.d)
+-include $(OBJ:.o=.d) $(RC_OBJ:.o=.d) $(LZ4_OBJ:.o=.d)

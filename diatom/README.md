@@ -62,7 +62,9 @@ on documented core measurements describing binaries the
 project no longer ships, on any sample rate stated as current truth that the
 generated core facts do not record, on a RetroAchievements address failing to
 reach the byte it names, on a zip or a protocol line read past its buffer,
-on the launcher protocol not reaching the socket, on
+on a save state that does not come back byte for byte from its packed file
+or an old one no longer read, on the launcher protocol not reaching the
+socket, on
 the launcher state plane end to end against the stub core, and on the port's
 audio contract. Each of those exists because the rule it guards decayed the
 moment nothing failed when it was broken.
