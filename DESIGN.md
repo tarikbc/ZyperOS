@@ -3032,6 +3032,24 @@ the device, 2026-11-10). Told to usbrole in
 /run/usbrole/mode, as the request is. Host shots: `--usb-menu
 [auto|said]`, with `--status ... usb=on` for the mark.
 
+**The offer.** The same Wi-Fi adapter, plugged in again and again, was
+asked about every time (my ask, 2026-11-13: "cant zyper remember?"). So
+the player's USB Accessory answers are counted on the device
+(`usb_accessory_answers`), and after the second, while the setting is Ask
+and the offer was never answered, the shelf offers Automatic once the
+accessory has its power (the power waits for nothing): Delete Game's
+confirm panel, **Power without asking?** over "Automatic powers what you
+plug in after 2 seconds. A computer not connected yet gets about 2
+seconds of power." in up to four balanced lines and the rule, then
+**Automatic** and **Keep Asking**, the cursor on Keep Asking. It comes by
+itself, so it takes a press as the question does (a button held through
+its start, or pressed in its first half second, counts once let go).
+Automatic is the setting's own, told to usbrole. Either answer, B too, is
+kept (`usb_auto_offer`) and it is never offered again; POWER, Auto Off or
+a quit answer nothing, and the next USB Accessory offers it again. On the
+shelf only, after the question, so never over a game (an answer in MENU >
+USB Device offers it back on the shelf). Host shot: `--usb-offer`.
+
 **The replug message.** Computer, B or MENU, and a plug a computer showed
 up on (fed by USB Accessory by mistake, or by Automatic), bring up "Your
 computer didn't connect. It can take a few tries: unplug the cable and plug

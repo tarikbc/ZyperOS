@@ -370,6 +370,8 @@ EXTRA.setdefault("usb-menu-wait", ("demo", "PS1", ["--usb-menu", "--menu", "USB 
 EXTRA.setdefault("usb-menu-ask", ("demo", "PS1", ["--usb-menu", "--menu", "USB Accessories"]))
 EXTRA.setdefault("usb-menu-auto", ("demo", "PS1", ["--usb-menu", "auto", "--menu", "USB Accessories"]))
 EXTRA.setdefault("usb-menu-said", ("demo", "PS1", ["--usb-menu", "said"]))
+# Zyper's one-time offer of Automatic, after a second USB Accessory
+EXTRA.setdefault("usb-offer", ("demo", "PS1", ["--usb-offer"]))
 EXTRA.setdefault("usb-mark", ("demo", "PS1", _USB_WAIT))
 # System Update (DESIGN.md 11.17, 2026-11-11): What's New scrolled to its
 # end, the corner's mark of a download behind the shelf, and Zyper's news

@@ -2716,6 +2716,7 @@ static unsigned g_usb_wait;
 /* --usb-menu: MENU's USB rows on a host shot, which has no usbrole */
 static bool shot_usb_menu;
 static bool shot_usb_said;     /* --usb-menu said: Automatic's message */
+static bool shot_usb_offer;    /* --usb-offer: Zyper's offer of Automatic */
 
 /* An accessory powered when the handheld turned off, kept on the card for
  * the next start (usbpower_resume): read once there and gone */
@@ -2784,6 +2785,21 @@ static void usb_auto_save(bool on)
 	g_usb_auto = on;
 	db_set_str(db_dev(), "usb_accessories", on ? "auto" : "ask");
 	plat_usb_power_mode(on);
+}
+
+/* Zyper's offer of Automatic (usbpower_offer_after): the player's USB
+ * Accessory answers counted under `usb_accessory_answers`, the offer's
+ * answer kept under `usb_auto_offer` ("auto" or "ask"), and the offer due,
+ * for the shelf to show once the question is over (usb_offer_show) */
+static bool g_usb_offer_due;
+
+static void usb_offer_count(void)
+{
+	int got = db_get_int(db_dev(), "usb_accessory_answers", 0);
+	unsigned was = got > 0 ? (unsigned)got : 0, n;
+
+	g_usb_offer_due = usbpower_offer_after(was, g_usb_auto, db_has(db_dev(), "usb_auto_offer"), &n);
+	if (n != was) db_set_int(db_dev(), "usb_accessory_answers", (int)n);
 }
 
 /* MENU > Battery Icon: the corner's battery as the mark alone ("bars", the
@@ -7694,18 +7710,25 @@ static leave_end panel_leave_run(app *a, void (*backdrop)(app *, void *, float),
 /* The question is `nq` rows - one dead row, or a paragraph's lines (Delete
  * Game's, DESIGN.md 11.31) - and the two answers go after it in `rows`,
  * which holds nq + 2. `fixed_w` is the panel's content width, 0 to size it
- * to the rows. */
-static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
-                         const char *yes_label, int fixed_w, int lv)
+ * to the rows. confirm_rows_as names the safe answer `no_label` where
+ * Cancel goes, and with a `guard` it is a question that came by itself
+ * (ask_settle): a button down as it opened, or pressed in its first half
+ * second, counts only once let go. */
+static void ask_settle(app *a, usbpower_guard *g);
+
+static bool confirm_rows_as(app *a, const char *heading, menu_row *rows, int nq,
+                            const char *yes_label, const char *no_label, int fixed_w, int lv,
+                            usbpower_guard *guard)
 {
 	int sel = nq + 1;
 	float k;
 
 	rows[nq]     = (menu_row){ yes_label, NULL, true };
-	rows[nq + 1] = (menu_row){ T(S_PANEL_CANCEL), NULL, true };
+	rows[nq + 1] = (menu_row){ no_label, NULL, true };
 
 	for (;;) {
 		plat_input_poll(&a->in);
+		if (guard) ask_settle(a, guard);
 		ui_sounds_follow();
 		if (a->in.quit_requested) { a->running = false; return false; }
 		if (a->in.pressed[IN_POWER] || idle_due(a)) { power_off(a); return false; }
@@ -7737,6 +7760,12 @@ static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
 		plat_present();
 		ui_frame_rest(8);
 	}
+}
+
+static bool confirm_rows(app *a, const char *heading, menu_row *rows, int nq,
+                         const char *yes_label, int fixed_w, int lv)
+{
+	return confirm_rows_as(a, heading, rows, nq, yes_label, T(S_PANEL_CANCEL), fixed_w, lv, NULL);
 }
 
 static bool confirm_body(app *a, const char *heading, const char *msg,
@@ -10956,6 +10985,9 @@ static void usb_power_ask(app *a, unsigned plug)
 	if (!a->running || choice == UP_GONE) return;
 	if (choice == UP_ACCESSORY) {
 		plat_usb_power_grant(plug);
+		/* Counted after the power, which waits for nothing: the second
+		 * may bring Zyper's offer of Automatic, on the shelf */
+		usb_offer_count();
 		return;
 	}
 	/* A phone: powered, so it is on the handheld's bus as a device, and
@@ -10970,6 +11002,51 @@ static void usb_power_ask(app *a, unsigned plug)
 	}
 	/* A computer: the message, until the cable comes out */
 	replug_on(plug);
+}
+
+/* Zyper's offer of Automatic (usbpower_offer_after, DESIGN.md 11.36), on
+ * the shelf after the USB Accessory answer that made it due, the accessory
+ * powered by then: the confirm panel, its words in up to four balanced
+ * lines over the heading's rule, then Automatic and Keep Asking, the cursor
+ * on Keep Asking. It comes by itself, so it takes a press as the question
+ * does (usbpower_guard). Automatic is MENU > USB Accessories' own, told to
+ * usbrole; either answer, B too, is kept, and it is never offered again.
+ * POWER, Auto Off or a quit answer nothing. */
+#define USB_OFFER_LINES 4
+static int usb_offer_rows(app *a, char lines[USB_OFFER_LINES][LB_LINE], menu_row *rows)
+{
+	int n = ui_balance_lines(ui_font(UI_F_MENU), T(S_XFER_USB_OFFER_SAID), menu_std_width(a),
+	                         USB_OFFER_LINES, lines), i;
+
+	ui_fit_drawn(T(S_XFER_USB_OFFER_SAID));
+	for (i = 0; i < n; i++) rows[i] = MENU_NOTE(lines[i]);
+	rows[n++] = MENU_HR;
+	return n;
+}
+
+static void usb_offer_show(app *a)
+{
+	char lines[USB_OFFER_LINES][LB_LINE];
+	menu_row rows[USB_OFFER_LINES + 3];
+	usbpower_guard guard;
+	int nq, lv;
+	bool yes;
+
+	g_usb_offer_due = false;
+	if (g_usb_auto || db_has(db_dev(), "usb_auto_offer")) return;
+	nq = usb_offer_rows(a, lines, rows);
+	lv = panel_open();
+	ask_guard_start(a, &guard);
+	yes = confirm_rows_as(a, T(S_XFER_USB_OFFER), rows, nq, T(S_SYSMENU_USB_AUTO),
+	                      T(S_XFER_USB_OFFER_KEEP), menu_std_width(a), lv, &guard);
+	g_tiles_hints = true;
+	panel_close(a, lv, !a->running);
+	plat_input_flush();
+	memset(&a->in, 0, sizeof a->in);
+	if (!a->running) return;
+	ulog_note(yes ? "offer: Automatic" : "offer: Keep Asking");
+	db_set_str(db_dev(), "usb_auto_offer", yes ? "auto" : "ask");
+	if (yes) usb_auto_save(true);
 }
 
 /* usbrole's state, five times a second at most, from wherever the launcher
@@ -25565,6 +25642,19 @@ static void shot_compose(app *a)
 		n = usb_auto_lines(a, lines, rows);
 		menu_draw(a, T(S_SYSMENU_USB_ACCESSORIES), rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
 	}
+	if (shot_usb_offer) {
+		/* Zyper's offer of Automatic, as usb_offer_show lays it out, the
+		 * cursor on Keep Asking */
+		char lines[USB_OFFER_LINES][LB_LINE];
+		menu_row rows[USB_OFFER_LINES + 3];
+		int n;
+
+		ui_scrim(a->r, 0);
+		n = usb_offer_rows(a, lines, rows);
+		rows[n]     = (menu_row){ T(S_SYSMENU_USB_AUTO), NULL, true };
+		rows[n + 1] = (menu_row){ T(S_XFER_USB_OFFER_KEEP), NULL, true };
+		menu_draw(a, T(S_XFER_USB_OFFER), rows, n + 2, n + 1, menu_std_width(a), MENU_ZYPEROS);
+	}
 	if (shot_dev >= 0) {
 		/* Developer Mode's page, as dev_screen builds it, and the message
 		 * the unlock leaves, in the language that is on */
@@ -27759,6 +27849,8 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc && !strcmp(argv[i + 1], "auto")) { g_usb_auto = true; i++; }
 			else if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { g_usb_auto = true; shot_usb_said = true; i++; }
 		}
+		/* Zyper's offer of Automatic after a second USB Accessory */
+		else if (!strcmp(argv[i], "--usb-offer")) shot_usb_offer = true;
 		else if (!strcmp(argv[i], "--usb-power")) {
 			shot_power = UP_COMPUTER;
 			if (i + 1 < argc && !strcmp(argv[i + 1], "said")) { shot_power = UP_TILES; i++; }
@@ -28993,6 +29085,9 @@ int main(int argc, char *argv[])
 			saver_stop(&a, "something was plugged in");
 			usb_power_ask(&a, plug);
 		}
+		/* Zyper's offer of Automatic, due from a USB Accessory answer
+		 * here or in MENU > USB Device: here, so never over a game */
+		if (g_usb_offer_due && a.running) usb_offer_show(&a);
 		/* A phone's USB tethering with an address: File Transfer opens on
 		 * it, once a link (phonelink.h) */
 		if (phone_link_due(g_xs.on)) {

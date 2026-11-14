@@ -114,6 +114,19 @@ int usbpower_follow(usbpower_follow_state *f, const usb_power *p, unsigned now_m
 #define USBPOWER_RESUME_MS 8000u
 bool usbpower_resume(const usb_power *p, bool kept, unsigned since_start_ms);
 
+/* The same Wi-Fi adapter plugged in day after day was asked about every
+ * time (my ask of 2026-11-13: "cant zyper remember?"). So the player's USB
+ * Accessory answers are counted, and at the USBPOWER_OFFER_AT-th, while the
+ * setting is Ask and the offer was never answered, the shelf offers
+ * Automatic once the accessory has its power (DESIGN.md 11.36): Automatic
+ * or Keep asking, either kept, and it is never offered again. An offer
+ * that got no answer (POWER, a quit) comes back at the next USB Accessory.
+ * One USB Accessory answer: `answers` the count before it, *count the
+ * count to keep (it stops at USBPOWER_OFFER_AT, and does not move once the
+ * offer is answered or the setting is Automatic); true when it is due. */
+#define USBPOWER_OFFER_AT 2u
+bool usbpower_offer_after(unsigned answers, bool automatic, bool answered, unsigned *count);
+
 /* A question that comes by itself (What did you plug in?, Computer
  * Connected) came while the player was pressing through the menus, and a
  * press meant for them answered it (the same report). So a button that was
