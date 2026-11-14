@@ -349,12 +349,23 @@ row's pages, which are at their own width (section 2).
   button.
 - **Turn:** it faces front (the tutorial's front pose, 10 degrees). A lit
   shoulder stands up out of the top edge, as in the tutorial.
-- **Lean:** it turns a little toward the side of the keys the row lights,
-  12 degrees either way of the front pose: A, B, X, Y, R1 and R2 show its
-  right side (22 degrees), the d-pad, L1 and L2 its left (-2); SELECT, START,
-  keys on both sides (Reset Buttons) and no keys (Applies To, Pak, Hotkeys)
-  bring it back to front. A side key with a centre key (the N64's d-pad and
-  SELECT) leans to its side.
+- **Lean:** it turns toward the side of the keys the row lights: A, B, X
+  and Y 12 degrees from the front pose, showing its right side (22
+  degrees); the d-pad 22 the other way (-12), so its row leans as plainly as
+  theirs. SELECT, START, keys on both sides (Reset Buttons) and no keys
+  (Applies To, Pak, Hotkeys) bring it back to front. A side key with a
+  centre key (the N64's d-pad and SELECT) leans to its side; a face with a
+  right shoulder (Reset Buttons with B and R1) leans as the face.
+- **Tilt:** a row that lights only shoulders (L1, L2, R1, R2, a centre key
+  with them or not) turns it 12 degrees toward their side (R1 and R2 to 22
+  degrees, L1 and L2 to -2) and tilts it back 25 degrees, as seen from a
+  little above: the top face shows, with the four shoulders standing on it
+  as blocks where the model has them (toward the back), the lit one
+  standing up out of it in the lit look (fill, ring, halo). Its upright
+  edges stay upright. Every other row is level. 25 degrees is the value
+  that shows the lit shoulder's front and top plainly at the Pixel 2's 640 x
+  480 while the handheld still reads as standing (18 showed a thin top, 30
+  tipped it).
 
 ### 8. Motion
 
@@ -362,9 +373,9 @@ DESIGN.md 8's tokens and curves only; nothing overshoots.
 
 | What | How |
 |---|---|
-| R1 or L1 into Controls | the handheld comes with the rows: 64 units in the press's way, faded up, in **move** (160 ms, out), and turns from 40 to 10 degrees, plus the lean of its first row, in **turn** (300 ms) |
+| R1 or L1 into Controls | the handheld comes with the rows: 64 units in the press's way, faded up, in **move** (160 ms, out), and turns from 40 to 10 degrees, plus the lean of its first row, in **turn** (300 ms); a shoulder row's tilt is there from the start |
 | Out of Controls | it leaves with the old tab's name: 96 units the press's way, gone in the first two fifths of **move** |
-| Up or Down | the fill glides in **quick** (as today); the old key's light goes out and the new key's comes in, in **quick** (as the tutorial does); the lean eases to the new row's side in **turn**, retargeted from where it is, never queued |
+| Up or Down | the fill glides in **quick** (as today); the old key's light goes out and the new key's comes in, in **quick** (as the tutorial does); the lean, the turn and the tilt eased together, goes to the new row's pose in **turn**, retargeted from where it is, never queued |
 | Left or Right on a button | the key presses in **press** (80 ms in, 80 out); a swapped partner lights in **quick** |
 | A shoulder row | the shoulder stands up in **quick** |
 | A to a button's choices, and back | the handheld holds still while the list beside it changes |

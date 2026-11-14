@@ -33,22 +33,26 @@
 #define DEV_DEG   10.0f
 /* Turned this far as the tab comes in, to DEV_DEG in **turn** */
 #define DEV_DEG_IN 40.0f
-/* Leaning toward the side of the keys the focused row lights, this far
- * either way of DEV_DEG, in **turn** (ct_lean says which side) */
-#define DEV_LEAN  12.0f
 /* How far a tab's move takes it: in with the rows, 64 units the press's way;
  * out with the old tab's name, 96 the press's way (menu_tabs_draw's) */
 #define DEV_IN_DX  64.0f
 #define DEV_OUT_DX 96.0f
 /* The kept texture's box about the handheld's middle: what a lit shoulder's
- * halo, the d-pad's ring and the faces' halos reach in every pose here */
+ * halo, the d-pad's ring and the faces' halos reach in every pose here and
+ * every frame between, the tilted ones too (their far top corner and a lit
+ * shoulder's halo higher, their near bottom corner lower: measured x -122 to
+ * 124, y -174 to 154, the tab coming in on R2 at 52 degrees the lowest) */
 #define KEEP_L 128
-#define KEEP_T 164
+#define KEEP_T 176
 #define KEEP_W 256
-#define KEEP_H 300
+#define KEEP_H 332
 
 /* Which screen sets the handheld's lights: the tab, or a button's choices */
 typedef enum { CS_TAB, CS_PICK } cs_mode;
+
+/* The handheld's lean toward the keys the focused row lights (ct_lean):
+ * degrees off the front pose, turned (off DEV_DEG) and tilted back */
+typedef struct { float yaw, pitch; } cs_lean;
 
 static struct {
 	/* The card as the tab shows it, read again when it changed */
@@ -71,9 +75,9 @@ static struct {
 	rm_table    base;
 	/* Each key's light, and its press: from where it was, and when */
 	tween       on[TD_KEYS];
-	/* The lean, degrees off DEV_DEG: from where it was, to where it goes,
-	 * and when, retargeted at each new row, never queued */
-	float       lean_from, lean_to;
+	/* The lean: from where it was, to where it goes, and when, the turn
+	 * and the tilt together, retargeted at each new row, never queued */
+	cs_lean     lean_from, lean_to;
 	unsigned    lean_t0;
 	bool        snap;
 	float       press_from[TD_KEYS];
@@ -237,25 +241,29 @@ static void press(int k)
 	g_cs.press_t0[k] = now ? now : 1;
 }
 
-/* The lean (degrees off DEV_DEG) at `now`, in **turn** */
-static float lean_at(unsigned now)
+/* The lean at `now`: the turn and the tilt eased together in **turn** */
+static cs_lean lean_at(unsigned now)
 {
 	const unsigned el = now - g_cs.lean_t0;
+	const cs_lean a = g_cs.lean_from, b = g_cs.lean_to;
+	float k;
 
-	if (!g_cs.lean_t0 || el >= DS_MS_TURN) return g_cs.lean_to;
-	return g_cs.lean_from + (g_cs.lean_to - g_cs.lean_from) * ds_turn((float)el / DS_MS_TURN);
+	if (!g_cs.lean_t0 || el >= DS_MS_TURN) return b;
+	k = ds_turn((float)el / DS_MS_TURN);
+	return (cs_lean){ a.yaw + (b.yaw - a.yaw) * k, a.pitch + (b.pitch - a.pitch) * k };
 }
 
-/* The lean heads for the side of `target`'s keys, from where it is; there at
- * once, the first time */
+/* The lean heads for the pose `target`'s keys ask for, from where it is;
+ * there at once, the first time */
 static void lean_toward(unsigned target, unsigned now)
 {
-	const float to = DEV_LEAN * (float)ct_lean(target);
+	cs_lean to;
 
+	ct_lean(target, &to.yaw, &to.pitch);
 	if (g_cs.snap) {
 		g_cs.lean_from = g_cs.lean_to = to;
 		g_cs.lean_t0 = 0;
-	} else if (to != g_cs.lean_to) {
+	} else if (to.yaw != g_cs.lean_to.yaw || to.pitch != g_cs.lean_to.pitch) {
 		g_cs.lean_from = lean_at(now);
 		g_cs.lean_to = to;
 		g_cs.lean_t0 = now ? now : 1;
@@ -304,6 +312,7 @@ static bool lights_of(const menu_side *at, unsigned *target)
 static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 {
 	float dx = 0.0f, op = 1.0f, deg = DEV_DEG;
+	cs_lean ln;
 	int k;
 
 	*moving = false;
@@ -329,7 +338,8 @@ static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 		if (mv < 1.0f) *moving = true;
 	}
 	if (op <= 0.004f) return false;
-	deg += lean_at(at->now);
+	ln = lean_at(at->now);
+	deg += ln.yaw;
 	if (g_cs.lean_t0 && at->now - g_cs.lean_t0 < DS_MS_TURN) *moving = true;
 	/* Cleared whole, padding too, so two poses compare as bytes */
 	memset(p, 0, sizeof *p);
@@ -337,6 +347,7 @@ static bool pose_of(const menu_side *at, td_pose *p, bool *moving)
 	p->cy = DEV_CY;
 	p->scale = DEV_SCALE;
 	p->deg = deg;
+	p->pitch = ln.pitch;
 	p->op = op;
 	for (k = 0; k < TD_KEYS; k++) {
 		p->on[k] = tween_at(&g_cs.on[k], at->now);
@@ -385,7 +396,7 @@ void ctlscr_open(void)
 	g_cs.base_row = -1;
 	g_cs.mode = CS_TAB;
 	g_cs.steady = false;
-	g_cs.lean_from = g_cs.lean_to = 0.0f;
+	g_cs.lean_from = g_cs.lean_to = (cs_lean){ 0.0f, 0.0f };
 	g_cs.lean_t0 = 0;
 	for (k = 0; k < TD_KEYS; k++) g_cs.press_t0[k] = 0;
 }

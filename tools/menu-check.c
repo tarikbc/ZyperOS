@@ -1975,6 +1975,15 @@ static void ct_table(rm_table *t, const char *spec)
 	rm_parse(spec, t);
 }
 
+/* Whether the handheld's pose for `keys` is `yaw` and `pitch` off the front's */
+static bool lean_is(unsigned keys, float yaw, float pitch)
+{
+	float y = -99.0f, p = -99.0f;
+
+	ct_lean(keys, &y, &p);
+	return y == yaw && p == pitch;
+}
+
 /* Where row `id` is, -1 for nowhere */
 static int ct_at(const ct_row *ids, int n, ct_row id)
 {
@@ -2248,26 +2257,49 @@ static void ctl_tab(void)
 	ck(ct_lit(&m, CT_BUTTON + RM_Y) == 1u << TD_Y, "once the cursor comes back, Y alone");
 	ck(ct_lit(&m, CT_RESET) == (1u << TD_Y | 1u << TD_B), "Reset Buttons lights every changed button");
 
-	/* ct_lean: the handheld turns toward the side the focused row lights */
+	/* ct_lean: the handheld turns toward the side the focused row lights, the
+	 * d-pad's further, and tilts back to show its top for a shoulder */
+	ck(CT_LEAN_DPAD_DEG >= 20.0f && CT_LEAN_DPAD_DEG <= 25.0f && CT_LEAN_DPAD_DEG > CT_LEAN_DEG,
+	   "ct_lean: the d-pad leans 20 to 25 degrees, further than a side's keys");
+	ck(CT_PITCH_DEG > 0.0f, "ct_lean: a shoulder's pitch shows the top");
 	ct_ps1(&m);
-	ck(ct_lean(1u << TD_Y) == 1 && ct_lean(1u << TD_A | 1u << TD_R2) == 1, "ct_lean: right keys, +1");
-	ck(ct_lean(1u << TD_DPAD) == -1 && ct_lean(1u << TD_L2) == -1, "ct_lean: left keys, -1");
-	ck(ct_lean(1u << TD_SELECT) == 0 && ct_lean(1u << TD_START) == 0 && ct_lean(0) == 0,
-	   "ct_lean: the middle keys and none, front");
-	ck(ct_lean(1u << TD_DPAD | 1u << TD_SELECT) == -1, "ct_lean: left and centre is left");
-	ck(ct_lean(1u << TD_L1 | 1u << TD_R1) == 0, "ct_lean: both sides, front");
-	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_Y)) == 1, "ct_lean: the Y row leans right");
-	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_L2)) == -1, "ct_lean: the L2 row leans left");
-	ck(ct_lean(ct_lit(&m, CT_BUTTON + RM_SELECT)) == 0, "ct_lean: the SELECT row, front");
-	ck(ct_lean(ct_lit(&m, CT_STICK)) == -1, "ct_lean: D-pad as Stick leans left on the PlayStation");
-	ck(ct_lean(ct_lit(&m, CT_SCOPE)) == 0 && ct_lean(ct_lit(&m, CT_HOTKEYS)) == 0, "ct_lean: Applies To and Hotkeys, front");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_Y), CT_LEAN_DEG, 0.0f), "ct_lean: the Y row leans right, no pitch");
+	ck(lean_is(ct_lit(&m, CT_STICK), -CT_LEAN_DPAD_DEG, 0.0f),
+	   "ct_lean: D-pad as Stick on the PlayStation leans further left, no pitch");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_L1), -CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the L1 row leans left and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_L2), -CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the L2 row leans left and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_R2), CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the R2 row leans right and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_R1), CT_LEAN_DEG, CT_PITCH_DEG), "ct_lean: the R1 row leans right and shows the top");
+	ck(lean_is(ct_lit(&m, CT_BUTTON + RM_SELECT), 0.0f, 0.0f), "ct_lean: the SELECT row, front");
+	ck(lean_is(ct_lit(&m, CT_SCOPE), 0.0f, 0.0f) && lean_is(ct_lit(&m, CT_HOTKEYS), 0.0f, 0.0f),
+	   "ct_lean: Applies To and Hotkeys, front");
+	ck(lean_is(1u << TD_START, 0.0f, 0.0f) && lean_is(0, 0.0f, 0.0f), "ct_lean: START alone and no keys, front");
+	ck(lean_is(1u << TD_L1 | 1u << TD_R1, 0.0f, 0.0f), "ct_lean: both sides' shoulders, front");
+	ck(lean_is(1u << TD_L1 | 1u << TD_SELECT, -CT_LEAN_DEG, CT_PITCH_DEG),
+	   "ct_lean: a shoulder with a centre key leans to its side and shows the top");
+	ck(lean_is(1u << TD_A | 1u << TD_R2, CT_LEAN_DEG, 0.0f), "ct_lean: a face with a right shoulder, no pitch");
+	ck(lean_is(1u << TD_DPAD | 1u << TD_L2, -CT_LEAN_DPAD_DEG, 0.0f), "ct_lean: the d-pad with a left shoulder, the d-pad's");
 	rm_set(&m.cur, &m.base, RM_B, (rm_choice){ RT_L1, 0 });
-	ck(ct_lean(ct_lit(&m, CT_RESET)) == 0, "ct_lean: Reset Buttons with B and L1 changed, front");
+	ck(lean_is(ct_lit(&m, CT_RESET), 0.0f, 0.0f), "ct_lean: Reset Buttons with B and L1 changed, front");
 	ct_ps1(&m);
-	m.stick_on = true;
+	rm_set(&m.cur, &m.base, RM_B, (rm_choice){ RT_R1, 0 });
+	ck(lean_is(ct_lit(&m, CT_RESET), CT_LEAN_DEG, 0.0f), "ct_lean: Reset Buttons with B and R1 changed, right, no pitch");
+	/* The N64's stick lights the d-pad and SELECT: left and centre is left */
+	memset(&m, 0, sizeof m);
+	m.tag = "N64"; m.ext = "z64"; m.sys_label = "N64"; m.map = CT_N64_MAP;
+	ct_table(&m.def, CT_N64_MAP);
+	m.cur = m.base = m.def;
+	m.stick_offered = m.stick_on = m.stick_default = true;
 	m.select_held_c = true;
-	ck(ct_lean(ct_lit(&m, CT_STICK)) == -1, "ct_lean: the stick on the N64 (d-pad and SELECT) leans left");
-	ct_ps1(&m);
+	ck(ct_lit(&m, CT_STICK) == (1u << TD_DPAD | 1u << TD_SELECT) && lean_is(ct_lit(&m, CT_STICK), -CT_LEAN_DPAD_DEG, 0.0f),
+	   "ct_lean: the stick on the N64 (d-pad and SELECT) leans as the d-pad does");
+	/* The Dreamcast's Face Buttons light the four faces */
+	memset(&m, 0, sizeof m);
+	m.tag = "DC"; m.ext = "chd"; m.sys_label = "Dreamcast"; m.map = CT_DC_MAP;
+	ct_table(&m.def, CT_DC_MAP);
+	m.cur = m.base = m.zdef = m.def;
+	m.face_offered = ctl_letter_layout("DC", &m.letters);
+	ck(lean_is(ct_lit(&m, CT_FACE), CT_LEAN_DEG, 0.0f), "ct_lean: Face Buttons lean right, no pitch");
 
 	/* The steps, round the choices, and Nothing */
 	ct_ps1(&m);
