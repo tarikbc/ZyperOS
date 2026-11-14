@@ -10,7 +10,8 @@
  * is there - the frame the bar is full when it came while held - a move
  * drops the snap at once and a menu fades it back over quick, and the daemon
  * is told to stop the same frame either way - the rule that keeps decoding
- * to what is on screen. */
+ * to what is on screen. And a snap a run brought under the same focus is
+ * looked for again (snapshelf_refocus) and plays after the wait. */
 #include <stdio.h>
 #include <string.h>
 
@@ -144,6 +145,38 @@ int main(void)
 	at(A, true, false, 0);
 	CHECK(!strcmp(at(A, true, false, SNAPS_WAIT_MS + 60000), A) && k == 0,
 	      "the cover turned into nothing");
+
+	printf("  a snap that came under the same focus is looked for again:\n");
+	{
+		snapshelf_at was = { 3, 7, "Super Metroid.sfc", snapshelf_media_gen() };
+		snapshelf_at same = was;
+
+		CHECK(!snapshelf_refocus(was, same), "the same focus worked its file out again");
+		same.cursor = 8;
+		CHECK(snapshelf_refocus(was, same), "a move kept the old file");
+		same = was;
+		same.file = "Star Fox.sfc";
+		CHECK(snapshelf_refocus(was, same), "another game at the same place kept the old file");
+		same = was;
+		same.sys = 4;
+		CHECK(snapshelf_refocus(was, same), "another shelf kept the old file");
+		/* a run brought this game's snap while the shelf kept its focus */
+		snapshelf_media_changed();
+		same = was;
+		same.gen = snapshelf_media_gen();
+		CHECK(snapshelf_refocus(was, same), "a run's new snap waited for a move (2026-11-14)");
+		was.gen = same.gen;
+		CHECK(!snapshelf_refocus(was, same), "worked out again every frame after a run");
+		/* and the shelf then plays it after the wait, as any snap */
+		memset(&s, 0, sizeof s);
+		at("", false, false, 0);              /* under the page: no snap yet */
+		at(A, false, false, 1000);            /* worked out again, still under it */
+		CHECK(!*at(A, true, false, 2000), "asked the moment the shelf was back");
+		CHECK(!strcmp(at(A, true, true, 2000 + SNAPS_WAIT_MS), A),
+		      "the snap that came during the run was not asked for after the wait");
+		at(A, true, true, 2000 + SNAPS_WAIT_MS + DS_MS_TURN / 2);
+		CHECK(k > 0, "the snap that came during the run did not turn in");
+	}
 
 	if (failures) { printf("\n%d check(s) failed\n", failures); return 1; }
 	printf("\nok: every check passed\n");

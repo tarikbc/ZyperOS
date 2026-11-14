@@ -36,6 +36,9 @@ static void muse_order_view(sysview *v) { (void)v; failures++; }
 static int shelf_owner(app *a, int s, int i) { return a->view[s].owner ? a->view[s].owner[i] : s; }
 static void free_view_textures(sysview *v) { v->dropped++; }
 static void cf_reset(coverflow *cf, int cursor) { cf->cursor = cursor; }
+/* The shelf told the card's media changed (src/snapshelf.h), stubbed */
+static int media_changes;
+static void snapshelf_media_changed(void) { media_changes++; }
 /* MENU > Scraper's page (scp_page), stubbed: it ran once, and named a game
  * the way a run does, in the library alone */
 static int pages_run;
@@ -80,6 +83,7 @@ int main(void)
 		a.view[0].cursor = 2; a.view[1].cursor = 1;
 		scraper_page(&a, "NES");
 		CHECK(pages_run == outcome + 1);
+		CHECK(media_changes == outcome + 1); /* the focused game's snap looked for again */
 		CHECK(a.view[0].cursor == 0 && a.view[1].cursor == 0);
 		CHECK(owners[0] == 1 && !strcmp(fav[0].file, "same.zip") && !strcmp(fav[0].title, "Alpha"));
 		CHECK(!strcmp(snes[0].title, "Zulu") && !strcmp(muse[0].title, "Album"));
@@ -140,6 +144,6 @@ int main(void)
 	}
 	db_shutdown();
 	if (failures) return 1;
-	puts("ok: scrape exits refresh titles, textures, sorting and selection without reboot");
+	puts("ok: scrape exits refresh titles, textures, sorting, selection and the focused snap without reboot");
 	return 0;
 }

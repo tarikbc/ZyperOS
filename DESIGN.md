@@ -1968,7 +1968,15 @@ Every cover whose game has a snap carries a mark at its bottom right, inset
 inset 9 on the cards either side, fading with the cover as its snap takes
 over, and none when Play on the Shelf or the console's switch is off. The
 shelf knows from one listing of the folder's .media, taken when it is first
-drawn and again when the folder changes (looked at every 2 s at most).
+drawn and again when the folder changes (looked at every 2 s at most). A
+Scraper run, from MENU or a console's Box Art, and a game's Cover and
+Video page that got or deleted a snap say the card's media changed
+(snapshelf_media_changed): the listing is taken again at once, and the
+focused game's snap file, worked out when the focus moves, is worked out
+again under the same focus, so a snap the run brought for it plays after
+the wait as soon as the shelf is back (2026-11-14, on the Pixel 2: "after
+i download a video from A4, and go back to the game list, the video doesnt
+render automaticlaly").
 *(My picks in the Scraper lab, `docs/design/mock/scraper-lab.html`,
 2026-11-06: one list, a page per source, a Video Snaps page, the cover
 turns wide, sound a setting muted to start, 3 seconds. Later that day, on
