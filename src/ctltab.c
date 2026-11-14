@@ -295,13 +295,25 @@ unsigned ct_lit(const ct_model *m, ct_row id)
 	}
 }
 
-int ct_lean(unsigned keys)
+void ct_lean(unsigned keys, float *yaw_deg, float *pitch_deg)
 {
+	const unsigned shoulders = 1u << TD_L1 | 1u << TD_L2 | 1u << TD_R1 | 1u << TD_R2;
 	const unsigned left = 1u << TD_DPAD | 1u << TD_L1 | 1u << TD_L2;
 	const unsigned right = 1u << TD_A | 1u << TD_B | 1u << TD_X | 1u << TD_Y | 1u << TD_R1 | 1u << TD_R2;
 	const bool l = (keys & left) != 0, r = (keys & right) != 0;
+	/* The keys on the front of that side: the d-pad, or a face */
+	const bool front = (keys & (left | right) & ~shoulders) != 0;
 
-	return r && !l ? 1 : l && !r ? -1 : 0;
+	*yaw_deg = *pitch_deg = 0.0f;
+	/* Keys on both sides, or on neither: the front pose */
+	if (l == r) return;
+	if (front) {
+		*yaw_deg = l ? -CT_LEAN_DPAD_DEG : CT_LEAN_DEG;
+	} else {
+		/* Only shoulders on that side, a centre key with them or not */
+		*yaw_deg = l ? -CT_LEAN_DEG : CT_LEAN_DEG;
+		*pitch_deg = CT_PITCH_DEG;
+	}
 }
 
 /* ---- the steps ------------------------------------------------------------- */

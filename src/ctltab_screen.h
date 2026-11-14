@@ -70,6 +70,13 @@ void ctlscr_changed(void);
  * button's choices */
 void ctlscr_side(app *a, const menu_side *at);
 
+/* Measures the handheld in every pose the tab gives it - each row's, every
+ * frame of the turn from one row's to another's, every frame of coming in
+ * with the rows - against its kept texture's box (td_box_holds): the count
+ * out of it, and in *measured how many were measured. For --handheld-box;
+ * it leaves the tab as ctlscr_open does. */
+int ctlscr_box_check(int *measured);
+
 /* Reset Buttons' question for the scope shown, into `q` */
 void ctlscr_question(const ctlscr_game *g, char *q, size_t n);
 

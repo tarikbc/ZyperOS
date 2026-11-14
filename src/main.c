@@ -113,6 +113,7 @@
 #include "remapstore.h"
 #include "tour.h"
 #include "tourdraw.h"
+#include "tourdevice.h"
 #include "game_menu.h"
 #include "portmenu.h"
 #include "gamedel.h"
@@ -26732,6 +26733,24 @@ static void shot_draw_gamecontrols(app *a)
 	if (bg) SDL_DestroyTexture(bg);
 }
 
+/* --handheld-box [tab|tour]: the handheld measured in every pose the
+ * Controls tab (ctlscr_box_check) and the tutorial (tourdev_box_check) give
+ * it, every frame of every turn, against its kept texture's box: a texture
+ * too small cuts the figure off on the device and on the host alike. A
+ * "HANDHELD-BOX:" line on stderr for each pose out of its box, and a count
+ * (tools/controls-shots-check.sh, tools/tour-shot-check.py). */
+static const char *shot_handheld_box;
+
+static void handheld_box_report(void)
+{
+	int tab = 0, tour = 0, bad = 0;
+
+	if (strcmp(shot_handheld_box, "tour")) bad += ctlscr_box_check(&tab);
+	if (strcmp(shot_handheld_box, "tab")) bad += tourdev_box_check(&tour);
+	fprintf(stderr, "handheld-box: %d poses of the Controls tab and %d of the tutorial measured, "
+	        "%d out of their box\n", tab, tour, bad);
+}
+
 /* --controls-fit [game|home]: every Controls page measured with the font
  * against the panel that draws it - the home's five on both devices, and
  * every system's in a game (an .fds game's too), or one of the two sets. A
@@ -27284,6 +27303,7 @@ static void shot_compose(app *a)
 	else if (g_shot_p2 && a->sys.count > 0) shot_draw_player2(a);
 	if (shot_gamecontrols >= 0 && a->sys.count > 0) shot_draw_gamecontrols(a);
 	if (shot_controls_fit) controls_fit_report(a);
+	if (shot_handheld_box) handheld_box_report();
 	/* Over **scrim.menu**, as the screens they picture are: kb_prompt's
 	 * backdrop, wait_panel and the achievement list opened over the shelf. */
 	if (shot_cheevos && shot_ingame) {
@@ -29451,6 +29471,11 @@ int main(int argc, char *argv[])
 		/* --gamemenu [row] [dual]: the menu over a paused game, that row
 		 * selected, with a Nintendo DS game's three screen rows when dual */
 		else if (!strcmp(argv[i], "--ingame")) shot_ingame = 1;
+		else if (!strcmp(argv[i], "--handheld-box")) {
+			shot_handheld_box = "all";
+			if (i + 1 < argc && (!strcmp(argv[i + 1], "tab") || !strcmp(argv[i + 1], "tour")))
+				shot_handheld_box = argv[++i];
+		}
 		else if (!strcmp(argv[i], "--controls-fit")) {
 			shot_controls_fit = "all";
 			if (i + 1 < argc && (!strcmp(argv[i + 1], "game") || !strcmp(argv[i + 1], "home")))

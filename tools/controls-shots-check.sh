@@ -150,6 +150,19 @@ fi
 measured=$(sed -n 's/^controls-fit: \([0-9]*\) pages measured.*/\1/p' "$D/one.log")
 [ "${measured:-0}" -gt 150 ] || fail "the fit test measured ${measured:-no} pages"
 
+echo "the Controls tab's handheld stays in its kept box, every pose and turn"
+# ctlscr_box_check: each row's pose, every frame of the turn from one row's
+# to another's and of coming in with the rows, measured against the box the
+# texture it is kept in covers (a box too small cuts the figure off)
+run --shot "$D/box.png" --theme light --handheld-box tab >"$D/one.log" 2>&1
+cat "$D/one.log" >>"$D/log"
+if grep -q '^HANDHELD-BOX:' "$D/one.log"; then
+	grep '^HANDHELD-BOX:' "$D/one.log" | head -5 | sed 's/^/  FAIL /'
+	fails=$((fails + 1))
+fi
+measured=$(sed -n 's/^handheld-box: \([0-9]*\) poses of the Controls tab.*/\1/p' "$D/one.log")
+[ "${measured:-0}" -gt 10000 ] || fail "the box check measured ${measured:-no} poses of the Controls tab"
+
 echo "the home's Controls pages, each its own"
 for th in light dark; do
 	p=0
@@ -176,7 +189,9 @@ done
 echo "the Controls tab: its rows beside the handheld, in both themes, still"
 # The PlayStation's game (the shelf on it, ZyperOS/.last): the tab at rest
 # and later the same picture; the cursor on D-pad as Stick lights the
-# d-pad, and the handheld leans left; Y leans it right, SELECT front; a swap of Y and B (two Lefts on Y) colors both values and lights
+# d-pad, and the handheld leans left; Y leans it right, SELECT front; L1 and
+# R2 lean it to their side and tilt it back to show the top, still once
+# there; a swap of Y and B (two Lefts on Y) colors both values and lights
 # both keys; A on Y opens its choices; the Hotkeys row's page; and a
 # Nintendo 64 game's tab, with its Pak and SELECT held for the C buttons
 printf 'PS1\nRidge Racer.chd\n' >"$D/root/.last"
@@ -194,6 +209,17 @@ for th in light dark; do
 	other "$th: a left row and a right row lean the handheld apart" "ctltab-stick-$th" "ctltab-y-$th"
 	other "$th: SELECT (front) is not Y (leaning right)" "ctltab-select-$th" "ctltab-y-$th"
 	other "$th: SELECT (front) is not D-pad as Stick (leaning left)" "ctltab-select-$th" "ctltab-stick-$th"
+	# a shoulder's row leans the handheld its way and tilts it to show the
+	# top: L1 is not the d-pad's lean, R2 not Y's, neither the front
+	shot "ctltab-l1-$th" --theme "$th" --screen games --gamemenu 6 --gm-tab 2
+	shot "ctltab-r2-$th" --theme "$th" --screen games --gamemenu 9 --gm-tab 2
+	shot "ctltab-r2-later-$th" --theme "$th" --screen games --gamemenu 9 --gm-tab 2 --shot-at 4000
+	other "$th: L1 (tilted, leaning left) is not D-pad as Stick (level, further left)" "ctltab-l1-$th" "ctltab-stick-$th"
+	other "$th: R2 (tilted, leaning right) is not Y (level, leaning right)" "ctltab-r2-$th" "ctltab-y-$th"
+	other "$th: L1 (leaning left) is not R2 (leaning right)" "ctltab-l1-$th" "ctltab-r2-$th"
+	other "$th: L1 (tilted) is not SELECT (front)" "ctltab-l1-$th" "ctltab-select-$th"
+	other "$th: R2 (tilted) is not SELECT (front)" "ctltab-r2-$th" "ctltab-select-$th"
+	same "$th: the tilted handheld sits still" "ctltab-r2-$th" "ctltab-r2-later-$th"
 	# The swap is kept in the library, so on a library of its own: the
 	# shots after it show the card's own table
 	rm -rf "$D/shared-swap" && mkdir -p "$D/shared-swap" || exit 1

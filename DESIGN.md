@@ -1095,19 +1095,24 @@ of the player's own goes on from wherever the loop was.
   "START: skip" ends (Music's line, wider than the stage, sits a little
   left of the stage's middle). On the Brick nothing moves and there is no
   handheld. src/tourdevice.c draws it in code, no image files, into a
-  304 x 368 texture kept while it does not change (it changes only as it
+  304 x 382 texture kept while it does not change (it changes only as it
   turns, a key lights or presses, and in the first lesson's fade-in): drawn
   every frame it cost the Pixel 2 a third of the lesson's frame rate, kept
   it costs nothing measurable. `check-tour-shots` holds each lesson's lit key on its side of the
-  handheld, the shoulders lit in Move Around and Music and no others, its
-  words clear of the inset, and the block moved and otherwise the Brick's,
-  in both themes.
+  handheld, the shoulders lit in Move Around and Music and no others, the
+  figure inside its texture in every frame of every turn
+  (`--handheld-box tour`), its words clear of the inset, and the block
+  moved and otherwise the Brick's, in both themes.
   - **Shared with the Controls tab** (11.28, 11.45): the tutorial's handheld
     and the in-game menu's Controls tab draw the same Pixel 2 through
-    `td_draw`, from a pose (centre, scale, turn, each key's light and press)
-    and the theme's colors, into the one kept texture, sized for its caller.
-    The tutorial's look is the Controls tab's: a change to the model changes
-    both.
+    `td_draw`, from a pose (centre, scale, turn, tilt, each key's light and
+    press) and the theme's colors, into the one kept texture, sized for its
+    caller. The tutorial's look is the Controls tab's: a change to the model
+    changes both. Both tilt it back the same 25 degrees for the shoulders
+    (the Controls tab's shoulder rows, the tutorial's Move Around and
+    Music), the top face showing with the shoulders standing on it; every
+    other pose is level, and a level pose draws as it did before the tilt,
+    pixel for pixel.
   - **Drawn** in code from `tools/build-pixel2-model.py`'s millimetres, the
     landing page's model, in the theme's roles and nothing else: the body
     **surface** with a 3-unit **edge**, its turned side **raised** (Beard)
@@ -1139,9 +1144,14 @@ of the player's own goes on from wherever the loop was.
     to the right, VOL 52 degrees to the left, both at 3.95, a little nearer.
     Brightness needs MENU and VOL, on opposite sides, so it faces front at
     3.45 and those keys stand out of its edges as tabs, 2.8 mm when lit,
-    the volume keys 4.6 so their + and - fit on them pressed too. A
-    step turns it from the last lesson's pose in **turn**, as the step comes
-    on; the first lesson fades it in with the stage.
+    the volume keys 4.6 so their + and - fit on them pressed too. Move
+    Around (L1, R1) and Music (L2, R2) light shoulders on both sides, so
+    they keep the front pose's 10 degrees and tilt it back 25, as seen from a
+    little above, so the top shows with the lit shoulders standing up on it
+    *(my ask, 2026-11-14: "can we use that same pixel 3d component on the
+    tutorial page?")*. A step turns it, and tilts it, from the last lesson's
+    pose in **turn**, as the step comes on; the first lesson fades it in
+    with the stage.
   - **The lit key**: **accent**, ringed in **accent-ink** (Beard) or
     **accent**, a soft **accent** halo under it (0.35, 0.75 while pressed),
     and a 3-unit ring 9 units out in the same ink so a 5 mm key is found
@@ -3889,16 +3899,22 @@ button; D-pad as Stick the d-pad (and SELECT on the N64 and the Dreamcast);
 Face Buttons the four faces; Reset Buttons every changed button; a swap
 both buttons while the cursor stays on the row; Applies To, Pak and Hotkeys
 nothing. A lit shoulder stands up out of the top edge. It **leans**
-toward the side of the keys lit, 12 degrees either way of the front pose: the
-right keys (A, B, X, Y, R1, R2) turn it to show its right side (22 degrees),
-the left keys (the d-pad, L1, L2) the other way (-2); SELECT, START, keys on
-both sides and no keys bring it back to the front pose.
+toward the side of the keys lit: the faces (A, B, X, Y) turn it 12 degrees
+from the front pose to show its right side (22 degrees), the d-pad 22 the
+other way (-12). A shoulder row turns it 12 toward its side (R1 and R2 to 22
+degrees, L1 and L2 to -2) and **tilts it back 25 degrees**, as seen from a
+little above, so the top shows with the four shoulders standing on it and
+the lit one standing up out of it in the lit look; its upright edges stay
+upright. SELECT, START, keys on both sides and no keys bring it back to the
+front pose, level; a side key with a centre key leans to its side (the N64's
+d-pad and SELECT as the d-pad), and a face with a right shoulder as the face,
+level.
 
 | What | Token and how |
 |---|---|
-| R1 or L1 into Controls | the handheld comes with the rows, 64 units the press's way and faded up in **move**, and turns from 40 to 10 degrees, plus the lean of its first row, in **turn** |
+| R1 or L1 into Controls | the handheld comes with the rows, 64 units the press's way and faded up in **move**, and turns from 40 to 10 degrees, plus the lean of its first row, in **turn**; a shoulder row's tilt is there from the start |
 | Out of Controls | it leaves with the old tab's name, 96 units the press's way, gone in the first two fifths of **move** |
-| Up or Down | the fill glides in **quick**; the old key's light goes out and the new key's comes in, in **quick**; the lean eases to the new row's side in **turn**, from where it is |
+| Up or Down | the fill glides in **quick**; the old key's light goes out and the new key's comes in, in **quick**; the lean (the turn and the tilt together) eases to the new row's pose in **turn**, from where it is |
 | Left or Right on a button | the key presses in **press** (in, then out); a swapped partner lights in **quick** |
 | A shoulder row | the shoulder stands up in **quick** |
 | A to a button's choices, and back | the handheld holds still while the list beside it changes |

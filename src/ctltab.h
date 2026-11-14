@@ -118,11 +118,20 @@ int ct_rows(const ct_model *m, ct_row *ids, menu_row *out, unsigned *vcol, ct_bu
  * sets; Reset Buttons every changed button; the rest none. */
 unsigned ct_lit(const ct_model *m, ct_row id);
 
-/* Which way the handheld leans for the keys a row lights (a ct_lit mask):
- * +1 toward its right side (A, B, X, Y, R1, R2), -1 toward its left (the
- * d-pad, L1, L2), 0 for the front: SELECT and START alone, no keys, or keys
- * on both sides. A side key with a centre key leans to its side. */
-int ct_lean(unsigned keys);
+/* The handheld's lean, degrees off the front pose (DESIGN.md 11.45) */
+#define CT_LEAN_DEG      12.0f   /* the faces' turn, and the shoulders' toward their side */
+#define CT_LEAN_DPAD_DEG 22.0f   /* the d-pad's, further */
+#define CT_PITCH_DEG     TD_PITCH_DEG   /* the shoulders' tilt back, so the top shows */
+
+/* The pose the handheld takes for the keys a row lights (a ct_lit mask), as
+ * offsets from the front pose: the yaw in *yaw_deg (more than 0 shows its
+ * right side) and the pitch in *pitch_deg (more than 0 shows its top). The
+ * faces turn it CT_LEAN_DEG right and the d-pad CT_LEAN_DPAD_DEG left,
+ * level, with their side's shoulders or not; shoulders alone on one side
+ * turn it CT_LEAN_DEG their way and tilt it CT_PITCH_DEG. SELECT and START
+ * alone, no keys, or keys on both sides: the front pose, level. A centre
+ * key with side keys changes nothing. */
+void ct_lean(unsigned keys, float *yaw_deg, float *pitch_deg);
 
 /* The button a button row is about (RM_*), -1 for another row */
 int ct_button_of(ct_row id);
