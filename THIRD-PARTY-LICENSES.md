@@ -219,8 +219,9 @@ logo or any brand's art, under ZyperOS's own license.
   Sean Barrett and its contributors (https://github.com/nothings/stb at
   d14d46f), public domain or MIT, at the end of the file. Both are compiled
   into the launcher for menu music (`src/bgm_dec.c`, `src/bgm_ogg.c`).
-  Menu music plays what the card's `Roms/BGM` holds, and ZyperOS's own
-  tracks below only while it holds none.
+  Menu music plays what the card's `Menu Music` folder holds, and ZyperOS's
+  own tracks below with it (MENU > Menu Music > ZyperOS Tracks), or alone
+  while it holds none.
 - `res/ssl/cacert.pem`, shipped as `ZyperOS/cacert.pem` - **Mozilla's root
   certificates**, in the form the curl project publishes
   (https://curl.se/ca/cacert.pem), under the Mozilla Public License 2.0.
@@ -231,8 +232,8 @@ logo or any brand's art, under ZyperOS's own license.
 
 ## Menu music (`res/bgm/`, shipped as `ZyperOS/res/bgm/`)
 
-Ten free 8-bit tracks, played behind the shelf and the menus while the card's
-`Roms/BGM` has no tracks of its own (`src/bgm.h`). Each is its author's work
+Ten free 8-bit tracks, played behind the shelf and the menus with the card's
+own in `Menu Music`, or alone while it has none (`src/bgm.h`). Each is its author's work
 under the license named, taken from the page linked, and is not relicensed
 by this repository's license. `res/bgm/tracks.json` records, for each, the
 exact file it was made from (its URL and SHA-256), the page and the license;

@@ -1014,11 +1014,11 @@ build-native/uisound-check: tools/uisound-check.c src/uisound.c src/uisound.h \
 	$(CC) -std=gnu11 -Wall -Wextra -D_GNU_SOURCE -O1 -g \
 	      -o $@ tools/uisound-check.c src/uisound.c src/audioout.c $(I18N_SRC)
 
-# Menu music's rules (src/bgm.h): the tracks, the settings, the shuffle, the
-# history L2 goes back along, the gain, the Menu Music screen's rows, a
-# track's name from its tags (src/bgm_tags.h) and Zyper's pop-up that says
-# it (src/songpop.h), and MP4's track in it when L2/R2 move MP4. No SDL and
-# no ALSA.
+# Menu music's rules (src/bgm.h): the tracks, from Menu Music and its folders
+# and ZyperOS's own, the settings, the shuffle, the history L2 goes
+# back along, the gain, the Menu Music screen's rows, a track's name from its
+# tags (src/bgm_tags.h) and Zyper's pop-up that says it (src/songpop.h), and
+# MP4's track in it when L2/R2 move MP4. No SDL and no ALSA.
 check-bgm: build-native/bgm-check
 	@./build-native/bgm-check
 

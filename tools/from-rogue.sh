@@ -72,7 +72,8 @@
 #            conversion is done - but not macOS's ._ shadows. A port whose
 #            script is only inside its folder is named: the shelf lists the
 #            scripts at the top.
-#   bgm      ROGUE's menu music, Roms/BGM on both (src/bgm.h).
+#   bgm      ROGUE's menu music, into Menu Music, the folder ZyperOS plays
+#            its menu music from (src/bgm.h); Roms/BGM is not read since 1.0.5.
 #   music    ROGUE's music folder into Muse's Music/; a song loose at its top
 #            into Music/Singles, where the launcher would move it anyway.
 #   skip     a folder left behind by decision, all of it, with the reason.
@@ -192,7 +193,7 @@ game|mame|Roms/MAME|zip|
 keep|naomi|Roms/NAOMI|zip 7z|chd
 keep|atomiswave|Roms/Atomiswave|zip 7z|chd
 port|ports|Roms/Ports|sh|
-bgm|BGM|Roms/BGM|mp3 ogg|
+bgm|BGM|Menu Music|mp3 ogg|
 music|music|Music|mp3 flac m4a m4b aac ogg oga opus wav|
 # bios|ROGUE bios/ path|Bios/ path||the ROGUE folders it serves. Only what a
 # ZyperOS core reads with ZyperOS's settings: pcsx_rearmed 7b0e8f8 looks for

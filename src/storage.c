@@ -1254,7 +1254,8 @@ static bool measure(const job_view *j, st_card *c, bool trust, bool force, bool 
 		}
 		c->nbooks = nb;
 	}
-	snprintf(path, sizeof path, "%s/BGM", j->p.roms);
+	/* The menu music: its own folder at the top of the card (src/bgm.h) */
+	snprintf(path, sizeof path, "%s/Menu Music", j->p.card);
 	c->bgm = root_bytes(path, trust, force, &cut, &ts);
 	c->nbgm = ts.audio_n;
 	/* The media pages' items, now the roots are walked */

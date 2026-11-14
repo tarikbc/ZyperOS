@@ -174,7 +174,7 @@ something once broke in a way nothing noticed:
 | `check-sysmark` | a system's color as a mark, for every shipped system in both themes: no color is text-dim and lime is accent-ink |
 | `check-menushots` | a menu's open, close and swap at their ends as the launcher draws them, byte for byte, and a picture halfway through each (builds the host launcher; skips without SDL2) |
 | `check-uisound` | the interface sounds' rule: which press plays what, never on a Bluetooth headset, the setting's four positions, the WAVs the launcher reads, and the mix |
-| `check-bgm` | menu music's rules: the tracks, the settings, the shuffle, the history L2 goes back along, the gain, the Menu Music rows, a track's name from its tags and Zyper's pop-up |
+| `check-bgm` | menu music's rules: the tracks, from the card's Menu Music folder and its folders and ZyperOS's own, the settings, the shuffle, the history L2 goes back along, the gain, the Menu Music rows, a track's name from its tags and Zyper's pop-up |
 | `check-bgm-tracks` | the menu music a fresh card plays: every file in res/bgm/ is the one res/bgm/tracks.json records, under a license a card may ship, credited, Ogg Vorbis at 48 kHz |
 | `check-sounds` | every WAV in res/sounds/ is what tools/gensounds.py synthesizes from tools/designdef.py's tones, and there is no other |
 | `check-messages` | result holds and the real input loop with a fake clock, and the source guard that keeps every result site off blocking delays |
@@ -261,8 +261,12 @@ battery capacity data those fields show "unknown".
 `pt-BR`, `fr`, `de`, `ja`, `it`, or `xx`, the pseudo-locale: every string
 accented, 40% longer and in brackets), whatever MENU > Language saved;
 `--menu` still finds a row by its English name. `--language [ROW]` draws MENU >
-Language's panel, the cursor on ROW. `python3 tools/i18n-shots.py --keep DIR`
-writes the main screens in every language (`make check-i18n-shots`).
+Language's panel, the cursor on ROW. `--music-page [ROW [STEPS]]` draws MENU >
+Menu Music's page, the cursor on ROW and then STEPS presses of Down, a frame
+each, so the list goes round (`foot`: no cursor, the note pinned under the
+rows).
+`python3 tools/i18n-shots.py --keep DIR` writes the main screens in every
+language (`make check-i18n-shots`).
 
 `--tour STEP [MS [DONE]]` draws a frame of the tutorial in place of the shelf:
 STEP is `lang` (the language step: its cursor steps a language a second,

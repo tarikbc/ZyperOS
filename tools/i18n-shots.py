@@ -388,6 +388,33 @@ EXTRA.setdefault("menu-shader", ("demo", "PS1", ["--menu", "Shader"]))
 # The README's shots' own settings, and these shots'
 SHOT_SETTINGS = {**R.SHOT_SETTINGS, "menu-shader": {"shader.PS1": "shimmerless"},
                  "menu-saver-off": {"saver": "0"}}
+
+# MENU > Menu Music with the card's own tracks in its Menu Music folder, at
+# the top of the card (src/bgm.h): ZyperOS Tracks and the note in each of its counts,
+# drawn with no cursor so the note is pinned under the rows; and with none,
+# the note that says where they go. The files are made for the shot and
+# taken away after it.
+SHOT_FILES = {}
+_THREE = ["Menu Music/01 Title Theme.mp3", "Menu Music/Pixel Quest/02 Green Fields.mp3",
+          "Menu Music/Pixel Quest/03 Boss.ogg"]
+for _name, _files, _off in (("music-page-mine", _THREE, False), ("music-page-mine-one", _THREE[:1], False),
+                            ("music-page-mine-off", _THREE, True), ("music-page-mine-off-one", _THREE[:1], True)):
+    EXTRA.setdefault(_name, ("demo", "PS1", ["--music-page", "foot"]))
+    SHOT_FILES[_name] = _files
+    if _off:
+        SHOT_SETTINGS[_name] = {"bgm.builtin": "off"}
+EXTRA.setdefault("music-page-none", ("demo", "PS1", ["--music-page", "foot"]))
+
+
+def set_files(card, files, on):
+    """A shot's files (SHOT_FILES) on the card, empty, or off it"""
+    for f in files or []:
+        path = card / f
+        if on:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+        elif path.exists():
+            path.unlink()
 # The in-game menu's Shader at each old screen, so each name is drawn and fit
 for _s in ("crt", "crt-curved", "scanlines", "lcd"):
     EXTRA.setdefault("gamemenu-shader-" + _s, ("demo", "PS1", ["--screen", "games", "--gamemenu", "5"]))
@@ -596,9 +623,11 @@ def run_language(code, shots, binary, keep):
             # A shot's own settings (readme-shots' SHOT_SETTINGS), only while it
             # is taken: the Shader row at its widest value
             R.set_settings(card, SHOT_SETTINGS.get(name), True)
+            set_files(card, SHOT_FILES.get(name), True)
             r = subprocess.run(command, cwd=ROOT, env=env, text=True, errors="replace",
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             R.set_settings(card, SHOT_SETTINGS.get(name), False)
+            set_files(card, SHOT_FILES.get(name), False)
             for line in r.stdout.splitlines():
                 if line.startswith(("i18n: cut data: ", "i18n: slides data: ", "i18n: tight data: ")):
                     data.setdefault(name, []).append(line[6:])
