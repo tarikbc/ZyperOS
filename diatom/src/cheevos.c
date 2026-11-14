@@ -576,9 +576,64 @@ static void report(void)
 	                msg);
 }
 
+/* ------------------------------------------------------ late memory */
+
+/* Memory a core maps after its game has loaded. PPSSPP is the one that
+ * needs this: its retro_get_memory_data answers NULL until the deferred
+ * boot inside retro_run has mapped the PSP's memory (its libretro.cpp says
+ * as much), seconds into the game on the Pixel 2, and resolving only after
+ * retro_load_game found 0 bytes - so a PSP set was loaded, watched nothing
+ * and fired nothing for the whole session, with only the log saying so.
+ *
+ * So while a set is loaded the core is asked again every LATE_EVERY frames:
+ * for as long as it has offered nothing, and after that until it has given
+ * the same answer LATE_STEADY looks in a row, or LATE_LOOKS looks have
+ * passed. A core whose memory is there from the start answers the same at
+ * once and is left alone after five seconds; the cost is the few calls a
+ * resolve makes, every half second. A map the core declared is not asked
+ * again: its pointers are fixed, and a new SET_MEMORY_MAPS re-resolves on
+ * its own (diatom_cheevos_note_map).
+ *
+ * From nothing to something, nothing is reset: no frame was evaluated, so
+ * every trigger is as the set loaded it, or as a state restored it. From
+ * something to something else - more memory, or the same moved - the
+ * runtime IS reset, as a state load resets it: hit counts and deltas read
+ * through the old pointers belong to memory that is not there now, and
+ * rc_reset_trigger also puts an achievement marked disabled back to
+ * waiting, which must see its condition false before it can fire. */
+#define LATE_EVERY  30
+#define LATE_STEADY 10
+#define LATE_LOOKS  120
+
+static unsigned g_late_frames, g_late_looks, g_late_steady;
+
+static uint64_t span_signature(void)
+{
+	uint64_t h = 1469598103934665603ull;
+	int i;
+
+	for (i = 0; i < g_nspan; i++) {
+		h = (h ^ (uint64_t)(uintptr_t)g_span[i].data) * 1099511628211ull;
+		h = (h ^ (uint64_t)g_span[i].size) * 1099511628211ull;
+	}
+	return h ^ (uint64_t)g_mapped;
+}
+
+static bool late_due(void)
+{
+	if (++g_late_frames < LATE_EVERY) return false;
+	g_late_frames = 0;
+	if (!g_core || g_used_map) return false;
+	if (g_mapped == 0) return true;
+	return g_late_looks++ < LATE_LOOKS && g_late_steady < LATE_STEADY;
+}
+
+static void late_look(void);
+
 size_t diatom_cheevos_resolve(diatom_core *c)
 {
 	g_core = c;
+	g_late_frames = g_late_looks = g_late_steady = 0;
 	resolve_now(c);
 	report();
 	return g_mapped;
@@ -960,12 +1015,36 @@ int diatom_cheevos_load(const char *path)
 	return ok;
 }
 
+static void late_look(void)
+{
+	const size_t   before = g_mapped;
+	const uint64_t was    = span_signature();
+	char msg[192];
+
+	resolve_now(g_core);
+	if (span_signature() == was) {
+		if (g_mapped) g_late_steady++;
+		return;
+	}
+	g_late_steady = 0;
+	snprintf(msg, sizeof msg,
+	         "cheevos: %s's memory changed after the load: %zu of %zu bytes "
+	         "readable, %zu before%s",
+	         rc_console_name(g_console), g_mapped, g_total, before,
+	         before && g_rt_live ? "; the set starts over" : "");
+	diatom_port_log(DIATOM_LOG_INFO, msg);
+	if (before && g_rt_live) rc_runtime_reset(&g_rt);
+}
+
 void diatom_cheevos_frame(void)
 {
 	/* Both guards matter. Without a set there is nothing to do; without
 	 * memory, every peek returns zero and the runtime would happily conclude
-	 * things about a console that is not there. */
-	if (!g_rt_live || g_mapped == 0) return;
+	 * things about a console that is not there. Between them, a core that
+	 * maps its memory late is asked again (late_look). */
+	if (!g_rt_live) return;
+	if (late_due()) late_look();
+	if (g_mapped == 0) return;
 
 	rc_runtime_do_frame(&g_rt, on_event, diatom_cheevos_peek, NULL, NULL);
 	progress_flush();

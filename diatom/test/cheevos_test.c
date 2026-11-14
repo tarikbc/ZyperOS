@@ -90,16 +90,23 @@ static uint8_t g_sram[0x2000];   /* cartridge RAM */
 
 static int mem_calls;          /* so a test can assert the core was NOT asked */
 
+/* PPSSPP's way: no memory at all until its boot, some frames into the game
+ * (mem_none); and, for the moved case, system RAM somewhere else after it */
+static bool     mem_none;
+static uint8_t *mem_ram = g_ram;
+
 static void *mem_data(unsigned id)
 {
 	mem_calls++;
-	if (id == RETRO_MEMORY_SYSTEM_RAM) return g_ram;
+	if (mem_none) return NULL;
+	if (id == RETRO_MEMORY_SYSTEM_RAM) return mem_ram;
 	if (id == RETRO_MEMORY_SAVE_RAM)   return g_sram;
 	return NULL;
 }
 
 static size_t mem_size(unsigned id)
 {
+	if (mem_none) return 0;
 	if (id == RETRO_MEMORY_SYSTEM_RAM) return sizeof g_ram;
 	if (id == RETRO_MEMORY_SAVE_RAM)   return sizeof g_sram;
 	return 0;
@@ -118,6 +125,8 @@ static void console_reset(void)
 	 * may ask a core for its memory otherwise. See the test below. */
 	g_core.game_loaded = true;
 	mem_calls = 0;
+	mem_none = false;
+	mem_ram = g_ram;
 
 	diatom_cheevos_reset();
 	diatom_cheevos_set_console(RC_CONSOLE_NINTENDO);
@@ -413,6 +422,75 @@ static void test_end_to_end(void)
 	CHECK(sent("CHEEVO\tid=76195\tstate=unlocked"), "76195 not enumerated as unlocked");
 }
 
+/* ---- 5b. memory the core maps late ---------------------------------------- */
+
+/* PPSSPP maps the PSP's memory in its first frames, after the load Diatom
+ * resolves at. The set has to start watching when the memory comes, with no
+ * reset of what it had (it had evaluated nothing); memory that MOVES after
+ * that resets the runtime, so a hit count read through the old pointer does
+ * not carry over; and a core whose memory never changes is asked only for
+ * a few seconds. */
+static uint8_t g_ram2[0x800];
+
+static void frames(int n)
+{
+	while (n-- > 0) diatom_cheevos_frame();
+}
+
+static void test_late_memory(void)
+{
+	int calls;
+
+	printf("  memory the core maps after the load:\n");
+	console_reset();
+	mem_none = true;
+	CHECK(diatom_cheevos_resolve(&g_core) == 0, "nothing should resolve before the boot");
+	write_set("9001\t0xH0010=5\n"
+	          "9002\t0xH0020=1.3.\n");     /* three frames of 1 */
+	CHECK(diatom_cheevos_load(g_set_path) == 2, "both achievements should load");
+
+	g_ram[0x10] = 5;                      /* true, but there is no memory */
+	sent_clear();
+	frames(90);
+	CHECK(!sent_starting("CHEEVO\tid=9001"), "fired with no memory under it");
+
+	mem_none = false;                     /* the boot: memory appears */
+	frames(30);                           /* the next look finds it */
+	CHECK(diatom_cheevos_total_bytes() > 0 && sent_starting("CHEEVO") == NULL,
+	      "a set should start watching, not fire, the frame memory appears");
+	g_ram[0x10] = 0;
+	frames(2);
+	g_ram[0x10] = 5;
+	frames(1);
+	CHECK(sent("CHEEVO\tid=9001\tstate=unlocked"),
+	      "9001 never fired once the memory was there");
+
+	/* Two of three hits, then system RAM moves: the hits were counted on
+	 * memory that is not there now, so they are gone - carried over, the
+	 * first hit after the move would be the third */
+	g_ram[0x20] = 1;
+	frames(2);
+	g_ram[0x20] = 0;                      /* read until the look sees the move */
+	memset(g_ram2, 0, sizeof g_ram2);
+	mem_ram = g_ram2;
+	sent_clear();
+	frames(30);                           /* the look that sees the move */
+	g_ram2[0x20] = 1;
+	frames(2);
+	CHECK(!sent_starting("CHEEVO\tid=9002"),
+	      "hits counted before the memory moved carried over");
+	frames(1);
+	CHECK(sent("CHEEVO\tid=9002\tstate=unlocked"),
+	      "9002 should fire on three hits after the move");
+
+	/* Steady memory: after LATE_STEADY looks the core is asked no more */
+	frames(30 * 12);
+	calls = mem_calls;
+	frames(30 * 20);
+	CHECK(mem_calls == calls, "a core with steady memory was still asked: %d calls",
+	      mem_calls - calls);
+}
+
 /* ---- 6. a loaded state is a different timeline --------------------------- */
 
 static void test_runtime_reset(void)
@@ -678,6 +756,7 @@ int main(void)
 	test_condition();
 	test_set_file();
 	test_end_to_end();
+	test_late_memory();
 	test_runtime_reset();
 	test_progress_kept();
 	test_progress_events();
