@@ -40,7 +40,11 @@ static int g_menu_side_w;
 static bool g_snap_drawing;
 static mm_frame g_pframe;
 #define PANEL_REST ((mm_frame){ {1,0}, {1,1}, 1, false })
-enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, VCOL_MESSAGE };
+enum { PANEL_MENU, PANEL_HOT, PANEL_TILES, PANEL_P2, PANEL_MOVE, PANEL_TILES_GRID, PANEL_LIST, VCOL_MESSAGE };
+/* A tiles panel's marks (src/ds/glyph.h's ui_glyph): none here */
+#define UI_GLYPH_COUNT 0
+static const int *g_tile_marks;
+static int g_tile_marks_n;
 static unsigned now, step, event_at, polls, frames, services[3];
 static int button, power_calls, game_stops, shelf_frames, game_frames, nudges[2];
 static bool idle, queued_quit, sent, jump, extra_accept, ticking;
@@ -89,9 +93,9 @@ static void menu_panel(app *a, const char *heading, const menu_row *rows,
 static void hot_panel(app *a, const char *heading, const menu_row *rows, int n,
                       mm_pose pose)
 { (void)a; (void)heading; (void)rows; (void)n; (void)pose; assert(0); }
-static void tiles_panel(app *a, const char *heading, const menu_row *tiles, int n,
-                        int sel, mm_pose pose)
-{ (void)a; (void)heading; (void)tiles; (void)n; (void)sel; (void)pose; assert(0); }
+static void tiles_panel(app *a, int kind, const char *heading, const menu_row *tiles,
+                        const int *marks, int n, int sel, mm_pose pose)
+{ (void)a; (void)kind; (void)heading; (void)tiles; (void)marks; (void)n; (void)sel; (void)pose; assert(0); }
 static void p2_panel(app *a, const char *heading, const menu_row *rows, int n,
                      unsigned accent, mm_pose pose)
 { (void)a; (void)heading; (void)rows; (void)n; (void)accent; (void)pose; assert(0); }
