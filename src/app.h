@@ -14,6 +14,7 @@
 #include "idle.h"
 #include "library.h"
 #include "muselib.h"
+#include "musequeue.h"
 #include "platform.h"
 #include "status.h"
 #include "sysupdate.h"
@@ -390,5 +391,35 @@ int  muse_artist_of(int al);
 void muse_album_dir(int al, char *out, size_t n);
 /* Now Playing's cover let go, the library about to change */
 void np_forget(void);
+
+/* How a Muse screen was left: back one level, Muse closed altogether, or the
+ * library rebuilt under it by Rescan Folder, so every album index it held is
+ * stale and the shelf has to find itself again. */
+typedef enum { MUSE_BACK, MUSE_CLOSE, MUSE_REBUILT } muse_exit;
+
+/* For MP4's Now Playing (src/nowplaying_screen.c): a book's next speed, a
+ * new queue played, the play mode moved on (its marks, MUSE_MODES), the
+ * power button inside Muse and what Muse is open over (g_muse_over, its
+ * ctx, and g_muse_gone when that rule ended it), the Now Playing cover
+ * brought up to date (g_np), and a menu for a screen of the launcher's */
+void book_cycle_speed(void);
+void muse_play(const char *const *paths, int n, int start, double at,
+               bool book, double speed, const char *artist, const char *album);
+void muse_cycle_mode(void);
+typedef struct { const char *key; int glyph; } muse_mode_name;
+extern const muse_mode_name MUSE_MODES[MUQ_MODES];
+void muse_power(app *a);
+typedef struct {
+	int          album;
+	bool         done;
+	SDL_Texture *tex;
+} np_cover_state;
+extern np_cover_state g_np;
+void np_cover(app *a, int al);
+void zyperos_menu_for(app *a, int screen);
+/* Muse's covers: whether the card has answered every album's ask */
+bool cover_answers(void);
+/* A count of the frames drawn: each shelf frame and each clear (main.c) */
+extern unsigned g_frame_no;
 
 #endif

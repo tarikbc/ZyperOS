@@ -322,6 +322,18 @@ unsigned mq_phase(int who, int key_a, int key_b);
 unsigned mq_row_phase(bool selected, const char *heading, int n, int sel);
 /* The last menu panel and its body (main.c) */
 extern SDL_Rect g_menu_panel, g_menu_body;
+/* A marquee's clock started again (a screen that has just opened); and the
+ * screens over the one on top closed by MENU, which stops there (main.c) */
+void mq_reset(int who);
+void panel_return(void);
+/* A result over Muse over a paused game stopped by that menu's power
+ * rule: every screen above unwinds (main.c, beside the runner) */
+extern bool g_message_stopped;
+/* What Muse is open over: NULL the shelf, else that menu's style and its
+ * ctx; g_muse_gone when its power rule ended what was underneath */
+extern const menu_style *g_muse_over;
+extern void             *g_muse_over_ctx;
+extern bool              g_muse_gone;
 
 /* SELECT: Muse, over whatever is on screen */
 bool muse_open(app *a, const menu_style *over, void *ctx);
