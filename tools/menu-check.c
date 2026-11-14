@@ -525,63 +525,6 @@ static void zyperos_menu_online(void)
 	n = sys_menu_build(&u, rows, &b, &heading);
 	ck(n == PM_ROWS, "and none of that changes the row count");
 	{
-		scraper_ui su;
-		scraper_bufs sb;
-		menu_row sr[SC_ROWS];
-		sc_row ids[SC_ROWS];
-		int m, j, src = 0;
-
-		memset(&su, 0, sizeof su);
-		su.net = true;
-		su.missing = 142;
-		su.snaps = "off \xc2\xb7 0 KB";
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(m <= SC_ROWS, "the screen fits SC_ROWS");
-		ck(m == 6, "six rows and a rule, what the panel holds at 640x480");
-		ck(ids[0] == SC_FETCH && !strcmp(sr[0].label, "Fetch Missing Art") &&
-		   !strcmp(val(&sr[0]), "142 missing") && sr[0].live, "Fetch Missing Art first, with the count");
-		ck(ids[1] == SC_SNAPS && !strcmp(sr[1].label, "Video Snaps") && sr[1].live,
-		   "Video Snaps under it");
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(src++ == 0, "ScreenScraper is asked first");
-			if (ids[j] == SC_LIBRETRO) ck(src++ == 1 && !sr[j].live &&
-			                              !strcmp(val(&sr[j]), "no account"),
-			                              "then libretro, which needs nothing");
-			if (ids[j] == SC_SGDB) ck(src++ == 2 && sr[j].live && !strcmp(val(&sr[j]), "link"),
-			                          "then SteamGridDB, which invites a link");
-			if (ids[j] == SC_SS) ck(!sr[j].live && !strcmp(val(&sr[j]), "not in this build"),
-			                        "a build without ScreenScraper's key says so");
-		}
-		ck(src == 3, "all three sources are there");
-		su.ss_have = su.ss_in = true;
-		su.ss_name = "tarik";
-		su.sgdb = "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b";
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(!strcmp(val(&sr[j]), "linked as tarik") && sr[j].live,
-			                        "a linked account says who, and opens its page");
-			if (ids[j] == SC_SGDB) ck(!strcmp(val(&sr[j]), su.sgdb), "the key, masked as given");
-		}
-		su.net = false;
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(!strcmp(val(&sr[0]), "needs Wi-Fi") && !sr[0].live && sr[1].live,
-		   "offline the fetch says why, and Video Snaps still opens");
-		su.net = true;
-		su.running = true;
-		su.done = 31;
-		su.total = 142;
-		su.ss_found = 12; su.lr_found = 17; su.sg_found = 2;
-		m = sys_menu_scraper_rows(&su, &sb, sr, ids);
-		ck(!strcmp(sr[0].label, "Fetching") && !strcmp(val(&sr[0]), "31 / 142"),
-		   "running, the first row is its progress");
-		for (j = 0; j < m; j++) {
-			if (ids[j] == SC_SS) ck(!strcmp(val(&sr[j]), "12 covers") && !sr[j].live,
-			                        "and each source counts what it found");
-			if (ids[j] == SC_SGDB) ck(!strcmp(val(&sr[j]), "2 covers") && !sr[j].live, "SteamGridDB too");
-			ck(sr[j].value != MENU_NOTE_MARK, "no notes: six rows are what the panel holds");
-		}
-	}
-	{
 		menu_row pr[SSP_ROWS];
 		ssp_row pid[SSP_ROWS];
 		int m = sys_menu_ss_rows(true, NULL, NULL, pr, pid), j, unlink = 0;
@@ -618,31 +561,25 @@ static void zyperos_menu_online(void)
 	}
 	{
 		snaps_console c[2] = { { "SNES", true, 212000000ull }, { "Game Boy", false, 0 } };
-		snaps_ui vu = { .fetch = false, .play = true, .ss_in = false, .ss_have = true,
+		snaps_ui vu = { .play = true, .ss_in = false, .ss_have = true,
 		                .sound = SNAP_MUTED,
 		                .c = c, .nc = 2, .total = 212000000ull };
 		static snaps_bufs vb;
 		menu_row vr[SN_ROWS];
 		sn_row vid[SN_ROWS];
-		int con[SN_ROWS], m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
+		int con[SN_ROWS], m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con), j;
 
 		printf("the Video Snaps page:\n");
-		ck(vid[0] == SN_FETCH && !vr[0].live && !strcmp(val(&vr[0]), "needs ScreenScraper"),
-		   "fetching needs ScreenScraper, and says so");
-		ck(vid[1] == SN_PLAY && !strcmp(val(&vr[1]), "On") && vr[1].live, "playing is On to start");
-		ck(vid[2] == SN_SOUND && !strcmp(val(&vr[2]), "muted"), "and muted to start");
-		ck(vid[4] == SN_CONSOLE && con[4] == 0 && !strcmp(vr[4].label, "SNES") &&
-		   !strcmp(val(&vr[4]), "On \xc2\xb7 212 MB"), "a console with its room and its switch");
-		ck(vid[5] == SN_CONSOLE && !strcmp(val(&vr[5]), "Off \xc2\xb7 0 KB"), "one turned off");
+		/* Getting them is MENU > Scraper's Systems grid now (2026-11-13) */
+		for (j = 0; j < m; j++) ck(!vr[j].label || strcmp(vr[j].label, "Fetch with Box Art"),
+		                            "no Fetch with Box Art row: the Systems grid gets them");
+		ck(vid[0] == SN_PLAY && !strcmp(val(&vr[0]), "On") && vr[0].live, "playing is On to start");
+		ck(vid[1] == SN_SOUND && !strcmp(val(&vr[1]), "muted"), "and muted to start");
+		ck(vid[3] == SN_CONSOLE && con[3] == 0 && !strcmp(vr[3].label, "SNES") &&
+		   !strcmp(val(&vr[3]), "On \xc2\xb7 212 MB"), "a console with its room and its switch");
+		ck(vid[4] == SN_CONSOLE && !strcmp(val(&vr[4]), "Off \xc2\xb7 0 KB"), "one turned off");
 		ck(vid[m - 1] == SN_DELETE && !strcmp(val(&vr[m - 1]), "212 MB") && vr[m - 1].live,
 		   "Delete All last, with what it gives back");
-		vu.ss_in = true;
-		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
-		ck(vr[0].live && !strcmp(val(&vr[0]), "Off"), "with ScreenScraper, fetching is a switch, Off to start");
-		vu.ss_have = false;
-		m = sys_menu_snaps_rows(&vu, &vb, vr, vid, con);
-		ck(!vr[0].live && !strcmp(val(&vr[0]), "not in this build"),
-		   "a build without ScreenScraper's developer pair says so, plainly");
 	}
 
 	/* Controls needs nothing of the device - no network, no account, no

@@ -23,7 +23,8 @@ static bool signed_in = true, no_cover_reply, wrong_reply, quota_reply, video_re
 static const char *snap_body = "XXXXftypisom-snap";
 static const char VIDEO[] = "{\"response\":{\"jeu\":{\"noms\":[{\"region\":\"us\",\"text\":\"Catalog Game 2\"}],"
 	"\"medias\":[{\"type\":\"video-normalized\",\"url\":\"https://test/snap.mp4\"}]}}}";
-static bool nes_only(const char *folder) { return !strcmp(folder, "NES"); }
+static bool nes_only(const char *folder, const char *file) { (void)file; return !strcmp(folder, "NES"); }
+static bool no_nes(const char *folder) { return strcmp(folder, "NES") != 0; }
 static systems_cfg systems;
 static const char GOOD[] = "{\"response\":{\"jeu\":{\"noms\":[{\"region\":\"us\",\"text\":\"Catalog Game 2\"}],"
 	"\"medias\":[{\"type\":\"box-2D\",\"url\":\"https://test/cover.png\"}]}}}";
@@ -213,6 +214,26 @@ int main(void)
 		p = run(); CHECK(requests == 0 && p.snaps == 0);
 		video_reply = false;
 		for (unsigned i = 0; i < 4; i++) { snprintf(path, sizeof path, "%s/%s", root, snaps[i]); unlink(path); }
+	}
+
+	/* Covers off for NES (MENU > Scraper's Systems, 2026-11-13), its videos
+	 * on: no NES game is asked for its name or a cover, and every one,
+	 * cover or not, gets its video's lookup; PICO-8, covers on, its name */
+	{
+		const char *nes[] = { "Covered 2", "Known", "Set 2", "Missing 2", "Bare 2" };
+
+		fresh_db(); write_at("NES/Bare 2.zip", "rom");
+		art_covers_rule(no_nes); ss_run_videos(nes_only); video_reply = true;
+		p = run();
+		CHECK(p.snaps == 5 && p.named == 1 && p.found == 0 && requests == 11);
+		CHECK(!matches("NES/.media/Bare 2.png", "\x89PNGnew-cover"));
+		snprintf(path, sizeof path, "%s/NES/.media/Bare 2.png", root); CHECK(access(path, F_OK) != 0);
+		check_covers();
+		art_covers_rule(NULL); ss_run_videos(NULL); video_reply = false;
+		for (unsigned i = 0; i < 5; i++) {
+			snprintf(path, sizeof path, "%s/NES/.media/%s.mp4", root, nes[i]); unlink(path);
+		}
+		snprintf(path, sizeof path, "%s/NES/Bare 2.zip", root); unlink(path);
 	}
 
 	/* The quota result survives cancel; run this last. */

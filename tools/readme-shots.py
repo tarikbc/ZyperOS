@@ -196,7 +196,7 @@ SHOTS={
     # The in-game menu over OpenBOR (src/portmenu.h), on the launcher's
     # made-up frame rather than a game's
     'openbor':('openbor','OPENBOR',['--screen','games','--gamemenu','0','port']),
-    'scraper':('demo','PS1',['--scraper','2']),
+    'scraper':('demo','PS1',['--scraper-page','1']),
     'update':('demo','PS1',['--update']),
     # The screensaver (DESIGN.md 11.37) over the focused game's screenshot,
     # which is the picture its video snap would be

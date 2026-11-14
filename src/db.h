@@ -131,6 +131,20 @@ bool db_titles_load(db *d, const char *folder, db_titles *out);
 const char *db_titles_find(const db_titles *t, const char *file);
 void db_titles_free(db_titles *t);
 bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m);
+
+/* ScreenScraper's "we do not know this game" (src/ssrun.h, SS_UNKNOWN) and
+ * when it said so, `at` in seconds, so a run leaves the game alone for a
+ * while: a console of games it does not know cost every run two seconds a
+ * game, each counted against the account's day of unknown games (HTTP 431),
+ * and the names pass asked about the same covered games again on every run.
+ * A later answer about the game clears it; a renamed file is a new key and
+ * is asked again. Library scope, as the games are. */
+bool db_ss_miss_set(db *d, const char *folder, const char *file, long long at);
+bool db_ss_miss_clear(db *d, const char *folder, const char *file);
+/* A folder's misses said between `from` and `to`, as titles rows with an
+ * empty title: db_titles_find finds one, db_titles_free frees them */
+bool db_ss_misses_load(db *d, const char *folder, long long from, long long to,
+                       db_titles *out);
 /* A game's row gone, details and title with it: the game was deleted from
  * the card (src/gamedel.h). True when there was one. */
 bool db_game_del(db *d, const char *folder, const char *file);

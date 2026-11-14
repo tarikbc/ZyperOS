@@ -252,6 +252,17 @@ static const char GAMES_SCHEMA[] =
 	"  PRIMARY KEY(folder, file)"
 	");";
 
+/* ScreenScraper's "we do not know this game" and when it said so, per card
+ * as the games are (db.h, db_ss_miss_set). Its own table, so no games row
+ * stands for a game with nothing in it. */
+static const char SS_MISS_SCHEMA[] =
+	"CREATE TABLE IF NOT EXISTS ss_miss("
+	"  folder TEXT NOT NULL,"
+	"  file TEXT NOT NULL,"
+	"  at INTEGER NOT NULL,"
+	"  PRIMARY KEY(folder, file)"
+	");";
+
 static bool run(db *d, const char *sql)
 {
 	char *err = NULL;
@@ -269,7 +280,7 @@ static bool games_schema(db *d)
 	bool has_title = false;
 	int rc;
 
-	if (!run(d, GAMES_SCHEMA)) return false;
+	if (!run(d, GAMES_SCHEMA) || !run(d, SS_MISS_SCHEMA)) return false;
 	if (sqlite3_prepare_v2(d->h, "PRAGMA table_info(games);", -1, &st, NULL) != SQLITE_OK)
 		return false;
 	while ((rc = sqlite3_step(st)) == SQLITE_ROW) {
@@ -578,6 +589,81 @@ void db_titles_free(db_titles *t)
 	for (int i = 0; i < t->n; i++) free((void *)t->rows[i].file);
 	free(t->rows);
 	memset(t, 0, sizeof *t);
+}
+
+/* --- ScreenScraper's misses (db.h) ----------------------------------------- */
+
+bool db_ss_miss_set(db *d, const char *folder, const char *file, long long at)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !folder || !file) return false;
+	if (sqlite3_prepare_v2(d->h, "INSERT OR REPLACE INTO ss_miss(folder, file, at) VALUES(?,?,?);",
+	                       -1, &st, NULL) != SQLITE_OK) return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(st, 3, at);
+	ok = sqlite3_step(st) == SQLITE_DONE;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_ss_miss_clear(db *d, const char *folder, const char *file)
+{
+	sqlite3_stmt *st = NULL;
+	bool ok;
+
+	if (!d || !folder || !file) return false;
+	if (sqlite3_prepare_v2(d->h, "DELETE FROM ss_miss WHERE folder=? AND file=?;",
+	                       -1, &st, NULL) != SQLITE_OK) return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(st, 2, file, -1, SQLITE_TRANSIENT);
+	ok = sqlite3_step(st) == SQLITE_DONE;
+	sqlite3_finalize(st);
+	return ok;
+}
+
+bool db_ss_misses_load(db *d, const char *folder, long long from, long long to, db_titles *out)
+{
+	sqlite3_stmt *st = NULL;
+	int cap = 0;
+
+	if (!out) return false;
+	memset(out, 0, sizeof *out);
+	if (!d || !folder) return false;
+	if (sqlite3_prepare_v2(d->h, "SELECT file FROM ss_miss WHERE folder=? AND at>=? AND at<=?;",
+	                       -1, &st, NULL) != SQLITE_OK) return false;
+	sqlite3_bind_text(st, 1, folder, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int64(st, 2, from);
+	sqlite3_bind_int64(st, 3, to);
+	while (sqlite3_step(st) == SQLITE_ROW) {
+		const char *file = (const char *)sqlite3_column_text(st, 0);
+		size_t lf;
+		char *both;
+
+		if (!file) continue;
+		if (out->n == cap) {
+			int bigger = cap ? cap * 2 : 64;
+			db_title_row *rows = realloc(out->rows, (size_t)bigger * sizeof *rows);
+
+			if (!rows) break;
+			out->rows = rows;
+			cap = bigger;
+		}
+		/* As a titles row, the file and an empty title in one block, so
+		 * db_titles_find and db_titles_free serve it */
+		lf = strlen(file);
+		if (!(both = malloc(lf + 2))) break;
+		memcpy(both, file, lf + 1);
+		both[lf + 1] = '\0';
+		out->rows[out->n].file = both;
+		out->rows[out->n].title = both + lf + 1;
+		out->n++;
+	}
+	sqlite3_finalize(st);
+	if (out->n > 1) qsort(out->rows, (size_t)out->n, sizeof *out->rows, title_row_cmp);
+	return true;
 }
 
 bool db_game_set(db *d, const char *folder, const char *file, const game_meta *m)

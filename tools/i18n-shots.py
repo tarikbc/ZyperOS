@@ -274,8 +274,28 @@ EXTRA = {
     "dev-page-none": ("demo", "PS1", ["--dev-page", "2"]),
     "dev-on": ("demo", "PS1", ["--dev-page", "3"]),
     "empty-ways": ("empty", "", ["--ways", "none,brick"]),
-    # A row whose value is "needs Wi-Fi", the longest it has in most languages
-    "scraper-offline": ("demo", "PS1", ["--scraper", "5"]),
+    # MENU > Scraper's page (DESIGN.md 11.19): the plan with videos off, on
+    # for three systems and for one (the plurals' one), Systems with a long
+    # name in focus too, Videos for, Settings, the run, done (and with one
+    # system's videos), offline, and a system's own Box Art
+    "scraper-page-plan-off": ("demo", "PS1", ["--scraper-page", "0"]),
+    "scraper-page-plan": ("demo", "PS1", ["--scraper-page", "1"]),
+    "scraper-page-plan-one": ("demo", "PS1", ["--scraper-page", "2"]),
+    "scraper-page-systems": ("demo", "PS1", ["--scraper-page", "3"]),
+    "scraper-page-systems-long": ("demo", "PS1", ["--scraper-page", "4"]),
+    "scraper-page-videos-for": ("demo", "PS1", ["--scraper-page", "5"]),
+    "scraper-page-settings": ("demo", "PS1", ["--scraper-page", "6"]),
+    "scraper-page-run": ("demo", "PS1", ["--scraper-page", "7", "7180"]),
+    "scraper-page-done": ("demo", "PS1", ["--scraper-page", "8"]),
+    "scraper-page-done-one": ("demo", "PS1", ["--scraper-page", "9"]),
+    "scraper-page-offline": ("demo", "PS1", ["--scraper-page", "10"]),
+    "scraper-page-boxart": ("demo", "PS1", ["--scraper-page", "11"]),
+    "scraper-page-done-no-account": ("demo", "PS1", ["--scraper-page", "12"]),
+    "scraper-page-plan-short": ("demo", "PS1", ["--scraper-page", "13"]),
+    "scraper-page-videos-for-one": ("demo", "PS1", ["--scraper-page", "14"]),
+    "scraper-page-done-full": ("demo", "PS1", ["--scraper-page", "15"]),
+    # and the Video Snaps page it opens: how the shelf plays them, the room
+    "scraper-video-snaps": ("demo", "PS1", ["--scraper", "3"]),
     # A game's Cover and Video (DESIGN.md 11.34) in every state, a tile of
     # each kind and region focused, Delete's question and the message of a
     # download that did not come; and the details row's other value

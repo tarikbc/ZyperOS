@@ -10,7 +10,7 @@ import sys
 
 source = Path(sys.argv[1]).read_text()
 functions = []
-for name in ('sort_shelf', 'refresh_game_titles', 'art_screen'):
+for name in ('sort_shelf', 'refresh_game_titles', 'scraper_page'):
     # sort_shelf is not static: src/shelfbuild.c sorts too (src/app.h)
     pattern = rf'^(?:static )?(?:void|menu_result) {name}\([^\n]*(?:\n[^{{]*)?\n?\{{\n.*?^\}}'
     match = re.search(pattern, source, re.M | re.S)

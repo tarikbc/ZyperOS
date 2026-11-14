@@ -6829,15 +6829,32 @@ static void menu_message(app *a, const char *heading, menu_row row,
  * reason says "needs Wi-Fi" in its value instead. */
 #define MSG_NEEDS_WIFI T(S_PANEL_NEEDS_WIFI)
 
-/* Video snaps come with a lookup when MENU > Scraper > Video Snaps says to,
- * for the consoles left on (ss_run_videos asks this per console). */
-static bool snap_wanted(const char *folder)
+/* Video snaps come with a lookup for a game whose system has its videos on
+ * (MENU > Scraper's Systems, snaps_get), and which Videos for takes: every
+ * game, the favorites, or the games played (src/snaps.h). A favorite and a
+ * game's play time are kept by its system's tag, so the systems a run
+ * covers are handed here as it starts (g_snap_sys); without them only "all"
+ * gets videos. The play times are folded once a run (stats_summarize). */
+static const systems_cfg *g_snap_sys;
+
+static bool snap_wanted(const char *folder, const char *file)
 {
-	return snaps_fetch() && snaps_console_on(folder);
+	const char *tag = NULL;
+	int which, i;
+	long secs = 0, last = 0;
+
+	if (!snaps_get(folder)) return false;
+	if ((which = snaps_for()) == SNAPS_FOR_ALL) return true;
+	for (i = 0; g_snap_sys && i < g_snap_sys->count; i++)
+		if (!strcmp(g_snap_sys->systems[i].folder, folder)) { tag = g_snap_sys->systems[i].tag; break; }
+	if (!tag) return false;
+	if (which == SNAPS_FOR_PLAYED && !(stats_lookup(tag, file, &secs, &last) && (secs > 0 || last > 0)))
+		return false;
+	return snaps_for_game(which, fav_is(tag, file), which == SNAPS_FOR_PLAYED);
 }
 
-/* MENU > Scraper's value, from the last count of missing covers: taken when
- * its screen opens and after a run (scraper_count), never per frame */
+/* MENU > Scraper's value, from the last count of missing covers: taken as
+ * its page closes (scraper_page), never per frame */
 static char g_scraper_val[32];
 
 /* The two menus behind MENU, their row indices and their buffers: src/sys_menu.h */
@@ -9471,6 +9488,14 @@ static ui_glyph tile_glyph(const char *label)
 	};
 	size_t i;
 
+	/* MENU > Scraper's questions (11.19): Settings - the two sources by
+	 * their own marks, never their logos, and the videos - and Videos for */
+	if (!strcmp(label, "ScreenScraper")) return UI_GLYPH_CLOUD;
+	if (!strcmp(label, "SteamGridDB")) return UI_GLYPH_GRID;
+	if (!strcmp(label, T(S_SCRAPER_PAGE_VIDEOS)) || !strcmp(label, T(S_SCRAPER_ALL_GAMES)))
+		return UI_GLYPH_FILM;
+	if (!strcmp(label, T(S_LIBRARY_FAVORITES))) return UI_GLYPH_HEART;
+	if (!strcmp(label, T(S_SCRAPER_PLAYED))) return UI_GLYPH_PLAY;
 	for (i = 0; i < sizeof MARKS / sizeof MARKS[0]; i++)
 		if (!strcmp(label, T(MARKS[i].name)) || !strcmp(label, T_en(MARKS[i].name)))
 			return MARKS[i].g;
@@ -9665,9 +9690,16 @@ static void tile_sub_lay(const char *label, const char *value, int w, tile_sub *
 #define CHOICE_ROW_GAP 12
 #define CHOICE_PAD_Y   14
 #define CHOICE_MARK    64
+/* MENU > Scraper's Settings is one too, known by its first row,
+ * ScreenScraper: a tile is 248 wide inside, and the name alone takes 264 in
+ * meta, with "linked as" and the account under it (2026-11-13). */
 static bool tiles_are_list(const menu_row *tiles, int n)
 {
-	return n == 3 && tiles[0].label && tile_glyph(tiles[0].label) == UI_GLYPH_HEADPHONES &&
+	ui_glyph g;
+
+	if (n != 3 || !tiles[0].label) return false;
+	g = tile_glyph(tiles[0].label);
+	return (g == UI_GLYPH_HEADPHONES || g == UI_GLYPH_CLOUD) &&
 	       tiles[0].value && tiles[1].value && tiles[2].value;
 }
 
@@ -12743,57 +12775,6 @@ static void xfer_screen_way(app *a, int way)
 	memset(&a->in, 0, sizeof a->in);
 }
 
-/* Box art, from libretro. See artscrape.h for the matching rule and why it is
- * that one.
- *
- * Starts as soon as the screen opens rather than asking again. The player has
- * already pressed A on a row called Box Art; a confirmation would be a second
- * question with the same answer. It is safe to start because it is safe to
- * stop: existing art is kept, and known titles need no metadata request.
- * A stopped run can continue with the next request tomorrow.
- *
- * Deliberately NOT automatic. It is a network request on someone's behalf,
- * and a launcher that quietly fetches two hundred images the first time a
- * card is inserted has made that decision for them. */
-/* The heading and rows, in one place so a shot cannot picture a screen that
- * does not exist - the lesson from --hare, where the fixture claimed a byte
- * count the code could not produce. */
-static void art_head(char *out, size_t n, const char *now)
-{
-	char fit[128];
-
-	/* Trimmed to fit. A ROM name is as long as somebody's dump of it -
-	 * "Legend of Zelda, The - A Link to the Past (USA)" and worse - and this
-	 * is a heading, which menu_draw centers rather than wraps, so a long one
-	 * ran off both sides of the panel. Three quarters of the screen leaves
-	 * the panel a margin it can keep. */
-	ui_fit_text(ui_font(UI_F_LABEL), now, fit, sizeof fit,
-	            ZYPEROS_SCREEN_W * 3 / 4);
-	snprintf(out, n, "%s\n%s", T(S_SCRAPER_BOX_ART), fit);
-}
-
-static int art_rows(menu_row *out, const char *where, const char *counts,
-                    bool working)
-{
-	out[0] = (menu_row){ T(S_SCRAPER_SYSTEMS), where,  false };
-	out[1] = (menu_row){ T(S_SCRAPER_ART),     counts, false };
-	out[2] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE), NULL, false };
-	return 3;
-}
-
-static void art_preview(app *a, const char *now, const char *where,
-                        const char *counts, bool working)
-{
-	menu_row rows[3];
-	char head[192];
-	int n = art_rows(rows, where, counts, working);
-
-	art_head(head, sizeof head, now);
-	draw_shelf(a);
-	ui_scrim(a->r, 0);
-	menu_draw(a, head, rows, n, -1, menu_std_width(a), MENU_ZYPEROS);
-}
-
 /* game_info and gi_rows: src/game_menu.h */
 
 static void gi_gather(app *a, int owner, const game_entry *g, game_info *gi)
@@ -12914,419 +12895,1505 @@ static void refresh_game_titles(app *a)
 	}
 }
 
-/* `only` names one system's folder, or NULL for the whole library. Says how
- * it went, for Zyper in the top menu: MENU_CHANGED when the run was seen
- * through to its end with nothing to report, MENU_FAILED when there was no
- * network or the run ended on a problem, MENU_STAY when it was left early.
+static menu_result ss_page(app *a);
+static menu_result snaps_screen(app *a);
+
+/* ---------- MENU > Scraper: one page (DESIGN.md 11.19) -------------------
  *
- * One system is worth having for the FIRST run on a card, where it is the
- * difference between twenty images and a hundred and eighty. It is worth much
- * less afterwards: a full card with stored names needs no network requests.
- * A card with covers but missing names asks only for the missing metadata. */
-static menu_result art_run(app *a, const char *only, const char *one,
-                           const char *stem, const char *one_file, unsigned accent,
-                           int lv)
-{
-	menu_row     rows[3];
+ * Tarik, 2026-11-13, over five rounds of shots: the old panel was "very
+ * confusing" ("stuck on 0/523 while the game on the header is changing"),
+ * "too verbose", its video part "an afterthought"; he asked to see "the
+ * images coming in, more icons", and the scope: "Is it getting video for
+ * all my roms? What is 1.4gb? Can i pick which ones gets videos? Or which
+ * systems gets arts?" This page answers those on itself, in the look of
+ * Flash Drive's page:
+ *
+ *   the plan     before a run: each system's icon with a cover mark and a
+ *                video mark, the covers it will look for, the videos it
+ *                will get and the room they take. A runs it, Y opens
+ *                Systems, START Settings (the accounts, Video Snaps).
+ *   Systems      one tile a system, its icon and two marks; A switches its
+ *                covers, X its videos, Y asks which games get videos; the
+ *                system in focus is said under the heading and at the foot.
+ *   the run      Zyper beside the game; its system's icon, its source's
+ *                mark and the bar under it; each cover found lands big and
+ *                then joins the six before it, a video's play mark on it.
+ *   done         the covers it found as a wall, the counts as marks, and
+ *                the room said plainly: "Videos: 3 systems, 525 MB on the
+ *                card".
+ *
+ * A system's own Box Art (its menu) opens the same page for it alone. The
+ * run is artscrape.c's, stepped here a pass at a time as before; what it
+ * found arrives by art_progress.found_seq, decoded off the frame
+ * (src/mediatex.h). */
+
+#define SCP_RING  14      /* arrivals kept: the run's grid shows 7, Done's wall 14 */
+#define SCP_LAND  520     /* a cover's landing, ms */
+#define SCP_COLS  3
+#define SCP_ROWS  3       /* the Systems grid's rows on the screen */
+#define SCP_MB_PER_VIDEO 2.5   /* a ScreenScraper snap, until the card's own say */
+#define SCP_MB_PER_COVER 0.25  /* a cover, until the card's own say */
+/* The page's frame, as Flash Drive's pages (DESIGN.md 11.18): the sides at
+ * DS_INSET, what the page holds from under the heading and Zyper, a line
+ * over the keys, and the keys at 704 */
+#define SCP_X0    DS_INSET                        /* 24 */
+#define SCP_X1    (ZYPEROS_SCREEN_W - DS_INSET)   /* 1000 */
+#define SCP_TOP   UD_TILE_Y                       /* 256 */
+#define SCP_LINE  648
+/* What a run leaves free on the card, and when one stops for room */
+#define SCP_RESERVE (200ULL * 1000 * 1000)
+#define SCP_FLOOR   (100ULL * 1000 * 1000)
+/* A run's pace before its own says (the 2026-11-13 logs: about 2 s a
+ * ScreenScraper lookup, about 1 s a libretro try), and a video's download
+ * over the Pixel 2's Wi-Fi */
+#define SCP_S_SS    2.0
+#define SCP_S_LR    1.0
+#define SCP_S_VIDEO 2.0
+
+typedef struct {
+	char folder[CFG_STR], tag[8], name[CFG_STR], key[CFG_STR];
+	int  miss;                       /* games with no cover */
+	int  vneed[SNAPS_FOR_COUNT];     /* games with no video, by Videos for */
+	int  names;                      /* games with a cover and no name: the details part's */
+	int  both[SNAPS_FOR_COUNT];      /* of those, the ones with no video too */
+	unsigned long long vroom;        /* its videos on the card */
+	int  nvideos;
+	bool cov, vid;
+	SDL_Texture *icon;
+} scp_sys;
+
+typedef struct {
+	SDL_Texture *tex;
+	int w, h;
+	unsigned seq;
+	int src;                         /* ART_SRC_* */
+	bool video;
+	char folder[CFG_STR];
+} scp_cover;
+
+enum { SCP_PLAN, SCP_SYSTEMS, SCP_RUN, SCP_DONE };
+
+typedef struct {
+	app *a;
+	bool fixture;                    /* a shot's: nothing read, nothing run */
+	char only[CFG_STR];              /* a system's Box Art: that system alone */
+	scp_sys s[CFG_MAX_SYSTEMS];
+	int n;
+	int where, focus;
+	bool net, ss_in;
+	double mb_video, mb_cover;
+	unsigned long long free;         /* the card's room, 0 when it cannot tell */
+	/* the run */
+	systems_cfg cfg;
 	art_progress p;
-	char         counts[160], where[64], head[192];
-	int          nrows = 3;
-	bool         done = false, working = true;
-	float        k;
-	/* Whether the one game already had a cover, so a miss can say it kept it
-	 * rather than read as though the cover went. */
-	bool         had = one && stem && only && has_box_art(only, stem);
+	unsigned seen;                   /* the arrival last taken */
+	scp_cover ring[SCP_RING];          /* [0] the newest */
+	int nring;
+	unsigned land_at;                /* when [0] began to land */
+	unsigned shot_now;               /* a shot's clock, else 0 */
+	int done_found, done_videos, done_missing;
+	char problem[160];
+	/* its pace, for the time left: per game in the part it is in, before
+	 * its own (s_cov, s_det), and the details part's games, guessed */
+	double s_cov, s_det;
+	int est_looks;
+	bool pace_det;
+	unsigned pace_t0, room_at;
+	int pace_n0;
+} scp_view;
 
-	if (!net_online()) {
-		menu_row row = { MSG_NEEDS_WIFI, NULL, false };
+static scp_view *g_scp;                /* the page open, for the run's rule */
 
-		timed_message(a, T(S_SCRAPER_BOX_ART), &row, 1, 0, accent);
-		return MENU_FAILED;
-	}
+/* A run's covers, by the Systems switch; the system of a Box Art always */
+static bool scp_rule(const char *folder)
+{
+	int i;
 
-	/* The scraper needs the one async slot, and an account answer from a game
-	 * just quit may still be holding it. */
-	sync_abandon();
+	if (!g_scp) return true;
+	if (g_scp->only[0]) return !strcmp(folder, g_scp->only);
+	for (i = 0; i < g_scp->n; i++)
+		if (!strcmp(g_scp->s[i].folder, folder)) return g_scp->s[i].cov;
+	return true;
+}
 
-	/* SCREENSCRAPER FIRST, FOR ONE GAME. That is the settled order: them
-	 * when the player has an account, libretro when they do not and libretro
-	 * again when they cannot answer - a miss, a refusal, or a name that does
-	 * not survive the check.
-	 *
-	 * Only the single-game path for now. The bulk run is the same idea over
-	 * 1,708 games and a different conversation about time: measured at 5.5
-	 * seconds a game it is an overnight job, where libretro fetches one index
-	 * per system and then only what is missing.
-	 *
-	 * It brings the text with it. A cover fetched without the year and the
-	 * synopsis would mean asking again later for what was in hand now. */
-	if (one && stem && only && ss_signed_in()) {
-		const system_cfg *sys = NULL;
-		char dir[LIB_PATH * 2];
-		int i;
+static SDL_Texture *scp_icon(scp_view *v, int i)
+{
+	char path[CFG_STR * 2];
 
-		for (i = 0; i < a->sys.count; i++)
-			if (!strcmp(a->sys.systems[i].folder, only)) { sys = &a->sys.systems[i]; break; }
-		snprintf(dir, sizeof dir, "%s/%s", P_ROMS, only);
-		if (sys && ss_run_begin(only, one_file, stem, dir, sys->exts)) {
-			bool ss_working = true;
-
-			while (ss_working && !want_quit && a->running) {
-				int st = ss_run_step();
-
-				plat_input_poll(&a->in);
-				ui_sounds_follow();
-				if (a->in.quit_requested) { ss_run_cancel(); a->running = false; return MENU_STAY; }
-				if (a->in.pressed[IN_POWER] || idle_due(a)) {
-					ss_run_cancel();
-					power_off(a);
-					return MENU_STAY;
-				}
-				if (menu_leaving(a)) {
-					ss_run_cancel();
-					plat_input_flush();
-					memset(&a->in, 0, sizeof a->in);
-					return MENU_STAY;
-				}
-				if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
-				if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
-				if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
-				if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
-
-				if (st == 0) {
-					/* Got it. Say so on the same panel the libretro run
-					 * uses, so the two sources look like one feature. */
-					menu_row row[2];
-
-					art_head(head, sizeof head, one);
-					row[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
-					                     T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND), false };
-					row[1] = (menu_row){ b_legend(S_KEYHINT_CLOSE), NULL, false };
-					timed_message(a, head, row, 2, menu_std_width(a), accent);
-					ss_run_cancel();
-					free_all_textures(a);
-					return MENU_CHANGED;
-				}
-				if (st < 0) { ss_run_cancel(); ss_working = false; break; }
-
-				art_head(head, sizeof head, one);
-				rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART), ss_run_where(), false };
-				rows[1] = (menu_row){ b_legend(S_KEYHINT_STOP), NULL, false };
-				if (!panel_frame(a, lv, &k)) continue;
-				tick_tint(a);
-				tick_theme(a);
-				draw_shelf(a);
-				ui_scrim_k(a->r, 0, k);
-				menu_draw(a, head, rows, 2, -1, menu_std_width(a), accent);
-				plat_draw_osd(a->r);
-				plat_present();
-				ui_frame_rest(8);
-			}
-			if (!a->running || want_quit) return MENU_STAY;
+	if (i < 0 || i >= v->n) return NULL;
+	if (!v->s[i].icon && v->s[i].key[0]) {
+		snprintf(path, sizeof path, "%s/system-icons/%s-still.png", v->fixture ? "res" : P_ROOT, v->s[i].key);
+		if ((v->s[i].icon = IMG_LoadTexture(v->a->r, path))) {
+			SDL_SetTextureScaleMode(v->s[i].icon, SDL_ScaleModeNearest);
+			SDL_SetTextureBlendMode(v->s[i].icon, SDL_BLENDMODE_BLEND);
 		}
 	}
+	return v->s[i].icon;
+}
 
-	if (only) {
-		/* A one-entry library rather than a filter inside artscrape.c. The
-		 * scraper already takes the list it should work on; handing it a
-		 * shorter list is the same operation, and it keeps "which systems"
-		 * a question the caller answers. */
-		static systems_cfg one;
-		int i;
+static void scp_icon_draw(scp_view *v, int i, int cx, int cy, int size, Uint8 al)
+{
+	SDL_Texture *t = scp_icon(v, i);
+	int w, h;
 
-		one.count = 0;
-		for (i = 0; i < a->sys.count; i++)
-			if (!strcmp(a->sys.systems[i].folder, only)) {
-				one.systems[0] = a->sys.systems[i];
-				one.count = 1;
-				break;
+	if (!t) return;
+	SDL_QueryTexture(t, NULL, NULL, &w, &h);
+	if (w >= h) { h = h * size / w; w = size; } else { w = w * size / h; h = size; }
+	SDL_SetTextureAlphaMod(t, al);
+	SDL_RenderCopy(v->a->r, t, NULL, &(SDL_Rect){ cx - w / 2, cy - h / 2, w, h });
+	SDL_SetTextureAlphaMod(t, 255);
+}
+
+static int scp_find(const scp_view *v, const char *folder)
+{
+	int i;
+
+	for (i = 0; folder && i < v->n; i++)
+		if (!strcmp(v->s[i].folder, folder)) return i;
+	return -1;
+}
+
+static int scp_bsearch_cmp(const void *k, const void *e)
+{
+	return strcmp(*(const char *const *)k, *(const char *const *)e);
+}
+
+/* What every system has and wants, from the shelves already scanned: its
+ * games with no cover (artscrape.c's art_missing, one listing of the
+ * folder and one of its .media), its games with no video by each choice of
+ * Videos for (one listing of the .mp4), the room its videos take, and its
+ * two switches. When the page opens and after a run, never per frame. */
+static void scp_count(scp_view *v)
+{
+	app *a = v->a;
+	unsigned long long all_bytes = 0, cover_bytes = 0;
+	int i, all_videos = 0, all_covers = 0;
+	long long now = (long long)time(NULL);
+	struct statvfs vfs;
+
+	v->n = 0;
+	v->net = net_online();
+	v->ss_in = ss_signed_in();
+	v->free = statvfs(P_ROMS, &vfs) == 0 ? (unsigned long long)vfs.f_bavail * vfs.f_frsize : 0;
+	stats_summarize(STATS_ALL, false, (long)time(NULL));
+	for (i = 0; i < a->sys.count && v->n < CFG_MAX_SYSTEMS; i++) {
+		const system_cfg *sc = &a->sys.systems[i];
+		const game_list *gl;
+		scp_sys *s;
+		char dir[LIB_PATH * 2], **mp4, **png;
+		int k, nmp4, npng, ncb;
+		db_titles titles = { 0 }, miss = { 0 };
+		bool named;
+
+		if (!sc->folder[0] || a->view[i].owner || is_muse(sc)) continue;
+		if (v->only[0] && strcmp(sc->folder, v->only)) continue;
+		gl = sys_games(&a->view[i]);
+		if (!gl->count) continue;
+		s = &v->s[v->n++];
+		memset(s, 0, sizeof *s);
+		snprintf(s->folder, sizeof s->folder, "%s", sc->folder);
+		snprintf(s->tag, sizeof s->tag, "%s", sc->tag);
+		snprintf(s->name, sizeof s->name, "%s", sc->name);
+		snprintf(s->key, sizeof s->key, "%s", home_art_key(sc->tag));
+		snprintf(dir, sizeof dir, "%s/%s", P_ROMS, sc->folder);
+		s->miss = art_missing(dir, sc->exts, NULL, NULL);
+		s->cov = v->only[0] ? true : snaps_covers(sc->folder);
+		s->vid = snaps_get(sc->folder);
+		s->vroom = snaps_bytes(P_ROMS, sc->folder);
+		mp4 = snaps_stems(P_ROMS, sc->folder, &nmp4);
+		png = snaps_cover_stems(P_ROMS, sc->folder, &npng);
+		s->nvideos = nmp4;
+		all_bytes += s->vroom;
+		all_videos += nmp4;
+		cover_bytes += snaps_cover_bytes(P_ROMS, sc->folder, &ncb, 24);
+		all_covers += ncb;
+		/* The details part's games, as artscrape.c's details_count picks
+		 * them: a cover, no name, and no miss in its 30 days */
+		named = v->ss_in && ss_system_id(sc->folder);
+		if (named) {
+			db_titles_load(db_lib(), sc->folder, &titles);
+			db_ss_misses_load(db_lib(), sc->folder, now - 30 * 86400LL, now + 86400, &miss);
+		}
+		for (k = 0; k < gl->count; k++) {
+			const game_entry *g = &gl->items[k];
+			const char *stem = g->name, *t;
+			long secs = 0, last = 0;
+			bool name = false;
+			int w;
+
+			if (named && ((npng && bsearch(&stem, png, (size_t)npng, sizeof *png, scp_bsearch_cmp)) ||
+			              es_art_cover(dir, g->file, g->name)) && !db_titles_find(&miss, g->file)) {
+				t = db_titles_find(&titles, g->file);
+				name = !t || !*t;
 			}
-		art_begin(&one, P_ROMS, stem);
+			if (name) s->names++;
+			if (nmp4 && bsearch(&stem, mp4, (size_t)nmp4, sizeof *mp4, scp_bsearch_cmp)) continue;
+			if (es_art_video(dir, g->file, g->name)) continue;
+			for (w = 0; w < SNAPS_FOR_COUNT; w++) {
+				bool in = w == SNAPS_FOR_ALL ||
+				          (w == SNAPS_FOR_FAVORITES && fav_is(sc->tag, g->file)) ||
+				          (w == SNAPS_FOR_PLAYED && stats_lookup(sc->tag, g->file, &secs, &last) &&
+				           (secs > 0 || last > 0));
+
+				if (!in) continue;
+				s->vneed[w]++;
+				if (name) s->both[w]++;
+			}
+		}
+		if (named) {
+			db_titles_free(&titles);
+			db_titles_free(&miss);
+		}
+		snaps_stems_free(mp4, nmp4);
+		snaps_stems_free(png, npng);
+	}
+	/* A video's size and a cover's as the card's own say, once it has a few */
+	v->mb_video = all_videos >= 5 ? (double)all_bytes / all_videos / 1e6 : SCP_MB_PER_VIDEO;
+	v->mb_cover = all_covers >= 5 ? (double)cover_bytes / all_covers / 1e6 : SCP_MB_PER_COVER;
+	if (v->focus >= v->n) v->focus = v->n ? v->n - 1 : 0;
+}
+
+/* The plan's totals */
+static void scp_totals(const scp_view *v, int *ncov, int *covers, int *nvid, int *videos)
+{
+	int i, which = snaps_for();
+
+	*ncov = *covers = *nvid = *videos = 0;
+	for (i = 0; i < v->n; i++) {
+		if (v->s[i].cov) { (*ncov)++; *covers += v->s[i].miss; }
+		if (v->s[i].vid) { (*nvid)++; *videos += v->s[i].vneed[which]; }
+	}
+}
+
+static void scp_mb(double mb, char *out, size_t n)
+{
+	sys_menu_bytes((unsigned long long)(mb * 1e6), out, n);
+}
+
+/* A size's spaces as no-break spaces, in place: "525 MB" stays on one line */
+static void scp_nbsp(char *s, size_t n)
+{
+	char out[64];
+	size_t o = 0, i;
+
+	for (i = 0; s[i] && o + 3 < sizeof out; i++) {
+		if (s[i] == ' ') { out[o++] = '\xc2'; out[o++] = '\xa0'; }
+		else out[o++] = s[i];
+	}
+	out[o] = '\0';
+	snprintf(s, n, "%s", out);
+}
+
+/* What a run will do with the switches as they are: covers to look for,
+ * videos to get (with an account), details lookups, the bytes all that
+ * adds to the card and about how long it takes. The plan's line, the
+ * room's check and the run's time left all read this. */
+typedef struct {
+	int covers, videos, looks;
+	double bytes, secs;
+} scp_need;
+
+static void scp_needs(const scp_view *v, scp_need *o)
+{
+	int i, k = snaps_for();
+
+	memset(o, 0, sizeof *o);
+	for (i = 0; i < v->n; i++) {
+		const scp_sys *s = &v->s[i];
+		bool vid = s->vid && v->ss_in;
+
+		if (s->cov) o->covers += s->miss;
+		if (vid) o->videos += s->vneed[k];
+		if (v->ss_in) o->looks += (s->cov ? s->names : 0) + (vid ? s->vneed[k] - (s->cov ? s->both[k] : 0) : 0);
+	}
+	o->bytes = (o->covers * v->mb_cover + o->videos * v->mb_video) * 1e6;
+	o->secs = o->covers * (v->ss_in ? SCP_S_SS : SCP_S_LR) + o->looks * SCP_S_SS + o->videos * SCP_S_VIDEO;
+}
+
+/* Will it fit, leaving SCP_RESERVE free? A card that cannot say: yes */
+static bool scp_fits(const scp_view *v, const scp_need *n)
+{
+	return !v->free || n->bytes + (double)SCP_RESERVE <= (double)v->free;
+}
+
+/* A time as the corner's battery says one: "12 min", "1 h 20 min";
+ * `round` takes a guess past 10 min to the nearest 5 */
+static void scp_time(double secs, bool round, char *out, size_t n)
+{
+	int m = (int)((secs + 59.0) / 60.0);
+
+	if (m < 1) m = 1;
+	if (round && m > 10) m = (m + 2) / 5 * 5;
+	if (m < 60) snprintf(out, n, T(S_CORNER_TIME_MIN), m);
+	else if (m % 60 == 0) snprintf(out, n, T(S_CORNER_TIME_H), m / 60);
+	else snprintf(out, n, T(S_CORNER_TIME_H_MIN), m / 60, m % 60);
+}
+
+/* ---- drawing ------------------------------------------------------------- */
+
+static float scp_ease(float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t); }
+
+/* A disc with a mark in it: lime with ink on it (on, a video), or the
+ * panel's own (a source) */
+static void scp_badge(app *a, int cx, int cy, int d, ui_glyph g, bool lime, Uint8 al)
+{
+	const ds_theme *t = theme();
+
+	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 - 2, cy - d / 2 - 2, d + 4, d + 4 }, d / 2 + 2, ui_col(t->edge, al));
+	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(lime ? t->accent : t->surface, al));
+	ui_glyph_draw(a->r, g, cx, cy, d * 64 / 100, ui_col(lime ? t->on_accent : t->accent_ink, al));
+}
+
+/* A switch as a mark: on, the lime disc; off, a quiet ring */
+static void scp_mark(app *a, int cx, int cy, int d, ui_glyph g, bool on)
+{
+	const ds_theme *t = theme();
+
+	if (on) { scp_badge(a, cx, cy, d, g, true, 255); return; }
+	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2, cy - d / 2, d, d }, d / 2, ui_col(t->edge, 255));
+	ui_round_rect(a->r, &(SDL_Rect){ cx - d / 2 + 2, cy - d / 2 + 2, d - 4, d - 4 }, d / 2 - 2, ui_col(t->raised, 255));
+	ui_glyph_draw(a->r, g, cx, cy, d * 60 / 100, UI_TEXT_DIM);
+}
+
+static ui_glyph scp_src_glyph(int src)
+{
+	return src == ART_SRC_SG ? UI_GLYPH_GRID : src == ART_SRC_LR ? UI_GLYPH_BOOK : UI_GLYPH_CLOUD;
+}
+
+static void scp_bar(app *a, int x, int y, int w, int num, int den)
+{
+	int fill = den > 0 ? (int)((long long)w * (num > den ? den : num) / den) : 0;
+
+	ui_round_rect(a->r, &(SDL_Rect){ x, y, w, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->track, 255));
+	if (fill > 0)
+		ui_round_rect(a->r, &(SDL_Rect){ x, y, fill, UI_BAR_H }, UI_BAR_H / 2, ui_col(theme()->accent_ink, 255));
+}
+
+/* A cover arrived, whole in `box` (never cut, never stretched), in its
+ * middle (`mid`) or at its foot; its source's mark on one corner and a
+ * video's play mark on the other; a lime frame round the newest. A video
+ * for a game with no cover of its own: a tile with the video's mark. */
+static void scp_cover_draw(app *a, const scp_cover *c, SDL_FRect box, Uint8 al, bool lit, bool mid)
+{
+	const ds_theme *t = theme();
+	float sw, sh, sc;
+	SDL_Rect q;
+	int d;
+
+	if (al == 0) return;
+	if (c->tex && c->w > 0 && c->h > 0) {
+		sc = box.w / (float)c->w;
+		if ((float)c->h * sc > box.h) sc = box.h / (float)c->h;
+		sw = c->w * sc;
+		sh = c->h * sc;
 	} else {
-		art_begin(&a->sys, P_ROMS, NULL);
+		sw = box.w * 0.8f;
+		sh = sw;
 	}
+	q = (SDL_Rect){ (int)(box.x + (box.w - sw) / 2), (int)(mid ? box.y + (box.h - sh) / 2 : box.y + box.h - sh),
+	                (int)sw, (int)sh };
+	if (lit) ui_round_rect(a->r, &(SDL_Rect){ q.x - 7, q.y - 7, q.w + 14, q.h + 14 }, 12, ui_col(t->accent, al));
+	else ui_round_rect(a->r, &(SDL_Rect){ q.x - 2, q.y - 2, q.w + 4, q.h + 4 }, 4, ui_col(t->edge, al));
+	if (c->tex) {
+		SDL_SetTextureAlphaMod(c->tex, al);
+		SDL_RenderCopy(a->r, c->tex, NULL, &q);
+		SDL_SetTextureAlphaMod(c->tex, 255);
+	} else {
+		ui_round_rect(a->r, &q, 4, ui_col(t->raised, al));
+		ui_glyph_draw(a->r, UI_GLYPH_FILM, q.x + q.w / 2, q.y + q.h / 2, q.w / 2, ui_col(t->accent_ink, al));
+	}
+	d = q.w > 120 ? 40 : 30;
+	scp_badge(a, q.x + q.w - d / 3, q.y + q.h - d / 3, d, scp_src_glyph(c->src), false, al);
+	if (c->video) scp_badge(a, q.x + d / 3, q.y + q.h - d / 3, d, UI_GLYPH_PLAY, true, al);
+}
 
-	while (!done && !want_quit && a->running) {
-		/* One step per frame. A step is one request STARTED or one poll of
-		 * the request already running - never a wait for one, because this
-		 * loop is where the power button is read. */
-		if (working && art_step() == 0) {
-			working = false;
-			plat_side_lights_say(SIDE_LIGHTS_DONE);
+/* The counts as marks, centered on `cx`: covers, videos, games not found
+ * when `miss` is not below 0, and the time left beside a clock when `eta`
+ * is not NULL */
+typedef struct { ui_glyph g; const char *s; SDL_Color c, ink; } scp_stat;
+
+static void scp_stats(app *a, int cx, int cy, int covers, int videos, int miss, const char *eta)
+{
+	const ds_theme *t = theme();
+	TTF_Font *f = ui_font(UI_F_MENU);
+	scp_stat st[4];
+	char num[3][16];
+	int i, w = 0, x, ns = 0;
+
+	snprintf(num[0], sizeof num[0], "%d", covers);
+	snprintf(num[1], sizeof num[1], "%d", videos);
+	snprintf(num[2], sizeof num[2], "%d", miss);
+	st[ns++] = (scp_stat){ UI_GLYPH_COVER, num[0], ui_col(t->accent_ink, 255), UI_TEXT };
+	st[ns++] = (scp_stat){ UI_GLYPH_FILM, num[1], ui_col(t->accent_ink, 255), UI_TEXT };
+	if (miss >= 0) st[ns++] = (scp_stat){ UI_GLYPH_CANCEL, num[2], UI_TEXT_DIM, UI_TEXT_DIM };
+	if (eta) st[ns++] = (scp_stat){ UI_GLYPH_CLOCK, eta, UI_TEXT_SOFT, UI_TEXT_SOFT };
+	for (i = 0; i < ns; i++) w += 44 + 8 + ui_text_width(f, st[i].s) + (i < ns - 1 ? 40 : 0);
+	x = cx - w / 2;
+	for (i = 0; i < ns; i++) {
+		ui_glyph_draw(a->r, st[i].g, x + 22, cy, 44, st[i].c);
+		x += 52;
+		ui_text(a->r, f, st[i].s, x, ui_cap_y(f, cy), -1, st[i].ink);
+		ui_fit_drawn(st[i].s);
+		x += ui_text_width(f, st[i].s) + 40;
+	}
+}
+
+/* The heading beside Zyper, as Flash Drive's pages: one line at 168, or a
+ * second in **meta** **text-soft** under it (the system in focus, a
+ * problem, "needs Wi-Fi", the plan's time beside a clock `g`) with the
+ * first at 150 and it at 208; each cut to the page's right side. `g`
+ * UI_GLYPH_COUNT: no mark. */
+static void scp_head(app *a, int hx, const char *title, const char *sub, ui_glyph g)
+{
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	bool two = sub && *sub;
+	int sx = hx;
+	char fit[192];
+
+	ui_fit_text(ft, title, fit, sizeof fit, SCP_X1 - hx);
+	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, two ? 150 : 168), -1, UI_TEXT);
+	if (two) {
+		if (g != UI_GLYPH_COUNT) {
+			ui_glyph_draw(a->r, g, hx + 16, 208, 32, ui_col(theme()->accent_ink, 255));
+			sx = hx + 44;
 		}
-		art_status(&p);
+		ui_fit_text(fs, sub, fit, sizeof fit, SCP_X1 - sx);
+		ui_text(a->r, fs, fit, sx, ui_cap_y(fs, 208), -1, UI_TEXT_SOFT);
+	}
+}
 
-		{
-			/* Three facts, each a count of its own, between " · " */
-			char fo[40], mi[40], al[40];
+/* The line over the keys (SCP_LINE): marks and their words, centered. A
+ * switch's mark (scp_mark) on or off, a plain mark in **accent-ink** beside
+ * words in **text-soft**, or both in **warning** */
+enum { SCP_ON, SCP_OFF, SCP_INFO, SCP_WARN };
+typedef struct {
+	ui_glyph g;
+	const char *text;
+	int tone;
+} scp_item;
 
-			snprintf(fo, sizeof fo, TN(S_SCRAPER_FOUND_N, p.found), p.found);
-			snprintf(mi, sizeof mi, TN(S_SCRAPER_MISSING_N, p.missing), p.missing);
-			snprintf(al, sizeof al, TN(S_SCRAPER_ALREADY_N, p.skipped), p.skipped);
-			snprintf(counts, sizeof counts, "%s · %s · %s", fo, mi, al);
+static void scp_line(app *a, const scp_item *it, int n)
+{
+	const ds_theme *t = theme();
+	TTF_Font *fs = ui_font(UI_F_META);
+	const int d = 36, pad = 14;
+	int w[4], i, sum = 0, gap = 48, x;
+
+	for (i = 0; i < n && i < 4; i++) sum += (w[i] = d + pad + ui_text_width(fs, it[i].text));
+	if (sum + gap * (n - 1) > SCP_X1 - SCP_X0) gap = 24;
+	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
+	for (i = 0; i < n && i < 4; i++) {
+		SDL_Color c = it[i].tone == SCP_WARN ? ui_col(t->warning, 255)
+		            : it[i].tone == SCP_OFF ? UI_TEXT_DIM : it[i].tone == SCP_INFO ? UI_TEXT_SOFT : UI_TEXT;
+
+		if (it[i].tone == SCP_ON || it[i].tone == SCP_OFF)
+			scp_mark(a, x + d / 2, SCP_LINE, d, it[i].g, it[i].tone == SCP_ON);
+		else
+			ui_glyph_draw(a->r, it[i].g, x + d / 2, SCP_LINE, d,
+			              it[i].tone == SCP_WARN ? c : ui_col(t->accent_ink, 255));
+		ui_text(a->r, fs, it[i].text, x + d + pad, ui_cap_y(fs, SCP_LINE), -1, c);
+		ui_fit_drawn(it[i].text);
+		x += w[i] + gap;
+	}
+}
+
+/* Up to four hints at the foot, centered as a row, the gap narrower when
+ * they are wide */
+static void scp_foot(app *a, const char *const *k, const char *const *l, int n)
+{
+	int w[4], i, sum = 0, x, gap = 40;
+
+	for (i = 0; i < n; i++) sum += (w[i] = page_hint_width(k[i], l[i], false));
+	if (sum + gap * (n - 1) > ZYPEROS_SCREEN_W - 2 * DS_INSET) gap = 20;
+	x = (ZYPEROS_SCREEN_W - sum - gap * (n - 1)) / 2;
+	for (i = 0; i < n; i++) {
+		page_hint(a->r, k[i], l[i], x, 704, false, false);
+		x += w[i] + gap;
+	}
+}
+
+/* The heading beside Zyper: the page's, or a system's for its Box Art */
+static const char *scp_title(const scp_view *v)
+{
+	return v->only[0] && v->n ? v->s[0].name : T(S_SCRAPER_HEADING);
+}
+
+/* The plan: what a run will do, before it starts. Each system's icon over
+ * its two marks; Covers and Videos as Flash Drive's two tiles, each with
+ * what it will add to the card; and over the keys about how long it takes
+ * and the room, in **warning** when it will not fit */
+static void scp_plan_draw(scp_view *v)
+{
+	app *a = v->a;
+	const ds_theme *t = theme();
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fm = ui_font(UI_F_MENU), *fs = ui_font(UI_F_META);
+	int hx = ud_page_top(a, 1.0f), i, ncov, covers, nvid, videos, shown, more;
+	/* nine across, the first's marks at the page's left side (31: half
+	 * the two marks' width) and the ninth's at its right */
+	const int cell = (SCP_X1 - SCP_X0 - 62) / 8, x1 = SCP_X0 + 31;
+	const int iy = SCP_TOP + 28, my = SCP_TOP + 84, ty = 376, th = 220;
+	char cb[16], cl[96], vb[24], vl[128], cplus[48] = "", vplus[48] = "", sz[32], fr[32], eta[48], room[128];
+	const char *K[4] = { "A", "Y", "START", "B" };
+	const char *L[4] = { T(S_SCRAPER_KEY_FETCH), T(S_SCRAPER_SYSTEMS), T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
+	scp_need need;
+
+	scp_totals(v, &ncov, &covers, &nvid, &videos);
+	scp_needs(v, &need);
+	/* The heading's second line: "needs Wi-Fi", else about how long */
+	if (!v->net) scp_head(a, hx, scp_title(v), T(S_MENU_NEEDS_WIFI), UI_GLYPH_COUNT);
+	else if (need.covers + need.videos + need.looks > 0) {
+		scp_time(need.secs, true, sz, sizeof sz);
+		snprintf(eta, sizeof eta, T(S_SCRAPER_ABOUT_TIME), sz);
+		scp_head(a, hx, scp_title(v), eta, UI_GLYPH_CLOCK);
+	} else {
+		scp_head(a, hx, scp_title(v), NULL, UI_GLYPH_COUNT);
+	}
+	/* The systems, as icons with their two marks: nine at most, and how
+	 * many more, from the page's left side */
+	shown = v->n > 9 ? 8 : v->n;
+	more = v->n - shown;
+	for (i = 0; i < shown; i++) {
+		int cx = x1 + i * cell;
+
+		scp_icon_draw(v, i, cx, iy, 60, v->s[i].cov || v->s[i].vid ? 255 : 110);
+		scp_mark(a, cx - 17, my, 28, UI_GLYPH_COVER, v->s[i].cov);
+		scp_mark(a, cx + 17, my, 28, UI_GLYPH_FILM, v->s[i].vid);
+	}
+	if (more > 0) {
+		char m[16];
+
+		snprintf(m, sizeof m, "+%d", more);
+		ui_text(a->r, fm, m, x1 + 8 * cell, ui_cap_y(fm, iy), 0, UI_TEXT_SOFT);
+	}
+	snprintf(cb, sizeof cb, "%d", covers);
+	snprintf(cl, sizeof cl, TN(S_SCRAPER_ON_N_SYSTEMS, ncov), ncov);
+	if (covers) {
+		scp_mb(covers * v->mb_cover, sz, sizeof sz);
+		snprintf(cplus, sizeof cplus, "+%s", sz);
+	}
+	if (nvid) {
+		snprintf(vb, sizeof vb, "%d", videos);
+		if (!v->ss_in) snprintf(vl, sizeof vl, "%s", T(S_SYSMENU_SN_NEEDS_SS));
+		else {
+			snprintf(vl, sizeof vl, TN(S_SCRAPER_ON_N_SYSTEMS, nvid), nvid);
+			if (videos) {
+				scp_mb(videos * v->mb_video, sz, sizeof sz);
+				snprintf(vplus, sizeof vplus, "+%s", sz);
+			}
 		}
-		if (p.named) {
-			char nm[40];
-			size_t used = strlen(counts);
+	} else {
+		snprintf(vb, sizeof vb, "%s", T(S_MENU_OFF_TITLE));
+		snprintf(vl, sizeof vl, "%s", T(S_SCRAPER_VIDEOS_OFF_ALL));
+	}
+	{
+		struct { ui_glyph g; const char *name, *big, *plus, *line; bool on; } TL[2] = {
+			{ UI_GLYPH_COVER, T(S_SCRAPER_PAGE_COVERS), cb, cplus, cl, ncov > 0 },
+			{ UI_GLYPH_FILM, T(S_SCRAPER_PAGE_VIDEOS), vb, vplus, vl, nvid > 0 },
+		};
 
-			snprintf(nm, sizeof nm, TN(S_SCRAPER_NAMES_N, p.named), p.named);
-			snprintf(counts + used, sizeof counts - used, " · %s", nm);
+		for (i = 0; i < 2; i++) {
+			SDL_Rect q = { i ? UD_TILE_X1 : UD_TILE_X0, ty, UD_TILE_W, th };
+
+			ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+			ui_glyph_draw(a->r, TL[i].g, q.x + UD_PAD + 28, q.y + 50, 56,
+			              TL[i].on ? ui_col(t->accent_ink, 255) : UI_TEXT_DIM);
+			ui_text(a->r, fm, TL[i].name, q.x + UD_PAD + 72, ui_cap_y(fm, q.y + 50), -1, UI_TEXT);
+			ui_text(a->r, ft, TL[i].big, q.x + UD_PAD, ui_cap_y(ft, q.y + 128), -1, TL[i].on ? UI_TEXT : UI_TEXT_DIM);
+			/* What it adds to the card, on the number's row: a few figures
+			 * leave the row room for it */
+			if (TL[i].plus[0])
+				ui_text(a->r, fm, TL[i].plus, q.x + q.w - UD_PAD, ui_cap_y(fm, q.y + 128), 1, UI_TEXT_SOFT);
+			ui_text(a->r, fs, TL[i].line, q.x + UD_PAD, ui_cap_y(fs, q.y + 180), -1, UI_TEXT_SOFT);
 		}
-		snprintf(where, sizeof where, "%d / %d", p.systems_done, p.systems);
-		if (one) {
-			/* Asked about one game, answer about one game: the run is that
-			 * game alone (art_begin's `only`), and "1 found, 19 already" would
-			 * be a true statement about work the player did not ask for. */
-			art_head(head, sizeof head, one);
-			rows[0] = (menu_row){ T(S_SCRAPER_BOX_ART),
-			                      working ? T(S_SCRAPER_FETCHING)
-			                      : p.found ? T(had ? S_SCRAPER_REPLACED : S_SCRAPER_FOUND)
-			                      : had ? T(S_SCRAPER_NOT_FOUND_KEPT)
-			                            : T(S_SCRAPER_NOT_FOUND), false };
-			rows[1] = (menu_row){ working ? b_legend(S_KEYHINT_STOP) : b_legend(S_KEYHINT_CLOSE),
-			                      NULL, false };
-			nrows = 2;
+	}
+	/* The room: the two tiles' figures added up, and the card's */
+	if (need.covers + need.videos + need.looks > 0) {
+		scp_item it[1];
+		char tf[64];
+
+		sys_menu_bytes((unsigned long long)need.bytes, sz, sizeof sz);
+		snprintf(tf, sizeof tf, T(S_SCRAPER_TO_FETCH), sz);
+		if (v->free) {
+			char f2[48];
+
+			sys_menu_bytes(v->free, fr, sizeof fr);
+			snprintf(f2, sizeof f2, T(S_STORAGE_FREE), fr);
+			snprintf(room, sizeof room, "%s \xc2\xb7 %s", tf, f2);
 		} else {
-			/* Running: what it is doing. Finished: what went wrong, or
-			 * that it is done - never the last game it happened to fetch,
-			 * which is what this said before and reads as still working
-			 * on it. */
-			art_head(head, sizeof head,
-			         working ? (p.now[0] ? p.now : T(S_SCRAPER_STARTING))
-			         : p.problem[0] ? p.problem : T(S_SCRAPER_DONE));
-			nrows = art_rows(rows, where, counts, working);
+			snprintf(room, sizeof room, "%s", tf);
 		}
+		it[0] = (scp_item){ UI_GLYPH_TO_CARD, room, scp_fits(v, &need) ? SCP_INFO : SCP_WARN };
+		scp_line(a, it, 1);
+	}
+	if (v->only[0]) {
+		const char *K1[3] = { "A", "START", "B" };
+		const char *L1[3] = { T(S_SCRAPER_KEY_FETCH), T(S_HOME_SETTINGS), T(S_SCRAPER_KEY_CLOSE) };
 
+		scp_foot(a, K1, L1, 3);
+	} else {
+		scp_foot(a, K, L, 4);
+	}
+}
+
+/* Systems: a tile a system, three to a row across the page, its icon and
+ * two marks; the one in focus ringed in **accent**, the ring inside the
+ * page's sides, and said under the heading and over the keys */
+#define SCP_GRID_RING 6
+#define SCP_GRID_GAP  24
+#define SCP_GRID_ROWG 18
+#define SCP_GRID_H    100
+#define SCP_GRID_W    ((SCP_X1 - SCP_X0 - 2 * SCP_GRID_RING - 2 * SCP_GRID_GAP) / SCP_COLS)   /* 305 */
+
+static void scp_systems_draw(scp_view *v)
+{
+	app *a = v->a;
+	const ds_theme *t = theme();
+	int hx = ud_page_top(a, 1.0f), i, top;
+	const int w = SCP_GRID_W, h = SCP_GRID_H, x0 = SCP_X0 + SCP_GRID_RING, y0 = SCP_TOP + SCP_GRID_RING;
+	char cov[64], vid[64], sz[32];
+	const char *K[4] = { "A", "X", "Y", "B" };
+	const char *L[4] = { T(S_SCRAPER_PAGE_COVERS), T(S_SCRAPER_PAGE_VIDEOS), T(S_SCRAPER_VIDEOS_FOR), T(S_SCRAPER_DONE) };
+	const scp_sys *f;
+	scp_item it[2];
+	int need;
+
+	if (!v->n) {
+		scp_head(a, hx, T(S_SCRAPER_SYSTEMS), NULL, UI_GLYPH_COUNT);
+		scp_foot(a, K + 3, L + 3, 1);
+		return;
+	}
+	f = &v->s[v->focus];
+	scp_head(a, hx, T(S_SCRAPER_SYSTEMS), f->name, UI_GLYPH_COUNT);
+	/* Three rows on the screen, the focus's among them */
+	top = v->focus / SCP_COLS - (SCP_ROWS - 1);
+	if (top < 0) top = 0;
+	if (top > v->focus / SCP_COLS) top = v->focus / SCP_COLS;
+	for (i = top * SCP_COLS; i < v->n && i < (top + SCP_ROWS) * SCP_COLS; i++) {
+		int r = i / SCP_COLS - top;
+		SDL_Rect q = { x0 + (i % SCP_COLS) * (w + SCP_GRID_GAP), y0 + r * (h + SCP_GRID_ROWG), w, h };
+		bool any = v->s[i].cov || v->s[i].vid;
+
+		if (i == v->focus)
+			ui_round_rect(a->r, &(SDL_Rect){ q.x - SCP_GRID_RING, q.y - SCP_GRID_RING, q.w + 2 * SCP_GRID_RING,
+			                                q.h + 2 * SCP_GRID_RING }, DS_RADIUS_CARD + SCP_GRID_RING,
+			              ui_col(t->accent, 255));
+		ui_round_rect(a->r, &q, DS_RADIUS_CARD, ui_col(t->raised, 255));
+		scp_icon_draw(v, i, q.x + 20 + 44, q.y + h / 2, 88, any ? 255 : 110);
+		scp_mark(a, q.x + w - 20 - 18, q.y + 28, 36, UI_GLYPH_COVER, v->s[i].cov);
+		scp_mark(a, q.x + w - 20 - 18, q.y + h - 28, 36, UI_GLYPH_FILM, v->s[i].vid);
+	}
+	/* The system in focus: the covers it misses, and its videos still to
+	 * fetch - the same figures the plan adds up */
+	if (f->cov) snprintf(cov, sizeof cov, TN(S_SYSMENU_SC_MISSING, f->miss), f->miss);
+	else snprintf(cov, sizeof cov, "%s", T(S_SCRAPER_OFF));
+	need = f->vneed[snaps_for()];
+	if (!f->vid) snprintf(vid, sizeof vid, "%s", T(S_SCRAPER_OFF));
+	else if (!v->ss_in) snprintf(vid, sizeof vid, "%s", T(S_SYSMENU_SN_NEEDS_SS));
+	else if (!need) snprintf(vid, sizeof vid, "%s", T(S_SCRAPER_COMPLETE));
+	else {
+		scp_mb(need * v->mb_video, sz, sizeof sz);
+		snprintf(vid, sizeof vid, T(S_SCRAPER_TO_FETCH), sz);
+	}
+	it[0] = (scp_item){ UI_GLYPH_COVER, cov, f->cov ? SCP_ON : SCP_OFF };
+	it[1] = (scp_item){ UI_GLYPH_FILM, vid, f->vid ? SCP_ON : SCP_OFF };
+	scp_line(a, it, 2);
+	scp_foot(a, K, L, 4);
+}
+
+static SDL_FRect scp_lerp(SDL_FRect p, SDL_FRect q, float e)
+{
+	return (SDL_FRect){ p.x + (q.x - p.x) * e, p.y + (q.y - p.y) * e, p.w + (q.w - p.w) * e, p.h + (q.h - p.h) * e };
+}
+
+/* The time a run has left: the part it is in at its own pace, once it has
+ * one (six games and 15 s), else the guess (s_cov, s_det); and in the
+ * covers part, the details part's games after it at the guess */
+static double scp_eta(scp_view *v, unsigned now, int looked, int total)
+{
+	bool det = v->p.details;
+	double spg = det ? v->s_det : v->s_cov, left;
+
+	if (det != v->pace_det || looked < v->pace_n0) {
+		v->pace_det = det;
+		v->pace_t0 = now;
+		v->pace_n0 = looked;
+	}
+	if (looked - v->pace_n0 >= 6 && now - v->pace_t0 >= 15000)
+		spg = (now - v->pace_t0) / 1000.0 / (looked - v->pace_n0);
+	left = (total - looked) * spg;
+	if (!det) left += v->est_looks * v->s_det;
+	return left > 0 ? left : 0;
+}
+
+/* The run: the game beside Zyper; its system, its source and how far under
+ * it; the newest cover landing big at the page's left, the six before it
+ * moving one place along to its right; the counts and the time left over
+ * the keys */
+#define SCP_BIG   360   /* the newest's square, from the page's left side */
+#define SCP_CELL  168   /* the six before it, three by two to the right side */
+
+static void scp_run_draw(scp_view *v, unsigned now)
+{
+	app *a = v->a;
+	TTF_Font *ft = ui_font(UI_F_TITLE), *fs = ui_font(UI_F_META);
+	int hx = ud_page_top(a, 1.0f), m, looked, total, si;
+	float e = v->nring && v->ring[0].tex ? scp_ease((float)(now - v->land_at) / SCP_LAND) : 1.0f;
+	char fit[160], cnt[48], eta[48];
+	/* the newest inside its square by its lit frame's width */
+	const SDL_FRect big = { SCP_X0 + 8, SCP_TOP + 8, SCP_BIG - 16, SCP_BIG - 16 };
+	const float gx = SCP_X0 + SCP_BIG + 24, sx = (SCP_X1 - gx - SCP_CELL) / 2, sy = SCP_CELL + 24;
+	const char *K[1] = { "B" }, *L[1] = { T(S_SCRAPER_KEY_STOP) };
+
+	/* Which part: covers (the plan's count), then the details of games
+	 * with a cover (their own count, art_progress.dtotal) */
+	if (v->p.details) {
+		looked = v->p.dlooked;
+		total = v->p.dtotal;
+	} else {
+		int i;
+
+		looked = v->p.looked;
+		for (total = 0, i = 0; i < v->n; i++) if (v->s[i].cov || v->only[0]) total += v->s[i].miss;
+	}
+	if (total < looked) total = looked;
+	ui_fit_text(ft, v->p.now, fit, sizeof fit, SCP_X1 - hx);
+	ui_text(a->r, ft, fit, hx, ui_cap_y(ft, 150), -1, UI_TEXT);
+	si = scp_find(v, v->p.folder_now);
+	scp_icon_draw(v, si, hx + 26, 208, 52, 255);
+	if (v->p.src != ART_SRC_NONE) scp_badge(a, hx + 80, 208, 40, scp_src_glyph(v->p.src), false, 255);
+	snprintf(cnt, sizeof cnt, "%d / %d", looked, total);
+	scp_bar(a, hx + 120, 205, SCP_X1 - hx - 120 - ui_text_width(fs, cnt) - 24, looked, total);
+	ui_text(a->r, fs, cnt, SCP_X1, ui_cap_y(fs, 208), 1, UI_TEXT_DIM);
+	/* The six before the newest, three by two; the one that was big comes
+	 * in first */
+	for (m = 6; m >= 0; m--) {
+		int k = m + 1;
+		SDL_FRect to = { gx + (m % 3) * sx, SCP_TOP + (m / 3) * sy, SCP_CELL, SCP_CELL };
+		SDL_FRect from = m == 0 ? big
+		               : (SDL_FRect){ gx + ((m - 1) % 3) * sx, SCP_TOP + ((m - 1) / 3) * sy, SCP_CELL, SCP_CELL };
+
+		if (k >= v->nring) continue;
+		if (m == 6) scp_cover_draw(a, &v->ring[k], from, (Uint8)(255 * (1.0f - e)), false, true);
+		else scp_cover_draw(a, &v->ring[k], scp_lerp(from, to, e), 255, false, true);
+	}
+	if (v->nring) {
+		SDL_FRect b = { big.x + big.w * 0.06f * (1 - e), big.y + 40 * (1 - e) + big.h * 0.06f * (1 - e),
+		                big.w * (0.88f + 0.12f * e), big.h * (0.88f + 0.12f * e) };
+
+		scp_cover_draw(a, &v->ring[0], b, (Uint8)(255 * e), true, true);
+	}
+	scp_time(scp_eta(v, now, looked, total), false, eta, sizeof eta);
+	scp_stats(a, ZYPEROS_SCREEN_W / 2, SCP_LINE, v->p.found, v->p.snaps, -1, eta);
+	scp_foot(a, K, L, 1);
+}
+
+/* Done: what came, as a wall across the page; the counts as marks; the room
+ * said plainly over the keys */
+static void scp_done_draw(scp_view *v)
+{
+	app *a = v->a;
+	TTF_Font *fs = ui_font(UI_F_META);
+	int hx = ud_page_top(a, 1.0f), m, i, nv = 0, n;
+	unsigned long long room = 0;
+	char line[160], sz[32];
+	const float gap = 20, cw = (SCP_X1 - SCP_X0 - 6 * gap) / 7, ch = 140;
+	const char *K[2] = { "A", "B" }, *L[2] = { T(S_SCRAPER_KEY_AGAIN), T(S_SCRAPER_KEY_CLOSE) };
+
+	scp_head(a, hx, T(S_SCRAPER_ALL_DONE), v->problem, UI_GLYPH_COUNT);
+	n = v->nring > 14 ? 14 : v->nring;
+	for (m = 0; m < n; m++) {
+		int k = n - 1 - m;     /* oldest first */
+
+		scp_cover_draw(a, &v->ring[k], (SDL_FRect){ SCP_X0 + (m % 7) * (cw + gap), SCP_TOP + (m / 7) * (ch + gap),
+		                                            cw, ch }, 255, false, false);
+	}
+	scp_stats(a, ZYPEROS_SCREEN_W / 2, 596, v->done_found, v->done_videos, v->done_missing, NULL);
+	for (i = 0; i < v->n; i++) if (v->s[i].vid) { nv++; room += v->s[i].vroom; }
+	if (nv) {
+		/* no account: no video came, so say why instead of "0 KB" */
+		if (!v->ss_in) snprintf(line, sizeof line, "%s: %s", T(S_SCRAPER_PAGE_VIDEOS), T(S_SYSMENU_SN_NEEDS_SS));
+		else {
+			scp_mb(room / 1e6, sz, sizeof sz);
+			snprintf(line, sizeof line, TN(S_SCRAPER_VIDEOS_ON_CARD, nv), nv, sz);
+		}
+		ui_text(a->r, fs, line, ZYPEROS_SCREEN_W / 2, ui_cap_y(fs, SCP_LINE), 0, UI_TEXT_SOFT);
+	}
+	scp_foot(a, K, L, 2);
+}
+
+static void scp_draw(scp_view *v, unsigned now)
+{
+	switch (v->where) {
+	case SCP_SYSTEMS: scp_systems_draw(v); break;
+	case SCP_RUN:     scp_run_draw(v, now); break;
+	case SCP_DONE:    scp_done_draw(v); break;
+	default:         scp_plan_draw(v); break;
+	}
+}
+
+/* The page under a panel opened from it (g_base_page) */
+static void scp_base(app *a, void *ctx)
+{
+	(void)a;
+	scp_draw(ctx, anim_now());
+}
+
+static void scp_test(scp_view *v, app *a);
+
+/* ---- the questions -------------------------------------------------------- */
+
+/* Tiles over the page, as Computer Connected's, or a list (tiles_are_list):
+ * the one picked, or -1 */
+static int scp_ask(scp_view *v, const char *heading, const char *sub, menu_row *tiles, int n, int sel)
+{
+	app *a = v->a;
+	key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
+	                   { "B", T(S_KEYHINT_CLOSE) } };
+	char legend[256];
+	int lv, choice = -2;
+	float k;
+
+	if (tiles_are_list(tiles, n)) snprintf(legend, sizeof legend, "%s", list_hints(T(S_KEYHINT_CLOSE)));
+	else keyhints_pack(hh, 3, legend, sizeof legend);
+	/* A line under the heading takes the panel's three notes: it, none
+	 * under the tiles, and the keys */
+	if (sub) {
+		tiles[n] = MENU_NOTE(sub);
+		tiles[n + 1] = MENU_NOTE(NULL);
+		tiles[n + 2] = MENU_NOTE(legend);
+	} else {
+		tiles[n] = MENU_NOTE(legend);
+	}
+	lv = panel_open();
+	while (choice == -2) {
 		plat_input_poll(&a->in);
+		scp_test(v, a);
 		ui_sounds_follow();
-		if (a->in.quit_requested) { art_cancel(); a->running = false; return MENU_STAY; }
+		if (a->in.quit_requested) { a->running = false; choice = -1; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) { choice = -1; break; }
+		if (menu_leaving(a) || a->in.pressed[IN_BACK]) choice = -1;
+		{
+			/* Left and Right along tiles; Up and Down too, for a list */
+			bool back = in_repeat(&a->in, IN_LEFT) || in_repeat(&a->in, IN_UP);
+			bool on = in_repeat(&a->in, IN_RIGHT) || in_repeat(&a->in, IN_DOWN);
 
-		/* A run in flight holds Auto Off (art_running, in long_task_busy):
-		 * the device is doing what it was asked, and powering off halfway
-		 * loses the rest. It used to be the other way round ("a library
-		 * left scraping unattended on battery is what Auto Off is for"),
-		 * and a run that Auto Off cut short had to be started again. The
-		 * battery running flat still ends it (battery_empty), and the
-		 * power button always does. */
-		if (a->in.pressed[IN_POWER] || idle_due(a)) {
-			art_cancel();
-			power_off(a);
-			return MENU_STAY;
+			if (back || on) {
+				moved_sound(a, back ? IN_LEFT : IN_RIGHT);
+				sel = (sel + (back ? -1 : 1) + n) % n;
+			}
 		}
-		if (menu_leaving(a)) {
-			art_cancel();
-			done = true;
-		}
-
-		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
-		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
-		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
-		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
-
+		if (a->in.pressed[IN_ACCEPT]) { uisound_play(DS_SOUND_ACCEPT); choice = sel; }
 		if (!panel_frame(a, lv, &k)) continue;
 		tick_tint(a);
 		tick_theme(a);
-		draw_shelf(a);
+		scp_draw(v, anim_now());
 		ui_scrim_k(a->r, 0, k);
-		menu_draw(a, head, rows, nrows, -1, menu_std_width(a), accent);
+		panel_show(a, PANEL_TILES, heading, tiles, n + (sub ? 3 : 1), sel, 0, MENU_ZYPEROS, NULL, false, 0, NULL);
 		plat_draw_osd(a->r);
 		plat_present();
 		ui_frame_rest(8);
 	}
-
-	art_cancel();
-	/* The cards on the shelf are textures already uploaded from whatever art
-	 * existed when the shelf was built. New art on the card changes nothing
-	 * until they are dropped and read again. */
-	free_all_textures(a);
+	panel_close(a, lv, !a->running);
 	plat_input_flush();
 	memset(&a->in, 0, sizeof a->in);
-	/* Finished, as against stopped: the run's own word on how it went */
-	if (working) return MENU_STAY;
-	return p.problem[0] ? MENU_FAILED : MENU_CHANGED;
+	return choice;
 }
 
-/* The run above as one screen with a panel, its every way out a close; and
- * one exit for title refresh, including a canceled cover, a miss that falls
- * through to libretro, and a partial bulk run. Do not sort while the run
- * still holds pointers to the selected entry's strings: art_run has returned
- * here, and the shelf the panel leaves over shows the new names. */
-static menu_result art_screen(app *a, const char *only, const char *one,
-                              const char *stem, const char *one_file, unsigned accent)
+/* Videos for's choices: for each, the videos still to fetch and their
+ * size, added up over the systems with videos on - which the line under
+ * the heading says, so a system's own figure (Systems' foot) is not taken
+ * for the whole (2026-11-14, on the Pixel 2: "in the videos for popup it's
+ * saying 1.9gb for all games, when collapsed it says 883mb") */
+static void scp_for_rows(const scp_view *v, menu_row *tiles, char *sub, size_t subn)
 {
-	int lv = panel_open();
-	menu_result r = art_run(a, only, one, stem, one_file, accent, lv);
+	static char val[SNAPS_FOR_COUNT][96];
+	int i, k, nvid = 0;
 
-	refresh_game_titles(a);
-	panel_close(a, lv, !a->running);
-	return r;
+	tiles[0] = (menu_row){ T(S_SCRAPER_ALL_GAMES), val[0], true };
+	tiles[1] = (menu_row){ T(S_LIBRARY_FAVORITES), val[1], true };
+	tiles[2] = (menu_row){ T(S_SCRAPER_PLAYED), val[2], true };
+	for (i = 0; i < v->n; i++) if (v->s[i].vid) nvid++;
+	for (k = 0; k < SNAPS_FOR_COUNT; k++) {
+		int n = 0;
+		char sz[32], tf[64];
+
+		for (i = 0; i < v->n; i++) if (v->s[i].vid) n += v->s[i].vneed[k];
+		scp_mb(n * v->mb_video, sz, sizeof sz);
+		scp_nbsp(sz, sizeof sz);
+		snprintf(tf, sizeof tf, T(S_SCRAPER_TO_FETCH), sz);
+		/* a number and its unit never apart on the tile's two lines */
+		snprintf(val[k], sizeof val[k], "%d\xc2\xa0\xc2\xb7\xc2\xa0%s", n, tf);
+	}
+	if (nvid) snprintf(sub, subn, TN(S_SCRAPER_VIDEOS_FOR_SYSTEMS, nvid), nvid);
+	else snprintf(sub, subn, "%s", T(S_SCRAPER_VIDEOS_OFF_ALL));
 }
 
-/* ---------- MENU > Scraper ------------------------------------------------
- *
- * Box Art, its three sources and Video Snaps, behind one MENU row: my
- * picks in the Scraper lab, 2026-11-06 (DESIGN.md 11.19). One list: Fetch
- * Missing Art and Video Snaps, a rule, then ScreenScraper, libretro and
- * SteamGridDB in the order a run asks them, each opening a page of its own.
- *
- * THE RUN GOES ON IN THIS SAME PANEL. Fetch Missing Art steps the scraper
- * from the build, one art_step a frame as art_run does, so the panel that
- * was asked is the one that answers: its first row becomes the progress and
- * each source counts what it finds. B stops it and closes the screen, as
- * Box Art's B always has. art_step touches neither the renderer nor the
- * event loop, which is all a build may not do. */
-
-
-typedef struct {
-	app        *a;
-	scraper_ui  u;
-	char        ss_name[SS_USER_MAX], sgdb[32], snaps[48], head[192];
-	menu_result said;
-} scraper_ctx;
-
-/* Video Snaps' value: on or off and the room they take */
-static unsigned long long snaps_total(app *a)
+/* Which games get videos */
+static void scp_videos_for(scp_view *v)
 {
-	unsigned long long sum = 0;
+	menu_row tiles[SNAPS_FOR_COUNT + 3];
+	char sub[128];
+	int c;
+
+	scp_for_rows(v, tiles, sub, sizeof sub);
+	c = scp_ask(v, T(S_SCRAPER_VIDEOS_FOR), sub, tiles, SNAPS_FOR_COUNT, snaps_for());
+	if (c >= 0) snaps_set_for(c);
+}
+
+/* Settings: the two accounts and Video Snaps, each its page as before */
+static void scp_settings(scp_view *v)
+{
+	static char ss[64], sg[32], vs[48];
+	menu_row tiles[4] = {
+		{ "ScreenScraper", ss, true },
+		{ "SteamGridDB", sg, true },
+		{ T(S_SCRAPER_PAGE_VIDEOS), vs, true },
+	};
+	char sz[24];
+	unsigned long long room = 0;
+	int i, c;
+
+	if (!ss_have_dev()) snprintf(ss, sizeof ss, "%s", T(S_SYSMENU_NOT_IN_BUILD));
+	else if (ss_signed_in()) snprintf(ss, sizeof ss, T(S_SYSMENU_SC_LINKED_AS), ss_user());
+	else snprintf(ss, sizeof ss, "%s", T(S_SYSMENU_SC_LINK));
+	if (!sgdb_have_key()) snprintf(sg, sizeof sg, "%s", T(S_SYSMENU_SC_LINK));
+	else if (sgdb_key_state() == SGDB_REFUSED) snprintf(sg, sizeof sg, "%s", T(S_SCRAPER_KEY_REFUSED));
+	else sgdb_key_masked(sg, sizeof sg);
+	for (i = 0; i < v->n; i++) room += v->s[i].vroom;
+	sys_menu_bytes(room, sz, sizeof sz);
+	snprintf(vs, sizeof vs, "%s \xc2\xb7 %s", snaps_play() ? T(S_SCRAPER_ON) : T(S_SCRAPER_OFF), sz);
+	c = scp_ask(v, T(S_HOME_SETTINGS), NULL, tiles, 3, 0);
+	if (c == 0) ss_page(v->a);
+	else if (c == 1) sgdb_screen(v->a);
+	else if (c == 2) snaps_screen(v->a);
+	if (c >= 0) scp_count(v);
+}
+
+/* ---- the run --------------------------------------------------------------- */
+
+static void scp_ring_free(scp_view *v)
+{
 	int i;
 
-	for (i = 0; i < a->sys.count; i++)
-		if (a->sys.systems[i].folder[0] && !is_muse(&a->sys.systems[i]))
-			sum += snaps_bytes(P_ROMS, a->sys.systems[i].folder);
-	return sum;
+	for (i = 0; i < v->nring; i++)
+		if (v->ring[i].tex) SDL_DestroyTexture(v->ring[i].tex);
+	v->nring = 0;
 }
 
-static void scraper_snaps_value(scraper_ctx *c)
+static void scp_start(scp_view *v)
 {
-	char sz[24];
+	int i, k;
 
-	sys_menu_bytes(snaps_total(c->a), sz, sizeof sz);
-	snprintf(c->snaps, sizeof c->snaps, "%s · %s",
-	         snaps_fetch() || snaps_play() ? T(S_SCRAPER_ON) : T(S_SCRAPER_OFF), sz);
-	c->u.snaps = c->snaps;
+	scp_ring_free(v);
+	memset(&v->cfg, 0, sizeof v->cfg);
+	for (i = 0; i < v->a->sys.count; i++) {
+		const system_cfg *sc = &v->a->sys.systems[i];
+
+		k = scp_find(v, sc->folder);
+		if (k < 0 || !(v->s[k].cov || v->s[k].vid || v->only[0])) continue;
+		if (v->cfg.count < CFG_MAX_SYSTEMS) v->cfg.systems[v->cfg.count++] = *sc;
+	}
+	{
+		/* the time left's guesses, until the run's own pace says */
+		scp_need need;
+
+		scp_needs(v, &need);
+		v->s_cov = v->ss_in ? SCP_S_SS : SCP_S_LR;
+		v->s_det = SCP_S_SS + (need.looks ? (double)need.videos / need.looks : 0.0) * SCP_S_VIDEO;
+		v->est_looks = need.looks;
+		v->pace_det = false;
+		v->pace_t0 = anim_now();
+		v->pace_n0 = 0;
+		v->room_at = 0;
+	}
+	g_scp = v;
+	g_snap_sys = &v->cfg;
+	art_covers_rule(scp_rule);
+	/* The one async slot, which an account answer may still hold */
+	sync_abandon();
+	art_begin(&v->cfg, P_ROMS, NULL);
+	memset(&v->p, 0, sizeof v->p);
+	v->seen = 0;
+	v->problem[0] = '\0';
+	v->where = SCP_RUN;
 }
 
-static void scraper_count(scraper_ctx *c)
+/* What arrived: a new tile in the ring, its picture asked off the frame */
+static void scp_take_arrival(scp_view *v)
 {
-	c->u.missing = art_count_missing(&c->a->sys, P_ROMS);
-	if (c->u.missing == 0)
-		snprintf(g_scraper_val, sizeof g_scraper_val, "%s", T(S_SCRAPER_COMPLETE));
-	else snprintf(g_scraper_val, sizeof g_scraper_val, TN(S_SCRAPER_MISSING_N, c->u.missing),
-	              c->u.missing);
+	scp_cover *c;
+
+	if (v->p.found_seq == v->seen) return;
+	v->seen = v->p.found_seq;
+	if (v->nring == SCP_RING) {
+		if (v->ring[SCP_RING - 1].tex) SDL_DestroyTexture(v->ring[SCP_RING - 1].tex);
+		v->nring--;
+	}
+	memmove(&v->ring[1], &v->ring[0], (size_t)v->nring * sizeof v->ring[0]);
+	v->nring++;
+	c = &v->ring[0];
+	memset(c, 0, sizeof *c);
+	c->seq = v->seen;
+	c->src = v->p.found_src;
+	c->video = v->p.found_video;
+	snprintf(c->folder, sizeof c->folder, "%s", v->p.found_folder);
+	if (v->p.found_path[0]) mt_ask((int)c->seq, v->p.found_path, 360);
+	else v->land_at = anim_now();     /* a video with no cover: lands as a tile */
 }
 
-static int scraper_build(void *ctx, menu_row *rows, int max, const char **heading)
+static bool scp_take_pictures(scp_view *v)
 {
-	static scraper_bufs b;
-	scraper_ctx *c = ctx;
-	sc_row ids[SC_ROWS];
-	char fit[128];
+	SDL_Surface *s;
+	int key, i;
+	bool any = false;
 
-	(void)max;
-	/* What can change under the screen: a link, a key the page sent */
-	sgdb_try_poll();
-	c->u.net = net_internet(NULL);
-	c->u.ss_have = ss_have_dev();
-	c->u.ss_in = ss_signed_in();
-	snprintf(c->ss_name, sizeof c->ss_name, "%s", ss_user());
-	c->u.ss_name = c->ss_name;
-	sgdb_key_masked(c->sgdb, sizeof c->sgdb);
-	c->u.sgdb = !sgdb_have_key() ? NULL
-	          : sgdb_key_state() == SGDB_REFUSED ? T(S_SCRAPER_KEY_REFUSED) : c->sgdb;
+	while (mt_take(&key, &s)) {
+		for (i = 0; i < v->nring; i++) {
+			if (v->ring[i].seq != (unsigned)key || v->ring[i].tex || !s) continue;
+			v->ring[i].tex = SDL_CreateTextureFromSurface(v->a->r, s);
+			v->ring[i].w = s->w;
+			v->ring[i].h = s->h;
+			if (i == 0) v->land_at = anim_now();
+			any = true;
+		}
+		if (s) SDL_FreeSurface(s);
+	}
+	return any;
+}
 
-	*heading = T(S_SCRAPER_HEADING);
-	if (c->u.running) {
-		art_progress p;
-		int r = art_step();
+/* The run is over: by its end, or stopped */
+static void scp_finish(scp_view *v, bool ended)
+{
+	art_status(&v->p);
+	v->done_found = v->p.found;
+	v->done_videos = v->p.snaps;
+	v->done_missing = v->p.missing;
+	snprintf(v->problem, sizeof v->problem, "%s", v->p.problem);
+	if (ended && !v->p.problem[0]) plat_side_lights_say(SIDE_LIGHTS_DONE);
+	art_cancel();
+	art_covers_rule(NULL);
+	g_snap_sys = NULL;
+	free_all_textures(v->a);
+	{
+		int i;
 
-		art_status(&p);
-		c->u.done = p.found + p.missing;
-		if (c->u.done > c->u.total) c->u.total = c->u.done;
-		c->u.ss_found = p.ss_found;
-		c->u.lr_found = p.lr_found;
-		c->u.sg_found = p.sg_found;
-		c->u.not_found = p.missing;
-		if (r != 1) {
-			/* Over: the counts stay, the shelf takes the new art; the side
-			 * lights say so when it ran to its end */
-			if (r == 0 && !p.problem[0]) plat_side_lights_say(SIDE_LIGHTS_DONE);
-			c->u.running = false;
-			c->u.ran = true;
-			c->said = p.problem[0] ? MENU_FAILED : MENU_CHANGED;
-			art_cancel();
-			free_all_textures(c->a);
-			scraper_count(c);
-			scraper_snaps_value(c);
-			if (p.problem[0]) {
-				ui_fit_text(ui_font(UI_F_LABEL), p.problem, fit, sizeof fit,
-				            ZYPEROS_SCREEN_W * 3 / 4);
-				snprintf(c->head, sizeof c->head, "%s\n%s", T(S_SCRAPER_HEADING), fit);
-				*heading = c->head;
+		/* The room said plainly at the end is the card's own, now */
+		for (i = 0; i < v->n; i++) v->s[i].vroom = snaps_bytes(P_ROMS, v->s[i].folder);
+	}
+	v->where = SCP_DONE;
+}
+
+/* ---- a test of the page on a host -------------------------------------------
+ * ZYPEROS_SCRAPER_TEST: the launcher opens the page at once and plays a
+ * script, commas between its steps: a button (A B X Y START UP DOWN LEFT
+ * RIGHT), wait=MS, run=MS (until the run is over, or MS), shot=PATH (the
+ * page as drawn now). Each step said on stderr with the page's state; the
+ * launcher quits at the script's end. The real loop, network and all: what
+ * a shot's fixture cannot show. */
+static const char *g_scp_test;
+static unsigned g_scp_until, g_scp_run_until;
+
+static void scp_test(scp_view *v, app *a)
+{
+	static const struct { const char *name; in_button b; } BTN[] = {
+		{ "A", IN_ACCEPT }, { "B", IN_BACK }, { "X", IN_X }, { "Y", IN_Y }, { "START", IN_START },
+		{ "UP", IN_UP }, { "DOWN", IN_DOWN }, { "LEFT", IN_LEFT }, { "RIGHT", IN_RIGHT },
+	};
+	char tok[512];
+	unsigned now = plat_now_ms();
+	size_t n, i;
+
+	if (!g_scp_test) return;
+	if (now < g_scp_until) return;
+	if (g_scp_run_until && v->where == SCP_RUN && now < g_scp_run_until) return;
+	g_scp_run_until = 0;
+	if (!*g_scp_test) { want_quit = 1; return; }
+	n = strcspn(g_scp_test, ",");
+	snprintf(tok, sizeof tok, "%.*s", (int)n, g_scp_test);
+	g_scp_test += n + (g_scp_test[n] == ',');
+	g_scp_until = now + 400;
+	for (i = 0; i < sizeof BTN / sizeof BTN[0]; i++)
+		if (!strcmp(tok, BTN[i].name)) a->in.pressed[BTN[i].b] = true;
+	if (!strncmp(tok, "wait=", 5)) g_scp_until = now + (unsigned)atoi(tok + 5);
+	if (!strncmp(tok, "run=", 4)) g_scp_run_until = now + (unsigned)atoi(tok + 4);
+	if (!strncmp(tok, "shot=", 5)) {
+		SDL_Surface *out = SDL_CreateRGBSurfaceWithFormat(0, ZYPEROS_SCREEN_W, ZYPEROS_SCREEN_H, 32,
+		                                                  SDL_PIXELFORMAT_RGBA32);
+
+		scp_draw(v, anim_now());
+		if (out) {
+			SDL_RenderReadPixels(a->r, NULL, SDL_PIXELFORMAT_RGBA32, out->pixels, out->pitch);
+			IMG_SavePNG(out, tok + 5);
+			SDL_FreeSurface(out);
+		}
+	}
+	fprintf(stderr, "scraper-test: %s where=%d systems=%d focus=%d arrived=%d found=%d looked=%d details=%d\n",
+	        tok, v->where, v->n, v->focus, v->nring, v->p.found, v->p.looked, v->p.details);
+}
+
+/* ---- the page -------------------------------------------------------------- */
+
+static void scp_page(app *a, const char *only)
+{
+	scp_view *v = calloc(1, sizeof *v);
+	int base;
+	unsigned beat = 0;
+	bool dirty = true;
+	art_progress last;
+
+	if (!v) return;
+	v->a = a;
+	if (only) snprintf(v->only, sizeof v->only, "%s", only);
+	scp_count(v);
+	mt_start();
+	base = panel_base();
+	g_base_page = scp_base;
+	g_base_ctx = v;
+	memset(&last, 0, sizeof last);
+	g_scp_test = getenv("ZYPEROS_SCRAPER_TEST");
+	while (!want_quit && a->running) {
+		unsigned now = anim_now();
+		bool anim;
+
+		plat_input_poll(&a->in);
+		scp_test(v, a);
+		muse_poll();
+		aout_apply(false);
+		if (a->in.quit_requested) { a->running = false; break; }
+		if (a->in.pressed[IN_POWER] || idle_due(a)) {
+			if (v->where == SCP_RUN) art_cancel();
+			power_off(a);
+			break;
+		}
+		if (in_repeat(&a->in, IN_VOLUP))    plat_volume_nudge(+1);
+		if (in_repeat(&a->in, IN_VOLDN))    plat_volume_nudge(-1);
+		if (in_repeat(&a->in, IN_BRIGHTUP)) plat_brightness_nudge(+1);
+		if (in_repeat(&a->in, IN_BRIGHTDN)) plat_brightness_nudge(-1);
+		for (int b = 0; b < IN_COUNT; b++) if (a->in.pressed[b] || a->in.down[b]) dirty = true;
+		if (a->in.pressed[IN_MENU]) {
+			if (v->where == SCP_RUN) scp_finish(v, false);
+			menu_leaving(a);
+			break;
+		}
+
+		if (v->where == SCP_RUN) {
+			int r = art_step();
+
+			art_status(&v->p);
+			scp_take_arrival(v);
+			if (scp_take_pictures(v)) dirty = true;
+			if (v->p.found_seq != last.found_seq || v->p.looked != last.looked ||
+			    v->p.dlooked != last.dlooked || v->p.src != last.src || strcmp(v->p.now, last.now))
+				dirty = true;
+			last = v->p;
+			/* The card filling: a look every 2 s, and the run stops with
+			 * SCP_FLOOR still free, which done says */
+			bool full = false;
+
+			if (r == 1 && now - v->room_at >= 2000) {
+				struct statvfs vfs;
+
+				v->room_at = now;
+				full = statvfs(P_ROMS, &vfs) == 0 &&
+				       (unsigned long long)vfs.f_bavail * vfs.f_frsize < SCP_FLOOR;
+			}
+			if (full) {
+				scp_finish(v, false);
+				snprintf(v->problem, sizeof v->problem, "%s", T(S_SCRAPER_NO_ROOM));
+				dirty = true;
+			} else if (r != 1) {
+				scp_finish(v, r == 0);
+				dirty = true;
+			} else if (a->in.pressed[IN_BACK]) {
+				uisound_play(DS_SOUND_BACK);
+				scp_finish(v, false);
+				dirty = true;
+			}
+		} else if (a->in.pressed[IN_BACK]) {
+			uisound_play(DS_SOUND_BACK);
+			if (v->where == SCP_SYSTEMS) { v->where = SCP_PLAN; dirty = true; }
+			else break;
+		} else if (v->where == SCP_SYSTEMS && v->n) {
+			in_button b = in_repeat(&a->in, IN_LEFT) ? IN_LEFT : in_repeat(&a->in, IN_RIGHT) ? IN_RIGHT
+			            : in_repeat(&a->in, IN_UP) ? IN_UP : in_repeat(&a->in, IN_DOWN) ? IN_DOWN : IN_NONE;
+			scp_sys *f = &v->s[v->focus];
+
+			if (b != IN_NONE) {
+				int to = v->focus + (b == IN_LEFT ? -1 : b == IN_RIGHT ? 1 : b == IN_UP ? -SCP_COLS : SCP_COLS);
+
+				if (to >= 0 && to < v->n) { moved_sound(a, b); v->focus = to; }
+			}
+			if (a->in.pressed[IN_ACCEPT]) {
+				uisound_play(DS_SOUND_ACCEPT);
+				f->cov = !f->cov;
+				snaps_set_covers(f->folder, f->cov);
+			} else if (a->in.pressed[IN_X]) {
+				uisound_play(DS_SOUND_ACCEPT);
+				f->vid = !f->vid;
+				snaps_set_get(f->folder, f->vid);
+			} else if (a->in.pressed[IN_Y]) {
+				scp_videos_for(v);
+				dirty = true;
+			}
+		} else if (v->where == SCP_PLAN || v->where == SCP_DONE) {
+			if (a->in.pressed[IN_ACCEPT]) {
+				scp_need need;
+
+				if (v->where == SCP_DONE) scp_count(v);
+				scp_needs(v, &need);
+				if (!v->net) {
+					uisound_play(DS_SOUND_DENY);
+					result_message(a, scp_title(v), MSG_NEEDS_WIFI);
+				} else if (!scp_fits(v, &need)) {
+					/* not started: the plan's line says it in **warning**,
+					 * and Y's videos or Storage make the room */
+					uisound_play(DS_SOUND_DENY);
+					result_message(a, scp_title(v), T(S_SCRAPER_NO_ROOM));
+				} else {
+					uisound_play(DS_SOUND_ACCEPT);
+					scp_start(v);
+				}
+			} else if (a->in.pressed[IN_Y] && v->where == SCP_PLAN && !v->only[0]) {
+				uisound_play(DS_SOUND_ACCEPT);
+				v->where = SCP_SYSTEMS;
+			} else if (a->in.pressed[IN_START] && v->where == SCP_PLAN) {
+				scp_settings(v);
+				dirty = true;
 			}
 		}
-	} else if (c->u.ran && c->head[0]) {
-		*heading = c->head;
+		if (g_menu_closing) break;
+
+		/* A frame when something changed, a cover is landing, or once a
+		 * second for the clock; between, the loop waits for a button */
+		anim = v->where == SCP_RUN && v->nring && now - v->land_at < SCP_LAND + 40;
+		if (now - beat >= 1000) { beat = now; dirty = true; }
+		if (!dirty && !anim) {
+			plat_input_wait(v->where == SCP_RUN ? 16 : 80);
+			continue;
+		}
+		dirty = false;
+		tick_tint(a);
+		tick_theme(a);
+		scp_draw(v, now);
+		panel_leave_draw(a, 0);
+		plat_draw_osd(a->r);
+		plat_present();
+		ui_frame_rest(8);
 	}
-	return sys_menu_scraper_rows(&c->u, &b, rows, ids);
+	if (v->where == SCP_RUN) scp_finish(v, false);
+	/* MENU's Scraper row says what is still missing, counted as the page
+	 * closes on the systems with covers on */
+	if (!v->only[0]) {
+		int i, miss = 0;
+
+		for (i = 0; i < v->n; i++) {
+			char dir[LIB_PATH * 2];
+			int k;
+
+			if (!v->s[i].cov) continue;
+			for (k = 0; k < a->sys.count && strcmp(a->sys.systems[k].folder, v->s[i].folder); k++) {}
+			if (k == a->sys.count) continue;
+			snprintf(dir, sizeof dir, "%s/%s", P_ROMS, v->s[i].folder);
+			miss += art_missing(dir, a->sys.systems[k].exts, NULL, NULL);
+		}
+		if (miss) snprintf(g_scraper_val, sizeof g_scraper_val, TN(S_SCRAPER_MISSING_N, miss), miss);
+		else snprintf(g_scraper_val, sizeof g_scraper_val, "%s", T(S_SCRAPER_COMPLETE));
+	}
+	mt_forget();
+	mt_stop();
+	mm_close(base, anim_now(), 0, g_menu_closing);
+	g_base_page = NULL;
+	g_base_ctx = NULL;
+	g_scp = NULL;
+	scp_ring_free(v);
+	for (int i = 0; i < v->n; i++) if (v->s[i].icon) SDL_DestroyTexture(v->s[i].icon);
+	free(v);
 }
 
-static menu_result ss_page(app *a);
-static menu_result snaps_screen(app *a);
-
-static menu_result scraper_key(app *a, void *ctx, in_button key, int sel)
+/* The page, from MENU or a system's Box Art, and every scrape's exit: the
+ * shelves' names from the library at once, with no restart (the run may
+ * have named games). tools/title-refresh-check.c runs this as it is, with
+ * the page stubbed. */
+static void scraper_page(app *a, const char *only)
 {
-	scraper_ctx *c = ctx;
-	scraper_bufs b;
-	menu_row rows[SC_ROWS];
-	sc_row ids[SC_ROWS];
-	menu_result r = MENU_STAY;
-	int n;
-
-	if (key != IN_ACCEPT || c->u.running) return MENU_STAY;
-	n = sys_menu_scraper_rows(&c->u, &b, rows, ids);
-	if (sel < 0 || sel >= n || !rows[sel].live) return MENU_STAY;
-	switch (ids[sel]) {
-	case SC_FETCH:
-		if (!net_online()) {
-			result_message(a, T(S_SCRAPER_HEADING), MSG_NEEDS_WIFI);
-			return MENU_FAILED;
-		}
-		/* The one async slot, which an account answer may still hold */
-		sync_abandon();
-		art_begin(&a->sys, P_ROMS, NULL);
-		c->u.running = true;
-		c->u.ran = false;
-		c->u.total = c->u.missing > 0 ? c->u.missing : 0;
-		c->u.done = c->u.ss_found = c->u.lr_found = c->u.sg_found = 0;
-		c->u.not_found = 0;
-		c->head[0] = '\0';
-		return MENU_STAY;
-	case SC_SNAPS:  r = snaps_screen(a); scraper_snaps_value(c); break;
-	case SC_SS:     r = ss_page(a); break;
-	case SC_SGDB:   r = sgdb_screen(a); break;
-	default: break;
-	}
-	return r;
+	scp_page(a, only);
+	refresh_game_titles(a);
 }
 
 static menu_result scraper_screen(app *a)
 {
-	scraper_ctx c;
+	scraper_page(a, NULL);
+	return MENU_STAY;
+}
 
-	memset(&c, 0, sizeof c);
-	c.a = a;
-	c.said = MENU_STAY;
-	scraper_count(&c);
-	scraper_snaps_value(&c);
-	menu_run(a, &(menu_style){ .accent = MENU_ZYPEROS, .fixed_w = menu_std_width(a) },
-	         scraper_build, scraper_key, &c);
-	/* Left while it ran: B, MENU, the power button or Auto Off */
-	if (c.u.running) {
-		art_cancel();
-		free_all_textures(a);
+/* ---- a shot's page (--scraper-page STATE [T]) ------------------------------
+ * The real drawing on stand-in systems, without a card or a run: 0 the plan
+ * with videos off, 1 with three systems' on, 2 with one, 3 Systems, 4 a long
+ * name in focus, 5 Videos for, 6 Settings, 7 the run at T ms, 8 done, 9
+ * done with one system's videos, 10 offline, 11 a system's Box Art, 12
+ * done with videos asked for and no ScreenScraper account, 13 the plan
+ * with too little room on the card, 14 Videos for with one system's
+ * videos on, 15 done after the card filled. Covers
+ * from ZYPEROS_LOOK_COVERS (paths split by ':') and their systems'
+ * indices from ZYPEROS_LOOK_SYS, when a shot has them. */
+static int shot_scraper_page = -1, shot_scraper_page_t = 7180;
+
+static void scp_fixture(scp_view *v, app *a, int state, int t)
+{
+	static const struct { const char *folder, *name, *key; bool cov; int miss, vneed; unsigned long long room; } SYS[9] = {
+		{ "NES", "NES", "NES", true, 120, 80, 0 },
+		{ "SNES", "SNES", "SNES", true, 96, 60, 0 },
+		{ "Game Boy", "Game Boy", "GB", true, 41, 30, 0 },
+		{ "Game Boy Advance", "Game Boy Advance", "GBA", true, 58, 44, 0 },
+		{ "Genesis", "Genesis", "GENESIS", true, 77, 70, 0 },
+		{ "PlayStation", "PlayStation", "PS1", true, 92, 85, 0 },
+		{ "Nintendo 64", "Nintendo 64", "N64", true, 39, 30, 0 },
+		{ "Neo Geo Pocket Color", "Neo Geo Pocket Color", "NGPC", false, 12, 10, 0 },
+		{ "Arcade", "Arcade", "ARCADE", false, 28, 25, 0 },
+	};
+	unsigned vid = state == 0 || state == 10 ? 0u : state == 2 || state == 9 || state == 14 ? 1u
+	             : (1u << 0) | (1u << 1) | (1u << 4);
+	int i;
+
+	memset(v, 0, sizeof *v);
+	v->a = a;
+	v->fixture = true;
+	v->net = state != 10;
+	v->ss_in = state != 12;     /* videos asked for, no account */
+	v->mb_video = SCP_MB_PER_VIDEO;
+	v->mb_cover = SCP_MB_PER_COVER;
+	v->free = state == 13 ? 400000000ULL : 11200000000ULL;
+	for (i = 0; i < 9; i++) {
+		scp_sys *s = &v->s[v->n++];
+
+		snprintf(s->folder, sizeof s->folder, "%s", SYS[i].folder);
+		snprintf(s->name, sizeof s->name, "%s", SYS[i].name);
+		snprintf(s->key, sizeof s->key, "%s", SYS[i].key);
+		s->cov = SYS[i].cov;
+		s->miss = SYS[i].miss;
+		s->vneed[SNAPS_FOR_ALL] = SYS[i].vneed;
+		s->vneed[SNAPS_FOR_FAVORITES] = SYS[i].vneed / 8;
+		s->vneed[SNAPS_FOR_PLAYED] = SYS[i].vneed * 3 / 10;
+		s->names = SYS[i].vneed / 2;
+		for (int w = 0; w < SNAPS_FOR_COUNT; w++) s->both[w] = s->vneed[w] / 4;
+		s->vid = (vid >> i) & 1u;
 	}
-	refresh_game_titles(a);
-	return c.said;
+	if (state == 11) {
+		v->s[0] = v->s[1];
+		v->n = 1;
+		snprintf(v->only, sizeof v->only, "%s", v->s[0].folder);
+		v->s[0].vid = true;
+	}
+	v->focus = state == 4 ? 7 : 4;
+	v->where = state == 3 || state == 4 || state == 5 || state == 14 ? SCP_SYSTEMS : state == 7 ? SCP_RUN
+	         : state == 8 || state == 9 || state == 12 || state == 15 ? SCP_DONE : SCP_PLAN;
+	if (state == 15) snprintf(v->problem, sizeof v->problem, "%s", T(S_SCRAPER_NO_ROOM));
+	if (state == 7 || state == 8 || state == 9 || state == 12 || state == 15) {
+		const char *env = getenv("ZYPEROS_LOOK_COVERS"), *sy = getenv("ZYPEROS_LOOK_SYS");
+		char buf[8192], *p, *save = NULL, names[SCP_RING][96];
+		int sys[SCP_RING], nc = 0, L, k;
+
+		memset(sys, 0, sizeof sys);
+		for (k = 0; sy && *sy && k < SCP_RING; k++) {
+			sys[k] = atoi(sy);
+			sy = strchr(sy, ',');
+			if (sy) sy++;
+		}
+		snprintf(buf, sizeof buf, "%s", env ? env : "");
+		L = state == 7 ? t / 1100 + 1 : SCP_RING;
+		for (p = strtok_r(buf, ":", &save); p && nc < SCP_RING; p = strtok_r(NULL, ":", &save)) {
+			const char *b = strrchr(p, '/');
+			char *dot;
+
+			snprintf(names[nc], sizeof names[nc], "%s", b ? b + 1 : p);
+			if ((dot = strrchr(names[nc], '.'))) *dot = '\0';
+			if (nc < L) {
+				/* newest first: the cover found last at [0] */
+				scp_cover *c;
+
+				memmove(&v->ring[1], &v->ring[0], (size_t)v->nring * sizeof v->ring[0]);
+				v->nring++;
+				c = &v->ring[0];
+				memset(c, 0, sizeof *c);
+				c->tex = IMG_LoadTexture(a->r, p);
+				if (c->tex) SDL_QueryTexture(c->tex, NULL, NULL, &c->w, &c->h);
+				c->seq = (unsigned)nc + 1;
+				c->src = nc % 5 == 3 ? ART_SRC_SG : nc % 3 == 1 ? ART_SRC_LR : ART_SRC_SS;
+				snprintf(c->folder, sizeof c->folder, "%s", SYS[sys[nc] % 9].folder);
+				c->video = ((vid >> (sys[nc] % 9)) & 1u) && nc % 2 == 0;
+				snprintf(v->p.now, sizeof v->p.now, "%s", names[nc]);
+				snprintf(v->p.folder_now, sizeof v->p.folder_now, "%s", SYS[sys[nc] % 9].folder);
+				v->p.src = c->src;
+				if (c->video) v->p.snaps++;
+			}
+			nc++;
+		}
+		v->p.looked = 37 + 2 * L;
+		v->p.found = 31 + L;
+		v->land_at = 1000000;
+		v->shot_now = v->land_at + (unsigned)(state == 7 ? t % 1100 : 2000);
+		{
+			/* the time left from the guesses, as a run's first seconds */
+			scp_need need;
+
+			scp_needs(v, &need);
+			v->s_cov = SCP_S_SS;
+			v->s_det = SCP_S_SS + (need.looks ? (double)need.videos / need.looks : 0.0) * SCP_S_VIDEO;
+			v->est_looks = need.looks;
+			v->pace_t0 = v->shot_now;
+			v->pace_n0 = v->p.looked;
+		}
+		v->done_found = 412;
+		v->done_videos = 38;
+		v->done_missing = 9;
+		for (i = 0; i < 9; i++)
+			if (v->s[i].vid) v->s[i].vroom = (unsigned long long)(v->s[i].vneed[SNAPS_FOR_ALL] * SCP_MB_PER_VIDEO * 1e6);
+	}
+}
+
+static void scraper_page_shot(app *a)
+{
+	static scp_view v;
+	int st = shot_scraper_page;
+
+	scp_fixture(&v, a, st, shot_scraper_page_t);
+	if (st == 5 || st == 14) {
+		/* As scp_videos_for asks it */
+		menu_row tiles[SNAPS_FOR_COUNT + 3];
+		key_hint hh[3] = { { KEYHINT_LEFT_RIGHT, T(S_KEYHINT_MOVE) }, { "A", T(S_KEYHINT_CHOOSE) },
+		                   { "B", T(S_KEYHINT_CLOSE) } };
+		static char legend[256], sub[128];
+
+		scp_for_rows(&v, tiles, sub, sizeof sub);
+		keyhints_pack(hh, 3, legend, sizeof legend);
+		tiles[SNAPS_FOR_COUNT] = MENU_NOTE(sub);
+		tiles[SNAPS_FOR_COUNT + 1] = MENU_NOTE(NULL);
+		tiles[SNAPS_FOR_COUNT + 2] = MENU_NOTE(legend);
+		scp_draw(&v, v.shot_now);
+		ui_scrim(a->r, 0);
+		tiles_panel(a, T(S_SCRAPER_VIDEOS_FOR), tiles, SNAPS_FOR_COUNT + 3, 1, PANEL_REST.panel);
+	} else if (st == 6) {
+		/* As scp_settings words them: a linked account, a key, videos on */
+		static char ss[64], vs[48];
+		menu_row tiles[4] = {
+			{ "ScreenScraper", ss, true },
+			{ "SteamGridDB", "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b", true },
+			{ T(S_SCRAPER_PAGE_VIDEOS), vs, true },
+		};
+		char sz[24];
+
+		snprintf(ss, sizeof ss, T(S_SYSMENU_SC_LINKED_AS), "tarik");
+		sys_menu_bytes(1400000000ull, sz, sizeof sz);
+		snprintf(vs, sizeof vs, "%s \xc2\xb7 %s", T(S_SCRAPER_ON), sz);
+		tiles[3] = MENU_NOTE(list_hints(T(S_KEYHINT_CLOSE)));
+		scp_draw(&v, v.shot_now);
+		ui_scrim(a->r, 0);
+		tiles_panel(a, T(S_HOME_SETTINGS), tiles, 4, 0, PANEL_REST.panel);
+	} else {
+		scp_draw(&v, v.shot_now);
+	}
+	for (int i = 0; i < v.nring; i++) if (v.ring[i].tex) SDL_DestroyTexture(v.ring[i].tex);
+	for (int i = 0; i < v.n; i++) if (v.s[i].icon) SDL_DestroyTexture(v.s[i].icon);
 }
 
 /* ScreenScraper's page: the account, whether it works, Unlink. Linking is
@@ -13417,8 +14484,7 @@ static void snaps_read(snaps_ctx *s)
 static int snaps_rows_now(snaps_ctx *s, menu_row *rows, sn_row *ids, int *con)
 {
 	static snaps_bufs b;
-	snaps_ui u = { .fetch = snaps_fetch(), .play = snaps_play(), .ss_in = ss_signed_in(),
-	               .ss_have = ss_have_dev(),
+	snaps_ui u = { .play = snaps_play(), .ss_in = ss_signed_in(), .ss_have = ss_have_dev(),
 	               .sound = snaps_sound(), .c = s->c, .nc = s->nc, .total = s->total };
 
 	return sys_menu_snaps_rows(&u, &b, rows, ids, con);
@@ -13449,7 +14515,6 @@ static menu_result snaps_key(app *a, void *ctx, in_button key, int sel)
 	n = snaps_rows_now(s, rows, ids, con);
 	if (!d || sel < 0 || sel >= n || !rows[sel].live) return MENU_STAY;
 	switch (ids[sel]) {
-	case SN_FETCH: snaps_set_fetch(!snaps_fetch()); break;
 	case SN_PLAY:  snaps_set_play(!snaps_play()); break;
 	case SN_SOUND: snaps_set_sound((snaps_sound() + d + 3) % 3); break;
 	case SN_CONSOLE:
@@ -18730,8 +19795,7 @@ static menu_result sysmenu_key(app *a, void *ctx, in_button key, int sel)
 		 * are looking at, and menu_draw already follows that rule everywhere
 		 * else. */
 		if (sel == SM_BOXART)
-			art_screen(a, a->sys.systems[a->sys_cursor].folder, NULL, NULL,
-			           NULL, a->sys.systems[a->sys_cursor].accent);
+			scraper_page(a, a->sys.systems[a->sys_cursor].folder);
 		if (sel == SM_RESCAN) {
 			wait_panel(a, a->sys.systems[a->sys_cursor].name, T(S_LIBRARY_SCANNING));
 			rescan_all(a);
@@ -24535,9 +25599,8 @@ static int shot_controls = -1;
 /* --sgdb [0|1|2]: MENU > SteamGridDB with no key, a key that works, or one
  * they refused - a stand-in key, masked as a real one is */
 static int shot_sgdb = -1;
-/* --scraper [0-5]: MENU > Scraper at rest, running, after a run; the Video
- * Snaps page; ScreenScraper's page; at rest with no network. Stand-in
- * counts, as a run would have. */
+/* --scraper [3|4]: the Video Snaps page; ScreenScraper's page. MENU >
+ * Scraper itself is --scraper-page (scraper_page_shot). */
 static int shot_scraper = -1;
 static int shot_about = -1;
 /* --about-scroll F: the story page scrolled F (0 to 1) of the way down, as
@@ -24555,8 +25618,6 @@ static int shot_music_page = -2, shot_music_steps;
 /* --update: MENU > System Update's page as the status file in
  * ZYPEROS_USERDATA/update says (the update lab's states) */
 static int shot_update = -1;
-static int shot_art;
-static const char *shot_art_now = "Legend of Zelda, The - A Link to the Past (USA)";
 static int shot_hare;
 static int shot_usb = -1;   /* --usb-ask [N]: the question, tile N focused */
 static int shot_dev = -1;   /* --dev-page [N]: Developer Mode's page with 1, 12 or no keys (0..2), or the message that says it is on (3) */
@@ -25469,36 +26530,12 @@ static void shot_compose(app *a)
 		ui_scrim(a->r, 0);
 		menu_draw(a, "SteamGridDB", rows, n, 0, menu_std_width(a), MENU_ZYPEROS);
 	}
-	if ((shot_scraper >= 0 && shot_scraper <= 2) || shot_scraper == 5) {
-		static scraper_bufs b;
-		scraper_ui u = { .net = true, .missing = 142, .snaps = "on \xc2\xb7 1.4 GB",
-		                 .ss_have = true, .ss_in = true, .ss_name = "tarik",
-		                 .sgdb = "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2" "1a2b" };
-		menu_row rows[SC_ROWS];
-		sc_row ids[SC_ROWS];
-		const char *head = T(S_SCRAPER_HEADING);
-		int n;
-
-		if (shot_scraper == 1) {
-			u.running = true; u.done = 31; u.total = 142;
-			u.ss_found = 12; u.lr_found = 17; u.sg_found = 2;
-		} else if (shot_scraper == 5) {
-			/* Offline: the first row's value is "needs Wi-Fi", the longest
-			 * it has in most languages (check-i18n-shots) */
-			u.net = false;
-		} else if (shot_scraper == 2) {
-			u.ran = true; u.missing = 9;
-			u.ss_found = 61; u.lr_found = 58; u.sg_found = 14; u.not_found = 9;
-		}
-		n = sys_menu_scraper_rows(&u, &b, rows, ids);
-		ui_scrim(a->r, 0);
-		menu_draw(a, head, rows, n, 0, menu_std_width(a), MENU_ZYPEROS);
-	} else if (shot_scraper == 3) {
+	if (shot_scraper == 3) {
 		static snaps_bufs b;
 		snaps_console c[5] = { { "SNES", true, 212000000ull }, { "Game Boy", true, 96000000ull },
 		                       { "PlayStation", false, 0 }, { "Genesis", true, 154000000ull },
 		                       { "NES", true, 188000000ull } };
-		snaps_ui u = { .fetch = true, .play = true, .ss_in = true, .ss_have = true,
+		snaps_ui u = { .play = true, .ss_in = true, .ss_have = true,
 		               .sound = SNAP_MUTED,
 		               .c = c, .nc = 5, .total = 650000000ull };
 		menu_row rows[SN_ROWS];
@@ -25516,9 +26553,6 @@ static void shot_compose(app *a)
 		menu_draw(a, "ScreenScraper", rows, n, 0, menu_std_width(a), MENU_ZYPEROS);
 	}
 	if (shot_np >= 0) np_shot(a);
-	if (shot_art)
-		art_preview(a, shot_art_now, "4 / 10",
-		            "37 found · 2 missing · 61 already", true);
 	if (shot_usb >= 0) {
 		/* The question a computer gets, at rest, as usb_ask asks it: all three tiles,
 		 * or with --usb-ask N plain the two a card without the development image has. In the language that is on, since the
@@ -25529,6 +26563,10 @@ static void shot_compose(app *a)
 
 		ui_scrim(a->r, 0);
 		tiles_panel(a, T(S_XFER_COMPUTER_CONNECTED), tiles, nt, shot_usb % nt, PANEL_REST.panel);
+	}
+	if (shot_scraper_page >= 0) {
+		scraper_page_shot(a);
+		return;
 	}
 	if (shot_usbdrive >= 0 && shot_usbdrive < UD_FRAMES) {
 		usb_drive_draw(a, shot_usbdrive);
@@ -27662,9 +28700,14 @@ int main(int argc, char *argv[])
 			if (g_shot_snap_wait > 1) g_shot_snap_wait = 1;
 		}
 		else if (!strcmp(argv[i], "--scraper")) {
-			shot_scraper = 0;
-			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '5')
+			shot_scraper = 3;
+			if (i + 1 < argc && argv[i + 1][0] >= '3' && argv[i + 1][0] <= '4')
 				shot_scraper = atoi(argv[++i]);
+		}
+		else if (!strcmp(argv[i], "--scraper-page") && i + 1 < argc) {
+			shot_scraper_page = atoi(argv[++i]);
+			if (i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9')
+				shot_scraper_page_t = atoi(argv[++i]);
 		}
 		else if (!strcmp(argv[i], "--sgdb")) {
 			shot_sgdb = 0;
@@ -27717,10 +28760,6 @@ int main(int argc, char *argv[])
 				        "--poweroff --shot-at %s\n", argv[i + 1]);
 				return 2;
 			}
-		}
-		else if (!strcmp(argv[i], "--art")) {
-			shot_art = 1;
-			if (i + 1 < argc && argv[i + 1][0] != '-') shot_art_now = argv[++i];
 		}
 		else if (!strcmp(argv[i], "--usb-ask")) {
 			shot_usb = 0;
@@ -28870,6 +29909,11 @@ int main(int argc, char *argv[])
 	 * card's empty .media folders go once the shelf is up (after_start_step). */
 	up_cable_tidy();
 
+	/* A test of MENU > Scraper's page (scp_test): the page at once */
+	if (getenv("ZYPEROS_SCRAPER_TEST")) {
+		scraper_page(&a, NULL);
+		a.running = false;
+	}
 	while (a.running) {
 		plat_input_poll(&a.in);
 		if (a.in.quit_requested || want_quit) break;

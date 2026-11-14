@@ -73,7 +73,7 @@ something once broke in a way nothing noticed:
 | `check-rahash` | the C and Python ROM hashers agree, over the whole library |
 | `check-raset` | the C and Python set converters agree (needs `RA_USER`/`RA_PASS`) |
 | `check-artscrape` | two name normalizers agree on every candidate |
-| `check-artrun` | whole Box Art runs against a fake network: Replace keeps a cover it cannot better, and a checksum names the ROM in a zip, not the readme beside it |
+| `check-artrun` | whole Scraper runs against a fake network: Replace keeps a cover it cannot better, a checksum names the ROM in a zip, not the readme beside it, libretro comes right after a ScreenScraper miss, ten in a row leave a system to libretro, misses are kept 30 days, and a system with covers off gets none |
 | `check-hare` | nothing on the file server is reachable without the PIN; the page is named after its link (`/link.js`: the cable's or Wi-Fi's, never kept by a browser), and a web folder from before that still serves its page; an upload or an update's file of an exact multiple of 128 KiB sent with the page's trailer is stored to the byte, one sent plainly as sent, and one with a trailer it cannot make sense of refused, the file of its name kept and no part-file left |
 | `check-httpd` | request parsing, including the malformed ones |
 | `check-xfer` | upload paths cannot escape the directory they were aimed at |
@@ -127,6 +127,7 @@ something once broke in a way nothing noticed:
 | `check-devmode` | developer mode on a release image: the unlock hold (L2 and R2 for five seconds, a bar that only rises, and letting go early, another page or holding on starting again), the setting kept in the card's database, a random one-time password in its alphabet, and only public keys without options taken from the card's key file, once each |
 | `check-ctl` | the launcher's command channel, the one `px2-open` talks to: the command lines, good and bad; a game's path split into its system's folder and the file, and anything else turned away (outside `Roms`, relative, `..`, a link that leads out); the system found by its folder in either case and the game by its launch path or its disc folder; a core by its name or its Core row's; the socket in a folder in `/tmp`, closed to others, a command in and an answer out, and the port record |
 | `check-sgdb` | SteamGridDB on the device: the real client and a whole run against a fake API (the key in a header and never a URL, the match, the formats, the refusals, a key refused with a 401 or 403 when it is entered said so and the one before it kept), its title and ratio held to tools/sgdb-check.py |
+| `check-snaps` | MENU > Scraper's settings: covers and videos per system (covers on and videos off to start, a card that had 1.0.4's Fetch with Box Art on still getting them), Videos for (all games, favorites, played) and which games it lets through |
 | `check-snapshelf` | when the shelf's cover turns into its video snap and back, on a clock the check moves by hand |
 | `check-ss` | whether this build can reach ScreenScraper, and whether an account survives a restart |
 | `check-savedlib` | the saved library a start shows first: a listing written, read and finished is the scan, and nothing but a whole file is read as one; four headless starts of the launcher, with a game added before the third, rebuilt in place |
