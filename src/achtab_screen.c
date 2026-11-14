@@ -18,6 +18,8 @@
 static const achtab_bufs *g_at;
 static at_source          g_at_src;
 static SDL_Renderer      *g_at_r;
+/* A shot's badges' set, in chv_source's place (achtab_shot_badges) */
+static const char        *g_shot_badge_set;
 
 static void at_header(app *a, const SDL_Rect *q)
 {
@@ -44,8 +46,8 @@ static SDL_Texture *at_badge(int row)
 
 	if (!g_at || g_at->state != AT_LIST || !g_at_src || row < 0 || row >= g_at->n) return NULL;
 	c = g_at_src(row);
-	return c ? rb_icon(g_at_r, chv_source(), c->badge, !(c->earned || c->earned_now),
-	                   theme()) : NULL;
+	return c ? rb_icon(g_at_r, g_shot_badge_set ? g_shot_badge_set : chv_source(), c->badge,
+	                   !(c->earned || c->earned_now), theme()) : NULL;
 }
 
 int achtab_rows(app *a, const at_facts *f, at_source at, achtab_bufs *b,
@@ -121,6 +123,7 @@ void achtab_close(void)
  * (main.c, --cheevos-screen): a set's names run past the panel often */
 static cheevo g_shot_set[8];
 static int    g_shot_earned = 3;
+static char   g_shot_pattern[24];
 
 static void shot_fill(void)
 {
@@ -142,6 +145,12 @@ static void shot_fill(void)
 		g_shot_set[i].points = sample[i].p;
 		g_shot_set[i].earned = i < g_shot_earned;
 		snprintf(g_shot_set[i].title, sizeof g_shot_set[i].title, "%s", sample[i].t);
+		snprintf(g_shot_set[i].badge, sizeof g_shot_set[i].badge, "%s", g_shot_pattern);
+		{
+			char *hash = strchr(g_shot_set[i].badge, '#');
+
+			if (hash) *hash = (char)('1' + i);
+		}
 	}
 	/* One count moving, where its points are (the fifth, when not earned) */
 	if (g_shot_earned <= 4) snprintf(g_shot_set[4].progress, sizeof g_shot_set[4].progress, "74/100");
@@ -160,3 +169,13 @@ const cheevo *achtab_shot_at(int i)
 }
 
 int achtab_shot_count(void) { return 8; }
+
+void achtab_shot_badges(const char *set, const char *pattern)
+{
+	int i;
+
+	g_shot_badge_set = set;
+	snprintf(g_shot_pattern, sizeof g_shot_pattern, "%s", pattern ? pattern : "");
+	(void)i;
+	shot_fill();
+}

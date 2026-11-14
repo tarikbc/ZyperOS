@@ -59,5 +59,8 @@ void achtab_close(void);
 const cheevo *achtab_shot_at(int i);
 int  achtab_shot_count(void);
 void achtab_shot_earned(int earned);
+/* ...with badges from a set on a shot's card, `pattern`'s '#' the row's
+ * number from 1 (main.c's --cheevos-badge); NULL keeps the plain ones */
+void achtab_shot_badges(const char *set, const char *pattern);
 
 #endif

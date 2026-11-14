@@ -121,7 +121,7 @@ LR_REPO={'PlayStation':'Sony_-_PlayStation','NES':'Nintendo_-_Nintendo_Entertain
          'Nintendo 64':'Nintendo_-_Nintendo_64','Dreamcast':'Sega_-_Dreamcast','ScummVM':'ScummVM'}
 # With --art, the in-game menu and its Controls pages stand over a screenshot
 # of a PlayStation game (--backdrop) rather than a made-up frame
-BACKDROP=['gamemenu','gamemenu-shader','controls-tab','controls-ps1','controls-hotkeys','controls-psp']
+BACKDROP=['gamemenu','gamemenu-shader','achtab','controls-tab','controls-ps1','controls-hotkeys','controls-psp']
 BACKDROP_GAME='Spyro the Dragon (USA)'   # bright, so the panel reads against it
 ART_CACHE=Path.home()/'Library/Caches/zyperos-readme-art'
 GAMES=[Path(f).stem for f,_ in LIBRARY['PlayStation']]
@@ -256,6 +256,9 @@ SHOTS={
     'gamemenu':('demo','PS1',['--screen','games','--gamemenu','3']),
     # ...on its Shader row, Sharp-Shimmerless (SHOT_SETTINGS)
     'gamemenu-shader':('demo','PS1',['--screen','games','--gamemenu','1','--gm-tab','1']),
+    # The in-game menu's Achievements tab (1.0.5): the list, with its badges
+    'achtab':('demo','PS1',['--screen','games','--gamemenu','1','--gm-tab','3','--achtab','list',
+                            '--cheevos-badge','{card}/Roms/PlayStation/.cheevos/Hagane.set','b#']),
     # The in-game menu's Controls tab (2026-11-13), light: a PlayStation game
     # with Y given Cross, so B gives Square (two Lefts on Y, the swap, both
     # values in the accent ink and both keys lit on the handheld). It is kept

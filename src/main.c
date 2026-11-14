@@ -27000,6 +27000,7 @@ static void shot_draw_gamemenu(app *a)
 		at_facts f;
 		int an, asel;
 
+		if (shot_badge_set) achtab_shot_badges(shot_badge_set, shot_badge_name);
 		gm_at_facts(&f);
 		st.fixed_w = gm_width(a);
 		st.follow_tint = true;
